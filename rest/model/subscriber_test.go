@@ -43,6 +43,48 @@ func TestSubscriberModelsGithubStatusAPI(t *testing.T) {
 	assert.EqualValues(origPrSubscriber, serviceModel)
 }
 
+func TestSubscriberModelsGithubMerge(t *testing.T) {
+	assert := assert.New(t)
+
+	subscriber := event.Subscriber{
+		Type: event.GithubMergeSubscriberType,
+		Target: event.GithubMergeSubscriber{
+			Owner:         "me",
+			Repo:          "mine",
+			PRNumber:      5,
+			CommitMessage: "abcd",
+			MergeMethod:   "squash",
+			CommitTitle:   "merged by evergreen",
+			SHA:           "deadbeef",
+		},
+	}
+	apiSubscriber := APISubscriber{}
+	err := apiSubscriber.BuildFromService(subscriber)
+	assert.NoError(err)
+
+	origSubscriber, err := apiSubscriber.ToService()
+	assert.NoError(err)
+	assert.EqualValues(subscriber, origSubscriber)
+
+	// incoming subscribers have target serialized as a map
+	incoming := APISubscriber{
+		Type: ToAPIString(event.GithubMergeSubscriberType),
+		Target: map[string]interface{}{
+			"owner":          "me",
+			"repo":           "mine",
+			"pr_number":      5,
+			"commit_message": "abcd",
+			"merge_method":   "squash",
+			"commit_title":   "merged by evergreen",
+			"sha":            "deadbeef",
+		},
+	}
+
+	serviceModel, err := incoming.ToService()
+	assert.NoError(err)
+	assert.EqualValues(origSubscriber, serviceModel)
+}
+
 func TestSubscriberModelsWebhook(t *testing.T) {
 	assert := assert.New(t)
 

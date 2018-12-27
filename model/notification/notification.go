@@ -6,6 +6,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/model/commitq/githubpr"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/anser/bsonutil"
@@ -79,6 +80,9 @@ func (n *Notification) SenderKey() (evergreen.SenderKey, error) {
 
 	case event.GithubPullRequestSubscriberType:
 		return evergreen.SenderGithubStatus, nil
+
+	case event.GithubMergeSubscriberType:
+		return evergreen.SenderGithubMerge, nil
 
 	default:
 		return evergreen.SenderEmail, errors.Errorf("unknown type '%s'", n.Subscriber.Type)
@@ -177,6 +181,22 @@ func (n *Notification) Composer() (message.Composer, error) {
 
 		return message.NewGithubStatusMessageWithRepo(level.Notice, *payload), nil
 
+	case event.GithubMergeSubscriberType:
+		sub := n.Subscriber.Target.(*event.GithubMergeSubscriber)
+		payload, ok := n.Payload.(*githubpr.GithubMergePR)
+		if !ok || payload == nil {
+			return nil, errors.New("github-merge payload is invalid")
+		}
+		payload.Owner = sub.Owner
+		payload.Repo = sub.Repo
+		payload.CommitMsg = sub.CommitMessage
+		payload.CommitTitle = sub.CommitTitle
+		payload.SHA = sub.SHA
+		payload.PRNum = sub.PRNumber
+		payload.MergeMethod = githubpr.GithubMergeMethod(sub.MergeMethod)
+
+		return githubpr.NewGithubMergePRMessage(level.Notice, *payload), nil
+
 	default:
 		return nil, errors.Errorf("unknown type '%s'", n.Subscriber.Type)
 	}
@@ -243,6 +263,7 @@ type NotificationStats struct {
 	EvergreenWebhook  int `json:"evergreen_webhook" bson:"evergreen_webhook" yaml:"evergreen_webhook"`
 	Email             int `json:"email" bson:"email" yaml:"email"`
 	Slack             int `json:"slack" bson:"slack" yaml:"slack"`
+	GithubMerge       int `json:"github_merge" bson:"github_merge" yaml:"github_merge"`
 }
 
 func CollectUnsentNotificationStats() (*NotificationStats, error) {
@@ -295,6 +316,9 @@ func CollectUnsentNotificationStats() (*NotificationStats, error) {
 
 		case event.SlackSubscriberType:
 			nStats.Slack = data.Count
+
+		case event.GithubMergeSubscriberType:
+			nStats.GithubMerge = data.Count
 
 		default:
 			grip.Error(message.Fields{

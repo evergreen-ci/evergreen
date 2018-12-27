@@ -11,6 +11,7 @@ import (
 	"time"
 
 	legacyDB "github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/model/commitq/githubpr"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mitchellh/mapstructure"
 	"github.com/mongodb/amboy"
@@ -391,6 +392,7 @@ func (e *envState) initSenders() error {
 
 	githubToken, err := e.settings.GetGithubOauthToken()
 	if err == nil && len(githubToken) > 0 {
+		// Github Status
 		sender, err = send.NewGithubStatusLogger("evergreen", &send.GithubOptions{
 			Token: githubToken,
 		}, "")
@@ -398,6 +400,13 @@ func (e *envState) initSenders() error {
 			return errors.Wrap(err, "Failed to setup github status logger")
 		}
 		e.senders[SenderGithubStatus] = sender
+
+		// Github PR Merge
+		sender, err = githubpr.NewGithubPRLogger("evergreen", githubToken)
+		if err != nil {
+			return errors.Wrap(err, "Failed to setup github merge logger")
+		}
+		e.senders[SenderGithubMerge] = sender
 	}
 
 	if jira := &e.settings.Jira; len(jira.GetHostURL()) != 0 {

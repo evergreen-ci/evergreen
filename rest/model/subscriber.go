@@ -22,6 +22,16 @@ type APIGithubPRSubscriber struct {
 	Ref      APIString `json:"ref" mapstructure:"ref"`
 }
 
+type APIGithubMergeSubscriber struct {
+	Owner         APIString `json:"owner" mapstructure:"owner"`
+	Repo          APIString `json:"repo" mapstructure:"repo"`
+	PRNumber      int       `json:"pr_number" mapstructure:"opr_numberwner"`
+	CommitMessage APIString `json:"commit_message" mapstructure:"commit_message"`
+	MergeMethod   APIString `json:"merge_method" mapstructure:"merge_method"`
+	CommitTitle   APIString `json:"commit_title" mapstructure:"commit_title"`
+	SHA           APIString `json:"sha" mapstructure:"sha"`
+}
+
 type APIWebhookSubscriber struct {
 	URL    APIString `json:"url" mapstructure:"url"`
 	Secret APIString `json:"secret" mapstructure:"secret"`
@@ -42,6 +52,12 @@ func (s *APISubscriber) BuildFromService(h interface{}) error {
 				return err
 			}
 			target = sub
+		case event.GithubMergeSubscriberType:
+			sub := APIGithubMergeSubscriber{}
+			err := sub.BuildFromService(v.Target)
+			if err != nil {
+				return err
+			}
 
 		case event.EvergreenWebhookSubscriberType:
 			sub := APIWebhookSubscriber{}
@@ -86,6 +102,19 @@ func (s *APISubscriber) ToService() (interface{}, error) {
 
 	case event.GithubPullRequestSubscriberType:
 		apiModel := APIGithubPRSubscriber{}
+		if err = mapstructure.Decode(s.Target, &apiModel); err != nil {
+			return nil, gimlet.ErrorResponse{
+				StatusCode: http.StatusBadRequest,
+				Message:    "Subscriber target is malformed",
+			}
+		}
+		target, err = apiModel.ToService()
+		if err != nil {
+			return nil, err
+		}
+
+	case event.GithubMergeSubscriberType:
+		apiModel := APIGithubMergeSubscriber{}
 		if err = mapstructure.Decode(s.Target, &apiModel); err != nil {
 			return nil, gimlet.ErrorResponse{
 				StatusCode: http.StatusBadRequest,
@@ -160,6 +189,40 @@ func (s *APIGithubPRSubscriber) ToService() (interface{}, error) {
 		Repo:     FromAPIString(s.Repo),
 		Ref:      FromAPIString(s.Ref),
 		PRNumber: s.PRNumber,
+	}, nil
+}
+
+func (s *APIGithubMergeSubscriber) BuildFromService(h interface{}) error {
+	if v, ok := h.(event.GithubMergeSubscriber); ok {
+		h = &v
+	}
+
+	switch v := h.(type) {
+	case *event.GithubMergeSubscriber:
+		s.Owner = ToAPIString(v.Owner)
+		s.Repo = ToAPIString(v.Repo)
+		s.PRNumber = v.PRNumber
+		s.CommitMessage = ToAPIString(v.CommitMessage)
+		s.MergeMethod = ToAPIString(v.MergeMethod)
+		s.CommitTitle = ToAPIString(v.CommitTitle)
+		s.SHA = ToAPIString(v.SHA)
+
+	default:
+		return errors.New("unknown type for APIGithubMergeSubscriber")
+	}
+
+	return nil
+}
+
+func (s *APIGithubMergeSubscriber) ToService() (interface{}, error) {
+	return event.GithubMergeSubscriber{
+		Owner:         FromAPIString(s.Owner),
+		Repo:          FromAPIString(s.Repo),
+		PRNumber:      s.PRNumber,
+		CommitMessage: FromAPIString(s.CommitMessage),
+		MergeMethod:   FromAPIString(s.MergeMethod),
+		CommitTitle:   FromAPIString(s.CommitTitle),
+		SHA:           FromAPIString(s.SHA),
 	}, nil
 }
 
