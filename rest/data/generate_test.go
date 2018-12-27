@@ -233,19 +233,15 @@ func TestGenerateTasks(t *testing.T) {
 	assert.Len(p.Tasks, 2)
 	assert.Len(p.BuildVariants[0].Tasks, 1)
 	assert.Len(p.BuildVariants[1].Tasks, 2)
-	var errs []error
-	p, errs = model.TranslateProject(v.Project)
-	assert.Empty(errs)
-	assert.Len(p.Tasks, 2)
-	assert.Len(p.BuildVariants[0].Tasks, 1)
-	assert.Len(p.BuildVariants[1].Tasks, 2)
+	assert.Nil(v.Project)
 
 	// Verify second project was changed
 	v, err = model.VersionFindOneId("sample_version")
 	assert.NoError(err)
 	p = &model.Project{}
+	var errs []error
 	p, errs = model.TranslateProject(v.Project)
-	assert.NoError(err)
+	assert.Empty(errs)
 	assert.Len(p.Tasks, 4)
 	assert.Len(p.BuildVariants[0].Tasks, 1)
 	assert.Len(p.BuildVariants[1].Tasks, 4)
