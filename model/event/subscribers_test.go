@@ -61,7 +61,7 @@ func TestSubscribers(t *testing.T) {
 		},
 	}
 	expected := []string{"github_pull_request-evergreen-ci-evergreen-9001-sadasdkjsad",
-		"github_merge-evergreen-ci-evergreen-9001-abcd-squash-efgh-deadbeef",
+		"github_merge-evergreen-ci-evergreen-9001-deadbeef-abcd-squash-efgh",
 		"evergreen-webhook-https://example.com", "email-hi@example.com",
 		"jira-issue-BF-Fail", "jira-comment-BF-1234"}
 	for i := range subs {
