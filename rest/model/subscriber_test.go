@@ -52,10 +52,10 @@ func TestSubscriberModelsGithubMerge(t *testing.T) {
 			Owner:         "me",
 			Repo:          "mine",
 			PRNumber:      5,
+			Ref:           "deadbeef",
 			CommitMessage: "abcd",
 			MergeMethod:   "squash",
 			CommitTitle:   "merged by evergreen",
-			SHA:           "deadbeef",
 		},
 	}
 	apiSubscriber := APISubscriber{}
@@ -73,10 +73,10 @@ func TestSubscriberModelsGithubMerge(t *testing.T) {
 			"owner":          "me",
 			"repo":           "mine",
 			"pr_number":      5,
+			"ref":            "deadbeef",
 			"commit_message": "abcd",
 			"merge_method":   "squash",
 			"commit_title":   "merged by evergreen",
-			"sha":            "deadbeef",
 		},
 	}
 
