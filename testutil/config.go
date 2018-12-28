@@ -161,7 +161,7 @@ func MockConfig() *evergreen.Settings {
 		},
 		ServiceFlags: evergreen.ServiceFlags{
 			TaskDispatchDisabled:         true,
-			HostinitDisabled:             true,
+			HostInitDisabled:             true,
 			MonitorDisabled:              true,
 			AlertsDisabled:               true,
 			AgentStartDisabled:           true,

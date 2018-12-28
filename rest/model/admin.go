@@ -1015,7 +1015,7 @@ func (a *APISchedulerConfig) ToService() (interface{}, error) {
 // APIServiceFlags is a public structure representing the admin service flags
 type APIServiceFlags struct {
 	TaskDispatchDisabled    bool `json:"task_dispatch_disabled"`
-	HostinitDisabled        bool `json:"hostinit_disabled"`
+	HostInitDisabled        bool `json:"host_init_disabled"`
 	MonitorDisabled         bool `json:"monitor_disabled"`
 	AlertsDisabled          bool `json:"alerts_disabled"`
 	AgentStartDisabled      bool `json:"agent_start_disabled"`
@@ -1217,7 +1217,7 @@ func (as *APIServiceFlags) BuildFromService(h interface{}) error {
 	switch v := h.(type) {
 	case evergreen.ServiceFlags:
 		as.TaskDispatchDisabled = v.TaskDispatchDisabled
-		as.HostinitDisabled = v.HostinitDisabled
+		as.HostInitDisabled = v.HostInitDisabled
 		as.MonitorDisabled = v.MonitorDisabled
 		as.AlertsDisabled = v.AlertsDisabled
 		as.AgentStartDisabled = v.AgentStartDisabled
@@ -1244,7 +1244,7 @@ func (as *APIServiceFlags) BuildFromService(h interface{}) error {
 func (as *APIServiceFlags) ToService() (interface{}, error) {
 	return evergreen.ServiceFlags{
 		TaskDispatchDisabled:         as.TaskDispatchDisabled,
-		HostinitDisabled:             as.HostinitDisabled,
+		HostInitDisabled:             as.HostInitDisabled,
 		MonitorDisabled:              as.MonitorDisabled,
 		AlertsDisabled:               as.AlertsDisabled,
 		AgentStartDisabled:           as.AgentStartDisabled,

@@ -9,7 +9,7 @@ import (
 // ServiceFlags holds the state of each of the runner/API processes
 type ServiceFlags struct {
 	TaskDispatchDisabled    bool `bson:"task_dispatch_disabled" json:"task_dispatch_disabled"`
-	HostinitDisabled        bool `bson:"hostinit_disabled" json:"hostinit_disabled"`
+	HostInitDisabled        bool `bson:"host_init_disabled" json:"host_init_disabled"`
 	MonitorDisabled         bool `bson:"monitor_disabled" json:"monitor_disabled"`
 	AlertsDisabled          bool `bson:"alerts_disabled" json:"alerts_disabled"`
 	AgentStartDisabled      bool `bson:"agent_start_disabled" json:"agent_start_disabled"`
@@ -45,7 +45,7 @@ func (c *ServiceFlags) Set() error {
 	_, err := db.Upsert(ConfigCollection, byId(c.SectionId()), bson.M{
 		"$set": bson.M{
 			taskDispatchKey:                 c.TaskDispatchDisabled,
-			hostinitKey:                     c.HostinitDisabled,
+			hostInitKey:                     c.HostInitDisabled,
 			monitorKey:                      c.MonitorDisabled,
 			alertsKey:                       c.AlertsDisabled,
 			agentStartKey:                   c.AgentStartDisabled,

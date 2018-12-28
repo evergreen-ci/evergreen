@@ -534,7 +534,7 @@ func PopulateHostCreationJobs(env evergreen.Environment, part int) amboy.QueueOp
 			return errors.WithStack(err)
 		}
 
-		if flags.HostinitDisabled {
+		if flags.HostInitDisabled {
 			grip.InfoWhen(sometimes.Percent(evergreen.DegradedLoggingPercent), message.Fields{
 				"message": "host init disabled",
 				"impact":  "new hosts are not created in cloud providers",
@@ -592,7 +592,7 @@ func PopulateHostSetupJobs(env evergreen.Environment, part int) amboy.QueueOpera
 			return errors.WithStack(err)
 		}
 
-		if flags.HostinitDisabled {
+		if flags.HostInitDisabled {
 			grip.InfoWhen(sometimes.Percent(evergreen.DegradedLoggingPercent), message.Fields{
 				"message": "host init disabled",
 				"impact":  "new hosts are not setup or provisioned",
