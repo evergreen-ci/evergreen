@@ -109,6 +109,7 @@ func requireStringFlag(name string) cli.BeforeFunc {
 	}
 }
 
+// nolint: unused, deadcode
 func requireStringSliceValueChoices(name string, options []string) cli.BeforeFunc {
 	return func(c *cli.Context) error {
 		catcher := grip.NewBasicCatcher()
@@ -135,6 +136,7 @@ func requireStringValueChoices(name string, options []string) cli.BeforeFunc {
 	}
 }
 
+// nolint: unused, deadcode
 func requireStringLengthIfSpecified(name string, length int) cli.BeforeFunc {
 	return func(c *cli.Context) error {
 		val := c.String(name)
