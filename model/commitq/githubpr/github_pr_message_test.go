@@ -24,7 +24,7 @@ func TestGithubPRMerge(t *testing.T) {
 	raw, ok := c.Raw().(*GithubMergePR)
 	assert.True(ok)
 
-	assert.Equal(pr, raw)
+	assert.Equal(pr, *raw)
 
 	assert.Equal("Merge Pull Request #1 (Ref: deadbeef) for mci on evergreen-ci/evergreen: merged by cq", c.String())
 }

@@ -356,6 +356,9 @@ tasks:
     name: test-model-commitq
   - <<: *run-go-test-suite-with-mongodb
     tags: ["db", "test"]
+    name: test-model-commitq-githubpr
+  - <<: *run-go-test-suite-with-mongodb
+    tags: ["db", "test"]
     name: test-plugin
   - <<: *run-go-test-suite-with-mongodb
     tags: ["db", "test"]
