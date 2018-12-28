@@ -31,10 +31,10 @@ func TestSubscribers(t *testing.T) {
 				Owner:         "evergreen-ci",
 				Repo:          "evergreen",
 				PRNumber:      9001,
+				Ref:           "deadbeef",
 				CommitMessage: "abcd",
 				MergeMethod:   "squash",
 				CommitTitle:   "efgh",
-				SHA:           "deadbeef",
 			},
 		},
 		{

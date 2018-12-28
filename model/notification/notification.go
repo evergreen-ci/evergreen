@@ -191,7 +191,7 @@ func (n *Notification) Composer() (message.Composer, error) {
 		payload.Repo = sub.Repo
 		payload.CommitMsg = sub.CommitMessage
 		payload.CommitTitle = sub.CommitTitle
-		payload.SHA = sub.SHA
+		payload.Ref = sub.Ref
 		payload.PRNum = sub.PRNumber
 		payload.MergeMethod = githubpr.GithubMergeMethod(sub.MergeMethod)
 

@@ -2,7 +2,6 @@ package commitq
 
 import (
 	"github.com/evergreen-ci/evergreen/db"
-	"github.com/evergreen-ci/evergreen/model"
 	"github.com/mongodb/anser/bsonutil"
 	"github.com/pkg/errors"
 	mgo "gopkg.in/mgo.v2"
@@ -41,14 +40,6 @@ func findOne(query db.Q) (*CommitQueue, error) {
 }
 
 func insert(q *CommitQueue) error {
-	projRef, err := model.FindOneProjectRef(q.ProjectID)
-	if err != nil {
-		return errors.Wrap(err, "can't verify project exists")
-	}
-	if projRef == nil {
-		return errors.New("project does not exist")
-	}
-
 	return db.Insert(Collection, q)
 }
 

@@ -11,6 +11,7 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/mock"
+	"github.com/evergreen-ci/evergreen/model/commitq/githubpr"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/notification"
 	"github.com/evergreen-ci/evergreen/testutil"
@@ -34,6 +35,7 @@ type eventNotificationSuite struct {
 	jiraComment   *notification.Notification
 	jiraIssue     *notification.Notification
 	githubStatus  *notification.Notification
+	githubPRMerge *notification.Notification
 }
 
 func TestEventNotificationJob(t *testing.T) {
@@ -131,6 +133,21 @@ func (s *eventNotificationSuite) SetupTest() {
 				State:   message.GithubStateFailure,
 			},
 		},
+		{
+			ID: "github-pr-merge",
+			Subscriber: event.Subscriber{
+				Type: event.GithubMergeSubscriberType,
+				Target: event.GithubMergeSubscriber{
+					Owner:         "evergreen-ci",
+					Repo:          "evergreen",
+					PRNumber:      1234,
+					CommitMessage: "merged your PR",
+				},
+			},
+			Payload: githubpr.GithubMergePR{
+				ProjectID: "mci",
+			},
+		},
 	}
 	s.webhook = &s.notifications[0]
 	s.email = &s.notifications[1]
@@ -138,6 +155,7 @@ func (s *eventNotificationSuite) SetupTest() {
 	s.jiraComment = &s.notifications[3]
 	s.jiraIssue = &s.notifications[4]
 	s.githubStatus = &s.notifications[5]
+	s.githubPRMerge = &s.notifications[6]
 
 	s.NoError(notification.InsertMany(s.notifications...))
 }

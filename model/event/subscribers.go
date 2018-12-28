@@ -160,10 +160,10 @@ type GithubMergeSubscriber struct {
 	Owner         string `bson:"owner"`
 	Repo          string `bson:"repo"`
 	PRNumber      int    `bson:"pr_number"`
+	Ref           string `bson:"Ref"`
 	CommitMessage string `bson:"commit_message"`
 	MergeMethod   string `bson:"merge_method"`
 	CommitTitle   string `bson:"commit_title"`
-	SHA           string `bson:"sha"`
 }
 
 func (s *GithubMergeSubscriber) String() string {
@@ -171,10 +171,10 @@ func (s *GithubMergeSubscriber) String() string {
 		s.Owner,
 		s.Repo,
 		s.PRNumber,
+		s.Ref,
 		s.CommitMessage,
 		s.MergeMethod,
 		s.CommitTitle,
-		s.SHA,
 	)
 }
 

@@ -17,22 +17,25 @@ const (
 )
 
 type GithubMergePR struct {
+	ProjectID   string            `bson:"projectID,omitempty" json:"projectID,omitempty" yaml:"projectID,omitempty"`
 	Owner       string            `bson:"owner,omitempty" json:"owner,omitempty" yaml:"owner,omitempty"`
 	Repo        string            `bson:"repo,omitempty" json:"repo,omitempty" yaml:"repo,omitempty"`
+	Ref         string            `bson:"ref,omitempty" json:"ref,omitempty" yaml:"ref,omitempty"`
+	PRNum       int               `bson:"PR_num,omitempty" json:"PR_num,omitempty" yaml:"PR_num,omitempty"`
 	CommitMsg   string            `bson:"commit_msg,omitempty" json:"commit_msg,omitempty" yaml:"commit_msg,omitempty"`
 	CommitTitle string            `bson:"commit_title,omitempty" json:"commit_title,omitempty" yaml:"commit_title,omitempty"`
-	SHA         string            `bson:"sha,omitempty" json:"sha,omitempty" yaml:"sha,omitempty"`
-	PRNum       int               `bson:"PR_num,omitempty" json:"PR_num,omitempty" yaml:"PR_num,omitempty"`
 	MergeMethod GithubMergeMethod `bson:"merge_method,omitempty" json:"merge_method,omitempty" yaml:"merge_method,omitempty"`
 }
 
 // Valid returns true if the message is well formed
 func (p *GithubMergePR) Valid() bool {
 	// owner, repo and ref must be empty or must be set
+	projectIDEmpty := len(p.ProjectID) == 0
 	ownerEmpty := len(p.Owner) == 0
 	repoEmpty := len(p.Repo) == 0
 	commitMsgEmpty := len(p.CommitMsg) == 0
-	if ownerEmpty || repoEmpty || commitMsgEmpty {
+	refEmpty := len(p.Ref) == 0
+	if projectIDEmpty || ownerEmpty || repoEmpty || commitMsgEmpty || refEmpty {
 		return false
 	}
 
@@ -71,12 +74,9 @@ func (c *githubMergePRMessage) Loggable() bool {
 }
 
 func (c *githubMergePRMessage) String() string {
-	str := fmt.Sprintf("Merge %s/%s: %s", c.raw.Owner, c.raw.Repo, c.raw.CommitMsg)
+	str := fmt.Sprintf("Merge Pull Request #%d (Ref: %s) for %s on %s/%s: %s", c.raw.PRNum, c.raw.Ref, c.raw.ProjectID, c.raw.Owner, c.raw.Repo, c.raw.CommitMsg)
 	if len(c.raw.CommitTitle) > 0 {
 		str += fmt.Sprintf(". Commit Title: %s", c.raw.CommitTitle)
-	}
-	if len(c.raw.SHA) > 0 {
-		str += fmt.Sprintf(". SHA: %s", c.raw.SHA)
 	}
 	if len(c.raw.MergeMethod) > 0 {
 		str += fmt.Sprintf(". Merge Method: %s", c.raw.MergeMethod)

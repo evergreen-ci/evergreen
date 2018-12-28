@@ -402,7 +402,7 @@ func (e *envState) initSenders() error {
 		e.senders[SenderGithubStatus] = sender
 
 		// Github PR Merge
-		sender, err = githubpr.NewGithubPRLogger("evergreen", githubToken)
+		sender, err = githubpr.NewGithubPRLogger("evergreen", githubToken, sender)
 		if err != nil {
 			return errors.Wrap(err, "Failed to setup github merge logger")
 		}

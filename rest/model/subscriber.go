@@ -25,11 +25,11 @@ type APIGithubPRSubscriber struct {
 type APIGithubMergeSubscriber struct {
 	Owner         APIString `json:"owner" mapstructure:"owner"`
 	Repo          APIString `json:"repo" mapstructure:"repo"`
-	PRNumber      int       `json:"pr_number" mapstructure:"opr_numberwner"`
+	PRNumber      int       `json:"pr_number" mapstructure:"pr_number"`
+	Ref           APIString `json:"ref" mapstructure:"ref"`
 	CommitMessage APIString `json:"commit_message" mapstructure:"commit_message"`
 	MergeMethod   APIString `json:"merge_method" mapstructure:"merge_method"`
 	CommitTitle   APIString `json:"commit_title" mapstructure:"commit_title"`
-	SHA           APIString `json:"sha" mapstructure:"sha"`
 }
 
 type APIWebhookSubscriber struct {
@@ -202,10 +202,10 @@ func (s *APIGithubMergeSubscriber) BuildFromService(h interface{}) error {
 		s.Owner = ToAPIString(v.Owner)
 		s.Repo = ToAPIString(v.Repo)
 		s.PRNumber = v.PRNumber
+		s.Ref = ToAPIString(v.Ref)
 		s.CommitMessage = ToAPIString(v.CommitMessage)
 		s.MergeMethod = ToAPIString(v.MergeMethod)
 		s.CommitTitle = ToAPIString(v.CommitTitle)
-		s.SHA = ToAPIString(v.SHA)
 
 	default:
 		return errors.New("unknown type for APIGithubMergeSubscriber")
@@ -219,10 +219,10 @@ func (s *APIGithubMergeSubscriber) ToService() (interface{}, error) {
 		Owner:         FromAPIString(s.Owner),
 		Repo:          FromAPIString(s.Repo),
 		PRNumber:      s.PRNumber,
+		Ref:           FromAPIString(s.Ref),
 		CommitMessage: FromAPIString(s.CommitMessage),
 		MergeMethod:   FromAPIString(s.MergeMethod),
 		CommitTitle:   FromAPIString(s.CommitTitle),
-		SHA:           FromAPIString(s.SHA),
 	}, nil
 }
 
