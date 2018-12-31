@@ -779,6 +779,8 @@ func displayTaskPriority(status string) int {
 		return 80
 	case evergreen.TaskSystemUnresponse:
 		return 90
+	case evergreen.TaskSetupFailed:
+		return 95
 	case evergreen.TaskSucceeded:
 		return 100
 	case evergreen.TaskInactive:
