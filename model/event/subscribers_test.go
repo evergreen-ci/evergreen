@@ -61,7 +61,7 @@ func TestSubscribers(t *testing.T) {
 		},
 	}
 	expected := []string{"github_pull_request-evergreen-ci-evergreen-9001-sadasdkjsad",
-		"github_merge-evergreen-ci-evergreen-9001-deadbeef-abcd-squash-efgh",
+		"github-merge-evergreen-ci-evergreen-9001-deadbeef-abcd-squash-efgh",
 		"evergreen-webhook-https://example.com", "email-hi@example.com",
 		"jira-issue-BF-Fail", "jira-comment-BF-1234"}
 	for i := range subs {
@@ -72,7 +72,7 @@ func TestSubscribers(t *testing.T) {
 	fetchedSubs := []Subscriber{}
 	assert.NoError(db.FindAllQ(SubscriptionsCollection, db.Q{}, &fetchedSubs))
 
-	assert.Len(fetchedSubs, 5)
+	assert.Len(fetchedSubs, 6)
 
 	for i := range subs {
 		assert.Contains(fetchedSubs, subs[i])

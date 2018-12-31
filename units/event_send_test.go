@@ -34,8 +34,6 @@ type eventNotificationSuite struct {
 	slack         *notification.Notification
 	jiraComment   *notification.Notification
 	jiraIssue     *notification.Notification
-	githubStatus  *notification.Notification
-	githubPRMerge *notification.Notification
 }
 
 func TestEventNotificationJob(t *testing.T) {
@@ -152,8 +150,6 @@ func (s *eventNotificationSuite) SetupTest() {
 	s.slack = &s.notifications[2]
 	s.jiraComment = &s.notifications[3]
 	s.jiraIssue = &s.notifications[4]
-	s.githubStatus = &s.notifications[5]
-	s.githubPRMerge = &s.notifications[6]
 
 	s.NoError(notification.InsertMany(s.notifications...))
 }
@@ -192,9 +188,9 @@ func (s *eventNotificationSuite) TestDegradedMode() {
 
 		job.Run(s.ctx)
 		s.NoError(job.Error())
-
-		s.NotZero(s.notificationHasError(s.webhook.ID, "sender is disabled, not sending notification"))
 	}
+
+	s.NotZero(s.notificationHasError(s.webhook.ID, "sender is disabled, not sending notification"))
 }
 
 func (s *eventNotificationSuite) TestEvergreenWebhook() {
@@ -270,18 +266,20 @@ func (s *eventNotificationSuite) TestJIRAIssue() {
 
 func (s *eventNotificationSuite) TestSendFailureResultsInNoMessages() {
 	s.Require().NoError(db.ClearCollections(notification.Collection))
-	for i := range s.notifications {
+	n := s.notifications[:len(s.notifications)-1]
+	for i := range n {
 		// make the payload malformed
-		s.notifications[i].Payload = nil
-		s.NoError(notification.InsertMany(s.notifications[i]))
+		n[i].Payload = nil
+		s.NoError(notification.InsertMany(n[i]))
 
-		job := NewEventNotificationJob(s.notifications[i].ID).(*eventNotificationJob)
+		job := NewEventNotificationJob(n[i].ID).(*eventNotificationJob)
 		job.env = s.env
 		job.Run(s.ctx)
 		s.Error(job.Error())
 
 		_, recv := s.env.InternalSender.GetMessageSafe()
 		s.False(recv)
-		s.NotZero(s.notificationHasError(s.webhook.ID, "^composer is not loggable$"))
 	}
+
+	s.NotZero(s.notificationHasError(s.webhook.ID, "^composer is not loggable$"))
 }

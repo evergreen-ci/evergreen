@@ -94,6 +94,11 @@ func (s *Subscriber) String() string {
 	case *GithubPullRequestSubscriber:
 		subscriberStr = v.String()
 
+	case GithubMergeSubscriber:
+		subscriberStr = v.String()
+	case *GithubMergeSubscriber:
+		subscriberStr = v.String()
+
 	case WebhookSubscriber:
 		subscriberStr = v.String()
 	case *WebhookSubscriber:

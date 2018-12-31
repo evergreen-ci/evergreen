@@ -58,6 +58,7 @@ func (s *APISubscriber) BuildFromService(h interface{}) error {
 			if err != nil {
 				return err
 			}
+			target = sub
 
 		case event.EvergreenWebhookSubscriberType:
 			sub := APIWebhookSubscriber{}
