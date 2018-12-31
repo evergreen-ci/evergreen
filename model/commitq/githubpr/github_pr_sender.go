@@ -4,9 +4,7 @@ import (
 	"context"
 	"log"
 	"os"
-	"strconv"
 
-	"github.com/evergreen-ci/evergreen/model/commitq"
 	"github.com/google/go-github/github"
 	"github.com/mongodb/grip/level"
 	"github.com/mongodb/grip/message"
@@ -61,10 +59,6 @@ func (s *githubPRLogger) Send(m message.Composer) {
 	}
 
 	s.sendMergeResult(PRResult, msg)
-
-	// Pop the queue
-	cq, err := commitq.FindOneId(msg.ProjectID)
-	cq.Remove(strconv.Itoa(msg.PRNum))
 }
 
 func (s *githubPRLogger) sendMergeResult(PRResult *github.PullRequestMergeResult, msg *GithubMergePR) error {

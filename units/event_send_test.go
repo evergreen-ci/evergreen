@@ -144,9 +144,7 @@ func (s *eventNotificationSuite) SetupTest() {
 					CommitMessage: "merged your PR",
 				},
 			},
-			Payload: githubpr.GithubMergePR{
-				ProjectID: "mci",
-			},
+			Payload: githubpr.GithubMergePR{},
 		},
 	}
 	s.webhook = &s.notifications[0]

@@ -404,9 +404,7 @@ func makeCommonPayload(sub *event.Subscription, selectors []event.Selector,
 		return msg, nil
 
 	case event.GithubMergeSubscriberType:
-		msg := &githubpr.GithubMergePR{
-			ProjectID: data.Project,
-		}
+		msg := &githubpr.GithubMergePR{}
 		return msg, nil
 
 	case event.JIRAIssueSubscriberType:
