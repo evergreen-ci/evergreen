@@ -57,7 +57,7 @@ func (s *githubPRLogger) Send(m message.Composer) {
 		CommitTitle: msg.CommitTitle,
 	}
 
-	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 	PRResult, _, err := s.prService.Merge(ctx, msg.Owner, msg.Repo, msg.PRNum, msg.CommitMessage, mergeOpts)
 	if err != nil {
