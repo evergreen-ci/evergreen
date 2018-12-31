@@ -371,7 +371,7 @@ func TestJIRADescription(t *testing.T) {
 
 			desc, err := j.getDescription()
 			So(err, ShouldBeNil)
-			So(strings.Contains(desc, "http://evergreen.ui/task/t1%21/0"), ShouldBeTrue)
+			So(strings.Contains(desc, "http://evergreen.ui/task/dt%23%21/0"), ShouldBeTrue)
 			So(strings.Contains(desc, "shouldn't be here"), ShouldBeFalse)
 		})
 	})

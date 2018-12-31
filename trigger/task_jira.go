@@ -53,7 +53,10 @@ func getTaskURL(data *jiraTemplateData) (string, error) {
 	}
 	id := data.Task.Id
 	execution := data.Task.Execution
-	if len(data.Task.OldTaskId) != 0 {
+	if data.Task.DisplayTask != nil {
+		id = data.Task.DisplayTask.Id
+		execution = data.Task.DisplayTask.Execution
+	} else if len(data.Task.OldTaskId) != 0 {
 		id = data.Task.OldTaskId
 	}
 
