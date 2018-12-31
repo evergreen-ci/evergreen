@@ -3,53 +3,59 @@ package githubpr
 import (
 	"fmt"
 
+	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/level"
 	"github.com/mongodb/grip/message"
+	"github.com/pkg/errors"
 )
-
-type GithubMergeMethod string
 
 // valid Github merge methods
 const (
-	GithubMergeMethodMerge  = GithubMergeMethod("merge")
-	GithubMergeMethodSquash = GithubMergeMethod("squash")
-	GithubMergeMethodRebase = GithubMergeMethod("rebase")
+	githubMergeMethodMerge  = "merge"
+	githubMergeMethodSquash = "squash"
+	githubMergeMethodRebase = "rebase"
 )
 
 type GithubMergePR struct {
-	Owner       string            `bson:"owner,omitempty" json:"owner,omitempty" yaml:"owner,omitempty"`
-	Repo        string            `bson:"repo,omitempty" json:"repo,omitempty" yaml:"repo,omitempty"`
-	Ref         string            `bson:"ref,omitempty" json:"ref,omitempty" yaml:"ref,omitempty"`
-	PRNum       int               `bson:"PR_num,omitempty" json:"PR_num,omitempty" yaml:"PR_num,omitempty"`
-	CommitMsg   string            `bson:"commit_msg,omitempty" json:"commit_msg,omitempty" yaml:"commit_msg,omitempty"`
-	CommitTitle string            `bson:"commit_title,omitempty" json:"commit_title,omitempty" yaml:"commit_title,omitempty"`
-	MergeMethod GithubMergeMethod `bson:"merge_method,omitempty" json:"merge_method,omitempty" yaml:"merge_method,omitempty"`
+	Owner         string `bson:"owner"`
+	Repo          string `bson:"repo"`
+	Ref           string `bson:"ref"`
+	PRNum         int    `bson:"pr_num"`
+	CommitMessage string `bson:"commit_message"`
+	CommitTitle   string `bson:"commit_title"`
+	MergeMethod   string `bson:"merge_method"`
 }
 
-// Valid returns true if the message is well formed
-func (p *GithubMergePR) Valid() bool {
+// Valid returns nil if the message is well formed
+func (p *GithubMergePR) Valid() error {
+	catcher := grip.NewBasicCatcher()
 	// owner, repo and ref must be empty or must be set
-	ownerEmpty := len(p.Owner) == 0
-	repoEmpty := len(p.Repo) == 0
-	commitMsgEmpty := len(p.CommitMsg) == 0
-	refEmpty := len(p.Ref) == 0
-	if ownerEmpty || repoEmpty || commitMsgEmpty || refEmpty {
-		return false
+	if len(p.Owner) == 0 {
+		catcher.Add(errors.New("Owner can't be empty"))
+	}
+	if len(p.Repo) == 0 {
+		catcher.Add(errors.New("Repo can't be empty"))
+	}
+	if len(p.CommitMessage) == 0 {
+		catcher.Add(errors.New("Commit message can't be empty"))
+	}
+	if len(p.Ref) == 0 {
+		catcher.Add(errors.New("Ref can't be empty"))
 	}
 
 	if p.PRNum <= 0 {
-		return false
+		catcher.Add(errors.New("Invalid pull request number"))
 	}
 
 	if len(p.MergeMethod) > 0 {
 		switch p.MergeMethod {
-		case GithubMergeMethodMerge, GithubMergeMethodSquash, GithubMergeMethodRebase:
+		case githubMergeMethodMerge, githubMergeMethodSquash, githubMergeMethodRebase:
 		default:
-			return false
+			catcher.Add(errors.New("Invalid merge method"))
 		}
 	}
 
-	return true
+	return catcher.Resolve()
 }
 
 type githubMergePRMessage struct {
@@ -68,16 +74,16 @@ func NewGithubMergePRMessage(p level.Priority, mergeMsg GithubMergePR) message.C
 }
 
 func (c *githubMergePRMessage) Loggable() bool {
-	return c.raw.Valid()
+	return c.raw.Valid() == nil
 }
 
 func (c *githubMergePRMessage) String() string {
-	str := fmt.Sprintf("Merge Pull Request #%d (Ref: %s) on %s/%s: %s", c.raw.PRNum, c.raw.Ref, c.raw.Owner, c.raw.Repo, c.raw.CommitMsg)
+	str := fmt.Sprintf("Merge Pull Request #%d (Ref: %s) on %s/%s: %s", c.raw.PRNum, c.raw.Ref, c.raw.Owner, c.raw.Repo, c.raw.CommitMessage)
 	if len(c.raw.CommitTitle) > 0 {
-		str += fmt.Sprintf(". Commit Title: %s", c.raw.CommitTitle)
+		str = fmt.Sprintf("%s. Commit Title: %s", str, c.raw.CommitTitle)
 	}
 	if len(c.raw.MergeMethod) > 0 {
-		str += fmt.Sprintf(". Merge Method: %s", c.raw.MergeMethod)
+		str = fmt.Sprintf("%s. Merge Method: %s", str, c.raw.MergeMethod)
 	}
 
 	return str

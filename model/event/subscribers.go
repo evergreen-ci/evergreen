@@ -165,7 +165,7 @@ type GithubMergeSubscriber struct {
 	Owner         string `bson:"owner"`
 	Repo          string `bson:"repo"`
 	PRNumber      int    `bson:"pr_number"`
-	Ref           string `bson:"Ref"`
+	Ref           string `bson:"ref"`
 	CommitMessage string `bson:"commit_message"`
 	MergeMethod   string `bson:"merge_method"`
 	CommitTitle   string `bson:"commit_title"`

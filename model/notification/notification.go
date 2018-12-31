@@ -182,18 +182,21 @@ func (n *Notification) Composer() (message.Composer, error) {
 		return message.NewGithubStatusMessageWithRepo(level.Notice, *payload), nil
 
 	case event.GithubMergeSubscriberType:
-		sub := n.Subscriber.Target.(*event.GithubMergeSubscriber)
+		sub, ok := n.Subscriber.Target.(*event.GithubMergeSubscriber)
+		if !ok {
+			return nil, errors.New("github-merge subscriber is invalid")
+		}
 		payload, ok := n.Payload.(*githubpr.GithubMergePR)
 		if !ok || payload == nil {
 			return nil, errors.New("github-merge payload is invalid")
 		}
 		payload.Owner = sub.Owner
 		payload.Repo = sub.Repo
-		payload.CommitMsg = sub.CommitMessage
+		payload.CommitMessage = sub.CommitMessage
 		payload.CommitTitle = sub.CommitTitle
 		payload.Ref = sub.Ref
 		payload.PRNum = sub.PRNumber
-		payload.MergeMethod = githubpr.GithubMergeMethod(sub.MergeMethod)
+		payload.MergeMethod = sub.MergeMethod
 
 		return githubpr.NewGithubMergePRMessage(level.Notice, *payload), nil
 

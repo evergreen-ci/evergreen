@@ -2,10 +2,11 @@ package githubpr
 
 import (
 	"context"
-	"log"
-	"os"
+	"fmt"
+	"time"
 
 	"github.com/google/go-github/github"
+	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/level"
 	"github.com/mongodb/grip/message"
 	"github.com/mongodb/grip/send"
@@ -23,7 +24,7 @@ type githubPRLogger struct {
 // merges a pull request
 // Specify an OAuth token for GitHub authentication
 func NewGithubPRLogger(name string, token string, statusSender send.Sender) (send.Sender, error) {
-	ctx := context.TODO()
+	ctx := context.Background()
 	ts := oauth2.StaticTokenSource(&oauth2.Token{AccessToken: token})
 	tc := oauth2.NewClient(ctx, ts)
 	githubClient := github.NewClient(tc)
@@ -33,9 +34,8 @@ func NewGithubPRLogger(name string, token string, statusSender send.Sender) (sen
 		statusSender: statusSender,
 	}
 
-	fallback := log.New(os.Stdout, "", log.LstdFlags)
-	if err := s.SetErrorHandler(send.ErrorHandlerFromLogger(fallback)); err != nil {
-		return nil, err
+	if err := s.SetErrorHandler(send.ErrorHandlerFromSender(grip.GetSender())); err != nil {
+		return nil, errors.Wrap(err, "can't set github pr logger error handler")
 	}
 
 	return s, nil
@@ -45,20 +45,27 @@ func (s *githubPRLogger) Send(m message.Composer) {
 	if !s.Level().ShouldLog(m) {
 		return
 	}
+	catcher := grip.NewBasicCatcher()
+	msg, ok := m.Raw().(*GithubMergePR)
+	if !ok {
+		s.ErrorHandler(errors.New("message of type githubPRLogger does not contain a GithubMergePR"), m)
+		return
+	}
 
-	msg := m.Raw().(*GithubMergePR)
 	mergeOpts := &github.PullRequestOptions{
-		MergeMethod: string(msg.MergeMethod),
+		MergeMethod: msg.MergeMethod,
 		CommitTitle: msg.CommitTitle,
 	}
 
-	ctx := context.TODO()
-	PRResult, _, err := s.prService.Merge(ctx, msg.Owner, msg.Repo, msg.PRNum, msg.CommitMsg, mergeOpts)
+	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
+	defer cancel()
+	PRResult, _, err := s.prService.Merge(ctx, msg.Owner, msg.Repo, msg.PRNum, msg.CommitMessage, mergeOpts)
 	if err != nil {
-		s.ErrorHandler(err, m)
+		catcher.Add(errors.Wrap(err, "can't access GitHub merge API"))
 	}
 
-	s.sendMergeResult(PRResult, msg)
+	catcher.Add(s.sendMergeResult(PRResult, msg))
+	s.ErrorHandler(catcher.Resolve(), m)
 }
 
 func (s *githubPRLogger) sendMergeResult(PRResult *github.PullRequestMergeResult, msg *GithubMergePR) error {
@@ -69,8 +76,7 @@ func (s *githubPRLogger) sendMergeResult(PRResult *github.PullRequestMergeResult
 		description = "Commit queue merge succeeded"
 	} else {
 		state = message.GithubStateFailure
-		description = "Commit queue merge failed: "
-		description += PRResult.GetMessage()
+		description = fmt.Sprintf("Commit queue merge failed: %s", PRResult.GetMessage())
 	}
 
 	status := message.GithubStatus{
