@@ -5,18 +5,26 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/evergreen-ci/evergreen/util"
 	"github.com/google/go-github/github"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/level"
 	"github.com/mongodb/grip/message"
 	"github.com/mongodb/grip/send"
 	"github.com/pkg/errors"
-	"golang.org/x/oauth2"
 )
 
+type prService interface {
+	Merge(context.Context, string, string, int, string, *github.PullRequestOptions) (*github.PullRequestMergeResult, *github.Response, error)
+}
+
+type statusSender interface {
+	Send(message.Composer)
+}
+
 type githubPRLogger struct {
-	prService    *github.PullRequestsService
-	statusSender send.Sender
+	prService    prService
+	statusSender statusSender
 	*send.Base
 }
 
@@ -24,9 +32,10 @@ type githubPRLogger struct {
 // merges a pull request
 // Specify an OAuth token for GitHub authentication
 func NewGithubPRLogger(name string, token string, statusSender send.Sender) (send.Sender, error) {
-	ctx := context.Background()
-	ts := oauth2.StaticTokenSource(&oauth2.Token{AccessToken: token})
-	tc := oauth2.NewClient(ctx, ts)
+	tc, err := util.GetOAuth2HTTPClient(token)
+	if err != nil {
+		return nil, errors.Wrap(err, "can't get oauth session")
+	}
 	githubClient := github.NewClient(tc)
 	s := &githubPRLogger{
 		Base:         send.NewBase(name),
