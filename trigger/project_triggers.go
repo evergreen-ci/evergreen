@@ -147,13 +147,14 @@ func makeDownstreamConfigFromCommand(ref model.ProjectRef, command, generateFile
 					{
 						Command: "subprocess.exec",
 						Params: map[string]interface{}{
-							"command": command,
+							"working_dir": "${workdir}/src",
+							"command":     command,
 						},
 					},
 					{
 						Command: "generate.tasks",
 						Params: map[string]interface{}{
-							"files": []string{fmt.Sprintf("src/%s", generateFile)},
+							"files": []string{fmt.Sprintf("${workdir}/src/%s", generateFile)},
 						},
 					},
 				},
