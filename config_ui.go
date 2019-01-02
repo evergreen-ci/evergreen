@@ -24,10 +24,6 @@ type UIConfig struct {
 	// on every request. Note that if this is true, changes to HTML templates
 	// won't take effect until server restart.
 	CacheTemplates bool `bson:"cache_templates" json:"cache_templates" yaml:"cachetemplates"`
-	// SecureCookies sets the "secure" flag on user tokens. Evergreen
-	// does not yet natively support SSL UI connections, but this option
-	// is available, for example, for deployments behind HTTPS load balancers.
-	SecureCookies bool `bson:"secure_cookies" json:"secure_cookies" yaml:"securecookies"`
 	// CsrfKey is a 32-byte key used to generate tokens that validate UI requests
 	CsrfKey string `bson:"csrf_key" json:"csrf_key" yaml:"csrfkey"`
 	// CORSOrigin is the allowed CORS Origin for some UI Routes
@@ -54,7 +50,6 @@ func (c *UIConfig) Set() error {
 			"secret":           c.Secret,
 			"default_project":  c.DefaultProject,
 			"cache_templates":  c.CacheTemplates,
-			"secure_cookies":   c.SecureCookies,
 			"csrf_key":         c.CsrfKey,
 			"cors_origin":      c.CORSOrigin,
 		},
