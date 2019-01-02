@@ -106,44 +106,80 @@ func (s *APISubscriber) ToService() (interface{}, error) {
 		apiModel := APIGithubPRSubscriber{}
 		if err = mapstructure.Decode(s.Target, &apiModel); err != nil {
 			err = errors.Wrap(err, "GitHub PR subscriber target is malformed")
-			break
+			grip.Error(err)
+			return nil, gimlet.ErrorResponse{
+				StatusCode: http.StatusBadRequest,
+				Message:    err.Error(),
+			}
 		}
 		target, err = apiModel.ToService()
 		if err != nil {
 			err = errors.Wrap(err, "can't read subscriber target from API model")
+			grip.Error(err)
+			return nil, gimlet.ErrorResponse{
+				StatusCode: http.StatusBadRequest,
+				Message:    err.Error(),
+			}
 		}
 
 	case event.GithubMergeSubscriberType:
 		apiModel := APIGithubMergeSubscriber{}
 		if err = mapstructure.Decode(s.Target, &apiModel); err != nil {
 			err = errors.Wrap(err, "GitHub merge subscriber target is malformed")
-			break
+			grip.Error(err)
+			return nil, gimlet.ErrorResponse{
+				StatusCode: http.StatusBadRequest,
+				Message:    err.Error(),
+			}
 		}
 		target, err = apiModel.ToService()
 		if err != nil {
 			err = errors.Wrap(err, "can't read subscriber target from API model")
+			grip.Error(err)
+			return nil, gimlet.ErrorResponse{
+				StatusCode: http.StatusBadRequest,
+				Message:    err.Error(),
+			}
 		}
 
 	case event.EvergreenWebhookSubscriberType:
 		apiModel := APIWebhookSubscriber{}
 		if err = mapstructure.Decode(s.Target, &apiModel); err != nil {
 			err = errors.Wrap(err, "webhook subscriber target is malformed")
-			break
+			grip.Error(err)
+			return nil, gimlet.ErrorResponse{
+				StatusCode: http.StatusBadRequest,
+				Message:    err.Error(),
+			}
 		}
 		target, err = apiModel.ToService()
 		if err != nil {
 			err = errors.Wrap(err, "can't read subscriber target from API model")
+			grip.Error(err)
+			return nil, gimlet.ErrorResponse{
+				StatusCode: http.StatusBadRequest,
+				Message:    err.Error(),
+			}
 		}
 
 	case event.JIRAIssueSubscriberType:
 		apiModel := APIJIRAIssueSubscriber{}
 		if err = mapstructure.Decode(s.Target, &apiModel); err != nil {
 			err = errors.Wrap(err, "JIRA issue subscriber target is malformed")
-			break
+			grip.Error(err)
+			return nil, gimlet.ErrorResponse{
+				StatusCode: http.StatusBadRequest,
+				Message:    err.Error(),
+			}
 		}
 		target, err = apiModel.ToService()
 		if err != nil {
 			err = errors.Wrap(err, "can't read subscriber target from API model")
+			grip.Error(err)
+			return nil, gimlet.ErrorResponse{
+				StatusCode: http.StatusBadRequest,
+				Message:    err.Error(),
+			}
 		}
 
 	case event.JIRACommentSubscriberType, event.EmailSubscriberType,
@@ -152,9 +188,6 @@ func (s *APISubscriber) ToService() (interface{}, error) {
 
 	default:
 		err = errors.Errorf("unknown subscriber type: '%s'", FromAPIString(s.Type))
-	}
-
-	if err != nil {
 		grip.Error(err)
 		return nil, gimlet.ErrorResponse{
 			StatusCode: http.StatusBadRequest,
@@ -167,10 +200,6 @@ func (s *APISubscriber) ToService() (interface{}, error) {
 }
 
 func (s *APIGithubPRSubscriber) BuildFromService(h interface{}) error {
-	if v, ok := h.(event.GithubPullRequestSubscriber); ok {
-		h = &v
-	}
-
 	switch v := h.(type) {
 	case *event.GithubPullRequestSubscriber:
 		s.Owner = ToAPIString(v.Owner)
@@ -195,10 +224,6 @@ func (s *APIGithubPRSubscriber) ToService() (interface{}, error) {
 }
 
 func (s *APIGithubMergeSubscriber) BuildFromService(h interface{}) error {
-	if v, ok := h.(event.GithubMergeSubscriber); ok {
-		h = &v
-	}
-
 	switch v := h.(type) {
 	case *event.GithubMergeSubscriber:
 		s.Owner = ToAPIString(v.Owner)
@@ -229,10 +254,6 @@ func (s *APIGithubMergeSubscriber) ToService() (interface{}, error) {
 }
 
 func (s *APIWebhookSubscriber) BuildFromService(h interface{}) error {
-	if v, ok := h.(event.WebhookSubscriber); ok {
-		h = &v
-	}
-
 	switch v := h.(type) {
 	case *event.WebhookSubscriber:
 		s.URL = ToAPIString(v.URL)
@@ -258,10 +279,6 @@ type APIJIRAIssueSubscriber struct {
 }
 
 func (s *APIJIRAIssueSubscriber) BuildFromService(h interface{}) error {
-	if v, ok := h.(event.JIRAIssueSubscriber); ok {
-		h = &v
-	}
-
 	switch v := h.(type) {
 	case *event.JIRAIssueSubscriber:
 		s.Project = ToAPIString(v.Project)

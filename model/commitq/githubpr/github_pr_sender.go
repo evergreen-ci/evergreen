@@ -23,6 +23,7 @@ type statusSender interface {
 }
 
 type githubPRLogger struct {
+	ctx          context.Context
 	prService    prService
 	statusSender statusSender
 	*send.Base
@@ -31,14 +32,24 @@ type githubPRLogger struct {
 // NewGithubPRLogger creates a new Sender implementation that
 // merges a pull request
 // Specify an OAuth token for GitHub authentication
-func NewGithubPRLogger(name string, token string, statusSender send.Sender) (send.Sender, error) {
+func NewGithubPRLogger(ctx context.Context, name string, token string, statusSender send.Sender) (send.Sender, error) {
+	var cancel context.CancelFunc
+	ctx, cancel = context.WithCancel(ctx)
 	tc, err := util.GetOAuth2HTTPClient(token)
 	if err != nil {
 		return nil, errors.Wrap(err, "can't get oauth session")
 	}
+
+	base := send.MakeBase(name, func() {}, func() error {
+		util.PutHTTPClient(tc)
+		cancel()
+		return nil
+	})
+
 	githubClient := github.NewClient(tc)
 	s := &githubPRLogger{
-		Base:         send.NewBase(name),
+		Base:         base,
+		ctx:          ctx,
 		prService:    githubClient.GetPullRequests(),
 		statusSender: statusSender,
 	}
@@ -66,14 +77,14 @@ func (s *githubPRLogger) Send(m message.Composer) {
 		CommitTitle: msg.CommitTitle,
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	ctx, cancel := context.WithTimeout(s.ctx, 10*time.Second)
 	defer cancel()
-	PRResult, _, err := s.prService.Merge(ctx, msg.Owner, msg.Repo, msg.PRNum, msg.CommitMessage, mergeOpts)
+	res, _, err := s.prService.Merge(ctx, msg.Owner, msg.Repo, msg.PRNum, msg.CommitMessage, mergeOpts)
 	if err != nil {
 		catcher.Add(errors.Wrap(err, "can't access GitHub merge API"))
 	}
 
-	catcher.Add(s.sendMergeResult(PRResult, msg))
+	catcher.Add(s.sendMergeResult(res, msg))
 	s.ErrorHandler(catcher.Resolve(), m)
 }
 
@@ -97,9 +108,6 @@ func (s *githubPRLogger) sendMergeResult(PRResult *github.PullRequestMergeResult
 		Description: description,
 	}
 	c := message.NewGithubStatusMessageWithRepo(level.Notice, status)
-	if !c.Loggable() {
-		return errors.New("Can't send malformed GitHub status")
-	}
 
 	s.statusSender.Send(c)
 	return nil

@@ -20,7 +20,7 @@ type GithubMergePR struct {
 	Owner         string `bson:"owner"`
 	Repo          string `bson:"repo"`
 	Ref           string `bson:"ref"`
-	PRNum         int    `bson:"pr_num"`
+	PRNum         int    `bson:"pr_number"`
 	CommitMessage string `bson:"commit_message"`
 	CommitTitle   string `bson:"commit_title"`
 	MergeMethod   string `bson:"merge_method"`

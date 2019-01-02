@@ -152,7 +152,7 @@ func (e *envState) Configure(ctx context.Context, confPath string, db *DBSetting
 	if e.session == nil {
 		catcher.Add(e.initDB(e.settings.Database))
 	}
-	catcher.Add(e.initSenders())
+	catcher.Add(e.initSenders(ctx))
 	catcher.Add(e.createQueues(ctx))
 	catcher.Extend(e.initQueues(ctx))
 
@@ -346,7 +346,7 @@ func (e *envState) initClientConfig() {
 	}
 }
 
-func (e *envState) initSenders() error {
+func (e *envState) initSenders(ctx context.Context) error {
 	if e.settings == nil {
 		return errors.New("no settings object, cannot build senders")
 	}
@@ -402,7 +402,7 @@ func (e *envState) initSenders() error {
 		e.senders[SenderGithubStatus] = sender
 
 		// Github PR Merge
-		sender, err = githubpr.NewGithubPRLogger("evergreen", githubToken, sender)
+		sender, err = githubpr.NewGithubPRLogger(ctx, "evergreen", githubToken, sender)
 		if err != nil {
 			return errors.Wrap(err, "Failed to setup github merge logger")
 		}

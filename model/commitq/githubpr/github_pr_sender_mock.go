@@ -21,6 +21,7 @@ func NewMockGithubPRLogger(name string, errLogger *mockErrorLogger) (send.Sender
 			Base:         send.NewBase(name),
 			prService:    &mockPRService{},
 			statusSender: mockStatusSender{},
+			ctx:          context.Background(),
 		},
 		errLogger: errLogger,
 	}
