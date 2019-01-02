@@ -77,7 +77,7 @@ func (j *agentDeployJob) Run(ctx context.Context) {
 		return
 	}
 
-	if flags.TaskrunnerDisabled {
+	if flags.AgentStartDisabled {
 		grip.Debug(message.Fields{
 			"mode":     "degraded",
 			"host":     j.HostID,

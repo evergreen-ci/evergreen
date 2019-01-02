@@ -117,11 +117,11 @@ func PopulateActivationJobs(part int) amboy.QueueOperation {
 			return errors.WithStack(err)
 		}
 
-		if flags.TaskDispatchDisabled {
+		if flags.SchedulerDisabled {
 			grip.InfoWhen(sometimes.Percent(evergreen.DegradedLoggingPercent), message.Fields{
-				"message": "task dispatching disabled",
+				"message": "scheduler is disabled",
+				"impact":  "skipping batch time activation",
 				"mode":    "degraded",
-				"impact":  "skipping stepback activation",
 			})
 			return nil
 		}
@@ -139,7 +139,7 @@ func PopulateActivationJobs(part int) amboy.QueueOperation {
 				continue
 			}
 
-			catcher.Add(queue.Put(NewVersionActiationJob(proj.Identifier, ts)))
+			catcher.Add(queue.Put(NewVersionActivationJob(proj.Identifier, ts)))
 		}
 
 		return catcher.Resolve()
@@ -508,9 +508,9 @@ func PopulateAgentDeployJobs(env evergreen.Environment) amboy.QueueOperation {
 			return errors.WithStack(err)
 		}
 
-		if flags.TaskrunnerDisabled {
+		if flags.AgentStartDisabled {
 			grip.InfoWhen(sometimes.Percent(evergreen.DegradedLoggingPercent), message.Fields{
-				"message": "taskrunner disabled",
+				"message": "agent start disabled",
 				"impact":  "agents are not deployed",
 				"mode":    "degraded",
 			})
@@ -547,7 +547,7 @@ func PopulateHostCreationJobs(env evergreen.Environment, part int) amboy.QueueOp
 			return errors.WithStack(err)
 		}
 
-		if flags.HostinitDisabled {
+		if flags.HostInitDisabled {
 			grip.InfoWhen(sometimes.Percent(evergreen.DegradedLoggingPercent), message.Fields{
 				"message": "host init disabled",
 				"impact":  "new hosts are not created in cloud providers",
@@ -605,7 +605,7 @@ func PopulateHostSetupJobs(env evergreen.Environment, part int) amboy.QueueOpera
 			return errors.WithStack(err)
 		}
 
-		if flags.HostinitDisabled {
+		if flags.HostInitDisabled {
 			grip.InfoWhen(sometimes.Percent(evergreen.DegradedLoggingPercent), message.Fields{
 				"message": "host init disabled",
 				"impact":  "new hosts are not setup or provisioned",

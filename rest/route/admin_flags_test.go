@@ -30,8 +30,8 @@ func TestAdminFlagsRouteSuite(t *testing.T) {
 		Flags model.APIServiceFlags `json:"service_flags"`
 	}{
 		Flags: model.APIServiceFlags{
-			HostinitDisabled:   true,
-			TaskrunnerDisabled: true,
+			HostInitDisabled:   true,
+			AgentStartDisabled: true,
 		},
 	}
 	jsonBody, err := json.Marshal(&body)
@@ -50,7 +50,7 @@ func TestAdminFlagsRouteSuite(t *testing.T) {
 
 	settings, err := sc.GetEvergreenSettings()
 	assert.NoError(err)
-	assert.Equal(body.Flags.HostinitDisabled, settings.ServiceFlags.HostinitDisabled)
-	assert.Equal(body.Flags.TaskrunnerDisabled, settings.ServiceFlags.TaskrunnerDisabled)
+	assert.Equal(body.Flags.HostInitDisabled, settings.ServiceFlags.HostInitDisabled)
+	assert.Equal(body.Flags.AgentStartDisabled, settings.ServiceFlags.AgentStartDisabled)
 	assert.Equal(body.Flags.RepotrackerDisabled, settings.ServiceFlags.RepotrackerDisabled)
 }

@@ -41,7 +41,7 @@ func makeVersionActivationCatchupJob() *versionActivationCatchup {
 
 }
 
-func NewVersionActiationJob(project string, id string) amboy.Job {
+func NewVersionActivationJob(project string, id string) amboy.Job {
 	j := makeVersionActivationCatchupJob()
 	j.Project = project
 

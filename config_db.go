@@ -50,14 +50,13 @@ var (
 
 	// degraded mode flags
 	taskDispatchKey                 = bsonutil.MustHaveTag(ServiceFlags{}, "TaskDispatchDisabled")
-	hostinitKey                     = bsonutil.MustHaveTag(ServiceFlags{}, "HostinitDisabled")
+	hostInitKey                     = bsonutil.MustHaveTag(ServiceFlags{}, "HostInitDisabled")
 	monitorKey                      = bsonutil.MustHaveTag(ServiceFlags{}, "MonitorDisabled")
 	alertsKey                       = bsonutil.MustHaveTag(ServiceFlags{}, "AlertsDisabled")
-	taskrunnerKey                   = bsonutil.MustHaveTag(ServiceFlags{}, "TaskrunnerDisabled")
+	agentStartKey                   = bsonutil.MustHaveTag(ServiceFlags{}, "AgentStartDisabled")
 	repotrackerKey                  = bsonutil.MustHaveTag(ServiceFlags{}, "RepotrackerDisabled")
 	schedulerKey                    = bsonutil.MustHaveTag(ServiceFlags{}, "SchedulerDisabled")
 	githubPRTestingDisabledKey      = bsonutil.MustHaveTag(ServiceFlags{}, "GithubPRTestingDisabled")
-	repotrackerPushEventDisabledKey = bsonutil.MustHaveTag(ServiceFlags{}, "RepotrackerPushEventDisabled")
 	cliUpdatesDisabledKey           = bsonutil.MustHaveTag(ServiceFlags{}, "CLIUpdatesDisabled")
 	backgroundStatsDisabledKey      = bsonutil.MustHaveTag(ServiceFlags{}, "BackgroundStatsDisabled")
 	eventProcessingDisabledKey      = bsonutil.MustHaveTag(ServiceFlags{}, "EventProcessingDisabled")
