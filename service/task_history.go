@@ -318,9 +318,7 @@ func (uis *UIServer) versionHistoryDrawer(w http.ResponseWriter, r *http.Request
 	}
 
 	// get the versions in the requested window
-	versions, err := getVersionsInWindow(drawerInfo.window, projCtx.Version.Identifier,
-		projCtx.Version.RevisionOrderNumber, drawerInfo.radius, projCtx.Version)
-
+	versions, err := getVersionsInWindow(drawerInfo.window, projCtx.Version.Identifier, drawerInfo.radius, projCtx.Version)
 	if err != nil {
 		uis.LoggedError(w, r, http.StatusInternalServerError, err)
 		return
@@ -359,9 +357,7 @@ func (uis *UIServer) taskHistoryDrawer(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// get the versions in the requested window
-	versions, err := getVersionsInWindow(drawerInfo.window, projCtx.Version.Identifier,
-		projCtx.Version.RevisionOrderNumber, drawerInfo.radius, projCtx.Version)
-
+	versions, err := getVersionsInWindow(drawerInfo.window, projCtx.Version.Identifier, drawerInfo.radius, projCtx.Version)
 	if err != nil {
 		uis.LoggedError(w, r, http.StatusInternalServerError, err)
 		return
@@ -379,12 +375,13 @@ func (uis *UIServer) taskHistoryDrawer(w http.ResponseWriter, r *http.Request) {
 	}{taskGroups})
 }
 
-func getVersionsInWindow(wt, projectId string, anchorOrderNum, radius int,
+func getVersionsInWindow(wt, projectId string, radius int,
 	center *model.Version) ([]model.Version, error) {
+	referenceTime := center.CreateTime
 	if wt == beforeWindow {
-		return makeVersionsQuery(anchorOrderNum, projectId, radius, true)
+		return makeVersionsQuery(referenceTime, projectId, radius, true)
 	} else if wt == afterWindow {
-		after, err := makeVersionsQuery(anchorOrderNum, projectId, radius, false)
+		after, err := makeVersionsQuery(referenceTime, projectId, radius, false)
 		if err != nil {
 			return nil, err
 		}
@@ -394,11 +391,11 @@ func getVersionsInWindow(wt, projectId string, anchorOrderNum, radius int,
 		}
 		return after, nil
 	}
-	before, err := makeVersionsQuery(anchorOrderNum, projectId, radius, true)
+	before, err := makeVersionsQuery(referenceTime, projectId, radius, true)
 	if err != nil {
 		return nil, err
 	}
-	after, err := makeVersionsQuery(anchorOrderNum, projectId, radius, false)
+	after, err := makeVersionsQuery(referenceTime, projectId, radius, false)
 	if err != nil {
 		return nil, err
 	}
@@ -414,11 +411,11 @@ func getVersionsInWindow(wt, projectId string, anchorOrderNum, radius int,
 // Helper to make the appropriate query to the versions collection for what
 // we will need.  "before" indicates whether to fetch versions before or
 // after the passed-in task.
-func makeVersionsQuery(anchorOrderNum int, projectId string, versionsToFetch int, before bool) ([]model.Version, error) {
+func makeVersionsQuery(referenceTime time.Time, projectId string, versionsToFetch int, before bool) ([]model.Version, error) {
 	// decide how the versions we want relative to the task's revision order number
-	ronQuery := bson.M{"$gt": anchorOrderNum}
+	ronQuery := bson.M{"$gt": referenceTime}
 	if before {
-		ronQuery = bson.M{"$lt": anchorOrderNum}
+		ronQuery = bson.M{"$lt": referenceTime}
 	}
 
 	// switch how to sort the versions
@@ -430,8 +427,8 @@ func makeVersionsQuery(anchorOrderNum int, projectId string, versionsToFetch int
 	// fetch the versions
 	return model.VersionFind(
 		db.Query(bson.M{
-			model.VersionIdentifierKey:          projectId,
-			model.VersionRevisionOrderNumberKey: ronQuery,
+			model.VersionIdentifierKey: projectId,
+			model.VersionCreateTimeKey: ronQuery,
 			model.VersionRequesterKey: bson.M{
 				"$in": evergreen.SystemVersionRequesterTypes,
 			},
@@ -470,8 +467,10 @@ func getTaskDrawerItems(displayName string, variant string, reverseOrder bool, v
 
 	taskIds := []string{}
 	for _, t := range tasks {
-		taskIds = append(taskIds, t.Id)
-		taskIds = append(taskIds, t.ExecutionTasks...) // also add test results of exuection tasks to the parent
+		if evergreen.IsFailedTaskStatus(t.Status) {
+			taskIds = append(taskIds, t.Id)
+			taskIds = append(taskIds, t.ExecutionTasks...) // also add test results of exuection tasks to the parent
+		}
 	}
 	query := db.Query(bson.M{
 		testresult.TaskIDKey: bson.M{
