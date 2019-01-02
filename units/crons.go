@@ -113,6 +113,20 @@ func PopulateRepotrackerPollingJobs(part int) amboy.QueueOperation {
 
 func PopulateActivationJobs(part int) amboy.QueueOperation {
 	return func(queue amboy.Queue) error {
+		flags, err := evergreen.GetServiceFlags()
+		if err != nil {
+			return errors.WithStack(err)
+		}
+
+		if flags.SchedulerDisabled {
+			grip.InfoWhen(sometimes.Percent(evergreen.DegradedLoggingPercent), message.Fields{
+				"message": "scheduler is disabled",
+				"impact":  "skipping batch time activation",
+				"mode":    "degraded",
+			})
+			return nil
+		}
+
 		projects, err := model.FindAllTrackedProjectRefs()
 		if err != nil {
 			return errors.WithStack(err)
