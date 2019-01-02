@@ -7,6 +7,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/distro"
+	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/pkg/errors"
@@ -69,11 +70,17 @@ func (dc *DBDistroConnector) CreateDistro(distro *distro.Distro) error {
 
 // DeleteDistroById removes a given distro from the database based on its id.
 func (dc *DBDistroConnector) DeleteDistroById(distroId string) error {
-	err := distro.Remove(distroId)
-	if err != nil {
+	var err error
+	if err := distro.Remove(distroId); err != nil {
 		return gimlet.ErrorResponse{
 			StatusCode: http.StatusInternalServerError,
 			Message:    fmt.Sprintf("distro with id '%s' was not deleted", distroId),
+		}
+	}
+	if err = host.MarkInactiveStaticHosts([]string{}, distroId); err != nil {
+		return gimlet.ErrorResponse{
+			StatusCode: http.StatusInternalServerError,
+			Message:    fmt.Sprintf("hosts for distro with id '%s' were not terminated", distroId),
 		}
 	}
 	return nil
