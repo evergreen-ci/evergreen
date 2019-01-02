@@ -16,7 +16,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/user"
-	"github.com/evergreen-ci/evergreen/model/version"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/mongodb/amboy/registry"
@@ -65,7 +64,7 @@ func (s *PatchIntentUnitsSuite) SetupTest() {
 
 	s.NotNil(s.env.Settings())
 
-	s.NoError(db.ClearCollections(evergreen.ConfigCollection, model.ProjectVarsCollection, version.Collection, user.Collection, model.ProjectRefCollection, patch.Collection, patch.IntentCollection, event.SubscriptionsCollection))
+	s.NoError(db.ClearCollections(evergreen.ConfigCollection, model.ProjectVarsCollection, model.VersionCollection, user.Collection, model.ProjectRefCollection, patch.Collection, patch.IntentCollection, event.SubscriptionsCollection))
 	s.NoError(db.ClearGridCollections(patch.GridFSPrefix))
 
 	s.NoError((&model.ProjectRef{
@@ -128,7 +127,7 @@ func (s *PatchIntentUnitsSuite) SetupTest() {
 	s.variants = []string{"ubuntu1604", "ubuntu1604-arm64", "ubuntu1604-debug", "race-detector"}
 	s.tasks = []string{"dist", "dist-test"}
 
-	s.NoError((&version.Version{
+	s.NoError((&model.Version{
 		Identifier: s.project,
 		CreateTime: time.Now(),
 		Revision:   s.hash,
@@ -338,7 +337,7 @@ func (s *PatchIntentUnitsSuite) verifyPatchDoc(patchDoc *patch.Patch, expectedPa
 }
 
 func (s *PatchIntentUnitsSuite) verifyVersionDoc(patchDoc *patch.Patch, expectedRequester string) {
-	versionDoc, err := version.FindOne(version.ById(patchDoc.Id.Hex()))
+	versionDoc, err := model.VersionFindOne(model.VersionById(patchDoc.Id.Hex()))
 	s.NoError(err)
 	s.Require().NotNil(versionDoc)
 
@@ -446,7 +445,7 @@ func (s *PatchIntentUnitsSuite) TestGithubPRTestFromUnknownUserDoesntCreateVersi
 		s.Empty(patchDoc.Version)
 	}
 
-	versionDoc, err := version.FindOne(version.ById(patchID.Hex()))
+	versionDoc, err := model.VersionFindOne(model.VersionById(patchID.Hex()))
 	s.NoError(err)
 	s.Nil(versionDoc)
 

@@ -6,7 +6,6 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/build"
-	"github.com/evergreen-ci/evergreen/model/version"
 	"github.com/pkg/errors"
 	"gopkg.in/mgo.v2/bson"
 )
@@ -19,13 +18,13 @@ const (
 
 // Given a project name and a list of build variants, return the latest version
 // on which all the given build variants succeeded. Gives up after 100 versions.
-func FindLastPassingVersionForBuildVariants(project *Project, buildVariantNames []string) (*version.Version, error) {
+func FindLastPassingVersionForBuildVariants(project *Project, buildVariantNames []string) (*Version, error) {
 	if len(buildVariantNames) == 0 {
 		return nil, errors.New("No build variants specified!")
 	}
 
 	// Get latest commit order number for this project
-	latestVersion, err := version.FindOne(version.ByMostRecentSystemRequester(project.Identifier).WithFields(version.RevisionOrderNumberKey))
+	latestVersion, err := VersionFindOne(VersionByMostRecentSystemRequester(project.Identifier).WithFields(VersionRevisionOrderNumberKey))
 	if err != nil {
 		return nil, errors.Wrap(err, "Error getting latest version")
 	}
@@ -91,13 +90,13 @@ func FindLastPassingVersionForBuildVariants(project *Project, buildVariantNames 
 	}
 
 	// Get the version corresponding to the resulting commit order number
-	v, err := version.FindOne(
+	v, err := VersionFindOne(
 		db.Query(bson.M{
-			version.RequesterKey: bson.M{
+			VersionRequesterKey: bson.M{
 				"$in": evergreen.SystemVersionRequesterTypes,
 			},
-			version.IdentifierKey:          project.Identifier,
-			version.RevisionOrderNumberKey: result[0]["_id"],
+			VersionIdentifierKey:          project.Identifier,
+			VersionRevisionOrderNumberKey: result[0]["_id"],
 		}))
 	if err != nil {
 		return nil, err

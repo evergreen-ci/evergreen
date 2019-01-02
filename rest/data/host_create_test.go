@@ -13,7 +13,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/user"
-	"github.com/evergreen-ci/evergreen/model/version"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -82,7 +81,7 @@ func TestListHostsForTask(t *testing.T) {
 
 func TestCreateHostsFromTask(t *testing.T) {
 	assert := assert.New(t)
-	assert.NoError(db.ClearCollections(task.Collection, version.Collection, distro.Collection, model.ProjectRefCollection, model.ProjectVarsCollection, host.Collection))
+	assert.NoError(db.ClearCollections(task.Collection, model.VersionCollection, distro.Collection, model.ProjectRefCollection, model.ProjectVarsCollection, host.Collection))
 	t1 := task.Task{
 		Id:           "t1",
 		DisplayName:  "t1",
@@ -107,7 +106,7 @@ buildvariants:
   tasks:
   - name: t1
 `
-	v1 := version.Version{
+	v1 := model.Version{
 		Id:         "v1",
 		Config:     versionYaml,
 		Identifier: "p",
@@ -174,7 +173,7 @@ buildvariants:
   tasks:
   - name: t2
 `
-	v2 := version.Version{
+	v2 := model.Version{
 		Id:         "v2",
 		Config:     versionYaml,
 		Identifier: "p",

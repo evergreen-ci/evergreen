@@ -1014,19 +1014,18 @@ func (a *APISchedulerConfig) ToService() (interface{}, error) {
 
 // APIServiceFlags is a public structure representing the admin service flags
 type APIServiceFlags struct {
-	TaskDispatchDisabled         bool `json:"task_dispatch_disabled"`
-	HostinitDisabled             bool `json:"hostinit_disabled"`
-	MonitorDisabled              bool `json:"monitor_disabled"`
-	AlertsDisabled               bool `json:"alerts_disabled"`
-	TaskrunnerDisabled           bool `json:"taskrunner_disabled"`
-	RepotrackerDisabled          bool `json:"repotracker_disabled"`
-	SchedulerDisabled            bool `json:"scheduler_disabled"`
-	GithubPRTestingDisabled      bool `json:"github_pr_testing_disabled"`
-	RepotrackerPushEventDisabled bool `json:"repotracker_push_event_disabled"`
-	CLIUpdatesDisabled           bool `json:"cli_updates_disabled"`
-	BackgroundStatsDisabled      bool `json:"background_stats_disabled"`
-	TaskLoggingDisabled          bool `json:"task_logging_disabled"`
-	CacheStatsJobDisabled        bool `json:"cache_stats_job_disabled"`
+	TaskDispatchDisabled    bool `json:"task_dispatch_disabled"`
+	HostInitDisabled        bool `json:"host_init_disabled"`
+	MonitorDisabled         bool `json:"monitor_disabled"`
+	AlertsDisabled          bool `json:"alerts_disabled"`
+	AgentStartDisabled      bool `json:"agent_start_disabled"`
+	RepotrackerDisabled     bool `json:"repotracker_disabled"`
+	SchedulerDisabled       bool `json:"scheduler_disabled"`
+	GithubPRTestingDisabled bool `json:"github_pr_testing_disabled"`
+	CLIUpdatesDisabled      bool `json:"cli_updates_disabled"`
+	BackgroundStatsDisabled bool `json:"background_stats_disabled"`
+	TaskLoggingDisabled     bool `json:"task_logging_disabled"`
+	CacheStatsJobDisabled   bool `json:"cache_stats_job_disabled"`
 
 	// Notifications Flags
 	EventProcessingDisabled      bool `json:"event_processing_disabled"`
@@ -1153,7 +1152,6 @@ type APIUIConfig struct {
 	Secret         APIString `json:"secret"`
 	DefaultProject APIString `json:"default_project"`
 	CacheTemplates bool      `json:"cache_templates"`
-	SecureCookies  bool      `json:"secure_cookies"`
 	CsrfKey        APIString `json:"csrf_key"`
 	CORSOrigin     APIString `json:"cors_origin"`
 }
@@ -1167,7 +1165,6 @@ func (a *APIUIConfig) BuildFromService(h interface{}) error {
 		a.Secret = ToAPIString(v.Secret)
 		a.DefaultProject = ToAPIString(v.DefaultProject)
 		a.CacheTemplates = v.CacheTemplates
-		a.SecureCookies = v.SecureCookies
 		a.CsrfKey = ToAPIString(v.CsrfKey)
 		a.CORSOrigin = ToAPIString(v.CORSOrigin)
 	default:
@@ -1184,7 +1181,6 @@ func (a *APIUIConfig) ToService() (interface{}, error) {
 		Secret:         FromAPIString(a.Secret),
 		DefaultProject: FromAPIString(a.DefaultProject),
 		CacheTemplates: a.CacheTemplates,
-		SecureCookies:  a.SecureCookies,
 		CsrfKey:        FromAPIString(a.CsrfKey),
 		CORSOrigin:     FromAPIString(a.CORSOrigin),
 	}, nil
@@ -1218,14 +1214,13 @@ func (as *APIServiceFlags) BuildFromService(h interface{}) error {
 	switch v := h.(type) {
 	case evergreen.ServiceFlags:
 		as.TaskDispatchDisabled = v.TaskDispatchDisabled
-		as.HostinitDisabled = v.HostinitDisabled
+		as.HostInitDisabled = v.HostInitDisabled
 		as.MonitorDisabled = v.MonitorDisabled
 		as.AlertsDisabled = v.AlertsDisabled
-		as.TaskrunnerDisabled = v.TaskrunnerDisabled
+		as.AgentStartDisabled = v.AgentStartDisabled
 		as.RepotrackerDisabled = v.RepotrackerDisabled
 		as.SchedulerDisabled = v.SchedulerDisabled
 		as.GithubPRTestingDisabled = v.GithubPRTestingDisabled
-		as.RepotrackerPushEventDisabled = v.RepotrackerPushEventDisabled
 		as.CLIUpdatesDisabled = v.CLIUpdatesDisabled
 		as.EventProcessingDisabled = v.EventProcessingDisabled
 		as.JIRANotificationsDisabled = v.JIRANotificationsDisabled
@@ -1246,14 +1241,13 @@ func (as *APIServiceFlags) BuildFromService(h interface{}) error {
 func (as *APIServiceFlags) ToService() (interface{}, error) {
 	return evergreen.ServiceFlags{
 		TaskDispatchDisabled:         as.TaskDispatchDisabled,
-		HostinitDisabled:             as.HostinitDisabled,
+		HostInitDisabled:             as.HostInitDisabled,
 		MonitorDisabled:              as.MonitorDisabled,
 		AlertsDisabled:               as.AlertsDisabled,
-		TaskrunnerDisabled:           as.TaskrunnerDisabled,
+		AgentStartDisabled:           as.AgentStartDisabled,
 		RepotrackerDisabled:          as.RepotrackerDisabled,
 		SchedulerDisabled:            as.SchedulerDisabled,
 		GithubPRTestingDisabled:      as.GithubPRTestingDisabled,
-		RepotrackerPushEventDisabled: as.RepotrackerPushEventDisabled,
 		CLIUpdatesDisabled:           as.CLIUpdatesDisabled,
 		EventProcessingDisabled:      as.EventProcessingDisabled,
 		JIRANotificationsDisabled:    as.JIRANotificationsDisabled,

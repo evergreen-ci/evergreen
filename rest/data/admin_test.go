@@ -15,7 +15,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/user"
-	"github.com/evergreen-ci/evergreen/model/version"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/stretchr/testify/suite"
@@ -32,13 +31,13 @@ func TestDataConnectorSuite(t *testing.T) {
 	s.ctx = &DBConnector{}
 	db.SetGlobalSessionProvider(testConfig.SessionFactory())
 	testutil.HandleTestingErr(db.ClearCollections(evergreen.ConfigCollection, task.Collection,
-		task.OldCollection, build.Collection, version.Collection, event.AllLogCollection), t, "Error clearing collections")
+		task.OldCollection, build.Collection, model.VersionCollection, event.AllLogCollection), t, "Error clearing collections")
 	b := &build.Build{
 		Id:      "buildtest",
 		Status:  evergreen.BuildStarted,
 		Version: "abc",
 	}
-	v := &version.Version{
+	v := &model.Version{
 		Id:     b.Version,
 		Status: evergreen.VersionStarted,
 	}
@@ -152,7 +151,7 @@ func (s *AdminDataSuite) TestSetAndGetSettings() {
 	s.EqualValues(testSettings.Providers.VSphere.Host, settingsFromConnector.Providers.VSphere.Host)
 	s.EqualValues(testSettings.RepoTracker.MaxConcurrentRequests, settingsFromConnector.RepoTracker.MaxConcurrentRequests)
 	s.EqualValues(testSettings.Scheduler.TaskFinder, settingsFromConnector.Scheduler.TaskFinder)
-	s.EqualValues(testSettings.ServiceFlags.HostinitDisabled, settingsFromConnector.ServiceFlags.HostinitDisabled)
+	s.EqualValues(testSettings.ServiceFlags.HostInitDisabled, settingsFromConnector.ServiceFlags.HostInitDisabled)
 	s.EqualValues(testSettings.Slack.Level, settingsFromConnector.Slack.Level)
 	s.EqualValues(testSettings.Slack.Options.Channel, settingsFromConnector.Slack.Options.Channel)
 	s.EqualValues(testSettings.Splunk.Channel, settingsFromConnector.Splunk.Channel)
@@ -251,7 +250,7 @@ func (s *AdminDataSuite) TestSetAndGetSettings() {
 	s.EqualValues(testSettings.Providers.VSphere.Host, settingsFromConnector.Providers.VSphere.Host)
 	s.EqualValues(testSettings.RepoTracker.MaxConcurrentRequests, settingsFromConnector.RepoTracker.MaxConcurrentRequests)
 	s.EqualValues(testSettings.Scheduler.TaskFinder, settingsFromConnector.Scheduler.TaskFinder)
-	s.EqualValues(testSettings.ServiceFlags.HostinitDisabled, settingsFromConnector.ServiceFlags.HostinitDisabled)
+	s.EqualValues(testSettings.ServiceFlags.HostInitDisabled, settingsFromConnector.ServiceFlags.HostInitDisabled)
 	s.EqualValues(testSettings.Slack.Level, settingsFromConnector.Slack.Level)
 	s.EqualValues(testSettings.Slack.Options.Channel, settingsFromConnector.Slack.Options.Channel)
 	s.EqualValues(testSettings.Splunk.Channel, settingsFromConnector.Splunk.Channel)

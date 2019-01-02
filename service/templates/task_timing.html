@@ -71,17 +71,24 @@ Evergreen - Task Timing
     </div>
       </div>
     <div class="row">
-    <div class="col-lg-3" style="margin-top:50px; margin-left:10px;" >
-      <div ng-hide="hoverInfo.hidden">
-        <div ng-hide="isAllTasks()">host id: <b>[[hoverInfo.host]]</b></div>
-        <div ng-hide="isAllTasks()">distro id: <b>[[hoverInfo.distro]]</b></div>
-        <div> duration: <b>[[hoverInfo.duration]]</b> </div>
-        <div style="font-family:monospace"><a ng-href="[[getLink()]]">[[hoverInfo.revision| limitTo:7]]</a></div>
-        <div>[[hoverInfo.create_time |  date: "MM/dd/yyyy 'at' h:mma"]] </div>
-        <div> <b> [[hoverInfo.author]]</b> </div><div>[[hoverInfo.message]] </div>
+      <div class="spinner-overlay ng-cloak">
+        <spinner ng-show="isLoading"></spinner>
+        <h1 ng-show="!isLoading && !taskData.length">
+          No data available!
+        </h1>
       </div>
-    </div>
-    <div class="col-lg-8 task-timing-chart" id="tt-graph"></div>
+      <div class="col-lg-3" style="margin-top:50px; margin-left:10px;" >
+        <div ng-hide="hoverInfo.hidden">
+          <div ng-hide="isAllTasks()">host id: <b>[[hoverInfo.host]]</b></div>
+          <div ng-hide="isAllTasks()">distro id: <b>[[hoverInfo.distro]]</b></div>
+          <div> duration: <b>[[hoverInfo.duration]]</b> </div>
+          <div style="font-family:monospace"><a ng-href="[[getLink()]]">[[hoverInfo.revision| limitTo:7]]</a></div>
+          <div>[[hoverInfo.create_time |  date: "MM/dd/yyyy 'at' h:mma"]] </div>
+          <div> <b> [[hoverInfo.author]]</b></div>
+          <div>[[hoverInfo.message]] </div>
+        </div>
+      </div>
+    <div class="col-lg-8 task-timing-chart" id="tt-graph" ng-show="taskData.length"></div>
   </div>
   </div>
 {{end}}

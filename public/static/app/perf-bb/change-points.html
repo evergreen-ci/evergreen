@@ -30,12 +30,7 @@
   ui-grid-selection
 >
   <div class="ui-grid-overlay ng-cloak">
-    <md-progress-circular
-      mode="indeterminate"
-      md-diameter="70"
-      ng-show="spvm.isLoading"
-    >
-    </md-progress-circular>
+    <spinner ng-if="spvm.isLoading"></spinner>
     <h1 ng-show="!spvm.isLoading && !spvm.gridOptions.data.length">
       No data available!
     </h1>

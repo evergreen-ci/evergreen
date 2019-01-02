@@ -4,10 +4,10 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/testresult"
-	"github.com/evergreen-ci/evergreen/model/version"
 	"gopkg.in/mgo.v2/bson"
 )
 
@@ -58,7 +58,7 @@ type Failure struct {
 }
 
 // Revision failure contains the revision and a list of the
-// task failures that exist on that version.
+// task failures that exist on that Version
 type RevisionFailure struct {
 	Id       string        `bson:"_id" json:"revision"`
 	Failures []TaskFailure `bson:"a" json:"failures"`
@@ -82,7 +82,7 @@ type RevisionFailures []RevisionFailure
 // FetchCells returns a Grid of Cells - grouped by variant and display name.
 // current is the most recent version and from which to fetch prior Cells
 // going back as far as depth versions.
-func FetchCells(current version.Version, depth int) (Grid, error) {
+func FetchCells(current model.Version, depth int) (Grid, error) {
 	cells := Grid{}
 	pipeline := []bson.M{
 		// Stage 1: Get all builds from the current version going back
@@ -142,7 +142,7 @@ func FetchCells(current version.Version, depth int) (Grid, error) {
 
 // FetchFailures returns the most recent test failures that have occurred at or
 // before the current version - looking back as far as depth versions.
-func FetchFailures(current version.Version, depth int) (Failures, error) {
+func FetchFailures(current model.Version, depth int) (Failures, error) {
 	pipeline := []bson.M{
 		// Get the most recent completed tasks - looking back as far as
 		// depth versions - on this project.
@@ -275,7 +275,7 @@ func FetchFailures(current version.Version, depth int) (Failures, error) {
 
 // FetchRevisionOrderFailures returns the most recent test failures
 // grouped by revision - looking as far back as depth revisions
-func FetchRevisionOrderFailures(current version.Version, depth int) (RevisionFailures, error) {
+func FetchRevisionOrderFailures(current model.Version, depth int) (RevisionFailures, error) {
 	pipeline := []bson.M{
 		// Get the most recent completed tasks - looking back as far as
 		// depth versions - on this project.

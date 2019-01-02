@@ -18,7 +18,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/manifest"
 	patchmodel "github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
-	"github.com/evergreen-ci/evergreen/model/version"
 	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/evergreen/util"
@@ -179,7 +178,7 @@ func (c *Mock) GetDistro(ctx context.Context, td TaskData) (*distro.Distro, erro
 }
 
 // GetVersion return a mock Version.
-func (c *Mock) GetVersion(ctx context.Context, td TaskData) (*version.Version, error) {
+func (c *Mock) GetVersion(ctx context.Context, td TaskData) (*serviceModel.Version, error) {
 	var err error
 	var data []byte
 	data, err = ioutil.ReadFile(filepath.Join(testutil.GetDirectoryOfFile(), "testdata", fmt.Sprintf("%s.yaml", td.ID)))
@@ -187,7 +186,7 @@ func (c *Mock) GetVersion(ctx context.Context, td TaskData) (*version.Version, e
 		panic(err)
 	}
 	config := string(data)
-	return &version.Version{
+	return &serviceModel.Version{
 		Id:     "mock_version_id",
 		Config: config,
 	}, nil
@@ -563,4 +562,8 @@ func (c *Mock) GetSubscriptions(_ context.Context) ([]event.Subscription, error)
 			},
 		},
 	}, nil
+}
+
+func (c *Mock) CreateVersionFromConfig(ctx context.Context, project, message string, active bool, config []byte) (*serviceModel.Version, error) {
+	return &serviceModel.Version{}, nil
 }

@@ -118,21 +118,28 @@ func (j *collectTaskEndDataJob) Run(ctx context.Context) {
 	}
 
 	msg := message.Fields{
-		"stat":            "task-end-stats",
-		"task_id":         j.task.Id,
-		"task":            j.task.DisplayName,
-		"execution":       j.task.Execution,
-		"requester":       j.task.Requester,
-		"activated_by":    j.task.ActivatedBy,
-		"project":         j.task.Project,
-		"variant":         j.task.BuildVariant,
-		"version":         j.task.Version,
-		"build":           j.task.BuildId,
-		"distro":          j.host.Distro.Id,
-		"provider":        j.host.Distro.Provider,
-		"host":            j.host.Id,
-		"total_wait_secs": j.task.FinishTime.Sub(j.task.GetTaskCreatedTime()).Seconds(),
-		"status":          j.task.ResultStatus(),
+		"stat":         "task-end-stats",
+		"task_id":      j.task.Id,
+		"task":         j.task.DisplayName,
+		"execution":    j.task.Execution,
+		"requester":    j.task.Requester,
+		"activated_by": j.task.ActivatedBy,
+		"project":      j.task.Project,
+		"variant":      j.task.BuildVariant,
+		"version":      j.task.Version,
+		"build":        j.task.BuildId,
+		"distro":       j.host.Distro.Id,
+		"provider":     j.host.Distro.Provider,
+		"host":         j.host.Id,
+		"status":       j.task.ResultStatus(),
+	}
+	totalWaitSecs := j.task.FinishTime.Sub(j.task.GetTaskCreatedTime())
+	if totalWaitSecs < 0 {
+		msg["create_time"] = j.task.CreateTime
+		msg["ingest_time"] = j.task.IngestTime
+		msg["finish_time"] = j.task.FinishTime
+	} else {
+		msg["total_wait_secs"] = totalWaitSecs.Seconds()
 	}
 
 	if cost != 0 {

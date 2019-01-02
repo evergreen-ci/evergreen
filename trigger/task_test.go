@@ -15,7 +15,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/testresult"
 	"github.com/evergreen-ci/evergreen/model/user"
-	"github.com/evergreen-ci/evergreen/model/version"
 	"github.com/evergreen-ci/evergreen/repotracker"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/mongodb/grip"
@@ -26,14 +25,14 @@ import (
 
 func TestBuildBreakNotificationsFromRepotracker(t *testing.T) {
 	assert := assert.New(t)
-	assert.NoError(db.ClearCollections(model.ProjectRefCollection, version.Collection, task.Collection, user.Collection, event.SubscriptionsCollection, build.Collection))
+	assert.NoError(db.ClearCollections(model.ProjectRefCollection, model.VersionCollection, task.Collection, user.Collection, event.SubscriptionsCollection, build.Collection))
 	proj := model.ProjectRef{
 		Identifier:           "proj",
 		NotifyOnBuildFailure: true,
 		Admins:               []string{"admin"},
 	}
 	assert.NoError(proj.Insert())
-	v1 := version.Version{
+	v1 := model.Version{
 		Id:         "v1",
 		Identifier: proj.Identifier,
 		Requester:  evergreen.RepotrackerVersionRequester,
@@ -81,7 +80,7 @@ func TestBuildBreakNotificationsFromRepotracker(t *testing.T) {
 
 	// a build triggered build break that the committer is subscribed to
 	// should only go to admins
-	v2 := version.Version{
+	v2 := model.Version{
 		Id:         "v2",
 		Identifier: proj.Identifier,
 		Requester:  evergreen.RepotrackerVersionRequester,
@@ -147,7 +146,7 @@ func (s *taskSuite) SetupSuite() {
 }
 
 func (s *taskSuite) SetupTest() {
-	s.NoError(db.ClearCollections(event.AllLogCollection, task.Collection, task.OldCollection, version.Collection, event.SubscriptionsCollection, alertrecord.Collection, testresult.Collection, event.SubscriptionsCollection, build.Collection, model.ProjectRefCollection))
+	s.NoError(db.ClearCollections(event.AllLogCollection, task.Collection, task.OldCollection, model.VersionCollection, event.SubscriptionsCollection, alertrecord.Collection, testresult.Collection, event.SubscriptionsCollection, build.Collection, model.ProjectRefCollection))
 	startTime := time.Now().Truncate(time.Millisecond).Add(-time.Hour)
 
 	s.task = task.Task{
@@ -185,7 +184,7 @@ func (s *taskSuite) SetupTest() {
 		ResourceId:   "test",
 		Data:         s.data,
 	}
-	v := version.Version{
+	v := model.Version{
 		Id:       "test_version_id",
 		AuthorID: "me",
 	}
@@ -634,7 +633,7 @@ func (s *taskSuite) makeTask(n int, taskStatus string) {
 	s.data.Status = taskStatus
 	s.event.ResourceId = s.task.Id
 	s.NoError(s.task.Insert())
-	v := version.Version{
+	v := model.Version{
 		Id: s.task.Version,
 	}
 	s.NoError(v.Insert())
@@ -837,7 +836,7 @@ func (s *taskSuite) TestRegressionByTestWithRegex() {
 	}
 	s.NoError(sub.Upsert())
 
-	v1 := version.Version{
+	v1 := model.Version{
 		Id:        "v1",
 		Requester: evergreen.RepotrackerVersionRequester,
 	}

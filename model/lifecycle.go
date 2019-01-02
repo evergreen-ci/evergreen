@@ -13,7 +13,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
-	"github.com/evergreen-ci/evergreen/model/version"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
@@ -159,11 +158,11 @@ func AbortVersion(versionId, caller string) error {
 }
 
 func MarkVersionStarted(versionId string, startTime time.Time) error {
-	return version.UpdateOne(
-		bson.M{version.IdKey: versionId},
+	return VersionUpdateOne(
+		bson.M{VersionIdKey: versionId},
 		bson.M{"$set": bson.M{
-			version.StartTimeKey: startTime,
-			version.StatusKey:    evergreen.VersionStarted,
+			VersionStartTimeKey: startTime,
+			VersionStatusKey:    evergreen.VersionStarted,
 		}},
 	)
 }
@@ -219,11 +218,11 @@ func MarkVersionCompleted(versionId string, finishTime time.Time, updates *Statu
 	if !finished {
 		return nil
 	}
-	if err := version.UpdateOne(
-		bson.M{version.IdKey: versionId},
+	if err := VersionUpdateOne(
+		bson.M{VersionIdKey: versionId},
 		bson.M{"$set": bson.M{
-			version.FinishTimeKey: finishTime,
-			version.StatusKey:     status,
+			VersionFinishTimeKey: finishTime,
+			VersionStatusKey:     status,
 		}},
 	); err != nil {
 		return errors.WithStack(err)
@@ -449,7 +448,7 @@ func RefreshTasksCache(buildId string) error {
 }
 
 // AddTasksToBuild creates the tasks for the given build of a project
-func AddTasksToBuild(b *build.Build, project *Project, v *version.Version,
+func AddTasksToBuild(b *build.Build, project *Project, v *Version,
 	taskNames []string, displayNames []string, generatedBy string) (*build.Build, error) {
 
 	// find the build variant for this project/build
@@ -480,16 +479,16 @@ func AddTasksToBuild(b *build.Build, project *Project, v *version.Version,
 
 // BuildCreateArgs is the set of parameters used in CreateBuildFromVersion
 type BuildCreateArgs struct {
-	Project      Project         // project to create the build for
-	Version      version.Version // the version the build belong to
-	TaskIDs      TaskIdConfig    // pre-generated IDs for the tasks to be created
-	BuildName    string          // name of the buildvariant
-	Activated    bool            // true if the build should be scheduled
-	TaskNames    []string        // names of tasks to create (used in patches). Will create all if nil
-	DisplayNames []string        // names of display tasks to create (used in patches). Will create all if nil
-	GeneratedBy  string          // ID of the task that generated this build
-	SourceRev    string          // githash of the revision that triggered this build
-	DefinitionID string          // definition ID of the trigger used to create this build
+	Project      Project      // project to create the build for
+	Version      Version      // the version the build belong to
+	TaskIDs      TaskIdConfig // pre-generated IDs for the tasks to be created
+	BuildName    string       // name of the buildvariant
+	Activated    bool         // true if the build should be scheduled
+	TaskNames    []string     // names of tasks to create (used in patches). Will create all if nil
+	DisplayNames []string     // names of display tasks to create (used in patches). Will create all if nil
+	GeneratedBy  string       // ID of the task that generated this build
+	SourceRev    string       // githash of the revision that triggered this build
+	DefinitionID string       // definition ID of the trigger used to create this build
 }
 
 // CreateBuildFromVersion creates a build given all of the necessary information
@@ -614,7 +613,7 @@ func CreateTasksFromGroup(in BuildVariantTaskUnit, proj *Project) []BuildVariant
 // The slice of tasks will be in the same order as the project's specified tasks
 // appear in the specified build variant.
 func createTasksForBuild(project *Project, buildVariant *BuildVariant, b *build.Build,
-	v *version.Version, taskIds TaskIdConfig, taskNames []string,
+	v *Version, taskIds TaskIdConfig, taskNames []string,
 	displayNames []string, generatedBy string) (task.Tasks, error) {
 
 	// the list of tasks we should create.  if tasks are passed in, then
@@ -829,7 +828,7 @@ func setNumDepsRec(task *task.Task, idToTasks map[string]*task.Task, seen map[st
 // TryMarkPatchBuildFinished attempts to mark a patch as finished if all
 // the builds for the patch are finished as well
 func TryMarkPatchBuildFinished(b *build.Build, finishTime time.Time, updates *StatusChanges) error {
-	v, err := version.FindOne(version.ById(b.Version))
+	v, err := VersionFindOne(VersionById(b.Version))
 	if err != nil {
 		return errors.WithStack(err)
 	}
@@ -866,16 +865,16 @@ func TryMarkPatchBuildFinished(b *build.Build, finishTime time.Time, updates *St
 	return nil
 }
 
-func getTaskCreateTime(projectId string, v *version.Version) (time.Time, error) {
+func getTaskCreateTime(projectId string, v *Version) (time.Time, error) {
 	createTime := time.Time{}
 	if evergreen.IsPatchRequester(v.Requester) {
-		baseVersion, err := version.FindOne(version.BaseVersionFromPatch(projectId, v.Revision))
+		baseVersion, err := VersionFindOne(VersionBaseVersionFromPatch(projectId, v.Revision))
 		if err != nil {
 			return createTime, errors.Wrap(err, "Error finding base version for patch version")
 		}
 		if baseVersion == nil {
 			grip.Warningf("Could not find base version for patch version %s", v.Id)
-			// The database data may be incomplete and missing the base version.
+			// The database data may be incomplete and missing the base Version
 			// In that case we don't want to fail, we fallback to the patch version's CreateTime.
 			return v.CreateTime, nil
 		}
@@ -887,7 +886,7 @@ func getTaskCreateTime(projectId string, v *version.Version) (time.Time, error) 
 
 // createOneTask is a helper to create a single task.
 func createOneTask(id string, buildVarTask BuildVariantTaskUnit, project *Project,
-	buildVariant *BuildVariant, b *build.Build, v *version.Version) (*task.Task, error) {
+	buildVariant *BuildVariant, b *build.Build, v *Version) (*task.Task, error) {
 	var distroID string
 
 	if len(buildVarTask.Distros) > 0 {
@@ -960,7 +959,7 @@ func createOneTask(id string, buildVarTask BuildVariantTaskUnit, project *Projec
 }
 
 func createDisplayTask(id string, displayName string, execTasks []string,
-	bv *BuildVariant, b *build.Build, v *version.Version, p *Project) (*task.Task, error) {
+	bv *BuildVariant, b *build.Build, v *Version, p *Project) (*task.Task, error) {
 
 	createTime, err := getTaskCreateTime(p.Identifier, v)
 	if err != nil {
@@ -1140,11 +1139,11 @@ func sortLayer(layer []task.Task, idToDisplayName map[string]string) []task.Task
 // Given a patch version and a list of variant/task pairs, creates the set of new builds that
 // do not exist yet out of the set of pairs. No tasks are added for builds which already exist
 // (see AddNewTasksForPatch).
-func AddNewBuilds(activated bool, v *version.Version, p *Project, tasks TaskVariantPairs, generatedBy string) error {
+func AddNewBuilds(activated bool, v *Version, p *Project, tasks TaskVariantPairs, generatedBy string) error {
 	taskIds := NewPatchTaskIdTable(p, v, tasks)
 
 	newBuildIds := make([]string, 0)
-	newBuildStatuses := make([]version.BuildStatus, 0)
+	newBuildStatuses := make([]VersionBuildStatus, 0)
 
 	existingBuilds, err := build.Find(build.ByVersion(v.Id).WithFields(build.BuildVariantKey, build.IdKey))
 	if err != nil {
@@ -1181,7 +1180,7 @@ func AddNewBuilds(activated bool, v *version.Version, p *Project, tasks TaskVari
 		}
 		newBuildIds = append(newBuildIds, buildId)
 		newBuildStatuses = append(newBuildStatuses,
-			version.BuildStatus{
+			VersionBuildStatus{
 				BuildVariant: pair.Variant,
 				BuildId:      buildId,
 				Activated:    activated,
@@ -1189,12 +1188,12 @@ func AddNewBuilds(activated bool, v *version.Version, p *Project, tasks TaskVari
 		)
 	}
 
-	return version.UpdateOne(
-		bson.M{version.IdKey: v.Id},
+	return VersionUpdateOne(
+		bson.M{VersionIdKey: v.Id},
 		bson.M{
 			"$push": bson.M{
-				version.BuildIdsKey:      bson.M{"$each": newBuildIds},
-				version.BuildVariantsKey: bson.M{"$each": newBuildStatuses},
+				VersionBuildIdsKey:      bson.M{"$each": newBuildIds},
+				VersionBuildVariantsKey: bson.M{"$each": newBuildStatuses},
 			},
 		},
 	)
@@ -1202,7 +1201,7 @@ func AddNewBuilds(activated bool, v *version.Version, p *Project, tasks TaskVari
 
 // Given a version and set of variant/task pairs, creates any tasks that don't exist yet,
 // within the set of already existing builds.
-func AddNewTasks(activated bool, v *version.Version, p *Project, pairs TaskVariantPairs, generatedBy string) error {
+func AddNewTasks(activated bool, v *Version, p *Project, pairs TaskVariantPairs, generatedBy string) error {
 	builds, err := build.Find(build.ByIds(v.BuildIds).WithFields(build.IdKey, build.BuildVariantKey, build.CreateTimeKey))
 	if err != nil {
 		return err

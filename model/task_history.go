@@ -11,7 +11,6 @@ import (
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/testresult"
-	"github.com/evergreen-ci/evergreen/model/version"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/anser/bsonutil"
 	"github.com/mongodb/grip"
@@ -39,7 +38,7 @@ type taskHistoryIterator struct {
 
 type TaskHistoryChunk struct {
 	Tasks       []bson.M
-	Versions    []version.Version
+	Versions    []Version
 	FailedTests map[string][]task.TestResult
 	Exhausted   ExhaustedIterator
 }
@@ -176,7 +175,7 @@ func (t TestHistoryParameters) QueryString() string {
 }
 
 type TaskHistoryIterator interface {
-	GetChunk(version *version.Version, numBefore, numAfter int, include bool) (TaskHistoryChunk, error)
+	GetChunk(version *Version, numBefore, numAfter int, include bool) (TaskHistoryChunk, error)
 	GetDistinctTestNames(numCommits int) ([]string, error)
 }
 
@@ -184,12 +183,12 @@ func NewTaskHistoryIterator(name string, buildVariants []string, projectName str
 	return TaskHistoryIterator(&taskHistoryIterator{TaskName: name, BuildVariants: buildVariants, ProjectName: projectName})
 }
 
-func (iter *taskHistoryIterator) findAllVersions(v *version.Version, numRevisions int, before, include bool) ([]version.Version, bool, error) {
+func (iter *taskHistoryIterator) findAllVersions(v *Version, numRevisions int, before, include bool) ([]Version, bool, error) {
 	versionQuery := bson.M{
-		version.RequesterKey: bson.M{
+		VersionRequesterKey: bson.M{
 			"$in": evergreen.SystemVersionRequesterTypes,
 		},
-		version.IdentifierKey: iter.ProjectName,
+		VersionIdentifierKey: iter.ProjectName,
 	}
 
 	// If including the specified version in the result, then should
@@ -200,9 +199,9 @@ func (iter *taskHistoryIterator) findAllVersions(v *version.Version, numRevision
 
 	// Determine the comparator to use based on whether the revisions
 	// come before/after the specified version
-	compare, order := "$gt", version.RevisionOrderNumberKey
+	compare, order := "$gt", VersionRevisionOrderNumberKey
 	if before {
-		compare, order = "$lt", fmt.Sprintf("-%v", version.RevisionOrderNumberKey)
+		compare, order = "$lt", fmt.Sprintf("-%v", VersionRevisionOrderNumberKey)
 		if include {
 			compare = "$lte"
 		}
@@ -211,18 +210,18 @@ func (iter *taskHistoryIterator) findAllVersions(v *version.Version, numRevision
 	}
 
 	if v != nil {
-		versionQuery[version.RevisionOrderNumberKey] = bson.M{compare: v.RevisionOrderNumber}
+		versionQuery[VersionRevisionOrderNumberKey] = bson.M{compare: v.RevisionOrderNumber}
 	}
 
 	// Get the next numRevisions, plus an additional one to check if have
 	// reached the beginning/end of history
-	versions, err := version.Find(
+	versions, err := VersionFind(
 		db.Query(versionQuery).WithFields(
-			version.IdKey,
-			version.RevisionOrderNumberKey,
-			version.RevisionKey,
-			version.MessageKey,
-			version.CreateTimeKey,
+			VersionIdKey,
+			VersionRevisionOrderNumberKey,
+			VersionRevisionKey,
+			VersionMessageKey,
+			VersionCreateTimeKey,
 		).Sort([]string{order}).Limit(numRevisions + 1))
 
 	// Check if there were fewer results returned by the query than what
@@ -248,10 +247,10 @@ func (iter *taskHistoryIterator) findAllVersions(v *version.Version, numRevision
 
 // Returns tasks grouped by their versions, and sorted with the most
 // recent first (i.e. descending commit order number).
-func (iter *taskHistoryIterator) GetChunk(v *version.Version, numBefore, numAfter int, include bool) (TaskHistoryChunk, error) {
+func (iter *taskHistoryIterator) GetChunk(v *Version, numBefore, numAfter int, include bool) (TaskHistoryChunk, error) {
 	chunk := TaskHistoryChunk{
 		Tasks:       []bson.M{},
-		Versions:    []version.Version{},
+		Versions:    []Version{},
 		FailedTests: map[string][]task.TestResult{},
 	}
 
@@ -661,8 +660,8 @@ func buildTestHistoryQuery(testHistoryParameters *TestHistoryParameters) ([]bson
 
 		revisionOrderNumberClause := bson.M{}
 		if testHistoryParameters.BeforeRevision != "" {
-			v, err := version.FindOne(version.ByProjectIdAndRevision(testHistoryParameters.Project,
-				testHistoryParameters.BeforeRevision).WithFields(version.RevisionOrderNumberKey))
+			v, err := VersionFindOne(VersionByProjectIdAndRevision(testHistoryParameters.Project,
+				testHistoryParameters.BeforeRevision).WithFields(VersionRevisionOrderNumberKey))
 			if err != nil {
 				return nil, err
 			}
@@ -673,8 +672,8 @@ func buildTestHistoryQuery(testHistoryParameters *TestHistoryParameters) ([]bson
 		}
 
 		if testHistoryParameters.AfterRevision != "" {
-			v, err := version.FindOne(version.ByProjectIdAndRevision(testHistoryParameters.Project,
-				testHistoryParameters.AfterRevision).WithFields(version.RevisionOrderNumberKey))
+			v, err := VersionFindOne(VersionByProjectIdAndRevision(testHistoryParameters.Project,
+				testHistoryParameters.AfterRevision).WithFields(VersionRevisionOrderNumberKey))
 			if err != nil {
 				return nil, err
 			}
@@ -922,8 +921,8 @@ func formRevisionQuery(params *TestHistoryParameters) (*bson.M, error) {
 	}
 	revisionOrderNumberClause := bson.M{}
 	if params.BeforeRevision != "" {
-		v, err := version.FindOne(version.ByProjectIdAndRevision(params.Project,
-			params.BeforeRevision).WithFields(version.RevisionOrderNumberKey))
+		v, err := VersionFindOne(VersionByProjectIdAndRevision(params.Project,
+			params.BeforeRevision).WithFields(VersionRevisionOrderNumberKey))
 		if err != nil {
 			return nil, err
 		}
@@ -934,8 +933,8 @@ func formRevisionQuery(params *TestHistoryParameters) (*bson.M, error) {
 	}
 
 	if params.AfterRevision != "" {
-		v, err := version.FindOne(version.ByProjectIdAndRevision(params.Project,
-			params.AfterRevision).WithFields(version.RevisionOrderNumberKey))
+		v, err := VersionFindOne(VersionByProjectIdAndRevision(params.Project,
+			params.AfterRevision).WithFields(VersionRevisionOrderNumberKey))
 		if err != nil {
 			return nil, err
 		}

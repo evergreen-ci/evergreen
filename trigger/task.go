@@ -15,7 +15,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/notification"
 	"github.com/evergreen-ci/evergreen/model/task"
-	"github.com/evergreen-ci/evergreen/model/version"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/grip"
@@ -36,6 +35,7 @@ const (
 	triggerTaskFirstFailureInVersionWithName = "first-failure-in-version-with-name"
 	triggerTaskRegressionByTest              = "regression-by-test"
 	triggerBuildBreak                        = "build-break"
+	keyFailureType                           = "failure-type"
 )
 
 func makeTaskTriggers() eventHandler {
@@ -131,7 +131,7 @@ type taskTriggers struct {
 	event    *event.EventLogEntry
 	data     *event.TaskEventData
 	task     *task.Task
-	version  *version.Version
+	version  *model.Version
 	uiConfig evergreen.UIConfig
 
 	oldTestResults map[string]*task.TestResult
@@ -172,7 +172,7 @@ func (t *taskTriggers) Fetch(e *event.EventLogEntry) error {
 		return errors.Wrap(err, "error getting display task")
 	}
 
-	t.version, err = version.FindOne(version.ById(t.task.Version))
+	t.version, err = model.VersionFindOne(model.VersionById(t.task.Version))
 	if err != nil {
 		return errors.Wrap(err, "failed to fetch version")
 	}
@@ -439,6 +439,9 @@ func isTaskRegression(sub *event.Subscription, t *task.Task) (bool, *alertrecord
 	if t.Status != evergreen.TaskFailed || !util.StringSliceContains(evergreen.SystemVersionRequesterTypes, t.Requester) {
 		return false, nil, nil
 	}
+	if !matchingFailureType(sub.TriggerData[keyFailureType], t.Details.Type) {
+		return false, nil, nil
+	}
 
 	previousTask, err := task.FindOne(task.ByBeforeRevisionWithStatusesAndRequesters(t.RevisionOrderNumber,
 		task.CompletedStatuses, t.BuildVariant, t.DisplayName, t.Project, evergreen.SystemVersionRequesterTypes))
@@ -655,6 +658,9 @@ func (t *taskTriggers) taskRegressionByTest(sub *event.Subscription) (*notificat
 	if !util.StringSliceContains(evergreen.SystemVersionRequesterTypes, t.task.Requester) || !isFailedTaskStatus(t.task.Status) {
 		return nil, nil
 	}
+	if !matchingFailureType(sub.TriggerData[keyFailureType], t.task.Details.Type) {
+		return nil, nil
+	}
 	// if no tests, alert only if it's a regression in task status
 	if len(t.task.LocalTestResults) == 0 {
 		return t.taskRegression(sub)
@@ -698,6 +704,13 @@ func (t *taskTriggers) taskRegressionByTest(sub *event.Subscription) (*notificat
 	return n, catcher.Resolve()
 }
 
+func matchingFailureType(requested, actual string) bool {
+	if requested == "any" || requested == "" {
+		return true
+	}
+	return requested == actual
+}
+
 func (j *taskTriggers) makeJIRATaskPayload(subID, project string) (*message.JiraIssue, error) {
 	return JIRATaskPayload(subID, project, j.uiConfig.Url, j.event.ID, j.task)
 }
@@ -719,7 +732,7 @@ func JIRATaskPayload(subID, project, uiUrl, eventID string, t *task.Task) (*mess
 		}
 	}
 
-	versionDoc, err := version.FindOneId(t.Version)
+	versionDoc, err := model.VersionFindOneId(t.Version)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to fetch version while building jira task payload")
 	}

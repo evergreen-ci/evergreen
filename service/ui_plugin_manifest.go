@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"net/http"
 
+	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/manifest"
-	"github.com/evergreen-ci/evergreen/model/version"
 	"github.com/evergreen-ci/gimlet"
 )
 
@@ -14,7 +14,7 @@ func (uis *UIServer) GetManifest(w http.ResponseWriter, r *http.Request) {
 	project := vars["project_id"]
 	revision := vars["revision"]
 
-	version, err := version.FindOne(version.ByProjectIdAndRevision(project, revision))
+	version, err := model.VersionFindOne(model.VersionByProjectIdAndRevision(project, revision))
 	if err != nil {
 		http.Error(w, fmt.Sprintf("error getting version for project %v with revision %v: %v",
 			project, revision, err), http.StatusBadRequest)

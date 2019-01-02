@@ -14,7 +14,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/manifest"
 	patchmodel "github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
-	"github.com/evergreen-ci/evergreen/model/version"
 	restmodel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/grip/message"
@@ -62,8 +61,8 @@ type Communicator interface {
 	GetProjectRef(context.Context, TaskData) (*model.ProjectRef, error)
 	// GetDistro returns the distro for the task.
 	GetDistro(context.Context, TaskData) (*distro.Distro, error)
-	// GetVersion loads the task's version.
-	GetVersion(context.Context, TaskData) (*version.Version, error)
+	// GetVersion loads the task's Version
+	GetVersion(context.Context, TaskData) (*model.Version, error)
 	// GetExpansions returns all expansions for the task known by the app server
 	GetExpansions(context.Context, TaskData) (util.Expansions, error)
 	// Heartbeat sends a heartbeat to the API server. The server can respond with
@@ -163,4 +162,7 @@ type Communicator interface {
 	// GetSubscriptions fetches the subscriptions for the user defined
 	// in the local evergreen yaml
 	GetSubscriptions(context.Context) ([]event.Subscription, error)
+
+	// CreateVersionFromConfig takes an evergreen config and makes runnable tasks from it
+	CreateVersionFromConfig(context.Context, string, string, bool, []byte) (*model.Version, error)
 }

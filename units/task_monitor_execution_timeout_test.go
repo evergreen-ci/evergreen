@@ -5,10 +5,10 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/task"
-	"github.com/evergreen-ci/evergreen/model/version"
 	"github.com/evergreen-ci/evergreen/testutil"
 	. "github.com/smartystreets/goconvey/convey"
 	"github.com/smartystreets/goconvey/convey/reporting"
@@ -51,7 +51,7 @@ func TestCleanupTask(t *testing.T) {
 				t, "error clearing builds collection")
 			testutil.HandleTestingErr(db.ClearCollections(task.OldCollection),
 				t, "error clearing old tasks collection")
-			testutil.HandleTestingErr(db.ClearCollections(version.Collection),
+			testutil.HandleTestingErr(db.ClearCollections(model.VersionCollection),
 				t, "error clearing versions collection")
 
 			Convey("the task should be reset", func() {
@@ -79,7 +79,7 @@ func TestCleanupTask(t *testing.T) {
 				}
 				So(b.Insert(), ShouldBeNil)
 
-				v := &version.Version{
+				v := &model.Version{
 					Id: "v1",
 				}
 				So(v.Insert(), ShouldBeNil)
@@ -157,7 +157,7 @@ func TestCleanupTask(t *testing.T) {
 				}
 				So(build.Insert(), ShouldBeNil)
 
-				v := &version.Version{Id: "v1"}
+				v := &model.Version{Id: "v1"}
 				So(v.Insert(), ShouldBeNil)
 
 				// cleaning up the task should work

@@ -179,7 +179,8 @@ func (c *communicatorImpl) retryRequest(ctx context.Context, info requestInfo, d
 		select {
 		case <-ctx.Done():
 			return nil, errors.New("request canceled")
-		case <-timer.C:
+		case t := <-timer.C:
+			grip.Debugf("retrying request for attempt %d at time %s", i, t.String())
 			if data != nil {
 				r.Body = ioutil.NopCloser(bytes.NewReader(out))
 			}
@@ -212,6 +213,7 @@ func (c *communicatorImpl) retryRequest(ctx context.Context, info requestInfo, d
 			}
 
 			dur = backoff.Duration()
+			grip.Debugf("resetting timer for attempt %d to %s", i, dur.String())
 			timer.Reset(dur)
 		}
 

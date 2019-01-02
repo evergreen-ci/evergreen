@@ -271,7 +271,8 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 
 	// Prevent multiple projects tracking the same repo/branch from enabling commit queue
 	if responseRef.CommitQEnabled {
-		projRef, err := model.FindOneProjectRefWithCommitQByOwnerRepoAndBranch(responseRef.Owner, responseRef.Repo, responseRef.Branch)
+		var projRef *model.ProjectRef
+		projRef, err = model.FindOneProjectRefWithCommitQByOwnerRepoAndBranch(responseRef.Owner, responseRef.Repo, responseRef.Branch)
 		if err != nil {
 			uis.LoggedError(w, r, http.StatusInternalServerError, err)
 			return

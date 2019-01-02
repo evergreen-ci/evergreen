@@ -2,6 +2,7 @@ package auth
 
 import (
 	"net/http"
+	"time"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
@@ -39,13 +40,14 @@ func LoadUserManager(authConfig evergreen.AuthConfig) (gimlet.UserManager, bool,
 	return nil, false, errors.New("Must have at least one form of authentication, currently there are none")
 }
 
-// sets the Token in the session cookie for authentication
-func setLoginToken(token string, w http.ResponseWriter) {
+// SetLoginToken sets the token in the session cookie for authentication.
+func SetLoginToken(token string, w http.ResponseWriter) {
 	authTokenCookie := &http.Cookie{
 		Name:     evergreen.AuthTokenCookie,
 		Value:    token,
 		HttpOnly: true,
 		Path:     "/",
+		Expires:  time.Now().Add(365 * 24 * time.Hour),
 	}
 	http.SetCookie(w, authTokenCookie)
 }

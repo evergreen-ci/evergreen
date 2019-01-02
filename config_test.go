@@ -392,7 +392,6 @@ func (s *AdminSuite) TestUiConfig() {
 		Secret:         "secret",
 		DefaultProject: "mci",
 		CacheTemplates: true,
-		SecureCookies:  true,
 		CsrfKey:        "csrf",
 	}
 

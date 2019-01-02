@@ -215,7 +215,7 @@ func TestAdminEventsBeforeQuery(t *testing.T) {
 	testutil.HandleTestingErr(db.Clear(AllLogCollection), t, "error clearing collection")
 	assert := assert.New(t)
 	before := &evergreen.ServiceFlags{}
-	after := &evergreen.ServiceFlags{HostinitDisabled: true}
+	after := &evergreen.ServiceFlags{HostInitDisabled: true}
 	assert.NoError(LogAdminEvent("service_flags", before, after, "beforeNow"))
 	time.Sleep(10 * time.Millisecond)
 	now := time.Now()

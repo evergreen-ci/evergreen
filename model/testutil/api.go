@@ -12,7 +12,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/manifest"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
-	"github.com/evergreen-ci/evergreen/model/version"
 	"github.com/pkg/errors"
 	"gopkg.in/mgo.v2/bson"
 	yaml "gopkg.in/yaml.v2"
@@ -29,7 +28,7 @@ func CleanupAPITestData() error {
 	// Ignore errs here because the ns might just not exist.
 	testCollections := []string{
 		task.Collection, build.Collection, host.Collection,
-		distro.Collection, version.Collection, patch.Collection,
+		distro.Collection, model.VersionCollection, patch.Collection,
 		model.PushlogCollection, model.ProjectVarsCollection, model.TaskQueuesCollection,
 		manifest.Collection, model.ProjectRefCollection}
 
@@ -157,7 +156,7 @@ func SetupAPITestData(testConfig *evergreen.Settings, taskDisplayName string, va
 	}
 
 	// Insert the version document
-	v := &version.Version{
+	v := &model.Version{
 		Id:       taskOne.Version,
 		BuildIds: []string{taskOne.BuildId},
 		Config:   string(projectYamlBytes),

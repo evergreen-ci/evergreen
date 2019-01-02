@@ -81,7 +81,7 @@ func (j *createHostJob) Run(ctx context.Context) {
 		j.AddError(err)
 	}
 
-	if flags.HostinitDisabled {
+	if flags.HostInitDisabled {
 		grip.Debug(message.Fields{
 			"mode":     "degraded",
 			"host":     j.HostID,

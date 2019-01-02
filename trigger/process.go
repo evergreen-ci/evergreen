@@ -10,7 +10,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/notification"
 	"github.com/evergreen-ci/evergreen/model/task"
-	"github.com/evergreen-ci/evergreen/model/version"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
@@ -81,10 +80,10 @@ func NotificationsFromEvent(e *event.EventLogEntry) ([]notification.Notification
 	return notifications, catcher.Resolve()
 }
 
-type projectProcessor func(ProcessorArgs) (*version.Version, error)
+type projectProcessor func(ProcessorArgs) (*model.Version, error)
 
 type ProcessorArgs struct {
-	SourceVersion     *version.Version
+	SourceVersion     *model.Version
 	DownstreamProject model.ProjectRef
 	ConfigFile        string
 	Command           string
@@ -97,7 +96,7 @@ type ProcessorArgs struct {
 
 // EvalProjectTriggers takes an event log entry and a processor (either the mock or TriggerDownstreamVersion)
 // and checks if any downstream builds should be triggered, creating them if they should
-func EvalProjectTriggers(e *event.EventLogEntry, processor projectProcessor) ([]version.Version, error) {
+func EvalProjectTriggers(e *event.EventLogEntry, processor projectProcessor) ([]model.Version, error) {
 	switch e.EventType {
 	case event.TaskFinished:
 		t, err := task.FindOneId(e.ResourceId)
@@ -132,7 +131,7 @@ func EvalProjectTriggers(e *event.EventLogEntry, processor projectProcessor) ([]
 	}
 }
 
-func triggerDownstreamProjectsForTask(t *task.Task, e *event.EventLogEntry, processor projectProcessor) ([]version.Version, error) {
+func triggerDownstreamProjectsForTask(t *task.Task, e *event.EventLogEntry, processor projectProcessor) ([]model.Version, error) {
 	if t.Requester != evergreen.RepotrackerVersionRequester {
 		return nil, nil
 	}
@@ -140,13 +139,13 @@ func triggerDownstreamProjectsForTask(t *task.Task, e *event.EventLogEntry, proc
 	if err != nil {
 		return nil, errors.Wrap(err, "error finding project ref")
 	}
-	sourceVersion, err := version.FindOneId(t.Version)
+	sourceVersion, err := model.VersionFindOneId(t.Version)
 	if err != nil {
 		return nil, errors.Wrap(err, "error finding version")
 	}
 
 	catcher := grip.NewBasicCatcher()
-	versions := []version.Version{}
+	versions := []model.Version{}
 projectLoop:
 	for _, ref := range downstreamProjects {
 
@@ -210,7 +209,7 @@ projectLoop:
 	return versions, catcher.Resolve()
 }
 
-func triggerDownstreamProjectsForBuild(b *build.Build, e *event.EventLogEntry, processor projectProcessor) ([]version.Version, error) {
+func triggerDownstreamProjectsForBuild(b *build.Build, e *event.EventLogEntry, processor projectProcessor) ([]model.Version, error) {
 	if b.Requester != evergreen.RepotrackerVersionRequester {
 		return nil, nil
 	}
@@ -218,13 +217,13 @@ func triggerDownstreamProjectsForBuild(b *build.Build, e *event.EventLogEntry, p
 	if err != nil {
 		return nil, errors.Wrap(err, "error finding project ref")
 	}
-	sourceVersion, err := version.FindOneId(b.Version)
+	sourceVersion, err := model.VersionFindOneId(b.Version)
 	if err != nil {
 		return nil, errors.Wrap(err, "error finding version")
 	}
 
 	catcher := grip.NewBasicCatcher()
-	versions := []version.Version{}
+	versions := []model.Version{}
 projectLoop:
 	for _, ref := range downstreamProjects {
 

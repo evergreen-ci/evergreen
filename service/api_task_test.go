@@ -24,7 +24,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/task"
 	modelUtil "github.com/evergreen-ci/evergreen/model/testutil"
-	"github.com/evergreen-ci/evergreen/model/version"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/amboy/queue"
@@ -563,7 +562,7 @@ func TestTaskLifecycleEndpoints(t *testing.T) {
 
 	Convey("with tasks, a host, a build, and a task queue", t, func() {
 		if err := db.ClearCollections(host.Collection, task.Collection, model.TaskQueuesCollection,
-			build.Collection, model.ProjectRefCollection, version.Collection, alertrecord.Collection, event.AllLogCollection); err != nil {
+			build.Collection, model.ProjectRefCollection, model.VersionCollection, alertrecord.Collection, event.AllLogCollection); err != nil {
 			t.Fatalf("clearing db: %v", err)
 		}
 
@@ -630,7 +629,7 @@ func TestTaskLifecycleEndpoints(t *testing.T) {
 		}
 		So(testBuild.Insert(), ShouldBeNil)
 
-		testVersion := version.Version{
+		testVersion := model.Version{
 			Id:     versionId,
 			Branch: projectId,
 		}

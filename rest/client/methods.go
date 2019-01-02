@@ -18,7 +18,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/manifest"
 	patchmodel "github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
-	"github.com/evergreen-ci/evergreen/model/version"
 	restmodel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/gimlet"
@@ -164,8 +163,8 @@ func (c *communicatorImpl) GetDistro(ctx context.Context, taskData TaskData) (*d
 }
 
 // GetVersion loads the task's version.
-func (c *communicatorImpl) GetVersion(ctx context.Context, taskData TaskData) (*version.Version, error) {
-	v := &version.Version{}
+func (c *communicatorImpl) GetVersion(ctx context.Context, taskData TaskData) (*model.Version, error) {
+	v := &model.Version{}
 	info := requestInfo{
 		method:   get,
 		taskData: &taskData,

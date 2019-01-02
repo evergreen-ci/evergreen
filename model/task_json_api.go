@@ -4,7 +4,6 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen/db"
-	"github.com/evergreen-ci/evergreen/model/version"
 	mgo "gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
 )
@@ -27,7 +26,7 @@ type PerfTaskForVersionId struct {
 	RevisionOrderNumber int    `bson:"r"`
 }
 
-// TaskInfo contains the relevant TaskJSON information the tasks associated with a version.
+// TaskInfo contains the relevant TaskJSON information the tasks associated with a Version
 type PerfTaskInfo struct {
 	TaskId   string      `bson:"t_id" json:"task_id"`
 	TaskName string      `bson:"tn" json:"task_name"`
@@ -41,7 +40,7 @@ type PerfTasksForVersion struct {
 	Tasks []PerfTaskInfo       `bson:"t" json:"tasks"`
 }
 
-// VersionData includes the TaskInfo, and Commit information for a given version.
+// VersionData includes the TaskInfo, and Commit information for a given Version
 type PerfVersionData struct {
 	JSONTasks    []PerfTaskInfo `json:"json_tasks"`
 	Commit       PerfCommitInfo `json:"commit_info"`
@@ -65,7 +64,7 @@ func PerfGetTasksForVersion(versionId, name string) ([]TaskJSON, error) {
 	return jsonForTasks, err
 }
 
-// getTasksForLatestVersion sends back the TaskJSON data associated with the latest version.
+// getTasksForLatestVersion sends back the TaskJSON data associated with the latest Version
 func PerfGetTasksForLatestVersion(project, name string, skip int) (*PerfVersionData, error) {
 	pipeline := []bson.M{
 		// match on name and project
@@ -122,7 +121,7 @@ func PerfGetTasksForLatestVersion(project, name string, skip int) (*PerfVersionD
 	}
 
 	// get the version commit info
-	v, err := version.FindOne(version.ById(currentVersion.Id.VersionId))
+	v, err := VersionFindOne(VersionById(currentVersion.Id.VersionId))
 	if err != nil {
 		return nil, err
 	}

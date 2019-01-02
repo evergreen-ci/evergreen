@@ -12,7 +12,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/task"
-	"github.com/evergreen-ci/evergreen/model/version"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
@@ -57,7 +56,7 @@ type containersOnParents struct {
 	numContainers int
 }
 
-func (s *distroSchedueler) scheduleDistro(distroId string, runnableTasksForDistro []task.Task, versions map[string]version.Version) distroSchedulerResult {
+func (s *distroSchedueler) scheduleDistro(distroId string, runnableTasksForDistro []task.Task, versions map[string]model.Version) distroSchedulerResult {
 	res := distroSchedulerResult{
 		distroId: distroId,
 	}

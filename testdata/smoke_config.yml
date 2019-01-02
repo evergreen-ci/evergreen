@@ -60,8 +60,7 @@ service_flags:
     monitor_disabled: true
     notifications_disabled: true
     alerts_disabled: true
-    taskrunner_disabled: true
+    agent_start_disabled: true
     repotracker_disabled: false
     scheduler_disabled: false
     github_pr_testing_disabled: true
-    repotracker_push_event_disabled: true

@@ -1,7 +1,6 @@
 package trigger
 
 import (
-	"fmt"
 	"testing"
 	"time"
 
@@ -9,7 +8,6 @@ import (
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/user"
-	"github.com/evergreen-ci/evergreen/model/version"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/stretchr/testify/assert"
 )
@@ -31,7 +29,7 @@ func TestMetadataFromVersion(t *testing.T) {
 		},
 	}
 	assert.NoError(author.Insert())
-	source := version.Version{
+	source := model.Version{
 		Author:     "name",
 		CreateTime: time.Now(),
 		Revision:   "abc",
@@ -91,13 +89,10 @@ func TestMakeDownstreamConfigFromCommand(t *testing.T) {
 	for _, t := range project.Tasks {
 		for _, c := range t.Commands {
 			if c.Command == "subprocess.exec" {
-				for _, value := range c.Params {
-					assert.EqualValues(cmd, value)
-					foundCommand = true
-				}
+				foundCommand = true
 			} else if c.Command == "generate.tasks" {
 				for _, value := range c.Params {
-					assert.Contains(value, fmt.Sprintf("src/%s", "generate.json"))
+					assert.Contains(value, "${workdir}/generate.json")
 					foundFile = true
 				}
 			}

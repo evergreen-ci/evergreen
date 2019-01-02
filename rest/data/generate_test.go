@@ -10,7 +10,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/task"
-	"github.com/evergreen-ci/evergreen/model/version"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -159,16 +158,16 @@ func TestParseProjects(t *testing.T) {
 func TestGenerateTasks(t *testing.T) {
 	assert := assert.New(t)
 	require := require.New(t)
-	require.NoError(db.ClearCollections(version.Collection, build.Collection, task.Collection, distro.Collection))
-	defer require.NoError(db.ClearCollections(version.Collection, build.Collection, task.Collection, distro.Collection))
-	randomVersion := version.Version{
+	require.NoError(db.ClearCollections(model.VersionCollection, build.Collection, task.Collection, distro.Collection))
+	defer require.NoError(db.ClearCollections(model.VersionCollection, build.Collection, task.Collection, distro.Collection))
+	randomVersion := model.Version{
 		Id:         "random_version",
 		Identifier: "mci",
 		Config:     sampleBaseProject,
 		BuildIds:   []string{"sample_build_id"},
 	}
 	require.NoError(randomVersion.Insert())
-	sampleVersion := version.Version{
+	sampleVersion := model.Version{
 		Id:         "sample_version",
 		Identifier: "mci",
 		Config:     sampleBaseProject,
@@ -226,7 +225,7 @@ func TestGenerateTasks(t *testing.T) {
 	}
 
 	// Make sure first project was not changed
-	v, err := version.FindOneId("random_version")
+	v, err := model.VersionFindOneId("random_version")
 	assert.NoError(err)
 	p := model.Project{}
 	err = model.LoadProjectInto([]byte(v.Config), "mci", &p)
@@ -236,7 +235,7 @@ func TestGenerateTasks(t *testing.T) {
 	assert.Len(p.BuildVariants[1].Tasks, 2)
 
 	// Verify second project was changed
-	v, err = version.FindOneId("sample_version")
+	v, err = model.VersionFindOneId("sample_version")
 	assert.NoError(err)
 	p = model.Project{}
 	err = model.LoadProjectInto([]byte(v.Config), "mci", &p)

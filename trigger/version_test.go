@@ -6,10 +6,10 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/alertrecord"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/task"
-	"github.com/evergreen-ci/evergreen/model/version"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/stretchr/testify/suite"
 	"gopkg.in/mgo.v2/bson"
@@ -22,7 +22,7 @@ func TestVersionTriggers(t *testing.T) {
 type VersionSuite struct {
 	event   event.EventLogEntry
 	data    *event.VersionEventData
-	version version.Version
+	version model.Version
 	subs    []event.Subscription
 
 	t *versionTriggers
@@ -35,12 +35,12 @@ func (s *VersionSuite) SetupSuite() {
 }
 
 func (s *VersionSuite) SetupTest() {
-	s.NoError(db.ClearCollections(event.AllLogCollection, version.Collection, event.SubscriptionsCollection, task.Collection, alertrecord.Collection))
+	s.NoError(db.ClearCollections(event.AllLogCollection, model.VersionCollection, event.SubscriptionsCollection, task.Collection, alertrecord.Collection))
 	startTime := time.Now().Truncate(time.Millisecond)
 
 	versionID := "5aeb4514f27e4f9984646d97"
 
-	s.version = version.Version{
+	s.version = model.Version{
 		Id:                  versionID,
 		Identifier:          "test",
 		StartTime:           startTime,
@@ -137,7 +137,7 @@ func (s *VersionSuite) TestAllTriggers() {
 
 	s.version.Status = evergreen.VersionSucceeded
 	s.data.Status = evergreen.VersionSucceeded
-	s.NoError(db.Update(version.Collection, bson.M{"_id": s.version.Id}, &s.version))
+	s.NoError(db.Update(model.VersionCollection, bson.M{"_id": s.version.Id}, &s.version))
 
 	n, err = NotificationsFromEvent(&s.event)
 	s.NoError(err)
@@ -145,7 +145,7 @@ func (s *VersionSuite) TestAllTriggers() {
 
 	s.version.Status = evergreen.VersionFailed
 	s.data.Status = evergreen.VersionFailed
-	s.NoError(db.Update(version.Collection, bson.M{"_id": s.version.Id}, &s.version))
+	s.NoError(db.Update(model.VersionCollection, bson.M{"_id": s.version.Id}, &s.version))
 
 	n, err = NotificationsFromEvent(&s.event)
 	s.NoError(err)
@@ -153,7 +153,7 @@ func (s *VersionSuite) TestAllTriggers() {
 
 	s.version.Status = evergreen.VersionFailed
 	s.data.Status = evergreen.VersionCreated
-	s.NoError(db.Update(version.Collection, bson.M{"_id": s.version.Id}, &s.version))
+	s.NoError(db.Update(model.VersionCollection, bson.M{"_id": s.version.Id}, &s.version))
 
 	n, err = NotificationsFromEvent(&s.event)
 	s.NoError(err)
@@ -304,7 +304,7 @@ func (s *VersionSuite) TestVersionRuntimeChange() {
 	s.Nil(n)
 
 	// version that exceeds threshold should generate
-	lastGreen := version.Version{
+	lastGreen := model.Version{
 		RevisionOrderNumber: 1,
 		Identifier:          s.version.Identifier,
 		StartTime:           time.Now().Add(-10 * time.Minute),

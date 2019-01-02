@@ -21,12 +21,7 @@
   ui-grid-grouping
 >
   <div class="ui-grid-overlay ng-cloak">
-    <md-progress-circular
-      mode="indeterminate"
-      md-diameter="70"
-      ng-show="pfvm.isLoading"
-    >
-    </md-progress-circular>
+    <spinner ng-if="pfvm.isLoading"></spinner>
     <h1 ng-show="!pfvm.isLoading && !pfvm.gridOptions.data.length">
       No data available!
     </h1>

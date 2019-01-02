@@ -10,7 +10,6 @@ import (
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/build"
-	"github.com/evergreen-ci/evergreen/model/version"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/mongodb/grip"
@@ -91,7 +90,7 @@ type versionStatusByTask map[string]versionStatus
 type versionStatusByBuild map[string]versionStatus
 
 // copyVersion copies the fields of a Version struct into a restVersion struct
-func copyVersion(srcVersion *version.Version, destVersion *restVersion) {
+func copyVersion(srcVersion *model.Version, destVersion *restVersion) {
 	destVersion.Id = srcVersion.Id
 	destVersion.CreateTime = srcVersion.CreateTime
 	destVersion.StartTime = srcVersion.StartTime
@@ -120,7 +119,7 @@ func copyVersion(srcVersion *version.Version, destVersion *restVersion) {
 func (restapi restAPI) getRecentVersions(w http.ResponseWriter, r *http.Request) {
 	projectId := gimlet.GetVars(r)["project_id"]
 
-	versions, err := version.Find(version.ByMostRecentSystemRequester(projectId).Limit(NumRecentVersions))
+	versions, err := model.VersionFind(model.VersionByMostRecentSystemRequester(projectId).Limit(NumRecentVersions))
 
 	if err != nil {
 		msg := fmt.Sprintf("Error finding recent versions of project '%v'", projectId)
@@ -232,7 +231,7 @@ func (restapi restAPI) getVersionInfoViaRevision(w http.ResponseWriter, r *http.
 	projectId := vars["project_id"]
 	revision := vars["revision"]
 
-	srcVersion, err := version.FindOne(version.ByProjectIdAndRevision(projectId, revision))
+	srcVersion, err := model.VersionFindOne(model.VersionByProjectIdAndRevision(projectId, revision))
 	if err != nil || srcVersion == nil {
 		msg := fmt.Sprintf("Error finding revision '%v' for project '%v'", revision, projectId)
 		statusCode := http.StatusNotFound

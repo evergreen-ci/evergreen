@@ -28,9 +28,9 @@ func TestAdminCommands(t *testing.T) {
 
 	assert.NoError(setServiceFlagValues([]string{"hostinit", "monitor", "agents", "tasks"}, true, flags))
 	assert.NotZero(*flags)
-	assert.True(flags.TaskrunnerDisabled)
+	assert.True(flags.AgentStartDisabled)
 	assert.True(flags.MonitorDisabled)
-	assert.True(flags.HostinitDisabled)
+	assert.True(flags.HostInitDisabled)
 	assert.True(flags.TaskDispatchDisabled)
 
 	assert.NoError(setServiceFlagValues([]string{"hostinit", "monitor", "agents", "tasks"}, false, flags))

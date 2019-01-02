@@ -9,7 +9,6 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/user"
-	"github.com/evergreen-ci/evergreen/model/version"
 	"github.com/evergreen-ci/evergreen/repotracker"
 	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/pkg/errors"
@@ -17,7 +16,7 @@ import (
 
 // TriggerDownstreamVersion assumes that you definitely want to create a downstream version
 // and will go through the process of version creation given a triggering version
-func TriggerDownstreamVersion(args ProcessorArgs) (*version.Version, error) {
+func TriggerDownstreamVersion(args ProcessorArgs) (*model.Version, error) {
 	if args.ConfigFile != "" && args.Command != "" {
 		return nil, errors.New("cannot specify both a file and command")
 	}
@@ -72,7 +71,7 @@ func TriggerDownstreamVersion(args ProcessorArgs) (*version.Version, error) {
 	return v, nil
 }
 
-func metadataFromVersion(source version.Version, ref model.ProjectRef) (repotracker.VersionMetadata, error) {
+func metadataFromVersion(source model.Version, ref model.ProjectRef) (repotracker.VersionMetadata, error) {
 	metadata := repotracker.VersionMetadata{
 		SourceVersion: &source,
 	}
@@ -142,19 +141,20 @@ func makeDownstreamConfigFromCommand(ref model.ProjectRef, command, generateFile
 						Command: "git.get_project",
 						Type:    evergreen.CommandTypeSetup,
 						Params: map[string]interface{}{
-							"directory": "${workdir}/src",
+							"directory": "${workdir}",
 						},
 					},
 					{
 						Command: "subprocess.exec",
 						Params: map[string]interface{}{
-							"command": command,
+							"working_dir": "${workdir}",
+							"command":     command,
 						},
 					},
 					{
 						Command: "generate.tasks",
 						Params: map[string]interface{}{
-							"files": []string{fmt.Sprintf("src/%s", generateFile)},
+							"files": []string{fmt.Sprintf("${workdir}/%s", generateFile)},
 						},
 					},
 				},

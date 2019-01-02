@@ -122,7 +122,7 @@ func (s *AdminRouteSuite) TestAdminRoute() {
 	s.EqualValues(testSettings.Providers.VSphere.Host, settings.Providers.VSphere.Host)
 	s.EqualValues(testSettings.RepoTracker.MaxConcurrentRequests, settings.RepoTracker.MaxConcurrentRequests)
 	s.EqualValues(testSettings.Scheduler.TaskFinder, settings.Scheduler.TaskFinder)
-	s.EqualValues(testSettings.ServiceFlags.HostinitDisabled, settings.ServiceFlags.HostinitDisabled)
+	s.EqualValues(testSettings.ServiceFlags.HostInitDisabled, settings.ServiceFlags.HostInitDisabled)
 	s.EqualValues(testSettings.Slack.Level, settings.Slack.Level)
 	s.EqualValues(testSettings.Slack.Options.Channel, settings.Slack.Options.Channel)
 	s.EqualValues(testSettings.Splunk.Channel, settings.Splunk.Channel)

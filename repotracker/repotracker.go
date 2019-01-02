@@ -11,7 +11,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/manifest"
 	"github.com/evergreen-ci/evergreen/model/user"
-	"github.com/evergreen-ci/evergreen/model/version"
 	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/evergreen/validator"
@@ -53,7 +52,7 @@ type VersionMetadata struct {
 	TriggerType   string
 	EventID       string
 	DefinitionID  string
-	SourceVersion *version.Version
+	SourceVersion *model.Version
 	IsAdHoc       bool
 	User          *user.DBUser
 	Message       string
@@ -205,14 +204,14 @@ func (repoTracker *RepoTracker) FetchRevisions(ctx context.Context) error {
 // The return value is the most recent version created as a result of storing the revisions.
 // This function is idempotent with regard to storing the same version multiple times.
 func (repoTracker *RepoTracker) StoreRevisions(ctx context.Context, revisions []model.Revision) error {
-	var newestVersion *version.Version
+	var newestVersion *model.Version
 	ref := repoTracker.ProjectRef
 	for i := len(revisions) - 1; i >= 0; i-- {
 		revision := revisions[i].Revision
 		grip.Infof("Processing revision %s in project %s", revision, ref.Identifier)
 
 		// We check if the version exists here so we can avoid fetching the github config unnecessarily
-		existingVersion, err := version.FindOne(version.ByProjectIdAndRevision(ref.Identifier, revisions[i].Revision))
+		existingVersion, err := model.VersionFindOne(model.VersionByProjectIdAndRevision(ref.Identifier, revisions[i].Revision))
 		grip.Error(message.WrapError(err, message.Fields{
 			"message":  "problem looking up version for project",
 			"runner":   RunnerName,
@@ -386,7 +385,7 @@ func (repoTracker *RepoTracker) GetProjectConfig(ctx context.Context, revision s
 		// response) - or encountered a problem in fetching a local
 		// configuration file. At any rate, this is bad enough that we
 		// want to send a notification instead of just creating a stub
-		// version.
+		// model.Version
 		var lastRevision string
 		repository, fErr := model.FindRepository(projectRef.Identifier)
 		if fErr != nil || repository == nil {
@@ -415,7 +414,7 @@ func (repoTracker *RepoTracker) GetProjectConfig(ctx context.Context, revision s
 
 // AddBuildBreakSubscriptions will subscribe admins of a project to a version if no one
 // else would receive a build break notification
-func AddBuildBreakSubscriptions(v *version.Version, projectRef *model.ProjectRef) error {
+func AddBuildBreakSubscriptions(v *model.Version, projectRef *model.ProjectRef) error {
 	subscriptionBase := event.Subscription{
 		ResourceType: event.ResourceTypeTask,
 		Trigger:      "build-break",
@@ -502,7 +501,7 @@ func makeBuildBreakSubscriber(userID string) (*event.Subscriber, error) {
 	return subscriber, nil
 }
 
-func CreateManifest(v version.Version, proj *model.Project, branch string, settings *evergreen.Settings) (*manifest.Manifest, error) {
+func CreateManifest(v model.Version, proj *model.Project, branch string, settings *evergreen.Settings) (*manifest.Manifest, error) {
 	if len(proj.Modules) == 0 {
 		return nil, nil
 	}
@@ -560,7 +559,7 @@ func CreateManifest(v version.Version, proj *model.Project, branch string, setti
 	return newManifest, errors.Wrap(err, "error inserting manifest")
 }
 
-func CreateVersionFromConfig(ref *model.ProjectRef, config *model.Project, metadata VersionMetadata, ignore bool, versionErrs *VersionErrors) (*version.Version, error) {
+func CreateVersionFromConfig(ref *model.ProjectRef, config *model.Project, metadata VersionMetadata, ignore bool, versionErrs *VersionErrors) (*model.Version, error) {
 	if ref == nil || config == nil {
 		return nil, errors.New("project ref and project cannot be nil")
 	}
@@ -614,7 +613,7 @@ func CreateVersionFromConfig(ref *model.ProjectRef, config *model.Project, metad
 
 // shellVersionFromRevision populates a new Version with metadata from a model.Revision.
 // Does not populate its config or store anything in the database.
-func shellVersionFromRevision(ref *model.ProjectRef, metadata VersionMetadata) (*version.Version, error) {
+func shellVersionFromRevision(ref *model.ProjectRef, metadata VersionMetadata) (*model.Version, error) {
 	u, err := user.FindByGithubUID(metadata.Revision.AuthorGithubUID)
 	grip.Error(message.WrapError(err, message.Fields{
 		"message": fmt.Sprintf("failed to fetch everg user with Github UID %d", metadata.Revision.AuthorGithubUID),
@@ -624,7 +623,7 @@ func shellVersionFromRevision(ref *model.ProjectRef, metadata VersionMetadata) (
 	if err != nil {
 		return nil, err
 	}
-	v := &version.Version{
+	v := &model.Version{
 		Author:              metadata.Revision.Author,
 		AuthorEmail:         metadata.Revision.AuthorEmail,
 		Branch:              ref.Branch,
@@ -670,7 +669,7 @@ func shellVersionFromRevision(ref *model.ProjectRef, metadata VersionMetadata) (
 
 // Verifies that the given revision order number is higher than the latest number stored for the project.
 func sanityCheckOrderNum(revOrderNum int, projectId, revision string) error {
-	latest, err := version.FindOne(version.ByMostRecentSystemRequester(projectId))
+	latest, err := model.VersionFindOne(model.VersionByMostRecentSystemRequester(projectId))
 	if err != nil || latest == nil {
 		return errors.Wrap(err, "Error getting latest version")
 	}
@@ -687,7 +686,7 @@ func sanityCheckOrderNum(revOrderNum int, projectId, revision string) error {
 
 // createVersionItems populates and stores all the tasks and builds for a version according to
 // the given project config.
-func createVersionItems(v *version.Version, ref *model.ProjectRef, metadata VersionMetadata, project *model.Project) error {
+func createVersionItems(v *model.Version, ref *model.ProjectRef, metadata VersionMetadata, project *model.Project) error {
 	// generate all task Ids so that we can easily reference them for dependencies
 	sourceRev := ""
 	if metadata.SourceVersion != nil {
@@ -720,7 +719,7 @@ func createVersionItems(v *version.Version, ref *model.ProjectRef, metadata Vers
 			continue
 		}
 
-		lastActivated, err := version.FindOne(version.ByLastVariantActivation(ref.Identifier, buildvariant.Name))
+		lastActivated, err := model.VersionFindOne(model.VersionByLastVariantActivation(ref.Identifier, buildvariant.Name))
 		if err != nil {
 			return errors.Wrap(err, "problem getting activatation time for variant")
 		}
@@ -752,7 +751,7 @@ func createVersionItems(v *version.Version, ref *model.ProjectRef, metadata Vers
 			"runner":  RunnerName,
 		})
 		v.BuildIds = append(v.BuildIds, buildId)
-		v.BuildVariants = append(v.BuildVariants, version.BuildStatus{
+		v.BuildVariants = append(v.BuildVariants, model.VersionBuildStatus{
 			BuildVariant: buildvariant.Name,
 			Activated:    false,
 			ActivateAt:   activateAt,

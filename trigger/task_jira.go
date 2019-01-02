@@ -12,7 +12,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/task"
-	"github.com/evergreen-ci/evergreen/model/version"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
@@ -54,10 +53,7 @@ func getTaskURL(data *jiraTemplateData) (string, error) {
 	}
 	id := data.Task.Id
 	execution := data.Task.Execution
-	if data.Task.DisplayTask != nil {
-		id = data.Task.DisplayTask.Id
-		execution = data.Task.DisplayTask.Execution
-	} else if len(data.Task.OldTaskId) != 0 {
+	if len(data.Task.OldTaskId) != 0 {
 		id = data.Task.OldTaskId
 	}
 
@@ -87,7 +83,7 @@ type jiraTemplateData struct {
 	Build              *build.Build
 	Host               *host.Host
 	Project            *model.ProjectRef
-	Version            *version.Version
+	Version            *model.Version
 	FailedTests        []task.TestResult
 	FailedTestNames    []string
 	Tests              []jiraTestFailure

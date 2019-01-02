@@ -11,7 +11,6 @@ import (
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/testresult"
-	"github.com/evergreen-ci/evergreen/model/version"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/mongodb/grip"
 	. "github.com/smartystreets/goconvey/convey"
@@ -36,7 +35,7 @@ func TestTaskHistory(t *testing.T) {
 
 		Convey("when finding task history items", func() {
 
-			testutil.HandleTestingErr(db.ClearCollections(version.Collection, task.Collection),
+			testutil.HandleTestingErr(db.ClearCollections(VersionCollection, task.Collection),
 				t, "Error clearing test collections")
 
 			for i := 10; i < 20; i++ {
@@ -46,7 +45,7 @@ func TestTaskHistory(t *testing.T) {
 				}
 
 				vid := fmt.Sprintf("v%v", i)
-				ver := &version.Version{
+				ver := &Version{
 					Id:                  vid,
 					RevisionOrderNumber: i,
 					Revision:            vid,
@@ -93,7 +92,7 @@ func TestTaskHistory(t *testing.T) {
 			Convey("tasks from a different project should be filtered"+
 				" out", func() {
 
-				vBefore, err := version.FindOne(version.ById("v15"))
+				vBefore, err := VersionFindOne(VersionById("v15"))
 				So(err, ShouldBeNil)
 
 				taskHistoryChunk, err := taskHistoryIterator.GetChunk(vBefore, 5, 0, false)
@@ -274,9 +273,9 @@ func TestSetDefaultsAndValidate(t *testing.T) {
 
 func TestBuildTestHistoryQuery(t *testing.T) {
 	Convey("With a version", t, func() {
-		testutil.HandleTestingErr(db.ClearCollections(task.Collection, version.Collection),
+		testutil.HandleTestingErr(db.ClearCollections(task.Collection, VersionCollection),
 			t, "Error clearing task collections")
-		testVersion := version.Version{
+		testVersion := Version{
 			Id:                  "testVersion",
 			Revision:            "abc",
 			RevisionOrderNumber: 1,
@@ -655,12 +654,12 @@ func TestGetTestHistory(t *testing.T) {
 		GetTestHistoryV2,
 	}
 	for _, testFunc := range testFuncs {
-		testutil.HandleTestingErr(db.ClearCollections(task.Collection, version.Collection, testresult.Collection),
+		testutil.HandleTestingErr(db.ClearCollections(task.Collection, VersionCollection, testresult.Collection),
 			t, "Error clearing task collections")
 		project := "proj"
 		now := time.Now()
 
-		testVersion := version.Version{
+		testVersion := Version{
 			Id:                  "testVersion",
 			Revision:            "fgh",
 			RevisionOrderNumber: 1,
@@ -668,7 +667,7 @@ func TestGetTestHistory(t *testing.T) {
 			Requester:           evergreen.RepotrackerVersionRequester,
 		}
 		assert.NoError(testVersion.Insert())
-		testVersion2 := version.Version{
+		testVersion2 := Version{
 			Id:                  "anotherVersion",
 			Revision:            "def",
 			RevisionOrderNumber: 2,
@@ -676,7 +675,7 @@ func TestGetTestHistory(t *testing.T) {
 			Requester:           evergreen.RepotrackerVersionRequester,
 		}
 		assert.NoError(testVersion2.Insert())
-		testVersion3 := version.Version{
+		testVersion3 := Version{
 			Id:                  "testV",
 			Revision:            "abcd",
 			RevisionOrderNumber: 4,
@@ -1130,12 +1129,12 @@ func TestCompareQueryRunTimes(t *testing.T) {
 	taskStatuses := []string{evergreen.TaskFailed, evergreen.TaskSucceeded}
 	testStatuses := []string{evergreen.TestFailedStatus, evergreen.TestSucceededStatus, evergreen.TestSkippedStatus, evergreen.TestSilentlyFailedStatus}
 	systemTypes := []string{evergreen.CommandTypeTest, evergreen.CommandTypeSystem, evergreen.CommandTypeSetup}
-	testutil.HandleTestingErr(db.ClearCollections(task.Collection, version.Collection, testresult.Collection),
+	testutil.HandleTestingErr(db.ClearCollections(task.Collection, VersionCollection, testresult.Collection),
 		t, "Error clearing collections")
 	project := "proj"
 	now := time.Now()
 
-	testVersion := version.Version{
+	testVersion := Version{
 		Id:                  "testVersion",
 		Revision:            "fgh",
 		RevisionOrderNumber: 1,
@@ -1143,7 +1142,7 @@ func TestCompareQueryRunTimes(t *testing.T) {
 		Requester:           evergreen.RepotrackerVersionRequester,
 	}
 	assert.NoError(testVersion.Insert())
-	testVersion2 := version.Version{
+	testVersion2 := Version{
 		Id:                  "anotherVersion",
 		Revision:            "def",
 		RevisionOrderNumber: 2,
@@ -1151,7 +1150,7 @@ func TestCompareQueryRunTimes(t *testing.T) {
 		Requester:           evergreen.RepotrackerVersionRequester,
 	}
 	assert.NoError(testVersion2.Insert())
-	testVersion3 := version.Version{
+	testVersion3 := Version{
 		Id:                  "testV",
 		Revision:            "abcd",
 		RevisionOrderNumber: 4,
@@ -1239,7 +1238,7 @@ func TestCompareQueryRunTimes(t *testing.T) {
 	grip.Infof("elapsed time for aggregation test history query on test names: %s", elapsedV1.String())
 	grip.Infof("elapsed time for non-aggregation test history query on test names: %s", elapsedV2.String())
 
-	testutil.HandleTestingErr(db.ClearCollections(task.Collection, version.Collection, testresult.Collection),
+	testutil.HandleTestingErr(db.ClearCollections(task.Collection, VersionCollection, testresult.Collection),
 		t, "Error clearing collections")
 }
 

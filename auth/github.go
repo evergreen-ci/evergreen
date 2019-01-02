@@ -142,7 +142,7 @@ func (gum *GithubUserManager) GetLoginCallbackHandler() http.HandlerFunc {
 			grip.Errorf("Error sending code and authentication info to Github: %+v", err)
 			return
 		}
-		setLoginToken(githubResponse.AccessToken, w)
+		SetLoginToken(githubResponse.AccessToken, w)
 		http.Redirect(w, r, redirect, http.StatusFound)
 	}
 }
