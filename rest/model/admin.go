@@ -1153,7 +1153,6 @@ type APIUIConfig struct {
 	Secret         APIString `json:"secret"`
 	DefaultProject APIString `json:"default_project"`
 	CacheTemplates bool      `json:"cache_templates"`
-	SecureCookies  bool      `json:"secure_cookies"`
 	CsrfKey        APIString `json:"csrf_key"`
 	CORSOrigin     APIString `json:"cors_origin"`
 }
@@ -1167,7 +1166,6 @@ func (a *APIUIConfig) BuildFromService(h interface{}) error {
 		a.Secret = ToAPIString(v.Secret)
 		a.DefaultProject = ToAPIString(v.DefaultProject)
 		a.CacheTemplates = v.CacheTemplates
-		a.SecureCookies = v.SecureCookies
 		a.CsrfKey = ToAPIString(v.CsrfKey)
 		a.CORSOrigin = ToAPIString(v.CORSOrigin)
 	default:
@@ -1184,7 +1182,6 @@ func (a *APIUIConfig) ToService() (interface{}, error) {
 		Secret:         FromAPIString(a.Secret),
 		DefaultProject: FromAPIString(a.DefaultProject),
 		CacheTemplates: a.CacheTemplates,
-		SecureCookies:  a.SecureCookies,
 		CsrfKey:        FromAPIString(a.CsrfKey),
 		CORSOrigin:     FromAPIString(a.CORSOrigin),
 	}, nil

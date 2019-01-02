@@ -202,7 +202,6 @@ func MockConfig() *evergreen.Settings {
 			Secret:         "secret",
 			DefaultProject: "mci",
 			CacheTemplates: true,
-			SecureCookies:  true,
 			CsrfKey:        "12345678901234567890123456789012",
 		},
 	}
