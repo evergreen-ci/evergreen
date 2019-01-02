@@ -47,7 +47,7 @@ func SetLoginToken(token string, w http.ResponseWriter) {
 		Value:    token,
 		HttpOnly: true,
 		Path:     "/",
-		Expires:  time.Now().Add(7 * 24 * time.Hour),
+		Expires:  time.Now().Add(365 * 24 * time.Hour),
 	}
 	http.SetCookie(w, authTokenCookie)
 }
