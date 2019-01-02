@@ -56,6 +56,7 @@ type VersionMetadata struct {
 	IsAdHoc       bool
 	User          *user.DBUser
 	Message       string
+	Alias         string
 }
 
 // The RepoPoller interface specifies behavior required of all repository poller
@@ -692,6 +693,14 @@ func createVersionItems(v *model.Version, ref *model.ProjectRef, metadata Versio
 	if metadata.SourceVersion != nil {
 		sourceRev = metadata.SourceVersion.Revision
 	}
+	var aliases model.ProjectAliases
+	var err error
+	if metadata.Alias != "" {
+		aliases, err = model.FindAliasInProject(ref.Identifier, metadata.Alias)
+		if err != nil {
+			return errors.Wrap(err, "error finding project alias")
+		}
+	}
 	taskIds := model.NewTaskIdTable(project, v, sourceRev, metadata.DefinitionID)
 
 	// create all builds for the version
@@ -699,7 +708,16 @@ func createVersionItems(v *model.Version, ref *model.ProjectRef, metadata Versio
 		if buildvariant.Disabled {
 			continue
 		}
-
+		if len(aliases) > 0 {
+			match, err := aliases.HasMatchingVariant(buildvariant.Name)
+			if err != nil {
+				grip.Error(err)
+				continue
+			}
+			if !match {
+				continue
+			}
+		}
 		args := model.BuildCreateArgs{
 			Project:      *project,
 			Version:      *v,
@@ -708,6 +726,7 @@ func createVersionItems(v *model.Version, ref *model.ProjectRef, metadata Versio
 			Activated:    false,
 			SourceRev:    sourceRev,
 			DefinitionID: metadata.DefinitionID,
+			Aliases:      aliases,
 		}
 		buildId, err := model.CreateBuildFromVersion(args)
 		if err != nil {
@@ -759,7 +778,7 @@ func createVersionItems(v *model.Version, ref *model.ProjectRef, metadata Versio
 		})
 	}
 
-	err := v.Insert()
+	err = v.Insert()
 	if err != nil && !db.IsDuplicateKey(err) {
 		grip.Error(message.WrapError(err, message.Fields{
 			"message": "problem inserting version",

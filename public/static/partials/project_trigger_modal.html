@@ -53,6 +53,12 @@
                             <input type="text" ng-model="trigger.file" ng-required="true" placeholder="[[trigger.command ? 'generated_tasks.json' : '.evergreen.yml']]">
                         </md-input-container>
                     </section>
+                    <section layout="row" flex>
+                        <md-input-container flex=50>
+                            <label>Alias:</label>
+                            <input type="text" ng-model="trigger.alias" placeholder="Patch alias to filter variants/tasks">
+                        </md-input-container>
+                    </section>
                 </md-card-content>
             </md-card>
             <md-button type="submit" class="md-raised" ng-click="closeDialog(true)" style="width:20%;float:right">Save

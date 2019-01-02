@@ -1,7 +1,10 @@
 package model
 
 import (
+	"regexp"
+
 	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/anser/bsonutil"
 	"github.com/pkg/errors"
 	"gopkg.in/mgo.v2/bson"
@@ -49,6 +52,8 @@ type ProjectAlias struct {
 	Task      string        `bson:"task,omitempty" json:"task"`
 	Tags      []string      `bson:"tags,omitempty" json:"tags"`
 }
+
+type ProjectAliases []ProjectAlias
 
 // FindAliasesForProject fetches all aliases for a given project
 func FindAliasesForProject(projectID string) ([]ProjectAlias, error) {
@@ -115,4 +120,38 @@ func RemoveProjectAlias(id string) error {
 		return errors.Wrapf(err, "failed to remove project alias %s", id)
 	}
 	return nil
+}
+
+func (a ProjectAliases) HasMatchingVariant(variant string) (bool, error) {
+	for _, alias := range a {
+		variantRegex, err := regexp.Compile(alias.Variant)
+		if err != nil {
+			return false, errors.Wrapf(err, "unable to compile regex %s", variantRegex)
+		}
+		if variantRegex.MatchString(variant) {
+			return true, nil
+		}
+	}
+	return false, nil
+}
+func (a ProjectAliases) HasMatchingTask(variant string, t *ProjectTask) (bool, error) {
+	if t == nil {
+		return false, errors.New("no task found")
+	}
+	for _, alias := range a {
+		variantRegex, err := regexp.Compile(alias.Variant)
+		if err != nil {
+			return false, errors.Wrapf(err, "unable to compile regex %s", variantRegex)
+		}
+		if variantRegex.MatchString(variant) {
+			taskRegex, err := regexp.Compile(alias.Task)
+			if err != nil {
+				return false, errors.Wrapf(err, "unable to compile regex %s", taskRegex)
+			}
+			if (alias.Task != "" && taskRegex.MatchString(t.Name)) || len(util.StringSliceIntersection(t.Tags, alias.Tags)) > 0 {
+				return true, nil
+			}
+		}
+	}
+	return false, nil
 }
