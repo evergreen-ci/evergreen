@@ -44,7 +44,7 @@ func getMockProjectSettings() model.ProjectSettingsEvent {
 			Owner:        "admin",
 			Subscriber: event.Subscriber{
 				Type:   event.GithubPullRequestSubscriberType,
-				Target: event.GithubPullRequestSubscriber{},
+				Target: &event.GithubPullRequestSubscriber{},
 			},
 		},
 		},
@@ -200,7 +200,7 @@ func checkSubscriptions(suite *ProjectEventSuite, in []event.Subscription, out [
 
 func checkSubscriptionTarget(suite *ProjectEventSuite, inTarget interface{}, outTarget interface{}) {
 	switch v := inTarget.(type) {
-	case event.GithubPullRequestSubscriber:
+	case *event.GithubPullRequestSubscriber:
 		outTargetGithub, ok := outTarget.(APIGithubPRSubscriber)
 		suite.Require().True(ok)
 		suite.Equal(v.Owner, FromAPIString(outTargetGithub.Owner))
@@ -208,19 +208,19 @@ func checkSubscriptionTarget(suite *ProjectEventSuite, inTarget interface{}, out
 		suite.Equal(v.PRNumber, outTargetGithub.PRNumber)
 		suite.Equal(v.Ref, FromAPIString(outTargetGithub.Ref))
 
-	case event.WebhookSubscriber:
+	case *event.WebhookSubscriber:
 		outTargetWebhook, ok := outTarget.(APIWebhookSubscriber)
 		suite.Require().True(ok)
 		suite.Equal(v.URL, FromAPIString(outTargetWebhook.URL))
 		suite.Equal(v.Secret, FromAPIString(outTargetWebhook.Secret))
 
-	case event.JIRAIssueSubscriber:
+	case *event.JIRAIssueSubscriber:
 		outTargetJIRA, ok := outTarget.(APIJIRAIssueSubscriber)
 		suite.Require().True(ok)
 		suite.Equal(v.Project, FromAPIString(outTargetJIRA.Project))
 		suite.Equal(v.IssueType, FromAPIString(outTargetJIRA.IssueType))
 
-	case string: // JIRACommentSubscriberType, EmailSubscriberType, SlackSubscriberType
+	case *string: // JIRACommentSubscriberType, EmailSubscriberType, SlackSubscriberType
 		outTargetString, ok := outTarget.(APIString)
 		suite.Require().True(ok)
 		suite.Equal(v, FromAPIString(outTargetString))
