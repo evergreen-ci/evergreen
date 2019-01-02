@@ -23,7 +23,10 @@ mciModule.controller('AdminOptionsCtrl', [
         // filtered set of builds
         return $scope.version.Builds.filter(buildFilter).map(
           function(x){
-            return x.Tasks.filter(function(y){return y.checkedForRestart}).length;
+            if (!x.Build.tasks) {
+              return 0;
+            }
+            return x.Build.tasks.filter(function(y){return y.checkedForRestart}).length;
           }
         ).reduce(function(x,y){return x+y}, 0);
     }
