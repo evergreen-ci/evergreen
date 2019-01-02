@@ -141,20 +141,20 @@ func makeDownstreamConfigFromCommand(ref model.ProjectRef, command, generateFile
 						Command: "git.get_project",
 						Type:    evergreen.CommandTypeSetup,
 						Params: map[string]interface{}{
-							"directory": "${workdir}/src",
+							"directory": "${workdir}",
 						},
 					},
 					{
 						Command: "subprocess.exec",
 						Params: map[string]interface{}{
-							"working_dir": "${workdir}/src",
+							"working_dir": "${workdir}",
 							"command":     command,
 						},
 					},
 					{
 						Command: "generate.tasks",
 						Params: map[string]interface{}{
-							"files": []string{fmt.Sprintf("${workdir}/src/%s", generateFile)},
+							"files": []string{fmt.Sprintf("${workdir}/%s", generateFile)},
 						},
 					},
 				},
