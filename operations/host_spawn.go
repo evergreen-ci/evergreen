@@ -146,7 +146,12 @@ func hostlist() cli.Command {
 
 func printHosts(hosts []*model.APIHost) error {
 	for _, h := range hosts {
-		grip.Infof("ID: %s; Distro: %s; Status: %s; Host name: %s; User: %s", model.FromAPIString(h.Id), h.Distro.Id, h.Status, h.HostURL, h.User)
+		grip.Infof("ID: %s; Distro: %s; Status: %s; Host name: %s; User: %s",
+			model.FromAPIString(h.Id),
+			model.FromAPIString(h.Distro.Id),
+			model.FromAPIString(h.Status),
+			model.FromAPIString(h.HostURL),
+			model.FromAPIString(h.User))
 	}
 	return nil
 }
