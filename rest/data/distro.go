@@ -71,7 +71,7 @@ func (dc *DBDistroConnector) CreateDistro(distro *distro.Distro) error {
 // DeleteDistroById removes a given distro from the database based on its id.
 func (dc *DBDistroConnector) DeleteDistroById(distroId string) error {
 	var err error
-	if err := distro.Remove(distroId); err != nil {
+	if err = distro.Remove(distroId); err != nil {
 		return gimlet.ErrorResponse{
 			StatusCode: http.StatusInternalServerError,
 			Message:    fmt.Sprintf("distro with id '%s' was not deleted", distroId),
