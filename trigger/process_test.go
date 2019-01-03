@@ -4,6 +4,8 @@ import (
 	"testing"
 	"time"
 
+	"gopkg.in/mgo.v2/bson"
+
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model"
@@ -255,7 +257,8 @@ func (s *projectTriggerSuite) TestBuildFinish() {
 func TestProjectTriggerIntegration(t *testing.T) {
 	assert := assert.New(t)
 	require := require.New(t)
-	assert.NoError(db.ClearCollections(task.Collection, build.Collection, model.VersionCollection, evergreen.ConfigCollection, model.ProjectRefCollection, model.RepositoriesCollection))
+	assert.NoError(db.ClearCollections(task.Collection, build.Collection, model.VersionCollection, evergreen.ConfigCollection,
+		model.ProjectRefCollection, model.RepositoriesCollection, model.ProjectAliasCollection))
 	config := testutil.TestConfig()
 	testutil.ConfigureIntegrationTest(t, config, "TestProjectTriggerIntegration")
 	assert.NoError(config.Set())
@@ -289,10 +292,18 @@ func TestProjectTriggerIntegration(t *testing.T) {
 		RemotePath: "self-tests.yml",
 		RepoKind:   "github",
 		Triggers: []model.TriggerDefinition{
-			{Project: "upstream", Level: "task", DefinitionID: "def1", TaskRegex: "upstream*", Status: evergreen.TaskSucceeded, ConfigFile: "self-tests.yml"},
+			{Project: "upstream", Level: "task", DefinitionID: "def1", TaskRegex: "upstream*", Status: evergreen.TaskSucceeded, ConfigFile: "self-tests.yml", Alias: "a1"},
 		},
 	}
 	assert.NoError(downstreamProjectRef.Insert())
+	alias := model.ProjectAlias{
+		ID:        bson.NewObjectId(),
+		ProjectID: downstreamProjectRef.Identifier,
+		Alias:     "a1",
+		Variant:   "ubuntu1604",
+		Task:      "test",
+	}
+	assert.NoError(alias.Upsert())
 	_, err := model.GetNewRevisionOrderNumber(downstreamProjectRef.Identifier)
 	assert.NoError(err)
 	downstreamRevision := "abc123"
@@ -326,6 +337,7 @@ func TestProjectTriggerIntegration(t *testing.T) {
 		assert.Equal(upstreamTask.Id, b.TriggerID)
 		assert.Equal("task", b.TriggerType)
 		assert.Equal(e.ID, b.TriggerEvent)
+		assert.Contains(b.BuildVariant, "ubuntu1604")
 	}
 	tasks, err := task.Find(task.ByVersion(downstreamVersions[0].Id))
 	assert.NoError(err)
@@ -337,5 +349,6 @@ func TestProjectTriggerIntegration(t *testing.T) {
 		assert.Equal(upstreamTask.Id, t.TriggerID)
 		assert.Equal("task", t.TriggerType)
 		assert.Equal(e.ID, t.TriggerEvent)
+		assert.Contains(t.DisplayName, "test")
 	}
 }

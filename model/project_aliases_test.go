@@ -6,6 +6,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/testutil"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
 	"gopkg.in/mgo.v2/bson"
 )
@@ -116,4 +117,55 @@ func (s *ProjectAliasSuite) TestFindAliasInProject() {
 	found, err := FindAliasInProject("project-1", "alias-1")
 	s.NoError(err)
 	s.Len(found, 2)
+}
+
+func TestMatching(t *testing.T) {
+	assert := assert.New(t)
+	aliases := ProjectAliases{
+		{Alias: "one", Variant: "bv1", Task: "t1"},
+		{Alias: "two", Variant: "bv2", Task: "t2", Tags: []string{"tag2"}},
+		{Alias: "three", Variant: "bv3", Tags: []string{"tag3"}},
+	}
+	match, err := aliases.HasMatchingVariant("bv1")
+	assert.NoError(err)
+	assert.True(match)
+	match, err = aliases.HasMatchingVariant("bv5")
+	assert.NoError(err)
+	assert.False(match)
+
+	task := &ProjectTask{
+		Name: "t1",
+	}
+	match, err = aliases.HasMatchingTask("bv1", task)
+	assert.NoError(err)
+	assert.True(match)
+	task = &ProjectTask{
+		Name: "t2",
+	}
+	match, err = aliases.HasMatchingTask("bv1", task)
+	assert.NoError(err)
+	assert.False(match)
+	task = &ProjectTask{
+		Name: "t2",
+	}
+	match, err = aliases.HasMatchingTask("bv2", task)
+	assert.NoError(err)
+	assert.True(match)
+	task = &ProjectTask{
+		Tags: []string{"tag2"},
+	}
+	match, err = aliases.HasMatchingTask("bv2", task)
+	assert.NoError(err)
+	assert.True(match)
+	task = &ProjectTask{
+		Tags: []string{"tag3"},
+		Name: "t3",
+	}
+	match, err = aliases.HasMatchingTask("bv3", task)
+	assert.NoError(err)
+	assert.True(match)
+	task = &ProjectTask{}
+	match, err = aliases.HasMatchingTask("bv3", task)
+	assert.NoError(err)
+	assert.False(match)
 }

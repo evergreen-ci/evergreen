@@ -460,7 +460,7 @@ func AddTasksToBuild(b *build.Build, project *Project, v *Version,
 
 	// create the new tasks for the build
 	taskIds := NewTaskIdTable(project, v, "", "")
-	tasks, err := createTasksForBuild(project, buildVariant, b, v, taskIds, taskNames, displayNames, generatedBy)
+	tasks, err := createTasksForBuild(project, buildVariant, b, v, taskIds, taskNames, displayNames, generatedBy, nil)
 	if err != nil {
 		return nil, errors.Wrapf(err, "error creating tasks for build '%s'", b.Id)
 	}
@@ -479,16 +479,17 @@ func AddTasksToBuild(b *build.Build, project *Project, v *Version,
 
 // BuildCreateArgs is the set of parameters used in CreateBuildFromVersion
 type BuildCreateArgs struct {
-	Project      Project      // project to create the build for
-	Version      Version      // the version the build belong to
-	TaskIDs      TaskIdConfig // pre-generated IDs for the tasks to be created
-	BuildName    string       // name of the buildvariant
-	Activated    bool         // true if the build should be scheduled
-	TaskNames    []string     // names of tasks to create (used in patches). Will create all if nil
-	DisplayNames []string     // names of display tasks to create (used in patches). Will create all if nil
-	GeneratedBy  string       // ID of the task that generated this build
-	SourceRev    string       // githash of the revision that triggered this build
-	DefinitionID string       // definition ID of the trigger used to create this build
+	Project      Project        // project to create the build for
+	Version      Version        // the version the build belong to
+	TaskIDs      TaskIdConfig   // pre-generated IDs for the tasks to be created
+	BuildName    string         // name of the buildvariant
+	Activated    bool           // true if the build should be scheduled
+	TaskNames    []string       // names of tasks to create (used in patches). Will create all if nil
+	DisplayNames []string       // names of display tasks to create (used in patches). Will create all if nil
+	GeneratedBy  string         // ID of the task that generated this build
+	SourceRev    string         // githash of the revision that triggered this build
+	DefinitionID string         // definition ID of the trigger used to create this build
+	Aliases      ProjectAliases // project aliases to use to filter tasks created
 }
 
 // CreateBuildFromVersion creates a build given all of the necessary information
@@ -546,7 +547,7 @@ func CreateBuildFromVersion(args BuildCreateArgs) (string, error) {
 	b.BuildNumber = strconv.FormatUint(buildNumber, 10)
 
 	// create all of the necessary tasks for the build
-	tasksForBuild, err := createTasksForBuild(&args.Project, buildVariant, b, &args.Version, args.TaskIDs, args.TaskNames, args.DisplayNames, args.GeneratedBy)
+	tasksForBuild, err := createTasksForBuild(&args.Project, buildVariant, b, &args.Version, args.TaskIDs, args.TaskNames, args.DisplayNames, args.GeneratedBy, args.Aliases)
 	if err != nil {
 		return "", errors.Wrapf(err, "error creating tasks for build %s", b.Id)
 	}
@@ -614,7 +615,7 @@ func CreateTasksFromGroup(in BuildVariantTaskUnit, proj *Project) []BuildVariant
 // appear in the specified build variant.
 func createTasksForBuild(project *Project, buildVariant *BuildVariant, b *build.Build,
 	v *Version, taskIds TaskIdConfig, taskNames []string,
-	displayNames []string, generatedBy string) (task.Tasks, error) {
+	displayNames []string, generatedBy string, aliases ProjectAliases) (task.Tasks, error) {
 
 	// the list of tasks we should create.  if tasks are passed in, then
 	// use those, else use the default set
@@ -629,6 +630,21 @@ func createTasksForBuild(project *Project, buildVariant *BuildVariant, b *build.
 	}
 
 	for _, task := range buildVariant.Tasks {
+		if aliases != nil {
+			match, err := aliases.HasMatchingTask(buildVariant.Name, project.FindProjectTask(task.Name))
+			if err != nil {
+				grip.Error(message.WrapError(err, message.Fields{
+					"message": "error creating tasks with alias filter",
+					"task":    task.Name,
+					"project": project.Identifier,
+					"alias":   aliases,
+				}))
+				continue
+			}
+			if !match {
+				continue
+			}
+		}
 		// get the task spec out of the project
 		taskSpec := project.GetSpecForTask(task.Name)
 
