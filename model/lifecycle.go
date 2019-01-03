@@ -633,7 +633,12 @@ func createTasksForBuild(project *Project, buildVariant *BuildVariant, b *build.
 		if aliases != nil {
 			match, err := aliases.HasMatchingTask(buildVariant.Name, project.FindProjectTask(task.Name))
 			if err != nil {
-				grip.Error(err)
+				grip.Error(message.WrapError(err, message.Fields{
+					"message": "error creating tasks with alias filter",
+					"task":    task.Name,
+					"project": project.Identifier,
+					"alias":   aliases,
+				}))
 				continue
 			}
 			if !match {
