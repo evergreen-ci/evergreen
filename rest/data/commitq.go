@@ -6,7 +6,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
-	"github.com/evergreen-ci/evergreen/model/commitq"
+	"github.com/evergreen-ci/evergreen/model/commitqueue"
 	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/pkg/errors"
 )
@@ -44,7 +44,7 @@ func (pc *DBCommitQConnector) EnqueueItem(owner, repo, baseBranch, item string) 
 	}
 
 	projectID := proj.Identifier
-	q, err := commitq.FindOneId(projectID)
+	q, err := commitqueue.FindOneId(projectID)
 	if err != nil {
 		return errors.Wrapf(err, "can't query for queue id %s", projectID)
 	}

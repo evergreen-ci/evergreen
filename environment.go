@@ -11,7 +11,7 @@ import (
 	"time"
 
 	legacyDB "github.com/evergreen-ci/evergreen/db"
-	"github.com/evergreen-ci/evergreen/model/commitq/githubpr"
+	"github.com/evergreen-ci/evergreen/model/commitqueue/githubpr"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mitchellh/mapstructure"
 	"github.com/mongodb/amboy"

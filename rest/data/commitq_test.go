@@ -5,7 +5,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model"
-	"github.com/evergreen-ci/evergreen/model/commitq"
+	"github.com/evergreen-ci/evergreen/model/commitqueue"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/stretchr/testify/suite"
 )
@@ -22,7 +22,7 @@ func TestCommitQSuite(t *testing.T) {
 }
 
 func (s *CommitQSuite) SetupTest() {
-	s.Require().NoError(db.Clear(commitq.Collection))
+	s.Require().NoError(db.Clear(commitqueue.Collection))
 	s.Require().NoError(db.Clear(model.ProjectRefCollection))
 	projRef := model.ProjectRef{
 		Identifier:     "mci",
@@ -32,15 +32,15 @@ func (s *CommitQSuite) SetupTest() {
 		CommitQEnabled: true,
 	}
 	s.Require().NoError(projRef.Insert())
-	q := &commitq.CommitQueue{ProjectID: "mci"}
-	s.Require().NoError(commitq.InsertQueue(q))
+	q := &commitqueue.CommitQueue{ProjectID: "mci"}
+	s.Require().NoError(commitqueue.InsertQueue(q))
 }
 
 func (s *CommitQSuite) TestEnqueue() {
 	s.ctx = &DBConnector{}
 	s.NoError(s.ctx.EnqueueItem("evergreen-ci", "evergreen", "master", "1234"))
 
-	q, err := commitq.FindOneId("mci")
+	q, err := commitqueue.FindOneId("mci")
 	s.NoError(err)
 
 	if s.Len(q.Queue, 1) {

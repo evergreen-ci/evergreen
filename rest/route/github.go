@@ -4,7 +4,7 @@ import (
 	"context"
 	"net/http"
 
-	"github.com/evergreen-ci/evergreen/model/commitq"
+	"github.com/evergreen-ci/evergreen/model/commitqueue"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/gimlet"
@@ -190,7 +190,7 @@ func (gh *githubHookApi) Run(ctx context.Context) gimlet.Responder {
 
 	case *github.IssueCommentEvent:
 		isPullRequestComment := event.Issue.IsPullRequest()
-		triggersCommitq := commitq.TriggersCommitQueue(*event.Action, *event.Comment.Body)
+		triggersCommitq := commitqueue.TriggersCommitQueue(*event.Action, *event.Comment.Body)
 		if !(isPullRequestComment && triggersCommitq) {
 			return gimlet.NewJSONResponse(struct{}{})
 		}
