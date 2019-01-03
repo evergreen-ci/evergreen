@@ -3,7 +3,6 @@ package trigger
 import (
 	"context"
 	"encoding/base64"
-	"fmt"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
@@ -141,20 +140,20 @@ func makeDownstreamConfigFromCommand(ref model.ProjectRef, command, generateFile
 						Command: "git.get_project",
 						Type:    evergreen.CommandTypeSetup,
 						Params: map[string]interface{}{
-							"directory": "${workdir}",
+							"directory": "${workdir}/src",
 						},
 					},
 					{
 						Command: "subprocess.exec",
 						Params: map[string]interface{}{
-							"working_dir": "${workdir}",
+							"working_dir": "src",
 							"command":     command,
 						},
 					},
 					{
 						Command: "generate.tasks",
 						Params: map[string]interface{}{
-							"files": []string{fmt.Sprintf("${workdir}/%s", generateFile)},
+							"files": []string{generateFile},
 						},
 					},
 				},
