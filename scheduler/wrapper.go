@@ -197,7 +197,7 @@ func UpdateStaticDistro(d distro.Distro) error {
 		return errors.WithStack(err)
 	}
 
-	if d.Id == "" || len(hosts) == 0 {
+	if d.Id == "" {
 		return nil
 	}
 
