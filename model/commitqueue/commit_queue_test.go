@@ -4,7 +4,6 @@ import (
 	"testing"
 
 	"github.com/evergreen-ci/evergreen/db"
-	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/stretchr/testify/suite"
 )
@@ -22,12 +21,6 @@ func TestCommitQueueSuite(t *testing.T) {
 
 func (s *CommitQueueSuite) SetupTest() {
 	s.Require().NoError(db.ClearCollections(Collection))
-	s.Require().NoError(db.ClearCollections(model.ProjectRefCollection))
-
-	projRef := model.ProjectRef{
-		Identifier: "mci",
-	}
-	s.Require().NoError(projRef.Insert())
 
 	s.q = &CommitQueue{
 		ProjectID:    "mci",
