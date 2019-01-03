@@ -176,7 +176,7 @@ go-test-config:$(buildDir)/go-test-config.json
 $(buildDir)/go-test-config.json:$(buildDir)/go-test-config
 	./$(buildDir)/go-test-config
 $(buildDir)/go-test-config:cmd/go-test-config/make-config.go
-	GOPATH=$(shell dirname $(shell pwd)) $(gobin) build -o $@ $< 
+	GOPATH=$(shell dirname $(shell pwd)) $(gobin) build -o $@ $<
 #end generated config
 
 # npm setup
