@@ -342,9 +342,10 @@ func (a *Agent) finishTask(ctx context.Context, tc *taskContext, status string) 
 	}
 
 	tc.logger.Execution().Infof("Sending final status as: %v", detail.Status)
-	if err := tc.logger.Close(); err != nil {
-		grip.Alert(errors.Wrap(err, "Error closing logger"))
-	}
+	grip.Alert(message.WrapError(tc.logger.Close(), message.Fields{
+		"task":   tc.task.ID,
+		"status": status,
+	}))
 	grip.Infof("Sending final status as: %v", detail.Status)
 	resp, err := a.comm.EndTask(ctx, detail, tc.task)
 	grip.Infof("Sent final status as: %v", detail.Status)
