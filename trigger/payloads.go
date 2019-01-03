@@ -12,7 +12,7 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/build"
-	"github.com/evergreen-ci/evergreen/model/commitqueue/githubpr"
+	"github.com/evergreen-ci/evergreen/model/commitqueue"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/notification"
 	"github.com/evergreen-ci/evergreen/model/task"
@@ -404,7 +404,7 @@ func makeCommonPayload(sub *event.Subscription, selectors []event.Selector,
 		return msg, nil
 
 	case event.GithubMergeSubscriberType:
-		msg := &githubpr.GithubMergePR{}
+		msg := &commitqueue.GithubMergePR{}
 		return msg, nil
 
 	case event.JIRAIssueSubscriberType:

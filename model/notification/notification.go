@@ -6,7 +6,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
-	"github.com/evergreen-ci/evergreen/model/commitqueue/githubpr"
+	"github.com/evergreen-ci/evergreen/model/commitqueue"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/anser/bsonutil"
@@ -186,7 +186,7 @@ func (n *Notification) Composer() (message.Composer, error) {
 		if !ok {
 			return nil, errors.New("github-merge subscriber is invalid")
 		}
-		payload, ok := n.Payload.(*githubpr.GithubMergePR)
+		payload, ok := n.Payload.(*commitqueue.GithubMergePR)
 		if !ok || payload == nil {
 			return nil, errors.New("github-merge payload is invalid")
 		}
@@ -198,7 +198,7 @@ func (n *Notification) Composer() (message.Composer, error) {
 		payload.PRNum = sub.PRNumber
 		payload.MergeMethod = sub.MergeMethod
 
-		return githubpr.NewGithubMergePRMessage(level.Notice, *payload), nil
+		return commitqueue.NewGithubMergePRMessage(level.Notice, *payload), nil
 
 	default:
 		return nil, errors.Errorf("unknown type '%s'", n.Subscriber.Type)
