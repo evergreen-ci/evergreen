@@ -11,7 +11,7 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/mock"
-	"github.com/evergreen-ci/evergreen/model/commitqueue"
+	"github.com/evergreen-ci/evergreen/model/commitqueue/githubpr"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/notification"
 	"github.com/evergreen-ci/evergreen/testutil"
@@ -142,7 +142,7 @@ func (s *eventNotificationSuite) SetupTest() {
 					CommitMessage: "merged your PR",
 				},
 			},
-			Payload: commitqueue.GithubMergePR{},
+			Payload: githubpr.GithubMergePR{},
 		},
 	}
 	s.webhook = &s.notifications[0]

@@ -1,4 +1,4 @@
-package commitqueue
+package githubpr
 
 import (
 	"context"

@@ -11,7 +11,7 @@ import (
 	"time"
 
 	legacyDB "github.com/evergreen-ci/evergreen/db"
-	"github.com/evergreen-ci/evergreen/model/commitqueue"
+	"github.com/evergreen-ci/evergreen/model/commitqueue/githubpr"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mitchellh/mapstructure"
 	"github.com/mongodb/amboy"
@@ -402,7 +402,7 @@ func (e *envState) initSenders(ctx context.Context) error {
 		e.senders[SenderGithubStatus] = sender
 
 		// Github PR Merge
-		sender, err = commitqueue.NewGithubPRLogger(ctx, "evergreen", githubToken, sender)
+		sender, err = githubpr.NewGithubPRLogger(ctx, "evergreen", githubToken, sender)
 		if err != nil {
 			return errors.Wrap(err, "Failed to setup github merge logger")
 		}
