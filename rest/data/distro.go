@@ -71,16 +71,16 @@ func (dc *DBDistroConnector) CreateDistro(distro *distro.Distro) error {
 // DeleteDistroById removes a given distro from the database based on its id.
 func (dc *DBDistroConnector) DeleteDistroById(distroId string) error {
 	var err error
-	if err = distro.Remove(distroId); err != nil {
-		return gimlet.ErrorResponse{
-			StatusCode: http.StatusInternalServerError,
-			Message:    fmt.Sprintf("distro with id '%s' was not deleted", distroId),
-		}
-	}
 	if err = host.MarkInactiveStaticHosts([]string{}, distroId); err != nil {
 		return gimlet.ErrorResponse{
 			StatusCode: http.StatusInternalServerError,
 			Message:    fmt.Sprintf("hosts for distro with id '%s' were not terminated", distroId),
+		}
+	}
+	if err = distro.Remove(distroId); err != nil {
+		return gimlet.ErrorResponse{
+			StatusCode: http.StatusInternalServerError,
+			Message:    fmt.Sprintf("distro with id '%s' was not deleted", distroId),
 		}
 	}
 	return nil

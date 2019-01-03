@@ -158,14 +158,14 @@ func (uis *UIServer) removeDistro(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err = distro.Remove(id); err != nil {
-		message := fmt.Sprintf("error removing distro '%v': %v", id, err)
+	if err = host.MarkInactiveStaticHosts([]string{}, id); err != nil {
+		message := fmt.Sprintf("error removing hosts for distro '%s': %s", id, err)
 		PushFlash(uis.CookieStore, r, w, NewErrorFlash(message))
 		http.Error(w, message, http.StatusInternalServerError)
 		return
 	}
-	if err = host.MarkInactiveStaticHosts([]string{}, id); err != nil {
-		message := fmt.Sprintf("error removing hosts for distro '%s': %s", id, err)
+	if err = distro.Remove(id); err != nil {
+		message := fmt.Sprintf("error removing distro '%v': %v", id, err)
 		PushFlash(uis.CookieStore, r, w, NewErrorFlash(message))
 		http.Error(w, message, http.StatusInternalServerError)
 		return
