@@ -4,6 +4,7 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/mongodb/anser/bsonutil"
+	"github.com/pkg/errors"
 	"gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
 )
@@ -40,5 +41,5 @@ func MarkInactiveStaticHosts(activeStaticHosts []string, distroID string) error 
 	if err == mgo.ErrNotFound {
 		return nil
 	}
-	return err
+	return errors.Wrap(err, "could not terminate static hosts")
 }
