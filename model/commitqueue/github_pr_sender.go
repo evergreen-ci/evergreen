@@ -37,7 +37,7 @@ func NewGithubPRLogger(ctx context.Context, name string, token string, statusSen
 	ctx, cancel = context.WithCancel(ctx)
 	tc, err := util.GetOAuth2HTTPClient(token)
 	if err != nil {
-		cancel()
+		defer cancel()
 		return nil, errors.Wrap(err, "can't get oauth session")
 	}
 
