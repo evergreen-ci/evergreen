@@ -3,6 +3,7 @@ package agent
 import (
 	"context"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/evergreen-ci/evergreen/rest/client"
@@ -63,7 +64,7 @@ func (sc *StatsCollector) logStats(ctx context.Context, exp *util.Expansions) {
 		defer cancel()
 		defer recovery.LogStackTraceAndContinue("encountered issue in stats collector")
 
-		sc.logger.System().Info("Starting stats collector")
+		sc.logger.System().Infof("Starting stats collector with %d commands at interval %s: %s", len(sc.Cmds), sc.Interval, strings.Join(sc.Cmds, ", "))
 		output := subprocess.OutputOptions{
 			Output: sc.logger.SystemWriter(level.Info),
 			Error:  sc.logger.SystemWriter(level.Error),
