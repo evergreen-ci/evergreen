@@ -3,6 +3,7 @@ package command
 import (
 	"context"
 	"fmt"
+	"net/http"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -206,17 +207,17 @@ func (s3pc *s3put) Execute(ctx context.Context,
 		return errors.WithStack(err)
 	}
 
-	// create bucket if not yet created
-	if !s3pc.bucketSet {
-		err := s3pc.createPailBucket()
-		if err != nil {
-			return errors.Wrap(err, "problem connecting to s3")
-		}
-		ctx, cancel := context.WithCancel(context.Background())
-		defer cancel()
-		if err := s3pc.bucket.Check(ctx); err != nil {
-			return errors.Wrap(err, "invalid bucket")
-		}
+	// create pail bucket
+	httpClient := util.GetHTTPClient()
+	defer util.PutHTTPClient(httpClient)
+	err := s3pc.createPailBucket(httpClient)
+	if err != nil {
+		return errors.Wrap(err, "problem connecting to s3")
+	}
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	if err := s3pc.bucket.Check(ctx); err != nil {
+		return errors.Wrap(err, "invalid bucket")
 	}
 
 	s3pc.taskdata = client.TaskData{ID: conf.Task.Id, Secret: conf.Task.Secret}
@@ -387,7 +388,7 @@ func (s3pc *s3put) attachFiles(ctx context.Context, comm client.Communicator, lo
 	return nil
 }
 
-func (s3pc *s3put) createPailBucket() error {
+func (s3pc *s3put) createPailBucket(httpClient *http.Client) error {
 	opts := pail.S3Options{
 		Credentials: pail.CreateAWSCredentials(s3pc.AwsKey, s3pc.AwsSecret, ""),
 		Region:      endpoints.UsEast1RegionID,
@@ -395,7 +396,7 @@ func (s3pc *s3put) createPailBucket() error {
 		Permission:  s3pc.Permissions,
 		ContentType: s3pc.ContentType,
 	}
-	bucket, err := pail.NewS3MultiPartBucket(opts)
+	bucket, err := pail.NewS3MultiPartBucketWithHTTPClient(httpClient, opts)
 	s3pc.bucket = bucket
 	return err
 }
