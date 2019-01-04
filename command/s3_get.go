@@ -2,16 +2,16 @@ package command
 
 import (
 	"context"
-	"net/http"
+	"io"
 	"os"
 	"path/filepath"
 	"time"
 
-	"github.com/aws/aws-sdk-go/aws/endpoints"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/rest/client"
+	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/evergreen-ci/evergreen/util"
-	"github.com/evergreen-ci/pail"
+	"github.com/goamz/goamz/aws"
 	"github.com/mitchellh/mapstructure"
 	"github.com/pkg/errors"
 )
@@ -40,8 +40,6 @@ type s3get struct {
 	// downloaded to the specified directory.
 	LocalFile string `mapstructure:"local_file" plugin:"expand"`
 	ExtractTo string `mapstructure:"extract_to" plugin:"expand"`
-
-	bucket pail.Bucket
 
 	base
 }
@@ -90,7 +88,6 @@ func (c *s3get) validateParams() error {
 	if c.LocalFile == "" && c.ExtractTo == "" {
 		return errors.New("must specify either local_file or extract_to")
 	}
-
 	return nil
 }
 
@@ -123,19 +120,6 @@ func (c *s3get) Execute(ctx context.Context,
 	// validate the params
 	if err := c.validateParams(); err != nil {
 		return errors.Wrap(err, "expanded params are not valid")
-	}
-
-	// create pail bucket
-	client := util.GetHTTPClient()
-	defer util.PutHTTPClient(client)
-	err := c.createPailBucket(client)
-	if err != nil {
-		return errors.Wrap(err, "problem connecting to s3")
-	}
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-	if err := c.bucket.Check(ctx); err != nil {
-		return errors.Wrap(err, "invalid pail bucket")
 	}
 
 	if !c.shouldRunForVariant(conf.BuildVariant.Name) {
@@ -211,10 +195,30 @@ func (c *s3get) getWithRetry(ctx context.Context, logger client.LoggerProducer) 
 
 // Fetch the specified resource from s3.
 func (c *s3get) get(ctx context.Context) error {
+	// get the appropriate session and bucket
+	auth := &aws.Auth{
+		AccessKey: c.AwsKey,
+		SecretKey: c.AwsSecret,
+	}
+
+	client := util.GetHTTPClient()
+	defer util.PutHTTPClient(client)
+
+	session := thirdparty.NewS3Session(auth, aws.USEast, client)
+	bucket := session.Bucket(c.Bucket)
+
+	// get a reader for the bucket
+	reader, err := bucket.GetReader(c.RemoteFile)
+	if err != nil {
+		return errors.Wrapf(err, "error getting bucket reader for file %v", c.RemoteFile)
+	}
+	defer reader.Close()
+
 	// either untar the remote, or just write to a file
 	if c.LocalFile != "" {
+		var exists bool
 		// remove the file, if it exists
-		exists, err := util.FileExists(c.LocalFile)
+		exists, err = util.FileExists(c.LocalFile)
 		if err != nil {
 			return errors.Wrapf(err, "error checking existence of local file %v",
 				c.LocalFile)
@@ -225,30 +229,20 @@ func (c *s3get) get(ctx context.Context) error {
 			}
 		}
 
-		// download to local file
-		return errors.Wrapf(c.bucket.Download(ctx, c.RemoteFile, c.LocalFile),
-			"error downloading %s to %s", c.RemoteFile, c.LocalFile)
+		// open the local file
+		file, err := os.Create(c.LocalFile)
+		if err != nil {
+			return errors.Wrapf(err, "error opening local file %v", c.LocalFile)
+		}
+		defer file.Close()
 
-	}
-
-	reader, err := c.bucket.Reader(ctx, c.RemoteFile)
-	if err != nil {
+		_, err = io.Copy(file, reader)
 		return errors.WithStack(err)
 	}
+
 	if err := util.ExtractTarball(ctx, reader, c.ExtractTo, []string{}); err != nil {
 		return errors.Wrapf(err, "problem extracting %s from archive", c.RemoteFile)
 	}
 
 	return nil
-}
-
-func (c *s3get) createPailBucket(client *http.Client) error {
-	opts := pail.S3Options{
-		Credentials: pail.CreateAWSCredentials(c.AwsKey, c.AwsSecret, ""),
-		Region:      endpoints.UsEast1RegionID,
-		Name:        c.Bucket,
-	}
-	bucket, err := pail.NewS3BucketWithHTTPClient(client, opts)
-	c.bucket = bucket
-	return err
 }
