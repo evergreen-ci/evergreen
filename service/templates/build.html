@@ -103,6 +103,10 @@ Evergreen - Build {{Trunc .Build.Build.Revision 10}} on {{.Build.Build.DisplayNa
               <github-commit-panel commit="commit" timezone="{{GetTimezone .User}}"></github-commit-panel>
             {{end}}
             <table id="build-info-elements">
+              <tr ng-show="build.upstream_data">
+                <td class="icon"><i class="fa fa-arrow-left"></i></td>
+                <td><a href="/[[build.upstream_data.trigger_type]]/[[build.upstream_data.trigger_id]]">Triggered from [[build.upstream_data.project_name]]</a></td>
+              </tr>
               <tr><td><i class="fa fa-clock-o"></i></td><th><strong title="The makespan is the difference in time from when the first task in the build has started to when the last task is completed.">Makespan</strong></th>
                 <td>
                   <span ng-show="makeSpanMS>0">[[makeSpanMS * 1000000 | default:0 | stringifyNanoseconds:true]]</span>

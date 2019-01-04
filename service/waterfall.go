@@ -108,24 +108,18 @@ type waterfallVersion struct {
 
 	// metadata about the enclosed versions.  if this version does not consist
 	// of multiple rolled-up versions, these will each only have length 1
-	Ids                 []string                `json:"ids"`
-	Messages            []string                `json:"messages"`
-	Authors             []string                `json:"authors"`
-	CreateTimes         []time.Time             `json:"create_times"`
-	Revisions           []string                `json:"revisions"`
-	RevisionOrderNumber int                     `json:"revision_order"`
-	UpstreamData        []waterfallUpstreamData `json:"upstream_data"`
+	Ids                 []string         `json:"ids"`
+	Messages            []string         `json:"messages"`
+	Authors             []string         `json:"authors"`
+	CreateTimes         []time.Time      `json:"create_times"`
+	Revisions           []string         `json:"revisions"`
+	RevisionOrderNumber int              `json:"revision_order"`
+	UpstreamData        []uiUpstreamData `json:"upstream_data"`
 
 	// used to hold any errors that were found in creating the version
 	Errors   []waterfallVersionError `json:"errors"`
 	Warnings []waterfallVersionError `json:"warnings"`
 	Ignoreds []bool                  `json:"ignoreds"`
-}
-
-type waterfallUpstreamData struct {
-	ProjectName string `json:"project_name"`
-	TriggerID   string `json:"trigger_id"`
-	TriggerType string `json:"trigger_type"`
 }
 
 type waterfallVersionError struct {
@@ -352,7 +346,7 @@ func getVersionsAndVariants(skip, numVersionElements int, project *model.Project
 				if err != nil {
 					return versionVariantData{}, err
 				}
-				activeVersion.UpstreamData = []waterfallUpstreamData{
+				activeVersion.UpstreamData = []uiUpstreamData{
 					{ProjectName: projectName, TriggerID: versionFromDB.TriggerID, TriggerType: versionFromDB.TriggerType},
 				}
 			}

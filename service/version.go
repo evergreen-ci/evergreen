@@ -74,9 +74,12 @@ func (uis *UIServer) versionPage(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		versionAsUI.UpstreamData = &uiUpstreamData{
-			Owner:    project.Owner,
-			Repo:     project.Repo,
-			Revision: revision,
+			Owner:       project.Owner,
+			Repo:        project.Repo,
+			Revision:    revision,
+			ProjectName: project.DisplayName,
+			TriggerID:   projCtx.Version.TriggerID,
+			TriggerType: projCtx.Version.TriggerType,
 		}
 	}
 
