@@ -66,7 +66,7 @@ mciModule.controller('ProjectCtrl', function($scope, $window, $http, $location, 
     {
       trigger: "first-failure-in-version",
       resource_type: "TASK",
-      label: "the first task failure occurs",
+      label: "the first failure in a version occurs",
       regex_selectors: taskRegexSelectors(),
     },
     {
