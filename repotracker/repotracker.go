@@ -708,8 +708,9 @@ func createVersionItems(v *model.Version, ref *model.ProjectRef, metadata Versio
 		if buildvariant.Disabled {
 			continue
 		}
+		var match bool
 		if len(aliases) > 0 {
-			match, err := aliases.HasMatchingVariant(buildvariant.Name)
+			match, err = aliases.HasMatchingVariant(buildvariant.Name)
 			if err != nil {
 				grip.Error(err)
 				continue
@@ -728,7 +729,8 @@ func createVersionItems(v *model.Version, ref *model.ProjectRef, metadata Versio
 			DefinitionID: metadata.DefinitionID,
 			Aliases:      aliases,
 		}
-		buildId, err := model.CreateBuildFromVersion(args)
+		var buildId string
+		buildId, err = model.CreateBuildFromVersion(args)
 		if err != nil {
 			grip.Error(message.WrapError(err, message.Fields{
 				"message": "error inserting build",

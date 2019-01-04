@@ -119,16 +119,16 @@ func TestTerminateStaticHostsForDistro(t *testing.T) {
 		},
 	}
 	for _, h := range hosts {
-		h.Insert()
+		assert.NoError(t, h.Insert())
 	}
 	found, err := Find(IsTerminated)
 	assert.NoError(t, err)
 	assert.Len(t, found, 0)
-	MarkInactiveStaticHosts([]string{}, "d1")
+	assert.NoError(t, MarkInactiveStaticHosts([]string{}, "d1"))
 	found, err = Find(IsTerminated)
 	assert.NoError(t, err)
 	assert.Len(t, found, 3)
-	MarkInactiveStaticHosts([]string{}, "d2")
+	assert.NoError(t, MarkInactiveStaticHosts([]string{}, "d2"))
 	found, err = Find(IsTerminated)
 	assert.NoError(t, err)
 	assert.Len(t, found, 4)

@@ -92,7 +92,7 @@ func TestMakeDownstreamConfigFromCommand(t *testing.T) {
 				foundCommand = true
 			} else if c.Command == "generate.tasks" {
 				for _, value := range c.Params {
-					assert.Contains(value, "${workdir}/generate.json")
+					assert.Contains(value, "generate.json")
 					foundFile = true
 				}
 			}
