@@ -536,21 +536,27 @@ func TestBucket(t *testing.T) {
 			})
 			t.Run("WriteOneFile", func(t *testing.T) {
 				bucket := impl.constructor(t)
-				key := newUUID()
-				assert.NoError(t, writeDataToFile(ctx, bucket, key, "hello world!"))
+				assert.NoError(t, writeDataToFile(ctx, bucket, newUUID(), "hello world!"))
 
-				// just check that it exists in the iterator
+				// dry run
+				dryRunBucket := clone(bucket, true)
+				assert.NoError(t, writeDataToFile(ctx, dryRunBucket, newUUID(), "hello world!"))
+
+				// just check that only one key exists in the iterator
 				iter, err := bucket.List(ctx, "")
 				require.NoError(t, err)
 				assert.True(t, iter.Next(ctx))
 				assert.False(t, iter.Next(ctx))
 				assert.NoError(t, iter.Err())
 			})
-
 			t.Run("RemoveOneFile", func(t *testing.T) {
 				bucket := impl.constructor(t)
 				key := newUUID()
 				assert.NoError(t, writeDataToFile(ctx, bucket, key, "hello world!"))
+
+				// dry run does not remove anything
+				dryRunBucket := clone(bucket, true)
+				assert.NoError(t, dryRunBucket.Remove(ctx, key))
 
 				// just check that it exists in the iterator
 				iter, err := bucket.List(ctx, "")
@@ -586,12 +592,19 @@ func TestBucket(t *testing.T) {
 				data, err := ioutil.ReadAll(reader)
 				require.NoError(t, err)
 				assert.Equal(t, "hello world!", string(data))
+
+				// dry run bucket also retrieves data
+				dryRunBucket := clone(bucket, true)
+				reader, err = dryRunBucket.Get(ctx, key)
+				require.NoError(t, err)
+				data, err = ioutil.ReadAll(reader)
+				require.NoError(t, err)
+				assert.Equal(t, "hello world!", string(data))
 			})
 			t.Run("PutSavesFiles", func(t *testing.T) {
 				const contents = "check data"
 				bucket := impl.constructor(t)
 				key := newUUID()
-
 				assert.NoError(t, bucket.Put(ctx, key, bytes.NewBuffer([]byte(contents))))
 
 				reader, err := bucket.Get(ctx, key)
@@ -599,6 +612,15 @@ func TestBucket(t *testing.T) {
 				data, err := ioutil.ReadAll(reader)
 				require.NoError(t, err)
 				assert.Equal(t, contents, string(data))
+			})
+			t.Run("PutWithDryRunDoesNotSaveFiles", func(t *testing.T) {
+				const contents = "check data"
+				bucket := clone(impl.constructor(t), true)
+				key := newUUID()
+				assert.NoError(t, bucket.Put(ctx, key, bytes.NewBuffer([]byte(contents))))
+
+				_, err := bucket.Get(ctx, key)
+				assert.Error(t, err)
 			})
 			t.Run("CopyDuplicatesData", func(t *testing.T) {
 				const contents = "this one"
@@ -616,6 +638,40 @@ func TestBucket(t *testing.T) {
 				require.NoError(t, err)
 				assert.Equal(t, contents, data)
 			})
+			t.Run("CopyDoesNotDuplicateDataToDryRunBucket", func(t *testing.T) {
+				const contents = "this one"
+				bucket := impl.constructor(t)
+				dryRunBucket := clone(bucket, true)
+				keyOne := newUUID()
+				keyTwo := newUUID()
+				assert.NoError(t, writeDataToFile(ctx, bucket, keyOne, contents))
+				options := CopyOptions{
+					SourceKey:         keyOne,
+					DestinationKey:    keyTwo,
+					DestinationBucket: dryRunBucket,
+				}
+				assert.NoError(t, bucket.Copy(ctx, options))
+				_, err := dryRunBucket.Get(ctx, keyTwo)
+				assert.Error(t, err)
+			})
+			t.Run("CopyDuplicatesDataFromDryRunBucket", func(t *testing.T) {
+				const contents = "this one"
+				bucket := impl.constructor(t)
+				dryRunBucket := clone(bucket, true)
+				keyOne := newUUID()
+				keyTwo := newUUID()
+				assert.NoError(t, writeDataToFile(ctx, bucket, keyOne, contents))
+				options := CopyOptions{
+					SourceKey:         keyOne,
+					DestinationKey:    keyTwo,
+					DestinationBucket: bucket,
+				}
+				assert.NoError(t, dryRunBucket.Copy(ctx, options))
+				data, err := readDataFromFile(ctx, bucket, keyTwo)
+				require.NoError(t, err)
+				assert.Equal(t, contents, data)
+			})
+
 			t.Run("CopyDuplicatesToDifferentBucket", func(t *testing.T) {
 				const contents = "this one"
 				srcBucket := impl.constructor(t)
@@ -638,7 +694,6 @@ func TestBucket(t *testing.T) {
 				bucket := impl.constructor(t)
 				key := newUUID()
 				path := filepath.Join(tempdir, uuid, key)
-
 				assert.NoError(t, writeDataToFile(ctx, bucket, key, contents))
 
 				_, err := os.Stat(path)
@@ -648,6 +703,19 @@ func TestBucket(t *testing.T) {
 				assert.False(t, os.IsNotExist(err))
 
 				data, err := ioutil.ReadFile(path)
+				require.NoError(t, err)
+				assert.Equal(t, contents, string(data))
+
+				// writes file to disk with dry run bucket
+				dryRunBucket := clone(bucket, true)
+				path = filepath.Join(tempdir, uuid, newUUID())
+				_, err = os.Stat(path)
+				assert.True(t, os.IsNotExist(err))
+				assert.NoError(t, dryRunBucket.Download(ctx, key, path))
+				_, err = os.Stat(path)
+				assert.False(t, os.IsNotExist(err))
+
+				data, err = ioutil.ReadFile(path)
 				require.NoError(t, err)
 				assert.Equal(t, contents, string(data))
 			})
@@ -735,6 +803,23 @@ func TestBucket(t *testing.T) {
 					}
 				}
 
+				// should work with dry run bucket
+				dryRunBucket := clone(bucket, true)
+				mirror = filepath.Join(tempdir, "pull-one", newUUID())
+				require.NoError(t, os.MkdirAll(mirror, 0700))
+				for i := 0; i < 3; i++ {
+					assert.NoError(t, dryRunBucket.Pull(ctx, mirror, ""))
+					files, err := walkLocalTree(ctx, mirror)
+					require.NoError(t, err)
+					assert.Len(t, files, 100)
+
+					if impl.name != "LegacyGridFS" {
+						for _, fn := range files {
+							_, ok := data[filepath.Base(fn)]
+							assert.True(t, ok)
+						}
+					}
+				}
 			})
 			t.Run("PushToBucket", func(t *testing.T) {
 				prefix := filepath.Join(tempdir, newUUID())
@@ -751,6 +836,11 @@ func TestBucket(t *testing.T) {
 				t.Run("ShortPrefix", func(t *testing.T) {
 					assert.NoError(t, bucket.Push(ctx, prefix, "foo"))
 					assert.NoError(t, bucket.Push(ctx, prefix, "foo"))
+				})
+				t.Run("DryRunBucketDoesNotPush", func(t *testing.T) {
+					dryRunBucket := clone(bucket, true)
+					assert.NoError(t, dryRunBucket.Push(ctx, prefix, "bar"))
+					assert.NoError(t, dryRunBucket.Push(ctx, prefix, "bar"))
 				})
 				t.Run("BucketContents", func(t *testing.T) {
 					iter, err := bucket.List(ctx, "")
@@ -849,3 +939,44 @@ type brokenWriter struct{}
 
 func (*brokenWriter) Write(_ []byte) (int, error) { return -1, errors.New("always") }
 func (*brokenWriter) Read(_ []byte) (int, error)  { return -1, errors.New("always") }
+
+func clone(b Bucket, dryRun bool) Bucket {
+	switch i := b.(type) {
+	case *s3BucketSmall:
+		return &s3BucketSmall{
+			s3Bucket: s3Bucket{
+				name:        i.name,
+				prefix:      i.prefix,
+				sess:        i.sess,
+				svc:         s3.New(i.sess),
+				permission:  i.permission,
+				contentType: i.contentType,
+				dryRun:      dryRun,
+			},
+		}
+	case *s3BucketLarge:
+		return &s3BucketLarge{
+			s3Bucket: s3Bucket{
+				name:        i.name,
+				prefix:      i.prefix,
+				sess:        i.sess,
+				svc:         s3.New(i.sess),
+				permission:  i.permission,
+				contentType: i.contentType,
+				dryRun:      dryRun,
+			},
+			minPartSize: i.minPartSize,
+		}
+	case *localFileSystem:
+		return &localFileSystem{path: i.path, dryRun: dryRun}
+	case *gridfsLegacyBucket:
+		opts := i.opts
+		opts.DryRun = dryRun
+		return &gridfsLegacyBucket{
+			opts:    opts,
+			session: i.session,
+		}
+	default:
+		return nil
+	}
+}

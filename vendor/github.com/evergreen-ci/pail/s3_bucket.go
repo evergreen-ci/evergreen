@@ -3,6 +3,7 @@ package pail
 import (
 	"context"
 	"io"
+	"net/http"
 	"os"
 	"path/filepath"
 	"strings"
@@ -31,6 +32,7 @@ type s3Bucket struct {
 	svc         *s3.S3
 	permission  string
 	contentType string
+	dryRun      bool
 }
 
 // S3Options support the use and creation of S3 backed buckets.
@@ -41,6 +43,7 @@ type S3Options struct {
 	Prefix      string
 	Permission  string
 	ContentType string
+	DryRun      bool
 }
 
 // Wrapper for creating AWS credentials.
@@ -69,18 +72,18 @@ func (s *s3Bucket) denormalizeKey(key string) string {
 	return key
 }
 
-func newS3BucketBase(options S3Options) (*s3Bucket, error) {
-	config := &aws.Config{Region: aws.String(options.Region)}
+func newS3BucketBase(client *http.Client, options S3Options) (*s3Bucket, error) {
+	config := &aws.Config{Region: aws.String(options.Region), HTTPClient: client}
 	if options.Credentials != nil {
 		_, err := options.Credentials.Get()
 		if err != nil {
-			return &s3Bucket{}, errors.Wrap(err, "invalid credentials!")
+			return nil, errors.Wrap(err, "invalid credentials!")
 		}
 		config.Credentials = options.Credentials
 	}
 	sess, err := session.NewSession(config)
 	if err != nil {
-		return &s3Bucket{}, errors.Wrap(err, "problem connecting to AWS")
+		return nil, errors.Wrap(err, "problem connecting to AWS")
 	}
 	svc := s3.New(sess)
 	return &s3Bucket{
@@ -90,6 +93,7 @@ func newS3BucketBase(options S3Options) (*s3Bucket, error) {
 		svc:         svc,
 		permission:  options.Permission,
 		contentType: options.ContentType,
+		dryRun:      options.DryRun,
 	}, nil
 }
 
@@ -98,9 +102,21 @@ func newS3BucketBase(options S3Options) (*s3Bucket, error) {
 // like to add objects larger than 5 gigabytes see
 // `NewS3MultiPartBucket`.
 func NewS3Bucket(options S3Options) (Bucket, error) {
-	bucket, err := newS3BucketBase(options)
+	bucket, err := newS3BucketBase(nil, options)
 	if err != nil {
-		return &s3BucketSmall{}, err
+		return nil, err
+	}
+	return &s3BucketSmall{s3Bucket: *bucket}, nil
+}
+
+// NewS3BucketWithHTTPClient returns a Bucket implementation backed by S3 with
+// an existing HTTP client connection. This implementation does not support
+// multipart uploads, if you would like to add objects larger than 5
+// gigabytes see `NewS3MultiPartBucket`.
+func NewS3BucketWithHTTPClient(client *http.Client, options S3Options) (Bucket, error) {
+	bucket, err := newS3BucketBase(client, options)
+	if err != nil {
+		return nil, err
 	}
 	return &s3BucketSmall{s3Bucket: *bucket}, nil
 }
@@ -108,9 +124,21 @@ func NewS3Bucket(options S3Options) (Bucket, error) {
 // NewS3MultiPartBucket returns a Bucket implementation backed by S3
 // that supports multipart uploads for large objects.
 func NewS3MultiPartBucket(options S3Options) (Bucket, error) {
-	bucket, err := newS3BucketBase(options)
+	bucket, err := newS3BucketBase(nil, options)
 	if err != nil {
-		return &s3BucketLarge{}, err
+		return nil, err
+	}
+	// 5MB is the minimum size for a multipart upload, so buffer needs to be at least that big.
+	return &s3BucketLarge{s3Bucket: *bucket, minPartSize: 5000000}, nil
+}
+
+// NewS3MultiPartBucketWithHTTPClient returns a Bucket implementation backed
+// by S3 with an existing HTTP client connection that supports multipart
+// uploads for large objects.
+func NewS3MultiPartBucketWithHTTPClient(client *http.Client, options S3Options) (Bucket, error) {
+	bucket, err := newS3BucketBase(client, options)
+	if err != nil {
+		return nil, err
 	}
 	// 5MB is the minimum size for a multipart upload, so buffer needs to be at least that big.
 	return &s3BucketLarge{s3Bucket: *bucket, minPartSize: 5000000}, nil
@@ -142,6 +170,7 @@ type smallWriteCloser struct {
 	key         string
 	permission  string
 	contentType string
+	dryRun      bool
 }
 
 type largeWriteCloser struct {
@@ -155,46 +184,51 @@ type largeWriteCloser struct {
 	key            string
 	permission     string
 	contentType    string
+	dryRun         bool
 	partNumber     int64
 	uploadId       string
 	completedParts []*s3.CompletedPart
 }
 
 func (w *largeWriteCloser) create() error {
-	input := &s3.CreateMultipartUploadInput{
-		Bucket:      aws.String(w.name),
-		Key:         aws.String(w.key),
-		ACL:         aws.String(w.permission),
-		ContentType: aws.String(w.contentType),
-	}
+	if !w.dryRun {
+		input := &s3.CreateMultipartUploadInput{
+			Bucket:      aws.String(w.name),
+			Key:         aws.String(w.key),
+			ACL:         aws.String(w.permission),
+			ContentType: aws.String(w.contentType),
+		}
 
-	result, err := w.svc.CreateMultipartUploadWithContext(w.ctx, input)
-	if err != nil {
-		return errors.Wrap(err, "problem creating a multipart upload")
+		result, err := w.svc.CreateMultipartUploadWithContext(w.ctx, input)
+		if err != nil {
+			return errors.Wrap(err, "problem creating a multipart upload")
+		}
+		w.uploadId = *result.UploadId
 	}
 	w.isCreated = true
-	w.uploadId = *result.UploadId
 	w.partNumber++
 	return nil
 }
 
 func (w *largeWriteCloser) complete() error {
-	input := &s3.CompleteMultipartUploadInput{
-		Bucket: aws.String(w.name),
-		Key:    aws.String(w.key),
-		MultipartUpload: &s3.CompletedMultipartUpload{
-			Parts: w.completedParts,
-		},
-		UploadId: aws.String(w.uploadId),
-	}
-
-	_, err := w.svc.CompleteMultipartUploadWithContext(w.ctx, input)
-	if err != nil {
-		abortErr := w.abort()
-		if abortErr != nil {
-			return errors.Wrap(abortErr, "problem aborting multipart upload")
+	if !w.dryRun {
+		input := &s3.CompleteMultipartUploadInput{
+			Bucket: aws.String(w.name),
+			Key:    aws.String(w.key),
+			MultipartUpload: &s3.CompletedMultipartUpload{
+				Parts: w.completedParts,
+			},
+			UploadId: aws.String(w.uploadId),
 		}
-		return errors.Wrap(err, "problem completing multipart upload")
+
+		_, err := w.svc.CompleteMultipartUploadWithContext(w.ctx, input)
+		if err != nil {
+			abortErr := w.abort()
+			if abortErr != nil {
+				return errors.Wrap(abortErr, "problem aborting multipart upload")
+			}
+			return errors.Wrap(err, "problem completing multipart upload")
+		}
 	}
 	return nil
 }
@@ -217,25 +251,27 @@ func (w *largeWriteCloser) flush() error {
 			return err
 		}
 	}
-	input := &s3.UploadPartInput{
-		Body:       aws.ReadSeekCloser(strings.NewReader(string(w.buffer))),
-		Bucket:     aws.String(w.name),
-		Key:        aws.String(w.key),
-		PartNumber: aws.Int64(w.partNumber),
-		UploadId:   aws.String(w.uploadId),
-	}
-	result, err := w.svc.UploadPartWithContext(w.ctx, input)
-	if err != nil {
-		abortErr := w.abort()
-		if abortErr != nil {
-			return errors.Wrap(abortErr, "problem aborting multipart upload")
+	if !w.dryRun {
+		input := &s3.UploadPartInput{
+			Body:       aws.ReadSeekCloser(strings.NewReader(string(w.buffer))),
+			Bucket:     aws.String(w.name),
+			Key:        aws.String(w.key),
+			PartNumber: aws.Int64(w.partNumber),
+			UploadId:   aws.String(w.uploadId),
 		}
-		return errors.Wrap(err, "problem uploading part")
+		result, err := w.svc.UploadPartWithContext(w.ctx, input)
+		if err != nil {
+			abortErr := w.abort()
+			if abortErr != nil {
+				return errors.Wrap(abortErr, "problem aborting multipart upload")
+			}
+			return errors.Wrap(err, "problem uploading part")
+		}
+		w.completedParts = append(w.completedParts, &s3.CompletedPart{
+			ETag:       result.ETag,
+			PartNumber: aws.Int64(w.partNumber),
+		})
 	}
-	w.completedParts = append(w.completedParts, &s3.CompletedPart{
-		ETag:       result.ETag,
-		PartNumber: aws.Int64(w.partNumber),
-	})
 	w.partNumber++
 	return nil
 }
@@ -266,6 +302,10 @@ func (w *smallWriteCloser) Close() error {
 	if w.isClosed {
 		return errors.New("writer already closed!")
 	}
+	if w.dryRun {
+		return nil
+	}
+
 	input := &s3.PutObjectInput{
 		Body:        aws.ReadSeekCloser(strings.NewReader(string(w.buffer))),
 		Bucket:      aws.String(w.name),
@@ -301,6 +341,7 @@ func (s *s3BucketSmall) Writer(ctx context.Context, key string) (io.WriteCloser,
 		key:         s.normalizeKey(key),
 		permission:  s.permission,
 		contentType: s.contentType,
+		dryRun:      s.dryRun,
 	}, nil
 }
 
@@ -313,6 +354,7 @@ func (s *s3BucketLarge) Writer(ctx context.Context, key string) (io.WriteCloser,
 		key:         s.normalizeKey(key),
 		permission:  s.permission,
 		contentType: s.contentType,
+		dryRun:      s.dryRun,
 	}, nil
 }
 
@@ -489,22 +531,26 @@ func (s *s3Bucket) Copy(ctx context.Context, options CopyOptions) error {
 		Key:        aws.String(s.normalizeKey(options.DestinationKey)),
 	}
 
-	_, err := s.svc.CopyObjectWithContext(ctx, input)
-	if err != nil {
-		return errors.Wrap(err, "problem copying data")
+	if !s.dryRun {
+		_, err := s.svc.CopyObjectWithContext(ctx, input)
+		if err != nil {
+			return errors.Wrap(err, "problem copying data")
+		}
 	}
 	return nil
 }
 
 func (s *s3Bucket) Remove(ctx context.Context, key string) error {
-	input := &s3.DeleteObjectInput{
-		Bucket: aws.String(s.name),
-		Key:    aws.String(s.normalizeKey(key)),
-	}
+	if !s.dryRun {
+		input := &s3.DeleteObjectInput{
+			Bucket: aws.String(s.name),
+			Key:    aws.String(s.normalizeKey(key)),
+		}
 
-	_, err := s.svc.DeleteObjectWithContext(ctx, input)
-	if err != nil {
-		return errors.Wrap(err, "problem removing data")
+		_, err := s.svc.DeleteObjectWithContext(ctx, input)
+		if err != nil {
+			return errors.Wrap(err, "problem removing data")
+		}
 	}
 	return nil
 }

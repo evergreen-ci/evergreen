@@ -118,7 +118,7 @@ imports:
   - name: github.com/evergreen-ci/shrub
     version: 32e668cd99410328bf6659e55671c11a6c727d9a
   - name: github.com/evergreen-ci/pail
-    version: 482e7cb1383367c60a84ab5dd9c1b7604722da76
+    version: 7fe7ba258c64b6c87558426d7a7cac80a7e42fd7
 
   # git library and its dependencies
   - name: gopkg.in/src-d/go-git.v4
