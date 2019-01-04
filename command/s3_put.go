@@ -79,8 +79,7 @@ type s3put struct {
 	workDir     string
 	skipMissing bool
 
-	bucketSet bool
-	bucket    pail.Bucket
+	bucket pail.Bucket
 
 	taskdata client.TaskData
 	base
