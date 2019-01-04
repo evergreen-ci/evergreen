@@ -264,7 +264,6 @@ func (uis *UIServer) taskPage(w http.ResponseWriter, r *http.Request) {
 	if projCtx.Task.HostId != "" {
 		uiTask.HostDNS = projCtx.Task.HostId
 		uiTask.HostId = projCtx.Task.HostId
-		var err error
 		taskHost, err = host.FindOne(host.ById(projCtx.Task.HostId))
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -276,7 +275,8 @@ func (uis *UIServer) taskPage(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if projCtx.Patch != nil {
-		taskOnBaseCommit, err := projCtx.Task.FindTaskOnBaseCommit()
+		var taskOnBaseCommit *task.Task
+		taskOnBaseCommit, err = projCtx.Task.FindTaskOnBaseCommit()
 		if err != nil {
 			uis.LoggedError(w, r, http.StatusInternalServerError, err)
 			return
