@@ -353,7 +353,7 @@ tasks:
     name: test-model-distro
   - <<: *run-go-test-suite-with-mongodb
     tags: ["db", "test"]
-    name: test-model-commitq
+    name: test-model-commitqueue
   - <<: *run-go-test-suite-with-mongodb
     tags: ["db", "test"]
     name: test-plugin

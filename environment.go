@@ -11,6 +11,7 @@ import (
 	"time"
 
 	legacyDB "github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/model/commitqueue"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mitchellh/mapstructure"
 	"github.com/mongodb/amboy"
@@ -151,7 +152,7 @@ func (e *envState) Configure(ctx context.Context, confPath string, db *DBSetting
 	if e.session == nil {
 		catcher.Add(e.initDB(e.settings.Database))
 	}
-	catcher.Add(e.initSenders())
+	catcher.Add(e.initSenders(ctx))
 	catcher.Add(e.createQueues(ctx))
 	catcher.Extend(e.initQueues(ctx))
 
@@ -345,7 +346,7 @@ func (e *envState) initClientConfig() {
 	}
 }
 
-func (e *envState) initSenders() error {
+func (e *envState) initSenders(ctx context.Context) error {
 	if e.settings == nil {
 		return errors.New("no settings object, cannot build senders")
 	}
@@ -391,6 +392,7 @@ func (e *envState) initSenders() error {
 
 	githubToken, err := e.settings.GetGithubOauthToken()
 	if err == nil && len(githubToken) > 0 {
+		// Github Status
 		sender, err = send.NewGithubStatusLogger("evergreen", &send.GithubOptions{
 			Token: githubToken,
 		}, "")
@@ -398,6 +400,13 @@ func (e *envState) initSenders() error {
 			return errors.Wrap(err, "Failed to setup github status logger")
 		}
 		e.senders[SenderGithubStatus] = sender
+
+		// Github PR Merge
+		sender, err = commitqueue.NewGithubPRLogger(ctx, "evergreen", githubToken, sender)
+		if err != nil {
+			return errors.Wrap(err, "Failed to setup github merge logger")
+		}
+		e.senders[SenderGithubMerge] = sender
 	}
 
 	if jira := &e.settings.Jira; len(jira.GetHostURL()) != 0 {

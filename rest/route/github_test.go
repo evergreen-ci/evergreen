@@ -11,7 +11,7 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model"
-	"github.com/evergreen-ci/evergreen/model/commitq"
+	"github.com/evergreen-ci/evergreen/model/commitqueue"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/testutil"
@@ -58,7 +58,7 @@ func (s *GithubWebhookRouteSuite) SetupTest() {
 	grip.Critical(s.conf.Api)
 
 	s.NoError(db.Clear(model.ProjectRefCollection))
-	s.NoError(db.Clear(commitq.Collection))
+	s.NoError(db.Clear(commitqueue.Collection))
 
 	s.queue = evergreen.GetEnvironment().LocalQueue()
 	s.sc = &data.MockConnector{MockPatchIntentConnector: data.MockPatchIntentConnector{

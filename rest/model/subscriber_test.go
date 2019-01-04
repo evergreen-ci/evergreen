@@ -10,22 +10,27 @@ import (
 func TestSubscriberModelsGithubStatusAPI(t *testing.T) {
 	assert := assert.New(t)
 
+	target := event.GithubPullRequestSubscriber{
+		Owner:    "me",
+		Repo:     "mine",
+		PRNumber: 5,
+		Ref:      "abc",
+	}
 	prSubscriber := event.Subscriber{
-		Type: event.GithubPullRequestSubscriberType,
-		Target: event.GithubPullRequestSubscriber{
-			Owner:    "me",
-			Repo:     "mine",
-			PRNumber: 5,
-			Ref:      "abc",
-		},
+		Type:   event.GithubPullRequestSubscriberType,
+		Target: &target,
 	}
 	apiPrSubscriber := APISubscriber{}
 	err := apiPrSubscriber.BuildFromService(prSubscriber)
 	assert.NoError(err)
 
-	origPrSubscriber, err := apiPrSubscriber.ToService()
+	origPrSubscriberInterface, err := apiPrSubscriber.ToService()
 	assert.NoError(err)
-	assert.EqualValues(prSubscriber, origPrSubscriber)
+
+	origPrSubscriber, ok := origPrSubscriberInterface.(event.Subscriber)
+	assert.True(ok)
+	assert.EqualValues(prSubscriber.Type, origPrSubscriber.Type)
+	assert.EqualValues(target, origPrSubscriber.Target)
 
 	// incoming subscribers have target serialized as a map
 	incoming := APISubscriber{
@@ -43,23 +48,74 @@ func TestSubscriberModelsGithubStatusAPI(t *testing.T) {
 	assert.EqualValues(origPrSubscriber, serviceModel)
 }
 
+func TestSubscriberModelsGithubMerge(t *testing.T) {
+	assert := assert.New(t)
+	target := event.GithubMergeSubscriber{
+		Owner:         "me",
+		Repo:          "mine",
+		PRNumber:      5,
+		Ref:           "deadbeef",
+		CommitMessage: "abcd",
+		MergeMethod:   "squash",
+		CommitTitle:   "merged by evergreen",
+	}
+	subscriber := event.Subscriber{
+		Type:   event.GithubMergeSubscriberType,
+		Target: &target,
+	}
+	apiSubscriber := APISubscriber{}
+	err := apiSubscriber.BuildFromService(subscriber)
+	assert.NoError(err)
+
+	origSubscriberInterface, err := apiSubscriber.ToService()
+	assert.NoError(err)
+
+	origSubscriber, ok := origSubscriberInterface.(event.Subscriber)
+	assert.True(ok)
+	assert.EqualValues(subscriber.Type, origSubscriber.Type)
+	assert.EqualValues(target, origSubscriber.Target)
+
+	// incoming subscribers have target serialized as a map
+	incoming := APISubscriber{
+		Type: ToAPIString(event.GithubMergeSubscriberType),
+		Target: map[string]interface{}{
+			"owner":          "me",
+			"repo":           "mine",
+			"pr_number":      5,
+			"ref":            "deadbeef",
+			"commit_message": "abcd",
+			"merge_method":   "squash",
+			"commit_title":   "merged by evergreen",
+		},
+	}
+
+	serviceModel, err := incoming.ToService()
+	assert.NoError(err)
+	assert.EqualValues(origSubscriber, serviceModel)
+}
+
 func TestSubscriberModelsWebhook(t *testing.T) {
 	assert := assert.New(t)
 
+	target := event.WebhookSubscriber{
+		URL:    "foo",
+		Secret: []byte("bar"),
+	}
 	webhookSubscriber := event.Subscriber{
-		Type: event.EvergreenWebhookSubscriberType,
-		Target: event.WebhookSubscriber{
-			URL:    "foo",
-			Secret: []byte("bar"),
-		},
+		Type:   event.EvergreenWebhookSubscriberType,
+		Target: &target,
 	}
 	apiWebhookSubscriber := APISubscriber{}
 	err := apiWebhookSubscriber.BuildFromService(webhookSubscriber)
 	assert.NoError(err)
 
-	origWebhookSubscriber, err := apiWebhookSubscriber.ToService()
+	origWebhookSubscriberInterface, err := apiWebhookSubscriber.ToService()
 	assert.NoError(err)
-	assert.EqualValues(webhookSubscriber, origWebhookSubscriber)
+
+	origWebhookSubscriber, ok := origWebhookSubscriberInterface.(event.Subscriber)
+	assert.True(ok)
+	assert.EqualValues(webhookSubscriber.Type, origWebhookSubscriber.Type)
+	assert.EqualValues(target, origWebhookSubscriber.Target)
 
 	// incoming subscribers have target serialized as a map
 	incoming := APISubscriber{
@@ -78,20 +134,25 @@ func TestSubscriberModelsWebhook(t *testing.T) {
 func TestSubscriberModelsJIRAIssue(t *testing.T) {
 	assert := assert.New(t)
 
+	target := event.JIRAIssueSubscriber{
+		Project:   "ABC",
+		IssueType: "123",
+	}
 	jiraIssueSubscriber := event.Subscriber{
-		Type: event.JIRAIssueSubscriberType,
-		Target: event.JIRAIssueSubscriber{
-			Project:   "ABC",
-			IssueType: "123",
-		},
+		Type:   event.JIRAIssueSubscriberType,
+		Target: &target,
 	}
 	apiJIRAIssueSubscriber := APISubscriber{}
 	err := apiJIRAIssueSubscriber.BuildFromService(jiraIssueSubscriber)
 	assert.NoError(err)
 
-	origJIRAIssueSubscriber, err := apiJIRAIssueSubscriber.ToService()
+	origJIRAIssueSubscriberInterface, err := apiJIRAIssueSubscriber.ToService()
 	assert.NoError(err)
-	assert.EqualValues(jiraIssueSubscriber, origJIRAIssueSubscriber)
+
+	origJIRAIssueSubscriber, ok := origJIRAIssueSubscriberInterface.(event.Subscriber)
+	assert.True(ok)
+	assert.EqualValues(jiraIssueSubscriber.Type, origJIRAIssueSubscriber.Type)
+	assert.EqualValues(target, origJIRAIssueSubscriber.Target)
 
 	// incoming subscribers have target serialized as a map
 	incoming := APISubscriber{

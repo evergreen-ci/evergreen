@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/model/commitqueue"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/anser/bsonutil"
@@ -63,6 +64,9 @@ func (n *Notification) SetBSON(raw bson.Raw) error {
 
 	case event.GithubPullRequestSubscriberType:
 		n.Payload = &message.GithubStatus{}
+
+	case event.GithubMergeSubscriberType:
+		n.Payload = &commitqueue.GithubMergePR{}
 
 	default:
 		return errors.Errorf("unknown payload type %s", temp.Subscriber.Type)

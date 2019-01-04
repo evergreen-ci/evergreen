@@ -346,7 +346,7 @@ func (s *notificationSuite) TestGithubPayload() {
 func (s *notificationSuite) TestCollectUnsentNotificationStats() {
 	types := []string{event.GithubPullRequestSubscriberType, event.EmailSubscriberType,
 		event.SlackSubscriberType, event.EvergreenWebhookSubscriberType,
-		event.JIRACommentSubscriberType, event.JIRAIssueSubscriberType}
+		event.JIRACommentSubscriberType, event.JIRAIssueSubscriberType, event.GithubMergeSubscriberType}
 
 	n := []Notification{}
 	// add one of every notification, unsent

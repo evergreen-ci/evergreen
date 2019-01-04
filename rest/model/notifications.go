@@ -33,6 +33,7 @@ type apiNotificationStats struct {
 	EvergreenWebhook  int `json:"evergreen_webhook"`
 	Email             int `json:"email"`
 	Slack             int `json:"slack"`
+	GithubMerge       int `json:"github_merge"`
 }
 
 func (n *apiNotificationStats) BuildFromService(h interface{}) error {
@@ -50,6 +51,7 @@ func (n *apiNotificationStats) BuildFromService(h interface{}) error {
 	n.EvergreenWebhook = data.EvergreenWebhook
 	n.Email = data.Email
 	n.Slack = data.Slack
+	n.GithubMerge = data.GithubMerge
 
 	return nil
 }

@@ -1,4 +1,4 @@
-package commitq
+package commitqueue
 
 import (
 	"github.com/pkg/errors"

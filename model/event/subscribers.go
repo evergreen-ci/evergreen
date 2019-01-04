@@ -17,6 +17,7 @@ const (
 	EvergreenWebhookSubscriberType  = "evergreen-webhook"
 	EmailSubscriberType             = "email"
 	SlackSubscriberType             = "slack"
+	GithubMergeSubscriberType       = "github-merge"
 )
 
 var SubscriberTypes = []string{
@@ -26,6 +27,7 @@ var SubscriberTypes = []string{
 	EvergreenWebhookSubscriberType,
 	EmailSubscriberType,
 	SlackSubscriberType,
+	GithubMergeSubscriberType,
 }
 
 //nolint: deadcode, megacheck, unused
@@ -69,6 +71,9 @@ func (s *Subscriber) SetBSON(raw bson.Raw) error {
 		str := ""
 		s.Target = &str
 
+	case GithubMergeSubscriberType:
+		s.Target = &GithubMergeSubscriber{}
+
 	default:
 		return errors.Errorf("unknown subscriber type: '%s'", s.Type)
 	}
@@ -87,6 +92,11 @@ func (s *Subscriber) String() string {
 	case GithubPullRequestSubscriber:
 		subscriberStr = v.String()
 	case *GithubPullRequestSubscriber:
+		subscriberStr = v.String()
+
+	case GithubMergeSubscriber:
+		subscriberStr = v.String()
+	case *GithubMergeSubscriber:
 		subscriberStr = v.String()
 
 	case WebhookSubscriber:
@@ -149,6 +159,35 @@ type GithubPullRequestSubscriber struct {
 
 func (s *GithubPullRequestSubscriber) String() string {
 	return fmt.Sprintf("%s-%s-%d-%s", s.Owner, s.Repo, s.PRNumber, s.Ref)
+}
+
+type GithubMergeSubscriber struct {
+	Owner         string `bson:"owner"`
+	Repo          string `bson:"repo"`
+	PRNumber      int    `bson:"pr_number"`
+	Ref           string `bson:"ref"`
+	CommitMessage string `bson:"commit_message"`
+	MergeMethod   string `bson:"merge_method"`
+	CommitTitle   string `bson:"commit_title"`
+}
+
+func (s *GithubMergeSubscriber) String() string {
+	return fmt.Sprintf("%s-%s-%d-%s-%s-%s-%s",
+		s.Owner,
+		s.Repo,
+		s.PRNumber,
+		s.Ref,
+		s.CommitMessage,
+		s.MergeMethod,
+		s.CommitTitle,
+	)
+}
+
+func NewGithubMergeSubscriber(s GithubMergeSubscriber) Subscriber {
+	return Subscriber{
+		Type:   GithubMergeSubscriberType,
+		Target: s,
+	}
 }
 
 func NewGithubStatusAPISubscriber(s GithubPullRequestSubscriber) Subscriber {

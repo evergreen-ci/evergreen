@@ -26,6 +26,18 @@ func TestSubscribers(t *testing.T) {
 			},
 		},
 		{
+			Type: GithubMergeSubscriberType,
+			Target: &GithubMergeSubscriber{
+				Owner:         "evergreen-ci",
+				Repo:          "evergreen",
+				PRNumber:      9001,
+				Ref:           "deadbeef",
+				CommitMessage: "abcd",
+				MergeMethod:   "squash",
+				CommitTitle:   "efgh",
+			},
+		},
+		{
 			Type: EvergreenWebhookSubscriberType,
 			Target: &WebhookSubscriber{
 				URL:    "https://example.com",
@@ -49,6 +61,7 @@ func TestSubscribers(t *testing.T) {
 		},
 	}
 	expected := []string{"github_pull_request-evergreen-ci-evergreen-9001-sadasdkjsad",
+		"github-merge-evergreen-ci-evergreen-9001-deadbeef-abcd-squash-efgh",
 		"evergreen-webhook-https://example.com", "email-hi@example.com",
 		"jira-issue-BF-Fail", "jira-comment-BF-1234"}
 	for i := range subs {
@@ -59,7 +72,7 @@ func TestSubscribers(t *testing.T) {
 	fetchedSubs := []Subscriber{}
 	assert.NoError(db.FindAllQ(SubscriptionsCollection, db.Q{}, &fetchedSubs))
 
-	assert.Len(fetchedSubs, 5)
+	assert.Len(fetchedSubs, 6)
 
 	for i := range subs {
 		assert.Contains(fetchedSubs, subs[i])
@@ -83,6 +96,9 @@ func TestSubscribersStringerWithMissingAttributes(t *testing.T) {
 	subs := []Subscriber{
 		{
 			Type: GithubPullRequestSubscriberType,
+		},
+		{
+			Type: GithubMergeSubscriberType,
 		},
 		{
 			Type: EvergreenWebhookSubscriberType,

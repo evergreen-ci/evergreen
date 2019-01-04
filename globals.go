@@ -238,6 +238,7 @@ const (
 	SenderJIRAIssue
 	SenderJIRAComment
 	SenderEmail
+	SenderGithubMerge
 )
 
 func (k SenderKey) String() string {
@@ -254,6 +255,8 @@ func (k SenderKey) String() string {
 		return "jira-comment"
 	case SenderJIRAIssue:
 		return "jira-issue"
+	case SenderGithubMerge:
+		return "github-merge"
 	default:
 		return "<error:unkwown>"
 	}
