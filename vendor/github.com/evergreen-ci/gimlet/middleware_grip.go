@@ -102,7 +102,7 @@ func (l *appLogging) ServeHTTP(rw http.ResponseWriter, r *http.Request, next htt
 func setupLogger(logger grip.Journaler, r *http.Request) *http.Request {
 	r = setServiceLogger(r, logger)
 	remote := r.Header.Get(remoteAddrHeaderName)
-	if remote == "" {
+	if remote != "" {
 		r.RemoteAddr = remote
 	}
 
