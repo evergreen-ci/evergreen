@@ -96,7 +96,6 @@ func (s *APISubscriber) BuildFromService(h interface{}) error {
 func (s *APISubscriber) ToService() (interface{}, error) {
 	var target interface{}
 	var err error
-	err = nil
 	out := event.Subscriber{
 		Type: FromAPIString(s.Type),
 	}

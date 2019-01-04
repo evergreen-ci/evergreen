@@ -740,7 +740,8 @@ func createVersionItems(v *model.Version, ref *model.ProjectRef, metadata Versio
 			continue
 		}
 
-		lastActivated, err := model.VersionFindOne(model.VersionByLastVariantActivation(ref.Identifier, buildvariant.Name))
+		var lastActivated *model.Version
+		lastActivated, err = model.VersionFindOne(model.VersionByLastVariantActivation(ref.Identifier, buildvariant.Name))
 		if err != nil {
 			return errors.Wrap(err, "problem getting activatation time for variant")
 		}

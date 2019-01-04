@@ -69,7 +69,7 @@ func NewGithubMergePRMessage(p level.Priority, mergeMsg GithubMergePR) message.C
 		raw: mergeMsg,
 	}
 	if err := s.SetPriority(p); err != nil {
-		s.SetPriority(level.Notice)
+		_ = s.SetPriority(level.Notice)
 	}
 
 	return s
