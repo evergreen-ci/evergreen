@@ -2,6 +2,7 @@ package command
 
 import (
 	"context"
+	"net/http"
 	"os"
 	"path/filepath"
 	"time"
@@ -40,8 +41,7 @@ type s3get struct {
 	LocalFile string `mapstructure:"local_file" plugin:"expand"`
 	ExtractTo string `mapstructure:"extract_to" plugin:"expand"`
 
-	bucketSet bool
-	bucket    pail.Bucket
+	bucket pail.Bucket
 
 	base
 }
@@ -125,17 +125,17 @@ func (c *s3get) Execute(ctx context.Context,
 		return errors.Wrap(err, "expanded params are not valid")
 	}
 
-	// create bucket if not yet created
-	if !c.bucketSet {
-		err := c.createPailBucket()
-		if err != nil {
-			return errors.Wrap(err, "problem connecting to s3")
-		}
-		ctx, cancel := context.WithCancel(context.Background())
-		defer cancel()
-		if err := c.bucket.Check(ctx); err != nil {
-			return errors.Wrap(err, "invalid bucket")
-		}
+	// create pail bucket
+	client := util.GetHTTPClient()
+	defer util.PutHTTPClient(client)
+	err := c.createPailBucket(client)
+	if err != nil {
+		return errors.Wrap(err, "problem connecting to s3")
+	}
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	if err := c.bucket.Check(ctx); err != nil {
+		return errors.Wrap(err, "invalid pail bucket")
 	}
 
 	if !c.shouldRunForVariant(conf.BuildVariant.Name) {
@@ -242,13 +242,13 @@ func (c *s3get) get(ctx context.Context) error {
 	return nil
 }
 
-func (c *s3get) createPailBucket() error {
+func (c *s3get) createPailBucket(client *http.Client) error {
 	opts := pail.S3Options{
 		Credentials: pail.CreateAWSCredentials(c.AwsKey, c.AwsSecret, ""),
 		Region:      endpoints.UsEast1RegionID,
 		Name:        c.Bucket,
 	}
-	bucket, err := pail.NewS3Bucket(opts)
+	bucket, err := pail.NewS3BucketWithHTTPClient(client, opts)
 	c.bucket = bucket
 	return err
 }
