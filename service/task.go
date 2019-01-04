@@ -54,6 +54,7 @@ type uiTaskData struct {
 	OverrideDependencies bool                    `json:"override_dependencies"`
 	IngestTime           time.Time               `json:"ingest_time"`
 	EstWaitTime          time.Duration           `json:"wait_time"`
+	UpstreamData         *uiUpstreamData         `json:"upstream_data,omitempty"`
 
 	// from the host doc (the dns name)
 	HostDNS string `json:"host_dns,omitempty"`
@@ -287,6 +288,20 @@ func (uis *UIServer) taskPage(w http.ResponseWriter, r *http.Request) {
 		}
 		taskPatch.StatusDiffs = model.StatusDiffTasks(taskOnBaseCommit, projCtx.Task).Tests
 		uiTask.PatchInfo = taskPatch
+	}
+
+	if projCtx.Task.TriggerID != "" {
+		var projectName string
+		projectName, err = model.GetUpstreamProjectName(projCtx.Task.TriggerID, projCtx.Task.TriggerType)
+		if err != nil {
+			uis.LoggedError(w, r, http.StatusInternalServerError, err)
+			return
+		}
+		uiTask.UpstreamData = &uiUpstreamData{
+			ProjectName: projectName,
+			TriggerID:   projCtx.Task.TriggerID,
+			TriggerType: projCtx.Task.TriggerType,
+		}
 	}
 
 	if uiTask.DisplayOnly {

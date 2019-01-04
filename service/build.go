@@ -67,6 +67,20 @@ func (uis *UIServer) buildPage(w http.ResponseWriter, r *http.Request) {
 	}
 	buildAsUI.Tasks = uiTasks
 
+	if projCtx.Build.TriggerID != "" {
+		var projectName string
+		projectName, err = model.GetUpstreamProjectName(projCtx.Build.TriggerID, projCtx.Build.TriggerType)
+		if err != nil {
+			uis.LoggedError(w, r, http.StatusInternalServerError, err)
+			return
+		}
+		buildAsUI.UpstreamData = &uiUpstreamData{
+			ProjectName: projectName,
+			TriggerID:   projCtx.Build.TriggerID,
+			TriggerType: projCtx.Build.TriggerType,
+		}
+	}
+
 	if evergreen.IsPatchRequester(projCtx.Build.Requester) {
 		buildOnBaseCommit, err := projCtx.Build.FindBuildOnBaseCommit()
 		if err != nil {

@@ -118,6 +118,10 @@ Evergreen - Version {{Trunc .Version.Version.Revision 10}}
              {{else}}
                <github-commit-panel commit="commit" timezone="{{GetTimezone .User}}"></github-commit-panel>
              {{end}}
+             <div class="semi-muted" ng-show="version.upstream">
+               <span class="icon"><i class="fa fa-arrow-left"></i></span>
+               <span><a href="/[[version.upstream.trigger_type]]/[[version.upstream.trigger_id]]">Triggered from [[version.upstream.project_name]]</a></span>
+             </div>
              <div class="error-text" ng-show="[[version.Version.errors.length]]">
                <i class="fa fa-ban"></i>
                [[version.Version.errors.length]]  [[version.Version.errors.length | pluralize:'error']] in configuration file

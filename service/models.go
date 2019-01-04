@@ -39,13 +39,16 @@ type uiVersion struct {
 	ActiveTasks  int
 	RepoOwner    string          `json:"repo_owner"`
 	Repo         string          `json:"repo_name"`
-	UpstreamData *uiUpstreamData `json:"upstream"`
+	UpstreamData *uiUpstreamData `json:"upstream,omitempty"`
 }
 
 type uiUpstreamData struct {
-	Owner    string `json:"owner"`
-	Repo     string `json:"repo"`
-	Revision string `json:"revision"`
+	Owner       string `json:"owner"`
+	Repo        string `json:"repo"`
+	Revision    string `json:"revision"`
+	ProjectName string `json:"project_name"`
+	TriggerID   string `json:"trigger_id"`
+	TriggerType string `json:"trigger_type"`
 }
 
 type uiPatch struct {
@@ -77,6 +80,7 @@ type uiBuild struct {
 	RepoOwner       string               `json:"repo_owner"`
 	Repo            string               `json:"repo_name"`
 	TaskStatusCount task.TaskStatusCount `json:"taskStatusCount"`
+	UpstreamData    *uiUpstreamData      `json:"upstream_data,omitempty"`
 }
 
 type uiTask struct {
