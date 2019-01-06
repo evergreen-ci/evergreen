@@ -129,7 +129,7 @@ func NewS3MultiPartBucket(options S3Options) (Bucket, error) {
 		return nil, err
 	}
 	// 5MB is the minimum size for a multipart upload, so buffer needs to be at least that big.
-	return &s3BucketLarge{s3Bucket: *bucket, minPartSize: 5000000}, nil
+	return &s3BucketLarge{s3Bucket: *bucket, minPartSize: 1024 * 1024 * 5}, nil
 }
 
 // NewS3MultiPartBucketWithHTTPClient returns a Bucket implementation backed
@@ -141,7 +141,7 @@ func NewS3MultiPartBucketWithHTTPClient(client *http.Client, options S3Options) 
 		return nil, err
 	}
 	// 5MB is the minimum size for a multipart upload, so buffer needs to be at least that big.
-	return &s3BucketLarge{s3Bucket: *bucket, minPartSize: 5000000}, nil
+	return &s3BucketLarge{s3Bucket: *bucket, minPartSize: 1024 * 1024 * 5}, nil
 }
 
 func (s *s3Bucket) String() string { return s.name }
@@ -272,6 +272,7 @@ func (w *largeWriteCloser) flush() error {
 			PartNumber: aws.Int64(w.partNumber),
 		})
 	}
+	w.buffer = []byte{}
 	w.partNumber++
 	return nil
 }

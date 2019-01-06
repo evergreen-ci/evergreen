@@ -502,6 +502,26 @@ func TestBucket(t *testing.T) {
 						assert.Equal(t, "html/text", *getObjectOutput.ContentType)
 					},
 				},
+				{
+					id: "TestLargeFileRoundTrip",
+					test: func(t *testing.T, b Bucket) {
+						size := int64(10000000)
+						key := newUUID()
+						bigBuff := make([]byte, size)
+						path := filepath.Join(tempdir, "bigfile.test0")
+
+						// upload large empty file
+						require.NoError(t, ioutil.WriteFile(path, bigBuff, 0666))
+						require.NoError(t, b.Upload(ctx, key, path))
+
+						// check size of empty file
+						path = filepath.Join(tempdir, "bigfile.test1")
+						require.NoError(t, b.Download(ctx, key, path))
+						fi, err := os.Stat(path)
+						require.NoError(t, err)
+						assert.Equal(t, size, fi.Size())
+					},
+				},
 			},
 		},
 	} {
