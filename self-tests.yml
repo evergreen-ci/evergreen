@@ -68,6 +68,18 @@ variables:
           target: revendor
       - func: run-make
         vars: { target: "${task_name}" }
+  - &run-go-test-suite-with-docker
+    name: test
+    commands:
+      - func: get-project
+      - func: set-up-credentials
+      - func: set-up-mongodb
+      - func: setup-docker-host
+      - func: run-make
+        vars:
+          target: revendor
+      - func: run-make
+        vars: { target: "${task_name}" }
   - &run-go-test-suite-with-mongodb
     # runs a make target above, but only on systems that have a
     # running mongod started for testing.
@@ -152,6 +164,7 @@ functions:
         AWS_SECRET: ${aws_secret}
         DEBUG_ENABLED: ${debug}
         DISABLE_COVERAGE: ${disable_coverage}
+        DOCKER_HOST: ${docker_host}
         EVERGREEN_ALL: "true"
         GOARCH: ${goarch}
         GO_BIN_PATH: ${gobin}
@@ -201,6 +214,32 @@ functions:
       params:
         working_dir: gopath/src/github.com/evergreen-ci/evergreen
         command: make check-mongod
+  setup-docker-host:
+    - command: host.create
+      params:
+        distro: archlinux-parent
+        provider: ec2
+        retries: 3
+        scope: build
+        security_group_ids:
+          - sg-097bff6dd0d1d31d0
+    - command: host.list
+      params:
+        wait: true
+        timeout_seconds: 600
+        num_hosts: 1
+        path: spawned_hosts.json
+    - command: shell.exec
+      params:
+        script: |
+          set -o xtrace
+          set -o errexit
+          hostname=$(tr -d '"[]{}' < spawned_hosts.json | cut -d , -f 1 | awk -F : '{print $2}' | head -3 | xargs)
+          printf "docker_host: %s" "$hostname" > expansions.yml
+    - command: expansions.update
+      params:
+        file: expansions.yml
+
   attach-test-results:
     - command: gotest.parse_files
       type: system
@@ -282,7 +321,7 @@ tasks:
   - <<: *run-go-test-suite-with-mongodb
     tags: ["db", "test"]
     name: test-db
-  - <<: *run-go-test-suite-with-mongodb
+  - <<: *run-go-test-suite-with-docker
     tags: ["db", "test"]
     name: test-cloud
   - <<: *run-go-test-suite-with-mongodb
