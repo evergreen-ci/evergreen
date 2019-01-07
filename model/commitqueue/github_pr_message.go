@@ -17,6 +17,7 @@ const (
 )
 
 type GithubMergePR struct {
+	ProjectID     string `bson:"project_id"`
 	Owner         string `bson:"owner"`
 	Repo          string `bson:"repo"`
 	Ref           string `bson:"ref"`
@@ -29,7 +30,9 @@ type GithubMergePR struct {
 // Valid returns nil if the message is well formed
 func (p *GithubMergePR) Valid() error {
 	catcher := grip.NewBasicCatcher()
-	// owner, repo and ref must be empty or must be set
+	if len(p.ProjectID) == 0 {
+		catcher.Add(errors.New("Project ID can't be empty"))
+	}
 	if len(p.Owner) == 0 {
 		catcher.Add(errors.New("Owner can't be empty"))
 	}

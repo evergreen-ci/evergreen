@@ -28,6 +28,7 @@ func TestSubscribers(t *testing.T) {
 		{
 			Type: GithubMergeSubscriberType,
 			Target: &GithubMergeSubscriber{
+				ProjectID:     "mci",
 				Owner:         "evergreen-ci",
 				Repo:          "evergreen",
 				PRNumber:      9001,

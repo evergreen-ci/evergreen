@@ -3,6 +3,7 @@ package commitqueue
 import (
 	"context"
 	"fmt"
+	"strconv"
 	"time"
 
 	"github.com/evergreen-ci/evergreen/util"
@@ -66,7 +67,7 @@ func (s *githubPRLogger) Send(m message.Composer) {
 	if !s.Level().ShouldLog(m) {
 		return
 	}
-	catcher := grip.NewBasicCatcher()
+
 	msg, ok := m.Raw().(*GithubMergePR)
 	if !ok {
 		s.ErrorHandler(errors.New("message of type githubPRLogger does not contain a GithubMergePR"), m)
@@ -78,15 +79,28 @@ func (s *githubPRLogger) Send(m message.Composer) {
 		CommitTitle: msg.CommitTitle,
 	}
 
+	// do the merge
 	ctx, cancel := context.WithTimeout(s.ctx, 10*time.Second)
 	defer cancel()
 	res, _, err := s.prService.Merge(ctx, msg.Owner, msg.Repo, msg.PRNum, msg.CommitMessage, mergeOpts)
+
 	if err != nil {
-		catcher.Add(errors.Wrap(err, "can't access GitHub merge API"))
+		s.ErrorHandler(errors.Wrap(err, "can't access GitHub merge API"), m)
 	}
 
-	catcher.Add(s.sendMergeResult(res, msg))
-	s.ErrorHandler(catcher.Resolve(), m)
+	// send the result to github
+	s.ErrorHandler(s.sendMergeResult(res, msg), m)
+
+	// dequeue the PR from its commit queue
+	commitq, err := FindOneId(msg.ProjectID)
+	if err != nil {
+		s.ErrorHandler(errors.Wrapf(err, "can't find commit queue for %s", msg.ProjectID), m)
+		return
+	}
+	err = commitq.Remove(strconv.Itoa(msg.PRNum))
+	if err != nil {
+		s.ErrorHandler(errors.Wrapf(err, "can't dequeue %d from commit queue", msg.PRNum), m)
+	}
 }
 
 func (s *githubPRLogger) sendMergeResult(PRResult *github.PullRequestMergeResult, msg *GithubMergePR) error {

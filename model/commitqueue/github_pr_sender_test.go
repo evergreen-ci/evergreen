@@ -14,6 +14,7 @@ func TestGithubPRLogger(t *testing.T) {
 	assert.NoError(err)
 
 	msg := GithubMergePR{
+		ProjectID:     "mci",
 		Owner:         "evergreen-ci",
 		Repo:          "evergreen",
 		Ref:           "deadbeef",
