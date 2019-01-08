@@ -38,7 +38,6 @@ mciModule.factory('Rounder', function(numberFilter) {
       // Perorm conversion to string and rounding
       let mantissaS = Math.round(absV / Math.pow(10, exponent - takeN + 1))
         .toString()
-        .substr(0, takeN)
 
       // trailingZeros option
       if (!options.trailingZeros) {

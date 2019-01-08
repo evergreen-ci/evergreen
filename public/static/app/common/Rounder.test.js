@@ -63,6 +63,11 @@ describe('RounderTest', function() {
   it('accepts negative values', function() {
     let r = Rounder.get()
     expect(r(-1.5)).toBe('-1.5')
-  
+  })
+
+  it('uses "round half away from zero" rounding strategy', function() {
+    let r = Rounder.get()
+    expect(r(0.105)).toBe('0.11')
+    expect(r(-0.105)).toBe('-0.11')
   })
 })
