@@ -61,6 +61,7 @@ func (c *RepoTrackerConnector) TriggerRepotracker(q amboy.Queue, msgID string, e
 			"owner":   *event.Repo.Owner.Name,
 			"repo":    *event.Repo.Name,
 			"ref":     *event.Ref,
+			"branch":  branch,
 			"message": "error occurred while trying to match push event to project refs",
 		}))
 		return err
