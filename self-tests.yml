@@ -216,6 +216,7 @@ functions:
         command: make check-mongod
   setup-docker-host:
     - command: host.create
+      type: setup
       params:
         distro: archlinux-parent
         provider: ec2
@@ -224,21 +225,22 @@ functions:
         security_group_ids:
           - sg-097bff6dd0d1d31d0
     - command: host.list
+      type: setup
       params:
         wait: true
         timeout_seconds: 600
         num_hosts: 1
-        path: spawned_hosts.json
-    - command: shell.exec
+        path: gopath/src/github.com/evergreen-ci/evergreen/spawned_hosts.json
+    - command: subprocess.exec
+      type: setup
       params:
-        script: |
-          set -o xtrace
-          set -o errexit
-          hostname=$(tr -d '"[]{}' < spawned_hosts.json | cut -d , -f 1 | awk -F : '{print $2}' | head -3 | xargs)
-          printf "docker_host: %s" "$hostname" > expansions.yml
+        working_dir: gopath/src/github.com/evergreen-ci/evergreen
+        command: make parse-host-file
+        env:
+          HOST_FILE: spawned_hosts.json
     - command: expansions.update
       params:
-        file: expansions.yml
+        file: gopath/src/github.com/evergreen-ci/evergreen/expansions.yml
 
   attach-test-results:
     - command: gotest.parse_files

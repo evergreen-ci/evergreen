@@ -6,6 +6,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/assert"
+
 	"github.com/docker/docker/api/types"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/mongodb/grip"
@@ -42,7 +44,7 @@ func TestDockerIntegrationSuite(t *testing.T) {
 			evergreenSettings: settings,
 		},
 	}
-	s.client.Init("1.37")
+	assert.NoError(t, s.client.Init("1.37"))
 	suite.Run(t, s)
 }
 
