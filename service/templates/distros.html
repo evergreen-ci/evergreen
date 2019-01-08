@@ -110,6 +110,21 @@ Evergreen - Distros
                   URL is required</div>
               </div>
               <div>
+                <label class="distro-label">Image Build Method:</label>
+                <select ng-readonly="readOnly" ng-model="activeDistro.settings.build_type" ng-required="activeDistro.provider == 'docker'">
+                  <option value="import" default>import</option>
+                  <option value="import" default>pull</option>
+                </select>
+              </div>
+              <div>
+                <label class="distro-label">Username for Registries:</label>
+                <input type="text" class="form-control" ng-model="activeDistro.settings.docker_registry_user" ng-readonly="readOnly">
+              </div>
+              <div>
+                <label class="distro-label">Password for Registries:</label>
+                <input type="password" class="form-control" ng-model="activeDistro.settings.docker_registry_pw" ng-readonly="readOnly">
+              </div>
+              <div>
                 <label class="distro-label">Pool ID:</label>
                 <select ng-readonly="readOnly" name="poolID" ng-model="activeDistro.container_pool" ng-required="activeDistro.provider == 'docker'">
                   <option ng-repeat="pool in containerPoolIds" value=[[pool]]>[[pool]]</option>
