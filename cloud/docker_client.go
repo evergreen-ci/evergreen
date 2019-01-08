@@ -4,6 +4,8 @@ package cloud
 
 import (
 	"context"
+	"encoding/base64"
+	"encoding/json"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -18,6 +20,7 @@ import (
 	"github.com/docker/docker/api/types/network"
 	docker "github.com/docker/docker/client"
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/grip"
@@ -126,12 +129,6 @@ func (c *dockerClientImpl) EnsureImageDownloaded(ctx context.Context, h *host.Ho
 	if err != nil {
 		return "", errors.Wrap(err, "Failed to generate docker client")
 	}
-	grip.Info(message.Fields{
-		"operation": "EnsureImageDownloaded",
-		"details":   "generateclient",
-		"duration":  time.Since(start),
-		"span":      time.Since(start).String(),
-	})
 
 	// Extract image name from url
 	baseName := path.Base(url)
@@ -140,66 +137,94 @@ func (c *dockerClientImpl) EnsureImageDownloaded(ctx context.Context, h *host.Ho
 	// Check if image already exists on host
 	_, _, err = dockerClient.ImageInspectWithRaw(ctx, imageName)
 	grip.Info(message.Fields{
-		"operation": "EnsureImageDownloaded",
-		"details":   "ImageInspectWithRaw",
-		"duration":  time.Since(start),
-		"span":      time.Since(start).String(),
+		"operation":     "EnsureImageDownloaded",
+		"details":       "ImageInspectWithRaw",
+		"duration_secs": time.Since(start).Seconds(),
 	})
 	if err == nil {
 		// Image already exists
 		return imageName, nil
 	} else if strings.Contains(err.Error(), "No such image") {
-
-		// Extend http client timeout for ImageImport
-		normalTimeout := c.httpClient.Timeout
-		dockerClient, err = c.changeTimeout(h, imageImportTimeout)
-		if err != nil {
-			return "", errors.Wrap(err, "Error changing http client timeout")
+		settings := *h.Distro.ProviderSettings
+		if settings["build_type"] == distro.DockerImageBuildTypeImport {
+			err = c.importImage(ctx, h, imageName, url)
+			grip.Info(message.Fields{
+				"operation":     "EnsureImageDownloaded",
+				"details":       "import image",
+				"duration_secs": time.Since(start).Seconds(),
+			})
+			return imageName, errors.Wrap(err, "error importing image")
+		} else if settings["build_type"] == distro.DockerImageBuildTypePull {
+			err = c.pullImage(ctx, h, url, settings["docker_registry_user"].(string), settings["docker_registry_pw"].(string))
+			grip.Info(message.Fields{
+				"operation":     "EnsureImageDownloaded",
+				"details":       "pull image",
+				"duration_secs": time.Since(start).Seconds(),
+			})
+			return imageName, errors.Wrap(err, "error pulling image")
 		}
-
-		// Image does not exist, import from remote tarball
-		source := types.ImageImportSource{SourceName: url}
-		msg := makeDockerLogMessage("ImageImport", h.Id, message.Fields{
-			"source":     source,
-			"image_name": imageName,
-			"image_url":  url,
-		})
-		var resp io.ReadCloser
-		resp, err = dockerClient.ImageImport(ctx, source, imageName, types.ImageImportOptions{})
-		if err != nil {
-			return "", errors.Wrapf(err, "Error importing image from %s", url)
-		}
-		grip.Info(message.Fields{
-			"operation": "EnsureImageDownloaded",
-			"details":   "ImageImport",
-			"duration":  time.Since(start),
-			"span":      time.Since(start).String(),
-		})
-		grip.Info(msg)
-
-		// Wait until ImageImport finishes
-		_, err = ioutil.ReadAll(resp)
-		if err != nil {
-			return "", errors.Wrap(err, "Error reading ImageImport response")
-		}
-
-		grip.Info(message.Fields{
-			"operation": "EnsureImageDownloaded",
-			"details":   "readall",
-			"duration":  time.Since(start),
-			"span":      time.Since(start).String(),
-		})
-
-		// Reset http client timeout
-		_, err = c.changeTimeout(h, normalTimeout)
-		if err != nil {
-			return "", errors.Wrap(err, "Error changing http client timeout")
-		}
-
-		return imageName, nil
-	} else {
-		return "", errors.Wrapf(err, "Error inspecting image %s", imageName)
+		return imageName, errors.Errorf("unrecognized image build method: %s", settings["build_type"])
 	}
+	return "", errors.Wrapf(err, "Error inspecting image %s", imageName)
+}
+
+func (c *dockerClientImpl) importImage(ctx context.Context, h *host.Host, name, url string) error {
+	// Extend http client timeout for ImageImport
+	normalTimeout := c.httpClient.Timeout
+	dockerClient, err := c.changeTimeout(h, imageImportTimeout)
+	if err != nil {
+		return errors.Wrap(err, "Error changing http client timeout")
+	}
+
+	// Image does not exist, import from remote tarball
+	source := types.ImageImportSource{SourceName: url}
+	var resp io.ReadCloser
+	resp, err = dockerClient.ImageImport(ctx, source, name, types.ImageImportOptions{})
+	if err != nil {
+		return errors.Wrapf(err, "Error importing image from %s", url)
+	}
+
+	// Wait until ImageImport finishes
+	_, err = ioutil.ReadAll(resp)
+	if err != nil {
+		return errors.Wrap(err, "Error reading ImageImport response")
+	}
+
+	// Reset http client timeout
+	_, err = c.changeTimeout(h, normalTimeout)
+	return errors.Wrap(err, "Error changing http client timeout")
+}
+
+func (c *dockerClientImpl) pullImage(ctx context.Context, h *host.Host, url, username, password string) error {
+	normalTimeout := c.httpClient.Timeout
+	dockerClient, err := c.changeTimeout(h, imageImportTimeout)
+	if err != nil {
+		return errors.Wrap(err, "Error changing http client timeout")
+	}
+
+	var auth string
+	if username != "" {
+		authConfig := types.AuthConfig{
+			Username: username,
+			Password: password,
+		}
+		var jsonBytes []byte
+		jsonBytes, err = json.Marshal(authConfig)
+		if err != nil {
+			return errors.Wrap(err, "error marshaling auth config")
+		}
+		auth = base64.URLEncoding.EncodeToString(jsonBytes)
+	}
+	resp, err := dockerClient.ImagePull(ctx, url, types.ImagePullOptions{RegistryAuth: auth})
+	if err != nil {
+		return errors.Wrap(err, "error pulling image from registry")
+	}
+	_, err = ioutil.ReadAll(resp)
+	if err != nil {
+		return errors.Wrap(err, "error reading image pull response")
+	}
+	_, err = c.changeTimeout(h, normalTimeout)
+	return errors.Wrap(err, "Error changing http client timeout")
 }
 
 // BuildImageWithAgent takes a base image and builds a new image on the specified
