@@ -334,18 +334,24 @@
           </md-fab-toolbar>
         </div>
       </div>
-      <h5>Thread Levels:</h5>
       <div>
-        <div ng-repeat="option in threadLevelsRadio.options">
-          <label>
-            <input
-              type="radio"
-              ng-model="threadLevelsRadio.value"
-              value="[[option.key]]"
-              name="threadlevels"
-            />&nbsp;[[option.val]]
-          </label>
-        </div>
+        <strong>Thread Levels:</strong>
+        <label ng-repeat="option in threadLevelsRadio.options">
+          <input
+            type="radio"
+            ng-model="threadLevelsRadio.value"
+            value="[[option.key]]"
+            name="threadlevels"
+          />&nbsp;[[option.val]]
+        </label>
+      </div>
+      <div>
+        <strong>Metric Name:</strong>
+        <select ng-model="metricSelect.value"
+                ng-disabled="metricSelect.options.length < 2"
+                ng-options="opt as opt.name for opt in metricSelect.options track by opt.key"
+        >
+        </select>
       </div>
       <div class="muted" ng-show="!locked">click on a graph to lock to a commit</div>
       <div class="perf-trendchart-wrapper" ng-repeat="k in perfSample.testNames()">

@@ -13,7 +13,8 @@ var findIndex = function(list, predicate) {
 
 mciModule.controller('PerfController', function PerfController(
   $scope, $window, $http, $location, $log, $q, ChangePointsService,
-  DrawPerfTrendChart, PROCESSED_TYPE, Settings, Stitch, STITCH_CONFIG
+  DrawPerfTrendChart, PROCESSED_TYPE, Settings, Stitch, STITCH_CONFIG,
+  TestSample, TrendSamples
 ) {
     /* for debugging
     $sce, $compile){
@@ -110,6 +111,14 @@ mciModule.controller('PerfController', function PerfController(
     value: Settings.perf.trendchart.threadLevelMode,
   }
 
+  $scope.metricSelect = {
+    options: [],
+    default: {key: 'ops_per_sec', name: 'ops/sec (Default)'},
+    value: undefined,
+  }
+  $scope.metricSelect.options.push($scope.metricSelect.default)
+  $scope.metricSelect.value = $scope.metricSelect.default
+
   // perftab refers to which tab should be selected. 0=graph, 1=table, 2=trend, 3=trend-table
   $scope.perftab = 2;
   $scope.project = $window.project;
@@ -148,6 +157,13 @@ mciModule.controller('PerfController', function PerfController(
     // Force comparison by value
     if (oldVal === newVal) return;
     Settings.perf.trendchart.threadLevelMode = newVal
+    $scope.redrawGraphs()
+  })
+
+  $scope.$watch('metricSelect.value', function(newVal, oldVal) {
+    // Force comparison by value
+    if (oldVal === newVal) return;
+    //Settings.perf.trendchart.threadLevelMode = newVal
     $scope.redrawGraphs()
   })
 
@@ -198,7 +214,8 @@ mciModule.controller('PerfController', function PerfController(
         compareSamples: compareSamples,
         threadMode: scope.threadLevelsRadio.value,
         linearMode: scope.scaleModel.linearMode,
-        originMode: scope.rangeModel.originMode
+        originMode: scope.rangeModel.originMode,
+        metric: scope.metricSelect.value.key,
       })
     }
     scope.showToolbar = true
@@ -560,6 +577,12 @@ mciModule.controller('PerfController', function PerfController(
         var chartDataQ = $http.get("/plugin/json/history/" + $scope.task.id + "/perf").then(
           function(resp) {
             $scope.trendSamples = new TrendSamples(resp.data);
+            $scope.metricSelect.options = [$scope.metricSelect.default].concat(
+              _.map(
+                _.without($scope.trendSamples.metrics, $scope.metricSelect.default.key),
+                function(d) { return {key: d, name: d} }
+              )
+            )
           })
 
         // Once trend chart data and change points get loaded
@@ -583,196 +606,3 @@ mciModule.controller('PerfController', function PerfController(
     }
   }
 })
-
-// Class to contain a collection of samples in a series.
-function TrendSamples(samples){
-  this.samples = samples;
-  var NON_THREAD_LEVELS = ['start', 'end']
-
-  // _sampleByCommitIndexes is a map of mappings of (githash -> sample data), keyed by test name.
-  // e.g.
-  // {
-  //   "test-foo":  {"ab215e..." : { sample data }, "bced3f..." : { sample data }, ...
-  //   "test-blah": {"ab215e..." : { sample data }, "bced3f..." : { sample data }, ...
-  //   ..
-  //}
-  this._sampleByCommitIndexes = {};
-
-  // seriesByName is a mapping of test names to sample data.
-  this.seriesByName = {};
-
-  this._tasksByName = {}
-
-  // testNames is a unique list of all the tests that appear in *any* of the given list of samples.
-  this.testNames = [];
-
-  for (var i = 0; i < samples.length; i++) {
-    var sample = samples[i];
-
-    for (var j = 0; j < sample.data.results.length; j++) {
-      var rec = sample.data.results[j];
-
-      // Create entry if not exists
-      if (!(rec.name in this.seriesByName)) {
-        this.seriesByName[rec.name] = [];
-      }
-
-      var maxOpsPerSecItem = _.max(rec.results, function(d) {
-        return d.ops_per_sec
-      })
-
-      // Sort items by thread level
-      // Change dict to array
-      var threadResults = _.chain(rec.results)
-        .omit(NON_THREAD_LEVELS)
-        .map(function(v, k) {
-          v.threadLevel = k
-          return v
-        })
-        .sortBy('-threadLevel')
-        .value()
-
-      this.seriesByName[rec.name].push({
-        revision: sample.revision,
-        task_id: sample.task_id,
-        ops_per_sec: maxOpsPerSecItem.ops_per_sec,
-        ops_per_sec_values: maxOpsPerSecItem.ops_per_sec_values,
-        order: sample.order,
-        createTime: sample.create_time,
-        threadResults: threadResults,
-      });
-    }
-  }
-
-  for (let key in this.seriesByName) {
-    this.seriesByName[key] = _.sortBy(this.seriesByName[key], 'order');
-    this.testNames.unshift(key);
-  }
-
-  for (let i = 0; i < this.testNames.length; i++) {
-    //make an index for commit hash -> sample for each test series
-    var k = this.testNames[i];
-    // FIXME Unknown behavior (coma operator after _groupBy stmt)
-    this._sampleByCommitIndexes[k] = _.groupBy(this.seriesByName[k], "revision"), function(x){return x[0]};
-    for(let t in this._sampleByCommitIndexes[k]){
-      this._sampleByCommitIndexes[k][t] = this._sampleByCommitIndexes[k][t][0];
-    }
-  }
-
-  // Returns a list of samples for a given test, sorted in the order that they were committed.
-  this.tasksByCommitOrder = function(){
-    if (!this._tasks) {
-      this._tasks = _.chain(this.seriesByName)
-        .values()
-        .flatten()
-        .uniq(false, d => d.task_id)
-        .sortBy('order')
-        .value()
-    }
-    return this._tasks;
-  }
-
-  this.tasksByCommitOrderByTestName = function(testName){
-     if(!(testName in this._tasksByName)){
-        this._tasksByName[testName] = _.sortBy(_.uniq(this.seriesByName[testName], function(x){return x.task_id}), "order")
-     }
-     return this._tasksByName[testName]
-  }
-
-  this.sampleInSeriesAtCommit = function(testName, revision){
-    return this._sampleByCommitIndexes[testName][revision];
-  }
-
-  this.indexOfCommitInSeries = function(testName, revision){
-    var t = this.tasksByCommitOrderByTestName(testName)
-    return findIndex(t, function(x) { return x.revision==revision })
-  }
-
-  this.noiseAtCommit = function(testName, revision){
-    var sample = this._sampleByCommitIndexes[testName][revision];
-    if(sample && sample.ops_per_sec_values && sample.ops_per_sec_values.length > 1){
-      var r = (_.max(sample.ops_per_sec_values) - _.min(sample.ops_per_sec_values)) / d3.mean(sample.ops_per_sec_values);
-      return r;
-    }
-  }
-}
-
-function TestSample(sample){
-  this.sample = sample;
-  this._threads = null;
-  this._maxes = {};
-
-  this.threads = function(){
-    if(this._threads == null){
-      this._threads = _.uniq(
-        _.filter(
-          _.flatten(
-            _.map(this.sample.data.results, function(x){
-              return _.keys(x.results)
-            }), true
-          ), numericFilter
-        )
-      );
-    }
-    return this._threads;
-  }
-
-  this.testNames = function(){
-    return _.pluck(this.sample.data.results, "name") ;
-  }
-
-  this.getLegendName = function(){
-    if(!!this.sample.tag){
-      return this.sample.tag
-    }
-    return this.sample.revision.substring(0,7)
-  }
-
-  // Returns only the keys that have results stored in them
-  this.resultKeys = function(testName){
-    var testInfo = this.resultForTest(testName);
-    return _.pluck(_(testInfo.results).pairs().filter(function(x){return typeof(x[1]) == "object" && "ops_per_sec" in x[1]}), 0)
-  }
-
-  this.threadsVsOps = function(testName) {
-    var testInfo = this.resultForTest(testName);
-    var result = [];
-    if (!testInfo)
-      return;
-    var series = testInfo.results;
-
-    var keys = this.resultKeys(testName)
-    for (var j = 0; j < keys.length; j++) {
-      result.push({
-        threads: parseInt(keys[j]),
-        ops_per_sec: series[keys[j]].ops_per_sec,
-        ops_per_sec_values: series[keys[j]].ops_per_sec_values,
-      });
-    }
-    _.sortBy(result, "threads");
-    return result;
-  }
-
-  this.resultForTest = function(testName){
-    return _.findWhere(
-      this.sample.data.results, {name: testName}
-    );
-  }
-
-  this.maxThroughputForTest = function(testName){
-    if(!_.has(this._maxes, testName)){
-      var d = this.resultForTest(testName);
-      if(!d){
-        return;
-      }
-      this._maxes[testName] = _.max(
-        _.filter(
-          _.pluck(
-            _.values(d.results), 'ops_per_sec'
-          ), numericFilter
-        )
-      );
-    }
-    return this._maxes[testName];
-  }
-}
