@@ -6,6 +6,7 @@ import (
 	"net/url"
 	"strings"
 	"text/template"
+	"time"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
@@ -22,7 +23,7 @@ const descriptionTemplateString = `
 h2. [{{.Task.DisplayName}} failed on {{.Build.DisplayName}}|{{taskurl .}}]
 Host: {{host .}}
 Project: [{{.Project.DisplayName}}|{{.UIRoot}}/waterfall/{{.Project.Identifier}}]
-Commit: [diff|https://github.com/{{.Project.Owner}}/{{.Project.Repo}}/commit/{{.Version.Revision}}]: {{.Version.Message}}
+Commit: [diff|https://github.com/{{.Project.Owner}}/{{.Project.Repo}}/commit/{{.Version.Revision}}]: {{.Version.Message}} | {{.Task.CreateTime | formatAsTimestamp}}
 Evergreen Subscription: {{.SubscriptionID}}; Evergreen Event: {{.EventID}}
 {{range .Tests}}*{{.Name}}* - [Logs|{{.URL}}] | [History|{{.HistoryURL}}]
 {{end}}
@@ -36,8 +37,14 @@ const (
 // descriptionTemplate is filled to create a JIRA alert ticket. Panics at start if invalid.
 var descriptionTemplate = template.Must(template.New("Desc").Funcs(template.FuncMap{
 	"taskurl": getTaskURL,
+        "formatAsTimestamp": formatAsTimestamp,
 	"host":    getHostMetadata,
 }).Parse(descriptionTemplateString))
+
+
+func formatAsTimestamp(t time.Time) string {
+	return t.Format(time.RFC822)
+}
 
 func getHostMetadata(data *jiraTemplateData) string {
 	if data.Host == nil {
