@@ -33,7 +33,7 @@ func (s *execCmdSuite) SetupTest() {
 
 	s.comm = client.NewMock("http://localhost.com")
 	s.conf = &model.TaskConfig{Expansions: &util.Expansions{}, Task: &task.Task{}, Project: &model.Project{}}
-	s.logger = s.comm.GetLoggerProducer(s.ctx, client.TaskData{ID: s.conf.Task.Id, Secret: s.conf.Task.Secret})
+	s.logger = s.comm.GetLoggerProducer(s.ctx, client.TaskData{ID: s.conf.Task.Id, Secret: s.conf.Task.Secret}, nil)
 }
 
 func (s *execCmdSuite) TearDownTest() {

@@ -40,7 +40,7 @@ func (s *generateSuite) SetupTest() {
 		Expansions: &util.Expansions{},
 		Task:       &task.Task{Id: "mock_id", Secret: "mock_secret"},
 		Project:    &model.Project{}}
-	s.logger = s.comm.GetLoggerProducer(s.ctx, client.TaskData{ID: s.conf.Task.Id, Secret: s.conf.Task.Secret})
+	s.logger = s.comm.GetLoggerProducer(s.ctx, client.TaskData{ID: s.conf.Task.Id, Secret: s.conf.Task.Secret}, nil)
 	s.g = &generateTask{}
 	var err error
 	s.tmpDirName, err = ioutil.TempDir("", "generate-suite-")

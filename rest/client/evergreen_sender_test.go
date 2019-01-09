@@ -18,7 +18,7 @@ func TestRestClientLogSenderMessageContents(t *testing.T) {
 
 	comm := NewMock("url")
 	td := TaskData{ID: "task", Secret: "secret"}
-	s, ok := newLogSender(ctx, comm, "testStream", td).(*logSender)
+	s, ok := newEvergreenLogSender(ctx, comm, "testStream", td, defaultLogBufferSize, defaultLogBufferTime).(*evergreenLogSender)
 	s.setBufferTime(10 * time.Millisecond)
 	assert.True(ok)
 
@@ -47,7 +47,7 @@ func TestRestClientLogSenderDoesNotLogInErrorConditions(t *testing.T) {
 	comm := NewMock("url")
 	comm.loggingShouldFail = true
 	td := TaskData{ID: "task", Secret: "secret"}
-	s, ok := newLogSender(ctx, comm, "testStream", td).(*logSender)
+	s, ok := newEvergreenLogSender(ctx, comm, "testStream", td, defaultLogBufferSize, defaultLogBufferTime).(*evergreenLogSender)
 	s.setBufferTime(10 * time.Millisecond)
 	assert.True(ok)
 
@@ -75,30 +75,4 @@ func TestLevelConverters(t *testing.T) {
 	assert.Equal(apimodels.LogErrorPrefix, priorityToString(level.Alert))
 	assert.Equal(apimodels.LogErrorPrefix, priorityToString(level.Critical))
 	assert.Equal(apimodels.LogErrorPrefix, priorityToString(level.Emergency))
-}
-
-func TestTimeoutLogSender(t *testing.T) {
-	assert := assert.New(t)
-
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
-	comm := NewMock("url")
-	td := TaskData{ID: "task", Secret: "secret"}
-	s, ok := newTimeoutLogSender(ctx, comm, "testStream", td).(*logSender)
-	s.setBufferTime(10 * time.Millisecond)
-	assert.True(ok)
-
-	// If no messages are sent, the last message time *should not* update
-	last1 := comm.LastMessageAt()
-	time.Sleep(20 * time.Millisecond)
-	last2 := comm.LastMessageAt()
-	assert.Equal(last1, last2)
-
-	// If a message is sent, the last message time *should* upate
-	s.Send(message.NewDefaultMessage(level.Error, "hello world!!"))
-	time.Sleep(20 * time.Millisecond)
-	assert.NoError(s.Close())
-	last3 := comm.LastMessageAt()
-	assert.NotEqual(last2, last3)
 }

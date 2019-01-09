@@ -39,7 +39,7 @@ func (s *BackgroundSuite) SetupTest() {
 	s.tc.taskConfig = &model.TaskConfig{}
 	s.tc.taskConfig.Project = &model.Project{}
 	s.tc.taskConfig.Project.CallbackTimeout = 0
-	s.tc.logger = s.a.comm.GetLoggerProducer(context.Background(), s.tc.task)
+	s.tc.logger = s.a.comm.GetLoggerProducer(context.Background(), s.tc.task, nil)
 }
 
 func (s *BackgroundSuite) TestWithCallbackTimeoutDefault() {

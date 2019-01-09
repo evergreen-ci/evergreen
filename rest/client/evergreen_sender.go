@@ -13,39 +13,29 @@ import (
 	"github.com/mongodb/grip/send"
 )
 
-const (
-	defaultBufferTime = 15 * time.Second
-	bufferCount       = 1000
-)
-
-type logSender struct {
-	logTaskData   TaskData
-	logChannel    string
-	comm          Communicator
-	cancel        context.CancelFunc
-	pipe          chan message.Composer
-	lastBatch     chan struct{}
-	signalEnd     chan struct{}
-	updateTimeout bool
-	bufferTime    time.Duration
-	closed        bool
+type evergreenLogSender struct {
+	logTaskData TaskData
+	logChannel  string
+	comm        Communicator
+	cancel      context.CancelFunc
+	pipe        chan message.Composer
+	lastBatch   chan struct{}
+	signalEnd   chan struct{}
+	bufferTime  time.Duration
+	bufferSize  int
+	closed      bool
 	sync.RWMutex
 	*send.Base
 }
 
-func newTimeoutLogSender(ctx context.Context, comm Communicator, channel string, taskData TaskData) send.Sender {
-	s := newLogSender(ctx, comm, channel, taskData).(*logSender)
-	s.updateTimeout = true
-	return s
-}
-
-func newLogSender(ctx context.Context, comm Communicator, channel string, taskData TaskData) send.Sender {
-	s := &logSender{
+func newEvergreenLogSender(ctx context.Context, comm Communicator, channel string, taskData TaskData, bufferSize int, bufferTime time.Duration) send.Sender {
+	s := &evergreenLogSender{
 		comm:        comm,
 		logChannel:  channel,
 		logTaskData: taskData,
 		Base:        send.NewBase(taskData.ID),
-		pipe:        make(chan message.Composer, bufferCount/2),
+		bufferSize:  bufferSize,
+		pipe:        make(chan message.Composer, bufferSize/2),
 		lastBatch:   make(chan struct{}),
 		signalEnd:   make(chan struct{}),
 	}
@@ -56,19 +46,19 @@ func newLogSender(ctx context.Context, comm Communicator, channel string, taskDa
 	return s
 }
 
-func (s *logSender) getBufferTime() time.Duration {
+func (s *evergreenLogSender) getBufferTime() time.Duration {
 	s.RLock()
 	defer s.RUnlock()
 	return s.bufferTime
 }
 
-func (s *logSender) setBufferTime(d time.Duration) {
+func (s *evergreenLogSender) setBufferTime(d time.Duration) {
 	s.Lock()
 	defer s.Unlock()
 	s.bufferTime = d
 }
 
-func (s *logSender) Close() error {
+func (s *evergreenLogSender) Close() error {
 	s.Lock()
 	close(s.signalEnd)
 	s.closed = true
@@ -78,18 +68,14 @@ func (s *logSender) Close() error {
 	return s.Base.Close()
 }
 
-func (s *logSender) flush(ctx context.Context, buffer []apimodels.LogMessage) {
+func (s *evergreenLogSender) flush(ctx context.Context, buffer []apimodels.LogMessage) {
 	grip.Warning(s.comm.SendLogMessages(ctx, s.logTaskData, buffer))
-
-	if s.updateTimeout {
-		s.comm.UpdateLastMessageTime()
-	}
 }
 
-func (s *logSender) startBackgroundSender(ctx context.Context) {
+func (s *evergreenLogSender) startBackgroundSender(ctx context.Context) {
 	bufferTime := s.getBufferTime()
 	if bufferTime == 0 {
-		bufferTime = defaultBufferTime
+		bufferTime = defaultLogBufferTime
 	}
 	timer := time.NewTimer(bufferTime)
 	buffer := []apimodels.LogMessage{}
@@ -110,7 +96,7 @@ backgroundSender:
 			timer.Reset(bufferTime)
 		case m := <-s.pipe:
 			buffer = append(buffer, s.convertMessage(m))
-			if len(buffer) >= bufferCount/2 {
+			if len(buffer) >= s.bufferSize/2 {
 				s.flush(ctx, buffer)
 				buffer = []apimodels.LogMessage{}
 				timer.Reset(bufferTime)
@@ -137,7 +123,7 @@ backgroundSender:
 	close(s.lastBatch)
 }
 
-func (s *logSender) Send(m message.Composer) {
+func (s *evergreenLogSender) Send(m message.Composer) {
 	s.RLock()
 	defer s.RUnlock()
 	if s.closed {
@@ -148,7 +134,7 @@ func (s *logSender) Send(m message.Composer) {
 	}
 }
 
-func (s *logSender) convertMessage(m message.Composer) apimodels.LogMessage {
+func (s *evergreenLogSender) convertMessage(m message.Composer) apimodels.LogMessage {
 	return apimodels.LogMessage{
 		Type:      s.logChannel,
 		Severity:  priorityToString(m.Priority()),
