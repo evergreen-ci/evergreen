@@ -4,6 +4,7 @@ import (
 	"regexp"
 	"strings"
 	"testing"
+	"time"
 
 	"net/url"
 
@@ -23,6 +24,7 @@ const (
 	projectId       = "testproject"
 	versionRevision = "aaaaaaaaaaaaaaaaaaa"
 	versionMessage  = "bbbbbbbbbb"
+	createTime      = 1546948595  // "Jan 08, 2019 11:56:35 UTC"
 	buildName       = "Linux 64"
 	buildId         = "b1"
 	taskName        = "mainTests"
@@ -260,6 +262,7 @@ func TestJIRADescription(t *testing.T) {
 						{TestFile: testName2, Status: evergreen.TestFailedStatus, LogId: "123"},
 						{TestFile: testName3, Status: evergreen.TestSucceededStatus},
 					},
+					CreateTime: time.Unix(createTime, 0).UTC(),
 				},
 				Host:  &host.Host{Id: hostId, Host: hostDNS},
 				Build: &build.Build{DisplayName: buildName, Id: buildId},
@@ -283,6 +286,7 @@ func TestJIRADescription(t *testing.T) {
 				So(d, ShouldContainSubstring, versionRevision)
 				So(d, ShouldContainSubstring, versionMessage)
 				So(d, ShouldContainSubstring, "diff|https://github.com/")
+				So(d, ShouldContainSubstring, "08 Jan 19 11:56 UTC")
 			})
 			Convey("with links to the task, host, project", func() {
 				So(d, ShouldContainSubstring, url.PathEscape(taskId))
