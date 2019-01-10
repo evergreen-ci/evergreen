@@ -277,7 +277,7 @@ func getHourlyTestStatsPipeline(projectId string, requester string, start time.T
 				{Name: dbTestStatsIdRequesterKey, Value: "$" + dbTestStatsIdRequesterKey},
 			},
 			dbTestStatsNumPassKey: makeSum(bson.M{"$eq": array{"$status", "pass"}}),
-			dbTestStatsNumFailKey: makeSum(bson.M{"$ne": array{"$status", "pass"}}),
+			dbTestStatsNumFailKey: makeSum(bson.M{"$in": array{"$status", array{"fail", "silentfail"}}}),
 			// "IGNORE" is not a special value, setting the value to something that is not a number will cause $avg to ignore it
 			dbTestStatsAvgDurationPassKey: bson.M{"$avg": bson.M{"$cond": bson.M{
 				"if":   bson.M{"$eq": array{"$status", "pass"}},
