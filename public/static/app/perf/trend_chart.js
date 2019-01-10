@@ -146,6 +146,7 @@ mciModule.factory('DrawPerfTrendChart', function (
       return _.filter(getCompValues(compSample))
     })
 
+
     // For given `activeLevels` returns those which exists in the `sample`
     function threadLevelsForSample(sample, activeLevels) {
       return _.filter(activeLevels, function(d) {

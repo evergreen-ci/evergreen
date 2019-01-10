@@ -47,11 +47,6 @@ mciModule.factory('TrendSamples', function() {
         var threadResults = _.chain(rec.results)
           .omit(NON_THREAD_LEVELS)
           .map(function(v, k) {
-            // TODO will remove this soon
-            //if (i > 50) {
-            //  v.other_metric = v.ops_per_sec * (.5 + 3 * Math.random())
-            //  v.other_metric_values = [v.other_metric]
-            //}
             _.each(_.keys(v), (d) => metricsSet.add(d))
             v.threadLevel = k
             return v

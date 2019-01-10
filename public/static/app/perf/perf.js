@@ -70,6 +70,11 @@ mciModule.controller('PerfController', function PerfController(
     }else{
       delete hash.compare
     }
+
+    if ($scope.metricSelect.value != $scope.metricSelect.default) {
+      hash.metric = $scope.metricSelect.value.key
+    }
+
     setTimeout(function(){
       $location.hash(encodeURIComponent(JSON.stringify(hash)))
       $scope.$apply()
@@ -163,7 +168,7 @@ mciModule.controller('PerfController', function PerfController(
   $scope.$watch('metricSelect.value', function(newVal, oldVal) {
     // Force comparison by value
     if (oldVal === newVal) return;
-    //Settings.perf.trendchart.threadLevelMode = newVal
+    $scope.syncHash(-1)
     $scope.redrawGraphs()
   })
 
@@ -583,6 +588,20 @@ mciModule.controller('PerfController', function PerfController(
                 function(d) { return {key: d, name: d} }
               )
             )
+
+          // Some copypasted checks
+          if ($scope.conf.enabled){
+            if ($location.hash().length>0){
+              try {
+                if ('metric' in hashparsed) {
+                  let metric = hashparsed.metric
+                  $scope.metricSelect.value = _.findWhere(
+                    $scope.metricSelect.options, {key: metric}
+                  ) || $scope.metricSelect.default
+                }
+              } catch (e) {}
+            }
+          }
           })
 
         // Once trend chart data and change points get loaded
