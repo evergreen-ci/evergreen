@@ -5,6 +5,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/task"
@@ -228,6 +229,44 @@ func (s *statsSuite) TestGenerateHourlyTestStats() {
 	require.Equal(1, doc.NumPass)
 	require.Equal(0, doc.NumFail)
 	require.Equal(float64(120), doc.AvgDurationPass)
+
+	// Generate hourly stats for project p5.
+	// Testing tests with status 'skip'.
+	err = GenerateHourlyTestStats("p5", "r1", baseHour, []string{"task1", "task2"}, jobTime)
+	require.NoError(err)
+	require.Equal(12, s.countHourlyTestDocs()) // 2 more tests combination were added to the collection.
+
+	// test1.js passed once and was skipped once.
+	doc, err = GetHourlyTestDoc(DbTestStatsId{
+		Project:      "p5",
+		Requester:    "r1",
+		TestFile:     "test1.js",
+		TaskName:     "task1",
+		BuildVariant: "v1",
+		Distro:       "d1",
+		Date:         baseHour,
+	})
+	require.NoError(err)
+	require.NotNil(doc)
+	require.Equal(1, doc.NumPass)
+	require.Equal(0, doc.NumFail)
+	require.Equal(float64(60), doc.AvgDurationPass)
+
+	// test2.js failed once and was skipped once.
+	doc, err = GetHourlyTestDoc(DbTestStatsId{
+		Project:      "p5",
+		Requester:    "r1",
+		TestFile:     "test2.js",
+		TaskName:     "task1",
+		BuildVariant: "v1",
+		Distro:       "d1",
+		Date:         baseHour,
+	})
+	require.NoError(err)
+	require.NotNil(doc)
+	require.Equal(0, doc.NumPass)
+	require.Equal(1, doc.NumFail)
+	require.Equal(float64(0), doc.AvgDurationPass)
 }
 
 func (s *statsSuite) TestGenerateDailyTestStatsFromHourly() {
@@ -498,49 +537,49 @@ func (s *statsSuite) initTasks() {
 
 	// Task
 	s.insertTask("p1", "r1", "task_id_1", 0, "task1", "v1", "d1", t0, testFailed)
-	s.insertTestResult("task_id_1", 0, "test1.js", "fail", 60)
-	s.insertTestResult("task_id_1", 0, "test2.js", "fail", 120)
-	s.insertTestResult("task_id_1", 0, "test3.js", "pass", 10)
+	s.insertTestResult("task_id_1", 0, "test1.js", evergreen.TestFailedStatus, 60)
+	s.insertTestResult("task_id_1", 0, "test2.js", evergreen.TestFailedStatus, 120)
+	s.insertTestResult("task_id_1", 0, "test3.js", evergreen.TestSucceededStatus, 10)
 	// Task on variant v2
 	s.insertTask("p1", "r1", "task_id_2", 0, "task1", "v2", "d1", t0, testFailed)
-	s.insertTestResult("task_id_2", 0, "test1.js", "fail", 60)
-	s.insertTestResult("task_id_2", 0, "test2.js", "fail", 120)
+	s.insertTestResult("task_id_2", 0, "test1.js", evergreen.TestFailedStatus, 60)
+	s.insertTestResult("task_id_2", 0, "test2.js", evergreen.TestFailedStatus, 120)
 	// Task with different task name
 	s.insertTask("p1", "r1", "task_id_3", 0, "task2", "v1", "d1", t0, testFailed)
-	s.insertTestResult("task_id_3", 0, "test1.js", "fail", 60)
-	s.insertTestResult("task_id_3", 0, "test2.js", "fail", 120)
+	s.insertTestResult("task_id_3", 0, "test1.js", evergreen.TestFailedStatus, 60)
+	s.insertTestResult("task_id_3", 0, "test2.js", evergreen.TestFailedStatus, 120)
 	// Task 10 minutes later
 	s.insertTask("p1", "r1", "task_id_4", 0, "task1", "v1", "d1", t0plus10m, testFailed)
-	s.insertTestResult("task_id_4", 0, "test1.js", "fail", 60)
-	s.insertTestResult("task_id_4", 0, "test2.js", "pass", 120)
-	s.insertTestResult("task_id_4", 0, "test3.js", "pass", 15)
+	s.insertTestResult("task_id_4", 0, "test1.js", evergreen.TestFailedStatus, 60)
+	s.insertTestResult("task_id_4", 0, "test2.js", evergreen.TestSucceededStatus, 120)
+	s.insertTestResult("task_id_4", 0, "test3.js", evergreen.TestSucceededStatus, 15)
 	// Task 1 hour later
 	s.insertTask("p1", "r1", "task_id_5", 0, "task1", "v1", "d1", t0plus1h, testFailed)
-	s.insertTestResult("task_id_5", 0, "test1.js", "fail", 60)
-	s.insertTestResult("task_id_5", 0, "test2.js", "fail", 120)
+	s.insertTestResult("task_id_5", 0, "test1.js", evergreen.TestFailedStatus, 60)
+	s.insertTestResult("task_id_5", 0, "test2.js", evergreen.TestFailedStatus, 120)
 	// Task different requester
 	s.insertTask("p1", "r2", "task_id_6", 0, "task1", "v1", "d1", t0, testFailed)
-	s.insertTestResult("task_id_6", 0, "test1.js", "fail", 60)
-	s.insertTestResult("task_id_6", 0, "test2.js", "fail", 120)
+	s.insertTestResult("task_id_6", 0, "test1.js", evergreen.TestFailedStatus, 60)
+	s.insertTestResult("task_id_6", 0, "test2.js", evergreen.TestFailedStatus, 120)
 	// Task different project
 	s.insertTask("p2", "r1", "task_id_7", 0, "task1", "v1", "d1", t0, testFailed)
-	s.insertTestResult("task_id_7", 0, "test1.js", "fail", 60)
-	s.insertTestResult("task_id_7", 0, "test2.js", "fail", 120)
+	s.insertTestResult("task_id_7", 0, "test1.js", evergreen.TestFailedStatus, 60)
+	s.insertTestResult("task_id_7", 0, "test2.js", evergreen.TestFailedStatus, 120)
 	// Task with old executions.
 	s.insertTask("p2", "r1", "task_id_8", 2, "task1", "v1", "d1", t0plus10m, testFailed)
-	s.insertTestResult("task_id_8", 2, "test1.js", "fail", 60)
-	s.insertTestResult("task_id_8", 2, "test2.js", "fail", 120)
+	s.insertTestResult("task_id_8", 2, "test1.js", evergreen.TestFailedStatus, 60)
+	s.insertTestResult("task_id_8", 2, "test2.js", evergreen.TestFailedStatus, 120)
 	s.insertOldTask("p2", "r1", "task_id_8", 0, "task1", "v1", "d1", t0min10m, testFailed)
-	s.insertTestResult("task_id_8", 0, "test1.js", "fail", 60)
-	s.insertTestResult("task_id_8", 0, "test2.js", "pass", 120)
-	s.insertTestResult("task_id_8", 0, "testOld.js", "fail", 120)
+	s.insertTestResult("task_id_8", 0, "test1.js", evergreen.TestFailedStatus, 60)
+	s.insertTestResult("task_id_8", 0, "test2.js", evergreen.TestSucceededStatus, 120)
+	s.insertTestResult("task_id_8", 0, "testOld.js", evergreen.TestFailedStatus, 120)
 	s.insertOldTask("p2", "r1", "task_id_8", 1, "task1", "v1", "d1", t0min1h, success100)
-	s.insertTestResult("task_id_8", 1, "test1.js", "pass", 60)
-	s.insertTestResult("task_id_8", 1, "test2.js", "pass", 120)
+	s.insertTestResult("task_id_8", 1, "test1.js", evergreen.TestSucceededStatus, 60)
+	s.insertTestResult("task_id_8", 1, "test2.js", evergreen.TestSucceededStatus, 120)
 	// Execution task
 	s.insertTask("p3", "r1", "task_id_9", 0, "task_exec_1", "v1", "d1", t0, testFailed)
-	s.insertTestResult("task_id_9", 0, "test1.js", "fail", 60)
-	s.insertTestResult("task_id_9", 0, "test2.js", "pass", 120)
+	s.insertTestResult("task_id_9", 0, "test1.js", evergreen.TestFailedStatus, 60)
+	s.insertTestResult("task_id_9", 0, "test2.js", evergreen.TestSucceededStatus, 120)
 	// Display task
 	s.insertDisplayTask("p3", "r1", "task_id_10", 0, "task_display_1", "v1", "d1", t0, testFailed, []string{"task_id_9"})
 	// Project p4 used to test various task statuses
@@ -554,6 +593,13 @@ func (s *statsSuite) initTasks() {
 	s.insertTask("p4", "r1", "task_id_18", 0, "task1", "v1", "d1", t0, setupFailed)
 	s.insertTask("p4", "r1", "task_id_19", 0, "task1", "v1", "d1", t0, timeout)
 	s.insertTask("p4", "r1", "task_id_20", 0, "task1", "v1", "d1", t0, timeout)
+	// Project p5 used to test handling of skipped tests.
+	s.insertTask("p5", "r1", "task_id_5_1", 0, "task1", "v1", "d1", t0, success100)
+	s.insertTestResult("task_id_5_1", 0, "test1.js", evergreen.TestSkippedStatus, 60)
+	s.insertTestResult("task_id_5_1", 0, "test2.js", evergreen.TestSkippedStatus, 60)
+	s.insertTask("p5", "r1", "task_id_5_2", 0, "task1", "v1", "d1", t0, testFailed)
+	s.insertTestResult("task_id_5_2", 0, "test1.js", evergreen.TestSucceededStatus, 60)
+	s.insertTestResult("task_id_5_2", 0, "test2.js", evergreen.TestFailedStatus, 60)
 }
 
 func (s *statsSuite) initTasksToUpdate() {
