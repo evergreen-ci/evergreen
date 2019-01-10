@@ -36,6 +36,10 @@ describe('PerfChartServiceTest', function() {
   it('extracts value for maxonly mode', function() {
     var item = {}
     item[cfg.valueAttr] = 1
+    item.threadResults = [
+      {threadLevel: '8', ops_per_sec: 5},
+      {threadLevel: '16', ops_per_sec: 1},
+    ]
 
     expect(
       svc.getValueForMaxOnly(null)(item)

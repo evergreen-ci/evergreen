@@ -5,196 +5,6 @@ function d3Translate(x, y) {
   return 'translate(' + x + ',' + y + ')';
 }
 
-mciModule.factory('PerfChartService', function() {
-  var cfg = {
-    container: {
-      width: 960,
-      height: 222
-    },
-    margin: {
-      top: 12,
-      right: 50,
-      bottom: 60,
-      left: 120
-    },
-    effectiveWidth: undefined, // to be calculated
-    effectiveHeight: undefined, // to be calculated
-    points: {
-      focusedR: 4.5,
-      changePointSize: 12,
-    },
-    toolTip: { // For change points
-      interlineSpace: 20,
-      width: 165,
-      margin: 15,
-      xOffset: -65,
-      yOffset: 0,
-      colOffset: [0, 45, 50, 65],
-      height: undefined, // to be calculated
-      labels: [{
-        key: 'nobs',
-        display: '#',
-      }, {
-        key: function(d) { return d.minmax[0] },
-        display: 'Min',
-      }, {
-        key: function(d) { return d.minmax[1] },
-        display: 'Max',
-      }, {
-        key: 'mean',
-        display: 'Mean',
-      }, {
-        key: 'variance',
-        display: 'Variance',
-      }, {
-        key: 'bfs',
-        display: 'Tickets',
-        nonStat: true,
-        formatter: function(val) { return (
-          val.length == 0 ? 'None' :
-          val.length == 1 ? val[0].key :
-          /* else */        val[0].key + ' and ' + val.length - 1 + ' more'
-        )},
-      }, {
-        key: 'skewness',
-        display: 'Skewness',
-        visible: false,
-      }, {
-        key: 'kurtosis',
-        display: 'Kurtosis',
-        visible: false,
-      }].filter(function(d) {
-        // Filter out non-visible items
-        return d.visible !== false
-      }).map(function(d, i) {
-        // Enumerate all items (required for rendering heterogeneous lists by d3js)
-        d.idx = i
-        return d
-      }),
-    },
-    valueAttr: 'ops_per_sec',
-    yAxis: {
-      ticks: 5,
-      gap: 10 // White space between axis and chart
-    },
-    xAxis: {
-      maxTicks: 10,
-      format: 'MMM DD',
-      labelYOffset: 20,
-    },
-    focus: {
-      labelOffset: {
-        x: 6,
-        y: -5,
-        between: 15, // Minimal vertical space between ops labels
-      }
-    },
-    format: {
-      date: 'll'
-    },
-    legend: {
-      itemHeight: 20,
-      itemWidth: 35,
-      gap: 10, // between legen items
-      yOffset: 10, // To bootom
-      textOverRectOffset: -15, // Aligns legend item with the text label
-      yPos: undefined, // To be calculated
-      xPos: undefined, // To be calculated
-      step: undefined, // to e calculated. Step between legend items
-    },
-    knownLevels: {
-        1: { colorId: 0 },
-        2: { colorId: 9 },
-        4: { colorId: 1 },
-        8: { colorId: 2 },
-       16: { colorId: 3 },
-       32: { colorId: 4 },
-       64: { colorId: 5 },
-      128: { colorId: 8 },
-      256: { colorId: 6 },
-      512: { colorId: 7 },
-    },
-  };
-
-  // Non-persistent color id offset for unusual thread level
-  cfg.knownLevelsCount = _.keys(cfg.knownLevels).length
-
-  // Chart are real size
-  cfg.effectiveWidth = cfg.container.width - cfg.margin.left - cfg.margin.right;
-  cfg.effectiveHeight = cfg.container.height - cfg.margin.top - cfg.margin.bottom;
-
-  // Tool Tip
-  cfg.toolTip.height = cfg.toolTip.interlineSpace * cfg.toolTip.labels.length
-
-  // Legend y pos
-  cfg.legend.yPos = (
-    cfg.container.height - cfg.legend.yOffset
-    - cfg.legend.itemHeight - cfg.legend.textOverRectOffset
-  )
-
-  cfg.legend.step = cfg.legend.itemWidth + cfg.legend.gap
-
-  // Returns list of y-positions of ops labels for given
-  // yScaledValues list.
-  function getOpsLabelYPosition(vals, cfg) {
-    var yScaledValues = _.sortBy(vals, function(d) { return -d })
-
-    // Calculate the most top (the last) label position.
-    // Also checks top margin overlap
-    var currentVal = _.last(yScaledValues)
-    var prevPos = currentVal + cfg.focus.labelOffset.y
-    if (prevPos < cfg.margin.top) {
-      prevPos = cfg.margin.top + 5
-    }
-    var textPosList = []
-    textPosList[_.indexOf(vals, currentVal)] = prevPos
-
-    // Calculate all other items positions, based on previous item position
-    // Loop skips the last item (see code above)
-    for (var i = yScaledValues.length - 2; i >= 0; i--) {
-      var currentVal = yScaledValues[i]
-      var currentPos = currentVal + cfg.focus.labelOffset.y;
-      var delta = prevPos - currentPos;
-      // If labels overlapping, move the label below previous label
-      var newPos = (delta > -cfg.focus.labelOffset.between)
-        ? prevPos + cfg.focus.labelOffset.between
-        : currentPos
-      prevPos = newPos
-      textPosList[_.indexOf(vals, currentVal)] = newPos
-    }
-
-    return textPosList;
-  }
-
-  // Pair for getValueForAllLevels function
-  // This curried function returns value for given
-  // thread `level` (ignored in this case) and series `item`
-  function getValueForMaxOnly() {
-    return function(item) {
-      return item[cfg.valueAttr]
-    }
-  }
-
-  // Pair for getValueForMaxOnly function
-  // This curried function returns value for given
-  // thread `level` and series `item`
-  function getValueForAllLevels(level) {
-    return function(item) {
-      var result = _.findWhere(item.threadResults, {threadLevel: level.name})
-      return result
-        ? result[cfg.valueAttr]
-        : null
-    }
-  }
-
-  return {
-    cfg: cfg,
-    getOpsLabelYPosition: getOpsLabelYPosition,
-    getValueForMaxOnly: getValueForMaxOnly,
-    getValueForAllLevels: getValueForAllLevels,
-  }
-})
-
 // TODO Create AngularJS directive
 mciModule.factory('DrawPerfTrendChart', function (
   PerfChartService, Rounder
@@ -214,7 +24,8 @@ mciModule.factory('DrawPerfTrendChart', function (
         compareSamples = params.compareSamples,
         threadMode = params.threadMode,
         linearMode = params.linearMode,
-        originMode = params.originMode;
+        originMode = params.originMode,
+        metric     = params.metric;
 
     function idxByRevision(series, revision) {
       return _.findIndex(series, function(sample) {
@@ -244,7 +55,11 @@ mciModule.factory('DrawPerfTrendChart', function (
       return _.findWhere(series, {revision: d.first_failing_revision})
     })
 
-    var cfg = PerfChartService.cfg;
+    var cfg = PerfChartService.cfg
+
+    // override default metric
+    cfg.valueAttr = metric
+
     document.getElementById(containerId).innerHTML = '';
 
     var svg = d3.select('#' + containerId)
@@ -279,9 +94,11 @@ mciModule.factory('DrawPerfTrendChart', function (
     }
 
     var allLevels = extractThreadLevels(series)
+    const maxLevel = '' + _.max(allLevels, (d) => +d)
+    const maxLevelIdx = _.indexOf(allLevels, maxLevel)
 
     var levelsMeta = threadMode == MAXONLY
-      ? [{name: 'MAX', idx: cfg.valueAttr, color: '#484848', isActive: true}]
+      ? [{name: 'MAX', idx: maxLevelIdx, color: '#484848', isActive: true}]
       : _.map(allLevels, function(d, i) {
         var data = {
           name: d,
@@ -328,6 +145,7 @@ mciModule.factory('DrawPerfTrendChart', function (
     let compSamplesValues = _.map(compareSamples, function(compSample) {
       return _.filter(getCompValues(compSample))
     })
+
 
     // For given `activeLevels` returns those which exists in the `sample`
     function threadLevelsForSample(sample, activeLevels) {
@@ -425,7 +243,7 @@ mciModule.factory('DrawPerfTrendChart', function (
           if (threadMode == MAXONLY) {
             // In maxonly mode levels contain single (max) item
             // Extract just one ops item
-            return d[cfg.valueAttr]
+            return d.threadResults[maxLevelIdx][cfg.valueAttr]
           } else {
             return getOpsValues(d)
           }
@@ -1218,9 +1036,14 @@ mciModule.factory('DrawPerfTrendChart', function (
       var x = xScale(idx)
 
       // List of per thread level values for selected item
-      var values = threadMode == MAXONLY
-        ? [item[cfg.valueAttr]]
-        : _.filter(getOpsValues(item))
+      let values = _.filter(
+        threadMode == MAXONLY
+          ? [item.threadResults[maxLevelIdx][cfg.valueAttr]]
+          : _.filter(getOpsValues(item))
+      )
+
+      // If there are no values for current metric, skip
+      if (values.length == 0) return
 
       var maxOps = _.max(values);
 
