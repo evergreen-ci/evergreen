@@ -5,6 +5,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/task"
@@ -536,49 +537,49 @@ func (s *statsSuite) initTasks() {
 
 	// Task
 	s.insertTask("p1", "r1", "task_id_1", 0, "task1", "v1", "d1", t0, testFailed)
-	s.insertTestResult("task_id_1", 0, "test1.js", "fail", 60)
-	s.insertTestResult("task_id_1", 0, "test2.js", "fail", 120)
-	s.insertTestResult("task_id_1", 0, "test3.js", "pass", 10)
+	s.insertTestResult("task_id_1", 0, "test1.js", evergreen.TestFailedStatus, 60)
+	s.insertTestResult("task_id_1", 0, "test2.js", evergreen.TestFailedStatus, 120)
+	s.insertTestResult("task_id_1", 0, "test3.js", evergreen.TestSucceededStatus, 10)
 	// Task on variant v2
 	s.insertTask("p1", "r1", "task_id_2", 0, "task1", "v2", "d1", t0, testFailed)
-	s.insertTestResult("task_id_2", 0, "test1.js", "fail", 60)
-	s.insertTestResult("task_id_2", 0, "test2.js", "fail", 120)
+	s.insertTestResult("task_id_2", 0, "test1.js", evergreen.TestFailedStatus, 60)
+	s.insertTestResult("task_id_2", 0, "test2.js", evergreen.TestFailedStatus, 120)
 	// Task with different task name
 	s.insertTask("p1", "r1", "task_id_3", 0, "task2", "v1", "d1", t0, testFailed)
-	s.insertTestResult("task_id_3", 0, "test1.js", "fail", 60)
-	s.insertTestResult("task_id_3", 0, "test2.js", "fail", 120)
+	s.insertTestResult("task_id_3", 0, "test1.js", evergreen.TestFailedStatus, 60)
+	s.insertTestResult("task_id_3", 0, "test2.js", evergreen.TestFailedStatus, 120)
 	// Task 10 minutes later
 	s.insertTask("p1", "r1", "task_id_4", 0, "task1", "v1", "d1", t0plus10m, testFailed)
-	s.insertTestResult("task_id_4", 0, "test1.js", "fail", 60)
-	s.insertTestResult("task_id_4", 0, "test2.js", "pass", 120)
-	s.insertTestResult("task_id_4", 0, "test3.js", "pass", 15)
+	s.insertTestResult("task_id_4", 0, "test1.js", evergreen.TestFailedStatus, 60)
+	s.insertTestResult("task_id_4", 0, "test2.js", evergreen.TestSucceededStatus, 120)
+	s.insertTestResult("task_id_4", 0, "test3.js", evergreen.TestSucceededStatus, 15)
 	// Task 1 hour later
 	s.insertTask("p1", "r1", "task_id_5", 0, "task1", "v1", "d1", t0plus1h, testFailed)
-	s.insertTestResult("task_id_5", 0, "test1.js", "fail", 60)
-	s.insertTestResult("task_id_5", 0, "test2.js", "fail", 120)
+	s.insertTestResult("task_id_5", 0, "test1.js", evergreen.TestFailedStatus, 60)
+	s.insertTestResult("task_id_5", 0, "test2.js", evergreen.TestFailedStatus, 120)
 	// Task different requester
 	s.insertTask("p1", "r2", "task_id_6", 0, "task1", "v1", "d1", t0, testFailed)
-	s.insertTestResult("task_id_6", 0, "test1.js", "fail", 60)
-	s.insertTestResult("task_id_6", 0, "test2.js", "fail", 120)
+	s.insertTestResult("task_id_6", 0, "test1.js", evergreen.TestFailedStatus, 60)
+	s.insertTestResult("task_id_6", 0, "test2.js", evergreen.TestFailedStatus, 120)
 	// Task different project
 	s.insertTask("p2", "r1", "task_id_7", 0, "task1", "v1", "d1", t0, testFailed)
-	s.insertTestResult("task_id_7", 0, "test1.js", "fail", 60)
-	s.insertTestResult("task_id_7", 0, "test2.js", "fail", 120)
+	s.insertTestResult("task_id_7", 0, "test1.js", evergreen.TestFailedStatus, 60)
+	s.insertTestResult("task_id_7", 0, "test2.js", evergreen.TestFailedStatus, 120)
 	// Task with old executions.
 	s.insertTask("p2", "r1", "task_id_8", 2, "task1", "v1", "d1", t0plus10m, testFailed)
-	s.insertTestResult("task_id_8", 2, "test1.js", "fail", 60)
-	s.insertTestResult("task_id_8", 2, "test2.js", "fail", 120)
+	s.insertTestResult("task_id_8", 2, "test1.js", evergreen.TestFailedStatus, 60)
+	s.insertTestResult("task_id_8", 2, "test2.js", evergreen.TestFailedStatus, 120)
 	s.insertOldTask("p2", "r1", "task_id_8", 0, "task1", "v1", "d1", t0min10m, testFailed)
-	s.insertTestResult("task_id_8", 0, "test1.js", "fail", 60)
-	s.insertTestResult("task_id_8", 0, "test2.js", "pass", 120)
-	s.insertTestResult("task_id_8", 0, "testOld.js", "fail", 120)
+	s.insertTestResult("task_id_8", 0, "test1.js", evergreen.TestFailedStatus, 60)
+	s.insertTestResult("task_id_8", 0, "test2.js", evergreen.TestSucceededStatus, 120)
+	s.insertTestResult("task_id_8", 0, "testOld.js", evergreen.TestFailedStatus, 120)
 	s.insertOldTask("p2", "r1", "task_id_8", 1, "task1", "v1", "d1", t0min1h, success100)
-	s.insertTestResult("task_id_8", 1, "test1.js", "pass", 60)
-	s.insertTestResult("task_id_8", 1, "test2.js", "pass", 120)
+	s.insertTestResult("task_id_8", 1, "test1.js", evergreen.TestSucceededStatus, 60)
+	s.insertTestResult("task_id_8", 1, "test2.js", evergreen.TestSucceededStatus, 120)
 	// Execution task
 	s.insertTask("p3", "r1", "task_id_9", 0, "task_exec_1", "v1", "d1", t0, testFailed)
-	s.insertTestResult("task_id_9", 0, "test1.js", "fail", 60)
-	s.insertTestResult("task_id_9", 0, "test2.js", "pass", 120)
+	s.insertTestResult("task_id_9", 0, "test1.js", evergreen.TestFailedStatus, 60)
+	s.insertTestResult("task_id_9", 0, "test2.js", evergreen.TestSucceededStatus, 120)
 	// Display task
 	s.insertDisplayTask("p3", "r1", "task_id_10", 0, "task_display_1", "v1", "d1", t0, testFailed, []string{"task_id_9"})
 	// Project p4 used to test various task statuses
@@ -594,11 +595,11 @@ func (s *statsSuite) initTasks() {
 	s.insertTask("p4", "r1", "task_id_20", 0, "task1", "v1", "d1", t0, timeout)
 	// Project p5 used to test handling of skipped tests.
 	s.insertTask("p5", "r1", "task_id_5_1", 0, "task1", "v1", "d1", t0, success100)
-	s.insertTestResult("task_id_5_1", 0, "test1.js", "skip", 60)
-	s.insertTestResult("task_id_5_1", 0, "test2.js", "skip", 60)
+	s.insertTestResult("task_id_5_1", 0, "test1.js", evergreen.TestSkippedStatus, 60)
+	s.insertTestResult("task_id_5_1", 0, "test2.js", evergreen.TestSkippedStatus, 60)
 	s.insertTask("p5", "r1", "task_id_5_2", 0, "task1", "v1", "d1", t0, testFailed)
-	s.insertTestResult("task_id_5_2", 0, "test1.js", "pass", 60)
-	s.insertTestResult("task_id_5_2", 0, "test2.js", "fail", 60)
+	s.insertTestResult("task_id_5_2", 0, "test1.js", evergreen.TestSucceededStatus, 60)
+	s.insertTestResult("task_id_5_2", 0, "test2.js", evergreen.TestFailedStatus, 60)
 }
 
 func (s *statsSuite) initTasksToUpdate() {

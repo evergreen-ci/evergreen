@@ -61,6 +61,7 @@ import (
 	"context"
 	"time"
 
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/testresult"
@@ -276,11 +277,11 @@ func getHourlyTestStatsPipeline(projectId string, requester string, start time.T
 				{Name: dbTestStatsIdProjectKey, Value: "$" + dbTestStatsIdProjectKey},
 				{Name: dbTestStatsIdRequesterKey, Value: "$" + dbTestStatsIdRequesterKey},
 			},
-			dbTestStatsNumPassKey: makeSum(bson.M{"$eq": array{"$status", "pass"}}),
-			dbTestStatsNumFailKey: makeSum(bson.M{"$in": array{"$status", array{"fail", "silentfail"}}}),
+			dbTestStatsNumPassKey: makeSum(bson.M{"$eq": array{"$status", evergreen.TestSucceededStatus}}),
+			dbTestStatsNumFailKey: makeSum(bson.M{"$in": array{"$status", array{evergreen.TestFailedStatus, evergreen.TestSilentlyFailedStatus}}}),
 			// "IGNORE" is not a special value, setting the value to something that is not a number will cause $avg to ignore it
 			dbTestStatsAvgDurationPassKey: bson.M{"$avg": bson.M{"$cond": bson.M{
-				"if":   bson.M{"$eq": array{"$status", "pass"}},
+				"if":   bson.M{"$eq": array{"$status", evergreen.TestSucceededStatus}},
 				"then": "$duration",
 				"else": "IGNORE"}}}}},
 		{"$addFields": bson.M{
