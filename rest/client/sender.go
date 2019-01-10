@@ -79,10 +79,7 @@ func (s *logSender) Close() error {
 }
 
 func (s *logSender) flush(ctx context.Context, buffer []apimodels.LogMessage) {
-	grip.Alert(message.WrapError(s.comm.SendLogMessages(ctx, s.logTaskData, buffer), message.Fields{
-		"task": s.logTaskData.ID,
-		"size": len(buffer),
-	}))
+	grip.Warning(s.comm.SendLogMessages(ctx, s.logTaskData, buffer))
 
 	if s.updateTimeout {
 		s.comm.UpdateLastMessageTime()
