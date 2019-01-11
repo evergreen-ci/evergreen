@@ -133,7 +133,7 @@ func (s *githubPRLogger) sendMergeResult(PRResult *github.PullRequestMergeResult
 	return nil
 }
 
-func (s *githubPRLogger) sendPatchResult(msg *GithubMergePR) error {
+func (s *githubPRLogger) sendPatchResult(msg *GithubMergePR) {
 	var state message.GithubState
 	var description string
 	if msg.PatchSucceeded {
@@ -156,5 +156,4 @@ func (s *githubPRLogger) sendPatchResult(msg *GithubMergePR) error {
 	c := message.NewGithubStatusMessageWithRepo(level.Notice, status)
 
 	s.statusSender.Send(c)
-	return nil
 }

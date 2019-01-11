@@ -1783,11 +1783,12 @@ func TestSkipOnPatch(t *testing.T) {
 
 	b.Requester = evergreen.GithubPRRequester
 	assert.True(b.IsPatchBuild() && bvt.SkipOnPatchBuild())
-	bvt.Patchable = nil
-	assert.False(b.IsPatchBuild() && bvt.SkipOnPatchBuild())
 
 	b.Requester = evergreen.MergeTestRequester
 	assert.True(b.IsPatchBuild() && bvt.SkipOnPatchBuild())
+
+	bvt.Patchable = nil
+	assert.False(b.IsPatchBuild() && bvt.SkipOnPatchBuild())
 }
 
 func TestSkipOnNonPatch(t *testing.T) {

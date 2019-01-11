@@ -76,6 +76,9 @@ func (j *commitQueueJob) Run(ctx context.Context) {
 	}
 
 	cq, err := commitqueue.FindOneId(j.QueueID)
+	if err != nil {
+		j.AddError(errors.Wrapf(err, "can't find commit queue for id %s", j.QueueID))
+	}
 	nextItem := cq.Next()
 	nextItemInt, err := strconv.Atoi(nextItem)
 	if err != nil {
@@ -194,6 +197,9 @@ func validatePR(pr *github.PullRequest) error {
 
 func makeVersion(ctx context.Context, githubToken string, projectRef *model.ProjectRef, pr *github.PullRequest) (*model.Version, error) {
 	config, err := getProjectConfigFromFileInCommit(ctx, githubToken, projectRef, *pr.MergeCommitSHA)
+	if err != nil {
+		return nil, errors.Wrap(err, "can't get remote config file")
+	}
 
 	patchDoc, err := makeMergePatch(pr, projectRef.Identifier, config)
 	if err != nil {

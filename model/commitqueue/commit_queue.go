@@ -5,9 +5,7 @@ import (
 )
 
 const (
-	triggerComment     = "evergreen merge"
-	githubMergeAction  = "github_merge"
-	githubStatusAction = "github_status"
+	triggerComment = "evergreen merge"
 )
 
 type CommitQueue struct {

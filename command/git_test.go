@@ -89,7 +89,7 @@ func (s *GitGetProjectSuite) SetupTest() {
 		Author:     "octocat",
 	}
 
-	s.modelData4, err = modelutil.SetupAPITestData(s.settings, "testtask1", "rhel55", configPath2, modelutil.NoPatch)
+	s.modelData4, err = modelutil.SetupAPITestData(s.settings, "testtask1", "rhel55", configPath2, modelutil.MergePatch)
 	s.NoError(err)
 	s.modelData4.TaskConfig.Expansions = util.NewExpansions(s.settings.Credentials)
 	s.modelData4.TaskConfig.GithubPatchData = patch.GithubPatch{

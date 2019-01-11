@@ -71,7 +71,7 @@ func (s *commitQueueSuite) SetupTest() {
 }
 
 func (s *commitQueueSuite) TestNewCommitQueueJob() {
-	job := NewCommitQueueJob("mci")
+	job := NewCommitQueueJob("mci", "job-1")
 	s.Equal("commit-queue:mci", job.ID())
 }
 
@@ -114,6 +114,8 @@ func (s *commitQueueSuite) TestGetPatchUser() {
 	}
 	s.NoError(u.Insert())
 	u, err = getPatchUser(uid)
+	s.NoError(err)
+	s.NotNil(u)
 	s.Equal("me", u.Id)
 }
 

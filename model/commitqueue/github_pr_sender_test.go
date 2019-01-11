@@ -3,12 +3,24 @@ package commitqueue
 import (
 	"testing"
 
+	"github.com/evergreen-ci/evergreen/db"
 	"github.com/mongodb/grip/level"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestGithubPRLogger(t *testing.T) {
 	assert := assert.New(t)
+
+	dbSessionFactory, err := getDBSessionFactory()
+	assert.NoError(err)
+	db.SetGlobalSessionProvider(dbSessionFactory)
+	assert.NoError(db.ClearCollections(Collection))
+	cq := &CommitQueue{
+		ProjectID: "mci",
+		Queue:     []string{"1", "2"},
+	}
+	assert.NoError(InsertQueue(cq))
+
 	errLogger := &mockErrorLogger{}
 	ghPRLogger, err := NewMockGithubPRLogger("mock_gh_pr_logger", errLogger)
 	assert.NoError(err)
