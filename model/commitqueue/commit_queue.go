@@ -4,7 +4,11 @@ import (
 	"github.com/pkg/errors"
 )
 
-const triggerComment = "evergreen merge"
+const (
+	triggerComment     = "evergreen merge"
+	githubMergeAction  = "github_merge"
+	githubStatusAction = "github_status"
+)
 
 type CommitQueue struct {
 	ProjectID    string   `bson:"_id"`
@@ -32,6 +36,13 @@ func (q *CommitQueue) Enqueue(item string) error {
 
 func (q CommitQueue) IsEmpty() bool {
 	return len(q.Queue) == 0
+}
+
+func (q CommitQueue) Next() string {
+	if q.IsEmpty() {
+		return ""
+	}
+	return q.Queue[0]
 }
 
 func (q CommitQueue) All() []string {

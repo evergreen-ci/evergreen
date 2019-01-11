@@ -14,12 +14,13 @@ func TestGithubPRLogger(t *testing.T) {
 	assert.NoError(err)
 
 	msg := GithubMergePR{
-		ProjectID:     "mci",
-		Owner:         "evergreen-ci",
-		Repo:          "evergreen",
-		Ref:           "deadbeef",
-		CommitMessage: "merged by cq",
-		PRNum:         1,
+		PatchSucceeded: true,
+		ProjectID:      "mci",
+		Owner:          "evergreen-ci",
+		Repo:           "evergreen",
+		Ref:            "deadbeef",
+		CommitMessage:  "merged by cq",
+		PRNum:          1,
 	}
 	c := NewGithubMergePRMessage(level.Info, msg)
 	ghPRLogger.Send(c)

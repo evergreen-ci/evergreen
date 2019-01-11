@@ -13,7 +13,7 @@ import (
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/anser/bsonutil"
 	"github.com/pkg/errors"
-	"gopkg.in/mgo.v2"
+	mgo "gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
 )
 
@@ -37,8 +37,10 @@ type ProjectRef struct {
 	// Github PushEvents for this project, instead of the Repotracker runner
 	TracksPushEvents bool `bson:"tracks_push_events" json:"tracks_push_events" yaml:"tracks_push_events"`
 
-	PRTestingEnabled bool `bson:"pr_testing_enabled" json:"pr_testing_enabled" yaml:"pr_testing_enabled"`
-	CommitQEnabled   bool `bson:"commitq_enabled" json:"commitq_enabled" yaml:"commitq_enabled"`
+	PRTestingEnabled   bool   `bson:"pr_testing_enabled" json:"pr_testing_enabled" yaml:"pr_testing_enabled"`
+	CommitQEnabled     bool   `bson:"commitq_enabled" json:"commitq_enabled" yaml:"commitq_enabled"`
+	CommitQMergeMethod string `bson:"commitq_merge_method" json:"commitq_merge_method" yaml:"commitq_merge_method"`
+	CommitQConfigFile  string `bson:"commitq_config_file" json:"commitq_config_file" yaml:"commitq_config_file"`
 
 	//Tracked determines whether or not the project is discoverable in the UI
 	Tracked          bool `bson:"tracked" json:"tracked"`
@@ -130,6 +132,8 @@ var (
 	projectRefTracksPushEventsKey   = bsonutil.MustHaveTag(ProjectRef{}, "TracksPushEvents")
 	projectRefPRTestingEnabledKey   = bsonutil.MustHaveTag(ProjectRef{}, "PRTestingEnabled")
 	projectRefCommitQEnabledKey     = bsonutil.MustHaveTag(ProjectRef{}, "CommitQEnabled")
+	projectRefCommitQConfigFileKey  = bsonutil.MustHaveTag(ProjectRef{}, "CommitQConfigFile")
+	projectRefCommitQMergeMethodKey = bsonutil.MustHaveTag(ProjectRef{}, "CommitQMergeMethod")
 	projectRefPatchingDisabledKey   = bsonutil.MustHaveTag(ProjectRef{}, "PatchingDisabled")
 	projectRefNotifyOnFailureKey    = bsonutil.MustHaveTag(ProjectRef{}, "NotifyOnBuildFailure")
 	projectRefTriggersKey           = bsonutil.MustHaveTag(ProjectRef{}, "Triggers")
@@ -316,6 +320,26 @@ func FindOneProjectRefWithCommitQByOwnerRepoAndBranch(owner, repo, branch string
 	return projRef, nil
 }
 
+func FindProjectRefsWithCommitQEnabled() ([]ProjectRef, error) {
+	projectRefs := []ProjectRef{}
+
+	err := db.FindAll(
+		ProjectRefCollection,
+		bson.M{
+			projectRefCommitQEnabledKey: true,
+		},
+		db.NoProjection,
+		db.NoSort,
+		db.NoSkip,
+		db.NoLimit,
+		&projectRefs,
+	)
+	if err != nil {
+		return nil, err
+	}
+	return projectRefs, nil
+}
+
 // FindProjectRefs returns limit refs starting at project identifier key
 // in the sortDir direction
 func FindProjectRefs(key string, limit int, sortDir int, isAuthenticated bool) ([]ProjectRef, error) {
@@ -389,6 +413,9 @@ func (projectRef *ProjectRef) Upsert() error {
 				ProjectRefAdminsKey:             projectRef.Admins,
 				projectRefTracksPushEventsKey:   projectRef.TracksPushEvents,
 				projectRefPRTestingEnabledKey:   projectRef.PRTestingEnabled,
+				projectRefCommitQEnabledKey:     projectRef.CommitQEnabled,
+				projectRefCommitQConfigFileKey:  projectRef.CommitQConfigFile,
+				projectRefCommitQMergeMethodKey: projectRef.CommitQMergeMethod,
 				projectRefPatchingDisabledKey:   projectRef.PatchingDisabled,
 				projectRefNotifyOnFailureKey:    projectRef.NotifyOnBuildFailure,
 				projectRefTriggersKey:           projectRef.Triggers,

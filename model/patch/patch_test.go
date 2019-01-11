@@ -97,6 +97,11 @@ func (s *patchSuite) SetupTest() {
 		},
 		{
 			CreateTime: s.time,
+			GithubPatchData: GithubPatch{
+				PRNumber:       9002,
+				Author:         "octodog",
+				MergeCommitSHA: "abcdef",
+			},
 		},
 	}
 
@@ -105,9 +110,14 @@ func (s *patchSuite) SetupTest() {
 	}
 
 	s.True(s.patches[0].IsGithubPRPatch())
+	s.False(s.patches[0].IsPRMergePatch())
 	s.True(s.patches[1].IsGithubPRPatch())
+	s.False(s.patches[1].IsPRMergePatch())
 	s.True(s.patches[2].IsGithubPRPatch())
+	s.False(s.patches[2].IsPRMergePatch())
 	s.True(s.patches[3].IsGithubPRPatch())
+	s.False(s.patches[3].IsPRMergePatch())
+	s.True(s.patches[4].IsPRMergePatch())
 	s.False(s.patches[4].IsGithubPRPatch())
 }
 

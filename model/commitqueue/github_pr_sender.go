@@ -74,6 +74,11 @@ func (s *githubPRLogger) Send(m message.Composer) {
 		return
 	}
 
+	s.sendPatchResult(msg)
+	if !msg.PatchSucceeded {
+		return
+	}
+
 	mergeOpts := &github.PullRequestOptions{
 		MergeMethod: msg.MergeMethod,
 		CommitTitle: msg.CommitTitle,
@@ -108,19 +113,45 @@ func (s *githubPRLogger) sendMergeResult(PRResult *github.PullRequestMergeResult
 	var description string
 	if PRResult.GetMerged() {
 		state = message.GithubStateSuccess
-		description = "Commit queue merge succeeded"
+		description = "merge succeeded"
 	} else {
 		state = message.GithubStateFailure
-		description = fmt.Sprintf("Commit queue merge failed: %s", PRResult.GetMessage())
+		description = fmt.Sprintf("merge failed: %s", PRResult.GetMessage())
 	}
 
 	status := message.GithubStatus{
 		Owner:       msg.Owner,
 		Repo:        msg.Repo,
 		Ref:         msg.Ref,
-		Context:     "evergreen",
+		Context:     "evergreen/commitqueue",
 		State:       state,
 		Description: description,
+	}
+	c := message.NewGithubStatusMessageWithRepo(level.Notice, status)
+
+	s.statusSender.Send(c)
+	return nil
+}
+
+func (s *githubPRLogger) sendPatchResult(msg *GithubMergePR) error {
+	var state message.GithubState
+	var description string
+	if msg.PatchSucceeded {
+		state = message.GithubStateSuccess
+		description = "merge test succeeded"
+	} else {
+		state = message.GithubStateFailure
+		description = "merge test failed"
+	}
+
+	status := message.GithubStatus{
+		Owner:       msg.Owner,
+		Repo:        msg.Repo,
+		Ref:         msg.Ref,
+		Context:     "evergreen/commitqueue",
+		State:       state,
+		Description: description,
+		URL:         msg.URL,
 	}
 	c := message.NewGithubStatusMessageWithRepo(level.Notice, status)
 

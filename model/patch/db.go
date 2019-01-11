@@ -5,7 +5,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/mongodb/anser/bsonutil"
-	"gopkg.in/mgo.v2"
+	mgo "gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
 )
 
@@ -184,4 +184,12 @@ func ByGithubPRAndCreatedBefore(t time.Time, owner, repo string, prNumber int) d
 		bsonutil.GetDottedKeyName(githubPatchDataKey, githubPatchBaseRepoKey):  repo,
 		bsonutil.GetDottedKeyName(githubPatchDataKey, githubPatchPRNumberKey):  prNumber,
 	})
+}
+
+func FindOneByGithubPRNum(prNumber int) (*Patch, error) {
+	q := db.Query(bson.M{
+		bsonutil.GetDottedKeyName(githubPatchDataKey, githubPatchPRNumberKey): prNumber,
+	})
+
+	return FindOne(q)
 }

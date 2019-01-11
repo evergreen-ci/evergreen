@@ -209,6 +209,9 @@ func (uis *UIServer) schedulePatch(w http.ResponseWriter, r *http.Request) {
 		if projCtx.Patch.IsGithubPRPatch() {
 			requester = evergreen.GithubPRRequester
 		}
+		if projCtx.Patch.IsPRMergePatch() {
+			requester = evergreen.MergeTestRequester
+		}
 
 		ctx, cancel := context.WithCancel(r.Context())
 		defer cancel()

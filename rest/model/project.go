@@ -22,6 +22,8 @@ type APIProject struct {
 	TracksPushEvents   bool        `json:"tracks_push_events"`
 	PRTestingEnabled   bool        `json:"pr_testing_enabled"`
 	CommitQEnabled     bool        `json:"commitq_enabled"`
+	CommitQFile        APIString   `json:"commitq_file"`
+	CommitQMergeMethod APIString   `json:"commitq_merge_method"`
 }
 
 func (apiProject *APIProject) BuildFromService(p interface{}) error {
@@ -48,6 +50,8 @@ func (apiProject *APIProject) BuildFromService(p interface{}) error {
 	apiProject.TracksPushEvents = v.TracksPushEvents
 	apiProject.PRTestingEnabled = v.PRTestingEnabled
 	apiProject.CommitQEnabled = v.CommitQEnabled
+	apiProject.CommitQFile = ToAPIString(v.CommitQConfigFile)
+	apiProject.CommitQMergeMethod = ToAPIString(v.CommitQMergeMethod)
 	apiProject.DeactivatePrevious = v.DeactivatePrevious
 
 	admins := []APIString{}
@@ -90,6 +94,8 @@ type APIProjectRef struct {
 	TracksPushEvents     bool        `json:"tracks_push_events"`
 	PRTestingEnabled     bool        `json:"pr_testing_enabled"`
 	CommitQEnabled       bool        `json:"commitq_enabled"`
+	CommitQFile          APIString   `json:"commitq_file"`
+	CommitQMergeMethod   APIString   `json:"commitq_merge_method"`
 	Tracked              bool        `json:"tracked"`
 	PatchingDisabled     bool        `json:"patching_disabled"`
 	Admins               []APIString `json:"admins"`
@@ -115,6 +121,8 @@ func (p *APIProjectRef) ToService() (model.ProjectRef, error) {
 		TracksPushEvents:     p.TracksPushEvents,
 		PRTestingEnabled:     p.PRTestingEnabled,
 		CommitQEnabled:       p.CommitQEnabled,
+		CommitQConfigFile:    FromAPIString(p.CommitQFile),
+		CommitQMergeMethod:   FromAPIString(p.CommitQMergeMethod),
 		Tracked:              p.Tracked,
 		PatchingDisabled:     p.PatchingDisabled,
 		NotifyOnBuildFailure: p.NotifyOnBuildFailure,
@@ -173,6 +181,8 @@ func (p *APIProjectRef) BuildFromService(v interface{}) error {
 	p.TracksPushEvents = projectRef.TracksPushEvents
 	p.PRTestingEnabled = projectRef.PRTestingEnabled
 	p.CommitQEnabled = projectRef.CommitQEnabled
+	p.CommitQFile = ToAPIString(projectRef.CommitQConfigFile)
+	p.CommitQMergeMethod = ToAPIString(projectRef.CommitQMergeMethod)
 	p.Tracked = projectRef.Tracked
 	p.PatchingDisabled = projectRef.PatchingDisabled
 	p.NotifyOnBuildFailure = projectRef.NotifyOnBuildFailure

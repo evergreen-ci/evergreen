@@ -6,7 +6,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
-	"gopkg.in/mgo.v2"
+	mgo "gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
 )
 
@@ -50,15 +50,16 @@ type Patch struct {
 
 // GithubPatch stores patch data for patches create from GitHub pull requests
 type GithubPatch struct {
-	PRNumber   int    `bson:"pr_number"`
-	BaseOwner  string `bson:"base_owner"`
-	BaseRepo   string `bson:"base_repo"`
-	BaseBranch string `bson:"base_branch"`
-	HeadOwner  string `bson:"head_owner"`
-	HeadRepo   string `bson:"head_repo"`
-	HeadHash   string `bson:"head_hash"`
-	Author     string `bson:"author"`
-	AuthorUID  int    `bson:"author_uid"`
+	PRNumber       int    `bson:"pr_number"`
+	BaseOwner      string `bson:"base_owner"`
+	BaseRepo       string `bson:"base_repo"`
+	BaseBranch     string `bson:"base_branch"`
+	HeadOwner      string `bson:"head_owner"`
+	HeadRepo       string `bson:"head_repo"`
+	HeadHash       string `bson:"head_hash"`
+	Author         string `bson:"author"`
+	AuthorUID      int    `bson:"author_uid"`
+	MergeCommitSHA string `bson:"merge_commit_sha"`
 }
 
 // ModulePatch stores request details for a patch
@@ -326,5 +327,9 @@ func (p *Patch) RemoveModulePatch(moduleName string) error {
 }
 
 func (p *Patch) IsGithubPRPatch() bool {
-	return p.GithubPatchData.PRNumber != 0
+	return p.GithubPatchData.BaseOwner != ""
+}
+
+func (p Patch) IsPRMergePatch() bool {
+	return p.GithubPatchData.MergeCommitSHA != ""
 }
