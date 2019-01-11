@@ -36,11 +36,10 @@ const (
 
 // descriptionTemplate is filled to create a JIRA alert ticket. Panics at start if invalid.
 var descriptionTemplate = template.Must(template.New("Desc").Funcs(template.FuncMap{
-	"taskurl": getTaskURL,
-        "formatAsTimestamp": formatAsTimestamp,
-	"host":    getHostMetadata,
+	"taskurl":           getTaskURL,
+	"formatAsTimestamp": formatAsTimestamp,
+	"host":              getHostMetadata,
 }).Parse(descriptionTemplateString))
-
 
 func formatAsTimestamp(t time.Time) string {
 	return t.Format(time.RFC822)
@@ -95,6 +94,7 @@ type jiraTemplateData struct {
 	FailedTestNames    []string
 	Tests              []jiraTestFailure
 	SpecificTaskStatus string
+	TaskDisplayName    string
 }
 
 func makeSpecificTaskStatus(t *task.Task) string {

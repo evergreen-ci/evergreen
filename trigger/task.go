@@ -748,19 +748,25 @@ func JIRATaskPayload(subID, project, uiUrl, eventID string, t *task.Task) (*mess
 		return nil, errors.New("could not find project ref while building jira task payload")
 	}
 
+	data := jiraTemplateData{
+		UIRoot:          uiUrl,
+		SubscriptionID:  subID,
+		EventID:         eventID,
+		Task:            t,
+		Version:         versionDoc,
+		Project:         projectRef,
+		Build:           buildDoc,
+		Host:            hostDoc,
+		TaskDisplayName: t.DisplayName,
+	}
+	if t.IsPartOfDisplay() {
+		data.TaskDisplayName = t.DisplayTask.DisplayName
+	}
+
 	builder := jiraBuilder{
 		project:  strings.ToUpper(project),
 		mappings: &evergreen.JIRANotificationsConfig{},
-		data: jiraTemplateData{
-			UIRoot:         uiUrl,
-			SubscriptionID: subID,
-			EventID:        eventID,
-			Task:           t,
-			Version:        versionDoc,
-			Project:        projectRef,
-			Build:          buildDoc,
-			Host:           hostDoc,
-		},
+		data:     data,
 	}
 
 	if err = builder.mappings.Get(); err != nil {
