@@ -179,13 +179,6 @@ $(buildDir)/go-test-config:cmd/go-test-config/make-config.go
 	GOPATH=$(shell dirname $(shell pwd)) $(gobin) build -o $@ $<
 #end generated config
 
-# parse a host.create file and set expansions
-parse-host-file:$(buildDir)/parse-host-file
-	./$(buildDir)/parse-host-file --file $(HOST_FILE)
-$(buildDir)/parse-host-file:cmd/parse-host-file/parse-host-file.go
-	$(gobin) build -o $@ $<
-# end host.create file parsing
-
 # npm setup
 $(buildDir)/.npmSetup:
 	@mkdir -p $(buildDir)
