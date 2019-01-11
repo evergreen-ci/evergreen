@@ -1,8 +1,8 @@
-package: github.com/evergreen-ci/sink
+package: github.com/evergreen-ci/pail
 import:
 - package: github.com/pkg/errors
 - package: github.com/mongodb/grip
 - package: github.com/aws/aws-sdk-go
 - package: gopkg.in/mgo.v2
 - package: github.com/stretchr/testify
-
+- package: github.com/mitchellh/go-homedir

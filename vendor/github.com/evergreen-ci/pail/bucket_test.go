@@ -17,6 +17,7 @@ import (
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/s3"
+	homedir "github.com/mitchellh/go-homedir"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -269,9 +270,10 @@ func TestBucket(t *testing.T) {
 			name: "S3Bucket",
 			constructor: func(t *testing.T) Bucket {
 				s3Options := S3Options{
-					Region: s3Region,
-					Name:   s3BucketName,
-					Prefix: s3Prefix + newUUID(),
+					Region:     s3Region,
+					Name:       s3BucketName,
+					Prefix:     s3Prefix + newUUID(),
+					MaxRetries: 20,
 				}
 				b, err := NewS3Bucket(s3Options)
 				require.NoError(t, err)
@@ -289,17 +291,107 @@ func TestBucket(t *testing.T) {
 				{
 					id: "TestCredentialsOverrideDefaults",
 					test: func(t *testing.T, b Bucket) {
-						assert.NoError(t, b.Check(ctx))
+						input := &s3.GetBucketLocationInput{
+							Bucket: aws.String(s3BucketName),
+						}
+
+						rawBucket := b.(*s3BucketSmall)
+						_, err := rawBucket.svc.GetBucketLocationWithContext(ctx, input)
+						assert.NoError(t, err)
+
 						badOptions := S3Options{
 							Credentials: CreateAWSCredentials("asdf", "asdf", "asdf"),
 							Region:      s3Region,
 							Name:        s3BucketName,
 						}
 						badBucket, err := NewS3Bucket(badOptions)
-						assert.Nil(t, err)
-						assert.Error(t, badBucket.Check(ctx))
+						require.NoError(t, err)
+						rawBucket = badBucket.(*s3BucketSmall)
+						_, err = rawBucket.svc.GetBucketLocationWithContext(ctx, input)
+						assert.Error(t, err)
 					},
 				},
+				{
+					id: "TestCheckPassesWhenDoNotHaveAccess",
+					test: func(t *testing.T, b Bucket) {
+						rawBucket := b.(*s3BucketSmall)
+						rawBucket.name = "mciuploads"
+						assert.NoError(t, rawBucket.Check(ctx))
+					},
+				},
+				{
+					id: "TestCheckFailsWhenBucketDNE",
+					test: func(t *testing.T, b Bucket) {
+						rawBucket := b.(*s3BucketSmall)
+						rawBucket.name = newUUID()
+						assert.Error(t, rawBucket.Check(ctx))
+					},
+				},
+				{
+					id: "TestSharedCredentialsOption",
+					test: func(t *testing.T, b Bucket) {
+						require.NoError(t, b.Check(ctx))
+
+						newFile, err := os.Create(filepath.Join(tempdir, "creds"))
+						require.NoError(t, err)
+						defer newFile.Close()
+						_, err = newFile.WriteString("[my_profile]\n")
+						require.NoError(t, err)
+						awsKey := fmt.Sprintf("aws_access_key_id = %s\n", os.Getenv("AWS_KEY"))
+						_, err = newFile.WriteString(awsKey)
+						require.NoError(t, err)
+						awsSecret := fmt.Sprintf("aws_secret_access_key = %s\n", os.Getenv("AWS_SECRET"))
+						_, err = newFile.WriteString(awsSecret)
+						require.NoError(t, err)
+
+						sharedCredsOptions := S3Options{
+							SharedCredentialsFilepath: filepath.Join(tempdir, "creds"),
+							SharedCredentialsProfile:  "my_profile",
+							Region:                    s3Region,
+							Name:                      s3BucketName,
+						}
+						sharedCredsBucket, err := NewS3Bucket(sharedCredsOptions)
+						require.NoError(t, err)
+						assert.NoError(t, sharedCredsBucket.Check(ctx))
+					},
+				},
+				{
+					id: "TestSharedCredentialsUsesCorrectDefaultFile",
+					test: func(t *testing.T, b Bucket) {
+						require.NoError(t, b.Check(ctx))
+
+						sharedCredsOptions := S3Options{
+							SharedCredentialsProfile: "default",
+							Region:                   s3Region,
+							Name:                     s3BucketName,
+						}
+						sharedCredsBucket, err := NewS3Bucket(sharedCredsOptions)
+						homeDir, err := homedir.Dir()
+						require.NoError(t, err)
+						fileName := filepath.Join(homeDir, ".aws", "credentials")
+						_, err = os.Stat(fileName)
+						if err == nil {
+							assert.NoError(t, sharedCredsBucket.Check(ctx))
+						} else {
+							assert.True(t, os.IsNotExist(err))
+						}
+					},
+				},
+				{
+					id: "TestSharedCredentialsFailsWhenProfileDNE",
+					test: func(t *testing.T, b Bucket) {
+						require.NoError(t, b.Check(ctx))
+
+						sharedCredsOptions := S3Options{
+							SharedCredentialsProfile: "DNE",
+							Region:                   s3Region,
+							Name:                     s3BucketName,
+						}
+						_, err := NewS3Bucket(sharedCredsOptions)
+						assert.Error(t, err)
+					},
+				},
+
 				{
 					id: "TestPermissions",
 					test: func(t *testing.T, b Bucket) {
@@ -372,6 +464,7 @@ func TestBucket(t *testing.T) {
 							ContentType: "html/text",
 						}
 						htmlBucket, err := NewS3Bucket(htmlOptions)
+						require.NoError(t, err)
 						key = newUUID()
 						writer, err = htmlBucket.Writer(ctx, key)
 						require.NoError(t, err)
@@ -386,7 +479,6 @@ func TestBucket(t *testing.T) {
 						getObjectOutput, err = rawBucket.svc.GetObject(getObjectInput)
 						require.NoError(t, err)
 						require.NotNil(t, getObjectOutput.ContentType)
-						fmt.Println(*getObjectOutput.ContentType)
 						assert.Equal(t, "html/text", *getObjectOutput.ContentType)
 					},
 				},
@@ -396,9 +488,10 @@ func TestBucket(t *testing.T) {
 			name: "S3MultiPartBucket",
 			constructor: func(t *testing.T) Bucket {
 				s3Options := S3Options{
-					Region: s3Region,
-					Name:   s3BucketName,
-					Prefix: s3Prefix + newUUID(),
+					Region:     s3Region,
+					Name:       s3BucketName,
+					Prefix:     s3Prefix + newUUID(),
+					MaxRetries: 20,
 				}
 				b, err := NewS3MultiPartBucket(s3Options)
 				require.NoError(t, err)
@@ -485,6 +578,7 @@ func TestBucket(t *testing.T) {
 							ContentType: "html/text",
 						}
 						htmlBucket, err := NewS3MultiPartBucket(htmlOptions)
+						require.NoError(t, err)
 						key = newUUID()
 						writer, err = htmlBucket.Writer(ctx, key)
 						require.NoError(t, err)
@@ -591,6 +685,162 @@ func TestBucket(t *testing.T) {
 				assert.False(t, iter.Next(ctx))
 				assert.Nil(t, iter.Item())
 				assert.NoError(t, iter.Err())
+			})
+			t.Run("RemoveManyFiles", func(t *testing.T) {
+				data := map[string]string{}
+				keys := []string{}
+				deleteData := map[string]string{}
+				deleteKeys := []string{}
+				for i := 0; i < 20; i++ {
+					key := newUUID()
+					data[key] = strings.Join([]string{newUUID(), newUUID(), newUUID()}, "\n")
+					keys = append(keys, key)
+				}
+				for i := 0; i < 20; i++ {
+					key := newUUID()
+					deleteData[key] = strings.Join([]string{newUUID(), newUUID(), newUUID()}, "\n")
+					deleteKeys = append(deleteKeys, key)
+				}
+
+				bucket := impl.constructor(t)
+				for k, v := range data {
+					require.NoError(t, writeDataToFile(ctx, bucket, k, v))
+				}
+				for k, v := range deleteData {
+					require.NoError(t, writeDataToFile(ctx, bucket, k, v))
+				}
+
+				// smaller s3 batch sizes for testing
+				switch i := bucket.(type) {
+				case *s3BucketSmall:
+					i.batchSize = 20
+				case *s3BucketLarge:
+					i.batchSize = 20
+				}
+
+				// check keys are in bucket
+				iter, err := bucket.List(ctx, "")
+				require.NoError(t, err)
+				for iter.Next(ctx) {
+					assert.NoError(t, iter.Err())
+					require.NotNil(t, iter.Item())
+					_, ok1 := data[iter.Item().Name()]
+					_, ok2 := deleteData[iter.Item().Name()]
+					assert.True(t, ok1 || ok2)
+				}
+
+				assert.NoError(t, bucket.RemoveMany(ctx, deleteKeys...))
+				iter, err = bucket.List(ctx, "")
+				require.NoError(t, err)
+				for iter.Next(ctx) {
+					assert.NoError(t, iter.Err())
+					require.NotNil(t, iter.Item())
+					_, ok := data[iter.Item().Name()]
+					assert.True(t, ok)
+					_, ok = deleteData[iter.Item().Name()]
+					assert.False(t, ok)
+				}
+
+			})
+			t.Run("RemovePrefix", func(t *testing.T) {
+				data := map[string]string{}
+				keys := []string{}
+				deleteData := map[string]string{}
+				deleteKeys := []string{}
+				prefix := newUUID()
+				for i := 0; i < 5; i++ {
+					key := newUUID()
+					data[key] = strings.Join([]string{newUUID(), newUUID(), newUUID()}, "\n")
+					keys = append(keys, key)
+				}
+				for i := 0; i < 5; i++ {
+					key := prefix + newUUID()
+					deleteData[key] = strings.Join([]string{newUUID(), newUUID(), newUUID()}, "\n")
+					deleteKeys = append(deleteKeys, key)
+				}
+
+				bucket := impl.constructor(t)
+				for k, v := range data {
+					require.NoError(t, writeDataToFile(ctx, bucket, k, v))
+				}
+				for k, v := range deleteData {
+					require.NoError(t, writeDataToFile(ctx, bucket, k, v))
+				}
+
+				// check keys are in bucket
+				iter, err := bucket.List(ctx, "")
+				require.NoError(t, err)
+				for iter.Next(ctx) {
+					assert.NoError(t, iter.Err())
+					require.NotNil(t, iter.Item())
+					_, ok1 := data[iter.Item().Name()]
+					_, ok2 := deleteData[iter.Item().Name()]
+					assert.True(t, ok1 || ok2)
+				}
+
+				assert.NoError(t, bucket.RemoveMany(ctx, deleteKeys...))
+				iter, err = bucket.List(ctx, "")
+				require.NoError(t, err)
+				for iter.Next(ctx) {
+					assert.NoError(t, iter.Err())
+					require.NotNil(t, iter.Item())
+					_, ok := data[iter.Item().Name()]
+					assert.True(t, ok)
+					_, ok = deleteData[iter.Item().Name()]
+					assert.False(t, ok)
+				}
+			})
+			t.Run("RemoveMatching", func(t *testing.T) {
+				data := map[string]string{}
+				keys := []string{}
+				deleteData := map[string]string{}
+				deleteKeys := []string{}
+				postfix := newUUID()
+				for i := 0; i < 5; i++ {
+					key := newUUID()
+					data[key] = strings.Join([]string{newUUID(), newUUID(), newUUID()}, "\n")
+					keys = append(keys, key)
+				}
+				for i := 0; i < 5; i++ {
+					key := newUUID() + postfix
+					deleteData[key] = strings.Join([]string{newUUID(), newUUID(), newUUID()}, "\n")
+					deleteKeys = append(deleteKeys, key)
+				}
+
+				bucket := impl.constructor(t)
+				for k, v := range data {
+					require.NoError(t, writeDataToFile(ctx, bucket, k, v))
+				}
+				for k, v := range deleteData {
+					require.NoError(t, writeDataToFile(ctx, bucket, k, v))
+				}
+
+				// check keys are in bucket
+				iter, err := bucket.List(ctx, "")
+				require.NoError(t, err)
+				for iter.Next(ctx) {
+					assert.NoError(t, iter.Err())
+					require.NotNil(t, iter.Item())
+					_, ok1 := data[iter.Item().Name()]
+					_, ok2 := deleteData[iter.Item().Name()]
+					assert.True(t, ok1 || ok2)
+				}
+
+				assert.NoError(t, bucket.RemoveMatching(ctx, ".*"+postfix))
+				iter, err = bucket.List(ctx, "")
+				require.NoError(t, err)
+				for iter.Next(ctx) {
+					assert.NoError(t, iter.Err())
+					require.NotNil(t, iter.Item())
+					_, ok := data[iter.Item().Name()]
+					assert.True(t, ok)
+					_, ok = deleteData[iter.Item().Name()]
+					assert.False(t, ok)
+				}
+			})
+			t.Run("RemoveMatchingInvalidExpression", func(t *testing.T) {
+				bucket := impl.constructor(t)
+				assert.Error(t, bucket.RemoveMatching(ctx, "["))
 			})
 			t.Run("ReadWriteRoundTripSimple", func(t *testing.T) {
 				bucket := impl.constructor(t)

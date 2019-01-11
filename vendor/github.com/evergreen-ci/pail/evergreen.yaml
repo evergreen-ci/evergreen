@@ -44,7 +44,6 @@ variables:
       - func: run-make
         vars: { target: "${task_name}" }
 
-
 #######################################
 #              Functions              #
 #######################################
@@ -71,6 +70,8 @@ functions:
         DISABLE_COVERAGE: ${disable_coverage}
         GOROOT: ${goroot}
         GOPATH: ${workdir}/gopath
+        AWS_KEY: ${aws_key}
+        AWS_SECRET: ${aws_secret}
   set-up-mongodb:
     - command: subprocess.exec
       type: setup

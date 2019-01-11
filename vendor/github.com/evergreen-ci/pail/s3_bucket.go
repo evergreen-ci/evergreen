@@ -13,6 +13,8 @@ import (
 	"github.com/aws/aws-sdk-go/aws/credentials"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/s3"
+	homedir "github.com/mitchellh/go-homedir"
+	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 )
 
@@ -33,17 +35,21 @@ type s3Bucket struct {
 	permission  string
 	contentType string
 	dryRun      bool
+	batchSize   int
 }
 
 // S3Options support the use and creation of S3 backed buckets.
 type S3Options struct {
-	Credentials *credentials.Credentials
-	Region      string
-	Name        string
-	Prefix      string
-	Permission  string
-	ContentType string
-	DryRun      bool
+	Credentials               *credentials.Credentials
+	SharedCredentialsFilepath string
+	SharedCredentialsProfile  string
+	Region                    string
+	Name                      string
+	Prefix                    string
+	Permission                string
+	ContentType               string
+	DryRun                    bool
+	MaxRetries                int
 }
 
 // Wrapper for creating AWS credentials.
@@ -73,8 +79,29 @@ func (s *s3Bucket) denormalizeKey(key string) string {
 }
 
 func newS3BucketBase(client *http.Client, options S3Options) (*s3Bucket, error) {
-	config := &aws.Config{Region: aws.String(options.Region), HTTPClient: client}
-	if options.Credentials != nil {
+	config := &aws.Config{
+		Region:     aws.String(options.Region),
+		HTTPClient: client,
+		MaxRetries: aws.Int(options.MaxRetries),
+	}
+	// if options.SharedCredentialsProfile is set, will override any credentials passed in
+	if options.SharedCredentialsProfile != "" {
+		fp := options.SharedCredentialsFilepath
+		if fp == "" {
+			// if options.SharedCredentialsFilepath is not set, use default filepath
+			homeDir, err := homedir.Dir()
+			if err != nil {
+				return nil, errors.Wrap(err, "failed to detect home directory when getting default credentials file")
+			}
+			fp = filepath.Join(homeDir, ".aws", "credentials")
+		}
+		sharedCredentials := credentials.NewSharedCredentials(fp, options.SharedCredentialsProfile)
+		_, err := sharedCredentials.Get()
+		if err != nil {
+			return nil, errors.Wrapf(err, "invalid credentials from profile '%s'", options.SharedCredentialsProfile)
+		}
+		config.Credentials = sharedCredentials
+	} else if options.Credentials != nil {
 		_, err := options.Credentials.Get()
 		if err != nil {
 			return nil, errors.Wrap(err, "invalid credentials!")
@@ -94,6 +121,7 @@ func newS3BucketBase(client *http.Client, options S3Options) (*s3Bucket, error) 
 		permission:  options.Permission,
 		contentType: options.ContentType,
 		dryRun:      options.DryRun,
+		batchSize:   1000,
 	}, nil
 }
 
@@ -147,16 +175,21 @@ func NewS3MultiPartBucketWithHTTPClient(client *http.Client, options S3Options) 
 func (s *s3Bucket) String() string { return s.name }
 
 func (s *s3Bucket) Check(ctx context.Context) error {
-	input := &s3.GetBucketLocationInput{
+	input := &s3.HeadBucketInput{
 		Bucket: aws.String(s.name),
 	}
 
-	result, err := s.svc.GetBucketLocationWithContext(ctx, input, s3.WithNormalizeBucketLocation)
+	_, err := s.svc.HeadBucketWithContext(ctx, input)
+	// aside from a 404 Not Found error, HEAD bucket returns a 403
+	// Forbidden error. If the latter is the case, that is OK because
+	// we know the bucket exists and the given credentials may have
+	// access to a sub-bucket. See
+	// https://docs.aws.amazon.com/AmazonS3/latest/API/RESTBucketHEAD.html
+	// for more information.
 	if err != nil {
-		return errors.Wrap(err, "problem getting bucket location")
-	}
-	if *result.LocationConstraint != *s.svc.Client.Config.Region {
-		return errors.New("bucket does not exist in given region.")
+		if aerr, ok := err.(awserr.Error); ok && aerr.Code() == "NotFound" {
+			return errors.Wrap(err, "problem finding bucket")
+		}
 	}
 	return nil
 }
@@ -554,6 +587,59 @@ func (s *s3Bucket) Remove(ctx context.Context, key string) error {
 		}
 	}
 	return nil
+}
+
+func (s *s3Bucket) deleteObjectsWrapper(ctx context.Context, toDelete *s3.Delete) error {
+	if len(toDelete.Objects) > 0 {
+		input := &s3.DeleteObjectsInput{
+			Bucket: aws.String(s.name),
+			Delete: toDelete,
+		}
+		_, err := s.svc.DeleteObjectsWithContext(ctx, input)
+		if err != nil {
+			return errors.Wrap(err, "problem removing data")
+		}
+	}
+	return nil
+}
+
+func (s *s3Bucket) RemoveMany(ctx context.Context, keys ...string) error {
+	catcher := grip.NewBasicCatcher()
+	if !s.dryRun {
+		count := 0
+		toDelete := &s3.Delete{}
+		for _, key := range keys {
+			// key limit for s3.DeleteObjectsWithContext, call function and reset
+			if count == s.batchSize {
+				catcher.Add(s.deleteObjectsWrapper(ctx, toDelete))
+				count = 0
+				toDelete = &s3.Delete{}
+			}
+			toDelete.Objects = append(
+				toDelete.Objects,
+				&s3.ObjectIdentifier{Key: aws.String(s.normalizeKey(key))},
+			)
+			count++
+		}
+		catcher.Add(s.deleteObjectsWrapper(ctx, toDelete))
+	}
+	return catcher.Resolve()
+}
+
+func (s *s3BucketSmall) RemovePrefix(ctx context.Context, prefix string) error {
+	return removePrefix(ctx, prefix, s)
+}
+
+func (s *s3BucketLarge) RemovePrefix(ctx context.Context, prefix string) error {
+	return removePrefix(ctx, prefix, s)
+}
+
+func (s *s3BucketSmall) RemoveMatching(ctx context.Context, expression string) error {
+	return removeMatching(ctx, expression, s)
+}
+
+func (s *s3BucketLarge) RemoveMatching(ctx context.Context, expression string) error {
+	return removeMatching(ctx, expression, s)
 }
 
 func (s *s3Bucket) listHelper(b Bucket, ctx context.Context, prefix string) (BucketIterator, error) {

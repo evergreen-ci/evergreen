@@ -9,6 +9,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"regexp"
 
 	"github.com/pkg/errors"
 )
@@ -70,4 +71,37 @@ func walkLocalTree(ctx context.Context, prefix string) ([]string, error) {
 	}
 
 	return out, nil
+}
+
+func removePrefix(ctx context.Context, prefix string, b Bucket) error {
+	iter, err := b.List(ctx, prefix)
+	if err != nil {
+		return errors.Wrapf(err, "failed to delete any objects with prefix '%s' for deletion", prefix)
+	}
+
+	keys := []string{}
+	for iter.Next(ctx) {
+		keys = append(keys, iter.Item().Name())
+	}
+	return errors.Wrapf(b.RemoveMany(ctx, keys...), "failed to delete some objects with prefix '%s'", prefix)
+}
+
+func removeMatching(ctx context.Context, expression string, b Bucket) error {
+	regex, err := regexp.Compile(expression)
+	if err != nil {
+		return errors.Wrapf(err, "invalid regular expression '%s'", expression)
+	}
+	iter, err := b.List(ctx, "")
+	if err != nil {
+		return errors.Wrapf(err, "failed to delete any objects matching '%s'", expression)
+	}
+
+	keys := []string{}
+	for iter.Next(ctx) {
+		key := iter.Item().Name()
+		if regex.MatchString(key) {
+			keys = append(keys, key)
+		}
+	}
+	return errors.Wrapf(b.RemoveMany(ctx, keys...), "failed to delete some objects matching '%s'", expression)
 }
