@@ -16,7 +16,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/task"
 	restmodel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/util"
-	"github.com/mongodb/grip/message"
 )
 
 // Communicator is an interface for communicating with the API server.
@@ -78,8 +77,6 @@ type Communicator interface {
 
 	// Sends a group of log messages to the API Server
 	SendLogMessages(context.Context, TaskData, []apimodels.LogMessage) error
-	SendProcessInfo(context.Context, TaskData, []*message.ProcessInfo) error
-	SendSystemInfo(context.Context, TaskData, *message.SystemInfo) error
 
 	// The following operations use the legacy API server and are
 	// used by task commands.

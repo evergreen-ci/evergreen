@@ -594,39 +594,6 @@ func (c *communicatorImpl) GetJSONHistory(ctx context.Context, taskData TaskData
 	return out, nil
 }
 
-func (c *communicatorImpl) SendProcessInfo(ctx context.Context, td TaskData, procs []*message.ProcessInfo) error {
-	if len(procs) == 0 {
-		return nil
-	}
-
-	info := requestInfo{
-		method:   post,
-		taskData: &td,
-		version:  apiVersion1,
-	}
-
-	info.setTaskPathSuffix("process_info")
-	_, err := c.retryRequest(ctx, info, procs)
-
-	return errors.Wrap(err, "problem sending process info results")
-}
-
-func (c *communicatorImpl) SendSystemInfo(ctx context.Context, td TaskData, sysinfo *message.SystemInfo) error {
-	if sysinfo == nil {
-		return nil
-	}
-
-	info := requestInfo{
-		method:   post,
-		version:  apiVersion1,
-		taskData: &td,
-	}
-	info.setTaskPathSuffix("system_info")
-	_, err := c.retryRequest(ctx, info, sysinfo)
-
-	return errors.Wrap(err, "problem sending sysinfo results")
-}
-
 // GenerateTasks posts new tasks for the `generate.tasks` command.
 func (c *communicatorImpl) GenerateTasks(ctx context.Context, td TaskData, jsonBytes []json.RawMessage) error {
 	info := requestInfo{

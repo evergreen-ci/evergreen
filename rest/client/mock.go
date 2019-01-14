@@ -22,7 +22,6 @@ import (
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/grip"
-	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 )
 
@@ -64,10 +63,6 @@ type Mock struct {
 	TestLogs         []*serviceModel.TestLog
 	TestLogCount     int
 
-	// metrics collection
-	ProcInfo map[string][]*message.ProcessInfo
-	SysInfo  map[string]*message.SystemInfo
-
 	// data collected by mocked methods
 	logMessages     map[string][]apimodels.LogMessage
 	PatchFiles      map[string]string
@@ -91,8 +86,6 @@ func NewMock(serverURL string) *Mock {
 		logMessages:   make(map[string][]apimodels.LogMessage),
 		PatchFiles:    make(map[string]string),
 		keyVal:        make(map[string]*serviceModel.KeyVal),
-		ProcInfo:      make(map[string][]*message.ProcessInfo),
-		SysInfo:       make(map[string]*message.SystemInfo),
 		AttachedFiles: make(map[string][]*artifact.File),
 		serverURL:     serverURL,
 	}
@@ -434,34 +427,6 @@ func (c *Mock) GetJSONData(ctx context.Context, td TaskData, tn, dn, vn string) 
 
 func (c *Mock) GetJSONHistory(ctx context.Context, td TaskData, tags bool, tn, dn string) ([]byte, error) {
 	return nil, nil
-}
-
-func (c *Mock) SendProcessInfo(ctx context.Context, td TaskData, procs []*message.ProcessInfo) error {
-	c.mu.Lock()
-	c.ProcInfo[td.ID] = procs
-	c.mu.Unlock()
-	return nil
-}
-
-func (c *Mock) GetProcessInfoLength(id string) int {
-	c.mu.RLock()
-	length := len(c.ProcInfo[id])
-	c.mu.RUnlock()
-	return length
-}
-
-func (c *Mock) SendSystemInfo(ctx context.Context, td TaskData, sysinfo *message.SystemInfo) error {
-	c.mu.Lock()
-	c.SysInfo[td.ID] = sysinfo
-	c.mu.Unlock()
-	return nil
-}
-
-func (c *Mock) GetSystemInfoLength() int {
-	c.mu.RLock()
-	length := len(c.SysInfo)
-	c.mu.RUnlock()
-	return length
 }
 
 func (c *Mock) GetDistrosList(ctx context.Context) ([]model.APIDistro, error) {
