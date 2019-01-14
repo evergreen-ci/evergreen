@@ -6,11 +6,10 @@ import (
 	"sync"
 	"time"
 
-	"github.com/mongodb/grip/level"
-
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/level"
 	"github.com/mongodb/grip/logging"
 	"github.com/mongodb/grip/send"
 	"github.com/pkg/errors"
