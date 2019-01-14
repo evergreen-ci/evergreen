@@ -50,6 +50,7 @@ func (s *commitQueueSuite) SetupSuite() {
 	s.Require().NoError(s.projectRef.Insert())
 
 	s.env = &mock.Environment{}
+	s.ctx = context.Background()
 	s.NoError(s.env.Configure(s.ctx, filepath.Join(evergreen.FindEvergreenHome(), testutil.TestDir, testutil.TestSettings), nil))
 }
 

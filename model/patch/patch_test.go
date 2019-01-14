@@ -162,5 +162,5 @@ func (s *patchSuite) TestMakeMergePatch() {
 	s.NoError(err)
 	s.Equal("mci", p.Project)
 	s.Equal(evergreen.PatchCreated, p.Status)
-	s.Equal(pr.MergeCommitSHA, p.GithubPatchData.MergeCommitSHA)
+	s.Equal(*pr.MergeCommitSHA, p.GithubPatchData.MergeCommitSHA)
 }
