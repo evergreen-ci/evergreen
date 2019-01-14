@@ -133,3 +133,37 @@ func (e *APIExpansion) ToService() (interface{}, error) {
 
 	return interface{}(d), nil
 }
+
+// APIDistroSetup is derived from a service layer set-up script (string)
+type APIDistroSetup struct {
+	Setup APIString `json:"setup"`
+}
+
+// BuildFromService converts from service level distro.Distro.Setup to an APIDistroSetup
+func (s *APIDistroSetup) BuildFromService(h interface{}) error {
+	switch v := h.(type) {
+	case distro.Distro:
+		s.Setup = ToAPIString(v.Setup)
+
+	default:
+		return errors.Errorf("%T is not an supported expansion type", h)
+	}
+	return nil
+}
+
+// APIDistroTeardown is derived from a service layer tear-down script (string)
+type APIDistroTeardown struct {
+	Teardown APIString `json:"teardown"`
+}
+
+// BuildFromService converts from service level distro.Distro.Teardown to an APIDistroTeardown
+func (t *APIDistroTeardown) BuildFromService(h interface{}) error {
+	switch v := h.(type) {
+	case distro.Distro:
+		t.Teardown = ToAPIString(v.Teardown)
+
+	default:
+		return errors.Errorf("%T is not an supported expansion type", h)
+	}
+	return nil
+}

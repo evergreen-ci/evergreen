@@ -34,7 +34,7 @@ func TestProjectPatchSuite(t *testing.T) {
 }
 
 func (s *ProjectPatchByIDSuite) SetupTest() {
-	s.sc = getMockProjectConnector()
+	s.sc = getMockProjectsConnector()
 	s.rm = makePatchProjectByID(s.sc).(*projectIDPatchHandler)
 }
 
@@ -95,7 +95,7 @@ func TestProjectPutSuite(t *testing.T) {
 }
 
 func (s *ProjectPutSuite) SetupTest() {
-	s.sc = getMockProjectConnector()
+	s.sc = getMockProjectsConnector()
 	s.rm = makePutProjectByID(s.sc).(*projectIDPutHandler)
 }
 
@@ -328,7 +328,7 @@ func (s *ProjectGetSuite) TestGetRecentVersions() {
 	s.EqualError(getVersions.Parse(ctx, request), "400 (Bad Request): Invalid offset")
 }
 
-func getMockProjectConnector() *data.MockConnector {
+func getMockProjectsConnector() *data.MockConnector {
 	connector := data.MockConnector{
 		MockProjectConnector: data.MockProjectConnector{
 			CachedProjects: []serviceModel.ProjectRef{

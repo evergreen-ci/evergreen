@@ -22,6 +22,224 @@ import (
 
 ////////////////////////////////////////////////////////////////////////
 //
+// Tests for GET /rest/v2/distros/{distro_id}/setup
+
+type DistroSetupByIDSuite struct {
+	sc *data.MockConnector
+	rm gimlet.RouteHandler
+
+	suite.Suite
+}
+
+func TestDistroSetupByIDSuite(t *testing.T) {
+	db.SetGlobalSessionProvider(testutil.TestConfig().SessionFactory())
+	suite.Run(t, new(DistroSetupByIDSuite))
+}
+
+func (s *DistroSetupByIDSuite) SetupSuite() {
+	s.sc = getMockDistrosConnector()
+	s.rm = makeGetDistroSetup(s.sc)
+}
+
+func (s *DistroSetupByIDSuite) TestRunValidId() {
+	ctx := context.Background()
+	h := s.rm.(*distroIDGetSetupHandler)
+	h.distroID = "fedora8"
+
+	resp := s.rm.Run(ctx)
+	s.NotNil(resp.Data())
+	s.Equal(resp.Status(), http.StatusOK)
+
+	script := (resp.Data()).(*model.APIDistroSetup)
+	s.Equal(script.Setup, model.ToAPIString("Set-up string"))
+}
+
+func (s *DistroSetupByIDSuite) TestRunInvalidId() {
+	ctx := context.Background()
+	h := s.rm.(*distroIDGetSetupHandler)
+	h.distroID = "invalid"
+
+	resp := s.rm.Run(ctx)
+	s.NotNil(resp.Data())
+	s.Equal(resp.Status(), http.StatusNotFound)
+}
+
+////////////////////////////////////////////////////////////////////////
+//
+// Tests for PATCH /rest/v2/distros/{distro_id}/setup
+
+type DistroPatchSetupByIDSuite struct {
+	sc *data.MockConnector
+	rm gimlet.RouteHandler
+
+	suite.Suite
+}
+
+func TestDistroPatchSetupByIDSuite(t *testing.T) {
+	db.SetGlobalSessionProvider(testutil.TestConfig().SessionFactory())
+	suite.Run(t, new(DistroPatchSetupByIDSuite))
+}
+
+func (s *DistroPatchSetupByIDSuite) SetupSuite() {
+	s.sc = getMockDistrosConnector()
+	s.rm = makeChangeDistroSetup(s.sc)
+}
+
+func (s *DistroPatchSetupByIDSuite) TestParseValidJSON() {
+	ctx := context.Background()
+	json := []byte(`{"setup": "New set-up script"}`)
+	req, _ := http.NewRequest("PATCH", "http://example.com/api/rest/v2/distros/fedora8/setup", bytes.NewBuffer(json))
+
+	err := s.rm.Parse(ctx, req)
+	s.NoError(err)
+	s.Equal("New set-up script", s.rm.(*distroIDChangeSetupHandler).Setup)
+}
+
+func (s *DistroPatchSetupByIDSuite) TestParseInvalidJSON() {
+	ctx := context.Background()
+	json := []byte(`{"malform": "ed}`)
+	req, _ := http.NewRequest("PATCH", "http://example.com/api/rest/v2/distros/fedora8/setup", bytes.NewBuffer(json))
+
+	err := s.rm.Parse(ctx, req)
+	s.Error(err)
+}
+
+func (s *DistroPatchSetupByIDSuite) TestRunValidId() {
+	ctx := context.Background()
+	h := s.rm.(*distroIDChangeSetupHandler)
+	h.distroID = "fedora8"
+	h.Setup = "New set-up script"
+
+	resp := s.rm.Run(ctx)
+	s.NotNil(resp.Data())
+	s.Equal(resp.Status(), http.StatusOK)
+
+	apiDistro := (resp.Data()).(*model.APIDistro)
+	s.Equal(apiDistro.Setup, model.ToAPIString("New set-up script"))
+}
+
+func (s *DistroPatchSetupByIDSuite) TestRunInValidId() {
+	ctx := context.Background()
+	h := s.rm.(*distroIDChangeSetupHandler)
+	h.distroID = "invalid"
+	h.Setup = "New set-up script"
+
+	resp := s.rm.Run(ctx)
+	s.NotNil(resp.Data())
+	s.Equal(resp.Status(), http.StatusNotFound)
+}
+
+////////////////////////////////////////////////////////////////////////
+//
+// Tests for GET /rest/v2/distros/{distro_id}/teardown
+
+type DistroTeardownByIDSuite struct {
+	sc *data.MockConnector
+	rm gimlet.RouteHandler
+
+	suite.Suite
+}
+
+func TestDistroTeardownByIDSuite(t *testing.T) {
+	db.SetGlobalSessionProvider(testutil.TestConfig().SessionFactory())
+	suite.Run(t, new(DistroTeardownByIDSuite))
+}
+
+func (s *DistroTeardownByIDSuite) SetupSuite() {
+	s.sc = getMockDistrosConnector()
+	s.rm = makeGetDistroTeardown(s.sc)
+}
+
+func (s *DistroTeardownByIDSuite) TestRunValidId() {
+	ctx := context.Background()
+	h := s.rm.(*distroIDGetTeardownHandler)
+	h.distroID = "fedora8"
+
+	resp := s.rm.Run(ctx)
+	s.NotNil(resp.Data())
+	s.Equal(resp.Status(), http.StatusOK)
+
+	script := (resp.Data()).(*model.APIDistroTeardown)
+	s.Equal(script.Teardown, model.ToAPIString("Tear-down string"))
+}
+
+func (s *DistroTeardownByIDSuite) TestRunInValidId() {
+	ctx := context.Background()
+	h := s.rm.(*distroIDGetTeardownHandler)
+	h.distroID = "invalid"
+
+	resp := s.rm.Run(ctx)
+	s.NotNil(resp.Data())
+	s.Equal(resp.Status(), http.StatusNotFound)
+}
+
+////////////////////////////////////////////////////////////////////////
+//
+// Tests for PATCH /rest/v2/distros/{distro_id}/teardown
+
+type DistroPatchTeardownByIDSuite struct {
+	sc *data.MockConnector
+	rm gimlet.RouteHandler
+
+	suite.Suite
+}
+
+func TestDistroPatchTeardownByIDSuite(t *testing.T) {
+	db.SetGlobalSessionProvider(testutil.TestConfig().SessionFactory())
+	suite.Run(t, new(DistroPatchTeardownByIDSuite))
+}
+
+func (s *DistroPatchTeardownByIDSuite) SetupSuite() {
+	s.sc = getMockDistrosConnector()
+	s.rm = makeChangeDistroTeardown(s.sc)
+}
+
+func (s *DistroPatchTeardownByIDSuite) TestParseValidJSON() {
+	ctx := context.Background()
+	json := []byte(`{"teardown": "New tear-down script"}`)
+	req, _ := http.NewRequest("PATCH", "http://example.com/api/rest/v2/distros/fedora8/teardown", bytes.NewBuffer(json))
+
+	err := s.rm.Parse(ctx, req)
+	s.NoError(err)
+	s.Equal("New tear-down script", s.rm.(*distroIDChangeTeardownHandler).Teardown)
+}
+
+func (s *DistroPatchTeardownByIDSuite) TestParseInvalidJSON() {
+	ctx := context.Background()
+	json := []byte(`{"malform": "ed}`)
+	req, _ := http.NewRequest("PATCH", "http://example.com/api/rest/v2/distros/fedora8/teardown", bytes.NewBuffer(json))
+
+	err := s.rm.Parse(ctx, req)
+	s.Error(err)
+}
+
+func (s *DistroPatchTeardownByIDSuite) TestRunValidId() {
+	ctx := context.Background()
+	h := s.rm.(*distroIDChangeTeardownHandler)
+	h.distroID = "fedora8"
+	h.Teardown = "New tear-down script"
+
+	resp := s.rm.Run(ctx)
+	s.NotNil(resp.Data())
+	s.Equal(resp.Status(), http.StatusOK)
+
+	apiDistro := (resp.Data()).(*model.APIDistro)
+	s.Equal(apiDistro.Teardown, model.ToAPIString("New tear-down script"))
+}
+
+func (s *DistroPatchTeardownByIDSuite) TestRunInValidId() {
+	ctx := context.Background()
+	h := s.rm.(*distroIDChangeTeardownHandler)
+	h.distroID = "invalid"
+	h.Teardown = "New set-up script"
+
+	resp := s.rm.Run(ctx)
+	s.NotNil(resp.Data())
+	s.Equal(resp.Status(), http.StatusNotFound)
+}
+
+////////////////////////////////////////////////////////////////////////
+//
 // Tests for GET /rest/v2/distros/{distro_id}
 
 type DistroByIDSuite struct {
@@ -129,7 +347,7 @@ func (s *DistroPutSuite) TestParse() {
 func (s *DistroPutSuite) TestRunNewWithValidEntity() {
 	ctx := context.Background()
 	json := []byte(`{"arch": "linux_amd64", "work_dir": "/data/mci", "ssh_key": "SSH Key", "provider": "mock", "user": "tibor"}`)
-	h := s.rm.(*distroPutHandler)
+	h := s.rm.(*distroIDPutHandler)
 	h.distroID = "distro4"
 	h.body = json
 
@@ -141,7 +359,7 @@ func (s *DistroPutSuite) TestRunNewWithValidEntity() {
 func (s *DistroPutSuite) TestRunNewWithInValidEntity() {
 	ctx := context.Background()
 	json := []byte(`{"arch": "linux_amd64", "work_dir": "/data/mci", "ssh_key": "", "provider": "mock", "user": "tibor"}`)
-	h := s.rm.(*distroPutHandler)
+	h := s.rm.(*distroIDPutHandler)
 	h.distroID = "distro4"
 	h.body = json
 
@@ -155,7 +373,7 @@ func (s *DistroPutSuite) TestRunNewWithInValidEntity() {
 func (s *DistroPutSuite) TestRunNewConflictingName() {
 	ctx := context.Background()
 	json := []byte(`{"name": "distro5", "arch": "linux_amd64", "work_dir": "/data/mci", "ssh_key": "", "provider": "mock", "user": "tibor"}`)
-	h := s.rm.(*distroPutHandler)
+	h := s.rm.(*distroIDPutHandler)
 	h.distroID = "distro4"
 	h.body = json
 
@@ -169,7 +387,7 @@ func (s *DistroPutSuite) TestRunNewConflictingName() {
 func (s *DistroPutSuite) TestRunExistingWithValidEntity() {
 	ctx := context.Background()
 	json := []byte(`{"arch": "linux_amd64", "work_dir": "/data/mci", "ssh_key": "SSH Key", "provider": "mock", "user": "tibor"}`)
-	h := s.rm.(*distroPutHandler)
+	h := s.rm.(*distroIDPutHandler)
 	h.distroID = "distro3"
 	h.body = json
 
@@ -181,7 +399,7 @@ func (s *DistroPutSuite) TestRunExistingWithValidEntity() {
 func (s *DistroPutSuite) TestRunExistingWithInValidEntity() {
 	ctx := context.Background()
 	json := []byte(`{"arch": "", "work_dir": "/data/mci", "ssh_key": "SSH Key", "provider": "", "user": ""}`)
-	h := s.rm.(*distroPutHandler)
+	h := s.rm.(*distroIDPutHandler)
 	h.distroID = "distro3"
 	h.body = json
 
@@ -195,7 +413,7 @@ func (s *DistroPutSuite) TestRunExistingWithInValidEntity() {
 func (s *DistroPutSuite) TestRunExistingConflictingName() {
 	ctx := context.Background()
 	json := []byte(`{"name": "distro5", "arch": "linux_amd64", "work_dir": "/data/mci", "ssh_key": "", "provider": "mock", "user": "tibor"}`)
-	h := s.rm.(*distroPutHandler)
+	h := s.rm.(*distroIDPutHandler)
 	h.distroID = "distro3"
 	h.body = json
 
@@ -720,4 +938,58 @@ func (s *DistroPatchByIDSuite) TestRunInValidNameChange() {
 
 	gimlet := (resp.Data()).(gimlet.ErrorResponse)
 	s.Equal(gimlet.Message, fmt.Sprintf("A distro's name is immutable; cannot rename distro '%s'", h.distroID))
+}
+
+func getMockDistrosConnector() *data.MockConnector {
+	connector := data.MockConnector{
+		MockDistroConnector: data.MockDistroConnector{
+			CachedDistros: []*distro.Distro{
+				{
+					Id:       "fedora8",
+					Arch:     "linux_amd64",
+					WorkDir:  "/data/mci",
+					PoolSize: 30,
+					Provider: "mock",
+					ProviderSettings: &map[string]interface{}{
+						"bid_price":      0.2,
+						"instance_type":  "m3.large",
+						"key_name":       "mci",
+						"security_group": "mci",
+						"ami":            "ami-2814683f",
+						"mount_points": map[string]interface{}{
+							"device_name":  "/dev/xvdb",
+							"virtual_name": "ephemeral0"},
+					},
+					SetupAsSudo: true,
+					Setup:       "Set-up string",
+					Teardown:    "Tear-down string",
+					User:        "root",
+					SSHKey:      "SSH key string",
+					SSHOptions: []string{
+						"StrictHostKeyChecking=no",
+						"BatchMode=yes",
+						"ConnectTimeout=10"},
+					SpawnAllowed: false,
+					Expansions: []distro.Expansion{
+						distro.Expansion{
+							Key:   "decompress",
+							Value: "tar zxvf"},
+						distro.Expansion{
+							Key:   "ps",
+							Value: "ps aux"},
+						distro.Expansion{
+							Key:   "kill_pid",
+							Value: "kill -- -$(ps opgid= %v)"},
+						distro.Expansion{
+							Key:   "scons_prune_ratio",
+							Value: "0.8"},
+					},
+					Disabled:      false,
+					ContainerPool: "",
+				},
+			},
+		},
+	}
+
+	return &connector
 }
