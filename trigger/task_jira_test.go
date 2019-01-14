@@ -24,7 +24,7 @@ const (
 	projectId       = "testproject"
 	versionRevision = "aaaaaaaaaaaaaaaaaaa"
 	versionMessage  = "bbbbbbbbbb"
-	createTime      = 1546948595  // "Jan 08, 2019 11:56:35 UTC"
+	createTime      = 1546948595 // "Jan 08, 2019 11:56:35 UTC"
 	buildName       = "Linux 64"
 	buildId         = "b1"
 	taskName        = "mainTests"
@@ -394,7 +394,7 @@ func TestCustomFields(t *testing.T) {
 
 	fields := map[string]map[string]string{}
 	fields["BFG"] = map[string]string{
-		jiraFailingTasksField:     "{{.Task.DisplayName}}",
+		jiraFailingTasksField:     "{{.TaskDisplayName}}",
 		jiraFailingTestsField:     "%%FailedTestNames%%",
 		jiraFailingVariantField:   "{{.Task.BuildVariant}}",
 		jiraEvergreenProjectField: "{{.Project.Identifier}}",
@@ -437,6 +437,7 @@ func TestCustomFields(t *testing.T) {
 				Revision: versionRevision,
 				Message:  versionMessage,
 			},
+			TaskDisplayName: taskName,
 		},
 	}
 	issue, err := j.build()
