@@ -68,14 +68,16 @@ type Connector interface {
 	// RestartBuild is a method to restart the build matching the same BuildId.
 	RestartBuild(string, string) error
 
+	// Find the project matching the given ProjectId.
+	FindProjectById(string) (*model.ProjectRef, error)
+	// Create/Update a project the given projectRef
+	CreateProject(projectRef *model.ProjectRef) error
+	UpdateProject(projectRef *model.ProjectRef) error
+
 	// FindProjects is a method to find projects as ordered by name
 	FindProjects(string, int, int, bool) ([]model.ProjectRef, error)
 	// FindProjectByBranch is a method to find the projectref given a branch name.
 	FindProjectByBranch(string) (*model.ProjectRef, error)
-
-	// Create/Update project methods
-	CreateProject(*restModel.APIProjectRef) (*restModel.APIProject, error)
-	UpdateProject(*restModel.APIProjectRef) (*restModel.APIProject, error)
 
 	// GetVersionsAndVariants returns recent versions for a project
 	GetVersionsAndVariants(int, int, *model.Project) (*restModel.VersionVariantData, error)

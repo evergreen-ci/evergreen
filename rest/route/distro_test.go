@@ -22,7 +22,7 @@ import (
 
 ////////////////////////////////////////////////////////////////////////
 //
-// Tests for GET distro by id
+// Tests for GET /rest/v2/distros/{distro_id}
 
 type DistroByIDSuite struct {
 	sc   *data.MockConnector
@@ -32,7 +32,7 @@ type DistroByIDSuite struct {
 	suite.Suite
 }
 
-func TestDistroSuite(t *testing.T) {
+func TestDistroByIDSuite(t *testing.T) {
 	db.SetGlobalSessionProvider(testutil.TestConfig().SessionFactory())
 	suite.Run(t, new(DistroByIDSuite))
 }
@@ -80,7 +80,7 @@ func (s *DistroByIDSuite) TestFindByIdFail() {
 
 ///////////////////////////////////////////////////////////////////////
 //
-// Tests for PUT distro by id
+// Tests for PUT /rest/v2/distro/{distro_id}
 
 type DistroPutSuite struct {
 	sc       *data.MockConnector
@@ -135,14 +135,7 @@ func (s *DistroPutSuite) TestRunNewWithValidEntity() {
 
 	resp := s.rm.Run(ctx)
 	s.NotNil(resp.Data())
-	s.Equal(resp.Status(), http.StatusOK)
-
-	apiDistro := (resp.Data()).(*model.APIDistro)
-	s.Equal(apiDistro.Arch, model.ToAPIString("linux_amd64"))
-	s.Equal(apiDistro.WorkDir, model.ToAPIString("/data/mci"))
-	s.Equal(apiDistro.SSHKey, model.ToAPIString("SSH Key"))
-	s.Equal(apiDistro.Provider, model.ToAPIString("mock"))
-	s.Equal(apiDistro.User, model.ToAPIString("tibor"))
+	s.Equal(resp.Status(), http.StatusCreated)
 }
 
 func (s *DistroPutSuite) TestRunNewWithInValidEntity() {
@@ -156,7 +149,6 @@ func (s *DistroPutSuite) TestRunNewWithInValidEntity() {
 	s.NotNil(resp.Data())
 	s.Equal(resp.Status(), http.StatusBadRequest)
 	error := (resp.Data()).(gimlet.ErrorResponse)
-	//s.Equal(error.Message, "distro 'ssh_key' cannot be blank")
 	s.Equal(error.Message, "ERROR: distro 'ssh_key' cannot be blank")
 }
 
@@ -169,9 +161,9 @@ func (s *DistroPutSuite) TestRunNewConflictingName() {
 
 	resp := s.rm.Run(ctx)
 	s.NotNil(resp.Data())
-	s.Equal(resp.Status(), http.StatusBadRequest)
+	s.Equal(resp.Status(), http.StatusForbidden)
 	error := (resp.Data()).(gimlet.ErrorResponse)
-	s.Equal(error.Message, fmt.Sprintf("Distro name is immutable; cannot rename distro resource '%s'", h.distroID))
+	s.Equal(error.Message, fmt.Sprintf("A distro's name is immutable; cannot rename distro '%s'", h.distroID))
 }
 
 func (s *DistroPutSuite) TestRunExistingWithValidEntity() {
@@ -184,13 +176,6 @@ func (s *DistroPutSuite) TestRunExistingWithValidEntity() {
 	resp := s.rm.Run(ctx)
 	s.NotNil(resp.Data())
 	s.Equal(resp.Status(), http.StatusOK)
-
-	apiDistro := (resp.Data()).(*model.APIDistro)
-	s.Equal(apiDistro.Arch, model.ToAPIString("linux_amd64"))
-	s.Equal(apiDistro.WorkDir, model.ToAPIString("/data/mci"))
-	s.Equal(apiDistro.SSHKey, model.ToAPIString("SSH Key"))
-	s.Equal(apiDistro.Provider, model.ToAPIString("mock"))
-	s.Equal(apiDistro.User, model.ToAPIString("tibor"))
 }
 
 func (s *DistroPutSuite) TestRunExistingWithInValidEntity() {
@@ -204,7 +189,6 @@ func (s *DistroPutSuite) TestRunExistingWithInValidEntity() {
 	s.NotNil(resp.Data())
 	s.Equal(resp.Status(), http.StatusBadRequest)
 	error := (resp.Data()).(gimlet.ErrorResponse)
-	//s.Equal(error.Message, "distro 'arch' cannot be blank, distro 'user' cannot be blank, distro 'provider' cannot be blank")
 	s.Equal(error.Message, "ERROR: distro 'arch' cannot be blank\nERROR: distro 'user' cannot be blank\nERROR: distro 'provider' cannot be blank")
 }
 
@@ -217,14 +201,14 @@ func (s *DistroPutSuite) TestRunExistingConflictingName() {
 
 	resp := s.rm.Run(ctx)
 	s.NotNil(resp.Data())
-	s.Equal(resp.Status(), http.StatusBadRequest)
+	s.Equal(resp.Status(), http.StatusForbidden)
 	error := (resp.Data()).(gimlet.ErrorResponse)
-	s.Equal(error.Message, fmt.Sprintf("Distro name is immutable; cannot rename distro resource '%s'", h.distroID))
+	s.Equal(error.Message, fmt.Sprintf("A distro's name is immutable; cannot rename distro '%s'", h.distroID))
 }
 
 ////////////////////////////////////////////////////////////////////////
 //
-// Tests for DELETE distro by id
+// Tests for DELETE /rest/v2/distros/{distro_id}
 
 type DistroDeleteByIDSuite struct {
 	sc   *data.MockConnector
@@ -291,7 +275,7 @@ func (s *DistroDeleteByIDSuite) TestRunInValidDistroId() {
 
 ////////////////////////////////////////////////////////////////////////
 //
-// Tests for PATCH distro by id
+// Tests for PATCH /rest/v2/distros/{distro_id}
 
 type DistroPatchByIDSuite struct {
 	sc       *data.MockConnector
@@ -732,8 +716,8 @@ func (s *DistroPatchByIDSuite) TestRunInValidNameChange() {
 
 	resp := s.rm.Run(ctx)
 	s.NotNil(resp.Data())
-	s.Equal(resp.Status(), http.StatusBadRequest)
+	s.Equal(resp.Status(), http.StatusForbidden)
 
 	gimlet := (resp.Data()).(gimlet.ErrorResponse)
-	s.Equal(gimlet.Message, fmt.Sprintf("Distro name is immutable; cannot rename distro resource '%s'", h.distroID))
+	s.Equal(gimlet.Message, fmt.Sprintf("A distro's name is immutable; cannot rename distro '%s'", h.distroID))
 }
