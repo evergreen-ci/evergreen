@@ -72,7 +72,7 @@ func (s *commitQueueSuite) SetupTest() {
 
 func (s *commitQueueSuite) TestNewCommitQueueJob() {
 	job := NewCommitQueueJob("mci", "job-1")
-	s.Equal("commit-queue:mci", job.ID())
+	s.Equal("commit-queue:mci_job-1", job.ID())
 }
 
 func (s *commitQueueSuite) TestValidatePR() {
@@ -151,7 +151,7 @@ func (s *commitQueueSuite) TestMakeVersionURL() {
 	uiConfig := evergreen.UIConfig{
 		Url: "baxter.thehacker.com",
 	}
-	uiConfig.Set()
+	s.NoError(uiConfig.Set())
 
 	url, err := makeVersionURL("abcde")
 	s.NoError(err)
