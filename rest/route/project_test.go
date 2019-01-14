@@ -64,8 +64,17 @@ func (s *ProjectPatchByIDSuite) TestRunInValidIdentifierChange() {
 	s.Equal(gimlet.Message, fmt.Sprintf("A project's id is immutable; cannot rename project '%s'", h.projectID))
 }
 
-func (s *ProjectPatchByIDSuite) TestRunValidEverything() {
+func (s *ProjectPatchByIDSuite) TestRunInvalidNonExistingId() {
+	ctx := context.Background()
+	json := []byte(`{"display_name": "This is a display name"}`)
+	h := s.rm.(*projectIDPatchHandler)
+	h.projectID = "non-existent"
+	h.body = json
 
+	resp := s.rm.Run(ctx)
+	s.rm.Run(ctx)
+	s.NotNil(resp.Data())
+	s.Equal(resp.Status(), http.StatusNotFound)
 }
 
 ////////////////////////////////////////////////////////////////////////
