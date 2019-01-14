@@ -466,9 +466,12 @@ func downloadUrls(root string, urls chan artifactDownload, workers int) error {
 				}
 
 				fileName := filepath.Join(folder, justFile)
+				if len(fileName) > 250 {
+					fileName = fileName[0:249]
+				}
 				fileNamesUsed.Lock()
 				for {
-					fileNamesUsed.nameCounts[fileName] += 1
+					fileNamesUsed.nameCounts[fileName]++
 					testFileName := fileNameWithIndex(fileName, fileNamesUsed.nameCounts[fileName])
 					_, err = os.Stat(testFileName)
 					if err != nil {
