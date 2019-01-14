@@ -6,6 +6,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/cloud"
+	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/amboy/dependency"
@@ -28,10 +29,11 @@ func init() {
 }
 
 type buildingContainerImageJob struct {
-	ParentID string `bson:"parent_id" json:"parent_id" yaml:"parent_id"`
-	job.Base `bson:"base" json:"base" yaml:"base"`
-	ImageURL string `bson:"image_url" json:"image_url" yaml:"image_url"`
-	Provider string `bson:"provider" json:"provider" yaml:"provider"`
+	job.Base `bson:"base"`
+
+	ParentID      string                        `bson:"parent_id"`
+	ImageSettings distro.ContainerImageSettings `bson:"image_settings"`
+	Provider      string                        `bson:"provider"`
 
 	// cache
 	parent   *host.Host
@@ -53,15 +55,15 @@ func makeBuildingContainerImageJob() *buildingContainerImageJob {
 	return j
 }
 
-func NewBuildingContainerImageJob(env evergreen.Environment, h *host.Host, imageURL, providerName string) amboy.Job {
+func NewBuildingContainerImageJob(env evergreen.Environment, h *host.Host, imageSettings distro.ContainerImageSettings, providerName string) amboy.Job {
 	job := makeBuildingContainerImageJob()
 
 	job.parent = h
-	job.ImageURL = imageURL
+	job.ImageSettings = imageSettings
 	job.ParentID = h.Id
 	job.Provider = providerName
 
-	job.SetID(fmt.Sprintf("%s.%s.attempt-%d.%s", buildingContainerImageJobName, job.ParentID, h.ContainerBuildAttempt, job.ImageURL))
+	job.SetID(fmt.Sprintf("%s.%s.attempt-%d.%s", buildingContainerImageJobName, job.ParentID, h.ContainerBuildAttempt, job.ImageSettings.URL))
 
 	return job
 }
@@ -114,7 +116,7 @@ func (j *buildingContainerImageJob) Run(ctx context.Context) {
 
 	if j.parent.ContainerBuildAttempt >= containerBuildRetries {
 		j.AddError(errors.Wrapf(j.parent.SetTerminated(evergreen.User),
-			"failed 5 times to build and download image '%s' on parent '%s'", j.ImageURL, j.parent.Id))
+			"failed 5 times to build and download image '%s' on parent '%s'", j.ImageSettings.URL, j.parent.Id))
 		return
 	}
 
@@ -130,7 +132,7 @@ func (j *buildingContainerImageJob) Run(ctx context.Context) {
 		return
 	}
 
-	err = containerMgr.BuildContainerImage(ctx, j.parent, j.ImageURL)
+	err = containerMgr.BuildContainerImage(ctx, j.parent, j.ImageSettings)
 	if err != nil {
 		j.AddError(errors.Wrap(err, "error building and downloading container image"))
 		return
@@ -138,7 +140,7 @@ func (j *buildingContainerImageJob) Run(ctx context.Context) {
 	if j.parent.ContainerImages == nil {
 		j.parent.ContainerImages = make(map[string]bool)
 	}
-	j.parent.ContainerImages[j.ImageURL] = true
+	j.parent.ContainerImages[j.ImageSettings.URL] = true
 	_, err = j.parent.Upsert()
 	if err != nil {
 		j.AddError(errors.Wrapf(err, "error upserting parent %s", j.parent.Id))

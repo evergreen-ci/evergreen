@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/pkg/errors"
 )
@@ -64,7 +65,7 @@ type ContainerManager interface {
 	// CalculateImageSpaceUsage returns the total space taken up by docker images on a specified host
 	CalculateImageSpaceUsage(ctx context.Context, h *host.Host) (int64, error)
 	// BuildContainerImage downloads and builds a container image onto parent specified by URL
-	BuildContainerImage(ctx context.Context, parent *host.Host, url string) error
+	BuildContainerImage(ctx context.Context, parent *host.Host, settings distro.ContainerImageSettings) error
 }
 
 // CostCalculator is an interface for cloud providers that can estimate what a span of time on a

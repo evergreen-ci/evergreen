@@ -7,6 +7,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/cloud"
+	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/amboy/dependency"
@@ -290,7 +291,8 @@ func (j *createHostJob) shouldRetryCreateHost(ctx context.Context) bool {
 }
 
 func (j *createHostJob) isImageBuilt(ctx context.Context) (bool, error) {
-	imageURL := (*j.host.Distro.ProviderSettings)["image_url"].(string)
+	settings := *j.host.Distro.ProviderSettings
+	imageURL := settings["image_url"].(string)
 
 	parent, err := host.FindOneId(j.host.ParentID)
 	if err != nil {
@@ -299,10 +301,22 @@ func (j *createHostJob) isImageBuilt(ctx context.Context) (bool, error) {
 	if ok := parent.ContainerImages[imageURL]; ok {
 		return true, nil
 	}
+	imageSettings := distro.ContainerImageSettings{
+		URL: imageURL,
+	}
+	if method, ok := settings["build_type"]; ok {
+		imageSettings.Method = method.(string)
+	}
+	if registryUser, ok := settings["docker_registry_user"]; ok {
+		imageSettings.RegistryUser = registryUser.(string)
+	}
+	if registryPassword, ok := settings["docker_registry_pw"]; ok {
+		imageSettings.RegistryPassword = registryPassword.(string)
+	}
 	//  If the image is not already present on the parent, run job to build
 	// the new image
 	if j.CurrentAttempt == 1 {
-		buildingContainerJob := NewBuildingContainerImageJob(j.env, parent, imageURL, j.host.Provider)
+		buildingContainerJob := NewBuildingContainerImageJob(j.env, parent, imageSettings, j.host.Provider)
 		err = j.env.RemoteQueue().Put(buildingContainerJob)
 		grip.Debug(message.WrapError(err, message.Fields{
 			"message": "Duplicate key being added to job to block building containers",

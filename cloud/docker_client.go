@@ -31,7 +31,7 @@ import (
 // The dockerClient interface wraps the Docker dockerClient interaction.
 type dockerClient interface {
 	Init(string) error
-	EnsureImageDownloaded(context.Context, *host.Host, string) (string, error)
+	EnsureImageDownloaded(context.Context, *host.Host, distro.ContainerImageSettings) (string, error)
 	BuildImageWithAgent(context.Context, *host.Host, string) (string, error)
 	CreateContainer(context.Context, *host.Host, *host.Host, *dockerSettings) error
 	GetContainer(context.Context, *host.Host, string) (*types.ContainerJSON, error)
@@ -123,7 +123,7 @@ func (c *dockerClientImpl) Init(apiVersion string) error {
 
 // EnsureImageDownloaded checks if the image in s3 specified by the URL already exists,
 // and if not, creates a new image from the remote tarball.
-func (c *dockerClientImpl) EnsureImageDownloaded(ctx context.Context, h *host.Host, url string) (string, error) {
+func (c *dockerClientImpl) EnsureImageDownloaded(ctx context.Context, h *host.Host, settings distro.ContainerImageSettings) (string, error) {
 	start := time.Now()
 	dockerClient, err := c.generateClient(h)
 	if err != nil {
@@ -131,7 +131,7 @@ func (c *dockerClientImpl) EnsureImageDownloaded(ctx context.Context, h *host.Ho
 	}
 
 	// Extract image name from url
-	baseName := path.Base(url)
+	baseName := path.Base(settings.URL)
 	imageName := strings.TrimSuffix(baseName, filepath.Ext(baseName))
 
 	// Check if image already exists on host
@@ -145,17 +145,16 @@ func (c *dockerClientImpl) EnsureImageDownloaded(ctx context.Context, h *host.Ho
 		// Image already exists
 		return imageName, nil
 	} else if strings.Contains(err.Error(), "No such image") {
-		settings := *h.Distro.ProviderSettings
-		if settings["build_type"] == distro.DockerImageBuildTypeImport {
-			err = c.importImage(ctx, h, imageName, url)
+		if settings.Method == distro.DockerImageBuildTypeImport {
+			err = c.importImage(ctx, h, imageName, settings.URL)
 			grip.Info(message.Fields{
 				"operation":     "EnsureImageDownloaded",
 				"details":       "import image",
 				"duration_secs": time.Since(start).Seconds(),
 			})
 			return imageName, errors.Wrap(err, "error importing image")
-		} else if settings["build_type"] == distro.DockerImageBuildTypePull {
-			err = c.pullImage(ctx, h, url, settings["docker_registry_user"].(string), settings["docker_registry_pw"].(string))
+		} else if settings.Method == distro.DockerImageBuildTypePull {
+			err = c.pullImage(ctx, h, settings.URL, settings.RegistryUser, settings.RegistryPassword)
 			grip.Info(message.Fields{
 				"operation":     "EnsureImageDownloaded",
 				"details":       "pull image",
@@ -163,7 +162,7 @@ func (c *dockerClientImpl) EnsureImageDownloaded(ctx context.Context, h *host.Ho
 			})
 			return imageName, errors.Wrap(err, "error pulling image")
 		}
-		return imageName, errors.Errorf("unrecognized image build method: %s", settings["build_type"])
+		return imageName, errors.Errorf("unrecognized image build method: %s", settings.Method)
 	}
 	return "", errors.Wrapf(err, "Error inspecting image %s", imageName)
 }
