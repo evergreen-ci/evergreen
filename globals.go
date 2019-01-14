@@ -344,3 +344,7 @@ func IsSystemActivator(caller string) bool {
 func IsPatchRequester(requester string) bool {
 	return requester == PatchVersionRequester || requester == GithubPRRequester || requester == MergeTestRequester
 }
+
+func IsGitHubPatchRequester(requester string) bool {
+	return requester == GithubPRRequester || requester == MergeTestRequester
+}

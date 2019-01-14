@@ -37,10 +37,10 @@ type ProjectRef struct {
 	// Github PushEvents for this project, instead of the Repotracker runner
 	TracksPushEvents bool `bson:"tracks_push_events" json:"tracks_push_events" yaml:"tracks_push_events"`
 
-	PRTestingEnabled   bool   `bson:"pr_testing_enabled" json:"pr_testing_enabled" yaml:"pr_testing_enabled"`
-	CommitQEnabled     bool   `bson:"commitq_enabled" json:"commitq_enabled" yaml:"commitq_enabled"`
-	CommitQMergeMethod string `bson:"commitq_merge_method" json:"commitq_merge_method" yaml:"commitq_merge_method"`
-	CommitQConfigFile  string `bson:"commitq_config_file" json:"commitq_config_file" yaml:"commitq_config_file"`
+	PRTestingEnabled       bool   `bson:"pr_testing_enabled" json:"pr_testing_enabled" yaml:"pr_testing_enabled"`
+	CommitQueueEnabled     bool   `bson:"commit_queue_enabled" json:"commit_queue_enabled" yaml:"commit_queue_enabled"`
+	CommitQueueMergeMethod string `bson:"commit_queue_merge_method" json:"commit_queue_merge_method" yaml:"commit_queue_merge_method"`
+	CommitQueueConfigFile  string `bson:"commit_queue_config_file" json:"commit_queue_config_file" yaml:"commit_queue_config_file"`
 
 	//Tracked determines whether or not the project is discoverable in the UI
 	Tracked          bool `bson:"tracked" json:"tracked"`
@@ -131,9 +131,9 @@ var (
 	ProjectRefAdminsKey             = bsonutil.MustHaveTag(ProjectRef{}, "Admins")
 	projectRefTracksPushEventsKey   = bsonutil.MustHaveTag(ProjectRef{}, "TracksPushEvents")
 	projectRefPRTestingEnabledKey   = bsonutil.MustHaveTag(ProjectRef{}, "PRTestingEnabled")
-	projectRefCommitQEnabledKey     = bsonutil.MustHaveTag(ProjectRef{}, "CommitQEnabled")
-	projectRefCommitQConfigFileKey  = bsonutil.MustHaveTag(ProjectRef{}, "CommitQConfigFile")
-	projectRefCommitQMergeMethodKey = bsonutil.MustHaveTag(ProjectRef{}, "CommitQMergeMethod")
+	projectRefCommitQEnabledKey     = bsonutil.MustHaveTag(ProjectRef{}, "CommitQueueEnabled")
+	projectRefCommitQConfigFileKey  = bsonutil.MustHaveTag(ProjectRef{}, "CommitQueueConfigFile")
+	projectRefCommitQMergeMethodKey = bsonutil.MustHaveTag(ProjectRef{}, "CommitQueueMergeMethod")
 	projectRefPatchingDisabledKey   = bsonutil.MustHaveTag(ProjectRef{}, "PatchingDisabled")
 	projectRefNotifyOnFailureKey    = bsonutil.MustHaveTag(ProjectRef{}, "NotifyOnBuildFailure")
 	projectRefTriggersKey           = bsonutil.MustHaveTag(ProjectRef{}, "Triggers")
@@ -413,9 +413,9 @@ func (projectRef *ProjectRef) Upsert() error {
 				ProjectRefAdminsKey:             projectRef.Admins,
 				projectRefTracksPushEventsKey:   projectRef.TracksPushEvents,
 				projectRefPRTestingEnabledKey:   projectRef.PRTestingEnabled,
-				projectRefCommitQEnabledKey:     projectRef.CommitQEnabled,
-				projectRefCommitQConfigFileKey:  projectRef.CommitQConfigFile,
-				projectRefCommitQMergeMethodKey: projectRef.CommitQMergeMethod,
+				projectRefCommitQEnabledKey:     projectRef.CommitQueueEnabled,
+				projectRefCommitQConfigFileKey:  projectRef.CommitQueueConfigFile,
+				projectRefCommitQMergeMethodKey: projectRef.CommitQueueMergeMethod,
 				projectRefPatchingDisabledKey:   projectRef.PatchingDisabled,
 				projectRefNotifyOnFailureKey:    projectRef.NotifyOnBuildFailure,
 				projectRefTriggersKey:           projectRef.Triggers,

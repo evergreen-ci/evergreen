@@ -138,7 +138,7 @@ func (c *gitFetchProject) buildCloneCommand(conf *model.TaskConfig) ([]string, e
 	if conf.GithubPatchData.PRNumber != 0 {
 		branchName := fmt.Sprintf("evg-pr-test-%s", util.RandomString())
 		var ref, commitToTest string
-		if conf.Task.Requester == evergreen.MergeTestRequester {
+		if conf.Task.IsMergeRequest() {
 			// GitHub creates a ref at refs/pull/[pr number]/merge
 			// pointing to the test merge commit they generate
 			// See: https://developer.github.com/v3/git/#checking-mergeability-of-pull-requests

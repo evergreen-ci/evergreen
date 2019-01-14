@@ -4,8 +4,10 @@ import (
 	"testing"
 	"time"
 
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/testutil"
+	"github.com/evergreen-ci/evergreen/util"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -298,4 +300,28 @@ func (s *UserTestSuite) TestClearLoginCacheAllUsers() {
 	s.NoError(err)
 	s.False(valid)
 	s.Nil(u)
+}
+
+func (s *UserTestSuite) TestGetPatchUser() {
+	uid := 1234
+	u, err := GetPatchUser(uid)
+	s.NoError(err)
+	s.Require().NotNil(u)
+	s.Equal(evergreen.GithubPatchUser, u.Id)
+
+	u = &DBUser{
+		Id:       "me",
+		DispName: "baxtor",
+		Settings: UserSettings{
+			GithubUser: GithubUser{
+				UID: uid,
+			},
+		},
+		APIKey: util.RandomString(),
+	}
+	s.NoError(u.Insert())
+	u, err = GetPatchUser(uid)
+	s.NoError(err)
+	s.NotNil(u)
+	s.Equal("me", u.Id)
 }

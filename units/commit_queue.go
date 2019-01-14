@@ -2,19 +2,16 @@ package units
 
 import (
 	"context"
-	"encoding/base64"
 	"fmt"
 	"strconv"
-	"time"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/commitqueue"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/patch"
-	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/thirdparty"
-	"github.com/evergreen-ci/evergreen/util"
+	"github.com/evergreen-ci/evergreen/validator"
 	"github.com/google/go-github/github"
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/amboy/dependency"
@@ -24,7 +21,7 @@ import (
 	"github.com/mongodb/grip/level"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
-	"gopkg.in/mgo.v2/bson"
+	yaml "gopkg.in/yaml.v2"
 )
 
 const (
@@ -38,6 +35,7 @@ func init() {
 type commitQueueJob struct {
 	job.Base `bson:"job_base" json:"job_base" yaml:"job_base"`
 	QueueID  string `bson:"queue_id" json:"queue_id" yaml:"queue_id"`
+	env      evergreen.Environment
 }
 
 func makeCommitQueueJob() *commitQueueJob {
@@ -54,9 +52,10 @@ func makeCommitQueueJob() *commitQueueJob {
 	return job
 }
 
-func NewCommitQueueJob(queueID string, id string) amboy.Job {
+func NewCommitQueueJob(env evergreen.Environment, queueID string, id string) amboy.Job {
 	job := makeCommitQueueJob()
 	job.QueueID = queueID
+	job.env = env
 	job.SetID(fmt.Sprintf("%s:%s_%s", commitQueueJobName, queueID, id))
 
 	return job
@@ -71,13 +70,14 @@ func (j *commitQueueJob) Run(ctx context.Context) {
 		return
 	}
 
-	if !projectRef.CommitQEnabled {
+	if !projectRef.CommitQueueEnabled {
 		return
 	}
 
 	cq, err := commitqueue.FindOneId(j.QueueID)
 	if err != nil {
 		j.AddError(errors.Wrapf(err, "can't find commit queue for id %s", j.QueueID))
+		return
 	}
 	nextItem := cq.Next()
 	nextItemInt, err := strconv.Atoi(nextItem)
@@ -86,17 +86,11 @@ func (j *commitQueueJob) Run(ctx context.Context) {
 		return
 	}
 
-	alreadyProcessed, err := versionExists(nextItemInt)
-	if err != nil {
-		j.AddError(errors.Wrap(err, "can't query for versions for this item"))
-	}
-	if alreadyProcessed {
-		return
-	}
-
-	githubToken, err := getGitHubToken()
+	conf := j.env.Settings()
+	githubToken, err := conf.GetGithubOauthToken()
 	if err != nil {
 		j.AddError(errors.Wrap(err, "can't get github token"))
+		return
 	}
 
 	pr, err := thirdparty.GetGithubPullRequest(ctx, githubToken, projectRef.Owner, projectRef.Repo, nextItemInt)
@@ -118,10 +112,20 @@ func (j *commitQueueJob) Run(ctx context.Context) {
 	}
 
 	if !*pr.Mergeable {
-		err = sendCommitQueueGithubStatus(pr, message.GithubStateFailure, "PR not mergeable", "")
+		err = sendCommitQueueGithubStatus(j.env, pr, message.GithubStateFailure, "PR not mergeable", "")
 		if err != nil {
 			j.AddError(errors.Wrap(err, "can't send github status"))
 		}
+		return
+	}
+
+	// check if a patch has already been created for this PR
+	existingPatch, err := patch.FindOneByGithubPRNum(nextItemInt)
+	if err != nil {
+		j.AddError(errors.Wrap(err, "can't query for patch matching PR Number"))
+		return
+	}
+	if existingPatch != nil {
 		return
 	}
 
@@ -131,7 +135,7 @@ func (j *commitQueueJob) Run(ctx context.Context) {
 		return
 	}
 
-	err = sendCommitQueueGithubStatus(pr, message.GithubStatePending, "preparing to test merge", v.Id)
+	err = sendCommitQueueGithubStatus(j.env, pr, message.GithubStatePending, "preparing to test merge", v.Id)
 	if err != nil {
 		j.AddError(errors.Wrap(err, "can't send github status"))
 	}
@@ -140,28 +144,6 @@ func (j *commitQueueJob) Run(ctx context.Context) {
 	if err != nil {
 		j.AddError(errors.Wrap(err, "can't subscribe GitHub PR merge to version"))
 	}
-}
-
-func versionExists(prNumber int) (bool, error) {
-	patch, err := patch.FindOneByGithubPRNum(prNumber)
-	if err != nil {
-		return false, errors.Wrap(err, "can't query for patch matching PR Number")
-	}
-	return patch != nil, nil
-}
-
-func getGitHubToken() (string, error) {
-	conf, err := evergreen.GetConfig()
-	if err != nil {
-		return "", errors.Wrap(err, "can't get Evergreen Config")
-	}
-
-	githubToken, err := conf.GetGithubOauthToken()
-	if err != nil {
-		return "", errors.Wrap(err, "can't get GitHub token from Evergreen Config")
-	}
-
-	return githubToken, nil
 }
 
 func validatePR(pr *github.PullRequest) error {
@@ -196,15 +178,21 @@ func validatePR(pr *github.PullRequest) error {
 }
 
 func makeVersion(ctx context.Context, githubToken string, projectRef *model.ProjectRef, pr *github.PullRequest) (*model.Version, error) {
-	config, err := getProjectConfigFromFileInCommit(ctx, githubToken, projectRef, *pr.MergeCommitSHA)
+	patchDoc, err := patch.MakeMergePatch(pr, projectRef.Identifier)
+	if err != nil {
+		return nil, errors.Wrap(err, "can't make patch")
+	}
+
+	config, err := validator.GetPatchedProject(ctx, patchDoc, githubToken)
 	if err != nil {
 		return nil, errors.Wrap(err, "can't get remote config file")
 	}
 
-	patchDoc, err := makeMergePatch(pr, projectRef.Identifier, config)
+	yamlBytes, err := yaml.Marshal(config)
 	if err != nil {
-		return nil, errors.Wrap(err, "can't make patch")
+		return nil, errors.Wrap(err, "can't marshal project config to yaml")
 	}
+	patchDoc.PatchedConfig = string(yamlBytes)
 
 	if err = patchDoc.Insert(); err != nil {
 		return nil, errors.Wrap(err, "can't insert patch")
@@ -218,85 +206,7 @@ func makeVersion(ctx context.Context, githubToken string, projectRef *model.Proj
 	return v, nil
 }
 
-func getProjectConfigFromFileInCommit(ctx context.Context, githubToken string, projectRef *model.ProjectRef, sha string) (string, error) {
-	cancelCtx, cancel := context.WithTimeout(ctx, 10*time.Second)
-	defer cancel()
-
-	owner := projectRef.Owner
-	repo := projectRef.Repo
-	file := projectRef.CommitQConfigFile
-	remoteConfigFile, err := thirdparty.GetGithubFile(cancelCtx, githubToken, owner, repo, file, sha)
-	if err != nil {
-		return "", errors.Wrapf(err, "error fetching file %s from commit %s", file, sha)
-	}
-	configFileContents, err := base64.StdEncoding.DecodeString(*remoteConfigFile.Content)
-	if err != nil {
-		return "", errors.Wrapf(err, "unable to decode file %s", file)
-	}
-
-	return string(configFileContents), nil
-}
-
-func makeMergePatch(pr *github.PullRequest, projectID string, configString string) (*patch.Patch, error) {
-	u, err := getPatchUser(pr.GetUser().GetID())
-	if err != nil {
-		return nil, errors.Wrap(err, "can't get user for patch")
-	}
-	prAuthor := u.Id
-	patchNumber, err := u.IncPatchNumber()
-	if err != nil {
-		return nil, errors.Wrap(err, "error computing patch num")
-	}
-	id := bson.NewObjectId()
-
-	patchDoc := &patch.Patch{
-		Id:            id,
-		Project:       projectID,
-		Author:        prAuthor,
-		Githash:       *pr.Base.SHA,
-		Description:   fmt.Sprintf("Commit Queue merge test PR #%d", *pr.Number),
-		CreateTime:    time.Now(),
-		Status:        evergreen.PatchCreated,
-		PatchedConfig: configString,
-		PatchNumber:   patchNumber,
-		GithubPatchData: patch.GithubPatch{
-			PRNumber:       *pr.Number,
-			MergeCommitSHA: *pr.MergeCommitSHA,
-		},
-	}
-
-	return patchDoc, nil
-}
-
-func getPatchUser(userUID int) (*user.DBUser, error) {
-	u, err := user.FindByGithubUID(userUID)
-	if err != nil {
-		return nil, errors.Wrap(err, "can't look for user")
-	}
-	if u == nil {
-		// set to a default user
-		u, err = user.FindOne(user.ById(evergreen.GithubPatchUser))
-		if err != nil {
-			return nil, errors.Wrap(err, "can't get user for pull request")
-		}
-		// default user doesn't exist yet
-		if u == nil {
-			u = &user.DBUser{
-				Id:       evergreen.GithubPatchUser,
-				DispName: "Github Pull Requests",
-				APIKey:   util.RandomString(),
-			}
-			if err = u.Insert(); err != nil {
-				return nil, errors.Wrap(err, "failed to create github patch user")
-			}
-		}
-	}
-
-	return u, nil
-}
-
-func sendCommitQueueGithubStatus(pr *github.PullRequest, state message.GithubState, description, versionID string) error {
-	env := evergreen.GetEnvironment()
+func sendCommitQueueGithubStatus(env evergreen.Environment, pr *github.PullRequest, state message.GithubState, description, versionID string) error {
 	sender, err := env.GetSender(evergreen.SenderGithubStatus)
 	if err != nil {
 		return errors.Wrap(err, "can't get GitHub status sender")
@@ -304,7 +214,11 @@ func sendCommitQueueGithubStatus(pr *github.PullRequest, state message.GithubSta
 
 	url := ""
 	if versionID != "" {
-		url, _ = makeVersionURL(versionID)
+		uiConfig := evergreen.UIConfig{}
+		if err := uiConfig.Get(); err == nil {
+			urlBase := uiConfig.Url
+			url = fmt.Sprintf("%s/version/%s", urlBase, versionID)
+		}
 	}
 
 	msg := message.GithubStatus{
@@ -313,7 +227,7 @@ func sendCommitQueueGithubStatus(pr *github.PullRequest, state message.GithubSta
 		Ref:         *pr.Head.SHA,
 		Context:     "evergreen/commitqueue",
 		State:       state,
-		Description: "preparing to test merge",
+		Description: description,
 		URL:         url,
 	}
 
@@ -321,15 +235,6 @@ func sendCommitQueueGithubStatus(pr *github.PullRequest, state message.GithubSta
 	sender.Send(c)
 
 	return nil
-}
-
-func makeVersionURL(versionID string) (string, error) {
-	uiConfig := evergreen.UIConfig{}
-	if err := uiConfig.Get(); err != nil {
-		return "", errors.Wrap(err, "can't get UI config")
-	}
-	urlBase := uiConfig.Url
-	return fmt.Sprintf("%s/version/%s", urlBase, versionID), nil
 }
 
 func subscribeMerge(projectRef *model.ProjectRef, pr *github.PullRequest, patchID string) error {
@@ -340,7 +245,7 @@ func subscribeMerge(projectRef *model.ProjectRef, pr *github.PullRequest, patchI
 		PRNumber:      *pr.Number,
 		Ref:           *pr.Head.SHA,
 		CommitMessage: "Merged by commit queue",
-		MergeMethod:   projectRef.CommitQMergeMethod,
+		MergeMethod:   projectRef.CommitQueueMergeMethod,
 		CommitTitle:   *pr.Title,
 	})
 	patchSub := event.NewPatchOutcomeSubscription(patchID, mergeSubscriber)

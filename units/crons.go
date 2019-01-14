@@ -414,7 +414,7 @@ func PopulateOldestImageRemovalJobs() amboy.QueueOperation {
 	}
 }
 
-func PopulateCommitQueueJobs() amboy.QueueOperation {
+func PopulateCommitQueueJobs(env evergreen.Environment) amboy.QueueOperation {
 	return func(queue amboy.Queue) error {
 		catcher := grip.NewBasicCatcher()
 		ts := util.RoundPartOfHour(1).Format(tsFormat)
@@ -424,7 +424,7 @@ func PopulateCommitQueueJobs() amboy.QueueOperation {
 			return errors.Wrap(err, "can't find projectRefs with Commit Queue enabled")
 		}
 		for _, p := range projectRefs {
-			catcher.Add(queue.Put(NewCommitQueueJob(p.Identifier, ts)))
+			catcher.Add(queue.Put(NewCommitQueueJob(env, p.Identifier, ts)))
 		}
 		return catcher.Resolve()
 	}

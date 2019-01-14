@@ -7,6 +7,7 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/testutil"
+	"github.com/google/go-github/github"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
 )
@@ -141,4 +142,25 @@ func (s *patchSuite) TestByGithubPRAndCreatedBefore() {
 	patches, err = Find(ByGithubPRAndCreatedBefore(s.time, "evergreen-ci", "evergreen", 9001))
 	s.NoError(err)
 	s.Len(patches, 1)
+}
+
+func (s *patchSuite) TestMakeMergePatch() {
+	shaTemp := "abcdef"
+	numTemp := 1
+	pr := &github.PullRequest{
+		Base: &github.PullRequestBranch{
+			SHA: &shaTemp,
+		},
+		User: &github.User{
+			ID: &numTemp,
+		},
+		Number:         &numTemp,
+		MergeCommitSHA: &shaTemp,
+	}
+
+	p, err := MakeMergePatch(pr, "mci")
+	s.NoError(err)
+	s.Equal("mci", p.Project)
+	s.Equal(evergreen.PatchCreated, p.Status)
+	s.Equal(pr.MergeCommitSHA, p.GithubPatchData.MergeCommitSHA)
 }

@@ -97,12 +97,12 @@ func (s *githubPRLogger) Send(m message.Composer) {
 	s.ErrorHandler(s.sendMergeResult(res, msg), m)
 
 	// dequeue the PR from its commit queue
-	commitq, err := FindOneId(msg.ProjectID)
+	cq, err := FindOneId(msg.ProjectID)
 	if err != nil {
 		s.ErrorHandler(errors.Wrapf(err, "can't find commit queue for %s", msg.ProjectID), m)
 		return
 	}
-	err = commitq.Remove(strconv.Itoa(msg.PRNum))
+	err = cq.Remove(strconv.Itoa(msg.PRNum))
 	if err != nil {
 		s.ErrorHandler(errors.Wrapf(err, "can't dequeue %d from commit queue", msg.PRNum), m)
 	}

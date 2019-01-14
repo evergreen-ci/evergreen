@@ -1,11 +1,15 @@
 package patch
 
 import (
+	"fmt"
 	"io/ioutil"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/model/user"
+	"github.com/google/go-github/github"
+	"github.com/pkg/errors"
 	mgo "gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
 )
@@ -332,4 +336,34 @@ func (p *Patch) IsGithubPRPatch() bool {
 
 func (p Patch) IsPRMergePatch() bool {
 	return p.GithubPatchData.MergeCommitSHA != ""
+}
+
+func MakeMergePatch(pr *github.PullRequest, projectID string) (*Patch, error) {
+	u, err := user.GetPatchUser(pr.GetUser().GetID())
+	if err != nil {
+		return nil, errors.Wrap(err, "can't get user for patch")
+	}
+	patchNumber, err := u.IncPatchNumber()
+	if err != nil {
+		return nil, errors.Wrap(err, "error computing patch num")
+	}
+
+	id := bson.NewObjectId()
+
+	patchDoc := &Patch{
+		Id:          id,
+		Project:     projectID,
+		Author:      u.Id,
+		Githash:     *pr.Base.SHA,
+		Description: fmt.Sprintf("Commit Queue merge test PR #%d", *pr.Number),
+		CreateTime:  time.Now(),
+		Status:      evergreen.PatchCreated,
+		PatchNumber: patchNumber,
+		GithubPatchData: GithubPatch{
+			PRNumber:       *pr.Number,
+			MergeCommitSHA: *pr.MergeCommitSHA,
+		},
+	}
+
+	return patchDoc, nil
 }
