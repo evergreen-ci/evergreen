@@ -228,7 +228,7 @@ functions:
       type: setup
       params:
         wait: true
-        timeout_seconds: 600
+        timeout_seconds: 900
         num_hosts: 1
         path: gopath/src/github.com/evergreen-ci/evergreen/spawned_hosts.json
     - command: subprocess.exec
