@@ -45,7 +45,7 @@ func TestBuildingContainerImageJob(t *testing.T) {
 	assert.NoError(h2.Insert())
 	assert.NoError(h3.Insert())
 
-	j := NewBuildingContainerImageJob(env, h1, distro.ContainerImageSettings{URL: "image-url", Method: distro.DockerImageBuildTypeImport}, evergreen.ProviderNameDockerMock)
+	j := NewBuildingContainerImageJob(env, h1, cloud.ContainerImageSettings{URL: "image-url", Method: distro.DockerImageBuildTypeImport}, evergreen.ProviderNameDockerMock)
 	assert.False(j.Status().Completed)
 
 	j.Run(context.Background())

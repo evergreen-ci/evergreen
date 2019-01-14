@@ -42,13 +42,6 @@ type Expansion struct {
 	Value string `bson:"value,omitempty" json:"value,omitempty"`
 }
 
-type ContainerImageSettings struct {
-	URL              string `bson:"url"`
-	Method           string `bson:"method"`
-	RegistryUser     string `bson:"registry_user,omitempty"`
-	RegistryPassword string `bson:"registry_password,omitempty"`
-}
-
 const (
 	DockerImageBuildTypeImport = "import"
 	DockerImageBuildTypePull   = "pull"

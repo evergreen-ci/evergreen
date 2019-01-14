@@ -7,7 +7,6 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/cloud"
-	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/amboy/dependency"
@@ -301,7 +300,7 @@ func (j *createHostJob) isImageBuilt(ctx context.Context) (bool, error) {
 	if ok := parent.ContainerImages[imageURL]; ok {
 		return true, nil
 	}
-	imageSettings := distro.ContainerImageSettings{
+	imageSettings := cloud.ContainerImageSettings{
 		URL: imageURL,
 	}
 	if method, ok := settings["build_type"]; ok {

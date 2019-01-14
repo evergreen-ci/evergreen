@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
-	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/mitchellh/mapstructure"
@@ -25,6 +24,13 @@ type dockerManager struct {
 type dockerSettings struct {
 	// ImageURL is the url of the Docker image to use when building the container.
 	ImageURL string `mapstructure:"image_url" json:"image_url" bson:"image_url"`
+}
+
+type ContainerImageSettings struct {
+	URL              string `bson:"url"`
+	Method           string `bson:"method"`
+	RegistryUser     string `bson:"registry_user,omitempty"`
+	RegistryPassword string `bson:"registry_password,omitempty"`
 }
 
 // nolint
@@ -334,7 +340,7 @@ func (m *dockerManager) CostForDuration(ctx context.Context, h *host.Host, start
 
 // BuildContainerImage downloads and buils a container image onto parent specified
 // by URL and returns this URL
-func (m *dockerManager) BuildContainerImage(ctx context.Context, parent *host.Host, settings distro.ContainerImageSettings) error {
+func (m *dockerManager) BuildContainerImage(ctx context.Context, parent *host.Host, settings ContainerImageSettings) error {
 	start := time.Now()
 	if !parent.HasContainers {
 		return errors.Errorf("Error provisioning image: '%s' is not a parent", parent.Id)

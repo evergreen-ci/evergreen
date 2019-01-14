@@ -45,5 +45,8 @@ func main() {
 	}
 
 	data := []byte(fmt.Sprintf("docker_host: %s", hosts[0].DNS))
-	ioutil.WriteFile("expansions.yml", data, 0644)
+	err = ioutil.WriteFile("expansions.yml", data, 0644)
+	if err != nil {
+		fmt.Println(err.Error())
+	}
 }

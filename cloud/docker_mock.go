@@ -9,7 +9,6 @@ import (
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/go-connections/nat"
-	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/pkg/errors"
 )
@@ -41,7 +40,7 @@ func (c *dockerClientMock) Init(string) error {
 	return nil
 }
 
-func (c *dockerClientMock) EnsureImageDownloaded(context.Context, *host.Host, distro.ContainerImageSettings) (string, error) {
+func (c *dockerClientMock) EnsureImageDownloaded(context.Context, *host.Host, ContainerImageSettings) (string, error) {
 	if c.failDownload {
 		return "", errors.New("failed to download image")
 	}

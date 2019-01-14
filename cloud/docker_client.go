@@ -31,7 +31,7 @@ import (
 // The dockerClient interface wraps the Docker dockerClient interaction.
 type dockerClient interface {
 	Init(string) error
-	EnsureImageDownloaded(context.Context, *host.Host, distro.ContainerImageSettings) (string, error)
+	EnsureImageDownloaded(context.Context, *host.Host, ContainerImageSettings) (string, error)
 	BuildImageWithAgent(context.Context, *host.Host, string) (string, error)
 	CreateContainer(context.Context, *host.Host, *host.Host, *dockerSettings) error
 	GetContainer(context.Context, *host.Host, string) (*types.ContainerJSON, error)
@@ -123,7 +123,7 @@ func (c *dockerClientImpl) Init(apiVersion string) error {
 
 // EnsureImageDownloaded checks if the image in s3 specified by the URL already exists,
 // and if not, creates a new image from the remote tarball.
-func (c *dockerClientImpl) EnsureImageDownloaded(ctx context.Context, h *host.Host, settings distro.ContainerImageSettings) (string, error) {
+func (c *dockerClientImpl) EnsureImageDownloaded(ctx context.Context, h *host.Host, settings ContainerImageSettings) (string, error) {
 	start := time.Now()
 	dockerClient, err := c.generateClient(h)
 	if err != nil {

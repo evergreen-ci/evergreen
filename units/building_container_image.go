@@ -6,7 +6,6 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/cloud"
-	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/amboy/dependency"
@@ -31,9 +30,9 @@ func init() {
 type buildingContainerImageJob struct {
 	job.Base `bson:"base"`
 
-	ParentID      string                        `bson:"parent_id"`
-	ImageSettings distro.ContainerImageSettings `bson:"image_settings"`
-	Provider      string                        `bson:"provider"`
+	ParentID      string                       `bson:"parent_id"`
+	ImageSettings cloud.ContainerImageSettings `bson:"image_settings"`
+	Provider      string                       `bson:"provider"`
 
 	// cache
 	parent   *host.Host
@@ -55,7 +54,7 @@ func makeBuildingContainerImageJob() *buildingContainerImageJob {
 	return j
 }
 
-func NewBuildingContainerImageJob(env evergreen.Environment, h *host.Host, imageSettings distro.ContainerImageSettings, providerName string) amboy.Job {
+func NewBuildingContainerImageJob(env evergreen.Environment, h *host.Host, imageSettings cloud.ContainerImageSettings, providerName string) amboy.Job {
 	job := makeBuildingContainerImageJob()
 
 	job.parent = h
