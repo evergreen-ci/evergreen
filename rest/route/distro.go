@@ -76,19 +76,23 @@ func (h *distroPutHandler) Run(ctx context.Context) gimlet.Responder {
 		return error
 	}
 
+	// Existing resource
 	if original != nil {
-		// Existing resource
 		if err = h.sc.UpdateDistro(distro); err != nil {
-			return gimlet.MakeJSONErrorResponder(errors.Wrap(err, fmt.Sprintf("Database error for update() distro with distro id '%s'", h.distroID)))
+			return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "Database error for update() distro with distro id '%s'", h.distroID))
 		}
-	} else {
-		// New resource
-		if err = h.sc.CreateDistro(distro); err != nil {
-			return gimlet.MakeJSONErrorResponder(errors.Wrap(err, fmt.Sprintf("Database error for insert() distro with distro id '%s'", h.distroID)))
-		}
+		return gimlet.NewJSONResponse(struct{}{})
 	}
 
-	return gimlet.NewJSONResponse(apiDistro)
+	// New resource
+	if err = h.sc.CreateDistro(distro); err != nil {
+		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "Database error for insert() distro with distro id '%s'", h.distroID))
+	}
+	responder := gimlet.NewJSONResponse(struct{}{})
+	if err = responder.SetStatus(http.StatusCreated); err != nil {
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "Cannot set HTTP status code"))
+	}
+	return responder
 }
 
 ///////////////////////////////////////////////////////////////////////
@@ -183,7 +187,7 @@ func (h *distroIDPatchHandler) Run(ctx context.Context) gimlet.Responder {
 
 	apiDistro := &model.APIDistro{}
 	if err = apiDistro.BuildFromService(*d); err != nil {
-		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "API Error converting from distro.Expansion to model.APIExpansion"))
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "API error converting from distro.Distro to model.APIDistro"))
 	}
 
 	if err = json.Unmarshal(h.body, apiDistro); err != nil {
@@ -239,7 +243,7 @@ func (h *distroIDGetHandler) Run(ctx context.Context) gimlet.Responder {
 
 	distroModel := &model.APIDistro{}
 	if err = distroModel.BuildFromService(*foundDistro); err != nil {
-		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "API Error converting from distro.Distro to model.APIDistro"))
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "API error converting from distro.Distro to model.APIDistro"))
 	}
 
 	return gimlet.NewJSONResponse(distroModel)
@@ -300,7 +304,7 @@ func (h *distroGetHandler) Run(ctx context.Context) gimlet.Responder {
 func validateDistro(ctx context.Context, apiDistro *model.APIDistro, resourceID string, settings *evergreen.Settings, isNewDistro bool) (*distro.Distro, gimlet.Responder) {
 	i, err := apiDistro.ToService()
 	if err != nil {
-		return nil, gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "API Error converting from model.APIDistro to distro.Distro"))
+		return nil, gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "API error converting from model.APIDistro to distro.Distro"))
 	}
 	d, ok := i.(*distro.Distro)
 	if !ok {
@@ -313,8 +317,8 @@ func validateDistro(ctx context.Context, apiDistro *model.APIDistro, resourceID 
 	id := model.FromAPIString(apiDistro.Name)
 	if resourceID != id {
 		return nil, gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
-			StatusCode: http.StatusBadRequest,
-			Message:    fmt.Sprintf("Distro name is immutable; cannot rename distro resource '%s'", resourceID),
+			StatusCode: http.StatusForbidden,
+			Message:    fmt.Sprintf("A distro's name is immutable; cannot rename distro '%s'", resourceID),
 		})
 	}
 

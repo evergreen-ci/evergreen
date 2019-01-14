@@ -1,10 +1,13 @@
 package data
 
 import (
+	"fmt"
+	"net/http"
 	"time"
 
 	"github.com/evergreen-ci/evergreen/model"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
+	"github.com/evergreen-ci/gimlet"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 )
@@ -12,6 +15,45 @@ import (
 // DBProjectConnector is a struct that implements the Project related methods
 // from the Connector through interactions with the backing database.
 type DBProjectConnector struct{}
+
+// FindProjectById queries the database for the project matching the projectRef.Identifier.
+func (pc *DBProjectConnector) FindProjectById(id string) (*model.ProjectRef, error) {
+	p, err := model.FindOneProjectRef(id)
+	if err != nil {
+		return nil, err
+	}
+	if p == nil {
+		return nil, gimlet.ErrorResponse{
+			StatusCode: http.StatusNotFound,
+			Message:    fmt.Sprintf("project with id '%s' not found", id),
+		}
+	}
+	return p, nil
+}
+
+// CreateProject inserts the given model.ProjectRef.
+func (pc *DBProjectConnector) CreateProject(projectRef *model.ProjectRef) error {
+	err := projectRef.Insert()
+	if err != nil {
+		return gimlet.ErrorResponse{
+			StatusCode: http.StatusInternalServerError,
+			Message:    fmt.Sprintf("project with id '%s' was not inserted", projectRef.Identifier),
+		}
+	}
+	return nil
+}
+
+// UpdateProject updates the given model.ProjectRef.Identifier.
+func (pc *DBProjectConnector) UpdateProject(projectRef *model.ProjectRef) error {
+	err := projectRef.Update()
+	if err != nil {
+		return gimlet.ErrorResponse{
+			StatusCode: http.StatusInternalServerError,
+			Message:    fmt.Sprintf("project with id '%s' was not updated", projectRef.Identifier),
+		}
+	}
+	return nil
+}
 
 // FindProjects queries the backing database for the specified projects
 func (pc *DBProjectConnector) FindProjects(key string, limit int, sortDir int, isAuthenticated bool) ([]model.ProjectRef, error) {
@@ -21,49 +63,6 @@ func (pc *DBProjectConnector) FindProjects(key string, limit int, sortDir int, i
 	}
 
 	return projects, nil
-}
-
-func (pc *DBProjectConnector) CreateProject(apiProjectRef *restModel.APIProjectRef) (*restModel.APIProject, error) {
-	projectRef, _ := apiProjectRef.ToService()
-
-	if err := projectRef.Insert(); err != nil {
-		return nil, errors.Wrapf(err, "Cannot insert project_ref into DB!")
-	}
-
-	createdProjectRef, err := model.FindOneProjectRef(projectRef.Identifier)
-	if err != nil {
-		return nil, errors.Wrap(err, "Created project couldn't be found")
-	}
-
-	apiProject := &restModel.APIProject{}
-	err = apiProject.BuildFromService(createdProjectRef)
-	if err != nil {
-		return nil, errors.Wrap(err, "problem converting project document")
-	}
-
-	return apiProject, nil
-}
-
-func (pc *DBProjectConnector) UpdateProject(apiProjectRef *restModel.APIProjectRef) (*restModel.APIProject, error) {
-	projectRef, _ := apiProjectRef.ToService()
-
-	// The projectRef guaranteed to be existing
-	if err := projectRef.Upsert(); err != nil {
-		return nil, errors.Wrapf(err, "Cannot update project_ref into DB!")
-	}
-
-	updateProjectRef, err := model.FindOneProjectRef(projectRef.Identifier)
-	if err != nil {
-		return nil, errors.Wrap(err, "Updated project couldn't be found")
-	}
-
-	apiProject := &restModel.APIProject{}
-	err = apiProject.BuildFromService(updateProjectRef)
-	if err != nil {
-		return nil, errors.Wrap(err, "problem converting project document")
-	}
-
-	return apiProject, nil
 }
 
 func (ac *DBProjectConnector) GetProjectEventLog(id string, before time.Time, n int) ([]restModel.APIProjectEvent, error) {
@@ -125,12 +124,40 @@ func (pc *MockProjectConnector) FindProjects(key string, limit int, sortDir int,
 	return projects, nil
 }
 
-func (pc *MockProjectConnector) CreateProject(apiProjectRef *restModel.APIProjectRef) (*restModel.APIProject, error) {
-	return &restModel.APIProject{Identifier: restModel.ToAPIString("test")}, nil
+func (pc *MockProjectConnector) FindProjectById(projectId string) (*model.ProjectRef, error) {
+	for _, p := range pc.CachedProjects {
+		if p.Identifier == projectId {
+			return &p, nil
+		}
+	}
+	return nil, gimlet.ErrorResponse{
+		StatusCode: http.StatusNotFound,
+		Message:    fmt.Sprintf("project with id '%s' not found", projectId),
+	}
 }
 
-func (pc *MockProjectConnector) UpdateProject(apiProjectRef *restModel.APIProjectRef) (*restModel.APIProject, error) {
-	return &restModel.APIProject{Identifier: restModel.ToAPIString("test")}, nil
+func (pc *MockProjectConnector) CreateProject(projectRef *model.ProjectRef) error {
+	for _, p := range pc.CachedProjects {
+		if p.Identifier == projectRef.Identifier {
+			return gimlet.ErrorResponse{
+				StatusCode: http.StatusInternalServerError,
+				Message:    fmt.Sprintf("project with id '%s' was not inserted", projectRef.Identifier),
+			}
+		}
+	}
+	return nil
+}
+
+func (pc *MockProjectConnector) UpdateProject(projectRef *model.ProjectRef) error {
+	for _, p := range pc.CachedProjects {
+		if p.Identifier == projectRef.Identifier {
+			return nil
+		}
+	}
+	return gimlet.ErrorResponse{
+		StatusCode: http.StatusInternalServerError,
+		Message:    fmt.Sprintf("project with id '%s' was not updated", projectRef.Identifier),
+	}
 }
 
 func (pc *MockProjectConnector) GetProjectEventLog(id string, before time.Time, n int) ([]restModel.APIProjectEvent, error) {

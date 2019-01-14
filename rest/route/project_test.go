@@ -3,20 +3,234 @@ package route
 import (
 	"bytes"
 	"context"
-	"encoding/json"
+	"fmt"
 	"net/http"
 	"testing"
 
+	"github.com/evergreen-ci/evergreen/db"
 	serviceModel "github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/rest/model"
+	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/stretchr/testify/suite"
 )
 
 ////////////////////////////////////////////////////////////////////////
 //
-// Tests for get projects route
+// Tests for PATCH /rest/v2/projects/{project_id}
+
+type ProjectPatchByIDSuite struct {
+	sc *data.MockConnector
+	// data data.MockProjectConnector
+	rm gimlet.RouteHandler
+
+	suite.Suite
+}
+
+func TestProjectPatchSuite(t *testing.T) {
+	db.SetGlobalSessionProvider(testutil.TestConfig().SessionFactory())
+	suite.Run(t, new(ProjectPatchByIDSuite))
+}
+
+func (s *ProjectPatchByIDSuite) SetupTest() {
+	s.sc = getMockProjectConnector()
+	s.rm = makePatchProjectByID(s.sc).(*projectIDPatchHandler)
+}
+
+func (s *ProjectPatchByIDSuite) TestParse() {
+	ctx := context.Background()
+	json := []byte(`{"private" : false}`)
+	req, _ := http.NewRequest("PATCH", "http://example.com/api/rest/v2/projects/dimoxinil", bytes.NewBuffer(json))
+
+	err := s.rm.Parse(ctx, req)
+	s.NoError(err)
+	s.Equal(json, s.rm.(*projectIDPatchHandler).body)
+}
+
+func (s *ProjectPatchByIDSuite) TestRunInValidIdentifierChange() {
+	ctx := context.Background()
+	json := []byte(`{"identifier": "Verboten"}`)
+	h := s.rm.(*projectIDPatchHandler)
+	h.projectID = "dimoxinil"
+	h.body = json
+
+	resp := s.rm.Run(ctx)
+	s.rm.Run(ctx)
+	s.NotNil(resp.Data())
+	s.Equal(resp.Status(), http.StatusForbidden)
+
+	gimlet := (resp.Data()).(gimlet.ErrorResponse)
+	s.Equal(gimlet.Message, fmt.Sprintf("A project's id is immutable; cannot rename project '%s'", h.projectID))
+}
+
+func (s *ProjectPatchByIDSuite) TestRunInvalidNonExistingId() {
+	ctx := context.Background()
+	json := []byte(`{"display_name": "This is a display name"}`)
+	h := s.rm.(*projectIDPatchHandler)
+	h.projectID = "non-existent"
+	h.body = json
+
+	resp := s.rm.Run(ctx)
+	s.rm.Run(ctx)
+	s.NotNil(resp.Data())
+	s.Equal(resp.Status(), http.StatusNotFound)
+}
+
+////////////////////////////////////////////////////////////////////////
+//
+// Tests for PUT /rest/v2/projects/{project_id}
+
+type ProjectPutSuite struct {
+	sc *data.MockConnector
+	// data data.MockProjectConnector
+	rm gimlet.RouteHandler
+
+	suite.Suite
+}
+
+func TestProjectPutSuite(t *testing.T) {
+	db.SetGlobalSessionProvider(testutil.TestConfig().SessionFactory())
+	suite.Run(t, new(ProjectPutSuite))
+}
+
+func (s *ProjectPutSuite) SetupTest() {
+	s.sc = getMockProjectConnector()
+	s.rm = makePutProjectByID(s.sc).(*projectIDPutHandler)
+}
+
+func (s *ProjectPutSuite) TestParse() {
+	ctx := context.Background()
+	json := []byte(
+		`{
+				"owner_name": "Rembrandt Q. Einstein",
+				"repo_name": "nutsandgum",
+				"branch_name": "master",
+				"repo_kind": "github",
+				"enabled": false,
+				"private": true,
+				"batch_time": 0,
+				"remote_path": "evergreen.yml",
+				"display_name": "Nuts and Gum: together at last!",
+				"local_config": "",
+				"deactivate_previous": true,
+				"tracks_push_events": true,
+				"pr_testing_enabled": true,
+				"commitq_enabled": true,
+				"tracked": false,
+				"patching_disabled": true,
+				"admins": ["Apu DeBeaumarchais"],
+				"notify_on_failure": true
+		}`)
+
+	req, _ := http.NewRequest("PUT", "http://example.com/api/rest/v2/projects/nutsandgum", bytes.NewBuffer(json))
+	err := s.rm.Parse(ctx, req)
+	s.NoError(err)
+}
+
+func (s *ProjectPutSuite) TestRunNewWithValidEntity() {
+	ctx := context.Background()
+	json := []byte(
+		`{
+				"owner_name": "Rembrandt Q. Einstein",
+				"repo_name": "nutsandgum",
+				"branch_name": "master",
+				"repo_kind": "github",
+				"enabled": false,
+				"private": true,
+				"batch_time": 0,
+				"remote_path": "evergreen.yml",
+				"display_name": "Nuts and Gum: together at last!",
+				"local_config": "",
+				"deactivate_previous": true,
+				"tracks_push_events": true,
+				"pr_testing_enabled": true,
+				"commitq_enabled": true,
+				"tracked": false,
+				"patching_disabled": true,
+				"admins": ["Apu DeBeaumarchais"],
+				"notify_on_failure": true
+		}`)
+
+	h := s.rm.(*projectIDPutHandler)
+	h.projectID = "nutsandgum"
+	h.body = json
+
+	resp := s.rm.Run(ctx)
+	s.NotNil(resp.Data())
+	s.Equal(resp.Status(), http.StatusCreated)
+}
+
+func (s *ProjectPutSuite) TestRunExistingWithValidEntity() {
+	ctx := context.Background()
+	json := []byte(
+		`{
+				"owner_name": "Rembrandt Q. Einstein",
+				"repo_name": "nutsandgum",
+				"branch_name": "master",
+				"repo_kind": "github",
+				"enabled": false,
+				"private": true,
+				"batch_time": 0,
+				"remote_path": "evergreen.yml",
+				"display_name": "Nuts and Gum: together at last!",
+				"local_config": "",
+				"deactivate_previous": true,
+				"tracks_push_events": true,
+				"pr_testing_enabled": true,
+				"commitq_enabled": true,
+				"tracked": false,
+				"patching_disabled": true,
+				"admins": ["Apu DeBeaumarchais"],
+				"notify_on_failure": true
+		}`)
+
+	h := s.rm.(*projectIDPutHandler)
+	h.projectID = "dimoxinil"
+	h.body = json
+
+	resp := s.rm.Run(ctx)
+	s.NotNil(resp.Data())
+	s.Equal(resp.Status(), http.StatusOK)
+
+}
+
+func (s *ProjectPutSuite) TestRunNewConflictingName() {
+	ctx := context.Background()
+	json := []byte(
+		`{
+				"owner_name": "Rembrandt Q. Einstein",
+				"repo_name": "nutsandgum",
+				"branch_name": "master",
+				"repo_kind": "github",
+				"enabled": false,
+				"private": true,
+				"batch_time": 0,
+				"identifier" : "verboten",
+				"remote_path": "evergreen.yml",
+				"display_name": "Nuts and Gum: together at last!",
+				"local_config": "",
+				"deactivate_previous": true,
+				"tracks_push_events": true,
+				"pr_testing_enabled": true,
+				"commitq_enabled": true,
+				"tracked": false,
+				"patching_disabled": true,
+				"admins": ["Apu DeBeaumarchais"],
+				"notify_on_failure": true
+		}`)
+	h := s.rm.(*projectIDPutHandler)
+	h.projectID = "new-project"
+	h.body = json
+
+	resp := s.rm.Run(ctx)
+	s.NotNil(resp.Data())
+	s.Equal(resp.Status(), http.StatusForbidden)
+}
+
+////////////////////////////////////////////////////////////////////////
+//
+// Tests for GET /rest/v2/projects
 
 type ProjectGetSuite struct {
 	data  data.MockProjectConnector
@@ -114,110 +328,33 @@ func (s *ProjectGetSuite) TestGetRecentVersions() {
 	s.EqualError(getVersions.Parse(ctx, request), "400 (Bad Request): Invalid offset")
 }
 
-////////////////////////////////////////////////////////////////////////
-//
-// Tests project create route
-type ProjectCreateSuite struct {
-	sc *data.MockConnector
-	h  *projectCreateHandler
-
-	suite.Suite
-}
-
-func TestProjectCreateSuite(t *testing.T) {
-	suite.Run(t, new(ProjectCreateSuite))
-}
-
-func (s *ProjectCreateSuite) SetupTest() {
-	s.sc = &data.MockConnector{}
-	s.h = &projectCreateHandler{sc: s.sc}
-}
-
-func (s *ProjectCreateSuite) TestRoute() {
-	payloadBytes, _ := json.Marshal(map[string]interface{}{
-		"identifier":  "id",
-		"branch_name": "branch",
-	})
-
-	payload := bytes.NewBuffer(payloadBytes)
-
-	r, err := http.NewRequest(
-		"PUT",
-		"https://evergreen.example.com/rest/v2/projects/",
-		payload,
-	)
-
-	s.Require().NoError(err)
-	ctx := context.Background()
-	err = s.h.Parse(ctx, r)
-	s.NoError(err)
-	s.Equal("id", model.FromAPIString(s.h.projectRef.Identifier))
-	s.Equal("branch", model.FromAPIString(s.h.projectRef.Branch))
-
-	resp := s.h.Run(ctx)
-	s.NotNil(resp)
-	s.Equal(http.StatusCreated, resp.Status())
-}
-
-////////////////////////////////////////////////////////////////////////
-//
-// Tests project update route
-type ProjectUpdateSuite struct {
-	sc   *data.MockConnector
-	h    *projectUpdateHandler
-	data data.MockProjectConnector
-
-	suite.Suite
-}
-
-func TestProjectUpdateSuite(t *testing.T) {
-	suite.Run(t, new(ProjectUpdateSuite))
-}
-
-func (s *ProjectUpdateSuite) SetupSuite() {
-	s.data = data.MockProjectConnector{
-		CachedProjects: []serviceModel.ProjectRef{
-			{Identifier: "A"},
+func getMockProjectConnector() *data.MockConnector {
+	connector := data.MockConnector{
+		MockProjectConnector: data.MockProjectConnector{
+			CachedProjects: []serviceModel.ProjectRef{
+				{
+					Owner:                "dimoxinil",
+					Repo:                 "dimoxinil-enterprise-repo",
+					Branch:               "master",
+					RepoKind:             "github",
+					Enabled:              false,
+					Private:              true,
+					BatchTime:            0,
+					RemotePath:           "evergreen.yml",
+					Identifier:           "dimoxinil",
+					DisplayName:          "Dimoxinil",
+					LocalConfig:          "",
+					DeactivatePrevious:   false,
+					TracksPushEvents:     false,
+					PRTestingEnabled:     false,
+					CommitQEnabled:       false,
+					Tracked:              true,
+					PatchingDisabled:     false,
+					Admins:               []string{"langdon.alger"},
+					NotifyOnBuildFailure: false,
+				},
+			},
 		},
 	}
-
-	s.sc = &data.MockConnector{}
-	s.sc = &data.MockConnector{
-		URL:                  "https://evergreen.example.net",
-		MockProjectConnector: s.data,
-	}
-	s.h = &projectUpdateHandler{sc: s.sc}
-}
-
-func (s *ProjectUpdateSuite) TestRoute() {
-	payloadBytes, _ := json.Marshal(map[string]interface{}{
-		"identifier":  "id",
-		"branch_name": "branch",
-	})
-
-	payload := bytes.NewBuffer(payloadBytes)
-
-	projCtx := serviceModel.Context{
-		ProjectRef: &serviceModel.ProjectRef{
-			Identifier: "A",
-		},
-	}
-	ctx := context.WithValue(context.Background(), RequestContext, &projCtx)
-
-	r, err := http.NewRequest(
-		"PATCH",
-		"https://evergreen.example.net/rest/v2/projects/A",
-		payload,
-	)
-	r = r.WithContext(ctx)
-
-	s.Require().NoError(err)
-	err = s.h.Parse(ctx, r)
-	s.NoError(err)
-	s.Equal("A", model.FromAPIString(s.h.projectRef.Identifier))
-	s.Equal("branch", model.FromAPIString(s.h.projectRef.Branch))
-
-	resp := s.h.Run(ctx)
-	s.NotNil(resp)
-	s.Equal(http.StatusOK, resp.Status())
+	return &connector
 }

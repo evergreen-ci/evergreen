@@ -98,7 +98,8 @@ type APIProjectRef struct {
 	Triggers []APITriggerDefinition `json:"triggers"`
 }
 
-func (p *APIProjectRef) ToService() (model.ProjectRef, error) {
+// ToService returns a service layer ProjectRef using the data from APIProjectRef
+func (p *APIProjectRef) ToService() (interface{}, error) {
 	projectRef := model.ProjectRef{
 		Owner:                FromAPIString(p.Owner),
 		Repo:                 FromAPIString(p.Repo),
@@ -143,7 +144,7 @@ func (p *APIProjectRef) ToService() (model.ProjectRef, error) {
 	}
 	projectRef.Triggers = triggers
 
-	return projectRef, nil
+	return &projectRef, nil
 }
 
 func (p *APIProjectRef) BuildFromService(v interface{}) error {

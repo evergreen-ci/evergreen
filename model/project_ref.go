@@ -147,6 +147,16 @@ func (projectRef *ProjectRef) Insert() error {
 	return db.Insert(ProjectRefCollection, projectRef)
 }
 
+func (projectRef *ProjectRef) Update() error {
+	return db.Update(
+		ProjectRefCollection,
+		bson.M{
+			ProjectRefIdentifierKey: projectRef.Identifier,
+		},
+		projectRef,
+	)
+}
+
 // FindOneProjectRef gets a project ref given the owner name, the repo
 // name and the project name
 func FindOneProjectRef(identifier string) (*ProjectRef, error) {
