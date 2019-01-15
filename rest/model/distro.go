@@ -32,11 +32,11 @@ type APIDistro struct {
 // BuildFromService converts from service level distro.Distro to an APIDistro
 func (apiDistro *APIDistro) BuildFromService(h interface{}) error {
 	var d distro.Distro
-	switch h.(type) {
+	switch v := h.(type) {
 	case distro.Distro:
-		d = h.(distro.Distro)
+		d = v
 	case *distro.Distro:
-		d = *h.(*distro.Distro)
+		d = *v
 	default:
 		return errors.Errorf("%T is not an supported expansion type", h)
 	}
