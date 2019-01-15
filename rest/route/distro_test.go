@@ -50,8 +50,8 @@ func (s *DistroSetupByIDSuite) TestRunValidId() {
 	s.NotNil(resp.Data())
 	s.Equal(resp.Status(), http.StatusOK)
 
-	script := (resp.Data()).(*model.APIDistroSetup)
-	s.Equal(script.Setup, model.ToAPIString("Set-up string"))
+	script := resp.Data()
+	s.Equal(script, model.ToAPIString("Set-up script"))
 }
 
 func (s *DistroSetupByIDSuite) TestRunInvalidId() {
@@ -159,8 +159,8 @@ func (s *DistroTeardownByIDSuite) TestRunValidId() {
 	s.NotNil(resp.Data())
 	s.Equal(resp.Status(), http.StatusOK)
 
-	script := (resp.Data()).(*model.APIDistroTeardown)
-	s.Equal(script.Teardown, model.ToAPIString("Tear-down string"))
+	script := resp.Data()
+	s.Equal(script, model.ToAPIString("Tear-down script"))
 }
 
 func (s *DistroTeardownByIDSuite) TestRunInValidId() {
@@ -961,8 +961,8 @@ func getMockDistrosConnector() *data.MockConnector {
 							"virtual_name": "ephemeral0"},
 					},
 					SetupAsSudo: true,
-					Setup:       "Set-up string",
-					Teardown:    "Tear-down string",
+					Setup:       "Set-up script",
+					Teardown:    "Tear-down script",
 					User:        "root",
 					SSHKey:      "SSH key string",
 					SSHOptions: []string{

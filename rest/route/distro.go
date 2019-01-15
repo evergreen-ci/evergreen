@@ -47,17 +47,17 @@ func (h *distroIDGetSetupHandler) Parse(ctx context.Context, r *http.Request) er
 
 // Run returns the given distro's setup script.
 func (h *distroIDGetSetupHandler) Run(ctx context.Context) gimlet.Responder {
-	distro, err := h.sc.FindDistroById(h.distroID)
+	d, err := h.sc.FindDistroById(h.distroID)
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "Database error for find() by distro id '%s'", h.distroID))
 	}
 
-	script := &model.APIDistroSetup{}
-	if err = script.BuildFromService(*distro); err != nil {
-		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "API error converting from distro.Distro.Setup to model.APIDistroSetup"))
+	apiDistro := &model.APIDistro{}
+	if err = apiDistro.BuildFromService(d); err != nil {
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "API error converting from distro.Distro to model.APIDistro"))
 	}
 
-	return gimlet.NewJSONResponse(script)
+	return gimlet.NewJSONResponse(apiDistro.Setup)
 }
 
 ///////////////////////////////////////////////////////////////////////
@@ -108,7 +108,7 @@ func (h *distroIDChangeSetupHandler) Run(ctx context.Context) gimlet.Responder {
 	}
 
 	apiDistro := &model.APIDistro{}
-	if err = apiDistro.BuildFromService(*d); err != nil {
+	if err = apiDistro.BuildFromService(d); err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "API error converting from distro.Distro to model.APIDistro"))
 	}
 
@@ -145,17 +145,17 @@ func (h *distroIDGetTeardownHandler) Parse(ctx context.Context, r *http.Request)
 
 // Run returns the given distro's teardown script.
 func (h *distroIDGetTeardownHandler) Run(ctx context.Context) gimlet.Responder {
-	distro, err := h.sc.FindDistroById(h.distroID)
+	d, err := h.sc.FindDistroById(h.distroID)
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "Database error for find() by distro id '%s'", h.distroID))
 	}
 
-	script := &model.APIDistroTeardown{}
-	if err = script.BuildFromService(*distro); err != nil {
-		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "API Error converting from distro.Distro.Teardown to model.APIDistroTeardown"))
+	apiDistro := &model.APIDistro{}
+	if err = apiDistro.BuildFromService(d); err != nil {
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "API error converting from distro.Distro to model.APIDistro"))
 	}
 
-	return gimlet.NewJSONResponse(script)
+	return gimlet.NewJSONResponse(apiDistro.Teardown)
 }
 
 ///////////////////////////////////////////////////////////////////////
@@ -206,7 +206,7 @@ func (h *distroIDChangeTeardownHandler) Run(ctx context.Context) gimlet.Responde
 	}
 
 	apiDistro := &model.APIDistro{}
-	if err = apiDistro.BuildFromService(*d); err != nil {
+	if err = apiDistro.BuildFromService(d); err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "API error converting from distro.Distro to model.APIDistro"))
 	}
 
@@ -382,7 +382,7 @@ func (h *distroIDPatchHandler) Run(ctx context.Context) gimlet.Responder {
 	}
 
 	apiDistro := &model.APIDistro{}
-	if err = apiDistro.BuildFromService(*d); err != nil {
+	if err = apiDistro.BuildFromService(d); err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "API error converting from distro.Distro to model.APIDistro"))
 	}
 
@@ -432,13 +432,13 @@ func (h *distroIDGetHandler) Parse(ctx context.Context, r *http.Request) error {
 
 // Run calls the data FindDistroById function and returns the distro from the provider.
 func (h *distroIDGetHandler) Run(ctx context.Context) gimlet.Responder {
-	foundDistro, err := h.sc.FindDistroById(h.distroID)
+	d, err := h.sc.FindDistroById(h.distroID)
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "Database error for find() by distro id '%s'", h.distroID))
 	}
 
 	distroModel := &model.APIDistro{}
-	if err = distroModel.BuildFromService(*foundDistro); err != nil {
+	if err = distroModel.BuildFromService(d); err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "API error converting from distro.Distro to model.APIDistro"))
 	}
 
