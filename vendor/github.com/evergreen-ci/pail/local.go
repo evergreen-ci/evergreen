@@ -12,15 +12,26 @@ import (
 )
 
 type localFileSystem struct {
-	path   string
-	dryRun bool
+	path         string
+	dryRun       bool
+	deleteOnSync bool
+}
+
+type LocalOptions struct {
+	Path         string
+	DryRun       bool
+	DeleteOnSync bool
 }
 
 // NewLocalBucket returns an implementation of the Bucket interface
 // that stores files in the local file system. Returns an error if the
 // directory doesn't exist.
-func NewLocalBucket(path string, dryRun bool) (Bucket, error) {
-	b := &localFileSystem{path: path, dryRun: dryRun}
+func NewLocalBucket(opts LocalOptions) (Bucket, error) {
+	b := &localFileSystem{
+		path:         opts.Path,
+		dryRun:       opts.DryRun,
+		deleteOnSync: opts.DeleteOnSync,
+	}
 	if err := b.Check(nil); err != nil {
 		return nil, errors.WithStack(err)
 
@@ -33,13 +44,13 @@ func NewLocalBucket(path string, dryRun bool) (Bucket, error) {
 // directory created for this purpose. Returns an error if there were
 // issues creating the temporary directory. This implementation does
 // not provide a mechanism to delete the temporary directory.
-func NewLocalTemporaryBucket(dryRun bool) (Bucket, error) {
+func NewLocalTemporaryBucket(opts LocalOptions) (Bucket, error) {
 	dir, err := ioutil.TempDir("", "pail-local-tmp-bucket")
 	if err != nil {
 		return nil, errors.Wrap(err, "problem creating temporary directory")
 	}
 
-	return &localFileSystem{path: dir, dryRun: dryRun}, nil
+	return &localFileSystem{path: dir, dryRun: opts.DryRun, deleteOnSync: opts.DeleteOnSync}, nil
 }
 
 func (b *localFileSystem) Check(_ context.Context) error {
@@ -88,6 +99,7 @@ func (b *localFileSystem) Put(ctx context.Context, name string, input io.Reader)
 		_ = f.Close()
 		return errors.Wrap(err, "problem copying data to file")
 	}
+
 	return errors.WithStack(f.Close())
 }
 
@@ -206,6 +218,9 @@ func (b *localFileSystem) Push(ctx context.Context, local, remote string) error 
 		}
 	}
 
+	if b.deleteOnSync && !b.dryRun {
+		return errors.Wrapf(os.RemoveAll(local), "problem removing '%s' after push", local)
+	}
 	return nil
 }
 
@@ -215,8 +230,11 @@ func (b *localFileSystem) Pull(ctx context.Context, local, remote string) error 
 	if err != nil {
 		return errors.WithStack(err)
 	}
+
+	keys := []string{}
 	for _, fn := range files {
 		path := filepath.Join(local, fn)
+		keys = append(keys, fn)
 		if _, err := os.Stat(path); os.IsNotExist(err) {
 			if err := b.Download(ctx, fn, path); err != nil {
 				return errors.WithStack(err)
@@ -241,6 +259,9 @@ func (b *localFileSystem) Pull(ctx context.Context, local, remote string) error 
 		}
 	}
 
+	if b.deleteOnSync && !b.dryRun {
+		return errors.Wrapf(b.RemoveMany(ctx, keys...), "problem removing '%s' after pull", remote)
+	}
 	return nil
 }
 
