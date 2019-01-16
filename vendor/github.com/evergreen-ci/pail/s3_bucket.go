@@ -28,14 +28,15 @@ type s3BucketLarge struct {
 }
 
 type s3Bucket struct {
-	name        string
-	prefix      string
-	sess        *session.Session
-	svc         *s3.S3
-	permission  string
-	contentType string
-	dryRun      bool
-	batchSize   int
+	name         string
+	prefix       string
+	sess         *session.Session
+	svc          *s3.S3
+	permission   string
+	contentType  string
+	dryRun       bool
+	batchSize    int
+	deleteOnSync bool
 }
 
 // S3Options support the use and creation of S3 backed buckets.
@@ -50,6 +51,7 @@ type S3Options struct {
 	ContentType               string
 	DryRun                    bool
 	MaxRetries                int
+	DeleteOnSync              bool
 }
 
 // Wrapper for creating AWS credentials.
@@ -114,14 +116,15 @@ func newS3BucketBase(client *http.Client, options S3Options) (*s3Bucket, error) 
 	}
 	svc := s3.New(sess)
 	return &s3Bucket{
-		name:        options.Name,
-		prefix:      options.Prefix,
-		sess:        sess,
-		svc:         svc,
-		permission:  options.Permission,
-		contentType: options.ContentType,
-		dryRun:      options.DryRun,
-		batchSize:   1000,
+		name:         options.Name,
+		prefix:       options.Prefix,
+		sess:         sess,
+		svc:          svc,
+		permission:   options.Permission,
+		contentType:  options.ContentType,
+		dryRun:       options.DryRun,
+		batchSize:    1000,
+		deleteOnSync: options.DeleteOnSync,
 	}, nil
 }
 
@@ -471,7 +474,7 @@ func (s *s3Bucket) Download(ctx context.Context, key, path string) error {
 	return errors.WithStack(f.Close())
 }
 
-func (s *s3Bucket) pushHelper(b Bucket, ctx context.Context, local, remote string) error {
+func (s *s3Bucket) push(ctx context.Context, local, remote string, b Bucket) error {
 	files, err := walkLocalTree(ctx, local)
 	if err != nil {
 		return errors.WithStack(err)
@@ -501,23 +504,28 @@ func (s *s3Bucket) pushHelper(b Bucket, ctx context.Context, local, remote strin
 			return errors.Wrapf(err, "problem finding '%s'", target)
 		}
 	}
+
+	if s.deleteOnSync && !s.dryRun {
+		return errors.Wrapf(os.RemoveAll(local), "problem removing '%s' after push", local)
+	}
 	return nil
 }
 
 func (s *s3BucketSmall) Push(ctx context.Context, local, remote string) error {
-	return s.pushHelper(s, ctx, local, s.normalizeKey(remote))
+	return s.push(ctx, local, s.normalizeKey(remote), s)
 }
 
 func (s *s3BucketLarge) Push(ctx context.Context, local, remote string) error {
-	return s.pushHelper(s, ctx, local, s.normalizeKey(remote))
+	return s.push(ctx, local, s.normalizeKey(remote), s)
 }
 
-func pullHelper(b Bucket, ctx context.Context, local, remote string) error {
+func (s *s3Bucket) pull(ctx context.Context, local, remote string, b Bucket) error {
 	iter, err := b.List(ctx, remote)
 	if err != nil {
 		return errors.WithStack(err)
 	}
 
+	keys := []string{}
 	for iter.Next(ctx) {
 		if iter.Err() != nil {
 			return errors.Wrap(err, "problem iterating bucket")
@@ -540,16 +548,22 @@ func pullHelper(b Bucket, ctx context.Context, local, remote string) error {
 				return errors.WithStack(err)
 			}
 		}
+
+		keys = append(keys, iter.Item().Name())
+	}
+
+	if s.deleteOnSync && !s.dryRun {
+		return errors.Wrapf(b.RemoveMany(ctx, keys...), "problem removing '%s' after pull", remote)
 	}
 	return nil
 }
 
 func (s *s3BucketSmall) Pull(ctx context.Context, local, remote string) error {
-	return pullHelper(s, ctx, local, remote)
+	return s.pull(ctx, local, remote, s)
 }
 
 func (s *s3BucketLarge) Pull(ctx context.Context, local, remote string) error {
-	return pullHelper(s, ctx, local, remote)
+	return s.pull(ctx, local, remote, s)
 }
 
 func (s *s3Bucket) Copy(ctx context.Context, options CopyOptions) error {
@@ -563,6 +577,7 @@ func (s *s3Bucket) Copy(ctx context.Context, options CopyOptions) error {
 		Bucket:     aws.String(s.name),
 		CopySource: aws.String(options.SourceKey),
 		Key:        aws.String(s.normalizeKey(options.DestinationKey)),
+		ACL:        aws.String(s.permission),
 	}
 
 	if !s.dryRun {
