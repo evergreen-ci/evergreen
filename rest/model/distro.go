@@ -31,47 +31,52 @@ type APIDistro struct {
 
 // BuildFromService converts from service level distro.Distro to an APIDistro
 func (apiDistro *APIDistro) BuildFromService(h interface{}) error {
+	var d distro.Distro
 	switch v := h.(type) {
 	case distro.Distro:
-		apiDistro.Name = ToAPIString(v.Id)
-		apiDistro.UserSpawnAllowed = v.SpawnAllowed
-		apiDistro.Provider = ToAPIString(v.Provider)
-		if v.ProviderSettings != nil && (v.Provider == evergreen.ProviderNameEc2Auto || v.Provider == evergreen.ProviderNameEc2OnDemand || v.Provider == evergreen.ProviderNameEc2Spot) {
-			ec2Settings := &cloud.EC2ProviderSettings{}
-			err := mapstructure.Decode(v.ProviderSettings, ec2Settings)
-			if err != nil {
-				return err
-			}
-			apiDistro.ImageID = ToAPIString(ec2Settings.AMI)
-		}
-		if v.ProviderSettings != nil {
-			apiDistro.ProviderSettings = *v.ProviderSettings
-		}
-		apiDistro.Arch = ToAPIString(v.Arch)
-		apiDistro.WorkDir = ToAPIString(v.WorkDir)
-		apiDistro.PoolSize = v.PoolSize
-		apiDistro.SetupAsSudo = v.SetupAsSudo
-		apiDistro.Setup = ToAPIString(v.Setup)
-		apiDistro.Teardown = ToAPIString(v.Teardown)
-		apiDistro.User = ToAPIString(v.User)
-		apiDistro.SSHKey = ToAPIString(v.SSHKey)
-		apiDistro.Disabled = v.Disabled
-		apiDistro.ContainerPool = ToAPIString(v.ContainerPool)
-		apiDistro.SSHOptions = v.SSHOptions
-		if v.Expansions != nil {
-			apiDistro.Expansions = []APIExpansion{}
-			for _, e := range v.Expansions {
-				expansion := &APIExpansion{}
-				if err := expansion.BuildFromService(e); err != nil {
-					return errors.Wrap(err, "Error converting from distro.Expansion to model.APIExpansion")
-				}
-				apiDistro.Expansions = append(apiDistro.Expansions, *expansion)
-			}
-		}
-
+		d = v
+	case *distro.Distro:
+		d = *v
 	default:
 		return errors.Errorf("%T is not an supported expansion type", h)
 	}
+
+	apiDistro.Name = ToAPIString(d.Id)
+	apiDistro.UserSpawnAllowed = d.SpawnAllowed
+	apiDistro.Provider = ToAPIString(d.Provider)
+	if d.ProviderSettings != nil && (d.Provider == evergreen.ProviderNameEc2Auto || d.Provider == evergreen.ProviderNameEc2OnDemand || d.Provider == evergreen.ProviderNameEc2Spot) {
+		ec2Settings := &cloud.EC2ProviderSettings{}
+		err := mapstructure.Decode(d.ProviderSettings, ec2Settings)
+		if err != nil {
+			return err
+		}
+		apiDistro.ImageID = ToAPIString(ec2Settings.AMI)
+	}
+	if d.ProviderSettings != nil {
+		apiDistro.ProviderSettings = *d.ProviderSettings
+	}
+	apiDistro.Arch = ToAPIString(d.Arch)
+	apiDistro.WorkDir = ToAPIString(d.WorkDir)
+	apiDistro.PoolSize = d.PoolSize
+	apiDistro.SetupAsSudo = d.SetupAsSudo
+	apiDistro.Setup = ToAPIString(d.Setup)
+	apiDistro.Teardown = ToAPIString(d.Teardown)
+	apiDistro.User = ToAPIString(d.User)
+	apiDistro.SSHKey = ToAPIString(d.SSHKey)
+	apiDistro.Disabled = d.Disabled
+	apiDistro.ContainerPool = ToAPIString(d.ContainerPool)
+	apiDistro.SSHOptions = d.SSHOptions
+	if d.Expansions != nil {
+		apiDistro.Expansions = []APIExpansion{}
+		for _, e := range d.Expansions {
+			expansion := &APIExpansion{}
+			if err := expansion.BuildFromService(e); err != nil {
+				return errors.Wrap(err, "Error converting from distro.Expansion to model.APIExpansion")
+			}
+			apiDistro.Expansions = append(apiDistro.Expansions, *expansion)
+		}
+	}
+
 	return nil
 }
 

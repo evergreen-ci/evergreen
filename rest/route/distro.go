@@ -19,9 +19,205 @@ import (
 
 ///////////////////////////////////////////////////////////////////////
 //
+// GET /rest/v2/distros/{distro_id}/setup
+
+type distroIDGetSetupHandler struct {
+	distroID string
+	sc       data.Connector
+}
+
+func makeGetDistroSetup(sc data.Connector) gimlet.RouteHandler {
+	return &distroIDGetSetupHandler{
+		sc: sc,
+	}
+}
+
+func (h *distroIDGetSetupHandler) Factory() gimlet.RouteHandler {
+	return &distroIDGetSetupHandler{
+		sc: h.sc,
+	}
+}
+
+// Parse fetches the distroId from the http request.
+func (h *distroIDGetSetupHandler) Parse(ctx context.Context, r *http.Request) error {
+	h.distroID = gimlet.GetVars(r)["distro_id"]
+
+	return nil
+}
+
+// Run returns the given distro's setup script.
+func (h *distroIDGetSetupHandler) Run(ctx context.Context) gimlet.Responder {
+	d, err := h.sc.FindDistroById(h.distroID)
+	if err != nil {
+		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "Database error for find() by distro id '%s'", h.distroID))
+	}
+
+	apiDistro := &model.APIDistro{}
+	if err = apiDistro.BuildFromService(d); err != nil {
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "API error converting from distro.Distro to model.APIDistro"))
+	}
+
+	return gimlet.NewJSONResponse(apiDistro.Setup)
+}
+
+///////////////////////////////////////////////////////////////////////
+//
+// PATCH /rest/v2/distros/{distro_id}/setup
+
+type distroIDChangeSetupHandler struct {
+	Setup    string
+	distroID string
+	sc       data.Connector
+}
+
+func makeChangeDistroSetup(sc data.Connector) gimlet.RouteHandler {
+	return &distroIDChangeSetupHandler{
+		sc: sc,
+	}
+}
+
+func (h *distroIDChangeSetupHandler) Factory() gimlet.RouteHandler {
+	return &distroIDChangeSetupHandler{
+		sc: h.sc,
+	}
+}
+
+// Parse fetches the distroId and JSON payload from the http request.
+func (h *distroIDChangeSetupHandler) Parse(ctx context.Context, r *http.Request) error {
+	h.distroID = gimlet.GetVars(r)["distro_id"]
+	body := util.NewRequestReader(r)
+	defer body.Close()
+
+	if err := util.ReadJSONInto(body, h); err != nil {
+		return errors.Wrap(err, "Argument read error")
+	}
+
+	return nil
+}
+
+// Run updates the setup script for the given distroId.
+func (h *distroIDChangeSetupHandler) Run(ctx context.Context) gimlet.Responder {
+	d, err := h.sc.FindDistroById(h.distroID)
+	if err != nil {
+		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "Database error for find() by distro id '%s'", h.distroID))
+	}
+
+	d.Setup = h.Setup
+	if err = h.sc.UpdateDistro(d); err != nil {
+		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "Database error for update() by distro id '%s'", h.distroID))
+	}
+
+	apiDistro := &model.APIDistro{}
+	if err = apiDistro.BuildFromService(d); err != nil {
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "API error converting from distro.Distro to model.APIDistro"))
+	}
+
+	return gimlet.NewJSONResponse(apiDistro)
+}
+
+///////////////////////////////////////////////////////////////////////
+//
+// GET /rest/v2/distros/{distro_id}/teardown
+
+type distroIDGetTeardownHandler struct {
+	distroID string
+	sc       data.Connector
+}
+
+func makeGetDistroTeardown(sc data.Connector) gimlet.RouteHandler {
+	return &distroIDGetTeardownHandler{
+		sc: sc,
+	}
+}
+
+func (h *distroIDGetTeardownHandler) Factory() gimlet.RouteHandler {
+	return &distroIDGetTeardownHandler{
+		sc: h.sc,
+	}
+}
+
+// Parse fetches the distroId from the http request.
+func (h *distroIDGetTeardownHandler) Parse(ctx context.Context, r *http.Request) error {
+	h.distroID = gimlet.GetVars(r)["distro_id"]
+
+	return nil
+}
+
+// Run returns the given distro's teardown script.
+func (h *distroIDGetTeardownHandler) Run(ctx context.Context) gimlet.Responder {
+	d, err := h.sc.FindDistroById(h.distroID)
+	if err != nil {
+		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "Database error for find() by distro id '%s'", h.distroID))
+	}
+
+	apiDistro := &model.APIDistro{}
+	if err = apiDistro.BuildFromService(d); err != nil {
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "API error converting from distro.Distro to model.APIDistro"))
+	}
+
+	return gimlet.NewJSONResponse(apiDistro.Teardown)
+}
+
+///////////////////////////////////////////////////////////////////////
+//
+// PATCH /rest/v2/distros/{distro_id}/teardown
+
+type distroIDChangeTeardownHandler struct {
+	Teardown string
+	distroID string
+	sc       data.Connector
+}
+
+func makeChangeDistroTeardown(sc data.Connector) gimlet.RouteHandler {
+	return &distroIDChangeTeardownHandler{
+		sc: sc,
+	}
+}
+
+func (h *distroIDChangeTeardownHandler) Factory() gimlet.RouteHandler {
+	return &distroIDChangeTeardownHandler{
+		sc: h.sc,
+	}
+}
+
+// Parse fetches the distroId and JSON payload from the http request.
+func (h *distroIDChangeTeardownHandler) Parse(ctx context.Context, r *http.Request) error {
+	h.distroID = gimlet.GetVars(r)["distro_id"]
+	body := util.NewRequestReader(r)
+	defer body.Close()
+
+	if err := util.ReadJSONInto(body, h); err != nil {
+		return errors.Wrap(err, "Argument read error")
+	}
+
+	return nil
+}
+
+// Run updates the teardown script for the given distroId.
+func (h *distroIDChangeTeardownHandler) Run(ctx context.Context) gimlet.Responder {
+	d, err := h.sc.FindDistroById(h.distroID)
+	if err != nil {
+		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "Database error for find() by distro id '%s'", h.distroID))
+	}
+
+	d.Teardown = h.Teardown
+	if err = h.sc.UpdateDistro(d); err != nil {
+		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "Database error for update() by distro id '%s'", h.distroID))
+	}
+
+	apiDistro := &model.APIDistro{}
+	if err = apiDistro.BuildFromService(d); err != nil {
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "API error converting from distro.Distro to model.APIDistro"))
+	}
+
+	return gimlet.NewJSONResponse(apiDistro)
+}
+
+///////////////////////////////////////////////////////////////////////
+//
 // PUT /rest/v2/distros/{distro_id}
 
-type distroPutHandler struct {
+type distroIDPutHandler struct {
 	distroID string
 	body     []byte
 	sc       data.Connector
@@ -29,21 +225,21 @@ type distroPutHandler struct {
 }
 
 func makePutDistro(sc data.Connector, settings *evergreen.Settings) gimlet.RouteHandler {
-	return &distroPutHandler{
+	return &distroIDPutHandler{
 		sc:       sc,
 		settings: settings,
 	}
 }
 
-func (h *distroPutHandler) Factory() gimlet.RouteHandler {
-	return &distroPutHandler{
+func (h *distroIDPutHandler) Factory() gimlet.RouteHandler {
+	return &distroIDPutHandler{
 		sc:       h.sc,
 		settings: h.settings,
 	}
 }
 
 // Parse fetches the distroId and JSON payload from the http request.
-func (h *distroPutHandler) Parse(ctx context.Context, r *http.Request) error {
+func (h *distroIDPutHandler) Parse(ctx context.Context, r *http.Request) error {
 	h.distroID = gimlet.GetVars(r)["distro_id"]
 
 	body := util.NewRequestReader(r)
@@ -60,7 +256,7 @@ func (h *distroPutHandler) Parse(ctx context.Context, r *http.Request) error {
 // Run either:
 // (a) replaces an existing resource with the entity defined in the JSON payload, or
 // (b) creates a new resource based on the Request-URI and JSON payload
-func (h *distroPutHandler) Run(ctx context.Context) gimlet.Responder {
+func (h *distroIDPutHandler) Run(ctx context.Context) gimlet.Responder {
 	original, err := h.sc.FindDistroById(h.distroID)
 	if err != nil && err.(gimlet.ErrorResponse).StatusCode != http.StatusNotFound {
 		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "Database error for find() by distro id '%s'", h.distroID))
@@ -83,15 +279,15 @@ func (h *distroPutHandler) Run(ctx context.Context) gimlet.Responder {
 		}
 		return gimlet.NewJSONResponse(struct{}{})
 	}
-
 	// New resource
+	responder := gimlet.NewJSONResponse(struct{}{})
+	if err = responder.SetStatus(http.StatusCreated); err != nil {
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "Cannot set HTTP status code to %d", http.StatusCreated))
+	}
 	if err = h.sc.CreateDistro(distro); err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "Database error for insert() distro with distro id '%s'", h.distroID))
 	}
-	responder := gimlet.NewJSONResponse(struct{}{})
-	if err = responder.SetStatus(http.StatusCreated); err != nil {
-		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "Cannot set HTTP status code"))
-	}
+
 	return responder
 }
 
@@ -186,7 +382,7 @@ func (h *distroIDPatchHandler) Run(ctx context.Context) gimlet.Responder {
 	}
 
 	apiDistro := &model.APIDistro{}
-	if err = apiDistro.BuildFromService(*d); err != nil {
+	if err = apiDistro.BuildFromService(d); err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "API error converting from distro.Distro to model.APIDistro"))
 	}
 
@@ -236,13 +432,13 @@ func (h *distroIDGetHandler) Parse(ctx context.Context, r *http.Request) error {
 
 // Run calls the data FindDistroById function and returns the distro from the provider.
 func (h *distroIDGetHandler) Run(ctx context.Context) gimlet.Responder {
-	foundDistro, err := h.sc.FindDistroById(h.distroID)
+	d, err := h.sc.FindDistroById(h.distroID)
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "Database error for find() by distro id '%s'", h.distroID))
 	}
 
 	distroModel := &model.APIDistro{}
-	if err = distroModel.BuildFromService(*foundDistro); err != nil {
+	if err = distroModel.BuildFromService(d); err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "API error converting from distro.Distro to model.APIDistro"))
 	}
 

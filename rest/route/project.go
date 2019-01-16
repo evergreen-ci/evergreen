@@ -348,12 +348,13 @@ func (h *projectIDPutHandler) Run(ctx context.Context) gimlet.Responder {
 		return gimlet.NewJSONResponse(struct{}{})
 	}
 	// New resource
+	responder := gimlet.NewJSONResponse(struct{}{})
+	if err = responder.SetStatus(http.StatusCreated); err != nil {
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "Cannot set HTTP status code to %d", http.StatusCreated))
+	}
 	if err = h.sc.CreateProject(dbProjectRef); err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "Database error for insert() distro with distro id '%s'", h.projectID))
 	}
-	responder := gimlet.NewJSONResponse(struct{}{})
-	if err = responder.SetStatus(http.StatusCreated); err != nil {
-		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "Cannot set HTTP status code"))
-	}
+
 	return responder
 }
