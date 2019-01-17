@@ -212,7 +212,7 @@ func nextTaskHasDifferentTaskGroupOrBuild(nextTask *apimodels.NextTaskResponse, 
 }
 
 func (a *Agent) resetLogging(ctx context.Context, tc *taskContext) error {
-	tc.logger = a.comm.GetLoggerProducer(ctx, tc.task)
+	tc.logger = a.comm.GetLoggerProducer(ctx, tc.task, nil)
 
 	sender, err := GetSender(ctx, a.opts.LogPrefix, tc.task.ID)
 	if err != nil {

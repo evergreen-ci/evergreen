@@ -38,7 +38,7 @@ func (s *createHostSuite) SetupSuite() {
 		Expansions: &util.Expansions{"subnet_id": "subnet-123456"},
 		Task:       &task.Task{Id: "mock_id", Secret: "mock_secret"},
 		Project:    &model.Project{}}
-	s.logger = s.comm.GetLoggerProducer(context.Background(), client.TaskData{ID: s.conf.Task.Id, Secret: s.conf.Task.Secret})
+	s.logger = s.comm.GetLoggerProducer(context.Background(), client.TaskData{ID: s.conf.Task.Id, Secret: s.conf.Task.Secret}, nil)
 }
 
 func (s *createHostSuite) SetupTest() {

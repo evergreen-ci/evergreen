@@ -9,8 +9,10 @@ import (
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/level"
 	"github.com/mongodb/grip/logging"
 	"github.com/mongodb/grip/send"
+	"github.com/pkg/errors"
 )
 
 const (
@@ -18,6 +20,9 @@ const (
 	defaultTimeoutStart = time.Second * 2
 	defaultTimeoutMax   = time.Minute * 10
 	heartbeatTimeout    = time.Minute * 1
+
+	defaultLogBufferTime = 15 * time.Second
+	defaultLogBufferSize = 1000
 )
 
 // communicatorImpl implements Communicator and makes requests to API endpoints for the agent.
@@ -44,6 +49,31 @@ type TaskData struct {
 	Secret             string
 	OverrideValidation bool
 }
+
+type LoggerConfig struct {
+	System LogOpts
+	Agent  LogOpts
+	Task   LogOpts
+}
+
+type LogOpts struct {
+	Sender          LogSender
+	SplunkServerURL string
+	SplunkToken     string
+	Filepath        string
+	LogkeeperURL    string
+	BufferDuration  time.Duration
+	BufferSize      int
+}
+
+type LogSender int
+
+const (
+	EvergreenLogSender LogSender = iota
+	FileLogSender
+	LogkeeperLogSender
+	SplunkLogSender
+)
 
 // NewCommunicator returns a Communicator capable of making HTTP REST requests against
 // the API server. To change the default retry behavior, use the SetTimeoutStart, SetTimeoutMax,
@@ -134,18 +164,22 @@ func (c *communicatorImpl) LastMessageAt() time.Time {
 }
 
 // GetLogProducer
-func (c *communicatorImpl) GetLoggerProducer(ctx context.Context, taskData TaskData) LoggerProducer {
+func (c *communicatorImpl) GetLoggerProducer(ctx context.Context, taskData TaskData, config *LoggerConfig) LoggerProducer {
 	local := grip.GetSender()
 
-	exec := newLogSender(ctx, c, apimodels.AgentLogPrefix, taskData)
+	if config == nil {
+		config = &LoggerConfig{}
+	}
+
+	exec := c.makeSender(ctx, taskData, config.Agent, apimodels.AgentLogPrefix)
 	grip.Warning(exec.SetFormatter(send.MakeDefaultFormatter()))
 	exec = send.NewConfiguredMultiSender(local, exec)
 
-	task := newTimeoutLogSender(ctx, c, apimodels.TaskLogPrefix, taskData)
+	task := c.makeSender(ctx, taskData, config.Task, apimodels.TaskLogPrefix)
 	grip.Warning(task.SetFormatter(send.MakeDefaultFormatter()))
 	task = send.NewConfiguredMultiSender(local, task)
 
-	system := newLogSender(ctx, c, apimodels.SystemLogPrefix, taskData)
+	system := c.makeSender(ctx, taskData, config.System, apimodels.SystemLogPrefix)
 	grip.Warning(system.SetFormatter(send.MakeDefaultFormatter()))
 	system = send.NewConfiguredMultiSender(local, system)
 
@@ -154,4 +188,68 @@ func (c *communicatorImpl) GetLoggerProducer(ctx context.Context, taskData TaskD
 		task:      logging.MakeGrip(task),
 		system:    logging.MakeGrip(system),
 	}
+}
+
+func (c *communicatorImpl) makeSender(ctx context.Context, taskData TaskData, opts LogOpts, prefix string) send.Sender {
+	levelInfo := send.LevelInfo{Default: level.Info, Threshold: level.Debug}
+	var sender send.Sender
+	var err error
+	bufferDuration := defaultLogBufferTime
+	if opts.BufferDuration > 0 {
+		bufferDuration = opts.BufferDuration
+	}
+	bufferSize := defaultLogBufferSize
+	if opts.BufferSize > 0 {
+		bufferSize = opts.BufferSize
+	}
+	switch opts.Sender {
+	// TODO: placeholder until implemented
+	case FileLogSender:
+		sender, err = send.NewPlainFileLogger(prefix, opts.Filepath, levelInfo)
+		if err != nil {
+			grip.Critical(errors.Wrap(err, "error creating file logger"))
+			return nil
+		}
+		err = sender.SetFormatter(send.MakePlainFormatter())
+		if err != nil {
+			grip.Critical(errors.Wrap(err, "error setting file logger format"))
+			return nil
+		}
+		sender = send.NewBufferedSender(sender, bufferDuration, bufferSize)
+	// TODO: placeholder until implemented
+	case SplunkLogSender:
+		info := send.SplunkConnectionInfo{
+			ServerURL: opts.SplunkServerURL,
+			Token:     opts.SplunkToken,
+		}
+		sender, err = send.NewSplunkLogger(prefix, info, levelInfo)
+		if err != nil {
+			grip.Critical(errors.Wrap(err, "error creating splunk logger"))
+			return nil
+		}
+		sender = send.NewBufferedSender(sender, bufferDuration, bufferSize)
+	// TODO: placeholder until implemented
+	case LogkeeperLogSender:
+		fallback, err := send.NewNativeLogger(prefix, levelInfo)
+		if err != nil {
+			grip.Critical(errors.Wrap(err, "error creating native fallback logger"))
+			return nil
+		}
+		config := send.BuildloggerConfig{
+			CreateTest: true,
+			URL:        opts.LogkeeperURL,
+			Local:      fallback,
+		}
+		sender, err = send.NewBuildlogger(prefix, &config, levelInfo)
+		if err != nil {
+			grip.Critical(errors.Wrap(err, "error creating logkeeper logger"))
+			return nil
+		}
+		sender = send.NewBufferedSender(sender, bufferDuration, bufferSize)
+	default:
+		sender = newEvergreenLogSender(ctx, c, prefix, taskData, bufferSize, bufferDuration)
+	}
+	sender = makeTimeoutLogSender(sender, c)
+
+	return sender
 }
