@@ -172,15 +172,12 @@ func (c *communicatorImpl) GetLoggerProducer(ctx context.Context, taskData TaskD
 	}
 
 	exec := c.makeSender(ctx, taskData, config.Agent, apimodels.AgentLogPrefix)
-	grip.Warning(exec.SetFormatter(send.MakeDefaultFormatter()))
 	exec = send.NewConfiguredMultiSender(local, exec)
 
 	task := c.makeSender(ctx, taskData, config.Task, apimodels.TaskLogPrefix)
-	grip.Warning(task.SetFormatter(send.MakeDefaultFormatter()))
 	task = send.NewConfiguredMultiSender(local, task)
 
 	system := c.makeSender(ctx, taskData, config.System, apimodels.SystemLogPrefix)
-	grip.Warning(system.SetFormatter(send.MakeDefaultFormatter()))
 	system = send.NewConfiguredMultiSender(local, system)
 
 	return &logHarness{
@@ -203,16 +200,10 @@ func (c *communicatorImpl) makeSender(ctx context.Context, taskData TaskData, op
 		bufferSize = opts.BufferSize
 	}
 	switch opts.Sender {
-	// TODO: placeholder until implemented
 	case FileLogSender:
 		sender, err = send.NewPlainFileLogger(prefix, opts.Filepath, levelInfo)
 		if err != nil {
 			grip.Critical(errors.Wrap(err, "error creating file logger"))
-			return nil
-		}
-		err = sender.SetFormatter(send.MakePlainFormatter())
-		if err != nil {
-			grip.Critical(errors.Wrap(err, "error setting file logger format"))
 			return nil
 		}
 		sender = send.NewBufferedSender(sender, bufferDuration, bufferSize)
@@ -249,7 +240,7 @@ func (c *communicatorImpl) makeSender(ctx context.Context, taskData TaskData, op
 	default:
 		sender = newEvergreenLogSender(ctx, c, prefix, taskData, bufferSize, bufferDuration)
 	}
-	sender = makeTimeoutLogSender(sender, c)
 
-	return sender
+	grip.Error(sender.SetFormatter(send.MakeDefaultFormatter()))
+	return makeTimeoutLogSender(sender, c)
 }
