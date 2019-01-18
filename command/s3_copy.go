@@ -42,7 +42,7 @@ type s3CopyFile struct {
 	// Permissions is the ACL to apply to the copied file. See:
 	//  http://docs.aws.amazon.com/AmazonS3/latest/dev/acl-overview.html#canned-acl
 	// for some examples.
-	Permissions string `mapstructure:"permissions"`
+	Permissions string `mapstructure:"permissions" plugin:"expand"`
 
 	// BuildVariants is a slice of build variants for which
 	// a specified file is to be copied. An empty slice indicates it is to be
