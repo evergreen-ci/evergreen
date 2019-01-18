@@ -208,13 +208,19 @@ func (t *taskTriggers) Selectors() []event.Selector {
 			Data: t.task.BuildId,
 		},
 		{
-			Type: selectorRequester,
-			Data: t.task.Requester,
-		},
-		{
 			Type: selectorDisplayName,
 			Data: t.task.DisplayName,
 		},
+		{
+			Type: selectorRequester,
+			Data: t.task.Requester,
+		},
+	}
+	if t.task.Requester == evergreen.TriggerRequester {
+		selectors = append(selectors, event.Selector{
+			Type: selectorRequester,
+			Data: evergreen.RepotrackerVersionRequester,
+		})
 	}
 	if t.version != nil && t.version.AuthorID != "" {
 		selectors = append(selectors, event.Selector{
