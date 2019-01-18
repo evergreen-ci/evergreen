@@ -774,10 +774,20 @@ mciModule.factory('DrawPerfTrendChart', function (
 
     // -- CHANGE POINT HOVER --
     var toolTipG = chartG.append('g')
-      .attr('class', 'g-tool-tip')
+      .attr({
+        class: 'g-tool-tip',
+      })
       .style('opacity', 0)
 
-    toolTipG.append('rect')
+    const toolTipContentG = toolTipG.append('g')
+      .attr({
+        transform: d3Translate(
+          -cfg.toolTip.xOffset + cfg.toolTip.margin,
+          cfg.toolTip.yOffset + cfg.toolTip.margin
+        ),
+      })
+
+    toolTipContentG.append('rect')
       .attr({
         x: cfg.toolTip.xOffset - cfg.toolTip.margin,
         y: cfg.toolTip.yOffset - cfg.toolTip.margin,
@@ -792,7 +802,7 @@ mciModule.factory('DrawPerfTrendChart', function (
         'stroke-width': 2,
       })
 
-    toolTipG.append('line')
+    toolTipContentG.append('line')
       .attr({
         x1: 0,
         y1: 0,
@@ -808,7 +818,7 @@ mciModule.factory('DrawPerfTrendChart', function (
       return d3Translate(0, cfg.toolTip.interlineSpace * (d.idx + .67))
     }
 
-    var toolTipItem = toolTipG
+    var toolTipItem = toolTipContentG
       .selectAll('g.stat')
       // Display all statistical items
       // Non-statistical items are handled separately
@@ -825,7 +835,7 @@ mciModule.factory('DrawPerfTrendChart', function (
         transform: translateToolTipItem,
       })
 
-    var nonStatToolTipItem = toolTipG
+    var nonStatToolTipItem = toolTipContentG
       .selectAll('g.non-stat')
       .data(_.where(cfg.toolTip.labels, {nonStat: true}))
       .enter()
@@ -899,16 +909,24 @@ mciModule.factory('DrawPerfTrendChart', function (
     //    The segment position is outside of domain, pos = 0
     // C. domain=[0, 100], pos=99, len=10
     //    The segment end position is outside of domain, pos = 90
-    function fit1d(domain, pos, len) {
-      return pos < domain[0]       ? 0 :
-             pos + len > domain[1] ? domain[1] - len :
-             pos
+    function fit1d(domain, pos, len, noOverlap) {
+      if (pos < domain[0]) {
+        return 0
+      } else if (pos + len > domain[1]) {
+        if (noOverlap) {
+          return pos - len
+        } else {
+          return domain[1] - len
+        }
+      } else {
+        return pos
+      }
     }
 
     function fit(domain2d, pos2d, len2d) {
       return [
-        fit1d(domain2d[0], pos2d[0], len2d[0]),
-        fit1d(domain2d[1], pos2d[1], len2d[1]),
+        fit1d(domain2d[0], pos2d[0], len2d[0], true),
+        fit1d(domain2d[1], pos2d[1], len2d[1], false),
       ]
     }
 
@@ -917,12 +935,16 @@ mciModule.factory('DrawPerfTrendChart', function (
       toolTipG
         .attr({
           'transform': function() {
+            const mousePos = d3.mouse(chartG[0][0]) // [0][0] is required to get bare <g> element
             return d3Translate.apply(
               null,
               fit(
                 [[0, cfg.effectiveWidth], [0, cfg.effectiveHeight]],
-                d3.mouse(chartG[0][0]), // [0][0] is required to get bare <g> element
-                [cfg.toolTip.width, cfg.toolTip.height]
+                [mousePos[0] + 10, mousePos[1]], // 10 for extra offset
+                [
+                  cfg.toolTip.width + cfg.toolTip.margin * 2 + 20, // 20 for extra offset
+                  cfg.toolTip.height
+                ]
               )
             )
           }
