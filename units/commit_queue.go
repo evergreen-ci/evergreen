@@ -212,7 +212,7 @@ func sendCommitQueueGithubStatus(env evergreen.Environment, pr *github.PullReque
 		return errors.Wrap(err, "can't get GitHub status sender")
 	}
 
-	url := ""
+	var url string
 	if versionID != "" {
 		uiConfig := evergreen.UIConfig{}
 		if err := uiConfig.Get(); err == nil {

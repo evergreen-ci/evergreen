@@ -334,12 +334,15 @@ func (p *Patch) IsGithubPRPatch() bool {
 	return p.GithubPatchData.BaseOwner != ""
 }
 
-func (p Patch) IsPRMergePatch() bool {
+func (p *Patch) IsPRMergePatch() bool {
 	return p.GithubPatchData.MergeCommitSHA != ""
 }
 
 func MakeMergePatch(pr *github.PullRequest, projectID string) (*Patch, error) {
-	u, err := user.GetPatchUser(pr.GetUser().GetID())
+	if pr.User == nil {
+		return nil, errors.New("pr contains no user")
+	}
+	u, err := user.GetPatchUser(pr.User.GetID())
 	if err != nil {
 		return nil, errors.Wrap(err, "can't get user for patch")
 	}
@@ -350,18 +353,22 @@ func MakeMergePatch(pr *github.PullRequest, projectID string) (*Patch, error) {
 
 	id := bson.NewObjectId()
 
+	if pr.Base == nil {
+		return nil, errors.New("pr contains no base branch data")
+	}
+
 	patchDoc := &Patch{
 		Id:          id,
 		Project:     projectID,
 		Author:      u.Id,
-		Githash:     *pr.Base.SHA,
+		Githash:     pr.Base.GetSHA(),
 		Description: fmt.Sprintf("Commit Queue merge test PR #%d", *pr.Number),
 		CreateTime:  time.Now(),
 		Status:      evergreen.PatchCreated,
 		PatchNumber: patchNumber,
 		GithubPatchData: GithubPatch{
-			PRNumber:       *pr.Number,
-			MergeCommitSHA: *pr.MergeCommitSHA,
+			PRNumber:       pr.GetNumber(),
+			MergeCommitSHA: pr.GetMergeCommitSHA(),
 		},
 	}
 

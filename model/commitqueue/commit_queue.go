@@ -32,18 +32,18 @@ func (q *CommitQueue) Enqueue(item string) error {
 	return nil
 }
 
-func (q CommitQueue) IsEmpty() bool {
+func (q *CommitQueue) IsEmpty() bool {
 	return len(q.Queue) == 0
 }
 
-func (q CommitQueue) Next() string {
+func (q *CommitQueue) Next() string {
 	if q.IsEmpty() {
 		return ""
 	}
 	return q.Queue[0]
 }
 
-func (q CommitQueue) All() []string {
+func (q *CommitQueue) All() []string {
 	return q.Queue
 }
 
@@ -85,7 +85,7 @@ func (q *CommitQueue) UpdateStatusAction(statusAction string) error {
 	return nil
 }
 
-func (q CommitQueue) findItem(item string) int {
+func (q *CommitQueue) findItem(item string) int {
 	for i, queued := range q.Queue {
 		if queued == item {
 			return i
