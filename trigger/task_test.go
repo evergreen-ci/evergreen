@@ -18,6 +18,7 @@ import (
 	"github.com/evergreen-ci/evergreen/repotracker"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
 	"gopkg.in/mgo.v2/bson"
@@ -930,6 +931,8 @@ func (s *taskSuite) TestRegressionByTestWithRegex() {
 	n, err := NotificationsFromEvent(&willNotify)
 	s.NoError(err)
 	s.Len(n, 1)
+	payload := n[0].Payload.(*message.Email)
+	s.Contains(payload.Subject, "test1")
 	wontNotify := event.EventLogEntry{
 		ResourceType: event.ResourceTypeTask,
 		ResourceId:   "t2",

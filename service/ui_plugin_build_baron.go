@@ -340,7 +340,7 @@ func (uis *UIServer) bbFileTicket(w http.ResponseWriter, r *http.Request) {
 }
 
 func (uis *UIServer) makeNotification(project string, t *task.Task) (*notification.Notification, error) {
-	payload, err := trigger.JIRATaskPayload("", project, uis.Settings.Ui.Url, "", t)
+	payload, err := trigger.JIRATaskPayload("", project, uis.Settings.Ui.Url, "", "", t)
 	if err != nil {
 		return nil, err
 	}
