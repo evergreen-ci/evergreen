@@ -51,6 +51,7 @@ func keysAdd() cli.Command {
 				if keyName == "" {
 					return errors.New("key name cannot be empty")
 				}
+				return nil
 			}),
 		Action: func(c *cli.Context) error {
 			confPath := c.Parent().String(confFlagName)
