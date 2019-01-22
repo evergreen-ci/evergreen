@@ -140,7 +140,6 @@ func keysDelete() cli.Command {
 	return cli.Command{
 		Name: "delete",
 		Before: mergeBeforeFuncs(
-			requireClientConfig,
 			setPlainLogger,
 			func(c *cli.Context) error {
 				if c.NArg() != 1 {
