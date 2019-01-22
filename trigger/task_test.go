@@ -292,6 +292,50 @@ func (s *taskSuite) SetupTest() {
 	s.t.uiConfig = *ui
 }
 
+func (s *taskSuite) TestTriggerEvent() {
+	s.NoError(db.ClearCollections(task.Collection, event.SubscriptionsCollection))
+	sub := &event.Subscription{
+		ID:           bson.NewObjectId().Hex(),
+		ResourceType: event.ResourceTypeTask,
+		Trigger:      triggerOutcome,
+		Selectors: []event.Selector{
+			{
+				Type: "id",
+				Data: s.event.ResourceId,
+			},
+			{
+				Type: "requester",
+				Data: evergreen.RepotrackerVersionRequester,
+			},
+		},
+		Subscriber: event.Subscriber{
+			Type:   event.JIRACommentSubscriberType,
+			Target: "A-1",
+		},
+		Owner: "someone",
+	}
+	s.NoError(sub.Upsert())
+	t := task.Task{
+		Id:                  "test",
+		Version:             "test_version_id",
+		BuildId:             "test_build_id",
+		BuildVariant:        "test_build_variant",
+		DistroId:            "test_distro_id",
+		Project:             "test_project",
+		DisplayName:         "test-display-name",
+		RevisionOrderNumber: 1,
+		Requester:           evergreen.TriggerRequester,
+		Status:              evergreen.TaskFailed,
+	}
+	s.NoError(t.Insert())
+
+	s.data.Status = evergreen.TaskFailed
+	s.event.Data = s.data
+	n, err := NotificationsFromEvent(&s.event)
+	s.NoError(err)
+	s.Len(n, 1)
+}
+
 func (s *taskSuite) TestAllTriggers() {
 	n, err := NotificationsFromEvent(&s.event)
 	s.NoError(err)
