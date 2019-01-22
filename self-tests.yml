@@ -240,7 +240,7 @@ functions:
           HOST_FILE: spawned_hosts.json
     - command: expansions.update
       params:
-        file: gopath/src/github.com/evergreen-ci/evergreen/expansions.yml
+        file: gopath/src/github.com/evergreen-ci/evergreen/bin/expansions.yml
 
   attach-test-results:
     - command: gotest.parse_files

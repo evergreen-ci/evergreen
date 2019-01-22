@@ -20,33 +20,34 @@ func main() {
 
 	if hostFile == "" {
 		fmt.Println("no host file provided")
-		return
+		os.Exit(1)
 	}
 
 	f, err := os.Open(hostFile)
 	if err != nil {
 		fmt.Println(err.Error())
-		return
+		os.Exit(1)
 	}
 	bytes, err := ioutil.ReadAll(f)
 	if err != nil {
 		fmt.Println(err.Error())
-		return
+		os.Exit(1)
 	}
 	var hosts []host
 	err = json.Unmarshal(bytes, &hosts)
 	if err != nil {
 		fmt.Println(err.Error())
-		return
+		os.Exit(1)
 	}
 	if len(hosts) < 1 {
 		fmt.Println("no hosts listed in file")
-		return
+		os.Exit(1)
 	}
 
 	data := []byte(fmt.Sprintf("docker_host: %s", hosts[0].DNS))
-	err = ioutil.WriteFile("expansions.yml", data, 0644)
+	err = ioutil.WriteFile("bin/expansions.yml", data, 0644)
 	if err != nil {
 		fmt.Println(err.Error())
+		os.Exit(1)
 	}
 }

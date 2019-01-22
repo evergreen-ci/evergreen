@@ -184,7 +184,7 @@ parse-host-file:$(buildDir)/parse-host-file
 	./$(buildDir)/parse-host-file --file $(HOST_FILE)
 $(buildDir)/parse-host-file:cmd/parse-host-file/parse-host-file.go
 	$(gobin) build -o $@ $<
-"expansions.yml":$(buildDir)/parse-host-file
+$(buildDir)/expansions.yml:$(buildDir)/parse-host-file
 # end host.create file parsing
 
 # npm setup
