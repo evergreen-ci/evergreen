@@ -18,6 +18,7 @@ import (
 	"github.com/evergreen-ci/evergreen/repotracker"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
 	"gopkg.in/mgo.v2/bson"
@@ -887,21 +888,23 @@ func (s *taskSuite) TestRegressionByTestWithRegex() {
 	s.NoError(v1.Insert())
 
 	t1 := task.Task{
-		Id:        "t1",
-		Requester: evergreen.RepotrackerVersionRequester,
-		Status:    evergreen.TaskFailed,
-		Version:   "v1",
-		BuildId:   "test_build_id",
-		Project:   "myproj",
+		Id:          "t1",
+		Requester:   evergreen.RepotrackerVersionRequester,
+		Status:      evergreen.TaskFailed,
+		DisplayName: "task1",
+		Version:     "v1",
+		BuildId:     "test_build_id",
+		Project:     "myproj",
 	}
 	s.NoError(t1.Insert())
 	t2 := task.Task{
-		Id:        "t2",
-		Requester: evergreen.RepotrackerVersionRequester,
-		Status:    evergreen.TaskFailed,
-		Version:   "v1",
-		BuildId:   "test_build_id",
-		Project:   "myproj",
+		Id:          "t2",
+		Requester:   evergreen.RepotrackerVersionRequester,
+		Status:      evergreen.TaskFailed,
+		DisplayName: "task2",
+		Version:     "v1",
+		BuildId:     "test_build_id",
+		Project:     "myproj",
 	}
 	s.NoError(t2.Insert())
 
@@ -930,6 +933,8 @@ func (s *taskSuite) TestRegressionByTestWithRegex() {
 	n, err := NotificationsFromEvent(&willNotify)
 	s.NoError(err)
 	s.Len(n, 1)
+	payload := n[0].Payload.(*message.Email)
+	s.Contains(payload.Subject, "task1 (test1)")
 	wontNotify := event.EventLogEntry{
 		ResourceType: event.ResourceTypeTask,
 		ResourceId:   "t2",

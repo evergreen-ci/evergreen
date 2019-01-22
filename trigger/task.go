@@ -232,7 +232,7 @@ func (t *taskTriggers) Selectors() []event.Selector {
 	return selectors
 }
 
-func (t *taskTriggers) makeData(sub *event.Subscription, pastTenseOverride string) (*commonTemplateData, error) {
+func (t *taskTriggers) makeData(sub *event.Subscription, pastTenseOverride, testNames string) (*commonTemplateData, error) {
 	api := restModel.APITask{}
 	if err := api.BuildFromService(t.task); err != nil {
 		return nil, errors.Wrap(err, "error building json model")
@@ -259,6 +259,9 @@ func (t *taskTriggers) makeData(sub *event.Subscription, pastTenseOverride strin
 	if t.task.DisplayTask != nil {
 		displayName = t.task.DisplayTask.DisplayName
 		status = t.task.DisplayTask.Status
+	}
+	if testNames != "" {
+		displayName += fmt.Sprintf(" (%s)", testNames)
 	}
 
 	data := commonTemplateData{
@@ -304,7 +307,7 @@ func (t *taskTriggers) makeData(sub *event.Subscription, pastTenseOverride strin
 	return &data, nil
 }
 
-func (t *taskTriggers) generate(sub *event.Subscription, pastTenseOverride string) (*notification.Notification, error) {
+func (t *taskTriggers) generate(sub *event.Subscription, pastTenseOverride, testNames string) (*notification.Notification, error) {
 	var payload interface{}
 	if sub.Subscriber.Type == event.JIRAIssueSubscriberType {
 		issueSub, ok := sub.Subscriber.Target.(*event.JIRAIssueSubscriber)
@@ -312,13 +315,13 @@ func (t *taskTriggers) generate(sub *event.Subscription, pastTenseOverride strin
 			return nil, errors.Errorf("unexpected target data type: '%T'", sub.Subscriber.Target)
 		}
 		var err error
-		payload, err = t.makeJIRATaskPayload(sub.ID, issueSub.Project)
+		payload, err = t.makeJIRATaskPayload(sub.ID, issueSub.Project, testNames)
 		if err != nil {
 			return nil, errors.Wrap(err, "failed to create jira payload for task")
 		}
 
 	} else {
-		data, err := t.makeData(sub, pastTenseOverride)
+		data, err := t.makeData(sub, pastTenseOverride, testNames)
 		if err != nil {
 			return nil, errors.Wrap(err, "failed to collect task data")
 		}
@@ -338,8 +341,8 @@ func (t *taskTriggers) generate(sub *event.Subscription, pastTenseOverride strin
 	return n, nil
 }
 
-func (t *taskTriggers) generateWithAlertRecord(sub *event.Subscription, alertType, pastTenseOverride string) (*notification.Notification, error) {
-	n, err := t.generate(sub, pastTenseOverride)
+func (t *taskTriggers) generateWithAlertRecord(sub *event.Subscription, alertType, pastTenseOverride, testNames string) (*notification.Notification, error) {
+	n, err := t.generate(sub, pastTenseOverride, testNames)
 	if err != nil {
 		return nil, err
 	}
@@ -362,7 +365,7 @@ func (t *taskTriggers) taskOutcome(sub *event.Subscription) (*notification.Notif
 		return nil, nil
 	}
 
-	return t.generate(sub, "")
+	return t.generate(sub, "", "")
 }
 
 func (t *taskTriggers) taskFailure(sub *event.Subscription) (*notification.Notification, error) {
@@ -370,7 +373,7 @@ func (t *taskTriggers) taskFailure(sub *event.Subscription) (*notification.Notif
 		return nil, nil
 	}
 
-	return t.generate(sub, "")
+	return t.generate(sub, "", "")
 }
 
 func (t *taskTriggers) taskSuccess(sub *event.Subscription) (*notification.Notification, error) {
@@ -378,7 +381,7 @@ func (t *taskTriggers) taskSuccess(sub *event.Subscription) (*notification.Notif
 		return nil, nil
 	}
 
-	return t.generate(sub, "")
+	return t.generate(sub, "", "")
 }
 
 func (t *taskTriggers) taskFirstFailureInBuild(sub *event.Subscription) (*notification.Notification, error) {
@@ -393,7 +396,7 @@ func (t *taskTriggers) taskFirstFailureInBuild(sub *event.Subscription) (*notifi
 		return nil, nil
 	}
 
-	return t.generateWithAlertRecord(sub, alertrecord.FirstVariantFailureId, "")
+	return t.generateWithAlertRecord(sub, alertrecord.FirstVariantFailureId, "", "")
 }
 
 func (t *taskTriggers) taskFirstFailureInVersion(sub *event.Subscription) (*notification.Notification, error) {
@@ -408,7 +411,7 @@ func (t *taskTriggers) taskFirstFailureInVersion(sub *event.Subscription) (*noti
 		return nil, nil
 	}
 
-	return t.generateWithAlertRecord(sub, alertrecord.FirstVersionFailureId, "")
+	return t.generateWithAlertRecord(sub, alertrecord.FirstVersionFailureId, "", "")
 }
 
 func (t *taskTriggers) taskFirstFailureInVersionWithName(sub *event.Subscription) (*notification.Notification, error) {
@@ -423,7 +426,7 @@ func (t *taskTriggers) taskFirstFailureInVersionWithName(sub *event.Subscription
 		return nil, nil
 	}
 
-	return t.generateWithAlertRecord(sub, alertrecord.FirstTaskTypeFailureId, "")
+	return t.generateWithAlertRecord(sub, alertrecord.FirstTaskTypeFailureId, "", "")
 }
 
 func (t *taskTriggers) taskRegression(sub *event.Subscription) (*notification.Notification, error) {
@@ -434,7 +437,7 @@ func (t *taskTriggers) taskRegression(sub *event.Subscription) (*notification.No
 	if !shouldNotify {
 		return nil, nil
 	}
-	n, err := t.generate(sub, "")
+	n, err := t.generate(sub, "", "")
 	if err != nil {
 		return nil, err
 	}
@@ -560,7 +563,7 @@ func (t *taskTriggers) taskExceedsDuration(sub *event.Subscription) (*notificati
 	if !t.task.StartTime.Add(maxDuration).Before(t.task.FinishTime) {
 		return nil, nil
 	}
-	return t.generate(sub, fmt.Sprintf("exceeded %d seconds", threshold))
+	return t.generate(sub, fmt.Sprintf("exceeded %d seconds", threshold), "")
 }
 
 func (t *taskTriggers) taskRuntimeChange(sub *event.Subscription) (*notification.Notification, error) {
@@ -590,7 +593,7 @@ func (t *taskTriggers) taskRuntimeChange(sub *event.Subscription) (*notification
 	if !shouldNotify {
 		return nil, nil
 	}
-	return t.generate(sub, fmt.Sprintf("changed in runtime by %.1f%% (over threshold of %s%%)", percentChange, percentString))
+	return t.generate(sub, fmt.Sprintf("changed in runtime by %.1f%% (over threshold of %s%%)", percentChange, percentString), "")
 }
 
 func isFailedTaskStatus(status string) bool {
@@ -701,8 +704,15 @@ func (t *taskTriggers) taskRegressionByTest(sub *event.Subscription) (*notificat
 	if len(testsToAlert) == 0 {
 		return nil, nil
 	}
+	testNames := ""
+	for i, test := range testsToAlert {
+		testNames += test.TestFile
+		if i != len(testsToAlert)-1 {
+			testNames += ", "
+		}
+	}
 
-	n, err := t.generate(sub, "")
+	n, err := t.generate(sub, "", testNames)
 	if err != nil {
 		return nil, err
 	}
@@ -717,11 +727,11 @@ func matchingFailureType(requested, actual string) bool {
 	return requested == actual
 }
 
-func (j *taskTriggers) makeJIRATaskPayload(subID, project string) (*message.JiraIssue, error) {
-	return JIRATaskPayload(subID, project, j.uiConfig.Url, j.event.ID, j.task)
+func (j *taskTriggers) makeJIRATaskPayload(subID, project, testNames string) (*message.JiraIssue, error) {
+	return JIRATaskPayload(subID, project, j.uiConfig.Url, j.event.ID, testNames, j.task)
 }
 
-func JIRATaskPayload(subID, project, uiUrl, eventID string, t *task.Task) (*message.JiraIssue, error) {
+func JIRATaskPayload(subID, project, uiUrl, eventID, testNames string, t *task.Task) (*message.JiraIssue, error) {
 	buildDoc, err := build.FindOne(build.ById(t.BuildId))
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to fetch build while building jira task payload")
@@ -767,6 +777,9 @@ func JIRATaskPayload(subID, project, uiUrl, eventID string, t *task.Task) (*mess
 	}
 	if t.IsPartOfDisplay() {
 		data.TaskDisplayName = t.DisplayTask.DisplayName
+	}
+	if testNames != "" {
+		data.TaskDisplayName += fmt.Sprintf(" (%s)", testNames)
 	}
 
 	builder := jiraBuilder{
@@ -851,7 +864,7 @@ func (t *taskTriggers) buildBreak(sub *event.Subscription) (*notification.Notifi
 		return nil, nil
 	}
 
-	n, err := t.generateWithAlertRecord(sub, alertrecord.FirstRegressionInVersion, "caused a regression")
+	n, err := t.generateWithAlertRecord(sub, alertrecord.FirstRegressionInVersion, "caused a regression", "")
 	if err != nil {
 		return nil, err
 	}
