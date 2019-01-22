@@ -6,6 +6,11 @@ import (
 	"github.com/mongodb/grip/send"
 )
 
+const (
+	taskIDKey  = "task_id"
+	logTypeKey = "type"
+)
+
 type taskAnnotator struct {
 	send.Sender
 	taskID  string
@@ -13,8 +18,8 @@ type taskAnnotator struct {
 }
 
 func (l *taskAnnotator) Send(m message.Composer) {
-	grip.Error(m.Annotate("task_id", l.taskID))
-	grip.Error(m.Annotate("type", l.logType))
+	grip.Error(m.Annotate(taskIDKey, l.taskID))
+	grip.Error(m.Annotate(logTypeKey, l.logType))
 	l.Sender.Send(m)
 }
 

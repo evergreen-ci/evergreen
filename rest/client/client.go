@@ -217,8 +217,7 @@ func (c *communicatorImpl) makeSender(ctx context.Context, taskData TaskData, op
 			grip.Critical(errors.Wrap(err, "error creating splunk logger"))
 			return nil
 		}
-		sender = newAnnotatedWrapper(taskData.ID, prefix, sender)
-		sender = send.NewBufferedSender(sender, bufferDuration, bufferSize)
+		sender = send.NewBufferedSender(newAnnotatedWrapper(taskData.ID, prefix, sender), bufferDuration, bufferSize)
 	// TODO: placeholder until implemented
 	case LogkeeperLogSender:
 		fallback, err := send.NewNativeLogger(prefix, levelInfo)
