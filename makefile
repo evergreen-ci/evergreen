@@ -63,7 +63,7 @@ lintArgs += --disable="varcheck" --disable="structcheck" --disable="aligncheck"
 lintArgs += --skip="$(buildDir)" --skip="scripts" --skip="$(gopath)"
 #  add and configure additional linters
 lintArgs += --enable="misspell" # --enable="lll" --line-length=100
-lintArgs += --disable="staticcheck"
+lintArgs += --disable="staticcheck" --disable="megacheck"
 #  suppress some lint errors (logging methods could return errors, and error checking in defers.)
 lintArgs += --exclude=".*([mM]ock.*ator|modadvapi32|osSUSE) is unused \((deadcode|unused|megacheck)\)$$"
 lintArgs += --exclude="error return value not checked \((defer .*|fmt.Fprint.*) \(errcheck\)$$"

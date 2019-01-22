@@ -26,7 +26,7 @@ func (agt *Agent) startStatusServer(ctx context.Context, port int) error {
 		return errors.Errorf("another agent is running on %d", port)
 	}
 	app := gimlet.NewApp()
-	if err := app.SetPort(port); err != nil {
+	if err = app.SetPort(port); err != nil {
 		return errors.WithStack(err)
 	}
 	app.NoVersions = true
