@@ -207,7 +207,6 @@ func (c *communicatorImpl) makeSender(ctx context.Context, taskData TaskData, op
 			return nil
 		}
 		sender = send.NewBufferedSender(sender, bufferDuration, bufferSize)
-	// TODO: placeholder until implemented
 	case SplunkLogSender:
 		info := send.SplunkConnectionInfo{
 			ServerURL: opts.SplunkServerURL,
@@ -218,7 +217,7 @@ func (c *communicatorImpl) makeSender(ctx context.Context, taskData TaskData, op
 			grip.Critical(errors.Wrap(err, "error creating splunk logger"))
 			return nil
 		}
-		sender = send.NewBufferedSender(sender, bufferDuration, bufferSize)
+		sender = send.NewBufferedSender(newAnnotatedWrapper(taskData.ID, prefix, sender), bufferDuration, bufferSize)
 	// TODO: placeholder until implemented
 	case LogkeeperLogSender:
 		fallback, err := send.NewNativeLogger(prefix, levelInfo)
