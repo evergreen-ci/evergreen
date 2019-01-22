@@ -45,23 +45,13 @@ func keysAdd() cli.Command {
 		},
 		Before: mergeBeforeFuncs(
 			setPlainLogger,
-			requireClientConfig,
 			requireFileExists(keyFileFlagName),
 			func(c *cli.Context) error {
-				numArgs := c.NArg()
-
-				if numArgs < 2 {
-					return errors.New("Too few arguments to add, need key name and public key file path")
-				} else if numArgs > 2 {
-					return errors.New("too many arguments to add a key")
+				keyName := c.String(keyNameFlagName)
+				if keyName == "" {
+					return errors.New("key name cannot be empty")
 				}
-				args := c.Args()
-
-				catcher := grip.NewBasicCatcher()
-				catcher.Add(c.Set(keyNameFlagName, args[0]))
-				catcher.Add(c.Set(keyFileFlagName, args[1]))
-
-				return catcher.Resolve()
+				return nil
 			}),
 		Action: func(c *cli.Context) error {
 			confPath := c.Parent().String(confFlagName)
@@ -140,7 +130,6 @@ func keysDelete() cli.Command {
 	return cli.Command{
 		Name: "delete",
 		Before: mergeBeforeFuncs(
-			requireClientConfig,
 			setPlainLogger,
 			func(c *cli.Context) error {
 				if c.NArg() != 1 {
