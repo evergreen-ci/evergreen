@@ -261,7 +261,7 @@ func (t *taskTriggers) makeData(sub *event.Subscription, pastTenseOverride, test
 		status = t.task.DisplayTask.Status
 	}
 	if testNames != "" {
-		displayName += fmt.Sprintf("(%s)", testNames)
+		displayName += fmt.Sprintf(" (%s)", testNames)
 	}
 
 	data := commonTemplateData{
@@ -708,7 +708,7 @@ func (t *taskTriggers) taskRegressionByTest(sub *event.Subscription) (*notificat
 	for i, test := range testsToAlert {
 		testNames += test.TestFile
 		if i != len(testsToAlert)-1 {
-			testNames += ","
+			testNames += ", "
 		}
 	}
 
@@ -779,7 +779,7 @@ func JIRATaskPayload(subID, project, uiUrl, eventID, testNames string, t *task.T
 		data.TaskDisplayName = t.DisplayTask.DisplayName
 	}
 	if testNames != "" {
-		data.TaskDisplayName += fmt.Sprintf("(%s)", testNames)
+		data.TaskDisplayName += fmt.Sprintf(" (%s)", testNames)
 	}
 
 	builder := jiraBuilder{
