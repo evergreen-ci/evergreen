@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/aws/aws-sdk-go/aws/endpoints"
+	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/util"
@@ -86,7 +87,7 @@ func (as *APIServer) s3copyPlugin(w http.ResponseWriter, r *http.Request) {
 		Credentials: pail.CreateAWSCredentials(s3CopyReq.AwsKey, s3CopyReq.AwsSecret, ""),
 		Region:      region,
 		Name:        s3CopyReq.S3SourceBucket,
-		Permission:  s3CopyReq.S3Permissions,
+		Permission:  s3.BucketCannedACLPublicRead,
 	}
 	srcBucket, err := pail.NewS3MultiPartBucket(srcOpts)
 	if err != nil {
@@ -96,7 +97,7 @@ func (as *APIServer) s3copyPlugin(w http.ResponseWriter, r *http.Request) {
 		Credentials: pail.CreateAWSCredentials(s3CopyReq.AwsKey, s3CopyReq.AwsSecret, ""),
 		Region:      region,
 		Name:        s3CopyReq.S3DestinationBucket,
-		Permission:  s3CopyReq.S3Permissions,
+		Permission:  s3.BucketCannedACLPublicRead,
 	}
 	destBucket, err := pail.NewS3MultiPartBucket(destOpts)
 	if err != nil {

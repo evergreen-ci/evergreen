@@ -4,7 +4,6 @@ import (
 	"context"
 	"path/filepath"
 
-	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/artifact"
@@ -38,11 +37,6 @@ type s3CopyFile struct {
 	//  path: linux-64/x86_64/artifact.tgz
 	Source      s3Loc `mapstructure:"source" plugin:"expand"`
 	Destination s3Loc `mapstructure:"destination" plugin:"expand"`
-
-	// Permissions is the ACL to apply to the copied file. See:
-	//  http://docs.aws.amazon.com/AmazonS3/latest/dev/acl-overview.html#canned-acl
-	// for some examples.
-	Permissions string `mapstructure:"permissions" plugin:"expand"`
 
 	// BuildVariants is a slice of build variants for which
 	// a specified file is to be copied. An empty slice indicates it is to be
@@ -104,9 +98,6 @@ func (c *s3copy) validateParams() error {
 		}
 		if s3CopyFile.Destination.Path == "" {
 			return errors.New("s3 destination path cannot be blank")
-		}
-		if s3CopyFile.Permissions == "" {
-			s3CopyFile.Permissions = s3.BucketCannedACLPublicRead
 		}
 
 		err := validateS3BucketName(s3CopyFile.Source.Bucket)

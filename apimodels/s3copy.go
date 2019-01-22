@@ -11,5 +11,4 @@ type S3CopyRequest struct {
 	S3DestinationBucket string `json:"s3_destination_bucket"`
 	S3DestinationPath   string `json:"s3_destination_path"`
 	S3DisplayName       string `json:"display_name"`
-	S3Permissions       string `json:"s3_permissions"`
 }

@@ -44,7 +44,7 @@ type s3put struct {
 	// Bucket is the s3 bucket to use when storing the desired file
 	Bucket string `mapstructure:"bucket" plugin:"expand"`
 
-	// Permissions is the ACL to apply to the uploaded file. See:
+	// Permission is the ACL to apply to the uploaded file. See:
 	//  http://docs.aws.amazon.com/AmazonS3/latest/dev/acl-overview.html#canned-acl
 	// for some examples.
 	Permissions string `mapstructure:"permissions"`
