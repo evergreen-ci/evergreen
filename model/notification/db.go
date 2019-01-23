@@ -2,6 +2,7 @@ package notification
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/evergreen-ci/evergreen/db"
@@ -128,6 +129,17 @@ func Find(id string) (*Notification, error) {
 	}
 
 	return &notification, err
+}
+
+func FindByEventID(id string) ([]Notification, error) {
+	notifications := []Notification{}
+	query := db.Query(bson.M{
+		idKey: bson.RegEx{Pattern: fmt.Sprintf("^%s-", id)},
+	},
+	)
+
+	err := db.FindAllQ(Collection, query, &notifications)
+	return notifications, err
 }
 
 func byID(id string) db.Q {
