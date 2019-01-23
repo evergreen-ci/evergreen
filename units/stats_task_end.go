@@ -28,9 +28,10 @@ func init() {
 // are logged but not returned, since any number of API failures could happen and
 // we shouldn't sacrifice a task's status for them.
 type collectTaskEndDataJob struct {
-	TaskID   string `bson:"task_id" json:"task_id" yaml:"task_id"`
-	HostID   string `bson:"host_id" json:"host_id" yaml:"host_id"`
-	job.Base `bson:"metadata" json:"metadata" yaml:"metadata"`
+	TaskID    string `bson:"task_id" json:"task_id" yaml:"task_id"`
+	Execution int    `bson:"execution" json:"execution" yaml:"execution"`
+	HostID    string `bson:"host_id" json:"host_id" yaml:"host_id"`
+	job.Base  `bson:"metadata" json:"metadata" yaml:"metadata"`
 
 	// internal cache
 	task *task.Task
@@ -60,6 +61,7 @@ func newTaskEndJob() *collectTaskEndDataJob {
 func NewCollectTaskEndDataJob(t *task.Task, h *host.Host) amboy.Job {
 	j := newTaskEndJob()
 	j.TaskID = t.Id
+	j.Execution = t.Execution
 	j.HostID = h.Id
 	j.task = t
 	j.host = h
@@ -73,17 +75,27 @@ func (j *collectTaskEndDataJob) Run(ctx context.Context) {
 
 	var err error
 	if j.task == nil {
-		j.task, err = task.FindOneId(j.TaskID)
+		j.task, err = task.FindOneByIdAndExecution(j.TaskID, j.Execution)
 		j.AddError(err)
+		if err != nil {
+			return
+		}
+	}
+	// The task was restarted before the job ran.
+	if j.task == nil {
+		j.task, err = task.FindOneOldNoMergeByIdAndExecution(j.TaskID, j.Execution)
+		j.AddError(err)
+		if err != nil {
+			return
+		}
 	}
 
 	if j.host == nil {
 		j.host, err = host.FindOneId(j.HostID)
 		j.AddError(err)
-	}
-
-	if j.HasErrors() {
-		return
+		if err != nil {
+			return
+		}
 	}
 
 	if j.env == nil {
