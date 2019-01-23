@@ -199,7 +199,7 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 		Admins             []string             `json:"admins"`
 		TracksPushEvents   bool                 `json:"tracks_push_events"`
 		PRTestingEnabled   bool                 `json:"pr_testing_enabled"`
-		CommitQEnabled     bool                 `json:"commitq_enabled"`
+		CommitQueueEnabled bool                 `json:"commitq_enabled"`
 		PatchingDisabled   bool                 `json:"patching_disabled"`
 		AlertConfig        map[string][]struct {
 			Provider string                 `json:"provider"`
@@ -270,14 +270,14 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Prevent multiple projects tracking the same repo/branch from enabling commit queue
-	if responseRef.CommitQEnabled {
+	if responseRef.CommitQueueEnabled {
 		var projRef *model.ProjectRef
 		projRef, err = model.FindOneProjectRefWithCommitQByOwnerRepoAndBranch(responseRef.Owner, responseRef.Repo, responseRef.Branch)
 		if err != nil {
 			uis.LoggedError(w, r, http.StatusInternalServerError, err)
 			return
 		}
-		if projRef.CommitQEnabled && projRef.Identifier != id {
+		if projRef.CommitQueueEnabled && projRef.Identifier != id {
 			uis.LoggedError(w, r, http.StatusBadRequest, errors.Errorf("Cannot enable Commit Queue in this repo, must disable in '%s' first", projRef.Identifier))
 			return
 		}
@@ -310,7 +310,7 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 	projectRef.Identifier = id
 	projectRef.TracksPushEvents = responseRef.TracksPushEvents
 	projectRef.PRTestingEnabled = responseRef.PRTestingEnabled
-	projectRef.CommitQEnabled = responseRef.CommitQEnabled
+	projectRef.CommitQueueEnabled = responseRef.CommitQueueEnabled
 	projectRef.PatchingDisabled = responseRef.PatchingDisabled
 	projectRef.NotifyOnBuildFailure = responseRef.NotifyOnBuildFailure
 	projectRef.Triggers = responseRef.Triggers

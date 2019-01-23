@@ -3,13 +3,14 @@ package user
 import (
 	"time"
 
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/mongodb/anser/bsonutil"
 	"github.com/pkg/errors"
-	"gopkg.in/mgo.v2"
+	mgo "gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
 )
 
@@ -174,6 +175,33 @@ func (u *DBUser) IncPatchNumber() (int, error) {
 		return 0, err
 	}
 	return dbUser.PatchNumber, nil
+}
+
+func GetPatchUser(gitHubUID int) (*DBUser, error) {
+	u, err := FindByGithubUID(gitHubUID)
+	if err != nil {
+		return nil, errors.Wrap(err, "can't look for user")
+	}
+	if u == nil {
+		// set to a default user
+		u, err = FindOne(ById(evergreen.GithubPatchUser))
+		if err != nil {
+			return nil, errors.Wrap(err, "can't get user for pull request")
+		}
+		// default user doesn't exist yet
+		if u == nil {
+			u = &DBUser{
+				Id:       evergreen.GithubPatchUser,
+				DispName: "Github Pull Requests",
+				APIKey:   util.RandomString(),
+			}
+			if err = u.Insert(); err != nil {
+				return nil, errors.Wrap(err, "failed to create github patch user")
+			}
+		}
+	}
+
+	return u, nil
 }
 
 func IsValidSubscriptionPreference(in string) bool {

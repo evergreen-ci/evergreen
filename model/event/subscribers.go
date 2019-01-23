@@ -162,6 +162,7 @@ func (s *GithubPullRequestSubscriber) String() string {
 }
 
 type GithubMergeSubscriber struct {
+	ProjectID     string `bson:"project_id"`
 	Owner         string `bson:"owner"`
 	Repo          string `bson:"repo"`
 	PRNumber      int    `bson:"pr_number"`
@@ -172,7 +173,8 @@ type GithubMergeSubscriber struct {
 }
 
 func (s *GithubMergeSubscriber) String() string {
-	return fmt.Sprintf("%s-%s-%d-%s-%s-%s-%s",
+	return fmt.Sprintf("%s-%s-%s-%d-%s-%s-%s-%s",
+		s.ProjectID,
 		s.Owner,
 		s.Repo,
 		s.PRNumber,

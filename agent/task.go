@@ -267,7 +267,7 @@ func (a *Agent) makeTaskConfig(ctx context.Context, tc *taskContext) (*model.Tas
 	}
 
 	var confPatch *patch.Patch
-	if confVersion.Requester == evergreen.GithubPRRequester {
+	if evergreen.IsGitHubPatchRequester(confVersion.Requester) {
 		tc.logger.Execution().Info("Fetching patch document for Github PR request.")
 		confPatch, err = a.comm.GetTaskPatch(ctx, tc.task)
 		if err != nil {
