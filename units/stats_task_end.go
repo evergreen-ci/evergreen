@@ -14,6 +14,7 @@ import (
 	"github.com/mongodb/amboy/registry"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
+	"github.com/pkg/errors"
 )
 
 const collectTaskEndDataJobName = "collect-task-end-data"
@@ -89,6 +90,10 @@ func (j *collectTaskEndDataJob) Run(ctx context.Context) {
 			return
 		}
 	}
+	if j.task == nil {
+		j.AddError(errors.Errorf("Could not find task '%s'", j.TaskID))
+		return
+	}
 
 	if j.host == nil {
 		j.host, err = host.FindOneId(j.HostID)
@@ -96,6 +101,10 @@ func (j *collectTaskEndDataJob) Run(ctx context.Context) {
 		if err != nil {
 			return
 		}
+	}
+	if j.host == nil {
+		j.AddError(errors.Errorf("Could not find host '%s'", j.HostID))
+		return
 	}
 
 	if j.env == nil {
