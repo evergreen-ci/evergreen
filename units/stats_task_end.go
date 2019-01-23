@@ -75,7 +75,7 @@ func (j *collectTaskEndDataJob) Run(ctx context.Context) {
 
 	var err error
 	if j.task == nil {
-		j.task, err = task.FindOneByIdAndExecution(j.TaskID, j.Execution)
+		j.task, err = task.FindOneIdAndExecution(j.TaskID, j.Execution)
 		j.AddError(err)
 		if err != nil {
 			return
