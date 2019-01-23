@@ -67,6 +67,7 @@ var (
 	githubStatusAPIDisabledKey      = bsonutil.MustHaveTag(ServiceFlags{}, "GithubStatusAPIDisabled")
 	taskLoggingDisabledKey          = bsonutil.MustHaveTag(ServiceFlags{}, "TaskLoggingDisabled")
 	cacheStatsJobDisabledKey        = bsonutil.MustHaveTag(ServiceFlags{}, "CacheStatsJobDisabled")
+	commitQueueDisabledKey          = bsonutil.MustHaveTag(ServiceFlags{}, "CommitQueueDisabled")
 
 	// ContainerPoolsConfig keys
 	poolsKey = bsonutil.MustHaveTag(ContainerPoolsConfig{}, "Pools")
