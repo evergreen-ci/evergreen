@@ -35,12 +35,22 @@ import (
 // for most error implementations.)
 type Catcher interface {
 	Add(error)
+	AddWhen(bool, error)
 	Extend([]error)
+	ExtendWhen(bool, []error)
 	Len() int
 	HasErrors() bool
 	String() string
 	Resolve() error
 	Errors() []error
+
+	New(string)
+	NewWhen(bool, string)
+	Errorf(string, ...interface{})
+	ErrorfWhen(bool, string, ...interface{})
+
+	Wrap(error, string)
+	Wrapf(error, string, ...interface{})
 }
 
 // multiCatcher provides an interface to collect and coalesse error
@@ -133,6 +143,61 @@ func (c *baseCatcher) Extend(errs []error) {
 
 		c.errs = append(c.errs, err)
 	}
+}
+
+func (c *baseCatcher) Errorf(form string, args ...interface{}) {
+	if form == "" {
+		return
+	} else if len(args) == 0 {
+		c.New(form)
+		return
+	}
+	c.Add(errors.Errorf(form, args...))
+}
+
+func (c *baseCatcher) New(e string) {
+	if e == "" {
+		return
+	}
+	c.Add(errors.New(e))
+}
+
+func (c *baseCatcher) Wrap(err error, m string) { c.Add(errors.Wrap(err, m)) }
+
+func (c *baseCatcher) Wrapf(err error, f string, args ...interface{}) {
+	c.Add(errors.Wrapf(err, f, args...))
+}
+
+func (c *baseCatcher) AddWhen(cond bool, err error) {
+	if !cond {
+		return
+	}
+
+	c.Add(err)
+}
+
+func (c *baseCatcher) ExtendWhen(cond bool, errs []error) {
+	if !cond {
+		return
+	}
+
+	c.Extend(errs)
+}
+
+func (c *baseCatcher) ErrorfWhen(cond bool, form string, args ...interface{}) {
+	if !cond {
+		return
+	}
+
+	c.Errorf(form, args...)
+}
+
+func (c *baseCatcher) NewWhen(cond bool, e string) {
+	if !cond {
+		return
+	}
+
+	c.New(e)
 }
 
 func (c *baseCatcher) Errors() []error {
@@ -233,7 +298,13 @@ func (c *timeAnnotatingCatcher) Add(err error) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
-	c.errs = append(c.errs, newTimeStampError(err).setExtended(c.extended))
+	tserr := newTimeStampError(err)
+
+	if tserr == nil {
+		return
+	}
+
+	c.errs = append(c.errs, tserr.setExtended(c.extended))
 }
 
 func (c *timeAnnotatingCatcher) Extend(errs []error) {
@@ -251,6 +322,65 @@ func (c *timeAnnotatingCatcher) Extend(errs []error) {
 
 		c.errs = append(c.errs, newTimeStampError(err).setExtended(c.extended))
 	}
+}
+
+func (c *timeAnnotatingCatcher) AddWhen(cond bool, err error) {
+	if !cond {
+		return
+	}
+
+	c.Add(err)
+}
+
+func (c *timeAnnotatingCatcher) ExtendWhen(cond bool, errs []error) {
+	if !cond {
+		return
+	}
+
+	c.Extend(errs)
+}
+
+func (c *timeAnnotatingCatcher) New(e string) {
+	if e == "" {
+		return
+	}
+
+	c.Add(errors.New(e))
+}
+
+func (c *timeAnnotatingCatcher) NewWhen(cond bool, e string) {
+	if !cond {
+		return
+	}
+
+	c.New(e)
+}
+
+func (c *timeAnnotatingCatcher) Errorf(f string, args ...interface{}) {
+	if f == "" {
+		return
+	} else if len(args) == 0 {
+		c.New(f)
+		return
+	}
+
+	c.Add(errors.Errorf(f, args...))
+}
+
+func (c *timeAnnotatingCatcher) ErrorfWhen(cond bool, f string, args ...interface{}) {
+	if !cond {
+		return
+	}
+
+	c.Errorf(f, args...)
+}
+
+func (c *timeAnnotatingCatcher) Wrap(err error, m string) {
+	c.Add(WrapErrorTimeMessage(err, m))
+}
+
+func (c *timeAnnotatingCatcher) Wrapf(err error, f string, args ...interface{}) {
+	c.Add(WrapErrorTimeMessagef(err, f, args...))
 }
 
 func (c *timeAnnotatingCatcher) Len() int {
