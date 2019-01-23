@@ -114,10 +114,10 @@ func (s *notificationSuite) TestMarkErrorWithNilErrorHasNoSideEffect() {
 }
 
 func (s *notificationSuite) TestInsertMany() {
-	s.n.ID = "1"
+	s.n.ID = "1-outcome-12345-32434"
 
 	n2 := Notification{
-		ID: "2",
+		ID: "1-outcome-67890-32434",
 		Subscriber: event.Subscriber{
 			Type:   event.SlackSubscriberType,
 			Target: "#general",
@@ -129,7 +129,7 @@ func (s *notificationSuite) TestInsertMany() {
 
 	payload2 := "jira hi"
 	n3 := Notification{
-		ID: "3",
+		ID: "2-success-45566-32433",
 		Subscriber: event.Subscriber{
 			Type:   event.JIRACommentSubscriberType,
 			Target: "ABC-1234",
@@ -177,6 +177,10 @@ func (s *notificationSuite) TestInsertMany() {
 			s.T().Errorf("unknown notification")
 		}
 	}
+
+	out2, err := FindByEventID("1")
+	s.NoError(err)
+	s.Len(out2, 2)
 }
 
 func (s *notificationSuite) TestWebhookPayload() {
