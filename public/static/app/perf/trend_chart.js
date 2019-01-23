@@ -901,19 +901,32 @@ mciModule.factory('DrawPerfTrendChart', function (
     // :ptype domain: [min, max]
     // :param pos: position of directional segment (actually 1d vector)
     // :param len: length of directional segment, non-negative
+    // :param mirror: when true, and when the segment doesn't fit, mirrors the segment
+    //                Domain: |───────────|
+    //                Vec:    |        [──┼──>
+    //                Ret:    |   <────]  |
     // :returns: new position of directional segment
     // Example:
-    // A. domain=[0, 100], pos=50, len=10
+    // A. domain=[0, 100], pos=50, len=10, mirror=false
     //    The segment perfectly fits domain, pos = 50
-    // B. domain=[0, 100], pos=-20, len=10
-    //    The segment position is outside of domain, pos = 0
+    //      Domain: |───────────|
+    //      Vec:    |     [─>   |
+    //      Ret:    |     [─>   |
+    // B. domain=[0, 100], pos=-20, len=10, mirror=false
+    //    The segment position is outside of domain, pos = 0, mirror=false
+    //      Domain:       |───────────|
+    //      Vec:     [──> |           |
+    //      Ret:          ├─>         |
     // C. domain=[0, 100], pos=99, len=10
-    //    The segment end position is outside of domain, pos = 90
-    function fit1d(domain, pos, len, noOverlap) {
+    //    The segment end position is outside of domain, pos = 90, mirror=false
+    //      Domain: |───────────|
+    //      Vec:    |          [┼─>
+    //      Ret:    |       [──>|
+    function fit1d(domain, pos, len, mirror) {
       if (pos < domain[0]) {
         return 0
       } else if (pos + len > domain[1]) {
-        if (noOverlap) {
+        if (mirror) {
           return pos - len
         } else {
           return domain[1] - len
