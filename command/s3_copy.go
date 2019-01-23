@@ -171,6 +171,7 @@ func (c *s3copy) s3Copy(ctx context.Context,
 			S3DestinationBucket: s3CopyFile.Destination.Bucket,
 			S3DestinationPath:   s3CopyFile.Destination.Path,
 			S3DisplayName:       s3CopyFile.DisplayName,
+			S3Permissions:       s3CopyFile.Permissions,
 		}
 
 		responseString, err := comm.S3Copy(ctx, td, &s3CopyReq)
