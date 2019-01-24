@@ -183,6 +183,38 @@ func (s *notificationSuite) TestInsertMany() {
 	s.Len(out2, 2)
 }
 
+func (s *notificationSuite) TestInsertManyUnordered() {
+	s.n.ID = "duplicate"
+
+	n2 := Notification{
+		ID: "duplicate",
+		Subscriber: event.Subscriber{
+			Type:   event.SlackSubscriberType,
+			Target: "#general",
+		},
+		Payload: &SlackPayload{
+			Body: "slack hi",
+		},
+	}
+
+	payload2 := "jira hi"
+	n3 := Notification{
+		ID: "not_a_duplicate",
+		Subscriber: event.Subscriber{
+			Type:   event.JIRACommentSubscriberType,
+			Target: "ABC-1234",
+		},
+		Payload: &payload2,
+	}
+
+	slice := []Notification{s.n, n2, n3}
+
+	s.Error(InsertMany(slice...))
+	out := []Notification{}
+	s.NoError(db.FindAllQ(Collection, db.Q{}, &out))
+	s.Len(out, 2)
+}
+
 func (s *notificationSuite) TestWebhookPayload() {
 	jsonData := `{"iama": "potato"}`
 	s.n.ID = "1"
