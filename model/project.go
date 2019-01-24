@@ -50,6 +50,7 @@ type Project struct {
 	TaskGroups      []TaskGroup                `yaml:"task_groups,omitempty" bson:"task_groups"`
 	Tasks           []ProjectTask              `yaml:"tasks,omitempty" bson:"tasks"`
 	ExecTimeoutSecs int                        `yaml:"exec_timeout_secs,omitempty" bson:"exec_timeout_secs"`
+	Loggers         []LoggerConfig             `yaml:"loggers,omitempty" bson:"loggers,omitempty"`
 
 	// Flag that indicates a project as requiring user authentication
 	Private bool `yaml:"private,omitempty" bson:"private"`
@@ -262,6 +263,8 @@ type PluginCommandConf struct {
 
 	// Vars defines variables that can be used within commands.
 	Vars map[string]string `yaml:"vars,omitempty" bson:"vars"`
+
+	Loggers []LoggerConfig `yaml:"loggers,omitempty" bson:"loggers,omitempty"`
 }
 
 type ArtifactInstructions struct {
@@ -370,6 +373,44 @@ type ProjectTask struct {
 	Patchable *bool `yaml:"patchable,omitempty" bson:"patchable,omitempty"`
 	Stepback  *bool `yaml:"stepback,omitempty" bson:"stepback,omitempty"`
 	PatchOnly *bool `yaml:"patch_only,omitempty" bson:"patch_only,omitempty"`
+}
+
+type LoggerConfig struct {
+	Type         string `yaml:"type" bson:"type"`
+	SplunkServer string `yaml:"splunk_server,omitempty" bson:"splunk_server,omitempty"`
+	SplunkToken  string `yaml:"splunk_token,omitempty" bson:"splunk_token,omitempty"`
+}
+
+func (c *LoggerConfig) IsValid() error {
+	catcher := grip.NewBasicCatcher()
+	if !util.StringSliceContains(ValidLogSenders, c.Type) {
+		catcher.Add(errors.Errorf("%s is not a valid log sender", c.Type))
+	}
+	if c.Type == string(SplunkLogSender) && c.SplunkServer == "" {
+		catcher.Add(errors.New("Splunk logger requires a server URL"))
+	}
+	if c.Type == string(SplunkLogSender) && c.SplunkToken == "" {
+		catcher.Add(errors.New("Splunk logger requires a token"))
+	}
+
+	return catcher.Resolve()
+}
+
+type LogSender string
+
+const (
+	EvergreenLogSender LogSender = "evergreen"
+	FileLogSender                = "file"
+	LogkeeperLogSender           = "logkeeper"
+	SplunkLogSender              = "splunk"
+)
+
+var ValidLogSenders = []string{
+	string(EvergreenLogSender),
+	string(FileLogSender),
+	string(LogkeeperLogSender),
+	string(SplunkLogSender),
+	"",
 }
 
 // TaskIdTable is a map of [variant, task display name]->[task id].

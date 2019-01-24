@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen/apimodels"
+	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/level"
@@ -57,7 +58,7 @@ type LoggerConfig struct {
 }
 
 type LogOpts struct {
-	Sender            LogSender
+	Sender            model.LogSender
 	SplunkServerURL   string
 	SplunkToken       string
 	Filepath          string
@@ -67,15 +68,6 @@ type LogOpts struct {
 	BufferDuration    time.Duration
 	BufferSize        int
 }
-
-type LogSender int
-
-const (
-	EvergreenLogSender LogSender = iota
-	FileLogSender
-	LogkeeperLogSender
-	SplunkLogSender
-)
 
 // NewCommunicator returns a Communicator capable of making HTTP REST requests against
 // the API server. To change the default retry behavior, use the SetTimeoutStart, SetTimeoutMax,
@@ -202,14 +194,14 @@ func (c *communicatorImpl) makeSender(ctx context.Context, taskData TaskData, op
 		bufferSize = opts.BufferSize
 	}
 	switch opts.Sender {
-	case FileLogSender:
+	case model.FileLogSender:
 		sender, err = send.NewPlainFileLogger(prefix, opts.Filepath, levelInfo)
 		if err != nil {
 			grip.Critical(errors.Wrap(err, "error creating file logger"))
 			return nil
 		}
 		sender = send.NewBufferedSender(sender, bufferDuration, bufferSize)
-	case SplunkLogSender:
+	case model.SplunkLogSender:
 		info := send.SplunkConnectionInfo{
 			ServerURL: opts.SplunkServerURL,
 			Token:     opts.SplunkToken,
@@ -220,7 +212,7 @@ func (c *communicatorImpl) makeSender(ctx context.Context, taskData TaskData, op
 			return nil
 		}
 		sender = send.NewBufferedSender(newAnnotatedWrapper(taskData.ID, prefix, sender), bufferDuration, bufferSize)
-	case LogkeeperLogSender:
+	case model.LogkeeperLogSender:
 		config := send.BuildloggerConfig{
 			URL:        opts.LogkeeperURL,
 			Number:     opts.LogkeeperBuildNum,

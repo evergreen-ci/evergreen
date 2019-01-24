@@ -10,6 +10,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/evergreen-ci/evergreen/model"
 	"github.com/mongodb/grip/level"
 	"github.com/mongodb/grip/logging"
 	"github.com/mongodb/grip/message"
@@ -80,7 +81,7 @@ func (s *logSenderSuite) randomSleep() {
 
 func (s *logSenderSuite) TestFileLogger() {
 	logFileName := fmt.Sprintf("%s/log", s.tempDir)
-	fileSender := s.restClient.makeSender(context.Background(), TaskData{}, LogOpts{Sender: FileLogSender, Filepath: logFileName}, "")
+	fileSender := s.restClient.makeSender(context.Background(), TaskData{}, LogOpts{Sender: model.FileLogSender, Filepath: logFileName}, "")
 	s.NotNil(fileSender)
 	logger := logging.MakeGrip(fileSender)
 

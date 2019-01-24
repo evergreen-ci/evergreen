@@ -59,6 +59,7 @@ type parserProject struct {
 	TaskGroups      []parserTaskGroup          `yaml:"task_groups,omitempty"`
 	Tasks           []parserTask               `yaml:"tasks,omitempty"`
 	ExecTimeoutSecs int                        `yaml:"exec_timeout_secs,omitempty"`
+	Loggers         []LoggerConfig             `yaml:"loggers,omitempty"`
 
 	// Matrix code
 	Axes []matrixAxis `yaml:"axes,omitempty"`
@@ -466,6 +467,7 @@ func translateProject(pp *parserProject) (*Project, []error) {
 		Modules:         pp.Modules,
 		Functions:       pp.Functions,
 		ExecTimeoutSecs: pp.ExecTimeoutSecs,
+		Loggers:         pp.Loggers,
 	}
 	tse := NewParserTaskSelectorEvaluator(pp.Tasks)
 	tgse := newTaskGroupSelectorEvaluator(pp.TaskGroups)
