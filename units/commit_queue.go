@@ -20,6 +20,7 @@ import (
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/level"
 	"github.com/mongodb/grip/message"
+	"github.com/mongodb/grip/sometimes"
 	"github.com/pkg/errors"
 	yaml "gopkg.in/yaml.v2"
 )
@@ -63,6 +64,19 @@ func NewCommitQueueJob(env evergreen.Environment, queueID string, id string) amb
 
 func (j *commitQueueJob) Run(ctx context.Context) {
 	defer j.MarkComplete()
+
+	flags, err := evergreen.GetServiceFlags()
+	if err != nil {
+		j.AddError(errors.New("can't get degraded mode flags"))
+		return
+	}
+	if flags.CommitQueueDisabled {
+		grip.InfoWhen(sometimes.Percent(evergreen.DegradedLoggingPercent), message.Fields{
+			"job":     commitQueueJobName,
+			"message": "commit queue processing is disabled",
+		})
+		return
+	}
 
 	projectRef, err := model.FindOneProjectRef(j.QueueID)
 	if err != nil {

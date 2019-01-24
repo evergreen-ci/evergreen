@@ -416,6 +416,20 @@ func PopulateOldestImageRemovalJobs() amboy.QueueOperation {
 
 func PopulateCommitQueueJobs(env evergreen.Environment) amboy.QueueOperation {
 	return func(queue amboy.Queue) error {
+		flags, err := evergreen.GetServiceFlags()
+		if err != nil {
+			return errors.WithStack(err)
+		}
+
+		if flags.CommitQueueDisabled {
+			grip.InfoWhen(sometimes.Percent(evergreen.DegradedLoggingPercent), message.Fields{
+				"message": "commit queue is disabled",
+				"impact":  "commit queue items are not processed",
+				"mode":    "degraded",
+			})
+			return nil
+		}
+
 		catcher := grip.NewBasicCatcher()
 		ts := util.RoundPartOfHour(1).Format(tsFormat)
 
