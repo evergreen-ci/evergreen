@@ -410,7 +410,6 @@ var ValidLogSenders = []string{
 	string(FileLogSender),
 	string(LogkeeperLogSender),
 	string(SplunkLogSender),
-	"",
 }
 
 // TaskIdTable is a map of [variant, task display name]->[task id].

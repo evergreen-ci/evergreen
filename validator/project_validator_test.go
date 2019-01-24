@@ -2045,4 +2045,20 @@ tasks:
 	assert.Contains(errs.String(), "error in project-level logger config: Splunk logger requires a server URL")
 	assert.Contains(errs.String(), "error in project-level logger config: somethingElse is not a valid log sender")
 	assert.Contains(errs.String(), "error in logger config for command foo in task task_1: commandLogger is not a valid log sender")
+
+	// no loggers specified should not error
+	yml = `
+repo: asdf
+tasks:
+- name: task_1
+  commands:
+  - command: myCommand
+  display_name: foo
+    `
+
+	project = &model.Project{}
+	err = model.LoadProjectInto([]byte(yml), "", project)
+	assert.NoError(err)
+	errs = checkLoggerConfig(project)
+	assert.Len(errs, 0)
 }
