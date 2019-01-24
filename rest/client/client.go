@@ -57,13 +57,15 @@ type LoggerConfig struct {
 }
 
 type LogOpts struct {
-	Sender          LogSender
-	SplunkServerURL string
-	SplunkToken     string
-	Filepath        string
-	LogkeeperURL    string
-	BufferDuration  time.Duration
-	BufferSize      int
+	Sender            LogSender
+	SplunkServerURL   string
+	SplunkToken       string
+	Filepath          string
+	LogkeeperURL      string
+	LogkeeperBuilder  string
+	LogkeeperBuildNum int
+	BufferDuration    time.Duration
+	BufferSize        int
 }
 
 type LogSender int
@@ -218,19 +220,15 @@ func (c *communicatorImpl) makeSender(ctx context.Context, taskData TaskData, op
 			return nil
 		}
 		sender = send.NewBufferedSender(newAnnotatedWrapper(taskData.ID, prefix, sender), bufferDuration, bufferSize)
-	// TODO: placeholder until implemented
 	case LogkeeperLogSender:
-		fallback, err := send.NewNativeLogger(prefix, levelInfo)
-		if err != nil {
-			grip.Critical(errors.Wrap(err, "error creating native fallback logger"))
-			return nil
-		}
 		config := send.BuildloggerConfig{
-			CreateTest: true,
 			URL:        opts.LogkeeperURL,
-			Local:      fallback,
+			Number:     opts.LogkeeperBuildNum,
+			Local:      grip.GetSender(),
+			Test:       prefix,
+			CreateTest: true,
 		}
-		sender, err = send.NewBuildlogger(prefix, &config, levelInfo)
+		sender, err = send.NewBuildlogger(opts.LogkeeperBuilder, &config, levelInfo)
 		if err != nil {
 			grip.Critical(errors.Wrap(err, "error creating logkeeper logger"))
 			return nil

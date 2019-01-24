@@ -174,3 +174,153 @@ func (s *CatcherSuite) TestExtendWithNilErrors() {
 	s.Equal(s.catcher.Len(), 1)
 
 }
+
+func (s *CatcherSuite) TestAddWhenNilError() {
+	s.catcher.AddWhen(true, nil)
+	s.Equal(s.catcher.Len(), 0)
+	s.catcher.AddWhen(false, nil)
+	s.Equal(s.catcher.Len(), 0)
+}
+
+func (s *CatcherSuite) TestAddWithErrorAndFalse() {
+	s.catcher.AddWhen(false, errors.New("f"))
+	s.Equal(s.catcher.Len(), 0)
+	s.catcher.AddWhen(true, errors.New("f"))
+	s.Equal(s.catcher.Len(), 1)
+	s.catcher.AddWhen(false, errors.New("f"))
+	s.Equal(s.catcher.Len(), 1)
+}
+
+func (s *CatcherSuite) TestExtendWhenNilError() {
+	s.catcher.ExtendWhen(true, []error{})
+	s.Equal(s.catcher.Len(), 0)
+	s.catcher.ExtendWhen(false, []error{})
+	s.Equal(s.catcher.Len(), 0)
+	s.catcher.ExtendWhen(true, nil)
+	s.Equal(s.catcher.Len(), 0)
+	s.catcher.ExtendWhen(false, nil)
+	s.Equal(s.catcher.Len(), 0)
+}
+
+func (s *CatcherSuite) TestExtendWithErrorAndFalse() {
+	s.catcher.ExtendWhen(false, []error{errors.New("f")})
+	s.Equal(s.catcher.Len(), 0)
+	s.catcher.ExtendWhen(true, []error{errors.New("f")})
+	s.Equal(s.catcher.Len(), 1)
+	s.catcher.ExtendWhen(false, []error{errors.New("f")})
+	s.Equal(s.catcher.Len(), 1)
+
+	s.catcher.ExtendWhen(false, []error{errors.New("f"), errors.New("f")})
+	s.Equal(s.catcher.Len(), 1)
+	s.catcher.ExtendWhen(true, []error{errors.New("f"), errors.New("f")})
+	s.Equal(s.catcher.Len(), 3)
+}
+
+func (s *CatcherSuite) TestNewEmpty() {
+	s.catcher.New("")
+	s.Equal(s.catcher.Len(), 0)
+}
+
+func (s *CatcherSuite) TestNewAdd() {
+	s.catcher.New("one")
+	s.Equal(s.catcher.Len(), 1)
+	s.Contains(s.catcher.Errors()[0].Error(), "one")
+}
+
+func (s *CatcherSuite) TestWrapEmpty() {
+	s.catcher.Wrap(nil, "foo")
+	s.Equal(s.catcher.Len(), 0)
+}
+
+func (s *CatcherSuite) TestWrapFEmpty() {
+	s.catcher.Wrapf(nil, "foo:%t", true)
+	s.Equal(s.catcher.Len(), 0)
+}
+
+func (s *CatcherSuite) TestWrapPopulated() {
+	s.catcher.Wrap(errors.New("foo"), "bar")
+	s.Equal(s.catcher.Len(), 1)
+	s.Contains(s.catcher.Errors()[0].Error(), "foo")
+	s.Contains(s.catcher.Errors()[0].Error(), "bar")
+}
+
+func (s *CatcherSuite) TestWrapfPopulated() {
+	s.catcher.Wrapf(errors.New("foo"), "bar: %s", "this")
+	s.Equal(s.catcher.Len(), 1)
+	s.Contains(s.catcher.Errors()[0].Error(), "foo")
+	s.Contains(s.catcher.Errors()[0].Error(), "bar: this")
+}
+
+func (s *CatcherSuite) TestWrapPopulatedNillAnnotation() {
+	s.catcher.Wrap(errors.New("foo"), "")
+	s.Equal(s.catcher.Len(), 1)
+	s.Contains(s.catcher.Errors()[0].Error(), "foo")
+}
+
+func (s *CatcherSuite) TestWrapfPopulatedNillAnnotation() {
+	s.catcher.Wrapf(errors.New("foo"), "")
+	s.Equal(s.catcher.Len(), 1)
+	s.Contains(s.catcher.Errors()[0].Error(), "foo")
+}
+
+func (s *CatcherSuite) TestNewWhen() {
+	s.catcher.NewWhen(false, "")
+	s.Equal(s.catcher.Len(), 0)
+	s.catcher.NewWhen(false, "one")
+	s.Equal(s.catcher.Len(), 0)
+	s.catcher.NewWhen(true, "one")
+	s.Equal(s.catcher.Len(), 1)
+	s.catcher.NewWhen(true, "")
+	s.Equal(s.catcher.Len(), 1)
+	s.catcher.NewWhen(false, "one")
+	s.Equal(s.catcher.Len(), 1)
+}
+
+func (s *CatcherSuite) TestErrorfNilCases() {
+	s.catcher.Errorf("")
+	s.Equal(s.catcher.Len(), 0)
+	s.catcher.Errorf("", true, false)
+	s.Equal(s.catcher.Len(), 0)
+}
+
+func (s *CatcherSuite) TestErrorfWhenNilCases() {
+	s.catcher.ErrorfWhen(true, "")
+	s.Equal(s.catcher.Len(), 0)
+	s.catcher.ErrorfWhen(true, "", true, false)
+	s.Equal(s.catcher.Len(), 0)
+
+	s.catcher.ErrorfWhen(false, "")
+	s.Equal(s.catcher.Len(), 0)
+	s.catcher.ErrorfWhen(false, "", true, false)
+	s.Equal(s.catcher.Len(), 0)
+}
+
+func (s *CatcherSuite) TestErrorfNoArgs() {
+	s.catcher.Errorf("%s what")
+	s.Equal(s.catcher.Len(), 1)
+	s.Contains(s.catcher.Errors()[0].Error(), "%s what")
+}
+
+func (s *CatcherSuite) TestErrorfWhenNoArgs() {
+	s.catcher.ErrorfWhen(false, "%s what")
+	s.Equal(s.catcher.Len(), 0)
+
+	s.catcher.ErrorfWhen(true, "%s what")
+	s.Equal(s.catcher.Len(), 1)
+	s.Contains(s.catcher.Errors()[0].Error(), "%s what")
+}
+
+func (s *CatcherSuite) TestErrorfFull() {
+	s.catcher.Errorf("%s what", "this")
+	s.Equal(s.catcher.Len(), 1)
+	s.Contains(s.catcher.Errors()[0].Error(), "this what")
+}
+
+func (s *CatcherSuite) TestWhenErrorfFull() {
+	s.catcher.ErrorfWhen(false, "%s what", "this")
+	s.Equal(s.catcher.Len(), 0)
+
+	s.catcher.ErrorfWhen(true, "%s what", "this")
+	s.Equal(s.catcher.Len(), 1)
+	s.Contains(s.catcher.Errors()[0].Error(), "this what")
+}
