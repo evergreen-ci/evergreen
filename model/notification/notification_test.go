@@ -246,6 +246,7 @@ func (s *notificationSuite) TestJIRAIssuePayload() {
 			"8":  "9",
 			"10": "11",
 		},
+		FixVersions: []string{},
 	}
 
 	s.NoError(InsertMany(s.n))
