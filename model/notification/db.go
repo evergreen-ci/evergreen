@@ -117,7 +117,9 @@ func InsertMany(items ...Notification) error {
 		interfaces[i] = &items[i]
 	}
 
-	return db.InsertMany(Collection, interfaces...)
+	// notification IDs are intended to collide when multiple subscriptions exist to the same event
+	// insert unordered will continue on error so the rest of the notifications in items will still be inserted
+	return db.InsertManyUnordered(Collection, interfaces...)
 }
 
 func Find(id string) (*Notification, error) {
