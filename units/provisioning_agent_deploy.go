@@ -26,7 +26,7 @@ import (
 
 const (
 	agentDeployJobName = "agent-deploy"
-	agentPutRetries    = 10
+	agentPutRetries    = 75
 )
 
 func init() {

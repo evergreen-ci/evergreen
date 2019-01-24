@@ -89,7 +89,7 @@ func startSystemCronJobs(ctx context.Context, env evergreen.Environment) {
 		units.PopulateOldestImageRemovalJobs()))
 
 	amboy.IntervalQueueOperation(ctx, env.RemoteQueue(), 15*time.Second, time.Now(), opts, amboy.GroupQueueOperationFactory(
-		units.PopulateHostSetupJobs(env, 0),
+		units.PopulateHostSetupJobs(env),
 		units.PopulateSchedulerJobs(env),
 		units.PopulateAgentDeployJobs(env)))
 
