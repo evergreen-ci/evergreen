@@ -11,9 +11,9 @@ import (
 	"github.com/pkg/errors"
 )
 
-type DBCommitQConnector struct{}
+type DBCommitQueueConnector struct{}
 
-func (pc *DBCommitQConnector) GithubPREnqueueItem(owner, repo string, PRNum int) error {
+func (pc *DBCommitQueueConnector) GithubPREnqueueItem(owner, repo string, PRNum int) error {
 	// Retrieve base branch for the PR from the Github API
 	conf, err := evergreen.GetConfig()
 	if err != nil {
@@ -34,7 +34,7 @@ func (pc *DBCommitQConnector) GithubPREnqueueItem(owner, repo string, PRNum int)
 	return errors.Wrap(err, "enqueue failed")
 }
 
-func (pc *DBCommitQConnector) EnqueueItem(owner, repo, baseBranch, item string) error {
+func (pc *DBCommitQueueConnector) EnqueueItem(owner, repo, baseBranch, item string) error {
 	proj, err := model.FindOneProjectRefWithCommitQByOwnerRepoAndBranch(owner, repo, baseBranch)
 	if err != nil {
 		return errors.Wrapf(err, "can't query for matching project with commit queue enabled. owner: %s, repo: %s, branch: %s", owner, repo, baseBranch)
@@ -59,15 +59,19 @@ func (pc *DBCommitQConnector) EnqueueItem(owner, repo, baseBranch, item string) 
 	return nil
 }
 
-type MockCommitQConnector struct {
+func (pc *DBCommitQueueConnector) FindCommitQueueByID(id string) (*commitqueue.CommitQueue, error) {
+	return commitqueue.FindOneId(id)
+}
+
+type MockCommitQueueConnector struct {
 	Queue map[string][]string
 }
 
-func (pc *MockCommitQConnector) GithubPREnqueueItem(owner, repo string, PRNum int) error {
+func (pc *MockCommitQueueConnector) GithubPREnqueueItem(owner, repo string, PRNum int) error {
 	return pc.EnqueueItem(owner, repo, "master", strconv.Itoa(PRNum))
 }
 
-func (pc *MockCommitQConnector) EnqueueItem(owner, repo, baseBranch, item string) error {
+func (pc *MockCommitQueueConnector) EnqueueItem(owner, repo, baseBranch, item string) error {
 	if pc.Queue == nil {
 		pc.Queue = make(map[string][]string)
 	}
@@ -76,4 +80,12 @@ func (pc *MockCommitQConnector) EnqueueItem(owner, repo, baseBranch, item string
 	pc.Queue[queueID] = append(pc.Queue[queueID], item)
 
 	return nil
+}
+
+func (pc *MockCommitQueueConnector) FindCommitQueueByID(id string) (*commitqueue.CommitQueue, error) {
+	if _, ok := pc.Queue[id]; !ok {
+		return nil, nil
+	}
+
+	return &commitqueue.CommitQueue{ProjectID: id, Queue: pc.Queue[id]}, nil
 }
