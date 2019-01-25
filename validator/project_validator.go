@@ -609,19 +609,17 @@ func checkRunOnOnlyOneDistro(project *model.Project) ValidationErrors {
 
 func checkLoggerConfig(project *model.Project) ValidationErrors {
 	errs := ValidationErrors{}
-	for _, config := range project.Loggers {
-		if err := config.IsValid(); err != nil {
+	if project.Loggers != nil {
+		if err := project.Loggers.IsValid(); err != nil {
 			errs = append(errs, ValidationError{
 				Message: errors.Wrap(err, "error in project-level logger config").Error(),
 				Level:   Warning,
 			})
 		}
-	}
 
-	for _, task := range project.Tasks {
-		for _, command := range task.Commands {
-			for _, config := range command.Loggers {
-				if err := config.IsValid(); err != nil {
+		for _, task := range project.Tasks {
+			for _, command := range task.Commands {
+				if err := command.Loggers.IsValid(); err != nil {
 					errs = append(errs, ValidationError{
 						Message: errors.Wrapf(err, "error in logger config for command %s in task %s", command.DisplayName, task.Name).Error(),
 						Level:   Warning,

@@ -50,7 +50,7 @@ type Project struct {
 	TaskGroups      []TaskGroup                `yaml:"task_groups,omitempty" bson:"task_groups"`
 	Tasks           []ProjectTask              `yaml:"tasks,omitempty" bson:"tasks"`
 	ExecTimeoutSecs int                        `yaml:"exec_timeout_secs,omitempty" bson:"exec_timeout_secs"`
-	Loggers         []LoggerConfig             `yaml:"loggers,omitempty" bson:"loggers,omitempty"`
+	Loggers         *LoggerConfig              `yaml:"loggers,omitempty" bson:"loggers,omitempty"`
 
 	// Flag that indicates a project as requiring user authentication
 	Private bool `yaml:"private,omitempty" bson:"private"`
@@ -264,7 +264,7 @@ type PluginCommandConf struct {
 	// Vars defines variables that can be used within commands.
 	Vars map[string]string `yaml:"vars,omitempty" bson:"vars"`
 
-	Loggers []LoggerConfig `yaml:"loggers,omitempty" bson:"loggers,omitempty"`
+	Loggers *LoggerConfig `yaml:"loggers,omitempty" bson:"loggers,omitempty"`
 }
 
 type ArtifactInstructions struct {
@@ -376,20 +376,42 @@ type ProjectTask struct {
 }
 
 type LoggerConfig struct {
+	Agent  []LogOpts `yaml:"agent" bson:"agent"`
+	System []LogOpts `yaml:"system" bson:"system"`
+	Task   []LogOpts `yaml:"task" bson:"task"`
+}
+
+type LogOpts struct {
 	Type         string `yaml:"type" bson:"type"`
 	SplunkServer string `yaml:"splunk_server,omitempty" bson:"splunk_server,omitempty"`
 	SplunkToken  string `yaml:"splunk_token,omitempty" bson:"splunk_token,omitempty"`
+	Filepath     string `yaml:"-" bson:"-"`
 }
 
 func (c *LoggerConfig) IsValid() error {
 	catcher := grip.NewBasicCatcher()
-	if !util.StringSliceContains(ValidLogSenders, c.Type) {
-		catcher.Add(errors.Errorf("%s is not a valid log sender", c.Type))
+	for _, opts := range c.Agent {
+		catcher.Add(errors.Wrap(opts.IsValid(), "invalid agent logger config"))
 	}
-	if c.Type == SplunkLogSender && c.SplunkServer == "" {
+	for _, opts := range c.System {
+		catcher.Add(errors.Wrap(opts.IsValid(), "invalid system logger config"))
+	}
+	for _, opts := range c.Task {
+		catcher.Add(errors.Wrap(opts.IsValid(), "invalid task logger config"))
+	}
+
+	return catcher.Resolve()
+}
+
+func (o *LogOpts) IsValid() error {
+	catcher := grip.NewBasicCatcher()
+	if !util.StringSliceContains(ValidLogSenders, o.Type) {
+		catcher.Add(errors.Errorf("%s is not a valid log sender", o.Type))
+	}
+	if o.Type == SplunkLogSender && o.SplunkServer == "" {
 		catcher.Add(errors.New("Splunk logger requires a server URL"))
 	}
-	if c.Type == SplunkLogSender && c.SplunkToken == "" {
+	if o.Type == SplunkLogSender && o.SplunkToken == "" {
 		catcher.Add(errors.New("Splunk logger requires a token"))
 	}
 

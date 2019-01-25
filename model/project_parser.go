@@ -59,7 +59,7 @@ type parserProject struct {
 	TaskGroups      []parserTaskGroup          `yaml:"task_groups,omitempty"`
 	Tasks           []parserTask               `yaml:"tasks,omitempty"`
 	ExecTimeoutSecs int                        `yaml:"exec_timeout_secs,omitempty"`
-	Loggers         []LoggerConfig             `yaml:"loggers,omitempty"`
+	Loggers         *LoggerConfig              `yaml:"loggers,omitempty"`
 
 	// Matrix code
 	Axes []matrixAxis `yaml:"axes,omitempty"`

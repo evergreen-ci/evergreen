@@ -32,6 +32,8 @@ func (a *Agent) runCommands(ctx context.Context, tc *taskContext, commands []mod
 			continue
 		}
 
+		commandLogger := a.makeLoggerProducer(ctx, commandInfo.Loggers, tc, tc.task)
+		defer commandLogger.Close()
 		for idx, cmd := range cmds {
 			if ctx.Err() != nil {
 				grip.Error("runCommands canceled")
@@ -87,8 +89,7 @@ func (a *Agent) runCommands(ctx context.Context, tc *taskContext, commands []mod
 					cmdChan <- recovery.HandlePanicWithError(recover(), nil,
 						fmt.Sprintf("problem running command '%s'", cmd.Name()))
 				}()
-
-				cmdChan <- cmd.Execute(ctx, a.comm, tc.logger, tc.taskConfig)
+				cmdChan <- cmd.Execute(ctx, a.comm, commandLogger, tc.taskConfig)
 			}()
 			select {
 			case err = <-cmdChan:

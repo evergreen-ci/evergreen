@@ -1162,25 +1162,25 @@ buildvariants:
 func TestLoggerConfig(t *testing.T) {
 	assert := assert.New(t)
 	yml := `
-repo: asdf
 loggers:
-- type: something
-  splunk_token: idk
-- type: somethingElse
+  agent:
+    - type: something
+      splunk_token: idk
+    - type: somethingElse
 tasks:
 - name: task_1
   commands:
   - command: myCommand
     loggers:
-    - type: commandLogger
+      system:
+        - type: commandLogger
 `
 
 	proj, errs := projectFromYAML([]byte(yml))
 	assert.NotNil(proj)
 	assert.Empty(errs)
-	assert.Len(proj.Loggers, 2)
-	assert.Equal("something", proj.Loggers[0].Type)
-	assert.Equal("idk", proj.Loggers[0].SplunkToken)
-	assert.Equal("somethingElse", proj.Loggers[1].Type)
-	assert.Equal("commandLogger", proj.Tasks[0].Commands[0].Loggers[0].Type)
+	assert.Equal("something", proj.Loggers.Agent[0].Type)
+	assert.Equal("idk", proj.Loggers.Agent[0].SplunkToken)
+	assert.Equal("somethingElse", proj.Loggers.Agent[1].Type)
+	assert.Equal("commandLogger", proj.Tasks[0].Commands[0].Loggers.System[0].Type)
 }
