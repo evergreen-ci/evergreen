@@ -268,7 +268,6 @@ mciModule.controller('TaskHistoryDrawerCtrl', function($scope, $window, $locatio
         $scope.taskHost = $window.taskHost;
         $scope.jiraHost = $window.jiraHost;
         $scope.isAdmin = $window.isAdmin;
-        $scope.subscriptions = [];
 
         $scope.triggers = [
           {
@@ -312,12 +311,11 @@ mciModule.controller('TaskHistoryDrawerCtrl', function($scope, $window, $locatio
 
           $mdDialog.show(promise).then(function(data){
             addSelectorsAndOwnerType(data, "task", $scope.task.id);
-            $scope.subscriptions.push(data);
-            $scope.saveSubscriptions();
+            $scope.saveSubscription(data);
           });
         };
 
-        $scope.saveSubscriptions = function() {
+        $scope.saveSubscription = function(subscription) {
           var success = function() {
             $mdToast.show({
               templateUrl: "/static/partials/subscription_confirmation_toast.html",
@@ -327,7 +325,7 @@ mciModule.controller('TaskHistoryDrawerCtrl', function($scope, $window, $locatio
           var failure = function(resp) {
             notificationService.pushNotification('Error saving subscriptions: ' + resp.data.error, 'errorHeader');
           };
-          mciSubscriptionsService.post($scope.subscriptions, { success: success, error: failure });
+          mciSubscriptionsService.post([subscription], { success: success, error: failure });
         }
 
         $scope.overrideDependencies = function() {
