@@ -84,7 +84,7 @@ func (j *commitQueueJob) Run(ctx context.Context) {
 		return
 	}
 
-	if !projectRef.CommitQueueEnabled {
+	if !projectRef.CommitQueue.Enabled {
 		return
 	}
 

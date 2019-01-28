@@ -182,25 +182,25 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 	}
 
 	responseRef := struct {
-		Identifier         string               `json:"id"`
-		DisplayName        string               `json:"display_name"`
-		RemotePath         string               `json:"remote_path"`
-		BatchTime          int                  `json:"batch_time"`
-		DeactivatePrevious bool                 `json:"deactivate_previous"`
-		Branch             string               `json:"branch_name"`
-		ProjVarsMap        map[string]string    `json:"project_vars"`
-		ProjectAliases     []model.ProjectAlias `json:"project_aliases"`
-		DeleteAliases      []string             `json:"delete_aliases"`
-		PrivateVars        map[string]bool      `json:"private_vars"`
-		Enabled            bool                 `json:"enabled"`
-		Private            bool                 `json:"private"`
-		Owner              string               `json:"owner_name"`
-		Repo               string               `json:"repo_name"`
-		Admins             []string             `json:"admins"`
-		TracksPushEvents   bool                 `json:"tracks_push_events"`
-		PRTestingEnabled   bool                 `json:"pr_testing_enabled"`
-		CommitQueueEnabled bool                 `json:"commitq_enabled"`
-		PatchingDisabled   bool                 `json:"patching_disabled"`
+		Identifier         string                  `json:"id"`
+		DisplayName        string                  `json:"display_name"`
+		RemotePath         string                  `json:"remote_path"`
+		BatchTime          int                     `json:"batch_time"`
+		DeactivatePrevious bool                    `json:"deactivate_previous"`
+		Branch             string                  `json:"branch_name"`
+		ProjVarsMap        map[string]string       `json:"project_vars"`
+		ProjectAliases     []model.ProjectAlias    `json:"project_aliases"`
+		DeleteAliases      []string                `json:"delete_aliases"`
+		PrivateVars        map[string]bool         `json:"private_vars"`
+		Enabled            bool                    `json:"enabled"`
+		Private            bool                    `json:"private"`
+		Owner              string                  `json:"owner_name"`
+		Repo               string                  `json:"repo_name"`
+		Admins             []string                `json:"admins"`
+		TracksPushEvents   bool                    `json:"tracks_push_events"`
+		PRTestingEnabled   bool                    `json:"pr_testing_enabled"`
+		CommitQueue        model.CommitQueueParams `json:"commit_queue"`
+		PatchingDisabled   bool                    `json:"patching_disabled"`
 		AlertConfig        map[string][]struct {
 			Provider string                 `json:"provider"`
 			Settings map[string]interface{} `json:"settings"`
@@ -270,14 +270,14 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Prevent multiple projects tracking the same repo/branch from enabling commit queue
-	if responseRef.CommitQueueEnabled {
+	if responseRef.CommitQueue.Enabled {
 		var projRef *model.ProjectRef
 		projRef, err = model.FindOneProjectRefWithCommitQByOwnerRepoAndBranch(responseRef.Owner, responseRef.Repo, responseRef.Branch)
 		if err != nil {
 			uis.LoggedError(w, r, http.StatusInternalServerError, err)
 			return
 		}
-		if projRef.CommitQueueEnabled && projRef.Identifier != id {
+		if projRef.CommitQueue.Enabled && projRef.Identifier != id {
 			uis.LoggedError(w, r, http.StatusBadRequest, errors.Errorf("Cannot enable Commit Queue in this repo, must disable in '%s' first", projRef.Identifier))
 			return
 		}
@@ -310,7 +310,7 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 	projectRef.Identifier = id
 	projectRef.TracksPushEvents = responseRef.TracksPushEvents
 	projectRef.PRTestingEnabled = responseRef.PRTestingEnabled
-	projectRef.CommitQueueEnabled = responseRef.CommitQueueEnabled
+	projectRef.CommitQueue = responseRef.CommitQueue
 	projectRef.PatchingDisabled = responseRef.PatchingDisabled
 	projectRef.NotifyOnBuildFailure = responseRef.NotifyOnBuildFailure
 	projectRef.Triggers = responseRef.Triggers

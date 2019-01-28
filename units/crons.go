@@ -433,7 +433,7 @@ func PopulateCommitQueueJobs(env evergreen.Environment) amboy.QueueOperation {
 		catcher := grip.NewBasicCatcher()
 		ts := util.RoundPartOfHour(1).Format(tsFormat)
 
-		projectRefs, err := model.FindProjectRefsWithCommitQEnabled()
+		projectRefs, err := model.FindProjectRefsWithCommitQueueEnabled()
 		if err != nil {
 			return errors.Wrap(err, "can't find projectRefs with Commit Queue enabled")
 		}
