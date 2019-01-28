@@ -35,7 +35,7 @@ func (s *CommitQueueSuite) TestGetCommitQueue() {
 
 	response := s.route.Run(context.Background())
 	s.Equal(200, response.Status())
-	s.Equal(model.APICommitQueue{
+	s.Equal(&model.APICommitQueue{
 		ProjectID: model.ToAPIString("evergreen-ci.evergreen.master"),
 		Queue:     []model.APIString{model.ToAPIString("1"), model.ToAPIString("2")},
 	}, response.Data())

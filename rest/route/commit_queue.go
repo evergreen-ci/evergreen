@@ -45,5 +45,5 @@ func (cq commitQueueGetHandler) Run(ctx context.Context) gimlet.Responder {
 		})
 	}
 
-	return gimlet.NewJSONResponse(*commitQueue)
+	return gimlet.NewJSONResponse(commitQueue)
 }
