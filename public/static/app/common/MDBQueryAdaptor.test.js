@@ -72,10 +72,38 @@ describe('MDBQueryAdaptorSpec', function() {
     })
   })
 
+  it('parses date field filtering tokens', function() {
+    const cases = [
+      // Input / Output
+      [['>', '2010-10-10'], [{op: '>', term: '2010-10-10T00:00:00+00:00'}]],
+      [['<', '2010-10-10'], [{op: '<', term: '2010-10-10T00:00:00+00:00'}]],
+      [['>', '=', '2010-10-10'], [{op: '>=', term: '2010-10-10T00:00:00+00:00'}]],
+      [['<', '=', '2010-10-10'], [{op: '<=', term: '2010-10-10T00:00:00+00:00'}]],
+      [['=', '2010-10-10'], [
+        {op: '>=', term: '2010-10-10T00:00:00+00:00'},
+        {op: '<=', term: '2010-10-10T23:59:59+00:00'},
+      ]],
+      [['2010-10-10'], [
+        {op: '>=', term: '2010-10-10T00:00:00+00:00'},
+        {op: '<=', term: '2010-10-10T23:59:59+00:00'},
+      ]],
+    ]
+
+    _.each(cases, function(c) {
+      expect(svc._dateTypeParser(c[0])).toEqual(c[1])
+    })
+  })
+
   it('compiles single filtering query', function() {
     expect(
       svc._predicateCompiler('fld')({op: '==', term: 10})
     ).toEqual({fld: {$eq: 10}})
+  })
+
+  it('compiles multiple predicates', function() {
+    expect(
+      svc._compileMany('fld')([{op: '>', term: 10}, {op: '<', term: 20}])
+    ).toEqual({fld: {$gt: 10, $lt: 20}})
   })
 
   it('compiles restricted query language to mdb query', function() {
@@ -84,11 +112,16 @@ describe('MDBQueryAdaptorSpec', function() {
         {type: 'number', field: 'a', term: '10'},
         {type: 'number', field: 'b', term: '>5'},
         {type: 'string', field: 'c', term: 'term'},
+        {type: 'date', field: 'd', term: '2010-10-10'},
       ])
     ).toEqual({$match: {
       a: {$eq: 10},
       b: {$gt: 5},
       c: {$regex: 'term', $options: 'i'},
+      d: {
+        $gte: '2010-10-10T00:00:00+00:00',
+        $lte: '2010-10-10T23:59:59+00:00',
+      },
     }})
   })
 
