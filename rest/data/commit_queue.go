@@ -7,6 +7,7 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/commitqueue"
+	restModel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/pkg/errors"
 )
@@ -59,12 +60,25 @@ func (pc *DBCommitQueueConnector) EnqueueItem(owner, repo, baseBranch, item stri
 	return nil
 }
 
-func (pc *DBCommitQueueConnector) FindCommitQueueByID(id string) (*commitqueue.CommitQueue, error) {
-	return commitqueue.FindOneId(id)
+func (pc *DBCommitQueueConnector) FindCommitQueueByID(id string) (*restModel.APICommitQueue, error) {
+	cqService, err := commitqueue.FindOneId(id)
+	if err != nil {
+		return nil, errors.Wrap(err, "can't get commit queue from database")
+	}
+	if cqService == nil {
+		return nil, nil
+	}
+
+	apiCommitQueue := &restModel.APICommitQueue{}
+	if err = apiCommitQueue.BuildFromService(*cqService); err != nil {
+		return nil, errors.Wrap(err, "can't read commit queue into API model")
+	}
+
+	return apiCommitQueue, nil
 }
 
 type MockCommitQueueConnector struct {
-	Queue map[string][]string
+	Queue map[string][]restModel.APIString
 }
 
 func (pc *MockCommitQueueConnector) GithubPREnqueueItem(owner, repo string, PRNum int) error {
@@ -73,19 +87,19 @@ func (pc *MockCommitQueueConnector) GithubPREnqueueItem(owner, repo string, PRNu
 
 func (pc *MockCommitQueueConnector) EnqueueItem(owner, repo, baseBranch, item string) error {
 	if pc.Queue == nil {
-		pc.Queue = make(map[string][]string)
+		pc.Queue = make(map[string][]restModel.APIString)
 	}
 
 	queueID := owner + "." + repo + "." + baseBranch
-	pc.Queue[queueID] = append(pc.Queue[queueID], item)
+	pc.Queue[queueID] = append(pc.Queue[queueID], restModel.ToAPIString(item))
 
 	return nil
 }
 
-func (pc *MockCommitQueueConnector) FindCommitQueueByID(id string) (*commitqueue.CommitQueue, error) {
+func (pc *MockCommitQueueConnector) FindCommitQueueByID(id string) (*restModel.APICommitQueue, error) {
 	if _, ok := pc.Queue[id]; !ok {
 		return nil, nil
 	}
 
-	return &commitqueue.CommitQueue{ProjectID: id, Queue: pc.Queue[id]}, nil
+	return &restModel.APICommitQueue{ProjectID: restModel.ToAPIString(id), Queue: pc.Queue[id]}, nil
 }

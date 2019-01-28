@@ -2,10 +2,10 @@ package route
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 
 	"github.com/evergreen-ci/evergreen/rest/data"
-	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/pkg/errors"
 )
@@ -36,12 +36,14 @@ func (cq commitQueueGetHandler) Parse(ctx context.Context, r *http.Request) erro
 func (cq commitQueueGetHandler) Run(ctx context.Context) gimlet.Responder {
 	commitQueue, err := cq.sc.FindCommitQueueByID(cq.project)
 	if err != nil {
-		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "can't get commit queue from database"))
+		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "can't get commit queue"))
 	}
-	apiCommitQueue := model.APICommitQueue{}
-	if err = apiCommitQueue.BuildFromService(*commitQueue); err != nil {
-		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "can't read commit queue into API model"))
+	if commitQueue == nil {
+		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+			StatusCode: http.StatusNotFound,
+			Message:    fmt.Sprintf("no matching project for ID %s", cq.project),
+		})
 	}
 
-	return gimlet.NewJSONResponse(apiCommitQueue)
+	return gimlet.NewJSONResponse(*commitQueue)
 }

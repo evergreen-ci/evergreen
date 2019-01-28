@@ -6,6 +6,7 @@ import (
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/commitqueue"
+	restModel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/stretchr/testify/suite"
 )
@@ -50,9 +51,9 @@ func (s *CommitQueueSuite) TestEnqueue() {
 
 func (s *CommitQueueSuite) TestFindCommitQueueByID() {
 	s.ctx = &DBConnector{}
-	cqDB, err := s.ctx.FindCommitQueueByID("mci")
+	cq, err := s.ctx.FindCommitQueueByID("mci")
 	s.NoError(err)
-	s.Equal("mci", cqDB.ProjectID)
+	s.Equal(restModel.ToAPIString("mci"), cq.ProjectID)
 }
 
 func (s *CommitQueueSuite) TestMockGithubPREnqueue() {
@@ -61,7 +62,7 @@ func (s *CommitQueueSuite) TestMockGithubPREnqueue() {
 	conn := s.ctx.(*MockConnector)
 	q, ok := conn.MockCommitQueueConnector.Queue["evergreen-ci.evergreen.master"]
 	if s.True(ok) && s.Len(q, 1) {
-		s.Equal(q[0], "1234")
+		s.Equal(restModel.ToAPIString("1234"), q[0])
 	}
 }
 
@@ -72,7 +73,7 @@ func (s *CommitQueueSuite) TestMockEnqueue() {
 	conn := s.ctx.(*MockConnector)
 	q, ok := conn.MockCommitQueueConnector.Queue["evergreen-ci.evergreen.master"]
 	if s.True(ok) && s.Len(q, 1) {
-		s.Equal(q[0], "1234")
+		s.Equal(restModel.ToAPIString("1234"), q[0])
 	}
 }
 
@@ -80,8 +81,8 @@ func (s *CommitQueueSuite) TestMockFindCommitQueueByID() {
 	s.ctx = &MockConnector{}
 	s.NoError(s.ctx.EnqueueItem("evergreen-ci", "evergreen", "master", "1234"))
 
-	cqDB, err := s.ctx.FindCommitQueueByID("evergreen-ci.evergreen.master")
+	cq, err := s.ctx.FindCommitQueueByID("evergreen-ci.evergreen.master")
 	s.NoError(err)
-	s.Equal("evergreen-ci.evergreen.master", cqDB.ProjectID)
-	s.Equal(cqDB.Queue, []string{"1234"})
+	s.Equal(restModel.ToAPIString("evergreen-ci.evergreen.master"), cq.ProjectID)
+	s.Equal([]restModel.APIString{restModel.ToAPIString("1234")}, cq.Queue)
 }

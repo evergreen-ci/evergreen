@@ -13,7 +13,7 @@ type APICommitQueue struct {
 func (cq *APICommitQueue) BuildFromService(h interface{}) error {
 	cqService, ok := h.(commitqueue.CommitQueue)
 	if !ok {
-		return errors.New("incorrect type when converting commit queue")
+		return errors.Errorf("incorrect type '%T' when converting commit queue", h)
 	}
 
 	cq.ProjectID = ToAPIString(cqService.ProjectID)
