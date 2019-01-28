@@ -12,10 +12,8 @@ const Collection = "commit_queue"
 
 var (
 	// bson fields for the CommitQueue struct
-	IdKey     = bsonutil.MustHaveTag(CommitQueue{}, "ProjectID")
-	QueueKey  = bsonutil.MustHaveTag(CommitQueue{}, "Queue")
-	MergeKey  = bsonutil.MustHaveTag(CommitQueue{}, "MergeAction")
-	StatusKey = bsonutil.MustHaveTag(CommitQueue{}, "StatusAction")
+	IdKey    = bsonutil.MustHaveTag(CommitQueue{}, "ProjectID")
+	QueueKey = bsonutil.MustHaveTag(CommitQueue{}, "Queue")
 )
 
 func updateOne(query interface{}, update interface{}) error {
@@ -69,19 +67,5 @@ func removeAll(id string) error {
 	return updateOne(
 		bson.M{IdKey: id},
 		bson.M{"$set": bson.M{QueueKey: []string{}}},
-	)
-}
-
-func updateMerge(id string, merge string) error {
-	return updateOne(
-		bson.M{IdKey: id},
-		bson.M{"$set": bson.M{MergeKey: merge}},
-	)
-}
-
-func updateStatus(id string, status string) error {
-	return updateOne(
-		bson.M{IdKey: id},
-		bson.M{"$set": bson.M{StatusKey: status}},
 	)
 }

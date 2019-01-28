@@ -144,7 +144,7 @@ func (j *commitQueueJob) Run(ctx context.Context) {
 		return
 	}
 
-	v, err := makeVersion(ctx, githubToken, projectRef, pr)
+	v, err := makeVersion(ctx, githubToken, projectRef.Identifier, pr)
 	if err != nil {
 		j.AddError(errors.Wrap(err, "can't make version"))
 		return
@@ -192,7 +192,7 @@ func validatePR(pr *github.PullRequest) error {
 	return catcher.Resolve()
 }
 
-func makeVersion(ctx context.Context, githubToken string, projectRef *model.ProjectRef, pr *github.PullRequest) (*model.Version, error) {
+func makeVersion(ctx context.Context, githubToken string, projectID string, pr *github.PullRequest) (*model.Version, error) {
 	patchDoc, err := patch.MakeMergePatch(pr, projectID, commitQueueAlias)
 	if err != nil {
 		return nil, errors.Wrap(err, "can't make patch")

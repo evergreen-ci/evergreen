@@ -9,10 +9,8 @@ const (
 )
 
 type CommitQueue struct {
-	ProjectID    string   `bson:"_id"`
-	Queue        []string `bson:"queue"`
-	MergeAction  string   `bson:"merge"`
-	StatusAction string   `bson:"status"`
+	ProjectID string   `bson:"_id"`
+	Queue     []string `bson:"queue"`
 }
 
 func InsertQueue(q *CommitQueue) error {
@@ -66,22 +64,6 @@ func (q *CommitQueue) RemoveAll() error {
 		return errors.Wrap(err, "can't clear queue")
 	}
 	q.Queue = []string{}
-	return nil
-}
-
-func (q *CommitQueue) UpdateMergeAction(mergeAction string) error {
-	if err := updateMerge(q.ProjectID, mergeAction); err != nil {
-		return errors.Wrap(err, "can't update merge")
-	}
-	q.MergeAction = mergeAction
-	return nil
-}
-
-func (q *CommitQueue) UpdateStatusAction(statusAction string) error {
-	if err := updateStatus(q.ProjectID, statusAction); err != nil {
-		return errors.Wrap(err, "can't update merge")
-	}
-	q.StatusAction = statusAction
 	return nil
 }
 

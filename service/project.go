@@ -11,6 +11,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/evergreen/model/commitqueue"
 	"github.com/evergreen-ci/evergreen/model/event"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/trigger"
@@ -277,9 +278,27 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 			uis.LoggedError(w, r, http.StatusInternalServerError, err)
 			return
 		}
-		if projRef.CommitQueue.Enabled && projRef.Identifier != id {
+		if projRef != nil && projRef.CommitQueue.Enabled && projRef.Identifier != id {
 			uis.LoggedError(w, r, http.StatusBadRequest, errors.Errorf("Cannot enable Commit Queue in this repo, must disable in '%s' first", projRef.Identifier))
 			return
+		}
+
+		if !responseRef.SetupGithubHook {
+			uis.LoggedError(w, r, http.StatusBadRequest, errors.Errorf("Cannot enable Commit Queue without github webhooks enabled for the project"))
+			return
+		}
+
+		cq, err := commitqueue.FindOneId(responseRef.Identifier)
+		if err != nil {
+			uis.LoggedError(w, r, http.StatusInternalServerError, err)
+			return
+		}
+		if cq == nil {
+			cq = &commitqueue.CommitQueue{ProjectID: responseRef.Identifier}
+			if err = commitqueue.InsertQueue(cq); err != nil {
+				uis.LoggedError(w, r, http.StatusInternalServerError, err)
+				return
+			}
 		}
 	}
 
