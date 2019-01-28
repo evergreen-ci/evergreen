@@ -56,15 +56,17 @@ func (s *shellExecuteCommandSuite) TestWorksWithEmptyShell() {
 }
 
 
-func (s *shellExecuteCommandSuite) TestErrorToIgnoreAndRedirectToStdOut() {
+func (s *shellExecuteCommandSuite) TestSilentAndRedirectToStdOutError() {
 	cmd := &subprocessExec{}
-	s.NoError(cmd.ParseParams(map[string]interface{}{}))
 
+	s.NoError(cmd.ParseParams(map[string]interface{}{}))
+	s.False(cmd.IgnoreStandardError)
+	s.False(cmd.IgnoreStandardOutput)
 	cmd.Silent = true
-	s.NoError(cmd.ParseParams(map[string]interface{}{}))
 
-	cmd.RedirectStandardErrorToOutput = true
-	s.Error(cmd.ParseParams(map[string]interface{}{}))
+	s.NoError(cmd.ParseParams(map[string]interface{}{}))
+	s.True(cmd.IgnoreStandardError)
+	s.True(cmd.IgnoreStandardOutput)
 }
 
 func (s *shellExecuteCommandSuite) TestShellIsntChangedDuringExecution() {
