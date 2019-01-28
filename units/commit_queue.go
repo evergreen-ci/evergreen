@@ -27,6 +27,7 @@ import (
 
 const (
 	commitQueueJobName = "commit-queue"
+	commitQueueAlias   = "__commit_queue"
 )
 
 func init() {
@@ -192,7 +193,7 @@ func validatePR(pr *github.PullRequest) error {
 }
 
 func makeVersion(ctx context.Context, githubToken string, projectRef *model.ProjectRef, pr *github.PullRequest) (*model.Version, error) {
-	patchDoc, err := patch.MakeMergePatch(pr, projectRef.Identifier)
+	patchDoc, err := patch.MakeMergePatch(pr, projectID, commitQueueAlias)
 	if err != nil {
 		return nil, errors.Wrap(err, "can't make patch")
 	}
@@ -207,6 +208,8 @@ func makeVersion(ctx context.Context, githubToken string, projectRef *model.Proj
 		return nil, errors.Wrap(err, "can't marshal project config to yaml")
 	}
 	patchDoc.PatchedConfig = string(yamlBytes)
+
+	config.BuildProjectTVPairs(patchDoc, patchDoc.Alias)
 
 	if err = patchDoc.Insert(); err != nil {
 		return nil, errors.Wrap(err, "can't insert patch")

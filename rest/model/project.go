@@ -80,12 +80,8 @@ type APITriggerDefinition struct {
 }
 
 type APICommitQueueParams struct {
-	Enabled      bool        `json:"enabled"`
-	MergeMethod  APIString   `json:"merge_method"`
-	Alias        APIString   `json:"alias"`
-	VariantRegex APIString   `json:"variant_regex"`
-	TaskRegex    APIString   `json:"task_regex"`
-	TaskTags     []APIString `json:"task_tags"`
+	Enabled     bool      `json:"enabled"`
+	MergeMethod APIString `json:"merge_method"`
 }
 
 func (cqParams *APICommitQueueParams) BuildFromService(h interface{}) error {
@@ -101,12 +97,6 @@ func (cqParams *APICommitQueueParams) BuildFromService(h interface{}) error {
 
 	cqParams.Enabled = params.Enabled
 	cqParams.MergeMethod = ToAPIString(params.MergeMethod)
-	cqParams.Alias = ToAPIString(params.Alias)
-	cqParams.VariantRegex = ToAPIString(params.VariantRegex)
-	cqParams.TaskRegex = ToAPIString(params.TaskRegex)
-	for _, tag := range params.TaskTags {
-		cqParams.TaskTags = append(cqParams.TaskTags, ToAPIString(tag))
-	}
 
 	return nil
 }
@@ -115,12 +105,6 @@ func (cqParams *APICommitQueueParams) ToService() (interface{}, error) {
 	serviceParams := model.CommitQueueParams{}
 	serviceParams.Enabled = cqParams.Enabled
 	serviceParams.MergeMethod = FromAPIString(cqParams.MergeMethod)
-	serviceParams.Alias = FromAPIString(cqParams.Alias)
-	serviceParams.VariantRegex = FromAPIString(cqParams.VariantRegex)
-	serviceParams.TaskRegex = FromAPIString(cqParams.TaskRegex)
-	for _, tag := range cqParams.TaskTags {
-		serviceParams.TaskTags = append(serviceParams.TaskTags, FromAPIString(tag))
-	}
 
 	return serviceParams, nil
 }
