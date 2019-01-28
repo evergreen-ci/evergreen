@@ -32,91 +32,98 @@ func (a *Agent) runCommands(ctx context.Context, tc *taskContext, commands []mod
 			err = nil
 			continue
 		}
-
-		var logger client.LoggerProducer
-		// if there is a command-specific logger, make it here otherwise use the task-level logger
-		if commandInfo.Loggers == nil {
-			logger = tc.logger
-		} else {
-			logger = a.makeLoggerProducer(ctx, commandInfo.Loggers, tc.task)
-		}
-		for idx, cmd := range cmds {
-			if ctx.Err() != nil {
-				grip.Error("runCommands canceled")
-				return errors.New("runCommands canceled")
-			}
-
-			// SetType implementations only modify the
-			// command's type *if* the command's type is
-			// not otherwise set.
-			cmd.SetType(tc.taskConfig.Project.CommandType)
-
-			fullCommandName := a.getCommandName(commandInfo, cmd)
-
-			if !commandInfo.RunOnVariant(tc.taskConfig.BuildVariant.Name) {
-				tc.logger.Task().Infof("Skipping command %s on variant %s (step %d of %d)",
-					fullCommandName, tc.taskConfig.BuildVariant.Name, i+1, len(commands))
-				continue
-			}
-
-			if len(cmds) == 1 {
-				tc.logger.Task().Infof("Running command %s (step %d of %d)", fullCommandName, i+1, len(commands))
-			} else {
-				// for functions with more than one command
-				tc.logger.Task().Infof("Running command %v (step %d.%d of %d)", fullCommandName, i+1, idx+1, len(commands))
-			}
-
-			for key, val := range commandInfo.Vars {
-				var newVal string
-				newVal, err = tc.taskConfig.Expansions.ExpandString(val)
-				if err != nil {
-					return errors.Wrapf(err, "Can't expand '%v'", val)
-				}
-				tc.taskConfig.Expansions.Put(key, newVal)
-			}
-
-			if isTaskCommands {
-				tc.setCurrentCommand(cmd)
-				tc.setCurrentTimeout(cmd)
-				a.comm.UpdateLastMessageTime()
-			} else {
-				tc.setCurrentTimeout(nil)
-			}
-
-			start := time.Now()
-			// We have seen cases where calling exec.*Cmd.Wait() waits for too long if
-			// the process has called subprocesses. It will wait until a subprocess
-			// finishes, instead of returning immediately when the context is canceled.
-			// We therefore check both if the context is cancled and if Wait() has finished.
-			cmdChan := make(chan error, 1)
-			go func() {
-				defer func() {
-					// this channel will get read from twice even though we only send once, hence why it's buffered
-					cmdChan <- recovery.HandlePanicWithError(recover(), nil,
-						fmt.Sprintf("problem running command '%s'", cmd.Name()))
-				}()
-				cmdChan <- cmd.Execute(ctx, a.comm, logger, tc.taskConfig)
-			}()
-			select {
-			case err = <-cmdChan:
-				if err != nil {
-					tc.logger.Task().Errorf("Command failed: %v", err)
-					if isTaskCommands {
-						return errors.Wrap(err, "command failed")
-					}
-				}
-			case <-ctx.Done():
-				tc.logger.Task().Errorf("Command canceled: %v", err)
-				return errors.Wrap(err, "command canceled")
-			}
-			tc.logger.Execution().Infof("Finished %s in %s", fullCommandName, time.Since(start).String())
-			if commandInfo.Loggers != nil { // close command-specific logger
-				grip.Error(logger.Close())
-			}
+		if err = a.runCommandSet(ctx, tc, commandInfo, cmds, isTaskCommands, i+1, len(commands)); err != nil {
+			return errors.WithStack(err)
 		}
 	}
 
 	return errors.WithStack(err)
+}
+
+func (a *Agent) runCommandSet(ctx context.Context, tc *taskContext, commandInfo model.PluginCommandConf,
+	cmds []command.Command, isTaskCommands bool, index, total int) error {
+
+	var err error
+	var logger client.LoggerProducer
+	// if there is a command-specific logger, make it here otherwise use the task-level logger
+	if commandInfo.Loggers == nil {
+		logger = tc.logger
+	} else {
+		logger = a.makeLoggerProducer(ctx, commandInfo.Loggers, tc.task)
+		defer grip.Error(logger.Close())
+	}
+	for idx, cmd := range cmds {
+		if ctx.Err() != nil {
+			grip.Error("runCommands canceled")
+			return errors.New("runCommands canceled")
+		}
+
+		// SetType implementations only modify the
+		// command's type *if* the command's type is
+		// not otherwise set.
+		cmd.SetType(tc.taskConfig.Project.CommandType)
+
+		fullCommandName := a.getCommandName(commandInfo, cmd)
+
+		if !commandInfo.RunOnVariant(tc.taskConfig.BuildVariant.Name) {
+			tc.logger.Task().Infof("Skipping command %s on variant %s (step %d of %d)",
+				fullCommandName, tc.taskConfig.BuildVariant.Name, index, total)
+			continue
+		}
+
+		if len(cmds) == 1 {
+			tc.logger.Task().Infof("Running command %s (step %d of %d)", fullCommandName, index, total)
+		} else {
+			// for functions with more than one command
+			tc.logger.Task().Infof("Running command %v (step %d.%d of %d)", fullCommandName, index, idx+1, total)
+		}
+
+		for key, val := range commandInfo.Vars {
+			var newVal string
+			newVal, err = tc.taskConfig.Expansions.ExpandString(val)
+			if err != nil {
+				return errors.Wrapf(err, "Can't expand '%v'", val)
+			}
+			tc.taskConfig.Expansions.Put(key, newVal)
+		}
+
+		if isTaskCommands {
+			tc.setCurrentCommand(cmd)
+			tc.setCurrentTimeout(cmd)
+			a.comm.UpdateLastMessageTime()
+		} else {
+			tc.setCurrentTimeout(nil)
+		}
+
+		start := time.Now()
+		// We have seen cases where calling exec.*Cmd.Wait() waits for too long if
+		// the process has called subprocesses. It will wait until a subprocess
+		// finishes, instead of returning immediately when the context is canceled.
+		// We therefore check both if the context is cancled and if Wait() has finished.
+		cmdChan := make(chan error, 1)
+		go func() {
+			defer func() {
+				// this channel will get read from twice even though we only send once, hence why it's buffered
+				cmdChan <- recovery.HandlePanicWithError(recover(), nil,
+					fmt.Sprintf("problem running command '%s'", cmd.Name()))
+			}()
+			cmdChan <- cmd.Execute(ctx, a.comm, logger, tc.taskConfig)
+		}()
+		select {
+		case err = <-cmdChan:
+			if err != nil {
+				tc.logger.Task().Errorf("Command failed: %v", err)
+				if isTaskCommands {
+					return errors.Wrap(err, "command failed")
+				}
+			}
+		case <-ctx.Done():
+			tc.logger.Task().Errorf("Command canceled: %v", err)
+			return errors.Wrap(err, "command canceled")
+		}
+		tc.logger.Execution().Infof("Finished %s in %s", fullCommandName, time.Since(start).String())
+	}
+	return nil
 }
 
 // runTaskCommands runs all commands for the task currently assigned to the agent and
