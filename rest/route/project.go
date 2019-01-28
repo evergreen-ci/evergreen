@@ -358,3 +358,62 @@ func (h *projectIDPutHandler) Run(ctx context.Context) gimlet.Responder {
 
 	return responder
 }
+
+////////////////////////////////////////////////////////////////////////
+//
+// GET /rest/v2/projects/{project_id}
+
+type projectIDGetHandler struct {
+	projectID string
+	body      []byte
+	sc        data.Connector
+}
+
+func makeGetProjectByID(sc data.Connector) gimlet.RouteHandler {
+	return &projectIDGetHandler{
+		sc: sc,
+	}
+}
+
+func (h *projectIDGetHandler) Factory() gimlet.RouteHandler {
+	return &projectIDGetHandler{
+		sc: h.sc,
+	}
+}
+
+func (h *projectIDGetHandler) Parse(ctx context.Context, r *http.Request) error {
+	h.projectID = gimlet.GetVars(r)["project_id"]
+	return nil
+}
+
+func (h *projectIDGetHandler) Run(ctx context.Context) gimlet.Responder {
+	project, err := h.sc.FindProjectById(h.projectID)
+	// do we want to return an error or just return nothing
+	if err != nil && err.(gimlet.ErrorResponse).StatusCode == http.StatusNotFound  {
+		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "project %s not found", h.projectID))
+	} else if err != nil {
+		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "Database error for find() by project id '%s'", h.projectID))
+	}
+
+	resp := gimlet.NewResponseBuilder()
+	if err = resp.SetFormat(gimlet.JSON); err != nil {
+		return gimlet.MakeJSONErrorResponder(err)
+	}
+
+	projectModel := &model.APIProject{}
+
+	if err = projectModel.BuildFromService(project); err != nil {
+		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+			Message:    "problem converting project document",
+			StatusCode: http.StatusInternalServerError,
+		})
+	}
+
+	if err = resp.AddData(projectModel); err != nil {
+		return gimlet.MakeJSONErrorResponder(err)
+	}
+
+	return resp
+}
+
+
