@@ -72,6 +72,11 @@ func (c *shellExec) ParseParams(params map[string]interface{}) error {
 		return errors.Wrapf(err, "error decoding %v params", c.Name())
 	}
 
+	if c.Silent {
+		c.IgnoreStandardError = true
+		c.IgnoreStandardOutput = true
+	}
+
 	if c.IgnoreStandardOutput && c.RedirectStandardErrorToOutput {
 		return errors.New("cannot ignore standard out, and redirect standard error to it")
 	}

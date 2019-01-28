@@ -55,6 +55,18 @@ func (s *shellExecuteCommandSuite) TestWorksWithEmptyShell() {
 	s.NoError(cmd.Execute(s.ctx, s.comm, s.logger, s.conf))
 }
 
+
+func (s *shellExecuteCommandSuite) TestErrorToIgnoreAndRedirectToStdOut() {
+	cmd := &subprocessExec{}
+	s.NoError(cmd.ParseParams(map[string]interface{}{}))
+
+	cmd.Silent = true
+	s.NoError(cmd.ParseParams(map[string]interface{}{}))
+
+	cmd.RedirectStandardErrorToOutput = true
+	s.Error(cmd.ParseParams(map[string]interface{}{}))
+}
+
 func (s *shellExecuteCommandSuite) TestShellIsntChangedDuringExecution() {
 	for _, sh := range s.shells {
 		cmd := &shellExec{Shell: sh, WorkingDir: testutil.GetDirectoryOfFile()}
