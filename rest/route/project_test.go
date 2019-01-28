@@ -268,10 +268,8 @@ func (s *ProjectGetByIDSuite) TestRunExistingId() {
 	resp := s.rm.Run(ctx)
 	s.NotNil(resp.Data())
 	s.Equal(resp.Status(), http.StatusOK)
-	payload := resp.Data().([]interface{})
 
-	s.Len(payload, 1)
-	s.Equal(model.ToAPIString("dimoxinil"), payload[0].(*model.APIProject).Identifier)
+	s.Equal(model.ToAPIString("dimoxinil"), resp.Data().(*model.APIProject).Identifier)
 }
 
 ////////////////////////////////////////////////////////////////////////

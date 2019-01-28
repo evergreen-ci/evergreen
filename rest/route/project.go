@@ -365,7 +365,6 @@ func (h *projectIDPutHandler) Run(ctx context.Context) gimlet.Responder {
 
 type projectIDGetHandler struct {
 	projectID string
-	body      []byte
 	sc        data.Connector
 }
 
@@ -388,11 +387,8 @@ func (h *projectIDGetHandler) Parse(ctx context.Context, r *http.Request) error 
 
 func (h *projectIDGetHandler) Run(ctx context.Context) gimlet.Responder {
 	project, err := h.sc.FindProjectById(h.projectID)
-	// do we want to return an error or just return nothing
-	if err != nil && err.(gimlet.ErrorResponse).StatusCode == http.StatusNotFound  {
-		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "project %s not found", h.projectID))
-	} else if err != nil {
-		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "Database error for find() by project id '%s'", h.projectID))
+	if err != nil {
+		return gimlet.MakeJSONErrorResponder(err)
 	}
 
 	resp := gimlet.NewResponseBuilder()
@@ -409,11 +405,7 @@ func (h *projectIDGetHandler) Run(ctx context.Context) gimlet.Responder {
 		})
 	}
 
-	if err = resp.AddData(projectModel); err != nil {
-		return gimlet.MakeJSONErrorResponder(err)
-	}
-
-	return resp
+	return gimlet.NewJSONResponse(projectModel)
 }
 
 
