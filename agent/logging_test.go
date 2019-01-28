@@ -41,7 +41,7 @@ func TestCommandLoggerOverride(t *testing.T) {
 
 	tmpDirName, err := ioutil.TempDir("", "agent-logging-")
 	require.NoError(err)
-	os.Mkdir(fmt.Sprintf("%s/tmp", tmpDirName), 0666)
+	require.NoError(os.Mkdir(fmt.Sprintf("%s/tmp", tmpDirName), 0666))
 
 	agt := &Agent{
 		opts: Options{

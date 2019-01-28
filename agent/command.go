@@ -7,6 +7,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen/command"
 	"github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/evergreen/rest/client"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/recovery"
 	"github.com/pkg/errors"
@@ -32,8 +33,13 @@ func (a *Agent) runCommands(ctx context.Context, tc *taskContext, commands []mod
 			continue
 		}
 
-		commandLogger := a.makeLoggerProducer(ctx, commandInfo.Loggers, tc, tc.task)
-		defer commandLogger.Close()
+		var logger client.LoggerProducer
+		// if there is a command-specific logger, make it here otherwise use the task-level logger
+		if commandInfo.Loggers == nil {
+			logger = tc.logger
+		} else {
+			logger = a.makeLoggerProducer(ctx, commandInfo.Loggers, tc.task)
+		}
 		for idx, cmd := range cmds {
 			if ctx.Err() != nil {
 				grip.Error("runCommands canceled")
@@ -89,7 +95,7 @@ func (a *Agent) runCommands(ctx context.Context, tc *taskContext, commands []mod
 					cmdChan <- recovery.HandlePanicWithError(recover(), nil,
 						fmt.Sprintf("problem running command '%s'", cmd.Name()))
 				}()
-				cmdChan <- cmd.Execute(ctx, a.comm, commandLogger, tc.taskConfig)
+				cmdChan <- cmd.Execute(ctx, a.comm, logger, tc.taskConfig)
 			}()
 			select {
 			case err = <-cmdChan:
@@ -104,6 +110,9 @@ func (a *Agent) runCommands(ctx context.Context, tc *taskContext, commands []mod
 				return errors.Wrap(err, "command canceled")
 			}
 			tc.logger.Execution().Infof("Finished %s in %s", fullCommandName, time.Since(start).String())
+			if commandInfo.Loggers != nil { // close command-specific logger
+				logger.Close()
+			}
 		}
 	}
 

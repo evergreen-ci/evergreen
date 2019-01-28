@@ -74,10 +74,7 @@ func GetSender(ctx context.Context, prefix, taskId string) (send.Sender, error) 
 	return send.NewConfiguredMultiSender(senders...), nil
 }
 
-func (a *Agent) makeLoggerProducer(ctx context.Context, c *model.LoggerConfig, tc *taskContext, td client.TaskData) client.LoggerProducer {
-	if c == nil {
-		return tc.logger
-	}
+func (a *Agent) makeLoggerProducer(ctx context.Context, c *model.LoggerConfig, td client.TaskData) client.LoggerProducer {
 	config := convertLoggerConfig(*c, a.opts.WorkingDirectory)
 	return a.comm.GetLoggerProducer(ctx, td, &config)
 }
