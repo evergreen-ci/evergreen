@@ -111,7 +111,7 @@ func (a *Agent) runCommands(ctx context.Context, tc *taskContext, commands []mod
 			}
 			tc.logger.Execution().Infof("Finished %s in %s", fullCommandName, time.Since(start).String())
 			if commandInfo.Loggers != nil { // close command-specific logger
-				logger.Close()
+				grip.Error(logger.Close())
 			}
 		}
 	}
