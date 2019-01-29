@@ -1,12 +1,16 @@
 package patch
 
 import (
+	"fmt"
 	"io/ioutil"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
-	"gopkg.in/mgo.v2"
+	"github.com/evergreen-ci/evergreen/model/user"
+	"github.com/google/go-github/github"
+	"github.com/pkg/errors"
+	mgo "gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
 )
 
@@ -50,15 +54,16 @@ type Patch struct {
 
 // GithubPatch stores patch data for patches create from GitHub pull requests
 type GithubPatch struct {
-	PRNumber   int    `bson:"pr_number"`
-	BaseOwner  string `bson:"base_owner"`
-	BaseRepo   string `bson:"base_repo"`
-	BaseBranch string `bson:"base_branch"`
-	HeadOwner  string `bson:"head_owner"`
-	HeadRepo   string `bson:"head_repo"`
-	HeadHash   string `bson:"head_hash"`
-	Author     string `bson:"author"`
-	AuthorUID  int    `bson:"author_uid"`
+	PRNumber       int    `bson:"pr_number"`
+	BaseOwner      string `bson:"base_owner"`
+	BaseRepo       string `bson:"base_repo"`
+	BaseBranch     string `bson:"base_branch"`
+	HeadOwner      string `bson:"head_owner"`
+	HeadRepo       string `bson:"head_repo"`
+	HeadHash       string `bson:"head_hash"`
+	Author         string `bson:"author"`
+	AuthorUID      int    `bson:"author_uid"`
+	MergeCommitSHA string `bson:"merge_commit_sha"`
 }
 
 // ModulePatch stores request details for a patch
@@ -326,5 +331,46 @@ func (p *Patch) RemoveModulePatch(moduleName string) error {
 }
 
 func (p *Patch) IsGithubPRPatch() bool {
-	return p.GithubPatchData.PRNumber != 0
+	return p.GithubPatchData.BaseOwner != ""
+}
+
+func (p *Patch) IsPRMergePatch() bool {
+	return p.GithubPatchData.MergeCommitSHA != ""
+}
+
+func MakeMergePatch(pr *github.PullRequest, projectID string) (*Patch, error) {
+	if pr.User == nil {
+		return nil, errors.New("pr contains no user")
+	}
+	u, err := user.GetPatchUser(pr.User.GetID())
+	if err != nil {
+		return nil, errors.Wrap(err, "can't get user for patch")
+	}
+	patchNumber, err := u.IncPatchNumber()
+	if err != nil {
+		return nil, errors.Wrap(err, "error computing patch num")
+	}
+
+	id := bson.NewObjectId()
+
+	if pr.Base == nil {
+		return nil, errors.New("pr contains no base branch data")
+	}
+
+	patchDoc := &Patch{
+		Id:          id,
+		Project:     projectID,
+		Author:      u.Id,
+		Githash:     pr.Base.GetSHA(),
+		Description: fmt.Sprintf("Commit Queue merge test PR #%d", *pr.Number),
+		CreateTime:  time.Now(),
+		Status:      evergreen.PatchCreated,
+		PatchNumber: patchNumber,
+		GithubPatchData: GithubPatch{
+			PRNumber:       pr.GetNumber(),
+			MergeCommitSHA: pr.GetMergeCommitSHA(),
+		},
+	}
+
+	return patchDoc, nil
 }

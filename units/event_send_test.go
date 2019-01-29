@@ -136,6 +136,7 @@ func (s *eventNotificationSuite) SetupTest() {
 			Subscriber: event.Subscriber{
 				Type: event.GithubMergeSubscriberType,
 				Target: event.GithubMergeSubscriber{
+					ProjectID:     "mci",
 					Owner:         "evergreen-ci",
 					Repo:          "evergreen",
 					PRNumber:      1234,

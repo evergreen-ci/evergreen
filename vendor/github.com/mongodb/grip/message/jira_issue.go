@@ -22,6 +22,7 @@ type JiraIssue struct {
 	Type        string   `bson:"type" json:"type" yaml:"type"`
 	Components  []string `bson:"components" json:"components" yaml:"components"`
 	Labels      []string `bson:"labels" json:"labels" yaml:"labels"`
+	FixVersions []string `bson:"versions" json:"versions" yaml:"versions"`
 	// ... other fields
 	Fields   map[string]interface{} `bson:"fields" json:"fields" yaml:"fields"`
 	Callback func(string)           `bson:"-" json:"-" yaml:"-"`

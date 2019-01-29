@@ -111,7 +111,7 @@ func tryProcessOneEvent(e *event.EventLogEntry) (n []notification.Notification, 
 		"message":       "event processed",
 		"event_id":      e.ID,
 		"event_type":    e.ResourceType,
-		"notifications": len(n),
+		"notifications": n,
 	})
 	grip.Error(message.WrapError(err, message.Fields{
 		"job":        eventMetaJobName,
@@ -149,7 +149,31 @@ func (j *eventMetaJob) dispatchLoop(ctx context.Context) error {
 	for i := range j.events {
 		notifications[i], err = tryProcessOneEvent(&j.events[i])
 		catcher.Add(err)
-		catcher.Add(notification.InsertMany(notifications[i]...))
+		if err = notification.InsertMany(notifications[i]...); err != nil {
+			grip.Error(message.WrapError(err, message.Fields{
+				"job_id":        j.ID(),
+				"job":           eventMetaJobName,
+				"source":        "events-processing",
+				"notifications": notifications[i],
+				"message":       "can't insert notifications",
+			}))
+			catcher.Add(err)
+		}
+
+		// Some notifications aren't making it to the database.
+		// This will highlight them
+		notificationsPersisted, err := notification.FindByEventID(j.events[i].ID)
+		catcher.Add(err)
+		if len(notificationsPersisted) != len(notifications[i]) {
+			grip.Error(message.Fields{
+				"job_id":                 j.ID(),
+				"job":                    eventMetaJobName,
+				"source":                 "events-processing",
+				"message":                "not all notifications persisted",
+				"notifications_inserted": notifications[i],
+				"notifications_in_db":    notificationsPersisted,
+			})
+		}
 	}
 
 	for idx := range notifications {

@@ -53,12 +53,11 @@ func (sc *StatsCollector) logStats(ctx context.Context, exp *util.Expansions) {
 	if sc.Interval == 0 {
 		sc.Interval = 60 * time.Second
 	}
-
-	timer := time.NewTimer(0)
-	defer timer.Stop()
 	sc.expandCommands(exp)
 
 	go func() {
+		timer := time.NewTimer(0)
+		defer timer.Stop()
 		var cancel context.CancelFunc
 		ctx, cancel = context.WithCancel(ctx)
 		defer cancel()

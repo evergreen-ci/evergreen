@@ -44,12 +44,14 @@ func (s *CommitQueueSuite) SetupTest() {
 func (s *CommitQueueSuite) TestEnqueue() {
 	s.NoError(s.q.Enqueue("c123"))
 	s.False(s.q.IsEmpty())
+	s.Equal("c123", s.q.Next())
 	s.NotEqual(-1, s.q.findItem("c123"))
 
 	// Persisted to db
 	dbq, err := FindOneId("mci")
 	s.NoError(err)
 	s.False(dbq.IsEmpty())
+	s.Equal("c123", dbq.Next())
 	s.NotEqual(-1, dbq.findItem("c123"))
 }
 

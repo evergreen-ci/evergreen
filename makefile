@@ -63,7 +63,7 @@ lintArgs += --disable="varcheck" --disable="structcheck" --disable="aligncheck"
 lintArgs += --skip="$(buildDir)" --skip="scripts" --skip="$(gopath)"
 #  add and configure additional linters
 lintArgs += --enable="misspell" # --enable="lll" --line-length=100
-lintArgs += --disable="megacheck" --enable="unused" --enable="gosimple"
+lintArgs += --disable="staticcheck" --disable="megacheck"
 #  suppress some lint errors (logging methods could return errors, and error checking in defers.)
 lintArgs += --exclude=".*([mM]ock.*ator|modadvapi32|osSUSE) is unused \((deadcode|unused|megacheck)\)$$"
 lintArgs += --exclude="error return value not checked \((defer .*|fmt.Fprint.*) \(errcheck\)$$"
@@ -178,6 +178,14 @@ $(buildDir)/go-test-config.json:$(buildDir)/go-test-config
 $(buildDir)/go-test-config:cmd/go-test-config/make-config.go
 	GOPATH=$(shell dirname $(shell pwd)) $(gobin) build -o $@ $<
 #end generated config
+
+# parse a host.create file and set expansions
+parse-host-file:$(buildDir)/parse-host-file
+	./$(buildDir)/parse-host-file --file $(HOST_FILE)
+$(buildDir)/parse-host-file:cmd/parse-host-file/parse-host-file.go
+	$(gobin) build -o $@ $<
+$(buildDir)/expansions.yml:$(buildDir)/parse-host-file
+# end host.create file parsing
 
 # npm setup
 $(buildDir)/.npmSetup:

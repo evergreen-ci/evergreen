@@ -190,6 +190,7 @@ func (n *Notification) Composer() (message.Composer, error) {
 		if !ok || payload == nil {
 			return nil, errors.New("github-merge payload is invalid")
 		}
+		payload.ProjectID = sub.ProjectID
 		payload.Owner = sub.Owner
 		payload.Repo = sub.Repo
 		payload.CommitMessage = sub.CommitMessage

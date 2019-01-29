@@ -163,6 +163,14 @@ func (c *BuildloggerConfig) GetTestLogURL() string {
 	return fmt.Sprintf("%s/build/%s/test/%s", c.URL, c.buildID, c.testID)
 }
 
+func (c *BuildloggerConfig) GetBuildID() string {
+	return c.buildID
+}
+
+func (c *BuildloggerConfig) GetTestID() string {
+	return c.testID
+}
+
 // NewBuildlogger constructs a Buildlogger-targeted Sender, with level
 // information set. See MakeBuildlogger and GetBuildloggerConfig for
 // more information.
@@ -332,7 +340,7 @@ func (b *buildlogger) getURL() string {
 	// if we want to create a test id, (e.g. the CreateTest flag
 	// is set and we don't have a testID), then the following URL
 	// will generate a testID.
-	if b.conf.CreateTest && b.conf.testID == "" {
+	if b.conf.CreateTest && b.conf.testID == "" && b.conf.buildID != "" {
 		// this will create the testID.
 		parts = append(parts, "test")
 	}

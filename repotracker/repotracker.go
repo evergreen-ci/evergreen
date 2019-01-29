@@ -19,6 +19,7 @@ import (
 	"github.com/mongodb/grip/level"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
+	mgo "gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
 	yaml "gopkg.in/yaml.v2"
 )
@@ -732,11 +733,13 @@ func createVersionItems(v *model.Version, ref *model.ProjectRef, metadata Versio
 		var buildId string
 		buildId, err = model.CreateBuildFromVersion(args)
 		if err != nil {
-			grip.Error(message.WrapError(err, message.Fields{
-				"message": "error inserting build",
-				"version": v.Id,
-				"variant": buildvariant.DisplayName,
-			}))
+			if metadata.TriggerID == "" || !mgo.IsDup(err) {
+				grip.Error(message.WrapError(err, message.Fields{
+					"message": "error inserting build",
+					"version": v.Id,
+					"variant": buildvariant.DisplayName,
+				}))
+			}
 			continue
 		}
 
