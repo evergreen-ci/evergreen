@@ -424,7 +424,7 @@ mciModule.controller('ProjectCtrl', function($scope, $window, $http, $location, 
 
   $scope.addGithubAlias = function() {
     if (!$scope.validPatchDefinition($scope.github_alias)) {
-      $scope.invalidPatchDefinitionMessage = "A patch alias must have variant regex, and exactly one of task regex or tag""
+      $scope.invalidPatchDefinitionMessage = "A patch alias must have variant regex, and exactly one of task regex or tag"
       return
     }
     item = Object.assign({}, $scope.github_alias)

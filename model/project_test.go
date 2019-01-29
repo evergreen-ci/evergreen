@@ -750,7 +750,7 @@ func (s *projectSuite) TestAliasResolution() {
 	}
 	s.Empty(displayTaskPairs)
 
-	// test that tje .*_2 regex selects the union of both
+	// test that the .*_2 regex selects the union of both
 	pairs, displayTaskPairs, err = s.project.BuildProjectTVPairsWithAlias(s.aliases[4].Alias)
 	s.NoError(err)
 	s.Len(pairs, 4)
