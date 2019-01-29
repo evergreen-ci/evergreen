@@ -30,31 +30,29 @@ func GetPatchedProject(ctx context.Context, p *patch.Patch, githubOauthToken str
 	// try to get the remote project file data at the requested revision
 	var projectFileBytes []byte
 	hash := p.Githash
-	path := projectRef.RemotePath
 	if p.IsGithubPRPatch() {
 		hash = p.GithubPatchData.HeadHash
 	}
 	if p.IsPRMergePatch() {
 		hash = p.GithubPatchData.MergeCommitSHA
-		path = projectRef.CommitQueueConfigFile
 	}
 
 	githubFile, err := thirdparty.GetGithubFile(ctx, githubOauthToken, projectRef.Owner,
-		projectRef.Repo, path, hash)
+		projectRef.Repo, projectRef.RemotePath, hash)
 	if err != nil {
 		// if the project file doesn't exist, but our patch includes a project file,
 		// we try to apply the diff and proceed.
-		if !(p.ConfigChanged(path) && thirdparty.IsFileNotFound(err)) {
+		if !(p.ConfigChanged(projectRef.RemotePath) && thirdparty.IsFileNotFound(err)) {
 			// return an error if the github error is network/auth-related or we aren't patching the config
 			return nil, errors.Wrapf(err, "Could not get github file at '%s/%s'@%s: %s", projectRef.Owner,
-				projectRef.Repo, path, hash)
+				projectRef.Repo, projectRef.RemotePath, hash)
 		}
 	} else {
 		// we successfully got the project file in base64, so we decode it
 		projectFileBytes, err = base64.StdEncoding.DecodeString(*githubFile.Content)
 		if err != nil {
 			return nil, errors.Wrapf(err, "Could not decode github file at '%s/%s'@%s: %s", projectRef.Owner,
-				projectRef.Repo, path, hash)
+				projectRef.Repo, projectRef.RemotePath, hash)
 		}
 	}
 
@@ -66,8 +64,8 @@ func GetPatchedProject(ctx context.Context, p *patch.Patch, githubOauthToken str
 	}
 
 	// apply remote configuration patch if needed
-	if !p.IsGithubPRPatch() && p.ConfigChanged(path) && p.PatchedConfig == "" {
-		project, err = model.MakePatchedConfig(ctx, p, path, string(projectFileBytes))
+	if !p.IsGithubPRPatch() && p.ConfigChanged(projectRef.RemotePath) && p.PatchedConfig == "" {
+		project, err = model.MakePatchedConfig(ctx, p, projectRef.RemotePath, string(projectFileBytes))
 		if err != nil {
 			return nil, errors.Wrapf(err, "Could not patch remote configuration file")
 		}

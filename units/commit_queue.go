@@ -262,7 +262,7 @@ func subscribeMerge(projectRef *model.ProjectRef, pr *github.PullRequest, patchI
 		PRNumber:      *pr.Number,
 		Ref:           *pr.Head.SHA,
 		CommitMessage: "Merged by commit queue",
-		MergeMethod:   projectRef.CommitQueueMergeMethod,
+		MergeMethod:   projectRef.CommitQueue.MergeMethod,
 		CommitTitle:   *pr.Title,
 	})
 	patchSub := event.NewPatchOutcomeSubscription(patchID, mergeSubscriber)

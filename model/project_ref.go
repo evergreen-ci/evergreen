@@ -37,10 +37,8 @@ type ProjectRef struct {
 	// Github PushEvents for this project, instead of the Repotracker runner
 	TracksPushEvents bool `bson:"tracks_push_events" json:"tracks_push_events" yaml:"tracks_push_events"`
 
-	PRTestingEnabled       bool              `bson:"pr_testing_enabled" json:"pr_testing_enabled" yaml:"pr_testing_enabled"`
-	CommitQueue            CommitQueueParams `bson:"commit_queue" json:"commit_queue" yaml:"commit_queue"`
-	CommitQueueMergeMethod string            `bson:"commit_queue_merge_method" json:"commit_queue_merge_method" yaml:"commit_queue_merge_method"`
-	CommitQueueConfigFile  string            `bson:"commit_queue_config_file" json:"commit_queue_config_file" yaml:"commit_queue_config_file"`
+	PRTestingEnabled bool              `bson:"pr_testing_enabled" json:"pr_testing_enabled" yaml:"pr_testing_enabled"`
+	CommitQueue      CommitQueueParams `bson:"commit_queue" json:"commit_queue" yaml:"commit_queue"`
 
 	//Tracked determines whether or not the project is discoverable in the UI
 	Tracked          bool `bson:"tracked" json:"tracked"`

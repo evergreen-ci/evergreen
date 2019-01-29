@@ -216,6 +216,7 @@ mciModule.controller('ProjectCtrl', function($scope, $window, $http, $location, 
           item = Object.assign({}, $scope.settingsFormData);
           item.setup_github_hook = false;
           item.pr_testing_enabled = false;
+          item.commit_queue.enabled = false;
           item.enabled = false;
           $http.post('/project/' + $scope.newProject.identifier, item).then(
             function(resp) {
@@ -265,6 +266,7 @@ mciModule.controller('ProjectCtrl', function($scope, $window, $http, $location, 
         $scope.githubHookID = data.github_hook.hook_id || 0;
         $scope.prTestingConflicts = data.pr_testing_conflicting_refs || [];
         $scope.prTestingEnabled = data.ProjectRef.pr_testing_enabled || false;
+        $scope.commitQueueConflicts = data.commit_queue_conflicting_refs || [];
         $scope.project_triggers = data.ProjectRef.triggers || [];
         _.each($scope.project_triggers, function(trigger) {
           if (trigger.command) {
@@ -278,10 +280,14 @@ mciModule.controller('ProjectCtrl', function($scope, $window, $http, $location, 
           return v.alias + v.variant + v.task;
         });
 
-        // Divide aliases into two categories (gh/patch aliases)
-        [$scope.github_aliases, $scope.patch_aliases] = _.partition(
-          $scope.aliases, function(d) { return d.alias == '__github' }
+        // Divide aliases into three categories (patch, github, and commit queue aliases)
+        $scope.github_aliases = $scope.aliases.filter(
+          function(d) { return d.alias == '__github' }
         )
+        $scope.commit_queue_aliases = $scope.aliases.filter(
+          function(d) { return d.alias == '__commit_queue' }
+        )
+        $scope.patch_aliases = _.difference($scope.aliases, $scope.github_aliases.concat($scope.commit_queue_aliases))
 
         $scope.settingsFormData = {
           identifier : $scope.projectRef.identifier,
@@ -304,6 +310,7 @@ mciModule.controller('ProjectCtrl', function($scope, $window, $http, $location, 
           setup_github_hook: $scope.githubHookID != 0,
           tracks_push_events: data.ProjectRef.tracks_push_events || false,
           pr_testing_enabled: data.ProjectRef.pr_testing_enabled || false,
+          commit_queue: data.ProjectRef.commit_queue || {},
           notify_on_failure: $scope.projectRef.notify_on_failure,
           force_repotracker_run: false,
           delete_aliases: [],
@@ -379,13 +386,33 @@ mciModule.controller('ProjectCtrl', function($scope, $window, $http, $location, 
       $scope.addGithubAlias();
       if($scope.github_alias) {
         if($scope.github_alias.variant) {
-          $scope.invalidPatchDefinitionMessage = "Missing task regex";
+          $scope.invalidGitHubPatchDefinitionMessage = "Missing task regex";
         }else if($scope.github_alias_task) {
-          $scope.invalidPatchDefinitionMessage = "Missing variant regex";
+          $scope.invalidGitHubPatchDefinitionMessage = "Missing variant regex";
         }
         return;
       }
     }
+
+    if ($scope.commit_queue_alias) {
+      $scope.addCommitQueueAlias();
+      if($scope.commit_queue_alias) {
+        if($scope.commit_queue_alias.variant) {
+          $scope.invalidCommitQueuePatchDefinitionMessage = "Missing task regex";
+        }else if($scope.commit_queue_alias) {
+          $scope.invalidCommitQueuePatchDefinitionMessage = "Missing variant regex";
+        }
+        return;
+      }
+    }
+
+    if($scope.settingsFormData.commit_queue.enabled) {
+      $scope.invalidCommitQueueParamsMessage = $scope.validateCommitQueueParams()
+      if($scope.invalidCommitQueueParamsMessage) {
+        return;
+      }
+    }
+
 
     if ($scope.patch_alias) {
       $scope.addPatchAlias();
@@ -395,7 +422,7 @@ mciModule.controller('ProjectCtrl', function($scope, $window, $http, $location, 
       return d.changed;
     });
 
-    $scope.settingsFormData.project_aliases = $scope.github_aliases.concat($scope.patch_aliases);
+    $scope.settingsFormData.project_aliases = $scope.github_aliases.concat($scope.patch_aliases, $scope.commit_queue_aliases);
 
     if ($scope.admin_name) {
       $scope.addAdmin();
@@ -436,7 +463,17 @@ mciModule.controller('ProjectCtrl', function($scope, $window, $http, $location, 
       item["alias"] = "__github"
       $scope.github_aliases = $scope.github_aliases.concat([item]);
       delete $scope.github_alias
-      $scope.invalidPatchDefinitionMessage = "";
+      $scope.invalidGitHubPatchDefinitionMessage = "";
+    }
+  };
+
+  $scope.addCommitQueueAlias = function() {
+    if ($scope.commit_queue_alias.variant && $scope.commit_queue_alias.task) {
+      item = Object.assign({}, $scope.commit_queue_alias);
+      item["alias"] = "__commit_queue";
+      $scope.commit_queue_aliases = $scope.commit_queue_aliases.concat([item]);
+      delete $scope.commit_queue_alias;
+      $scope.invalidCommitQueuePatchDefinitionMessage = "";
     }
   };
 
@@ -459,6 +496,14 @@ mciModule.controller('ProjectCtrl', function($scope, $window, $http, $location, 
       $scope.settingsFormData.delete_aliases = $scope.settingsFormData.delete_aliases.concat([$scope.github_aliases[i]["_id"]])
     }
     $scope.github_aliases.splice(i, 1);
+    $scope.isDirty = true;
+  };
+
+  $scope.removeCommitQueueAlias = function(i) {
+    if ($scope.commit_queue_aliases[i]["_id"]) {
+      $scope.settingsFormData.delete_aliases = $scope.settingsFormData.delete_aliases.concat([$scope.commit_queue_aliases[i]["_id"]])
+    }
+    $scope.commit_queue_aliases.splice(i, 1);
     $scope.isDirty = true;
   };
 
@@ -680,6 +725,26 @@ mciModule.controller('ProjectCtrl', function($scope, $window, $http, $location, 
       });
       $scope.isDirty = true;
   };
+
+  $scope.validateCommitQueueParams = function() {
+    validMergeMethods = ["squash", "merge", "rebase"];
+    validMergeActions = ["github"];
+    validStatusActions = ["github"];
+    
+    if(!validMergeMethods.includes($scope.settingsFormData.commit_queue.merge_method)) {
+      validOptions = validMergeMethods.join()
+      return `invalid merge method (Choose one from: ${validOptions})`;
+    }
+    if(!validMergeActions.includes($scope.settingsFormData.commit_queue.merge_action)) {
+      validOptions = validMergeActions.join()
+      return `invalid merge action (Choose one from: ${validOptions})`;
+    }
+    if(!validStatusActions.includes($scope.settingsFormData.commit_queue.status_action)) {
+      validOptions = validStatusActions.join()
+      return `invalid status action (Choose one from: ${validOptions})`;
+    }
+  }
+
   $scope.show_build_break = true;
 
 });

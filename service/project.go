@@ -103,15 +103,19 @@ func (uis *UIServer) projectPage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	prConflictingRefs, err := model.FindProjectRefsByRepoAndBranch(projRef.Owner, projRef.Repo, projRef.Branch)
+	matchingRefs, err := model.FindProjectRefsByRepoAndBranch(projRef.Owner, projRef.Repo, projRef.Branch)
 	if err != nil {
 		uis.LoggedError(w, r, http.StatusInternalServerError, err)
 		return
 	}
-	conflictingRefs := []string{}
-	for _, ref := range prConflictingRefs {
+	PRConflictingRefs := []string{}
+	CQConflictingRefs := []string{}
+	for _, ref := range matchingRefs {
 		if ref.PRTestingEnabled && ref.Identifier != projRef.Identifier {
-			conflictingRefs = append(conflictingRefs, ref.Identifier)
+			PRConflictingRefs = append(PRConflictingRefs, ref.Identifier)
+		}
+		if ref.CommitQueue.Enabled && ref.Identifier != projRef.Identifier {
+			CQConflictingRefs = append(CQConflictingRefs, ref.Identifier)
 		}
 	}
 
@@ -146,13 +150,14 @@ func (uis *UIServer) projectPage(w http.ResponseWriter, r *http.Request) {
 	}
 
 	data := struct {
-		ProjectRef      *model.ProjectRef
-		ProjectVars     *model.ProjectVars
-		ProjectAliases  []model.ProjectAlias        `json:"aliases,omitempty"`
-		ConflictingRefs []string                    `json:"pr_testing_conflicting_refs,omitempty"`
-		GithubHook      restModel.APIGithubHook     `json:"github_hook"`
-		Subscriptions   []restModel.APISubscription `json:"subscriptions"`
-	}{projRef, projVars, projectAliases, conflictingRefs, apiHook, apiSubscriptions}
+		ProjectRef        *model.ProjectRef
+		ProjectVars       *model.ProjectVars
+		ProjectAliases    []model.ProjectAlias        `json:"aliases,omitempty"`
+		PRConflictingRefs []string                    `json:"pr_testing_conflicting_refs,omitempty"`
+		CQConflictingRefs []string                    `json:"commit_queue_conflicting_refs,omitempty"`
+		GithubHook        restModel.APIGithubHook     `json:"github_hook"`
+		Subscriptions     []restModel.APISubscription `json:"subscriptions"`
+	}{projRef, projVars, projectAliases, PRConflictingRefs, CQConflictingRefs, apiHook, apiSubscriptions}
 
 	// the project context has all projects so make the ui list using all projects
 	gimlet.WriteJSON(w, data)
@@ -183,7 +188,7 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 	}
 
 	responseRef := struct {
-		Identifier         string                  `json:"id"`
+		Identifier         string                  `json:"identifier"`
 		DisplayName        string                  `json:"display_name"`
 		RemotePath         string                  `json:"remote_path"`
 		BatchTime          int                     `json:"batch_time"`

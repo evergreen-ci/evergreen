@@ -299,7 +299,7 @@ Evergreen Projects
         <div class="variables" ng-show="isSuperUser">
           <div class="form-group">
             <div class="col-header col-lg-6 form-control-static"> <h3> GitHub Webhook Installation </h3>
-                <div class="muted small" ng-show="githubHookID === 0">Github webhooks have not been enabled for this repository. In order to use Github Pull Request testing, tick the box below, and save the project to set up the webhook in this
+                <div class="muted small" ng-show="githubHookID === 0">Github webhooks have not been enabled for this repository. In order to use Github Pull Request testing and the commit queue, tick the box below, and save the project to set up the webhook in this
                 repository.</div>
                 <div class="muted small" ng-show="githubHookID !== 0">Github webhooks are enabled!</div>
             </div>
@@ -381,7 +381,95 @@ Evergreen Projects
                   <button class="plus-button btn btn-primary" ng-disabled="!validPatchDefinition(github_alias.variant, github_alias.task)" type="button" ng-click="addGithubAlias()">
                     <i class="fa fa-plus"></i>
                   </button>
-                <label class="distro-error">[[invalidPatchDefinitionMessage]]</label>
+                <label class="distro-error">[[invalidGitHubPatchDefinitionMessage]]</label>
+                </div>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <div class="col-header col-lg-6 form-control-static"> <h3> Commit Queue Merging </h3> </div>
+          </div>
+
+          <div id="patch-variants-list-header" class="form-group" ng-show="commitQueueConflicts.length !== 0">
+            <div class="col-lg-6">
+                Commit Queue merging cannot be enabled on this project: only one Evergreen project
+                per Repository/Branch combination can enable commit queue. To enable commit queue in this
+                project, please turn it off in <span ng-repeat="x in commitQueueConflicts"> "[[x]]"<span ng-show="!$last">, </span> </span>
+            </div>
+          </div>
+          <div id="patch-variants-list-header" class="form-group" ng-show="commitQueueConflicts.length === 0">
+              <div class="col-lg-6">
+                  <input type="checkbox" id="cq-merging-checkbox" ng-model="settingsFormData.commit_queue.enabled" />
+                  <label for="cq-merging-checkbox">Enable Commit Queue Merging</label>
+              </div>
+          </div>
+
+
+          <!-- COMMIT QUEUE PATCH DEFINITIONS -->
+          <div ng-show="settingsFormData.commit_queue.enabled">
+              <div id="patch-variants-list-header" class="form-group">
+                  <div class="col-lg-2"> <label class="control-label"> Merge Method </label> </div>
+                  <div class="col-lg-2"> <label class="control-label"> Merge Action </label> </div>
+                  <div class="col-lg-2"> <label class="control-label"> Status Action </label> </div>
+              </div>
+            <div class="form-group">
+                <div class="col-lg-2">
+                  <input class="form-control" ng-model="settingsFormData.commit_queue.merge_method" type="text" placeholder="merge, squash, rebase">
+                </div>
+                <div class="col-lg-2">
+                  <input class="form-control" ng-model="settingsFormData.commit_queue.merge_action" type="text" placeholder="github">
+                </div>
+                <div class="col-lg-2">
+                  <input class="form-control" ng-model="settingsFormData.commit_queue.status_action" type="text" placeholder="github">
+                </div>
+                <div class="col-lg-4">
+                  <label class="distro-error">[[invalidCommitQueueParamsMessage]]</label>
+                </div>
+            </div>
+            <div class="form-group">
+                <div class="col-header col-lg-6 form-control-static"> <h4> Commit Queue Patch Definitions </h4>
+                </div>
+            </div>
+
+            <div id="patch-variants-list-header" class="form-group">
+                <div class="col-lg-3"> <label class="control-label"> Variant Regex </label> </div>
+                <div class="col-lg-3"> <label class="control-label"> Task Regex </label> </div>
+                <div class="col-lg-2"> <label class="control-label"> Task Tags </label> </div>
+                <div class="col-lg-2"></div>
+            </div>
+
+            <div id="patch-variants-list" class="form-group" ng-repeat="obj in commit_queue_aliases track by $index">
+                <div class="col-lg-3">
+                  <input class="form-control" ng-model="obj.variant" type="text" placeholder="variant regex">
+                </div>
+                <div class="col-lg-3">
+                  <input class="form-control" ng-model="obj.task" type="text" placeholder="task regex">
+                </div>
+                <div class="col-lg-2">
+                  <tag-input klass="form-control" items="obj.tags" placeholder="tags (comma-delimited)" />
+                </div>
+                <div class="col-lg-4">
+                  <button class="btn btn-default btn-danger" type="button" ng-click="removeCommitQueueAlias($index)">
+                    <i class="fa fa-trash"></i>
+                  </button>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <div class="col-lg-3">
+                  <input ng-model="commit_queue_alias.variant" class="form-control" type="text" placeholder="variant regex">
+                </div>
+                  <div class="col-lg-3">
+                <input ng-model="commit_queue_alias.task" class="form-control" type="text" placeholder="task regex">
+                </div>
+                <div class="col-lg-2">
+                  <tag-input klass="form-control" items="commit_queue_alias.tags" placeholder="tags (comma-delimited)" />
+                </div>
+                <div class="col-lg-4">
+                  <button class="plus-button btn btn-primary" ng-disabled="!validPatchDefinition(commit_queue_alias.variant, commit_queue_alias.task)" type="button" ng-click="addCommitQueueAlias()">
+                    <i class="fa fa-plus"></i>
+                  </button>
+                <label class="distro-error">[[invalidCommitQueuePatchDefinitionMessage]]</label>
                 </div>
             </div>
           </div>
