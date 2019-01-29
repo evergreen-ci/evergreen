@@ -54,6 +54,30 @@ mciModule.factory('MDBQueryAdaptor', function() {
     }
   }
 
+  // (parser) -> (tokens) -> expr[]
+  // :returns: list of expressions, which could be compiled by compileMany
+  function asDateType(parser) {
+    return function(tokens) {
+      let expr = parser(tokens)
+      if (!expr) return [] // Bypass (no expr)
+      let date = moment.utc(expr.term)
+      if (!date.isValid()) return [] // ignore invalid dates
+      if (expr.op == '==') {
+        return [{
+          op: '>=',
+          term: date.startOf('day').format(),
+        }, {
+          op: '<=',
+          term: date.endOf('day').format(),
+        }]
+      }
+      return [{
+        op: expr.op,
+        term: date.format(),
+      }]
+    }
+  }
+
   function asNumType(parser) {
     return function(tokens) {
       var expr = parser(tokens)
@@ -108,6 +132,21 @@ mciModule.factory('MDBQueryAdaptor', function() {
     }
   }
 
+  // field => predicate[] => expr[]
+  function compileMany(field) {
+    let compiler = predicateCompiler(field)
+    return function(predicates) {
+      // Compile
+      let compiledPredicates = _.map(predicates, compiler)
+      // Combine
+      let ret = {}
+      ret[field] = _.reduce(compiledPredicates, function(m, d) {
+        return _.extend(m, d[field])
+      }, {})
+      return ret
+    }
+  }
+
   function compileFiltering(options) {
     var matchers = _.chain(options)
       .map(function(option) {
@@ -144,8 +183,8 @@ mciModule.factory('MDBQueryAdaptor', function() {
     'date': {
       preprocess: condense,
       tokenize: numTypeTokenizer,
-      parse: parser,
-      compile: predicateCompiler,
+      parse: asDateType(parser),
+      compile: compileMany,
     }
   }
 
@@ -175,7 +214,9 @@ mciModule.factory('MDBQueryAdaptor', function() {
     _numTypeTokenizer: numTypeTokenizer,
     _strTypeTokenizer: strTypeTokenizer,
     _numTypeParser: asNumType(parser),
+    _dateTypeParser: asDateType(parser),
     _strTypeParser: strTypeParser,
     _predicateCompiler: predicateCompiler,
+    _compileMany: compileMany,
   }
 })
