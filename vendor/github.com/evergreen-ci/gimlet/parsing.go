@@ -21,6 +21,11 @@ func GetVars(r *http.Request) map[string]string {
 	return mux.Vars(r)
 }
 
+// SetURLVars sets URL variables for testing purposes only.
+func SetURLVars(r *http.Request, val map[string]string) *http.Request {
+	return mux.SetURLVars(r, val)
+}
+
 // GetJSON parses JSON from a io.ReadCloser (e.g. http/*Request.Body
 // or http/*Response.Body) into an object specified by the
 // request. Used in handler functiosn to retreve and parse data
