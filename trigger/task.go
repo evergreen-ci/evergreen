@@ -612,18 +612,12 @@ func isTestStatusRegression(oldStatus, newStatus string) bool {
 	return false
 }
 
-func testMatchesRegex(testName string, sub *event.Subscription) bool {
+func testMatchesRegex(testName string, sub *event.Subscription) (bool, error) {
 	regex, ok := sub.TriggerData[event.TestRegexKey]
 	if !ok || regex == "" {
-		return true
+		return true, nil
 	}
-	match, err := regexp.MatchString(regex, testName)
-	grip.Error(message.WrapError(err, message.Fields{
-		"source":  "test-trigger",
-		"message": "bad regex in db",
-	}))
-
-	return match
+	return regexp.MatchString(regex, testName)
 }
 
 func (t *taskTriggers) shouldIncludeTest(sub *event.Subscription, previousTask *task.Task, test *task.TestResult) (bool, error) {
@@ -687,8 +681,19 @@ func (t *taskTriggers) taskRegressionByTest(sub *event.Subscription) (*notificat
 	}
 
 	testsToAlert := []task.TestResult{}
+	var match bool
 	for i := range t.task.LocalTestResults {
-		if !testMatchesRegex(t.task.LocalTestResults[i].TestFile, sub) {
+		match, err = testMatchesRegex(t.task.LocalTestResults[i].TestFile, sub)
+		if err != nil {
+			grip.Error(message.WrapError(err, message.Fields{
+				"source":  "test-trigger",
+				"message": "bad regex in db",
+				"task":    t.task.Id,
+				"project": t.task.Project,
+			}))
+			continue
+		}
+		if !match {
 			continue
 		}
 		var shouldInclude bool

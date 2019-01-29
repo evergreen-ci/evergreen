@@ -233,7 +233,10 @@ func (c *communicatorImpl) makeSender(ctx context.Context, taskData TaskData, op
 		}
 
 		grip.Error(sender.SetFormatter(send.MakeDefaultFormatter()))
-		senders = append(senders, makeTimeoutLogSender(sender, c))
+		if prefix == apimodels.TaskLogPrefix {
+			sender = makeTimeoutLogSender(sender, c)
+		}
+		senders = append(senders, sender)
 	}
 
 	return send.NewConfiguredMultiSender(senders...)
