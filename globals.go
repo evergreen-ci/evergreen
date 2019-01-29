@@ -269,6 +269,7 @@ const (
 	defaultAmboyPoolSize         = 2
 	defaultAmboyLocalStorageSize = 1024
 	defaultAmboyQueueName        = "evg.service"
+	defaultSingleAmboyQueueName  = "evg.single"
 	defaultAmboyDBName           = "amboy"
 	maxNotificationsPerSecond    = 100
 )

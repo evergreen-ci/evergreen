@@ -208,6 +208,9 @@ type Connector interface {
 	// GenerateTasks parses JSON files for `generate.tasks` and creates the new builds and tasks.
 	GenerateTasks(context.Context, string, []json.RawMessage) error
 
+	// GeneratePoll checks to see if a `generate.tasks` job has finished.
+	GeneratePoll(context.Context, string, amboy.Queue) (bool, error)
+
 	// SaveSubscriptions saves a set of notification subscriptions
 	SaveSubscriptions([]event.Subscription) error
 	// GetSubscriptions returns the subscriptions that belong to a user

@@ -492,6 +492,10 @@ func (c *Mock) GenerateTasks(ctx context.Context, td TaskData, jsonBytes []json.
 	return nil
 }
 
+func (c *Mock) GenerateTasksPoll(ctx context.Context, td TaskData) (bool, error) {
+	return true, nil
+}
+
 func (c *Mock) CreateHost(ctx context.Context, td TaskData, options apimodels.CreateHost) error {
 	if td.ID == "" {
 		return errors.New("no task ID sent to CreateHost")

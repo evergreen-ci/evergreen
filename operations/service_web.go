@@ -40,6 +40,7 @@ func startWebService() cli.Command {
 				grip.EmergencyFatal(errors.Wrap(env.SaveConfig(), "problem saving config"))
 			}
 			grip.EmergencyFatal(errors.Wrap(env.RemoteQueue().Start(ctx), "problem starting remote queue"))
+			grip.EmergencyFatal(errors.Wrap(env.SingleWorkerQueue().Start(ctx), "problem starting single worker queue"))
 
 			settings := env.Settings()
 			sender, err := settings.GetSender(env)
