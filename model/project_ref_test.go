@@ -272,7 +272,7 @@ func TestFindProjectRefsWithCommitQueueEnabled(t *testing.T) {
 	doc.CommitQueue.Enabled = false
 	require.NoError(doc.Insert())
 
-	projectRefs, err := FindProjectRefsWithCommitQEnabled()
+	projectRefs, err := FindProjectRefsWithCommitQueueEnabled()
 	assert.NoError(err)
 	require.Len(projectRefs, 2)
 	assert.Equal("mci", projectRefs[0].Identifier)
