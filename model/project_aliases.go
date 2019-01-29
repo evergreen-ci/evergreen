@@ -96,6 +96,16 @@ func (p *ProjectAlias) Upsert() error {
 		variantKey:   p.Variant,
 		tagsKey:      p.Tags,
 	}
+
+	taskSet := p.Task != ""
+	tagsSet := len(p.Tags) > 0
+	// Exactly one of task regex or tag allowed
+	taskTagsValid := taskSet != tagsSet
+
+	if !taskTagsValid {
+		return errors.New("Exactly one of task or tag allowed")
+	}
+
 	if p.Task != "" {
 		update[taskKey] = p.Task
 	}

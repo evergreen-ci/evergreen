@@ -517,10 +517,9 @@ func (s *projectSuite) SetupTest() {
 		},
 		{
 			ProjectID: "project",
-			Alias:     "aTags_2tasks",
+			Alias:     "2tasks(obsolete)", // Remains from times when tags and tasks were allowed together
 			Variant:   ".*",
 			Task:      ".*_2",
-			Tags:      []string{"a"},
 		},
 		{
 			ProjectID: "project",
@@ -751,10 +750,10 @@ func (s *projectSuite) TestAliasResolution() {
 	}
 	s.Empty(displayTaskPairs)
 
-	// test that the 'a' tag and .*_2 regex selects the union of both
+	// test that tje .*_2 regex selects the union of both
 	pairs, displayTaskPairs, err = s.project.BuildProjectTVPairsWithAlias(s.aliases[4].Alias)
 	s.NoError(err)
-	s.Len(pairs, 6)
+	s.Len(pairs, 4)
 	for _, pair := range pairs {
 		s.NotEqual("b_task_1", pair.TaskName)
 	}
@@ -811,19 +810,17 @@ func (s *projectSuite) TestBuildProjectTVPairs() {
 func (s *projectSuite) TestBuildProjectTVPairsWithAlias() {
 	patchDoc := patch.Patch{}
 
-	s.project.BuildProjectTVPairs(&patchDoc, "aTags_2tasks")
+	s.project.BuildProjectTVPairs(&patchDoc, "2tasks(obsolete)")
 
 	s.Len(patchDoc.BuildVariants, 2)
 	s.Contains(patchDoc.BuildVariants, "bv_1")
 	s.Contains(patchDoc.BuildVariants, "bv_2")
-	s.Len(patchDoc.Tasks, 3)
-	s.Contains(patchDoc.Tasks, "a_task_1")
+	s.Len(patchDoc.Tasks, 2)
 	s.Contains(patchDoc.Tasks, "a_task_2")
 	s.Contains(patchDoc.Tasks, "b_task_2")
 
 	for _, vt := range patchDoc.VariantsTasks {
-		s.Len(vt.Tasks, 3)
-		s.Contains(vt.Tasks, "a_task_1")
+		s.Len(vt.Tasks, 2)
 		s.Contains(vt.Tasks, "a_task_2")
 		s.Contains(vt.Tasks, "b_task_2")
 		s.Empty(vt.DisplayTasks)
