@@ -73,8 +73,6 @@ func (s *commitQueueSuite) SetupTest() {
 			"3",
 			"4",
 		},
-		MergeAction:  "github",
-		StatusAction: "github",
 	}
 	s.Require().NoError(commitqueue.InsertQueue(cq))
 }
