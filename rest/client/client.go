@@ -231,5 +231,8 @@ func (c *communicatorImpl) makeSender(ctx context.Context, taskData TaskData, op
 	}
 
 	grip.Error(sender.SetFormatter(send.MakeDefaultFormatter()))
-	return makeTimeoutLogSender(sender, c)
+	if prefix == apimodels.TaskLogPrefix {
+		sender = makeTimeoutLogSender(sender, c)
+	}
+	return sender
 }
