@@ -42,6 +42,7 @@ func TestCommandLoggerOverride(t *testing.T) {
 	tmpDirName, err := ioutil.TempDir("", "agent-logging-")
 	require.NoError(err)
 	require.NoError(os.Mkdir(fmt.Sprintf("%s/tmp", tmpDirName), 0666))
+	defer os.RemoveAll(tmpDirName)
 
 	agt := &Agent{
 		opts: Options{
@@ -106,6 +107,4 @@ func TestCommandLoggerOverride(t *testing.T) {
 	bytes, err := ioutil.ReadAll(f)
 	assert.NoError(err)
 	assert.Contains(string(bytes), "[p=info]: hello world")
-
-	require.NoError(os.RemoveAll(tmpDirName))
 }
