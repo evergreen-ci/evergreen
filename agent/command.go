@@ -50,7 +50,9 @@ func (a *Agent) runCommandSet(ctx context.Context, tc *taskContext, commandInfo 
 		logger = tc.logger
 	} else {
 		logger = a.makeLoggerProducer(ctx, commandInfo.Loggers, tc.task)
-		defer grip.Error(logger.Close())
+		defer func() {
+			grip.Error(logger.Close())
+		}()
 	}
 	for idx, cmd := range cmds {
 		if ctx.Err() != nil {
