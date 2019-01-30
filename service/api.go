@@ -319,13 +319,6 @@ func (as *APIServer) AppendTaskLog(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	grip.Info(message.Fields{
-		"message": "appending task log",
-		"size":    length,
-		"task_id": t.Id,
-		"project": t.Project,
-	})
-
 	taskLog.TaskId = t.Id
 	taskLog.Execution = t.Execution
 
