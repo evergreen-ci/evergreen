@@ -92,13 +92,6 @@ variables:
         vars:
           target: revendor
       - func: run-make
-        loggers:
-          task:
-            - type: logkeeper
-          agent:
-            - type: logkeeper
-          system:
-            - type: logkeeper
         vars: { target: "${task_name}" }
   - &run-smoke-test
     name: smoke
