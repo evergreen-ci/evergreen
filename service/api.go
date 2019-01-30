@@ -313,7 +313,7 @@ func (as *APIServer) AppendTaskLog(w http.ResponseWriter, r *http.Request) {
 	}
 	t := MustHaveTask(r)
 	taskLog := &model.TaskLog{}
-	length, err := util.ReadJSONIntoWithLength(util.NewRequestReader(r), taskLog)
+	_, err := util.ReadJSONIntoWithLength(util.NewRequestReader(r), taskLog)
 	if err != nil {
 		http.Error(w, "unable to read logs from request", http.StatusBadRequest)
 		return
