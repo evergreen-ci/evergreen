@@ -816,7 +816,7 @@ Admin Settings
 								</md-card-content>
 							</md-card>
 
-							<md-card flex=50 id="logger_config" style="height:280px">
+							<md-card flex=50 id="logger_config">
 								<md-card-title>
 									<md-card-title-text>
 										<span>Logger Config</span>
@@ -841,6 +841,10 @@ Admin Settings
 									<md-input-container class="control" style="width:45%; margin-left:50px;">
 										<label>Buffer count</label>
 										<input type="number" ng-model="Settings.logger_config.buffer.count">
+									</md-input-container>
+									<md-input-container class="control" style="width:45%;">
+										<label>Logkeeper URL</label>
+										<input type="text" ng-model="Settings.logger_config.logkeeper_url">
 									</md-input-container>
 								</md-card-content>
 							</md-card>

@@ -102,7 +102,7 @@ func TestCommandLoggerOverride(t *testing.T) {
 	err = agt.runTaskCommands(ctx, tc)
 	assert.NoError(err)
 
-	f, err := os.Open(fmt.Sprintf("%s/task.log", tmpDirName))
+	f, err := os.Open(fmt.Sprintf("%s/%s/task.log", tmpDirName, taskLogDirectory))
 	assert.NoError(err)
 	bytes, err := ioutil.ReadAll(f)
 	assert.NoError(err)
