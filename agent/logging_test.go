@@ -140,7 +140,7 @@ func TestResetLogging(t *testing.T) {
 
 	assert.NoError(agt.resetLogging(ctx, tc))
 	tc.logger.Execution().Info("foo")
-	tc.logger.Close()
+	assert.NoError(tc.logger.Close())
 	msgs := agt.comm.(*client.Mock).GetMockMessages()
 	assert.Equal("foo", msgs[tc.task.ID][0].Message)
 
