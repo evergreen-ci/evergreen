@@ -85,6 +85,7 @@ func AttachHandler(app *gimlet.APIApp, queue amboy.Queue, URL string, superUsers
 	app.AddRoute("/projects/{project_id}/revisions/{commit_hash}/tasks").Version(2).Get().Wrap(checkUser).RouteHandler(makeTasksByProjectAndCommitHandler(sc))
 	app.AddRoute("/projects/{project_id}/test_stats").Version(2).Get().Wrap(checkUser).RouteHandler(makeGetProjectTestStats(sc))
 	app.AddRoute("/projects/{project_id}/task_stats").Version(2).Get().Wrap(checkUser).RouteHandler(makeGetProjectTaskStats(sc))
+	app.AddRoute("/projects/{project_id}/commit_queue").Version(2).Get().Wrap(checkUser).RouteHandler(makeGetCommitQueueItems(sc))
 	app.AddRoute("/status/cli_version").Version(2).Get().RouteHandler(makeFetchCLIVersionRoute(sc))
 	app.AddRoute("/status/hosts/distros").Version(2).Get().Wrap(checkUser).RouteHandler(makeHostStatusByDistroRoute(sc))
 	app.AddRoute("/status/notifications").Version(2).Get().Wrap(checkUser).RouteHandler(makeFetchNotifcationStatusRoute(sc))

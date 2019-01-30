@@ -6,22 +6,23 @@ import (
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/commitqueue"
+	restModel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/stretchr/testify/suite"
 )
 
-type CommitQSuite struct {
+type CommitQueueSuite struct {
 	ctx Connector
 	suite.Suite
 }
 
-func TestCommitQSuite(t *testing.T) {
+func TestCommitQueueSuite(t *testing.T) {
 	db.SetGlobalSessionProvider(testutil.TestConfig().SessionFactory())
-	s := &CommitQSuite{}
+	s := &CommitQueueSuite{}
 	suite.Run(t, s)
 }
 
-func (s *CommitQSuite) SetupTest() {
+func (s *CommitQueueSuite) SetupTest() {
 	s.Require().NoError(db.Clear(commitqueue.Collection))
 	s.Require().NoError(db.Clear(model.ProjectRefCollection))
 	projRef := model.ProjectRef{
@@ -36,7 +37,7 @@ func (s *CommitQSuite) SetupTest() {
 	s.Require().NoError(commitqueue.InsertQueue(q))
 }
 
-func (s *CommitQSuite) TestEnqueue() {
+func (s *CommitQueueSuite) TestEnqueue() {
 	s.ctx = &DBConnector{}
 	s.NoError(s.ctx.EnqueueItem("evergreen-ci", "evergreen", "master", "1234"))
 
@@ -48,23 +49,40 @@ func (s *CommitQSuite) TestEnqueue() {
 	}
 }
 
-func (s *CommitQSuite) TestMockGithubPREnqueue() {
+func (s *CommitQueueSuite) TestFindCommitQueueByID() {
+	s.ctx = &DBConnector{}
+	cq, err := s.ctx.FindCommitQueueByID("mci")
+	s.NoError(err)
+	s.Equal(restModel.ToAPIString("mci"), cq.ProjectID)
+}
+
+func (s *CommitQueueSuite) TestMockGithubPREnqueue() {
 	s.ctx = &MockConnector{}
 	s.NoError(s.ctx.GithubPREnqueueItem("evergreen-ci", "evergreen", 1234))
 	conn := s.ctx.(*MockConnector)
-	q, ok := conn.MockCommitQConnector.Queue["evergreen-ci.evergreen.master"]
+	q, ok := conn.MockCommitQueueConnector.Queue["evergreen-ci.evergreen.master"]
 	if s.True(ok) && s.Len(q, 1) {
-		s.Equal(q[0], "1234")
+		s.Equal(restModel.ToAPIString("1234"), q[0])
 	}
 }
 
-func (s *CommitQSuite) TestMockEnqueue() {
+func (s *CommitQueueSuite) TestMockEnqueue() {
 	s.ctx = &MockConnector{}
 	s.NoError(s.ctx.EnqueueItem("evergreen-ci", "evergreen", "master", "1234"))
 
 	conn := s.ctx.(*MockConnector)
-	q, ok := conn.MockCommitQConnector.Queue["evergreen-ci.evergreen.master"]
+	q, ok := conn.MockCommitQueueConnector.Queue["evergreen-ci.evergreen.master"]
 	if s.True(ok) && s.Len(q, 1) {
-		s.Equal(q[0], "1234")
+		s.Equal(restModel.ToAPIString("1234"), q[0])
 	}
+}
+
+func (s *CommitQueueSuite) TestMockFindCommitQueueByID() {
+	s.ctx = &MockConnector{}
+	s.NoError(s.ctx.EnqueueItem("evergreen-ci", "evergreen", "master", "1234"))
+
+	cq, err := s.ctx.FindCommitQueueByID("evergreen-ci.evergreen.master")
+	s.NoError(err)
+	s.Equal(restModel.ToAPIString("evergreen-ci.evergreen.master"), cq.ProjectID)
+	s.Equal([]restModel.APIString{restModel.ToAPIString("1234")}, cq.Queue)
 }
