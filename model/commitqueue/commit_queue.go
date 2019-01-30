@@ -47,18 +47,18 @@ func (q *CommitQueue) All() []string {
 	return q.Queue
 }
 
-func (q *CommitQueue) Remove(item string) error {
+func (q *CommitQueue) Remove(item string) (bool, error) {
 	itemIndex := q.findItem(item)
 	if itemIndex < 0 {
-		return errors.New("item not in queue")
+		return false, nil
 	}
 
 	if err := remove(q.ProjectID, item); err != nil {
-		return errors.Wrap(err, "can't remove item")
+		return true, errors.Wrap(err, "can't remove item")
 	}
 
 	q.Queue = append(q.Queue[:itemIndex], q.Queue[itemIndex+1:]...)
-	return nil
+	return true, nil
 }
 
 func (q *CommitQueue) RemoveAll() error {

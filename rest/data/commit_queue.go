@@ -77,6 +77,19 @@ func (pc *DBCommitQueueConnector) FindCommitQueueByID(id string) (*restModel.API
 	return apiCommitQueue, nil
 }
 
+func (pc *DBCommitQueueConnector) CommitQueueRemoveItem(id, item string) (bool, error) {
+	cq, err := commitqueue.FindOneId(id)
+	if err != nil {
+		return false, errors.Wrapf(err, "can't get commit queue for id '%s'", id)
+	}
+	if cq == nil {
+		return false, nil
+	}
+
+	found, err := cq.Remove(item)
+	return found, errors.Wrapf(err, "can't remove item '%s'", item)
+}
+
 type MockCommitQueueConnector struct {
 	Queue map[string][]restModel.APIString
 }
@@ -102,4 +115,19 @@ func (pc *MockCommitQueueConnector) FindCommitQueueByID(id string) (*restModel.A
 	}
 
 	return &restModel.APICommitQueue{ProjectID: restModel.ToAPIString(id), Queue: pc.Queue[id]}, nil
+}
+
+func (pc *MockCommitQueueConnector) CommitQueueRemoveItem(id, item string) (bool, error) {
+	if _, ok := pc.Queue[id]; !ok {
+		return false, nil
+	}
+
+	for i := range pc.Queue[id] {
+		if restModel.FromAPIString(pc.Queue[id][i]) == item {
+			pc.Queue[id] = append(pc.Queue[id][:i], pc.Queue[id][i+1:]...)
+			return true, nil
+		}
+	}
+
+	return false, nil
 }

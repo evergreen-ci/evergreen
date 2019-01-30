@@ -230,4 +230,5 @@ type Connector interface {
 	GithubPREnqueueItem(string, string, int) error
 	EnqueueItem(string, string, string, string) error
 	FindCommitQueueByID(string) (*restModel.APICommitQueue, error)
+	CommitQueueRemoveItem(string, string) (bool, error)
 }

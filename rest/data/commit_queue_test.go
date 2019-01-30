@@ -56,6 +56,25 @@ func (s *CommitQueueSuite) TestFindCommitQueueByID() {
 	s.Equal(restModel.ToAPIString("mci"), cq.ProjectID)
 }
 
+func (s *CommitQueueSuite) TestCommitQueueRemoveItem() {
+	s.ctx = &DBConnector{}
+	s.Require().NoError(s.ctx.EnqueueItem("evergreen-ci", "evergreen", "master", "1"))
+	s.Require().NoError(s.ctx.EnqueueItem("evergreen-ci", "evergreen", "master", "2"))
+	s.Require().NoError(s.ctx.EnqueueItem("evergreen-ci", "evergreen", "master", "3"))
+
+	found, err := s.ctx.CommitQueueRemoveItem("mci", "not_here")
+	s.NoError(err)
+	s.False(found)
+
+	found, err = s.ctx.CommitQueueRemoveItem("mci", "1")
+	s.NoError(err)
+	s.True(found)
+	cq, err := s.ctx.FindCommitQueueByID("mci")
+	s.NoError(err)
+	s.Equal(restModel.ToAPIString("2"), cq.Queue[0])
+	s.Equal(restModel.ToAPIString("3"), cq.Queue[1])
+}
+
 func (s *CommitQueueSuite) TestMockGithubPREnqueue() {
 	s.ctx = &MockConnector{}
 	s.NoError(s.ctx.GithubPREnqueueItem("evergreen-ci", "evergreen", 1234))
@@ -85,4 +104,23 @@ func (s *CommitQueueSuite) TestMockFindCommitQueueByID() {
 	s.NoError(err)
 	s.Equal(restModel.ToAPIString("evergreen-ci.evergreen.master"), cq.ProjectID)
 	s.Equal([]restModel.APIString{restModel.ToAPIString("1234")}, cq.Queue)
+}
+
+func (s *CommitQueueSuite) TestMockCommitQueueRemoveItem() {
+	s.ctx = &MockConnector{}
+	s.Require().NoError(s.ctx.EnqueueItem("evergreen-ci", "evergreen", "master", "1"))
+	s.Require().NoError(s.ctx.EnqueueItem("evergreen-ci", "evergreen", "master", "2"))
+	s.Require().NoError(s.ctx.EnqueueItem("evergreen-ci", "evergreen", "master", "3"))
+
+	found, err := s.ctx.CommitQueueRemoveItem("evergreen-ci.evergreen.master", "not_here")
+	s.NoError(err)
+	s.False(found)
+
+	found, err = s.ctx.CommitQueueRemoveItem("evergreen-ci.evergreen.master", "1")
+	s.NoError(err)
+	s.True(found)
+	cq, err := s.ctx.FindCommitQueueByID("evergreen-ci.evergreen.master")
+	s.NoError(err)
+	s.Equal(restModel.ToAPIString("2"), cq.Queue[0])
+	s.Equal(restModel.ToAPIString("3"), cq.Queue[1])
 }
