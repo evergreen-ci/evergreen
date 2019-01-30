@@ -80,44 +80,40 @@ func GetSender(ctx context.Context, prefix, taskId string) (send.Sender, error) 
 func (a *Agent) makeLoggerProducer(ctx context.Context, c *model.LoggerConfig, td client.TaskData, task *task.Task) client.LoggerProducer {
 	path := fmt.Sprintf("%s/%s", a.opts.WorkingDirectory, taskLogDirectory)
 	grip.Error(errors.Wrap(os.Mkdir(path, os.ModeDir|os.ModePerm), "error making log directory"))
-	config := convertLoggerConfig(*c, path, a.opts.LogkeeperURL, td.ID, task.Execution)
-	return a.comm.GetLoggerProducer(ctx, td, &config)
-}
 
-func convertLoggerConfig(c model.LoggerConfig, workdir, logkeeperURL, taskID string, execution int) client.LoggerConfig {
 	config := client.LoggerConfig{}
 	for _, agentConfig := range c.Agent {
 		config.Agent = append(config.Agent, client.LogOpts{
-			LogkeeperURL:      logkeeperURL,
-			LogkeeperBuilder:  fmt.Sprintf("%s_%d", taskID, execution),
+			LogkeeperURL:      a.opts.LogkeeperURL,
+			LogkeeperBuilder:  fmt.Sprintf("%s_%d", task.Id, task.Execution),
 			LogkeeperBuildNum: 0,
 			Sender:            model.LogSender(agentConfig.Type),
 			SplunkServerURL:   agentConfig.SplunkServer,
 			SplunkToken:       agentConfig.SplunkToken,
-			Filepath:          fmt.Sprintf("%s/agent.log", workdir),
+			Filepath:          fmt.Sprintf("%s/agent.log", path),
 		})
 	}
 	for _, systemConfig := range c.System {
 		config.System = append(config.System, client.LogOpts{
-			LogkeeperURL:      logkeeperURL,
-			LogkeeperBuilder:  fmt.Sprintf("%s_%d", taskID, execution),
+			LogkeeperURL:      a.opts.LogkeeperURL,
+			LogkeeperBuilder:  fmt.Sprintf("%s_%d", task.Id, task.Execution),
 			LogkeeperBuildNum: 1,
 			Sender:            model.LogSender(systemConfig.Type),
 			SplunkServerURL:   systemConfig.SplunkServer,
 			SplunkToken:       systemConfig.SplunkToken,
-			Filepath:          fmt.Sprintf("%s/system.log", workdir),
+			Filepath:          fmt.Sprintf("%s/system.log", path),
 		})
 	}
 	for _, taskConfig := range c.Task {
 		config.Task = append(config.Task, client.LogOpts{
-			LogkeeperURL:      logkeeperURL,
-			LogkeeperBuilder:  fmt.Sprintf("%s_%d", taskID, execution),
+			LogkeeperURL:      a.opts.LogkeeperURL,
+			LogkeeperBuilder:  fmt.Sprintf("%s_%d", task.Id, task.Execution),
 			LogkeeperBuildNum: 2,
 			Sender:            model.LogSender(taskConfig.Type),
 			SplunkServerURL:   taskConfig.SplunkServer,
 			SplunkToken:       taskConfig.SplunkToken,
-			Filepath:          fmt.Sprintf("%s/task.log", workdir),
+			Filepath:          fmt.Sprintf("%s/task.log", path),
 		})
 	}
-	return config
+	return a.comm.GetLoggerProducer(ctx, td, &config)
 }
