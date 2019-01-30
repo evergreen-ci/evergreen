@@ -407,24 +407,25 @@ Evergreen Projects
 
           <!-- COMMIT QUEUE PATCH DEFINITIONS -->
           <div ng-show="settingsFormData.commit_queue.enabled">
-              <div id="patch-variants-list-header" class="form-group">
-                  <div class="col-lg-2"> <label class="control-label"> Merge Method </label> </div>
-                  <div class="col-lg-2"> <label class="control-label"> Merge Action </label> </div>
-                  <div class="col-lg-2"> <label class="control-label"> Status Action </label> </div>
+            <div>
+              <div>
+                <label for="mergeMethodSelect"> Merge Method: </label>
+                <select id="mergeMethodSelect" ng-model="settingsFormData.commit_queue.merge_method" >
+                  <option ng-repeat="option in validMergeMethods">[[option]]</option>
+                </select>
               </div>
-            <div class="form-group">
-                <div class="col-lg-2">
-                  <input class="form-control" ng-model="settingsFormData.commit_queue.merge_method" type="text" placeholder="merge, squash, rebase">
-                </div>
-                <div class="col-lg-2">
-                  <input class="form-control" ng-model="settingsFormData.commit_queue.merge_action" type="text" placeholder="github">
-                </div>
-                <div class="col-lg-2">
-                  <input class="form-control" ng-model="settingsFormData.commit_queue.status_action" type="text" placeholder="github">
-                </div>
-                <div class="col-lg-4">
-                  <label class="distro-error">[[invalidCommitQueueParamsMessage]]</label>
-                </div>
+              <div>
+                <label for="mergeActionSelect"> Merge Action: </label>
+                <select id="mergeActionSelect" ng-model="settingsFormData.commit_queue.merge_action" >
+                    <option ng-repeat="option in validMergeActions">[[option]]</option>
+                </select>
+              </div>
+              <div>
+                <label for="statusActionSelect"> Status Action: </label>
+                <select id="statusActionSelect" ng-model="settingsFormData.commit_queue.status_action" >
+                    <option ng-repeat="option in validStatusActions">[[option]]</option>
+                </select>
+              </div>
             </div>
             <div class="form-group">
                 <div class="col-header col-lg-6 form-control-static"> <h4> Commit Queue Patch Definitions </h4>
