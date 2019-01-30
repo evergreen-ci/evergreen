@@ -19,7 +19,6 @@ import (
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
-	"github.com/mongodb/grip/sometimes"
 	"github.com/pkg/errors"
 )
 
@@ -319,13 +318,6 @@ func (as *APIServer) AppendTaskLog(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "unable to read logs from request", http.StatusBadRequest)
 		return
 	}
-
-	grip.InfoWhen(sometimes.Fifth(), message.Fields{
-		"message": "appending task log (logs 1/5 of the time)",
-		"size":    length,
-		"task_id": t.Id,
-		"project": t.Project,
-	})
 
 	taskLog.TaskId = t.Id
 	taskLog.Execution = t.Execution
