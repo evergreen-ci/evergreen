@@ -31,6 +31,7 @@ type Options struct {
 	HostSecret         string
 	StatusPort         int
 	LogPrefix          string
+	LogkeeperURL       string
 	WorkingDirectory   string
 	HeartbeatInterval  time.Duration
 	AgentSleepInterval time.Duration

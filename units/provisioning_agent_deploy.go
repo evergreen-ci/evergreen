@@ -297,6 +297,7 @@ func (j *agentDeployJob) startAgentOnRemote(ctx context.Context, settings *everg
 		fmt.Sprintf("--host_secret='%s'", hostObj.Secret),
 		fmt.Sprintf("--log_prefix='%s'", filepath.Join(hostObj.Distro.WorkDir, "agent")),
 		fmt.Sprintf("--working_directory='%s'", hostObj.Distro.WorkDir),
+		fmt.Sprintf("--logkeeper_url='%s'", settings.LoggerConfig.LogkeeperURL),
 		"--cleanup",
 	}
 

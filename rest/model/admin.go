@@ -602,6 +602,7 @@ type APILoggerConfig struct {
 	Buffer         *APILogBuffering `json:"buffer"`
 	DefaultLevel   APIString        `json:"default_level"`
 	ThresholdLevel APIString        `json:"threshold_level"`
+	LogkeeperURL   APIString        `json:"logkeeper_url"`
 }
 
 func (a *APILoggerConfig) BuildFromService(h interface{}) error {
@@ -609,6 +610,7 @@ func (a *APILoggerConfig) BuildFromService(h interface{}) error {
 	case evergreen.LoggerConfig:
 		a.DefaultLevel = ToAPIString(v.DefaultLevel)
 		a.ThresholdLevel = ToAPIString(v.ThresholdLevel)
+		a.LogkeeperURL = ToAPIString(v.LogkeeperURL)
 		a.Buffer = &APILogBuffering{}
 		if err := a.Buffer.BuildFromService(v.Buffer); err != nil {
 			return err
@@ -623,6 +625,7 @@ func (a *APILoggerConfig) ToService() (interface{}, error) {
 	config := evergreen.LoggerConfig{
 		DefaultLevel:   FromAPIString(a.DefaultLevel),
 		ThresholdLevel: FromAPIString(a.ThresholdLevel),
+		LogkeeperURL:   FromAPIString(a.LogkeeperURL),
 	}
 	i, err := a.Buffer.ToService()
 	if err != nil {

@@ -33,6 +33,7 @@ type communicatorImpl struct {
 	timeoutStart time.Duration
 	timeoutMax   time.Duration
 	httpClient   *http.Client
+	loggerInfo   loggerMetadata
 
 	// these fields have setters
 	hostID     string
@@ -42,6 +43,11 @@ type communicatorImpl struct {
 
 	lastMessageSent time.Time
 	mutex           sync.RWMutex
+}
+
+type loggerMetadata struct {
+	logkeeperBuild string
+	logkeeperTest  string
 }
 
 // TaskData contains the taskData.ID and taskData.Secret. It must be set for some client methods.
@@ -228,6 +234,8 @@ func (c *communicatorImpl) makeSender(ctx context.Context, taskData TaskData, op
 				return nil
 			}
 			sender = send.NewBufferedSender(sender, bufferDuration, bufferSize)
+			c.loggerInfo.logkeeperBuild = config.GetBuildID()
+			c.loggerInfo.logkeeperTest = config.GetTestID()
 		default:
 			sender = newEvergreenLogSender(ctx, c, prefix, taskData, bufferSize, bufferDuration)
 		}
