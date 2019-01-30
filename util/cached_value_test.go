@@ -54,8 +54,8 @@ func TestCachedIntValue(t *testing.T) {
 	cv.refresher = nil
 	assert.Error(cv.SetRefresher(nil))
 	assert.NoError(cv.SetRefresher(trueRefresher))
-	assert.Error(cv.SetRefresher(trueRefresher))
-	assert.Error(cv.SetRefresher(falseRefresher))
+	assert.NoError(cv.SetRefresher(trueRefresher))
+	assert.NoError(cv.SetRefresher(falseRefresher))
 }
 
 func TestCachedDurationValue(t *testing.T) {
@@ -105,6 +105,6 @@ func TestCachedDurationValue(t *testing.T) {
 	cv.refresher = nil
 	assert.Error(cv.SetRefresher(nil))
 	assert.NoError(cv.SetRefresher(trueRefresher))
-	assert.Error(cv.SetRefresher(trueRefresher))
-	assert.Error(cv.SetRefresher(falseRefresher))
+	assert.NoError(cv.SetRefresher(trueRefresher))
+	assert.NoError(cv.SetRefresher(falseRefresher))
 }
