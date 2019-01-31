@@ -85,8 +85,8 @@ func (a *Agent) makeLoggerProducer(ctx context.Context, c *model.LoggerConfig, t
 	for _, agentConfig := range c.Agent {
 		config.Agent = append(config.Agent, client.LogOpts{
 			LogkeeperURL:      a.opts.LogkeeperURL,
-			LogkeeperBuilder:  fmt.Sprintf("%s_%d", task.Id, task.Execution),
-			LogkeeperBuildNum: 0,
+			LogkeeperBuilder:  task.Id,
+			LogkeeperBuildNum: task.Execution,
 			Sender:            model.LogSender(agentConfig.Type),
 			SplunkServerURL:   agentConfig.SplunkServer,
 			SplunkToken:       agentConfig.SplunkToken,
@@ -96,8 +96,8 @@ func (a *Agent) makeLoggerProducer(ctx context.Context, c *model.LoggerConfig, t
 	for _, systemConfig := range c.System {
 		config.System = append(config.System, client.LogOpts{
 			LogkeeperURL:      a.opts.LogkeeperURL,
-			LogkeeperBuilder:  fmt.Sprintf("%s_%d", task.Id, task.Execution),
-			LogkeeperBuildNum: 1,
+			LogkeeperBuilder:  task.Id,
+			LogkeeperBuildNum: task.Execution,
 			Sender:            model.LogSender(systemConfig.Type),
 			SplunkServerURL:   systemConfig.SplunkServer,
 			SplunkToken:       systemConfig.SplunkToken,
@@ -107,8 +107,8 @@ func (a *Agent) makeLoggerProducer(ctx context.Context, c *model.LoggerConfig, t
 	for _, taskConfig := range c.Task {
 		config.Task = append(config.Task, client.LogOpts{
 			LogkeeperURL:      a.opts.LogkeeperURL,
-			LogkeeperBuilder:  fmt.Sprintf("%s_%d", task.Id, task.Execution),
-			LogkeeperBuildNum: 2,
+			LogkeeperBuilder:  task.Id,
+			LogkeeperBuildNum: task.Execution,
 			Sender:            model.LogSender(taskConfig.Type),
 			SplunkServerURL:   taskConfig.SplunkServer,
 			SplunkToken:       taskConfig.SplunkToken,
