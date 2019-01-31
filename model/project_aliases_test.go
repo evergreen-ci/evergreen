@@ -75,36 +75,6 @@ func (s *ProjectAliasSuite) TestInsertTagsAndNoTask() {
 	}
 }
 
-func (s *ProjectAliasSuite) TestInsertNoTagsAndNoTask() {
-	for _, alias := range s.aliases {
-		aliasCopy := alias
-		aliasCopy.Task = ""
-		aliasCopy.Tags = []string{}
-		s.Error(aliasCopy.Upsert())
-	}
-
-	var out ProjectAlias
-	for i, _ := range s.aliases {
-		q := db.Query(bson.M{projectIDKey: fmt.Sprintf("project-%d", i)})
-		s.Error(db.FindOneQ(ProjectAliasCollection, q, &out))
-	}
-}
-
-func (s *ProjectAliasSuite) TestInsertBothTagsAndTask() {
-	tags := []string{"tag1", "tag2"}
-	for _, alias := range s.aliases {
-		aliasCopy := alias
-		aliasCopy.Tags = tags
-		s.Error(aliasCopy.Upsert())
-	}
-
-	var out ProjectAlias
-	for i, _ := range s.aliases {
-		q := db.Query(bson.M{projectIDKey: fmt.Sprintf("project-%d", i)})
-		s.Error(db.FindOneQ(ProjectAliasCollection, q, &out))
-	}
-}
-
 func (s *ProjectAliasSuite) TestRemove() {
 	for i, a := range s.aliases {
 		s.NoError(a.Upsert())
