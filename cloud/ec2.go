@@ -44,6 +44,9 @@ type EC2ProviderSettings struct {
 	// InstanceType is the EC2 instance type.
 	InstanceType string `mapstructure:"instance_type" json:"instance_type,omitempty" bson:"instance_type,omitempty"`
 
+	// IPv6 is set to true if the instance should have only an IPv6 address.
+	IPv6 bool `mapstructure:"ipv6" json:"ipv6,omitempty" bson:"ipv6,omitempty"`
+
 	// KeyName is the AWS SSH key name.
 	KeyName string `mapstructure:"key_name" json:"key_name,omitempty" bson:"key_name,omitempty"`
 
@@ -183,6 +186,10 @@ func (m *ec2Manager) spawnOnDemandHost(ctx context.Context, h *host.Host, ec2Set
 				SubnetId:                 &ec2Settings.SubnetId,
 			},
 		}
+		if ec2Settings.IPv6 {
+			input.NetworkInterfaces[0].SetIpv6AddressCount(1)
+			input.NetworkInterfaces[0].SetAssociatePublicIpAddress(false)
+		}
 	} else {
 		input.SecurityGroups = ec2Settings.getSecurityGroups()
 	}
@@ -301,6 +308,10 @@ func (m *ec2Manager) spawnSpotHost(ctx context.Context, h *host.Host, ec2Setting
 				Groups:                   ec2Settings.getSecurityGroups(),
 				SubnetId:                 &ec2Settings.SubnetId,
 			},
+		}
+		if ec2Settings.IPv6 {
+			spotRequest.LaunchSpecification.NetworkInterfaces[0].SetIpv6AddressCount(1)
+			spotRequest.LaunchSpecification.NetworkInterfaces[0].SetAssociatePublicIpAddress(false)
 		}
 	} else {
 		spotRequest.LaunchSpecification.SecurityGroups = ec2Settings.getSecurityGroups()
@@ -860,17 +871,16 @@ func (m *ec2Manager) makeNewKey(ctx context.Context, name string, h *host.Host) 
 	return *resp.KeyMaterial, nil
 }
 
-// GetDNSName returns the DNS name for the host.
-func (m *ec2Manager) GetDNSName(ctx context.Context, h *host.Host) (string, error) {
+func (m *ec2Manager) retrieveInstance(ctx context.Context, h *host.Host) (*ec2.Instance, error) {
 	var instance *ec2.Instance
 	var err error
 
 	r, err := getRegion(h)
 	if err != nil {
-		return "", errors.Wrap(err, "problem getting region from host")
+		return nil, errors.Wrap(err, "problem getting region from host")
 	}
 	if err = m.client.Create(m.credentials, r); err != nil {
-		return "", errors.Wrap(err, "error creating client")
+		return nil, errors.Wrap(err, "error creating client")
 	}
 	defer m.client.Close()
 
@@ -883,20 +893,20 @@ func (m *ec2Manager) GetDNSName(ctx context.Context, h *host.Host) (string, erro
 				"host_provider": h.Distro.Provider,
 				"distro":        h.Distro.Id,
 			}))
-			return "", errors.Wrap(err, "error getting instance info")
+			return nil, errors.Wrap(err, "error getting instance info")
 		}
 	} else {
 		var instanceId string
 		instanceId, err = m.client.GetSpotInstanceId(ctx, h)
 		if err != nil {
-			return "", errors.Wrapf(err, "failed to get spot request info for %s", h.Id)
+			return nil, errors.Wrapf(err, "failed to get spot request info for %s", h.Id)
 		}
 		if instanceId == "" {
-			return "", errors.WithStack(errors.New("spot instance does not yet have an instanceId"))
+			return nil, errors.WithStack(errors.New("spot instance does not yet have an instanceId"))
 		}
 		instance, err = m.client.GetInstanceInfo(ctx, instanceId)
 		if err != nil {
-			return "", errors.Wrap(err, "error getting instance info")
+			return nil, errors.Wrap(err, "error getting instance info")
 		}
 	}
 
@@ -907,13 +917,36 @@ func (m *ec2Manager) GetDNSName(ctx context.Context, h *host.Host) (string, erro
 	h.StartTime = *instance.LaunchTime
 	h.VolumeTotalSize, err = getVolumeSize(ctx, m.client, h)
 	if err != nil {
-		return "", errors.Wrapf(err, "error getting volume size for host %s", h.Id)
+		return nil, errors.Wrapf(err, "error getting volume size for host %s", h.Id)
 	}
 	if err := h.CacheHostData(); err != nil {
-		return "", errors.Wrap(err, "error updating host document in db")
+		return nil, errors.Wrap(err, "error updating host document in db")
+	}
+
+	return instance, nil
+}
+
+// GetDNSName returns the DNS name for the host.
+func (m *ec2Manager) GetDNSName(ctx context.Context, h *host.Host) (string, error) {
+	instance, err := m.retrieveInstance(ctx, h)
+	if err != nil {
+		return "", err
+	}
+
+	// set IPv6 address, if applicable
+	for _, networkInterface := range instance.NetworkInterfaces {
+		if len(networkInterface.Ipv6Addresses) > 0 {
+			err = h.SetIPv6Address(*networkInterface.Ipv6Addresses[0].Ipv6Address)
+			if err != nil {
+				return "", err
+			}
+			break
+		}
 	}
 	return *instance.PublicDnsName, nil
 }
+
+
 
 // GetSSHOptions returns the command-line args to pass to SSH.
 func (m *ec2Manager) GetSSHOptions(h *host.Host, keyName string) ([]string, error) {

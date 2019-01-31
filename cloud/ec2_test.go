@@ -615,9 +615,13 @@ func (s *EC2Suite) TestOnUp() {
 }
 
 func (s *EC2Suite) TestGetDNSName() {
-	dns, err := s.onDemandManager.GetDNSName(context.Background(), &host.Host{Id: "instance_id"})
+	h := host.Host{Id: "instance_id"}
+	h.Insert()
+	dns, err := s.onDemandManager.GetDNSName(context.Background(), &h)
 	s.Equal("public_dns_name", dns)
 	s.NoError(err)
+
+	s.Equal(h.IPv6, MockIPV6)
 }
 
 func (s *EC2Suite) TestGetSSHOptionsEmptyKey() {

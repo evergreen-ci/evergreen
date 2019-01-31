@@ -26,6 +26,7 @@ type Host struct {
 	Tag      string        `bson:"tag" json:"tag"`
 	Distro   distro.Distro `bson:"distro" json:"distro"`
 	Provider string        `bson:"host_type" json:"host_type"`
+	IPv6	 string		   `bson:"ipv6_address" json:"ipv6_address"`
 
 	// secondary (external) identifier for the host
 	ExternalIdentifier string `bson:"ext_identifier" json:"ext_identifier"`
@@ -73,7 +74,7 @@ type Host struct {
 
 	Status    string `bson:"status" json:"status"`
 	StartedBy string `bson:"started_by" json:"started_by"`
-	// UserHost is alwayas false, and will be removed
+	// UserHost is always false, and will be removed
 	UserHost      bool   `bson:"user_host" json:"user_host"`
 	AgentRevision string `bson:"agent_revision" json:"agent_revision"`
 	NeedsNewAgent bool   `bson:"needs_agent" json:"needs_agent"`
@@ -334,6 +335,27 @@ func (h *Host) SetDNSName(dnsName string) error {
 	if err == nil {
 		h.Host = dnsName
 		event.LogHostDNSNameSet(h.Id, dnsName)
+	}
+	if err == mgo.ErrNotFound {
+		return nil
+	}
+	return err
+}
+
+func (h *Host) SetIPv6Address(ipv6Address string) error {
+	err := UpdateOne(
+		bson.M{
+			IdKey:  h.Id,
+			IPv6Key: "",
+		},
+		bson.M{
+			"$set": bson.M{
+				IPv6Key: ipv6Address,
+			},
+		},
+	)
+	if err == nil {
+		h.IPv6 = ipv6Address
 	}
 	if err == mgo.ErrNotFound {
 		return nil

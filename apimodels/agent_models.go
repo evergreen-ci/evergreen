@@ -81,6 +81,7 @@ type CreateHost struct {
 	Distro          string      `mapstructure:"distro" json:"distro" plugin:"expand"`
 	EBSDevices      []EbsDevice `mapstructure:"ebs_block_device" json:"ebs_block_device" plugin:"expand"`
 	InstanceType    string      `mapstructure:"instance_type" json:"instance_type" plugin:"expand"`
+	IPv6            bool        `mapstructure:"ipv6" json:"ipv6"`
 	Region          string      `mapstructure:"region" json:"region" plugin:"expand"`
 	SecurityGroups  []string    `mapstructure:"security_group_ids" json:"security_group_ids" plugin:"expand"`
 	Spot            bool        `mapstructure:"spot" json:"spot"`
