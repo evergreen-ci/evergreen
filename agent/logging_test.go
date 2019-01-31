@@ -108,3 +108,44 @@ func TestCommandLoggerOverride(t *testing.T) {
 	assert.NoError(err)
 	assert.Contains(string(bytes), "[p=info]: hello world")
 }
+
+func TestResetLogging(t *testing.T) {
+	assert := assert.New(t)
+	require := require.New(t)
+	tmpDirName, err := ioutil.TempDir("", "reset-logging-")
+	require.NoError(err)
+	defer os.RemoveAll(tmpDirName)
+	agt := &Agent{
+		opts: Options{
+			HostID:           "host",
+			HostSecret:       "secret",
+			StatusPort:       2286,
+			LogPrefix:        evergreen.LocalLoggingOverride,
+			WorkingDirectory: tmpDirName,
+		},
+		comm: client.NewMock("url"),
+	}
+	tc := &taskContext{
+		task: client.TaskData{
+			ID:     "logging",
+			Secret: "task_secret",
+		},
+	}
+
+	ctx := context.Background()
+	assert.NoError(agt.fetchProjectConfig(ctx, tc))
+	assert.EqualValues(model.EvergreenLogSender, tc.project.Loggers.Agent[0].Type)
+	assert.EqualValues(model.FileLogSender, tc.project.Loggers.System[0].Type)
+	assert.EqualValues(model.FileLogSender, tc.project.Loggers.Task[0].Type)
+
+	assert.NoError(agt.resetLogging(ctx, tc))
+	tc.logger.Execution().Info("foo")
+	assert.NoError(tc.logger.Close())
+	msgs := agt.comm.(*client.Mock).GetMockMessages()
+	assert.Equal("foo", msgs[tc.task.ID][0].Message)
+
+	config, err := agt.makeTaskConfig(ctx, tc)
+	assert.NoError(err)
+	assert.NotNil(config.Project)
+	assert.NotNil(config.Version)
+}

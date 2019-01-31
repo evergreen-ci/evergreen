@@ -227,26 +227,15 @@ func (tc *taskContext) hadTimedOut() bool {
 
 // makeTaskConfig fetches task configuration data required to run the task from the API server.
 func (a *Agent) makeTaskConfig(ctx context.Context, tc *taskContext) (*model.TaskConfig, error) {
+	if tc.project == nil && tc.version == nil {
+		err := a.fetchProjectConfig(ctx, tc)
+		if err != nil {
+			return nil, err
+		}
+	}
+
 	tc.logger.Execution().Info("Fetching distro configuration.")
 	confDistro, err := a.comm.GetDistro(ctx, tc.task)
-	if err != nil {
-		return nil, err
-	}
-
-	tc.logger.Execution().Info("Fetching version.")
-	confVersion, err := a.comm.GetVersion(ctx, tc.task)
-	if err != nil {
-		return nil, err
-	}
-
-	confProject := &model.Project{}
-	err = model.LoadProjectInto([]byte(confVersion.Config), confVersion.Identifier, confProject)
-	if err != nil {
-		return nil, errors.Wrapf(err, "reading project config")
-	}
-
-	tc.logger.Execution().Info("Fetching task configuration.")
-	confTask, err := a.comm.GetTask(ctx, tc.task)
 	if err != nil {
 		return nil, err
 	}
@@ -267,7 +256,7 @@ func (a *Agent) makeTaskConfig(ctx context.Context, tc *taskContext) (*model.Tas
 	}
 
 	var confPatch *patch.Patch
-	if evergreen.IsGitHubPatchRequester(confVersion.Requester) {
+	if evergreen.IsGitHubPatchRequester(tc.version.Requester) {
 		tc.logger.Execution().Info("Fetching patch document for Github PR request.")
 		confPatch, err = a.comm.GetTaskPatch(ctx, tc.task)
 		if err != nil {
@@ -278,7 +267,7 @@ func (a *Agent) makeTaskConfig(ctx context.Context, tc *taskContext) (*model.Tas
 	}
 
 	tc.logger.Execution().Info("Constructing TaskConfig.")
-	return model.NewTaskConfig(confDistro, confVersion, confProject, confTask, confRef, confPatch, exp)
+	return model.NewTaskConfig(confDistro, tc.version, tc.project, tc.taskModel, confRef, confPatch, exp)
 }
 
 func (tc *taskContext) getExecTimeout() time.Duration {
