@@ -927,10 +927,14 @@ Admin Settings
 										<label>Secret</label>
 										<input type="text" ng-model="Settings.providers.aws.aws_secret">
 									</md-input-container>
+									<md-input-container class="control" style="width:45%;">
+										<label>S3 Bucket</label>
+										<input type="text" ng-model="Settings.providers.aws.bucket">
+									</md-input-container>
 								</md-card-content>
 							</md-card>
 
-							<md-card flex=50 id="docker">
+							<md-card flex=50 id="docker" style="height:200px">
 								<md-card-title>
 									<md-card-title-text>
 										<span>Docker</span>

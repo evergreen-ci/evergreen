@@ -45,6 +45,7 @@ func (c *CloudProviders) ValidateAndDefault() error { return nil }
 type AWSConfig struct {
 	Secret string `bson:"aws_secret" json:"aws_secret" yaml:"aws_secret"`
 	Id     string `bson:"aws_id" json:"aws_id" yaml:"aws_id"`
+	Bucket string `bson:"bucket" json:"bucket" yaml:"bucket"`
 }
 
 // DockerConfig stores auth info for Docker.

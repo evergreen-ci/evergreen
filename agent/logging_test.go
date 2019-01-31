@@ -11,6 +11,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/rest/client"
+	"github.com/evergreen-ci/pail"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -35,7 +36,7 @@ func TestGetSenderLocal(t *testing.T) {
 	assert.NoError(err)
 }
 
-func TestCommandLoggerOverride(t *testing.T) {
+func TestCommandFileLogging(t *testing.T) {
 	assert := assert.New(t)
 	require := require.New(t)
 
@@ -57,6 +58,7 @@ func TestCommandLoggerOverride(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
+	// run a task with a command logger specified as a file
 	taskID := "logging"
 	taskSecret := "mock_task_secret"
 	tc := &taskContext{
@@ -68,6 +70,8 @@ func TestCommandLoggerOverride(t *testing.T) {
 		runGroupSetup: true,
 		taskConfig: &model.TaskConfig{
 			Task: &task.Task{
+				Id:          "t1",
+				Execution:   0,
 				DisplayName: "task1",
 			},
 			BuildVariant: &model.BuildVariant{Name: "bv"},
@@ -102,9 +106,24 @@ func TestCommandLoggerOverride(t *testing.T) {
 	err = agt.runTaskCommands(ctx, tc)
 	assert.NoError(err)
 
+	// verify log contents
 	f, err := os.Open(fmt.Sprintf("%s/%s/task.log", tmpDirName, taskLogDirectory))
 	assert.NoError(err)
 	bytes, err := ioutil.ReadAll(f)
+	assert.NoError(err)
+	assert.Contains(string(bytes), "[p=info]: hello world")
+
+	// mock upload the logs
+	bucket, err := pail.NewLocalBucket(pail.LocalOptions{
+		Path: tmpDirName,
+	})
+	assert.NoError(err)
+	assert.NoError(agt.uploadLogFiles(ctx, tc, bucket, "mock"))
+
+	// verify uploaded log contents
+	f, err = os.Open(fmt.Sprintf("%s/logs/%s/%d/task.log", tmpDirName, tc.taskConfig.Task.Id, tc.taskConfig.Task.Execution))
+	assert.NoError(err)
+	bytes, err = ioutil.ReadAll(f)
 	assert.NoError(err)
 	assert.Contains(string(bytes), "[p=info]: hello world")
 }

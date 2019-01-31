@@ -26,6 +26,9 @@ func Agent() cli.Command {
 		statusPortFlagName       = "status_port"
 		cleanupFlagName          = "cleanup"
 		logkeeperFlagName        = "logkeeper_url"
+		s3KeyFlag                = "s3_key"
+		s3SecretFlag             = "s3_secret"
+		s3BucketFlag             = "s3_bucket"
 	)
 
 	return cli.Command{
@@ -57,6 +60,18 @@ func Agent() cli.Command {
 				Name:  logkeeperFlagName,
 				Usage: "URL of a logkeeper service to be used by tasks",
 			},
+			cli.StringFlag{
+				Name:  s3KeyFlag,
+				Usage: "S3 key to use for log file uploads",
+			},
+			cli.StringFlag{
+				Name:  s3SecretFlag,
+				Usage: "S3 secret to use for log file uploads",
+			},
+			cli.StringFlag{
+				Name:  s3BucketFlag,
+				Usage: "S3 bucket to use for log file uploads",
+			},
 			cli.IntFlag{
 				Name:  statusPortFlagName,
 				Value: 2285,
@@ -86,6 +101,11 @@ func Agent() cli.Command {
 				WorkingDirectory: c.String(workingDirectoryFlagName),
 				Cleanup:          c.Bool(cleanupFlagName),
 				LogkeeperURL:     c.String(logkeeperFlagName),
+				S3Opts: agent.S3Config{
+					Key:    c.String(s3KeyFlag),
+					Secret: c.String(s3SecretFlag),
+					Bucket: c.String(s3BucketFlag),
+				},
 			}
 
 			if err := os.MkdirAll(opts.WorkingDirectory, 0777); err != nil {

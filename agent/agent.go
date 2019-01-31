@@ -3,6 +3,7 @@ package agent
 import (
 	"context"
 	"fmt"
+	"os"
 	"sync"
 	"time"
 
@@ -37,6 +38,13 @@ type Options struct {
 	HeartbeatInterval  time.Duration
 	AgentSleepInterval time.Duration
 	Cleanup            bool
+	S3Opts             S3Config
+}
+
+type S3Config struct {
+	Key    string
+	Secret string
+	Bucket string
 }
 
 type taskContext struct {
@@ -243,6 +251,7 @@ func (a *Agent) fetchProjectConfig(ctx context.Context, tc *taskContext) error {
 }
 
 func (a *Agent) resetLogging(ctx context.Context, tc *taskContext) error {
+	grip.Error(os.RemoveAll(fmt.Sprintf("%s/%s", a.opts.WorkingDirectory, taskLogDirectory)))
 	if tc.project != nil && tc.project.Loggers != nil {
 		tc.logger = a.makeLoggerProducer(ctx, tc.project.Loggers, tc.task, tc.taskModel)
 	} else {
@@ -349,6 +358,14 @@ func (a *Agent) runTaskTimeoutCommands(ctx context.Context, tc *taskContext) {
 
 // finishTask sends the returned EndTaskResponse and error
 func (a *Agent) finishTask(ctx context.Context, tc *taskContext, status string) (*apimodels.EndTaskResponse, error) {
+	err := a.uploadToS3(ctx, tc, s3UploadOpts{
+		awsKey:    a.opts.S3Opts.Key,
+		awsSecret: a.opts.S3Opts.Secret,
+		bucket:    a.opts.S3Opts.Bucket,
+	})
+	if err != nil {
+		tc.logger.Execution().Error(errors.Wrap(err, "error uploading log files"))
+	}
 	detail := a.endTaskResponse(tc, status)
 	switch detail.Status {
 	case evergreen.TaskSucceeded:
@@ -366,7 +383,7 @@ func (a *Agent) finishTask(ctx context.Context, tc *taskContext, status string) 
 	}
 
 	tc.logger.Execution().Infof("Sending final status as: %v", detail.Status)
-	if err := tc.logger.Close(); err != nil {
+	if err = tc.logger.Close(); err != nil {
 		grip.Errorf("Error closing logger: %v", err)
 	}
 	grip.Infof("Sending final status as: %v", detail.Status)
