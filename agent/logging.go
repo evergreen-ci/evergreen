@@ -136,7 +136,7 @@ type s3UploadOpts struct {
 func (a *Agent) uploadToS3(ctx context.Context, tc *taskContext, opts s3UploadOpts) error {
 	s3Opts := pail.S3Options{
 		Credentials: pail.CreateAWSCredentials(opts.awsKey, opts.awsSecret, ""),
-		Region:      endpoints.UsEast1RegionID, // TODO: configuration?
+		Region:      endpoints.UsEast1RegionID,
 		Name:        opts.bucket,
 		Permission:  "public-read",
 		ContentType: "text/plain",
