@@ -36,13 +36,14 @@ func TestCheckHostWrapper(t *testing.T) {
 
 	conf := testutil.TestConfig()
 	queue := evergreen.GetEnvironment().LocalQueue()
+	singleQueue := evergreen.GetEnvironment().SingleWorkerQueue()
 
 	Convey("With a simple checkTask and checkHost-wrapped route", t, func() {
 		if err := db.ClearCollections(host.Collection, task.Collection); err != nil {
 			t.Fatalf("clearing db: %v", err)
 		}
 
-		as, err := NewAPIServer(conf, queue)
+		as, err := NewAPIServer(conf, queue, singleQueue)
 		if err != nil {
 			t.Fatalf("creating test API server: %v", err)
 		}
@@ -167,7 +168,7 @@ func TestCheckHostWrapper(t *testing.T) {
 			t.Fatalf("clearing db: %v", err)
 		}
 
-		as, err := NewAPIServer(conf, queue)
+		as, err := NewAPIServer(conf, queue, singleQueue)
 		if err != nil {
 			t.Fatalf("creating test API server: %v", err)
 		}
