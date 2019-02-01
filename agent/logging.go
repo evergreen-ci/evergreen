@@ -126,12 +126,6 @@ func (a *Agent) makeLoggerProducer(ctx context.Context, c *model.LoggerConfig, t
 	return a.comm.GetLoggerProducer(ctx, td, &config)
 }
 
-type s3UploadOpts struct {
-	bucket    string
-	awsKey    string
-	awsSecret string
-}
-
 func (a *Agent) uploadToS3(ctx context.Context, tc *taskContext) error {
 	bucket, err := pail.NewS3Bucket(a.opts.S3Opts)
 	if err != nil {
