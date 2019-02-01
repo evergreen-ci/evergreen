@@ -1,6 +1,6 @@
 <div class="row"><div class="col-lg-12">
 <div class="buildbaron-panel" ng-controller="TaskBuildBaronCtrl"
-    ng-show="conf.enabled && task.status == 'failed' && have_user">
+    ng-show="conf.enabled && (task.status.includes('failed') || task.status.includes('timed-out')) && have_user">
     <h3>
         <img class="gravatar-small" src="/static/plugins/buildbaron/images/baron.png">
         </img>

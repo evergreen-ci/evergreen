@@ -313,18 +313,11 @@ func (as *APIServer) AppendTaskLog(w http.ResponseWriter, r *http.Request) {
 	}
 	t := MustHaveTask(r)
 	taskLog := &model.TaskLog{}
-	length, err := util.ReadJSONIntoWithLength(util.NewRequestReader(r), taskLog)
+	_, err := util.ReadJSONIntoWithLength(util.NewRequestReader(r), taskLog)
 	if err != nil {
 		http.Error(w, "unable to read logs from request", http.StatusBadRequest)
 		return
 	}
-
-	grip.Info(message.Fields{
-		"message": "appending task log",
-		"size":    length,
-		"task_id": t.Id,
-		"project": t.Project,
-	})
 
 	taskLog.TaskId = t.Id
 	taskLog.Execution = t.Execution

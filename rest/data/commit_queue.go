@@ -7,13 +7,14 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/commitqueue"
+	restModel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/pkg/errors"
 )
 
-type DBCommitQConnector struct{}
+type DBCommitQueueConnector struct{}
 
-func (pc *DBCommitQConnector) GithubPREnqueueItem(owner, repo string, PRNum int) error {
+func (pc *DBCommitQueueConnector) GithubPREnqueueItem(owner, repo string, PRNum int) error {
 	// Retrieve base branch for the PR from the Github API
 	conf, err := evergreen.GetConfig()
 	if err != nil {
@@ -34,7 +35,7 @@ func (pc *DBCommitQConnector) GithubPREnqueueItem(owner, repo string, PRNum int)
 	return errors.Wrap(err, "enqueue failed")
 }
 
-func (pc *DBCommitQConnector) EnqueueItem(owner, repo, baseBranch, item string) error {
+func (pc *DBCommitQueueConnector) EnqueueItem(owner, repo, baseBranch, item string) error {
 	proj, err := model.FindOneProjectRefWithCommitQByOwnerRepoAndBranch(owner, repo, baseBranch)
 	if err != nil {
 		return errors.Wrapf(err, "can't query for matching project with commit queue enabled. owner: %s, repo: %s, branch: %s", owner, repo, baseBranch)
@@ -59,21 +60,46 @@ func (pc *DBCommitQConnector) EnqueueItem(owner, repo, baseBranch, item string) 
 	return nil
 }
 
-type MockCommitQConnector struct {
-	Queue map[string][]string
+func (pc *DBCommitQueueConnector) FindCommitQueueByID(id string) (*restModel.APICommitQueue, error) {
+	cqService, err := commitqueue.FindOneId(id)
+	if err != nil {
+		return nil, errors.Wrap(err, "can't get commit queue from database")
+	}
+	if cqService == nil {
+		return nil, nil
+	}
+
+	apiCommitQueue := &restModel.APICommitQueue{}
+	if err = apiCommitQueue.BuildFromService(*cqService); err != nil {
+		return nil, errors.Wrap(err, "can't read commit queue into API model")
+	}
+
+	return apiCommitQueue, nil
 }
 
-func (pc *MockCommitQConnector) GithubPREnqueueItem(owner, repo string, PRNum int) error {
+type MockCommitQueueConnector struct {
+	Queue map[string][]restModel.APIString
+}
+
+func (pc *MockCommitQueueConnector) GithubPREnqueueItem(owner, repo string, PRNum int) error {
 	return pc.EnqueueItem(owner, repo, "master", strconv.Itoa(PRNum))
 }
 
-func (pc *MockCommitQConnector) EnqueueItem(owner, repo, baseBranch, item string) error {
+func (pc *MockCommitQueueConnector) EnqueueItem(owner, repo, baseBranch, item string) error {
 	if pc.Queue == nil {
-		pc.Queue = make(map[string][]string)
+		pc.Queue = make(map[string][]restModel.APIString)
 	}
 
 	queueID := owner + "." + repo + "." + baseBranch
-	pc.Queue[queueID] = append(pc.Queue[queueID], item)
+	pc.Queue[queueID] = append(pc.Queue[queueID], restModel.ToAPIString(item))
 
 	return nil
+}
+
+func (pc *MockCommitQueueConnector) FindCommitQueueByID(id string) (*restModel.APICommitQueue, error) {
+	if _, ok := pc.Queue[id]; !ok {
+		return nil, nil
+	}
+
+	return &restModel.APICommitQueue{ProjectID: restModel.ToAPIString(id), Queue: pc.Queue[id]}, nil
 }

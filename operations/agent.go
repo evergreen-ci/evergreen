@@ -25,6 +25,7 @@ func Agent() cli.Command {
 		logPrefixFlagName        = "log_prefix"
 		statusPortFlagName       = "status_port"
 		cleanupFlagName          = "cleanup"
+		logkeeperFlagName        = "logkeeper_url"
 	)
 
 	return cli.Command{
@@ -51,6 +52,10 @@ func Agent() cli.Command {
 				Name:  logPrefixFlagName,
 				Value: "evg.agent",
 				Usage: "prefix for the agent's log filename",
+			},
+			cli.StringFlag{
+				Name:  logkeeperFlagName,
+				Usage: "URL of a logkeeper service to be used by tasks",
 			},
 			cli.IntFlag{
 				Name:  statusPortFlagName,
@@ -80,6 +85,7 @@ func Agent() cli.Command {
 				LogPrefix:        c.String(logPrefixFlagName),
 				WorkingDirectory: c.String(workingDirectoryFlagName),
 				Cleanup:          c.Bool(cleanupFlagName),
+				LogkeeperURL:     c.String(logkeeperFlagName),
 			}
 
 			if err := os.MkdirAll(opts.WorkingDirectory, 0777); err != nil {

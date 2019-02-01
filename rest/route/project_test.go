@@ -230,6 +230,50 @@ func (s *ProjectPutSuite) TestRunNewConflictingName() {
 
 ////////////////////////////////////////////////////////////////////////
 //
+// Tests for GET /rest/v2/projects/{project_id}
+
+type ProjectGetByIDSuite struct {
+	sc *data.MockConnector
+	// data data.MockProjectConnector
+	rm gimlet.RouteHandler
+
+	suite.Suite
+}
+
+func TestProjectGetByIDSuite(t *testing.T) {
+	db.SetGlobalSessionProvider(testutil.TestConfig().SessionFactory())
+	suite.Run(t, new(ProjectGetByIDSuite))
+}
+
+func (s *ProjectGetByIDSuite) SetupTest() {
+	s.sc = getMockProjectsConnector()
+	s.rm = makeGetProjectByID(s.sc).(*projectIDGetHandler)
+}
+
+func (s *ProjectGetByIDSuite) TestRunNonExistingId() {
+	ctx := context.Background()
+	h := s.rm.(*projectIDGetHandler)
+	h.projectID = "non-existent"
+
+	resp := s.rm.Run(ctx)
+	s.NotNil(resp.Data())
+	s.Equal(resp.Status(), http.StatusNotFound)
+}
+
+func (s *ProjectGetByIDSuite) TestRunExistingId() {
+	ctx := context.Background()
+	h := s.rm.(*projectIDGetHandler)
+	h.projectID = "dimoxinil"
+
+	resp := s.rm.Run(ctx)
+	s.NotNil(resp.Data())
+	s.Equal(resp.Status(), http.StatusOK)
+
+	s.Equal(model.ToAPIString("dimoxinil"), resp.Data().(*model.APIProject).Identifier)
+}
+
+////////////////////////////////////////////////////////////////////////
+//
 // Tests for GET /rest/v2/projects
 
 type ProjectGetSuite struct {

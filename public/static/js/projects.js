@@ -383,17 +383,11 @@ mciModule.controller('ProjectCtrl', function($scope, $window, $http, $location, 
       $scope.addProjectVar();
     }
     if ($scope.github_alias) {
-      $scope.commitGithubAlias();
-      if($scope.github_alias) {
-        return;
-      }
+      $scope.addGithubAlias();
     }
 
     if ($scope.commit_queue_alias) {
-      $scope.commitCommitQueueAlias();
-      if($scope.commit_queue_alias) {
-        return;
-      }
+      $scope.addCommitQueueAlias();
     }
 
     if ($scope.patch_alias) {
@@ -439,40 +433,39 @@ mciModule.controller('ProjectCtrl', function($scope, $window, $http, $location, 
     }
   };
 
-  $scope.commitGithubAlias = function() {
-    if ($scope.github_alias.variant && $scope.github_alias.task) {
-      item = Object.assign({}, $scope.github_alias)
-      item["alias"] = "__github"
-      $scope.github_aliases = $scope.github_aliases.concat([item]);
-      delete $scope.github_alias
-      $scope.invalidGitHubPatchDefinitionMessage = "";
-    }else if(!$scope.github_alias.variant) {
-      $scope.invalidGitHubPatchDefinitionMessage = "Missing variant regex";
-    }else if(!$scope.github_alias.task) {
-      $scope.invalidGitHubPatchDefinitionMessage = "Missing task regex";
+  $scope.addGithubAlias = function() {
+    if (!$scope.validPatchDefinition($scope.github_alias)) {
+      $scope.invalidPatchDefinitionMessage = "A patch alias must have variant regex, and exactly one of task regex or tag"
+      return
     }
+    item = Object.assign({}, $scope.github_alias)
+    item["alias"] = "__github"
+    $scope.github_aliases = $scope.github_aliases.concat([item]);
+    delete $scope.github_alias
+    $scope.invalidGitHubPatchDefinitionMessage = "";
   };
 
-  $scope.commitCommitQueueAlias = function() {
-    if ($scope.commit_queue_alias.variant && $scope.commit_queue_alias.task) {
-      item = Object.assign({}, $scope.commit_queue_alias);
-      item["alias"] = "__commit_queue";
-      $scope.commit_queue_aliases = $scope.commit_queue_aliases.concat([item]);
-      delete $scope.commit_queue_alias;
-      $scope.invalidCommitQueuePatchDefinitionMessage = "";
-    }else if(!$scope.commit_queue_alias.variant) {
-      $scope.invalidCommitQueuePatchDefinitionMessage = "Missing variant regex";
-    }else if(!$scope.commit_queue_alias.task) {
-      $scope.invalidCommitQueuePatchDefinitionMessage = "Missing task regex";
+  $scope.addCommitQueueAlias = function() {
+    if (!$scope.validPatchDefinition($scope.commit_queue_alias)) {
+      $scope.invalidCommitQueuePatchDefinitionMessage = "A patch alias must have variant regex, and exactly one of task regex or tag"
+      return
     }
+    item = Object.assign({}, $scope.commit_queue_alias);
+    item["alias"] = "__commit_queue";
+    $scope.commit_queue_aliases = $scope.commit_queue_aliases.concat([item]);
+    delete $scope.commit_queue_alias;
+    $scope.invalidCommitQueuePatchDefinitionMessage = "";
+
   };
 
   $scope.addPatchAlias = function() {
-    if ($scope.patch_alias.alias && $scope.patch_alias.variant && ($scope.patch_alias.task || $scope.patch_alias.tags_temp)) {
-      item = Object.assign({}, $scope.patch_alias)
-      $scope.patch_aliases = $scope.patch_aliases.concat([item]);
-      delete $scope.patch_alias
+    if (!$scope.validPatchAlias($scope.patch_alias)){
+      $scope.invalidPatchAliasMessage = "A patch alias must have an alias name, variant regex, and exactly one of task regex or tag"
+      return
     }
+    item = Object.assign({}, $scope.patch_alias)
+    $scope.patch_aliases = $scope.patch_aliases.concat([item]);
+    delete $scope.patch_alias
   };
 
   $scope.removeProjectVar = function(name) {
@@ -595,21 +588,15 @@ mciModule.controller('ProjectCtrl', function($scope, $window, $http, $location, 
     return true;
   }
 
-  $scope.validPatchDefinition = function(variantRegex, taskRegex){
-    if (!variantRegex || !taskRegex){
-      return false;
-    }
+  $scope.validPatchDefinition = function(alias){
+    // variant AND (task XOR tags)
+    return alias && alias.variant && (Boolean(alias.task) != !_.isEmpty(alias.tags))
+  }
 
-    return true;
-  };
-
-  $scope.validPatchAlias = function(alias, variantRegex, taskRegex, taskTags){
-    if (!alias || !variantRegex || (!taskRegex && !taskTags)){
-      return false;
-    }
-
-    return true;
-  };
+  $scope.validPatchAlias = function(alias){
+    // Same as GitHub alias, but with alias required
+    return $scope.validPatchDefinition(alias) && alias.alias
+  }
 
   $scope.showTriggerModal = function(index) {
     if (index != undefined) {

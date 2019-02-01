@@ -2025,26 +2025,28 @@ func TestDuplicateTaskInBV(t *testing.T) {
 func TestLoggerConfig(t *testing.T) {
 	assert := assert.New(t)
 	yml := `
-repo: asdf
 loggers:
-- type: splunk
-  splunk_token: idk
-- type: somethingElse
+  agent:
+  - type: splunk
+    splunk_token: idk
+  task:
+  - type: somethingElse
 tasks:
 - name: task_1
   commands:
   - command: myCommand
     display_name: foo
     loggers:
-    - type: commandLogger
+      system:
+      - type: commandLogger
 `
 	project := &model.Project{}
 	err := model.LoadProjectInto([]byte(yml), "", project)
 	assert.NoError(err)
 	errs := checkLoggerConfig(project)
-	assert.Contains(errs.String(), "error in project-level logger config: Splunk logger requires a server URL")
-	assert.Contains(errs.String(), "error in project-level logger config: somethingElse is not a valid log sender")
-	assert.Contains(errs.String(), "error in logger config for command foo in task task_1: commandLogger is not a valid log sender")
+	assert.Contains(errs.String(), "error in project-level logger config: invalid agent logger config: Splunk logger requires a server URL")
+	assert.Contains(errs.String(), "invalid task logger config: somethingElse is not a valid log sender")
+	assert.Contains(errs.String(), "error in logger config for command foo in task task_1: invalid system logger config: commandLogger is not a valid log sender")
 
 	// no loggers specified should not error
 	yml = `

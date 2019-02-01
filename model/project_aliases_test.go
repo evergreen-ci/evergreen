@@ -38,7 +38,7 @@ func (s *ProjectAliasSuite) SetupTest() {
 	}
 }
 
-func (s *ProjectAliasSuite) TestInsert() {
+func (s *ProjectAliasSuite) TestInsertTaskAndNoTags() {
 	for _, a := range s.aliases {
 		s.NoError(a.Upsert())
 	}
@@ -51,6 +51,27 @@ func (s *ProjectAliasSuite) TestInsert() {
 		s.Equal(a.Alias, out.Alias)
 		s.Equal(a.Variant, out.Variant)
 		s.Equal(a.Task, out.Task)
+	}
+}
+
+func (s *ProjectAliasSuite) TestInsertTagsAndNoTask() {
+	tags := []string{"tag1", "tag2"}
+	for _, alias := range s.aliases {
+		aliasCopy := alias
+		aliasCopy.Task = ""
+		aliasCopy.Tags = tags
+		s.NoError(aliasCopy.Upsert())
+	}
+
+	var out ProjectAlias
+	for i, a := range s.aliases {
+		q := db.Query(bson.M{projectIDKey: fmt.Sprintf("project-%d", i)})
+		s.NoError(db.FindOneQ(ProjectAliasCollection, q, &out))
+		s.Equal(a.ProjectID, out.ProjectID)
+		s.Equal(a.Alias, out.Alias)
+		s.Equal(a.Variant, out.Variant)
+		s.Equal("", out.Task)
+		s.Equal(tags, out.Tags)
 	}
 }
 
