@@ -233,8 +233,8 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 		if strings.TrimSpace(pd.Variant) == "" {
 			errs = append(errs, fmt.Sprintf("variant regex #%d can't be empty string", i+1))
 		}
-		if strings.TrimSpace(pd.Task) == "" && len(pd.Tags) == 0 {
-			errs = append(errs, fmt.Sprintf("must specify either task regex or tags on line #%d ", i+1))
+		if (strings.TrimSpace(pd.Task) == "") == (len(pd.Tags) == 0) {
+			errs = append(errs, fmt.Sprintf("must specify exactly one of task regex or tags on line #%d ", i+1))
 		}
 
 		if _, err = regexp.Compile(pd.Variant); err != nil {

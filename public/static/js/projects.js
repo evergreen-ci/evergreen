@@ -377,14 +377,6 @@ mciModule.controller('ProjectCtrl', function($scope, $window, $http, $location, 
     }
     if ($scope.github_alias) {
       $scope.addGithubAlias();
-      if($scope.github_alias) {
-        if($scope.github_alias.variant) {
-          $scope.invalidPatchDefinitionMessage = "Missing task regex";
-        }else if($scope.github_alias_task) {
-          $scope.invalidPatchDefinitionMessage = "Missing variant regex";
-        }
-        return;
-      }
     }
 
     if ($scope.patch_alias) {
@@ -431,21 +423,25 @@ mciModule.controller('ProjectCtrl', function($scope, $window, $http, $location, 
   };
 
   $scope.addGithubAlias = function() {
-    if ($scope.github_alias.variant && $scope.github_alias.task) {
-      item = Object.assign({}, $scope.github_alias)
-      item["alias"] = "__github"
-      $scope.github_aliases = $scope.github_aliases.concat([item]);
-      delete $scope.github_alias
-      $scope.invalidPatchDefinitionMessage = "";
+    if (!$scope.validPatchDefinition($scope.github_alias)) {
+      $scope.invalidPatchDefinitionMessage = "A patch alias must have variant regex, and exactly one of task regex or tag"
+      return
     }
+    item = Object.assign({}, $scope.github_alias)
+    item["alias"] = "__github"
+    $scope.github_aliases = $scope.github_aliases.concat([item]);
+    delete $scope.github_alias
+    $scope.invalidPatchDefinitionMessage = "";
   };
 
   $scope.addPatchAlias = function() {
-    if ($scope.patch_alias.alias && $scope.patch_alias.variant && ($scope.patch_alias.task || $scope.patch_alias.tags_temp)) {
-      item = Object.assign({}, $scope.patch_alias)
-      $scope.patch_aliases = $scope.patch_aliases.concat([item]);
-      delete $scope.patch_alias
+    if (!$scope.validPatchAlias($scope.patch_alias)){
+      $scope.invalidPatchAliasMessage = "A patch alias must have an alias name, variant regex, and exactly one of task regex or tag"
+      return
     }
+    item = Object.assign({}, $scope.patch_alias)
+    $scope.patch_aliases = $scope.patch_aliases.concat([item]);
+    delete $scope.patch_alias
   };
 
   $scope.removeProjectVar = function(name) {
@@ -560,21 +556,15 @@ mciModule.controller('ProjectCtrl', function($scope, $window, $http, $location, 
     return true;
   }
 
-  $scope.validPatchDefinition = function(variantRegex, taskRegex){
-    if (!variantRegex || !taskRegex){
-      return false;
-    }
+  $scope.validPatchDefinition = function(alias){
+    // variant AND (task XOR tags_
+    return alias && alias.variant && (Boolean(alias.task) != !_.isEmpty(alias.tags))
+  }
 
-    return true;
-  };
-
-  $scope.validPatchAlias = function(alias, variantRegex, taskRegex, taskTags){
-    if (!alias || !variantRegex || (!taskRegex && !taskTags)){
-      return false;
-    }
-
-    return true;
-  };
+  $scope.validPatchAlias = function(alias){
+    // Same as GitHub alias, but with alias required
+    return $scope.validPatchDefinition(alias) && alias.alias
+  }
 
   $scope.showTriggerModal = function(index) {
     if (index != undefined) {
