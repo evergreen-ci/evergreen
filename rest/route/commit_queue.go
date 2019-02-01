@@ -68,15 +68,17 @@ func (cq commitQueueDeleteItemHandler) Factory() gimlet.RouteHandler {
 }
 
 func (cq commitQueueDeleteItemHandler) Parse(ctx context.Context, r *http.Request) error {
-	cq.project = gimlet.GetVars(r)["project_id"]
-	cq.item = gimlet.GetVars(r)["item"]
+	vars := gimlet.GetVars(r)
+	cq.project = vars["project_id"]
+	cq.item = vars["item"]
+
 	return nil
 }
 
 func (cq commitQueueDeleteItemHandler) Run(ctx context.Context) gimlet.Responder {
 	found, err := cq.sc.CommitQueueRemoveItem(cq.project, cq.item)
 	if err != nil {
-		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "can't delete item"))
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "can't delete item"))
 	}
 	if !found {
 		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{

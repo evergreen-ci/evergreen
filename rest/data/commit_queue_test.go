@@ -1,6 +1,7 @@
 package data
 
 import (
+	"context"
 	"testing"
 
 	"github.com/evergreen-ci/evergreen/db"
@@ -75,14 +76,16 @@ func (s *CommitQueueSuite) TestCommitQueueRemoveItem() {
 	s.Equal(restModel.ToAPIString("3"), cq.Queue[1])
 }
 
-func (s *CommitQueueSuite) TestMockGithubPREnqueue() {
+func (s *CommitQueueSuite) TestMockGetGitHubPR() {
 	s.ctx = &MockConnector{}
-	s.NoError(s.ctx.GithubPREnqueueItem("evergreen-ci", "evergreen", 1234))
-	conn := s.ctx.(*MockConnector)
-	q, ok := conn.MockCommitQueueConnector.Queue["evergreen-ci.evergreen.master"]
-	if s.True(ok) && s.Len(q, 1) {
-		s.Equal(restModel.ToAPIString("1234"), q[0])
-	}
+	pr, err := s.ctx.GetGitHubPR(context.Background(), "evergreen-ci", "evergreen", 1234)
+	s.NoError(err)
+
+	s.Require().NotNil(pr.User.ID)
+	s.Equal(1234, *pr.User.ID)
+
+	s.Require().NotNil(pr.Base.Label)
+	s.Equal("master", *pr.Base.Label)
 }
 
 func (s *CommitQueueSuite) TestMockEnqueue() {

@@ -2,37 +2,37 @@ package data
 
 import (
 	"context"
-	"strconv"
+	"time"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/commitqueue"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/thirdparty"
+	"github.com/google/go-github/github"
 	"github.com/pkg/errors"
 )
 
 type DBCommitQueueConnector struct{}
 
-func (pc *DBCommitQueueConnector) GithubPREnqueueItem(owner, repo string, PRNum int) error {
-	// Retrieve base branch for the PR from the Github API
+func (pc *DBCommitQueueConnector) GetGitHubPR(ctx context.Context, owner, repo string, PRNum int) (*github.PullRequest, error) {
 	conf, err := evergreen.GetConfig()
 	if err != nil {
-		return errors.Wrap(err, "can't get evergreen configuration")
+		return nil, errors.Wrap(err, "can't get evergreen configuration")
 	}
 	ghToken, err := conf.GetGithubOauthToken()
 	if err != nil {
-		return errors.Wrap(err, "can't get Github OAuth token from configuration")
-	}
-	ctx := context.Background()
-	pr, err := thirdparty.GetGithubPullRequest(ctx, ghToken, owner, repo, PRNum)
-	if err != nil {
-		return errors.Wrap(err, "call to Github API failed")
+		return nil, errors.Wrap(err, "can't get Github OAuth token from configuration")
 	}
 
-	baseBranch := *pr.Base.Label
-	err = pc.EnqueueItem(owner, repo, baseBranch, strconv.Itoa(PRNum))
-	return errors.Wrap(err, "enqueue failed")
+	ctxWithCancel, cancel := context.WithTimeout(ctx, 10*time.Second)
+	defer cancel()
+	pr, err := thirdparty.GetGithubPullRequest(ctxWithCancel, ghToken, owner, repo, PRNum)
+	if err != nil {
+		return nil, errors.Wrap(err, "call to Github API failed")
+	}
+
+	return pr, nil
 }
 
 func (pc *DBCommitQueueConnector) EnqueueItem(owner, repo, baseBranch, item string) error {
@@ -94,8 +94,17 @@ type MockCommitQueueConnector struct {
 	Queue map[string][]restModel.APIString
 }
 
-func (pc *MockCommitQueueConnector) GithubPREnqueueItem(owner, repo string, PRNum int) error {
-	return pc.EnqueueItem(owner, repo, "master", strconv.Itoa(PRNum))
+func (pc *MockCommitQueueConnector) GetGitHubPR(ctx context.Context, owner, repo string, PRNum int) (*github.PullRequest, error) {
+	userID := 1234
+	label := "master"
+	return &github.PullRequest{
+		User: &github.User{
+			ID: &userID,
+		},
+		Base: &github.PullRequestBranch{
+			Label: &label,
+		},
+	}, nil
 }
 
 func (pc *MockCommitQueueConnector) EnqueueItem(owner, repo, baseBranch, item string) error {

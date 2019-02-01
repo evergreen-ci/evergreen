@@ -12,6 +12,7 @@ import (
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/gimlet"
 	. "github.com/smartystreets/goconvey/convey"
+	"github.com/stretchr/testify/assert"
 )
 
 // PrefetchProjectContext gets the information related to the project that the request contains
@@ -83,4 +84,68 @@ func TestPrefetchProject(t *testing.T) {
 			})
 		})
 	})
+}
+
+func TestCommitQueueItemOwnerMiddleware(t *testing.T) {
+	assert := assert.New(t)
+
+	ctx := context.Background()
+	opCtx := model.Context{}
+	opCtx.ProjectRef = &model.ProjectRef{
+		Private:    true,
+		Identifier: "mci",
+		Owner:      "evergreen-ci",
+		Repo:       "evergreen",
+		Branch:     "master",
+	}
+	ctx = gimlet.AttachUser(ctx, &user.DBUser{
+		Settings: user.UserSettings{
+			GithubUser: user.GithubUser{
+				UID: 1234,
+			},
+		},
+	})
+
+	r, err := http.NewRequest(http.MethodDelete, "/", nil)
+	assert.NoError(err)
+	assert.NotNil(r)
+	// with the PR owner
+	r = r.WithContext(context.WithValue(ctx, RequestContext, &opCtx))
+	r = gimlet.SetURLVars(r, map[string]string{
+		"project_id": "mci",
+		"item":       "1234",
+	})
+
+	mockDataConnector := &data.MockConnector{}
+	mw := NewCommitQueueItemOwnerMiddleware(mockDataConnector)
+
+	rw := httptest.NewRecorder()
+	mw.ServeHTTP(rw, r, func(rw http.ResponseWriter, r *http.Request) {
+		ctx = r.Context()
+	})
+	assert.Equal(http.StatusOK, rw.Code)
+
+	// with an unauthorized user
+	ctx = gimlet.AttachUser(ctx, &user.DBUser{
+		Settings: user.UserSettings{
+			GithubUser: user.GithubUser{
+				UID: 4321,
+			},
+		},
+	})
+	r = r.WithContext(context.WithValue(ctx, RequestContext, &opCtx))
+	mw.ServeHTTP(rw, r, func(rw http.ResponseWriter, r *http.Request) {
+		ctx = r.Context()
+	})
+	assert.Equal(http.StatusUnauthorized, rw.Code)
+
+	// with a non-existent PR
+	r = gimlet.SetURLVars(r, map[string]string{
+		"project_id": "mci",
+		"item":       "1234",
+	})
+	mw.ServeHTTP(rw, r, func(rw http.ResponseWriter, r *http.Request) {
+		ctx = r.Context()
+	})
+	assert.Equal(http.StatusInternalServerError, rw.Code)
 }

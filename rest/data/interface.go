@@ -227,7 +227,7 @@ type Connector interface {
 	GetTaskStats(stats.StatsFilter) ([]restModel.APITaskStats, error)
 
 	// Commit queue methods
-	GithubPREnqueueItem(string, string, int) error
+	GetGitHubPR(context.Context, string, string, int) (*github.PullRequest, error)
 	EnqueueItem(string, string, string, string) error
 	FindCommitQueueByID(string) (*restModel.APICommitQueue, error)
 	CommitQueueRemoveItem(string, string) (bool, error)
