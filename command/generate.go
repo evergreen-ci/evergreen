@@ -16,8 +16,6 @@ import (
 	"github.com/pkg/errors"
 )
 
-const generateTaskPollAttempts = 10
-
 type generateTask struct {
 	// Files are a list of JSON documents.
 	Files []string `mapstructure:"files" plugin:"expand"`
@@ -80,7 +78,7 @@ func (c *generateTask) Execute(ctx context.Context, comm client.Communicator, lo
 	if err != nil {
 		return errors.Wrap(err, "problem parsing JSON")
 	}
-	if err := comm.GenerateTasks(ctx, td, post); err != nil {
+	if err = comm.GenerateTasks(ctx, td, post); err != nil {
 		return errors.Wrap(err, "Problem posting task data")
 	}
 
