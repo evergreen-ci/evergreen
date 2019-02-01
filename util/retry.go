@@ -19,9 +19,9 @@ func init() {
 // an error interface. These functions can be used with util.Retry.
 type RetriableFunc func() (bool, error)
 
-func getBackoff(initialSleep time.Duration, numAttempts int) *backoff.Backoff {
-	if initialSleep < 100*time.Millisecond {
-		initialSleep = 100 * time.Millisecond
+func getBackoff(numAttempts int, min time.Duration, max time.Duration) *backoff.Backoff {
+	if min < 100*time.Millisecond {
+		min = 100 * time.Millisecond
 	}
 
 	if numAttempts == 0 {
@@ -29,59 +29,58 @@ func getBackoff(initialSleep time.Duration, numAttempts int) *backoff.Backoff {
 	}
 
 	var factor float64 = 2
+	if max == 0 {
+		max = time.Duration(float64(min) * math.Pow(factor, float64(numAttempts)))
+	}
 
 	return &backoff.Backoff{
-		Min: initialSleep,
+		Min: min,
 		// the maximum value is uncapped. could change this
 		// value so that we didn't avoid very long sleeps in
 		// potential worst cases.
-		Max:    time.Duration(float64(initialSleep) * math.Pow(factor, float64(numAttempts))),
+		Max:    max,
 		Factor: factor,
 		Jitter: true,
 	}
 }
 
-// Retry provides a mechanism to retry an operation with exponential
-// backoff (that uses some jitter) Specify the maximum number of
-// retry attempts that you want to permit as well as the initial
-// period that you want to sleep between attempts.
+// Retry provides a mechanism to retry an operation with exponential backoff with jitter. Specify
+// minimum duration, maximum duration, and maximum number of retries.
 //
-// Retry requires that the starting sleep interval be at least 100
-// milliseconds, and forces this interval if you attempt to use a
-// shorter period.
-//
-// If you specify less than 0 attempts, Retry will use an attempt value of 1.
-func Retry(ctx context.Context, op RetriableFunc, attempts int, sleep time.Duration) (bool, error) {
+// It will set min to 100ms if not set.
+// It will set max to (min * 2^attempts) if not set.
+// It will set attempts to 1 if not set.
+func Retry(ctx context.Context, op RetriableFunc, min time.Duration, max time.Duration, attempts int) error {
 	if attempts < 1 {
 		attempts = 1
 	}
 	attempt := 0
-	backoff := getBackoff(sleep, attempts)
+	backoff := getBackoff(attempts, min, max)
 	timer := time.NewTimer(backoff.Duration())
 	for {
 		select {
 		case <-ctx.Done():
-			return false, errors.Errorf("context canceled after %d retries", attempt)
+			return errors.Errorf("context canceled after %d retries", attempt)
 		case <-timer.C:
 			shouldRetry, err := op()
 			if err == nil {
-				return false, nil
+				return nil
 			}
 			if shouldRetry {
 				attempt++
 				if attempt == attempts {
-					return true, errors.Wrapf(err, "after %d retries, operation failed", attempts)
+					return errors.Wrapf(err, "after %d retries, operation failed", attempts)
 				}
 				timer.Reset(backoff.Duration())
 			} else {
-				return false, err
+				return err
 			}
 		}
 	}
 }
 
 func RehttpDelay(initialSleep time.Duration, numAttempts int) rehttp.DelayFn {
-	backoff := getBackoff(initialSleep, numAttempts)
+	backoff := getBackoff(numAttempts, initialSleep, 0)
 	return func(attempt rehttp.Attempt) time.Duration {
 		return backoff.ForAttempt(float64(attempt.Index))
 	}

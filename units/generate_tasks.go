@@ -21,7 +21,7 @@ import (
 )
 
 const (
-	generateTasksJobName = "event-send"
+	generateTasksJobName = "generate-tasks"
 )
 
 func init() {
@@ -53,14 +53,14 @@ func NewGenerateTaskJob(id string, json []json.RawMessage) amboy.Job {
 	j.TaskID = id
 	j.JSON = json
 
-	j.SetID(fmt.Sprintf("%s:%s", generateTasksJobName, id))
+	j.SetID(fmt.Sprintf("%s-%s", generateTasksJobName, id))
 	return j
 }
 
 func (j *generateTasksJob) Run(ctx context.Context) {
 	defer j.MarkComplete()
 
-	projects, err := ParseProjects(j.JSON)
+	projects, err := parseProjects(j.JSON)
 	if err != nil {
 		j.AddError(errors.Wrap(err, "error parsing JSON from `generate.tasks`"))
 		return
@@ -68,7 +68,7 @@ func (j *generateTasksJob) Run(ctx context.Context) {
 	g := model.MergeGeneratedProjects(projects)
 	g.TaskID = j.TaskID
 
-	_, err = util.Retry(
+	err = util.Retry(
 		ctx,
 		func() (bool, error) {
 			p, v, t, pm, prevConfig, err := g.NewVersion() // nolint
@@ -95,11 +95,11 @@ func (j *generateTasksJob) Run(ctx context.Context) {
 				}
 			}
 			return false, nil
-		}, 10, 100*time.Millisecond)
+		}, 100*time.Millisecond, time.Minute, 10)
 	j.AddError(err)
 }
 
-func ParseProjects(jsonBytes []json.RawMessage) ([]model.GeneratedProject, error) {
+func parseProjects(jsonBytes []json.RawMessage) ([]model.GeneratedProject, error) {
 	catcher := grip.NewBasicCatcher()
 	var projects []model.GeneratedProject
 	for _, f := range jsonBytes {

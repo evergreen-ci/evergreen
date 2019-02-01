@@ -47,6 +47,7 @@ func startWebService() cli.Command {
 			grip.EmergencyFatal(err)
 			grip.EmergencyFatal(grip.SetSender(sender))
 			queue := env.RemoteQueue()
+			singleQueue := env.SingleWorkerQueue()
 
 			defer cancel()
 			defer sender.Close()
@@ -62,7 +63,7 @@ func startWebService() cli.Command {
 				uiServer  *http.Server
 			)
 
-			serviceHandler, err := getServiceRouter(settings, queue)
+			serviceHandler, err := getServiceRouter(settings, queue, singleQueue)
 			if err != nil {
 				return errors.WithStack(err)
 			}
@@ -172,7 +173,7 @@ func getServiceRouter(settings *evergreen.Settings, queue amboy.Queue) (http.Han
 		return nil, errors.Wrap(err, "failed to create UI server")
 	}
 
-	as, err := service.NewAPIServer(settings, queue)
+	as, err := service.NewAPIServer(settings, queue, singleQueue)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to create API server")
 	}

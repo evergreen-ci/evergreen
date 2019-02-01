@@ -51,13 +51,12 @@ func GetRouter(as *APIServer, uis *UIServer) (http.Handler, error) {
 	rest := GetRESTv1App(as)
 
 	opts := route.HandlerOpts{
-		App:          rest,
 		APIQueue:     as.queue,
 		URL:          as.Settings.Ui.Url,
 		SuperUsers:   as.Settings.SuperUsers,
 		GithubSecret: []byte(as.Settings.Api.GithubWebhookSecret),
 	}
-	route.AttachHandler(opts)
+	route.AttachHandler(rest, opts)
 
 	// Historically all rest interfaces were available in the API
 	// and UI endpoints. While there were no users of restv1 in
@@ -67,13 +66,13 @@ func GetRouter(as *APIServer, uis *UIServer) (http.Handler, error) {
 	apiRestV2 := gimlet.NewApp()
 	apiRestV2.SetPrefix(evergreen.APIRoutePrefix + "/" + evergreen.RestRoutePrefix)
 	opts = route.HandlerOpts{
-		App:          apiRestV2,
-		APIQueue:     as.queue,
-		URL:          as.Settings.Ui.Url,
-		SuperUsers:   as.Settings.SuperUsers,
-		GithubSecret: []byte(as.Settings.Api.GithubWebhookSecret),
+		APIQueue:          as.queue,
+		SingleWorkerQueue: as.singleWorkerQueue,
+		URL:               as.Settings.Ui.Url,
+		SuperUsers:        as.Settings.SuperUsers,
+		GithubSecret:      []byte(as.Settings.Api.GithubWebhookSecret),
 	}
-	route.AttachHandler(opts)
+	route.AttachHandler(apiRestV2, opts)
 
 	// in the future the following functions will be above this
 	// point, and we'll just have the app, but during the legacy

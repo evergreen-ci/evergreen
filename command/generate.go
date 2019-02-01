@@ -11,7 +11,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/rest/client"
 	"github.com/evergreen-ci/evergreen/util"
-	"github.com/jpillora/backoff"
 	"github.com/mitchellh/mapstructure"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
@@ -84,35 +83,21 @@ func (c *generateTask) Execute(ctx context.Context, comm client.Communicator, lo
 	if err := comm.GenerateTasks(ctx, td, post); err != nil {
 		return errors.Wrap(err, "Problem posting task data")
 	}
-	b := &backoff.Backoff{
-		Min:    time.Second,
-		Max:    time.Minute,
-		Factor: 2,
-		Jitter: true,
-	}
-	timer := time.NewTimer(0)
-	defer timer.Stop()
+
 	var finished bool
-	for {
-		select {
-		case <-ctx.Done():
-			return errors.New("context canceled in generate tasks poller")
-		case <-timer.C:
-			logger.Task().Infof("Checking if generator has finished (attempt %d of %d)", b.Attempt()+1, generateTaskPollAttempts)
+	err = util.Retry(
+		ctx,
+		func() (bool, error) {
 			finished, err = comm.GenerateTasksPoll(ctx, td)
 			if err != nil {
-				return errors.Wrapf(err, "error generating tasks for '%s'", conf.Task.Id)
+				return false, errors.Wrapf(err, "error generating tasks for '%s'", conf.Task.Id)
 			}
 			if finished {
-				return nil
+				return false, nil
 			}
-			if b.Attempt()+1 >= generateTaskPollAttempts {
-				return errors.Errorf("Generator not finished after %d attempts", generateTaskPollAttempts)
-			}
-			timer.Reset(b.Duration())
-		}
-	}
-	return errors.WithStack(errors.New("Programmer error. Unreachable code."))
+			return true, errors.New("task generation unfinished")
+		}, time.Second, time.Minute, 10)
+	return err
 }
 
 func generateTaskForFile(fn string, conf *model.TaskConfig) ([]byte, error) {

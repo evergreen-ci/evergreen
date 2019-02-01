@@ -234,7 +234,7 @@ func TestGenerateTasks(t *testing.T) {
 
 func TestParseProjects(t *testing.T) {
 	assert := assert.New(t)
-	parsed, err := ParseProjects(sampleGeneratedProject)
+	parsed, err := parseProjects(sampleGeneratedProject)
 	assert.NoError(err)
 	assert.Len(parsed, 1)
 	assert.Len(parsed[0].BuildVariants, 1)
