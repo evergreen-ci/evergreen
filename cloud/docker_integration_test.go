@@ -51,13 +51,13 @@ func TestDockerIntegrationSuite(t *testing.T) {
 func (s *DockerIntegrationSuite) TestImagePull() {
 	var err error
 	ctx := context.Background()
-	_, err = util.Retry(ctx, func() (bool, error) {
+	err = util.Retry(ctx, func() (bool, error) {
 		err = s.client.pullImage(ctx, &s.host, "docker.io/library/hello-world", "", "")
 		if err != nil {
 			return true, err
 		}
 		return false, nil
-	}, 10, 1*time.Second)
+	}, 10, time.Second, 0)
 	s.NoError(err)
 
 	images, err := s.client.client.ImageList(ctx, types.ImageListOptions{All: true})
