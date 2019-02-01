@@ -21,7 +21,6 @@ import (
 // POST /rest/v2/notifications/{target_id}
 
 type notificationPostHandler struct {
-	body        []byte
 	handler     gimlet.RouteHandler
 	environment evergreen.Environment
 }
@@ -51,7 +50,7 @@ func (h *notificationPostHandler) Parse(ctx context.Context, r *http.Request) er
 	case "email":
 		h.handler = makeEmailNotification(h.environment)
 	default:
-		return fmt.Errorf("'%s' is not a support {target_id}", targetID)
+		return fmt.Errorf("'%s' is not a supported {target_id}", targetID)
 	}
 
 	h.handler.Parse(ctx, r)
