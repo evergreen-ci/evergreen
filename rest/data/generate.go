@@ -21,10 +21,7 @@ func (gc *GenerateConnector) GeneratePoll(ctx context.Context, taskID string, qu
 	if !exists {
 		return false, errors.Errorf("task %s not in queue", taskID)
 	}
-	if j.Status().Completed {
-		return true, nil
-	}
-	return false, nil
+	return j.Status().Completed, nil
 }
 
 type MockGenerateConnector struct{}

@@ -32,7 +32,8 @@ type generateHandler struct {
 
 func (h *generateHandler) Factory() gimlet.RouteHandler {
 	return &generateHandler{
-		sc: h.sc,
+		sc:    h.sc,
+		queue: h.queue,
 	}
 }
 
@@ -94,7 +95,8 @@ type generatePollHandler struct {
 
 func (h *generatePollHandler) Factory() gimlet.RouteHandler {
 	return &generatePollHandler{
-		sc: h.sc,
+		sc:    h.sc,
+		queue: h.queue,
 	}
 }
 

@@ -616,7 +616,7 @@ func (c *communicatorImpl) GenerateTasksPoll(ctx context.Context, td TaskData) (
 	info.path = fmt.Sprintf("tasks/%s/generate", td.ID)
 	resp, err := c.retryRequest(ctx, info, nil)
 	if err != nil {
-		errors.Wrap(err, "problem sending `generate.tasks` request")
+		return false, errors.Wrap(err, "problem sending `generate.tasks` request")
 	}
 	defer resp.Body.Close()
 	generated := apimodels.GeneratePollResponse{}
