@@ -10,10 +10,8 @@ import (
 func TestCommitQueueBuildFromService(t *testing.T) {
 	assert := assert.New(t)
 	cq := commitqueue.CommitQueue{
-		ProjectID:    "mci",
-		Queue:        []string{"1", "2", "3"},
-		MergeAction:  "squash",
-		StatusAction: "github",
+		ProjectID: "mci",
+		Queue:     []string{"1", "2", "3"},
 	}
 
 	cqAPI := APICommitQueue{}
