@@ -50,7 +50,7 @@ func getBackoff(numAttempts int, min time.Duration, max time.Duration) *backoff.
 // It will set min to 100ms if not set.
 // It will set max to (min * 2^attempts) if not set.
 // It will set attempts to 1 if not set.
-func Retry(ctx context.Context, op RetriableFunc, min time.Duration, max time.Duration, attempts int) error {
+func Retry(ctx context.Context, op RetriableFunc, attempts int, min time.Duration, max time.Duration) error {
 	if attempts < 1 {
 		attempts = 1
 	}
