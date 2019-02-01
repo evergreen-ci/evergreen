@@ -6,9 +6,11 @@ import (
 	"os/signal"
 	"syscall"
 
+	"github.com/aws/aws-sdk-go/aws/endpoints"
 	"github.com/evergreen-ci/evergreen/agent"
 	"github.com/evergreen-ci/evergreen/command"
 	"github.com/evergreen-ci/evergreen/rest/client"
+	"github.com/evergreen-ci/pail"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/mongodb/grip/recovery"
@@ -26,9 +28,6 @@ func Agent() cli.Command {
 		statusPortFlagName       = "status_port"
 		cleanupFlagName          = "cleanup"
 		logkeeperFlagName        = "logkeeper_url"
-		s3KeyFlag                = "s3_key"
-		s3SecretFlag             = "s3_secret"
-		s3BucketFlag             = "s3_bucket"
 	)
 
 	return cli.Command{
@@ -60,18 +59,6 @@ func Agent() cli.Command {
 				Name:  logkeeperFlagName,
 				Usage: "URL of a logkeeper service to be used by tasks",
 			},
-			cli.StringFlag{
-				Name:  s3KeyFlag,
-				Usage: "S3 key to use for log file uploads",
-			},
-			cli.StringFlag{
-				Name:  s3SecretFlag,
-				Usage: "S3 secret to use for log file uploads",
-			},
-			cli.StringFlag{
-				Name:  s3BucketFlag,
-				Usage: "S3 bucket to use for log file uploads",
-			},
 			cli.IntFlag{
 				Name:  statusPortFlagName,
 				Value: 2285,
@@ -101,10 +88,12 @@ func Agent() cli.Command {
 				WorkingDirectory: c.String(workingDirectoryFlagName),
 				Cleanup:          c.Bool(cleanupFlagName),
 				LogkeeperURL:     c.String(logkeeperFlagName),
-				S3Opts: agent.S3Config{
-					Key:    c.String(s3KeyFlag),
-					Secret: c.String(s3SecretFlag),
-					Bucket: c.String(s3BucketFlag),
+				S3Opts: pail.S3Options{
+					Credentials: pail.CreateAWSCredentials(os.Getenv("S3_KEY"), os.Getenv("S3_SECRET"), ""),
+					Region:      endpoints.UsEast1RegionID,
+					Name:        os.Getenv("S3_BUCKET"),
+					Permission:  "public-read",
+					ContentType: "text/plain",
 				},
 			}
 
