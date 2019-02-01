@@ -5,7 +5,7 @@ describe('TaskTimingControllerTest', function() {
 
   const $window = {
     activeProject: {
-      task_names: ['T_A', 'T_C', 'T_D'],
+      task_names: ['T_C', 'T_D', 'T_NonExistent'],
       build_variants: [{
         name: 'BV_A',
         task_names: ['T_A', 'T_C'],
@@ -19,12 +19,14 @@ describe('TaskTimingControllerTest', function() {
         display_tasks: [],
       }, {
         name: 'BV_C',
+        task_names: ['T_X'],
         display_tasks: [{
           name: 'T_X',
           execution_tasks: ['T_C']
         }]
       }, {
         name: 'BV_D',
+        task_names: ['T_X'],
         display_tasks: [{
           name: 'T_X',
           execution_tasks: ['T_C']
