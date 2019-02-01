@@ -15,6 +15,7 @@ import (
 	"github.com/evergreen-ci/evergreen/rest/client"
 	"github.com/evergreen-ci/evergreen/subprocess"
 	"github.com/evergreen-ci/evergreen/util"
+	"github.com/evergreen-ci/pail"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/mongodb/grip/recovery"
@@ -38,13 +39,7 @@ type Options struct {
 	HeartbeatInterval  time.Duration
 	AgentSleepInterval time.Duration
 	Cleanup            bool
-	S3Opts             S3Config
-}
-
-type S3Config struct {
-	Key    string
-	Secret string
-	Bucket string
+	S3Opts             pail.S3Options
 }
 
 type taskContext struct {
@@ -358,11 +353,7 @@ func (a *Agent) runTaskTimeoutCommands(ctx context.Context, tc *taskContext) {
 
 // finishTask sends the returned EndTaskResponse and error
 func (a *Agent) finishTask(ctx context.Context, tc *taskContext, status string) (*apimodels.EndTaskResponse, error) {
-	err := a.uploadToS3(ctx, tc, s3UploadOpts{
-		awsKey:    a.opts.S3Opts.Key,
-		awsSecret: a.opts.S3Opts.Secret,
-		bucket:    a.opts.S3Opts.Bucket,
-	})
+	err := a.uploadToS3(ctx, tc)
 	if err != nil {
 		tc.logger.Execution().Error(errors.Wrap(err, "error uploading log files"))
 	}

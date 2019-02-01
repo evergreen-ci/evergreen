@@ -118,7 +118,7 @@ func TestCommandFileLogging(t *testing.T) {
 		Path: tmpDirName,
 	})
 	assert.NoError(err)
-	assert.NoError(agt.uploadLogFiles(ctx, tc, bucket, "mock"))
+	assert.NoError(agt.uploadLogFiles(ctx, tc, bucket))
 
 	// verify uploaded log contents
 	f, err = os.Open(fmt.Sprintf("%s/logs/%s/%d/task.log", tmpDirName, tc.taskConfig.Task.Id, tc.taskConfig.Task.Execution))

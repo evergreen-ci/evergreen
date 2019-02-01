@@ -5,8 +5,6 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/aws/aws-sdk-go/aws/endpoints"
-
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/task"
@@ -19,14 +17,15 @@ import (
 	"github.com/pkg/errors"
 )
 
-const taskLogDirectory = "evergreen-logs"
+const (
+	taskLogDirectory  = "evergreen-logs"
+	agentLogFileName  = "agent.log"
+	systemLogFileName = "system.log"
+	taskLogFileName   = "task.log"
+)
 
 var (
 	idSource chan int
-
-	agentLogs  = fmt.Sprintf("%s/%s", taskLogDirectory, "agent.log")
-	systemLogs = fmt.Sprintf("%s/%s", taskLogDirectory, "system.log")
-	taskLogs   = fmt.Sprintf("%s/%s", taskLogDirectory, "task.log")
 )
 
 func init() {
@@ -99,7 +98,7 @@ func (a *Agent) makeLoggerProducer(ctx context.Context, c *model.LoggerConfig, t
 			Sender:            agentConfig.Type,
 			SplunkServerURL:   agentConfig.SplunkServer,
 			SplunkToken:       agentConfig.SplunkToken,
-			Filepath:          fmt.Sprintf("%s/%s", a.opts.WorkingDirectory, agentLogs),
+			Filepath:          fmt.Sprintf("%s/%s/%s", a.opts.WorkingDirectory, taskLogDirectory, agentLogFileName),
 		})
 	}
 	for _, systemConfig := range c.System {
@@ -110,7 +109,7 @@ func (a *Agent) makeLoggerProducer(ctx context.Context, c *model.LoggerConfig, t
 			Sender:            systemConfig.Type,
 			SplunkServerURL:   systemConfig.SplunkServer,
 			SplunkToken:       systemConfig.SplunkToken,
-			Filepath:          fmt.Sprintf("%s/%s", a.opts.WorkingDirectory, systemLogs),
+			Filepath:          fmt.Sprintf("%s/%s/%s", a.opts.WorkingDirectory, taskLogDirectory, systemLogFileName),
 		})
 	}
 	for _, taskConfig := range c.Task {
@@ -121,7 +120,7 @@ func (a *Agent) makeLoggerProducer(ctx context.Context, c *model.LoggerConfig, t
 			Sender:            taskConfig.Type,
 			SplunkServerURL:   taskConfig.SplunkServer,
 			SplunkToken:       taskConfig.SplunkToken,
-			Filepath:          fmt.Sprintf("%s/%s", a.opts.WorkingDirectory, taskLogs),
+			Filepath:          fmt.Sprintf("%s/%s/%s", a.opts.WorkingDirectory, taskLogDirectory, taskLogFileName),
 		})
 	}
 	return a.comm.GetLoggerProducer(ctx, td, &config)
@@ -133,62 +132,29 @@ type s3UploadOpts struct {
 	awsSecret string
 }
 
-func (a *Agent) uploadToS3(ctx context.Context, tc *taskContext, opts s3UploadOpts) error {
-	s3Opts := pail.S3Options{
-		Credentials: pail.CreateAWSCredentials(opts.awsKey, opts.awsSecret, ""),
-		Region:      endpoints.UsEast1RegionID,
-		Name:        opts.bucket,
-		Permission:  "public-read",
-		ContentType: "text/plain",
-	}
-	bucket, err := pail.NewS3Bucket(s3Opts)
+func (a *Agent) uploadToS3(ctx context.Context, tc *taskContext) error {
+	bucket, err := pail.NewS3Bucket(a.opts.S3Opts)
 	if err != nil {
 		return errors.Wrap(err, "error creating pail")
 	}
 
-	return a.uploadLogFiles(ctx, tc, bucket, opts.bucket)
+	return a.uploadLogFiles(ctx, tc, bucket)
 }
 
-func (a *Agent) uploadLogFiles(ctx context.Context, tc *taskContext, bucket pail.Bucket, name string) error {
-	agentLogFile, err := os.Open(fmt.Sprintf("%s/%s", a.opts.WorkingDirectory, agentLogs))
-	if err != nil {
-		if !os.IsNotExist(err) {
-			grip.Error(errors.Wrap(err, "error opening agent log file"))
-		}
-	} else {
-		path := fmt.Sprintf("logs/%s/%d/agent.log", tc.taskConfig.Task.Id, tc.taskConfig.Task.Execution)
-		err = bucket.Put(ctx, path, agentLogFile)
-		if err != nil {
-			return errors.Wrap(err, "error uploading agent log")
-		}
-		grip.Infof("agent logs uploaded to %s/%s", name, path)
-	}
-	systemLogFile, err := os.Open(fmt.Sprintf("%s/%s", a.opts.WorkingDirectory, systemLogs))
-	if err != nil {
-		if !os.IsNotExist(err) {
-			grip.Error(errors.Wrap(err, "error opening system log file"))
-		}
-	} else {
-		path := fmt.Sprintf("logs/%s/%d/system.log", tc.taskConfig.Task.Id, tc.taskConfig.Task.Execution)
-		err = bucket.Put(ctx, path, systemLogFile)
-		if err != nil {
-			return errors.Wrap(err, "error uploading system log")
-		}
-		grip.Infof("system logs uploaded to %s/%s", name, path)
-	}
-	taskLogFile, err := os.Open(fmt.Sprintf("%s/%s", a.opts.WorkingDirectory, taskLogs))
-	if err != nil {
-		if !os.IsNotExist(err) {
-			grip.Error(errors.Wrap(err, "error opening agent task file"))
-		}
-	} else {
-		path := fmt.Sprintf("logs/%s/%d/task.log", tc.taskConfig.Task.Id, tc.taskConfig.Task.Execution)
-		err = bucket.Put(ctx, path, taskLogFile)
-		if err != nil {
-			return errors.Wrap(err, "error uploading task log")
-		}
-		grip.Infof("task logs uploaded to %s/%s", name, path)
-	}
+func (a *Agent) uploadLogFiles(ctx context.Context, tc *taskContext, bucket pail.Bucket) error {
+	catcher := grip.NewBasicCatcher()
+	catcher.Add(a.uploadSingleFile(ctx, bucket, agentLogFileName, tc.taskConfig.Task.Id, tc.taskConfig.Task.Execution))
+	catcher.Add(a.uploadSingleFile(ctx, bucket, systemLogFileName, tc.taskConfig.Task.Id, tc.taskConfig.Task.Execution))
+	catcher.Add(a.uploadSingleFile(ctx, bucket, taskLogFileName, tc.taskConfig.Task.Id, tc.taskConfig.Task.Execution))
 
-	return nil
+	return catcher.Resolve()
+}
+
+func (a *Agent) uploadSingleFile(ctx context.Context, bucket pail.Bucket, file string, taskID string, execution int) error {
+	localPath := fmt.Sprintf("%s/%s/%s", a.opts.WorkingDirectory, taskLogDirectory, file)
+	_, err := os.Stat(localPath)
+	if os.IsNotExist(err) {
+		return nil
+	}
+	return bucket.Upload(ctx, fmt.Sprintf("logs/%s/%d/%s", taskID, execution, file), localPath)
 }

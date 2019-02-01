@@ -298,9 +298,6 @@ func (j *agentDeployJob) startAgentOnRemote(ctx context.Context, settings *everg
 		fmt.Sprintf("--log_prefix='%s'", filepath.Join(hostObj.Distro.WorkDir, "agent")),
 		fmt.Sprintf("--working_directory='%s'", hostObj.Distro.WorkDir),
 		fmt.Sprintf("--logkeeper_url='%s'", settings.LoggerConfig.LogkeeperURL),
-		fmt.Sprintf("--s3_key='%s'", settings.Providers.AWS.Id),
-		fmt.Sprintf("--s3_secret='%s'", settings.Providers.AWS.Secret),
-		fmt.Sprintf("--s3_bucket='%s'", settings.Providers.AWS.Bucket),
 		"--cleanup",
 	}
 
@@ -333,6 +330,10 @@ func (j *agentDeployJob) startAgentOnRemote(ctx context.Context, settings *everg
 			env["GRIP_SPLUNK_CHANNEL"] = settings.Splunk.Channel
 		}
 	}
+
+	env["S3_KEY"] = settings.Providers.AWS.Id
+	env["S3_SECRET"] = settings.Providers.AWS.Secret
+	env["S3_BUCKET"] = settings.Providers.AWS.Bucket
 
 	startAgentCmd := subprocess.NewRemoteCommand(
 		remoteCmd,
