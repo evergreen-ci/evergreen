@@ -3,6 +3,7 @@ package data
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 
 	"github.com/evergreen-ci/evergreen/units"
 	"github.com/mongodb/amboy"
@@ -17,7 +18,7 @@ func (gc *GenerateConnector) GenerateTasks(ctx context.Context, taskID string, j
 }
 
 func (gc *GenerateConnector) GeneratePoll(ctx context.Context, taskID string, queue amboy.Queue) (bool, error) {
-	j, exists := queue.Get(taskID)
+	j, exists := queue.Get(fmt.Sprintf("generate-tasks-%s", taskID))
 	if !exists {
 		return false, errors.Errorf("task %s not in queue", taskID)
 	}
