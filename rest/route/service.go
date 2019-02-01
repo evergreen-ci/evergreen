@@ -70,6 +70,7 @@ func AttachHandler(app *gimlet.APIApp, queue amboy.Queue, URL string, superUsers
 	app.AddRoute("/keys").Version(2).Get().Wrap(checkUser).RouteHandler(makeFetchKeys(sc))
 	app.AddRoute("/keys").Version(2).Post().Wrap(checkUser).RouteHandler(makeSetKey(sc))
 	app.AddRoute("/keys/{key_name}").Version(2).Delete().Wrap(checkUser).RouteHandler(makeDeleteKeys(sc))
+	app.AddRoute("/notifications/{target_id}").Version(2).Post().Wrap(superUser).RouteHandler(makeNotification(environment))
 	app.AddRoute("/patches/{patch_id}").Version(2).Get().RouteHandler(makeFetchPatchByID(sc))
 	app.AddRoute("/patches/{patch_id}").Version(2).Patch().Wrap(checkUser).RouteHandler(makeChangePatchStatus(sc))
 	app.AddRoute("/patches/{patch_id}/abort").Version(2).Post().Wrap(checkUser).RouteHandler(makeAbortPatch(sc))
@@ -106,5 +107,4 @@ func AttachHandler(app *gimlet.APIApp, queue amboy.Queue, URL string, superUsers
 	app.AddRoute("/versions/{version_id}/abort").Version(2).Post().Wrap(checkUser).RouteHandler(makeAbortVersion(sc))
 	app.AddRoute("/versions/{version_id}/builds").Version(2).Get().RouteHandler(makeGetVersionBuilds(sc))
 	app.AddRoute("/versions/{version_id}/restart").Version(2).Post().Wrap(checkUser).RouteHandler(makeRestartVersion(sc))
-	app.AddRoute("/notifications/{target_id}").Version(2).Post().Wrap(superUser).RouteHandler(makeNotification(environment))
 }
