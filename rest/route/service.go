@@ -23,7 +23,7 @@ func AttachHandler(app *gimlet.APIApp, queue amboy.Queue, URL string, superUsers
 	checkUser := gimlet.NewRequireAuthHandler()
 	addProject := NewProjectContextMiddleware(sc)
 	checkProjectAdmin := NewProjectAdminMiddleware(sc)
-
+	environment := evergreen.GetEnvironment()
 	settings := evergreen.GetEnvironment().Settings()
 
 	// Routes
@@ -106,4 +106,5 @@ func AttachHandler(app *gimlet.APIApp, queue amboy.Queue, URL string, superUsers
 	app.AddRoute("/versions/{version_id}/abort").Version(2).Post().Wrap(checkUser).RouteHandler(makeAbortVersion(sc))
 	app.AddRoute("/versions/{version_id}/builds").Version(2).Get().RouteHandler(makeGetVersionBuilds(sc))
 	app.AddRoute("/versions/{version_id}/restart").Version(2).Post().Wrap(checkUser).RouteHandler(makeRestartVersion(sc))
+	app.AddRoute("/notifications/{target_id}").Version(2).Post().Wrap(superUser).RouteHandler(makeNotification(environment))
 }
