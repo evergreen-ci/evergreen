@@ -157,7 +157,7 @@ func gracefulShutdownForSIGTERM(ctx context.Context, servers []*http.Server, wai
 	close(wait)
 }
 
-func getServiceRouter(settings *evergreen.Settings, queue amboy.Queue) (http.Handler, error) {
+func getServiceRouter(settings *evergreen.Settings, queue amboy.Queue, singleQueue amboy.Queue) (http.Handler, error) {
 	home := evergreen.FindEvergreenHome()
 	if home == "" {
 		return nil, errors.New("EVGHOME environment variable must be set to run UI server")
