@@ -11,6 +11,7 @@ import (
 	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/google/go-github/github"
 	"github.com/pkg/errors"
+	mgo "gopkg.in/mgo.v2"
 )
 
 type DBCommitQueueConnector struct{}
@@ -49,9 +50,6 @@ func (pc *DBCommitQueueConnector) EnqueueItem(owner, repo, baseBranch, item stri
 	if err != nil {
 		return errors.Wrapf(err, "can't query for queue id %s", projectID)
 	}
-	if q == nil {
-		return errors.Errorf("commit queue not found for id %s", projectID)
-	}
 
 	if err := q.Enqueue(item); err != nil {
 		return errors.Wrapf(err, "can't enqueue item to queue %s", projectID)
@@ -63,10 +61,10 @@ func (pc *DBCommitQueueConnector) EnqueueItem(owner, repo, baseBranch, item stri
 func (pc *DBCommitQueueConnector) FindCommitQueueByID(id string) (*restModel.APICommitQueue, error) {
 	cqService, err := commitqueue.FindOneId(id)
 	if err != nil {
+		if err == mgo.ErrNotFound {
+			return nil, nil
+		}
 		return nil, errors.Wrap(err, "can't get commit queue from database")
-	}
-	if cqService == nil {
-		return nil, nil
 	}
 
 	apiCommitQueue := &restModel.APICommitQueue{}
@@ -82,12 +80,8 @@ func (pc *DBCommitQueueConnector) CommitQueueRemoveItem(id, item string) (bool, 
 	if err != nil {
 		return false, errors.Wrapf(err, "can't get commit queue for id '%s'", id)
 	}
-	if cq == nil {
-		return false, nil
-	}
 
-	found, err := cq.Remove(item)
-	return found, errors.Wrapf(err, "can't remove item '%s'", item)
+	return cq.Remove(item)
 }
 
 type MockCommitQueueConnector struct {
