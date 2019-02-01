@@ -1002,7 +1002,7 @@ func checkTaskGroups(p *model.Project) ValidationErrors {
 				dependencies = append(dependencies, dependsOn.Name)
 			}
 			errs = append(errs, ValidationError{
-				Message: fmt.Sprintf("task %s in task group %s has a dependency on a task outside the task group (%s), "+
+				Message: fmt.Sprintf("task %s in task group %s has a dependency on another task (%s), "+
 					"which can cause task group tasks to be scheduled out of order", t, tg, dependencies),
 				Level: Error,
 			})
