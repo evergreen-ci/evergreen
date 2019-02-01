@@ -247,7 +247,7 @@ func (e *envState) createQueues(ctx context.Context) error {
 	if err = singleq.SetDriver(singlemdb); err != nil {
 		return errors.WithStack(err)
 	}
-	if err = singleq.SetRunner(pool.NewAbortablePool(1, rq)); err != nil {
+	if err = singleq.SetRunner(pool.NewAbortablePool(1, singleq)); err != nil {
 		return errors.Wrap(err, "problem configuring worker pool for single worker queue")
 	}
 	e.singleWorkerQueue = singleq
