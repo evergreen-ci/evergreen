@@ -376,7 +376,7 @@ func githubRequest(ctx context.Context, method string, url string, oauthToken st
 // tryGithubPost posts the data to the Github api endpoint with the url given
 func tryGithubPost(ctx context.Context, url string, oauthToken string, data interface{}) (resp *http.Response, err error) {
 	grip.Errorf("Attempting GitHub API POST at ‘%s’", url)
-	retryFail, err := util.Retry(ctx, func() (bool, error) {
+	err = util.Retry(ctx, func() (bool, error) {
 		resp, err = githubRequest(ctx, http.MethodPost, url, oauthToken, data)
 		if err != nil {
 			grip.Errorf("failed trying to call github POST on %s: %+v", url, err)
@@ -397,13 +397,9 @@ func tryGithubPost(ctx context.Context, url string, oauthToken string, data inte
 
 		grip.Logf(loglevel, "Github API response: %v. %v", resp.Status, rateMessage)
 		return false, nil
-	}, NumGithubRetries, GithubSleepTimeSecs*time.Second)
+	}, NumGithubRetries, GithubSleepTimeSecs*time.Second, 0)
 
 	if err != nil {
-		// couldn't post it
-		if retryFail {
-			grip.Errorf("Github POST to '%s' used up all retries.", url)
-		}
 		return nil, errors.WithStack(err)
 	}
 

@@ -606,6 +606,26 @@ func (c *communicatorImpl) GenerateTasks(ctx context.Context, td TaskData, jsonB
 	return errors.Wrap(err, "problem sending `generate.tasks` request")
 }
 
+// GenerateTasksPoll posts new tasks for the `generate.tasks` command.
+func (c *communicatorImpl) GenerateTasksPoll(ctx context.Context, td TaskData) (bool, error) {
+	info := requestInfo{
+		method:   get,
+		taskData: &td,
+		version:  apiVersion2,
+	}
+	info.path = fmt.Sprintf("tasks/%s/generate", td.ID)
+	resp, err := c.retryRequest(ctx, info, nil)
+	if err != nil {
+		return false, errors.Wrap(err, "problem sending `generate.tasks` request")
+	}
+	defer resp.Body.Close()
+	generated := apimodels.GeneratePollResponse{}
+	if err := util.ReadJSONInto(resp.Body, &generated); err != nil {
+		return false, errors.Wrapf(err, "problem reading generated from response body for '%s'", td.ID)
+	}
+	return generated.Finished, nil
+}
+
 // CreateHost requests a new host be created
 func (c *communicatorImpl) CreateHost(ctx context.Context, td TaskData, options apimodels.CreateHost) error {
 	info := requestInfo{

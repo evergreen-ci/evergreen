@@ -107,7 +107,7 @@ func (as *APIServer) s3copyPlugin(w http.ResponseWriter, r *http.Request) {
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	_, err = util.Retry(
+	err = util.Retry(
 		ctx,
 		func() (bool, error) {
 			copyOpts := pail.CopyOptions{
@@ -127,7 +127,7 @@ func (as *APIServer) s3copyPlugin(w http.ResponseWriter, r *http.Request) {
 			grip.Error(err)
 
 			return false, err
-		}, s3CopyRetryNumRetries, s3CopyRetrySleepTimeSec*time.Second)
+		}, s3CopyRetryNumRetries, s3CopyRetrySleepTimeSec*time.Second, 0)
 
 	if err != nil {
 		grip.Error(errors.Wrap(errors.WithStack(newPushLog.UpdateStatus(model.PushLogFailed)), "updating pushlog status failed"))
