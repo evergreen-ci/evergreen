@@ -13,7 +13,7 @@ type GenerateConnector struct{}
 
 // GenerateTasks parses JSON files for `generate.tasks` and creates the new builds and tasks.
 func (gc *GenerateConnector) GenerateTasks(ctx context.Context, taskID string, jsonBytes []json.RawMessage, q amboy.Queue) error {
-	return q.Put(units.NewGenerateTaskJob(taskID, jsonBytes))
+	return q.Put(units.NewGenerateTasksJob(taskID, jsonBytes))
 }
 
 func (gc *GenerateConnector) GeneratePoll(ctx context.Context, taskID string, queue amboy.Queue) (bool, error) {

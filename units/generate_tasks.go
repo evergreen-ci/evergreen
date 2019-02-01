@@ -48,7 +48,7 @@ func makeGenerateTaskJob() *generateTasksJob {
 	return j
 }
 
-func NewGenerateTaskJob(id string, json []json.RawMessage) amboy.Job {
+func NewGenerateTasksJob(id string, json []json.RawMessage) amboy.Job {
 	j := makeGenerateTaskJob()
 	j.TaskID = id
 	j.JSON = json
