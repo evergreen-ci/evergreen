@@ -86,7 +86,7 @@ func TestPrefetchProject(t *testing.T) {
 	})
 }
 
-func TestCommitQueueItemOwnerMiddleware(t *testing.T) {
+func TestCommitQueueItemOwnerMiddlewarePROwner(t *testing.T) {
 	assert := assert.New(t)
 
 	ctx := context.Background()
@@ -109,7 +109,7 @@ func TestCommitQueueItemOwnerMiddleware(t *testing.T) {
 	r, err := http.NewRequest(http.MethodDelete, "/", nil)
 	assert.NoError(err)
 	assert.NotNil(r)
-	// with the PR owner
+
 	r = r.WithContext(context.WithValue(ctx, RequestContext, &opCtx))
 	r = gimlet.SetURLVars(r, map[string]string{
 		"project_id": "mci",
@@ -118,14 +118,71 @@ func TestCommitQueueItemOwnerMiddleware(t *testing.T) {
 
 	mockDataConnector := &data.MockConnector{}
 	mw := NewCommitQueueItemOwnerMiddleware(mockDataConnector)
-
 	rw := httptest.NewRecorder()
-	mw.ServeHTTP(rw, r, func(rw http.ResponseWriter, r *http.Request) {
-		ctx = r.Context()
-	})
-	assert.Equal(http.StatusOK, rw.Code)
 
-	// with an unauthorized user
+	mw.ServeHTTP(rw, r, func(rw http.ResponseWriter, r *http.Request) {})
+	assert.Equal(http.StatusOK, rw.Code)
+}
+
+func TestCommitQueueItemOwnerMiddlewareProjectAdmin(t *testing.T) {
+	assert := assert.New(t)
+
+	ctx := context.Background()
+	opCtx := model.Context{}
+	opCtx.ProjectRef = &model.ProjectRef{
+		Private:    true,
+		Identifier: "mci",
+		Owner:      "evergreen-ci",
+		Repo:       "evergreen",
+		Branch:     "master",
+		Admins:     []string{"admin"},
+	}
+	ctx = gimlet.AttachUser(ctx, &user.DBUser{
+		Settings: user.UserSettings{
+			GithubUser: user.GithubUser{
+				UID: 1234,
+			},
+		},
+	})
+
+	r, err := http.NewRequest(http.MethodDelete, "/", nil)
+	assert.NoError(err)
+	assert.NotNil(r)
+
+	ctx = gimlet.AttachUser(ctx, &user.DBUser{
+		Id: "admin",
+	})
+	r = r.WithContext(context.WithValue(ctx, RequestContext, &opCtx))
+	r = gimlet.SetURLVars(r, map[string]string{
+		"project_id": "mci",
+		"item":       "1234",
+	})
+
+	mockDataConnector := &data.MockConnector{}
+	mw := NewCommitQueueItemOwnerMiddleware(mockDataConnector)
+	rw := httptest.NewRecorder()
+
+	mw.ServeHTTP(rw, r, func(rw http.ResponseWriter, r *http.Request) {})
+	assert.Equal(http.StatusOK, rw.Code)
+}
+
+func TestCommitQueueItemOwnerMiddlewareUnauthorizedUser(t *testing.T) {
+	assert := assert.New(t)
+
+	ctx := context.Background()
+	opCtx := model.Context{}
+	opCtx.ProjectRef = &model.ProjectRef{
+		Private:    true,
+		Identifier: "mci",
+		Owner:      "evergreen-ci",
+		Repo:       "evergreen",
+		Branch:     "master",
+	}
+
+	r, err := http.NewRequest(http.MethodDelete, "/", nil)
+	assert.NoError(err)
+	assert.NotNil(r)
+
 	ctx = gimlet.AttachUser(ctx, &user.DBUser{
 		Settings: user.UserSettings{
 			GithubUser: user.GithubUser{
@@ -133,19 +190,17 @@ func TestCommitQueueItemOwnerMiddleware(t *testing.T) {
 			},
 		},
 	})
-	r = r.WithContext(context.WithValue(ctx, RequestContext, &opCtx))
-	mw.ServeHTTP(rw, r, func(rw http.ResponseWriter, r *http.Request) {
-		ctx = r.Context()
-	})
-	assert.Equal(http.StatusUnauthorized, rw.Code)
 
-	// with a non-existent PR
+	r = r.WithContext(context.WithValue(ctx, RequestContext, &opCtx))
 	r = gimlet.SetURLVars(r, map[string]string{
 		"project_id": "mci",
 		"item":       "1234",
 	})
-	mw.ServeHTTP(rw, r, func(rw http.ResponseWriter, r *http.Request) {
-		ctx = r.Context()
-	})
-	assert.Equal(http.StatusInternalServerError, rw.Code)
+
+	mockDataConnector := &data.MockConnector{}
+	mw := NewCommitQueueItemOwnerMiddleware(mockDataConnector)
+	rw := httptest.NewRecorder()
+
+	mw.ServeHTTP(rw, r, func(rw http.ResponseWriter, r *http.Request) {})
+	assert.Equal(http.StatusUnauthorized, rw.Code)
 }
