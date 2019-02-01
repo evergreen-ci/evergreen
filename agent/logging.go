@@ -7,7 +7,6 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
-	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/rest/client"
 	"github.com/evergreen-ci/evergreen/subprocess"
 	"github.com/mongodb/grip"
@@ -77,7 +76,7 @@ func GetSender(ctx context.Context, prefix, taskId string) (send.Sender, error) 
 	return send.NewConfiguredMultiSender(senders...), nil
 }
 
-func (a *Agent) makeLoggerProducer(ctx context.Context, c *model.LoggerConfig, td client.TaskData, task *task.Task) client.LoggerProducer {
+func (a *Agent) makeLoggerProducer(ctx context.Context, tc *taskContext, c *model.LoggerConfig) client.LoggerProducer {
 	path := fmt.Sprintf("%s/%s", a.opts.WorkingDirectory, taskLogDirectory)
 	grip.Error(errors.Wrap(os.Mkdir(path, os.ModeDir|os.ModePerm), "error making log directory"))
 
@@ -85,8 +84,8 @@ func (a *Agent) makeLoggerProducer(ctx context.Context, c *model.LoggerConfig, t
 	for _, agentConfig := range c.Agent {
 		config.Agent = append(config.Agent, client.LogOpts{
 			LogkeeperURL:      a.opts.LogkeeperURL,
-			LogkeeperBuilder:  task.Id,
-			LogkeeperBuildNum: task.Execution,
+			LogkeeperBuilder:  tc.taskConfig.Task.Id,
+			LogkeeperBuildNum: tc.taskConfig.Task.Execution,
 			Sender:            model.LogSender(agentConfig.Type),
 			SplunkServerURL:   agentConfig.SplunkServer,
 			SplunkToken:       agentConfig.SplunkToken,
@@ -96,8 +95,8 @@ func (a *Agent) makeLoggerProducer(ctx context.Context, c *model.LoggerConfig, t
 	for _, systemConfig := range c.System {
 		config.System = append(config.System, client.LogOpts{
 			LogkeeperURL:      a.opts.LogkeeperURL,
-			LogkeeperBuilder:  task.Id,
-			LogkeeperBuildNum: task.Execution,
+			LogkeeperBuilder:  tc.taskConfig.Task.Id,
+			LogkeeperBuildNum: tc.taskConfig.Task.Execution,
 			Sender:            model.LogSender(systemConfig.Type),
 			SplunkServerURL:   systemConfig.SplunkServer,
 			SplunkToken:       systemConfig.SplunkToken,
@@ -107,13 +106,24 @@ func (a *Agent) makeLoggerProducer(ctx context.Context, c *model.LoggerConfig, t
 	for _, taskConfig := range c.Task {
 		config.Task = append(config.Task, client.LogOpts{
 			LogkeeperURL:      a.opts.LogkeeperURL,
-			LogkeeperBuilder:  task.Id,
-			LogkeeperBuildNum: task.Execution,
+			LogkeeperBuilder:  tc.taskConfig.Task.Id,
+			LogkeeperBuildNum: tc.taskConfig.Task.Execution,
 			Sender:            model.LogSender(taskConfig.Type),
 			SplunkServerURL:   taskConfig.SplunkServer,
 			SplunkToken:       taskConfig.SplunkToken,
 			Filepath:          fmt.Sprintf("%s/task.log", path),
 		})
 	}
-	return a.comm.GetLoggerProducer(ctx, td, &config)
+	logger := a.comm.GetLoggerProducer(ctx, tc.task, &config)
+	loggerData := a.comm.GetLoggerMetadata()
+	for _, agent := range loggerData.Agent {
+		tc.logs.AgentLogURLs = append(tc.logs.AgentLogURLs, fmt.Sprintf("%s/build/%s/test/%s", a.opts.LogkeeperURL, agent.Build, agent.Test))
+	}
+	for _, system := range loggerData.System {
+		tc.logs.SystemLogURLs = append(tc.logs.SystemLogURLs, fmt.Sprintf("%s/build/%s/test/%s", a.opts.LogkeeperURL, system.Build, system.Test))
+	}
+	for _, task := range loggerData.Task {
+		tc.logs.TaskLogURLs = append(tc.logs.TaskLogURLs, fmt.Sprintf("%s/build/%s/test/%s", a.opts.LogkeeperURL, task.Build, task.Test))
+	}
+	return logger
 }

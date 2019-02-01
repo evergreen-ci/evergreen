@@ -149,3 +149,48 @@ func TestResetLogging(t *testing.T) {
 	assert.NotNil(config.Project)
 	assert.NotNil(config.Version)
 }
+
+func TestLogkeeperMetadataPopulated(t *testing.T) {
+	assert := assert.New(t)
+
+	agt := &Agent{
+		opts: Options{
+			HostID:       "host",
+			HostSecret:   "secret",
+			StatusPort:   2286,
+			LogPrefix:    evergreen.LocalLoggingOverride,
+			LogkeeperURL: "logkeeper",
+		},
+		comm: client.NewMock("mock"),
+	}
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	taskID := "logging"
+	taskSecret := "mock_task_secret"
+	tc := &taskContext{
+		task: client.TaskData{
+			ID:     taskID,
+			Secret: taskSecret,
+		},
+		project: &model.Project{
+			Loggers: &model.LoggerConfig{
+				Agent:  []model.LogOpts{{Type: model.LogkeeperLogSender}},
+				System: []model.LogOpts{{Type: model.LogkeeperLogSender}},
+				Task:   []model.LogOpts{{Type: model.LogkeeperLogSender}},
+			},
+		},
+		taskConfig: &model.TaskConfig{
+			Task: &task.Task{
+				DisplayName: "task1",
+			},
+			BuildVariant: &model.BuildVariant{Name: "bv"},
+			Timeout:      &model.Timeout{IdleTimeoutSecs: 15, ExecTimeoutSecs: 15},
+		},
+	}
+	err := agt.resetLogging(ctx, tc)
+	assert.NoError(err)
+	assert.Equal("logkeeper/build/build1/test/test1", tc.logs.AgentLogURLs[0])
+	assert.Equal("logkeeper/build/build1/test/test2", tc.logs.SystemLogURLs[0])
+	assert.Equal("logkeeper/build/build1/test/test3", tc.logs.TaskLogURLs[0])
+}

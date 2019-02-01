@@ -42,6 +42,7 @@ type Options struct {
 type taskContext struct {
 	currentCommand command.Command
 	logger         client.LoggerProducer
+	logs           apimodels.TaskLogs
 	statsCollector *StatsCollector
 	task           client.TaskData
 	taskGroup      string
@@ -244,7 +245,7 @@ func (a *Agent) fetchProjectConfig(ctx context.Context, tc *taskContext) error {
 
 func (a *Agent) resetLogging(ctx context.Context, tc *taskContext) error {
 	if tc.project != nil && tc.project.Loggers != nil {
-		tc.logger = a.makeLoggerProducer(ctx, tc.project.Loggers, tc.task, tc.taskModel)
+		tc.logger = a.makeLoggerProducer(ctx, tc, tc.project.Loggers)
 	} else {
 		tc.logger = a.comm.GetLoggerProducer(ctx, tc.task, nil)
 	}
@@ -385,6 +386,7 @@ func (a *Agent) endTaskResponse(tc *taskContext, status string) *apimodels.TaskE
 		Type:        tc.getCurrentCommand().Type(),
 		TimedOut:    tc.hadTimedOut(),
 		Status:      status,
+		Logs:        tc.logs,
 	}
 }
 

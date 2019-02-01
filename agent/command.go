@@ -49,7 +49,7 @@ func (a *Agent) runCommandSet(ctx context.Context, tc *taskContext, commandInfo 
 	if commandInfo.Loggers == nil {
 		logger = tc.logger
 	} else {
-		logger = a.makeLoggerProducer(ctx, commandInfo.Loggers, tc.task, tc.taskConfig.Task)
+		logger = a.makeLoggerProducer(ctx, tc, commandInfo.Loggers)
 		defer func() {
 			grip.Error(logger.Close())
 		}()

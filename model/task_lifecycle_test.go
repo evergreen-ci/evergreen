@@ -619,6 +619,11 @@ func TestTaskStatusImpactedByFailedTest(t *testing.T) {
 			}
 			detail = &apimodels.TaskEndDetail{
 				Status: evergreen.TaskSucceeded,
+				Logs: apimodels.TaskLogs{
+					AgentLogURLs:  []string{"agent"},
+					TaskLogURLs:   []string{"task"},
+					SystemLogURLs: []string{"system"},
+				},
 			}
 
 			testutil.HandleTestingErr(db.ClearCollections(ProjectRefCollection, task.Collection, build.Collection, VersionCollection), t,
@@ -629,7 +634,7 @@ func TestTaskStatusImpactedByFailedTest(t *testing.T) {
 			So(ref.Insert(), ShouldBeNil)
 		}
 
-		Convey("task should not fail if there are no failed test", func() {
+		Convey("task should not fail if there are no failed test, also logs should be updated", func() {
 			reset()
 			updates := StatusChanges{}
 			So(MarkEnd(testTask, "", time.Now(), detail, true, &updates), ShouldBeNil)
@@ -642,6 +647,7 @@ func TestTaskStatusImpactedByFailedTest(t *testing.T) {
 			taskData, err := task.FindOne(task.ById(testTask.Id))
 			So(err, ShouldBeNil)
 			So(taskData.Status, ShouldEqual, evergreen.TaskSucceeded)
+			So(taskData.Logs, ShouldEqual, detail.Logs)
 			buildCache, err := build.FindOne(build.ById(b.Id))
 			So(err, ShouldBeNil)
 			So(buildCache.Status, ShouldEqual, evergreen.TaskSucceeded)
