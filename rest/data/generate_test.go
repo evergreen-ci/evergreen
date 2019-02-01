@@ -21,7 +21,7 @@ func TestGeneratePoll(t *testing.T) {
 	assert.Error(err)
 	j := &mockJob{}
 	j.SetID("1")
-	q.Start(context.Background())
+	assert.NoError(q.Start(context.Background()))
 	assert.NoError(q.Put(j))
 	finished, err = gc.GeneratePoll(context.Background(), "1", q)
 	assert.False(finished)
