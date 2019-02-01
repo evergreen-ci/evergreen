@@ -104,28 +104,28 @@ func TestCommandFileLogging(t *testing.T) {
 	assert.NoError(err)
 	defer agt.removeTaskDirectory(tc)
 	err = agt.runTaskCommands(ctx, tc)
-	assert.NoError(err)
+	require.NoError(err)
 
 	// verify log contents
 	f, err := os.Open(fmt.Sprintf("%s/%s/task.log", tmpDirName, taskLogDirectory))
-	assert.NoError(err)
+	require.NoError(err)
 	bytes, err := ioutil.ReadAll(f)
-	assert.NoError(err)
-	assert.Contains(string(bytes), "[p=info]: hello world")
+	require.NoError(err)
+	assert.Contains(string(bytes), "hello world")
 
 	// mock upload the logs
 	bucket, err := pail.NewLocalBucket(pail.LocalOptions{
 		Path: tmpDirName,
 	})
-	assert.NoError(err)
-	assert.NoError(agt.uploadLogFiles(ctx, tc, bucket))
+	require.NoError(err)
+	require.NoError(agt.uploadLogFiles(ctx, tc, bucket))
 
 	// verify uploaded log contents
 	f, err = os.Open(fmt.Sprintf("%s/logs/%s/%d/task.log", tmpDirName, tc.taskConfig.Task.Id, tc.taskConfig.Task.Execution))
-	assert.NoError(err)
+	require.NoError(err)
 	bytes, err = ioutil.ReadAll(f)
-	assert.NoError(err)
-	assert.Contains(string(bytes), "[p=info]: hello world")
+	require.NoError(err)
+	assert.Contains(string(bytes), "hello world")
 }
 
 func TestResetLogging(t *testing.T) {

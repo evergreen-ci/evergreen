@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"path/filepath"
 	"sync"
 	"time"
 
@@ -246,7 +247,7 @@ func (a *Agent) fetchProjectConfig(ctx context.Context, tc *taskContext) error {
 }
 
 func (a *Agent) resetLogging(ctx context.Context, tc *taskContext) error {
-	grip.Error(os.RemoveAll(fmt.Sprintf("%s/%s", a.opts.WorkingDirectory, taskLogDirectory)))
+	grip.Error(os.RemoveAll(filepath.Join(a.opts.WorkingDirectory, taskLogDirectory)))
 	if tc.project != nil && tc.project.Loggers != nil {
 		tc.logger = a.makeLoggerProducer(ctx, tc.project.Loggers, tc.task, tc.taskModel)
 	} else {
@@ -354,9 +355,8 @@ func (a *Agent) runTaskTimeoutCommands(ctx context.Context, tc *taskContext) {
 // finishTask sends the returned EndTaskResponse and error
 func (a *Agent) finishTask(ctx context.Context, tc *taskContext, status string) (*apimodels.EndTaskResponse, error) {
 	err := a.uploadToS3(ctx, tc)
-	if err != nil {
-		tc.logger.Execution().Error(errors.Wrap(err, "error uploading log files"))
-	}
+	tc.logger.Execution().Error(errors.Wrap(err, "error uploading log files"))
+
 	detail := a.endTaskResponse(tc, status)
 	switch detail.Status {
 	case evergreen.TaskSucceeded:

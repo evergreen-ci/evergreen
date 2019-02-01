@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"path/filepath"
+	"strconv"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
@@ -86,7 +88,7 @@ func GetSender(ctx context.Context, prefix, taskId string) (send.Sender, error) 
 }
 
 func (a *Agent) makeLoggerProducer(ctx context.Context, c *model.LoggerConfig, td client.TaskData, task *task.Task) client.LoggerProducer {
-	path := fmt.Sprintf("%s/%s", a.opts.WorkingDirectory, taskLogDirectory)
+	path := filepath.Join(a.opts.WorkingDirectory, taskLogDirectory)
 	grip.Error(errors.Wrap(os.Mkdir(path, os.ModeDir|os.ModePerm), "error making log directory"))
 
 	config := client.LoggerConfig{}
@@ -98,7 +100,7 @@ func (a *Agent) makeLoggerProducer(ctx context.Context, c *model.LoggerConfig, t
 			Sender:            agentConfig.Type,
 			SplunkServerURL:   agentConfig.SplunkServer,
 			SplunkToken:       agentConfig.SplunkToken,
-			Filepath:          fmt.Sprintf("%s/%s/%s", a.opts.WorkingDirectory, taskLogDirectory, agentLogFileName),
+			Filepath:          filepath.Join(a.opts.WorkingDirectory, taskLogDirectory, agentLogFileName),
 		})
 	}
 	for _, systemConfig := range c.System {
@@ -109,7 +111,7 @@ func (a *Agent) makeLoggerProducer(ctx context.Context, c *model.LoggerConfig, t
 			Sender:            systemConfig.Type,
 			SplunkServerURL:   systemConfig.SplunkServer,
 			SplunkToken:       systemConfig.SplunkToken,
-			Filepath:          fmt.Sprintf("%s/%s/%s", a.opts.WorkingDirectory, taskLogDirectory, systemLogFileName),
+			Filepath:          filepath.Join(a.opts.WorkingDirectory, taskLogDirectory, systemLogFileName),
 		})
 	}
 	for _, taskConfig := range c.Task {
@@ -120,7 +122,7 @@ func (a *Agent) makeLoggerProducer(ctx context.Context, c *model.LoggerConfig, t
 			Sender:            taskConfig.Type,
 			SplunkServerURL:   taskConfig.SplunkServer,
 			SplunkToken:       taskConfig.SplunkToken,
-			Filepath:          fmt.Sprintf("%s/%s/%s", a.opts.WorkingDirectory, taskLogDirectory, taskLogFileName),
+			Filepath:          filepath.Join(a.opts.WorkingDirectory, taskLogDirectory, taskLogFileName),
 		})
 	}
 	return a.comm.GetLoggerProducer(ctx, td, &config)
@@ -136,6 +138,9 @@ func (a *Agent) uploadToS3(ctx context.Context, tc *taskContext) error {
 }
 
 func (a *Agent) uploadLogFiles(ctx context.Context, tc *taskContext, bucket pail.Bucket) error {
+	if tc.taskConfig == nil || tc.taskConfig.Task == nil {
+		return nil
+	}
 	catcher := grip.NewBasicCatcher()
 	catcher.Add(a.uploadSingleFile(ctx, bucket, agentLogFileName, tc.taskConfig.Task.Id, tc.taskConfig.Task.Execution))
 	catcher.Add(a.uploadSingleFile(ctx, bucket, systemLogFileName, tc.taskConfig.Task.Id, tc.taskConfig.Task.Execution))
@@ -145,10 +150,10 @@ func (a *Agent) uploadLogFiles(ctx context.Context, tc *taskContext, bucket pail
 }
 
 func (a *Agent) uploadSingleFile(ctx context.Context, bucket pail.Bucket, file string, taskID string, execution int) error {
-	localPath := fmt.Sprintf("%s/%s/%s", a.opts.WorkingDirectory, taskLogDirectory, file)
+	localPath := filepath.Join(a.opts.WorkingDirectory, taskLogDirectory, file)
 	_, err := os.Stat(localPath)
 	if os.IsNotExist(err) {
 		return nil
 	}
-	return bucket.Upload(ctx, fmt.Sprintf("logs/%s/%d/%s", taskID, execution, file), localPath)
+	return bucket.Upload(ctx, filepath.Join("logs", taskID, strconv.Itoa(execution), file), localPath)
 }
