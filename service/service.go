@@ -51,10 +51,11 @@ func GetRouter(as *APIServer, uis *UIServer) (http.Handler, error) {
 	rest := GetRESTv1App(as)
 
 	opts := route.HandlerOpts{
-		APIQueue:     as.queue,
-		URL:          as.Settings.Ui.Url,
-		SuperUsers:   as.Settings.SuperUsers,
-		GithubSecret: []byte(as.Settings.Api.GithubWebhookSecret),
+		APIQueue:          as.queue,
+		SingleWorkerQueue: as.singleWorkerQueue,
+		URL:               as.Settings.Ui.Url,
+		SuperUsers:        as.Settings.SuperUsers,
+		GithubSecret:      []byte(as.Settings.Api.GithubWebhookSecret),
 	}
 	route.AttachHandler(rest, opts)
 
