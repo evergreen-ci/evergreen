@@ -149,7 +149,7 @@ func (a *Agent) runPreTaskCommands(ctx context.Context, tc *taskContext) {
 			return
 		}
 		if taskGroup.SetupGroup != nil {
-			err = a.runCommands(ctx, tc, taskGroup.SetupGroup.List(), false)
+			err = a.runCommands(ctx, tc, taskGroup.SetupGroup.List(), taskGroup.SetupGroupFailTask)
 			if err != nil {
 				tc.logger.Execution().Error(errors.Wrap(err, "error running task setup group"))
 			}
@@ -184,9 +184,8 @@ func (tc *taskContext) getCurrentCommand() command.Command {
 func (tc *taskContext) setCurrentTimeout(cmd command.Command) {
 	tc.Lock()
 	defer tc.Unlock()
-
 	var timeout time.Duration
-	if cmd == nil {
+	if cmd == nil || tc.taskConfig.Timeout == nil {
 		timeout = defaultIdleTimeout
 	} else if dynamicTimeout := tc.taskConfig.GetIdleTimeout(); dynamicTimeout != 0 {
 		timeout = time.Duration(dynamicTimeout) * time.Second
@@ -195,7 +194,6 @@ func (tc *taskContext) setCurrentTimeout(cmd command.Command) {
 	} else {
 		timeout = defaultIdleTimeout
 	}
-
 	tc.timeout = timeout
 	tc.logger.Execution().Debugf("Set command timeout for '%s' (%s) to %s",
 		tc.currentCommand.DisplayName(), tc.currentCommand.Type(), timeout)

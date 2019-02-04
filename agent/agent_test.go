@@ -597,6 +597,44 @@ task_groups:
 	s.Equal("Finished running pre-task commands.", msgs[len(msgs)-1].Message)
 }
 
+func (s *AgentSuite) TestGroupPreGroupCommandsFail() {
+	s.tc.taskGroup = "task_group_name"
+	s.tc.taskConfig = &model.TaskConfig{
+		BuildVariant: &model.BuildVariant{
+			Name: "buildvariant_id",
+		},
+		Task: &task.Task{
+			Id:        "task_id",
+			TaskGroup: "task_group_name",
+			Version:   versionId,
+		},
+		Project: &model.Project{},
+		WorkDir: s.tc.taskDirectory,
+	}
+	s.tc.taskGroup = "task_group_name"
+	s.tc.runGroupSetup = true
+	projYml := `
+task_groups:
+- name: task_group_name
+  setup_group_fail_task: true
+  setup_group:
+  - command: thisisnotarealcommand
+    params:
+      script: "echo hi"
+`
+	v := &model.Version{
+		Id:     versionId,
+		Config: projYml,
+	}
+	s.tc.taskConfig.Version = v
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	s.a.runPreTaskCommands(ctx, s.tc)
+	s.NoError(s.tc.logger.Close())
+	msgs := s.mockCommunicator.GetMockMessages()["task_id"]
+	s.Contains(msgs[len(msgs)-2].Message, "error running task setup group")
+}
+
 func (s *AgentSuite) TestGroupPreTaskCommands() {
 	s.tc.taskGroup = "task_group_name"
 	s.tc.taskConfig = &model.TaskConfig{

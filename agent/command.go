@@ -16,13 +16,11 @@ import (
 func (a *Agent) runCommands(ctx context.Context, tc *taskContext, commands []model.PluginCommandConf, isTaskCommands bool) (err error) {
 	var cmds []command.Command
 	defer func() { err = recovery.HandlePanicWithError(recover(), err, "run commands") }()
-
 	for i, commandInfo := range commands {
 		if ctx.Err() != nil {
 			grip.Error("runCommands canceled")
 			return errors.New("runCommands canceled")
 		}
-
 		cmds, err = command.Render(commandInfo, tc.taskConfig.Project.Functions)
 		if err != nil {
 			tc.logger.Task().Errorf("Couldn't parse plugin command '%v': %v", commandInfo.Command, err)
@@ -101,7 +99,7 @@ func (a *Agent) runCommandSet(ctx context.Context, tc *taskContext, commandInfo 
 		// We have seen cases where calling exec.*Cmd.Wait() waits for too long if
 		// the process has called subprocesses. It will wait until a subprocess
 		// finishes, instead of returning immediately when the context is canceled.
-		// We therefore check both if the context is cancled and if Wait() has finished.
+		// We therefore check both if the context is cancelled and if Wait() has finished.
 		cmdChan := make(chan error, 1)
 		go func() {
 			defer func() {
