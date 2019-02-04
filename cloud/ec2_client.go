@@ -21,7 +21,7 @@ import (
 )
 
 const defaultRegion = "us-east-1"
-const MockIPV6 = "1234::aba:asdf:a211:736"
+const MockIPV6 = "abcd:1234:459c:2d00:cfe4:843b:1d60:8e47"
 
 // AWSClient is a wrapper for aws-sdk-go so we can use a mock in testing.
 type AWSClient interface {

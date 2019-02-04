@@ -7,7 +7,7 @@ import (
 
 type CreateHost struct {
 	DNSName    string `json:"dns_name"`
-	IPv6	   string `json:"ipv6_address"`
+	IP         string `json:"ip_address"`
 	InstanceID string `json:"instance_id"`
 }
 
@@ -16,12 +16,12 @@ func (createHost *CreateHost) BuildFromService(h interface{}) error {
 	case host.Host:
 		createHost.DNSName = v.Host
 		createHost.InstanceID = v.Id
-		createHost.IPv6 = v.IPv6
+		createHost.IP = v.IP
 		createHost.InstanceID = v.ExternalIdentifier
 	case *host.Host:
 		createHost.DNSName = v.Host
 		createHost.InstanceID = v.Id
-		createHost.IPv6 = v.IPv6
+		createHost.IP = v.IP
 		createHost.InstanceID = v.ExternalIdentifier
 	default:
 		return errors.Errorf("Invalid type passed to *CreateHost.BuildFromService (%T)", h)

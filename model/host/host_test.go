@@ -325,40 +325,30 @@ func TestHostSetDNSName(t *testing.T) {
 }
 
 func TestHostSetIPv6Address(t *testing.T) {
-	var err error
+	assert := assert.New(t)
+	assert.NoError(db.ClearCollections(Collection))
 
-	Convey("With a host", t, func() {
+	host := &Host{
+		Id: "hostOne",
+	}
+	assert.NoError(host.Insert())
 
-		testutil.HandleTestingErr(db.Clear(Collection), t, "Error"+
-			" clearing '%v' collection", Collection)
+	ipv6Address := "abcd:1234:459c:2d00:cfe4:843b:1d60:8e47"
+	ipv6Address2 := "aaaa:1f18:459c:2d00:cfe4:843b:1d60:9999"
 
-		host := &Host{
-			Id: "hostOne",
-		}
+	assert.NoError(host.SetIPv6Address(ipv6Address))
+	assert.Equal(host.IP, ipv6Address)
+	host, err := FindOne(ById(host.Id))
+	assert.NoError(err)
+	assert.Equal(host.IP, ipv6Address)
 
-		So(host.Insert(), ShouldBeNil)
-		ipv6Address :=  "1234::aba:asdf:a211:736"
-		ipv6Address2 := "5678::bcb:asdf:a211:736"
+	// if the host is already updated, no new updates should work
+	assert.Error(host.SetIPv6Address(ipv6Address2))
+	assert.Equal(host.IP, ipv6Address)
 
-		Convey("setting the ipv6 address should update both the in-memory and"+
-			" database copies of the host", func() {
-
-			So(host.SetIPv6Address(ipv6Address), ShouldBeNil)
-			So(host.IPv6, ShouldEqual, ipv6Address)
-			host, err = FindOne(ById(host.Id))
-			So(err, ShouldBeNil)
-			So(host.IPv6, ShouldEqual, ipv6Address)
-
-			// if the host is already updated, no new updates should work
-			So(host.SetDNSName(ipv6Address2), ShouldBeNil)
-			So(host.IPv6, ShouldEqual, ipv6Address)
-
-			host, err = FindOne(ById(host.Id))
-			So(err, ShouldBeNil)
-			So(host.IPv6, ShouldEqual, ipv6Address)
-
-		})
-	})
+	host, err = FindOne(ById(host.Id))
+	assert.NoError(err)
+	assert.Equal(host.IP, ipv6Address)
 }
 
 func TestMarkAsProvisioned(t *testing.T) {

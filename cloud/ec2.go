@@ -187,8 +187,7 @@ func (m *ec2Manager) spawnOnDemandHost(ctx context.Context, h *host.Host, ec2Set
 			},
 		}
 		if ec2Settings.IPv6 {
-			input.NetworkInterfaces[0].SetIpv6AddressCount(1)
-			input.NetworkInterfaces[0].SetAssociatePublicIpAddress(false)
+			input.NetworkInterfaces[0].SetIpv6AddressCount(1).SetAssociatePublicIpAddress(false)
 		}
 	} else {
 		input.SecurityGroups = ec2Settings.getSecurityGroups()
@@ -310,8 +309,7 @@ func (m *ec2Manager) spawnSpotHost(ctx context.Context, h *host.Host, ec2Setting
 			},
 		}
 		if ec2Settings.IPv6 {
-			spotRequest.LaunchSpecification.NetworkInterfaces[0].SetIpv6AddressCount(1)
-			spotRequest.LaunchSpecification.NetworkInterfaces[0].SetAssociatePublicIpAddress(false)
+			spotRequest.LaunchSpecification.NetworkInterfaces[0].SetIpv6AddressCount(1).SetAssociatePublicIpAddress(false)
 		}
 	} else {
 		spotRequest.LaunchSpecification.SecurityGroups = ec2Settings.getSecurityGroups()
@@ -930,23 +928,20 @@ func (m *ec2Manager) retrieveInstance(ctx context.Context, h *host.Host) (*ec2.I
 func (m *ec2Manager) GetDNSName(ctx context.Context, h *host.Host) (string, error) {
 	instance, err := m.retrieveInstance(ctx, h)
 	if err != nil {
-		return "", err
+		return "", errors.Wrapf(err, "error retrieving instance")
 	}
-
 	// set IPv6 address, if applicable
 	for _, networkInterface := range instance.NetworkInterfaces {
 		if len(networkInterface.Ipv6Addresses) > 0 {
 			err = h.SetIPv6Address(*networkInterface.Ipv6Addresses[0].Ipv6Address)
 			if err != nil {
-				return "", err
+				return "", errors.Wrap(err, "error setting ipv6 address")
 			}
 			break
 		}
 	}
 	return *instance.PublicDnsName, nil
 }
-
-
 
 // GetSSHOptions returns the command-line args to pass to SSH.
 func (m *ec2Manager) GetSSHOptions(h *host.Host, keyName string) ([]string, error) {
