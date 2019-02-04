@@ -408,10 +408,10 @@ func (o *LogOpts) IsValid() error {
 	if !util.StringSliceContains(ValidLogSenders, o.Type) {
 		catcher.Add(errors.Errorf("%s is not a valid log sender", o.Type))
 	}
-	if o.Type == string(SplunkLogSender) && o.SplunkServer == "" {
+	if o.Type == SplunkLogSender && o.SplunkServer == "" {
 		catcher.Add(errors.New("Splunk logger requires a server URL"))
 	}
-	if o.Type == string(SplunkLogSender) && o.SplunkToken == "" {
+	if o.Type == SplunkLogSender && o.SplunkToken == "" {
 		catcher.Add(errors.New("Splunk logger requires a token"))
 	}
 

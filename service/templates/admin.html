@@ -920,12 +920,20 @@ Admin Settings
 								</md-card-title>
 								<md-card-content>
 									<md-input-container class="control" style="width:45%;">
-										<label>ID</label>
+										<label>EC2 Key</label>
 										<input type="text" ng-model="Settings.providers.aws.aws_id">
 									</md-input-container>
 									<md-input-container class="control" style="width:45%; margin-left:50px;">
-										<label>Secret</label>
+										<label>EC2 Secret</label>
 										<input type="text" ng-model="Settings.providers.aws.aws_secret">
+									</md-input-container>
+									<md-input-container class="control" style="width:45%;">
+										<label>S3 Key</label>
+										<input type="text" ng-model="Settings.providers.aws.s3_key">
+									</md-input-container>
+									<md-input-container class="control" style="width:45%; margin-left:50px;">
+										<label>S3 Secret</label>
+										<input type="text" ng-model="Settings.providers.aws.s3_secret">
 									</md-input-container>
 									<md-input-container class="control" style="width:45%;">
 										<label>S3 Bucket</label>

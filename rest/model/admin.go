@@ -825,16 +825,20 @@ func (a *APIContainerPool) ToService() (interface{}, error) {
 }
 
 type APIAWSConfig struct {
-	Secret APIString `json:"aws_secret"`
-	Id     APIString `json:"aws_id"`
-	Bucket APIString `json:"bucket"`
+	EC2Secret APIString `json:"aws_secret"`
+	EC2Key    APIString `json:"aws_id"`
+	S3Key     APIString `json:"s3_key"`
+	S3Secret  APIString `json:"s3_secret"`
+	Bucket    APIString `json:"bucket"`
 }
 
 func (a *APIAWSConfig) BuildFromService(h interface{}) error {
 	switch v := h.(type) {
 	case evergreen.AWSConfig:
-		a.Secret = ToAPIString(v.Secret)
-		a.Id = ToAPIString(v.Id)
+		a.EC2Secret = ToAPIString(v.EC2Secret)
+		a.EC2Key = ToAPIString(v.EC2Key)
+		a.S3Key = ToAPIString(v.S3Key)
+		a.S3Secret = ToAPIString(v.S3Secret)
 		a.Bucket = ToAPIString(v.Bucket)
 	default:
 		return errors.Errorf("%T is not a supported type", h)
@@ -844,9 +848,11 @@ func (a *APIAWSConfig) BuildFromService(h interface{}) error {
 
 func (a *APIAWSConfig) ToService() (interface{}, error) {
 	return evergreen.AWSConfig{
-		Id:     FromAPIString(a.Id),
-		Bucket: FromAPIString(a.Bucket),
-		Secret: FromAPIString(a.Secret),
+		EC2Key:    FromAPIString(a.EC2Key),
+		EC2Secret: FromAPIString(a.EC2Secret),
+		S3Key:     FromAPIString(a.S3Key),
+		S3Secret:  FromAPIString(a.S3Secret),
+		Bucket:    FromAPIString(a.Bucket),
 	}, nil
 }
 

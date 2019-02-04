@@ -124,8 +124,8 @@ func MockConfig() *evergreen.Settings {
 		PprofPort: "port",
 		Providers: evergreen.CloudProviders{
 			AWS: evergreen.AWSConfig{
-				Secret: "aws_secret",
-				Id:     "aws",
+				EC2Secret: "aws_secret",
+				EC2Key:    "aws",
 			},
 			Docker: evergreen.DockerConfig{
 				APIVersion: "docker_version",
