@@ -287,7 +287,9 @@ mciModule.controller('ProjectCtrl', function($scope, $window, $http, $location, 
         $scope.commit_queue_aliases = $scope.aliases.filter(
           function(d) { return d.alias == '__commit_queue' }
         )
-        $scope.patch_aliases = _.difference($scope.aliases, $scope.github_aliases.concat($scope.commit_queue_aliases))
+        $scope.patch_aliases = $scope.aliases.filter(
+          function(d) { return d.alias !== '__github' && d.alias !== '__commit_queue' }
+        )
 
         $scope.settingsFormData = {
           identifier : $scope.projectRef.identifier,
@@ -318,6 +320,16 @@ mciModule.controller('ProjectCtrl', function($scope, $window, $http, $location, 
           files_ignored_from_cache: data.ProjectRef.files_ignored_from_cache,
           disabled_stats_cache: data.ProjectRef.disabled_stats_cache,
         };
+
+        if(!$scope.settingsFormData.commit_queue.merge_method) {
+          $scope.settingsFormData.commit_queue.merge_method = $scope.validMergeMethods[0];
+        }
+        if(!$scope.settingsFormData.commit_queue.merge_action) {
+          $scope.settingsFormData.commit_queue.merge_action = $scope.validMergeActions[0];
+        }
+        if(!$scope.settingsFormData.commit_queue.status_action) {
+          $scope.settingsFormData.commit_queue.status_action = $scope.validStatusActions[0];
+        }
 
         $scope.subscriptions = _.map(data.subscriptions || [], function(v) {
           t = lookupTrigger($scope.triggers, v.trigger, v.resource_type);
@@ -398,7 +410,7 @@ mciModule.controller('ProjectCtrl', function($scope, $window, $http, $location, 
       return d.changed;
     });
 
-    $scope.settingsFormData.project_aliases = $scope.github_aliases.concat($scope.patch_aliases, $scope.commit_queue_aliases);
+    $scope.settingsFormData.project_aliases = $scope.github_aliases.concat($scope.commit_queue_aliases, $scope.patch_aliases);
 
     if ($scope.admin_name) {
       $scope.addAdmin();

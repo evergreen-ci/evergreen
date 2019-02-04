@@ -410,21 +410,15 @@ Evergreen Projects
             <div>
               <div>
                 <label for="mergeMethodSelect"> Merge Method: </label>
-                <select id="mergeMethodSelect" ng-model="settingsFormData.commit_queue.merge_method" >
-                  <option ng-repeat="option in validMergeMethods">[[option]]</option>
-                </select>
+                <select id="mergeMethodSelect" ng-model="settingsFormData.commit_queue.merge_method" ng-options="option for option in validMergeMethods"></select>
               </div>
               <div>
                 <label for="mergeActionSelect"> Merge Action: </label>
-                <select id="mergeActionSelect" ng-model="settingsFormData.commit_queue.merge_action" >
-                    <option ng-repeat="option in validMergeActions">[[option]]</option>
-                </select>
+                <select id="mergeActionSelect" ng-model="settingsFormData.commit_queue.merge_action" ng-options="option for option in validMergeActions"></select>
               </div>
               <div>
                 <label for="statusActionSelect"> Status Action: </label>
-                <select id="statusActionSelect" ng-model="settingsFormData.commit_queue.status_action" >
-                    <option ng-repeat="option in validStatusActions">[[option]]</option>
-                </select>
+                <select id="statusActionSelect" ng-model="settingsFormData.commit_queue.status_action" ng-options="option for option in validMergeActions"></select>
               </div>
             </div>
             <div class="form-group">

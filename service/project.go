@@ -313,6 +313,8 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 				return
 			}
 		}
+
+		projectRef.CommitQueue = commitQueueParams
 	}
 
 	catcher := grip.NewSimpleCatcher()
@@ -342,7 +344,6 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 	projectRef.Identifier = id
 	projectRef.TracksPushEvents = responseRef.TracksPushEvents
 	projectRef.PRTestingEnabled = responseRef.PRTestingEnabled
-	projectRef.CommitQueue = commitQueueParams
 	projectRef.PatchingDisabled = responseRef.PatchingDisabled
 	projectRef.NotifyOnBuildFailure = responseRef.NotifyOnBuildFailure
 	projectRef.Triggers = responseRef.Triggers
