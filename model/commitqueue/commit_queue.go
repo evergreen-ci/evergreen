@@ -54,7 +54,7 @@ func (q *CommitQueue) Remove(item string) (bool, error) {
 	}
 
 	if err := remove(q.ProjectID, item); err != nil {
-		return true, errors.Wrap(err, "can't remove item")
+		return false, errors.Wrap(err, "can't remove item")
 	}
 
 	q.Queue = append(q.Queue[:itemIndex], q.Queue[itemIndex+1:]...)
