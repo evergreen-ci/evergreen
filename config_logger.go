@@ -12,6 +12,7 @@ type LoggerConfig struct {
 	Buffer         LogBuffering `bson:"buffer" json:"buffer" yaml:"buffer"`
 	DefaultLevel   string       `bson:"default_level" json:"default_level" yaml:"default_level"`
 	ThresholdLevel string       `bson:"threshold_level" json:"threshold_level" yaml:"threshold_level"`
+	LogkeeperURL   string       `bson:"logkeeper_url" json:"logkeeper_url" yaml:"logkeeper_url"`
 }
 
 func (c LoggerConfig) Info() send.LevelInfo {
@@ -38,6 +39,7 @@ func (c *LoggerConfig) Set() error {
 			"buffer":          c.Buffer,
 			"default_level":   c.DefaultLevel,
 			"threshold_level": c.ThresholdLevel,
+			"logkeeper_url":   c.LogkeeperURL,
 		},
 	})
 	return errors.Wrapf(err, "error updating section %s", c.SectionId())

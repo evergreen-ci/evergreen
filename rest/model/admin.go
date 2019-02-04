@@ -267,6 +267,7 @@ func (a *APISMTPConfig) ToService() (interface{}, error) {
 
 type APIAmboyConfig struct {
 	Name           APIString `json:"name"`
+	SingleName     APIString `json:"single_name"`
 	DB             APIString `json:"database"`
 	PoolSizeLocal  int       `json:"pool_size_local"`
 	PoolSizeRemote int       `json:"pool_size_remote"`
@@ -277,6 +278,7 @@ func (a *APIAmboyConfig) BuildFromService(h interface{}) error {
 	switch v := h.(type) {
 	case evergreen.AmboyConfig:
 		a.Name = ToAPIString(v.Name)
+		a.SingleName = ToAPIString(v.SingleName)
 		a.DB = ToAPIString(v.DB)
 		a.PoolSizeLocal = v.PoolSizeLocal
 		a.PoolSizeRemote = v.PoolSizeRemote
@@ -290,6 +292,7 @@ func (a *APIAmboyConfig) BuildFromService(h interface{}) error {
 func (a *APIAmboyConfig) ToService() (interface{}, error) {
 	return evergreen.AmboyConfig{
 		Name:           FromAPIString(a.Name),
+		SingleName:     FromAPIString(a.SingleName),
 		DB:             FromAPIString(a.DB),
 		PoolSizeLocal:  a.PoolSizeLocal,
 		PoolSizeRemote: a.PoolSizeRemote,
@@ -602,6 +605,7 @@ type APILoggerConfig struct {
 	Buffer         *APILogBuffering `json:"buffer"`
 	DefaultLevel   APIString        `json:"default_level"`
 	ThresholdLevel APIString        `json:"threshold_level"`
+	LogkeeperURL   APIString        `json:"logkeeper_url"`
 }
 
 func (a *APILoggerConfig) BuildFromService(h interface{}) error {
@@ -609,6 +613,7 @@ func (a *APILoggerConfig) BuildFromService(h interface{}) error {
 	case evergreen.LoggerConfig:
 		a.DefaultLevel = ToAPIString(v.DefaultLevel)
 		a.ThresholdLevel = ToAPIString(v.ThresholdLevel)
+		a.LogkeeperURL = ToAPIString(v.LogkeeperURL)
 		a.Buffer = &APILogBuffering{}
 		if err := a.Buffer.BuildFromService(v.Buffer); err != nil {
 			return err
@@ -623,6 +628,7 @@ func (a *APILoggerConfig) ToService() (interface{}, error) {
 	config := evergreen.LoggerConfig{
 		DefaultLevel:   FromAPIString(a.DefaultLevel),
 		ThresholdLevel: FromAPIString(a.ThresholdLevel),
+		LogkeeperURL:   FromAPIString(a.LogkeeperURL),
 	}
 	i, err := a.Buffer.ToService()
 	if err != nil {

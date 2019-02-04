@@ -30,13 +30,14 @@ const (
 
 // APIServer handles communication with Evergreen agents and other back-end requests.
 type APIServer struct {
-	UserManager gimlet.UserManager
-	Settings    evergreen.Settings
-	queue       amboy.Queue
+	UserManager       gimlet.UserManager
+	Settings          evergreen.Settings
+	queue             amboy.Queue
+	singleWorkerQueue amboy.Queue
 }
 
 // NewAPIServer returns an APIServer initialized with the given settings and plugins.
-func NewAPIServer(settings *evergreen.Settings, queue amboy.Queue) (*APIServer, error) {
+func NewAPIServer(settings *evergreen.Settings, queue amboy.Queue, singleWorkerQueue amboy.Queue) (*APIServer, error) {
 	authManager, _, err := auth.LoadUserManager(settings.AuthConfig)
 	if err != nil {
 		return nil, errors.WithStack(err)
@@ -47,9 +48,10 @@ func NewAPIServer(settings *evergreen.Settings, queue amboy.Queue) (*APIServer, 
 	}
 
 	as := &APIServer{
-		UserManager: authManager,
-		Settings:    *settings,
-		queue:       queue,
+		UserManager:       authManager,
+		Settings:          *settings,
+		queue:             queue,
+		singleWorkerQueue: singleWorkerQueue,
 	}
 
 	return as, nil
@@ -313,18 +315,11 @@ func (as *APIServer) AppendTaskLog(w http.ResponseWriter, r *http.Request) {
 	}
 	t := MustHaveTask(r)
 	taskLog := &model.TaskLog{}
-	length, err := util.ReadJSONIntoWithLength(util.NewRequestReader(r), taskLog)
+	_, err := util.ReadJSONIntoWithLength(util.NewRequestReader(r), taskLog)
 	if err != nil {
 		http.Error(w, "unable to read logs from request", http.StatusBadRequest)
 		return
 	}
-
-	grip.Info(message.Fields{
-		"message": "appending task log",
-		"size":    length,
-		"task_id": t.Id,
-		"project": t.Project,
-	})
 
 	taskLog.TaskId = t.Id
 	taskLog.Execution = t.Execution

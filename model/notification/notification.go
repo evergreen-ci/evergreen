@@ -49,7 +49,7 @@ type Notification struct {
 	Subscriber event.Subscriber `bson:"subscriber"`
 	Payload    interface{}      `bson:"payload"`
 
-	SentAt   time.Time            `bson:"sent_at"`
+	SentAt   time.Time            `bson:"sent_at,omitempty"`
 	Error    string               `bson:"error,omitempty"`
 	Metadata NotificationMetadata `bson:"metadata,omitempty"`
 }
@@ -276,7 +276,7 @@ func CollectUnsentNotificationStats() (*NotificationStats, error) {
 		{
 			"$match": bson.M{
 				sentAtKey: bson.M{
-					"$eq": time.Time{},
+					"$exists": false,
 				},
 			},
 		},

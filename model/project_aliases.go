@@ -95,9 +95,7 @@ func (p *ProjectAlias) Upsert() error {
 		projectIDKey: p.ProjectID,
 		variantKey:   p.Variant,
 		tagsKey:      p.Tags,
-	}
-	if p.Task != "" {
-		update[taskKey] = p.Task
+		taskKey:      p.Task,
 	}
 
 	_, err := db.Upsert(ProjectAliasCollection, bson.M{
@@ -134,6 +132,7 @@ func (a ProjectAliases) HasMatchingVariant(variant string) (bool, error) {
 	}
 	return false, nil
 }
+
 func (a ProjectAliases) HasMatchingTask(variant string, t *ProjectTask) (bool, error) {
 	if t == nil {
 		return false, errors.New("no task found")

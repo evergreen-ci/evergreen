@@ -176,7 +176,7 @@ func (c *Mock) GetVersion(ctx context.Context, td TaskData) (*serviceModel.Versi
 	var data []byte
 	data, err = ioutil.ReadFile(filepath.Join(testutil.GetDirectoryOfFile(), "testdata", fmt.Sprintf("%s.yaml", td.ID)))
 	if err != nil {
-		panic(err)
+		grip.Error(err)
 	}
 	config := string(data)
 	return &serviceModel.Version{
@@ -490,6 +490,10 @@ func (c *Mock) GenerateTasks(ctx context.Context, td TaskData, jsonBytes []json.
 		return errors.New("mock failed, wrong secret")
 	}
 	return nil
+}
+
+func (c *Mock) GenerateTasksPoll(ctx context.Context, td TaskData) (bool, error) {
+	return true, nil
 }
 
 func (c *Mock) CreateHost(ctx context.Context, td TaskData, options apimodels.CreateHost) error {

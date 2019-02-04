@@ -26,6 +26,7 @@ type Environment struct {
 	Remote            amboy.Queue
 	Driver            queue.Driver
 	Local             amboy.Queue
+	SingleWorker      amboy.Queue
 	Closers           map[string]func(context.Context) error
 	DBSession         *anserMock.Session
 	EvergreenSettings *evergreen.Settings
@@ -73,6 +74,12 @@ func (e *Environment) LocalQueue() amboy.Queue {
 	e.mu.RLock()
 	defer e.mu.RUnlock()
 	return e.Local
+}
+
+func (e *Environment) SingleWorkerQueue() amboy.Queue {
+	e.mu.RLock()
+	defer e.mu.RUnlock()
+	return e.SingleWorker
 }
 
 func (e *Environment) Session() *mgo.Session {
