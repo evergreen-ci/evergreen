@@ -95,7 +95,7 @@ func (j *generateTasksJob) Run(ctx context.Context) {
 				}
 			}
 			return false, nil
-		}, 10, 100*time.Millisecond, time.Minute)
+		}, 20, 100*time.Millisecond, time.Minute)
 	j.AddError(err)
 }
 

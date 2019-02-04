@@ -94,7 +94,7 @@ func (c *generateTask) Execute(ctx context.Context, comm client.Communicator, lo
 				return false, nil
 			}
 			return true, errors.New("task generation unfinished")
-		}, 10, time.Second, time.Minute)
+		}, 100, time.Second, 15*time.Second)
 	return err
 }
 
