@@ -2,9 +2,7 @@ package route
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"net/http"
 
 	"github.com/evergreen-ci/evergreen"
@@ -39,8 +37,8 @@ func (h *notificationPostHandler) Factory() gimlet.RouteHandler {
 
 // Parse fetches targetID from the http request.
 func (h *notificationPostHandler) Parse(ctx context.Context, r *http.Request) error {
-	targetID := gimlet.GetVars(r)["target_id"]
-	switch targetID {
+	t := gimlet.GetVars(r)["type"]
+	switch t {
 	case "jira_comment":
 		h.handler = makeJiraCommentNotification(h.environment)
 	case "jira_issue":
@@ -50,7 +48,7 @@ func (h *notificationPostHandler) Parse(ctx context.Context, r *http.Request) er
 	case "email":
 		h.handler = makeEmailNotification(h.environment)
 	default:
-		return fmt.Errorf("'%s' is not a supported {target_id}", targetID)
+		return fmt.Errorf("'%s' is not a supported {type}", t)
 	}
 
 	h.handler.Parse(ctx, r)
@@ -89,14 +87,8 @@ func (h *jiraCommentNotificationPostHandler) Factory() gimlet.RouteHandler {
 // Parse fetches the JSON payload from the and unmarshals it to an APIJiraComment.
 func (h *jiraCommentNotificationPostHandler) Parse(ctx context.Context, r *http.Request) error {
 	body := util.NewRequestReader(r)
-	defer body.Close()
-	b, err := ioutil.ReadAll(body)
-	if err != nil {
-		return errors.Wrap(err, "Argument read error")
-	}
-
 	h.APIJiraComment = &model.APIJiraComment{}
-	if err := json.Unmarshal(b, h.APIJiraComment); err != nil {
+	if err := gimlet.GetJSON(body, h.APIJiraComment); err != nil {
 		errors.Wrap(err, "API error while unmarshalling JSON to model.APIJiraComment")
 	}
 
@@ -154,14 +146,8 @@ func (h *jiraIssueNotificationPostHandler) Factory() gimlet.RouteHandler {
 // Parse fetches the JSON payload from the and unmarshals it to an APIJiraIssue.
 func (h *jiraIssueNotificationPostHandler) Parse(ctx context.Context, r *http.Request) error {
 	body := util.NewRequestReader(r)
-	defer body.Close()
-	b, err := ioutil.ReadAll(body)
-	if err != nil {
-		return errors.Wrap(err, "Argument read error")
-	}
-
 	h.APIJiraIssue = &model.APIJiraIssue{}
-	if err := json.Unmarshal(b, h.APIJiraIssue); err != nil {
+	if err := gimlet.GetJSON(body, h.APIJiraIssue); err != nil {
 		errors.Wrap(err, "API error while unmarshalling JSON to model.APIJiraIssue")
 	}
 
@@ -219,14 +205,8 @@ func (h *slackNotificationPostHandler) Factory() gimlet.RouteHandler {
 // Parse fetches the JSON payload from the and unmarshals it to an APISlack.
 func (h *slackNotificationPostHandler) Parse(ctx context.Context, r *http.Request) error {
 	body := util.NewRequestReader(r)
-	defer body.Close()
-	b, err := ioutil.ReadAll(body)
-	if err != nil {
-		return errors.Wrap(err, "Argument read error")
-	}
-
 	h.APISlack = &model.APISlack{}
-	if err := json.Unmarshal(b, h.APISlack); err != nil {
+	if err := gimlet.GetJSON(body, h.APISlack); err != nil {
 		errors.Wrap(err, "API error while unmarshalling JSON to model.APISlack")
 	}
 
@@ -291,14 +271,8 @@ func (h *emailNotificationPostHandler) Factory() gimlet.RouteHandler {
 // Parse fetches the JSON payload from the and unmarshals it to an APIEmail.
 func (h *emailNotificationPostHandler) Parse(ctx context.Context, r *http.Request) error {
 	body := util.NewRequestReader(r)
-	defer body.Close()
-	b, err := ioutil.ReadAll(body)
-	if err != nil {
-		return errors.Wrap(err, "Argument read error")
-	}
-
 	h.APIEmail = &model.APIEmail{}
-	if err := json.Unmarshal(b, h.APIEmail); err != nil {
+	if err := gimlet.GetJSON(body, h.APIEmail); err != nil {
 		errors.Wrap(err, "API error while unmarshalling JSON to model.APIEmail")
 	}
 

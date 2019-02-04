@@ -34,16 +34,6 @@ func (s *JiraCommentNotificationSuite) SetupSuite() {
 	s.rm = makeJiraCommentNotification(evergreen.GetEnvironment())
 }
 
-func (s *JiraCommentNotificationSuite) TestParseInValidJSON() {
-	ctx := context.Background()
-	json := []byte(`{
-	 "malformed": true
-	}`)
-	req, _ := http.NewRequest("POST", "http://example.com/api/rest/v2/notifications/jira_comment", bytes.NewBuffer(json))
-	err := s.rm.Parse(ctx, req)
-	s.NoError(err)
-}
-
 func (s *JiraCommentNotificationSuite) TestParseValidJSON() {
 	ctx := context.Background()
 	json := []byte(`{
@@ -105,8 +95,8 @@ func (s *JiraIssueNotificationSuite) TestParseValidJSON() {
 	s.Equal(restModel.ToAPIString("This is the JIRA issue's reporter"), apiJiraIssue.Reporter)
 	s.Equal(restModel.ToAPIString("This is the JIRA issue's assignee"), apiJiraIssue.Assignee)
 	s.Equal(restModel.ToAPIString("This is the JIRA issue's type"), apiJiraIssue.Type)
-	s.Equal([]restModel.APIString{restModel.ToAPIString("c1"), restModel.ToAPIString("c2")}, apiJiraIssue.Components)
-	s.Equal([]restModel.APIString{restModel.ToAPIString("l1"), restModel.ToAPIString("l2")}, apiJiraIssue.Labels)
+	s.Equal([]string{"c1", "c2"}, apiJiraIssue.Components)
+	s.Equal([]string{"l1", "l2"}, apiJiraIssue.Labels)
 	mock := map[string]interface{}{"f1": true, "f2": 12.34, "f3": "string"}
 	s.Equal(len(mock), len(apiJiraIssue.Fields))
 	s.Equal(mock["f1"], apiJiraIssue.Fields["f1"])
@@ -193,7 +183,7 @@ func (s *SlackNotificationSuite) TestParseValidJSON() {
 	s.Equal(restModel.ToAPIString("I'm the first attachment's first field title"), apiSlack.Attachments[0].Fields[0].Title)
 	s.Equal(restModel.ToAPIString("I'm the first attachment's first field value"), apiSlack.Attachments[0].Fields[0].Value)
 	s.Equal(true, apiSlack.Attachments[0].Fields[0].Short)
-	s.Equal([]restModel.APIString{restModel.ToAPIString("m11"), restModel.ToAPIString("m12")}, apiSlack.Attachments[0].MarkdownIn)
+	s.Equal([]string{"m11", "m12"}, apiSlack.Attachments[0].MarkdownIn)
 	s.Equal(restModel.ToAPIString("I'm the first attachment's footer"), apiSlack.Attachments[0].Footer)
 
 	s.Equal(restModel.ToAPIString("I'm the second attachment's color"), apiSlack.Attachments[1].Color)
@@ -205,7 +195,7 @@ func (s *SlackNotificationSuite) TestParseValidJSON() {
 	s.Equal(restModel.ToAPIString("I'm the second attachment's first field title"), apiSlack.Attachments[1].Fields[0].Title)
 	s.Equal(restModel.ToAPIString("I'm the second attachment's first field value"), apiSlack.Attachments[1].Fields[0].Value)
 	s.Equal(false, apiSlack.Attachments[1].Fields[0].Short)
-	s.Equal([]restModel.APIString{restModel.ToAPIString("m21"), restModel.ToAPIString("m22")}, apiSlack.Attachments[1].MarkdownIn)
+	s.Equal([]string{"m21", "m22"}, apiSlack.Attachments[1].MarkdownIn)
 	s.Equal(restModel.ToAPIString("I'm the second attachment's footer"), apiSlack.Attachments[1].Footer)
 }
 
@@ -245,7 +235,7 @@ func (s *EmailNotificationSuite) TestParseValidJSON() {
 
 	apiEmail := s.rm.(*emailNotificationPostHandler).APIEmail
 	s.Equal(restModel.ToAPIString("me"), apiEmail.From)
-	s.Equal([]restModel.APIString{restModel.ToAPIString("Tom"), restModel.ToAPIString("Dick"), restModel.ToAPIString("Harry")}, apiEmail.Recipients)
+	s.Equal([]string{"Tom", "Dick", "Harry"}, apiEmail.Recipients)
 	s.Equal(restModel.ToAPIString("This is the email's subject"), apiEmail.Subject)
 	s.Equal(restModel.ToAPIString("This is the email's body"), apiEmail.Body)
 	s.Equal(true, apiEmail.PlainTextContents)

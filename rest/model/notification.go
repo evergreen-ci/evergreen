@@ -14,12 +14,10 @@ type APIJiraComment struct {
 func (c *APIJiraComment) BuildFromService(h interface{}) error {
 	var comment message.JIRAComment
 	switch v := h.(type) {
-	case message.JIRAComment:
-		comment = v
 	case *message.JIRAComment:
 		comment = *v
 	default:
-		return errors.Errorf("%T is not a supported expansion type", h)
+		return errors.Errorf("%T is not a supported type", h)
 	}
 
 	c.IssueID = ToAPIString(comment.IssueID)
@@ -47,22 +45,19 @@ type APIJiraIssue struct {
 	Reporter    APIString              `json:"reporter"`
 	Assignee    APIString              `json:"assignee"`
 	Type        APIString              `json:"type"`
-	Components  []APIString            `json:"components"`
-	Labels      []APIString            `json:"labels"`
+	Components  []string               `json:"components"`
+	Labels      []string               `json:"labels"`
 	Fields      map[string]interface{} `json:"fields"`
-	Callback    func(string)           `json:"-"`
 }
 
 // BuildFromService converts from service level message.JiraIssue to APIJiraIssue.
 func (i *APIJiraIssue) BuildFromService(h interface{}) error {
 	var issue message.JiraIssue
 	switch v := h.(type) {
-	case message.JiraIssue:
-		issue = v
 	case *message.JiraIssue:
 		issue = *v
 	default:
-		return errors.Errorf("%T is not a supported expansion type", h)
+		return errors.Errorf("%T is not a supported type", h)
 	}
 
 	i.IssueKey = ToAPIString(issue.IssueKey)
@@ -73,19 +68,12 @@ func (i *APIJiraIssue) BuildFromService(h interface{}) error {
 	i.Assignee = ToAPIString(issue.Assignee)
 	i.Type = ToAPIString(issue.Type)
 	if issue.Components != nil {
-		i.Components = []APIString{}
-		for _, s := range issue.Components {
-			i.Components = append(i.Components, ToAPIString(s))
-		}
+		i.Components = issue.Components
 	}
 	if issue.Labels != nil {
-		i.Labels = []APIString{}
-		for _, s := range issue.Labels {
-			i.Labels = append(i.Labels, ToAPIString(s))
-		}
+		i.Labels = issue.Labels
 	}
 	i.Fields = issue.Fields
-	i.Callback = issue.Callback
 
 	return nil
 }
@@ -100,14 +88,9 @@ func (i *APIJiraIssue) ToService() (interface{}, error) {
 	issue.Reporter = FromAPIString(i.Reporter)
 	issue.Assignee = FromAPIString(i.Assignee)
 	issue.Type = FromAPIString(i.Type)
-	for _, s := range i.Components {
-		issue.Components = append(issue.Components, FromAPIString(s))
-	}
-	for _, s := range i.Labels {
-		issue.Labels = append(issue.Labels, FromAPIString(s))
-	}
+	issue.Components = i.Components
+	issue.Labels = i.Labels
 	issue.Fields = i.Fields
-	issue.Callback = i.Callback
 
 	return &issue, nil
 }
@@ -124,12 +107,10 @@ type APISlack struct {
 func (n *APISlack) BuildFromService(h interface{}) error {
 	var slack message.Slack
 	switch v := h.(type) {
-	case message.Slack:
-		slack = v
 	case *message.Slack:
 		slack = *v
 	default:
-		return errors.Errorf("%T is not a supported expansion type", h)
+		return errors.Errorf("%T is not a supported type", h)
 	}
 
 	n.Target = ToAPIString(slack.Target)
@@ -156,28 +137,26 @@ func (n *APISlack) ToService() (interface{}, error) {
 ///////////////////////////////////////////////////////////////////////
 
 type APISlackAttachment struct {
-	Color      APIString                  `json:"color"`
-	Fallback   APIString                  `json:"fallback"`
-	AuthorName APIString                  `json:"author_name"`
-	AuthorIcon APIString                  `json:"author_icon"`
-	Title      APIString                  `json:"title"`
-	TitleLink  APIString                  `json:"title_link"`
-	Text       APIString                  `json:"text"`
-	Fields     []*APISlackAttachmentField `json:"fields"`
-	MarkdownIn []APIString                `json:"mrkdwn_in"`
-	Footer     APIString                  `json:"footer"`
+	Color      APIString                 `json:"color"`
+	Fallback   APIString                 `json:"fallback"`
+	AuthorName APIString                 `json:"author_name"`
+	AuthorIcon APIString                 `json:"author_icon"`
+	Title      APIString                 `json:"title"`
+	TitleLink  APIString                 `json:"title_link"`
+	Text       APIString                 `json:"text"`
+	Fields     []APISlackAttachmentField `json:"fields"`
+	MarkdownIn []string                  `json:"mrkdwn_in"`
+	Footer     APIString                 `json:"footer"`
 }
 
 // BuildFromService converts from service level message.SlackAttachment to APISlackAttachment.
 func (a *APISlackAttachment) BuildFromService(h interface{}) error {
 	var attachment message.SlackAttachment
 	switch v := h.(type) {
-	case message.SlackAttachment:
-		attachment = v
 	case *message.SlackAttachment:
 		attachment = *v
 	default:
-		return errors.Errorf("%T is not a supported expansion type", h)
+		return errors.Errorf("%T is not a supported type", h)
 	}
 
 	a.Color = ToAPIString(attachment.Color)
@@ -189,20 +168,17 @@ func (a *APISlackAttachment) BuildFromService(h interface{}) error {
 	a.Text = ToAPIString(attachment.Text)
 	a.Footer = ToAPIString(attachment.Footer)
 	if attachment.Fields != nil {
-		a.Fields = []*APISlackAttachmentField{}
+		a.Fields = []APISlackAttachmentField{}
 		for _, f := range attachment.Fields {
 			field := &APISlackAttachmentField{}
 			if err := field.BuildFromService(f); err != nil {
 				return errors.Wrap(err, "Error converting from slack.Attachment to model.APISlackAttachment")
 			}
-			a.Fields = append(a.Fields, field)
+			a.Fields = append(a.Fields, *field)
 		}
 	}
 	if attachment.MarkdownIn != nil {
-		a.MarkdownIn = []APIString{}
-		for _, m := range attachment.MarkdownIn {
-			a.MarkdownIn = append(a.MarkdownIn, ToAPIString(m))
-		}
+		a.MarkdownIn = attachment.MarkdownIn
 	}
 
 	return nil
@@ -226,9 +202,7 @@ func (a *APISlackAttachment) ToService() (interface{}, error) {
 		}
 		attachment.Fields = append(attachment.Fields, i.(*message.SlackAttachmentField))
 	}
-	for _, s := range a.MarkdownIn {
-		attachment.MarkdownIn = append(attachment.MarkdownIn, FromAPIString(s))
-	}
+	attachment.MarkdownIn = a.MarkdownIn
 
 	return &attachment, nil
 }
@@ -245,12 +219,10 @@ type APISlackAttachmentField struct {
 func (f *APISlackAttachmentField) BuildFromService(h interface{}) error {
 	var field message.SlackAttachmentField
 	switch v := h.(type) {
-	case message.SlackAttachmentField:
-		field = v
 	case *message.SlackAttachmentField:
 		field = *v
 	default:
-		return errors.Errorf("%T is not a supported expansion type", h)
+		return errors.Errorf("%T is not a supported type", h)
 	}
 
 	f.Title = ToAPIString(field.Title)
@@ -274,7 +246,7 @@ func (f *APISlackAttachmentField) ToService() (interface{}, error) {
 
 type APIEmail struct {
 	From              APIString           `json:"from"`
-	Recipients        []APIString         `json:"recipients"`
+	Recipients        []string            `json:"recipients"`
 	Subject           APIString           `json:"subject"`
 	Body              APIString           `json:"body"`
 	PlainTextContents bool                `json:"is_plain_text"`
@@ -285,17 +257,15 @@ type APIEmail struct {
 func (n *APIEmail) BuildFromService(h interface{}) error {
 	var email message.Email
 	switch v := h.(type) {
-	case message.Email:
-		email = v
 	case *message.Email:
 		email = *v
 	default:
-		return errors.Errorf("%T is not a supported expansion type", h)
+		return errors.Errorf("%T is not a supported type", h)
 	}
 
 	n.From = ToAPIString(email.From)
-	for _, r := range email.Recipients {
-		n.Recipients = append(n.Recipients, ToAPIString(r))
+	if email.Recipients != nil {
+		n.Recipients = email.Recipients
 	}
 	n.Subject = ToAPIString(email.Subject)
 	n.Body = ToAPIString(email.Body)
@@ -309,9 +279,7 @@ func (n *APIEmail) BuildFromService(h interface{}) error {
 func (n *APIEmail) ToService() (interface{}, error) {
 	email := message.Email{}
 	email.From = FromAPIString(n.From)
-	for _, r := range n.Recipients {
-		email.Recipients = append(email.Recipients, FromAPIString(r))
-	}
+	email.Recipients = n.Recipients
 	email.Subject = FromAPIString(n.Subject)
 	email.Body = FromAPIString(n.Body)
 	email.PlainTextContents = n.PlainTextContents
