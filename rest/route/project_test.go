@@ -230,6 +230,50 @@ func (s *ProjectPutSuite) TestRunNewConflictingName() {
 
 ////////////////////////////////////////////////////////////////////////
 //
+// Tests for GET /rest/v2/projects/{project_id}
+
+type ProjectGetByIDSuite struct {
+	sc *data.MockConnector
+	// data data.MockProjectConnector
+	rm gimlet.RouteHandler
+
+	suite.Suite
+}
+
+func TestProjectGetByIDSuite(t *testing.T) {
+	db.SetGlobalSessionProvider(testutil.TestConfig().SessionFactory())
+	suite.Run(t, new(ProjectGetByIDSuite))
+}
+
+func (s *ProjectGetByIDSuite) SetupTest() {
+	s.sc = getMockProjectsConnector()
+	s.rm = makeGetProjectByID(s.sc).(*projectIDGetHandler)
+}
+
+func (s *ProjectGetByIDSuite) TestRunNonExistingId() {
+	ctx := context.Background()
+	h := s.rm.(*projectIDGetHandler)
+	h.projectID = "non-existent"
+
+	resp := s.rm.Run(ctx)
+	s.NotNil(resp.Data())
+	s.Equal(resp.Status(), http.StatusNotFound)
+}
+
+func (s *ProjectGetByIDSuite) TestRunExistingId() {
+	ctx := context.Background()
+	h := s.rm.(*projectIDGetHandler)
+	h.projectID = "dimoxinil"
+
+	resp := s.rm.Run(ctx)
+	s.NotNil(resp.Data())
+	s.Equal(resp.Status(), http.StatusOK)
+
+	s.Equal(model.ToAPIString("dimoxinil"), resp.Data().(*model.APIProject).Identifier)
+}
+
+////////////////////////////////////////////////////////////////////////
+//
 // Tests for GET /rest/v2/projects
 
 type ProjectGetSuite struct {
@@ -333,25 +377,27 @@ func getMockProjectsConnector() *data.MockConnector {
 		MockProjectConnector: data.MockProjectConnector{
 			CachedProjects: []serviceModel.ProjectRef{
 				{
-					Owner:                "dimoxinil",
-					Repo:                 "dimoxinil-enterprise-repo",
-					Branch:               "master",
-					RepoKind:             "github",
-					Enabled:              false,
-					Private:              true,
-					BatchTime:            0,
-					RemotePath:           "evergreen.yml",
-					Identifier:           "dimoxinil",
-					DisplayName:          "Dimoxinil",
-					LocalConfig:          "",
-					DeactivatePrevious:   false,
-					TracksPushEvents:     false,
-					PRTestingEnabled:     false,
-					CommitQEnabled:       false,
-					Tracked:              true,
-					PatchingDisabled:     false,
-					Admins:               []string{"langdon.alger"},
-					NotifyOnBuildFailure: false,
+					Owner:                  "dimoxinil",
+					Repo:                   "dimoxinil-enterprise-repo",
+					Branch:                 "master",
+					RepoKind:               "github",
+					Enabled:                false,
+					Private:                true,
+					BatchTime:              0,
+					RemotePath:             "evergreen.yml",
+					Identifier:             "dimoxinil",
+					DisplayName:            "Dimoxinil",
+					LocalConfig:            "",
+					DeactivatePrevious:     false,
+					TracksPushEvents:       false,
+					PRTestingEnabled:       false,
+					CommitQueueEnabled:     false,
+					CommitQueueMergeMethod: "squash",
+					CommitQueueConfigFile:  "self-tests.yml",
+					Tracked:                true,
+					PatchingDisabled:       false,
+					Admins:                 []string{"langdon.alger"},
+					NotifyOnBuildFailure:   false,
 				},
 			},
 		},

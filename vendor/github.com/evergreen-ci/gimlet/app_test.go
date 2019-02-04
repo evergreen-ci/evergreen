@@ -96,11 +96,11 @@ func (s *AppSuite) TestResolveEncountersErrorsWithAnInvalidRoot() {
 	n, err2 := s.app.getNegroni()
 	s.Nil(n)
 	s.Error(err2)
-	s.Equal(err1, err2)
+	s.Equal(err1.Error(), err2.Error())
 
 	// also to run
 	err2 = s.app.Run(context.TODO())
-	s.Equal(err1, err2)
+	s.Equal(err1.Error(), err2.Error())
 }
 
 func (s *AppSuite) TestSetPortToExistingValueIsANoOp() {

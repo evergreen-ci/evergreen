@@ -19,6 +19,7 @@ const (
 	NoPatch PatchTestMode = iota
 	InlinePatch
 	ExternalPatch
+	MergePatch
 )
 
 func (m PatchTestMode) String() string {

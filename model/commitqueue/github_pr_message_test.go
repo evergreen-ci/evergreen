@@ -10,6 +10,7 @@ import (
 func TestGithubPRMerge(t *testing.T) {
 	assert := assert.New(t)
 	pr := GithubMergePR{
+		ProjectID:     "mci",
 		Owner:         "evergreen-ci",
 		Repo:          "evergreen",
 		Ref:           "deadbeef",
@@ -32,6 +33,7 @@ func TestGithubMergePRMessageValidator(t *testing.T) {
 	assert := assert.New(t)
 
 	missingPRNum := GithubMergePR{
+		ProjectID:     "mci",
 		Owner:         "evergreen-ci",
 		Repo:          "evergreen",
 		Ref:           "deadbeef",
@@ -41,6 +43,7 @@ func TestGithubMergePRMessageValidator(t *testing.T) {
 	assert.False(c.Loggable())
 
 	missingMergeMethod := GithubMergePR{
+		ProjectID:     "mci",
 		Owner:         "evergreen-ci",
 		Repo:          "evergreen",
 		Ref:           "deadbeef",

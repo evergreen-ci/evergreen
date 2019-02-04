@@ -17,8 +17,16 @@ import (
 )
 
 func (agt *Agent) startStatusServer(ctx context.Context, port int) error {
+	// Although checking the error returned by `srv.ListenAndServe` is sufficient to exit if
+	// another agent is running, it's possible for `startStatusServer` to return before
+	// `grip.EmergencyFatal` runs, which means that later code, e.g., code that deletes files
+	// that a running task depends on, could run.
+	_, err := http.Get(fmt.Sprintf("http://127.0.0.1:%d/status", port))
+	if err == nil {
+		return errors.Errorf("another agent is running on %d", port)
+	}
 	app := gimlet.NewApp()
-	if err := app.SetPort(port); err != nil {
+	if err = app.SetPort(port); err != nil {
 		return errors.WithStack(err)
 	}
 	app.NoVersions = true

@@ -2,6 +2,7 @@ package notification
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/evergreen-ci/evergreen/db"
@@ -116,7 +117,9 @@ func InsertMany(items ...Notification) error {
 		interfaces[i] = &items[i]
 	}
 
-	return db.InsertMany(Collection, interfaces...)
+	// notification IDs are intended to collide when multiple subscriptions exist to the same event
+	// insert unordered will continue on error so the rest of the notifications in items will still be inserted
+	return db.InsertManyUnordered(Collection, interfaces...)
 }
 
 func Find(id string) (*Notification, error) {
@@ -128,6 +131,17 @@ func Find(id string) (*Notification, error) {
 	}
 
 	return &notification, err
+}
+
+func FindByEventID(id string) ([]Notification, error) {
+	notifications := []Notification{}
+	query := db.Query(bson.M{
+		idKey: bson.RegEx{Pattern: fmt.Sprintf("^%s-", id)},
+	},
+	)
+
+	err := db.FindAllQ(Collection, query, &notifications)
+	return notifications, err
 }
 
 func byID(id string) db.Q {

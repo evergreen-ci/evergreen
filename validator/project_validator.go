@@ -102,6 +102,7 @@ var projectSemanticValidators = []projectValidator{
 	checkTaskCommands,
 	checkTaskGroups,
 	checkRunOnOnlyOneDistro,
+	checkLoggerConfig,
 }
 
 func (vr ValidationError) Error() string {
@@ -606,6 +607,31 @@ func checkRunOnOnlyOneDistro(project *model.Project) ValidationErrors {
 	return errs
 }
 
+func checkLoggerConfig(project *model.Project) ValidationErrors {
+	errs := ValidationErrors{}
+	if project.Loggers != nil {
+		if err := project.Loggers.IsValid(); err != nil {
+			errs = append(errs, ValidationError{
+				Message: errors.Wrap(err, "error in project-level logger config").Error(),
+				Level:   Warning,
+			})
+		}
+
+		for _, task := range project.Tasks {
+			for _, command := range task.Commands {
+				if err := command.Loggers.IsValid(); err != nil {
+					errs = append(errs, ValidationError{
+						Message: errors.Wrapf(err, "error in logger config for command %s in task %s", command.DisplayName, task.Name).Error(),
+						Level:   Warning,
+					})
+				}
+			}
+		}
+	}
+
+	return errs
+}
+
 // Checks each task definitions to determine if a command is specified
 func checkTaskCommands(project *model.Project) ValidationErrors {
 	errs := ValidationErrors{}
@@ -971,9 +997,13 @@ func checkTaskGroups(p *model.Project) ValidationErrors {
 	for t, tg := range tasksInTaskGroups {
 		spec := p.GetSpecForTask(t)
 		if len(spec.DependsOn) > 0 {
+			dependencies := make([]string, 0, len(spec.DependsOn))
+			for _, dependsOn := range spec.DependsOn {
+				dependencies = append(dependencies, dependsOn.Name)
+			}
 			errs = append(errs, ValidationError{
-				Message: fmt.Sprintf("task %s in task group %s has a dependency on a task outside the task group, "+
-					"which can cause task group tasks to be scheduled out of order", t, tg),
+				Message: fmt.Sprintf("task %s in task group %s has a dependency on another task (%s), "+
+					"which can cause task group tasks to be scheduled out of order", t, tg, dependencies),
 				Level: Error,
 			})
 		}

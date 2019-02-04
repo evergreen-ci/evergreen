@@ -3,6 +3,7 @@ package route
 import (
 	"context"
 	"net/http"
+	"strconv"
 
 	"github.com/evergreen-ci/evergreen/model/commitqueue"
 	"github.com/evergreen-ci/evergreen/model/patch"
@@ -198,7 +199,37 @@ func (gh *githubHookApi) Run(ctx context.Context) gimlet.Responder {
 		owner := *event.Repo.Owner.Login
 		repo := *event.Repo.Name
 		PRNum := *event.Issue.Number
-		err := gh.sc.GithubPREnqueueItem(owner, repo, PRNum)
+		pr, err := gh.sc.GetGitHubPR(ctx, owner, repo, PRNum)
+		if err != nil {
+			grip.Error(message.WrapError(err, message.Fields{
+				"source":  "github hook",
+				"msg_id":  gh.msgID,
+				"event":   gh.eventType,
+				"action":  *event.Action,
+				"owner":   owner,
+				"repo":    repo,
+				"item":    PRNum,
+				"message": "get pr failed",
+			}))
+			return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "can't get PR from GitHub API"))
+		}
+
+		if pr == nil || pr.Base == nil || pr.Base.Label == nil {
+			grip.Error(message.WrapError(err, message.Fields{
+				"source":  "github hook",
+				"msg_id":  gh.msgID,
+				"event":   gh.eventType,
+				"action":  *event.Action,
+				"owner":   owner,
+				"repo":    repo,
+				"item":    PRNum,
+				"message": "PR contains no base branch label",
+			}))
+			return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "PR contains no base branch label"))
+		}
+
+		baseBranch := *pr.Base.Label
+		err = gh.sc.EnqueueItem(owner, repo, baseBranch, strconv.Itoa(PRNum))
 		if err != nil {
 			grip.Error(message.WrapError(err, message.Fields{
 				"source":  "github hook",

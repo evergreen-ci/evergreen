@@ -365,7 +365,7 @@ func (s *DockerSuite) TestBuildContainerImage() {
 	s.NoError(err)
 	s.Equal("parent", parent.Id)
 
-	err = s.manager.BuildContainerImage(ctx, parent, "image-url")
+	err = s.manager.BuildContainerImage(ctx, parent, ContainerImageSettings{URL: "image-url", Method: distro.DockerImageBuildTypeImport})
 	s.NoError(err)
 }
 
@@ -382,7 +382,7 @@ func (s *DockerSuite) TestBuildContainerImageFailedDownload() {
 	s.NoError(err)
 	s.Equal("parent", parent.Id)
 
-	err = s.manager.BuildContainerImage(ctx, parent, "image-url")
+	err = s.manager.BuildContainerImage(ctx, parent, ContainerImageSettings{URL: "image-url", Method: distro.DockerImageBuildTypeImport})
 	s.EqualError(err, "Unable to ensure that image 'image-url' is on host 'parent': failed to download image")
 }
 
@@ -399,6 +399,6 @@ func (s *DockerSuite) TestBuildContainerImageFailedBuild() {
 	s.NoError(err)
 	s.Equal("parent", parent.Id)
 
-	err = s.manager.BuildContainerImage(ctx, parent, "image-url")
+	err = s.manager.BuildContainerImage(ctx, parent, ContainerImageSettings{URL: "image-url", Method: distro.DockerImageBuildTypeImport})
 	s.EqualError(err, "Failed to build image 'image-url' with agent on host 'parent': failed to build image with agent")
 }

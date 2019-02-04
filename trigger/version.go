@@ -71,7 +71,34 @@ func (t *versionTriggers) Fetch(e *event.EventLogEntry) error {
 }
 
 func (t *versionTriggers) Selectors() []event.Selector {
-	return MakeVersionSelectors(*t.version)
+	selectors := []event.Selector{
+		{
+			Type: selectorID,
+			Data: t.version.Id,
+		},
+		{
+			Type: selectorProject,
+			Data: t.version.Identifier,
+		},
+		{
+			Type: selectorObject,
+			Data: objectVersion,
+		},
+		{
+			Type: selectorRequester,
+			Data: t.version.Requester,
+		},
+	}
+	if t.version.Requester == evergreen.TriggerRequester {
+		selectors = append(selectors, event.Selector{
+			Type: selectorRequester,
+			Data: evergreen.RepotrackerVersionRequester,
+		})
+	}
+	if t.version.AuthorID != "" {
+		selectors = append(selectors, event.Selector{Type: selectorOwner, Data: t.version.AuthorID})
+	}
+	return selectors
 }
 
 func (t *versionTriggers) makeData(sub *event.Subscription, pastTenseOverride string) (*commonTemplateData, error) {
@@ -218,29 +245,4 @@ func (t *versionTriggers) versionRegression(sub *event.Subscription) (*notificat
 		}
 	}
 	return nil, nil
-}
-
-func MakeVersionSelectors(v model.Version) []event.Selector {
-	selectors := []event.Selector{
-		{
-			Type: selectorID,
-			Data: v.Id,
-		},
-		{
-			Type: selectorProject,
-			Data: v.Identifier,
-		},
-		{
-			Type: selectorObject,
-			Data: objectVersion,
-		},
-		{
-			Type: selectorRequester,
-			Data: v.Requester,
-		},
-	}
-	if v.AuthorID != "" {
-		selectors = append(selectors, event.Selector{Type: selectorOwner, Data: v.AuthorID})
-	}
-	return selectors
 }

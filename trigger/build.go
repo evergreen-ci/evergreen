@@ -131,7 +131,7 @@ func (t *buildTriggers) Fetch(e *event.EventLogEntry) error {
 }
 
 func (t *buildTriggers) Selectors() []event.Selector {
-	return []event.Selector{
+	selectors := []event.Selector{
 		{
 			Type: selectorID,
 			Data: t.build.Id,
@@ -161,6 +161,13 @@ func (t *buildTriggers) Selectors() []event.Selector {
 			Data: t.build.BuildVariant,
 		},
 	}
+	if t.build.Requester == evergreen.TriggerRequester {
+		selectors = append(selectors, event.Selector{
+			Type: selectorRequester,
+			Data: evergreen.RepotrackerVersionRequester,
+		})
+	}
+	return selectors
 }
 
 func (t *buildTriggers) buildOutcome(sub *event.Subscription) (*notification.Notification, error) {

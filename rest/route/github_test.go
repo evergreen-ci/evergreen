@@ -215,5 +215,5 @@ func (s *GithubWebhookRouteSuite) TestCommitQueueCommentTrigger() {
 	}
 
 	s.NoError(err)
-	s.Len(s.sc.MockCommitQConnector.Queue, 1)
+	s.Len(s.sc.MockCommitQueueConnector.Queue, 1)
 }

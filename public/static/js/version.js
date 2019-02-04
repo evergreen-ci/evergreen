@@ -7,7 +7,6 @@ mciModule.controller('VersionController', function($scope, $rootScope, $location
   $scope.tab = 0
   $scope.version = {};
   $scope.taskStatuses = {};
-  $scope.subscriptions = [];
   $scope.triggers = [
     {
       trigger: "outcome",
@@ -104,12 +103,11 @@ mciModule.controller('VersionController', function($scope, $rootScope, $location
       }else {
         addInSelectorsAndOwnerType(data, "version", "version", $scope.version.Version.id);
       }
-      $scope.subscriptions.push(data);
-      $scope.saveSubscriptions();
+      $scope.saveSubscription(data);
     });
   };
 
-  $scope.saveSubscriptions = function() {
+  $scope.saveSubscription = function(subscription) {
     var success = function() {
       $mdToast.show({
         templateUrl: "/static/partials/subscription_confirmation_toast.html",
@@ -119,7 +117,7 @@ mciModule.controller('VersionController', function($scope, $rootScope, $location
     var failure = function(resp) {
       notifier.pushNotification('Error saving subscriptions: ' + resp.data.error, 'notifyHeader');
     };
-    mciSubscriptionsService.post($scope.subscriptions, { success: success, error: failure });
+    mciSubscriptionsService.post([subscription], { success: success, error: failure });
   }
 
   $rootScope.$on("version_updated", function(e, newVersion){

@@ -42,6 +42,11 @@ type Expansion struct {
 	Value string `bson:"value,omitempty" json:"value,omitempty"`
 }
 
+const (
+	DockerImageBuildTypeImport = "import"
+	DockerImageBuildTypePull   = "pull"
+)
+
 // Seed the random number generator for creating distro names
 func init() {
 	rand.Seed(time.Now().UnixNano())

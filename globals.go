@@ -221,6 +221,7 @@ const (
 	GithubPRRequester           = "github_pull_request"
 	RepotrackerVersionRequester = "gitter_request"
 	TriggerRequester            = "trigger_request"
+	MergeTestRequester          = "merge_test"
 	AdHocRequester              = "ad_hoc"
 )
 
@@ -268,6 +269,7 @@ const (
 	defaultAmboyPoolSize         = 2
 	defaultAmboyLocalStorageSize = 1024
 	defaultAmboyQueueName        = "evg.service"
+	defaultSingleAmboyQueueName  = "evg.single"
 	defaultAmboyDBName           = "amboy"
 	maxNotificationsPerSecond    = 100
 )
@@ -279,6 +281,7 @@ var (
 	PatchRequesters = []string{
 		PatchVersionRequester,
 		GithubPRRequester,
+		MergeTestRequester,
 	}
 
 	// UpHostStatus is a list of all host statuses that are considered up.
@@ -340,5 +343,9 @@ func IsSystemActivator(caller string) bool {
 }
 
 func IsPatchRequester(requester string) bool {
-	return requester == PatchVersionRequester || requester == GithubPRRequester
+	return requester == PatchVersionRequester || requester == GithubPRRequester || requester == MergeTestRequester
+}
+
+func IsGitHubPatchRequester(requester string) bool {
+	return requester == GithubPRRequester || requester == MergeTestRequester
 }

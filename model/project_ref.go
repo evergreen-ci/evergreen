@@ -13,7 +13,7 @@ import (
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/anser/bsonutil"
 	"github.com/pkg/errors"
-	"gopkg.in/mgo.v2"
+	mgo "gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
 )
 
@@ -37,8 +37,10 @@ type ProjectRef struct {
 	// Github PushEvents for this project, instead of the Repotracker runner
 	TracksPushEvents bool `bson:"tracks_push_events" json:"tracks_push_events" yaml:"tracks_push_events"`
 
-	PRTestingEnabled bool `bson:"pr_testing_enabled" json:"pr_testing_enabled" yaml:"pr_testing_enabled"`
-	CommitQEnabled   bool `bson:"commitq_enabled" json:"commitq_enabled" yaml:"commitq_enabled"`
+	PRTestingEnabled       bool   `bson:"pr_testing_enabled" json:"pr_testing_enabled" yaml:"pr_testing_enabled"`
+	CommitQueueEnabled     bool   `bson:"commit_queue_enabled" json:"commit_queue_enabled" yaml:"commit_queue_enabled"`
+	CommitQueueMergeMethod string `bson:"commit_queue_merge_method" json:"commit_queue_merge_method" yaml:"commit_queue_merge_method"`
+	CommitQueueConfigFile  string `bson:"commit_queue_config_file" json:"commit_queue_config_file" yaml:"commit_queue_config_file"`
 
 	//Tracked determines whether or not the project is discoverable in the UI
 	Tracked          bool `bson:"tracked" json:"tracked"`
@@ -129,7 +131,9 @@ var (
 	ProjectRefAdminsKey             = bsonutil.MustHaveTag(ProjectRef{}, "Admins")
 	projectRefTracksPushEventsKey   = bsonutil.MustHaveTag(ProjectRef{}, "TracksPushEvents")
 	projectRefPRTestingEnabledKey   = bsonutil.MustHaveTag(ProjectRef{}, "PRTestingEnabled")
-	projectRefCommitQEnabledKey     = bsonutil.MustHaveTag(ProjectRef{}, "CommitQEnabled")
+	projectRefCommitQEnabledKey     = bsonutil.MustHaveTag(ProjectRef{}, "CommitQueueEnabled")
+	projectRefCommitQConfigFileKey  = bsonutil.MustHaveTag(ProjectRef{}, "CommitQueueConfigFile")
+	projectRefCommitQMergeMethodKey = bsonutil.MustHaveTag(ProjectRef{}, "CommitQueueMergeMethod")
 	projectRefPatchingDisabledKey   = bsonutil.MustHaveTag(ProjectRef{}, "PatchingDisabled")
 	projectRefNotifyOnFailureKey    = bsonutil.MustHaveTag(ProjectRef{}, "NotifyOnBuildFailure")
 	projectRefTriggersKey           = bsonutil.MustHaveTag(ProjectRef{}, "Triggers")
@@ -326,6 +330,26 @@ func FindOneProjectRefWithCommitQByOwnerRepoAndBranch(owner, repo, branch string
 	return projRef, nil
 }
 
+func FindProjectRefsWithCommitQEnabled() ([]ProjectRef, error) {
+	projectRefs := []ProjectRef{}
+
+	err := db.FindAll(
+		ProjectRefCollection,
+		bson.M{
+			projectRefCommitQEnabledKey: true,
+		},
+		db.NoProjection,
+		db.NoSort,
+		db.NoSkip,
+		db.NoLimit,
+		&projectRefs,
+	)
+	if err != nil {
+		return nil, err
+	}
+	return projectRefs, nil
+}
+
 // FindProjectRefs returns limit refs starting at project identifier key
 // in the sortDir direction
 func FindProjectRefs(key string, limit int, sortDir int, isAuthenticated bool) ([]ProjectRef, error) {
@@ -399,6 +423,9 @@ func (projectRef *ProjectRef) Upsert() error {
 				ProjectRefAdminsKey:             projectRef.Admins,
 				projectRefTracksPushEventsKey:   projectRef.TracksPushEvents,
 				projectRefPRTestingEnabledKey:   projectRef.PRTestingEnabled,
+				projectRefCommitQEnabledKey:     projectRef.CommitQueueEnabled,
+				projectRefCommitQConfigFileKey:  projectRef.CommitQueueConfigFile,
+				projectRefCommitQMergeMethodKey: projectRef.CommitQueueMergeMethod,
 				projectRefPatchingDisabledKey:   projectRef.PatchingDisabled,
 				projectRefNotifyOnFailureKey:    projectRef.NotifyOnBuildFailure,
 				projectRefTriggersKey:           projectRef.Triggers,

@@ -49,7 +49,7 @@ type Notification struct {
 	Subscriber event.Subscriber `bson:"subscriber"`
 	Payload    interface{}      `bson:"payload"`
 
-	SentAt   time.Time            `bson:"sent_at"`
+	SentAt   time.Time            `bson:"sent_at,omitempty"`
 	Error    string               `bson:"error,omitempty"`
 	Metadata NotificationMetadata `bson:"metadata,omitempty"`
 }
@@ -190,6 +190,7 @@ func (n *Notification) Composer() (message.Composer, error) {
 		if !ok || payload == nil {
 			return nil, errors.New("github-merge payload is invalid")
 		}
+		payload.ProjectID = sub.ProjectID
 		payload.Owner = sub.Owner
 		payload.Repo = sub.Repo
 		payload.CommitMessage = sub.CommitMessage
@@ -275,7 +276,7 @@ func CollectUnsentNotificationStats() (*NotificationStats, error) {
 		{
 			"$match": bson.M{
 				sentAtKey: bson.M{
-					"$eq": time.Time{},
+					"$exists": false,
 				},
 			},
 		},

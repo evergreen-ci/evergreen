@@ -56,10 +56,6 @@ func (v *CachedIntValue) SetRefresher(r CachedIntValueRefresher) error {
 		return errors.New("cannot set a nil refresher")
 	}
 
-	if v.refresher != nil {
-		return errors.New("cannot overwrite an existing refresher")
-	}
-
 	v.refresher = r
 	return nil
 }
@@ -133,10 +129,6 @@ func (v *CachedDurationValue) String() string {
 func (v *CachedDurationValue) SetRefresher(r CachedDurationValueRefresher) error {
 	if r == nil {
 		return errors.New("cannot set a nil refresher")
-	}
-
-	if v.refresher != nil {
-		return errors.New("cannot overwrite an existing refresher")
 	}
 
 	v.refresher = r

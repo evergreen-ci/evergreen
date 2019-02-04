@@ -312,13 +312,14 @@ func (u *userService) validateGroup(username string) error {
 }
 
 func (u *userService) getUserFromLDAP(username string) (gimlet.User, error) {
+	catcher := grip.NewBasicCatcher()
 	var (
-		errs   [2]error
+		found  bool
 		err    error
 		result *ldap.SearchResult
 	)
 
-	for idx, path := range []string{u.userPath, u.servicePath} {
+	for _, path := range []string{u.userPath, u.servicePath} {
 		result, err = u.search(
 			ldap.NewSearchRequest(
 				path,
@@ -331,28 +332,26 @@ func (u *userService) getUserFromLDAP(username string) (gimlet.User, error) {
 				[]string{},
 				nil))
 		if err != nil {
-			errs[idx] = errors.Wrap(err, "problem searching ldap")
+			catcher.Add(errors.Wrap(err, "problem searching ldap"))
 			continue
 		}
 		if len(result.Entries) == 0 {
-			errs[idx] = errors.Errorf("no entry returned for user '%s'", username)
+			catcher.Add(errors.Errorf("no entry returned for user '%s'", username))
 			continue
 		}
 		if len(result.Entries[0].Attributes) == 0 {
-			errs[idx] = errors.Errorf("entry's attributes empty for user '%s'", username)
+			catcher.Add(errors.Errorf("entry's attributes empty for user '%s'", username))
 			continue
 		}
 
+		found = true
 		break
 	}
 
-	for _, err = range errs {
-		if err != nil {
-			return nil, err
-		}
+	if found {
+		return makeUser(result), nil
 	}
-
-	return makeUser(result), nil
+	return nil, catcher.Resolve()
 }
 
 func makeUser(result *ldap.SearchResult) gimlet.User {

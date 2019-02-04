@@ -23,15 +23,17 @@ mciModule.controller('TaskTimingController', function(
     // Intermediate accumulators for code below
     const displayTaskNamesSet = new Set()
     const executionTaskNamesSet = new Set()
+    const allBvTaskNamesSet = new Set()
 
     // {bvName: [list of selectable task names], ...}
     $scope.selectableTasksPerBV = _.reduce(bvs, function(m, bv) {
-      let dispTaskNames = _.pluck(bv.display_tasks, 'name')
-      let execTaskNames = _.flatten(
+      const dispTaskNames = _.pluck(bv.display_tasks, 'name')
+      const execTaskNames = _.flatten(
         _.pluck(bv.display_tasks, 'execution_tasks'), true
       )
+      const bvTaskNames = bv.task_names
 
-      m[bv.name] = _.chain(bv.task_names)
+      m[bv.name] = _.chain(bvTaskNames)
         // Include display task names
         .union(dispTaskNames)
         // exclude execution task names
@@ -42,6 +44,7 @@ mciModule.controller('TaskTimingController', function(
       // Side effect - collect set of all display/exec task names
       for (let name of dispTaskNames) displayTaskNamesSet.add(name)
       for (let name of execTaskNames) executionTaskNamesSet.add(name)
+      for (let name of bvTaskNames) allBvTaskNamesSet.add(name)
 
       return m
     }, {})
@@ -51,8 +54,10 @@ mciModule.controller('TaskTimingController', function(
       _.without.bind(_,
         // 1. Include 'All Tasks' item
         [ALL_TASKS]
-          // 2. Include all project's task names
-          .concat($scope.currentProject.task_names)
+          // 2. Include all task names present in all BVs
+          // NOTE Interesting fact - all bv tasks set
+          //      doesn't equal to all project tasks set
+          .concat([...allBvTaskNamesSet])
           // 3. Include all display task names
           .concat([...displayTaskNamesSet])
       // 4. Exclude all execution task names
@@ -65,6 +70,7 @@ mciModule.controller('TaskTimingController', function(
     // We don't need these sets anymore
     displayTaskNamesSet.clear()
     executionTaskNamesSet.clear()
+    allBvTaskNamesSet.clear()
 
     var initialHash = $locationHash.get();
     // TODO do we keep this?

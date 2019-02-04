@@ -414,6 +414,36 @@ func PopulateOldestImageRemovalJobs() amboy.QueueOperation {
 	}
 }
 
+func PopulateCommitQueueJobs(env evergreen.Environment) amboy.QueueOperation {
+	return func(queue amboy.Queue) error {
+		flags, err := evergreen.GetServiceFlags()
+		if err != nil {
+			return errors.WithStack(err)
+		}
+
+		if flags.CommitQueueDisabled {
+			grip.InfoWhen(sometimes.Percent(evergreen.DegradedLoggingPercent), message.Fields{
+				"message": "commit queue is disabled",
+				"impact":  "commit queue items are not processed",
+				"mode":    "degraded",
+			})
+			return nil
+		}
+
+		catcher := grip.NewBasicCatcher()
+		ts := util.RoundPartOfHour(1).Format(tsFormat)
+
+		projectRefs, err := model.FindProjectRefsWithCommitQEnabled()
+		if err != nil {
+			return errors.Wrap(err, "can't find projectRefs with Commit Queue enabled")
+		}
+		for _, p := range projectRefs {
+			catcher.Add(queue.Put(NewCommitQueueJob(env, p.Identifier, ts)))
+		}
+		return catcher.Resolve()
+	}
+}
+
 func PopulateSchedulerJobs(env evergreen.Environment) amboy.QueueOperation {
 	return func(queue amboy.Queue) error {
 		flags, err := evergreen.GetServiceFlags()
@@ -527,8 +557,8 @@ func PopulateAgentDeployJobs(env evergreen.Environment) amboy.QueueOperation {
 			return errors.WithStack(err)
 		}
 
-		// don't do this more than once a minute:
-		ts := util.RoundPartOfMinute(30).Format(tsFormat)
+		// 3x / minute
+		ts := util.RoundPartOfMinute(20).Format(tsFormat)
 		catcher := grip.NewBasicCatcher()
 
 		for _, h := range hosts {
@@ -598,7 +628,7 @@ func PopulateHostCreationJobs(env evergreen.Environment, part int) amboy.QueueOp
 	}
 }
 
-func PopulateHostSetupJobs(env evergreen.Environment, part int) amboy.QueueOperation {
+func PopulateHostSetupJobs(env evergreen.Environment) amboy.QueueOperation {
 	return func(queue amboy.Queue) error {
 		flags, err := evergreen.GetServiceFlags()
 		if err != nil {
@@ -616,7 +646,7 @@ func PopulateHostSetupJobs(env evergreen.Environment, part int) amboy.QueueOpera
 
 		hosts, err := host.FindByFirstProvisioningAttempt()
 		grip.Error(message.WrapError(err, message.Fields{
-			"operation": "background task creation",
+			"operation": "background host provisioning",
 			"cron":      setupHostJobName,
 			"impact":    "hosts cannot provision",
 		}))
@@ -624,7 +654,7 @@ func PopulateHostSetupJobs(env evergreen.Environment, part int) amboy.QueueOpera
 			return errors.Wrap(err, "error fetching provisioning hosts")
 		}
 
-		ts := util.RoundPartOfMinute(part).Format(tsFormat)
+		ts := util.RoundPartOfMinute(30).Format(tsFormat)
 		catcher := grip.NewBasicCatcher()
 		for _, h := range hosts {
 			catcher.Add(queue.Put(NewHostSetupJob(env, h, ts)))

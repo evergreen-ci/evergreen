@@ -78,6 +78,8 @@ func (apiBuild *APIBuild) BuildFromService(h interface{}) error {
 		origin = commitOrigin
 	case evergreen.GithubPRRequester:
 		origin = patchOrigin
+	case evergreen.MergeTestRequester:
+		origin = patchOrigin
 	case evergreen.PatchVersionRequester:
 		origin = patchOrigin
 	case evergreen.TriggerRequester:

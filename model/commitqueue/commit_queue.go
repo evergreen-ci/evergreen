@@ -4,7 +4,9 @@ import (
 	"github.com/pkg/errors"
 )
 
-const triggerComment = "evergreen merge"
+const (
+	triggerComment = "evergreen merge"
+)
 
 type CommitQueue struct {
 	ProjectID    string   `bson:"_id"`
@@ -30,26 +32,33 @@ func (q *CommitQueue) Enqueue(item string) error {
 	return nil
 }
 
-func (q CommitQueue) IsEmpty() bool {
+func (q *CommitQueue) IsEmpty() bool {
 	return len(q.Queue) == 0
 }
 
-func (q CommitQueue) All() []string {
+func (q *CommitQueue) Next() string {
+	if q.IsEmpty() {
+		return ""
+	}
+	return q.Queue[0]
+}
+
+func (q *CommitQueue) All() []string {
 	return q.Queue
 }
 
-func (q *CommitQueue) Remove(item string) error {
+func (q *CommitQueue) Remove(item string) (bool, error) {
 	itemIndex := q.findItem(item)
 	if itemIndex < 0 {
-		return errors.New("item not in queue")
+		return false, nil
 	}
 
 	if err := remove(q.ProjectID, item); err != nil {
-		return errors.Wrap(err, "can't remove item")
+		return false, errors.Wrap(err, "can't remove item")
 	}
 
 	q.Queue = append(q.Queue[:itemIndex], q.Queue[itemIndex+1:]...)
-	return nil
+	return true, nil
 }
 
 func (q *CommitQueue) RemoveAll() error {
@@ -76,7 +85,7 @@ func (q *CommitQueue) UpdateStatusAction(statusAction string) error {
 	return nil
 }
 
-func (q CommitQueue) findItem(item string) int {
+func (q *CommitQueue) findItem(item string) int {
 	for i, queued := range q.Queue {
 		if queued == item {
 			return i

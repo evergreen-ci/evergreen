@@ -18,6 +18,7 @@ import (
 	"github.com/evergreen-ci/evergreen/repotracker"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
 	"gopkg.in/mgo.v2/bson"
@@ -290,6 +291,50 @@ func (s *taskSuite) SetupTest() {
 	s.t.data = s.data
 	s.t.task = &s.task
 	s.t.uiConfig = *ui
+}
+
+func (s *taskSuite) TestTriggerEvent() {
+	s.NoError(db.ClearCollections(task.Collection, event.SubscriptionsCollection))
+	sub := &event.Subscription{
+		ID:           bson.NewObjectId().Hex(),
+		ResourceType: event.ResourceTypeTask,
+		Trigger:      triggerOutcome,
+		Selectors: []event.Selector{
+			{
+				Type: "id",
+				Data: s.event.ResourceId,
+			},
+			{
+				Type: "requester",
+				Data: evergreen.RepotrackerVersionRequester,
+			},
+		},
+		Subscriber: event.Subscriber{
+			Type:   event.JIRACommentSubscriberType,
+			Target: "A-1",
+		},
+		Owner: "someone",
+	}
+	s.NoError(sub.Upsert())
+	t := task.Task{
+		Id:                  "test",
+		Version:             "test_version_id",
+		BuildId:             "test_build_id",
+		BuildVariant:        "test_build_variant",
+		DistroId:            "test_distro_id",
+		Project:             "test_project",
+		DisplayName:         "test-display-name",
+		RevisionOrderNumber: 1,
+		Requester:           evergreen.TriggerRequester,
+		Status:              evergreen.TaskFailed,
+	}
+	s.NoError(t.Insert())
+
+	s.data.Status = evergreen.TaskFailed
+	s.event.Data = s.data
+	n, err := NotificationsFromEvent(&s.event)
+	s.NoError(err)
+	s.Len(n, 1)
 }
 
 func (s *taskSuite) TestAllTriggers() {
@@ -843,21 +888,23 @@ func (s *taskSuite) TestRegressionByTestWithRegex() {
 	s.NoError(v1.Insert())
 
 	t1 := task.Task{
-		Id:        "t1",
-		Requester: evergreen.RepotrackerVersionRequester,
-		Status:    evergreen.TaskFailed,
-		Version:   "v1",
-		BuildId:   "test_build_id",
-		Project:   "myproj",
+		Id:          "t1",
+		Requester:   evergreen.RepotrackerVersionRequester,
+		Status:      evergreen.TaskFailed,
+		DisplayName: "task1",
+		Version:     "v1",
+		BuildId:     "test_build_id",
+		Project:     "myproj",
 	}
 	s.NoError(t1.Insert())
 	t2 := task.Task{
-		Id:        "t2",
-		Requester: evergreen.RepotrackerVersionRequester,
-		Status:    evergreen.TaskFailed,
-		Version:   "v1",
-		BuildId:   "test_build_id",
-		Project:   "myproj",
+		Id:          "t2",
+		Requester:   evergreen.RepotrackerVersionRequester,
+		Status:      evergreen.TaskFailed,
+		DisplayName: "task2",
+		Version:     "v1",
+		BuildId:     "test_build_id",
+		Project:     "myproj",
 	}
 	s.NoError(t2.Insert())
 
@@ -886,6 +933,8 @@ func (s *taskSuite) TestRegressionByTestWithRegex() {
 	n, err := NotificationsFromEvent(&willNotify)
 	s.NoError(err)
 	s.Len(n, 1)
+	payload := n[0].Payload.(*message.Email)
+	s.Contains(payload.Subject, "task1 (test1)")
 	wontNotify := event.EventLogEntry{
 		ResourceType: event.ResourceTypeTask,
 		ResourceId:   "t2",
