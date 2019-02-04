@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/model/artifact"
 	"github.com/evergreen-ci/evergreen/model/task"
@@ -51,6 +52,7 @@ type APITask struct {
 	Artifacts          []APIFile        `json:"artifacts"`
 	DisplayOnly        bool             `json:"display_only"`
 	ExecutionTasks     []APIString      `json:"execution_tasks,omitempty"`
+	Mainline           bool             `json:"mainline"`
 }
 
 type logLinks struct {
@@ -118,6 +120,7 @@ func (at *APITask) BuildFromService(t interface{}) error {
 			GenerateTask:     v.GenerateTask,
 			GeneratedBy:      v.GeneratedBy,
 			DisplayOnly:      v.DisplayOnly,
+			Mainline:         (v.Requester == evergreen.RepotrackerVersionRequester),
 		}
 		if len(v.ExecutionTasks) > 0 {
 			ets := []APIString{}
