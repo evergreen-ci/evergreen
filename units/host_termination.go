@@ -109,7 +109,7 @@ func (j *hostTerminationJob) Run(ctx context.Context) {
 		})
 
 	// host may still be an intent host
-	if j.host.Status == evergreen.HostUninitialized {
+	if j.host.Status == evergreen.HostUninitialized || j.host.Status == evergreen.HostBuilding {
 		if err = j.host.Terminate(evergreen.User); err != nil {
 			j.AddError(errors.Wrap(err, "problem terminating intent host in db"))
 			grip.Error(message.WrapError(err, message.Fields{
