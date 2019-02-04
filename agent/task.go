@@ -184,6 +184,7 @@ func (tc *taskContext) getCurrentCommand() command.Command {
 func (tc *taskContext) setCurrentTimeout(cmd command.Command) {
 	tc.Lock()
 	defer tc.Unlock()
+
 	var timeout time.Duration
 	if cmd == nil || tc.taskConfig.Timeout == nil {
 		timeout = defaultIdleTimeout
@@ -194,6 +195,7 @@ func (tc *taskContext) setCurrentTimeout(cmd command.Command) {
 	} else {
 		timeout = defaultIdleTimeout
 	}
+
 	tc.timeout = timeout
 	tc.logger.Execution().Debugf("Set command timeout for '%s' (%s) to %s",
 		tc.currentCommand.DisplayName(), tc.currentCommand.Type(), timeout)
