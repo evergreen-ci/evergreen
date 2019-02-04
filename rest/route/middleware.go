@@ -3,6 +3,7 @@ package route
 import (
 	"context"
 	"net/http"
+	"strconv"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/auth"
@@ -130,6 +131,73 @@ func (m *projectAdminMiddleware) ServeHTTP(rw http.ResponseWriter, r *http.Reque
 	isSuperuser := util.StringSliceContains(m.sc.GetSuperUsers(), user.Username())
 	isAdmin := util.StringSliceContains(opCtx.ProjectRef.Admins, user.Username())
 	if !(isSuperuser || isAdmin) {
+		gimlet.WriteResponse(rw, gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+			StatusCode: http.StatusUnauthorized,
+			Message:    "Not authorized",
+		}))
+		return
+	}
+
+	next(rw, r)
+}
+
+func NewCommitQueueItemOwnerMiddleware(sc data.Connector) gimlet.Middleware {
+	return &CommitQueueItemOwnerMiddleware{
+		sc: sc,
+	}
+}
+
+type CommitQueueItemOwnerMiddleware struct {
+	sc data.Connector
+}
+
+func (m *CommitQueueItemOwnerMiddleware) ServeHTTP(rw http.ResponseWriter, r *http.Request, next http.HandlerFunc) {
+	ctx := r.Context()
+	user := MustHaveUser(ctx)
+	opCtx := MustHaveProjectContext(ctx)
+
+	// A superuser or project admin is authorized
+	isSuperuser := util.StringSliceContains(m.sc.GetSuperUsers(), user.Username())
+	isAdmin := util.StringSliceContains(opCtx.ProjectRef.Admins, user.Username())
+	if isSuperuser || isAdmin {
+		next(rw, r)
+		return
+	}
+
+	// The owner of the PR (the one who opened it) can also pass
+	vars := gimlet.GetVars(r)
+	item, ok := vars["item"]
+	if !ok {
+		gimlet.WriteResponse(rw, gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+			StatusCode: http.StatusBadRequest,
+			Message:    "No item provided",
+		}))
+		return
+	}
+
+	itemInt, err := strconv.Atoi(item)
+	if err != nil {
+		gimlet.WriteResponse(rw, gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+			StatusCode: http.StatusBadRequest,
+			Message:    "item is not an integer",
+		}))
+		return
+	}
+
+	pr, err := m.sc.GetGitHubPR(ctx, opCtx.ProjectRef.Owner, opCtx.ProjectRef.Repo, itemInt)
+	if err != nil {
+		gimlet.WriteResponse(rw, gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+			StatusCode: http.StatusInternalServerError,
+			Message:    "can't get information about PR",
+		}))
+		return
+	}
+
+	var githubUID int
+	if pr != nil && pr.User != nil && pr.User.ID != nil {
+		githubUID = *pr.User.ID
+	}
+	if githubUID == 0 || user.Settings.GithubUser.UID != githubUID {
 		gimlet.WriteResponse(rw, gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
 			StatusCode: http.StatusUnauthorized,
 			Message:    "Not authorized",

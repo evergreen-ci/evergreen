@@ -102,9 +102,11 @@ func (s *githubPRLogger) Send(m message.Composer) {
 		s.ErrorHandler(errors.Wrapf(err, "can't find commit queue for %s", msg.ProjectID), m)
 		return
 	}
-	err = cq.Remove(strconv.Itoa(msg.PRNum))
+	found, err := cq.Remove(strconv.Itoa(msg.PRNum))
 	if err != nil {
 		s.ErrorHandler(errors.Wrapf(err, "can't dequeue %d from commit queue", msg.PRNum), m)
+	} else if !found {
+		s.ErrorHandler(errors.Errorf("item %d did not exist on the queue", msg.PRNum), m)
 	}
 }
 
