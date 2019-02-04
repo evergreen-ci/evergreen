@@ -144,7 +144,7 @@ func (s *AdminDataSuite) TestSetAndGetSettings() {
 	s.EqualValues(testSettings.Notify.SMTP.From, settingsFromConnector.Notify.SMTP.From)
 	s.EqualValues(testSettings.Notify.SMTP.Port, settingsFromConnector.Notify.SMTP.Port)
 	s.Equal(len(testSettings.Notify.SMTP.AdminEmail), len(settingsFromConnector.Notify.SMTP.AdminEmail))
-	s.EqualValues(testSettings.Providers.AWS.Id, settingsFromConnector.Providers.AWS.Id)
+	s.EqualValues(testSettings.Providers.AWS.EC2Key, settingsFromConnector.Providers.AWS.EC2Key)
 	s.EqualValues(testSettings.Providers.Docker.APIVersion, settingsFromConnector.Providers.Docker.APIVersion)
 	s.EqualValues(testSettings.Providers.GCE.ClientEmail, settingsFromConnector.Providers.GCE.ClientEmail)
 	s.EqualValues(testSettings.Providers.OpenStack.IdentityEndpoint, settingsFromConnector.Providers.OpenStack.IdentityEndpoint)
@@ -184,7 +184,7 @@ func (s *AdminDataSuite) TestSetAndGetSettings() {
 			s.Equal(testSettings.ServiceFlags.RepotrackerDisabled, v.RepotrackerDisabled)
 		case *evergreen.CloudProviders:
 			foundProvidersEvent = true
-			s.Equal(testSettings.Providers.AWS.Id, v.AWS.Id)
+			s.Equal(testSettings.Providers.AWS.EC2Key, v.AWS.EC2Key)
 			s.Equal(testSettings.Providers.GCE.ClientEmail, v.GCE.ClientEmail)
 		case *evergreen.Settings:
 			foundRootEvent = true
@@ -243,7 +243,7 @@ func (s *AdminDataSuite) TestSetAndGetSettings() {
 	s.EqualValues(testSettings.Notify.SMTP.From, settingsFromConnector.Notify.SMTP.From)
 	s.EqualValues(testSettings.Notify.SMTP.Port, settingsFromConnector.Notify.SMTP.Port)
 	s.Equal(len(testSettings.Notify.SMTP.AdminEmail), len(settingsFromConnector.Notify.SMTP.AdminEmail))
-	s.EqualValues(testSettings.Providers.AWS.Id, settingsFromConnector.Providers.AWS.Id)
+	s.EqualValues(testSettings.Providers.AWS.EC2Key, settingsFromConnector.Providers.AWS.EC2Key)
 	s.EqualValues(testSettings.Providers.Docker.APIVersion, settingsFromConnector.Providers.Docker.APIVersion)
 	s.EqualValues(testSettings.Providers.GCE.ClientEmail, settingsFromConnector.Providers.GCE.ClientEmail)
 	s.EqualValues(testSettings.Providers.OpenStack.IdentityEndpoint, settingsFromConnector.Providers.OpenStack.IdentityEndpoint)
