@@ -75,10 +75,9 @@ mciModule.controller('PerfController', function PerfController(
       hash.metric = $scope.metricSelect.value.key
     }
 
-    setTimeout(function(){
-      $location.hash(encodeURIComponent(JSON.stringify(hash)))
-      $scope.$apply()
-    }, 1)
+    $location.hash(encodeURIComponent(JSON.stringify(hash)))
+    // Do not moify browser history
+    $location.replace()
   }
 
   $scope.checkEnter = function(keyEvent){
@@ -453,37 +452,42 @@ mciModule.controller('PerfController', function PerfController(
   }
 
   $scope.addComparisonForm = function(formData, draw){
-    var commitHash = formData.hash
-    var saveObj = {}
-    if(commitHash){
+    const commitHash = formData.hash
+    const saveObj = {}
+
+    if (commitHash) {
       saveObj.hash = commitHash
-    }else{
+    } else {
       saveObj.tag = formData.tag
     }
-    if(!!formData.tag && !!formData.tag.tag){
+
+    if (Boolean(formData.tag) && Boolean(formData.tag.tag)) {
       formData.tag = formData.tag.tag
     }
-    $scope.savedCompares.push(saveObj)
-    if(!!commitHash){
+
+    // Add only unique hashes and tags
+    $scope.savedCompares = _.uniq($scope.savedCompares.concat(saveObj), function(d) {
+      return '' + d.tag + d.hash
+    })
+
+    if (Boolean(commitHash)){
       $http.get("/plugin/json/commit/" + $scope.project + "/" + commitHash + "/" + $scope.task.build_variant + "/" + $scope.task.display_name + "/perf").then(
         function(resp){
-          var d = resp.data;
-          var compareSample = new TestSample(d);
+          const d = resp.data;
+          const compareSample = new TestSample(d);
           $scope.comparePerfSamples.push(compareSample)
-          if(draw)
-            $scope.redrawGraphs()
+          if (draw) $scope.redrawGraphs()
         },
         function(resp){ console.log(resp.data) });
-    }else if(!!formData.tag && formData.tag.length > 0){
+    } else if (Boolean(formData.tag) && formData.tag.length > 0) {
       $http.get("/plugin/json/tag/" + $scope.project + "/" + formData.tag + "/" + $scope.task.build_variant + "/" + $scope.task.display_name + "/perf").then(
         function(resp){
-          var d = resp.data;
-          var compareSample = new TestSample(d);
+          const d = resp.data;
+          const compareSample = new TestSample(d);
           $scope.comparePerfSamples.push(compareSample)
-          if(draw)
-            $scope.redrawGraphs()
+          if (draw) $scope.redrawGraphs()
         },
-        function(resp){console.log(resp.data) });
+        function (resp){ console.log(resp.data) });
     }
 
     $scope.compareForm = {}
@@ -505,7 +509,7 @@ mciModule.controller('PerfController', function PerfController(
   }
 
   if ($scope.conf.enabled){
-    if ($location.hash().length>0){
+    if ($location.hash().length > 0) {
       try {
         var hashparsed = JSON.parse(decodeURIComponent($location.hash()))
         if ('hiddenGraphs' in hashparsed){
@@ -591,7 +595,7 @@ mciModule.controller('PerfController', function PerfController(
 
           // Some copypasted checks
           if ($scope.conf.enabled){
-            if ($location.hash().length>0){
+            if ($location.hash().length > 0) {
               try {
                 if ('metric' in hashparsed) {
                   let metric = hashparsed.metric
