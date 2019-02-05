@@ -33,7 +33,11 @@ func CommitQueue() cli.Command {
 				Name:  joinFlagNames(itemFlagName, "i"),
 				Usage: "delete `ITEM`",
 			}),
-		Before: requireOnlyOneBool(listFlagName, deleteFlagName),
+		Before: mergeBeforeFuncs(
+			requireOnlyOneBool(listFlagName, deleteFlagName),
+			requireFlagsForBool(listFlagName, projectFlagName),
+			requireFlagsForBool(deleteFlagName, projectFlagName, itemFlagName),
+		),
 		Action: func(c *cli.Context) error {
 			confPath := c.Parent().String(confFlagName)
 			projectID := c.String(projectFlagName)

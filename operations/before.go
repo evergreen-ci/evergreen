@@ -194,6 +194,20 @@ func requireAtLeastOneBool(flags ...string) cli.BeforeFunc {
 	}
 }
 
+func requireFlagsForBool(boolFlag string, requiredStringFlags ...string) cli.BeforeFunc {
+	return func(c *cli.Context) error {
+		catcher := grip.NewBasicCatcher()
+		if c.Bool(boolFlag) {
+			for _, flag := range requiredStringFlags {
+				if c.String(flag) == "" {
+					catcher.Add(errors.Errorf("'%s' flag is required for '%s'", flag, boolFlag))
+				}
+			}
+		}
+		return catcher.Resolve()
+	}
+}
+
 func mergeBeforeFuncs(ops ...func(c *cli.Context) error) cli.BeforeFunc {
 	return func(c *cli.Context) error {
 		catcher := grip.NewBasicCatcher()
