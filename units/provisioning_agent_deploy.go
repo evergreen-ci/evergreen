@@ -331,6 +331,10 @@ func (j *agentDeployJob) startAgentOnRemote(ctx context.Context, settings *everg
 		}
 	}
 
+	env["S3_KEY"] = settings.Providers.AWS.S3Key
+	env["S3_SECRET"] = settings.Providers.AWS.S3Secret
+	env["S3_BUCKET"] = settings.Providers.AWS.Bucket
+
 	startAgentCmd := subprocess.NewRemoteCommand(
 		remoteCmd,
 		hostInfo.Hostname,

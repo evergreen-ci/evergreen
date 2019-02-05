@@ -187,3 +187,7 @@ func (ch *CreateHost) Validate() error {
 func (ch *CreateHost) Expand(exp *util.Expansions) error {
 	return errors.Wrap(util.ExpandValues(ch, exp), "error expanding host.create")
 }
+
+type GeneratePollResponse struct {
+	Finished bool `json:"finished"`
+}

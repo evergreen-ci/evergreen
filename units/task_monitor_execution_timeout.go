@@ -139,14 +139,16 @@ func cleanUpTimedOutTask(t *task.Task) error {
 			t.HostId, t.Id)
 	}
 
-	// if there's no relevant host, something went wrong
+	// if there's no relevant host and the task is not a display task, something went wrong
 	if host == nil {
-		grip.Error(message.Fields{
-			"message":   "no entry found for host",
-			"task":      t.Id,
-			"host":      t.HostId,
-			"operation": "cleanup timed out task",
-		})
+		if !t.DisplayOnly {
+			grip.Error(message.Fields{
+				"message":   "no entry found for host",
+				"task":      t.Id,
+				"host":      t.HostId,
+				"operation": "cleanup timed out task",
+			})
+		}
 		return errors.WithStack(t.MarkUnscheduled())
 	}
 

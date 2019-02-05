@@ -70,7 +70,7 @@ type LoggerConfig struct {
 }
 
 type LogOpts struct {
-	Sender            model.LogSender
+	Sender            string
 	SplunkServerURL   string
 	SplunkToken       string
 	Filepath          string

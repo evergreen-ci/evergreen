@@ -206,7 +206,10 @@ type Connector interface {
 	GetCLIUpdate() (*restModel.APICLIUpdate, error)
 
 	// GenerateTasks parses JSON files for `generate.tasks` and creates the new builds and tasks.
-	GenerateTasks(context.Context, string, []json.RawMessage) error
+	GenerateTasks(context.Context, string, []json.RawMessage, amboy.Queue) error
+
+	// GeneratePoll checks to see if a `generate.tasks` job has finished.
+	GeneratePoll(context.Context, string, amboy.Queue) (bool, error)
 
 	// SaveSubscriptions saves a set of notification subscriptions
 	SaveSubscriptions([]event.Subscription) error
@@ -227,7 +230,8 @@ type Connector interface {
 	GetTaskStats(stats.StatsFilter) ([]restModel.APITaskStats, error)
 
 	// Commit queue methods
-	GithubPREnqueueItem(string, string, int) error
+	GetGitHubPR(context.Context, string, string, int) (*github.PullRequest, error)
 	EnqueueItem(string, string, string, string) error
 	FindCommitQueueByID(string) (*restModel.APICommitQueue, error)
+	CommitQueueRemoveItem(string, string) (bool, error)
 }

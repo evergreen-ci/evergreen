@@ -6,9 +6,11 @@ import (
 	"os/signal"
 	"syscall"
 
+	"github.com/aws/aws-sdk-go/aws/endpoints"
 	"github.com/evergreen-ci/evergreen/agent"
 	"github.com/evergreen-ci/evergreen/command"
 	"github.com/evergreen-ci/evergreen/rest/client"
+	"github.com/evergreen-ci/pail"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/mongodb/grip/recovery"
@@ -86,6 +88,13 @@ func Agent() cli.Command {
 				WorkingDirectory: c.String(workingDirectoryFlagName),
 				Cleanup:          c.Bool(cleanupFlagName),
 				LogkeeperURL:     c.String(logkeeperFlagName),
+				S3Opts: pail.S3Options{
+					Credentials: pail.CreateAWSCredentials(os.Getenv("S3_KEY"), os.Getenv("S3_SECRET"), ""),
+					Region:      endpoints.UsEast1RegionID,
+					Name:        os.Getenv("S3_BUCKET"),
+					Permission:  "public-read",
+					ContentType: "text/plain",
+				},
 			}
 
 			if err := os.MkdirAll(opts.WorkingDirectory, 0777); err != nil {

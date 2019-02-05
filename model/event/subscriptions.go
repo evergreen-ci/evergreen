@@ -10,7 +10,6 @@ import (
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/anser/bsonutil"
 	"github.com/mongodb/grip"
-	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 	mgo "gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
@@ -153,11 +152,6 @@ func regexSelectorsMatch(selectors []Selector, regexSelectors []Selector) bool {
 		}
 
 		matched, err := regexp.MatchString(regexSelectors[i].Data, selector.Data)
-		grip.Error(message.WrapError(err, message.Fields{
-			"source":  "notifications-errors",
-			"message": "bad regex in db",
-		}))
-		// TODO swallow regex errors?
 		if err != nil || !matched {
 			return false
 		}

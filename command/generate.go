@@ -6,6 +6,7 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"time"
 
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/rest/client"
@@ -77,7 +78,24 @@ func (c *generateTask) Execute(ctx context.Context, comm client.Communicator, lo
 	if err != nil {
 		return errors.Wrap(err, "problem parsing JSON")
 	}
-	return errors.Wrap(comm.GenerateTasks(ctx, td, post), "Problem posting task data")
+	if err = comm.GenerateTasks(ctx, td, post); err != nil {
+		return errors.Wrap(err, "Problem posting task data")
+	}
+
+	var finished bool
+	err = util.Retry(
+		ctx,
+		func() (bool, error) {
+			finished, err = comm.GenerateTasksPoll(ctx, td)
+			if err != nil {
+				return false, errors.Wrapf(err, "error generating tasks for '%s'", conf.Task.Id)
+			}
+			if finished {
+				return false, nil
+			}
+			return true, errors.New("task generation unfinished")
+		}, 100, time.Second, 15*time.Second)
+	return err
 }
 
 func generateTaskForFile(fn string, conf *model.TaskConfig) ([]byte, error) {

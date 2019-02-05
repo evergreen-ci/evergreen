@@ -797,19 +797,23 @@ Admin Settings
 										<label>Name</label>
 										<input type="text" ng-model="Settings.amboy.name">
 									</md-input-container>
-									<md-input-container class="control" style="width:45%; margin-left:50px;">
+                  <md-input-container class="control" style="width:45%; margin-left:50px;">
+										<label>Single Worker Name</label>
+										<input type="text" ng-model="Settings.amboy.single_name">
+									</md-input-container>
+                  <md-input-container class="control" style="width:45%;">
 										<label>DB name</label>
 										<input type="text" ng-model="Settings.amboy.database">
 									</md-input-container>
-									<md-input-container class="control" style="width:45%;">
+                  <md-input-container class="control" style="width:45%; margin-left:50px;">
 										<label>Local pool size</label>
 										<input type="number" ng-model="Settings.amboy.pool_size_local">
 									</md-input-container>
-									<md-input-container class="control" style="width:45%; margin-left:50px;">
+                  <md-input-container class="control" style="width:45%;">
 										<label>Remote pool size</label>
 										<input type="number" ng-model="Settings.amboy.pool_size_remote">
 									</md-input-container>
-									<md-input-container class="control" style="width:45%;">
+                  <md-input-container class="control" style="width:45%; margin-left:50px;">
 										<label>Local storage size</label>
 										<input type="number" ng-model="Settings.amboy.local_storage_size">
 									</md-input-container>
@@ -920,17 +924,29 @@ Admin Settings
 								</md-card-title>
 								<md-card-content>
 									<md-input-container class="control" style="width:45%;">
-										<label>ID</label>
+										<label>EC2 Key</label>
 										<input type="text" ng-model="Settings.providers.aws.aws_id">
 									</md-input-container>
 									<md-input-container class="control" style="width:45%; margin-left:50px;">
-										<label>Secret</label>
+										<label>EC2 Secret</label>
 										<input type="text" ng-model="Settings.providers.aws.aws_secret">
+									</md-input-container>
+									<md-input-container class="control" style="width:45%;">
+										<label>S3 Key</label>
+										<input type="text" ng-model="Settings.providers.aws.s3_key">
+									</md-input-container>
+									<md-input-container class="control" style="width:45%; margin-left:50px;">
+										<label>S3 Secret</label>
+										<input type="text" ng-model="Settings.providers.aws.s3_secret">
+									</md-input-container>
+									<md-input-container class="control" style="width:45%;">
+										<label>S3 Bucket</label>
+										<input type="text" ng-model="Settings.providers.aws.bucket">
 									</md-input-container>
 								</md-card-content>
 							</md-card>
 
-							<md-card flex=50 id="docker">
+							<md-card flex=50 id="docker" style="height:200px">
 								<md-card-title>
 									<md-card-title-text>
 										<span>Docker</span>

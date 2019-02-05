@@ -503,7 +503,7 @@ func (cpf *cachingPriceFetcher) cacheEBSPrices() error {
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	_, err := util.Retry(
+	err := util.Retry(
 		ctx,
 		func() (bool, error) {
 			resp, err := client.Get(endpoint)
@@ -518,7 +518,7 @@ func (cpf *cachingPriceFetcher) cacheEBSPrices() error {
 				return true, errors.Wrap(err, "reading response body")
 			}
 			return false, nil
-		}, awsClientImplRetries, awsClientImplStartPeriod)
+		}, awsClientImplRetries, awsClientImplStartPeriod, 0)
 	if err != nil {
 		return errors.WithStack(err)
 	}

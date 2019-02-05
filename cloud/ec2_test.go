@@ -177,16 +177,16 @@ func (s *EC2Suite) TestConfigure() {
 	err := s.onDemandManager.Configure(ctx, settings)
 	s.Error(err)
 
-	settings.Providers.AWS.Id = "id"
+	settings.Providers.AWS.EC2Key = "id"
 	err = s.onDemandManager.Configure(ctx, settings)
 	s.Error(err)
 
-	settings.Providers.AWS.Id = ""
-	settings.Providers.AWS.Secret = "secret"
+	settings.Providers.AWS.EC2Key = ""
+	settings.Providers.AWS.EC2Secret = "secret"
 	err = s.onDemandManager.Configure(ctx, settings)
 	s.Error(err)
 
-	settings.Providers.AWS.Id = "id"
+	settings.Providers.AWS.EC2Key = "id"
 	err = s.onDemandManager.Configure(ctx, settings)
 	s.NoError(err)
 	ec2m := s.onDemandManager.(*ec2Manager)
