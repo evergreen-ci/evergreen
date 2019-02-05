@@ -20,6 +20,7 @@ import (
 	"github.com/mongodb/grip/level"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
+	mgo "gopkg.in/mgo.v2"
 )
 
 const hostTerminationJobName = "host-termination-job"
@@ -169,6 +170,27 @@ func (j *hostTerminationJob) Run(ctx context.Context) {
 			}
 			return
 		}
+	} else if j.host.Status == evergreen.HostBuilding {
+		// If the host is not a container and is building, this means the host is an intent
+		// host, and should be terminated in the database, and not in the cloud manager.
+		if err = j.host.Terminate(evergreen.User); err != nil {
+			// It is possible that the provisioning-create-host job has removed the
+			// intent host from the database before this job got to it. If so, there is
+			// nothing to terminate with a cloud manager, since if there is a
+			// cloud-managed host, it has a different ID.
+			if err == mgo.ErrNotFound {
+				return
+			}
+			j.AddError(errors.Wrap(err, "problem terminating intent host in db"))
+			grip.Error(message.WrapError(err, message.Fields{
+				"host":     j.host.Id,
+				"provider": j.host.Distro.Provider,
+				"job_type": j.Type().Name,
+				"job":      j.ID(),
+				"message":  "problem terminating intent host in db",
+			}))
+		}
+		return
 	}
 
 	// convert the host to a cloud host
