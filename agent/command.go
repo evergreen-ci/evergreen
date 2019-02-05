@@ -120,8 +120,14 @@ func (a *Agent) runCommandSet(ctx context.Context, tc *taskContext, commandInfo 
 				}
 			}
 		case <-ctx.Done():
-			tc.logger.Task().Errorf("Command canceled: %v", err)
-			return errors.Wrap(err, "command canceled")
+			switch ctx.Err() {
+			case context.DeadlineExceeded:
+				deadline, _ := ctx.Deadline()
+				tc.logger.Task().Errorf("Command timed out: %v", deadline)
+			case context.Canceled:
+				tc.logger.Task().Errorf("Agent was stopped: %v", ctx.Err())
+			}
+			return errors.Wrap(ctx.Err(), "RunCommands ended early")
 		}
 		tc.logger.Execution().Infof("Finished %s in %s", fullCommandName, time.Since(start).String())
 	}
