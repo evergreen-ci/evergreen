@@ -657,3 +657,56 @@ func (c *communicatorImpl) CreateVersionFromConfig(ctx context.Context, project,
 
 	return v, nil
 }
+
+func (c *communicatorImpl) GetCommitQueue(ctx context.Context, projectID string) (*model.APICommitQueue, error) {
+	info := requestInfo{
+		method:  get,
+		version: apiVersion2,
+		path:    fmt.Sprintf("/projects/%s/commit_queue", projectID),
+	}
+
+	resp, err := c.request(ctx, info, "")
+	if err != nil {
+		return nil, errors.Wrap(err, "problem fetching commit queue list")
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		errMsg := gimlet.ErrorResponse{}
+
+		if err := util.ReadJSONInto(resp.Body, &errMsg); err != nil {
+			return nil, errors.Wrap(err, "problem fetching commit queue list and parsing error message")
+		}
+		return nil, errors.Wrap(errMsg, "problem fetching commit queue list")
+	}
+
+	cq := model.APICommitQueue{}
+
+	if err = util.ReadJSONInto(resp.Body, &cq); err != nil {
+		return nil, errors.Wrap(err, "error parsing commit queue")
+	}
+
+	return &cq, nil
+}
+
+func (c *communicatorImpl) DeleteCommitQueueItem(ctx context.Context, projectID, item string) error {
+	info := requestInfo{
+		method:  delete,
+		version: apiVersion2,
+		path:    fmt.Sprintf("/projects/%s/commit_queue/%s", projectID, item),
+	}
+
+	resp, err := c.request(ctx, info, "")
+	if err != nil {
+		return errors.Wrapf(err, "problem deleting item '%s' from commit queue '%s'", item, projectID)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusNoContent {
+		errMsg := gimlet.ErrorResponse{}
+		if err := util.ReadJSONInto(resp.Body, &errMsg); err != nil {
+			return errors.Wrapf(err, "response code %d problem deleting item '%s' from commit queue '%s' and parsing error message", resp.StatusCode, item, projectID)
+		}
+		return errors.Wrapf(errMsg, "problem deleting item '%s' from commit queue '%s'", item, projectID)
+	}
+
+	return nil
+}

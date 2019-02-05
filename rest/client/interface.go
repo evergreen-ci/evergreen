@@ -165,4 +165,8 @@ type Communicator interface {
 
 	// CreateVersionFromConfig takes an evergreen config and makes runnable tasks from it
 	CreateVersionFromConfig(context.Context, string, string, bool, []byte) (*model.Version, error)
+
+	// Commit Queue
+	GetCommitQueue(context.Context, string) (*restmodel.APICommitQueue, error)
+	DeleteCommitQueueItem(context.Context, string, string) error
 }
