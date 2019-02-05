@@ -418,13 +418,11 @@ func (o *LogOpts) IsValid() error {
 	return catcher.Resolve()
 }
 
-type LogSender string
-
 const (
-	EvergreenLogSender LogSender = "evergreen"
-	FileLogSender                = "file"
-	LogkeeperLogSender           = "logkeeper"
-	SplunkLogSender              = "splunk"
+	EvergreenLogSender = "evergreen"
+	FileLogSender      = "file"
+	LogkeeperLogSender = "logkeeper"
+	SplunkLogSender    = "splunk"
 )
 
 var ValidLogSenders = []string{

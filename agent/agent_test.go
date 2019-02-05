@@ -54,6 +54,7 @@ func (s *AgentSuite) SetupTest() {
 		},
 		taskConfig: &model.TaskConfig{
 			Project: &model.Project{},
+			Task:    &task.Task{},
 		},
 		runGroupSetup: true,
 	}

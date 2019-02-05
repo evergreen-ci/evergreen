@@ -92,8 +92,8 @@ func SetupAPITestData(testConfig *evergreen.Settings, taskDisplayName string, va
 	projectVars := &model.ProjectVars{
 		Id: project.DisplayName,
 		Vars: map[string]string{
-			"aws_key":    testConfig.Providers.AWS.Id,
-			"aws_secret": testConfig.Providers.AWS.Secret,
+			"aws_key":    testConfig.Providers.AWS.EC2Key,
+			"aws_secret": testConfig.Providers.AWS.EC2Secret,
 			"fetch_key":  "fetch_expansion_value",
 		},
 	}

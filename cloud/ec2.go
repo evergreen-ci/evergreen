@@ -152,13 +152,13 @@ func (m *ec2Manager) GetSettings() ProviderSettings {
 func (m *ec2Manager) Configure(ctx context.Context, settings *evergreen.Settings) error {
 	m.settings = settings
 
-	if settings.Providers.AWS.Id == "" || settings.Providers.AWS.Secret == "" {
+	if settings.Providers.AWS.EC2Key == "" || settings.Providers.AWS.EC2Secret == "" {
 		return errors.New("AWS ID and Secret must not be blank")
 	}
 
 	m.credentials = credentials.NewStaticCredentialsFromCreds(credentials.Value{
-		AccessKeyID:     settings.Providers.AWS.Id,
-		SecretAccessKey: settings.Providers.AWS.Secret,
+		AccessKeyID:     settings.Providers.AWS.EC2Key,
+		SecretAccessKey: settings.Providers.AWS.EC2Secret,
 	})
 
 	return nil

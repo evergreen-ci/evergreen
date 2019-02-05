@@ -302,8 +302,8 @@ func (s *AdminSuite) TestJiraConfig() {
 func (s *AdminSuite) TestProvidersConfig() {
 	config := CloudProviders{
 		AWS: AWSConfig{
-			Secret: "aws_secret",
-			Id:     "aws",
+			EC2Secret: "aws_secret",
+			EC2Key:    "aws",
 		},
 		Docker: DockerConfig{
 			APIVersion: "docker_version",
