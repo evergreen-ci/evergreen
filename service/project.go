@@ -195,7 +195,9 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 		DeactivatePrevious bool                           `json:"deactivate_previous"`
 		Branch             string                         `json:"branch_name"`
 		ProjVarsMap        map[string]string              `json:"project_vars"`
-		ProjectAliases     []model.ProjectAlias           `json:"project_aliases"`
+		GitHubAliases      []model.ProjectAlias           `json:"github_aliases"`
+		CommitQueueAliases []model.ProjectAlias           `json:"commit_queue_aliases"`
+		PatchAliases       []model.ProjectAlias           `json:"patch_aliases"`
 		DeleteAliases      []string                       `json:"delete_aliases"`
 		PrivateVars        map[string]bool                `json:"private_vars"`
 		Enabled            bool                           `json:"enabled"`
@@ -232,24 +234,9 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 	}
 
 	errs := []string{}
-	for i, pd := range responseRef.ProjectAliases {
-		if strings.TrimSpace(pd.Alias) == "" {
-			errs = append(errs, fmt.Sprintf("alias name #%d can't be empty string", i+1))
-		}
-		if strings.TrimSpace(pd.Variant) == "" {
-			errs = append(errs, fmt.Sprintf("variant regex #%d can't be empty string", i+1))
-		}
-		if (strings.TrimSpace(pd.Task) == "") == (len(pd.Tags) == 0) {
-			errs = append(errs, fmt.Sprintf("must specify exactly one of task regex or tags on line #%d ", i+1))
-		}
-
-		if _, err = regexp.Compile(pd.Variant); err != nil {
-			errs = append(errs, fmt.Sprintf("variant regex #%d is invalid", i+1))
-		}
-		if _, err = regexp.Compile(pd.Task); err != nil {
-			errs = append(errs, fmt.Sprintf("task regex #%d is invalid", i+1))
-		}
-	}
+	errs = append(errs, validateProjectAliases(responseRef.GitHubAliases, "GitHub Aliases")...)
+	errs = append(errs, validateProjectAliases(responseRef.CommitQueueAliases, "Commit Queue Aliases")...)
+	errs = append(errs, validateProjectAliases(responseRef.PatchAliases, "Patch Aliases")...)
 	if len(errs) > 0 {
 		errMsg := ""
 		for _, err := range errs {
@@ -478,9 +465,13 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 	}
 
 	origProjectAliases, _ := model.FindAliasesForProject(id)
-	for i := range responseRef.ProjectAliases {
-		responseRef.ProjectAliases[i].ProjectID = id
-		catcher.Add(responseRef.ProjectAliases[i].Upsert())
+	var projectAliases []model.ProjectAlias
+	projectAliases = append(projectAliases, responseRef.GitHubAliases...)
+	projectAliases = append(projectAliases, responseRef.CommitQueueAliases...)
+	projectAliases = append(projectAliases, responseRef.PatchAliases...)
+	for i := range projectAliases {
+		projectAliases[i].ProjectID = id
+		catcher.Add(projectAliases[i].Upsert())
 	}
 
 	for _, alias := range responseRef.DeleteAliases {
@@ -707,4 +698,29 @@ func (uis *UIServer) projectEvents(w http.ResponseWriter, r *http.Request) {
 		ViewData
 	}{id, uis.GetCommonViewData(w, r, true, true)}
 	uis.render.WriteResponse(w, http.StatusOK, data, "base", template, "base_angular.html", "menu.html")
+}
+
+func validateProjectAliases(aliases []model.ProjectAlias, aliasType string) []string {
+	errs := []string{}
+
+	for i, pd := range aliases {
+		if strings.TrimSpace(pd.Alias) == "" {
+			errs = append(errs, fmt.Sprintf("%s: alias name #%d can't be empty string", aliasType, i+1))
+		}
+		if strings.TrimSpace(pd.Variant) == "" {
+			errs = append(errs, fmt.Sprintf("%s: variant regex #%d can't be empty string", aliasType, i+1))
+		}
+		if (strings.TrimSpace(pd.Task) == "") == (len(pd.Tags) == 0) {
+			errs = append(errs, fmt.Sprintf("%s: must specify exactly one of task regex or tags on line #%d", aliasType, i+1))
+		}
+
+		if _, err := regexp.Compile(pd.Variant); err != nil {
+			errs = append(errs, fmt.Sprintf("%s: variant regex #%d is invalid", aliasType, i+1))
+		}
+		if _, err := regexp.Compile(pd.Task); err != nil {
+			errs = append(errs, fmt.Sprintf("%s: task regex #%d is invalid", aliasType, i+1))
+		}
+	}
+
+	return errs
 }

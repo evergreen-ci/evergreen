@@ -350,7 +350,7 @@ Evergreen Projects
                 <div class="col-lg-2"></div>
             </div>
 
-            <div id="patch-variants-list" class="form-group" ng-repeat="obj in github_aliases track by $index">
+            <div id="patch-variants-list" class="form-group" ng-repeat="obj in settingsFormData.github_aliases track by $index">
                 <div class="col-lg-3">
                   <input class="form-control" ng-model="obj.variant" type="text" placeholder="variant regex">
                 </div>
@@ -433,7 +433,7 @@ Evergreen Projects
                 <div class="col-lg-2"></div>
             </div>
 
-            <div id="patch-variants-list" class="form-group" ng-repeat="obj in commit_queue_aliases track by $index">
+            <div id="patch-variants-list" class="form-group" ng-repeat="obj in settingsFormData.commit_queue_aliases track by $index">
                 <div class="col-lg-3">
                   <input class="form-control" ng-model="obj.variant" type="text" placeholder="variant regex">
                 </div>
@@ -488,7 +488,7 @@ Evergreen Projects
             <div class="col-lg-2"></div>
           </div>
 
-          <div id="patch-aliases-list" class="form-group" ng-repeat="obj in patch_aliases track by $index">
+          <div id="patch-aliases-list" class="form-group" ng-repeat="obj in settingsFormData.patch_aliases track by $index">
             <div class="col-lg-2">
               <input class="form-control" ng-model="obj.alias" type="text" placeholder="alias">
             </div>

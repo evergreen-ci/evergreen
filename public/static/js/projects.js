@@ -280,17 +280,6 @@ mciModule.controller('ProjectCtrl', function($scope, $window, $http, $location, 
           return v.alias + v.variant + v.task;
         });
 
-        // Divide aliases into three categories (patch, github, and commit queue aliases)
-        $scope.github_aliases = $scope.aliases.filter(
-          function(d) { return d.alias == '__github' }
-        )
-        $scope.commit_queue_aliases = $scope.aliases.filter(
-          function(d) { return d.alias == '__commit_queue' }
-        )
-        $scope.patch_aliases = $scope.aliases.filter(
-          function(d) { return d.alias !== '__github' && d.alias !== '__commit_queue' }
-        )
-
         $scope.settingsFormData = {
           identifier : $scope.projectRef.identifier,
           project_vars: $scope.projectVars,
@@ -321,6 +310,18 @@ mciModule.controller('ProjectCtrl', function($scope, $window, $http, $location, 
           disabled_stats_cache: data.ProjectRef.disabled_stats_cache,
         };
 
+        // Divide aliases into three categories (patch, github, and commit queue aliases)
+        $scope.settingsFormData.github_aliases = $scope.aliases.filter(
+          function(d) { return d.alias == '__github' }
+        )
+        $scope.settingsFormData.commit_queue_aliases = $scope.aliases.filter(
+          function(d) { return d.alias == '__commit_queue' }
+        )
+        $scope.settingsFormData.patch_aliases = $scope.aliases.filter(
+          function(d) { return d.alias !== '__github' && d.alias !== '__commit_queue' }
+        )
+
+        // Set commit queue defaults
         if(!$scope.settingsFormData.commit_queue.merge_method) {
           $scope.settingsFormData.commit_queue.merge_method = $scope.validMergeMethods[0];
         }
@@ -410,8 +411,6 @@ mciModule.controller('ProjectCtrl', function($scope, $window, $http, $location, 
       return d.changed;
     });
 
-    $scope.settingsFormData.project_aliases = $scope.github_aliases.concat($scope.commit_queue_aliases, $scope.patch_aliases);
-
     if ($scope.admin_name) {
       $scope.addAdmin();
     }
@@ -452,7 +451,7 @@ mciModule.controller('ProjectCtrl', function($scope, $window, $http, $location, 
     }
     item = Object.assign({}, $scope.github_alias)
     item["alias"] = "__github"
-    $scope.github_aliases = $scope.github_aliases.concat([item]);
+    $scope.settingsFormData.github_aliases = $scope.settingsFormData.github_aliases.concat([item]);
     delete $scope.github_alias
     $scope.invalidGitHubPatchDefinitionMessage = "";
   };
@@ -464,7 +463,7 @@ mciModule.controller('ProjectCtrl', function($scope, $window, $http, $location, 
     }
     item = Object.assign({}, $scope.commit_queue_alias);
     item["alias"] = "__commit_queue";
-    $scope.commit_queue_aliases = $scope.commit_queue_aliases.concat([item]);
+    $scope.settingsFormData.commit_queue_aliases = $scope.settingsFormData.commit_queue_aliases.concat([item]);
     delete $scope.commit_queue_alias;
     $scope.invalidCommitQueuePatchDefinitionMessage = "";
 
@@ -476,7 +475,7 @@ mciModule.controller('ProjectCtrl', function($scope, $window, $http, $location, 
       return
     }
     item = Object.assign({}, $scope.patch_alias)
-    $scope.patch_aliases = $scope.patch_aliases.concat([item]);
+    $scope.settingsFormData.patch_aliases = $scope.settingsFormData.patch_aliases.concat([item]);
     delete $scope.patch_alias
   };
 
@@ -487,26 +486,26 @@ mciModule.controller('ProjectCtrl', function($scope, $window, $http, $location, 
   };
 
   $scope.removeGithubAlias = function(i) {
-    if ($scope.github_aliases[i]["_id"]) {
-      $scope.settingsFormData.delete_aliases = $scope.settingsFormData.delete_aliases.concat([$scope.github_aliases[i]["_id"]])
+    if ($scope.settingsFormData.github_aliases[i]["_id"]) {
+      $scope.settingsFormData.delete_aliases = $scope.settingsFormData.delete_aliases.concat([$scope.settingsFormData.github_aliases[i]["_id"]])
     }
-    $scope.github_aliases.splice(i, 1);
+    $scope.settingsFormData.github_aliases.splice(i, 1);
     $scope.isDirty = true;
   };
 
   $scope.removeCommitQueueAlias = function(i) {
-    if ($scope.commit_queue_aliases[i]["_id"]) {
-      $scope.settingsFormData.delete_aliases = $scope.settingsFormData.delete_aliases.concat([$scope.commit_queue_aliases[i]["_id"]])
+    if ($scope.settingsFormData.commit_queue_aliases[i]["_id"]) {
+      $scope.settingsFormData.delete_aliases = $scope.settingsFormData.delete_aliases.concat([$scope.settingsFormData.commit_queue_aliases[i]["_id"]])
     }
-    $scope.commit_queue_aliases.splice(i, 1);
+    $scope.settingsFormData.commit_queue_aliases.splice(i, 1);
     $scope.isDirty = true;
   };
 
   $scope.removePatchAlias = function(i) {
-    if ($scope.patch_aliases[i]["_id"]) {
-      $scope.settingsFormData.delete_aliases = $scope.settingsFormData.delete_aliases.concat([$scope.patch_aliases[i]["_id"]])
+    if ($scope.settingsFormData.patch_aliases[i]["_id"]) {
+      $scope.settingsFormData.delete_aliases = $scope.settingsFormData.delete_aliases.concat([$scope.settingsFormData.patch_aliases[i]["_id"]])
     }
-    $scope.patch_aliases.splice(i, 1);
+    $scope.settingsFormData.patch_aliases.splice(i, 1);
     $scope.isDirty = true;
   };
 
