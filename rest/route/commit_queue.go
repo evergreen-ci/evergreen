@@ -93,3 +93,34 @@ func (cq commitQueueDeleteItemHandler) Run(ctx context.Context) gimlet.Responder
 	}
 	return response
 }
+
+type commitQueueClearAllHandler struct {
+	sc data.Connector
+}
+
+func makeClearCommitQueuesHandler(sc data.Connector) gimlet.RouteHandler {
+	return &commitQueueClearAllHandler{
+		sc: sc,
+	}
+}
+
+func (cq *commitQueueClearAllHandler) Factory() gimlet.RouteHandler {
+	return &commitQueueClearAllHandler{
+		sc: cq.sc,
+	}
+}
+
+func (cq *commitQueueClearAllHandler) Parse(ctx context.Context, r *http.Request) error {
+	return nil
+}
+
+func (cq *commitQueueClearAllHandler) Run(ctx context.Context) gimlet.Responder {
+	clearedCount, err := cq.sc.CommitQueueClearAll()
+	if err != nil {
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "can't clear commit queues"))
+	}
+
+	return gimlet.NewJSONResponse(struct {
+		clearedCount int `json:"cleared_count"`
+	}{clearedCount})
+}
