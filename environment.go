@@ -243,7 +243,7 @@ func (e *envState) createQueues(ctx context.Context) error {
 	if err != nil {
 		return errors.Wrap(err, "problem setting queue backend")
 	}
-	singleq := queue.NewRemoteUnordered(1)
+	singleq := queue.NewRemoteUnordered(8)
 	if err = singleq.SetDriver(singlemdb); err != nil {
 		return errors.WithStack(err)
 	}
