@@ -26,7 +26,7 @@ func (s *CommitQueueSuite) SetupTest() {
 }
 
 func (s *CommitQueueSuite) TestGetCommitQueue() {
-	route := makeGetCommitQueueItems(s.sc).(commitQueueGetHandler)
+	route := makeGetCommitQueueItems(s.sc).(*commitQueueGetHandler)
 	route.project = "evergreen-ci.evergreen.master"
 	s.NoError(s.sc.EnqueueItem("evergreen-ci", "evergreen", "master", "1"))
 	s.NoError(s.sc.EnqueueItem("evergreen-ci", "evergreen", "master", "2"))
@@ -40,7 +40,7 @@ func (s *CommitQueueSuite) TestGetCommitQueue() {
 }
 
 func (s *CommitQueueSuite) TestDeleteItem() {
-	route := makeDeleteCommitQueueItems(s.sc).(commitQueueDeleteItemHandler)
+	route := makeDeleteCommitQueueItems(s.sc).(*commitQueueDeleteItemHandler)
 	s.NoError(s.sc.EnqueueItem("evergreen-ci", "evergreen", "master", "1"))
 	s.NoError(s.sc.EnqueueItem("evergreen-ci", "evergreen", "master", "2"))
 	route.project = "evergreen-ci.evergreen.master"

@@ -673,7 +673,7 @@ func (c *communicatorImpl) GetCommitQueue(ctx context.Context, projectID string)
 	if resp.StatusCode != http.StatusOK {
 		errMsg := gimlet.ErrorResponse{}
 
-		if err := util.ReadJSONInto(resp.Body, &errMsg); err != nil {
+		if err = util.ReadJSONInto(resp.Body, &errMsg); err != nil {
 			return nil, errors.Wrap(err, "problem fetching commit queue list and parsing error message")
 		}
 		return nil, errors.Wrap(errMsg, "problem fetching commit queue list")
