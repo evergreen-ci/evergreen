@@ -41,11 +41,13 @@ func (s *commitQueueSuite) SetupSuite() {
 	s.Require().Len(s.prBody, 24757)
 
 	s.projectRef = &model.ProjectRef{
-		Identifier:             "mci",
-		Owner:                  "baxterthehacker",
-		Repo:                   "public-repo",
-		CommitQueueConfigFile:  "test_config.yaml",
-		CommitQueueMergeMethod: "squash",
+		Identifier: "mci",
+		Owner:      "baxterthehacker",
+		Repo:       "public-repo",
+		CommitQueue: model.CommitQueueParams{
+			Enabled:     true,
+			MergeMethod: "squash",
+		},
 	}
 	s.Require().NoError(s.projectRef.Insert())
 
@@ -71,8 +73,6 @@ func (s *commitQueueSuite) SetupTest() {
 			"3",
 			"4",
 		},
-		MergeAction:  "github",
-		StatusAction: "github",
 	}
 	s.Require().NoError(commitqueue.InsertQueue(cq))
 }

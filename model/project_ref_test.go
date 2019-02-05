@@ -224,12 +224,14 @@ func TestFindOneProjectRefWithCommitQByOwnerRepoAndBranch(t *testing.T) {
 	assert.Nil(projectRef)
 
 	doc := &ProjectRef{
-		Owner:              "mongodb",
-		Repo:               "mci",
-		Branch:             "master",
-		RepoKind:           "github",
-		Identifier:         "mci",
-		CommitQueueEnabled: false,
+		Owner:      "mongodb",
+		Repo:       "mci",
+		Branch:     "master",
+		RepoKind:   "github",
+		Identifier: "mci",
+		CommitQueue: CommitQueueParams{
+			Enabled: false,
+		},
 	}
 	require.NoError(doc.Insert())
 
@@ -237,10 +239,42 @@ func TestFindOneProjectRefWithCommitQByOwnerRepoAndBranch(t *testing.T) {
 	assert.NoError(err)
 	assert.Nil(projectRef)
 
-	doc.CommitQueueEnabled = true
+	doc.CommitQueue.Enabled = true
 	require.NoError(db.Update(ProjectRefCollection, bson.M{ProjectRefIdentifierKey: "mci"}, doc))
 
 	projectRef, err = FindOneProjectRefWithCommitQByOwnerRepoAndBranch("mongodb", "mci", "master")
 	assert.NoError(err)
 	assert.NotNil(projectRef)
+}
+
+func TestFindProjectRefsWithCommitQueueEnabled(t *testing.T) {
+	assert := assert.New(t)
+	require := require.New(t)
+
+	require.NoError(db.Clear(ProjectRefCollection))
+	doc := &ProjectRef{
+		Owner:      "mongodb",
+		Repo:       "mci",
+		Branch:     "master",
+		RepoKind:   "github",
+		Identifier: "mci",
+		CommitQueue: CommitQueueParams{
+			Enabled: true,
+		},
+	}
+	require.NoError(doc.Insert())
+
+	doc.Branch = "fix"
+	require.NoError(doc.Insert())
+
+	doc.Identifier = "grip"
+	doc.Repo = "grip"
+	doc.CommitQueue.Enabled = false
+	require.NoError(doc.Insert())
+
+	projectRefs, err := FindProjectRefsWithCommitQueueEnabled()
+	assert.NoError(err)
+	require.Len(projectRefs, 2)
+	assert.Equal("mci", projectRefs[0].Identifier)
+	assert.Equal("mci", projectRefs[1].Identifier)
 }

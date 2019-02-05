@@ -1,29 +1,26 @@
 package model
 
 import (
-	"errors"
-
 	"github.com/evergreen-ci/evergreen/model"
+	"github.com/pkg/errors"
 )
 
 type APIProject struct {
-	BatchTime              int         `json:"batch_time"`
-	Branch                 APIString   `json:"branch_name"`
-	DisplayName            APIString   `json:"display_name"`
-	Enabled                bool        `json:"enabled"`
-	Identifier             APIString   `json:"identifier"`
-	Owner                  APIString   `json:"owner_name"`
-	Private                bool        `json:"private"`
-	RemotePath             APIString   `json:"remote_path"`
-	Repo                   APIString   `json:"repo_name"`
-	Tracked                bool        `json:"tracked"`
-	DeactivatePrevious     bool        `json:"deactivate_previous"`
-	Admins                 []APIString `json:"admins"`
-	TracksPushEvents       bool        `json:"tracks_push_events"`
-	PRTestingEnabled       bool        `json:"pr_testing_enabled"`
-	CommitQueueEnabled     bool        `json:"commitq_enabled"`
-	CommitQueueFile        APIString   `json:"commitq_file"`
-	CommitQueueMergeMethod APIString   `json:"commitq_merge_method"`
+	BatchTime          int                  `json:"batch_time"`
+	Branch             APIString            `json:"branch_name"`
+	DisplayName        APIString            `json:"display_name"`
+	Enabled            bool                 `json:"enabled"`
+	Identifier         APIString            `json:"identifier"`
+	Owner              APIString            `json:"owner_name"`
+	Private            bool                 `json:"private"`
+	RemotePath         APIString            `json:"remote_path"`
+	Repo               APIString            `json:"repo_name"`
+	Tracked            bool                 `json:"tracked"`
+	DeactivatePrevious bool                 `json:"deactivate_previous"`
+	Admins             []APIString          `json:"admins"`
+	TracksPushEvents   bool                 `json:"tracks_push_events"`
+	PRTestingEnabled   bool                 `json:"pr_testing_enabled"`
+	CommitQueue        APICommitQueueParams `json:"commit_queue"`
 }
 
 func (apiProject *APIProject) BuildFromService(p interface{}) error {
@@ -37,6 +34,12 @@ func (apiProject *APIProject) BuildFromService(p interface{}) error {
 	default:
 		return errors.New("incorrect type when fetching converting project type")
 	}
+
+	cq := APICommitQueueParams{}
+	if err := cq.BuildFromService(v.CommitQueue); err != nil {
+		return errors.Wrap(err, "can't convert commit queue params")
+	}
+
 	apiProject.BatchTime = v.BatchTime
 	apiProject.Branch = ToAPIString(v.Branch)
 	apiProject.DisplayName = ToAPIString(v.DisplayName)
@@ -49,9 +52,7 @@ func (apiProject *APIProject) BuildFromService(p interface{}) error {
 	apiProject.Tracked = v.Tracked
 	apiProject.TracksPushEvents = v.TracksPushEvents
 	apiProject.PRTestingEnabled = v.PRTestingEnabled
-	apiProject.CommitQueueEnabled = v.CommitQueueEnabled
-	apiProject.CommitQueueFile = ToAPIString(v.CommitQueueConfigFile)
-	apiProject.CommitQueueMergeMethod = ToAPIString(v.CommitQueueMergeMethod)
+	apiProject.CommitQueue = cq
 	apiProject.DeactivatePrevious = v.DeactivatePrevious
 
 	admins := []APIString{}
@@ -78,55 +79,93 @@ type APITriggerDefinition struct {
 	Command           APIString `json:"command"`
 }
 
+type APICommitQueueParams struct {
+	Enabled      bool      `json:"enabled"`
+	MergeMethod  APIString `json:"merge_method"`
+	MergeAction  APIString `json:"merge_action"`
+	StatusAction APIString `json:"status_action"`
+}
+
+func (cqParams *APICommitQueueParams) BuildFromService(h interface{}) error {
+	var params model.CommitQueueParams
+	switch h.(type) {
+	case model.CommitQueueParams:
+		params = h.(model.CommitQueueParams)
+	case *model.CommitQueueParams:
+		params = *h.(*model.CommitQueueParams)
+	default:
+		return errors.Errorf("Invalid commit queue params of type '%T'", h)
+	}
+
+	cqParams.Enabled = params.Enabled
+	cqParams.MergeMethod = ToAPIString(params.MergeMethod)
+	cqParams.MergeAction = ToAPIString(params.MergeAction)
+	cqParams.StatusAction = ToAPIString(params.StatusAction)
+
+	return nil
+}
+
+func (cqParams *APICommitQueueParams) ToService() (interface{}, error) {
+	serviceParams := model.CommitQueueParams{}
+	serviceParams.Enabled = cqParams.Enabled
+	serviceParams.MergeMethod = FromAPIString(cqParams.MergeMethod)
+	serviceParams.MergeAction = FromAPIString(cqParams.MergeAction)
+	serviceParams.StatusAction = FromAPIString(cqParams.StatusAction)
+
+	return serviceParams, nil
+}
+
 type APIProjectRef struct {
-	Owner                  APIString   `json:"owner_name"`
-	Repo                   APIString   `json:"repo_name"`
-	Branch                 APIString   `json:"branch_name"`
-	RepoKind               APIString   `json:"repo_kind"`
-	Enabled                bool        `json:"enabled"`
-	Private                bool        `json:"private"`
-	BatchTime              int         `json:"batch_time"`
-	RemotePath             APIString   `json:"remote_path"`
-	Identifier             APIString   `json:"identifier"`
-	DisplayName            APIString   `json:"display_name"`
-	LocalConfig            APIString   `json:"local_config"`
-	DeactivatePrevious     bool        `json:"deactivate_previous"`
-	TracksPushEvents       bool        `json:"tracks_push_events"`
-	PRTestingEnabled       bool        `json:"pr_testing_enabled"`
-	CommitQueueEnabled     bool        `json:"commitq_enabled"`
-	CommitQueueFile        APIString   `json:"commitq_file"`
-	CommitQueueMergeMethod APIString   `json:"commitq_merge_method"`
-	Tracked                bool        `json:"tracked"`
-	PatchingDisabled       bool        `json:"patching_disabled"`
-	Admins                 []APIString `json:"admins"`
-	NotifyOnBuildFailure   bool        `json:"notify_on_failure"`
+	Owner                APIString            `json:"owner_name"`
+	Repo                 APIString            `json:"repo_name"`
+	Branch               APIString            `json:"branch_name"`
+	RepoKind             APIString            `json:"repo_kind"`
+	Enabled              bool                 `json:"enabled"`
+	Private              bool                 `json:"private"`
+	BatchTime            int                  `json:"batch_time"`
+	RemotePath           APIString            `json:"remote_path"`
+	Identifier           APIString            `json:"identifier"`
+	DisplayName          APIString            `json:"display_name"`
+	LocalConfig          APIString            `json:"local_config"`
+	DeactivatePrevious   bool                 `json:"deactivate_previous"`
+	TracksPushEvents     bool                 `json:"tracks_push_events"`
+	PRTestingEnabled     bool                 `json:"pr_testing_enabled"`
+	CommitQueue          APICommitQueueParams `json:"commit_queue"`
+	Tracked              bool                 `json:"tracked"`
+	PatchingDisabled     bool                 `json:"patching_disabled"`
+	Admins               []APIString          `json:"admins"`
+	NotifyOnBuildFailure bool                 `json:"notify_on_failure"`
 
 	Triggers []APITriggerDefinition `json:"triggers"`
 }
 
 // ToService returns a service layer ProjectRef using the data from APIProjectRef
 func (p *APIProjectRef) ToService() (interface{}, error) {
+
+	commitQueue, err := p.CommitQueue.ToService()
+	if err != nil {
+		return nil, errors.Wrap(err, "can't convert commit queue params")
+	}
+
 	projectRef := model.ProjectRef{
-		Owner:                  FromAPIString(p.Owner),
-		Repo:                   FromAPIString(p.Repo),
-		Branch:                 FromAPIString(p.Branch),
-		RepoKind:               FromAPIString(p.RepoKind),
-		Enabled:                p.Enabled,
-		Private:                p.Private,
-		BatchTime:              p.BatchTime,
-		RemotePath:             FromAPIString(p.RemotePath),
-		Identifier:             FromAPIString(p.Identifier),
-		DisplayName:            FromAPIString(p.DisplayName),
-		LocalConfig:            FromAPIString(p.LocalConfig),
-		DeactivatePrevious:     p.DeactivatePrevious,
-		TracksPushEvents:       p.TracksPushEvents,
-		PRTestingEnabled:       p.PRTestingEnabled,
-		CommitQueueEnabled:     p.CommitQueueEnabled,
-		CommitQueueConfigFile:  FromAPIString(p.CommitQueueFile),
-		CommitQueueMergeMethod: FromAPIString(p.CommitQueueMergeMethod),
-		Tracked:                p.Tracked,
-		PatchingDisabled:       p.PatchingDisabled,
-		NotifyOnBuildFailure:   p.NotifyOnBuildFailure,
+		Owner:                FromAPIString(p.Owner),
+		Repo:                 FromAPIString(p.Repo),
+		Branch:               FromAPIString(p.Branch),
+		RepoKind:             FromAPIString(p.RepoKind),
+		Enabled:              p.Enabled,
+		Private:              p.Private,
+		BatchTime:            p.BatchTime,
+		RemotePath:           FromAPIString(p.RemotePath),
+		Identifier:           FromAPIString(p.Identifier),
+		DisplayName:          FromAPIString(p.DisplayName),
+		LocalConfig:          FromAPIString(p.LocalConfig),
+		DeactivatePrevious:   p.DeactivatePrevious,
+		TracksPushEvents:     p.TracksPushEvents,
+		PRTestingEnabled:     p.PRTestingEnabled,
+		CommitQueue:          commitQueue.(model.CommitQueueParams),
+		Tracked:              p.Tracked,
+		PatchingDisabled:     p.PatchingDisabled,
+		NotifyOnBuildFailure: p.NotifyOnBuildFailure,
 	}
 
 	// Copy admins
@@ -167,6 +206,11 @@ func (p *APIProjectRef) BuildFromService(v interface{}) error {
 		return errors.New("Invalid type of the argument")
 	}
 
+	cq := APICommitQueueParams{}
+	if err := cq.BuildFromService(projectRef.CommitQueue); err != nil {
+		return errors.Wrap(err, "can't convert commit queue parameters")
+	}
+
 	p.Owner = ToAPIString(projectRef.Owner)
 	p.Repo = ToAPIString(projectRef.Repo)
 	p.Branch = ToAPIString(projectRef.Branch)
@@ -181,9 +225,7 @@ func (p *APIProjectRef) BuildFromService(v interface{}) error {
 	p.DeactivatePrevious = projectRef.DeactivatePrevious
 	p.TracksPushEvents = projectRef.TracksPushEvents
 	p.PRTestingEnabled = projectRef.PRTestingEnabled
-	p.CommitQueueEnabled = projectRef.CommitQueueEnabled
-	p.CommitQueueFile = ToAPIString(projectRef.CommitQueueConfigFile)
-	p.CommitQueueMergeMethod = ToAPIString(projectRef.CommitQueueMergeMethod)
+	p.CommitQueue = cq
 	p.Tracked = projectRef.Tracked
 	p.PatchingDisabled = projectRef.PatchingDisabled
 	p.NotifyOnBuildFailure = projectRef.NotifyOnBuildFailure

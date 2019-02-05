@@ -30,9 +30,7 @@ func (s *CommitQueueSuite) SetupTest() {
 	s.Require().NoError(db.ClearCollections(Collection))
 
 	s.q = &CommitQueue{
-		ProjectID:    "mci",
-		MergeAction:  "squash",
-		StatusAction: "github",
+		ProjectID: "mci",
 	}
 
 	s.NoError(InsertQueue(s.q))
@@ -108,26 +106,6 @@ func (s *CommitQueueSuite) TestRemoveAll() {
 	dbq, err := FindOneId("mci")
 	s.NoError(err)
 	s.Empty(dbq.All())
-}
-
-func (s *CommitQueueSuite) TestUpdateMerge() {
-	s.Equal("squash", s.q.MergeAction)
-	s.NoError(s.q.UpdateMergeAction("rebase"))
-	s.Equal("rebase", s.q.MergeAction)
-
-	dbq, err := FindOneId("mci")
-	s.NoError(err)
-	s.Equal("rebase", dbq.MergeAction)
-}
-
-func (s *CommitQueueSuite) TestUpdateStatus() {
-	s.Equal("github", s.q.StatusAction)
-	s.NoError(s.q.UpdateStatusAction("email"))
-	s.Equal("email", s.q.StatusAction)
-
-	dbq, err := FindOneId("mci")
-	s.NoError(err)
-	s.Equal("email", dbq.StatusAction)
 }
 
 func (s *CommitQueueSuite) TestCommentTrigger() {

@@ -37,10 +37,8 @@ type ProjectRef struct {
 	// Github PushEvents for this project, instead of the Repotracker runner
 	TracksPushEvents bool `bson:"tracks_push_events" json:"tracks_push_events" yaml:"tracks_push_events"`
 
-	PRTestingEnabled       bool   `bson:"pr_testing_enabled" json:"pr_testing_enabled" yaml:"pr_testing_enabled"`
-	CommitQueueEnabled     bool   `bson:"commit_queue_enabled" json:"commit_queue_enabled" yaml:"commit_queue_enabled"`
-	CommitQueueMergeMethod string `bson:"commit_queue_merge_method" json:"commit_queue_merge_method" yaml:"commit_queue_merge_method"`
-	CommitQueueConfigFile  string `bson:"commit_queue_config_file" json:"commit_queue_config_file" yaml:"commit_queue_config_file"`
+	PRTestingEnabled bool              `bson:"pr_testing_enabled" json:"pr_testing_enabled" yaml:"pr_testing_enabled"`
+	CommitQueue      CommitQueueParams `bson:"commit_queue" json:"commit_queue" yaml:"commit_queue"`
 
 	//Tracked determines whether or not the project is discoverable in the UI
 	Tracked          bool `bson:"tracked" json:"tracked"`
@@ -60,6 +58,13 @@ type ProjectRef struct {
 	DisabledStatsCache    bool     `bson:"disabled_stats_cache,omitempty" json:"disabled_stats_cache,omitempty"`
 
 	Triggers []TriggerDefinition `bson:"triggers,omitempty" json:"triggers,omitempty"`
+}
+
+type CommitQueueParams struct {
+	Enabled      bool   `bson:"enabled" json:"enabled"`
+	MergeMethod  string `bson:"merge_method" json:"merge_method"`
+	MergeAction  string `bson:"merge_action" json:"merge_action"`
+	StatusAction string `bson:"status_action" json:"status_action"`
 }
 
 // RepositoryErrorDetails indicates whether or not there is an invalid revision and if there is one,
@@ -131,14 +136,13 @@ var (
 	ProjectRefAdminsKey             = bsonutil.MustHaveTag(ProjectRef{}, "Admins")
 	projectRefTracksPushEventsKey   = bsonutil.MustHaveTag(ProjectRef{}, "TracksPushEvents")
 	projectRefPRTestingEnabledKey   = bsonutil.MustHaveTag(ProjectRef{}, "PRTestingEnabled")
-	projectRefCommitQEnabledKey     = bsonutil.MustHaveTag(ProjectRef{}, "CommitQueueEnabled")
-	projectRefCommitQConfigFileKey  = bsonutil.MustHaveTag(ProjectRef{}, "CommitQueueConfigFile")
-	projectRefCommitQMergeMethodKey = bsonutil.MustHaveTag(ProjectRef{}, "CommitQueueMergeMethod")
+	projectRefCommitQueueKey        = bsonutil.MustHaveTag(ProjectRef{}, "CommitQueue")
 	projectRefPatchingDisabledKey   = bsonutil.MustHaveTag(ProjectRef{}, "PatchingDisabled")
 	projectRefNotifyOnFailureKey    = bsonutil.MustHaveTag(ProjectRef{}, "NotifyOnBuildFailure")
 	projectRefTriggersKey           = bsonutil.MustHaveTag(ProjectRef{}, "Triggers")
 
-	projectRefTriggerProjectKey = bsonutil.MustHaveTag(TriggerDefinition{}, "Project")
+	projectRefCommitQueueEnabledKey = bsonutil.MustHaveTag(CommitQueueParams{}, "Enabled")
+	projectRefTriggerProjectKey     = bsonutil.MustHaveTag(TriggerDefinition{}, "Project")
 )
 
 const (
@@ -313,10 +317,10 @@ func FindOneProjectRefWithCommitQByOwnerRepoAndBranch(owner, repo, branch string
 	if err := db.FindOne(
 		ProjectRefCollection,
 		bson.M{
-			ProjectRefOwnerKey:          owner,
-			ProjectRefRepoKey:           repo,
-			ProjectRefBranchKey:         branch,
-			projectRefCommitQEnabledKey: true,
+			ProjectRefOwnerKey:  owner,
+			ProjectRefRepoKey:   repo,
+			ProjectRefBranchKey: branch,
+			bsonutil.GetDottedKeyName(projectRefCommitQueueKey, projectRefCommitQueueEnabledKey): true,
 		},
 		db.NoProjection,
 		db.NoSort,
@@ -330,13 +334,13 @@ func FindOneProjectRefWithCommitQByOwnerRepoAndBranch(owner, repo, branch string
 	return projRef, nil
 }
 
-func FindProjectRefsWithCommitQEnabled() ([]ProjectRef, error) {
+func FindProjectRefsWithCommitQueueEnabled() ([]ProjectRef, error) {
 	projectRefs := []ProjectRef{}
 
 	err := db.FindAll(
 		ProjectRefCollection,
 		bson.M{
-			projectRefCommitQEnabledKey: true,
+			bsonutil.GetDottedKeyName(projectRefCommitQueueKey, projectRefCommitQueueEnabledKey): true,
 		},
 		db.NoProjection,
 		db.NoSort,
@@ -423,9 +427,7 @@ func (projectRef *ProjectRef) Upsert() error {
 				ProjectRefAdminsKey:             projectRef.Admins,
 				projectRefTracksPushEventsKey:   projectRef.TracksPushEvents,
 				projectRefPRTestingEnabledKey:   projectRef.PRTestingEnabled,
-				projectRefCommitQEnabledKey:     projectRef.CommitQueueEnabled,
-				projectRefCommitQConfigFileKey:  projectRef.CommitQueueConfigFile,
-				projectRefCommitQMergeMethodKey: projectRef.CommitQueueMergeMethod,
+				projectRefCommitQueueKey:        projectRef.CommitQueue,
 				projectRefPatchingDisabledKey:   projectRef.PatchingDisabled,
 				projectRefNotifyOnFailureKey:    projectRef.NotifyOnBuildFailure,
 				projectRefTriggersKey:           projectRef.Triggers,

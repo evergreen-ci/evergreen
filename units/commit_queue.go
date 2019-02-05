@@ -27,6 +27,7 @@ import (
 
 const (
 	commitQueueJobName = "commit-queue"
+	commitQueueAlias   = "__commit_queue"
 )
 
 func init() {
@@ -84,7 +85,7 @@ func (j *commitQueueJob) Run(ctx context.Context) {
 		return
 	}
 
-	if !projectRef.CommitQueueEnabled {
+	if !projectRef.CommitQueue.Enabled {
 		return
 	}
 
@@ -143,7 +144,7 @@ func (j *commitQueueJob) Run(ctx context.Context) {
 		return
 	}
 
-	v, err := makeVersion(ctx, githubToken, projectRef, pr)
+	v, err := makeVersion(ctx, githubToken, projectRef.Identifier, pr)
 	if err != nil {
 		j.AddError(errors.Wrap(err, "can't make version"))
 		return
@@ -191,8 +192,8 @@ func validatePR(pr *github.PullRequest) error {
 	return catcher.Resolve()
 }
 
-func makeVersion(ctx context.Context, githubToken string, projectRef *model.ProjectRef, pr *github.PullRequest) (*model.Version, error) {
-	patchDoc, err := patch.MakeMergePatch(pr, projectRef.Identifier)
+func makeVersion(ctx context.Context, githubToken string, projectID string, pr *github.PullRequest) (*model.Version, error) {
+	patchDoc, err := patch.MakeMergePatch(pr, projectID, commitQueueAlias)
 	if err != nil {
 		return nil, errors.Wrap(err, "can't make patch")
 	}
@@ -207,6 +208,8 @@ func makeVersion(ctx context.Context, githubToken string, projectRef *model.Proj
 		return nil, errors.Wrap(err, "can't marshal project config to yaml")
 	}
 	patchDoc.PatchedConfig = string(yamlBytes)
+
+	config.BuildProjectTVPairs(patchDoc, patchDoc.Alias)
 
 	if err = patchDoc.Insert(); err != nil {
 		return nil, errors.Wrap(err, "can't insert patch")
@@ -259,7 +262,7 @@ func subscribeMerge(projectRef *model.ProjectRef, pr *github.PullRequest, patchI
 		PRNumber:      *pr.Number,
 		Ref:           *pr.Head.SHA,
 		CommitMessage: "Merged by commit queue",
-		MergeMethod:   projectRef.CommitQueueMergeMethod,
+		MergeMethod:   projectRef.CommitQueue.MergeMethod,
 		CommitTitle:   *pr.Title,
 	})
 	patchSub := event.NewPatchOutcomeSubscription(patchID, mergeSubscriber)

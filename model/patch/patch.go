@@ -338,7 +338,7 @@ func (p *Patch) IsPRMergePatch() bool {
 	return p.GithubPatchData.MergeCommitSHA != ""
 }
 
-func MakeMergePatch(pr *github.PullRequest, projectID string) (*Patch, error) {
+func MakeMergePatch(pr *github.PullRequest, projectID, alias string) (*Patch, error) {
 	if pr.User == nil {
 		return nil, errors.New("pr contains no user")
 	}
@@ -365,6 +365,7 @@ func MakeMergePatch(pr *github.PullRequest, projectID string) (*Patch, error) {
 		Description: fmt.Sprintf("Commit Queue merge test PR #%d", *pr.Number),
 		CreateTime:  time.Now(),
 		Status:      evergreen.PatchCreated,
+		Alias:       alias,
 		PatchNumber: patchNumber,
 		GithubPatchData: GithubPatch{
 			PRNumber:       pr.GetNumber(),

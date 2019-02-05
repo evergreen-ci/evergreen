@@ -11,6 +11,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/evergreen/model/commitqueue"
 	"github.com/evergreen-ci/evergreen/model/event"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/trigger"
@@ -102,15 +103,19 @@ func (uis *UIServer) projectPage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	prConflictingRefs, err := model.FindProjectRefsByRepoAndBranch(projRef.Owner, projRef.Repo, projRef.Branch)
+	matchingRefs, err := model.FindProjectRefsByRepoAndBranch(projRef.Owner, projRef.Repo, projRef.Branch)
 	if err != nil {
 		uis.LoggedError(w, r, http.StatusInternalServerError, err)
 		return
 	}
-	conflictingRefs := []string{}
-	for _, ref := range prConflictingRefs {
+	PRConflictingRefs := []string{}
+	CQConflictingRefs := []string{}
+	for _, ref := range matchingRefs {
 		if ref.PRTestingEnabled && ref.Identifier != projRef.Identifier {
-			conflictingRefs = append(conflictingRefs, ref.Identifier)
+			PRConflictingRefs = append(PRConflictingRefs, ref.Identifier)
+		}
+		if ref.CommitQueue.Enabled && ref.Identifier != projRef.Identifier {
+			CQConflictingRefs = append(CQConflictingRefs, ref.Identifier)
 		}
 	}
 
@@ -145,13 +150,14 @@ func (uis *UIServer) projectPage(w http.ResponseWriter, r *http.Request) {
 	}
 
 	data := struct {
-		ProjectRef      *model.ProjectRef
-		ProjectVars     *model.ProjectVars
-		ProjectAliases  []model.ProjectAlias        `json:"aliases,omitempty"`
-		ConflictingRefs []string                    `json:"pr_testing_conflicting_refs,omitempty"`
-		GithubHook      restModel.APIGithubHook     `json:"github_hook"`
-		Subscriptions   []restModel.APISubscription `json:"subscriptions"`
-	}{projRef, projVars, projectAliases, conflictingRefs, apiHook, apiSubscriptions}
+		ProjectRef        *model.ProjectRef
+		ProjectVars       *model.ProjectVars
+		ProjectAliases    []model.ProjectAlias        `json:"aliases,omitempty"`
+		PRConflictingRefs []string                    `json:"pr_testing_conflicting_refs,omitempty"`
+		CQConflictingRefs []string                    `json:"commit_queue_conflicting_refs,omitempty"`
+		GithubHook        restModel.APIGithubHook     `json:"github_hook"`
+		Subscriptions     []restModel.APISubscription `json:"subscriptions"`
+	}{projRef, projVars, projectAliases, PRConflictingRefs, CQConflictingRefs, apiHook, apiSubscriptions}
 
 	// the project context has all projects so make the ui list using all projects
 	gimlet.WriteJSON(w, data)
@@ -182,25 +188,27 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 	}
 
 	responseRef := struct {
-		Identifier         string               `json:"id"`
-		DisplayName        string               `json:"display_name"`
-		RemotePath         string               `json:"remote_path"`
-		BatchTime          int                  `json:"batch_time"`
-		DeactivatePrevious bool                 `json:"deactivate_previous"`
-		Branch             string               `json:"branch_name"`
-		ProjVarsMap        map[string]string    `json:"project_vars"`
-		ProjectAliases     []model.ProjectAlias `json:"project_aliases"`
-		DeleteAliases      []string             `json:"delete_aliases"`
-		PrivateVars        map[string]bool      `json:"private_vars"`
-		Enabled            bool                 `json:"enabled"`
-		Private            bool                 `json:"private"`
-		Owner              string               `json:"owner_name"`
-		Repo               string               `json:"repo_name"`
-		Admins             []string             `json:"admins"`
-		TracksPushEvents   bool                 `json:"tracks_push_events"`
-		PRTestingEnabled   bool                 `json:"pr_testing_enabled"`
-		CommitQueueEnabled bool                 `json:"commitq_enabled"`
-		PatchingDisabled   bool                 `json:"patching_disabled"`
+		Identifier         string                         `json:"identifier"`
+		DisplayName        string                         `json:"display_name"`
+		RemotePath         string                         `json:"remote_path"`
+		BatchTime          int                            `json:"batch_time"`
+		DeactivatePrevious bool                           `json:"deactivate_previous"`
+		Branch             string                         `json:"branch_name"`
+		ProjVarsMap        map[string]string              `json:"project_vars"`
+		GitHubAliases      []model.ProjectAlias           `json:"github_aliases"`
+		CommitQueueAliases []model.ProjectAlias           `json:"commit_queue_aliases"`
+		PatchAliases       []model.ProjectAlias           `json:"patch_aliases"`
+		DeleteAliases      []string                       `json:"delete_aliases"`
+		PrivateVars        map[string]bool                `json:"private_vars"`
+		Enabled            bool                           `json:"enabled"`
+		Private            bool                           `json:"private"`
+		Owner              string                         `json:"owner_name"`
+		Repo               string                         `json:"repo_name"`
+		Admins             []string                       `json:"admins"`
+		TracksPushEvents   bool                           `json:"tracks_push_events"`
+		PRTestingEnabled   bool                           `json:"pr_testing_enabled"`
+		CommitQueue        restModel.APICommitQueueParams `json:"commit_queue"`
+		PatchingDisabled   bool                           `json:"patching_disabled"`
 		AlertConfig        map[string][]struct {
 			Provider string                 `json:"provider"`
 			Settings map[string]interface{} `json:"settings"`
@@ -226,24 +234,9 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 	}
 
 	errs := []string{}
-	for i, pd := range responseRef.ProjectAliases {
-		if strings.TrimSpace(pd.Alias) == "" {
-			errs = append(errs, fmt.Sprintf("alias name #%d can't be empty string", i+1))
-		}
-		if strings.TrimSpace(pd.Variant) == "" {
-			errs = append(errs, fmt.Sprintf("variant regex #%d can't be empty string", i+1))
-		}
-		if (strings.TrimSpace(pd.Task) == "") == (len(pd.Tags) == 0) {
-			errs = append(errs, fmt.Sprintf("must specify exactly one of task regex or tags on line #%d ", i+1))
-		}
-
-		if _, err = regexp.Compile(pd.Variant); err != nil {
-			errs = append(errs, fmt.Sprintf("variant regex #%d is invalid", i+1))
-		}
-		if _, err = regexp.Compile(pd.Task); err != nil {
-			errs = append(errs, fmt.Sprintf("task regex #%d is invalid", i+1))
-		}
-	}
+	errs = append(errs, validateProjectAliases(responseRef.GitHubAliases, "GitHub Aliases")...)
+	errs = append(errs, validateProjectAliases(responseRef.CommitQueueAliases, "Commit Queue Aliases")...)
+	errs = append(errs, validateProjectAliases(responseRef.PatchAliases, "Patch Aliases")...)
 	if len(errs) > 0 {
 		errMsg := ""
 		for _, err := range errs {
@@ -270,17 +263,45 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Prevent multiple projects tracking the same repo/branch from enabling commit queue
-	if responseRef.CommitQueueEnabled {
+	commitQueueParamsInterface, err := responseRef.CommitQueue.ToService()
+	commitQueueParams, ok := commitQueueParamsInterface.(model.CommitQueueParams)
+	if err != nil || !ok {
+		uis.LoggedError(w, r, http.StatusBadRequest, errors.Errorf("Cannot read Commit Queue into model"))
+		return
+	}
+
+	if commitQueueParams.Enabled {
 		var projRef *model.ProjectRef
 		projRef, err = model.FindOneProjectRefWithCommitQByOwnerRepoAndBranch(responseRef.Owner, responseRef.Repo, responseRef.Branch)
 		if err != nil {
 			uis.LoggedError(w, r, http.StatusInternalServerError, err)
 			return
 		}
-		if projRef.CommitQueueEnabled && projRef.Identifier != id {
+		if projRef != nil && projRef.CommitQueue.Enabled && projRef.Identifier != id {
 			uis.LoggedError(w, r, http.StatusBadRequest, errors.Errorf("Cannot enable Commit Queue in this repo, must disable in '%s' first", projRef.Identifier))
 			return
 		}
+
+		if !responseRef.SetupGithubHook {
+			uis.LoggedError(w, r, http.StatusBadRequest, errors.Errorf("Cannot enable Commit Queue without github webhooks enabled for the project"))
+			return
+		}
+
+		var cq *commitqueue.CommitQueue
+		cq, err = commitqueue.FindOneId(responseRef.Identifier)
+		if err != nil {
+			uis.LoggedError(w, r, http.StatusInternalServerError, err)
+			return
+		}
+		if cq == nil {
+			cq = &commitqueue.CommitQueue{ProjectID: responseRef.Identifier}
+			if err = commitqueue.InsertQueue(cq); err != nil {
+				uis.LoggedError(w, r, http.StatusInternalServerError, err)
+				return
+			}
+		}
+
+		projectRef.CommitQueue = commitQueueParams
 	}
 
 	catcher := grip.NewSimpleCatcher()
@@ -310,7 +331,6 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 	projectRef.Identifier = id
 	projectRef.TracksPushEvents = responseRef.TracksPushEvents
 	projectRef.PRTestingEnabled = responseRef.PRTestingEnabled
-	projectRef.CommitQueueEnabled = responseRef.CommitQueueEnabled
 	projectRef.PatchingDisabled = responseRef.PatchingDisabled
 	projectRef.NotifyOnBuildFailure = responseRef.NotifyOnBuildFailure
 	projectRef.Triggers = responseRef.Triggers
@@ -445,9 +465,13 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 	}
 
 	origProjectAliases, _ := model.FindAliasesForProject(id)
-	for i := range responseRef.ProjectAliases {
-		responseRef.ProjectAliases[i].ProjectID = id
-		catcher.Add(responseRef.ProjectAliases[i].Upsert())
+	var projectAliases []model.ProjectAlias
+	projectAliases = append(projectAliases, responseRef.GitHubAliases...)
+	projectAliases = append(projectAliases, responseRef.CommitQueueAliases...)
+	projectAliases = append(projectAliases, responseRef.PatchAliases...)
+	for i := range projectAliases {
+		projectAliases[i].ProjectID = id
+		catcher.Add(projectAliases[i].Upsert())
 	}
 
 	for _, alias := range responseRef.DeleteAliases {
@@ -674,4 +698,29 @@ func (uis *UIServer) projectEvents(w http.ResponseWriter, r *http.Request) {
 		ViewData
 	}{id, uis.GetCommonViewData(w, r, true, true)}
 	uis.render.WriteResponse(w, http.StatusOK, data, "base", template, "base_angular.html", "menu.html")
+}
+
+func validateProjectAliases(aliases []model.ProjectAlias, aliasType string) []string {
+	errs := []string{}
+
+	for i, pd := range aliases {
+		if strings.TrimSpace(pd.Alias) == "" {
+			errs = append(errs, fmt.Sprintf("%s: alias name #%d can't be empty string", aliasType, i+1))
+		}
+		if strings.TrimSpace(pd.Variant) == "" {
+			errs = append(errs, fmt.Sprintf("%s: variant regex #%d can't be empty string", aliasType, i+1))
+		}
+		if (strings.TrimSpace(pd.Task) == "") == (len(pd.Tags) == 0) {
+			errs = append(errs, fmt.Sprintf("%s: must specify exactly one of task regex or tags on line #%d", aliasType, i+1))
+		}
+
+		if _, err := regexp.Compile(pd.Variant); err != nil {
+			errs = append(errs, fmt.Sprintf("%s: variant regex #%d is invalid", aliasType, i+1))
+		}
+		if _, err := regexp.Compile(pd.Task); err != nil {
+			errs = append(errs, fmt.Sprintf("%s: task regex #%d is invalid", aliasType, i+1))
+		}
+	}
+
+	return errs
 }

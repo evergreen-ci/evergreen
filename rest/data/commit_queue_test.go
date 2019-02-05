@@ -27,11 +27,13 @@ func (s *CommitQueueSuite) SetupTest() {
 	s.Require().NoError(db.Clear(commitqueue.Collection))
 	s.Require().NoError(db.Clear(model.ProjectRefCollection))
 	projRef := model.ProjectRef{
-		Identifier:         "mci",
-		Owner:              "evergreen-ci",
-		Repo:               "evergreen",
-		Branch:             "master",
-		CommitQueueEnabled: true,
+		Identifier: "mci",
+		Owner:      "evergreen-ci",
+		Repo:       "evergreen",
+		Branch:     "master",
+		CommitQueue: model.CommitQueueParams{
+			Enabled: true,
+		},
 	}
 	s.Require().NoError(projRef.Insert())
 	q := &commitqueue.CommitQueue{ProjectID: "mci"}
