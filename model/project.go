@@ -346,7 +346,7 @@ type TaskGroup struct {
 
 	// data about the task group
 	MaxHosts           int             `yaml:"max_hosts" bson:"max_hosts"`
-	SetupGroupFailTask bool            `yaml:"setup_group_fail_task", bson:"setup_group_fail_task"`
+	SetupGroupFailTask bool            `yaml:"setup_group_can_fail_task" bson:"setup_group_can_fail_task"`
 	SetupGroup         *YAMLCommandSet `yaml:"setup_group" bson:"setup_group"`
 	TeardownGroup      *YAMLCommandSet `yaml:"teardown_group" bson:"teardown_group"`
 	SetupTask          *YAMLCommandSet `yaml:"setup_task" bson:"setup_task"`

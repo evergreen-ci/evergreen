@@ -219,7 +219,7 @@ pre:
 	s.tc.taskConfig.Version = v
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	s.a.runPreTaskCommands(ctx, s.tc)
+	s.NoError(s.a.runPreTaskCommands(ctx, s.tc))
 	_ = s.tc.logger.Close()
 	msgs := s.mockCommunicator.GetMockMessages()["task_id"]
 	s.Equal("Running pre-task commands.", msgs[1].Message)
@@ -589,7 +589,7 @@ task_groups:
 	s.tc.taskConfig.Version = v
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	s.a.runPreTaskCommands(ctx, s.tc)
+	s.NoError(s.a.runPreTaskCommands(ctx, s.tc))
 	_ = s.tc.logger.Close()
 	msgs := s.mockCommunicator.GetMockMessages()["task_id"]
 	s.Equal("Running pre-task commands.", msgs[1].Message)
@@ -629,10 +629,10 @@ task_groups:
 	s.tc.taskConfig.Version = v
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	s.a.runPreTaskCommands(ctx, s.tc)
+	s.Error(s.a.runPreTaskCommands(ctx, s.tc))
 	s.NoError(s.tc.logger.Close())
 	msgs := s.mockCommunicator.GetMockMessages()["task_id"]
-	s.Contains(msgs[len(msgs)-2].Message, "error running task setup group")
+	s.Contains(msgs[len(msgs)-1].Message, "error running task setup group")
 }
 
 func (s *AgentSuite) TestGroupPreTaskCommands() {
@@ -665,7 +665,7 @@ task_groups:
 	s.tc.taskConfig.Version = v
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	s.a.runPreTaskCommands(ctx, s.tc)
+	s.NoError(s.a.runPreTaskCommands(ctx, s.tc))
 	_ = s.tc.logger.Close()
 	msgs := s.mockCommunicator.GetMockMessages()["task_id"]
 	s.Equal("Running pre-task commands.", msgs[1].Message)
