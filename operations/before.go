@@ -194,6 +194,7 @@ func requireAtLeastOneBool(flags ...string) cli.BeforeFunc {
 	}
 }
 
+// If the bool flag is present check the required string flags are present as well
 func requireFlagsForBool(boolFlag string, requiredStringFlags ...string) cli.BeforeFunc {
 	return func(c *cli.Context) error {
 		catcher := grip.NewBasicCatcher()
