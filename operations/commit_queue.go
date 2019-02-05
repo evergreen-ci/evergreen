@@ -6,17 +6,15 @@ import (
 
 	"github.com/evergreen-ci/evergreen/rest/client"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
-	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 	"github.com/urfave/cli"
 )
 
 func CommitQueue() cli.Command {
 	const (
-		listFlagName      = "list"
-		deleteFlagName    = "delete"
-		deleteAllFlagName = "delete-all"
-		itemFlagName      = "item"
+		listFlagName   = "list"
+		deleteFlagName = "delete"
+		itemFlagName   = "item"
 	)
 
 	return cli.Command{
@@ -31,15 +29,11 @@ func CommitQueue() cli.Command {
 				Name:  deleteFlagName,
 				Usage: "delete an item from a project's commit queue",
 			},
-			cli.BoolFlag{
-				Name:  deleteAllFlagName,
-				Usage: "clear the contents of a project's commit queue",
-			},
 			cli.StringFlag{
 				Name:  joinFlagNames(itemFlagName, "i"),
 				Usage: "delete `ITEM`",
 			}),
-		Before: requireOnlyOneBool(listFlagName, deleteFlagName, deleteAllFlagName),
+		Before: requireOnlyOneBool(listFlagName, deleteFlagName),
 		Action: func(c *cli.Context) error {
 			confPath := c.Parent().String(confFlagName)
 			projectID := c.String(projectFlagName)
@@ -62,8 +56,6 @@ func CommitQueue() cli.Command {
 				return listCommitQueue(ctx, client, projectID)
 			case c.Bool(deleteFlagName):
 				return deleteCommitQueueItem(ctx, client, projectID, item)
-			case c.Bool(deleteAllFlagName):
-				return clearCommitQueue(ctx, client, projectID)
 			}
 			return errors.Errorf("this code should not be reachable")
 		},
@@ -93,10 +85,5 @@ func deleteCommitQueueItem(ctx context.Context, client client.Communicator, proj
 
 	fmt.Printf("Item '%s' deleted\n", item)
 
-	return nil
-}
-
-func clearCommitQueue(ctx context.Context, client client.Communicator, projectID string) error {
-	grip.Info("not implemented")
 	return nil
 }
