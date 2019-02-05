@@ -149,6 +149,9 @@ func TestResetLogging(t *testing.T) {
 			ID:     "logging",
 			Secret: "task_secret",
 		},
+		taskConfig: &model.TaskConfig{
+			Task: &task.Task{},
+		},
 	}
 
 	ctx := context.Background()

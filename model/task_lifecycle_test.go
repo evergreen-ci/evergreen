@@ -2,6 +2,7 @@ package model
 
 import (
 	"fmt"
+	"reflect"
 	"testing"
 	"time"
 
@@ -647,7 +648,7 @@ func TestTaskStatusImpactedByFailedTest(t *testing.T) {
 			taskData, err := task.FindOne(task.ById(testTask.Id))
 			So(err, ShouldBeNil)
 			So(taskData.Status, ShouldEqual, evergreen.TaskSucceeded)
-			So(taskData.Logs, ShouldEqual, detail.Logs)
+			So(reflect.DeepEqual(taskData.Logs, detail.Logs), ShouldBeTrue)
 			buildCache, err := build.FindOne(build.ById(b.Id))
 			So(err, ShouldBeNil)
 			So(buildCache.Status, ShouldEqual, evergreen.TaskSucceeded)
