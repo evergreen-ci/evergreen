@@ -182,5 +182,6 @@ func (ch *CreateHost) Expand(exp *util.Expansions) error {
 }
 
 type GeneratePollResponse struct {
-	Finished bool `json:"finished"`
+	Finished bool     `json:"finished"`
+	Errors   []string `json:"errors"`
 }

@@ -6,8 +6,10 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
+	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/rest/client"
 	"github.com/evergreen-ci/evergreen/util"
@@ -82,20 +84,23 @@ func (c *generateTask) Execute(ctx context.Context, comm client.Communicator, lo
 		return errors.Wrap(err, "Problem posting task data")
 	}
 
-	var finished bool
+	var generateStatus *apimodels.GeneratePollResponse
 	err = util.Retry(
 		ctx,
 		func() (bool, error) {
-			finished, err = comm.GenerateTasksPoll(ctx, td)
+			generateStatus, err = comm.GenerateTasksPoll(ctx, td)
 			if err != nil {
 				return false, errors.Wrapf(err, "error generating tasks for '%s'", conf.Task.Id)
 			}
-			if finished {
+			if generateStatus.Finished {
 				return false, nil
 			}
 			return true, errors.New("task generation unfinished")
 		}, 100, time.Second, 15*time.Second)
-	return err
+	if len(generateStatus.Errors) > 0 {
+		return errors.New(strings.Join(generateStatus.Errors, ", "))
+	}
+	return nil
 }
 
 func generateTaskForFile(fn string, conf *model.TaskConfig) ([]byte, error) {

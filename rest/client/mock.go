@@ -492,8 +492,11 @@ func (c *Mock) GenerateTasks(ctx context.Context, td TaskData, jsonBytes []json.
 	return nil
 }
 
-func (c *Mock) GenerateTasksPoll(ctx context.Context, td TaskData) (bool, error) {
-	return true, nil
+func (c *Mock) GenerateTasksPoll(ctx context.Context, td TaskData) (*apimodels.GeneratePollResponse, error) {
+	return &apimodels.GeneratePollResponse{
+		Finished: true,
+		Errors:   []string{},
+	}, nil
 }
 
 func (c *Mock) CreateHost(ctx context.Context, td TaskData, options apimodels.CreateHost) error {
