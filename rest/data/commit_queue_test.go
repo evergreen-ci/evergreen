@@ -94,7 +94,7 @@ func (s *CommitQueueSuite) TestCommitQueueClearAll() {
 
 	// both queues have items
 	s.Require().NoError(s.ctx.EnqueueItem("evergreen-ci", "evergreen", "master", "12"))
-	q.Enqueue("78")
+	s.NoError(q.Enqueue("78"))
 	clearedCount, err = s.ctx.CommitQueueClearAll()
 	s.NoError(err)
 	s.Equal(2, clearedCount)
