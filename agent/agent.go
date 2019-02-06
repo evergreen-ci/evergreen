@@ -250,7 +250,7 @@ func (a *Agent) fetchProjectConfig(ctx context.Context, tc *taskContext) error {
 func (a *Agent) resetLogging(ctx context.Context, tc *taskContext) error {
 	grip.Error(os.RemoveAll(filepath.Join(a.opts.WorkingDirectory, taskLogDirectory)))
 	if tc.project != nil && tc.project.Loggers != nil {
-		tc.logger = a.makeLoggerProducer(ctx, tc, tc.project.Loggers)
+		tc.logger = a.makeLoggerProducer(ctx, tc, tc.project.Loggers, "")
 	} else {
 		tc.logger = a.comm.GetLoggerProducer(ctx, tc.task, nil)
 	}

@@ -49,7 +49,7 @@ func (a *Agent) runCommandSet(ctx context.Context, tc *taskContext, commandInfo 
 	if commandInfo.Loggers == nil {
 		logger = tc.logger
 	} else {
-		logger = a.makeLoggerProducer(ctx, tc, commandInfo.Loggers)
+		logger = a.makeLoggerProducer(ctx, tc, commandInfo.Loggers, getFunctionName(commandInfo))
 		defer func() {
 			grip.Error(logger.Close())
 		}()
@@ -65,7 +65,7 @@ func (a *Agent) runCommandSet(ctx context.Context, tc *taskContext, commandInfo 
 		// not otherwise set.
 		cmd.SetType(tc.taskConfig.Project.CommandType)
 
-		fullCommandName := a.getCommandName(commandInfo, cmd)
+		fullCommandName := getCommandName(commandInfo, cmd)
 
 		if !commandInfo.RunOnVariant(tc.taskConfig.BuildVariant.Name) {
 			tc.logger.Task().Infof("Skipping command %s on variant %s (step %d of %d)",
@@ -154,7 +154,7 @@ func (a *Agent) runTaskCommands(ctx context.Context, tc *taskContext) error {
 	return nil
 }
 
-func (a *Agent) getCommandName(commandInfo model.PluginCommandConf, cmd command.Command) string {
+func getCommandName(commandInfo model.PluginCommandConf, cmd command.Command) string {
 	commandName := cmd.Name()
 	if commandInfo.Function != "" {
 		commandName = fmt.Sprintf(`'%s' in "%s"`, commandName, commandInfo.Function)
@@ -164,4 +164,17 @@ func (a *Agent) getCommandName(commandInfo model.PluginCommandConf, cmd command.
 		commandName = fmt.Sprintf("'%s'", commandName)
 	}
 	return commandName
+}
+
+func getFunctionName(commandInfo model.PluginCommandConf) string {
+	if commandInfo.DisplayName != "" {
+		return commandInfo.DisplayName
+	}
+	if commandInfo.Function != "" {
+		return commandInfo.Function
+	}
+	if commandInfo.Command != "" {
+		return commandInfo.Command
+	}
+	return "unknown function"
 }

@@ -39,9 +39,14 @@ type TaskEndDetail struct {
 }
 
 type TaskLogs struct {
-	AgentLogURLs  []string `bson:"agent" json:"agent"`
-	SystemLogURLs []string `bson:"system" json:"system"`
-	TaskLogURLs   []string `bson:"task" json:"task"`
+	AgentLogURLs  []LogInfo `bson:"agent" json:"agent"`
+	SystemLogURLs []LogInfo `bson:"system" json:"system"`
+	TaskLogURLs   []LogInfo `bson:"task" json:"task"`
+}
+
+type LogInfo struct {
+	Command string `bson:"command" json:"command"`
+	URL     string `bson:"url" json:"url"`
 }
 
 type TaskEndDetails struct {
