@@ -1,7 +1,7 @@
 mciModule.controller('SignalProcessingCtrl', function(
   $log, $scope, $timeout, $window, ChangePointsService, CHANGE_POINTS_GRID,
   EvgUiGridUtil, EvgUtil, FORMAT, MDBQueryAdaptor, PROCESSED_TYPE,
-  STITCH_CONFIG, Stitch, uiGridConstants,
+  Settings, STITCH_CONFIG, Stitch, uiGridConstants,
 ) {
   var vm = this
   // Ui grid col accessor
@@ -24,6 +24,26 @@ mciModule.controller('SignalProcessingCtrl', function(
   // Holds currently selected items
   vm.selection = []
 
+  // Could not be overriden by persistent user settings
+  const mandatoryDefaultFiltering = {
+    create_time: '>' + moment().subtract(2, 'weeks').format(FORMAT.ISO_DATE),
+    project: '=' + $window.project,
+  }
+
+  // Might be overriden by persistent user settings
+  const secondaryDefaultFiltering = {
+    probability: '>0.05',
+  }
+
+  const getDefaultFiltering = function() {
+    return _.extend(
+      {},
+      secondaryDefaultFiltering,
+      Settings.perf.signalProcessing.persistentFiltering,
+      mandatoryDefaultFiltering
+    )
+  }
+
   var state = {
     sorting: [{
       field: 'suspect_revision',
@@ -32,11 +52,7 @@ mciModule.controller('SignalProcessingCtrl', function(
       field: 'magnitude',
       direction: 'asc',
     }],
-    filtering: {
-      create_time: '>' + moment().subtract(2, 'weeks').format(FORMAT.ISO_DATE),
-      probability: '>0.05',
-      project: '=' + $window.project,
-    },
+    filtering: getDefaultFiltering(),
     mode: vm.mode.value,
   }
 
@@ -196,13 +212,17 @@ mciModule.controller('SignalProcessingCtrl', function(
     loadData(state)
   }
 
-  // Sets `state` to grid filters
-  function setInitialGridState(gridApi, state) {
+  function setInitialGridFiltering(gridApi, state) {
     _.each(state.filtering, function(term, colName) {
       var col = getCol(colName)
       if (!col) return // Error! Associated col does not found
       col.filters = [{term: term}]
     })
+  }
+
+  // Sets `state` to grid filters
+  function setInitialGridState(gridApi, state) {
+    setInitialGridFiltering(gridApi, state)
 
     _.each(state.sorting, function(sortingItem) {
       var col = getCol(sortingItem.field)
@@ -247,11 +267,24 @@ mciModule.controller('SignalProcessingCtrl', function(
       })
 
       var onFilterChanged = _.debounce(function() {
-        state.filtering = _.reduce(api.grid.columns, function(m, d) {
+        const filtering = _.reduce(api.grid.columns, function(m, d) {
           var term = d.filters[0].term
           if (term) m[d.field] = term
           return m
         }, {})
+
+        Settings.perf.signalProcessing.persistentFiltering = filtering
+
+        // When user clicks 'Clear all filters'
+        // FIXME and when clear all filters mnually. Either patching
+        //       of uigrid either standalone button required
+        if (_.isEmpty(filtering)) {
+          state.filtering = getDefaultFiltering()
+          setInitialGridFiltering(vm.gridApi, state)
+        } else {
+          state.filtering = filtering
+        }
+
         loadData(state)
       }, 200)
 

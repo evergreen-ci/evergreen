@@ -1,7 +1,7 @@
 /*
   Wrapper over window.localStorage
   - Allows to work with localStorage as with simple JS object
-  - Auto type casting: String (default), Number, Boolean or a function
+  - Auto type casting: String (default), Number, Boolean, Object or a function
   - Default setting value (undefined by default)
 
   Require setting to have defenition in the `constants`.
@@ -35,6 +35,24 @@ mciModule.factory('Settings', function(SETTING_DEFS, $log) {
     return _.isObject(node) && _.any(_.keys(node), isEither(['default', 'type']))
   }
 
+  // TODO create serialization classes for each type
+  //      which should also contain default value deifned
+  function serialize(descriptor, value) {
+    if (descriptor.type === Object) {
+      return JSON.stringify(value)
+    } else {
+      return value
+    }
+  }
+
+  function deserialize(descriptor, value) {
+    if (descriptor.type === Object) {
+      return JSON.parse(value)
+    } else {
+      return (descriptor.type || String)(value)
+    }
+  }
+
   function buildSettingsTree(obj, contextKey) {
     return _.reduce(_.keys(obj), function(m, key) {
       var v = obj[key]
@@ -42,7 +60,7 @@ mciModule.factory('Settings', function(SETTING_DEFS, $log) {
         var accessor = {
           path: contextKey.concat(key).join('.'),
           type: v.type,
-          default: v.default,
+          default: serialize(v, v.default)
         }
         m['_' + key] = accessor
         Object.defineProperty(m, key, {
@@ -62,7 +80,10 @@ mciModule.factory('Settings', function(SETTING_DEFS, $log) {
   }
 
   function writeSetting(descriptor, value) {
-    localStorage.setItem(descriptor.path, value)
+    localStorage.setItem(
+      descriptor.path,
+      serialize(descriptor, value)
+    )
   }
 
   function readSetting(descriptor) {
@@ -79,8 +100,7 @@ mciModule.factory('Settings', function(SETTING_DEFS, $log) {
       }
     }
 
-    // Type casting
-    return (descriptor.type || String)(value)
+    return deserialize(descriptor, value)
   }
 
   var tree = buildSettingsTree(SETTING_DEFS, [SETTING_DEFS.GLOBAL_PREFIX])
