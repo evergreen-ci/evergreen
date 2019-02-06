@@ -14,13 +14,14 @@ describe('SettingsTest', function() {
     }, [])
 
     tree.param = value
-    expect(tree.param).toBe(value)
+    expect(tree.param).toEqual(value)
   }
 
   it('can store different param types', function() {
     typeCheck(Number, 1)
     typeCheck(Boolean, true)
     typeCheck(String, 'a')
+    typeCheck(Object, {data: 'value'})
     typeCheck(undefined, 'a')
   })
 
@@ -32,6 +33,17 @@ describe('SettingsTest', function() {
     expect(tree.param).toBe('Default')
     // Ensure the value was set to localStorage
     expect(localStorage.getItem('param')).toBe('Default')
+  })
+
+  it('respect and restores deault value for Object type', function() {
+    var tree = Settings._buildSettingsTree({
+      param: {
+        type: Object,
+        default: {initial: 'value'},
+      }
+    }, [])
+
+    expect(tree.param).toEqual({initial: 'value'})
   })
 
   it('actually uses localStorage', function() {
@@ -48,6 +60,7 @@ describe('SettingsTest', function() {
 
   it('ensures all settings are known', function() {
     var knownSettings = [
+      'perf.signalProcessing.persistentFiltering',
       'perf.trendchart.originMode.enabled',
       'perf.trendchart.linearMode.enabled',
       'perf.trendchart.threadLevelMode',

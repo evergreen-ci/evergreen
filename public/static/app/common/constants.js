@@ -9,6 +9,13 @@ mciModule
   .constant('SETTING_DEFS', {
     GLOBAL_PREFIX: 'mciSetting',
     perf: {
+      signalProcessing: {
+        persistentFiltering: {
+          type: Object,
+          default: {}, // actually, we could store defaults here
+                       // but there are some compute-time params
+        },
+      },
       trendchart: {
         linearMode: {
           enabled: {
