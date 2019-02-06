@@ -147,6 +147,20 @@ mciModule.controller('AdminSettingsController', ['$scope', '$window', '$http', '
       });
   }
 
+  $scope.clearCommitQueues = function(){
+    if(!confirm("This will clear the contents of all commit queues. Continue?")){
+      return
+    }
+
+    $http.delete('/admin/commit_queues').then(
+      function(resp) {
+        notificationService.pushNotification("Operation successful: cleared " + resp.data.cleared_count + " queues", 'notifyHeader', 'success');
+      },
+      function(resp) {
+        notificationService.pushNotification("Failed to clear commit queues: " + resp.data.error, 'errorHeader');
+      });
+  }
+
   timestamp = function(ts) {
     return "[" + moment(ts, "YYYY-MM-DDTHH:mm:ss").format("lll") + "] ";
   }

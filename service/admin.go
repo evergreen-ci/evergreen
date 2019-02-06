@@ -54,3 +54,17 @@ func (uis *UIServer) clearAllUserTokens(w http.ResponseWriter, r *http.Request) 
 		gimlet.WriteJSON(w, map[string]string{})
 	}
 }
+
+func (uis *UIServer) clearAllCommitQueues(w http.ResponseWriter, r *http.Request) {
+	dc := &data.DBCommitQueueConnector{}
+	clearedCount, err := dc.CommitQueueClearAll()
+	if err != nil {
+		gimlet.WriteJSONInternalError(w, struct {
+			Error string `json:"error"`
+		}{Error: err.Error()})
+	} else {
+		gimlet.WriteJSON(w, struct {
+			ClearedCount int `json:"cleared_count"`
+		}{clearedCount})
+	}
+}

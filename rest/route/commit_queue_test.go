@@ -60,23 +60,3 @@ func (s *CommitQueueSuite) TestDeleteItem() {
 	response = route.Run(context.Background())
 	s.Equal(404, response.Status())
 }
-
-func (s *CommitQueueSuite) TestClearAll() {
-	route := makeClearCommitQueuesHandler(s.sc).(*commitQueueClearAllHandler)
-	s.NoError(s.sc.EnqueueItem("evergreen-ci", "evergreen", "master", "12"))
-	s.NoError(s.sc.EnqueueItem("evergreen-ci", "evergreen", "master", "23"))
-	s.NoError(s.sc.EnqueueItem("evergreen-ci", "logkeeper", "master", "45"))
-	s.NoError(s.sc.EnqueueItem("evergreen-ci", "logkeeper", "master", "56"))
-
-	response := route.Run(context.Background())
-	s.Equal(200, response.Status())
-	s.Equal(struct {
-		clearedCount int `json:"cleared_count"`
-	}{2}, response.Data())
-
-	response = route.Run(context.Background())
-	s.Equal(200, response.Status())
-	s.Equal(struct {
-		clearedCount int `json:"cleared_count"`
-	}{0}, response.Data())
-}
