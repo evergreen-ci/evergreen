@@ -212,7 +212,8 @@ func TestLogkeeperMetadataPopulated(t *testing.T) {
 	}
 	err := agt.resetLogging(ctx, tc)
 	assert.NoError(err)
-	assert.Equal("logkeeper/build/build1/test/test1", tc.logs.AgentLogURLs[0])
-	assert.Equal("logkeeper/build/build1/test/test2", tc.logs.SystemLogURLs[0])
-	assert.Equal("logkeeper/build/build1/test/test3", tc.logs.TaskLogURLs[0])
+	assert.Equal("logkeeper/build/build1/test/test1", tc.logs.AgentLogURLs[0].URL)
+	assert.Equal("logkeeper/build/build1/test/test2", tc.logs.SystemLogURLs[0].URL)
+	assert.Equal("logkeeper/build/build1/test/test3", tc.logs.TaskLogURLs[0].URL)
+	assert.Equal("", tc.logs.TaskLogURLs[0].Command)
 }
