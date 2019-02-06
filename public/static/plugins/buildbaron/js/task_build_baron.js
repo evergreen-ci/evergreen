@@ -1,4 +1,25 @@
-mciModule.controller('TaskBuildBaronCtrl', function($scope, $http, $window) {
+mciModule.controller('TaskBuildBaronCtrl', function($scope, $http, $window, Stitch, STITCH_CONFIG) {
+
+  $scope.has_change_points = false
+  checkChangePoints = function(callback){
+    var suspect_revision = $scope.task.gitspec;
+    return Stitch.use(STITCH_CONFIG.PERF).query(function(db) {
+      var query = {
+        project: $scope.task.branch,
+        task: $scope.task.display_name,
+        variant: $scope.task.build_variant,
+        suspect_revision: suspect_revision,
+      }
+      return db
+        .db(STITCH_CONFIG.PERF.DB_PERF)
+        .collection(STITCH_CONFIG.PERF.COLL_UNPROCESSED_POINTS)
+        .find(query)
+        .execute()
+        .then(function(change_points){
+          return callback(change_points.length > 0)
+        })
+    })
+  }
   $scope.conf = $window.plugins["buildbaron"];
 
   var statusKeys = {
@@ -214,17 +235,20 @@ mciModule.controller('TaskBuildBaronCtrl', function($scope, $http, $window) {
     }
   };
 
-  $scope.setTask($window.task_data);
-  if ( $scope.conf.enabled && $scope.have_user && $scope.task.status == "failed" ) {
-    $scope.build_baron_status = "loading";
-    $scope.getBuildBaronResults();
-    $scope.getFeedback();
-  }
-  if($scope.conf.enabled && $scope.have_user){
-    $scope.getNote();
-  }
-  $scope.getCreatedTickets();
-
+  $scope.build_baron_status = "checking for change points";
+  checkChangePoints(function(has_change_points){
+    $scope.setTask($window.task_data);
+    $scope.has_change_points = has_change_points
+    if ( $scope.conf.enabled && $scope.have_user && $scope.task.status == "failed" || $scope.has_change_points ) {
+      $scope.build_baron_status = "loading";
+      $scope.getBuildBaronResults();
+      $scope.getFeedback();
+    }
+    if($scope.conf.enabled && $scope.have_user){
+      $scope.getNote();
+    }
+    $scope.getCreatedTickets();
+  })
   $scope.clearTicket = function(){
     $scope.newTicket = true;
     $scope.ticketTests = [];
