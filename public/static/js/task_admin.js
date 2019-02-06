@@ -8,8 +8,19 @@ mciModule.controller('AdminOptionsCtrl', ['$scope', '$window', '$rootScope', 'mc
         $scope.task = task;
         $scope.taskId = task.id;
         $scope.isAborted = ($scope.task.status == 'undispatched' && !$scope.task.activated && $scope.task.dispatch_time > 0)
-        $scope.canRestart = (($scope.task.status !== "started" && $scope.task.status !== "unstarted" && $scope.task.status !== "undispatched"
-        && $scope.task.status !== "dispatched" && $scope.task.status !== "inactive") || $scope.isAborted || ($scope.task.display_only && $scope.task.task_waiting=="blocked"));
+        $scope.canRestart = (
+          (
+            $scope.task.status !== "started" &&
+            $scope.task.status !== "unstarted" &&
+            $scope.task.status !== "undispatched" &&
+            $scope.task.status !== "dispatched" &&
+            $scope.task.status !== "inactive"
+          ) ||
+          $scope.isAborted || (
+            $scope.task.display_only &&
+            $scope.task.task_waiting=="blocked"
+          )
+        )
         $scope.canAbort = ($scope.task.status == "dispatched" || $scope.task.status == "started");
         $scope.canSchedule = !$scope.task.activated && !$scope.canRestart && !$scope.isAborted;
         $scope.canUnschedule = $scope.task.activated && ($scope.task.status == "undispatched") ;
