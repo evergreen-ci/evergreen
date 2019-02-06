@@ -209,7 +209,7 @@ type Connector interface {
 	GenerateTasks(context.Context, string, []json.RawMessage, amboy.Queue) error
 
 	// GeneratePoll checks to see if a `generate.tasks` job has finished.
-	GeneratePoll(context.Context, string, amboy.Queue) (bool, error)
+	GeneratePoll(context.Context, string, amboy.Queue) (bool, []string, error)
 
 	// SaveSubscriptions saves a set of notification subscriptions
 	SaveSubscriptions([]event.Subscription) error

@@ -100,7 +100,7 @@ type Communicator interface {
 	GenerateTasks(context.Context, TaskData, []json.RawMessage) error
 
 	// GenerateTasksPoll polls for new tasks for the `generate.tasks` command.
-	GenerateTasksPoll(context.Context, TaskData) (bool, error)
+	GenerateTasksPoll(context.Context, TaskData) (*apimodels.GeneratePollResponse, error)
 
 	// Spawn-hosts for tasks methods
 	CreateHost(context.Context, TaskData, apimodels.CreateHost) error

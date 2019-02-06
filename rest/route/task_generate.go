@@ -118,7 +118,7 @@ func (h *generatePollHandler) Parse(ctx context.Context, r *http.Request) error 
 }
 
 func (h *generatePollHandler) Run(ctx context.Context) gimlet.Responder {
-	finished, err := h.sc.GeneratePoll(ctx, h.taskID, h.queue)
+	finished, jobErrs, err := h.sc.GeneratePoll(ctx, h.taskID, h.queue)
 	if err != nil {
 		grip.Error(message.WrapError(err, message.Fields{
 			"message": "error polling for generated tasks",
@@ -126,5 +126,8 @@ func (h *generatePollHandler) Run(ctx context.Context) gimlet.Responder {
 		}))
 		return gimlet.MakeJSONInternalErrorResponder(err)
 	}
-	return gimlet.NewJSONResponse(&apimodels.GeneratePollResponse{Finished: finished})
+	return gimlet.NewJSONResponse(&apimodels.GeneratePollResponse{
+		Finished: finished,
+		Errors:   jobErrs,
+	})
 }
