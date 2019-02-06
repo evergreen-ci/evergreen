@@ -16,7 +16,7 @@ import (
 
 ///////////////////////////////////////////////////////////////////////
 //
-// POST /rest/v2/notifications/{target_id}
+// POST /rest/v2/notifications/{type}
 
 type notificationPostHandler struct {
 	handler     gimlet.RouteHandler
@@ -35,7 +35,7 @@ func (h *notificationPostHandler) Factory() gimlet.RouteHandler {
 	}
 }
 
-// Parse fetches targetID from the http request.
+// Parse fetches the notification type from the http request.
 func (h *notificationPostHandler) Parse(ctx context.Context, r *http.Request) error {
 	t := gimlet.GetVars(r)["type"]
 	switch t {
@@ -48,7 +48,7 @@ func (h *notificationPostHandler) Parse(ctx context.Context, r *http.Request) er
 	case "email":
 		h.handler = makeEmailNotification(h.environment)
 	default:
-		return fmt.Errorf("'%s' is not a supported {type}", t)
+		return errors.Errorf("'%s' is not a supported {type}", t)
 	}
 
 	h.handler.Parse(ctx, r)
