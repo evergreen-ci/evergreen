@@ -387,12 +387,12 @@ Evergreen Projects
           </div>
 
           <div class="form-group">
-            <div class="col-header col-lg-6 form-control-static"> <h3> Commit Queue Merging </h3> </div>
+            <div class="col-header col-lg-6 form-control-static"> <h3>Commit Queue</h3> </div>
           </div>
 
           <div id="patch-variants-list-header" class="form-group" ng-show="commitQueueConflicts.length !== 0">
             <div class="col-lg-6">
-                Commit Queue merging cannot be enabled on this project: only one Evergreen project
+                Commit Queue cannot be enabled on this project: only one Evergreen project
                 per Repository/Branch combination can enable commit queue. To enable commit queue in this
                 project, please turn it off in <span ng-repeat="x in commitQueueConflicts"> "[[x]]"<span ng-show="!$last">, </span> </span>
             </div>
@@ -400,7 +400,7 @@ Evergreen Projects
           <div id="patch-variants-list-header" class="form-group" ng-show="commitQueueConflicts.length === 0">
               <div class="col-lg-6">
                   <input type="checkbox" id="cq-merging-checkbox" ng-model="settingsFormData.commit_queue.enabled" />
-                  <label for="cq-merging-checkbox">Enable Commit Queue Merging</label>
+                  <label for="cq-merging-checkbox">Enable Commit Queue</label>
               </div>
           </div>
 
