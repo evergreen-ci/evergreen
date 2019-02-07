@@ -215,7 +215,7 @@ func (gh *githubHookApi) Run(ctx context.Context) gimlet.Responder {
 		}
 
 		if pr == nil || pr.Base == nil || pr.Base.Ref == nil {
-			grip.Error(message.WrapError(err, message.Fields{
+			grip.Error(message.Fields{
 				"source":  "github hook",
 				"msg_id":  gh.msgID,
 				"event":   gh.eventType,
@@ -224,8 +224,8 @@ func (gh *githubHookApi) Run(ctx context.Context) gimlet.Responder {
 				"repo":    repo,
 				"item":    PRNum,
 				"message": "PR contains no base branch ref",
-			}))
-			return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "PR contains no base branch label"))
+			})
+			return gimlet.MakeJSONErrorResponder(errors.New("PR contains no base branch label"))
 		}
 
 		baseBranch := *pr.Base.Ref

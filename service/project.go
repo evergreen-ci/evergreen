@@ -288,11 +288,10 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		var cq *commitqueue.CommitQueue
-		cq, err = commitqueue.FindOneId(responseRef.Identifier)
+		_, err = commitqueue.FindOneId(responseRef.Identifier)
 		if err != nil {
 			if err == mgo.ErrNotFound {
-				cq = &commitqueue.CommitQueue{ProjectID: responseRef.Identifier}
+				cq := &commitqueue.CommitQueue{ProjectID: responseRef.Identifier}
 				if err = commitqueue.InsertQueue(cq); err != nil {
 					uis.LoggedError(w, r, http.StatusInternalServerError, err)
 					return
@@ -302,9 +301,8 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 				return
 			}
 		}
-
-		projectRef.CommitQueue = commitQueueParams
 	}
+	projectRef.CommitQueue = commitQueueParams
 
 	catcher := grip.NewSimpleCatcher()
 	for i, trigger := range responseRef.Triggers {
