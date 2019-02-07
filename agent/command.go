@@ -120,7 +120,7 @@ func (a *Agent) runCommandSet(ctx context.Context, tc *taskContext, commandInfo 
 				}
 			}
 		case <-ctx.Done():
-			tc.logger.Task().Errorf("Agent stopped early: %v", ctx.Err())
+			tc.logger.Task().Errorf("Command stopped early: %s", ctx.Err())
 			return errors.Wrap(ctx.Err(), "Agent stopped early")
 		}
 		tc.logger.Execution().Infof("Finished %s in %s", fullCommandName, time.Since(start).String())
