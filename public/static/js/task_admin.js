@@ -206,7 +206,10 @@ mciModule.directive('adminRestartTask', function() {
       '<div class="col-lg-12">' +
         'Restart current task?' +
         '<button type="button" class="btn btn-danger" style="float: right;" ng-disabled="noClose" data-dismiss="modal">Cancel</button>' +
-        '<button type="button" class="btn btn-primary" style="float: right; margin-right: 10px;" ng-click="restart()" ng-disabled="noClose">Yes</button>' +
+        '<button type="button" class="btn btn-primary" style="float: right; margin-right: 10px;" ng-click="restart()" ng-disabled="noClose">' +
+          '<md-progress-circular ng-if="noClose" class="md-warn md-accent md-hue-2" md-mode="indeterminate" md-diameter="20px"></md-progress-circular>' +
+          '<span ng-if="!noClose">Yes</span>' +
+        '</button>' +
       '</div>' +
     '</div>'
   }
