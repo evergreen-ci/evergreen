@@ -134,7 +134,9 @@ func (s *GithubSuite) TestFindIntentSpecifically() {
 	s.NotNil(found)
 
 	s.Equal(intent, found)
-	s.Equal(intent.NewPatch(), found.NewPatch())
+	s.Equal(intent.NewPatch().Description, found.NewPatch().Description)
+	s.Equal(intent.NewPatch().CreateTime, found.NewPatch().CreateTime)
+	s.Equal(intent.NewPatch().GithubPatchData, found.NewPatch().GithubPatchData)
 }
 
 func (s *GithubSuite) TestSetProcessed() {
