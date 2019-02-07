@@ -262,6 +262,7 @@ functions:
           set -o xtrace
           rm gopath/src/github.com/evergreen-ci/evergreen/bin/output.*
           rm gopath/src/github.com/evergreen-ci/evergreen/bin/jstests/*.xml
+          echo 'hello 4'
 
 #######################################
 #                Tasks                #
