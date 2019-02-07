@@ -340,6 +340,7 @@ func FindProjectRefsWithCommitQueueEnabled() ([]ProjectRef, error) {
 	err := db.FindAll(
 		ProjectRefCollection,
 		bson.M{
+			ProjectRefEnabledKey: true,
 			bsonutil.GetDottedKeyName(projectRefCommitQueueKey, projectRefCommitQueueEnabledKey): true,
 		},
 		db.NoProjection,

@@ -253,6 +253,7 @@ func TestFindProjectRefsWithCommitQueueEnabled(t *testing.T) {
 
 	require.NoError(db.Clear(ProjectRefCollection))
 	doc := &ProjectRef{
+		Enabled:    true,
 		Owner:      "mongodb",
 		Repo:       "mci",
 		Branch:     "master",
