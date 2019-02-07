@@ -66,6 +66,10 @@ func NewCommitQueueJob(env evergreen.Environment, queueID string, id string) amb
 func (j *commitQueueJob) Run(ctx context.Context) {
 	defer j.MarkComplete()
 
+	if j.env == nil {
+		j.env = evergreen.GetEnvironment()
+	}
+
 	flags, err := evergreen.GetServiceFlags()
 	if err != nil {
 		j.AddError(errors.New("can't get degraded mode flags"))
@@ -86,6 +90,11 @@ func (j *commitQueueJob) Run(ctx context.Context) {
 	}
 
 	if !projectRef.CommitQueue.Enabled {
+		grip.Info(message.Fields{
+			"source":  "commit queue",
+			"job_id":  j.ID(),
+			"message": "project has commit queue disabled",
+		})
 		return
 	}
 
@@ -95,6 +104,10 @@ func (j *commitQueueJob) Run(ctx context.Context) {
 		return
 	}
 	nextItem := cq.Next()
+	if nextItem == "" {
+		return
+	}
+
 	nextItemInt, err := strconv.Atoi(nextItem)
 	if err != nil {
 		j.AddError(errors.Wrapf(err, "can't parse next item \"%s\" as int", nextItem))
@@ -114,7 +127,7 @@ func (j *commitQueueJob) Run(ctx context.Context) {
 		return
 	}
 
-	if validatePR(pr) != nil {
+	if err = validatePR(pr); err != nil {
 		j.AddError(errors.Wrap(err, "invalid PR"))
 		return
 	}
@@ -135,7 +148,8 @@ func (j *commitQueueJob) Run(ctx context.Context) {
 	}
 
 	// check if a patch has already been created for this PR
-	existingPatch, err := patch.FindOneByGithubPRNum(nextItemInt)
+	mergeCommitSHA := pr.GetMergeCommitSHA()
+	existingPatch, err := patch.FindOneByGithubPRNumAndMergeCommitSHA(nextItemInt, mergeCommitSHA)
 	if err != nil {
 		j.AddError(errors.Wrap(err, "can't query for patch matching PR Number"))
 		return
@@ -159,11 +173,21 @@ func (j *commitQueueJob) Run(ctx context.Context) {
 	if err != nil {
 		j.AddError(errors.Wrap(err, "can't subscribe GitHub PR merge to version"))
 	}
+
+	grip.Info(message.Fields{
+		"source":  "commit queue",
+		"job_id":  j.ID(),
+		"item":    nextItem,
+		"message": "finished processing item",
+	})
 }
 
 func validatePR(pr *github.PullRequest) error {
-	catcher := grip.NewSimpleCatcher()
+	if pr == nil {
+		return errors.New("No PR provided")
+	}
 
+	catcher := grip.NewSimpleCatcher()
 	if pr.GetMergeCommitSHA() == "" {
 		catcher.Add(errors.New("no merge commit SHA"))
 	}

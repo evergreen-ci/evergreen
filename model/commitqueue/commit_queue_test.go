@@ -110,13 +110,13 @@ func (s *CommitQueueSuite) TestRemoveAll() {
 
 func (s *CommitQueueSuite) TestCommentTrigger() {
 	comment := "no dice"
-	action := "create"
+	action := "created"
 	s.False(TriggersCommitQueue(action, comment))
 
 	comment = triggerComment
 	s.True(TriggersCommitQueue(action, comment))
 
-	action = "delete"
+	action = "deleted"
 	s.False(TriggersCommitQueue(action, comment))
 }
 

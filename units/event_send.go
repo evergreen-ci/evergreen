@@ -142,6 +142,9 @@ func (j *eventNotificationJob) checkDegradedMode(n *notification.Notification) e
 	case event.GithubPullRequestSubscriberType:
 		return checkFlag(j.flags.GithubStatusAPIDisabled)
 
+	case event.GithubMergeSubscriberType:
+		return checkFlag(j.flags.CommitQueueDisabled)
+
 	case event.SlackSubscriberType:
 		return checkFlag(j.flags.SlackNotificationsDisabled)
 

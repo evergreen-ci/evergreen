@@ -76,6 +76,8 @@ func (s *githubPRLogger) Send(m message.Composer) {
 
 	s.sendPatchResult(msg)
 	if !msg.PatchSucceeded {
+		s.ErrorHandler(errors.New("not proceeding with merge for failed patch"), m)
+		s.ErrorHandler(dequeueFromCommitQueue(msg.ProjectID, msg.PRNum), m)
 		return
 	}
 
@@ -96,18 +98,7 @@ func (s *githubPRLogger) Send(m message.Composer) {
 	// send the result to github
 	s.ErrorHandler(s.sendMergeResult(res, msg), m)
 
-	// dequeue the PR from its commit queue
-	cq, err := FindOneId(msg.ProjectID)
-	if err != nil {
-		s.ErrorHandler(errors.Wrapf(err, "can't find commit queue for %s", msg.ProjectID), m)
-		return
-	}
-	found, err := cq.Remove(strconv.Itoa(msg.PRNum))
-	if err != nil {
-		s.ErrorHandler(errors.Wrapf(err, "can't dequeue %d from commit queue", msg.PRNum), m)
-	} else if !found {
-		s.ErrorHandler(errors.Errorf("item %d did not exist on the queue", msg.PRNum), m)
-	}
+	s.ErrorHandler(dequeueFromCommitQueue(msg.ProjectID, msg.PRNum), m)
 }
 
 func (s *githubPRLogger) sendMergeResult(PRResult *github.PullRequestMergeResult, msg *GithubMergePR) error {
@@ -158,4 +149,19 @@ func (s *githubPRLogger) sendPatchResult(msg *GithubMergePR) {
 	c := message.NewGithubStatusMessageWithRepo(level.Notice, status)
 
 	s.statusSender.Send(c)
+}
+
+func dequeueFromCommitQueue(projectID string, PRNum int) error {
+	cq, err := FindOneId(projectID)
+	if err != nil {
+		return errors.Wrapf(err, "can't find commit queue for %s", projectID)
+	}
+	found, err := cq.Remove(strconv.Itoa(PRNum))
+	if err != nil {
+		return errors.Wrapf(err, "can't dequeue %d from commit queue", PRNum)
+	} else if !found {
+		return errors.Errorf("item %d did not exist on the queue", PRNum)
+	}
+
+	return nil
 }

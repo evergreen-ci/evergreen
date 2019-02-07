@@ -214,7 +214,7 @@ func (gh *githubHookApi) Run(ctx context.Context) gimlet.Responder {
 			return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "can't get PR from GitHub API"))
 		}
 
-		if pr == nil || pr.Base == nil || pr.Base.Label == nil {
+		if pr == nil || pr.Base == nil || pr.Base.Ref == nil {
 			grip.Error(message.WrapError(err, message.Fields{
 				"source":  "github hook",
 				"msg_id":  gh.msgID,
@@ -223,12 +223,12 @@ func (gh *githubHookApi) Run(ctx context.Context) gimlet.Responder {
 				"owner":   owner,
 				"repo":    repo,
 				"item":    PRNum,
-				"message": "PR contains no base branch label",
+				"message": "PR contains no base branch ref",
 			}))
 			return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "PR contains no base branch label"))
 		}
 
-		baseBranch := *pr.Base.Label
+		baseBranch := *pr.Base.Ref
 		err = gh.sc.EnqueueItem(owner, repo, baseBranch, strconv.Itoa(PRNum))
 		if err != nil {
 			grip.Error(message.WrapError(err, message.Fields{
@@ -243,6 +243,14 @@ func (gh *githubHookApi) Run(ctx context.Context) gimlet.Responder {
 			}))
 			return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "can't enqueue item on commit queue"))
 		}
+		grip.Info(message.Fields{
+			"source":  "github hook",
+			"msg_id":  gh.msgID,
+			"event":   gh.eventType,
+			"action":  *event.Action,
+			"comment": *event.Comment.Body,
+			"message": "finished processing comment",
+		})
 	}
 
 	return gimlet.NewJSONResponse(struct{}{})

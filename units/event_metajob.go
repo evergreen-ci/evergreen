@@ -32,6 +32,9 @@ func notificationIsEnabled(flags *evergreen.ServiceFlags, n *notification.Notifi
 	case event.GithubPullRequestSubscriberType:
 		return !flags.GithubStatusAPIDisabled
 
+	case event.GithubMergeSubscriberType:
+		return !flags.CommitQueueDisabled
+
 	case event.JIRAIssueSubscriberType, event.JIRACommentSubscriberType:
 		return !flags.JIRANotificationsDisabled
 

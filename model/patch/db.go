@@ -59,6 +59,7 @@ var (
 	githubPatchHeadRepoKey   = bsonutil.MustHaveTag(GithubPatch{}, "HeadRepo")
 	githubPatchHeadHashKey   = bsonutil.MustHaveTag(GithubPatch{}, "HeadHash")
 	githubPatchAuthorKey     = bsonutil.MustHaveTag(GithubPatch{}, "Author")
+	githubMergeCommitSHAKey  = bsonutil.MustHaveTag(GithubPatch{}, "MergeCommitSHA")
 )
 
 // Query Validation
@@ -186,9 +187,10 @@ func ByGithubPRAndCreatedBefore(t time.Time, owner, repo string, prNumber int) d
 	})
 }
 
-func FindOneByGithubPRNum(prNumber int) (*Patch, error) {
+func FindOneByGithubPRNumAndMergeCommitSHA(prNumber int, mergeCommitSHA string) (*Patch, error) {
 	q := db.Query(bson.M{
-		bsonutil.GetDottedKeyName(githubPatchDataKey, githubPatchPRNumberKey): prNumber,
+		bsonutil.GetDottedKeyName(githubPatchDataKey, githubPatchPRNumberKey):  prNumber,
+		bsonutil.GetDottedKeyName(githubPatchDataKey, githubMergeCommitSHAKey): mergeCommitSHA,
 	})
 
 	return FindOne(q)
