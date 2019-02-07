@@ -33,7 +33,7 @@ type communicatorImpl struct {
 	timeoutStart time.Duration
 	timeoutMax   time.Duration
 	httpClient   *http.Client
-	loggerInfo   loggerMetadata
+	loggerInfo   LoggerMetadata
 
 	// these fields have setters
 	hostID     string
@@ -45,9 +45,15 @@ type communicatorImpl struct {
 	mutex           sync.RWMutex
 }
 
-type loggerMetadata struct {
-	logkeeperBuild string
-	logkeeperTest  string
+type LoggerMetadata struct {
+	Agent  []LogkeeperMetadata
+	System []LogkeeperMetadata
+	Task   []LogkeeperMetadata
+}
+
+type LogkeeperMetadata struct {
+	Build string
+	Test  string
 }
 
 // TaskData contains the taskData.ID and taskData.Secret. It must be set for some client methods.
@@ -163,6 +169,10 @@ func (c *communicatorImpl) LastMessageAt() time.Time {
 	return c.lastMessageSent
 }
 
+func (c *communicatorImpl) GetLoggerMetadata() LoggerMetadata {
+	return c.loggerInfo
+}
+
 // GetLogProducer
 func (c *communicatorImpl) GetLoggerProducer(ctx context.Context, taskData TaskData, config *LoggerConfig) LoggerProducer {
 
@@ -234,8 +244,18 @@ func (c *communicatorImpl) makeSender(ctx context.Context, taskData TaskData, op
 				return nil
 			}
 			sender = send.NewBufferedSender(sender, bufferDuration, bufferSize)
-			c.loggerInfo.logkeeperBuild = config.GetBuildID()
-			c.loggerInfo.logkeeperTest = config.GetTestID()
+			metadata := LogkeeperMetadata{
+				Build: config.GetBuildID(),
+				Test:  config.GetTestID(),
+			}
+			switch prefix {
+			case apimodels.AgentLogPrefix:
+				c.loggerInfo.Agent = append(c.loggerInfo.Agent, metadata)
+			case apimodels.SystemLogPrefix:
+				c.loggerInfo.System = append(c.loggerInfo.System, metadata)
+			case apimodels.TaskLogPrefix:
+				c.loggerInfo.Task = append(c.loggerInfo.Task, metadata)
+			}
 		default:
 			sender = newEvergreenLogSender(ctx, c, prefix, taskData, bufferSize, bufferDuration)
 		}
