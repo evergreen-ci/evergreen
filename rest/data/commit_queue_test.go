@@ -86,8 +86,8 @@ func (s *CommitQueueSuite) TestMockGetGitHubPR() {
 	s.Require().NotNil(pr.User.ID)
 	s.Equal(1234, *pr.User.ID)
 
-	s.Require().NotNil(pr.Base.Label)
-	s.Equal("master", *pr.Base.Label)
+	s.Require().NotNil(pr.Base.Ref)
+	s.Equal("master", *pr.Base.Ref)
 }
 
 func (s *CommitQueueSuite) TestMockEnqueue() {
