@@ -201,8 +201,6 @@ func (s *GithubWebhookRouteSuite) TestPushEventTriggersRepoTracker() {
 }
 
 func (s *GithubWebhookRouteSuite) TestCommitQueueCommentTrigger() {
-	s.TestAddIntent()
-
 	event, err := github.ParseWebHook("issue_comment", s.commentBody)
 	s.NotNil(event)
 	s.NoError(err)

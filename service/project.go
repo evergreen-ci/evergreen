@@ -22,6 +22,7 @@ import (
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
+	mgo "gopkg.in/mgo.v2"
 )
 
 const tsFormat = "2006-01-02.15-04-05"
@@ -287,22 +288,21 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		var cq *commitqueue.CommitQueue
-		cq, err = commitqueue.FindOneId(responseRef.Identifier)
+		_, err = commitqueue.FindOneId(responseRef.Identifier)
 		if err != nil {
-			uis.LoggedError(w, r, http.StatusInternalServerError, err)
-			return
-		}
-		if cq == nil {
-			cq = &commitqueue.CommitQueue{ProjectID: responseRef.Identifier}
-			if err = commitqueue.InsertQueue(cq); err != nil {
+			if err == mgo.ErrNotFound {
+				cq := &commitqueue.CommitQueue{ProjectID: responseRef.Identifier}
+				if err = commitqueue.InsertQueue(cq); err != nil {
+					uis.LoggedError(w, r, http.StatusInternalServerError, err)
+					return
+				}
+			} else {
 				uis.LoggedError(w, r, http.StatusInternalServerError, err)
 				return
 			}
 		}
-
-		projectRef.CommitQueue = commitQueueParams
 	}
+	projectRef.CommitQueue = commitQueueParams
 
 	catcher := grip.NewSimpleCatcher()
 	for i, trigger := range responseRef.Triggers {

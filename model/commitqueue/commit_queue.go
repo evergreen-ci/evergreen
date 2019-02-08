@@ -77,7 +77,7 @@ func (q *CommitQueue) findItem(item string) int {
 }
 
 func TriggersCommitQueue(commentAction string, comment string) bool {
-	if commentAction == "delete" {
+	if commentAction == "deleted" {
 		return false
 	}
 	return comment == triggerComment

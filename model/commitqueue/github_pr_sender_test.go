@@ -5,25 +5,35 @@ import (
 
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/mongodb/grip/level"
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/suite"
 )
 
-func TestGithubPRLogger(t *testing.T) {
-	assert := assert.New(t)
+type GitHubPRSenderSuite struct {
+	suite.Suite
+	q *CommitQueue
+}
 
+func TestGitHubPRSenderSuite(t *testing.T) {
+	s := new(GitHubPRSenderSuite)
+	suite.Run(t, s)
+}
+
+func (s *GitHubPRSenderSuite) SetupTest() {
 	dbSessionFactory, err := getDBSessionFactory()
-	assert.NoError(err)
+	s.NoError(err)
 	db.SetGlobalSessionProvider(dbSessionFactory)
-	assert.NoError(db.ClearCollections(Collection))
+	s.NoError(db.ClearCollections(Collection))
 	cq := &CommitQueue{
 		ProjectID: "mci",
 		Queue:     []string{"1", "2"},
 	}
-	assert.NoError(InsertQueue(cq))
+	s.NoError(InsertQueue(cq))
+}
 
+func (s *GitHubPRSenderSuite) TestGithubPRLogger() {
 	errLogger := &mockErrorLogger{}
 	ghPRLogger, err := NewMockGithubPRLogger("mock_gh_pr_logger", errLogger)
-	assert.NoError(err)
+	s.NoError(err)
 
 	msg := GithubMergePR{
 		PatchSucceeded: true,
@@ -36,5 +46,12 @@ func TestGithubPRLogger(t *testing.T) {
 	}
 	c := NewGithubMergePRMessage(level.Info, msg)
 	ghPRLogger.Send(c)
-	assert.Empty(errLogger.errList)
+	s.Empty(errLogger.errList)
+}
+
+func (s *GitHubPRSenderSuite) TestDequeueFromCommitQueue() {
+	s.NoError(dequeueFromCommitQueue("mci", 1))
+	cq, err := FindOneId("mci")
+	s.NoError(err)
+	s.Equal("2", cq.Next())
 }

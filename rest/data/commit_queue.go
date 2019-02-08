@@ -42,7 +42,7 @@ func (pc *DBCommitQueueConnector) EnqueueItem(owner, repo, baseBranch, item stri
 		return errors.Wrapf(err, "can't query for matching project with commit queue enabled. owner: %s, repo: %s, branch: %s", owner, repo, baseBranch)
 	}
 	if proj == nil {
-		return errors.Wrapf(err, "no matching project with commit queue enabled. owner: %s, repo: %s, branch: %s", owner, repo, baseBranch)
+		return errors.Errorf("no matching project with commit queue enabled. owner: %s, repo: %s, branch: %s", owner, repo, baseBranch)
 	}
 
 	projectID := proj.Identifier
@@ -90,13 +90,13 @@ type MockCommitQueueConnector struct {
 
 func (pc *MockCommitQueueConnector) GetGitHubPR(ctx context.Context, owner, repo string, PRNum int) (*github.PullRequest, error) {
 	userID := 1234
-	label := "master"
+	ref := "master"
 	return &github.PullRequest{
 		User: &github.User{
 			ID: &userID,
 		},
 		Base: &github.PullRequestBranch{
-			Label: &label,
+			Ref: &ref,
 		},
 	}, nil
 }
