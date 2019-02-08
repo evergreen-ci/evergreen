@@ -167,6 +167,6 @@ type Communicator interface {
 	CreateVersionFromConfig(context.Context, string, string, bool, []byte) (*model.Version, error)
 
 	// Commit Queue
-	GetCommitQueue(context.Context, string) (*restmodel.APICommitQueue, error)
-	DeleteCommitQueueItem(context.Context, string, string) error
+	GetCommitQueue(ctx context.Context, projectID string) (*restmodel.APICommitQueue, error)
+	DeleteCommitQueueItem(ctx context.Context, projectID string, item string) error
 }

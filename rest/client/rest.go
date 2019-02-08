@@ -676,7 +676,7 @@ func (c *communicatorImpl) GetCommitQueue(ctx context.Context, projectID string)
 		if err = util.ReadJSONInto(resp.Body, &errMsg); err != nil {
 			return nil, errors.Wrap(err, "problem fetching commit queue list and parsing error message")
 		}
-		return nil, errors.Wrap(errMsg, "problem fetching commit queue list")
+		return nil, errMsg
 	}
 
 	cq := model.APICommitQueue{}
@@ -705,7 +705,7 @@ func (c *communicatorImpl) DeleteCommitQueueItem(ctx context.Context, projectID,
 		if err := util.ReadJSONInto(resp.Body, &errMsg); err != nil {
 			return errors.Wrapf(err, "response code %d problem deleting item '%s' from commit queue '%s' and parsing error message", resp.StatusCode, item, projectID)
 		}
-		return errors.Wrapf(errMsg, "problem deleting item '%s' from commit queue '%s'", item, projectID)
+		return errMsg
 	}
 
 	return nil
