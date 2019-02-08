@@ -77,6 +77,7 @@ func New(opts Options, comm client.Communicator) *Agent {
 // Start starts the agent loop. The agent polls the API server for new tasks
 // at interval agentSleepInterval and runs them.
 func (a *Agent) Start(ctx context.Context) error {
+	defer recovery.LogStackTraceAndExit("main agent thread")
 	err := a.startStatusServer(ctx, a.opts.StatusPort)
 	if err != nil {
 		return errors.WithStack(err)
