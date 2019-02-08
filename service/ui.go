@@ -343,7 +343,6 @@ func (uis *UIServer) GetServiceApp() *gimlet.APIApp {
 	app.AddRoute("/admin").Wrap(needsLogin, needsContext).Handler(uis.adminSettings).Get()
 	app.AddRoute("/admin/cleartokens").Wrap(needsSuperUser).Handler(uis.clearAllUserTokens).Post()
 	app.AddRoute("/admin/events").Wrap(needsLogin, needsContext).Handler(uis.adminEvents).Get()
-	app.AddRoute("/admin/commit_queues").Wrap(needsSuperUser).Handler(uis.clearAllCommitQueues).Delete()
 
 	// Plugin routes
 	app.PrefixRoute("/plugin").Route("/buildbaron/jira_bf_search/{task_id}/{execution}").Wrap(needsLogin, needsContext).Handler(uis.bbJiraSearch).Get()

@@ -152,13 +152,14 @@ mciModule.controller('AdminSettingsController', ['$scope', '$window', '$http', '
       return
     }
 
-    $http.delete('/admin/commit_queues').then(
-      function(resp) {
-        notificationService.pushNotification("Operation successful: cleared " + resp.data.cleared_count + " queues", 'notifyHeader', 'success');
-      },
-      function(resp) {
-        notificationService.pushNotification("Failed to clear commit queues: " + resp.data.error, 'errorHeader');
-      });
+    var successHandler = function(resp) {
+      notificationService.pushNotification("Operation successful: cleared " + resp.data.cleared_count + " queues", 'notifyHeader', 'success');
+    };
+    var errorHandler = function(resp) {
+      notificationService.pushNotification("Failed to clear commit queues: " + resp.data.error, 'errorHeader');
+    };
+
+    mciAdminRestService.clearCommitQueues({ success: successHandler, error: errorHandler });
   }
 
   timestamp = function(ts) {
