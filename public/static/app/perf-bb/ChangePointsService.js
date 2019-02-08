@@ -59,6 +59,18 @@ mciModule.factory('ChangePointsService', function(
     )
   }
 
+  // Get unprocessed change points for query, return promise
+  // :param query: The mongo query to filter on.
+  function getUnprocessedChangePoints(query){
+    return Stitch.use(STITCH_CONFIG.PERF).query(function(db) {
+      return db
+        .db(STITCH_CONFIG.PERF.DB_PERF)
+        .collection(STITCH_CONFIG.PERF.COLL_UNPROCESSED_POINTS)
+        .find(query)
+        .execute()
+    })
+  }
+
   // Sets processed_type for the change points
   // :param points: list of change point objects
   // :param mark: PROCESSED_TYPE
@@ -75,5 +87,6 @@ mciModule.factory('ChangePointsService', function(
 
   return {
     markPoints: markPoints,
+    getUnprocessedChangePoints: getUnprocessedChangePoints,
   }
 })

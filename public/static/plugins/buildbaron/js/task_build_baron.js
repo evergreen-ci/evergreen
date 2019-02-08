@@ -1,25 +1,5 @@
-mciModule.controller('TaskBuildBaronCtrl', function($scope, $http, $window, Stitch, STITCH_CONFIG) {
+mciModule.controller('TaskBuildBaronCtrl', function($scope, $http, $window, ChangePointsService) {
 
-  $scope.has_change_points = false
-  checkChangePoints = function(callback){
-    var suspect_revision = $scope.task.gitspec;
-    return Stitch.use(STITCH_CONFIG.PERF).query(function(db) {
-      var query = {
-        project: $scope.task.branch,
-        task: $scope.task.display_name,
-        variant: $scope.task.build_variant,
-        suspect_revision: suspect_revision,
-      }
-      return db
-        .db(STITCH_CONFIG.PERF.DB_PERF)
-        .collection(STITCH_CONFIG.PERF.COLL_UNPROCESSED_POINTS)
-        .find(query)
-        .execute()
-        .then(function(change_points){
-          return callback(change_points.length > 0)
-        })
-    })
-  }
   $scope.conf = $window.plugins["buildbaron"];
 
   var statusKeys = {
@@ -222,7 +202,14 @@ mciModule.controller('TaskBuildBaronCtrl', function($scope, $http, $window, Stit
 
   $scope.newTicket = false;
   $scope.ticketTests = [];
+  $scope.changePoints = []
   $scope.creatingTicket = false;
+
+  $scope.showBuildBaronPanel = function(){
+    return $scope.conf.enabled &&
+           ($scope.task.status.includes('failed') || $scope.changePoints.length || $scope.task.status.includes('timed-out')) &&
+           $scope.have_user
+  }
 
   $scope.setTask = function(task) {
     $scope.task = task;
@@ -236,10 +223,17 @@ mciModule.controller('TaskBuildBaronCtrl', function($scope, $http, $window, Stit
   };
 
   $scope.build_baron_status = "checking for change points";
-  checkChangePoints(function(has_change_points){
+  var query ={
+    project: $scope.task.branch,
+    task: $scope.task.display_name,
+    variant: $scope.task.build_variant,
+    suspect_revision: $scope.task.gitspec,
+  }
+  ChangePointsService.getUnprocessedChangePoints(query).then(function(change_points){
     $scope.setTask($window.task_data);
-    $scope.has_change_points = has_change_points
-    if ( $scope.conf.enabled && $scope.have_user && $scope.task.status == "failed" || $scope.has_change_points ) {
+    $scope.changePoints = change_points
+
+    if ( $scope.conf.enabled && $scope.have_user && $scope.task.status == "failed" || $scope.changePoints.length ) {
       $scope.build_baron_status = "loading";
       $scope.getBuildBaronResults();
       $scope.getFeedback();
