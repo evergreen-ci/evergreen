@@ -73,6 +73,7 @@ Admin Settings
 						<li class="link" ng-click="scrollTo('logger_config')">Logger Config</li>
 						<li class="link" ng-click="scrollTo('notifications')">Notifications Config</li>
 						<li class="link" ng-click="scrollTo('triggers')">Triggers Config</li>
+						<li class="link" ng-click="scrollTo('commit_queue')">Commit Queue</li>
 						<div>Providers</div>
 						<li class="link" ng-click="scrollTo('containerpools')">Container Pools</li>
 						<li class="link" ng-click="scrollTo('aws')">AWS</li>
@@ -488,27 +489,39 @@ Admin Settings
 						</section>
 
 						<section layout="row" flex>
-
-							<md-card flex=50 id="api" style="height:200px">
-								<md-card-title>
-									<md-card-title-text>
-										<span>API</span>
-									</md-card-title-text>
-									<md-button ng-click="clearSection('api')">
-										<i class="fa fa-trash"></i>
-									</md-button>
-								</md-card-title>
-								<md-card-content>
-									<md-input-container class="control" style="width:45%;">
-										<label>HTTP listener address</label>
-										<input type="text" ng-model="Settings.api.http_listen_addr">
-									</md-input-container>
-									<md-input-container class="control" style="width:45%; margin-left:50px;">
-										<label>Github webhook secret</label>
-										<input type="text" ng-model="Settings.api.github_webhook_secret">
-									</md-input-container>
-								</md-card-content>
-							</md-card>
+							<section layout="column" flex>
+								<md-card flex=50 id="api" style="height:200px">
+										<md-card-title>
+											<md-card-title-text>
+												<span>API</span>
+											</md-card-title-text>
+											<md-button ng-click="clearSection('api')">
+												<i class="fa fa-trash"></i>
+											</md-button>
+										</md-card-title>
+										<md-card-content>
+											<md-input-container class="control" style="width:45%;">
+												<label>HTTP listener address</label>
+												<input type="text" ng-model="Settings.api.http_listen_addr">
+											</md-input-container>
+											<md-input-container class="control" style="width:45%; margin-left:50px;">
+												<label>Github webhook secret</label>
+												<input type="text" ng-model="Settings.api.github_webhook_secret">
+											</md-input-container>
+										</md-card-content>
+									</md-card>
+		
+									<md-card flex=50 id="commit_queue">
+											<md-card-title>
+												<md-card-title-text>
+													<span>Commit Queue</span>
+												</md-card-title-text>
+											</md-card-title>
+											<md-card-content>
+												<button ng-click="clearCommitQueues()" class="btn btn-primary">Clear Commit Queues</button>
+											</md-card-content>
+									</md-card>
+							</section>
 
 							<md-card flex=50 id="ui">
 								<md-card-title>

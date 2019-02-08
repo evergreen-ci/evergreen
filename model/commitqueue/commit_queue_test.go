@@ -93,19 +93,36 @@ func (s *CommitQueueSuite) TestRemoveOne() {
 	s.Equal("e345", items[1])
 }
 
-func (s *CommitQueueSuite) TestRemoveAll() {
+func (s *CommitQueueSuite) TestClearAll() {
 	s.Require().NoError(s.q.Enqueue("c123"))
 	s.Require().NoError(s.q.Enqueue("d234"))
 	s.Require().NoError(s.q.Enqueue("e345"))
 	s.Require().Len(s.q.All(), 3)
 
-	s.NoError(s.q.RemoveAll())
-	s.Empty(s.q.All())
+	q := &CommitQueue{
+		ProjectID: "logkeeper",
+		Queue:     []string{},
+	}
+	s.Require().NoError(InsertQueue(q))
 
-	// Persisted to db
-	dbq, err := FindOneId("mci")
+	// Only one commit queue has contents
+	clearedCount, err := ClearAllCommitQueues()
 	s.NoError(err)
-	s.Empty(dbq.All())
+	s.Equal(1, clearedCount)
+
+	s.q, err = FindOneId("mci")
+	s.NoError(err)
+	s.Empty(s.q.All())
+	q, err = FindOneId("logkeeper")
+	s.NoError(err)
+	s.Empty(q.All())
+
+	// both have contents
+	s.Require().NoError(s.q.Enqueue("c1234"))
+	s.Require().NoError(q.Enqueue("d234"))
+	clearedCount, err = ClearAllCommitQueues()
+	s.NoError(err)
+	s.Equal(2, clearedCount)
 }
 
 func (s *CommitQueueSuite) TestCommentTrigger() {

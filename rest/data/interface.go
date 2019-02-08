@@ -234,4 +234,5 @@ type Connector interface {
 	EnqueueItem(string, string, string, string) error
 	FindCommitQueueByID(string) (*restModel.APICommitQueue, error)
 	CommitQueueRemoveItem(string, string) (bool, error)
+	CommitQueueClearAll() (int, error)
 }

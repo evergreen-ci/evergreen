@@ -78,6 +78,28 @@ func (s *CommitQueueSuite) TestCommitQueueRemoveItem() {
 	s.Equal(restModel.ToAPIString("3"), cq.Queue[1])
 }
 
+func (s *CommitQueueSuite) TestCommitQueueClearAll() {
+	s.ctx = &DBConnector{}
+	s.Require().NoError(s.ctx.EnqueueItem("evergreen-ci", "evergreen", "master", "12"))
+	s.Require().NoError(s.ctx.EnqueueItem("evergreen-ci", "evergreen", "master", "34"))
+	s.Require().NoError(s.ctx.EnqueueItem("evergreen-ci", "evergreen", "master", "56"))
+
+	q := &commitqueue.CommitQueue{ProjectID: "logkeeper"}
+	s.Require().NoError(commitqueue.InsertQueue(q))
+
+	// Only one queue is cleared since the second is empty
+	clearedCount, err := s.ctx.CommitQueueClearAll()
+	s.NoError(err)
+	s.Equal(1, clearedCount)
+
+	// both queues have items
+	s.Require().NoError(s.ctx.EnqueueItem("evergreen-ci", "evergreen", "master", "12"))
+	s.NoError(q.Enqueue("78"))
+	clearedCount, err = s.ctx.CommitQueueClearAll()
+	s.NoError(err)
+	s.Equal(2, clearedCount)
+}
+
 func (s *CommitQueueSuite) TestMockGetGitHubPR() {
 	s.ctx = &MockConnector{}
 	pr, err := s.ctx.GetGitHubPR(context.Background(), "evergreen-ci", "evergreen", 1234)
@@ -128,4 +150,17 @@ func (s *CommitQueueSuite) TestMockCommitQueueRemoveItem() {
 	s.NoError(err)
 	s.Equal(restModel.ToAPIString("2"), cq.Queue[0])
 	s.Equal(restModel.ToAPIString("3"), cq.Queue[1])
+}
+
+func (s *CommitQueueSuite) TestMockCommitQueueClearAll() {
+	s.ctx = &MockConnector{}
+	s.Require().NoError(s.ctx.EnqueueItem("evergreen-ci", "evergreen", "master", "12"))
+	s.Require().NoError(s.ctx.EnqueueItem("evergreen-ci", "evergreen", "master", "34"))
+
+	s.Require().NoError(s.ctx.EnqueueItem("evergreen-ci", "logkeeper", "master", "56"))
+	s.Require().NoError(s.ctx.EnqueueItem("evergreen-ci", "logkeeper", "master", "78"))
+
+	clearedCount, err := s.ctx.CommitQueueClearAll()
+	s.NoError(err)
+	s.Equal(2, clearedCount)
 }

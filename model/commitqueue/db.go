@@ -24,6 +24,11 @@ func updateOne(query interface{}, update interface{}) error {
 	)
 }
 
+func updateAll(query interface{}, update interface{}) (int, error) {
+	results, err := db.UpdateAll(Collection, query, update)
+	return results.Updated, err
+}
+
 func FindOneId(id string) (*CommitQueue, error) {
 	return findOne(db.Query(bson.M{IdKey: id}))
 }
@@ -60,9 +65,9 @@ func remove(id string, item string) error {
 	)
 }
 
-func removeAll(id string) error {
-	return updateOne(
-		bson.M{IdKey: id},
+func clearAll() (int, error) {
+	return updateAll(
+		bson.M{},
 		bson.M{"$set": bson.M{QueueKey: []string{}}},
 	)
 }

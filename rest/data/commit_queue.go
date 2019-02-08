@@ -84,6 +84,10 @@ func (pc *DBCommitQueueConnector) CommitQueueRemoveItem(id, item string) (bool, 
 	return cq.Remove(item)
 }
 
+func (pc *DBCommitQueueConnector) CommitQueueClearAll() (int, error) {
+	return commitqueue.ClearAllCommitQueues()
+}
+
 type MockCommitQueueConnector struct {
 	Queue map[string][]restModel.APIString
 }
@@ -133,4 +137,16 @@ func (pc *MockCommitQueueConnector) CommitQueueRemoveItem(id, item string) (bool
 	}
 
 	return false, nil
+}
+
+func (pc *MockCommitQueueConnector) CommitQueueClearAll() (int, error) {
+	var count int
+	for k, v := range pc.Queue {
+		if len(v) > 0 {
+			count++
+		}
+		pc.Queue[k] = []restModel.APIString{}
+	}
+
+	return count, nil
 }

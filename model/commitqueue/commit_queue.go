@@ -59,14 +59,6 @@ func (q *CommitQueue) Remove(item string) (bool, error) {
 	return true, nil
 }
 
-func (q *CommitQueue) RemoveAll() error {
-	if err := removeAll(q.ProjectID); err != nil {
-		return errors.Wrap(err, "can't clear queue")
-	}
-	q.Queue = []string{}
-	return nil
-}
-
 func (q *CommitQueue) findItem(item string) int {
 	for i, queued := range q.Queue {
 		if queued == item {
@@ -81,4 +73,13 @@ func TriggersCommitQueue(commentAction string, comment string) bool {
 		return false
 	}
 	return comment == triggerComment
+}
+
+func ClearAllCommitQueues() (int, error) {
+	clearedCount, err := clearAll()
+	if err != nil {
+		return 0, errors.Wrap(err, "can't clear queue")
+	}
+
+	return clearedCount, nil
 }

@@ -372,6 +372,10 @@ mciServices.rest.factory('mciAdminRestService', ['mciBaseRestService', function(
       baseSvc.postResource(resource + "/revert", [], config, callbacks);
     }
 
+    service.clearCommitQueues = function(callbacks) {
+        baseSvc.deleteResource(resource + "/commit_queues", [], {}, callbacks);
+    }
+
     return service;
 }]);
 
