@@ -61,6 +61,11 @@ func TestCommandFileLogging(t *testing.T) {
 	// run a task with a command logger specified as a file
 	taskID := "logging"
 	taskSecret := "mock_task_secret"
+	task := &task.Task{
+		Id:          "t1",
+		Execution:   0,
+		DisplayName: "task1",
+	}
 	tc := &taskContext{
 		taskDirectory: tmpDirName,
 		task: client.TaskData{
@@ -69,11 +74,7 @@ func TestCommandFileLogging(t *testing.T) {
 		},
 		runGroupSetup: true,
 		taskConfig: &model.TaskConfig{
-			Task: &task.Task{
-				Id:          "t1",
-				Execution:   0,
-				DisplayName: "task1",
-			},
+			Task:         task,
 			BuildVariant: &model.BuildVariant{Name: "bv"},
 			Project: &model.Project{
 				Tasks: []model.ProjectTask{
@@ -99,6 +100,7 @@ func TestCommandFileLogging(t *testing.T) {
 			Timeout: &model.Timeout{IdleTimeoutSecs: 15, ExecTimeoutSecs: 15},
 			WorkDir: tmpDirName,
 		},
+		taskModel: task,
 	}
 	err = agt.resetLogging(ctx, tc)
 	assert.NoError(err)
@@ -190,6 +192,9 @@ func TestLogkeeperMetadataPopulated(t *testing.T) {
 
 	taskID := "logging"
 	taskSecret := "mock_task_secret"
+	task := &task.Task{
+		DisplayName: "task1",
+	}
 	tc := &taskContext{
 		task: client.TaskData{
 			ID:     taskID,
@@ -203,12 +208,11 @@ func TestLogkeeperMetadataPopulated(t *testing.T) {
 			},
 		},
 		taskConfig: &model.TaskConfig{
-			Task: &task.Task{
-				DisplayName: "task1",
-			},
+			Task:         task,
 			BuildVariant: &model.BuildVariant{Name: "bv"},
 			Timeout:      &model.Timeout{IdleTimeoutSecs: 15, ExecTimeoutSecs: 15},
 		},
+		taskModel: task,
 	}
 	err := agt.resetLogging(ctx, tc)
 	assert.NoError(err)
