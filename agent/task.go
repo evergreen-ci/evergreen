@@ -128,6 +128,7 @@ func (a *Agent) startTask(ctx context.Context, tc *taskContext, complete chan<- 
 	}
 
 	a.killProcs(tc, false)
+
 	if err = a.runPreTaskCommands(innerCtx, tc); err != nil {
 		complete <- evergreen.TaskSetupFailed
 		return
@@ -152,10 +153,9 @@ func (a *Agent) runPreTaskCommands(ctx context.Context, tc *taskContext) error {
 			return nil
 		}
 		if taskGroup.SetupGroup != nil {
-			err = a.runCommands(ctx, tc, taskGroup.SetupGroup.List(), taskGroup.SetupGroupFailTask)
+			err = a.runCommands(ctx, tc, taskGroup.SetupGroup.List(), false, taskGroup.SetupGroupFailTask)
 			if err != nil {
-				err = errors.Wrap(err, "error running task setup group")
-				tc.logger.Execution().Error(err)
+				tc.logger.Execution().Error(errors.Wrap(err, "error running task setup group"))
 				if taskGroup.SetupGroupFailTask {
 					return err
 				}
@@ -169,7 +169,7 @@ func (a *Agent) runPreTaskCommands(ctx context.Context, tc *taskContext) error {
 		return nil
 	}
 	if taskGroup.SetupTask != nil {
-		err = a.runCommands(ctx, tc, taskGroup.SetupTask.List(), false)
+		err = a.runCommands(ctx, tc, taskGroup.SetupTask.List(), false, false)
 	}
 	tc.logger.Task().ErrorWhenf(err != nil, "Running pre-task commands failed: %v", err)
 	tc.logger.Task().InfoWhen(err == nil, "Finished running pre-task commands.")
@@ -194,7 +194,7 @@ func (tc *taskContext) setCurrentTimeout(cmd command.Command) {
 	defer tc.Unlock()
 
 	var timeout time.Duration
-	if cmd == nil || tc.taskConfig.Timeout == nil {
+	if cmd == nil {
 		timeout = defaultIdleTimeout
 	} else if dynamicTimeout := tc.taskConfig.GetIdleTimeout(); dynamicTimeout != 0 {
 		timeout = time.Duration(dynamicTimeout) * time.Second

@@ -189,7 +189,7 @@ func (s *AgentSuite) TestCancelRunCommands() {
 		},
 	}
 	cmds := []model.PluginCommandConf{cmd}
-	err := s.a.runCommands(ctx, s.tc, cmds, false)
+	err := s.a.runCommands(ctx, s.tc, cmds, false, false)
 	s.Error(err)
 	s.Equal("runCommands canceled", err.Error())
 }

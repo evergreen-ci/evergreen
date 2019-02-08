@@ -341,7 +341,7 @@ func (a *Agent) runTaskTimeoutCommands(ctx context.Context, tc *taskContext) {
 		return
 	}
 	if taskGroup.Timeout != nil {
-		err := a.runCommands(ctx, tc, taskGroup.Timeout.List(), false)
+		err := a.runCommands(ctx, tc, taskGroup.Timeout.List(), false, false)
 		tc.logger.Execution().ErrorWhenf(err != nil, "Error running timeout command: %v", err)
 		tc.logger.Task().InfoWhenf(err == nil, "Finished running timeout commands in %v.", time.Since(start).String())
 	}
@@ -403,7 +403,7 @@ func (a *Agent) runPostTaskCommands(ctx context.Context, tc *taskContext) {
 		return
 	}
 	if taskGroup.TeardownTask != nil {
-		err := a.runCommands(ctx, tc, taskGroup.TeardownTask.List(), false)
+		err := a.runCommands(ctx, tc, taskGroup.TeardownTask.List(), false, false)
 		tc.logger.Task().ErrorWhenf(err != nil, "Error running post-task command: %v", err)
 		tc.logger.Task().InfoWhenf(err == nil, "Finished running post-task commands in %v.", time.Since(start).String())
 	}
@@ -431,7 +431,7 @@ func (a *Agent) runPostGroupCommands(ctx context.Context, tc *taskContext) {
 		var cancel context.CancelFunc
 		ctx, cancel = a.withCallbackTimeout(ctx, tc)
 		defer cancel()
-		err := a.runCommands(ctx, tc, taskGroup.TeardownGroup.List(), false)
+		err := a.runCommands(ctx, tc, taskGroup.TeardownGroup.List(), false, false)
 		grip.ErrorWhenf(err != nil, "Error running post-task command: %v", err)
 		grip.InfoWhen(err == nil, "Finished running post-group commands")
 	}

@@ -13,7 +13,8 @@ import (
 	"github.com/pkg/errors"
 )
 
-func (a *Agent) runCommands(ctx context.Context, tc *taskContext, commands []model.PluginCommandConf, isTaskCommands bool) (err error) {
+func (a *Agent) runCommands(ctx context.Context, tc *taskContext, commands []model.PluginCommandConf,
+	isTaskCommands bool, shouldSetupFail bool) (err error) {
 	var cmds []command.Command
 	defer func() { err = recovery.HandlePanicWithError(recover(), err, "run commands") }()
 
@@ -32,7 +33,7 @@ func (a *Agent) runCommands(ctx context.Context, tc *taskContext, commands []mod
 			err = nil
 			continue
 		}
-		if err = a.runCommandSet(ctx, tc, commandInfo, cmds, isTaskCommands, i+1, len(commands)); err != nil {
+		if err = a.runCommandSet(ctx, tc, commandInfo, cmds, isTaskCommands, shouldSetupFail, i+1, len(commands)); err != nil {
 			return errors.WithStack(err)
 		}
 	}
@@ -41,7 +42,7 @@ func (a *Agent) runCommands(ctx context.Context, tc *taskContext, commands []mod
 }
 
 func (a *Agent) runCommandSet(ctx context.Context, tc *taskContext, commandInfo model.PluginCommandConf,
-	cmds []command.Command, isTaskCommands bool, index, total int) error {
+	cmds []command.Command, isTaskCommands bool, shouldSetupFail bool, index, total int) error {
 
 	var err error
 	var logger client.LoggerProducer
@@ -115,7 +116,7 @@ func (a *Agent) runCommandSet(ctx context.Context, tc *taskContext, commandInfo 
 		case err = <-cmdChan:
 			if err != nil {
 				tc.logger.Task().Errorf("Command failed: %v", err)
-				if isTaskCommands {
+				if isTaskCommands || shouldSetupFail {
 					return errors.Wrap(err, "command failed")
 				}
 			}
@@ -145,7 +146,7 @@ func (a *Agent) runTaskCommands(ctx context.Context, tc *taskContext) error {
 	}
 	tc.logger.Execution().Info("Running task commands.")
 	start := time.Now()
-	err := a.runCommands(ctx, tc, task.Commands, true)
+	err := a.runCommands(ctx, tc, task.Commands, true, false)
 	tc.logger.Execution().Infof("Finished running task commands in %v.", time.Since(start).String())
 	if err != nil {
 		tc.logger.Execution().Errorf("Task failed: %v", err)
