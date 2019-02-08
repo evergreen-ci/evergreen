@@ -416,19 +416,32 @@ mciModule.controller('PerfController', function PerfController(
 
   function markChangePoints(points, mark) {
     ChangePointsService.markPoints(points, mark).then(function() {
-      // Acked points should remain (at least for now)
-      if (mark != PROCESSED_TYPE.ACKNOWLEDGED) {
-        $scope.$emit('changePointsRemove', _.pluck(points, 'suspect_revision'))
-      }
+      $scope.$emit('changePointsUpdate', {
+        pointRevs: _.pluck(points, 'suspect_revision'),
+        processed_type: mark,
+      })
     }, _.noop)
   }
 
   $scope.ackChangePoints = function(points) {
-    markChangePoints(points, PROCESSED_TYPE.ACKNOWLEDGED)
+    markChangePoints(
+      _.filter(points, (d) => d.processed_type === PROCESSED_TYPE.NONE),
+      PROCESSED_TYPE.ACKNOWLEDGED
+    )
   }
 
   $scope.hideChangePoints = function(points) {
-    markChangePoints(points, PROCESSED_TYPE.HIDDEN)
+    markChangePoints(
+      _.filter(points, (d) => d.processed_type === PROCESSED_TYPE.NONE),
+      PROCESSED_TYPE.HIDDEN
+    )
+  }
+
+  $scope.unmarkChangePoints = function(points) {
+    markChangePoints(
+      _.filter(points, (d) => d.processed_type != PROCESSED_TYPE.NONE),
+      PROCESSED_TYPE.NONE
+    )
   }
 
   $scope.getSampleAtCommit = function(series, commit) {
@@ -538,7 +551,7 @@ mciModule.controller('PerfController', function PerfController(
         setTimeout(function(){drawDetailGraph($scope.perfSample, $scope.comparePerfSamples, $scope.task.id)},0);
 
         // This code loads change points for current task from the mdb cloud
-        var changePointsQ = Stitch.use(STITCH_CONFIG.PERF).query(function(db) {
+        var unprocessedPointsQ = Stitch.use(STITCH_CONFIG.PERF).query(function(db) {
           return db
             .db(STITCH_CONFIG.PERF.DB_PERF)
             .collection(STITCH_CONFIG.PERF.COLL_UNPROCESSED_POINTS)
@@ -549,13 +562,46 @@ mciModule.controller('PerfController', function PerfController(
             })
             .execute()
         }).then(
-          function(docs) {
-            return _.groupBy(docs, 'test')
-          }, function(err) {
+          function(docs) { return docs },
+          function(err) {
             $log.error('Cannot load change points!', err)
             return {} // Try to recover an error
-        }).then(function(data) {
-          $scope.changePoints = data
+        })
+
+        const processedPointsQ = Stitch.use(STITCH_CONFIG.PERF).query(function(db) {
+          return db
+            .db(STITCH_CONFIG.PERF.DB_PERF)
+            .collection(STITCH_CONFIG.PERF.COLL_PROCESSED_POINTS)
+            .find({
+              project: $scope.task.branch,
+              task: $scope.task.display_name,
+              variant: $scope.task.build_variant,
+            })
+            .execute()
+        }).then(
+          function(docs) { return docs },
+          function(err) {
+            $log.error('Cannot load processed change points!', err)
+            return {} // Try to recover an error
+        })
+        const changePointsQ = $q.all({
+          processed: processedPointsQ,
+          unprocessed: unprocessedPointsQ,
+        }).then(function(points) {
+          // Merge processed and unprocessed change points
+          // Processed ones always have a priority
+          // (in situations, when the revision has one processed
+          // and one unprocessed point)
+          const docs = _.reduce(points.unprocessed, function(m, d) {
+            // If there are no processed change point with same revision
+            if (!_.findWhere(m, {suspect_revision: d.suspect_revision})) {
+              return m.concat(d)
+            }
+            return m
+          }, points.processed)
+          // Group all items by test
+          $scope.changePoints = _.groupBy(docs, 'test')
+          return $scope.changePoints
         })
 
         var buildFailuresQ = Stitch.use(STITCH_CONFIG.PERF).query(function(db) {

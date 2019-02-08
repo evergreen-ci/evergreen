@@ -7,7 +7,7 @@ function d3Translate(x, y) {
 
 // TODO Create AngularJS directive
 mciModule.factory('DrawPerfTrendChart', function (
-  PerfChartService, Rounder
+  PerfChartService, PROCESSED_TYPE, Rounder
 ) {
   const MAXONLY = 'maxonly';
   let round = Rounder.get({rre: 0.01, trailingZeros: true})
@@ -631,7 +631,6 @@ mciModule.factory('DrawPerfTrendChart', function (
           })
         .append('line')
         .style({
-          stroke: 'red',
           'stroke-width': '4',
         })
 
@@ -646,6 +645,14 @@ mciModule.factory('DrawPerfTrendChart', function (
           y2: function(d) {
             return yScale(getValueFor(d.level)(series[d.changePoint._meta.lastRevIdx]))
           },
+        })
+        .style({
+          stroke: (d) =>
+            d.changePoint.processed_type === PROCESSED_TYPE.NONE ? 'red' :
+            d.changePoint.processed_type === PROCESSED_TYPE.ACKNOWLEDGED ? 'green' :
+            d.changePoint.processed_type === PROCESSED_TYPE.HIDDEN ? 'darkblue' :
+            'cyan' // cyan for invalid processed_type
+          ,
         })
 
       changePointSegments.exit().remove()
@@ -1129,11 +1136,15 @@ mciModule.factory('DrawPerfTrendChart', function (
       })
     }
 
-    // Fired when the user click Ack/Hide buttons for the change point
-    scope.$parent.$on('changePointsRemove', function(evt, cpRevisions) {
-      visibleChangePoints = _.filter(visibleChangePoints, function(d) {
-        return !_.contains(cpRevisions, d.suspect_revision)
+    // :ptype context: {pointRevs: Array<String>, processed_type: PROCESSED_TYPE}
+    scope.$parent.$on('changePointsUpdate', function(evt, context) {
+      // Assign new processed_type to visible change points
+      _.each(visibleChangePoints, function(cp) {
+        if (_.contains(context.pointRevs, cp.suspect_revision)) {
+          cp.processed_type = context.processed_type
+        }
       })
+
       redrawChangePoints()
       // Hide a tooltip
       toolTipG.style('opacity', 0)

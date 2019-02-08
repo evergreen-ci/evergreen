@@ -380,6 +380,12 @@
                           ng-click="hideChangePoints(cps)"
                   >Hide</button>
                 </div>
+                <div class="btn-group">
+                  <button class="btn btn-xs btn-primary"
+                          ng-disabled="!cps.length"
+                          ng-click="unmarkChangePoints(cps)"
+                  >Unmark</button>
+                </div>
               </div>
               <div ng-show="!comparePerfSample">
                 <button ng-click="addComparisonHash(hoverSamples[k].revision)" class="btn btn-sm">Compare</button>

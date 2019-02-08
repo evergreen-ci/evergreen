@@ -38,7 +38,7 @@ mciModule.factory('ChangePointsService', function(
   function dbDispatchMarkPoints(points, mark, mode) {
     if (!points || !points.length) return
     // Dispatching
-    if (mark == undefined) {
+    if (mark == PROCESSED_TYPE.NONE) {
       dbUnmarkPoints(points)
     } else if (_.contains(PROCESSED_TYPE.ALL, mark)) {
       if (mode == 'processed') {
