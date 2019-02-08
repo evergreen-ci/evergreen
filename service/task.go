@@ -55,6 +55,7 @@ type uiTaskData struct {
 	IngestTime           time.Time               `json:"ingest_time"`
 	EstWaitTime          time.Duration           `json:"wait_time"`
 	UpstreamData         *uiUpstreamData         `json:"upstream_data,omitempty"`
+	Logs                 *apimodels.TaskLogs     `json:"logs,omitempty"`
 
 	// from the host doc (the dns name)
 	HostDNS string `json:"host_dns,omitempty"`
@@ -231,6 +232,7 @@ func (uis *UIServer) taskPage(w http.ResponseWriter, r *http.Request) {
 		VersionId:            projCtx.Version.Id,
 		RepoOwner:            projCtx.ProjectRef.Owner,
 		Repo:                 projCtx.ProjectRef.Repo,
+		Logs:                 projCtx.Task.Logs,
 		Archived:             archived,
 		TotalExecutions:      totalExecutions,
 		PartOfDisplay:        projCtx.Task.IsPartOfDisplay(),
