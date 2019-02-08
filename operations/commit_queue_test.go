@@ -77,7 +77,7 @@ func (s *CommitQueueSuite) TestListContents() {
 	origStdout := os.Stdout
 	r, w, _ := os.Pipe()
 	os.Stdout = w
-	grip.SetSender(send.MakePlainLogger())
+	s.NoError(grip.SetSender(send.MakePlainLogger()))
 	s.NoError(listCommitQueue(s.ctx, s.client, "mci"))
 	s.NoError(w.Close())
 	os.Stdout = origStdout
@@ -108,7 +108,7 @@ func (s *CommitQueueSuite) TestDeleteCommitQueueItem() {
 	origStdout := os.Stdout
 	r, w, _ := os.Pipe()
 	os.Stdout = w
-	grip.SetSender(send.MakePlainLogger())
+	s.NoError(grip.SetSender(send.MakePlainLogger()))
 	s.NoError(deleteCommitQueueItem(s.ctx, s.client, "mci", "123"))
 	s.NoError(w.Close())
 	os.Stdout = origStdout
