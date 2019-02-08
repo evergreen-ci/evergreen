@@ -30,6 +30,7 @@ var (
 	TagKey                       = bsonutil.MustHaveTag(Host{}, "Tag")
 	DistroKey                    = bsonutil.MustHaveTag(Host{}, "Distro")
 	ProviderKey                  = bsonutil.MustHaveTag(Host{}, "Provider")
+	IPKey                        = bsonutil.MustHaveTag(Host{}, "IP")
 	ProvisionedKey               = bsonutil.MustHaveTag(Host{}, "Provisioned")
 	ProvisionTimeKey             = bsonutil.MustHaveTag(Host{}, "ProvisionTime")
 	ExtIdKey                     = bsonutil.MustHaveTag(Host{}, "ExternalIdentifier")

@@ -21,6 +21,7 @@ import (
 )
 
 const defaultRegion = "us-east-1"
+const MockIPV6 = "abcd:1234:459c:2d00:cfe4:843b:1d60:8e47"
 
 // AWSClient is a wrapper for aws-sdk-go so we can use a mock in testing.
 type AWSClient interface {
@@ -605,6 +606,8 @@ func (c *awsClientMock) DescribeInstances(ctx context.Context, input *ec2.Descri
 	if c.DescribeInstancesOutput != nil {
 		return c.DescribeInstancesOutput, nil
 	}
+	ipv6 := ec2.InstanceIpv6Address{}
+	ipv6.SetIpv6Address(MockIPV6)
 	return &ec2.DescribeInstancesOutput{
 		Reservations: []*ec2.Reservation{
 			&ec2.Reservation{
@@ -616,6 +619,13 @@ func (c *awsClientMock) DescribeInstances(ctx context.Context, input *ec2.Descri
 							Name: aws.String(ec2.InstanceStateNameRunning),
 						},
 						PublicDnsName: aws.String("public_dns_name"),
+						NetworkInterfaces: []*ec2.InstanceNetworkInterface{
+							&ec2.InstanceNetworkInterface{
+								Ipv6Addresses: []*ec2.InstanceIpv6Address{
+									&ipv6,
+								},
+							},
+						},
 					},
 				},
 			},
@@ -763,6 +773,15 @@ func (c *awsClientMock) GetInstanceInfo(ctx context.Context, id string) (*ec2.In
 	instance.InstanceType = aws.String("m3.4xlarge")
 	instance.LaunchTime = aws.Time(time.Now())
 	instance.PublicDnsName = aws.String("public_dns_name")
+	ipv6 := ec2.InstanceIpv6Address{}
+	ipv6.SetIpv6Address(MockIPV6)
+	instance.NetworkInterfaces = []*ec2.InstanceNetworkInterface{
+		&ec2.InstanceNetworkInterface{
+			Ipv6Addresses: []*ec2.InstanceIpv6Address{
+				&ipv6,
+			},
+		},
+	}
 	instance.State = &ec2.InstanceState{}
 	instance.State.Name = aws.String("running")
 	return instance, nil

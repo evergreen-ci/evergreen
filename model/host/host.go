@@ -26,6 +26,7 @@ type Host struct {
 	Tag      string        `bson:"tag" json:"tag"`
 	Distro   distro.Distro `bson:"distro" json:"distro"`
 	Provider string        `bson:"host_type" json:"host_type"`
+	IP       string        `bson:"ip_address" json:"ip_address"`
 
 	// secondary (external) identifier for the host
 	ExternalIdentifier string `bson:"ext_identifier" json:"ext_identifier"`
@@ -73,7 +74,7 @@ type Host struct {
 
 	Status    string `bson:"status" json:"status"`
 	StartedBy string `bson:"started_by" json:"started_by"`
-	// UserHost is alwayas false, and will be removed
+	// UserHost is always false, and will be removed
 	UserHost      bool   `bson:"user_host" json:"user_host"`
 	AgentRevision string `bson:"agent_revision" json:"agent_revision"`
 	NeedsNewAgent bool   `bson:"needs_agent" json:"needs_agent"`
@@ -339,6 +340,27 @@ func (h *Host) SetDNSName(dnsName string) error {
 		return nil
 	}
 	return err
+}
+
+func (h *Host) SetIPv6Address(ipv6Address string) error {
+	err := UpdateOne(
+		bson.M{
+			IdKey: h.Id,
+			IPKey: "",
+		},
+		bson.M{
+			"$set": bson.M{
+				IPKey: ipv6Address,
+			},
+		},
+	)
+
+	if err != nil {
+		return errors.Wrap(err, "error finding instance")
+	}
+
+	h.IP = ipv6Address
+	return nil
 }
 
 func (h *Host) MarkAsProvisioned() error {

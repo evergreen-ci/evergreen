@@ -185,7 +185,11 @@ func (j *setupHostJob) setDNSName(ctx context.Context, host *host.Host, cloudMgr
 
 	// sanity check for the host DNS name
 	if hostDNS == "" {
-		return errors.Errorf("instance %s is running but not returning a DNS name", host.Id)
+		// DNS name not required if IP address set
+		if host.IP != "" {
+			return nil
+		}
+		return errors.Errorf("instance %s is running but not returning a DNS name or IP address", host.Id)
 	}
 
 	// update the host's DNS name
