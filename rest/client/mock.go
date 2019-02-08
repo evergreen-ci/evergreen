@@ -556,3 +556,16 @@ func (c *Mock) GetSubscriptions(_ context.Context) ([]event.Subscription, error)
 func (c *Mock) CreateVersionFromConfig(ctx context.Context, project, message string, active bool, config []byte) (*serviceModel.Version, error) {
 	return &serviceModel.Version{}, nil
 }
+
+func (c *Mock) GetCommitQueue(ctx context.Context, projectID string) (*model.APICommitQueue, error) {
+	return &model.APICommitQueue{
+		ProjectID: model.ToAPIString("mci"),
+		Queue: []model.APIString{
+			model.ToAPIString("123"), model.ToAPIString("456"), model.ToAPIString("789"),
+		},
+	}, nil
+}
+
+func (c *Mock) DeleteCommitQueueItem(ctx context.Context, projectID, item string) error {
+	return nil
+}
