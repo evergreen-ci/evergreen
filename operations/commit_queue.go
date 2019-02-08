@@ -2,7 +2,6 @@ package operations
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/evergreen-ci/evergreen/rest/client"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
@@ -11,11 +10,7 @@ import (
 	"github.com/urfave/cli"
 )
 
-const (
-	listFlagName   = "list"
-	deleteFlagName = "delete"
-	itemFlagName   = "item"
-)
+const itemFlagName = "item"
 
 func CommitQueue() cli.Command {
 	return cli.Command{
@@ -97,8 +92,8 @@ func listCommitQueue(ctx context.Context, client client.Communicator, projectID 
 		return err
 	}
 
-	fmt.Printf("Project: %s\n", restModel.FromAPIString(cq.ProjectID))
-	fmt.Printf("Queue Length: %d\n", len(cq.Queue))
+	grip.Infof("Project: %s\n", restModel.FromAPIString(cq.ProjectID))
+	grip.Infof("Queue Length: %d\n", len(cq.Queue))
 	for i, item := range cq.Queue {
 		grip.Infof("\t%d: %s\n", i+1, restModel.FromAPIString(item))
 	}

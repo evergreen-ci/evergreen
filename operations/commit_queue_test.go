@@ -14,6 +14,8 @@ import (
 	"github.com/evergreen-ci/evergreen/rest/client"
 	"github.com/evergreen-ci/evergreen/service"
 	"github.com/evergreen-ci/evergreen/testutil"
+	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/send"
 	"github.com/stretchr/testify/suite"
 	yaml "gopkg.in/yaml.v2"
 )
@@ -72,12 +74,13 @@ func (s *CommitQueueSuite) TestListContents() {
 	}
 	s.Require().NoError(commitqueue.InsertQueue(cq))
 
-	origStdOut := os.Stdout
+	origStdout := os.Stdout
 	r, w, _ := os.Pipe()
 	os.Stdout = w
+	grip.SetSender(send.MakePlainLogger())
 	s.NoError(listCommitQueue(s.ctx, s.client, "mci"))
 	s.NoError(w.Close())
-	os.Stdout = origStdOut
+	os.Stdout = origStdout
 	out, _ := ioutil.ReadAll(r)
 	stringOut := string(out[:])
 
@@ -102,12 +105,13 @@ func (s *CommitQueueSuite) TestDeleteCommitQueueItem() {
 
 	s.Error(deleteCommitQueueItem(s.ctx, s.client, "mci", "not_here"))
 
-	origStdOut := os.Stdout
+	origStdout := os.Stdout
 	r, w, _ := os.Pipe()
 	os.Stdout = w
+	grip.SetSender(send.MakePlainLogger())
 	s.NoError(deleteCommitQueueItem(s.ctx, s.client, "mci", "123"))
 	s.NoError(w.Close())
-	os.Stdout = origStdOut
+	os.Stdout = origStdout
 	out, _ := ioutil.ReadAll(r)
 	stringOut := string(out[:])
 
