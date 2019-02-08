@@ -799,7 +799,7 @@ task_groups:
 - name: example_task_group
   share_processes: true
   max_hosts: 2
-  setup_group_fail_task: true
+  setup_group_can_fail_task: true
   setup_group:
   - command: shell.exec
     params:

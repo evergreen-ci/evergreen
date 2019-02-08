@@ -616,7 +616,7 @@ func (s *AgentSuite) TestGroupPreGroupCommandsFail() {
 	projYml := `
 task_groups:
 - name: task_group_name
-  setup_group_fail_task: true
+  setup_group_can_fail_task: true
   setup_group:
   - command: thisisnotarealcommand
     params:

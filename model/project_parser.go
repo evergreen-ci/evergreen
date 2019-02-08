@@ -73,7 +73,7 @@ type parserTaskGroup struct {
 	ExecTimeoutSecs    int                `yaml:"exec_timeout_secs,omitempty"`
 	Stepback           *bool              `yaml:"stepback,omitempty"`
 	MaxHosts           int                `yaml:"max_hosts,omitempty"`
-	SetupGroupFailTask bool               `yaml:"setup_group_fail_task,omitempty"`
+	SetupGroupFailTask bool               `yaml:"setup_group_can_fail_task,omitempty"`
 	SetupGroup         *YAMLCommandSet    `yaml:"setup_group,omitempty"`
 	TeardownGroup      *YAMLCommandSet    `yaml:"teardown_group,omitempty"`
 	SetupTask          *YAMLCommandSet    `yaml:"setup_task,omitempty"`
