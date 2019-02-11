@@ -11,7 +11,6 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/service"
-	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/amboy/queue"
@@ -214,7 +213,7 @@ func getAdminService(env evergreen.Environment, settings *evergreen.Settings) (h
 	app := gimlet.NewApp()
 	app.AddMiddleware(gimlet.MakeRecoveryLogger())
 
-	handler, err := gimlet.MergeApplications(app, localAbort, remoteAbort, localReporting, remoteReporting, util.GetPprofApp())
+	handler, err := gimlet.MergeApplications(app, localAbort, remoteAbort, localReporting, remoteReporting, gimlet.GetPProfApp())
 	if err != nil {
 		return nil, errors.Wrap(err, "problem assembling handler")
 	}
