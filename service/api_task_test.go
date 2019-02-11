@@ -271,7 +271,7 @@ func TestAssignNextAvailableTask(t *testing.T) {
 func TestNextTask(t *testing.T) {
 	conf := testutil.TestConfig()
 	queue := evergreen.GetEnvironment().LocalQueue()
-	singleQueue := evergreen.GetEnvironment().SingleWorkerQueue()
+	generateQueue := evergreen.GetEnvironment().GenerateTasksQueue()
 
 	Convey("with tasks, a host, a build, and a task queue", t, func() {
 		if err := db.ClearCollections(host.Collection, task.Collection, model.TaskQueuesCollection, build.Collection, evergreen.ConfigCollection); err != nil {
@@ -284,7 +284,7 @@ func TestNextTask(t *testing.T) {
 			t.Fatalf("unable to create admin settings: %v", err)
 		}
 
-		as, err := NewAPIServer(conf, queue, singleQueue)
+		as, err := NewAPIServer(conf, queue, generateQueue)
 		if err != nil {
 			t.Fatalf("creating test API server: %v", err)
 		}
@@ -568,12 +568,12 @@ func TestTaskLifecycleEndpoints(t *testing.T) {
 		}
 
 		q := queue.NewLocalLimitedSize(4, 2048)
-		singleQueue := queue.NewLocalOrdered(1)
+		generateQueue := queue.NewLocalOrdered(1)
 		if err := q.Start(ctx); err != nil {
 			t.Fatalf("failed to start queue %s", err)
 		}
 
-		as, err := NewAPIServer(conf, q, singleQueue)
+		as, err := NewAPIServer(conf, q, generateQueue)
 		if err != nil {
 			t.Fatalf("creating test API server: %v", err)
 		}

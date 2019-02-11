@@ -72,15 +72,16 @@ type Environment interface {
 	// The Environment provides access to three queues, a
 	// local-process level queue that is not persisted between
 	// runs, a remote shared queue that all processes can use
-	// to distribute work amongst the application tier, and a single-worker
-	// queue, which has only a single worker per app server.
+	// to distribute work amongst the application tier, and a queue
+	// for generate.tasks, which has a smaller number of workers
+	// per app server.
 	//
 	// The LocalQueue is not durable, and results aren't available
 	// between process restarts. The RemoteQueue is not
 	// (generally) started by default.
 	LocalQueue() amboy.Queue
 	RemoteQueue() amboy.Queue
-	SingleWorkerQueue() amboy.Queue
+	GenerateTasksQueue() amboy.Queue
 
 	// ClientConfig provides access to a list of the latest evergreen
 	// clients, that this server can serve to users
@@ -118,7 +119,7 @@ type ClientConfig struct {
 type envState struct {
 	remoteQueue        amboy.Queue
 	localQueue         amboy.Queue
-	singleWorkerQueue  amboy.Queue
+	generateTasksQueue amboy.Queue
 	notificationsQueue amboy.Queue
 	settings           *Settings
 	session            *mgo.Session
@@ -243,14 +244,14 @@ func (e *envState) createQueues(ctx context.Context) error {
 	if err != nil {
 		return errors.Wrap(err, "problem setting queue backend")
 	}
-	singleq := queue.NewRemoteUnordered(8)
-	if err = singleq.SetDriver(singlemdb); err != nil {
+	generateTasksQ := queue.NewRemoteUnordered(8)
+	if err = generateTasksQ.SetDriver(singlemdb); err != nil {
 		return errors.WithStack(err)
 	}
-	if err = singleq.SetRunner(pool.NewAbortablePool(1, singleq)); err != nil {
-		return errors.Wrap(err, "problem configuring worker pool for single worker queue")
+	if err = generateTasksQ.SetRunner(pool.NewAbortablePool(1, generateTasksQ)); err != nil {
+		return errors.Wrap(err, "problem configuring worker pool for generate tasks queue")
 	}
-	e.singleWorkerQueue = singleq
+	e.generateTasksQueue = generateTasksQ
 
 	// Notifications queue w/ moving weight avg pool
 	e.notificationsQueue = queue.NewLocalLimitedSize(len(e.senders), e.settings.Amboy.LocalStorage)
@@ -512,10 +513,10 @@ func (e *envState) RemoteQueue() amboy.Queue {
 	return e.remoteQueue
 }
 
-func (e *envState) SingleWorkerQueue() amboy.Queue {
+func (e *envState) GenerateTasksQueue() amboy.Queue {
 	e.mu.RLock()
 	defer e.mu.RUnlock()
-	return e.singleWorkerQueue
+	return e.generateTasksQueue
 }
 
 func (e *envState) Session() *mgo.Session {

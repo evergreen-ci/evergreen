@@ -76,7 +76,7 @@ func (e *Environment) LocalQueue() amboy.Queue {
 	return e.Local
 }
 
-func (e *Environment) SingleWorkerQueue() amboy.Queue {
+func (e *Environment) GenerateTasksQueue() amboy.Queue {
 	e.mu.RLock()
 	defer e.mu.RUnlock()
 	return e.SingleWorker
