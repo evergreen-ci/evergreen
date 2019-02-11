@@ -610,6 +610,27 @@ func GithubUserInOrganization(ctx context.Context, token, requiredOrganization, 
 	return isMember, err
 }
 
+func GitHubUserPermissionLevel(ctx context.Context, token, owner, repo, username string) (string, error) {
+	all := rehttp.RetryAll(rehttp.RetryMaxRetries(NumGithubRetries-1), githubShouldRetryWith404s)
+	httpClient, err := util.GetRetryableOauth2HTTPClient(token, all, util.RehttpDelay(GithubSleepTimeSecs, NumGithubRetries))
+	if err != nil {
+		return "", errors.Wrap(err, "can't get http client")
+	}
+	defer util.PutHTTPClient(httpClient)
+
+	client := github.NewClient(httpClient)
+
+	permissionLevel, _, err := client.Repositories.GetPermissionLevel(ctx, owner, repo, username)
+	if err != nil {
+		return "", errors.Wrap(err, "can't get permissions from GitHub")
+	}
+	if permissionLevel == nil && permissionLevel.Permission == nil {
+		return "", errors.Errorf("GitHub returned an invalid response to request for user permissions for '%s'", username)
+	}
+
+	return *permissionLevel.Permission, nil
+}
+
 // GetPullRequestMergeBase returns the merge base hash for the given PR.
 // This function will retry up to 5 times, regardless of error response (unless
 // error is the result of hitting an api limit)

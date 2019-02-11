@@ -9,6 +9,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/commitqueue"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/thirdparty"
+	"github.com/evergreen-ci/evergreen/util"
 	"github.com/google/go-github/github"
 	"github.com/pkg/errors"
 	mgo "gopkg.in/mgo.v2"
@@ -88,6 +89,44 @@ func (pc *DBCommitQueueConnector) CommitQueueClearAll() (int, error) {
 	return commitqueue.ClearAllCommitQueues()
 }
 
+func (pc *DBCommitQueueConnector) IsAuthorized(ctx context.Context, username, owner, repo string) (bool, error) {
+	// In the org
+	conf, err := evergreen.GetConfig()
+	if err != nil {
+		return false, errors.Wrap(err, "can't get evergreen configuration")
+	}
+	token, err := conf.GetGithubOauthToken()
+	if err != nil {
+		return false, errors.Wrap(err, "can't get Github OAuth token from configuration")
+	}
+
+	env := evergreen.GetEnvironment()
+	requiredOrganization := env.Settings().GithubPRCreatorOrg
+	if requiredOrganization == "" {
+		return false, errors.New("no GitHub PR creator organization configured")
+	}
+
+	ctxWithCancel, cancel := context.WithTimeout(ctx, 10*time.Second)
+	defer cancel()
+	inOrg, err := thirdparty.GithubUserInOrganization(ctxWithCancel, token, requiredOrganization, username)
+	if err != nil {
+		return false, errors.Wrap(err, "call to Github API failed")
+	}
+
+	// Has repository merge permission
+	// See: https://help.github.com/articles/repository-permission-levels-for-an-organization/
+	ctxWithCancel, cancel = context.WithTimeout(ctx, 10*time.Second)
+	defer cancel()
+	permission, err := thirdparty.GitHubUserPermissionLevel(ctxWithCancel, token, owner, repo, username)
+	if err != nil {
+		return false, errors.Wrap(err, "call to Github API failed")
+	}
+	mergePermissions := []string{"admin", "write"}
+	hasPermission := util.StringSliceContains(mergePermissions, permission)
+
+	return inOrg && hasPermission, nil
+}
+
 type MockCommitQueueConnector struct {
 	Queue map[string][]restModel.APIString
 }
@@ -149,4 +188,8 @@ func (pc *MockCommitQueueConnector) CommitQueueClearAll() (int, error) {
 	}
 
 	return count, nil
+}
+
+func (pc *MockCommitQueueConnector) IsAuthorized(ctx context.Context, user, owner, repo string) (bool, error) {
+	return true, nil
 }

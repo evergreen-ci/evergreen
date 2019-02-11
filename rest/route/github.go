@@ -2,6 +2,7 @@ package route
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"strconv"
 
@@ -199,6 +200,36 @@ func (gh *githubHookApi) Run(ctx context.Context) gimlet.Responder {
 		owner := *event.Repo.Owner.Login
 		repo := *event.Repo.Name
 		PRNum := *event.Issue.Number
+		user := *event.Comment.User.Login
+		authorized, err := gh.sc.IsAuthorized(ctx, user, owner, repo)
+		if err != nil {
+			grip.Error(message.WrapError(err, message.Fields{
+				"source":  "github hook",
+				"msg_id":  gh.msgID,
+				"event":   gh.eventType,
+				"action":  *event.Action,
+				"owner":   owner,
+				"repo":    repo,
+				"user":    user,
+				"message": "get authorized failed",
+			}))
+			return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "can't get user info from GitHub API"))
+		}
+		if !authorized {
+			grip.Error(message.Fields{
+				"source":  "github hook",
+				"msg_id":  gh.msgID,
+				"event":   gh.eventType,
+				"action":  *event.Action,
+				"user":    user,
+				"message": "user is not authorized to merge",
+			})
+			return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+				StatusCode: http.StatusUnauthorized,
+				Message:    fmt.Sprintf("user '%s' is not authorized to merge", user),
+			})
+		}
+
 		pr, err := gh.sc.GetGitHubPR(ctx, owner, repo, PRNum)
 		if err != nil {
 			grip.Error(message.WrapError(err, message.Fields{
