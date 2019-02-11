@@ -7,7 +7,10 @@ mciModule.controller('HostCtrl', function($scope, $window) {
 
   // Spawned by task aliases
   $scope.spawnedByTask = $scope.host.spawn_options.spawned_by_task
-  $scope.taskId = $scope.host.spawn_options.task_id
+  // FIXME EVG-5284 might have mistake in model definition
+  //       spawn_options does not have task_id
+  //       but started_by seem to contain tasl id instead
+  $scope.taskId = $scope.host.spawn_options.task_id || $scope.host.started_by
 
   $scope.host.uptime = "N/A";
   if ($scope.host.host_type !== "static") {
@@ -20,6 +23,8 @@ mciModule.controller('HostCtrl', function($scope, $window) {
       $scope.host.uptime = moment.duration(uptime, 'seconds').humanize();
   }
 
+  // FIXME this might be inaccurate, because this will include local timezone
+  //       we might want moment(0) for '1970-01-01T00:00:00Z'
   var epochTime = moment("Jan 1, 1970");
 
   var last_communication = moment($scope.host.last_communication);
