@@ -51,9 +51,7 @@ func (h *notificationPostHandler) Parse(ctx context.Context, r *http.Request) er
 		return errors.Errorf("'%s' is not a supported {type}", t)
 	}
 
-	h.handler.Parse(ctx, r)
-
-	return nil
+	return h.handler.Parse(ctx, r)
 }
 
 // Run dispatches the notification.
@@ -89,7 +87,7 @@ func (h *jiraCommentNotificationPostHandler) Parse(ctx context.Context, r *http.
 	body := util.NewRequestReader(r)
 	h.APIJiraComment = &model.APIJiraComment{}
 	if err := gimlet.GetJSON(body, h.APIJiraComment); err != nil {
-		errors.Wrap(err, "API error while unmarshalling JSON to model.APIJiraComment")
+		return errors.Wrap(err, "API error while unmarshalling JSON to model.APIJiraComment")
 	}
 
 	return nil
@@ -148,7 +146,7 @@ func (h *jiraIssueNotificationPostHandler) Parse(ctx context.Context, r *http.Re
 	body := util.NewRequestReader(r)
 	h.APIJiraIssue = &model.APIJiraIssue{}
 	if err := gimlet.GetJSON(body, h.APIJiraIssue); err != nil {
-		errors.Wrap(err, "API error while unmarshalling JSON to model.APIJiraIssue")
+		return errors.Wrap(err, "API error while unmarshalling JSON to model.APIJiraIssue")
 	}
 
 	return nil
@@ -207,7 +205,7 @@ func (h *slackNotificationPostHandler) Parse(ctx context.Context, r *http.Reques
 	body := util.NewRequestReader(r)
 	h.APISlack = &model.APISlack{}
 	if err := gimlet.GetJSON(body, h.APISlack); err != nil {
-		errors.Wrap(err, "API error while unmarshalling JSON to model.APISlack")
+		return errors.Wrap(err, "API error while unmarshalling JSON to model.APISlack")
 	}
 
 	return nil
@@ -273,7 +271,7 @@ func (h *emailNotificationPostHandler) Parse(ctx context.Context, r *http.Reques
 	body := util.NewRequestReader(r)
 	h.APIEmail = &model.APIEmail{}
 	if err := gimlet.GetJSON(body, h.APIEmail); err != nil {
-		errors.Wrap(err, "API error while unmarshalling JSON to model.APIEmail")
+		return errors.Wrap(err, "API error while unmarshalling JSON to model.APIEmail")
 	}
 
 	return nil
