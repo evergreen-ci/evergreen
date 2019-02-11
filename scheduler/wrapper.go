@@ -2,6 +2,7 @@ package scheduler
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
@@ -17,6 +18,33 @@ import (
 	"github.com/pkg/errors"
 )
 
+type DistroQueueInfo struct {
+	Distro             distro.Distro
+	Length             int
+	ExpectedDuration   time.Duration
+	CountOverThreshold int
+	TaskGroupsInfo     map[string]TaskGroupInfo
+}
+
+type TaskGroupInfo struct {
+	GroupID               string
+	Count                 int
+	MaxHosts              int
+	ExpectedDuration      time.Duration
+	CountOverThreshold    int
+	DurationOverThreshold time.Duration
+}
+
+type HostAllocatorData struct {
+	Distro           distro.Distro
+	ExistingHosts    []host.Host
+	TaskRunDistros   []string // Is this actually used?
+	FreeHostFraction float64
+	UsesContainers   bool
+	ContainerPool    *evergreen.ContainerPool
+	DistroQueueInfo  DistroQueueInfo
+}
+
 type Configuration struct {
 	DistroID         string
 	TaskFinder       string
@@ -27,37 +55,37 @@ type Configuration struct {
 func PlanDistro(ctx context.Context, conf Configuration, s *evergreen.Settings) error {
 	schedulerInstance := util.RandomString()
 	startAt := time.Now()
-	distroSpec, err := distro.FindOne(distro.ById(conf.DistroID))
+	distro, err := distro.FindOne(distro.ById(conf.DistroID))
 	if err != nil {
 		return errors.Wrap(err, "problem finding distro")
 	}
 
-	if err = UpdateStaticDistro(distroSpec); err != nil {
+	if err = UpdateStaticDistro(distro); err != nil {
 		return errors.Wrap(err, "problem updating static hosts")
 	}
 
-	if err = underwaterUnschedule(conf.DistroID); err != nil {
+	if err = underwaterUnschedule(distro.Id); err != nil {
 		return errors.Wrap(err, "problem unscheduling underwater tasks")
 	}
 
-	if distroSpec.Disabled {
+	if distro.Disabled {
 		grip.InfoWhen(sometimes.Quarter(), message.Fields{
 			"message": "scheduling for distro is disabled",
 			"runner":  RunnerName,
-			"distro":  conf.DistroID,
+			"distro":  distro.Id,
 		})
 		return nil
 	}
 
 	startTaskFinder := time.Now()
 	finder := GetTaskFinder(conf.TaskFinder)
-	tasks, err := finder(conf.DistroID)
+	tasks, err := finder(distro.Id)
 	if err != nil {
 		return errors.Wrap(err, "problem calculating task finder")
 	}
 	grip.Info(message.Fields{
 		"runner":        RunnerName,
-		"distro":        conf.DistroID,
+		"distro":        distro.Id,
 		"operation":     "runtime-stats",
 		"phase":         "task-finder",
 		"instance":      schedulerInstance,
@@ -78,13 +106,13 @@ func PlanDistro(ctx context.Context, conf Configuration, s *evergreen.Settings) 
 	}
 
 	startPlanPhase := time.Now()
-	res := ds.scheduleDistro(conf.DistroID, runnableTasks, versions)
+	res := ds.scheduleDistro(distro.Id, runnableTasks, versions)
 	if res.err != nil {
 		return errors.Wrap(res.err, "problem calculating distro plan")
 	}
 	grip.Info(message.Fields{
 		"runner":        RunnerName,
-		"distro":        conf.DistroID,
+		"distro":        distro.Id,
 		"operation":     "runtime-stats",
 		"phase":         "planning-distro",
 		"instance":      schedulerInstance,
@@ -101,41 +129,109 @@ func PlanDistro(ctx context.Context, conf Configuration, s *evergreen.Settings) 
 	})
 
 	startHostAllocation := time.Now()
-	if err = host.RemoveStaleInitializing(conf.DistroID); err != nil {
+	if err = host.RemoveStaleInitializing(distro.Id); err != nil {
 		return errors.Wrap(err, "problem removing previously intented hosts, before creating new ones.") // nolint:misspell
 	}
 
-	distroHosts, err := host.AllRunningHosts(conf.DistroID)
-	if err != nil {
-		return errors.Wrap(err, "with host query")
-	}
+	distroHosts, err := host.AllRunningHosts(distro.Id)
 
-	allocatorArgs := HostAllocatorData{
-		taskQueueItems:   res.taskQueueItem,
-		existingHosts:    distroHosts,
-		distro:           distroSpec,
-		freeHostFraction: conf.FreeHostFraction,
+	///////////////////////////////////////////////////////////////////////
+	// allocatorArgs := HostAllocatorData{
+	// 	taskQueueItems:   res.taskQueueItem, // []model.TaskQueueItem from distroSchedulerResult.taskQueueItem retuned by ds.scheduleDistro()
+	// 	existingHosts:    distroHosts,       // distroHosts, err := host.AllRunningHosts(conf.DistroID)
+	// 	distro:           distroSpec,        // distroSpec, err := distro.FindOne(distro.ById(conf.DistroID))
+	// 	freeHostFraction: conf.FreeHostFraction,
+	// }
+
+	allocatorData := HostAllocatorData{
+		Distro:           distro,
+		ExistingHosts:    distroHosts, // distroHosts, err := host.AllRunningHosts(conf.DistroID)
+		FreeHostFraction: conf.FreeHostFraction,
 	}
 
 	// retrieve container pool information for container distros
 	var pool *evergreen.ContainerPool
-	if distroSpec.ContainerPool != "" {
-		pool = s.ContainerPools.GetContainerPool(distroSpec.ContainerPool)
+	if distro.ContainerPool != "" {
+		pool = s.ContainerPools.GetContainerPool(distro.ContainerPool)
 		if pool == nil {
 			return errors.Wrap(err, "problem retrieving container pool")
 		}
-		allocatorArgs.usesContainers = true
-		allocatorArgs.containerPool = pool
+		allocatorData.UsesContainers = true
+		allocatorData.ContainerPool = pool
 	}
 
+	///////////////////////////////////////////////////////////////////////
+	// STU AT WORK!
+
+	durationThreshold := MaxDurationPerDistroHost
+	if allocatorData.UsesContainers {
+		durationThreshold = MaxDurationPerDistroHostWithContainers
+	}
+
+	taskGroupsInfo := map[string]TaskGroupInfo{}
+	distroDuration := 0 * time.Nanosecond
+	distroOverThreshold := 0
+
+	for _, task := range tasks {
+		group := task.TaskGroup
+		taskGroupID := ""
+
+		if group != "" {
+			buildVariant := task.BuildVariant
+			project := task.Project
+			version := task.Version
+			taskGroupID = fmt.Sprintf("%s_%s_%s_%s", group, buildVariant, project, version)
+		}
+
+		duration := task.FetchExpectedDuration()
+		distroDuration += duration
+		overThreshold = (duration > durationThreshold)
+
+		if stats, exists := taskGroupsInfo[taskGroupID]; exists {
+			stats.Count++
+			stats.ExpectedDuration += duration
+			if overThreshold {
+				stats.CountOverThreshold++
+				stats.DurationOverThreshold++
+				distroOverThreshold++
+			}
+			taskGroupsInfo[taskGroupID] = stats
+		} else {
+			info := TaskGroupInfo{
+				GroupID:          taskGroupID,
+				Count:            1,
+				ExpectedDuration: duration,
+				MaxHosts:         task.TaskGroupMaxHosts,
+			}
+			if overThreshold {
+				info.CountOverThreshold = 1
+				info.DurationOverThreshold = duration
+				distroOverThreshold = 1
+			}
+			taskGroupsInfo[taskGroupID] = info
+		}
+	}
+
+	distroQueueInfo := DistroQueueInfo{
+		Distro:             distro,
+		Length:             len(runnableTasks),
+		ExpectedDuration:   distroDuration,
+		CountOverThreshold: distroOverThreshold,
+		TaskGroupsInfo:     taskGroupsInfo,
+	}
+
+	allocatorData.DistroQueueInfo = distroQueueInfo
+
 	allocator := GetHostAllocator(conf.HostAllocator)
-	newHosts, err := allocator(ctx, allocatorArgs)
+	newHosts, err := allocator(ctx, allocatorData)
+
 	if err != nil {
 		return errors.Wrap(err, "problem finding distro")
 	}
+
 	grip.Info(message.Fields{
 		"runner":        RunnerName,
-		"distro":        conf.DistroID,
+		"distro":        distro.Id,
 		"operation":     "runtime-stats",
 		"phase":         "host-allocation",
 		"instance":      schedulerInstance,
@@ -143,19 +239,19 @@ func PlanDistro(ctx context.Context, conf Configuration, s *evergreen.Settings) 
 	})
 
 	startHostSpawning := time.Now()
-	hostsSpawned, err := spawnHosts(ctx, distroSpec, newHosts, pool)
+	hostsSpawned, err := spawnHosts(ctx, distroc, newHosts, pool)
 	if err != nil {
 		return errors.Wrap(err, "Error spawning new hosts")
 	}
 
 	event.LogSchedulerEvent(event.SchedulerEventData{
 		TaskQueueInfo: res.schedulerEvent,
-		DistroId:      conf.DistroID,
+		DistroId:      distro.Id,
 	})
 
 	grip.Info(message.Fields{
 		"runner":        RunnerName,
-		"distro":        conf.DistroID,
+		"distro":        distro.IdD,
 		"operation":     "runtime-stats",
 		"phase":         "host-spawning",
 		"instance":      schedulerInstance,
@@ -172,9 +268,9 @@ func PlanDistro(ctx context.Context, conf Configuration, s *evergreen.Settings) 
 	grip.Info(message.Fields{
 		"message":                "distro-scheduler-report",
 		"runner":                 RunnerName,
-		"distro":                 conf.DistroID,
-		"provider":               distroSpec.Provider,
-		"max_hosts":              distroSpec.PoolSize,
+		"distro":                 distro.Id,
+		"provider":               distro.Provider,
+		"max_hosts":              distro.PoolSize,
 		"new_hosts":              hostsSpawned,
 		"num_hosts":              len(hostsSpawned),
 		"queue":                  res.schedulerEvent,
