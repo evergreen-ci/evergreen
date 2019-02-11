@@ -9,7 +9,6 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
-	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
@@ -35,7 +34,7 @@ func (agt *Agent) startStatusServer(ctx context.Context, port int) error {
 	app.AddRoute("/status").Handler(agt.statusHandler()).Get()
 	app.AddRoute("/terminate").Handler(terminateAgentHandler).Delete()
 
-	handler, err := gimlet.MergeApplications(app, util.GetPprofApp())
+	handler, err := gimlet.MergeApplications(app, gimlet.GetPProfApp())
 	if err != nil {
 		return errors.WithStack(err)
 	}

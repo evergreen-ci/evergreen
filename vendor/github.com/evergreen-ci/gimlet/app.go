@@ -12,7 +12,6 @@ package gimlet
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"net/http"
 	"strings"
@@ -21,7 +20,18 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/recovery"
+	"github.com/pkg/errors"
 )
+
+// WaitFunc is a function type returned by some functions that allows
+// callers to wait on background processes started by the returning
+// function.
+//
+// If the context passed to a wait function is canceled then the wait
+// function should return immediately. You may wish to pass contexts
+// with a different timeout to the wait function from the one you
+// passed to the outer function to ensure correct waiting semantics.
+type WaitFunc func(context.Context)
 
 // APIApp is a structure representing a single API service.
 type APIApp struct {
@@ -95,10 +105,29 @@ func (a *APIApp) RestWrappers() {
 // Run configured API service on the configured port. Before running
 // the application, Run also resolves any sub-apps, and adds all
 // routes.
+//
+// If you cancel the context that you pass to run, the application
+// will gracefully shutdown, and wait indefinitely until the
+// application has returned. To get different waiting behavior use
+// BackgroundRun.
 func (a *APIApp) Run(ctx context.Context) error {
+	wait, err := a.BackgroundRun(ctx)
+
+	if err != nil {
+		return errors.WithStack(err)
+	}
+
+	wait(context.Background())
+
+	return nil
+}
+
+// BackgroundRun is a non-blocking form of Run that allows you to
+// manage a service running in the background.
+func (a *APIApp) BackgroundRun(ctx context.Context) (WaitFunc, error) {
 	n, err := a.getNegroni()
 	if err != nil {
-		return err
+		return nil, errors.WithStack(err)
 	}
 
 	srv := &http.Server{
@@ -112,7 +141,7 @@ func (a *APIApp) Run(ctx context.Context) error {
 	serviceWait := make(chan struct{})
 	go func() {
 		defer recovery.LogStackTraceAndContinue("app service")
-		grip.Noticef("starting app on: %s:%d", a.address, a.port)
+		grip.Noticef("starting %s on: %s:%d", a.prefix, a.address, a.port)
 		srv.ListenAndServe()
 		close(serviceWait)
 	}()
@@ -123,9 +152,14 @@ func (a *APIApp) Run(ctx context.Context) error {
 		grip.Debug(srv.Shutdown(ctx))
 	}()
 
-	<-serviceWait
+	wait := func(wctx context.Context) {
+		select {
+		case <-wctx.Done():
+		case <-serviceWait:
+		}
+	}
 
-	return nil
+	return wait, nil
 }
 
 // SetPort allows users to configure a default port for the API

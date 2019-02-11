@@ -1,4 +1,4 @@
-package util
+package gimlet
 
 import (
 	"bufio"
@@ -16,12 +16,13 @@ import (
 	"strconv"
 	"strings"
 	"time"
-
-	"github.com/evergreen-ci/gimlet"
 )
 
-func GetPprofApp() *gimlet.APIApp {
-	app := gimlet.NewApp()
+// GetPProfApp produces an APIApp that has routes registered for pprof
+// access. The routes themselves are copied from the standard library
+// but configured for integration into an existing gimlet-based application.
+func GetPProfApp() *APIApp {
+	app := NewApp()
 	app.SetPrefix("/debug/pprof")
 	app.NoVersions = true
 
