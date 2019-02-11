@@ -143,6 +143,8 @@ func (a *Agent) startTask(ctx context.Context, tc *taskContext, complete chan<- 
 
 func (a *Agent) runPreTaskCommands(ctx context.Context, tc *taskContext) error {
 	tc.logger.Task().Info("Running pre-task commands.")
+	opts := runCommandsOptions{isTaskCommands: false}
+
 	if tc.runGroupSetup {
 		var cancel context.CancelFunc
 		ctx, cancel = a.withCallbackTimeout(ctx, tc)
@@ -153,7 +155,8 @@ func (a *Agent) runPreTaskCommands(ctx context.Context, tc *taskContext) error {
 			return nil
 		}
 		if taskGroup.SetupGroup != nil {
-			err = a.runCommands(ctx, tc, taskGroup.SetupGroup.List(), false, taskGroup.SetupGroupFailTask)
+			opts.shouldSetupFail = taskGroup.SetupGroupFailTask
+			err = a.runCommands(ctx, tc, taskGroup.SetupGroup.List(), opts)
 			if err != nil {
 				tc.logger.Execution().Error(errors.Wrap(err, "error running task setup group"))
 				if taskGroup.SetupGroupFailTask {
@@ -169,7 +172,8 @@ func (a *Agent) runPreTaskCommands(ctx context.Context, tc *taskContext) error {
 		return nil
 	}
 	if taskGroup.SetupTask != nil {
-		err = a.runCommands(ctx, tc, taskGroup.SetupTask.List(), false, false)
+		opts.shouldSetupFail = false
+		err = a.runCommands(ctx, tc, taskGroup.SetupTask.List(), opts)
 	}
 	tc.logger.Task().ErrorWhenf(err != nil, "Running pre-task commands failed: %v", err)
 	tc.logger.Task().InfoWhen(err == nil, "Finished running pre-task commands.")
