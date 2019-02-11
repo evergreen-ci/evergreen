@@ -358,3 +358,54 @@ func (h *projectIDPutHandler) Run(ctx context.Context) gimlet.Responder {
 
 	return responder
 }
+
+////////////////////////////////////////////////////////////////////////
+//
+// GET /rest/v2/projects/{project_id}
+
+type projectIDGetHandler struct {
+	projectID string
+	sc        data.Connector
+}
+
+func makeGetProjectByID(sc data.Connector) gimlet.RouteHandler {
+	return &projectIDGetHandler{
+		sc: sc,
+	}
+}
+
+func (h *projectIDGetHandler) Factory() gimlet.RouteHandler {
+	return &projectIDGetHandler{
+		sc: h.sc,
+	}
+}
+
+func (h *projectIDGetHandler) Parse(ctx context.Context, r *http.Request) error {
+	h.projectID = gimlet.GetVars(r)["project_id"]
+	return nil
+}
+
+func (h *projectIDGetHandler) Run(ctx context.Context) gimlet.Responder {
+	project, err := h.sc.FindProjectById(h.projectID)
+	if err != nil {
+		return gimlet.MakeJSONErrorResponder(err)
+	}
+
+	resp := gimlet.NewResponseBuilder()
+	if err = resp.SetFormat(gimlet.JSON); err != nil {
+		return gimlet.MakeJSONErrorResponder(err)
+	}
+
+	projectModel := &model.APIProject{}
+
+	if err = projectModel.BuildFromService(project); err != nil {
+		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+			Message:    "problem converting project document",
+			StatusCode: http.StatusInternalServerError,
+		})
+	}
+
+	return gimlet.NewJSONResponse(projectModel)
+}
+
+

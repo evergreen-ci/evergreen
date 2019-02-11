@@ -113,9 +113,12 @@ func SetupAPITestData(testConfig *evergreen.Settings, taskDisplayName string, va
 		Secret:       "testTaskSecret",
 		Version:      "testVersionId",
 		Status:       evergreen.TaskDispatched,
-		Requester:    evergreen.RepotrackerVersionRequester,
 	}
-	if patchMode != NoPatch {
+	if patchMode == NoPatch {
+		taskOne.Requester = evergreen.RepotrackerVersionRequester
+	} else if patchMode == MergePatch {
+		taskOne.Requester = evergreen.MergeTestRequester
+	} else {
 		taskOne.Requester = evergreen.PatchVersionRequester
 	}
 	if err = taskOne.Insert(); err != nil {

@@ -51,6 +51,7 @@ func TestSubscriberModelsGithubStatusAPI(t *testing.T) {
 func TestSubscriberModelsGithubMerge(t *testing.T) {
 	assert := assert.New(t)
 	target := event.GithubMergeSubscriber{
+		ProjectID:     "mci",
 		Owner:         "me",
 		Repo:          "mine",
 		PRNumber:      5,
@@ -79,6 +80,7 @@ func TestSubscriberModelsGithubMerge(t *testing.T) {
 	incoming := APISubscriber{
 		Type: ToAPIString(event.GithubMergeSubscriberType),
 		Target: map[string]interface{}{
+			"project_id":     "mci",
 			"owner":          "me",
 			"repo":           "mine",
 			"pr_number":      5,

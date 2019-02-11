@@ -69,3 +69,13 @@ func TestRequestReadingErrorPropogating(t *testing.T) {
 	assert.Error(t, GetJSONUnlimited(errc, "foo"))
 	assert.Error(t, GetYAMLUnlimited(errc, "foo"))
 }
+
+func TestSetURLVars(t *testing.T) {
+	r, err := http.NewRequest("GET", "/url", nil)
+	assert.NoError(t, err)
+	var nilMap map[string]string
+	assert.Equal(t, nilMap, GetVars(r))
+	vars := map[string]string{"foo": "bar"}
+	r = SetURLVars(r, vars)
+	assert.Equal(t, vars, GetVars(r))
+}

@@ -52,6 +52,7 @@ func MockConfig() *evergreen.Settings {
 		},
 		Amboy: evergreen.AmboyConfig{
 			Name:           "amboy",
+			SingleName:     "single",
 			DB:             "db",
 			PoolSizeLocal:  10,
 			PoolSizeRemote: 20,

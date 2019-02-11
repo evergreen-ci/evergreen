@@ -267,6 +267,7 @@ func (a *APISMTPConfig) ToService() (interface{}, error) {
 
 type APIAmboyConfig struct {
 	Name           APIString `json:"name"`
+	SingleName     APIString `json:"single_name"`
 	DB             APIString `json:"database"`
 	PoolSizeLocal  int       `json:"pool_size_local"`
 	PoolSizeRemote int       `json:"pool_size_remote"`
@@ -277,6 +278,7 @@ func (a *APIAmboyConfig) BuildFromService(h interface{}) error {
 	switch v := h.(type) {
 	case evergreen.AmboyConfig:
 		a.Name = ToAPIString(v.Name)
+		a.SingleName = ToAPIString(v.SingleName)
 		a.DB = ToAPIString(v.DB)
 		a.PoolSizeLocal = v.PoolSizeLocal
 		a.PoolSizeRemote = v.PoolSizeRemote
@@ -290,6 +292,7 @@ func (a *APIAmboyConfig) BuildFromService(h interface{}) error {
 func (a *APIAmboyConfig) ToService() (interface{}, error) {
 	return evergreen.AmboyConfig{
 		Name:           FromAPIString(a.Name),
+		SingleName:     FromAPIString(a.SingleName),
 		DB:             FromAPIString(a.DB),
 		PoolSizeLocal:  a.PoolSizeLocal,
 		PoolSizeRemote: a.PoolSizeRemote,
@@ -602,6 +605,7 @@ type APILoggerConfig struct {
 	Buffer         *APILogBuffering `json:"buffer"`
 	DefaultLevel   APIString        `json:"default_level"`
 	ThresholdLevel APIString        `json:"threshold_level"`
+	LogkeeperURL   APIString        `json:"logkeeper_url"`
 }
 
 func (a *APILoggerConfig) BuildFromService(h interface{}) error {
@@ -609,6 +613,7 @@ func (a *APILoggerConfig) BuildFromService(h interface{}) error {
 	case evergreen.LoggerConfig:
 		a.DefaultLevel = ToAPIString(v.DefaultLevel)
 		a.ThresholdLevel = ToAPIString(v.ThresholdLevel)
+		a.LogkeeperURL = ToAPIString(v.LogkeeperURL)
 		a.Buffer = &APILogBuffering{}
 		if err := a.Buffer.BuildFromService(v.Buffer); err != nil {
 			return err
@@ -623,6 +628,7 @@ func (a *APILoggerConfig) ToService() (interface{}, error) {
 	config := evergreen.LoggerConfig{
 		DefaultLevel:   FromAPIString(a.DefaultLevel),
 		ThresholdLevel: FromAPIString(a.ThresholdLevel),
+		LogkeeperURL:   FromAPIString(a.LogkeeperURL),
 	}
 	i, err := a.Buffer.ToService()
 	if err != nil {
@@ -1026,6 +1032,7 @@ type APIServiceFlags struct {
 	BackgroundStatsDisabled bool `json:"background_stats_disabled"`
 	TaskLoggingDisabled     bool `json:"task_logging_disabled"`
 	CacheStatsJobDisabled   bool `json:"cache_stats_job_disabled"`
+	CommitQueueDisabled     bool `json:"commit_queue_disabled"`
 
 	// Notifications Flags
 	EventProcessingDisabled      bool `json:"event_processing_disabled"`
@@ -1231,6 +1238,7 @@ func (as *APIServiceFlags) BuildFromService(h interface{}) error {
 		as.BackgroundStatsDisabled = v.BackgroundStatsDisabled
 		as.TaskLoggingDisabled = v.TaskLoggingDisabled
 		as.CacheStatsJobDisabled = v.CacheStatsJobDisabled
+		as.CommitQueueDisabled = v.CommitQueueDisabled
 	default:
 		return errors.Errorf("%T is not a supported service flags type", h)
 	}
@@ -1258,6 +1266,7 @@ func (as *APIServiceFlags) ToService() (interface{}, error) {
 		BackgroundStatsDisabled:      as.BackgroundStatsDisabled,
 		TaskLoggingDisabled:          as.TaskLoggingDisabled,
 		CacheStatsJobDisabled:        as.CacheStatsJobDisabled,
+		CommitQueueDisabled:          as.CommitQueueDisabled,
 	}, nil
 }
 

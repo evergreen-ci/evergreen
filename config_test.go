@@ -212,6 +212,7 @@ func (s *AdminSuite) TestAlertsConfig() {
 func (s *AdminSuite) TestAmboyConfig() {
 	config := AmboyConfig{
 		Name:           "amboy",
+		SingleName:     "single",
 		DB:             "db",
 		PoolSizeLocal:  10,
 		PoolSizeRemote: 20,

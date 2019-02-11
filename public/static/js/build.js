@@ -70,7 +70,6 @@ mciModule.controller('BuildViewController', function($scope, $http, $timeout, $r
   $scope.loading = false;
   $scope.lastUpdate = null;
   $scope.jiraHost = $window.jiraHost;
-  $scope.subscriptions = [];
   $scope.hide_add_subscription = true;
   $scope.triggers = [
     {
@@ -139,12 +138,11 @@ mciModule.controller('BuildViewController', function($scope, $http, $timeout, $r
       }else {
         addInSelectorsAndOwnerType(data, "build", "build", $scope.build.Build._id);
       }
-      $scope.subscriptions.push(data);
-      $scope.saveSubscriptions();
+      $scope.saveSubscription(data);
     });
   };
 
-  $scope.saveSubscriptions = function() {
+  $scope.saveSubscription = function(subscription) {
     var success = function() {
       $mdToast.show({
         templateUrl: "/static/partials/subscription_confirmation_toast.html",
@@ -154,7 +152,7 @@ mciModule.controller('BuildViewController', function($scope, $http, $timeout, $r
     var failure = function(resp) {
       notificationService.pushNotification('Error saving subscriptions: ' + resp.data.error, 'notifyHeader');
     };
-    mciSubscriptionsService.post($scope.subscriptions, { success: success, error: failure });
+    mciSubscriptionsService.post([subscription], { success: success, error: failure });
   }
 
   $scope.setBuild = function(build) {

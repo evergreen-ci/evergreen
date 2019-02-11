@@ -137,13 +137,24 @@ func (c *gitFetchProject) buildCloneCommand(conf *model.TaskConfig) ([]string, e
 
 	if conf.GithubPatchData.PRNumber != 0 {
 		branchName := fmt.Sprintf("evg-pr-test-%s", util.RandomString())
-
-		gitCommands = append(gitCommands, []string{
+		var ref, commitToTest string
+		if conf.Task.IsMergeRequest() {
+			// GitHub creates a ref at refs/pull/[pr number]/merge
+			// pointing to the test merge commit they generate
+			// See: https://developer.github.com/v3/git/#checking-mergeability-of-pull-requests
+			// and: https://docs.travis-ci.com/user/pull-requests/#my-pull-request-isnt-being-built
+			ref = "merge"
+			commitToTest = conf.GithubPatchData.MergeCommitSHA
+		} else {
 			// Github creates a ref called refs/pull/[pr number]/head
 			// that provides the entire tree of changes, including merges
-			fmt.Sprintf(`git fetch origin "pull/%d/head:%s"`, conf.GithubPatchData.PRNumber, branchName),
+			ref = "head"
+			commitToTest = conf.GithubPatchData.HeadHash
+		}
+		gitCommands = append(gitCommands, []string{
+			fmt.Sprintf(`git fetch origin "pull/%d/%s:%s"`, conf.GithubPatchData.PRNumber, ref, branchName),
 			fmt.Sprintf(`git checkout "%s"`, branchName),
-			fmt.Sprintf("git reset --hard %s", conf.GithubPatchData.HeadHash),
+			fmt.Sprintf("git reset --hard %s", commitToTest),
 		}...)
 
 	} else {

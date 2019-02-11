@@ -132,7 +132,7 @@ func (c *awsClientImpl) RunInstances(ctx context.Context, input *ec2.RunInstance
 	var output *ec2.Reservation
 	var err error
 	msg := makeAWSLogMessage("RunInstances", fmt.Sprintf("%T", c), input)
-	_, err = util.Retry(
+	err = util.Retry(
 		ctx,
 		func() (bool, error) {
 			output, err = c.EC2.RunInstancesWithContext(ctx, input)
@@ -144,7 +144,7 @@ func (c *awsClientImpl) RunInstances(ctx context.Context, input *ec2.RunInstance
 			}
 			grip.Info(msg)
 			return false, nil
-		}, awsClientImplRetries, awsClientImplStartPeriod)
+		}, awsClientImplRetries, awsClientImplStartPeriod, 0)
 	if err != nil {
 		return nil, err
 	}
@@ -156,7 +156,7 @@ func (c *awsClientImpl) DescribeInstances(ctx context.Context, input *ec2.Descri
 	var output *ec2.DescribeInstancesOutput
 	var err error
 	msg := makeAWSLogMessage("DescribeInstances", fmt.Sprintf("%T", c), input)
-	_, err = util.Retry(
+	err = util.Retry(
 		ctx,
 		func() (bool, error) {
 			output, err = c.EC2.DescribeInstancesWithContext(ctx, input)
@@ -168,7 +168,7 @@ func (c *awsClientImpl) DescribeInstances(ctx context.Context, input *ec2.Descri
 			}
 			grip.Info(msg)
 			return false, nil
-		}, awsClientImplRetries, awsClientImplStartPeriod)
+		}, awsClientImplRetries, awsClientImplStartPeriod, 0)
 	if err != nil {
 		return nil, err
 	}
@@ -180,7 +180,7 @@ func (c *awsClientImpl) CreateTags(ctx context.Context, input *ec2.CreateTagsInp
 	var output *ec2.CreateTagsOutput
 	var err error
 	msg := makeAWSLogMessage("CreateTags", fmt.Sprintf("%T", c), input)
-	_, err = util.Retry(
+	err = util.Retry(
 		ctx,
 		func() (bool, error) {
 			output, err = c.EC2.CreateTagsWithContext(ctx, input)
@@ -192,7 +192,7 @@ func (c *awsClientImpl) CreateTags(ctx context.Context, input *ec2.CreateTagsInp
 			}
 			grip.Info(msg)
 			return false, nil
-		}, awsClientImplRetries, awsClientImplStartPeriod)
+		}, awsClientImplRetries, awsClientImplStartPeriod, 0)
 	if err != nil {
 		return nil, err
 	}
@@ -204,7 +204,7 @@ func (c *awsClientImpl) TerminateInstances(ctx context.Context, input *ec2.Termi
 	var output *ec2.TerminateInstancesOutput
 	var err error
 	msg := makeAWSLogMessage("TerminateInstances", fmt.Sprintf("%T", c), input)
-	_, err = util.Retry(
+	err = util.Retry(
 		ctx,
 		func() (bool, error) {
 			output, err = c.EC2.TerminateInstancesWithContext(ctx, input)
@@ -227,7 +227,7 @@ func (c *awsClientImpl) TerminateInstances(ctx context.Context, input *ec2.Termi
 			}
 			grip.Info(msg)
 			return false, nil
-		}, awsClientImplRetries, awsClientImplStartPeriod)
+		}, awsClientImplRetries, awsClientImplStartPeriod, 0)
 	if err != nil {
 		return nil, err
 	}
@@ -239,7 +239,7 @@ func (c *awsClientImpl) RequestSpotInstances(ctx context.Context, input *ec2.Req
 	var output *ec2.RequestSpotInstancesOutput
 	var err error
 	msg := makeAWSLogMessage("RequestSpotInstances", fmt.Sprintf("%T", c), input)
-	_, err = util.Retry(
+	err = util.Retry(
 		ctx,
 		func() (bool, error) {
 			output, err = c.EC2.RequestSpotInstancesWithContext(ctx, input)
@@ -251,7 +251,7 @@ func (c *awsClientImpl) RequestSpotInstances(ctx context.Context, input *ec2.Req
 			}
 			grip.Info(msg)
 			return false, nil
-		}, awsClientImplRetries, awsClientImplStartPeriod)
+		}, awsClientImplRetries, awsClientImplStartPeriod, 0)
 	if err != nil {
 		return nil, err
 	}
@@ -263,7 +263,7 @@ func (c *awsClientImpl) DescribeSpotInstanceRequests(ctx context.Context, input 
 	var output *ec2.DescribeSpotInstanceRequestsOutput
 	var err error
 	msg := makeAWSLogMessage("DescribeSpotInstanceRequests", fmt.Sprintf("%T", c), input)
-	_, err = util.Retry(
+	err = util.Retry(
 		ctx,
 		func() (bool, error) {
 			output, err = c.EC2.DescribeSpotInstanceRequestsWithContext(ctx, input)
@@ -275,7 +275,7 @@ func (c *awsClientImpl) DescribeSpotInstanceRequests(ctx context.Context, input 
 			}
 			grip.Info(msg)
 			return false, nil
-		}, awsClientImplRetries, awsClientImplStartPeriod)
+		}, awsClientImplRetries, awsClientImplStartPeriod, 0)
 	if err != nil {
 		return nil, err
 	}
@@ -340,7 +340,7 @@ func (c *awsClientImpl) CancelSpotInstanceRequests(ctx context.Context, input *e
 	var output *ec2.CancelSpotInstanceRequestsOutput
 	var err error
 	msg := makeAWSLogMessage("CancelSpotInstanceRequests", fmt.Sprintf("%T", c), input)
-	_, err = util.Retry(
+	err = util.Retry(
 		ctx,
 		func() (bool, error) {
 			output, err = c.EC2.CancelSpotInstanceRequestsWithContext(ctx, input)
@@ -355,7 +355,7 @@ func (c *awsClientImpl) CancelSpotInstanceRequests(ctx context.Context, input *e
 			}
 			grip.Info(msg)
 			return false, nil
-		}, awsClientImplRetries, awsClientImplStartPeriod)
+		}, awsClientImplRetries, awsClientImplStartPeriod, 0)
 	if err != nil {
 		return nil, err
 	}
@@ -367,7 +367,7 @@ func (c *awsClientImpl) DescribeVolumes(ctx context.Context, input *ec2.Describe
 	var output *ec2.DescribeVolumesOutput
 	var err error
 	msg := makeAWSLogMessage("DescribeVolumes", fmt.Sprintf("%T", c), input)
-	_, err = util.Retry(
+	err = util.Retry(
 		ctx,
 		func() (bool, error) {
 			output, err = c.EC2.DescribeVolumesWithContext(ctx, input)
@@ -379,7 +379,7 @@ func (c *awsClientImpl) DescribeVolumes(ctx context.Context, input *ec2.Describe
 			}
 			grip.Info(msg)
 			return false, nil
-		}, awsClientImplRetries, awsClientImplStartPeriod)
+		}, awsClientImplRetries, awsClientImplStartPeriod, 0)
 	if err != nil {
 		return nil, err
 	}
@@ -391,7 +391,7 @@ func (c *awsClientImpl) DescribeSpotPriceHistory(ctx context.Context, input *ec2
 	var output *ec2.DescribeSpotPriceHistoryOutput
 	var err error
 	msg := makeAWSLogMessage("DescribeSpotPriceHistory", fmt.Sprintf("%T", c), input)
-	_, err = util.Retry(
+	err = util.Retry(
 		ctx,
 		func() (bool, error) {
 			output, err = c.EC2.DescribeSpotPriceHistoryWithContext(ctx, input)
@@ -403,7 +403,7 @@ func (c *awsClientImpl) DescribeSpotPriceHistory(ctx context.Context, input *ec2
 			}
 			grip.Info(msg)
 			return false, nil
-		}, awsClientImplRetries, awsClientImplStartPeriod)
+		}, awsClientImplRetries, awsClientImplStartPeriod, 0)
 	if err != nil {
 		return nil, err
 	}
@@ -415,7 +415,7 @@ func (c *awsClientImpl) DescribeSubnets(ctx context.Context, input *ec2.Describe
 	var output *ec2.DescribeSubnetsOutput
 	var err error
 	msg := makeAWSLogMessage("DescribeSubnets", fmt.Sprintf("%T", c), input)
-	_, err = util.Retry(
+	err = util.Retry(
 		ctx,
 		func() (bool, error) {
 			output, err = c.EC2.DescribeSubnetsWithContext(ctx, input)
@@ -427,7 +427,7 @@ func (c *awsClientImpl) DescribeSubnets(ctx context.Context, input *ec2.Describe
 			}
 			grip.Info(msg)
 			return false, nil
-		}, awsClientImplRetries, awsClientImplStartPeriod)
+		}, awsClientImplRetries, awsClientImplStartPeriod, 0)
 	if err != nil {
 		return nil, err
 	}
@@ -439,7 +439,7 @@ func (c *awsClientImpl) DescribeVpcs(ctx context.Context, input *ec2.DescribeVpc
 	var output *ec2.DescribeVpcsOutput
 	var err error
 	msg := makeAWSLogMessage("DescribeVpcs", fmt.Sprintf("%T", c), input)
-	_, err = util.Retry(
+	err = util.Retry(
 		ctx,
 		func() (bool, error) {
 			output, err = c.EC2.DescribeVpcsWithContext(ctx, input)
@@ -451,7 +451,7 @@ func (c *awsClientImpl) DescribeVpcs(ctx context.Context, input *ec2.DescribeVpc
 			}
 			grip.Info(msg)
 			return false, nil
-		}, awsClientImplRetries, awsClientImplStartPeriod)
+		}, awsClientImplRetries, awsClientImplStartPeriod, 0)
 	if err != nil {
 		return nil, err
 	}
@@ -489,7 +489,7 @@ func (c *awsClientImpl) CreateKeyPair(ctx context.Context, input *ec2.CreateKeyP
 	var output *ec2.CreateKeyPairOutput
 	var err error
 	msg := makeAWSLogMessage("CreateKeyPair", fmt.Sprintf("%T", c), input)
-	_, err = util.Retry(
+	err = util.Retry(
 		ctx,
 		func() (bool, error) {
 			output, err = c.EC2.CreateKeyPairWithContext(ctx, input)
@@ -501,7 +501,7 @@ func (c *awsClientImpl) CreateKeyPair(ctx context.Context, input *ec2.CreateKeyP
 			}
 			grip.Info(msg)
 			return false, nil
-		}, awsClientImplRetries, awsClientImplStartPeriod)
+		}, awsClientImplRetries, awsClientImplStartPeriod, 0)
 	if err != nil {
 		return nil, err
 	}
@@ -513,7 +513,7 @@ func (c *awsClientImpl) DeleteKeyPair(ctx context.Context, input *ec2.DeleteKeyP
 	var output *ec2.DeleteKeyPairOutput
 	var err error
 	msg := makeAWSLogMessage("DeleteKeyPair", fmt.Sprintf("%T", c), input)
-	_, err = util.Retry(
+	err = util.Retry(
 		ctx,
 		func() (bool, error) {
 			output, err = c.EC2.DeleteKeyPairWithContext(ctx, input)
@@ -525,7 +525,7 @@ func (c *awsClientImpl) DeleteKeyPair(ctx context.Context, input *ec2.DeleteKeyP
 			}
 			grip.Info(msg)
 			return false, nil
-		}, awsClientImplRetries, awsClientImplStartPeriod)
+		}, awsClientImplRetries, awsClientImplStartPeriod, 0)
 	if err != nil {
 		return nil, err
 	}
@@ -537,7 +537,7 @@ func (c *awsClientImpl) GetProducts(ctx context.Context, input *pricing.GetProdu
 	var output *pricing.GetProductsOutput
 	var err error
 	msg := makeAWSLogMessage("GetProducts", fmt.Sprintf("%T", c), input)
-	_, err = util.Retry(
+	err = util.Retry(
 		ctx,
 		func() (bool, error) {
 			output, err = c.pricing.GetProductsWithContext(ctx, input)
@@ -549,7 +549,7 @@ func (c *awsClientImpl) GetProducts(ctx context.Context, input *pricing.GetProdu
 			}
 			grip.Info(msg)
 			return false, nil
-		}, awsClientImplRetries, awsClientImplStartPeriod)
+		}, awsClientImplRetries, awsClientImplStartPeriod, 0)
 	if err != nil {
 		return nil, err
 	}

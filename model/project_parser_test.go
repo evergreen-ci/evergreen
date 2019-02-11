@@ -1158,3 +1158,29 @@ buildvariants:
 	assert.Len(proj.BuildVariants[2].Tasks, 1)
 	assert.Nil(proj.BuildVariants[2].Tasks[0].PatchOnly)
 }
+
+func TestLoggerConfig(t *testing.T) {
+	assert := assert.New(t)
+	yml := `
+loggers:
+  agent:
+    - type: something
+      splunk_token: idk
+    - type: somethingElse
+tasks:
+- name: task_1
+  commands:
+  - command: myCommand
+    loggers:
+      system:
+        - type: commandLogger
+`
+
+	proj, errs := projectFromYAML([]byte(yml))
+	assert.NotNil(proj)
+	assert.Empty(errs)
+	assert.Equal("something", proj.Loggers.Agent[0].Type)
+	assert.Equal("idk", proj.Loggers.Agent[0].SplunkToken)
+	assert.Equal("somethingElse", proj.Loggers.Agent[1].Type)
+	assert.Equal("commandLogger", proj.Tasks[0].Commands[0].Loggers.System[0].Type)
+}

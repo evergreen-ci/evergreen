@@ -33,9 +33,6 @@ func FindOneId(id string) (*CommitQueue, error) {
 func findOne(query db.Q) (*CommitQueue, error) {
 	queue := &CommitQueue{}
 	err := db.FindOneQ(Collection, query, &queue)
-	if err == mgo.ErrNotFound {
-		return nil, nil
-	}
 	return queue, err
 }
 

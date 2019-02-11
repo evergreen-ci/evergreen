@@ -674,6 +674,24 @@ func FindOneId(id string) (*Task, error) {
 	return task, nil
 }
 
+func FindOneIdAndExecution(id string, execution int) (*Task, error) {
+	task := &Task{}
+	query := db.Query(bson.M{
+		IdKey:        id,
+		ExecutionKey: execution,
+	})
+	err := db.FindOneQ(Collection, query, task)
+
+	if err == mgo.ErrNotFound {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, errors.Wrap(err, "error finding task by id and execution")
+	}
+
+	return task, nil
+}
+
 // FindOneOldNoMerge is a FindOneOld without merging test results.
 func FindOneOldNoMerge(query db.Q) (*Task, error) {
 	task := &Task{}
@@ -682,6 +700,15 @@ func FindOneOldNoMerge(query db.Q) (*Task, error) {
 		return nil, nil
 	}
 	return task, err
+}
+
+// FindOneOldNoMergeByIdAndExecution finds a task from the old tasks collection without test results.
+func FindOneOldNoMergeByIdAndExecution(id string, execution int) (*Task, error) {
+	query := db.Query(bson.M{
+		IdKey:        id,
+		ExecutionKey: execution,
+	})
+	return FindOneOldNoMerge(query)
 }
 
 func FindOneIdWithFields(id string, projected ...string) (*Task, error) {

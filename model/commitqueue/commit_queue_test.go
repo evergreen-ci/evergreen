@@ -44,12 +44,14 @@ func (s *CommitQueueSuite) SetupTest() {
 func (s *CommitQueueSuite) TestEnqueue() {
 	s.NoError(s.q.Enqueue("c123"))
 	s.False(s.q.IsEmpty())
+	s.Equal("c123", s.q.Next())
 	s.NotEqual(-1, s.q.findItem("c123"))
 
 	// Persisted to db
 	dbq, err := FindOneId("mci")
 	s.NoError(err)
 	s.False(dbq.IsEmpty())
+	s.Equal("c123", dbq.Next())
 	s.NotEqual(-1, dbq.findItem("c123"))
 }
 
@@ -71,9 +73,13 @@ func (s *CommitQueueSuite) TestRemoveOne() {
 	s.Require().NoError(s.q.Enqueue("e345"))
 	s.Require().Len(s.q.All(), 3)
 
-	s.Error(s.q.Remove("not_here"))
+	found, err := s.q.Remove("not_here")
+	s.NoError(err)
+	s.False(found)
 
-	s.NoError(s.q.Remove("d234"))
+	found, err = s.q.Remove("d234")
+	s.NoError(err)
+	s.True(found)
 	items := s.q.All()
 	s.Len(items, 2)
 	// Still in order

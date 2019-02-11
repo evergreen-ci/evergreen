@@ -2535,10 +2535,10 @@ func (c *Collection) Insert(docs ...interface{}) error {
 	return err
 }
 
-// InsertUnordered is the same as Inesrt but has the "unordered" or
+// InsertUnordered is the same as Insert but has the "unordered" or
 // continue on error semantics in the context of bulk operations.
 func (c *Collection) InsertUnordered(docs ...interface{}) error {
-	_, err := c.writeOp(&insertOp{c.FullName, docs, 0}, false)
+	_, err := c.writeOp(&insertOp{c.FullName, docs, 1}, false)
 	return err
 }
 

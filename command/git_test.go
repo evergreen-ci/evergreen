@@ -38,6 +38,7 @@ type GitGetProjectSuite struct {
 	modelData1 *modelutil.TestModelData // test model for TestGitPlugin
 	modelData2 *modelutil.TestModelData // test model for TestValidateGitCommands
 	modelData3 *modelutil.TestModelData
+	modelData4 *modelutil.TestModelData
 }
 
 func init() {
@@ -86,6 +87,14 @@ func (s *GitGetProjectSuite) SetupTest() {
 		HeadRepo:   "evergreen",
 		HeadHash:   "55ca6286e3e4f4fba5d0448333fa99fc5a404a73",
 		Author:     "octocat",
+	}
+
+	s.modelData4, err = modelutil.SetupAPITestData(s.settings, "testtask1", "rhel55", configPath2, modelutil.MergePatch)
+	s.NoError(err)
+	s.modelData4.TaskConfig.Expansions = util.NewExpansions(s.settings.Credentials)
+	s.modelData4.TaskConfig.GithubPatchData = patch.GithubPatch{
+		PRNumber:       9001,
+		MergeCommitSHA: "abcdef",
 	}
 }
 
@@ -281,6 +290,19 @@ func (s *GitGetProjectSuite) TestBuildCommandForPullRequests() {
 	s.True(strings.HasPrefix(cmds[5], "git fetch origin \"pull/9001/head:evg-pr-test-"))
 	s.True(strings.HasPrefix(cmds[6], "git checkout \"evg-pr-test-"))
 	s.Equal("git reset --hard 55ca6286e3e4f4fba5d0448333fa99fc5a404a73", cmds[7])
+}
+
+func (s *GitGetProjectSuite) TestBuildCommandForMergeTests() {
+	c := gitFetchProject{
+		Directory: "dir",
+	}
+
+	cmds, err := c.buildCloneCommand(s.modelData4.TaskConfig)
+	s.NoError(err)
+	s.Len(cmds, 8)
+	s.True(strings.HasPrefix(cmds[5], "git fetch origin \"pull/9001/merge:evg-pr-test-"))
+	s.True(strings.HasPrefix(cmds[6], "git checkout \"evg-pr-test-"))
+	s.Equal("git reset --hard abcdef", cmds[7])
 }
 
 func (s *GitGetProjectSuite) TestBuildModuleCommand() {

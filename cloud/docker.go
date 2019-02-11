@@ -26,6 +26,13 @@ type dockerSettings struct {
 	ImageURL string `mapstructure:"image_url" json:"image_url" bson:"image_url"`
 }
 
+type ContainerImageSettings struct {
+	URL              string `bson:"url"`
+	Method           string `bson:"method"`
+	RegistryUser     string `bson:"registry_user,omitempty"`
+	RegistryPassword string `bson:"registry_password,omitempty"`
+}
+
 // nolint
 var (
 	// bson fields for the ProviderSettings struct
@@ -333,16 +340,16 @@ func (m *dockerManager) CostForDuration(ctx context.Context, h *host.Host, start
 
 // BuildContainerImage downloads and buils a container image onto parent specified
 // by URL and returns this URL
-func (m *dockerManager) BuildContainerImage(ctx context.Context, parent *host.Host, url string) error {
+func (m *dockerManager) BuildContainerImage(ctx context.Context, parent *host.Host, settings ContainerImageSettings) error {
 	start := time.Now()
 	if !parent.HasContainers {
 		return errors.Errorf("Error provisioning image: '%s' is not a parent", parent.Id)
 	}
 
 	// Import correct base image if not already on host.
-	image, err := m.client.EnsureImageDownloaded(ctx, parent, url)
+	image, err := m.client.EnsureImageDownloaded(ctx, parent, settings)
 	if err != nil {
-		return errors.Wrapf(err, "Unable to ensure that image '%s' is on host '%s'", url, parent.Id)
+		return errors.Wrapf(err, "Unable to ensure that image '%s' is on host '%s'", settings.URL, parent.Id)
 	}
 	grip.Info(message.Fields{
 		"operation": "EnsureImageDownloaded",
@@ -354,7 +361,7 @@ func (m *dockerManager) BuildContainerImage(ctx context.Context, parent *host.Ho
 	// Build image containing Evergreen executable.
 	_, err = m.client.BuildImageWithAgent(ctx, parent, image)
 	if err != nil {
-		return errors.Wrapf(err, "Failed to build image '%s' with agent on host '%s'", url, parent.Id)
+		return errors.Wrapf(err, "Failed to build image '%s' with agent on host '%s'", settings.URL, parent.Id)
 	}
 	grip.Info(message.Fields{
 		"operation": "BuildImageWithAgent",

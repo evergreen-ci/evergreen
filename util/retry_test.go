@@ -29,14 +29,11 @@ func TestRetriesUsedUp(t *testing.T) {
 		start := time.Now()
 		ctx, cancel := context.WithCancel(context.Background())
 		defer cancel()
-		retryFail, err := Retry(ctx, failingFunc, TestRetries, TestSleep)
+		err := Retry(ctx, failingFunc, TestRetries, TestSleep, 0)
 		end := time.Now()
 
 		Convey("calling it with Retry should return an error", func() {
 			So(err, ShouldNotBeNil)
-		})
-		Convey("the 'retried till failure' flag should be true", func() {
-			So(retryFail, ShouldBeTrue)
 		})
 		Convey("Time spent doing Retry() should be total time sleeping", func() {
 			So(end, ShouldHappenOnOrAfter, start.Add((TestRetries-1)*TestSleep))
@@ -59,17 +56,14 @@ func TestRetryUntilSuccess(t *testing.T) {
 		start := time.Now()
 		ctx, cancel := context.WithCancel(context.Background())
 		defer cancel()
-		retryFail, err := Retry(ctx, retryPassingFunc, TestRetries, TestSleep)
+		err := Retry(ctx, retryPassingFunc, TestRetries, TestSleep, 0)
 		end := time.Now()
 
 		Convey("calling it with Retry should not return any error", func() {
 			So(err, ShouldBeNil)
 		})
-		Convey("the 'retried till failure' flag should be false", func() {
-			So(retryFail, ShouldBeFalse)
-		})
 		Convey("time spent should be retry sleep * attempts needed to pass", func() {
-			backoff := getBackoff(TestSleep, TestRetries)
+			backoff := getBackoff(TestRetries, TestSleep, 0)
 
 			So(end, ShouldHappenOnOrAfter, start.Add((TriesTillPass-1)*TestSleep))
 			So(end, ShouldHappenBefore, start.Add(backoff.Max))
@@ -86,13 +80,10 @@ func TestNonRetriableFailure(t *testing.T) {
 
 		ctx, cancel := context.WithCancel(context.Background())
 		defer cancel()
-		retryFail, err := Retry(ctx, failingFuncNoRetry, TestRetries, TestSleep)
+		err := Retry(ctx, failingFuncNoRetry, TestRetries, TestSleep, 0)
 
 		Convey("calling it with Retry should return an error", func() {
 			So(err, ShouldNotBeNil)
-		})
-		Convey("the 'retried till failure' flag should be false", func() {
-			So(retryFail, ShouldBeFalse)
 		})
 	})
 }

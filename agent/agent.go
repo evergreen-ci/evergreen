@@ -10,6 +10,7 @@ import (
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/command"
 	"github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/rest/client"
 	"github.com/evergreen-ci/evergreen/subprocess"
 	"github.com/evergreen-ci/evergreen/util"
@@ -31,6 +32,7 @@ type Options struct {
 	HostSecret         string
 	StatusPort         int
 	LogPrefix          string
+	LogkeeperURL       string
 	WorkingDirectory   string
 	HeartbeatInterval  time.Duration
 	AgentSleepInterval time.Duration
@@ -48,6 +50,9 @@ type taskContext struct {
 	taskDirectory  string
 	timeout        time.Duration
 	timedOut       bool
+	project        *model.Project
+	taskModel      *task.Task
+	version        *model.Version
 	sync.RWMutex
 }
 
@@ -138,6 +143,12 @@ LOOP:
 					timer.Reset(0)
 					continue LOOP
 				}
+				if err := a.fetchProjectConfig(ctx, tc); err != nil {
+					grip.Error(message.WrapError(err, message.Fields{
+						"message": "error fetching project config; will attempt at a later point",
+						"task":    tc.task.ID,
+					}))
+				}
 				if err := a.resetLogging(lgrCtx, tc); err != nil {
 					grip.Critical(message.WrapError(err, message.Fields{
 						"message": "error setting up logger",
@@ -211,8 +222,32 @@ func nextTaskHasDifferentTaskGroupOrBuild(nextTask *apimodels.NextTaskResponse, 
 	return false
 }
 
+func (a *Agent) fetchProjectConfig(ctx context.Context, tc *taskContext) error {
+	v, err := a.comm.GetVersion(ctx, tc.task)
+	if err != nil {
+		return errors.Wrap(err, "error getting version")
+	}
+	project := &model.Project{}
+	err = model.LoadProjectInto([]byte(v.Config), v.Identifier, project)
+	if err != nil {
+		return errors.Wrapf(err, "error reading project config")
+	}
+	taskModel, err := a.comm.GetTask(ctx, tc.task)
+	if err != nil {
+		return errors.Wrap(err, "error getting task")
+	}
+	tc.version = v
+	tc.taskModel = taskModel
+	tc.project = project
+	return nil
+}
+
 func (a *Agent) resetLogging(ctx context.Context, tc *taskContext) error {
-	tc.logger = a.comm.GetLoggerProducer(ctx, tc.task, nil)
+	if tc.project != nil && tc.project.Loggers != nil {
+		tc.logger = a.makeLoggerProducer(ctx, tc.project.Loggers, tc.task, tc.taskModel)
+	} else {
+		tc.logger = a.comm.GetLoggerProducer(ctx, tc.task, nil)
+	}
 
 	sender, err := GetSender(ctx, a.opts.LogPrefix, tc.task.ID)
 	if err != nil {

@@ -73,3 +73,38 @@ func (s *StatusSuite) TestAgentStartsStatusServer() {
 	s.Require().NoError(err)
 	s.Equal(200, resp.StatusCode)
 }
+
+func (s *StatusSuite) TestAgentFailsToStartTwice() {
+	resp, err := http.Get("http://127.0.0.1:2287/status")
+	s.Error(err)
+
+	s.testOpts.StatusPort = 2287
+	agt := New(s.testOpts, client.NewMock("url"))
+	mockCommunicator := agt.comm.(*client.Mock)
+	mockCommunicator.NextTaskIsNil = true
+	ctx, cancel := context.WithCancel(context.Background())
+	s.cancel = cancel
+
+	first := make(chan error, 1)
+	go func(c chan error) {
+		c <- agt.Start(ctx)
+	}(first)
+	time.Sleep(100 * time.Millisecond)
+	resp, err = http.Get("http://127.0.0.1:2287/status")
+	s.Equal(200, resp.StatusCode)
+
+	second := make(chan error, 1)
+	go func(c chan error) {
+		secondCtx, secondCancel := context.WithCancel(context.Background())
+		defer secondCancel()
+		c <- agt.Start(secondCtx)
+	}(second)
+
+	err = <-second
+	s.Error(err)
+	s.Contains(err.Error(), "another agent is running on 2287")
+
+	cancel()
+	err = <-first
+	s.Require().NoError(err)
+}

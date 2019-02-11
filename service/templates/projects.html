@@ -378,7 +378,7 @@ Evergreen Projects
                   <tag-input klass="form-control" items="github_alias.tags" placeholder="tags (comma-delimited)" />
                 </div>
                 <div class="col-lg-4">
-                  <button class="plus-button btn btn-primary" ng-disabled="!validPatchDefinition(github_alias.variant, github_alias.task)" type="button" ng-click="addGithubAlias()">
+                  <button class="plus-button btn btn-primary" ng-disabled="!validPatchDefinition(github_alias)" type="button" ng-click="addGithubAlias()">
                     <i class="fa fa-plus"></i>
                   </button>
                 <label class="distro-error">[[invalidPatchDefinitionMessage]]</label>
@@ -438,8 +438,8 @@ Evergreen Projects
             <div class="col-lg-2">
               <tag-input klass="form-control" items="patch_alias.tags" placeholder="tags (comma-delimited)" />
             </div>
-            <div class="col-lg-2">
-              <button class="plus-button btn btn-primary " ng-disabled="!validPatchAlias(patch_alias.alias, patch_alias.variant, patch_alias.task, patch_alias.tags_temp)" type="button" ng-click="addPatchAlias()">
+            <div class="col-lg-4">
+              <button class="plus-button btn btn-primary " ng-disabled="!validPatchAlias(patch_alias)" type="button" ng-click="addPatchAlias()">
                 <i class="fa fa-plus"></i>
               </button>
               <label class="distro-error">[[invalidPatchAliasMessage]]</label>

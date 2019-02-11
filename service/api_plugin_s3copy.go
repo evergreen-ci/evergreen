@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"github.com/aws/aws-sdk-go/aws/endpoints"
-	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/util"
@@ -87,7 +86,7 @@ func (as *APIServer) s3copyPlugin(w http.ResponseWriter, r *http.Request) {
 		Credentials: pail.CreateAWSCredentials(s3CopyReq.AwsKey, s3CopyReq.AwsSecret, ""),
 		Region:      region,
 		Name:        s3CopyReq.S3SourceBucket,
-		Permission:  s3.BucketCannedACLPublicRead,
+		Permission:  s3CopyReq.S3Permissions,
 	}
 	srcBucket, err := pail.NewS3MultiPartBucket(srcOpts)
 	if err != nil {
@@ -97,7 +96,7 @@ func (as *APIServer) s3copyPlugin(w http.ResponseWriter, r *http.Request) {
 		Credentials: pail.CreateAWSCredentials(s3CopyReq.AwsKey, s3CopyReq.AwsSecret, ""),
 		Region:      region,
 		Name:        s3CopyReq.S3DestinationBucket,
-		Permission:  s3.BucketCannedACLPublicRead,
+		Permission:  s3CopyReq.S3Permissions,
 	}
 	destBucket, err := pail.NewS3MultiPartBucket(destOpts)
 	if err != nil {
@@ -108,7 +107,7 @@ func (as *APIServer) s3copyPlugin(w http.ResponseWriter, r *http.Request) {
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	_, err = util.Retry(
+	err = util.Retry(
 		ctx,
 		func() (bool, error) {
 			copyOpts := pail.CopyOptions{
@@ -128,7 +127,7 @@ func (as *APIServer) s3copyPlugin(w http.ResponseWriter, r *http.Request) {
 			grip.Error(err)
 
 			return false, err
-		}, s3CopyRetryNumRetries, s3CopyRetrySleepTimeSec*time.Second)
+		}, s3CopyRetryNumRetries, s3CopyRetrySleepTimeSec*time.Second, 0)
 
 	if err != nil {
 		grip.Error(errors.Wrap(errors.WithStack(newPushLog.UpdateStatus(model.PushLogFailed)), "updating pushlog status failed"))
