@@ -143,7 +143,7 @@ func (a *Agent) startTask(ctx context.Context, tc *taskContext, complete chan<- 
 
 func (a *Agent) runPreTaskCommands(ctx context.Context, tc *taskContext) error {
 	tc.logger.Task().Info("Running pre-task commands.")
-	opts := runCommandsOptions{isTaskCommands: false}
+	opts := runCommandsOptions{}
 
 	if tc.runGroupSetup {
 		var cancel context.CancelFunc

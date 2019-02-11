@@ -147,10 +147,7 @@ func (a *Agent) runTaskCommands(ctx context.Context, tc *taskContext) error {
 	}
 	tc.logger.Execution().Info("Running task commands.")
 	start := time.Now()
-	opts := runCommandsOptions{
-		isTaskCommands:  true,
-		shouldSetupFail: false,
-	}
+	opts := runCommandsOptions{isTaskCommands: true}
 	err := a.runCommands(ctx, tc, task.Commands, opts)
 	tc.logger.Execution().Infof("Finished running task commands in %v.", time.Since(start).String())
 	if err != nil {
