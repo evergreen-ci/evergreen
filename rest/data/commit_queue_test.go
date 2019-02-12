@@ -21,7 +21,6 @@ type CommitQueueSuite struct {
 }
 
 func TestCommitQueueSuite(t *testing.T) {
-	testConfig := testutil.TestConfig()
 	db.SetGlobalSessionProvider(testConfig.SessionFactory())
 	testutil.ConfigureIntegrationTest(t, testConfig, "TestCommitQueueSuite")
 	s := &CommitQueueSuite{settings: testConfig}
