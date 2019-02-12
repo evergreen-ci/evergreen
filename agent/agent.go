@@ -46,7 +46,7 @@ type Options struct {
 type taskContext struct {
 	currentCommand command.Command
 	logger         client.LoggerProducer
-	logs           apimodels.TaskLogs
+	logs           *apimodels.TaskLogs
 	statsCollector *StatsCollector
 	task           client.TaskData
 	taskGroup      string

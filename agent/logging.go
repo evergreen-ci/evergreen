@@ -127,6 +127,7 @@ func (a *Agent) makeLoggerProducer(ctx context.Context, tc *taskContext, c *mode
 	}
 	logger := a.comm.GetLoggerProducer(ctx, tc.task, &config)
 	loggerData := a.comm.GetLoggerMetadata()
+	tc.logs = &apimodels.TaskLogs{}
 	for _, agent := range loggerData.Agent {
 		tc.logs.AgentLogURLs = append(tc.logs.AgentLogURLs, apimodels.LogInfo{
 			Command: commandName,

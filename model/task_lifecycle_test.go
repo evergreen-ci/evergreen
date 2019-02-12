@@ -620,7 +620,7 @@ func TestTaskStatusImpactedByFailedTest(t *testing.T) {
 			}
 			detail = &apimodels.TaskEndDetail{
 				Status: evergreen.TaskSucceeded,
-				Logs: apimodels.TaskLogs{
+				Logs: &apimodels.TaskLogs{
 					AgentLogURLs:  []apimodels.LogInfo{{Command: "foo1", URL: "agent"}},
 					TaskLogURLs:   []apimodels.LogInfo{{Command: "foo2", URL: "task"}},
 					SystemLogURLs: []apimodels.LogInfo{{Command: "foo3", URL: "system"}},
