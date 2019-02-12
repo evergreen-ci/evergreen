@@ -7,10 +7,7 @@ mciModule.controller('HostCtrl', function($scope, $window) {
 
   // Spawned by task aliases
   $scope.spawnedByTask = $scope.host.spawn_options.spawned_by_task
-  // FIXME EVG-5284 might have mistake in model definition
-  //       spawn_options does not have task_id
-  //       but started_by seem to contain tasl id instead
-  $scope.taskId = $scope.host.spawn_options.task_id || $scope.host.started_by
+  $scope.taskId = $scope.host.started_by
 
   $scope.host.uptime = "N/A";
   if ($scope.host.host_type !== "static") {
