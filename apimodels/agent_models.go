@@ -31,11 +31,11 @@ type HeartbeatResponse struct {
 // TaskEndDetail contains data sent from the agent to the
 // API server after each task run.
 type TaskEndDetail struct {
-	Status      string   `bson:"status,omitempty" json:"status,omitempty"`
-	Type        string   `bson:"type,omitempty" json:"type,omitempty"`
-	Description string   `bson:"desc,omitempty" json:"desc,omitempty"`
-	TimedOut    bool     `bson:"timed_out,omitempty" json:"timed_out,omitempty"`
-	Logs        TaskLogs `bson:"logs,omitempty" json:"logs,omitempty"`
+	Status      string    `bson:"status,omitempty" json:"status,omitempty"`
+	Type        string    `bson:"type,omitempty" json:"type,omitempty"`
+	Description string    `bson:"desc,omitempty" json:"desc,omitempty"`
+	TimedOut    bool      `bson:"timed_out,omitempty" json:"timed_out,omitempty"`
+	Logs        *TaskLogs `bson:"logs,omitempty" json:"logs,omitempty"`
 }
 
 type TaskLogs struct {
