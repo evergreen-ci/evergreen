@@ -96,21 +96,18 @@ func (s *githubPRLogger) Send(m message.Composer) {
 	}
 
 	// send the result to github
-	s.ErrorHandler(s.sendMergeResult(res, msg), m)
+	// only send if the merge was not successful since
+	// GitHub won't display statuses received after the PR has been merged
+	if !res.GetMerged() {
+		s.ErrorHandler(s.sendMergeFailedStatus(res.GetMessage(), msg), m)
+	}
 
 	s.ErrorHandler(dequeueFromCommitQueue(msg.ProjectID, msg.PRNum), m)
 }
 
-func (s *githubPRLogger) sendMergeResult(PRResult *github.PullRequestMergeResult, msg *GithubMergePR) error {
-	var state message.GithubState
-	var description string
-	if PRResult.GetMerged() {
-		state = message.GithubStateSuccess
-		description = "merge succeeded"
-	} else {
-		state = message.GithubStateFailure
-		description = fmt.Sprintf("merge failed: %s", PRResult.GetMessage())
-	}
+func (s *githubPRLogger) sendMergeFailedStatus(githubMessage string, msg *GithubMergePR) error {
+	state := message.GithubStateFailure
+	description := fmt.Sprintf("merge failed: %s", githubMessage)
 
 	status := message.GithubStatus{
 		Owner:       msg.Owner,
