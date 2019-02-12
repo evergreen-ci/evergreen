@@ -4,6 +4,8 @@ import (
 	"context"
 	"testing"
 
+	"github.com/evergreen-ci/evergreen"
+
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/commitqueue"
@@ -13,13 +15,16 @@ import (
 )
 
 type CommitQueueSuite struct {
-	ctx Connector
+	ctx      Connector
+	settings *evergreen.Settings
 	suite.Suite
 }
 
 func TestCommitQueueSuite(t *testing.T) {
-	db.SetGlobalSessionProvider(testutil.TestConfig().SessionFactory())
-	s := &CommitQueueSuite{}
+	testConfig := testutil.TestConfig()
+	db.SetGlobalSessionProvider(testConfig.SessionFactory())
+	testutil.ConfigureIntegrationTest(t, testConfig, "TestCommitQueueSuite")
+	s := &CommitQueueSuite{settings: testConfig}
 	suite.Run(t, s)
 }
 
@@ -98,6 +103,29 @@ func (s *CommitQueueSuite) TestCommitQueueClearAll() {
 	clearedCount, err = s.ctx.CommitQueueClearAll()
 	s.NoError(err)
 	s.Equal(2, clearedCount)
+}
+
+func (s *CommitQueueSuite) TestIsAuthorizedToPatchAndMerge() {
+	s.ctx = &DBConnector{}
+	ctx := context.Background()
+
+	args := UserRepoPair{
+		Username: "evrg-bot-webhook",
+		Owner:    "evergreen-ci",
+		Repo:     "evergreen",
+	}
+	authorized, err := s.ctx.IsAuthorizedToPatchAndMerge(ctx, s.settings, args)
+	s.NoError(err)
+	s.True(authorized)
+
+	args = UserRepoPair{
+		Username: "octocat",
+		Owner:    "evergreen-ci",
+		Repo:     "evergreen",
+	}
+	authorized, err = s.ctx.IsAuthorizedToPatchAndMerge(ctx, s.settings, args)
+	s.NoError(err)
+	s.False(authorized)
 }
 
 func (s *CommitQueueSuite) TestMockGetGitHubPR() {

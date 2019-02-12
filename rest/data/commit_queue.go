@@ -89,26 +89,27 @@ func (pc *DBCommitQueueConnector) CommitQueueClearAll() (int, error) {
 	return commitqueue.ClearAllCommitQueues()
 }
 
-func (pc *DBCommitQueueConnector) IsAuthorized(ctx context.Context, username, owner, repo string) (bool, error) {
+type UserRepoPair struct {
+	Username string
+	Owner    string
+	Repo     string
+}
+
+func (pc *DBCommitQueueConnector) IsAuthorizedToPatchAndMerge(ctx context.Context, settings *evergreen.Settings, args UserRepoPair) (bool, error) {
 	// In the org
-	conf, err := evergreen.GetConfig()
-	if err != nil {
-		return false, errors.Wrap(err, "can't get evergreen configuration")
-	}
-	token, err := conf.GetGithubOauthToken()
+	token, err := settings.GetGithubOauthToken()
 	if err != nil {
 		return false, errors.Wrap(err, "can't get Github OAuth token from configuration")
 	}
 
-	env := evergreen.GetEnvironment()
-	requiredOrganization := env.Settings().GithubPRCreatorOrg
+	requiredOrganization := settings.GithubPRCreatorOrg
 	if requiredOrganization == "" {
 		return false, errors.New("no GitHub PR creator organization configured")
 	}
 
 	ctxWithCancel, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
-	inOrg, err := thirdparty.GithubUserInOrganization(ctxWithCancel, token, requiredOrganization, username)
+	inOrg, err := thirdparty.GithubUserInOrganization(ctxWithCancel, token, requiredOrganization, args.Username)
 	if err != nil {
 		return false, errors.Wrap(err, "call to Github API failed")
 	}
@@ -117,7 +118,7 @@ func (pc *DBCommitQueueConnector) IsAuthorized(ctx context.Context, username, ow
 	// See: https://help.github.com/articles/repository-permission-levels-for-an-organization/
 	ctxWithCancel, cancel = context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
-	permission, err := thirdparty.GitHubUserPermissionLevel(ctxWithCancel, token, owner, repo, username)
+	permission, err := thirdparty.GitHubUserPermissionLevel(ctxWithCancel, token, args.Owner, args.Repo, args.Username)
 	if err != nil {
 		return false, errors.Wrap(err, "call to Github API failed")
 	}
@@ -190,6 +191,6 @@ func (pc *MockCommitQueueConnector) CommitQueueClearAll() (int, error) {
 	return count, nil
 }
 
-func (pc *MockCommitQueueConnector) IsAuthorized(ctx context.Context, user, owner, repo string) (bool, error) {
+func (pc *MockCommitQueueConnector) IsAuthorizedToPatchAndMerge(context.Context, *evergreen.Settings, UserRepoPair) (bool, error) {
 	return true, nil
 }

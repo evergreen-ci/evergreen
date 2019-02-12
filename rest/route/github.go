@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"strconv"
 
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/commitqueue"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/rest/data"
@@ -32,13 +33,15 @@ type githubHookApi struct {
 	eventType string
 	msgID     string
 	sc        data.Connector
+	settings  *evergreen.Settings
 }
 
-func makeGithubHooksRoute(sc data.Connector, queue amboy.Queue, secret []byte) gimlet.RouteHandler {
+func makeGithubHooksRoute(sc data.Connector, queue amboy.Queue, secret []byte, settings *evergreen.Settings) gimlet.RouteHandler {
 	return &githubHookApi{
-		sc:     sc,
-		queue:  queue,
-		secret: secret,
+		sc:       sc,
+		settings: settings,
+		queue:    queue,
+		secret:   secret,
 	}
 }
 
@@ -201,7 +204,13 @@ func (gh *githubHookApi) Run(ctx context.Context) gimlet.Responder {
 		repo := *event.Repo.Name
 		PRNum := *event.Issue.Number
 		user := *event.Comment.User.Login
-		authorized, err := gh.sc.IsAuthorized(ctx, user, owner, repo)
+
+		isAuthorizedArgs := data.UserRepoPair{
+			Username: user,
+			Owner:    owner,
+			Repo:     repo,
+		}
+		authorized, err := gh.sc.IsAuthorizedToPatchAndMerge(ctx, gh.settings, isAuthorizedArgs)
 		if err != nil {
 			grip.Error(message.WrapError(err, message.Fields{
 				"source":  "github hook",
