@@ -13,7 +13,13 @@ import (
 	"github.com/pkg/errors"
 )
 
-func (a *Agent) runCommands(ctx context.Context, tc *taskContext, commands []model.PluginCommandConf, isTaskCommands bool) (err error) {
+type runCommandsOptions struct {
+	isTaskCommands  bool
+	shouldSetupFail bool
+}
+
+func (a *Agent) runCommands(ctx context.Context, tc *taskContext, commands []model.PluginCommandConf,
+	options runCommandsOptions) (err error) {
 	var cmds []command.Command
 	defer func() { err = recovery.HandlePanicWithError(recover(), err, "run commands") }()
 
@@ -26,13 +32,9 @@ func (a *Agent) runCommands(ctx context.Context, tc *taskContext, commands []mod
 		cmds, err = command.Render(commandInfo, tc.taskConfig.Project.Functions)
 		if err != nil {
 			tc.logger.Task().Errorf("Couldn't parse plugin command '%v': %v", commandInfo.Command, err)
-			if isTaskCommands {
-				return err
-			}
-			err = nil
-			continue
+			return err
 		}
-		if err = a.runCommandSet(ctx, tc, commandInfo, cmds, isTaskCommands, i+1, len(commands)); err != nil {
+		if err = a.runCommandSet(ctx, tc, commandInfo, cmds, options, i+1, len(commands)); err != nil {
 			return errors.WithStack(err)
 		}
 	}
@@ -41,7 +43,7 @@ func (a *Agent) runCommands(ctx context.Context, tc *taskContext, commands []mod
 }
 
 func (a *Agent) runCommandSet(ctx context.Context, tc *taskContext, commandInfo model.PluginCommandConf,
-	cmds []command.Command, isTaskCommands bool, index, total int) error {
+	cmds []command.Command, options runCommandsOptions, index, total int) error {
 
 	var err error
 	var logger client.LoggerProducer
@@ -89,7 +91,7 @@ func (a *Agent) runCommandSet(ctx context.Context, tc *taskContext, commandInfo 
 			tc.taskConfig.Expansions.Put(key, newVal)
 		}
 
-		if isTaskCommands {
+		if options.isTaskCommands {
 			tc.setCurrentCommand(cmd)
 			tc.setCurrentTimeout(cmd)
 			a.comm.UpdateLastMessageTime()
@@ -101,7 +103,7 @@ func (a *Agent) runCommandSet(ctx context.Context, tc *taskContext, commandInfo 
 		// We have seen cases where calling exec.*Cmd.Wait() waits for too long if
 		// the process has called subprocesses. It will wait until a subprocess
 		// finishes, instead of returning immediately when the context is canceled.
-		// We therefore check both if the context is cancled and if Wait() has finished.
+		// We therefore check both if the context is cancelled and if Wait() has finished.
 		cmdChan := make(chan error, 1)
 		go func() {
 			defer func() {
@@ -115,7 +117,7 @@ func (a *Agent) runCommandSet(ctx context.Context, tc *taskContext, commandInfo 
 		case err = <-cmdChan:
 			if err != nil {
 				tc.logger.Task().Errorf("Command failed: %v", err)
-				if isTaskCommands {
+				if options.isTaskCommands || options.shouldSetupFail {
 					return errors.Wrap(err, "command failed")
 				}
 			}
@@ -145,7 +147,8 @@ func (a *Agent) runTaskCommands(ctx context.Context, tc *taskContext) error {
 	}
 	tc.logger.Execution().Info("Running task commands.")
 	start := time.Now()
-	err := a.runCommands(ctx, tc, task.Commands, true)
+	opts := runCommandsOptions{isTaskCommands: true}
+	err := a.runCommands(ctx, tc, task.Commands, opts)
 	tc.logger.Execution().Infof("Finished running task commands in %v.", time.Since(start).String())
 	if err != nil {
 		tc.logger.Execution().Errorf("Task failed: %v", err)

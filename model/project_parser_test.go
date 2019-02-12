@@ -799,6 +799,7 @@ task_groups:
 - name: example_task_group
   share_processes: true
   max_hosts: 2
+  setup_group_can_fail_task: true
   setup_group:
   - command: shell.exec
     params:
@@ -830,6 +831,7 @@ buildvariants:
 	tg := proj.TaskGroups[0]
 	assert.Equal("example_task_group", tg.Name)
 	assert.Equal(2, tg.MaxHosts)
+	assert.Equal(true, tg.SetupGroupFailTask)
 	assert.Len(tg.Tasks, 2)
 	assert.Len(tg.SetupTask.List(), 1)
 	assert.Len(tg.SetupGroup.List(), 1)

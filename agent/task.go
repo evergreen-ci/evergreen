@@ -128,7 +128,11 @@ func (a *Agent) startTask(ctx context.Context, tc *taskContext, complete chan<- 
 	}
 
 	a.killProcs(tc, false)
-	a.runPreTaskCommands(innerCtx, tc)
+
+	if err = a.runPreTaskCommands(innerCtx, tc); err != nil {
+		complete <- evergreen.TaskSetupFailed
+		return
+	}
 
 	if err = a.runTaskCommands(innerCtx, tc); err != nil {
 		complete <- evergreen.TaskFailed
@@ -137,8 +141,10 @@ func (a *Agent) startTask(ctx context.Context, tc *taskContext, complete chan<- 
 	complete <- evergreen.TaskSucceeded
 }
 
-func (a *Agent) runPreTaskCommands(ctx context.Context, tc *taskContext) {
+func (a *Agent) runPreTaskCommands(ctx context.Context, tc *taskContext) error {
 	tc.logger.Task().Info("Running pre-task commands.")
+	opts := runCommandsOptions{}
+
 	if tc.runGroupSetup {
 		var cancel context.CancelFunc
 		ctx, cancel = a.withCallbackTimeout(ctx, tc)
@@ -146,12 +152,16 @@ func (a *Agent) runPreTaskCommands(ctx context.Context, tc *taskContext) {
 		taskGroup, err := model.GetTaskGroup(tc.taskGroup, tc.taskConfig)
 		if err != nil {
 			tc.logger.Execution().Error(errors.Wrap(err, "error fetching task group for pre-group commands"))
-			return
+			return nil
 		}
 		if taskGroup.SetupGroup != nil {
-			err = a.runCommands(ctx, tc, taskGroup.SetupGroup.List(), false)
+			opts.shouldSetupFail = taskGroup.SetupGroupFailTask
+			err = a.runCommands(ctx, tc, taskGroup.SetupGroup.List(), opts)
 			if err != nil {
 				tc.logger.Execution().Error(errors.Wrap(err, "error running task setup group"))
+				if taskGroup.SetupGroupFailTask {
+					return err
+				}
 			}
 		}
 	}
@@ -159,13 +169,15 @@ func (a *Agent) runPreTaskCommands(ctx context.Context, tc *taskContext) {
 	taskGroup, err := model.GetTaskGroup(tc.taskGroup, tc.taskConfig)
 	if err != nil {
 		tc.logger.Execution().Error(errors.Wrap(err, "error fetching task group for pre-task commands"))
-		return
+		return nil
 	}
 	if taskGroup.SetupTask != nil {
-		err = a.runCommands(ctx, tc, taskGroup.SetupTask.List(), false)
+		opts.shouldSetupFail = false
+		err = a.runCommands(ctx, tc, taskGroup.SetupTask.List(), opts)
 	}
 	tc.logger.Task().ErrorWhenf(err != nil, "Running pre-task commands failed: %v", err)
 	tc.logger.Task().InfoWhen(err == nil, "Finished running pre-task commands.")
+	return nil
 }
 
 func (tc *taskContext) setCurrentCommand(command command.Command) {
