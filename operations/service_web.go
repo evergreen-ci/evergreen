@@ -39,14 +39,14 @@ func startWebService() cli.Command {
 				grip.EmergencyFatal(errors.Wrap(env.SaveConfig(), "problem saving config"))
 			}
 			grip.EmergencyFatal(errors.Wrap(env.RemoteQueue().Start(ctx), "problem starting remote queue"))
-			grip.EmergencyFatal(errors.Wrap(env.SingleWorkerQueue().Start(ctx), "problem starting single worker queue"))
+			grip.EmergencyFatal(errors.Wrap(env.GenerateTasksQueue().Start(ctx), "problem starting generate tasks"))
 
 			settings := env.Settings()
 			sender, err := settings.GetSender(env)
 			grip.EmergencyFatal(err)
 			grip.EmergencyFatal(grip.SetSender(sender))
 			queue := env.RemoteQueue()
-			singleQueue := env.SingleWorkerQueue()
+			generateQueue := env.GenerateTasksQueue()
 
 			defer cancel()
 			defer sender.Close()
@@ -62,7 +62,7 @@ func startWebService() cli.Command {
 				uiServer  *http.Server
 			)
 
-			serviceHandler, err := getServiceRouter(settings, queue, singleQueue)
+			serviceHandler, err := getServiceRouter(settings, queue, generateQueue)
 			if err != nil {
 				return errors.WithStack(err)
 			}
@@ -156,7 +156,7 @@ func gracefulShutdownForSIGTERM(ctx context.Context, servers []*http.Server, wai
 	close(wait)
 }
 
-func getServiceRouter(settings *evergreen.Settings, queue amboy.Queue, singleQueue amboy.Queue) (http.Handler, error) {
+func getServiceRouter(settings *evergreen.Settings, queue amboy.Queue, generateQueue amboy.Queue) (http.Handler, error) {
 	home := evergreen.FindEvergreenHome()
 	if home == "" {
 		return nil, errors.New("EVGHOME environment variable must be set to run UI server")
@@ -172,7 +172,7 @@ func getServiceRouter(settings *evergreen.Settings, queue amboy.Queue, singleQue
 		return nil, errors.Wrap(err, "failed to create UI server")
 	}
 
-	as, err := service.NewAPIServer(settings, queue, singleQueue)
+	as, err := service.NewAPIServer(settings, queue, generateQueue)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to create API server")
 	}

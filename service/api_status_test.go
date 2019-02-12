@@ -28,9 +28,9 @@ func getCTAEndpoint(t *testing.T) *httptest.ResponseRecorder {
 
 	conf := testutil.TestConfig()
 	queue := evergreen.GetEnvironment().LocalQueue()
-	singleQueue := evergreen.GetEnvironment().SingleWorkerQueue()
+	generateQueue := evergreen.GetEnvironment().GenerateTasksQueue()
 
-	as, err := NewAPIServer(conf, queue, singleQueue)
+	as, err := NewAPIServer(conf, queue, generateQueue)
 	if err != nil {
 		t.Fatalf("creating test API server: %v", err)
 	}
@@ -57,9 +57,9 @@ func getStuckHostEndpoint(t *testing.T) *httptest.ResponseRecorder {
 
 	conf := testutil.TestConfig()
 	queue := evergreen.GetEnvironment().LocalQueue()
-	singleQueue := evergreen.GetEnvironment().SingleWorkerQueue()
+	generateQueue := evergreen.GetEnvironment().GenerateTasksQueue()
 
-	as, err := NewAPIServer(conf, queue, singleQueue)
+	as, err := NewAPIServer(conf, queue, generateQueue)
 	if err != nil {
 		t.Fatalf("creating test API server: %v", err)
 	}
