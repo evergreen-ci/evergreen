@@ -1,4 +1,5 @@
 mciModule.controller('TaskHistoryDrawerCtrl', function($scope, $window, $location, $filter, $timeout, historyDrawerService) {
+  const APPROX_TASK_ITEM_HEIGHT = 17
   // cache the task being displayed on the page
   $scope.task = $window.task_data;
 
@@ -133,6 +134,8 @@ mciModule.controller('TaskHistoryDrawerCtrl', function($scope, $window, $locatio
             // regroup
             $scope.groupedRevisions = groupHistory($scope.revisions);
 
+            // Scroll down by rough offset calculation
+            drawerContentsEl.scrollTop(APPROX_TASK_ITEM_HEIGHT * data.revisions.length);
           },
           error: function(data) {
             console.log('error fetching later revisions: ' + JSON.stringify(data));
@@ -173,7 +176,6 @@ mciModule.controller('TaskHistoryDrawerCtrl', function($scope, $window, $locatio
 
                   // regroup
                   $scope.groupedRevisions = groupHistory($scope.revisions);
-
                 },
                 error: function(data) {
                   console.log('error fetching earlier revisions: ' + JSON.stringify(data));
@@ -231,7 +233,7 @@ mciModule.controller('TaskHistoryDrawerCtrl', function($scope, $window, $locatio
           }
         }
 
-        drawerContentsEl.on('mousewheel DOMMouseScroll onmousewheel', smallScrollFunc);
+        drawerContentsEl.on('mousewheel DOMMouseScroll onmousewheel', _.debounce(smallScrollFunc, 100));
 
         // scrolling function to fire if the element is scrollable (it overflows
         // its div)

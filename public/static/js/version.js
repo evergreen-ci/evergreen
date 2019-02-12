@@ -274,6 +274,7 @@ mciModule.controller('VersionController', function($scope, $rootScope, $location
 
 
 mciModule.controller('VersionHistoryDrawerCtrl', function($scope, $window, $filter, $timeout, historyDrawerService) {
+  const APPROX_REVISION_ITEM_HEIGHT = 17
 
   // cache the task being displayed on the page
   $scope.version = $window.version;
@@ -373,6 +374,9 @@ mciModule.controller('VersionHistoryDrawerCtrl', function($scope, $window, $filt
           // regroup
           $scope.groupedRevisions = groupHistory($scope.revisions);
 
+          // Scroll down by rough offset calculation
+          drawerContentsEl.scrollTop(APPROX_REVISION_ITEM_HEIGHT * data.revisions.length);
+
         },
         error: function(data) {
           console.log('error fetching later revisions: ' + JSON.stringify(data));
@@ -471,7 +475,7 @@ mciModule.controller('VersionHistoryDrawerCtrl', function($scope, $window, $filt
     }
   }
 
-  drawerContentsEl.on('mousewheel DOMMouseScroll onmousewheel', smallScrollFunc);
+  drawerContentsEl.on('mousewheel DOMMouseScroll onmousewheel', _.debounce(smallScrollFunc, 100));
 
   // scrolling function to fire if the element is scrollable (it overflows
   // its div)
@@ -479,13 +483,11 @@ mciModule.controller('VersionHistoryDrawerCtrl', function($scope, $window, $filt
     if (drawerContentsEl.scrollTop() === 0) {
       // we hit the top of the drawer
       fetchLaterRevisions();
-
-    } else if (drawerContentsEl.scrollTop() + 10 >=
-      drawerContentsEl[0].scrollHeight - drawerContentsEl.height()) {
-
+    } else if (
+      drawerContentsEl.scrollTop() + 10 >= drawerContentsEl[0].scrollHeight - drawerContentsEl.height()
+    ) {
       // we hit the bottom of the drawer
       fetchEarlierRevisions();
-
     }
   }
 
