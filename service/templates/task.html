@@ -242,6 +242,10 @@ Evergreen - {{Trunc .Task.Revision 10}} / {{.Task.BuildVariantDisplay}} / {{.Tas
                       <td class="icon"><i class="fa fa-calendar"></i></td>
                       <td>Finished on [[task.finish_time | dateFromNanoseconds | convertDateToUserTimezone:userTz:"MMM D, YYYY h:mm:ss a"]]</td>
                     </tr>
+                    <tr ng-show="task.task_end_details.status == 'failed' && (task.task_end_details.type == 'setup' || task.task_end_details.type == 'system') ">
+                      <td class="icon"><i class="fa fa-file-text-o"</td>
+                      <td>Failing Command: [[task.task_end_details.desc]]</td>
+                    </tr>
                     <tr ng-show="task.priority > 0">
                       <td class="icon"><i class="fa fa-rocket"></i></td>
                       <td>Priority: [[task.priority]]</td>
