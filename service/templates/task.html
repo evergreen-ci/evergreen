@@ -242,6 +242,10 @@ Evergreen - {{Trunc .Task.Revision 10}} / {{.Task.BuildVariantDisplay}} / {{.Tas
                       <td class="icon"><i class="fa fa-calendar"></i></td>
                       <td>Finished on [[task.finish_time | dateFromNanoseconds | convertDateToUserTimezone:userTz:"MMM D, YYYY h:mm:ss a"]]</td>
                     </tr>
+                    <tr ng-show="task.task_end_details.status == 'failed' && (task.task_end_details.type == 'setup' || task.task_end_details.type == 'system') ">
+                      <td class="icon"><i class="fa fa-code"></i></td>
+                      <td>Failing Command: [[task.task_end_details.desc]]</td>
+                    </tr>
                     <tr ng-show="task.priority > 0">
                       <td class="icon"><i class="fa fa-rocket"></i></td>
                       <td>Priority: [[task.priority]]</td>
@@ -255,7 +259,7 @@ Evergreen - {{Trunc .Task.Revision 10}} / {{.Task.BuildVariantDisplay}} / {{.Tas
                       <td><a href="/[[task.upstream_data.trigger_type]]/[[task.upstream_data.trigger_id]]">Triggered from [[task.upstream_data.project_name]]</a></td>
                     </tr>
                     <tr ng-show="task.display_task">
-                      <td class="icon"><i class="fa fa-link"></i></td>
+                      <td class="icon"><i class="fa fa-link"></i></td>`
                       <td><a href="/task/[[task.display_task]]">Parent display task</a></td>
                     </tr>
                     <tr ng-if="task.display_only">
