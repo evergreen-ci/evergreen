@@ -89,13 +89,13 @@ func (pc *DBCommitQueueConnector) CommitQueueClearAll() (int, error) {
 	return commitqueue.ClearAllCommitQueues()
 }
 
-type UserRepoPair struct {
+type UserRepoInfo struct {
 	Username string
 	Owner    string
 	Repo     string
 }
 
-func (pc *DBCommitQueueConnector) IsAuthorizedToPatchAndMerge(ctx context.Context, settings *evergreen.Settings, args UserRepoPair) (bool, error) {
+func (pc *DBCommitQueueConnector) IsAuthorizedToPatchAndMerge(ctx context.Context, settings *evergreen.Settings, args UserRepoInfo) (bool, error) {
 	// In the org
 	token, err := settings.GetGithubOauthToken()
 	if err != nil {
@@ -191,6 +191,6 @@ func (pc *MockCommitQueueConnector) CommitQueueClearAll() (int, error) {
 	return count, nil
 }
 
-func (pc *MockCommitQueueConnector) IsAuthorizedToPatchAndMerge(context.Context, *evergreen.Settings, UserRepoPair) (bool, error) {
+func (pc *MockCommitQueueConnector) IsAuthorizedToPatchAndMerge(context.Context, *evergreen.Settings, UserRepoInfo) (bool, error) {
 	return true, nil
 }

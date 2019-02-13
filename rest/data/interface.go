@@ -235,5 +235,5 @@ type Connector interface {
 	FindCommitQueueByID(string) (*restModel.APICommitQueue, error)
 	CommitQueueRemoveItem(string, string) (bool, error)
 	CommitQueueClearAll() (int, error)
-	IsAuthorizedToPatchAndMerge(context.Context, *evergreen.Settings, UserRepoPair) (bool, error)
+	IsAuthorizedToPatchAndMerge(context.Context, *evergreen.Settings, UserRepoInfo) (bool, error)
 }
