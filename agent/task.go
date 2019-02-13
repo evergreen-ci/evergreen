@@ -261,12 +261,6 @@ func (a *Agent) makeTaskConfig(ctx context.Context, tc *taskContext) (*model.Tas
 		return nil, errors.New("agent retrieved an empty project ref")
 	}
 
-	tc.logger.Execution().Info("Fetching expansions")
-	exp, err := a.comm.GetExpansions(ctx, tc.task)
-	if err != nil {
-		return nil, err
-	}
-
 	var confPatch *patch.Patch
 	if evergreen.IsGitHubPatchRequester(tc.version.Requester) {
 		tc.logger.Execution().Info("Fetching patch document for Github PR request.")
@@ -279,7 +273,7 @@ func (a *Agent) makeTaskConfig(ctx context.Context, tc *taskContext) (*model.Tas
 	}
 
 	tc.logger.Execution().Info("Constructing TaskConfig.")
-	return model.NewTaskConfig(confDistro, tc.version, tc.project, tc.taskModel, confRef, confPatch, exp)
+	return model.NewTaskConfig(confDistro, tc.version, tc.project, tc.taskModel, confRef, confPatch, tc.expansions)
 }
 
 func (tc *taskContext) getExecTimeout() time.Duration {

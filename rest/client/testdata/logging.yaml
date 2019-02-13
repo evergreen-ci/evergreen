@@ -4,7 +4,9 @@ loggers:
   agent:
     - type: evergreen
   system:
-    - type: file
+    - type: splunk
+      splunk_server: www.example.com
+      splunk_token: ${foo}
 
 tasks:
   - name: something

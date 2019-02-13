@@ -90,41 +90,8 @@ func GetSender(ctx context.Context, prefix, taskId string) (send.Sender, error) 
 func (a *Agent) makeLoggerProducer(ctx context.Context, tc *taskContext, c *model.LoggerConfig, commandName string) client.LoggerProducer {
 	path := filepath.Join(a.opts.WorkingDirectory, taskLogDirectory)
 	grip.Error(errors.Wrap(os.Mkdir(path, os.ModeDir|os.ModePerm), "error making log directory"))
+	config := a.convertLoggerConfig(tc, c)
 
-	config := client.LoggerConfig{}
-	for _, agentConfig := range c.Agent {
-		config.Agent = append(config.Agent, client.LogOpts{
-			LogkeeperURL:      a.opts.LogkeeperURL,
-			LogkeeperBuilder:  tc.taskModel.Id,
-			LogkeeperBuildNum: tc.taskModel.Execution,
-			Sender:            agentConfig.Type,
-			SplunkServerURL:   agentConfig.SplunkServer,
-			SplunkToken:       agentConfig.SplunkToken,
-			Filepath:          filepath.Join(a.opts.WorkingDirectory, taskLogDirectory, agentLogFileName),
-		})
-	}
-	for _, systemConfig := range c.System {
-		config.System = append(config.System, client.LogOpts{
-			LogkeeperURL:      a.opts.LogkeeperURL,
-			LogkeeperBuilder:  tc.taskModel.Id,
-			LogkeeperBuildNum: tc.taskModel.Execution,
-			Sender:            systemConfig.Type,
-			SplunkServerURL:   systemConfig.SplunkServer,
-			SplunkToken:       systemConfig.SplunkToken,
-			Filepath:          filepath.Join(a.opts.WorkingDirectory, taskLogDirectory, systemLogFileName),
-		})
-	}
-	for _, taskConfig := range c.Task {
-		config.Task = append(config.Task, client.LogOpts{
-			LogkeeperURL:      a.opts.LogkeeperURL,
-			LogkeeperBuilder:  tc.taskModel.Id,
-			LogkeeperBuildNum: tc.taskModel.Execution,
-			Sender:            taskConfig.Type,
-			SplunkServerURL:   taskConfig.SplunkServer,
-			SplunkToken:       taskConfig.SplunkToken,
-			Filepath:          filepath.Join(a.opts.WorkingDirectory, taskLogDirectory, taskLogFileName),
-		})
-	}
 	logger := a.comm.GetLoggerProducer(ctx, tc.task, &config)
 	loggerData := a.comm.GetLoggerMetadata()
 	tc.logs = &apimodels.TaskLogs{}
@@ -147,6 +114,69 @@ func (a *Agent) makeLoggerProducer(ctx context.Context, tc *taskContext, c *mode
 		})
 	}
 	return logger
+}
+
+func (a *Agent) convertLoggerConfig(tc *taskContext, c *model.LoggerConfig) client.LoggerConfig {
+	config := client.LoggerConfig{}
+	for _, agentConfig := range c.Agent {
+		splunkServer, err := tc.expansions.ExpandString(agentConfig.SplunkServer)
+		if err != nil {
+			grip.Error(errors.Wrap(err, "error expanding splunk server"))
+		}
+		splunkToken, err := tc.expansions.ExpandString(agentConfig.SplunkToken)
+		if err != nil {
+			grip.Error(errors.Wrap(err, "error expanding splunk token"))
+		}
+		config.Agent = append(config.Agent, client.LogOpts{
+			LogkeeperURL:      a.opts.LogkeeperURL,
+			LogkeeperBuilder:  tc.taskModel.Id,
+			LogkeeperBuildNum: tc.taskModel.Execution,
+			Sender:            agentConfig.Type,
+			SplunkServerURL:   splunkServer,
+			SplunkToken:       splunkToken,
+			Filepath:          filepath.Join(a.opts.WorkingDirectory, taskLogDirectory, agentLogFileName),
+		})
+	}
+	for _, systemConfig := range c.System {
+		splunkServer, err := tc.expansions.ExpandString(systemConfig.SplunkServer)
+		if err != nil {
+			grip.Error(errors.Wrap(err, "error expanding splunk server"))
+		}
+		splunkToken, err := tc.expansions.ExpandString(systemConfig.SplunkToken)
+		if err != nil {
+			grip.Error(errors.Wrap(err, "error expanding splunk token"))
+		}
+		config.System = append(config.System, client.LogOpts{
+			LogkeeperURL:      a.opts.LogkeeperURL,
+			LogkeeperBuilder:  tc.taskModel.Id,
+			LogkeeperBuildNum: tc.taskModel.Execution,
+			Sender:            systemConfig.Type,
+			SplunkServerURL:   splunkServer,
+			SplunkToken:       splunkToken,
+			Filepath:          filepath.Join(a.opts.WorkingDirectory, taskLogDirectory, systemLogFileName),
+		})
+	}
+	for _, taskConfig := range c.Task {
+		splunkServer, err := tc.expansions.ExpandString(taskConfig.SplunkServer)
+		if err != nil {
+			grip.Error(errors.Wrap(err, "error expanding splunk server"))
+		}
+		splunkToken, err := tc.expansions.ExpandString(taskConfig.SplunkToken)
+		if err != nil {
+			grip.Error(errors.Wrap(err, "error expanding splunk token"))
+		}
+		config.Task = append(config.Task, client.LogOpts{
+			LogkeeperURL:      a.opts.LogkeeperURL,
+			LogkeeperBuilder:  tc.taskModel.Id,
+			LogkeeperBuildNum: tc.taskModel.Execution,
+			Sender:            taskConfig.Type,
+			SplunkServerURL:   splunkServer,
+			SplunkToken:       splunkToken,
+			Filepath:          filepath.Join(a.opts.WorkingDirectory, taskLogDirectory, taskLogFileName),
+		})
+	}
+
+	return config
 }
 
 func (a *Agent) uploadToS3(ctx context.Context, tc *taskContext) error {

@@ -159,7 +159,7 @@ func TestResetLogging(t *testing.T) {
 	ctx := context.Background()
 	assert.NoError(agt.fetchProjectConfig(ctx, tc))
 	assert.EqualValues(model.EvergreenLogSender, tc.project.Loggers.Agent[0].Type)
-	assert.EqualValues(model.FileLogSender, tc.project.Loggers.System[0].Type)
+	assert.EqualValues(model.SplunkLogSender, tc.project.Loggers.System[0].Type)
 	assert.EqualValues(model.FileLogSender, tc.project.Loggers.Task[0].Type)
 
 	assert.NoError(agt.resetLogging(ctx, tc))
@@ -172,6 +172,10 @@ func TestResetLogging(t *testing.T) {
 	assert.NoError(err)
 	assert.NotNil(config.Project)
 	assert.NotNil(config.Version)
+
+	// check that expansions are correctly populated
+	logConfig := agt.convertLoggerConfig(tc, tc.project.Loggers)
+	assert.Equal("bar", logConfig.System[0].SplunkToken)
 }
 
 func TestLogkeeperMetadataPopulated(t *testing.T) {
