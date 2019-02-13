@@ -84,6 +84,7 @@ func (s *githubPRLogger) Send(m message.Composer) {
 	mergeOpts := &github.PullRequestOptions{
 		MergeMethod: msg.MergeMethod,
 		CommitTitle: msg.CommitTitle,
+		SHA:         msg.Ref,
 	}
 
 	// do the merge
