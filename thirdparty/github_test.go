@@ -171,6 +171,16 @@ func (s *githubSuite) TestGithubUserInOrganization() {
 	s.False(isMember)
 }
 
+func (s *githubSuite) TestGitHubUserPermissionLevel() {
+	permissionLevel, err := GitHubUserPermissionLevel(s.ctx, s.token, "evergreen-ci", "evergreen", "evrg-bot-webhook")
+	s.NoError(err)
+	s.Contains([]string{"admin", "write"}, permissionLevel)
+
+	permissionLevel, err = GitHubUserPermissionLevel(s.ctx, s.token, "evergreen-ci", "evergreen", "octocat")
+	s.NoError(err)
+	s.Contains([]string{"read", "none"}, permissionLevel)
+}
+
 func (s *githubSuite) TestGetGithubPullRequestDiff() {
 	p := patch.GithubPatch{
 		PRNumber:   448,

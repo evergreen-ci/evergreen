@@ -65,7 +65,7 @@ func (s *GithubWebhookRouteSuite) SetupTest() {
 		CachedIntents: map[data.MockPatchIntentKey]patch.Intent{},
 	}}
 
-	s.rm = makeGithubHooksRoute(s.sc, s.queue, []byte(s.conf.Api.GithubWebhookSecret))
+	s.rm = makeGithubHooksRoute(s.sc, s.queue, []byte(s.conf.Api.GithubWebhookSecret), evergreen.GetEnvironment().Settings())
 
 	var err error
 	s.prBody, err = ioutil.ReadFile(filepath.Join(testutil.GetDirectoryOfFile(), "testdata", "pull_request.json"))

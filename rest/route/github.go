@@ -2,9 +2,11 @@ package route
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"strconv"
 
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/commitqueue"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/rest/data"
@@ -31,21 +33,24 @@ type githubHookApi struct {
 	eventType string
 	msgID     string
 	sc        data.Connector
+	settings  *evergreen.Settings
 }
 
-func makeGithubHooksRoute(sc data.Connector, queue amboy.Queue, secret []byte) gimlet.RouteHandler {
+func makeGithubHooksRoute(sc data.Connector, queue amboy.Queue, secret []byte, settings *evergreen.Settings) gimlet.RouteHandler {
 	return &githubHookApi{
-		sc:     sc,
-		queue:  queue,
-		secret: secret,
+		sc:       sc,
+		settings: settings,
+		queue:    queue,
+		secret:   secret,
 	}
 }
 
 func (gh *githubHookApi) Factory() gimlet.RouteHandler {
 	return &githubHookApi{
-		queue:  gh.queue,
-		secret: gh.secret,
-		sc:     gh.sc,
+		queue:    gh.queue,
+		secret:   gh.secret,
+		sc:       gh.sc,
+		settings: gh.settings,
 	}
 }
 
@@ -196,18 +201,50 @@ func (gh *githubHookApi) Run(ctx context.Context) gimlet.Responder {
 			return gimlet.NewJSONResponse(struct{}{})
 		}
 
-		owner := *event.Repo.Owner.Login
-		repo := *event.Repo.Name
-		PRNum := *event.Issue.Number
-		pr, err := gh.sc.GetGitHubPR(ctx, owner, repo, PRNum)
+		userRepo := data.UserRepoInfo{
+			Username: *event.Comment.User.Login,
+			Owner:    *event.Repo.Owner.Login,
+			Repo:     *event.Repo.Name,
+		}
+		authorized, err := gh.sc.IsAuthorizedToPatchAndMerge(ctx, gh.settings, userRepo)
 		if err != nil {
 			grip.Error(message.WrapError(err, message.Fields{
 				"source":  "github hook",
 				"msg_id":  gh.msgID,
 				"event":   gh.eventType,
 				"action":  *event.Action,
-				"owner":   owner,
-				"repo":    repo,
+				"owner":   userRepo.Owner,
+				"repo":    userRepo.Repo,
+				"user":    userRepo.Username,
+				"message": "get authorized failed",
+			}))
+			return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "can't get user info from GitHub API"))
+		}
+		if !authorized {
+			grip.Error(message.Fields{
+				"source":  "github hook",
+				"msg_id":  gh.msgID,
+				"event":   gh.eventType,
+				"action":  *event.Action,
+				"user":    userRepo.Username,
+				"message": "user is not authorized to merge",
+			})
+			return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+				StatusCode: http.StatusUnauthorized,
+				Message:    fmt.Sprintf("user '%s' is not authorized to merge", userRepo.Username),
+			})
+		}
+
+		PRNum := *event.Issue.Number
+		pr, err := gh.sc.GetGitHubPR(ctx, userRepo.Owner, userRepo.Repo, PRNum)
+		if err != nil {
+			grip.Error(message.WrapError(err, message.Fields{
+				"source":  "github hook",
+				"msg_id":  gh.msgID,
+				"event":   gh.eventType,
+				"action":  *event.Action,
+				"owner":   userRepo.Owner,
+				"repo":    userRepo.Repo,
 				"item":    PRNum,
 				"message": "get pr failed",
 			}))
@@ -220,8 +257,8 @@ func (gh *githubHookApi) Run(ctx context.Context) gimlet.Responder {
 				"msg_id":  gh.msgID,
 				"event":   gh.eventType,
 				"action":  *event.Action,
-				"owner":   owner,
-				"repo":    repo,
+				"owner":   userRepo.Owner,
+				"repo":    userRepo.Repo,
 				"item":    PRNum,
 				"message": "PR contains no base branch ref",
 			})
@@ -229,15 +266,15 @@ func (gh *githubHookApi) Run(ctx context.Context) gimlet.Responder {
 		}
 
 		baseBranch := *pr.Base.Ref
-		err = gh.sc.EnqueueItem(owner, repo, baseBranch, strconv.Itoa(PRNum))
+		err = gh.sc.EnqueueItem(userRepo.Owner, userRepo.Repo, baseBranch, strconv.Itoa(PRNum))
 		if err != nil {
 			grip.Error(message.WrapError(err, message.Fields{
 				"source":  "github hook",
 				"msg_id":  gh.msgID,
 				"event":   gh.eventType,
 				"action":  *event.Action,
-				"owner":   owner,
-				"repo":    repo,
+				"owner":   userRepo.Owner,
+				"repo":    userRepo.Repo,
 				"item":    PRNum,
 				"message": "commit queue enqueue failed",
 			}))

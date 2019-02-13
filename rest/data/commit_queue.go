@@ -9,6 +9,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/commitqueue"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/thirdparty"
+	"github.com/evergreen-ci/evergreen/util"
 	"github.com/google/go-github/github"
 	"github.com/pkg/errors"
 	mgo "gopkg.in/mgo.v2"
@@ -88,6 +89,45 @@ func (pc *DBCommitQueueConnector) CommitQueueClearAll() (int, error) {
 	return commitqueue.ClearAllCommitQueues()
 }
 
+type UserRepoInfo struct {
+	Username string
+	Owner    string
+	Repo     string
+}
+
+func (pc *DBCommitQueueConnector) IsAuthorizedToPatchAndMerge(ctx context.Context, settings *evergreen.Settings, args UserRepoInfo) (bool, error) {
+	// In the org
+	token, err := settings.GetGithubOauthToken()
+	if err != nil {
+		return false, errors.Wrap(err, "can't get Github OAuth token from configuration")
+	}
+
+	requiredOrganization := settings.GithubPRCreatorOrg
+	if requiredOrganization == "" {
+		return false, errors.New("no GitHub PR creator organization configured")
+	}
+
+	ctxWithCancel, cancel := context.WithTimeout(ctx, 10*time.Second)
+	defer cancel()
+	inOrg, err := thirdparty.GithubUserInOrganization(ctxWithCancel, token, requiredOrganization, args.Username)
+	if err != nil {
+		return false, errors.Wrap(err, "call to Github API failed")
+	}
+
+	// Has repository merge permission
+	// See: https://help.github.com/articles/repository-permission-levels-for-an-organization/
+	ctxWithCancel, cancel = context.WithTimeout(ctx, 10*time.Second)
+	defer cancel()
+	permission, err := thirdparty.GitHubUserPermissionLevel(ctxWithCancel, token, args.Owner, args.Repo, args.Username)
+	if err != nil {
+		return false, errors.Wrap(err, "call to Github API failed")
+	}
+	mergePermissions := []string{"admin", "write"}
+	hasPermission := util.StringSliceContains(mergePermissions, permission)
+
+	return inOrg && hasPermission, nil
+}
+
 type MockCommitQueueConnector struct {
 	Queue map[string][]restModel.APIString
 }
@@ -149,4 +189,8 @@ func (pc *MockCommitQueueConnector) CommitQueueClearAll() (int, error) {
 	}
 
 	return count, nil
+}
+
+func (pc *MockCommitQueueConnector) IsAuthorizedToPatchAndMerge(context.Context, *evergreen.Settings, UserRepoInfo) (bool, error) {
+	return true, nil
 }
