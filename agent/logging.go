@@ -3,6 +3,7 @@ package agent
 import (
 	"context"
 	"fmt"
+	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -24,6 +25,7 @@ const (
 	agentLogFileName  = "agent.log"
 	systemLogFileName = "system.log"
 	taskLogFileName   = "task.log"
+	s3BaseURL         = "https://s3.amazonaws.com"
 )
 
 var (
@@ -90,7 +92,12 @@ func GetSender(ctx context.Context, prefix, taskId string) (send.Sender, error) 
 func (a *Agent) makeLoggerProducer(ctx context.Context, tc *taskContext, c *model.LoggerConfig, commandName string) client.LoggerProducer {
 	path := filepath.Join(a.opts.WorkingDirectory, taskLogDirectory)
 	grip.Error(errors.Wrap(os.Mkdir(path, os.ModeDir|os.ModePerm), "error making log directory"))
-	config := a.convertLoggerConfig(tc, c)
+	// if this is a command-specific logger, create a dir for the command's logs separate from the overall task
+	if commandName != "" {
+		path = filepath.Join(path, commandName)
+		grip.Error(errors.Wrapf(os.Mkdir(path, os.ModeDir|os.ModePerm), "error making log directory for command %s", commandName))
+	}
+	config := a.convertLoggerConfig(tc, c, path)
 
 	logger := a.comm.GetLoggerProducer(ctx, tc.task, &config)
 	loggerData := a.comm.GetLoggerMetadata()
@@ -116,7 +123,7 @@ func (a *Agent) makeLoggerProducer(ctx context.Context, tc *taskContext, c *mode
 	return logger
 }
 
-func (a *Agent) convertLoggerConfig(tc *taskContext, c *model.LoggerConfig) client.LoggerConfig {
+func (a *Agent) convertLoggerConfig(tc *taskContext, c *model.LoggerConfig, path string) client.LoggerConfig {
 	config := client.LoggerConfig{}
 	for _, agentConfig := range c.Agent {
 		splunkServer, err := tc.expansions.ExpandString(agentConfig.SplunkServer)
@@ -134,7 +141,7 @@ func (a *Agent) convertLoggerConfig(tc *taskContext, c *model.LoggerConfig) clie
 			Sender:            agentConfig.Type,
 			SplunkServerURL:   splunkServer,
 			SplunkToken:       splunkToken,
-			Filepath:          filepath.Join(a.opts.WorkingDirectory, taskLogDirectory, agentLogFileName),
+			Filepath:          filepath.Join(path, agentLogFileName),
 		})
 	}
 	for _, systemConfig := range c.System {
@@ -153,7 +160,7 @@ func (a *Agent) convertLoggerConfig(tc *taskContext, c *model.LoggerConfig) clie
 			Sender:            systemConfig.Type,
 			SplunkServerURL:   splunkServer,
 			SplunkToken:       splunkToken,
-			Filepath:          filepath.Join(a.opts.WorkingDirectory, taskLogDirectory, systemLogFileName),
+			Filepath:          filepath.Join(path, systemLogFileName),
 		})
 	}
 	for _, taskConfig := range c.Task {
@@ -172,7 +179,7 @@ func (a *Agent) convertLoggerConfig(tc *taskContext, c *model.LoggerConfig) clie
 			Sender:            taskConfig.Type,
 			SplunkServerURL:   splunkServer,
 			SplunkToken:       splunkToken,
-			Filepath:          filepath.Join(a.opts.WorkingDirectory, taskLogDirectory, taskLogFileName),
+			Filepath:          filepath.Join(path, taskLogFileName),
 		})
 	}
 
@@ -185,26 +192,68 @@ func (a *Agent) uploadToS3(ctx context.Context, tc *taskContext) error {
 		return errors.Wrap(err, "error creating pail")
 	}
 
-	return a.uploadLogFiles(ctx, tc, bucket)
+	return a.uploadLogDir(ctx, tc, bucket, "")
 }
 
-func (a *Agent) uploadLogFiles(ctx context.Context, tc *taskContext, bucket pail.Bucket) error {
+func (a *Agent) uploadLogDir(ctx context.Context, tc *taskContext, bucket pail.Bucket, name string) error {
 	if tc.taskConfig == nil || tc.taskConfig.Task == nil {
 		return nil
 	}
 	catcher := grip.NewBasicCatcher()
-	catcher.Add(a.uploadSingleFile(ctx, bucket, agentLogFileName, tc.taskConfig.Task.Id, tc.taskConfig.Task.Execution))
-	catcher.Add(a.uploadSingleFile(ctx, bucket, systemLogFileName, tc.taskConfig.Task.Id, tc.taskConfig.Task.Execution))
-	catcher.Add(a.uploadSingleFile(ctx, bucket, taskLogFileName, tc.taskConfig.Task.Id, tc.taskConfig.Task.Execution))
+	path := filepath.Join(a.opts.WorkingDirectory, taskLogDirectory)
+	if name != "" {
+		path = filepath.Join(path, name)
+	}
+	dir, err := ioutil.ReadDir(path)
+	if err != nil {
+		catcher.Add(errors.Wrap(err, "error reading log directory"))
+		return catcher.Resolve()
+	}
+	for _, f := range dir {
+		if f.IsDir() {
+			catcher.Add(a.uploadLogDir(ctx, tc, bucket, f.Name()))
+		} else {
+			catcher.Add(a.uploadSingleFile(ctx, tc, bucket, f.Name(), tc.taskConfig.Task.Id, tc.taskConfig.Task.Execution, name))
+		}
+	}
 
 	return catcher.Resolve()
 }
 
-func (a *Agent) uploadSingleFile(ctx context.Context, bucket pail.Bucket, file string, taskID string, execution int) error {
-	localPath := filepath.Join(a.opts.WorkingDirectory, taskLogDirectory, file)
+func (a *Agent) uploadSingleFile(ctx context.Context, tc *taskContext, bucket pail.Bucket, file string, taskID string, execution int, command string) error {
+	localDir := filepath.Join(a.opts.WorkingDirectory, taskLogDirectory)
+	remoteDir := filepath.Join("logs", taskID, strconv.Itoa(execution))
+	if command != "" {
+		localDir = filepath.Join(localDir, command)
+		remoteDir = filepath.Join(remoteDir, command)
+	}
+	localPath := filepath.Join(localDir, file)
 	_, err := os.Stat(localPath)
 	if os.IsNotExist(err) {
 		return nil
 	}
-	return bucket.Upload(ctx, filepath.Join("logs", taskID, strconv.Itoa(execution), file), localPath)
+	err = bucket.Upload(ctx, filepath.Join(remoteDir, file), localPath)
+	if err != nil {
+		return errors.Wrapf(err, "error uploading %s to S3", localPath)
+	}
+	remoteURL := fmt.Sprintf("%s/%s/%s/%s", s3BaseURL, a.opts.S3Opts.Name, remoteDir, file)
+	tc.logger.Execution().Infof("uploaded file %s from %s to %s", file, localPath, remoteURL)
+	switch file {
+	case agentLogFileName:
+		tc.logs.AgentLogURLs = append(tc.logs.AgentLogURLs, apimodels.LogInfo{
+			Command: command,
+			URL:     remoteURL,
+		})
+	case systemLogFileName:
+		tc.logs.SystemLogURLs = append(tc.logs.SystemLogURLs, apimodels.LogInfo{
+			Command: command,
+			URL:     remoteURL,
+		})
+	case taskLogFileName:
+		tc.logs.TaskLogURLs = append(tc.logs.TaskLogURLs, apimodels.LogInfo{
+			Command: command,
+			URL:     remoteURL,
+		})
+	}
+	return nil
 }
