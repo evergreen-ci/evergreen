@@ -172,6 +172,10 @@ func TestResetLogging(t *testing.T) {
 	assert.NoError(err)
 	assert.NotNil(config.Project)
 	assert.NotNil(config.Version)
+
+	// check that expansions are correctly populated
+	logConfig := agt.convertLoggerConfig(tc, tc.project.Loggers)
+	assert.Equal("bar", logConfig.System[0].SplunkToken)
 }
 
 func TestLogkeeperMetadataPopulated(t *testing.T) {

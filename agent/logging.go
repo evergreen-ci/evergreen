@@ -90,7 +90,33 @@ func GetSender(ctx context.Context, prefix, taskId string) (send.Sender, error) 
 func (a *Agent) makeLoggerProducer(ctx context.Context, tc *taskContext, c *model.LoggerConfig, commandName string) client.LoggerProducer {
 	path := filepath.Join(a.opts.WorkingDirectory, taskLogDirectory)
 	grip.Error(errors.Wrap(os.Mkdir(path, os.ModeDir|os.ModePerm), "error making log directory"))
+	config := a.convertLoggerConfig(tc, c)
 
+	logger := a.comm.GetLoggerProducer(ctx, tc.task, &config)
+	loggerData := a.comm.GetLoggerMetadata()
+	tc.logs = &apimodels.TaskLogs{}
+	for _, agent := range loggerData.Agent {
+		tc.logs.AgentLogURLs = append(tc.logs.AgentLogURLs, apimodels.LogInfo{
+			Command: commandName,
+			URL:     fmt.Sprintf("%s/build/%s/test/%s", a.opts.LogkeeperURL, agent.Build, agent.Test),
+		})
+	}
+	for _, system := range loggerData.System {
+		tc.logs.SystemLogURLs = append(tc.logs.SystemLogURLs, apimodels.LogInfo{
+			Command: commandName,
+			URL:     fmt.Sprintf("%s/build/%s/test/%s", a.opts.LogkeeperURL, system.Build, system.Test),
+		})
+	}
+	for _, task := range loggerData.Task {
+		tc.logs.TaskLogURLs = append(tc.logs.TaskLogURLs, apimodels.LogInfo{
+			Command: commandName,
+			URL:     fmt.Sprintf("%s/build/%s/test/%s", a.opts.LogkeeperURL, task.Build, task.Test),
+		})
+	}
+	return logger
+}
+
+func (a *Agent) convertLoggerConfig(tc *taskContext, c *model.LoggerConfig) client.LoggerConfig {
 	config := client.LoggerConfig{}
 	for _, agentConfig := range c.Agent {
 		splunkServer, err := tc.expansions.ExpandString(agentConfig.SplunkServer)
@@ -149,28 +175,8 @@ func (a *Agent) makeLoggerProducer(ctx context.Context, tc *taskContext, c *mode
 			Filepath:          filepath.Join(a.opts.WorkingDirectory, taskLogDirectory, taskLogFileName),
 		})
 	}
-	logger := a.comm.GetLoggerProducer(ctx, tc.task, &config)
-	loggerData := a.comm.GetLoggerMetadata()
-	tc.logs = &apimodels.TaskLogs{}
-	for _, agent := range loggerData.Agent {
-		tc.logs.AgentLogURLs = append(tc.logs.AgentLogURLs, apimodels.LogInfo{
-			Command: commandName,
-			URL:     fmt.Sprintf("%s/build/%s/test/%s", a.opts.LogkeeperURL, agent.Build, agent.Test),
-		})
-	}
-	for _, system := range loggerData.System {
-		tc.logs.SystemLogURLs = append(tc.logs.SystemLogURLs, apimodels.LogInfo{
-			Command: commandName,
-			URL:     fmt.Sprintf("%s/build/%s/test/%s", a.opts.LogkeeperURL, system.Build, system.Test),
-		})
-	}
-	for _, task := range loggerData.Task {
-		tc.logs.TaskLogURLs = append(tc.logs.TaskLogURLs, apimodels.LogInfo{
-			Command: commandName,
-			URL:     fmt.Sprintf("%s/build/%s/test/%s", a.opts.LogkeeperURL, task.Build, task.Test),
-		})
-	}
-	return logger
+
+	return config
 }
 
 func (a *Agent) uploadToS3(ctx context.Context, tc *taskContext) error {

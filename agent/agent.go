@@ -245,7 +245,7 @@ func (a *Agent) fetchProjectConfig(ctx context.Context, tc *taskContext) error {
 	}
 	exp, err := a.comm.GetExpansions(ctx, tc.task)
 	if err != nil {
-		return err
+		return errors.Wrap(err, "error getting expansions")
 	}
 	tc.version = v
 	tc.taskModel = taskModel
