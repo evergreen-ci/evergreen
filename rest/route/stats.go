@@ -323,7 +323,17 @@ func (tsh *testStatsHandler) Parse(ctx context.Context, r *http.Request) error {
 }
 
 func (tsh *testStatsHandler) Run(ctx context.Context) gimlet.Responder {
-	var err error
+	flags, err := evergreen.GetServiceFlags()
+	if err != nil {
+		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "Error retrieving service flags"))
+	}
+	if flags.CacheStatsEndpointDisabled {
+		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+			Message:    "endpoint is disabled",
+			StatusCode: http.StatusServiceUnavailable,
+		})
+	}
+
 	var testStatsResult []model.APITestStats
 
 	testStatsResult, err = tsh.sc.GetTestStats(tsh.filter)
@@ -402,7 +412,17 @@ func (tsh *taskStatsHandler) Parse(ctx context.Context, r *http.Request) error {
 }
 
 func (tsh *taskStatsHandler) Run(ctx context.Context) gimlet.Responder {
-	var err error
+	flags, err := evergreen.GetServiceFlags()
+	if err != nil {
+		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "Error retrieving service flags"))
+	}
+	if flags.CacheStatsEndpointDisabled {
+		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+			Message:    "endpoint is disabled",
+			StatusCode: http.StatusServiceUnavailable,
+		})
+	}
+
 	var taskStatsResult []model.APITaskStats
 
 	taskStatsResult, err = tsh.sc.GetTaskStats(tsh.filter)
