@@ -125,9 +125,7 @@ backgroundSender:
 	}
 
 	// send the final batch
-	if len(buffer) > 0 {
-		s.flush(ctx, buffer)
-	}
+	s.flush(ctx, buffer)
 
 	// let close return
 	close(s.lastBatch)
