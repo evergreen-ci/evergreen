@@ -273,6 +273,7 @@ func RestartVersion(versionId string, taskIds []string, abortInProgress bool, ca
 
 	restartIds := make([]string, 0)
 	// archive all the tasks
+	t0 := time.Now()
 	for _, t := range allTasks {
 		if err = t.Archive(); err != nil {
 			return errors.Wrap(err, "failed to archive task")
@@ -323,7 +324,6 @@ func RestartVersion(versionId string, taskIds []string, abortInProgress bool, ca
 		"versionId": versionId,
 		"duration":  time.Since(t0).String(),
 	})
-	t0 = time.Now()
 
 	// TODO figure out a way to coalesce updates for task cache for the same build, so we
 	// only need to do one update per-build instead of one per-task here.
