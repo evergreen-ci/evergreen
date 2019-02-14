@@ -1029,19 +1029,20 @@ func (a *APISchedulerConfig) ToService() (interface{}, error) {
 
 // APIServiceFlags is a public structure representing the admin service flags
 type APIServiceFlags struct {
-	TaskDispatchDisabled    bool `json:"task_dispatch_disabled"`
-	HostInitDisabled        bool `json:"host_init_disabled"`
-	MonitorDisabled         bool `json:"monitor_disabled"`
-	AlertsDisabled          bool `json:"alerts_disabled"`
-	AgentStartDisabled      bool `json:"agent_start_disabled"`
-	RepotrackerDisabled     bool `json:"repotracker_disabled"`
-	SchedulerDisabled       bool `json:"scheduler_disabled"`
-	GithubPRTestingDisabled bool `json:"github_pr_testing_disabled"`
-	CLIUpdatesDisabled      bool `json:"cli_updates_disabled"`
-	BackgroundStatsDisabled bool `json:"background_stats_disabled"`
-	TaskLoggingDisabled     bool `json:"task_logging_disabled"`
-	CacheStatsJobDisabled   bool `json:"cache_stats_job_disabled"`
-	CommitQueueDisabled     bool `json:"commit_queue_disabled"`
+	TaskDispatchDisabled       bool `json:"task_dispatch_disabled"`
+	HostInitDisabled           bool `json:"host_init_disabled"`
+	MonitorDisabled            bool `json:"monitor_disabled"`
+	AlertsDisabled             bool `json:"alerts_disabled"`
+	AgentStartDisabled         bool `json:"agent_start_disabled"`
+	RepotrackerDisabled        bool `json:"repotracker_disabled"`
+	SchedulerDisabled          bool `json:"scheduler_disabled"`
+	GithubPRTestingDisabled    bool `json:"github_pr_testing_disabled"`
+	CLIUpdatesDisabled         bool `json:"cli_updates_disabled"`
+	BackgroundStatsDisabled    bool `json:"background_stats_disabled"`
+	TaskLoggingDisabled        bool `json:"task_logging_disabled"`
+	CacheStatsJobDisabled      bool `json:"cache_stats_job_disabled"`
+	CacheStatsEndpointDisabled bool `json:"cache_stats_endpoint_disabled"`
+	CommitQueueDisabled        bool `json:"commit_queue_disabled"`
 
 	// Notifications Flags
 	EventProcessingDisabled      bool `json:"event_processing_disabled"`
@@ -1247,6 +1248,7 @@ func (as *APIServiceFlags) BuildFromService(h interface{}) error {
 		as.BackgroundStatsDisabled = v.BackgroundStatsDisabled
 		as.TaskLoggingDisabled = v.TaskLoggingDisabled
 		as.CacheStatsJobDisabled = v.CacheStatsJobDisabled
+		as.CacheStatsEndpointDisabled = v.CacheStatsEndpointDisabled
 		as.CommitQueueDisabled = v.CommitQueueDisabled
 	default:
 		return errors.Errorf("%T is not a supported service flags type", h)
@@ -1275,6 +1277,7 @@ func (as *APIServiceFlags) ToService() (interface{}, error) {
 		BackgroundStatsDisabled:      as.BackgroundStatsDisabled,
 		TaskLoggingDisabled:          as.TaskLoggingDisabled,
 		CacheStatsJobDisabled:        as.CacheStatsJobDisabled,
+		CacheStatsEndpointDisabled:   as.CacheStatsEndpointDisabled,
 		CommitQueueDisabled:          as.CommitQueueDisabled,
 	}, nil
 }
