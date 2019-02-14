@@ -153,7 +153,7 @@ func (j *commitQueueJob) Run(ctx context.Context) {
 			"project": j.QueueID,
 			"item":    nextItem,
 			"message": "invalid PR",
-		})
+		}))
 		return
 	}
 
@@ -195,7 +195,7 @@ func (j *commitQueueJob) Run(ctx context.Context) {
 			"project": j.QueueID,
 			"item":    nextItem,
 			"message": "can't make version",
-		})
+		}))
 		return
 	}
 
@@ -214,7 +214,7 @@ func (j *commitQueueJob) Run(ctx context.Context) {
 			"project": j.QueueID,
 			"item":    nextItem,
 			"message": "can't subscribe for merge sender",
-		})
+		}))
 	}
 
 	grip.Info(message.Fields{
