@@ -222,21 +222,21 @@ func (a *Agent) uploadLogDir(ctx context.Context, tc *taskContext, bucket pail.B
 
 func (a *Agent) uploadSingleFile(ctx context.Context, tc *taskContext, bucket pail.Bucket, file string, taskID string, execution int, command string) error {
 	localDir := filepath.Join(a.opts.WorkingDirectory, taskLogDirectory)
-	remoteDir := filepath.Join("logs", taskID, strconv.Itoa(execution))
+	remotePath := fmt.Sprintf("logs/%s/%s", taskID, strconv.Itoa(execution))
 	if command != "" {
 		localDir = filepath.Join(localDir, command)
-		remoteDir = filepath.Join(remoteDir, command)
+		remotePath = fmt.Sprintf("%s/%s", remotePath, command)
 	}
 	localPath := filepath.Join(localDir, file)
 	_, err := os.Stat(localPath)
 	if os.IsNotExist(err) {
 		return nil
 	}
-	err = bucket.Upload(ctx, filepath.Join(remoteDir, file), localPath)
+	err = bucket.Upload(ctx, fmt.Sprintf("%s/%s", remotePath, file), localPath)
 	if err != nil {
 		return errors.Wrapf(err, "error uploading %s to S3", localPath)
 	}
-	remoteURL := fmt.Sprintf("%s/%s/%s/%s", s3BaseURL, a.opts.S3Opts.Name, remoteDir, file)
+	remoteURL := fmt.Sprintf("%s/%s/%s/%s", s3BaseURL, a.opts.S3Opts.Name, remotePath, file)
 	tc.logger.Execution().Infof("uploaded file %s from %s to %s", file, localPath, remoteURL)
 	switch file {
 	case agentLogFileName:
