@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net/http"
 	"sort"
+	"time"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
@@ -233,9 +234,11 @@ func (uis *UIServer) modifyVersion(w http.ResponseWriter, r *http.Request) {
 
 	authName := user.DisplayName()
 
+	restart := false
 	// determine what action needs to be taken
 	switch jsonMap.Action {
 	case "restart":
+		restart = true
 		if err = model.RestartVersion(projCtx.Version.Id, jsonMap.TaskIds, jsonMap.Abort, user.Id); err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
@@ -267,6 +270,7 @@ func (uis *UIServer) modifyVersion(w http.ResponseWriter, r *http.Request) {
 		gimlet.WriteJSONError(w, fmt.Sprintf("Unrecognized action: %v", jsonMap.Action))
 		return
 	}
+	t0 := time.Now()
 
 	// After the version has been modified, re-load it from DB and send back the up-to-date view
 	// to the client.
@@ -307,6 +311,14 @@ func (uis *UIServer) modifyVersion(w http.ResponseWriter, r *http.Request) {
 	}
 	versionAsUI.Builds = uiBuilds
 	gimlet.WriteJSON(w, versionAsUI)
+	if restart {
+		grip.Info(message.Fields{
+			"message":   "Time to update user view",
+			"modify_by": "restart",
+			"versionId": projCtx.Version.Id,
+			"duration":  time.Since(t0).String(),
+		})
+	}
 }
 
 // addFailedTests fetches the tasks that failed from the database and attaches
