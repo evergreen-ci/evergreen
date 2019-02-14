@@ -36,7 +36,6 @@ func (o *OOMTracker) Check() error {
 func analyzeDmesg(isSudo bool) (bool, []int, error) {
 	var cmd *exec.Cmd
 	wasOOMKilled := false
-	pidChannel := make(chan *int)
 
 	if isSudo {
 		cmd = exec.Command("sudo", "dmesg")
@@ -47,34 +46,27 @@ func analyzeDmesg(isSudo bool) (bool, []int, error) {
 	if err != nil {
 		return false, []int{}, errors.Wrap(err, "error creating StdoutPipe for dmesg command")
 	}
-	scanner := bufio.NewScanner(cmdReader)
-	go func() {
-		for scanner.Scan() {
-			line := scanner.Text()
-			if dmesgContainsOOMKill(line) {
-				wasOOMKilled = true
-				pid := getPidFromDmesg(line)
-				if pid != nil {
-					pidChannel <- pid
-				}
-			}
-		}
-	}()
 
+	scanner := bufio.NewScanner(cmdReader)
 	err = cmd.Start()
 	if err != nil {
 		return false, []int{}, errors.Wrap(err, "Error starting dmesg command")
 	}
 
-	err = cmd.Wait()
-	if err != nil {
-		return false, []int{}, errors.Wrap(err, "Error waiting on dmesg command")
-	}
+	go func() {
+		cmd.Wait()
+	}()
 
-	close(pidChannel)
 	pids := []int{}
-	for pid := range pidChannel {
-		pids = append(pids, *pid)
+	for scanner.Scan() {
+		line := scanner.Text()
+		if dmesgContainsOOMKill(line) {
+			wasOOMKilled = true
+			pid, hasPid := getPidFromDmesg(line)
+			if hasPid {
+				pids = append(pids, pid)
+			}
+		}
 	}
 
 	return wasOOMKilled, pids, nil

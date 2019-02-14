@@ -36,28 +36,28 @@ func dmesgContainsOOMKill(line string) bool {
 		strings.Contains(line, "Killed process") || strings.Contains(line, "oom")
 }
 
-func getPidFromDmesg(line string) *int {
+func getPidFromDmesg(line string) (int, bool) {
 	split := strings.Split(line, "Killed process")
-	if len(split) <= 1 { // sep DNE
-		return nil
+	if len(split) <= 1 {
+		return 0, false
 	}
 	newSplit := strings.Split(strings.TrimSpace(split[1]), " ")
 	pid, err := strconv.Atoi(newSplit[0])
 	if err != nil {
-		return nil
+		return 0, false
 	}
-	return &pid
+	return pid, true
 }
 
-func getPidFromLog(line string) *int {
+func getPidFromLog(line string) (int, bool) {
 	split := strings.Split(line, "pid")
-	if len(split) <= 1 { // sep DNE
-		return nil
+	if len(split) <= 1 {
+		return 0, false
 	}
 	newSplit := strings.Split(strings.TrimSpace(split[1]), " ")
 	pid, err := strconv.Atoi(newSplit[0])
 	if err != nil {
-		return nil
+		return 0, false
 	}
-	return &pid
+	return pid, true
 }
