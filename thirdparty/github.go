@@ -624,7 +624,7 @@ func GitHubUserPermissionLevel(ctx context.Context, token, owner, repo, username
 	if err != nil {
 		return "", errors.Wrap(err, "can't get permissions from GitHub")
 	}
-	if permissionLevel == nil && permissionLevel.Permission == nil {
+	if permissionLevel == nil || permissionLevel.Permission == nil {
 		return "", errors.Errorf("GitHub returned an invalid response to request for user permissions for '%s'", username)
 	}
 
