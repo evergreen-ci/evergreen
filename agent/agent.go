@@ -248,7 +248,9 @@ func (a *Agent) fetchProjectConfig(ctx context.Context, tc *taskContext) error {
 }
 
 func (a *Agent) resetLogging(ctx context.Context, tc *taskContext) {
-	grip.Error(tc.logger.Close())
+	if tc.logger != nil {
+		grip.Error(tc.logger.Close())
+	}
 	grip.Error(os.RemoveAll(filepath.Join(a.opts.WorkingDirectory, taskLogDirectory)))
 	if tc.project != nil && tc.project.Loggers != nil {
 		tc.logger = a.makeLoggerProducer(ctx, tc, tc.project.Loggers, "")
