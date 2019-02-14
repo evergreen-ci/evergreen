@@ -273,7 +273,6 @@ func RestartVersion(versionId string, taskIds []string, abortInProgress bool, ca
 
 	restartIds := make([]string, 0)
 	// archive all the tasks
-	t0 := time.Now()
 	for _, t := range allTasks {
 		if err = t.Archive(); err != nil {
 			return errors.Wrap(err, "failed to archive task")
@@ -289,7 +288,6 @@ func RestartVersion(versionId string, taskIds []string, abortInProgress bool, ca
 		"versionId": versionId,
 		"duration":  time.Since(t0).String(),
 	})
-	t0 = time.Now()
 	if abortInProgress {
 		// abort in-progress tasks in this build
 		_, err = task.UpdateAll(
@@ -318,12 +316,6 @@ func RestartVersion(versionId string, taskIds []string, abortInProgress bool, ca
 	if err = task.ResetTasks(restartIds); err != nil {
 		return errors.WithStack(err)
 	}
-	grip.Info(message.Fields{
-		"message":   "Time to abort/indicate restart",
-		"modify_by": "restart",
-		"versionId": versionId,
-		"duration":  time.Since(t0).String(),
-	})
 
 	// TODO figure out a way to coalesce updates for task cache for the same build, so we
 	// only need to do one update per-build instead of one per-task here.
@@ -336,14 +328,6 @@ func RestartVersion(versionId string, taskIds []string, abortInProgress bool, ca
 			return errors.WithStack(err)
 		}
 	}
-
-	grip.Info(message.Fields{
-		"message":   "Time to reset cached tasks",
-		"modify_by": "restart",
-		"versionId": versionId,
-		"duration":  time.Since(t0).String(),
-	})
-	t0 = time.Now()
 
 	// reset the build statuses, once per build
 	buildIdList := make([]string, 0, len(buildIdSet))
@@ -368,12 +352,6 @@ func RestartVersion(versionId string, taskIds []string, abortInProgress bool, ca
 		}
 	}
 
-	grip.Info(message.Fields{
-		"message":   "Time to update builds/activation",
-		"modify_by": "restart",
-		"versionId": versionId,
-		"duration":  time.Since(t0).String(),
-	})
 	return nil
 }
 
