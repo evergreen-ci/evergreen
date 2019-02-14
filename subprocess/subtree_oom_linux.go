@@ -4,14 +4,15 @@ package subprocess
 
 import (
 	"bufio"
+	"context"
 	"os/exec"
 
 	"github.com/pkg/errors"
 )
 
-func (o *OOMTracker) Clear() error {
+func (o *OOMTracker) Clear(ctx context.Context) error {
 	var err error
-	o.IsSudo, err = isSudo()
+	o.IsSudo, err = isSudo(ctx)
 	if err != nil {
 		return errors.Wrap(err, "error checking sudo")
 	}
@@ -23,8 +24,8 @@ func (o *OOMTracker) Clear() error {
 	return errors.Wrap(exec.Command("dmesg", "-c").Run(), "error clearing dmesg")
 }
 
-func (o *OOMTracker) Check() error {
-	wasOOMKilled, pids, err := analyzeDmesg(o.IsSudo)
+func (o *OOMTracker) Check(ctx context.Context) error {
+	wasOOMKilled, pids, err := analyzeDmesg(ctx, o.IsSudo)
 	if err != nil {
 		return errors.Wrap(err, "error searching log")
 	}
@@ -33,14 +34,15 @@ func (o *OOMTracker) Check() error {
 	return nil
 }
 
-func analyzeDmesg(isSudo bool) (bool, []int, error) {
+func analyzeDmesg(ctx context.Context, isSudo bool) (bool, []int, error) {
 	var cmd *exec.Cmd
 	wasOOMKilled := false
+	errs := make(chan error)
 
 	if isSudo {
-		cmd = exec.Command("sudo", "dmesg")
+		cmd = exec.CommandContext(ctx, "sudo", "dmesg")
 	} else {
-		cmd = exec.Command("dmesg")
+		cmd = exec.CommandContext(ctx, "dmesg")
 	}
 	cmdReader, err := cmd.StdoutPipe()
 	if err != nil {
@@ -54,7 +56,7 @@ func analyzeDmesg(isSudo bool) (bool, []int, error) {
 	}
 
 	go func() {
-		cmd.Wait()
+		errs <- cmd.Wait()
 	}()
 
 	pids := []int{}
@@ -69,5 +71,6 @@ func analyzeDmesg(isSudo bool) (bool, []int, error) {
 		}
 	}
 
-	return wasOOMKilled, pids, nil
+	err = <-errs
+	return wasOOMKilled, pids, errors.Wrap(err, "Error waiting for dmesg command")
 }

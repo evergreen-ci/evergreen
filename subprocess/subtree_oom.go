@@ -1,6 +1,7 @@
 package subprocess
 
 import (
+	"context"
 	"os/exec"
 	"strconv"
 	"strings"
@@ -18,8 +19,8 @@ func NewOOMTracker() *OOMTracker {
 	return &OOMTracker{}
 }
 
-func isSudo() (bool, error) {
-	if err := exec.Command("sudo", "date").Run(); err != nil {
+func isSudo(ctx context.Context) (bool, error) {
+	if err := exec.CommandContext(ctx, "sudo", "date").Run(); err != nil {
 		switch err.(type) {
 		case *exec.ExitError:
 			return false, nil
