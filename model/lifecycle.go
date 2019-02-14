@@ -273,6 +273,7 @@ func RestartVersion(versionId string, taskIds []string, abortInProgress bool, ca
 	restartIds := make([]string, 0)
 	t0 := time.Now()
 	// archive all the tasks
+	t0 := time.Now()
 	for _, t := range allTasks {
 		if err = t.Archive(); err != nil {
 			return errors.Wrap(err, "failed to archive task")
