@@ -111,6 +111,15 @@ func (j *commitQueueJob) Run(ctx context.Context) {
 	nextItemInt, err := strconv.Atoi(nextItem)
 	if err != nil {
 		j.AddError(errors.Wrapf(err, "can't parse next item \"%s\" as int", nextItem))
+		_, err2 := cq.Remove(nextItem)
+		j.AddError(errors.Wrapf(err2, "error dequeuing item '%s'", nextItem))
+		grip.Error(message.WrapError(err, message.Fields{
+			"job":     commitQueueJobName,
+			"source":  "commit queue",
+			"project": j.QueueID,
+			"item":    nextItem,
+			"message": "next item can't be parsed as an int",
+		}))
 		return
 	}
 
@@ -124,11 +133,27 @@ func (j *commitQueueJob) Run(ctx context.Context) {
 	pr, err := thirdparty.GetGithubPullRequest(ctx, githubToken, projectRef.Owner, projectRef.Repo, nextItemInt)
 	if err != nil {
 		j.AddError(errors.Wrap(err, "can't get PR from GitHub"))
+		grip.Error(message.WrapError(err, message.Fields{
+			"job":     commitQueueJobName,
+			"source":  "commit queue",
+			"project": j.QueueID,
+			"item":    nextItem,
+			"message": "can't get PR from GitHub",
+		}))
 		return
 	}
 
 	if err = validatePR(pr); err != nil {
 		j.AddError(errors.Wrap(err, "invalid PR"))
+		_, err2 := cq.Remove(nextItem)
+		j.AddError(errors.Wrapf(err2, "error dequeuing item '%s'", nextItem))
+		grip.Error(message.WrapError(err, message.Fields{
+			"job":     commitQueueJobName,
+			"source":  "commit queue",
+			"project": j.QueueID,
+			"item":    nextItem,
+			"message": "invalid PR",
+		}))
 		return
 	}
 
@@ -161,6 +186,16 @@ func (j *commitQueueJob) Run(ctx context.Context) {
 	v, err := makeVersion(ctx, githubToken, projectRef.Identifier, pr)
 	if err != nil {
 		j.AddError(errors.Wrap(err, "can't make version"))
+		j.AddError(sendCommitQueueGithubStatus(j.env, pr, message.GithubStateFailure, "can't make version", ""))
+		_, err2 := cq.Remove(nextItem)
+		j.AddError(errors.Wrapf(err2, "error dequeuing item '%s'", nextItem))
+		grip.Error(message.WrapError(err, message.Fields{
+			"job":     commitQueueJobName,
+			"source":  "commit queue",
+			"project": j.QueueID,
+			"item":    nextItem,
+			"message": "can't make version",
+		}))
 		return
 	}
 
@@ -172,6 +207,14 @@ func (j *commitQueueJob) Run(ctx context.Context) {
 	err = subscribeMerge(projectRef, pr, v.Id)
 	if err != nil {
 		j.AddError(errors.Wrap(err, "can't subscribe GitHub PR merge to version"))
+		j.AddError(sendCommitQueueGithubStatus(j.env, pr, message.GithubStateFailure, "can't start merge", ""))
+		grip.Error(message.WrapError(err, message.Fields{
+			"job":     commitQueueJobName,
+			"source":  "commit queue",
+			"project": j.QueueID,
+			"item":    nextItem,
+			"message": "can't subscribe for merge sender",
+		}))
 	}
 
 	grip.Info(message.Fields{
