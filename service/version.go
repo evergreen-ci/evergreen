@@ -312,7 +312,12 @@ func (uis *UIServer) modifyVersion(w http.ResponseWriter, r *http.Request) {
 	versionAsUI.Builds = uiBuilds
 	gimlet.WriteJSON(w, versionAsUI)
 	if restart {
-		grip.Infof("Time to update user view: ", time.Now().Sub(t0))
+		grip.Info(message.Fields{
+			"message":   "Time to update user view",
+			"modify_by": "restart",
+			"versionId": projCtx.Version.Id,
+			"duration":  time.Since(t0).String(),
+		})
 	}
 }
 
