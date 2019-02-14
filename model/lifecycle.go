@@ -272,6 +272,7 @@ func RestartVersion(versionId string, taskIds []string, abortInProgress bool, ca
 
 	restartIds := make([]string, 0)
 	// archive all the tasks
+	t0 := time.Now()
 	for _, t := range allTasks {
 		if err = t.Archive(); err != nil {
 			return errors.Wrap(err, "failed to archive task")
@@ -281,6 +282,8 @@ func RestartVersion(versionId string, taskIds []string, abortInProgress bool, ca
 		}
 	}
 
+	grip.Infof("Time to archive: %s", time.Now().Sub(t0).String())
+	t0 = time.Now()
 	if abortInProgress {
 		// abort in-progress tasks in this build
 		_, err = task.UpdateAll(
@@ -310,6 +313,9 @@ func RestartVersion(versionId string, taskIds []string, abortInProgress bool, ca
 		return errors.WithStack(err)
 	}
 
+	grip.Infof("Time to abort/indicate restart: ", time.Now().Sub(t0).String())
+	t0 = time.Now()
+
 	// TODO figure out a way to coalesce updates for task cache for the same build, so we
 	// only need to do one update per-build instead of one per-task here.
 	// Doesn't seem to be possible as-is because $ can only apply to one array element matched per
@@ -321,6 +327,9 @@ func RestartVersion(versionId string, taskIds []string, abortInProgress bool, ca
 			return errors.WithStack(err)
 		}
 	}
+
+	grip.Infof("Time to reset cached tasks: ", time.Now().Sub(t0).String())
+	t0 = time.Now()
 
 	// reset the build statuses, once per build
 	buildIdList := make([]string, 0, len(buildIdSet))
@@ -344,6 +353,8 @@ func RestartVersion(versionId string, taskIds []string, abortInProgress bool, ca
 			return errors.WithStack(err)
 		}
 	}
+
+	grip.Infof("Time to update builds and activation: ", time.Now().Sub(t0).String())
 	return nil
 }
 
