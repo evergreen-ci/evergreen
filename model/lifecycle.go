@@ -265,21 +265,13 @@ func SetVersionPriority(versionId string, priority int64) error {
 // If abortInProgress is true, it also sets the abort flag on any in-progress tasks.
 func RestartVersion(versionId string, taskIds []string, abortInProgress bool, caller string) error {
 	// restart all the 'not in-progress' tasks for the version
-	t0 := time.Now()
 	allTasks, err := task.FindWithDisplayTasks(task.ByDispatchedWithIdsVersionAndStatus(taskIds, versionId, task.CompletedStatuses))
 	if err != nil && err != mgo.ErrNotFound {
 		return err
 	}
 
-	grip.Info(message.Fields{
-		"message":   "Time to find all tasks",
-		"modify_by": "restart",
-		"versionId": versionId,
-		"duration":  time.Since(t0).String(),
-	})
-	t0 = time.Now()
-
 	restartIds := make([]string, 0)
+	t0 := time.Now()
 	// archive all the tasks
 	for _, t := range allTasks {
 		if err = t.Archive(); err != nil {
