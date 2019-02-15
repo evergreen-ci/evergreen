@@ -396,6 +396,9 @@ func (c *LoggerConfig) IsValid() error {
 	}
 	for _, opts := range c.System {
 		catcher.Add(errors.Wrap(opts.IsValid(), "invalid system logger config"))
+		if opts.Type == FileLogSender {
+			catcher.Add(errors.New("file logger is disallowed for system logs, changing to Evergreen logger"))
+		}
 	}
 	for _, opts := range c.Task {
 		catcher.Add(errors.Wrap(opts.IsValid(), "invalid task logger config"))
