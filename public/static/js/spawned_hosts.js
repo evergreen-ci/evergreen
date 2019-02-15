@@ -65,6 +65,7 @@ mciModule.controller('SpawnedHostsCtrl', ['$scope','$window', '$timeout', 'mciSp
         'hosts', {}, {
           success: function(resp) {
             var hosts = resp.data;
+
             _.each(hosts, function(host) {
               host.isTerminated = host.status == 'terminated';
               var terminateTime = moment(host.termination_time);
@@ -108,6 +109,17 @@ mciModule.controller('SpawnedHostsCtrl', ['$scope','$window', '$timeout', 'mciSp
     // assumes true.
     $scope.availableHosts = function() {
       return ($scope.hosts == null) || ($scope.hosts.length < $scope.maxHostsPerUser)
+    }
+
+    $scope.generatePassword = function() {
+      $scope.curHostData.password = _.shuffle(
+        SHA1(document.cookie + _.now()).slice(0, 9).concat(
+          _.take(
+            _.shuffle('~!@#$%^&*_-+=`|\\(){}[]:;"\'<>,.?/'),
+            3
+          ).join('')
+        )
+      ).join('')
     }
 
     $scope.fetchSpawnableDistros = function(selectDistro, cb) {

@@ -2,13 +2,21 @@
   <div class="panel">
     <div class="panel-body row">
       <span class="semi-muted">New Password:&nbsp;
-	      <input id="password-input" name="uPassword" style="float: right;" type="password" ng-model="curHostData.password" placeholder='Password' ng-minlength="6" equals="{{curHostData.cPassword}}" complexity required></input>
+	      <input id="password-input" name="uPassword" style="float: right;" type="text" ng-model="curHostData.password" placeholder='Password' ng-minlength="6" equals="{{curHostData.cPassword}}" complexity required></input>
+        <button type="button"
+                class="btn btn-primary btn-sm"
+                style="float: right; margin-right: 5px;"
+                title="Generate random password"
+                ng-click="generatePassword()"
+        >
+          <i class="fa fa-refresh fa-lg"></i>
+        </button>
 		</span>
       <br>
     </div>
     <div class="panel-body row">
       <span class="semi-muted">Confirm Password:&nbsp;
-	      <input id="cPassword-input" name="cPassword" style="float: right;" type="password" ng-model="curHostData.cPassword" placeholder="Confirm Password" ng-minlength="6" equals="{{curHostData.password}}" required></input>
+	      <input id="cPassword-input" name="cPassword" style="float: right;" type="text" ng-model="curHostData.cPassword" placeholder="Confirm Password" ng-minlength="6" equals="{{curHostData.password}}" required></input>
 		</span>
     </div>
     <div class="panel-body row">
