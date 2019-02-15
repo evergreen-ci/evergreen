@@ -87,7 +87,7 @@ func TestCommandFileLogging(t *testing.T) {
 							},
 							Loggers: &model.LoggerConfig{
 								Agent:  []model.LogOpts{{Type: model.FileLogSender}},
-								System: []model.LogOpts{{Type: model.FileLogSender}},
+								System: []model.LogOpts{{Type: model.SplunkLogSender}},
 								Task:   []model.LogOpts{{Type: model.FileLogSender}},
 							},
 						},
