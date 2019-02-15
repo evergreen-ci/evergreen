@@ -34,7 +34,8 @@ func isSudo(ctx context.Context) (bool, error) {
 
 func dmesgContainsOOMKill(line string) bool {
 	return strings.Contains(line, "Out of memory") ||
-		strings.Contains(line, "Killed process") || strings.Contains(line, "oom")
+		strings.Contains(line, "Killed process") || strings.Contains(line, "OOM killer") ||
+		strings.Contains(line, "OOM-killer")
 }
 
 func getPidFromDmesg(line string) (int, bool) {

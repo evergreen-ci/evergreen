@@ -51,8 +51,7 @@ func analyzeLogs(ctx context.Context, isSudo bool) (bool, []int, error) {
 	}
 
 	scanner := bufio.NewScanner(cmdReader)
-	err = cmd.Start()
-	if err != nil {
+	if err = cmd.Start(); err != nil {
 		return false, []int{}, errors.Wrap(err, "Error starting log command")
 	}
 
@@ -63,7 +62,7 @@ func analyzeLogs(ctx context.Context, isSudo bool) (bool, []int, error) {
 	pids := []int{}
 	for scanner.Scan() {
 		line := scanner.Text()
-		if strings.Contains(line, "swap") {
+		if strings.Contains(line, "low swap") {
 			wasOOMKilled = true
 			pid, hasPid := getPidFromLog(line)
 			if hasPid {
