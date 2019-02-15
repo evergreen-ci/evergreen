@@ -19,10 +19,10 @@ func (o *OOMTracker) Clear(ctx context.Context) error {
 	}
 
 	if o.IsSudo {
-		return errors.Wrap(exec.Command("sudo", "log", "erase", "--all").Run(), "error clearing log")
+		return errors.Wrap(exec.CommandContext(ctx, "sudo", "log", "erase", "--all").Run(), "error clearing log")
 	}
 
-	return errors.Wrap(exec.Command("log", "erase", "--all").Run(), "error clearing log")
+	return errors.Wrap(exec.CommandContext(ctx, "log", "erase", "--all").Run(), "error clearing log")
 }
 
 func (o *OOMTracker) Check(ctx context.Context) error {
@@ -47,16 +47,21 @@ func analyzeLogs(ctx context.Context, isSudo bool) (bool, []int, error) {
 	}
 	cmdReader, err := cmd.StdoutPipe()
 	if err != nil {
-		return false, []int{}, errors.Wrap(err, "error creating StdoutPipe for log command")
+		return false, nil, errors.Wrap(err, "error creating StdoutPipe for log command")
 	}
 
 	scanner := bufio.NewScanner(cmdReader)
 	if err = cmd.Start(); err != nil {
-		return false, []int{}, errors.Wrap(err, "Error starting log command")
+		return false, nil, errors.Wrap(err, "Error starting log command")
 	}
 
 	go func() {
-		errs <- cmd.Wait()
+		select {
+		case <-ctx.Done():
+			return
+		case errs <- cmd.Wait():
+			return
+		}
 	}()
 
 	pids := []int{}
@@ -64,13 +69,17 @@ func analyzeLogs(ctx context.Context, isSudo bool) (bool, []int, error) {
 		line := scanner.Text()
 		if strings.Contains(line, "low swap") {
 			wasOOMKilled = true
-			pid, hasPid := getPidFromLog(line)
-			if hasPid {
+			if pid, hasPid := getPidFromLog(line); hasPid {
 				pids = append(pids, pid)
 			}
 		}
 	}
 
-	err = <-errs
-	return wasOOMKilled, pids, errors.Wrap(err, "Error waiting for dmesg command")
+	select {
+	case <-ctx.Done():
+		return false, nil, errors.New("request cancelled")
+	case err = <-errs:
+		return wasOOMKilled, pids, errors.Wrap(err, "Error waiting for dmesg command")
+	}
+	return wasOOMKilled, pids, nil
 }
