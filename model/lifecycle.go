@@ -271,6 +271,14 @@ func RestartVersion(versionId string, taskIds []string, abortInProgress bool, ca
 		return err
 	}
 
+	grip.Info(message.Fields{
+		"message":   "Time to find all tasks",
+		"modify_by": "restart",
+		"versionId": versionId,
+		"duration":  time.Since(t0).String(),
+	})
+	t0 = time.Now()
+
 	restartIds := make([]string, 0)
 	// archive all the tasks
 	for _, t := range allTasks {
