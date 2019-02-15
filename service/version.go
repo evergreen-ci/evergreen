@@ -233,11 +233,9 @@ func (uis *UIServer) modifyVersion(w http.ResponseWriter, r *http.Request) {
 
 	authName := user.DisplayName()
 
-	restart := false
 	// determine what action needs to be taken
 	switch jsonMap.Action {
 	case "restart":
-		restart = true
 		if err = model.RestartVersion(projCtx.Version.Id, jsonMap.TaskIds, jsonMap.Abort, user.Id); err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
