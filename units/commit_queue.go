@@ -157,6 +157,13 @@ func (j *commitQueueJob) Run(ctx context.Context) {
 		return
 	}
 
+	// Remove already merged PRs from the queue
+	if *pr.Merged {
+		_, err := cq.Remove(nextItem)
+		j.AddError(errors.Wrapf(err, "error dequeuing item '%s'", nextItem))
+		return
+	}
+
 	// GitHub hasn't yet tested if the PR is mergeable.
 	// Check back later
 	// See: https://developer.github.com/v3/pulls/#response-1
@@ -254,6 +261,9 @@ func validatePR(pr *github.PullRequest) error {
 	}
 	if pr.GetTitle() == "" {
 		catcher.Add(errors.New("no valid title"))
+	}
+	if pr.Merged == nil {
+		catcher.Add(errors.New("no valid merged status"))
 	}
 
 	return catcher.Resolve()
