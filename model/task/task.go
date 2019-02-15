@@ -1147,6 +1147,7 @@ func (t *Task) Archive() error {
 		"versionId": t.Id,
 		"duration":  time.Since(t0).String(),
 	})
+
 	t0 = time.Now()
 
 	archiveTask := *t
