@@ -65,7 +65,6 @@ mciModule.controller('SpawnedHostsCtrl', ['$scope','$window', '$timeout', 'mciSp
         'hosts', {}, {
           success: function(resp) {
             var hosts = resp.data;
-
             _.each(hosts, function(host) {
               host.isTerminated = host.status == 'terminated';
               var terminateTime = moment(host.termination_time);
@@ -120,6 +119,13 @@ mciModule.controller('SpawnedHostsCtrl', ['$scope','$window', '$timeout', 'mciSp
           ).join('')
         )
       ).join('')
+    }
+
+    $scope.copyPassword = function() {
+      const el = document.getElementById('password-input')
+      el.focus()
+      el.select()
+      document.execCommand('copy')
     }
 
     $scope.fetchSpawnableDistros = function(selectDistro, cb) {
@@ -332,7 +338,6 @@ mciModule.controller('SpawnedHostsCtrl', ['$scope','$window', '$timeout', 'mciSp
       }
       host.selected = 'active-host';
       host.password = '';
-      host.cPassword = '';
       $scope.lastSelected = host;
       $scope.curHostData = host;
       $scope.curHostData.isTerminated = host.isTerminated;
