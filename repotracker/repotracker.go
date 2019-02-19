@@ -556,6 +556,14 @@ func CreateManifest(v model.Version, proj *model.Project, branch string, setting
 
 	}
 	newManifest.Modules = modules
+	grip.Debug(message.Fields{
+		"message":     "creating manifest",
+		"version_id":  v.Id,
+		"manifest":    newManifest,
+		"project":     v.Identifier,
+		"modules":     modules,
+		"branch_info": gitBranch,
+	})
 	_, err = newManifest.TryInsert()
 
 	return newManifest, errors.Wrap(err, "error inserting manifest")
