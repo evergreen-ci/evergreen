@@ -102,10 +102,6 @@ backgroundSender:
 				timer.Reset(bufferTime)
 			}
 		case <-s.signalEnd:
-			if len(buffer) >= s.bufferSize/2 {
-				s.flush(ctx, buffer)
-				buffer = []apimodels.LogMessage{}
-			}
 			break backgroundSender
 		}
 	}
@@ -113,15 +109,11 @@ backgroundSender:
 	// set the level really high, (which is mutexed) so that we
 	// never send another message
 	_ = s.SetLevel(send.LevelInfo{Threshold: level.Priority(200)})
-
-	// drain the pipe
+	// close the pipe so we can drain things
 	close(s.pipe)
+	// drain the pipe
 	for msg := range s.pipe {
 		buffer = append(buffer, s.convertMessage(msg))
-		if len(buffer) >= s.bufferSize/2 {
-			s.flush(ctx, buffer)
-			buffer = []apimodels.LogMessage{}
-		}
 	}
 
 	// send the final batch
