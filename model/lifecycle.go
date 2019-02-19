@@ -271,7 +271,6 @@ func RestartVersion(versionId string, taskIds []string, abortInProgress bool, ca
 	}
 
 	restartIds := make([]string, 0)
-	t0 := time.Now()
 	// archive all the tasks
 	for _, t := range allTasks {
 		if err = t.Archive(); err != nil {
@@ -282,12 +281,6 @@ func RestartVersion(versionId string, taskIds []string, abortInProgress bool, ca
 		}
 	}
 
-	grip.Info(message.Fields{
-		"message":   "Time to archive",
-		"modify_by": "restart",
-		"versionId": versionId,
-		"duration":  time.Since(t0).String(),
-	})
 	if abortInProgress {
 		// abort in-progress tasks in this build
 		_, err = task.UpdateAll(
