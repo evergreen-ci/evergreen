@@ -180,6 +180,9 @@ func (a *Agent) convertLoggerConfig(tc *taskContext, c *model.LoggerConfig) clie
 }
 
 func (a *Agent) uploadToS3(ctx context.Context, tc *taskContext) error {
+	if a.opts.S3Opts.Name == "" {
+		return nil
+	}
 	bucket, err := pail.NewS3Bucket(a.opts.S3Opts)
 	if err != nil {
 		return errors.Wrap(err, "error creating pail")
