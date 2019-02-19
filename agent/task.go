@@ -70,6 +70,8 @@ func (a *Agent) startTask(ctx context.Context, tc *taskContext, complete chan<- 
 		complete <- evergreen.TaskFailed
 		return
 	}
+	taskConfig.Redacted = tc.expVars.PrivateVars
+	tc.setTaskConfig(taskConfig)
 
 	if ctx.Err() != nil {
 		grip.Info("task canceled")
@@ -82,17 +84,6 @@ func (a *Agent) startTask(ctx context.Context, tc *taskContext, complete chan<- 
 	defer cancel()
 
 	go a.startMaxExecTimeoutWatch(ctx, tc, cancel)
-
-	tc.logger.Execution().Infof("Fetching expansions for project %s", taskConfig.Task.Project)
-	expVars, err := a.comm.FetchExpansionVars(innerCtx, tc.task)
-	if err != nil {
-		tc.logger.Execution().Errorf("error fetching project expansion variables: %s", err)
-		complete <- evergreen.TaskFailed
-		return
-	}
-	taskConfig.Expansions.Update(expVars.Vars)
-	taskConfig.Redacted = expVars.PrivateVars
-	tc.setTaskConfig(taskConfig)
 
 	// set up the system stats collector
 	tc.statsCollector = NewSimpleStatsCollector(
