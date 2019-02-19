@@ -87,7 +87,16 @@ func (uis *UIServer) taskTimingPage(w http.ResponseWriter, r *http.Request) {
 	for _, bv := range project.BuildVariants {
 		newBv := UIBuildVariant{bv.Name, []string{}, []UIDisplayTask{}}
 		for _, task := range bv.Tasks {
-			newBv.TaskNames = append(newBv.TaskNames, task.Name)
+			if task.IsGroup {
+				tg := project.FindTaskGroup(task.Name)
+				if tg != nil {
+					for _, groupTask := range tg.Tasks {
+						newBv.TaskNames = append(newBv.TaskNames, groupTask)
+					}
+				}
+			} else {
+				newBv.TaskNames = append(newBv.TaskNames, task.Name)
+			}
 		}
 
 		// Copy display and execution tasks to UIBuildVariant ui-model
