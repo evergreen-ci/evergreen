@@ -6,9 +6,12 @@ import (
 	"io/ioutil"
 	"math/rand"
 	"os"
+	"path/filepath"
 	"strconv"
 	"testing"
 	"time"
+
+	"github.com/evergreen-ci/evergreen/apimodels"
 
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/mongodb/grip/level"
@@ -101,6 +104,16 @@ func (s *logSenderSuite) TestFileLogger() {
 		s.Contains(logStr, fmt.Sprintf("%d\n", i))
 	}
 	s.Contains(logStr, "p=debug")
+
+	// no file logger for system logs
+	path := filepath.Join(s.tempDir, "nothere")
+	defaultSender := s.restClient.makeSender(context.Background(), TaskData{}, []LogOpts{{Sender: model.FileLogSender, Filepath: path}}, apimodels.SystemLogPrefix)
+	s.NotNil(defaultSender)
+	logger = logging.MakeGrip(defaultSender)
+	logger.Debug("foo")
+	s.NoError(defaultSender.Close())
+	_, err = os.Stat(path)
+	s.True(os.IsNotExist(err))
 }
 
 func (s *logSenderSuite) TestEvergreenLogger() {
