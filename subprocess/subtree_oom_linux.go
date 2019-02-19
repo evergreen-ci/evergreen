@@ -81,5 +81,4 @@ func analyzeDmesg(ctx context.Context, isSudo bool) (bool, []int, error) {
 	case err = <-errs:
 		return wasOOMKilled, pids, errors.Wrap(err, "Error waiting for dmesg command")
 	}
-	return wasOOMKilled, pids, nil
 }
