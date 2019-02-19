@@ -102,8 +102,7 @@ func TestCommandFileLogging(t *testing.T) {
 		},
 		taskModel: task,
 	}
-	err = agt.resetLogging(ctx, tc)
-	assert.NoError(err)
+	agt.resetLogging(ctx, tc)
 	defer agt.removeTaskDirectory(tc)
 	err = agt.runTaskCommands(ctx, tc)
 	require.NoError(err)
@@ -162,7 +161,7 @@ func TestResetLogging(t *testing.T) {
 	assert.EqualValues(model.SplunkLogSender, tc.project.Loggers.System[0].Type)
 	assert.EqualValues(model.FileLogSender, tc.project.Loggers.Task[0].Type)
 
-	assert.NoError(agt.resetLogging(ctx, tc))
+	agt.resetLogging(ctx, tc)
 	tc.logger.Execution().Info("foo")
 	assert.NoError(tc.logger.Close())
 	msgs := agt.comm.(*client.Mock).GetMockMessages()
@@ -218,8 +217,7 @@ func TestLogkeeperMetadataPopulated(t *testing.T) {
 		},
 		taskModel: task,
 	}
-	err := agt.resetLogging(ctx, tc)
-	assert.NoError(err)
+	agt.resetLogging(ctx, tc)
 	assert.Equal("logkeeper/build/build1/test/test1", tc.logs.AgentLogURLs[0].URL)
 	assert.Equal("logkeeper/build/build1/test/test2", tc.logs.SystemLogURLs[0].URL)
 	assert.Equal("logkeeper/build/build1/test/test3", tc.logs.TaskLogURLs[0].URL)

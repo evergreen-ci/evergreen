@@ -157,14 +157,7 @@ LOOP:
 						"task":    tc.task.ID,
 					}))
 				}
-				if err := a.resetLogging(lgrCtx, tc); err != nil {
-					grip.Critical(message.WrapError(err, message.Fields{
-						"message": "error setting up logger",
-						"task":    tc.task.ID,
-					}))
-					timer.Reset(0)
-					continue LOOP
-				}
+				a.resetLogging(lgrCtx, tc)
 				tskCtx, tskCancel := context.WithCancel(ctx)
 				defer tskCancel()
 				shouldExit, err := a.runTask(tskCtx, tskCancel, tc)
@@ -261,7 +254,10 @@ func (a *Agent) fetchProjectConfig(ctx context.Context, tc *taskContext) error {
 	return nil
 }
 
-func (a *Agent) resetLogging(ctx context.Context, tc *taskContext) error {
+func (a *Agent) resetLogging(ctx context.Context, tc *taskContext) {
+	if tc.logger != nil {
+		grip.Error(tc.logger.Close())
+	}
 	grip.Error(os.RemoveAll(filepath.Join(a.opts.WorkingDirectory, taskLogDirectory)))
 	if tc.project != nil && tc.project.Loggers != nil {
 		tc.logger = a.makeLoggerProducer(ctx, tc, tc.project.Loggers, "")
@@ -270,14 +266,9 @@ func (a *Agent) resetLogging(ctx context.Context, tc *taskContext) error {
 	}
 
 	sender, err := GetSender(ctx, a.opts.LogPrefix, tc.task.ID)
-	if err != nil {
-		return errors.Wrap(err, "problem getting sender")
-	}
-	err = grip.SetSender(sender)
-	if err != nil {
-		return errors.Wrap(err, "problem setting sender")
-	}
-	return nil
+	grip.Error(errors.Wrap(err, "problem getting sender"))
+
+	grip.Error(errors.Wrap(grip.SetSender(sender), "problem setting sender"))
 }
 
 // runTask returns true if the agent should exit, and separate an error if relevant
@@ -440,10 +431,7 @@ func (a *Agent) runPostGroupCommands(ctx context.Context, tc *taskContext) {
 	if tc.taskConfig == nil {
 		return
 	}
-	if err := a.resetLogging(ctx, tc); err != nil {
-		grip.Error(errors.Wrap(err, "error resetting logging"))
-		return
-	}
+	a.resetLogging(ctx, tc)
 	defer tc.logger.Close()
 	taskGroup, err := model.GetTaskGroup(tc.taskGroup, tc.taskConfig)
 	if err != nil {
