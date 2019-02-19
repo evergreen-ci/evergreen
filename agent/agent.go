@@ -46,6 +46,7 @@ type Options struct {
 type taskContext struct {
 	currentCommand command.Command
 	expansions     util.Expansions
+	expVars        *apimodels.ExpansionVars
 	logger         client.LoggerProducer
 	logs           *apimodels.TaskLogs
 	statsCollector *StatsCollector
@@ -247,10 +248,16 @@ func (a *Agent) fetchProjectConfig(ctx context.Context, tc *taskContext) error {
 	if err != nil {
 		return errors.Wrap(err, "error getting expansions")
 	}
+	expVars, err := a.comm.FetchExpansionVars(ctx, tc.task)
+	if err != nil {
+		return errors.Wrap(err, "error getting project vars")
+	}
+	exp.Update(expVars.Vars)
 	tc.version = v
 	tc.taskModel = taskModel
 	tc.project = project
 	tc.expansions = exp
+	tc.expVars = expVars
 	return nil
 }
 
