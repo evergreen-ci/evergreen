@@ -1119,7 +1119,6 @@ func (t *Task) Archive() error {
 			}
 		}
 	}
-	t0 := time.Now()
 
 	// only increment restarts if have a current restarts
 	// this way restarts will never be set for new tasks but will be
@@ -1141,15 +1140,6 @@ func (t *Task) Archive() error {
 		return errors.Wrap(err, "task.Archive() failed")
 	}
 
-	grip.Info(message.Fields{
-		"message":   "Time to update executions/restarts",
-		"modify_by": "restart",
-		"versionId": t.Id,
-		"duration":  time.Since(t0).String(),
-	})
-
-	t0 = time.Now()
-
 	archiveTask := *t
 	archiveTask.Id = fmt.Sprintf("%v_%v", t.Id, t.Execution)
 	archiveTask.OldTaskId = t.Id
@@ -1159,24 +1149,10 @@ func (t *Task) Archive() error {
 		return errors.Wrap(err, "task.Archive() failed")
 	}
 
-	grip.Info(message.Fields{
-		"message":   "Time to insert task",
-		"modify_by": "restart",
-		"versionId": t.Id,
-		"duration":  time.Since(t0).String(),
-	})
-	t0 = time.Now()
-
 	err = event.UpdateExecutions(t.HostId, t.Id, t.Execution)
 	if err != nil {
 		return errors.Wrap(err, "unable to update host event logs")
 	}
-	grip.Info(message.Fields{
-		"message":   "Time to update archived task",
-		"modify_by": "restart",
-		"versionId": t.Id,
-		"duration":  time.Since(t0).String(),
-	})
 	return nil
 }
 
