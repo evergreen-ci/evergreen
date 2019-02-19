@@ -111,8 +111,6 @@ func (j *commitQueueJob) Run(ctx context.Context) {
 	nextItemInt, err := strconv.Atoi(nextItem)
 	if err != nil {
 		j.AddError(errors.Wrapf(err, "can't parse next item \"%s\" as int", nextItem))
-		_, err2 := cq.Remove(nextItem)
-		j.AddError(errors.Wrapf(err2, "error dequeuing item '%s'", nextItem))
 		grip.Error(message.WrapError(err, message.Fields{
 			"job":     commitQueueJobName,
 			"source":  "commit queue",
@@ -120,6 +118,17 @@ func (j *commitQueueJob) Run(ctx context.Context) {
 			"item":    nextItem,
 			"message": "next item can't be parsed as an int",
 		}))
+
+		_, err = cq.Remove(nextItem)
+		j.AddError(errors.Wrapf(err, "error dequeuing item '%s'", nextItem))
+		grip.Error(message.WrapError(err, message.Fields{
+			"job":     commitQueueJobName,
+			"source":  "commit queue",
+			"project": j.QueueID,
+			"item":    nextItem,
+			"message": "can't dequeue item",
+		}))
+
 		return
 	}
 
@@ -145,14 +154,36 @@ func (j *commitQueueJob) Run(ctx context.Context) {
 
 	if err = validatePR(pr); err != nil {
 		j.AddError(errors.Wrap(err, "invalid PR"))
-		_, err2 := cq.Remove(nextItem)
-		j.AddError(errors.Wrapf(err2, "error dequeuing item '%s'", nextItem))
 		grip.Error(message.WrapError(err, message.Fields{
 			"job":     commitQueueJobName,
 			"source":  "commit queue",
 			"project": j.QueueID,
 			"item":    nextItem,
 			"message": "invalid PR",
+		}))
+
+		_, err = cq.Remove(nextItem)
+		j.AddError(errors.Wrapf(err, "error dequeuing item '%s'", nextItem))
+		grip.Error(message.WrapError(err, message.Fields{
+			"job":     commitQueueJobName,
+			"source":  "commit queue",
+			"project": j.QueueID,
+			"item":    nextItem,
+			"message": "can't dequeue item",
+		}))
+		return
+	}
+
+	// Remove already merged PRs from the queue
+	if *pr.Merged {
+		_, err = cq.Remove(nextItem)
+		j.AddError(errors.Wrapf(err, "error dequeuing item '%s'", nextItem))
+		grip.Error(message.WrapError(err, message.Fields{
+			"job":     commitQueueJobName,
+			"source":  "commit queue",
+			"project": j.QueueID,
+			"item":    nextItem,
+			"message": "can't dequeue item",
 		}))
 		return
 	}
@@ -186,15 +217,24 @@ func (j *commitQueueJob) Run(ctx context.Context) {
 	v, err := makeVersion(ctx, githubToken, projectRef.Identifier, pr)
 	if err != nil {
 		j.AddError(errors.Wrap(err, "can't make version"))
-		j.AddError(sendCommitQueueGithubStatus(j.env, pr, message.GithubStateFailure, "can't make version", ""))
-		_, err2 := cq.Remove(nextItem)
-		j.AddError(errors.Wrapf(err2, "error dequeuing item '%s'", nextItem))
 		grip.Error(message.WrapError(err, message.Fields{
 			"job":     commitQueueJobName,
 			"source":  "commit queue",
 			"project": j.QueueID,
 			"item":    nextItem,
 			"message": "can't make version",
+		}))
+
+		j.AddError(sendCommitQueueGithubStatus(j.env, pr, message.GithubStateFailure, "can't make version", ""))
+
+		_, err = cq.Remove(nextItem)
+		j.AddError(errors.Wrapf(err, "error dequeuing item '%s'", nextItem))
+		grip.Error(message.WrapError(err, message.Fields{
+			"job":     commitQueueJobName,
+			"source":  "commit queue",
+			"project": j.QueueID,
+			"item":    nextItem,
+			"message": "can't dequeue item",
 		}))
 		return
 	}
@@ -254,6 +294,9 @@ func validatePR(pr *github.PullRequest) error {
 	}
 	if pr.GetTitle() == "" {
 		catcher.Add(errors.New("no valid title"))
+	}
+	if pr.Merged == nil {
+		catcher.Add(errors.New("no valid merged status"))
 	}
 
 	return catcher.Resolve()
