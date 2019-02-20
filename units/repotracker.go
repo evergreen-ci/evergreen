@@ -106,10 +106,6 @@ func (j *repotrackerJob) Run(ctx context.Context) {
 		return
 	}
 
-	if ref.Owner == "" || ref.Repo == "" || ref.Branch == "" {
-		return
-	}
-
 	err = repotracker.CollectRevisionsForProject(ctx, settings, *ref)
 
 	if err != nil {

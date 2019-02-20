@@ -45,7 +45,7 @@ func PopulateCatchupJobs(part int) amboy.QueueOperation {
 		for _, proj := range projects {
 			// only do catchup jobs for enabled projects
 			// that track push events.
-			if !proj.Enabled || !proj.TracksPushEvents {
+			if !proj.Enabled || !proj.TracksPushEvents || proj.Owner == "" || proj.Repo == "" || proj.Branch == "" {
 				continue
 			}
 
@@ -97,7 +97,7 @@ func PopulateRepotrackerPollingJobs(part int) amboy.QueueOperation {
 
 		catcher := grip.NewBasicCatcher()
 		for _, proj := range projects {
-			if !proj.Enabled || proj.TracksPushEvents {
+			if !proj.Enabled || proj.TracksPushEvents || proj.Owner == "" || proj.Repo == "" || proj.Branch == "" {
 				continue
 			}
 
