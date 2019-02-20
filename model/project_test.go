@@ -387,8 +387,9 @@ buildvariants:
 	settings := &evergreen.Settings{
 		Credentials: map[string]string{"github": "token globalGitHubOauthToken"},
 	}
-
-	expansions, err := PopulateExpansions(taskDoc, &h, settings)
+	oauthToken, err := settings.GetGithubOauthToken()
+	assert.NoError(err)
+	expansions, err := PopulateExpansions(taskDoc, &h, oauthToken)
 	assert.NoError(err)
 	assert.Len(map[string]string(expansions), 17)
 	assert.Equal("0", expansions.Get("execution"))
@@ -414,7 +415,8 @@ buildvariants:
 	assert.NoError(VersionUpdateOne(bson.M{VersionIdKey: v.Id}, bson.M{
 		"$set": bson.M{VersionRequesterKey: evergreen.PatchVersionRequester},
 	}))
-	expansions, err = PopulateExpansions(taskDoc, &h, settings)
+
+	expansions, err = PopulateExpansions(taskDoc, &h, oauthToken)
 	assert.NoError(err)
 	assert.Len(map[string]string(expansions), 18)
 	assert.Equal("true", expansions.Get("is_patch"))
@@ -425,7 +427,7 @@ buildvariants:
 	assert.NoError(VersionUpdateOne(bson.M{VersionIdKey: v.Id}, bson.M{
 		"$set": bson.M{VersionRequesterKey: evergreen.GithubPRRequester},
 	}))
-	expansions, err = PopulateExpansions(taskDoc, &h, settings)
+	expansions, err = PopulateExpansions(taskDoc, &h, oauthToken)
 	assert.NoError(err)
 	assert.Len(map[string]string(expansions), 18)
 	assert.Equal("true", expansions.Get("is_patch"))
@@ -444,7 +446,7 @@ buildvariants:
 	}
 	assert.NoError(patchDoc.Insert())
 
-	expansions, err = PopulateExpansions(taskDoc, &h, settings)
+	expansions, err = PopulateExpansions(taskDoc, &h, oauthToken)
 	assert.NoError(err)
 	assert.Len(map[string]string(expansions), 21)
 	assert.Equal("true", expansions.Get("is_patch"))
@@ -467,7 +469,7 @@ buildvariants:
 	assert.NoError(upstreamProject.Insert())
 	taskDoc.TriggerID = "upstreamTask"
 	taskDoc.TriggerType = ProjectTriggerLevelTask
-	expansions, err = PopulateExpansions(taskDoc, &h, settings)
+	expansions, err = PopulateExpansions(taskDoc, &h, oauthToken)
 	assert.NoError(err)
 	assert.Len(map[string]string(expansions), 29)
 	assert.Equal(taskDoc.TriggerID, expansions.Get("trigger_event_identifier"))

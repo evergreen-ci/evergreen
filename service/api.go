@@ -206,13 +206,13 @@ func (as *APIServer) GetProjectRef(w http.ResponseWriter, r *http.Request) {
 func (as *APIServer) GetExpansions(w http.ResponseWriter, r *http.Request) {
 	t := MustHaveTask(r)
 	h := MustHaveHost(r)
-	settings, err := evergreen.GetConfig()
+	settings := as.GetSettings()
+	oauthToken, err := settings.GetGithubOauthToken()
 	if err != nil {
 		as.LoggedError(w, r, http.StatusInternalServerError, err)
-		return
 	}
 
-	e, err := model.PopulateExpansions(t, h, settings)
+	e, err := model.PopulateExpansions(t, h, oauthToken)
 	if err != nil {
 		as.LoggedError(w, r, http.StatusInternalServerError, err)
 		return

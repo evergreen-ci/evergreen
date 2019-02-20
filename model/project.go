@@ -669,14 +669,13 @@ var (
 	ProjectTasksKey         = bsonutil.MustHaveTag(Project{}, "Tasks")
 )
 
-func PopulateExpansions(t *task.Task, h *host.Host, settings *evergreen.Settings) (util.Expansions, error) {
+func PopulateExpansions(t *task.Task, h *host.Host, oauthToken string) (util.Expansions, error) {
 	if t == nil {
 		return nil, errors.New("task cannot be nil")
 	}
 	if h == nil {
 		return nil, errors.New("host cannot be nil")
 	}
-	oauthToken, _ := settings.GetGithubOauthToken()
 
 	expansions := util.Expansions{}
 	expansions.Put("execution", fmt.Sprintf("%v", t.Execution))
