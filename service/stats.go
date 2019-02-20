@@ -196,29 +196,6 @@ func (uis *UIServer) taskTimingJSON(w http.ResponseWriter, r *http.Request) {
 		data.Builds = uiBuilds
 
 	} else {
-		foundTask := false
-
-		for _, t := range bv.Tasks {
-			if t.Name == taskName {
-				foundTask = true
-				break
-			}
-		}
-
-		// Try found Display Task with name taskName
-		if !foundTask {
-			for _, dt := range bv.DisplayTasks {
-				if dt.Name == taskName {
-					foundTask = true
-					break
-				}
-			}
-		}
-
-		if !foundTask {
-			uis.LoggedError(w, r, http.StatusNotFound, errors.Errorf("no task named '%v'", taskName))
-			return
-		}
 		var tasks []task.Task
 
 		fields := []string{task.CreateTimeKey, task.DispatchTimeKey,
@@ -253,6 +230,10 @@ func (uis *UIServer) taskTimingJSON(w http.ResponseWriter, r *http.Request) {
 				uis.LoggedError(w, r, http.StatusNotFound, err)
 				return
 			}
+		}
+		if len(tasks) == 0 {
+			uis.LoggedError(w, r, http.StatusNotFound, errors.New("no task data found"))
+			return
 		}
 
 		uiTasks := []*UITask{}
