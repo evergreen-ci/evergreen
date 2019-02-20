@@ -215,6 +215,25 @@ func FindAllTrackedProjectRefs() ([]ProjectRef, error) {
 	return projectRefs, err
 }
 
+func FindAllTrackedProjectRefsWithRepoInfo() ([]ProjectRef, error) {
+	projectRefs := []ProjectRef{}
+	err := db.FindAll(
+		ProjectRefCollection,
+		bson.M{
+			ProjectRefTrackedKey: true,
+			ProjectRefOwnerKey:   bson.M{"$exists": true, "$ne": ""},
+			ProjectRefRepoKey:    bson.M{"$exists": true, "$ne": ""},
+			ProjectRefBranchKey:  bson.M{"$exists": true, "$ne": ""},
+		},
+		db.NoProjection,
+		db.NoSort,
+		db.NoSkip,
+		db.NoLimit,
+		&projectRefs,
+	)
+	return projectRefs, err
+}
+
 // FindAllProjectRefs returns all project refs in the db
 func FindAllProjectRefs() ([]ProjectRef, error) {
 	projectRefs := []ProjectRef{}
