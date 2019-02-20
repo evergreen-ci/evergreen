@@ -496,9 +496,6 @@ type BuildCreateArgs struct {
 // CreateBuildFromVersion creates a build given all of the necessary information
 // from the corresponding version and project and a list of tasks.
 func CreateBuildFromVersion(args BuildCreateArgs) (string, error) {
-
-	grip.Debugf("Creating %s %s build, activated: %v", args.Version.Requester, args.BuildName, args.Activated)
-
 	// find the build variant for this project/build
 	buildVariant := args.Project.FindBuildVariant(args.BuildName)
 	if buildVariant == nil {
