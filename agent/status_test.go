@@ -108,3 +108,22 @@ func (s *StatusSuite) TestAgentFailsToStartTwice() {
 	err = <-first
 	s.Require().NoError(err)
 }
+
+func (s *StatusSuite) TestCheckOOMSucceeds() {
+	resp, err := http.Get("http://127.0.0.1:2286/oom/check")
+	s.Error(err)
+
+	agt := New(s.testOpts, client.NewMock("url"))
+	mockCommunicator := agt.comm.(*client.Mock)
+	mockCommunicator.NextTaskIsNil = true
+	ctx, cancel := context.WithCancel(context.Background())
+	s.cancel = cancel
+	go func() {
+		_ = agt.Start(ctx)
+	}()
+	time.Sleep(100 * time.Second)
+
+	resp, err = http.Get("http://127.0.0.1:2286/oom/check")
+	s.Require().NoError(err)
+	s.Equal(200, resp.StatusCode)
+}

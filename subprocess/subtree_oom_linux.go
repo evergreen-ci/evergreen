@@ -11,13 +11,12 @@ import (
 )
 
 func (o *OOMTracker) Clear(ctx context.Context) error {
-	var err error
-	o.IsSudo, err = isSudo(ctx)
+	sudo, err := isSudo(ctx)
 	if err != nil {
 		return errors.Wrap(err, "error checking sudo")
 	}
 
-	if o.IsSudo {
+	if sudo {
 		return errors.Wrap(exec.CommandContext(ctx, "sudo", "dmesg", "-c").Run(), "error clearing dmesg")
 	}
 
@@ -25,7 +24,7 @@ func (o *OOMTracker) Clear(ctx context.Context) error {
 }
 
 func (o *OOMTracker) Check(ctx context.Context) error {
-	wasOOMKilled, pids, err := analyzeDmesg(ctx, o.IsSudo)
+	wasOOMKilled, pids, err := analyzeDmesg(ctx)
 	if err != nil {
 		return errors.Wrap(err, "error searching log")
 	}
@@ -34,12 +33,17 @@ func (o *OOMTracker) Check(ctx context.Context) error {
 	return nil
 }
 
-func analyzeDmesg(ctx context.Context, isSudo bool) (bool, []int, error) {
+func analyzeDmesg(ctx context.Context) (bool, []int, error) {
 	var cmd *exec.Cmd
 	wasOOMKilled := false
 	errs := make(chan error)
 
-	if isSudo {
+	sudo, err := isSudo(ctx)
+	if err != nil {
+		return false, nil, errors.Wrap(err, "error checking sudo")
+	}
+
+	if sudo {
 		cmd = exec.CommandContext(ctx, "sudo", "dmesg")
 	} else {
 		cmd = exec.CommandContext(ctx, "dmesg")

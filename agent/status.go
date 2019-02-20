@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/subprocess"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
@@ -33,6 +34,8 @@ func (agt *Agent) startStatusServer(ctx context.Context, port int) error {
 	app.AddMiddleware(gimlet.MakeRecoveryLogger())
 	app.AddRoute("/status").Handler(agt.statusHandler()).Get()
 	app.AddRoute("/terminate").Handler(terminateAgentHandler).Delete()
+	app.AddRoute("/oom/clear").Handler(subprocess.ClearOOMHandler()).Get()
+	app.AddRoute("/oom/check").Handler(subprocess.CheckOOMHandler()).Get()
 
 	handler, err := gimlet.MergeApplications(app, gimlet.GetPProfApp())
 	if err != nil {
