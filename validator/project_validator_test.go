@@ -1935,6 +1935,16 @@ func TestValidateCreateHosts(t *testing.T) {
     - command: host.create
     - command: host.create
     - command: host.create
+  - name: t_10
+    commands:
+    - command: host.create
+    - command: host.create
+    - command: host.create
+  - name: t_11
+    commands:
+    - command: host.create
+    - command: host.create
+    - command: host.create
   buildvariants:
   - name: "bv"
     tasks:
@@ -1947,6 +1957,8 @@ func TestValidateCreateHosts(t *testing.T) {
     - name: t_7
     - name: t_8
     - name: t_9
+    - name: t_10
+    - name: t_11
   `
 	err = model.LoadProjectInto([]byte(yml), "id", &p)
 	require.NoError(err)
