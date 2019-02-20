@@ -122,10 +122,10 @@ mciModule.controller('SpawnedHostsCtrl', ['$scope','$window', '$timeout', 'mciSp
     }
 
     $scope.copyPassword = function() {
-      const el = document.getElementById('password-input')
-      el.focus()
-      el.select()
-      document.execCommand('copy')
+      var el = $('#password-input');
+      el.focus();
+      el.select();
+      document.execCommand('copy');
     }
 
     $scope.fetchSpawnableDistros = function(selectDistro, cb) {
