@@ -6,6 +6,8 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/task"
+	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 )
 
@@ -95,8 +97,21 @@ func badHostTaskRelationship(h *host.Host, t *task.Task) bool {
 	if t.Id == h.RunningTask {
 		return false
 	}
-	if t.Id == h.LastTask && h.RunningTask == "" {
-		return false
+	if t.Id == h.LastTask {
+		if h.RunningTask == "" {
+			return false
+		}
+		nextTask, err := task.FindOneId(h.RunningTask)
+		if err != nil {
+			grip.Error(message.WrapError(err, message.Fields{
+				"message": "problem finding task",
+				"task":    h.RunningTask,
+			}))
+		}
+		// If the next task has not been marked started, allow logs to be posted for post group.
+		if nextTask == nil || nextTask.Status == evergreen.TaskDispatched {
+			return false
+		}
 	}
 	return true
 }
