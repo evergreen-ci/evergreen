@@ -42,6 +42,7 @@ var (
 	VersionRemoteURLKey           = bsonutil.MustHaveTag(Version{}, "RemotePath")
 	VersionTriggerIDKey           = bsonutil.MustHaveTag(Version{}, "TriggerID")
 	VersionTriggerTypeKey         = bsonutil.MustHaveTag(Version{}, "TriggerType")
+	VersionSatisfiedTriggersKey   = bsonutil.MustHaveTag(Version{}, "SatisfiedTriggers")
 )
 
 // ById returns a db.Q object which will filter on {_id : <the id param>}
@@ -251,4 +252,13 @@ func VersionUpdateOne(query interface{}, update interface{}) error {
 		query,
 		update,
 	)
+}
+
+func AddSatisfiedTrigger(versionID, definitionID string) error {
+	return VersionUpdateOne(bson.M{VersionIdKey: versionID},
+		bson.M{
+			"$push": bson.M{
+				VersionSatisfiedTriggersKey: definitionID,
+			},
+		})
 }
