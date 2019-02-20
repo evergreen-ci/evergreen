@@ -110,6 +110,24 @@ mciModule.controller('SpawnedHostsCtrl', ['$scope','$window', '$timeout', 'mciSp
       return ($scope.hosts == null) || ($scope.hosts.length < $scope.maxHostsPerUser)
     }
 
+    $scope.generatePassword = function() {
+      $scope.curHostData.password = _.shuffle(
+        SHA1(document.cookie + _.now()).slice(0, 9).concat(
+          _.take(
+            _.shuffle('~!@#$%^&*_-+=`|\\(){}[]:;"\'<>,.?/'),
+            3
+          ).join('')
+        )
+      ).join('')
+    }
+
+    $scope.copyPassword = function() {
+      var el = $('#password-input');
+      el.focus();
+      el.select();
+      document.execCommand('copy');
+    }
+
     $scope.fetchSpawnableDistros = function(selectDistro, cb) {
       mciSpawnRestService.getSpawnableDistros(
         'distros', {}, {
@@ -320,7 +338,6 @@ mciModule.controller('SpawnedHostsCtrl', ['$scope','$window', '$timeout', 'mciSp
       }
       host.selected = 'active-host';
       host.password = '';
-      host.cPassword = '';
       $scope.lastSelected = host;
       $scope.curHostData = host;
       $scope.curHostData.isTerminated = host.isTerminated;

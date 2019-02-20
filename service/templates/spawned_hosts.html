@@ -1,5 +1,6 @@
 {{define "scripts"}}
 {{if .User}}
+  <script type="text/javascript" src="/static/thirdparty/SHA-1.js"></script>
   <script type="text/javascript" src="{{Static "js" "spawned_hosts.js"}}?hash={{ BuildRevision }}"></script>
 {{end}}
 <script type="text/javascript">
