@@ -103,8 +103,6 @@ func (a *Agent) loop(ctx context.Context) error {
 		lgrCtx        context.Context
 		cancel        context.CancelFunc
 		jitteredSleep time.Duration
-
-		exit bool
 	)
 	lgrCtx, cancel = context.WithCancel(ctx)
 	defer cancel()
@@ -144,13 +142,7 @@ LOOP:
 					timer.Reset(0)
 					continue LOOP
 				}
-				tc, exit = a.prepareNextTask(ctx, nextTask, tc)
-				if exit {
-					// Query for next task, this time with an empty task group,
-					// to get a ShouldExit from the API, and set NeedsNewAgent.
-					timer.Reset(0)
-					continue LOOP
-				}
+				tc = a.prepareNextTask(ctx, nextTask, tc)
 				if err := a.fetchProjectConfig(ctx, tc); err != nil {
 					grip.Error(message.WrapError(err, message.Fields{
 						"message": "error fetching project config; will attempt at a later point",
@@ -189,16 +181,13 @@ LOOP:
 	}
 }
 
-func (a *Agent) prepareNextTask(ctx context.Context, nextTask *apimodels.NextTaskResponse, tc *taskContext) (*taskContext, bool) {
+func (a *Agent) prepareNextTask(ctx context.Context, nextTask *apimodels.NextTaskResponse, tc *taskContext) *taskContext {
 	setupGroup := false
 	taskDirectory := tc.taskDirectory
 	if nextTaskHasDifferentTaskGroupOrBuild(nextTask, tc) {
 		setupGroup = true
 		taskDirectory = ""
 		a.runPostGroupCommands(ctx, tc)
-		if nextTask.NewAgent {
-			return &taskContext{}, true
-		}
 	}
 	return &taskContext{
 		task: client.TaskData{
@@ -208,7 +197,7 @@ func (a *Agent) prepareNextTask(ctx context.Context, nextTask *apimodels.NextTas
 		taskGroup:     nextTask.TaskGroup,
 		runGroupSetup: setupGroup,
 		taskDirectory: taskDirectory,
-	}, false
+	}
 }
 
 func nextTaskHasDifferentTaskGroupOrBuild(nextTask *apimodels.NextTaskResponse, tc *taskContext) bool {

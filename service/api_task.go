@@ -108,8 +108,8 @@ func checkHostHealth(h *host.Host) bool {
 	return false
 }
 
-// checkAgentRevision checks that the agent revision is current.
-func checkAgentRevision(h *host.Host) bool {
+// agentRevisionIsOld checks that the agent revision is current.
+func agentRevisionIsOld(h *host.Host) bool {
 	if h.AgentRevision != evergreen.BuildRevision {
 		grip.Info(message.Fields{
 			"message":        "agent has wrong revision, so it should exit",
@@ -389,9 +389,10 @@ func assignNextAvailableTask(taskQueue *model.TaskQueue, currentHost *host.Host)
 // and popping the next task off the task queue.
 func (as *APIServer) NextTask(w http.ResponseWriter, r *http.Request) {
 	h := MustHaveHost(r)
-	response := apimodels.NextTaskResponse{}
+	var response apimodels.NextTaskResponse
+	var err error
 	if checkHostHealth(h) {
-		if err := h.SetNeedsNewAgent(true); err != nil {
+		if err = h.SetNeedsNewAgent(true); err != nil {
 			grip.Error(message.WrapError(err, message.Fields{
 				"host":      h.Id,
 				"operation": "next_task",
@@ -406,59 +407,10 @@ func (as *APIServer) NextTask(w http.ResponseWriter, r *http.Request) {
 		gimlet.WriteJSON(w, response)
 		return
 	}
-	if checkAgentRevision(h) {
-		details := &apimodels.GetNextTaskDetails{}
-		if err := util.ReadJSONInto(util.NewRequestReader(r), details); err != nil {
-			if innerErr := h.SetNeedsNewAgent(true); innerErr != nil {
-				grip.Error(message.WrapError(innerErr, message.Fields{
-					"host":      h.Id,
-					"operation": "next_task",
-					"message":   "problem indicating that host needs new agent",
-					"source":    "database error",
-					"revision":  evergreen.BuildRevision,
-				}))
-				gimlet.WriteResponse(w, gimlet.MakeJSONInternalErrorResponder(innerErr))
-				return
-			}
-			grip.Info(message.WrapError(err, message.Fields{
-				"host":          h.Id,
-				"operation":     "next_task",
-				"message":       "unable to unmarshal next task details, so updating agent",
-				"host_revision": h.AgentRevision,
-				"revision":      evergreen.BuildRevision,
-			}))
-			response.ShouldExit = true
-			gimlet.WriteJSON(w, response)
-			return
-		}
-		if details.TaskGroup == "" {
-			if err := h.SetNeedsNewAgent(true); err != nil {
-				grip.Error(message.WrapError(err, message.Fields{
-					"host":      h.Id,
-					"operation": "next_task",
-					"message":   "problem indicating that host needs new agent",
-					"source":    "database error",
-					"revision":  evergreen.BuildRevision,
-				}))
-				gimlet.WriteResponse(w, gimlet.MakeJSONInternalErrorResponder(err))
-				return
-			}
-			if err := h.ClearRunningTask(); err != nil {
-				grip.Error(message.WrapError(err, message.Fields{
-					"host":      h.Id,
-					"operation": "next_task",
-					"message":   "problem unsetting running task",
-					"source":    "database error",
-					"revision":  evergreen.BuildRevision,
-				}))
-				gimlet.WriteResponse(w, gimlet.MakeJSONInternalErrorResponder(err))
-				return
-			}
-			response.ShouldExit = true
-			gimlet.WriteJSON(w, response)
-			return
-		}
-		response.NewAgent = true
+	var agentExit bool
+	response, agentExit = handleOldAgentRevision(response, h, w, r)
+	if agentExit {
+		return
 	}
 
 	flags, err := evergreen.GetServiceFlags()
@@ -475,47 +427,7 @@ func (as *APIServer) NextTask(w http.ResponseWriter, r *http.Request) {
 
 	// if there is already a task assigned to the host send back that task
 	if h.RunningTask != "" {
-		var t *task.Task
-		t, err = task.FindOne(task.ById(h.RunningTask))
-		if err != nil {
-			err = errors.Wrapf(err, "error getting running task %s", h.RunningTask)
-			grip.Error(err)
-			gimlet.WriteResponse(w, gimlet.MakeJSONInternalErrorResponder(err))
-			return
-		}
-
-		// if the task can be dispatched and activated dispatch it
-		if t.IsDispatchable() {
-			err = errors.WithStack(model.MarkTaskDispatched(t, h.Id, h.Distro.Id))
-			if err != nil {
-				grip.Error(errors.Wrapf(err, "error while marking task %s as dispatched for host %s", t.Id, h.Id))
-				gimlet.WriteResponse(w, gimlet.MakeJSONInternalErrorResponder(err))
-				return
-			}
-		}
-		// if the task is activated return that task
-		if t.Activated {
-			setNextTask(t, &response)
-			gimlet.WriteJSON(w, response)
-			return
-		}
-		// the task is not activated so the host's running task should be unset
-		// so it can retrieve a new task.
-		if err = h.ClearRunningTask(); err != nil {
-			err = errors.WithStack(err)
-			grip.Error(err)
-			gimlet.WriteResponse(w, gimlet.MakeJSONInternalErrorResponder(err))
-			return
-		}
-
-		// return an empty
-		grip.Info(message.Fields{
-			"op":      "next_task",
-			"message": "unset running task field for inactive task on host",
-			"host_id": h.Id,
-			"task_id": t.Id,
-		})
-		gimlet.WriteJSON(w, response)
+		sendBackRunningTask(h, response, w)
 		return
 	}
 
@@ -572,6 +484,110 @@ func (as *APIServer) NextTask(w http.ResponseWriter, r *http.Request) {
 		"host_id": h.Id,
 	})
 	gimlet.WriteJSON(w, response)
+}
+
+func handleOldAgentRevision(response apimodels.NextTaskResponse, h *host.Host, w http.ResponseWriter, r *http.Request) (apimodels.NextTaskResponse, bool) {
+	if agentRevisionIsOld(h) {
+		details := &apimodels.GetNextTaskDetails{}
+		if err := util.ReadJSONInto(util.NewRequestReader(r), details); err != nil {
+			if innerErr := h.SetNeedsNewAgent(true); innerErr != nil {
+				grip.Error(message.WrapError(innerErr, message.Fields{
+					"host":      h.Id,
+					"operation": "next_task",
+					"message":   "problem indicating that host needs new agent",
+					"source":    "database error",
+					"revision":  evergreen.BuildRevision,
+				}))
+				gimlet.WriteResponse(w, gimlet.MakeJSONInternalErrorResponder(innerErr))
+				return apimodels.NextTaskResponse{}, true
+			}
+			grip.Info(message.WrapError(err, message.Fields{
+				"host":          h.Id,
+				"operation":     "next_task",
+				"message":       "unable to unmarshal next task details, so updating agent",
+				"host_revision": h.AgentRevision,
+				"revision":      evergreen.BuildRevision,
+			}))
+			response.ShouldExit = true
+			gimlet.WriteJSON(w, response)
+			return apimodels.NextTaskResponse{}, true
+		}
+		if details.TaskGroup == "" {
+			if err := h.SetNeedsNewAgent(true); err != nil {
+				grip.Error(message.WrapError(err, message.Fields{
+					"host":      h.Id,
+					"operation": "next_task",
+					"message":   "problem indicating that host needs new agent",
+					"source":    "database error",
+					"revision":  evergreen.BuildRevision,
+				}))
+				gimlet.WriteResponse(w, gimlet.MakeJSONInternalErrorResponder(err))
+				return apimodels.NextTaskResponse{}, true
+
+			}
+			if err := h.ClearRunningTask(); err != nil {
+				grip.Error(message.WrapError(err, message.Fields{
+					"host":      h.Id,
+					"operation": "next_task",
+					"message":   "problem unsetting running task",
+					"source":    "database error",
+					"revision":  evergreen.BuildRevision,
+				}))
+				gimlet.WriteResponse(w, gimlet.MakeJSONInternalErrorResponder(err))
+				return apimodels.NextTaskResponse{}, true
+			}
+			response.ShouldExit = true
+			gimlet.WriteJSON(w, response)
+			return apimodels.NextTaskResponse{}, true
+		}
+	}
+	return response, false
+}
+
+func sendBackRunningTask(h *host.Host, response apimodels.NextTaskResponse, w http.ResponseWriter) {
+	var err error
+	var t *task.Task
+	t, err = task.FindOne(task.ById(h.RunningTask))
+	if err != nil {
+		err = errors.Wrapf(err, "error getting running task %s", h.RunningTask)
+		grip.Error(err)
+		gimlet.WriteResponse(w, gimlet.MakeJSONInternalErrorResponder(err))
+		return
+	}
+
+	// if the task can be dispatched and activated dispatch it
+	if t.IsDispatchable() {
+		err = errors.WithStack(model.MarkTaskDispatched(t, h.Id, h.Distro.Id))
+		if err != nil {
+			grip.Error(errors.Wrapf(err, "error while marking task %s as dispatched for host %s", t.Id, h.Id))
+			gimlet.WriteResponse(w, gimlet.MakeJSONInternalErrorResponder(err))
+			return
+		}
+	}
+	// if the task is activated return that task
+	if t.Activated {
+		setNextTask(t, &response)
+		gimlet.WriteJSON(w, response)
+		return
+	}
+	// the task is not activated so the host's running task should be unset
+	// so it can retrieve a new task.
+	if err = h.ClearRunningTask(); err != nil {
+		err = errors.WithStack(err)
+		grip.Error(err)
+		gimlet.WriteResponse(w, gimlet.MakeJSONInternalErrorResponder(err))
+		return
+	}
+
+	// return an empty
+	grip.Info(message.Fields{
+		"op":      "next_task",
+		"message": "unset running task field for inactive task on host",
+		"host_id": h.Id,
+		"task_id": t.Id,
+	})
+	gimlet.WriteJSON(w, response)
+	return
 }
 
 func setNextTask(t *task.Task, response *apimodels.NextTaskResponse) {

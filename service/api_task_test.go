@@ -391,7 +391,6 @@ func TestNextTask(t *testing.T) {
 				So(resp.Code, ShouldEqual, http.StatusOK)
 				So(json.NewDecoder(resp.Body).Decode(details), ShouldBeNil)
 				So(details.ShouldExit, ShouldEqual, true)
-				So(details.NewAgent, ShouldEqual, false)
 				So(sampleHost.SetAgentRevision(evergreen.BuildRevision), ShouldBeNil) // reset
 			})
 			Convey("with an out of date agent revision and a task group", func() {
@@ -402,7 +401,6 @@ func TestNextTask(t *testing.T) {
 				So(resp.Code, ShouldEqual, http.StatusOK)
 				So(json.NewDecoder(resp.Body).Decode(details), ShouldBeNil)
 				So(details.ShouldExit, ShouldEqual, false)
-				So(details.NewAgent, ShouldEqual, true)
 				So(sampleHost.SetAgentRevision(evergreen.BuildRevision), ShouldBeNil) // reset
 			})
 			Convey("with a host that already has a running task", func() {
@@ -550,7 +548,7 @@ func TestCheckHostHealth(t *testing.T) {
 		shouldExit = checkHostHealth(h)
 		So(shouldExit, ShouldBeTrue)
 		Convey("With a host that is running but has a different revision", func() {
-			shouldExit := checkAgentRevision(h)
+			shouldExit := agentRevisionIsOld(h)
 			So(shouldExit, ShouldBeTrue)
 		})
 	})
