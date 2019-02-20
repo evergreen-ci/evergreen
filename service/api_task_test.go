@@ -550,7 +550,7 @@ func TestCheckHostHealth(t *testing.T) {
 		shouldExit = checkHostHealth(h)
 		So(shouldExit, ShouldBeTrue)
 		Convey("With a host that is running but has a different revision", func() {
-			shouldExit := checkAgentRevision(h)
+			shouldExit := agentRevisionIsOld(h)
 			So(shouldExit, ShouldBeTrue)
 		})
 	})
