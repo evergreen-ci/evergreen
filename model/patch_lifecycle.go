@@ -226,7 +226,6 @@ func MakePatchedConfig(ctx context.Context, p *patch.Patch, remoteConfigPath, pr
 // Creates builds based on the Version
 func FinalizePatch(ctx context.Context, p *patch.Patch, requester string, githubOauthToken string) (*Version, error) {
 	// unmarshal the project YAML for storage
-	start := time.Now()
 	project := &Project{}
 	err := LoadProjectInto([]byte(p.PatchedConfig), p.Project, project)
 	if err != nil {
@@ -234,24 +233,11 @@ func FinalizePatch(ctx context.Context, p *patch.Patch, requester string, github
 			"Error marshaling patched project config from repository revision “%v”",
 			p.Githash)
 	}
-	grip.Debug(message.Fields{
-		"operation": "finalize patch",
-		"step":      "loadprojectinto",
-		"time":      time.Since(start),
-		"duration":  time.Since(start).String(),
-	})
 
 	projectRef, err := FindOneProjectRef(p.Project)
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}
-
-	grip.Debug(message.Fields{
-		"operation": "finalize patch",
-		"step":      "find proj ref",
-		"time":      time.Since(start),
-		"duration":  time.Since(start).String(),
-	})
 
 	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
@@ -260,12 +246,6 @@ func FinalizePatch(ctx context.Context, p *patch.Patch, requester string, github
 	if err != nil {
 		return nil, errors.Wrap(err, "Couldn't fetch commit information")
 	}
-	grip.Debug(message.Fields{
-		"operation": "finalize patch",
-		"step":      "get commit",
-		"time":      time.Since(start),
-		"duration":  time.Since(start).String(),
-	})
 
 	patchVersion := &Version{
 		Id:                  p.Id.Hex(),
@@ -302,12 +282,6 @@ func FinalizePatch(ctx context.Context, p *patch.Patch, requester string, github
 			DisplayTasks: tasks.DisplayTasks,
 		}).TVPairsToVariantTasks()
 	}
-	grip.Debug(message.Fields{
-		"operation": "finalize patch",
-		"step":      "make pairs",
-		"time":      time.Since(start),
-		"duration":  time.Since(start).String(),
-	})
 
 	taskIds := NewPatchTaskIdTable(project, patchVersion, tasks)
 	variantsProcessed := map[string]bool{}
@@ -344,31 +318,13 @@ func FinalizePatch(ctx context.Context, p *patch.Patch, requester string, github
 			},
 		)
 	}
-	grip.Debug(message.Fields{
-		"operation": "finalize patch",
-		"step":      "createbuildfromversion",
-		"time":      time.Since(start),
-		"duration":  time.Since(start).String(),
-	})
 
 	if err = patchVersion.Insert(); err != nil {
 		return nil, errors.WithStack(err)
 	}
-	grip.Debug(message.Fields{
-		"operation": "finalize patch",
-		"step":      "insert",
-		"time":      time.Since(start),
-		"duration":  time.Since(start).String(),
-	})
 	if err = p.SetActivated(patchVersion.Id); err != nil {
 		return nil, errors.WithStack(err)
 	}
-	grip.Debug(message.Fields{
-		"operation": "finalize patch",
-		"step":      "set activated",
-		"time":      time.Since(start),
-		"duration":  time.Since(start).String(),
-	})
 	return patchVersion, nil
 }
 
