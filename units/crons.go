@@ -34,7 +34,7 @@ func PopulateCatchupJobs(part int) amboy.QueueOperation {
 			return nil
 		}
 
-		projects, err := model.FindAllTrackedProjectRefs()
+		projects, err := model.FindAllTrackedProjectRefsWithRepoInfo()
 		if err != nil {
 			return errors.WithStack(err)
 		}
@@ -88,7 +88,7 @@ func PopulateRepotrackerPollingJobs(part int) amboy.QueueOperation {
 			return nil
 		}
 
-		projects, err := model.FindAllTrackedProjectRefs()
+		projects, err := model.FindAllTrackedProjectRefsWithRepoInfo()
 		if err != nil {
 			return errors.WithStack(err)
 		}
