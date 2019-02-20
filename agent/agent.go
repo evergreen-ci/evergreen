@@ -36,6 +36,7 @@ type Options struct {
 	StatusPort         int
 	LogPrefix          string
 	LogkeeperURL       string
+	S3BaseURL          string
 	WorkingDirectory   string
 	HeartbeatInterval  time.Duration
 	AgentSleepInterval time.Duration

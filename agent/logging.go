@@ -25,7 +25,6 @@ const (
 	agentLogFileName  = "agent.log"
 	systemLogFileName = "system.log"
 	taskLogFileName   = "task.log"
-	s3BaseURL         = "https://s3.amazonaws.com"
 )
 
 var (
@@ -236,7 +235,7 @@ func (a *Agent) uploadSingleFile(ctx context.Context, tc *taskContext, bucket pa
 	if err != nil {
 		return errors.Wrapf(err, "error uploading %s to S3", localPath)
 	}
-	remoteURL := fmt.Sprintf("%s/%s/%s/%s", s3BaseURL, a.opts.S3Opts.Name, remotePath, file)
+	remoteURL := fmt.Sprintf("%s/%s/%s/%s", a.opts.S3BaseURL, a.opts.S3Opts.Name, remotePath, file)
 	tc.logger.Execution().Infof("uploaded file %s from %s to %s", file, localPath, remoteURL)
 	switch file {
 	case agentLogFileName:
