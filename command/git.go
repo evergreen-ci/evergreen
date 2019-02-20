@@ -218,6 +218,10 @@ func (c *gitFetchProject) Execute(ctx context.Context,
 
 	var err error
 
+	// expand the github parameters before running the task
+	if err = util.ExpandValues(c, conf.Expansions); err != nil {
+		return errors.Wrap(err, "error expanding github parameters")
+	}
 	// c.ProjectToken (from the project's YAML file) takes precedence
 	// over db.admin.find({"_id": "global"},{"credentials.github": 1}), unless it is an empty string.
 	oauthToken := conf.Expansions.Get("global_github_oauth_token")
