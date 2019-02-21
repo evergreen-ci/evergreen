@@ -25,7 +25,7 @@ func TestListHostsForTask(t *testing.T) {
 		{
 			Id:     "1",
 			Host:   "1.com",
-			IP: "abcd:1234:459c:2d00:cfe4:843b:1d60:8e47",
+			IP:     "abcd:1234:459c:2d00:cfe4:843b:1d60:8e47",
 			Status: evergreen.HostRunning,
 			SpawnOptions: host.SpawnOptions{
 				TaskID: "task_1",
@@ -137,8 +137,12 @@ buildvariants:
 		Id: "p",
 	}
 	assert.NoError(pvars.Insert())
-
+	settings := &evergreen.Settings{
+		Credentials: map[string]string{"github": "token globalGitHubOauthToken"},
+	}
+	assert.NoError(settings.Set())
 	dc := DBCreateHostConnector{}
+
 	err := dc.CreateHostsFromTask(&t1, user.DBUser{Id: "me"}, "")
 	assert.NoError(err)
 
