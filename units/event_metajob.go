@@ -107,6 +107,7 @@ func tryProcessOneEvent(e *event.EventLogEntry) (n []notification.Notification, 
 		}
 	}()
 
+	startDebug := time.Now()
 	n, err = trigger.NotificationsFromEvent(e)
 	grip.Info(message.Fields{
 		"job":           eventMetaJobName,
@@ -115,7 +116,10 @@ func tryProcessOneEvent(e *event.EventLogEntry) (n []notification.Notification, 
 		"event_id":      e.ID,
 		"event_type":    e.ResourceType,
 		"notifications": len(n),
+		"duration":      time.Now().Sub(startDebug),
+		"stat":          "notifications-from-event",
 	})
+
 	grip.Error(message.WrapError(err, message.Fields{
 		"job":        eventMetaJobName,
 		"source":     "events-processing",
@@ -125,11 +129,20 @@ func tryProcessOneEvent(e *event.EventLogEntry) (n []notification.Notification, 
 	}))
 
 	v, err := trigger.EvalProjectTriggers(e, trigger.TriggerDownstreamVersion)
+	grip.Info(message.Fields{
+		"job":           eventMetaJobName,
+		"source":        "events-processing",
+		"message":       "project triggers evaluated",
+		"event_id":      e.ID,
+		"event_type":    e.ResourceType,
+		"duration":      time.Now().Sub(startDebug),
+		"stat":          "eval-project-triggers",
+	})
 	versions := []string{}
 	for _, version := range v {
 		versions = append(versions, version.Id)
 	}
-	grip.Info(message.Fields{
+	grip.InfoWhen(len(versions) > 0, message.Fields{
 		"job":      eventMetaJobName,
 		"source":   "events-processing",
 		"message":  "triggering downstream builds",
@@ -179,7 +192,7 @@ func (j *eventMetaJob) dispatchLoop(ctx context.Context) error {
 		"message":    "stats",
 		"start_time": startTime.String(),
 		"end_time":   endTime.String(),
-		"duration":   totalDuration.String(),
+		"duration":   totalDuration.Seconds(),
 		"n":          len(j.events),
 	})
 
