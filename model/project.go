@@ -672,13 +672,14 @@ var (
 	ProjectTasksKey         = bsonutil.MustHaveTag(Project{}, "Tasks")
 )
 
-func PopulateExpansions(t *task.Task, h *host.Host) (util.Expansions, error) {
+func PopulateExpansions(t *task.Task, h *host.Host, oauthToken string) (util.Expansions, error) {
 	if t == nil {
 		return nil, errors.New("task cannot be nil")
 	}
 	if h == nil {
 		return nil, errors.New("host cannot be nil")
 	}
+
 	expansions := util.Expansions{}
 	expansions.Put("execution", fmt.Sprintf("%v", t.Execution))
 	expansions.Put("version_id", t.Version)
@@ -688,7 +689,7 @@ func PopulateExpansions(t *task.Task, h *host.Host) (util.Expansions, error) {
 	expansions.Put("build_variant", t.BuildVariant)
 	expansions.Put("revision", t.Revision)
 	expansions.Put("project", t.Project)
-
+	expansions.Put("global_github_oauth_token", oauthToken)
 	expansions.Put("distro_id", h.Distro.Id)
 
 	if t.TriggerID != "" {
