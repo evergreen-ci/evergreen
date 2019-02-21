@@ -89,6 +89,7 @@ func NewEventMetaJob(q amboy.Queue, ts string) amboy.Job {
 }
 
 func tryProcessOneEvent(e *event.EventLogEntry) (n []notification.Notification, err error) {
+	startDebug := time.Now()
 	if e == nil {
 		return nil, errors.New("nil event")
 	}
@@ -137,6 +138,17 @@ func tryProcessOneEvent(e *event.EventLogEntry) (n []notification.Notification, 
 		"versions": versions,
 	})
 
+	dur := time.Now().Sub(startDebug)
+	max := 10 * time.Second
+	if dur > max {
+		grip.Info(message.Fields{
+			"job":      eventMetaJobName,
+			"source":   "events-processing",
+			"message":  "very slow log message",
+			"event_id": e.ID,
+			"duration": dur.Seconds(),
+		})
+	}
 	return n, err
 }
 
@@ -179,7 +191,7 @@ func (j *eventMetaJob) dispatchLoop(ctx context.Context) error {
 		"message":    "stats",
 		"start_time": startTime.String(),
 		"end_time":   endTime.String(),
-		"duration":   totalDuration.String(),
+		"duration":   totalDuration.Seconds(),
 		"n":          len(j.events),
 	})
 
