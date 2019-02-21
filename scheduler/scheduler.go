@@ -9,7 +9,6 @@ import (
 	"github.com/evergreen-ci/evergreen/cloud"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/distro"
-	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/mongodb/grip"
@@ -29,19 +28,11 @@ type Scheduler struct {
 }
 
 const (
-	RunnerName = "scheduler"
-
+	RunnerName               = "scheduler"
 	underwaterPruningEnabled = true
 )
 
-type distroSchedulerResult struct {
-	distroId       string
-	schedulerEvent event.TaskQueueInfo
-	taskQueueItem  []model.TaskQueueItem
-	err            error
-}
-
-type distroSchedueler struct {
+type distroScheduler struct {
 	runtimeID string
 	TaskPrioritizer
 	TaskQueuePersister
@@ -56,81 +47,39 @@ type containersOnParents struct {
 	numContainers int
 }
 
-func (s *distroSchedueler) scheduleDistro(distroId string, runnableTasksForDistro []task.Task, versions map[string]model.Version) distroSchedulerResult {
-	res := distroSchedulerResult{
-		distroId: distroId,
-	}
+func (s *distroScheduler) scheduleDistro(distroID string, runnableTasksForDistro []task.Task, versions map[string]model.Version) ([]task.Task, error) {
 	grip.Info(message.Fields{
 		"runner":    RunnerName,
-		"distro":    distroId,
+		"distro":    distroID,
 		"num_tasks": len(runnableTasksForDistro),
 		"instance":  s.runtimeID,
 	})
 
-	prioritizedTasks, err := s.PrioritizeTasks(distroId, runnableTasksForDistro, versions)
+	prioritizedTasks, err := s.PrioritizeTasks(distroID, runnableTasksForDistro, versions)
 	if err != nil {
-		res.err = errors.Wrap(err, "Error prioritizing tasks")
-		return res
+		return nil, errors.Wrap(err, "Error prioritizing tasks")
 	}
 
 	// persist the queue of tasks
 	grip.Debug(message.Fields{
 		"runner":    RunnerName,
-		"distro":    distroId,
+		"distro":    distroID,
 		"instance":  s.runtimeID,
 		"operation": "saving task queue for distro",
 	})
 
-	queuedTasks, err := s.PersistTaskQueue(distroId, prioritizedTasks)
+	_, err = s.PersistTaskQueue(distroID, prioritizedTasks)
 	if err != nil {
-		res.err = errors.Wrapf(err, "Error processing distro %s saving task queue", distroId)
-		return res
+		return nil, errors.Wrapf(err, "Error processing distro %s saving task queue", distroID)
 	}
 
 	// track scheduled time for prioritized tasks
 	err = task.SetTasksScheduledTime(prioritizedTasks, time.Now())
 	if err != nil {
-		res.err = errors.Wrapf(err,
-			"Error processing distro %s setting scheduled time for prioritized tasks",
-			distroId)
-		return res
-	}
-	res.taskQueueItem = queuedTasks
-
-	var totalDuration time.Duration
-	for _, item := range queuedTasks {
-		totalDuration += item.ExpectedDuration
-	}
-	// initialize the task queue info
-	res.schedulerEvent = event.TaskQueueInfo{
-		TaskQueueLength:  len(queuedTasks),
-		NumHostsRunning:  0,
-		ExpectedDuration: totalDuration,
+		return nil, errors.Wrapf(err, "Error processing distro %s setting scheduled time for prioritized tasks", distroID)
 	}
 
-	// final sanity check
-	if len(runnableTasksForDistro) != len(res.taskQueueItem) {
-		delta := make(map[string]string)
-		for _, t := range res.taskQueueItem {
-			delta[t.Id] = "res.taskQueueItem"
-		}
-		for _, i := range runnableTasksForDistro {
-			if delta[i.Id] == "res.taskQueueItem" {
-				delete(delta, i.Id)
-			} else {
-				delta[i.Id] = "d.runnableTasksForDistro"
-			}
-		}
-		grip.Alert(message.Fields{
-			"runner":             RunnerName,
-			"distro":             distroId,
-			"message":            "inconsistency with scheduler input and output",
-			"instance":           s.runtimeID,
-			"inconsistent_tasks": delta,
-		})
-	}
-
-	return res
+	return prioritizedTasks, nil
 }
 
 // Call out to the embedded Manager to spawn hosts.  Takes in a map of
