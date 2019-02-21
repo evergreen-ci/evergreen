@@ -6,7 +6,6 @@ import (
 	"sort"
 	"time"
 
-	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/util"
@@ -16,10 +15,6 @@ import (
 )
 
 const (
-	// maximum turnaround we want to maintain for all hosts for a given distro
-	MaxDurationPerDistroHost               = 30 * time.Minute
-	MaxDurationPerDistroHostWithContainers = 2 * time.Minute
-
 	// for distro queues with tasks that appear on other queues, this constant
 	// indicates the fraction of the total duration of shared tasks that we want
 	// to account for when alternate distros are unable to satisfy the
@@ -70,8 +65,8 @@ type DistroScheduleData struct {
 // duration of tasks within a distro's queue
 type ScheduledDistroTasksData struct {
 
-	// all tasks in this distro's queue
-	taskQueueItems []model.TaskQueueItem
+	// all tasks and their respective expected durations in this distro's queue
+	taskDurations map[string]time.Duration
 
 	// all tasks that have been previously accounted for in other distros
 	tasksAccountedFor map[string]bool
@@ -101,7 +96,7 @@ func DurationBasedHostAllocator(ctx context.Context, hostAllocatorData HostAlloc
 		grip.Error(message.WrapError(err, message.Fields{
 			"runner":  RunnerName,
 			"message": "problem getting number of running hosts for distro",
-			"distro":  hostAllocatorData.distro.Id,
+			"distro":  hostAllocatorData.Distro.Id,
 		}))
 		return 0, errors.WithStack(err)
 	}
@@ -110,7 +105,7 @@ func DurationBasedHostAllocator(ctx context.Context, hostAllocatorData HostAlloc
 		"runner":        RunnerName,
 		"num_new_hosts": newHostsNeeded,
 		"message":       "requsting new hosts",
-		"distro":        hostAllocatorData.distro.Id,
+		"distro":        hostAllocatorData.Distro.Id,
 	})
 
 	return newHostsNeeded, nil
@@ -121,26 +116,28 @@ func DurationBasedHostAllocator(ctx context.Context, hostAllocatorData HostAlloc
 func computeScheduledTasksDuration(scheduledDistroTasksData *ScheduledDistroTasksData) (
 	scheduledTasksDuration float64, sharedTasksDuration map[string]float64) {
 
-	taskQueueItems := scheduledDistroTasksData.taskQueueItems
-	tasksAccountedFor := scheduledDistroTasksData.tasksAccountedFor
+	// taskQueueItems := scheduledDistroTasksData.taskQueueItems
+	taskDurations := scheduledDistroTasksData.taskDurations
+	tasksAccountedFor := scheduledDistroTasksData.tasksAccountedFor // tasksAccountedFor := make(map[string]bool)
 	sharedTasksDuration = make(map[string]float64)
 
 	// compute the total expected duration for tasks in this queue
-	for _, taskQueueItem := range taskQueueItems {
-		if !tasksAccountedFor[taskQueueItem.Id] {
-			scheduledTasksDuration += taskQueueItem.ExpectedDuration.Seconds()
-			tasksAccountedFor[taskQueueItem.Id] = true
+	for taskID, taskDuration := range taskDurations {
+		if _, exists := tasksAccountedFor[taskID]; !exists {
+			scheduledTasksDuration += taskDuration.Seconds()
+			tasksAccountedFor[taskID] = true
 		}
 
 		// if the task can be run on multiple distros - including this one - add
 		// it to the total duration of 'shared tasks' for the distro and all
 		// other distros it can be run on
 		if util.StringSliceContains(scheduledDistroTasksData.taskRunDistros, scheduledDistroTasksData.currentDistroId) {
-			for _, distroId := range scheduledDistroTasksData.taskRunDistros {
-				sharedTasksDuration[distroId] += taskQueueItem.ExpectedDuration.Seconds()
+			for _, distroID := range scheduledDistroTasksData.taskRunDistros {
+				sharedTasksDuration[distroID] += taskDuration.Seconds()
 			}
 		}
 	}
+
 	return
 }
 
@@ -376,16 +373,17 @@ func numNewDistroHosts(poolSize, numExistingHosts, numFreeHosts, durNewHosts,
 func durationNumNewHostsForDistro(ctx context.Context, hostAllocatorData *HostAllocatorData,
 	tasksAccountedFor map[string]bool, distroScheduleData map[string]DistroScheduleData) (numNewHosts int, err error) {
 
-	existingDistroHosts := hostAllocatorData.existingHosts
-	taskQueueItems := hostAllocatorData.taskQueueItems
-	taskRunDistros := hostAllocatorData.taskRunDistros
-	distro := hostAllocatorData.distro
+	existingDistroHosts := hostAllocatorData.ExistingHosts
+	// taskQueueItems := hostAllocatorData.taskQueueItems
+	taskDurations := hostAllocatorData.DistroQueueInfo.TaskDurations
+	taskRunDistros := hostAllocatorData.TaskRunDistros
+	distro := hostAllocatorData.Distro
 
 	// determine how many free hosts we have
 	numFreeHosts := 0
 	for _, existingDistroHost := range existingDistroHosts {
 		if existingDistroHost.RunningTask == "" {
-			numFreeHosts += 1
+			numFreeHosts++
 		}
 	}
 
@@ -398,8 +396,16 @@ func durationNumNewHostsForDistro(ctx context.Context, hostAllocatorData *HostAl
 	}
 
 	// construct the data needed by computeScheduledTasksDuration
+	// scheduledDistroTasksData := &ScheduledDistroTasksData{
+	// 	taskQueueItems:    taskQueueItems,
+	// 	tasksAccountedFor: tasksAccountedFor,
+	// 	taskRunDistros:    taskRunDistros,
+	// 	currentDistroId:   distro.Id,
+	// }
+
+	// construct the data needed by computeScheduledTasksDuration
 	scheduledDistroTasksData := &ScheduledDistroTasksData{
-		taskQueueItems:    taskQueueItems,
+		taskDurations:     taskDurations,
 		tasksAccountedFor: tasksAccountedFor,
 		taskRunDistros:    taskRunDistros,
 		currentDistroId:   distro.Id,
@@ -419,14 +425,16 @@ func durationNumNewHostsForDistro(ctx context.Context, hostAllocatorData *HostAl
 	// revise the new host estimate based on the cap of the number of new hosts
 	// and the number of free hosts
 	numNewHosts = numNewDistroHosts(distro.PoolSize, len(existingDistroHosts),
-		numFreeHosts, durationBasedNumNewHosts, len(taskQueueItems))
+		// numFreeHosts, durationBasedNumNewHosts, len(taskQueueItems))
+		numFreeHosts, durationBasedNumNewHosts, len(taskDurations))
 
 	// create an entry for this distro in the scheduling map
 	distroData := DistroScheduleData{
-		nominalNumNewHosts:   numNewHosts,
-		numFreeHosts:         numFreeHosts,
-		poolSize:             distro.PoolSize,
-		taskQueueLength:      len(taskQueueItems),
+		nominalNumNewHosts: numNewHosts,
+		numFreeHosts:       numFreeHosts,
+		poolSize:           distro.PoolSize,
+		// taskQueueLength:      len(taskQueueItems),
+		taskQueueLength:      len(taskDurations),
 		sharedTasksDuration:  sharedTasksDuration,
 		runningTasksDuration: runningTasksDuration,
 		numExistingHosts:     len(existingDistroHosts),
@@ -474,19 +482,20 @@ func durationNumNewHostsForDistro(ctx context.Context, hostAllocatorData *HostAl
 	schTasksRuntime := time.Duration(scheduledTasksDuration) * time.Second
 
 	grip.Info(message.Fields{
-		"message":                      "queue state report",
-		"runner":                       RunnerName,
-		"provider":                     distro.Provider,
-		"distro":                       distro.Id,
-		"new_hosts_needed":             numNewHosts,
-		"num_existing_hosts":           len(existingDistroHosts),
-		"num_free_hosts":               numFreeHosts,
-		"estimated_runtime":            estRuntime,
-		"estimated_runtime_span":       estRuntime.String(),
-		"pending_tasks":                len(existingDistroHosts) - numFreeHosts,
-		"current_tasks_runtime":        curTasksRuntime,
-		"current_tasks_runtime_span":   curTasksRuntime.String(),
-		"queue_length":                 len(taskQueueItems),
+		"message":                    "queue state report",
+		"runner":                     RunnerName,
+		"provider":                   distro.Provider,
+		"distro":                     distro.Id,
+		"new_hosts_needed":           numNewHosts,
+		"num_existing_hosts":         len(existingDistroHosts),
+		"num_free_hosts":             numFreeHosts,
+		"estimated_runtime":          estRuntime,
+		"estimated_runtime_span":     estRuntime.String(),
+		"pending_tasks":              len(existingDistroHosts) - numFreeHosts,
+		"current_tasks_runtime":      curTasksRuntime,
+		"current_tasks_runtime_span": curTasksRuntime.String(),
+		// "queue_length":                 len(taskQueueItems),
+		"queue_length":                 len(taskDurations),
 		"scheduled_tasks_runtime":      schTasksRuntime,
 		"scheduled_tasks_runtime_span": schTasksRuntime.String(),
 	})
