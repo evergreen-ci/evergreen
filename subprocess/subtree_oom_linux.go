@@ -54,8 +54,7 @@ func analyzeDmesg(ctx context.Context) (bool, []int, error) {
 	}
 
 	scanner := bufio.NewScanner(cmdReader)
-	err = cmd.Start()
-	if err != nil {
+	if err = cmd.Start(); err != nil {
 		return false, nil, errors.Wrap(err, "Error starting dmesg command")
 	}
 

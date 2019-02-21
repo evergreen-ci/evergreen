@@ -39,6 +39,10 @@ func analyzeLogs(ctx context.Context) (bool, []int, error) {
 	wasOOMKilled := false
 	errs := make(chan error)
 	sudo, err := isSudo(ctx)
+	if err != nil {
+		return false, nil, errors.Wrap(err, "error checking sudo")
+	}
+
 	if sudo {
 		cmd = exec.CommandContext(ctx, "sudo", "log", "show")
 	} else {
