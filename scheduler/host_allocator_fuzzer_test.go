@@ -5,12 +5,12 @@ import (
 	"fmt"
 	"math"
 	"math/rand"
+	"strconv"
 	"testing"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
-	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/task"
@@ -87,13 +87,28 @@ func (s *HostAllocatorFuzzerSuite) randomizeData() {
 
 	// generate a random number of scheduled tasks with random durations
 	numTasks := rand.Intn(s.settings.maxNumTasks) + 1
-	taskQueue := []model.TaskQueueItem{}
+
+	// taskQueue := []model.TaskQueueItem{}
+	// for i := 0; i < numTasks; i++ {
+	// 	duration := rand.Int63n(int64(s.settings.expectedDurationMax))
+	// 	queueTask := model.TaskQueueItem{
+	// 		ExpectedDuration: time.Duration(duration),
+	// 	}
+	// 	taskQueue = append(taskQueue, queueTask)
+	// }
+
+	var expectedDuration time.Duration
+	taskDurations := make(map[string]time.Duration)
 	for i := 0; i < numTasks; i++ {
-		duration := rand.Int63n(int64(s.settings.expectedDurationMax))
-		queueTask := model.TaskQueueItem{
-			ExpectedDuration: time.Duration(duration),
-		}
-		taskQueue = append(taskQueue, queueTask)
+		duration := time.Duration(rand.Int63n(int64(s.settings.expectedDurationMax)))
+		taskDurations[strconv.Itoa(i)] = duration
+		expectedDuration += duration
+	}
+
+	distroQueueInfo := DistroQueueInfo{
+		Distro:           s.distro,
+		TaskDurations:    taskDurations,
+		ExpectedDuration: expectedDuration,
 	}
 
 	// generate a random number of hosts running tasks
@@ -135,10 +150,11 @@ func (s *HostAllocatorFuzzerSuite) randomizeData() {
 	}
 
 	s.testData = HostAllocatorData{
-		distro:           s.distro,
-		existingHosts:    hosts,
-		freeHostFraction: s.freeHostFraction,
-		taskQueueItems:   taskQueue,
+		Distro:           s.distro,
+		ExistingHosts:    hosts,
+		FreeHostFraction: s.freeHostFraction,
+		DistroQueueInfo:  distroQueueInfo,
+		// taskQueueItems:   taskQueue,
 	}
 }
 
@@ -147,9 +163,13 @@ func (s *HostAllocatorFuzzerSuite) TestHeuristics() {
 		s.randomizeData()
 		newHosts, err := s.allocator(s.ctx, s.testData)
 		s.NoError(err)
-		queue := s.testData.taskQueueItems
-		queueSize := len(queue)
-		queueDuration := calcScheduledTasksDuration(queue)
+		// queue := s.testData.taskQueueItems
+		// queueSize := len(queue)
+		// queueDuration := calcScheduledTasksDuration(queue)
+		distroQueueInfo := s.testData.DistroQueueInfo
+		queueSize := distroQueueInfo.Length
+		queueDuration := distroQueueInfo.ExpectedDuration
+
 		s.True(newHosts >= 0)
 		s.True(newHosts <= queueSize)
 		numFree := float64(newHosts+s.freeHosts) + math.Ceil(s.soonToBeFree*s.freeHostFraction)

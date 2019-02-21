@@ -3,8 +3,8 @@ package scheduler
 import (
 	"context"
 	"testing"
+	"time"
 
-	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
 	. "github.com/smartystreets/goconvey/convey"
@@ -37,8 +37,8 @@ func TestDeficitBasedHostAllocator(t *testing.T) {
 				dist.PoolSize = len(hosts) + 5
 
 				hostAllocatorData := &HostAllocatorData{
-					existingHosts: hosts,
-					distro:        dist,
+					Distro:        dist,
+					ExistingHosts: hosts,
 				}
 
 				So(deficitNumNewHostsForDistro(ctx, hostAllocatorData,
@@ -47,17 +47,18 @@ func TestDeficitBasedHostAllocator(t *testing.T) {
 
 		Convey("if the number of existing hosts equals the max hosts, no new"+
 			" hosts can be spawned", func() {
-			taskQueueItems := []model.TaskQueueItem{
-				{Id: taskIds[0]},
-				{Id: taskIds[1]},
-				{Id: taskIds[2]},
-				{Id: taskIds[3]},
+			var duration time.Duration
+			taskDurations := map[string]time.Duration{
+				taskIds[0]: duration,
+				taskIds[1]: duration,
+				taskIds[2]: duration,
+				taskIds[3]: duration,
 			}
 			dist.PoolSize = 0
 
 			hostAllocatorData := &HostAllocatorData{
-				existingHosts: []host.Host{},
-				distro:        dist,
+				ExistingHosts: []host.Host{},
+				Distro:        dist,
 			}
 
 			So(deficitNumNewHostsForDistro(ctx, hostAllocatorData, dist),
@@ -67,10 +68,15 @@ func TestDeficitBasedHostAllocator(t *testing.T) {
 			}
 			dist.PoolSize = len(hosts)
 
+			distroQueueInfo := DistroQueueInfo{
+				Distro:        dist,
+				TaskDurations: taskDurations,
+			}
+
 			hostAllocatorData = &HostAllocatorData{
-				taskQueueItems: taskQueueItems,
-				existingHosts:  hosts,
-				distro:         dist,
+				Distro:          dist,
+				ExistingHosts:   hosts,
+				DistroQueueInfo: distroQueueInfo,
 			}
 
 			So(deficitNumNewHostsForDistro(ctx, hostAllocatorData, dist),
@@ -79,23 +85,29 @@ func TestDeficitBasedHostAllocator(t *testing.T) {
 
 		Convey("if the number of existing hosts exceeds the max hosts, no new"+
 			" hosts can be spawned", func() {
-
-			taskQueueItems := []model.TaskQueueItem{
-				{Id: taskIds[0]},
-				{Id: taskIds[1]},
-				{Id: taskIds[2]},
-				{Id: taskIds[3]},
+			var duration time.Duration
+			taskDurations := map[string]time.Duration{
+				taskIds[0]: duration,
+				taskIds[1]: duration,
+				taskIds[2]: duration,
+				taskIds[3]: duration,
 			}
+
 			hosts := []host.Host{
 				{Id: hostIds[0]},
 				{Id: hostIds[1]},
 			}
 			dist.PoolSize = 1
 
+			distroQueueInfo := DistroQueueInfo{
+				Distro:        dist,
+				TaskDurations: taskDurations,
+			}
+
 			hostAllocatorData := &HostAllocatorData{
-				taskQueueItems: taskQueueItems,
-				existingHosts:  hosts,
-				distro:         dist,
+				Distro:          dist,
+				ExistingHosts:   hosts,
+				DistroQueueInfo: distroQueueInfo,
 			}
 
 			So(deficitNumNewHostsForDistro(ctx, hostAllocatorData, dist),
@@ -104,10 +116,12 @@ func TestDeficitBasedHostAllocator(t *testing.T) {
 
 		Convey("if the number of tasks to run is less than the number of free"+
 			" hosts, no new hosts are needed", func() {
-			taskQueueItems := []model.TaskQueueItem{
-				{Id: taskIds[0]},
-				{Id: taskIds[1]},
+			var duration time.Duration
+			taskDurations := map[string]time.Duration{
+				taskIds[0]: duration,
+				taskIds[1]: duration,
 			}
+
 			hosts := []host.Host{
 				{Id: hostIds[0]},
 				{Id: hostIds[1], RunningTask: runningTaskIds[0]},
@@ -116,10 +130,15 @@ func TestDeficitBasedHostAllocator(t *testing.T) {
 			}
 			dist.PoolSize = len(hosts) + 5
 
+			distroQueueInfo := DistroQueueInfo{
+				Distro:        dist,
+				TaskDurations: taskDurations,
+			}
+
 			hostAllocatorData := &HostAllocatorData{
-				taskQueueItems: taskQueueItems,
-				existingHosts:  hosts,
-				distro:         dist,
+				Distro:          dist,
+				ExistingHosts:   hosts,
+				DistroQueueInfo: distroQueueInfo,
 			}
 
 			So(deficitNumNewHostsForDistro(ctx, hostAllocatorData, dist),
@@ -129,10 +148,12 @@ func TestDeficitBasedHostAllocator(t *testing.T) {
 
 		Convey("if the number of tasks to run is equal to the number of free"+
 			" hosts, no new hosts are needed", func() {
-			taskQueueItems := []model.TaskQueueItem{
-				{Id: taskIds[0]},
-				{Id: taskIds[1]},
+			var duration time.Duration
+			taskDurations := map[string]time.Duration{
+				taskIds[0]: duration,
+				taskIds[1]: duration,
 			}
+
 			hosts := []host.Host{
 				{Id: hostIds[0]},
 				{Id: hostIds[1], RunningTask: runningTaskIds[0]},
@@ -141,10 +162,15 @@ func TestDeficitBasedHostAllocator(t *testing.T) {
 			}
 			dist.PoolSize = len(hosts) + 5
 
+			distroQueueInfo := DistroQueueInfo{
+				Distro:        dist,
+				TaskDurations: taskDurations,
+			}
+
 			hostAllocatorData := &HostAllocatorData{
-				taskQueueItems: taskQueueItems,
-				existingHosts:  hosts,
-				distro:         dist,
+				Distro:          dist,
+				ExistingHosts:   hosts,
+				DistroQueueInfo: distroQueueInfo,
 			}
 
 			So(deficitNumNewHostsForDistro(ctx, hostAllocatorData, dist),
@@ -154,13 +180,15 @@ func TestDeficitBasedHostAllocator(t *testing.T) {
 		Convey("if the number of tasks to run exceeds the number of free"+
 			" hosts, new hosts are needed up to the maximum allowed for the"+
 			" distro", func() {
-			taskQueueItems := []model.TaskQueueItem{
-				{Id: taskIds[0]},
-				{Id: taskIds[1]},
-				{Id: taskIds[2]},
-				{Id: taskIds[3]},
-				{Id: taskIds[4]},
+			var duration time.Duration
+			taskDurations := map[string]time.Duration{
+				taskIds[0]: duration,
+				taskIds[1]: duration,
+				taskIds[2]: duration,
+				taskIds[3]: duration,
+				taskIds[4]: duration,
 			}
+
 			hosts := []host.Host{
 				{Id: hostIds[0]},
 				{Id: hostIds[1], RunningTask: runningTaskIds[0]},
@@ -170,36 +198,50 @@ func TestDeficitBasedHostAllocator(t *testing.T) {
 			}
 			dist.PoolSize = 9
 
+			distroQueueInfo := DistroQueueInfo{
+				Distro:        dist,
+				Length:        5,
+				TaskDurations: taskDurations,
+			}
+
 			hostAllocatorData := &HostAllocatorData{
-				taskQueueItems: taskQueueItems,
-				existingHosts:  hosts,
-				distro:         dist,
+				Distro:          dist,
+				ExistingHosts:   hosts,
+				DistroQueueInfo: distroQueueInfo,
 			}
 
 			So(deficitNumNewHostsForDistro(ctx, hostAllocatorData, dist),
 				ShouldEqual, 3)
 
 			dist.PoolSize = 8
+
+			distroQueueInfo = DistroQueueInfo{
+				Distro:        dist,
+				Length:        5,
+				TaskDurations: taskDurations,
+			}
+
 			hostAllocatorData = &HostAllocatorData{
-				taskQueueItems: taskQueueItems,
-				existingHosts:  hosts,
-				distro:         dist,
+				Distro:          dist,
+				ExistingHosts:   hosts,
+				DistroQueueInfo: distroQueueInfo,
+				// taskQueueItems: taskQueueItems,
 			}
 			So(deficitNumNewHostsForDistro(ctx, hostAllocatorData, dist),
 				ShouldEqual, 3)
 			dist.PoolSize = 7
 			hostAllocatorData = &HostAllocatorData{
-				taskQueueItems: taskQueueItems,
-				existingHosts:  hosts,
-				distro:         dist,
+				Distro:          dist,
+				ExistingHosts:   hosts,
+				DistroQueueInfo: distroQueueInfo,
 			}
 			So(deficitNumNewHostsForDistro(ctx, hostAllocatorData, dist),
 				ShouldEqual, 2)
 			dist.PoolSize = 6
 			hostAllocatorData = &HostAllocatorData{
-				taskQueueItems: taskQueueItems,
-				existingHosts:  hosts,
-				distro:         dist,
+				Distro:          dist,
+				ExistingHosts:   hosts,
+				DistroQueueInfo: distroQueueInfo,
 			}
 			So(deficitNumNewHostsForDistro(ctx, hostAllocatorData, dist),
 				ShouldEqual, 1)
@@ -210,18 +252,28 @@ func TestDeficitBasedHostAllocator(t *testing.T) {
 			hosts := []host.Host{
 				{Id: hostIds[0]},
 			}
-			taskQueueItems := []model.TaskQueueItem{
-				{Id: taskIds[0]},
-				{Id: taskIds[1]},
-				{Id: taskIds[2]},
+
+			var duration time.Duration
+			taskDurations := map[string]time.Duration{
+				taskIds[0]: duration,
+				taskIds[1]: duration,
+				taskIds[2]: duration,
 			}
+
 			dist.PoolSize = 20
 			dist.Provider = "static"
-			hostAllocatorData := &HostAllocatorData{
-				taskQueueItems: taskQueueItems,
-				existingHosts:  hosts,
-				distro:         dist,
+
+			distroQueueInfo := DistroQueueInfo{
+				Distro:        dist,
+				TaskDurations: taskDurations,
 			}
+
+			hostAllocatorData := &HostAllocatorData{
+				Distro:          dist,
+				ExistingHosts:   hosts,
+				DistroQueueInfo: distroQueueInfo,
+			}
+
 			So(deficitNumNewHostsForDistro(ctx, hostAllocatorData, dist),
 				ShouldEqual, 0)
 		})

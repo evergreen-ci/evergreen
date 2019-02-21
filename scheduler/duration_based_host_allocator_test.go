@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen/db"
-	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/task"
@@ -58,14 +57,14 @@ func TestDurationBasedNewHostsNeeded(t *testing.T) {
 			},
 		}
 
-		taskQueueItems := []model.TaskQueueItem{
-			{Id: taskIds[0], ExpectedDuration: expDurs[0]},
-			{Id: taskIds[1], ExpectedDuration: expDurs[1]},
-			{Id: taskIds[2], ExpectedDuration: expDurs[2]},
-			{Id: taskIds[3], ExpectedDuration: expDurs[3]},
-			{Id: taskIds[4], ExpectedDuration: expDurs[4]},
-			{Id: taskIds[5], ExpectedDuration: expDurs[5]},
-			{Id: taskIds[6], ExpectedDuration: expDurs[6]},
+		taskDurations := map[string]time.Duration{
+			taskIds[0]: expDurs[0],
+			taskIds[1]: expDurs[1],
+			taskIds[2]: expDurs[2],
+			taskIds[3]: expDurs[3],
+			taskIds[4]: expDurs[4],
+			taskIds[5]: expDurs[5],
+			taskIds[6]: expDurs[6],
 		}
 
 		hosts := [][]host.Host{
@@ -82,13 +81,18 @@ func TestDurationBasedNewHostsNeeded(t *testing.T) {
 			{},
 		}
 
+		distroQueueInfo := DistroQueueInfo{
+			Distro:        distroSlice[0],
+			TaskDurations: taskDurations,
+		}
+
 		Convey("ensure that the distro schedule data is used to spin "+
 			"up new hosts if needed",
 			func() {
 				hostAllocatorData := HostAllocatorData{
-					taskQueueItems: taskQueueItems,
-					existingHosts:  hosts[0],
-					distro:         distroSlice[0],
+					ExistingHosts:   hosts[0],
+					Distro:          distroSlice[0],
+					DistroQueueInfo: distroQueueInfo,
 				}
 
 				// integration test of duration based host allocator
@@ -641,7 +645,8 @@ func TestComputeRunningTasksDuration(t *testing.T) {
 func TestComputeScheduledTasksDuration(t *testing.T) {
 	var expDur time.Duration
 	var tasks []string
-	var queueItems []model.TaskQueueItem
+	taskDurations := make(map[string]time.Duration)
+
 	var tasksAccountedFor map[string]bool
 
 	Convey("When calling computeScheduledTasksDuration...", t, func() {
@@ -650,24 +655,25 @@ func TestComputeScheduledTasksDuration(t *testing.T) {
 			tasks = []string{"t1", "t2", "t3", "t4", "t5", "t6"}
 			expDur = time.Duration(180) * time.Minute
 			tasksAccountedFor = make(map[string]bool)
-			queueItems = []model.TaskQueueItem{
-				{Id: tasks[0], ExpectedDuration: expDur},
-				{Id: tasks[1], ExpectedDuration: expDur},
-				{Id: tasks[2], ExpectedDuration: expDur},
-				{Id: tasks[3], ExpectedDuration: expDur},
-				{Id: tasks[4], ExpectedDuration: expDur},
+
+			taskDurations = map[string]time.Duration{
+				tasks[0]: expDur,
+				tasks[1]: expDur,
+				tasks[2]: expDur,
+				tasks[3]: expDur,
+				tasks[4]: expDur,
 			}
 
 			// construct the data needed by computeScheduledTasksDuration
 			scheduledDistroTasksData := &ScheduledDistroTasksData{
-				taskQueueItems:    queueItems,
 				tasksAccountedFor: tasksAccountedFor,
+				taskDurations:     taskDurations,
 			}
 
 			scheduledTasksDuration, _ := computeScheduledTasksDuration(
 				scheduledDistroTasksData)
 
-			expectedTotalDuration := float64(len(queueItems)) * expDur.Seconds()
+			expectedTotalDuration := float64(len(taskDurations)) * expDur.Seconds()
 			So(scheduledTasksDuration, ShouldEqual, expectedTotalDuration)
 		})
 
@@ -675,17 +681,18 @@ func TestComputeScheduledTasksDuration(t *testing.T) {
 			tasks = []string{"t1", "t2", "t3", "t4", "t5", "t6"}
 			expDur = time.Duration(180) * time.Minute
 			tasksAccountedFor = make(map[string]bool)
-			queueItems = []model.TaskQueueItem{
-				{Id: tasks[0], ExpectedDuration: expDur},
-				{Id: tasks[1], ExpectedDuration: expDur},
-				{Id: tasks[2], ExpectedDuration: expDur},
-				{Id: tasks[3], ExpectedDuration: expDur},
-				{Id: tasks[4], ExpectedDuration: expDur},
+
+			taskDurations = map[string]time.Duration{
+				tasks[0]: expDur,
+				tasks[1]: expDur,
+				tasks[2]: expDur,
+				tasks[3]: expDur,
+				tasks[4]: expDur,
 			}
 
 			// construct the data needed by computeScheduledTasksDuration
 			scheduledDistroTasksData := &ScheduledDistroTasksData{
-				taskQueueItems:    queueItems,
+				taskDurations:     taskDurations,
 				tasksAccountedFor: tasksAccountedFor,
 			}
 
@@ -707,17 +714,18 @@ func TestComputeScheduledTasksDuration(t *testing.T) {
 			tasks = []string{"t1", "t2", "t3", "t4", "t5", "t6"}
 			expDur = time.Duration(180) * time.Minute
 			tasksAccountedFor = make(map[string]bool)
-			distroOneQueueItems := []model.TaskQueueItem{
-				{Id: tasks[0], ExpectedDuration: expDur},
-				{Id: tasks[1], ExpectedDuration: expDur},
-				{Id: tasks[2], ExpectedDuration: expDur},
-				{Id: tasks[3], ExpectedDuration: expDur},
-				{Id: tasks[4], ExpectedDuration: expDur},
+
+			distroOneTaskDurations := map[string]time.Duration{
+				tasks[0]: expDur,
+				tasks[1]: expDur,
+				tasks[2]: expDur,
+				tasks[3]: expDur,
+				tasks[4]: expDur,
 			}
 
 			// construct the data needed by computeScheduledTasksDuration
 			scheduledDistroTasksData := &ScheduledDistroTasksData{
-				taskQueueItems:    distroOneQueueItems,
+				taskDurations:     distroOneTaskDurations,
 				tasksAccountedFor: tasksAccountedFor,
 			}
 
@@ -736,15 +744,19 @@ func TestComputeScheduledTasksDuration(t *testing.T) {
 			// task 0 appears in both task queues so it's duration should be
 			// ignored. task 5 is new so its duration should be used and the
 			// map should be updated to include it
-			distroTwoQueueItems := []model.TaskQueueItem{
-				{Id: tasks[0], ExpectedDuration: expDur},
-				{Id: tasks[5], ExpectedDuration: expDur},
+			// distroTwoQueueItems := []model.TaskQueueItem{
+			// 	{Id: tasks[0], ExpectedDuration: expDur},
+			// 	{Id: tasks[5], ExpectedDuration: expDur},
+			// }
+			distroTwoTaskDurations := map[string]time.Duration{
+				tasks[0]: expDur,
+				tasks[5]: expDur,
 			}
 			expectedTasksAccountedFor[tasks[5]] = true
 
 			// construct the data needed by computeScheduledTasksDuration
 			scheduledDistroTasksData = &ScheduledDistroTasksData{
-				taskQueueItems:    distroTwoQueueItems,
+				taskDurations:     distroTwoTaskDurations,
 				tasksAccountedFor: tasksAccountedFor,
 			}
 
@@ -786,8 +798,8 @@ func TestDurationBasedHostAllocator(t *testing.T) {
 				dist.PoolSize = len(hosts) + 5
 
 				hostAllocatorData := &HostAllocatorData{
-					existingHosts: hosts,
-					distro:        dist,
+					ExistingHosts: hosts,
+					Distro:        dist,
 				}
 
 				tasksAccountedFor := make(map[string]bool)
@@ -801,17 +813,18 @@ func TestDurationBasedHostAllocator(t *testing.T) {
 
 		Convey("if the number of existing hosts equals the max hosts, no new"+
 			" hosts can be spawned", func() {
-			taskQueueItems := []model.TaskQueueItem{
-				{Id: taskIds[0]},
-				{Id: taskIds[1]},
-				{Id: taskIds[2]},
-				{Id: taskIds[3]},
+			var duration time.Duration
+			taskDurations := map[string]time.Duration{
+				taskIds[0]: duration,
+				taskIds[1]: duration,
+				taskIds[2]: duration,
+				taskIds[3]: duration,
 			}
 			dist.PoolSize = 0
 
 			hostAllocatorData := &HostAllocatorData{
-				existingHosts: []host.Host{},
-				distro:        dist,
+				ExistingHosts: []host.Host{},
+				Distro:        dist,
 			}
 
 			tasksAccountedFor := make(map[string]bool)
@@ -826,10 +839,15 @@ func TestDurationBasedHostAllocator(t *testing.T) {
 			}
 			dist.PoolSize = len(hosts)
 
+			distroQueueInfo := DistroQueueInfo{
+				Distro:        dist,
+				TaskDurations: taskDurations,
+			}
+
 			hostAllocatorData = &HostAllocatorData{
-				taskQueueItems: taskQueueItems,
-				existingHosts:  hosts,
-				distro:         dist,
+				Distro:          dist,
+				ExistingHosts:   hosts,
+				DistroQueueInfo: distroQueueInfo,
 			}
 
 			tasksAccountedFor = make(map[string]bool)
@@ -843,12 +861,12 @@ func TestDurationBasedHostAllocator(t *testing.T) {
 
 		Convey("if the number of existing hosts exceeds the max hosts, no new"+
 			" hosts can be spawned", func() {
-
-			taskQueueItems := []model.TaskQueueItem{
-				{Id: taskIds[0]},
-				{Id: taskIds[1]},
-				{Id: taskIds[2]},
-				{Id: taskIds[3]},
+			var duration time.Duration
+			taskDurations := map[string]time.Duration{
+				taskIds[0]: duration,
+				taskIds[1]: duration,
+				taskIds[2]: duration,
+				taskIds[3]: duration,
 			}
 			hosts := []host.Host{
 				{Id: hostIds[0]},
@@ -856,10 +874,15 @@ func TestDurationBasedHostAllocator(t *testing.T) {
 			}
 			dist.PoolSize = 1
 
+			distroQueueInfo := DistroQueueInfo{
+				Distro:        dist,
+				TaskDurations: taskDurations,
+			}
+
 			hostAllocatorData := &HostAllocatorData{
-				taskQueueItems: taskQueueItems,
-				existingHosts:  hosts,
-				distro:         dist,
+				Distro:          dist,
+				ExistingHosts:   hosts,
+				DistroQueueInfo: distroQueueInfo,
 			}
 
 			tasksAccountedFor := make(map[string]bool)
@@ -873,10 +896,12 @@ func TestDurationBasedHostAllocator(t *testing.T) {
 
 		Convey("if the number of tasks to run is less than the number of free"+
 			" hosts, no new hosts are needed", func() {
-			taskQueueItems := []model.TaskQueueItem{
-				{Id: taskIds[0]},
-				{Id: taskIds[1]},
+			var duration time.Duration
+			taskDurations := map[string]time.Duration{
+				taskIds[0]: duration,
+				taskIds[1]: duration,
 			}
+
 			hosts := []host.Host{
 				{Id: hostIds[0]},
 				{Id: hostIds[1]},
@@ -884,10 +909,15 @@ func TestDurationBasedHostAllocator(t *testing.T) {
 			}
 			dist.PoolSize = len(hosts) + 5
 
+			distroQueueInfo := DistroQueueInfo{
+				Distro:        dist,
+				TaskDurations: taskDurations,
+			}
+
 			hostAllocatorData := &HostAllocatorData{
-				taskQueueItems: taskQueueItems,
-				existingHosts:  hosts,
-				distro:         dist,
+				Distro:          dist,
+				ExistingHosts:   hosts,
+				DistroQueueInfo: distroQueueInfo,
 			}
 
 			tasksAccountedFor := make(map[string]bool)
@@ -908,17 +938,24 @@ func TestDurationBasedHostAllocator(t *testing.T) {
 				{Id: hostIds[2], RunningTask: runningTaskIds[1]},
 				{Id: hostIds[3]},
 			}
-			taskQueueItems := []model.TaskQueueItem{
-				{Id: taskIds[0]},
-				{Id: taskIds[1]},
+
+			var duration time.Duration
+			taskDurations := map[string]time.Duration{
+				taskIds[0]: duration,
+				taskIds[1]: duration,
 			}
 
 			dist.PoolSize = len(hosts) + 5
 
+			distroQueueInfo := DistroQueueInfo{
+				Distro:        dist,
+				TaskDurations: taskDurations,
+			}
+
 			hostAllocatorData := &HostAllocatorData{
-				taskQueueItems: taskQueueItems,
-				existingHosts:  hosts,
-				distro:         dist,
+				Distro:          dist,
+				ExistingHosts:   hosts,
+				DistroQueueInfo: distroQueueInfo,
 			}
 
 			tasksAccountedFor := make(map[string]bool)
@@ -940,13 +977,12 @@ func TestDurationBasedHostAllocator(t *testing.T) {
 			" hosts, new hosts are needed up to the maximum allowed for the"+
 			" dist", func() {
 			expDur := time.Duration(200) * time.Minute
-			// all runnable tasks have an expected duration of expDur (200mins)
-			taskQueueItems := []model.TaskQueueItem{
-				{Id: taskIds[0], ExpectedDuration: expDur},
-				{Id: taskIds[1], ExpectedDuration: expDur},
-				{Id: taskIds[2], ExpectedDuration: expDur},
-				{Id: taskIds[3], ExpectedDuration: expDur},
-				{Id: taskIds[4], ExpectedDuration: expDur},
+			taskDurations := map[string]time.Duration{
+				taskIds[0]: expDur,
+				taskIds[1]: expDur,
+				taskIds[2]: expDur,
+				taskIds[3]: expDur,
+				taskIds[4]: expDur,
 			}
 			// running tasks have a time to completion of about 1 minute
 			hosts := []host.Host{
@@ -976,10 +1012,16 @@ func TestDurationBasedHostAllocator(t *testing.T) {
 			//
 			// Hence, we should always expect to use that minimum.
 			//
+
+			distroQueueInfo := DistroQueueInfo{
+				Distro:        dist,
+				TaskDurations: taskDurations,
+			}
+
 			hostAllocatorData := &HostAllocatorData{
-				taskQueueItems: taskQueueItems,
-				existingHosts:  hosts,
-				distro:         dist,
+				Distro:          dist,
+				ExistingHosts:   hosts,
+				DistroQueueInfo: distroQueueInfo,
 			}
 			tasksAccountedFor := make(map[string]bool)
 			distroScheduleData := make(map[string]DistroScheduleData)
@@ -997,10 +1039,16 @@ func TestDurationBasedHostAllocator(t *testing.T) {
 			So(newHosts, ShouldEqual, 3)
 
 			dist.PoolSize = 8
+
+			distroQueueInfo = DistroQueueInfo{
+				Distro:        dist,
+				TaskDurations: taskDurations,
+			}
+
 			hostAllocatorData = &HostAllocatorData{
-				taskQueueItems: taskQueueItems,
-				existingHosts:  hosts,
-				distro:         dist,
+				Distro:          dist,
+				ExistingHosts:   hosts,
+				DistroQueueInfo: distroQueueInfo,
 			}
 
 			tasksAccountedFor = make(map[string]bool)
@@ -1011,10 +1059,16 @@ func TestDurationBasedHostAllocator(t *testing.T) {
 			So(err, ShouldBeNil)
 			So(newHosts, ShouldEqual, 3)
 			dist.PoolSize = 7
+
+			distroQueueInfo = DistroQueueInfo{
+				Distro:        dist,
+				TaskDurations: taskDurations,
+			}
+
 			hostAllocatorData = &HostAllocatorData{
-				taskQueueItems: taskQueueItems,
-				existingHosts:  hosts,
-				distro:         dist,
+				Distro:          dist,
+				ExistingHosts:   hosts,
+				DistroQueueInfo: distroQueueInfo,
 			}
 
 			tasksAccountedFor = make(map[string]bool)
@@ -1027,11 +1081,17 @@ func TestDurationBasedHostAllocator(t *testing.T) {
 
 			dist.PoolSize = 6
 
-			hostAllocatorData = &HostAllocatorData{
-				taskQueueItems: taskQueueItems,
-				existingHosts:  hosts,
-				distro:         dist,
+			distroQueueInfo = DistroQueueInfo{
+				Distro:        dist,
+				TaskDurations: taskDurations,
 			}
+
+			hostAllocatorData = &HostAllocatorData{
+				Distro:          dist,
+				ExistingHosts:   hosts,
+				DistroQueueInfo: distroQueueInfo,
+			}
+
 			tasksAccountedFor = make(map[string]bool)
 
 			newHosts, err = durationNumNewHostsForDistro(ctx, hostAllocatorData,
@@ -1043,14 +1103,14 @@ func TestDurationBasedHostAllocator(t *testing.T) {
 		Convey("if the distro cannot be used to spawn hosts, then no new "+
 			"hosts can be spawned", func() {
 			expDur := time.Duration(200) * time.Minute
-			// all runnable tasks have an expected duration of expDur (200mins)
-			taskQueueItems := []model.TaskQueueItem{
-				{Id: taskIds[0], ExpectedDuration: expDur},
-				{Id: taskIds[1], ExpectedDuration: expDur},
-				{Id: taskIds[2], ExpectedDuration: expDur},
-				{Id: taskIds[3], ExpectedDuration: expDur},
-				{Id: taskIds[4], ExpectedDuration: expDur},
+			taskDurations := map[string]time.Duration{
+				taskIds[0]: expDur,
+				taskIds[1]: expDur,
+				taskIds[2]: expDur,
+				taskIds[3]: expDur,
+				taskIds[4]: expDur,
 			}
+
 			// running tasks have a time to completion of about 1 minute
 			hosts := []host.Host{
 				{Id: hostIds[0]},
@@ -1063,10 +1123,15 @@ func TestDurationBasedHostAllocator(t *testing.T) {
 			dist.PoolSize = 20
 			dist.Provider = "static"
 
+			distroQueueInfo := DistroQueueInfo{
+				Distro:        dist,
+				TaskDurations: taskDurations,
+			}
+
 			hostAllocatorData := &HostAllocatorData{
-				taskQueueItems: taskQueueItems,
-				existingHosts:  hosts,
-				distro:         dist,
+				Distro:          dist,
+				ExistingHosts:   hosts,
+				DistroQueueInfo: distroQueueInfo,
 			}
 
 			tasksAccountedFor := make(map[string]bool)
@@ -1082,13 +1147,12 @@ func TestDurationBasedHostAllocator(t *testing.T) {
 			"\nnumber of new hosts allowed for this distro, the estimate of new "+
 			"\nhosts should be used", func() {
 			expDur := time.Duration(200) * time.Minute
-			// all runnable tasks have an expected duration of expDur (200mins)
-			taskQueueItems := []model.TaskQueueItem{
-				{Id: taskIds[0], ExpectedDuration: expDur},
-				{Id: taskIds[1], ExpectedDuration: expDur},
-				{Id: taskIds[2], ExpectedDuration: expDur},
-				{Id: taskIds[3], ExpectedDuration: expDur},
-				{Id: taskIds[4], ExpectedDuration: expDur},
+			taskDurations := map[string]time.Duration{
+				taskIds[0]: expDur,
+				taskIds[1]: expDur,
+				taskIds[2]: expDur,
+				taskIds[3]: expDur,
+				taskIds[4]: expDur,
 			}
 
 			// running tasks have a time to completion of about 1 minute
@@ -1101,10 +1165,15 @@ func TestDurationBasedHostAllocator(t *testing.T) {
 			}
 			dist.PoolSize = 20
 
+			distroQueueInfo := DistroQueueInfo{
+				Distro:        dist,
+				TaskDurations: taskDurations,
+			}
+
 			hostAllocatorData := &HostAllocatorData{
-				taskQueueItems: taskQueueItems,
-				existingHosts:  hosts,
-				distro:         dist,
+				Distro:          dist,
+				ExistingHosts:   hosts,
+				DistroQueueInfo: distroQueueInfo,
 			}
 
 			tasksAccountedFor := make(map[string]bool)
@@ -1128,12 +1197,12 @@ func TestDurationBasedHostAllocator(t *testing.T) {
 			"\nnumber of free hosts, that difference should be used", func() {
 			expDur := time.Duration(400) * time.Minute
 			// all runnable tasks have an expected duration of expDur (200mins)
-			taskQueueItems := []model.TaskQueueItem{
-				{Id: taskIds[0], ExpectedDuration: expDur},
-				{Id: taskIds[1], ExpectedDuration: expDur},
-				{Id: taskIds[2], ExpectedDuration: expDur},
-				{Id: taskIds[3], ExpectedDuration: expDur},
-				{Id: taskIds[4], ExpectedDuration: expDur},
+			taskDurations := map[string]time.Duration{
+				taskIds[0]: expDur,
+				taskIds[1]: expDur,
+				taskIds[2]: expDur,
+				taskIds[3]: expDur,
+				taskIds[4]: expDur,
 			}
 
 			// running tasks have a time to completion of about 1 minute
@@ -1146,10 +1215,15 @@ func TestDurationBasedHostAllocator(t *testing.T) {
 			}
 			dist.PoolSize = 20
 
+			distroQueueInfo := DistroQueueInfo{
+				Distro:        dist,
+				TaskDurations: taskDurations,
+			}
+
 			hostAllocatorData := &HostAllocatorData{
-				taskQueueItems: taskQueueItems,
-				existingHosts:  hosts,
-				distro:         dist,
+				Distro:          dist,
+				ExistingHosts:   hosts,
+				DistroQueueInfo: distroQueueInfo,
 			}
 
 			tasksAccountedFor := make(map[string]bool)
@@ -1178,12 +1252,12 @@ func TestDurationBasedHostAllocator(t *testing.T) {
 			"be used", func() {
 			expDur := time.Duration(180) * time.Minute
 			// all runnable tasks have an expected duration of expDur (200mins)
-			taskQueueItems := []model.TaskQueueItem{
-				{Id: taskIds[0], ExpectedDuration: expDur},
-				{Id: taskIds[1], ExpectedDuration: expDur},
-				{Id: taskIds[2], ExpectedDuration: expDur},
-				{Id: taskIds[3], ExpectedDuration: expDur},
-				{Id: taskIds[4], ExpectedDuration: expDur},
+			taskDurations := map[string]time.Duration{
+				taskIds[0]: expDur,
+				taskIds[1]: expDur,
+				taskIds[2]: expDur,
+				taskIds[3]: expDur,
+				taskIds[4]: expDur,
 			}
 
 			// running tasks have a time to completion of about 1 minute
@@ -1197,10 +1271,15 @@ func TestDurationBasedHostAllocator(t *testing.T) {
 			}
 			dist.PoolSize = 20
 
+			distroQueueInfo := DistroQueueInfo{
+				Distro:        dist,
+				TaskDurations: taskDurations,
+			}
+
 			hostAllocatorData := &HostAllocatorData{
-				taskQueueItems: taskQueueItems,
-				existingHosts:  hosts,
-				distro:         dist,
+				Distro:          dist,
+				ExistingHosts:   hosts,
+				DistroQueueInfo: distroQueueInfo,
 			}
 
 			tasksAccountedFor := make(map[string]bool)

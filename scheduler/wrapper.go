@@ -2,7 +2,6 @@ package scheduler
 
 import (
 	"context"
-	"fmt"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
@@ -10,6 +9,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
+	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mitchellh/mapstructure"
 	"github.com/mongodb/grip"
@@ -18,31 +18,83 @@ import (
 	"github.com/pkg/errors"
 )
 
-type DistroQueueInfo struct {
-	Distro             distro.Distro
-	Length             int
-	ExpectedDuration   time.Duration
-	CountOverThreshold int
-	TaskGroupsInfo     map[string]TaskGroupInfo
-}
+const (
+	// maximum turnaround we want to maintain for all hosts for a given distro
+	MaxDurationPerDistroHost               = 30 * time.Minute
+	MaxDurationPerDistroHostWithContainers = 2 * time.Minute
+)
 
 type TaskGroupInfo struct {
-	GroupID               string
-	Count                 int
+	Name                  string
+	Count                 int // Redundant if we need to use TaskDurations
+	TaskDurations         map[string]time.Duration
 	MaxHosts              int
 	ExpectedDuration      time.Duration
 	CountOverThreshold    int
 	DurationOverThreshold time.Duration
 }
 
-type HostAllocatorData struct {
-	Distro           distro.Distro
-	ExistingHosts    []host.Host
-	TaskRunDistros   []string // Is this actually used?
-	FreeHostFraction float64
-	UsesContainers   bool
-	ContainerPool    *evergreen.ContainerPool
-	DistroQueueInfo  DistroQueueInfo
+type DistroQueueInfo struct {
+	Distro             distro.Distro
+	Length             int // Redundant if we need to use TaskDurations
+	TaskDurations      map[string]time.Duration
+	ExpectedDuration   time.Duration
+	CountOverThreshold int
+	TaskGroupInfos     map[string]TaskGroupInfo
+}
+
+func SetDistroQueueInfo(tasks []task.Task, maxDurationThreshold time.Duration, distro distro.Distro) DistroQueueInfo {
+	var distroExpectedDuration time.Duration
+	var distroCountOverThreshold int
+	distroTaskDurations := make(map[string]time.Duration)
+	taskGroupInfos := make(map[string]TaskGroupInfo)
+
+	for _, task := range tasks {
+		group := task.TaskGroup
+		name := ""
+		if group != "" {
+			name = makeTaskGroupString(group, task.BuildVariant, task.Project, task.Version)
+		}
+
+		duration := task.FetchExpectedDuration()
+		distroTaskDurations[task.Id] = duration
+		distroExpectedDuration += duration
+
+		var taskGroupInfo TaskGroupInfo
+		if info, exists := taskGroupInfos[name]; exists {
+			info.Count++
+			info.ExpectedDuration += duration
+			taskGroupInfo = info
+		} else {
+			taskGroupInfo = TaskGroupInfo{
+				Name:             name,
+				Count:            1,
+				TaskDurations:    map[string]time.Duration{task.Id: duration},
+				MaxHosts:         task.TaskGroupMaxHosts,
+				ExpectedDuration: duration,
+			}
+		}
+		taskGroupInfo.TaskDurations[task.Id] = duration
+
+		if duration >= maxDurationThreshold {
+			taskGroupInfo.CountOverThreshold++
+			taskGroupInfo.DurationOverThreshold += duration
+			distroCountOverThreshold++
+		}
+
+		taskGroupInfos[name] = taskGroupInfo
+	}
+
+	distroQueueInfo := DistroQueueInfo{
+		Distro:             distro,
+		Length:             len(tasks),
+		TaskDurations:      distroTaskDurations,
+		ExpectedDuration:   distroExpectedDuration,
+		CountOverThreshold: distroCountOverThreshold,
+		TaskGroupInfos:     taskGroupInfos,
+	}
+
+	return distroQueueInfo
 }
 
 type Configuration struct {
@@ -94,10 +146,10 @@ func PlanDistro(ctx context.Context, conf Configuration, s *evergreen.Settings) 
 
 	runnableTasks, versions, err := filterTasksWithVersionCache(tasks)
 	if err != nil {
-		return errors.Wrap(err, "error getting runnable tasks")
+		return errors.Wrap(err, "error while filtering tasks against the versions' cache")
 	}
 
-	ds := &distroSchedueler{
+	ds := &distroScheduler{
 		TaskPrioritizer: &CmpBasedTaskPrioritizer{
 			runtimeID: schedulerInstance,
 		},
@@ -106,10 +158,11 @@ func PlanDistro(ctx context.Context, conf Configuration, s *evergreen.Settings) 
 	}
 
 	startPlanPhase := time.Now()
-	res := ds.scheduleDistro(distro.Id, runnableTasks, versions)
-	if res.err != nil {
-		return errors.Wrap(res.err, "problem calculating distro plan")
+	prioritizedTasks, err := ds.scheduleDistro(distro.Id, runnableTasks, versions)
+	if err != nil {
+		return errors.Wrap(err, "problem calculating distro plan")
 	}
+
 	grip.Info(message.Fields{
 		"runner":        RunnerName,
 		"distro":        distro.Id,
@@ -117,15 +170,8 @@ func PlanDistro(ctx context.Context, conf Configuration, s *evergreen.Settings) 
 		"phase":         "planning-distro",
 		"instance":      schedulerInstance,
 		"duration_secs": time.Since(startPlanPhase).Seconds(),
-
-		// The following keys were previously part of a
-		// separate message, but to cut down on noise...
-		//
-		// "runner":   RunnerName,
-		// "instance": schedulerInstance,
-		// "distro":   conf.DistroID,
-		"stat": "distro-queue-size",
-		"size": len(res.taskQueueItem),
+		"stat":          "distro-queue-size",
+		"size":          len(prioritizedTasks),
 	})
 
 	startHostAllocation := time.Now()
@@ -135,18 +181,11 @@ func PlanDistro(ctx context.Context, conf Configuration, s *evergreen.Settings) 
 
 	distroHosts, err := host.AllRunningHosts(distro.Id)
 
-	///////////////////////////////////////////////////////////////////////
-	// allocatorArgs := HostAllocatorData{
-	// 	taskQueueItems:   res.taskQueueItem, // []model.TaskQueueItem from distroSchedulerResult.taskQueueItem retuned by ds.scheduleDistro()
-	// 	existingHosts:    distroHosts,       // distroHosts, err := host.AllRunningHosts(conf.DistroID)
-	// 	distro:           distroSpec,        // distroSpec, err := distro.FindOne(distro.ById(conf.DistroID))
-	// 	freeHostFraction: conf.FreeHostFraction,
-	// }
-
-	allocatorData := HostAllocatorData{
-		Distro:           distro,
-		ExistingHosts:    distroHosts, // distroHosts, err := host.AllRunningHosts(conf.DistroID)
-		FreeHostFraction: conf.FreeHostFraction,
+	hostAllocatorData := HostAllocatorData{
+		Distro:               distro,
+		ExistingHosts:        distroHosts,
+		FreeHostFraction:     conf.FreeHostFraction,
+		MaxDurationThreshold: MaxDurationPerDistroHost,
 	}
 
 	// retrieve container pool information for container distros
@@ -156,75 +195,16 @@ func PlanDistro(ctx context.Context, conf Configuration, s *evergreen.Settings) 
 		if pool == nil {
 			return errors.Wrap(err, "problem retrieving container pool")
 		}
-		allocatorData.UsesContainers = true
-		allocatorData.ContainerPool = pool
+		hostAllocatorData.UsesContainers = true
+		hostAllocatorData.ContainerPool = pool
+		hostAllocatorData.MaxDurationThreshold = MaxDurationPerDistroHostWithContainers
 	}
 
-	///////////////////////////////////////////////////////////////////////
-	// STU AT WORK!
-
-	durationThreshold := MaxDurationPerDistroHost
-	if allocatorData.UsesContainers {
-		durationThreshold = MaxDurationPerDistroHostWithContainers
-	}
-
-	taskGroupsInfo := map[string]TaskGroupInfo{}
-	distroDuration := 0 * time.Nanosecond
-	distroOverThreshold := 0
-
-	for _, task := range tasks {
-		group := task.TaskGroup
-		taskGroupID := ""
-
-		if group != "" {
-			buildVariant := task.BuildVariant
-			project := task.Project
-			version := task.Version
-			taskGroupID = fmt.Sprintf("%s_%s_%s_%s", group, buildVariant, project, version)
-		}
-
-		duration := task.FetchExpectedDuration()
-		distroDuration += duration
-		overThreshold = (duration > durationThreshold)
-
-		if stats, exists := taskGroupsInfo[taskGroupID]; exists {
-			stats.Count++
-			stats.ExpectedDuration += duration
-			if overThreshold {
-				stats.CountOverThreshold++
-				stats.DurationOverThreshold++
-				distroOverThreshold++
-			}
-			taskGroupsInfo[taskGroupID] = stats
-		} else {
-			info := TaskGroupInfo{
-				GroupID:          taskGroupID,
-				Count:            1,
-				ExpectedDuration: duration,
-				MaxHosts:         task.TaskGroupMaxHosts,
-			}
-			if overThreshold {
-				info.CountOverThreshold = 1
-				info.DurationOverThreshold = duration
-				distroOverThreshold = 1
-			}
-			taskGroupsInfo[taskGroupID] = info
-		}
-	}
-
-	distroQueueInfo := DistroQueueInfo{
-		Distro:             distro,
-		Length:             len(runnableTasks),
-		ExpectedDuration:   distroDuration,
-		CountOverThreshold: distroOverThreshold,
-		TaskGroupsInfo:     taskGroupsInfo,
-	}
-
-	allocatorData.DistroQueueInfo = distroQueueInfo
+	distroQueueInfo := SetDistroQueueInfo(prioritizedTasks, hostAllocatorData.MaxDurationThreshold, distro)
+	hostAllocatorData.DistroQueueInfo = distroQueueInfo
 
 	allocator := GetHostAllocator(conf.HostAllocator)
-	newHosts, err := allocator(ctx, allocatorData)
-
+	newHosts, err := allocator(ctx, hostAllocatorData)
 	if err != nil {
 		return errors.Wrap(err, "problem finding distro")
 	}
@@ -239,19 +219,25 @@ func PlanDistro(ctx context.Context, conf Configuration, s *evergreen.Settings) 
 	})
 
 	startHostSpawning := time.Now()
-	hostsSpawned, err := spawnHosts(ctx, distroc, newHosts, pool)
+	hostsSpawned, err := spawnHosts(ctx, distro, newHosts, pool)
 	if err != nil {
 		return errors.Wrap(err, "Error spawning new hosts")
 	}
 
+	eventInfo := event.TaskQueueInfo{
+		TaskQueueLength:  len(prioritizedTasks),
+		NumHostsRunning:  0,
+		ExpectedDuration: distroQueueInfo.ExpectedDuration,
+	}
+
 	event.LogSchedulerEvent(event.SchedulerEventData{
-		TaskQueueInfo: res.schedulerEvent,
+		TaskQueueInfo: eventInfo,
 		DistroId:      distro.Id,
 	})
 
 	grip.Info(message.Fields{
 		"runner":        RunnerName,
-		"distro":        distro.IdD,
+		"distro":        distro.Id,
 		"operation":     "runtime-stats",
 		"phase":         "host-spawning",
 		"instance":      schedulerInstance,
@@ -260,9 +246,9 @@ func PlanDistro(ctx context.Context, conf Configuration, s *evergreen.Settings) 
 
 	var makespan time.Duration
 	if len(hostsSpawned) != 0 {
-		makespan = res.schedulerEvent.ExpectedDuration / time.Duration(len(hostsSpawned))
-	} else if res.schedulerEvent.TaskQueueLength > 0 {
-		makespan = res.schedulerEvent.ExpectedDuration
+		makespan = distroQueueInfo.ExpectedDuration / time.Duration(len(hostsSpawned))
+	} else if distroQueueInfo.Length > 0 {
+		makespan = distroQueueInfo.ExpectedDuration
 	}
 
 	grip.Info(message.Fields{
@@ -273,8 +259,8 @@ func PlanDistro(ctx context.Context, conf Configuration, s *evergreen.Settings) 
 		"max_hosts":              distro.PoolSize,
 		"new_hosts":              hostsSpawned,
 		"num_hosts":              len(hostsSpawned),
-		"queue":                  res.schedulerEvent,
-		"total_runtime":          res.schedulerEvent.ExpectedDuration.String(),
+		"queue":                  eventInfo,
+		"total_runtime":          distroQueueInfo.ExpectedDuration.String(),
 		"predicted_makespan":     makespan.String(),
 		"scheduler_runtime_secs": time.Since(startAt).Seconds(),
 		"instance":               schedulerInstance,
