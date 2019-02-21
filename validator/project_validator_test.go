@@ -1032,6 +1032,21 @@ func TestValidatePluginCommands(t *testing.T) {
 			So(validatePluginCommands(project), ShouldNotResemble, ValidationErrors{})
 			So(len(validatePluginCommands(project)), ShouldEqual, 1)
 		})
+		Convey("an error should be thrown if a function plugin command doesn't have commands", func() {
+			project := &model.Project{
+				Functions: map[string]*model.YAMLCommandSet{
+					"funcOne": {
+						SingleCommand: &model.PluginCommandConf{
+							Params: map[string]interface{}{
+								"blah": []interface{}{"test"},
+							},
+						},
+					},
+				},
+			}
+			So(validatePluginCommands(project), ShouldNotResemble, ValidationErrors{})
+			So(len(validatePluginCommands(project)), ShouldEqual, 1)
+		})
 		Convey("no error should be thrown if a function plugin command is valid", func() {
 			project := &model.Project{
 				Functions: map[string]*model.YAMLCommandSet{
