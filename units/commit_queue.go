@@ -104,117 +104,81 @@ func (j *commitQueueJob) Run(ctx context.Context) {
 		return
 	}
 	nextItem := cq.Next()
-	if nextItem == "" {
+	if nextItem == nil {
 		return
 	}
-
-	nextItemInt, err := strconv.Atoi(nextItem)
-	if err != nil {
-		j.AddError(errors.Wrapf(err, "can't parse next item \"%s\" as int", nextItem))
-		_, err2 := cq.Remove(nextItem)
-		j.AddError(errors.Wrapf(err2, "error dequeuing item '%s'", nextItem))
-		grip.Error(message.WrapError(err, message.Fields{
-			"job":     commitQueueJobName,
-			"source":  "commit queue",
-			"project": j.QueueID,
-			"item":    nextItem,
-			"message": "next item can't be parsed as an int",
-		}))
-		return
-	}
+	cq.SetProcessing(true)
 
 	conf := j.env.Settings()
 	githubToken, err := conf.GetGithubOauthToken()
 	if err != nil {
 		j.AddError(errors.Wrap(err, "can't get github token"))
+		j.AddError(errors.Wrap(cq.SetProcessing(false), "can't set processing to false"))
 		return
 	}
 
-	pr, err := thirdparty.GetGithubPullRequest(ctx, githubToken, projectRef.Owner, projectRef.Repo, nextItemInt)
+	pr, dequeue, err := checkPR(ctx, githubToken, nextItem.Issue, projectRef.Owner, projectRef.Repo)
 	if err != nil {
-		j.AddError(errors.Wrap(err, "can't get PR from GitHub"))
-		grip.Error(message.WrapError(err, message.Fields{
-			"job":     commitQueueJobName,
-			"source":  "commit queue",
-			"project": j.QueueID,
-			"item":    nextItem,
-			"message": "can't get PR from GitHub",
-		}))
-		return
-	}
-
-	if err = validatePR(pr); err != nil {
-		j.AddError(errors.Wrap(err, "invalid PR"))
-		_, err2 := cq.Remove(nextItem)
-		j.AddError(errors.Wrapf(err2, "error dequeuing item '%s'", nextItem))
-		grip.Error(message.WrapError(err, message.Fields{
-			"job":     commitQueueJobName,
-			"source":  "commit queue",
-			"project": j.QueueID,
-			"item":    nextItem,
-			"message": "invalid PR",
-		}))
-		return
-	}
-
-	// GitHub hasn't yet tested if the PR is mergeable.
-	// Check back later
-	// See: https://developer.github.com/v3/pulls/#response-1
-	if pr.Mergeable == nil {
-		return
-	}
-
-	if !*pr.Mergeable {
-		err = sendCommitQueueGithubStatus(j.env, pr, message.GithubStateFailure, "PR not mergeable", "")
-		if err != nil {
-			j.AddError(errors.Wrap(err, "can't send github status"))
+		j.logError(err, "PR not valid for merge", nextItem)
+		if dequeue {
+			if pr != nil {
+				j.AddError(sendCommitQueueGithubStatus(j.env, pr, message.GithubStateFailure, "PR not valid for merge", ""))
+			}
+			j.dequeue(cq, nextItem)
+		} else {
+			j.AddError(errors.Wrap(cq.SetProcessing(false), "can't set processing to false"))
 		}
 		return
 	}
 
-	// check if a patch has already been created for this PR
-	mergeCommitSHA := pr.GetMergeCommitSHA()
-	existingPatch, err := patch.FindOneByGithubPRNumAndMergeCommitSHA(nextItemInt, mergeCommitSHA)
+	patchDoc, projectConfig, err := makeMergePatch(ctx, pr, githubToken, projectRef.Identifier)
 	if err != nil {
-		j.AddError(errors.Wrap(err, "can't query for patch matching PR Number"))
-		return
-	}
-	if existingPatch != nil {
+		j.logError(err, "can't make patch", nextItem)
+		j.AddError(sendCommitQueueGithubStatus(j.env, pr, message.GithubStateFailure, "can't make patch", ""))
+		j.dequeue(cq, nextItem)
+		j.AddError(errors.Wrap(cq.SetProcessing(false), "can't set processing to false"))
 		return
 	}
 
-	v, err := makeVersion(ctx, githubToken, projectRef.Identifier, pr)
+	modulePRs, modulePatches, dequeue, err := getModules(ctx, githubToken, nextItem, projectConfig)
 	if err != nil {
-		j.AddError(errors.Wrap(err, "can't make version"))
+		j.logError(err, "can't get modules", nextItem)
+		if dequeue {
+			j.AddError(sendCommitQueueGithubStatus(j.env, pr, message.GithubStateFailure, "can't get modules", ""))
+			j.dequeue(cq, nextItem)
+		} else {
+			j.AddError(errors.Wrap(cq.SetProcessing(false), "can't set processing to false"))
+		}
+		return
+	}
+	patchDoc.Patches = modulePatches
+
+	v, err := makeVersion(ctx, githubToken, projectConfig, patchDoc)
+	if err != nil {
+		j.logError(err, "can't make version", nextItem)
 		j.AddError(sendCommitQueueGithubStatus(j.env, pr, message.GithubStateFailure, "can't make version", ""))
-		_, err2 := cq.Remove(nextItem)
-		j.AddError(errors.Wrapf(err2, "error dequeuing item '%s'", nextItem))
-		grip.Error(message.WrapError(err, message.Fields{
-			"job":     commitQueueJobName,
-			"source":  "commit queue",
-			"project": j.QueueID,
-			"item":    nextItem,
-			"message": "can't make version",
-		}))
+		j.dequeue(cq, nextItem)
 		return
 	}
 
-	err = sendCommitQueueGithubStatus(j.env, pr, message.GithubStatePending, "preparing to test merge", v.Id)
-	if err != nil {
-		j.AddError(errors.Wrap(err, "can't send github status"))
+	j.AddError(sendCommitQueueGithubStatus(j.env, pr, message.GithubStatePending, "preparing to test merge", v.Id))
+	for _, modulePR := range modulePRs {
+		j.AddError(sendCommitQueueGithubStatus(j.env, modulePR, message.GithubStatePending, "preparing to test merge", v.Id))
 	}
 
-	err = subscribeMerge(projectRef, pr, v.Id)
+	err = subscribeMerge(projectRef.Identifier, projectRef.Owner, projectRef.Repo, projectRef.CommitQueue.MergeMethod, v.Id, pr)
 	if err != nil {
-		j.AddError(errors.Wrap(err, "can't subscribe GitHub PR merge to version"))
+		j.logError(err, "can't subscribe GitHub PR merge to version", nextItem)
 		j.AddError(sendCommitQueueGithubStatus(j.env, pr, message.GithubStateFailure, "can't start merge", ""))
-		grip.Error(message.WrapError(err, message.Fields{
-			"job":     commitQueueJobName,
-			"source":  "commit queue",
-			"project": j.QueueID,
-			"item":    nextItem,
-			"message": "can't subscribe for merge sender",
-		}))
+		j.dequeue(cq, nextItem)
+	}
+
+	for _, modulePR := range modulePRs {
+		err = subscribeMerge("", modulePR.Base.Repo.Owner.GetLogin(), *modulePR.Base.Repo.Name, projectRef.CommitQueue.MergeMethod, v.Id, modulePR)
+		if err != nil {
+			j.logError(err, "can't subscribe GitHub PR merge to version for module", nextItem)
+			j.AddError(sendCommitQueueGithubStatus(j.env, modulePR, message.GithubStateFailure, "can't start merge", ""))
+		}
 	}
 
 	grip.Info(message.Fields{
@@ -223,6 +187,88 @@ func (j *commitQueueJob) Run(ctx context.Context) {
 		"item":    nextItem,
 		"message": "finished processing item",
 	})
+}
+
+func (j *commitQueueJob) logError(err error, msg string, item *commitqueue.CommitQueueItem) {
+	if err == nil {
+		return
+	}
+	j.AddError(errors.Wrap(err, msg))
+	grip.Error(message.WrapError(err, message.Fields{
+		"job":     commitQueueJobName,
+		"source":  "commit queue",
+		"project": j.QueueID,
+		"item":    *item,
+		"message": msg,
+	}))
+}
+
+func (j *commitQueueJob) dequeue(cq *commitqueue.CommitQueue, item *commitqueue.CommitQueueItem) {
+	_, err := cq.Remove(item.Issue)
+	j.logError(err, fmt.Sprintf("error dequeuing item '%s'", item.Issue), item)
+}
+
+func checkPR(ctx context.Context, githubToken, issue, owner, repo string) (*github.PullRequest, bool, error) {
+	issueInt, err := strconv.Atoi(issue)
+	if err != nil {
+		return nil, true, errors.Wrapf(err, "can't parse issue '%s' as int", issue)
+	}
+
+	pr, err := thirdparty.GetGithubPullRequest(ctx, githubToken, owner, repo, issueInt)
+	if err != nil {
+		return nil, false, errors.Wrap(err, "can't get PR from GitHub")
+	}
+
+	if err = validatePR(pr); err != nil {
+		return nil, true, errors.Wrap(err, "GitHub returned an incomplete PR")
+	}
+
+	if pr.Mergeable == nil {
+		if *pr.Merged {
+			return pr, true, errors.New("PR is already merged")
+		}
+		// GitHub hasn't yet tested if the PR is mergeable.
+		// Check back later
+		// See: https://developer.github.com/v3/pulls/#response-1
+		return pr, false, errors.New("GitHub hasn't yet generated a merge commit")
+	}
+
+	if !*pr.Mergeable {
+		return pr, true, errors.New("PR is not mergeable")
+	}
+
+	return pr, false, nil
+}
+
+func getModules(ctx context.Context, githubToken string, nextItem *commitqueue.CommitQueueItem, projectConfig *model.Project) ([]*github.PullRequest, []patch.ModulePatch, bool, error) {
+	var modulePRs []*github.PullRequest
+	var modulePatches []patch.ModulePatch
+	for _, mod := range nextItem.Modules {
+		module, err := projectConfig.GetModuleByName(mod.Module)
+		if err != nil {
+			return nil, nil, true, errors.Wrapf(err, "can't get module for module name '%s'", mod.Module)
+		}
+		owner, repo, err := thirdparty.ParseGitUrl(module.Repo)
+		if err != nil {
+			return nil, nil, true, errors.Wrapf(err, "module '%s' misconfigured (malformed URL)", mod.Module)
+		}
+
+		pr, dequeue, err := checkPR(ctx, githubToken, mod.Issue, owner, repo)
+		if err != nil {
+			return nil, nil, dequeue, errors.Wrap(err, "PR not valid for merge")
+		}
+		modulePRs = append(modulePRs, pr)
+
+		modulePatches = append(modulePatches, patch.ModulePatch{
+			ModuleName: mod.Module,
+			Githash:    pr.GetMergeCommitSHA(),
+			PatchSet: patch.PatchSet{
+				Patch: mod.Issue,
+			},
+		})
+	}
+
+	return modulePRs, modulePatches, false, nil
 }
 
 func validatePR(pr *github.PullRequest) error {
@@ -255,30 +301,37 @@ func validatePR(pr *github.PullRequest) error {
 	if pr.GetTitle() == "" {
 		catcher.Add(errors.New("no valid title"))
 	}
+	if pr.Merged == nil {
+		catcher.Add(errors.New("no valid merged"))
+	}
 
 	return catcher.Resolve()
 }
 
-func makeVersion(ctx context.Context, githubToken string, projectID string, pr *github.PullRequest) (*model.Version, error) {
+func makeMergePatch(ctx context.Context, pr *github.PullRequest, githubToken, projectID string) (*patch.Patch, *model.Project, error) {
 	patchDoc, err := patch.MakeMergePatch(pr, projectID, commitQueueAlias)
 	if err != nil {
-		return nil, errors.Wrap(err, "can't make patch")
+		return nil, nil, errors.Wrap(err, "can't make patch")
 	}
 
 	config, err := validator.GetPatchedProject(ctx, patchDoc, githubToken)
 	if err != nil {
-		return nil, errors.Wrap(err, "can't get remote config file")
+		return nil, nil, errors.Wrap(err, "can't get remote config file")
 	}
 
 	yamlBytes, err := yaml.Marshal(config)
 	if err != nil {
-		return nil, errors.Wrap(err, "can't marshal project config to yaml")
+		return nil, nil, errors.Wrap(err, "can't marshal project config to yaml")
 	}
 	patchDoc.PatchedConfig = string(yamlBytes)
 
-	config.BuildProjectTVPairs(patchDoc, patchDoc.Alias)
+	return patchDoc, config, nil
+}
 
-	if err = patchDoc.Insert(); err != nil {
+func makeVersion(ctx context.Context, githubToken string, project *model.Project, patchDoc *patch.Patch) (*model.Version, error) {
+	project.BuildProjectTVPairs(patchDoc, patchDoc.Alias)
+
+	if err := patchDoc.Insert(); err != nil {
 		return nil, errors.Wrap(err, "can't insert patch")
 	}
 
@@ -321,15 +374,15 @@ func sendCommitQueueGithubStatus(env evergreen.Environment, pr *github.PullReque
 	return nil
 }
 
-func subscribeMerge(projectRef *model.ProjectRef, pr *github.PullRequest, patchID string) error {
+func subscribeMerge(projectID, owner, repo, mergeMethod, patchID string, pr *github.PullRequest) error {
 	mergeSubscriber := event.NewGithubMergeSubscriber(event.GithubMergeSubscriber{
-		ProjectID:     projectRef.Identifier,
-		Owner:         projectRef.Owner,
-		Repo:          projectRef.Repo,
+		ProjectID:     projectID,
+		Owner:         owner,
+		Repo:          repo,
 		PRNumber:      *pr.Number,
 		Ref:           *pr.Head.SHA,
 		CommitMessage: "Merged by commit queue",
-		MergeMethod:   projectRef.CommitQueue.MergeMethod,
+		MergeMethod:   mergeMethod,
 		CommitTitle:   *pr.Title,
 	})
 	patchSub := event.NewPatchOutcomeSubscription(patchID, mergeSubscriber)

@@ -25,7 +25,14 @@ func (s *GitHubPRSenderSuite) SetupTest() {
 	s.NoError(db.ClearCollections(Collection))
 	cq := &CommitQueue{
 		ProjectID: "mci",
-		Queue:     []string{"1", "2"},
+		Queue: []CommitQueueItem{
+			CommitQueueItem{
+				Issue: "1",
+			},
+			CommitQueueItem{
+				Issue: "2",
+			},
+		},
 	}
 	s.NoError(InsertQueue(cq))
 }
@@ -53,5 +60,5 @@ func (s *GitHubPRSenderSuite) TestDequeueFromCommitQueue() {
 	s.NoError(dequeueFromCommitQueue("mci", 1))
 	cq, err := FindOneId("mci")
 	s.NoError(err)
-	s.Equal("2", cq.Next())
+	s.Equal("2", cq.Next().Issue)
 }

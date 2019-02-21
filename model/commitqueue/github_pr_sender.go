@@ -77,7 +77,9 @@ func (s *githubPRLogger) Send(m message.Composer) {
 	s.sendPatchResult(msg)
 	if !msg.PatchSucceeded {
 		s.ErrorHandler(errors.New("not proceeding with merge for failed patch"), m)
-		s.ErrorHandler(dequeueFromCommitQueue(msg.ProjectID, msg.PRNum), m)
+		if msg.ProjectID != "" {
+			s.ErrorHandler(dequeueFromCommitQueue(msg.ProjectID, msg.PRNum), m)
+		}
 		return
 	}
 
@@ -94,6 +96,7 @@ func (s *githubPRLogger) Send(m message.Composer) {
 
 	if err != nil {
 		s.ErrorHandler(errors.Wrap(err, "can't access GitHub merge API"), m)
+		// don't send status to GitHub since we can't access their API anyway...
 	}
 
 	// send the result to github
@@ -103,7 +106,11 @@ func (s *githubPRLogger) Send(m message.Composer) {
 		s.ErrorHandler(s.sendMergeFailedStatus(res.GetMessage(), msg), m)
 	}
 
-	s.ErrorHandler(dequeueFromCommitQueue(msg.ProjectID, msg.PRNum), m)
+	// Module merges are sent with the empty string as the projectID
+	// Wait for the main PR to be merged to dequeue
+	if msg.ProjectID != "" {
+		s.ErrorHandler(dequeueFromCommitQueue(msg.ProjectID, msg.PRNum), m)
+	}
 }
 
 func (s *githubPRLogger) sendMergeFailedStatus(githubMessage string, msg *GithubMergePR) error {

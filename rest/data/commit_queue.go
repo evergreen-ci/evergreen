@@ -37,7 +37,7 @@ func (pc *DBCommitQueueConnector) GetGitHubPR(ctx context.Context, owner, repo s
 	return pr, nil
 }
 
-func (pc *DBCommitQueueConnector) EnqueueItem(owner, repo, baseBranch, item string) error {
+func (pc *DBCommitQueueConnector) EnqueueItem(owner, repo, baseBranch string, item commitqueue.CommitQueueItem) error {
 	proj, err := model.FindOneProjectRefWithCommitQByOwnerRepoAndBranch(owner, repo, baseBranch)
 	if err != nil {
 		return errors.Wrapf(err, "can't query for matching project with commit queue enabled. owner: %s, repo: %s, branch: %s", owner, repo, baseBranch)
@@ -129,7 +129,7 @@ func (pc *DBCommitQueueConnector) IsAuthorizedToPatchAndMerge(ctx context.Contex
 }
 
 type MockCommitQueueConnector struct {
-	Queue map[string][]restModel.APIString
+	Queue map[string][]restModel.APICommitQueueItem
 }
 
 func (pc *MockCommitQueueConnector) GetGitHubPR(ctx context.Context, owner, repo string, PRNum int) (*github.PullRequest, error) {
@@ -145,13 +145,16 @@ func (pc *MockCommitQueueConnector) GetGitHubPR(ctx context.Context, owner, repo
 	}, nil
 }
 
-func (pc *MockCommitQueueConnector) EnqueueItem(owner, repo, baseBranch, item string) error {
+func (pc *MockCommitQueueConnector) EnqueueItem(owner, repo, baseBranch string, item commitqueue.CommitQueueItem) error {
 	if pc.Queue == nil {
-		pc.Queue = make(map[string][]restModel.APIString)
+		pc.Queue = make(map[string][]restModel.APICommitQueueItem)
 	}
 
+	apiItem := restModel.APICommitQueueItem{}
+	apiItem.BuildFromService(item)
+
 	queueID := owner + "." + repo + "." + baseBranch
-	pc.Queue[queueID] = append(pc.Queue[queueID], restModel.ToAPIString(item))
+	pc.Queue[queueID] = append(pc.Queue[queueID], apiItem)
 
 	return nil
 }
@@ -170,7 +173,7 @@ func (pc *MockCommitQueueConnector) CommitQueueRemoveItem(id, item string) (bool
 	}
 
 	for i := range pc.Queue[id] {
-		if restModel.FromAPIString(pc.Queue[id][i]) == item {
+		if restModel.FromAPIString(pc.Queue[id][i].Issue) == item {
 			pc.Queue[id] = append(pc.Queue[id][:i], pc.Queue[id][i+1:]...)
 			return true, nil
 		}
@@ -185,7 +188,7 @@ func (pc *MockCommitQueueConnector) CommitQueueClearAll() (int, error) {
 		if len(v) > 0 {
 			count++
 		}
-		pc.Queue[k] = []restModel.APIString{}
+		pc.Queue[k] = []restModel.APICommitQueueItem{}
 	}
 
 	return count, nil

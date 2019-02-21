@@ -201,6 +201,18 @@ func (gh *githubHookApi) Run(ctx context.Context) gimlet.Responder {
 			return gimlet.NewJSONResponse(struct{}{})
 		}
 
+		commentData, err := commitqueue.GetCommentData(*event.Comment.Body)
+		if err != nil {
+			grip.Error(message.WrapError(err, message.Fields{
+				"source":  "github hook",
+				"msg_id":  gh.msgID,
+				"event":   gh.eventType,
+				"action":  *event.Action,
+				"message": "can't parse data from comment string",
+			}))
+			return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "can't parse data from comment string"))
+		}
+
 		userRepo := data.UserRepoInfo{
 			Username: *event.Comment.User.Login,
 			Owner:    *event.Repo.Owner.Login,
@@ -266,7 +278,11 @@ func (gh *githubHookApi) Run(ctx context.Context) gimlet.Responder {
 		}
 
 		baseBranch := *pr.Base.Ref
-		err = gh.sc.EnqueueItem(userRepo.Owner, userRepo.Repo, baseBranch, strconv.Itoa(PRNum))
+		item := commitqueue.CommitQueueItem{
+			Issue:   strconv.Itoa(PRNum),
+			Modules: commentData.Modules,
+		}
+		err = gh.sc.EnqueueItem(userRepo.Owner, userRepo.Repo, baseBranch, item)
 		if err != nil {
 			grip.Error(message.WrapError(err, message.Fields{
 				"source":  "github hook",

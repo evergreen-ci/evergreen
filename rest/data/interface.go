@@ -9,6 +9,7 @@ import (
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/build"
+	"github.com/evergreen-ci/evergreen/model/commitqueue"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
@@ -231,7 +232,7 @@ type Connector interface {
 
 	// Commit queue methods
 	GetGitHubPR(context.Context, string, string, int) (*github.PullRequest, error)
-	EnqueueItem(string, string, string, string) error
+	EnqueueItem(string, string, string, commitqueue.CommitQueueItem) error
 	FindCommitQueueByID(string) (*restModel.APICommitQueue, error)
 	CommitQueueRemoveItem(string, string) (bool, error)
 	CommitQueueClearAll() (int, error)

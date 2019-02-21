@@ -134,3 +134,38 @@ func GetPatchSummaries(patchContent string) ([]patch.Summary, error) {
 	}
 	return summaries, nil
 }
+
+func ParseGitUrl(url string) (string, string, error) {
+	var owner, repo string
+	httpsPrefix := "https://"
+	if strings.HasPrefix(url, httpsPrefix) {
+		url = strings.TrimPrefix(url, httpsPrefix)
+		split := strings.Split(url, "/")
+		if len(split) != 3 {
+			return owner, repo, errors.Errorf("Invalid Git URL format '%s'", url)
+		}
+		owner = split[1]
+		splitRepo := strings.Split(split[2], ".")
+		if len(splitRepo) != 2 {
+			return owner, repo, errors.Errorf("Invalid Git URL format '%s'", url)
+		}
+		repo = splitRepo[0]
+	} else {
+		splitModule := strings.Split(url, ":")
+		if len(splitModule) != 2 {
+			return owner, repo, errors.Errorf("Invalid Git URL format '%s'", url)
+		}
+		splitOwner := strings.Split(splitModule[1], "/")
+		if len(splitOwner) != 2 {
+			return owner, repo, errors.Errorf("Invalid Git URL format '%s'", url)
+		}
+		owner = splitOwner[0]
+		splitRepo := strings.Split(splitOwner[1], ".")
+		if len(splitRepo) != 2 {
+			return owner, repo, errors.Errorf("Invalid Git URL format '%s'", url)
+		}
+		repo = splitRepo[0]
+	}
+
+	return owner, repo, nil
+}

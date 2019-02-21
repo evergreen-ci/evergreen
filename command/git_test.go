@@ -27,7 +27,6 @@ import (
 	"github.com/mongodb/grip/level"
 	"github.com/mongodb/grip/send"
 	"github.com/smartystreets/goconvey/convey/reporting"
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -300,8 +299,8 @@ func (s *GitGetProjectSuite) TestBuildCommandForMergeTests() {
 	cmds, err := c.buildCloneCommand(s.modelData4.TaskConfig)
 	s.NoError(err)
 	s.Len(cmds, 8)
-	s.True(strings.HasPrefix(cmds[5], "git fetch origin \"pull/9001/merge:evg-pr-test-"))
-	s.True(strings.HasPrefix(cmds[6], "git checkout \"evg-pr-test-"))
+	s.True(strings.HasPrefix(cmds[5], "git fetch origin \"pull/9001/merge:evg-merge-test-"))
+	s.True(strings.HasPrefix(cmds[6], "git checkout \"evg-merge-test-"))
 	s.Equal("git reset --hard abcdef", cmds[7])
 }
 
@@ -312,7 +311,7 @@ func (s *GitGetProjectSuite) TestBuildModuleCommand() {
 	}
 
 	// ensure module clone command with ssh URL does not inject token
-	cmds, err := c.buildModuleCloneCommand("git@github.com:deafgoat/mci_test.git", "deafgoat", "mci_test", "module", "master")
+	cmds, err := c.buildModuleCloneCommand("git@github.com:deafgoat/mci_test.git", "deafgoat", "mci_test", "module", "master", evergreen.PatchVersionRequester, nil)
 	s.NoError(err)
 	s.Require().Len(cmds, 5)
 	s.Equal("set -o xtrace", cmds[0])
@@ -322,7 +321,7 @@ func (s *GitGetProjectSuite) TestBuildModuleCommand() {
 	s.Equal("git checkout 'master'", cmds[4])
 
 	// ensure module clone command with http URL injects token
-	cmds, err = c.buildModuleCloneCommand("https://github.com/deafgoat/mci_test.git", "deafgoat", "mci_test", "module", "master")
+	cmds, err = c.buildModuleCloneCommand("https://github.com/deafgoat/mci_test.git", "deafgoat", "mci_test", "module", "master", evergreen.PatchVersionRequester, nil)
 	s.NoError(err)
 	s.Require().Len(cmds, 8)
 	s.Equal("set -o xtrace", cmds[0])
@@ -335,11 +334,30 @@ func (s *GitGetProjectSuite) TestBuildModuleCommand() {
 	s.Equal("git checkout 'master'", cmds[7])
 
 	// ensure insecure github url is force to use https
-	cmds, err = c.buildModuleCloneCommand("http://github.com/deafgoat/mci_test.git", "deafgoat", "mci_test", "module", "master")
+	cmds, err = c.buildModuleCloneCommand("http://github.com/deafgoat/mci_test.git", "deafgoat", "mci_test", "module", "master", evergreen.PatchVersionRequester, nil)
 	s.NoError(err)
 	s.Require().Len(cmds, 8)
 	s.Equal("echo \"git clone https://[redacted oauth token]@github.com/deafgoat/mci_test.git 'module'\"", cmds[3])
 	s.Equal("git clone https://GITHUBTOKEN@github.com/deafgoat/mci_test.git 'module'", cmds[4])
+
+	// with merge test-commit checkout
+	module := &patch.ModulePatch{
+		ModuleName: "test-module",
+		Githash:    "1234abcd",
+		PatchSet: patch.PatchSet{
+			Patch: "1234",
+		},
+	}
+	cmds, err = c.buildModuleCloneCommand("git@github.com:deafgoat/mci_test.git", "deafgoat", "mci_test", "module", "master", evergreen.MergeTestRequester, module)
+	s.NoError(err)
+	s.Require().Len(cmds, 7)
+	s.Equal("set -o xtrace", cmds[0])
+	s.Equal("set -o errexit", cmds[1])
+	s.Equal("git clone 'git@github.com:deafgoat/mci_test.git' 'module'", cmds[2])
+	s.Equal("cd module", cmds[3])
+	s.Regexp("^git fetch origin \"pull/1234/merge:evg-merge-test-", cmds[4])
+	s.Regexp("^git checkout 'evg-merge-test-", cmds[5])
+	s.Equal("git reset --hard 1234abcd", cmds[6])
 }
 
 func (s *GitGetProjectSuite) TestIsMailboxPatch() {
@@ -406,20 +424,4 @@ func (s *GitGetProjectSuite) TestAllowsEmptyPatches() {
 	s.Require().NotNil(msg)
 	s.Equal(level.Info, msg.Priority)
 	s.Equal("Skipping empty patch file...", msg.Message.String())
-}
-
-func TestParseGitUrl(t *testing.T) {
-	assert := assert.New(t)
-	sender := send.MakeInternalLogger()
-	logger := client.NewSingleChannelLogHarness("", sender)
-
-	httpsUrl := "https://github.com/evergreen-ci/sample.git"
-	owner, repo := parseGitUrl(httpsUrl, logger)
-	assert.Equal("evergreen-ci", owner)
-	assert.Equal("sample", repo)
-
-	sshUrl := "git@github.com:evergreen-ci/sample.git"
-	owner, repo = parseGitUrl(sshUrl, logger)
-	assert.Equal("evergreen-ci", owner)
-	assert.Equal("sample", repo)
 }
