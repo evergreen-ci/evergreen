@@ -89,14 +89,8 @@ func GetSender(ctx context.Context, prefix, taskId string) (send.Sender, error) 
 }
 
 func (a *Agent) makeLoggerProducer(ctx context.Context, tc *taskContext, c *model.LoggerConfig, commandName string) client.LoggerProducer {
-	path := filepath.Join(a.opts.WorkingDirectory, taskLogDirectory)
-	grip.Error(errors.Wrap(os.Mkdir(path, os.ModeDir|os.ModePerm), "error making log directory"))
-	// if this is a command-specific logger, create a dir for the command's logs separate from the overall task
-	if commandName != "" {
-		path = filepath.Join(path, commandName)
-		grip.Error(errors.Wrapf(os.Mkdir(path, os.ModeDir|os.ModePerm), "error making log directory for command %s", commandName))
-	}
-	config := a.convertLoggerConfig(tc, c, path)
+	config := a.prepLogger(tc, c, commandName)
+	grip.Info(config)
 
 	logger := a.comm.GetLoggerProducer(ctx, tc.task, &config)
 	loggerData := a.comm.GetLoggerMetadata()
@@ -122,67 +116,51 @@ func (a *Agent) makeLoggerProducer(ctx context.Context, tc *taskContext, c *mode
 	return logger
 }
 
-func (a *Agent) convertLoggerConfig(tc *taskContext, c *model.LoggerConfig, path string) client.LoggerConfig {
+func (a *Agent) prepLogger(tc *taskContext, c *model.LoggerConfig, commandName string) client.LoggerConfig {
+	logDir := filepath.Join(a.opts.WorkingDirectory, taskLogDirectory)
+	grip.Error(errors.Wrap(os.MkdirAll(logDir, os.ModeDir|os.ModePerm), "error making log directory"))
+	// if this is a command-specific logger, create a dir for the command's logs separate from the overall task
+	if commandName != "" {
+		logDir = filepath.Join(logDir, commandName)
+		grip.Error(errors.Wrapf(os.MkdirAll(logDir, os.ModeDir|os.ModePerm), "error making log directory for command %s", commandName))
+	}
 	config := client.LoggerConfig{}
 	for _, agentConfig := range c.Agent {
-		splunkServer, err := tc.expansions.ExpandString(agentConfig.SplunkServer)
-		if err != nil {
-			grip.Error(errors.Wrap(err, "error expanding splunk server"))
-		}
-		splunkToken, err := tc.expansions.ExpandString(agentConfig.SplunkToken)
-		if err != nil {
-			grip.Error(errors.Wrap(err, "error expanding splunk token"))
-		}
-		config.Agent = append(config.Agent, client.LogOpts{
-			LogkeeperURL:      a.opts.LogkeeperURL,
-			LogkeeperBuilder:  tc.taskModel.Id,
-			LogkeeperBuildNum: tc.taskModel.Execution,
-			Sender:            agentConfig.Type,
-			SplunkServerURL:   splunkServer,
-			SplunkToken:       splunkToken,
-			Filepath:          filepath.Join(path, agentLogFileName),
-		})
+		a.prepSingleLogger(tc, agentConfig, &config.Agent, logDir, agentLogFileName)
 	}
 	for _, systemConfig := range c.System {
-		splunkServer, err := tc.expansions.ExpandString(systemConfig.SplunkServer)
-		if err != nil {
-			grip.Error(errors.Wrap(err, "error expanding splunk server"))
-		}
-		splunkToken, err := tc.expansions.ExpandString(systemConfig.SplunkToken)
-		if err != nil {
-			grip.Error(errors.Wrap(err, "error expanding splunk token"))
-		}
-		config.System = append(config.System, client.LogOpts{
-			LogkeeperURL:      a.opts.LogkeeperURL,
-			LogkeeperBuilder:  tc.taskModel.Id,
-			LogkeeperBuildNum: tc.taskModel.Execution,
-			Sender:            systemConfig.Type,
-			SplunkServerURL:   splunkServer,
-			SplunkToken:       splunkToken,
-			Filepath:          filepath.Join(path, systemLogFileName),
-		})
+		a.prepSingleLogger(tc, systemConfig, &config.System, logDir, systemLogFileName)
 	}
 	for _, taskConfig := range c.Task {
-		splunkServer, err := tc.expansions.ExpandString(taskConfig.SplunkServer)
-		if err != nil {
-			grip.Error(errors.Wrap(err, "error expanding splunk server"))
-		}
-		splunkToken, err := tc.expansions.ExpandString(taskConfig.SplunkToken)
-		if err != nil {
-			grip.Error(errors.Wrap(err, "error expanding splunk token"))
-		}
-		config.Task = append(config.Task, client.LogOpts{
-			LogkeeperURL:      a.opts.LogkeeperURL,
-			LogkeeperBuilder:  tc.taskModel.Id,
-			LogkeeperBuildNum: tc.taskModel.Execution,
-			Sender:            taskConfig.Type,
-			SplunkServerURL:   splunkServer,
-			SplunkToken:       splunkToken,
-			Filepath:          filepath.Join(path, taskLogFileName),
-		})
+		a.prepSingleLogger(tc, taskConfig, &config.Task, logDir, taskLogFileName)
 	}
 
 	return config
+}
+
+func (a *Agent) prepSingleLogger(tc *taskContext, in model.LogOpts, out *[]client.LogOpts, logDir, fileName string) {
+	splunkServer, err := tc.expansions.ExpandString(in.SplunkServer)
+	if err != nil {
+		grip.Error(errors.Wrap(err, "error expanding splunk server"))
+	}
+	splunkToken, err := tc.expansions.ExpandString(in.SplunkToken)
+	if err != nil {
+		grip.Error(errors.Wrap(err, "error expanding splunk token"))
+	}
+	if in.LogDirectory != "" {
+		grip.Error(errors.Wrap(os.MkdirAll(in.LogDirectory, os.ModeDir|os.ModePerm), "error making log directory"))
+		logDir = in.LogDirectory
+	}
+	tc.logDirectories = append(tc.logDirectories, logDir)
+	*out = append(*out, client.LogOpts{
+		LogkeeperURL:      a.opts.LogkeeperURL,
+		LogkeeperBuilder:  tc.taskModel.Id,
+		LogkeeperBuildNum: tc.taskModel.Execution,
+		Sender:            in.Type,
+		SplunkServerURL:   splunkServer,
+		SplunkToken:       splunkToken,
+		Filepath:          filepath.Join(logDir, fileName),
+	})
 }
 
 func (a *Agent) uploadToS3(ctx context.Context, tc *taskContext) error {
@@ -191,28 +169,32 @@ func (a *Agent) uploadToS3(ctx context.Context, tc *taskContext) error {
 		return errors.Wrap(err, "error creating pail")
 	}
 
-	return a.uploadLogDir(ctx, tc, bucket, "")
+	catcher := grip.NewBasicCatcher()
+	for _, logDir := range tc.logDirectories {
+		catcher.Add(a.uploadLogDir(ctx, tc, bucket, logDir, ""))
+	}
+
+	return catcher.Resolve()
 }
 
-func (a *Agent) uploadLogDir(ctx context.Context, tc *taskContext, bucket pail.Bucket, name string) error {
+func (a *Agent) uploadLogDir(ctx context.Context, tc *taskContext, bucket pail.Bucket, directoryName, commandName string) error {
 	if tc.taskConfig == nil || tc.taskConfig.Task == nil {
 		return nil
 	}
 	catcher := grip.NewBasicCatcher()
-	path := filepath.Join(a.opts.WorkingDirectory, taskLogDirectory)
-	if name != "" {
-		path = filepath.Join(path, name)
+	if commandName != "" {
+		directoryName = filepath.Join(directoryName, commandName)
 	}
-	dir, err := ioutil.ReadDir(path)
+	dir, err := ioutil.ReadDir(directoryName)
 	if err != nil {
 		catcher.Add(errors.Wrap(err, "error reading log directory"))
 		return catcher.Resolve()
 	}
 	for _, f := range dir {
 		if f.IsDir() {
-			catcher.Add(a.uploadLogDir(ctx, tc, bucket, f.Name()))
+			catcher.Add(a.uploadLogDir(ctx, tc, bucket, directoryName, f.Name()))
 		} else {
-			catcher.Add(a.uploadSingleFile(ctx, tc, bucket, f.Name(), tc.taskConfig.Task.Id, tc.taskConfig.Task.Execution, name))
+			catcher.Add(a.uploadSingleFile(ctx, tc, bucket, f.Name(), tc.taskConfig.Task.Id, tc.taskConfig.Task.Execution, commandName))
 		}
 	}
 

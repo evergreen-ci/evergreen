@@ -55,6 +55,7 @@ type taskContext struct {
 	runGroupSetup  bool
 	taskConfig     *model.TaskConfig
 	taskDirectory  string
+	logDirectories []string
 	timeout        time.Duration
 	timedOut       bool
 	project        *model.Project
