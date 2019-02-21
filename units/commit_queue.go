@@ -107,7 +107,7 @@ func (j *commitQueueJob) Run(ctx context.Context) {
 	if nextItem == nil {
 		return
 	}
-	cq.SetProcessing(true)
+	j.AddError(errors.Wrap(cq.SetProcessing(true), "can't set processing to true"))
 
 	conf := j.env.Settings()
 	githubToken, err := conf.GetGithubOauthToken()
@@ -253,15 +253,19 @@ func getModules(ctx context.Context, githubToken string, nextItem *commitqueue.C
 			return nil, nil, true, errors.Wrapf(err, "module '%s' misconfigured (malformed URL)", mod.Module)
 		}
 
-		pr, dequeue, err := checkPR(ctx, githubToken, mod.Issue, owner, repo)
-		if err != nil {
-			return nil, nil, dequeue, errors.Wrap(err, "PR not valid for merge")
+		githash := ""
+		if mod.Issue != "" {
+			pr, dequeue, err := checkPR(ctx, githubToken, mod.Issue, owner, repo)
+			if err != nil {
+				return nil, nil, dequeue, errors.Wrap(err, "PR not valid for merge")
+			}
+			modulePRs = append(modulePRs, pr)
+			githash = pr.GetMergeCommitSHA()
 		}
-		modulePRs = append(modulePRs, pr)
 
 		modulePatches = append(modulePatches, patch.ModulePatch{
 			ModuleName: mod.Module,
-			Githash:    pr.GetMergeCommitSHA(),
+			Githash:    githash,
 			PatchSet: patch.PatchSet{
 				Patch: mod.Issue,
 			},

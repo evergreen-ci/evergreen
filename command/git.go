@@ -314,7 +314,8 @@ func (c *gitFetchProject) Execute(ctx context.Context,
 				revision = module.Branch
 			}
 		}
-		owner, repo, err := thirdparty.ParseGitUrl(module.Repo)
+		var owner, repo string
+		owner, repo, err = thirdparty.ParseGitUrl(module.Repo)
 		if err != nil {
 			logger.Execution().Error(err.Error())
 		}
