@@ -402,7 +402,15 @@ func MarkEnd(t *task.Task, caller string, finishTime time.Time, detail *apimodel
 		grip.Warningf("Tried to mark task %s as finished twice", t.Id)
 		return nil
 	}
-
+	if util.IsZeroTime(t.StartTime) {
+		grip.Warning(message.Fields{
+			"message":      "Task is missing start time",
+			"task_id":      t.Id,
+			"execution":    t.Execution,
+			"requester":    t.Requester,
+			"activated_by": t.ActivatedBy,
+		})
+	}
 	err := t.MarkEnd(finishTime, detail)
 	if err != nil {
 		return err

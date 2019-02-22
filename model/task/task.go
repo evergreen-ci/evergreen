@@ -730,13 +730,6 @@ func (t *Task) MarkEnd(finishTime time.Time, detail *apimodels.TaskEndDetail) er
 		if timedOutStart.Before(t.IngestTime) {
 			t.StartTime = t.IngestTime
 		}
-		grip.Warning(message.Fields{
-			"message":      "Task is missing start time",
-			"task_id":      t.Id,
-			"execution":    t.Execution,
-			"requester":    t.Requester,
-			"activated_by": t.ActivatedBy,
-		})
 	}
 
 	t.TimeTaken = finishTime.Sub(t.StartTime)
