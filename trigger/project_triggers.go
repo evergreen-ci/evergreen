@@ -55,6 +55,10 @@ func TriggerDownstreamVersion(args ProcessorArgs) (*model.Version, error) {
 	if err != nil {
 		return nil, errors.Wrap(err, "error creating version")
 	}
+	err = args.SourceVersion.AddSatisfiedTrigger(args.DefinitionID)
+	if err != nil {
+		return nil, err
+	}
 	err = model.UpdateLastRevision(v.Identifier, v.Revision)
 	if err != nil {
 		return nil, errors.Wrap(err, "error updating last revision")

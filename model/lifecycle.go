@@ -265,7 +265,6 @@ func SetVersionPriority(versionId string, priority int64) error {
 // If abortInProgress is true, it also sets the abort flag on any in-progress tasks.
 func RestartVersion(versionId string, taskIds []string, abortInProgress bool, caller string) error {
 	// restart all the 'not in-progress' tasks for the version
-	t0 := time.Now()
 	allTasks, err := task.FindWithDisplayTasks(task.ByDispatchedWithIdsVersionAndStatus(taskIds, versionId, task.CompletedStatuses))
 	if err != nil && err != mgo.ErrNotFound {
 		return err
@@ -282,13 +281,6 @@ func RestartVersion(versionId string, taskIds []string, abortInProgress bool, ca
 		}
 	}
 
-	grip.Info(message.Fields{
-		"message":   "Time to archive",
-		"modify_by": "restart",
-		"versionId": versionId,
-		"duration":  time.Since(t0).String(),
-	})
-	t0 = time.Now()
 	if abortInProgress {
 		// abort in-progress tasks in this build
 		_, err = task.UpdateAll(
@@ -317,13 +309,6 @@ func RestartVersion(versionId string, taskIds []string, abortInProgress bool, ca
 	if err = task.ResetTasks(restartIds); err != nil {
 		return errors.WithStack(err)
 	}
-	grip.Info(message.Fields{
-		"message":   "Time to abort/indicate restart",
-		"modify_by": "restart",
-		"versionId": versionId,
-		"duration":  time.Since(t0).String(),
-	})
-	t0 = time.Now()
 
 	// TODO figure out a way to coalesce updates for task cache for the same build, so we
 	// only need to do one update per-build instead of one per-task here.
@@ -336,14 +321,6 @@ func RestartVersion(versionId string, taskIds []string, abortInProgress bool, ca
 			return errors.WithStack(err)
 		}
 	}
-
-	grip.Info(message.Fields{
-		"message":   "Time to reset cached tasks",
-		"modify_by": "restart",
-		"versionId": versionId,
-		"duration":  time.Since(t0).String(),
-	})
-	t0 = time.Now()
 
 	// reset the build statuses, once per build
 	buildIdList := make([]string, 0, len(buildIdSet))
@@ -368,12 +345,6 @@ func RestartVersion(versionId string, taskIds []string, abortInProgress bool, ca
 		}
 	}
 
-	grip.Info(message.Fields{
-		"message":   "Time to update builds/activation",
-		"modify_by": "restart",
-		"versionId": versionId,
-		"duration":  time.Since(t0).String(),
-	})
 	return nil
 }
 
@@ -525,9 +496,6 @@ type BuildCreateArgs struct {
 // CreateBuildFromVersion creates a build given all of the necessary information
 // from the corresponding version and project and a list of tasks.
 func CreateBuildFromVersion(args BuildCreateArgs) (string, error) {
-
-	grip.Debugf("Creating %s %s build, activated: %v", args.Version.Requester, args.BuildName, args.Activated)
-
 	// find the build variant for this project/build
 	buildVariant := args.Project.FindBuildVariant(args.BuildName)
 	if buildVariant == nil {

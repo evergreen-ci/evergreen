@@ -306,7 +306,7 @@ func validatePR(pr *github.PullRequest) error {
 		catcher.Add(errors.New("no valid title"))
 	}
 	if pr.Merged == nil {
-		catcher.Add(errors.New("no valid merged"))
+		catcher.Add(errors.New("no valid merged status"))
 	}
 
 	return catcher.Resolve()

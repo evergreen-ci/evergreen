@@ -740,6 +740,11 @@ func validatePluginCommands(project *model.Project) ValidationErrors {
 			)
 		}
 
+		if len(commands.List()) == 0 {
+			errs = append(errs,
+				ValidationError{Message: fmt.Sprintf("function %s must have a command", funcName)})
+		}
+
 		for _, c := range commands.List() {
 			if c.Function != "" {
 				errs = append(errs,
@@ -1056,7 +1061,7 @@ func checkOrAddTask(task, variant string, tasksFound map[string]interface{}) *Va
 func validateCreateHosts(p *model.Project) ValidationErrors {
 	ts := p.TasksThatCallCommand(evergreen.CreateHostCommandName)
 	errs := validateTimesCalledPerTask(p, ts, evergreen.CreateHostCommandName, 3)
-	errs = append(errs, validateTimesCalledTotal(p, ts, evergreen.CreateHostCommandName, 25)...)
+	errs = append(errs, validateTimesCalledTotal(p, ts, evergreen.CreateHostCommandName, 30)...)
 	return errs
 }
 

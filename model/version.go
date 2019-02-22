@@ -52,6 +52,7 @@ type Version struct {
 	// this comment, if they can be identified
 	AuthorID string `bson:"author_id,omitempty" json:"author_id,omitempty"`
 
+	SatisfiedTriggers []string `bson:"satisfied_triggers,omitempty" json:"satisfied_triggers,omitempty"`
 	// Fields set if triggered by an upstream build
 	TriggerID    string `bson:"trigger_id,omitempty" json:"trigger_id,omitempty"`
 	TriggerType  string `bson:"trigger_type,omitempty" json:"trigger_type,omitempty"`
@@ -80,6 +81,14 @@ func (self *Version) UpdateBuildVariants() error {
 
 func (self *Version) Insert() error {
 	return db.Insert(VersionCollection, self)
+}
+
+func (v *Version) AddSatisfiedTrigger(definitionID string) error {
+	if v.SatisfiedTriggers == nil {
+		v.SatisfiedTriggers = []string{}
+	}
+	v.SatisfiedTriggers = append(v.SatisfiedTriggers, definitionID)
+	return errors.Wrap(AddSatisfiedTrigger(v.Id, definitionID), "error adding satisfied trigger")
 }
 
 // VersionBuildStatus stores metadata relating to each build

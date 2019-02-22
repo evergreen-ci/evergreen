@@ -1105,7 +1105,6 @@ func (t *Task) Insert() error {
 // Inserts the task into the old_tasks collection
 func (t *Task) Archive() error {
 	var update bson.M
-
 	if t.DisplayOnly {
 		for _, et := range t.ExecutionTasks {
 			execTask, err := FindOne(ById(et))
@@ -1140,6 +1139,7 @@ func (t *Task) Archive() error {
 	if err != nil {
 		return errors.Wrap(err, "task.Archive() failed")
 	}
+
 	archiveTask := *t
 	archiveTask.Id = fmt.Sprintf("%v_%v", t.Id, t.Execution)
 	archiveTask.OldTaskId = t.Id
@@ -1148,6 +1148,7 @@ func (t *Task) Archive() error {
 	if err != nil {
 		return errors.Wrap(err, "task.Archive() failed")
 	}
+
 	err = event.UpdateExecutions(t.HostId, t.Id, t.Execution)
 	if err != nil {
 		return errors.Wrap(err, "unable to update host event logs")

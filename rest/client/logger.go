@@ -46,6 +46,7 @@ type logHarness struct {
 	system    grip.Journaler
 	mu        sync.Mutex
 	writers   []io.WriteCloser
+	closed    bool
 }
 
 func (l *logHarness) Execution() grip.Journaler { return l.execution }
@@ -73,6 +74,10 @@ func (l *logHarness) SystemWriter(p level.Priority) io.WriteCloser {
 func (l *logHarness) Close() error {
 	l.mu.Lock()
 	defer l.mu.Unlock()
+	if l.closed {
+		return nil
+	}
+	l.closed = true
 
 	catcher := grip.NewBasicCatcher()
 

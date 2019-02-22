@@ -259,7 +259,7 @@ Evergreen - {{Trunc .Task.Revision 10}} / {{.Task.BuildVariantDisplay}} / {{.Tas
                       <td><a href="/[[task.upstream_data.trigger_type]]/[[task.upstream_data.trigger_id]]">Triggered from [[task.upstream_data.project_name]]</a></td>
                     </tr>
                     <tr ng-show="task.display_task">
-                      <td class="icon"><i class="fa fa-link"></i></td>`
+                      <td class="icon"><i class="fa fa-link"></i></td>
                       <td><a href="/task/[[task.display_task]]">Parent display task</a></td>
                     </tr>
                     <tr ng-if="task.display_only">
@@ -484,7 +484,7 @@ Evergreen - {{Trunc .Task.Revision 10}} / {{.Task.BuildVariantDisplay}} / {{.Tas
         <a class="pointer btn btn-default" ng-class="{active:currentLogs==eventLogs}" ng-click="setCurrentLogs(eventLogs)">Event logs</a>
       </div>
     </h3>
-    <div class="row" ng-show="task.logs && (task.logs.agent.length > 0 || task.logs.agent.task > 0 || task.logs.agent.system > 0)">
+    <div class="row" ng-show="task.logs && (task.logs.agent.length > 0 || task.logs.task.length > 0 || task.logs.system.length > 0)">
       <div class="col-lg-12">
         <pre>
 <span class="">External Task Logs:</span>

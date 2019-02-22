@@ -474,9 +474,7 @@ func (s *AgentSuite) TestPrepareNextTask() {
 		},
 	}
 	tc.taskDirectory = "task_directory"
-	var exit bool
-	tc, exit = s.a.prepareNextTask(context.Background(), nextTask, tc)
-	s.False(exit)
+	tc = s.a.prepareNextTask(context.Background(), nextTask, tc)
 	s.True(tc.runGroupSetup, "if the next task is not in a group, runGroupSetup should be true")
 	s.Equal("", tc.taskGroup)
 	s.Empty(tc.taskDirectory)
@@ -491,17 +489,10 @@ func (s *AgentSuite) TestPrepareNextTask() {
 	}
 	tc.logger = s.a.comm.GetLoggerProducer(context.Background(), s.tc.task, nil)
 	tc.taskDirectory = "task_directory"
-	tc, exit = s.a.prepareNextTask(context.Background(), nextTask, tc)
-	s.False(exit)
+	tc = s.a.prepareNextTask(context.Background(), nextTask, tc)
 	s.False(tc.runGroupSetup, "if the next task is in the same group as the previous task, runGroupSetup should be false")
 	s.Equal("foo", tc.taskGroup)
 	s.Equal("task_directory", tc.taskDirectory)
-
-	nextTask.NewAgent = true
-	tc, exit = s.a.prepareNextTask(context.Background(), nextTask, tc)
-	s.True(exit, "if NewAgent is true and we're in a task group, exit should be true")
-	s.Equal(&taskContext{}, tc, "if NewAgent is true and we're in a task group, the task context should be empty")
-	nextTask.NewAgent = false // reset NewAgent
 
 	nextTask.TaskGroup = "foo"
 	tc.taskGroup = "foo"
@@ -513,8 +504,7 @@ func (s *AgentSuite) TestPrepareNextTask() {
 	}
 	tc.logger = s.a.comm.GetLoggerProducer(context.Background(), s.tc.task, nil)
 	tc.taskDirectory = "task_directory"
-	tc, exit = s.a.prepareNextTask(context.Background(), nextTask, tc)
-	s.False(exit)
+	tc = s.a.prepareNextTask(context.Background(), nextTask, tc)
 	s.True(tc.runGroupSetup, "if the next task is a different group from the previous task, runGroupSetup should be true")
 	s.Equal("foo", tc.taskGroup)
 	s.Empty(tc.taskDirectory)
@@ -528,8 +518,7 @@ func (s *AgentSuite) TestPrepareNextTask() {
 	nextTask.TaskGroup = "bar"
 	tc.taskGroup = "foo"
 	tc.taskDirectory = "task_directory"
-	tc, exit = s.a.prepareNextTask(context.Background(), nextTask, tc)
-	s.False(exit)
+	tc = s.a.prepareNextTask(context.Background(), nextTask, tc)
 	s.True(tc.runGroupSetup, "if the next task is in a different group from the previous task, runGroupSetup should be true")
 	s.Equal("bar", tc.taskGroup)
 	s.Empty(tc.taskDirectory)
@@ -546,8 +535,7 @@ func (s *AgentSuite) TestPrepareNextTask() {
 	nextTask.Build = "build_id_2"
 	tc.taskGroup = "bar"
 	tc.taskDirectory = "task_directory"
-	tc, exit = s.a.prepareNextTask(context.Background(), nextTask, tc)
-	s.False(exit)
+	tc = s.a.prepareNextTask(context.Background(), nextTask, tc)
 	s.True(tc.runGroupSetup, "if the next task in the same version but a different build, runSetupGroup should be true")
 	s.Equal("bar", tc.taskGroup)
 	s.Empty(tc.taskDirectory)
@@ -743,7 +731,7 @@ task_groups:
 	defer cancel()
 	s.a.runPostGroupCommands(ctx, s.tc)
 	msgs := s.mockCommunicator.GetMockMessages()["task_id"]
-	s.Equal("Running command 'shell.exec' (step 1 of 1)", msgs[0].Message)
+	s.Equal("Running command 'shell.exec' (step 1 of 1)", msgs[1].Message)
 	s.Contains(msgs[len(msgs)-1].Message, "Finished 'shell.exec'")
 }
 

@@ -289,6 +289,7 @@ func FinalizePatch(ctx context.Context, p *patch.Patch, requester string, github
 		if _, ok := variantsProcessed[vt.Variant]; ok {
 			continue
 		}
+		variantsProcessed[vt.Variant] = true
 
 		var buildId string
 		var displayNames []string

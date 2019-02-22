@@ -71,15 +71,7 @@ type NextTaskResponse struct {
 	TaskGroup  string `json:"task_group,omitempty"`
 	Version    string `json:"version,omitempty"`
 	Build      string `json:"build,omitempty"`
-	// ShouldExit indicates that something has gone wrong, so the agent
-	// should exit immediately when it receives this message. ShouldExit can
-	// interrupt a task group.
-	ShouldExit bool `json:"should_exit,omitempty"`
-	// NewAgent indicates a new agent available, so the agent should exit
-	// gracefully. Practically speaking, this means that if the agent is
-	// currently in a task group, it should only exit when it has finished
-	// the task group.
-	NewAgent bool `json:"new_agent,omitempty"`
+	ShouldExit bool   `json:"should_exit,omitempty"`
 }
 
 // EndTaskResponse is what is returned when the task ends

@@ -351,4 +351,12 @@ func TestProjectTriggerIntegration(t *testing.T) {
 		assert.Equal(e.ID, t.TriggerEvent)
 		assert.Contains(t.DisplayName, "test")
 	}
+
+	// verify that triggering this version again does nothing
+	upstreamVersionFromDB, err := model.VersionFindOneId(upstreamVersion.Id)
+	assert.NoError(err)
+	assert.Contains(upstreamVersionFromDB.SatisfiedTriggers, "def1")
+	downstreamVersions, err = EvalProjectTriggers(&e, TriggerDownstreamVersion)
+	assert.NoError(err)
+	assert.Len(downstreamVersions, 0)
 }

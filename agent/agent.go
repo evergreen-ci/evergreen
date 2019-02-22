@@ -46,6 +46,7 @@ type Options struct {
 type taskContext struct {
 	currentCommand command.Command
 	expansions     util.Expansions
+	expVars        *apimodels.ExpansionVars
 	logger         client.LoggerProducer
 	logs           *apimodels.TaskLogs
 	statsCollector *StatsCollector
@@ -102,8 +103,6 @@ func (a *Agent) loop(ctx context.Context) error {
 		lgrCtx        context.Context
 		cancel        context.CancelFunc
 		jitteredSleep time.Duration
-
-		exit bool
 	)
 	lgrCtx, cancel = context.WithCancel(ctx)
 	defer cancel()
@@ -143,27 +142,14 @@ LOOP:
 					timer.Reset(0)
 					continue LOOP
 				}
-				tc, exit = a.prepareNextTask(ctx, nextTask, tc)
-				if exit {
-					// Query for next task, this time with an empty task group,
-					// to get a ShouldExit from the API, and set NeedsNewAgent.
-					timer.Reset(0)
-					continue LOOP
-				}
+				tc = a.prepareNextTask(ctx, nextTask, tc)
 				if err := a.fetchProjectConfig(ctx, tc); err != nil {
 					grip.Error(message.WrapError(err, message.Fields{
 						"message": "error fetching project config; will attempt at a later point",
 						"task":    tc.task.ID,
 					}))
 				}
-				if err := a.resetLogging(lgrCtx, tc); err != nil {
-					grip.Critical(message.WrapError(err, message.Fields{
-						"message": "error setting up logger",
-						"task":    tc.task.ID,
-					}))
-					timer.Reset(0)
-					continue LOOP
-				}
+				a.resetLogging(lgrCtx, tc)
 				tskCtx, tskCancel := context.WithCancel(ctx)
 				defer tskCancel()
 				shouldExit, err := a.runTask(tskCtx, tskCancel, tc)
@@ -195,16 +181,13 @@ LOOP:
 	}
 }
 
-func (a *Agent) prepareNextTask(ctx context.Context, nextTask *apimodels.NextTaskResponse, tc *taskContext) (*taskContext, bool) {
+func (a *Agent) prepareNextTask(ctx context.Context, nextTask *apimodels.NextTaskResponse, tc *taskContext) *taskContext {
 	setupGroup := false
 	taskDirectory := tc.taskDirectory
 	if nextTaskHasDifferentTaskGroupOrBuild(nextTask, tc) {
 		setupGroup = true
 		taskDirectory = ""
 		a.runPostGroupCommands(ctx, tc)
-		if nextTask.NewAgent {
-			return &taskContext{}, true
-		}
 	}
 	return &taskContext{
 		task: client.TaskData{
@@ -214,7 +197,7 @@ func (a *Agent) prepareNextTask(ctx context.Context, nextTask *apimodels.NextTas
 		taskGroup:     nextTask.TaskGroup,
 		runGroupSetup: setupGroup,
 		taskDirectory: taskDirectory,
-	}, false
+	}
 }
 
 func nextTaskHasDifferentTaskGroupOrBuild(nextTask *apimodels.NextTaskResponse, tc *taskContext) bool {
@@ -247,14 +230,23 @@ func (a *Agent) fetchProjectConfig(ctx context.Context, tc *taskContext) error {
 	if err != nil {
 		return errors.Wrap(err, "error getting expansions")
 	}
+	expVars, err := a.comm.FetchExpansionVars(ctx, tc.task)
+	if err != nil {
+		return errors.Wrap(err, "error getting project vars")
+	}
+	exp.Update(expVars.Vars)
 	tc.version = v
 	tc.taskModel = taskModel
 	tc.project = project
 	tc.expansions = exp
+	tc.expVars = expVars
 	return nil
 }
 
-func (a *Agent) resetLogging(ctx context.Context, tc *taskContext) error {
+func (a *Agent) resetLogging(ctx context.Context, tc *taskContext) {
+	if tc.logger != nil {
+		grip.Error(tc.logger.Close())
+	}
 	grip.Error(os.RemoveAll(filepath.Join(a.opts.WorkingDirectory, taskLogDirectory)))
 	if tc.project != nil && tc.project.Loggers != nil {
 		tc.logger = a.makeLoggerProducer(ctx, tc, tc.project.Loggers, "")
@@ -263,14 +255,9 @@ func (a *Agent) resetLogging(ctx context.Context, tc *taskContext) error {
 	}
 
 	sender, err := GetSender(ctx, a.opts.LogPrefix, tc.task.ID)
-	if err != nil {
-		return errors.Wrap(err, "problem getting sender")
-	}
-	err = grip.SetSender(sender)
-	if err != nil {
-		return errors.Wrap(err, "problem setting sender")
-	}
-	return nil
+	grip.Error(errors.Wrap(err, "problem getting sender"))
+
+	grip.Error(errors.Wrap(grip.SetSender(sender), "problem setting sender"))
 }
 
 // runTask returns true if the agent should exit, and separate an error if relevant
@@ -433,10 +420,7 @@ func (a *Agent) runPostGroupCommands(ctx context.Context, tc *taskContext) {
 	if tc.taskConfig == nil {
 		return
 	}
-	if err := a.resetLogging(ctx, tc); err != nil {
-		grip.Error(errors.Wrap(err, "error resetting logging"))
-		return
-	}
+	a.resetLogging(ctx, tc)
 	defer tc.logger.Close()
 	taskGroup, err := model.GetTaskGroup(tc.taskGroup, tc.taskConfig)
 	if err != nil {
