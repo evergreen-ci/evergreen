@@ -29,7 +29,9 @@ func (cq *APICommitQueue) BuildFromService(h interface{}) error {
 	cq.ProjectID = ToAPIString(cqService.ProjectID)
 	for _, item := range cqService.Queue {
 		cqItem := APICommitQueueItem{}
-		cqItem.BuildFromService(item)
+		if err := cqItem.BuildFromService(item); err != nil {
+			return errors.Wrap(err, "can't build API commit queue item from db model")
+		}
 		cq.Queue = append(cq.Queue, cqItem)
 	}
 

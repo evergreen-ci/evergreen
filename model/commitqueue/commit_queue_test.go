@@ -67,10 +67,10 @@ func (s *CommitQueueSuite) TestNext() {
 	s.NoError(s.q.Enqueue(sampleCommitQueueItem))
 	s.Len(s.q.Queue, 1)
 
-	s.q.SetProcessing(true)
+	s.NoError(s.q.SetProcessing(true))
 	s.Nil(s.q.Next())
 
-	s.q.SetProcessing(false)
+	s.NoError(s.q.SetProcessing(false))
 	s.NotNil(s.q.Next())
 	s.Equal(s.q.Next().Issue, "c123")
 }
@@ -105,9 +105,11 @@ func (s *CommitQueueSuite) TestRemoveOne() {
 	s.Equal("c123", items[0].Issue)
 	s.Equal("e345", items[1].Issue)
 
-	s.q.SetProcessing(true)
+	s.NoError(s.q.SetProcessing(true))
 	s.Nil(s.q.Next())
-	s.q.Remove("c123")
+	found, err = s.q.Remove("c123")
+	s.True(found)
+	s.NoError(err)
 	s.NotNil(s.q.Next())
 	s.Equal(s.q.Next().Issue, "e345")
 }

@@ -151,7 +151,9 @@ func (pc *MockCommitQueueConnector) EnqueueItem(owner, repo, baseBranch string, 
 	}
 
 	apiItem := restModel.APICommitQueueItem{}
-	apiItem.BuildFromService(item)
+	if err := apiItem.BuildFromService(item); err != nil {
+		return errors.Wrap(err, "can't build API commit queue item from db model")
+	}
 
 	queueID := owner + "." + repo + "." + baseBranch
 	pc.Queue[queueID] = append(pc.Queue[queueID], apiItem)
