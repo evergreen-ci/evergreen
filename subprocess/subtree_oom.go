@@ -3,12 +3,13 @@ package subprocess
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"net/http"
 	"os/exec"
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/evergreen-ci/gimlet"
 
 	"github.com/mongodb/grip"
 
@@ -78,6 +79,7 @@ func ClearOOMHandler() http.HandlerFunc {
 
 		if err := resp.Clear(ctx); err != nil {
 			grip.Error(err)
+			gimlet.WriteJSONInternalError(w, err.Error())
 			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
@@ -85,6 +87,7 @@ func ClearOOMHandler() http.HandlerFunc {
 		out, err := json.MarshalIndent(resp, " ", " ")
 		if err != nil {
 			grip.Error(err)
+			gimlet.WriteJSONInternalError(w, err.Error())
 			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
@@ -105,6 +108,7 @@ func CheckOOMHandler() http.HandlerFunc {
 
 		if err := resp.Check(ctx); err != nil {
 			grip.Error(err)
+			gimlet.WriteJSONInternalError(w, err.Error())
 			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
@@ -112,11 +116,11 @@ func CheckOOMHandler() http.HandlerFunc {
 		out, err := json.MarshalIndent(resp, " ", " ")
 		if err != nil {
 			grip.Error(err)
+			gimlet.WriteJSONInternalError(w, err.Error())
 			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
 
-		fmt.Println(string(out))
 		w.Header().Set("Content-Type", "application/json; charset=utf-8")
 		w.WriteHeader(http.StatusOK)
 		_, err = w.Write(out)
