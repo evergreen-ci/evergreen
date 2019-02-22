@@ -1614,6 +1614,13 @@ func (t *Task) blockedStatePrivate() (string, error) {
 	}
 	for _, dependency := range t.DependsOn {
 		depTask := taskMap[dependency.TaskId]
+		if depTask == nil {
+			grip.Error(message.Fields{
+				"message": "task does not exist",
+				"task_id": dependency.TaskId,
+			})
+			continue
+		}
 		state, err := depTask.blockedStatePrivate()
 		if err != nil {
 			return "", err
