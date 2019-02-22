@@ -333,17 +333,11 @@ func (c *gitFetchProject) Execute(ctx context.Context,
 		var modulePatch *patch.ModulePatch
 		if p != nil {
 			// find module among the patch's Patches
-			moduleIndex := -1
-			for i, modulePatch := range p.Patches {
-				if modulePatch.ModuleName == moduleName {
-					moduleIndex = i
+			for i := range p.Patches {
+				if p.Patches[i].ModuleName == moduleName {
+					modulePatch = &p.Patches[i]
 					break
 				}
-			}
-			// not found
-			if moduleIndex == -1 {
-				logger.Execution().Errorf("module '%s' not found in patch", moduleName)
-				continue
 			}
 		}
 
