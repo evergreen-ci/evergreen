@@ -8,6 +8,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/evergreen-ci/evergreen/subprocess"
+	"github.com/evergreen-ci/evergreen/util"
+
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/rest/client"
 	"github.com/mongodb/grip"
@@ -123,4 +126,9 @@ func (s *StatusSuite) TestCheckOOMSucceeds() {
 	resp, err := http.Get("http://127.0.0.1:2286/oom/check")
 	s.Require().NoError(err)
 	s.Equal(200, resp.StatusCode)
+
+	tracker := subprocess.OOMTracker{}
+	err = util.ReadJSONInto(resp.Body, &tracker)
+	s.Equal(false, tracker.WasOOMKilled)
+	s.Len(tracker.Pids, 0)
 }
