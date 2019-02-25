@@ -145,7 +145,7 @@ LOOP:
 					continue LOOP
 				}
 				tc = a.prepareNextTask(ctx, nextTask, tc)
-				if err := a.fetchProjectConfig(ctx, tc); err != nil {
+				if err = a.fetchProjectConfig(ctx, tc); err != nil {
 					grip.Error(message.WrapError(err, message.Fields{
 						"message": "error fetching project config; will attempt at a later point",
 						"task":    tc.task.ID,

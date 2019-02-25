@@ -155,10 +155,11 @@ func (s *GitGetProjectSuite) TestValidateGitCommands() {
 	comm := client.NewMock("http://localhost.com")
 	logger, err := comm.GetLoggerProducer(ctx, client.TaskData{ID: conf.Task.Id, Secret: conf.Task.Secret}, nil)
 	s.NoError(err)
+	var pluginCmds []Command
 
 	for _, task := range conf.Project.Tasks {
 		for _, command := range task.Commands {
-			pluginCmds, err := Render(command, conf.Project.Functions)
+			pluginCmds, err = Render(command, conf.Project.Functions)
 			s.NoError(err)
 			s.NotNil(pluginCmds)
 			err = pluginCmds[0].Execute(ctx, comm, logger, conf)
