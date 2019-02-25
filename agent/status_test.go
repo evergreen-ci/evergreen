@@ -128,7 +128,7 @@ func (s *StatusSuite) TestCheckOOMSucceeds() {
 	s.Equal(200, resp.StatusCode)
 
 	tracker := subprocess.OOMTracker{}
-	err = util.ReadJSONInto(resp.Body, &tracker)
+	s.NoError(util.ReadJSONInto(resp.Body, &tracker))
 	s.Equal(false, tracker.WasOOMKilled)
 	s.Len(tracker.Pids, 0)
 }
