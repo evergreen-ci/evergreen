@@ -833,6 +833,7 @@ type APIAWSConfig struct {
 	S3Key     APIString `json:"s3_key"`
 	S3Secret  APIString `json:"s3_secret"`
 	Bucket    APIString `json:"bucket"`
+	S3BaseURL APIString `json:"s3_base_url"`
 }
 
 func (a *APIAWSConfig) BuildFromService(h interface{}) error {
@@ -843,6 +844,7 @@ func (a *APIAWSConfig) BuildFromService(h interface{}) error {
 		a.S3Key = ToAPIString(v.S3Key)
 		a.S3Secret = ToAPIString(v.S3Secret)
 		a.Bucket = ToAPIString(v.Bucket)
+		a.S3BaseURL = ToAPIString(v.S3BaseURL)
 	default:
 		return errors.Errorf("%T is not a supported type", h)
 	}
@@ -856,6 +858,7 @@ func (a *APIAWSConfig) ToService() (interface{}, error) {
 		S3Key:     FromAPIString(a.S3Key),
 		S3Secret:  FromAPIString(a.S3Secret),
 		Bucket:    FromAPIString(a.Bucket),
+		S3BaseURL: FromAPIString(a.S3BaseURL),
 	}, nil
 }
 

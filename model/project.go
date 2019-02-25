@@ -386,7 +386,7 @@ type LogOpts struct {
 	Type         string `yaml:"type" bson:"type"`
 	SplunkServer string `yaml:"splunk_server,omitempty" bson:"splunk_server,omitempty"`
 	SplunkToken  string `yaml:"splunk_token,omitempty" bson:"splunk_token,omitempty"`
-	Filepath     string `yaml:"-" bson:"-"`
+	LogDirectory string `yaml:"log_directory" bson:"log_directory"`
 }
 
 func (c *LoggerConfig) IsValid() error {

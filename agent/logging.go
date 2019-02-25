@@ -3,6 +3,7 @@ package agent
 import (
 	"context"
 	"fmt"
+	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -88,9 +89,8 @@ func GetSender(ctx context.Context, prefix, taskId string) (send.Sender, error) 
 }
 
 func (a *Agent) makeLoggerProducer(ctx context.Context, tc *taskContext, c *model.LoggerConfig, commandName string) client.LoggerProducer {
-	path := filepath.Join(a.opts.WorkingDirectory, taskLogDirectory)
-	grip.Error(errors.Wrap(os.Mkdir(path, os.ModeDir|os.ModePerm), "error making log directory"))
-	config := a.convertLoggerConfig(tc, c)
+	config := a.prepLogger(tc, c, commandName)
+	grip.Info(config)
 
 	logger := a.comm.GetLoggerProducer(ctx, tc.task, &config)
 	loggerData := a.comm.GetLoggerMetadata()
@@ -116,67 +116,51 @@ func (a *Agent) makeLoggerProducer(ctx context.Context, tc *taskContext, c *mode
 	return logger
 }
 
-func (a *Agent) convertLoggerConfig(tc *taskContext, c *model.LoggerConfig) client.LoggerConfig {
+func (a *Agent) prepLogger(tc *taskContext, c *model.LoggerConfig, commandName string) client.LoggerConfig {
+	logDir := filepath.Join(a.opts.WorkingDirectory, taskLogDirectory)
+	grip.Error(errors.Wrap(os.MkdirAll(logDir, os.ModeDir|os.ModePerm), "error making log directory"))
+	// if this is a command-specific logger, create a dir for the command's logs separate from the overall task
+	if commandName != "" {
+		logDir = filepath.Join(logDir, commandName)
+		grip.Error(errors.Wrapf(os.MkdirAll(logDir, os.ModeDir|os.ModePerm), "error making log directory for command %s", commandName))
+	}
 	config := client.LoggerConfig{}
 	for _, agentConfig := range c.Agent {
-		splunkServer, err := tc.expansions.ExpandString(agentConfig.SplunkServer)
-		if err != nil {
-			grip.Error(errors.Wrap(err, "error expanding splunk server"))
-		}
-		splunkToken, err := tc.expansions.ExpandString(agentConfig.SplunkToken)
-		if err != nil {
-			grip.Error(errors.Wrap(err, "error expanding splunk token"))
-		}
-		config.Agent = append(config.Agent, client.LogOpts{
-			LogkeeperURL:      a.opts.LogkeeperURL,
-			LogkeeperBuilder:  tc.taskModel.Id,
-			LogkeeperBuildNum: tc.taskModel.Execution,
-			Sender:            agentConfig.Type,
-			SplunkServerURL:   splunkServer,
-			SplunkToken:       splunkToken,
-			Filepath:          filepath.Join(a.opts.WorkingDirectory, taskLogDirectory, agentLogFileName),
-		})
+		config.Agent = append(config.Agent, a.prepSingleLogger(tc, agentConfig, logDir, agentLogFileName))
 	}
 	for _, systemConfig := range c.System {
-		splunkServer, err := tc.expansions.ExpandString(systemConfig.SplunkServer)
-		if err != nil {
-			grip.Error(errors.Wrap(err, "error expanding splunk server"))
-		}
-		splunkToken, err := tc.expansions.ExpandString(systemConfig.SplunkToken)
-		if err != nil {
-			grip.Error(errors.Wrap(err, "error expanding splunk token"))
-		}
-		config.System = append(config.System, client.LogOpts{
-			LogkeeperURL:      a.opts.LogkeeperURL,
-			LogkeeperBuilder:  tc.taskModel.Id,
-			LogkeeperBuildNum: tc.taskModel.Execution,
-			Sender:            systemConfig.Type,
-			SplunkServerURL:   splunkServer,
-			SplunkToken:       splunkToken,
-			Filepath:          filepath.Join(a.opts.WorkingDirectory, taskLogDirectory, systemLogFileName),
-		})
+		config.System = append(config.System, a.prepSingleLogger(tc, systemConfig, logDir, systemLogFileName))
 	}
 	for _, taskConfig := range c.Task {
-		splunkServer, err := tc.expansions.ExpandString(taskConfig.SplunkServer)
-		if err != nil {
-			grip.Error(errors.Wrap(err, "error expanding splunk server"))
-		}
-		splunkToken, err := tc.expansions.ExpandString(taskConfig.SplunkToken)
-		if err != nil {
-			grip.Error(errors.Wrap(err, "error expanding splunk token"))
-		}
-		config.Task = append(config.Task, client.LogOpts{
-			LogkeeperURL:      a.opts.LogkeeperURL,
-			LogkeeperBuilder:  tc.taskModel.Id,
-			LogkeeperBuildNum: tc.taskModel.Execution,
-			Sender:            taskConfig.Type,
-			SplunkServerURL:   splunkServer,
-			SplunkToken:       splunkToken,
-			Filepath:          filepath.Join(a.opts.WorkingDirectory, taskLogDirectory, taskLogFileName),
-		})
+		config.Task = append(config.Task, a.prepSingleLogger(tc, taskConfig, logDir, taskLogFileName))
 	}
 
 	return config
+}
+
+func (a *Agent) prepSingleLogger(tc *taskContext, in model.LogOpts, logDir, fileName string) client.LogOpts {
+	splunkServer, err := tc.expansions.ExpandString(in.SplunkServer)
+	if err != nil {
+		grip.Error(errors.Wrap(err, "error expanding splunk server"))
+	}
+	splunkToken, err := tc.expansions.ExpandString(in.SplunkToken)
+	if err != nil {
+		grip.Error(errors.Wrap(err, "error expanding splunk token"))
+	}
+	if in.LogDirectory != "" {
+		grip.Error(errors.Wrap(os.MkdirAll(in.LogDirectory, os.ModeDir|os.ModePerm), "error making log directory"))
+		logDir = in.LogDirectory
+	}
+	tc.logDirectories = append(tc.logDirectories, logDir)
+	return client.LogOpts{
+		LogkeeperURL:      a.opts.LogkeeperURL,
+		LogkeeperBuilder:  tc.taskModel.Id,
+		LogkeeperBuildNum: tc.taskModel.Execution,
+		Sender:            in.Type,
+		SplunkServerURL:   splunkServer,
+		SplunkToken:       splunkToken,
+		Filepath:          filepath.Join(logDir, fileName),
+	}
 }
 
 func (a *Agent) uploadToS3(ctx context.Context, tc *taskContext) error {
@@ -188,26 +172,72 @@ func (a *Agent) uploadToS3(ctx context.Context, tc *taskContext) error {
 		return errors.Wrap(err, "error creating pail")
 	}
 
-	return a.uploadLogFiles(ctx, tc, bucket)
-}
-
-func (a *Agent) uploadLogFiles(ctx context.Context, tc *taskContext, bucket pail.Bucket) error {
-	if tc.taskConfig == nil || tc.taskConfig.Task == nil {
-		return nil
-	}
 	catcher := grip.NewBasicCatcher()
-	catcher.Add(a.uploadSingleFile(ctx, bucket, agentLogFileName, tc.taskConfig.Task.Id, tc.taskConfig.Task.Execution))
-	catcher.Add(a.uploadSingleFile(ctx, bucket, systemLogFileName, tc.taskConfig.Task.Id, tc.taskConfig.Task.Execution))
-	catcher.Add(a.uploadSingleFile(ctx, bucket, taskLogFileName, tc.taskConfig.Task.Id, tc.taskConfig.Task.Execution))
+	for _, logDir := range tc.logDirectories {
+		catcher.Add(a.uploadLogDir(ctx, tc, bucket, logDir, ""))
+	}
 
 	return catcher.Resolve()
 }
 
-func (a *Agent) uploadSingleFile(ctx context.Context, bucket pail.Bucket, file string, taskID string, execution int) error {
-	localPath := filepath.Join(a.opts.WorkingDirectory, taskLogDirectory, file)
+func (a *Agent) uploadLogDir(ctx context.Context, tc *taskContext, bucket pail.Bucket, directoryName, commandName string) error {
+	if tc.taskConfig == nil || tc.taskConfig.Task == nil {
+		return nil
+	}
+	catcher := grip.NewBasicCatcher()
+	if commandName != "" {
+		directoryName = filepath.Join(directoryName, commandName)
+	}
+	dir, err := ioutil.ReadDir(directoryName)
+	if err != nil {
+		catcher.Add(errors.Wrap(err, "error reading log directory"))
+		return catcher.Resolve()
+	}
+	for _, f := range dir {
+		if f.IsDir() {
+			catcher.Add(a.uploadLogDir(ctx, tc, bucket, directoryName, f.Name()))
+		} else {
+			catcher.Add(a.uploadSingleFile(ctx, tc, bucket, f.Name(), tc.taskConfig.Task.Id, tc.taskConfig.Task.Execution, commandName))
+		}
+	}
+
+	return catcher.Resolve()
+}
+
+func (a *Agent) uploadSingleFile(ctx context.Context, tc *taskContext, bucket pail.Bucket, file string, taskID string, execution int, command string) error {
+	localDir := filepath.Join(a.opts.WorkingDirectory, taskLogDirectory)
+	remotePath := fmt.Sprintf("logs/%s/%s", taskID, strconv.Itoa(execution))
+	if command != "" {
+		localDir = filepath.Join(localDir, command)
+		remotePath = fmt.Sprintf("%s/%s", remotePath, command)
+	}
+	localPath := filepath.Join(localDir, file)
 	_, err := os.Stat(localPath)
 	if os.IsNotExist(err) {
 		return nil
 	}
-	return bucket.Upload(ctx, filepath.Join("logs", taskID, strconv.Itoa(execution), file), localPath)
+	err = bucket.Upload(ctx, fmt.Sprintf("%s/%s", remotePath, file), localPath)
+	if err != nil {
+		return errors.Wrapf(err, "error uploading %s to S3", localPath)
+	}
+	remoteURL := fmt.Sprintf("%s/%s/%s/%s", a.opts.S3BaseURL, a.opts.S3Opts.Name, remotePath, file)
+	tc.logger.Execution().Infof("uploaded file %s from %s to %s", file, localPath, remoteURL)
+	switch file {
+	case agentLogFileName:
+		tc.logs.AgentLogURLs = append(tc.logs.AgentLogURLs, apimodels.LogInfo{
+			Command: command,
+			URL:     remoteURL,
+		})
+	case systemLogFileName:
+		tc.logs.SystemLogURLs = append(tc.logs.SystemLogURLs, apimodels.LogInfo{
+			Command: command,
+			URL:     remoteURL,
+		})
+	case taskLogFileName:
+		tc.logs.TaskLogURLs = append(tc.logs.TaskLogURLs, apimodels.LogInfo{
+			Command: command,
+			URL:     remoteURL,
+		})
+	}
+	return nil
 }

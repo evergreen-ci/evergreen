@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/evergreen-ci/evergreen"
@@ -108,7 +109,7 @@ func TestCommandFileLogging(t *testing.T) {
 	require.NoError(err)
 
 	// verify log contents
-	f, err := os.Open(fmt.Sprintf("%s/%s/task.log", tmpDirName, taskLogDirectory))
+	f, err := os.Open(fmt.Sprintf("%s/%s/%s/task.log", tmpDirName, taskLogDirectory, "shell.exec"))
 	require.NoError(err)
 	bytes, err := ioutil.ReadAll(f)
 	require.NoError(err)
@@ -119,14 +120,18 @@ func TestCommandFileLogging(t *testing.T) {
 		Path: tmpDirName,
 	})
 	require.NoError(err)
-	require.NoError(agt.uploadLogFiles(ctx, tc, bucket))
+	require.NoError(agt.uploadLogDir(ctx, tc, bucket, filepath.Join(tmpDirName, taskLogDirectory), ""))
 
 	// verify uploaded log contents
-	f, err = os.Open(fmt.Sprintf("%s/logs/%s/%d/task.log", tmpDirName, tc.taskConfig.Task.Id, tc.taskConfig.Task.Execution))
+	f, err = os.Open(fmt.Sprintf("%s/logs/%s/%d/%s/task.log", tmpDirName, tc.taskConfig.Task.Id, tc.taskConfig.Task.Execution, "shell.exec"))
 	require.NoError(err)
 	bytes, err = ioutil.ReadAll(f)
 	require.NoError(err)
 	assert.Contains(string(bytes), "hello world")
+
+	// verify populated URLs
+	assert.Equal("shell.exec", tc.logs.TaskLogURLs[0].Command)
+	assert.Contains(tc.logs.TaskLogURLs[0].URL, "/logs/t1/0/shell.exec/task.log")
 }
 
 func TestResetLogging(t *testing.T) {
@@ -173,7 +178,7 @@ func TestResetLogging(t *testing.T) {
 	assert.NotNil(config.Version)
 
 	// check that expansions are correctly populated
-	logConfig := agt.convertLoggerConfig(tc, tc.project.Loggers)
+	logConfig := agt.prepLogger(tc, tc.project.Loggers, "")
 	assert.Equal("bar", logConfig.System[0].SplunkToken)
 }
 
