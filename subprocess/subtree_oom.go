@@ -8,7 +8,6 @@ import (
 	"strings"
 
 	"github.com/evergreen-ci/gimlet"
-
 	"github.com/pkg/errors"
 )
 
