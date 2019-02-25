@@ -2,16 +2,12 @@ package subprocess
 
 import (
 	"context"
-	"encoding/json"
 	"net/http"
 	"os/exec"
 	"strconv"
 	"strings"
-	"time"
 
 	"github.com/evergreen-ci/gimlet"
-
-	"github.com/mongodb/grip"
 
 	"github.com/pkg/errors"
 )
@@ -73,55 +69,25 @@ func getPidFromLog(line string) (int, bool) {
 func ClearOOMHandler() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		resp := NewOOMTracker()
-		ctx, cancel := context.WithTimeout(r.Context(), time.Minute)
-		defer cancel()
 
-		if err := resp.Clear(ctx); err != nil {
-			grip.Error(err)
+		if err := resp.Clear(r.Context()); err != nil {
 			gimlet.WriteJSONInternalError(w, err.Error())
-			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
 
-		out, err := json.MarshalIndent(resp, " ", " ")
-		if err != nil {
-			grip.Error(err)
-			gimlet.WriteJSONInternalError(w, err.Error())
-			w.WriteHeader(http.StatusInternalServerError)
-			return
-		}
-
-		w.Header().Set("Content-Type", "application/json; charset=utf-8")
-		w.WriteHeader(http.StatusOK)
-		_, err = w.Write(out)
-		grip.Error(err)
+		gimlet.WriteJSON(w, resp)
 	}
 }
 
 func CheckOOMHandler() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		resp := NewOOMTracker()
-		ctx, cancel := context.WithTimeout(r.Context(), 5*time.Minute)
-		defer cancel()
 
-		if err := resp.Check(ctx); err != nil {
-			grip.Error(err)
+		if err := resp.Check(r.Context()); err != nil {
 			gimlet.WriteJSONInternalError(w, err.Error())
-			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
 
-		out, err := json.MarshalIndent(resp, " ", " ")
-		if err != nil {
-			grip.Error(err)
-			gimlet.WriteJSONInternalError(w, err.Error())
-			w.WriteHeader(http.StatusInternalServerError)
-			return
-		}
-
-		w.Header().Set("Content-Type", "application/json; charset=utf-8")
-		w.WriteHeader(http.StatusOK)
-		_, err = w.Write(out)
-		grip.Error(err)
+		gimlet.WriteJSON(w, resp)
 	}
 }
