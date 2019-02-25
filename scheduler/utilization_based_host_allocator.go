@@ -19,11 +19,6 @@ import (
 	"github.com/mongodb/grip/recovery"
 )
 
-// type taskGroupData struct {
-// 	hosts []host.Host
-// 	tasks []model.TaskQueueItem
-// }
-
 type TaskGroupData struct {
 	Hosts []host.Host
 	Info  TaskGroupInfo
@@ -193,8 +188,8 @@ func groupByTaskGroup(runningHosts []host.Host, distroQueueInfo DistroQueueInfo)
 			}
 		}
 	}
-	taskGroupsInfo := distroQueueInfo.TaskGroupInfos
-	for name, info := range taskGroupsInfo {
+	taskGroupsInfosMap := distroQueueInfo.taskGroupInfosMap
+	for name, info := range taskGroupsInfosMap {
 		if data, exists := taskGroupDatas[name]; exists {
 			data.Info = info
 			taskGroupDatas[name] = data
@@ -209,12 +204,13 @@ func groupByTaskGroup(runningHosts []host.Host, distroQueueInfo DistroQueueInfo)
 	// Any task group can use a host not running a task group, so add them to each list.
 	// This does mean that we can plan more than 1 task for a given host from 2 different
 	// task groups, but that should be in the realm of "this is an estimate"
-	for name, data := range taskGroupDatas {
-		if name != "" {
-			if taskGroupData, ok := taskGroupDatas[""]; ok {
-				data.Hosts = append(data.Hosts, taskGroupData.Hosts...)
-				taskGroupDatas[name] = data
+	if taskGroupData, ok := taskGroupDatas[""]; ok {
+		for name, data := range taskGroupDatas {
+			if name == "" {
+				continue
 			}
+			data.Hosts = append(data.Hosts, taskGroupData.Hosts...)
+			taskGroupDatas[name] = data
 		}
 	}
 
