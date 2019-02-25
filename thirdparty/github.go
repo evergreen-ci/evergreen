@@ -134,27 +134,6 @@ func GetGithubCommits(ctx context.Context, oauthToken, owner, repo, ref string, 
 	return commits, resp.NextPage, nil
 }
 
-func GetGithubAPIStatus(ctx context.Context) (string, error) {
-	resp, err := githubRequest(ctx, http.MethodGet, fmt.Sprintf("%v/api/status.json", GithubStatusBase), "", nil)
-	if resp != nil {
-		defer resp.Body.Close()
-	}
-	if err != nil {
-		return "", errors.Wrap(err, "github request failed")
-	}
-
-	gitStatus := struct {
-		Status      string    `json:"status"`
-		LastUpdated time.Time `json:"last_updated"`
-	}{}
-
-	if err = util.ReadJSONInto(resp.Body, &gitStatus); err != nil {
-		return "", errors.Wrap(err, "json read failed")
-	}
-
-	return gitStatus.Status, nil
-}
-
 // GetGithubFile returns a struct that contains the contents of files within
 // a repository as Base64 encoded content.
 func GetGithubFile(ctx context.Context, oauthToken, owner, repo, path, hash string) (*github.RepositoryContent, error) {
