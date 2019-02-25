@@ -126,19 +126,19 @@ func (a *Agent) prepLogger(tc *taskContext, c *model.LoggerConfig, commandName s
 	}
 	config := client.LoggerConfig{}
 	for _, agentConfig := range c.Agent {
-		a.prepSingleLogger(tc, agentConfig, &config.Agent, logDir, agentLogFileName)
+		config.Agent = append(config.Agent, a.prepSingleLogger(tc, agentConfig, logDir, agentLogFileName))
 	}
 	for _, systemConfig := range c.System {
-		a.prepSingleLogger(tc, systemConfig, &config.System, logDir, systemLogFileName)
+		config.System = append(config.System, a.prepSingleLogger(tc, systemConfig, logDir, systemLogFileName))
 	}
 	for _, taskConfig := range c.Task {
-		a.prepSingleLogger(tc, taskConfig, &config.Task, logDir, taskLogFileName)
+		config.Task = append(config.Task, a.prepSingleLogger(tc, taskConfig, logDir, taskLogFileName))
 	}
 
 	return config
 }
 
-func (a *Agent) prepSingleLogger(tc *taskContext, in model.LogOpts, out *[]client.LogOpts, logDir, fileName string) {
+func (a *Agent) prepSingleLogger(tc *taskContext, in model.LogOpts, logDir, fileName string) client.LogOpts {
 	splunkServer, err := tc.expansions.ExpandString(in.SplunkServer)
 	if err != nil {
 		grip.Error(errors.Wrap(err, "error expanding splunk server"))
@@ -152,7 +152,7 @@ func (a *Agent) prepSingleLogger(tc *taskContext, in model.LogOpts, out *[]clien
 		logDir = in.LogDirectory
 	}
 	tc.logDirectories = append(tc.logDirectories, logDir)
-	*out = append(*out, client.LogOpts{
+	return client.LogOpts{
 		LogkeeperURL:      a.opts.LogkeeperURL,
 		LogkeeperBuilder:  tc.taskModel.Id,
 		LogkeeperBuildNum: tc.taskModel.Execution,
@@ -160,7 +160,7 @@ func (a *Agent) prepSingleLogger(tc *taskContext, in model.LogOpts, out *[]clien
 		SplunkServerURL:   splunkServer,
 		SplunkToken:       splunkToken,
 		Filepath:          filepath.Join(logDir, fileName),
-	})
+	}
 }
 
 func (a *Agent) uploadToS3(ctx context.Context, tc *taskContext) error {
