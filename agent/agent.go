@@ -151,7 +151,24 @@ LOOP:
 						"task":    tc.task.ID,
 					}))
 				}
-				a.resetLogging(lgrCtx, tc)
+				err = a.resetLogging(lgrCtx, tc)
+				if err != nil {
+					detail := &apimodels.TaskEndDetail{
+						Status:      evergreen.TaskFailed,
+						Type:        evergreen.CommandTypeSetup,
+						Description: fmt.Sprintf("invalid logger config: %s", err.Error()),
+					}
+					resp, err := a.comm.EndTask(ctx, detail, tc.task)
+					if err != nil {
+						grip.Critical(errors.Wrap(err, "error calling EndTask"))
+						continue LOOP
+					}
+					if resp.ShouldExit {
+						grip.Notice("Next task response indicates agent should exit")
+						return nil
+					}
+					continue LOOP
+				}
 				tskCtx, tskCancel := context.WithCancel(ctx)
 				defer tskCancel()
 				shouldExit, err := a.runTask(tskCtx, tskCancel, tc)
@@ -245,21 +262,26 @@ func (a *Agent) fetchProjectConfig(ctx context.Context, tc *taskContext) error {
 	return nil
 }
 
-func (a *Agent) resetLogging(ctx context.Context, tc *taskContext) {
+func (a *Agent) resetLogging(ctx context.Context, tc *taskContext) error {
+	var err error
 	if tc.logger != nil {
 		grip.Error(tc.logger.Close())
 	}
 	grip.Error(os.RemoveAll(filepath.Join(a.opts.WorkingDirectory, taskLogDirectory)))
 	if tc.project != nil && tc.project.Loggers != nil {
-		tc.logger = a.makeLoggerProducer(ctx, tc, tc.project.Loggers, "")
+		tc.logger, err = a.makeLoggerProducer(ctx, tc, tc.project.Loggers, "")
 	} else {
-		tc.logger = a.comm.GetLoggerProducer(ctx, tc.task, nil)
+		tc.logger, err = a.comm.GetLoggerProducer(ctx, tc.task, nil)
+	}
+	if err != nil {
+		return err
 	}
 
 	sender, err := GetSender(ctx, a.opts.LogPrefix, tc.task.ID)
 	grip.Error(errors.Wrap(err, "problem getting sender"))
 
 	grip.Error(errors.Wrap(grip.SetSender(sender), "problem setting sender"))
+	return nil
 }
 
 // runTask returns true if the agent should exit, and separate an error if relevant
@@ -422,7 +444,11 @@ func (a *Agent) runPostGroupCommands(ctx context.Context, tc *taskContext) {
 	if tc.taskConfig == nil {
 		return
 	}
-	a.resetLogging(ctx, tc)
+	err := a.resetLogging(ctx, tc)
+	if err != nil {
+		grip.Critical(errors.Wrap(err, "error making post-group logger"))
+		return
+	}
 	defer tc.logger.Close()
 	taskGroup, err := model.GetTaskGroup(tc.taskGroup, tc.taskConfig)
 	if err != nil {

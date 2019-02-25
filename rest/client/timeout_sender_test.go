@@ -84,7 +84,8 @@ func (s *logSenderSuite) randomSleep() {
 
 func (s *logSenderSuite) TestFileLogger() {
 	logFileName := fmt.Sprintf("%s/log", s.tempDir)
-	fileSender := s.restClient.makeSender(context.Background(), TaskData{}, []LogOpts{{Sender: model.FileLogSender, Filepath: logFileName}}, "")
+	fileSender, err := s.restClient.makeSender(context.Background(), TaskData{}, []LogOpts{{Sender: model.FileLogSender, Filepath: logFileName}}, "")
+	s.NoError(err)
 	s.NotNil(fileSender)
 	logger := logging.MakeGrip(fileSender)
 
@@ -107,7 +108,8 @@ func (s *logSenderSuite) TestFileLogger() {
 
 	// no file logger for system logs
 	path := filepath.Join(s.tempDir, "nothere")
-	defaultSender := s.restClient.makeSender(context.Background(), TaskData{}, []LogOpts{{Sender: model.FileLogSender, Filepath: path}}, apimodels.SystemLogPrefix)
+	defaultSender, err := s.restClient.makeSender(context.Background(), TaskData{}, []LogOpts{{Sender: model.FileLogSender, Filepath: path}}, apimodels.SystemLogPrefix)
+	s.NoError(err)
 	s.NotNil(defaultSender)
 	logger = logging.MakeGrip(defaultSender)
 	logger.Debug("foo")
@@ -137,4 +139,10 @@ func (s *logSenderSuite) TestEvergreenLogger() {
 	for i := 0; i < s.numMessages; i++ {
 		s.Equal(strconv.Itoa(i), msgs[i].Message)
 	}
+}
+
+func (s *logSenderSuite) TestMisconfiguredLogkeeper() {
+	sender, err := s.restClient.makeSender(context.Background(), TaskData{}, []LogOpts{{Sender: model.LogkeeperLogSender}}, "")
+	s.Error(err)
+	s.Nil(sender)
 }

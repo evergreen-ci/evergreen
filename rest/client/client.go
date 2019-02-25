@@ -174,7 +174,7 @@ func (c *communicatorImpl) GetLoggerMetadata() LoggerMetadata {
 }
 
 // GetLogProducer
-func (c *communicatorImpl) GetLoggerProducer(ctx context.Context, taskData TaskData, config *LoggerConfig) LoggerProducer {
+func (c *communicatorImpl) GetLoggerProducer(ctx context.Context, taskData TaskData, config *LoggerConfig) (LoggerProducer, error) {
 
 	if config == nil {
 		config = &LoggerConfig{
@@ -184,18 +184,27 @@ func (c *communicatorImpl) GetLoggerProducer(ctx context.Context, taskData TaskD
 		}
 	}
 
-	exec := c.makeSender(ctx, taskData, config.Agent, apimodels.AgentLogPrefix)
-	task := c.makeSender(ctx, taskData, config.Task, apimodels.TaskLogPrefix)
-	system := c.makeSender(ctx, taskData, config.System, apimodels.SystemLogPrefix)
+	exec, err := c.makeSender(ctx, taskData, config.Agent, apimodels.AgentLogPrefix)
+	if err != nil {
+		return nil, errors.Wrap(err, "error making agent logger")
+	}
+	task, err := c.makeSender(ctx, taskData, config.Task, apimodels.TaskLogPrefix)
+	if err != nil {
+		return nil, errors.Wrap(err, "error making task logger")
+	}
+	system, err := c.makeSender(ctx, taskData, config.System, apimodels.SystemLogPrefix)
+	if err != nil {
+		return nil, errors.Wrap(err, "error making system logger")
+	}
 
 	return &logHarness{
 		execution: logging.MakeGrip(exec),
 		task:      logging.MakeGrip(task),
 		system:    logging.MakeGrip(system),
-	}
+	}, nil
 }
 
-func (c *communicatorImpl) makeSender(ctx context.Context, taskData TaskData, opts []LogOpts, prefix string) send.Sender {
+func (c *communicatorImpl) makeSender(ctx context.Context, taskData TaskData, opts []LogOpts, prefix string) (send.Sender, error) {
 	levelInfo := send.LevelInfo{Default: level.Info, Threshold: level.Debug}
 	senders := []send.Sender{grip.GetSender()}
 
@@ -218,8 +227,7 @@ func (c *communicatorImpl) makeSender(ctx context.Context, taskData TaskData, op
 		case model.FileLogSender:
 			sender, err = send.NewPlainFileLogger(prefix, opt.Filepath, levelInfo)
 			if err != nil {
-				grip.Critical(errors.Wrap(err, "error creating file logger"))
-				return nil
+				return nil, errors.Wrap(err, "error creating file logger")
 			}
 
 			sender = send.NewBufferedSender(sender, bufferDuration, bufferSize)
@@ -230,8 +238,7 @@ func (c *communicatorImpl) makeSender(ctx context.Context, taskData TaskData, op
 			}
 			sender, err = send.NewSplunkLogger(prefix, info, levelInfo)
 			if err != nil {
-				grip.Critical(errors.Wrap(err, "error creating splunk logger"))
-				return nil
+				return nil, errors.Wrap(err, "error creating splunk logger")
 			}
 			sender = send.NewBufferedSender(newAnnotatedWrapper(taskData.ID, prefix, sender), bufferDuration, bufferSize)
 		case model.LogkeeperLogSender:
@@ -244,8 +251,7 @@ func (c *communicatorImpl) makeSender(ctx context.Context, taskData TaskData, op
 			}
 			sender, err = send.NewBuildlogger(opt.LogkeeperBuilder, &config, levelInfo)
 			if err != nil {
-				grip.Critical(errors.Wrap(err, "error creating logkeeper logger"))
-				return nil
+				return nil, errors.Wrap(err, "error creating logkeeper logger")
 			}
 			sender = send.NewBufferedSender(sender, bufferDuration, bufferSize)
 			metadata := LogkeeperMetadata{
@@ -271,5 +277,5 @@ func (c *communicatorImpl) makeSender(ctx context.Context, taskData TaskData, op
 		senders = append(senders, sender)
 	}
 
-	return send.NewConfiguredMultiSender(senders...)
+	return send.NewConfiguredMultiSender(senders...), nil
 }

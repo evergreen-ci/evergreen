@@ -103,7 +103,7 @@ func TestCommandFileLogging(t *testing.T) {
 		},
 		taskModel: task,
 	}
-	agt.resetLogging(ctx, tc)
+	assert.NoError(agt.resetLogging(ctx, tc))
 	defer agt.removeTaskDirectory(tc)
 	err = agt.runTaskCommands(ctx, tc)
 	require.NoError(err)
@@ -166,7 +166,7 @@ func TestResetLogging(t *testing.T) {
 	assert.EqualValues(model.SplunkLogSender, tc.project.Loggers.System[0].Type)
 	assert.EqualValues(model.FileLogSender, tc.project.Loggers.Task[0].Type)
 
-	agt.resetLogging(ctx, tc)
+	assert.NoError(agt.resetLogging(ctx, tc))
 	tc.logger.Execution().Info("foo")
 	assert.NoError(tc.logger.Close())
 	msgs := agt.comm.(*client.Mock).GetMockMessages()
@@ -180,6 +180,44 @@ func TestResetLogging(t *testing.T) {
 	// check that expansions are correctly populated
 	logConfig := agt.prepLogger(tc, tc.project.Loggers, "")
 	assert.Equal("bar", logConfig.System[0].SplunkToken)
+}
+
+func TestResetLoggingErrors(t *testing.T) {
+	assert := assert.New(t)
+	require := require.New(t)
+	tmpDirName, err := ioutil.TempDir("", "logging-error-")
+	require.NoError(err)
+	defer os.RemoveAll(tmpDirName)
+	agt := &Agent{
+		opts: Options{
+			HostID:           "host",
+			HostSecret:       "secret",
+			StatusPort:       2286,
+			LogPrefix:        evergreen.LocalLoggingOverride,
+			WorkingDirectory: tmpDirName,
+		},
+		comm: client.NewCommunicator("www.foo.com"),
+	}
+	project := &model.Project{
+		Loggers: &model.LoggerConfig{
+			Agent: []model.LogOpts{{Type: model.LogkeeperLogSender}},
+		},
+		Tasks: []model.ProjectTask{},
+	}
+	tc := &taskContext{
+		taskDirectory: tmpDirName,
+		task: client.TaskData{
+			ID:     "logging_error",
+			Secret: "secret",
+		},
+		runGroupSetup: true,
+		taskConfig:    &model.TaskConfig{},
+		project:       project,
+		taskModel:     &task.Task{},
+	}
+
+	ctx := context.Background()
+	assert.Error(agt.resetLogging(ctx, tc))
 }
 
 func TestLogkeeperMetadataPopulated(t *testing.T) {
@@ -222,7 +260,7 @@ func TestLogkeeperMetadataPopulated(t *testing.T) {
 		},
 		taskModel: task,
 	}
-	agt.resetLogging(ctx, tc)
+	assert.NoError(agt.resetLogging(ctx, tc))
 	assert.Equal("logkeeper/build/build1/test/test1", tc.logs.AgentLogURLs[0].URL)
 	assert.Equal("logkeeper/build/build1/test/test2", tc.logs.SystemLogURLs[0].URL)
 	assert.Equal("logkeeper/build/build1/test/test3", tc.logs.TaskLogURLs[0].URL)

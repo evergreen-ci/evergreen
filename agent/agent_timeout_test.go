@@ -73,7 +73,7 @@ func (s *TimeoutSuite) TestExecTimeoutProject() {
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	s.a.resetLogging(ctx, tc)
+	s.NoError(s.a.resetLogging(ctx, tc))
 	defer s.a.removeTaskDirectory(tc)
 	_, err := s.a.runTask(ctx, cancel, tc)
 	s.NoError(err)
@@ -136,7 +136,7 @@ func (s *TimeoutSuite) TestExecTimeoutTask() {
 	// tests in this suite to create differently-named task directories.
 	s.mockCommunicator.TaskExecution = 1
 
-	s.a.resetLogging(ctx, tc)
+	s.NoError(s.a.resetLogging(ctx, tc))
 	defer s.a.removeTaskDirectory(tc)
 	_, err := s.a.runTask(ctx, cancel, tc)
 	s.NoError(err)
@@ -198,7 +198,7 @@ func (s *TimeoutSuite) TestIdleTimeoutFunc() {
 	// tests in this suite to create differently-named task directories.
 	s.mockCommunicator.TaskExecution = 2
 
-	s.a.resetLogging(ctx, tc)
+	s.NoError(s.a.resetLogging(ctx, tc))
 	defer s.a.removeTaskDirectory(tc)
 	_, err := s.a.runTask(ctx, cancel, tc)
 	s.NoError(err)
@@ -260,7 +260,7 @@ func (s *TimeoutSuite) TestIdleTimeoutCommand() {
 	// tests in this suite to create differently-named task directories.
 	s.mockCommunicator.TaskExecution = 3
 
-	s.a.resetLogging(ctx, tc)
+	s.NoError(s.a.resetLogging(ctx, tc))
 	defer s.a.removeTaskDirectory(tc)
 	_, err := s.a.runTask(ctx, cancel, tc)
 	s.NoError(err)
@@ -322,7 +322,7 @@ func (s *TimeoutSuite) TestDynamicIdleTimeout() {
 	// tests in this suite to create differently-named task directories.
 	s.mockCommunicator.TaskExecution = 3
 
-	s.a.resetLogging(ctx, tc)
+	s.NoError(s.a.resetLogging(ctx, tc))
 	defer s.a.removeTaskDirectory(tc)
 	_, err := s.a.runTask(ctx, cancel, tc)
 	s.NoError(err)
@@ -384,7 +384,7 @@ func (s *TimeoutSuite) TestDynamicExecTimeoutTask() {
 	// tests in this suite to create differently-named task directories.
 	s.mockCommunicator.TaskExecution = 1
 
-	s.a.resetLogging(ctx, tc)
+	s.NoError(s.a.resetLogging(ctx, tc))
 	defer s.a.removeTaskDirectory(tc)
 	_, err := s.a.runTask(ctx, cancel, tc)
 	s.NoError(err)

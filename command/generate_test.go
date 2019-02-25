@@ -34,15 +34,16 @@ func TestGenerateSuite(t *testing.T) {
 
 func (s *generateSuite) SetupTest() {
 	s.ctx, s.cancel = context.WithCancel(context.Background())
+	var err error
 
 	s.comm = client.NewMock("http://localhost.com")
 	s.conf = &model.TaskConfig{
 		Expansions: &util.Expansions{},
 		Task:       &task.Task{Id: "mock_id", Secret: "mock_secret"},
 		Project:    &model.Project{}}
-	s.logger = s.comm.GetLoggerProducer(s.ctx, client.TaskData{ID: s.conf.Task.Id, Secret: s.conf.Task.Secret}, nil)
+	s.logger, err = s.comm.GetLoggerProducer(s.ctx, client.TaskData{ID: s.conf.Task.Id, Secret: s.conf.Task.Secret}, nil)
+	s.NoError(err)
 	s.g = &generateTask{}
-	var err error
 	s.tmpDirName, err = ioutil.TempDir("", "generate-suite-")
 	s.conf.WorkDir = s.tmpDirName
 	s.Require().NoError(err)

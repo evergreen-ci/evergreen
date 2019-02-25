@@ -88,11 +88,13 @@ func GetSender(ctx context.Context, prefix, taskId string) (send.Sender, error) 
 	return send.NewConfiguredMultiSender(senders...), nil
 }
 
-func (a *Agent) makeLoggerProducer(ctx context.Context, tc *taskContext, c *model.LoggerConfig, commandName string) client.LoggerProducer {
+func (a *Agent) makeLoggerProducer(ctx context.Context, tc *taskContext, c *model.LoggerConfig, commandName string) (client.LoggerProducer, error) {
 	config := a.prepLogger(tc, c, commandName)
-	grip.Info(config)
 
-	logger := a.comm.GetLoggerProducer(ctx, tc.task, &config)
+	logger, err := a.comm.GetLoggerProducer(ctx, tc.task, &config)
+	if err != nil {
+		return nil, err
+	}
 	loggerData := a.comm.GetLoggerMetadata()
 	tc.logs = &apimodels.TaskLogs{}
 	for _, agent := range loggerData.Agent {
@@ -113,7 +115,7 @@ func (a *Agent) makeLoggerProducer(ctx context.Context, tc *taskContext, c *mode
 			URL:     fmt.Sprintf("%s/build/%s/test/%s", a.opts.LogkeeperURL, task.Build, task.Test),
 		})
 	}
-	return logger
+	return logger, nil
 }
 
 func (a *Agent) prepLogger(tc *taskContext, c *model.LoggerConfig, commandName string) client.LoggerConfig {

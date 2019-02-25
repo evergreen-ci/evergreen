@@ -10,7 +10,8 @@ import (
 func TestLoggerClose(t *testing.T) {
 	assert := assert.New(t)
 	comm := NewCommunicator("www.foo.com")
-	logger := comm.GetLoggerProducer(context.Background(), TaskData{}, nil)
+	logger, err := comm.GetLoggerProducer(context.Background(), TaskData{}, nil)
+	assert.NoError(err)
 	assert.NotNil(logger)
 	assert.NoError(logger.Close())
 	assert.NotPanics(func() {

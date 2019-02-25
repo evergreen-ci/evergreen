@@ -36,6 +36,7 @@ func TestAgentSuite(t *testing.T) {
 }
 
 func (s *AgentSuite) SetupTest() {
+	var err error
 	s.a = &Agent{
 		opts: Options{
 			HostID:     "host",
@@ -60,12 +61,12 @@ func (s *AgentSuite) SetupTest() {
 	}
 	ctx, cancel := context.WithCancel(context.Background())
 	s.canceler = cancel
-	s.tc.logger = s.a.comm.GetLoggerProducer(ctx, s.tc.task, nil)
+	s.tc.logger, err = s.a.comm.GetLoggerProducer(ctx, s.tc.task, nil)
+	s.NoError(err)
 
 	factory, ok := command.GetCommandFactory("setup.initial")
 	s.True(ok)
 	s.tc.setCurrentCommand(factory())
-	var err error
 	s.tmpDirName, err = ioutil.TempDir("", "agent-command-suite-")
 	s.Require().NoError(err)
 	s.tc.taskDirectory = s.tmpDirName
@@ -422,6 +423,7 @@ func (s *AgentSuite) TestWaitHeartbeatTimeout() {
 }
 
 func (s *AgentSuite) TestWaitIdleTimeout() {
+	var err error
 	s.tc = &taskContext{
 		task: client.TaskData{
 			ID:     "task_id",
@@ -449,7 +451,8 @@ func (s *AgentSuite) TestWaitIdleTimeout() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	s.tc.logger = s.a.comm.GetLoggerProducer(ctx, s.tc.task, nil)
+	s.tc.logger, err = s.a.comm.GetLoggerProducer(ctx, s.tc.task, nil)
+	s.NoError(err)
 	factory, ok := command.GetCommandFactory("setup.initial")
 	s.True(ok)
 	s.tc.setCurrentCommand(factory())
@@ -465,9 +468,11 @@ func (s *AgentSuite) TestWaitIdleTimeout() {
 }
 
 func (s *AgentSuite) TestPrepareNextTask() {
+	var err error
 	nextTask := &apimodels.NextTaskResponse{}
 	tc := &taskContext{}
-	tc.logger = s.a.comm.GetLoggerProducer(context.Background(), s.tc.task, nil)
+	tc.logger, err = s.a.comm.GetLoggerProducer(context.Background(), s.tc.task, nil)
+	s.NoError(err)
 	tc.taskConfig = &model.TaskConfig{
 		Task: &task.Task{
 			Version: "version_base",
@@ -487,7 +492,8 @@ func (s *AgentSuite) TestPrepareNextTask() {
 			Version: "version_name",
 		},
 	}
-	tc.logger = s.a.comm.GetLoggerProducer(context.Background(), s.tc.task, nil)
+	tc.logger, err = s.a.comm.GetLoggerProducer(context.Background(), s.tc.task, nil)
+	s.NoError(err)
 	tc.taskDirectory = "task_directory"
 	tc = s.a.prepareNextTask(context.Background(), nextTask, tc)
 	s.False(tc.runGroupSetup, "if the next task is in the same group as the previous task, runGroupSetup should be false")
@@ -502,7 +508,8 @@ func (s *AgentSuite) TestPrepareNextTask() {
 			Version: "a_different_version",
 		},
 	}
-	tc.logger = s.a.comm.GetLoggerProducer(context.Background(), s.tc.task, nil)
+	tc.logger, err = s.a.comm.GetLoggerProducer(context.Background(), s.tc.task, nil)
+	s.NoError(err)
 	tc.taskDirectory = "task_directory"
 	tc = s.a.prepareNextTask(context.Background(), nextTask, tc)
 	s.True(tc.runGroupSetup, "if the next task is a different group from the previous task, runGroupSetup should be true")
@@ -514,7 +521,8 @@ func (s *AgentSuite) TestPrepareNextTask() {
 			Version: versionId,
 		},
 	}
-	tc.logger = s.a.comm.GetLoggerProducer(context.Background(), s.tc.task, nil)
+	tc.logger, err = s.a.comm.GetLoggerProducer(context.Background(), s.tc.task, nil)
+	s.NoError(err)
 	nextTask.TaskGroup = "bar"
 	tc.taskGroup = "foo"
 	tc.taskDirectory = "task_directory"
@@ -529,7 +537,8 @@ func (s *AgentSuite) TestPrepareNextTask() {
 			BuildId: "build_id_1",
 		},
 	}
-	tc.logger = s.a.comm.GetLoggerProducer(context.Background(), s.tc.task, nil)
+	tc.logger, err = s.a.comm.GetLoggerProducer(context.Background(), s.tc.task, nil)
+	s.NoError(err)
 	nextTask.TaskGroup = "bar"
 	nextTask.Version = versionId
 	nextTask.Build = "build_id_2"

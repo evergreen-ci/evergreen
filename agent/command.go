@@ -51,7 +51,10 @@ func (a *Agent) runCommandSet(ctx context.Context, tc *taskContext, commandInfo 
 	if commandInfo.Loggers == nil {
 		logger = tc.logger
 	} else {
-		logger = a.makeLoggerProducer(ctx, tc, commandInfo.Loggers, getFunctionName(commandInfo))
+		logger, err = a.makeLoggerProducer(ctx, tc, commandInfo.Loggers, getFunctionName(commandInfo))
+		if err != nil {
+			return errors.Wrap(err, "error making logger")
+		}
 		defer func() {
 			grip.Error(logger.Close())
 		}()

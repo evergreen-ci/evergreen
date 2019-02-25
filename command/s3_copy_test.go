@@ -35,7 +35,8 @@ func TestS3CopyPluginExecution(t *testing.T) {
 		testutil.HandleTestingErr(err, t, "failed to setup test data")
 		conf := modelData.TaskConfig
 		conf.WorkDir = pwd
-		logger := comm.GetLoggerProducer(ctx, client.TaskData{ID: conf.Task.Id, Secret: conf.Task.Secret}, nil)
+		logger, err := comm.GetLoggerProducer(ctx, client.TaskData{ID: conf.Task.Id, Secret: conf.Task.Secret}, nil)
+		So(err, ShouldBeNil)
 
 		conf.Expansions.Update(map[string]string{
 			"aws_key":    testConfig.Providers.AWS.EC2Key,
