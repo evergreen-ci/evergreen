@@ -156,6 +156,10 @@ type Task struct {
 	TriggerEvent string `bson:"trigger_event,omitempty" json:"trigger_event,omitempty"`
 }
 
+func (t *Task) GetTaskGroupString() string {
+	return fmt.Sprintf("%s_%s_%s_%s", t.TaskGroup, t.BuildVariant, t.Project, t.Version)
+}
+
 // Dependency represents a task that must be completed before the owning
 // task can be scheduled.
 type Dependency struct {

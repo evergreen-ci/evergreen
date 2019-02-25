@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/evergreen-ci/evergreen/model/distro"
+	"github.com/evergreen-ci/evergreen/model/distroqueue"
 	"github.com/evergreen-ci/evergreen/model/host"
 	. "github.com/smartystreets/goconvey/convey"
 )
@@ -57,7 +58,7 @@ func TestDeficitBasedHostAllocator(t *testing.T) {
 			}
 			dist.PoolSize = len(hosts)
 
-			distroQueueInfo := DistroQueueInfo{
+			distroQueueInfo := distroqueue.DistroQueueInfo{
 				Length: 4,
 			}
 
@@ -79,7 +80,7 @@ func TestDeficitBasedHostAllocator(t *testing.T) {
 			}
 			dist.PoolSize = 1
 
-			distroQueueInfo := DistroQueueInfo{
+			distroQueueInfo := distroqueue.DistroQueueInfo{
 				Length: 4,
 			}
 
@@ -103,7 +104,7 @@ func TestDeficitBasedHostAllocator(t *testing.T) {
 			}
 			dist.PoolSize = len(hosts) + 5
 
-			distroQueueInfo := DistroQueueInfo{
+			distroQueueInfo := distroqueue.DistroQueueInfo{
 				Length: 2,
 			}
 
@@ -128,7 +129,7 @@ func TestDeficitBasedHostAllocator(t *testing.T) {
 			}
 			dist.PoolSize = len(hosts) + 5
 
-			distroQueueInfo := DistroQueueInfo{
+			distroQueueInfo := distroqueue.DistroQueueInfo{
 				Length: 2,
 			}
 
@@ -154,7 +155,7 @@ func TestDeficitBasedHostAllocator(t *testing.T) {
 			}
 			dist.PoolSize = 9
 
-			distroQueueInfo := DistroQueueInfo{
+			distroQueueInfo := distroqueue.DistroQueueInfo{
 				Length: 5,
 			}
 
@@ -169,7 +170,7 @@ func TestDeficitBasedHostAllocator(t *testing.T) {
 
 			dist.PoolSize = 8
 
-			distroQueueInfo = DistroQueueInfo{
+			distroQueueInfo = distroqueue.DistroQueueInfo{
 				Length: 5,
 			}
 
@@ -206,7 +207,7 @@ func TestDeficitBasedHostAllocator(t *testing.T) {
 			dist.PoolSize = 20
 			dist.Provider = "static"
 
-			distroQueueInfo := DistroQueueInfo{
+			distroQueueInfo := distroqueue.DistroQueueInfo{
 				Length: 3,
 			}
 

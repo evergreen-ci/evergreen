@@ -6,6 +6,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/distro"
+	"github.com/evergreen-ci/evergreen/model/distroqueue"
 	"github.com/evergreen-ci/evergreen/model/host"
 )
 
@@ -19,7 +20,7 @@ type HostAllocatorData struct {
 	MaxDurationThreshold time.Duration
 	UsesContainers       bool
 	ContainerPool        *evergreen.ContainerPool
-	DistroQueueInfo      DistroQueueInfo
+	DistroQueueInfo      distroqueue.DistroQueueInfo
 }
 
 func GetHostAllocator(name string) HostAllocator {
