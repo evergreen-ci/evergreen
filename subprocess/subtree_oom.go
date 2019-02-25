@@ -73,7 +73,7 @@ func getPidFromLog(line string) (int, bool) {
 func ClearOOMHandler() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		resp := NewOOMTracker()
-		ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+		ctx, cancel := context.WithTimeout(r.Context(), time.Minute)
 		defer cancel()
 
 		if err := resp.Clear(ctx); err != nil {
@@ -101,7 +101,7 @@ func ClearOOMHandler() http.HandlerFunc {
 func CheckOOMHandler() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		resp := NewOOMTracker()
-		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
+		ctx, cancel := context.WithTimeout(r.Context(), 5*time.Minute)
 		defer cancel()
 
 		if err := resp.Check(ctx); err != nil {
