@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"math"
 	"math/rand"
-	"strconv"
 	"testing"
 	"time"
 
@@ -87,27 +86,14 @@ func (s *HostAllocatorFuzzerSuite) randomizeData() {
 
 	// generate a random number of scheduled tasks with random durations
 	numTasks := rand.Intn(s.settings.maxNumTasks) + 1
-
-	// taskQueue := []model.TaskQueueItem{}
-	// for i := 0; i < numTasks; i++ {
-	// 	duration := rand.Int63n(int64(s.settings.expectedDurationMax))
-	// 	queueTask := model.TaskQueueItem{
-	// 		ExpectedDuration: time.Duration(duration),
-	// 	}
-	// 	taskQueue = append(taskQueue, queueTask)
-	// }
-
 	var expectedDuration time.Duration
-	taskDurations := make(map[string]time.Duration)
 	for i := 0; i < numTasks; i++ {
-		duration := time.Duration(rand.Int63n(int64(s.settings.expectedDurationMax)))
-		taskDurations[strconv.Itoa(i)] = duration
-		expectedDuration += duration
+		duration := rand.Int63n(int64(s.settings.expectedDurationMax))
+		expectedDuration += time.Duration(duration)
 	}
 
 	distroQueueInfo := DistroQueueInfo{
-		Distro:           s.distro,
-		TaskDurations:    taskDurations,
+		Length:           numTasks,
 		ExpectedDuration: expectedDuration,
 	}
 
@@ -154,7 +140,6 @@ func (s *HostAllocatorFuzzerSuite) randomizeData() {
 		ExistingHosts:    hosts,
 		FreeHostFraction: s.freeHostFraction,
 		DistroQueueInfo:  distroQueueInfo,
-		// taskQueueItems:   taskQueue,
 	}
 }
 
@@ -163,9 +148,6 @@ func (s *HostAllocatorFuzzerSuite) TestHeuristics() {
 		s.randomizeData()
 		newHosts, err := s.allocator(s.ctx, s.testData)
 		s.NoError(err)
-		// queue := s.testData.taskQueueItems
-		// queueSize := len(queue)
-		// queueDuration := calcScheduledTasksDuration(queue)
 		distroQueueInfo := s.testData.DistroQueueInfo
 		queueSize := distroQueueInfo.Length
 		queueDuration := distroQueueInfo.ExpectedDuration

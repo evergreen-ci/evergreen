@@ -17,7 +17,7 @@ import (
 func TestGroupByTaskGroup(t *testing.T) {
 	assert := assert.New(t)
 
-	// No other task groups except ""
+	// No task groups except ""
 
 	hosts := []host.Host{
 		{
@@ -26,10 +26,6 @@ func TestGroupByTaskGroup(t *testing.T) {
 		{
 			Id: "host2",
 		},
-	}
-
-	distro := distro.Distro{
-		Id: "distro1",
 	}
 
 	taskGroupInfo := TaskGroupInfo{
@@ -42,11 +38,10 @@ func TestGroupByTaskGroup(t *testing.T) {
 	}
 
 	distroQueueInfo := DistroQueueInfo{
-		Distro:             distro,
 		Length:             2,
 		ExpectedDuration:   2 * time.Minute,
 		CountOverThreshold: 0,
-		TaskGroupInfos:     map[string]TaskGroupInfo{"": taskGroupInfo},
+		taskGroupInfosMap:  map[string]TaskGroupInfo{"": taskGroupInfo},
 	}
 
 	taskGroupDatas := groupByTaskGroup(hosts, distroQueueInfo)
@@ -79,9 +74,8 @@ func TestGroupByTaskGroup(t *testing.T) {
 	}
 
 	distroQueueInfo = DistroQueueInfo{
-		Distro: distro,
 		Length: 2,
-		TaskGroupInfos: map[string]TaskGroupInfo{
+		taskGroupInfosMap: map[string]TaskGroupInfo{
 			taskGroupInfo1.Name: taskGroupInfo1,
 			taskGroupInfo2.Name: taskGroupInfo2,
 		},
@@ -112,9 +106,8 @@ func TestGroupByTaskGroup(t *testing.T) {
 	}
 
 	distroQueueInfo = DistroQueueInfo{
-		Distro: distro,
 		Length: 2,
-		TaskGroupInfos: map[string]TaskGroupInfo{
+		taskGroupInfosMap: map[string]TaskGroupInfo{
 			taskGroupInfo1.Name: taskGroupInfo1,
 			taskGroupInfo2.Name: taskGroupInfo2,
 		},
@@ -228,10 +221,9 @@ func (s *UtilizationAllocatorSuite) TestNoExistingHosts() {
 	}
 
 	distroQueueInfo := DistroQueueInfo{
-		Distro:           s.distro,
 		Length:           5,
 		ExpectedDuration: (20 * time.Minute) + (3 * time.Minute) + (45 * time.Second) + (15 * time.Minute) + (25 * time.Minute),
-		TaskGroupInfos: map[string]TaskGroupInfo{
+		taskGroupInfosMap: map[string]TaskGroupInfo{
 			"": taskGroupInfo,
 		},
 	}
@@ -255,7 +247,6 @@ func (s *UtilizationAllocatorSuite) TestStaticDistro() {
 	}
 
 	distroQueueInfo := DistroQueueInfo{
-		Distro:             distro,
 		Length:             2,
 		ExpectedDuration:   (20 * time.Minute) + (30 * time.Minute),
 		CountOverThreshold: 1,
@@ -305,7 +296,6 @@ func (s *UtilizationAllocatorSuite) TestExistingHostsSufficient() {
 	s.NoError(t2.Insert())
 
 	distroQueueInfo := DistroQueueInfo{
-		Distro:             s.distro,
 		Length:             3,
 		ExpectedDuration:   (30 * time.Second) + (3 * time.Minute) + (5 * time.Minute),
 		CountOverThreshold: 0,
@@ -359,11 +349,10 @@ func (s *UtilizationAllocatorSuite) TestLongTasksInQueue1() {
 	}
 
 	distroQueueInfo := DistroQueueInfo{
-		Distro:             s.distro,
 		Length:             5,
 		ExpectedDuration:   5 * (30 * time.Minute),
 		CountOverThreshold: 5,
-		TaskGroupInfos: map[string]TaskGroupInfo{
+		taskGroupInfosMap: map[string]TaskGroupInfo{
 			"": taskGroupInfo,
 		},
 	}
@@ -416,11 +405,10 @@ func (s *UtilizationAllocatorSuite) TestLongTasksInQueue2() {
 	}
 
 	distroQueueInfo := DistroQueueInfo{
-		Distro:             s.distro,
 		Length:             7,
 		ExpectedDuration:   (5 * (30 * time.Minute)) + (3 * time.Minute) + (10 * time.Minute),
 		CountOverThreshold: 5,
-		TaskGroupInfos: map[string]TaskGroupInfo{
+		taskGroupInfosMap: map[string]TaskGroupInfo{
 			"": taskGroupInfo,
 		},
 	}
@@ -478,11 +466,10 @@ func (s *UtilizationAllocatorSuite) TestOverMaxHosts() {
 	}
 
 	distroQueueInfo := DistroQueueInfo{
-		Distro:             distro,
 		Length:             9,
 		ExpectedDuration:   9 * (30 * time.Minute),
 		CountOverThreshold: 9,
-		TaskGroupInfos: map[string]TaskGroupInfo{
+		taskGroupInfosMap: map[string]TaskGroupInfo{
 			"": taskGroupInfo,
 		},
 	}
@@ -533,11 +520,10 @@ func (s *UtilizationAllocatorSuite) TestExistingLongTask() {
 	}
 
 	distroQueueInfo := DistroQueueInfo{
-		Distro:             s.distro,
 		Length:             2,
 		ExpectedDuration:   (30 * time.Second) + (5 * time.Minute),
 		CountOverThreshold: 0,
-		TaskGroupInfos: map[string]TaskGroupInfo{
+		taskGroupInfosMap: map[string]TaskGroupInfo{
 			"": taskGroupInfo,
 		},
 	}
@@ -576,10 +562,9 @@ func (s *UtilizationAllocatorSuite) TestOverrunTask() {
 	}
 
 	distroQueueInfo := DistroQueueInfo{
-		Distro:           s.distro,
 		Length:           4,
 		ExpectedDuration: (20 * time.Minute) + (15 * time.Minute) + (15 * time.Minute) + (25 * time.Minute),
-		TaskGroupInfos: map[string]TaskGroupInfo{
+		taskGroupInfosMap: map[string]TaskGroupInfo{
 			"": taskGroupInfo,
 		},
 	}
@@ -668,11 +653,10 @@ func (s *UtilizationAllocatorSuite) TestSoonToBeFree() {
 	}
 
 	distroQueueInfo := DistroQueueInfo{
-		Distro:             s.distro,
 		Length:             6,
 		ExpectedDuration:   6 * (30 * time.Minute),
 		CountOverThreshold: 6,
-		TaskGroupInfos: map[string]TaskGroupInfo{
+		taskGroupInfosMap: map[string]TaskGroupInfo{
 			"": taskGroupInfo,
 		},
 	}
@@ -705,7 +689,6 @@ func (s *UtilizationAllocatorSuite) TestExcessHosts() {
 	}
 
 	distroQueueInfo := DistroQueueInfo{
-		Distro:             s.distro,
 		Length:             1,
 		ExpectedDuration:   29 * time.Minute,
 		CountOverThreshold: 0,
@@ -787,7 +770,6 @@ func (s *UtilizationAllocatorSuite) TestRealisticScenario1() {
 	}
 
 	distroQueueInfo := DistroQueueInfo{
-		Distro: s.distro,
 		Length: 8,
 		// 3 long tasks + 37min of new tasks
 		// these should need 4 total hosts, but there is 1 idle host
@@ -795,7 +777,7 @@ func (s *UtilizationAllocatorSuite) TestRealisticScenario1() {
 		// so we only need 2 new hosts
 		ExpectedDuration:   (30 * time.Minute) + (5 * time.Minute) + (45 * time.Minute) + (30 * time.Second) + (10 * time.Minute) + (1 * time.Hour) + (1 * time.Minute) + (20 * time.Minute),
 		CountOverThreshold: 3,
-		TaskGroupInfos: map[string]TaskGroupInfo{
+		taskGroupInfosMap: map[string]TaskGroupInfo{
 			"": taskGroupInfo,
 		},
 	}
@@ -876,7 +858,6 @@ func (s *UtilizationAllocatorSuite) TestRealisticScenario2() {
 	s.NoError(t5.Insert())
 
 	distroQueueInfo := DistroQueueInfo{
-		Distro: s.distro,
 		Length: 8,
 		// 1 long task + 68 minutes of tasks should need 3 hosts
 		// 3.0 free hosts in the next 30 mins (factor = 1)
@@ -981,7 +962,6 @@ func (s *UtilizationAllocatorSuite) TestRealisticScenarioWithContainers() {
 	s.NoError(t5.Insert())
 
 	distroQueueInfo := DistroQueueInfo{
-		Distro: s.distro,
 		Length: 6,
 		// 2 long tasks + 9 minutes of tasks should need 3 hosts
 		// there are 2 idle tasks and 2 free hosts in the next 5 mins (factor = 1)
@@ -1100,14 +1080,13 @@ func (s *UtilizationAllocatorSuite) TestRealisticScenarioWithContainers2() {
 	}
 
 	distroQueueInfo := DistroQueueInfo{
-		Distro: s.distro,
 		Length: 8,
 		// 3 long tasks + 10 minutes of tasks should need 5 hosts
 		// there is 1 idle task and 3 free hosts in the next 5 mins (factor = 1)
 		// so we need 1 host
 		ExpectedDuration:   (5 * time.Minute) + (2 * time.Minute) + (15 * time.Minute) + (30 * time.Second) + (10 * time.Minute) + (50 * time.Second) + (50 * time.Second) + (7 * time.Minute),
 		CountOverThreshold: 5,
-		TaskGroupInfos: map[string]TaskGroupInfo{
+		taskGroupInfosMap: map[string]TaskGroupInfo{
 			"": taskGroupInfo,
 		},
 	}
@@ -1144,12 +1123,11 @@ func (s *UtilizationAllocatorSuite) TestOnlyTaskGroupsOnlyScheduled() {
 	}
 
 	distroQueueInfo := DistroQueueInfo{
-		Distro: s.distro,
 		Length: 10,
 		// a long queue of task group tasks with max hosts=2 should request 2
 		ExpectedDuration:   10 * (30 * time.Minute),
 		CountOverThreshold: 10,
-		TaskGroupInfos: map[string]TaskGroupInfo{
+		taskGroupInfosMap: map[string]TaskGroupInfo{
 			name: taskGroupInfo,
 		},
 	}
@@ -1244,11 +1222,10 @@ func (s *UtilizationAllocatorSuite) TestOnlyTaskGroupsSomeRunning() {
 	}
 
 	distroQueueInfo := DistroQueueInfo{
-		Distro:             s.distro,
 		Length:             taskGroupInfo1.Count + taskGroupInfo2.Count,
 		ExpectedDuration:   taskGroupInfo1.ExpectedDuration + taskGroupInfo2.ExpectedDuration,
 		CountOverThreshold: taskGroupInfo1.CountOverThreshold + taskGroupInfo2.CountOverThreshold,
-		TaskGroupInfos: map[string]TaskGroupInfo{
+		taskGroupInfosMap: map[string]TaskGroupInfo{
 			group1: taskGroupInfo1,
 			group2: taskGroupInfo2,
 		},
@@ -1408,11 +1385,10 @@ func (s *UtilizationAllocatorSuite) TestRealisticScenarioWithTaskGroups() {
 	}
 
 	distroQueueInfo := DistroQueueInfo{
-		Distro:             s.distro,
 		Length:             taskGroupInfo1.Count + taskGroupInfo2.Count + taskGroupInfo3.Count,
 		ExpectedDuration:   taskGroupInfo1.ExpectedDuration + taskGroupInfo2.ExpectedDuration + taskGroupInfo3.ExpectedDuration,
 		CountOverThreshold: taskGroupInfo1.CountOverThreshold + taskGroupInfo2.CountOverThreshold + taskGroupInfo3.CountOverThreshold,
-		TaskGroupInfos: map[string]TaskGroupInfo{
+		taskGroupInfosMap: map[string]TaskGroupInfo{
 			group1: taskGroupInfo1,
 			group2: taskGroupInfo2,
 			group3: taskGroupInfo3,
@@ -1455,11 +1431,10 @@ func (s *UtilizationAllocatorSuite) TestTaskGroupsWithExcessFreeHosts() {
 	}
 
 	distroQueueInfo := DistroQueueInfo{
-		Distro:             s.distro,
 		Length:             taskGroupInfo.Count,
 		ExpectedDuration:   taskGroupInfo.ExpectedDuration,
 		CountOverThreshold: taskGroupInfo.CountOverThreshold,
-		TaskGroupInfos: map[string]TaskGroupInfo{
+		taskGroupInfosMap: map[string]TaskGroupInfo{
 			name: taskGroupInfo,
 		},
 	}
