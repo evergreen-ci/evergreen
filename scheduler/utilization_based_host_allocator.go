@@ -2,7 +2,6 @@ package scheduler
 
 import (
 	"context"
-	"fmt"
 	"math"
 	"runtime"
 	"sync"
@@ -12,6 +11,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/distro"
+	"github.com/evergreen-ci/evergreen/model/distroqueue"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/mongodb/grip"
@@ -21,7 +21,7 @@ import (
 
 type TaskGroupData struct {
 	Hosts []host.Host
-	Info  TaskGroupInfo
+	Info  distroqueue.TaskGroupInfo
 }
 
 func UtilizationBasedHostAllocator(ctx context.Context, hostAllocatorData HostAllocatorData) (int, error) {
@@ -171,12 +171,12 @@ func evalHostUtilization(ctx context.Context, d distro.Distro, taskGroupData Tas
 }
 
 // groupByTaskGroup takes a list of hosts and tasks and returns them grouped by task group
-func groupByTaskGroup(runningHosts []host.Host, distroQueueInfo DistroQueueInfo) map[string]TaskGroupData {
+func groupByTaskGroup(runningHosts []host.Host, distroQueueInfo distroqueue.DistroQueueInfo) map[string]TaskGroupData {
 	taskGroupDatas := map[string]TaskGroupData{}
 	for _, h := range runningHosts {
 		name := ""
 		if h.RunningTask != "" && h.RunningTaskGroup != "" {
-			name = makeTaskGroupString(h.RunningTaskGroup, h.RunningTaskBuildVariant, h.RunningTaskProject, h.RunningTaskVersion)
+			name = h.GetTaskGroupString()
 		}
 		if data, exists := taskGroupDatas[name]; exists {
 			data.Hosts = append(data.Hosts, h)
@@ -184,12 +184,18 @@ func groupByTaskGroup(runningHosts []host.Host, distroQueueInfo DistroQueueInfo)
 		} else {
 			taskGroupDatas[name] = TaskGroupData{
 				Hosts: []host.Host{h},
-				Info:  TaskGroupInfo{},
+				Info:  distroqueue.TaskGroupInfo{},
 			}
 		}
 	}
-	taskGroupsInfosMap := distroQueueInfo.taskGroupInfosMap
-	for name, info := range taskGroupsInfosMap {
+
+	taskGroupInfos := distroQueueInfo.TaskGroupInfos
+	taskGroupInfosMap := make(map[string]distroqueue.TaskGroupInfo, len(taskGroupInfos))
+	for _, info := range taskGroupInfos {
+		taskGroupInfosMap[info.Name] = info
+	}
+
+	for name, info := range taskGroupInfosMap {
 		if data, exists := taskGroupDatas[name]; exists {
 			data.Info = info
 			taskGroupDatas[name] = data
@@ -215,10 +221,6 @@ func groupByTaskGroup(runningHosts []host.Host, distroQueueInfo DistroQueueInfo)
 	}
 
 	return taskGroupDatas
-}
-
-func makeTaskGroupString(group, bv, project, version string) string {
-	return fmt.Sprintf("%s_%s_%s_%s", group, bv, project, version)
 }
 
 // calcNewHostsNeeded returns the number of new hosts needed based
