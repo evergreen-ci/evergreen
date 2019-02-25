@@ -11,6 +11,7 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/distro"
+	"github.com/evergreen-ci/evergreen/model/distroqueue"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/stretchr/testify/suite"
@@ -92,7 +93,7 @@ func (s *HostAllocatorFuzzerSuite) randomizeData() {
 		expectedDuration += time.Duration(duration)
 	}
 
-	distroQueueInfo := DistroQueueInfo{
+	distroQueueInfo := distroqueue.DistroQueueInfo{
 		Length:           numTasks,
 		ExpectedDuration: expectedDuration,
 	}

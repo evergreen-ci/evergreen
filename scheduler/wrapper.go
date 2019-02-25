@@ -7,6 +7,7 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/cloud"
 	"github.com/evergreen-ci/evergreen/model/distro"
+	"github.com/evergreen-ci/evergreen/model/distroqueue"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/task"
@@ -25,46 +26,28 @@ const (
 	dynamicDistroRuntimeAlertThreshold     = 24 * time.Hour
 )
 
-// Should TaskGroupInfo and DistroQueueInfo live in the model package?
-type TaskGroupInfo struct {
-	Name                  string        `bson:"name" json:"name"`
-	Count                 int           `bson:"count" json:"count"`
-	MaxHosts              int           `bson:"max_hosts" json:"max_hosts"`
-	ExpectedDuration      time.Duration `bson:"expected_duration" json:"expected_duration"`
-	CountOverThreshold    int           `bson:"count_over_threshold" json:"count_over_threshold"`
-	DurationOverThreshold time.Duration `bson:"duration_over_threshold" json:"duration_over_threshold"`
-}
-
-type DistroQueueInfo struct {
-	Length             int             `bson:"length" json:"length"`
-	ExpectedDuration   time.Duration   `bson:"expected_duration" json:"expected_duration"`
-	CountOverThreshold int             `bson:"count_over_threshold" json:"count_over_threshold"`
-	TaskGroupInfos     []TaskGroupInfo `bson:"task_group_infos" json:"task_group_infos"`
-	taskGroupInfosMap  map[string]TaskGroupInfo
-}
-
-func GetDistroQueueInfo(tasks []task.Task, maxDurationThreshold time.Duration, distro distro.Distro) DistroQueueInfo {
+func GetDistroQueueInfo(tasks []task.Task, maxDurationThreshold time.Duration) distroqueue.DistroQueueInfo {
 	var distroExpectedDuration time.Duration
 	var distroCountOverThreshold int
-	taskGroupInfosMap := make(map[string]TaskGroupInfo)
+	taskGroupInfosMap := make(map[string]distroqueue.TaskGroupInfo)
 
 	for _, task := range tasks {
 		group := task.TaskGroup
 		name := ""
 		if group != "" {
-			name = makeTaskGroupString(group, task.BuildVariant, task.Project, task.Version)
+			name = task.GetTaskGroupString()
 		}
 
 		duration := task.FetchExpectedDuration()
 		distroExpectedDuration += duration
 
-		var taskGroupInfo TaskGroupInfo
+		var taskGroupInfo distroqueue.TaskGroupInfo
 		if info, exists := taskGroupInfosMap[name]; exists {
 			info.Count++
 			info.ExpectedDuration += duration
 			taskGroupInfo = info
 		} else {
-			taskGroupInfo = TaskGroupInfo{
+			taskGroupInfo = distroqueue.TaskGroupInfo{
 				Name:             name,
 				Count:            1,
 				MaxHosts:         task.TaskGroupMaxHosts,
@@ -79,17 +62,16 @@ func GetDistroQueueInfo(tasks []task.Task, maxDurationThreshold time.Duration, d
 		taskGroupInfosMap[name] = taskGroupInfo
 	}
 
-	taskGroupInfos := make([]TaskGroupInfo, len(taskGroupInfosMap))
+	taskGroupInfos := make([]distroqueue.TaskGroupInfo, len(taskGroupInfosMap))
 	for _, info := range taskGroupInfosMap {
 		taskGroupInfos = append(taskGroupInfos, info)
 	}
 
-	distroQueueInfo := DistroQueueInfo{
+	distroQueueInfo := distroqueue.DistroQueueInfo{
 		Length:             len(tasks),
 		ExpectedDuration:   distroExpectedDuration,
 		CountOverThreshold: distroCountOverThreshold,
 		TaskGroupInfos:     taskGroupInfos,
-		taskGroupInfosMap:  taskGroupInfosMap,
 	}
 
 	return distroQueueInfo
@@ -198,7 +180,7 @@ func PlanDistro(ctx context.Context, conf Configuration, s *evergreen.Settings) 
 		hostAllocatorData.MaxDurationThreshold = MaxDurationPerDistroHostWithContainers
 	}
 
-	distroQueueInfo := GetDistroQueueInfo(prioritizedTasks, hostAllocatorData.MaxDurationThreshold, distro)
+	distroQueueInfo := GetDistroQueueInfo(prioritizedTasks, hostAllocatorData.MaxDurationThreshold)
 	hostAllocatorData.DistroQueueInfo = distroQueueInfo
 
 	allocator := GetHostAllocator(conf.HostAllocator)
