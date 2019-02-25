@@ -72,6 +72,7 @@ func GetDistroQueueInfo(tasks []task.Task, maxDurationThreshold time.Duration) m
 		ExpectedDuration:   distroExpectedDuration,
 		CountOverThreshold: distroCountOverThreshold,
 		TaskGroupInfos:     taskGroupInfos,
+		taskGroupInfosMap:  taskGroupInfosMap,
 	}
 
 	return distroQueueInfo
