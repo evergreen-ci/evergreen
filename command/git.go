@@ -2,6 +2,7 @@ package command
 
 import (
 	"bufio"
+	"bytes"
 	"context"
 	"fmt"
 	"io"
@@ -69,7 +70,6 @@ func (c *gitFetchProject) ParseParams(params map[string]interface{}) error {
 
 func buildHTTPCloneCommand(opts cloneOpts) ([]string, error) {
 	clone := fmt.Sprintf("git clone https://%s@%s/%s/%s.git '%s'", opts.token, opts.location.Host, opts.owner, opts.repo, opts.dir)
-
 	if opts.branch != "" {
 		clone = fmt.Sprintf("%s --branch '%s'", clone, opts.branch)
 	}
@@ -246,8 +246,9 @@ func (c *gitFetchProject) Execute(ctx context.Context,
 
 	stdOut := logger.TaskWriter(level.Info)
 	defer stdOut.Close()
-	stdErr := logger.TaskWriter(level.Error)
-	defer stdErr.Close()
+	stdErr := noopWriteCloser{
+		&bytes.Buffer{},
+	}
 	output := subprocess.OutputOptions{Output: stdOut, Error: stdErr}
 	fetchSourceCmd := subprocess.NewLocalCommand(cmdsJoined, conf.WorkDir, "bash", nil, true)
 	if err = fetchSourceCmd.SetOutput(output); err != nil {
@@ -265,6 +266,11 @@ func (c *gitFetchProject) Execute(ctx context.Context,
 	logger.Execution().Debug(fmt.Sprintf("Commands are: %s", redactedCmds))
 
 	if err = fetchSourceCmd.Run(ctx); err != nil {
+		errorOutput := stdErr.String()
+		if errorOutput != "" {
+			scrubbedOutput := strings.Replace(errorOutput, oauthToken, "[redacted oauth token]", -1)
+			logger.Execution().Error(scrubbedOutput)
+		}
 		return errors.Wrap(err, "problem running fetch command")
 	}
 
@@ -572,4 +578,8 @@ func (c *gitFetchProject) applyPatch(ctx context.Context, logger client.LoggerPr
 		}
 	}
 	return nil
+}
+
+type noopWriteCloser struct {
+	*bytes.Buffer
 }
