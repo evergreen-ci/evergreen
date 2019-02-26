@@ -7,6 +7,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/evergreen/model/commitqueue"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/amboy/dependency"
@@ -92,7 +93,7 @@ func NewGithubStatusUpdateJobForPushToCommitQueue(owner, repo, ref string, prNum
 	job.Repo = repo
 	job.Ref = ref
 
-	job.SetID(fmt.Sprintf("%s:%s-%d-%s", githubStatusUpdateJobName, job.UpdateType, prNumber, time.Now().String()))
+	job.SetID(fmt.Sprintf("%s:%s-%s-%s-%d-%s", githubStatusUpdateJobName, job.UpdateType, owner, repo, prNumber, time.Now().String()))
 	return job
 }
 
@@ -187,7 +188,7 @@ func (j *githubStatusUpdateJob) fetch() (*message.GithubStatus, error) {
 		status.Description = "patch must be manually authorized"
 		status.State = message.GithubStateFailure
 	} else if j.UpdateType == githubUpdateTypePushToCommitQueue {
-		status.Context = "evergreen/commitqueue"
+		status.Context = commitqueue.CommitQueueContext
 		status.Description = "added to queue"
 		status.State = message.GithubStatePending
 

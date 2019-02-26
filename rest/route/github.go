@@ -283,8 +283,8 @@ func (gh *githubHookApi) Run(ctx context.Context) gimlet.Responder {
 		}
 
 		pushJob := units.NewGithubStatusUpdateJobForPushToCommitQueue(userRepo.Owner, userRepo.Repo, baseBranch, PRNum)
-		pushJob.Run(ctx)
-		grip.ErrorWhen(pushJob.Error() != nil, message.WrapError(pushJob.Error(), message.Fields{
+		q := evergreen.GetEnvironment().LocalQueue()
+		grip.Error(message.WrapError(q.Put(pushJob), message.Fields{
 			"source":  "github hook",
 			"msg_id":  gh.msgID,
 			"event":   gh.eventType,

@@ -12,6 +12,7 @@ import (
 	"github.com/evergreen-ci/evergreen/mock"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/build"
+	"github.com/evergreen-ci/evergreen/model/commitqueue"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/google/go-github/github"
@@ -144,7 +145,7 @@ func (s *githubStatusUpdateSuite) TestForPushToCommitQueue() {
 	s.Equal(ref, status.Ref)
 
 	s.Zero(status.URL)
-	s.Equal("evergreen/commitqueue", status.Context)
+	s.Equal(commitqueue.CommitQueueContext, status.Context)
 	s.Equal("added to queue", status.Description)
 	s.Equal(message.GithubStatePending, status.State)
 }
