@@ -10,6 +10,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/commitqueue"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/rest/data"
+	"github.com/evergreen-ci/evergreen/units"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/google/go-github/github"
 	"github.com/mongodb/amboy"
@@ -280,6 +281,20 @@ func (gh *githubHookApi) Run(ctx context.Context) gimlet.Responder {
 			}))
 			return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "can't enqueue item on commit queue"))
 		}
+
+		pushJob := units.NewGithubStatusUpdateJobForPushToCommitQueue(userRepo.Owner, userRepo.Repo, baseBranch, PRNum)
+		pushJob.Run(ctx)
+		grip.ErrorWhen(pushJob.Error() != nil, message.WrapError(pushJob.Error(), message.Fields{
+			"source":  "github hook",
+			"msg_id":  gh.msgID,
+			"event":   gh.eventType,
+			"action":  *event.Action,
+			"owner":   userRepo.Owner,
+			"repo":    userRepo.Repo,
+			"item":    PRNum,
+			"message": "failed to queue notification for commit queue push",
+		}))
+
 		grip.Info(message.Fields{
 			"source":  "github hook",
 			"msg_id":  gh.msgID,
