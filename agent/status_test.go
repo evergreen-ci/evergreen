@@ -8,6 +8,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/evergreen-ci/evergreen/subprocess"
+	"github.com/evergreen-ci/evergreen/util"
+
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/rest/client"
 	"github.com/mongodb/grip"
@@ -107,4 +110,25 @@ func (s *StatusSuite) TestAgentFailsToStartTwice() {
 	cancel()
 	err = <-first
 	s.Require().NoError(err)
+}
+
+func (s *StatusSuite) TestCheckOOMSucceeds() {
+	agt := New(s.testOpts, client.NewMock("url"))
+	mockCommunicator := agt.comm.(*client.Mock)
+	mockCommunicator.NextTaskIsNil = true
+	ctx, cancel := context.WithCancel(context.Background())
+	s.cancel = cancel
+	go func() {
+		_ = agt.Start(ctx)
+	}()
+	time.Sleep(100 * time.Millisecond)
+
+	resp, err := http.Get("http://127.0.0.1:2286/oom/check")
+	s.Require().NoError(err)
+	s.Equal(200, resp.StatusCode)
+
+	tracker := subprocess.OOMTracker{}
+	s.NoError(util.ReadJSONInto(resp.Body, &tracker))
+	s.Equal(false, tracker.WasOOMKilled)
+	s.Len(tracker.Pids, 0)
 }

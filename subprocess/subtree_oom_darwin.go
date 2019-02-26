@@ -12,13 +12,12 @@ import (
 )
 
 func (o *OOMTracker) Clear(ctx context.Context) error {
-	var err error
-	o.IsSudo, err = isSudo(ctx)
+	sudo, err := isSudo(ctx)
 	if err != nil {
 		return errors.Wrap(err, "error checking sudo")
 	}
 
-	if o.IsSudo {
+	if sudo {
 		return errors.Wrap(exec.CommandContext(ctx, "sudo", "log", "erase", "--all").Run(), "error clearing log")
 	}
 
@@ -26,7 +25,7 @@ func (o *OOMTracker) Clear(ctx context.Context) error {
 }
 
 func (o *OOMTracker) Check(ctx context.Context) error {
-	wasOOMKilled, pids, err := analyzeLogs(ctx, o.IsSudo)
+	wasOOMKilled, pids, err := analyzeLogs(ctx)
 	if err != nil {
 		return errors.Wrap(err, "error searching log")
 	}
@@ -35,12 +34,16 @@ func (o *OOMTracker) Check(ctx context.Context) error {
 	return nil
 }
 
-func analyzeLogs(ctx context.Context, isSudo bool) (bool, []int, error) {
+func analyzeLogs(ctx context.Context) (bool, []int, error) {
 	var cmd *exec.Cmd
 	wasOOMKilled := false
 	errs := make(chan error)
+	sudo, err := isSudo(ctx)
+	if err != nil {
+		return false, nil, errors.Wrap(err, "error checking sudo")
+	}
 
-	if isSudo {
+	if sudo {
 		cmd = exec.CommandContext(ctx, "sudo", "log", "show")
 	} else {
 		cmd = exec.CommandContext(ctx, "log", "show")
@@ -80,5 +83,6 @@ func analyzeLogs(ctx context.Context, isSudo bool) (bool, []int, error) {
 		return false, nil, errors.New("request cancelled")
 	case err = <-errs:
 		return wasOOMKilled, pids, errors.Wrap(err, "Error waiting for dmesg command")
+
 	}
 }
