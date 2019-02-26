@@ -8,8 +8,8 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/distro"
-	"github.com/evergreen-ci/evergreen/model/distroqueue"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/stretchr/testify/assert"
@@ -30,7 +30,7 @@ func TestGroupByTaskGroup(t *testing.T) {
 		},
 	}
 
-	taskGroupInfo := distroqueue.TaskGroupInfo{
+	taskGroupInfo := model.TaskGroupInfo{
 		Name:                  "",
 		Count:                 2,
 		MaxHosts:              1,
@@ -39,11 +39,11 @@ func TestGroupByTaskGroup(t *testing.T) {
 		DurationOverThreshold: 0,
 	}
 
-	distroQueueInfo := distroqueue.DistroQueueInfo{
+	distroQueueInfo := model.DistroQueueInfo{
 		Length:             2,
 		ExpectedDuration:   2 * time.Minute,
 		CountOverThreshold: 0,
-		TaskGroupInfos:     []distroqueue.TaskGroupInfo{taskGroupInfo},
+		TaskGroupInfos:     []model.TaskGroupInfo{taskGroupInfo},
 	}
 
 	taskGroupDatas := groupByTaskGroup(hosts, distroQueueInfo)
@@ -65,19 +65,19 @@ func TestGroupByTaskGroup(t *testing.T) {
 			RunningTask:      "bar",
 		},
 	}
-	taskGroupInfo1 := distroqueue.TaskGroupInfo{
+	taskGroupInfo1 := model.TaskGroupInfo{
 		Name:  fmt.Sprintf("%s_%s_%s_%s", "g2", "", "", ""),
 		Count: 1,
 	}
 
-	taskGroupInfo2 := distroqueue.TaskGroupInfo{
+	taskGroupInfo2 := model.TaskGroupInfo{
 		Name:  "",
 		Count: 1,
 	}
 
-	distroQueueInfo = distroqueue.DistroQueueInfo{
+	distroQueueInfo = model.DistroQueueInfo{
 		Length: 2,
-		TaskGroupInfos: []distroqueue.TaskGroupInfo{
+		TaskGroupInfos: []model.TaskGroupInfo{
 			taskGroupInfo1,
 			taskGroupInfo2,
 		},
@@ -107,9 +107,9 @@ func TestGroupByTaskGroup(t *testing.T) {
 		},
 	}
 
-	distroQueueInfo = distroqueue.DistroQueueInfo{
+	distroQueueInfo = model.DistroQueueInfo{
 		Length: 2,
-		TaskGroupInfos: []distroqueue.TaskGroupInfo{
+		TaskGroupInfos: []model.TaskGroupInfo{
 			taskGroupInfo1,
 			taskGroupInfo2,
 		},
@@ -216,16 +216,16 @@ func (s *UtilizationAllocatorSuite) TestCalcExistingFreeHosts() {
 }
 
 func (s *UtilizationAllocatorSuite) TestNoExistingHosts() {
-	taskGroupInfo := distroqueue.TaskGroupInfo{
+	taskGroupInfo := model.TaskGroupInfo{
 		Name:             "",
 		Count:            5,
 		ExpectedDuration: (20 * time.Minute) + (3 * time.Minute) + (45 * time.Second) + (15 * time.Minute) + (25 * time.Minute),
 	}
 
-	distroQueueInfo := distroqueue.DistroQueueInfo{
+	distroQueueInfo := model.DistroQueueInfo{
 		Length:           5,
 		ExpectedDuration: (20 * time.Minute) + (3 * time.Minute) + (45 * time.Second) + (15 * time.Minute) + (25 * time.Minute),
-		TaskGroupInfos: []distroqueue.TaskGroupInfo{
+		TaskGroupInfos: []model.TaskGroupInfo{
 			taskGroupInfo,
 		},
 	}
@@ -248,7 +248,7 @@ func (s *UtilizationAllocatorSuite) TestStaticDistro() {
 		Provider: evergreen.ProviderNameStatic,
 	}
 
-	distroQueueInfo := distroqueue.DistroQueueInfo{
+	distroQueueInfo := model.DistroQueueInfo{
 		Length:             2,
 		ExpectedDuration:   (20 * time.Minute) + (30 * time.Minute),
 		CountOverThreshold: 1,
@@ -297,7 +297,7 @@ func (s *UtilizationAllocatorSuite) TestExistingHostsSufficient() {
 	}
 	s.NoError(t2.Insert())
 
-	distroQueueInfo := distroqueue.DistroQueueInfo{
+	distroQueueInfo := model.DistroQueueInfo{
 		Length:             3,
 		ExpectedDuration:   (30 * time.Second) + (3 * time.Minute) + (5 * time.Minute),
 		CountOverThreshold: 0,
@@ -342,7 +342,7 @@ func (s *UtilizationAllocatorSuite) TestLongTasksInQueue1() {
 	}
 	s.NoError(t2.Insert())
 
-	taskGroupInfo := distroqueue.TaskGroupInfo{
+	taskGroupInfo := model.TaskGroupInfo{
 		Name:                  "",
 		Count:                 5,
 		ExpectedDuration:      5 * (30 * time.Minute),
@@ -350,13 +350,11 @@ func (s *UtilizationAllocatorSuite) TestLongTasksInQueue1() {
 		DurationOverThreshold: 5 * (30 * time.Minute),
 	}
 
-	distroQueueInfo := distroqueue.DistroQueueInfo{
+	distroQueueInfo := model.DistroQueueInfo{
 		Length:             5,
 		ExpectedDuration:   5 * (30 * time.Minute),
 		CountOverThreshold: 5,
-		TaskGroupInfos: []distroqueue.TaskGroupInfo{
-			taskGroupInfo,
-		},
+		TaskGroupInfos:     []model.TaskGroupInfo{taskGroupInfo},
 	}
 
 	hostAllocatorData := HostAllocatorData{
@@ -398,7 +396,7 @@ func (s *UtilizationAllocatorSuite) TestLongTasksInQueue2() {
 	}
 	s.NoError(t2.Insert())
 
-	taskGroupInfo := distroqueue.TaskGroupInfo{
+	taskGroupInfo := model.TaskGroupInfo{
 		Name:                  "",
 		Count:                 7,
 		ExpectedDuration:      (5 * (30 * time.Minute)) + (3 * time.Minute) + (10 * time.Minute),
@@ -406,11 +404,11 @@ func (s *UtilizationAllocatorSuite) TestLongTasksInQueue2() {
 		DurationOverThreshold: 5 * (30 * time.Minute),
 	}
 
-	distroQueueInfo := distroqueue.DistroQueueInfo{
+	distroQueueInfo := model.DistroQueueInfo{
 		Length:             7,
 		ExpectedDuration:   (5 * (30 * time.Minute)) + (3 * time.Minute) + (10 * time.Minute),
 		CountOverThreshold: 5,
-		TaskGroupInfos: []distroqueue.TaskGroupInfo{
+		TaskGroupInfos: []model.TaskGroupInfo{
 			taskGroupInfo,
 		},
 	}
@@ -459,7 +457,7 @@ func (s *UtilizationAllocatorSuite) TestOverMaxHosts() {
 		PoolSize: 10,
 	}
 
-	taskGroupInfo := distroqueue.TaskGroupInfo{
+	taskGroupInfo := model.TaskGroupInfo{
 		Name:                  "",
 		Count:                 9,
 		ExpectedDuration:      9 * (30 * time.Minute),
@@ -467,13 +465,11 @@ func (s *UtilizationAllocatorSuite) TestOverMaxHosts() {
 		DurationOverThreshold: 9 * (30 * time.Minute),
 	}
 
-	distroQueueInfo := distroqueue.DistroQueueInfo{
+	distroQueueInfo := model.DistroQueueInfo{
 		Length:             9,
 		ExpectedDuration:   9 * (30 * time.Minute),
 		CountOverThreshold: 9,
-		TaskGroupInfos: []distroqueue.TaskGroupInfo{
-			taskGroupInfo,
-		},
+		TaskGroupInfos:     []model.TaskGroupInfo{taskGroupInfo},
 	}
 
 	hostAllocatorData := HostAllocatorData{
@@ -515,19 +511,17 @@ func (s *UtilizationAllocatorSuite) TestExistingLongTask() {
 	}
 	s.NoError(t2.Insert())
 
-	taskGroupInfo := distroqueue.TaskGroupInfo{
+	taskGroupInfo := model.TaskGroupInfo{
 		Name:             "",
 		Count:            2,
 		ExpectedDuration: (30 * time.Second) + (5 * time.Minute),
 	}
 
-	distroQueueInfo := distroqueue.DistroQueueInfo{
+	distroQueueInfo := model.DistroQueueInfo{
 		Length:             2,
 		ExpectedDuration:   (30 * time.Second) + (5 * time.Minute),
 		CountOverThreshold: 0,
-		TaskGroupInfos: []distroqueue.TaskGroupInfo{
-			taskGroupInfo,
-		},
+		TaskGroupInfos:     []model.TaskGroupInfo{taskGroupInfo},
 	}
 
 	hostAllocatorData := HostAllocatorData{
@@ -557,18 +551,16 @@ func (s *UtilizationAllocatorSuite) TestOverrunTask() {
 	}
 	s.NoError(t1.Insert())
 
-	taskGroupInfo := distroqueue.TaskGroupInfo{
+	taskGroupInfo := model.TaskGroupInfo{
 		Name:             "",
 		Count:            4,
 		ExpectedDuration: (20 * time.Minute) + (15 * time.Minute) + (15 * time.Minute) + (25 * time.Minute),
 	}
 
-	distroQueueInfo := distroqueue.DistroQueueInfo{
+	distroQueueInfo := model.DistroQueueInfo{
 		Length:           4,
 		ExpectedDuration: (20 * time.Minute) + (15 * time.Minute) + (15 * time.Minute) + (25 * time.Minute),
-		TaskGroupInfos: []distroqueue.TaskGroupInfo{
-			taskGroupInfo,
-		},
+		TaskGroupInfos:   []model.TaskGroupInfo{taskGroupInfo},
 	}
 
 	hostAllocatorData := HostAllocatorData{
@@ -646,7 +638,7 @@ func (s *UtilizationAllocatorSuite) TestSoonToBeFree() {
 	}
 	s.NoError(t5.Insert())
 
-	taskGroupInfo := distroqueue.TaskGroupInfo{
+	taskGroupInfo := model.TaskGroupInfo{
 		Name:                  "",
 		Count:                 6,
 		ExpectedDuration:      6 * (30 * time.Minute),
@@ -654,13 +646,11 @@ func (s *UtilizationAllocatorSuite) TestSoonToBeFree() {
 		DurationOverThreshold: 6 * (30 * time.Minute),
 	}
 
-	distroQueueInfo := distroqueue.DistroQueueInfo{
+	distroQueueInfo := model.DistroQueueInfo{
 		Length:             6,
 		ExpectedDuration:   6 * (30 * time.Minute),
 		CountOverThreshold: 6,
-		TaskGroupInfos: []distroqueue.TaskGroupInfo{
-			taskGroupInfo,
-		},
+		TaskGroupInfos:     []model.TaskGroupInfo{taskGroupInfo},
 	}
 
 	hostAllocatorData := HostAllocatorData{
@@ -690,7 +680,7 @@ func (s *UtilizationAllocatorSuite) TestExcessHosts() {
 		RunningTask: "",
 	}
 
-	distroQueueInfo := distroqueue.DistroQueueInfo{
+	distroQueueInfo := model.DistroQueueInfo{
 		Length:             1,
 		ExpectedDuration:   29 * time.Minute,
 		CountOverThreshold: 0,
@@ -763,7 +753,7 @@ func (s *UtilizationAllocatorSuite) TestRealisticScenario1() {
 	}
 	s.NoError(t4.Insert())
 
-	taskGroupInfo := distroqueue.TaskGroupInfo{
+	taskGroupInfo := model.TaskGroupInfo{
 		Name:                  "",
 		Count:                 8,
 		ExpectedDuration:      (30 * time.Minute) + (5 * time.Minute) + (45 * time.Minute) + (30 * time.Second) + (10 * time.Minute) + (1 * time.Hour) + (1 * time.Minute) + (20 * time.Minute),
@@ -771,7 +761,7 @@ func (s *UtilizationAllocatorSuite) TestRealisticScenario1() {
 		DurationOverThreshold: (30 * time.Minute) + (45 * time.Minute) + (1 * time.Hour),
 	}
 
-	distroQueueInfo := distroqueue.DistroQueueInfo{
+	distroQueueInfo := model.DistroQueueInfo{
 		Length: 8,
 		// 3 long tasks + 37min of new tasks
 		// these should need 4 total hosts, but there is 1 idle host
@@ -779,9 +769,7 @@ func (s *UtilizationAllocatorSuite) TestRealisticScenario1() {
 		// so we only need 2 new hosts
 		ExpectedDuration:   (30 * time.Minute) + (5 * time.Minute) + (45 * time.Minute) + (30 * time.Second) + (10 * time.Minute) + (1 * time.Hour) + (1 * time.Minute) + (20 * time.Minute),
 		CountOverThreshold: 3,
-		TaskGroupInfos: []distroqueue.TaskGroupInfo{
-			taskGroupInfo,
-		},
+		TaskGroupInfos:     []model.TaskGroupInfo{taskGroupInfo},
 	}
 
 	hostAllocatorData := HostAllocatorData{
@@ -859,7 +847,7 @@ func (s *UtilizationAllocatorSuite) TestRealisticScenario2() {
 	}
 	s.NoError(t5.Insert())
 
-	distroQueueInfo := distroqueue.DistroQueueInfo{
+	distroQueueInfo := model.DistroQueueInfo{
 		Length: 8,
 		// 1 long task + 68 minutes of tasks should need 3 hosts
 		// 3.0 free hosts in the next 30 mins (factor = 1)
@@ -963,7 +951,7 @@ func (s *UtilizationAllocatorSuite) TestRealisticScenarioWithContainers() {
 	}
 	s.NoError(t5.Insert())
 
-	distroQueueInfo := distroqueue.DistroQueueInfo{
+	distroQueueInfo := model.DistroQueueInfo{
 		Length: 6,
 		// 2 long tasks + 9 minutes of tasks should need 3 hosts
 		// there are 2 idle tasks and 2 free hosts in the next 5 mins (factor = 1)
@@ -1073,7 +1061,7 @@ func (s *UtilizationAllocatorSuite) TestRealisticScenarioWithContainers2() {
 	}
 	s.NoError(t5.Insert())
 
-	taskGroupInfo := distroqueue.TaskGroupInfo{
+	taskGroupInfo := model.TaskGroupInfo{
 		Name:                  "",
 		Count:                 8,
 		ExpectedDuration:      (5 * time.Minute) + (2 * time.Minute) + (15 * time.Minute) + (30 * time.Second) + (10 * time.Minute) + (50 * time.Second) + (50 * time.Second) + (7 * time.Minute),
@@ -1081,14 +1069,14 @@ func (s *UtilizationAllocatorSuite) TestRealisticScenarioWithContainers2() {
 		DurationOverThreshold: (5 * time.Minute) + (2 * time.Minute) + (15 * time.Minute) + (10 * time.Minute) + (7 * time.Minute),
 	}
 
-	distroQueueInfo := distroqueue.DistroQueueInfo{
+	distroQueueInfo := model.DistroQueueInfo{
 		Length: 8,
 		// 3 long tasks + 10 minutes of tasks should need 5 hosts
 		// there is 1 idle task and 3 free hosts in the next 5 mins (factor = 1)
 		// so we need 1 host
 		ExpectedDuration:   (5 * time.Minute) + (2 * time.Minute) + (15 * time.Minute) + (30 * time.Second) + (10 * time.Minute) + (50 * time.Second) + (50 * time.Second) + (7 * time.Minute),
 		CountOverThreshold: 5,
-		TaskGroupInfos: []distroqueue.TaskGroupInfo{
+		TaskGroupInfos: []model.TaskGroupInfo{
 			taskGroupInfo,
 		},
 	}
@@ -1115,7 +1103,7 @@ func (s *UtilizationAllocatorSuite) TestRealisticScenarioWithContainers2() {
 func (s *UtilizationAllocatorSuite) TestOnlyTaskGroupsOnlyScheduled() {
 	name := fmt.Sprintf("%s_%s_%s_%s", "tg1", "", "", "")
 
-	taskGroupInfo := distroqueue.TaskGroupInfo{
+	taskGroupInfo := model.TaskGroupInfo{
 		Name:                  name,
 		Count:                 10,
 		MaxHosts:              2,
@@ -1124,12 +1112,12 @@ func (s *UtilizationAllocatorSuite) TestOnlyTaskGroupsOnlyScheduled() {
 		DurationOverThreshold: 10 * (30 * time.Minute),
 	}
 
-	distroQueueInfo := distroqueue.DistroQueueInfo{
+	distroQueueInfo := model.DistroQueueInfo{
 		Length: 10,
 		// a long queue of task group tasks with max hosts=2 should request 2
 		ExpectedDuration:   10 * (30 * time.Minute),
 		CountOverThreshold: 10,
-		TaskGroupInfos: []distroqueue.TaskGroupInfo{
+		TaskGroupInfos: []model.TaskGroupInfo{
 			taskGroupInfo,
 		},
 	}
@@ -1204,7 +1192,7 @@ func (s *UtilizationAllocatorSuite) TestOnlyTaskGroupsSomeRunning() {
 	s.NoError(t3.Insert())
 
 	group1 := fmt.Sprintf("%s_%s_%s_%s", "g1", "bv1", s.projectName, "v1")
-	taskGroupInfo1 := distroqueue.TaskGroupInfo{
+	taskGroupInfo1 := model.TaskGroupInfo{
 		Name:                  group1,
 		Count:                 1,
 		MaxHosts:              3,
@@ -1214,7 +1202,7 @@ func (s *UtilizationAllocatorSuite) TestOnlyTaskGroupsSomeRunning() {
 	}
 
 	group2 := fmt.Sprintf("%s_%s_%s_%s", "g2", "bv1", s.projectName, "v1")
-	taskGroupInfo2 := distroqueue.TaskGroupInfo{
+	taskGroupInfo2 := model.TaskGroupInfo{
 		Name:                  group2,
 		Count:                 4,
 		MaxHosts:              1,
@@ -1223,14 +1211,11 @@ func (s *UtilizationAllocatorSuite) TestOnlyTaskGroupsSomeRunning() {
 		DurationOverThreshold: 4 * (30 * time.Minute),
 	}
 
-	distroQueueInfo := distroqueue.DistroQueueInfo{
+	distroQueueInfo := model.DistroQueueInfo{
 		Length:             taskGroupInfo1.Count + taskGroupInfo2.Count,
 		ExpectedDuration:   taskGroupInfo1.ExpectedDuration + taskGroupInfo2.ExpectedDuration,
 		CountOverThreshold: taskGroupInfo1.CountOverThreshold + taskGroupInfo2.CountOverThreshold,
-		TaskGroupInfos: []distroqueue.TaskGroupInfo{
-			taskGroupInfo1,
-			taskGroupInfo2,
-		},
+		TaskGroupInfos:     []model.TaskGroupInfo{taskGroupInfo1, taskGroupInfo2},
 	}
 
 	hostAllocatorData := HostAllocatorData{
@@ -1357,7 +1342,7 @@ func (s *UtilizationAllocatorSuite) TestRealisticScenarioWithTaskGroups() {
 	s.NoError(t7.Insert())
 
 	group1 := fmt.Sprintf("%s_%s_%s_%s", "g1", "bv1", s.projectName, "v1")
-	taskGroupInfo1 := distroqueue.TaskGroupInfo{
+	taskGroupInfo1 := model.TaskGroupInfo{
 		Name:                  group1,
 		Count:                 2,
 		MaxHosts:              3,
@@ -1367,7 +1352,7 @@ func (s *UtilizationAllocatorSuite) TestRealisticScenarioWithTaskGroups() {
 	}
 
 	group2 := fmt.Sprintf("%s_%s_%s_%s", "g2", "bv1", s.projectName, "v1")
-	taskGroupInfo2 := distroqueue.TaskGroupInfo{
+	taskGroupInfo2 := model.TaskGroupInfo{
 		Name:                  group2,
 		Count:                 2,
 		MaxHosts:              1,
@@ -1377,7 +1362,7 @@ func (s *UtilizationAllocatorSuite) TestRealisticScenarioWithTaskGroups() {
 	}
 
 	group3 := ""
-	taskGroupInfo3 := distroqueue.TaskGroupInfo{
+	taskGroupInfo3 := model.TaskGroupInfo{
 		Name:                  group3,
 		Count:                 6,
 		MaxHosts:              0,
@@ -1386,15 +1371,11 @@ func (s *UtilizationAllocatorSuite) TestRealisticScenarioWithTaskGroups() {
 		DurationOverThreshold: 0,
 	}
 
-	distroQueueInfo := distroqueue.DistroQueueInfo{
+	distroQueueInfo := model.DistroQueueInfo{
 		Length:             taskGroupInfo1.Count + taskGroupInfo2.Count + taskGroupInfo3.Count,
 		ExpectedDuration:   taskGroupInfo1.ExpectedDuration + taskGroupInfo2.ExpectedDuration + taskGroupInfo3.ExpectedDuration,
 		CountOverThreshold: taskGroupInfo1.CountOverThreshold + taskGroupInfo2.CountOverThreshold + taskGroupInfo3.CountOverThreshold,
-		TaskGroupInfos: []distroqueue.TaskGroupInfo{
-			taskGroupInfo1,
-			taskGroupInfo2,
-			taskGroupInfo3,
-		},
+		TaskGroupInfos:     []model.TaskGroupInfo{taskGroupInfo1, taskGroupInfo2, taskGroupInfo3},
 	}
 
 	hostAllocatorData := HostAllocatorData{
@@ -1423,7 +1404,7 @@ func (s *UtilizationAllocatorSuite) TestTaskGroupsWithExcessFreeHosts() {
 	}
 
 	name := fmt.Sprintf("%s_%s_%s_%s", "g1", "bv1", s.projectName, "v1")
-	taskGroupInfo := distroqueue.TaskGroupInfo{
+	taskGroupInfo := model.TaskGroupInfo{
 		Name:                  name,
 		Count:                 3,
 		MaxHosts:              3,
@@ -1432,13 +1413,11 @@ func (s *UtilizationAllocatorSuite) TestTaskGroupsWithExcessFreeHosts() {
 		DurationOverThreshold: 3,
 	}
 
-	distroQueueInfo := distroqueue.DistroQueueInfo{
+	distroQueueInfo := model.DistroQueueInfo{
 		Length:             taskGroupInfo.Count,
 		ExpectedDuration:   taskGroupInfo.ExpectedDuration,
 		CountOverThreshold: taskGroupInfo.CountOverThreshold,
-		TaskGroupInfos: []distroqueue.TaskGroupInfo{
-			taskGroupInfo,
-		},
+		TaskGroupInfos:     []model.TaskGroupInfo{taskGroupInfo},
 	}
 
 	hostAllocatorData := HostAllocatorData{
