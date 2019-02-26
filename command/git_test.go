@@ -145,6 +145,44 @@ func (s *GitGetProjectSuite) TestGitPlugin() {
 	}
 }
 
+func (s *GitGetProjectSuite) TestTokenScrubbedFromLogger() {
+	conf := s.modelData1.TaskConfig
+	conf.ProjectRef.Repo = "doesntexist"
+	token, err := s.settings.GetGithubOauthToken()
+	s.NoError(err)
+	conf.Expansions.Put("global_github_oauth_token", token)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	comm := client.NewMock("http://localhost.com")
+	logger := comm.GetLoggerProducer(ctx, client.TaskData{ID: conf.Task.Id, Secret: conf.Task.Secret}, nil)
+
+	for _, task := range conf.Project.Tasks {
+		s.NotEqual(len(task.Commands), 0)
+		for _, command := range task.Commands {
+
+			pluginCmds, err := Render(command, conf.Project.Functions)
+			s.NoError(err)
+			s.NotNil(pluginCmds)
+			err = pluginCmds[0].Execute(ctx, comm, logger, conf)
+			s.Error(err)
+		}
+	}
+
+	s.NoError(logger.Close())
+	found := false
+	for _, msgs := range comm.GetMockMessages() {
+		for _, msg := range msgs {
+			if strings.Contains(msg.Message, "https://[redacted oauth token]@github.com/deafgoat/doesntexist.git/") {
+				found = true
+			}
+			if strings.Contains(msg.Message, token) {
+				s.FailNow("token was leaked")
+			}
+		}
+	}
+	s.True(found)
+}
+
 func (s *GitGetProjectSuite) TestValidateGitCommands() {
 	const refToCompare = "cf46076567e4949f9fc68e0634139d4ac495c89b" //note: also defined in test_config.yml
 
