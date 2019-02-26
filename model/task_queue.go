@@ -21,7 +21,6 @@ const (
 	TaskQueuesCollection = "task_queues"
 )
 
-// describes the state of a TaskGroup
 type TaskGroupInfo struct {
 	Name                  string        `bson:"name" json:"name"`
 	Count                 int           `bson:"count" json:"count"`
@@ -31,7 +30,6 @@ type TaskGroupInfo struct {
 	DurationOverThreshold time.Duration `bson:"duration_over_threshold" json:"duration_over_threshold"`
 }
 
-// describes the TaskGroups comprising a distro queue
 type DistroQueueInfo struct {
 	Length             int             `bson:"length" json:"length"`
 	ExpectedDuration   time.Duration   `bson:"expected_duration" json:"expected_duration"`
