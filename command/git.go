@@ -247,9 +247,8 @@ func (c *gitFetchProject) Execute(ctx context.Context,
 	stdOut := logger.TaskWriter(level.Info)
 	defer stdOut.Close()
 	stdErr := noopWriteCloser{
-		w: &bytes.Buffer{},
+		&bytes.Buffer{},
 	}
-	defer stdErr.Close()
 	output := subprocess.OutputOptions{Output: stdOut, Error: stdErr}
 	fetchSourceCmd := subprocess.NewLocalCommand(cmdsJoined, conf.WorkDir, "bash", nil, true)
 	if err = fetchSourceCmd.SetOutput(output); err != nil {
@@ -267,7 +266,7 @@ func (c *gitFetchProject) Execute(ctx context.Context,
 	logger.Execution().Debug(fmt.Sprintf("Commands are: %s", redactedCmds))
 
 	if err = fetchSourceCmd.Run(ctx); err != nil {
-		errorOutput := stdErr.w.String()
+		errorOutput := stdErr.String()
 		if errorOutput != "" {
 			scrubbedOutput := strings.Replace(errorOutput, oauthToken, "[redacted oauth token]", -1)
 			logger.Execution().Error(scrubbedOutput)
@@ -582,13 +581,5 @@ func (c *gitFetchProject) applyPatch(ctx context.Context, logger client.LoggerPr
 }
 
 type noopWriteCloser struct {
-	w *bytes.Buffer
-}
-
-func (c noopWriteCloser) Write(data []byte) (n int, err error) {
-	return c.w.Write(data)
-}
-
-func (c noopWriteCloser) Close() error {
-	return nil
+	*bytes.Buffer
 }
