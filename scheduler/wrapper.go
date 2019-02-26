@@ -6,8 +6,8 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/cloud"
+	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/distro"
-	"github.com/evergreen-ci/evergreen/model/distroqueue"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/task"
@@ -26,10 +26,10 @@ const (
 	dynamicDistroRuntimeAlertThreshold     = 24 * time.Hour
 )
 
-func GetDistroQueueInfo(tasks []task.Task, maxDurationThreshold time.Duration) distroqueue.DistroQueueInfo {
+func GetDistroQueueInfo(tasks []task.Task, maxDurationThreshold time.Duration) model.DistroQueueInfo {
 	var distroExpectedDuration time.Duration
 	var distroCountOverThreshold int
-	taskGroupInfosMap := make(map[string]distroqueue.TaskGroupInfo)
+	taskGroupInfosMap := make(map[string]model.TaskGroupInfo)
 
 	for _, task := range tasks {
 		group := task.TaskGroup
@@ -41,13 +41,13 @@ func GetDistroQueueInfo(tasks []task.Task, maxDurationThreshold time.Duration) d
 		duration := task.FetchExpectedDuration()
 		distroExpectedDuration += duration
 
-		var taskGroupInfo distroqueue.TaskGroupInfo
+		var taskGroupInfo model.TaskGroupInfo
 		if info, exists := taskGroupInfosMap[name]; exists {
 			info.Count++
 			info.ExpectedDuration += duration
 			taskGroupInfo = info
 		} else {
-			taskGroupInfo = distroqueue.TaskGroupInfo{
+			taskGroupInfo = model.TaskGroupInfo{
 				Name:             name,
 				Count:            1,
 				MaxHosts:         task.TaskGroupMaxHosts,
@@ -62,12 +62,12 @@ func GetDistroQueueInfo(tasks []task.Task, maxDurationThreshold time.Duration) d
 		taskGroupInfosMap[name] = taskGroupInfo
 	}
 
-	taskGroupInfos := make([]distroqueue.TaskGroupInfo, len(taskGroupInfosMap))
+	taskGroupInfos := make([]model.TaskGroupInfo, len(taskGroupInfosMap))
 	for _, info := range taskGroupInfosMap {
 		taskGroupInfos = append(taskGroupInfos, info)
 	}
 
-	distroQueueInfo := distroqueue.DistroQueueInfo{
+	distroQueueInfo := model.DistroQueueInfo{
 		Length:             len(tasks),
 		ExpectedDuration:   distroExpectedDuration,
 		CountOverThreshold: distroCountOverThreshold,

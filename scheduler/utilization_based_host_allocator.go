@@ -10,8 +10,8 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/distro"
-	"github.com/evergreen-ci/evergreen/model/distroqueue"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/mongodb/grip"
@@ -21,7 +21,7 @@ import (
 
 type TaskGroupData struct {
 	Hosts []host.Host
-	Info  distroqueue.TaskGroupInfo
+	Info  model.TaskGroupInfo
 }
 
 func UtilizationBasedHostAllocator(ctx context.Context, hostAllocatorData HostAllocatorData) (int, error) {
@@ -171,7 +171,7 @@ func evalHostUtilization(ctx context.Context, d distro.Distro, taskGroupData Tas
 }
 
 // groupByTaskGroup takes a list of hosts and tasks and returns them grouped by task group
-func groupByTaskGroup(runningHosts []host.Host, distroQueueInfo distroqueue.DistroQueueInfo) map[string]TaskGroupData {
+func groupByTaskGroup(runningHosts []host.Host, distroQueueInfo model.DistroQueueInfo) map[string]TaskGroupData {
 	taskGroupDatas := map[string]TaskGroupData{}
 	for _, h := range runningHosts {
 		name := ""
@@ -184,13 +184,13 @@ func groupByTaskGroup(runningHosts []host.Host, distroQueueInfo distroqueue.Dist
 		} else {
 			taskGroupDatas[name] = TaskGroupData{
 				Hosts: []host.Host{h},
-				Info:  distroqueue.TaskGroupInfo{},
+				Info:  model.TaskGroupInfo{},
 			}
 		}
 	}
 
 	taskGroupInfos := distroQueueInfo.TaskGroupInfos
-	taskGroupInfosMap := make(map[string]distroqueue.TaskGroupInfo, len(taskGroupInfos))
+	taskGroupInfosMap := make(map[string]model.TaskGroupInfo, len(taskGroupInfos))
 	for _, info := range taskGroupInfos {
 		taskGroupInfosMap[info.Name] = info
 	}
