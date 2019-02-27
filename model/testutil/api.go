@@ -212,11 +212,7 @@ func SetupAPITestData(testConfig *evergreen.Settings, taskDisplayName string, va
 	if err != nil {
 		return nil, errors.Wrap(err, "couldn't get db session!")
 	}
-	oauthToken, err := testConfig.GetGithubOauthToken()
-	if err != nil {
-		return nil, errors.Wrap(err, "error getting oauth token")
-	}
-	e, err := model.PopulateExpansions(taskOne, testHost, oauthToken)
+	e, err := model.PopulateExpansions(taskOne, testHost)
 	if err != nil {
 		return nil, errors.Wrap(err, "error populating expansions")
 	}

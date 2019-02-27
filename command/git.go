@@ -35,7 +35,7 @@ type gitFetchProject struct {
 	// Note: If a module does not have a revision it will use the module's branch to get the project.
 	Revisions map[string]string `plugin:"expand"`
 
-	ProjectToken string `plugin:"expand" mapstructure:"token"`
+	Token string `plugin:"expand"`
 
 	base
 }
@@ -96,7 +96,7 @@ func buildSSHCloneCommand(location, branch, dir string) ([]string, error) {
 	}, nil
 }
 
-func (c *gitFetchProject) buildCloneCommand(conf *model.TaskConfig, oauthToken string) ([]string, error) {
+func (c *gitFetchProject) buildCloneCommand(conf *model.TaskConfig) ([]string, error) {
 	gitCommands := []string{
 		"set -o xtrace",
 		"set -o errexit",
@@ -104,7 +104,7 @@ func (c *gitFetchProject) buildCloneCommand(conf *model.TaskConfig, oauthToken s
 	}
 
 	var cloneCmd []string
-	if oauthToken == "" {
+	if c.Token == "" {
 		location, err := conf.ProjectRef.Location()
 		if err != nil {
 			return nil, err
@@ -125,7 +125,7 @@ func (c *gitFetchProject) buildCloneCommand(conf *model.TaskConfig, oauthToken s
 			repo:     conf.ProjectRef.Repo,
 			branch:   conf.ProjectRef.Branch,
 			dir:      c.Directory,
-			token:    oauthToken,
+			token:    c.Token,
 		}
 		cloneCmd, err = buildHTTPCloneCommand(opts)
 		if err != nil {
@@ -165,7 +165,7 @@ func (c *gitFetchProject) buildCloneCommand(conf *model.TaskConfig, oauthToken s
 	return gitCommands, nil
 }
 
-func (c *gitFetchProject) buildModuleCloneCommand(cloneURI, owner, repo, moduleBase, ref, oauthToken string) ([]string, error) {
+func (c *gitFetchProject) buildModuleCloneCommand(cloneURI, owner, repo, moduleBase, ref string) ([]string, error) {
 	if cloneURI == "" {
 		return nil, errors.New("empty repository URI")
 	}
@@ -199,7 +199,7 @@ func (c *gitFetchProject) buildModuleCloneCommand(cloneURI, owner, repo, moduleB
 			owner:    owner,
 			repo:     repo,
 			dir:      moduleBase,
-			token:    oauthToken,
+			token:    c.Token,
 		}
 		cmds, err := buildHTTPCloneCommand(opts)
 		if err != nil {
@@ -220,24 +220,18 @@ func (c *gitFetchProject) Execute(ctx context.Context,
 
 	// expand the github parameters before running the task
 	if err = util.ExpandValues(c, conf.Expansions); err != nil {
-		return errors.Wrap(err, "error expanding github parameters")
-	}
-	// c.ProjectToken (from the project's YAML file) takes precedence
-	// over db.admin.find({"_id": "global"},{"credentials.github": 1}), unless it is an empty string.
-	oauthToken := conf.Expansions.Get("global_github_oauth_token")
-	if len(c.ProjectToken) != 0 {
-		oauthToken = c.ProjectToken
+		return err
 	}
 
-	if strings.HasPrefix(oauthToken, "token") {
-		splitToken := strings.Split(oauthToken, " ")
+	if strings.HasPrefix(c.Token, "token") {
+		splitToken := strings.Split(c.Token, " ")
 		if len(splitToken) != 2 {
 			return errors.New("token format is invalid")
 		}
-		oauthToken = splitToken[1]
+		c.Token = splitToken[1]
 	}
 
-	gitCommands, err := c.buildCloneCommand(conf, oauthToken)
+	gitCommands, err := c.buildCloneCommand(conf)
 	if err != nil {
 		return errors.WithStack(err)
 	}
@@ -260,8 +254,8 @@ func (c *gitFetchProject) Execute(ctx context.Context,
 
 	logger.Execution().Info("Fetching source from git...")
 	redactedCmds := cmdsJoined
-	if oauthToken != "" {
-		redactedCmds = strings.Replace(redactedCmds, oauthToken, "[redacted oauth token]", -1)
+	if c.Token != "" {
+		redactedCmds = strings.Replace(redactedCmds, c.Token, "[redacted oauth token]", -1)
 	}
 	logger.Execution().Debug(fmt.Sprintf("Commands are: %s", redactedCmds))
 
@@ -309,7 +303,7 @@ func (c *gitFetchProject) Execute(ctx context.Context,
 		}
 
 		var moduleCmds []string
-		moduleCmds, err = c.buildModuleCloneCommand(module.Repo, owner, repo, moduleBase, revision, oauthToken)
+		moduleCmds, err = c.buildModuleCloneCommand(module.Repo, owner, repo, moduleBase, revision)
 		if err != nil {
 			return err
 		}

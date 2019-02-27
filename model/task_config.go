@@ -142,16 +142,7 @@ func MakeConfigFromTask(t *task.Task) (*TaskConfig, error) {
 	if err != nil {
 		return nil, errors.Wrap(err, "error finding host")
 	}
-
-	settings, err := evergreen.GetConfig()
-	if err != nil {
-		return nil, errors.Wrap(err, "error getting evergreen config")
-	}
-	oauthToken, err := settings.GetGithubOauthToken()
-	if err != nil {
-		return nil, errors.Wrap(err, "error getting oauth token")
-	}
-	e, err := PopulateExpansions(t, h, oauthToken)
+	e, err := PopulateExpansions(t, h)
 	if err != nil {
 		return nil, errors.Wrap(err, "error populating expansions")
 	}
