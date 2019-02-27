@@ -156,7 +156,7 @@ LOOP:
 					detail := &apimodels.TaskEndDetail{
 						Status:      evergreen.TaskFailed,
 						Type:        evergreen.CommandTypeSetup,
-						Description: fmt.Sprintf("invalid logger config: %s", err.Error()),
+						Description: fmt.Sprintf("error setting up task logger: %s", err.Error()),
 					}
 					resp, err := a.comm.EndTask(ctx, detail, tc.task)
 					if err != nil {
