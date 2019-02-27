@@ -262,7 +262,7 @@ func (c *gitFetchProject) Execute(ctx context.Context,
 	if err = fetchSourceCmd.Run(ctx); err != nil {
 		errorOutput := stdErr.String()
 		if errorOutput != "" {
-			scrubbedOutput := strings.Replace(errorOutput, oauthToken, "[redacted oauth token]", -1)
+			scrubbedOutput := strings.Replace(errorOutput, c.Token, "[redacted oauth token]", -1)
 			logger.Execution().Error(scrubbedOutput)
 		}
 		return errors.Wrap(err, "problem running fetch command")
