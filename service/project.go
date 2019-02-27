@@ -129,14 +129,6 @@ func (uis *UIServer) projectPage(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	apiHook := restModel.APIGithubHook{}
-	if hook != nil {
-		if err = apiHook.BuildFromService(*hook); err != nil {
-			uis.LoggedError(w, r, http.StatusInternalServerError, err)
-			return
-		}
-	}
-
 	subscriptions, err := event.FindSubscriptionsByOwner(projRef.Identifier, event.OwnerTypeProject)
 	if err != nil {
 		uis.LoggedError(w, r, http.StatusInternalServerError, err)
@@ -151,14 +143,14 @@ func (uis *UIServer) projectPage(w http.ResponseWriter, r *http.Request) {
 	}
 
 	data := struct {
-		ProjectRef        *model.ProjectRef
-		ProjectVars       *model.ProjectVars
-		ProjectAliases    []model.ProjectAlias        `json:"aliases,omitempty"`
-		PRConflictingRefs []string                    `json:"pr_testing_conflicting_refs,omitempty"`
-		CQConflictingRefs []string                    `json:"commit_queue_conflicting_refs,omitempty"`
-		GithubHook        restModel.APIGithubHook     `json:"github_hook"`
-		Subscriptions     []restModel.APISubscription `json:"subscriptions"`
-	}{projRef, projVars, projectAliases, PRConflictingRefs, CQConflictingRefs, apiHook, apiSubscriptions}
+		ProjectRef            *model.ProjectRef
+		ProjectVars           *model.ProjectVars
+		ProjectAliases        []model.ProjectAlias        `json:"aliases,omitempty"`
+		PRConflictingRefs     []string                    `json:"pr_testing_conflicting_refs,omitempty"`
+		CQConflictingRefs     []string                    `json:"commit_queue_conflicting_refs,omitempty"`
+		GitHubWebhooksEnabled bool                        `json:"github_webhooks_enabled"`
+		Subscriptions         []restModel.APISubscription `json:"subscriptions"`
+	}{projRef, projVars, projectAliases, PRConflictingRefs, CQConflictingRefs, hook != nil, apiSubscriptions}
 
 	// the project context has all projects so make the ui list using all projects
 	gimlet.WriteJSON(w, data)
@@ -215,7 +207,6 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 			Settings map[string]interface{} `json:"settings"`
 		} `json:"alert_config"`
 		NotifyOnBuildFailure  bool                        `json:"notify_on_failure"`
-		SetupGithubHook       bool                        `json:"setup_github_hook"`
 		ForceRepotrackerRun   bool                        `json:"force_repotracker_run"`
 		Subscriptions         []restModel.APISubscription `json:"subscriptions"`
 		DeleteSubscriptions   []string                    `json:"delete_subscriptions"`
@@ -229,8 +220,12 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if len(responseRef.Owner) == 0 || len(responseRef.Repo) == 0 {
+		http.Error(w, "no owner/repo specified", http.StatusBadRequest)
+		return
+	}
 	if len(responseRef.Branch) == 0 {
-		http.Error(w, fmt.Sprintf("no branch specified %v", err), http.StatusBadRequest)
+		http.Error(w, "no branch specified", http.StatusBadRequest)
 		return
 	}
 
@@ -248,7 +243,57 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	var hook *model.GithubHook
+	hook, err = model.FindGithubHook(responseRef.Owner, responseRef.Repo)
+	if err != nil {
+		uis.LoggedError(w, r, http.StatusInternalServerError, err)
+		return
+	}
+	origGithubWebhookEnabled := (hook != nil)
+	if hook == nil {
+		var hookID int
+		hookID, err = uis.setupGithubHook(responseRef.Owner, responseRef.Repo)
+		if err != nil {
+			grip.Error(message.WrapError(err, message.Fields{
+				"source":  "project edit",
+				"message": "can't setup webhook",
+				"project": id,
+				"owner":   responseRef.Owner,
+				"repo":    responseRef.Repo,
+			}))
+			// don't kill it here, sometimes people change
+			// Evergreen to track a personal branch,
+			// one that we have no access to
+			projectRef.TracksPushEvents = false
+		} else {
+			hook := model.GithubHook{
+				HookID: hookID,
+				Owner:  responseRef.Owner,
+				Repo:   responseRef.Repo,
+			}
+			if err = hook.Insert(); err != nil {
+				// A github hook as been created, but we couldn't
+				// save the hook ID in our database. This needs
+				// manual attention for clean up
+				grip.Alert(message.WrapError(err, message.Fields{
+					"source":  "project edit",
+					"message": "can't save hook",
+					"project": id,
+					"owner":   responseRef.Owner,
+					"repo":    responseRef.Repo,
+					"hook_id": hookID,
+				}))
+				uis.LoggedError(w, r, http.StatusInternalServerError, err)
+				return
+			}
+		}
+	}
+
 	if responseRef.PRTestingEnabled {
+		if hook == nil {
+			uis.LoggedError(w, r, http.StatusBadRequest, errors.New("Cannot enable PR Testing in this repo, must enable GitHub webhooks first"))
+			return
+		}
 		var conflictingRefs []model.ProjectRef
 		conflictingRefs, err = model.FindProjectRefsByRepoAndBranch(responseRef.Owner, responseRef.Repo, responseRef.Branch)
 		if err != nil {
@@ -283,7 +328,7 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		if !responseRef.SetupGithubHook {
+		if hook == nil {
 			uis.LoggedError(w, r, http.StatusBadRequest, errors.Errorf("Cannot enable Commit Queue without github webhooks enabled for the project"))
 			return
 		}
@@ -341,54 +386,6 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		uis.LoggedError(w, r, http.StatusInternalServerError, err)
 		return
-	}
-
-	var hook *model.GithubHook
-	hook, err = model.FindGithubHook(responseRef.Owner, responseRef.Repo)
-	if err != nil {
-		uis.LoggedError(w, r, http.StatusInternalServerError, err)
-		return
-	}
-	origGithubWebhookEnabled := hook != nil
-	currentGithubWebhookEnabled := origGithubWebhookEnabled
-	if responseRef.SetupGithubHook && hook == nil {
-		var hookID int
-		hookID, err = uis.setupGithubHook(projectRef)
-		if err != nil {
-			grip.Error(message.WrapError(err, message.Fields{
-				"source":  "project edit",
-				"message": "can't setup webhook",
-				"project": id,
-				"owner":   responseRef.Owner,
-				"repo":    responseRef.Repo,
-			}))
-			// don't kill it here, sometimes people change
-			// Evergreen to track a personal branch,
-			// one that we have no access to
-			projectRef.TracksPushEvents = false
-		} else {
-			currentGithubWebhookEnabled = true
-			hook := model.GithubHook{
-				HookID: hookID,
-				Owner:  responseRef.Owner,
-				Repo:   responseRef.Repo,
-			}
-			if err = hook.Insert(); err != nil {
-				// A github hook as been created, but we couldn't
-				// save the hook ID in our database. This needs
-				// manual attention for clean up
-				grip.Alert(message.WrapError(err, message.Fields{
-					"source":  "project edit",
-					"message": "can't save hook",
-					"project": id,
-					"owner":   responseRef.Owner,
-					"repo":    responseRef.Repo,
-					"hook_id": hookID,
-				}))
-				uis.LoggedError(w, r, http.StatusInternalServerError, err)
-				return
-			}
-		}
 	}
 
 	if responseRef.ForceRepotrackerRun {
@@ -496,7 +493,7 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 	currentSubscriptions, _ := event.FindSubscriptionsByOwner(projectRef.Identifier, event.OwnerTypeProject)
 	after := model.ProjectSettingsEvent{
 		ProjectRef:         *projectRef,
-		GitHubHooksEnabled: currentGithubWebhookEnabled,
+		GitHubHooksEnabled: hook != nil,
 		Vars:               *projectVars,
 		Aliases:            currentAliases,
 		Subscriptions:      currentSubscriptions,
@@ -631,7 +628,7 @@ func (uis *UIServer) setRevision(w http.ResponseWriter, r *http.Request) {
 	gimlet.WriteJSON(w, nil)
 }
 
-func (uis *UIServer) setupGithubHook(projectRef *model.ProjectRef) (int, error) {
+func (uis *UIServer) setupGithubHook(owner, repo string) (int, error) {
 	token, err := uis.Settings.GetGithubOauthToken()
 	if err != nil {
 		return 0, err
@@ -661,7 +658,7 @@ func (uis *UIServer) setupGithubHook(projectRef *model.ProjectRef) (int, error) 
 
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
-	hook, resp, err := client.Repositories.CreateHook(ctx, projectRef.Owner, projectRef.Repo, &newHook)
+	hook, resp, err := client.Repositories.CreateHook(ctx, owner, repo, &newHook)
 	if err != nil {
 		return 0, err
 	}
