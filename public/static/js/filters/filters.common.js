@@ -344,6 +344,9 @@ filters.common.filter('conditional', function() {
           if (details.timed_out && 'desc' in details && details.desc == 'heartbeat') {
             return 'system unresponsive';
           }
+          if (details.type == 'setup') {
+            return 'setup timed out';
+          }
           if (details.type == 'system') {
             return 'system timed out';
           }

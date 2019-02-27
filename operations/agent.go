@@ -28,6 +28,7 @@ func Agent() cli.Command {
 		statusPortFlagName       = "status_port"
 		cleanupFlagName          = "cleanup"
 		logkeeperFlagName        = "logkeeper_url"
+		s3BaseFlagName           = "s3_base_url"
 	)
 
 	return cli.Command{
@@ -59,6 +60,10 @@ func Agent() cli.Command {
 				Name:  logkeeperFlagName,
 				Usage: "URL of a logkeeper service to be used by tasks",
 			},
+			cli.StringFlag{
+				Name:  s3BaseFlagName,
+				Usage: "base URL for S3 uploads (defaults to 'https://s3.amazonaws.com'",
+			},
 			cli.IntFlag{
 				Name:  statusPortFlagName,
 				Value: 2285,
@@ -80,6 +85,10 @@ func Agent() cli.Command {
 			requireStringFlag(workingDirectoryFlagName),
 		),
 		Action: func(c *cli.Context) error {
+			s3Base := c.String(s3BaseFlagName)
+			if s3Base == "" {
+				s3Base = "https://s3.amazonaws.com"
+			}
 			opts := agent.Options{
 				HostID:           c.String(hostIDFlagName),
 				HostSecret:       c.String(hostSecretFlagName),
@@ -88,6 +97,7 @@ func Agent() cli.Command {
 				WorkingDirectory: c.String(workingDirectoryFlagName),
 				Cleanup:          c.Bool(cleanupFlagName),
 				LogkeeperURL:     c.String(logkeeperFlagName),
+				S3BaseURL:        s3Base,
 				S3Opts: pail.S3Options{
 					Credentials: pail.CreateAWSCredentials(os.Getenv("S3_KEY"), os.Getenv("S3_SECRET"), ""),
 					Region:      endpoints.UsEast1RegionID,

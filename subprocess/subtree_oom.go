@@ -2,16 +2,17 @@ package subprocess
 
 import (
 	"context"
+	"net/http"
 	"os/exec"
 	"strconv"
 	"strings"
 
+	"github.com/evergreen-ci/gimlet"
 	"github.com/pkg/errors"
 )
 
 type OOMTracker struct {
 	WasOOMKilled bool  `json:"was_oom_killed"`
-	IsSudo       bool  `json:"is_sudo"`
 	Pids         []int `json:"pids"`
 }
 
@@ -62,4 +63,30 @@ func getPidFromLog(line string) (int, bool) {
 		return 0, false
 	}
 	return pid, true
+}
+
+func ClearOOMHandler() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		resp := NewOOMTracker()
+
+		if err := resp.Clear(r.Context()); err != nil {
+			gimlet.WriteJSONInternalError(w, err.Error())
+			return
+		}
+
+		gimlet.WriteJSON(w, resp)
+	}
+}
+
+func CheckOOMHandler() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		resp := NewOOMTracker()
+
+		if err := resp.Check(r.Context()); err != nil {
+			gimlet.WriteJSONInternalError(w, err.Error())
+			return
+		}
+
+		gimlet.WriteJSON(w, resp)
+	}
 }

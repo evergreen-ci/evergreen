@@ -730,13 +730,6 @@ func (t *Task) MarkEnd(finishTime time.Time, detail *apimodels.TaskEndDetail) er
 		if timedOutStart.Before(t.IngestTime) {
 			t.StartTime = t.IngestTime
 		}
-		grip.Warning(message.Fields{
-			"message":      "Task is missing start time",
-			"task_id":      t.Id,
-			"execution":    t.Execution,
-			"requester":    t.Requester,
-			"activated_by": t.ActivatedBy,
-		})
 	}
 
 	t.TimeTaken = finishTime.Sub(t.StartTime)
@@ -1614,6 +1607,13 @@ func (t *Task) blockedStatePrivate() (string, error) {
 	}
 	for _, dependency := range t.DependsOn {
 		depTask := taskMap[dependency.TaskId]
+		if depTask == nil {
+			grip.Error(message.Fields{
+				"message": "task does not exist",
+				"task_id": dependency.TaskId,
+			})
+			continue
+		}
 		state, err := depTask.blockedStatePrivate()
 		if err != nil {
 			return "", err

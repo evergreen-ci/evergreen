@@ -52,12 +52,6 @@ func (s *githubSuite) TearDownTest() {
 	s.cancel()
 }
 
-func (s *githubSuite) TestGetGithubAPIStatus() {
-	status, err := GetGithubAPIStatus(s.ctx)
-	s.NoError(err)
-	s.Contains([]string{GithubAPIStatusGood, GithubAPIStatusMinor, GithubAPIStatusMajor}, status)
-}
-
 func (s *githubSuite) TestCheckGithubAPILimit() {
 	rem, err := CheckGithubAPILimit(s.ctx, s.token)
 	s.NoError(err)

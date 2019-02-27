@@ -89,43 +89,17 @@ func ActivateBuildsForProject(project model.ProjectRef) error {
 // CheckGithubAPIResources returns true when the github API is ready,
 // accessible and with sufficient quota to satisfy our needs
 func CheckGithubAPIResources(ctx context.Context, githubToken string) bool {
-	status, err := thirdparty.GetGithubAPIStatus(ctx)
-	if err != nil {
-		grip.Warning(message.WrapError(err, message.Fields{
-			"runner":  RunnerName,
-			"message": "problem contacting github",
-		}))
-		return false
-	}
-
-	if status != thirdparty.GithubAPIStatusGood {
-		if status == thirdparty.GithubAPIStatusMajor {
-			grip.Warning(message.Fields{
-				"status":  status,
-				"runner":  RunnerName,
-				"message": "skipping repotracker because of GithubAPI status",
-			})
-
-			return false
-		}
-
-		grip.Notice(message.Fields{
-			"message": "github api status degraded",
-			"status":  status,
-			"runner":  RunnerName,
-		})
-	}
 
 	remaining, err := thirdparty.CheckGithubAPILimit(ctx, githubToken)
 	if err != nil {
-		grip.Warning(message.WrapError(err, message.Fields{
+		grip.Error(message.WrapError(err, message.Fields{
 			"runner":  RunnerName,
 			"message": "problem checking github api limit",
 		}))
 		return false
 	}
 	if remaining < githubAPILimitCeiling {
-		grip.Warning(message.Fields{
+		grip.Error(message.Fields{
 			"runner":   RunnerName,
 			"message":  "too few github API requests remaining",
 			"requests": remaining,

@@ -32,7 +32,11 @@ func (as *APIServer) StartTask(w http.ResponseWriter, r *http.Request) {
 	var err error
 
 	t := MustHaveTask(r)
-	grip.Infoln("Marking task started:", t.Id)
+	grip.Debug(message.Fields{
+		"message": "marking task started",
+		"task_id": t.Id,
+		"details": t.Details,
+	})
 
 	taskStartInfo := &apimodels.TaskStartRequest{}
 	if err = util.ReadJSONInto(util.NewRequestReader(r), taskStartInfo); err != nil {

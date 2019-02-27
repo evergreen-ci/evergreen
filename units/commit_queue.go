@@ -366,7 +366,7 @@ func sendCommitQueueGithubStatus(env evergreen.Environment, pr *github.PullReque
 		Owner:       *pr.Base.Repo.Owner.Login,
 		Repo:        *pr.Base.Repo.Name,
 		Ref:         *pr.Head.SHA,
-		Context:     "evergreen/commitqueue",
+		Context:     commitqueue.Context,
 		State:       state,
 		Description: description,
 		URL:         url,
