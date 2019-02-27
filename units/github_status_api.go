@@ -7,6 +7,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/evergreen/model/commitqueue"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/amboy/dependency"
@@ -24,9 +25,10 @@ import (
 const (
 	githubStatusUpdateJobName = "github-status-update"
 
-	githubUpdateTypeNewPatch    = "new-patch"
-	githubUpdateTypeRequestAuth = "request-auth"
-	githubUpdateTypeBadConfig   = "bad-config"
+	githubUpdateTypeNewPatch          = "new-patch"
+	githubUpdateTypeRequestAuth       = "request-auth"
+	githubUpdateTypePushToCommitQueue = "commit-queue"
+	githubUpdateTypeBadConfig         = "bad-config"
 )
 
 func init() {
@@ -41,6 +43,9 @@ type githubStatusUpdateJob struct {
 
 	FetchID    string `bson:"fetch_id" json:"fetch_id" yaml:"fetch_id"`
 	UpdateType string `bson:"update_type" json:"update_type" yaml:"update_type"`
+	Owner      string `bson:"owner" json:"owner" yaml:"owner"`
+	Repo       string `bson:"repo" json:"repo" yaml:"repo"`
+	Ref        string `bson:"ref" json:"ref" yaml:"ref"`
 }
 
 func makeGithubStatusUpdateJob() *githubStatusUpdateJob {
@@ -78,6 +83,17 @@ func NewGithubStatusUpdateJobForExternalPatch(patchID string) amboy.Job {
 	job.UpdateType = githubUpdateTypeRequestAuth
 
 	job.SetID(fmt.Sprintf("%s:%s-%s-%s", githubStatusUpdateJobName, job.UpdateType, patchID, time.Now().String()))
+	return job
+}
+
+func NewGithubStatusUpdateJobForPushToCommitQueue(owner, repo, ref string, prNumber int) amboy.Job {
+	job := makeGithubStatusUpdateJob()
+	job.UpdateType = githubUpdateTypePushToCommitQueue
+	job.Owner = owner
+	job.Repo = repo
+	job.Ref = ref
+
+	job.SetID(fmt.Sprintf("%s:%s-%s-%s-%d-%s", githubStatusUpdateJobName, job.UpdateType, owner, repo, prNumber, time.Now().String()))
 	return job
 }
 
@@ -171,6 +187,17 @@ func (j *githubStatusUpdateJob) fetch() (*message.GithubStatus, error) {
 		status.Context = "evergreen"
 		status.Description = "patch must be manually authorized"
 		status.State = message.GithubStateFailure
+	} else if j.UpdateType == githubUpdateTypePushToCommitQueue {
+		status.Context = commitqueue.Context
+		status.Description = "added to queue"
+		status.State = message.GithubStatePending
+
+		status.Owner = j.Owner
+		status.Repo = j.Repo
+		status.Ref = j.Ref
+
+		// Since there is no patch document, we return early.
+		return &status, nil
 	}
 
 	if patchDoc == nil {

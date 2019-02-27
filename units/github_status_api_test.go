@@ -12,6 +12,7 @@ import (
 	"github.com/evergreen-ci/evergreen/mock"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/build"
+	"github.com/evergreen-ci/evergreen/model/commitqueue"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/google/go-github/github"
@@ -126,6 +127,26 @@ func (s *githubStatusUpdateSuite) TestForPatchCreated() {
 	s.Equal(fmt.Sprintf("https://example.com/version/%s", s.patchDoc.Version), status.URL)
 	s.Equal("preparing to run tasks", status.Description)
 	s.Equal("evergreen", status.Context)
+	s.Equal(message.GithubStatePending, status.State)
+}
+
+func (s *githubStatusUpdateSuite) TestForPushToCommitQueue() {
+	owner, repo, ref := "evergreen-ci", "evergreen", "776f608b5b12cd27b8d931c8ee4ca0c13f857299"
+	prNum := 1
+	job := NewGithubStatusUpdateJobForPushToCommitQueue(owner, repo, ref, prNum).(*githubStatusUpdateJob)
+	job.env = s.env
+	job.Run(context.Background())
+	s.False(job.HasErrors())
+
+	status := s.msgToStatus(s.env.InternalSender)
+
+	s.Equal(owner, status.Owner)
+	s.Equal(repo, status.Repo)
+	s.Equal(ref, status.Ref)
+
+	s.Zero(status.URL)
+	s.Equal(commitqueue.Context, status.Context)
+	s.Equal("added to queue", status.Description)
 	s.Equal(message.GithubStatePending, status.State)
 }
 
