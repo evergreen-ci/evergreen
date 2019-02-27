@@ -1,7 +1,6 @@
 package commitqueue
 
 import (
-	"encoding/json"
 	"strings"
 
 	"github.com/pkg/errors"
@@ -103,26 +102,4 @@ func ClearAllCommitQueues() (int, error) {
 	}
 
 	return clearedCount, nil
-}
-
-type CommentData struct {
-	Modules []Module `json:"modules"`
-}
-
-func GetCommentData(comment string) (CommentData, error) {
-	data := CommentData{}
-
-	// trim comment until the first '{'
-	posOpening := strings.Index(comment, "{")
-	// no data was included with the comment string
-	if posOpening == -1 {
-		return data, nil
-	}
-
-	commentDataString := comment[posOpening:]
-	if err := json.Unmarshal([]byte(commentDataString), &data); err != nil {
-		return data, errors.Wrap(err, "can't parse comment for data")
-	}
-
-	return data, nil
 }

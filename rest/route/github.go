@@ -10,6 +10,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/commitqueue"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/rest/data"
+	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/google/go-github/github"
 	"github.com/mongodb/amboy"
@@ -109,7 +110,7 @@ func (gh *githubHookApi) Run(ctx context.Context) gimlet.Responder {
 			"source":  "github hook",
 			"msg_id":  gh.msgID,
 			"event":   gh.eventType,
-			"hook_id": *event.HookID,
+			"hook_id": event.HookID,
 		})
 
 	case *github.PullRequestEvent:
@@ -135,7 +136,7 @@ func (gh *githubHookApi) Run(ctx context.Context) gimlet.Responder {
 					"source":  "github hook",
 					"msg_id":  gh.msgID,
 					"event":   gh.eventType,
-					"action":  *event.Action,
+					"action":  event.Action,
 					"message": "failed to create intent",
 				}))
 				return gimlet.NewJSONErrorResponse(gimlet.ErrorResponse{
@@ -148,13 +149,13 @@ func (gh *githubHookApi) Run(ctx context.Context) gimlet.Responder {
 				"source":    "github hook",
 				"msg_id":    gh.msgID,
 				"event":     gh.eventType,
-				"action":    *event.Action,
+				"action":    event.Action,
 				"message":   "pr accepted, attempting to queue",
-				"repo":      *event.Repo.FullName,
-				"ref":       *event.PullRequest.Base.Ref,
-				"pr_number": *event.Number,
-				"creator":   *event.Sender.Login,
-				"hash":      *event.PullRequest.Head.SHA,
+				"repo":      event.Repo.FullName,
+				"ref":       event.PullRequest.Base.Ref,
+				"pr_number": event.Number,
+				"creator":   event.Sender.Login,
+				"hash":      event.PullRequest.Head.SHA,
 			})
 
 			if err := gh.sc.AddPatchIntent(ghi, gh.queue); err != nil {
@@ -201,18 +202,6 @@ func (gh *githubHookApi) Run(ctx context.Context) gimlet.Responder {
 			return gimlet.NewJSONResponse(struct{}{})
 		}
 
-		commentData, err := commitqueue.GetCommentData(*event.Comment.Body)
-		if err != nil {
-			grip.Error(message.WrapError(err, message.Fields{
-				"source":  "github hook",
-				"msg_id":  gh.msgID,
-				"event":   gh.eventType,
-				"action":  *event.Action,
-				"message": "can't parse data from comment string",
-			}))
-			return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "can't parse data from comment string"))
-		}
-
 		userRepo := data.UserRepoInfo{
 			Username: *event.Comment.User.Login,
 			Owner:    *event.Repo.Owner.Login,
@@ -224,7 +213,7 @@ func (gh *githubHookApi) Run(ctx context.Context) gimlet.Responder {
 				"source":  "github hook",
 				"msg_id":  gh.msgID,
 				"event":   gh.eventType,
-				"action":  *event.Action,
+				"action":  event.Action,
 				"owner":   userRepo.Owner,
 				"repo":    userRepo.Repo,
 				"user":    userRepo.Username,
@@ -237,7 +226,7 @@ func (gh *githubHookApi) Run(ctx context.Context) gimlet.Responder {
 				"source":  "github hook",
 				"msg_id":  gh.msgID,
 				"event":   gh.eventType,
-				"action":  *event.Action,
+				"action":  event.Action,
 				"user":    userRepo.Username,
 				"message": "user is not authorized to merge",
 			})
@@ -254,7 +243,7 @@ func (gh *githubHookApi) Run(ctx context.Context) gimlet.Responder {
 				"source":  "github hook",
 				"msg_id":  gh.msgID,
 				"event":   gh.eventType,
-				"action":  *event.Action,
+				"action":  event.Action,
 				"owner":   userRepo.Owner,
 				"repo":    userRepo.Repo,
 				"item":    PRNum,
@@ -277,10 +266,11 @@ func (gh *githubHookApi) Run(ctx context.Context) gimlet.Responder {
 			return gimlet.MakeJSONErrorResponder(errors.New("PR contains no base branch label"))
 		}
 
+		modules := model.ParseGitHubCommentModules(*event.Comment.Body)
 		baseBranch := *pr.Base.Ref
-		item := commitqueue.CommitQueueItem{
-			Issue:   strconv.Itoa(PRNum),
-			Modules: commentData.Modules,
+		item := model.APICommitQueueItem{
+			Issue:   model.ToAPIString(strconv.Itoa(PRNum)),
+			Modules: modules,
 		}
 		err = gh.sc.EnqueueItem(userRepo.Owner, userRepo.Repo, baseBranch, item)
 		if err != nil {
@@ -288,7 +278,7 @@ func (gh *githubHookApi) Run(ctx context.Context) gimlet.Responder {
 				"source":  "github hook",
 				"msg_id":  gh.msgID,
 				"event":   gh.eventType,
-				"action":  *event.Action,
+				"action":  event.Action,
 				"owner":   userRepo.Owner,
 				"repo":    userRepo.Repo,
 				"item":    PRNum,
@@ -300,8 +290,8 @@ func (gh *githubHookApi) Run(ctx context.Context) gimlet.Responder {
 			"source":  "github hook",
 			"msg_id":  gh.msgID,
 			"event":   gh.eventType,
-			"action":  *event.Action,
-			"comment": *event.Comment.Body,
+			"action":  event.Action,
+			"comment": event.Comment.Body,
 			"message": "finished processing comment",
 		})
 	}

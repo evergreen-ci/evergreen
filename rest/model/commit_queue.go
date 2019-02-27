@@ -1,6 +1,8 @@
 package model
 
 import (
+	"regexp"
+
 	"github.com/evergreen-ci/evergreen/model/commitqueue"
 	"github.com/pkg/errors"
 )
@@ -59,5 +61,36 @@ func (item *APICommitQueueItem) BuildFromService(h interface{}) error {
 }
 
 func (item *APICommitQueueItem) ToService() (interface{}, error) {
-	return nil, errors.New("not implemented for read-only route")
+	serviceItem := commitqueue.CommitQueueItem{
+		Issue: FromAPIString(item.Issue),
+	}
+	for _, module := range item.Modules {
+		serviceModule := commitqueue.Module{
+			Module: FromAPIString(module.Module),
+			Issue:  FromAPIString(module.Issue),
+		}
+		serviceItem.Modules = append(serviceItem.Modules, serviceModule)
+	}
+	return serviceItem, nil
+}
+
+func ParseGitHubCommentModules(comment string) []APIModule {
+	modules := []APIModule{}
+
+	r := regexp.MustCompile(`^evergreen merge.+(?P<modules>(--modules|-m)\s+\[\w+:\d+(\s*,\s*\w+:\d+)*\]).*$`)
+	if !r.MatchString(comment) {
+		return modules
+	}
+	moduleSubstring := r.FindStringSubmatch(comment)[1]
+	moduleRegexp := regexp.MustCompile(`(\w+):(\d+)`)
+	moduleMatches := moduleRegexp.FindAllStringSubmatch(moduleSubstring, -1)
+
+	for _, match := range moduleMatches {
+		modules = append(modules, APIModule{
+			Module: ToAPIString(match[1]),
+			Issue:  ToAPIString(match[2]),
+		})
+	}
+
+	return modules
 }

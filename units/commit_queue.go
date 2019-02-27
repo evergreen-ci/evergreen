@@ -195,10 +195,10 @@ func (j *commitQueueJob) logError(err error, msg string, item *commitqueue.Commi
 	}
 	j.AddError(errors.Wrap(err, msg))
 	grip.Error(message.WrapError(err, message.Fields{
-		"job":     commitQueueJobName,
+		"job_id":  j.ID(),
 		"source":  "commit queue",
 		"project": j.QueueID,
-		"item":    *item,
+		"item":    item,
 		"message": msg,
 	}))
 }

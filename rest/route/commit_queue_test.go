@@ -4,7 +4,6 @@ import (
 	"context"
 	"testing"
 
-	"github.com/evergreen-ci/evergreen/model/commitqueue"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/stretchr/testify/suite"
@@ -33,16 +32,16 @@ func (s *CommitQueueSuite) TestGetCommitQueue() {
 		"evergreen-ci",
 		"evergreen",
 		"master",
-		commitqueue.CommitQueueItem{
-			Issue: "1",
-			Modules: []commitqueue.Module{
-				commitqueue.Module{
-					Module: "test_module",
-					Issue:  "1234",
+		model.APICommitQueueItem{
+			Issue: model.ToAPIString("1"),
+			Modules: []model.APIModule{
+				model.APIModule{
+					Module: model.ToAPIString("test_module"),
+					Issue:  model.ToAPIString("1234"),
 				},
 			},
 		}))
-	s.NoError(s.sc.EnqueueItem("evergreen-ci", "evergreen", "master", commitqueue.CommitQueueItem{Issue: "2"}))
+	s.NoError(s.sc.EnqueueItem("evergreen-ci", "evergreen", "master", model.APICommitQueueItem{Issue: model.ToAPIString("2")}))
 
 	response := route.Run(context.Background())
 	s.Equal(200, response.Status())
@@ -67,8 +66,8 @@ func (s *CommitQueueSuite) TestGetCommitQueue() {
 
 func (s *CommitQueueSuite) TestDeleteItem() {
 	route := makeDeleteCommitQueueItems(s.sc).(*commitQueueDeleteItemHandler)
-	s.NoError(s.sc.EnqueueItem("evergreen-ci", "evergreen", "master", commitqueue.CommitQueueItem{Issue: "1"}))
-	s.NoError(s.sc.EnqueueItem("evergreen-ci", "evergreen", "master", commitqueue.CommitQueueItem{Issue: "2"}))
+	s.NoError(s.sc.EnqueueItem("evergreen-ci", "evergreen", "master", model.APICommitQueueItem{Issue: model.ToAPIString("1")}))
+	s.NoError(s.sc.EnqueueItem("evergreen-ci", "evergreen", "master", model.APICommitQueueItem{Issue: model.ToAPIString("2")}))
 	route.project = "evergreen-ci.evergreen.master"
 
 	// Valid delete
@@ -89,10 +88,10 @@ func (s *CommitQueueSuite) TestDeleteItem() {
 
 func (s *CommitQueueSuite) TestClearAll() {
 	route := makeClearCommitQueuesHandler(s.sc).(*commitQueueClearAllHandler)
-	s.NoError(s.sc.EnqueueItem("evergreen-ci", "evergreen", "master", commitqueue.CommitQueueItem{Issue: "12"}))
-	s.NoError(s.sc.EnqueueItem("evergreen-ci", "evergreen", "master", commitqueue.CommitQueueItem{Issue: "23"}))
-	s.NoError(s.sc.EnqueueItem("evergreen-ci", "logkeeper", "master", commitqueue.CommitQueueItem{Issue: "34"}))
-	s.NoError(s.sc.EnqueueItem("evergreen-ci", "logkeeper", "master", commitqueue.CommitQueueItem{Issue: "45"}))
+	s.NoError(s.sc.EnqueueItem("evergreen-ci", "evergreen", "master", model.APICommitQueueItem{Issue: model.ToAPIString("12")}))
+	s.NoError(s.sc.EnqueueItem("evergreen-ci", "evergreen", "master", model.APICommitQueueItem{Issue: model.ToAPIString("23")}))
+	s.NoError(s.sc.EnqueueItem("evergreen-ci", "logkeeper", "master", model.APICommitQueueItem{Issue: model.ToAPIString("34")}))
+	s.NoError(s.sc.EnqueueItem("evergreen-ci", "logkeeper", "master", model.APICommitQueueItem{Issue: model.ToAPIString("45")}))
 
 	response := route.Run(context.Background())
 	s.Equal(200, response.Status())

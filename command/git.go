@@ -211,7 +211,7 @@ func (c *gitFetchProject) buildModuleCloneCommand(cloneURI, owner, repo, moduleB
 		gitCommands = append(gitCommands, cmds...)
 	}
 
-	if requester == evergreen.MergeTestRequester && modulePatch != nil && modulePatch.PatchSet.Patch != "" {
+	if modulePatchProvidedForMergeTest(requester, modulePatch) {
 		branchName := fmt.Sprintf("evg-merge-test-%s", util.RandomString())
 		gitCommands = append(gitCommands,
 			fmt.Sprintf(`git fetch origin "pull/%s/merge:%s"`, modulePatch.PatchSet.Patch, branchName),
@@ -286,9 +286,7 @@ func (c *gitFetchProject) Execute(ctx context.Context,
 		logger.Execution().Info("Fetching patch.")
 		p, err = comm.GetTaskPatch(ctx, client.TaskData{ID: conf.Task.Id, Secret: conf.Task.Secret})
 		if err != nil {
-			err = errors.Wrap(err, "Failed to get patch")
-			logger.Execution().Error(err.Error())
-			return err
+			return errors.Wrap(err, "Failed to get patch")
 		}
 	}
 
@@ -561,4 +559,11 @@ func (c *gitFetchProject) applyPatch(ctx context.Context, logger client.LoggerPr
 		}
 	}
 	return nil
+}
+
+func modulePatchProvidedForMergeTest(requester string, modulePatch *patch.ModulePatch) bool {
+	isMergeTest := requester == evergreen.MergeTestRequester
+	patchProvided := (modulePatch != nil) && (modulePatch.PatchSet.Patch != "")
+
+	return isMergeTest && patchProvided
 }

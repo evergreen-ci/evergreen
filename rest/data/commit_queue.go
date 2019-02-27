@@ -37,7 +37,7 @@ func (pc *DBCommitQueueConnector) GetGitHubPR(ctx context.Context, owner, repo s
 	return pr, nil
 }
 
-func (pc *DBCommitQueueConnector) EnqueueItem(owner, repo, baseBranch string, item commitqueue.CommitQueueItem) error {
+func (pc *DBCommitQueueConnector) EnqueueItem(owner, repo, baseBranch string, item restModel.APICommitQueueItem) error {
 	proj, err := model.FindOneProjectRefWithCommitQByOwnerRepoAndBranch(owner, repo, baseBranch)
 	if err != nil {
 		return errors.Wrapf(err, "can't query for matching project with commit queue enabled. owner: %s, repo: %s, branch: %s", owner, repo, baseBranch)
@@ -52,7 +52,13 @@ func (pc *DBCommitQueueConnector) EnqueueItem(owner, repo, baseBranch string, it
 		return errors.Wrapf(err, "can't query for queue id %s", projectID)
 	}
 
-	if err := q.Enqueue(item); err != nil {
+	itemInterface, err := item.ToService()
+	if err != nil {
+		return errors.Wrap(err, "item cannot be converted to DB model")
+	}
+
+	itemService := itemInterface.(commitqueue.CommitQueueItem)
+	if err := q.Enqueue(itemService); err != nil {
 		return errors.Wrapf(err, "can't enqueue item to queue %s", projectID)
 	}
 
@@ -145,18 +151,13 @@ func (pc *MockCommitQueueConnector) GetGitHubPR(ctx context.Context, owner, repo
 	}, nil
 }
 
-func (pc *MockCommitQueueConnector) EnqueueItem(owner, repo, baseBranch string, item commitqueue.CommitQueueItem) error {
+func (pc *MockCommitQueueConnector) EnqueueItem(owner, repo, baseBranch string, item restModel.APICommitQueueItem) error {
 	if pc.Queue == nil {
 		pc.Queue = make(map[string][]restModel.APICommitQueueItem)
 	}
 
-	apiItem := restModel.APICommitQueueItem{}
-	if err := apiItem.BuildFromService(item); err != nil {
-		return errors.Wrap(err, "can't build API commit queue item from db model")
-	}
-
 	queueID := owner + "." + repo + "." + baseBranch
-	pc.Queue[queueID] = append(pc.Queue[queueID], apiItem)
+	pc.Queue[queueID] = append(pc.Queue[queueID], item)
 
 	return nil
 }

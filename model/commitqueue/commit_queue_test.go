@@ -164,29 +164,6 @@ func (s *CommitQueueSuite) TestCommentTrigger() {
 	s.False(TriggersCommitQueue(action, comment))
 }
 
-func (s *CommitQueueSuite) TestGetCommentData() {
-	var mods []Module
-	comment := "1234"
-	data, err := GetCommentData(comment)
-	s.NoError(err)
-	s.Equal(mods, data.Modules)
-
-	comment = `2345 {"don't_care_field":"don't_care"}`
-	data, err = GetCommentData(comment)
-	s.NoError(err)
-	s.Equal(mods, data.Modules)
-
-	comment = `2345 {"modules":[{"module":"test_module", "issue":"5678"}]}`
-	data, err = GetCommentData(comment)
-	s.NoError(err)
-	s.Equal([]Module{
-		Module{
-			Module: "test_module",
-			Issue:  "5678",
-		},
-	}, data.Modules)
-}
-
 // Duplicated here from testutil to avoid import cycle
 // (evergreen package requires github_pr_sender and testutil requires evergreen)
 type settings struct {
