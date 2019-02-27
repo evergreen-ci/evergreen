@@ -280,7 +280,7 @@ func validatePR(pr *github.PullRequest) error {
 	if pr.GetBase() == nil || pr.GetBase().GetSHA() == "" {
 		catcher.Add(errors.New("no valid base SHA"))
 	}
-	if pr.GetBase() == nil || pr.GetBase().GetRepo() == nil || pr.GetBase().GetRepo().GetName() == "" {
+	if pr.GetBase() == nil || pr.GetBase().GetRepo() == nil || pr.GetBase().GetRepo().GetName() == "" || pr.GetBase().GetRepo().GetFullName() == "" {
 		catcher.Add(errors.New("no valid base repo name"))
 	}
 	if pr.GetBase() == nil || pr.GetBase().GetRepo() == nil || pr.GetBase().GetRepo().GetOwner() == nil || pr.GetBase().GetRepo().GetOwner().GetLogin() == "" {
@@ -294,6 +294,9 @@ func validatePR(pr *github.PullRequest) error {
 	}
 	if pr.GetTitle() == "" {
 		catcher.Add(errors.New("no valid title"))
+	}
+	if pr.GetHTMLURL() == "" {
+		catcher.Add(errors.New("no valid HTML URL"))
 	}
 	if pr.Merged == nil {
 		catcher.Add(errors.New("no valid merged status"))
