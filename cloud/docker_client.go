@@ -381,12 +381,12 @@ func (c *dockerClientImpl) GetLogs(ctx context.Context, h *host.Host, containerI
 		return nil, errors.Wrapf(err, "Docker logs API call failed for container %s", containerID)
 	}
 	res := LogReader{}
-	tempout := new(bytes.Buffer)
-	temperr := new(bytes.Buffer)
+	tempout := &bytes.Buffer{}
+	temperr := &bytes.Buffer{}
 
 	_, err = stdcopy.StdCopy(tempout, temperr, stream)
 	if err != nil {
-		return nil, errors.Wrapf(err, "Error copying stream")
+		return nil, errors.Wrapf(err, "Error copying stream for container %s", containerID)
 	}
 
 	res.OutReader = tempout
