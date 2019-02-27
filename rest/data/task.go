@@ -56,19 +56,6 @@ func (tc *DBTaskConnector) FindTasksByBuildId(buildId, taskId, status string, li
 	if err != nil {
 		return []task.Task{}, err
 	}
-	if len(res) == 0 {
-		var message string
-		if status != "" {
-			message = fmt.Sprintf("tasks from build '%s' with status '%s' "+
-				"not found", buildId, status)
-		} else {
-			message = fmt.Sprintf("tasks from build '%s' not found", buildId)
-		}
-		return []task.Task{}, gimlet.ErrorResponse{
-			StatusCode: http.StatusNotFound,
-			Message:    message,
-		}
-	}
 
 	if taskId != "" {
 		found := false
