@@ -1,6 +1,7 @@
 package cloud
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"math/rand"
@@ -93,6 +94,12 @@ func (c *dockerClientMock) GetContainer(context.Context, *host.Host, string) (*t
 	}
 
 	return container, nil
+}
+
+func (c *dockerClientMock) GetLogs(context.Context, *host.Host, string, types.ContainerLogsOptions) (*LogReader, error) {
+	out := bytes.NewBufferString("this is a log message")
+	logs := LogReader{OutReader: out}
+	return &logs, nil
 }
 
 func (c *dockerClientMock) ListContainers(context.Context, *host.Host) ([]types.Container, error) {
