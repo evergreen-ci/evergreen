@@ -284,7 +284,8 @@ func (uis *UIServer) GetServiceApp() *gimlet.APIApp {
 	app.AddRoute("/task_history/{project_id}/{task_name}/test_names").Wrap(needsContext).Handler(uis.taskHistoryTestNames).Get()
 
 	// History Drawer Endpoints
-	app.AddRoute("/history/tasks/{task_id}/{window}").Wrap(needsContext).Handler(uis.taskHistoryDrawer).Get()
+	app.AddRoute("/history/tasks/{task_id}/{window}").Wrap(needsContext).Handler(uis.taskHistoryDrawer).Get() // TODO: remove after deploy
+	app.AddRoute("/history/tasks/2/{version_id}/{window}/{variant}/{display_name}").Wrap(needsContext).Handler(uis.taskHistoryDrawer2).Get()
 	app.AddRoute("/history/versions/{version_id}/{window}").Wrap(needsContext).Handler(uis.versionHistoryDrawer).Get()
 
 	// Variant History
