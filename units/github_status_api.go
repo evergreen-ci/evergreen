@@ -188,7 +188,7 @@ func (j *githubStatusUpdateJob) fetch() (*message.GithubStatus, error) {
 		status.Description = "patch must be manually authorized"
 		status.State = message.GithubStateFailure
 	} else if j.UpdateType == githubUpdateTypePushToCommitQueue {
-		status.Context = commitqueue.CommitQueueContext
+		status.Context = commitqueue.Context
 		status.Description = "added to queue"
 		status.State = message.GithubStatePending
 

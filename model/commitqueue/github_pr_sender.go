@@ -15,7 +15,7 @@ import (
 	"github.com/pkg/errors"
 )
 
-const CommitQueueContext = "evergreen/commitqueue"
+const Context = "evergreen/commitqueue"
 
 type prService interface {
 	Merge(context.Context, string, string, int, string, *github.PullRequestOptions) (*github.PullRequestMergeResult, *github.Response, error)
@@ -116,7 +116,7 @@ func (s *githubPRLogger) sendMergeFailedStatus(githubMessage string, msg *Github
 		Owner:       msg.Owner,
 		Repo:        msg.Repo,
 		Ref:         msg.Ref,
-		Context:     CommitQueueContext,
+		Context:     Context,
 		State:       state,
 		Description: description,
 	}
@@ -141,7 +141,7 @@ func (s *githubPRLogger) sendPatchResult(msg *GithubMergePR) {
 		Owner:       msg.Owner,
 		Repo:        msg.Repo,
 		Ref:         msg.Ref,
-		Context:     CommitQueueContext,
+		Context:     Context,
 		State:       state,
 		Description: description,
 		URL:         msg.URL,

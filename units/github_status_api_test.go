@@ -145,7 +145,7 @@ func (s *githubStatusUpdateSuite) TestForPushToCommitQueue() {
 	s.Equal(ref, status.Ref)
 
 	s.Zero(status.URL)
-	s.Equal(commitqueue.CommitQueueContext, status.Context)
+	s.Equal(commitqueue.Context, status.Context)
 	s.Equal("added to queue", status.Description)
 	s.Equal(message.GithubStatePending, status.State)
 }
