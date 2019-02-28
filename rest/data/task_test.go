@@ -242,13 +242,8 @@ func (s *TaskConnectorFetchByBuildSuite) TestFindFromMiddleTaskFail() {
 
 func (s *TaskConnectorFetchByBuildSuite) TestFindFromMiddleBuildFail() {
 	foundTests, err := s.ctx.FindTasksByBuildId("fake_build", "", "", 0, 1)
-	s.Error(err)
+	s.NoError(err)
 	s.Equal(0, len(foundTests))
-
-	s.IsType(gimlet.ErrorResponse{}, err)
-	apiErr, ok := err.(gimlet.ErrorResponse)
-	s.True(ok)
-	s.Equal(http.StatusNotFound, apiErr.StatusCode)
 }
 func (s *TaskConnectorFetchByBuildSuite) TestFindEmptyTaskId() {
 	buildId := "build_0"
