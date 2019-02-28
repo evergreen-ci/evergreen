@@ -240,6 +240,7 @@ mciModule.controller('ProjectCtrl', function($scope, $window, $http, $location, 
           $scope.loadProject(data.ProjectId);
           $scope.newProject = {};
           $scope.settingsFormData.tracks_push_events = true;
+          $scope.NewBlankProject = true;
         },
         function(resp){
           console.log("error creating project: " + resp.status);
@@ -421,6 +422,7 @@ mciModule.controller('ProjectCtrl', function($scope, $window, $http, $location, 
         $scope.settingsFormData.force_repotracker_run = false;
         $scope.loadProject($scope.settingsFormData.identifier)
         $scope.isDirty = false;
+        $scope.NewBlankProject = false;
       },
       function(resp) {
         $scope.saveMessage = "Couldn't save project: " + resp.data.error;
