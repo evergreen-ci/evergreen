@@ -3,6 +3,7 @@
 package cloud
 
 import (
+	"bytes"
 	"context"
 	"encoding/base64"
 	"encoding/json"
@@ -19,6 +20,7 @@ import (
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/network"
 	docker "github.com/docker/docker/client"
+	"github.com/docker/docker/pkg/stdcopy"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
@@ -35,6 +37,7 @@ type dockerClient interface {
 	BuildImageWithAgent(context.Context, *host.Host, string) (string, error)
 	CreateContainer(context.Context, *host.Host, *host.Host, *dockerSettings) error
 	GetContainer(context.Context, *host.Host, string) (*types.ContainerJSON, error)
+	GetLogs(context.Context, *host.Host, string, types.ContainerLogsOptions) (*LogReader, error)
 	ListContainers(context.Context, *host.Host) ([]types.Container, error)
 	RemoveImage(context.Context, *host.Host, string) error
 	RemoveContainer(context.Context, *host.Host, string) error
@@ -49,6 +52,11 @@ type dockerClientImpl struct {
 	httpClient        *http.Client
 	client            *docker.Client
 	evergreenSettings *evergreen.Settings
+}
+
+type LogReader struct {
+	OutReader io.Reader
+	ErrReader io.Reader
 }
 
 // template string for new images with agent
@@ -360,6 +368,30 @@ func (c *dockerClientImpl) CreateContainer(ctx context.Context, parentHost, cont
 	grip.Info(msg)
 
 	return nil
+}
+
+func (c *dockerClientImpl) GetLogs(ctx context.Context, h *host.Host, containerID string, options types.ContainerLogsOptions) (*LogReader, error) {
+	dockerClient, err := c.generateClient(h)
+	if err != nil {
+		return nil, errors.Wrap(err, "Failed to generate docker client")
+	}
+
+	stream, err := dockerClient.ContainerLogs(ctx, containerID, options)
+	if err != nil {
+		return nil, errors.Wrapf(err, "Docker logs API call failed for container %s", containerID)
+	}
+	res := LogReader{}
+	tempout := &bytes.Buffer{}
+	temperr := &bytes.Buffer{}
+
+	_, err = stdcopy.StdCopy(tempout, temperr, stream)
+	if err != nil {
+		return nil, errors.Wrapf(err, "Error copying stream for container %s", containerID)
+	}
+
+	res.OutReader = tempout
+	res.ErrReader = temperr
+	return &res, nil
 }
 
 // GetContainer returns low-level information on the Docker container with the

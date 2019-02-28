@@ -206,13 +206,7 @@ func (as *APIServer) GetProjectRef(w http.ResponseWriter, r *http.Request) {
 func (as *APIServer) GetExpansions(w http.ResponseWriter, r *http.Request) {
 	t := MustHaveTask(r)
 	h := MustHaveHost(r)
-	settings := as.GetSettings()
-	oauthToken, err := settings.GetGithubOauthToken()
-	if err != nil {
-		as.LoggedError(w, r, http.StatusInternalServerError, err)
-	}
-
-	e, err := model.PopulateExpansions(t, h, oauthToken)
+	e, err := model.PopulateExpansions(t, h)
 	if err != nil {
 		as.LoggedError(w, r, http.StatusInternalServerError, err)
 		return
