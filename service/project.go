@@ -261,9 +261,9 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 				"owner":   responseRef.Owner,
 				"repo":    responseRef.Repo,
 			}))
-			// don't kill it here, sometimes people change
-			// Evergreen to track a personal branch,
-			// one that we have no access to
+			// don't return here:
+			// sometimes people change a project to track a personal
+			// branch we don't have access to
 			projectRef.TracksPushEvents = false
 		} else {
 			hook := model.GithubHook{
@@ -275,9 +275,9 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 				// A github hook as been created, but we couldn't
 				// save the hook ID in our database. This needs
 				// manual attention for clean up
-				grip.Alert(message.WrapError(err, message.Fields{
+				grip.Error(message.WrapError(err, message.Fields{
 					"source":  "project edit",
-					"message": "can't save hook",
+					"message": "can't save hook to db",
 					"project": id,
 					"owner":   responseRef.Owner,
 					"repo":    responseRef.Repo,
