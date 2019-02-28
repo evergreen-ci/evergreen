@@ -60,7 +60,25 @@ mciServices.rest.factory('historyDrawerService', ['mciBaseRestService',
         }
 
         service.fetchVersionHistory = historyFetcher("versions");
-        service.fetchTaskHistory = historyFetcher("tasks");
+
+        return service;
+    }
+]);
+
+mciServices.rest.factory('taskHistoryDrawerService', ['mciBaseRestService',
+    function(baseSvc) {
+        var resource = 'history';
+        var service = {};
+        var defaultRadius = 10;
+
+        service.fetchTaskHistory = function(versionId, taskVariant, taskName, sortType, radius, callbacks) {
+            var config = {
+                params: {
+                    radius: radius || defaultRadius
+                }
+            };
+            baseSvc.getResource(resource, ["tasks", "2", versionId, sortType, taskVariant, taskName], config, callbacks);
+        }
 
         return service;
     }

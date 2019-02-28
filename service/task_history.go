@@ -280,14 +280,15 @@ func (uis *UIServer) taskHistoryTestNames(w http.ResponseWriter, r *http.Request
 
 // drawerParams contains the parameters from a request to populate a task or version history drawer.
 type drawerParams struct {
-	anchorId string
-	window   string
-	radius   int
+	anchorId    string // id of the item serving as reference point in history
+	window      string
+	radius      int
+	displayName string
+	variant     string
 }
 
 func validateDrawerParams(r *http.Request) (drawerParams, error) {
 	requestVars := gimlet.GetVars(r)
-	anchorId := requestVars["anchor"] // id of the item serving as reference point in history
 	window := requestVars["window"]
 
 	// do some validation on the window of tasks requested
@@ -304,7 +305,13 @@ func validateDrawerParams(r *http.Request) (drawerParams, error) {
 	if err != nil {
 		return drawerParams{}, errors.Errorf("invalid value %v for radius", radius)
 	}
-	return drawerParams{anchorId, window, historyRadius}, nil
+	return drawerParams{
+		anchorId:    requestVars["anchor"],
+		window:      window,
+		radius:      historyRadius,
+		displayName: requestVars["display_name"],
+		variant:     requestVars["variant"],
+	}, nil
 }
 
 // Handler for serving the data used to populate the task history drawer.
@@ -342,7 +349,7 @@ func (uis *UIServer) versionHistoryDrawer(w http.ResponseWriter, r *http.Request
 	}{versionDrawerItems})
 }
 
-// Handler for serving the data used to populate the task history drawer.
+// TODO: remove after deploy
 func (uis *UIServer) taskHistoryDrawer(w http.ResponseWriter, r *http.Request) {
 	projCtx := MustHaveProjectContext(r)
 
@@ -365,6 +372,39 @@ func (uis *UIServer) taskHistoryDrawer(w http.ResponseWriter, r *http.Request) {
 
 	// populate task groups for the versions in the window
 	taskGroups, err := getTaskDrawerItems(projCtx.Task.DisplayName, projCtx.Task.BuildVariant, false, versions)
+	if err != nil {
+		uis.LoggedError(w, r, http.StatusInternalServerError, err)
+		return
+	}
+
+	gimlet.WriteJSON(w, struct {
+		Revisions []taskDrawerItem `json:"revisions"`
+	}{taskGroups})
+}
+
+// Handler for serving the data used to populate the task history drawer. TODO: rename after deploy
+func (uis *UIServer) taskHistoryDrawer2(w http.ResponseWriter, r *http.Request) {
+	projCtx := MustHaveProjectContext(r)
+
+	drawerInfo, err := validateDrawerParams(r)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	if projCtx.Version == nil {
+		http.Error(w, "no version available", http.StatusBadRequest)
+		return
+	}
+	// get the versions in the requested window
+	versions, err := getVersionsInWindow(drawerInfo.window, projCtx.Version.Identifier, drawerInfo.radius, projCtx.Version)
+	if err != nil {
+		uis.LoggedError(w, r, http.StatusInternalServerError, err)
+		return
+	}
+
+	// populate task groups for the versions in the window
+	taskGroups, err := getTaskDrawerItems(drawerInfo.displayName, drawerInfo.variant, false, versions)
 	if err != nil {
 		uis.LoggedError(w, r, http.StatusInternalServerError, err)
 		return

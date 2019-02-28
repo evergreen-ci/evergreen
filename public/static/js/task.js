@@ -1,4 +1,4 @@
-mciModule.controller('TaskHistoryDrawerCtrl', function($scope, $window, $location, $filter, $timeout, historyDrawerService) {
+mciModule.controller('TaskHistoryDrawerCtrl', function($scope, $window, $location, $filter, $timeout, taskHistoryDrawerService) {
   const APPROX_TASK_ITEM_HEIGHT = 17
   // cache the task being displayed on the page
   $scope.task = $window.task_data;
@@ -74,7 +74,7 @@ mciModule.controller('TaskHistoryDrawerCtrl', function($scope, $window, $locatio
 
   // make a backend call to get the drawer contents
   function fetchHistory() {
-    historyDrawerService.fetchTaskHistory($scope.task.id, 'surround', 20, {
+    taskHistoryDrawerService.fetchTaskHistory($scope.task.version_id, $scope.task.build_variant, $scope.task.display_name, 'surround', 20, {
       success: function(resp) {
         var data = resp.data;
 
@@ -120,7 +120,7 @@ mciModule.controller('TaskHistoryDrawerCtrl', function($scope, $window, $locatio
         // get a task id from it
         var anchorId = mostRecentRevision.task.id;
 
-        historyDrawerService.fetchTaskHistory(anchorId, 'after', 20, {
+        taskHistoryDrawerService.fetchTaskHistory($scope.task.version_id, $scope.task.build_variant, $scope.task.display_name, 'after', 20, {
           success: function(resp) {
             var data = resp.data;
             // no computation necessary
@@ -160,10 +160,7 @@ mciModule.controller('TaskHistoryDrawerCtrl', function($scope, $window, $locatio
             // get a task id from it
             var anchorId = leastRecentRevision.task.id;
 
-            historyDrawerService.fetchTaskHistory(
-              anchorId,
-              'before',
-              20, {
+            taskHistoryDrawerService.fetchTaskHistory($scope.task.version_id, $scope.task.build_variant, $scope.task.display_name, 'before', 20, {
                 success: function(resp) {
                   var data = resp.data;
                   // no computation necessary
