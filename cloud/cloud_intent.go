@@ -35,6 +35,7 @@ func NewIntent(d distro.Distro, instanceName, provider string, options HostOptio
 		ParentID:              options.ParentID,
 		ContainerPoolSettings: options.ContainerPoolSettings,
 		SpawnOptions:          options.SpawnOptions,
+		DockerOptions:         options.DockerOptions,
 	}
 
 	if options.ExpirationDuration != nil {

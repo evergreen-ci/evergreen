@@ -10,6 +10,7 @@ import (
 
 const (
 	ProviderEC2                = "ec2"
+	ProviderDocker             = "docker"
 	ScopeTask                  = "task"
 	ScopeBuild                 = "build"
 	DefaultSetupTimeoutSecs    = 600
@@ -105,6 +106,16 @@ type CreateHost struct {
 	SetupTimeoutSecs    int    `mapstructure:"timeout_setup_secs" json:"timeout_setup_secs"`
 	TeardownTimeoutSecs int    `mapstructure:"timeout_teardown_secs" json:"timeout_teardown_secs"`
 	Retries             int    `mapstructure:"retries" json:"retries"`
+
+	// docker-related settings
+	Image    string           `mapstructure:"image" json:"image" plugin:"expand"`
+	Command  string           `mapstructure:"command" json:"command" plugin:"expand"`
+	Registry RegistrySettings `mapstructure:"registry" json:"registry" plugin:"expand"`
+
+	Background    bool   `mapstructure:"background" json:"background"`
+	PollFrequency int    `mapstructure:"poll_frequency_secs" json:"poll_frequency_secs"`
+	StdoutFile    string `mapstructure:"stdout_file_name" json:"stdout_file_name" plugin:"expand"`
+	StderrFile    string `mapstructure:"stderr_file_name" json:"stderr_file_name" plugin:"expand"`
 }
 
 type EbsDevice struct {
@@ -114,8 +125,38 @@ type EbsDevice struct {
 	SnapshotID string `mapstructure:"ebs_snapshot_id" json:"ebs_snapshot_id"`
 }
 
-func (ch *CreateHost) Validate() error {
+type RegistrySettings struct {
+	Name     string `mapstructure:"registry_name" json:"registry_name"`
+	Username string `mapstructure:"registry_username" json:"registry_username"`
+	Password string `mapstructure:"registry_password" json:"registry_password"`
+}
+
+func (ch *CreateHost) ValidateDocker() error {
 	catcher := grip.NewBasicCatcher()
+	if ch.Distro == "" {
+		catcher.Add(errors.New("distro must be set"))
+	}
+	if ch.Image == "" || ch.Command == "" {
+		catcher.Add(errors.New("docker image and command must both be set"))
+	}
+
+	if ch.PollFrequency == 0 {
+		ch.PollFrequency = 60
+	}
+
+	if (ch.Registry.Username != "" && ch.Registry.Password == "") ||
+		(ch.Registry.Username == "" && ch.Registry.Password != "") {
+		catcher.Add(errors.New("username and password must both be set or unset"))
+	}
+
+	catcher.Add(ch.setNumHosts())
+	return catcher.Resolve()
+}
+
+func (ch *CreateHost) ValidateEC2() error {
+	catcher := grip.NewBasicCatcher()
+	ch.CloudProvider = ProviderEC2
+
 	if (ch.AMI != "" && ch.Distro != "") || (ch.AMI == "" && ch.Distro == "") {
 		catcher.Add(errors.New("must set exactly one of ami or distro"))
 	}
@@ -136,25 +177,8 @@ func (ch *CreateHost) Validate() error {
 		catcher.Add(errors.New("aws_access_key_id, aws_secret_access_key, key_name must all be set or unset"))
 	}
 
-	if ch.NumHosts == "" {
-		ch.NumHosts = "1"
-	} else {
-		numHosts, err := strconv.Atoi(ch.NumHosts)
-		if err != nil {
-			catcher.Add(errors.Errorf("problem parsing '%s' as an int", ch.NumHosts))
-		}
-		if numHosts > 10 || numHosts < 0 {
-			catcher.Add(errors.New("num_hosts must be between 1 and 10"))
-		} else if numHosts == 0 {
-			ch.NumHosts = "1"
-		}
-	}
-	if ch.CloudProvider == "" {
-		ch.CloudProvider = ProviderEC2
-	}
-	if ch.CloudProvider != ProviderEC2 {
-		catcher.Add(errors.New("only 'ec2' is supported for providers"))
-	}
+	catcher.Add(ch.setNumHosts())
+
 	if ch.Retries > 10 {
 		catcher.Add(errors.New("retries must not be greater than 10"))
 	}
@@ -179,7 +203,37 @@ func (ch *CreateHost) Validate() error {
 	if ch.TeardownTimeoutSecs < 60 || ch.TeardownTimeoutSecs > 604800 {
 		catcher.Add(errors.New("timeout_teardown_secs must be between 60 and 604800"))
 	}
+
 	return catcher.Resolve()
+}
+
+func (ch *CreateHost) setNumHosts() error {
+	if ch.NumHosts == "" {
+		ch.NumHosts = "1"
+	} else {
+		numHosts, err := strconv.Atoi(ch.NumHosts)
+		if err != nil {
+			return errors.Errorf("problem parsing '%s' as an int", ch.NumHosts)
+		}
+		if numHosts > 10 || numHosts < 0 {
+			return errors.New("num_hosts must be between 1 and 10")
+		} else if numHosts == 0 {
+			ch.NumHosts = "1"
+		}
+	}
+	return nil
+}
+
+func (ch *CreateHost) Validate() error {
+	if ch.CloudProvider == ProviderEC2 || ch.CloudProvider == "" { //default
+		return ch.ValidateEC2()
+	}
+
+	if ch.CloudProvider == ProviderDocker {
+		return ch.ValidateDocker()
+	}
+
+	return errors.New("only ec2 and docker are currently supported cloud providers")
 }
 
 func (ch *CreateHost) Expand(exp *util.Expansions) error {

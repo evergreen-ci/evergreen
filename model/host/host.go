@@ -114,9 +114,26 @@ type Host struct {
 
 	// SpawnOptions holds data which the monitor uses to determine when to terminate hosts spawned by tasks.
 	SpawnOptions SpawnOptions `bson:"spawn_options,omitempty" json:"spawn_options,omitempty"`
+
+	// DockerOptions stores information for creating a container with a specific image and command
+	DockerOptions DockerOptions `bson:"docker_options,omitempty" json:"docker_options,omitempty"`
 }
 
 type HostGroup []Host
+
+// DockerOptions contains options for starting a container from host create
+type DockerOptions struct {
+	// Optional parameters to define a registry name and authentication
+	RegistryName     string `bson:"registry_name,omitempty" json:"registry_name,omitempty"`
+	RegistryUsername string `bson:"registry_username,omitempty" json:"registry_username,omitempty"`
+	RegistryPassword string `bson:"registry_password,omitempty" json:"registry_password,omitempty"`
+
+	// Image is required and specifies the image for the container.
+	// This can be a URL or an image base, to be combined with a registry.
+	Image string `bson:"image,omitempty" json:"image,omitempty"`
+	// Command is required and is the command to run on the docker.
+	Command string `bson:"command,omitempty" json:"command,omitempty"`
+}
 
 // ProvisionOptions is struct containing options about how a new host should be set up.
 type ProvisionOptions struct {

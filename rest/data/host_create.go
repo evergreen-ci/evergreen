@@ -151,6 +151,64 @@ func createHostFromCommand(cmd model.PluginCommandConf) (*apimodels.CreateHost, 
 }
 
 func (dc *DBCreateHostConnector) MakeIntentHost(taskID, userID, publicKey string, createHost apimodels.CreateHost) (*host.Host, error) {
+	if createHost.CloudProvider == evergreen.ProviderNameDocker {
+		return dc.makeDockerIntentHost(userID, createHost)
+	}
+	return dc.makeEC2IntentHost(taskID, userID, publicKey, createHost)
+}
+
+func (dc *DBCreateHostConnector) makeDockerIntentHost(userID string, createHost apimodels.CreateHost) (*host.Host, error) {
+	d := distro.Distro{}
+	var err error
+
+	distroID := createHost.Distro
+	if distroID != "" {
+		d, err = distro.FindOne(distro.ById(distroID))
+		if err != nil {
+			return nil, errors.Wrapf(err, "error finding distro %s", distroID)
+		}
+	} else {
+		return nil, errors.New("distro id cannot be empty")
+	}
+
+	options := cloud.HostOptions{}
+	if userID != "" {
+		options.UserName = userID
+		options.UserHost = true
+	}
+	options.DockerOptions = host.DockerOptions{
+		Image:            createHost.Image,
+		Command:          createHost.Command,
+		RegistryName:     createHost.Registry.Name,
+		RegistryUsername: createHost.Registry.Username,
+		RegistryPassword: createHost.Registry.Password,
+	}
+
+	if d.ContainerPool != "" {
+		allParents, err := host.FindAllRunningParentsByContainerPool(d.ContainerPool)
+		if err != nil {
+			return nil, errors.Wrap(err, "error finding parents by container pool")
+		}
+		for _, parent := range allParents {
+			// find a parent that can accommodate an additional container
+			curContainers, err := parent.GetContainers()
+			if err != nil {
+				return nil, errors.Wrap(err, "error finding number of containers for parent")
+			}
+			containerSpace := parent.ContainerPoolSettings.MaxContainers - len(curContainers)
+
+			if containerSpace > 0 {
+				options.ParentID = parent.Id
+				return cloud.NewIntent(d, d.GenerateName(), d.Provider, options), nil
+			}
+		}
+	}
+
+	return cloud.NewIntent(d, d.GenerateName(), d.Provider, options), nil
+
+}
+
+func (dc *DBCreateHostConnector) makeEC2IntentHost(taskID, userID, publicKey string, createHost apimodels.CreateHost) (*host.Host, error) {
 	provider := evergreen.ProviderNameEc2OnDemand
 	if createHost.Spot {
 		provider = evergreen.ProviderNameEc2Spot

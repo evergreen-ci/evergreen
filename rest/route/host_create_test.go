@@ -1,6 +1,7 @@
 package route
 
 import (
+	"context"
 	"testing"
 
 	"github.com/evergreen-ci/evergreen"
@@ -169,4 +170,52 @@ func TestMakeIntentHost(t *testing.T) {
 	assert.Equal("my_secret_key", ec2Settings.AWSSecret)
 	assert.Equal("subnet-123456", ec2Settings.SubnetId)
 	assert.Equal(true, ec2Settings.IsVpc)
+
+}
+
+func TestHostCreateDocker(t *testing.T) {
+	db.SetGlobalSessionProvider(testutil.TestConfig().SessionFactory())
+	assert := assert.New(t)
+	require := require.New(t)
+	require.NoError(db.ClearCollections(distro.Collection, host.Collection, task.Collection))
+	handler := hostCreateHandler{
+		sc: &data.DBConnector{},
+	}
+
+	d := distro.Distro{
+		Id: "archlinux-test",
+		ProviderSettings: &map[string]interface{}{
+			"ami": "ami-123456",
+		},
+	}
+	require.NoError(d.Insert())
+
+	c := apimodels.CreateHost{
+		CloudProvider: apimodels.ProviderDocker,
+		NumHosts:      "1",
+		Distro:        "archlinux-test",
+		Image:         "my-image",
+		Command:       "echo hello",
+	}
+	c.Registry.Name = "myregistry"
+	handler.createHost = c
+
+	h, err := handler.sc.MakeIntentHost(handler.taskID, "", "", handler.createHost)
+	assert.NoError(err)
+	assert.NotNil(h)
+	assert.Equal("archlinux-test", h.Distro.Id)
+	assert.Equal("my-image", h.DockerOptions.Image)
+	assert.Equal("echo hello", h.DockerOptions.Command)
+	assert.Equal("myregistry", h.DockerOptions.RegistryName)
+
+	hosts, err := host.Find(db.Q{})
+	assert.NoError(err)
+	require.Len(hosts, 0)
+
+	assert.Equal(200, handler.Run(context.Background()).Status())
+	hosts, err = host.Find(db.Q{})
+	assert.NoError(err)
+	require.Len(hosts, 1)
+	assert.Equal(h.DockerOptions.Command, hosts[0].DockerOptions.Command)
+
 }
