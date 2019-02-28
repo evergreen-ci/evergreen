@@ -362,7 +362,7 @@ func MakeMergePatch(pr *github.PullRequest, projectID, alias string) (*Patch, er
 		Project:     projectID,
 		Author:      u.Id,
 		Githash:     pr.Base.GetSHA(),
-		Description: fmt.Sprintf("Commit Queue merge test PR #%d", *pr.Number),
+		Description: fmt.Sprintf("'%s' commit queue merge (PR #%d) by %s: %s (%s)", pr.Base.Repo.GetFullName(), pr.GetNumber(), u.Username(), pr.GetTitle(), pr.GetHTMLURL()),
 		CreateTime:  time.Now(),
 		Status:      evergreen.PatchCreated,
 		Alias:       alias,
