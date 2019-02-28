@@ -19,6 +19,7 @@ mciModule.controller('ProjectCtrl', function($scope, $window, $http, $location, 
   $scope.modalOpen = false;
   $scope.newProject = {};
   $scope.newProjectMessage="";
+  $scope.NewBlankProject = false;
 
   $scope.repoChanged = false;
   $scope.repoChange = function() {
