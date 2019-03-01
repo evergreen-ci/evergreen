@@ -2,6 +2,7 @@ package operations
 
 import (
 	"context"
+	"strings"
 
 	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/pkg/errors"
@@ -39,9 +40,13 @@ func notificationSlack() cli.Command {
 			},
 		},
 		Action: func(c *cli.Context) error {
-			confPath := c.Parent().String(confFlagName)
+			confPath := c.Parent().Parent().String(confFlagName)
 			target := c.String(targetFlagName)
 			msg := c.String(msgFlagName)
+
+			if err := validateTargetHasOctothorpeOrArobase(target); err != nil {
+				return errors.Wrap(err, "invalid target")
+			}
 
 			ctx, cancel := context.WithCancel(context.Background())
 			defer cancel()
@@ -65,6 +70,13 @@ func notificationSlack() cli.Command {
 			return nil
 		},
 	}
+}
+
+func validateTargetHasOctothorpeOrArobase(target string) error {
+	if !strings.HasPrefix(target, "#") && !strings.HasPrefix(target, "@") {
+		return errors.New("target must begin with '#' or '@'")
+	}
+	return nil
 }
 
 func notificationEmail() cli.Command {
@@ -98,7 +110,7 @@ func notificationEmail() cli.Command {
 			},
 		},
 		Action: func(c *cli.Context) error {
-			confPath := c.Parent().String(confFlagName)
+			confPath := c.Parent().Parent().String(confFlagName)
 			from := c.String(fromFlagName)
 			recipients := c.StringSlice(recipientsFlagName)
 			body := c.String(bodyFlagName)

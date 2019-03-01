@@ -9,6 +9,7 @@ import (
 	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/gimlet"
+	"github.com/mongodb/grip/level"
 	"github.com/mongodb/grip/message"
 	"github.com/mongodb/grip/send"
 	"github.com/pkg/errors"
@@ -107,7 +108,7 @@ func (h *jiraCommentNotificationPostHandler) Run(ctx context.Context) gimlet.Res
 		})
 	}
 
-	h.composer = message.MakeJIRACommentMessage(comment.IssueID, comment.Body)
+	h.composer = message.NewJIRACommentMessage(level.Notice, comment.IssueID, comment.Body)
 	h.sender, err = h.environment.GetSender(evergreen.SenderJIRAComment)
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "Error fetching sender key for evergreen.SenderJIRAComment"))
@@ -167,6 +168,9 @@ func (h *jiraIssueNotificationPostHandler) Run(ctx context.Context) gimlet.Respo
 	}
 
 	h.composer = message.MakeJiraMessage(issue)
+	if err := h.composer.SetPriority(level.Notice); err != nil {
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "Error setting priority level on jira message"))
+	}
 	h.sender, err = h.environment.GetSender(evergreen.SenderJIRAIssue)
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "Error fetching sender key for evergreen.SenderJIRAIssue"))
@@ -231,7 +235,7 @@ func (h *slackNotificationPostHandler) Run(ctx context.Context) gimlet.Responder
 	target := model.FromAPIString(h.APISlack.Target)
 	msg := model.FromAPIString(h.APISlack.Msg)
 
-	h.composer = message.MakeSlackMessage(target, msg, attachments)
+	h.composer = message.NewSlackMessage(level.Notice, target, msg, attachments)
 	s, err := h.environment.GetSender(evergreen.SenderSlack)
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "Error fetching sender key for evergreen.SenderSlack"))
@@ -291,7 +295,7 @@ func (h *emailNotificationPostHandler) Run(ctx context.Context) gimlet.Responder
 		})
 	}
 
-	h.composer = message.MakeEmailMessage(*email)
+	h.composer = message.NewEmailMessage(level.Notice, *email)
 	h.sender, err = h.environment.GetSender(evergreen.SenderEmail)
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "Error fetching sender key for evergreen.SenderEmail"))
