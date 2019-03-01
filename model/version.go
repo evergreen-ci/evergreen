@@ -189,3 +189,19 @@ func VersionGetHistory(versionId string, N int) ([]Version, error) {
 
 	return versions, nil
 }
+
+type VersionsByOrder []Version
+
+func (v VersionsByOrder) Len() int {
+	return len(v)
+}
+
+func (v VersionsByOrder) Less(i, j int) bool {
+	return v[i].RevisionOrderNumber < v[j].RevisionOrderNumber
+}
+
+func (v VersionsByOrder) Swap(i, j int) {
+	temp := v[i]
+	v[i] = v[j]
+	v[j] = temp
+}

@@ -2,6 +2,7 @@ package service
 
 import (
 	"net/http"
+	"sort"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
@@ -264,19 +265,20 @@ func (uis *UIServer) taskTimingJSON(w http.ResponseWriter, r *http.Request) {
 	if util.StringSliceContains(evergreen.SystemVersionRequesterTypes, request) {
 		versions, err := model.VersionFind(model.VersionByIds(versionIds).
 			WithFields(model.VersionIdKey, model.VersionCreateTimeKey, model.VersionMessageKey,
-				model.VersionAuthorKey, model.VersionRevisionKey, model.VersionRevisionOrderNumberKey).
-			Sort([]string{"-" + model.VersionRevisionOrderNumberKey}))
+				model.VersionAuthorKey, model.VersionRevisionKey, model.VersionRevisionOrderNumberKey))
 		if err != nil {
-			uis.LoggedError(w, r, http.StatusBadRequest, err)
+			uis.LoggedError(w, r, http.StatusNotFound, errors.Wrap(err, "error finding past versions"))
 			return
 		}
+		sort.Sort(sort.Reverse(model.VersionsByOrder(versions)))
+
 		data.Versions = versions
 	} else {
 		// patches
 		patches, err := patch.Find(patch.ByVersions(versionIds).
 			WithFields(patch.IdKey, patch.CreateTimeKey, patch.DescriptionKey, patch.AuthorKey))
 		if err != nil {
-			uis.LoggedError(w, r, http.StatusBadRequest, err)
+			uis.LoggedError(w, r, http.StatusNotFound, errors.Wrap(err, "error finding past patches"))
 			return
 		}
 		data.Patches = patches
