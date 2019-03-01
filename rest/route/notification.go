@@ -168,7 +168,7 @@ func (h *jiraIssueNotificationPostHandler) Run(ctx context.Context) gimlet.Respo
 	}
 
 	h.composer = message.MakeJiraMessage(issue)
-	if err := h.composer.SetPriority(level.Notice); err != nil {
+	if err = h.composer.SetPriority(level.Notice); err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "Error setting priority level on jira message"))
 	}
 	h.sender, err = h.environment.GetSender(evergreen.SenderJIRAIssue)
