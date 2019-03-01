@@ -710,3 +710,27 @@ func (c *communicatorImpl) DeleteCommitQueueItem(ctx context.Context, projectID,
 
 	return nil
 }
+
+func (c *communicatorImpl) SendNotification(ctx context.Context, notificationType string, data interface{}) error {
+	info := requestInfo{
+		method:  post,
+		version: apiVersion2,
+		path:    "notifications/" + notificationType,
+	}
+
+	resp, err := c.request(ctx, info, data)
+	if err != nil {
+		return errors.Wrapf(err, "problem sending slack notification")
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		errMsg := gimlet.ErrorResponse{}
+		if err := util.ReadJSONInto(resp.Body, &errMsg); err != nil {
+			return errors.Wrapf(err, "response code %d problem sending '%s' notification and parsing errors message",
+				resp.StatusCode, notificationType)
+		}
+		return errMsg
+	}
+
+	return nil
+}

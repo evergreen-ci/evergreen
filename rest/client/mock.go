@@ -288,7 +288,6 @@ func (c *Mock) GetMockMessages() map[string][]apimodels.LogMessage {
 func (c *Mock) GetLoggerProducer(ctx context.Context, td TaskData, config *LoggerConfig) LoggerProducer {
 	return NewSingleChannelLogHarness(td.ID, newEvergreenLogSender(ctx, c, apimodels.AgentLogPrefix, td, defaultLogBufferSize, defaultLogBufferTime))
 }
-
 func (c *Mock) GetLoggerMetadata() LoggerMetadata {
 	return LoggerMetadata{
 		Agent: []LogkeeperMetadata{{
@@ -567,5 +566,9 @@ func (c *Mock) GetCommitQueue(ctx context.Context, projectID string) (*model.API
 }
 
 func (c *Mock) DeleteCommitQueueItem(ctx context.Context, projectID, item string) error {
+	return nil
+}
+
+func (c *Mock) SendNotification(_ context.Context, _ string, _ interface{}) error {
 	return nil
 }
