@@ -364,13 +364,13 @@ func (c *gitFetchProject) Execute(ctx context.Context,
 	if conf.Task.Requester == evergreen.PatchVersionRequester {
 		if err = c.getPatchContents(ctx, comm, logger, conf, p); err != nil {
 			err = errors.Wrap(err, "Failed to get patch contents")
-			logger.Execution().Errorf(err.Error())
+			logger.Execution().Error(err.Error())
 			return err
 		}
 
 		if err = c.applyPatch(ctx, logger, conf, p); err != nil {
 			err = errors.Wrap(err, "Failed to apply patch")
-			logger.Execution().Infof(err.Error())
+			logger.Execution().Error(err.Error())
 			return err
 		}
 	}
