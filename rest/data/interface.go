@@ -5,6 +5,8 @@ import (
 	"encoding/json"
 	"time"
 
+	"github.com/evergreen-ci/evergreen/cloud"
+
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/model"
@@ -236,4 +238,7 @@ type Connector interface {
 	CommitQueueRemoveItem(string, string) (bool, error)
 	CommitQueueClearAll() (int, error)
 	IsAuthorizedToPatchAndMerge(context.Context, *evergreen.Settings, UserRepoInfo) (bool, error)
+
+	//Docker methods
+	GetLogs(context.Context, string, *host.Host) (*cloud.LogReader, error)
 }

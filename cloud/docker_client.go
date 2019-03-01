@@ -65,6 +65,10 @@ const (
 	imageImportTimeout  = 10 * time.Minute
 )
 
+func GetClient(s *evergreen.Settings) *dockerClientImpl {
+	return &dockerClientImpl{evergreenSettings: s}
+}
+
 // generateClient generates a Docker client that can talk to the specified host
 // machine. The Docker client must be exposed and available for requests at the
 // client port 3369 on the host machine.
@@ -370,6 +374,8 @@ func (c *dockerClientImpl) CreateContainer(ctx context.Context, parentHost, cont
 	return nil
 }
 
+// GetLogs returns a LogReader for the given container, with an out/error stream depending on the logs provided.
+// This assumes the container is not using TTY.
 func (c *dockerClientImpl) GetLogs(ctx context.Context, h *host.Host, containerID string, options types.ContainerLogsOptions) (*LogReader, error) {
 	dockerClient, err := c.generateClient(h)
 	if err != nil {

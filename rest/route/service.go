@@ -78,6 +78,7 @@ func AttachHandler(app *gimlet.APIApp, opts HandlerOpts) {
 	app.AddRoute("/hosts/{host_id}/terminate").Version(2).Post().Wrap(checkUser).RouteHandler(makeTerminateHostRoute(sc))
 	app.AddRoute("/hosts/{task_id}/create").Version(2).Post().RouteHandler(makeHostCreateRouteManager(sc))
 	app.AddRoute("/hosts/{task_id}/list").Version(2).Get().RouteHandler(makeHostListRouteManager(sc))
+	app.AddRoute("/hosts/{container_id}/logs").Version(2).Get().RouteHandler(makeContainerLogsRouteManager(sc))
 	app.AddRoute("/keys").Version(2).Get().Wrap(checkUser).RouteHandler(makeFetchKeys(sc))
 	app.AddRoute("/keys").Version(2).Post().Wrap(checkUser).RouteHandler(makeSetKey(sc))
 	app.AddRoute("/keys/{key_name}").Version(2).Delete().Wrap(checkUser).RouteHandler(makeDeleteKeys(sc))

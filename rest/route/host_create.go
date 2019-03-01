@@ -131,3 +131,55 @@ func (h *hostListHandler) Run(ctx context.Context) gimlet.Responder {
 	}
 	return gimlet.NewJSONResponse(results)
 }
+
+////////////////////////////////////////////////////////////////////////
+//
+// GET /rest/v2/hosts/{container_id}/logs
+
+type containerLogsHandler struct {
+	containerID string
+
+	sc data.Connector
+}
+
+func makeContainerLogsRouteManager(sc data.Connector) gimlet.RouteHandler {
+	return &containerLogsHandler{sc: sc}
+}
+
+func (h *containerLogsHandler) Factory() gimlet.RouteHandler { return &containerLogsHandler{sc: h.sc} }
+
+func (h *containerLogsHandler) Parse(ctx context.Context, r *http.Request) error {
+	id := gimlet.GetVars(r)["container_id"]
+	if id == "" {
+		return gimlet.ErrorResponse{
+			StatusCode: http.StatusBadRequest,
+			Message:    "must provide container ID",
+		}
+	}
+	h.containerID = id
+	if _, code, err := dbModel.ValidateContainer(h.containerID, r); err != nil {
+		return gimlet.ErrorResponse{
+			StatusCode: code,
+			Message:    "container is invalid",
+		}
+	}
+
+	return nil
+}
+
+func (h *containerLogsHandler) Run(ctx context.Context) gimlet.Responder {
+	host, err := host.FindOneId(h.containerID)
+	if err != nil {
+		return gimlet.NewJSONErrorResponse(errors.Wrapf(err, "error finding container %s", h.containerID))
+	}
+
+	parent, err := host.GetParent()
+	if err != nil {
+		return gimlet.NewJSONErrorResponse(errors.Wrapf(err, "error finding parent for container %s", h.containerID))
+	}
+	reader, err := h.sc.GetLogs(ctx, h.containerID, parent)
+	if err != nil {
+		return gimlet.NewJSONErrorResponse(err)
+	}
+	return gimlet.NewJSONResponse(reader)
+}

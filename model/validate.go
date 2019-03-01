@@ -90,6 +90,20 @@ func ValidateHost(hostId string, r *http.Request) (*host.Host, int, error) {
 	return h, http.StatusOK, nil
 }
 
+func ValidateContainer(containerId string, r *http.Request) (*host.Host, int, error) {
+	if containerId == "" {
+		return nil, http.StatusBadRequest, errors.Errorf("Request %s is missing host container id", r.URL)
+	}
+	h, err := host.FindOne(host.ById(containerId))
+	if h == nil {
+		return nil, http.StatusBadRequest, errors.Errorf("Container %s not found", containerId)
+	}
+	if err != nil {
+		return nil, http.StatusInternalServerError, errors.Wrapf(err, "Error loading context for container %s", containerId)
+	}
+	return h, http.StatusOK, nil
+}
+
 func badHostTaskRelationship(h *host.Host, t *task.Task) bool {
 	if t == nil {
 		return false

@@ -180,7 +180,7 @@ func (m *dockerManager) Configure(ctx context.Context, s *evergreen.Settings) er
 	config := s.Providers.Docker
 
 	if m.client == nil {
-		m.client = &dockerClientImpl{evergreenSettings: s}
+		m.client = GetClient(s)
 	}
 
 	if err := m.client.Init(config.APIVersion); err != nil {
