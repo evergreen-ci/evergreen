@@ -152,12 +152,12 @@ func createHostFromCommand(cmd model.PluginCommandConf) (*apimodels.CreateHost, 
 
 func (dc *DBCreateHostConnector) MakeIntentHost(taskID, userID, publicKey string, createHost apimodels.CreateHost) (*host.Host, error) {
 	if createHost.CloudProvider == evergreen.ProviderNameDocker {
-		return dc.makeDockerIntentHost(userID, createHost)
+		return makeDockerIntentHost(taskID, userID, createHost)
 	}
-	return dc.makeEC2IntentHost(taskID, userID, publicKey, createHost)
+	return makeEC2IntentHost(taskID, userID, publicKey, createHost)
 }
 
-func (dc *DBCreateHostConnector) makeDockerIntentHost(userID string, createHost apimodels.CreateHost) (*host.Host, error) {
+func makeDockerIntentHost(taskID, userID string, createHost apimodels.CreateHost) (*host.Host, error) {
 	d := distro.Distro{}
 	var err error
 
@@ -165,17 +165,15 @@ func (dc *DBCreateHostConnector) makeDockerIntentHost(userID string, createHost 
 	if distroID != "" {
 		d, err = distro.FindOne(distro.ById(distroID))
 		if err != nil {
-			return nil, errors.Wrapf(err, "error finding distro %s", distroID)
+			return nil, errors.Wrapf(err, "problem finding distro %s", distroID)
 		}
-	} else {
-		return nil, errors.New("distro id cannot be empty")
 	}
 
-	options := cloud.HostOptions{}
-	if userID != "" {
-		options.UserName = userID
-		options.UserHost = true
+	options, err := getAgentOptions(taskID, userID, createHost)
+	if err != nil {
+		return nil, errors.Wrap(err, "error making host options for EC2")
 	}
+
 	options.DockerOptions = host.DockerOptions{
 		Image:            createHost.Image,
 		Command:          createHost.Command,
@@ -184,31 +182,11 @@ func (dc *DBCreateHostConnector) makeDockerIntentHost(userID string, createHost 
 		RegistryPassword: createHost.Registry.Password,
 	}
 
-	if d.ContainerPool != "" {
-		allParents, err := host.FindAllRunningParentsByContainerPool(d.ContainerPool)
-		if err != nil {
-			return nil, errors.Wrap(err, "error finding parents by container pool")
-		}
-		for _, parent := range allParents {
-			// find a parent that can accommodate an additional container
-			curContainers, err := parent.GetContainers()
-			if err != nil {
-				return nil, errors.Wrap(err, "error finding number of containers for parent")
-			}
-			containerSpace := parent.ContainerPoolSettings.MaxContainers - len(curContainers)
-
-			if containerSpace > 0 {
-				options.ParentID = parent.Id
-				return cloud.NewIntent(d, d.GenerateName(), d.Provider, options), nil
-			}
-		}
-	}
-
-	return cloud.NewIntent(d, d.GenerateName(), d.Provider, options), nil
+	return cloud.NewIntent(d, d.GenerateName(), d.Provider, *options), nil
 
 }
 
-func (dc *DBCreateHostConnector) makeEC2IntentHost(taskID, userID, publicKey string, createHost apimodels.CreateHost) (*host.Host, error) {
+func makeEC2IntentHost(taskID, userID, publicKey string, createHost apimodels.CreateHost) (*host.Host, error) {
 	provider := evergreen.ProviderNameEc2OnDemand
 	if createHost.Spot {
 		provider = evergreen.ProviderNameEc2Spot
@@ -223,7 +201,7 @@ func (dc *DBCreateHostConnector) makeEC2IntentHost(taskID, userID, publicKey str
 		if err != nil {
 			return nil, errors.Wrap(err, "problem finding distro")
 		}
-		if err := mapstructure.Decode(d.ProviderSettings, &ec2Settings); err != nil {
+		if err = mapstructure.Decode(d.ProviderSettings, &ec2Settings); err != nil {
 			return nil, errors.Wrap(err, "problem unmarshaling provider settings")
 		}
 	}
@@ -272,11 +250,18 @@ func (dc *DBCreateHostConnector) makeEC2IntentHost(taskID, userID, publicKey str
 	}
 	ec2Settings.IPv6 = createHost.IPv6
 	ec2Settings.IsVpc = true // task-spawned hosts do not support ec2 classic
-	if err := mapstructure.Decode(ec2Settings, &d.ProviderSettings); err != nil {
+	if err = mapstructure.Decode(ec2Settings, &d.ProviderSettings); err != nil {
 		return nil, errors.Wrap(err, "error marshaling provider settings")
 	}
 
-	// scope and teardown options
+	options, err := getAgentOptions(taskID, userID, createHost)
+	if err != nil {
+		return nil, errors.Wrap(err, "error making host options for EC2")
+	}
+	return cloud.NewIntent(d, d.GenerateName(), provider, *options), nil
+}
+
+func getAgentOptions(taskID, userID string, createHost apimodels.CreateHost) (*cloud.HostOptions, error) {
 	options := cloud.HostOptions{}
 	if userID != "" {
 		options.UserName = userID
@@ -307,8 +292,7 @@ func (dc *DBCreateHostConnector) makeEC2IntentHost(taskID, userID, publicKey str
 		options.SpawnOptions.Retries = createHost.Retries
 		options.SpawnOptions.SpawnedByTask = true
 	}
-
-	return cloud.NewIntent(d, d.GenerateName(), provider, options), nil
+	return &options, nil
 }
 
 // MockCreateHostConnector mocks `DBCreateHostConnector`.
