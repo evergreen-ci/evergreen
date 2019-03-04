@@ -53,7 +53,7 @@ func TestExpansionsPluginWExecution(t *testing.T) {
 	defer cancel()
 	comm := client.NewMock("http://localhost.com")
 	conf := &model.TaskConfig{Expansions: &util.Expansions{}, Task: &task.Task{}, Project: &model.Project{}}
-	logger := comm.GetLoggerProducer(ctx, client.TaskData{ID: conf.Task.Id, Secret: conf.Task.Secret}, nil)
+	logger, _ := comm.GetLoggerProducer(ctx, client.TaskData{ID: conf.Task.Id, Secret: conf.Task.Secret}, nil)
 
 	Convey("When running Update commands", t, func() {
 		Convey("if there is no expansion, the file name is not changed", func() {
@@ -78,7 +78,8 @@ func TestExpansionWriter(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	comm := client.NewMock("http://localhost.com")
-	logger := comm.GetLoggerProducer(ctx, client.TaskData{ID: "id", Secret: "secret"}, nil)
+	logger, err := comm.GetLoggerProducer(ctx, client.TaskData{ID: "id", Secret: "secret"}, nil)
+	assert.NoError(err)
 	tc := &model.TaskConfig{
 		Expansions: &util.Expansions{
 			"foo":      "bar",

@@ -26,7 +26,7 @@ func TestPatchPluginAPI(t *testing.T) {
 	defer cancel()
 	comm := client.NewMock("http://localhost.com")
 	conf := &model.TaskConfig{Expansions: &util.Expansions{}, Task: &task.Task{}, Project: &model.Project{}}
-	logger := comm.GetLoggerProducer(ctx, client.TaskData{ID: conf.Task.Id, Secret: conf.Task.Secret}, nil)
+	logger, _ := comm.GetLoggerProducer(ctx, client.TaskData{ID: conf.Task.Id, Secret: conf.Task.Secret}, nil)
 
 	cwd := testutil.GetDirectoryOfFile()
 
@@ -117,7 +117,8 @@ func TestPatchPlugin(t *testing.T) {
 		taskConfig := modelData.TaskConfig
 
 		comm := client.NewMock("http://localhost.com")
-		logger := comm.GetLoggerProducer(ctx, client.TaskData{ID: taskConfig.Task.Id, Secret: taskConfig.Task.Secret}, nil)
+		logger, err := comm.GetLoggerProducer(ctx, client.TaskData{ID: taskConfig.Task.Id, Secret: taskConfig.Task.Secret}, nil)
+		So(err, ShouldBeNil)
 
 		Convey("all commands in test project should execute successfully", func() {
 			taskConfig.Task.Requester = evergreen.PatchVersionRequester

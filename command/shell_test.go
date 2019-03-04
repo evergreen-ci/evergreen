@@ -32,11 +32,13 @@ func TestShellExecuteCommand(t *testing.T) {
 }
 
 func (s *shellExecuteCommandSuite) SetupTest() {
+	var err error
 	s.ctx, s.cancel = context.WithCancel(context.Background())
 
 	s.comm = client.NewMock("http://localhost.com")
 	s.conf = &model.TaskConfig{Expansions: &util.Expansions{}, Task: &task.Task{}, Project: &model.Project{}}
-	s.logger = s.comm.GetLoggerProducer(s.ctx, client.TaskData{ID: s.conf.Task.Id, Secret: s.conf.Task.Secret}, nil)
+	s.logger, err = s.comm.GetLoggerProducer(s.ctx, client.TaskData{ID: s.conf.Task.Id, Secret: s.conf.Task.Secret}, nil)
+	s.NoError(err)
 
 	s.shells = []string{"bash", "python", "sh"}
 
@@ -54,7 +56,6 @@ func (s *shellExecuteCommandSuite) TestWorksWithEmptyShell() {
 	s.Empty(cmd.Shell)
 	s.NoError(cmd.Execute(s.ctx, s.comm, s.logger, s.conf))
 }
-
 
 func (s *shellExecuteCommandSuite) TestSilentAndRedirectToStdOutError() {
 	cmd := &subprocessExec{}

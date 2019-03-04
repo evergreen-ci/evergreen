@@ -38,7 +38,8 @@ func runTest(t *testing.T, configPath string, customTests func(string)) {
 
 		conf := modelData.TaskConfig
 		conf.WorkDir = "."
-		logger := comm.GetLoggerProducer(ctx, client.TaskData{ID: conf.Task.Id, Secret: conf.Task.Secret}, nil)
+		logger, err := comm.GetLoggerProducer(ctx, client.TaskData{ID: conf.Task.Id, Secret: conf.Task.Secret}, nil)
+		So(err, ShouldBeNil)
 
 		Convey("all commands in test project should execute successfully", func() {
 			for _, projTask := range conf.Project.Tasks {
@@ -148,7 +149,8 @@ func TestParseAndUpload(t *testing.T) {
 
 	conf := modelData.TaskConfig
 	conf.WorkDir = filepath.Join(testutil.GetDirectoryOfFile(), "testdata", "xunit")
-	logger := comm.GetLoggerProducer(ctx, client.TaskData{ID: conf.Task.Id, Secret: conf.Task.Secret}, nil)
+	logger, err := comm.GetLoggerProducer(ctx, client.TaskData{ID: conf.Task.Id, Secret: conf.Task.Secret}, nil)
+	assert.NoError(err)
 
 	err = xr.parseAndUploadResults(ctx, conf, logger, comm)
 	assert.NoError(err)
