@@ -275,7 +275,7 @@ func (n *APIEmail) BuildFromService(h interface{}) error {
 	return nil
 }
 
-// ToService returns a service layer message.JiraIssue using the data from APIJiraIssue.
+// ToService returns a service layer message.Email using the data from APIEmail.
 func (n *APIEmail) ToService() (interface{}, error) {
 	email := message.Email{}
 	email.From = FromAPIString(n.From)
