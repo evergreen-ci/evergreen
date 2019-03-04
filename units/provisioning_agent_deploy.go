@@ -121,7 +121,7 @@ func (j *agentDeployJob) Run(ctx context.Context) {
 	}
 
 	if stat.LastAttemptFailed() && stat.AllAttemptsFailed() && stat.Count >= agentPutRetries {
-		if disableErr := j.host.DisablePoisonedHost("failed 10 times to put agent on host"); disableErr != nil {
+		if disableErr := j.host.DisablePoisonedHost(fmt.Sprintf("failed %d times to put agent on host", agentPutRetries)); disableErr != nil {
 			j.AddError(errors.Wrapf(disableErr, "error terminating host %s", j.host.Id))
 			return
 		}
