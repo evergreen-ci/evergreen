@@ -1,9 +1,14 @@
 package route
 
 import (
+	"bytes"
 	"context"
+	"fmt"
 	"net/http"
 	"testing"
+	"time"
+
+	"github.com/evergreen-ci/gimlet"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/apimodels"
@@ -221,7 +226,7 @@ func TestHostCreateDocker(t *testing.T) {
 
 }
 
-func TestGetLogs(t *testing.T) {
+func TestGetDockerLogs(t *testing.T) {
 	db.SetGlobalSessionProvider(testutil.TestConfig().SessionFactory())
 	assert := assert.New(t)
 	require := require.New(t)
@@ -259,7 +264,31 @@ func TestGetLogs(t *testing.T) {
 	}
 	require.NoError(parent.Insert())
 
-	handler.containerID = h.Id
+	// invalid Parse start time
+	startTime := time.Now().Add(-time.Minute).String()
+	url := fmt.Sprintf("/hosts/%s/logs?start_time=%s", h.Id, startTime)
+	request, err := http.NewRequest("GET", url, bytes.NewReader(nil))
+	assert.NoError(err)
+	options := map[string]string{"container_id": h.Id}
+
+	request = gimlet.SetURLVars(request, options)
+	assert.Error(handler.Parse(context.Background(), request))
+
+	// valid Parse
+	startTime = time.Now().Add(-time.Minute).Format(time.RFC3339)
+	endTime := time.Now().Format(time.RFC3339)
+	url = fmt.Sprintf("/hosts/%s/logs?start_time=%s&end_time=%s", h.Id, startTime, endTime)
+
+	request, err = http.NewRequest("GET", url, bytes.NewReader(nil))
+	assert.NoError(err)
+	request = gimlet.SetURLVars(request, options)
+
+	assert.NoError(handler.Parse(context.Background(), request))
+	assert.Equal(h.Id, handler.containerID)
+	assert.Equal(startTime, handler.startTime)
+	assert.Equal(endTime, handler.endTime)
+
+	// valid Run
 	res := handler.Run(context.Background())
 	require.NotNil(res)
 	assert.Equal(http.StatusOK, res.Status())

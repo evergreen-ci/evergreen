@@ -298,18 +298,16 @@ func getAgentOptions(taskID, userID string, createHost apimodels.CreateHost) (*c
 	return &options, nil
 }
 
-// GetLogs is used by the /host/{container_id}/logs route to retrieve the logs for the given container.
-func (dc *DBCreateHostConnector) GetLogs(ctx context.Context, containerId string, parent *host.Host) (*cloud.LogReader, error) {
-	settings, err := evergreen.GetConfig()
-	if err != nil {
-		return nil, errors.Wrap(err, "error getting settings config")
-	}
-	c := cloud.GetClient(settings)
-	if err = c.Init(settings.Providers.Docker.APIVersion); err != nil {
+// GetDockerLogs is used by the /host/{container_id}/logs route to retrieve the logs for the given container.
+func (dc *DBCreateHostConnector) GetDockerLogs(ctx context.Context, containerId string, parent *host.Host,
+	settings *evergreen.Settings, options types.ContainerLogsOptions) (*cloud.LogReader, error) {
+	c := cloud.GetDockerClient(settings)
+	if err := c.Init(settings.Providers.Docker.APIVersion); err != nil {
 
 		return nil, errors.Wrap(err, "error initializing client")
 	}
-	reader, err := c.GetLogs(ctx, parent, containerId, types.ContainerLogsOptions{ShowStdout: true, ShowStderr: true})
+
+	reader, err := c.GetDockerLogs(ctx, parent, containerId, options)
 	if err != nil {
 		return nil, errors.Wrapf(err, "error getting logs for container %s", containerId)
 	}
@@ -319,9 +317,9 @@ func (dc *DBCreateHostConnector) GetLogs(ctx context.Context, containerId string
 // MockCreateHostConnector mocks `DBCreateHostConnector`.
 type MockCreateHostConnector struct{}
 
-func (dc *MockCreateHostConnector) GetLogs(ctx context.Context, containerId string, parent *host.Host) (*cloud.LogReader, error) {
+func (dc *MockCreateHostConnector) GetDockerLogs(ctx context.Context, containerId string, parent *host.Host, settings *evergreen.Settings, options types.ContainerLogsOptions) (*cloud.LogReader, error) {
 	c := cloud.GetMockClient()
-	reader, err := c.GetLogs(ctx, parent, containerId, types.ContainerLogsOptions{})
+	reader, err := c.GetDockerLogs(ctx, parent, containerId, options)
 	if err != nil {
 		return nil, errors.Wrapf(err, "error getting logs for container %s", containerId)
 	}

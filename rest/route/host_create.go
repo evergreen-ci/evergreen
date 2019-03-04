@@ -2,8 +2,14 @@ package route
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"strconv"
+	"time"
+
+	"github.com/docker/docker/api/types"
+
+	"github.com/evergreen-ci/evergreen"
 
 	"github.com/evergreen-ci/evergreen/apimodels"
 	dbModel "github.com/evergreen-ci/evergreen/model"
@@ -138,6 +144,8 @@ func (h *hostListHandler) Run(ctx context.Context) gimlet.Responder {
 
 type containerLogsHandler struct {
 	containerID string
+	startTime   string
+	endTime     string
 
 	sc data.Connector
 }
@@ -153,7 +161,7 @@ func (h *containerLogsHandler) Parse(ctx context.Context, r *http.Request) error
 	if id == "" {
 		return gimlet.ErrorResponse{
 			StatusCode: http.StatusBadRequest,
-			Message:    "must provide container ID",
+			Message:    "must provide 'container_id'",
 		}
 	}
 	h.containerID = id
@@ -161,6 +169,25 @@ func (h *containerLogsHandler) Parse(ctx context.Context, r *http.Request) error
 		return gimlet.ErrorResponse{
 			StatusCode: code,
 			Message:    "container is invalid",
+		}
+	}
+
+	if h.startTime = r.FormValue("start_time"); h.startTime != "" {
+		if _, err := time.Parse(time.RFC3339, h.startTime); err != nil {
+			return gimlet.ErrorResponse{
+				StatusCode: http.StatusBadRequest,
+				Message: fmt.Sprintf("problem parsing start time from '%s' (%s). Must be given in the following format: %s",
+					h.startTime, err.Error(), time.RFC3339),
+			}
+		}
+	}
+	if h.endTime = r.FormValue("end_time"); h.endTime != "" {
+		if _, err := time.Parse(time.RFC3339, h.startTime); err != nil {
+			return gimlet.ErrorResponse{
+				StatusCode: http.StatusBadRequest,
+				Message: fmt.Sprintf("problem parsing start time from '%s' (%s). Must be given in the following format: %s",
+					h.startTime, err.Error(), time.RFC3339),
+			}
 		}
 	}
 
@@ -172,12 +199,26 @@ func (h *containerLogsHandler) Run(ctx context.Context) gimlet.Responder {
 	if err != nil {
 		return gimlet.NewJSONErrorResponse(errors.Wrapf(err, "error finding container %s", h.containerID))
 	}
+	if host == nil {
+		return gimlet.NewJSONErrorResponse(errors.New(fmt.Sprintf("container %s not found", h.containerID)))
+	}
 
 	parent, err := host.GetParent()
 	if err != nil {
 		return gimlet.NewJSONErrorResponse(errors.Wrapf(err, "error finding parent for container %s", h.containerID))
 	}
-	reader, err := h.sc.GetLogs(ctx, h.containerID, parent)
+	settings, err := evergreen.GetConfig()
+	if err != nil {
+		return gimlet.NewJSONErrorResponse(errors.Wrap(err, "error getting settings config"))
+	}
+	options := types.ContainerLogsOptions{
+		ShowStdout: true,
+		ShowStderr: true,
+		Timestamps: true,
+		Since:      h.startTime,
+		Until:      h.endTime,
+	}
+	reader, err := h.sc.GetDockerLogs(ctx, h.containerID, parent, settings, options)
 	if err != nil {
 		return gimlet.NewJSONErrorResponse(err)
 	}

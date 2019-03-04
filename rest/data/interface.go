@@ -5,6 +5,8 @@ import (
 	"encoding/json"
 	"time"
 
+	"github.com/docker/docker/api/types"
+
 	"github.com/evergreen-ci/evergreen/cloud"
 
 	"github.com/evergreen-ci/evergreen"
@@ -239,6 +241,6 @@ type Connector interface {
 	CommitQueueClearAll() (int, error)
 	IsAuthorizedToPatchAndMerge(context.Context, *evergreen.Settings, UserRepoInfo) (bool, error)
 
-	//Docker methods
-	GetLogs(context.Context, string, *host.Host) (*cloud.LogReader, error)
+	// GetDockerLogs returns logs for the given docker container
+	GetDockerLogs(context.Context, string, *host.Host, *evergreen.Settings, types.ContainerLogsOptions) (*cloud.LogReader, error)
 }

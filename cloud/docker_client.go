@@ -37,7 +37,7 @@ type dockerClient interface {
 	BuildImageWithAgent(context.Context, *host.Host, string) (string, error)
 	CreateContainer(context.Context, *host.Host, *host.Host, *dockerSettings) error
 	GetContainer(context.Context, *host.Host, string) (*types.ContainerJSON, error)
-	GetLogs(context.Context, *host.Host, string, types.ContainerLogsOptions) (*LogReader, error)
+	GetDockerLogs(context.Context, *host.Host, string, types.ContainerLogsOptions) (*LogReader, error)
 	ListContainers(context.Context, *host.Host) ([]types.Container, error)
 	RemoveImage(context.Context, *host.Host, string) error
 	RemoveContainer(context.Context, *host.Host, string) error
@@ -65,7 +65,7 @@ const (
 	imageImportTimeout  = 10 * time.Minute
 )
 
-func GetClient(s *evergreen.Settings) *dockerClientImpl {
+func GetDockerClient(s *evergreen.Settings) *dockerClientImpl {
 	return &dockerClientImpl{evergreenSettings: s}
 }
 
@@ -374,9 +374,9 @@ func (c *dockerClientImpl) CreateContainer(ctx context.Context, parentHost, cont
 	return nil
 }
 
-// GetLogs returns a LogReader for the given container, with an out/error stream depending on the logs provided.
+// GetDockerLogs returns a LogReader for the given container, with an out/error stream depending on the logs provided.
 // This assumes the container is not using TTY.
-func (c *dockerClientImpl) GetLogs(ctx context.Context, h *host.Host, containerID string, options types.ContainerLogsOptions) (*LogReader, error) {
+func (c *dockerClientImpl) GetDockerLogs(ctx context.Context, h *host.Host, containerID string, options types.ContainerLogsOptions) (*LogReader, error) {
 	dockerClient, err := c.generateClient(h)
 	if err != nil {
 		return nil, errors.Wrap(err, "Failed to generate docker client")
