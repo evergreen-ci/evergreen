@@ -45,7 +45,7 @@ func notificationSlack() cli.Command {
 			msg := c.String(msgFlagName)
 
 			if err := validateTargetHasOctothorpeOrArobase(target); err != nil {
-				return errors.Wrap(err, "invalid target")
+				return err
 			}
 
 			ctx, cancel := context.WithCancel(context.Background())
