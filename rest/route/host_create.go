@@ -164,31 +164,40 @@ func (h *containerLogsHandler) Parse(ctx context.Context, r *http.Request) error
 			Message:    "must provide 'container_id'",
 		}
 	}
-	h.containerID = id
-	if _, code, err := dbModel.ValidateContainer(h.containerID, r); err != nil {
+	host, err := host.FindOne(host.ById(id))
+	if host == nil {
 		return gimlet.ErrorResponse{
-			StatusCode: code,
-			Message:    "container is invalid",
+			StatusCode: http.StatusBadRequest,
+			Message:    fmt.Sprintf("Container %s not found", id),
 		}
 	}
+	if err != nil {
+		return gimlet.ErrorResponse{
+			StatusCode: http.StatusInternalServerError,
+			Message:    "Error loading host for container " + id,
+		}
+	}
+	h.containerID = id
 
-	if h.startTime = r.FormValue("start_time"); h.startTime != "" {
-		if _, err := time.Parse(time.RFC3339, h.startTime); err != nil {
+	if startTime := r.FormValue("start_time"); startTime != "" {
+		if _, err := time.Parse(time.RFC3339, startTime); err != nil {
 			return gimlet.ErrorResponse{
 				StatusCode: http.StatusBadRequest,
 				Message: fmt.Sprintf("problem parsing start time from '%s' (%s). Must be given in the following format: %s",
-					h.startTime, err.Error(), time.RFC3339),
+					startTime, err.Error(), time.RFC3339),
 			}
 		}
+		h.startTime = startTime
 	}
-	if h.endTime = r.FormValue("end_time"); h.endTime != "" {
-		if _, err := time.Parse(time.RFC3339, h.startTime); err != nil {
+	if endTime := r.FormValue("end_time"); endTime != "" {
+		if _, err := time.Parse(time.RFC3339, endTime); err != nil {
 			return gimlet.ErrorResponse{
 				StatusCode: http.StatusBadRequest,
-				Message: fmt.Sprintf("problem parsing start time from '%s' (%s). Must be given in the following format: %s",
-					h.startTime, err.Error(), time.RFC3339),
+				Message: fmt.Sprintf("problem parsing end time from '%s' (%s). Must be given in the following format: %s",
+					endTime, err.Error(), time.RFC3339),
 			}
 		}
+		h.endTime = endTime
 	}
 
 	return nil
