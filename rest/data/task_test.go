@@ -202,11 +202,9 @@ func (s *TaskConnectorFetchByBuildSuite) TestFindByBuildAndStatus() {
 
 			s.Equal((s.numTasks-startAt)-i*sort, len(foundTasks))
 			for ix, t := range foundTasks {
-				var index int
+				index := ix
 				if sort > 0 {
-					index = i + ix
-				} else {
-					index = (len(foundTasks) - 1) - ix
+					index += i
 				}
 				s.Equal(tids[index], t.Id)
 			}

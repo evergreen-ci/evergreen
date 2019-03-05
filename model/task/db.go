@@ -10,7 +10,7 @@ import (
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/anser/bsonutil"
 	"github.com/pkg/errors"
-	mgo "gopkg.in/mgo.v2"
+	"gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
 )
 
@@ -509,10 +509,6 @@ func TasksByBuildIdPipeline(buildId, taskId, taskStatus string,
 			IdKey:      bson.M{sortOperator: taskId},
 		}},
 	}
-
-	// sort the tasks before limiting to get the next [limit] tasks
-	pipeline = append(pipeline, bson.M{"$sort": bson.M{IdKey: sortDir}})
-
 	if taskStatus != "" {
 		statusMatch := bson.M{
 			"$match": bson.M{StatusKey: taskStatus},
