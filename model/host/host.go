@@ -365,12 +365,12 @@ func (h *Host) SetIPv6Address(ipv6Address string) error {
 
 func (h *Host) MarkAsProvisioned() error {
 	event.LogHostProvisioned(h.Id)
-	h.Status = evergreen.HostRunning
-	h.Provisioned = true
-	h.ProvisionTime = time.Now()
-	return UpdateOne(
+	err := UpdateOne(
 		bson.M{
 			IdKey: h.Id,
+			StatusKey: bson.M{
+				"$nin": evergreen.DownHostStatus,
+			},
 		},
 		bson.M{
 			"$set": bson.M{
@@ -380,6 +380,15 @@ func (h *Host) MarkAsProvisioned() error {
 			},
 		},
 	)
+
+	if err != nil {
+		return err
+	}
+
+	h.Status = evergreen.HostRunning
+	h.Provisioned = true
+	h.ProvisionTime = time.Now()
+	return nil
 }
 
 // ClearRunningAndSetLastTask unsets the running task on the host and updates the last task fields.
