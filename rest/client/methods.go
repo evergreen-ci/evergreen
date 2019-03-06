@@ -11,6 +11,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/mongodb/grip/recovery"
+
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/artifact"
@@ -324,6 +326,7 @@ func (c *communicatorImpl) SendLogMessages(ctx context.Context, taskData TaskDat
 		close(doneChan)
 	}()
 	go func() {
+		defer recovery.LogStackTraceAndExit("backup timer")
 		select {
 		case <-ctx.Done():
 			grip.Info("task ending, stopping backup timer thread")
