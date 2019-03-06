@@ -2,9 +2,13 @@ package route
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"strconv"
+	"time"
 
+	"github.com/docker/docker/api/types"
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/apimodels"
 	dbModel "github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/host"
@@ -130,4 +134,101 @@ func (h *hostListHandler) Run(ctx context.Context) gimlet.Responder {
 		return gimlet.MakeJSONErrorResponder(catcher.Resolve())
 	}
 	return gimlet.NewJSONResponse(results)
+}
+
+////////////////////////////////////////////////////////////////////////
+//
+// GET /rest/v2/hosts/{container_id}/logs
+
+type containerLogsHandler struct {
+	startTime string
+	endTime   string
+	tail      string
+
+	host *host.Host
+
+	sc data.Connector
+}
+
+func makeContainerLogsRouteManager(sc data.Connector) gimlet.RouteHandler {
+	return &containerLogsHandler{sc: sc}
+}
+
+func (h *containerLogsHandler) Factory() gimlet.RouteHandler { return &containerLogsHandler{sc: h.sc} }
+
+func (h *containerLogsHandler) Parse(ctx context.Context, r *http.Request) error {
+	id := gimlet.GetVars(r)["container_id"]
+	host, err := host.FindOne(host.ById(id))
+	if host == nil {
+		return gimlet.ErrorResponse{
+			StatusCode: http.StatusNotFound,
+			Message:    fmt.Sprintf("Container %s not found", id),
+		}
+	}
+	if err != nil {
+		return gimlet.ErrorResponse{
+			StatusCode: http.StatusInternalServerError,
+			Message:    "Error loading host for container " + id,
+		}
+	}
+	h.host = host
+
+	if startTime := r.FormValue("start_time"); startTime != "" {
+		if _, err := time.Parse(time.RFC3339, startTime); err != nil {
+			return gimlet.ErrorResponse{
+				StatusCode: http.StatusBadRequest,
+				Message: fmt.Sprintf("problem parsing start time from '%s' (%s). Format must be RFC339",
+					startTime, err.Error()),
+			}
+		}
+		h.startTime = startTime
+	}
+	if endTime := r.FormValue("end_time"); endTime != "" {
+		if _, err := time.Parse(time.RFC3339, endTime); err != nil {
+			return gimlet.ErrorResponse{
+				StatusCode: http.StatusBadRequest,
+				Message: fmt.Sprintf("problem parsing end time from '%s' (%s). Format must be RFC339",
+					endTime, err.Error()),
+			}
+		}
+		h.endTime = endTime
+	}
+	if tailStr := r.FormValue("tail"); tailStr != "" {
+		tail, err := strconv.Atoi(tailStr)
+		if (err == nil && tail >= 0) || (err != nil && tailStr == "all") {
+			h.tail = tailStr
+		} else {
+			return gimlet.ErrorResponse{
+				StatusCode: http.StatusBadRequest,
+				Message: fmt.Sprintf("tail '%s' invalid, must be non-negative integer or 'all'",
+					tailStr),
+			}
+		}
+	}
+
+	return nil
+}
+
+func (h *containerLogsHandler) Run(ctx context.Context) gimlet.Responder {
+	parent, err := h.host.GetParent()
+	if err != nil {
+		return gimlet.NewJSONErrorResponse(errors.Wrapf(err, "error finding parent for container %s", h.host.Id))
+	}
+	settings, err := evergreen.GetConfig()
+	if err != nil {
+		return gimlet.NewJSONErrorResponse(errors.Wrap(err, "error getting settings config"))
+	}
+	options := types.ContainerLogsOptions{
+		ShowStdout: true,
+		ShowStderr: true,
+		Timestamps: true,
+		Tail:       h.tail,
+		Since:      h.startTime,
+		Until:      h.endTime,
+	}
+	reader, err := h.sc.GetDockerLogs(ctx, h.host.Id, parent, settings, options)
+	if err != nil {
+		return gimlet.NewJSONErrorResponse(err)
+	}
+	return gimlet.NewJSONResponse(reader)
 }

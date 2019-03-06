@@ -16,7 +16,7 @@ import (
 )
 
 type DockerSuite struct {
-	client     dockerClient
+	client     DockerClient
 	manager    *dockerManager
 	distro     distro.Distro
 	hostOpts   HostOptions

@@ -17,7 +17,7 @@ import (
 
 // dockerManager implements the Manager interface for Docker.
 type dockerManager struct {
-	client dockerClient
+	client DockerClient
 }
 
 // ProviderSettings specifies the settings used to configure a host instance.
@@ -180,7 +180,7 @@ func (m *dockerManager) Configure(ctx context.Context, s *evergreen.Settings) er
 	config := s.Providers.Docker
 
 	if m.client == nil {
-		m.client = &dockerClientImpl{evergreenSettings: s}
+		m.client = GetDockerClient(s)
 	}
 
 	if err := m.client.Init(config.APIVersion); err != nil {

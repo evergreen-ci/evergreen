@@ -1,10 +1,13 @@
 package data
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	"strconv"
 	"time"
+
+	"github.com/docker/docker/api/types"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/apimodels"
@@ -295,8 +298,34 @@ func getAgentOptions(taskID, userID string, createHost apimodels.CreateHost) (*c
 	return &options, nil
 }
 
+// GetDockerLogs is used by the /host/{container_id}/logs route to retrieve the logs for the given container.
+func (dc *DBCreateHostConnector) GetDockerLogs(ctx context.Context, containerId string, parent *host.Host,
+	settings *evergreen.Settings, options types.ContainerLogsOptions) (*cloud.LogReader, error) {
+	c := cloud.GetDockerClient(settings)
+
+	if err := c.Init(settings.Providers.Docker.APIVersion); err != nil {
+
+		return nil, errors.Wrap(err, "error initializing client")
+	}
+
+	reader, err := c.GetDockerLogs(ctx, parent, containerId, options)
+	if err != nil {
+		return nil, errors.Wrapf(err, "error getting logs for container %s", containerId)
+	}
+	return reader, nil
+}
+
 // MockCreateHostConnector mocks `DBCreateHostConnector`.
 type MockCreateHostConnector struct{}
+
+func (dc *MockCreateHostConnector) GetDockerLogs(ctx context.Context, containerId string, parent *host.Host, settings *evergreen.Settings, options types.ContainerLogsOptions) (*cloud.LogReader, error) {
+	c := cloud.GetMockClient()
+	reader, err := c.GetDockerLogs(ctx, parent, containerId, options)
+	if err != nil {
+		return nil, errors.Wrapf(err, "error getting logs for container %s", containerId)
+	}
+	return reader, nil
+}
 
 // ListHostsForTask lists running hosts scoped to the task or the task's build.
 func (*MockCreateHostConnector) ListHostsForTask(taskID string) ([]host.Host, error) {
@@ -304,7 +333,8 @@ func (*MockCreateHostConnector) ListHostsForTask(taskID string) ([]host.Host, er
 }
 
 func (*MockCreateHostConnector) MakeIntentHost(taskID, userID, publicKey string, createHost apimodels.CreateHost) (*host.Host, error) {
-	return nil, errors.New("MakeIntentHost not implemented")
+	connector := DBCreateHostConnector{}
+	return connector.MakeIntentHost(taskID, userID, publicKey, createHost)
 }
 
 func (*MockCreateHostConnector) CreateHostsFromTask(t *task.Task, user user.DBUser, keyNameOrVal string) error {

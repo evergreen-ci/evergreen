@@ -30,6 +30,10 @@ type dockerClientMock struct {
 	baseImage    string
 }
 
+func GetMockClient() *dockerClientMock {
+	return &dockerClientMock{}
+}
+
 func (c *dockerClientMock) generateContainerID() string {
 	return fmt.Sprintf("container-%d", rand.New(rand.NewSource(time.Now().UnixNano())).Int())
 }
@@ -96,7 +100,7 @@ func (c *dockerClientMock) GetContainer(context.Context, *host.Host, string) (*t
 	return container, nil
 }
 
-func (c *dockerClientMock) GetLogs(context.Context, *host.Host, string, types.ContainerLogsOptions) (*LogReader, error) {
+func (c *dockerClientMock) GetDockerLogs(context.Context, *host.Host, string, types.ContainerLogsOptions) (*LogReader, error) {
 	out := bytes.NewBufferString("this is a log message")
 	logs := LogReader{OutReader: out}
 	return &logs, nil
