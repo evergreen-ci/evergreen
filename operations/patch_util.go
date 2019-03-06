@@ -399,7 +399,7 @@ func gitCmd(cmdName, base string, gitArgs ...string) (string, error) {
 	cmd := exec.Command("git", args...)
 	out, err := cmd.CombinedOutput()
 	if err != nil {
-		return "", errors.Errorf("'git %v %v' failed with err %v", base, strings.Join(args, " "), err)
+		return "", errors.Errorf("'git %s' failed with err %s", strings.Join(args, " "), err)
 	}
 	return string(out), err
 }
