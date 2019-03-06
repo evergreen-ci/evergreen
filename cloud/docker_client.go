@@ -30,8 +30,8 @@ import (
 	"github.com/pkg/errors"
 )
 
-// The dockerClient interface wraps the Docker dockerClient interaction.
-type dockerClient interface {
+// The DockerClient interface wraps the Docker dockerClient interaction.
+type DockerClient interface {
 	Init(string) error
 	EnsureImageDownloaded(context.Context, *host.Host, ContainerImageSettings) (string, error)
 	BuildImageWithAgent(context.Context, *host.Host, string) (string, error)
@@ -65,8 +65,9 @@ const (
 	imageImportTimeout  = 10 * time.Minute
 )
 
-func GetDockerClient(s *evergreen.Settings) *dockerClientImpl {
-	return &dockerClientImpl{evergreenSettings: s}
+func GetDockerClient(s *evergreen.Settings) DockerClient {
+	var client DockerClient = &dockerClientImpl{evergreenSettings: s}
+	return client
 }
 
 // generateClient generates a Docker client that can talk to the specified host

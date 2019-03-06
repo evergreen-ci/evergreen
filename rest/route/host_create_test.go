@@ -301,7 +301,7 @@ func TestGetDockerLogs(t *testing.T) {
 	request = gimlet.SetURLVars(request, options)
 
 	assert.NoError(handler.Parse(context.Background(), request))
-	assert.Equal(h.Id, handler.containerID)
+	assert.Equal(h.Id, handler.host.Id)
 	assert.Equal(startTime, handler.startTime)
 	assert.Equal(endTime, handler.endTime)
 	assert.Equal("10", handler.tail)

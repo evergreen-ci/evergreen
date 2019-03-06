@@ -17,7 +17,7 @@ import (
 
 // dockerManager implements the Manager interface for Docker.
 type dockerManager struct {
-	client dockerClient
+	client DockerClient
 }
 
 // ProviderSettings specifies the settings used to configure a host instance.

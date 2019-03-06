@@ -302,6 +302,7 @@ func getAgentOptions(taskID, userID string, createHost apimodels.CreateHost) (*c
 func (dc *DBCreateHostConnector) GetDockerLogs(ctx context.Context, containerId string, parent *host.Host,
 	settings *evergreen.Settings, options types.ContainerLogsOptions) (*cloud.LogReader, error) {
 	c := cloud.GetDockerClient(settings)
+
 	if err := c.Init(settings.Providers.Docker.APIVersion); err != nil {
 
 		return nil, errors.Wrap(err, "error initializing client")

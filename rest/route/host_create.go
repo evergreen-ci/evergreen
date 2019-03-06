@@ -8,9 +8,7 @@ import (
 	"time"
 
 	"github.com/docker/docker/api/types"
-
 	"github.com/evergreen-ci/evergreen"
-
 	"github.com/evergreen-ci/evergreen/apimodels"
 	dbModel "github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/host"
@@ -143,10 +141,11 @@ func (h *hostListHandler) Run(ctx context.Context) gimlet.Responder {
 // GET /rest/v2/hosts/{container_id}/logs
 
 type containerLogsHandler struct {
-	containerID string
-	startTime   string
-	endTime     string
-	tail        string
+	startTime string
+	endTime   string
+	tail      string
+
+	host *host.Host
 
 	sc data.Connector
 }
@@ -159,16 +158,10 @@ func (h *containerLogsHandler) Factory() gimlet.RouteHandler { return &container
 
 func (h *containerLogsHandler) Parse(ctx context.Context, r *http.Request) error {
 	id := gimlet.GetVars(r)["container_id"]
-	if id == "" {
-		return gimlet.ErrorResponse{
-			StatusCode: http.StatusBadRequest,
-			Message:    "must provide 'container_id'",
-		}
-	}
 	host, err := host.FindOne(host.ById(id))
 	if host == nil {
 		return gimlet.ErrorResponse{
-			StatusCode: http.StatusBadRequest,
+			StatusCode: http.StatusNotFound,
 			Message:    fmt.Sprintf("Container %s not found", id),
 		}
 	}
@@ -178,14 +171,14 @@ func (h *containerLogsHandler) Parse(ctx context.Context, r *http.Request) error
 			Message:    "Error loading host for container " + id,
 		}
 	}
-	h.containerID = id
+	h.host = host
 
 	if startTime := r.FormValue("start_time"); startTime != "" {
 		if _, err := time.Parse(time.RFC3339, startTime); err != nil {
 			return gimlet.ErrorResponse{
 				StatusCode: http.StatusBadRequest,
-				Message: fmt.Sprintf("problem parsing start time from '%s' (%s). Must be given in the following format: %s",
-					startTime, err.Error(), time.RFC3339),
+				Message: fmt.Sprintf("problem parsing start time from '%s' (%s). Format must be RFC339",
+					startTime, err.Error()),
 			}
 		}
 		h.startTime = startTime
@@ -194,8 +187,8 @@ func (h *containerLogsHandler) Parse(ctx context.Context, r *http.Request) error
 		if _, err := time.Parse(time.RFC3339, endTime); err != nil {
 			return gimlet.ErrorResponse{
 				StatusCode: http.StatusBadRequest,
-				Message: fmt.Sprintf("problem parsing end time from '%s' (%s). Must be given in the following format: %s",
-					endTime, err.Error(), time.RFC3339),
+				Message: fmt.Sprintf("problem parsing end time from '%s' (%s). Format must be RFC339",
+					endTime, err.Error()),
 			}
 		}
 		h.endTime = endTime
@@ -207,7 +200,7 @@ func (h *containerLogsHandler) Parse(ctx context.Context, r *http.Request) error
 		} else {
 			return gimlet.ErrorResponse{
 				StatusCode: http.StatusBadRequest,
-				Message: fmt.Sprintf("tail %s invalid, must be non-negative integer or 'all'",
+				Message: fmt.Sprintf("tail '%s' invalid, must be non-negative integer or 'all'",
 					tailStr),
 			}
 		}
@@ -217,17 +210,9 @@ func (h *containerLogsHandler) Parse(ctx context.Context, r *http.Request) error
 }
 
 func (h *containerLogsHandler) Run(ctx context.Context) gimlet.Responder {
-	host, err := host.FindOneId(h.containerID)
+	parent, err := h.host.GetParent()
 	if err != nil {
-		return gimlet.NewJSONErrorResponse(errors.Wrapf(err, "error finding container %s", h.containerID))
-	}
-	if host == nil {
-		return gimlet.NewJSONErrorResponse(errors.New(fmt.Sprintf("container %s not found", h.containerID)))
-	}
-
-	parent, err := host.GetParent()
-	if err != nil {
-		return gimlet.NewJSONErrorResponse(errors.Wrapf(err, "error finding parent for container %s", h.containerID))
+		return gimlet.NewJSONErrorResponse(errors.Wrapf(err, "error finding parent for container %s", h.host.Id))
 	}
 	settings, err := evergreen.GetConfig()
 	if err != nil {
@@ -241,7 +226,7 @@ func (h *containerLogsHandler) Run(ctx context.Context) gimlet.Responder {
 		Since:      h.startTime,
 		Until:      h.endTime,
 	}
-	reader, err := h.sc.GetDockerLogs(ctx, h.containerID, parent, settings, options)
+	reader, err := h.sc.GetDockerLogs(ctx, h.host.Id, parent, settings, options)
 	if err != nil {
 		return gimlet.NewJSONErrorResponse(err)
 	}
