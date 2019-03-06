@@ -313,8 +313,35 @@ func (c *communicatorImpl) SendLogMessages(ctx context.Context, taskData TaskDat
 	}
 	info.setTaskPathSuffix("log")
 	var cancel context.CancelFunc
-	ctx, cancel = context.WithTimeout(ctx, 10*time.Minute)
+	ctx, cancel = context.WithDeadline(ctx, time.Now().Add(10*time.Minute))
 	defer cancel()
+	backupTimer := time.NewTimer(15 * time.Minute)
+	start := time.Now()
+	defer backupTimer.Stop()
+	doneChan := make(chan bool)
+	defer func() {
+		doneChan <- true
+		close(doneChan)
+	}()
+	go func() {
+		select {
+		case <-ctx.Done():
+			grip.Info("task ending, stopping backup timer thread")
+			return
+		case t := <-backupTimer.C:
+			grip.Alert(message.Fields{
+				"message":  "retryRequest exceeded 15 minutes",
+				"start":    start.String(),
+				"end":      t.String(),
+				"task":     taskData.ID,
+				"messages": msgs,
+			})
+			cancel()
+			return
+		case <-doneChan:
+			return
+		}
+	}()
 	if _, err := c.retryRequest(ctx, info, &payload); err != nil {
 		return errors.Wrapf(err, "problem sending %d log messages for task %s", len(msgs), taskData.ID)
 	}
