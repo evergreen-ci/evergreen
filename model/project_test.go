@@ -1201,3 +1201,24 @@ func TestModuleList(t *testing.T) {
 	}
 	assert.False(projModules.IsIdentical(manifest4))
 }
+
+func TestLoggerConfigValidate(t *testing.T) {
+	assert := assert.New(t)
+
+	var config *LoggerConfig
+	assert.NotPanics(func() {
+		assert.NoError(config.IsValid())
+	})
+	config = &LoggerConfig{}
+	assert.NoError(config.IsValid())
+
+	config = &LoggerConfig{
+		Agent: []LogOpts{{Type: "foo"}},
+	}
+	assert.EqualError(config.IsValid(), "invalid agent logger config: foo is not a valid log sender")
+
+	config = &LoggerConfig{
+		System: []LogOpts{{Type: SplunkLogSender}},
+	}
+	assert.EqualError(config.IsValid(), "invalid system logger config: Splunk logger requires a server URL\nSplunk logger requires a token")
+}

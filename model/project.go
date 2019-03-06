@@ -390,6 +390,9 @@ type LogOpts struct {
 }
 
 func (c *LoggerConfig) IsValid() error {
+	if c == nil {
+		return nil
+	}
 	catcher := grip.NewBasicCatcher()
 	for _, opts := range c.Agent {
 		catcher.Add(errors.Wrap(opts.IsValid(), "invalid agent logger config"))
