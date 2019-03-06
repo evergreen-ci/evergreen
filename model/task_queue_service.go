@@ -12,11 +12,11 @@ import (
 	"github.com/mongodb/grip/message"
 )
 
-// TaskDispatchService is an in-memory representation of schedulable tasks for a distro.
+// taskDispatchService is an in-memory representation of schedulable tasks for a distro.
 //
 // TODO Pass all task group tasks, not just dispatchable ones, to the constructor.
 // TODO Maintain an in-memory global (but per app server) task queue per distro.
-type TaskDispatchService struct {
+type taskDispatchService struct {
 	mu       sync.Mutex
 	distroID string
 	order    []string
@@ -33,8 +33,8 @@ type schedulableUnit struct {
 	tasks        []TaskQueueItem
 }
 
-// NewTaskDispatchService creates a TaskDispatchService from a slice of TaskQueueItems.
-func NewTaskDispatchService(distroID string, items []TaskQueueItem) *TaskDispatchService {
+// NewTaskDispatchService creates a taskDispatchService from a slice of TaskQueueItems.
+func NewTaskDispatchService(distroID string, items []TaskQueueItem) *taskDispatchService {
 	// This slice likely has too much capacity, but it helps append performance.
 	order := make([]string, 0, len(items))
 	units := map[string]schedulableUnit{}
@@ -69,7 +69,7 @@ func NewTaskDispatchService(distroID string, items []TaskQueueItem) *TaskDispatc
 			}
 		}
 	}
-	t := &TaskDispatchService{
+	t := &taskDispatchService{
 		distroID: distroID,
 		order:    order,
 		units:    units,
@@ -78,7 +78,7 @@ func NewTaskDispatchService(distroID string, items []TaskQueueItem) *TaskDispatc
 }
 
 // FindNextTask returns the next dispatchable task in the queue.
-func (t *TaskDispatchService) FindNextTask(spec TaskSpec) *TaskQueueItem {
+func (t *taskDispatchService) FindNextTask(spec TaskSpec) *TaskQueueItem {
 	t.mu.Lock()
 	defer t.mu.Unlock()
 
@@ -152,7 +152,7 @@ func compositeGroupId(group, variant, version string) string {
 	return fmt.Sprintf("%s-%s-%s", group, variant, version)
 }
 
-func (t *TaskDispatchService) nextTaskGroupTask(unit schedulableUnit) *TaskQueueItem {
+func (t *taskDispatchService) nextTaskGroupTask(unit schedulableUnit) *TaskQueueItem {
 	for i, nextTask := range unit.tasks {
 		if nextTask.IsDispatched == true {
 			continue
@@ -174,10 +174,7 @@ func (t *TaskDispatchService) nextTaskGroupTask(unit schedulableUnit) *TaskQueue
 			return nil
 		}
 
-		// If the task is running in a 1-host task group, has finished, and did not succeed,
-		// remove the units from the local queue. Rely on EndTask to block later tasks.
-		if unit.maxHosts == 1 && nextTaskFromDB.FinishTime != util.ZeroTime && nextTaskFromDB.Status != evergreen.TaskSucceeded {
-			delete(t.units, unit.id)
+		if t.isBlockedSingleHostTaskGroup(unit, nextTaskFromDB) {
 			return nil
 		}
 
@@ -194,4 +191,15 @@ func (t *TaskDispatchService) nextTaskGroupTask(unit schedulableUnit) *TaskQueue
 	// If all the tasks have been dispatched, remove the unit.
 	delete(t.units, unit.id)
 	return nil
+}
+
+// isBlockedSingleHostTaskGroup checks if the task is running in a 1-host task group, has finished,
+// and did not succeed. If so it removes the unit from the local queue. But rely on EndTask to
+// block later tasks.
+func (t *taskDispatchService) isBlockedSingleHostTaskGroup(unit schedulableUnit, dbTask *task.Task) bool {
+	if unit.maxHosts == 1 && !util.IsZeroTime(dbTask.FinishTime) && dbTask.Status != evergreen.TaskSucceeded {
+		delete(t.units, unit.id)
+		return true
+	}
+	return false
 }

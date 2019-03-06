@@ -13,17 +13,17 @@ import (
 	"github.com/stretchr/testify/suite"
 )
 
-type TaskDispatchServiceSuite struct {
+type taskDispatchServiceSuite struct {
 	suite.Suite
 
 	items []TaskQueueItem
 }
 
 func TestTaskDispatchServiceSuite(t *testing.T) {
-	suite.Run(t, new(TaskDispatchServiceSuite))
+	suite.Run(t, new(taskDispatchServiceSuite))
 }
 
-func (s *TaskDispatchServiceSuite) SetupTest() {
+func (s *taskDispatchServiceSuite) SetupTest() {
 	s.Require().NoError(db.ClearCollections(task.Collection))
 	items := []TaskQueueItem{}
 	var group string
@@ -80,7 +80,7 @@ func (s *TaskDispatchServiceSuite) SetupTest() {
 
 }
 
-func (s *TaskDispatchServiceSuite) TestConstructor() {
+func (s *taskDispatchServiceSuite) TestConstructor() {
 	service := NewTaskDispatchService("distro_1", s.items)
 	s.Len(service.order, 24, "20 bare tasks + 4 task groups")
 	s.Len(service.units, 24, "20 bare tasks + 4 task groups")
@@ -115,7 +115,7 @@ func (s *TaskDispatchServiceSuite) TestConstructor() {
 	}
 }
 
-func (s *TaskDispatchServiceSuite) TestEmptyService() {
+func (s *taskDispatchServiceSuite) TestEmptyService() {
 	service := NewTaskDispatchService("distro_1", []TaskQueueItem{
 		{
 			Id:    "0",
@@ -129,7 +129,7 @@ func (s *TaskDispatchServiceSuite) TestEmptyService() {
 	s.Empty(service.order) // slice is emptied when map is emptied
 }
 
-func (s *TaskDispatchServiceSuite) TestSingleHostTaskGroupsBlock() {
+func (s *taskDispatchServiceSuite) TestSingleHostTaskGroupsBlock() {
 	s.Require().NoError(db.ClearCollections(task.Collection))
 	items := []TaskQueueItem{}
 	var startTime time.Time
@@ -179,7 +179,7 @@ func (s *TaskDispatchServiceSuite) TestSingleHostTaskGroupsBlock() {
 	s.Empty(service.units)
 }
 
-func (s *TaskDispatchServiceSuite) TestFindNextTask() {
+func (s *taskDispatchServiceSuite) TestFindNextTask() {
 	service := NewTaskDispatchService("distro_1", s.items)
 	var spec TaskSpec
 	var next *TaskQueueItem
