@@ -1,4 +1,12 @@
 command_type: test
+loggers:
+  task:
+    - type: evergreen
+    - type: file
+  agent:
+    - type: evergreen
+  system:
+    - type: evergreen
 stepback: true
 ignore:
     - "*.md" # don't schedule tests if a commit only changes markdown files
