@@ -176,6 +176,8 @@ func (uis *UIServer) taskPage(w http.ResponseWriter, r *http.Request) {
 			uis.LoggedError(w, r, http.StatusNotFound, errors.New("Error finding task or execution"))
 			return
 		}
+	} else {
+		execution = projCtx.Task.Execution
 	}
 
 	// Build a struct containing the subset of task data needed for display in the UI
