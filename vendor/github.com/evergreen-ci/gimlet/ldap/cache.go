@@ -23,7 +23,7 @@ type UserCache interface {
 	Clear(gimlet.User, bool) error
 	GetOrCreate(gimlet.User) (gimlet.User, error)
 	Get(string) (gimlet.User, bool, error)
-	Find(string) (gimlet.User, error)
+	Find(string) (gimlet.User, bool, error)
 }
 
 func NewInMemoryUserCache(ctx context.Context, ttl time.Duration) UserCache {
@@ -134,25 +134,29 @@ func (c *userCache) Clear(u gimlet.User, all bool) error {
 	return nil
 }
 
-func (c *userCache) Find(id string) (gimlet.User, error) {
+func (c *userCache) Find(id string) (gimlet.User, bool, error) {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
 
 	token, ok := c.userToToken[id]
 	if !ok {
-		return nil, errors.Errorf("could not find user of id %s", id)
+		return nil, false, errors.Errorf("could not find user of id %s", id)
 	}
 
 	user, exists := c.cache[token]
 	if !exists {
-		return nil, errors.Errorf("could not find user of id %s", id)
+		return nil, false, errors.Errorf("could not find user of id %s", id)
 	}
 
-	return user.user, nil
+	if time.Since(user.time) >= c.ttl {
+		return user.user, false, nil
+	}
+
+	return user.user, true, nil
 }
 
 func (c *userCache) GetOrCreate(u gimlet.User) (gimlet.User, error) {
-	usr, err := c.Find(u.Username())
+	usr, _, err := c.Find(u.Username())
 	if err == nil {
 		return usr, nil
 	}
@@ -194,5 +198,5 @@ func (c *externalUserCache) Add(u gimlet.User) error                        { _,
 func (c *externalUserCache) Put(u gimlet.User) (string, error)              { return c.put(u) }
 func (c *externalUserCache) Get(token string) (gimlet.User, bool, error)    { return c.get(token) }
 func (c *externalUserCache) Clear(u gimlet.User, all bool) error            { return c.clear(u, all) }
-func (c *externalUserCache) Find(id string) (gimlet.User, error)            { return c.find(id) }
+func (c *externalUserCache) Find(id string) (gimlet.User, bool, error)      { return c.find(id) }
 func (c *externalUserCache) GetOrCreate(u gimlet.User) (gimlet.User, error) { return c.getOrCreate(u) }

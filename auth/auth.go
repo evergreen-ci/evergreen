@@ -73,3 +73,17 @@ func getOrCreateUser(u gimlet.User) (gimlet.User, error) {
 }
 
 func getUserByID(id string) (gimlet.User, error) { return model.FindUserByID(id) }
+
+// getUserWithExpiration returns a user by id and a boolean. True indicates the user is valid. False
+// indicates that the user has expired. An error is returned if the user does not exist or if there
+// is an error retrieving the user.
+func getUserByIdWithExpiration(id string, expireAfter time.Duration) (gimlet.User, bool, error) {
+	u, err := model.FindUserByID(id)
+	if err != nil {
+		return nil, false, errors.Wrap(err, "problem getting user from cache")
+	}
+	if time.Since(u.LoginCache.TTL) > expireAfter {
+		return u, false, nil
+	}
+	return u, true, nil
+}

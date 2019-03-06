@@ -63,7 +63,7 @@ type GetUserByToken func(string) (gimlet.User, bool, error)
 type ClearUserToken func(gimlet.User, bool) error
 
 // GetUserByID is a function provided by the client to get a user from persistent storage.
-type GetUserByID func(string) (gimlet.User, error)
+type GetUserByID func(string) (gimlet.User, bool, error)
 
 // GetOrCreateUser is a function provided by the client to get a user from
 // persistent storage, or if the user does not exist, to create and save it.
@@ -131,15 +131,21 @@ func (u *userService) GetUserByToken(_ context.Context, token string) (gimlet.Us
 		return nil, errors.New("token is not present in cache")
 	}
 	if !valid {
-		if err := u.validateGroup(user.Username()); err != nil {
-			return nil, errors.Wrap(err, "could not authorize user")
-		}
-
-		if _, err := u.cache.Put(user); err != nil {
-			return nil, errors.Wrap(err, "problem putting user in cache")
+		if err = u.reauthorizeUser(user); err != nil {
+			return nil, errors.WithStack(err)
 		}
 	}
 	return user, nil
+}
+
+func (u *userService) reauthorizeUser(user gimlet.User) error {
+	if err := u.validateGroup(user.Username()); err != nil {
+		return errors.Wrap(err, "could not authorize user")
+	}
+	if _, err := u.cache.Put(user); err != nil {
+		return errors.Wrap(err, "problem putting user in cache")
+	}
+	return nil
 }
 
 // CreateUserToken creates and returns a new user token from a username and password.
@@ -176,7 +182,19 @@ func (u *userService) IsRedirect() bool { return false }
 
 // GetUserByID gets a user from persistent storage.
 func (u *userService) GetUserByID(id string) (gimlet.User, error) {
-	return u.cache.Find(id)
+	user, valid, err := u.cache.Find(id)
+	if err != nil {
+		return nil, errors.Wrap(err, "problem getting user by id")
+	}
+	if user == nil {
+		return nil, errors.New("user is not present in db")
+	}
+	if !valid {
+		if err = u.reauthorizeUser(user); err != nil {
+			return nil, errors.WithStack(err)
+		}
+	}
+	return user, nil
 }
 
 // GetOrCreateUser gets a user from persistent storage or creates one.
