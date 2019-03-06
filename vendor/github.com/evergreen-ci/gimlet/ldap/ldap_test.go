@@ -211,9 +211,9 @@ func mockClearCache(u gimlet.User, all bool) error {
 	return nil
 }
 
-func mockGetUserByID(id string) (gimlet.User, error) {
+func mockGetUserByID(id string) (gimlet.User, bool, error) {
 	u := gimlet.NewBasicUser(id, "", "", "", []string{})
-	return u, nil
+	return u, true, nil
 }
 
 func mockGetOrCreateUser(user gimlet.User) (gimlet.User, error) {
@@ -471,9 +471,52 @@ func (s *LDAPSuite) TestIsRedirect() {
 }
 
 func (s *LDAPSuite) TestGetUser() {
-	user, err := s.um.GetUserByID("foo")
+	impl, ok := s.um.(*userService).cache.(*externalUserCache)
+	s.True(ok)
+	impl.find = mockGetErr
+	u, err := s.um.GetUserByID("foo")
+	s.Error(err)
+	s.Nil(u)
+
+	impl.find = mockGetValid
+	u, err = s.um.GetUserByID("foo")
 	s.NoError(err)
-	s.Equal("foo", user.Username())
+	s.Equal("foo", u.Username())
+
+	impl.find = mockGetExpired
+	u, err = s.um.GetUserByID("foo")
+	s.NoError(err)
+	s.Equal("foo", u.Username())
+
+	serviceGroupImpl, ok := s.serviceGroupUm.(*userService).cache.(*externalUserCache)
+	s.True(ok)
+	serviceGroupImpl.find = mockGetExpired
+	u, err = s.badGroupUm.GetUserByID("foo")
+	s.NoError(err)
+	s.Equal("foo", u.Username())
+
+	badGroupImpl, ok := s.badGroupUm.(*userService).cache.(*externalUserCache)
+	s.True(ok)
+	badGroupImpl.find = mockGetExpired
+	u, err = s.badGroupUm.GetUserByID("foo")
+	s.Error(err)
+	s.Nil(u)
+
+	u, err = s.um.GetUserByID("badUser")
+	s.Error(err)
+	s.Nil(u)
+
+	impl.find = mockGetMissing
+	u, err = s.um.GetUserByID("foo")
+	s.Error(err)
+	s.Nil(u)
+
+	realConnImpl, ok := s.realConnUm.(*userService).cache.(*externalUserCache)
+	s.True(ok)
+	realConnImpl.find = mockGetExpired
+	u, err = s.realConnUm.GetUserByID("foo")
+	s.Error(err)
+	s.Nil(u)
 }
 
 func (s *LDAPSuite) TestGetOrCreateUser() {

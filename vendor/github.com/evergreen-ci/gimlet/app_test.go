@@ -200,6 +200,17 @@ func (s *AppSuite) TestAppRun() {
 	s.NoError(s.app.Run(ctx))
 }
 
+func (s *AppSuite) TestAppRunWithError() {
+	s.Len(s.app.routes, 0)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	defer cancel()
+	s.app.port = -10
+	s.app.address = ":;;;:::::"
+	wait, err := s.app.BackgroundRun(ctx)
+	s.Error(err)
+	s.Nil(wait)
+}
+
 func (s *AppSuite) TestWrapperAccessors() {
 	s.Len(s.app.wrappers, 0)
 	s.app.AddWrapper(MakeRecoveryLogger())

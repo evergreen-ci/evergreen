@@ -79,7 +79,7 @@ func TestUserCache(t *testing.T) {
 							user: gimlet.NewBasicUser("foo", "", "", "", []string{}),
 							time: time.Now().Add(time.Hour),
 						}
-						_, err := cache.Find("foo")
+						_, _, err := cache.Find("foo")
 						assert.Error(t, err)
 					},
 				},
@@ -114,12 +114,12 @@ func TestUserCache(t *testing.T) {
 						u, ok := cache[token]
 						return u, ok, nil
 					},
-					GetUser: func(id string) (gimlet.User, error) {
+					GetUser: func(id string) (gimlet.User, bool, error) {
 						u, ok := users[id]
 						if !ok {
-							return nil, errors.New("not found")
+							return nil, false, errors.New("not found")
 						}
-						return u, nil
+						return u, true, nil
 					},
 					GetCreateUser: func(u gimlet.User) (gimlet.User, error) {
 						users[u.Username()] = u
@@ -171,7 +171,7 @@ func TestUserCache(t *testing.T) {
 				const id = "username"
 				u := gimlet.NewBasicUser(id, "", "", "", []string{})
 				assert.NoError(t, cache.Add(u))
-				cu, err := cache.Find(id)
+				cu, _, err := cache.Find(id)
 				assert.NoError(t, err)
 				assert.Equal(t, u, cu)
 			})
@@ -190,7 +190,7 @@ func TestUserCache(t *testing.T) {
 			})
 			t.Run("FindErrorsForNotFound", func(t *testing.T) {
 				cache := impl.factory()
-				cu, err := cache.Find("foo")
+				cu, _, err := cache.Find("foo")
 				assert.Error(t, err)
 				assert.Nil(t, cu)
 			})
@@ -203,7 +203,7 @@ func TestUserCache(t *testing.T) {
 			})
 			t.Run("GetOrCreateNewUser", func(t *testing.T) {
 				cache := impl.factory()
-				_, err := cache.Find("usr")
+				_, _, err := cache.Find("usr")
 				assert.Error(t, err)
 
 				u := gimlet.NewBasicUser("usr", "", "", "", []string{})
@@ -212,12 +212,12 @@ func TestUserCache(t *testing.T) {
 				require.NoError(t, err)
 				assert.Equal(t, u, cu)
 
-				_, err = cache.Find("usr")
+				_, _, err = cache.Find("usr")
 				assert.NoError(t, err)
 			})
 			t.Run("GetOrCreateNewUser", func(t *testing.T) {
 				cache := impl.factory()
-				_, err := cache.Find("usr")
+				_, _, err := cache.Find("usr")
 				assert.Error(t, err)
 
 				u := gimlet.NewBasicUser("usr", "", "", "", []string{})

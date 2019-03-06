@@ -13,13 +13,11 @@ package gimlet
 import (
 	"context"
 	"fmt"
-	"net/http"
 	"strings"
 	"time"
 
 	"github.com/gorilla/mux"
 	"github.com/mongodb/grip"
-	"github.com/mongodb/grip/recovery"
 	"github.com/pkg/errors"
 )
 
@@ -39,6 +37,7 @@ type APIApp struct {
 	SimpleVersions bool
 	NoVersions     bool
 	isResolved     bool
+	hasMerged      bool
 	prefix         string
 	port           int
 	router         *mux.Router
@@ -130,36 +129,21 @@ func (a *APIApp) BackgroundRun(ctx context.Context) (WaitFunc, error) {
 		return nil, errors.WithStack(err)
 	}
 
-	srv := &http.Server{
-		Addr:              fmt.Sprintf("%s:%d", a.address, a.port),
-		Handler:           n,
-		ReadTimeout:       time.Minute,
-		ReadHeaderTimeout: 30 * time.Second,
-		WriteTimeout:      time.Minute,
+	conf := ServerConfig{
+		Handler: n,
+		Address: fmt.Sprintf("%s:%d", a.address, a.port),
+		Timeout: time.Minute,
+		Info:    fmt.Sprintf("app with '%s' prefix", a.prefix),
 	}
 
-	serviceWait := make(chan struct{})
-	go func() {
-		defer recovery.LogStackTraceAndContinue("app service")
-		grip.Noticef("starting %s on: %s:%d", a.prefix, a.address, a.port)
-		srv.ListenAndServe()
-		close(serviceWait)
-	}()
-
-	go func() {
-		defer recovery.LogStackTraceAndContinue("server shutdown")
-		<-ctx.Done()
-		grip.Debug(srv.Shutdown(ctx))
-	}()
-
-	wait := func(wctx context.Context) {
-		select {
-		case <-wctx.Done():
-		case <-serviceWait:
-		}
+	srv, err := conf.Resolve()
+	if err != nil {
+		return nil, errors.WithStack(err)
 	}
 
-	return wait, nil
+	grip.Noticef("starting %s on: %s:%d", a.prefix, a.address, a.port)
+
+	return srv.Run(ctx)
 }
 
 // SetPort allows users to configure a default port for the API

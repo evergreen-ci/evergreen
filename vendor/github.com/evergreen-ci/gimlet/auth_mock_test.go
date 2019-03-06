@@ -10,7 +10,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestInterfacesAteImplemented(t *testing.T) {
+func TestInterfacesAreImplemented(t *testing.T) {
 	assert := assert.New(t)
 
 	assert.Implements((*Authenticator)(nil), &MockAuthenticator{})
