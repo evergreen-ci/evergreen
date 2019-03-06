@@ -264,9 +264,8 @@ func TestGetDockerLogs(t *testing.T) {
 	}
 	require.NoError(parent.Insert())
 
-	// invalid Parse start time
-	startTime := time.Now().Add(-time.Minute).String()
-	url := fmt.Sprintf("/hosts/%s/logs?start_time=%s", h.Id, startTime)
+	// invalid tail
+	url := fmt.Sprintf("/hosts/%s/logs?tail=%s", h.Id, "invalid")
 	request, err := http.NewRequest("GET", url, bytes.NewReader(nil))
 	assert.NoError(err)
 	options := map[string]string{"container_id": h.Id}
@@ -274,10 +273,28 @@ func TestGetDockerLogs(t *testing.T) {
 	request = gimlet.SetURLVars(request, options)
 	assert.Error(handler.Parse(context.Background(), request))
 
+	url = fmt.Sprintf("/hosts/%s/logs?tail=%s", h.Id, "-1")
+	request, err = http.NewRequest("GET", url, bytes.NewReader(nil))
+	assert.NoError(err)
+	options = map[string]string{"container_id": h.Id}
+
+	request = gimlet.SetURLVars(request, options)
+	assert.Error(handler.Parse(context.Background(), request))
+
+	// invalid Parse start time
+	startTime := time.Now().Add(-time.Minute).String()
+	url = fmt.Sprintf("/hosts/%s/logs?start_time=%s", h.Id, startTime)
+	request, err = http.NewRequest("GET", url, bytes.NewReader(nil))
+	assert.NoError(err)
+	options = map[string]string{"container_id": h.Id}
+
+	request = gimlet.SetURLVars(request, options)
+	assert.Error(handler.Parse(context.Background(), request))
+
 	// valid Parse
 	startTime = time.Now().Add(-time.Minute).Format(time.RFC3339)
 	endTime := time.Now().Format(time.RFC3339)
-	url = fmt.Sprintf("/hosts/%s/logs?start_time=%s&end_time=%s", h.Id, startTime, endTime)
+	url = fmt.Sprintf("/hosts/%s/logs?start_time=%s&end_time=%s&tail=10", h.Id, startTime, endTime)
 
 	request, err = http.NewRequest("GET", url, bytes.NewReader(nil))
 	assert.NoError(err)
@@ -287,6 +304,7 @@ func TestGetDockerLogs(t *testing.T) {
 	assert.Equal(h.Id, handler.containerID)
 	assert.Equal(startTime, handler.startTime)
 	assert.Equal(endTime, handler.endTime)
+	assert.Equal("10", handler.tail)
 
 	// valid Run
 	res := handler.Run(context.Background())

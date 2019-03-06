@@ -146,6 +146,7 @@ type containerLogsHandler struct {
 	containerID string
 	startTime   string
 	endTime     string
+	tail        string
 
 	sc data.Connector
 }
@@ -199,6 +200,18 @@ func (h *containerLogsHandler) Parse(ctx context.Context, r *http.Request) error
 		}
 		h.endTime = endTime
 	}
+	if tailStr := r.FormValue("tail"); tailStr != "" {
+		tail, err := strconv.Atoi(tailStr)
+		if (err == nil && tail >= 0) || (err != nil && tailStr == "all") {
+			h.tail = tailStr
+		} else {
+			return gimlet.ErrorResponse{
+				StatusCode: http.StatusBadRequest,
+				Message: fmt.Sprintf("tail %s invalid, must be non-negative integer or 'all'",
+					tailStr),
+			}
+		}
+	}
 
 	return nil
 }
@@ -224,6 +237,7 @@ func (h *containerLogsHandler) Run(ctx context.Context) gimlet.Responder {
 		ShowStdout: true,
 		ShowStderr: true,
 		Timestamps: true,
+		Tail:       h.tail,
 		Since:      h.startTime,
 		Until:      h.endTime,
 	}
