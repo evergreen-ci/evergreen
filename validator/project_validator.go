@@ -742,7 +742,10 @@ func validatePluginCommands(project *model.Project) ValidationErrors {
 
 		if len(commands.List()) == 0 {
 			errs = append(errs,
-				ValidationError{Message: fmt.Sprintf("function %s must have a command", funcName)})
+				ValidationError{
+					Message: fmt.Sprintf("function %s must have a command", funcName),
+					Level:   Warning,
+				})
 		}
 
 		for _, c := range commands.List() {
