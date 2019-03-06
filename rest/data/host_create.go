@@ -171,7 +171,7 @@ func makeDockerIntentHost(taskID, userID string, createHost apimodels.CreateHost
 
 	options, err := getAgentOptions(taskID, userID, createHost)
 	if err != nil {
-		return nil, errors.Wrap(err, "error making host options for EC2")
+		return nil, errors.Wrap(err, "error making host options for docker")
 	}
 
 	options.DockerOptions = host.DockerOptions{
