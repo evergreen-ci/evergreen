@@ -23,6 +23,7 @@ import (
 	"github.com/evergreen-ci/gimlet"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
+	"github.com/mongodb/grip/recovery"
 	"github.com/pkg/errors"
 )
 
@@ -313,8 +314,38 @@ func (c *communicatorImpl) SendLogMessages(ctx context.Context, taskData TaskDat
 	}
 	info.setTaskPathSuffix("log")
 	var cancel context.CancelFunc
-	ctx, cancel = context.WithTimeout(ctx, 10*time.Minute)
+	now := time.Now()
+	grip.Debugf("sending log messages at %s", now.String())
+	ctx, cancel = context.WithDeadline(ctx, now.Add(10*time.Minute))
 	defer cancel()
+	backupTimer := time.NewTimer(15 * time.Minute)
+	start := time.Now()
+	defer backupTimer.Stop()
+	doneChan := make(chan bool)
+	defer func() {
+		doneChan <- true
+		close(doneChan)
+	}()
+	go func() {
+		defer recovery.LogStackTraceAndExit("backup timer")
+		select {
+		case <-ctx.Done():
+			grip.Info("task ending, stopping backup timer thread")
+			return
+		case t := <-backupTimer.C:
+			grip.Alert(message.Fields{
+				"message":  "retryRequest exceeded 15 minutes",
+				"start":    start.String(),
+				"end":      t.String(),
+				"task":     taskData.ID,
+				"messages": msgs,
+			})
+			cancel()
+			return
+		case <-doneChan:
+			return
+		}
+	}()
 	if _, err := c.retryRequest(ctx, info, &payload); err != nil {
 		return errors.Wrapf(err, "problem sending %d log messages for task %s", len(msgs), taskData.ID)
 	}
