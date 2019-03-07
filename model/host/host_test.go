@@ -15,6 +15,7 @@ import (
 	. "github.com/smartystreets/goconvey/convey"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
 )
 
@@ -364,9 +365,14 @@ func TestMarkAsProvisioned(t *testing.T) {
 			Id: "hostOne",
 		}
 
-		So(host.Insert(), ShouldBeNil)
+		host2 := &Host{
+			Id:     "hostTwo",
+			Status: evergreen.HostTerminated,
+		}
 
-		Convey("marking the host as provisioned should update the status,"+
+		So(host.Insert(), ShouldBeNil)
+		So(host2.Insert(), ShouldBeNil)
+		Convey("marking a host that isn't down as provisioned should update the status,"+
 			" provisioned, and host name fields in both the in-memory and"+
 			" database copies of the host", func() {
 
@@ -379,6 +385,9 @@ func TestMarkAsProvisioned(t *testing.T) {
 			So(host.Status, ShouldEqual, evergreen.HostRunning)
 			So(host.Provisioned, ShouldEqual, true)
 
+			So(host2.MarkAsProvisioned(), ShouldEqual, mgo.ErrNotFound)
+			So(host2.Status, ShouldEqual, evergreen.HostTerminated)
+			So(host2.Provisioned, ShouldEqual, false)
 		})
 
 	})
