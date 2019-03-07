@@ -62,6 +62,9 @@ mciModule.controller('ProjectCtrl', function($scope, $window, $http, $location, 
       resource_type: "TASK",
       label: "any task fails",
       regex_selectors: taskRegexSelectors(),
+      extraFields: [
+        {text: "Failure type", key:"failure-type", type:"select", options:["any","test","system","setup"], default: "any"}
+      ]
     },
     {
       trigger: "first-failure-in-version",
