@@ -189,17 +189,6 @@ func (h *projectTaskGetHandler) Run(ctx context.Context) gimlet.Responder {
 		}
 	}
 
-	// Consistent response regardless data existence
-	respData := resp.Data()
-	switch d := respData.(type) {
-	case []interface{}:
-		if len(d) == 0 {
-			// make([]int, 0) is used to force searilization of empty array as [] in JSON
-			// Type (`int`) doesn't matter and could be any, since the array is empty
-			return gimlet.NewJSONResponse(make([]int, 0))
-		}
-	}
-
 	return resp
 }
 
