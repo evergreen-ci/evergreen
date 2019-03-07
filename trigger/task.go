@@ -369,6 +369,9 @@ func (t *taskTriggers) taskOutcome(sub *event.Subscription) (*notification.Notif
 }
 
 func (t *taskTriggers) taskFailure(sub *event.Subscription) (*notification.Notification, error) {
+	if !matchingFailureType(sub.TriggerData[keyFailureType], t.task.Details.Type) {
+		return nil, nil
+	}
 	if !isFailedTaskStatus(t.data.Status) {
 		return nil, nil
 	}
