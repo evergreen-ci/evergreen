@@ -295,6 +295,7 @@ func (a *Agent) runTask(ctx context.Context, cancel context.CancelFunc, tc *task
 		"task_secret": tc.task.Secret,
 	})
 
+	defer a.killProcs(tc, false)
 	defer cancel()
 
 	// If the heartbeat aborts the task immediately, we should report that
@@ -371,8 +372,8 @@ func (a *Agent) runTaskTimeoutCommands(ctx context.Context, tc *taskContext) {
 }
 
 // finishTask sends the returned EndTaskResponse and error
-func (a *Agent) finishTask(ctx context.Context, tc *taskContext, status string) (resp *apimodels.EndTaskResponse, err error) {
-	err = a.uploadToS3(ctx, tc)
+func (a *Agent) finishTask(ctx context.Context, tc *taskContext, status string) (*apimodels.EndTaskResponse, error) {
+	err := a.uploadToS3(ctx, tc)
 	tc.logger.Execution().Error(errors.Wrap(err, "error uploading log files"))
 
 	detail := a.endTaskResponse(tc, status)
@@ -391,8 +392,6 @@ func (a *Agent) finishTask(ctx context.Context, tc *taskContext, status string) 
 		return nil, nil
 	}
 
-	defer func() { err = recovery.HandlePanicWithError(recover(), err, "finishing task") }()
-
 	a.killProcs(tc, false)
 
 	tc.logger.Execution().Infof("Sending final status as: %v", detail.Status)
@@ -400,7 +399,7 @@ func (a *Agent) finishTask(ctx context.Context, tc *taskContext, status string) 
 		grip.Errorf("Error closing logger: %v", err)
 	}
 	grip.Infof("Sending final status as: %v", detail.Status)
-	resp, err = a.comm.EndTask(ctx, detail, tc.task)
+	resp, err := a.comm.EndTask(ctx, detail, tc.task)
 	grip.Infof("Sent final status as: %v", detail.Status)
 	if err != nil {
 		return nil, errors.Wrap(err, "problem marking task complete")
