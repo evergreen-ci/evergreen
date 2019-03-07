@@ -77,18 +77,13 @@ func (item *APICommitQueueItem) ToService() (interface{}, error) {
 func ParseGitHubCommentModules(comment string) []APIModule {
 	modules := []APIModule{}
 
-	r := regexp.MustCompile(`^evergreen merge.+(?P<modules>(--modules|-m)\s+\[\w+:\d+(\s*,\s*\w+:\d+)*\]).*$`)
-	if !r.MatchString(comment) {
-		return modules
-	}
-	moduleSubstring := r.FindStringSubmatch(comment)[1]
-	moduleRegexp := regexp.MustCompile(`(\w+):(\d+)`)
-	moduleMatches := moduleRegexp.FindAllStringSubmatch(moduleSubstring, -1)
+	r := regexp.MustCompile(`(?:--module|-m)\s+(\w+):(\d+)`)
+	moduleSlices := r.FindAllStringSubmatch(comment, -1)
 
-	for _, match := range moduleMatches {
+	for _, moduleSlice := range moduleSlices {
 		modules = append(modules, APIModule{
-			Module: ToAPIString(match[1]),
-			Issue:  ToAPIString(match[2]),
+			Module: ToAPIString(moduleSlice[1]),
+			Issue:  ToAPIString(moduleSlice[2]),
 		})
 	}
 

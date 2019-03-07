@@ -52,13 +52,13 @@ func TestParseGitHubCommentModules(t *testing.T) {
 	modules = ParseGitHubCommentModules(comment)
 	assert.Len(modules, 0)
 
-	comment = "evergreen merge --unknown-option blah_blah --modules [module1:1234]"
+	comment = "evergreen merge --unknown-option blah_blah --module module1:1234"
 	modules = ParseGitHubCommentModules(comment)
 	assert.Len(modules, 1)
 	assert.Equal(ToAPIString("module1"), modules[0].Module)
 	assert.Equal(ToAPIString("1234"), modules[0].Issue)
 
-	comment = "evergreen merge --modules [module1:1234 , module2:3456,module3:5678]"
+	comment = "evergreen merge --module module1:1234 -m  module2:3456 --module module3:5678"
 	modules = ParseGitHubCommentModules(comment)
 	assert.Len(modules, 3)
 	assert.Equal(ToAPIString("module1"), modules[0].Module)
@@ -68,13 +68,13 @@ func TestParseGitHubCommentModules(t *testing.T) {
 	assert.Equal(ToAPIString("module3"), modules[2].Module)
 	assert.Equal(ToAPIString("5678"), modules[2].Issue)
 
-	comment = "evergreen merge -m [module1:1234]"
+	comment = "evergreen merge -m module1:1234"
 	modules = ParseGitHubCommentModules(comment)
 	assert.Len(modules, 1)
 	assert.Equal(ToAPIString("module1"), modules[0].Module)
 	assert.Equal(ToAPIString("1234"), modules[0].Issue)
 
-	comment = "evergreen merge -m []"
+	comment = "evergreen merge -m"
 	modules = ParseGitHubCommentModules(comment)
 	assert.Len(modules, 0)
 }
