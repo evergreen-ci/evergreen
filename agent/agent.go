@@ -371,8 +371,8 @@ func (a *Agent) runTaskTimeoutCommands(ctx context.Context, tc *taskContext) {
 }
 
 // finishTask sends the returned EndTaskResponse and error
-func (a *Agent) finishTask(ctx context.Context, tc *taskContext, status string) (*apimodels.EndTaskResponse, error) {
-	err := a.uploadToS3(ctx, tc)
+func (a *Agent) finishTask(ctx context.Context, tc *taskContext, status string) (resp *apimodels.EndTaskResponse, err error) {
+	err = a.uploadToS3(ctx, tc)
 	tc.logger.Execution().Error(errors.Wrap(err, "error uploading log files"))
 
 	detail := a.endTaskResponse(tc, status)
@@ -391,14 +391,16 @@ func (a *Agent) finishTask(ctx context.Context, tc *taskContext, status string) 
 		return nil, nil
 	}
 
-	a.killProcs(tc, false, false)
+	defer func() { err = recovery.HandlePanicWithError(recover(), err, "finishing task") }()
+
+	a.killProcs(tc, false)
 
 	tc.logger.Execution().Infof("Sending final status as: %v", detail.Status)
 	if err = tc.logger.Close(); err != nil {
 		grip.Errorf("Error closing logger: %v", err)
 	}
 	grip.Infof("Sending final status as: %v", detail.Status)
-	resp, err := a.comm.EndTask(ctx, detail, tc.task)
+	resp, err = a.comm.EndTask(ctx, detail, tc.task)
 	grip.Infof("Sent final status as: %v", detail.Status)
 	if err != nil {
 		return nil, errors.Wrap(err, "problem marking task complete")
@@ -419,8 +421,8 @@ func (a *Agent) endTaskResponse(tc *taskContext, status string) *apimodels.TaskE
 
 func (a *Agent) runPostTaskCommands(ctx context.Context, tc *taskContext) {
 	start := time.Now()
-	a.killProcs(tc, false, false)
-	defer a.killProcs(tc, false, false)
+	a.killProcs(tc, false)
+	defer a.killProcs(tc, false)
 	tc.logger.Task().Info("Running post-task commands.")
 	var cancel context.CancelFunc
 	ctx, cancel = a.withCallbackTimeout(ctx, tc)
@@ -440,7 +442,7 @@ func (a *Agent) runPostTaskCommands(ctx context.Context, tc *taskContext) {
 
 func (a *Agent) runPostGroupCommands(ctx context.Context, tc *taskContext) {
 	defer a.removeTaskDirectory(tc)
-	defer a.killProcs(tc, true, true)
+	defer a.killProcs(tc, true)
 	if tc.taskConfig == nil {
 		return
 	}
@@ -457,7 +459,7 @@ func (a *Agent) runPostGroupCommands(ctx context.Context, tc *taskContext) {
 	}
 	if taskGroup.TeardownGroup != nil {
 		grip.Info("Running post-group commands")
-		a.killProcs(tc, true, true)
+		a.killProcs(tc, true)
 		var cancel context.CancelFunc
 		ctx, cancel = a.withCallbackTimeout(ctx, tc)
 		defer cancel()
@@ -467,10 +469,10 @@ func (a *Agent) runPostGroupCommands(ctx context.Context, tc *taskContext) {
 	}
 }
 
-func (a *Agent) killProcs(tc *taskContext, ignoreTaskGroupCheck bool, loggerClosed bool) {
+func (a *Agent) killProcs(tc *taskContext, ignoreTaskGroupCheck bool) {
 	if a.shouldKill(tc, ignoreTaskGroupCheck) {
 		if tc.task.ID != "" {
-			if !loggerClosed {
+			if !tc.logger.Closed() {
 				tc.logger.Task().Infof("cleaning up processes for task: %s", tc.task.ID)
 			} else {
 				grip.Infof("cleaning up processes for task: %s", tc.task.ID)
@@ -481,7 +483,7 @@ func (a *Agent) killProcs(tc *taskContext, ignoreTaskGroupCheck bool, loggerClos
 			}
 		}
 
-		if !loggerClosed {
+		if !tc.logger.Closed() {
 			tc.logger.Task().Infof("cleaned up processes for task: %s", tc.task.ID)
 		} else {
 			grip.Infof("cleaned up processes for task: %s", tc.task.ID)
