@@ -295,8 +295,6 @@ func (a *Agent) runTask(ctx context.Context, cancel context.CancelFunc, tc *task
 		"task_secret": tc.task.Secret,
 	})
 
-	// Defers are LIFO. We cancel all agent task threads, then any procs started by the agent, then remove the task directory.
-	defer a.killProcs(tc, false)
 	defer cancel()
 
 	// If the heartbeat aborts the task immediately, we should report that
@@ -393,6 +391,8 @@ func (a *Agent) finishTask(ctx context.Context, tc *taskContext, status string) 
 		return nil, nil
 	}
 
+	a.killProcs(tc, false, false)
+
 	tc.logger.Execution().Infof("Sending final status as: %v", detail.Status)
 	if err = tc.logger.Close(); err != nil {
 		grip.Errorf("Error closing logger: %v", err)
@@ -419,8 +419,8 @@ func (a *Agent) endTaskResponse(tc *taskContext, status string) *apimodels.TaskE
 
 func (a *Agent) runPostTaskCommands(ctx context.Context, tc *taskContext) {
 	start := time.Now()
-	a.killProcs(tc, false)
-	defer a.killProcs(tc, false)
+	a.killProcs(tc, false, false)
+	defer a.killProcs(tc, false, false)
 	tc.logger.Task().Info("Running post-task commands.")
 	var cancel context.CancelFunc
 	ctx, cancel = a.withCallbackTimeout(ctx, tc)
@@ -440,7 +440,7 @@ func (a *Agent) runPostTaskCommands(ctx context.Context, tc *taskContext) {
 
 func (a *Agent) runPostGroupCommands(ctx context.Context, tc *taskContext) {
 	defer a.removeTaskDirectory(tc)
-	defer a.killProcs(tc, true)
+	defer a.killProcs(tc, true, true)
 	if tc.taskConfig == nil {
 		return
 	}
@@ -457,7 +457,7 @@ func (a *Agent) runPostGroupCommands(ctx context.Context, tc *taskContext) {
 	}
 	if taskGroup.TeardownGroup != nil {
 		grip.Info("Running post-group commands")
-		a.killProcs(tc, true)
+		a.killProcs(tc, true, true)
 		var cancel context.CancelFunc
 		ctx, cancel = a.withCallbackTimeout(ctx, tc)
 		defer cancel()
@@ -467,17 +467,25 @@ func (a *Agent) runPostGroupCommands(ctx context.Context, tc *taskContext) {
 	}
 }
 
-func (a *Agent) killProcs(tc *taskContext, ignoreTaskGroupCheck bool) {
+func (a *Agent) killProcs(tc *taskContext, ignoreTaskGroupCheck bool, loggerClosed bool) {
 	if a.shouldKill(tc, ignoreTaskGroupCheck) {
-		grip.Infof("cleaning up processes for task: %s", tc.task.ID)
-
 		if tc.task.ID != "" {
+			if !loggerClosed {
+				tc.logger.Task().Infof("cleaning up processes for task: %s", tc.task.ID)
+			} else {
+				grip.Infof("cleaning up processes for task: %s", tc.task.ID)
+			}
 			if err := subprocess.KillSpawnedProcs(tc.task.ID, tc.logger.Task()); err != nil {
 				msg := fmt.Sprintf("Error cleaning up spawned processes (agent-exit): %v", err)
 				grip.Critical(msg)
 			}
 		}
-		grip.Infof("processes cleaned up for task %s", tc.task.ID)
+
+		if !loggerClosed {
+			tc.logger.Task().Infof("cleaned up processes for task: %s", tc.task.ID)
+		} else {
+			grip.Infof("cleaned up processes for task: %s", tc.task.ID)
+		}
 	}
 }
 

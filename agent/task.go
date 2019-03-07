@@ -118,7 +118,7 @@ func (a *Agent) startTask(ctx context.Context, tc *taskContext, complete chan<- 
 		return
 	}
 
-	a.killProcs(tc, false)
+	a.killProcs(tc, false, false)
 
 	if err = a.runPreTaskCommands(innerCtx, tc); err != nil {
 		complete <- evergreen.TaskSetupFailed
