@@ -178,6 +178,10 @@ const (
 	MaxLCTInterval = 5 * time.Minute
 )
 
+func (h *Host) GetTaskGroupString() string {
+	return fmt.Sprintf("%s_%s_%s_%s", h.RunningTaskGroup, h.RunningTaskBuildVariant, h.RunningTaskProject, h.RunningTaskVersion)
+}
+
 // IdleTime returns how long has this host been idle
 func (h *Host) IdleTime() time.Duration {
 
