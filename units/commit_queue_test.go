@@ -67,11 +67,19 @@ func (s *commitQueueSuite) SetupTest() {
 
 	cq := &commitqueue.CommitQueue{
 		ProjectID: "mci",
-		Queue: []string{
-			"1",
-			"2",
-			"3",
-			"4",
+		Queue: []commitqueue.CommitQueueItem{
+			commitqueue.CommitQueueItem{
+				Issue: "1",
+			},
+			commitqueue.CommitQueueItem{
+				Issue: "2",
+			},
+			commitqueue.CommitQueueItem{
+				Issue: "3",
+			},
+			commitqueue.CommitQueueItem{
+				Issue: "4",
+			},
 		},
 	}
 	s.Require().NoError(commitqueue.InsertQueue(cq))
@@ -96,7 +104,7 @@ func (s *commitQueueSuite) TestValidatePR() {
 
 func (s *commitQueueSuite) TestSubscribeMerge() {
 	s.NoError(db.ClearCollections(event.SubscriptionsCollection))
-	s.NoError(subscribeMerge(s.projectRef, s.pr, "abcdef"))
+	s.NoError(subscribeMerge(s.projectRef.Identifier, s.projectRef.Owner, s.projectRef.Repo, "squash", "abcdef", s.pr))
 
 	selectors := []event.Selector{
 		event.Selector{
@@ -112,7 +120,6 @@ func (s *commitQueueSuite) TestSubscribeMerge() {
 
 	s.Equal(event.GithubMergeSubscriberType, subscription.Subscriber.Type)
 	s.Equal(event.ResourceTypePatch, subscription.ResourceType)
-	s.Equal(event.GithubMergeSubscriberType, subscription.Subscriber.Type)
 	target, ok := subscription.Subscriber.Target.(*event.GithubMergeSubscriber)
 	s.True(ok)
 	s.Equal(s.projectRef.Identifier, target.ProjectID)

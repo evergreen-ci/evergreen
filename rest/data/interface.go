@@ -233,7 +233,7 @@ type Connector interface {
 
 	// Commit queue methods
 	GetGitHubPR(context.Context, string, string, int) (*github.PullRequest, error)
-	EnqueueItem(string, string, string, string) error
+	EnqueueItem(string, string, string, restModel.APICommitQueueItem) error
 	FindCommitQueueByID(string) (*restModel.APICommitQueue, error)
 	CommitQueueRemoveItem(string, string) (bool, error)
 	CommitQueueClearAll() (int, error)

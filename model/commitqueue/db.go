@@ -12,8 +12,10 @@ const Collection = "commit_queue"
 
 var (
 	// bson fields for the CommitQueue struct
-	IdKey    = bsonutil.MustHaveTag(CommitQueue{}, "ProjectID")
-	QueueKey = bsonutil.MustHaveTag(CommitQueue{}, "Queue")
+	IdKey         = bsonutil.MustHaveTag(CommitQueue{}, "ProjectID")
+	QueueKey      = bsonutil.MustHaveTag(CommitQueue{}, "Queue")
+	ProcessingKey = bsonutil.MustHaveTag(CommitQueue{}, "Processing")
+	IssueKey      = bsonutil.MustHaveTag(CommitQueueItem{}, "Issue")
 )
 
 func updateOne(query interface{}, update interface{}) error {
@@ -43,7 +45,7 @@ func insert(q *CommitQueue) error {
 	return db.Insert(Collection, q)
 }
 
-func add(id string, queue []string, item string) error {
+func add(id string, queue []CommitQueueItem, item CommitQueueItem) error {
 	err := updateOne(
 		bson.M{
 			IdKey:    id,
@@ -58,16 +60,23 @@ func add(id string, queue []string, item string) error {
 	return err
 }
 
-func remove(id string, item string) error {
+func remove(id, issue string) error {
 	return updateOne(
 		bson.M{IdKey: id},
-		bson.M{"$pull": bson.M{QueueKey: item}},
+		bson.M{"$pull": bson.M{QueueKey: bson.M{IssueKey: issue}}},
+	)
+}
+
+func setProcessing(id string, status bool) error {
+	return updateOne(
+		bson.M{IdKey: id},
+		bson.M{"$set": bson.M{ProcessingKey: status}},
 	)
 }
 
 func clearAll() (int, error) {
 	return updateAll(
 		bson.M{},
-		bson.M{"$set": bson.M{QueueKey: []string{}}},
+		bson.M{"$set": bson.M{QueueKey: []CommitQueueItem{}}},
 	)
 }

@@ -59,3 +59,31 @@ func TestGetPatchSummaries(t *testing.T) {
 	assert.Equal(0, summaries[2].Additions)
 	assert.Equal(0, summaries[2].Deletions)
 }
+
+func TestParseGitUrl(t *testing.T) {
+	assert := assert.New(t)
+
+	httpsUrl := "https://github.com/evergreen-ci/sample.git"
+	owner, repo, err := ParseGitUrl(httpsUrl)
+	assert.NoError(err)
+	assert.Equal("evergreen-ci", owner)
+	assert.Equal("sample", repo)
+
+	httpsUrl = "https://github.com/sample.git"
+	owner, repo, err = ParseGitUrl(httpsUrl)
+	assert.Error(err)
+	assert.Equal("", owner)
+	assert.Equal("", repo)
+
+	sshUrl := "git@github.com:evergreen-ci/sample.git"
+	owner, repo, err = ParseGitUrl(sshUrl)
+	assert.NoError(err)
+	assert.Equal("evergreen-ci", owner)
+	assert.Equal("sample", repo)
+
+	sshUrl = "git@github.com:evergreen-ci/sample"
+	owner, repo, err = ParseGitUrl(sshUrl)
+	assert.Error(err)
+	assert.Equal("evergreen-ci", owner)
+	assert.Equal("", repo)
+}

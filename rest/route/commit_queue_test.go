@@ -28,21 +28,46 @@ func (s *CommitQueueSuite) SetupTest() {
 func (s *CommitQueueSuite) TestGetCommitQueue() {
 	route := makeGetCommitQueueItems(s.sc).(*commitQueueGetHandler)
 	route.project = "evergreen-ci.evergreen.master"
-	s.NoError(s.sc.EnqueueItem("evergreen-ci", "evergreen", "master", "1"))
-	s.NoError(s.sc.EnqueueItem("evergreen-ci", "evergreen", "master", "2"))
+	s.NoError(s.sc.EnqueueItem(
+		"evergreen-ci",
+		"evergreen",
+		"master",
+		model.APICommitQueueItem{
+			Issue: model.ToAPIString("1"),
+			Modules: []model.APIModule{
+				model.APIModule{
+					Module: model.ToAPIString("test_module"),
+					Issue:  model.ToAPIString("1234"),
+				},
+			},
+		}))
+	s.NoError(s.sc.EnqueueItem("evergreen-ci", "evergreen", "master", model.APICommitQueueItem{Issue: model.ToAPIString("2")}))
 
 	response := route.Run(context.Background())
 	s.Equal(200, response.Status())
 	s.Equal(&model.APICommitQueue{
 		ProjectID: model.ToAPIString("evergreen-ci.evergreen.master"),
-		Queue:     []model.APIString{model.ToAPIString("1"), model.ToAPIString("2")},
+		Queue: []model.APICommitQueueItem{
+			model.APICommitQueueItem{
+				Issue: model.ToAPIString("1"),
+				Modules: []model.APIModule{
+					model.APIModule{
+						Module: model.ToAPIString("test_module"),
+						Issue:  model.ToAPIString("1234"),
+					},
+				},
+			},
+			model.APICommitQueueItem{
+				Issue: model.ToAPIString("2"),
+			},
+		},
 	}, response.Data())
 }
 
 func (s *CommitQueueSuite) TestDeleteItem() {
 	route := makeDeleteCommitQueueItems(s.sc).(*commitQueueDeleteItemHandler)
-	s.NoError(s.sc.EnqueueItem("evergreen-ci", "evergreen", "master", "1"))
-	s.NoError(s.sc.EnqueueItem("evergreen-ci", "evergreen", "master", "2"))
+	s.NoError(s.sc.EnqueueItem("evergreen-ci", "evergreen", "master", model.APICommitQueueItem{Issue: model.ToAPIString("1")}))
+	s.NoError(s.sc.EnqueueItem("evergreen-ci", "evergreen", "master", model.APICommitQueueItem{Issue: model.ToAPIString("2")}))
 	route.project = "evergreen-ci.evergreen.master"
 
 	// Valid delete
@@ -63,10 +88,10 @@ func (s *CommitQueueSuite) TestDeleteItem() {
 
 func (s *CommitQueueSuite) TestClearAll() {
 	route := makeClearCommitQueuesHandler(s.sc).(*commitQueueClearAllHandler)
-	s.NoError(s.sc.EnqueueItem("evergreen-ci", "evergreen", "master", "12"))
-	s.NoError(s.sc.EnqueueItem("evergreen-ci", "evergreen", "master", "23"))
-	s.NoError(s.sc.EnqueueItem("evergreen-ci", "logkeeper", "master", "45"))
-	s.NoError(s.sc.EnqueueItem("evergreen-ci", "logkeeper", "master", "56"))
+	s.NoError(s.sc.EnqueueItem("evergreen-ci", "evergreen", "master", model.APICommitQueueItem{Issue: model.ToAPIString("12")}))
+	s.NoError(s.sc.EnqueueItem("evergreen-ci", "evergreen", "master", model.APICommitQueueItem{Issue: model.ToAPIString("23")}))
+	s.NoError(s.sc.EnqueueItem("evergreen-ci", "logkeeper", "master", model.APICommitQueueItem{Issue: model.ToAPIString("34")}))
+	s.NoError(s.sc.EnqueueItem("evergreen-ci", "logkeeper", "master", model.APICommitQueueItem{Issue: model.ToAPIString("45")}))
 
 	response := route.Run(context.Background())
 	s.Equal(200, response.Status())

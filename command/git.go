@@ -18,6 +18,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/rest/client"
 	"github.com/evergreen-ci/evergreen/subprocess"
+	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mitchellh/mapstructure"
 	"github.com/mongodb/grip/level"
@@ -136,8 +137,7 @@ func (c *gitFetchProject) buildCloneCommand(conf *model.TaskConfig) ([]string, e
 	gitCommands = append(gitCommands, cloneCmd...)
 
 	if conf.GithubPatchData.PRNumber != 0 {
-		branchName := fmt.Sprintf("evg-pr-test-%s", util.RandomString())
-		var ref, commitToTest string
+		var ref, commitToTest, branchName string
 		if conf.Task.IsMergeRequest() {
 			// GitHub creates a ref at refs/pull/[pr number]/merge
 			// pointing to the test merge commit they generate
@@ -145,11 +145,13 @@ func (c *gitFetchProject) buildCloneCommand(conf *model.TaskConfig) ([]string, e
 			// and: https://docs.travis-ci.com/user/pull-requests/#my-pull-request-isnt-being-built
 			ref = "merge"
 			commitToTest = conf.GithubPatchData.MergeCommitSHA
+			branchName = fmt.Sprintf("evg-merge-test-%s", util.RandomString())
 		} else {
 			// Github creates a ref called refs/pull/[pr number]/head
 			// that provides the entire tree of changes, including merges
 			ref = "head"
 			commitToTest = conf.GithubPatchData.HeadHash
+			branchName = fmt.Sprintf("evg-pr-test-%s", util.RandomString())
 		}
 		gitCommands = append(gitCommands, []string{
 			fmt.Sprintf(`git fetch origin "pull/%d/%s:%s"`, conf.GithubPatchData.PRNumber, ref, branchName),
@@ -165,7 +167,7 @@ func (c *gitFetchProject) buildCloneCommand(conf *model.TaskConfig) ([]string, e
 	return gitCommands, nil
 }
 
-func (c *gitFetchProject) buildModuleCloneCommand(cloneURI, owner, repo, moduleBase, ref string) ([]string, error) {
+func (c *gitFetchProject) buildModuleCloneCommand(cloneURI, owner, repo, moduleBase, ref, requester string, modulePatch *patch.ModulePatch) ([]string, error) {
 	if cloneURI == "" {
 		return nil, errors.New("empty repository URI")
 	}
@@ -207,7 +209,17 @@ func (c *gitFetchProject) buildModuleCloneCommand(cloneURI, owner, repo, moduleB
 		}
 		gitCommands = append(gitCommands, cmds...)
 	}
-	gitCommands = append(gitCommands, fmt.Sprintf("git checkout '%s'", ref))
+
+	if modulePatchProvidedForMergeTest(requester, modulePatch) {
+		branchName := fmt.Sprintf("evg-merge-test-%s", util.RandomString())
+		gitCommands = append(gitCommands,
+			fmt.Sprintf(`git fetch origin "pull/%s/merge:%s"`, modulePatch.PatchSet.Patch, branchName),
+			fmt.Sprintf("git checkout '%s'", branchName),
+			fmt.Sprintf("git reset --hard %s", modulePatch.Githash),
+		)
+	} else {
+		gitCommands = append(gitCommands, fmt.Sprintf("git checkout '%s'", ref))
+	}
 
 	return gitCommands, nil
 }
@@ -268,6 +280,15 @@ func (c *gitFetchProject) Execute(ctx context.Context,
 		return errors.Wrap(err, "problem running fetch command")
 	}
 
+	var p *patch.Patch
+	if evergreen.IsPatchRequester(conf.Task.Requester) {
+		logger.Execution().Info("Fetching patch.")
+		p, err = comm.GetTaskPatch(ctx, client.TaskData{ID: conf.Task.Id, Secret: conf.Task.Secret})
+		if err != nil {
+			return errors.Wrap(err, "Failed to get patch")
+		}
+	}
+
 	// Fetch source for the modules
 	for _, moduleName := range conf.BuildVariant.Modules {
 		if ctx.Err() != nil {
@@ -297,13 +318,28 @@ func (c *gitFetchProject) Execute(ctx context.Context,
 				revision = module.Branch
 			}
 		}
-		owner, repo := parseGitUrl(module.Repo, logger)
+		var owner, repo string
+		owner, repo, err = thirdparty.ParseGitUrl(module.Repo)
+		if err != nil {
+			logger.Execution().Error(err.Error())
+		}
 		if owner == "" || repo == "" {
 			continue
 		}
 
+		var modulePatch *patch.ModulePatch
+		if p != nil {
+			// find module among the patch's Patches
+			for i := range p.Patches {
+				if p.Patches[i].ModuleName == moduleName {
+					modulePatch = &p.Patches[i]
+					break
+				}
+			}
+		}
+
 		var moduleCmds []string
-		moduleCmds, err = c.buildModuleCloneCommand(module.Repo, owner, repo, moduleBase, revision)
+		moduleCmds, err = c.buildModuleCloneCommand(module.Repo, owner, repo, moduleBase, revision, conf.Task.Requester, modulePatch)
 		if err != nil {
 			return err
 		}
@@ -325,72 +361,21 @@ func (c *gitFetchProject) Execute(ctx context.Context,
 	}
 
 	//Apply patches if necessary
-	if conf.Task.Requester != evergreen.PatchVersionRequester {
-		return nil
-	}
+	if conf.Task.Requester == evergreen.PatchVersionRequester {
+		if err = c.getPatchContents(ctx, comm, logger, conf, p); err != nil {
+			err = errors.Wrap(err, "Failed to get patch contents")
+			logger.Execution().Error(err.Error())
+			return err
+		}
 
-	logger.Execution().Info("Fetching patch.")
-	patch, err := comm.GetTaskPatch(ctx, client.TaskData{ID: conf.Task.Id, Secret: conf.Task.Secret})
-	if err != nil {
-		err = errors.Wrap(err, "Failed to get patch")
-		logger.Execution().Error(err.Error())
-		return err
-	}
-
-	if err = c.getPatchContents(ctx, comm, logger, conf, patch); err != nil {
-		err = errors.Wrap(err, "Failed to get patch contents")
-		logger.Execution().Errorf(err.Error())
-		return err
-	}
-
-	if err = c.applyPatch(ctx, logger, conf, patch); err != nil {
-		err = errors.Wrap(err, "Failed to apply patch")
-		logger.Execution().Infof(err.Error())
-		return err
+		if err = c.applyPatch(ctx, logger, conf, p); err != nil {
+			err = errors.Wrap(err, "Failed to apply patch")
+			logger.Execution().Error(err.Error())
+			return err
+		}
 	}
 
 	return nil
-}
-
-func parseGitUrl(url string, logger client.LoggerProducer) (string, string) {
-	var owner string
-	var repo string
-	httpsPrefix := "https://"
-	if strings.HasPrefix(url, httpsPrefix) {
-		url = strings.TrimPrefix(url, httpsPrefix)
-		split := strings.Split(url, "/")
-		if len(split) != 3 {
-			logger.Execution().Errorf("Invalid module format '%s'", url)
-			return "", ""
-		}
-		owner = split[1]
-		splitRepo := strings.Split(split[2], ".")
-		if len(splitRepo) != 2 {
-			logger.Execution().Errorf("Invalid module format '%s'", url)
-			return "", ""
-		}
-		repo = splitRepo[0]
-	} else {
-		splitModule := strings.Split(url, ":")
-		if len(splitModule) != 2 {
-			logger.Execution().Errorf("Invalid module format '%s'", url)
-			return "", ""
-		}
-		splitOwner := strings.Split(splitModule[1], "/")
-		if len(splitOwner) != 2 {
-			logger.Execution().Errorf("Invalid module format '%s'", url)
-			return "", ""
-		}
-		owner = splitOwner[0]
-		splitRepo := strings.Split(splitOwner[1], ".")
-		if len(splitRepo) != 2 {
-			logger.Execution().Errorf("Invalid module format '%s'", url)
-			return "", ""
-		}
-		repo = splitRepo[0]
-	}
-
-	return owner, repo
 }
 
 // getPatchContents() dereferences any patch files that are stored externally, fetching them from
@@ -572,6 +557,13 @@ func (c *gitFetchProject) applyPatch(ctx context.Context, logger client.LoggerPr
 		}
 	}
 	return nil
+}
+
+func modulePatchProvidedForMergeTest(requester string, modulePatch *patch.ModulePatch) bool {
+	isMergeTest := requester == evergreen.MergeTestRequester
+	patchProvided := (modulePatch != nil) && (modulePatch.PatchSet.Patch != "")
+
+	return isMergeTest && patchProvided
 }
 
 type noopWriteCloser struct {

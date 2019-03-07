@@ -18,6 +18,16 @@ type CommitQueueSuite struct {
 	q *CommitQueue
 }
 
+var sampleCommitQueueItem = CommitQueueItem{
+	Issue: "c123",
+	Modules: []Module{
+		Module{
+			Module: "test_module",
+			Issue:  "d234",
+		},
+	},
+}
+
 func TestCommitQueueSuite(t *testing.T) {
 	s := new(CommitQueueSuite)
 	suite.Run(t, s)
@@ -40,36 +50,39 @@ func (s *CommitQueueSuite) SetupTest() {
 }
 
 func (s *CommitQueueSuite) TestEnqueue() {
-	s.NoError(s.q.Enqueue("c123"))
-	s.False(s.q.IsEmpty())
-	s.Equal("c123", s.q.Next())
+	s.NoError(s.q.Enqueue(sampleCommitQueueItem))
+	s.Len(s.q.Queue, 1)
+	s.Equal("c123", s.q.Next().Issue)
 	s.NotEqual(-1, s.q.findItem("c123"))
 
 	// Persisted to db
 	dbq, err := FindOneId("mci")
 	s.NoError(err)
-	s.False(dbq.IsEmpty())
-	s.Equal("c123", dbq.Next())
+	s.Len(dbq.Queue, 1)
+	s.Equal(sampleCommitQueueItem, *dbq.Next())
 	s.NotEqual(-1, dbq.findItem("c123"))
 }
 
-func (s *CommitQueueSuite) TestAll() {
-	s.Require().NoError(s.q.Enqueue("c123"))
-	s.Require().NoError(s.q.Enqueue("d234"))
-	s.Require().NoError(s.q.Enqueue("e345"))
+func (s *CommitQueueSuite) TestNext() {
+	s.NoError(s.q.Enqueue(sampleCommitQueueItem))
+	s.Len(s.q.Queue, 1)
 
-	items := s.q.All()
-	s.Len(items, 3)
-	s.Equal("c123", items[0])
-	s.Equal("d234", items[1])
-	s.Equal("e345", items[2])
+	s.NoError(s.q.SetProcessing(true))
+	s.Nil(s.q.Next())
+
+	s.NoError(s.q.SetProcessing(false))
+	s.NotNil(s.q.Next())
+	s.Equal(s.q.Next().Issue, "c123")
 }
 
 func (s *CommitQueueSuite) TestRemoveOne() {
-	s.Require().NoError(s.q.Enqueue("c123"))
-	s.Require().NoError(s.q.Enqueue("d234"))
-	s.Require().NoError(s.q.Enqueue("e345"))
-	s.Require().Len(s.q.All(), 3)
+	item := sampleCommitQueueItem
+	s.Require().NoError(s.q.Enqueue(item))
+	item.Issue = "d234"
+	s.Require().NoError(s.q.Enqueue(item))
+	item.Issue = "e345"
+	s.Require().NoError(s.q.Enqueue(item))
+	s.Require().Len(s.q.Queue, 3)
 
 	found, err := s.q.Remove("not_here")
 	s.NoError(err)
@@ -78,30 +91,42 @@ func (s *CommitQueueSuite) TestRemoveOne() {
 	found, err = s.q.Remove("d234")
 	s.NoError(err)
 	s.True(found)
-	items := s.q.All()
+	items := s.q.Queue
 	s.Len(items, 2)
 	// Still in order
-	s.Equal("c123", items[0])
-	s.Equal("e345", items[1])
+	s.Equal("c123", items[0].Issue)
+	s.Equal("e345", items[1].Issue)
 
 	// Persisted to db
 	dbq, err := FindOneId("mci")
 	s.NoError(err)
-	items = dbq.All()
+	items = dbq.Queue
 	s.Len(items, 2)
-	s.Equal("c123", items[0])
-	s.Equal("e345", items[1])
+	s.Equal("c123", items[0].Issue)
+	s.Equal("e345", items[1].Issue)
+
+	s.NoError(s.q.SetProcessing(true))
+	s.Nil(s.q.Next())
+	found, err = s.q.Remove("c123")
+	s.True(found)
+	s.NoError(err)
+	s.NotNil(s.q.Next())
+	s.Equal(s.q.Next().Issue, "e345")
 }
 
 func (s *CommitQueueSuite) TestClearAll() {
-	s.Require().NoError(s.q.Enqueue("c123"))
-	s.Require().NoError(s.q.Enqueue("d234"))
-	s.Require().NoError(s.q.Enqueue("e345"))
-	s.Require().Len(s.q.All(), 3)
+	item := sampleCommitQueueItem
+	s.Require().NoError(s.q.Enqueue(item))
+	item.Issue = "d234"
+	s.Require().NoError(s.q.Enqueue(item))
+	item.Issue = "e345"
+	s.Require().NoError(s.q.Enqueue(item))
+	s.Require().Len(s.q.Queue, 3)
+	s.Require().Len(s.q.Queue, 3)
 
 	q := &CommitQueue{
 		ProjectID: "logkeeper",
-		Queue:     []string{},
+		Queue:     []CommitQueueItem{},
 	}
 	s.Require().NoError(InsertQueue(q))
 
@@ -112,14 +137,16 @@ func (s *CommitQueueSuite) TestClearAll() {
 
 	s.q, err = FindOneId("mci")
 	s.NoError(err)
-	s.Empty(s.q.All())
+	s.Empty(s.q.Queue)
 	q, err = FindOneId("logkeeper")
 	s.NoError(err)
-	s.Empty(q.All())
+	s.Empty(q.Queue)
 
 	// both have contents
-	s.Require().NoError(s.q.Enqueue("c1234"))
-	s.Require().NoError(q.Enqueue("d234"))
+	item.Issue = "c1234"
+	s.Require().NoError(s.q.Enqueue(item))
+	item.Issue = "d234"
+	s.Require().NoError(q.Enqueue(item))
 	clearedCount, err = ClearAllCommitQueues()
 	s.NoError(err)
 	s.Equal(2, clearedCount)
@@ -137,6 +164,8 @@ func (s *CommitQueueSuite) TestCommentTrigger() {
 	s.False(TriggersCommitQueue(action, comment))
 }
 
+// Duplicated here from testutil to avoid import cycle
+// (evergreen package requires github_pr_sender and testutil requires evergreen)
 type settings struct {
 	Database dbSettings `yaml:"database"`
 }
@@ -154,8 +183,6 @@ type writeConcern struct {
 	J        bool   `yaml:"j"`
 }
 
-// Duplicated here from testutil to avoid import cycle
-// (evergreen package requires github_pr_sender and testutil requires evergreen)
 func getDBSessionFactory() (*db.SessionFactory, error) {
 	evgHome := os.Getenv("EVGHOME")
 	testDir := "config_test"
