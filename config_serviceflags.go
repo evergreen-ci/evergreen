@@ -22,6 +22,8 @@ type ServiceFlags struct {
 	CacheStatsJobDisabled      bool `bson:"cache_stats_job_disabled" json:"cache_stats_job_disabled"`
 	CacheStatsEndpointDisabled bool `bson:"cache_stats_endpoint_disabled" json:"cache_stats_endpoint_disabled"`
 	CommitQueueDisabled        bool `bson:"commit_queue_disabled" json:"commit_queue_disabled"`
+	PlannerDisabled            bool `bson:"planner_disabled" json:"planner_disabled"`
+	HostAllocatorDisabled      bool `bson:"host_allocator_disabled" json:"host_allocator_disabled"`
 
 	// Notification Flags
 	EventProcessingDisabled      bool `bson:"event_processing_disabled" json:"event_processing_disabled"`

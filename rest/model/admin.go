@@ -1046,6 +1046,8 @@ type APIServiceFlags struct {
 	CacheStatsJobDisabled      bool `json:"cache_stats_job_disabled"`
 	CacheStatsEndpointDisabled bool `json:"cache_stats_endpoint_disabled"`
 	CommitQueueDisabled        bool `json:"commit_queue_disabled"`
+	PlannerDisabled            bool `json:"planner_disabled"`
+	HostAllocatorDisabled      bool `json:"host_allocator_disabled"`
 
 	// Notifications Flags
 	EventProcessingDisabled      bool `json:"event_processing_disabled"`
