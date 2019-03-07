@@ -117,10 +117,7 @@ mciModule.controller('TaskHistoryDrawerCtrl', function($scope, $window, $locatio
           return
         }
 
-        // get a task id from it
-        var anchorId = mostRecentRevision.task.id;
-
-        taskHistoryDrawerService.fetchTaskHistory($scope.task.version_id, $scope.task.build_variant, $scope.task.display_name, 'after', 20, {
+        taskHistoryDrawerService.fetchTaskHistory(mostRecentRevision.version_id, $scope.task.build_variant, $scope.task.display_name, 'after', 20, {
           success: function(resp) {
             var data = resp.data;
             // no computation necessary
@@ -157,10 +154,7 @@ mciModule.controller('TaskHistoryDrawerCtrl', function($scope, $window, $locatio
               return
             }
 
-            // get a task id from it
-            var anchorId = leastRecentRevision.task.id;
-
-            taskHistoryDrawerService.fetchTaskHistory($scope.task.version_id, $scope.task.build_variant, $scope.task.display_name, 'before', 20, {
+            taskHistoryDrawerService.fetchTaskHistory(leastRecentRevision.version_id, $scope.task.build_variant, $scope.task.display_name, 'before', 20, {
                 success: function(resp) {
                   var data = resp.data;
                   // no computation necessary
