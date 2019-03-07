@@ -11,8 +11,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/mongodb/grip/recovery"
-
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/artifact"
@@ -25,6 +23,7 @@ import (
 	"github.com/evergreen-ci/gimlet"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
+	"github.com/mongodb/grip/recovery"
 	"github.com/pkg/errors"
 )
 
@@ -315,7 +314,9 @@ func (c *communicatorImpl) SendLogMessages(ctx context.Context, taskData TaskDat
 	}
 	info.setTaskPathSuffix("log")
 	var cancel context.CancelFunc
-	ctx, cancel = context.WithDeadline(ctx, time.Now().Add(10*time.Minute))
+	now := time.Now()
+	grip.Debugf("sending log messages at %s", now.String())
+	ctx, cancel = context.WithDeadline(ctx, now.Add(10*time.Minute))
 	defer cancel()
 	backupTimer := time.NewTimer(15 * time.Minute)
 	start := time.Now()
