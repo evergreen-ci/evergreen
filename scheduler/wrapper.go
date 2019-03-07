@@ -62,7 +62,7 @@ func GetDistroQueueInfo(tasks []task.Task, maxDurationThreshold time.Duration) m
 		taskGroupInfosMap[name] = taskGroupInfo
 	}
 
-	taskGroupInfos := make([]model.TaskGroupInfo, len(taskGroupInfosMap))
+	taskGroupInfos := make([]model.TaskGroupInfo, 0, len(taskGroupInfosMap))
 	for _, info := range taskGroupInfosMap {
 		taskGroupInfos = append(taskGroupInfos, info)
 	}
@@ -160,6 +160,9 @@ func PlanDistro(ctx context.Context, conf Configuration, s *evergreen.Settings) 
 	}
 
 	distroHosts, err := host.AllRunningHosts(distro.Id)
+	if err != nil {
+		return errors.Wrap(err, "with host query")
+	}
 
 	hostAllocatorData := HostAllocatorData{
 		Distro:               distro,
