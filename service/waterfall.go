@@ -262,8 +262,7 @@ func getVersionsAndVariants(skip, numVersionElements int, project *model.Project
 				}
 
 				if buildVariant.DisplayName == "" {
-					buildVariant.DisplayName = b.BuildVariant +
-						" (removed)"
+					buildVariant.DisplayName = b.BuildVariant
 				}
 
 				// The version is marked active if there are any
@@ -401,7 +400,7 @@ func getVersionsAndVariants(skip, numVersionElements int, project *model.Project
 	for name := range bvSet {
 		displayName := buildVariantMappings[name]
 		if displayName == "" {
-			displayName = name + " (removed)"
+			displayName = name
 		}
 		buildVariants = append(buildVariants, waterfallBuildVariant{Id: name, DisplayName: displayName})
 	}
@@ -519,7 +518,7 @@ func countOnPreviousPage(skip int, numVersionElements int, project *model.Projec
 					bvDisplayName := buildVariantMappings[b.BuildVariant]
 
 					if bvDisplayName == "" {
-						bvDisplayName = b.BuildVariant + " (removed)"
+						bvDisplayName = b.BuildVariant
 					}
 
 					// When versions is active and variane query matches
