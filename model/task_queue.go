@@ -31,18 +31,49 @@ type TaskGroupInfo struct {
 }
 
 type DistroQueueInfo struct {
-	Length             int             `bson:"length" json:"length"`
-	ExpectedDuration   time.Duration   `bson:"expected_duration" json:"expected_duration"`
-	CountOverThreshold int             `bson:"count_over_threshold" json:"count_over_threshold"`
-	TaskGroupInfos     []TaskGroupInfo `bson:"task_group_infos" json:"task_group_infos"`
+	Length               int             `bson:"length" json:"length"`
+	ExpectedDuration     time.Duration   `bson:"expected_duration" json:"expected_duration"`
+	MaxDurationThreshold time.Duration   `bson:"max_duration_threshold" json:"max_duration_threshold"`
+	CountOverThreshold   int             `bson:"count_over_threshold" json:"count_over_threshold"`
+	TaskGroupInfos       []TaskGroupInfo `bson:"task_group_infos" json:"task_group_infos"`
 }
+
+// BRIAN?
+func GetDistroQueueInfo(distroID string) (DistroQueueInfo, error) {
+	query := bson.M{taskQueueDistroKey: distroID}
+	projection := bson.M{taskQueueDistroQueueInfoKey: 1}
+	distroQueueInfo := DistroQueueInfo{}
+
+	return distroQueueInfo, db.FindOne(TaskQueuesCollection, query, projection, db.NoSort, &distroQueueInfo)
+}
+
+// func GetDistroQueueInfo(distroID string) (*DistroQueueInfo, error) {
+// 	// event := &ProjectNotificationTime{}?
+// 	query := bson.M{taskQueueDistroKey: distroID}
+// 	projection := bson.M{taskQueueDistroQueueInfoKey: 1}
+// 	distroQueueInfo := &DistroQueueInfo{}
+//
+// 	err := db.FindOne(
+// 		TaskQueuesCollection,
+// 		query,
+// 		projection,
+// 		db.NoSort,
+// 		distroQueueInfo,
+// 	)
+// 	if err != nil {
+// 		return nil, err
+// 	}
+//
+// 	return distroQueueInfo, nil
+// }
 
 // represents the next n tasks to be run on hosts of the distro
 type TaskQueue struct {
-	Id          bson.ObjectId   `bson:"_id,omitempty" json:"_id"`
-	Distro      string          `bson:"distro" json:"distro"`
-	GeneratedAt time.Time       `bson:"generated_at" json:"generated_at"`
-	Queue       []TaskQueueItem `bson:"queue" json:"queue"`
+	Id              bson.ObjectId   `bson:"_id,omitempty" json:"_id"`
+	Distro          string          `bson:"distro" json:"distro"`
+	GeneratedAt     time.Time       `bson:"generated_at" json:"generated_at"`
+	Queue           []TaskQueueItem `bson:"queue" json:"queue"`
+	DistroQueueInfo DistroQueueInfo `bson:"distro_queue_info" json:"distro_queue_info"`
 
 	useModerDequeueOp bool
 }
@@ -70,10 +101,11 @@ type TaskQueueItem struct {
 // must not no-lint these values
 var (
 	// bson fields for the task queue struct
-	taskQueueIdKey          = bsonutil.MustHaveTag(TaskQueue{}, "Id")
-	taskQueueDistroKey      = bsonutil.MustHaveTag(TaskQueue{}, "Distro")
-	taskQueueGeneratedAtKey = bsonutil.MustHaveTag(TaskQueue{}, "GeneratedAt")
-	taskQueueQueueKey       = bsonutil.MustHaveTag(TaskQueue{}, "Queue")
+	taskQueueIdKey              = bsonutil.MustHaveTag(TaskQueue{}, "Id")
+	taskQueueDistroKey          = bsonutil.MustHaveTag(TaskQueue{}, "Distro")
+	taskQueueGeneratedAtKey     = bsonutil.MustHaveTag(TaskQueue{}, "GeneratedAt")
+	taskQueueQueueKey           = bsonutil.MustHaveTag(TaskQueue{}, "Queue")
+	taskQueueDistroQueueInfoKey = bsonutil.MustHaveTag(TaskQueue{}, "DistroQueueInfo")
 
 	// bson fields for the individual task queue items
 	taskQueueItemIdKey            = bsonutil.MustHaveTag(TaskQueueItem{}, "Id")
@@ -89,6 +121,20 @@ var (
 	taskQueueItemProjectKey       = bsonutil.MustHaveTag(TaskQueueItem{}, "Project")
 	taskQueueItemExpDurationKey   = bsonutil.MustHaveTag(TaskQueueItem{}, "ExpectedDuration")
 	taskQueueItemPriorityKey      = bsonutil.MustHaveTag(TaskQueueItem{}, "Priority")
+
+	// bson fields for the distroQueueInfo struct
+	// distroQueueInfoLengthKey             = bsonutil.MustHaveTag(DistroQueueInfo{}, "Length")
+	// distroQueueInfoExpectedDurationKey   = bsonutil.MustHaveTag(DistroQueueInfo{}, "ExpectedDuration")
+	// distroQueueInfoCountOverThresholdKey = bsonutil.MustHaveTag(DistroQueueInfo{}, "CountOverThreshold")
+	// distroQueueInfoTaskGroupInfosKey     = bsonutil.MustHaveTag(DistroQueueInfo{}, "TaskGroupInfos")
+
+	// bson fields for the TaskGroupInfo struct
+	// taskGroupInfoNameKey                  = bsonutil.MustHaveTag(TaskGroupInfo{}, "Name")
+	// taskGroupInfoCountKey                 = bsonutil.MustHaveTag(TaskGroupInfo{}, "Count")
+	// taskGroupInfoMaxHostsKey              = bsonutil.MustHaveTag(TaskGroupInfo{}, "MaxHosts")
+	// taskGroupInfoExpectedDurationKey      = bsonutil.MustHaveTag(TaskGroupInfo{}, "ExpectedDuration")
+	// taskGroupInfoCountOverThresholdKey    = bsonutil.MustHaveTag(TaskGroupInfo{}, "CountOverThreshold")
+	// taskGroupInfoDurationOverThresholdKey = bsonutil.MustHaveTag(TaskGroupInfo{}, "DurationOverThreshold")
 )
 
 // TaskSpec is an argument structure to formalize the way that callers
@@ -102,11 +148,12 @@ type TaskSpec struct {
 	GroupMaxHosts int
 }
 
-func NewTaskQueue(distro string, queue []TaskQueueItem) *TaskQueue {
+func NewTaskQueue(distroID string, queue []TaskQueueItem, distroQueueInfo DistroQueueInfo) *TaskQueue {
 	return &TaskQueue{
-		Distro:      distro,
-		Queue:       queue,
-		GeneratedAt: time.Now(),
+		Distro:          distroID,
+		Queue:           queue,
+		GeneratedAt:     time.Now(),
+		DistroQueueInfo: distroQueueInfo,
 	}
 }
 
@@ -227,7 +274,7 @@ func (self *TaskQueue) Save() error {
 	if len(self.Queue) > 500 {
 		self.Queue = self.Queue[:500]
 	}
-	return updateTaskQueue(self.Distro, self.Queue)
+	return updateTaskQueue(self.Distro, self.Queue, self.DistroQueueInfo)
 }
 
 func (self *TaskQueue) FindNextTask(spec TaskSpec) *TaskQueueItem {
@@ -288,7 +335,7 @@ func (self *TaskQueue) FindNextTask(spec TaskSpec) *TaskQueueItem {
 	return nil
 }
 
-func updateTaskQueue(distro string, taskQueue []TaskQueueItem) error {
+func updateTaskQueue(distro string, taskQueue []TaskQueueItem, distroQueueInfo DistroQueueInfo) error {
 	_, err := db.Upsert(
 		TaskQueuesCollection,
 		bson.M{
@@ -296,8 +343,9 @@ func updateTaskQueue(distro string, taskQueue []TaskQueueItem) error {
 		},
 		bson.M{
 			"$set": bson.M{
-				taskQueueQueueKey:       taskQueue,
-				taskQueueGeneratedAtKey: time.Now(),
+				taskQueueQueueKey:           taskQueue,
+				taskQueueGeneratedAtKey:     time.Now(),
+				taskQueueDistroQueueInfoKey: distroQueueInfo,
 			},
 		},
 	)

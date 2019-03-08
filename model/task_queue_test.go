@@ -503,10 +503,11 @@ func TestClearTaskQueue(t *testing.T) {
 			Id: "task3",
 		},
 	}
-	queue := NewTaskQueue(distro, tasks)
+
+	queue := NewTaskQueue(distro, tasks, DistroQueueInfo{})
 	assert.Len(queue.Queue, 3)
 	assert.NoError(queue.Save())
-	otherQueue := NewTaskQueue(otherDistro, tasks)
+	otherQueue := NewTaskQueue(otherDistro, tasks, DistroQueueInfo{})
 	assert.Len(otherQueue.Queue, 3)
 	assert.NoError(otherQueue.Save())
 

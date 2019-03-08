@@ -47,7 +47,7 @@ func TestSpawnHosts(t *testing.T) {
 		Convey("if there are no hosts to be spawned, the Scheduler should not"+
 			" make any calls to the Manager", func() {
 
-			newHostsSpawned, err := spawnHosts(ctx, distro.Distro{}, 0, nil)
+			newHostsSpawned, err := SpawnHosts(ctx, distro.Distro{}, 0, nil)
 			So(err, ShouldBeNil)
 			So(len(newHostsSpawned), ShouldEqual, 0)
 		})
@@ -65,7 +65,7 @@ func TestSpawnHosts(t *testing.T) {
 			for _, id := range distroIds {
 				d := distro.Distro{Id: id, PoolSize: 3, Provider: evergreen.ProviderNameMock}
 
-				newHostsSpawned, err := spawnHosts(ctx, d, newHostsNeeded[id], nil)
+				newHostsSpawned, err := SpawnHosts(ctx, d, newHostsNeeded[id], nil)
 				So(err, ShouldBeNil)
 
 				So(newHostsNeeded[id], ShouldEqual, len(newHostsSpawned))
@@ -228,7 +228,7 @@ func (s *SchedulerSuite) TestSpawnHostsParents() {
 	num := numNewParentsNeeded(parentsParams)
 	s.Equal(1, num)
 
-	newHostsSpawned, err := spawnHosts(ctx, d, 1, pool)
+	newHostsSpawned, err := SpawnHosts(ctx, d, 1, pool)
 	s.NoError(err)
 
 	parents := 0
@@ -281,7 +281,7 @@ func (s *SchedulerSuite) TestSpawnHostsContainers() {
 	s.NoError(host2.Insert())
 	s.NoError(host3.Insert())
 
-	newHostsSpawned, err := spawnHosts(ctx, d, 1, pool)
+	newHostsSpawned, err := SpawnHosts(ctx, d, 1, pool)
 	s.NoError(err)
 
 	currentParents, err := host.FindAllRunningParentsByContainerPool(pool.Id)
@@ -355,7 +355,7 @@ func (s *SchedulerSuite) TestSpawnHostsParentsAndSomeContainers() {
 	num := numNewParentsNeeded(parentsParams)
 	s.Equal(1, num)
 
-	newHostsSpawned, err := spawnHosts(ctx, d, 3, pool)
+	newHostsSpawned, err := SpawnHosts(ctx, d, 3, pool)
 	s.NoError(err)
 	s.Equal(2, len(newHostsSpawned))
 
@@ -400,7 +400,7 @@ func (s *SchedulerSuite) TestSpawnHostsMaximumCapacity() {
 	s.NoError(host1.Insert())
 	s.NoError(host2.Insert())
 
-	newHostsSpawned, err := spawnHosts(ctx, d, 2, pool)
+	newHostsSpawned, err := SpawnHosts(ctx, d, 2, pool)
 	s.NoError(err)
 
 	currentParents, err := host.FindAllRunningParentsByContainerPool(pool.Id)
@@ -605,7 +605,7 @@ func (s *SchedulerSuite) TestSpawnContainersStatic() {
 	s.NoError(host2.Insert())
 	s.NoError(host3.Insert())
 
-	newHostsSpawned, err := spawnHosts(ctx, d, 4, pool)
+	newHostsSpawned, err := SpawnHosts(ctx, d, 4, pool)
 	s.NoError(err)
 
 	currentParents, err := host.FindAllRunningParentsByContainerPool(pool.Id)

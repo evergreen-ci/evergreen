@@ -96,16 +96,19 @@ func TestDBTaskQueuePersister(t *testing.T) {
 			},
 		}
 
+		distroQueueInfo1 := GetDistroQueueInfo(tasks[0:3], MaxDurationPerDistroHost)
+		distroQueueInfo2 := GetDistroQueueInfo(tasks[3:], MaxDurationPerDistroHost)
+
 		So(db.Clear(model.TaskQueuesCollection), ShouldBeNil)
 
 		Convey("saving task queues should place them in the database with the "+
 			"correct ordering of tasks along with the relevant average task "+
 			"completion times", func() {
 			_, err := taskQueuePersister.PersistTaskQueue(distroIds[0],
-				[]task.Task{tasks[0], tasks[1], tasks[2]})
+				[]task.Task{tasks[0], tasks[1], tasks[2]}, distroQueueInfo1)
 			So(err, ShouldBeNil)
 			_, err = taskQueuePersister.PersistTaskQueue(distroIds[1],
-				[]task.Task{tasks[3], tasks[4]})
+				[]task.Task{tasks[3], tasks[4]}, distroQueueInfo2)
 			So(err, ShouldBeNil)
 
 			taskQueue, err := model.LoadTaskQueue(distroIds[0])

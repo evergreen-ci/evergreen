@@ -2,7 +2,6 @@ package scheduler
 
 import (
 	"context"
-	"time"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
@@ -14,13 +13,12 @@ import (
 type HostAllocator func(context.Context, HostAllocatorData) (int, error)
 
 type HostAllocatorData struct {
-	Distro               distro.Distro
-	ExistingHosts        []host.Host
-	FreeHostFraction     float64
-	MaxDurationThreshold time.Duration
-	UsesContainers       bool
-	ContainerPool        *evergreen.ContainerPool
-	DistroQueueInfo      model.DistroQueueInfo
+	Distro           distro.Distro
+	ExistingHosts    []host.Host
+	FreeHostFraction float64
+	UsesContainers   bool
+	ContainerPool    *evergreen.ContainerPool
+	DistroQueueInfo  model.DistroQueueInfo
 }
 
 func GetHostAllocator(name string) HostAllocator {
