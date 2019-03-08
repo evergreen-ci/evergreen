@@ -1,7 +1,7 @@
 mciModule
   .constant('PROCESSED_TYPE', (function() {
-    var acknowledged = 'acknowledged'
-    var hidden = 'hidden'
+    const acknowledged = 'acknowledged';
+    const hidden = 'hidden';
     return {
       ACKNOWLEDGED: acknowledged,
       HIDDEN:       hidden,
@@ -22,3 +22,7 @@ mciModule
     'HAZARD_CHART_WIDTH': 60,
     'HAZARD_CHART_HEIGHT': 22,
   })
+  .constant('OUTLIERS_TYPE', {
+    DETECTED: 'detected',
+    SUSPICIOUS: 'suspicious',
+  });
