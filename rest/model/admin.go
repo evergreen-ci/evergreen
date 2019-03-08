@@ -1046,6 +1046,8 @@ type APIServiceFlags struct {
 	CacheStatsJobDisabled      bool `json:"cache_stats_job_disabled"`
 	CacheStatsEndpointDisabled bool `json:"cache_stats_endpoint_disabled"`
 	CommitQueueDisabled        bool `json:"commit_queue_disabled"`
+	PlannerDisabled            bool `json:"planner_disabled"`
+	HostAllocatorDisabled      bool `json:"host_allocator_disabled"`
 
 	// Notifications Flags
 	EventProcessingDisabled      bool `json:"event_processing_disabled"`
@@ -1253,6 +1255,8 @@ func (as *APIServiceFlags) BuildFromService(h interface{}) error {
 		as.CacheStatsJobDisabled = v.CacheStatsJobDisabled
 		as.CacheStatsEndpointDisabled = v.CacheStatsEndpointDisabled
 		as.CommitQueueDisabled = v.CommitQueueDisabled
+		as.PlannerDisabled = v.PlannerDisabled
+		as.HostAllocatorDisabled = v.HostAllocatorDisabled
 	default:
 		return errors.Errorf("%T is not a supported service flags type", h)
 	}
@@ -1282,6 +1286,8 @@ func (as *APIServiceFlags) ToService() (interface{}, error) {
 		CacheStatsJobDisabled:        as.CacheStatsJobDisabled,
 		CacheStatsEndpointDisabled:   as.CacheStatsEndpointDisabled,
 		CommitQueueDisabled:          as.CommitQueueDisabled,
+		PlannerDisabled:              as.PlannerDisabled,
+		HostAllocatorDisabled:        as.HostAllocatorDisabled,
 	}, nil
 }
 

@@ -69,6 +69,8 @@ var (
 	cacheStatsJobDisabledKey        = bsonutil.MustHaveTag(ServiceFlags{}, "CacheStatsJobDisabled")
 	cacheStatsEndpointDisabledKey   = bsonutil.MustHaveTag(ServiceFlags{}, "CacheStatsEndpointDisabled")
 	commitQueueDisabledKey          = bsonutil.MustHaveTag(ServiceFlags{}, "CommitQueueDisabled")
+	plannerDisabledKey              = bsonutil.MustHaveTag(ServiceFlags{}, "PlannerDisabled")
+	hostAllocatorDisabledKey        = bsonutil.MustHaveTag(ServiceFlags{}, "HostAllocatorDisabled")
 
 	// ContainerPoolsConfig keys
 	poolsKey = bsonutil.MustHaveTag(ContainerPoolsConfig{}, "Pools")

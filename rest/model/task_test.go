@@ -4,6 +4,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/task"
 	. "github.com/smartystreets/goconvey/convey"
 )
@@ -80,6 +81,7 @@ func TestTaskBuildFromService(t *testing.T) {
 						},
 					},
 					DisplayName: "testDisplayName",
+					Requester:   evergreen.RepotrackerVersionRequester,
 				},
 			},
 			{
@@ -97,7 +99,9 @@ func TestTaskBuildFromService(t *testing.T) {
 					FinishTime:    NewTime(time.Time{}),
 					IngestTime:    NewTime(time.Time{}),
 				},
-				st: task.Task{},
+				st: task.Task{
+					Requester: evergreen.RepotrackerVersionRequester,
+				},
 			},
 		}
 		Convey("running BuildFromService(), should produce the equivalent model", func() {
@@ -105,6 +109,32 @@ func TestTaskBuildFromService(t *testing.T) {
 				apiTask := &APITask{}
 				err := apiTask.BuildFromService(&tc.st)
 				So(err, ShouldBeNil)
+				So(true, ShouldEqual, apiTask.Mainline)
+
+				tc.st.Requester = evergreen.PatchVersionRequester
+				apiTask = &APITask{}
+				err = apiTask.BuildFromService(&tc.st)
+				So(err, ShouldBeNil)
+				So(false, ShouldEqual, apiTask.Mainline)
+
+				tc.st.Requester = evergreen.GithubPRRequester
+				apiTask = &APITask{}
+				err = apiTask.BuildFromService(&tc.st)
+				So(err, ShouldBeNil)
+				So(false, ShouldEqual, apiTask.Mainline)
+
+				tc.st.Requester = evergreen.TriggerRequester
+				apiTask = &APITask{}
+				err = apiTask.BuildFromService(&tc.st)
+				So(err, ShouldBeNil)
+				So(false, ShouldEqual, apiTask.Mainline)
+
+				tc.st.Requester = evergreen.AdHocRequester
+				apiTask = &APITask{}
+				err = apiTask.BuildFromService(&tc.st)
+				So(err, ShouldBeNil)
+				So(false, ShouldEqual, apiTask.Mainline)
+
 				err = apiTask.BuildFromService("url")
 				So(err, ShouldBeNil)
 				So(FromAPIString(apiTask.Id), ShouldEqual, FromAPIString(tc.at.Id))

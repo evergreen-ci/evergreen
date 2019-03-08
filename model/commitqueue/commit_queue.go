@@ -1,6 +1,8 @@
 package commitqueue
 
 import (
+	"strings"
+
 	"github.com/pkg/errors"
 )
 
@@ -8,17 +10,26 @@ const (
 	triggerComment = "evergreen merge"
 )
 
+type Module struct {
+	Module string `bson:"module" json:"module"`
+	Issue  string `bson:"issue" json:"issue"`
+}
+type CommitQueueItem struct {
+	Issue   string   `bson:"issue"`
+	Modules []Module `bson:"modules"`
+}
 type CommitQueue struct {
-	ProjectID string   `bson:"_id"`
-	Queue     []string `bson:"queue"`
+	ProjectID  string            `bson:"_id"`
+	Processing bool              `bson:"processing"`
+	Queue      []CommitQueueItem `bson:"queue"`
 }
 
 func InsertQueue(q *CommitQueue) error {
 	return insert(q)
 }
 
-func (q *CommitQueue) Enqueue(item string) error {
-	if !(q.findItem(item) < 0) {
+func (q *CommitQueue) Enqueue(item CommitQueueItem) error {
+	if !(q.findItem(item.Issue) < 0) {
 		return errors.New("item already in queue")
 	}
 
@@ -30,49 +41,58 @@ func (q *CommitQueue) Enqueue(item string) error {
 	return nil
 }
 
-func (q *CommitQueue) IsEmpty() bool {
-	return len(q.Queue) == 0
-}
-
-func (q *CommitQueue) Next() string {
-	if q.IsEmpty() {
-		return ""
+func (q *CommitQueue) Next() *CommitQueueItem {
+	if len(q.Queue) == 0 || q.Processing {
+		return nil
 	}
-	return q.Queue[0]
+
+	return &q.Queue[0]
 }
 
-func (q *CommitQueue) All() []string {
-	return q.Queue
-}
-
-func (q *CommitQueue) Remove(item string) (bool, error) {
-	itemIndex := q.findItem(item)
+func (q *CommitQueue) Remove(issue string) (bool, error) {
+	itemIndex := q.findItem(issue)
 	if itemIndex < 0 {
 		return false, nil
 	}
 
-	if err := remove(q.ProjectID, item); err != nil {
+	if err := remove(q.ProjectID, issue); err != nil {
 		return false, errors.Wrap(err, "can't remove item")
 	}
 
 	q.Queue = append(q.Queue[:itemIndex], q.Queue[itemIndex+1:]...)
+
+	// clearing the front of the queue
+	if itemIndex == 0 {
+		if err := q.SetProcessing(false); err != nil {
+			return false, err
+		}
+	}
 	return true, nil
 }
 
-func (q *CommitQueue) findItem(item string) int {
+func (q *CommitQueue) findItem(issue string) int {
 	for i, queued := range q.Queue {
-		if queued == item {
+		if queued.Issue == issue {
 			return i
 		}
 	}
 	return -1
 }
 
+func (q *CommitQueue) SetProcessing(status bool) error {
+	q.Processing = status
+	if err := setProcessing(q.ProjectID, status); err != nil {
+		return errors.Wrapf(err, "can't set processing on queue id '%s'", q.ProjectID)
+	}
+
+	return nil
+}
+
 func TriggersCommitQueue(commentAction string, comment string) bool {
 	if commentAction == "deleted" {
 		return false
 	}
-	return comment == triggerComment
+	return strings.HasPrefix(comment, triggerComment)
 }
 
 func ClearAllCommitQueues() (int, error) {

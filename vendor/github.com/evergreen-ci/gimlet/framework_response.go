@@ -74,6 +74,7 @@ func NewResponseBuilder() Responder {
 	return &responseBuilder{
 		status: http.StatusOK,
 		format: JSON,
+		data:   []interface{}{},
 	}
 }
 
@@ -110,7 +111,7 @@ func (r *responseBuilder) Pages() *ResponsePages { return r.pages }
 
 func (r *responseBuilder) AddData(d interface{}) error {
 	if d == nil {
-		return errors.New("cannot  data to responder")
+		return errors.New("cannot add nil data to responder")
 	}
 
 	r.data = append(r.data, d)

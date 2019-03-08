@@ -37,6 +37,7 @@ const (
 // but different build variants.
 type taskDrawerItem struct {
 	Revision   string    `json:"revision"`
+	VersionID  string    `json:"version_id"`
 	Message    string    `json:"message"`
 	CreateTime time.Time `json:"create_time"`
 	// small amount of info about each task in this group
@@ -349,41 +350,8 @@ func (uis *UIServer) versionHistoryDrawer(w http.ResponseWriter, r *http.Request
 	}{versionDrawerItems})
 }
 
-// TODO: remove after deploy
+// Handler for serving the data used to populate the task history drawer
 func (uis *UIServer) taskHistoryDrawer(w http.ResponseWriter, r *http.Request) {
-	projCtx := MustHaveProjectContext(r)
-
-	drawerInfo, err := validateDrawerParams(r)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		return
-	}
-
-	if projCtx.Version == nil {
-		http.Error(w, "no version available", http.StatusBadRequest)
-		return
-	}
-	// get the versions in the requested window
-	versions, err := getVersionsInWindow(drawerInfo.window, projCtx.Version.Identifier, drawerInfo.radius, projCtx.Version)
-	if err != nil {
-		uis.LoggedError(w, r, http.StatusInternalServerError, err)
-		return
-	}
-
-	// populate task groups for the versions in the window
-	taskGroups, err := getTaskDrawerItems(projCtx.Task.DisplayName, projCtx.Task.BuildVariant, false, versions)
-	if err != nil {
-		uis.LoggedError(w, r, http.StatusInternalServerError, err)
-		return
-	}
-
-	gimlet.WriteJSON(w, struct {
-		Revisions []taskDrawerItem `json:"revisions"`
-	}{taskGroups})
-}
-
-// Handler for serving the data used to populate the task history drawer. TODO: rename after deploy
-func (uis *UIServer) taskHistoryDrawer2(w http.ResponseWriter, r *http.Request) {
 	projCtx := MustHaveProjectContext(r)
 
 	drawerInfo, err := validateDrawerParams(r)
@@ -538,6 +506,7 @@ func createSiblingTaskGroups(tasks []task.Task, versions []model.Version) []task
 			Revision:   v.Revision,
 			Message:    v.Message,
 			CreateTime: v.CreateTime,
+			VersionID:  v.Id,
 		}
 		groupsByVersion[v.Id] = group
 	}

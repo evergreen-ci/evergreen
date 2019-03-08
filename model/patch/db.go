@@ -186,12 +186,3 @@ func ByGithubPRAndCreatedBefore(t time.Time, owner, repo string, prNumber int) d
 		bsonutil.GetDottedKeyName(githubPatchDataKey, githubPatchPRNumberKey):  prNumber,
 	})
 }
-
-func FindOneByGithubPRNumAndMergeCommitSHA(prNumber int, mergeCommitSHA string) (*Patch, error) {
-	q := db.Query(bson.M{
-		bsonutil.GetDottedKeyName(githubPatchDataKey, githubPatchPRNumberKey):  prNumber,
-		bsonutil.GetDottedKeyName(githubPatchDataKey, githubMergeCommitSHAKey): mergeCommitSHA,
-	})
-
-	return FindOne(q)
-}

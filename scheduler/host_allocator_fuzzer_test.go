@@ -87,13 +87,15 @@ func (s *HostAllocatorFuzzerSuite) randomizeData() {
 
 	// generate a random number of scheduled tasks with random durations
 	numTasks := rand.Intn(s.settings.maxNumTasks) + 1
-	taskQueue := []model.TaskQueueItem{}
+	var expectedDuration time.Duration
 	for i := 0; i < numTasks; i++ {
 		duration := rand.Int63n(int64(s.settings.expectedDurationMax))
-		queueTask := model.TaskQueueItem{
-			ExpectedDuration: time.Duration(duration),
-		}
-		taskQueue = append(taskQueue, queueTask)
+		expectedDuration += time.Duration(duration)
+	}
+
+	distroQueueInfo := model.DistroQueueInfo{
+		Length:           numTasks,
+		ExpectedDuration: expectedDuration,
 	}
 
 	// generate a random number of hosts running tasks
@@ -135,10 +137,10 @@ func (s *HostAllocatorFuzzerSuite) randomizeData() {
 	}
 
 	s.testData = HostAllocatorData{
-		distro:           s.distro,
-		existingHosts:    hosts,
-		freeHostFraction: s.freeHostFraction,
-		taskQueueItems:   taskQueue,
+		Distro:           s.distro,
+		ExistingHosts:    hosts,
+		FreeHostFraction: s.freeHostFraction,
+		DistroQueueInfo:  distroQueueInfo,
 	}
 }
 
@@ -147,9 +149,10 @@ func (s *HostAllocatorFuzzerSuite) TestHeuristics() {
 		s.randomizeData()
 		newHosts, err := s.allocator(s.ctx, s.testData)
 		s.NoError(err)
-		queue := s.testData.taskQueueItems
-		queueSize := len(queue)
-		queueDuration := calcScheduledTasksDuration(queue)
+		distroQueueInfo := s.testData.DistroQueueInfo
+		queueSize := distroQueueInfo.Length
+		queueDuration := distroQueueInfo.ExpectedDuration
+
 		s.True(newHosts >= 0)
 		s.True(newHosts <= queueSize)
 		numFree := float64(newHosts+s.freeHosts) + math.Ceil(s.soonToBeFree*s.freeHostFraction)

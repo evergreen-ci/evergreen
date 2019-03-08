@@ -178,6 +178,10 @@ const (
 	MaxLCTInterval = 5 * time.Minute
 )
 
+func (h *Host) GetTaskGroupString() string {
+	return fmt.Sprintf("%s_%s_%s_%s", h.RunningTaskGroup, h.RunningTaskBuildVariant, h.RunningTaskProject, h.RunningTaskVersion)
+}
+
 // IdleTime returns how long has this host been idle
 func (h *Host) IdleTime() time.Duration {
 
@@ -382,12 +386,12 @@ func (h *Host) SetIPv6Address(ipv6Address string) error {
 
 func (h *Host) MarkAsProvisioned() error {
 	event.LogHostProvisioned(h.Id)
-	h.Status = evergreen.HostRunning
-	h.Provisioned = true
-	h.ProvisionTime = time.Now()
-	return UpdateOne(
+	err := UpdateOne(
 		bson.M{
 			IdKey: h.Id,
+			StatusKey: bson.M{
+				"$nin": evergreen.DownHostStatus,
+			},
 		},
 		bson.M{
 			"$set": bson.M{
@@ -397,6 +401,15 @@ func (h *Host) MarkAsProvisioned() error {
 			},
 		},
 	)
+
+	if err != nil {
+		return err
+	}
+
+	h.Status = evergreen.HostRunning
+	h.Provisioned = true
+	h.ProvisionTime = time.Now()
+	return nil
 }
 
 // ClearRunningAndSetLastTask unsets the running task on the host and updates the last task fields.

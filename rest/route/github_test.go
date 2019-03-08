@@ -76,7 +76,7 @@ func (s *GithubWebhookRouteSuite) SetupTest() {
 	s.Len(s.pushBody, 7603)
 	s.commentBody, err = ioutil.ReadFile(filepath.Join(testutil.GetDirectoryOfFile(), "testdata", "comment_event.json"))
 	s.NoError(err)
-	s.Len(s.commentBody, 11470)
+	s.Len(s.commentBody, 11534)
 
 	var ok bool
 	s.h, ok = s.rm.Factory().(*githubHookApi)
