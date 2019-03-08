@@ -68,6 +68,8 @@ func (c *ServiceFlags) Set() error {
 			cacheStatsJobDisabledKey:        c.CacheStatsJobDisabled,
 			cacheStatsEndpointDisabledKey:   c.CacheStatsEndpointDisabled,
 			commitQueueDisabledKey:          c.CommitQueueDisabled,
+			plannerDisabledKey:              c.PlannerDisabled,
+			hostAllocatorDisabledKey:        c.HostAllocatorDisabled,
 		},
 	})
 	return errors.Wrapf(err, "error updating section %s", c.SectionId())

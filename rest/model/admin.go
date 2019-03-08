@@ -1255,6 +1255,8 @@ func (as *APIServiceFlags) BuildFromService(h interface{}) error {
 		as.CacheStatsJobDisabled = v.CacheStatsJobDisabled
 		as.CacheStatsEndpointDisabled = v.CacheStatsEndpointDisabled
 		as.CommitQueueDisabled = v.CommitQueueDisabled
+		as.PlannerDisabled = v.PlannerDisabled
+		as.HostAllocatorDisabled = v.HostAllocatorDisabled
 	default:
 		return errors.Errorf("%T is not a supported service flags type", h)
 	}
@@ -1284,6 +1286,8 @@ func (as *APIServiceFlags) ToService() (interface{}, error) {
 		CacheStatsJobDisabled:        as.CacheStatsJobDisabled,
 		CacheStatsEndpointDisabled:   as.CacheStatsEndpointDisabled,
 		CommitQueueDisabled:          as.CommitQueueDisabled,
+		PlannerDisabled:              as.PlannerDisabled,
+		HostAllocatorDisabled:        as.HostAllocatorDisabled,
 	}, nil
 }
 
