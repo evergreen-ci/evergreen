@@ -786,9 +786,6 @@ func JIRATaskPayload(subID, project, uiUrl, eventID, testNames string, t *task.T
 	if t.IsPartOfDisplay() {
 		data.TaskDisplayName = t.DisplayTask.DisplayName
 	}
-	if testNames != "" {
-		data.TaskDisplayName += fmt.Sprintf(" (%s)", testNames)
-	}
 
 	builder := jiraBuilder{
 		project:  strings.ToUpper(project),
