@@ -72,9 +72,7 @@ func (v ValidationErrors) SetPriority(_ level.Priority) error {
 	return nil
 }
 
-// Functions used to validate the syntax of a project configuration file. Any
-// validation errors here for remote configuration files are fatal and will
-// cause stubs to be created for the project.
+// Functions used to validate the syntax of a project configuration file.
 var projectSyntaxValidators = []projectValidator{
 	ensureHasNecessaryBVFields,
 	checkDependencyGraph,
@@ -96,8 +94,6 @@ var projectSyntaxValidators = []projectValidator{
 }
 
 // Functions used to validate the semantics of a project configuration file.
-// Validations errors here are not fatal. However, it is recommended that the
-// suggested corrections are applied.
 var projectSemanticValidators = []projectValidator{
 	checkTaskCommands,
 	checkTaskGroups,
