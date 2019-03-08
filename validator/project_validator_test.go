@@ -2091,3 +2091,41 @@ tasks:
 	errs = checkLoggerConfig(project)
 	assert.Len(errs, 0)
 }
+
+func TestCheckProjectConfigurationIsValid(t *testing.T) {
+	assert := assert.New(t)
+	require := require.New(t)
+	require.NoError(db.Clear(distro.Collection))
+	d := distro.Distro{Id: "example_distro"}
+	require.NoError(d.Insert())
+	exampleYml := `
+tasks:
+- name: one
+  commands:
+  - command: shell.exec
+- name: two
+  commands:
+  - command: shell.exec
+buildvariants:
+- name: "bv-1"
+  display_name: "bv_display"
+  run_on: "example_distro"
+  tasks:
+  - name: one
+  - name: two
+- name: "bv-2"
+  display_name: "bv_display"
+  run_on: "example_distro"
+  tasks:
+  - name: one
+  - name: two
+`
+	proj := model.Project{}
+	err := model.LoadProjectInto([]byte(exampleYml), "example_project", &proj)
+	assert.NotNil(proj)
+	assert.NoError(err)
+	errs, err := CheckProjectSyntax(&proj)
+	assert.NoError(err)
+	assert.Len(errs, 1, "one warning was found")
+	assert.NoError(CheckProjectConfigurationIsValid(&proj), "no errors are reported because they are warnings")
+}
