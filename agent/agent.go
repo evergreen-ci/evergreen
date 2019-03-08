@@ -391,6 +391,8 @@ func (a *Agent) finishTask(ctx context.Context, tc *taskContext, status string) 
 		tc.logger.Task().Error("Task completed - CANCELED.")
 		// If we receive a 409, return control to the loop (ask for a new task)
 		return nil, nil
+	default:
+		tc.logger.Task().Errorf("Programmer error: Invalid task status %s", detail.Status)
 	}
 
 	tc.logger.Execution().Infof("Sending final status as: %v", detail.Status)
