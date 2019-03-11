@@ -449,8 +449,8 @@ func RefreshTasksCache(buildId string) error {
 }
 
 // AddTasksToBuild creates the tasks for the given build of a project
-func AddTasksToBuild(b *build.Build, project *Project, v *Version,
-	taskNames []string, displayNames []string, generatedBy string) (*build.Build, error) {
+func AddTasksToBuild(b *build.Build, project *Project, v *Version, taskNames []string,
+	displayNames []string, generatedBy string, tasksInBuild []task.Task) (*build.Build, error) {
 
 	// find the build variant for this project/build
 	buildVariant := project.FindBuildVariant(b.BuildVariant)
@@ -461,7 +461,7 @@ func AddTasksToBuild(b *build.Build, project *Project, v *Version,
 
 	// create the new tasks for the build
 	taskIds := NewTaskIdTable(project, v, "", "")
-	tasks, err := createTasksForBuild(project, buildVariant, b, v, taskIds, taskNames, displayNames, generatedBy, nil)
+	tasks, err := createTasksForBuild(project, buildVariant, b, v, taskIds, taskNames, displayNames, generatedBy, nil, tasksInBuild)
 	if err != nil {
 		return nil, errors.Wrapf(err, "error creating tasks for build '%s'", b.Id)
 	}
@@ -545,7 +545,7 @@ func CreateBuildFromVersion(args BuildCreateArgs) (string, error) {
 	b.BuildNumber = strconv.FormatUint(buildNumber, 10)
 
 	// create all of the necessary tasks for the build
-	tasksForBuild, err := createTasksForBuild(&args.Project, buildVariant, b, &args.Version, args.TaskIDs, args.TaskNames, args.DisplayNames, args.GeneratedBy, args.Aliases)
+	tasksForBuild, err := createTasksForBuild(&args.Project, buildVariant, b, &args.Version, args.TaskIDs, args.TaskNames, args.DisplayNames, args.GeneratedBy, args.Aliases, nil)
 	if err != nil {
 		return "", errors.Wrapf(err, "error creating tasks for build %s", b.Id)
 	}
@@ -611,9 +611,9 @@ func CreateTasksFromGroup(in BuildVariantTaskUnit, proj *Project) []BuildVariant
 // slice of all of the tasks created, as well as an error if any occurs.
 // The slice of tasks will be in the same order as the project's specified tasks
 // appear in the specified build variant.
-func createTasksForBuild(project *Project, buildVariant *BuildVariant, b *build.Build,
-	v *Version, taskIds TaskIdConfig, taskNames []string,
-	displayNames []string, generatedBy string, aliases ProjectAliases) (task.Tasks, error) {
+func createTasksForBuild(project *Project, buildVariant *BuildVariant, b *build.Build, v *Version,
+	taskIds TaskIdConfig, taskNames []string, displayNames []string, generatedBy string,
+	aliases ProjectAliases, tasksInBuild []task.Task) (task.Tasks, error) {
 
 	// the list of tasks we should create.  if tasks are passed in, then
 	// use those, else use the default set
@@ -676,7 +676,7 @@ func createTasksForBuild(project *Project, buildVariant *BuildVariant, b *build.
 
 	// if any tasks already exist in the build, add them to the id table
 	// so they can be used as dependencies
-	for _, task := range b.Tasks {
+	for _, task := range tasksInBuild {
 		execTable.AddId(b.BuildVariant, task.DisplayName, task.Id)
 	}
 
@@ -735,16 +735,19 @@ func createTasksForBuild(project *Project, buildVariant *BuildVariant, b *build.
 			t.DependsOn[0].Variant != AllVariants {
 			// the task depends on all of the other tasks in the build
 			newTask.DependsOn = make([]task.Dependency, 0, len(tasksToCreate)-1)
+			status := evergreen.TaskSucceeded
+			if t.DependsOn[0].Status != "" {
+				status = t.DependsOn[0].Status
+			}
 			for _, dep := range tasksToCreate {
-				status := evergreen.TaskSucceeded
-				if t.DependsOn[0].Status != "" {
-					status = t.DependsOn[0].Status
-				}
 				id := execTable.GetId(b.BuildVariant, dep.Name)
 				if len(id) == 0 || dep.Name == newTask.DisplayName {
 					continue
 				}
 				newTask.DependsOn = append(newTask.DependsOn, task.Dependency{TaskId: id, Status: status})
+			}
+			for _, existingTask := range tasksInBuild {
+				newTask.DependsOn = append(newTask.DependsOn, task.Dependency{TaskId: existingTask.Id, Status: status})
 			}
 		} else {
 			// the task has specific dependencies
@@ -1216,7 +1219,7 @@ func AddNewBuilds(activated bool, v *Version, p *Project, tasks TaskVariantPairs
 // Given a version and set of variant/task pairs, creates any tasks that don't exist yet,
 // within the set of already existing builds.
 func AddNewTasks(activated bool, v *Version, p *Project, pairs TaskVariantPairs, generatedBy string) error {
-	builds, err := build.Find(build.ByIds(v.BuildIds).WithFields(build.IdKey, build.BuildVariantKey, build.CreateTimeKey))
+	builds, err := build.Find(build.ByIds(v.BuildIds).WithFields(build.IdKey, build.BuildVariantKey, build.CreateTimeKey, build.TasksKey))
 	if err != nil {
 		return err
 	}
@@ -1255,7 +1258,7 @@ func AddNewTasks(activated bool, v *Version, p *Project, pairs TaskVariantPairs,
 			continue
 		}
 		// Add the new set of tasks to the build.
-		if _, err = AddTasksToBuild(&b, p, v, tasksToAdd, displayTasksToAdd, generatedBy); err != nil {
+		if _, err = AddTasksToBuild(&b, p, v, tasksToAdd, displayTasksToAdd, generatedBy, tasksInBuild); err != nil {
 			return err
 		}
 	}

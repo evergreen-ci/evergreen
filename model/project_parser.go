@@ -396,7 +396,7 @@ func (pss *parserStringSlice) UnmarshalYAML(unmarshal func(interface{}) error) e
 // LoadProjectInto loads the raw data from the config file into project
 // and sets the project's identifier field to identifier. Tags are evaluateed.
 func LoadProjectInto(data []byte, identifier string, project *Project) error {
-	p, errs := projectFromYAML(data) // ignore warnings, for now (TODO)
+	p, errs := projectFromYAML(data)
 	if len(errs) > 0 {
 		// create a human-readable error list
 		buf := bytes.Buffer{}
