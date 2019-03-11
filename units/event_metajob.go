@@ -3,6 +3,8 @@ package units
 import (
 	"context"
 	"fmt"
+	"runtime"
+	"sync"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
@@ -15,6 +17,7 @@ import (
 	"github.com/mongodb/amboy/registry"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
+	"github.com/mongodb/grip/recovery"
 	"github.com/mongodb/grip/sometimes"
 	"github.com/pkg/errors"
 )
@@ -130,13 +133,13 @@ func tryProcessOneEvent(e *event.EventLogEntry) (n []notification.Notification, 
 
 	v, err := trigger.EvalProjectTriggers(e, trigger.TriggerDownstreamVersion)
 	grip.Info(message.Fields{
-		"job":           eventMetaJobName,
-		"source":        "events-processing",
-		"message":       "project triggers evaluated",
-		"event_id":      e.ID,
-		"event_type":    e.ResourceType,
-		"duration":      time.Now().Sub(startDebug),
-		"stat":          "eval-project-triggers",
+		"job":        eventMetaJobName,
+		"source":     "events-processing",
+		"message":    "project triggers evaluated",
+		"event_id":   e.ID,
+		"event_type": e.ResourceType,
+		"duration":   time.Now().Sub(startDebug),
+		"stat":       "eval-project-triggers",
 	})
 	versions := []string{}
 	for _, version := range v {
@@ -159,28 +162,51 @@ func (j *eventMetaJob) dispatchLoop(ctx context.Context) error {
 	startTime := time.Now()
 	logger := event.NewDBEventLogger(event.AllLogCollection)
 	catcher := grip.NewSimpleCatcher()
-	notifications := make([][]notification.Notification, len(j.events))
 
-	var err error
-	for i := range j.events {
-		notifications[i], err = tryProcessOneEvent(&j.events[i])
-		catcher.Add(err)
-		if err = notification.InsertMany(notifications[i]...); err != nil {
-			grip.Error(message.WrapError(err, message.Fields{
-				"job_id":        j.ID(),
-				"job":           eventMetaJobName,
-				"source":        "events-processing",
-				"notifications": notifications[i],
-				"message":       "can't insert notifications",
-			}))
-			catcher.Add(err)
+	input := make(chan event.EventLogEntry, len(j.events))
+	for _, e := range j.events {
+		select {
+		case input <- e:
+			continue
+		case <-ctx.Done():
+			return errors.New("operation aborted")
 		}
-	}
 
-	for idx := range notifications {
-		catcher.Add(j.dispatch(notifications[idx]))
-		catcher.Add(logger.MarkProcessed(&j.events[idx]))
 	}
+	close(input)
+	wg := &sync.WaitGroup{}
+
+	for i := 0; i < runtime.NumCPU(); i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			defer recovery.LogStackTraceAndContinue("problem during notification dispatch")
+
+			for e := range input {
+				n, err := tryProcessOneEvent(&e)
+				catcher.Add(err)
+				if err != nil {
+					continue
+				}
+
+				if err = notification.InsertMany(n...); err != nil {
+					grip.Error(message.WrapError(err, message.Fields{
+						"job_id":        j.ID(),
+						"job":           eventMetaJobName,
+						"source":        "events-processing",
+						"notifications": n,
+						"message":       "can't insert notifications",
+					}))
+					catcher.Add(err)
+					continue
+				}
+
+				catcher.Add(j.dispatch(n))
+				catcher.Add(logger.MarkProcessed(&e))
+			}
+		}()
+	}
+	wg.Wait()
 
 	endTime := time.Now()
 	totalDuration := endTime.Sub(startTime)
@@ -194,6 +220,8 @@ func (j *eventMetaJob) dispatchLoop(ctx context.Context) error {
 		"end_time":   endTime.String(),
 		"duration":   totalDuration.Seconds(),
 		"n":          len(j.events),
+		"has_errors": catcher.HasErrors(),
+		"num_errors": catcher.Len(),
 	})
 
 	return catcher.Resolve()
