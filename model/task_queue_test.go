@@ -222,6 +222,7 @@ tasks:
 			Version:           "b",
 			Project:           "a",
 			Revision:          "b",
+			DistroId:          "distro_1",
 		},
 		{
 			Id:                "one_1",
@@ -232,15 +233,24 @@ tasks:
 			Version:           "b",
 			Project:           "a",
 			Revision:          "b",
+			DistroId:          "distro_1",
 		},
 	}
 	for _, t := range tasks {
 		require.NoError(t.Insert())
 	}
+	assert.NoError(updateTaskQueue("distro_1", []TaskQueueItem{
+		{
+			Id: tasks[1].Id,
+		},
+	}))
 	assert.NoError(BlockTaskGroupTasks("task_id_1"))
 	found, err := task.FindOneId("one_1")
 	assert.NoError(err)
 	assert.Equal("task_id_1", found.DependsOn[0].TaskId)
+	queue, err := LoadTaskQueue("distro_1")
+	assert.NoError(err)
+	assert.Len(queue.Queue, 0)
 }
 
 func TestBlockTaskGroupTasksFailsWithCircularDependencies(t *testing.T) {
