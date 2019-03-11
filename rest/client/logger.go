@@ -32,8 +32,6 @@ type LoggerProducer interface {
 
 	// Close releases all resources by calling Close on all underlying senders.
 	Close() error
-	// Closed returns true if this logger has been closed, false otherwise.
-	Closed() bool
 }
 
 ////////////////////////////////////////////////////////////////////////
@@ -46,7 +44,7 @@ type logHarness struct {
 	execution grip.Journaler
 	task      grip.Journaler
 	system    grip.Journaler
-	mu        sync.RWMutex
+	mu        sync.Mutex
 	writers   []io.WriteCloser
 	closed    bool
 }
@@ -94,21 +92,14 @@ func (l *logHarness) Close() error {
 	return errors.Wrap(catcher.Resolve(), "problem closing log harness")
 }
 
-func (l *logHarness) Closed() bool {
-	l.mu.RLock()
-	defer l.mu.RUnlock()
-	return l.closed
-}
-
 ////////////////////////////////////////////////////////////////////////
 //
 // Single Channel LoggerProducer
 
 type singleChannelLogHarness struct {
 	logger  grip.Journaler
-	mu      sync.RWMutex
+	mu      sync.Mutex
 	writers []io.WriteCloser
-	closed  bool
 }
 
 // NewSingleChannelLogHarnness returns a log implementation that uses
@@ -153,10 +144,6 @@ func (l *singleChannelLogHarness) SystemWriter(p level.Priority) io.WriteCloser 
 func (l *singleChannelLogHarness) Close() error {
 	l.mu.Lock()
 	defer l.mu.Unlock()
-	if l.closed {
-		return nil
-	}
-	l.closed = true
 
 	catcher := grip.NewBasicCatcher()
 
@@ -167,10 +154,4 @@ func (l *singleChannelLogHarness) Close() error {
 	catcher.Add(l.logger.GetSender().Close())
 
 	return errors.Wrap(catcher.Resolve(), "problem closing log harness")
-}
-
-func (l *singleChannelLogHarness) Closed() bool {
-	l.mu.RLock()
-	defer l.mu.RUnlock()
-	return l.closed
 }
