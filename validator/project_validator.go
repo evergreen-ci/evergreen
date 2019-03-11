@@ -72,9 +72,7 @@ func (v ValidationErrors) SetPriority(_ level.Priority) error {
 	return nil
 }
 
-// Functions used to validate the syntax of a project configuration file. Any
-// validation errors here for remote configuration files are fatal and will
-// cause stubs to be created for the project.
+// Functions used to validate the syntax of a project configuration file.
 var projectSyntaxValidators = []projectValidator{
 	ensureHasNecessaryBVFields,
 	checkDependencyGraph,
@@ -96,8 +94,6 @@ var projectSyntaxValidators = []projectValidator{
 }
 
 // Functions used to validate the semantics of a project configuration file.
-// Validations errors here are not fatal. However, it is recommended that the
-// suggested corrections are applied.
 var projectSemanticValidators = []projectValidator{
 	checkTaskCommands,
 	checkTaskGroups,
@@ -174,16 +170,32 @@ func CheckProjectConfigurationIsValid(project *model.Project) error {
 		}
 	}
 	if len(syntaxErrs) > 0 {
-		return gimlet.ErrorResponse{
-			StatusCode: http.StatusBadRequest,
-			Message:    fmt.Sprintf("project syntax is invalid: %s", ValidationErrorsToString(syntaxErrs)),
+		syntaxErrsAtErrorLevel := ValidationErrors{}
+		for _, err := range syntaxErrs {
+			if err.Level == Error {
+				syntaxErrsAtErrorLevel = append(syntaxErrsAtErrorLevel, err)
+			}
+		}
+		if len(syntaxErrsAtErrorLevel) > 0 {
+			return gimlet.ErrorResponse{
+				StatusCode: http.StatusBadRequest,
+				Message:    fmt.Sprintf("project syntax is invalid: %s", ValidationErrorsToString(syntaxErrs)),
+			}
 		}
 	}
 	semanticErrs := CheckProjectSemantics(project)
 	if len(semanticErrs) > 0 {
-		return gimlet.ErrorResponse{
-			StatusCode: http.StatusBadRequest,
-			Message:    fmt.Sprintf("project semantics is invalid: %s", ValidationErrorsToString(semanticErrs)),
+		semanticErrsAtErrorLevel := ValidationErrors{}
+		for _, err := range semanticErrs {
+			if err.Level == Error {
+				semanticErrsAtErrorLevel = append(semanticErrsAtErrorLevel, err)
+			}
+		}
+		if len(semanticErrsAtErrorLevel) > 0 {
+			return gimlet.ErrorResponse{
+				StatusCode: http.StatusBadRequest,
+				Message:    fmt.Sprintf("project semantics is invalid: %s", ValidationErrorsToString(semanticErrs)),
+			}
 		}
 	}
 	return nil
@@ -1012,7 +1024,7 @@ func checkTaskGroups(p *model.Project) ValidationErrors {
 			errs = append(errs, ValidationError{
 				Message: fmt.Sprintf("task %s in task group %s has a dependency on another task (%s), "+
 					"which can cause task group tasks to be scheduled out of order", t, tg, dependencies),
-				Level: Error,
+				Level: Warning,
 			})
 		}
 	}

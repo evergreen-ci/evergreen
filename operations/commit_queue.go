@@ -95,7 +95,13 @@ func listCommitQueue(ctx context.Context, client client.Communicator, projectID 
 	grip.Infof("Project: %s\n", restModel.FromAPIString(cq.ProjectID))
 	grip.Infof("Queue Length: %d\n", len(cq.Queue))
 	for i, item := range cq.Queue {
-		grip.Infof("\t%d: %s\n", i+1, restModel.FromAPIString(item))
+		grip.Infof("\t%d: %s\n", i+1, restModel.FromAPIString(item.Issue))
+		if len(item.Modules) > 0 {
+			grip.Info("\tModules:\n")
+			for j, module := range item.Modules {
+				grip.Infof("\t\t%d: %s (%s)\n", j+1, restModel.FromAPIString(module.Module), restModel.FromAPIString(module.Issue))
+			}
+		}
 	}
 
 	return nil

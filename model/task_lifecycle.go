@@ -885,7 +885,7 @@ func ClearAndResetStrandedTask(h *host.Host) error {
 		return errors.Wrap(err, "problem marking task failed")
 	}
 
-	if time.Since(t.StartTime) < task.UnschedulableThreshold {
+	if time.Since(t.ActivatedTime) < task.UnschedulableThreshold {
 		if t.IsPartOfDisplay() {
 			return t.DisplayTask.SetResetWhenFinished()
 		}

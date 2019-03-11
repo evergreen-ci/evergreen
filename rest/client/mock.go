@@ -559,8 +559,25 @@ func (c *Mock) CreateVersionFromConfig(ctx context.Context, project, message str
 func (c *Mock) GetCommitQueue(ctx context.Context, projectID string) (*model.APICommitQueue, error) {
 	return &model.APICommitQueue{
 		ProjectID: model.ToAPIString("mci"),
-		Queue: []model.APIString{
-			model.ToAPIString("123"), model.ToAPIString("456"), model.ToAPIString("789"),
+		Queue: []model.APICommitQueueItem{
+			model.APICommitQueueItem{
+				Issue: model.ToAPIString("123"),
+				Modules: []model.APIModule{
+					model.APIModule{
+						Module: model.ToAPIString("test_module"),
+						Issue:  model.ToAPIString("345"),
+					},
+				},
+			},
+			model.APICommitQueueItem{
+				Issue: model.ToAPIString("345"),
+				Modules: []model.APIModule{
+					model.APIModule{
+						Module: model.ToAPIString("test_module2"),
+						Issue:  model.ToAPIString("567"),
+					},
+				},
+			},
 		},
 	}, nil
 }

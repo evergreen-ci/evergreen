@@ -244,7 +244,25 @@ Admin Settings
 														<md-radio-button data-ng-value="true"></md-radio-button>
 													</md-radio-group>
 												</td>
-											</tr>											
+											</tr>
+											<tr>
+												<td>Planner</td>
+												<td colspan="2">
+													<md-radio-group data-ng-model="Settings.service_flags.planner_disabled" layout="row">
+														<md-radio-button data-ng-value="false"></md-radio-button>
+														<md-radio-button data-ng-value="true"></md-radio-button>
+													</md-radio-group>
+												</td>
+											</tr>
+											<tr>
+												<td>Host Allocator</td>
+												<td colspan="2">
+													<md-radio-group data-ng-model="Settings.service_flags.host_allocator_disabled" layout="row">
+													<md-radio-button data-ng-value="false"></md-radio-button>
+													<md-radio-button data-ng-value="true"></md-radio-button>
+												</md-radio-group>
+												</td>
+											</tr>
 											<tr>
 												<td>&nbsp;</td>
 											</tr>
@@ -519,7 +537,7 @@ Admin Settings
 											</md-input-container>
 										</md-card-content>
 									</md-card>
-		
+
 									<md-card flex=50 id="commit_queue">
 											<md-card-title>
 												<md-card-title-text>
