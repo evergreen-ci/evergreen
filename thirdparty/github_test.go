@@ -187,7 +187,7 @@ func (s *githubSuite) TestGetGithubPullRequestDiff() {
 		Author:     "richardsamuels",
 	}
 
-	diff, summaries, err := GetGithubPullRequestDiff(s.ctx, s.token, &p)
+	diff, summaries, err := GetGithubPullRequestDiff(s.ctx, s.token, p)
 	s.NoError(err)
 	s.Len(summaries, 2)
 	s.Len(diff, 1470)
@@ -278,5 +278,5 @@ func TestBuildPatchURL(t *testing.T) {
 		HeadHash:   "something",
 		Author:     "richardsamuels",
 	}
-	assert.Equal("https://api.github.com/repos/evergreen-ci/evergreen/pulls/448.diff", buildPatchURL(&p))
+	assert.Equal("https://api.github.com/repos/evergreen-ci/evergreen/pulls/448.diff", buildPatchURL(p))
 }

@@ -673,7 +673,7 @@ func GetGithubPullRequest(ctx context.Context, token, baseOwner, baseRepo string
 
 // GetGithubDiff downloads a diff from a Github Pull Request diff. This function
 // does not use go-github because this operation is not supported
-func GetGithubPullRequestDiff(ctx context.Context, token string, gh *patch.GithubPatch) (string, []patch.Summary, error) {
+func GetGithubPullRequestDiff(ctx context.Context, token string, gh patch.GithubPatch) (string, []patch.Summary, error) {
 	all := rehttp.RetryAll(rehttp.RetryMaxRetries(NumGithubRetries-1), githubShouldRetryWith404s)
 	client, err := util.GetRetryableOauth2HTTPClient(token, all, util.RehttpDelay(GithubSleepTimeSecs, NumGithubRetries))
 	if err != nil {
@@ -727,7 +727,7 @@ func doGithubRequest(client *http.Client, req *http.Request, accept string) (str
 
 // buildPatchURL creates a URL to enable downloading patch files through the
 // Github API
-func buildPatchURL(gp *patch.GithubPatch) string {
+func buildPatchURL(gp patch.GithubPatch) string {
 	url := &url.URL{
 		Scheme: "https",
 		Host:   "api.github.com",

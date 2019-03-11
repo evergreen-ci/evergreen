@@ -4,8 +4,10 @@ import (
 	"context"
 	"fmt"
 	"strconv"
+	"strings"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/commitqueue"
 	"github.com/evergreen-ci/evergreen/model/event"
@@ -151,7 +153,7 @@ func (j *commitQueueJob) Run(ctx context.Context) {
 		}
 		return
 	}
-	patchDoc.Patches = modulePatches
+	patchDoc.Patches = append(patchDoc.Patches, modulePatches...)
 
 	v, err := makeVersion(ctx, githubToken, projectConfig, patchDoc)
 	if err != nil {
@@ -253,15 +255,12 @@ func getModules(ctx context.Context, githubToken string, nextItem *commitqueue.C
 			return nil, nil, true, errors.Wrapf(err, "module '%s' misconfigured (malformed URL)", mod.Module)
 		}
 
-		githash := ""
-		if mod.Issue != "" {
-			pr, dequeue, err := checkPR(ctx, githubToken, mod.Issue, owner, repo)
-			if err != nil {
-				return nil, nil, dequeue, errors.Wrap(err, "PR not valid for merge")
-			}
-			modulePRs = append(modulePRs, pr)
-			githash = pr.GetMergeCommitSHA()
+		pr, dequeue, err := checkPR(ctx, githubToken, mod.Issue, owner, repo)
+		if err != nil {
+			return nil, nil, dequeue, errors.Wrap(err, "PR not valid for merge")
 		}
+		modulePRs = append(modulePRs, pr)
+		githash := pr.GetMergeCommitSHA()
 
 		modulePatches = append(modulePatches, patch.ModulePatch{
 			ModuleName: mod.Module,
@@ -284,10 +283,10 @@ func validatePR(pr *github.PullRequest) error {
 	if pr.GetMergeCommitSHA() == "" {
 		catcher.Add(errors.New("no merge commit SHA"))
 	}
-	if pr.GetUser() == nil || pr.GetUser().GetID() == 0 {
+	if pr.GetUser() == nil || pr.GetUser().GetLogin() == "" {
 		catcher.Add(errors.New("no valid user"))
 	}
-	if pr.GetBase() == nil || pr.GetBase().GetSHA() == "" {
+	if pr.GetBase() == nil || pr.GetBase().GetSHA() == "" || pr.GetBase().GetRef() == "" {
 		catcher.Add(errors.New("no valid base SHA"))
 	}
 	if pr.GetBase() == nil || pr.GetBase().GetRepo() == nil || pr.GetBase().GetRepo().GetName() == "" || pr.GetBase().GetRepo().GetFullName() == "" {
@@ -321,6 +320,28 @@ func makeMergePatch(ctx context.Context, pr *github.PullRequest, githubToken, pr
 		return nil, nil, errors.Wrap(err, "can't make patch")
 	}
 
+	// diff to be displayed in the UI
+	patchContent, summaries, err := thirdparty.GetGithubPullRequestDiff(ctx, githubToken, patchDoc.GithubPatchData)
+	if err != nil {
+		return nil, nil, errors.Wrap(err, "can't get diff")
+	}
+
+	patchFileID := fmt.Sprintf("%s_%s", patchDoc.Id.Hex(), patchDoc.Githash)
+	if err = db.WriteGridFile(patch.GridFSPrefix, patchFileID, strings.NewReader(patchContent)); err != nil {
+		return nil, nil, errors.Wrap(err, "failed to write patch file to db")
+	}
+
+	// empty string for name of the main patch
+	patchDoc.Patches = append(patchDoc.Patches, patch.ModulePatch{
+		ModuleName: "",
+		Githash:    patchDoc.Githash,
+		PatchSet: patch.PatchSet{
+			PatchFileId: patchFileID,
+			Summary:     summaries,
+		},
+	})
+
+	// fetch the latest config file
 	config, err := validator.GetPatchedProject(ctx, patchDoc, githubToken)
 	if err != nil {
 		return nil, nil, errors.Wrap(err, "can't get remote config file")
