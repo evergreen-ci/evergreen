@@ -295,6 +295,7 @@ func (a *Agent) runTask(ctx context.Context, cancel context.CancelFunc, tc *task
 		"task_secret": tc.task.Secret,
 	})
 
+	// Defers are LIFO. We cancel all agent task threads, then any procs started by the agent, then remove the task directory.
 	defer a.killProcs(tc, false)
 	defer cancel()
 
@@ -394,8 +395,6 @@ func (a *Agent) finishTask(ctx context.Context, tc *taskContext, status string) 
 		tc.logger.Task().Errorf("Programmer error: Invalid task status %s", detail.Status)
 	}
 
-	a.killProcs(tc, false)
-
 	tc.logger.Execution().Infof("Sending final status as: %v", detail.Status)
 	if err = tc.logger.Close(); err != nil {
 		grip.Errorf("Error closing logger: %v", err)
@@ -472,23 +471,15 @@ func (a *Agent) runPostGroupCommands(ctx context.Context, tc *taskContext) {
 
 func (a *Agent) killProcs(tc *taskContext, ignoreTaskGroupCheck bool) {
 	if a.shouldKill(tc, ignoreTaskGroupCheck) {
+		grip.Infof("cleaning up processes for task: %s", tc.task.ID)
+
 		if tc.task.ID != "" {
-			if !tc.logger.Closed() {
-				tc.logger.Task().Infof("cleaning up processes for task: %s", tc.task.ID)
-			} else {
-				grip.Infof("cleaning up processes for task: %s", tc.task.ID)
-			}
 			if err := subprocess.KillSpawnedProcs(tc.task.ID, tc.logger.Task()); err != nil {
 				msg := fmt.Sprintf("Error cleaning up spawned processes (agent-exit): %v", err)
 				grip.Critical(msg)
 			}
 		}
-
-		if !tc.logger.Closed() {
-			tc.logger.Task().Infof("cleaned up processes for task: %s", tc.task.ID)
-		} else {
-			grip.Infof("cleaned up processes for task: %s", tc.task.ID)
-		}
+		grip.Infof("processes cleaned up for task %s", tc.task.ID)
 	}
 }
 
