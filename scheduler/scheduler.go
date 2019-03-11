@@ -47,41 +47,6 @@ type containersOnParents struct {
 	numContainers int
 }
 
-// func (s *distroScheduler) scheduleDistro(distroID string, runnableTasksForDistro []task.Task, versions map[string]model.Version) ([]task.Task, error) {
-// 	grip.Info(message.Fields{
-// 		"runner":    RunnerName,
-// 		"distro":    distroID,
-// 		"num_tasks": len(runnableTasksForDistro),
-// 		"instance":  s.runtimeID,
-// 	})
-//
-// 	prioritizedTasks, err := s.PrioritizeTasks(distroID, runnableTasksForDistro, versions)
-// 	if err != nil {
-// 		return nil, errors.Wrap(err, "Error prioritizing tasks")
-// 	}
-//
-// 	// persist the queue of tasks
-// 	grip.Debug(message.Fields{
-// 		"runner":    RunnerName,
-// 		"distro":    distroID,
-// 		"instance":  s.runtimeID,
-// 		"operation": "saving task queue for distro",
-// 	})
-//
-// 	_, err = s.PersistTaskQueue(distroID, prioritizedTasks, )
-// 	if err != nil {
-// 		return nil, errors.Wrapf(err, "Error processing distro %s saving task queue", distroID)
-// 	}
-//
-// 	// track scheduled time for prioritized tasks
-// 	err = task.SetTasksScheduledTime(prioritizedTasks, time.Now())
-// 	if err != nil {
-// 		return nil, errors.Wrapf(err, "Error processing distro %s setting scheduled time for prioritized tasks", distroID)
-// 	}
-//
-// 	return prioritizedTasks, nil
-// }
-
 func (s *distroScheduler) scheduleDistro(distroID string, runnableTasksForDistro []task.Task, versions map[string]model.Version, maxDurationThreshold time.Duration) (
 	[]task.Task, error) {
 
@@ -157,7 +122,7 @@ func GetDistroQueueInfo(tasks []task.Task, maxDurationThreshold time.Duration) m
 			distroCountOverThreshold++
 		}
 		taskGroupInfosMap[name] = taskGroupInfo
-		tasks[i] = task // Is this bad practice?
+		tasks[i] = task // Is this bad practice? (see task_queue_persister.go)
 	}
 
 	taskGroupInfos := make([]model.TaskGroupInfo, 0, len(taskGroupInfosMap))

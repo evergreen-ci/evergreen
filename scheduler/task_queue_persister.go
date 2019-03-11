@@ -30,19 +30,18 @@ func (self *DBTaskQueuePersister) PersistTaskQueue(distro string, tasks []task.T
 			Requester:           t.Requester,
 			Revision:            t.Revision,
 			Project:             t.Project,
-			// ExpectedDuration:    t.FetchExpectedDuration(),   // ?
-			ExpectedDuration: t.ExpectedDuration,
-			Priority:         t.Priority,
-			Group:            t.TaskGroup,
-			GroupMaxHosts:    t.TaskGroupMaxHosts,
-			Version:          t.Version,
+			ExpectedDuration:    t.ExpectedDuration,
+			Priority:            t.Priority,
+			Group:               t.TaskGroup,
+			GroupMaxHosts:       t.TaskGroupMaxHosts,
+			Version:             t.Version,
+			// ExpectedDuration:    t.FetchExpectedDuration(),   // Do we need to do this again?
 		})
 
 	}
 
 	queue := model.NewTaskQueue(distro, taskQueue, distroQueueInfo)
 	err := queue.Save() // queue.Save() will only save the first 500 items
-	// If we care to, we could check for a mis-match by comparing len(TaskQueue.Queue) to distroQueueInfo.Length
 
 	return taskQueue, errors.WithStack(err)
 }

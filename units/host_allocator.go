@@ -75,8 +75,6 @@ func (j *hostAllocatorJob) Run(ctx context.Context) {
 		return
 	}
 
-	// I need to add and merge the flag-related code first
-
 	// flags, err := evergreen.GetServiceFlags()
 	// if err != nil {
 	// 	j.AddError(errors.Wrapf(err, "can't get degraded mode flags"))
@@ -124,11 +122,11 @@ func (j *hostAllocatorJob) Run(ctx context.Context) {
 		return
 	}
 
-	//////////////////////////////
-	// The "host-allocation" phase
-	//////////////////////////////
-	hostAllocationBegins := time.Now()
+	////////////////////////
+	// host-allocation phase
+	////////////////////////
 
+	hostAllocationBegins := time.Now()
 	hostAllocator := scheduler.GetHostAllocator(config.Scheduler.HostAllocator)
 	hostAllocatorData := scheduler.HostAllocatorData{
 		Distro:           distro,
@@ -155,11 +153,11 @@ func (j *hostAllocatorJob) Run(ctx context.Context) {
 		"duration_secs": time.Since(hostAllocationBegins).Seconds(),
 	})
 
-	////////////////////////////
-	// The "host-spawning" phase
-	////////////////////////////
-	hostSpawningBegins := time.Now()
+	//////////////////////
+	// host-spawning phase
+	//////////////////////
 
+	hostSpawningBegins := time.Now()
 	hostsSpawned, err := scheduler.SpawnHosts(ctx, distro, nHosts, containerPool)
 	if err != nil {
 		j.AddError(errors.Wrap(err, "Error spawning new hosts"))
@@ -206,6 +204,6 @@ func (j *hostAllocatorJob) Run(ctx context.Context) {
 		"predicted_makespan": makespan.String(),
 		"instance":           j.ID(),
 		// "runner":             scheduler.RunnerName,
-		//"scheduler_runtime_secs": time.Since(startAt).Seconds(),   // We cannot determine this?
+		// "scheduler_runtime_secs": time.Since(startAt).Seconds(),   // We cannot determine this?
 	})
 }
