@@ -19,6 +19,7 @@ import (
 
 const (
 	TaskQueuesCollection = "task_queues"
+	useModernDequeueOp   = false
 )
 
 type TaskGroupInfo struct {
@@ -219,6 +220,7 @@ func BlockTaskGroupTasks(taskID string) error {
 	}
 	for _, taskToBlock := range tasksToBlock {
 		catcher.Add(taskToBlock.AddDependency(task.Dependency{TaskId: taskID, Status: evergreen.TaskSucceeded}))
+		catcher.Add(dequeue(taskToBlock.Id, taskToBlock.DistroId))
 	}
 	return catcher.Resolve()
 }
@@ -504,12 +506,7 @@ outer:
 	}
 
 	var err error
-	if self.useModerDequeueOp {
-		err = self.dequeueUpdate(taskId)
-	} else {
-		err = self.legacyDequeueUpdate(taskId)
-	}
-
+	err = dequeue(taskId, self.Distro)
 	if errors.Cause(err) == mgo.ErrNotFound {
 		return nil
 	}
@@ -517,13 +514,21 @@ outer:
 	return errors.WithStack(err)
 }
 
-func (self *TaskQueue) dequeueUpdate(taskId string) error {
+func dequeue(taskId, distroId string) error {
+	if useModernDequeueOp {
+		return dequeueUpdate(taskId, distroId)
+	} else {
+		return legacyDequeueUpdate(taskId, distroId)
+	}
+}
+
+func dequeueUpdate(taskId, distroId string) error {
 	itemKey := bsonutil.GetDottedKeyName(taskQueueQueueKey, taskQueueItemIdKey)
 
 	return errors.WithStack(db.Update(
 		TaskQueuesCollection,
 		bson.M{
-			taskQueueDistroKey: self.Distro,
+			taskQueueDistroKey: distroId,
 			itemKey:            taskId,
 		},
 		bson.M{
@@ -534,11 +539,11 @@ func (self *TaskQueue) dequeueUpdate(taskId string) error {
 	))
 }
 
-func (self *TaskQueue) legacyDequeueUpdate(taskId string) error {
+func legacyDequeueUpdate(taskId, distroId string) error {
 	return errors.WithStack(db.Update(
 		TaskQueuesCollection,
 		bson.M{
-			taskQueueDistroKey: self.Distro,
+			taskQueueDistroKey: distroId,
 		},
 		bson.M{
 			"$pull": bson.M{
