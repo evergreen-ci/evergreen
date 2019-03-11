@@ -114,8 +114,8 @@ type uiExecTask struct {
 
 type uiTestResult struct {
 	TestResult task.TestResult `json:"test_result"`
-	TaskId     *string         `json:"task_id"`
-	TaskName   *string         `json:"task_name"`
+	TaskId     string          `json:"task_id"`
+	TaskName   string          `json:"task_name"`
 }
 
 func (uis *UIServer) taskPage(w http.ResponseWriter, r *http.Request) {
@@ -310,8 +310,14 @@ func (uis *UIServer) taskPage(w http.ResponseWriter, r *http.Request) {
 
 	if uiTask.DisplayOnly {
 		uiTask.TestResults = []uiTestResult{}
+		execTasks := []task.Task{}
 		for _, t := range projCtx.Task.ExecutionTasks {
-			et, err := task.FindOneIdOldOrNew(t, execution)
+			var et *task.Task
+			if archived {
+				et, err = task.FindOneOldNoMergeByIdAndExecution(t, execution)
+			} else {
+				et, err = task.FindOneId(t)
+			}
 			if err != nil {
 				uis.LoggedError(w, r, http.StatusInternalServerError, err)
 				return
@@ -324,14 +330,22 @@ func (uis *UIServer) taskPage(w http.ResponseWriter, r *http.Request) {
 				})
 				continue
 			}
+			execTasks = append(execTasks, *et)
+		}
+		execTasks, err = task.MergeTestResultsBulk(execTasks, nil)
+		if err != nil {
+			uis.LoggedError(w, r, http.StatusInternalServerError, err)
+			return
+		}
+		for _, execTask := range execTasks {
 			uiTask.ExecutionTasks = append(uiTask.ExecutionTasks, uiExecTask{
-				Id:        et.Id,
-				Name:      et.DisplayName,
-				TimeTaken: et.TimeTaken,
-				Status:    et.ResultStatus(),
+				Id:        execTask.Id,
+				Name:      execTask.DisplayName,
+				TimeTaken: execTask.TimeTaken,
+				Status:    execTask.ResultStatus(),
 			})
-			for _, tr := range et.LocalTestResults {
-				uiTask.TestResults = append(uiTask.TestResults, uiTestResult{TestResult: tr, TaskId: &et.Id, TaskName: &et.DisplayName})
+			for _, tr := range execTask.LocalTestResults {
+				uiTask.TestResults = append(uiTask.TestResults, uiTestResult{TestResult: tr, TaskId: execTask.Id, TaskName: execTask.DisplayName})
 			}
 		}
 	} else {
