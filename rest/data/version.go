@@ -155,15 +155,14 @@ func (vc *DBVersionConnector) GetVersionsAndVariants(skip, numVersionElements in
 			for _, b := range buildsInVersion {
 				displayName := buildVariantMappings[b.BuildVariant]
 				if displayName == "" {
-					displayName = b.BuildVariant + " (removed)"
+					displayName = b.BuildVariant
 				}
 				buildVariants = append(buildVariants, displayName)
 
 				buildVariant := buildVariantMappings[b.BuildVariant]
 
 				if buildVariant == "" {
-					buildVariant = b.BuildVariant +
-						" (removed)"
+					buildVariant = b.BuildVariant
 				}
 
 				if _, ok := buildList[b.BuildVariant]; !ok {
