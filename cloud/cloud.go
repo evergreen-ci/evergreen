@@ -64,7 +64,7 @@ type ContainerManager interface {
 	// CalculateImageSpaceUsage returns the total space taken up by docker images on a specified host
 	CalculateImageSpaceUsage(ctx context.Context, h *host.Host) (int64, error)
 	// BuildContainerImage downloads and builds a container image onto parent specified by URL
-	BuildContainerImage(ctx context.Context, parent *host.Host, settings ContainerImageSettings) error
+	BuildContainerImage(ctx context.Context, parent *host.Host, options host.DockerOptions) error
 }
 
 // CostCalculator is an interface for cloud providers that can estimate what a span of time on a

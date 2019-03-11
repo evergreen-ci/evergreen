@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"path"
 	"strconv"
 	"time"
 
@@ -177,12 +178,20 @@ func makeDockerIntentHost(taskID, userID string, createHost apimodels.CreateHost
 		return nil, errors.Wrap(err, "error making host options for docker")
 	}
 
+	method := distro.DockerImageBuildTypeImport
+	// not a URL
+	if path.Base(createHost.Image) == createHost.Image {
+		method = distro.DockerImageBuildTypePull
+	}
+
 	options.DockerOptions = host.DockerOptions{
 		Image:            createHost.Image,
 		Command:          createHost.Command,
 		RegistryName:     createHost.Registry.Name,
 		RegistryUsername: createHost.Registry.Username,
 		RegistryPassword: createHost.Registry.Password,
+		Method:           method,
+		SkipImageBuild:   true,
 	}
 
 	return cloud.NewIntent(d, d.GenerateName(), d.Provider, *options), nil
@@ -261,6 +270,10 @@ func makeEC2IntentHost(taskID, userID, publicKey string, createHost apimodels.Cr
 	if err != nil {
 		return nil, errors.Wrap(err, "error making host options for EC2")
 	}
+
+	// TODO: EVG-5895 will assign the parent ID
+	options.ParentID = "placeholder"
+
 	return cloud.NewIntent(d, d.GenerateName(), provider, *options), nil
 }
 

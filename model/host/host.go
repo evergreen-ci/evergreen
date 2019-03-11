@@ -121,18 +121,22 @@ type Host struct {
 
 type HostGroup []Host
 
-// DockerOptions contains options for starting a container from host create
+// DockerOptions contains options for starting a container
 type DockerOptions struct {
 	// Optional parameters to define a registry name and authentication
 	RegistryName     string `bson:"registry_name,omitempty" json:"registry_name,omitempty"`
-	RegistryUsername string `bson:"registry_username,omitempty" json:"registry_username,omitempty"`
-	RegistryPassword string `bson:"registry_password,omitempty" json:"registry_password,omitempty"`
+	RegistryUsername string `mapstructure:"docker_registry_user" bson:"docker_registry_user,omitempty" json:"docker_registry_user,omitempty"`
+	RegistryPassword string `mapstructure:"docker_registry_pw" bson:"docker_registry_pw,omitempty" json:"docker_registry_pw,omitempty"`
 
 	// Image is required and specifies the image for the container.
 	// This can be a URL or an image base, to be combined with a registry.
-	Image string `bson:"image,omitempty" json:"image,omitempty"`
+	Image string `mapstructure:"image_url" bson:"image_url,omitempty" json:"image_url,omitempty"`
+	// Method is either "pull" or "import" and defines how to retrieve the image.
+	Method string `mapstructure:"build_type" bson:"build_type,omitempty" json:"build_type,omitempty"`
 	// Command is required and is the command to run on the docker.
 	Command string `bson:"command,omitempty" json:"command,omitempty"`
+	// If the container is created from host create, we want to skip building the image with agent
+	SkipImageBuild bool `bson:"skip_build,omitempty" json:"skip_build,omitempty"`
 }
 
 // ProvisionOptions is struct containing options about how a new host should be set up.

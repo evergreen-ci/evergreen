@@ -33,9 +33,9 @@ import (
 // The DockerClient interface wraps the Docker dockerClient interaction.
 type DockerClient interface {
 	Init(string) error
-	EnsureImageDownloaded(context.Context, *host.Host, ContainerImageSettings) (string, error)
+	EnsureImageDownloaded(context.Context, *host.Host, host.DockerOptions) (string, error)
 	BuildImageWithAgent(context.Context, *host.Host, string) (string, error)
-	CreateContainer(context.Context, *host.Host, *host.Host, *dockerSettings) error
+	CreateContainer(context.Context, *host.Host, *host.Host) error
 	GetContainer(context.Context, *host.Host, string) (*types.ContainerJSON, error)
 	GetDockerLogs(context.Context, *host.Host, string, types.ContainerLogsOptions) (*LogReader, error)
 	ListContainers(context.Context, *host.Host) ([]types.Container, error)
@@ -136,7 +136,7 @@ func (c *dockerClientImpl) Init(apiVersion string) error {
 
 // EnsureImageDownloaded checks if the image in s3 specified by the URL already exists,
 // and if not, creates a new image from the remote tarball.
-func (c *dockerClientImpl) EnsureImageDownloaded(ctx context.Context, h *host.Host, settings ContainerImageSettings) (string, error) {
+func (c *dockerClientImpl) EnsureImageDownloaded(ctx context.Context, h *host.Host, options host.DockerOptions) (string, error) {
 	start := time.Now()
 	dockerClient, err := c.generateClient(h)
 	if err != nil {
@@ -144,7 +144,7 @@ func (c *dockerClientImpl) EnsureImageDownloaded(ctx context.Context, h *host.Ho
 	}
 
 	// Extract image name from url
-	baseName := path.Base(settings.URL)
+	baseName := path.Base(options.Image)
 	imageName := strings.TrimSuffix(baseName, filepath.Ext(baseName))
 
 	// Check if image already exists on host
@@ -158,16 +158,20 @@ func (c *dockerClientImpl) EnsureImageDownloaded(ctx context.Context, h *host.Ho
 		// Image already exists
 		return imageName, nil
 	} else if strings.Contains(err.Error(), "No such image") {
-		if settings.Method == distro.DockerImageBuildTypeImport {
-			err = c.importImage(ctx, h, imageName, settings.URL)
+		if options.Method == distro.DockerImageBuildTypeImport {
+			err = c.importImage(ctx, h, imageName, options.Image)
 			grip.Info(message.Fields{
 				"operation":     "EnsureImageDownloaded",
 				"details":       "import image",
 				"duration_secs": time.Since(start).Seconds(),
 			})
 			return imageName, errors.Wrap(err, "error importing image")
-		} else if settings.Method == distro.DockerImageBuildTypePull {
-			err = c.pullImage(ctx, h, settings.URL, settings.RegistryUser, settings.RegistryPassword)
+		} else if options.Method == distro.DockerImageBuildTypePull {
+			image := options.Image
+			if options.RegistryName != "" {
+				image = fmt.Sprintf("%s:%d/%s", options.RegistryName, h.ContainerPoolSettings.Port, imageName)
+			}
+			err = c.pullImage(ctx, h, image, options.RegistryUsername, options.RegistryPassword)
 			grip.Info(message.Fields{
 				"operation":     "EnsureImageDownloaded",
 				"details":       "pull image",
@@ -175,7 +179,7 @@ func (c *dockerClientImpl) EnsureImageDownloaded(ctx context.Context, h *host.Ho
 			})
 			return imageName, errors.Wrap(err, "error pulling image")
 		}
-		return imageName, errors.Errorf("unrecognized image build method: %s", settings.Method)
+		return imageName, errors.Errorf("unrecognized image build method: %s", options.Method)
 	}
 	return "", errors.Wrapf(err, "Error inspecting image %s", imageName)
 }
@@ -316,39 +320,40 @@ func (c *dockerClientImpl) BuildImageWithAgent(ctx context.Context, h *host.Host
 }
 
 // CreateContainer creates a new Docker container with Evergreen agent.
-func (c *dockerClientImpl) CreateContainer(ctx context.Context, parentHost, containerHost *host.Host, settings *dockerSettings) error {
+func (c *dockerClientImpl) CreateContainer(ctx context.Context, parentHost, containerHost *host.Host) error {
 	dockerClient, err := c.generateClient(parentHost)
 	if err != nil {
 		return errors.Wrap(err, "Failed to generate docker client")
 	}
 
 	// Extract image name from url
-	baseName := path.Base(settings.ImageURL)
+	baseName := path.Base(containerHost.DockerOptions.Image)
 	provisionedImage := fmt.Sprintf(provisionedImageTag, strings.TrimSuffix(baseName, filepath.Ext(baseName)))
 
-	// Build path to Evergreen executable.
-	pathToExecutable := filepath.Join("/", "evergreen")
-	if parentHost.Distro.IsWindows() {
-		pathToExecutable += ".exe"
-	}
-
-	// Generate the host secret for container if none exists.
-	if containerHost.Secret == "" {
-		if err = containerHost.CreateSecret(); err != nil {
-			return errors.Wrapf(err, "creating secret for %s", containerHost.Id)
+	agentCmdParts := []string{containerHost.DockerOptions.Command}
+	if containerHost.DockerOptions.Command == "" {
+		// Generate the host secret for container if none exists.
+		if containerHost.Secret == "" {
+			if err = containerHost.CreateSecret(); err != nil {
+				return errors.Wrapf(err, "creating secret for %s", containerHost.Id)
+			}
 		}
-	}
-
-	// Build Evergreen agent command.
-	agentCmdParts := []string{
-		pathToExecutable,
-		"agent",
-		fmt.Sprintf("--api_server=%s", c.evergreenSettings.ApiUrl),
-		fmt.Sprintf("--host_id=%s", containerHost.Id),
-		fmt.Sprintf("--host_secret=%s", containerHost.Secret),
-		fmt.Sprintf("--log_prefix=%s", filepath.Join(containerHost.Distro.WorkDir, "agent")),
-		fmt.Sprintf("--working_directory=%s", containerHost.Distro.WorkDir),
-		"--cleanup",
+		// Build path to Evergreen executable.
+		pathToExecutable := filepath.Join("/", "evergreen")
+		if parentHost.Distro.IsWindows() {
+			pathToExecutable += ".exe"
+		}
+		// Build Evergreen agent command.
+		agentCmdParts = []string{
+			pathToExecutable,
+			"agent",
+			fmt.Sprintf("--api_server=%s", c.evergreenSettings.ApiUrl),
+			fmt.Sprintf("--host_id=%s", containerHost.Id),
+			fmt.Sprintf("--host_secret=%s", containerHost.Secret),
+			fmt.Sprintf("--log_prefix=%s", filepath.Join(containerHost.Distro.WorkDir, "agent")),
+			fmt.Sprintf("--working_directory=%s", containerHost.Distro.WorkDir),
+			"--cleanup",
+		}
 	}
 
 	// Populate container settings with command and new image.
