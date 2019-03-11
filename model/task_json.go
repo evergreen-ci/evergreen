@@ -108,6 +108,9 @@ func GetTaskJSONTags(taskId string) ([]TagContainer, error) {
 	if err != nil {
 		return nil, err
 	}
+	if t == nil {
+		return nil, errors.Errorf("cannot find task %s", taskId)
+	}
 	tags := []TagContainer{}
 	err = db.Aggregate(TaskJSONCollection, []bson.M{
 		{"$match": bson.M{
