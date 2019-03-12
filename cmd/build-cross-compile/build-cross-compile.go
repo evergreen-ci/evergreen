@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"runtime"
 	"strings"
 )
@@ -82,6 +83,7 @@ func main() {
 		"PATH=" + strings.Replace(os.Getenv("PATH"), `\`, `\\`, -1),
 		"GOPATH=" + strings.Replace(os.Getenv("GOPATH"), `\`, `\\`, -1),
 		"GOROOT=" + runtime.GOROOT(),
+		"GOCACHE=" + filepath.Join(directory, ".cache"),
 	}
 
 	if race && supportsRaceDetector(arch, system) {
