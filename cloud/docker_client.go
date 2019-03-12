@@ -354,6 +354,7 @@ func (c *dockerClientImpl) CreateContainer(ctx context.Context, parentHost, cont
 			fmt.Sprintf("--working_directory=%s", containerHost.Distro.WorkDir),
 			"--cleanup",
 		}
+		containerHost.DockerOptions.Command = strings.Join(agentCmdParts, "\n")
 	}
 
 	// Populate container settings with command and new image.
@@ -370,11 +371,13 @@ func (c *dockerClientImpl) CreateContainer(ctx context.Context, parentHost, cont
 	})
 
 	// Build container
-	if _, err := dockerClient.ContainerCreate(ctx, containerConf, hostConf, networkConf, containerHost.Id); err != nil {
+	info, err := dockerClient.ContainerCreate(ctx, containerConf, hostConf, networkConf, containerHost.Id)
+	if err != nil {
 		err = errors.Wrapf(err, "Docker create API call failed for container '%s'", containerHost.Id)
 		grip.Error(err)
 		return err
 	}
+	containerHost.ContainerId = info.ID
 	grip.Info(msg)
 
 	return nil
