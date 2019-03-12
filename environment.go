@@ -671,7 +671,7 @@ func getClientConfig(baseURL string) (*ClientConfig, error) {
 			return err
 		}
 
-		if info.IsDir() || info.Name() == "version" {
+		if info.IsDir() || !strings.Contains(info.Name(), "evergreen") {
 			return nil
 		}
 
