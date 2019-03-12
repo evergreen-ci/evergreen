@@ -157,8 +157,9 @@ func tryProcessOneEvent(e *event.EventLogEntry) (n []notification.Notification, 
 }
 
 func (j *eventMetaJob) dispatchLoop(ctx context.Context) error {
-	// TODO: if this is a perf problem, it could be multithreaded. For now,
-	// we just log time
+	// TODO: in the future we may want to split up this job so
+	// that the parallelism is pushed up to amboy rather than down
+	// into this job.
 	startTime := time.Now()
 	logger := event.NewDBEventLogger(event.AllLogCollection)
 	catcher := grip.NewSimpleCatcher()
@@ -171,11 +172,10 @@ func (j *eventMetaJob) dispatchLoop(ctx context.Context) error {
 		case <-ctx.Done():
 			return errors.New("operation aborted")
 		}
-
 	}
 	close(input)
-	wg := &sync.WaitGroup{}
 
+	wg := &sync.WaitGroup{}
 	for i := 0; i < runtime.NumCPU(); i++ {
 		wg.Add(1)
 		go func() {
@@ -185,9 +185,7 @@ func (j *eventMetaJob) dispatchLoop(ctx context.Context) error {
 			for e := range input {
 				n, err := tryProcessOneEvent(&e)
 				catcher.Add(err)
-				if err != nil {
-					continue
-				}
+				catcher.Add(logger.MarkProcessed(&e))
 
 				if err = notification.InsertMany(n...); err != nil {
 					grip.Error(message.WrapError(err, message.Fields{
@@ -198,11 +196,9 @@ func (j *eventMetaJob) dispatchLoop(ctx context.Context) error {
 						"message":       "can't insert notifications",
 					}))
 					catcher.Add(err)
-					continue
 				}
 
 				catcher.Add(j.dispatch(n))
-				catcher.Add(logger.MarkProcessed(&e))
 			}
 		}()
 	}
