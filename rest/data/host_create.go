@@ -271,9 +271,6 @@ func makeEC2IntentHost(taskID, userID, publicKey string, createHost apimodels.Cr
 		return nil, errors.Wrap(err, "error making host options for EC2")
 	}
 
-	// TODO: EVG-5895 will assign the parent ID
-	options.ParentID = "placeholder"
-
 	return cloud.NewIntent(d, d.GenerateName(), provider, *options), nil
 }
 

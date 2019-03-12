@@ -19,17 +19,16 @@ import (
 )
 
 type Host struct {
-	Id          string        `bson:"_id" json:"id"`
-	ContainerId string        `bson:"container_id" json:"container_id"`
-	Host        string        `bson:"host_id" json:"host"`
-	User        string        `bson:"user" json:"user"`
-	Secret      string        `bson:"secret" json:"secret"`
-	Tag         string        `bson:"tag" json:"tag"`
-	Distro      distro.Distro `bson:"distro" json:"distro"`
-	Provider    string        `bson:"host_type" json:"host_type"`
-	IP          string        `bson:"ip_address" json:"ip_address"`
+	Id       string        `bson:"_id" json:"id"`
+	Host     string        `bson:"host_id" json:"host"`
+	User     string        `bson:"user" json:"user"`
+	Secret   string        `bson:"secret" json:"secret"`
+	Tag      string        `bson:"tag" json:"tag"`
+	Distro   distro.Distro `bson:"distro" json:"distro"`
+	Provider string        `bson:"host_type" json:"host_type"`
+	IP       string        `bson:"ip_address" json:"ip_address"`
 
-	// secondary (external) identifier for the host
+	// secondary (external) identifier for the host (the containerID for containers)
 	ExternalIdentifier string `bson:"ext_identifier" json:"ext_identifier"`
 
 	// physical location of host
@@ -126,8 +125,8 @@ type HostGroup []Host
 type DockerOptions struct {
 	// Optional parameters to define a registry name and authentication
 	RegistryName     string `bson:"registry_name,omitempty" json:"registry_name,omitempty"`
-	RegistryUsername string `mapstructure:"docker_registry_user" bson:"docker_registry_user,omitempty" json:"docker_registry_user,omitempty"`
-	RegistryPassword string `mapstructure:"docker_registry_pw" bson:"docker_registry_pw,omitempty" json:"docker_registry_pw,omitempty"`
+	RegistryUsername string `mapstructure:"registry_username" bson:"registry_username,omitempty" json:"registry_username,omitempty"`
+	RegistryPassword string `mapstructure:"registry_password" bson:"registry_password,omitempty" json:"registry_password,omitempty"`
 
 	// Image is required and specifies the image for the container.
 	// This can be a URL or an image base, to be combined with a registry.

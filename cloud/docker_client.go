@@ -377,7 +377,7 @@ func (c *dockerClientImpl) CreateContainer(ctx context.Context, parentHost, cont
 		grip.Error(err)
 		return err
 	}
-	containerHost.ContainerId = info.ID
+	containerHost.ExternalIdentifier = info.ID
 	grip.Info(msg)
 
 	return nil

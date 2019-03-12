@@ -6,10 +6,11 @@ import (
 	"strings"
 	"time"
 
+	"github.com/mongodb/anser/bsonutil"
+
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
-	"github.com/mongodb/anser/bsonutil"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
@@ -26,13 +27,6 @@ type dockerSettings struct {
 	ImageURL string `mapstructure:"image_url" json:"image_url" bson:"image_url"`
 }
 
-type ContainerImageSettings struct {
-	URL              string `bson:"url"`
-	Method           string `bson:"method"`
-	RegistryUser     string `bson:"registry_user,omitempty"`
-	RegistryPassword string `bson:"registry_password,omitempty"`
-}
-
 // nolint
 var (
 	// bson fields for the ProviderSettings struct
@@ -42,7 +36,7 @@ var (
 //Validate checks that the settings from the config file are sane.
 func (settings *dockerSettings) Validate() error {
 	if settings.ImageURL == "" {
-		return errors.New("ImageURL must not be blank")
+		return errors.New("Image must not be empty")
 	}
 
 	return nil
@@ -74,12 +68,10 @@ func (m *dockerManager) SpawnHost(ctx context.Context, h *host.Host) (*host.Host
 		return nil, errors.Wrapf(err, "Error getting host IP for parent host %s", parentHost.Id)
 	}
 
-	grip.Info(message.Fields{
-		"message":   "decoded Docker container settings",
-		"container": h.Id,
-		"host_ip":   hostIP,
-		"image_url": h.DockerOptions.Image,
-	})
+	settings := dockerSettings{ImageURL: h.DockerOptions.Image}
+	if err = settings.Validate(); err != nil {
+		return nil, errors.Wrapf(err, "Invalid Docker settings for host '%s'", h.Id)
+	}
 
 	// Create container
 	if err = m.client.CreateContainer(ctx, parentHost, h); err != nil {
@@ -330,9 +322,8 @@ func (m *dockerManager) CostForDuration(ctx context.Context, h *host.Host, start
 	return cost / numContainers, nil
 }
 
-// BuildContainerImage downloads and buils a container image onto parent specified
-// by URL and returns this URL
-func (m *dockerManager) BuildContainerImage(ctx context.Context, parent *host.Host, options host.DockerOptions) error {
+// GetContainerImage downloads a container image onto given parent, using given Image. If specified, build image with evergreen agent.
+func (m *dockerManager) GetContainerImage(ctx context.Context, parent *host.Host, options host.DockerOptions) error {
 	start := time.Now()
 	if !parent.HasContainers {
 		return errors.Errorf("Error provisioning image: '%s' is not a parent", parent.Id)

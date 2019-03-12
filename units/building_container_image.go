@@ -131,7 +131,7 @@ func (j *buildingContainerImageJob) Run(ctx context.Context) {
 		return
 	}
 
-	err = containerMgr.BuildContainerImage(ctx, j.parent, j.DockerOptions)
+	err = containerMgr.GetContainerImage(ctx, j.parent, j.DockerOptions)
 	if err != nil {
 		j.AddError(errors.Wrap(err, "error building and downloading container image"))
 		return

@@ -65,17 +65,6 @@ func (s *DockerSuite) SetupTest() {
 func (s *DockerSuite) TearDownTest() {
 	s.NoError(db.Clear(host.Collection))
 }
-func (s *DockerSuite) TestValidateSettings() {
-	// all required settings are provided
-	settingsOk := &dockerSettings{
-		ImageURL: "http://0.0.0.0:8000/docker_image.tgz",
-	}
-	s.NoError(settingsOk.Validate())
-
-	// error when missing image url
-	settingsNoImageURL := &dockerSettings{}
-	s.EqualError(settingsNoImageURL.Validate(), "ImageURL must not be blank")
-}
 
 func (s *DockerSuite) TestConfigureAPICall() {
 	mock, ok := s.client.(*dockerClientMock)
@@ -344,7 +333,7 @@ func (s *DockerSuite) TestRemoveOldestImage() {
 	s.NoError(err)
 }
 
-func (s *DockerSuite) TestBuildContainerImage() {
+func (s *DockerSuite) TestGetContainerImage() {
 	mock, ok := s.client.(*dockerClientMock)
 	s.True(ok)
 	s.False(mock.failDownload)
@@ -357,11 +346,28 @@ func (s *DockerSuite) TestBuildContainerImage() {
 	s.NoError(err)
 	s.Equal("parent", parent.Id)
 
-	err = s.manager.BuildContainerImage(ctx, parent, host.DockerOptions{Image: "image-url", Method: distro.DockerImageBuildTypeImport})
+	err = s.manager.GetContainerImage(ctx, parent, host.DockerOptions{Image: "image-url", Method: distro.DockerImageBuildTypeImport})
 	s.NoError(err)
 }
 
-func (s *DockerSuite) TestBuildContainerImageFailedDownload() {
+func (s *DockerSuite) TestGetContainerImageNoBuild() {
+	mock, ok := s.client.(*dockerClientMock)
+	s.True(ok)
+	s.False(mock.failDownload)
+	s.False(mock.failBuild)
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	parent, err := host.FindOneId("parent")
+	s.NoError(err)
+	s.Equal("parent", parent.Id)
+
+	err = s.manager.GetContainerImage(ctx, parent, host.DockerOptions{Image: "image-url", Method: distro.DockerImageBuildTypeImport, SkipImageBuild: true})
+	s.NoError(err)
+}
+
+func (s *DockerSuite) TestGetContainerImageFailedDownload() {
 	mock, ok := s.client.(*dockerClientMock)
 	s.True(ok)
 	s.False(mock.failBuild)
@@ -374,11 +380,11 @@ func (s *DockerSuite) TestBuildContainerImageFailedDownload() {
 	s.NoError(err)
 	s.Equal("parent", parent.Id)
 
-	err = s.manager.BuildContainerImage(ctx, parent, host.DockerOptions{Image: "image-url", Method: distro.DockerImageBuildTypeImport})
+	err = s.manager.GetContainerImage(ctx, parent, host.DockerOptions{Image: "image-url", Method: distro.DockerImageBuildTypeImport})
 	s.EqualError(err, "Unable to ensure that image 'image-url' is on host 'parent': failed to download image")
 }
 
-func (s *DockerSuite) TestBuildContainerImageFailedBuild() {
+func (s *DockerSuite) TestGetContainerImageFailedBuild() {
 	mock, ok := s.client.(*dockerClientMock)
 	s.True(ok)
 	s.False(mock.failDownload)
@@ -391,6 +397,6 @@ func (s *DockerSuite) TestBuildContainerImageFailedBuild() {
 	s.NoError(err)
 	s.Equal("parent", parent.Id)
 
-	err = s.manager.BuildContainerImage(ctx, parent, host.DockerOptions{Image: "image-url", Method: distro.DockerImageBuildTypeImport})
+	err = s.manager.GetContainerImage(ctx, parent, host.DockerOptions{Image: "image-url", Method: distro.DockerImageBuildTypeImport})
 	s.EqualError(err, "Failed to build image 'image-url' with agent on host 'parent': failed to build image with agent")
 }

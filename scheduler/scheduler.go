@@ -5,8 +5,6 @@ import (
 	"math"
 	"time"
 
-	"github.com/mitchellh/mapstructure"
-
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/cloud"
 	"github.com/evergreen-ci/evergreen/model"
@@ -14,6 +12,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/task"
+	"github.com/mitchellh/mapstructure"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
@@ -261,7 +260,7 @@ func generateContainerHostIntents(d distro.Distro, newContainersNeeded int) ([]h
 	containerHostIntents := make([]host.Host, 0)
 
 	// Decode provider settings from distro settings
-	dockerOptions, err := getDockerOptionsFromProviderSettings(d.ProviderSettings)
+	dockerOptions, err := getDockerOptionsFromProviderSettings(*d.ProviderSettings)
 	if err != nil {
 		return nil, errors.Wrapf(err, "Error getting docker options from distro %s", d.Id)
 	}
@@ -291,7 +290,7 @@ func generateContainerHostIntents(d distro.Distro, newContainersNeeded int) ([]h
 	return containerHostIntents, nil
 }
 
-func getDockerOptionsFromProviderSettings(settings *map[string]interface{}) (*host.DockerOptions, error) {
+func getDockerOptionsFromProviderSettings(settings map[string]interface{}) (*host.DockerOptions, error) {
 	dockerOptions := &host.DockerOptions{}
 	if settings != nil {
 		if err := mapstructure.Decode(settings, dockerOptions); err != nil {
@@ -305,18 +304,13 @@ func getDockerOptionsFromProviderSettings(settings *map[string]interface{}) (*ho
 }
 
 // generateParentHostOptions generates host options for a parent host
-func generateParentHostOptions(settings *map[string]interface{}, pool *evergreen.ContainerPool) (cloud.HostOptions, error) {
+func generateParentHostOptions(pool *evergreen.ContainerPool) cloud.HostOptions {
 	options := cloud.HostOptions{
 		HasContainers:         true,
 		UserName:              evergreen.User,
 		ContainerPoolSettings: pool,
 	}
-	opts, err := getDockerOptionsFromProviderSettings(settings)
-	if err != nil {
-		return options, errors.Wrap(err, "error getting docker options from settings")
-	}
-	options.DockerOptions = *opts
-	return options, nil
+	return options
 }
 
 // getNumContainersOnParents returns a slice of parents and their respective
@@ -395,14 +389,9 @@ func containerCapacity(numCurrentParents, numCurrentContainers, numContainersToS
 // createParents creates host intent documents for each parent
 func createParents(parent distro.Distro, numNewParents int, pool *evergreen.ContainerPool) []host.Host {
 	hostsSpawned := make([]host.Host, numNewParents)
-	options, err := generateParentHostOptions(parent.ProviderSettings, pool)
-	grip.DebugWhen(err != nil, message.Fields{
-		"message":   "error generating parent host options",
-		"distro_id": parent.Id,
-		"error":     err,
-	})
+
 	for idx := range hostsSpawned {
-		hostsSpawned[idx] = *cloud.NewIntent(parent, parent.GenerateName(), parent.Provider, options)
+		hostsSpawned[idx] = *cloud.NewIntent(parent, parent.GenerateName(), parent.Provider, generateParentHostOptions(pool))
 	}
 
 	return hostsSpawned
