@@ -1165,3 +1165,36 @@ func (h *Host) EstimateNumContainersForDuration(start, end time.Time) (float64, 
 	}
 	return float64(containersAtStart+containersAtEnd) / 2, nil
 }
+
+// StaleRunningTaskIDs finds any running tasks whose last heartbeat was at least the specified threshold ago
+// and whose host thinks it's still running that task. Projects out everything but the ID and execution
+func StaleRunningTaskIDs(staleness time.Duration) ([]task.Task, error) {
+	var out []task.Task
+	pipeline := []bson.M{
+		{"$match": bson.M{
+			task.StatusKey:        task.SelectorTaskInProgress,
+			task.LastHeartbeatKey: bson.M{"$lte": time.Now().Add(-staleness)},
+		}},
+		{"$lookup": bson.M{
+			"from":         Collection,
+			"localField":   task.HostIdKey,
+			"foreignField": IdKey,
+			"as":           "hosts",
+		}},
+		{"$project": bson.M{
+			task.IdKey:        1,
+			task.ExecutionKey: 1,
+			"host": bson.M{
+				"$arrayElemAt": []interface{}{"$hosts", 0},
+			},
+		}},
+		{"$match": bson.M{
+			"$expr": bson.M{
+				"$eq": []string{"$_id", bsonutil.GetDottedKeyName("$host", RunningTaskKey)},
+			},
+		}},
+	}
+
+	err := db.Aggregate(task.Collection, pipeline, &out)
+	return out, err
+}

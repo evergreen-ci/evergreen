@@ -174,24 +174,6 @@ func ByIdsBuildAndStatus(taskIds []string, buildId string, statuses []string) db
 	})
 }
 
-// ByStaleRunningTask creates a query that finds any running tasks
-// whose last heartbeat was at least the specified threshold ago, or
-// that has been dispatched but hasn't started in twice that long.
-func ByStaleRunningTask(staleness time.Duration) db.Q {
-	return db.Query(bson.M{
-		"$or": []bson.M{
-			{
-				StatusKey:        SelectorTaskInProgress,
-				LastHeartbeatKey: bson.M{"$lte": time.Now().Add(-staleness)},
-			},
-			{
-				StatusKey:       evergreen.TaskDispatched,
-				DispatchTimeKey: bson.M{"$lte": time.Now().Add(-2 * staleness)},
-			},
-		},
-	})
-}
-
 // ByCommit creates a query on Evergreen as the requester on a revision, buildVariant, displayName and project.
 func ByCommit(revision, buildVariant, displayName, project, requester string) db.Q {
 	return db.Query(bson.M{
