@@ -419,23 +419,30 @@ func getVersionsInWindow(wt, projectId string, radius int,
 // we will need.  "before" indicates whether to fetch versions before or
 // after the passed-in task.
 func makeVersionsQuery(v *model.Version, projectId string, versionsToFetch int, before bool) ([]model.Version, error) {
-	// decide how the versions we want relative to the task's revision order number
-	ronQuery := bson.M{"$gte": v.CreateTime, "$gt": v.Revision}
+	var orderOperator string
+	var sortVersions []string
 	if before {
-		ronQuery = bson.M{"$lte": v.CreateTime, "$lt": v.Revision}
-	}
-
-	// switch how to sort the versions
-	sortVersions := []string{model.VersionCreateTimeKey}
-	if before {
+		orderOperator = "$lt"
 		sortVersions = []string{"-" + model.VersionCreateTimeKey}
+	} else {
+		orderOperator = "$gt"
+		sortVersions = []string{model.VersionCreateTimeKey}
+	}
+	revisionWindowQuery := []bson.M{
+		{
+			model.VersionCreateTimeKey: bson.M{orderOperator: v.CreateTime},
+		},
+		{
+			model.VersionCreateTimeKey: bson.M{"$eq": v.CreateTime},
+			model.VersionRevisionKey:   bson.M{orderOperator: v.Revision},
+		},
 	}
 
 	// fetch the versions
 	return model.VersionFind(
 		db.Query(bson.M{
 			model.VersionIdentifierKey: projectId,
-			model.VersionCreateTimeKey: ronQuery,
+			"$or":                      revisionWindowQuery,
 			model.VersionRequesterKey: bson.M{
 				"$in": evergreen.SystemVersionRequesterTypes,
 			},
