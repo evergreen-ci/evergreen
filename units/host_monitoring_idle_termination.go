@@ -140,7 +140,7 @@ func (j *idleHostJob) Run(ctx context.Context) {
 	// if we haven't heard from the host or it's been idle for longer than the cutoff, we should terminate
 	if communicationTime >= idleTimeCutoff || idleTime >= idleTimeCutoff {
 		j.Terminated = true
-		tjob := NewHostTerminationJob(j.env, *j.host)
+		tjob := NewHostTerminationJob(j.env, *j.host, false)
 		tjob.Run(ctx)
 		j.AddError(tjob.Error())
 	}

@@ -283,7 +283,7 @@ func PopulateHostTerminationJobs(env evergreen.Environment) amboy.QueueOperation
 		catcher.Add(err)
 
 		for _, h := range hosts {
-			catcher.Add(queue.Put(NewHostTerminationJob(env, h)))
+			catcher.Add(queue.Put(NewHostTerminationJob(env, h, true)))
 		}
 
 		hosts, err = host.AllHostsSpawnedByTasksToTerminate()
@@ -295,7 +295,7 @@ func PopulateHostTerminationJobs(env evergreen.Environment) amboy.QueueOperation
 		catcher.Add(err)
 
 		for _, h := range hosts {
-			catcher.Add(queue.Put(NewHostTerminationJob(env, h)))
+			catcher.Add(queue.Put(NewHostTerminationJob(env, h, true)))
 		}
 
 		return catcher.Resolve()
