@@ -39,7 +39,7 @@ func TestCreateHostBuildFromServiceWithContainer(t *testing.T) {
 	assert.Equal(c.Image, h.DockerOptions.Image)
 	assert.Equal(c.Command, h.DockerOptions.Command)
 	assert.Equal(c.ContainerID, h.ExternalIdentifier)
-	assert.Equal(c.Host, h.Id)
+	assert.Equal(c.ParentID, h.ParentID)
 
 	assert.Empty(c.DNSName)
 	assert.Empty(c.InstanceID)
