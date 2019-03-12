@@ -88,17 +88,18 @@ func (s *TaskHistorySuite) TestGetVersionsInWindow() {
 }
 
 func (s *TaskHistorySuite) TestMakeVersionsQuery() {
-	versionsAfter, err := makeVersionsQuery(&s.middleVersion, s.projectID, 20, false)
+	radius := 20
+	versionsAfter, err := makeVersionsQuery(&s.middleVersion, s.projectID, radius, false)
 	s.NoError(err)
-	s.Len(versionsAfter, 20)
+	s.Len(versionsAfter, radius)
 	for i, version := range versionsAfter {
 		s.Equal("cccc", version.Revision)
 		s.True(version.CreateTime.Equal(s.versionsAfter[i].CreateTime))
 	}
 
-	versionsBefore, err := makeVersionsQuery(&s.middleVersion, s.projectID, 20, true)
+	versionsBefore, err := makeVersionsQuery(&s.middleVersion, s.projectID, radius, true)
 	s.NoError(err)
-	s.Len(versionsBefore, 20)
+	s.Len(versionsBefore, radius)
 	for i, version := range versionsBefore {
 		s.Equal("aaaa", version.Revision)
 		s.True(version.CreateTime.Equal(s.versionsBefore[len(s.versionsBefore)-(i+1)].CreateTime))
