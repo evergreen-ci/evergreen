@@ -385,11 +385,10 @@ func (uis *UIServer) taskHistoryDrawer(w http.ResponseWriter, r *http.Request) {
 
 func getVersionsInWindow(wt, projectId string, radius int,
 	center *model.Version) ([]model.Version, error) {
-	referenceTime := center.CreateTime
 	if wt == beforeWindow {
-		return makeVersionsQuery(referenceTime, projectId, radius, true)
+		return makeVersionsQuery(center, projectId, radius, true)
 	} else if wt == afterWindow {
-		after, err := makeVersionsQuery(referenceTime, projectId, radius, false)
+		after, err := makeVersionsQuery(center, projectId, radius, false)
 		if err != nil {
 			return nil, err
 		}
@@ -399,11 +398,11 @@ func getVersionsInWindow(wt, projectId string, radius int,
 		}
 		return after, nil
 	}
-	before, err := makeVersionsQuery(referenceTime, projectId, radius, true)
+	before, err := makeVersionsQuery(center, projectId, radius, true)
 	if err != nil {
 		return nil, err
 	}
-	after, err := makeVersionsQuery(referenceTime, projectId, radius, false)
+	after, err := makeVersionsQuery(center, projectId, radius, false)
 	if err != nil {
 		return nil, err
 	}
@@ -419,11 +418,11 @@ func getVersionsInWindow(wt, projectId string, radius int,
 // Helper to make the appropriate query to the versions collection for what
 // we will need.  "before" indicates whether to fetch versions before or
 // after the passed-in task.
-func makeVersionsQuery(referenceTime time.Time, projectId string, versionsToFetch int, before bool) ([]model.Version, error) {
+func makeVersionsQuery(v *model.Version, projectId string, versionsToFetch int, before bool) ([]model.Version, error) {
 	// decide how the versions we want relative to the task's revision order number
-	ronQuery := bson.M{"$gt": referenceTime}
+	ronQuery := bson.M{"$gte": v.CreateTime, "$gt": v.Revision}
 	if before {
-		ronQuery = bson.M{"$lt": referenceTime}
+		ronQuery = bson.M{"$lte": v.CreateTime, "$lt": v.Revision}
 	}
 
 	// switch how to sort the versions
