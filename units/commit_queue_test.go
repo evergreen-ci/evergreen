@@ -153,5 +153,6 @@ func (s *commitQueueSuite) TestWritePatchInfo() {
 	s.NoError(err)
 	defer reader.Close()
 	bytes, err := ioutil.ReadAll(reader)
+	s.NoError(err)
 	s.Equal(patchContent, string(bytes))
 }
