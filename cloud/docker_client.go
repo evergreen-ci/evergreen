@@ -169,7 +169,7 @@ func (c *dockerClientImpl) EnsureImageDownloaded(ctx context.Context, h *host.Ho
 		} else if options.Method == distro.DockerImageBuildTypePull {
 			image := options.Image
 			if options.RegistryName != "" {
-				image = fmt.Sprintf("%s:%d/%s", options.RegistryName, h.ContainerPoolSettings.Port, imageName)
+				image = fmt.Sprintf("%s/%s", options.RegistryName, imageName)
 			}
 			err = c.pullImage(ctx, h, image, options.RegistryUsername, options.RegistryPassword)
 			grip.Info(message.Fields{
