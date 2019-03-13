@@ -1005,9 +1005,10 @@ func (a *APIRepoTrackerConfig) ToService() (interface{}, error) {
 }
 
 type APISchedulerConfig struct {
-	TaskFinder       APIString `json:"task_finder"`
-	HostAllocator    APIString `json:"host_allocator"`
-	FreeHostFraction float64   `json:"free_host_fraction"`
+	TaskFinder           APIString `json:"task_finder"`
+	HostAllocator        APIString `json:"host_allocator"`
+	FreeHostFraction     float64   `json:"free_host_fraction"`
+	CacheDurationSeconds int       `json:"cache_duration_seconds"`
 }
 
 func (a *APISchedulerConfig) BuildFromService(h interface{}) error {
@@ -1016,6 +1017,7 @@ func (a *APISchedulerConfig) BuildFromService(h interface{}) error {
 		a.TaskFinder = ToAPIString(v.TaskFinder)
 		a.HostAllocator = ToAPIString(v.HostAllocator)
 		a.FreeHostFraction = v.FreeHostFraction
+		a.CacheDurationSeconds = v.CacheDurationSeconds
 	default:
 		return errors.Errorf("%T is not a supported type", h)
 	}
@@ -1024,9 +1026,10 @@ func (a *APISchedulerConfig) BuildFromService(h interface{}) error {
 
 func (a *APISchedulerConfig) ToService() (interface{}, error) {
 	return evergreen.SchedulerConfig{
-		TaskFinder:       FromAPIString(a.TaskFinder),
-		HostAllocator:    FromAPIString(a.HostAllocator),
-		FreeHostFraction: a.FreeHostFraction,
+		TaskFinder:           FromAPIString(a.TaskFinder),
+		HostAllocator:        FromAPIString(a.HostAllocator),
+		FreeHostFraction:     a.FreeHostFraction,
+		CacheDurationSeconds: a.CacheDurationSeconds,
 	}, nil
 }
 

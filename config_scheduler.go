@@ -9,9 +9,10 @@ import (
 
 // SchedulerConfig holds relevant settings for the scheduler process.
 type SchedulerConfig struct {
-	TaskFinder       string  `bson:"task_finder" json:"task_finder" yaml:"task_finder"`
-	HostAllocator    string  `bson:"host_allocator" json:"host_allocator" yaml:"host_allocator"`
-	FreeHostFraction float64 `bson:"free_host_fraction" json:"free_host_fraction" yaml:"free_host_fraction"`
+	TaskFinder           string  `bson:"task_finder" json:"task_finder" yaml:"task_finder"`
+	HostAllocator        string  `bson:"host_allocator" json:"host_allocator" yaml:"host_allocator"`
+	FreeHostFraction     float64 `bson:"free_host_fraction" json:"free_host_fraction" yaml:"free_host_fraction"`
+	CacheDurationSeconds int     `bson:"cache_duration_seconds" json:"cache_duration_seconds" yaml:"cache_duration_seconds"`
 }
 
 func (c *SchedulerConfig) SectionId() string { return "scheduler" }
@@ -43,6 +44,10 @@ func (c *SchedulerConfig) ValidateAndDefault() error {
 		// default to legacy
 		c.TaskFinder = finders[0]
 		return nil
+	}
+
+	if c.CacheDurationSeconds == 0 || c.CacheDurationSeconds > 600 {
+		c.CacheDurationSeconds = 20
 	}
 
 	if !util.StringSliceContains(finders, c.TaskFinder) {
