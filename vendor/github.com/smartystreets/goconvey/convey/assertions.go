@@ -16,7 +16,6 @@ var (
 	ShouldBeTrue         = assertions.ShouldBeTrue
 	ShouldBeFalse        = assertions.ShouldBeFalse
 	ShouldBeZeroValue    = assertions.ShouldBeZeroValue
-	// ShouldNotBeZeroValue = assertions.ShouldNotBeZeroValue
 
 	ShouldBeGreaterThan          = assertions.ShouldBeGreaterThan
 	ShouldBeGreaterThanOrEqualTo = assertions.ShouldBeGreaterThanOrEqualTo
@@ -66,6 +65,4 @@ var (
 	ShouldHappenWithin         = assertions.ShouldHappenWithin
 	ShouldNotHappenWithin      = assertions.ShouldNotHappenWithin
 	ShouldBeChronological      = assertions.ShouldBeChronological
-
-	ShouldBeError = assertions.ShouldBeError
 )

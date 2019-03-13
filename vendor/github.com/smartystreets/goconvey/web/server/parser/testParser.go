@@ -118,10 +118,7 @@ func (self *testParser) preserveStackTraceIndentation(index int, line string) {
 }
 func (self *testParser) parseLogLocation() {
 	self.otherLines = append(self.otherLines, self.line)
-	lineFields := strings.TrimSpace(self.line)
-	if strings.HasPrefix(lineFields, "Error Trace:") {
-		lineFields = strings.TrimPrefix(lineFields, "Error Trace:")
-	}
+	lineFields := self.line
 	fields := strings.Split(lineFields, ":")
 	self.test.File = strings.TrimSpace(fields[0])
 	self.test.Line, _ = strconv.Atoi(fields[1])

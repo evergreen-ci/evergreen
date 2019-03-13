@@ -8,14 +8,11 @@ import (
 	"flag"
 	"fmt"
 	"log"
-	"net"
 	"net/http"
 	"os"
 	"os/exec"
 	"path/filepath"
-	"regexp"
 	"runtime"
-	"strconv"
 	"strings"
 	"time"
 
@@ -37,16 +34,15 @@ func init() {
 func flags() {
 	flag.IntVar(&port, "port", 8080, "The port at which to serve http.")
 	flag.StringVar(&host, "host", "127.0.0.1", "The host at which to serve http.")
-	flag.DurationVar(&nap, "poll", quarterSecond, "The interval to wait between polling the file system for changes.")
-	flag.IntVar(&packages, "packages", 10, "The number of packages to test in parallel. Higher == faster but more costly in terms of computing.")
+	flag.DurationVar(&nap, "poll", quarterSecond, "The interval to wait between polling the file system for changes (default: 250ms).")
+	flag.IntVar(&packages, "packages", 10, "The number of packages to test in parallel. Higher == faster but more costly in terms of computing. (default: 10)")
 	flag.StringVar(&gobin, "gobin", "go", "The path to the 'go' binary (default: search on the PATH).")
-	flag.BoolVar(&cover, "cover", true, "Enable package-level coverage statistics. Requires Go 1.2+ and the go cover tool.")
-	flag.IntVar(&depth, "depth", -1, "The directory scanning depth. If -1, scan infinitely deep directory structures. 0: scan working directory. 1+: Scan into nested directories, limited to value.")
+	flag.BoolVar(&cover, "cover", true, "Enable package-level coverage statistics. Requires Go 1.2+ and the go cover tool. (default: true)")
+	flag.IntVar(&depth, "depth", -1, "The directory scanning depth. If -1, scan infinitely deep directory structures. 0: scan working directory. 1+: Scan into nested directories, limited to value. (default: -1)")
 	flag.StringVar(&timeout, "timeout", "0", "The test execution timeout if none is specified in the *.goconvey file (default is '0', which is the same as not providing this option).")
-	flag.StringVar(&watchedSuffixes, "watchedSuffixes", ".go", "A comma separated list of file suffixes to watch for modifications.")
+	flag.StringVar(&watchedSuffixes, "watchedSuffixes", ".go", "A comma separated list of file suffixes to watch for modifications (default: .go).")
 	flag.StringVar(&excludedDirs, "excludedDirs", "vendor,node_modules", "A comma separated list of directories that will be excluded from being watched")
 	flag.StringVar(&workDir, "workDir", "", "set goconvey working directory (default current directory)")
-	flag.BoolVar(&autoLaunchBrowser, "launchBrowser", true, "toggle auto launching of browser (default: true)")
 
 	log.SetOutput(os.Stdout)
 	log.SetFlags(log.LstdFlags | log.Lshortfile)
@@ -78,34 +74,31 @@ func main() {
 	longpollChan := make(chan chan string)
 	executor := executor.NewExecutor(tester, parser, longpollChan)
 	server := api.NewHTTPServer(working, watcherInput, executor, longpollChan)
-	listener := createListener()
 	go runTestOnUpdates(watcherOutput, executor, server)
 	go watcher.Listen()
-	if autoLaunchBrowser {
-		go launchBrowser(listener.Addr().String())
-	}
-	serveHTTP(server, listener)
+	go launchBrowser(host, port)
+	serveHTTP(server)
 }
 
 func browserCmd() (string, bool) {
 	browser := map[string]string{
-		"darwin":  "open",
-		"linux":   "xdg-open",
-		"windows": "start",
+		"darwin": "open",
+		"linux":  "xdg-open",
+		"win32":  "start",
 	}
 	cmd, ok := browser[runtime.GOOS]
 	return cmd, ok
 }
 
-func launchBrowser(addr string) {
+func launchBrowser(host string, port int) {
 	browser, ok := browserCmd()
 	if !ok {
 		log.Printf("Skipped launching browser for this OS: %s", runtime.GOOS)
 		return
 	}
 
-	log.Printf("Launching browser on %s", addr)
-	url := fmt.Sprintf("http://%s", addr)
+	log.Printf("Launching browser on %s:%d", host, port)
+	url := fmt.Sprintf("http://%s:%d", host, port)
 	cmd := exec.Command(browser, url)
 
 	output, err := cmd.CombinedOutput()
@@ -158,21 +151,10 @@ func testFilesImportTheirOwnPackage(packagePath string) bool {
 	return false
 }
 
-func createListener() net.Listener {
-	l, err := net.Listen("tcp", fmt.Sprintf("%s:%d", host, port))
-	if err != nil {
-		log.Println(err)
-	}
-	if l == nil {
-		os.Exit(1)
-	}
-	return l
-}
-
-func serveHTTP(server contract.Server, listener net.Listener) {
+func serveHTTP(server contract.Server) {
 	serveStaticResources()
 	serveAjaxMethods(server)
-	activateServer(listener)
+	activateServer()
 }
 
 func serveStaticResources() {
@@ -190,9 +172,9 @@ func serveAjaxMethods(server contract.Server) {
 	http.HandleFunc("/pause", server.TogglePause)
 }
 
-func activateServer(listener net.Listener) {
-	log.Printf("Serving HTTP at: http://%s\n", listener.Addr())
-	err := http.Serve(listener, nil)
+func activateServer() {
+	log.Printf("Serving HTTP at: http://%s:%d\n", host, port)
+	err := http.ListenAndServe(fmt.Sprintf("%s:%d", host, port), nil)
 	if err != nil {
 		log.Println(err)
 	}
@@ -200,25 +182,17 @@ func activateServer(listener net.Listener) {
 
 func coverageEnabled(cover bool, reports string) bool {
 	return (cover &&
-		goMinVersion(1, 2) &&
+		goVersion_1_2_orGreater() &&
 		coverToolInstalled() &&
 		ensureReportDirectoryExists(reports))
 }
-func goMinVersion(wanted ...int) bool {
+func goVersion_1_2_orGreater() bool {
 	version := runtime.Version() // 'go1.2....'
-	s := regexp.MustCompile(`go([\d]+)\.([\d]+)\.?([\d]+)?`).FindAllStringSubmatch(version, 1)
-	if len(s) == 0 {
-		log.Printf("Cannot determine if newer than go1.2, disabling coverage.")
+	major, minor := version[2], version[4]
+	version_1_2 := major >= byte('1') && minor >= byte('2')
+	if !version_1_2 {
+		log.Printf(pleaseUpgradeGoVersion, version)
 		return false
-	}
-	for idx, str := range s[0][1:] {
-		if len(wanted) == idx {
-			break
-		}
-		if v, _ := strconv.Atoi(str); v < wanted[idx] {
-			log.Printf(pleaseUpgradeGoVersion, version)
-			return false
-		}
 	}
 	return true
 }
@@ -280,17 +254,16 @@ func getWorkDir() string {
 }
 
 var (
-	port              int
-	host              string
-	gobin             string
-	nap               time.Duration
-	packages          int
-	cover             bool
-	depth             int
-	timeout           string
-	watchedSuffixes   string
-	excludedDirs      string
-	autoLaunchBrowser bool
+	port            int
+	host            string
+	gobin           string
+	nap             time.Duration
+	packages        int
+	cover           bool
+	depth           int
+	timeout         string
+	watchedSuffixes string
+	excludedDirs    string
 
 	static  string
 	reports string

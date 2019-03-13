@@ -78,7 +78,6 @@ func (self *outputParser) recordFinalOutcome(outcome string) {
 }
 
 func (self *outputParser) processTestOutput() {
-	self.line = strings.TrimSpace(self.line)
 	if isNewTest(self.line) {
 		self.registerTestFunction()
 
@@ -95,11 +94,8 @@ func (self *outputParser) processTestOutput() {
 }
 
 func (self *outputParser) registerTestFunction() {
-	testNameReg := testNamePattern.FindStringSubmatch(self.line)
-	if len(testNameReg) < 2 { // Test-related lines that aren't about a new test
-		return
-	}
-	self.test = contract.NewTestResult(testNameReg[1])
+	testName := testNamePattern.FindStringSubmatch(self.line)[1]
+	self.test = contract.NewTestResult(testName)
 	self.tests = append(self.tests, self.test)
 	self.testMap[self.test.TestName] = self.test
 }

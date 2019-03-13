@@ -11,16 +11,12 @@ import (
 // --- PASS: TestOldSchool_PassesWithMessage (0.03 seconds)
 func parseTestFunctionDuration(line string) float64 {
 	line = strings.Replace(line, "(", "", 1)
-	line = strings.Replace(line, ")", "", 1)
 	fields := strings.Split(line, " ")
-	return parseDurationInSeconds(fields[3], 2)
+	return parseDurationInSeconds(fields[3]+"s", 2)
 }
 
 func parseDurationInSeconds(raw string, precision int) float64 {
-	elapsed, err := time.ParseDuration(raw)
-	if err != nil {
-		elapsed, _ = time.ParseDuration(raw + "s")
-	}
+	elapsed, _ := time.ParseDuration(raw)
 	return round(elapsed.Seconds(), precision)
 }
 

@@ -3,7 +3,6 @@ package model
 import (
 	"fmt"
 	"sync"
-	"time"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/host"
@@ -11,79 +10,17 @@ import (
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
-	"github.com/pkg/errors"
 )
 
-type TaskQueueService interface {
-	FindNextTask(string, TaskSpec) (*TaskQueueItem, error)
-	Refresh(string) error
-}
-
-type TaskDispatchService interface {
-	FindNextTask(TaskSpec) *TaskQueueItem
-	Refresh() error
-}
-
-type taskDispatchService struct {
-	queues map[string]TaskDispatchService
-	mu     sync.RWMutex
-	ttl    time.Duration
-}
-
-func (s *taskDispatchService) FindNextTask(distro string, spec TaskSpec) (*TaskQueueItem, error) {
-	queue, err := s.ensureQueue(distro)
-	if err != nil {
-		return nil, errors.WithStack(err)
-	}
-
-	return queue.FindNextTask(spec), nil
-}
-
-func (s *taskDispatchService) Refresh(distro string) error {
-	queue, err := s.ensureQueue(distro)
-	if err != nil {
-		return errors.WithStack(err)
-	}
-
-	return errors.WithStack(queue.Refresh())
-}
-
-func (s *taskDispatchService) ensureQueue(distro string) (TaskDispatchService, error) {
-	s.mu.RLock()
-	queue, ok := s.queues[distro]
-	s.mu.RUnlock()
-	if ok {
-		return queue, nil
-	}
-
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	queue, ok = s.queues[distro]
-	if ok {
-		return queue, nil
-	}
-
-	queue = NewTaskDispatchService(distro, nil, s.ttl)
-	s.queues[distro] = queue
-
-	if err := queue.Refresh(); err != nil {
-		return nil, errors.WithStack(err)
-	}
-
-	return queue, nil
-}
-
-// taskDistroDispatchService is an in-memory representation of schedulable tasks for a distro.
+// taskDispatchService is an in-memory representation of schedulable tasks for a distro.
 //
 // TODO Pass all task group tasks, not just dispatchable ones, to the constructor.
 // TODO Maintain an in-memory global (but per app server) task queue per distro.
-type taskDistroDispatchService struct {
-	mu          sync.RWMutex
-	distroID    string
-	order       []string
-	units       map[string]schedulableUnit
-	ttl         time.Duration
-	lastUpdated time.Time
+type taskDispatchService struct {
+	mu       sync.Mutex
+	distroID string
+	order    []string
+	units    map[string]schedulableUnit
 }
 
 // schedulableUnit represents a unit of tasks that must be kept together in the queue because they
@@ -96,55 +33,8 @@ type schedulableUnit struct {
 	tasks        []TaskQueueItem
 }
 
-// NewTaskDispatchService creates a taskDistroDispatchService from a slice of TaskQueueItems.
-func NewTaskDispatchService(distroID string, items []TaskQueueItem, ttl time.Duration) TaskDispatchService {
-	t := &taskDistroDispatchService{
-		distroID: distroID,
-		ttl:      ttl,
-	}
-
-	if items != nil {
-		t.rebuild(items)
-	}
-
-	return t
-}
-
-func (t *taskDistroDispatchService) Refresh() error {
-	if !t.shouldRefresh() {
-		return nil
-	}
-
-	queue, err := FindDistroTaskQueue(t.distroID)
-	if err != nil {
-		return errors.WithStack(err)
-	}
-
-	t.rebuild(queue.Queue)
-
-	return nil
-}
-
-func shouldRefreshCached(ttl time.Duration, lastUpdated time.Time) bool {
-	return time.Since(lastUpdated) > ttl
-}
-
-func (t *taskDistroDispatchService) shouldRefresh() bool {
-	t.mu.RLock()
-	defer t.mu.RUnlock()
-
-	return shouldRefreshCached(t.ttl, t.lastUpdated)
-}
-
-func (t *taskDistroDispatchService) rebuild(items []TaskQueueItem) {
-	t.mu.Lock()
-	defer t.mu.Unlock()
-
-	// given the lock a
-	if shouldRefreshCached(t.ttl, t.lastUpdated) {
-		return
-	}
-
+// NewTaskDispatchService creates a taskDispatchService from a slice of TaskQueueItems.
+func NewTaskDispatchService(distroID string, items []TaskQueueItem) *taskDispatchService {
 	// This slice likely has too much capacity, but it helps append performance.
 	order := make([]string, 0, len(items))
 	units := map[string]schedulableUnit{}
@@ -179,15 +69,16 @@ func (t *taskDistroDispatchService) rebuild(items []TaskQueueItem) {
 			}
 		}
 	}
-
-	t.order = order
-	t.units = units
-	t.lastUpdated = time.Now()
-	return
+	t := &taskDispatchService{
+		distroID: distroID,
+		order:    order,
+		units:    units,
+	}
+	return t
 }
 
 // FindNextTask returns the next dispatchable task in the queue.
-func (t *taskDistroDispatchService) FindNextTask(spec TaskSpec) *TaskQueueItem {
+func (t *taskDispatchService) FindNextTask(spec TaskSpec) *TaskQueueItem {
 	t.mu.Lock()
 	defer t.mu.Unlock()
 
@@ -261,7 +152,7 @@ func compositeGroupId(group, variant, version string) string {
 	return fmt.Sprintf("%s-%s-%s", group, variant, version)
 }
 
-func (t *taskDistroDispatchService) nextTaskGroupTask(unit schedulableUnit) *TaskQueueItem {
+func (t *taskDispatchService) nextTaskGroupTask(unit schedulableUnit) *TaskQueueItem {
 	for i, nextTask := range unit.tasks {
 		if nextTask.IsDispatched == true {
 			continue
@@ -305,7 +196,7 @@ func (t *taskDistroDispatchService) nextTaskGroupTask(unit schedulableUnit) *Tas
 // isBlockedSingleHostTaskGroup checks if the task is running in a 1-host task group, has finished,
 // and did not succeed. If so it removes the unit from the local queue. But rely on EndTask to
 // block later tasks.
-func (t *taskDistroDispatchService) isBlockedSingleHostTaskGroup(unit schedulableUnit, dbTask *task.Task) bool {
+func (t *taskDispatchService) isBlockedSingleHostTaskGroup(unit schedulableUnit, dbTask *task.Task) bool {
 	if unit.maxHosts == 1 && !util.IsZeroTime(dbTask.FinishTime) && dbTask.Status != evergreen.TaskSucceeded {
 		delete(t.units, unit.id)
 		return true
