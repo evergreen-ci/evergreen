@@ -568,10 +568,6 @@ func UpdateBuildAndVersionStatusForTask(taskId string, updates *StatusChanges) e
 			}
 
 			failedTask = true
-			if t.DisplayName == evergreen.CompileStage {
-				buildComplete = true
-				break
-			}
 		}
 
 		// update the cached version of the task, in its build document

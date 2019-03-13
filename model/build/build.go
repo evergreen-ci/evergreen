@@ -81,7 +81,7 @@ func (b *Build) IsFinished() bool {
 // returns boolean to indicate if tasks are complete, string with either
 // BuildFailed or BuildSucceded. The string is only valid when the boolean is
 // true
-func (b *Build) AllUnblockedTasksOrCompileFinished(tasksWithDeps []task.Task) (bool, string, error) {
+func (b *Build) AllUnblockedTasksFinished(tasksWithDeps []task.Task) (bool, string, error) {
 	if !b.Activated {
 		return false, b.Status, nil
 	}
@@ -93,9 +93,6 @@ func (b *Build) AllUnblockedTasksOrCompileFinished(tasksWithDeps []task.Task) (b
 			continue
 		}
 		if evergreen.IsFailedTaskStatus(b.Tasks[i].Status) {
-			if b.Tasks[i].DisplayName == evergreen.CompileStage {
-				return true, evergreen.BuildFailed, nil
-			}
 			status = evergreen.BuildFailed
 		}
 		if !evergreen.IsFinishedTaskStatus(b.Tasks[i].Status) {

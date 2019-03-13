@@ -192,7 +192,7 @@ func MarkVersionCompleted(versionId string, finishTime time.Time, updates *Statu
 		if b.Activated {
 			activeBuilds += 1
 		}
-		complete, buildStatus, err := b.AllUnblockedTasksOrCompileFinished(tasksWithDeps)
+		complete, buildStatus, err := b.AllUnblockedTasksFinished(tasksWithDeps)
 		if err != nil {
 			return errors.WithStack(err)
 		}
