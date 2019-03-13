@@ -12,10 +12,12 @@ import (
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/commitqueue"
 	"github.com/evergreen-ci/evergreen/model/event"
+	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/google/go-github/github"
 	"github.com/stretchr/testify/suite"
+	"gopkg.in/mgo.v2/bson"
 )
 
 type commitQueueSuite struct {
@@ -126,4 +128,42 @@ func (s *commitQueueSuite) TestSubscribeMerge() {
 	s.Equal(s.projectRef.Owner, target.Owner)
 	s.Equal(s.projectRef.Repo, target.Repo)
 	s.Equal(s.pr.GetTitle(), target.CommitTitle)
+}
+
+func (s *commitQueueSuite) TestWritePatchInfo() {
+	s.NoError(db.ClearGridCollections(patch.GridFSPrefix))
+
+	patchDoc := &patch.Patch{
+		Id:      bson.ObjectIdHex("aabbccddeeff112233445566"),
+		Githash: "abcdef",
+	}
+	config := &model.Project{
+		Enabled: true,
+	}
+
+	patchSummaries := []patch.Summary{
+		patch.Summary{
+			Name:      "myfile.go",
+			Additions: 1,
+			Deletions: 0,
+		},
+	}
+
+	patchContent := `diff --git a/myfile.go b/myfile.go
+	index abcdef..123456 100644
+	--- a/myfile.go
+	+++ b/myfile.go
+	@@ +2,1 @@ func myfunc {
+	+				fmt.Print(\"hello world\")
+			}
+	`
+
+	s.NoError(writePatchInfo(patchDoc, config, patchSummaries, patchContent, s.projectRef.Identifier))
+	s.Len(patchDoc.Patches, 1)
+	s.Equal(patchSummaries, patchDoc.Patches[0].PatchSet.Summary)
+	reader, err := db.GetGridFile(patch.GridFSPrefix, patchDoc.Patches[0].PatchSet.PatchFileId)
+	s.NoError(err)
+	defer reader.Close()
+	bytes, err := ioutil.ReadAll(reader)
+	s.Equal(patchContent, string(bytes))
 }
