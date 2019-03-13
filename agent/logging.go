@@ -153,6 +153,9 @@ func (a *Agent) prepSingleLogger(tc *taskContext, in model.LogOpts, logDir, file
 		grip.Error(errors.Wrap(os.MkdirAll(in.LogDirectory, os.ModeDir|os.ModePerm), "error making log directory"))
 		logDir = in.LogDirectory
 	}
+	if tc.logDirectories == nil {
+		tc.logDirectories = map[string]interface{}{}
+	}
 	tc.logDirectories[logDir] = nil
 	return client.LogOpts{
 		LogkeeperURL:      a.opts.LogkeeperURL,
