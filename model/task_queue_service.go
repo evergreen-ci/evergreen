@@ -19,13 +19,8 @@ type TaskQueueService interface {
 	Refresh(string) error
 }
 
-type TaskDispatchService interface {
-	FindNextTask(TaskSpec) *TaskQueueItem
-	Refresh() error
-}
-
 type taskDispatchService struct {
-	queues map[string]TaskDispatchService
+	queues map[string]*taskDistroDispatchService
 	mu     sync.RWMutex
 	ttl    time.Duration
 }
@@ -33,7 +28,7 @@ type taskDispatchService struct {
 func NewTaskQueueService(ttl time.Duration) TaskQueueService {
 	return &taskDispatchService{
 		ttl:    ttl,
-		queues: map[string]TaskDispatchService{},
+		queues: map[string]*taskDistroDispatchService{},
 	}
 }
 
@@ -55,7 +50,7 @@ func (s *taskDispatchService) Refresh(distro string) error {
 	return errors.WithStack(queue.Refresh())
 }
 
-func (s *taskDispatchService) ensureQueue(distro string) (TaskDispatchService, error) {
+func (s *taskDispatchService) ensureQueue(distro string) (*taskDistroDispatchService, error) {
 	s.mu.RLock()
 	queue, ok := s.queues[distro]
 	s.mu.RUnlock()
@@ -70,7 +65,7 @@ func (s *taskDispatchService) ensureQueue(distro string) (TaskDispatchService, e
 		return queue, nil
 	}
 
-	queue = NewDistroTaskDispatchService(distro, nil, s.ttl)
+	queue = newDistroTaskDispatchService(distro, nil, s.ttl)
 	s.queues[distro] = queue
 
 	if err := queue.Refresh(); err != nil {
@@ -103,8 +98,8 @@ type schedulableUnit struct {
 	tasks        []TaskQueueItem
 }
 
-// NewTaskDispatchService creates a taskDistroDispatchService from a slice of TaskQueueItems.
-func NewDistroTaskDispatchService(distroID string, items []TaskQueueItem, ttl time.Duration) TaskDispatchService {
+// newTaskDispatchService creates a taskDistroDispatchService from a slice of TaskQueueItems.
+func newDistroTaskDispatchService(distroID string, items []TaskQueueItem, ttl time.Duration) *taskDistroDispatchService {
 	t := &taskDistroDispatchService{
 		distroID: distroID,
 		ttl:      ttl,
@@ -118,6 +113,9 @@ func NewDistroTaskDispatchService(distroID string, items []TaskQueueItem, ttl ti
 }
 
 func (t *taskDistroDispatchService) Refresh() error {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+
 	if !t.shouldRefresh() {
 		return nil
 	}
@@ -137,16 +135,15 @@ func shouldRefreshCached(ttl time.Duration, lastUpdated time.Time) bool {
 }
 
 func (t *taskDistroDispatchService) shouldRefresh() bool {
-	t.mu.RLock()
-	defer t.mu.RUnlock()
+	if shouldRefreshCached(t.ttl, t.lastUpdated) {
+		t.lastUpdated = time.Now()
+		return true
+	}
 
-	return shouldRefreshCached(t.ttl, t.lastUpdated)
+	return false
 }
 
 func (t *taskDistroDispatchService) rebuild(items []TaskQueueItem) {
-	t.mu.Lock()
-	defer t.mu.Unlock()
-
 	if !shouldRefreshCached(t.ttl, t.lastUpdated) {
 		return
 	}

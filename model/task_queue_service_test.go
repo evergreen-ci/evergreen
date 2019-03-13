@@ -81,7 +81,7 @@ func (s *taskDispatchServiceSuite) SetupTest() {
 }
 
 func (s *taskDispatchServiceSuite) TestConstructor() {
-	service := NewDistroTaskDispatchService("distro_1", s.items, time.Minute).(*taskDistroDispatchService)
+	service := newDistroTaskDispatchService("distro_1", s.items, time.Minute)
 	s.Len(service.order, 24, "20 bare tasks + 4 task groups")
 	s.Len(service.units, 24, "20 bare tasks + 4 task groups")
 	s.Equal(len(service.order), len(service.units), "order and units should have same length")
@@ -116,12 +116,12 @@ func (s *taskDispatchServiceSuite) TestConstructor() {
 }
 
 func (s *taskDispatchServiceSuite) TestEmptyService() {
-	service := NewDistroTaskDispatchService("distro_1", []TaskQueueItem{
+	service := newDistroTaskDispatchService("distro_1", []TaskQueueItem{
 		{
 			Id:    "0",
 			Group: "",
 		},
-	}, time.Minute).(*taskDistroDispatchService)
+	}, time.Minute)
 	next := service.FindNextTask(TaskSpec{})
 	s.Require().NotNil(next)
 	s.Equal("0", next.Id)
@@ -169,7 +169,7 @@ func (s *taskDispatchServiceSuite) TestSingleHostTaskGroupsBlock() {
 		}
 		s.Require().NoError(t.Insert())
 	}
-	service := NewDistroTaskDispatchService("distro_1", items, time.Minute).(*taskDistroDispatchService)
+	service := newDistroTaskDispatchService("distro_1", items, time.Minute)
 	spec := TaskSpec{
 		Group:        "group_1",
 		BuildVariant: "variant_1",
@@ -181,7 +181,7 @@ func (s *taskDispatchServiceSuite) TestSingleHostTaskGroupsBlock() {
 }
 
 func (s *taskDispatchServiceSuite) TestFindNextTask() {
-	service := NewDistroTaskDispatchService("distro_1", s.items, time.Minute)
+	service := newDistroTaskDispatchService("distro_1", s.items, time.Minute)
 	var spec TaskSpec
 	var next *TaskQueueItem
 
