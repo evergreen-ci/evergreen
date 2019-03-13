@@ -92,18 +92,6 @@ func (s *commitQueueSuite) TestNewCommitQueueJob() {
 	s.Equal("commit-queue:mci_job-1", job.ID())
 }
 
-func (s *commitQueueSuite) TestValidatePR() {
-	s.NoError(validatePR(s.pr))
-
-	mergeCommitSha := s.pr.MergeCommitSHA
-	s.pr.MergeCommitSHA = nil
-	s.Error(validatePR(s.pr))
-	s.pr.MergeCommitSHA = mergeCommitSha
-
-	s.pr.Base = nil
-	s.Error(validatePR(s.pr))
-}
-
 func (s *commitQueueSuite) TestSubscribeMerge() {
 	s.NoError(db.ClearCollections(event.SubscriptionsCollection))
 	s.NoError(subscribeMerge(s.projectRef.Identifier, s.projectRef.Owner, s.projectRef.Repo, "squash", "abcdef", s.pr))

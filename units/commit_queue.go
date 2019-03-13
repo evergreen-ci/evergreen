@@ -235,7 +235,7 @@ func checkPR(ctx context.Context, githubToken, issue, owner, repo string) (*gith
 		return nil, false, errors.Wrap(err, "can't get PR from GitHub")
 	}
 
-	if err = validatePR(pr); err != nil {
+	if err = thirdparty.ValidatePR(pr); err != nil {
 		return nil, true, errors.Wrap(err, "GitHub returned an incomplete PR")
 	}
 
@@ -286,46 +286,6 @@ func getModules(ctx context.Context, githubToken string, nextItem *commitqueue.C
 	}
 
 	return modulePRs, modulePatches, false, nil
-}
-
-func validatePR(pr *github.PullRequest) error {
-	if pr == nil {
-		return errors.New("No PR provided")
-	}
-
-	catcher := grip.NewSimpleCatcher()
-	if pr.GetMergeCommitSHA() == "" {
-		catcher.Add(errors.New("no merge commit SHA"))
-	}
-	if pr.GetUser() == nil || pr.GetUser().GetLogin() == "" {
-		catcher.Add(errors.New("no valid user"))
-	}
-	if pr.GetBase() == nil || pr.GetBase().GetSHA() == "" || pr.GetBase().GetRef() == "" {
-		catcher.Add(errors.New("no valid base SHA"))
-	}
-	if pr.GetBase() == nil || pr.GetBase().GetRepo() == nil || pr.GetBase().GetRepo().GetName() == "" || pr.GetBase().GetRepo().GetFullName() == "" {
-		catcher.Add(errors.New("no valid base repo name"))
-	}
-	if pr.GetBase() == nil || pr.GetBase().GetRepo() == nil || pr.GetBase().GetRepo().GetOwner() == nil || pr.GetBase().GetRepo().GetOwner().GetLogin() == "" {
-		catcher.Add(errors.New("no valid base repo owner login"))
-	}
-	if pr.GetHead() == nil || pr.GetHead().GetSHA() == "" {
-		catcher.Add(errors.New("no valid head SHA"))
-	}
-	if pr.GetNumber() == 0 {
-		catcher.Add(errors.New("no valid pr number"))
-	}
-	if pr.GetTitle() == "" {
-		catcher.Add(errors.New("no valid title"))
-	}
-	if pr.GetHTMLURL() == "" {
-		catcher.Add(errors.New("no valid HTML URL"))
-	}
-	if pr.Merged == nil {
-		catcher.Add(errors.New("no valid merged status"))
-	}
-
-	return catcher.Resolve()
 }
 
 func getPatchInfo(ctx context.Context, githubToken string, patchDoc *patch.Patch) (string, []patch.Summary, *model.Project, error) {
