@@ -64,7 +64,6 @@
 	max-height: 300px;
 	overflow: auto;
 	margin-top: 10px;
-  box-shadow: inset 0 -2px 0 rgba(0,0,0,0.05);
 }
 
 // admin stuff
@@ -96,11 +95,14 @@
   left: -1em;
   float: left;
   max-width: 100%;
+  min-width: 200px;
   margin-right: -1em;
 }
+
 .test-results-table {
   table-layout: fixed;
   word-wrap: break-word;
+  width: 520px;
 
   .progress {
     margin-bottom: 0;
@@ -324,9 +326,6 @@
 }
 .execDropdown {
 	white-space: nowrap;
-}
-.fullWidth {
-	width: 100%;
 }
 #task-info-elements td:nth-child(1) {
 	width: 35px;
