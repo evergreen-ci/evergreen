@@ -577,6 +577,12 @@ type awsClientMock struct { //nolint
 
 	*ec2.DescribeSpotInstanceRequestsOutput
 	*ec2.DescribeInstancesOutput
+	*ec2.DescribeSpotPriceHistoryOutput
+	*ec2.RequestSpotInstancesOutput
+	RunInstancesReservation *ec2.Reservation
+
+	FailRunInstances         bool
+	FailRequestSpotInstances bool
 }
 
 // Create a new mock client.
@@ -590,14 +596,18 @@ func (c *awsClientMock) Close() {}
 // RunInstances is a mock for ec2.RunInstances.
 func (c *awsClientMock) RunInstances(ctx context.Context, input *ec2.RunInstancesInput) (*ec2.Reservation, error) {
 	c.RunInstancesInput = input
-	return &ec2.Reservation{
+	if c.FailRunInstances {
+		return nil, errors.New("failed in RunInstances")
+	}
+	c.RunInstancesReservation = &ec2.Reservation{
 		Instances: []*ec2.Instance{
 			&ec2.Instance{
 				InstanceId: aws.String("instance_id"),
 				KeyName:    aws.String("keyName"),
 			},
 		},
-	}, nil
+	}
+	return c.RunInstancesReservation, nil
 }
 
 // DescribeInstances is a mock for ec2.DescribeInstances
@@ -648,7 +658,10 @@ func (c *awsClientMock) TerminateInstances(ctx context.Context, input *ec2.Termi
 // RequestSpotInstances is a mock for ec2.RequestSpotInstances.
 func (c *awsClientMock) RequestSpotInstances(ctx context.Context, input *ec2.RequestSpotInstancesInput) (*ec2.RequestSpotInstancesOutput, error) {
 	c.RequestSpotInstancesInput = input
-	return &ec2.RequestSpotInstancesOutput{
+	if c.FailRequestSpotInstances {
+		return nil, errors.New("failed in RequestSpotInstances")
+	}
+	c.RequestSpotInstancesOutput = &ec2.RequestSpotInstancesOutput{
 		SpotInstanceRequests: []*ec2.SpotInstanceRequest{
 			&ec2.SpotInstanceRequest{
 				InstanceId:            aws.String("instance_id"),
@@ -656,7 +669,8 @@ func (c *awsClientMock) RequestSpotInstances(ctx context.Context, input *ec2.Req
 				SpotInstanceRequestId: aws.String("instance_id"),
 			},
 		},
-	}, nil
+	}
+	return c.RequestSpotInstancesOutput, nil
 }
 
 // DescribeSpotInstanceRequests is a mock for ec2.DescribeSpotInstanceRequests.
@@ -734,6 +748,9 @@ func (c *awsClientMock) DescribeVolumes(ctx context.Context, input *ec2.Describe
 // DescribeSpotPriceHistory is a mock for ec2.DescribeSpotPriceHistory.
 func (c *awsClientMock) DescribeSpotPriceHistory(ctx context.Context, input *ec2.DescribeSpotPriceHistoryInput) (*ec2.DescribeSpotPriceHistoryOutput, error) {
 	c.DescribeSpotPriceHistoryInput = input
+	if c.DescribeSpotPriceHistoryOutput != nil {
+		return c.DescribeSpotPriceHistoryOutput, nil
+	}
 	return &ec2.DescribeSpotPriceHistoryOutput{
 		SpotPriceHistory: []*ec2.SpotPrice{
 			&ec2.SpotPrice{

@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
+	"sort"
 	"strconv"
 	"strings"
 	"sync"
@@ -13,7 +14,6 @@ import (
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/service/ec2"
 	"github.com/aws/aws-sdk-go/service/pricing"
-	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/grip"
@@ -284,7 +284,26 @@ func (cpf *cachingPriceFetcher) parseAWSPricing(out *pricing.GetProductsOutput) 
 	return p, nil
 }
 
-func (cpf *cachingPriceFetcher) getLatestLowestSpotCostForInstance(ctx context.Context, client AWSClient, settings *EC2ProviderSettings, os osType) (float64, string, error) {
+type availabilityZonePrice struct {
+	availabilityZone string
+	price            float64
+}
+
+type availabilityZonePrices []availabilityZonePrice
+
+func (p availabilityZonePrices) Len() int {
+	return len(p)
+}
+
+func (p availabilityZonePrices) Less(i, j int) bool {
+	return p[i].price < p[j].price
+}
+
+func (p availabilityZonePrices) Swap(i, j int) {
+	p[i], p[j] = p[j], p[i]
+}
+
+func (cpf *cachingPriceFetcher) getLatestSpotCostsForInstance(ctx context.Context, client AWSClient, settings *EC2ProviderSettings, os osType) (availabilityZonePrices, error) {
 	osName := string(os)
 	if settings.IsVpc {
 		osName += " (Amazon VPC)"
@@ -293,96 +312,41 @@ func (cpf *cachingPriceFetcher) getLatestLowestSpotCostForInstance(ctx context.C
 	grip.Debug(message.Fields{
 		"message":       "getting spot history",
 		"instance_type": settings.InstanceType,
-		"function":      "getLatestLowestSpotCostForInstance",
+		"function":      "getLatestSpotCostsForInstance",
 		"start_time":    "future",
 	})
 
 	args := hourlySpotPriceHistoryInput{
 		iType: settings.InstanceType,
 		os:    osType(osName),
-		// passing a future start time gets the latest price only
+		// Passing a future start time gets the latest prices only.
 		start: time.Now().UTC().Add(24 * time.Hour),
 		end:   time.Now().UTC().Add(25 * time.Hour),
-		// passing empty zone to find the "best"
+		// Don't specify a zone to get all availability zones.
 		zone: "",
 	}
 
 	prices, err := cpf.describeSpotPriceHistory(ctx, client, args)
 	if err != nil {
-		return 0, "", errors.WithStack(err)
+		return nil, errors.WithStack(err)
 	}
 	if len(prices) == 0 {
-		return 0, "", errors.New("no prices found")
+		return nil, errors.New("no spot prices found")
 	}
 
-	var min float64
-	var az string
+	azPrices := make(availabilityZonePrices, 0, len(prices))
+
 	for i := range prices {
 		p, err := strconv.ParseFloat(*prices[i].SpotPrice, 64)
 		if err != nil {
-			return 0, "", errors.Wrapf(err, "problem parsing %s", *prices[i].SpotPrice)
+			return nil, errors.Wrapf(err, "problem parsing %s", *prices[i].SpotPrice)
 		}
-		if min == 0 || p < min {
-			min = p
-			az = *prices[i].AvailabilityZone
-		}
-	}
-	return min, az, nil
-}
 
-func (m *ec2Manager) getProvider(ctx context.Context, h *host.Host, ec2settings *EC2ProviderSettings) (ec2ProviderType, error) {
-	var (
-		err           error
-		onDemandPrice float64
-		spotPrice     float64
-		az            string
-		r             string
-	)
-	if h.UserHost || m.provider == onDemandProvider || m.provider == autoProvider {
-		r, err = getRegion(h)
-		if err != nil {
-			return 0, errors.Wrap(err, "problem getting region for host")
-		}
-		onDemandPrice, err = pkgCachingPriceFetcher.getEC2OnDemandCost(ctx, m.client, getOsName(h), ec2settings.InstanceType, r)
-		if err != nil {
-			return 0, errors.Wrap(err, "error getting ec2 on-demand cost")
-		}
+		azPrices = append(azPrices, availabilityZonePrice{availabilityZone: *prices[i].AvailabilityZone, price: p})
 	}
-	if m.provider == spotProvider || m.provider == autoProvider {
-		spotPrice, az, err = pkgCachingPriceFetcher.getLatestLowestSpotCostForInstance(ctx, m.client, ec2settings, getOsName(h))
-		if err != nil {
-			return 0, errors.Wrap(err, "error getting latest lowest spot price")
-		}
-	}
-	if h.UserHost || m.provider == onDemandProvider {
-		h.Distro.Provider = evergreen.ProviderNameEc2OnDemand
-		h.ComputeCostPerHour = onDemandPrice
-		return onDemandProvider, nil
-	}
-	if m.provider == spotProvider {
-		h.Distro.Provider = evergreen.ProviderNameEc2Spot
-		h.ComputeCostPerHour = spotPrice
-		return spotProvider, nil
-	}
-	if m.provider == autoProvider {
-		if spotPrice < onDemandPrice {
-			h.ComputeCostPerHour = spotPrice
-			ec2settings.BidPrice = onDemandPrice
-			if ec2settings.VpcName != "" {
-				subnetID, err := m.getSubnetForAZ(ctx, az, ec2settings.VpcName)
-				if err != nil {
-					return 0, errors.Wrap(err, "error settings dynamic subnet for spot")
-				}
-				ec2settings.SubnetId = subnetID
-			}
-			h.Distro.Provider = evergreen.ProviderNameEc2Spot
-			return spotProvider, nil
-		}
-		h.ComputeCostPerHour = onDemandPrice
-		h.Distro.Provider = evergreen.ProviderNameEc2OnDemand
-		return onDemandProvider, nil
-	}
-	return 0, errors.Errorf("provider is %d, expected %d, %d, or %d", m.provider, onDemandProvider, spotProvider, autoProvider)
+	sort.Sort(azPrices)
+
+	return azPrices, nil
 }
 
 func (m *ec2Manager) getSubnetForAZ(ctx context.Context, azName, vpcName string) (string, error) {
@@ -605,7 +569,6 @@ func (i hourlySpotPriceHistoryInput) String() string {
 	return fmt.Sprintln(i.iType, i.zone, i.os, i.start.Round(spotPriceCacheTTL).Unix())
 }
 
-// describeHourlySpotPriceHistory talks to Amazon to get spot price history
 func (cpf *cachingPriceFetcher) describeSpotPriceHistory(ctx context.Context, client AWSClient, input hourlySpotPriceHistoryInput) ([]*ec2.SpotPrice, error) {
 	cpf.Lock()
 	defer cpf.Unlock()

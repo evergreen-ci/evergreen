@@ -446,6 +446,177 @@ func (s *EC2Suite) TestSpawnHostVPCSpot() {
 	s.Equal(base64OfSomeUserData, *requestInput.LaunchSpecification.UserData)
 }
 
+func (s *EC2Suite) setSpotPriceOutput(mock *awsClientMock, price, instanceType, zone string) {
+	now := time.Now()
+	spotPrice := ec2.SpotPrice{
+		AvailabilityZone: &zone,
+		SpotPrice:        &price,
+		InstanceType:     &instanceType,
+		Timestamp:        &now,
+	}
+	priceHistory := []*ec2.SpotPrice{&spotPrice}
+	mock.DescribeSpotPriceHistoryOutput = &ec2.DescribeSpotPriceHistoryOutput{SpotPriceHistory: priceHistory}
+}
+
+func (s *EC2Suite) setOnDemandPriceOutput(cpf *cachingPriceFetcher, onDemandPrice float64, os osType, instanceType, region string) {
+	osName := osBillingName(os)
+	cpf.ec2Prices = map[odInfo]float64{
+		odInfo{os: osName, instance: instanceType, region: region}: onDemandPrice,
+	}
+}
+
+func (s *EC2Suite) getHost(provider string, os osType, instanceType string) *host.Host {
+	h := &host.Host{}
+	h.Distro.Provider = provider
+	h.Distro.Arch = string(os)
+	h.Distro.ProviderSettings = &map[string]interface{}{
+		"ami":           "ami",
+		"instance_type": instanceType,
+		"key_name":      "keyName",
+		"mount_points": []map[string]string{
+			map[string]string{"device_name": "device", "virtual_name": "virtual"},
+		},
+		"security_group_ids": []string{"sg-123456"},
+		"subnet_id":          "subnet-123456",
+		"user_data":          someUserData,
+	}
+	return h
+}
+
+func (s *EC2Suite) TestSpawnHostAutoProviderWhenOnDemandIsCheaper() {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	manager, ok := s.autoManager.(*ec2Manager)
+	s.True(ok)
+
+	mock, ok := manager.client.(*awsClientMock)
+	s.True(ok)
+
+	instanceType := "instanceType"
+	s.setOnDemandPriceOutput(pkgCachingPriceFetcher, 0.1, osLinux, instanceType, "US East (N. Virginia)")
+	s.setSpotPriceOutput(mock, "1.0", instanceType, "us-east-1a")
+	h := s.getHost(evergreen.ProviderNameEc2Auto, osLinux, instanceType)
+
+	res, err := manager.SpawnHost(ctx, h)
+	s.NoError(err)
+	s.NotNil(res)
+	// An on-demand instance should have been requested, but not a spot instance.
+	s.Nil(mock.RequestSpotInstancesInput)
+	s.NotNil(mock.RunInstancesInput)
+}
+
+func (s *EC2Suite) TestSpawnHostSpotProviderWhenOnDemandIsCheaper() {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	manager, ok := s.spotManager.(*ec2Manager)
+	s.True(ok)
+
+	mock, ok := manager.client.(*awsClientMock)
+	s.True(ok)
+
+	instanceType := "instanceType"
+	s.setOnDemandPriceOutput(pkgCachingPriceFetcher, 0.1, osLinux, instanceType, "US East (N. Virginia)")
+	s.setSpotPriceOutput(mock, "1.0", instanceType, "us-east-1a")
+	h := s.getHost(evergreen.ProviderNameEc2Spot, osLinux, instanceType)
+
+	res, err := manager.SpawnHost(ctx, h)
+	s.NoError(err)
+	s.NotNil(res)
+	// A spot instance should have been requested, but not an on-demand instance.
+	s.NotNil(mock.RequestSpotInstancesInput)
+	s.Nil(mock.RunInstancesInput)
+}
+
+func (s *EC2Suite) TestSpawnHostAutoProviderWithSpotInstances() {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	manager, ok := s.autoManager.(*ec2Manager)
+	s.True(ok)
+	mock, ok := manager.client.(*awsClientMock)
+	s.True(ok)
+
+	instanceType := "instanceType"
+	s.setOnDemandPriceOutput(pkgCachingPriceFetcher, 1.0, osLinux, instanceType, "US East (N. Virginia)")
+	s.setSpotPriceOutput(mock, "0.1", instanceType, "us-east-1a")
+	h := s.getHost(evergreen.ProviderNameEc2Auto, osLinux, instanceType)
+
+	res, err := manager.SpawnHost(ctx, h)
+	s.NoError(err)
+	s.NotNil(res)
+	// A spot instance shouold have been requested, but not an on-demand instance.
+	s.NotNil(mock.RequestSpotInstancesInput)
+	s.Nil(mock.RunInstancesInput)
+}
+
+func (s *EC2Suite) TestSpawnHostAutoProviderNoSpotInstances() {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	manager, ok := s.autoManager.(*ec2Manager)
+	s.True(ok)
+	mock, ok := manager.client.(*awsClientMock)
+	s.True(ok)
+
+	instanceType := "instanceType"
+	s.setOnDemandPriceOutput(pkgCachingPriceFetcher, 1.0, osLinux, instanceType, "US East (N. Virginia)")
+	s.setSpotPriceOutput(mock, "0.1", instanceType, "us-east-1a")
+	h := s.getHost(evergreen.ProviderNameEc2Auto, osLinux, instanceType)
+
+	mock.FailRequestSpotInstances = true
+
+	res, err := manager.SpawnHost(ctx, h)
+	s.NoError(err)
+	s.NotNil(res)
+	// Both a spot and an on-demand instance should have been requested.
+	s.NotNil(mock.RequestSpotInstancesInput)
+	s.NotNil(mock.RunInstancesInput)
+}
+
+func (s *EC2Suite) TestSpawnHostSpotProviderNoSpotInstances() {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	h := s.getHost(evergreen.ProviderNameEc2Spot, osLinux, "instanceType")
+
+	manager, ok := s.spotManager.(*ec2Manager)
+	s.True(ok)
+
+	mock, ok := manager.client.(*awsClientMock)
+	s.True(ok)
+	mock.FailRequestSpotInstances = true
+
+	res, err := s.spotManager.SpawnHost(ctx, h)
+	s.Error(err)
+	s.Nil(res)
+}
+
+func (s *EC2Suite) TestSpawnHostAutoWithUserHost() {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	manager, ok := s.autoManager.(*ec2Manager)
+	s.True(ok)
+
+	mock, ok := manager.client.(*awsClientMock)
+	s.True(ok)
+
+	instanceType := "instanceType"
+	s.setOnDemandPriceOutput(pkgCachingPriceFetcher, 1.0, osLinux, instanceType, "US East (N. Virginia)")
+	s.setSpotPriceOutput(mock, "0.1", instanceType, "us-east-1a")
+	h := s.getHost(evergreen.ProviderNameEc2Auto, osLinux, instanceType)
+	h.UserHost = true
+
+	res, err := manager.SpawnHost(ctx, h)
+	s.NoError(err)
+	s.NotNil(res)
+	// An on-demand instance should have been requested, but not a spot instance.
+	s.Nil(mock.RequestSpotInstancesInput)
+	s.NotNil(mock.RunInstancesInput)
+}
+
 func (s *EC2Suite) TestNoKeyAndNotSpawnHostForTaskShouldFail() {
 	h := &host.Host{}
 	h.Distro.Id = "distro_id"
@@ -564,6 +735,7 @@ func (s *EC2Suite) TestSpawnHostForTask() {
 	s.Equal("evg_auto_"+project, k.Name)
 	s.Equal("key_material", k.Value)
 }
+
 func (s *EC2Suite) TestGetInstanceStatus() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -670,44 +842,6 @@ func (s *EC2Suite) TestGetInstanceName() {
 	d := distro.Distro{Id: "foo"}
 	id := d.GenerateName()
 	s.True(strings.HasPrefix(id, "evg-foo-"))
-}
-
-func (s *EC2Suite) TestGetProvider() {
-	h := &host.Host{
-		Distro: distro.Distro{
-			Arch: "Linux/Unix",
-		},
-	}
-	pkgCachingPriceFetcher.ec2Prices = map[odInfo]float64{
-		odInfo{
-			os:       "Linux",
-			instance: "instance",
-			region:   "US East (N. Virginia)",
-		}: 23.2,
-	}
-	ec2Settings := &EC2ProviderSettings{
-		InstanceType: "instance",
-		IsVpc:        true,
-		SubnetId:     "subnet-123456",
-		VpcName:      "vpc_name",
-	}
-
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
-	manager, ok := s.autoManager.(*ec2Manager)
-	s.True(ok)
-	provider, err := manager.getProvider(ctx, h, ec2Settings)
-	s.NoError(err)
-	s.Equal(spotProvider, provider)
-	// subnet should be set based on vpc name
-	s.Equal("subnet-654321", ec2Settings.SubnetId)
-	s.Equal(h.Distro.Provider, evergreen.ProviderNameEc2Spot)
-
-	h.UserHost = true
-	provider, err = manager.getProvider(ctx, h, ec2Settings)
-	s.NoError(err)
-	s.Equal(onDemandProvider, provider)
 }
 
 func (s *EC2Suite) TestPersistInstanceId() {

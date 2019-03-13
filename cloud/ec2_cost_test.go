@@ -4,9 +4,12 @@ package cloud
 
 import (
 	"context"
+	"sort"
+	"strconv"
 	"testing"
 	"time"
 
+	"github.com/aws/aws-sdk-go/service/ec2"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
@@ -164,6 +167,57 @@ func (s *CostUnitSuite) TestTimeTilNextPayment() {
 
 	timeNextPayment = timeTilNextEC2Payment(&hourlyHostNoStartTime)
 	s.InDelta(timeTilNextHour, timeNextPayment.Nanoseconds(), float64(1*time.Millisecond))
+}
+
+func (s *CostUnitSuite) TestGetLatestSpotCostsForInstance() {
+	client := &awsClientMock{}
+	instanceType := "m4.large"
+	now := time.Now()
+	spotPrices := []struct {
+		zone  string
+		price string
+	}{
+		{zone: "us-east-1a", price: "0.5"},
+		{zone: "us-east-1b", price: "0.2"},
+		{zone: "us-east-1c", price: "1.3"},
+		{zone: "us-east-1d", price: "0.3"},
+	}
+
+	priceHistory := make([]*ec2.SpotPrice, 0, len(spotPrices))
+	for i := range spotPrices {
+		priceHistory = append(priceHistory, &ec2.SpotPrice{
+			AvailabilityZone: &spotPrices[i].zone,
+			SpotPrice:        &spotPrices[i].price,
+			InstanceType:     &instanceType,
+			Timestamp:        &now,
+		})
+	}
+	client.DescribeSpotPriceHistoryOutput = &ec2.DescribeSpotPriceHistoryOutput{SpotPriceHistory: priceHistory}
+
+	cpf := &cachingPriceFetcher{}
+
+	settings := &EC2ProviderSettings{InstanceType: instanceType}
+
+	zonePrices, err := cpf.getLatestSpotCostsForInstance(context.TODO(), client, settings, "fooOS")
+	s.NoError(err)
+	s.Equal(len(spotPrices), len(zonePrices))
+	s.True(sort.IsSorted(zonePrices))
+
+	p0, err := strconv.ParseFloat(spotPrices[0].price, 64)
+	s.NoError(err)
+	s.Equal(p0, zonePrices[2].price)
+
+	p1, err := strconv.ParseFloat(spotPrices[1].price, 64)
+	s.NoError(err)
+	s.Equal(p1, zonePrices[0].price)
+
+	p2, err := strconv.ParseFloat(spotPrices[2].price, 64)
+	s.NoError(err)
+	s.Equal(p2, zonePrices[3].price)
+
+	p3, err := strconv.ParseFloat(spotPrices[3].price, 64)
+	s.NoError(err)
+	s.Equal(p3, zonePrices[1].price)
 }
 
 type CostIntegrationSuite struct {
@@ -335,91 +389,4 @@ func (s *CostIntegrationSuite) TestFetchOnDemandPricingUncached() {
 	s.Equal(1.504, pkgCachingPriceFetcher.ec2Prices[odInfo{os: "Windows", instance: "m5.4xlarge", region: "US East (N. Virginia)"}])
 	s.Equal(.192, pkgCachingPriceFetcher.ec2Prices[odInfo{os: "Linux", instance: "m5.xlarge", region: "US East (N. Virginia)"}])
 	s.Equal(.376, pkgCachingPriceFetcher.ec2Prices[odInfo{os: "Windows", instance: "m5.xlarge", region: "US East (N. Virginia)"}])
-}
-
-func (s *CostIntegrationSuite) TestGetProviderStatic() {
-	h := &host.Host{}
-	settings := &EC2ProviderSettings{}
-	settings.InstanceType = "m4.large"
-	settings.IsVpc = true
-
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
-	s.m.provider = onDemandProvider
-	provider, err := s.m.getProvider(ctx, h, settings)
-	s.NoError(err)
-	s.Equal(onDemandProvider, provider)
-
-	s.m.provider = spotProvider
-	provider, err = s.m.getProvider(ctx, h, settings)
-	s.NoError(err)
-	s.Equal(spotProvider, provider)
-
-	s.m.provider = 5
-	_, err = s.m.getProvider(ctx, h, settings)
-	s.Error(err)
-
-	s.m.provider = -5
-	_, err = s.m.getProvider(ctx, h, settings)
-	s.Error(err)
-}
-
-func (s *CostIntegrationSuite) TestGetProviderAuto() {
-	h := &host.Host{
-		Distro: distro.Distro{
-			Arch: "linux",
-		},
-	}
-	settings := &EC2ProviderSettings{}
-	s.m.provider = autoProvider
-
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
-	m4LargeOnDemand, err := pkgCachingPriceFetcher.getEC2OnDemandCost(context.Background(), s.m.client, getOsName(h), "m4.large", defaultRegion)
-	s.InDelta(.1, m4LargeOnDemand, .05)
-	s.NoError(err)
-
-	t2MicroOnDemand, err := pkgCachingPriceFetcher.getEC2OnDemandCost(context.Background(), s.m.client, getOsName(h), "t2.micro", defaultRegion)
-	s.InDelta(.0116, t2MicroOnDemand, .01)
-	s.NoError(err)
-
-	settings.InstanceType = "m4.large"
-	settings.IsVpc = true
-	m4LargeSpot, az, err := pkgCachingPriceFetcher.getLatestLowestSpotCostForInstance(ctx, s.m.client, settings, getOsName(h))
-	s.Contains(az, "us-east")
-	s.True(m4LargeSpot > 0)
-	s.NoError(err)
-
-	settings.InstanceType = "t2.micro"
-	settings.IsVpc = true
-	t2MicroSpot, az, err := pkgCachingPriceFetcher.getLatestLowestSpotCostForInstance(ctx, s.m.client, settings, getOsName(h))
-	s.Contains(az, "us-east")
-	s.True(t2MicroSpot > 0)
-	s.NoError(err)
-
-	settings.InstanceType = "m4.large"
-	settings.IsVpc = true
-	provider, err := s.m.getProvider(ctx, h, settings)
-	s.NoError(err)
-	if m4LargeSpot < m4LargeOnDemand {
-		s.Equal(spotProvider, provider)
-		s.Equal(evergreen.ProviderNameEc2Spot, h.Distro.Provider)
-	} else {
-		s.Equal(onDemandProvider, provider)
-		s.Equal(evergreen.ProviderNameEc2OnDemand, h.Distro.Provider)
-	}
-
-	settings.InstanceType = "t2.micro"
-	settings.IsVpc = true
-	provider, err = s.m.getProvider(ctx, h, settings)
-	s.NoError(err)
-	if t2MicroSpot < t2MicroOnDemand {
-		s.Equal(spotProvider, provider)
-		s.Equal(evergreen.ProviderNameEc2Spot, h.Distro.Provider)
-	} else {
-		s.Equal(onDemandProvider, provider)
-		s.Equal(evergreen.ProviderNameEc2OnDemand, h.Distro.Provider)
-	}
 }

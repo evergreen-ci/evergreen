@@ -218,12 +218,6 @@ func (m *ec2Manager) spawnOnDemandHost(ctx context.Context, h *host.Host, ec2Set
 			"host_provider": h.Distro.Provider,
 			"distro":        h.Distro.Id,
 		}))
-		grip.Error(message.WrapError(h.Remove(), message.Fields{
-			"message":       "error removing intent host",
-			"host":          h.Id,
-			"host_provider": h.Distro.Provider,
-			"distro":        h.Distro.Id,
-		}))
 		if err != nil {
 			return nil, errors.Wrap(err, msg)
 		}
@@ -333,7 +327,6 @@ func (m *ec2Manager) spawnSpotHost(ctx context.Context, h *host.Host, ec2Setting
 	})
 	spotResp, err := m.client.RequestSpotInstances(ctx, spotRequest)
 	if err != nil {
-		grip.Error(errors.Wrapf(h.Remove(), "error removing intent host %s", h.Id))
 		return nil, errors.Wrap(err, "RequestSpotInstances API call returned an error")
 	}
 
@@ -347,6 +340,67 @@ func (m *ec2Manager) spawnSpotHost(ctx context.Context, h *host.Host, ec2Setting
 	h.Id = *spotReqRes.SpotInstanceRequestId
 	resources := []*string{spotReqRes.SpotInstanceRequestId}
 	return resources, nil
+}
+
+// trySpawningSpotHost attempts to spawn a spot host in multiple availability regions. It returns an error if it fails.
+func (m *ec2Manager) trySpawningSpotHost(ctx context.Context, h *host.Host, ec2Settings *EC2ProviderSettings, blockDevices []*ec2.BlockDeviceMapping, osName osType, onDemandPrice float64) ([]*string, error) {
+	azSpotPrices, err := pkgCachingPriceFetcher.getLatestSpotCostsForInstance(ctx, m.client, ec2Settings, osName)
+	if err != nil {
+		return nil, errors.Wrap(err, "error getting latest spot prices")
+	}
+
+	if len(azSpotPrices) == 0 {
+		return nil, errors.New("could not fetch spot host prices for availability zones")
+	}
+
+	catcher := grip.NewBasicCatcher()
+
+	if m.provider == autoProvider {
+		ec2Settings.BidPrice = onDemandPrice
+	}
+
+	originalZone := h.Zone
+	originalSubnetID := ec2Settings.SubnetId
+
+	// Try spawning spot hosts until either one is spawned or all availability zones have been tried.
+	// For auto mode, also stop trying to spawn a spot host early if the on-demand price is cheaper.
+	for _, azSpotPrice := range azSpotPrices {
+		if m.provider == autoProvider && azSpotPrice.price > onDemandPrice {
+			break
+		}
+
+		h.ComputeCostPerHour = azSpotPrice.price
+		h.Zone = azSpotPrice.availabilityZone
+
+		if ec2Settings.VpcName != "" {
+			subnetID, err := m.getSubnetForAZ(ctx, azSpotPrice.availabilityZone, ec2Settings.VpcName)
+			if err != nil {
+				catcher.Add(err)
+				continue
+			}
+			ec2Settings.SubnetId = subnetID
+		}
+
+		resources, err := m.spawnSpotHost(ctx, h, ec2Settings, blockDevices)
+		if err != nil {
+			catcher.Add(err)
+			continue
+		}
+
+		grip.Debug(message.Fields{
+			"message":       "spawned spot host",
+			"host":          h.Id,
+			"host_provider": h.Distro.Provider,
+			"distro":        h.Distro.Id,
+		})
+
+		return resources, nil
+	}
+
+	h.Zone = originalZone
+	ec2Settings.SubnetId = originalSubnetID
+
+	return nil, catcher.Resolve()
 }
 
 // SpawnHost spawns a new host.
@@ -399,28 +453,51 @@ func (m *ec2Manager) SpawnHost(ctx context.Context, h *host.Host) (*host.Host, e
 	}
 	h.InstanceType = ec2Settings.InstanceType
 
-	r, err := getRegion(h)
+	region, err := getRegion(h)
 	if err != nil {
 		return nil, errors.Wrap(err, "problem getting region for host")
 	}
-	if err = m.client.Create(m.credentials, r); err != nil {
+	if err = m.client.Create(m.credentials, region); err != nil {
 		return nil, errors.Wrap(err, "error creating client")
 	}
 	defer m.client.Close()
 
 	var resources []*string
-	provider, err := m.getProvider(ctx, h, ec2Settings)
-	if err != nil {
-		msg := "error getting provider"
-		grip.Error(message.WrapError(err, message.Fields{
-			"message":       msg,
-			"host":          h.Id,
-			"host_provider": h.Distro.Provider,
-			"distro":        h.Distro.Id,
-		}))
-		return nil, errors.Wrap(err, msg)
+
+	needsOnDemandHost := m.provider == onDemandProvider || h.UserHost
+
+	osName := getOsName(h)
+	var onDemandPrice float64
+	if needsOnDemandHost || m.provider == autoProvider {
+		onDemandPrice, err = pkgCachingPriceFetcher.getEC2OnDemandCost(ctx, m.client, osName, ec2Settings.InstanceType, region)
+		if err != nil {
+			return nil, errors.Wrap(err, "error getting ec2 on-demand cost")
+		}
 	}
-	if provider == onDemandProvider {
+
+	if !needsOnDemandHost {
+		h.Distro.Provider = evergreen.ProviderNameEc2Spot
+		resources, err = m.trySpawningSpotHost(ctx, h, ec2Settings, blockDevices, osName, onDemandPrice)
+		if m.provider == spotProvider && resources == nil {
+			if err == nil {
+				err = errors.New("spot host could not be created in any availability zones")
+			}
+			msg := "error spawning spot host"
+			grip.Error(message.WrapError(err, message.Fields{
+				"message":       msg,
+				"host":          h.Id,
+				"host_provider": h.Distro.Provider,
+				"distro":        h.Distro.Id,
+			}))
+
+			return nil, errors.Wrap(err, "failed to spawn spot host")
+		}
+	}
+
+	if resources == nil {
+		h.Distro.Provider = evergreen.ProviderNameEc2OnDemand
+		h.ComputeCostPerHour = onDemandPrice
+
 		resources, err = m.spawnOnDemandHost(ctx, h, ec2Settings, blockDevices)
 		if err != nil {
 			msg := "error spawning on-demand host"
@@ -434,24 +511,6 @@ func (m *ec2Manager) SpawnHost(ctx context.Context, h *host.Host) (*host.Host, e
 		}
 		grip.Debug(message.Fields{
 			"message":       "spawned on-demand host",
-			"host":          h.Id,
-			"host_provider": h.Distro.Provider,
-			"distro":        h.Distro.Id,
-		})
-	} else if provider == spotProvider {
-		resources, err = m.spawnSpotHost(ctx, h, ec2Settings, blockDevices)
-		if err != nil {
-			msg := "error spawning spot host"
-			grip.Error(message.WrapError(err, message.Fields{
-				"message":       msg,
-				"host":          h.Id,
-				"host_provider": h.Distro.Provider,
-				"distro":        h.Distro.Id,
-			}))
-			return nil, errors.Wrap(err, msg)
-		}
-		grip.Debug(message.Fields{
-			"message":       "spawned spot host",
 			"host":          h.Id,
 			"host_provider": h.Distro.Provider,
 			"distro":        h.Distro.Id,
