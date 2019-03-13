@@ -67,7 +67,7 @@ type Build struct {
 
 // Returns whether or not the build has finished, based on its status.
 // In spite of the name, a build with status BuildFailed may still be in
-// progress; use AllCachedTasksOrCompileFinished
+// progress; use AllCachedTasksFinished
 func (b *Build) IsFinished() bool {
 	return b.Status == evergreen.BuildFailed ||
 		b.Status == evergreen.BuildSucceeded
