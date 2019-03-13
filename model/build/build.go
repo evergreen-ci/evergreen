@@ -77,8 +77,7 @@ func (b *Build) IsFinished() bool {
 // one of the statuses in IsFinishedTaskStatus or the task is considered blocked
 //
 // returns boolean to indicate if tasks are complete, string with either BuildFailed or
-// BuildSucceded. The string is only valid when the boolean is
- true
+// BuildSucceded. The string is only valid when the boolean is true
 func (b *Build) AllUnblockedTasksFinished(tasksWithDeps []task.Task) (bool, string, error) {
 	if !b.Activated {
 		return false, b.Status, nil
