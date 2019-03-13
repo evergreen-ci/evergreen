@@ -147,7 +147,6 @@ func (t *taskDistroDispatchService) rebuild(items []TaskQueueItem) {
 	t.mu.Lock()
 	defer t.mu.Unlock()
 
-	// given the lock a
 	if !shouldRefreshCached(t.ttl, t.lastUpdated) {
 		return
 	}
