@@ -1219,7 +1219,7 @@ func AddNewBuilds(activated bool, v *Version, p *Project, tasks TaskVariantPairs
 // Given a version and set of variant/task pairs, creates any tasks that don't exist yet,
 // within the set of already existing builds.
 func AddNewTasks(activated bool, v *Version, p *Project, pairs TaskVariantPairs, generatedBy string) error {
-	builds, err := build.Find(build.ByIds(v.BuildIds).WithFields(build.IdKey, build.BuildVariantKey, build.CreateTimeKey, build.TasksKey))
+	builds, err := build.Find(build.ByIds(v.BuildIds).WithFields(build.IdKey, build.BuildVariantKey, build.CreateTimeKey))
 	if err != nil {
 		return err
 	}
