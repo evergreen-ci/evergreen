@@ -158,10 +158,7 @@ function wireup()
 	{
 		var newSetting = $(this).data('show-debug-output');
 		save('show-debug-output', newSetting);
-		if (newSetting === "show")
-			$('.story-line-desc .message').show();
-		else
-			$('.story-line-desc .message').hide();
+		setDebugOutputUI(newSetting);
 	});
 	$('.enum#ui-effects').on('click', 'li:not(.sel)', function()
 	{
@@ -170,6 +167,40 @@ function wireup()
 		save('ui-effects', newSetting);
 	});
 	// End settings wireup
+
+	//wireup the notification-settings switches
+	$('.enum#notification').on('click', 'li:not(.sel)', function()
+	{
+		var enabled = $(this).data('notification');
+		log("Turning notifications " + enabled ? 'on' : 'off');
+		save('notifications', enabled);
+
+		if (notif() && 'Notification' in window)
+		{
+			if (Notification.permission !== 'denied')
+			{
+				Notification.requestPermission(function(per)
+				{
+					if (!('permission' in Notification))
+					{
+						Notification.permission = per;
+					}
+				});
+			}
+			else
+				log("Permission denied to show desktop notification");
+		}
+
+		setNotifUI()
+	});
+
+	$('.enum#notification-level').on('click', 'li:not(.sel)', function()
+	{
+		var level = $(this).data('notification-level');
+		convey.notificationLevel = level;
+		save('notification-level', level);
+	});
+	// End notification-settings
 
 	convey.layout.header = $('header').first();
 	convey.layout.frame = $('.frame').first();
@@ -222,23 +253,7 @@ function wireup()
 
 	$('#toggle-notif').click(function()
 	{
-		log("Turning notifications " + (notif() ? "off" : "on"));
-		$(this).toggleClass("fa-bell-o fa-bell " + convey.layout.selClass);
-		save('notifications', !notif());
-
-		if (notif() && 'Notification' in window)
-		{
-			if (Notification.permission !== 'denied')
-			{
-				Notification.requestPermission(function(per)
-				{
-					if (!('permission' in Notification))
-						Notification.permission = per;
-				});
-			}
-			else
-				log("Permission denied to show desktop notification");
-		}
+		toggle($('.settings-notification'), $(this));
 	});
 
 	$('#show-history').click(function()
@@ -248,7 +263,7 @@ function wireup()
 
 	$('#show-settings').click(function()
 	{
-		toggle($('.settings'), $(this));
+		toggle($('.settings-general'), $(this));
 	});
 
 	$('#show-gen').click(function() {
@@ -256,15 +271,6 @@ function wireup()
 		if (window.focus)
 			writer.focus();
 	});
-
-	// Wire-up the tipsy tooltips
-	$('.controls li, .pkg-cover-name').tipsy({ live: true });
-	$('footer .replay').tipsy({ live: true, gravity: 'e' });
-	$('#path').tipsy({ delayIn: 500 });
-	$('.ignore').tipsy({ live: true, gravity: $.fn.tipsy.autoNS });
-	$('.disabled').tipsy({ live: true, gravity: $.fn.tipsy.autoNS });
-	$('#logo').tipsy({ gravity: 'w' });
-
 
 	$('.toggler').not('.narrow').prepend('<i class="fa fa-angle-up fa-lg"></i>');
 	$('.toggler.narrow').prepend('<i class="fa fa-angle-down fa-lg"></i>');
@@ -395,9 +401,55 @@ function wireup()
 		e.stopPropagation();
 	});
 
+	// Wire-up the tipsy tooltips
+	setTooltips();
+
 	// Keep everything positioned and sized properly on window resize
 	reframe();
 	$(window).resize(reframe);
+}
+
+function setTooltips()
+{
+	var tips = {
+		'#path': { delayIn: 500 },
+		'#logo': { gravity: 'w' },
+		'.controls li, .pkg-cover-name': { live: false },
+		'footer .replay': { live: false, gravity: 'e' },
+		'.ignore': { live: false, gravity: $.fn.tipsy.autoNS },
+		'.disabled': { live: false, gravity: $.fn.tipsy.autoNS }
+	};
+
+	for (var key in tips)
+	{
+		$(key).each(function(el)
+		{
+			if(!$(this).tipsy(true))
+				$(this).tipsy(tips[key]);
+		});
+	}
+}
+
+function setDebugOutputUI(newSetting){
+	var $storyLine = $('.story-line');
+	switch(newSetting) {
+		case 'hide':
+			$('.message', $storyLine).hide();
+			break;
+		case 'fail':
+			$('.message', $storyLine.not('.fail, .panic')).hide();
+			$('.message', $storyLine.filter('.fail, .panic')).show();
+			break;
+		default:
+			$('.message', $storyLine).show();
+			break;
+	}
+}
+
+function setNotifUI()
+{
+	var $toggleNotif = $('#toggle-notif').addClass(notif() ? "fa-bell" : "fa-bell-o");
+	$toggleNotif.removeClass(!notif() ? "fa-bell" : "fa-bell-o");
 }
 
 function expandAll()
@@ -477,8 +529,16 @@ function loadSettingsFromStorage()
 	convey.uiEffects = uiEffects === "true";
 	enumSel("ui-effects", uiEffects);
 
-	if (notif())
-		$('#toggle-notif').toggleClass("fa-bell-o fa-bell " + convey.layout.selClass);
+	enumSel("notification", ""+notif());
+	var notifLevel = get("notification-level");
+	if (notifLevel === null) 
+	{
+		notifLevel = '.*';
+	}
+	convey.notificationLevel = notifLevel;
+	enumSel("notification-level", notifLevel);
+
+	setNotifUI();
 }
 
 
@@ -769,7 +829,8 @@ function process(data, status, jqxhr)
 	convey.intervalFuncs.momentjs();
 
 	// Show notification, if enabled
-	if (notif())
+	var levelRegex = new RegExp("("+convey.notificationLevel+")", "i");
+	if (notif() && current().overall.status.class.match(levelRegex))
 	{
 		log("Showing notification");
 		if (convey.notif)
@@ -778,12 +839,16 @@ function process(data, status, jqxhr)
 			convey.notif.close();
 		}
 
-		var notifText = notifSummary(current())
+		var notifText = notifSummary(current());
 
 		convey.notif = new Notification(notifText.title, {
 			body: notifText.body,
 			icon: $('.favicon').attr('href')
 		});
+
+                convey.notif.onclick = function() { 
+                  window.focus(); 
+                };
 
 		convey.notifTimer = setTimeout(function() { convey.notif.close(); }, 5000);
 	}
@@ -794,25 +859,11 @@ function process(data, status, jqxhr)
 	else
 		$('title').text("GoConvey [" + current().overall.status.text + "] " + current().overall.passed + "/" + current().overall.assertions);
 
+	setTooltips();
+
 	// All done!
 	log("Processing complete");
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 // Updates the entire UI given a frame from the history
 function renderFrame(frame)
@@ -879,8 +930,8 @@ function renderFrame(frame)
 
 	$('.history .item').removeClass('selected');
 
-	if (get('show-debug-output') === "hide")
-		$('.story-line-desc .message').hide();
+
+	setDebugOutputUI(get('show-debug-output'));
 
 	log("Rendering finished");
 }
@@ -1293,7 +1344,7 @@ function customMarkupPipes()
 		if (num < 0)
 			return "0";
 		else if (num <= 5)
-			return "5px";	// Still shows low coverage
+			return "5";	// Still shows low coverage
 		else if (num > 100)
 			str = "100";
 		return str;

@@ -49,7 +49,7 @@ func (self *Shell) GoTest(directory, packageName string, tags, arguments []strin
 ///////////////////////////////////////////////////////////////////////////////
 
 func findGoConvey(directory, gobin, packageName, tagsArg string) Command {
-	return NewCommand(directory, gobin, "list", "-f", "'{{.TestImports}}'", tagsArg, packageName)
+	return NewCommand(directory, gobin, "list", "-f", "'{{.TestImports}}{{.XTestImports}}'", tagsArg, packageName)
 }
 
 func compile(directory, gobin, tagsArg string) Command {
@@ -77,7 +77,7 @@ func runWithCoverage(compile, goconvey Command, coverage bool, reportPath, direc
 	}
 
 	if strings.Contains(goconvey.Output, goconveyDSLImport) {
-		arguments = append(arguments, "-json")
+		arguments = append(arguments, "-convey-json")
 	}
 
 	arguments = append(arguments, customArguments...)
@@ -110,7 +110,7 @@ func runWithoutCoverage(compile, withCoverage, goconvey Command, directory, gobi
 	}
 
 	if strings.Contains(goconvey.Output, goconveyDSLImport) {
-		arguments = append(arguments, "-json")
+		arguments = append(arguments, "-convey-json")
 	}
 	arguments = append(arguments, customArguments...)
 	return NewCommand(directory, gobin, arguments...)

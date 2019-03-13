@@ -4,12 +4,14 @@ import "strings"
 
 func noGoFiles(line string) bool {
 	return strings.HasPrefix(line, "can't load package: ") &&
-		strings.Contains(line, ": no buildable Go source files in ")
+		(strings.Contains(line, ": no buildable Go source files in ") ||
+			strings.Contains(line, ": no Go ") ||
+			strings.Contains(line, "cannot find module providing package"))
 }
 func buildFailed(line string) bool {
 	return strings.HasPrefix(line, "# ") ||
 		strings.Contains(line, "cannot find package") ||
-		(strings.HasPrefix(line, "can't load package: ") && !strings.Contains(line, ": no Go source files in ")) ||
+		(strings.HasPrefix(line, "can't load package: ") && !strings.Contains(line, ": no Go ")) ||
 		(strings.Contains(line, ": found packages ") && strings.Contains(line, ".go) and ") && strings.Contains(line, ".go) in "))
 }
 func noTestFunctions(line string) bool {
@@ -22,7 +24,7 @@ func isNewTest(line string) bool {
 	return strings.HasPrefix(line, "=== ")
 }
 func isTestResult(line string) bool {
-	return strings.HasPrefix(line, "--- ")
+	return strings.HasPrefix(line, "--- FAIL:") || strings.HasPrefix(line, "--- PASS:") || strings.HasPrefix(line, "--- SKIP:")
 }
 func isPackageReport(line string) bool {
 	return (strings.HasPrefix(line, "FAIL") ||
