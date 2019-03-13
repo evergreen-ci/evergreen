@@ -96,8 +96,7 @@ const (
 
 	HostTypeStatic = "static"
 
-	CompileStage = "compile"
-	PushStage    = "push"
+	PushStage = "push"
 
 	// maximum task (zero based) execution number
 	MaxTaskExecution = 3

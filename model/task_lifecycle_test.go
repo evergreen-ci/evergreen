@@ -1906,7 +1906,7 @@ func TestMarkEndRequiresAllTasksToFinishToUpdateBuildStatus(t *testing.T) {
 	assert.False(updates.VersionComplete)
 	b, err := build.FindOneId(buildID)
 	assert.NoError(err)
-	complete, _, err := b.AllUnblockedTasksOrCompileFinished(nil)
+	complete, _, err := b.AllUnblockedTasksFinished(nil)
 	assert.NoError(err)
 	assert.False(complete)
 
@@ -1918,7 +1918,7 @@ func TestMarkEndRequiresAllTasksToFinishToUpdateBuildStatus(t *testing.T) {
 	assert.False(updates.VersionComplete)
 	b, err = build.FindOneId(buildID)
 	assert.NoError(err)
-	complete, _, err = b.AllUnblockedTasksOrCompileFinished(nil)
+	complete, _, err = b.AllUnblockedTasksFinished(nil)
 	assert.NoError(err)
 	assert.False(complete)
 
@@ -1930,7 +1930,7 @@ func TestMarkEndRequiresAllTasksToFinishToUpdateBuildStatus(t *testing.T) {
 	assert.False(updates.VersionComplete)
 	b, err = build.FindOneId(buildID)
 	assert.NoError(err)
-	complete, _, err = b.AllUnblockedTasksOrCompileFinished(nil)
+	complete, _, err = b.AllUnblockedTasksFinished(nil)
 	assert.NoError(err)
 	assert.False(complete)
 
@@ -1942,7 +1942,7 @@ func TestMarkEndRequiresAllTasksToFinishToUpdateBuildStatus(t *testing.T) {
 	assert.True(updates.VersionComplete)
 	b, err = build.FindOneId(buildID)
 	assert.NoError(err)
-	complete, _, err = b.AllUnblockedTasksOrCompileFinished(nil)
+	complete, _, err = b.AllUnblockedTasksFinished(nil)
 	assert.NoError(err)
 	assert.True(complete)
 
@@ -1960,7 +1960,7 @@ func TestMarkEndRequiresAllTasksToFinishToUpdateBuildStatusWithCompileTask(t *te
 	buildID := "buildtest"
 	testTask := task.Task{
 		Id:          "testone",
-		DisplayName: evergreen.CompileStage,
+		DisplayName: "compile",
 		Activated:   true,
 		BuildId:     buildID,
 		Project:     "sample",
@@ -1993,7 +1993,7 @@ func TestMarkEndRequiresAllTasksToFinishToUpdateBuildStatusWithCompileTask(t *te
 		Tasks: []build.TaskCache{
 			{
 				Id:          testTask.Id,
-				DisplayName: evergreen.CompileStage,
+				DisplayName: "compile",
 				Status:      evergreen.TaskStarted,
 				Activated:   true,
 			},
@@ -2024,7 +2024,7 @@ func TestMarkEndRequiresAllTasksToFinishToUpdateBuildStatusWithCompileTask(t *te
 	assert.True(updates.VersionComplete)
 	b, err := build.FindOneId(buildID)
 	assert.NoError(err)
-	complete, _, err := b.AllUnblockedTasksOrCompileFinished(nil)
+	complete, _, err := b.AllUnblockedTasksFinished(nil)
 	assert.True(complete)
 	assert.NoError(err)
 	assert.True(b.IsFinished())
@@ -2106,7 +2106,7 @@ func TestMarkEndWithBlockedDependenciesTriggersNotifications(t *testing.T) {
 	assert.True(updates.VersionComplete)
 	b, err := build.FindOneId(buildID)
 	assert.NoError(err)
-	complete, _, err := b.AllUnblockedTasksOrCompileFinished(nil)
+	complete, _, err := b.AllUnblockedTasksFinished(nil)
 	assert.True(complete)
 	assert.NoError(err)
 	assert.True(b.IsFinished())
