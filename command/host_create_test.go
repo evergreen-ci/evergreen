@@ -58,6 +58,13 @@ func (s *createHostSuite) TestParamDefaults() {
 	s.Equal(apimodels.ProviderEC2, s.cmd.CreateHost.CloudProvider)
 	s.Equal(apimodels.DefaultSetupTimeoutSecs, s.cmd.CreateHost.SetupTimeoutSecs)
 	s.Equal(apimodels.DefaultTeardownTimeoutSecs, s.cmd.CreateHost.TeardownTimeoutSecs)
+
+	s.params["provider"] = apimodels.ProviderDocker
+	s.params["image"] = "my-image"
+	s.params["command"] = "echo hi"
+	s.NoError(s.cmd.ParseParams(s.params))
+	s.NoError(s.cmd.expandAndValidate(s.conf))
+	s.Equal(apimodels.DefaultBackgroundTimeoutSecs, s.cmd.CreateHost.BackgroundTimeoutSecs)
 }
 
 func (s *createHostSuite) TestParamValidation() {
@@ -105,6 +112,20 @@ func (s *createHostSuite) TestParamValidation() {
 	s.params["timeout_teardown_secs"] = 60
 	s.params["scope"] = "task"
 	s.params["num_hosts"] = 2
+	s.NoError(s.cmd.ParseParams(s.params))
+	s.NoError(s.cmd.expandAndValidate(s.conf))
+
+	// Validate docker requirements
+	s.params["provider"] = apimodels.ProviderDocker
+	s.NoError(s.cmd.ParseParams(s.params))
+	s.Contains(s.cmd.expandAndValidate(s.conf).Error(), "distro must be set")
+	s.Contains(s.cmd.expandAndValidate(s.conf).Error(), "docker image must be set")
+	s.Contains(s.cmd.expandAndValidate(s.conf).Error(), "docker command must be set")
+	s.Contains(s.cmd.expandAndValidate(s.conf).Error(), "num_hosts cannot be greater than 1")
+	s.params["image"] = "my-image"
+	s.params["command"] = "echo hi"
+	s.params["num_hosts"] = 1
+	s.params["distro"] = "my-distro"
 	s.NoError(s.cmd.ParseParams(s.params))
 	s.NoError(s.cmd.expandAndValidate(s.conf))
 }

@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/cloud"
 	serviceModel "github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/rest/model"
@@ -733,4 +734,47 @@ func (c *communicatorImpl) SendNotification(ctx context.Context, notificationTyp
 	}
 
 	return nil
+}
+
+func (c *communicatorImpl) GetDockerLogs(ctx context.Context, evergreenID string, startTime time.Time, endTime time.Time) (*cloud.LogInfo, error) {
+	path := fmt.Sprintf("/host/%s/logs", evergreenID)
+	if startTime != util.ZeroTime && endTime != util.ZeroTime {
+		path = fmt.Sprintf("%s?start_time=%s&end_time=%s", path, startTime.Format(time.RFC3339), endTime.Format(time.RFC3339))
+	} else if startTime != util.ZeroTime {
+		path = fmt.Sprintf("%s?start_time=%s", path, startTime.Format(time.RFC3339))
+	} else if endTime != util.ZeroTime {
+		path = fmt.Sprintf("%s?end_time=%s", path, endTime.Format(time.RFC3339))
+	}
+
+	info := requestInfo{
+		method:  post,
+		version: apiVersion2,
+		path:    path,
+	}
+	resp, err := c.request(ctx, info, "")
+	if err != nil {
+		return nil, errors.Wrapf(err, "problem getting logs for container _id %s", evergreenID)
+	}
+	defer resp.Body.Close()
+	bytes, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to read response")
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		restErr := gimlet.ErrorResponse{}
+		if err = json.Unmarshal(bytes, &restErr); err != nil {
+			return nil, errors.Errorf("received an error but was unable to parse: %s", string(bytes))
+		}
+
+		return nil, errors.Wrapf(restErr, "response code %d problem getting logs for container _id %s",
+			resp.StatusCode, evergreenID)
+	}
+	r := cloud.LogInfo{}
+	err = json.Unmarshal(bytes, r)
+	if err != nil {
+		return nil, errors.Wrap(err, "error parsing log reader")
+	}
+
+	return &r, nil
 }

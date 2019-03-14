@@ -1,6 +1,7 @@
 package apimodels
 
 import (
+	"fmt"
 	"strconv"
 
 	"github.com/evergreen-ci/evergreen/util"
@@ -9,12 +10,14 @@ import (
 )
 
 const (
-	ProviderEC2                = "ec2"
-	ProviderDocker             = "docker"
-	ScopeTask                  = "task"
-	ScopeBuild                 = "build"
-	DefaultSetupTimeoutSecs    = 600
-	DefaultTeardownTimeoutSecs = 21600
+	ProviderEC2                  = "ec2"
+	ProviderDocker               = "docker"
+	ScopeTask                    = "task"
+	ScopeBuild                   = "build"
+	DefaultSetupTimeoutSecs      = 600
+	DefaultTeardownTimeoutSecs   = 21600
+	DefaultBackgroundTimeoutSecs = 600
+	DefaultPollFrequency         = 30
 )
 
 // TaskStartRequest holds information sent by the agent to the
@@ -106,13 +109,14 @@ type CreateHost struct {
 	KeyName         string      `mapstructure:"key_name" json:"key_name" plugin:"expand"`
 
 	// docker-related settings
-	Image         string           `mapstructure:"image" json:"image" plugin:"expand"`
-	Command       string           `mapstructure:"command" json:"command" plugin:"expand"`
-	Registry      RegistrySettings `mapstructure:"registry" json:"registry" plugin:"expand"`
-	Background    bool             `mapstructure:"background" json:"background"`
-	PollFrequency int              `mapstructure:"poll_frequency_secs" json:"poll_frequency_secs"` // poll frequency in seconds
-	StdoutFile    string           `mapstructure:"stdout_file_name" json:"stdout_file_name" plugin:"expand"`
-	StderrFile    string           `mapstructure:"stderr_file_name" json:"stderr_file_name" plugin:"expand"`
+	Image                 string           `mapstructure:"image" json:"image" plugin:"expand"`
+	Command               string           `mapstructure:"command" json:"command" plugin:"expand"`
+	Registry              RegistrySettings `mapstructure:"registry" json:"registry" plugin:"expand"`
+	Background            bool             `mapstructure:"background" json:"background"` // default is true
+	BackgroundTimeoutSecs int              `mapstructure:"background_timeout_secs" json:"background_timeout_secs"`
+	PollFrequency         int              `mapstructure:"poll_frequency_secs" json:"poll_frequency_secs"` // poll frequency in seconds
+	StdoutFile            string           `mapstructure:"stdout_file_name" json:"stdout_file_name" plugin:"expand"`
+	StderrFile            string           `mapstructure:"stderr_file_name" json:"stderr_file_name" plugin:"expand"`
 }
 
 type EbsDevice struct {
@@ -144,8 +148,14 @@ func (ch *CreateHost) ValidateDocker() error {
 		catcher.Add(errors.New("docker command must be set"))
 	}
 
+	if ch.BackgroundTimeoutSecs <= 0 {
+		ch.BackgroundTimeoutSecs = DefaultBackgroundTimeoutSecs
+	} else if ch.BackgroundTimeoutSecs > 3600 || ch.BackgroundTimeoutSecs < 60 {
+		catcher.Add(errors.New("background_timeout_secs must be between 60 and 3600 seconds"))
+	}
+
 	if ch.PollFrequency <= 0 {
-		ch.PollFrequency = 60
+		ch.PollFrequency = DefaultPollFrequency
 	} else if ch.PollFrequency > 60 {
 		catcher.Add(errors.New("poll frequency must not be greater than 60 seconds"))
 	}
@@ -219,6 +229,9 @@ func (ch *CreateHost) validateAgentOptions() error {
 func (ch *CreateHost) setNumHosts() error {
 	if ch.NumHosts == "" {
 		ch.NumHosts = "1"
+	}
+	if ch.CloudProvider == ProviderDocker && ch.NumHosts != "1" {
+		return errors.New(fmt.Sprintf("num_hosts cannot be greater than 1 for cloud provider %s", ProviderDocker))
 	} else {
 		numHosts, err := strconv.Atoi(ch.NumHosts)
 		if err != nil {

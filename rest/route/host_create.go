@@ -69,6 +69,8 @@ func (h *hostCreateHandler) Run(ctx context.Context) gimlet.Responder {
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(err)
 	}
+
+	ids := []string{}
 	for i := 0; i < numHosts; i++ {
 		intentHost, err := h.sc.MakeIntentHost(h.taskID, "", "", h.createHost)
 		if err != nil {
@@ -76,13 +78,14 @@ func (h *hostCreateHandler) Run(ctx context.Context) gimlet.Responder {
 		}
 
 		hosts = append(hosts, *intentHost)
+		ids = append(ids, intentHost.Id)
 	}
 
 	if err := host.InsertMany(hosts); err != nil {
 		return gimlet.MakeJSONErrorResponder(err)
 	}
 
-	return gimlet.NewJSONResponse(struct{}{})
+	return gimlet.NewJSONResponse(ids)
 }
 
 type hostListHandler struct {
@@ -157,18 +160,18 @@ func makeContainerLogsRouteManager(sc data.Connector) gimlet.RouteHandler {
 func (h *containerLogsHandler) Factory() gimlet.RouteHandler { return &containerLogsHandler{sc: h.sc} }
 
 func (h *containerLogsHandler) Parse(ctx context.Context, r *http.Request) error {
-	id := gimlet.GetVars(r)["container_id"]
-	host, err := host.FindOne(host.ById(id))
+	id := gimlet.GetVars(r)["evergreen_id"]
+	host, err := host.FindOneId(id)
 	if host == nil {
 		return gimlet.ErrorResponse{
 			StatusCode: http.StatusNotFound,
-			Message:    fmt.Sprintf("Container %s not found", id),
+			Message:    fmt.Sprintf("Container _id %s not found", id),
 		}
 	}
 	if err != nil {
 		return gimlet.ErrorResponse{
 			StatusCode: http.StatusInternalServerError,
-			Message:    "Error loading host for container " + id,
+			Message:    "Error loading host for container _id " + id,
 		}
 	}
 	h.host = host
@@ -212,7 +215,7 @@ func (h *containerLogsHandler) Parse(ctx context.Context, r *http.Request) error
 func (h *containerLogsHandler) Run(ctx context.Context) gimlet.Responder {
 	parent, err := h.host.GetParent()
 	if err != nil {
-		return gimlet.NewJSONErrorResponse(errors.Wrapf(err, "error finding parent for container %s", h.host.Id))
+		return gimlet.NewJSONErrorResponse(errors.Wrapf(err, "error finding parent for container _id %s", h.host.Id))
 	}
 	settings, err := evergreen.GetConfig()
 	if err != nil {
@@ -226,9 +229,9 @@ func (h *containerLogsHandler) Run(ctx context.Context) gimlet.Responder {
 		Since:      h.startTime,
 		Until:      h.endTime,
 	}
-	reader, err := h.sc.GetDockerLogs(ctx, h.host.Id, parent, settings, options)
+	info, err := h.sc.GetDockerLogs(ctx, h.host.ExternalIdentifier, parent, settings, options)
 	if err != nil {
 		return gimlet.NewJSONErrorResponse(err)
 	}
-	return gimlet.NewJSONResponse(reader)
+	return gimlet.NewJSONResponse(info)
 }

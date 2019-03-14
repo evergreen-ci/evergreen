@@ -240,5 +240,5 @@ type Connector interface {
 	IsAuthorizedToPatchAndMerge(context.Context, *evergreen.Settings, UserRepoInfo) (bool, error)
 
 	// GetDockerLogs returns logs for the given docker container
-	GetDockerLogs(context.Context, string, *host.Host, *evergreen.Settings, types.ContainerLogsOptions) (*cloud.LogReader, error)
+	GetDockerLogs(context.Context, string, *host.Host, *evergreen.Settings, types.ContainerLogsOptions) (*cloud.LogInfo, error)
 }

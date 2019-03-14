@@ -2,8 +2,10 @@ package command
 
 import (
 	"context"
+	"fmt"
 	"io/ioutil"
 	"os"
+	"time"
 
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/model"
@@ -23,6 +25,10 @@ func (c *createHost) Name() string { return "host.create" }
 
 func (c *createHost) ParseParams(params map[string]interface{}) error {
 	c.CreateHost = &apimodels.CreateHost{}
+
+	if params["background"] == nil {
+		params["background"] = true
+	}
 	decoder, err := mapstructure.NewDecoder(&mapstructure.DecoderConfig{
 		WeaklyTypedInput: true,
 		Result:           c.CreateHost,
@@ -46,7 +52,6 @@ func (c *createHost) expandAndValidate(conf *model.TaskConfig) error {
 
 func (c *createHost) Execute(ctx context.Context, comm client.Communicator,
 	logger client.LoggerProducer, conf *model.TaskConfig) error {
-
 	if err := c.expandAndValidate(conf); err != nil {
 		return err
 	}
@@ -61,8 +66,70 @@ func (c *createHost) Execute(ctx context.Context, comm client.Communicator,
 			return err
 		}
 	}
+	startTime := time.Now()
+	ids, err := comm.CreateHost(ctx, taskData, *c.CreateHost)
+	if err != nil || c.CreateHost.CloudProvider != apimodels.ProviderDocker || c.CreateHost.Background == false {
+		return err
+	}
+	if len(ids) == 0 {
+		return errors.New("Programmer error: no intent host ID received")
+	}
+	if c.CreateHost.StderrFile == "" {
+		c.CreateHost.StderrFile = fmt.Sprintf("container-err-%s.log", ids[0])
+	}
+	if c.CreateHost.StdoutFile == "" {
+		c.CreateHost.StdoutFile = fmt.Sprintf("container-out-%s.log", ids[0])
+	}
 
-	return comm.CreateHost(ctx, taskData, *c.CreateHost)
+	errChan := make(chan error)
+
+	timer := time.NewTimer(time.Duration(c.CreateHost.PollFrequency) * time.Second)
+	defer timer.Stop()
+
+	timeoutTimer := time.NewTimer(time.Duration(c.CreateHost.BackgroundTimeoutSecs) * time.Second)
+	defer timeoutTimer.Stop()
+
+	// get logs in batches until container exits or we timeout
+waitForLogs:
+	for {
+		select {
+		case <-ctx.Done():
+			errChan <- errors.New("context finished waiting for host to exit")
+			break waitForLogs
+		case <-timer.C:
+			curTime := time.Now()
+			logInfo, err := comm.GetDockerLogs(ctx, ids[0], startTime, curTime)
+			startTime = curTime
+			if err != nil || logInfo == nil {
+				errChan <- err
+				break waitForLogs
+			}
+			if logInfo.HasStarted != false {
+				err = ioutil.WriteFile(c.CreateHost.StdoutFile, []byte(logInfo.OutStr), 0644)
+				err2 := ioutil.WriteFile(c.CreateHost.StderrFile, []byte(logInfo.ErrStr), 0644)
+				if err != nil || err2 != nil {
+					errChan <- err
+					errChan <- err2
+					break waitForLogs
+				}
+				if !logInfo.IsRunning {
+					break waitForLogs
+				}
+			}
+
+			timer.Reset(time.Duration(c.CreateHost.PollFrequency) * time.Second)
+		case <-timeoutTimer.C:
+			errChan <- errors.New("reached timeout waiting for host to exit")
+			break waitForLogs
+		}
+	}
+
+	select {
+	case err := <-errChan:
+		return errors.Wrap(err, "problem waiting for logs in background")
+	default:
+		return nil
+	}
 }
 
 func (c *createHost) populateUserdata() error {

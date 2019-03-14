@@ -1,7 +1,6 @@
 package cloud
 
 import (
-	"bytes"
 	"context"
 	"fmt"
 	"math/rand"
@@ -100,9 +99,12 @@ func (c *dockerClientMock) GetContainer(context.Context, *host.Host, string) (*t
 	return container, nil
 }
 
-func (c *dockerClientMock) GetDockerLogs(context.Context, *host.Host, string, types.ContainerLogsOptions) (*LogReader, error) {
-	out := bytes.NewBufferString("this is a log message")
-	logs := LogReader{OutReader: out}
+func (c *dockerClientMock) GetDockerLogs(_ context.Context, containerID string, _ *host.Host, _ types.ContainerLogsOptions) (*LogInfo, error) {
+	res := LogInfo{}
+	if containerID == "" { // container not started yet
+		return &res, nil
+	}
+	logs := LogInfo{OutStr: "this is a log message", IsRunning: false, HasStarted: true}
 	return &logs, nil
 }
 

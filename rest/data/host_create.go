@@ -310,7 +310,7 @@ func getAgentOptions(taskID, userID string, createHost apimodels.CreateHost) (*c
 
 // GetDockerLogs is used by the /host/{container_id}/logs route to retrieve the logs for the given container.
 func (dc *DBCreateHostConnector) GetDockerLogs(ctx context.Context, containerId string, parent *host.Host,
-	settings *evergreen.Settings, options types.ContainerLogsOptions) (*cloud.LogReader, error) {
+	settings *evergreen.Settings, options types.ContainerLogsOptions) (*cloud.LogInfo, error) {
 	c := cloud.GetDockerClient(settings)
 
 	if err := c.Init(settings.Providers.Docker.APIVersion); err != nil {
@@ -318,7 +318,7 @@ func (dc *DBCreateHostConnector) GetDockerLogs(ctx context.Context, containerId 
 		return nil, errors.Wrap(err, "error initializing client")
 	}
 
-	reader, err := c.GetDockerLogs(ctx, parent, containerId, options)
+	reader, err := c.GetDockerLogs(ctx, containerId, parent, options)
 	if err != nil {
 		return nil, errors.Wrapf(err, "error getting logs for container %s", containerId)
 	}
@@ -328,9 +328,10 @@ func (dc *DBCreateHostConnector) GetDockerLogs(ctx context.Context, containerId 
 // MockCreateHostConnector mocks `DBCreateHostConnector`.
 type MockCreateHostConnector struct{}
 
-func (dc *MockCreateHostConnector) GetDockerLogs(ctx context.Context, containerId string, parent *host.Host, settings *evergreen.Settings, options types.ContainerLogsOptions) (*cloud.LogReader, error) {
+func (dc *MockCreateHostConnector) GetDockerLogs(ctx context.Context, containerId string, parent *host.Host,
+	settings *evergreen.Settings, options types.ContainerLogsOptions) (*cloud.LogInfo, error) {
 	c := cloud.GetMockClient()
-	reader, err := c.GetDockerLogs(ctx, parent, containerId, options)
+	reader, err := c.GetDockerLogs(ctx, containerId, parent, options)
 	if err != nil {
 		return nil, errors.Wrapf(err, "error getting logs for container %s", containerId)
 	}
