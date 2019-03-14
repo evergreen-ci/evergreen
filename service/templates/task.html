@@ -404,7 +404,7 @@ Evergreen - {{Trunc .Task.Revision 10}} / {{.Task.BuildVariantDisplay}} / {{.Tas
                       </thead>
                       <tbody data-test-results="task.test_results">
                         <tr md-virtual-repeat="test in task.test_results" ng-show="test.test_result.status != 'skip'"
-                        class="repeated-item test-result-row" ng-class="test.test_result.display_name == hash.test | conditional:'highlight-bg':''">
+                        class="test-result-row" ng-class="test.test_result.display_name == hash.test | conditional:'highlight-bg':''">
                           <td class="col-lg-6">
                             <div class="test-result-link-wrapper">
                               <i class="icon fa fa-link" style="cursor: pointer;" ng-click="linkToTest(test.test_result.display_name)"> </i>

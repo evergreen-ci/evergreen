@@ -476,7 +476,9 @@ mciModule.controller('TaskHistoryDrawerCtrl', function($scope, $window, $locatio
         }
 
         $scope.sortBy = $scope.sortOrders[0];
-        $scope.task.test_results.sort($scope.sortBy.compareFunc);
+        if ($scope.task.test_results) {
+          $scope.task.test_results.sort($scope.sortBy.compareFunc);
+        };
 
         $scope.isMet = function(dependency) {
           // check if a dependency is met, unmet, or in progress

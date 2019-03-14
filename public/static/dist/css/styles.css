@@ -1454,7 +1454,7 @@ textarea {
 .files-panel .files-list {
   overflow: hidden;
   text-overflow: ellipsis;
-  whitespace: nowrap;
+  white-space: nowrap;
 }
 #page-content {
   position: absolute;
