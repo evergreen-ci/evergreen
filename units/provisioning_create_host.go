@@ -290,32 +290,18 @@ func (j *createHostJob) shouldRetryCreateHost(ctx context.Context) bool {
 }
 
 func (j *createHostJob) isImageBuilt(ctx context.Context) (bool, error) {
-	settings := *j.host.Distro.ProviderSettings
-	imageURL := settings["image_url"].(string)
-
 	parent, err := host.FindOneId(j.host.ParentID)
 	if err != nil {
 		return false, errors.Wrapf(err, "problem getting parent for '%s'", j.host.Id)
 	}
-	if ok := parent.ContainerImages[imageURL]; ok {
+	if ok := parent.ContainerImages[j.host.DockerOptions.Image]; ok {
 		return true, nil
 	}
-	imageSettings := cloud.ContainerImageSettings{
-		URL: imageURL,
-	}
-	if method, ok := settings["build_type"]; ok {
-		imageSettings.Method = method.(string)
-	}
-	if registryUser, ok := settings["docker_registry_user"]; ok {
-		imageSettings.RegistryUser = registryUser.(string)
-	}
-	if registryPassword, ok := settings["docker_registry_pw"]; ok {
-		imageSettings.RegistryPassword = registryPassword.(string)
-	}
+
 	//  If the image is not already present on the parent, run job to build
 	// the new image
 	if j.CurrentAttempt == 1 {
-		buildingContainerJob := NewBuildingContainerImageJob(j.env, parent, imageSettings, j.host.Provider)
+		buildingContainerJob := NewBuildingContainerImageJob(j.env, parent, j.host.DockerOptions, j.host.Provider)
 		err = j.env.RemoteQueue().Put(buildingContainerJob)
 		grip.Debug(message.WrapError(err, message.Fields{
 			"message": "Duplicate key being added to job to block building containers",
