@@ -77,7 +77,7 @@ func (s *TaskHistorySuite) TestGetVersionsInWindow() {
 	s.NoError(err)
 
 	for i := 0; i < radius; i++ {
-		s.True(versions[i].CreateTime.Equal(s.versionsAfter[(radius-1)-i].CreateTime))
+		s.True(versions[i].CreateTime.Equal(s.versionsAfter[radius-(i+1)].CreateTime))
 	}
 
 	s.True(s.middleVersion.CreateTime.Equal(versions[radius].CreateTime))
@@ -87,17 +87,17 @@ func (s *TaskHistorySuite) TestGetVersionsInWindow() {
 	}
 }
 
-func (s *TaskHistorySuite) TestMakeVersionsQuery() {
+func (s *TaskHistorySuite) TestSurroundingVersions() {
 	radius := 20
-	versionsAfter, err := makeVersionsQuery(&s.middleVersion, s.projectID, radius, false)
+	versionsAfter, err := surroundingVersions(&s.middleVersion, s.projectID, radius, false)
 	s.NoError(err)
-	s.Len(versionsAfter, radius)
+	s.Require().Len(versionsAfter, radius)
 	for i, version := range versionsAfter {
 		s.Equal("cccc", version.Revision)
-		s.True(version.CreateTime.Equal(s.versionsAfter[i].CreateTime))
+		s.True(version.CreateTime.Equal(s.versionsAfter[radius-(i+1)].CreateTime))
 	}
 
-	versionsBefore, err := makeVersionsQuery(&s.middleVersion, s.projectID, radius, true)
+	versionsBefore, err := surroundingVersions(&s.middleVersion, s.projectID, radius, true)
 	s.NoError(err)
 	s.Len(versionsBefore, radius)
 	for i, version := range versionsBefore {
