@@ -2,7 +2,9 @@ package thirdparty
 
 import (
 	"context"
+	"io/ioutil"
 	"net/http"
+	"path/filepath"
 	"strconv"
 	"testing"
 	"time"
@@ -12,6 +14,7 @@ import (
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/testutil"
+	"github.com/google/go-github/github"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
@@ -187,7 +190,7 @@ func (s *githubSuite) TestGetGithubPullRequestDiff() {
 		Author:     "richardsamuels",
 	}
 
-	diff, summaries, err := GetGithubPullRequestDiff(s.ctx, s.token, &p)
+	diff, summaries, err := GetGithubPullRequestDiff(s.ctx, s.token, p)
 	s.NoError(err)
 	s.Len(summaries, 2)
 	s.Len(diff, 1470)
@@ -278,5 +281,28 @@ func TestBuildPatchURL(t *testing.T) {
 		HeadHash:   "something",
 		Author:     "richardsamuels",
 	}
-	assert.Equal("https://api.github.com/repos/evergreen-ci/evergreen/pulls/448.diff", buildPatchURL(&p))
+	assert.Equal("https://api.github.com/repos/evergreen-ci/evergreen/pulls/448.diff", buildPatchURL(p))
+}
+
+func TestValidatePR(t *testing.T) {
+	assert := assert.New(t)
+
+	prBody, err := ioutil.ReadFile(filepath.Join(testutil.GetDirectoryOfFile(), "..", "units", "testdata", "pull_request.json"))
+	assert.NoError(err)
+	assert.Len(prBody, 24757)
+	webhookInterface, err := github.ParseWebHook("pull_request", prBody)
+	assert.NoError(err)
+	prEvent, ok := webhookInterface.(*github.PullRequestEvent)
+	assert.True(ok)
+	pr := prEvent.GetPullRequest()
+
+	assert.NoError(ValidatePR(pr))
+
+	mergeCommitSha := pr.MergeCommitSHA
+	pr.MergeCommitSHA = nil
+	assert.Error(ValidatePR(pr))
+	pr.MergeCommitSHA = mergeCommitSha
+
+	pr.Base = nil
+	assert.Error(ValidatePR(pr))
 }

@@ -673,7 +673,7 @@ func GetGithubPullRequest(ctx context.Context, token, baseOwner, baseRepo string
 
 // GetGithubDiff downloads a diff from a Github Pull Request diff. This function
 // does not use go-github because this operation is not supported
-func GetGithubPullRequestDiff(ctx context.Context, token string, gh *patch.GithubPatch) (string, []patch.Summary, error) {
+func GetGithubPullRequestDiff(ctx context.Context, token string, gh patch.GithubPatch) (string, []patch.Summary, error) {
 	all := rehttp.RetryAll(rehttp.RetryMaxRetries(NumGithubRetries-1), githubShouldRetryWith404s)
 	client, err := util.GetRetryableOauth2HTTPClient(token, all, util.RehttpDelay(GithubSleepTimeSecs, NumGithubRetries))
 	if err != nil {
@@ -727,7 +727,7 @@ func doGithubRequest(client *http.Client, req *http.Request, accept string) (str
 
 // buildPatchURL creates a URL to enable downloading patch files through the
 // Github API
-func buildPatchURL(gp *patch.GithubPatch) string {
+func buildPatchURL(gp patch.GithubPatch) string {
 	url := &url.URL{
 		Scheme: "https",
 		Host:   "api.github.com",
@@ -736,4 +736,78 @@ func buildPatchURL(gp *patch.GithubPatch) string {
 	}
 
 	return url.String()
+}
+
+func ValidatePR(pr *github.PullRequest) error {
+	if pr == nil {
+		return errors.New("No PR provided")
+	}
+
+	catcher := grip.NewSimpleCatcher()
+	if pr.GetMergeCommitSHA() == "" {
+		catcher.Add(errors.New("no merge commit SHA"))
+	}
+	if missingUserLogin(pr) {
+		catcher.Add(errors.New("no valid user"))
+	}
+	if missingBaseSHA(pr) {
+		catcher.Add(errors.New("no valid base SHA"))
+	}
+	if missingBaseRef(pr) {
+		catcher.Add(errors.New("no valid base ref"))
+	}
+	if missingBaseRepoName(pr) {
+		catcher.Add(errors.New("no valid base repo name"))
+	}
+	if missingBaseRepoFullName(pr) {
+		catcher.Add(errors.New("no valid base repo name"))
+	}
+	if missingBaseRepoOwnerLogin(pr) {
+		catcher.Add(errors.New("no valid base repo owner login"))
+	}
+	if missingHeadSHA(pr) {
+		catcher.Add(errors.New("no valid head SHA"))
+	}
+	if pr.GetNumber() == 0 {
+		catcher.Add(errors.New("no valid pr number"))
+	}
+	if pr.GetTitle() == "" {
+		catcher.Add(errors.New("no valid title"))
+	}
+	if pr.GetHTMLURL() == "" {
+		catcher.Add(errors.New("no valid HTML URL"))
+	}
+	if pr.Merged == nil {
+		catcher.Add(errors.New("no valid merged status"))
+	}
+
+	return catcher.Resolve()
+}
+
+func missingUserLogin(pr *github.PullRequest) bool {
+	return pr.User == nil || pr.User.GetLogin() == ""
+}
+
+func missingBaseSHA(pr *github.PullRequest) bool {
+	return pr.Base == nil || pr.Base.GetSHA() == ""
+}
+
+func missingBaseRef(pr *github.PullRequest) bool {
+	return pr.Base == nil || pr.Base.GetRef() == ""
+}
+
+func missingBaseRepoName(pr *github.PullRequest) bool {
+	return pr.Base == nil || pr.Base.Repo == nil || pr.Base.Repo.GetName() == "" || pr.Base.Repo.GetFullName() == ""
+}
+
+func missingBaseRepoFullName(pr *github.PullRequest) bool {
+	return pr.Base == nil || pr.Base.Repo == nil || pr.Base.Repo.GetFullName() == ""
+}
+
+func missingBaseRepoOwnerLogin(pr *github.PullRequest) bool {
+	return pr.Base == nil || pr.Base.Repo == nil || pr.Base.Repo.Owner == nil || pr.Base.Repo.Owner.GetLogin() == ""
+}
+
+func missingHeadSHA(pr *github.PullRequest) bool {
+	return pr.Head == nil || pr.Head.GetSHA() == ""
 }
