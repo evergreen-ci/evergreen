@@ -1439,7 +1439,6 @@ textarea {
 .test-results-table {
   table-layout: fixed;
   word-wrap: break-word;
-  width: 520px;
 }
 .test-results-table .progress {
   margin-bottom: 0;
