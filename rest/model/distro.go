@@ -69,11 +69,11 @@ func (apiDistro *APIDistro) BuildFromService(h interface{}) error {
 	if d.Expansions != nil {
 		apiDistro.Expansions = []APIExpansion{}
 		for _, e := range d.Expansions {
-			expansion := &APIExpansion{}
+			expansion := APIExpansion{}
 			if err := expansion.BuildFromService(e); err != nil {
 				return errors.Wrap(err, "Error converting from distro.Expansion to model.APIExpansion")
 			}
-			apiDistro.Expansions = append(apiDistro.Expansions, *expansion)
+			apiDistro.Expansions = append(apiDistro.Expansions, expansion)
 		}
 	}
 
@@ -104,7 +104,11 @@ func (apiDistro *APIDistro) ToService() (interface{}, error) {
 		if err != nil {
 			return nil, errors.Wrap(err, "Error converting from model.APIExpansion to distro.Expansion")
 		}
-		d.Expansions = append(d.Expansions, i.(distro.Expansion))
+		expansion, ok := i.(distro.Expansion)
+		if !ok {
+			return nil, errors.Errorf("Unexpected type %T for distro.Expansion", i)
+		}
+		d.Expansions = append(d.Expansions, expansion)
 	}
 	d.Disabled = apiDistro.Disabled
 	d.ContainerPool = FromAPIString(apiDistro.ContainerPool)

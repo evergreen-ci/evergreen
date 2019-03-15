@@ -24,9 +24,8 @@ const (
 )
 
 type Configuration struct {
-	DistroID   string
-	TaskFinder string
-	// HostAllocator    string	// Remove this?
+	DistroID         string
+	TaskFinder       string
 	FreeHostFraction float64
 }
 
@@ -35,10 +34,6 @@ func PlanDistro(ctx context.Context, conf Configuration, s *evergreen.Settings) 
 	distro, err := distro.FindOne(distro.ById(conf.DistroID))
 	if err != nil {
 		return errors.Wrap(err, "problem finding distro")
-	}
-
-	if err = UpdateStaticDistro(distro); err != nil {
-		return errors.Wrap(err, "problem updating static hosts")
 	}
 
 	if err = underwaterUnschedule(distro.Id); err != nil {

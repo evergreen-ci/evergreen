@@ -339,7 +339,7 @@ func TestClearTaskQueueRoute(t *testing.T) {
 			Id: "task3",
 		},
 	}
-	queue := model.NewTaskQueue(distro, tasks)
+	queue := model.NewTaskQueue(distro, tasks, model.DistroQueueInfo{})
 	assert.Len(queue.Queue, 3)
 	assert.NoError(queue.Save())
 

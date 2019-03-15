@@ -35,9 +35,7 @@ func (self *DBTaskQueuePersister) PersistTaskQueue(distro string, tasks []task.T
 			Group:               t.TaskGroup,
 			GroupMaxHosts:       t.TaskGroupMaxHosts,
 			Version:             t.Version,
-			// ExpectedDuration:    t.FetchExpectedDuration(),   // Do we need to do this again?
 		})
-
 	}
 
 	queue := model.NewTaskQueue(distro, taskQueue, distroQueueInfo)

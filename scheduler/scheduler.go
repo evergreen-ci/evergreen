@@ -122,7 +122,7 @@ func GetDistroQueueInfo(tasks []task.Task, maxDurationThreshold time.Duration) m
 			distroCountOverThreshold++
 		}
 		taskGroupInfosMap[name] = taskGroupInfo
-		tasks[i] = task // Is this bad practice? (see task_queue_persister.go)
+		tasks[i] = task
 	}
 
 	taskGroupInfos := make([]model.TaskGroupInfo, 0, len(taskGroupInfosMap))

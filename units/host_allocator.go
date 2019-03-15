@@ -17,6 +17,7 @@ import (
 	"github.com/mongodb/amboy/registry"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
+	"github.com/mongodb/grip/sometimes"
 	"github.com/pkg/errors"
 )
 
@@ -75,23 +76,28 @@ func (j *hostAllocatorJob) Run(ctx context.Context) {
 		return
 	}
 
-	// flags, err := evergreen.GetServiceFlags()
-	// if err != nil {
-	// 	j.AddError(errors.Wrapf(err, "can't get degraded mode flags"))
-	// 	return
-	// }
+	flags, err := evergreen.GetServiceFlags()
+	if err != nil {
+		j.AddError(errors.Wrapf(err, "Can't get degraded mode flags"))
+		return
+	}
 
-	// if flags.HostAllocatorDisabled {
-	// 	grip.InfoWhen(sometimes.Percent(evergreen.DegradedLoggingPercent), message.Fields{
-	// 		"job":     hostAllocatorJobName,
-	// 		"message": "host allocation is disabled",
-	// 	})
-	// 	return
-	// }
+	if flags.HostAllocatorDisabled {
+		grip.InfoWhen(sometimes.Percent(evergreen.DegradedLoggingPercent), message.Fields{
+			"job":     hostAllocatorJobName,
+			"message": "host allocation is disabled",
+		})
+		return
+	}
 
 	distro, err := distro.FindOne(distro.ById(j.DistroID))
 	if err != nil {
 		j.AddError(errors.Wrapf(err, "Database error for find() by distro id '%s'", j.DistroID))
+		return
+	}
+
+	if err = scheduler.UpdateStaticDistro(distro); err != nil {
+		j.AddError(errors.Wrap(err, "problem updating static hosts"))
 		return
 	}
 
@@ -111,11 +117,10 @@ func (j *hostAllocatorJob) Run(ctx context.Context) {
 
 	existingHosts, err := host.AllRunningHosts(j.DistroID)
 	if err != nil {
-		j.AddError(errors.Wrap(err, "with host query")) // Make a better error message?
+		j.AddError(errors.Wrap(err, "Database error retrieving running hosts"))
 		return
 	}
 
-	// Should model.GetDistroQueueInfo() return a pointer or a struct?
 	distroQueueInfo, err := model.GetDistroQueueInfo(j.DistroID)
 	if err != nil {
 		j.AddError(errors.Wrapf(err, "Database error retrieving DistroQueueInfo for distro id '%s'", j.DistroID))
@@ -192,18 +197,19 @@ func (j *hostAllocatorJob) Run(ctx context.Context) {
 	}
 
 	grip.Info(message.Fields{
-		"message":            "distro-scheduler-report",
-		"runner":             hostAllocatorJobName,
-		"distro":             distro.Id,
-		"provider":           distro.Provider,
-		"max_hosts":          distro.PoolSize,
-		"new_hosts":          hostsSpawned,
-		"num_hosts":          len(hostsSpawned),
-		"queue":              eventInfo,
-		"total_runtime":      distroQueueInfo.ExpectedDuration.String(),
-		"predicted_makespan": makespan.String(),
-		"instance":           j.ID(),
-		// "runner":             scheduler.RunnerName,
-		// "scheduler_runtime_secs": time.Since(startAt).Seconds(),   // We cannot determine this?
+		"message":                 "distro-scheduler-report",
+		"job_type":                hostAllocatorJobName,
+		"distro":                  distro.Id,
+		"provider":                distro.Provider,
+		"max_hosts":               distro.PoolSize,
+		"new_hosts":               hostsSpawned,
+		"num_hosts":               len(hostsSpawned),
+		"queue":                   eventInfo,
+		"total_runtime":           distroQueueInfo.ExpectedDuration.String(),
+		"runtime_secs":            distroQueueInfo.ExpectedDuration.Seconds(),
+		"predicted_makespan":      makespan.String(),
+		"predicted_makespan_secs": makespan.Seconds(),
+		"instance":                j.ID(),
+		"runner":                  scheduler.RunnerName,
 	})
 }

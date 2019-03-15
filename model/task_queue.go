@@ -38,34 +38,14 @@ type DistroQueueInfo struct {
 	TaskGroupInfos       []TaskGroupInfo `bson:"task_group_infos" json:"task_group_infos"`
 }
 
-// BRIAN?
 func GetDistroQueueInfo(distroID string) (DistroQueueInfo, error) {
+	taskQueue := &TaskQueue{}
 	query := bson.M{taskQueueDistroKey: distroID}
-	projection := bson.M{taskQueueDistroQueueInfoKey: 1}
-	distroQueueInfo := DistroQueueInfo{}
+	projection := bson.M{taskQueueDistroQueueInfoKey: 1, taskQueueIdKey: 0}
+	err := db.FindOne(TaskQueuesCollection, query, projection, db.NoSort, taskQueue)
 
-	return distroQueueInfo, db.FindOne(TaskQueuesCollection, query, projection, db.NoSort, &distroQueueInfo)
+	return taskQueue.DistroQueueInfo, err
 }
-
-// func GetDistroQueueInfo(distroID string) (*DistroQueueInfo, error) {
-// 	// event := &ProjectNotificationTime{}?
-// 	query := bson.M{taskQueueDistroKey: distroID}
-// 	projection := bson.M{taskQueueDistroQueueInfoKey: 1}
-// 	distroQueueInfo := &DistroQueueInfo{}
-//
-// 	err := db.FindOne(
-// 		TaskQueuesCollection,
-// 		query,
-// 		projection,
-// 		db.NoSort,
-// 		distroQueueInfo,
-// 	)
-// 	if err != nil {
-// 		return nil, err
-// 	}
-//
-// 	return distroQueueInfo, nil
-// }
 
 // represents the next n tasks to be run on hosts of the distro
 type TaskQueue struct {
@@ -121,20 +101,6 @@ var (
 	taskQueueItemProjectKey       = bsonutil.MustHaveTag(TaskQueueItem{}, "Project")
 	taskQueueItemExpDurationKey   = bsonutil.MustHaveTag(TaskQueueItem{}, "ExpectedDuration")
 	taskQueueItemPriorityKey      = bsonutil.MustHaveTag(TaskQueueItem{}, "Priority")
-
-	// bson fields for the distroQueueInfo struct
-	// distroQueueInfoLengthKey             = bsonutil.MustHaveTag(DistroQueueInfo{}, "Length")
-	// distroQueueInfoExpectedDurationKey   = bsonutil.MustHaveTag(DistroQueueInfo{}, "ExpectedDuration")
-	// distroQueueInfoCountOverThresholdKey = bsonutil.MustHaveTag(DistroQueueInfo{}, "CountOverThreshold")
-	// distroQueueInfoTaskGroupInfosKey     = bsonutil.MustHaveTag(DistroQueueInfo{}, "TaskGroupInfos")
-
-	// bson fields for the TaskGroupInfo struct
-	// taskGroupInfoNameKey                  = bsonutil.MustHaveTag(TaskGroupInfo{}, "Name")
-	// taskGroupInfoCountKey                 = bsonutil.MustHaveTag(TaskGroupInfo{}, "Count")
-	// taskGroupInfoMaxHostsKey              = bsonutil.MustHaveTag(TaskGroupInfo{}, "MaxHosts")
-	// taskGroupInfoExpectedDurationKey      = bsonutil.MustHaveTag(TaskGroupInfo{}, "ExpectedDuration")
-	// taskGroupInfoCountOverThresholdKey    = bsonutil.MustHaveTag(TaskGroupInfo{}, "CountOverThreshold")
-	// taskGroupInfoDurationOverThresholdKey = bsonutil.MustHaveTag(TaskGroupInfo{}, "DurationOverThreshold")
 )
 
 // TaskSpec is an argument structure to formalize the way that callers

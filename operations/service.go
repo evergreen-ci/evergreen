@@ -92,6 +92,7 @@ func startSystemCronJobs(ctx context.Context, env evergreen.Environment) {
 	amboy.IntervalQueueOperation(ctx, env.RemoteQueue(), 15*time.Second, time.Now(), opts, amboy.GroupQueueOperationFactory(
 		units.PopulateHostSetupJobs(env),
 		units.PopulateSchedulerJobs(env),
+		units.PopulateHostAllocatorJobs(env),
 		units.PopulateAgentDeployJobs(env)))
 
 	amboy.IntervalQueueOperation(ctx, env.RemoteQueue(), 150*time.Second, time.Now(), opts, amboy.GroupQueueOperationFactory(
