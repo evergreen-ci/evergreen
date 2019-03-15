@@ -35,6 +35,9 @@ func TestCheckDistro(t *testing.T) {
 					"security_group_ids": []string{"a"},
 					"mount_points":       nil,
 				},
+				PlannerSettings: distro.PlannerSettings{
+					Version: evergreen.PlannerVersionTunable,
+				},
 			}
 			verrs, err := CheckDistro(ctx, d, conf, true)
 			So(err, ShouldBeNil)
@@ -69,6 +72,9 @@ func TestCheckDistro(t *testing.T) {
 					"instance_type":      "a",
 					"security_group_ids": []string{"a"},
 					"mount_points":       nil,
+				},
+				PlannerSettings: distro.PlannerSettings{
+					Version: evergreen.PlannerVersionTunable,
 				},
 			}
 			verrs, err := CheckDistro(ctx, d, conf, false)
