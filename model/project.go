@@ -743,6 +743,10 @@ func PopulateExpansions(t *task.Task, h *host.Host) (util.Expansions, error) {
 		var p *patch.Patch
 		expansions.Put("is_patch", "true")
 		expansions.Put("revision_order_id", fmt.Sprintf("%s_%d", v.Author, v.RevisionOrderNumber))
+		if v.Requester == evergreen.MergeTestRequester {
+			expansions.Put("is_commit_queue", "true")
+		}
+
 		p, err = patch.FindOne(patch.ByVersion(t.Version))
 		if err != nil {
 			return nil, errors.Wrap(err, "error finding patch")

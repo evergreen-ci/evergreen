@@ -401,6 +401,7 @@ buildvariants:
 	assert.True(expansions.Exists("created_at"))
 	assert.Equal("42", expansions.Get("revision_order_id"))
 	assert.False(expansions.Exists("is_patch"))
+	assert.False(expansions.Exists("is_commit_queue"))
 	assert.False(expansions.Exists("github_repo"))
 	assert.False(expansions.Exists("github_author"))
 	assert.False(expansions.Exists("github_pr_number"))
@@ -413,9 +414,19 @@ buildvariants:
 	assert.NoError(err)
 	assert.Len(map[string]string(expansions), 17)
 	assert.Equal("true", expansions.Get("is_patch"))
+	assert.False(expansions.Exists("is_commit_queue"))
 	assert.False(expansions.Exists("github_repo"))
 	assert.False(expansions.Exists("github_author"))
 	assert.False(expansions.Exists("github_pr_number"))
+
+	assert.NoError(VersionUpdateOne(bson.M{VersionIdKey: v.Id}, bson.M{
+		"$set": bson.M{VersionRequesterKey: evergreen.MergeTestRequester},
+	}))
+	expansions, err = PopulateExpansions(taskDoc, &h)
+	assert.NoError(err)
+	assert.Len(map[string]string(expansions), 18)
+	assert.Equal("true", expansions.Get("is_patch"))
+	assert.Equal("true", expansions.Get("is_commit_queue"))
 
 	assert.NoError(VersionUpdateOne(bson.M{VersionIdKey: v.Id}, bson.M{
 		"$set": bson.M{VersionRequesterKey: evergreen.GithubPRRequester},
@@ -424,6 +435,7 @@ buildvariants:
 	assert.NoError(err)
 	assert.Len(map[string]string(expansions), 17)
 	assert.Equal("true", expansions.Get("is_patch"))
+	assert.False(expansions.Exists("is_commit_queue"))
 	assert.False(expansions.Exists("github_repo"))
 	assert.False(expansions.Exists("github_author"))
 	assert.False(expansions.Exists("github_pr_number"))
