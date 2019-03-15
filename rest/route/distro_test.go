@@ -258,7 +258,20 @@ func TestDistroByIDSuite(t *testing.T) {
 func (s *DistroByIDSuite) SetupSuite() {
 	s.data = data.MockDistroConnector{
 		CachedDistros: []*distro.Distro{
-			{Id: "distro1"},
+			{
+				Id: "distro1",
+				PlannerSettings: distro.PlannerSettings{
+					Version:                evergreen.PlannerVersionLegacy,
+					MinimumHosts:           5,
+					MaximumHosts:           10,
+					TargetTime:             60000000000,
+					AcceptableHostIdleTime: 10000000000,
+					GroupVersions:          true,
+					PatchZipperFactor:      7,
+					MainlineFirst:          false,
+					PatchFirst:             true,
+				},
+			},
 			{Id: "distro2"},
 		},
 		CachedTasks: []task.Task{
@@ -286,6 +299,15 @@ func (s *DistroByIDSuite) TestFindByIdFound() {
 	d, ok := (resp.Data()).(*model.APIDistro)
 	s.True(ok)
 	s.Equal(model.ToAPIString("distro1"), d.Name)
+	s.Equal(model.ToAPIString(evergreen.PlannerVersionLegacy), d.PlannerSettings.Version)
+	s.Equal(5, d.PlannerSettings.MinimumHosts)
+	s.Equal(10, d.PlannerSettings.MaximumHosts)
+	s.Equal(model.NewAPIDuration(60000000000), d.PlannerSettings.TargetTime)
+	s.Equal(model.NewAPIDuration(10000000000), d.PlannerSettings.AcceptableHostIdleTime)
+	s.Equal(true, d.PlannerSettings.GroupVersions)
+	s.Equal(7, d.PlannerSettings.PatchZipperFactor)
+	s.Equal(false, d.PlannerSettings.MainlineFirst)
+	s.Equal(true, d.PlannerSettings.PatchFirst)
 }
 
 func (s *DistroByIDSuite) TestFindByIdFail() {
@@ -337,7 +359,26 @@ func (s *DistroPutSuite) SetupTest() {
 
 func (s *DistroPutSuite) TestParse() {
 	ctx := context.Background()
-	json := []byte(`{"arch": "linux_amd64", "work_dir": "/data/mci", "ssh_key": "SSH string", "provider": "mock", "user": "tibor"}`)
+	json := []byte(`
+  	{
+			"arch": "linux_amd64",
+    	"work_dir": "/data/mci",
+    	"ssh_key": "SSH string",
+    	"provider": "mock",
+    	"user": "tibor",
+    	"planner_settings": {
+      	"version": "tunable",
+    		"minimum_hosts": 10,
+    		"maximum_hosts": 20,
+    		"target_time": 30000000000,
+    		"acceptable_host_idle_time": 5000000000,
+    		"group_versions": false,
+    		"patch_zipper_factor": 2,
+    		"mainline_first": true,
+    		"patch_first": false
+  		}
+    }`,
+	)
 
 	req, _ := http.NewRequest("PUT", "http://example.com/api/rest/v2/distros/distro4", bytes.NewBuffer(json))
 	err := s.rm.Parse(ctx, req)
@@ -358,7 +399,7 @@ func (s *DistroPutSuite) TestRunNewWithValidEntity() {
 
 func (s *DistroPutSuite) TestRunNewWithInValidEntity() {
 	ctx := context.Background()
-	json := []byte(`{"arch": "linux_amd64", "work_dir": "/data/mci", "ssh_key": "", "provider": "mock", "user": "tibor"}`)
+	json := []byte(`{"arch": "linux_amd64", "work_dir": "/data/mci", "ssh_key": "", "provider": "mock", "user": "tibor", "planner_settings": {"version": "invalid"}}`)
 	h := s.rm.(*distroIDPutHandler)
 	h.distroID = "distro4"
 	h.body = json
@@ -367,7 +408,7 @@ func (s *DistroPutSuite) TestRunNewWithInValidEntity() {
 	s.NotNil(resp.Data())
 	s.Equal(resp.Status(), http.StatusBadRequest)
 	error := (resp.Data()).(gimlet.ErrorResponse)
-	s.Equal(error.Message, "ERROR: distro 'ssh_key' cannot be blank")
+	s.Equal("ERROR: distro 'ssh_key' cannot be blank\nERROR: invalid distro.planner_settings.version 'invalid' for distro 'distro4'", error.Message)
 }
 
 func (s *DistroPutSuite) TestRunNewConflictingName() {
@@ -407,7 +448,7 @@ func (s *DistroPutSuite) TestRunExistingWithInValidEntity() {
 	s.NotNil(resp.Data())
 	s.Equal(resp.Status(), http.StatusBadRequest)
 	error := (resp.Data()).(gimlet.ErrorResponse)
-	s.Equal(error.Message, "ERROR: distro 'arch' cannot be blank\nERROR: distro 'user' cannot be blank\nERROR: distro 'provider' cannot be blank")
+	s.Equal("ERROR: distro 'arch' cannot be blank\nERROR: distro 'user' cannot be blank\nERROR: distro 'provider' cannot be blank", error.Message)
 }
 
 func (s *DistroPutSuite) TestRunExistingConflictingName() {
@@ -421,7 +462,7 @@ func (s *DistroPutSuite) TestRunExistingConflictingName() {
 	s.NotNil(resp.Data())
 	s.Equal(resp.Status(), http.StatusForbidden)
 	error := (resp.Data()).(gimlet.ErrorResponse)
-	s.Equal(error.Message, fmt.Sprintf("A distro's name is immutable; cannot rename distro '%s'", h.distroID))
+	s.Equal(fmt.Sprintf("A distro's name is immutable; cannot rename distro '%s'", h.distroID), error.Message)
 }
 
 ////////////////////////////////////////////////////////////////////////
@@ -807,6 +848,7 @@ func (s *DistroPatchByIDSuite) TestRunValidContainer() {
 
 	apiDistro := (resp.Data()).(*model.APIDistro)
 	s.Equal(apiDistro.ContainerPool, model.ToAPIString(""))
+	s.Equal(apiDistro.PlannerSettings.Version, model.ToAPIString("legacy"))
 }
 
 func (s *DistroPatchByIDSuite) TestRunInValidEmptyStringValues() {
@@ -831,6 +873,32 @@ func (s *DistroPatchByIDSuite) TestRunInValidEmptyStringValues() {
 
 	error := (resp.Data()).(gimlet.ErrorResponse)
 	s.Equal(strings.Join(errors, "\n"), error.Message)
+}
+
+func (s *DistroPatchByIDSuite) TestRunValidPlannerSettingsVersion() {
+	ctx := context.Background()
+	json := []byte(`{"planner_settings": {"version": "tunable"}}`)
+	h := s.rm.(*distroIDPatchHandler)
+	h.distroID = "fedora8"
+	h.body = json
+
+	resp := s.rm.Run(ctx)
+	s.NotNil(resp.Data())
+	s.Equal(resp.Status(), http.StatusOK)
+	apiDistro := (resp.Data()).(*model.APIDistro)
+	s.Equal(model.ToAPIString("tunable"), apiDistro.PlannerSettings.Version)
+}
+
+func (s *DistroPatchByIDSuite) TestRunInValidPlannerSettingsVersion() {
+	ctx := context.Background()
+	json := []byte(`{"planner_settings": {"version": "invalid"}}`)
+	h := s.rm.(*distroIDPatchHandler)
+	h.distroID = "fedora8"
+	h.body = json
+
+	resp := s.rm.Run(ctx)
+	s.NotNil(resp.Data())
+	s.Equal(http.StatusBadRequest, resp.Status())
 }
 
 func (s *DistroPatchByIDSuite) TestValidFindAndReplaceFullDocument() {

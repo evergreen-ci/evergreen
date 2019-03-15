@@ -24,6 +24,7 @@ var (
 	ExpansionsKey       = bsonutil.MustHaveTag(Distro{}, "Expansions")
 	DisabledKey         = bsonutil.MustHaveTag(Distro{}, "Disabled")
 	ContainerPoolKey    = bsonutil.MustHaveTag(Distro{}, "ContainerPool")
+	PlannerSettingsKey  = bsonutil.MustHaveTag(Distro{}, "PlannerSettings")
 )
 
 const Collection = "distro"
