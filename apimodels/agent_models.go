@@ -36,7 +36,7 @@ type TaskEndDetail struct {
 	Type        string    `bson:"type,omitempty" json:"type,omitempty"`
 	Description string    `bson:"desc,omitempty" json:"desc,omitempty"`
 	TimedOut    bool      `bson:"timed_out,omitempty" json:"timed_out,omitempty"`
-	Logs        *TaskLogs `bson:"logs,omitempty" json:"logs,omitempty"`
+	Logs        *TaskLogs `bson:"-" json:"logs,omitempty"`
 }
 
 type TaskLogs struct {
