@@ -3,7 +3,9 @@ package thirdparty
 import (
 	"context"
 	"io/ioutil"
+	"net"
 	"net/http"
+	"net/url"
 	"path/filepath"
 	"strconv"
 	"testing"
@@ -53,6 +55,41 @@ func (s *githubSuite) SetupTest() {
 func (s *githubSuite) TearDownTest() {
 	s.NoError(s.ctx.Err())
 	s.cancel()
+}
+
+func (s *githubSuite) TestGithubShouldRetry() {
+	attempt := rehttp.Attempt{
+		Request: &http.Request{
+			URL: &url.URL{
+				Scheme: "https",
+				Host:   "www.example.com",
+			},
+		},
+		Response: &http.Response{
+			StatusCode: 200,
+			Header: http.Header{
+				"X-Ratelimit-Limit":     []string{"10"},
+				"X-Ratelimit-Remaining": []string{"10"},
+			},
+		},
+	}
+	s.False(githubShouldRetry(attempt))
+
+	attempt.Error = &net.DNSError{IsTimeout: true}
+	s.True(githubShouldRetry(attempt))
+
+	attempt.Error = net.InvalidAddrError("wrong address")
+	s.False(githubShouldRetry(attempt))
+
+	attempt.Error = nil
+	attempt.Response.StatusCode = http.StatusBadGateway
+	s.True(githubShouldRetry(attempt))
+
+	attempt.Response.Header = http.Header{
+		"X-Ratelimit-Limit":     []string{"10"},
+		"X-Ratelimit-Remaining": []string{"0"},
+	}
+	s.False(githubShouldRetry(attempt))
 }
 
 func (s *githubSuite) TestCheckGithubAPILimit() {
