@@ -22,16 +22,6 @@ func (uis *UIServer) loginPage(w http.ResponseWriter, r *http.Request) {
 	uis.render.WriteResponse(w, http.StatusOK, nil, "base", "login.html", "base_angular.html")
 }
 
-func clearSession(w http.ResponseWriter) {
-	authTokenCookie := &http.Cookie{
-		Name:   evergreen.AuthTokenCookie,
-		Value:  "",
-		MaxAge: -1,
-		Path:   "/",
-	}
-	http.SetCookie(w, authTokenCookie)
-}
-
 func (uis *UIServer) login(w http.ResponseWriter, r *http.Request) {
 	creds := struct {
 		Username string `json:"username"`
@@ -56,12 +46,13 @@ func (uis *UIServer) login(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Invalid username/password", http.StatusUnauthorized)
 		return
 	}
-	auth.SetLoginToken(token, w)
+
+	uis.umconf.AttachCookie(token, w)
 	gimlet.WriteJSON(w, map[string]string{})
 }
 
 func (uis *UIServer) logout(w http.ResponseWriter, r *http.Request) {
-	clearSession(w)
+	uis.umconf.ClearCookie(w)
 	loginURL := fmt.Sprintf("%v/login", uis.RootURL)
 	http.Redirect(w, r, loginURL, http.StatusFound)
 }
@@ -76,7 +67,8 @@ func (uis *UIServer) newAPIKey(w http.ResponseWriter, r *http.Request) {
 	gimlet.WriteJSON(w, struct {
 		Key string `json:"key"`
 	}{newKey})
-}
+
+
 
 func (uis *UIServer) clearUserToken(w http.ResponseWriter, r *http.Request) {
 	u := MustHaveUser(r)

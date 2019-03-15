@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"runtime/debug"
 	"strings"
+	"time"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/auth"
@@ -35,6 +36,7 @@ type UIServer struct {
 
 	//authManager
 	UserManager        gimlet.UserManager
+	umconf             gimlet.UserMiddlewareConfiguration
 	umIsLDAP           bool
 	Settings           evergreen.Settings
 	CookieStore        *sessions.CookieStore
@@ -86,6 +88,17 @@ func NewUIServer(settings *evergreen.Settings, queue amboy.Queue, home string, f
 			settings.Jira.GetHostURL(),
 			settings.Jira.Username,
 			settings.Jira.Password),
+		umconf: gimlet.UserMiddlewareConfiguration{
+			HeaderKeyName:  evergreen.APIKeyHeader,
+			HeaderUserName: evergreen.APIUserHeader,
+			CookieName:     evergreen.AuthTokenCookie,
+			CookieTTL:      time.Now().Add(365 * 24 * time.Hour),
+			CookiePath:     "/",
+		},
+	}
+
+	if err := uis.umconf.Validate(); err != nil {
+		return nil, errors.Wrap(err, "programmer error; invalid user middleware configuration")
 	}
 
 	plugins := plugin.GetPublished()
