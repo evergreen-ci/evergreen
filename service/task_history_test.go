@@ -33,15 +33,16 @@ func (s *TaskHistorySuite) SetupTest() {
 	s.NoError(db.ClearCollections(model.VersionCollection))
 	now := time.Date(2009, time.November, 10, 23, 0, 0, 0, time.UTC)
 	for i := 0; i < 50; i++ {
-		now = now.Add(time.Minute)
+		// backwards in time, in descending order
+		now = now.Add(-time.Minute)
 		version := model.Version{
 			Id:         util.RandomString(),
-			Revision:   "aaaa",
+			Revision:   "cccc",
 			CreateTime: now,
 			Identifier: s.projectID,
 			Requester:  evergreen.RepotrackerVersionRequester,
 		}
-		s.versionsBefore = append(s.versionsBefore, version)
+		s.versionsAfter = append(s.versionsAfter, version)
 		s.NoError(version.Insert())
 	}
 
@@ -59,15 +60,15 @@ func (s *TaskHistorySuite) SetupTest() {
 	for i := 0; i < 50; i++ {
 		version := model.Version{
 			Id:         util.RandomString(),
-			Revision:   "cccc",
+			Revision:   "aaaa",
 			CreateTime: now,
 			Identifier: s.projectID,
 			Requester:  evergreen.RepotrackerVersionRequester,
 		}
-		s.versionsAfter = append(s.versionsAfter, version)
+		s.versionsBefore = append(s.versionsBefore, version)
 		s.NoError(version.Insert())
 
-		now = now.Add(time.Minute)
+		now = now.Add(-time.Minute)
 	}
 }
 
@@ -77,31 +78,33 @@ func (s *TaskHistorySuite) TestGetVersionsInWindow() {
 	s.NoError(err)
 
 	for i := 0; i < radius; i++ {
-		s.True(versions[i].CreateTime.Equal(s.versionsAfter[(radius-1)-i].CreateTime))
+		// compare to the last _radius_ elements in s.versionsAfter
+		s.True(versions[i].CreateTime.Equal(s.versionsAfter[(len(s.versionsAfter))-radius+i].CreateTime))
 	}
 
 	s.True(s.middleVersion.CreateTime.Equal(versions[radius].CreateTime))
 
 	for i := 0; i < radius; i++ {
-		s.True(versions[i+(1+radius)].CreateTime.Equal(s.versionsBefore[(len(s.versionsBefore)-1)-i].CreateTime))
+		s.True(versions[i+(1+radius)].CreateTime.Equal(s.versionsBefore[i].CreateTime))
 	}
 }
 
-func (s *TaskHistorySuite) TestMakeVersionsQuery() {
+func (s *TaskHistorySuite) TestSurroundingVersions() {
 	radius := 20
-	versionsAfter, err := makeVersionsQuery(&s.middleVersion, s.projectID, radius, false)
+	versionsAfter, err := surroundingVersions(&s.middleVersion, s.projectID, radius, false)
 	s.NoError(err)
-	s.Len(versionsAfter, radius)
+	s.Require().Len(versionsAfter, radius)
 	for i, version := range versionsAfter {
 		s.Equal("cccc", version.Revision)
-		s.True(version.CreateTime.Equal(s.versionsAfter[i].CreateTime))
+		// compare to the last _radius_ elements in s.versionsAfter
+		s.True(version.CreateTime.Equal(s.versionsAfter[(len(s.versionsAfter)-radius)+i].CreateTime))
 	}
 
-	versionsBefore, err := makeVersionsQuery(&s.middleVersion, s.projectID, radius, true)
+	versionsBefore, err := surroundingVersions(&s.middleVersion, s.projectID, radius, true)
 	s.NoError(err)
 	s.Len(versionsBefore, radius)
 	for i, version := range versionsBefore {
 		s.Equal("aaaa", version.Revision)
-		s.True(version.CreateTime.Equal(s.versionsBefore[len(s.versionsBefore)-(i+1)].CreateTime))
+		s.True(version.CreateTime.Equal(s.versionsBefore[i].CreateTime))
 	}
 }
