@@ -45,7 +45,7 @@ func (c *dockerClientMock) Init(string) error {
 	return nil
 }
 
-func (c *dockerClientMock) EnsureImageDownloaded(context.Context, *host.Host, ContainerImageSettings) (string, error) {
+func (c *dockerClientMock) EnsureImageDownloaded(context.Context, *host.Host, host.DockerOptions) (string, error) {
 	if c.failDownload {
 		return "", errors.New("failed to download image")
 	}
@@ -59,7 +59,7 @@ func (c *dockerClientMock) BuildImageWithAgent(context.Context, *host.Host, stri
 	return fmt.Sprintf(provisionedImageTag, c.baseImage), nil
 }
 
-func (c *dockerClientMock) CreateContainer(context.Context, *host.Host, *host.Host, *dockerSettings) error {
+func (c *dockerClientMock) CreateContainer(context.Context, *host.Host, *host.Host) error {
 	if c.failCreate {
 		return errors.New("failed to create container")
 	}

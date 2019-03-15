@@ -370,6 +370,9 @@ func MakeMergePatch(pr *github.PullRequest, projectID, alias string) (*Patch, er
 		GithubPatchData: GithubPatch{
 			PRNumber:       pr.GetNumber(),
 			MergeCommitSHA: pr.GetMergeCommitSHA(),
+			BaseOwner:      pr.Base.User.GetLogin(),
+			BaseRepo:       pr.Base.Repo.GetName(),
+			BaseBranch:     pr.Base.GetRef(),
 		},
 	}
 

@@ -1,6 +1,7 @@
 package model
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/evergreen-ci/evergreen/db"
@@ -85,6 +86,18 @@ var (
 			},
 		},
 	}
+	sampleGeneratedProjectAddToBVOnly = GeneratedProject{
+		BuildVariants: []parserBV{
+			parserBV{
+				Name: "a_variant",
+				Tasks: parserBVTaskUnits{
+					parserBVTaskUnit{
+						Name: "task_that_has_dependencies",
+					},
+				},
+			},
+		},
+	}
 	sampleProjYml = `
 tasks:
   - name: say-hi
@@ -96,6 +109,12 @@ tasks:
   - name: a-depended-on-task
     command:
       - command: shell.exec
+  - name: task_that_has_dependencies
+    commands:
+      - command: shell.exec
+    depends_on:
+      - name: "*"
+        status: "*"
 
 buildvariants:
   - name: a_variant
@@ -103,6 +122,39 @@ buildvariants:
     tasks:
     - name: say-hi
     - name: a-depended-on-task
+
+functions:
+  a_function:
+    command: shell.exec
+`
+	sampleProjYmlTaskGroups = `
+tasks:
+  - name: say-hi
+    commands:
+      - command: shell.exec
+  - name: say-bye
+    commands:
+      - command: shell.exec
+  - name: say_something_else
+  - name: task_that_has_dependencies
+    commands:
+      - command: shell.exec
+    depends_on:
+      - name: "*"
+
+task_groups:
+- name: my_task_group
+  max_hosts: 1
+  tasks:
+  - say-hi
+  - say-bye
+
+buildvariants:
+  - name: a_variant
+    display_name: Variant Number One
+    tasks:
+    - name: my_task_group
+    - name: say_something_else
 
 functions:
   a_function:
@@ -498,5 +550,65 @@ func (s *GenerateSuite) TestSaveNewBuildsAndTasks() {
 		} else {
 			s.EqualValues(10, task.Priority)
 		}
+	}
+}
+
+func (s *GenerateSuite) TestSaveNewTasksWithDependencies() {
+	tasksThatExist := []task.Task{
+		{
+			Id:      "task_that_called_generate_task",
+			Version: "version_that_called_generate_task",
+			BuildId: "generate_build",
+		},
+		{
+			Id:      "say-hi-task-id",
+			Version: "version_that_called_generate_task",
+			BuildId: "sample_build",
+		},
+		{
+			Id:      "say-bye-task-id",
+			Version: "version_that_called_generate_task",
+			BuildId: "sample_build",
+		},
+		{
+			Id:      "say_something_else",
+			Version: "version_that_called_generate_task",
+			BuildId: "sample_build",
+		},
+	}
+	for _, t := range tasksThatExist {
+		s.NoError(t.Insert())
+	}
+
+	sampleBuild := build.Build{
+		Id:           "sample_build",
+		BuildVariant: "a_variant",
+		Version:      "version_that_called_generate_task",
+	}
+	v := &Version{
+		Id:       "version_that_called_generate_task",
+		BuildIds: []string{"sample_build"},
+		Config:   sampleProjYmlTaskGroups,
+	}
+	s.NoError(sampleBuild.Insert())
+	s.NoError(v.Insert())
+
+	g := sampleGeneratedProjectAddToBVOnly
+	g.TaskID = "task_that_called_generate_task"
+	p, v, t, pm, prevConfig, err := g.NewVersion()
+	s.NoError(err)
+	s.NoError(g.Save(p, v, t, pm, prevConfig))
+	tasks := []task.Task{}
+	err = db.FindAllQ(task.Collection, db.Query(bson.M{}), &tasks)
+	s.NoError(err)
+	err = db.FindAllQ(task.Collection, db.Query(bson.M{"display_name": "task_that_has_dependencies"}), &tasks)
+	s.NoError(err)
+	s.Len(tasks[0].DependsOn, 3)
+	expected := map[string]bool{"say-hi-task-id": false, "say-bye-task-id": false, "say_something_else": false}
+	for _, dependency := range tasks[0].DependsOn {
+		expected[dependency.TaskId] = true
+	}
+	for taskName, expect := range expected {
+		s.True(expect, fmt.Sprintf("%s should be a dependency but wasn't", taskName))
 	}
 }

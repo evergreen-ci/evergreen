@@ -153,7 +153,10 @@ func (a *Agent) prepSingleLogger(tc *taskContext, in model.LogOpts, logDir, file
 		grip.Error(errors.Wrap(os.MkdirAll(in.LogDirectory, os.ModeDir|os.ModePerm), "error making log directory"))
 		logDir = in.LogDirectory
 	}
-	tc.logDirectories = append(tc.logDirectories, logDir)
+	if tc.logDirectories == nil {
+		tc.logDirectories = map[string]interface{}{}
+	}
+	tc.logDirectories[logDir] = nil
 	return client.LogOpts{
 		LogkeeperURL:      a.opts.LogkeeperURL,
 		LogkeeperBuilder:  tc.taskModel.Id,
@@ -175,7 +178,7 @@ func (a *Agent) uploadToS3(ctx context.Context, tc *taskContext) error {
 	}
 
 	catcher := grip.NewBasicCatcher()
-	for _, logDir := range tc.logDirectories {
+	for logDir := range tc.logDirectories {
 		catcher.Add(a.uploadLogDir(ctx, tc, bucket, logDir, ""))
 	}
 

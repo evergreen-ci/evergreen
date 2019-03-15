@@ -391,7 +391,7 @@ func (j *patchIntentProcessor) buildGithubPatchDoc(ctx context.Context, patchDoc
 		return false, err
 	}
 
-	patchContent, summaries, err := thirdparty.GetGithubPullRequestDiff(ctx, githubOauthToken, &patchDoc.GithubPatchData)
+	patchContent, summaries, err := thirdparty.GetGithubPullRequestDiff(ctx, githubOauthToken, patchDoc.GithubPatchData)
 	if err != nil {
 		return isMember, err
 	}

@@ -483,13 +483,11 @@ Evergreen - {{Trunc .Task.Revision 10}} / {{.Task.BuildVariantDisplay}} / {{.Tas
       <div class="col-lg-12">
         <pre>
 <span class="">External Task Logs:</span>
-<span ng-repeat="logInfo in task.logs.task"><a ng-href="[[logInfo.url]]">[[logInfo.command?logInfo.command:task.display_name]]</a></span>
-
+<span ng-repeat="logInfo in task.logs.task"><a ng-href="[[logInfo.url]]">[[logInfo.command?logInfo.command:task.display_name]]</a><br/></span>
 <span class="">External Agent Logs:</span>
-<span ng-repeat="logInfo in task.logs.agent"><a ng-href="[[logInfo.url]]">[[logInfo.command?logInfo.command:task.display_name]]</a></span>
-
+<span ng-repeat="logInfo in task.logs.agent"><a ng-href="[[logInfo.url]]">[[logInfo.command?logInfo.command:task.display_name]]</a><br/></span>
 <span class="">External System Logs:</span>
-<span ng-repeat="logInfo in task.logs.system"><a ng-href="[[logInfo.url]]">[[logInfo.command?logInfo.command:task.display_name]]</a></span></pre>
+<span ng-repeat="logInfo in task.logs.system"><a ng-href="[[logInfo.url]]">[[logInfo.command?logInfo.command:task.display_name]]</a><br/></span></pre>
 
       </div>
     </div>

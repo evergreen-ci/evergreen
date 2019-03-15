@@ -39,7 +39,7 @@ imports:
   - name: github.com/smartystreets/assertions
     version: f8459f92181409546d2762c9e9c4bedc23c92d76
   - name: github.com/smartystreets/goconvey
-    version: af8e7d560364b90f732a1d119d17b5506e50447d
+    version: 200a235640ff2643e3126834b67f3e93df76640a
 
   - name: github.com/stretchr/testify
     version: 890a5c3458b43e6104ff5da8dfa139d013d77544
@@ -47,7 +47,7 @@ imports:
   - name: github.com/jacobsa/oglematchers
     version: 4fc24f97b5b74022c2a3f4ca7eed57ca29083d3e
   - name: github.com/jtolds/gls
-    version: 8ddce2a84170772b95dd5d576c48d517b22cac63
+    version: b4936e06046bbecbb94cae9c18127ebe510a2cb9
   - name: gopkg.in/yaml.v2
     version: 49c95bdc21843256fb6c4e0d370a05f24a0bf213
   - name: gopkg.in/mgo.v2

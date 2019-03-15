@@ -199,7 +199,7 @@ func (s *PatchIntentUnitsSuite) TestProcessCliPatchIntent() {
 	}
 	s.NoError(evergreen.SetServiceFlags(flags))
 
-	patchContent, summaries, err := thirdparty.GetGithubPullRequestDiff(context.Background(), githubOauthToken, &s.githubPatchData)
+	patchContent, summaries, err := thirdparty.GetGithubPullRequestDiff(context.Background(), githubOauthToken, s.githubPatchData)
 	s.NoError(err)
 	s.NotEmpty(patchContent)
 	s.NotEqual("{", patchContent[0])

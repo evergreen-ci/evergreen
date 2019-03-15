@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/evergreen-ci/evergreen/validator"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 	"github.com/urfave/cli"
@@ -73,5 +74,12 @@ func validateFile(path string, ac *legacyClient) error {
 	} else {
 		grip.Info(projErrors)
 	}
+
+	for _, e := range projErrors {
+		if e.Level == validator.Error {
+			return errors.New("invalid configuration")
+		}
+	}
+
 	return nil
 }

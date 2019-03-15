@@ -4,8 +4,10 @@ import (
 	"context"
 	"fmt"
 	"strconv"
+	"strings"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/commitqueue"
 	"github.com/evergreen-ci/evergreen/model/event"
@@ -131,12 +133,26 @@ func (j *commitQueueJob) Run(ctx context.Context) {
 		return
 	}
 
-	patchDoc, projectConfig, err := makeMergePatch(ctx, pr, githubToken, projectRef.Identifier)
+	patchDoc, err := patch.MakeMergePatch(pr, projectRef.Identifier, commitQueueAlias)
 	if err != nil {
 		j.logError(err, "can't make patch", nextItem)
 		j.AddError(sendCommitQueueGithubStatus(j.env, pr, message.GithubStateFailure, "can't make patch", ""))
 		j.dequeue(cq, nextItem)
-		j.AddError(errors.Wrap(cq.SetProcessing(false), "can't set processing to false"))
+		return
+	}
+
+	patch, patchSummaries, projectConfig, err := getPatchInfo(ctx, githubToken, patchDoc)
+	if err != nil {
+		j.logError(err, "can't get patch info", nextItem)
+		j.AddError(sendCommitQueueGithubStatus(j.env, pr, message.GithubStateFailure, "can't make patch", ""))
+		j.dequeue(cq, nextItem)
+		return
+	}
+
+	if err = writePatchInfo(patchDoc, projectConfig, patchSummaries, patch, projectRef.Identifier); err != nil {
+		j.logError(err, "can't make patch", nextItem)
+		j.AddError(sendCommitQueueGithubStatus(j.env, pr, message.GithubStateFailure, "can't make patch", ""))
+		j.dequeue(cq, nextItem)
 		return
 	}
 
@@ -151,7 +167,7 @@ func (j *commitQueueJob) Run(ctx context.Context) {
 		}
 		return
 	}
-	patchDoc.Patches = modulePatches
+	patchDoc.Patches = append(patchDoc.Patches, modulePatches...)
 
 	v, err := makeVersion(ctx, githubToken, projectConfig, patchDoc)
 	if err != nil {
@@ -219,7 +235,7 @@ func checkPR(ctx context.Context, githubToken, issue, owner, repo string) (*gith
 		return nil, false, errors.Wrap(err, "can't get PR from GitHub")
 	}
 
-	if err = validatePR(pr); err != nil {
+	if err = thirdparty.ValidatePR(pr); err != nil {
 		return nil, true, errors.Wrap(err, "GitHub returned an incomplete PR")
 	}
 
@@ -253,15 +269,12 @@ func getModules(ctx context.Context, githubToken string, nextItem *commitqueue.C
 			return nil, nil, true, errors.Wrapf(err, "module '%s' misconfigured (malformed URL)", mod.Module)
 		}
 
-		githash := ""
-		if mod.Issue != "" {
-			pr, dequeue, err := checkPR(ctx, githubToken, mod.Issue, owner, repo)
-			if err != nil {
-				return nil, nil, dequeue, errors.Wrap(err, "PR not valid for merge")
-			}
-			modulePRs = append(modulePRs, pr)
-			githash = pr.GetMergeCommitSHA()
+		pr, dequeue, err := checkPR(ctx, githubToken, mod.Issue, owner, repo)
+		if err != nil {
+			return nil, nil, dequeue, errors.Wrap(err, "PR not valid for merge")
 		}
+		modulePRs = append(modulePRs, pr)
+		githash := pr.GetMergeCommitSHA()
 
 		modulePatches = append(modulePatches, patch.ModulePatch{
 			ModuleName: mod.Module,
@@ -275,64 +288,43 @@ func getModules(ctx context.Context, githubToken string, nextItem *commitqueue.C
 	return modulePRs, modulePatches, false, nil
 }
 
-func validatePR(pr *github.PullRequest) error {
-	if pr == nil {
-		return errors.New("No PR provided")
-	}
-
-	catcher := grip.NewSimpleCatcher()
-	if pr.GetMergeCommitSHA() == "" {
-		catcher.Add(errors.New("no merge commit SHA"))
-	}
-	if pr.GetUser() == nil || pr.GetUser().GetID() == 0 {
-		catcher.Add(errors.New("no valid user"))
-	}
-	if pr.GetBase() == nil || pr.GetBase().GetSHA() == "" {
-		catcher.Add(errors.New("no valid base SHA"))
-	}
-	if pr.GetBase() == nil || pr.GetBase().GetRepo() == nil || pr.GetBase().GetRepo().GetName() == "" || pr.GetBase().GetRepo().GetFullName() == "" {
-		catcher.Add(errors.New("no valid base repo name"))
-	}
-	if pr.GetBase() == nil || pr.GetBase().GetRepo() == nil || pr.GetBase().GetRepo().GetOwner() == nil || pr.GetBase().GetRepo().GetOwner().GetLogin() == "" {
-		catcher.Add(errors.New("no valid base repo owner login"))
-	}
-	if pr.GetHead() == nil || pr.GetHead().GetSHA() == "" {
-		catcher.Add(errors.New("no valid head SHA"))
-	}
-	if pr.GetNumber() == 0 {
-		catcher.Add(errors.New("no valid pr number"))
-	}
-	if pr.GetTitle() == "" {
-		catcher.Add(errors.New("no valid title"))
-	}
-	if pr.GetHTMLURL() == "" {
-		catcher.Add(errors.New("no valid HTML URL"))
-	}
-	if pr.Merged == nil {
-		catcher.Add(errors.New("no valid merged status"))
-	}
-
-	return catcher.Resolve()
-}
-
-func makeMergePatch(ctx context.Context, pr *github.PullRequest, githubToken, projectID string) (*patch.Patch, *model.Project, error) {
-	patchDoc, err := patch.MakeMergePatch(pr, projectID, commitQueueAlias)
+func getPatchInfo(ctx context.Context, githubToken string, patchDoc *patch.Patch) (string, []patch.Summary, *model.Project, error) {
+	patchContent, summaries, err := thirdparty.GetGithubPullRequestDiff(ctx, githubToken, patchDoc.GithubPatchData)
 	if err != nil {
-		return nil, nil, errors.Wrap(err, "can't make patch")
+		return "", nil, nil, errors.Wrap(err, "can't get diff")
 	}
 
+	// fetch the latest config file
 	config, err := validator.GetPatchedProject(ctx, patchDoc, githubToken)
 	if err != nil {
-		return nil, nil, errors.Wrap(err, "can't get remote config file")
+		return "", nil, nil, errors.Wrap(err, "can't get remote config file")
 	}
+
+	return patchContent, summaries, config, nil
+}
+
+func writePatchInfo(patchDoc *patch.Patch, config *model.Project, patchSummaries []patch.Summary, patchContent, projectID string) error {
+	patchFileID := fmt.Sprintf("%s_%s", patchDoc.Id.Hex(), patchDoc.Githash)
+	if err := db.WriteGridFile(patch.GridFSPrefix, patchFileID, strings.NewReader(patchContent)); err != nil {
+		return errors.Wrap(err, "failed to write patch file to db")
+	}
+
+	// no name for the main patch
+	patchDoc.Patches = append(patchDoc.Patches, patch.ModulePatch{
+		Githash: patchDoc.Githash,
+		PatchSet: patch.PatchSet{
+			PatchFileId: patchFileID,
+			Summary:     patchSummaries,
+		},
+	})
 
 	yamlBytes, err := yaml.Marshal(config)
 	if err != nil {
-		return nil, nil, errors.Wrap(err, "can't marshal project config to yaml")
+		return errors.Wrap(err, "can't marshal project config to yaml")
 	}
 	patchDoc.PatchedConfig = string(yamlBytes)
 
-	return patchDoc, config, nil
+	return nil
 }
 
 func makeVersion(ctx context.Context, githubToken string, project *model.Project, patchDoc *patch.Patch) (*model.Version, error) {

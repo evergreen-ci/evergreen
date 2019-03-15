@@ -67,21 +67,18 @@ type Build struct {
 
 // Returns whether or not the build has finished, based on its status.
 // In spite of the name, a build with status BuildFailed may still be in
-// progress; use AllCachedTasksOrCompileFinished
+// progress; use AllCachedTasksFinished
 func (b *Build) IsFinished() bool {
 	return b.Status == evergreen.BuildFailed ||
 		b.Status == evergreen.BuildSucceeded
 }
 
-// AllUnblockedTasksOrCompileFinished returns true when either:
-//  1. if there is a compile task, the compile task's status is one the ones
-//     listed in IsFailedTaskStatus
-//  2. or all activated tasks in the task cache have one of the statuses in
-//     IsFinishedTaskStatus or the task is considered blocked
-// returns boolean to indicate if tasks are complete, string with either
-// BuildFailed or BuildSucceded. The string is only valid when the boolean is
-// true
-func (b *Build) AllUnblockedTasksOrCompileFinished(tasksWithDeps []task.Task) (bool, string, error) {
+// AllUnblockedTasksOrCompileFinished returns true when all activated tasks in the task cache have
+// one of the statuses in IsFinishedTaskStatus or the task is considered blocked
+//
+// returns boolean to indicate if tasks are complete, string with either BuildFailed or
+// BuildSucceded. The string is only valid when the boolean is true
+func (b *Build) AllUnblockedTasksFinished(tasksWithDeps []task.Task) (bool, string, error) {
 	if !b.Activated {
 		return false, b.Status, nil
 	}
@@ -93,9 +90,6 @@ func (b *Build) AllUnblockedTasksOrCompileFinished(tasksWithDeps []task.Task) (b
 			continue
 		}
 		if evergreen.IsFailedTaskStatus(b.Tasks[i].Status) {
-			if b.Tasks[i].DisplayName == evergreen.CompileStage {
-				return true, evergreen.BuildFailed, nil
-			}
 			status = evergreen.BuildFailed
 		}
 		if !evergreen.IsFinishedTaskStatus(b.Tasks[i].Status) {

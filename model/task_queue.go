@@ -449,6 +449,18 @@ func FindAllTaskQueues() ([]TaskQueue, error) {
 	return taskQueues, err
 }
 
+func FindDistroTaskQueue(distroID string) (TaskQueue, error) {
+	queue := TaskQueue{}
+	err := db.FindOne(
+		TaskQueuesCollection,
+		bson.M{taskQueueIdKey: distroID},
+		db.NoProjection,
+		db.NoSort,
+		&queue)
+
+	return queue, errors.WithStack(err)
+}
+
 func FindTaskQueueGenerationTimes() (map[string]time.Time, error) {
 	out := []map[string]time.Time{}
 

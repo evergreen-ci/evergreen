@@ -44,8 +44,7 @@ func (s *DockerSuite) SetupTest() {
 		Id:       "d",
 		Provider: "docker",
 		ProviderSettings: &map[string]interface{}{
-			"image_url": "http://0.0.0.0:8000/docker_image.tgz",
-			"pool_id":   "pool_id",
+			"pool_id": "pool_id",
 		},
 		User: "root",
 	}
@@ -56,23 +55,15 @@ func (s *DockerSuite) SetupTest() {
 	}
 	s.hostOpts = HostOptions{
 		ParentID: "parent",
+		DockerOptions: host.DockerOptions{
+			Image: "http://0.0.0.0:8000/docker_image.tgz",
+		},
 	}
 	s.NoError(s.parentHost.Insert())
 }
 
 func (s *DockerSuite) TearDownTest() {
 	s.NoError(db.Clear(host.Collection))
-}
-func (s *DockerSuite) TestValidateSettings() {
-	// all required settings are provided
-	settingsOk := &dockerSettings{
-		ImageURL: "http://0.0.0.0:8000/docker_image.tgz",
-	}
-	s.NoError(settingsOk.Validate())
-
-	// error when missing image url
-	settingsNoImageURL := &dockerSettings{}
-	s.EqualError(settingsNoImageURL.Validate(), "ImageURL must not be blank")
 }
 
 func (s *DockerSuite) TestConfigureAPICall() {
@@ -127,16 +118,16 @@ func (s *DockerSuite) TestTerminateInstanceAPICall() {
 	hostA := NewIntent(s.distro, s.distro.GenerateName(), s.distro.Provider, s.hostOpts)
 	s.NoError(hostA.Insert())
 	hostA, err := s.manager.SpawnHost(ctx, hostA)
-	s.NotNil(hostA)
 	s.NoError(err)
+	s.Require().NotNil(hostA)
 	_, err = hostA.Upsert()
 	s.NoError(err)
 
 	hostB := NewIntent(s.distro, s.distro.GenerateName(), s.distro.Provider, s.hostOpts)
 	s.NoError(hostB.Insert())
 	hostB, err = s.manager.SpawnHost(ctx, hostB)
-	s.NotNil(hostB)
 	s.NoError(err)
+	s.Require().NotNil(hostB)
 	_, err = hostB.Upsert()
 	s.NoError(err)
 
@@ -208,18 +199,8 @@ func (s *DockerSuite) TestSpawnInvalidSettings() {
 	s.Error(err)
 	s.Nil(host)
 
-	dSettingsNone := distro.Distro{Provider: "docker"}
-	host = NewIntent(dSettingsNone, dSettingsNone.GenerateName(), dSettingsNone.Provider, s.hostOpts)
-	host, err = s.manager.SpawnHost(ctx, host)
-	s.Error(err)
-	s.Nil(host)
-
-	dSettingsInvalid := distro.Distro{
-		Provider:         "docker",
-		ProviderSettings: &map[string]interface{}{"instance_type": ""},
-	}
-	host = NewIntent(dSettingsInvalid, dSettingsInvalid.GenerateName(), dSettingsInvalid.Provider, s.hostOpts)
-	s.NoError(host.Insert())
+	emptyHostOpts := HostOptions{}
+	host = NewIntent(s.distro, s.distro.GenerateName(), dProviderName.Provider, emptyHostOpts)
 	host, err = s.manager.SpawnHost(ctx, host)
 	s.Error(err)
 	s.Nil(host)
@@ -352,7 +333,7 @@ func (s *DockerSuite) TestRemoveOldestImage() {
 	s.NoError(err)
 }
 
-func (s *DockerSuite) TestBuildContainerImage() {
+func (s *DockerSuite) TestGetContainerImage() {
 	mock, ok := s.client.(*dockerClientMock)
 	s.True(ok)
 	s.False(mock.failDownload)
@@ -365,11 +346,28 @@ func (s *DockerSuite) TestBuildContainerImage() {
 	s.NoError(err)
 	s.Equal("parent", parent.Id)
 
-	err = s.manager.BuildContainerImage(ctx, parent, ContainerImageSettings{URL: "image-url", Method: distro.DockerImageBuildTypeImport})
+	err = s.manager.GetContainerImage(ctx, parent, host.DockerOptions{Image: "image-url", Method: distro.DockerImageBuildTypeImport})
 	s.NoError(err)
 }
 
-func (s *DockerSuite) TestBuildContainerImageFailedDownload() {
+func (s *DockerSuite) TestGetContainerImageNoBuild() {
+	mock, ok := s.client.(*dockerClientMock)
+	s.True(ok)
+	s.False(mock.failDownload)
+	s.False(mock.failBuild)
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	parent, err := host.FindOneId("parent")
+	s.NoError(err)
+	s.Equal("parent", parent.Id)
+
+	err = s.manager.GetContainerImage(ctx, parent, host.DockerOptions{Image: "image-url", Method: distro.DockerImageBuildTypeImport, SkipImageBuild: true})
+	s.NoError(err)
+}
+
+func (s *DockerSuite) TestGetContainerImageFailedDownload() {
 	mock, ok := s.client.(*dockerClientMock)
 	s.True(ok)
 	s.False(mock.failBuild)
@@ -382,11 +380,11 @@ func (s *DockerSuite) TestBuildContainerImageFailedDownload() {
 	s.NoError(err)
 	s.Equal("parent", parent.Id)
 
-	err = s.manager.BuildContainerImage(ctx, parent, ContainerImageSettings{URL: "image-url", Method: distro.DockerImageBuildTypeImport})
+	err = s.manager.GetContainerImage(ctx, parent, host.DockerOptions{Image: "image-url", Method: distro.DockerImageBuildTypeImport})
 	s.EqualError(err, "Unable to ensure that image 'image-url' is on host 'parent': failed to download image")
 }
 
-func (s *DockerSuite) TestBuildContainerImageFailedBuild() {
+func (s *DockerSuite) TestGetContainerImageFailedBuild() {
 	mock, ok := s.client.(*dockerClientMock)
 	s.True(ok)
 	s.False(mock.failDownload)
@@ -399,6 +397,6 @@ func (s *DockerSuite) TestBuildContainerImageFailedBuild() {
 	s.NoError(err)
 	s.Equal("parent", parent.Id)
 
-	err = s.manager.BuildContainerImage(ctx, parent, ContainerImageSettings{URL: "image-url", Method: distro.DockerImageBuildTypeImport})
+	err = s.manager.GetContainerImage(ctx, parent, host.DockerOptions{Image: "image-url", Method: distro.DockerImageBuildTypeImport})
 	s.EqualError(err, "Failed to build image 'image-url' with agent on host 'parent': failed to build image with agent")
 }
