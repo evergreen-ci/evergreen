@@ -92,7 +92,7 @@ func NewUIServer(settings *evergreen.Settings, queue amboy.Queue, home string, f
 			HeaderKeyName:  evergreen.APIKeyHeader,
 			HeaderUserName: evergreen.APIUserHeader,
 			CookieName:     evergreen.AuthTokenCookie,
-			CookieTTL:      time.Now().Add(365 * 24 * time.Hour),
+			CookieTTL:      365 * 24 * time.Hour,
 			CookiePath:     "/",
 		},
 	}
