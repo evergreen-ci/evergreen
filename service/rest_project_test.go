@@ -31,7 +31,11 @@ func TestProjectRoutes(t *testing.T) {
 	})
 
 	app := GetRESTv1App(&uis)
-	app.AddMiddleware(gimlet.UserMiddleware(uis.UserManager, GetUserMiddlewareConf()))
+	app.AddMiddleware(gimlet.UserMiddleware(uis.UserManager, gimlet.UserMiddlewareConfiguration{
+		CookieName:     evergreen.AuthTokenCookie,
+		HeaderKeyName:  evergreen.APIKeyHeader,
+		HeaderUserName: evergreen.APIUserHeader,
+	}))
 	n, err := app.Handler()
 	testutil.HandleTestingErr(err, t, "error setting up router")
 
