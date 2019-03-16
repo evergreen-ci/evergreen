@@ -5,7 +5,6 @@ import (
 	"net/http"
 
 	"github.com/evergreen-ci/evergreen"
-	"github.com/evergreen-ci/evergreen/auth"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/util"
@@ -67,8 +66,7 @@ func (uis *UIServer) newAPIKey(w http.ResponseWriter, r *http.Request) {
 	gimlet.WriteJSON(w, struct {
 		Key string `json:"key"`
 	}{newKey})
-
-
+}
 
 func (uis *UIServer) clearUserToken(w http.ResponseWriter, r *http.Request) {
 	u := MustHaveUser(r)
