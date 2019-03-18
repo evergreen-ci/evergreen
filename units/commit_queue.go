@@ -146,7 +146,7 @@ func (j *commitQueueJob) Run(ctx context.Context) {
 		j.AddError(sendCommitQueueGithubStatus(j.env, pr, message.GithubStateFailure, "can't make patch", ""))
 		j.dequeue(cq, nextItem)
 		if invalid {
-			update := NewGithubStatusUpdateJobForBadConfig(projectRef.Identifier, j.ID())
+			update := NewGithubStatusUpdateJobForBadConfig(projectRef, pr.Head.GetRef(), j.ID())
 			update.Run(ctx)
 			j.AddError(update.Error())
 		}

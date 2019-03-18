@@ -277,35 +277,6 @@ func verifyGithubAPILimitHeader(header http.Header) (int64, error) {
 	return rem, nil
 }
 
-func TestGithubShouldRetryDoesntPanic(t *testing.T) {
-	assert := assert.New(t)
-	req, err := http.NewRequest(http.MethodGet, "http://example.com", nil)
-	assert.NoError(err)
-
-	assert.NotPanics(func() {
-		a := rehttp.Attempt{
-			Index:    0,
-			Request:  req,
-			Response: nil,
-			Error:    errors.New("something bad"),
-		}
-
-		assert.True(githubShouldRetry(a))
-
-		a.Response = &http.Response{
-			Request:    a.Request,
-			Status:     http.StatusText(http.StatusOK),
-			StatusCode: http.StatusOK,
-			Header: http.Header{
-				"X-Ratelimit-Limit":     []string{"5000"},
-				"X-Ratelimit-Remaining": []string{"4900"},
-			},
-		}
-		a.Error = nil
-		assert.False(githubShouldRetry(a))
-	})
-}
-
 func TestBuildPatchURL(t *testing.T) {
 	assert := assert.New(t)
 	p := patch.GithubPatch{

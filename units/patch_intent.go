@@ -111,7 +111,7 @@ func (j *patchIntentProcessor) Run(ctx context.Context) {
 				j.AddError(errors.Wrap(err, "can't fetch project ref"))
 				return
 			}
-			update := NewGithubStatusUpdateJobForBadConfig(projectRef.Identifier, j.ID())
+			update := NewGithubStatusUpdateJobForBadConfig(projectRef, patchDoc.GithubPatchData.HeadHash, j.ID())
 			update.Run(ctx)
 			j.AddError(update.Error())
 		}

@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/commitqueue"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/mongodb/amboy"
@@ -98,12 +99,15 @@ func NewGithubStatusUpdateJobForPushToCommitQueue(owner, repo, ref string, prNum
 
 // NewGithubStatusUpdateJobForBadConfig marks a ref as failed because the
 // evergreen configuration is bad
-func NewGithubStatusUpdateJobForBadConfig(projectID, senderID string) amboy.Job {
+func NewGithubStatusUpdateJobForBadConfig(projectRef *model.ProjectRef, hash, senderID string) amboy.Job {
 	job := makeGithubStatusUpdateJob()
-	job.FetchID = projectID
+	job.FetchID = projectRef.Identifier
+	job.Owner = projectRef.Owner
+	job.Repo = projectRef.Repo
+	job.Ref = hash
 	job.UpdateType = githubUpdateTypeBadConfig
 
-	job.SetID(fmt.Sprintf("%s:%s-%s-%s-%s", githubStatusUpdateJobName, job.UpdateType, projectID, senderID, time.Now().String()))
+	job.SetID(fmt.Sprintf("%s:%s-%s-%s-%s", githubStatusUpdateJobName, job.UpdateType, senderID, time.Now().String()))
 
 	return job
 }
@@ -154,6 +158,13 @@ func (j *githubStatusUpdateJob) fetch() (*message.GithubStatus, error) {
 		status.Context = "evergreen"
 		status.State = message.GithubStateFailure
 		status.Description = "project config was invalid"
+
+		status.Owner = j.Owner
+		status.Repo = j.Repo
+		status.Ref = j.Ref
+
+		// Since there is no patch document, we return early.
+		return &status, nil
 
 	} else if j.UpdateType == githubUpdateTypeNewPatch {
 		status.URL = fmt.Sprintf("%s/version/%s", j.urlBase, j.FetchID)
