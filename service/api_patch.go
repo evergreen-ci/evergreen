@@ -18,7 +18,6 @@ import (
 	"github.com/evergreen-ci/gimlet"
 	"github.com/pkg/errors"
 	"gopkg.in/mgo.v2/bson"
-	"gopkg.in/yaml.v2"
 )
 
 const formMimeType = "application/x-www-form-urlencoded"
@@ -295,18 +294,13 @@ func (as *APIServer) existingPatchRequest(w http.ResponseWriter, r *http.Request
 			http.Error(w, "patch is already finalized", http.StatusBadRequest)
 			return
 		}
-		var patchedProject *model.Project
-		patchedProject, err = validator.GetPatchedProject(ctx, p, githubOauthToken)
+
+		projectYamlBytes, err = validator.GetPatchedProject(ctx, p, githubOauthToken)
 		if err != nil {
 			as.LoggedError(w, r, http.StatusInternalServerError, err)
 			return
 		}
-		var projectYamlBytes []byte
-		projectYamlBytes, err = yaml.Marshal(patchedProject)
-		if err != nil {
-			as.LoggedError(w, r, http.StatusInternalServerError, errors.Wrap(err, "error marshaling patched config"))
-			return
-		}
+
 		p.PatchedConfig = string(projectYamlBytes)
 		_, err = model.FinalizePatch(ctx, p, evergreen.PatchVersionRequester, githubOauthToken)
 		if err != nil {

@@ -20,7 +20,6 @@ import (
 	"github.com/evergreen-ci/evergreen/testutil"
 	. "github.com/smartystreets/goconvey/convey"
 	"gopkg.in/mgo.v2/bson"
-	"gopkg.in/yaml.v2"
 )
 
 var (
@@ -180,18 +179,18 @@ func TestGetPatchedProject(t *testing.T) {
 				configPatch := resetPatchSetup(t, configFilePath)
 				token, err := patchTestConfig.GetGithubOauthToken()
 				So(err, ShouldBeNil)
-				project, err := GetPatchedProject(ctx, configPatch, token)
+				projectData, err := GetPatchedProject(ctx, configPatch, token)
 				So(err, ShouldBeNil)
-				So(project, ShouldNotBeNil)
+				So(projectData, ShouldNotBeNil)
 			})
 
 			Convey("Calling GetPatchedProject on a project-less version returns a valid project", func() {
 				configPatch := resetProjectlessPatchSetup(t)
 				token, err := patchTestConfig.GetGithubOauthToken()
 				So(err, ShouldBeNil)
-				project, err := GetPatchedProject(ctx, configPatch, token)
+				projectData, err := GetPatchedProject(ctx, configPatch, token)
 				So(err, ShouldBeNil)
-				So(project, ShouldNotBeNil)
+				So(projectData, ShouldNotBeNil)
 			})
 
 			Convey("Calling GetPatchedProject on a patch with GridFS patches works", func() {
@@ -204,9 +203,9 @@ func TestGetPatchedProject(t *testing.T) {
 
 				token, err := patchTestConfig.GetGithubOauthToken()
 				So(err, ShouldBeNil)
-				project, err := GetPatchedProject(ctx, configPatch, token)
+				projectData, err := GetPatchedProject(ctx, configPatch, token)
 				So(err, ShouldBeNil)
-				So(project, ShouldNotBeNil)
+				So(projectData, ShouldNotBeNil)
 			})
 
 			Reset(func() {
@@ -228,11 +227,9 @@ func TestFinalizePatch(t *testing.T) {
 			Convey("a patched config should drive version creation", func() {
 				token, err := patchTestConfig.GetGithubOauthToken()
 				So(err, ShouldBeNil)
-				project, err := GetPatchedProject(ctx, configPatch, token)
+				projectData, err := GetPatchedProject(ctx, configPatch, token)
 				So(err, ShouldBeNil)
-				yamlBytes, err := yaml.Marshal(project)
-				So(err, ShouldBeNil)
-				configPatch.PatchedConfig = string(yamlBytes)
+				configPatch.PatchedConfig = string(projectData)
 				token, err = patchTestConfig.GetGithubOauthToken()
 				So(err, ShouldBeNil)
 				version, err := model.FinalizePatch(ctx, configPatch, evergreen.PatchVersionRequester, token)
@@ -254,11 +251,9 @@ func TestFinalizePatch(t *testing.T) {
 				configPatch := resetPatchSetup(t, patchedConfigFile)
 				token, err := patchTestConfig.GetGithubOauthToken()
 				So(err, ShouldBeNil)
-				project, err := GetPatchedProject(ctx, configPatch, token)
+				projectData, err := GetPatchedProject(ctx, configPatch, token)
 				So(err, ShouldBeNil)
-				yamlBytes, err := yaml.Marshal(project)
-				So(err, ShouldBeNil)
-				configPatch.PatchedConfig = string(yamlBytes)
+				configPatch.PatchedConfig = string(projectData)
 				token, err = patchTestConfig.GetGithubOauthToken()
 				So(err, ShouldBeNil)
 				version, err := model.FinalizePatch(ctx, configPatch, evergreen.PatchVersionRequester, token)

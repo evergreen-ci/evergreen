@@ -50,9 +50,12 @@ func TestMakePatchedConfig(t *testing.T) {
 			}
 			projectBytes, err := ioutil.ReadFile(filepath.Join(cwd, "testdata", "project.config"))
 			So(err, ShouldBeNil)
-			project, err := MakePatchedConfig(ctx, p, remoteConfigPath, string(projectBytes))
+			projectData, err := MakePatchedConfig(ctx, p, remoteConfigPath, string(projectBytes))
 			So(err, ShouldBeNil)
-			So(project, ShouldNotBeNil)
+			So(projectData, ShouldNotBeNil)
+
+			project := &Project{}
+			So(LoadProjectInto(projectData, "", project), ShouldBeNil)
 			So(len(project.Tasks), ShouldEqual, 2)
 		})
 		Convey("an empty base config should be patched correctly", func() {
@@ -69,9 +72,13 @@ func TestMakePatchedConfig(t *testing.T) {
 				}},
 			}
 
-			project, err := MakePatchedConfig(ctx, p, remoteConfigPath, "")
+			projectData, err := MakePatchedConfig(ctx, p, remoteConfigPath, "")
 			So(err, ShouldBeNil)
-			So(project, ShouldNotBeNil)
+			So(projectData, ShouldNotBeNil)
+
+			project := &Project{}
+			So(LoadProjectInto(projectData, "", project), ShouldBeNil)
+
 			So(len(project.Tasks), ShouldEqual, 1)
 			So(project.Tasks[0].Name, ShouldEqual, "hello")
 

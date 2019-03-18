@@ -105,10 +105,8 @@ func IncludePatchDependencies(project *Project, tvpairs []TVPair) []TVPair {
 }
 
 // MakePatchedConfig takes in the path to a remote configuration a stringified version
-// of the current project and returns an unmarshalled version of the project
-// with the patch applied
-func MakePatchedConfig(ctx context.Context, p *patch.Patch, remoteConfigPath, projectConfig string) (
-	*Project, error) {
+// of the current project and returns a byte slice of the project string with the patch applied
+func MakePatchedConfig(ctx context.Context, p *patch.Patch, remoteConfigPath, projectConfig string) ([]byte, error) {
 	for _, patchPart := range p.Patches {
 		// we only need to patch the main project and not any other modules
 		if patchPart.ModuleName != "" {
@@ -211,11 +209,7 @@ func MakePatchedConfig(ctx context.Context, p *patch.Patch, remoteConfigPath, pr
 		if err != nil {
 			return nil, errors.Wrap(err, "could not read patched config file")
 		}
-		project := &Project{}
-		if err = LoadProjectInto(data, p.Project, project); err != nil {
-			return nil, errors.WithStack(err)
-		}
-		return project, nil
+		return data, nil
 	}
 	return nil, errors.New("no patch on project")
 }

@@ -167,7 +167,7 @@ func (s *githubStatusUpdateSuite) TestForBadConfig() {
 	}
 	s.NoError(ref.Insert())
 
-	job, ok := NewGithubStatusUpdateJobForBadConfig(intent.ID()).(*githubStatusUpdateJob)
+	job, ok := NewGithubStatusUpdateJobForBadConfig(ref.Identifier, "sender-id").(*githubStatusUpdateJob)
 	s.Require().NotNil(job)
 	s.Require().True(ok)
 	s.Require().Equal(githubUpdateTypeBadConfig, job.UpdateType)

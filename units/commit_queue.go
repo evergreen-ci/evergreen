@@ -24,7 +24,6 @@ import (
 	"github.com/mongodb/grip/message"
 	"github.com/mongodb/grip/sometimes"
 	"github.com/pkg/errors"
-	yaml "gopkg.in/yaml.v2"
 )
 
 const (
@@ -141,11 +140,16 @@ func (j *commitQueueJob) Run(ctx context.Context) {
 		return
 	}
 
-	patch, patchSummaries, projectConfig, err := getPatchInfo(ctx, githubToken, patchDoc)
+	patch, patchSummaries, projectConfig, invalid, err := getPatchInfo(ctx, githubToken, projectRef.Identifier, patchDoc)
 	if err != nil {
 		j.logError(err, "can't get patch info", nextItem)
 		j.AddError(sendCommitQueueGithubStatus(j.env, pr, message.GithubStateFailure, "can't make patch", ""))
 		j.dequeue(cq, nextItem)
+		if invalid {
+			update := NewGithubStatusUpdateJobForBadConfig(projectRef.Identifier, j.ID())
+			update.Run(ctx)
+			j.AddError(update.Error())
+		}
 		return
 	}
 
@@ -288,19 +292,25 @@ func getModules(ctx context.Context, githubToken string, nextItem *commitqueue.C
 	return modulePRs, modulePatches, false, nil
 }
 
-func getPatchInfo(ctx context.Context, githubToken string, patchDoc *patch.Patch) (string, []patch.Summary, *model.Project, error) {
+func getPatchInfo(ctx context.Context, githubToken, projectID string, patchDoc *patch.Patch) (string, []patch.Summary, *model.Project, bool, error) {
 	patchContent, summaries, err := thirdparty.GetGithubPullRequestDiff(ctx, githubToken, patchDoc.GithubPatchData)
 	if err != nil {
-		return "", nil, nil, errors.Wrap(err, "can't get diff")
+		return "", nil, nil, false, errors.Wrap(err, "can't get diff")
 	}
 
 	// fetch the latest config file
-	config, err := validator.GetPatchedProject(ctx, patchDoc, githubToken)
+	yamlBytes, err := validator.GetPatchedProject(ctx, patchDoc, githubToken)
 	if err != nil {
-		return "", nil, nil, errors.Wrap(err, "can't get remote config file")
+		return "", nil, nil, false, errors.Wrap(err, "can't get remote config file")
 	}
 
-	return patchContent, summaries, config, nil
+	patchDoc.PatchedConfig = string(yamlBytes)
+	config, invalid, err := validator.ValidateProjectPatch(yamlBytes, projectID)
+	if err != nil {
+		return "", nil, nil, invalid, errors.Wrap(err, "invalid config patch")
+	}
+
+	return patchContent, summaries, config, false, nil
 }
 
 func writePatchInfo(patchDoc *patch.Patch, config *model.Project, patchSummaries []patch.Summary, patchContent, projectID string) error {
@@ -317,12 +327,6 @@ func writePatchInfo(patchDoc *patch.Patch, config *model.Project, patchSummaries
 			Summary:     patchSummaries,
 		},
 	})
-
-	yamlBytes, err := yaml.Marshal(config)
-	if err != nil {
-		return errors.Wrap(err, "can't marshal project config to yaml")
-	}
-	patchDoc.PatchedConfig = string(yamlBytes)
 
 	return nil
 }
