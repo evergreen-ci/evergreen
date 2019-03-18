@@ -124,6 +124,7 @@ func requireStringSliceValueChoices(name string, options []string) cli.BeforeFun
 	}
 }
 
+// nolint: unused, deadcode
 func requireStringValueChoices(name string, options []string) cli.BeforeFunc {
 	return func(c *cli.Context) error {
 		val := c.String(name)
@@ -154,6 +155,7 @@ func requireStringLengthIfSpecified(name string, length int) cli.BeforeFunc {
 	}
 }
 
+// nolint: unused, deadcode
 func requireIntValueBetween(name string, min, max int) cli.BeforeFunc {
 	return func(c *cli.Context) error {
 		val := c.Int(name)
