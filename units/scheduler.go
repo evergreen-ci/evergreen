@@ -87,7 +87,6 @@ func (j *distroSchedulerJob) Run(ctx context.Context) {
 	conf := scheduler.Configuration{
 		DistroID:         j.DistroID,
 		TaskFinder:       settings.Scheduler.TaskFinder,
-		HostAllocator:    settings.Scheduler.HostAllocator,
 		FreeHostFraction: settings.Scheduler.FreeHostFraction,
 	}
 

@@ -10,7 +10,8 @@ import (
 // and saving it.
 type TaskQueuePersister interface {
 	// distro, tasks, duration cache
-	PersistTaskQueue(string, []task.Task) ([]model.TaskQueueItem, error)
+	// TO DO: do we actually need to return []model.TaskQueueItem?
+	PersistTaskQueue(string, []task.Task, model.DistroQueueInfo) ([]model.TaskQueueItem, error)
 }
 
 // DBTaskQueuePersister saves a queue to the database.
@@ -18,7 +19,7 @@ type DBTaskQueuePersister struct{}
 
 // PersistTaskQueue saves the task queue to the database.
 // Returns an error if the db call returns an error.
-func (self *DBTaskQueuePersister) PersistTaskQueue(distro string, tasks []task.Task) ([]model.TaskQueueItem, error) {
+func (self *DBTaskQueuePersister) PersistTaskQueue(distro string, tasks []task.Task, distroQueueInfo model.DistroQueueInfo) ([]model.TaskQueueItem, error) {
 	taskQueue := make([]model.TaskQueueItem, 0, len(tasks))
 	for _, t := range tasks {
 		taskQueue = append(taskQueue, model.TaskQueueItem{
@@ -29,17 +30,16 @@ func (self *DBTaskQueuePersister) PersistTaskQueue(distro string, tasks []task.T
 			Requester:           t.Requester,
 			Revision:            t.Revision,
 			Project:             t.Project,
-			ExpectedDuration:    t.FetchExpectedDuration(),
+			ExpectedDuration:    t.ExpectedDuration,
 			Priority:            t.Priority,
 			Group:               t.TaskGroup,
 			GroupMaxHosts:       t.TaskGroupMaxHosts,
 			Version:             t.Version,
 		})
-
 	}
 
-	queue := model.NewTaskQueue(distro, taskQueue)
-	err := queue.Save() // queue.Save() will only save the first 1000 items
+	queue := model.NewTaskQueue(distro, taskQueue, distroQueueInfo)
+	err := queue.Save() // queue.Save() will only save the first 500 items
 
 	return taskQueue, errors.WithStack(err)
 }

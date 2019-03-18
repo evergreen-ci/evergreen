@@ -48,7 +48,9 @@ type containersOnParents struct {
 	numContainers int
 }
 
-func (s *distroScheduler) scheduleDistro(distroID string, runnableTasksForDistro []task.Task, versions map[string]model.Version) ([]task.Task, error) {
+func (s *distroScheduler) scheduleDistro(distroID string, runnableTasksForDistro []task.Task, versions map[string]model.Version, maxDurationThreshold time.Duration) (
+	[]task.Task, error) {
+
 	grip.Info(message.Fields{
 		"runner":    RunnerName,
 		"distro":    distroID,
@@ -61,7 +63,8 @@ func (s *distroScheduler) scheduleDistro(distroID string, runnableTasksForDistro
 		return nil, errors.Wrap(err, "Error prioritizing tasks")
 	}
 
-	// persist the queue of tasks
+	distroQueueInfo := GetDistroQueueInfo(prioritizedTasks, maxDurationThreshold)
+
 	grip.Debug(message.Fields{
 		"runner":    RunnerName,
 		"distro":    distroID,
@@ -69,7 +72,8 @@ func (s *distroScheduler) scheduleDistro(distroID string, runnableTasksForDistro
 		"operation": "saving task queue for distro",
 	})
 
-	_, err = s.PersistTaskQueue(distroID, prioritizedTasks)
+	// persist the queue of tasks and its associated distroQueueInfo
+	_, err = s.PersistTaskQueue(distroID, prioritizedTasks, distroQueueInfo)
 	if err != nil {
 		return nil, errors.Wrapf(err, "Error processing distro %s saving task queue", distroID)
 	}
@@ -77,16 +81,71 @@ func (s *distroScheduler) scheduleDistro(distroID string, runnableTasksForDistro
 	// track scheduled time for prioritized tasks
 	err = task.SetTasksScheduledTime(prioritizedTasks, time.Now())
 	if err != nil {
-		return nil, errors.Wrapf(err, "Error processing distro %s setting scheduled time for prioritized tasks", distroID)
+		return nil, errors.Wrapf(err, "Error setting scheduled time for prioritized tasks for distro '%s'", distroID)
 	}
 
 	return prioritizedTasks, nil
 }
 
+// Returns the distroQueueInfo for the given set of tasks having set the task.ExpectedDuration for each task.
+func GetDistroQueueInfo(tasks []task.Task, maxDurationThreshold time.Duration) model.DistroQueueInfo {
+	var distroExpectedDuration time.Duration
+	var distroCountOverThreshold int
+	taskGroupInfosMap := make(map[string]model.TaskGroupInfo)
+
+	for i, task := range tasks {
+		group := task.TaskGroup
+		name := ""
+		if group != "" {
+			name = task.GetTaskGroupString()
+		}
+
+		duration := task.FetchExpectedDuration()
+		task.ExpectedDuration = duration
+		distroExpectedDuration += duration
+
+		var taskGroupInfo model.TaskGroupInfo
+		if info, exists := taskGroupInfosMap[name]; exists {
+			info.Count++
+			info.ExpectedDuration += duration
+			taskGroupInfo = info
+		} else {
+			taskGroupInfo = model.TaskGroupInfo{
+				Name:             name,
+				Count:            1,
+				MaxHosts:         task.TaskGroupMaxHosts,
+				ExpectedDuration: duration,
+			}
+		}
+		if duration >= maxDurationThreshold {
+			taskGroupInfo.CountOverThreshold++
+			taskGroupInfo.DurationOverThreshold += duration
+			distroCountOverThreshold++
+		}
+		taskGroupInfosMap[name] = taskGroupInfo
+		tasks[i] = task
+	}
+
+	taskGroupInfos := make([]model.TaskGroupInfo, 0, len(taskGroupInfosMap))
+	for _, info := range taskGroupInfosMap {
+		taskGroupInfos = append(taskGroupInfos, info)
+	}
+
+	distroQueueInfo := model.DistroQueueInfo{
+		Length:               len(tasks),
+		ExpectedDuration:     distroExpectedDuration,
+		MaxDurationThreshold: maxDurationThreshold,
+		CountOverThreshold:   distroCountOverThreshold,
+		TaskGroupInfos:       taskGroupInfos,
+	}
+
+	return distroQueueInfo
+}
+
 // Call out to the embedded Manager to spawn hosts.  Takes in a map of
 // distro -> number of hosts to spawn for the distro.
 // Returns a map of distro -> hosts spawned, and an error if one occurs.
-func spawnHosts(ctx context.Context, d distro.Distro, newHostsNeeded int, pool *evergreen.ContainerPool) ([]host.Host, error) {
+func SpawnHosts(ctx context.Context, d distro.Distro, newHostsNeeded int, pool *evergreen.ContainerPool) ([]host.Host, error) {
 
 	startTime := time.Now()
 

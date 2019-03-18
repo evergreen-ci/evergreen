@@ -241,11 +241,17 @@ tasks:
 	for _, t := range tasks {
 		require.NoError(t.Insert())
 	}
-	assert.NoError(updateTaskQueue("distro_1", []TaskQueueItem{
-		{
-			Id: tasks[1].Id,
+	assert.NoError(updateTaskQueue(
+		"distro_1",
+		[]TaskQueueItem{
+			{
+				Id: tasks[1].Id,
+			},
 		},
-	}))
+		DistroQueueInfo{
+			Length: 1,
+		},
+	))
 	assert.NoError(BlockTaskGroupTasks("task_id_1"))
 	found, err := task.FindOneId("one_1")
 	assert.NoError(err)
@@ -515,10 +521,11 @@ func TestClearTaskQueue(t *testing.T) {
 			Id: "task3",
 		},
 	}
-	queue := NewTaskQueue(distro, tasks)
+
+	queue := NewTaskQueue(distro, tasks, DistroQueueInfo{})
 	assert.Len(queue.Queue, 3)
 	assert.NoError(queue.Save())
-	otherQueue := NewTaskQueue(otherDistro, tasks)
+	otherQueue := NewTaskQueue(otherDistro, tasks, DistroQueueInfo{})
 	assert.Len(otherQueue.Queue, 3)
 	assert.NoError(otherQueue.Save())
 

@@ -31,12 +31,13 @@ func UtilizationBasedHostAllocator(ctx context.Context, hostAllocatorData HostAl
 	}
 
 	// split tasks/hosts by task group (including those with no group) and find # of hosts needed for each
-	newHostsNeeded := 0
-	startAt := time.Now()
-	taskGroupDatas := groupByTaskGroup(hostAllocatorData.ExistingHosts, hostAllocatorData.DistroQueueInfo)
-	taskGroupingRuntime := time.Since(startAt)
-	startAt = time.Now()
+	nNewHosts := 0
+	taskGroupingBeginsAt := time.Now()
 
+	taskGroupDatas := groupByTaskGroup(hostAllocatorData.ExistingHosts, hostAllocatorData.DistroQueueInfo)
+	taskGroupingRuntime := time.Since(taskGroupingBeginsAt)
+
+	calcNumHostsBeginsAt := time.Now()
 	for name, taskGroupData := range taskGroupDatas {
 		var maxHosts int
 		if name == "" {
@@ -49,13 +50,13 @@ func UtilizationBasedHostAllocator(ctx context.Context, hostAllocatorData HostAl
 		}
 
 		// calculate number of hosts needed for this group
-		newHosts, err := evalHostUtilization(
+		n, err := evalHostUtilization(
 			ctx,
 			distro,
 			taskGroupData,
 			hostAllocatorData.FreeHostFraction,
 			hostAllocatorData.ContainerPool,
-			hostAllocatorData.MaxDurationThreshold,
+			hostAllocatorData.DistroQueueInfo.MaxDurationThreshold,
 			maxHosts)
 
 		if err != nil {
@@ -63,22 +64,21 @@ func UtilizationBasedHostAllocator(ctx context.Context, hostAllocatorData HostAl
 		}
 
 		// add up total number of hosts needed for all groups
-		newHostsNeeded += newHosts
+		nNewHosts += n
 	}
-
-	calcRuntime := time.Since(startAt)
+	calcNumHostsRuntime := time.Since(calcNumHostsBeginsAt)
 
 	grip.Info(message.Fields{
 		"runner":         RunnerName,
 		"distro":         distro.Id,
-		"num_new_hosts":  newHostsNeeded,
+		"num_new_hosts":  nNewHosts,
 		"message":        "requesting new hosts",
 		"group_dur_secs": taskGroupingRuntime.Seconds(),
 		"group_num":      len(taskGroupDatas),
-		"calc_dur_secs":  calcRuntime.Seconds(),
+		"calc_dur_secs":  calcNumHostsRuntime.Seconds(),
 	})
 
-	return newHostsNeeded, nil
+	return nNewHosts, nil
 }
 
 // Calculate the number of hosts needed by taking the total task scheduled task time

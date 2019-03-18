@@ -443,6 +443,39 @@ func PopulateCommitQueueJobs(env evergreen.Environment) amboy.QueueOperation {
 	}
 }
 
+func PopulateHostAllocatorJobs(env evergreen.Environment) amboy.QueueOperation {
+	return func(queue amboy.Queue) error {
+		flags, err := evergreen.GetServiceFlags()
+		if err != nil {
+			return errors.WithStack(err)
+		}
+
+		if flags.HostAllocatorDisabled {
+			grip.InfoWhen(sometimes.Percent(evergreen.DegradedLoggingPercent), message.Fields{
+				"message": "host allocation is disabled",
+				"impact":  "new hosts cannot be allocated",
+				"mode":    "degraded",
+			})
+			return nil
+		}
+
+		// find all active distros
+		distros, err := distro.Find(distro.ByActiveOrStatic())
+		if err != nil {
+			return errors.WithStack(err)
+		}
+
+		ts := util.RoundPartOfMinute(0)
+		catcher := grip.NewBasicCatcher()
+
+		for _, d := range distros {
+			catcher.Add(queue.Put(NewHostAllocatorJob(env, d.Id, ts)))
+		}
+
+		return catcher.Resolve()
+	}
+}
+
 func PopulateSchedulerJobs(env evergreen.Environment) amboy.QueueOperation {
 	return func(queue amboy.Queue) error {
 		flags, err := evergreen.GetServiceFlags()
