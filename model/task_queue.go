@@ -41,9 +41,16 @@ type DistroQueueInfo struct {
 
 func GetDistroQueueInfo(distroID string) (DistroQueueInfo, error) {
 	taskQueue := &TaskQueue{}
-	query := bson.M{taskQueueDistroKey: distroID}
-	projection := bson.M{taskQueueDistroQueueInfoKey: 1, taskQueueIdKey: 0}
-	err := db.FindOne(TaskQueuesCollection, query, projection, db.NoSort, taskQueue)
+	err := db.FindOne(
+		TaskQueuesCollection,
+		bson.M{taskQueueDistroKey: distroID},
+		bson.M{taskQueueDistroQueueInfoKey: 1, taskQueueIdKey: 0},
+		db.NoSort,
+		taskQueue,
+	)
+	if err != nil {
+		return DistroQueueInfo{}, errors.Wrapf(err, "Database error retrieving DistroQueueInfo for distro id '%s'", distroID)
+	}
 
 	return taskQueue.DistroQueueInfo, err
 }
