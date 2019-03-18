@@ -19,8 +19,9 @@ import (
 
 const (
 	TaskQueuesCollection = "task_queues"
-	useModernDequeueOp   = false
 )
+
+var useModernDequeueOp = true
 
 type TaskGroupInfo struct {
 	Name                  string        `bson:"name" json:"name"`
@@ -44,8 +45,6 @@ type TaskQueue struct {
 	Distro      string          `bson:"distro" json:"distro"`
 	GeneratedAt time.Time       `bson:"generated_at" json:"generated_at"`
 	Queue       []TaskQueueItem `bson:"queue" json:"queue"`
-
-	useModerDequeueOp bool
 }
 
 type TaskDep struct {
