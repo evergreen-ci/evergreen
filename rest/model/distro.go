@@ -172,7 +172,6 @@ func (apiDistro *APIDistro) ToService() (interface{}, error) {
 		if err != nil {
 			return nil, errors.Wrap(err, "Error converting from model.APIExpansion to distro.Expansion")
 		}
-		d.Expansions = append(d.Expansions, i.(distro.Expansion))
 		expansion, ok := i.(distro.Expansion)
 		if !ok {
 			return nil, errors.Errorf("Unexpected type %T for distro.Expansion", i)
