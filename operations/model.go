@@ -141,7 +141,7 @@ func (s *ClientSettings) GetRestCommunicator(ctx context.Context) client.Communi
 		grip.Noticef("Banner: %s", banner)
 	}
 
-	update, err := checkUpdate(c, true)
+	update, err := checkUpdate(c, true, false)
 	if err != nil {
 		grip.Debug(err)
 	}

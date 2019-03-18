@@ -16,12 +16,14 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/rest/client"
 	"github.com/kardianos/osext"
+	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 	"github.com/urfave/cli"
 )
 
 func Update() cli.Command {
 	const installFlagName = "install"
+	const forceFlagName = "force"
 
 	return cli.Command{
 		Name:    "get-update",
@@ -32,10 +34,15 @@ func Update() cli.Command {
 				Name:  joinFlagNames(installFlagName, "i", "yes", "y"),
 				Usage: "after downloading the update, install the updated binary",
 			},
+			cli.BoolFlag{
+				Name:  joinFlagNames(forceFlagName, "f"),
+				Usage: "download a new CLI even if the current CLI is not out of date",
+			},
 		},
 		Action: func(c *cli.Context) error {
 			confPath := c.Parent().String(confFlagName)
 			doInstall := c.Bool(installFlagName)
+			forceUpdate := c.Bool(forceFlagName)
 
 			ctx, cancel := context.WithCancel(context.Background())
 			defer cancel()
@@ -47,7 +54,7 @@ func Update() cli.Command {
 
 			client := conf.GetRestCommunicator(ctx)
 
-			update, err := checkUpdate(client, false)
+			update, err := checkUpdate(client, false, forceUpdate)
 			if err != nil {
 				return err
 			}
@@ -55,42 +62,42 @@ func Update() cli.Command {
 				return nil
 			}
 
-			fmt.Println("Fetching update from", update.binary.URL)
+			grip.Infof("Fetching update from %s", update.binary.URL)
 			updatedBin, err := prepareUpdate(update.binary.URL, update.newVersion)
 			if err != nil {
 				return err
 			}
 
 			if doInstall {
-				fmt.Println("Upgraded binary successfully downloaded to temporary file:", updatedBin)
+				grip.Infof("Upgraded binary successfully downloaded to temporary file: %s", updatedBin)
 
 				var binaryDest string
 				binaryDest, err = osext.Executable()
 				if err != nil {
-					return errors.Errorf("Failed to get installation path: %v", err)
+					return errors.Errorf("Failed to get installation path: %s", err)
 				}
 
-				fmt.Println("Unlinking existing binary at", binaryDest)
+				grip.Infof("Unlinking existing binary at %s", binaryDest)
 				err = syscall.Unlink(binaryDest)
 				if err != nil {
 					return err
 				}
-				fmt.Println("Copying upgraded binary to: ", binaryDest)
-				err = copyFile(binaryDest, updatedBin)
+				grip.Infof("Moving upgraded binary to: %s", binaryDest)
+				err = os.Rename(updatedBin, binaryDest)
 				if err != nil {
 					return err
 				}
 
-				fmt.Println("Setting binary permissions...")
+				grip.Info("Setting binary permissions...")
 				err = os.Chmod(binaryDest, 0755)
 				if err != nil {
 					return err
 				}
-				fmt.Println("Upgrade complete!")
+				grip.Info("Upgrade complete!")
 				return nil
 			}
 
-			fmt.Println("New binary downloaded (but not installed) to path: ", updatedBin)
+			grip.Infof("New binary downloaded (but not installed) to path: %s", updatedBin)
 
 			// Attempt to generate a command that the user can copy/paste to complete the install.
 			binaryDest, err := osext.Executable()
@@ -98,35 +105,15 @@ func Update() cli.Command {
 				// osext not working on this platform so we can't generate command, give up (but ignore err)
 				return nil
 			}
-			installCommand := fmt.Sprintf("\tmv %v %v", updatedBin, binaryDest)
+			installCommand := fmt.Sprintf("\tmv %s %s", updatedBin, binaryDest)
 			if runtime.GOOS == "windows" {
-				installCommand = fmt.Sprintf("\tmove %v %v", updatedBin, binaryDest)
+				installCommand = fmt.Sprintf("\tmove %s %s", updatedBin, binaryDest)
 			}
-			fmt.Printf("\nTo complete the install, run the following command:\n\n")
-			fmt.Println(installCommand)
+			grip.Infof("To complete the install, run the following command:\n%s", installCommand)
 
 			return nil
 		},
 	}
-}
-
-func copyFile(dst, src string) error {
-	s, err := os.Open(src)
-	if err != nil {
-		return err
-	}
-	// no need to check errors on read only file, we already got everything
-	// we need from the filesystem, so nothing can go wrong now.
-	defer s.Close()
-	d, err := os.Create(dst)
-	if err != nil {
-		return err
-	}
-	if _, err := io.Copy(d, s); err != nil {
-		_ = d.Close()
-		return err
-	}
-	return d.Close()
 }
 
 // prepareUpdate fetches the update at the given URL, writes it to a temporary file, and returns
@@ -143,7 +130,7 @@ func prepareUpdate(url, newVersion string) (string, error) {
 	}
 
 	if response == nil {
-		return "", errors.Errorf("empty response from URL: %v", url)
+		return "", errors.Errorf("empty response from URL: %s", url)
 	}
 
 	defer response.Body.Close()
@@ -183,14 +170,14 @@ func prepareUpdate(url, newVersion string) (string, error) {
 	cmd := exec.Command(tempPath, "version")
 	out, err := cmd.CombinedOutput()
 	if err != nil {
-		return "", errors.Errorf("Update failed - checking version of new binary returned error: %v", err)
+		return "", errors.Errorf("Update failed - checking version of new binary returned error: %s", err)
 	}
 
 	updatedVersion := string(out)
 	updatedVersion = strings.TrimSpace(updatedVersion)
 
 	if updatedVersion != newVersion {
-		return "", errors.Errorf("Update failed - expected new binary to have version %v, but got %v instead", newVersion, updatedVersion)
+		return "", errors.Errorf("Update failed - expected new binary to have version %s, but got %s instead", newVersion, updatedVersion)
 	}
 
 	return tempPath, nil
@@ -202,7 +189,7 @@ type updateStatus struct {
 	newVersion  string
 }
 
-func checkUpdate(client client.Communicator, silent bool) (updateStatus, error) {
+func checkUpdate(client client.Communicator, silent bool, force bool) (updateStatus, error) {
 	var outLog io.Writer = os.Stdout
 	if silent {
 		outLog = ioutil.Discard
@@ -212,24 +199,24 @@ func checkUpdate(client client.Communicator, silent bool) (updateStatus, error) 
 	// server says is the latest
 	clients, err := client.GetClientConfig(context.Background())
 	if err != nil {
-		fmt.Fprintf(outLog, "Failed checking for updates: %v\n", err)
+		fmt.Fprintf(outLog, "Failed checking for updates: %s\n", err)
 		return updateStatus{nil, false, ""}, err
 	}
 
 	// No update needed
-	if clients.LatestRevision == evergreen.ClientVersion {
-		fmt.Fprintf(outLog, "Binary is already up to date at revision %v - not updating.\n", evergreen.ClientVersion)
+	if !force && clients.LatestRevision == evergreen.ClientVersion {
+		fmt.Fprintf(outLog, "Binary is already up to date at revision %s - not updating.\n", evergreen.ClientVersion)
 		return updateStatus{nil, false, clients.LatestRevision}, nil
 	}
 
 	binarySource := findClientUpdate(*clients)
 	if binarySource == nil {
 		// Client is out of date but no update available
-		fmt.Fprintf(outLog, "Client is out of date (version %v) but update is unavailable.\n", evergreen.ClientVersion)
+		fmt.Fprintf(outLog, "Client is out of date (version %s) but update is unavailable.\n", evergreen.ClientVersion)
 		return updateStatus{nil, true, clients.LatestRevision}, nil
 	}
 
-	fmt.Fprintf(outLog, "Update to version %v found at %v\n", clients.LatestRevision, binarySource.URL)
+	fmt.Fprintf(outLog, "Update to version %s found at %s\n", clients.LatestRevision, binarySource.URL)
 	return updateStatus{binarySource, true, clients.LatestRevision}, nil
 }
 
