@@ -79,11 +79,16 @@ func main() {
 	ldfQuoted := fmt.Sprintf("-ldflags=\"%s\"", ldFlags)
 	cmd.Args = append(cmd.Args, ldf)
 
+	absDirectory, err := filepath.Abs(directory)
+	if err != nil {
+		fmt.Printf("problem building %s: %v\n", output, err)
+		os.Exit(1)
+	}
 	cmd.Env = []string{
 		"PATH=" + strings.Replace(os.Getenv("PATH"), `\`, `\\`, -1),
 		"GOPATH=" + strings.Replace(os.Getenv("GOPATH"), `\`, `\\`, -1),
 		"GOROOT=" + runtime.GOROOT(),
-		"GOCACHE=" + filepath.Join(directory, ".cache"),
+		"GOCACHE=" + filepath.Join(absDirectory, ".cache"),
 	}
 
 	if race && supportsRaceDetector(arch, system) {
