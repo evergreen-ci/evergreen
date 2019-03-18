@@ -8,7 +8,18 @@ mciModule.controller('DistrosCtrl', function($scope, $window, $location, $anchor
 
   for (var i = 0; i < $scope.distros.length; i++) {
     $scope.distros[i].pool_size = $scope.distros[i].pool_size || 0;
+    $scope.distros[i].planner_settings = $scope.distros[i].planner_settings || {}
+    $scope.distros[i].planner_settings.minimum_hosts = $scope.distros[i].planner_settings.minimum_hosts || 0;
+    $scope.distros[i].planner_settings.version = $scope.distros[i].planner_settings.version || "legacy";
   }
+
+  $scope.planner_versions = [{
+   'id': "legacy",
+    'display': 'Legacy '
+  }, {
+    'id': "tunable",
+    'display': 'Tunable '
+  }];
 
   $scope.providers = [{
     'id': 'ec2-auto',
@@ -324,6 +335,7 @@ mciModule.controller('DistrosCtrl', function($scope, $window, $location, $anchor
       }
       newDistro.settings = _.clone($scope.activeDistro.settings);
       newDistro.expansions = _.clone($scope.activeDistro.expansions);
+      newDistro.planner_settings = _.clone($scope.activeDistro.planner_settings);
 
       $scope.distros.unshift(newDistro);
       $scope.hasNew = true;
@@ -440,6 +452,12 @@ mciModule.filter("providerDisplay", function() {
 mciModule.filter("archDisplay", function() {
   return function(arch, scope) {
     return scope.getKeyDisplay('architectures', arch);
+  }
+});
+
+mciModule.filter("versionDisplay", function() {
+  return function(version, scope) {
+    return scope.getKeyDisplay('planner_versions', version);
   }
 });
 

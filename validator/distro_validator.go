@@ -27,6 +27,7 @@ var distroSyntaxValidators = []distroValidator{
 	ensureStaticHostsAreNotSpawnable,
 	ensureValidContainerPool,
 	ensureHasNoUnauthorizedCharacters,
+	ensureHasValidPlannerVersion,
 }
 
 // CheckDistro checks if the distro configuration syntax is valid. Returns
@@ -203,5 +204,19 @@ func ensureValidContainerPool(ctx context.Context, d *distro.Distro, s *evergree
 			return ValidationErrors{{Error, "error in container pool settings: " + err.Error()}}
 		}
 	}
+	return nil
+}
+
+// ensureHasValidPlannerVersion checks that the distro's PlannerSetting.Version is valid
+func ensureHasValidPlannerVersion(ctx context.Context, d *distro.Distro, s *evergreen.Settings) ValidationErrors {
+	if !util.StringSliceContains(evergreen.ValidPlannerVersions, d.PlannerSettings.Version) {
+		return ValidationErrors{
+			{
+				Message: fmt.Sprintf("invalid distro.planner_settings.version '%s' for distro '%s'", d.PlannerSettings.Version, d.Id),
+				Level:   Error,
+			},
+		}
+	}
+
 	return nil
 }

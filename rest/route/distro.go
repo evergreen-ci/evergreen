@@ -262,7 +262,12 @@ func (h *distroIDPutHandler) Run(ctx context.Context) gimlet.Responder {
 		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "Database error for find() by distro id '%s'", h.distroID))
 	}
 
-	apiDistro := &model.APIDistro{Name: model.ToAPIString(h.distroID)}
+	apiDistro := &model.APIDistro{
+		Name: model.ToAPIString(h.distroID),
+		PlannerSettings: model.APIPlannerSettings{
+			Version: model.ToAPIString(evergreen.PlannerVersionLegacy),
+		},
+	}
 	if err = json.Unmarshal(h.body, apiDistro); err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "API error while unmarshalling JSON"))
 	}

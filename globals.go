@@ -131,6 +131,9 @@ const (
 	TeardownScriptName = "teardown.sh"
 
 	RoutePaginatorNextPageHeaderKey = "Link"
+
+	PlannerVersionLegacy  = "legacy"
+	PlannerVersionTunable = "tunable"
 )
 
 func IsFinishedTaskStatus(status string) bool {
@@ -315,6 +318,12 @@ var (
 		HostTerminated,
 		HostQuarantined,
 		HostDecommissioned,
+	}
+
+	// Set of valid PlannerSettings.Version strings that can be user set via the API
+	ValidPlannerVersions = []string{
+		PlannerVersionLegacy,
+		PlannerVersionTunable,
 	}
 
 	// constant arrays for db update logic
