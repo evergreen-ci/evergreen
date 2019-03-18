@@ -383,60 +383,67 @@ func (uis *UIServer) taskHistoryDrawer(w http.ResponseWriter, r *http.Request) {
 	}{taskGroups})
 }
 
-func getVersionsInWindow(wt, projectId string, radius int,
-	center *model.Version) ([]model.Version, error) {
-	referenceTime := center.CreateTime
+// Get the versions for projectID within radius around the center version, sorted backwards in time
+// wt indicates the direction away from center
+func getVersionsInWindow(wt, projectID string, radius int, center *model.Version) ([]model.Version, error) {
 	if wt == beforeWindow {
-		return makeVersionsQuery(referenceTime, projectId, radius, true)
+		return surroundingVersions(center, projectID, radius, true)
 	} else if wt == afterWindow {
-		after, err := makeVersionsQuery(referenceTime, projectId, radius, false)
+		after, err := surroundingVersions(center, projectID, radius, false)
 		if err != nil {
 			return nil, err
 		}
-		// reverse the versions in "after" so that they're ordered backwards in time
-		for i, j := 0, len(after)-1; i < j; i, j = i+1, j-1 {
-			after[i], after[j] = after[j], after[i]
-		}
 		return after, nil
 	}
-	before, err := makeVersionsQuery(referenceTime, projectId, radius, true)
+	before, err := surroundingVersions(center, projectID, radius, true)
 	if err != nil {
 		return nil, err
 	}
-	after, err := makeVersionsQuery(referenceTime, projectId, radius, false)
+	after, err := surroundingVersions(center, projectID, radius, false)
 	if err != nil {
 		return nil, err
 	}
-	// reverse the versions in "after" so that they're ordered backwards in time
-	for i, j := 0, len(after)-1; i < j; i, j = i+1, j-1 {
-		after[i], after[j] = after[j], after[i]
-	}
-	after = append(after, *center)
-	after = append(after, before...)
-	return after, nil
+
+	return append(append(after, *center), before...), nil
 }
 
-// Helper to make the appropriate query to the versions collection for what
-// we will need.  "before" indicates whether to fetch versions before or
-// after the passed-in task.
-func makeVersionsQuery(referenceTime time.Time, projectId string, versionsToFetch int, before bool) ([]model.Version, error) {
-	// decide how the versions we want relative to the task's revision order number
-	ronQuery := bson.M{"$gt": referenceTime}
+// Helper to query the versions collection for versions created before
+// or after the center, indicated by "before", and sorted backwards in time
+func surroundingVersions(center *model.Version, projectId string, versionsToFetch int, before bool) ([]model.Version, error) {
+	direction := "$gt"
+	sortOn := []string{model.VersionCreateTimeKey}
 	if before {
-		ronQuery = bson.M{"$lt": referenceTime}
+		direction = "$lt"
+		sortOn = []string{"-" + model.VersionCreateTimeKey}
 	}
 
-	// switch how to sort the versions
-	sortVersions := []string{model.VersionCreateTimeKey}
-	if before {
-		sortVersions = []string{"-" + model.VersionCreateTimeKey}
-	}
-
-	// fetch the versions
-	return model.VersionFind(
+	// fetch other concurrent versions
+	concurrentVersions, err := model.VersionFind(
 		db.Query(bson.M{
 			model.VersionIdentifierKey: projectId,
-			model.VersionCreateTimeKey: ronQuery,
+			model.VersionCreateTimeKey: center.CreateTime,
+			model.VersionRequesterKey: bson.M{
+				"$in": evergreen.SystemVersionRequesterTypes,
+			},
+			model.VersionRevisionKey: bson.M{direction: center.Revision},
+		}).WithFields(
+			model.VersionRevisionOrderNumberKey,
+			model.VersionRevisionKey,
+			model.VersionMessageKey,
+			model.VersionCreateTimeKey,
+			model.VersionErrorsKey,
+			model.VersionWarningsKey,
+			model.VersionIgnoredKey,
+		).Limit(versionsToFetch))
+	if err != nil {
+		return nil, errors.Wrap(err, "can't get concurrent versions")
+	}
+
+	// fetch consecutive versions
+	versions, err := model.VersionFind(
+		db.Query(bson.M{
+			model.VersionIdentifierKey: projectId,
+			model.VersionCreateTimeKey: bson.M{direction: center.CreateTime},
 			model.VersionRequesterKey: bson.M{
 				"$in": evergreen.SystemVersionRequesterTypes,
 			},
@@ -448,7 +455,19 @@ func makeVersionsQuery(referenceTime time.Time, projectId string, versionsToFetc
 			model.VersionErrorsKey,
 			model.VersionWarningsKey,
 			model.VersionIgnoredKey,
-		).Sort(sortVersions).Limit(versionsToFetch))
+		).Sort(sortOn).Limit(versionsToFetch - len(concurrentVersions)))
+	if err != nil {
+		return nil, errors.Wrap(err, "can't get consecutive versions")
+	}
+
+	if before {
+		return append(concurrentVersions, versions...), nil
+	}
+	// reverse versions
+	for begin, end := 0, len(versions)-1; begin < end; begin, end = begin+1, end-1 {
+		versions[begin], versions[end] = versions[end], versions[begin]
+	}
+	return append(versions, concurrentVersions...), nil
 }
 
 // Given a task name and a slice of versions, return the appropriate sibling

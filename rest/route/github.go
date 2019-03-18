@@ -288,7 +288,20 @@ func (gh *githubHookApi) Run(ctx context.Context) gimlet.Responder {
 			return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "can't enqueue item on commit queue"))
 		}
 
-		pushJob := units.NewGithubStatusUpdateJobForPushToCommitQueue(userRepo.Owner, userRepo.Repo, baseBranch, PRNum)
+		if pr == nil || pr.Head == nil || pr.Head.SHA == nil {
+			grip.Error(message.Fields{
+				"source":  "github hook",
+				"msg_id":  gh.msgID,
+				"event":   gh.eventType,
+				"action":  event.Action,
+				"owner":   userRepo.Owner,
+				"repo":    userRepo.Repo,
+				"item":    PRNum,
+				"message": "PR contains no head branch SHA",
+			})
+			return gimlet.MakeJSONErrorResponder(errors.New("PR contains no head branch SHA"))
+		}
+		pushJob := units.NewGithubStatusUpdateJobForPushToCommitQueue(userRepo.Owner, userRepo.Repo, *pr.Head.SHA, PRNum)
 		q := evergreen.GetEnvironment().LocalQueue()
 		grip.Error(message.WrapError(q.Put(pushJob), message.Fields{
 			"source":  "github hook",

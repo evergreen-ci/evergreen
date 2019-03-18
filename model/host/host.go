@@ -28,7 +28,7 @@ type Host struct {
 	Provider string        `bson:"host_type" json:"host_type"`
 	IP       string        `bson:"ip_address" json:"ip_address"`
 
-	// secondary (external) identifier for the host
+	// secondary (external) identifier for the host (the containerID for containers)
 	ExternalIdentifier string `bson:"ext_identifier" json:"ext_identifier"`
 
 	// physical location of host
@@ -121,18 +121,22 @@ type Host struct {
 
 type HostGroup []Host
 
-// DockerOptions contains options for starting a container from host create
+// DockerOptions contains options for starting a container
 type DockerOptions struct {
 	// Optional parameters to define a registry name and authentication
-	RegistryName     string `bson:"registry_name,omitempty" json:"registry_name,omitempty"`
-	RegistryUsername string `bson:"registry_username,omitempty" json:"registry_username,omitempty"`
-	RegistryPassword string `bson:"registry_password,omitempty" json:"registry_password,omitempty"`
+	RegistryName     string `mapstructure:"docker_registry_name" bson:"docker_registry_name,omitempty" json:"docker_registry_name,omitempty"`
+	RegistryUsername string `mapstructure:"docker_registry_user" bson:"docker_registry_user,omitempty" json:"docker_registry_user,omitempty"`
+	RegistryPassword string `mapstructure:"docker_registry_pw" bson:"docker_registry_pw,omitempty" json:"docker_registry_pw,omitempty"`
 
 	// Image is required and specifies the image for the container.
 	// This can be a URL or an image base, to be combined with a registry.
-	Image string `bson:"image,omitempty" json:"image,omitempty"`
+	Image string `mapstructure:"image_url" bson:"image_url,omitempty" json:"image_url,omitempty"`
+	// Method is either "pull" or "import" and defines how to retrieve the image.
+	Method string `mapstructure:"build_type" bson:"build_type,omitempty" json:"build_type,omitempty"`
 	// Command is required and is the command to run on the docker.
-	Command string `bson:"command,omitempty" json:"command,omitempty"`
+	Command string `mapstructure:"command" bson:"command,omitempty" json:"command,omitempty"`
+	// If the container is created from host create, we want to skip building the image with agent
+	SkipImageBuild bool `mapstructure:"skip_build" bson:"skip_build,omitempty" json:"skip_build,omitempty"`
 }
 
 // ProvisionOptions is struct containing options about how a new host should be set up.
@@ -1164,4 +1168,37 @@ func (h *Host) EstimateNumContainersForDuration(start, end time.Time) (float64, 
 		return 0, errors.Wrapf(err, "Error counting containers running at %v", end)
 	}
 	return float64(containersAtStart+containersAtEnd) / 2, nil
+}
+
+// StaleRunningTaskIDs finds any running tasks whose last heartbeat was at least the specified threshold ago
+// and whose host thinks it's still running that task. Projects out everything but the ID and execution
+func StaleRunningTaskIDs(staleness time.Duration) ([]task.Task, error) {
+	var out []task.Task
+	pipeline := []bson.M{
+		{"$match": bson.M{
+			task.StatusKey:        task.SelectorTaskInProgress,
+			task.LastHeartbeatKey: bson.M{"$lte": time.Now().Add(-staleness)},
+		}},
+		{"$lookup": bson.M{
+			"from":         Collection,
+			"localField":   task.HostIdKey,
+			"foreignField": IdKey,
+			"as":           "hosts",
+		}},
+		{"$project": bson.M{
+			task.IdKey:        1,
+			task.ExecutionKey: 1,
+			"host": bson.M{
+				"$arrayElemAt": []interface{}{"$hosts", 0},
+			},
+		}},
+		{"$match": bson.M{
+			"$expr": bson.M{
+				"$eq": []string{"$_id", bsonutil.GetDottedKeyName("$host", RunningTaskKey)},
+			},
+		}},
+	}
+
+	err := db.Aggregate(task.Collection, pipeline, &out)
+	return out, err
 }

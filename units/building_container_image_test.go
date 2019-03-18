@@ -6,7 +6,6 @@ import (
 	"testing"
 
 	"github.com/evergreen-ci/evergreen"
-	"github.com/evergreen-ci/evergreen/cloud"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
@@ -46,7 +45,7 @@ func TestBuildingContainerImageJob(t *testing.T) {
 	assert.NoError(h2.Insert())
 	assert.NoError(h3.Insert())
 
-	j := NewBuildingContainerImageJob(env, h1, cloud.ContainerImageSettings{URL: "image-url", Method: distro.DockerImageBuildTypeImport}, evergreen.ProviderNameDockerMock)
+	j := NewBuildingContainerImageJob(env, h1, host.DockerOptions{Image: "image-url", Method: distro.DockerImageBuildTypeImport}, evergreen.ProviderNameDockerMock)
 	assert.False(j.Status().Completed)
 
 	j.Run(context.Background())

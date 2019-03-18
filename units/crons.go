@@ -8,7 +8,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
-	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/grip"
@@ -236,7 +235,7 @@ func PopulateTaskMonitoring() amboy.QueueOperation {
 		for _, t := range tasks {
 			taskIDs[t.Id] = t.Execution
 		}
-		tasks, err = task.Find(task.ByStaleRunningTask(heartbeatTimeoutThreshold).WithFields(task.IdKey, task.ExecutionKey))
+		tasks, err = host.StaleRunningTaskIDs(heartbeatTimeoutThreshold)
 		if err != nil {
 			return errors.Wrap(err, "error finding tasks with timed-out or stale heartbeats")
 		}
@@ -284,7 +283,7 @@ func PopulateHostTerminationJobs(env evergreen.Environment) amboy.QueueOperation
 		catcher.Add(err)
 
 		for _, h := range hosts {
-			catcher.Add(queue.Put(NewHostTerminationJob(env, h)))
+			catcher.Add(queue.Put(NewHostTerminationJob(env, h, true)))
 		}
 
 		hosts, err = host.AllHostsSpawnedByTasksToTerminate()
@@ -296,7 +295,7 @@ func PopulateHostTerminationJobs(env evergreen.Environment) amboy.QueueOperation
 		catcher.Add(err)
 
 		for _, h := range hosts {
-			catcher.Add(queue.Put(NewHostTerminationJob(env, h)))
+			catcher.Add(queue.Put(NewHostTerminationJob(env, h, true)))
 		}
 
 		return catcher.Resolve()

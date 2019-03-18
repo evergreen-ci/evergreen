@@ -2,14 +2,15 @@ package cloud
 
 import (
 	"context"
+	"fmt"
 	"strings"
 	"time"
+
+	"github.com/mongodb/anser/bsonutil"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
-	"github.com/mitchellh/mapstructure"
-	"github.com/mongodb/anser/bsonutil"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
@@ -26,13 +27,6 @@ type dockerSettings struct {
 	ImageURL string `mapstructure:"image_url" json:"image_url" bson:"image_url"`
 }
 
-type ContainerImageSettings struct {
-	URL              string `bson:"url"`
-	Method           string `bson:"method"`
-	RegistryUser     string `bson:"registry_user,omitempty"`
-	RegistryPassword string `bson:"registry_password,omitempty"`
-}
-
 // nolint
 var (
 	// bson fields for the ProviderSettings struct
@@ -42,7 +36,7 @@ var (
 //Validate checks that the settings from the config file are sane.
 func (settings *dockerSettings) Validate() error {
 	if settings.ImageURL == "" {
-		return errors.New("ImageURL must not be blank")
+		return errors.New("Image must not be empty")
 	}
 
 	return nil
@@ -60,12 +54,8 @@ func (m *dockerManager) SpawnHost(ctx context.Context, h *host.Host) (*host.Host
 			evergreen.ProviderNameDocker, h.Distro.Id, h.Distro.Provider)
 	}
 
-	// Decode provider settings from distro settings
-	settings := &dockerSettings{}
-	if h.Distro.ProviderSettings != nil {
-		if err := mapstructure.Decode(h.Distro.ProviderSettings, settings); err != nil {
-			return nil, errors.Wrapf(err, "Error decoding params for distro '%s'", h.Distro.Id)
-		}
+	if h.DockerOptions.Image == "" {
+		return nil, errors.New(fmt.Sprintf("Docker image empty for host '%s'", h.Id))
 	}
 
 	// get parent of host
@@ -78,19 +68,13 @@ func (m *dockerManager) SpawnHost(ctx context.Context, h *host.Host) (*host.Host
 		return nil, errors.Wrapf(err, "Error getting host IP for parent host %s", parentHost.Id)
 	}
 
+	settings := dockerSettings{ImageURL: h.DockerOptions.Image}
 	if err = settings.Validate(); err != nil {
 		return nil, errors.Wrapf(err, "Invalid Docker settings for host '%s'", h.Id)
 	}
 
-	grip.Info(message.Fields{
-		"message":   "decoded Docker container settings",
-		"container": h.Id,
-		"host_ip":   hostIP,
-		"image_url": settings.ImageURL,
-	})
-
 	// Create container
-	if err = m.client.CreateContainer(ctx, parentHost, h, settings); err != nil {
+	if err = m.client.CreateContainer(ctx, parentHost, h); err != nil {
 		err = errors.Wrapf(err, "Failed to create container for host '%s'", hostIP)
 		grip.Error(err)
 		return nil, err
@@ -338,18 +322,17 @@ func (m *dockerManager) CostForDuration(ctx context.Context, h *host.Host, start
 	return cost / numContainers, nil
 }
 
-// BuildContainerImage downloads and buils a container image onto parent specified
-// by URL and returns this URL
-func (m *dockerManager) BuildContainerImage(ctx context.Context, parent *host.Host, settings ContainerImageSettings) error {
+// GetContainerImage downloads a container image onto given parent, using given Image. If specified, build image with evergreen agent.
+func (m *dockerManager) GetContainerImage(ctx context.Context, parent *host.Host, options host.DockerOptions) error {
 	start := time.Now()
 	if !parent.HasContainers {
 		return errors.Errorf("Error provisioning image: '%s' is not a parent", parent.Id)
 	}
 
 	// Import correct base image if not already on host.
-	image, err := m.client.EnsureImageDownloaded(ctx, parent, settings)
+	image, err := m.client.EnsureImageDownloaded(ctx, parent, options)
 	if err != nil {
-		return errors.Wrapf(err, "Unable to ensure that image '%s' is on host '%s'", settings.URL, parent.Id)
+		return errors.Wrapf(err, "Unable to ensure that image '%s' is on host '%s'", options.Image, parent.Id)
 	}
 	grip.Info(message.Fields{
 		"operation": "EnsureImageDownloaded",
@@ -358,10 +341,14 @@ func (m *dockerManager) BuildContainerImage(ctx context.Context, parent *host.Ho
 		"span":      time.Since(start).String(),
 	})
 
+	if options.SkipImageBuild {
+		return nil
+	}
+
 	// Build image containing Evergreen executable.
 	_, err = m.client.BuildImageWithAgent(ctx, parent, image)
 	if err != nil {
-		return errors.Wrapf(err, "Failed to build image '%s' with agent on host '%s'", settings.URL, parent.Id)
+		return errors.Wrapf(err, "Failed to build image '%s' with agent on host '%s'", options.Image, parent.Id)
 	}
 	grip.Info(message.Fields{
 		"operation": "BuildImageWithAgent",

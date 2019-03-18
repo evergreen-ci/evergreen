@@ -142,7 +142,7 @@ func (r *commandRegistry) renderCommands(commandInfo model.PluginCommandConf,
 		if !ok {
 			errs = append(errs, fmt.Sprintf("function '%s' not found in project functions", name))
 		} else {
-			for _, c := range cmds.List() {
+			for i, c := range cmds.List() {
 				if c.Function != "" {
 					errs = append(errs, fmt.Sprintf("can not reference a function within a "+
 						"function: '%s' referenced within '%s'", c.Function, name))
@@ -155,7 +155,7 @@ func (r *commandRegistry) renderCommands(commandInfo model.PluginCommandConf,
 				}
 
 				if c.DisplayName == "" {
-					c.DisplayName = fmt.Sprintf(`'%v' in "%v"`, c.Command, name)
+					c.DisplayName = fmt.Sprintf(`'%v' in "%v" (#%d)`, c.Command, name, i+1)
 				}
 
 				if c.TimeoutSecs == 0 {

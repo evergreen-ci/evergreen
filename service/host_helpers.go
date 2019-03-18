@@ -54,7 +54,7 @@ func modifyHostStatus(queue amboy.Queue, h *host.Host, opts *uiParams, u *user.D
 				}
 			}
 
-			if err := queue.Put(units.NewHostTerminationJob(env, *h)); err != nil {
+			if err := queue.Put(units.NewHostTerminationJob(env, *h, true)); err != nil {
 				return "", gimlet.ErrorResponse{
 					StatusCode: http.StatusInternalServerError,
 					Message:    HostTerminationQueueingError,

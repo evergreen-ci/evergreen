@@ -34,8 +34,9 @@ func init() {
 }
 
 type hostTerminationJob struct {
-	HostID   string `bson:"host_id" json:"host_id" yaml:"host_id"`
-	job.Base `bson:"metadata" json:"metadata" yaml:"metadata"`
+	HostID          string `bson:"host_id" json:"host_id"`
+	TerminateIfBusy bool   `bson:"terminate_if_busy" json:"terminate_if_busy"`
+	job.Base        `bson:"metadata" json:"metadata"`
 
 	host *host.Host
 	env  evergreen.Environment
@@ -55,11 +56,12 @@ func makeHostTerminationJob() *hostTerminationJob {
 	return j
 }
 
-func NewHostTerminationJob(env evergreen.Environment, h host.Host) amboy.Job {
+func NewHostTerminationJob(env evergreen.Environment, h host.Host, terminateIfBusy bool) amboy.Job {
 	j := makeHostTerminationJob()
 	j.host = &h
 	j.HostID = h.Id
 	j.env = env
+	j.TerminateIfBusy = terminateIfBusy
 	j.SetPriority(2)
 	ts := util.RoundPartOfHour(2).Format(tsFormat)
 	j.SetID(fmt.Sprintf("%s.%s.%s", hostTerminationJobName, j.HostID, ts))
@@ -137,16 +139,20 @@ func (j *hostTerminationJob) Run(ctx context.Context) {
 
 	// clear the running task of the host in case one has been assigned.
 	if j.host.RunningTask != "" {
-		grip.Warning(message.Fields{
-			"message":  "Host has running task; clearing before terminating",
-			"job":      j.ID(),
-			"job_type": j.Type().Name,
-			"host":     j.host.Id,
-			"provider": j.host.Distro.Provider,
-			"task":     j.host.RunningTask,
-		})
+		if j.TerminateIfBusy {
+			grip.Warning(message.Fields{
+				"message":  "Host has running task; clearing before terminating",
+				"job":      j.ID(),
+				"job_type": j.Type().Name,
+				"host":     j.host.Id,
+				"provider": j.host.Distro.Provider,
+				"task":     j.host.RunningTask,
+			})
 
-		j.AddError(model.ClearAndResetStrandedTask(j.host))
+			j.AddError(model.ClearAndResetStrandedTask(j.host))
+		} else {
+			return
+		}
 	}
 
 	// terminate containers in DB if parent already terminated

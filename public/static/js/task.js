@@ -394,10 +394,17 @@ mciModule.controller('TaskHistoryDrawerCtrl', function($scope, $window, $locatio
         return "/spawn?distro_id=" + $scope.taskHost.distro._id + "&task_id=" + $scope.task.id
       }
 
+      // Defines the sort order for a test's status.
+      function ordinalForTestStatus(task) {
+        var orderedTestStatuses = ['fail', 'silentfail', 'pass', 'skip'];
+        return orderedTestStatuses.indexOf(task.test_result.status);
+      }
+
       $scope.setSortBy = function(order) {
         $scope.sortBy = order;
         hash.sort = order.name;
         $locationHash.set(hash);
+        $scope.task.test_results.sort($scope.sortBy.compareFunc);
       };
 
       $scope.linkToTest = function(testName) {
@@ -416,30 +423,36 @@ mciModule.controller('TaskHistoryDrawerCtrl', function($scope, $window, $locatio
         $scope.md5 = md5;
         $scope.maxTests = 1;
 
-        /**
-        * Defines the sort order for a test's status.
-        */
-        function ordinalForTestStatus(task) {
-          var orderedTestStatuses = ['fail', 'silentfail', 'pass', 'skip'];
-          return orderedTestStatuses.indexOf(task.test_result.status);
+        var byName = function(a, b) {
+          if (a.test_result.test_file > b.test_result.test_file) { return 1; }
+          if (a.test_result.test_file < b.test_result.test_file) { return -1; }
+          return 0;
+        }
+        var byStatus = function(a, b) {
+          if (ordinalForTestStatus(a) > ordinalForTestStatus(b)) { return 1; }
+          if (ordinalForTestStatus(a) < ordinalForTestStatus(b)) { return -1; }
+          return byName(a,b);
+        }
+        var byTimeTaken = function(a, b) {
+          // this is intentionally reversed to sort in descending order of time
+          return b.test_result.time_taken - a.test_result.time_taken;
+        }
+        var bySequence = function(a, b) {
+          return a > b;
         }
 
         $scope.sortOrders = [{
           name: 'Status',
-          by: [ordinalForTestStatus, 'test_result.display_name'],
-          reverse: false
+          compareFunc: byStatus
         }, {
           name: 'Name',
-          by: ['test_result.display_name'],
-          reverse: false
+          compareFunc: byName
         }, {
           name: 'Time Taken',
-          by: ['test_result.time_taken', 'test_result.display_name'],
-          reverse: true
+          compareFunc: byTimeTaken
         }, {
           name: 'Sequence',
-          by: ['test_result'],
-          reverse: false
+          compareFunc: bySequence
         }];
 
         var totalTestTime = 0;
@@ -463,6 +476,9 @@ mciModule.controller('TaskHistoryDrawerCtrl', function($scope, $window, $locatio
         }
 
         $scope.sortBy = $scope.sortOrders[0];
+        if ($scope.task.test_results) {
+          $scope.task.test_results.sort($scope.sortBy.compareFunc);
+        };
 
         $scope.isMet = function(dependency) {
           // check if a dependency is met, unmet, or in progress
@@ -634,18 +650,15 @@ mciModule.controller('TaskHistoryDrawerCtrl', function($scope, $window, $locatio
               scope.progressBarClass = 'progress-bar-default';
             }
 
+            scope.barWidth = scope.timeTaken / scope.maxTestTime * 90;
+            if (scope.barWidth < 5) {
+              scope.barWidth = 5;
+            }
             var timeInNano = scope.timeTaken * 1000 * 1000 * 1000;
             $(element).tooltip({
               title: $filter('stringifyNanoseconds')(timeInNano),
               animation: false,
             });
-          });
-
-          scope.$watch('maxTestTime', function(maxTestTime) {
-            scope.barWidth = scope.timeTaken / maxTestTime * 90;
-            if (scope.barWidth < 5) {
-              scope.barWidth = 5;
-            }
           });
         }
       }

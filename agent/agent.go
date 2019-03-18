@@ -56,7 +56,7 @@ type taskContext struct {
 	runGroupSetup  bool
 	taskConfig     *model.TaskConfig
 	taskDirectory  string
-	logDirectories []string
+	logDirectories map[string]interface{}
 	timeout        time.Duration
 	timedOut       bool
 	project        *model.Project
@@ -473,7 +473,7 @@ func (a *Agent) runPostGroupCommands(ctx context.Context, tc *taskContext) {
 func (a *Agent) killProcs(tc *taskContext, ignoreTaskGroupCheck bool) {
 	if a.shouldKill(tc, ignoreTaskGroupCheck) {
 		if tc.task.ID != "" {
-			if !tc.logger.Closed() {
+			if tc.logger != nil && !tc.logger.Closed() {
 				tc.logger.Task().Infof("cleaning up processes for task: %s", tc.task.ID)
 			} else {
 				grip.Infof("cleaning up processes for task: %s", tc.task.ID)
@@ -484,7 +484,7 @@ func (a *Agent) killProcs(tc *taskContext, ignoreTaskGroupCheck bool) {
 			}
 		}
 
-		if !tc.logger.Closed() {
+		if tc.logger != nil && !tc.logger.Closed() {
 			tc.logger.Task().Infof("cleaned up processes for task: %s", tc.task.ID)
 		} else {
 			grip.Infof("cleaned up processes for task: %s", tc.task.ID)

@@ -5,6 +5,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/apimodels"
@@ -34,6 +35,7 @@ type APIServer struct {
 	Settings           evergreen.Settings
 	queue              amboy.Queue
 	generateTasksQueue amboy.Queue
+	taskQueueService   model.TaskQueueService
 }
 
 // NewAPIServer returns an APIServer initialized with the given settings and plugins.
@@ -52,6 +54,7 @@ func NewAPIServer(settings *evergreen.Settings, queue amboy.Queue, generateTasks
 		Settings:           *settings,
 		queue:              queue,
 		generateTasksQueue: generateTasksQueue,
+		taskQueueService:   model.NewTaskQueueService(20 * time.Second),
 	}
 
 	return as, nil
