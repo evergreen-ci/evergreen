@@ -239,11 +239,17 @@ tasks:
 	for _, t := range tasks {
 		require.NoError(t.Insert())
 	}
-	assert.NoError(updateTaskQueue("distro_1", []TaskQueueItem{
-		{
-			Id: tasks[1].Id,
+	assert.NoError(updateTaskQueue(
+		"distro_1",
+		[]TaskQueueItem{
+			{
+				Id: tasks[1].Id,
+			},
 		},
-	}))
+		DistroQueueInfo{
+			Length: 1,
+		},
+	))
 	assert.NoError(BlockTaskGroupTasks("task_id_1"))
 	found, err := task.FindOneId("one_1")
 	assert.NoError(err)

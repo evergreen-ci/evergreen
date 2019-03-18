@@ -10,7 +10,7 @@ import (
 // and saving it.
 type TaskQueuePersister interface {
 	// distro, tasks, duration cache
-	// Do we actually need to return []model.TaskQueueItem?
+	// TO DO: do we actually need to return []model.TaskQueueItem?
 	PersistTaskQueue(string, []task.Task, model.DistroQueueInfo) ([]model.TaskQueueItem, error)
 }
 
