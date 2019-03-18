@@ -5,8 +5,10 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"github.com/urfave/negroni"
 )
 
@@ -174,4 +176,95 @@ func TestUserMiddleware(t *testing.T) {
 		assert.Nil(rusr)
 	})
 	assert.Equal(http.StatusOK, rw.Code)
+}
+
+func TestUserMiddlewareConfiguration(t *testing.T) {
+	conf := UserMiddlewareConfiguration{
+		HeaderUserName: "u",
+		HeaderKeyName:  "k",
+		CookieName:     "c",
+		CookieTTL:      time.Hour,
+		CookiePath:     "/p",
+	}
+	require.NoError(t, conf.Validate())
+
+	t.Run("DiabledChecksAreValid", func(t *testing.T) {
+		conf := UserMiddlewareConfiguration{
+			SkipCookie:      true,
+			SkipHeaderCheck: true,
+		}
+		assert.NoError(t, conf.Validate())
+	})
+	t.Run("ZeroValueIsNotValid", func(t *testing.T) {
+		conf := UserMiddlewareConfiguration{}
+		assert.Zero(t, conf.CookiePath)
+		assert.Error(t, conf.Validate())
+		// also we expect that the validate will populate the Tl
+		assert.NotZero(t, conf.CookiePath)
+	})
+
+	t.Run("Cookie", func(t *testing.T) {
+		rw := httptest.NewRecorder()
+		assert.Len(t, rw.Header(), 0)
+		conf.AttachCookie("foo", rw)
+		assert.Len(t, rw.Header(), 1)
+		conf.ClearCookie(rw)
+		assert.Len(t, rw.Header(), 1)
+	})
+
+	t.Run("InvalidConfigurations", func(t *testing.T) {
+		for _, test := range []struct {
+			name string
+			op   func(UserMiddlewareConfiguration) UserMiddlewareConfiguration
+		}{
+			{
+				name: "MissingCoookieName",
+				op: func(conf UserMiddlewareConfiguration) UserMiddlewareConfiguration {
+					conf.CookieName = ""
+					return conf
+				},
+			},
+			{
+				name: "TooShortTTL",
+				op: func(conf UserMiddlewareConfiguration) UserMiddlewareConfiguration {
+					conf.CookieTTL = time.Millisecond
+					return conf
+				},
+			},
+			{
+				name: "MalformedPath",
+				op: func(conf UserMiddlewareConfiguration) UserMiddlewareConfiguration {
+					conf.CookiePath = "foo"
+					return conf
+				},
+			},
+			{
+				name: "MissingUserName",
+				op: func(conf UserMiddlewareConfiguration) UserMiddlewareConfiguration {
+					conf.HeaderUserName = ""
+					return conf
+				},
+			},
+			{
+				name: "MissingKeyName",
+				op: func(conf UserMiddlewareConfiguration) UserMiddlewareConfiguration {
+					conf.HeaderKeyName = ""
+					return conf
+				},
+			},
+		} {
+			t.Run(test.name, func(t *testing.T) {
+				conf := UserMiddlewareConfiguration{
+					HeaderUserName: "u",
+					HeaderKeyName:  "k",
+					CookieName:     "c",
+					CookieTTL:      time.Hour,
+					CookiePath:     "/p",
+				}
+				require.NoError(t, conf.Validate())
+				conf = test.op(conf)
+				require.Error(t, conf.Validate())
+			})
+		}
+	})
 }

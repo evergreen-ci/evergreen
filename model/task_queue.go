@@ -19,8 +19,9 @@ import (
 
 const (
 	TaskQueuesCollection = "task_queues"
-	useModernDequeueOp   = false
 )
+
+var useModernDequeueOp = true
 
 type TaskGroupInfo struct {
 	Name                  string        `bson:"name" json:"name"`
