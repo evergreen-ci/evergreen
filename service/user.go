@@ -5,7 +5,6 @@ import (
 	"net/http"
 
 	"github.com/evergreen-ci/evergreen"
-	"github.com/evergreen-ci/evergreen/auth"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/util"
@@ -20,16 +19,6 @@ func (uis *UIServer) loginPage(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, "/login/redirect", http.StatusFound)
 	}
 	uis.render.WriteResponse(w, http.StatusOK, nil, "base", "login.html", "base_angular.html")
-}
-
-func clearSession(w http.ResponseWriter) {
-	authTokenCookie := &http.Cookie{
-		Name:   evergreen.AuthTokenCookie,
-		Value:  "",
-		MaxAge: -1,
-		Path:   "/",
-	}
-	http.SetCookie(w, authTokenCookie)
 }
 
 func (uis *UIServer) login(w http.ResponseWriter, r *http.Request) {
@@ -56,12 +45,13 @@ func (uis *UIServer) login(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Invalid username/password", http.StatusUnauthorized)
 		return
 	}
-	auth.SetLoginToken(token, w)
+
+	uis.umconf.AttachCookie(token, w)
 	gimlet.WriteJSON(w, map[string]string{})
 }
 
 func (uis *UIServer) logout(w http.ResponseWriter, r *http.Request) {
-	clearSession(w)
+	uis.umconf.ClearCookie(w)
 	loginURL := fmt.Sprintf("%v/login", uis.RootURL)
 	http.Redirect(w, r, loginURL, http.StatusFound)
 }
