@@ -140,7 +140,7 @@ func (j *commitQueueJob) Run(ctx context.Context) {
 		return
 	}
 
-	patch, patchSummaries, projectConfig, invalid, err := getPatchInfo(ctx, githubToken, projectRef.Identifier, patchDoc)
+	patch, patchSummaries, projectConfig, invalid, err := getPatchInfo(ctx, githubToken, patchDoc)
 	if err != nil {
 		j.logError(err, "can't get patch info", nextItem)
 		j.AddError(sendCommitQueueGithubStatus(j.env, pr, message.GithubStateFailure, "can't make patch", ""))
@@ -153,7 +153,7 @@ func (j *commitQueueJob) Run(ctx context.Context) {
 		return
 	}
 
-	if err = writePatchInfo(patchDoc, projectConfig, patchSummaries, patch, projectRef.Identifier); err != nil {
+	if err = writePatchInfo(patchDoc, projectConfig, patchSummaries, patch); err != nil {
 		j.logError(err, "can't make patch", nextItem)
 		j.AddError(sendCommitQueueGithubStatus(j.env, pr, message.GithubStateFailure, "can't make patch", ""))
 		j.dequeue(cq, nextItem)
@@ -292,7 +292,7 @@ func getModules(ctx context.Context, githubToken string, nextItem *commitqueue.C
 	return modulePRs, modulePatches, false, nil
 }
 
-func getPatchInfo(ctx context.Context, githubToken, projectID string, patchDoc *patch.Patch) (string, []patch.Summary, *model.Project, bool, error) {
+func getPatchInfo(ctx context.Context, githubToken string, patchDoc *patch.Patch) (string, []patch.Summary, *model.Project, bool, error) {
 	patchContent, summaries, err := thirdparty.GetGithubPullRequestDiff(ctx, githubToken, patchDoc.GithubPatchData)
 	if err != nil {
 		return "", nil, nil, false, errors.Wrap(err, "can't get diff")
@@ -305,7 +305,7 @@ func getPatchInfo(ctx context.Context, githubToken, projectID string, patchDoc *
 	}
 
 	patchDoc.PatchedConfig = string(yamlBytes)
-	config, invalid, err := validator.ValidateProjectPatch(yamlBytes, projectID)
+	config, invalid, err := validator.ValidateProjectPatch(yamlBytes, patchDoc.Project)
 	if err != nil {
 		return "", nil, nil, invalid, errors.Wrap(err, "invalid config patch")
 	}
@@ -313,7 +313,7 @@ func getPatchInfo(ctx context.Context, githubToken, projectID string, patchDoc *
 	return patchContent, summaries, config, false, nil
 }
 
-func writePatchInfo(patchDoc *patch.Patch, config *model.Project, patchSummaries []patch.Summary, patchContent, projectID string) error {
+func writePatchInfo(patchDoc *patch.Patch, config *model.Project, patchSummaries []patch.Summary, patchContent string) error {
 	patchFileID := fmt.Sprintf("%s_%s", patchDoc.Id.Hex(), patchDoc.Githash)
 	if err := db.WriteGridFile(patch.GridFSPrefix, patchFileID, strings.NewReader(patchContent)); err != nil {
 		return errors.Wrap(err, "failed to write patch file to db")

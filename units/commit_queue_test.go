@@ -146,7 +146,7 @@ func (s *commitQueueSuite) TestWritePatchInfo() {
 			}
 	`
 
-	s.NoError(writePatchInfo(patchDoc, config, patchSummaries, patchContent, s.projectRef.Identifier))
+	s.NoError(writePatchInfo(patchDoc, config, patchSummaries, patchContent))
 	s.Len(patchDoc.Patches, 1)
 	s.Equal(patchSummaries, patchDoc.Patches[0].PatchSet.Summary)
 	reader, err := db.GetGridFile(patch.GridFSPrefix, patchDoc.Patches[0].PatchSet.PatchFileId)
