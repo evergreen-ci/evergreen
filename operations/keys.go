@@ -54,7 +54,7 @@ func keysAdd() cli.Command {
 				return nil
 			}),
 		Action: func(c *cli.Context) error {
-			confPath := c.Parent().String(confFlagName)
+			confPath := c.Parent().Parent().String(confFlagName)
 			keyName := c.String(keyNameFlagName)
 			keyFile := c.String(keyFileFlagName)
 
@@ -95,7 +95,7 @@ func keysList() cli.Command {
 		Usage:  "list all public keys for the current user",
 		Before: setPlainLogger,
 		Action: func(c *cli.Context) error {
-			confPath := c.Parent().String(confFlagName)
+			confPath := c.Parent().Parent().String(confFlagName)
 
 			ctx, cancel := context.WithCancel(context.Background())
 			defer cancel()
@@ -128,7 +128,8 @@ func keysList() cli.Command {
 }
 func keysDelete() cli.Command {
 	return cli.Command{
-		Name: "delete",
+		Name:  "delete",
+		Usage: "delete a public key",
 		Before: mergeBeforeFuncs(
 			setPlainLogger,
 			func(c *cli.Context) error {
@@ -142,7 +143,7 @@ func keysDelete() cli.Command {
 				return nil
 			}),
 		Action: func(c *cli.Context) error {
-			confPath := c.Parent().String(confFlagName)
+			confPath := c.Parent().Parent().String(confFlagName)
 
 			ctx, cancel := context.WithCancel(context.Background())
 			defer cancel()

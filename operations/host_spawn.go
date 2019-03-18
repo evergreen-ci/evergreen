@@ -45,7 +45,7 @@ func hostCreate() cli.Command {
 			},
 		},
 		Action: func(c *cli.Context) error {
-			confPath := c.Parent().String(confFlagName)
+			confPath := c.Parent().Parent().String(confFlagName)
 			distro := c.String(distroFlagName)
 			key := c.String(keyFlagName)
 			fn := c.String(scriptFlagName)

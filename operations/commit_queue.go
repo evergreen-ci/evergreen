@@ -33,7 +33,7 @@ func listQueue() cli.Command {
 			setPlainLogger,
 		),
 		Action: func(c *cli.Context) error {
-			confPath := c.Parent().String(confFlagName)
+			confPath := c.Parent().Parent().String(confFlagName)
 			projectID := c.String(projectFlagName)
 
 			ctx, cancel := context.WithCancel(context.Background())
@@ -66,7 +66,7 @@ func deleteItem() cli.Command {
 			setPlainLogger,
 		),
 		Action: func(c *cli.Context) error {
-			confPath := c.Parent().String(confFlagName)
+			confPath := c.Parent().Parent().String(confFlagName)
 			projectID := c.String(projectFlagName)
 			item := c.String(itemFlagName)
 
