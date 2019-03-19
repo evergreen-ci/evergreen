@@ -17,6 +17,7 @@ import (
 	"github.com/evergreen-ci/evergreen/rest/client"
 	"github.com/kardianos/osext"
 	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 	"github.com/urfave/cli"
 )
@@ -62,14 +63,14 @@ func Update() cli.Command {
 				return nil
 			}
 
-			grip.Infoln("Fetching update from %s", update.binary.URL)
+			grip.Infoln("Fetching update from", update.binary.URL)
 			updatedBin, err := prepareUpdate(update.binary.URL, update.newVersion)
 			if err != nil {
 				return err
 			}
 
 			if doInstall {
-				grip.Infoln("Upgraded binary successfully downloaded to temporary file: %s", updatedBin)
+				grip.Infoln("Upgraded binary successfully downloaded to temporary file:", updatedBin)
 
 				var binaryDest string
 				binaryDest, err = osext.Executable()
@@ -77,12 +78,12 @@ func Update() cli.Command {
 					return errors.Errorf("Failed to get installation path: %s", err)
 				}
 
-				grip.Infoln("Unlinking existing binary at %s", binaryDest)
+				grip.Infoln("Unlinking existing binary at", binaryDest)
 				err = syscall.Unlink(binaryDest)
 				if err != nil {
 					return err
 				}
-				grip.Infoln("Moving upgraded binary to: %s", binaryDest)
+				grip.Infoln("Moving upgraded binary to:", binaryDest)
 				err = os.Rename(updatedBin, binaryDest)
 				if err != nil {
 					return err
@@ -97,7 +98,7 @@ func Update() cli.Command {
 				return nil
 			}
 
-			grip.Infoln("New binary downloaded (but not installed) to path: %s", updatedBin)
+			grip.Infoln("New binary downloaded (but not installed) to path:", updatedBin)
 
 			// Attempt to generate a command that the user can copy/paste to complete the install.
 			binaryDest, err := osext.Executable()
@@ -109,7 +110,7 @@ func Update() cli.Command {
 			if runtime.GOOS == "windows" {
 				installCommand = fmt.Sprintf("\tmove %s %s", updatedBin, binaryDest)
 			}
-			grip.Infoln("To complete the install, run the following command:\n%s", installCommand)
+			grip.Infoln("To complete the install, run the following command:", installCommand)
 
 			return nil
 		},
@@ -170,7 +171,7 @@ func prepareUpdate(url, newVersion string) (string, error) {
 	cmd := exec.Command(tempPath, "version")
 	out, err := cmd.CombinedOutput()
 	if err != nil {
-		return "", errors.Errorf("Update failed - checking version of new binary returned error: %s", err)
+		return "", errors.Wrapf(err, "Update failed - checking version of new binary returned error: %s")
 	}
 
 	updatedVersion := string(out)
@@ -190,33 +191,40 @@ type updateStatus struct {
 }
 
 func checkUpdate(client client.Communicator, silent bool, force bool) (updateStatus, error) {
-	var outLog io.Writer = os.Stdout
-	if silent {
-		outLog = ioutil.Discard
-	}
-
 	// This version of the cli has been built with a version, so we can compare it with what the
 	// server says is the latest
 	clients, err := client.GetClientConfig(context.Background())
+	grip.NoticeWhen(!silent, message.WrapError(err, message.Fields{
+		"message": "Failed checking for updates",
+	}))
 	if err != nil {
-		fmt.Fprintf(outLog, "Failed checking for updates: %s\n", err)
 		return updateStatus{nil, false, ""}, err
 	}
 
 	// No update needed
 	if !force && clients.LatestRevision == evergreen.ClientVersion {
-		fmt.Fprintf(outLog, "Binary is already up to date at revision %s - not updating.\n", evergreen.ClientVersion)
+		grip.NoticeWhen(!silent, message.Fields{
+			"message":  "Binary is already up to date - not updating.",
+			"revision": evergreen.ClientVersion,
+		})
 		return updateStatus{nil, false, clients.LatestRevision}, nil
 	}
 
 	binarySource := findClientUpdate(*clients)
 	if binarySource == nil {
 		// Client is out of date but no update available
-		fmt.Fprintf(outLog, "Client is out of date (version %s) but update is unavailable.\n", evergreen.ClientVersion)
+		grip.NoticeWhen(!silent, message.WrapError(err, message.Fields{
+			"message":  "Client is out of date but update is unavailable.",
+			"revision": evergreen.ClientVersion,
+		}))
 		return updateStatus{nil, true, clients.LatestRevision}, nil
 	}
 
-	fmt.Fprintf(outLog, "Update to version %s found at %s\n", clients.LatestRevision, binarySource.URL)
+	grip.NoticeWhen(!silent, message.WrapError(err, message.Fields{
+		"message":      "Update to version found",
+		"revision":     evergreen.ClientVersion,
+		"new_revision": clients.LatestRevision,
+	}))
 	return updateStatus{binarySource, true, clients.LatestRevision}, nil
 }
 
