@@ -24,6 +24,7 @@ import (
 	"github.com/mongodb/grip/message"
 	"github.com/mongodb/grip/sometimes"
 	"github.com/pkg/errors"
+	yaml "gopkg.in/yaml.v2"
 )
 
 const (
@@ -140,20 +141,26 @@ func (j *commitQueueJob) Run(ctx context.Context) {
 		return
 	}
 
-	patch, patchSummaries, projectConfig, invalid, err := getPatchInfo(ctx, githubToken, patchDoc)
+	patch, patchSummaries, projectConfig, err := getPatchInfo(ctx, githubToken, patchDoc)
 	if err != nil {
 		j.logError(err, "can't get patch info", nextItem)
 		j.AddError(sendCommitQueueGithubStatus(j.env, pr, message.GithubStateFailure, "can't make patch", ""))
 		j.dequeue(cq, nextItem)
-		if invalid {
-			update := NewGithubStatusUpdateJobForBadConfig(projectRef, pr.Head.GetRef(), j.ID())
-			update.Run(ctx)
-			j.AddError(update.Error())
-		}
 		return
 	}
 
-	if err = writePatchInfo(patchDoc, projectConfig, patchSummaries, patch); err != nil {
+	errs := validator.CheckProjectSyntax(projectConfig)
+	if len(errs) != 0 {
+		update := NewGithubStatusUpdateJobForBadConfig(projectRef, pr.Head.GetRef(), j.ID())
+		update.Run(ctx)
+		j.AddError(update.Error())
+		j.logError(err, "invalid config file", nextItem)
+		j.AddError(sendCommitQueueGithubStatus(j.env, pr, message.GithubStateFailure, "can't make patch", ""))
+		j.dequeue(cq, nextItem)
+		return
+	}
+
+	if err = writePatchInfo(patchDoc, patchSummaries, patch); err != nil {
 		j.logError(err, "can't make patch", nextItem)
 		j.AddError(sendCommitQueueGithubStatus(j.env, pr, message.GithubStateFailure, "can't make patch", ""))
 		j.dequeue(cq, nextItem)
@@ -292,28 +299,28 @@ func getModules(ctx context.Context, githubToken string, nextItem *commitqueue.C
 	return modulePRs, modulePatches, false, nil
 }
 
-func getPatchInfo(ctx context.Context, githubToken string, patchDoc *patch.Patch) (string, []patch.Summary, *model.Project, bool, error) {
+func getPatchInfo(ctx context.Context, githubToken string, patchDoc *patch.Patch) (string, []patch.Summary, *model.Project, error) {
 	patchContent, summaries, err := thirdparty.GetGithubPullRequestDiff(ctx, githubToken, patchDoc.GithubPatchData)
 	if err != nil {
-		return "", nil, nil, false, errors.Wrap(err, "can't get diff")
+		return "", nil, nil, errors.Wrap(err, "can't get diff")
 	}
 
 	// fetch the latest config file
-	yamlBytes, err := validator.GetPatchedProject(ctx, patchDoc, githubToken)
+	config, err := model.GetPatchedProject(ctx, patchDoc, githubToken)
 	if err != nil {
-		return "", nil, nil, false, errors.Wrap(err, "can't get remote config file")
+		return "", nil, nil, errors.Wrap(err, "can't get remote config file")
 	}
 
+	yamlBytes, err := yaml.Marshal(config)
+	if err != nil {
+		return "", nil, nil, errors.Wrap(err, "can't marshall remote config file")
+	}
 	patchDoc.PatchedConfig = string(yamlBytes)
-	config, invalid, err := validator.ValidateProjectPatch(yamlBytes, patchDoc.Project)
-	if err != nil {
-		return "", nil, nil, invalid, errors.Wrap(err, "invalid config patch")
-	}
 
-	return patchContent, summaries, config, false, nil
+	return patchContent, summaries, config, nil
 }
 
-func writePatchInfo(patchDoc *patch.Patch, config *model.Project, patchSummaries []patch.Summary, patchContent string) error {
+func writePatchInfo(patchDoc *patch.Patch, patchSummaries []patch.Summary, patchContent string) error {
 	patchFileID := fmt.Sprintf("%s_%s", patchDoc.Id.Hex(), patchDoc.Githash)
 	if err := db.WriteGridFile(patch.GridFSPrefix, patchFileID, strings.NewReader(patchContent)); err != nil {
 		return errors.Wrap(err, "failed to write patch file to db")

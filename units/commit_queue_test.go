@@ -125,9 +125,6 @@ func (s *commitQueueSuite) TestWritePatchInfo() {
 		Id:      bson.ObjectIdHex("aabbccddeeff112233445566"),
 		Githash: "abcdef",
 	}
-	config := &model.Project{
-		Enabled: true,
-	}
 
 	patchSummaries := []patch.Summary{
 		patch.Summary{
@@ -146,7 +143,7 @@ func (s *commitQueueSuite) TestWritePatchInfo() {
 			}
 	`
 
-	s.NoError(writePatchInfo(patchDoc, config, patchSummaries, patchContent))
+	s.NoError(writePatchInfo(patchDoc, patchSummaries, patchContent))
 	s.Len(patchDoc.Patches, 1)
 	s.Equal(patchSummaries, patchDoc.Patches[0].PatchSet.Summary)
 	reader, err := db.GetGridFile(patch.GridFSPrefix, patchDoc.Patches[0].PatchSet.PatchFileId)

@@ -26,6 +26,7 @@ import (
 	"github.com/mongodb/grip/sometimes"
 	"github.com/pkg/errors"
 	"gopkg.in/mgo.v2/bson"
+	yaml "gopkg.in/yaml.v2"
 )
 
 const (
@@ -203,18 +204,19 @@ func (j *patchIntentProcessor) finishPatch(ctx context.Context, patchDoc *patch.
 	}
 
 	// Get and validate patched config
-	projectData, err := validator.GetPatchedProject(ctx, patchDoc, githubOauthToken)
+	project, err := model.GetPatchedProject(ctx, patchDoc, githubOauthToken)
 	if err != nil {
 		return errors.Wrap(err, "can't get patched config")
 	}
-	project, invalid, err := validator.ValidateProjectPatch(projectData, pref.Identifier)
-	if err != nil {
-		if invalid {
-			return errors.Wrap(err, errInvalidPatchedConfig)
-		}
-		return errors.Wrap(err, "can't apply project config patch")
+	errs := validator.CheckProjectSyntax(project)
+	if len(errs) != 0 {
+		return errors.Wrap(err, errInvalidPatchedConfig)
 	}
-	patchDoc.PatchedConfig = string(projectData)
+	yamlBytes, err := yaml.Marshal(project)
+	if err != nil {
+		return errors.Wrap(err, "can't marshal patched config")
+	}
+	patchDoc.PatchedConfig = string(yamlBytes)
 
 	if patchDoc.Patches[0].ModuleName != "" {
 		// is there a module? validate it.

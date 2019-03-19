@@ -18,6 +18,7 @@ import (
 	"github.com/evergreen-ci/gimlet"
 	"github.com/pkg/errors"
 	"gopkg.in/mgo.v2/bson"
+	yaml "gopkg.in/yaml.v2"
 )
 
 const formMimeType = "application/x-www-form-urlencoded"
@@ -295,14 +296,18 @@ func (as *APIServer) existingPatchRequest(w http.ResponseWriter, r *http.Request
 			return
 		}
 
-		var projectYamlBytes []byte
-		projectYamlBytes, err = validator.GetPatchedProject(ctx, p, githubOauthToken)
+		project, err = model.GetPatchedProject(ctx, p, githubOauthToken)
 		if err != nil {
 			as.LoggedError(w, r, http.StatusInternalServerError, err)
 			return
 		}
 
-		p.PatchedConfig = string(projectYamlBytes)
+		yamlBytes, err := yaml.Marshal(project)
+		if err != nil {
+			as.LoggedError(w, r, http.StatusInternalServerError, err)
+			return
+		}
+		p.PatchedConfig = string(yamlBytes)
 		_, err = model.FinalizePatch(ctx, p, evergreen.PatchVersionRequester, githubOauthToken)
 		if err != nil {
 			as.LoggedError(w, r, http.StatusInternalServerError, err)
