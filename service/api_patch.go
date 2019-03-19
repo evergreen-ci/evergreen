@@ -302,7 +302,8 @@ func (as *APIServer) existingPatchRequest(w http.ResponseWriter, r *http.Request
 			return
 		}
 
-		yamlBytes, err := yaml.Marshal(project)
+		var yamlBytes []byte
+		yamlBytes, err = yaml.Marshal(project)
 		if err != nil {
 			as.LoggedError(w, r, http.StatusInternalServerError, err)
 			return
