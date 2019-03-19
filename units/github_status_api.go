@@ -107,7 +107,7 @@ func NewGithubStatusUpdateJobForBadConfig(projectRef *model.ProjectRef, hash, se
 	job.Ref = hash
 	job.UpdateType = githubUpdateTypeBadConfig
 
-	job.SetID(fmt.Sprintf("%s:%s-%s-%s-%s", githubStatusUpdateJobName, job.UpdateType, senderID, time.Now().String()))
+	job.SetID(fmt.Sprintf("%s:%s-%s-%s", githubStatusUpdateJobName, job.UpdateType, senderID, time.Now().String()))
 
 	return job
 }

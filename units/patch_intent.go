@@ -105,7 +105,8 @@ func (j *patchIntentProcessor) Run(ctx context.Context) {
 	if err = j.finishPatch(ctx, patchDoc, githubOauthToken); err != nil {
 		j.AddError(err)
 		if j.IntentType == patch.GithubIntentType && strings.HasPrefix(err.Error(), errInvalidPatchedConfig) {
-			projectRef, err := model.FindOneProjectRefByRepoAndBranchWithPRTesting(patchDoc.GithubPatchData.BaseOwner,
+			var projectRef *model.ProjectRef
+			projectRef, err = model.FindOneProjectRefByRepoAndBranchWithPRTesting(patchDoc.GithubPatchData.BaseOwner,
 				patchDoc.GithubPatchData.BaseRepo, patchDoc.GithubPatchData.BaseBranch)
 			if err != nil {
 				j.AddError(errors.Wrap(err, "can't fetch project ref"))
