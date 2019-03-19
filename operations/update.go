@@ -171,7 +171,7 @@ func prepareUpdate(url, newVersion string) (string, error) {
 	cmd := exec.Command(tempPath, "version")
 	out, err := cmd.CombinedOutput()
 	if err != nil {
-		return "", errors.Wrapf(err, "Update failed - checking version of new binary returned error: %s")
+		return "", errors.Wrapf(err, "Update failed - checking version of new binary returned error")
 	}
 
 	updatedVersion := string(out)
