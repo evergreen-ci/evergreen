@@ -976,6 +976,9 @@ func (m *ec2Manager) getSpotInstanceStatus(ctx context.Context, h *host.Host) (C
 		err = errors.Wrapf(err, "failed to get spot request info for %s", h.Id)
 		return StatusUnknown, err
 	}
+	if len(spotDetails.SpotInstanceRequests) == 0 {
+		return StatusUnknown, errors.Errorf("failed to get spot request info for %s", h.Id)
+	}
 
 	spotInstance := spotDetails.SpotInstanceRequests[0]
 	//Spot request has been fulfilled, so get status of the instance itself
