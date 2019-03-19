@@ -266,7 +266,7 @@ func (as *APIServer) EndTask(w http.ResponseWriter, r *http.Request) {
 	}
 
 	grip.Info(message.Fields{
-		"message":   "Successfully marked task %s as finished",
+		"message":   "Successfully marked task as finished",
 		"task":      t.Id,
 		"operation": "mark end",
 		"duration":  time.Since(finishTime),
