@@ -42,7 +42,7 @@ func TestGetBuildInfo(t *testing.T) {
 	})
 
 	app := GetRESTv1App(&uis)
-	app.AddMiddleware(gimlet.UserMiddleware(uis.UserManager, gimlet.UserMiddlewareConfiguration{}))
+	app.AddMiddleware(gimlet.UserMiddleware(uis.UserManager, GetUserMiddlewareConf()))
 	router, err := app.Handler()
 	testutil.HandleTestingErr(err, t, "error setting up router")
 
@@ -205,7 +205,7 @@ func TestGetBuildStatus(t *testing.T) {
 	})
 
 	app := GetRESTv1App(&uis)
-	app.AddMiddleware(gimlet.UserMiddleware(uis.UserManager, gimlet.UserMiddlewareConfiguration{}))
+	app.AddMiddleware(gimlet.UserMiddleware(uis.UserManager, GetUserMiddlewareConf()))
 	router, err := app.Handler()
 	testutil.HandleTestingErr(err, t, "error setting up router")
 
