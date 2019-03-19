@@ -44,7 +44,7 @@ func TestGetRecentVersions(t *testing.T) {
 	})
 
 	app := GetRESTv1App(&uis)
-	app.AddMiddleware(gimlet.UserMiddleware(uis.UserManager, GetUserMiddlewareConf()))
+	app.AddMiddleware(gimlet.UserMiddleware(uis.UserManager, gimlet.UserMiddlewareConfiguration{}))
 	router, err := app.Handler()
 	testutil.HandleTestingErr(err, t, "error setting up router")
 
@@ -249,7 +249,7 @@ func TestGetVersionInfo(t *testing.T) {
 	})
 
 	app := GetRESTv1App(&uis)
-	app.AddMiddleware(gimlet.UserMiddleware(uis.UserManager, GetUserMiddlewareConf()))
+	app.AddMiddleware(gimlet.UserMiddleware(uis.UserManager, gimlet.UserMiddlewareConfiguration{}))
 	router, err := app.Handler()
 	testutil.HandleTestingErr(err, t, "error setting up router")
 
@@ -353,7 +353,7 @@ func TestGetVersionInfoViaRevision(t *testing.T) {
 	})
 
 	app := GetRESTv1App(&uis)
-	app.AddMiddleware(gimlet.UserMiddleware(uis.UserManager, GetUserMiddlewareConf()))
+	app.AddMiddleware(gimlet.UserMiddleware(uis.UserManager, gimlet.UserMiddlewareConfiguration{}))
 	router, err := app.Handler()
 	testutil.HandleTestingErr(err, t, "error setting up router")
 
@@ -448,7 +448,11 @@ func TestActivateVersion(t *testing.T) {
 	})
 
 	app := GetRESTv1App(&uis)
-	app.AddMiddleware(gimlet.UserMiddleware(uis.UserManager, GetUserMiddlewareConf()))
+	app.AddMiddleware(gimlet.UserMiddleware(uis.UserManager, gimlet.UserMiddlewareConfiguration{
+		CookieName:     evergreen.AuthTokenCookie,
+		HeaderKeyName:  evergreen.APIKeyHeader,
+		HeaderUserName: evergreen.APIUserHeader,
+	}))
 	router, err := app.Handler()
 	testutil.HandleTestingErr(err, t, "error setting up router")
 
@@ -586,7 +590,7 @@ func TestGetVersionStatus(t *testing.T) {
 	})
 
 	app := GetRESTv1App(&uis)
-	app.AddMiddleware(gimlet.UserMiddleware(uis.UserManager, GetUserMiddlewareConf()))
+	app.AddMiddleware(gimlet.UserMiddleware(uis.UserManager, gimlet.UserMiddlewareConfiguration{}))
 	router, err := app.Handler()
 	testutil.HandleTestingErr(err, t, "error setting up router")
 

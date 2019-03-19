@@ -4,7 +4,10 @@ import (
 	"context"
 	"net/http"
 	"net/url"
+	"strings"
+	"time"
 
+	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 )
 
@@ -13,9 +16,67 @@ import (
 type UserMiddlewareConfiguration struct {
 	SkipCookie      bool
 	SkipHeaderCheck bool
-	CookieName      string
 	HeaderUserName  string
 	HeaderKeyName   string
+	CookieName      string
+	CookiePath      string
+	CookieTTL       time.Duration
+}
+
+// Validate ensures that the UserMiddlewareConfiguration is correct
+// and internally consistent.
+func (umc *UserMiddlewareConfiguration) Validate() error {
+	catcher := grip.NewBasicCatcher()
+
+	if !umc.SkipCookie {
+		if umc.CookieName == "" {
+			catcher.New("must specify cookie name when cookie authentication is enabled")
+		}
+
+		if umc.CookieTTL < time.Second {
+			catcher.New("cookie timeout is less than a second")
+		}
+
+		if umc.CookiePath == "" {
+			umc.CookiePath = "/"
+		} else if !strings.HasPrefix(umc.CookiePath, "/") {
+			catcher.New("cookie path must begin with '/'")
+		}
+	}
+
+	if !umc.SkipHeaderCheck {
+		if umc.HeaderUserName == "" {
+			catcher.New("when header auth is enabled, must specify a header user name")
+		}
+
+		if umc.HeaderKeyName == "" {
+			catcher.New("when header auth is enabled, must specify a header key name")
+		}
+	}
+
+	return catcher.Resolve()
+}
+
+// AttachCookie sets a cookie with the specified cookie to the
+// request, according to the configuration of the user manager.
+func (umc UserMiddlewareConfiguration) AttachCookie(token string, rw http.ResponseWriter) {
+	http.SetCookie(rw, &http.Cookie{
+		Name:     umc.CookieName,
+		Path:     umc.CookiePath,
+		Value:    token,
+		HttpOnly: true,
+		Expires:  time.Now().Add(umc.CookieTTL),
+	})
+}
+
+// ClearCookie removes the cookie defied in the user manager.
+func (umc UserMiddlewareConfiguration) ClearCookie(rw http.ResponseWriter) {
+	http.SetCookie(rw, &http.Cookie{
+		Name:   umc.CookieName,
+		Path:   umc.CookiePath,
+		Value:  "",
+		MaxAge: -1,
+	})
 }
 
 func setUserForRequest(r *http.Request, u User) *http.Request {
@@ -102,7 +163,6 @@ func (u *userMiddleware) ServeHTTP(rw http.ResponseWriter, r *http.Request, next
 				r = setUserForRequest(r, usr)
 			}
 		}
-
 	}
 
 	if !u.conf.SkipHeaderCheck {
