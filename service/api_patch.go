@@ -295,7 +295,8 @@ func (as *APIServer) existingPatchRequest(w http.ResponseWriter, r *http.Request
 			return
 		}
 
-		project, err := model.GetPatchedProject(ctx, p, githubOauthToken)
+		var project *model.Project
+		project, err = model.GetPatchedProject(ctx, p, githubOauthToken)
 		if err != nil {
 			as.LoggedError(w, r, http.StatusInternalServerError, err)
 			return

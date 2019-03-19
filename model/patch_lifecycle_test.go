@@ -36,8 +36,8 @@ var (
 
 	// newProjectPatchFile is a diff that adds a new project configuration file
 	// located at newConfigFilePath.
-	newProjectPatchFile = "testdata/project2.diff"
-	newConfigFilePath   = "testing/project2.config"
+	newProjectPatchFile = "testdata/project.diff"
+	newConfigFilePath   = "model/testdata/project2.config"
 )
 
 func init() {
