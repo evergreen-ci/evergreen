@@ -1,6 +1,6 @@
 mciModule.controller('PerfBBOutliersCtrl', function(
     $scope, $window, EvgUiGridUtil, EvgUtil, FORMAT, MDBQueryAdaptor, uiGridConstants,
-    uiGridGroupingConstants, STITCH_CONFIG, Stitch,
+    STITCH_CONFIG, Stitch,
 ) {
     // Perf Failures View-Model.
     const vm = this;
@@ -33,35 +33,64 @@ mciModule.controller('PerfBBOutliersCtrl', function(
 
     // Holds currently selected items.
     vm.selection = [];
+    // Mark and Unmark actions will be enabled in EVG-5980.
+    // Mute and Unmute actions will be enabled in EVG-5981.
+    vm.actions = [
+        {
+            title: 'Mute',
+            action: console.log,
+            visible: () => vm.state.mode !== 'muted',
+            disabled: () => true,
+        },
+        {
+            title: 'Mark',
+            action: console.log,
+            visible: () => vm.state.mode !== 'marked',
+            disabled: () => true,
+        },
+        {
+            title: 'Unmute',
+            action: console.log,
+            visible: () => vm.state.mode === 'muted',
+            disabled: () => true,
+        },
+        {
+            title: 'Unmark',
+            action: console.log,
+            visible: () => vm.state.mode === 'marked',
+            disabled: () => true,
+        },
+    ];
 
-    const modeToItemVisibilityMap = {
-        detected: function(item) { return item.type !== OUTLIERS_TYPE.DETECTED },
-        suspicious: function(item) { return item.type !== OUTLIERS_TYPE.SUSPICIOUS },
-    };
+    const modesRequiringFilters = new Set([
+        OUTLIERS_TYPE.DETECTED, OUTLIERS_TYPE.SUSPICIOUS
+    ]);
 
     // Could not be overridden by persistent user settings.
-    const mandatoryDefaultFiltering = {
-        create_time: '>' + moment().subtract(2, 'weeks').format(FORMAT.ISO_DATE),
-        project: '=' + $window.project,
+    const mandatoryDefaultFiltering = (state) => {
+        return {
+            create_time: '>' + state.lookBack.format(FORMAT.ISO_DATE),
+            project: '=' + $window.project,
+        };
     };
 
     const getDefaultFiltering = () => {
         let typeFilter = {};
-        if (vm.mode.value in modeToItemVisibilityMap) {
+        if (modesRequiringFilters.has(vm.mode.value)) {
             typeFilter = {
                 type: '=' + vm.mode.value,
             };
         }
         return _.extend(
             {},
-            mandatoryDefaultFiltering,
+            mandatoryDefaultFiltering(vm.state),
             typeFilter
         );
     };
 
     vm.state = {
         filtering: getDefaultFiltering,
-        lookBackDays: 14,
+        lookBack: moment().subtract(2, 'weeks'),
         mode: vm.mode.value,
     };
 
@@ -72,29 +101,19 @@ mciModule.controller('PerfBBOutliersCtrl', function(
         marked: STITCH_CONFIG.PERF.COLL_MARKED_OUTLIERS,
     };
 
-    vm.lookBackDays = vm.state.lookBackDays;
-
-    vm.applyFiltering = function() {
-        // Say the form the state is 'pristine'
-        $scope.form.$setPristine();
-        // Update controller state
-        vm.state.lookBackDays = +vm.lookBackDays;
-        loadData();
-    };
-
     // Enhances filtering state with some contextual meta data
     // This data is required by expression compiler
     function getFilteringContext(state) {
-        return _.reduce(state.filtering(), (m, v, k) => {
+        return _.reduce(state.filtering(), (accum, filter_value, filter_key) => {
             if (!getCol) {
-                return m;
+                return accum;
             }
-            const col = getCol(k);
-            if (!col) return m;  // Error! Associated col does not found
+            const col = getCol(filter_key);
+            if (!col) return accum;  // Error! Associated col does not found
 
-            return m.concat({
-                field: k,
-                term: v,
+            return accum.concat({
+                field: filter_key,
+                term: filter_value,
                 type: col.colDef.type || 'string',
             })
         }, []);
@@ -112,13 +131,17 @@ mciModule.controller('PerfBBOutliersCtrl', function(
                 getFilteringContext(state)
             );
             // check if filtering query was compiled into something
-            filteringChain && chain.push(filteringChain);
+            if (filteringChain) {
+                chain.push(filteringChain);
+            }
         }
 
         if (state.sorting) {
             const sortingChain = MDBQueryAdaptor.compileSorting(state.sorting);
             // check if sorting query was compiled into something
-            sortingChain && chain.push(sortingChain);
+            if (sortingChain) {
+                chain.push(sortingChain);
+            }
         }
 
         chain.push({$limit: LIMIT});
@@ -212,11 +235,6 @@ mciModule.controller('PerfBBOutliersCtrl', function(
 
         columnDefs: [
             {
-                name: 'Order',
-                field: 'order',
-                type: 'number',
-            },
-            {
                 name: 'Variant',
                 field: 'variant',
                 type: 'string',
@@ -255,7 +273,24 @@ mciModule.controller('PerfBBOutliersCtrl', function(
                 cellFilter: 'limitTo:7',
                 width: 100,
                 sort: {
+                    direction: uiGridConstants.DESC,
                     priority: 0,
+                },
+                sortingAlgorithm: (a, b, rowA, rowB, direction) => {
+                    // Sort revision by order instead of revision id.
+                    const nulls = vm.gridApi.core.sortHandleNulls(a, b);
+                    if (nulls !== null) {
+                        return nulls;
+                    }
+
+                    if (a === b) {
+                        return 0;
+                    }
+
+                    if (rowA && rowB) {
+                        return rowA.entity.order - rowB.entity.order;
+                    }
+
                 },
                 cellTemplate: 'ui-grid-group-name',
                 grouping: {

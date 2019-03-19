@@ -1,12 +1,10 @@
 mciModule
   .constant('PROCESSED_TYPE', (function() {
-    const acknowledged = 'acknowledged';
-    const hidden = 'hidden';
     return {
-      ACKNOWLEDGED: acknowledged,
-      HIDDEN:       hidden,
+      ACKNOWLEDGED: 'acknowledged',
+      HIDDEN:       'hidden',
       NONE:         undefined,
-      ALL:          [acknowledged, hidden]
+      ALL:          ['acknowledged', 'hidden']
     }
   })())
   .constant('PERFBB_HAZARD_VALUES', [
