@@ -62,14 +62,14 @@ func Update() cli.Command {
 				return nil
 			}
 
-			grip.Infof("Fetching update from %s", update.binary.URL)
+			grip.Infoln("Fetching update from %s", update.binary.URL)
 			updatedBin, err := prepareUpdate(update.binary.URL, update.newVersion)
 			if err != nil {
 				return err
 			}
 
 			if doInstall {
-				grip.Infof("Upgraded binary successfully downloaded to temporary file: %s", updatedBin)
+				grip.Infoln("Upgraded binary successfully downloaded to temporary file: %s", updatedBin)
 
 				var binaryDest string
 				binaryDest, err = osext.Executable()
@@ -77,12 +77,12 @@ func Update() cli.Command {
 					return errors.Errorf("Failed to get installation path: %s", err)
 				}
 
-				grip.Infof("Unlinking existing binary at %s", binaryDest)
+				grip.Infoln("Unlinking existing binary at %s", binaryDest)
 				err = syscall.Unlink(binaryDest)
 				if err != nil {
 					return err
 				}
-				grip.Infof("Moving upgraded binary to: %s", binaryDest)
+				grip.Infoln("Moving upgraded binary to: %s", binaryDest)
 				err = os.Rename(updatedBin, binaryDest)
 				if err != nil {
 					return err
@@ -97,7 +97,7 @@ func Update() cli.Command {
 				return nil
 			}
 
-			grip.Infof("New binary downloaded (but not installed) to path: %s", updatedBin)
+			grip.Infoln("New binary downloaded (but not installed) to path: %s", updatedBin)
 
 			// Attempt to generate a command that the user can copy/paste to complete the install.
 			binaryDest, err := osext.Executable()
@@ -109,7 +109,7 @@ func Update() cli.Command {
 			if runtime.GOOS == "windows" {
 				installCommand = fmt.Sprintf("\tmove %s %s", updatedBin, binaryDest)
 			}
-			grip.Infof("To complete the install, run the following command:\n%s", installCommand)
+			grip.Infoln("To complete the install, run the following command:\n%s", installCommand)
 
 			return nil
 		},
