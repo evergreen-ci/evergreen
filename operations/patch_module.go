@@ -31,6 +31,7 @@ func PatchSetModule() cli.Command {
 			large := c.Bool(largeFlagName)
 			skipConfirm := c.Bool(yesFlagName)
 			project := c.String(projectFlagName)
+			committedOnly := c.Bool(committedFlagName)
 			args := c.Args()
 
 			ctx, cancel := context.WithCancel(context.Background())
@@ -69,7 +70,7 @@ func PatchSetModule() cli.Command {
 			}
 
 			// diff against the module branch.
-			diffData, err := loadGitData(moduleBranch, c.Bool(committedFlagName), args...)
+			diffData, err := loadGitData(moduleBranch, committedOnly, args...)
 			if err != nil {
 				return err
 			}

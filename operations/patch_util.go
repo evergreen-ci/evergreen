@@ -47,16 +47,17 @@ type localDiff struct {
 }
 
 type patchParams struct {
-	Project     string
-	Variants    []string
-	Tasks       []string
-	Description string
-	Alias       string
-	SkipConfirm bool
-	Finalize    bool
-	Browse      bool
-	Large       bool
-	ShowSummary bool
+	Project       string
+	Variants      []string
+	Tasks         []string
+	Description   string
+	Alias         string
+	SkipConfirm   bool
+	Finalize      bool
+	Browse        bool
+	Large         bool
+	ShowSummary   bool
+	CommittedOnly bool
 }
 
 type patchSubmission struct {
@@ -388,7 +389,7 @@ func gitDiff(base string, committedOnly bool, diffArgs ...string) (string, error
 
 // getLog runs "git log <base>
 func gitLog(base string) (string, error) {
-	args := []string{fmt.Sprintf("...%v", base), "--oneline"}
+	args := []string{fmt.Sprintf("...%s", base), "--oneline"}
 	return gitCmd("log", args...)
 }
 
