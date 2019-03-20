@@ -423,11 +423,27 @@ func MarkEnd(t *task.Task, caller string, finishTime time.Time, detail *apimodel
 			return err
 		}
 		if err = build.UpdateCachedTask(t.DisplayTask.BuildId, t.DisplayTask.Id, t.DisplayTask.Status, t.TimeTaken); err != nil {
+			grip.Error(message.Fields{
+				"message":    "failed to set cached display task finished",
+				"function":   "MarkEnd",
+				"build_id":   t.BuildId,
+				"task_id":    t.Id,
+				"status":     detail.Status,
+				"time_taken": t.TimeTaken,
+			})
 			return err
 		}
 	} else {
 		err = build.SetCachedTaskFinished(t.BuildId, t.Id, detail.Status, detail, t.TimeTaken)
 		if err != nil {
+			grip.Error(message.Fields{
+				"message":    "failed to set cached task finished",
+				"function":   "MarkEnd",
+				"build_id":   t.BuildId,
+				"task_id":    t.Id,
+				"status":     detail.Status,
+				"time_taken": t.TimeTaken,
+			})
 			return errors.Wrap(err, "error updating build")
 		}
 	}
@@ -576,6 +592,14 @@ func UpdateBuildAndVersionStatusForTask(taskId string, updates *StatusChanges) e
 		}
 		err = b.SetCachedTaskFinished(t.Id, status, &t.Details, t.TimeTaken)
 		if err != nil {
+			grip.Error(message.Fields{
+				"message":    "failed to set cached task finished",
+				"function":   "UpdateBuildAndVersionStatusForTask",
+				"build_id":   b.Id,
+				"task_id":    t.Id,
+				"status":     status,
+				"time_taken": t.TimeTaken,
+			})
 			return fmt.Errorf("error updating build: %v", err.Error())
 		}
 	}
