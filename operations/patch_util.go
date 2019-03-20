@@ -377,31 +377,24 @@ func gitMergeBase(branch1, branch2 string) (string, error) {
 
 // gitDiff runs "git diff <base> <diffargs ...>" and returns the output of the command as a string
 func gitDiff(base string, committedOnly bool, diffArgs ...string) (string, error) {
-	against := ""
+	args := []string{base}
 	if committedOnly {
-		against = "HEAD"
+		args = append(args, "HEAD")
 	}
-	args := append([]string{
-		"--no-ext-diff",
-	}, diffArgs...)
-	return gitCmd("diff", base, against, args...)
+	args = append(args, "--no-ext-diff")
+	args = append(args, diffArgs...)
+	return gitCmd("diff", args...)
 }
 
 // getLog runs "git log <base>
-func gitLog(base string, logArgs ...string) (string, error) {
-	args := append(logArgs, "--oneline")
-	return gitCmd("log", fmt.Sprintf("...%v", base), "", args...)
+func gitLog(base string) (string, error) {
+	args := []string{fmt.Sprintf("...%v", base), "--oneline"}
+	return gitCmd("log", args...)
 }
 
-func gitCmd(cmdName, base, against string, gitArgs ...string) (string, error) {
+func gitCmd(cmdName string, gitArgs ...string) (string, error) {
 	args := make([]string, 0, 1+len(gitArgs))
 	args = append(args, cmdName)
-	if base != "" {
-		args = append(args, base)
-	}
-	if against != "" {
-		args = append(args, against)
-	}
 	args = append(args, gitArgs...)
 	cmd := exec.Command("git", args...)
 	out, err := cmd.CombinedOutput()
