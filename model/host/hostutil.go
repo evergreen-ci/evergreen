@@ -32,10 +32,15 @@ func (h *Host) TearDownCommand() string {
 }
 
 func (h *Host) CurlCommand(url string) string {
-	return fmt.Sprintf("cd ~ && curl -LO '%s/clients/%s' && chmod +x %s",
+	binaryName := h.Distro.BinaryName()
+	executableSubPath := h.Distro.ExecutableSubPath()
+	curl := fmt.Sprintf("cd ~ && if [ -f %s ]; then %s get-update --install --force; else curl -LO '%s/clients/%s' && chmod +x %s; fi",
+		binaryName,
+		binaryName,
 		url,
-		h.Distro.ExecutableSubPath(),
-		h.Distro.BinaryName())
+		executableSubPath,
+		binaryName)
+	return curl
 }
 
 const (
