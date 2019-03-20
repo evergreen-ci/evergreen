@@ -331,7 +331,7 @@ func getPatchDisplay(p *patch.Patch, summarize bool, uiHost string) (string, err
 // loadGitData inspects the current git working directory and returns a patch and its summary.
 // The branch argument is used to determine where to generate the merge base from, and any extra
 // arguments supplied are passed directly in as additional args to git diff.
-func loadGitData(branch string, extraArgs ...string) (*localDiff, error) {
+func loadGitData(branch string, committedOnly bool, extraArgs ...string) (*localDiff, error) {
 	// branch@{upstream} refers to the branch that the branch specified by branchname is set to
 	// build on top of. This allows automatically detecting a branch based on the correct remote,
 	// if the user's repo is a fork, for example.
@@ -344,7 +344,7 @@ func loadGitData(branch string, extraArgs ...string) (*localDiff, error) {
 	if len(extraArgs) > 0 {
 		statArgs = append(statArgs, extraArgs...)
 	}
-	stat, err := gitDiff(mergeBase, statArgs...)
+	stat, err := gitDiff(mergeBase, committedOnly, statArgs...)
 	if err != nil {
 		return nil, errors.Errorf("Error getting diff summary: %v", err)
 	}
@@ -357,7 +357,7 @@ func loadGitData(branch string, extraArgs ...string) (*localDiff, error) {
 		extraArgs = append(extraArgs, "--binary")
 	}
 
-	patch, err := gitDiff(mergeBase, extraArgs...)
+	patch, err := gitDiff(mergeBase, committedOnly, extraArgs...)
 	if err != nil {
 		return nil, errors.Errorf("Error getting patch: %v", err)
 	}
@@ -376,24 +376,31 @@ func gitMergeBase(branch1, branch2 string) (string, error) {
 }
 
 // gitDiff runs "git diff <base> <diffargs ...>" and returns the output of the command as a string
-func gitDiff(base string, diffArgs ...string) (string, error) {
+func gitDiff(base string, committedOnly bool, diffArgs ...string) (string, error) {
+	against := ""
+	if committedOnly {
+		against = "HEAD"
+	}
 	args := append([]string{
 		"--no-ext-diff",
 	}, diffArgs...)
-	return gitCmd("diff", base, args...)
+	return gitCmd("diff", base, against, args...)
 }
 
 // getLog runs "git log <base>
 func gitLog(base string, logArgs ...string) (string, error) {
 	args := append(logArgs, "--oneline")
-	return gitCmd("log", fmt.Sprintf("...%v", base), args...)
+	return gitCmd("log", fmt.Sprintf("...%v", base), "", args...)
 }
 
-func gitCmd(cmdName, base string, gitArgs ...string) (string, error) {
+func gitCmd(cmdName, base, against string, gitArgs ...string) (string, error) {
 	args := make([]string, 0, 1+len(gitArgs))
 	args = append(args, cmdName)
 	if base != "" {
 		args = append(args, base)
+	}
+	if against != "" {
+		args = append(args, against)
 	}
 	args = append(args, gitArgs...)
 	cmd := exec.Command("git", args...)
@@ -401,5 +408,5 @@ func gitCmd(cmdName, base string, gitArgs ...string) (string, error) {
 	if err != nil {
 		return "", errors.Errorf("'git %s' failed with err %s", strings.Join(args, " "), err)
 	}
-	return string(out), err
+	return string(out), nil
 }

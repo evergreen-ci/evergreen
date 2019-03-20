@@ -18,7 +18,7 @@ func PatchSetModule() cli.Command {
 		Name:    "patch-set-module",
 		Aliases: []string{"set-module"},
 		Usage:   "update or add module to an existing patch",
-		Flags: mergeFlagSlices(addPatchIDFlag(), addPathFlag(), addModuleFlag(), addYesFlag(
+		Flags: mergeFlagSlices(addPatchIDFlag(), addPathFlag(), addModuleFlag(), addCommittedOnlyFlag(), addYesFlag(
 			cli.BoolFlag{
 				Name:  largeFlagName,
 				Usage: "enable submitting larger patches (>16MB)",
@@ -69,7 +69,7 @@ func PatchSetModule() cli.Command {
 			}
 
 			// diff against the module branch.
-			diffData, err := loadGitData(moduleBranch, args...)
+			diffData, err := loadGitData(moduleBranch, c.Bool(committedFlagName), args...)
 			if err != nil {
 				return err
 			}

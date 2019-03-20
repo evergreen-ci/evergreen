@@ -17,7 +17,7 @@ const (
 )
 
 func getPatchFlags(flags ...cli.Flag) []cli.Flag {
-	return mergeFlagSlices(addProjectFlag(flags...), addVariantsFlag(), addTasksFlag(), addLargeFlag(), addYesFlag(
+	return mergeFlagSlices(addProjectFlag(flags...), addVariantsFlag(), addTasksFlag(), addLargeFlag(), addCommittedOnlyFlag(), addYesFlag(
 		cli.StringFlag{
 			Name:  joinFlagNames(patchDescriptionFlagName, "d"),
 			Usage: "description for the patch",
@@ -83,7 +83,7 @@ func Patch() cli.Command {
 				return err
 			}
 
-			diffData, err := loadGitData(ref.Branch, args...)
+			diffData, err := loadGitData(ref.Branch, c.Bool(committedFlagName), args...)
 			if err != nil {
 				return err
 			}
