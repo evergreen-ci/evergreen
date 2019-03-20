@@ -12,8 +12,6 @@ mciModule.controller('PerfBBOutliersCtrl', function(
         SUSPICIOUS: 'suspicious',
     };
 
-    let getCol;
-
     vm.mode = {
         options: [{
             id: 'detected',
@@ -74,7 +72,7 @@ mciModule.controller('PerfBBOutliersCtrl', function(
         };
     };
 
-    const getDefaultFiltering = () => {
+    $scope.getDefaultFiltering = () => {
         let typeFilter = {};
         if (modesRequiringFilters.has(vm.mode.value)) {
             typeFilter = {
@@ -89,7 +87,7 @@ mciModule.controller('PerfBBOutliersCtrl', function(
     };
 
     vm.state = {
-        filtering: getDefaultFiltering,
+        filtering: $scope.getDefaultFiltering,
         lookBack: moment().subtract(2, 'weeks'),
         mode: vm.mode.value,
     };
@@ -105,10 +103,10 @@ mciModule.controller('PerfBBOutliersCtrl', function(
     // This data is required by expression compiler
     function getFilteringContext(state) {
         return _.reduce(state.filtering(), (accum, filter_value, filter_key) => {
-            if (!getCol) {
+            if (!$scope.getCol) {
                 return accum;
             }
-            const col = getCol(filter_key);
+            const col = $scope.getCol(filter_key);
             if (!col) return accum;  // Error! Associated col does not found
 
             return accum.concat({
@@ -121,7 +119,7 @@ mciModule.controller('PerfBBOutliersCtrl', function(
 
     // Creates aggregation expression, which could be used by Stitch
     // for given `state`
-    function getAggChain(state) {
+    $scope.getAggChain = (state) => {
         let chain = [];
 
         // Check if the state has filtering
@@ -146,7 +144,25 @@ mciModule.controller('PerfBBOutliersCtrl', function(
 
         chain.push({$limit: LIMIT});
         return chain;
-    }
+    };
+
+    $scope.sortRevision = (a, b, rowA, rowB) => {
+        // Sort revision by order instead of revision id.
+        const nulls = vm.gridApi.core.sortHandleNulls(a, b);
+        if (nulls !== null) {
+            return nulls;
+        }
+
+        if (a === b) {
+            return 0;
+        }
+
+        if (rowA && rowB) {
+            return rowA.entity.order - rowB.entity.order;
+        }
+
+        return a - b;
+    };
 
     function hydrateData(docs) {
         _.each(docs, (doc) => {
@@ -168,7 +184,7 @@ mciModule.controller('PerfBBOutliersCtrl', function(
         theMostRecentPromise = Stitch.use(STITCH_CONFIG.PERF).query((db) => {
             return db.db(STITCH_CONFIG.PERF.DB_PERF)
                 .collection(modeToCollMap[vm.state.mode])
-                .aggregate(getAggChain(vm.state));
+                .aggregate($scope.getAggChain(vm.state));
         });
 
         const thisPromise = theMostRecentPromise;
@@ -219,7 +235,7 @@ mciModule.controller('PerfBBOutliersCtrl', function(
 
         onRegisterApi: (api) => {
             vm.gridApi = api;
-            getCol = EvgUiGridUtil.getColAccessor(api);
+            $scope.getCol = EvgUiGridUtil.getColAccessor(api);
 
             api.selection.on.rowSelectionChanged(null, _.debounce(() => {
                 handleRowSelectionChange(api);
@@ -276,22 +292,7 @@ mciModule.controller('PerfBBOutliersCtrl', function(
                     direction: uiGridConstants.DESC,
                     priority: 0,
                 },
-                sortingAlgorithm: (a, b, rowA, rowB, direction) => {
-                    // Sort revision by order instead of revision id.
-                    const nulls = vm.gridApi.core.sortHandleNulls(a, b);
-                    if (nulls !== null) {
-                        return nulls;
-                    }
-
-                    if (a === b) {
-                        return 0;
-                    }
-
-                    if (rowA && rowB) {
-                        return rowA.entity.order - rowB.entity.order;
-                    }
-
-                },
+                sortingAlgorithm: $scope.sortRevision,
                 cellTemplate: 'ui-grid-group-name',
                 grouping: {
                     groupPriority: 0,
