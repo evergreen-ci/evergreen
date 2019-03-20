@@ -424,11 +424,11 @@ func MarkEnd(t *task.Task, caller string, finishTime time.Time, detail *apimodel
 		}
 		if err = build.UpdateCachedTask(t.DisplayTask.BuildId, t.DisplayTask.Id, t.DisplayTask.Status, t.TimeTaken); err != nil {
 			grip.Error(message.Fields{
-				"message":    "failed to set cached display task finished",
+				"message":    "failed to update cached display task",
 				"function":   "MarkEnd",
-				"build_id":   t.BuildId,
-				"task_id":    t.Id,
-				"status":     detail.Status,
+				"build_id":   t.DisplayTask.BuildId,
+				"task_id":    t.DisplayTask.Id,
+				"status":     t.DisplayTask.Status,
 				"time_taken": t.TimeTaken,
 			})
 			return err
