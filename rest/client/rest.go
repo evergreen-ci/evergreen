@@ -736,13 +736,13 @@ func (c *communicatorImpl) SendNotification(ctx context.Context, notificationTyp
 	return nil
 }
 
-func (c *communicatorImpl) GetDockerLogs(ctx context.Context, evergreenID string, startTime time.Time, endTime time.Time) (*cloud.LogInfo, error) {
-	path := fmt.Sprintf("/host/%s/logs", evergreenID)
-	if startTime != util.ZeroTime && endTime != util.ZeroTime {
+func (c *communicatorImpl) GetDockerLogs(ctx context.Context, hostID string, startTime time.Time, endTime time.Time) (*cloud.LogInfo, error) {
+	path := fmt.Sprintf("/host/%s/logs", hostID)
+	if !util.IsZeroTime(startTime) && !util.IsZeroTime(endTime) {
 		path = fmt.Sprintf("%s?start_time=%s&end_time=%s", path, startTime.Format(time.RFC3339), endTime.Format(time.RFC3339))
-	} else if startTime != util.ZeroTime {
+	} else if !util.IsZeroTime(startTime) {
 		path = fmt.Sprintf("%s?start_time=%s", path, startTime.Format(time.RFC3339))
-	} else if endTime != util.ZeroTime {
+	} else if !util.IsZeroTime(endTime) {
 		path = fmt.Sprintf("%s?end_time=%s", path, endTime.Format(time.RFC3339))
 	}
 
@@ -753,7 +753,7 @@ func (c *communicatorImpl) GetDockerLogs(ctx context.Context, evergreenID string
 	}
 	resp, err := c.request(ctx, info, "")
 	if err != nil {
-		return nil, errors.Wrapf(err, "problem getting logs for container _id %s", evergreenID)
+		return nil, errors.Wrapf(err, "problem getting logs for container _id %s", hostID)
 	}
 	defer resp.Body.Close()
 	bytes, err := ioutil.ReadAll(resp.Body)
@@ -768,7 +768,7 @@ func (c *communicatorImpl) GetDockerLogs(ctx context.Context, evergreenID string
 		}
 
 		return nil, errors.Wrapf(restErr, "response code %d problem getting logs for container _id %s",
-			resp.StatusCode, evergreenID)
+			resp.StatusCode, hostID)
 	}
 	r := cloud.LogInfo{}
 	err = json.Unmarshal(bytes, r)

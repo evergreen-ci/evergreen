@@ -269,7 +269,7 @@ func TestGetDockerLogs(t *testing.T) {
 	url := fmt.Sprintf("/hosts/%s/logs?tail=%s", h.Id, "invalid")
 	request, err := http.NewRequest("GET", url, bytes.NewReader(nil))
 	assert.NoError(err)
-	options := map[string]string{"evergreen_id": h.Id}
+	options := map[string]string{"host_id": h.Id}
 
 	request = gimlet.SetURLVars(request, options)
 	assert.Error(handler.Parse(context.Background(), request))
@@ -277,7 +277,7 @@ func TestGetDockerLogs(t *testing.T) {
 	url = fmt.Sprintf("/hosts/%s/logs?tail=%s", h.Id, "-1")
 	request, err = http.NewRequest("GET", url, bytes.NewReader(nil))
 	assert.NoError(err)
-	options = map[string]string{"evergreen_id": h.Id}
+	options = map[string]string{"host_id": h.Id}
 
 	request = gimlet.SetURLVars(request, options)
 	assert.Error(handler.Parse(context.Background(), request))
@@ -287,7 +287,7 @@ func TestGetDockerLogs(t *testing.T) {
 	url = fmt.Sprintf("/hosts/%s/logs?start_time=%s", h.Id, startTime)
 	request, err = http.NewRequest("GET", url, bytes.NewReader(nil))
 	assert.NoError(err)
-	options = map[string]string{"evergreen_id": h.Id}
+	options = map[string]string{"host_id": h.Id}
 
 	request = gimlet.SetURLVars(request, options)
 	assert.Error(handler.Parse(context.Background(), request))
@@ -361,7 +361,7 @@ func TestGetDockerLogsNotStarted(t *testing.T) {
 	request, err := http.NewRequest("GET", url, bytes.NewReader(nil))
 	assert.NoError(err)
 
-	options := map[string]string{"evergreen_id": h.Id}
+	options := map[string]string{"host_id": h.Id}
 	request = gimlet.SetURLVars(request, options)
 
 	assert.NoError(handler.Parse(context.Background(), request))

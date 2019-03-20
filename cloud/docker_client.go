@@ -414,8 +414,11 @@ func (c *dockerClientImpl) GetDockerLogs(ctx context.Context, containerID string
 	res.ErrStr = temperr.String()
 
 	container, err := c.GetContainer(ctx, parent, containerID)
-	if err != nil || container == nil {
+	if err != nil {
 		return nil, errors.Wrapf(err, "Error getting container %s", containerID)
+	}
+	if container == nil {
+		return nil, errors.Errorf("Container %s returned empty", containerID)
 	}
 	res.IsRunning = container.State.Running
 	return &res, nil

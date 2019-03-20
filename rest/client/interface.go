@@ -176,5 +176,5 @@ type Communicator interface {
 	SendNotification(ctx context.Context, notificationType string, data interface{}) error
 
 	// GetDockerLogs returns logs and status for the given docker container
-	GetDockerLogs(ctx context.Context, evergreenID string, startTime time.Time, endTime time.Time) (*cloud.LogInfo, error)
+	GetDockerLogs(ctx context.Context, hostID string, startTime time.Time, endTime time.Time) (*cloud.LogInfo, error)
 }

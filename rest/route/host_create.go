@@ -160,7 +160,7 @@ func makeContainerLogsRouteManager(sc data.Connector) gimlet.RouteHandler {
 func (h *containerLogsHandler) Factory() gimlet.RouteHandler { return &containerLogsHandler{sc: h.sc} }
 
 func (h *containerLogsHandler) Parse(ctx context.Context, r *http.Request) error {
-	id := gimlet.GetVars(r)["evergreen_id"]
+	id := gimlet.GetVars(r)["host_id"]
 	host, err := host.FindOneId(id)
 	if host == nil {
 		return gimlet.ErrorResponse{

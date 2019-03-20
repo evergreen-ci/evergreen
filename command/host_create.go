@@ -26,7 +26,7 @@ func (c *createHost) Name() string { return "host.create" }
 func (c *createHost) ParseParams(params map[string]interface{}) error {
 	c.CreateHost = &apimodels.CreateHost{}
 
-	if params["background"] == nil {
+	if _, ok := params["background"]; !ok {
 		params["background"] = true
 	}
 	decoder, err := mapstructure.NewDecoder(&mapstructure.DecoderConfig{
@@ -68,67 +68,71 @@ func (c *createHost) Execute(ctx context.Context, comm client.Communicator,
 	}
 	startTime := time.Now()
 	ids, err := comm.CreateHost(ctx, taskData, *c.CreateHost)
-	if err != nil || c.CreateHost.CloudProvider != apimodels.ProviderDocker || c.CreateHost.Background == false {
-		return err
+	if err != nil {
+		return errors.Wrap(err, "error creating host")
+	} else if c.CreateHost.CloudProvider != apimodels.ProviderDocker {
+		return nil // don't want to wait for logs
 	}
+
 	if len(ids) == 0 {
 		return errors.New("Programmer error: no intent host ID received")
 	}
 	if c.CreateHost.StderrFile == "" {
-		c.CreateHost.StderrFile = fmt.Sprintf("container-err-%s.log", ids[0])
+		c.CreateHost.StderrFile = fmt.Sprintf("%s.err.log", ids[0])
 	}
 	if c.CreateHost.StdoutFile == "" {
-		c.CreateHost.StdoutFile = fmt.Sprintf("container-out-%s.log", ids[0])
+		c.CreateHost.StdoutFile = fmt.Sprintf("%s.out.log", ids[0])
 	}
 
-	errChan := make(chan error)
+	if !c.CreateHost.Background {
+		return errors.Wrap(c.waitForLogs(ctx, comm, logger, startTime, ids[0]), "error waiting for logs")
+	}
 
-	timer := time.NewTimer(time.Duration(c.CreateHost.PollFrequency) * time.Second)
-	defer timer.Stop()
+	go func() {
+		if err = c.waitForLogs(ctx, comm, logger, startTime, ids[0]); err != nil {
+			logger.Task().Errorf("error waiting for logs in background: %v", err)
+		}
+	}()
 
-	timeoutTimer := time.NewTimer(time.Duration(c.CreateHost.BackgroundTimeoutSecs) * time.Second)
+	return nil
+}
+
+func (c *createHost) waitForLogs(ctx context.Context, comm client.Communicator, logger client.LoggerProducer,
+	startTime time.Time, hostID string) error {
+	pollTicker := time.NewTimer(time.Duration(c.CreateHost.PollFrequency) * time.Second)
+	defer pollTicker.Stop()
+
+	timeoutTimer := time.NewTimer(time.Duration(c.CreateHost.ContainerWaitTimeoutSecs) * time.Second)
 	defer timeoutTimer.Stop()
 
 	// get logs in batches until container exits or we timeout
-waitForLogs:
 	for {
 		select {
 		case <-ctx.Done():
-			errChan <- errors.New("context finished waiting for host to exit")
-			break waitForLogs
-		case <-timer.C:
+			return errors.New("context finished waiting for host to exit")
+		case <-pollTicker.C:
 			curTime := time.Now()
-			logInfo, err := comm.GetDockerLogs(ctx, ids[0], startTime, curTime)
+			logInfo, err := comm.GetDockerLogs(ctx, hostID, startTime, curTime)
+			if err != nil {
+				return errors.Wrap(err, "error retrieving docker logs")
+			}
 			startTime = curTime
-			if err != nil || logInfo == nil {
-				errChan <- err
-				break waitForLogs
-			}
-			if logInfo.HasStarted != false {
-				err = ioutil.WriteFile(c.CreateHost.StdoutFile, []byte(logInfo.OutStr), 0644)
-				err2 := ioutil.WriteFile(c.CreateHost.StderrFile, []byte(logInfo.ErrStr), 0644)
-				if err != nil || err2 != nil {
-					errChan <- err
-					errChan <- err2
-					break waitForLogs
+			if logInfo.HasStarted {
+				if err = ioutil.WriteFile(c.CreateHost.StdoutFile, []byte(logInfo.OutStr), 0644); err != nil {
+					return errors.Wrap(err, "error writing stdout to file")
 				}
-				if !logInfo.IsRunning {
-					break waitForLogs
+				if err = ioutil.WriteFile(c.CreateHost.StderrFile, []byte(logInfo.ErrStr), 0644); err != nil {
+					return errors.Wrap(err, "error writing stderr to file")
+				}
+				if !logInfo.IsRunning { // container exited
+					logger.Task().Infof("Logs retrieved for container _id %s in %d seconds",
+						hostID, int(time.Since(startTime).Seconds()))
+					return nil
 				}
 			}
-
-			timer.Reset(time.Duration(c.CreateHost.PollFrequency) * time.Second)
 		case <-timeoutTimer.C:
-			errChan <- errors.New("reached timeout waiting for host to exit")
-			break waitForLogs
+			return errors.New("reached timeout waiting for host to exit")
 		}
-	}
-
-	select {
-	case err := <-errChan:
-		return errors.Wrap(err, "problem waiting for logs in background")
-	default:
-		return nil
 	}
 }
 

@@ -102,6 +102,7 @@ func (c *dockerClientMock) GetContainer(context.Context, *host.Host, string) (*t
 func (c *dockerClientMock) GetDockerLogs(_ context.Context, containerID string, _ *host.Host, _ types.ContainerLogsOptions) (*LogInfo, error) {
 	res := LogInfo{}
 	if containerID == "" { // container not started yet
+		res.HasStarted = false
 		return &res, nil
 	}
 	logs := LogInfo{OutStr: "this is a log message", IsRunning: false, HasStarted: true}
