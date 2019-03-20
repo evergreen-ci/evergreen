@@ -13,14 +13,14 @@ func TestGitCmd(t *testing.T) {
 
 		Convey("when calling out to binary with properly formatted args should"+
 			"run binary", func() {
-			out, err := gitCmd("--version", "")
+			out, err := gitCmd("--version", "", "")
 			So(err, ShouldBeNil)
 
 			So(out, ShouldStartWith, "git version")
 		})
 		Convey("when calling out to binary with poorly formatted args should"+
 			"run binary and return error", func() {
-			_, err := gitCmd("bad", "args")
+			_, err := gitCmd("bad", "args", "")
 			So(err, ShouldNotBeNil)
 			So(err.Error(), ShouldEndWith, "failed with err exit status 1")
 		})
