@@ -209,7 +209,7 @@ func addDbSettingsFlags(flags ...cli.Flag) []cli.Flag {
 
 func addCommittedOnlyFlag(flags ...cli.Flag) []cli.Flag {
 	return append(flags, cli.BoolFlag{
-		Name:  joinFlagNames(committedFlagName, "c"),
+		Name:  committedFlagName,
 		Usage: "diff with HEAD, ignoring working tree changes",
 	})
 }
