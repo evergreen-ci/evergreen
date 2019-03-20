@@ -26,7 +26,7 @@ func TestCurlCommand(t *testing.T) {
 	assert := assert.New(t)
 	h := &Host{Distro: distro.Distro{Arch: "windows_amd64"}}
 	url := "www.example.com"
-	expected := "cd ~ && if [ -f evergreen.exe ]; then evergreen.exe get-update --install --force; else curl -LO 'www.example.com/clients/windows_amd64/evergreen.exe' && chmod +x evergreen.exe; fi"
+	expected := "cd ~ && curl -LO 'www.example.com/clients/windows_amd64/evergreen.exe' && chmod +x evergreen.exe"
 	assert.Equal(expected, h.CurlCommand(url))
 
 	h = &Host{Distro: distro.Distro{Arch: "linux_amd64"}}
