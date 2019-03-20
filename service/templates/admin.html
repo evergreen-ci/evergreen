@@ -68,6 +68,7 @@ Admin Settings
 						<li class="link" ng-click="scrollTo('jira')">Jira</li>
 						<li class="link" ng-click="scrollTo('slack')">Slack</li>
 						<li class="link" ng-click="scrollTo('splunk')">Splunk</li>
+						<li class="link" ng-click="scrollTo('google_analytics')">Google Analytics</li>
 						<div>Background Processing</div>
 						<li class="link" ng-click="scrollTo('amboy')">Amboy</li>
 						<li class="link" ng-click="scrollTo('logger_config')">Logger Config</li>
@@ -819,6 +820,25 @@ Admin Settings
 									<md-input-container class="control" style="width:45%;">
 										<label>Channel</label>
 										<input type="text" ng-model="Settings.splunk.channel">
+									</md-input-container>
+								</md-card-content>
+							</md-card>
+            </section>
+
+            <section layout="row" flex>
+							<md-card flex=50 id="google_analytics" style="height:280px">
+								<md-card-title>
+									<md-card-title-text>
+										<span>Google Analytics</span>
+									</md-card-title-text>
+									<md-button ng-click="clearSection('splunk')">
+										<i class="fa fa-trash"></i>
+									</md-button>
+								</md-card-title>
+								<md-card-content>
+									<md-input-container class="control" style="width:45%;">
+										<label>Tracking ID</label>
+										<input type="text" ng-model="Settings.google_analytics">
 									</md-input-container>
 								</md-card-content>
 							</md-card>

@@ -3,6 +3,17 @@
 <html lang="en" ng-app="MCI">
 
     <head>
+        {{if ne .GoogleAnalytics ""}}
+        <!-- Global site tag (gtag.js) - Google Analytics -->
+        <script async src="https://www.googletagmanager.com/gtag/js?id={{.GoogleAnalytics}}"></script>
+        <script>
+         window.dataLayer = window.dataLayer || [];
+         function gtag(){dataLayer.push(arguments);}
+         gtag('js', new Date());
+
+         gtag('config', '{{.GoogleAnalytics}}');
+        </script>
+        {{end}}
         <meta charset="utf-8">
         <title>{{ template "title" .}}</title>
 
