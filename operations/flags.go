@@ -49,6 +49,13 @@ func addPathFlag(flags ...cli.Flag) []cli.Flag {
 	})
 }
 
+func addOutputPath(flags ...cli.Flag) []cli.Flag {
+	return append(flags, cli.StringFlag{
+		Name:  joinFlagNames(pathFlagName, "filename", "file", "f"),
+		Usage: "path to the output file",
+	})
+}
+
 func serviceConfigFlags(flags ...cli.Flag) []cli.Flag {
 	return append(flags,
 		cli.StringFlag{
