@@ -13,7 +13,6 @@ import (
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/mock"
 	"github.com/evergreen-ci/evergreen/model"
-	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/user"
@@ -65,7 +64,7 @@ func (s *PatchIntentUnitsSuite) SetupTest() {
 
 	s.NotNil(s.env.Settings())
 
-	s.NoError(db.ClearCollections(evergreen.ConfigCollection, model.ProjectVarsCollection, model.VersionCollection, user.Collection, model.ProjectRefCollection, patch.Collection, patch.IntentCollection, event.SubscriptionsCollection, distro.Collection))
+	s.NoError(db.ClearCollections(evergreen.ConfigCollection, model.ProjectVarsCollection, model.VersionCollection, user.Collection, model.ProjectRefCollection, patch.Collection, patch.IntentCollection, event.SubscriptionsCollection))
 	s.NoError(db.ClearGridCollections(patch.GridFSPrefix))
 
 	s.NoError((&model.ProjectRef{
@@ -106,23 +105,6 @@ func (s *PatchIntentUnitsSuite) SetupTest() {
 		Variant:   "fake",
 		Task:      "fake",
 	}).Upsert())
-
-	s.NoError((&distro.Distro{Id: "ubuntu1604-test"}).Insert())
-	s.NoError((&distro.Distro{Id: "ubuntu1604-build"}).Insert())
-	s.NoError((&distro.Distro{Id: "archlinux-test"}).Insert())
-	s.NoError((&distro.Distro{Id: "archlinux-build"}).Insert())
-	s.NoError((&distro.Distro{Id: "windows-64-vs2015-small"}).Insert())
-	s.NoError((&distro.Distro{Id: "rhel71-power8-test"}).Insert())
-	s.NoError((&distro.Distro{Id: "rhel72-zseries-test"}).Insert())
-	s.NoError((&distro.Distro{Id: "ubuntu1604-arm64-small"}).Insert())
-	s.NoError((&distro.Distro{Id: "rhel62-test"}).Insert())
-	s.NoError((&distro.Distro{Id: "rhel70-small"}).Insert())
-	s.NoError((&distro.Distro{Id: "rhel62-small"}).Insert())
-	s.NoError((&distro.Distro{Id: "linux-64-amzn-test"}).Insert())
-	s.NoError((&distro.Distro{Id: "debian81-test"}).Insert())
-	s.NoError((&distro.Distro{Id: "debian71-test"}).Insert())
-	s.NoError((&distro.Distro{Id: "ubuntu1404-test"}).Insert())
-	s.NoError((&distro.Distro{Id: "macos-1012"}).Insert())
 
 	s.repo = "evergreen-ci/evergreen"
 	s.headRepo = "tychoish/evergreen"

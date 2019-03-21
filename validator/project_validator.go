@@ -144,7 +144,7 @@ func CheckProjectSemantics(project *model.Project) ValidationErrors {
 }
 
 // verify that the project configuration syntax is valid
-func CheckProjectSyntax(project *model.Project) ValidationErrors {
+func CheckProjectSyntax(project *model.Project) (ValidationErrors, error) {
 	validationErrs := ValidationErrors{}
 	for _, projectSyntaxValidator := range projectSyntaxValidators {
 		validationErrs = append(validationErrs,
@@ -154,15 +154,21 @@ func CheckProjectSyntax(project *model.Project) ValidationErrors {
 	// get distroIds for ensureReferentialIntegrity validation
 	distroIds, err := getDistroIds()
 	if err != nil {
-		validationErrs = append(validationErrs, ValidationError{Message: "can't get distros from database"})
+		return nil, err
 	}
 	validationErrs = append(validationErrs, ensureReferentialIntegrity(project, distroIds)...)
-	return validationErrs
+	return validationErrs, nil
 }
 
 // verify that the project configuration semantics and configuration syntax is valid
 func CheckProjectConfigurationIsValid(project *model.Project) error {
-	syntaxErrs := CheckProjectSyntax(project)
+	syntaxErrs, err := CheckProjectSyntax(project)
+	if err != nil {
+		return gimlet.ErrorResponse{
+			StatusCode: http.StatusBadRequest,
+			Message:    errors.Wrap(err, "error checking project syntax").Error(),
+		}
+	}
 	if len(syntaxErrs) > 0 {
 		syntaxErrsAtErrorLevel := ValidationErrors{}
 		for _, err := range syntaxErrs {

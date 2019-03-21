@@ -14,10 +14,11 @@ import (
 	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/evergreen-ci/evergreen/units"
 	"github.com/evergreen-ci/evergreen/util"
+	"github.com/evergreen-ci/evergreen/validator"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/pkg/errors"
 	"gopkg.in/mgo.v2/bson"
-	yaml "gopkg.in/yaml.v2"
+	"gopkg.in/yaml.v2"
 )
 
 const formMimeType = "application/x-www-form-urlencoded"
@@ -294,21 +295,19 @@ func (as *APIServer) existingPatchRequest(w http.ResponseWriter, r *http.Request
 			http.Error(w, "patch is already finalized", http.StatusBadRequest)
 			return
 		}
-
-		var project *model.Project
-		project, err = model.GetPatchedProject(ctx, p, githubOauthToken)
+		var patchedProject *model.Project
+		patchedProject, err = validator.GetPatchedProject(ctx, p, githubOauthToken)
 		if err != nil {
 			as.LoggedError(w, r, http.StatusInternalServerError, err)
 			return
 		}
-
-		var yamlBytes []byte
-		yamlBytes, err = yaml.Marshal(project)
+		var projectYamlBytes []byte
+		projectYamlBytes, err = yaml.Marshal(patchedProject)
 		if err != nil {
-			as.LoggedError(w, r, http.StatusInternalServerError, err)
+			as.LoggedError(w, r, http.StatusInternalServerError, errors.Wrap(err, "error marshaling patched config"))
 			return
 		}
-		p.PatchedConfig = string(yamlBytes)
+		p.PatchedConfig = string(projectYamlBytes)
 		_, err = model.FinalizePatch(ctx, p, evergreen.PatchVersionRequester, githubOauthToken)
 		if err != nil {
 			as.LoggedError(w, r, http.StatusInternalServerError, err)

@@ -2,7 +2,6 @@ package model
 
 import (
 	"context"
-	"encoding/base64"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -105,78 +104,11 @@ func IncludePatchDependencies(project *Project, tvpairs []TVPair) []TVPair {
 	return di.Include(tvpairs)
 }
 
-// GetPatchedProject creates and validates a project created by fetching latest commit information from GitHub
-// and applying the patch to the latest remote configuration. The error returned can be a validation error.
-func GetPatchedProject(ctx context.Context, p *patch.Patch, githubOauthToken string) (*Project, error) {
-	if p.Version != "" {
-		return nil, errors.Errorf("Patch %v already finalized", p.Version)
-	}
-
-	projectRef, err := FindOneProjectRef(p.Project)
-	if err != nil {
-		return nil, errors.WithStack(err)
-	}
-
-	project := &Project{}
-	// if the patched config exists, use that as the project file bytes.
-	if p.PatchedConfig != "" {
-		if err = LoadProjectInto([]byte(p.PatchedConfig), projectRef.Identifier, project); err != nil {
-			return nil, errors.WithStack(err)
-		}
-		return project, nil
-	}
-
-	var cancel context.CancelFunc
-	ctx, cancel = context.WithTimeout(ctx, 10*time.Second)
-	defer cancel()
-
-	// try to get the remote project file data at the requested revision
-	var projectFileBytes []byte
-	hash := p.Githash
-	if p.IsGithubPRPatch() {
-		hash = p.GithubPatchData.HeadHash
-	}
-	if p.IsPRMergePatch() {
-		hash = p.GithubPatchData.MergeCommitSHA
-	}
-
-	githubFile, err := thirdparty.GetGithubFile(ctx, githubOauthToken, projectRef.Owner,
-		projectRef.Repo, projectRef.RemotePath, hash)
-	if err != nil {
-		// if the project file doesn't exist, but our patch includes a project file,
-		// we try to apply the diff and proceed.
-		if !(p.ConfigChanged(projectRef.RemotePath) && thirdparty.IsFileNotFound(err)) {
-			// return an error if the github error is network/auth-related or we aren't patching the config
-			return nil, errors.Wrapf(err, "Could not get github file at '%s/%s'@%s: %s", projectRef.Owner,
-				projectRef.Repo, projectRef.RemotePath, hash)
-		}
-	} else {
-		// we successfully got the project file in base64, so we decode it
-		projectFileBytes, err = base64.StdEncoding.DecodeString(*githubFile.Content)
-		if err != nil {
-			return nil, errors.Wrapf(err, "Could not decode github file at '%s/%s'@%s: %s", projectRef.Owner,
-				projectRef.Repo, projectRef.RemotePath, hash)
-		}
-	}
-
-	// apply remote configuration patch if needed
-	if !(p.IsGithubPRPatch() || p.IsPRMergePatch()) && p.ConfigChanged(projectRef.RemotePath) {
-		projectFileBytes, err = MakePatchedConfig(ctx, p, projectRef.RemotePath, string(projectFileBytes))
-		if err != nil {
-			return nil, errors.Wrapf(err, "Could not patch remote configuration file")
-		}
-	}
-
-	if err := LoadProjectInto(projectFileBytes, projectRef.Identifier, project); err != nil {
-		return nil, errors.WithStack(err)
-	}
-
-	return project, nil
-}
-
 // MakePatchedConfig takes in the path to a remote configuration a stringified version
-// of the current project and returns a byte slice of the project string with the patch applied
-func MakePatchedConfig(ctx context.Context, p *patch.Patch, remoteConfigPath, projectConfig string) ([]byte, error) {
+// of the current project and returns an unmarshalled version of the project
+// with the patch applied
+func MakePatchedConfig(ctx context.Context, p *patch.Patch, remoteConfigPath, projectConfig string) (
+	*Project, error) {
 	for _, patchPart := range p.Patches {
 		// we only need to patch the main project and not any other modules
 		if patchPart.ModuleName != "" {
@@ -279,7 +211,11 @@ func MakePatchedConfig(ctx context.Context, p *patch.Patch, remoteConfigPath, pr
 		if err != nil {
 			return nil, errors.Wrap(err, "could not read patched config file")
 		}
-		return data, nil
+		project := &Project{}
+		if err = LoadProjectInto(data, p.Project, project); err != nil {
+			return nil, errors.WithStack(err)
+		}
+		return project, nil
 	}
 	return nil, errors.New("no patch on project")
 }

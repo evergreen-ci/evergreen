@@ -99,15 +99,12 @@ func NewGithubStatusUpdateJobForPushToCommitQueue(owner, repo, ref string, prNum
 
 // NewGithubStatusUpdateJobForBadConfig marks a ref as failed because the
 // evergreen configuration is bad
-func NewGithubStatusUpdateJobForBadConfig(projectRef *model.ProjectRef, hash, senderID string) amboy.Job {
+func NewGithubStatusUpdateJobForBadConfig(intentID string) amboy.Job {
 	job := makeGithubStatusUpdateJob()
-	job.FetchID = projectRef.Identifier
-	job.Owner = projectRef.Owner
-	job.Repo = projectRef.Repo
-	job.Ref = hash
+	job.FetchID = intentID
 	job.UpdateType = githubUpdateTypeBadConfig
 
-	job.SetID(fmt.Sprintf("%s:%s-%s-%s", githubStatusUpdateJobName, job.UpdateType, senderID, time.Now().String()))
+	job.SetID(fmt.Sprintf("%s:%s-%s-%s", githubStatusUpdateJobName, job.UpdateType, intentID, time.Now().String()))
 
 	return job
 }
@@ -154,17 +151,30 @@ func (j *githubStatusUpdateJob) fetch() (*message.GithubStatus, error) {
 	status := message.GithubStatus{}
 
 	if j.UpdateType == githubUpdateTypeBadConfig {
-		status.URL = fmt.Sprintf("%s/waterfall/%s", j.urlBase, j.FetchID)
+		var intent patch.Intent
+		intent, err = patch.FindIntent(j.FetchID, patch.GithubIntentType)
+		if err != nil {
+			return nil, errors.Wrap(err, "can't fetch patch intent")
+		}
+		patchDoc = intent.NewPatch()
+		if patchDoc == nil {
+			return nil, errors.New("patch is missing")
+		}
+
+		var projectRef *model.ProjectRef
+		projectRef, err = model.FindOneProjectRefByRepoAndBranchWithPRTesting(patchDoc.GithubPatchData.BaseOwner,
+			patchDoc.GithubPatchData.BaseRepo, patchDoc.GithubPatchData.BaseBranch)
+		if err != nil {
+			return nil, errors.Wrap(err, "can't fetch project ref")
+		}
+		if projectRef == nil {
+			return nil, errors.New("can't find project ref")
+		}
+
+		status.URL = fmt.Sprintf("%s/waterfall/%s", j.urlBase, projectRef.Identifier)
 		status.Context = "evergreen"
 		status.State = message.GithubStateFailure
 		status.Description = "project config was invalid"
-
-		status.Owner = j.Owner
-		status.Repo = j.Repo
-		status.Ref = j.Ref
-
-		// Since there is no patch document, we return early.
-		return &status, nil
 
 	} else if j.UpdateType == githubUpdateTypeNewPatch {
 		status.URL = fmt.Sprintf("%s/version/%s", j.urlBase, j.FetchID)

@@ -1368,7 +1368,8 @@ func TestCheckProjectSyntax(t *testing.T) {
 	project, err := model.FindProject("", projectRef)
 	assert.NoError(err)
 
-	verrs := CheckProjectSyntax(project)
+	verrs, err := CheckProjectSyntax(project)
+	assert.NoError(err)
 	assert.Equal(ValidationErrors{}, verrs)
 
 	assert.NoError(db.Clear(distro.Collection))
@@ -1760,10 +1761,12 @@ buildvariants:
 	assert.Len(tg.Tasks, 2)
 	assert.Equal("not_in_a_task_group", proj.Tasks[0].Name)
 	assert.Equal("task_in_a_task_group_1", proj.Tasks[0].DependsOn[0].Name)
-	syntaxErrs := CheckProjectSyntax(&proj)
+	syntaxErrs, err := CheckProjectSyntax(&proj)
 	assert.Len(syntaxErrs, 0)
+	assert.NoError(err)
 	semanticErrs := CheckProjectSemantics(&proj)
 	assert.Len(semanticErrs, 0)
+	assert.NoError(err)
 }
 
 func TestTaskGroupWithDependencyOutsideGroupWarning(t *testing.T) {
@@ -1802,11 +1805,13 @@ buildvariants:
 	assert.Len(tg.Tasks, 1)
 	assert.Equal("not_in_a_task_group", proj.Tasks[0].Name)
 	assert.Equal("not_in_a_task_group", proj.Tasks[1].DependsOn[0].Name)
-	syntaxErrs := CheckProjectSyntax(&proj)
+	syntaxErrs, err := CheckProjectSyntax(&proj)
 	assert.Len(syntaxErrs, 1)
 	assert.Equal("dependency error for 'task_in_a_task_group' task: dependency bv/not_in_a_task_group is not present in the project config", syntaxErrs[0].Error())
+	assert.NoError(err)
 	semanticErrs := CheckProjectSemantics(&proj)
 	assert.Len(semanticErrs, 0)
+	assert.NoError(err)
 }
 
 func TestDisplayTaskExecutionTasksNameValidation(t *testing.T) {
@@ -1846,12 +1851,14 @@ buildvariants:
 	proj.BuildVariants[0].DisplayTasks[0].ExecutionTasks = append(proj.BuildVariants[0].DisplayTasks[0].ExecutionTasks,
 		"display_three")
 
-	syntaxErrs := CheckProjectSyntax(&proj)
+	syntaxErrs, err := CheckProjectSyntax(&proj)
 	assert.Len(syntaxErrs, 1)
+	assert.NoError(err)
 	assert.Equal(syntaxErrs[0].Level, Error)
 	assert.Equal("execution task 'display_three' has prefix 'display_' which is invalid",
 		syntaxErrs[0].Message)
 	semanticErrs := CheckProjectSemantics(&proj)
+	assert.NoError(err)
 	assert.Len(semanticErrs, 0)
 }
 
@@ -2117,7 +2124,8 @@ buildvariants:
 	err := model.LoadProjectInto([]byte(exampleYml), "example_project", &proj)
 	assert.NotNil(proj)
 	assert.NoError(err)
-	errs := CheckProjectSyntax(&proj)
+	errs, err := CheckProjectSyntax(&proj)
+	assert.NoError(err)
 	assert.Len(errs, 1, "one warning was found")
 	assert.NoError(CheckProjectConfigurationIsValid(&proj), "no errors are reported because they are warnings")
 }

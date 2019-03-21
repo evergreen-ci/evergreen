@@ -590,7 +590,10 @@ func CreateVersionFromConfig(ref *model.ProjectRef, config *model.Project, metad
 	v.Ignored = ignore
 
 	// validate the project
-	verrs := validator.CheckProjectSyntax(config)
+	verrs, err := validator.CheckProjectSyntax(config)
+	if err != nil {
+		return nil, errors.Wrap(err, "error validating project")
+	}
 	if len(verrs) > 0 || versionErrs != nil {
 		// We have syntax errors in the project.
 		// Format them, as we need to store + display them to the user
