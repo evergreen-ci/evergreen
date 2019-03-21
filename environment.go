@@ -22,6 +22,7 @@ import (
 	"github.com/mongodb/grip/level"
 	"github.com/mongodb/grip/message"
 	"github.com/mongodb/grip/send"
+	"github.com/mongodb/jasper"
 	"github.com/pkg/errors"
 	mgo "gopkg.in/mgo.v2"
 )
@@ -83,11 +84,15 @@ type Environment interface {
 	RemoteQueue() amboy.Queue
 	GenerateTasksQueue() amboy.Queue
 
+	// Jasper is a process manager for running external
+	// commands. Every process has a manager service.
+	JasperManger() jasper.Manager
+
 	// ClientConfig provides access to a list of the latest evergreen
 	// clients, that this server can serve to users
 	ClientConfig() *ClientConfig
 
-	// SaveConfig persists the configuration settings to the db
+	// SaveConfig persists the configuration settings.
 	SaveConfig() error
 
 	// GetSender provides a grip Sender configured with the environment's
@@ -121,6 +126,7 @@ type envState struct {
 	localQueue         amboy.Queue
 	generateTasksQueue amboy.Queue
 	notificationsQueue amboy.Queue
+	jasperManager      jasper.Manager
 	settings           *Settings
 	session            *mgo.Session
 	mu                 sync.RWMutex
@@ -156,6 +162,11 @@ func (e *envState) Configure(ctx context.Context, confPath string, db *DBSetting
 	if e.session == nil {
 		catcher.Add(e.initDB(e.settings.Database))
 	}
+
+	jpm, err := jasper.NewLocalManager(true)
+	catcher.Add(err)
+	e.jasperManager = jpm
+
 	catcher.Add(e.initSenders(ctx))
 	catcher.Add(e.createQueues(ctx))
 	catcher.Extend(e.initQueues(ctx))

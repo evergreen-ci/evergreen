@@ -9,10 +9,10 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
-	"github.com/evergreen-ci/evergreen/subprocess"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
+	"github.com/mongodb/jasper"
 	"github.com/pkg/errors"
 )
 
@@ -34,10 +34,10 @@ func (agt *Agent) startStatusServer(ctx context.Context, port int) error {
 	app.AddMiddleware(gimlet.MakeRecoveryLogger())
 	app.AddRoute("/status").Handler(agt.statusHandler()).Get()
 	app.AddRoute("/terminate").Handler(terminateAgentHandler).Delete()
-	app.AddRoute("/oom/clear").Handler(subprocess.ClearOOMHandler()).Delete()
-	app.AddRoute("/oom/check").Handler(subprocess.CheckOOMHandler()).Get()
+	app.AddRoute("/oom/clear").Handler(http.RedirectHandler("/jasper/v1/list/oom", http.StatusMovedPermanently)).Delete()
+	app.AddRoute("/oom/check").Handler(http.RedirectHandler("/jasper/v1/list/oom", http.StatusMovedPermanently)).Get()
 
-	handler, err := gimlet.MergeApplications(app, gimlet.GetPProfApp())
+	handler, err := gimlet.MergeApplications(app, gimlet.GetPProfApp(), jasper.NewManagerService(agt.jasper).App(ctx))
 	if err != nil {
 		return errors.WithStack(err)
 	}
@@ -67,6 +67,11 @@ func (agt *Agent) startStatusServer(ctx context.Context, port int) error {
 	}()
 
 	return nil
+}
+
+func oomRedirect(rw http.ResponseWriter, r *http.Request) {
+	http.Redirect("/jasper/v1/list/oom")
+
 }
 
 // statusResponse is the structure of the response objects produced by
