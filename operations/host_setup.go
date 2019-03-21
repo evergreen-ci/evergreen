@@ -44,7 +44,7 @@ func hostSetup() cli.Command {
 func runSetupScript(ctx context.Context, wd string, setupAsSudo bool) error {
 	grip.Warning(os.MkdirAll(wd, 0777))
 
-	if _, err := os.Stat(evergreen.SetupScriptName); os.IsNotExist(err) {
+	if err := os.Rename(evergreen.TempSetupScriptName, evergreen.SetupScriptName); os.IsNotExist(err) {
 		return nil
 	}
 

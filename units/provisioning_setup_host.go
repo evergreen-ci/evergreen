@@ -9,7 +9,6 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
-	"strings"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
@@ -468,12 +467,6 @@ func (j *setupHostJob) provisionHost(ctx context.Context, h *host.Host, settings
 		grip.Infof("Running setup script for spawn host %s", h.Id)
 		// run the setup script with the agent
 		if logs, err := h.RunSSHCommand(ctx, h.SetupCommand(), sshOptions); err != nil {
-			if strings.Contains(logs, fmt.Sprintf("mv: cannot stat '%s': No such file or directory", evergreen.TempSetupScriptName)) ||
-				strings.Contains(logs, fmt.Sprintf("mv: rename %s to %s: No such file or directory", evergreen.TempSetupScriptName, evergreen.SetupScriptName)) {
-				// The setup command failed because another job is running the setup command and renamed the script.
-				return nil
-			}
-
 			grip.Error(message.WrapError(h.SetUnprovisioned(), message.Fields{
 				"operation": "setting host unprovisioned",
 				"host":      h.Id,
