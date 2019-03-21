@@ -253,7 +253,8 @@ func (j *agentDeployJob) prepRemoteHost(ctx context.Context, hostObj host.Host, 
 	}
 
 	if logs, err := hostObj.RunSSHCommand(ctx, hostObj.SetupCommand(), sshOptions); err != nil {
-		if strings.Contains(logs, "No such file or directory") {
+		if strings.Contains(logs, fmt.Sprintf("mv: cannot stat '%s': No such file or directory", evergreen.TempSetupScriptName)) ||
+			strings.Contains(logs, fmt.Sprintf("mv: rename %s to %s: No such file or directory", evergreen.TempSetupScriptName, evergreen.SetupScriptName)) {
 			// The setup command failed because another job is running the setup command and renamed the script.
 			return nil
 		}
