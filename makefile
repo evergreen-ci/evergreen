@@ -250,6 +250,10 @@ vendor-clean:
 	rm -rf vendor/github.com/mongodb/amboy/vendor/github.com/aws/
 	rm -rf vendor/github.com/mongodb/amboy/vendor/github.com/mongodb/mongo-go-driver/vendor/golang.org/x/net/
 	rm -rf vendor/github.com/mongodb/amboy/vendor/github.com/mongodb/mongo-go-driver/vendor/golang.org/x/text/
+	rm -rf vendor/github.com/mongodb/jasper/vender/github.com/mongodb/grip
+	rm -rf vendor/github.com/mongodb/jasper/vender/github.com/mongodb/amboy
+	rm -rf vendor/github.com/mongodb/jasper/vender/github.com/mholt/archiver
+	rm -rf vendor/github.com/mongodb/jasper/vender/github.com/evergreen-ci/gimlet
 	rm -rf vendor/github.com/docker/docker/vendor/golang.org/x/net/
 	rm -rf vendor/github.com/docker/docker/vendor/github.com/docker/go-connections/
 	rm -rf vendor/github.com/docker/docker/vendor/github.com/Microsoft/go-winio/

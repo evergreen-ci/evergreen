@@ -1,0 +1,18 @@
+hash: 7c97c5ab258e7c40c81cad1debb2d8abe9dbdc11a06b90d1475732a4b7ed8194
+updated: 2016-10-20T16:48:42.872025812-04:00
+imports:
+- name: github.com/pkg/errors
+  version: ff09b135c25aae272398c51a07235b90a75aa4f0
+- name: github.com/satori/go.uuid
+  version: b061729afc07e77a8aa4fad0a2fd840958f1942a
+- name: github.com/stretchr/testify
+  version: 890a5c3458b43e6104ff5da8dfa139d013d77544
+- name: github.com/mholt/archiver
+  version: 4a8a092653655d29c8e091cf2ecf91cbe697f0de
+
+- name: github.com/mongodb/grip
+  version: 7ec499c3201dc7726da08f3f51e90386ec26a3d7
+- name: github.com/mongodb/amboy
+  version: 49a93edc4abc6bd35c01d50f1d263ab1ebe66857
+
+devImports: []

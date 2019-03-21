@@ -1,0 +1,134 @@
+command_type: test
+stepback: false
+ignore:
+    - "*.md" # don't schedule tests if a commit only changes markdown files
+    - "*.rst" # don't schedule tests if a commit only changes rst files
+    - ".github/*" # github CODEOWNERS configuration
+
+#######################################
+#         YAML Templates              #
+#######################################
+variables:
+  - &run-build
+    # runs a build operations. The task name in evergreen should
+    # correspond to a make target for the build operation.
+    name: test
+    commands:
+      - command: git.get_project
+        type: system
+        params:
+          directory: gopath/src/github.com/mongodb/jasper
+      - func: run-make
+        vars: { target: "${task_name}" }
+
+#######################################
+#              Functions              #
+#######################################
+functions:
+  run-make:
+    command: shell.exec
+    type: test
+    params:
+       script: |
+         set -o errexit
+         set -o verbose
+
+         # Configure a local go path for this build.
+         export GOPATH=`pwd`/gopath
+
+         # on windows we need to turn the slashes the other way
+         if [ "Windows_NT" == "$OS" ]; then
+            export GOPATH=$(cygpath -m $GOPATH)
+         fi
+
+         cd gopath/src/github.com/mongodb/jasper
+
+         # Run make, called with proper environment variables set,
+         # running the target.
+         ${build_env|} make -k ${target}
+
+#######################################
+#                Tasks                #
+#######################################
+post:
+  - command: gotest.parse_files
+    type: setup
+    params:
+      files:
+        - "gopath/src/github.com/mongodb/jasper/build/output.*"
+        - "gopath/src/github.com/mongodb/jasper/build/test.*.out"
+        - "gopath/src/github.com/mongodb/jasper/build/race.*.out"
+
+tasks:
+  - <<: *run-build
+    tags: ["dist"]
+    name: dist
+    depends_on:
+      - name: "test"
+
+  - <<: *run-build
+    tags: ["test"]
+    name: test
+
+  - <<: *run-build
+    tags: ["legacy-check"]
+    name: compile-base
+
+  - <<: *run-build
+    tags: ["race"]
+    name: race
+
+  - <<: *run-build
+    tags: ["bench"]
+    name: benchmark
+
+#######################################
+#           Buildvariants             #
+#######################################
+buildvariants:
+  - name: race-detector
+    display_name: Race Detector (Arch Linux)
+    expansions:
+      build_env: "DISABLE_COVERAGE=true"
+    run_on:
+      - archlinux-test
+    tasks: 
+      - name: ".race"
+
+  - name: ubuntu1604
+    display_name: Ubuntu 16.04
+    expansions:
+      build_env: "GOROOT=/opt/golang/go1.11/ PATH=/opt/golang/go1.11/bin:$PATH"
+    run_on:
+      - ubuntu1604-test
+    tasks: 
+      - name: ".test"
+      - name: ".bench"
+
+  - name: ubuntu1604-go1.8
+    display_name: Ubuntu 16.04 (go1.8)
+    expansions:
+      build_env: "GOROOT=/opt/golang/go1.8/ PATH=/opt/golang/go1.8/bin:$PATH"
+    run_on:
+      - ubuntu1604-test
+    tasks: 
+      - name: ".legacy-check"
+
+
+  - name: macos
+    display_name: macOS 10.12
+    expansions:
+      build_env: "GOROOT=/opt/golang/go1.11/ PATH=/opt/golang/go1.11/bin:$PATH DISABLE_COVERAGE=true"
+    run_on:
+      - macos-1012
+    tasks:
+      - name: ".test"
+
+  - name: windows
+    display_name: Windows
+    run_on:
+      - windows-64-vs2015-small
+    expansions:
+      build_env: "GOROOT=c:/golang/go1.11 PATH=/cygdrive/c/golang/go1.11/bin:$PATH DISABLE_COVERAGE=true"
+    tasks:
+      - name: ".test"
