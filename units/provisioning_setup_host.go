@@ -229,7 +229,7 @@ func (j *setupHostJob) runHostSetup(ctx context.Context, targetHost *host.Host, 
 	}
 
 	if targetHost.Distro.Setup != "" {
-		err = j.copyScript(ctx, settings, targetHost, evergreen.SetupScriptName, targetHost.Distro.Setup)
+		err = j.copyScript(ctx, settings, targetHost, evergreen.SetupScriptName, evergreen.TempSetupScriptName, targetHost.Distro.Setup)
 		if err != nil {
 			return errors.Wrapf(err, "error copying setup script %v to host %v",
 				evergreen.SetupScriptName, targetHost.Id)
@@ -237,7 +237,7 @@ func (j *setupHostJob) runHostSetup(ctx context.Context, targetHost *host.Host, 
 	}
 
 	if targetHost.Distro.Teardown != "" {
-		err = j.copyScript(ctx, settings, targetHost, evergreen.TeardownScriptName, targetHost.Distro.Teardown)
+		err = j.copyScript(ctx, settings, targetHost, evergreen.TeardownScriptName, evergreen.TeardownScriptName, targetHost.Distro.Teardown)
 		if err != nil {
 			return errors.Wrapf(err, "error copying teardown script %v to host %v",
 				evergreen.TeardownScriptName, targetHost.Id)
@@ -250,7 +250,7 @@ func (j *setupHostJob) runHostSetup(ctx context.Context, targetHost *host.Host, 
 // copyScript writes a given script as file "name" to the target host. This works
 // by creating a local copy of the script on the runner's machine, scping it over
 // then removing the local copy.
-func (j *setupHostJob) copyScript(ctx context.Context, settings *evergreen.Settings, target *host.Host, name, script string) error {
+func (j *setupHostJob) copyScript(ctx context.Context, settings *evergreen.Settings, target *host.Host, name, remoteName, script string) error {
 	// parse the hostname into the user, host and port
 	startAt := time.Now()
 	hostInfo, err := util.ParseSSHInfo(target.Host)
@@ -272,12 +272,13 @@ func (j *setupHostJob) copyScript(ctx context.Context, settings *evergreen.Setti
 	}
 	defer func() {
 		errCtx := message.Fields{
-			"job":       j.ID(),
-			"operation": "cleaning up after script copy",
-			"file":      file.Name(),
-			"distro":    target.Distro.Id,
-			"host":      target.Host,
-			"name":      name,
+			"job":         j.ID(),
+			"operation":   "cleaning up after script copy",
+			"file":        file.Name(),
+			"distro":      target.Distro.Id,
+			"host":        target.Host,
+			"name":        name,
+			"remote_name": remoteName,
 		}
 		grip.Error(message.WrapError(file.Close(), errCtx))
 		grip.Error(message.WrapError(os.Remove(file.Name()), errCtx))
@@ -288,6 +289,7 @@ func (j *setupHostJob) copyScript(ctx context.Context, settings *evergreen.Setti
 			"distro":        target.Distro.Id,
 			"host":          target.Host,
 			"name":          name,
+			"remote_name":   remoteName,
 			"duration_secs": time.Since(startAt).Seconds(),
 		})
 	}()
@@ -314,7 +316,7 @@ func (j *setupHostJob) copyScript(ctx context.Context, settings *evergreen.Setti
 	output := subprocess.OutputOptions{Output: scpCmdOut, SendErrorToOutput: true}
 	scpCmd := subprocess.NewSCPCommand(
 		file.Name(),
-		filepath.Join("~", name),
+		filepath.Join("~", remoteName),
 		hostInfo.Hostname,
 		user,
 		append([]string{"-vvv", "-P", hostInfo.Port}, sshOptions...))

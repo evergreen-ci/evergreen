@@ -44,22 +44,22 @@ func hostSetup() cli.Command {
 func runSetupScript(ctx context.Context, wd string, setupAsSudo bool) error {
 	grip.Warning(os.MkdirAll(wd, 0777))
 
-	if _, err := os.Stat(evergreen.HostSetupScriptName); os.IsNotExist(err) {
+	if _, err := os.Stat(evergreen.SetupScriptName); os.IsNotExist(err) {
 		return nil
 	}
 
-	chmod := getChmodCommandWithSudo(ctx, evergreen.HostSetupScriptName, setupAsSudo)
+	chmod := getChmodCommandWithSudo(ctx, evergreen.SetupScriptName, setupAsSudo)
 	out, err := chmod.CombinedOutput()
 	if err != nil {
 		return errors.Wrap(err, string(out))
 	}
 
-	cmd := getShCommandWithSudo(ctx, evergreen.HostSetupScriptName, setupAsSudo)
+	cmd := getShCommandWithSudo(ctx, evergreen.SetupScriptName, setupAsSudo)
 	out, err = cmd.CombinedOutput()
 
 	catcher := grip.NewSimpleCatcher()
 	catcher.Add(err)
-	catcher.Add(os.Remove(evergreen.HostSetupScriptName))
+	catcher.Add(os.Remove(evergreen.SetupScriptName))
 
 	grip.Warning(os.MkdirAll(wd, 0777))
 
