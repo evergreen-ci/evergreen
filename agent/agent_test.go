@@ -15,6 +15,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/rest/client"
+	"github.com/mongodb/jasper"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -47,6 +48,8 @@ func (s *AgentSuite) SetupTest() {
 		comm: client.NewMock("url"),
 	}
 	s.mockCommunicator = s.a.comm.(*client.Mock)
+	s.a.jasper, err = jasper.NewLocalManager(true)
+	s.Require().NoError(err)
 
 	s.tc = &taskContext{
 		task: client.TaskData{
@@ -551,8 +554,8 @@ func (s *AgentSuite) TestPrepareNextTask() {
 }
 
 func (s *AgentSuite) TestAgentConstructorSetsHostData() {
-	agent := New(Options{HostID: "host_id", HostSecret: "host_secret"}, client.NewMock("url"))
-
+	agent, err := New(Options{HostID: "host_id", HostSecret: "host_secret"}, client.NewMock("url"))
+	s.Require().NoError(err)
 	s.Equal("host_id", agent.comm.GetHostID())
 	s.Equal("host_secret", agent.comm.GetHostSecret())
 }

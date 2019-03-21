@@ -121,7 +121,10 @@ func Agent() cli.Command {
 			comm := client.NewCommunicator(c.String("api_server"))
 			defer comm.Close()
 
-			agt := agent.New(opts, comm)
+			agt, err := agent.New(opts, comm)
+			if err != nil {
+				return errors.Wrap(err, "problem constructing agetn")
+			}
 
 			ctx, cancel := context.WithCancel(context.Background())
 			defer cancel()
