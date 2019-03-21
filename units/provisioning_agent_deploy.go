@@ -251,7 +251,13 @@ func (j *agentDeployJob) prepRemoteHost(ctx context.Context, hostObj host.Host, 
 	if hostObj.Distro.Setup == "" {
 		return nil
 	}
+
 	if logs, err := hostObj.RunSSHCommand(ctx, hostObj.SetupCommand(), sshOptions); err != nil {
+		if strings.Contains(logs, "No such file or directory") {
+			// The setup command failed because another job is running the setup command and renamed the script.
+			return nil
+		}
+
 		event.LogProvisionFailed(hostObj.Id, logs)
 
 		grip.Error(message.WrapError(err, message.Fields{

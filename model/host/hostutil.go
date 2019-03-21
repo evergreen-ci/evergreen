@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"time"
 
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/subprocess"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/grip"
@@ -15,7 +16,7 @@ import (
 )
 
 func (h *Host) SetupCommand() string {
-	cmd := fmt.Sprintf("%s host setup", filepath.Join("~", h.Distro.BinaryName()))
+	cmd := fmt.Sprintf("mv '%s' '%s' && %s host setup", evergreen.SetupScriptName, evergreen.HostSetupScriptName, filepath.Join("~", h.Distro.BinaryName()))
 
 	if h.Distro.SetupAsSudo {
 		cmd += " --setup_as_sudo"

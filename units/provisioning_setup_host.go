@@ -9,6 +9,7 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
@@ -225,15 +226,6 @@ func (j *setupHostJob) runHostSetup(ctx context.Context, targetHost *host.Host, 
 	// Do not copy setup scripts to task-spawned hosts
 	if targetHost.SpawnOptions.SpawnedByTask {
 		return nil
-	}
-
-	// get expansions mapping using settings
-	if targetHost.Distro.Setup == "" {
-		exp := util.NewExpansions(settings.Expansions)
-		targetHost.Distro.Setup, err = exp.ExpandString(targetHost.Distro.Setup)
-		if err != nil {
-			return errors.Wrap(err, "expansions error")
-		}
 	}
 
 	if targetHost.Distro.Setup != "" {
@@ -474,6 +466,11 @@ func (j *setupHostJob) provisionHost(ctx context.Context, h *host.Host, settings
 		grip.Infof("Running setup script for spawn host %s", h.Id)
 		// run the setup script with the agent
 		if logs, err := h.RunSSHCommand(ctx, h.SetupCommand(), sshOptions); err != nil {
+			if strings.Contains(logs, "No such file or directory") {
+				// The setup command failed because another job is running the setup command and renamed the script.
+				return nil
+			}
+
 			grip.Error(message.WrapError(h.SetUnprovisioned(), message.Fields{
 				"operation": "setting host unprovisioned",
 				"host":      h.Id,
