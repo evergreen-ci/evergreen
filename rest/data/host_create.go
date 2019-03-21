@@ -10,7 +10,6 @@ import (
 	"time"
 
 	"github.com/docker/docker/api/types"
-
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/cloud"
@@ -195,7 +194,14 @@ func makeDockerIntentHost(taskID, userID string, createHost apimodels.CreateHost
 		SkipImageBuild:   true,
 	}
 
-	return cloud.NewIntent(d, d.GenerateName(), d.Provider, *options), nil
+	hostIntents, err := cloud.GenerateContainerHostIntents(d, 1, *options)
+	if err != nil {
+		return nil, errors.Wrap(err, "error generating host intent")
+	}
+	if len(hostIntents) != 1 {
+		return nil, errors.New("no parents available for new host intent")
+	}
+	return &hostIntents[0], nil
 
 }
 
