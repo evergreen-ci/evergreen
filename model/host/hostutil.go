@@ -32,10 +32,24 @@ func (h *Host) TearDownCommand() string {
 }
 
 func (h *Host) CurlCommand(url string) string {
-	return fmt.Sprintf("cd ~ && curl -LO '%s/clients/%s' && chmod +x %s",
-		url,
-		h.Distro.ExecutableSubPath(),
-		h.Distro.BinaryName())
+	binaryName := h.Distro.BinaryName()
+	executableSubPath := h.Distro.ExecutableSubPath()
+	var curl string
+	if h.Distro.IsWindows() {
+		// You cannot unlink a running file on Windows. Maybe one day we https://stackoverflow.com/questions/10319526/understanding-a-self-deleting-program-in-c.
+		curl = fmt.Sprintf("cd ~ && curl -LO '%s/clients/%s' && chmod +x %s",
+			url,
+			executableSubPath,
+			binaryName)
+	} else {
+		curl = fmt.Sprintf("cd ~ && if [ -f %s ]; then %s get-update --install --force; else curl -LO '%s/clients/%s' && chmod +x %s; fi",
+			binaryName,
+			binaryName,
+			url,
+			executableSubPath,
+			binaryName)
+	}
+	return curl
 }
 
 const (
