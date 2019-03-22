@@ -16,7 +16,7 @@ type BuildTypes struct {
 
 func (b BuildTypes) String() string {
 	out, err := json.MarshalIndent(b, "   ", "   ")
-	grip.CatchError(err)
+	grip.Error(err)
 
 	return string(out) + "\n"
 }
