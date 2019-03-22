@@ -15,6 +15,8 @@ import (
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/mongodb/grip/send"
+	"github.com/mongodb/jasper"
+	"github.com/pkg/errors"
 	mgo "gopkg.in/mgo.v2"
 )
 
@@ -23,14 +25,15 @@ import (
 var _ evergreen.Environment = &Environment{}
 
 type Environment struct {
-	Remote            amboy.Queue
-	Driver            queue.Driver
-	Local             amboy.Queue
-	SingleWorker      amboy.Queue
-	Closers           map[string]func(context.Context) error
-	DBSession         *anserMock.Session
-	EvergreenSettings *evergreen.Settings
-	mu                sync.RWMutex
+	Remote               amboy.Queue
+	Driver               queue.Driver
+	Local                amboy.Queue
+	JasperProcessManager jasper.Manager
+	SingleWorker         amboy.Queue
+	Closers              map[string]func(context.Context) error
+	DBSession            *anserMock.Session
+	EvergreenSettings    *evergreen.Settings
+	mu                   sync.RWMutex
 
 	InternalSender *send.InternalSender
 }
@@ -61,6 +64,13 @@ func (e *Environment) Configure(ctx context.Context, path string, db *evergreen.
 
 	e.InternalSender = send.MakeInternalLogger()
 
+	jpm, err := jasper.NewLocalManager(true)
+	if err != nil {
+		return errors.WithStack(err)
+	}
+
+	e.JasperProcessManager = jpm
+
 	return nil
 }
 
@@ -86,6 +96,13 @@ func (e *Environment) Session() *mgo.Session {
 	session, _, _ := edb.GetGlobalSessionFactory().GetSession()
 
 	return session
+}
+
+func (e *Environment) JasperManager() jasper.Manager {
+	e.mu.RLock()
+	defer e.mu.RUnlock()
+
+	return e.JasperProcessManager
 }
 
 func (e *Environment) Settings() *evergreen.Settings {
