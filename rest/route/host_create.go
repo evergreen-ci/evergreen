@@ -1,8 +1,10 @@
 package route
 
 import (
+	"bytes"
 	"context"
 	"fmt"
+	"io"
 	"net/http"
 	"strconv"
 	"time"
@@ -141,7 +143,7 @@ func (h *hostListHandler) Run(ctx context.Context) gimlet.Responder {
 
 ////////////////////////////////////////////////////////////////////////
 //
-// GET /rest/v2/hosts/{container_id}/logs
+// GET /rest/v2/hosts/{host_id}/logs
 
 type containerLogsHandler struct {
 	startTime string
@@ -150,14 +152,40 @@ type containerLogsHandler struct {
 
 	host *host.Host
 
-	sc data.Connector
+	isError bool
+	logs    io.Reader
+	sc      data.Connector
 }
 
-func makeContainerLogsRouteManager(sc data.Connector) gimlet.RouteHandler {
-	return &containerLogsHandler{sc: sc}
+func makeContainerLogsRouteManager(sc data.Connector, isError bool) *containerLogsHandler {
+	return &containerLogsHandler{sc: sc, isError: isError}
 }
 
-func (h *containerLogsHandler) Factory() gimlet.RouteHandler { return &containerLogsHandler{sc: h.sc} }
+func (h *containerLogsHandler) ServeHTTP(rw http.ResponseWriter, r *http.Request) {
+	h.Factory()
+
+	ctx, cancel := context.WithCancel(r.Context())
+	defer cancel()
+	if err := h.Parse(ctx, r); err != nil {
+		gimlet.WriteResponse(rw, gimlet.NewJSONErrorResponse(err))
+		return
+	}
+	if resp := h.Run(ctx); resp != nil {
+		gimlet.WriteResponse(rw, resp)
+		return
+	}
+
+	_, err := io.Copy(rw, h.logs)
+	if err != nil {
+		gimlet.WriteResponse(rw, gimlet.NewJSONInternalErrorResponse(err))
+		return
+	}
+}
+
+func (h *containerLogsHandler) Factory() gimlet.RouteHandler {
+	h = &containerLogsHandler{sc: h.sc, isError: h.isError}
+	return h
+}
 
 func (h *containerLogsHandler) Parse(ctx context.Context, r *http.Request) error {
 	id := gimlet.GetVars(r)["host_id"]
@@ -222,16 +250,74 @@ func (h *containerLogsHandler) Run(ctx context.Context) gimlet.Responder {
 		return gimlet.NewJSONErrorResponse(errors.Wrap(err, "error getting settings config"))
 	}
 	options := types.ContainerLogsOptions{
-		ShowStdout: true,
-		ShowStderr: true,
 		Timestamps: true,
 		Tail:       h.tail,
 		Since:      h.startTime,
 		Until:      h.endTime,
 	}
-	info, err := h.sc.GetDockerLogs(ctx, h.host.ExternalIdentifier, parent, settings, options)
-	if err != nil {
-		return gimlet.NewJSONErrorResponse(err)
+	if h.isError {
+		options.ShowStderr = true
+	} else {
+		options.ShowStdout = true
 	}
-	return gimlet.NewJSONResponse(info)
+	logs, err := h.sc.GetDockerLogs(ctx, h.host.ExternalIdentifier, parent, settings, options)
+	if err != nil {
+		return gimlet.NewJSONErrorResponse(errors.Wrap(err, "error getting docker logs"))
+	}
+	h.logs = bytes.NewReader(logs)
+	return nil
+}
+
+////////////////////////////////////////////////////////////////////////
+//
+// GET /rest/v2/hosts/{host_id}/status
+
+type containerStatusHandler struct {
+	host *host.Host
+
+	sc data.Connector
+}
+
+func makeContainerStatusManager(sc data.Connector) *containerStatusHandler {
+	return &containerStatusHandler{sc: sc}
+}
+
+func (h *containerStatusHandler) Factory() gimlet.RouteHandler {
+	return &containerStatusHandler{sc: h.sc}
+}
+
+func (h *containerStatusHandler) Parse(ctx context.Context, r *http.Request) error {
+	id := gimlet.GetVars(r)["host_id"]
+	host, err := host.FindOneId(id)
+	if host == nil {
+		return gimlet.ErrorResponse{
+			StatusCode: http.StatusNotFound,
+			Message:    fmt.Sprintf("Container _id %s not found", id),
+		}
+	}
+	if err != nil {
+		return gimlet.ErrorResponse{
+			StatusCode: http.StatusInternalServerError,
+			Message: fmt.Sprintf("Error loading host for container _id %s (%s)",
+				id, err.Error()),
+		}
+	}
+	h.host = host
+	return nil
+}
+
+func (h *containerStatusHandler) Run(ctx context.Context) gimlet.Responder {
+	parent, err := h.host.GetParent()
+	if err != nil {
+		return gimlet.NewJSONErrorResponse(errors.Wrapf(err, "error finding parent for container _id %s", h.host.Id))
+	}
+	settings, err := evergreen.GetConfig()
+	if err != nil {
+		return gimlet.NewJSONErrorResponse(errors.Wrap(err, "error getting settings config"))
+	}
+	status, err := h.sc.GetDockerStatus(ctx, h.host.ExternalIdentifier, parent, settings)
+	if err != nil {
+		return gimlet.NewJSONErrorResponse(errors.Wrap(err, "error getting docker status"))
+	}
+	return gimlet.NewJSONResponse(status)
 }

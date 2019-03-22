@@ -37,7 +37,8 @@ type DockerClient interface {
 	BuildImageWithAgent(context.Context, *host.Host, string) (string, error)
 	CreateContainer(context.Context, *host.Host, *host.Host) error
 	GetContainer(context.Context, *host.Host, string) (*types.ContainerJSON, error)
-	GetDockerLogs(context.Context, string, *host.Host, types.ContainerLogsOptions) (*LogInfo, error)
+	GetDockerLogs(context.Context, string, *host.Host, types.ContainerLogsOptions) ([]byte, error)
+	GetDockerStatus(context.Context, string, *host.Host) (*ContainerStatus, error)
 	ListContainers(context.Context, *host.Host) ([]types.Container, error)
 	RemoveImage(context.Context, *host.Host, string) error
 	RemoveContainer(context.Context, *host.Host, string) error
@@ -54,9 +55,7 @@ type dockerClientImpl struct {
 	evergreenSettings *evergreen.Settings
 }
 
-type LogInfo struct {
-	OutStr     string
-	ErrStr     string
+type ContainerStatus struct {
 	IsRunning  bool
 	HasStarted bool
 }
@@ -385,19 +384,17 @@ func (c *dockerClientImpl) CreateContainer(ctx context.Context, parentHost, cont
 	return nil
 }
 
-// GetDockerLogs returns a LogInfo for the given container, with an out/error stream depending on the logs provided.
+// GetDockerLogs returns output logs or error logs, based on the given options.
 // This assumes the container is not using TTY.
-func (c *dockerClientImpl) GetDockerLogs(ctx context.Context, containerID string, parent *host.Host, options types.ContainerLogsOptions) (*LogInfo, error) {
+func (c *dockerClientImpl) GetDockerLogs(ctx context.Context, containerID string, parent *host.Host, options types.ContainerLogsOptions) ([]byte, error) {
 	dockerClient, err := c.generateClient(parent)
 	if err != nil {
 		return nil, errors.Wrap(err, "Failed to generate docker client")
 	}
 
-	res := LogInfo{}
 	if containerID == "" { // container not started yet
-		return &res, nil
+		return nil, errors.New("container has not started")
 	}
-	res.HasStarted = true
 	stream, err := dockerClient.ContainerLogs(ctx, containerID, options)
 	if err != nil {
 		return nil, errors.Wrapf(err, "Docker logs API call failed for container %s", containerID)
@@ -410,9 +407,17 @@ func (c *dockerClientImpl) GetDockerLogs(ctx context.Context, containerID string
 		return nil, errors.Wrapf(err, "Error copying stream for container %s", containerID)
 	}
 
-	res.OutStr = tempout.String()
-	res.ErrStr = temperr.String()
+	if options.ShowStdout {
+		return tempout.Bytes(), nil
+	}
+	return temperr.Bytes(), nil
+}
 
+func (c *dockerClientImpl) GetDockerStatus(ctx context.Context, containerID string, parent *host.Host) (*ContainerStatus, error) {
+	if containerID == "" {
+		return &ContainerStatus{HasStarted: false}, nil
+	}
+	status := ContainerStatus{HasStarted: true}
 	container, err := c.GetContainer(ctx, parent, containerID)
 	if err != nil {
 		return nil, errors.Wrapf(err, "Error getting container %s", containerID)
@@ -420,8 +425,9 @@ func (c *dockerClientImpl) GetDockerLogs(ctx context.Context, containerID string
 	if container == nil {
 		return nil, errors.Errorf("Container %s returned empty", containerID)
 	}
-	res.IsRunning = container.State.Running
-	return &res, nil
+
+	status.IsRunning = container.State.Running
+	return &status, nil
 }
 
 // GetContainer returns low-level information on the Docker container with the

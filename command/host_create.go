@@ -105,26 +105,25 @@ func (c *createHost) waitForLogs(ctx context.Context, comm client.Communicator, 
 	timeoutTimer := time.NewTimer(time.Duration(c.CreateHost.ContainerWaitTimeoutSecs) * time.Second)
 	defer timeoutTimer.Stop()
 
+	batchStart := startTime
 	// get logs in batches until container exits or we timeout
 	for {
 		select {
 		case <-ctx.Done():
 			return errors.New("context finished waiting for host to exit")
 		case <-pollTicker.C:
-			curTime := time.Now()
-			logInfo, err := comm.GetDockerLogs(ctx, hostID, startTime, curTime)
+			batchEnd := time.Now()
+			status, err := comm.GetDockerStatus(ctx, hostID)
 			if err != nil {
-				return errors.Wrap(err, "error retrieving docker logs")
+				return errors.Wrapf(err, "error getting docker status")
 			}
-			startTime = curTime
-			if logInfo.HasStarted {
-				if err = ioutil.WriteFile(c.CreateHost.StdoutFile, []byte(logInfo.OutStr), 0644); err != nil {
-					return errors.Wrap(err, "error writing stdout to file")
+			if status.HasStarted {
+				if err = c.getAndWriteLogs(ctx, comm, hostID, batchStart, batchEnd); err != nil {
+					return errors.Wrapf(err, "error getting and writing logs on started container")
 				}
-				if err = ioutil.WriteFile(c.CreateHost.StderrFile, []byte(logInfo.ErrStr), 0644); err != nil {
-					return errors.Wrap(err, "error writing stderr to file")
-				}
-				if !logInfo.IsRunning { // container exited
+				batchStart = batchEnd
+
+				if !status.IsRunning { // container exited
 					logger.Task().Infof("Logs retrieved for container _id %s in %d seconds",
 						hostID, int(time.Since(startTime).Seconds()))
 					return nil
@@ -134,6 +133,27 @@ func (c *createHost) waitForLogs(ctx context.Context, comm client.Communicator, 
 			return errors.New("reached timeout waiting for host to exit")
 		}
 	}
+}
+
+func (c *createHost) getAndWriteLogs(ctx context.Context, comm client.Communicator, hostID string,
+	startTime, endTime time.Time) error {
+
+	outLogs, err := comm.GetDockerLogs(ctx, hostID, startTime, endTime, false)
+	if err != nil {
+		return errors.Wrap(err, "error retrieving docker output logs")
+	}
+	errLogs, err := comm.GetDockerLogs(ctx, hostID, startTime, endTime, true)
+	if err != nil {
+		return errors.Wrap(err, "error retrieving docker error logs")
+	}
+
+	if err = ioutil.WriteFile(c.CreateHost.StdoutFile, outLogs, 0644); err != nil {
+		return errors.Wrap(err, "error writing stdout to file")
+	}
+	if err = ioutil.WriteFile(c.CreateHost.StderrFile, errLogs, 0644); err != nil {
+		return errors.Wrap(err, "error writing stderr to file")
+	}
+	return nil
 }
 
 func (c *createHost) populateUserdata() error {

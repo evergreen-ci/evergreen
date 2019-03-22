@@ -591,6 +591,10 @@ func (c *Mock) SendNotification(_ context.Context, _ string, _ interface{}) erro
 	return nil
 }
 
-func (c *Mock) GetDockerLogs(context.Context, string, time.Time, time.Time) (*cloud.LogInfo, error) {
-	return &cloud.LogInfo{}, nil
+func (c *Mock) GetDockerLogs(context.Context, string, time.Time, time.Time, bool) ([]byte, error) {
+	return []byte("this is a log"), nil
+}
+
+func (c *Mock) GetDockerStatus(context.Context, string) (*cloud.ContainerStatus, error) {
+	return &cloud.ContainerStatus{HasStarted: true}, nil
 }
