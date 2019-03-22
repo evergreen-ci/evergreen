@@ -47,7 +47,7 @@ func githubShouldRetry(attempt rehttp.Attempt) bool {
 		return true
 	}
 
-	if attempt.Response.StatusCode != http.StatusOK {
+	if attempt.Response.StatusCode >= http.StatusBadRequest {
 		grip.Error(errors.Errorf("Calling github %s on %s got a bad response code: %v", attempt.Request.Method, url, attempt.Response.StatusCode))
 	}
 

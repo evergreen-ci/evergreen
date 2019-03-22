@@ -105,7 +105,7 @@ func (j *patchIntentProcessor) Run(ctx context.Context) {
 
 	if err = j.finishPatch(ctx, patchDoc, githubOauthToken); err != nil {
 		j.AddError(err)
-		if j.IntentType == patch.GithubIntentType && strings.HasPrefix(err.Error(), errInvalidPatchedConfig) {
+		if j.IntentType == patch.GithubIntentType && err.Error() == errInvalidPatchedConfig {
 			var projectRef *model.ProjectRef
 			projectRef, err = model.FindOneProjectRefByRepoAndBranchWithPRTesting(patchDoc.GithubPatchData.BaseOwner,
 				patchDoc.GithubPatchData.BaseRepo, patchDoc.GithubPatchData.BaseBranch)
@@ -210,7 +210,11 @@ func (j *patchIntentProcessor) finishPatch(ctx context.Context, patchDoc *patch.
 	}
 	errs := validator.CheckProjectSyntax(project)
 	if len(errs) != 0 {
-		return errors.Wrap(err, errInvalidPatchedConfig)
+		for _, validatorErr := range errs {
+			if validatorErr.Level == validator.Error {
+				return errors.New(errInvalidPatchedConfig)
+			}
+		}
 	}
 	yamlBytes, err := yaml.Marshal(project)
 	if err != nil {
