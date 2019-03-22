@@ -179,3 +179,32 @@ func (s *CommitQueueSuite) TestDeleteCommitQueueItem() {
 
 	s.Contains(stringOut, "Item '123' deleted")
 }
+
+// func (s *CommitQueueSuite) TestMergeBranch() {
+// 	origStdout := os.Stdout
+// 	r, w, _ := os.Pipe()
+// 	os.Stdout = w
+// 	s.NoError(grip.SetSender(send.MakePlainLogger()))
+
+// 	id, err := uploadPatches(context.Background(), s.client, "mci", "mbox formatted patch")
+
+// 	s.NoError(w.Close())
+// 	out, _ := ioutil.ReadAll(r)
+// 	stringOut := string(out[:])
+
+// 	s.NoError(err)
+// 	s.Contains(stringOut, "Item ID is '")
+
+// 	r, w, _ = os.Pipe()
+// 	os.Stdout = w
+
+// 	err = enqueueItem(context.Background(), s.client, id)
+
+// 	s.NoError(w.Close())
+// 	os.Stdout = origStdout
+// 	out, _ = ioutil.ReadAll(r)
+// 	stringOut = string(out[:])
+
+// 	s.NoError(err)
+// 	s.Contains(stringOut, "Queue position is '")
+// }

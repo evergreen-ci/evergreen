@@ -586,6 +586,18 @@ func (c *Mock) DeleteCommitQueueItem(ctx context.Context, projectID, item string
 	return nil
 }
 
+func (c *Mock) UploadPatches(ctx context.Context, projectID, patches string) (string, error) {
+	return "abcdef", nil
+}
+
+func (c *Mock) EnqueueItem(ctx context.Context, id string) (int, error) {
+	if id != "abcdef" {
+		return 0, errors.New("error uploading patch")
+	}
+
+	return 1, nil
+}
+
 func (c *Mock) SendNotification(_ context.Context, _ string, _ interface{}) error {
 	return nil
 }

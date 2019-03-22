@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"strconv"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
@@ -709,6 +710,67 @@ func (c *communicatorImpl) DeleteCommitQueueItem(ctx context.Context, projectID,
 	}
 
 	return nil
+}
+
+func (c *communicatorImpl) UploadPatches(ctx context.Context, projectID, patches string) (string, error) {
+	info := requestInfo{
+		method:  post,
+		version: apiVersion2,
+		path:    fmt.Sprintf("/commitqueue/patch_upload/%s", projectID),
+	}
+
+	resp, err := c.request(ctx, info, patches)
+	if err != nil {
+		return "", err
+	}
+	defer resp.Body.Close()
+	bytes, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return "", errors.Wrap(err, "failed to read response")
+	}
+	if resp.StatusCode != http.StatusOK {
+		restErr := gimlet.ErrorResponse{}
+		if err = json.Unmarshal(bytes, &restErr); err != nil {
+			return "", errors.Errorf("received an error but was unable to parse: %s", string(bytes))
+		}
+
+		return "", restErr
+	}
+
+	return string(bytes), nil
+}
+
+func (c *communicatorImpl) EnqueueItem(ctx context.Context, id string) (int, error) {
+	info := requestInfo{
+		method:  put,
+		version: apiVersion2,
+		path:    fmt.Sprintf("/commitqueue/enqueue/%s", id),
+	}
+
+	resp, err := c.request(ctx, info, nil)
+	if err != nil {
+		return 0, err
+	}
+	defer resp.Body.Close()
+	bytes, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return 0, errors.Wrap(err, "failed to read response")
+	}
+	if resp.StatusCode != http.StatusOK {
+		restErr := gimlet.ErrorResponse{}
+		if err = json.Unmarshal(bytes, &restErr); err != nil {
+			return 0, errors.Errorf("received an error but was unable to parse: %s", string(bytes))
+		}
+
+		return 0, restErr
+	}
+
+	position, err := strconv.Atoi(string(bytes))
+	if err != nil {
+		return 0, errors.Wrapf(err, "can't interpret '%s' as int", string(bytes))
+	}
+
+	return position, nil
 }
 
 func (c *communicatorImpl) SendNotification(ctx context.Context, notificationType string, data interface{}) error {
