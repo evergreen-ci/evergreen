@@ -413,7 +413,7 @@ func MarkEnd(t *task.Task, caller string, finishTime time.Time, detail *apimodel
 	}
 	err := t.MarkEnd(finishTime, detail)
 	if err != nil {
-		return err
+		return errors.Wrap(err, "could not mark task finished")
 	}
 	status := t.ResultStatus()
 	event.LogTaskFinished(t.Id, t.Execution, t.HostId, status)
@@ -560,12 +560,12 @@ func UpdateBuildAndVersionStatusForTask(taskId string, updates *StatusChanges) e
 
 		displayTask, err = t.GetDisplayTask()
 		if err != nil {
-			return err
+			return errors.WithStack(err)
 		}
 		if displayTask != nil {
 			err = UpdateDisplayTask(displayTask)
 			if err != nil {
-				return err
+				return errors.WithStack(err)
 			}
 			t = *displayTask
 			status = t.Status
