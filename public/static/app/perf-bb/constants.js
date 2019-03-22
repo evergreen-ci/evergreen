@@ -1,12 +1,10 @@
 mciModule
   .constant('PROCESSED_TYPE', (function() {
-    var acknowledged = 'acknowledged'
-    var hidden = 'hidden'
     return {
-      ACKNOWLEDGED: acknowledged,
-      HIDDEN:       hidden,
+      ACKNOWLEDGED: 'acknowledged',
+      HIDDEN:       'hidden',
       NONE:         undefined,
-      ALL:          [acknowledged, hidden]
+      ALL:          ['acknowledged', 'hidden']
     }
   })())
   .constant('PERFBB_HAZARD_VALUES', [
@@ -22,3 +20,7 @@ mciModule
     'HAZARD_CHART_WIDTH': 60,
     'HAZARD_CHART_HEIGHT': 22,
   })
+  .constant('OUTLIERS_TYPE', {
+    DETECTED: 'detected',
+    SUSPICIOUS: 'suspicious',
+  });
