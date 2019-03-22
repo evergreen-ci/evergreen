@@ -128,6 +128,7 @@ func (s *AdminSuite) TestBaseConfig() {
 		ConfigDir:          "cfg_dir",
 		Credentials:        map[string]string{"k1": "v1"},
 		Expansions:         map[string]string{"k2": "v2"},
+		GoogleAnalyticsID:  "u-12345",
 		GithubPRCreatorOrg: "org",
 		Keys:               map[string]string{"k3": "v3"},
 		LogPath:            "logpath",
@@ -153,6 +154,7 @@ func (s *AdminSuite) TestBaseConfig() {
 	s.Equal(config.ConfigDir, settings.ConfigDir)
 	s.Equal(config.Credentials, settings.Credentials)
 	s.Equal(config.Expansions, settings.Expansions)
+	s.Equal(config.GoogleAnalyticsID, settings.GoogleAnalyticsID)
 	s.Equal(config.GithubPRCreatorOrg, settings.GithubPRCreatorOrg)
 	s.Equal(config.Keys, settings.Keys)
 	s.Equal(config.LogPath, settings.LogPath)
