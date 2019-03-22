@@ -2,7 +2,6 @@ package util
 
 import (
 	"encoding/json"
-	"fmt"
 	"io"
 	"io/ioutil"
 
@@ -23,7 +22,7 @@ func ReadJSONIntoWithLength(r io.ReadCloser, data interface{}) (int, error) {
 		return 0, errors.Wrapf(err, "error reading JSON (%s)", string(bytes))
 	}
 	length := len(bytes)
-	fmt.Println("-->", string(bytes))
+
 	return length, errors.Wrapf(json.Unmarshal(bytes, data), "error attempting to unmarshal into %T", data)
 }
 
