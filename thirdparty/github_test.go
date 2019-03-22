@@ -3,7 +3,9 @@ package thirdparty
 import (
 	"context"
 	"io/ioutil"
+	"net"
 	"net/http"
+	"net/url"
 	"path/filepath"
 	"strconv"
 	"testing"
@@ -53,6 +55,41 @@ func (s *githubSuite) SetupTest() {
 func (s *githubSuite) TearDownTest() {
 	s.NoError(s.ctx.Err())
 	s.cancel()
+}
+
+func (s *githubSuite) TestGithubShouldRetry() {
+	attempt := rehttp.Attempt{
+		Request: &http.Request{
+			URL: &url.URL{
+				Scheme: "https",
+				Host:   "www.example.com",
+			},
+		},
+		Response: &http.Response{
+			StatusCode: 200,
+			Header: http.Header{
+				"X-Ratelimit-Limit":     []string{"10"},
+				"X-Ratelimit-Remaining": []string{"10"},
+			},
+		},
+	}
+	s.False(githubShouldRetry(attempt))
+
+	attempt.Error = &net.DNSError{IsTimeout: true}
+	s.True(githubShouldRetry(attempt))
+
+	attempt.Error = net.InvalidAddrError("wrong address")
+	s.False(githubShouldRetry(attempt))
+
+	attempt.Error = nil
+	attempt.Response.StatusCode = http.StatusBadGateway
+	s.True(githubShouldRetry(attempt))
+
+	attempt.Response.Header = http.Header{
+		"X-Ratelimit-Limit":     []string{"10"},
+		"X-Ratelimit-Remaining": []string{"0"},
+	}
+	s.False(githubShouldRetry(attempt))
 }
 
 func (s *githubSuite) TestCheckGithubAPILimit() {
@@ -238,35 +275,6 @@ func verifyGithubAPILimitHeader(header http.Header) (int64, error) {
 	}
 
 	return rem, nil
-}
-
-func TestGithubShouldRetryDoesntPanic(t *testing.T) {
-	assert := assert.New(t)
-	req, err := http.NewRequest(http.MethodGet, "http://example.com", nil)
-	assert.NoError(err)
-
-	assert.NotPanics(func() {
-		a := rehttp.Attempt{
-			Index:    0,
-			Request:  req,
-			Response: nil,
-			Error:    errors.New("something bad"),
-		}
-
-		assert.True(githubShouldRetry(a))
-
-		a.Response = &http.Response{
-			Request:    a.Request,
-			Status:     http.StatusText(http.StatusOK),
-			StatusCode: http.StatusOK,
-			Header: http.Header{
-				"X-Ratelimit-Limit":     []string{"5000"},
-				"X-Ratelimit-Remaining": []string{"4900"},
-			},
-		}
-		a.Error = nil
-		assert.False(githubShouldRetry(a))
-	})
 }
 
 func TestBuildPatchURL(t *testing.T) {

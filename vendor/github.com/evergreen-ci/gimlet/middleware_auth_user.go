@@ -65,7 +65,7 @@ func (umc UserMiddlewareConfiguration) AttachCookie(token string, rw http.Respon
 		Path:     umc.CookiePath,
 		Value:    token,
 		HttpOnly: true,
-		Expires:  time.Now().Add(umc.CookieTTL * time.Second),
+		Expires:  time.Now().Add(umc.CookieTTL),
 	})
 }
 
