@@ -101,7 +101,7 @@ func getEdition(fn string) (MongoDBEdition, error) {
 		}
 	}
 
-	for _, platform := range []string{"osx", "win32", "sunos5", "linux", "sunos6"} {
+	for _, platform := range []string{"macos", "osx", "win32", "sunos5", "linux", "sunos6"} {
 		if strings.HasPrefix(fn, "mongodb-"+platform) {
 			return Base, nil
 		}
@@ -113,7 +113,7 @@ func getEdition(fn string) (MongoDBEdition, error) {
 func getTarget(fn string) (string, error) {
 	// enterprise targets:
 	if strings.Contains(fn, "enterprise") {
-		for _, platform := range []string{"windows", "osx"} {
+		for _, platform := range []string{"windows", "osx", "macos"} {
 			if strings.Contains(fn, platform) {
 				return platform, nil
 			}
@@ -163,6 +163,9 @@ func getTarget(fn string) (string, error) {
 	}
 	if strings.Contains(fn, "osx") {
 		return "osx", nil
+	}
+	if strings.Contains(fn, "macos") {
+		return "macos", nil
 	}
 
 	// solaris!

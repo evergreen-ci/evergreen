@@ -12,6 +12,8 @@ func TestTargetIdentification(t *testing.T) {
 	assert := assert.New(t)
 
 	builds := map[string]string{
+		"https://fastdl.mongodb.org/osx/mongodb-macos-x86_64-4.1.7.tgz":                                "macos",
+		"https://downloads.mongodb.com/osx/mongodb-macos-x86_64-enterprise-4.1.7.tgz":                  "macos",
 		"https://downloads.mongodb.com/linux/mongodb-linux-arm64-enterprise-ubuntu1604-3.4.0-rc5.tgz":  "ubuntu1604",
 		"https://downloads.mongodb.com/linux/mongodb-linux-ppc64le-enterprise-rhel71-3.4.0-rc5.tgz":    "rhel71",
 		"https://downloads.mongodb.com/linux/mongodb-linux-s390x-enterprise-rhel72-3.4.0-rc5.tgz":      "rhel72",
@@ -69,6 +71,8 @@ func TestEditionIdentification(t *testing.T) {
 	assert := assert.New(t)
 
 	builds := map[string]MongoDBEdition{
+		"https://fastdl.mongodb.org/osx/mongodb-macos-x86_64-4.1.7.tgz":                                 Base,
+		"https://downloads.mongodb.com/osx/mongodb-macos-x86_64-enterprise-4.1.7.tgz":                   Enterprise,
 		"https://downloads.mongodb.com/linux/mongodb-linux-arm64-enterprise-ubuntu1604-3.4.0-rc5.tgz":   Enterprise,
 		"https://downloads.mongodb.com/linux/mongodb-linux-ppc64le-enterprise-rhel71-3.4.0-rc5.tgz":     Enterprise,
 		"https://downloads.mongodb.com/linux/mongodb-linux-s390x-enterprise-rhel72-3.4.0-rc5.tgz":       Enterprise,
@@ -119,6 +123,7 @@ func TestVersionIdentification(t *testing.T) {
 	assert := assert.New(t)
 
 	builds := map[string]string{
+		"mongodb-macos-x86_64-4.1.7":      "4.1.7",
 		"mongodb-linux-x86_64-3.4.0-rc5":  "3.4.0-rc5",
 		"mongodb-linux-x86_64-3.4.0-rc4":  "3.4.0-rc4",
 		"mongodb-linux-x86_64-3.4.0-rc3":  "3.4.0-rc3",

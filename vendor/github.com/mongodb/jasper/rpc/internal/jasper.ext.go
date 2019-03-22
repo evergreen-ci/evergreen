@@ -10,7 +10,8 @@ import (
 )
 
 // Export takes a protobuf RPC CreateOptions struct and returns the analogous
-// Jasper CreateOptions struct.
+// Jasper CreateOptions struct. It is not safe to concurrently access the
+// exported RPC CreateOptions and the returned Jasper CreateOptions.
 func (opts *CreateOptions) Export() *jasper.CreateOptions {
 	out := &jasper.CreateOptions{
 		Args:             opts.Args,
@@ -41,7 +42,9 @@ func (opts *CreateOptions) Export() *jasper.CreateOptions {
 
 // ConvertCreateOptions takes a Jasper CreateOptions struct and returns an
 // equivalent protobuf RPC *CreateOptions struct. ConvertCreateOptions is the
-// inverse of (*CreateOptions) Export().
+// inverse of (*CreateOptions) Export(). It is not safe to concurrently
+// access the converted Jasper CreateOptions and the returned RPC
+// CreateOptions.
 func ConvertCreateOptions(opts *jasper.CreateOptions) *CreateOptions {
 	if opts.TimeoutSecs == 0 && opts.Timeout != 0 {
 		opts.TimeoutSecs = int(opts.Timeout.Seconds())

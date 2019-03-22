@@ -120,7 +120,7 @@ imports:
   - name: github.com/evergreen-ci/pail
     version: 1d8f19c9a70ae650f7499bd07b6cf47e17fe89c9
   - name: github.com/mongodb/jasper
-    version: ed910849e8744cf3daaf888febf42c925e6f7c8c
+    version: 0362cb8f2ea05d3d9f7a5c545ad5af2ce97f8b26
 
   # git library and its dependencies
   - name: gopkg.in/src-d/go-git.v4

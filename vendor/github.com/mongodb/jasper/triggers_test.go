@@ -34,7 +34,7 @@ func TestDefaultTrigger(t *testing.T) {
 			assert.Len(t, out, 1)
 			_, err = out[0].Wait(ctx)
 			assert.NoError(t, err)
-			assert.True(t, tcmd.started)
+			assert.True(t, out[0].Info(ctx).Options.started)
 		},
 		"OneOnSuccess": func(ctx context.Context, t *testing.T, manager Manager) {
 			opts := trueCreateOpts()
@@ -46,6 +46,7 @@ func TestDefaultTrigger(t *testing.T) {
 			out, err := manager.List(ctx, All)
 			assert.NoError(t, err)
 			assert.Len(t, out, 1)
+			assert.True(t, out[0].Info(ctx).Options.started)
 		},
 		"FailureTriggerDoesNotWorkWithCanceledContext": func(ctx context.Context, t *testing.T, manager Manager) {
 			cctx, cancel := context.WithCancel(ctx)
@@ -102,7 +103,7 @@ func TestDefaultTrigger(t *testing.T) {
 			assert.Len(t, out, 1)
 			_, err = out[0].Wait(ctx)
 			assert.NoError(t, err)
-			assert.True(t, tcmd.started)
+			assert.True(t, out[0].Info(ctx).Options.started)
 		},
 		"TimeoutWithoutTimeout": func(ctx context.Context, t *testing.T, manager Manager) {
 			opts := falseCreateOpts()
@@ -117,7 +118,7 @@ func TestDefaultTrigger(t *testing.T) {
 			assert.Len(t, out, 1)
 			_, err = out[0].Wait(ctx)
 			assert.NoError(t, err)
-			assert.True(t, tcmd.started)
+			assert.True(t, out[0].Info(ctx).Options.started)
 		},
 		"TimeoutWithCanceledContext": func(ctx context.Context, t *testing.T, manager Manager) {
 			cctx, cancel := context.WithCancel(ctx)

@@ -48,6 +48,22 @@ func (version *ArtifactVersion) GetDownload(key BuildOptions) (ArtifactDownload,
 		}
 	}
 
+	// For OSX, the target depends on the version. Before 4.1, OSX targets are
+	// "osx". However, starting in 4.1.1, OSX targets are "macos".
+	if key.Target == "osx" {
+		parsedVersion, err := NewMongoDBVersion(version.Version)
+		if err != nil {
+			return ArtifactDownload{}, errors.Wrap(err, "could not parse version")
+		}
+		macosVersion, err := NewMongoDBVersion("4.1.1")
+		if err != nil {
+			return ArtifactDownload{}, errors.Wrap(err, "could not parse version for comparison")
+		}
+		if parsedVersion.IsGreaterThanOrEqualTo(macosVersion) {
+			key.Target = "macos"
+		}
+	}
+
 	// we look for debug builds later in the process, but as map
 	// keys, debug is always false.
 	key.Debug = false

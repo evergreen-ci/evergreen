@@ -300,15 +300,14 @@ func TestCommandImplementation(t *testing.T) {
 	}
 }
 
-// TODO: fix failure due to context deadline exceeded.
 func TestRunParallelRunsInParallel(t *testing.T) {
 	cmd := NewCommand().Extend([][]string{
 		[]string{"sleep", "3"},
 		[]string{"sleep", "3"},
 		[]string{"sleep", "3"},
 	})
-	threePointTwoSeconds := time.Second*3 + time.Millisecond*200
-	maxRunTimeAllowed := threePointTwoSeconds
+	threePointFiveSeconds := time.Second*3 + time.Millisecond*500
+	maxRunTimeAllowed := threePointFiveSeconds
 	cctx, cancel := context.WithTimeout(context.Background(), maxRunTimeAllowed)
 	defer cancel()
 	// If this does not run in parallel, the context will timeout and we will

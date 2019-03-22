@@ -5,15 +5,17 @@ import (
 	"syscall"
 )
 
-// TODO
-//   - helpers to configure output
-//   - high level documentation
-//   - venturing
+const (
+	// EnvironID is the environment variable that is set on all managed
+	// processes. The value of this environment variable is always the
+	// ID of the process.
+	EnvironID = "JASPER_ID"
 
-// EnvironID is the environment variable that is set on all managed
-// processes. The value of this environment variable is always the
-// ID of the process.
-const EnvironID = "JASPER_ID"
+	// ManagerEnvironID is the environment variable that is set on
+	// all managed process that always identifies the process'
+	// manager. Used for process tracking and forensics.
+	ManagerEnvironID = "JASPER_MANAGER"
+)
 
 // Manager provides a basic, high level process management interface
 // for processes, and supports creation and introspection. External

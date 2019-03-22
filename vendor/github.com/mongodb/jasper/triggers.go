@@ -12,7 +12,8 @@ import (
 
 // ProcessTrigger describes the way to write cleanup functions for
 // processes, which provide ways of adding behavior to processes after
-// they complete.
+// they complete. A ProcessTrigger can read the fields within
+// ProcessInfo.Options but should not mutate them.
 type ProcessTrigger func(ProcessInfo)
 
 // ProcessTriggerSequence is simply a convenience type to simplify
@@ -29,7 +30,8 @@ func (s ProcessTriggerSequence) Run(info ProcessInfo) {
 // SignalTrigger describes the way to write hooks that will execute
 // before a process is about to be signaled. It returns a bool
 // indicating if the signal should be skipped after execution of the
-// trigger.
+// trigger. A SignalTrigger can read the fields within ProcessInfo.Options but
+// should not mutate them.
 type SignalTrigger func(ProcessInfo, syscall.Signal) (skipSignal bool)
 
 // SignalTriggerSequence is a convenience type to simplify running
@@ -83,7 +85,7 @@ func makeDefaultTrigger(ctx context.Context, m Manager, opts *CreateOptions, par
 					newctx, cancel = context.WithCancel(ctx)
 				}
 
-				p, err := m.CreateProcess(newctx, opt)
+				p, err := m.CreateProcess(newctx, opt.Copy())
 				if err != nil {
 					grip.Warning(message.WrapError(err, message.Fields{
 						"trigger": "on-timeout",
@@ -97,7 +99,7 @@ func makeDefaultTrigger(ctx context.Context, m Manager, opts *CreateOptions, par
 			}
 		case info.Successful:
 			for _, opt := range opts.OnSuccess {
-				p, err := m.CreateProcess(ctx, opt)
+				p, err := m.CreateProcess(ctx, opt.Copy())
 				if err != nil {
 					grip.Warning(message.WrapError(err, message.Fields{
 						"trigger": "on-success",
@@ -109,7 +111,7 @@ func makeDefaultTrigger(ctx context.Context, m Manager, opts *CreateOptions, par
 			}
 		case !info.Successful:
 			for _, opt := range opts.OnFailure {
-				p, err := m.CreateProcess(ctx, opt)
+				p, err := m.CreateProcess(ctx, opt.Copy())
 				if err != nil {
 
 					grip.Warning(message.WrapError(err, message.Fields{

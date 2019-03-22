@@ -17,10 +17,11 @@ import (
 )
 
 type blockingProcess struct {
-	id   string
-	opts CreateOptions
-	ops  chan func(*exec.Cmd)
-	err  error
+	id       string
+	opts     CreateOptions
+	ops      chan func(*exec.Cmd)
+	complete chan struct{}
+	err      error
 
 	mu             sync.RWMutex
 	tags           map[string]struct{}
@@ -40,10 +41,11 @@ func newBlockingProcess(ctx context.Context, opts *CreateOptions) (Process, erro
 	}
 
 	p := &blockingProcess{
-		id:   id,
-		opts: *opts,
-		tags: make(map[string]struct{}),
-		ops:  make(chan func(*exec.Cmd)),
+		id:       id,
+		opts:     *opts,
+		tags:     make(map[string]struct{}),
+		ops:      make(chan func(*exec.Cmd)),
+		complete: make(chan struct{}),
 	}
 
 	for _, t := range opts.Tags {
@@ -58,6 +60,7 @@ func newBlockingProcess(ctx context.Context, opts *CreateOptions) (Process, erro
 		return nil, errors.Wrap(err, "problem starting command")
 	}
 
+	p.info.Options.started = true
 	p.opts.started = true
 	opts.started = true
 
@@ -113,6 +116,7 @@ func (p *blockingProcess) reactor(ctx context.Context, cmd *exec.Cmd) {
 		defer close(signal)
 		signal <- cmd.Wait()
 	}()
+	defer close(p.complete)
 
 	for {
 		select {
@@ -147,11 +151,9 @@ func (p *blockingProcess) reactor(ctx context.Context, cmd *exec.Cmd) {
 				}))
 			}()
 
+			p.triggers.Run(info)
 			p.setErr(err)
 			p.setInfo(info)
-			p.mu.RLock()
-			p.triggers.Run(info)
-			p.mu.RUnlock()
 			return
 		case <-ctx.Done():
 			// note, the process might take a moment to
@@ -161,8 +163,8 @@ func (p *blockingProcess) reactor(ctx context.Context, cmd *exec.Cmd) {
 			info.IsRunning = false
 			info.Successful = false
 
-			p.setInfo(info)
 			p.triggers.Run(info)
+			p.setInfo(info)
 			return
 		case op := <-p.ops:
 			if op != nil {
@@ -191,8 +193,12 @@ func (p *blockingProcess) Info(ctx context.Context) ProcessInfo {
 			return res
 		case <-ctx.Done():
 			return p.getInfo()
+		case <-p.complete:
+			return p.getInfo()
 		}
 	case <-ctx.Done():
+		return p.getInfo()
+	case <-p.complete:
 		return p.getInfo()
 	}
 }
@@ -221,9 +227,18 @@ func (p *blockingProcess) Running(ctx context.Context) bool {
 
 	select {
 	case p.ops <- operation:
-		return <-out
+		select {
+		case res := <-out:
+			return res
+		case <-ctx.Done():
+			return p.getInfo().IsRunning
+		case <-p.complete:
+			return p.getInfo().IsRunning
+		}
 	case <-ctx.Done():
-		return false
+		return p.getInfo().IsRunning
+	case <-p.complete:
+		return p.getInfo().IsRunning
 	}
 }
 
@@ -261,9 +276,13 @@ func (p *blockingProcess) Signal(ctx context.Context, sig syscall.Signal) error 
 			return res
 		case <-ctx.Done():
 			return errors.New("context canceled")
+		case <-p.complete:
+			return errors.New("cannot signal after process is complete")
 		}
 	case <-ctx.Done():
 		return errors.New("context canceled")
+	case <-p.complete:
+		return errors.New("cannot signal after process is complete")
 	}
 }
 
@@ -335,21 +354,16 @@ func (p *blockingProcess) Wait(ctx context.Context) (int, error) {
 			return -1, errors.New("wait operation canceled")
 		case err := <-out:
 			return p.getInfo().ExitCode, errors.WithStack(err)
-		default:
-			if p.hasCompleteInfo() {
-				return p.getInfo().ExitCode, p.getErr()
-			}
+		case <-p.complete:
+			return p.getInfo().ExitCode, p.getErr()
 		}
 	}
 }
 
 func (p *blockingProcess) Respawn(ctx context.Context) (Process, error) {
 	opts := p.Info(ctx).Options
-	opts.closers = []func() error{}
-
-	newProc, err := newBlockingProcess(ctx, &opts)
-
-	return newProc, err
+	optsCopy := opts.Copy()
+	return newBlockingProcess(ctx, optsCopy)
 }
 
 func (p *blockingProcess) Tag(t string) {

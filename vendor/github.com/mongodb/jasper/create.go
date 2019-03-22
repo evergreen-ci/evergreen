@@ -16,6 +16,7 @@ import (
 
 // CreateOptions contains options related to starting a process. This includes
 // execution configuration, post-execution triggers, and output configuration.
+// It is not safe for concurrent access.
 type CreateOptions struct {
 	Args             []string          `json:"args"`
 	Environment      map[string]string `json:"env,omitempty"`
@@ -30,7 +31,6 @@ type CreateOptions struct {
 	OnFailure        []*CreateOptions  `json:"on_failure"`
 	OnTimeout        []*CreateOptions  `json:"on_timeout"`
 
-	//
 	closers []func() error
 	started bool
 }
@@ -190,4 +190,49 @@ func (opts *CreateOptions) Close() error {
 		catcher.Add(c())
 	}
 	return catcher.Resolve()
+}
+
+// Copy returns a copy of the options for only the exported fields. Unexported
+// fields are cleared.
+func (opts *CreateOptions) Copy() *CreateOptions {
+	optsCopy := *opts
+
+	if opts.Args != nil {
+		optsCopy.Args = make([]string, len(opts.Args))
+		_ = copy(optsCopy.Args, opts.Args)
+	}
+
+	if opts.Tags != nil {
+		optsCopy.Tags = make([]string, len(opts.Tags))
+		_ = copy(optsCopy.Tags, opts.Tags)
+	}
+
+	if opts.Environment != nil {
+		optsCopy.Environment = make(map[string]string)
+		for key, val := range opts.Environment {
+			optsCopy.Environment[key] = val
+		}
+	}
+
+	if opts.OnSuccess != nil {
+		optsCopy.OnSuccess = make([]*CreateOptions, len(opts.OnSuccess))
+		_ = copy(optsCopy.OnSuccess, opts.OnSuccess)
+	}
+
+	if opts.OnFailure != nil {
+		optsCopy.OnFailure = make([]*CreateOptions, len(opts.OnFailure))
+		_ = copy(optsCopy.OnFailure, opts.OnFailure)
+	}
+
+	if opts.OnTimeout != nil {
+		optsCopy.OnTimeout = make([]*CreateOptions, len(opts.OnTimeout))
+		_ = copy(optsCopy.OnTimeout, opts.OnTimeout)
+	}
+
+	optsCopy.Output = *opts.Output.Copy()
+
+	optsCopy.closers = nil
+	optsCopy.started = false
+
+	return &optsCopy
 }

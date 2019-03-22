@@ -52,18 +52,19 @@ func newBasicProcess(ctx context.Context, opts *CreateOptions) (Process, error) 
 		return nil, errors.Wrap(err, "problem registering options closer trigger")
 	}
 
-	err = cmd.Start()
-	if err != nil {
-		return nil, errors.Wrap(err, "problem creating command")
+	if err = cmd.Start(); err != nil {
+		return nil, errors.Wrap(err, "problem starting command")
 	}
 
 	p.info.ID = p.id
 	p.info.Options = p.opts
 	p.info.Host = p.opts.Hostname
 
-	go p.transition(ctx, cmd)
-
+	p.info.Options.started = true
+	p.opts.started = true
 	opts.started = true
+
+	go p.transition(ctx, cmd)
 
 	return p, nil
 }
@@ -80,7 +81,6 @@ func (p *basicProcess) transition(ctx context.Context, cmd *exec.Cmd) {
 		p.Lock()
 		defer p.Unlock()
 		defer close(p.initialized)
-		p.opts.started = true
 		p.info.IsRunning = true
 		p.info.PID = p.cmd.Process.Pid
 		p.cmd = cmd
@@ -152,10 +152,8 @@ func (p *basicProcess) Respawn(ctx context.Context) (Process, error) {
 	p.RLock()
 	defer p.RUnlock()
 
-	opts := p.info.Options
-	opts.closers = []func() error{}
-
-	return newBasicProcess(ctx, &opts)
+	optsCopy := p.info.Options.Copy()
+	return newBasicProcess(ctx, optsCopy)
 }
 
 func (p *basicProcess) Wait(ctx context.Context) (int, error) {

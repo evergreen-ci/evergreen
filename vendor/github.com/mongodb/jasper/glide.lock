@@ -12,7 +12,7 @@ imports:
   - name: github.com/evergreen-ci/gimlet
     version: 713b8d22b5e93a0c25a9f71ca944c86d7ecefe84
   - name: github.com/tychoish/bond
-    version: a6a4ddb19d113c553f1ab0970d6292e0e95c7221
+    version: 95c1163c9c775eff904de8446a10e350cce9b8dd
   - name: github.com/tychoish/lru
     version: f77a748d12a924cfbfcf396426dd58de5aa3a9e2
   - name: github.com/mholt/archiver

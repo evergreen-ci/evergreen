@@ -84,7 +84,7 @@ func TestManagerInterface(t *testing.T) {
 					proc, err := manager.CreateProcess(ctx, opts)
 					assert.NoError(t, err)
 					assert.NotNil(t, proc)
-					assert.True(t, opts.started)
+					assert.True(t, proc.Info(ctx).Options.started)
 				},
 				"CreateProcessFails": func(ctx context.Context, t *testing.T, manager Manager) {
 					proc, err := manager.CreateProcess(ctx, &CreateOptions{})

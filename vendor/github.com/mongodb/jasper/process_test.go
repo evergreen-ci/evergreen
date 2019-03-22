@@ -409,7 +409,8 @@ func TestProcessImplementations(t *testing.T) {
 					require.NoError(t, err)
 
 					newProc, err := proc.Respawn(ctx)
-					assert.NoError(t, err)
+					require.NoError(t, err)
+					require.NotNil(t, newProc)
 					_, err = newProc.Wait(ctx)
 					require.NoError(t, err)
 					assert.True(t, newProc.Info(ctx).Successful)
@@ -421,7 +422,8 @@ func TestProcessImplementations(t *testing.T) {
 					require.NotNil(t, proc)
 
 					newProc, err := proc.Respawn(ctx)
-					assert.NoError(t, err)
+					require.NoError(t, err)
+					require.NotNil(t, newProc)
 					_, err = newProc.Wait(ctx)
 					require.NoError(t, err)
 					assert.True(t, newProc.Info(ctx).Successful)

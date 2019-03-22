@@ -165,9 +165,25 @@ func (c *BuildCatalog) Get(version, edition, target, arch string, debug bool) (s
 	if strings.Contains(target, "auto") {
 		t, err := getDistro()
 		if err != nil {
-
+			// For OSX, the target depends on the version. Before 4.1, OSX
+			// targets are "osx". However, starting in 4.1.1, OSX targets are
+			// "macos".
 			if runtime.GOOS == "darwin" {
-				target = "osx"
+				parsedVersion, err := NewMongoDBVersion(version)
+				if err != nil {
+					return "", errors.Wrap(err, "could not parse version")
+				}
+				macosVersion, err := NewMongoDBVersion("4.1.1")
+				if err != nil {
+					return "", errors.Wrap(err, "could not parse version for comparison")
+				}
+				if parsedVersion.IsGreaterThanOrEqualTo(macosVersion) {
+					grip.Debug("kim: renamed target to macos while building catalog")
+					target = "macos"
+				} else {
+					grip.Debug("kim: renamed target to osx while building catalog")
+					target = "osx"
+				}
 			} else {
 				target = runtime.GOOS
 			}

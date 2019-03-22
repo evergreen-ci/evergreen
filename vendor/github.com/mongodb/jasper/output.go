@@ -411,3 +411,21 @@ func (o *OutputOptions) GetError() (io.Writer, error) {
 
 	return o.errorMulti, nil
 }
+
+// Copy returns a copy of the options for only the exported fields. Unexported
+// fields are cleared.
+func (o *OutputOptions) Copy() *OutputOptions {
+	optsCopy := *o
+
+	optsCopy.outputSender = nil
+	optsCopy.errorSender = nil
+	optsCopy.outputMulti = nil
+	optsCopy.errorMulti = nil
+
+	if o.Loggers != nil {
+		optsCopy.Loggers = make([]Logger, len(o.Loggers))
+		_ = copy(optsCopy.Loggers, o.Loggers)
+	}
+
+	return &optsCopy
+}
