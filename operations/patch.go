@@ -17,7 +17,7 @@ const (
 )
 
 func getPatchFlags(flags ...cli.Flag) []cli.Flag {
-	return mergeFlagSlices(addProjectFlag(flags...), addVariantsFlag(), addTasksFlag(), addLargeFlag(), addYesFlag(
+	return mergeFlagSlices(addProjectFlag(flags...), addVariantsFlag(), addTasksFlag(), addLargeFlag(), addCommittedOnlyFlag(), addYesFlag(
 		cli.StringFlag{
 			Name:  joinFlagNames(patchDescriptionFlagName, "d"),
 			Usage: "description for the patch",
@@ -51,16 +51,17 @@ func Patch() cli.Command {
 			confPath := c.Parent().String(confFlagName)
 			args := c.Args()
 			params := &patchParams{
-				Project:     c.String(projectFlagName),
-				Variants:    c.StringSlice(variantsFlagName),
-				Tasks:       c.StringSlice(tasksFlagName),
-				SkipConfirm: c.Bool(yesFlagName),
-				Description: c.String(patchDescriptionFlagName),
-				Finalize:    c.Bool(patchFinalizeFlagName),
-				Browse:      c.Bool(patchBrowseFlagName),
-				ShowSummary: c.Bool(patchVerboseFlagName),
-				Large:       c.Bool(largeFlagName),
-				Alias:       c.String(patchAliasFlagName),
+				Project:       c.String(projectFlagName),
+				Variants:      c.StringSlice(variantsFlagName),
+				Tasks:         c.StringSlice(tasksFlagName),
+				SkipConfirm:   c.Bool(yesFlagName),
+				Description:   c.String(patchDescriptionFlagName),
+				Finalize:      c.Bool(patchFinalizeFlagName),
+				Browse:        c.Bool(patchBrowseFlagName),
+				ShowSummary:   c.Bool(patchVerboseFlagName),
+				Large:         c.Bool(largeFlagName),
+				Alias:         c.String(patchAliasFlagName),
+				CommittedOnly: c.Bool(committedFlagName),
 			}
 
 			ctx, cancel := context.WithCancel(context.Background())
@@ -83,7 +84,7 @@ func Patch() cli.Command {
 				return err
 			}
 
-			diffData, err := loadGitData(ref.Branch, args...)
+			diffData, err := loadGitData(ref.Branch, params.CommittedOnly, args...)
 			if err != nil {
 				return err
 			}

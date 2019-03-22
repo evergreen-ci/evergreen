@@ -13,7 +13,7 @@ func TestGitCmd(t *testing.T) {
 
 		Convey("when calling out to binary with properly formatted args should"+
 			"run binary", func() {
-			out, err := gitCmd("--version", "")
+			out, err := gitCmd("--version")
 			So(err, ShouldBeNil)
 
 			So(out, ShouldStartWith, "git version")

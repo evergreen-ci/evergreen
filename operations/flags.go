@@ -25,6 +25,7 @@ const (
 	limitFlagName         = "limit"
 	messageFlagName       = "message"
 	activeFlagName        = "active"
+	committedFlagName     = "committed-only"
 
 	anserDryRunFlagName      = "dry-run"
 	anserLimitFlagName       = "limit"
@@ -204,6 +205,13 @@ func addDbSettingsFlags(flags ...cli.Flag) []cli.Flag {
 			Usage: "Write mode. Only valid values are blank or 'majority'",
 		},
 	)
+}
+
+func addCommittedOnlyFlag(flags ...cli.Flag) []cli.Flag {
+	return append(flags, cli.BoolFlag{
+		Name:  committedFlagName,
+		Usage: "diff with HEAD, ignoring working tree changes",
+	})
 }
 
 func mergeFlagSlices(in ...[]cli.Flag) []cli.Flag {
