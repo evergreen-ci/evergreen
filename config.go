@@ -61,7 +61,7 @@ type Settings struct {
 	Expansions         map[string]string         `yaml:"expansions" bson:"expansions" json:"expansions"`
 	ExpansionsNew      util.KeyValuePairSlice    `yaml:"expansions_new" bson:"expansions_new" json:"expansions_new"`
 	GithubPRCreatorOrg string                    `yaml:"github_pr_creator_org" bson:"github_pr_creator_org" json:"github_pr_creator_org"`
-	GoogleAnalytics    string                    `yaml:"google_analytics" bson:"google_analytics" json:"google_analytics"`
+	GoogleAnalyticsID  string                    `yaml:"google_analytics" bson:"google_analytics" json:"google_analytics"`
 	HostInit           HostInitConfig            `yaml:"hostinit" bson:"hostinit" json:"hostinit" id:"hostinit"`
 	Jira               JiraConfig                `yaml:"jira" bson:"jira" json:"jira" id:"jira"`
 	JIRANotifications  JIRANotificationsConfig   `yaml:"jira_notifications" json:"jira_notifications" bson:"jira_notifications" id:"jira_notifications"`
@@ -108,7 +108,7 @@ func (c *Settings) Set() error {
 			credentialsNewKey:     c.CredentialsNew,
 			expansionsKey:         c.Expansions,
 			expansionsNewKey:      c.ExpansionsNew,
-			googleAnalyticsKey:    c.GoogleAnalytics,
+			googleAnalyticsKey:    c.GoogleAnalyticsID,
 			githubPRCreatorOrgKey: c.GithubPRCreatorOrg,
 			keysKey:               c.Keys,
 			keysNewKey:            c.KeysNew,

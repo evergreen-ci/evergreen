@@ -51,7 +51,7 @@ type APIAdminSettings struct {
 	Credentials        map[string]string                 `json:"credentials,omitempty"`
 	ContainerPools     *APIContainerPoolsConfig          `json:"container_pools,omitempty"`
 	Expansions         map[string]string                 `json:"expansions,omitempty"`
-	GoogleAnalytics    APIString                         `json:"google_analytics,omitempty"`
+	GoogleAnalyticsID  APIString                         `json:"google_analytics,omitempty"`
 	GithubPRCreatorOrg APIString                         `json:"github_pr_creator_org,omitempty"`
 	HostInit           *APIHostInitConfig                `json:"hostinit,omitempty"`
 	Jira               *APIJiraConfig                    `json:"jira,omitempty"`
@@ -106,7 +106,7 @@ func (as *APIAdminSettings) BuildFromService(h interface{}) error {
 		as.BannerTheme = &tmp
 		as.ClientBinariesDir = &v.ClientBinariesDir
 		as.ConfigDir = &v.ConfigDir
-		as.GoogleAnalytics = ToAPIString(v.GoogleAnalytics)
+		as.GoogleAnalyticsID = ToAPIString(v.GoogleAnalyticsID)
 		as.GithubPRCreatorOrg = &v.GithubPRCreatorOrg
 		as.LogPath = &v.LogPath
 		as.Plugins = v.Plugins
@@ -145,7 +145,7 @@ func (as *APIAdminSettings) ToService() (interface{}, error) {
 	if as.ConfigDir != nil {
 		settings.ConfigDir = *as.ConfigDir
 	}
-	settings.GoogleAnalytics = FromAPIString(as.GoogleAnalytics)
+	settings.GoogleAnalyticsID = FromAPIString(as.GoogleAnalyticsID)
 	if as.GithubPRCreatorOrg != nil {
 		settings.GithubPRCreatorOrg = *as.GithubPRCreatorOrg
 	}

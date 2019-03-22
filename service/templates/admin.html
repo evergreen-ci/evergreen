@@ -703,7 +703,6 @@ Admin Settings
 						</section>
 
 						<section layout="row" flex>
-
 							<md-card flex=50 id="jira">
 								<md-card-title>
 									<md-card-title-text>
@@ -733,6 +732,22 @@ Admin Settings
 								</md-card-content>
 							</md-card>
 
+							<md-card flex=50 id="google_analytics" style="height:280px">
+								<md-card-title>
+									<md-card-title-text>
+										<span>Google Analytics</span>
+									</md-card-title-text>
+									<md-button ng-click="clearSection('google_analytics')">
+										<i class="fa fa-trash"></i>
+									</md-button>
+								</md-card-title>
+								<md-card-content>
+									<md-input-container class="control" style="width:45%;">
+										<label>Tracking ID</label>
+										<input type="text" ng-model="Settings.google_analytics">
+									</md-input-container>
+								</md-card-content>
+							</md-card>
 						</section>
 
 						<section layout="row" flex>
@@ -825,25 +840,6 @@ Admin Settings
 							</md-card>
             </section>
 
-            <section layout="row" flex>
-							<md-card flex=50 id="google_analytics" style="height:280px">
-								<md-card-title>
-									<md-card-title-text>
-										<span>Google Analytics</span>
-									</md-card-title-text>
-									<md-button ng-click="clearSection('google_analytics')">
-										<i class="fa fa-trash"></i>
-									</md-button>
-								</md-card-title>
-								<md-card-content>
-									<md-input-container class="control" style="width:45%;">
-										<label>Tracking ID</label>
-										<input type="text" ng-model="Settings.google_analytics">
-									</md-input-container>
-								</md-card-content>
-							</md-card>
-
-						</section>
 
 						<section layout="row" flex>
 
