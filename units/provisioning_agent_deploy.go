@@ -251,6 +251,7 @@ func (j *agentDeployJob) prepRemoteHost(ctx context.Context, hostObj host.Host, 
 	if hostObj.Distro.Setup == "" {
 		return nil
 	}
+
 	if logs, err := hostObj.RunSSHCommand(ctx, hostObj.SetupCommand(), sshOptions); err != nil {
 		event.LogProvisionFailed(hostObj.Id, logs)
 

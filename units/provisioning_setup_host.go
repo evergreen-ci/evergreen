@@ -227,15 +227,6 @@ func (j *setupHostJob) runHostSetup(ctx context.Context, targetHost *host.Host, 
 		return nil
 	}
 
-	// get expansions mapping using settings
-	if targetHost.Distro.Setup == "" {
-		exp := util.NewExpansions(settings.Expansions)
-		targetHost.Distro.Setup, err = exp.ExpandString(targetHost.Distro.Setup)
-		if err != nil {
-			return errors.Wrap(err, "expansions error")
-		}
-	}
-
 	if targetHost.Distro.Setup != "" {
 		err = j.copyScript(ctx, settings, targetHost, evergreen.SetupScriptName, targetHost.Distro.Setup)
 		if err != nil {

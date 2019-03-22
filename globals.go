@@ -127,8 +127,9 @@ const (
 
 	DegradedLoggingPercent = 10
 
-	SetupScriptName    = "setup.sh"
-	TeardownScriptName = "teardown.sh"
+	SetupScriptName     = "setup.sh"
+	TempSetupScriptName = "setup-temp.sh"
+	TeardownScriptName  = "teardown.sh"
 
 	RoutePaginatorNextPageHeaderKey = "Link"
 

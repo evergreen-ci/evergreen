@@ -47,19 +47,22 @@ func runSetupScript(ctx context.Context, wd string, setupAsSudo bool) error {
 	if _, err := os.Stat(evergreen.SetupScriptName); os.IsNotExist(err) {
 		return nil
 	}
+	if err := os.Rename(evergreen.SetupScriptName, evergreen.TempSetupScriptName); os.IsNotExist(err) {
+		return nil
+	}
 
-	chmod := getChmodCommandWithSudo(ctx, evergreen.SetupScriptName, setupAsSudo)
+	chmod := getChmodCommandWithSudo(ctx, evergreen.TempSetupScriptName, setupAsSudo)
 	out, err := chmod.CombinedOutput()
 	if err != nil {
 		return errors.Wrap(err, string(out))
 	}
 
-	cmd := getShCommandWithSudo(ctx, evergreen.SetupScriptName, setupAsSudo)
+	cmd := getShCommandWithSudo(ctx, evergreen.TempSetupScriptName, setupAsSudo)
 	out, err = cmd.CombinedOutput()
 
 	catcher := grip.NewSimpleCatcher()
 	catcher.Add(err)
-	catcher.Add(os.Remove(evergreen.SetupScriptName))
+	catcher.Add(os.Remove(evergreen.TempSetupScriptName))
 
 	grip.Warning(os.MkdirAll(wd, 0777))
 
