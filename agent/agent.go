@@ -14,7 +14,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/rest/client"
-	"github.com/evergreen-ci/evergreen/subprocess"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/pail"
 	"github.com/mongodb/grip"
@@ -490,7 +489,7 @@ func (a *Agent) killProcs(tc *taskContext, ignoreTaskGroupCheck bool) {
 			} else {
 				grip.Infof("cleaning up processes for task: %s", tc.task.ID)
 			}
-			if err := subprocess.KillSpawnedProcs(tc.task.ID, tc.logger.Task()); err != nil {
+			if err := util.KillSpawnedProcs(tc.task.ID, tc.logger.Task()); err != nil {
 				msg := fmt.Sprintf("Error cleaning up spawned processes (agent-exit): %v", err)
 				grip.Critical(msg)
 			}

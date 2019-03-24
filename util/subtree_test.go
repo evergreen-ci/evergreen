@@ -1,6 +1,6 @@
 // +build !windows
 
-package subprocess
+package util
 
 import (
 	"bytes"
@@ -9,6 +9,7 @@ import (
 	"os"
 	"testing"
 
+	"github.com/evergreen-ci/evergreen/subprocess"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/logging"
 	. "github.com/smartystreets/goconvey/convey"
@@ -23,13 +24,8 @@ func TestSubtreeCleanup(t *testing.T) {
 		env = append(env, "EVR_AGENT_PID=12345")
 		env = append(env, fmt.Sprintf("EVR_TASK_ID=%v", id))
 		env = append(env, fmt.Sprintf("EVR_AGENT_PID=%v", os.Getpid()))
-		localCmd := &localCmd{
-			CmdString:   "while true; do sleep 1; done; echo 'finish'",
-			Stdout:      buf,
-			Stderr:      buf,
-			ScriptMode:  true,
-			Environment: env,
-		}
+		localCmd := subprocess.NewLocalCommand("while true; do sleep 1; done; echo 'finish'", "", "", env, true)
+
 		So(localCmd.Start(context.TODO()), ShouldBeNil)
 		TrackProcess(id, localCmd.GetPid(), logging.MakeGrip(grip.GetSender()))
 

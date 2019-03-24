@@ -135,8 +135,8 @@ func (c *shellExec) Execute(ctx context.Context,
 	}
 
 	env := append(os.Environ(),
-		fmt.Sprintf("%s=%s", subprocess.MarkerTaskID, conf.Task.Id),
-		fmt.Sprintf("%s=%d", subprocess.MarkerAgentPID, os.Getpid()),
+		fmt.Sprintf("%s=%s", util.MarkerTaskID, conf.Task.Id),
+		fmt.Sprintf("%s=%d", util.MarkerAgentPID, os.Getpid()),
 		fmt.Sprintf("TMP=%s", taskTmpDir),
 		fmt.Sprintf("TEMP=%s", taskTmpDir),
 		fmt.Sprintf("TMPDIR=%s", taskTmpDir))
@@ -166,7 +166,7 @@ func (c *shellExec) Execute(ctx context.Context,
 	// Call the platform's process-tracking function. On some OSes this will be a noop,
 	// on others this may need to do some additional work to track the process so that
 	// it can be cleaned up later.
-	subprocess.TrackProcess(conf.Task.Id, pid, logger.System())
+	util.TrackProcess(conf.Task.Id, pid, logger.System())
 
 	if c.Background {
 		logger.Execution().Debugf("running command in the background [pid=%d]", pid)

@@ -128,8 +128,8 @@ func (c *subprocessExec) doExpansions(exp *util.Expansions) error {
 }
 
 func (c *subprocessExec) getProc(taskID string, logger client.LoggerProducer) (subprocess.Command, func(), error) {
-	c.Env[subprocess.MarkerTaskID] = taskID
-	c.Env[subprocess.MarkerAgentPID] = strconv.Itoa(os.Getpid())
+	c.Env[util.MarkerTaskID] = taskID
+	c.Env[util.MarkerAgentPID] = strconv.Itoa(os.Getpid())
 
 	proc, err := subprocess.NewLocalExec(c.Binary, c.Args, c.Env, c.WorkingDir)
 	if err != nil {
@@ -244,7 +244,7 @@ func (c *subprocessExec) runCommand(ctx context.Context, taskID string, proc sub
 		return errors.Wrap(err, "problem starting background process")
 	}
 	pid := proc.GetPid()
-	subprocess.TrackProcess(taskID, pid, logger.System())
+	util.TrackProcess(taskID, pid, logger.System())
 
 	if c.Background {
 		logger.Execution().Infof("started background process with pid %d", pid)
