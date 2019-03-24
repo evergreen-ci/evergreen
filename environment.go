@@ -22,6 +22,7 @@ import (
 	"github.com/mongodb/grip/level"
 	"github.com/mongodb/grip/message"
 	"github.com/mongodb/grip/send"
+	"github.com/mongodb/jasper"
 	"github.com/pkg/errors"
 	mgo "gopkg.in/mgo.v2"
 )
@@ -83,11 +84,15 @@ type Environment interface {
 	RemoteQueue() amboy.Queue
 	GenerateTasksQueue() amboy.Queue
 
+	// Jasper is a process manager for running external
+	// commands. Every process has a manager service.
+	JasperManager() jasper.Manager
+
 	// ClientConfig provides access to a list of the latest evergreen
 	// clients, that this server can serve to users
 	ClientConfig() *ClientConfig
 
-	// SaveConfig persists the configuration settings to the db
+	// SaveConfig persists the configuration settings.
 	SaveConfig() error
 
 	// GetSender provides a grip Sender configured with the environment's
@@ -121,6 +126,7 @@ type envState struct {
 	localQueue         amboy.Queue
 	generateTasksQueue amboy.Queue
 	notificationsQueue amboy.Queue
+	jasperManager      jasper.Manager
 	settings           *Settings
 	session            *mgo.Session
 	mu                 sync.RWMutex
@@ -156,6 +162,8 @@ func (e *envState) Configure(ctx context.Context, confPath string, db *DBSetting
 	if e.session == nil {
 		catcher.Add(e.initDB(e.settings.Database))
 	}
+
+	catcher.Add(e.initJasper())
 	catcher.Add(e.initSenders(ctx))
 	catcher.Add(e.createQueues(ctx))
 	catcher.Extend(e.initQueues(ctx))
@@ -482,16 +490,19 @@ func (e *envState) initSenders(ctx context.Context) error {
 	return catcher.Resolve()
 }
 
-type BuildBaronProject struct {
-	TicketCreateProject  string   `mapstructure:"ticket_create_project" bson:"ticket_create_project"`
-	TicketSearchProjects []string `mapstructure:"ticket_search_projects" bson:"ticket_search_projects"`
+func (e *envState) initJasper() error {
+	jpm, err := jasper.NewLocalManager(true)
+	if err != nil {
+		return errors.WithStack(err)
+	}
 
-	// The BF Suggestion server as a source of suggestions is only enabled for projects where BFSuggestionServer isn't the empty string.
-	BFSuggestionServer      string `mapstructure:"bf_suggestion_server" bson:"bf_suggestion_server"`
-	BFSuggestionUsername    string `mapstructure:"bf_suggestion_username" bson:"bf_suggestion_username"`
-	BFSuggestionPassword    string `mapstructure:"bf_suggestion_password" bson:"bf_suggestion_password"`
-	BFSuggestionTimeoutSecs int    `mapstructure:"bf_suggestion_timeout_secs" bson:"bf_suggestion_timeout_secs"`
-	BFSuggestionFeaturesURL string `mapstructure:"bf_suggestion_features_url" bson:"bf_suggestion_features_url"`
+	e.jasperManager = jpm
+
+	e.closers["jasper-manaer"] = func(ctx context.Context) error {
+		return errors.WithStack(jpm.Close(ctx))
+	}
+
+	return nil
 }
 
 func (e *envState) Settings() *Settings {
@@ -539,6 +550,18 @@ func (e *envState) ClientConfig() *ClientConfig {
 
 	config := *e.clientConfig
 	return &config
+}
+
+type BuildBaronProject struct {
+	TicketCreateProject  string   `mapstructure:"ticket_create_project" bson:"ticket_create_project"`
+	TicketSearchProjects []string `mapstructure:"ticket_search_projects" bson:"ticket_search_projects"`
+
+	// The BF Suggestion server as a source of suggestions is only enabled for projects where BFSuggestionServer isn't the empty string.
+	BFSuggestionServer      string `mapstructure:"bf_suggestion_server" bson:"bf_suggestion_server"`
+	BFSuggestionUsername    string `mapstructure:"bf_suggestion_username" bson:"bf_suggestion_username"`
+	BFSuggestionPassword    string `mapstructure:"bf_suggestion_password" bson:"bf_suggestion_password"`
+	BFSuggestionTimeoutSecs int    `mapstructure:"bf_suggestion_timeout_secs" bson:"bf_suggestion_timeout_secs"`
+	BFSuggestionFeaturesURL string `mapstructure:"bf_suggestion_features_url" bson:"bf_suggestion_features_url"`
 }
 
 func (e *envState) SaveConfig() error {
@@ -692,4 +715,11 @@ func getClientConfig(baseURL string) (*ClientConfig, error) {
 	}
 
 	return c, nil
+}
+
+func (e *envState) JasperManager() jasper.Manager {
+	e.mu.RLock()
+	defer e.mu.RUnlock()
+
+	return e.jasperManager
 }

@@ -44,6 +44,7 @@ import:
   - package: github.com/vmware/govmomi
   - package: github.com/mongodb/anser
   - package: github.com/mongodb/amboy
+  - package: github.com/mongodb/jasper
   - package: github.com/evergreen-ci/gimlet
   - package: github.com/tychoish/tarjan
   - package: github.com/google/go-github

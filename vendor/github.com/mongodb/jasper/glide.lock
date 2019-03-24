@@ -1,0 +1,39 @@
+hash: ""
+updated: 2016-10-20T16:48:42.872025812-04:00
+imports:
+  - name: github.com/satori/go.uuid
+    version: 36e9d2ebbde5e3f13ab2e25625fd453271d6522e
+  - name: github.com/pkg/errors
+    version: 2b3a18b5f0fb6b4f9190549597d3f962c02bc5eb
+  - name: github.com/stretchr/testify
+    version: 890a5c3458b43e6104ff5da8dfa139d013d77544
+  - name: github.com/mongodb/grip
+    version: 12c3fdeb2dbd5bc0b124a884f8f5bb3418c49cca
+  - name: github.com/evergreen-ci/gimlet
+    version: 713b8d22b5e93a0c25a9f71ca944c86d7ecefe84
+  - name: github.com/tychoish/bond
+    version: c5c97df78ea1091f5ac2da1d6e6054e588b4e3ce
+  - name: github.com/tychoish/lru
+    version: f77a748d12a924cfbfcf396426dd58de5aa3a9e2
+  - name: github.com/mholt/archiver
+    version: de0d89e255e17c8d75a40122055763e743ab0593
+  - name: github.com/montanaflynn/stats
+    version: db72e6cae808b936b0c01fd330ff1fcd2c86c95e
+  - name: github.com/mongodb/amboy
+    version: ba41957778899cce2775284bfdb7155475794657
+  - name: github.com/google/shlex
+    version: 6f45313302b9c56850fc17f99e40caebce98c716
+
+  # grpc and dependencies
+  - name: google.golang.org/grpc
+    version: 2773c7bbcf81cf358d3f0038b1469b2d44062acb
+  - name: golang.org/x/net
+    version: 3a22650c66bd7f4fb6d1e8072ffd7b75c8a27898
+  - name: golang.org/x/sys
+    version: a9d3bda3a223baa6bba6ef412cb273f0fd163c05
+  - name: golang.org/x/text
+    version: 6c92c7dc7f53607809182301b96e4cc1975143f1
+  - name: google.golang.org/genproto
+    version: 082222b4a5c572e33e82ee9162d1352c7cf38682
+  - name: github.com/golang/protobuf
+    version: c823c79ea1570fb5ff454033735a8e68575d1d0f

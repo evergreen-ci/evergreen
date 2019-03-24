@@ -1,0 +1,12 @@
+package: github.com/mongodb/jasper
+import:
+  - package: github.com/pkg/errors
+  - package: github.com/satori/go.uuid
+  - package: github.com/stretchr/testify
+  - package: github.com/mongodb/grip
+  - package: github.com/evergreen-ci/gimlet
+  - package: github.com/tychoish/bond
+  - package: github.com/tychoish/lru
+  - package: github.com/mholt/archiver
+  - package: github.com/montanaflynn/stats
+  - package: github.com/mongodb/amboy

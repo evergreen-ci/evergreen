@@ -20,13 +20,15 @@ import (
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/mongodb/grip/recovery"
+	"github.com/mongodb/jasper"
 	"github.com/pkg/errors"
 )
 
 // Agent manages the data necessary to run tasks on a host.
 type Agent struct {
-	comm client.Communicator
-	opts Options
+	comm   client.Communicator
+	jasper jasper.Manager
+	opts   Options
 }
 
 // Options contains startup options for the Agent.
@@ -67,7 +69,7 @@ type taskContext struct {
 
 // New creates a new Agent with some Options and a client.Communicator. Call the
 // Agent's Start method to begin listening for tasks to run.
-func New(opts Options, comm client.Communicator) *Agent {
+func New(opts Options, comm client.Communicator) (*Agent, error) {
 	comm.SetHostID(opts.HostID)
 	comm.SetHostSecret(opts.HostSecret)
 	agent := &Agent{
@@ -75,13 +77,21 @@ func New(opts Options, comm client.Communicator) *Agent {
 		comm: comm,
 	}
 
-	return agent
+	jpm, err := jasper.NewLocalManager(true)
+	if err != nil {
+		return nil, errors.WithStack(err)
+	}
+
+	agent.jasper = jpm
+
+	return agent, nil
 }
 
 // Start starts the agent loop. The agent polls the API server for new tasks
 // at interval agentSleepInterval and runs them.
 func (a *Agent) Start(ctx context.Context) error {
 	defer recovery.LogStackTraceAndExit("main agent thread")
+
 	err := a.startStatusServer(ctx, a.opts.StatusPort)
 	if err != nil {
 		return errors.WithStack(err)
@@ -89,6 +99,7 @@ func (a *Agent) Start(ctx context.Context) error {
 	if a.opts.Cleanup {
 		tryCleanupDirectory(a.opts.WorkingDirectory)
 	}
+
 	return errors.Wrap(a.loop(ctx), "error in agent loop, exiting")
 }
 
@@ -170,6 +181,7 @@ LOOP:
 					continue LOOP
 				}
 				tskCtx, tskCancel := context.WithCancel(ctx)
+				a.jasper.Clear(ctx)
 				defer tskCancel()
 				shouldExit, err := a.runTask(tskCtx, tskCancel, tc)
 				if err != nil {

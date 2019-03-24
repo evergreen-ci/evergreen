@@ -9,10 +9,10 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
-	"github.com/evergreen-ci/evergreen/subprocess"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
+	"github.com/mongodb/jasper"
 	"github.com/pkg/errors"
 )
 
@@ -34,10 +34,13 @@ func (agt *Agent) startStatusServer(ctx context.Context, port int) error {
 	app.AddMiddleware(gimlet.MakeRecoveryLogger())
 	app.AddRoute("/status").Handler(agt.statusHandler()).Get()
 	app.AddRoute("/terminate").Handler(terminateAgentHandler).Delete()
-	app.AddRoute("/oom/clear").Handler(subprocess.ClearOOMHandler()).Delete()
-	app.AddRoute("/oom/check").Handler(subprocess.CheckOOMHandler()).Get()
+	app.AddRoute("/oom/clear").Handler(http.RedirectHandler("/jasper/v1/list/oom", http.StatusMovedPermanently).ServeHTTP).Delete()
+	app.AddRoute("/oom/check").Handler(http.RedirectHandler("/jasper/v1/list/oom", http.StatusMovedPermanently).ServeHTTP).Get()
 
-	handler, err := gimlet.MergeApplications(app, gimlet.GetPProfApp())
+	jpmapp := jasper.NewManagerService(agt.jasper).App(ctx)
+	jpmapp.SetPrefix("jasper")
+
+	handler, err := gimlet.MergeApplications(app, jpmapp, gimlet.GetPProfApp())
 	if err != nil {
 		return errors.WithStack(err)
 	}

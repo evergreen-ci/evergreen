@@ -1,0 +1,4 @@
+package: github.com/tychoish/lru
+import:
+- package: github.com/pkg/errors
+- package: github.com/tychoish/grip

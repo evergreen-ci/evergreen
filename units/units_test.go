@@ -3,6 +3,7 @@ package units
 import (
 	"testing"
 
+	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/amboy/registry"
 	"github.com/mongodb/grip"
@@ -12,7 +13,13 @@ import (
 func TestAllRegisteredUnitsAreRemoteSafe(t *testing.T) {
 	assert := assert.New(t)
 
+	disabled := []string{
+		"bond-recall-download-file",
+	}
 	for id := range registry.JobTypeNames() {
+		if util.StringSliceContains(disabled, id) {
+			continue
+		}
 		grip.Infoln("testing job is remote ready:", id)
 		factory, err := registry.GetJobFactory(id)
 		assert.NoError(err)
@@ -22,7 +29,6 @@ func TestAllRegisteredUnitsAreRemoteSafe(t *testing.T) {
 		assert.NotNil(job)
 
 		assert.Equal(id, job.Type().Name)
-
 		for _, f := range []amboy.Format{amboy.JSON, amboy.YAML, amboy.JSON} {
 			assert.NotPanics(func() {
 				dbjob, err := registry.MakeJobInterchange(job, f)
