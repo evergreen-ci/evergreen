@@ -127,6 +127,7 @@ func GetPatchedProject(ctx context.Context, p *patch.Patch, githubOauthToken str
 	var cancel context.CancelFunc
 	ctx, cancel = context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
+	env := evergreen.GetEnvironment()
 
 	// try to get the remote project file data at the requested revision
 	var projectFileBytes []byte
@@ -159,7 +160,7 @@ func GetPatchedProject(ctx context.Context, p *patch.Patch, githubOauthToken str
 
 	// apply remote configuration patch if needed
 	if !(p.IsGithubPRPatch() || p.IsPRMergePatch()) && p.ConfigChanged(projectRef.RemotePath) {
-		projectFileBytes, err = MakePatchedConfig(ctx, p, projectRef.RemotePath, string(projectFileBytes))
+		projectFileBytes, err = MakePatchedConfig(ctx, env, p, projectRef.RemotePath, string(projectFileBytes))
 		if err != nil {
 			return nil, errors.Wrapf(err, "Could not patch remote configuration file")
 		}
@@ -175,7 +176,7 @@ func GetPatchedProject(ctx context.Context, p *patch.Patch, githubOauthToken str
 // MakePatchedConfig takes in the path to a remote configuration a stringified version
 // of the current project and returns an unmarshalled version of the project
 // with the patch applied
-func MakePatchedConfig(ctx context.Context, env evergreen.Environment, p *patch.Patch, remoteConfigPath, projectConfig string) (*Project, error) {
+func MakePatchedConfig(ctx context.Context, env evergreen.Environment, p *patch.Patch, remoteConfigPath, projectConfig string) ([]byte, error) {
 	for _, patchPart := range p.Patches {
 		// we only need to patch the main project and not any other modules
 		if patchPart.ModuleName != "" {
@@ -202,7 +203,6 @@ func MakePatchedConfig(ctx context.Context, env evergreen.Environment, p *patch.
 			if err != nil {
 				return nil, errors.Wrap(err, "could not write temporary patch file")
 			}
-
 		} else {
 			patchFilePath, err = util.WriteToTempFile(patchPart.PatchSet.Patch)
 			if err != nil {
@@ -256,7 +256,6 @@ func MakePatchedConfig(ctx context.Context, env evergreen.Environment, p *patch.
 		err = env.JasperManager().CreateCommand(ctx).Add([]string{"bash", "-c", strings.Join(patchCommandStrings, "\n")}).
 			SetErrorSender(level.Error, grip.GetSender()).SetOutputSender(level.Info, grip.GetSender()).
 			Directory(workingDirectory).Run(ctx)
-
 		if err != nil {
 			return nil, errors.Wrap(err, "could not run patch command")
 		}

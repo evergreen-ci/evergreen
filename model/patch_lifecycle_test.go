@@ -20,7 +20,6 @@ import (
 	"github.com/mongodb/grip"
 	. "github.com/smartystreets/goconvey/convey"
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 	"gopkg.in/mgo.v2/bson"
 	yaml "gopkg.in/yaml.v2"
 )
@@ -45,6 +44,20 @@ func init() {
 	current := testutil.GetDirectoryOfFile()
 	patchFile = filepath.Join(current, patchFile)
 	newProjectPatchFile = filepath.Join(current, newProjectPatchFile)
+
+	ctx, cancel := context.WithCancel(context.Background())
+
+	env := evergreen.GetEnvironment()
+	err := env.Configure(ctx, filepath.Join(evergreen.FindEvergreenHome(), testutil.TestDir, testutil.TestSettings), nil)
+	if err != nil {
+		cancel()
+		panic(err)
+	}
+
+	env.RegisterCloser("close-context", func(ctx context.Context) error {
+		cancel()
+		return nil
+	})
 }
 
 func clearAll(t *testing.T) {
@@ -279,7 +292,7 @@ func TestMakePatchedConfig(t *testing.T) {
 	defer cancel()
 
 	env := evergreen.GetEnvironment()
-	require.NoError(t, env.Configure(ctx, filepath.Join(evergreen.FindEvergreenHome(), testutil.TestDir, testutil.TestSettings), nil))
+
 	Convey("With calling MakePatchedConfig with a config and remote configuration path", t, func() {
 		cwd := testutil.GetDirectoryOfFile()
 
@@ -306,7 +319,7 @@ func TestMakePatchedConfig(t *testing.T) {
 			}
 			projectBytes, err := ioutil.ReadFile(filepath.Join(cwd, "testdata", "project.config"))
 			So(err, ShouldBeNil)
-			project, err := MakePatchedConfig(ctx, env, p, remoteConfigPath, string(projectBytes))
+			projectData, err := MakePatchedConfig(ctx, env, p, remoteConfigPath, string(projectBytes))
 			So(err, ShouldBeNil)
 			So(projectData, ShouldNotBeNil)
 
@@ -328,8 +341,11 @@ func TestMakePatchedConfig(t *testing.T) {
 				}},
 			}
 
-			project, err := MakePatchedConfig(ctx, env, p, remoteConfigPath, "")
+			projectData, err := MakePatchedConfig(ctx, env, p, remoteConfigPath, "")
 			So(err, ShouldBeNil)
+
+			project := &Project{}
+			So(LoadProjectInto(projectData, "", project), ShouldBeNil)
 			So(project, ShouldNotBeNil)
 
 			So(len(project.Tasks), ShouldEqual, 1)
