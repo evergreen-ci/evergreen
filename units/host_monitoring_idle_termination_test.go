@@ -7,6 +7,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
 	modelUtil "github.com/evergreen-ci/evergreen/model/testutil"
 	"github.com/evergreen-ci/evergreen/testutil"
@@ -68,6 +69,7 @@ func TestFlaggingIdleHosts(t *testing.T) {
 			// creation time would otherwise indicate it has been idle a while
 			host1 := host.Host{
 				Id:           "h1",
+				Distro:       distro.Distro{Id: "distro1"},
 				Provider:     evergreen.ProviderNameMock,
 				CreationTime: time.Now().Add(-30 * time.Minute),
 				RunningTask:  "t1",
@@ -84,6 +86,7 @@ func TestFlaggingIdleHosts(t *testing.T) {
 			Convey("even if they have a last communication time > 10 minutes", func() {
 				h2 := host.Host{
 					Id:                    "anotherhost",
+					Distro:                distro.Distro{Id: "distro1"},
 					Provider:              evergreen.ProviderNameMock,
 					CreationTime:          time.Now().Add(-30 * time.Minute),
 					RunningTask:           "t3",
@@ -110,6 +113,7 @@ func TestFlaggingIdleHosts(t *testing.T) {
 
 			host1 := host.Host{
 				Id:                    "h2",
+				Distro:                distro.Distro{Id: "distro1"},
 				Provider:              evergreen.ProviderNameMock,
 				LastTask:              "t1",
 				LastTaskCompletedTime: time.Now().Add(-time.Minute * 20),
@@ -122,6 +126,7 @@ func TestFlaggingIdleHosts(t *testing.T) {
 
 			host2 := host.Host{
 				Id:                    "h3",
+				Distro:                distro.Distro{Id: "distro1"},
 				Provider:              evergreen.ProviderNameMock,
 				LastTask:              "t2",
 				LastTaskCompletedTime: time.Now().Add(-time.Minute * 2),
@@ -143,6 +148,7 @@ func TestFlaggingIdleHosts(t *testing.T) {
 			"than 10 mins should be marked as idle", func() {
 			anotherHost := host.Host{
 				Id:                    "h4",
+				Distro:                distro.Distro{Id: "distro1"},
 				Provider:              evergreen.ProviderNameMock,
 				LastCommunicationTime: time.Now().Add(-time.Minute * 20),
 				Status:                evergreen.HostRunning,
@@ -159,6 +165,7 @@ func TestFlaggingIdleHosts(t *testing.T) {
 			now := time.Now()
 			h5 := host.Host{
 				Id:                    "h5",
+				Distro:                distro.Distro{Id: "distro1"},
 				Provider:              evergreen.ProviderNameMock,
 				LastCommunicationTime: now,
 				Status:                evergreen.HostRunning,
