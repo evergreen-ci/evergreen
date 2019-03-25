@@ -320,24 +320,37 @@ func PopulateIdleHostJobs(env evergreen.Environment) amboy.QueueOperation {
 
 		catcher := grip.NewBasicCatcher()
 		ts := util.RoundPartOfHour(1).Format(tsFormat)
-		hosts, err := host.AllIdleEphemeral()
+		distroHosts, err := host.IdleEphemeralGroupedByDistroId(true)
 		catcher.Add(err)
-		grip.Warning(message.WrapError(err, message.Fields{
-			"cron":      idleHostJobName,
-			"operation": "background task creation",
-			"hosts":     hosts,
-			"impact":    "idle hosts termination",
-		}))
+
+		var hostsToTerminate []host.Host
+		for _, info := range distroHosts {
+			nIdleHosts := len(info.Hosts)
+			distro, err := distro.FindOne(distro.ById(info.DistroID))
+			if err != nil {
+				catcher.Add(err)
+			}
+			minimumHosts := distro.PlannerSettings.MinimumHosts
+
+			if nIdleHosts <= minimumHosts {
+				continue
+			}
+
+			nHostsToTerminate := nIdleHosts - minimumHosts
+			for i := 0; i < nHostsToTerminate; i++ {
+				hostsToTerminate = append(hostsToTerminate, info.Hosts[i])
+			}
+		}
 
 		grip.InfoWhen(sometimes.Percent(10), message.Fields{
 			"id":    idleHostJobName,
 			"op":    "dispatcher",
-			"hosts": hosts,
-			"num":   len(hosts),
+			"hosts": hostsToTerminate,
+			"num":   len(hostsToTerminate),
 		})
 
-		for _, h := range hosts {
-			err := queue.Put(NewIdleHostTerminationJob(env, h, ts))
+		for _, host := range hostsToTerminate {
+			err := queue.Put(NewIdleHostTerminationJob(env, host, ts))
 			catcher.Add(err)
 		}
 

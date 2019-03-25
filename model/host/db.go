@@ -78,6 +78,12 @@ var (
 	SpawnOptionsBuildIDKey       = bsonutil.MustHaveTag(SpawnOptions{}, "BuildID")
 	SpawnOptionsTimeoutKey       = bsonutil.MustHaveTag(SpawnOptions{}, "TimeoutTeardown")
 	SpawnOptionsSpawnedByTaskKey = bsonutil.MustHaveTag(SpawnOptions{}, "SpawnedByTask")
+	DistroIDKey                  = bsonutil.MustHaveTag(distro.Distro{}, "Id")
+)
+
+var (
+	HostsByDistroDistroIDKey = bsonutil.MustHaveTag(HostsByDistro{}, "DistroID")
+	HostsByDistroHostsKey    = bsonutil.MustHaveTag(HostsByDistro{}, "Hosts")
 )
 
 // === Queries ===
@@ -126,6 +132,46 @@ func AllIdleEphemeral() ([]Host, error) {
 	})
 
 	return Find(query)
+}
+
+func IdleEphemeralGroupedByDistroId(creationTimeAsc bool) ([]HostsByDistro, error) {
+	var hostsByDistro []HostsByDistro
+	sortOrder := -1
+	if creationTimeAsc {
+		sortOrder = 1
+	}
+
+	pipeline := []bson.M{
+		{
+			"$match": bson.M{
+				RunningTaskKey:   bson.M{"$exists": false},
+				StartedByKey:     evergreen.User,
+				StatusKey:        evergreen.HostRunning,
+				ProviderKey:      bson.M{"$in": evergreen.ProviderSpawnable},
+				HasContainersKey: bson.M{"$ne": true},
+			},
+		},
+		{
+			"$sort": bson.M{CreateTimeKey: sortOrder},
+		},
+		{
+			"$group": bson.M{
+				"_id": "$" + bsonutil.GetDottedKeyName(DistroKey, DistroIDKey),
+				HostsByDistroHostsKey: bson.M{
+					"$push": "$$ROOT",
+				},
+			},
+		},
+		{
+			"$project": bson.M{"_id": 0, HostsByDistroDistroIDKey: "$_id", HostsByDistroHostsKey: 1},
+		},
+	}
+	err := db.Aggregate(Collection, pipeline, &hostsByDistro)
+	if err != nil {
+		return nil, errors.Wrap(err, "problem grouping idle hosts by distro id")
+	}
+
+	return hostsByDistro, nil
 }
 
 func runningHostsQuery(distroID string) bson.M {

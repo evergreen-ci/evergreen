@@ -119,6 +119,11 @@ type Host struct {
 	DockerOptions DockerOptions `bson:"docker_options,omitempty" json:"docker_options,omitempty"`
 }
 
+type HostsByDistro struct {
+	DistroID string `bson:"distro_id" json:"distro_id" mapstructure:"distro_id"`
+	Hosts    []Host `bson:"hosts" json:"hosts" mapstructure:"hosts"`
+}
+
 type HostGroup []Host
 
 // DockerOptions contains options for starting a container
