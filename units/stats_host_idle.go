@@ -200,7 +200,7 @@ func (j *collectHostIdleDataJob) getTaskStartStatsMessage() message.Composer {
 		"distro":       j.host.Distro.Id,
 		"provider":     j.host.Distro.Provider,
 		"host":         j.host.Id,
-		"latency_secs": j.task.StartTime.Sub(j.task.GetTaskCreatedTime()).Seconds(),
+		"latency_secs": j.task.StartTime.Sub(j.task.ActivatedTime).Seconds(),
 	}
 
 	if strings.HasPrefix(j.host.Distro.Provider, "ec2") {
