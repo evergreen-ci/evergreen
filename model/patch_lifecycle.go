@@ -14,13 +14,11 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/patch"
-	"github.com/evergreen-ci/evergreen/subprocess"
 	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/level"
 	"github.com/mongodb/grip/message"
-	"github.com/mongodb/grip/send"
 	"github.com/pkg/errors"
 )
 
@@ -175,8 +173,9 @@ func GetPatchedProject(ctx context.Context, p *patch.Patch, githubOauthToken str
 }
 
 // MakePatchedConfig takes in the path to a remote configuration a stringified version
-// of the current project and returns a byte slice of the project string with the patch applied
-func MakePatchedConfig(ctx context.Context, p *patch.Patch, remoteConfigPath, projectConfig string) ([]byte, error) {
+// of the current project and returns an unmarshalled version of the project
+// with the patch applied
+func MakePatchedConfig(ctx context.Context, env evergreen.Environment, p *patch.Patch, remoteConfigPath, projectConfig string) (*Project, error) {
 	for _, patchPart := range p.Patches {
 		// we only need to patch the main project and not any other modules
 		if patchPart.ModuleName != "" {
@@ -254,26 +253,11 @@ func MakePatchedConfig(ctx context.Context, p *patch.Patch, remoteConfigPath, pr
 				remoteConfigPath, patchFilePath),
 		}
 
-		stderr := send.MakeWriterSender(grip.GetSender(), level.Error)
-		defer stderr.Close() //nolint: evg
-		stdout := send.MakeWriterSender(grip.GetSender(), level.Info)
-		defer stdout.Close() //nolint: evg
-		output := subprocess.OutputOptions{Output: stdout, Error: stderr}
-
-		patchCmd := subprocess.NewLocalCommand(
-			strings.Join(patchCommandStrings, "\n"),
-			workingDirectory,
-			"bash",
-			nil,
-			true)
-
-		if err = patchCmd.SetOutput(output); err != nil {
-			return nil, errors.Wrap(err, "problem configuring command output")
+		err := env.JasperManager().CreateCommand().SetErrorSender(level.Error, grip.GetSender()).SetOutputSender(level.Info, grip.GetSender()).Add(fmt.Sprintf("bash", "-c", strings.Join(patchCommandStrings, "\n"))).Run(ctx)
+		if err != nil {
+			return nil, errors.Wrap(err, "could not run patch command")
 		}
 
-		if err = patchCmd.Run(ctx); err != nil {
-			return nil, errors.Errorf("could not run patch command: %v", err)
-		}
 		// read in the patched config file
 		data, err := ioutil.ReadFile(localConfigPath)
 		if err != nil {

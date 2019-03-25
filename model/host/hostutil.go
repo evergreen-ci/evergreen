@@ -7,10 +7,9 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/evergreen-ci/evergreen/subprocess"
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/util"
-	"github.com/mongodb/grip"
-	"github.com/mongodb/grip/message"
+	"github.com/mongodb/jasper"
 	"github.com/pkg/errors"
 )
 
@@ -43,18 +42,18 @@ const (
 	sshTimeout = 2 * time.Minute
 )
 
-func getSSHOutputOptions() subprocess.OutputOptions {
+func getSSHOutputOptions() jasper.OutputOptions {
 	// store up to 1MB of streamed command output to print if a command fails
 	output := &util.CappedWriter{
 		Buffer:   &bytes.Buffer{},
 		MaxBytes: 1024 * 1024, // 1MB
 	}
 
-	return subprocess.OutputOptions{Output: output, SendErrorToOutput: true}
+	return jasper.OutputOptions{Output: output, SendErrorToOutput: true}
 }
 
 // RunSSHCommand runs an SSH command on a remote host.
-func (h *Host) RunSSHCommand(ctx context.Context, cmd string, sshOptions []string) (string, error) {
+func (h *Host) RunSSHCommand(ctx context.Context, env evergreen.Environment, cmd string, sshOptions []string) (string, error) {
 	// compute any info necessary to ssh into the host
 	hostInfo, err := util.ParseSSHInfo(h.Host)
 	if err != nil {
@@ -63,44 +62,13 @@ func (h *Host) RunSSHCommand(ctx context.Context, cmd string, sshOptions []strin
 
 	opts := getSSHOutputOptions()
 	output := opts.Output.(*util.CappedWriter)
-
-	proc := subprocess.NewRemoteCommand(
-		cmd,
-		hostInfo.Hostname,
-		h.User,
-		nil,   // env
-		false, // background
-		append([]string{"-p", hostInfo.Port, "-t", "-t"}, sshOptions...),
-		false, // loggingDisabled
-	)
-
-	if err = proc.SetOutput(opts); err != nil {
-		grip.Alert(message.WrapError(err, message.Fields{
-			"function":  "RunSSHCommand",
-			"operation": "setting up command output",
-			"distro":    h.Distro.Id,
-			"host":      h.Id,
-			"output":    output,
-			"cause":     "programmer error",
-		}))
-
-		return "", errors.Wrap(err, "problem setting up command output")
-	}
-
-	grip.Info(message.Fields{
-		"command":  cmd,
-		"hostname": hostInfo.Hostname,
-		"user":     h.User,
-		"host_id":  h.Id,
-		"message":  "running command over ssh",
-	})
+	cmdArgs := append(append([]string{"ssh"}, "-p", hostInfo.Port, "-t", "-t", sshOptions...), cmd)
 
 	var cancel context.CancelFunc
 	ctx, cancel = context.WithTimeout(ctx, sshTimeout)
 	defer cancel()
 
-	err = proc.Run(ctx)
-	grip.Notice(proc.Stop())
+	err := env.JasperManager().CreateCommand().ApplyFromOpts(&jasper.CreateOptions{Output: opts}).Add(cmdArgs).Run(ctx)
 
 	return output.String(), errors.Wrap(err, "error running shell cmd")
 }
