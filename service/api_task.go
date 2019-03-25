@@ -314,7 +314,6 @@ func (as *APIServer) EndTask(w http.ResponseWriter, r *http.Request) {
 		"operation": "mark end",
 		"duration":  time.Since(now),
 	})
-	now = time.Now()
 
 	grip.Info(message.Fields{
 		"message":   "Successfully marked task as finished",
