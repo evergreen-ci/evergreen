@@ -418,11 +418,7 @@ func (as *APIServer) validateProjectConfig(w http.ResponseWriter, r *http.Reques
 		gimlet.WriteJSONError(w, validator.ValidationErrors{validationErr})
 		return
 	}
-	syntaxErrs, err := validator.CheckProjectSyntax(project)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
+	syntaxErrs := validator.CheckProjectSyntax(project)
 	semanticErrs := validator.CheckProjectSemantics(project)
 	if len(syntaxErrs)+len(semanticErrs) != 0 {
 		gimlet.WriteJSONError(w, append(syntaxErrs, semanticErrs...))

@@ -36,8 +36,19 @@ const (
 )
 
 func githubShouldRetry(attempt rehttp.Attempt) bool {
+	url := attempt.Request.URL.String()
+
+	if attempt.Error != nil {
+		grip.Errorf("failed trying to call github %s on %s: %+v", attempt.Request.Method, url, attempt.Error)
+		return rehttp.RetryTemporaryErr()(attempt)
+	}
+
 	if attempt.Response == nil {
 		return true
+	}
+
+	if attempt.Response.StatusCode >= http.StatusBadRequest {
+		grip.Error(errors.Errorf("Calling github %s on %s got a bad response code: %v", attempt.Request.Method, url, attempt.Response.StatusCode))
 	}
 
 	limit := parseGithubRateLimit(attempt.Response.Header)
@@ -45,18 +56,10 @@ func githubShouldRetry(attempt rehttp.Attempt) bool {
 		return false
 	}
 
-	url := attempt.Request.URL.String()
-	if attempt.Response.StatusCode == http.StatusUnauthorized {
-		grip.Error(errors.Errorf("Calling github %s on %s failed: got 'unauthorized' response", attempt.Request.Method, url))
-	}
-	if attempt.Response.StatusCode != http.StatusOK {
-		grip.Error(errors.Errorf("Calling github %s on %s got a bad response code: %v", attempt.Request.Method, url, attempt.Response.StatusCode))
-	}
-	if attempt.Error != nil {
-		grip.Errorf("failed trying to call github %s on %s: %+v",
-			attempt.Request.Method, url, attempt.Error)
+	if attempt.Response.StatusCode == http.StatusBadGateway {
 		return true
 	}
+
 	rateMessage, _ := getGithubRateLimit(attempt.Response.Header)
 	grip.Debugf("Github API response: %s. %s", attempt.Response.Status, rateMessage)
 
@@ -83,7 +86,7 @@ func githubShouldRetryWith404s(attempt rehttp.Attempt) bool {
 }
 
 func getGithubClient(token string) (*http.Client, error) {
-	all := rehttp.RetryAll(rehttp.RetryMaxRetries(NumGithubRetries-1), rehttp.RetryTemporaryErr(), githubShouldRetry)
+	all := rehttp.RetryAll(rehttp.RetryMaxRetries(NumGithubRetries-1), githubShouldRetry)
 	return util.GetRetryableOauth2HTTPClient(token, all, util.RehttpDelay(GithubSleepTimeSecs, NumGithubRetries))
 }
 

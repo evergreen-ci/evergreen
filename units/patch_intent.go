@@ -105,8 +105,15 @@ func (j *patchIntentProcessor) Run(ctx context.Context) {
 
 	if err = j.finishPatch(ctx, patchDoc, githubOauthToken); err != nil {
 		j.AddError(err)
-		if j.IntentType == patch.GithubIntentType && strings.HasPrefix(err.Error(), errInvalidPatchedConfig) {
-			update := NewGithubStatusUpdateJobForBadConfig(j.intent.ID())
+		if j.IntentType == patch.GithubIntentType && err.Error() == errInvalidPatchedConfig {
+			var projectRef *model.ProjectRef
+			projectRef, err = model.FindOneProjectRefByRepoAndBranchWithPRTesting(patchDoc.GithubPatchData.BaseOwner,
+				patchDoc.GithubPatchData.BaseRepo, patchDoc.GithubPatchData.BaseBranch)
+			if err != nil {
+				j.AddError(errors.Wrap(err, "can't fetch project ref"))
+				return
+			}
+			update := NewGithubStatusUpdateJobForBadConfig(projectRef, patchDoc.GithubPatchData.HeadHash, j.ID())
 			update.Run(ctx)
 			j.AddError(update.Error())
 		}
@@ -196,11 +203,24 @@ func (j *patchIntentProcessor) finishPatch(ctx context.Context, patchDoc *patch.
 		return errors.New("patching is diabled for project")
 	}
 
-	// Get and validate patched config and add it to the patch document
-	project, err := validator.GetPatchedProject(ctx, patchDoc, githubOauthToken)
+	// Get and validate patched config
+	project, err := model.GetPatchedProject(ctx, patchDoc, githubOauthToken)
 	if err != nil {
-		return errors.Wrap(err, errInvalidPatchedConfig)
+		return errors.Wrap(err, "can't get patched config")
 	}
+	errs := validator.CheckProjectSyntax(project)
+	if len(errs) != 0 {
+		for _, validatorErr := range errs {
+			if validatorErr.Level == validator.Error {
+				return errors.New(errInvalidPatchedConfig)
+			}
+		}
+	}
+	yamlBytes, err := yaml.Marshal(project)
+	if err != nil {
+		return errors.Wrap(err, "can't marshal patched config")
+	}
+	patchDoc.PatchedConfig = string(yamlBytes)
 
 	if patchDoc.Patches[0].ModuleName != "" {
 		// is there a module? validate it.
@@ -224,13 +244,6 @@ func (j *patchIntentProcessor) finishPatch(ctx context.Context, patchDoc *patch.
 			return errors.Errorf("No such buildvariant: '%s'", buildVariant)
 		}
 	}
-
-	// add the project config
-	projectYamlBytes, err := yaml.Marshal(project)
-	if err != nil {
-		return errors.Wrap(err, "error marshaling patched config")
-	}
-	patchDoc.PatchedConfig = string(projectYamlBytes)
 
 	project.BuildProjectTVPairs(patchDoc, j.intent.GetAlias())
 
