@@ -143,6 +143,14 @@ func (as *APIServer) EndTask(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	now := time.Now()
+	grip.Info(message.Fields{
+		"message":   "finished parsing task end json",
+		"operation": "mark end",
+		"duration":  time.Since(now),
+	})
+	now = time.Now()
+
 	// Check that finishing status is a valid constant
 	if !validateTaskEndDetails(details) {
 		msg := fmt.Errorf("Invalid end status '%v' for task %v", details.Status, t.Id)
@@ -172,6 +180,13 @@ func (as *APIServer) EndTask(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	grip.Info(message.Fields{
+		"message":   "finished clearing running and setting last task",
+		"operation": "mark end",
+		"duration":  time.Since(now),
+	})
+	now = time.Now()
+
 	projectRef, err := model.FindOneProjectRef(t.Project)
 	if err != nil {
 		as.LoggedError(w, r, http.StatusInternalServerError, err)
@@ -189,6 +204,12 @@ func (as *APIServer) EndTask(w http.ResponseWriter, r *http.Request) {
 		as.LoggedError(w, r, http.StatusInternalServerError, err)
 		return
 	}
+	grip.Info(message.Fields{
+		"message":   "finished calling model.MarkEnd",
+		"operation": "mark end",
+		"duration":  time.Since(now),
+	})
+	now = time.Now()
 
 	// the task was aborted if it is still in undispatched.
 	// the active state should be inactive.
@@ -217,6 +238,12 @@ func (as *APIServer) EndTask(w http.ResponseWriter, r *http.Request) {
 			"task_id": t.Id,
 		})
 	}
+	grip.Info(message.Fields{
+		"message":   "finished blocking task group tasks",
+		"operation": "mark end",
+		"duration":  time.Since(now),
+	})
+	now = time.Now()
 
 	job := units.NewCollectTaskEndDataJob(t, currentHost)
 	if err = as.queue.Put(job); err != nil {
@@ -224,12 +251,24 @@ func (as *APIServer) EndTask(w http.ResponseWriter, r *http.Request) {
 			errors.Wrap(err, "couldn't queue job to update task cost accounting"))
 		return
 	}
+	grip.Info(message.Fields{
+		"message":   "finished creating new collect task end data job",
+		"operation": "mark end",
+		"duration":  time.Since(now),
+	})
+	now = time.Now()
 
 	// update the bookkeeping entry for the task
 	err = task.UpdateExpectedDuration(t, t.TimeTaken)
 	if err != nil {
 		grip.Warning(message.WrapError(err, "problem updating expected duration"))
 	}
+	grip.Info(message.Fields{
+		"message":   "finished updating expected duration",
+		"operation": "mark end",
+		"duration":  time.Since(now),
+	})
+	now = time.Now()
 
 	if checkHostHealth(currentHost) {
 		// set the needs new agent flag on the host
@@ -240,6 +279,12 @@ func (as *APIServer) EndTask(w http.ResponseWriter, r *http.Request) {
 		}
 		endTaskResp.ShouldExit = true
 	}
+	grip.Info(message.Fields{
+		"message":   "finished checking host health",
+		"operation": "mark end",
+		"duration":  time.Since(now),
+	})
+	now = time.Now()
 
 	// we should disable hosts and prevent them from performing
 	// more work if they appear to be in a bad state
@@ -264,6 +309,12 @@ func (as *APIServer) EndTask(w http.ResponseWriter, r *http.Request) {
 		}
 		endTaskResp.ShouldExit = true
 	}
+	grip.Info(message.Fields{
+		"message":   "finished checking recent events",
+		"operation": "mark end",
+		"duration":  time.Since(now),
+	})
+	now = time.Now()
 
 	grip.Info(message.Fields{
 		"message":   "Successfully marked task as finished",
