@@ -10,10 +10,10 @@ import (
 
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model"
-	"github.com/evergreen-ci/evergreen/subprocess"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/google/go-github/github"
+	"github.com/mongodb/jasper"
 	. "github.com/smartystreets/goconvey/convey"
 	"github.com/smartystreets/goconvey/convey/reporting"
 )
@@ -30,26 +30,22 @@ var (
 	evgProjectRef *model.ProjectRef
 )
 
+type bufCloser struct {
+	*bytes.Buffer
+}
+
+func (b *bufCloser) Close() error { return ni }
+
 func getDistantEVGRevision() (string, error) {
 	cwd, err := os.Getwd()
 	if err != nil {
 		return "", err
 	}
 
-	cmd, err := subprocess.NewLocalExec("git", []string{"rev-list", "--reverse", "HEAD~100", "--max-count=1"}, nil, cwd)
-	if err != nil {
-		return "", err
-	}
+	buf := &bufCloser{&bytes.Buffer{}}
 
-	buf := &bytes.Buffer{}
-
-	err = cmd.SetOutput(subprocess.OutputOptions{
-		SuppressError: true,
-		Output:        buf,
-	})
-	if err != nil {
-		return "", err
-	}
+	cmd := jasper.NewCommand().Add([]string{"git", "rev-list", "--reverse", "HEAD~100", "--max-count=1"}).Directory(cwd).
+		SuppressStandardError(true).SetOutputWriter(buf)
 
 	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
 	defer cancel()

@@ -104,7 +104,7 @@ func startSystemCronJobs(ctx context.Context, env evergreen.Environment) {
 		units.PopulateHostAlertJobs(20)))
 
 	amboy.IntervalQueueOperation(ctx, env.RemoteQueue(), 3*time.Hour, time.Now(), opts, amboy.GroupQueueOperationFactory(
-		units.CacheHistoricalTestDataJob(6)))
+		units.PopulateCacheHistoricalTestDataJob(6)))
 
 	////////////////////////////////////////////////////////////////////////
 	//
@@ -132,6 +132,8 @@ func startSystemCronJobs(ctx context.Context, env evergreen.Environment) {
 	})
 
 	amboy.IntervalQueueOperation(ctx, env.LocalQueue(), time.Minute, time.Now(), opts, func(queue amboy.Queue) error {
+		catcher := grip.NewBasicCatcher()
+		catcher.Add(queue.Put(units.PopulateJasperCleanup(env)))
 		flags, err := evergreen.GetServiceFlags()
 		if err != nil {
 			grip.Alert(message.WrapError(err, message.Fields{
@@ -152,5 +154,4 @@ func startSystemCronJobs(ctx context.Context, env evergreen.Environment) {
 
 		return queue.Put(units.NewLocalAmboyStatsCollector(env, fmt.Sprintf("amboy-local-stats-%d", time.Now().Unix())))
 	})
-
 }
