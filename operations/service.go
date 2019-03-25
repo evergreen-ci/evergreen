@@ -131,27 +131,27 @@ func startSystemCronJobs(ctx context.Context, env evergreen.Environment) {
 		return queue.Put(units.NewSysInfoStatsCollector(fmt.Sprintf("sys-info-stats-%d", time.Now().Unix())))
 	})
 
-	amboy.IntervalQueueOperation(ctx, env.LocalQueue(), time.Minute, time.Now(), opts, func(queue amboy.Queue) error {
-		catcher := grip.NewBasicCatcher()
-		catcher.Add(queue.Put(units.PopulateJasperCleanup(env)))
-		flags, err := evergreen.GetServiceFlags()
-		if err != nil {
-			grip.Alert(message.WrapError(err, message.Fields{
-				"message":   "problem fetching service flags",
-				"operation": "background stats",
-			}))
-			return err
-		}
+	amboy.IntervalQueueOperation(ctx, env.LocalQueue(), time.Minute, time.Now(), opts, amboy.GroupQueueOperationFactory(
+		units.PopulateJasperCleanup(env),
+		func(queue amboy.Queue) error {
+			flags, err := evergreen.GetServiceFlags()
+			if err != nil {
+				grip.Alert(message.WrapError(err, message.Fields{
+					"message":   "problem fetching service flags",
+					"operation": "background stats",
+				}))
+				return err
+			}
 
-		if flags.BackgroundStatsDisabled {
-			grip.InfoWhen(sometimes.Percent(evergreen.DegradedLoggingPercent), message.Fields{
-				"message": "background stats collection disabled",
-				"impact":  "amboy stats disabled",
-				"mode":    "degraded",
-			})
-			return nil
-		}
+			if flags.BackgroundStatsDisabled {
+				grip.InfoWhen(sometimes.Percent(evergreen.DegradedLoggingPercent), message.Fields{
+					"message": "background stats collection disabled",
+					"impact":  "amboy stats disabled",
+					"mode":    "degraded",
+				})
+				return nil
+			}
 
-		return queue.Put(units.NewLocalAmboyStatsCollector(env, fmt.Sprintf("amboy-local-stats-%d", time.Now().Unix())))
-	})
+			return queue.Put(units.NewLocalAmboyStatsCollector(env, fmt.Sprintf("amboy-local-stats-%d", time.Now().Unix())))
+		}))
 }

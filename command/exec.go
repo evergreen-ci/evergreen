@@ -126,11 +126,11 @@ func (c *subprocessExec) doExpansions(exp *util.Expansions) error {
 	return errors.Wrap(catcher.Resolve(), "problem expanding strings")
 }
 
-func (c *subprocessExec) getProc(taskID string, logger client.LoggerProducer) *jasper.Command {
+func (c *subprocessExec) getProc(ctx context.Context, taskID string, logger client.LoggerProducer) *jasper.Command {
 	c.Env[util.MarkerTaskID] = taskID
 	c.Env[util.MarkerAgentPID] = strconv.Itoa(os.Getpid())
 
-	cmd := c.JasperManager().CreateCommand().Add(append([]string{c.Binary}, c.Args...)).
+	cmd := c.JasperManager().CreateCommand(ctx).Add(append([]string{c.Binary}, c.Args...)).
 		Background(c.Background).Environment(c.Env).Directory(c.WorkingDir).
 		SuppressStandardError(c.IgnoreStandardError).SuppressStandardOutput(c.IgnoreStandardOutput).RedirectErrorToOutput(c.RedirectStandardErrorToOutput).
 		ProcConstructor(func(ctx context.Context, opts *jasper.CreateOptions) (jasper.Process, error) {
@@ -139,20 +139,20 @@ func (c *subprocessExec) getProc(taskID string, logger client.LoggerProducer) *j
 				return proc, errors.WithStack(err)
 			}
 
-			pid := proc.Info().PID
+			pid := proc.Info(ctx).PID
 
 			util.TrackProcess(taskID, pid, logger.System())
 
 			if c.Background {
 				logger.Execution().Debugf("running command in the background [pid=%d]", pid)
 			} else {
-				logger.Exeuction().Infof("started process with pid '%d'", pid)
+				logger.Execution().Infof("started process with pid '%d'", pid)
 			}
 
 			return proc, nil
 		})
 
-	if !opts.SuppressOutput {
+	if !c.IgnoreStandardOutput {
 		if c.SystemLog {
 			cmd.SetOutputSender(level.Info, logger.System().GetSender())
 		} else {
@@ -160,7 +160,7 @@ func (c *subprocessExec) getProc(taskID string, logger client.LoggerProducer) *j
 		}
 	}
 
-	if !opts.SuppressError {
+	if !c.IgnoreStandardError {
 		if c.SystemLog {
 			cmd.SetErrorSender(level.Error, logger.System().GetSender())
 		} else {
@@ -209,7 +209,7 @@ func (c *subprocessExec) Execute(ctx context.Context, comm client.Communicator, 
 		}
 	}
 
-	err = errors.WithStack(c.runCommand(ctx, conf.Task.Id, c.getProc(conf.Task.Id, logger), logger))
+	err = errors.WithStack(c.runCommand(ctx, conf.Task.Id, c.getProc(ctx, conf.Task.Id, logger), logger))
 
 	if ctx.Err() != nil {
 		logger.System().Debug("dumping running processes")
@@ -236,7 +236,6 @@ func (c *subprocessExec) runCommand(ctx context.Context, taskID string, cmd *jas
 			"background": c.Background,
 			"silent":     c.Silent,
 			"continue":   c.ContinueOnError,
-			"command":    c.Command(),
 		}))
 		return nil
 	}

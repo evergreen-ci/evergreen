@@ -49,6 +49,7 @@ type base struct {
 	idleTimeout time.Duration
 	typeName    string
 	displayName string
+	jasper      jasper.Manager
 	mu          sync.RWMutex
 }
 

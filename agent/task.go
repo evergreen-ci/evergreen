@@ -88,6 +88,7 @@ func (a *Agent) startTask(ctx context.Context, tc *taskContext, complete chan<- 
 	// set up the system stats collector
 	tc.statsCollector = NewSimpleStatsCollector(
 		tc.logger,
+		a.jasper,
 		defaultStatsInterval,
 		"uptime",
 		"df -h",

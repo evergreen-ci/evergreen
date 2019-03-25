@@ -53,7 +53,8 @@ func getSSHOutputOptions() jasper.OutputOptions {
 }
 
 // RunSSHCommand runs an SSH command on a remote host.
-func (h *Host) RunSSHCommand(ctx context.Context, env evergreen.Environment, cmd string, sshOptions []string) (string, error) {
+func (h *Host) RunSSHCommand(ctx context.Context, cmd string, sshOptions []string) (string, error) {
+	env := evergreen.GetEnvironment()
 	// compute any info necessary to ssh into the host
 	hostInfo, err := util.ParseSSHInfo(h.Host)
 	if err != nil {
@@ -62,13 +63,13 @@ func (h *Host) RunSSHCommand(ctx context.Context, env evergreen.Environment, cmd
 
 	opts := getSSHOutputOptions()
 	output := opts.Output.(*util.CappedWriter)
-	cmdArgs := append(append([]string{"ssh"}, "-p", hostInfo.Port, "-t", "-t", sshOptions...), cmd)
+	cmdArgs := append(append(append([]string{"ssh"}, "-p", hostInfo.Port, "-t", "-t"), sshOptions...), cmd)
 
 	var cancel context.CancelFunc
 	ctx, cancel = context.WithTimeout(ctx, sshTimeout)
 	defer cancel()
 
-	err := env.JasperManager().CreateCommand().ApplyFromOpts(&jasper.CreateOptions{Output: opts}).Add(cmdArgs).Run(ctx)
+	err = env.JasperManager().CreateCommand(ctx).ApplyFromOpts(&jasper.CreateOptions{Output: opts}).Add(cmdArgs).Run(ctx)
 
 	return output.String(), errors.Wrap(err, "error running shell cmd")
 }

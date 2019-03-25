@@ -5,7 +5,6 @@ import (
 	"sync"
 
 	"github.com/mongodb/grip"
-	"github.com/mongodb/grip/level"
 	"github.com/mongodb/grip/logging"
 	"github.com/mongodb/grip/send"
 	"github.com/pkg/errors"
@@ -23,12 +22,6 @@ type LoggerProducer interface {
 	Execution() grip.Journaler
 	Task() grip.Journaler
 	System() grip.Journaler
-
-	// The writer functions return an io.Writer for use with
-	// exec.Cmd operations for capturing standard output and standard
-	// error from sbprocesses.
-	TaskWriter(level.Priority) io.WriteCloser
-	SystemWriter(level.Priority) io.WriteCloser
 
 	// Close releases all resources by calling Close on all underlying senders.
 	Close() error
@@ -55,24 +48,6 @@ func (l *logHarness) Execution() grip.Journaler { return l.execution }
 func (l *logHarness) Task() grip.Journaler      { return l.task }
 func (l *logHarness) System() grip.Journaler    { return l.system }
 
-func (l *logHarness) TaskWriter(p level.Priority) io.WriteCloser {
-	l.mu.Lock()
-	defer l.mu.Unlock()
-
-	w := send.MakeWriterSender(l.task.GetSender(), p)
-	l.writers = append(l.writers, w)
-	return w
-}
-
-func (l *logHarness) SystemWriter(p level.Priority) io.WriteCloser {
-	l.mu.Lock()
-	defer l.mu.Unlock()
-
-	w := send.MakeWriterSender(l.system.GetSender(), p)
-	l.writers = append(l.writers, w)
-	return w
-}
-
 func (l *logHarness) Close() error {
 	l.mu.Lock()
 	defer l.mu.Unlock()
@@ -82,10 +57,6 @@ func (l *logHarness) Close() error {
 	l.closed = true
 
 	catcher := grip.NewBasicCatcher()
-
-	for _, w := range l.writers {
-		catcher.Add(w.Close())
-	}
 
 	catcher.Add(l.execution.GetSender().Close())
 	catcher.Add(l.task.GetSender().Close())
@@ -105,10 +76,9 @@ func (l *logHarness) Closed() bool {
 // Single Channel LoggerProducer
 
 type singleChannelLogHarness struct {
-	logger  grip.Journaler
-	mu      sync.RWMutex
-	writers []io.WriteCloser
-	closed  bool
+	logger grip.Journaler
+	mu     sync.RWMutex
+	closed bool
 }
 
 // NewSingleChannelLogHarnness returns a log implementation that uses
@@ -132,24 +102,6 @@ func (l *singleChannelLogHarness) Execution() grip.Journaler { return l.logger }
 func (l *singleChannelLogHarness) Task() grip.Journaler      { return l.logger }
 func (l *singleChannelLogHarness) System() grip.Journaler    { return l.logger }
 
-func (l *singleChannelLogHarness) TaskWriter(p level.Priority) io.WriteCloser {
-	l.mu.Lock()
-	defer l.mu.Unlock()
-
-	w := send.MakeWriterSender(l.logger.GetSender(), p)
-	l.writers = append(l.writers, w)
-	return w
-}
-
-func (l *singleChannelLogHarness) SystemWriter(p level.Priority) io.WriteCloser {
-	l.mu.Lock()
-	defer l.mu.Unlock()
-
-	w := send.MakeWriterSender(l.logger.GetSender(), p)
-	l.writers = append(l.writers, w)
-	return w
-}
-
 func (l *singleChannelLogHarness) Close() error {
 	l.mu.Lock()
 	defer l.mu.Unlock()
@@ -159,10 +111,6 @@ func (l *singleChannelLogHarness) Close() error {
 	l.closed = true
 
 	catcher := grip.NewBasicCatcher()
-
-	for _, w := range l.writers {
-		catcher.Add(w.Close())
-	}
 
 	catcher.Add(l.logger.GetSender().Close())
 

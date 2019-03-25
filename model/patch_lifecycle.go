@@ -253,7 +253,9 @@ func MakePatchedConfig(ctx context.Context, env evergreen.Environment, p *patch.
 				remoteConfigPath, patchFilePath),
 		}
 
-		err := env.JasperManager().CreateCommand().SetErrorSender(level.Error, grip.GetSender()).SetOutputSender(level.Info, grip.GetSender()).Add(fmt.Sprintf("bash", "-c", strings.Join(patchCommandStrings, "\n"))).Run(ctx)
+		err = env.JasperManager().CreateCommand(ctx).Add([]string{"bash", "-c", strings.Join(patchCommandStrings, "\n")}).
+			SetErrorSender(level.Error, grip.GetSender()).SetOutputSender(level.Info, grip.GetSender()).Run(ctx)
+
 		if err != nil {
 			return nil, errors.Wrap(err, "could not run patch command")
 		}

@@ -106,12 +106,12 @@ func (c *shellExec) Execute(ctx context.Context, _ client.Communicator, logger c
 
 	env := map[string]string{
 		util.MarkerTaskID:   conf.Task.Id,
-		util.MarkerAgetnPid: strconv.Itoa(os.GetPid()),
+		util.MarkerAgentPID: strconv.Itoa(os.Getpid()),
 	}
 	addTempDirs(env, taskTmpDir)
 
-	cmd := c.JasperManager().CreateCommand().Add([]string{c.Shell, "-c", c.Script}).
-		Background(c.Background).Directory(c.WorkingDir).AddEnv(env).
+	cmd := c.JasperManager().CreateCommand(ctx).Add([]string{c.Shell, "-c", c.Script}).
+		Background(c.Background).Directory(c.WorkingDir).Environment(env).
 		SuppressStandardError(c.IgnoreStandardError).SuppressStandardOutput(c.IgnoreStandardOutput).RedirectErrorToOutput(c.RedirectStandardErrorToOutput).
 		ProcConstructor(func(ctx context.Context, opts *jasper.CreateOptions) (jasper.Process, error) {
 			proc, err := c.JasperManager().CreateProcess(ctx, opts)
@@ -119,20 +119,20 @@ func (c *shellExec) Execute(ctx context.Context, _ client.Communicator, logger c
 				return proc, errors.WithStack(err)
 			}
 
-			pid := proc.Info().PID
+			pid := proc.Info(ctx).PID
 
-			util.TrackProcess(taskID, pid, logger.System())
+			util.TrackProcess(conf.Task.Id, pid, logger.System())
 
 			if c.Background {
 				logger.Execution().Debugf("running command in the background [pid=%d]", pid)
 			} else {
-				logger.Exeuction().Infof("started process with pid '%d'", pid)
+				logger.Execution().Infof("started process with pid '%d'", pid)
 			}
 
 			return proc, nil
 		})
 
-	if !opts.SuppressOutput {
+	if !c.IgnoreStandardOutput {
 		if c.SystemLog {
 			cmd.SetOutputSender(level.Info, logger.System().GetSender())
 		} else {
@@ -140,7 +140,7 @@ func (c *shellExec) Execute(ctx context.Context, _ client.Communicator, logger c
 		}
 	}
 
-	if !opts.SuppressError {
+	if !c.IgnoreStandardError {
 		if c.SystemLog {
 			cmd.SetErrorSender(level.Error, logger.System().GetSender())
 		} else {
@@ -158,7 +158,7 @@ func (c *shellExec) Execute(ctx context.Context, _ client.Communicator, logger c
 
 	err = cmd.Run(ctx)
 
-	err = errors.Wrapf(err, "command [pid=%d] encountered problem", pid)
+	err = errors.Wrapf(err, "command encountered problem")
 	if ctx.Err() != nil {
 		logger.System().Debug("dumping running processes before canceling work")
 		logger.System().Debug(message.CollectAllProcesses())
