@@ -20,7 +20,6 @@ import (
 type CreateOptions struct {
 	Args             []string          `json:"args"`
 	Environment      map[string]string `json:"env,omitempty"`
-	Hostname         string            `json:"host,omitempty"`
 	WorkingDirectory string            `json:"working_directory,omitempty"`
 	Output           OutputOptions     `json:"output"`
 	OverrideEnviron  bool              `json:"override_env,omitempty"`

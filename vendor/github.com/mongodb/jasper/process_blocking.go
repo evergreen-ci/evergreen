@@ -33,7 +33,6 @@ type blockingProcess struct {
 func newBlockingProcess(ctx context.Context, opts *CreateOptions) (Process, error) {
 	id := uuid.Must(uuid.NewV4()).String()
 	opts.AddEnvVar(EnvironID, id)
-	opts.Hostname, _ = os.Hostname()
 
 	cmd, err := opts.Resolve(ctx)
 	if err != nil {
@@ -67,10 +66,10 @@ func newBlockingProcess(ctx context.Context, opts *CreateOptions) (Process, erro
 	p.info = ProcessInfo{
 		ID:        id,
 		PID:       cmd.Process.Pid,
-		Host:      opts.Hostname,
 		Options:   *opts,
 		IsRunning: true,
 	}
+	p.info.Host, _ = os.Hostname()
 
 	go p.reactor(ctx, cmd)
 
