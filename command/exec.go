@@ -140,8 +140,15 @@ func (c *subprocessExec) getProc(taskID string, logger client.LoggerProducer) *j
 			}
 
 			pid := proc.Info().PID
-			logger.Exeuction().Infof("started process '%s' with pid '%d'", c.Binary, pid)
+
 			util.TrackProcess(taskID, pid, logger.System())
+
+			if c.Background {
+				logger.Execution().Debugf("running command in the background [pid=%d]", pid)
+			} else {
+				logger.Exeuction().Infof("started process with pid '%d'", pid)
+			}
+
 			return proc, nil
 		})
 
@@ -221,11 +228,6 @@ func (c *subprocessExec) runCommand(ctx context.Context, taskID string, cmd *jas
 	}
 
 	err := cmd.Run(ctx)
-
-	if c.Background {
-		logger.Execution().Info("started background process '%s'", c.Binary)
-		return nil
-	}
 
 	if c.ContinueOnError {
 		logger.Execution().Notice(message.WrapError(err, message.Fields{
