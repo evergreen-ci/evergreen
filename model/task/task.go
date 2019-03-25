@@ -257,14 +257,6 @@ func (t *Task) IsDispatchable() bool {
 	return t.Status == evergreen.TaskUndispatched && t.Activated
 }
 
-func (t *Task) GetTaskCreatedTime() time.Time {
-	if t.IngestTime.IsZero() {
-		return t.CreateTime
-	}
-
-	return t.IngestTime
-}
-
 // satisfiesDependency checks a task the receiver task depends on
 // to see if its status satisfies a dependency. If the "Status" field is
 // unset, default to checking that is succeeded.

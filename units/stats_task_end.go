@@ -154,14 +154,8 @@ func (j *collectTaskEndDataJob) Run(ctx context.Context) {
 		"host":         j.host.Id,
 		"status":       j.task.ResultStatus(),
 	}
-	totalWaitSecs := j.task.FinishTime.Sub(j.task.GetTaskCreatedTime())
-	if totalWaitSecs < 0 {
-		msg["create_time"] = j.task.CreateTime
-		msg["ingest_time"] = j.task.IngestTime
-		msg["finish_time"] = j.task.FinishTime
-	} else {
-		msg["total_wait_secs"] = totalWaitSecs.Seconds()
-	}
+	totalWaitSecs := j.task.FinishTime.Sub(j.task.ActivatedTime)
+	msg["total_wait_secs"] = totalWaitSecs.Seconds()
 
 	if cost != 0 {
 		msg["cost"] = cost
