@@ -10,7 +10,6 @@ import (
 	"github.com/docker/docker/api/types"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/apimodels"
-	"github.com/evergreen-ci/evergreen/cloud"
 	dbModel "github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
@@ -89,7 +88,7 @@ func (h *hostCreateHandler) Run(ctx context.Context) gimlet.Responder {
 			return gimlet.NewJSONErrorResponse(errors.Errorf("container pool %s not found", distro.ContainerPool))
 		}
 
-		parents, numHosts, err = cloud.CreateParentIntentsAndHostsToSpawn(containerPool, 1)
+		parents, numHosts, err = host.CreateParentIntentsAndNumHostsToSpawn(containerPool, 1, false)
 		if err != nil {
 			return gimlet.NewJSONErrorResponse(errors.Wrap(err, "error getting parent intents and number of hosts to spawn"))
 		}

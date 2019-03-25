@@ -2134,11 +2134,11 @@ func TestFindAllRunningParentsByContainerPool(t *testing.T) {
 	assert.NoError(host2.Insert())
 	assert.NoError(host3.Insert())
 
-	hosts, err := FindAllRunningParentsByContainerPool("test-pool")
+	hosts, err := findAllRunningParentsByContainerPool("test-pool")
 	assert.NoError(err)
 	assert.Equal([]Host{*host1}, hosts)
 
-	hosts, err = FindAllRunningParentsByContainerPool("missing-test-pool")
+	hosts, err = findAllRunningParentsByContainerPool("missing-test-pool")
 	assert.NoError(err)
 	assert.Empty(hosts)
 
@@ -2510,7 +2510,7 @@ func TestCountUphostParents(t *testing.T) {
 	assert.NoError(h4.Insert())
 	assert.NoError(h5.Insert())
 
-	numUphostParents, err := CountUphostParentsByContainerPool("test-pool")
+	numUphostParents, err := countUphostParentsByContainerPool("test-pool")
 	assert.NoError(err)
 	assert.Equal(2, numUphostParents)
 }
@@ -2740,9 +2740,9 @@ func TestNumNewParentsNeeded(t *testing.T) {
 	assert.NoError(host3.Insert())
 	assert.NoError(host4.Insert())
 
-	currentParents, err := FindAllRunningParentsByContainerPool(d.ContainerPool)
+	currentParents, err := findAllRunningParentsByContainerPool(d.ContainerPool)
 	assert.NoError(err)
-	numUphostParents, err := CountUphostParentsByContainerPool("test-pool")
+	numUphostParents, err := countUphostParentsByContainerPool("test-pool")
 	assert.NoError(err)
 	existingContainers, err := HostGroup(currentParents).FindRunningContainersOnParents()
 	assert.NoError(err)
@@ -2791,9 +2791,9 @@ func TestNumNewParentsNeeded2(t *testing.T) {
 	assert.NoError(host2.Insert())
 	assert.NoError(host3.Insert())
 
-	currentParents, err := FindAllRunningParentsByContainerPool(d.ContainerPool)
+	currentParents, err := findAllRunningParentsByContainerPool(d.ContainerPool)
 	assert.NoError(err)
-	numUphostParents, err := CountUphostParentsByContainerPool("test-pool")
+	numUphostParents, err := countUphostParentsByContainerPool("test-pool")
 	assert.NoError(err)
 	existingContainers, err := HostGroup(currentParents).FindRunningContainersOnParents()
 	assert.NoError(err)

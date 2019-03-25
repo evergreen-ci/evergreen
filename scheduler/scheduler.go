@@ -5,7 +5,6 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
-	"github.com/evergreen-ci/evergreen/cloud"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
@@ -156,7 +155,7 @@ func SpawnHosts(ctx context.Context, d distro.Distro, newHostsNeeded int, pool *
 		var err error
 		var newParentHosts []host.Host
 		// only want to spawn amount of parents allowed based on pool size
-		newParentHosts, numHostsToSpawn, err = cloud.CreateParentIntentsAndHostsToSpawn(pool, newHostsNeeded)
+		newParentHosts, numHostsToSpawn, err = host.CreateParentIntentsAndNumHostsToSpawn(pool, newHostsNeeded, true)
 		if err != nil {
 			return nil, errors.Wrap(err, "could not generate new parents hosts needed")
 		}
@@ -180,7 +179,7 @@ func SpawnHosts(ctx context.Context, d distro.Distro, newHostsNeeded int, pool *
 		if err != nil {
 			return nil, errors.Wrapf(err, "Error getting docker options from distro %s", d.Id)
 		}
-		containerIntents, err := cloud.GenerateContainerHostIntents(d, numHostsToSpawn, *hostOptions)
+		containerIntents, err := host.GenerateContainerHostIntents(d, numHostsToSpawn, *hostOptions)
 		if err != nil {
 			return nil, errors.Wrap(err, "error generating container intent hosts")
 		}
@@ -210,12 +209,12 @@ func SpawnHosts(ctx context.Context, d distro.Distro, newHostsNeeded int, pool *
 	return hostsSpawned, nil
 }
 
-func getHostOptionsFromDistro(d distro.Distro) (*cloud.HostOptions, error) {
+func getHostOptionsFromDistro(d distro.Distro) (*host.HostOptions, error) {
 	dockerOptions, err := getDockerOptionsFromProviderSettings(*d.ProviderSettings)
 	if err != nil {
 		return nil, errors.Wrapf(err, "Error getting docker options from distro %s", d.Id)
 	}
-	hostOptions := cloud.HostOptions{
+	hostOptions := host.HostOptions{
 		UserName:      evergreen.User,
 		DockerOptions: *dockerOptions,
 	}
@@ -237,10 +236,10 @@ func getDockerOptionsFromProviderSettings(settings map[string]interface{}) (*hos
 
 // generateIntentHost creates a host intent document for a regular host
 func generateIntentHost(d distro.Distro) (*host.Host, error) {
-	hostOptions := cloud.HostOptions{
+	hostOptions := host.HostOptions{
 		UserName: evergreen.User,
 	}
-	return cloud.NewIntent(d, d.GenerateName(), d.Provider, hostOptions), nil
+	return host.NewIntent(d, d.GenerateName(), d.Provider, hostOptions), nil
 }
 
 // pass 'allDistros' or the empty string to unchedule all distros.
