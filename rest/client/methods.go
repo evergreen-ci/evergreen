@@ -667,13 +667,13 @@ func (c *communicatorImpl) CreateHost(ctx context.Context, td TaskData, options 
 	info.path = fmt.Sprintf("hosts/%s/create", td.ID)
 	resp, err := c.retryRequest(ctx, info, options)
 	if err != nil {
-		return []string{}, errors.Wrap(err, "problem sending `create.host` request")
+		return nil, errors.Wrap(err, "problem sending `create.host` request")
 	}
 	defer resp.Body.Close()
 
 	ids := []string{}
 	if err = util.ReadJSONInto(resp.Body, &ids); err != nil {
-		return []string{}, errors.Wrap(err, "problem reading ids from `create.host` response")
+		return nil, errors.Wrap(err, "problem reading ids from `create.host` response")
 	}
 	return ids, nil
 }

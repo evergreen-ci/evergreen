@@ -149,7 +149,7 @@ func (ch *CreateHost) ValidateDocker() error {
 
 	if ch.ContainerWaitTimeoutSecs <= 0 {
 		ch.ContainerWaitTimeoutSecs = DefaultContainerWaitTimeoutSecs
-	} else if ch.ContainerWaitTimeoutSecs > 3600 || ch.ContainerWaitTimeoutSecs < 10 {
+	} else if ch.ContainerWaitTimeoutSecs >= 3600 || ch.ContainerWaitTimeoutSecs <= 10 {
 		catcher.New("container_wait_timeout_secs must be between 10 and 3600 seconds")
 	}
 

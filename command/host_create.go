@@ -26,6 +26,7 @@ func (c *createHost) Name() string { return "host.create" }
 func (c *createHost) ParseParams(params map[string]interface{}) error {
 	c.CreateHost = &apimodels.CreateHost{}
 
+	// background default is true
 	if _, ok := params["background"]; !ok {
 		params["background"] = true
 	}
@@ -70,10 +71,18 @@ func (c *createHost) Execute(ctx context.Context, comm client.Communicator,
 	ids, err := comm.CreateHost(ctx, taskData, *c.CreateHost)
 	if err != nil {
 		return errors.Wrap(err, "error creating host")
-	} else if c.CreateHost.CloudProvider != apimodels.ProviderDocker {
-		return nil // don't want to wait for logs
+	} else if c.CreateHost.CloudProvider == apimodels.ProviderDocker {
+		if err = c.getLogsFromNewDockerHost(ctx, logger, comm, ids, startTime); err != nil {
+			return errors.Wrap(err, "problem getting logs from created host")
+		}
 	}
 
+	return nil
+}
+
+func (c *createHost) getLogsFromNewDockerHost(ctx context.Context, logger client.LoggerProducer, comm client.Communicator,
+	ids []string, startTime time.Time) error {
+	var err error
 	if len(ids) == 0 {
 		return errors.New("Programmer error: no intent host ID received")
 	}
@@ -99,7 +108,7 @@ func (c *createHost) Execute(ctx context.Context, comm client.Communicator,
 
 func (c *createHost) waitForLogs(ctx context.Context, comm client.Communicator, logger client.LoggerProducer,
 	startTime time.Time, hostID string) error {
-	pollTicker := time.NewTimer(time.Duration(c.CreateHost.PollFrequency) * time.Second)
+	pollTicker := time.NewTicker(time.Duration(c.CreateHost.PollFrequency) * time.Second)
 	defer pollTicker.Stop()
 
 	timeoutTimer := time.NewTimer(time.Duration(c.CreateHost.ContainerWaitTimeoutSecs) * time.Second)
@@ -110,7 +119,8 @@ func (c *createHost) waitForLogs(ctx context.Context, comm client.Communicator, 
 	for {
 		select {
 		case <-ctx.Done():
-			return errors.New("context finished waiting for host to exit")
+			logger.Task().Infof("context finished waiting for host %s to exit", hostID)
+			return nil
 		case <-pollTicker.C:
 			batchEnd := time.Now()
 			status, err := comm.GetDockerStatus(ctx, hostID)
@@ -118,7 +128,7 @@ func (c *createHost) waitForLogs(ctx context.Context, comm client.Communicator, 
 				return errors.Wrapf(err, "error getting docker status")
 			}
 			if status.HasStarted {
-				if err = c.getAndWriteLogs(ctx, comm, hostID, batchStart, batchEnd); err != nil {
+				if err = c.getAndWriteLogBatch(ctx, comm, hostID, batchStart, batchEnd); err != nil {
 					return errors.Wrapf(err, "error getting and writing logs on started container")
 				}
 				batchStart = batchEnd
@@ -135,7 +145,7 @@ func (c *createHost) waitForLogs(ctx context.Context, comm client.Communicator, 
 	}
 }
 
-func (c *createHost) getAndWriteLogs(ctx context.Context, comm client.Communicator, hostID string,
+func (c *createHost) getAndWriteLogBatch(ctx context.Context, comm client.Communicator, hostID string,
 	startTime, endTime time.Time) error {
 
 	outLogs, err := comm.GetDockerLogs(ctx, hostID, startTime, endTime, false)

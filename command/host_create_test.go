@@ -64,6 +64,7 @@ func (s *createHostSuite) TestParamDefaults() {
 	s.params["command"] = "echo hi"
 	s.NoError(s.cmd.ParseParams(s.params))
 	s.NoError(s.cmd.expandAndValidate(s.conf))
+	s.True(s.cmd.CreateHost.Background)
 	s.Equal(apimodels.DefaultContainerWaitTimeoutSecs, s.cmd.CreateHost.ContainerWaitTimeoutSecs)
 }
 
