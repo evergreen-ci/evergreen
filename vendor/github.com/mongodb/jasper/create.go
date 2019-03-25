@@ -138,11 +138,11 @@ func (opts *CreateOptions) Resolve(ctx context.Context) (*exec.Cmd, error) {
 
 	cmd.Stdout, err = opts.Output.GetOutput()
 	if err != nil {
-		return nil, err
+		return nil, errors.WithStack(err)
 	}
 	cmd.Stderr, err = opts.Output.GetError()
 	if err != nil {
-		return nil, err
+		return nil, errors.WithStack(err)
 	}
 	cmd.Env = env
 
@@ -163,7 +163,7 @@ func (opts *CreateOptions) Resolve(ctx context.Context) (*exec.Cmd, error) {
 			catcher.Add(opts.Output.errorSender.Sender.Close())
 		}
 
-		return catcher.Resolve()
+		return errors.WithStack(catcher.Resolve())
 	})
 
 	return cmd, nil

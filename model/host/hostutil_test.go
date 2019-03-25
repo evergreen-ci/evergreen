@@ -18,5 +18,9 @@ func TestOutputOptions(t *testing.T) {
 	require.NotNil(t, output)
 
 	require.NoError(t, opts.Validate())
-	assert.Equal(t, opts.GetOutput(), opts.GetError())
+	stdout, err := opts.GetOutput()
+	require.NoError(t, err)
+	stderr, err := opts.GetError()
+	require.NoError(t, err)
+	assert.Equal(t, stdout, stderr)
 }

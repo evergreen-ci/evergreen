@@ -176,7 +176,7 @@ func (tc *taskContext) setCurrentCommand(command command.Command) {
 	tc.Lock()
 	defer tc.Unlock()
 	tc.currentCommand = command
-	command.SetJasperManager(tc.jasper)
+
 	tc.logger.Execution().Infof("Current command set to '%s' (%s)", tc.currentCommand.DisplayName(), tc.currentCommand.Type())
 }
 

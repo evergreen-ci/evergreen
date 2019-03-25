@@ -399,10 +399,7 @@ func getCreateOpt(ctx context.Context, args []string, dir string, env map[string
 		opts = &CreateOptions{Args: args}
 	}
 	opts.WorkingDirectory = dir
-
-	for k, v := range env {
-		opts.Environment[k] = v
-	}
+	opts.Environment = env
 
 	return opts, nil
 }
@@ -481,7 +478,7 @@ func (c *Command) exec(ctx context.Context, opts *CreateOptions, idx int) error 
 	}
 
 	grip.Log(c.priority, addOutOp(msg))
-	return err
+	return errors.WithStack(err)
 }
 
 // BuildCommand builds the Command given the configuration of arguments.

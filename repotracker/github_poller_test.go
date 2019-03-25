@@ -34,7 +34,7 @@ type bufCloser struct {
 	*bytes.Buffer
 }
 
-func (b *bufCloser) Close() error { return ni }
+func (b *bufCloser) Close() error { return nil }
 
 func getDistantEVGRevision() (string, error) {
 	cwd, err := os.Getwd()

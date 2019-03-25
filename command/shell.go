@@ -76,6 +76,10 @@ func (c *shellExec) ParseParams(params map[string]interface{}) error {
 		c.IgnoreStandardOutput = true
 	}
 
+	if c.Shell == "" {
+		c.Shell = "sh"
+	}
+
 	if c.IgnoreStandardOutput && c.RedirectStandardErrorToOutput {
 		return errors.New("cannot ignore standard out, and redirect standard error to it")
 	}
