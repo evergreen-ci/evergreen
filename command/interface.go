@@ -7,6 +7,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/rest/client"
+	"github.com/mongodb/jasper"
 )
 
 // Command is an interface that defines a command
@@ -37,6 +38,9 @@ type Command interface {
 
 	IdleTimeout() time.Duration
 	SetIdleTimeout(time.Duration)
+
+	SetJasperManager(jasper.Manager)
+	JasperManager() jasper.Manager
 }
 
 // base contains a basic implementation of functionality that is
@@ -90,4 +94,18 @@ func (b *base) IdleTimeout() time.Duration {
 	defer b.mu.RUnlock()
 
 	return b.idleTimeout
+}
+
+func (b *base) SetJasperManager(jpm jasper.Manager) {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+
+	b.jasper = jpm
+}
+
+func (b *base) JasperManager() jasper.Manager {
+	b.mu.RLock()
+	defer b.mu.RUnlock()
+
+	return b.jasper
 }

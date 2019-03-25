@@ -2,18 +2,17 @@ package command
 
 import (
 	"context"
-	"fmt"
-	"io"
 	"os"
+	"strconv"
 
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/rest/client"
-	"github.com/evergreen-ci/evergreen/subprocess"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mitchellh/mapstructure"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/level"
 	"github.com/mongodb/grip/message"
+	"github.com/mongodb/jasper"
 	"github.com/pkg/errors"
 )
 
@@ -85,13 +84,10 @@ func (c *shellExec) ParseParams(params map[string]interface{}) error {
 }
 
 // Execute starts the shell with its given parameters.
-func (c *shellExec) Execute(ctx context.Context,
-	_ client.Communicator, logger client.LoggerProducer, conf *model.TaskConfig) error {
-
+func (c *shellExec) Execute(ctx context.Context, _ client.Communicator, logger client.LoggerProducer, conf *model.TaskConfig) error {
 	logger.Execution().Debug("Preparing script...")
 
 	var err error
-
 	if err = c.doExpansions(conf.Expansions); err != nil {
 		logger.Execution().Warning(err.Error())
 		return errors.WithStack(err)
@@ -103,47 +99,53 @@ func (c *shellExec) Execute(ctx context.Context,
 		return errors.WithStack(err)
 	}
 
-	var logWriterInfo io.WriteCloser
-	var logWriterErr io.WriteCloser
-
-	if c.SystemLog {
-		logWriterInfo = logger.SystemWriter(level.Info)
-		logWriterErr = logger.SystemWriter(level.Error)
-	} else {
-		logWriterInfo = logger.TaskWriter(level.Info)
-		logWriterErr = logger.TaskWriter(level.Error)
-	}
-	defer logWriterInfo.Close()
-	defer logWriterErr.Close()
-
-	opts := subprocess.OutputOptions{
-		SuppressOutput:    c.IgnoreStandardOutput,
-		SuppressError:     c.IgnoreStandardError,
-		SendOutputToError: c.RedirectStandardErrorToOutput,
-	}
-
-	if !opts.SuppressOutput {
-		opts.Output = logWriterInfo
-	}
-	if !opts.SuppressError {
-		opts.Error = logWriterErr
-	}
-
 	taskTmpDir, err := conf.GetWorkingDirectory("tmp")
 	if err != nil {
 		logger.Execution().Notice(err.Error())
 	}
 
-	env := append(os.Environ(),
-		fmt.Sprintf("%s=%s", util.MarkerTaskID, conf.Task.Id),
-		fmt.Sprintf("%s=%d", util.MarkerAgentPID, os.Getpid()),
-		fmt.Sprintf("TMP=%s", taskTmpDir),
-		fmt.Sprintf("TEMP=%s", taskTmpDir),
-		fmt.Sprintf("TMPDIR=%s", taskTmpDir))
+	env := map[string]string{
+		util.MarkerTaskID:   conf.Task.Id,
+		util.MarkerAgetnPid: strconv.Itoa(os.GetPid()),
+	}
+	addTempDirs(env, taskTmpDir)
 
-	localCmd := subprocess.NewLocalCommand(c.Script, c.WorkingDir, c.Shell, env, true)
-	if err = localCmd.SetOutput(opts); err != nil {
-		return err
+	cmd := c.JasperManager().CreateCommand().Add([]string{c.Shell, "-c", c.Script}).
+		Background(c.Background).Directory(c.WorkingDir).AddEnv(env).
+		SuppressStandardError(c.IgnoreStandardError).SuppressStandardOutput(c.IgnoreStandardOutput).RedirectErrorToOutput(c.RedirectStandardErrorToOutput).
+		ProcConstructor(func(ctx context.Context, opts *jasper.CreateOptions) (jasper.Process, error) {
+			proc, err := c.JasperManager().CreateProcess(ctx, opts)
+			if err != nil {
+				return proc, errors.WithStack(err)
+			}
+
+			pid := proc.Info().PID
+
+			util.TrackProcess(taskID, pid, logger.System())
+
+			if c.Background {
+				logger.Execution().Debugf("running command in the background [pid=%d]", pid)
+			} else {
+				logger.Exeuction().Infof("started process with pid '%d'", pid)
+			}
+
+			return proc, nil
+		})
+
+	if !opts.SuppressOutput {
+		if c.SystemLog {
+			cmd.SetOutputSender(level.Info, logger.System().GetSender())
+		} else {
+			cmd.SetOutputSender(level.Info, logger.Task().GetSender())
+		}
+	}
+
+	if !opts.SuppressError {
+		if c.SystemLog {
+			cmd.SetErrorSender(level.Error, logger.System().GetSender())
+		} else {
+			cmd.SetErrorSender(level.Error, logger.Task().GetSender())
+		}
 	}
 
 	if c.Silent {
@@ -154,26 +156,9 @@ func (c *shellExec) Execute(ctx context.Context,
 			c.Shell, c.Script)
 	}
 
-	if err = localCmd.Start(ctx); err != nil {
-		logger.System().Debugf("error spawning shell process: %v", err)
-		return err
-	}
+	err = cmd.Run(ctx)
 
-	pid := localCmd.GetPid()
-
-	logger.System().Debugf("spawned shell process with pid %d", pid)
-
-	// Call the platform's process-tracking function. On some OSes this will be a noop,
-	// on others this may need to do some additional work to track the process so that
-	// it can be cleaned up later.
-	util.TrackProcess(conf.Task.Id, pid, logger.System())
-
-	if c.Background {
-		logger.Execution().Debugf("running command in the background [pid=%d]", pid)
-		return nil
-	}
-
-	err = errors.Wrapf(localCmd.Wait(), "command [pid=%d] encountered problem", pid)
+	err = errors.Wrapf(err, "command [pid=%d] encountered problem", pid)
 	if ctx.Err() != nil {
 		logger.System().Debug("dumping running processes before canceling work")
 		logger.System().Debug(message.CollectAllProcesses())

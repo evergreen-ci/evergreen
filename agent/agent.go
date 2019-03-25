@@ -50,6 +50,7 @@ type taskContext struct {
 	expansions     util.Expansions
 	expVars        *apimodels.ExpansionVars
 	logger         client.LoggerProducer
+	jasper         jasper.Manager
 	logs           *apimodels.TaskLogs
 	statsCollector *StatsCollector
 	task           client.TaskData
@@ -76,7 +77,7 @@ func New(opts Options, comm client.Communicator) (*Agent, error) {
 		comm: comm,
 	}
 
-	jpm, err := jasper.NewLocalManager(true)
+	jpm, err := jasper.NewLocalManager(false)
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}
@@ -181,6 +182,7 @@ LOOP:
 				}
 				tskCtx, tskCancel := context.WithCancel(ctx)
 				a.jasper.Clear(ctx)
+				tc.jasper = a.jasper
 				defer tskCancel()
 				shouldExit, err := a.runTask(tskCtx, tskCancel, tc)
 				if err != nil {
@@ -290,8 +292,8 @@ func (a *Agent) resetLogging(ctx context.Context, tc *taskContext) error {
 
 	sender, err := GetSender(ctx, a.opts.LogPrefix, tc.task.ID)
 	grip.Error(errors.Wrap(err, "problem getting sender"))
-
 	grip.Error(errors.Wrap(grip.SetSender(sender), "problem setting sender"))
+
 	return nil
 }
 
