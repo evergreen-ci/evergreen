@@ -101,9 +101,6 @@ func makeSpecificTaskStatus(t *task.Task) string {
 	if t.Status == evergreen.TaskSucceeded {
 		return evergreen.TaskSucceeded
 	}
-	if t.Details.TimedOut {
-		return evergreen.TaskTimedOut
-	}
 	if t.Details.Type == evergreen.CommandTypeSystem {
 		if t.Details.TimedOut && t.Details.Description == "heartbeat" {
 			return evergreen.TaskSystemUnresponse
@@ -112,6 +109,9 @@ func makeSpecificTaskStatus(t *task.Task) string {
 	}
 	if t.Details.Type == evergreen.CommandTypeSetup {
 		return evergreen.TaskSetupFailed
+	}
+	if t.Details.TimedOut {
+		return evergreen.TaskTimedOut
 	}
 	return evergreen.TaskFailed
 }
