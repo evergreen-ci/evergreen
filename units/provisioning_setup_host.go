@@ -671,7 +671,7 @@ func (j *setupHostJob) fetchRemoteTaskData(ctx context.Context, taskId, cliPath,
 	ctx, cancel = context.WithTimeout(ctx, 15*time.Minute)
 	defer cancel()
 
-	err := makeShellCmd.Run(ctx)
+	err = makeShellCmd.Run(ctx)
 
 	grip.Error(message.WrapError(err, message.Fields{
 		"message": fmt.Sprintf("fetch-artifacts-%s", taskId),
