@@ -517,7 +517,6 @@ func MarkEnd(t *task.Task, caller string, finishTime time.Time, detail *apimodel
 		"operation": "mark end",
 		"duration":  time.Since(now),
 	})
-	now = time.Now()
 
 	return nil
 }
