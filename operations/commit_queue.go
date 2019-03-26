@@ -168,23 +168,24 @@ func setModuleCommand() cli.Command {
 			requireModuleFlag,
 		),
 		Action: func(c *cli.Context) error {
-			confPath := c.Parent().String(confFlagName)
-			ref := c.String(refFlagName)
-			id := c.String(patchIDFlagName)
-			module := c.String(moduleFlagName)
-			largeOK := c.Bool(largeFlagName)
-			skipConfirm := c.Bool(yesFlagName)
-
 			params := moduleParams{
-				patchID:     id,
-				module:      module,
-				confPath:    confPath,
-				ref:         ref,
-				large:       largeOK,
-				skipConfirm: skipConfirm,
+				patchID:     c.String(patchIDFlagName),
+				module:      c.String(moduleFlagName),
+				ref:         c.String(refFlagName),
+				large:       c.Bool(largeFlagName),
+				skipConfirm: c.Bool(yesFlagName),
 			}
 
-			return params.addModule()
+			conf, err := NewClientSettings(c.Parent().String(confFlagName))
+			if err != nil {
+				return errors.Wrap(err, "problem loading configuration")
+			}
+			ac, rc, err := conf.getLegacyClients()
+			if err != nil {
+				return errors.Wrap(err, "problem accessing evergreen service")
+			}
+
+			return params.addModule(ac, rc)
 		},
 	}
 }
@@ -287,22 +288,12 @@ func (p *mergeParams) uploadMergePatch(conf *ClientSettings, ac *legacyClient) e
 type moduleParams struct {
 	patchID     string
 	module      string
-	confPath    string
 	ref         string
 	large       bool
 	skipConfirm bool
 }
 
-func (p *moduleParams) addModule() error {
-	conf, err := NewClientSettings(p.confPath)
-	if err != nil {
-		return errors.Wrap(err, "problem loading configuration")
-	}
-	ac, rc, err := conf.getLegacyClients()
-	if err != nil {
-		return errors.Wrap(err, "problem accessing evergreen service")
-	}
-
+func (p *moduleParams) addModule(ac *legacyClient, rc *legacyClient) error {
 	proj, err := rc.GetPatchedConfig(p.patchID)
 	if err != nil {
 		return err
@@ -318,14 +309,23 @@ func (p *moduleParams) addModule() error {
 		return errors.Wrap(err, "can't get patch data")
 	}
 
+	if len(diffData.fullPatch) == 0 {
+		if p.skipConfirm {
+			return errors.New("empty patch aborted")
+		}
+		if !confirm("Patch submission is empty. Continue?(y/n)", true) {
+			return errors.New("empty patch aborted")
+		}
+	}
+
 	if err = validatePatchSize(diffData, p.large); err != nil {
 		return err
 	}
 
 	if !p.skipConfirm {
-		fmt.Printf("Using branch %v for module %v \n", moduleBranch, p.module)
+		grip.Infof("Using branch %s for module %s", moduleBranch, p.module)
 		if diffData.patchSummary != "" {
-			fmt.Println(diffData.patchSummary)
+			grip.Info(diffData.patchSummary)
 		}
 
 		if !confirm("This is a summary of the patch to be submitted. Continue? (y/n):", true) {
