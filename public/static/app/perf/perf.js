@@ -550,6 +550,33 @@ mciModule.controller('PerfController', function PerfController(
         }
         setTimeout(function(){drawDetailGraph($scope.perfSample, $scope.comparePerfSamples, $scope.task.id)},0);
 
+        // Get a list of rejected points.
+        var getRejectedPointsQ = Stitch.use(STITCH_CONFIG.PERF).query(function(db) {
+          const query = {
+            project: $scope.task.branch,
+            task: $scope.task.display_name,
+            variant: $scope.task.build_variant,
+            test: new stitch.BSON.BSONRegExp("^(fio|canary|iperf|NetworkBandwidth)"),
+            $or : [
+              {'$and':[{ "rejected" : true }, { "outlier" : true }]},
+              {'$and':[{ "results.rejected" : true }, { "results.outlier" : true }]}]
+          }
+          return db
+            .db(STITCH_CONFIG.PERF.DB_PERF)
+            .collection(STITCH_CONFIG.PERF.COLL_POINTS)
+            .find(query)
+            .execute()
+        }).then(
+          function(docs) {
+            return _.chain(docs).
+              pluck('task_id').
+              uniq().
+              value()
+          }, function(err) {
+            $log.error('Cannot load change points!', err)
+            return [] // Try to recover an error
+          })
+
         // This code loads change points for current task from the mdb cloud
         var unprocessedPointsQ = Stitch.use(STITCH_CONFIG.PERF).query(function(db) {
           return db
@@ -631,27 +658,36 @@ mciModule.controller('PerfController', function PerfController(
         // Populate the trend data
         var chartDataQ = $http.get("/plugin/json/history/" + $scope.task.id + "/perf").then(
           function(resp) {
-            $scope.trendSamples = new TrendSamples(resp.data);
-            $scope.metricSelect.options = [$scope.metricSelect.default].concat(
-              _.map(
-                _.without($scope.trendSamples.metrics, $scope.metricSelect.default.key),
-                function(d) { return {key: d, name: d} }
+            getRejectedPointsQ.then(function(rejects){
+              let data = resp.data;
+              if(rejects.length){
+                data = _.reject(resp.data, function(doc) {
+                  // return  $scope.task.id != doc.task_id && _.contains(rejects, doc.task_id);
+                  return  _.contains(rejects, doc.task_id);
+                })
+              }
+              $scope.trendSamples = new TrendSamples(data);
+              $scope.metricSelect.options = [$scope.metricSelect.default].concat(
+                _.map(
+                  _.without($scope.trendSamples.metrics, $scope.metricSelect.default.key),
+                  function(d) { return {key: d, name: d} }
+                )
               )
-            )
 
-          // Some copypasted checks
-          if ($scope.conf.enabled){
-            if ($location.hash().length > 0) {
-              try {
-                if ('metric' in hashparsed) {
-                  let metric = hashparsed.metric
-                  $scope.metricSelect.value = _.findWhere(
-                    $scope.metricSelect.options, {key: metric}
-                  ) || $scope.metricSelect.default
+              // Some copypasted checks
+              if ($scope.conf.enabled){
+                if ($location.hash().length > 0) {
+                  try {
+                    if ('metric' in hashparsed) {
+                      let metric = hashparsed.metric
+                      $scope.metricSelect.value = _.findWhere(
+                        $scope.metricSelect.options, {key: metric}
+                      ) || $scope.metricSelect.default
+                    }
+                  } catch (e) {}
                 }
-              } catch (e) {}
-            }
-          }
+              }
+            })
           })
 
         // Once trend chart data and change points get loaded
