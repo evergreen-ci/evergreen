@@ -2,6 +2,7 @@ package operations
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/evergreen-ci/evergreen/rest/client"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
@@ -205,6 +206,17 @@ func (p *mergeParams) mergeBranch(ctx context.Context, confPath string) error {
 	}
 
 	if p.id == "" {
+		if p.projectID == "" {
+			p.projectID = conf.FindDefaultProject()
+		} else {
+			if conf.FindDefaultProject() == "" &&
+				!p.skipConfirm && confirm(fmt.Sprintf("Make %v your default project?", p.projectID), true) {
+				conf.SetDefaultProject(p.projectID)
+				if err := conf.Write(""); err != nil {
+					grip.Warningf("warning - failed to set default project: %v\n", err)
+				}
+			}
+		}
 		if p.projectID == "" {
 			return errors.New("no project identifier provided")
 		}
