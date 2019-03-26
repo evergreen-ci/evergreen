@@ -712,34 +712,6 @@ func (c *communicatorImpl) DeleteCommitQueueItem(ctx context.Context, projectID,
 	return nil
 }
 
-func (c *communicatorImpl) UploadPatches(ctx context.Context, projectID, patches string) (string, error) {
-	info := requestInfo{
-		method:  post,
-		version: apiVersion2,
-		path:    fmt.Sprintf("/commitqueue/patch_upload/%s", projectID),
-	}
-
-	resp, err := c.request(ctx, info, patches)
-	if err != nil {
-		return "", err
-	}
-	defer resp.Body.Close()
-	bytes, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		return "", errors.Wrap(err, "failed to read response")
-	}
-	if resp.StatusCode != http.StatusOK {
-		restErr := gimlet.ErrorResponse{}
-		if err = json.Unmarshal(bytes, &restErr); err != nil {
-			return "", errors.Errorf("received an error but was unable to parse: %s", string(bytes))
-		}
-
-		return "", restErr
-	}
-
-	return string(bytes), nil
-}
-
 func (c *communicatorImpl) EnqueueItem(ctx context.Context, id string) (int, error) {
 	info := requestInfo{
 		method:  put,

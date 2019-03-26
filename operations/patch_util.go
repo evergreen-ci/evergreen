@@ -71,13 +71,13 @@ type patchSubmission struct {
 	finalize    bool
 }
 
-func (p *patchParams) createPatch(ac *legacyClient, conf *ClientSettings, diffData *localDiff) error {
+func (p *patchParams) createPatch(ac *legacyClient, conf *ClientSettings, diffData *localDiff) (*patch.Patch, error) {
 	if err := validatePatchSize(diffData, p.Large); err != nil {
-		return err
+		return nil, err
 	}
 	if !p.SkipConfirm && len(diffData.fullPatch) == 0 {
 		if !confirm("Patch submission is empty. Continue?(y/n)", true) {
-			return nil
+			return nil, nil
 		}
 	} else if !p.SkipConfirm && diffData.patchSummary != "" {
 		grip.Info(diffData.patchSummary)
@@ -86,7 +86,7 @@ func (p *patchParams) createPatch(ac *legacyClient, conf *ClientSettings, diffDa
 		}
 
 		if !confirm("This is a summary of the patch to be submitted. Continue? (y/n):", true) {
-			return nil
+			return nil, nil
 		}
 	}
 
@@ -104,11 +104,11 @@ func (p *patchParams) createPatch(ac *legacyClient, conf *ClientSettings, diffDa
 
 	newPatch, err := ac.PutPatch(patchSub)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	patchDisp, err := getPatchDisplay(newPatch, p.ShowSummary, conf.UIServerHost)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	grip.Info("Patch successfully created.")
@@ -118,7 +118,7 @@ func (p *patchParams) createPatch(ac *legacyClient, conf *ClientSettings, diffDa
 		browserCmd, err := findBrowserCommand()
 		if err != nil || len(browserCmd) == 0 {
 			grip.Warningf("cannot find browser command: %s", err)
-			return nil
+			return newPatch, nil
 		}
 
 		var url string
@@ -130,10 +130,10 @@ func (p *patchParams) createPatch(ac *legacyClient, conf *ClientSettings, diffDa
 
 		browserCmd = append(browserCmd, url)
 		cmd := exec.Command(browserCmd[0], browserCmd[1:]...)
-		return cmd.Run()
+		return newPatch, cmd.Run()
 	}
 
-	return nil
+	return newPatch, nil
 }
 
 func findBrowserCommand() ([]string, error) {

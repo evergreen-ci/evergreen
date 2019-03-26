@@ -15,6 +15,7 @@ const (
 	refFlagName        = "ref"
 	pauseFlagName      = "pause"
 	identifierFlagName = "identifier"
+	commitQueueAlias   = "__commit_queue"
 )
 
 func CommitQueue() cli.Command {
@@ -96,7 +97,7 @@ func mergeCommand() cli.Command {
 	return cli.Command{
 		Name:  "merge",
 		Usage: "test and merge a feature branch",
-		Flags: addProjectFlag(
+		Flags: mergeFlagSlices(addProjectFlag(), addLargeFlag(), addYesFlag(
 			cli.StringFlag{
 				Name:  joinFlagNames(refFlagName, "r"),
 				Usage: "merge branch `REF`",
@@ -110,7 +111,11 @@ func mergeCommand() cli.Command {
 				Name:  pauseFlagName,
 				Usage: "wait to enqueue an item until finalized",
 			},
-		),
+			cli.StringFlag{
+				Name:  joinFlagNames(patchDescriptionFlagName, "d"),
+				Usage: "description for the patch",
+			},
+		)),
 		Before: mergeBeforeFuncs(
 			setPlainLogger,
 		),
@@ -120,31 +125,23 @@ func mergeCommand() cli.Command {
 			ref := c.String(refFlagName)
 			id := c.String(identifierFlagName)
 			pause := c.Bool(pauseFlagName)
+			largeOK := c.Bool(largeFlagName)
+			description := c.String(patchDescriptionFlagName)
+			skipConfirm := c.Bool(yesFlagName)
 
 			ctx, cancel := context.WithCancel(context.Background())
 			defer cancel()
-			conf, err := NewClientSettings(confPath)
-			if err != nil {
-				return errors.Wrap(err, "problem loading configuration")
-			}
-
-			ac, _, err := conf.getLegacyClients()
-			if err != nil {
-				return errors.Wrap(err, "problem accessing evergreen service")
-			}
-
-			client := conf.GetRestCommunicator(ctx)
-			if err != nil {
-				return errors.Wrap(err, "problem accessing evergreen service")
-			}
 
 			params := mergeParams{
-				projectID: projectID,
-				ref:       ref,
-				id:        id,
-				pause:     pause,
+				projectID:   projectID,
+				ref:         ref,
+				id:          id,
+				pause:       pause,
+				description: description,
+				skipConfirm: skipConfirm,
+				large:       largeOK,
 			}
-			return params.mergeBranch(ctx, client, ac)
+			return params.mergeBranch(ctx, confPath)
 		},
 	}
 }
@@ -182,99 +179,111 @@ func deleteCommitQueueItem(ctx context.Context, client client.Communicator, proj
 }
 
 type mergeParams struct {
-	projectID string
-	ref       string
-	id        string
-	pause     bool
+	projectID   string
+	ref         string
+	id          string
+	pause       bool
+	description string
+	skipConfirm bool
+	large       bool
 }
 
-func (p *mergeParams) mergeBranch(ctx context.Context, client client.Communicator, ac *legacyClient) error {
+func (p *mergeParams) mergeBranch(ctx context.Context, confPath string) error {
+	conf, err := NewClientSettings(confPath)
+	if err != nil {
+		return errors.Wrap(err, "problem loading configuration")
+	}
+
+	ac, _, err := conf.getLegacyClients()
+	if err != nil {
+		return errors.Wrap(err, "problem accessing evergreen service")
+	}
+
+	client := conf.GetRestCommunicator(ctx)
+	if err != nil {
+		return errors.Wrap(err, "problem accessing evergreen service")
+	}
+
 	if p.id == "" {
 		if p.projectID == "" {
-			return errors.New("no project ID provided")
+			return errors.New("no project identifier provided")
 		}
-
 		projectRef, err := ac.GetProjectRef(p.projectID)
 		if err != nil {
 			return err
 		}
-
 		diffData, err := getFeaturePatchInfo(projectRef.Branch, p.ref)
 		if err != nil {
 			return errors.Wrap(err, "can't generate patches")
 		}
 
-		if len(diffData.patches) == 0 {
-			if !confirm("Patch submission is empty. Continue?(y/n)", true) {
-				return nil
+		if p.description == "" && !p.skipConfirm {
+			p.description = prompt("Enter a description for this patch (optional):")
+		}
+		if p.description == "" {
+			p.description, err = gitCmd("rev-parse", "--abbrev-ref", p.ref)
+			if err != nil {
+				return errors.Wrapf(err, "can't get branch name for ref %s", p.ref)
 			}
 		}
 
-		grip.Info(diffData.stat)
-		grip.Info(diffData.log)
-		if !confirm("This is a summary of the merge patch to be submitted. Continue? (y/n):", true) {
-			return nil
+		patchParams := &patchParams{
+			Project:     p.projectID,
+			SkipConfirm: p.skipConfirm,
+			Description: p.description,
+			Large:       p.large,
+			Alias:       commitQueueAlias,
 		}
 
-		p.id, err = uploadPatches(ctx, client, p.projectID, diffData.patches)
+		patch, err := patchParams.createPatch(ac, conf, diffData)
 		if err != nil {
 			return err
 		}
+		if patch == nil {
+			return nil
+		}
+		p.id = patch.Id.Hex()
 	}
 
 	if !p.pause {
-		if err := enqueueItem(ctx, client, p.id); err != nil {
+		position, err := client.EnqueueItem(ctx, p.id)
+		if err != nil {
 			return err
 		}
+		grip.Infof("Queue position is %d", position)
 	}
 
 	return nil
 }
 
-type diffData struct {
-	stat    string
-	log     string
-	patches string
-}
-
-func getFeaturePatchInfo(projectBranch, ref string) (diffData, error) {
+func getFeaturePatchInfo(projectBranch, ref string) (*localDiff, error) {
 	upstream := projectBranch + "@{upstream}"
 	revisionRange := upstream + ".." + ref
 
 	stat, err := gitCmd("diff", "--no-ext-diff", "--stat", revisionRange)
 	if err != nil {
-		return diffData{}, errors.Wrap(err, "can't get stat")
+		return nil, errors.Wrap(err, "can't get stat")
 	}
 
 	log, err := gitCmd("log", "--oneline", revisionRange)
 	if err != nil {
-		return diffData{}, errors.Wrap(err, "can't get log")
+		return nil, errors.Wrap(err, "can't get log")
 	}
 
 	patches, err := gitCmd("format-patch", "--no-ext-diff", "--stdout", revisionRange)
 	if err != nil {
-		return diffData{}, errors.Wrap(err, "can't generate patch")
+		return nil, errors.Wrap(err, "can't generate patch")
 	}
 
-	return diffData{stat, log, patches}, nil
-}
-
-func uploadPatches(ctx context.Context, client client.Communicator, projectID, patches string) (string, error) {
-	id, err := client.UploadPatches(ctx, projectID, patches)
+	mergeBase, err := gitMergeBase(upstream, ref)
 	if err != nil {
-		return "", err
+		return nil, errors.Errorf("Error getting merge base: %v", err)
 	}
 
-	grip.Infof("Item ID is '%s'", id)
-	return id, nil
-}
-
-func enqueueItem(ctx context.Context, client client.Communicator, id string) error {
-	position, err := client.EnqueueItem(ctx, id)
-	if err != nil {
-		return err
-	}
-
-	grip.Infof("Queue position is '%d'", position)
-	return nil
+	return &localDiff{
+		fullPatch:    patches,
+		patchSummary: stat,
+		log:          log,
+		base:         mergeBase,
+	}, nil
 }
