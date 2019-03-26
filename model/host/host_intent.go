@@ -112,22 +112,24 @@ func generateParentHostOptions(pool *evergreen.ContainerPool) HostOptions {
 	return options
 }
 
-func CreateParentIntentsAndNumHostsToSpawn(pool *evergreen.ContainerPool, newHostsNeeded int, useParentCapacity bool) ([]Host, int, error) {
+func InsertParentIntentsAndGetNumHostsToSpawn(pool *evergreen.ContainerPool, newHostsNeeded int, ignoreMaxHosts bool) ([]Host, int, error) {
 	// find all running parents with the specified container pool
-
-	numNewParentsToSpawn, newHostsNeeded, err := getNumNewParentsAndHostsToSpawn(pool, newHostsNeeded, useParentCapacity)
+	numNewParentsToSpawn, newHostsNeeded, err := getNumNewParentsAndHostsToSpawn(pool, newHostsNeeded, ignoreMaxHosts)
 	if err != nil {
-		return []Host{}, 0, errors.Wrap(err, "error getting number of parents to spawn")
+		return nil, 0, errors.Wrap(err, "error getting number of parents to spawn")
 	}
-	newParentHosts := []Host{}
-	if numNewParentsToSpawn > 0 {
-		// get parent distro from pool
-		parentDistro, err := distro.FindOne(distro.ById(pool.Distro))
-		if err != nil {
-			return nil, 0, errors.Wrap(err, "error find parent distro")
-		}
-		newParentHosts = createParents(parentDistro, numNewParentsToSpawn, pool)
+	if numNewParentsToSpawn <= 0 {
+		return nil, newHostsNeeded, nil
 	}
 
+	// get parent distro from pool
+	parentDistro, err := distro.FindOne(distro.ById(pool.Distro))
+	if err != nil {
+		return nil, 0, errors.Wrap(err, "error find parent distro")
+	}
+	newParentHosts := createParents(parentDistro, numNewParentsToSpawn, pool)
+	if err = InsertMany(newParentHosts); err != nil {
+		return nil, 0, errors.Wrap(err, "error inserting new parent hosts")
+	}
 	return newParentHosts, newHostsNeeded, nil
 }

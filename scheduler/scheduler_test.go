@@ -114,7 +114,7 @@ func (s *SchedulerSuite) TestSpawnHostsParents() {
 	parents := 0
 	children := 0
 	for _, h := range newHostsSpawned {
-		if s.True(h.HasContainers) {
+		if h.HasContainers {
 			parents++
 		} else if s.NotEmpty(h.ParentID) {
 			children++
@@ -122,7 +122,7 @@ func (s *SchedulerSuite) TestSpawnHostsParents() {
 	}
 
 	s.Equal(1, parents)
-	s.Equal(0, children)
+	s.Equal(1, children)
 }
 
 func (s *SchedulerSuite) TestSpawnHostsContainers() {
@@ -178,7 +178,7 @@ func (s *SchedulerSuite) TestSpawnHostsParentsAndSomeContainers() {
 	providerSettings["image_url"] = "my-image"
 	d := distro.Distro{Id: "distro", Provider: evergreen.ProviderNameMock, ContainerPool: "test-pool",
 		ProviderSettings: &providerSettings}
-	parent := distro.Distro{Id: "parent-distro", PoolSize: 3, Provider: evergreen.ProviderNameMock}
+	parent := distro.Distro{Id: "parent-distro", PoolSize: 2, Provider: evergreen.ProviderNameMock}
 
 	pool := &evergreen.ContainerPool{Distro: "parent-distro", Id: "test-pool", MaxContainers: 3}
 	host1 := &host.Host{
@@ -208,9 +208,10 @@ func (s *SchedulerSuite) TestSpawnHostsParentsAndSomeContainers() {
 	s.NoError(host2.Insert())
 	s.NoError(host3.Insert())
 
-	newHostsSpawned, err := SpawnHosts(ctx, d, 3, pool)
+	newHostsSpawned, err := SpawnHosts(ctx, d, 5, pool)
 	s.NoError(err)
-	s.Equal(2, len(newHostsSpawned))
+	// 1 parent, 3 children on new parent, 1 child on old parent
+	s.Equal(5, len(newHostsSpawned))
 
 	parents := 0
 	children := 0
@@ -223,7 +224,7 @@ func (s *SchedulerSuite) TestSpawnHostsParentsAndSomeContainers() {
 		}
 	}
 
-	s.Equal(1, children)
+	s.Equal(4, children)
 	s.Equal(1, parents)
 }
 

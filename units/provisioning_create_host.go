@@ -285,7 +285,7 @@ func (j *createHostJob) tryRequeue(ctx context.Context) {
 
 func (j *createHostJob) shouldRetryCreateHost(ctx context.Context) bool {
 	return j.CurrentAttempt < j.MaxAttempts &&
-		j.host.Status != evergreen.HostStarting &&
+		(j.host.Status == evergreen.HostUninitialized || j.host.Status == evergreen.HostBuilding) &&
 		ctx.Err() == nil
 }
 
@@ -293,6 +293,9 @@ func (j *createHostJob) isImageBuilt(ctx context.Context) (bool, error) {
 	parent, err := host.FindOneId(j.host.ParentID)
 	if err != nil {
 		return false, errors.Wrapf(err, "problem getting parent for '%s'", j.host.Id)
+	}
+	if parent.Status == evergreen.HostUninitialized || parent.Status == evergreen.HostBuilding {
+		return false, errors.Errorf("parent for host '%s' not running", j.host.Id)
 	}
 	if ok := parent.ContainerImages[j.host.DockerOptions.Image]; ok {
 		return true, nil

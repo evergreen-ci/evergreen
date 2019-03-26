@@ -149,17 +149,15 @@ func SpawnHosts(ctx context.Context, d distro.Distro, newHostsNeeded int, pool *
 		return nil, errors.New("scheduling run canceled")
 	}
 
-	// if distro is container distro, check if there are enough parent hosts to
-	// support new containers
+	// if distro is container distro, check if there are enough parent hosts to support new containers
+	var newParentHosts []host.Host
 	if pool != nil {
 		var err error
-		var newParentHosts []host.Host
 		// only want to spawn amount of parents allowed based on pool size
-		newParentHosts, numHostsToSpawn, err = host.CreateParentIntentsAndNumHostsToSpawn(pool, newHostsNeeded, true)
+		newParentHosts, numHostsToSpawn, err = host.InsertParentIntentsAndGetNumHostsToSpawn(pool, newHostsNeeded, false)
 		if err != nil {
 			return nil, errors.Wrap(err, "could not generate new parents hosts needed")
 		}
-		hostsSpawned = append(hostsSpawned, newParentHosts...)
 		if len(newParentHosts) > 0 {
 			grip.Info(message.Fields{
 				"runner":          RunnerName,
@@ -205,7 +203,7 @@ func SpawnHosts(ctx context.Context, d distro.Distro, newHostsNeeded int, pool *
 		"duration_secs": time.Since(startTime).Seconds(),
 		"num_hosts":     len(hostsSpawned),
 	})
-
+	hostsSpawned = append(hostsSpawned, newParentHosts...)
 	return hostsSpawned, nil
 }
 

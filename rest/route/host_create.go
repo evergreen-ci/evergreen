@@ -77,7 +77,6 @@ func (h *hostCreateHandler) Run(ctx context.Context) gimlet.Responder {
 		return gimlet.NewJSONErrorResponse(errors.Wrapf(err, "error getting distro %s", h.createHost.Distro))
 	}
 	if distro.ContainerPool != "" && h.createHost.CloudProvider == evergreen.ProviderNameDocker {
-		var parents []host.Host
 		settings, err := evergreen.GetConfig()
 		if err != nil {
 			return gimlet.NewJSONErrorResponse(errors.Wrap(err, "error getting settings config"))
@@ -88,11 +87,10 @@ func (h *hostCreateHandler) Run(ctx context.Context) gimlet.Responder {
 			return gimlet.NewJSONErrorResponse(errors.Errorf("container pool %s not found", distro.ContainerPool))
 		}
 
-		parents, numHosts, err = host.CreateParentIntentsAndNumHostsToSpawn(containerPool, 1, false)
+		_, numHosts, err = host.InsertParentIntentsAndGetNumHostsToSpawn(containerPool, 1, true)
 		if err != nil {
-			return gimlet.NewJSONErrorResponse(errors.Wrap(err, "error getting parent intents and number of hosts to spawn"))
+			return gimlet.NewJSONErrorResponse(errors.Wrap(err, "error creating parent intents and number of hosts to spawn"))
 		}
-		hosts = append(hosts, parents...)
 	}
 
 	ids := []string{}
