@@ -131,7 +131,7 @@ func (c *createHost) waitForLogs(ctx context.Context, comm client.Communicator, 
 				if err = c.getAndWriteLogBatch(ctx, comm, hostID, batchStart, batchEnd); err != nil {
 					return errors.Wrapf(err, "error getting and writing logs on started container")
 				}
-				batchStart = batchEnd
+				batchStart = batchEnd.Add(time.Nanosecond) // to prevent repeat logs
 
 				if !status.IsRunning { // container exited
 					logger.Task().Infof("Logs retrieved for container _id %s in %d seconds",
