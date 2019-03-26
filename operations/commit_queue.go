@@ -2,8 +2,8 @@ package operations
 
 import (
 	"context"
-	"fmt"
 
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/rest/client"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/mongodb/grip"
@@ -16,7 +16,6 @@ const (
 	refFlagName        = "ref"
 	pauseFlagName      = "pause"
 	identifierFlagName = "identifier"
-	commitQueueAlias   = "__commit_queue"
 )
 
 func CommitQueue() cli.Command {
@@ -121,28 +120,35 @@ func mergeCommand() cli.Command {
 			setPlainLogger,
 		),
 		Action: func(c *cli.Context) error {
-			confPath := c.Parent().String(confFlagName)
-			projectID := c.String(projectFlagName)
-			ref := c.String(refFlagName)
-			id := c.String(identifierFlagName)
-			pause := c.Bool(pauseFlagName)
-			largeOK := c.Bool(largeFlagName)
-			description := c.String(patchDescriptionFlagName)
-			skipConfirm := c.Bool(yesFlagName)
-
 			ctx, cancel := context.WithCancel(context.Background())
 			defer cancel()
 
 			params := mergeParams{
-				projectID:   projectID,
-				ref:         ref,
-				id:          id,
-				pause:       pause,
-				description: description,
-				skipConfirm: skipConfirm,
-				large:       largeOK,
+				projectID:   c.String(projectFlagName),
+				ref:         c.String(refFlagName),
+				id:          c.String(identifierFlagName),
+				pause:       c.Bool(pauseFlagName),
+				description: c.String(patchDescriptionFlagName),
+				skipConfirm: c.Bool(yesFlagName),
+				large:       c.Bool(largeFlagName),
 			}
-			return params.mergeBranch(ctx, confPath)
+
+			conf, err := NewClientSettings(c.Parent().String(confFlagName))
+			if err != nil {
+				return errors.Wrap(err, "problem loading configuration")
+			}
+
+			ac, _, err := conf.getLegacyClients()
+			if err != nil {
+				return errors.Wrap(err, "problem accessing legacy evergreen client")
+			}
+
+			client := conf.GetRestCommunicator(ctx)
+			if err != nil {
+				return errors.Wrap(err, "problem accessing evergreen service")
+			}
+
+			return params.mergeBranch(ctx, conf, client, ac)
 		},
 	}
 }
@@ -189,72 +195,11 @@ type mergeParams struct {
 	large       bool
 }
 
-func (p *mergeParams) mergeBranch(ctx context.Context, confPath string) error {
-	conf, err := NewClientSettings(confPath)
-	if err != nil {
-		return errors.Wrap(err, "problem loading configuration")
-	}
-
-	ac, _, err := conf.getLegacyClients()
-	if err != nil {
-		return errors.Wrap(err, "problem accessing evergreen service")
-	}
-
-	client := conf.GetRestCommunicator(ctx)
-	if err != nil {
-		return errors.Wrap(err, "problem accessing evergreen service")
-	}
-
+func (p *mergeParams) mergeBranch(ctx context.Context, conf *ClientSettings, client client.Communicator, ac *legacyClient) error {
 	if p.id == "" {
-		if p.projectID == "" {
-			p.projectID = conf.FindDefaultProject()
-		} else {
-			if conf.FindDefaultProject() == "" &&
-				!p.skipConfirm && confirm(fmt.Sprintf("Make %v your default project?", p.projectID), true) {
-				conf.SetDefaultProject(p.projectID)
-				if err := conf.Write(""); err != nil {
-					grip.Warningf("warning - failed to set default project: %v\n", err)
-				}
-			}
-		}
-		if p.projectID == "" {
-			return errors.New("no project identifier provided")
-		}
-		projectRef, err := ac.GetProjectRef(p.projectID)
-		if err != nil {
+		if err := p.uploadMergePatch(conf, ac); err != nil {
 			return err
 		}
-		diffData, err := getFeaturePatchInfo(projectRef.Branch, p.ref)
-		if err != nil {
-			return errors.Wrap(err, "can't generate patches")
-		}
-
-		if p.description == "" && !p.skipConfirm {
-			p.description = prompt("Enter a description for this patch (optional):")
-		}
-		if p.description == "" {
-			p.description, err = gitCmd("rev-parse", "--abbrev-ref", p.ref)
-			if err != nil {
-				return errors.Wrapf(err, "can't get branch name for ref %s", p.ref)
-			}
-		}
-
-		patchParams := &patchParams{
-			Project:     p.projectID,
-			SkipConfirm: p.skipConfirm,
-			Description: p.description,
-			Large:       p.large,
-			Alias:       commitQueueAlias,
-		}
-
-		patch, err := patchParams.createPatch(ac, conf, diffData)
-		if err != nil {
-			return err
-		}
-		if patch == nil {
-			return nil
-		}
-		p.id = patch.Id.Hex()
 	}
 
 	if !p.pause {
@@ -264,6 +209,41 @@ func (p *mergeParams) mergeBranch(ctx context.Context, confPath string) error {
 		}
 		grip.Infof("Queue position is %d", position)
 	}
+
+	return nil
+}
+
+func (p *mergeParams) uploadMergePatch(conf *ClientSettings, ac *legacyClient) error {
+	patchParams := &patchParams{
+		Project:     p.projectID,
+		SkipConfirm: p.skipConfirm,
+		Description: p.description,
+		Large:       p.large,
+		Alias:       evergreen.CommitQueueAlias,
+	}
+	projectRef, err := patchParams.ValidateProjectID(conf, ac)
+	if err != nil {
+		return errors.Wrap(err, "invalid project ID")
+	}
+
+	diffData, err := getFeaturePatchInfo(projectRef.Branch, p.ref)
+	if err != nil {
+		return errors.Wrap(err, "can't generate patches")
+	}
+
+	if p.description == "" {
+		p.description, err = gitCmd("rev-parse", "--abbrev-ref", p.ref)
+		if err != nil {
+			return errors.Wrapf(err, "can't get branch name for ref %s", p.ref)
+		}
+	}
+
+	patch, err := patchParams.createPatch(ac, conf, diffData)
+	if err != nil {
+		return err
+	}
+
+	p.id = patch.Id.Hex()
 
 	return nil
 }

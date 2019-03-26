@@ -77,7 +77,7 @@ func (p *patchParams) createPatch(ac *legacyClient, conf *ClientSettings, diffDa
 	}
 	if !p.SkipConfirm && len(diffData.fullPatch) == 0 {
 		if !confirm("Patch submission is empty. Continue?(y/n)", true) {
-			return nil, nil
+			return nil, errors.New("patch aborted")
 		}
 	} else if !p.SkipConfirm && diffData.patchSummary != "" {
 		grip.Info(diffData.patchSummary)
@@ -86,7 +86,7 @@ func (p *patchParams) createPatch(ac *legacyClient, conf *ClientSettings, diffDa
 		}
 
 		if !confirm("This is a summary of the patch to be submitted. Continue? (y/n):", true) {
-			return nil, nil
+			return nil, errors.New("patch aborted")
 		}
 	}
 
@@ -163,20 +163,9 @@ func findBrowserCommand() ([]string, error) {
 
 // Performs validation for patch or patch-file
 func (p *patchParams) validatePatchCommand(ctx context.Context, conf *ClientSettings, ac *legacyClient, comm client.Communicator) (*model.ProjectRef, error) {
-	if p.Project == "" {
-		p.Project = conf.FindDefaultProject()
-	} else {
-		if conf.FindDefaultProject() == "" &&
-			!p.SkipConfirm && confirm(fmt.Sprintf("Make %v your default project?", p.Project), true) {
-			conf.SetDefaultProject(p.Project)
-			if err := conf.Write(""); err != nil {
-				grip.Warningf("warning - failed to set default project: %v\n", err)
-			}
-		}
-	}
-
-	if p.Project == "" {
-		return nil, errors.Errorf("Need to specify a project.")
+	ref, err := p.ValidateProjectID(conf, ac)
+	if err != nil {
+		return nil, errors.Wrap(err, "invalid project ID")
 	}
 
 	if err := p.loadAlias(conf); err != nil {
@@ -209,21 +198,40 @@ func (p *patchParams) validatePatchCommand(ctx context.Context, conf *ClientSett
 		}
 	}
 
-	// Validate the project exists
-	ref, err := ac.GetProjectRef(p.Project)
-	if err != nil {
-		if apiErr, ok := err.(APIError); ok && apiErr.code == http.StatusNotFound {
-			err = errors.Errorf("%v \nRun `evergreen list --projects` to see all valid projects", err)
-		}
-		return nil, err
-	}
-
 	if (len(p.Tasks) == 0 || len(p.Variants) == 0) && p.Alias == "" && p.Finalize {
 		return ref, errors.Errorf("Need to specify at least one task/variant or alias when finalizing.")
 	}
 
 	if p.Description == "" && !p.SkipConfirm {
 		p.Description = prompt("Enter a description for this patch (optional):")
+	}
+
+	return ref, nil
+}
+
+func (p *patchParams) ValidateProjectID(conf *ClientSettings, ac *legacyClient) (*model.ProjectRef, error) {
+	if p.Project == "" {
+		p.Project = conf.FindDefaultProject()
+	} else {
+		if conf.FindDefaultProject() == "" &&
+			!p.SkipConfirm && confirm(fmt.Sprintf("Make %v your default project?", p.Project), true) {
+			conf.SetDefaultProject(p.Project)
+			if err := conf.Write(""); err != nil {
+				grip.Warningf("warning - failed to set default project: %v\n", err)
+			}
+		}
+	}
+
+	if p.Project == "" {
+		return nil, errors.Errorf("Need to specify a project.")
+	}
+
+	ref, err := ac.GetProjectRef(p.Project)
+	if err != nil {
+		if apiErr, ok := err.(APIError); ok && apiErr.code == http.StatusNotFound {
+			err = errors.Errorf("%v \nRun `evergreen list --projects` to see all valid projects", err)
+		}
+		return nil, err
 	}
 
 	return ref, nil

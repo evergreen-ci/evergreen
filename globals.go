@@ -135,6 +135,8 @@ const (
 
 	PlannerVersionLegacy  = "legacy"
 	PlannerVersionTunable = "tunable"
+
+	CommitQueueAlias = "__commit_queue"
 )
 
 func IsFinishedTaskStatus(status string) bool {
