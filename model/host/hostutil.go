@@ -9,7 +9,6 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/util"
-	"github.com/mongodb/jasper"
 	"github.com/pkg/errors"
 )
 
@@ -42,16 +41,6 @@ const (
 	sshTimeout = 2 * time.Minute
 )
 
-func getSSHOutputOptions() jasper.OutputOptions {
-	// store up to 1MB of streamed command output to print if a command fails
-	output := &util.CappedWriter{
-		Buffer:   &bytes.Buffer{},
-		MaxBytes: 1024 * 1024, // 1MB
-	}
-
-	return jasper.OutputOptions{Output: output, SendErrorToOutput: true}
-}
-
 // RunSSHCommand runs an SSH command on a remote host.
 func (h *Host) RunSSHCommand(ctx context.Context, cmd string, sshOptions []string) (string, error) {
 	env := evergreen.GetEnvironment()
@@ -61,15 +50,18 @@ func (h *Host) RunSSHCommand(ctx context.Context, cmd string, sshOptions []strin
 		return "", errors.Wrapf(err, "error parsing ssh info %v", h.Host)
 	}
 
-	opts := getSSHOutputOptions()
-	output := opts.Output.(*util.CappedWriter)
-	cmdArgs := append(append(append([]string{"ssh"}, "-p", hostInfo.Port, "-t", "-t"), sshOptions...), cmd)
+	output := &util.CappedWriter{
+		Buffer:   &bytes.Buffer{},
+		MaxBytes: 1024 * 1024, // 1MB
+	}
 
 	var cancel context.CancelFunc
 	ctx, cancel = context.WithTimeout(ctx, sshTimeout)
 	defer cancel()
 
-	err = env.JasperManager().CreateCommand(ctx).ApplyFromOpts(&jasper.CreateOptions{Output: opts}).Add(cmdArgs).Run(ctx)
+	err = env.JasperManager().CreateCommand(ctx).Host(hostInfo.Hostname).User(hostInfo.User).
+		ExtendSSHArgs("-p", hostInfo.Port, "-t", "-t").ExtendSSHArgs(sshOptions...).
+		SetOutputWriter(output).RedirectErrorToOutput(true).Append(cmd).Run(ctx)
 
 	return output.String(), errors.Wrap(err, "error running shell cmd")
 }

@@ -18,7 +18,7 @@ import (
 // back to the API server at regular intervals.
 type StatsCollector struct {
 	logger client.LoggerProducer
-	Jasper jasper.Manager
+	jasper jasper.Manager
 	Cmds   []string
 	// indicates the sampling frequency
 	Interval time.Duration
@@ -31,7 +31,7 @@ func NewSimpleStatsCollector(logger client.LoggerProducer, jpm jasper.Manager, i
 		logger:   logger,
 		Cmds:     cmds,
 		Interval: interval,
-		Jasper:   jpm,
+		jasper:   jpm,
 	}
 }
 
@@ -77,7 +77,7 @@ func (sc *StatsCollector) logStats(ctx context.Context, exp *util.Expansions) {
 				return
 			case <-timer.C:
 				runStartedAt := time.Now()
-				err := sc.Jasper.CreateCommand(ctx).Append(sc.Cmds...).
+				err := sc.jasper.CreateCommand(ctx).Append(sc.Cmds...).
 					SetOutputSender(level.Info, sc.logger.System().GetSender()).
 					SetErrorSender(level.Error, sc.logger.System().GetSender()).
 					Run(ctx)
