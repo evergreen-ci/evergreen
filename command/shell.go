@@ -118,7 +118,8 @@ func (c *shellExec) Execute(ctx context.Context, _ client.Communicator, logger c
 		Background(c.Background).Directory(c.WorkingDir).Environment(env).
 		SuppressStandardError(c.IgnoreStandardError).SuppressStandardOutput(c.IgnoreStandardOutput).RedirectErrorToOutput(c.RedirectStandardErrorToOutput).
 		ProcConstructor(func(ctx context.Context, opts *jasper.CreateOptions) (jasper.Process, error) {
-			proc, err := c.JasperManager().CreateProcess(ctx, opts)
+			var proc jasper.Process
+			proc, err = c.JasperManager().CreateProcess(ctx, opts)
 			if err != nil {
 				return proc, errors.WithStack(err)
 			}
