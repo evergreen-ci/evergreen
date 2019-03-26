@@ -26,6 +26,7 @@ func CommitQueue() cli.Command {
 			listQueue(),
 			deleteItem(),
 			mergeCommand(),
+			setModuleCommand(),
 		},
 	}
 }
@@ -150,6 +151,44 @@ func mergeCommand() cli.Command {
 	}
 }
 
+func setModuleCommand() cli.Command {
+	return cli.Command{
+		Name:  "set-module",
+		Usage: "update or add module to an existing merge patch",
+		Flags: mergeFlagSlices(addLargeFlag(), addPatchIDFlag(), addModuleFlag(), addYesFlag(
+			cli.StringFlag{
+				Name:  joinFlagNames(refFlagName, "r"),
+				Usage: "merge branch `REF`",
+				Value: "HEAD",
+			},
+		)),
+		Before: mergeBeforeFuncs(
+			setPlainLogger,
+			requirePatchIDFlag,
+			requireModuleFlag,
+		),
+		Action: func(c *cli.Context) error {
+			confPath := c.Parent().String(confFlagName)
+			ref := c.String(refFlagName)
+			id := c.String(patchIDFlagName)
+			module := c.String(moduleFlagName)
+			largeOK := c.Bool(largeFlagName)
+			skipConfirm := c.Bool(yesFlagName)
+
+			params := moduleParams{
+				patchID:     id,
+				module:      module,
+				confPath:    confPath,
+				ref:         ref,
+				large:       largeOK,
+				skipConfirm: skipConfirm,
+			}
+
+			return params.addModule()
+		},
+	}
+}
+
 func listCommitQueue(ctx context.Context, client client.Communicator, projectID string) error {
 	cq, err := client.GetCommitQueue(ctx, projectID)
 	if err != nil {
@@ -241,6 +280,63 @@ func (p *mergeParams) uploadMergePatch(conf *ClientSettings, ac *legacyClient) e
 	}
 
 	p.id = patch.Id.Hex()
+
+	return nil
+}
+
+type moduleParams struct {
+	patchID     string
+	module      string
+	confPath    string
+	ref         string
+	large       bool
+	skipConfirm bool
+}
+
+func (p *moduleParams) addModule() error {
+	conf, err := NewClientSettings(p.confPath)
+	if err != nil {
+		return errors.Wrap(err, "problem loading configuration")
+	}
+	ac, rc, err := conf.getLegacyClients()
+	if err != nil {
+		return errors.Wrap(err, "problem accessing evergreen service")
+	}
+
+	proj, err := rc.GetPatchedConfig(p.patchID)
+	if err != nil {
+		return err
+	}
+
+	moduleBranch, err := getModuleBranch(p.module, proj)
+	if err != nil {
+		return errors.Wrapf(err, "could not set specified module: '%s'", p.module)
+	}
+
+	diffData, err := getFeaturePatchInfo(moduleBranch, p.ref)
+	if err != nil {
+		return errors.Wrap(err, "can't get patch data")
+	}
+
+	if err = validatePatchSize(diffData, p.large); err != nil {
+		return err
+	}
+
+	if !p.skipConfirm {
+		fmt.Printf("Using branch %v for module %v \n", moduleBranch, p.module)
+		if diffData.patchSummary != "" {
+			fmt.Println(diffData.patchSummary)
+		}
+
+		if !confirm("This is a summary of the patch to be submitted. Continue? (y/n):", true) {
+			return nil
+		}
+	}
+
+	err = ac.UpdatePatchModule(p.patchID, p.module, diffData.fullPatch, diffData.base)
+	if err != nil {
+		return err
+	}
 
 	return nil
 }
