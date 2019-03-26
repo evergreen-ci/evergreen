@@ -309,13 +309,10 @@ func TestGetDockerLogs(t *testing.T) {
 
 	// valid Run
 	res := handler.Run(context.Background())
-	require.Nil(res)
-	require.NotNil(handler.logs)
-
-	logs := make([]byte, 30)
-	_, err = handler.logs.Read(logs)
+	require.NotNil(res)
+	logs := res.Data().(*bytes.Buffer)
 	assert.NoError(err)
-	assert.Contains(string(logs), "this is a log message")
+	assert.Contains(logs.String(), "this is a log message")
 
 }
 

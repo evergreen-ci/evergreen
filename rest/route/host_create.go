@@ -1,10 +1,8 @@
 package route
 
 import (
-	"bytes"
 	"context"
 	"fmt"
-	"io"
 	"net/http"
 	"strconv"
 	"time"
@@ -153,33 +151,11 @@ type containerLogsHandler struct {
 	host *host.Host
 
 	isError bool
-	logs    io.Reader
 	sc      data.Connector
 }
 
 func makeContainerLogsRouteManager(sc data.Connector, isError bool) *containerLogsHandler {
 	return &containerLogsHandler{sc: sc, isError: isError}
-}
-
-func (h *containerLogsHandler) ServeHTTP(rw http.ResponseWriter, r *http.Request) {
-	h.Factory()
-
-	ctx, cancel := context.WithCancel(r.Context())
-	defer cancel()
-	if err := h.Parse(ctx, r); err != nil {
-		gimlet.WriteResponse(rw, gimlet.NewJSONErrorResponse(err))
-		return
-	}
-	if resp := h.Run(ctx); resp != nil {
-		gimlet.WriteResponse(rw, resp)
-		return
-	}
-
-	_, err := io.Copy(rw, h.logs)
-	if err != nil {
-		gimlet.WriteResponse(rw, gimlet.NewJSONInternalErrorResponse(err))
-		return
-	}
 }
 
 func (h *containerLogsHandler) Factory() gimlet.RouteHandler {
@@ -264,8 +240,7 @@ func (h *containerLogsHandler) Run(ctx context.Context) gimlet.Responder {
 	if err != nil {
 		return gimlet.NewJSONErrorResponse(errors.Wrap(err, "error getting docker logs"))
 	}
-	h.logs = bytes.NewReader(logs)
-	return nil
+	return gimlet.NewTextResponse(logs)
 }
 
 ////////////////////////////////////////////////////////////////////////

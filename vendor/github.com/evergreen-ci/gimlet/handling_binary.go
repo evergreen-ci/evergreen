@@ -6,7 +6,7 @@ import (
 
 // WriteBinaryResponse writes binary data to a response with the specified code.
 func WriteBinaryResponse(w http.ResponseWriter, code int, data interface{}) {
-	writeResponse(BINARY, w, code, convertToBin(data))
+	writeResponse(BINARY, w, code, data)
 }
 
 // WriteBinary writes the data, converted to a byte slice as possible, to the response body, with a successful

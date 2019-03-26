@@ -8,7 +8,7 @@ import (
 // code as plain text after attempting to convert the data to a byte
 // array.
 func WriteTextResponse(w http.ResponseWriter, code int, data interface{}) {
-	writeResponse(TEXT, w, code, convertToBytes(data))
+	writeResponse(TEXT, w, code, data)
 }
 
 // WriteText writes the data, converted to text as possible, to the response body, with a successful

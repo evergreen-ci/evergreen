@@ -1,8 +1,10 @@
 package cloud
 
 import (
+	"bytes"
 	"context"
 	"fmt"
+	"io"
 	"math/rand"
 	"time"
 
@@ -99,12 +101,12 @@ func (c *dockerClientMock) GetContainer(context.Context, *host.Host, string) (*t
 	return container, nil
 }
 
-func (c *dockerClientMock) GetDockerLogs(_ context.Context, containerID string, _ *host.Host, _ types.ContainerLogsOptions) ([]byte, error) {
+func (c *dockerClientMock) GetDockerLogs(_ context.Context, containerID string, _ *host.Host, _ types.ContainerLogsOptions) (io.Reader, error) {
 	if containerID == "" { // container not started yet
 		return nil, errors.New("Failed to generate docker client")
 	}
 
-	return []byte("this is a log message"), nil
+	return bytes.NewBufferString("this is a log message"), nil
 }
 
 func (c *dockerClientMock) GetDockerStatus(_ context.Context, containerID string, _ *host.Host) (*ContainerStatus, error) {

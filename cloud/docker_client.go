@@ -37,7 +37,7 @@ type DockerClient interface {
 	BuildImageWithAgent(context.Context, *host.Host, string) (string, error)
 	CreateContainer(context.Context, *host.Host, *host.Host) error
 	GetContainer(context.Context, *host.Host, string) (*types.ContainerJSON, error)
-	GetDockerLogs(context.Context, string, *host.Host, types.ContainerLogsOptions) ([]byte, error)
+	GetDockerLogs(context.Context, string, *host.Host, types.ContainerLogsOptions) (io.Reader, error)
 	GetDockerStatus(context.Context, string, *host.Host) (*ContainerStatus, error)
 	ListContainers(context.Context, *host.Host) ([]types.Container, error)
 	RemoveImage(context.Context, *host.Host, string) error
@@ -386,7 +386,7 @@ func (c *dockerClientImpl) CreateContainer(ctx context.Context, parentHost, cont
 
 // GetDockerLogs returns output logs or error logs, based on the given options.
 // This assumes the container is not using TTY.
-func (c *dockerClientImpl) GetDockerLogs(ctx context.Context, containerID string, parent *host.Host, options types.ContainerLogsOptions) ([]byte, error) {
+func (c *dockerClientImpl) GetDockerLogs(ctx context.Context, containerID string, parent *host.Host, options types.ContainerLogsOptions) (io.Reader, error) {
 	dockerClient, err := c.generateClient(parent)
 	if err != nil {
 		return nil, errors.Wrap(err, "Failed to generate docker client")
@@ -408,9 +408,9 @@ func (c *dockerClientImpl) GetDockerLogs(ctx context.Context, containerID string
 	}
 
 	if options.ShowStdout {
-		return tempout.Bytes(), nil
+		return tempout, nil
 	}
-	return temperr.Bytes(), nil
+	return temperr, nil
 }
 
 func (c *dockerClientImpl) GetDockerStatus(ctx context.Context, containerID string, parent *host.Host) (*ContainerStatus, error) {

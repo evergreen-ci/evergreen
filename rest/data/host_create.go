@@ -3,6 +3,7 @@ package data
 import (
 	"context"
 	"fmt"
+	"io"
 	"net/http"
 	"path"
 	"strconv"
@@ -310,7 +311,7 @@ func getAgentOptions(taskID, userID string, createHost apimodels.CreateHost) (*c
 
 // GetDockerLogs is used by the /host/{host_id}/logs route to retrieve the logs for the given container.
 func (dc *DBCreateHostConnector) GetDockerLogs(ctx context.Context, containerId string, parent *host.Host,
-	settings *evergreen.Settings, options types.ContainerLogsOptions) ([]byte, error) {
+	settings *evergreen.Settings, options types.ContainerLogsOptions) (io.Reader, error) {
 	c := cloud.GetDockerClient(settings)
 
 	if err := c.Init(settings.Providers.Docker.APIVersion); err != nil {
@@ -343,7 +344,7 @@ func (db *DBCreateHostConnector) GetDockerStatus(ctx context.Context, containerI
 type MockCreateHostConnector struct{}
 
 func (dc *MockCreateHostConnector) GetDockerLogs(ctx context.Context, containerId string, parent *host.Host,
-	settings *evergreen.Settings, options types.ContainerLogsOptions) ([]byte, error) {
+	settings *evergreen.Settings, options types.ContainerLogsOptions) (io.Reader, error) {
 	c := cloud.GetMockClient()
 	logs, err := c.GetDockerLogs(ctx, containerId, parent, options)
 	if err != nil {
