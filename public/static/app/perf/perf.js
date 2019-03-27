@@ -551,9 +551,9 @@ mciModule.controller('PerfController', function PerfController(
         setTimeout(function(){drawDetailGraph($scope.perfSample, $scope.comparePerfSamples, $scope.task.id)},0);
 
         // Get a list of rejected points.
-        const getRejectedPointsQ = PointsDataService.getRejectedPointsQ($scope.task.branch,
-                                                                         $scope.task.build_variant,
-                                                                         $scope.task.display_name);
+        const rejectedPointsPromise = PointsDataService.getRejectedPointsQ($scope.task.branch,
+                                                                           $scope.task.build_variant,
+                                                                           $scope.task.display_name);
 
         // This code loads change points for current task from the mdb cloud
         var unprocessedPointsQ = Stitch.use(STITCH_CONFIG.PERF).query(function(db) {
@@ -636,7 +636,7 @@ mciModule.controller('PerfController', function PerfController(
         // Populate the trend data
         var chartDataQ = $http.get("/plugin/json/history/" + $scope.task.id + "/perf").then(
           function(resp) {
-            getRejectedPointsQ.then(function(rejects){
+            rejectedPointsPromise.then(function(rejects){
               let data = resp.data;
               if(rejects.length){
                 data = _.reject(resp.data, (doc) => _.contains(rejects, doc.task_id));
