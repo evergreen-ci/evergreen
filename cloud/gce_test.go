@@ -21,7 +21,7 @@ type GCESuite struct {
 	client   gceClient
 	manager  *gceManager
 	distro   distro.Distro
-	hostOpts host.HostOptions
+	hostOpts host.CreateOptions
 	suite.Suite
 }
 
@@ -52,7 +52,7 @@ func (s *GCESuite) SetupTest() {
 			"network_tags":  []string{"abc", "def", "ghi"},
 		},
 	}
-	s.hostOpts = host.HostOptions{}
+	s.hostOpts = host.CreateOptions{}
 }
 
 func (s *GCESuite) TestValidateSettings() {
@@ -381,7 +381,7 @@ func (s *GCESuite) TestSpawnAPICall() {
 			"disk_size_gb":  10,
 		},
 	}
-	opts := host.HostOptions{}
+	opts := host.CreateOptions{}
 
 	mock, ok := s.client.(*gceClientMock)
 	s.True(ok)

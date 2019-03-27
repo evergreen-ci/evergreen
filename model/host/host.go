@@ -1146,6 +1146,7 @@ func GetNumContainersOnParents(d distro.Distro) ([]ContainersOnParents, error) {
 				})
 		}
 	}
+
 	return numContainersOnParents, nil
 }
 

@@ -19,7 +19,7 @@ type VSphereSuite struct {
 	client   vsphereClient
 	manager  *vsphereManager
 	distro   distro.Distro
-	hostOpts host.HostOptions
+	hostOpts host.CreateOptions
 	suite.Suite
 }
 
@@ -45,7 +45,7 @@ func (s *VSphereSuite) SetupTest() {
 			"template": "macos-1012",
 		},
 	}
-	s.hostOpts = host.HostOptions{}
+	s.hostOpts = host.CreateOptions{}
 }
 
 func (s *VSphereSuite) TestValidateSettings() {

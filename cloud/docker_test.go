@@ -19,7 +19,7 @@ type DockerSuite struct {
 	client     DockerClient
 	manager    *dockerManager
 	distro     distro.Distro
-	hostOpts   host.HostOptions
+	hostOpts   host.CreateOptions
 	parentHost host.Host
 	suite.Suite
 }
@@ -53,7 +53,7 @@ func (s *DockerSuite) SetupTest() {
 		Host:          "host",
 		HasContainers: true,
 	}
-	s.hostOpts = host.HostOptions{
+	s.hostOpts = host.CreateOptions{
 		ParentID: "parent",
 		DockerOptions: host.DockerOptions{
 			Image: "http://0.0.0.0:8000/docker_image.tgz",
@@ -199,7 +199,7 @@ func (s *DockerSuite) TestSpawnInvalidSettings() {
 	s.Error(err)
 	s.Nil(h)
 
-	emptyHostOpts := host.HostOptions{}
+	emptyHostOpts := host.CreateOptions{}
 	h = host.NewIntent(s.distro, s.distro.GenerateName(), dProviderName.Provider, emptyHostOpts)
 	h, err = s.manager.SpawnHost(ctx, h)
 	s.Error(err)

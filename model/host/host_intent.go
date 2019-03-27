@@ -9,9 +9,9 @@ import (
 	"github.com/pkg/errors"
 )
 
-// HostOptions is a struct of options that are commonly passed around when creating a
+// CreateOptions is a struct of options that are commonly passed around when creating a
 // new cloud host.
-type HostOptions struct {
+type CreateOptions struct {
 	ProvisionOptions   *ProvisionOptions
 	ExpirationDuration *time.Duration
 	UserName           string
@@ -27,8 +27,8 @@ type HostOptions struct {
 // NewIntent creates an IntentHost using the given host settings. An IntentHost is a host that
 // does not exist yet but is intended to be picked up by the hostinit package and started. This
 // function takes distro information, the name of the instance, the provider of the instance and
-// a HostOptions and returns an IntentHost.
-func NewIntent(d distro.Distro, instanceName, provider string, options HostOptions) *Host {
+// a CreateOptions and returns an IntentHost.
+func NewIntent(d distro.Distro, instanceName, provider string, options CreateOptions) *Host {
 	creationTime := time.Now()
 	// proactively write all possible information pertaining
 	// to the host we want to create. this way, if we are unable
@@ -65,7 +65,7 @@ func NewIntent(d distro.Distro, instanceName, provider string, options HostOptio
 // GenerateContainerHostIntents generates container intent documents by going
 // through available parents and packing on the parents with longest expected
 // finish time
-func GenerateContainerHostIntents(d distro.Distro, newContainersNeeded int, hostOptions HostOptions) ([]Host, error) {
+func GenerateContainerHostIntents(d distro.Distro, newContainersNeeded int, hostOptions CreateOptions) ([]Host, error) {
 	parents, err := GetNumContainersOnParents(d)
 	if err != nil {
 		return nil, errors.Wrap(err, "Could not find number of containers on each parent")
@@ -97,14 +97,14 @@ func createParents(parent distro.Distro, numNewParents int, pool *evergreen.Cont
 	hostsSpawned := make([]Host, numNewParents)
 
 	for idx := range hostsSpawned {
-		hostsSpawned[idx] = *NewIntent(parent, parent.GenerateName(), parent.Provider, generateParentHostOptions(pool))
+		hostsSpawned[idx] = *NewIntent(parent, parent.GenerateName(), parent.Provider, generateParentCreateOptions(pool))
 	}
 	return hostsSpawned
 }
 
-// generateParentHostOptions generates host options for a parent host
-func generateParentHostOptions(pool *evergreen.ContainerPool) HostOptions {
-	options := HostOptions{
+// generateParentCreateOptions generates host options for a parent host
+func generateParentCreateOptions(pool *evergreen.ContainerPool) CreateOptions {
+	options := CreateOptions{
 		HasContainers:         true,
 		UserName:              evergreen.User,
 		ContainerPoolSettings: pool,

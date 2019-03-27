@@ -173,7 +173,7 @@ func SpawnHosts(ctx context.Context, d distro.Distro, newHostsNeeded int, pool *
 
 	// create intent documents for container hosts
 	if d.ContainerPool != "" {
-		hostOptions, err := getHostOptionsFromDistro(d)
+		hostOptions, err := getCreateOptionsFromDistro(d)
 		if err != nil {
 			return nil, errors.Wrapf(err, "Error getting docker options from distro %s", d.Id)
 		}
@@ -207,12 +207,12 @@ func SpawnHosts(ctx context.Context, d distro.Distro, newHostsNeeded int, pool *
 	return hostsSpawned, nil
 }
 
-func getHostOptionsFromDistro(d distro.Distro) (*host.HostOptions, error) {
+func getCreateOptionsFromDistro(d distro.Distro) (*host.CreateOptions, error) {
 	dockerOptions, err := getDockerOptionsFromProviderSettings(*d.ProviderSettings)
 	if err != nil {
 		return nil, errors.Wrapf(err, "Error getting docker options from distro %s", d.Id)
 	}
-	hostOptions := host.HostOptions{
+	hostOptions := host.CreateOptions{
 		UserName:      evergreen.User,
 		DockerOptions: *dockerOptions,
 	}
@@ -234,7 +234,7 @@ func getDockerOptionsFromProviderSettings(settings map[string]interface{}) (*hos
 
 // generateIntentHost creates a host intent document for a regular host
 func generateIntentHost(d distro.Distro) (*host.Host, error) {
-	hostOptions := host.HostOptions{
+	hostOptions := host.CreateOptions{
 		UserName: evergreen.User,
 	}
 	return host.NewIntent(d, d.GenerateName(), d.Provider, hostOptions), nil

@@ -17,7 +17,7 @@ type OpenStackSuite struct {
 	keyname  string
 	manager  *openStackManager
 	distro   distro.Distro
-	hostOpts host.HostOptions
+	hostOpts host.CreateOptions
 	suite.Suite
 }
 
@@ -47,7 +47,7 @@ func (s *OpenStackSuite) SetupTest() {
 			"security_group": "group",
 		},
 	}
-	s.hostOpts = host.HostOptions{}
+	s.hostOpts = host.CreateOptions{}
 }
 
 func (s *OpenStackSuite) TestValidateSettings() {

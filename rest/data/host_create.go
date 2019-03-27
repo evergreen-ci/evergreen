@@ -281,8 +281,8 @@ func makeEC2IntentHost(taskID, userID, publicKey string, createHost apimodels.Cr
 	return host.NewIntent(d, d.GenerateName(), provider, *options), nil
 }
 
-func getAgentOptions(taskID, userID string, createHost apimodels.CreateHost) (*host.HostOptions, error) {
-	options := host.HostOptions{}
+func getAgentOptions(taskID, userID string, createHost apimodels.CreateHost) (*host.CreateOptions, error) {
+	options := host.CreateOptions{}
 	if userID != "" {
 		options.UserName = userID
 		options.UserHost = true
