@@ -658,7 +658,7 @@ func (c *communicatorImpl) GenerateTasksPoll(ctx context.Context, td TaskData) (
 }
 
 // CreateHost requests a new host be created
-func (c *communicatorImpl) CreateHost(ctx context.Context, td TaskData, options apimodels.CreateHost) error {
+func (c *communicatorImpl) CreateHost(ctx context.Context, td TaskData, options apimodels.CreateHost) ([]string, error) {
 	info := requestInfo{
 		method:   post,
 		taskData: &td,
@@ -667,17 +667,15 @@ func (c *communicatorImpl) CreateHost(ctx context.Context, td TaskData, options 
 	info.path = fmt.Sprintf("hosts/%s/create", td.ID)
 	resp, err := c.retryRequest(ctx, info, options)
 	if err != nil {
-		return errors.Wrap(err, "problem sending `create.host` request")
+		return nil, errors.Wrap(err, "problem sending `create.host` request")
 	}
 	defer resp.Body.Close()
-	if resp.StatusCode == http.StatusOK {
-		return nil
+
+	ids := []string{}
+	if err = util.ReadJSONInto(resp.Body, &ids); err != nil {
+		return nil, errors.Wrap(err, "problem reading ids from `create.host` response")
 	}
-	body, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		return errors.Wrap(err, "problem reading body from `create.host` response")
-	}
-	return errors.Errorf("error executing `create.host`: %s", string(body))
+	return ids, nil
 }
 
 func (c *communicatorImpl) ListHosts(ctx context.Context, td TaskData) ([]restmodel.CreateHost, error) {

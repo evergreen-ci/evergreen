@@ -256,6 +256,7 @@ func TestGetDockerLogs(t *testing.T) {
 	})
 	require.NoError(err)
 	h.ParentID = "parent"
+	h.ExternalIdentifier = "my-container"
 	require.NoError(h.Insert())
 
 	parent := host.Host{
@@ -265,28 +266,28 @@ func TestGetDockerLogs(t *testing.T) {
 	require.NoError(parent.Insert())
 
 	// invalid tail
-	url := fmt.Sprintf("/hosts/%s/logs?tail=%s", h.Id, "invalid")
+	url := fmt.Sprintf("/hosts/%s/logs/output?tail=%s", h.Id, "invalid")
 	request, err := http.NewRequest("GET", url, bytes.NewReader(nil))
 	assert.NoError(err)
-	options := map[string]string{"container_id": h.Id}
+	options := map[string]string{"host_id": h.Id}
 
 	request = gimlet.SetURLVars(request, options)
 	assert.Error(handler.Parse(context.Background(), request))
 
-	url = fmt.Sprintf("/hosts/%s/logs?tail=%s", h.Id, "-1")
+	url = fmt.Sprintf("/hosts/%s/logs/output?tail=%s", h.Id, "-1")
 	request, err = http.NewRequest("GET", url, bytes.NewReader(nil))
 	assert.NoError(err)
-	options = map[string]string{"container_id": h.Id}
+	options = map[string]string{"host_id": h.Id}
 
 	request = gimlet.SetURLVars(request, options)
 	assert.Error(handler.Parse(context.Background(), request))
 
 	// invalid Parse start time
 	startTime := time.Now().Add(-time.Minute).String()
-	url = fmt.Sprintf("/hosts/%s/logs?start_time=%s", h.Id, startTime)
+	url = fmt.Sprintf("/hosts/%s/logs/output?start_time=%s", h.Id, startTime)
 	request, err = http.NewRequest("GET", url, bytes.NewReader(nil))
 	assert.NoError(err)
-	options = map[string]string{"container_id": h.Id}
+	options = map[string]string{"host_id": h.Id}
 
 	request = gimlet.SetURLVars(request, options)
 	assert.Error(handler.Parse(context.Background(), request))
@@ -294,7 +295,7 @@ func TestGetDockerLogs(t *testing.T) {
 	// valid Parse
 	startTime = time.Now().Add(-time.Minute).Format(time.RFC3339)
 	endTime := time.Now().Format(time.RFC3339)
-	url = fmt.Sprintf("/hosts/%s/logs?start_time=%s&end_time=%s&tail=10", h.Id, startTime, endTime)
+	url = fmt.Sprintf("/hosts/%s/logs/output?start_time=%s&end_time=%s&tail=10", h.Id, startTime, endTime)
 
 	request, err = http.NewRequest("GET", url, bytes.NewReader(nil))
 	assert.NoError(err)
@@ -309,11 +310,124 @@ func TestGetDockerLogs(t *testing.T) {
 	// valid Run
 	res := handler.Run(context.Background())
 	require.NotNil(res)
+	logs := res.Data().(*bytes.Buffer)
+	assert.NoError(err)
+	assert.Contains(logs.String(), "this is a log message")
+
+}
+
+func TestGetDockerLogsError(t *testing.T) {
+	db.SetGlobalSessionProvider(testutil.TestConfig().SessionFactory())
+	assert := assert.New(t)
+	require := require.New(t)
+	require.NoError(db.ClearCollections(distro.Collection, host.Collection, task.Collection))
+	handler := containerLogsHandler{
+		sc: &data.MockConnector{},
+	}
+
+	d := distro.Distro{
+		Id: "archlinux-test",
+		ProviderSettings: &map[string]interface{}{
+			"ami": "ami-123456",
+		},
+	}
+	require.NoError(d.Insert())
+	myTask := task.Task{
+		Id:      "task-id",
+		BuildId: "build-id",
+	}
+	require.NoError(myTask.Insert())
+
+	h, err := handler.sc.MakeIntentHost("task-id", "", "", apimodels.CreateHost{
+		Distro:        "archlinux-test",
+		CloudProvider: "docker",
+		NumHosts:      "1",
+		Scope:         "task",
+	})
+	require.NoError(err)
+	h.ParentID = "parent"
+	require.NoError(h.Insert())
+
+	parent := host.Host{
+		Id:            "parent",
+		HasContainers: true,
+	}
+	require.NoError(parent.Insert())
+
+	url := fmt.Sprintf("/hosts/%s/logs/output", h.Id)
+
+	request, err := http.NewRequest("GET", url, bytes.NewReader(nil))
+	assert.NoError(err)
+
+	options := map[string]string{"host_id": h.Id}
+	request = gimlet.SetURLVars(request, options)
+
+	assert.NoError(handler.Parse(context.Background(), request))
+	assert.Equal(h.Id, handler.host.Id)
+
+	res := handler.Run(context.Background())
+	require.NotNil(res)
+	assert.Equal(http.StatusBadRequest, res.Status())
+}
+
+func TestGetDockerStatus(t *testing.T) {
+	db.SetGlobalSessionProvider(testutil.TestConfig().SessionFactory())
+	assert := assert.New(t)
+	require := require.New(t)
+	require.NoError(db.ClearCollections(distro.Collection, host.Collection, task.Collection))
+	handler := containerStatusHandler{
+		sc: &data.MockConnector{},
+	}
+
+	d := distro.Distro{
+		Id: "archlinux-test",
+		ProviderSettings: &map[string]interface{}{
+			"ami": "ami-123456",
+		},
+	}
+	require.NoError(d.Insert())
+	myTask := task.Task{
+		Id:      "task-id",
+		BuildId: "build-id",
+	}
+	require.NoError(myTask.Insert())
+
+	h, err := handler.sc.MakeIntentHost("task-id", "", "", apimodels.CreateHost{
+		Distro:        "archlinux-test",
+		CloudProvider: "docker",
+		NumHosts:      "1",
+		Scope:         "task",
+	})
+	require.NoError(err)
+	h.ParentID = "parent"
+	h.ExternalIdentifier = "my-container"
+	require.NoError(h.Insert())
+
+	parent := host.Host{
+		Id:            "parent",
+		HasContainers: true,
+	}
+	require.NoError(parent.Insert())
+
+	url := fmt.Sprintf("/hosts/%s/logs/status", h.Id)
+	options := map[string]string{"host_id": h.Id}
+
+	request, err := http.NewRequest("GET", url, bytes.NewReader(nil))
+	assert.NoError(err)
+	request = gimlet.SetURLVars(request, options)
+
+	assert.NoError(handler.Parse(context.Background(), request))
+	require.NotNil(handler.host)
+	assert.Equal(h.Id, handler.host.Id)
+
+	// valid Run
+	res := handler.Run(context.Background())
+	require.NotNil(res)
 	assert.Equal(http.StatusOK, res.Status())
 
-	reader, ok := res.Data().(*cloud.LogReader)
+	status, ok := res.Data().(*cloud.ContainerStatus)
 	require.True(ok)
-	assert.NotNil(reader)
-	assert.NotNil(reader.OutReader)
-	assert.Nil(reader.ErrReader)
+	require.NotNil(status)
+	require.True(status.HasStarted)
+
 }

@@ -123,12 +123,14 @@ func TestBytesConverter(t *testing.T) {
 		out := c[0].(string)
 		in := c[1]
 
-		assert.Equal([]byte(out), convertToBytes(in))
-		assert.Equal([]byte(out), convertToBin(in))
+		buf := &bytes.Buffer{}
+		writePayload(buf, in)
+		assert.Equal([]byte(out), buf.Bytes())
 	}
 
-	assert.Equal([]byte("gimletgimlet"), convertToBin([]string{"gimlet", "gimlet"}))
-	assert.Equal([]byte("gimlet\ngimlet"), convertToBytes([]string{"gimlet", "gimlet"}))
+	buf := &bytes.Buffer{}
+	writePayload(buf, []string{"gimlet", "gimlet"})
+	assert.Equal([]byte("gimlet\ngimlet"), buf.Bytes())
 }
 
 type mangledResponseWriter struct{ *httptest.ResponseRecorder }
