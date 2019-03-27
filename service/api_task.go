@@ -22,6 +22,9 @@ import (
 
 // if a host encounters more than this number of system failures, then it should be disabled.
 const consecutiveSystemFailureThreshold = 3
+const taskQueueServiceTTL = time.Minute
+
+var taskQueueService model.TaskQueueService
 
 // StartTask is the handler function that retrieves the task from the request
 // and acquires the global lock
@@ -317,7 +320,28 @@ func assignNextAvailableTask(taskQueue *model.TaskQueue, currentHost *host.Host)
 	// continue must be preceded by dequeueing the current task from the
 	// queue to prevent an infinite loop.
 	for taskQueue.Length() != 0 {
-		queueItem := taskQueue.FindNextTask(spec)
+		var queueItem *model.TaskQueueItem
+		var err error
+		switch currentHost.Distro.PlannerSettings.Version {
+		case evergreen.PlannerVersionTunable:
+			if taskQueueService == nil {
+				taskQueueService = model.NewTaskQueueService(taskQueueServiceTTL)
+			} else {
+				taskQueueService.Refresh(currentHost.Distro.Id)
+			}
+			queueItem, err = taskQueueService.FindNextTask(currentHost.Distro.Id, spec)
+			if err != nil {
+				grip.Alert(message.WrapError(err, message.Fields{
+					"distro":  currentHost.Distro.Id,
+					"host":    currentHost.Id,
+					"message": "problem getting next task",
+					"spec":    spec,
+				}))
+				return nil, errors.Wrap(err, "problem getting next task")
+			}
+		default:
+			queueItem = taskQueue.FindNextTask(spec)
+		}
 		if queueItem == nil {
 			return nil, nil
 		}

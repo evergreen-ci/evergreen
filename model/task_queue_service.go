@@ -78,7 +78,6 @@ func (s *taskDispatchService) ensureQueue(distro string) (*taskDistroDispatchSer
 // taskDistroDispatchService is an in-memory representation of schedulable tasks for a distro.
 //
 // TODO Pass all task group tasks, not just dispatchable ones, to the constructor.
-// TODO Maintain an in-memory global (but per app server) task queue per distro.
 type taskDistroDispatchService struct {
 	mu          sync.RWMutex
 	distroID    string

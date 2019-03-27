@@ -116,11 +116,11 @@ var (
 // may query/select a task from an existing task queue to support
 // out-of-order task execution for the purpose of task-groups.
 type TaskSpec struct {
-	Group         string
-	BuildVariant  string
-	ProjectID     string
-	Version       string
-	GroupMaxHosts int
+	Group         string `json:"group"`
+	BuildVariant  string `json:"build_variant"`
+	ProjectID     string `json:"project_id"`
+	Version       string `json:"version"`
+	GroupMaxHosts int    `json:"group_max_hosts"`
 }
 
 func NewTaskQueue(distroID string, queue []TaskQueueItem, distroQueueInfo DistroQueueInfo) *TaskQueue {
