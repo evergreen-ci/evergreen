@@ -657,9 +657,8 @@ mciModule.controller('PerfController', function PerfController(
                 if ($location.hash().length > 0) {
                   try {
                     if ('metric' in hashparsed) {
-                      let metric = hashparsed.metric
                       $scope.metricSelect.value = _.findWhere(
-                        $scope.metricSelect.options, {key: metric}
+                        $scope.metricSelect.options, {key: hashparsed.metric}
                       ) || $scope.metricSelect.default
                     }
                   } catch (e) {}

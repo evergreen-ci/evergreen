@@ -472,7 +472,7 @@ mciModule.factory('DrawPerfTrendChart', function (
       // Only set the current revision marker if the current
       // revision is found
       if (currentItemIdx != -1) {
-        var commitCircle = chartG
+        const commitCircle = chartG
             .selectAll('circle.current')
             .data(
               threadMode == MAXONLY
