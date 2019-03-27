@@ -551,31 +551,9 @@ mciModule.controller('PerfController', function PerfController(
         setTimeout(function(){drawDetailGraph($scope.perfSample, $scope.comparePerfSamples, $scope.task.id)},0);
 
         // Get a list of rejected points.
-        var getRejectedPointsQ = Stitch.use(STITCH_CONFIG.PERF).query(function(db) {
-          const query = {
-            project: $scope.task.branch,
-            task: $scope.task.display_name,
-            variant: $scope.task.build_variant,
-            test: new stitch.BSON.BSONRegExp("^(fio|canary|iperf|NetworkBandwidth)"),
-            $or : [
-              {'$and':[{ "rejected" : true }, { "outlier" : true }]},
-              {'$and':[{ "results.rejected" : true }, { "results.outlier" : true }]}]
-          }
-          return db
-            .db(STITCH_CONFIG.PERF.DB_PERF)
-            .collection(STITCH_CONFIG.PERF.COLL_POINTS)
-            .find(query)
-            .execute()
-        }).then(
-          function(docs) {
-            return _.chain(docs).
-              pluck('task_id').
-              uniq().
-              value()
-          }, function(err) {
-            $log.error('Cannot load change points!', err)
-            return [] // Try to recover an error
-          })
+        const getRejectedPointsQ = PointsDataService.getRejectedPointsQ($scope.task.branch,
+                                                                         $scope.task.build_variant,
+                                                                         $scope.task.display_name);
 
         // This code loads change points for current task from the mdb cloud
         var unprocessedPointsQ = Stitch.use(STITCH_CONFIG.PERF).query(function(db) {
