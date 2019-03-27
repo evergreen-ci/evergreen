@@ -94,6 +94,12 @@ func (j *taskExecutionTimeoutJob) Run(ctx context.Context) {
 		return
 	}
 
+	// if the task has heartbeat since this job was queued, let it run
+	if t.LastHeartbeat.Add(heartbeatTimeoutThreshold).After(time.Now()) {
+		j.successful = true
+		return
+	}
+
 	msg := message.Fields{
 		"operation": j.Type().Name,
 		"id":        j.ID(),
