@@ -1,6 +1,6 @@
 // +build linux solaris
 
-package subprocess
+package util
 
 import (
 	"io"

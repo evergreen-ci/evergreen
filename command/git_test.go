@@ -26,18 +26,20 @@ import (
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/grip/level"
 	"github.com/mongodb/grip/send"
+	"github.com/mongodb/jasper"
 	"github.com/smartystreets/goconvey/convey/reporting"
 	"github.com/stretchr/testify/suite"
 )
 
 type GitGetProjectSuite struct {
-	suite.Suite
-	settings *evergreen.Settings
-
+	settings   *evergreen.Settings
+	jasper     jasper.Manager
 	modelData1 *modelutil.TestModelData // test model for TestGitPlugin
 	modelData2 *modelutil.TestModelData // test model for TestValidateGitCommands
 	modelData3 *modelutil.TestModelData
 	modelData4 *modelutil.TestModelData
+
+	suite.Suite
 }
 
 func init() {
@@ -50,7 +52,9 @@ func TestGitGetProjectSuite(t *testing.T) {
 	settings := testutil.TestConfig()
 	testutil.ConfigureIntegrationTest(t, settings, "TestGitGetProjectSuite")
 	s.settings = settings
-
+	var err error
+	s.jasper, err = jasper.NewLocalManager(false)
+	s.Require().NoError(err)
 	suite.Run(t, s)
 }
 
@@ -108,10 +112,10 @@ func (s *GitGetProjectSuite) TestGitPlugin() {
 	for _, task := range conf.Project.Tasks {
 		s.NotEqual(len(task.Commands), 0)
 		for _, command := range task.Commands {
-
 			pluginCmds, err := Render(command, conf.Project.Functions)
 			s.NoError(err)
 			s.NotNil(pluginCmds)
+			pluginCmds[0].SetJasperManager(s.jasper)
 			err = pluginCmds[0].Execute(ctx, comm, logger, conf)
 			s.NoError(err)
 		}
@@ -137,6 +141,7 @@ func (s *GitGetProjectSuite) TestTokenScrubbedFromLogger() {
 			pluginCmds, err := Render(command, conf.Project.Functions)
 			s.NoError(err)
 			s.NotNil(pluginCmds)
+			pluginCmds[0].SetJasperManager(s.jasper)
 			err = pluginCmds[0].Execute(ctx, comm, logger, conf)
 			s.Error(err)
 		}
@@ -173,6 +178,7 @@ func (s *GitGetProjectSuite) TestValidateGitCommands() {
 			pluginCmds, err = Render(command, conf.Project.Functions)
 			s.NoError(err)
 			s.NotNil(pluginCmds)
+			pluginCmds[0].SetJasperManager(s.jasper)
 			err = pluginCmds[0].Execute(ctx, comm, logger, conf)
 			s.NoError(err)
 		}
@@ -460,7 +466,7 @@ func (s *GitGetProjectSuite) TestAllowsEmptyPatches() {
 	}
 
 	s.NoError(c.applyPatch(ctx, logger, &conf, &p))
-	s.Equal(3, sender.Len())
+	s.Equal(1, sender.Len())
 
 	msg := sender.GetMessage()
 	s.Require().NotNil(msg)
