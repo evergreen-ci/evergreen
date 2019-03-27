@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
-	"strconv"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
@@ -737,12 +736,12 @@ func (c *communicatorImpl) EnqueueItem(ctx context.Context, id string) (int, err
 		return 0, restErr
 	}
 
-	position, err := strconv.Atoi(string(bytes))
-	if err != nil {
-		return 0, errors.Wrapf(err, "can't interpret '%s' as int", string(bytes))
+	positionResp := model.APICommitQueuePosition{}
+	if err = util.ReadJSONInto(resp.Body, &positionResp); err != nil {
+		return 0, errors.Wrap(err, "error parsing position response")
 	}
 
-	return position, nil
+	return positionResp.Position, nil
 }
 
 func (c *communicatorImpl) SendNotification(ctx context.Context, notificationType string, data interface{}) error {
