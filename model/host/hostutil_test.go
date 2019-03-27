@@ -20,3 +20,8 @@ func TestOutputOptions(t *testing.T) {
 	require.NoError(t, opts.Validate())
 	assert.Equal(t, opts.GetOutput(), opts.GetError())
 }
+
+func TestTeardownCommandOverSSH(t *testing.T) {
+	cmd := TearDownCommandOverSSH()
+	assert.Equal(t, "chmod +x teardown.sh && sh teardown.sh", cmd)
+}
