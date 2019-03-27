@@ -492,7 +492,11 @@ func TestMakeSpecificTaskStatus(t *testing.T) {
 	assert.Equal(evergreen.TaskSetupFailed, makeSpecificTaskStatus(doc))
 
 	doc.Details.Type = evergreen.CommandTypeSystem
+	doc.Details.TimedOut = true
 	assert.Equal(evergreen.TaskSystemFailed, makeSpecificTaskStatus(doc))
+
+	doc.Details.Description = "heartbeat"
+	assert.Equal(evergreen.TaskSystemUnresponse, makeSpecificTaskStatus(doc))
 }
 
 func TestMakeSummaryPrefix(t *testing.T) {
