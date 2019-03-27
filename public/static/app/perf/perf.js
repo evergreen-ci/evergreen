@@ -14,7 +14,7 @@ var findIndex = function(list, predicate) {
 mciModule.controller('PerfController', function PerfController(
   $scope, $window, $http, $location, $log, $q, ChangePointsService,
   DrawPerfTrendChart, PROCESSED_TYPE, Settings, Stitch, STITCH_CONFIG,
-  TestSample, TrendSamples
+  TestSample, TrendSamples, PointsDataService
 ) {
     /* for debugging
     $sce, $compile){
@@ -550,6 +550,11 @@ mciModule.controller('PerfController', function PerfController(
         }
         setTimeout(function(){drawDetailGraph($scope.perfSample, $scope.comparePerfSamples, $scope.task.id)},0);
 
+        // Get a list of rejected points.
+        const rejectedPointsPromise = PointsDataService.getRejectedPointsQ($scope.task.branch,
+                                                                           $scope.task.build_variant,
+                                                                           $scope.task.display_name);
+
         // This code loads change points for current task from the mdb cloud
         var unprocessedPointsQ = Stitch.use(STITCH_CONFIG.PERF).query(function(db) {
           return db
@@ -631,27 +636,32 @@ mciModule.controller('PerfController', function PerfController(
         // Populate the trend data
         var chartDataQ = $http.get("/plugin/json/history/" + $scope.task.id + "/perf").then(
           function(resp) {
-            $scope.trendSamples = new TrendSamples(resp.data);
-            $scope.metricSelect.options = [$scope.metricSelect.default].concat(
-              _.map(
-                _.without($scope.trendSamples.metrics, $scope.metricSelect.default.key),
-                function(d) { return {key: d, name: d} }
+            rejectedPointsPromise.then(function(rejects){
+              let data = resp.data;
+              if(rejects.length){
+                data = _.reject(resp.data, (doc) => _.contains(rejects, doc.task_id));
+              }
+              $scope.trendSamples = new TrendSamples(data);
+              $scope.metricSelect.options = [$scope.metricSelect.default].concat(
+                _.map(
+                  _.without($scope.trendSamples.metrics, $scope.metricSelect.default.key),
+                  function(d) { return {key: d, name: d} }
+                )
               )
-            )
 
-          // Some copypasted checks
-          if ($scope.conf.enabled){
-            if ($location.hash().length > 0) {
-              try {
-                if ('metric' in hashparsed) {
-                  let metric = hashparsed.metric
-                  $scope.metricSelect.value = _.findWhere(
-                    $scope.metricSelect.options, {key: metric}
-                  ) || $scope.metricSelect.default
+              // Some copypasted checks
+              if ($scope.conf.enabled){
+                if ($location.hash().length > 0) {
+                  try {
+                    if ('metric' in hashparsed) {
+                      $scope.metricSelect.value = _.findWhere(
+                        $scope.metricSelect.options, {key: hashparsed.metric}
+                      ) || $scope.metricSelect.default
+                    }
+                  } catch (e) {}
                 }
-              } catch (e) {}
-            }
-          }
+              }
+            })
           })
 
         // Once trend chart data and change points get loaded

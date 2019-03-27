@@ -52,6 +52,7 @@ mciModule
       appId: 'evergreen_perf_plugin-wwdoa',
       // Assets associated with this instance
       DB_PERF: 'perf',
+      COLL_POINTS: 'points',
       COLL_CHANGE_POINTS: 'change_points',
       COLL_UNPROCESSED_POINTS: 'unprocessed_change_points',
       COLL_PROCESSED_POINTS: 'processed_change_points',

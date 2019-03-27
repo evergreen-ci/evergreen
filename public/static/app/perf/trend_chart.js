@@ -469,18 +469,20 @@ mciModule.factory('DrawPerfTrendChart', function (
 
       lines.exit().remove()
 
-      // Current revision marker
-      var commitCircle = chartG
-        .selectAll('circle.current')
-        .data(
-          threadMode == MAXONLY
-            ? activeLevels
-            : threadLevelsForSample(series[currentItemIdx], activeLevels)
-        )
+      // Only set the current revision marker if the current
+      // revision is found
+      if (currentItemIdx != -1) {
+        const commitCircle = chartG
+            .selectAll('circle.current')
+            .data(
+              threadMode == MAXONLY
+                ? activeLevels
+                : threadLevelsForSample(series[currentItemIdx], activeLevels)
+            )
 
-      commitCircle
-        .enter()
-        .append('circle')
+        commitCircle
+          .enter()
+          .append('circle')
           .attr({
             class: 'point current',
             cx: xScale(currentItemIdx),
@@ -491,15 +493,16 @@ mciModule.factory('DrawPerfTrendChart', function (
             stroke: function(d) { return d.color },
           })
 
-      commitCircle
-        .transition()
-        .attr({
-          cy: function(level) {
-            return yScale(getValueFor(level)(series[currentItemIdx]))
-          }
-        })
+        commitCircle
+          .transition()
+          .attr({
+            cy: function(level) {
+              return yScale(getValueFor(level)(series[currentItemIdx]))
+            }
+          })
 
-      commitCircle.exit().remove()
+        commitCircle.exit().remove()
+      }
     }
 
     redrawLines()
