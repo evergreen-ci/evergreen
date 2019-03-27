@@ -16,6 +16,7 @@ import (
 	"github.com/evergreen-ci/evergreen/rest/client"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 )
 
@@ -71,13 +72,13 @@ type patchSubmission struct {
 	finalize    bool
 }
 
-func (p *patchParams) createPatch(ac *legacyClient, conf *ClientSettings, diffData *localDiff) error {
+func (p *patchParams) createPatch(ac *legacyClient, conf *ClientSettings, diffData *localDiff) (*patch.Patch, error) {
 	if err := validatePatchSize(diffData, p.Large); err != nil {
-		return err
+		return nil, err
 	}
 	if !p.SkipConfirm && len(diffData.fullPatch) == 0 {
 		if !confirm("Patch submission is empty. Continue?(y/n)", true) {
-			return nil
+			return nil, errors.New("patch aborted")
 		}
 	} else if !p.SkipConfirm && diffData.patchSummary != "" {
 		grip.Info(diffData.patchSummary)
@@ -86,7 +87,7 @@ func (p *patchParams) createPatch(ac *legacyClient, conf *ClientSettings, diffDa
 		}
 
 		if !confirm("This is a summary of the patch to be submitted. Continue? (y/n):", true) {
-			return nil
+			return nil, errors.New("patch aborted")
 		}
 	}
 
@@ -104,11 +105,11 @@ func (p *patchParams) createPatch(ac *legacyClient, conf *ClientSettings, diffDa
 
 	newPatch, err := ac.PutPatch(patchSub)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	patchDisp, err := getPatchDisplay(newPatch, p.ShowSummary, conf.UIServerHost)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	grip.Info("Patch successfully created.")
@@ -118,7 +119,7 @@ func (p *patchParams) createPatch(ac *legacyClient, conf *ClientSettings, diffDa
 		browserCmd, err := findBrowserCommand()
 		if err != nil || len(browserCmd) == 0 {
 			grip.Warningf("cannot find browser command: %s", err)
-			return nil
+			return newPatch, nil
 		}
 
 		var url string
@@ -130,10 +131,10 @@ func (p *patchParams) createPatch(ac *legacyClient, conf *ClientSettings, diffDa
 
 		browserCmd = append(browserCmd, url)
 		cmd := exec.Command(browserCmd[0], browserCmd[1:]...)
-		return cmd.Run()
+		return newPatch, cmd.Run()
 	}
 
-	return nil
+	return newPatch, nil
 }
 
 func findBrowserCommand() ([]string, error) {
@@ -163,20 +164,9 @@ func findBrowserCommand() ([]string, error) {
 
 // Performs validation for patch or patch-file
 func (p *patchParams) validatePatchCommand(ctx context.Context, conf *ClientSettings, ac *legacyClient, comm client.Communicator) (*model.ProjectRef, error) {
-	if p.Project == "" {
-		p.Project = conf.FindDefaultProject()
-	} else {
-		if conf.FindDefaultProject() == "" &&
-			!p.SkipConfirm && confirm(fmt.Sprintf("Make %v your default project?", p.Project), true) {
-			conf.SetDefaultProject(p.Project)
-			if err := conf.Write(""); err != nil {
-				grip.Warningf("warning - failed to set default project: %v\n", err)
-			}
-		}
-	}
-
-	if p.Project == "" {
-		return nil, errors.Errorf("Need to specify a project.")
+	ref, err := p.ValidateProjectID(conf, ac)
+	if err != nil {
+		return nil, errors.Wrap(err, "invalid project ID")
 	}
 
 	if err := p.loadAlias(conf); err != nil {
@@ -209,21 +199,43 @@ func (p *patchParams) validatePatchCommand(ctx context.Context, conf *ClientSett
 		}
 	}
 
-	// Validate the project exists
-	ref, err := ac.GetProjectRef(p.Project)
-	if err != nil {
-		if apiErr, ok := err.(APIError); ok && apiErr.code == http.StatusNotFound {
-			err = errors.Errorf("%v \nRun `evergreen list --projects` to see all valid projects", err)
-		}
-		return nil, err
-	}
-
 	if (len(p.Tasks) == 0 || len(p.Variants) == 0) && p.Alias == "" && p.Finalize {
 		return ref, errors.Errorf("Need to specify at least one task/variant or alias when finalizing.")
 	}
 
 	if p.Description == "" && !p.SkipConfirm {
 		p.Description = prompt("Enter a description for this patch (optional):")
+	}
+
+	return ref, nil
+}
+
+func (p *patchParams) ValidateProjectID(conf *ClientSettings, ac *legacyClient) (*model.ProjectRef, error) {
+	if p.Project == "" {
+		p.Project = conf.FindDefaultProject()
+	} else {
+		if conf.FindDefaultProject() == "" &&
+			!p.SkipConfirm && confirm(fmt.Sprintf("Make %s your default project?", p.Project), true) {
+			conf.SetDefaultProject(p.Project)
+			if err := conf.Write(""); err != nil {
+				grip.Warning(message.WrapError(err, message.Fields{
+					"message": "failed to set default project",
+					"project": p.Project,
+				}))
+			}
+		}
+	}
+
+	if p.Project == "" {
+		return nil, errors.New("Need to specify a project")
+	}
+
+	ref, err := ac.GetProjectRef(p.Project)
+	if err != nil {
+		if apiErr, ok := err.(APIError); ok && apiErr.code == http.StatusNotFound {
+			err = errors.Errorf("%s \nRun `evergreen list --projects` to see all valid projects", err)
+		}
+		return nil, err
 	}
 
 	return ref, nil
