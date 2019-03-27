@@ -639,10 +639,7 @@ mciModule.controller('PerfController', function PerfController(
             getRejectedPointsQ.then(function(rejects){
               let data = resp.data;
               if(rejects.length){
-                data = _.reject(resp.data, function(doc) {
-                  // return  $scope.task.id != doc.task_id && _.contains(rejects, doc.task_id);
-                  return  _.contains(rejects, doc.task_id);
-                })
+                data = _.reject(resp.data, (doc) => _.contains(rejects, doc.task_id));
               }
               $scope.trendSamples = new TrendSamples(data);
               $scope.metricSelect.options = [$scope.metricSelect.default].concat(
