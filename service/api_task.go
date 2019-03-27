@@ -327,7 +327,15 @@ func assignNextAvailableTask(taskQueue *model.TaskQueue, currentHost *host.Host)
 			if taskQueueService == nil {
 				taskQueueService = model.NewTaskQueueService(taskQueueServiceTTL)
 			} else {
-				taskQueueService.Refresh(currentHost.Distro.Id)
+				if err = taskQueueService.Refresh(currentHost.Distro.Id); err != nil {
+					grip.Alert(message.WrapError(err, message.Fields{
+						"distro":  currentHost.Distro.Id,
+						"host":    currentHost.Id,
+						"message": "problem refreshing taskQueueService",
+						"spec":    spec,
+					}))
+					return nil, errors.Wrap(err, "problem refreshing taskQueueService")
+				}
 			}
 			queueItem, err = taskQueueService.FindNextTask(currentHost.Distro.Id, spec)
 			if err != nil {
