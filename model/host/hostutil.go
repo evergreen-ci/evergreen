@@ -62,7 +62,7 @@ func ChmodCommandWithSudo(ctx context.Context, script string, sudo bool) *exec.C
 
 func (h *Host) CurlCommand(url string) string {
 	return fmt.Sprintf("cd ~ && curl -LO '%s/clients/%s' && chmod +x %s",
-		url,
+		strings.TrimRight(url, "/"),
 		h.Distro.ExecutableSubPath(),
 		h.Distro.BinaryName())
 }
@@ -72,13 +72,24 @@ const (
 	sshTimeout = 2 * time.Minute
 )
 
+func (h *Host) GetSSHInfo() (*util.StaticHostInfo, error) {
+	hostInfo, err := util.ParseSSHInfo(h.Host)
+	if err != nil {
+		return nil, errors.Wrapf(err, "error parsing ssh info %v", h.Host)
+	}
+	if hostInfo.User == "" {
+		hostInfo.User = h.User
+	}
+
+	return hostInfo, nil
+}
+
 // RunSSHCommand runs an SSH command on a remote host.
 func (h *Host) RunSSHCommand(ctx context.Context, cmd string, sshOptions []string) (string, error) {
 	env := evergreen.GetEnvironment()
-	// compute any info necessary to ssh into the host
-	hostInfo, err := util.ParseSSHInfo(h.Host)
+	hostInfo, err := h.GetSSHInfo()
 	if err != nil {
-		return "", errors.Wrapf(err, "error parsing ssh info %v", h.Host)
+		return "", errors.WithStack(err)
 	}
 
 	output := &util.CappedWriter{
@@ -92,7 +103,8 @@ func (h *Host) RunSSHCommand(ctx context.Context, cmd string, sshOptions []strin
 
 	err = env.JasperManager().CreateCommand(ctx).Host(hostInfo.Hostname).User(hostInfo.User).
 		ExtendSSHArgs("-p", hostInfo.Port, "-t", "-t").ExtendSSHArgs(sshOptions...).
-		SetOutputWriter(output).RedirectErrorToOutput(true).Append(cmd).Run(ctx)
+		SetOutputWriter(output).RedirectErrorToOutput(true).
+		Append(cmd).Run(ctx)
 
 	return output.String(), errors.Wrap(err, "error running shell cmd")
 }

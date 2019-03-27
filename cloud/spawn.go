@@ -193,7 +193,7 @@ func constructPwdUpdateCommand(ctx context.Context, env evergreen.Environment, h
 		return nil, err
 	}
 
-	hostInfo, err := util.ParseSSHInfo(hostObj.Host)
+	hostInfo, err := hostObj.GetSSHInfo()
 	if err != nil {
 		return nil, err
 	}
