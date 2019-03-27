@@ -116,9 +116,6 @@ func mergeCommand() cli.Command {
 				Usage: "description for the patch",
 			},
 		)),
-		Before: mergeBeforeFuncs(
-			setPlainLogger,
-		),
 		Action: func(c *cli.Context) error {
 			ctx, cancel := context.WithCancel(context.Background())
 			defer cancel()

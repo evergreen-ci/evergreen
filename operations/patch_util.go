@@ -16,6 +16,7 @@ import (
 	"github.com/evergreen-ci/evergreen/rest/client"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 )
 
@@ -214,22 +215,25 @@ func (p *patchParams) ValidateProjectID(conf *ClientSettings, ac *legacyClient) 
 		p.Project = conf.FindDefaultProject()
 	} else {
 		if conf.FindDefaultProject() == "" &&
-			!p.SkipConfirm && confirm(fmt.Sprintf("Make %v your default project?", p.Project), true) {
+			!p.SkipConfirm && confirm(fmt.Sprintf("Make %s your default project?", p.Project), true) {
 			conf.SetDefaultProject(p.Project)
 			if err := conf.Write(""); err != nil {
-				grip.Warningf("warning - failed to set default project: %v\n", err)
+				grip.Warning(message.WrapError(err, message.Fields{
+					"message": "failed to set default project",
+					"project": p.Project,
+				}))
 			}
 		}
 	}
 
 	if p.Project == "" {
-		return nil, errors.Errorf("Need to specify a project.")
+		return nil, errors.New("Need to specify a project")
 	}
 
 	ref, err := ac.GetProjectRef(p.Project)
 	if err != nil {
 		if apiErr, ok := err.(APIError); ok && apiErr.code == http.StatusNotFound {
-			err = errors.Errorf("%v \nRun `evergreen list --projects` to see all valid projects", err)
+			err = errors.Errorf("%s \nRun `evergreen list --projects` to see all valid projects", err)
 		}
 		return nil, err
 	}
