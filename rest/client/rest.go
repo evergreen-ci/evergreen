@@ -716,7 +716,7 @@ func (c *communicatorImpl) EnqueueItem(ctx context.Context, id string) (int, err
 	info := requestInfo{
 		method:  put,
 		version: apiVersion2,
-		path:    fmt.Sprintf("/commitqueue/enqueue/%s", id),
+		path:    fmt.Sprintf("/commit_queue/enqueue/%s", id),
 	}
 
 	resp, err := c.request(ctx, info, nil)

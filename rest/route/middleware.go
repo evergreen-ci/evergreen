@@ -8,6 +8,7 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/auth"
 	"github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/evergreen/model/commitqueue"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/util"
@@ -164,9 +165,9 @@ func (m *CommitQueueItemOwnerMiddleware) ServeHTTP(rw http.ResponseWriter, r *ht
 		return
 	}
 
-	// The owner of the PR (the one who opened it) can also pass
+	// The owner of the patch can also pass
 	vars := gimlet.GetVars(r)
-	item, ok := vars["item"]
+	item, ok := vars["patch_id"]
 	if !ok {
 		gimlet.WriteResponse(rw, gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
 			StatusCode: http.StatusBadRequest,
@@ -175,34 +176,57 @@ func (m *CommitQueueItemOwnerMiddleware) ServeHTTP(rw http.ResponseWriter, r *ht
 		return
 	}
 
-	itemInt, err := strconv.Atoi(item)
-	if err != nil {
-		gimlet.WriteResponse(rw, gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
-			StatusCode: http.StatusBadRequest,
-			Message:    "item is not an integer",
-		}))
-		return
+	if opCtx.ProjectRef.CommitQueue.MergeAction == commitqueue.PatchMergeAction {
+		patch, err := m.sc.FindPatchById(item)
+		if err != nil {
+			if _, ok := err.(gimlet.ErrorResponse); ok {
+				gimlet.WriteResponse(rw, gimlet.MakeJSONErrorResponder(err))
+			}
+			gimlet.WriteResponse(rw, gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+				StatusCode: http.StatusInternalServerError,
+				Message:    "can't get information about patch",
+			}))
+			return
+		}
+		if user.Id != patch.Author {
+			gimlet.WriteResponse(rw, gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+				StatusCode: http.StatusUnauthorized,
+				Message:    "Not authorized",
+			}))
+			return
+		}
 	}
 
-	pr, err := m.sc.GetGitHubPR(ctx, opCtx.ProjectRef.Owner, opCtx.ProjectRef.Repo, itemInt)
-	if err != nil {
-		gimlet.WriteResponse(rw, gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
-			StatusCode: http.StatusInternalServerError,
-			Message:    "can't get information about PR",
-		}))
-		return
-	}
+	if opCtx.ProjectRef.CommitQueue.MergeAction == commitqueue.GitHubMergeAction {
+		itemInt, err := strconv.Atoi(item)
+		if err != nil {
+			gimlet.WriteResponse(rw, gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+				StatusCode: http.StatusBadRequest,
+				Message:    "item is not an integer",
+			}))
+			return
+		}
 
-	var githubUID int
-	if pr != nil && pr.User != nil && pr.User.ID != nil {
-		githubUID = *pr.User.ID
-	}
-	if githubUID == 0 || user.Settings.GithubUser.UID != githubUID {
-		gimlet.WriteResponse(rw, gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
-			StatusCode: http.StatusUnauthorized,
-			Message:    "Not authorized",
-		}))
-		return
+		pr, err := m.sc.GetGitHubPR(ctx, opCtx.ProjectRef.Owner, opCtx.ProjectRef.Repo, itemInt)
+		if err != nil {
+			gimlet.WriteResponse(rw, gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+				StatusCode: http.StatusInternalServerError,
+				Message:    "can't get information about PR",
+			}))
+			return
+		}
+
+		var githubUID int
+		if pr != nil && pr.User != nil && pr.User.ID != nil {
+			githubUID = *pr.User.ID
+		}
+		if githubUID == 0 || user.Settings.GithubUser.UID != githubUID {
+			gimlet.WriteResponse(rw, gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+				StatusCode: http.StatusUnauthorized,
+				Message:    "Not authorized",
+			}))
+			return
+		}
 	}
 
 	next(rw, r)

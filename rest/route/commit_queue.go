@@ -6,6 +6,7 @@ import (
 	"net/http"
 
 	"github.com/evergreen-ci/evergreen/rest/data"
+	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/pkg/errors"
 )
@@ -70,7 +71,7 @@ func (cq commitQueueDeleteItemHandler) Factory() gimlet.RouteHandler {
 func (cq *commitQueueDeleteItemHandler) Parse(ctx context.Context, r *http.Request) error {
 	vars := gimlet.GetVars(r)
 	cq.project = vars["project_id"]
-	cq.item = vars["item"]
+	cq.item = vars["patch_id"]
 
 	return nil
 }
@@ -123,4 +124,47 @@ func (cq *commitQueueClearAllHandler) Run(ctx context.Context) gimlet.Responder 
 	return gimlet.NewJSONResponse(struct {
 		ClearedCount int `json:"cleared_count"`
 	}{clearedCount})
+}
+
+type commitQueueEnqueueItemHandler struct {
+	item string
+
+	sc data.Connector
+}
+
+func makeCommitQueueEnqueueItem(sc data.Connector) gimlet.RouteHandler {
+	return &commitQueueEnqueueItemHandler{
+		sc: sc,
+	}
+}
+
+func (cq commitQueueEnqueueItemHandler) Factory() gimlet.RouteHandler {
+	return &commitQueueEnqueueItemHandler{
+		sc: cq.sc,
+	}
+}
+
+func (cq *commitQueueEnqueueItemHandler) Parse(ctx context.Context, r *http.Request) error {
+	vars := gimlet.GetVars(r)
+	cq.item = vars["patch_id"]
+
+	return nil
+}
+
+func (cq *commitQueueEnqueueItemHandler) Run(ctx context.Context) gimlet.Responder {
+	patch, err := cq.sc.FindPatchById(cq.item)
+	if err != nil {
+		if _, ok := err.(gimlet.ErrorResponse); ok {
+			return gimlet.MakeJSONErrorResponder(err)
+		}
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "can't find item"))
+	}
+
+	commitQueueItem := model.APICommitQueueItem{Issue: model.ToAPIString(cq.item)}
+	position, err := cq.sc.EnqueueItem(patch.Project, commitQueueItem)
+	if err != nil {
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "can't enqueue item"))
+	}
+
+	return gimlet.NewJSONResponse(model.APICommitQueuePosition{Position: position})
 }

@@ -73,11 +73,33 @@ func TestProjectConnectorGetSuite(t *testing.T) {
 
 		testutil.ConfigureIntegrationTest(t, testConfig, "TestProjectConnectorGetSuite")
 		db.SetGlobalSessionProvider(testConfig.SessionFactory())
+		db.ClearCollections(model.ProjectRefCollection)
 
 		projects := []*model.ProjectRef{
-			{Identifier: "projectA", Private: false},
-			{Identifier: "projectB", Private: true},
-			{Identifier: "projectC", Private: true},
+			{
+				Identifier:  "projectA",
+				Private:     false,
+				CommitQueue: model.CommitQueueParams{Enabled: true},
+				Owner:       "evergreen-ci",
+				Repo:        "gimlet",
+				Branch:      "master",
+			},
+			{
+				Identifier:  "projectB",
+				Private:     true,
+				CommitQueue: model.CommitQueueParams{Enabled: true},
+				Owner:       "evergreen-ci",
+				Repo:        "evergreen",
+				Branch:      "master",
+			},
+			{
+				Identifier:  "projectC",
+				Private:     true,
+				CommitQueue: model.CommitQueueParams{Enabled: true},
+				Owner:       "mongodb",
+				Repo:        "mongo",
+				Branch:      "master",
+			},
 			{Identifier: "projectD", Private: false},
 			{Identifier: "projectE", Private: false},
 			{Identifier: "projectF", Private: true},
@@ -173,9 +195,30 @@ func TestMockProjectConnectorGetSuite(t *testing.T) {
 
 		s.ctx = &MockConnector{MockProjectConnector: MockProjectConnector{
 			CachedProjects: []model.ProjectRef{
-				{Identifier: "projectA", Private: false},
-				{Identifier: "projectB", Private: true},
-				{Identifier: "projectC", Private: true},
+				{
+					Identifier:  "projectA",
+					Private:     false,
+					CommitQueue: model.CommitQueueParams{Enabled: true},
+					Owner:       "evergreen-ci",
+					Repo:        "gimlet",
+					Branch:      "master",
+				},
+				{
+					Identifier:  "projectB",
+					Private:     true,
+					CommitQueue: model.CommitQueueParams{Enabled: true},
+					Owner:       "evergreen-ci",
+					Repo:        "evergreen",
+					Branch:      "master",
+				},
+				{
+					Identifier:  "projectC",
+					Private:     true,
+					CommitQueue: model.CommitQueueParams{Enabled: true},
+					Owner:       "evergreen-ci",
+					Repo:        "evergreen",
+					Branch:      "master",
+				},
 				{Identifier: "projectD", Private: false},
 				{Identifier: "projectE", Private: false},
 				{Identifier: "projectF", Private: true},
@@ -403,4 +446,13 @@ func (s *ProjectConnectorGetSuite) TestGetProjectEvents() {
 	events, err := s.ctx.GetProjectEventLog(projectId, time.Now(), 0)
 	s.NoError(err)
 	s.Equal(projEventCount, len(events))
+}
+
+func (s *ProjectConnectorGetSuite) TestGetProjectWithCommitQByOwnerRepoAndBranch() {
+	projRef, err := s.ctx.GetProjectWithCommitQByOwnerRepoAndBranch("octocat", "hello-world", "master")
+	s.Error(err)
+
+	projRef, err = s.ctx.GetProjectWithCommitQByOwnerRepoAndBranch("evergreen-ci", "evergreen", "master")
+	s.NoError(err)
+	s.Equal("projectB", projRef.Identifier)
 }

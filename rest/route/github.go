@@ -269,11 +269,12 @@ func (gh *githubHookApi) Run(ctx context.Context) gimlet.Responder {
 
 		modules := model.ParseGitHubCommentModules(*event.Comment.Body)
 		baseBranch := *pr.Base.Ref
+		projectRef, err := gh.sc.GetProjectWithCommitQByOwnerRepoAndBranch(userRepo.Owner, userRepo.Repo, baseBranch)
 		item := model.APICommitQueueItem{
 			Issue:   model.ToAPIString(strconv.Itoa(PRNum)),
 			Modules: modules,
 		}
-		err = gh.sc.EnqueueItem(userRepo.Owner, userRepo.Repo, baseBranch, item)
+		_, err = gh.sc.EnqueueItem(projectRef.Identifier, item)
 		if err != nil {
 			grip.Error(message.WrapError(err, message.Fields{
 				"source":  "github hook",
