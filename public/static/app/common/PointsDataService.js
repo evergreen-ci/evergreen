@@ -24,8 +24,9 @@ mciModule.factory('PointsDataService', function($log, Stitch, STITCH_CONFIG) {
         function(docs) {
           return _.chain(docs).pluck('task_id').uniq().value();
         }, function(err) {
-          $log.error('Cannot load change points!', err);
-          return [] // Try to recover an error
+          // Try to gracefully handle an error.
+          $log.error('Cannot load rejected points!', err);
+          return [];
         })
   } ;
 
