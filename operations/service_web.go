@@ -217,7 +217,7 @@ func getAdminService(ctx context.Context, env evergreen.Environment, settings *e
 	jpm := jasper.NewManagerService(env.JasperManager())
 	jpmapp := jpm.App(ctx)
 	jpmapp.SetPrefix("jasper")
-	jpm.ToggleCachePruning(false)
+	jpm.SetDisableCachePruning(true)
 
 	handler, err := gimlet.MergeApplications(app, localAbort, remoteAbort, localReporting, remoteReporting, jpmapp, gimlet.GetPProfApp())
 	if err != nil {

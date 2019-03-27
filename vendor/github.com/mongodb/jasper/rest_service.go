@@ -91,11 +91,11 @@ func (s *Service) App(ctx context.Context) *gimlet.APIApp {
 	return app
 }
 
-func (s *Service) ToggleCachePruning(v bool) {
+func (s *Service) SetDisableCachePruning(v bool) {
 	s.cacheMutex.Lock()
 	defer s.cacheMutex.Unlock()
 
-	s.cacheOpts.Disabled = true
+	s.cacheOpts.Disabled = v
 }
 
 func (s *Service) SetCacheMaxSize(size int) {

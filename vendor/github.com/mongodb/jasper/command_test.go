@@ -284,6 +284,15 @@ func TestCommandImplementation(t *testing.T) {
 							output := verifyCommandAndGetOutput(ctx, t, &cmd, runFunc, true)
 							checkOutput(t, true, output, "makefile")
 						},
+						"SetOutputOptions": func(ctx context.Context, t *testing.T, cmd Command) {
+							opts := OutputOptions{
+								SendOutputToError: true,
+							}
+
+							assert.False(t, cmd.opts.Output.SendOutputToError)
+							cmd.SetOutputOptions(opts)
+							assert.True(t, cmd.opts.Output.SendOutputToError)
+						},
 						// "": func(ctx context.Context, t *testing.T, cmd Command) {},
 					} {
 						t.Run(name, func(t *testing.T) {
