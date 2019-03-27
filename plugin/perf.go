@@ -40,7 +40,6 @@ func (pp *PerfPlugin) GetPanelConfig() (*PanelConfig, error) {
 		Panels: []UIPanel{
 			{
 				Includes: []template.HTML{
-					`<script type="text/javascript" src="/static/app/common/PointsDataService.js"></script>`,
 					`<script type="text/javascript" src="/static/app/perf/trend_chart.js"></script>`,
 					`<script type="text/javascript" src="/static/app/perf/perf.js"></script>`,
 					`<script type="text/javascript" src="/static/app/perf/PerfChartService.js"></script>`,
