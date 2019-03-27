@@ -19,3 +19,8 @@ func TestCurlCommand(t *testing.T) {
 	expected = "cd ~ && curl -LO 'www.example.com/clients/linux_amd64/evergreen' && chmod +x evergreen"
 	assert.Equal(expected, h.CurlCommand(url))
 }
+
+func TestTeardownCommandOverSSH(t *testing.T) {
+	cmd := TearDownCommandOverSSH()
+	assert.Equal(t, "chmod +x teardown.sh && sh teardown.sh", cmd)
+}

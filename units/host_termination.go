@@ -346,7 +346,12 @@ func (j *hostTerminationJob) runHostTeardown(ctx context.Context, cloudHost *clo
 	logs, err := j.host.RunSSHCommand(ctx, j.host.TearDownCommand(), sshOptions)
 	if err != nil {
 		event.LogHostTeardown(j.host.Id, logs, false, time.Since(startTime))
-		return errors.Wrapf(err, "error running teardown script on remote host: %s", logs)
+		// Try again, this time without the agent, just in case.
+		logs, err = j.host.RunSSHCommand(ctx, TearDownCommandOverSSH(), sshOptions)
+		if err != nil {
+			event.LogHostTeardown(j.host.Id, logs, false, time.Since(startTime))
+			return errors.Wrapf(err, "error running teardown script on remote host: %s", logs)
+		}
 	}
 	event.LogHostTeardown(j.host.Id, logs, true, time.Since(startTime))
 	return nil
