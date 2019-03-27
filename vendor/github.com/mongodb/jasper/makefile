@@ -32,7 +32,7 @@ test:
 .PHONY: benchmark
 benchmark:
 	@mkdir -p $(buildDir)
-	go test $(testArgs) -timeout 1.5h -bench=$(benchPattern) $(if $(RUN_TEST),, -run=^^$$) | tee $(buildDir)/bench.sink.out
+	go test $(testArgs) -timeout 30m -bench=$(benchPattern) $(if $(RUN_TEST),, -run=^^$$) | tee $(buildDir)/bench.sink.out
 	@grep -s -q -e "^PASS" $(buildDir)/bench.sink.out
 coverage:$(buildDir)/cover.out
 	@go tool cover -func=$< | sed -E 's%github.com/.*/jasper/%%' | column -t

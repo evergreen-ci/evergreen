@@ -5,6 +5,9 @@ import (
 	"fmt"
 	"strings"
 	"time"
+
+	"github.com/mongodb/grip"
+	"github.com/pkg/errors"
 )
 
 type caseDefinition struct {
@@ -49,6 +52,7 @@ benchRepeat:
 			out.trials++
 			out.raw = append(out.raw, res)
 		default:
+			grip.Error(errors.Wrap(res.err, "failed to run benchmark iteration"))
 			continue
 		}
 	}

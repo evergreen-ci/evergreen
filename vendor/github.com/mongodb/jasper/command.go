@@ -108,12 +108,6 @@ func (c *Command) SetOutputOptions(opts OutputOptions) *Command { c.opts.Output 
 // String returns a stringified representation.
 func (c *Command) String() string { return fmt.Sprintf("id='%s', cmd='%s'", c.id, c.getCmd()) }
 
-// Add adds on a sub-command.
-func (c *Command) Add(args []string) *Command { c.cmds = append(c.cmds, args); return c }
-
-// Extend adds on multiple sub-commands.
-func (c *Command) Extend(cmds [][]string) *Command { c.cmds = append(c.cmds, cmds...); return c }
-
 // Directory sets the working directory.
 func (c *Command) Directory(d string) *Command { c.opts.WorkingDirectory = d; return c }
 
@@ -187,6 +181,27 @@ func (c *Command) AddEnv(k, v string) *Command { c.setupEnv(); c.opts.Environmen
 // execute if the function returns true.
 func (c *Command) Prerequisite(chk func() bool) *Command { c.prerequisite = chk; return c }
 
+// Add adds on a sub-command.
+func (c *Command) Add(args []string) *Command { c.cmds = append(c.cmds, args); return c }
+
+// Extend adds on multiple sub-commands.
+func (c *Command) Extend(cmds [][]string) *Command { c.cmds = append(c.cmds, cmds...); return c }
+
+// ShellOperation adds an operation to the command that runs a shell
+// script, using the shell's "-c" option).
+func (c *Command) ShellScript(shell, script string) *Command {
+	c.cmds = append(c.cmds, []string{shell, "-c", script})
+	return c
+}
+
+// Bash adds a script using "bash -c", as syntactic sugar for the
+// ShellScript method.
+func (c *Command) Bash(script string) *Command { return c.ShellScript("bash", script) }
+
+// Bash adds a script using "bash -c", as syntactic sugar for the
+// ShellScript method.
+func (c *Command) Sh(script string) *Command { return c.ShellScript("sh", script) }
+
 // Append takes a series of strings and splits them into sub-commands and adds
 // them to the Command.
 func (c *Command) Append(cmds ...string) *Command {
@@ -195,6 +210,10 @@ func (c *Command) Append(cmds ...string) *Command {
 	}
 	return c
 }
+
+// AppendArgs is the variadic equivalent of Add, which adds a command
+// in the form of arguments.
+func (c *Command) AppendArgs(args ...string) *Command { return c.Add(args) }
 
 func (c *Command) setupEnv() {
 	if c.opts.Environment == nil {

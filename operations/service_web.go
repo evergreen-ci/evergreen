@@ -19,6 +19,7 @@ import (
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/mongodb/grip/recovery"
+	"github.com/mongodb/jasper"
 	"github.com/pkg/errors"
 	"github.com/urfave/cli"
 )
@@ -66,7 +67,7 @@ func startWebService() cli.Command {
 			if err != nil {
 				return errors.WithStack(err)
 			}
-			adminHandler, err := getAdminService(env, settings)
+			adminHandler, err := getAdminService(ctx, env, settings)
 			if err != nil {
 				return errors.WithStack(err)
 			}
@@ -180,7 +181,7 @@ func getServiceRouter(settings *evergreen.Settings, queue amboy.Queue, generateQ
 	return service.GetRouter(as, uis)
 }
 
-func getAdminService(env evergreen.Environment, settings *evergreen.Settings) (http.Handler, error) {
+func getAdminService(ctx context.Context, env evergreen.Environment, settings *evergreen.Settings) (http.Handler, error) {
 	localPool, ok := env.LocalQueue().Runner().(amboy.AbortableRunner)
 	if !ok {
 		return nil, errors.New("local pool is not configured with an abortable pool")
@@ -213,7 +214,12 @@ func getAdminService(env evergreen.Environment, settings *evergreen.Settings) (h
 	app := gimlet.NewApp()
 	app.AddMiddleware(gimlet.MakeRecoveryLogger())
 
-	handler, err := gimlet.MergeApplications(app, localAbort, remoteAbort, localReporting, remoteReporting, gimlet.GetPProfApp())
+	jpm := jasper.NewManagerService(env.JasperManager())
+	jpmapp := jpm.App(ctx)
+	jpmapp.SetPrefix("jasper")
+	jpm.SetDisableCachePruning(true)
+
+	handler, err := gimlet.MergeApplications(app, localAbort, remoteAbort, localReporting, remoteReporting, jpmapp, gimlet.GetPProfApp())
 	if err != nil {
 		return nil, errors.Wrap(err, "problem assembling handler")
 	}
