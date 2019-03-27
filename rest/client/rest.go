@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/cloud"
 	serviceModel "github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/rest/model"
@@ -733,4 +734,75 @@ func (c *communicatorImpl) SendNotification(ctx context.Context, notificationTyp
 	}
 
 	return nil
+}
+
+// GetDockerStatus returns status of the container for the given host
+func (c *communicatorImpl) GetDockerStatus(ctx context.Context, hostID string) (*cloud.ContainerStatus, error) {
+	info := requestInfo{
+		method:  get,
+		path:    fmt.Sprintf("hosts/%s/status", hostID),
+		version: apiVersion2,
+	}
+	resp, err := c.request(ctx, info, nil)
+	if err != nil {
+		return nil, errors.Wrapf(err, "error getting container status for %s", hostID)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		errMsg := gimlet.ErrorResponse{}
+		if err := util.ReadJSONInto(resp.Body, &errMsg); err != nil {
+			return nil, errors.Wrap(err, "problem getting container status and parsing error message")
+		}
+		return nil, errors.Wrap(errMsg, "problem getting container status")
+	}
+	status := cloud.ContainerStatus{}
+	if err := util.ReadJSONInto(resp.Body, &status); err != nil {
+		return nil, errors.Wrap(err, "problem parsing container status")
+	}
+
+	return &status, nil
+}
+
+func (c *communicatorImpl) GetDockerLogs(ctx context.Context, hostID string, startTime time.Time, endTime time.Time, isError bool) ([]byte, error) {
+	path := fmt.Sprintf("/host/%s/logs", hostID)
+	if isError {
+		path = fmt.Sprintf("%s/error", path)
+	} else {
+		path = fmt.Sprintf("%s/output", path)
+	}
+	if !util.IsZeroTime(startTime) && !util.IsZeroTime(endTime) {
+		path = fmt.Sprintf("%s?start_time=%s&end_time=%s", path, startTime.Format(time.RFC3339), endTime.Format(time.RFC3339))
+	} else if !util.IsZeroTime(startTime) {
+		path = fmt.Sprintf("%s?start_time=%s", path, startTime.Format(time.RFC3339))
+	} else if !util.IsZeroTime(endTime) {
+		path = fmt.Sprintf("%s?end_time=%s", path, endTime.Format(time.RFC3339))
+	}
+
+	info := requestInfo{
+		method:  post,
+		version: apiVersion2,
+		path:    path,
+	}
+	resp, err := c.request(ctx, info, "")
+	if err != nil {
+		return nil, errors.Wrapf(err, "problem getting logs for container _id %s", hostID)
+	}
+	defer resp.Body.Close()
+
+	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to read response")
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		restErr := gimlet.ErrorResponse{}
+		if err = json.Unmarshal(body, &restErr); err != nil {
+			return nil, errors.Errorf("received an error but was unable to parse: %s", string(body))
+		}
+
+		return nil, errors.Wrapf(restErr, "response code %d problem getting logs for container _id %s",
+			resp.StatusCode, hostID)
+	}
+	return body, nil
 }

@@ -11,6 +11,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/apimodels"
+	"github.com/evergreen-ci/evergreen/cloud"
 	serviceModel "github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/artifact"
 	"github.com/evergreen-ci/evergreen/model/distro"
@@ -515,15 +516,15 @@ func (c *Mock) GenerateTasksPoll(ctx context.Context, td TaskData) (*apimodels.G
 	}, nil
 }
 
-func (c *Mock) CreateHost(ctx context.Context, td TaskData, options apimodels.CreateHost) error {
+func (c *Mock) CreateHost(ctx context.Context, td TaskData, options apimodels.CreateHost) ([]string, error) {
 	if td.ID == "" {
-		return errors.New("no task ID sent to CreateHost")
+		return []string{}, errors.New("no task ID sent to CreateHost")
 	}
 	if td.Secret == "" {
-		return errors.New("no task secret sent to CreateHost")
+		return []string{}, errors.New("no task secret sent to CreateHost")
 	}
 	c.CreatedHost = options
-	return options.Validate()
+	return []string{"id"}, options.Validate()
 }
 
 func (c *Mock) ListHosts(_ context.Context, _ TaskData) ([]model.CreateHost, error) { return nil, nil }
@@ -588,4 +589,12 @@ func (c *Mock) DeleteCommitQueueItem(ctx context.Context, projectID, item string
 
 func (c *Mock) SendNotification(_ context.Context, _ string, _ interface{}) error {
 	return nil
+}
+
+func (c *Mock) GetDockerLogs(context.Context, string, time.Time, time.Time, bool) ([]byte, error) {
+	return []byte("this is a log"), nil
+}
+
+func (c *Mock) GetDockerStatus(context.Context, string) (*cloud.ContainerStatus, error) {
+	return &cloud.ContainerStatus{HasStarted: true}, nil
 }

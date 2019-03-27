@@ -136,18 +136,21 @@ type hostChangeRDPPasswordHandler struct {
 	hostID      string
 	rdpPassword string
 	sc          data.Connector
+	env         evergreen.Environment
 }
 
-func makeHostChangePassword(sc data.Connector) gimlet.RouteHandler {
+func makeHostChangePassword(sc data.Connector, env evergreen.Environment) gimlet.RouteHandler {
 	return &hostChangeRDPPasswordHandler{
-		sc: sc,
+		sc:  sc,
+		env: env,
 	}
 
 }
 
 func (h *hostChangeRDPPasswordHandler) Factory() gimlet.RouteHandler {
 	return &hostChangeRDPPasswordHandler{
-		sc: h.sc,
+		sc:  h.sc,
+		env: h.env,
 	}
 }
 
@@ -194,7 +197,7 @@ func (h *hostChangeRDPPasswordHandler) Run(ctx context.Context) gimlet.Responder
 			Message:    "RDP passwords can only be set on running hosts",
 		})
 	}
-	if err := cloud.SetHostRDPPassword(ctx, host, h.rdpPassword); err != nil {
+	if err := cloud.SetHostRDPPassword(ctx, h.env, host, h.rdpPassword); err != nil {
 		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
 			StatusCode: http.StatusInternalServerError,
 			Message:    err.Error(),

@@ -90,7 +90,7 @@ mciModule.controller('ProjectCtrl', function($scope, $window, $http, $location, 
       label: "a previously passing task fails",
       regex_selectors: taskRegexSelectors(),
       extraFields: [
-        {text: "Re-notify after how many hours", key: "renotify-interval", validator: validateDuration, default: 48},
+        {text: "Re-notify after how many hours", key: "renotify-interval", validator: validateDuration, default: "48"},
         {text: "Failure type", key:"failure-type", type:"select", options:["any","test","system","setup"], default: "any"}
       ]
     },
@@ -101,7 +101,7 @@ mciModule.controller('ProjectCtrl', function($scope, $window, $http, $location, 
       regex_selectors: taskRegexSelectors(),
       extraFields: [
         {text: "Test names matching regex", key: "test-regex", validator: null},
-        {text: "Re-notify after how many hours", key: "renotify-interval", validator: validateDuration, default: 48},
+        {text: "Re-notify after how many hours", key: "renotify-interval", validator: validateDuration, default: "48"},
         {text: "Failure type", key:"failure-type", type:"select", options:["any","test","system","setup"], default: "any"}
       ]
     },

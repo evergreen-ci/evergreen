@@ -44,6 +44,20 @@ func init() {
 	current := testutil.GetDirectoryOfFile()
 	patchFile = filepath.Join(current, patchFile)
 	newProjectPatchFile = filepath.Join(current, newProjectPatchFile)
+
+	ctx, cancel := context.WithCancel(context.Background())
+
+	env := evergreen.GetEnvironment()
+	err := env.Configure(ctx, filepath.Join(evergreen.FindEvergreenHome(), testutil.TestDir, testutil.TestSettings), nil)
+	if err != nil {
+		cancel()
+		panic(err)
+	}
+
+	env.RegisterCloser("close-context", func(ctx context.Context) error {
+		cancel()
+		return nil
+	})
 }
 
 func clearAll(t *testing.T) {
@@ -277,6 +291,8 @@ func TestMakePatchedConfig(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
+	env := evergreen.GetEnvironment()
+
 	Convey("With calling MakePatchedConfig with a config and remote configuration path", t, func() {
 		cwd := testutil.GetDirectoryOfFile()
 
@@ -303,7 +319,7 @@ func TestMakePatchedConfig(t *testing.T) {
 			}
 			projectBytes, err := ioutil.ReadFile(filepath.Join(cwd, "testdata", "project.config"))
 			So(err, ShouldBeNil)
-			projectData, err := MakePatchedConfig(ctx, p, remoteConfigPath, string(projectBytes))
+			projectData, err := MakePatchedConfig(ctx, env, p, remoteConfigPath, string(projectBytes))
 			So(err, ShouldBeNil)
 			So(projectData, ShouldNotBeNil)
 
@@ -325,12 +341,12 @@ func TestMakePatchedConfig(t *testing.T) {
 				}},
 			}
 
-			projectData, err := MakePatchedConfig(ctx, p, remoteConfigPath, "")
+			projectData, err := MakePatchedConfig(ctx, env, p, remoteConfigPath, "")
 			So(err, ShouldBeNil)
-			So(projectData, ShouldNotBeNil)
 
 			project := &Project{}
 			So(LoadProjectInto(projectData, "", project), ShouldBeNil)
+			So(project, ShouldNotBeNil)
 
 			So(len(project.Tasks), ShouldEqual, 1)
 			So(project.Tasks[0].Name, ShouldEqual, "hello")

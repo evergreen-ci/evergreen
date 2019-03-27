@@ -3,62 +3,48 @@ package gimlet
 import (
 	"bytes"
 	"fmt"
+	"io"
 	"net/http"
 	"strings"
 
 	"github.com/mongodb/grip"
+	"github.com/pkg/errors"
 )
 
-func writeResponse(of OutputFormat, w http.ResponseWriter, code int, data []byte) {
+func writeResponse(of OutputFormat, w http.ResponseWriter, code int, data interface{}) {
 	w.Header().Set("Content-Type", of.ContentType())
 
 	w.WriteHeader(code)
 
-	size, err := w.Write(data)
+	size, err := writePayload(w, data)
 
 	if err != nil {
-		grip.Warningf("encountered error %s writing a %d (%s) response ", err.Error(), size, of)
+		w.WriteHeader(http.StatusInternalServerError)
+		grip.Warningf("encountered error '%s' writing a %d (%s) response ", err.Error(), size, of)
 	}
 }
 
-func convertToBin(data interface{}) []byte {
+func writePayload(w io.Writer, data interface{}) (int, error) {
 	switch data := data.(type) {
 	case []byte:
-		return data
+		return w.Write(data)
 	case string:
-		return []byte(data)
+		return w.Write([]byte(data))
 	case error:
-		return []byte(data.Error())
+		return w.Write([]byte(data.Error()))
 	case []string:
-		var out []byte
-		for _, s := range data {
-			out = append(out, []byte(s)...)
-		}
-		return out
+		return w.Write([]byte(strings.Join(data, "\n")))
 	case *bytes.Buffer:
-		return data.Bytes()
+		return w.Write(data.Bytes())
 	case fmt.Stringer:
-		return []byte(data.String())
+		return w.Write([]byte(data.String()))
+	case io.Reader:
+		size, err := io.Copy(w, data)
+		return int(size), errors.WithStack(err)
+	case []io.Reader:
+		size, err := io.Copy(w, io.MultiReader(data...))
+		return int(size), errors.WithStack(err)
 	default:
-		return []byte(fmt.Sprintf("%v", data))
-	}
-}
-
-func convertToBytes(data interface{}) []byte {
-	switch data := data.(type) {
-	case []byte:
-		return data
-	case string:
-		return []byte(data)
-	case error:
-		return []byte(data.Error())
-	case []string:
-		return []byte(strings.Join(data, "\n"))
-	case *bytes.Buffer:
-		return data.Bytes()
-	case fmt.Stringer:
-		return []byte(data.String())
-	default:
-		return []byte(fmt.Sprintf("%v", data))
+		return w.Write([]byte(fmt.Sprintf("%v", data)))
 	}
 }

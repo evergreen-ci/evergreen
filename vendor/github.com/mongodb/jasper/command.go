@@ -497,7 +497,7 @@ func (c *Command) exec(ctx context.Context, opts *CreateOptions, idx int) error 
 	}
 
 	grip.Log(c.priority, addOutOp(msg))
-	return err
+	return errors.WithStack(err)
 }
 
 // BuildCommand builds the Command given the configuration of arguments.

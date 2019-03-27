@@ -9,12 +9,14 @@ import (
 )
 
 const (
-	ProviderEC2                = "ec2"
-	ProviderDocker             = "docker"
-	ScopeTask                  = "task"
-	ScopeBuild                 = "build"
-	DefaultSetupTimeoutSecs    = 600
-	DefaultTeardownTimeoutSecs = 21600
+	ProviderEC2                     = "ec2"
+	ProviderDocker                  = "docker"
+	ScopeTask                       = "task"
+	ScopeBuild                      = "build"
+	DefaultSetupTimeoutSecs         = 600
+	DefaultTeardownTimeoutSecs      = 21600
+	DefaultContainerWaitTimeoutSecs = 600
+	DefaultPollFrequency            = 30
 )
 
 // TaskStartRequest holds information sent by the agent to the
@@ -106,13 +108,14 @@ type CreateHost struct {
 	KeyName         string      `mapstructure:"key_name" json:"key_name" plugin:"expand"`
 
 	// docker-related settings
-	Image         string           `mapstructure:"image" json:"image" plugin:"expand"`
-	Command       string           `mapstructure:"command" json:"command" plugin:"expand"`
-	Registry      RegistrySettings `mapstructure:"registry" json:"registry" plugin:"expand"`
-	Background    bool             `mapstructure:"background" json:"background"`
-	PollFrequency int              `mapstructure:"poll_frequency_secs" json:"poll_frequency_secs"` // poll frequency in seconds
-	StdoutFile    string           `mapstructure:"stdout_file_name" json:"stdout_file_name" plugin:"expand"`
-	StderrFile    string           `mapstructure:"stderr_file_name" json:"stderr_file_name" plugin:"expand"`
+	Image                    string           `mapstructure:"image" json:"image" plugin:"expand"`
+	Command                  string           `mapstructure:"command" json:"command" plugin:"expand"`
+	Registry                 RegistrySettings `mapstructure:"registry" json:"registry" plugin:"expand"`
+	Background               bool             `mapstructure:"background" json:"background"` // default is true
+	ContainerWaitTimeoutSecs int              `mapstructure:"container_wait_timeout_secs" json:"container_wait_timeout_secs"`
+	PollFrequency            int              `mapstructure:"poll_frequency_secs" json:"poll_frequency_secs"` // poll frequency in seconds
+	StdoutFile               string           `mapstructure:"stdout_file_name" json:"stdout_file_name" plugin:"expand"`
+	StderrFile               string           `mapstructure:"stderr_file_name" json:"stderr_file_name" plugin:"expand"`
 }
 
 type EbsDevice struct {
@@ -135,24 +138,30 @@ func (ch *CreateHost) ValidateDocker() error {
 	catcher.Add(ch.validateAgentOptions())
 
 	if ch.Distro == "" {
-		catcher.Add(errors.New("distro must be set"))
+		catcher.New("distro must be set")
 	}
 	if ch.Image == "" {
-		catcher.Add(errors.New("docker image must be set"))
+		catcher.New("docker image must be set")
 	}
 	if ch.Command == "" {
-		catcher.Add(errors.New("docker command must be set"))
+		catcher.New("docker command must be set")
+	}
+
+	if ch.ContainerWaitTimeoutSecs <= 0 {
+		ch.ContainerWaitTimeoutSecs = DefaultContainerWaitTimeoutSecs
+	} else if ch.ContainerWaitTimeoutSecs >= 3600 || ch.ContainerWaitTimeoutSecs <= 10 {
+		catcher.New("container_wait_timeout_secs must be between 10 and 3600 seconds")
 	}
 
 	if ch.PollFrequency <= 0 {
-		ch.PollFrequency = 60
+		ch.PollFrequency = DefaultPollFrequency
 	} else if ch.PollFrequency > 60 {
-		catcher.Add(errors.New("poll frequency must not be greater than 60 seconds"))
+		catcher.New("poll frequency must not be greater than 60 seconds")
 	}
 
 	if (ch.Registry.Username != "" && ch.Registry.Password == "") ||
 		(ch.Registry.Username == "" && ch.Registry.Password != "") {
-		catcher.Add(errors.New("username and password must both be set or unset"))
+		catcher.New("username and password must both be set or unset")
 	}
 
 	return catcher.Resolve()
@@ -165,23 +174,23 @@ func (ch *CreateHost) ValidateEC2() error {
 	catcher.Add(ch.validateAgentOptions())
 
 	if (ch.AMI != "" && ch.Distro != "") || (ch.AMI == "" && ch.Distro == "") {
-		catcher.Add(errors.New("must set exactly one of ami or distro"))
+		catcher.New("must set exactly one of ami or distro")
 	}
 	if ch.AMI != "" {
 		if ch.InstanceType == "" {
-			catcher.Add(errors.New("instance_type must be set if ami is set"))
+			catcher.New("instance_type must be set if ami is set")
 		}
 		if len(ch.SecurityGroups) == 0 {
-			catcher.Add(errors.New("must specify security_group_ids if ami is set"))
+			catcher.New("must specify security_group_ids if ami is set")
 		}
 		if ch.Subnet == "" {
-			catcher.Add(errors.New("subnet_id must be set if ami is set"))
+			catcher.New("subnet_id must be set if ami is set")
 		}
 	}
 
 	if !(ch.AWSKeyID == "" && ch.AWSSecret == "" && ch.KeyName == "") &&
 		!(ch.AWSKeyID != "" && ch.AWSSecret != "" && ch.KeyName != "") {
-		catcher.Add(errors.New("aws_access_key_id, aws_secret_access_key, key_name must all be set or unset"))
+		catcher.New("aws_access_key_id, aws_secret_access_key, key_name must all be set or unset")
 	}
 
 	return catcher.Resolve()
@@ -190,7 +199,7 @@ func (ch *CreateHost) ValidateEC2() error {
 func (ch *CreateHost) validateAgentOptions() error {
 	catcher := grip.NewBasicCatcher()
 	if ch.Retries > 10 {
-		catcher.Add(errors.New("retries must not be greater than 10"))
+		catcher.New("retries must not be greater than 10")
 	}
 	if ch.Retries < 1 {
 		ch.Retries = 1
@@ -199,19 +208,19 @@ func (ch *CreateHost) validateAgentOptions() error {
 		ch.Scope = ScopeTask
 	}
 	if ch.Scope != ScopeTask && ch.Scope != ScopeBuild {
-		catcher.Add(errors.New("scope must be build or task"))
+		catcher.New("scope must be build or task")
 	}
 	if ch.SetupTimeoutSecs == 0 {
 		ch.SetupTimeoutSecs = DefaultSetupTimeoutSecs
 	}
 	if ch.SetupTimeoutSecs < 60 || ch.SetupTimeoutSecs > 3600 {
-		catcher.Add(errors.New("timeout_setup_secs must be between 60 and 3600"))
+		catcher.New("timeout_setup_secs must be between 60 and 3600")
 	}
 	if ch.TeardownTimeoutSecs == 0 {
 		ch.TeardownTimeoutSecs = DefaultTeardownTimeoutSecs
 	}
 	if ch.TeardownTimeoutSecs < 60 || ch.TeardownTimeoutSecs > 604800 {
-		catcher.Add(errors.New("timeout_teardown_secs must be between 60 and 604800"))
+		catcher.New("timeout_teardown_secs must be between 60 and 604800")
 	}
 	return catcher.Resolve()
 }
@@ -219,6 +228,9 @@ func (ch *CreateHost) validateAgentOptions() error {
 func (ch *CreateHost) setNumHosts() error {
 	if ch.NumHosts == "" {
 		ch.NumHosts = "1"
+	}
+	if ch.CloudProvider == ProviderDocker && ch.NumHosts != "1" {
+		return errors.Errorf("num_hosts cannot be greater than 1 for cloud provider %s", ProviderDocker)
 	} else {
 		numHosts, err := strconv.Atoi(ch.NumHosts)
 		if err != nil {
