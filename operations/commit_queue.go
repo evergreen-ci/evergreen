@@ -184,7 +184,7 @@ func setModuleCommand() cli.Command {
 				return errors.Wrap(err, "problem accessing evergreen service")
 			}
 
-			return params.addModule(ac, rc)
+			return errors.WithStack(params.addModule(ac, rc))
 		},
 	}
 }
@@ -320,7 +320,7 @@ func (p *moduleParams) addModule(ac *legacyClient, rc *legacyClient) error {
 
 	err = ac.UpdatePatchModule(p.patchID, p.module, diffData.fullPatch, diffData.base)
 	if err != nil {
-		return err
+		return errors.WithStack(err)
 	}
 
 	return nil
