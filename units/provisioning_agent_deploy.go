@@ -112,6 +112,24 @@ func (j *agentDeployJob) Run(ctx context.Context) {
 	}
 
 	settings := j.env.Settings()
+
+	// Occasionally an agent deploy job will be dispatched around the same time that
+	// PopulateAgentDeployJobs creates another job. These jobs can race. An atomic update on the
+	// needs new agent field will cause the job to fail early here. Updating the last
+	// communicated time prevents the other branches of the PopulateAgentDeployJobs from
+	// immediately applying. Instead MaxLCTInterval must pass.
+	if err = j.host.SetNeedsNewAgent(false); err != nil {
+		j.AddError(errors.Wrapf(err, "error setting needs agent flag to true on host %s", j.host.Id))
+	}
+	if err = j.host.UpdateLastCommunicated(); err != nil {
+		j.AddError(errors.Wrapf(err, "error setting LCT on host %s", j.host.Id))
+	}
+	defer func() {
+		if err = j.host.SetNeedsNewAgent(true); err != nil {
+			j.AddError(errors.Wrapf(err, "error setting needs agent flag to false on host %s", j.host.Id))
+		}
+	}()
+
 	j.AddError(j.startAgentOnHost(ctx, settings, *j.host))
 
 	stat, err := event.GetRecentAgentDeployStatuses(j.HostID, agentPutRetries)
@@ -230,12 +248,6 @@ func (j *agentDeployJob) startAgentOnHost(ctx context.Context, settings *evergre
 
 	if err = hostObj.SetAgentRevision(evergreen.BuildRevision); err != nil {
 		return errors.Wrapf(err, "error setting agent revision on host %s", hostObj.Id)
-	}
-	if err = hostObj.UpdateLastCommunicated(); err != nil {
-		return errors.Wrapf(err, "error setting LCT on host %s", hostObj.Id)
-	}
-	if err = hostObj.SetNeedsNewAgent(false); err != nil {
-		return errors.Wrapf(err, "error setting needs agent flag on host %s", hostObj.Id)
 	}
 	return nil
 }
