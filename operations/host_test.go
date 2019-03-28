@@ -10,7 +10,6 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/host"
-	"github.com/mongodb/grip"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -138,9 +137,6 @@ func TestHostRunner(t *testing.T) {
 			return
 		default:
 			if info, err := os.Stat(args.clientPath); err == nil {
-				grip.Info(info.Mode())
-				// Executable bit should be set.
-				assert.NotZero(t, info.Mode().Perm()&0100)
 				return
 			}
 		}
