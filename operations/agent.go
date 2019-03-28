@@ -20,45 +20,20 @@ import (
 
 func Agent() cli.Command {
 	const (
-		hostIDFlagName           = "host_id"
-		hostSecretFlagName       = "host_secret"
-		apiServerFlagName        = "api_server"
-		workingDirectoryFlagName = "working_directory"
-		logPrefixFlagName        = "log_prefix"
-		statusPortFlagName       = "status_port"
-		cleanupFlagName          = "cleanup"
-		logkeeperFlagName        = "logkeeper_url"
-		s3BaseFlagName           = "s3_base_url"
+		logPrefixFlagName  = "log_prefix"
+		statusPortFlagName = "status_port"
+		cleanupFlagName    = "cleanup"
+		s3BaseFlagName     = "s3_base_url"
 	)
 
 	return cli.Command{
 		Name:  "agent",
 		Usage: "run an evergreen agent",
-		Flags: []cli.Flag{
-			cli.StringFlag{
-				Name:  hostIDFlagName,
-				Usage: "id of machine agent is running on",
-			},
-			cli.StringFlag{
-				Name:  hostSecretFlagName,
-				Usage: "secret for the current host",
-			},
-			cli.StringFlag{
-				Name:  apiServerFlagName,
-				Usage: "URL of the API server",
-			},
-			cli.StringFlag{
-				Name:  workingDirectoryFlagName,
-				Usage: "working directory for the agent",
-			},
+		Flags: append(addCommonAgentAndRunnerFlags(),
 			cli.StringFlag{
 				Name:  logPrefixFlagName,
 				Value: "evg.agent",
 				Usage: "prefix for the agent's log filename",
-			},
-			cli.StringFlag{
-				Name:  logkeeperFlagName,
-				Usage: "URL of a logkeeper service to be used by tasks",
 			},
 			cli.StringFlag{
 				Name:  s3BaseFlagName,
@@ -73,16 +48,12 @@ func Agent() cli.Command {
 				Name:  cleanupFlagName,
 				Usage: "clean up working directory and processes (do not set for smoke tests)",
 			},
-		},
+		),
 		Before: mergeBeforeFuncs(
-			func(c *cli.Context) error {
+			append(requireAgentFlags(), func(c *cli.Context) error {
 				grip.SetName("evergreen.agent")
 				return nil
-			},
-			requireStringFlag(apiServerFlagName),
-			requireStringFlag(hostIDFlagName),
-			requireStringFlag(hostSecretFlagName),
-			requireStringFlag(workingDirectoryFlagName),
+			})...,
 		),
 		Action: func(c *cli.Context) error {
 			s3Base := c.String(s3BaseFlagName)
@@ -96,7 +67,7 @@ func Agent() cli.Command {
 				LogPrefix:        c.String(logPrefixFlagName),
 				WorkingDirectory: c.String(workingDirectoryFlagName),
 				Cleanup:          c.Bool(cleanupFlagName),
-				LogkeeperURL:     c.String(logkeeperFlagName),
+				LogkeeperURL:     c.String(logkeeperURLFlagName),
 				S3BaseURL:        s3Base,
 				S3Opts: pail.S3Options{
 					Credentials: pail.CreateAWSCredentials(os.Getenv("S3_KEY"), os.Getenv("S3_SECRET"), ""),
@@ -118,12 +89,12 @@ func Agent() cli.Command {
 				"host":     opts.HostID,
 			})
 
-			comm := client.NewCommunicator(c.String("api_server"))
+			comm := client.NewCommunicator(c.String(apiServerURLFlagName))
 			defer comm.Close()
 
 			agt, err := agent.New(opts, comm)
 			if err != nil {
-				return errors.Wrap(err, "problem constructing agetn")
+				return errors.Wrap(err, "problem constructing agent")
 			}
 
 			ctx, cancel := context.WithCancel(context.Background())

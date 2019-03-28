@@ -4,11 +4,13 @@ import (
 	"context"
 	"io/ioutil"
 	"os"
+	"path/filepath"
 	"testing"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/host"
+	"github.com/mongodb/grip"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -112,4 +114,35 @@ func TestHostTeardownScript(t *testing.T) {
 	err = runHostTeardownScript(ctx)
 	assert.Error(err)
 
+}
+
+func TestHostRunner(t *testing.T) {
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	dir, err := ioutil.TempDir("", "")
+	require.NoError(t, err)
+	defer os.RemoveAll(dir)
+
+	args := &runnerArgs{
+		clientURL:  "www.example.com",
+		clientPath: filepath.Join(dir, "foo"),
+	}
+
+	require.NoError(t, args.fetchClient(ctx))
+
+	for {
+		select {
+		case <-ctx.Done():
+			assert.Fail(t, "context timed out before expected file was downloaded")
+			return
+		default:
+			if info, err := os.Stat(args.clientPath); err == nil {
+				grip.Info(info.Mode())
+				// Executable bit should be set.
+				assert.NotZero(t, info.Mode().Perm()&0100)
+				return
+			}
+		}
+	}
 }

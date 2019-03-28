@@ -194,6 +194,15 @@ func requireAtLeastOneBool(flags ...string) cli.BeforeFunc {
 	}
 }
 
+func requireAgentFlags(beforeFuncs ...func(c *cli.Context) error) []func(c *cli.Context) error {
+	return append(beforeFuncs,
+		requireStringFlag(apiServerURLFlagName),
+		requireStringFlag(hostIDFlagName),
+		requireStringFlag(hostSecretFlagName),
+		requireStringFlag(workingDirectoryFlagName),
+	)
+}
+
 func mergeBeforeFuncs(ops ...func(c *cli.Context) error) cli.BeforeFunc {
 	return func(c *cli.Context) error {
 		catcher := grip.NewBasicCatcher()

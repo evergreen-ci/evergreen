@@ -13,6 +13,7 @@ func Host() cli.Command {
 			hostStatus(),
 			hostSetup(),
 			hostTeardown(),
+			hostRunner(),
 		},
 	}
 }
