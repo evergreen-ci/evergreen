@@ -3,6 +3,9 @@ package host
 import (
 	"time"
 
+	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
+
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/util"
@@ -70,6 +73,12 @@ func GenerateContainerHostIntents(d distro.Distro, newContainersNeeded int, host
 	if err != nil {
 		return nil, errors.Wrap(err, "Could not find number of containers on each parent")
 	}
+	grip.Info(message.Fields{
+		"new_containers_needed": newContainersNeeded,
+		"num_parents":           len(parents),
+		"distro":                d.Id,
+		"operation":             "spawning new parents",
+	})
 	containerHostIntents := make([]Host, 0)
 
 	for _, parent := range parents {
@@ -83,6 +92,12 @@ func GenerateContainerHostIntents(d distro.Distro, newContainersNeeded int, host
 		for i := 0; i < containersToCreate; i++ {
 			hostOptions.ParentID = parent.ParentHost.Id
 			containerHostIntents = append(containerHostIntents, *NewIntent(d, d.GenerateName(), d.Provider, hostOptions))
+			grip.Info(message.Fields{
+				"message":   "creating container host intent",
+				"parent_id": parent.ParentHost.Id,
+				"distro":    d.Id,
+				"operation": "spawning new parents",
+			})
 		}
 		newContainersNeeded -= containersToCreate
 		if newContainersNeeded == 0 {
@@ -98,6 +113,12 @@ func createParents(parent distro.Distro, numNewParents int, pool *evergreen.Cont
 
 	for idx := range hostsSpawned {
 		hostsSpawned[idx] = *NewIntent(parent, parent.GenerateName(), parent.Provider, generateParentCreateOptions(pool))
+		grip.Info(message.Fields{
+			"message":   "adding parent",
+			"parent_id": hostsSpawned[idx].Id,
+			"operation": "spawning new parents",
+			"distro":    parent.Id,
+		})
 	}
 	return hostsSpawned
 }
@@ -129,6 +150,11 @@ func InsertParentIntentsAndGetNumHostsToSpawn(pool *evergreen.ContainerPool, new
 	}
 	newParentHosts := createParents(parentDistro, numNewParentsToSpawn, pool)
 	if err = InsertMany(newParentHosts); err != nil {
+		grip.Error(message.Fields{
+			"operation": "spawning new parents",
+			"error":     err,
+			"message":   "error inserting new parent hosts",
+		})
 		return nil, 0, errors.Wrap(err, "error inserting new parent hosts")
 	}
 	return newParentHosts, newHostsNeeded, nil
