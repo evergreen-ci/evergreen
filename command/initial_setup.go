@@ -7,7 +7,6 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/rest/client"
-	"github.com/mongodb/jasper"
 )
 
 type initialSetup struct{}
@@ -21,8 +20,6 @@ func (*initialSetup) Name() string                                    { return "
 func (*initialSetup) SetIdleTimeout(d time.Duration)                  {}
 func (*initialSetup) IdleTimeout() time.Duration                      { return 0 }
 func (*initialSetup) ParseParams(params map[string]interface{}) error { return nil }
-func (*initialSetup) JasperManager() jasper.Manager                   { return nil }
-func (*initialSetup) SetJasperManager(_ jasper.Manager)               {}
 func (*initialSetup) Execute(ctx context.Context,
 	client client.Communicator, logger client.LoggerProducer, conf *model.TaskConfig) error {
 

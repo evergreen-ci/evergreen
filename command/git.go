@@ -17,6 +17,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/rest/client"
+	"github.com/evergreen-ci/evergreen/subprocess"
 	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mitchellh/mapstructure"
@@ -247,21 +248,24 @@ func (c *gitFetchProject) Execute(ctx context.Context,
 		return errors.WithStack(err)
 	}
 
+	cmdsJoined := strings.Join(gitCommands, "\n")
+
+	stdOut := logger.TaskWriter(level.Info)
+	defer stdOut.Close()
 	stdErr := noopWriteCloser{
 		&bytes.Buffer{},
+	}
+	output := subprocess.OutputOptions{Output: stdOut, Error: stdErr}
+	fetchSourceCmd := subprocess.NewLocalCommand(cmdsJoined, conf.WorkDir, "bash", nil, true)
+	if err = fetchSourceCmd.SetOutput(output); err != nil {
+		return errors.WithStack(err)
 	}
 
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
-	jpm := c.JasperManager()
-
-	fetchScript := strings.Join(gitCommands, "\n")
-	fetchSourceCmd := jpm.CreateCommand(ctx).Add([]string{"bash", "-c", fetchScript}).Directory(conf.WorkDir).
-		SetOutputSender(level.Info, logger.Task().GetSender()).SetErrorWriter(stdErr)
-
 	logger.Execution().Info("Fetching source from git...")
-	redactedCmds := fetchScript
+	redactedCmds := cmdsJoined
 	if c.Token != "" {
 		redactedCmds = strings.Replace(redactedCmds, c.Token, "[redacted oauth token]", -1)
 	}
@@ -340,11 +344,18 @@ func (c *gitFetchProject) Execute(ctx context.Context,
 			return err
 		}
 
-		err = jpm.CreateCommand(ctx).Add([]string{"bash", "-c", strings.Join(moduleCmds, "\n")}).
-			Directory(filepath.ToSlash(filepath.Join(conf.WorkDir, c.Directory))).
-			SetOutputSender(level.Info, logger.Task().GetSender()).SetErrorWriter(stdErr).Run(ctx)
+		moduleFetchCmd := subprocess.NewLocalCommand(
+			strings.Join(moduleCmds, "\n"),
+			filepath.ToSlash(filepath.Join(conf.WorkDir, c.Directory)),
+			"bash",
+			nil,
+			true)
 
-		if err != nil {
+		if err = moduleFetchCmd.SetOutput(output); err != nil {
+			return err
+		}
+
+		if err = moduleFetchCmd.Run(ctx); err != nil {
 			return errors.Wrap(err, "problem with git command")
 		}
 	}
@@ -463,7 +474,12 @@ func getPatchCommands(modulePatch patch.ModulePatch, dir, patchPath string) []st
 func (c *gitFetchProject) applyPatch(ctx context.Context, logger client.LoggerProducer,
 	conf *model.TaskConfig, p *patch.Patch) error {
 
-	jpm := c.JasperManager()
+	stdOut := logger.TaskWriter(level.Info)
+	defer stdOut.Close()
+	stdErr := logger.TaskWriter(level.Error)
+	defer stdErr.Close()
+
+	output := subprocess.OutputOptions{Output: stdOut, Error: stdErr}
 
 	// patch sets and contain multiple patches, some of them for modules
 	for _, patchPart := range p.Patches {
@@ -531,10 +547,12 @@ func (c *gitFetchProject) applyPatch(ctx context.Context, logger client.LoggerPr
 		patchCommandStrings = append(patchCommandStrings, applyCommand)
 		cmdsJoined := strings.Join(patchCommandStrings, "\n")
 
-		cmd := jpm.CreateCommand(ctx).Directory(conf.WorkDir).Add([]string{"bash", "-c", cmdsJoined}).
-			SetOutputSender(level.Info, logger.Task().GetSender()).SetErrorSender(level.Error, logger.Task().GetSender())
+		patchCmd := subprocess.NewLocalCommand(cmdsJoined, conf.WorkDir, "bash", nil, true)
+		if err = patchCmd.SetOutput(output); err != nil {
+			return errors.WithStack(err)
+		}
 
-		if err = cmd.Run(ctx); err != nil {
+		if err = patchCmd.Run(ctx); err != nil {
 			return errors.WithStack(err)
 		}
 	}
@@ -551,5 +569,3 @@ func modulePatchProvidedForMergeTest(requester string, modulePatch *patch.Module
 type noopWriteCloser struct {
 	*bytes.Buffer
 }
-
-func (noopWriteCloser) Close() error { return nil }

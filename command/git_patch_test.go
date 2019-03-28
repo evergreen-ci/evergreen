@@ -15,10 +15,8 @@ import (
 	"github.com/evergreen-ci/evergreen/rest/client"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/evergreen/util"
-	"github.com/mongodb/jasper"
 	. "github.com/smartystreets/goconvey/convey"
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 )
 
 func TestPatchPluginAPI(t *testing.T) {
@@ -99,10 +97,6 @@ func TestPatchPlugin(t *testing.T) {
 	defer cancel()
 	cwd := testutil.GetDirectoryOfFile()
 	db.SetGlobalSessionProvider(settings.SessionFactory())
-
-	jpm, err := jasper.NewLocalManager(false)
-	require.NoError(t, err)
-
 	Convey("With patch plugin installed into plugin registry", t, func() {
 		testutil.HandleTestingErr(db.Clear(model.VersionCollection), t,
 			"unable to clear versions collection")
@@ -137,7 +131,6 @@ func TestPatchPlugin(t *testing.T) {
 					So(pluginCmds, ShouldNotBeNil)
 					So(err, ShouldBeNil)
 
-					pluginCmds[0].SetJasperManager(jpm)
 					err = pluginCmds[0].Execute(ctx, comm, logger, taskConfig)
 					So(err, ShouldBeNil)
 				}

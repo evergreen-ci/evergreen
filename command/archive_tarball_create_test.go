@@ -9,10 +9,9 @@ import (
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/rest/client"
+	"github.com/evergreen-ci/evergreen/subprocess"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/evergreen/util"
-	"github.com/mongodb/grip/level"
-	"github.com/mongodb/jasper"
 	. "github.com/smartystreets/goconvey/convey"
 )
 
@@ -117,7 +116,7 @@ func TestTarGzCommandMakeArchive(t *testing.T) {
 
 				// untar the file
 				So(os.MkdirAll(outputDir, 0755), ShouldBeNil)
-				untarCmd := jasper.BuildCommand("extract test", level.Info, []string{"tar", "-zxvf", "../target.tgz"}, outputDir, nil)
+				untarCmd := subprocess.NewLocalCommand("tar xvf ../target.tgz", outputDir, "bash", nil, false)
 				So(untarCmd.Run(context.TODO()), ShouldBeNil)
 
 				// make sure that the correct files were included
@@ -131,7 +130,9 @@ func TestTarGzCommandMakeArchive(t *testing.T) {
 				)
 				So(err, ShouldBeNil)
 				So(exists, ShouldBeFalse)
+
 			})
+
 		})
 	})
 }

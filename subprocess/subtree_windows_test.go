@@ -1,6 +1,6 @@
 // +build windows
 
-package util
+package subprocess
 
 import (
 	"fmt"

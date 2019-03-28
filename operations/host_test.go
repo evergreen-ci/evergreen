@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
-	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -68,10 +67,10 @@ func TestHostSetupScript(t *testing.T) {
 func TestHostSudoShHelper(t *testing.T) {
 	assert := assert.New(t)
 
-	cmd := host.ShCommandWithSudo(context.Background(), "foo", false)
+	cmd := getShCommandWithSudo(context.Background(), "foo", false)
 	assert.Equal([]string{"sh", "foo"}, cmd.Args)
 
-	cmd = host.ShCommandWithSudo(context.Background(), "foo", true)
+	cmd = getShCommandWithSudo(context.Background(), "foo", true)
 	assert.Equal([]string{"sudo", "sh", "foo"}, cmd.Args)
 }
 

@@ -69,7 +69,6 @@ func (a *Agent) runCommandSet(ctx context.Context, tc *taskContext, commandInfo 
 		// command's type *if* the command's type is
 		// not otherwise set.
 		cmd.SetType(tc.taskConfig.Project.CommandType)
-		cmd.SetJasperManager(a.jasper)
 
 		fullCommandName := getCommandName(commandInfo, cmd)
 

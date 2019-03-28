@@ -7,18 +7,17 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen/rest/client"
+	"github.com/evergreen-ci/evergreen/subprocess"
 	"github.com/evergreen-ci/evergreen/util"
+	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/level"
-	"github.com/mongodb/grip/message"
 	"github.com/mongodb/grip/recovery"
-	"github.com/mongodb/jasper"
 )
 
 // StatsCollector samples machine statistics and logs them
 // back to the API server at regular intervals.
 type StatsCollector struct {
 	logger client.LoggerProducer
-	jasper jasper.Manager
 	Cmds   []string
 	// indicates the sampling frequency
 	Interval time.Duration
@@ -26,12 +25,11 @@ type StatsCollector struct {
 
 // NewSimpleStatsCollector creates a StatsCollector that runs the given commands
 // at the given interval and sends the results to the given logger.
-func NewSimpleStatsCollector(logger client.LoggerProducer, jpm jasper.Manager, interval time.Duration, cmds ...string) *StatsCollector {
+func NewSimpleStatsCollector(logger client.LoggerProducer, interval time.Duration, cmds ...string) *StatsCollector {
 	return &StatsCollector{
 		logger:   logger,
 		Cmds:     cmds,
 		Interval: interval,
-		jasper:   jpm,
 	}
 }
 
@@ -66,29 +64,30 @@ func (sc *StatsCollector) logStats(ctx context.Context, exp *util.Expansions) {
 		defer recovery.LogStackTraceAndContinue("encountered issue in stats collector")
 
 		sc.logger.System().Infof("Starting stats collector with %d commands at interval %s: %s", len(sc.Cmds), sc.Interval, strings.Join(sc.Cmds, ", "))
+		output := subprocess.OutputOptions{
+			Output: sc.logger.SystemWriter(level.Info),
+			Error:  sc.logger.SystemWriter(level.Error),
+		}
 
-		iters := 0
-		startedAt := time.Now()
 		for {
-			iters++
 			select {
 			case <-ctx.Done():
 				sc.logger.System().Info("StatsCollector ticker stopping.")
 				return
 			case <-timer.C:
-				runStartedAt := time.Now()
-				err := sc.jasper.CreateCommand(ctx).Append(sc.Cmds...).
-					SetOutputSender(level.Info, sc.logger.System().GetSender()).
-					SetErrorSender(level.Error, sc.logger.System().GetSender()).
-					Run(ctx)
+				for _, cmd := range sc.Cmds {
+					sc.logger.System().Infof("Running %v", cmd)
+					command := subprocess.NewLocalCommand(cmd, "", "bash", nil, false)
+					if err := command.SetOutput(output); err != nil {
+						// if we get here, it's programmer error
+						grip.Critical(err)
+						panic("problem configuring output for stats collector")
+					}
 
-				sc.logger.System().Error(message.WrapError(err, message.Fields{
-					"message":           "error running stats collector",
-					"iterations":        iters,
-					"iter_runtime_secs": time.Since(runStartedAt).Seconds(),
-					"runtime_secs":      time.Since(startedAt).Seconds(),
-					"interval":          sc.Interval,
-				}))
+					if err := command.Run(ctx); err != nil {
+						sc.logger.System().Errorf("error running '%v': %v", cmd, err)
+					}
+				}
 				timer.Reset(sc.Interval)
 			}
 		}

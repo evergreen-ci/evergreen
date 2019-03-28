@@ -9,7 +9,6 @@ import (
 	"github.com/evergreen-ci/evergreen/rest/client"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/evergreen/util"
-	"github.com/mongodb/jasper"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
@@ -20,7 +19,6 @@ type execCmdSuite struct {
 	conf   *model.TaskConfig
 	comm   client.Communicator
 	logger client.LoggerProducer
-	jasper jasper.Manager
 	ctx    context.Context
 
 	suite.Suite
@@ -28,12 +26,6 @@ type execCmdSuite struct {
 
 func TestExecCmdSuite(t *testing.T) {
 	suite.Run(t, new(execCmdSuite))
-}
-
-func (s *execCmdSuite) SetupSuite() {
-	var err error
-	s.jasper, err = jasper.NewLocalManager(false)
-	s.Require().NoError(err)
 }
 
 func (s *execCmdSuite) SetupTest() {
@@ -163,37 +155,50 @@ func (s *execCmdSuite) TestInvalidToSpecifyCommandInMultipleWays() {
 	s.Error(cmd.ParseParams(map[string]interface{}{}))
 }
 
+func (s *execCmdSuite) TestGetProcErrorsIfCommandIsNotSet() {
+	cmd := &subprocessExec{}
+	s.NoError(cmd.ParseParams(map[string]interface{}{}))
+	exec, closer, err := cmd.getProc("foo", s.logger)
+	s.Len(cmd.Env, 2)
+	s.Error(err)
+	s.Nil(exec)
+	s.Nil(closer)
+}
+
 func (s *execCmdSuite) TestGetProcEnvSetting() {
 	cmd := &subprocessExec{
 		Binary:    "bash",
 		SystemLog: true,
 	}
-	cmd.SetJasperManager(s.jasper)
-
 	s.NoError(cmd.ParseParams(map[string]interface{}{}))
-	exec := cmd.getProc(s.ctx, "foo", s.logger)
-	s.Len(cmd.Env, 2)
+	exec, closer, err := cmd.getProc("foo", s.logger)
+	s.NoError(err)
 	s.NotNil(exec)
+	s.NotNil(closer)
+	s.NotPanics(func() { closer() })
+	s.Len(cmd.Env, 2)
 }
 
 func (s *execCmdSuite) TestRunCommand() {
 	cmd := &subprocessExec{
 		Binary: "bash",
 	}
-	cmd.SetJasperManager(s.jasper)
 	s.NoError(cmd.ParseParams(map[string]interface{}{}))
-	exec := cmd.getProc(s.ctx, "foo", s.logger)
+	exec, closer, err := cmd.getProc("foo", s.logger)
+	s.NoError(err)
 	s.NoError(cmd.runCommand(s.ctx, "foo", exec, s.logger))
+	s.NotPanics(func() { closer() })
 }
 
 func (s *execCmdSuite) TestRunCommandPropgatesError() {
 	cmd := &subprocessExec{
 		Command: "bash -c 'exit 1'",
 	}
-	cmd.SetJasperManager(s.jasper)
 	s.NoError(cmd.ParseParams(map[string]interface{}{}))
-	exec := cmd.getProc(s.ctx, "foo", s.logger)
+	exec, closer, err := cmd.getProc("foo", s.logger)
+	s.NoError(err)
 	s.Error(cmd.runCommand(s.ctx, "foo", exec, s.logger))
+	s.NotPanics(func() { closer() })
 }
 
 func (s *execCmdSuite) TestRunCommandContinueOnErrorNoError() {
@@ -201,10 +206,11 @@ func (s *execCmdSuite) TestRunCommandContinueOnErrorNoError() {
 		Command:         "bash -c 'exit 1'",
 		ContinueOnError: true,
 	}
-	cmd.SetJasperManager(s.jasper)
 	s.NoError(cmd.ParseParams(map[string]interface{}{}))
-	exec := cmd.getProc(s.ctx, "foo", s.logger)
+	exec, closer, err := cmd.getProc("foo", s.logger)
+	s.NoError(err)
 	s.NoError(cmd.runCommand(s.ctx, "foo", exec, s.logger))
+	s.NotPanics(func() { closer() })
 }
 
 func (s *execCmdSuite) TestRunCommandBackgroundAlwaysNil() {
@@ -213,10 +219,11 @@ func (s *execCmdSuite) TestRunCommandBackgroundAlwaysNil() {
 		Background: true,
 		Silent:     true,
 	}
-	cmd.SetJasperManager(s.jasper)
 	s.NoError(cmd.ParseParams(map[string]interface{}{}))
-	exec := cmd.getProc(s.ctx, "foo", s.logger)
+	exec, closer, err := cmd.getProc("foo", s.logger)
+	s.NoError(err)
 	s.NoError(cmd.runCommand(s.ctx, "foo", exec, s.logger))
+	s.NotPanics(func() { closer() })
 }
 
 func (s *execCmdSuite) TestCommandFailsWithoutWorkingDirectorySet() {
@@ -237,7 +244,6 @@ func (s *execCmdSuite) TestCommandIntegrationSimple() {
 		Command:    "bash -c 'echo hello world!'",
 		WorkingDir: testutil.GetDirectoryOfFile(),
 	}
-	cmd.SetJasperManager(s.jasper)
 
 	s.NoError(cmd.ParseParams(map[string]interface{}{}))
 	s.NoError(cmd.Execute(s.ctx, s.comm, s.logger, s.conf))
@@ -262,7 +268,7 @@ func (s *execCmdSuite) TestCommandIntegrationFailureCase() {
 		Env:        map[string]string{},
 		WorkingDir: testutil.GetDirectoryOfFile(),
 	}
-	cmd.SetJasperManager(s.jasper)
+
 	s.NoError(cmd.ParseParams(map[string]interface{}{}))
 	s.Error(cmd.Execute(s.ctx, s.comm, s.logger, s.conf))
 }
@@ -272,7 +278,6 @@ func (s *execCmdSuite) TestExecuteErrorsIfCommandAborts() {
 		Command:    "bash -c 'echo hello world!'",
 		WorkingDir: testutil.GetDirectoryOfFile(),
 	}
-	cmd.SetJasperManager(s.jasper)
 
 	s.cancel()
 
@@ -289,7 +294,6 @@ func (s *execCmdSuite) TestKeepEmptyArgs() {
 		Command:    "echo ${foo|} bar",
 		WorkingDir: testutil.GetDirectoryOfFile(),
 	}
-	cmd.SetJasperManager(s.jasper)
 	s.NoError(cmd.ParseParams(map[string]interface{}{}))
 	s.NoError(cmd.Execute(s.ctx, s.comm, s.logger, s.conf))
 	s.Len(cmd.Args, 1)
@@ -300,7 +304,6 @@ func (s *execCmdSuite) TestKeepEmptyArgs() {
 		WorkingDir:    testutil.GetDirectoryOfFile(),
 		KeepEmptyArgs: true,
 	}
-	cmd.SetJasperManager(s.jasper)
 	s.NoError(cmd.ParseParams(map[string]interface{}{}))
 	s.NoError(cmd.Execute(s.ctx, s.comm, s.logger, s.conf))
 	s.Len(cmd.Args, 2)

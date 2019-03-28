@@ -26,31 +26,15 @@ type Command struct {
 	priority level.Priority
 	id       string
 	procIDs  []string
-	remote   remoteCommandOptions
 
 	continueOnError bool
 	ignoreError     bool
-	runBackground   bool
 	prerequisite    func() bool
 
 	makep ProcessConstructor
 }
 
-type remoteCommandOptions struct {
-	host string
-	user string
-	args []string
-}
-
-func (rco *remoteCommandOptions) hostString() string {
-	if rco.user == "" {
-		return rco.host
-	}
-
-	return fmt.Sprintf("%s@%s", rco.user, rco.host)
-}
-
-func getRemoteCreateOpt(ctx context.Context, rco remoteCommandOptions, args []string, dir string) (*CreateOptions, error) {
+func getRemoteCreateOpt(ctx context.Context, host string, args []string, dir string) (*CreateOptions, error) {
 	var remoteCmd string
 
 	if dir != "" {
@@ -66,7 +50,7 @@ func getRemoteCreateOpt(ctx context.Context, rco remoteCommandOptions, args []st
 		remoteCmd += strings.Join(args, " ")
 	}
 
-	return &CreateOptions{Args: append(append([]string{"ssh"}, rco.args...), rco.hostString(), remoteCmd)}, nil
+	return &CreateOptions{Args: []string{"ssh", host, remoteCmd}}, nil
 }
 
 func getLogOutput(out []byte) string {
@@ -102,9 +86,6 @@ func (c *Command) GetProcIDs() []string { return c.procIDs }
 // ApplyFromOpts uses the CreateOptions to configure the Command.
 func (c *Command) ApplyFromOpts(opts *CreateOptions) *Command { c.opts = opts; return c }
 
-// SetOutputOptions sets the output options for a command.
-func (c *Command) SetOutputOptions(opts OutputOptions) *Command { c.opts.Output = opts; return c }
-
 // String returns a stringified representation.
 func (c *Command) String() string { return fmt.Sprintf("id='%s', cmd='%s'", c.id, c.getCmd()) }
 
@@ -113,33 +94,13 @@ func (c *Command) Directory(d string) *Command { c.opts.WorkingDirectory = d; re
 
 // Host sets the hostname. A blank hostname implies local execution of the
 // command, a non-blank hostname is treated as a remotely executed command.
-func (c *Command) Host(h string) *Command { c.remote.host = h; return c }
-
-// User sets the username for remote operations. Host name must be set
-// to execute as a remote command.
-func (c *Command) User(u string) *Command { c.remote.user = u; return c }
-
-// SetSSHArgs sets the arguments, if any, that are passed to the
-// underlying ssh command, for remote commands.
-func (c *Command) SetSSHArgs(args []string) *Command { c.remote.args = args; return c }
-
-// ExtendSSHArgs allows you to add arguments, when needed, to the
-// underlying ssh command, for remote commands.
-func (c *Command) ExtendSSHArgs(a ...string) *Command {
-	c.remote.args = append(c.remote.args, a...)
-	return c
-}
+func (c *Command) Host(h string) *Command { c.opts.Hostname = h; return c }
 
 // Priority sets the logging priority.
 func (c *Command) Priority(l level.Priority) *Command { c.priority = l; return c }
 
 // ID sets the ID.
 func (c *Command) ID(id string) *Command { c.id = id; return c }
-
-// Background allows you to set the command to run in the background
-// when you call Run(), the command will begin executing but will not
-// complete when run returns.
-func (c *Command) Background(runBackground bool) *Command { c.runBackground = runBackground; return c }
 
 // ContinueOnError sets a flag for determining if the Command should continue
 // executing its sub-commands even if one of them errors.
@@ -148,26 +109,6 @@ func (c *Command) ContinueOnError(cont bool) *Command { c.continueOnError = cont
 // IgnoreError sets a flag for determining if the Command should return a nil
 // error despite errors in its sub-command executions.
 func (c *Command) IgnoreError(ignore bool) *Command { c.ignoreError = ignore; return c }
-
-// SuppressStandardError, when set to true, discards all standard
-// error content.
-func (c *Command) SuppressStandardError(v bool) *Command { c.opts.Output.SuppressError = v; return c }
-
-// SuppressStandardOutput, when set to true, discards all standard
-// output content.
-func (c *Command) SuppressStandardOutput(v bool) *Command { c.opts.Output.SuppressOutput = v; return c }
-
-// RedirectOutputToError sends all standard output content to standard error.
-func (c *Command) RedirectOutputToError(v bool) *Command {
-	c.opts.Output.SendOutputToError = v
-	return c
-}
-
-// RedirectOutputToError sends all standard error output to standard output.
-func (c *Command) RedirectErrorToOutput(v bool) *Command {
-	c.opts.Output.SendOutputToError = v
-	return c
-}
 
 // Environment replaces the current environment map with the given environment
 // map.
@@ -418,7 +359,10 @@ func getCreateOpt(ctx context.Context, args []string, dir string, env map[string
 		opts = &CreateOptions{Args: args}
 	}
 	opts.WorkingDirectory = dir
-	opts.Environment = env
+
+	for k, v := range env {
+		opts.Environment[k] = v
+	}
 
 	return opts, nil
 }
@@ -426,9 +370,9 @@ func getCreateOpt(ctx context.Context, args []string, dir string, env map[string
 func (c *Command) getCreateOpts(ctx context.Context) ([]*CreateOptions, error) {
 	out := []*CreateOptions{}
 	catcher := grip.NewBasicCatcher()
-	if c.remote.host != "" {
+	if c.opts.Hostname != "" {
 		for _, args := range c.cmds {
-			cmd, err := getRemoteCreateOpt(ctx, c.remote, args, c.opts.WorkingDirectory)
+			cmd, err := getRemoteCreateOpt(ctx, c.opts.Hostname, args, c.opts.WorkingDirectory)
 			if err != nil {
 				catcher.Add(err)
 				continue
@@ -460,10 +404,8 @@ func (c *Command) exec(ctx context.Context, opts *CreateOptions, idx int) error 
 		"cmd": strings.Join(opts.Args, " "),
 		"idx": idx,
 		"len": len(c.cmds),
-		"bkg": c.runBackground,
 	}
 
-	addOutOp := func(msg message.Fields) message.Fields { return msg }
 	var err error
 	var newProc Process
 	if c.opts.Output.Output == nil {
@@ -476,10 +418,9 @@ func (c *Command) exec(ctx context.Context, opts *CreateOptions, idx int) error 
 		}
 
 		c.procIDs = append(c.procIDs, newProc.ID())
-		addOutOp = func(msg message.Fields) message.Fields {
-			getLogOutput(out.Bytes())
-			return msg
-		}
+		_, err = newProc.Wait(ctx)
+		msg["out"] = getLogOutput(out.Bytes())
+		msg["err"] = err
 	} else {
 		opts.Output.Error = c.opts.Output.Error
 		opts.Output.Output = c.opts.Output.Output
@@ -489,60 +430,57 @@ func (c *Command) exec(ctx context.Context, opts *CreateOptions, idx int) error 
 		}
 
 		c.procIDs = append(c.procIDs, newProc.ID())
-	}
-
-	if !c.runBackground {
 		_, err = newProc.Wait(ctx)
 		msg["err"] = err
 	}
 
-	grip.Log(c.priority, addOutOp(msg))
-	return errors.WithStack(err)
+	grip.Log(c.priority, msg)
+	return err
 }
 
-// BuildCommand builds the Command given the configuration of arguments.
-func BuildCommand(id string, pri level.Priority, args []string, dir string, env map[string]string) *Command {
-	return NewCommand().ID(id).Priority(pri).Add(args).Directory(dir).Environment(env)
+// RunCommand runs the Command given the configuration of arguments.
+func RunCommand(ctx context.Context, id string, pri level.Priority, args []string, dir string, env map[string]string) error {
+	return NewCommand().ID(id).Priority(pri).Add(args).Directory(dir).Environment(env).Run(ctx)
 }
 
-// BuildRemoteCommand builds the Command remotely given the configuration of arguments.
-func BuildRemoteCommand(id string, pri level.Priority, host string, args []string, dir string) *Command {
-	return NewCommand().ID(id).Priority(pri).Host(host).Add(args).Directory(dir)
+// RunRemoteCommand runs the Command remotely given the configuration of arguments.
+func RunRemoteCommand(ctx context.Context, id string, pri level.Priority, host string, args []string, dir string) error {
+	return NewCommand().ID(id).Priority(pri).Host(host).Add(args).Directory(dir).Run(ctx)
 }
 
-// BuildCommandGroupContinueOnError runs the group of sub-commands given the
+// RunCommandGroupContinueOnError runs the group of sub-commands given the
 // configuration of arguments, continuing execution despite any errors.
-func BuildCommandGroupContinueOnError(id string, pri level.Priority, cmds [][]string, dir string, env map[string]string) *Command {
-	return NewCommand().ID(id).Priority(pri).Extend(cmds).Directory(dir).Environment(env).ContinueOnError(true)
+func RunCommandGroupContinueOnError(ctx context.Context, id string, pri level.Priority, cmds [][]string, dir string, env map[string]string) error {
+	return NewCommand().ID(id).Priority(pri).Extend(cmds).Directory(dir).Environment(env).ContinueOnError(true).Run(ctx)
 }
 
-// BuildRemoteCommandGroupContinueOnError runs the group of sub-commands remotely
+// RunRemoteCommandGroupContinueOnError runs the group of sub-commands remotely
 // given the configuration of arguments, continuing execution despite any
 // errors.
-func BuildRemoteCommandGroupContinueOnError(id string, pri level.Priority, host string, cmds [][]string, dir string) *Command {
-	return NewCommand().ID(id).Priority(pri).Host(host).Extend(cmds).Directory(dir).ContinueOnError(true)
+func RunRemoteCommandGroupContinueOnError(ctx context.Context, id string, pri level.Priority, host string, cmds [][]string, dir string) error {
+	return NewCommand().ID(id).Priority(pri).Host(host).Extend(cmds).Directory(dir).ContinueOnError(true).Run(ctx)
 }
 
-// BuildCommandGroup runs the group of sub-commands given the configuration of
+// RunCommandGroup runs the group of sub-commands given the configuration of
 // arguments.
-func BuildCommandGroup(id string, pri level.Priority, cmds [][]string, dir string, env map[string]string) *Command {
-	return NewCommand().ID(id).Priority(pri).Extend(cmds).Directory(dir).Environment(env)
+func RunCommandGroup(ctx context.Context, id string, pri level.Priority, cmds [][]string, dir string, env map[string]string) error {
+	return NewCommand().ID(id).Priority(pri).Extend(cmds).Directory(dir).Environment(env).Run(ctx)
 }
 
-// BuildRemoteCommandGroup runs the group of sub-commands remotely given the
+// RunRemoteCommandGroup runs the group of sub-commands remotely given the
 // configuration of arguments.
-func BuildRemoteCommandGroup(id string, pri level.Priority, host string, cmds [][]string, dir string) *Command {
-	return NewCommand().ID(id).Priority(pri).Host(host).Extend(cmds).Directory(dir)
+func RunRemoteCommandGroup(ctx context.Context, id string, pri level.Priority, host string, cmds [][]string, dir string) error {
+	return NewCommand().ID(id).Priority(pri).Host(host).Extend(cmds).Directory(dir).Run(ctx)
 }
 
-// BuildParallelCommandGroup runs the group of sub-commands in
+// RunParallelCommandGroup runs the group of sub-commands in
 // parallel given the configuration of arguments.
-func BuildParallelCommandGroup(id string, pri level.Priority, cmds [][]string, dir string, env map[string]string) *Command {
-	return NewCommand().ID(id).Priority(pri).Extend(cmds).Directory(dir).Environment(env)
+func RunParallelCommandGroup(ctx context.Context, id string, pri level.Priority, cmds [][]string, dir string, env map[string]string) error {
+	return NewCommand().ID(id).Priority(pri).Extend(cmds).Directory(dir).Environment(env).RunParallel(ctx)
 }
 
-// BuildParallelRemoteCommandGroup runs the group of sub-commands
+// RunParallelRemoteCommandGroup runs the group of sub-commands
 // remotely in parallel given the configuration of arguments.
-func BuildParallelRemoteCommandGroup(id string, pri level.Priority, host string, cmds [][]string, dir string) *Command {
-	return NewCommand().ID(id).Priority(pri).Host(host).Extend(cmds).Directory(dir)
+func RunParallelRemoteCommandGroup(ctx context.Context, id string, pri level.Priority, host string, cmds [][]string, dir string) error {
+	return NewCommand().ID(id).Priority(pri).Host(host).Extend(cmds).Directory(dir).RunParallel(ctx)
 }

@@ -9,7 +9,6 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
-	"strings"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
@@ -18,6 +17,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/user"
+	"github.com/evergreen-ci/evergreen/subprocess"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/amboy/dependency"
@@ -308,36 +308,46 @@ func (j *setupHostJob) copyScript(ctx context.Context, settings *evergreen.Setti
 		return errors.Wrapf(err, "error getting ssh options for host %v", target.Id)
 	}
 
-	scpCmdOut := &util.CappedWriter{
-		Buffer:   &bytes.Buffer{},
-		MaxBytes: 1024 * 1024,
-	}
-	scpArgs := buildScpCommand(file.Name(), name, hostInfo, user, sshOptions)
+	scpCmdOut := &bytes.Buffer{}
 
-	scpCmd := j.env.JasperManager().CreateCommand(ctx).Add(scpArgs).
-		RedirectErrorToOutput(true).SetOutputWriter(scpCmdOut)
+	output := subprocess.OutputOptions{Output: scpCmdOut, SendErrorToOutput: true}
+	scpCmd := subprocess.NewSCPCommand(
+		file.Name(),
+		filepath.Join("~", name),
+		hostInfo.Hostname,
+		user,
+		append([]string{"-vvv", "-P", hostInfo.Port}, sshOptions...))
+
+	if err = scpCmd.SetOutput(output); err != nil {
+		grip.Alert(message.WrapError(err, message.Fields{
+			"job":       j.ID(),
+			"operation": "setting up copy script command",
+			"distro":    target.Distro.Id,
+			"host":      target.Host,
+			"output":    output,
+			"cause":     "programmer error",
+		}))
+		return errors.Wrap(err, "problem configuring output")
+	}
 
 	// run the command to scp the script with a timeout
 	var cancel context.CancelFunc
 	ctx, cancel = context.WithTimeout(ctx, scpTimeout)
 	defer cancel()
+	if err = scpCmd.Run(ctx); err != nil {
+		grip.Notice(message.WrapError(err, message.Fields{
+			"message": "problem copying script to host",
+			"job":     j.ID(),
+			"command": scpCmd,
+			"distro":  target.Distro.Id,
+			"host":    target.Host,
+			"output":  scpCmdOut.String(),
+		}))
 
-	err = scpCmd.Run(ctx)
-
-	grip.Notice(message.WrapError(err, message.Fields{
-		"message": "problem copying script to host",
-		"job":     j.ID(),
-		"command": strings.Join(scpArgs, " "),
-		"distro":  target.Distro.Id,
-		"host":    target.Host,
-		"output":  scpCmdOut.String(),
-	}))
-
-	return errors.Wrap(err, "error copying script to remote machine")
-}
-
-func buildScpCommand(src, dst string, info *util.StaticHostInfo, user string, opts []string) []string {
-	return append(append([]string{"scp", "-vvv", "-P", info.Port}, opts...), src, fmt.Sprintf("%s@%s:~/%s", user, info.Hostname, dst))
+		return errors.Wrapf(err, "error (%v) copying script to remote machine",
+			scpCmdOut.String())
+	}
+	return nil
 }
 
 // Build the setup script that will need to be run on the specified host.
@@ -556,14 +566,20 @@ func (j *setupHostJob) loadClient(ctx context.Context, target *host.Host, settin
 		Buffer:   &bytes.Buffer{},
 		MaxBytes: 1024 * 1024,
 	}
+	opts := subprocess.OutputOptions{Output: mkdirOutput, SendErrorToOutput: true}
+	makeShellCmd := subprocess.NewRemoteCommand(
+		fmt.Sprintf("mkdir -m 777 -p ~/%s && (echo 'PATH=$PATH:~/%s' >> ~/.profile || true; echo 'PATH=$PATH:~/%s' >> ~/.bash_profile || true)", targetDir, targetDir, targetDir),
+		hostSSHInfo.Hostname,
+		target.User,
+		nil,   // env
+		false, // background
+		append([]string{"-p", hostSSHInfo.Port}, sshOptions...),
+		false, // disable logging
+	)
 
-	mkdctx, cancel := context.WithTimeout(ctx, 30*time.Second)
-	defer cancel()
-
-	makeShellCmd := j.env.JasperManager().CreateCommand(mkdctx).Host(hostSSHInfo.Hostname).User(target.User).
-		ExtendSSHArgs("-p", hostSSHInfo.Port).ExtendSSHArgs(sshOptions...).
-		RedirectErrorToOutput(true).SetOutputWriter(mkdirOutput).
-		Append(fmt.Sprintf("mkdir -m 777 -p ~/%s && (echo 'PATH=$PATH:~/%s' >> ~/.profile || true; echo 'PATH=$PATH:~/%s' >> ~/.bash_profile || true)", targetDir, targetDir, targetDir))
+	if err = makeShellCmd.SetOutput(opts); err != nil {
+		return nil, errors.Wrap(err, "problem setting up output")
+	}
 
 	// Create the directory for the binary to be uploaded into.
 	// Also, make a best effort to add the binary's location to $PATH upon login. If we can't do
@@ -571,26 +587,48 @@ func (j *setupHostJob) loadClient(ctx context.Context, target *host.Host, settin
 	// use an absolute path (or manually set $PATH in their shell) to execute it.
 
 	// run the make shell command with a timeout
-	if err = makeShellCmd.Run(mkdctx); err != nil {
+	var cancel context.CancelFunc
+	ctx, cancel = context.WithTimeout(ctx, 30*time.Second)
+	defer cancel()
+	if err = makeShellCmd.Run(ctx); err != nil {
 		return nil, errors.Wrapf(err, "error running setup command for cli, %v",
 			mkdirOutput.Buffer.String())
 	}
-
-	// run the command to curl the agent
-	curlctx, cancel := context.WithTimeout(ctx, 2*time.Minute)
-	defer cancel()
 
 	curlOut := &util.CappedWriter{
 		Buffer:   &bytes.Buffer{},
 		MaxBytes: 1024 * 1024,
 	}
+	opts.Output = curlOut
 
-	curlcmd := j.env.JasperManager().CreateCommand(mkdctx).Host(hostSSHInfo.Hostname).User(target.User).
-		ExtendSSHArgs("-p", hostSSHInfo.Port).ExtendSSHArgs(sshOptions...).
-		RedirectErrorToOutput(true).SetOutputWriter(curlOut).
-		Append(target.CurlCommand(settings.Ui.Url))
+	// place the binary into the directory
+	curlSetupCmd := subprocess.NewRemoteCommand(
+		target.CurlCommand(settings.Ui.Url),
+		hostSSHInfo.Hostname,
+		target.User,
+		nil,   // env
+		false, // background
+		append([]string{"-p", hostSSHInfo.Port}, sshOptions...),
+		false, // disable logging
+	)
 
-	if err = curlcmd.Run(curlctx); err != nil {
+	if err = curlSetupCmd.SetOutput(opts); err != nil {
+		grip.Alert(message.WrapError(err, message.Fields{
+			"job":       j.ID(),
+			"operation": "command to fetch the evergreen binary on the host",
+			"distro":    target.Distro.Id,
+			"host":      target.Host,
+			"output":    opts,
+			"cause":     "programmer error",
+		}))
+
+		return nil, errors.Wrap(err, "problem setting up output")
+	}
+
+	// run the command to curl the agent
+	ctx, cancel = context.WithTimeout(ctx, 3*time.Minute)
+	defer cancel()
+	if err = curlSetupCmd.Run(ctx); err != nil {
 		return nil, errors.Wrapf(err, "error running curl command for cli, %s", curlOut.Buffer.String())
 	}
 
@@ -622,15 +660,36 @@ func (j *setupHostJob) loadClient(ctx context.Context, target *host.Host, settin
 		MaxBytes: 1024 * 1024,
 	}
 
-	scpArgs := buildScpCommand(tempFileName, fmt.Sprintf("%s/.evergreen.yml", targetDir), hostSSHInfo, target.User, sshOptions)
-	scpYmlCommand := j.env.JasperManager().CreateCommand(ctx).Add(scpArgs).
-		RedirectErrorToOutput(true).SetOutputWriter(scpOut)
+	output := subprocess.OutputOptions{
+		Output:            scpOut,
+		SendErrorToOutput: true,
+	}
+
+	scpYmlCommand := subprocess.NewSCPCommand(
+		tempFileName,
+		fmt.Sprintf("~/%s/.evergreen.yml", targetDir),
+		hostSSHInfo.Hostname,
+		target.User,
+		append([]string{"-P", hostSSHInfo.Port}, sshOptions...))
+
+	if err = scpYmlCommand.SetOutput(output); err != nil {
+		grip.Alert(message.WrapError(err, message.Fields{
+			"job":       j.ID(),
+			"operation": "setting up copy cli config command",
+			"distro":    target.Distro.Id,
+			"host":      target.Host,
+			"output":    output,
+			"cause":     "programmer error",
+		}))
+
+		return nil, errors.Wrap(err, "problem configuring output")
+	}
 
 	ctx, cancel = context.WithTimeout(ctx, 30*time.Second)
 	defer cancel()
 
 	if err = scpYmlCommand.Run(ctx); err != nil {
-		return nil, errors.Wrapf(err, "error running SCP command for evergreen.yml, %v", scpOut.String())
+		return nil, errors.Wrapf(err, "error running SCP command for evergreen.yml, %v", scpOut.Buffer.String())
 	}
 
 	return &loadClientResult{
@@ -660,28 +719,47 @@ func (j *setupHostJob) fetchRemoteTaskData(ctx context.Context, taskId, cliPath,
 		MaxBytes: 1024 * 1024,
 	}
 	fetchCmd := fmt.Sprintf("%s -c %s fetch -t %s --source --artifacts --dir='%s'", cliPath, confPath, taskId, target.Distro.WorkDir)
+	makeShellCmd := subprocess.NewRemoteCommand(
+		fetchCmd,
+		hostSSHInfo.Hostname,
+		target.User,
+		nil,   // env
+		false, // background
+		append([]string{"-p", hostSSHInfo.Port}, sshOptions...),
+		false, // disable logging
+	)
 
-	makeShellCmd := j.env.JasperManager().CreateCommand(ctx).Host(hostSSHInfo.Hostname).User(target.User).
-		ExtendSSHArgs("-p", hostSSHInfo.Port).ExtendSSHArgs(sshOptions...).
-		RedirectErrorToOutput(true).SetOutputWriter(cmdOutput).
-		Append(fetchCmd)
+	output := subprocess.OutputOptions{Output: cmdOutput, SendErrorToOutput: true}
+	if err := makeShellCmd.SetOutput(output); err != nil {
+		grip.Alert(message.WrapError(err, message.Fields{
+			"operation": "fetch command",
+			"message":   "configuring output for fetch command",
+			"hostname":  hostSSHInfo.Hostname,
+			"distro":    target.Distro.Id,
+			"host_id":   target.Id,
+			"cause":     "programmer error",
+			"output":    output,
+		}))
+
+		return errors.Wrap(err, "problem configuring output for fetch command")
+	}
 
 	// run the make shell command with a timeout
 	var cancel context.CancelFunc
 	ctx, cancel = context.WithTimeout(ctx, 15*time.Minute)
 	defer cancel()
 
-	err = makeShellCmd.Run(ctx)
-
-	grip.Error(message.WrapError(err, message.Fields{
-		"message": fmt.Sprintf("fetch-artifacts-%s", taskId),
-		"host":    hostSSHInfo.Hostname,
-		"cmd":     fetchCmd,
-		"job":     j.ID(),
-		"output":  cmdOutput.Buffer.String(),
-	}))
-
-	return errors.WithStack(err)
+	if err := makeShellCmd.Run(ctx); err != nil {
+		grip.Error(message.WrapError(err, message.Fields{
+			"message": fmt.Sprintf("fetch-artifacts-%s", taskId),
+			"host":    hostSSHInfo.Hostname,
+			"cmd":     fetchCmd,
+			"job":     j.ID(),
+			"output":  cmdOutput.Buffer.String(),
+		}))
+		return err
+	}
+	return nil
 }
 
 func (j *setupHostJob) tryRequeue() {

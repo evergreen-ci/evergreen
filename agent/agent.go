@@ -14,6 +14,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/rest/client"
+	"github.com/evergreen-ci/evergreen/subprocess"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/pail"
 	"github.com/mongodb/grip"
@@ -50,7 +51,6 @@ type taskContext struct {
 	expansions     util.Expansions
 	expVars        *apimodels.ExpansionVars
 	logger         client.LoggerProducer
-	jasper         jasper.Manager
 	logs           *apimodels.TaskLogs
 	statsCollector *StatsCollector
 	task           client.TaskData
@@ -77,7 +77,7 @@ func New(opts Options, comm client.Communicator) (*Agent, error) {
 		comm: comm,
 	}
 
-	jpm, err := jasper.NewLocalManager(false)
+	jpm, err := jasper.NewLocalManager(true)
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}
@@ -182,7 +182,6 @@ LOOP:
 				}
 				tskCtx, tskCancel := context.WithCancel(ctx)
 				a.jasper.Clear(ctx)
-				tc.jasper = a.jasper
 				defer tskCancel()
 				shouldExit, err := a.runTask(tskCtx, tskCancel, tc)
 				if err != nil {
@@ -292,8 +291,8 @@ func (a *Agent) resetLogging(ctx context.Context, tc *taskContext) error {
 
 	sender, err := GetSender(ctx, a.opts.LogPrefix, tc.task.ID)
 	grip.Error(errors.Wrap(err, "problem getting sender"))
-	grip.Error(errors.Wrap(grip.SetSender(sender), "problem setting sender"))
 
+	grip.Error(errors.Wrap(grip.SetSender(sender), "problem setting sender"))
 	return nil
 }
 
@@ -491,7 +490,7 @@ func (a *Agent) killProcs(tc *taskContext, ignoreTaskGroupCheck bool) {
 			} else {
 				grip.Infof("cleaning up processes for task: %s", tc.task.ID)
 			}
-			if err := util.KillSpawnedProcs(tc.task.ID, tc.logger.Task()); err != nil {
+			if err := subprocess.KillSpawnedProcs(tc.task.ID, tc.logger.Task()); err != nil {
 				msg := fmt.Sprintf("Error cleaning up spawned processes (agent-exit): %v", err)
 				grip.Critical(msg)
 			}

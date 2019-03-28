@@ -36,7 +36,3 @@ func (cw *CappedWriter) IsFull() bool {
 func (cw *CappedWriter) String() string {
 	return cw.Buffer.String()
 }
-
-// Close is a noop method so that you can use CappedWriter as an
-// io.WriteCloser.
-func (cw *CappedWriter) Close() error { return nil }

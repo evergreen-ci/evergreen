@@ -187,7 +187,6 @@ func (uis *UIServer) modifySpawnHost(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "no action specified", http.StatusBadRequest)
 		return
 	}
-	env := evergreen.GetEnvironment()
 	// determine what action needs to be taken
 	switch *updateParams.Action {
 	case HostTerminate:
@@ -199,7 +198,7 @@ func (uis *UIServer) modifySpawnHost(w http.ResponseWriter, r *http.Request) {
 		ctx, cancel = context.WithCancel(r.Context())
 		defer cancel()
 
-		if err := cloud.TerminateSpawnHost(ctx, h, env.Settings(), u.Id); err != nil {
+		if err := cloud.TerminateSpawnHost(ctx, h, evergreen.GetEnvironment().Settings(), u.Id); err != nil {
 			uis.LoggedError(w, r, http.StatusInternalServerError, err)
 			return
 		}
@@ -216,7 +215,7 @@ func (uis *UIServer) modifySpawnHost(w http.ResponseWriter, r *http.Request) {
 			uis.LoggedError(w, r, http.StatusBadRequest, errors.New("Invalid password"))
 			return
 		}
-		if err := cloud.SetHostRDPPassword(ctx, env, h, pwd); err != nil {
+		if err := cloud.SetHostRDPPassword(ctx, h, pwd); err != nil {
 			uis.LoggedError(w, r, http.StatusInternalServerError, err)
 			return
 		}

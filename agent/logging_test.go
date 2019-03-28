@@ -13,7 +13,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/rest/client"
 	"github.com/evergreen-ci/pail"
-	"github.com/mongodb/jasper"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -57,9 +56,6 @@ func TestCommandFileLogging(t *testing.T) {
 		},
 		comm: client.NewCommunicator("www.example.com"),
 	}
-	jpm, err := jasper.NewLocalManager(false)
-	require.NoError(err)
-	agt.jasper = jpm
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 

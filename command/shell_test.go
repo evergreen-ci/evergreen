@@ -13,7 +13,6 @@ import (
 	"github.com/evergreen-ci/evergreen/rest/client"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/evergreen/util"
-	"github.com/mongodb/jasper"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -25,19 +24,11 @@ type shellExecuteCommandSuite struct {
 	logger client.LoggerProducer
 	shells []string
 
-	jasper jasper.Manager
-
 	suite.Suite
 }
 
 func TestShellExecuteCommand(t *testing.T) {
 	suite.Run(t, new(shellExecuteCommandSuite))
-}
-
-func (s *shellExecuteCommandSuite) SetupSuite() {
-	var err error
-	s.jasper, err = jasper.NewLocalManager(false)
-	s.Require().NoError(err)
 }
 
 func (s *shellExecuteCommandSuite) SetupTest() {
@@ -61,13 +52,8 @@ func (s *shellExecuteCommandSuite) TearDownTest() {
 }
 
 func (s *shellExecuteCommandSuite) TestWorksWithEmptyShell() {
-	cmd := &shellExec{
-		WorkingDir: testutil.GetDirectoryOfFile(),
-	}
-	cmd.SetJasperManager(s.jasper)
+	cmd := &shellExec{WorkingDir: testutil.GetDirectoryOfFile()}
 	s.Empty(cmd.Shell)
-	s.NoError(cmd.ParseParams(map[string]interface{}{}))
-	s.NotEmpty(cmd.Shell)
 	s.NoError(cmd.Execute(s.ctx, s.comm, s.logger, s.conf))
 }
 
@@ -87,7 +73,7 @@ func (s *shellExecuteCommandSuite) TestSilentAndRedirectToStdOutError() {
 func (s *shellExecuteCommandSuite) TestShellIsntChangedDuringExecution() {
 	for _, sh := range s.shells {
 		cmd := &shellExec{Shell: sh, WorkingDir: testutil.GetDirectoryOfFile()}
-		cmd.SetJasperManager(s.jasper)
+
 		s.NoError(cmd.Execute(s.ctx, s.comm, s.logger, s.conf))
 		s.Equal(sh, cmd.Shell)
 	}
@@ -117,12 +103,11 @@ func (s *shellExecuteCommandSuite) TestCancellingContextShouldCancelCommand() {
 		Script:     "sleep 60",
 		WorkingDir: testutil.GetDirectoryOfFile(),
 	}
-	cmd.SetJasperManager(s.jasper)
 	ctx, cancel := context.WithTimeout(s.ctx, time.Nanosecond)
 	time.Sleep(time.Millisecond)
 	defer cancel()
 
 	err := cmd.Execute(ctx, s.comm, s.logger, s.conf)
-	s.Contains("shell command interrupted", err.Error())
+	s.Contains("context deadline exceeded", err.Error())
 	s.NotContains("error while stopping process", err.Error())
 }

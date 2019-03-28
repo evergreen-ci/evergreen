@@ -1,9 +1,10 @@
-package util
+package subprocess
 
 import (
 	"os"
 	"strings"
 
+	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/mongodb/grip"
 )
 
@@ -14,7 +15,7 @@ const (
 
 func envHasMarkers(key string, env []string) bool {
 	// If this agent was started by an integration test, only kill a proc if it was started by this agent
-	if os.Getenv(MarkerAgentPID) != "" {
+	if os.Getenv(testutil.EnvOverride) != "" {
 		for _, envVar := range env {
 			if strings.HasPrefix(envVar, MarkerTaskID) {
 				split := strings.Split(envVar, "=")

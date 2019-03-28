@@ -20,6 +20,7 @@ import (
 type CreateOptions struct {
 	Args             []string          `json:"args"`
 	Environment      map[string]string `json:"env,omitempty"`
+	Hostname         string            `json:"host,omitempty"`
 	WorkingDirectory string            `json:"working_directory,omitempty"`
 	Output           OutputOptions     `json:"output"`
 	OverrideEnviron  bool              `json:"override_env,omitempty"`
@@ -138,11 +139,11 @@ func (opts *CreateOptions) Resolve(ctx context.Context) (*exec.Cmd, error) {
 
 	cmd.Stdout, err = opts.Output.GetOutput()
 	if err != nil {
-		return nil, errors.WithStack(err)
+		return nil, err
 	}
 	cmd.Stderr, err = opts.Output.GetError()
 	if err != nil {
-		return nil, errors.WithStack(err)
+		return nil, err
 	}
 	cmd.Env = env
 
@@ -163,7 +164,7 @@ func (opts *CreateOptions) Resolve(ctx context.Context) (*exec.Cmd, error) {
 			catcher.Add(opts.Output.errorSender.Sender.Close())
 		}
 
-		return errors.WithStack(catcher.Resolve())
+		return catcher.Resolve()
 	})
 
 	return cmd, nil

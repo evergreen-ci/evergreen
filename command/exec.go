@@ -2,18 +2,19 @@ package command
 
 import (
 	"context"
+	"io"
 	"os"
 	"strconv"
 
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/rest/client"
+	"github.com/evergreen-ci/evergreen/subprocess"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/google/shlex"
 	"github.com/mitchellh/mapstructure"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/level"
 	"github.com/mongodb/grip/message"
-	"github.com/mongodb/jasper"
 	"github.com/pkg/errors"
 )
 
@@ -126,49 +127,54 @@ func (c *subprocessExec) doExpansions(exp *util.Expansions) error {
 	return errors.Wrap(catcher.Resolve(), "problem expanding strings")
 }
 
-func (c *subprocessExec) getProc(ctx context.Context, taskID string, logger client.LoggerProducer) *jasper.Command {
-	c.Env[util.MarkerTaskID] = taskID
-	c.Env[util.MarkerAgentPID] = strconv.Itoa(os.Getpid())
+func (c *subprocessExec) getProc(taskID string, logger client.LoggerProducer) (subprocess.Command, func(), error) {
+	c.Env[subprocess.MarkerTaskID] = taskID
+	c.Env[subprocess.MarkerAgentPID] = strconv.Itoa(os.Getpid())
 
-	cmd := c.JasperManager().CreateCommand(ctx).Add(append([]string{c.Binary}, c.Args...)).
-		Background(c.Background).Environment(c.Env).Directory(c.WorkingDir).
-		SuppressStandardError(c.IgnoreStandardError).SuppressStandardOutput(c.IgnoreStandardOutput).RedirectErrorToOutput(c.RedirectStandardErrorToOutput).
-		ProcConstructor(func(ctx context.Context, opts *jasper.CreateOptions) (jasper.Process, error) {
-			proc, err := c.JasperManager().CreateProcess(ctx, opts)
-			if err != nil {
-				return proc, errors.WithStack(err)
-			}
+	proc, err := subprocess.NewLocalExec(c.Binary, c.Args, c.Env, c.WorkingDir)
+	if err != nil {
+		return nil, nil, errors.Wrap(err, "problem constructing command wrapper")
+	}
 
-			pid := proc.Info(ctx).PID
+	var output io.WriteCloser
+	var error io.WriteCloser
 
-			util.TrackProcess(taskID, pid, logger.System())
+	opts := subprocess.OutputOptions{
+		SuppressOutput:    c.IgnoreStandardOutput,
+		SuppressError:     c.IgnoreStandardError,
+		SendOutputToError: c.RedirectStandardErrorToOutput,
+	}
 
-			if c.Background {
-				logger.Execution().Debugf("running command in the background [pid=%d]", pid)
-			} else {
-				logger.Execution().Infof("started process with pid '%d'", pid)
-			}
-
-			return proc, nil
-		})
-
-	if !c.IgnoreStandardOutput {
+	if !opts.SuppressOutput {
 		if c.SystemLog {
-			cmd.SetOutputSender(level.Info, logger.System().GetSender())
+			output = logger.SystemWriter(level.Info)
 		} else {
-			cmd.SetOutputSender(level.Info, logger.Task().GetSender())
+			output = logger.TaskWriter(level.Info)
+		}
+		opts.Output = output
+
+	}
+
+	if !opts.SuppressError {
+		if c.SystemLog {
+			error = logger.SystemWriter(level.Error)
+		} else {
+			error = logger.TaskWriter(level.Error)
+		}
+		opts.Error = error
+	}
+
+	closer := func() {
+		if output != nil {
+			_ = output.Close()
+		}
+
+		if error != nil {
+			_ = error.Close()
 		}
 	}
 
-	if !c.IgnoreStandardError {
-		if c.SystemLog {
-			cmd.SetErrorSender(level.Error, logger.System().GetSender())
-		} else {
-			cmd.SetErrorSender(level.Error, logger.Task().GetSender())
-		}
-	}
-
-	return cmd
+	return proc, closer, proc.SetOutput(opts)
 }
 
 func addTempDirs(env map[string]string, dir string) {
@@ -209,7 +215,14 @@ func (c *subprocessExec) Execute(ctx context.Context, comm client.Communicator, 
 		}
 	}
 
-	err = errors.WithStack(c.runCommand(ctx, conf.Task.Id, c.getProc(ctx, conf.Task.Id, logger), logger))
+	proc, closer, err := c.getProc(conf.Task.Id, logger)
+	if err != nil {
+		logger.Execution().Warning(err.Error())
+		return errors.WithStack(err)
+	}
+	defer closer()
+
+	err = errors.WithStack(c.runCommand(ctx, conf.Task.Id, proc, logger))
 
 	if ctx.Err() != nil {
 		logger.System().Debug("dumping running processes")
@@ -222,21 +235,27 @@ func (c *subprocessExec) Execute(ctx context.Context, comm client.Communicator, 
 	return err
 }
 
-func (c *subprocessExec) runCommand(ctx context.Context, taskID string, cmd *jasper.Command, logger client.LoggerProducer) error {
+func (c *subprocessExec) runCommand(ctx context.Context, taskID string, proc subprocess.Command, logger client.LoggerProducer) error {
 	if c.Silent {
 		logger.Execution().Info("executing command in silent mode")
 	}
 
-	err := cmd.Run(ctx)
+	if err := proc.Start(ctx); err != nil {
+		return errors.Wrap(err, "problem starting background process")
+	}
+	pid := proc.GetPid()
+	subprocess.TrackProcess(taskID, pid, logger.System())
+
+	if c.Background {
+		logger.Execution().Infof("started background process with pid %d", pid)
+		return nil
+	}
+	logger.Execution().Debugf("started foreground process with pid %d, waiting for completion", pid)
+
+	err := errors.Wrapf(proc.Wait(), "command with pid %d encountered error", pid)
 
 	if c.ContinueOnError {
-		logger.Execution().Notice(message.WrapError(err, message.Fields{
-			"task":       taskID,
-			"binary":     c.Binary,
-			"background": c.Background,
-			"silent":     c.Silent,
-			"continue":   c.ContinueOnError,
-		}))
+		logger.Execution().Notice(err)
 		return nil
 	}
 

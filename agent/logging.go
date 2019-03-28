@@ -12,7 +12,7 @@ import (
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/rest/client"
-	"github.com/evergreen-ci/evergreen/util"
+	"github.com/evergreen-ci/evergreen/subprocess"
 	"github.com/evergreen-ci/pail"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/level"
@@ -53,7 +53,7 @@ func GetSender(ctx context.Context, prefix, taskId string) (send.Sender, error) 
 		senders []send.Sender
 	)
 
-	if os.Getenv(util.MarkerAgentPID) == "" { // this var is set if the agent is started via a command
+	if os.Getenv(subprocess.MarkerAgentPID) == "" { // this var is set if the agent is started via a command
 		if splunk := send.GetSplunkConnectionInfo(); splunk.Populated() {
 			grip.Info("configuring splunk sender")
 			sender, err = send.NewSplunkLogger("evergreen.agent", splunk, send.LevelInfo{Default: level.Alert, Threshold: level.Alert})
