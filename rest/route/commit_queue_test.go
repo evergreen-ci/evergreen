@@ -133,5 +133,5 @@ func (s *CommitQueueSuite) TestEnqueueItem() {
 	route.item = id.Hex()
 	response := route.Run(context.Background())
 	s.Equal(200, response.Status())
-	s.Equal(model.APICommitQueuePosition{1}, response.Data())
+	s.Equal(model.APICommitQueuePosition{Position: 1}, response.Data())
 }
