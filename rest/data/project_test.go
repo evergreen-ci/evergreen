@@ -73,7 +73,7 @@ func TestProjectConnectorGetSuite(t *testing.T) {
 
 		testutil.ConfigureIntegrationTest(t, testConfig, "TestProjectConnectorGetSuite")
 		db.SetGlobalSessionProvider(testConfig.SessionFactory())
-		db.ClearCollections(model.ProjectRefCollection)
+		s.Require().NoError(db.ClearCollections(model.ProjectRefCollection))
 
 		projects := []*model.ProjectRef{
 			{

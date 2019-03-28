@@ -163,7 +163,7 @@ func (s *CommitQueueSuite) TestMockEnqueue() {
 	s.Require().Equal(1, pos)
 
 	conn := s.ctx.(*MockConnector)
-	q, ok := conn.MockCommitQueueConnector.Queue["evergreen-ci.evergreen.master"]
+	q, ok := conn.MockCommitQueueConnector.Queue["mci"]
 	if s.True(ok) && s.Len(q, 1) {
 		s.Equal(restModel.ToAPIString("1234"), q[0].Issue)
 	}
@@ -175,9 +175,9 @@ func (s *CommitQueueSuite) TestMockFindCommitQueueByID() {
 	s.Require().NoError(err)
 	s.Require().Equal(1, pos)
 
-	cq, err := s.ctx.FindCommitQueueByID("evergreen-ci.evergreen.master")
+	cq, err := s.ctx.FindCommitQueueByID("mci")
 	s.NoError(err)
-	s.Equal(restModel.ToAPIString("evergreen-ci.evergreen.master"), cq.ProjectID)
+	s.Equal(restModel.ToAPIString("mci"), cq.ProjectID)
 	s.Equal(restModel.ToAPIString("1234"), cq.Queue[0].Issue)
 }
 

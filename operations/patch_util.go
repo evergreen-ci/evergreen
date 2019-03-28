@@ -164,7 +164,7 @@ func findBrowserCommand() ([]string, error) {
 
 // Performs validation for patch or patch-file
 func (p *patchParams) validatePatchCommand(ctx context.Context, conf *ClientSettings, ac *legacyClient, comm client.Communicator) (*model.ProjectRef, error) {
-	ref, err := p.ValidateProjectID(conf, ac)
+	ref, err := ValidateProjectID(conf, ac, p.Project, p.SkipConfirm)
 	if err != nil {
 		return nil, errors.Wrap(err, "invalid project ID")
 	}
@@ -205,37 +205,6 @@ func (p *patchParams) validatePatchCommand(ctx context.Context, conf *ClientSett
 
 	if p.Description == "" && !p.SkipConfirm {
 		p.Description = prompt("Enter a description for this patch (optional):")
-	}
-
-	return ref, nil
-}
-
-func (p *patchParams) ValidateProjectID(conf *ClientSettings, ac *legacyClient) (*model.ProjectRef, error) {
-	if p.Project == "" {
-		p.Project = conf.FindDefaultProject()
-	} else {
-		if conf.FindDefaultProject() == "" &&
-			!p.SkipConfirm && confirm(fmt.Sprintf("Make %s your default project?", p.Project), true) {
-			conf.SetDefaultProject(p.Project)
-			if err := conf.Write(""); err != nil {
-				grip.Warning(message.WrapError(err, message.Fields{
-					"message": "failed to set default project",
-					"project": p.Project,
-				}))
-			}
-		}
-	}
-
-	if p.Project == "" {
-		return nil, errors.New("Need to specify a project")
-	}
-
-	ref, err := ac.GetProjectRef(p.Project)
-	if err != nil {
-		if apiErr, ok := err.(APIError); ok && apiErr.code == http.StatusNotFound {
-			err = errors.Errorf("%s \nRun `evergreen list --projects` to see all valid projects", err)
-		}
-		return nil, err
 	}
 
 	return ref, nil
@@ -297,6 +266,37 @@ func (p *patchParams) loadTasks(conf *ClientSettings) error {
 	}
 
 	return nil
+}
+
+func ValidateProjectID(conf *ClientSettings, ac *legacyClient, projectID string, skipConfirm bool) (*model.ProjectRef, error) {
+	if projectID == "" {
+		projectID = conf.FindDefaultProject()
+	} else {
+		if conf.FindDefaultProject() == "" &&
+			!skipConfirm && confirm(fmt.Sprintf("Make %s your default project?", projectID), true) {
+			conf.SetDefaultProject(projectID)
+			if err := conf.Write(""); err != nil {
+				grip.Warning(message.WrapError(err, message.Fields{
+					"message": "failed to set default project",
+					"project": projectID,
+				}))
+			}
+		}
+	}
+
+	if projectID == "" {
+		return nil, errors.New("Need to specify a project")
+	}
+
+	ref, err := ac.GetProjectRef(projectID)
+	if err != nil {
+		if apiErr, ok := err.(APIError); ok && apiErr.code == http.StatusNotFound {
+			err = errors.Errorf("%s \nRun `evergreen list --projects` to see all valid projects", err)
+		}
+		return nil, err
+	}
+
+	return ref, nil
 }
 
 // Returns an error if the diff is greater than the system limit, or if it's above the large

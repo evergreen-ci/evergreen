@@ -79,7 +79,7 @@
     "created_at": "2018-12-05T21:16:34Z",
     "updated_at": "2018-12-05T21:16:34Z",
     "author_association": "CONTRIBUTOR",
-    "body": "evergreen merge {\"modules\":[{\"module\":\"test_module\",\"issue\":\"1234\"}]}"
+    "body": "evergreen merge --module test_module:1234"
   },
   "repository": {
     "id": 35129377,

@@ -167,7 +167,7 @@ func (m *CommitQueueItemOwnerMiddleware) ServeHTTP(rw http.ResponseWriter, r *ht
 
 	// The owner of the patch can also pass
 	vars := gimlet.GetVars(r)
-	item, ok := vars["patch_id"]
+	item, ok := vars["item"]
 	if !ok {
 		gimlet.WriteResponse(rw, gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
 			StatusCode: http.StatusBadRequest,

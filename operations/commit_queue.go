@@ -193,14 +193,19 @@ type mergeParams struct {
 }
 
 func (p *mergeParams) mergeBranch(ctx context.Context, conf *ClientSettings, client client.Communicator, ac *legacyClient) error {
+	projectRef, err := ValidateProjectID(conf, ac, p.projectID, p.skipConfirm)
+	if err != nil {
+		return errors.Wrap(err, "invalid project ID")
+	}
+
 	if p.id == "" {
-		if err := p.uploadMergePatch(conf, ac); err != nil {
+		if err := p.uploadMergePatch(conf, ac, projectRef.Branch); err != nil {
 			return err
 		}
 	}
 
 	if !p.pause {
-		position, err := client.EnqueueItem(ctx, p.id)
+		position, err := client.EnqueueItem(ctx, p.projectID, p.id)
 		if err != nil {
 			return err
 		}
@@ -210,7 +215,7 @@ func (p *mergeParams) mergeBranch(ctx context.Context, conf *ClientSettings, cli
 	return nil
 }
 
-func (p *mergeParams) uploadMergePatch(conf *ClientSettings, ac *legacyClient) error {
+func (p *mergeParams) uploadMergePatch(conf *ClientSettings, ac *legacyClient, branch string) error {
 	patchParams := &patchParams{
 		Project:     p.projectID,
 		SkipConfirm: p.skipConfirm,
@@ -218,12 +223,8 @@ func (p *mergeParams) uploadMergePatch(conf *ClientSettings, ac *legacyClient) e
 		Large:       p.large,
 		Alias:       evergreen.CommitQueueAlias,
 	}
-	projectRef, err := patchParams.ValidateProjectID(conf, ac)
-	if err != nil {
-		return errors.Wrap(err, "invalid project ID")
-	}
 
-	diffData, err := getFeaturePatchInfo(projectRef.Branch, p.ref)
+	diffData, err := getFeaturePatchInfo(branch, p.ref)
 	if err != nil {
 		return errors.Wrap(err, "can't generate patches")
 	}

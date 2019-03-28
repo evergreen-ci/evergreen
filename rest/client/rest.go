@@ -712,11 +712,11 @@ func (c *communicatorImpl) DeleteCommitQueueItem(ctx context.Context, projectID,
 	return nil
 }
 
-func (c *communicatorImpl) EnqueueItem(ctx context.Context, id string) (int, error) {
+func (c *communicatorImpl) EnqueueItem(ctx context.Context, projectID, item string) (int, error) {
 	info := requestInfo{
 		method:  put,
 		version: apiVersion2,
-		path:    fmt.Sprintf("/commit_queue/enqueue/%s", id),
+		path:    fmt.Sprintf("/projects/%s/commit_queue/%s", projectID, item),
 	}
 
 	resp, err := c.request(ctx, info, nil)

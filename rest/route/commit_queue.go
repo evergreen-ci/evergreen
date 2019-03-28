@@ -71,7 +71,7 @@ func (cq commitQueueDeleteItemHandler) Factory() gimlet.RouteHandler {
 func (cq *commitQueueDeleteItemHandler) Parse(ctx context.Context, r *http.Request) error {
 	vars := gimlet.GetVars(r)
 	cq.project = vars["project_id"]
-	cq.item = vars["patch_id"]
+	cq.item = vars["item"]
 
 	return nil
 }
@@ -146,7 +146,7 @@ func (cq commitQueueEnqueueItemHandler) Factory() gimlet.RouteHandler {
 
 func (cq *commitQueueEnqueueItemHandler) Parse(ctx context.Context, r *http.Request) error {
 	vars := gimlet.GetVars(r)
-	cq.item = vars["patch_id"]
+	cq.item = vars["item"]
 
 	return nil
 }

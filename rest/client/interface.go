@@ -171,7 +171,7 @@ type Communicator interface {
 	// Commit Queue
 	GetCommitQueue(ctx context.Context, projectID string) (*restmodel.APICommitQueue, error)
 	DeleteCommitQueueItem(ctx context.Context, projectID string, item string) error
-	EnqueueItem(ctx context.Context, id string) (int, error)
+	EnqueueItem(ctx context.Context, projectID, item string) (int, error)
 
 	// Notifications
 	SendNotification(ctx context.Context, notificationType string, data interface{}) error

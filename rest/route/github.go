@@ -270,6 +270,20 @@ func (gh *githubHookApi) Run(ctx context.Context) gimlet.Responder {
 		modules := model.ParseGitHubCommentModules(*event.Comment.Body)
 		baseBranch := *pr.Base.Ref
 		projectRef, err := gh.sc.GetProjectWithCommitQByOwnerRepoAndBranch(userRepo.Owner, userRepo.Repo, baseBranch)
+		if err != nil {
+			grip.Error(message.WrapError(err, message.Fields{
+				"source":  "github hook",
+				"msg_id":  gh.msgID,
+				"event":   gh.eventType,
+				"action":  event.Action,
+				"owner":   userRepo.Owner,
+				"repo":    userRepo.Repo,
+				"branch":  baseBranch,
+				"item":    PRNum,
+				"message": "no matching project",
+			}))
+			return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "no matching project"))
+		}
 		item := model.APICommitQueueItem{
 			Issue:   model.ToAPIString(strconv.Itoa(PRNum)),
 			Modules: modules,
