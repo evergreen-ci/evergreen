@@ -244,7 +244,8 @@ func TestCommitQueueItemOwnerMiddlewareUserPatch(t *testing.T) {
 
 	r = r.WithContext(context.WithValue(ctx, RequestContext, &opCtx))
 	r = gimlet.SetURLVars(r, map[string]string{
-		"item": id.Hex(),
+		"project_id": "mci",
+		"item":       id.Hex(),
 	})
 
 	dataConnector := &data.DBConnector{}
@@ -263,7 +264,7 @@ func TestCommitQueueItemOwnerMiddlewareUserPatch(t *testing.T) {
 	assert.NoError(p.Insert())
 	r = gimlet.SetURLVars(r, map[string]string{
 		"project_id": "mci",
-		"patch_id":   id.Hex(),
+		"item":       id.Hex(),
 	})
 
 	rw = httptest.NewRecorder()
