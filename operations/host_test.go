@@ -136,7 +136,7 @@ func TestHostRunner(t *testing.T) {
 			assert.Fail(t, "context timed out before expected file was downloaded")
 			return
 		default:
-			if info, err := os.Stat(args.clientPath); err == nil {
+			if _, err = os.Stat(args.clientPath); err == nil {
 				return
 			}
 		}
