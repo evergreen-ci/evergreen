@@ -933,13 +933,21 @@ func (h *Host) GetParent() (*Host, error) {
 	if h.ParentID == "" {
 		return nil, errors.New("Host does not have a parent")
 	}
-
-	host, err := FindOneId(h.ParentID)
+	query := db.Query(bson.M{
+		TagKey: h.ParentID,
+	})
+	host, err := FindOne(query) // try to find by tag
 	if err != nil {
 		return nil, errors.Wrap(err, "Error finding parent")
 	}
 	if host == nil {
-		return nil, errors.New("Parent not found")
+		host, err = FindOneId(h.ParentID)
+		if err != nil {
+			return nil, errors.Wrap(err, "Error finding parent")
+		}
+		if host == nil {
+			return nil, errors.New("Parent not found")
+		}
 	}
 	if !host.HasContainers {
 		return nil, errors.New("Host found is not a parent")

@@ -22,7 +22,7 @@ func TestSchedulerSpawnSuite(t *testing.T) {
 	suite.Run(t, new(SchedulerSuite))
 }
 
-func (s *SchedulerSuite) TearDownTest() {
+func (s *SchedulerSuite) SetupTest() {
 	s.NoError(db.ClearCollections("hosts"))
 	s.NoError(db.ClearCollections("distro"))
 	s.NoError(db.ClearCollections("tasks"))
@@ -128,6 +128,7 @@ func (s *SchedulerSuite) TestSpawnHostsParents() {
 func (s *SchedulerSuite) TestSpawnHostsContainers() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
+
 	providerSettings := make(map[string]interface{})
 	providerSettings["image_url"] = "my-image"
 	d := distro.Distro{Id: "distro", Provider: evergreen.ProviderNameMock,
@@ -226,6 +227,46 @@ func (s *SchedulerSuite) TestSpawnHostsParentsAndSomeContainers() {
 
 	s.Equal(4, children)
 	s.Equal(1, parents)
+}
+
+func (s *SchedulerSuite) TestSpawnHostsOneNewParent() {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	providerSettings := make(map[string]interface{})
+	providerSettings["image_url"] = "my-image"
+	d := distro.Distro{Id: "distro", Provider: evergreen.ProviderNameMock, ContainerPool: "test-pool",
+		ProviderSettings: &providerSettings}
+	parent := distro.Distro{Id: "parent-distro", PoolSize: 2, Provider: evergreen.ProviderNameMock}
+
+	pool := &evergreen.ContainerPool{Distro: "parent-distro", Id: "test-pool", MaxContainers: 3}
+
+	s.NoError(d.Insert())
+	s.NoError(parent.Insert())
+
+	newHostsSpawned, err := SpawnHosts(ctx, d, 1, pool)
+	s.NoError(err)
+	// 1 parent, 1 child
+	s.Equal(2, len(newHostsSpawned))
+
+	parentHost := host.Host{}
+	childHost := host.Host{}
+
+	for _, h := range newHostsSpawned {
+		if h.HasContainers {
+			parentHost = h
+		} else if h.ParentID != "" {
+			childHost = h
+		}
+	}
+
+	s.Require().NotEmpty(childHost)
+	s.Require().NotEmpty(parentHost)
+
+	s.Equal(childHost.ParentID, parentHost.Id)
+	parentDoc, err := childHost.GetParent()
+	s.NoError(err)
+	s.Equal(parentHost.Id, parentDoc.Id)
 }
 
 func (s *SchedulerSuite) TestSpawnHostsMaximumCapacity() {

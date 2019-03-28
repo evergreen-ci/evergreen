@@ -301,6 +301,16 @@ func (j *createHostJob) isImageBuilt(ctx context.Context) (bool, error) {
 		})
 		return false, errors.Wrapf(err, "problem getting parent for '%s'", j.host.Id)
 	}
+	if parent == nil {
+		grip.Error(message.Fields{
+			"error":     err.Error(),
+			"message":   "parent is emptyt",
+			"host":      j.host.Id,
+			"parent":    j.host.ParentID,
+			"operation": "spawning new parents",
+		})
+		return false, errors.Wrapf(err, "problem getting parent for '%s'", j.host.Id)
+	}
 
 	if parent.Status == evergreen.HostUninitialized || parent.Status == evergreen.HostBuilding {
 		return false, errors.Errorf("parent for host '%s' not running", j.host.Id)
