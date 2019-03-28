@@ -125,8 +125,10 @@ func (j *agentDeployJob) Run(ctx context.Context) {
 		j.AddError(errors.Wrapf(err, "error setting LCT on host %s", j.host.Id))
 	}
 	defer func() {
-		if err = j.host.SetNeedsNewAgent(true); err != nil {
-			j.AddError(errors.Wrapf(err, "error setting needs agent flag to false on host %s", j.host.Id))
+		if j.HasErrors() {
+			if err = j.host.SetNeedsNewAgent(true); err != nil {
+				j.AddError(errors.Wrapf(err, "error setting needs agent flag to false on host %s", j.host.Id))
+			}
 		}
 	}()
 
