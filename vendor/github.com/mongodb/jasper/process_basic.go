@@ -28,7 +28,6 @@ type basicProcess struct {
 func newBasicProcess(ctx context.Context, opts *CreateOptions) (Process, error) {
 	id := uuid.Must(uuid.NewV4()).String()
 	opts.AddEnvVar(EnvironID, id)
-	opts.Hostname, _ = os.Hostname()
 
 	cmd, err := opts.Resolve(ctx)
 	if err != nil {
@@ -58,7 +57,7 @@ func newBasicProcess(ctx context.Context, opts *CreateOptions) (Process, error) 
 
 	p.info.ID = p.id
 	p.info.Options = p.opts
-	p.info.Host = p.opts.Hostname
+	p.info.Host, _ = os.Hostname()
 
 	p.info.Options.started = true
 	p.opts.started = true
