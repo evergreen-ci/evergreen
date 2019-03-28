@@ -565,12 +565,12 @@ func (h *Host) IsWaitingForAgent() bool {
 
 // SetNeedsNewAgent sets the "needs new agent" flag on the host
 func (h *Host) SetNeedsNewAgent(needsAgent bool) error {
-	err := UpdateOne(bson.M{IdKey: h.Id},
+	err := UpdateOne(bson.M{IdKey: h.Id, NeedsNewAgentKey: !needsAgent},
 		bson.M{"$set": bson.M{NeedsNewAgentKey: needsAgent}})
 	if err != nil {
 		return err
 	}
-	h.NeedsNewAgent = true
+	h.NeedsNewAgent = needsAgent
 	return nil
 }
 
