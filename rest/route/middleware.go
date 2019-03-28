@@ -13,6 +13,7 @@ import (
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/gimlet"
+	"github.com/pkg/errors"
 )
 
 type (
@@ -179,13 +180,7 @@ func (m *CommitQueueItemOwnerMiddleware) ServeHTTP(rw http.ResponseWriter, r *ht
 	if opCtx.ProjectRef.CommitQueue.MergeAction == commitqueue.PatchMergeAction {
 		patch, err := m.sc.FindPatchById(item)
 		if err != nil {
-			if _, ok := err.(gimlet.ErrorResponse); ok {
-				gimlet.WriteResponse(rw, gimlet.MakeJSONErrorResponder(err))
-			}
-			gimlet.WriteResponse(rw, gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
-				StatusCode: http.StatusInternalServerError,
-				Message:    "can't get information about patch",
-			}))
+			gimlet.WriteResponse(rw, gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "can't find item")))
 			return
 		}
 		if user.Id != patch.Author {

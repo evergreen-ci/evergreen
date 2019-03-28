@@ -448,11 +448,11 @@ func (s *ProjectConnectorGetSuite) TestGetProjectEvents() {
 	s.Equal(projEventCount, len(events))
 }
 
-func (s *ProjectConnectorGetSuite) TestGetProjectWithCommitQByOwnerRepoAndBranch() {
-	projRef, err := s.ctx.GetProjectWithCommitQByOwnerRepoAndBranch("octocat", "hello-world", "master")
+func (s *ProjectConnectorGetSuite) TestGetProjectWithCommitQueueByOwnerRepoAndBranch() {
+	projRef, err := s.ctx.GetProjectWithCommitQueueByOwnerRepoAndBranch("octocat", "hello-world", "master")
 	s.Error(err)
 
-	projRef, err = s.ctx.GetProjectWithCommitQByOwnerRepoAndBranch("evergreen-ci", "evergreen", "master")
+	projRef, err = s.ctx.GetProjectWithCommitQueueByOwnerRepoAndBranch("evergreen-ci", "evergreen", "master")
 	s.NoError(err)
 	s.Equal("projectB", projRef.Identifier)
 }

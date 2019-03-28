@@ -15,7 +15,6 @@ import (
 	"github.com/evergreen-ci/gimlet"
 	. "github.com/smartystreets/goconvey/convey"
 	"github.com/stretchr/testify/assert"
-	"gopkg.in/mgo.v2/bson"
 )
 
 // PrefetchProjectContext gets the information related to the project that the request contains
@@ -233,19 +232,20 @@ func TestCommitQueueItemOwnerMiddlewareUserPatch(t *testing.T) {
 	assert.NoError(err)
 	assert.NotNil(r)
 
-	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "octocat"})
-	// not authorized on this patch
-	id := bson.NewObjectId()
-	p := patch.Patch{
-		Id:     id,
-		Author: "me",
+	p := &patch.Patch{
+		Author: "octocat",
 	}
 	assert.NoError(p.Insert())
+	p, err = patch.FindOne(patch.ByUser("octocat"))
+	assert.NoError(err)
+	assert.NotNil(p)
 
+	// not authorized
+	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "me"})
 	r = r.WithContext(context.WithValue(ctx, RequestContext, &opCtx))
 	r = gimlet.SetURLVars(r, map[string]string{
 		"project_id": "mci",
-		"item":       id.Hex(),
+		"item":       p.Id.Hex(),
 	})
 
 	dataConnector := &data.DBConnector{}
@@ -255,18 +255,13 @@ func TestCommitQueueItemOwnerMiddlewareUserPatch(t *testing.T) {
 	mw.ServeHTTP(rw, r, func(rw http.ResponseWriter, r *http.Request) {})
 	assert.Equal(http.StatusUnauthorized, rw.Code)
 
-	// authorized on this patch
-	id = bson.NewObjectId()
-	p = patch.Patch{
-		Id:     id,
-		Author: "octocat",
-	}
-	assert.NoError(p.Insert())
+	// authorized
+	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "octocat"})
+	r = r.WithContext(context.WithValue(ctx, RequestContext, &opCtx))
 	r = gimlet.SetURLVars(r, map[string]string{
 		"project_id": "mci",
-		"item":       id.Hex(),
+		"item":       p.Id.Hex(),
 	})
-
 	rw = httptest.NewRecorder()
 	mw.ServeHTTP(rw, r, func(rw http.ResponseWriter, r *http.Request) {})
 	assert.Equal(http.StatusOK, rw.Code)

@@ -213,15 +213,14 @@ func TestFindOneProjectRefByRepoAndBranchWithPRTesting(t *testing.T) {
 	require.Nil(projectRef)
 }
 
-func TestFindOneProjectRefWithCommitQByOwnerRepoAndBranch(t *testing.T) {
+func TestFindOneProjectRefWithCommitQueueByOwnerRepoAndBranch(t *testing.T) {
 	assert := assert.New(t)
 	require := require.New(t)
 
 	require.NoError(db.Clear(ProjectRefCollection))
 
-	projectRef, err := FindOneProjectRefWithCommitQByOwnerRepoAndBranch("mongodb", "mci", "master")
-	assert.NoError(err)
-	assert.Nil(projectRef)
+	projectRef, err := FindOneProjectRefWithCommitQueueByOwnerRepoAndBranch("mongodb", "mci", "master")
+	assert.Error(err)
 
 	doc := &ProjectRef{
 		Owner:      "mongodb",
@@ -235,14 +234,13 @@ func TestFindOneProjectRefWithCommitQByOwnerRepoAndBranch(t *testing.T) {
 	}
 	require.NoError(doc.Insert())
 
-	projectRef, err = FindOneProjectRefWithCommitQByOwnerRepoAndBranch("mongodb", "mci", "master")
-	assert.NoError(err)
-	assert.Nil(projectRef)
+	projectRef, err = FindOneProjectRefWithCommitQueueByOwnerRepoAndBranch("mongodb", "mci", "master")
+	assert.Error(err)
 
 	doc.CommitQueue.Enabled = true
 	require.NoError(db.Update(ProjectRefCollection, bson.M{ProjectRefIdentifierKey: "mci"}, doc))
 
-	projectRef, err = FindOneProjectRefWithCommitQByOwnerRepoAndBranch("mongodb", "mci", "master")
+	projectRef, err = FindOneProjectRefWithCommitQueueByOwnerRepoAndBranch("mongodb", "mci", "master")
 	assert.NoError(err)
 	assert.NotNil(projectRef)
 }

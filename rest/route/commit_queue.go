@@ -127,7 +127,8 @@ func (cq *commitQueueClearAllHandler) Run(ctx context.Context) gimlet.Responder 
 }
 
 type commitQueueEnqueueItemHandler struct {
-	item string
+	item    string
+	project string
 
 	sc data.Connector
 }
@@ -147,21 +148,17 @@ func (cq commitQueueEnqueueItemHandler) Factory() gimlet.RouteHandler {
 func (cq *commitQueueEnqueueItemHandler) Parse(ctx context.Context, r *http.Request) error {
 	vars := gimlet.GetVars(r)
 	cq.item = vars["item"]
+	patch, err := cq.sc.FindPatchById(cq.item)
+	if err != nil {
+		return errors.Wrap(err, "can't find item")
+	}
+	cq.project = patch.Project
 
 	return nil
 }
 
 func (cq *commitQueueEnqueueItemHandler) Run(ctx context.Context) gimlet.Responder {
-	patch, err := cq.sc.FindPatchById(cq.item)
-	if err != nil {
-		if _, ok := err.(gimlet.ErrorResponse); ok {
-			return gimlet.MakeJSONErrorResponder(err)
-		}
-		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "can't find item"))
-	}
-
-	commitQueueItem := model.APICommitQueueItem{Issue: model.ToAPIString(cq.item)}
-	position, err := cq.sc.EnqueueItem(patch.Project, commitQueueItem)
+	position, err := cq.sc.EnqueueItem(cq.project, model.APICommitQueueItem{Issue: model.ToAPIString(cq.item)})
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "can't enqueue item"))
 	}

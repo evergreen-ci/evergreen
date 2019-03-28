@@ -86,13 +86,10 @@ func (ac *DBProjectConnector) GetProjectEventLog(id string, before time.Time, n 
 	return out, catcher.Resolve()
 }
 
-func (ac *DBProjectConnector) GetProjectWithCommitQByOwnerRepoAndBranch(owner, repo, branch string) (*model.ProjectRef, error) {
-	proj, err := model.FindOneProjectRefWithCommitQByOwnerRepoAndBranch(owner, repo, branch)
+func (ac *DBProjectConnector) GetProjectWithCommitQueueByOwnerRepoAndBranch(owner, repo, branch string) (*model.ProjectRef, error) {
+	proj, err := model.FindOneProjectRefWithCommitQueueByOwnerRepoAndBranch(owner, repo, branch)
 	if err != nil {
 		return nil, errors.Wrapf(err, "can't query for projectRef %s/%s tracking %s", owner, repo, branch)
-	}
-	if proj == nil {
-		return nil, errors.Errorf("no matching projectRef %s/%s tracking %s", owner, repo, branch)
 	}
 
 	return proj, nil
@@ -176,12 +173,12 @@ func (pc *MockProjectConnector) GetProjectEventLog(id string, before time.Time, 
 	return pc.CachedEvents, nil
 }
 
-func (pc *MockProjectConnector) GetProjectWithCommitQByOwnerRepoAndBranch(owner, repo, branch string) (*model.ProjectRef, error) {
+func (pc *MockProjectConnector) GetProjectWithCommitQueueByOwnerRepoAndBranch(owner, repo, branch string) (*model.ProjectRef, error) {
 	for _, p := range pc.CachedProjects {
 		if p.Owner == owner && p.Repo == repo && p.Branch == branch {
 			return &p, nil
 		}
 	}
 
-	return nil, errors.Errorf("no matching projectRef %s/%s tracking %s", owner, repo, branch)
+	return nil, errors.Errorf("can't query for projectRef %s/%s tracking %s", owner, repo, branch)
 }
