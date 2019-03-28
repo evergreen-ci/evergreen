@@ -117,7 +117,7 @@ func (j *agentDeployJob) Run(ctx context.Context) {
 	// communicated time prevents the other branches of the PopulateAgentDeployJobs from
 	// immediately applying. Instead MaxLCTInterval must pass.
 	if err = j.host.SetNeedsNewAgent(false); err != nil {
-		j.AddError(errors.Wrapf(err, "error setting needs agent flag to true on host %s", j.host.Id))
+		j.AddError(errors.Wrapf(err, "error setting needs agent flag to false on host %s", j.host.Id))
 	}
 	if err = j.host.UpdateLastCommunicated(); err != nil {
 		j.AddError(errors.Wrapf(err, "error setting LCT on host %s", j.host.Id))
@@ -125,7 +125,7 @@ func (j *agentDeployJob) Run(ctx context.Context) {
 	defer func() {
 		if j.HasErrors() {
 			if err = j.host.SetNeedsNewAgent(true); err != nil {
-				j.AddError(errors.Wrapf(err, "error setting needs agent flag to false on host %s", j.host.Id))
+				j.AddError(errors.Wrapf(err, "error setting needs agent flag to true on host %s", j.host.Id))
 			}
 		}
 	}()
