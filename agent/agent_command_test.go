@@ -9,6 +9,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/rest/client"
+	"github.com/mongodb/jasper"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -37,6 +38,8 @@ func (s *CommandSuite) SetupTest() {
 
 	var err error
 	s.tmpDirName, err = ioutil.TempDir("", "agent-command-suite-")
+	s.Require().NoError(err)
+	s.a.jasper, err = jasper.NewLocalManager(false)
 	s.Require().NoError(err)
 }
 
