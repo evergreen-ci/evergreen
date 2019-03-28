@@ -163,7 +163,6 @@ func setModuleCommand() cli.Command {
 			},
 		)),
 		Before: mergeBeforeFuncs(
-			setPlainLogger,
 			requirePatchIDFlag,
 			requireModuleFlag,
 		),
@@ -294,19 +293,9 @@ type moduleParams struct {
 }
 
 func (p *moduleParams) addModule(ac *legacyClient, rc *legacyClient) error {
-	proj, err := rc.GetPatchedConfig(p.patchID)
+	diffData, err := p.getModulePatch(rc)
 	if err != nil {
-		return err
-	}
-
-	moduleBranch, err := getModuleBranch(p.module, proj)
-	if err != nil {
-		return errors.Wrapf(err, "could not set specified module: '%s'", p.module)
-	}
-
-	diffData, err := getFeaturePatchInfo(moduleBranch, p.ref)
-	if err != nil {
-		return errors.Wrap(err, "can't get patch data")
+		return errors.Wrap(err, "can't get patch")
 	}
 
 	if len(diffData.fullPatch) == 0 {
@@ -323,11 +312,7 @@ func (p *moduleParams) addModule(ac *legacyClient, rc *legacyClient) error {
 	}
 
 	if !p.skipConfirm {
-		grip.Infof("Using branch %s for module %s", moduleBranch, p.module)
-		if diffData.patchSummary != "" {
-			grip.Info(diffData.patchSummary)
-		}
-
+		grip.InfoWhen(diffData.patchSummary != "", diffData.patchSummary)
 		if !confirm("This is a summary of the patch to be submitted. Continue? (y/n):", true) {
 			return nil
 		}
@@ -339,6 +324,25 @@ func (p *moduleParams) addModule(ac *legacyClient, rc *legacyClient) error {
 	}
 
 	return nil
+}
+
+func (p *moduleParams) getModulePatch(rc *legacyClient) (*localDiff, error) {
+	proj, err := rc.GetPatchedConfig(p.patchID)
+	if err != nil {
+		return nil, err
+	}
+
+	moduleBranch, err := getModuleBranch(p.module, proj)
+	if err != nil {
+		return nil, errors.Wrapf(err, "could not set specified module: '%s'", p.module)
+	}
+
+	diffData, err := getFeaturePatchInfo(moduleBranch, p.ref)
+	if err != nil {
+		return nil, errors.Wrap(err, "can't get patch data")
+	}
+
+	return diffData, nil
 }
 
 func getFeaturePatchInfo(projectBranch, ref string) (*localDiff, error) {
