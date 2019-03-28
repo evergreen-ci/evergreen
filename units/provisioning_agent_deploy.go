@@ -309,7 +309,7 @@ func (j *agentDeployJob) startAgentOnRemote(ctx context.Context, settings *everg
 	})
 
 	// compute any info necessary to ssh into the host
-	hostInfo, err := hostObj.GetSSHInfo()
+	hostInfo, err := util.ParseSSHInfo(hostObj.Host)
 	if err != nil {
 		return errors.Wrapf(err, "error parsing ssh info %v", hostObj.Host)
 	}
@@ -336,10 +336,8 @@ func (j *agentDeployJob) startAgentOnRemote(ctx context.Context, settings *everg
 	ctx, cancel := context.WithTimeout(ctx, sshTimeout)
 	defer cancel()
 
-	remoteCmd = fmt.Sprintf("nohup %s > /tmp/start 2>1 &", remoteCmd)
-
 	startAgentCmd := j.env.JasperManager().CreateCommand(ctx).Environment(env).Append(remoteCmd).
-		User(hostObj.User).Host(hostInfo.Hostname).ExtendSSHArgs("-p", hostInfo.Port).ExtendSSHArgs(sshOptions...)
+		User(hostObj.User).Host(hostInfo.Hostname).ExtendSSHArgs("-p", hostInfo.Port).ExtendSSHArgs(sshOptions...).Background(true)
 
 	if err = startAgentCmd.Run(ctx); err != nil {
 		return errors.Wrapf(err, "error starting agent (%v)", hostObj.Id)

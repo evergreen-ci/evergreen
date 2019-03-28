@@ -252,12 +252,10 @@ func (j *setupHostJob) runHostSetup(ctx context.Context, targetHost *host.Host, 
 func (j *setupHostJob) copyScript(ctx context.Context, settings *evergreen.Settings, target *host.Host, name, script string) error {
 	// parse the hostname into the user, host and port
 	startAt := time.Now()
-
-	hostInfo, err := target.GetSSHInfo()
+	hostInfo, err := util.ParseSSHInfo(target.Host)
 	if err != nil {
-		return errors.WithStack(err)
+		return err
 	}
-
 	user := target.Distro.User
 	if hostInfo.User != "" {
 		user = hostInfo.User
@@ -539,7 +537,7 @@ func (j *setupHostJob) loadClient(ctx context.Context, target *host.Host, settin
 	// 1. mkdir the destination directory on the host,
 	//    and modify ~/.profile so the target binary will be on the $PATH
 	targetDir := "cli_bin"
-	hostSSHInfo, err := target.GetSSHInfo()
+	hostSSHInfo, err := util.ParseSSHInfo(target.Host)
 	if err != nil {
 		return nil, errors.Wrapf(err, "error parsing ssh info %s", target.Host)
 	}
@@ -642,7 +640,7 @@ func (j *setupHostJob) loadClient(ctx context.Context, target *host.Host, settin
 }
 
 func (j *setupHostJob) fetchRemoteTaskData(ctx context.Context, taskId, cliPath, confPath string, target *host.Host, settings *evergreen.Settings) error {
-	hostSSHInfo, err := target.GetSSHInfo()
+	hostSSHInfo, err := util.ParseSSHInfo(target.Host)
 	if err != nil {
 		return errors.Wrapf(err, "error parsing ssh info %s", target.Host)
 	}
