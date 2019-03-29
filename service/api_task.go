@@ -190,7 +190,7 @@ func (as *APIServer) EndTask(w http.ResponseWriter, r *http.Request) {
 	}
 
 	job := units.NewUpdateBuildAndVersionJob(t.Id)
-	if err := evergreen.GetEnvironment().RemoteQueue().Put(job); err != nil {
+	if err := as.queue.Put(job); err != nil {
 		as.LoggedError(w, r, http.StatusInternalServerError, errors.Wrap(err, "problem putting update build and version job"))
 		return
 	}
