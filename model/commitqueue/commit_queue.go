@@ -7,7 +7,9 @@ import (
 )
 
 const (
-	triggerComment = "evergreen merge"
+	triggerComment    = "evergreen merge"
+	GitHubMergeAction = "github"
+	PatchMergeAction  = "patch"
 )
 
 type Module struct {
@@ -28,17 +30,18 @@ func InsertQueue(q *CommitQueue) error {
 	return insert(q)
 }
 
-func (q *CommitQueue) Enqueue(item CommitQueueItem) error {
-	if !(q.findItem(item.Issue) < 0) {
-		return errors.New("item already in queue")
+func (q *CommitQueue) Enqueue(item CommitQueueItem) (int, error) {
+	position := q.findItem(item.Issue)
+	if !(position < 0) {
+		return position + 1, errors.New("item already in queue")
 	}
 
 	if err := add(q.ProjectID, q.Queue, item); err != nil {
-		return err
+		return 0, err
 	}
 
 	q.Queue = append(q.Queue, item)
-	return nil
+	return len(q.Queue), nil
 }
 
 func (q *CommitQueue) Next() *CommitQueueItem {

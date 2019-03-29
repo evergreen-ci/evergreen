@@ -45,7 +45,9 @@ func (s *CommitQueueSuite) SetupTest() {
 
 func (s *CommitQueueSuite) TestEnqueue() {
 	s.ctx = &DBConnector{}
-	s.NoError(s.ctx.EnqueueItem("evergreen-ci", "evergreen", "master", restModel.APICommitQueueItem{Issue: restModel.ToAPIString("1234")}))
+	pos, err := s.ctx.EnqueueItem("mci", restModel.APICommitQueueItem{Issue: restModel.ToAPIString("1234")})
+	s.NoError(err)
+	s.Equal(1, pos)
 
 	q, err := commitqueue.FindOneId("mci")
 	s.NoError(err)
@@ -64,9 +66,15 @@ func (s *CommitQueueSuite) TestFindCommitQueueByID() {
 
 func (s *CommitQueueSuite) TestCommitQueueRemoveItem() {
 	s.ctx = &DBConnector{}
-	s.Require().NoError(s.ctx.EnqueueItem("evergreen-ci", "evergreen", "master", restModel.APICommitQueueItem{Issue: restModel.ToAPIString("1")}))
-	s.Require().NoError(s.ctx.EnqueueItem("evergreen-ci", "evergreen", "master", restModel.APICommitQueueItem{Issue: restModel.ToAPIString("2")}))
-	s.Require().NoError(s.ctx.EnqueueItem("evergreen-ci", "evergreen", "master", restModel.APICommitQueueItem{Issue: restModel.ToAPIString("3")}))
+	pos, err := s.ctx.EnqueueItem("mci", restModel.APICommitQueueItem{Issue: restModel.ToAPIString("1")})
+	s.Require().NoError(err)
+	s.Require().Equal(1, pos)
+	pos, err = s.ctx.EnqueueItem("mci", restModel.APICommitQueueItem{Issue: restModel.ToAPIString("2")})
+	s.Require().NoError(err)
+	s.Require().Equal(2, pos)
+	pos, err = s.ctx.EnqueueItem("mci", restModel.APICommitQueueItem{Issue: restModel.ToAPIString("3")})
+	s.Require().NoError(err)
+	s.Require().Equal(3, pos)
 
 	found, err := s.ctx.CommitQueueRemoveItem("mci", "not_here")
 	s.NoError(err)
@@ -83,9 +91,15 @@ func (s *CommitQueueSuite) TestCommitQueueRemoveItem() {
 
 func (s *CommitQueueSuite) TestCommitQueueClearAll() {
 	s.ctx = &DBConnector{}
-	s.Require().NoError(s.ctx.EnqueueItem("evergreen-ci", "evergreen", "master", restModel.APICommitQueueItem{Issue: restModel.ToAPIString("12")}))
-	s.Require().NoError(s.ctx.EnqueueItem("evergreen-ci", "evergreen", "master", restModel.APICommitQueueItem{Issue: restModel.ToAPIString("34")}))
-	s.Require().NoError(s.ctx.EnqueueItem("evergreen-ci", "evergreen", "master", restModel.APICommitQueueItem{Issue: restModel.ToAPIString("56")}))
+	pos, err := s.ctx.EnqueueItem("mci", restModel.APICommitQueueItem{Issue: restModel.ToAPIString("12")})
+	s.Require().NoError(err)
+	s.Require().Equal(1, pos)
+	pos, err = s.ctx.EnqueueItem("mci", restModel.APICommitQueueItem{Issue: restModel.ToAPIString("34")})
+	s.Require().NoError(err)
+	s.Require().Equal(2, pos)
+	pos, err = s.ctx.EnqueueItem("mci", restModel.APICommitQueueItem{Issue: restModel.ToAPIString("56")})
+	s.Require().NoError(err)
+	s.Require().Equal(3, pos)
 
 	q := &commitqueue.CommitQueue{ProjectID: "logkeeper"}
 	s.Require().NoError(commitqueue.InsertQueue(q))
@@ -96,8 +110,12 @@ func (s *CommitQueueSuite) TestCommitQueueClearAll() {
 	s.Equal(1, clearedCount)
 
 	// both queues have items
-	s.Require().NoError(s.ctx.EnqueueItem("evergreen-ci", "evergreen", "master", restModel.APICommitQueueItem{Issue: restModel.ToAPIString("12")}))
-	s.NoError(q.Enqueue(commitqueue.CommitQueueItem{Issue: "78"}))
+	pos, err = s.ctx.EnqueueItem("mci", restModel.APICommitQueueItem{Issue: restModel.ToAPIString("12")})
+	s.Require().NoError(err)
+	s.Require().Equal(1, pos)
+	pos, err = q.Enqueue(commitqueue.CommitQueueItem{Issue: "78"})
+	s.NoError(err)
+	s.Equal(1, pos)
 	clearedCount, err = s.ctx.CommitQueueClearAll()
 	s.NoError(err)
 	s.Equal(2, clearedCount)
@@ -140,10 +158,12 @@ func (s *CommitQueueSuite) TestMockGetGitHubPR() {
 
 func (s *CommitQueueSuite) TestMockEnqueue() {
 	s.ctx = &MockConnector{}
-	s.NoError(s.ctx.EnqueueItem("evergreen-ci", "evergreen", "master", restModel.APICommitQueueItem{Issue: restModel.ToAPIString("1234")}))
+	pos, err := s.ctx.EnqueueItem("mci", restModel.APICommitQueueItem{Issue: restModel.ToAPIString("1234")})
+	s.Require().NoError(err)
+	s.Require().Equal(1, pos)
 
 	conn := s.ctx.(*MockConnector)
-	q, ok := conn.MockCommitQueueConnector.Queue["evergreen-ci.evergreen.master"]
+	q, ok := conn.MockCommitQueueConnector.Queue["mci"]
 	if s.True(ok) && s.Len(q, 1) {
 		s.Equal(restModel.ToAPIString("1234"), q[0].Issue)
 	}
@@ -151,28 +171,36 @@ func (s *CommitQueueSuite) TestMockEnqueue() {
 
 func (s *CommitQueueSuite) TestMockFindCommitQueueByID() {
 	s.ctx = &MockConnector{}
-	s.NoError(s.ctx.EnqueueItem("evergreen-ci", "evergreen", "master", restModel.APICommitQueueItem{Issue: restModel.ToAPIString("1234")}))
+	pos, err := s.ctx.EnqueueItem("mci", restModel.APICommitQueueItem{Issue: restModel.ToAPIString("1234")})
+	s.Require().NoError(err)
+	s.Require().Equal(1, pos)
 
-	cq, err := s.ctx.FindCommitQueueByID("evergreen-ci.evergreen.master")
+	cq, err := s.ctx.FindCommitQueueByID("mci")
 	s.NoError(err)
-	s.Equal(restModel.ToAPIString("evergreen-ci.evergreen.master"), cq.ProjectID)
+	s.Equal(restModel.ToAPIString("mci"), cq.ProjectID)
 	s.Equal(restModel.ToAPIString("1234"), cq.Queue[0].Issue)
 }
 
 func (s *CommitQueueSuite) TestMockCommitQueueRemoveItem() {
 	s.ctx = &MockConnector{}
-	s.Require().NoError(s.ctx.EnqueueItem("evergreen-ci", "evergreen", "master", restModel.APICommitQueueItem{Issue: restModel.ToAPIString("1")}))
-	s.Require().NoError(s.ctx.EnqueueItem("evergreen-ci", "evergreen", "master", restModel.APICommitQueueItem{Issue: restModel.ToAPIString("2")}))
-	s.Require().NoError(s.ctx.EnqueueItem("evergreen-ci", "evergreen", "master", restModel.APICommitQueueItem{Issue: restModel.ToAPIString("3")}))
+	pos, err := s.ctx.EnqueueItem("mci", restModel.APICommitQueueItem{Issue: restModel.ToAPIString("1")})
+	s.Require().NoError(err)
+	s.Require().Equal(1, pos)
+	pos, err = s.ctx.EnqueueItem("mci", restModel.APICommitQueueItem{Issue: restModel.ToAPIString("2")})
+	s.Require().NoError(err)
+	s.Require().Equal(2, pos)
+	pos, err = s.ctx.EnqueueItem("mci", restModel.APICommitQueueItem{Issue: restModel.ToAPIString("3")})
+	s.Require().NoError(err)
+	s.Require().Equal(3, pos)
 
-	found, err := s.ctx.CommitQueueRemoveItem("evergreen-ci.evergreen.master", "not_here")
+	found, err := s.ctx.CommitQueueRemoveItem("mci", "not_here")
 	s.NoError(err)
 	s.False(found)
 
-	found, err = s.ctx.CommitQueueRemoveItem("evergreen-ci.evergreen.master", "1")
+	found, err = s.ctx.CommitQueueRemoveItem("mci", "1")
 	s.NoError(err)
 	s.True(found)
-	cq, err := s.ctx.FindCommitQueueByID("evergreen-ci.evergreen.master")
+	cq, err := s.ctx.FindCommitQueueByID("mci")
 	s.NoError(err)
 	s.Equal(restModel.ToAPIString("2"), cq.Queue[0].Issue)
 	s.Equal(restModel.ToAPIString("3"), cq.Queue[1].Issue)
@@ -180,11 +208,19 @@ func (s *CommitQueueSuite) TestMockCommitQueueRemoveItem() {
 
 func (s *CommitQueueSuite) TestMockCommitQueueClearAll() {
 	s.ctx = &MockConnector{}
-	s.Require().NoError(s.ctx.EnqueueItem("evergreen-ci", "evergreen", "master", restModel.APICommitQueueItem{Issue: restModel.ToAPIString("12")}))
-	s.Require().NoError(s.ctx.EnqueueItem("evergreen-ci", "evergreen", "master", restModel.APICommitQueueItem{Issue: restModel.ToAPIString("34")}))
+	pos, err := s.ctx.EnqueueItem("mci", restModel.APICommitQueueItem{Issue: restModel.ToAPIString("12")})
+	s.Require().NoError(err)
+	s.Require().Equal(1, pos)
+	pos, err = s.ctx.EnqueueItem("mci", restModel.APICommitQueueItem{Issue: restModel.ToAPIString("34")})
+	s.Require().NoError(err)
+	s.Require().Equal(2, pos)
 
-	s.Require().NoError(s.ctx.EnqueueItem("evergreen-ci", "logkeeper", "master", restModel.APICommitQueueItem{Issue: restModel.ToAPIString("56")}))
-	s.Require().NoError(s.ctx.EnqueueItem("evergreen-ci", "logkeeper", "master", restModel.APICommitQueueItem{Issue: restModel.ToAPIString("78")}))
+	pos, err = s.ctx.EnqueueItem("logkeeper", restModel.APICommitQueueItem{Issue: restModel.ToAPIString("12")})
+	s.Require().NoError(err)
+	s.Require().Equal(1, pos)
+	pos, err = s.ctx.EnqueueItem("logkeeper", restModel.APICommitQueueItem{Issue: restModel.ToAPIString("34")})
+	s.Require().NoError(err)
+	s.Require().Equal(2, pos)
 
 	clearedCount, err := s.ctx.CommitQueueClearAll()
 	s.NoError(err)

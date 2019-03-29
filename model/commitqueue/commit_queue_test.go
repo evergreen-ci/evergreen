@@ -50,7 +50,9 @@ func (s *CommitQueueSuite) SetupTest() {
 }
 
 func (s *CommitQueueSuite) TestEnqueue() {
-	s.NoError(s.q.Enqueue(sampleCommitQueueItem))
+	pos, err := s.q.Enqueue(sampleCommitQueueItem)
+	s.NoError(err)
+	s.Equal(1, pos)
 	s.Len(s.q.Queue, 1)
 	s.Equal("c123", s.q.Next().Issue)
 	s.NotEqual(-1, s.q.findItem("c123"))
@@ -64,7 +66,9 @@ func (s *CommitQueueSuite) TestEnqueue() {
 }
 
 func (s *CommitQueueSuite) TestNext() {
-	s.NoError(s.q.Enqueue(sampleCommitQueueItem))
+	pos, err := s.q.Enqueue(sampleCommitQueueItem)
+	s.NoError(err)
+	s.Equal(1, pos)
 	s.Len(s.q.Queue, 1)
 
 	s.NoError(s.q.SetProcessing(true))
@@ -77,11 +81,17 @@ func (s *CommitQueueSuite) TestNext() {
 
 func (s *CommitQueueSuite) TestRemoveOne() {
 	item := sampleCommitQueueItem
-	s.Require().NoError(s.q.Enqueue(item))
+	pos, err := s.q.Enqueue(item)
+	s.Require().NoError(err)
+	s.Require().Equal(1, pos)
 	item.Issue = "d234"
-	s.Require().NoError(s.q.Enqueue(item))
+	pos, err = s.q.Enqueue(item)
+	s.Require().NoError(err)
+	s.Require().Equal(2, pos)
 	item.Issue = "e345"
-	s.Require().NoError(s.q.Enqueue(item))
+	pos, err = s.q.Enqueue(item)
+	s.Require().NoError(err)
+	s.Require().Equal(3, pos)
 	s.Require().Len(s.q.Queue, 3)
 
 	found, err := s.q.Remove("not_here")
@@ -116,12 +126,17 @@ func (s *CommitQueueSuite) TestRemoveOne() {
 
 func (s *CommitQueueSuite) TestClearAll() {
 	item := sampleCommitQueueItem
-	s.Require().NoError(s.q.Enqueue(item))
+	pos, err := s.q.Enqueue(item)
+	s.Require().NoError(err)
+	s.Require().Equal(1, pos)
 	item.Issue = "d234"
-	s.Require().NoError(s.q.Enqueue(item))
+	pos, err = s.q.Enqueue(item)
+	s.Require().NoError(err)
+	s.Require().Equal(2, pos)
 	item.Issue = "e345"
-	s.Require().NoError(s.q.Enqueue(item))
-	s.Require().Len(s.q.Queue, 3)
+	pos, err = s.q.Enqueue(item)
+	s.Require().NoError(err)
+	s.Require().Equal(3, pos)
 	s.Require().Len(s.q.Queue, 3)
 
 	q := &CommitQueue{
@@ -144,9 +159,13 @@ func (s *CommitQueueSuite) TestClearAll() {
 
 	// both have contents
 	item.Issue = "c1234"
-	s.Require().NoError(s.q.Enqueue(item))
+	pos, err = s.q.Enqueue(item)
+	s.Require().NoError(err)
+	s.Require().Equal(1, pos)
 	item.Issue = "d234"
-	s.Require().NoError(q.Enqueue(item))
+	pos, err = q.Enqueue(item)
+	s.Require().NoError(err)
+	s.Require().Equal(1, pos)
 	clearedCount, err = ClearAllCommitQueues()
 	s.NoError(err)
 	s.Equal(2, clearedCount)

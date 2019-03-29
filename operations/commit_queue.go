@@ -2,6 +2,7 @@ package operations
 
 import (
 	"context"
+	"net/http"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/rest/client"
@@ -239,7 +240,7 @@ func (p *mergeParams) mergeBranch(ctx context.Context, conf *ClientSettings, cli
 	}
 
 	if !p.pause {
-		position, err := client.EnqueueItem(ctx, p.id)
+		position, err := client.EnqueueItem(ctx, p.projectID, p.id)
 		if err != nil {
 			return err
 		}
@@ -257,12 +258,20 @@ func (p *mergeParams) uploadMergePatch(conf *ClientSettings, ac *legacyClient) e
 		Large:       p.large,
 		Alias:       evergreen.CommitQueueAlias,
 	}
-	projectRef, err := patchParams.ValidateProjectID(conf, ac)
-	if err != nil {
+
+	if err := patchParams.loadProject(conf); err != nil {
 		return errors.Wrap(err, "invalid project ID")
 	}
 
-	diffData, err := getFeaturePatchInfo(projectRef.Branch, p.ref)
+	ref, err := ac.GetProjectRef(patchParams.Project)
+	if err != nil {
+		if apiErr, ok := err.(APIError); ok && apiErr.code == http.StatusNotFound {
+			err = errors.WithStack(err)
+		}
+		return errors.Wrap(err, "can't get project ref")
+	}
+
+	diffData, err := getFeaturePatchInfo(ref.Branch, p.ref)
 	if err != nil {
 		return errors.Wrap(err, "can't generate patches")
 	}

@@ -4,9 +4,11 @@ import (
 	"context"
 	"testing"
 
+	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/stretchr/testify/suite"
+	"gopkg.in/mgo.v2/bson"
 )
 
 type CommitQueueSuite struct {
@@ -27,11 +29,9 @@ func (s *CommitQueueSuite) SetupTest() {
 
 func (s *CommitQueueSuite) TestGetCommitQueue() {
 	route := makeGetCommitQueueItems(s.sc).(*commitQueueGetHandler)
-	route.project = "evergreen-ci.evergreen.master"
-	s.NoError(s.sc.EnqueueItem(
-		"evergreen-ci",
-		"evergreen",
-		"master",
+	route.project = "mci"
+	pos, err := s.sc.EnqueueItem(
+		"mci",
 		model.APICommitQueueItem{
 			Issue: model.ToAPIString("1"),
 			Modules: []model.APIModule{
@@ -40,13 +40,18 @@ func (s *CommitQueueSuite) TestGetCommitQueue() {
 					Issue:  model.ToAPIString("1234"),
 				},
 			},
-		}))
-	s.NoError(s.sc.EnqueueItem("evergreen-ci", "evergreen", "master", model.APICommitQueueItem{Issue: model.ToAPIString("2")}))
+		})
+	s.NoError(err)
+	s.Equal(1, pos)
+
+	pos, err = s.sc.EnqueueItem("mci", model.APICommitQueueItem{Issue: model.ToAPIString("2")})
+	s.Require().NoError(err)
+	s.Require().Equal(2, pos)
 
 	response := route.Run(context.Background())
 	s.Equal(200, response.Status())
 	s.Equal(&model.APICommitQueue{
-		ProjectID: model.ToAPIString("evergreen-ci.evergreen.master"),
+		ProjectID: model.ToAPIString("mci"),
 		Queue: []model.APICommitQueueItem{
 			model.APICommitQueueItem{
 				Issue: model.ToAPIString("1"),
@@ -66,9 +71,14 @@ func (s *CommitQueueSuite) TestGetCommitQueue() {
 
 func (s *CommitQueueSuite) TestDeleteItem() {
 	route := makeDeleteCommitQueueItems(s.sc).(*commitQueueDeleteItemHandler)
-	s.NoError(s.sc.EnqueueItem("evergreen-ci", "evergreen", "master", model.APICommitQueueItem{Issue: model.ToAPIString("1")}))
-	s.NoError(s.sc.EnqueueItem("evergreen-ci", "evergreen", "master", model.APICommitQueueItem{Issue: model.ToAPIString("2")}))
-	route.project = "evergreen-ci.evergreen.master"
+	pos, err := s.sc.EnqueueItem("mci", model.APICommitQueueItem{Issue: model.ToAPIString("1")})
+	s.Require().NoError(err)
+	s.Require().Equal(1, pos)
+	pos, err = s.sc.EnqueueItem("mci", model.APICommitQueueItem{Issue: model.ToAPIString("2")})
+	s.Require().NoError(err)
+	s.Require().Equal(2, pos)
+
+	route.project = "mci"
 
 	// Valid delete
 	route.item = "1"
@@ -88,10 +98,18 @@ func (s *CommitQueueSuite) TestDeleteItem() {
 
 func (s *CommitQueueSuite) TestClearAll() {
 	route := makeClearCommitQueuesHandler(s.sc).(*commitQueueClearAllHandler)
-	s.NoError(s.sc.EnqueueItem("evergreen-ci", "evergreen", "master", model.APICommitQueueItem{Issue: model.ToAPIString("12")}))
-	s.NoError(s.sc.EnqueueItem("evergreen-ci", "evergreen", "master", model.APICommitQueueItem{Issue: model.ToAPIString("23")}))
-	s.NoError(s.sc.EnqueueItem("evergreen-ci", "logkeeper", "master", model.APICommitQueueItem{Issue: model.ToAPIString("34")}))
-	s.NoError(s.sc.EnqueueItem("evergreen-ci", "logkeeper", "master", model.APICommitQueueItem{Issue: model.ToAPIString("45")}))
+	pos, err := s.sc.EnqueueItem("mci", model.APICommitQueueItem{Issue: model.ToAPIString("12")})
+	s.Require().NoError(err)
+	s.Require().Equal(1, pos)
+	pos, err = s.sc.EnqueueItem("mci", model.APICommitQueueItem{Issue: model.ToAPIString("23")})
+	s.Require().NoError(err)
+	s.Require().Equal(2, pos)
+	pos, err = s.sc.EnqueueItem("logkeeper", model.APICommitQueueItem{Issue: model.ToAPIString("34")})
+	s.Require().NoError(err)
+	s.Require().Equal(1, pos)
+	pos, err = s.sc.EnqueueItem("logkeeper", model.APICommitQueueItem{Issue: model.ToAPIString("45")})
+	s.Require().NoError(err)
+	s.Require().Equal(2, pos)
 
 	response := route.Run(context.Background())
 	s.Equal(200, response.Status())
@@ -104,4 +122,16 @@ func (s *CommitQueueSuite) TestClearAll() {
 	s.Equal(struct {
 		ClearedCount int `json:"cleared_count"`
 	}{0}, response.Data())
+}
+
+func (s *CommitQueueSuite) TestEnqueueItem() {
+	route := makeCommitQueueEnqueueItem(s.sc).(*commitQueueEnqueueItemHandler)
+	id := bson.NewObjectId()
+	s.sc.CachedPatches = append(s.sc.CachedPatches, patch.Patch{
+		Id: id,
+	})
+	route.item = id.Hex()
+	response := route.Run(context.Background())
+	s.Equal(200, response.Status())
+	s.Equal(model.APICommitQueuePosition{Position: 1}, response.Data())
 }
