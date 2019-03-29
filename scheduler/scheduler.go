@@ -135,14 +135,6 @@ func GetDistroQueueInfo(tasks []task.Task, maxDurationThreshold time.Duration) m
 // distro -> number of hosts to spawn for the distro.
 // Returns a map of distro -> hosts spawned, and an error if one occurs.
 func SpawnHosts(ctx context.Context, d distro.Distro, newHostsNeeded int, pool *evergreen.ContainerPool) ([]host.Host, error) {
-	if newHostsNeeded > 0 {
-		grip.Info(message.Fields{
-			"runner":       RunnerName,
-			"distro":       d.Id,
-			"hosts_needed": newHostsNeeded,
-			"operation":    "spawning new parents",
-		})
-	}
 	startTime := time.Now()
 
 	if newHostsNeeded == 0 {

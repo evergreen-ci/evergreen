@@ -292,19 +292,12 @@ func (j *createHostJob) shouldRetryCreateHost(ctx context.Context) bool {
 func (j *createHostJob) isImageBuilt(ctx context.Context) (bool, error) {
 	parent, err := j.host.GetParent()
 	if err != nil {
-		grip.Error(message.Fields{
-			"error":     err.Error(),
-			"message":   "problem getting parent",
-			"host":      j.host.Id,
-			"parent":    j.host.ParentID,
-			"operation": "spawning new parents",
-		})
 		return false, errors.Wrapf(err, "problem getting parent for '%s'", j.host.Id)
 	}
 	if parent == nil {
 		grip.Error(message.Fields{
 			"error":     err.Error(),
-			"message":   "parent is emptyt",
+			"message":   "parent is empty",
 			"host":      j.host.Id,
 			"parent":    j.host.ParentID,
 			"operation": "spawning new parents",

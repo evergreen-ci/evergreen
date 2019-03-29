@@ -1152,12 +1152,6 @@ func GetNumContainersOnParents(d distro.Distro) ([]ContainersOnParents, error) {
 					ParentHost:    parent,
 					NumContainers: len(currentContainers),
 				})
-			grip.Info(message.Fields{
-				"operation":                "spawning new parents",
-				"parent":                   parent.Id,
-				"num_containers_on_parent": len(currentContainers),
-				"message":                  "uphost parent to assign to containers",
-			})
 		}
 	}
 
