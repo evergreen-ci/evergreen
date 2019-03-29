@@ -131,14 +131,14 @@ func CreateSpawnHost(so SpawnOptions) (*host.Host, error) {
 		OwnerId: so.Owner.Id,
 	}
 	expiration := DefaultSpawnHostExpiration
-	hostOptions := HostOptions{
+	hostOptions := host.CreateOptions{
 		ProvisionOptions:   provisionOptions,
 		UserName:           so.UserName,
 		ExpirationDuration: &expiration,
 		UserHost:           true,
 	}
 
-	intentHost := NewIntent(d, d.GenerateName(), d.Provider, hostOptions)
+	intentHost := host.NewIntent(d, d.GenerateName(), d.Provider, hostOptions)
 	if intentHost == nil { // theoretically this should not happen
 		return nil, errors.New("unable to intent host: NewIntent did not return a host")
 	}

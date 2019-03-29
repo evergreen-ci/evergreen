@@ -252,6 +252,7 @@ buildvariants:
   tasks:
   - name: t1
 `
+
 	v1 := model.Version{
 		Id:         "v1",
 		Config:     versionYaml,
@@ -263,10 +264,25 @@ buildvariants:
 		RunningTask: t1.Id,
 	}
 	assert.NoError(h1.Insert())
-	d := distro.Distro{
-		Id: "distro",
+
+	parent := distro.Distro{Id: "parent-distro", PoolSize: 3, Provider: evergreen.ProviderNameMock}
+	require.NoError(parent.Insert())
+
+	pool := &evergreen.ContainerPool{Distro: "parent-distro", Id: "test-pool", MaxContainers: 2}
+	parentHost := &host.Host{
+		Id:                    "host1",
+		Host:                  "host",
+		User:                  "user",
+		Distro:                distro.Distro{Id: "parent-distro"},
+		Status:                evergreen.HostRunning,
+		HasContainers:         true,
+		ContainerPoolSettings: pool,
 	}
-	assert.NoError(d.Insert())
+	require.NoError(parentHost.Insert())
+
+	d := distro.Distro{Id: "distro", Provider: evergreen.ProviderNameMock, ContainerPool: "test-pool"}
+	require.NoError(d.Insert())
+
 	p := model.ProjectRef{
 		Identifier: "p",
 	}
