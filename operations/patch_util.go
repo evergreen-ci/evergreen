@@ -164,7 +164,7 @@ func findBrowserCommand() ([]string, error) {
 
 // Performs validation for patch or patch-file
 func (p *patchParams) validatePatchCommand(ctx context.Context, conf *ClientSettings, ac *legacyClient, comm client.Communicator) (*model.ProjectRef, error) {
-	if err = p.loadProject(conf); err != nil {
+	if err := p.loadProject(conf); err != nil {
 		grip.Warningf("warning - failed to set default project: %v\n", err)
 	}
 
@@ -223,7 +223,7 @@ func (p *patchParams) loadProject(conf *ClientSettings) error {
 		p.Project = conf.FindDefaultProject()
 	} else {
 		if conf.FindDefaultProject() == "" &&
-			!skipConfirm && confirm(fmt.Sprintf("Make %s your default project?", p.Project), true) {
+			!p.SkipConfirm && confirm(fmt.Sprintf("Make %s your default project?", p.Project), true) {
 			conf.SetDefaultProject(p.Project)
 			if err := conf.Write(""); err != nil {
 				grip.Warning(message.WrapError(err, message.Fields{
