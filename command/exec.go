@@ -133,10 +133,28 @@ func (c *subprocessExec) getProc(ctx context.Context, taskID string, logger clie
 	cmd := c.JasperManager().CreateCommand(ctx).Add(append([]string{c.Binary}, c.Args...)).
 		Background(c.Background).Environment(c.Env).Directory(c.WorkingDir).
 		SuppressStandardError(c.IgnoreStandardError).SuppressStandardOutput(c.IgnoreStandardOutput).RedirectErrorToOutput(c.RedirectStandardErrorToOutput).
-		ProcConstructor(func(ctx context.Context, opts *jasper.CreateOptions) (jasper.Process, error) {
-			proc, err := c.JasperManager().CreateProcess(ctx, opts)
+		ProcConstructor(func(lctx context.Context, opts *jasper.CreateOptions) (jasper.Process, error) {
+			var cancel context.CancelFunc
+			var ictx context.Context
+			if c.Background {
+				ictx, cancel = context.WithCancel(context.Background())
+			} else {
+				ictx = lctx
+			}
+
+			proc, err := c.JasperManager().CreateProcess(ictx, opts)
 			if err != nil {
+				if cancel != nil {
+					cancel()
+				}
+
 				return proc, errors.WithStack(err)
+			}
+
+			if cancel != nil {
+				grip.Warning(message.WrapError(proc.RegisterTrigger(lctx, func(info jasper.ProcessInfo) {
+					cancel()
+				}), "problem registering cancellation for process"))
 			}
 
 			pid := proc.Info(ctx).PID

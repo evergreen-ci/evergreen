@@ -158,7 +158,7 @@ func (s *patchSuite) TestMakeMergePatch() {
 		MergeCommitSHA: &shaTemp,
 	}
 
-	p, err := MakeMergePatch(pr, "mci", "__commit_queue")
+	p, err := MakeMergePatch(pr, "mci", evergreen.CommitQueueAlias)
 	s.NoError(err)
 	s.Equal("mci", p.Project)
 	s.Equal(evergreen.PatchCreated, p.Status)

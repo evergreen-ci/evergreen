@@ -165,12 +165,14 @@ func SetHostRDPPassword(ctx context.Context, env evergreen.Environment, host *ho
 
 	// update RDP and sshd password
 	if err = pwdUpdateCmd.Run(ctx); err != nil {
-		grip.Warning(message.WrapError(err, message.Fields{
+		grip.Warning(message.Fields{
 			"stdout":    stdout.Buffer.String(),
 			"stderr":    stderr.Buffer.String(),
 			"operation": "set host rdp password",
 			"host":      host.Id,
-		}))
+			"cmd":       pwdUpdateCmd.String(),
+			"err":       err,
+		})
 		return errors.Wrap(err, "Error updating host RDP password")
 	}
 
@@ -179,6 +181,7 @@ func SetHostRDPPassword(ctx context.Context, env evergreen.Environment, host *ho
 		"stderr":    stderr.Buffer.String(),
 		"operation": "set host rdp password",
 		"host":      host.Id,
+		"cmd":       pwdUpdateCmd.String(),
 	})
 
 	return nil
@@ -193,7 +196,7 @@ func constructPwdUpdateCommand(ctx context.Context, env evergreen.Environment, h
 		return nil, err
 	}
 
-	hostInfo, err := util.ParseSSHInfo(hostObj.Host)
+	hostInfo, err := hostObj.GetSSHInfo()
 	if err != nil {
 		return nil, err
 	}
@@ -204,12 +207,12 @@ func constructPwdUpdateCommand(ctx context.Context, env evergreen.Environment, h
 	}
 
 	escapedPassword := strings.Replace(password, `\`, `\\`, -1)
-	updatePwdCmd := fmt.Sprintf(`net user %s "%s" && sc config sshd obj= '.\%s' password= "%s"`,
-		hostObj.User, escapedPassword, hostObj.User, escapedPassword)
+	updatePwdCmd := fmt.Sprintf(`'net user %s %s'`, hostObj.User, escapedPassword)
+	sshUpdatePwd := fmt.Sprintf(`'sc config sshd obj= \".%s\" password= \"%s\"'`, hostObj.User, escapedPassword)
 
 	return env.JasperManager().CreateCommand(ctx).Host(hostInfo.Hostname).User(hostObj.User).
 		ExtendSSHArgs("-p", hostInfo.Port).ExtendSSHArgs(sshOptions...).
-		Append(updatePwdCmd), nil
+		Append(updatePwdCmd).Append(sshUpdatePwd), nil
 }
 
 func TerminateSpawnHost(ctx context.Context, host *host.Host, settings *evergreen.Settings, user string) error {

@@ -89,7 +89,8 @@ func Patch() cli.Command {
 				return err
 			}
 
-			return params.createPatch(ac, conf, diffData)
+			_, err = params.createPatch(ac, conf, diffData)
+			return err
 		},
 	}
 }
@@ -155,7 +156,8 @@ func PatchFile() cli.Command {
 
 			diffData := &localDiff{string(fullPatch), "", "", base}
 
-			return params.createPatch(ac, conf, diffData)
+			_, err = params.createPatch(ac, conf, diffData)
+			return err
 		},
 	}
 }

@@ -106,7 +106,9 @@ func (c *Command) ApplyFromOpts(opts *CreateOptions) *Command { c.opts = opts; r
 func (c *Command) SetOutputOptions(opts OutputOptions) *Command { c.opts.Output = opts; return c }
 
 // String returns a stringified representation.
-func (c *Command) String() string { return fmt.Sprintf("id='%s', cmd='%s'", c.id, c.getCmd()) }
+func (c *Command) String() string {
+	return fmt.Sprintf("id='%s', remote='%s', cmd='%s'", c.id, c.remote.hostString(), c.getCmd())
+}
 
 // Directory sets the working directory.
 func (c *Command) Directory(d string) *Command { c.opts.WorkingDirectory = d; return c }

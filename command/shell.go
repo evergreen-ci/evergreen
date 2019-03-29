@@ -117,11 +117,29 @@ func (c *shellExec) Execute(ctx context.Context, _ client.Communicator, logger c
 	cmd := c.JasperManager().CreateCommand(ctx).Add([]string{c.Shell, "-c", c.Script}).
 		Background(c.Background).Directory(c.WorkingDir).Environment(env).
 		SuppressStandardError(c.IgnoreStandardError).SuppressStandardOutput(c.IgnoreStandardOutput).RedirectErrorToOutput(c.RedirectStandardErrorToOutput).
-		ProcConstructor(func(ctx context.Context, opts *jasper.CreateOptions) (jasper.Process, error) {
+		ProcConstructor(func(lctx context.Context, opts *jasper.CreateOptions) (jasper.Process, error) {
+			var cancel context.CancelFunc
+			var ictx context.Context
+			if c.Background {
+				ictx, cancel = context.WithCancel(context.Background())
+			} else {
+				ictx = lctx
+			}
+
 			var proc jasper.Process
-			proc, err = c.JasperManager().CreateProcess(ctx, opts)
+			proc, err = c.JasperManager().CreateProcess(ictx, opts)
 			if err != nil {
+				if cancel != nil {
+					cancel()
+				}
+
 				return proc, errors.WithStack(err)
+			}
+
+			if cancel != nil {
+				grip.Warning(message.WrapError(proc.RegisterTrigger(lctx, func(info jasper.ProcessInfo) {
+					cancel()
+				}), "problem registering cancellation for process"))
 			}
 
 			pid := proc.Info(ctx).PID
