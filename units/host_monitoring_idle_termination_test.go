@@ -58,10 +58,19 @@ func TestFlaggingIdleHosts(t *testing.T) {
 	Convey("When flagging idle hosts to be terminated", t, func() {
 
 		// reset the db
+		testutil.HandleTestingErr(db.ClearCollections(distro.Collection),
+			t, "error clearing distros collection")
 		testutil.HandleTestingErr(db.ClearCollections(host.Collection),
 			t, "error clearing hosts collection")
 		testutil.HandleTestingErr(modelUtil.AddTestIndexes(host.Collection,
 			true, true, host.RunningTaskKey), t, "error adding host index")
+
+		// insert our reference distro.Distro
+		distro1 := distro.Distro{
+			Id: "distro1",
+		}
+		testutil.HandleTestingErr(distro1.Insert(), t, "error inserting distro")
+
 		Convey("hosts currently running a task should never be"+
 			" flagged", func() {
 
@@ -135,6 +144,7 @@ func TestFlaggingIdleHosts(t *testing.T) {
 				StartedBy:             evergreen.User,
 				Provisioned:           true,
 			}
+
 			testutil.HandleTestingErr(host2.Insert(), t, "error inserting host")
 
 			// finding idle hosts should only return the first host
@@ -179,6 +189,197 @@ func TestFlaggingIdleHosts(t *testing.T) {
 			idle, err := flagIdleHosts(ctx, env)
 			So(err, ShouldBeNil)
 			So(len(idle), ShouldEqual, 0)
+		})
+	})
+}
+
+////////////////////////////////////////////////////////////////////////
+//
+// Testing with reference distro ids that are not present in the 'distro' collection in the database
+//
+
+func TestFlaggingIdleHostsWithMissingDistroIDs(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	testConfig := testutil.TestConfig()
+	db.SetGlobalSessionProvider(testConfig.SessionFactory())
+
+	env := evergreen.GetEnvironment()
+
+	Convey("When flagging idle hosts to be terminated", t, func() {
+
+		// reset the db
+		testutil.HandleTestingErr(db.ClearCollections(distro.Collection),
+			t, "error clearing distros collection")
+		testutil.HandleTestingErr(db.ClearCollections(host.Collection),
+			t, "error clearing hosts collection")
+
+		// insert two reference distro.Distro
+		distro1 := distro.Distro{
+			Id: "distro1",
+			PlannerSettings: distro.PlannerSettings{
+				MinimumHosts: 2,
+			},
+		}
+		distro2 := distro.Distro{
+			Id: "distro2",
+			PlannerSettings: distro.PlannerSettings{
+				MinimumHosts: 1,
+			},
+		}
+
+		testutil.HandleTestingErr(distro1.Insert(), t, "error inserting distro")
+		testutil.HandleTestingErr(distro2.Insert(), t, "error inserting distro")
+
+		Convey("Add some hosts with referenced host.Distro that do not exist in the distro collection ", func() {
+			host1 := host.Host{
+				Id:           "h1",
+				Distro:       distro.Distro{Id: "distro2"},
+				Provider:     evergreen.ProviderNameMock,
+				CreationTime: time.Now().Add(-10 * time.Minute),
+				Status:       evergreen.HostRunning,
+				StartedBy:    evergreen.User,
+			}
+			host2 := host.Host{
+				Id:           "h2",
+				Distro:       distro.Distro{Id: "distro1"},
+				Provider:     evergreen.ProviderNameMock,
+				CreationTime: time.Now().Add(-20 * time.Minute),
+				Status:       evergreen.HostRunning,
+				StartedBy:    evergreen.User,
+			}
+			host3 := host.Host{
+				Id:           "h3",
+				Distro:       distro.Distro{Id: "c"},
+				Provider:     evergreen.ProviderNameMock,
+				CreationTime: time.Now().Add(-30 * time.Minute),
+				Status:       evergreen.HostRunning,
+				StartedBy:    evergreen.User,
+			}
+			host4 := host.Host{
+				Id:           "h4",
+				Distro:       distro.Distro{Id: "a"},
+				Provider:     evergreen.ProviderNameMock,
+				CreationTime: time.Now().Add(-30 * time.Minute),
+				Status:       evergreen.HostRunning,
+				StartedBy:    evergreen.User,
+			}
+			host5 := host.Host{
+				Id:           "h5",
+				Distro:       distro.Distro{Id: "z"},
+				Provider:     evergreen.ProviderNameMock,
+				CreationTime: time.Now().Add(-20 * time.Minute),
+				Status:       evergreen.HostRunning,
+				StartedBy:    evergreen.User,
+			}
+			testutil.HandleTestingErr(host1.Insert(), t, "error inserting host")
+			testutil.HandleTestingErr(host2.Insert(), t, "error inserting host")
+			testutil.HandleTestingErr(host3.Insert(), t, "error inserting host")
+			testutil.HandleTestingErr(host4.Insert(), t, "error inserting host")
+			testutil.HandleTestingErr(host5.Insert(), t, "error inserting host")
+
+			// If encountered missing distros, we exit early before we ever check for hosts to flag as idle
+			idle, err := flagIdleHosts(ctx, env)
+			So(err.Error(), ShouldContainSubstring, "distro ids a,c,z not found")
+			So(len(idle), ShouldEqual, 0)
+		})
+	})
+}
+
+////////////////////////////////////////////////////////////////////////
+//
+// Testing with non-zero values for Distro.PlannerSettings.MinimumHosts
+//
+
+func TestFlaggingIdleHostsWhenNonZeroMinimumHosts(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	testConfig := testutil.TestConfig()
+	db.SetGlobalSessionProvider(testConfig.SessionFactory())
+
+	env := evergreen.GetEnvironment()
+
+	Convey("When flagging idle hosts to be terminated", t, func() {
+
+		// reset the db
+		testutil.HandleTestingErr(db.ClearCollections(distro.Collection),
+			t, "error clearing distros collection")
+		testutil.HandleTestingErr(db.ClearCollections(host.Collection),
+			t, "error clearing hosts collection")
+
+		// insert a reference distro.Distro
+		distro1 := distro.Distro{
+			Id: "distro1",
+			PlannerSettings: distro.PlannerSettings{
+				MinimumHosts: 2,
+			},
+		}
+
+		testutil.HandleTestingErr(distro1.Insert(), t, "error inserting distro")
+
+		Convey("Neither host should be flagged as idle as MinimumHosts is 2", func() {
+			host1 := host.Host{
+				Id:           "h1",
+				Distro:       distro.Distro{Id: "distro1"},
+				Provider:     evergreen.ProviderNameMock,
+				CreationTime: time.Now().Add(-30 * time.Minute),
+				Status:       evergreen.HostRunning,
+				StartedBy:    evergreen.User,
+			}
+			host2 := host.Host{
+				Id:           "h2",
+				Distro:       distro.Distro{Id: "distro1"},
+				Provider:     evergreen.ProviderNameMock,
+				CreationTime: time.Now().Add(-20 * time.Minute),
+				Status:       evergreen.HostRunning,
+				StartedBy:    evergreen.User,
+			}
+			testutil.HandleTestingErr(host1.Insert(), t, "error inserting host")
+			testutil.HandleTestingErr(host2.Insert(), t, "error inserting host")
+
+			// finding idle hosts should not return either host
+			idle, err := flagIdleHosts(ctx, env)
+			So(err, ShouldBeNil)
+			So(len(idle), ShouldEqual, 0)
+		})
+
+		Convey("MinimumHosts is 2; 1 host is running a task and 2 hosts are idle", func() {
+			host1 := host.Host{
+				Id:           "h1",
+				Distro:       distro.Distro{Id: "distro1"},
+				Provider:     evergreen.ProviderNameMock,
+				CreationTime: time.Now().Add(-30 * time.Minute),
+				Status:       evergreen.HostRunning,
+				StartedBy:    evergreen.User,
+			}
+			host2 := host.Host{
+				Id:           "h2",
+				Distro:       distro.Distro{Id: "distro1"},
+				Provider:     evergreen.ProviderNameMock,
+				CreationTime: time.Now().Add(-20 * time.Minute),
+				Status:       evergreen.HostRunning,
+				StartedBy:    evergreen.User,
+			}
+			host3 := host.Host{
+				Id:           "h3",
+				Distro:       distro.Distro{Id: "distro1"},
+				Provider:     evergreen.ProviderNameMock,
+				CreationTime: time.Now().Add(-10 * time.Minute),
+				Status:       evergreen.HostRunning,
+				StartedBy:    evergreen.User,
+				RunningTask:  "t1",
+			}
+			testutil.HandleTestingErr(host1.Insert(), t, "error inserting host")
+			testutil.HandleTestingErr(host2.Insert(), t, "error inserting host")
+			testutil.HandleTestingErr(host3.Insert(), t, "error inserting host")
+
+			// Only the oldest host not running a task should be flagged as idle - leaving 2 running hosts.
+			idle, err := flagIdleHosts(ctx, env)
+			So(err, ShouldBeNil)
+			So(len(idle), ShouldEqual, 1)
+			So(idle[0], ShouldEqual, "h1")
 		})
 	})
 }

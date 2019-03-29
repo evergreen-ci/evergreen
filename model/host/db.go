@@ -78,12 +78,12 @@ var (
 	SpawnOptionsBuildIDKey       = bsonutil.MustHaveTag(SpawnOptions{}, "BuildID")
 	SpawnOptionsTimeoutKey       = bsonutil.MustHaveTag(SpawnOptions{}, "TimeoutTeardown")
 	SpawnOptionsSpawnedByTaskKey = bsonutil.MustHaveTag(SpawnOptions{}, "SpawnedByTask")
-	DistroIDKey                  = bsonutil.MustHaveTag(distro.Distro{}, "Id")
 )
 
 var (
-	HostsByDistroDistroIDKey = bsonutil.MustHaveTag(HostsByDistro{}, "DistroID")
-	HostsByDistroHostsKey    = bsonutil.MustHaveTag(HostsByDistro{}, "Hosts")
+	HostsByDistroDistroIDKey          = bsonutil.MustHaveTag(IdleHostsByDistroID{}, "DistroID")
+	HostsByDistroIdleHostsKey         = bsonutil.MustHaveTag(IdleHostsByDistroID{}, "IdleHosts")
+	HostsByDistroRunningHostsCountKey = bsonutil.MustHaveTag(IdleHostsByDistroID{}, "RunningHostsCount")
 )
 
 // === Queries ===
@@ -134,17 +134,14 @@ func AllIdleEphemeral() ([]Host, error) {
 	return Find(query)
 }
 
-func IdleEphemeralGroupedByDistroId(creationTimeAsc bool) ([]HostsByDistro, error) {
-	var hostsByDistro []HostsByDistro
-	sortOrder := -1
-	if creationTimeAsc {
-		sortOrder = 1
-	}
-
+// IdleEphemeralGroupedByDistroId groups and collates the following grouped and ordered by {distro.Id: 1}:
+// - []host.Host of ephemeral hosts without containers which having no running task, ordered by {host.CreationTime: 1}
+// - the total number of ephemeral hosts with status: evergreen.HostRunning
+func IdleEphemeralGroupedByDistroId() ([]IdleHostsByDistroID, error) {
+	var idlehostsByDistroID []IdleHostsByDistroID
 	pipeline := []bson.M{
 		{
 			"$match": bson.M{
-				RunningTaskKey:   bson.M{"$exists": false},
 				StartedByKey:     evergreen.User,
 				StatusKey:        evergreen.HostRunning,
 				ProviderKey:      bson.M{"$in": evergreen.ProviderSpawnable},
@@ -152,26 +149,28 @@ func IdleEphemeralGroupedByDistroId(creationTimeAsc bool) ([]HostsByDistro, erro
 			},
 		},
 		{
-			"$sort": bson.M{CreateTimeKey: sortOrder},
+			"$sort": bson.M{CreateTimeKey: 1},
 		},
 		{
 			"$group": bson.M{
-				"_id": "$" + bsonutil.GetDottedKeyName(DistroKey, DistroIDKey),
-				HostsByDistroHostsKey: bson.M{
-					"$push": "$$ROOT",
-				},
+				"_id":                             "$" + bsonutil.GetDottedKeyName(DistroKey, distro.IdKey),
+				HostsByDistroRunningHostsCountKey: bson.M{"$sum": 1},
+				HostsByDistroIdleHostsKey:         bson.M{"$push": bson.M{"$cond": []interface{}{bson.M{"$eq": []interface{}{"$running_task", bson.Undefined}}, "$$ROOT", bson.Undefined}}},
 			},
 		},
 		{
-			"$project": bson.M{"_id": 0, HostsByDistroDistroIDKey: "$_id", HostsByDistroHostsKey: 1},
+			"$sort": bson.M{"_id": 1},
+		},
+		{
+			"$project": bson.M{"_id": 0, HostsByDistroDistroIDKey: "$_id", HostsByDistroIdleHostsKey: 1, HostsByDistroRunningHostsCountKey: 1},
 		},
 	}
-	err := db.Aggregate(Collection, pipeline, &hostsByDistro)
-	if err != nil {
-		return nil, errors.Wrap(err, "problem grouping idle hosts by distro id")
+
+	if err := db.Aggregate(Collection, pipeline, &idlehostsByDistroID); err != nil {
+		return nil, errors.Wrap(err, "problem grouping idle hosts by Distro.Id")
 	}
 
-	return hostsByDistro, nil
+	return idlehostsByDistroID, nil
 }
 
 func runningHostsQuery(distroID string) bson.M {

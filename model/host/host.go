@@ -119,9 +119,10 @@ type Host struct {
 	DockerOptions DockerOptions `bson:"docker_options,omitempty" json:"docker_options,omitempty"`
 }
 
-type HostsByDistro struct {
-	DistroID string `bson:"distro_id" json:"distro_id" mapstructure:"distro_id"`
-	Hosts    []Host `bson:"hosts" json:"hosts" mapstructure:"hosts"`
+type IdleHostsByDistroID struct {
+	DistroID          string `bson:"distro_id"`
+	IdleHosts         []Host `bson:"idle_hosts"`
+	RunningHostsCount int    `bson:"running_hosts_count"`
 }
 
 type HostGroup []Host

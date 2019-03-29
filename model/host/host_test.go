@@ -929,7 +929,7 @@ func TestHostStats(t *testing.T) {
 	const d1 = "distro1"
 	const d2 = "distro2"
 
-	testutil.HandleTestingErr(db.Clear(Collection), t, "error clearing hosts collection")
+	testutil.HandleTestingErr(db.ClearCollections(Collection, task.Collection), t, "error clearing collections")
 	host1 := &Host{
 		Id:          "host1",
 		Distro:      distro.Distro{Id: d1},
@@ -1114,7 +1114,7 @@ func TestIdleEphemeralGroupedByDistroId(t *testing.T) {
 		Distro:        distro.Distro{Id: d1},
 		Status:        evergreen.HostRunning,
 		StartedBy:     evergreen.User,
-		Provider:      evergreen.ProviderNameEc2OnDemand,
+		Provider:      evergreen.ProviderNameMock,
 		HasContainers: false,
 		CreationTime:  time.Now().Add(-20 * time.Minute),
 	}
@@ -1123,7 +1123,7 @@ func TestIdleEphemeralGroupedByDistroId(t *testing.T) {
 		Distro:        distro.Distro{Id: d1},
 		Status:        evergreen.HostRunning,
 		StartedBy:     evergreen.User,
-		Provider:      evergreen.ProviderNameEc2OnDemand,
+		Provider:      evergreen.ProviderNameMock,
 		HasContainers: false,
 		CreationTime:  time.Now().Add(-10 * time.Minute),
 	}
@@ -1132,7 +1132,7 @@ func TestIdleEphemeralGroupedByDistroId(t *testing.T) {
 		Distro:        distro.Distro{Id: d2},
 		Status:        evergreen.HostRunning,
 		StartedBy:     evergreen.User,
-		Provider:      evergreen.ProviderNameEc2OnDemand,
+		Provider:      evergreen.ProviderNameMock,
 		HasContainers: false,
 		CreationTime:  time.Now().Add(-30 * time.Minute),
 	}
@@ -1141,7 +1141,7 @@ func TestIdleEphemeralGroupedByDistroId(t *testing.T) {
 		Distro:        distro.Distro{Id: d1},
 		Status:        evergreen.HostRunning,
 		StartedBy:     evergreen.User,
-		Provider:      evergreen.ProviderNameEc2OnDemand,
+		Provider:      evergreen.ProviderNameMock,
 		HasContainers: false,
 		CreationTime:  time.Now().Add(-40 * time.Minute),
 	}
@@ -1150,9 +1150,19 @@ func TestIdleEphemeralGroupedByDistroId(t *testing.T) {
 		Distro:        distro.Distro{Id: d2},
 		Status:        evergreen.HostRunning,
 		StartedBy:     evergreen.User,
-		Provider:      evergreen.ProviderNameEc2OnDemand,
+		Provider:      evergreen.ProviderNameMock,
 		HasContainers: false,
 		CreationTime:  time.Now().Add(-50 * time.Minute),
+	}
+	host6 := &Host{
+		Id:            "host6",
+		Distro:        distro.Distro{Id: d1},
+		RunningTask:   "I'm running a task so I'm certainly not idle!",
+		Status:        evergreen.HostRunning,
+		StartedBy:     evergreen.User,
+		Provider:      evergreen.ProviderNameMock,
+		HasContainers: false,
+		CreationTime:  time.Now().Add(-60 * time.Minute),
 	}
 
 	assert.NoError(host1.Insert())
@@ -1160,52 +1170,23 @@ func TestIdleEphemeralGroupedByDistroId(t *testing.T) {
 	assert.NoError(host3.Insert())
 	assert.NoError(host4.Insert())
 	assert.NoError(host5.Insert())
+	assert.NoError(host6.Insert())
 
-	distroHosts, err := IdleEphemeralGroupedByDistroId(true)
+	idleHostsByDistroID, err := IdleEphemeralGroupedByDistroId()
 	assert.NoError(err)
-	assert.Equal(2, len(distroHosts))
+	assert.Equal(2, len(idleHostsByDistroID))
 
-	// Confirm the hosts are sorted from oldest to newest CreationTime.
-	if distroHosts[0].DistroID == d2 {
-		assert.Equal(2, len(distroHosts[0].Hosts))
-		assert.Equal("host5", distroHosts[0].Hosts[0].Id)
-		assert.Equal("host3", distroHosts[0].Hosts[1].Id)
-		assert.Equal(3, len(distroHosts[1].Hosts))
-		assert.Equal("host4", distroHosts[1].Hosts[0].Id)
-		assert.Equal("host1", distroHosts[1].Hosts[1].Id)
-		assert.Equal("host2", distroHosts[1].Hosts[2].Id)
-	} else {
-		assert.Equal(3, len(distroHosts[0].Hosts))
-		assert.Equal("host4", distroHosts[0].Hosts[0].Id)
-		assert.Equal("host1", distroHosts[0].Hosts[1].Id)
-		assert.Equal("host2", distroHosts[0].Hosts[2].Id)
-		assert.Equal(2, len(distroHosts[1].Hosts))
-		assert.Equal("host5", distroHosts[1].Hosts[0].Id)
-		assert.Equal("host3", distroHosts[1].Hosts[1].Id)
-	}
-
-	distroHosts, err = IdleEphemeralGroupedByDistroId(false)
-	assert.NoError(err)
-	assert.Equal(2, len(distroHosts))
-
-	// Confirm the hosts are sorted from newest to oldest CreationTime.
-	if distroHosts[0].DistroID == d2 {
-		assert.Equal(2, len(distroHosts[0].Hosts))
-		assert.Equal("host3", distroHosts[0].Hosts[0].Id)
-		assert.Equal("host5", distroHosts[0].Hosts[1].Id)
-		assert.Equal(3, len(distroHosts[1].Hosts))
-		assert.Equal("host2", distroHosts[1].Hosts[0].Id)
-		assert.Equal("host1", distroHosts[1].Hosts[1].Id)
-		assert.Equal("host4", distroHosts[1].Hosts[2].Id)
-	} else {
-		assert.Equal(3, len(distroHosts[0].Hosts))
-		assert.Equal("host2", distroHosts[0].Hosts[0].Id)
-		assert.Equal("host1", distroHosts[0].Hosts[1].Id)
-		assert.Equal("host4", distroHosts[0].Hosts[2].Id)
-		assert.Equal(2, len(distroHosts[1].Hosts))
-		assert.Equal("host3", distroHosts[1].Hosts[0].Id)
-		assert.Equal("host5", distroHosts[1].Hosts[1].Id)
-	}
+	// Confirm the distroIDs are ordered {:distro._id and that IdleHosts are sorted from oldest to newest CreationTime.
+	assert.Equal("distro1", idleHostsByDistroID[0].DistroID)
+	assert.Equal(3, len(idleHostsByDistroID[0].IdleHosts))
+	assert.Equal(4, idleHostsByDistroID[0].RunningHostsCount)
+	assert.Equal("host4", idleHostsByDistroID[0].IdleHosts[0].Id)
+	assert.Equal("host1", idleHostsByDistroID[0].IdleHosts[1].Id)
+	assert.Equal("host2", idleHostsByDistroID[0].IdleHosts[2].Id)
+	assert.Equal(2, len(idleHostsByDistroID[1].IdleHosts))
+	assert.Equal(2, idleHostsByDistroID[1].RunningHostsCount)
+	assert.Equal("host5", idleHostsByDistroID[1].IdleHosts[0].Id)
+	assert.Equal("host3", idleHostsByDistroID[1].IdleHosts[1].Id)
 }
 
 func TestFindAllRunningContainers(t *testing.T) {
