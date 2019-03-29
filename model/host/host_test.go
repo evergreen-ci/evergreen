@@ -1176,7 +1176,7 @@ func TestIdleEphemeralGroupedByDistroId(t *testing.T) {
 	assert.NoError(err)
 	assert.Equal(2, len(idleHostsByDistroID))
 
-	// Confirm the distroIDs are ordered {:distro._id and that IdleHosts are sorted from oldest to newest CreationTime.
+	// Confirm the distroIDs are ordered by {"distro._id": 1} and that IdleHosts are sorted from oldest to newest CreationTime.
 	assert.Equal("distro1", idleHostsByDistroID[0].DistroID)
 	assert.Equal(3, len(idleHostsByDistroID[0].IdleHosts))
 	assert.Equal(4, idleHostsByDistroID[0].RunningHostsCount)

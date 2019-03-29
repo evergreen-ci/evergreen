@@ -368,7 +368,7 @@ func PopulateIdleHostJobs(env evergreen.Environment) amboy.QueueOperation {
 			grip.InfoWhen(sometimes.Percent(10), message.Fields{
 				"id":                         idleHostJobName,
 				"op":                         "dispatcher",
-				"distro_id":                  distrosFound[i].Id,
+				"distro_id":                  info.DistroID,
 				"minimum_hosts":              minimumHosts,
 				"num_running_hosts":          totalRunningHosts,
 				"num_idle_hosts":             nIdleHosts,

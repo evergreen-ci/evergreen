@@ -72,5 +72,6 @@ func GetSetDifference(a, b []string) (difference []string) {
 			diff = append(diff, e)
 		}
 	}
+
 	return diff
 }
