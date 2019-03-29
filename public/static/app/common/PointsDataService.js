@@ -57,7 +57,6 @@ mciModule.factory('PointsDataService', function ($log, Stitch, STITCH_CONFIG) {
         .map((value, key) => [key, _.isSet(value) ? Array.from(value) : value])
         .object()
         .value(),
-      //.mapObject((value) => Array.from(value)),
       err => {
         // Try to gracefully handle an error.
         $log.error('Cannot load outliers and rejected points!', err);
