@@ -17,6 +17,7 @@ import (
 type TaskQueueService interface {
 	FindNextTask(string, TaskSpec) (*TaskQueueItem, error)
 	Refresh(string) error
+	RefreshFindNextTask(string, TaskSpec) (*TaskQueueItem, error)
 }
 
 type taskDispatchService struct {
@@ -48,6 +49,18 @@ func (s *taskDispatchService) Refresh(distro string) error {
 	}
 
 	return errors.WithStack(queue.Refresh())
+}
+
+func (s *taskDispatchService) RefreshFindNextTask(distro string, spec TaskSpec) (*TaskQueueItem, error) {
+	queue, err := s.ensureQueue(distro)
+	if err != nil {
+		return nil, errors.WithStack(err)
+	}
+
+	if err := queue.Refresh(); err != nil {
+		return nil, errors.WithStack(queue.Refresh())
+	}
+	return queue.FindNextTask(spec), nil
 }
 
 func (s *taskDispatchService) ensureQueue(distro string) (*taskDistroDispatchService, error) {
