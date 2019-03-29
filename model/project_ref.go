@@ -333,7 +333,7 @@ func FindOneProjectRefByRepoAndBranchWithPRTesting(owner, repo, branch string) (
 
 func FindOneProjectRefWithCommitQueueByOwnerRepoAndBranch(owner, repo, branch string) (*ProjectRef, error) {
 	projRef := &ProjectRef{}
-	if err := db.FindOne(
+	err := db.FindOne(
 		ProjectRefCollection,
 		bson.M{
 			ProjectRefOwnerKey:  owner,
@@ -344,7 +344,8 @@ func FindOneProjectRefWithCommitQueueByOwnerRepoAndBranch(owner, repo, branch st
 		db.NoProjection,
 		db.NoSort,
 		projRef,
-	); err != nil {
+	)
+	if err != nil {
 		return nil, errors.Wrapf(err, "can't query for project with commit queue. owner: %s, repo: %s, branch: %s", owner, repo, branch)
 	}
 

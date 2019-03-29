@@ -2,6 +2,7 @@ package operations
 
 import (
 	"context"
+	"net/http"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/rest/client"
@@ -193,13 +194,8 @@ type mergeParams struct {
 }
 
 func (p *mergeParams) mergeBranch(ctx context.Context, conf *ClientSettings, client client.Communicator, ac *legacyClient) error {
-	projectRef, err := ValidateProjectID(conf, ac, p.projectID, p.skipConfirm)
-	if err != nil {
-		return errors.Wrap(err, "invalid project ID")
-	}
-
 	if p.id == "" {
-		if err := p.uploadMergePatch(conf, ac, projectRef.Branch); err != nil {
+		if err := p.uploadMergePatch(conf, ac); err != nil {
 			return err
 		}
 	}
@@ -215,7 +211,7 @@ func (p *mergeParams) mergeBranch(ctx context.Context, conf *ClientSettings, cli
 	return nil
 }
 
-func (p *mergeParams) uploadMergePatch(conf *ClientSettings, ac *legacyClient, branch string) error {
+func (p *mergeParams) uploadMergePatch(conf *ClientSettings, ac *legacyClient) error {
 	patchParams := &patchParams{
 		Project:     p.projectID,
 		SkipConfirm: p.skipConfirm,
@@ -224,7 +220,19 @@ func (p *mergeParams) uploadMergePatch(conf *ClientSettings, ac *legacyClient, b
 		Alias:       evergreen.CommitQueueAlias,
 	}
 
-	diffData, err := getFeaturePatchInfo(branch, p.ref)
+	if err := patchParams.loadProject(conf); err != nil {
+		return errors.Wrap(err, "invalid project ID")
+	}
+
+	ref, err := ac.GetProjectRef(patchParams.Project)
+	if err != nil {
+		if apiErr, ok := err.(APIError); ok && apiErr.code == http.StatusNotFound {
+			err = errors.WithStack(err)
+		}
+		return errors.Wrap(err, "can't get project ref")
+	}
+
+	diffData, err := getFeaturePatchInfo(ref.Branch, p.ref)
 	if err != nil {
 		return errors.Wrap(err, "can't generate patches")
 	}
