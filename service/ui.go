@@ -211,6 +211,7 @@ func (uis *UIServer) GetServiceApp() *gimlet.APIApp {
 	// User login and logout
 	app.AddRoute("/login").Handler(uis.loginPage).Get()
 	app.AddRoute("/login").Handler(uis.login).Post()
+	app.AddRoute("/login/key").Handler(uis.userGetKey).Get()
 	app.AddRoute("/logout").Handler(uis.logout).Get()
 
 	if h := uis.UserManager.GetLoginHandler(uis.RootURL); h != nil {
