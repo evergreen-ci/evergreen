@@ -2,6 +2,7 @@ package evergreen
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -49,7 +50,7 @@ func (s *EnvironmentSuite) TestLoadingConfig() {
 
 	// first test loading config from a file
 	env, err := NewEnvironment(ctx, s.path, nil)
-	s.NoError(err)
+	s.Require().NoError(err)
 	s.env = env.(*envState)
 	s.Equal("http://localhost:8080", s.env.Settings().ApiUrl)
 
@@ -63,9 +64,10 @@ func (s *EnvironmentSuite) TestLoadingConfig() {
 	db := settings.Database
 
 	env, err = NewEnvironment(ctx, "", &db)
-	s.NoError(err)
-	s.Equal(db, s.env.settings.Database)
+	s.Require().NoError(err)
+	fmt.Println(db, s.env.settings)
 	s.env = env.(*envState)
+	s.Equal(db, s.env.settings.Database)
 	s.Equal("http://localhost:8080", s.env.Settings().ApiUrl)
 }
 
