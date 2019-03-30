@@ -164,6 +164,8 @@ func (q *unorderedLocal) Next(ctx context.Context) amboy.Job {
 // results pending. Other implementations may have different semantics
 // for this method.
 func (q *unorderedLocal) Results(ctx context.Context) <-chan amboy.Job {
+	q.tasks.RLock()
+	defer q.tasks.RUnlock()
 	output := make(chan amboy.Job, q.numCompleted)
 
 	go func() {

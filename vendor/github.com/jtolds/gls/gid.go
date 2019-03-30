@@ -21,5 +21,6 @@ func EnsureGoroutineId(cb func(gid uint)) {
 	}
 	gid := stackTagPool.Acquire()
 	defer stackTagPool.Release(gid)
+
 	addStackTag(gid, func() { cb(gid) })
 }

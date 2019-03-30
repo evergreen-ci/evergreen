@@ -62,7 +62,7 @@ func (d *driverInternal) Close() {
 // Get retrieves a job object from the persistence system based on the
 // name (ID) of the job. If no job exists by this name, the error is
 // non-nil.
-func (d *driverInternal) Get(name string) (amboy.Job, error) {
+func (d *driverInternal) Get(_ context.Context, name string) (amboy.Job, error) {
 	d.jobs.RLock()
 	defer d.jobs.RUnlock()
 
@@ -76,7 +76,7 @@ func (d *driverInternal) Get(name string) (amboy.Job, error) {
 }
 
 // Put saves a new job to the queue, returning if it already exists.
-func (d *driverInternal) Put(j amboy.Job) error {
+func (d *driverInternal) Put(_ context.Context, j amboy.Job) error {
 	d.jobs.Lock()
 	defer d.jobs.Unlock()
 	name := j.ID()
@@ -95,7 +95,7 @@ func (d *driverInternal) Put(j amboy.Job) error {
 // Save takes a job and persists it in the storage for this driver. If
 // there is no job with a matching ID, then this operation returns an
 // error.
-func (d *driverInternal) Save(j amboy.Job) error {
+func (d *driverInternal) Save(_ context.Context, j amboy.Job) error {
 	d.jobs.Lock()
 	defer d.jobs.Unlock()
 	name := j.ID()
@@ -133,7 +133,7 @@ func (d *driverInternal) JobStats(ctx context.Context) <-chan amboy.JobStatusInf
 // SaveStatus persists only the status document in the job in the
 // persistence layer. If the job does not exist, this method produces
 // an error.
-func (d *driverInternal) SaveStatus(j amboy.Job, stat amboy.JobStatusInfo) error {
+func (d *driverInternal) SaveStatus(_ context.Context, j amboy.Job, stat amboy.JobStatusInfo) error {
 	d.jobs.Lock()
 	defer d.jobs.Unlock()
 	name := j.ID()
@@ -151,7 +151,7 @@ func (d *driverInternal) SaveStatus(j amboy.Job, stat amboy.JobStatusInfo) error
 
 // Jobs is a generator of all Job objects stored by the driver. There
 // is no additional filtering of the jobs produced by this generator.
-func (d *driverInternal) Jobs() <-chan amboy.Job {
+func (d *driverInternal) Jobs(_ context.Context) <-chan amboy.Job {
 	d.jobs.RLock()
 	defer d.jobs.RUnlock()
 	output := make(chan amboy.Job, len(d.jobs.m))
@@ -208,7 +208,7 @@ func (d *driverInternal) Next(ctx context.Context) amboy.Job {
 // Stats iterates through all of the jobs stored in the driver and
 // determines how many locked, completed, and pending jobs are stored
 // in the queue.
-func (d *driverInternal) Stats() amboy.QueueStats {
+func (d *driverInternal) Stats(_ context.Context) amboy.QueueStats {
 	d.jobs.RLock()
 	defer d.jobs.RUnlock()
 

@@ -1,5 +1,12 @@
 package db
 
-import mgo "gopkg.in/mgo.v2"
+import (
+	"github.com/pkg/errors"
+	mgo "gopkg.in/mgo.v2"
+)
 
-func ResultsNotFound(err error) bool { return err == mgo.ErrNotFound }
+var errNotFound = errors.New("document not found")
+
+func ResultsNotFound(err error) bool {
+	return errors.Cause(err) == mgo.ErrNotFound || errors.Cause(err) == errNotFound
+}

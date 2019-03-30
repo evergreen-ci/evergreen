@@ -33,7 +33,7 @@ func TestSpawnhostAlertJob(t *testing.T) {
 	ctx := context.Background()
 	env := &mock.Environment{}
 	j.env = env
-	assert.NoError(j.env.Configure(ctx, filepath.Join(evergreen.FindEvergreenHome(), testutil.TestDir, testutil.TestSettings), nil))
+	assert.NoError(env.Configure(ctx, filepath.Join(evergreen.FindEvergreenHome(), testutil.TestDir, testutil.TestSettings), nil))
 
 	j.Run(ctx)
 	assert.NoError(j.Error())

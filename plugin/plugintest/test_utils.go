@@ -14,7 +14,7 @@ func SetupPatchData(apiData *modelutil.TestModelData, patchPath string, t *testi
 
 	if patchPath != "" {
 		modulePatchContent, err := ioutil.ReadFile(patchPath)
-		testutil.HandleTestingErr(err, t, "failed to read test module patch file %v")
+		testutil.HandleTestingErr(err, t, "failed to read test module patch file")
 
 		patch := &patch.Patch{
 			Status:  evergreen.PatchCreated,
@@ -28,7 +28,7 @@ func SetupPatchData(apiData *modelutil.TestModelData, patchPath string, t *testi
 			},
 		}
 
-		testutil.HandleTestingErr(patch.Insert(), t, "failed to insert patch %v")
+		testutil.HandleTestingErr(patch.Insert(), t, "failed to insert patch")
 
 	}
 

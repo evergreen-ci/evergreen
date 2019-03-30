@@ -17,6 +17,7 @@ import (
 // storage.
 type priorityLocalQueue struct {
 	storage  *priorityStorage
+	fixed    *fixedStorage
 	channel  chan amboy.Job
 	runner   amboy.Runner
 	counters struct {
@@ -29,9 +30,10 @@ type priorityLocalQueue struct {
 // NewLocalPriorityQueue constructs a new priority queue instance and
 // initializes a local worker queue with the specified number of
 // worker processes.
-func NewLocalPriorityQueue(workers int) amboy.Queue {
+func NewLocalPriorityQueue(workers, capacity int) amboy.Queue {
 	q := &priorityLocalQueue{
 		storage: makePriorityStorage(),
+		fixed:   newFixedStorage(capacity),
 	}
 
 	q.runner = pool.NewLocalWorkers(workers, q)
@@ -156,9 +158,18 @@ func (q *priorityLocalQueue) Stats() amboy.QueueStats {
 // Complete marks a job complete. The operation is asynchronous in
 // this implementation.
 func (q *priorityLocalQueue) Complete(ctx context.Context, j amboy.Job) {
-	grip.Debugf("marking job (%s) as complete", j.ID())
+	id := j.ID()
+	grip.Debugf("marking job (%s) as complete", id)
 	q.counters.Lock()
 	defer q.counters.Unlock()
+
+	q.fixed.Push(id)
+
+	if num := q.fixed.Oversize(); num > 0 {
+		for i := 0; i < num; i++ {
+			q.storage.Remove(q.fixed.Pop())
+		}
+	}
 
 	q.counters.completed++
 }

@@ -22,7 +22,6 @@ import (
 	"github.com/evergreen-ci/evergreen/testutil"
 	. "github.com/smartystreets/goconvey/convey"
 	"github.com/smartystreets/goconvey/convey/reporting"
-	"github.com/stretchr/testify/assert"
 	"gopkg.in/mgo.v2/bson"
 	yaml "gopkg.in/yaml.v2"
 )
@@ -118,11 +117,9 @@ func setupCLITestHarness() cliTestHarness {
 }
 
 func TestCLIFetchSource(t *testing.T) {
-	evergreen.ResetEnvironment()
-
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	assert.NoError(t, evergreen.GetEnvironment().Configure(ctx, filepath.Join(evergreen.FindEvergreenHome(), testutil.TestDir, testutil.TestSettings), nil))
+	testutil.SetGlobalEnvironment(ctx, t)
 
 	testutil.ConfigureIntegrationTest(t, testConfig, "TestCLIFetchSource")
 	evergreen.GetEnvironment().Settings().Credentials = testConfig.Credentials
@@ -185,11 +182,10 @@ func TestCLIFetchSource(t *testing.T) {
 }
 
 func TestCLIFetchArtifacts(t *testing.T) {
-	evergreen.ResetEnvironment()
-
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	assert.NoError(t, evergreen.GetEnvironment().Configure(ctx, filepath.Join(evergreen.FindEvergreenHome(), testutil.TestDir, testutil.TestSettings), nil))
+
+	testutil.SetGlobalEnvironment(ctx, t)
 
 	testutil.ConfigureIntegrationTest(t, testConfig, "TestCLIFetchArtifacts")
 	evergreen.GetEnvironment().Settings().Credentials = testConfig.Credentials
@@ -327,11 +323,10 @@ func TestCLITestHistory(t *testing.T) {
 }
 
 func TestCLIFunctions(t *testing.T) {
-	evergreen.ResetEnvironment()
-
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	assert.NoError(t, evergreen.GetEnvironment().Configure(ctx, filepath.Join(evergreen.FindEvergreenHome(), testutil.TestDir, testutil.TestSettings), nil))
+
+	testutil.SetGlobalEnvironment(ctx, t)
 	testutil.ConfigureIntegrationTest(t, testConfig, "TestCLIFunctions")
 	evergreen.GetEnvironment().Settings().Credentials = testConfig.Credentials
 

@@ -64,15 +64,15 @@ func (s *BaseCheckSuite) TestIdIsAccessorForTaskIDAttribute() {
 func (s *BaseCheckSuite) TestDependencyAccessorIsCorrect() {
 	s.Equal(s.base.dep, s.base.Dependency())
 	s.base.SetDependency(dependency.NewAlways())
-	s.Equal(dependency.AlwaysRun, s.base.Dependency().Type().Name)
+	s.Equal("always", s.base.Dependency().Type().Name)
 }
 
 func (s *BaseCheckSuite) TestSetDependencyAcceptsAndPersistsChangesToDependencyType() {
-	s.Equal(dependency.AlwaysRun, s.base.dep.Type().Name)
-	localDep := dependency.NewLocalFileInstance()
-	s.NotEqual(localDep.Type().Name, dependency.AlwaysRun)
+	s.Equal("always", s.base.dep.Type().Name)
+	localDep := dependency.MakeLocalFile()
+	s.NotEqual(localDep.Type().Name, "always")
 	s.base.SetDependency(localDep)
-	s.Equal(dependency.LocalFileRelationship, s.base.dep.Type().Name)
+	s.Equal("local-file", s.base.dep.Type().Name)
 }
 
 func (s *BaseCheckSuite) TestMarkCompleteHelperSetsCompleteState() {

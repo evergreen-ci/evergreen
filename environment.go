@@ -18,20 +18,24 @@ import (
 	"github.com/mongodb/amboy/logger"
 	"github.com/mongodb/amboy/pool"
 	"github.com/mongodb/amboy/queue"
+	"github.com/mongodb/anser/db"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/level"
 	"github.com/mongodb/grip/message"
 	"github.com/mongodb/grip/send"
 	"github.com/mongodb/jasper"
 	"github.com/pkg/errors"
+	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/options"
 	mgo "gopkg.in/mgo.v2"
 )
 
-var globalEnvState *envState
+var (
+	globalEnv     Environment
+	globalEnvLock *sync.RWMutex
+)
 
-func init() {
-	ResetEnvironment()
-}
+func init() { globalEnvLock = &sync.RWMutex{} }
 
 // GetEnvironment returns the global application level
 // environment. This implementation is thread safe, but must be
@@ -43,32 +47,27 @@ func init() {
 // (e.g. models) and in the implementation of amboy jobs where it is
 // necessary to access the global environment. There is a mock
 // implementation for use in testing.
-func GetEnvironment() Environment { return globalEnvState }
+func GetEnvironment() Environment {
+	return globalEnv
+}
 
-func ResetEnvironment() {
-	globalEnvState = &envState{
-		senders: map[SenderKey]send.Sender{},
-		closers: map[string]func(context.Context) error{},
-	}
+func SetEnvironment(env Environment) {
+	globalEnvLock.Lock()
+	defer globalEnvLock.Unlock()
+
+	globalEnv = env
 }
 
 // Environment provides application-level services (e.g. databases,
 // configuration, queues.
 type Environment interface {
-	// Configure initializes the object. Some implementations may
-	// not allow the same instance to be configured more than
-	// once.
-	//
-	// If Configure returns without an error, you should assume
-	// that the queues have been started, there was no issue
-	// establishing a connection to the database, and that the
-	// local and remote queues have started.
-	Configure(context.Context, string, *DBSettings) error
-
 	// Returns the settings object. The settings object is not
 	// necessarily safe for concurrent access.
 	Settings() *Settings
-	Session() *mgo.Session
+
+	Session() db.Session
+	Client() *mongo.Client
+	DB() *mongo.Database
 
 	// The Environment provides access to three queues, a
 	// local-process level queue that is not persisted between
@@ -110,6 +109,53 @@ type Environment interface {
 	Close(context.Context) error
 }
 
+// Configure initializes the object. Some implementations may
+// not allow the same instance to be configured more than
+// once.
+//
+// If Configure returns without an error, you should assume
+// that the queues have been started, there was no issue
+// establishing a connection to the database, and that the
+// local and remote queues have started.
+//
+// Configure requires that either the path or DB is sent so that it
+// can construct the evergreen settings. If both are sent, the
+// settings will be from the file
+func NewEnvironment(ctx context.Context, confPath string, db *DBSettings) (Environment, error) {
+	e := &envState{
+		senders: map[SenderKey]send.Sender{},
+		closers: map[string]func(context.Context) error{},
+	}
+
+	if db != nil && confPath == "" {
+		if err := e.initDB(ctx, *db); err != nil {
+			return nil, errors.Wrap(err, "error configuring db")
+		}
+	}
+	if err := e.initSettings(confPath); err != nil {
+		return nil, errors.WithStack(err)
+	}
+	if db != nil && confPath == "" {
+		e.settings.Database = *db
+	}
+
+	catcher := grip.NewBasicCatcher()
+	if e.session == nil {
+		catcher.Add(e.initDB(ctx, e.settings.Database))
+	}
+
+	catcher.Add(e.initJasper())
+	catcher.Add(e.initSenders(ctx))
+	catcher.Add(e.createQueues(ctx))
+	catcher.Extend(e.initQueues(ctx))
+
+	if catcher.HasErrors() {
+		return nil, errors.WithStack(catcher.Resolve())
+
+	}
+	return e, nil
+}
+
 type ClientBinary struct {
 	Arch string `yaml:"arch" json:"arch"`
 	OS   string `yaml:"os" json:"os"`
@@ -129,46 +175,11 @@ type envState struct {
 	jasperManager      jasper.Manager
 	settings           *Settings
 	session            *mgo.Session
+	client             *mongo.Client
 	mu                 sync.RWMutex
 	clientConfig       *ClientConfig
 	closers            map[string]func(context.Context) error
 	senders            map[SenderKey]send.Sender
-}
-
-// Configure requires that either the path or DB is sent so that it can construct the
-// evergreen settings. If both are sent, the settings will be from the file
-func (e *envState) Configure(ctx context.Context, confPath string, db *DBSettings) error {
-	e.mu.Lock()
-	defer e.mu.Unlock()
-
-	// make sure we don't reconfigure (and leak resources)
-	if e.settings != nil {
-		return errors.New("cannot reconfigre a configured environment")
-	}
-
-	if db != nil && confPath == "" {
-		if err := e.initDB(*db); err != nil {
-			return errors.Wrap(err, "error configuring db")
-		}
-	}
-	if err := e.initSettings(confPath); err != nil {
-		return errors.WithStack(err)
-	}
-	if db != nil && confPath == "" {
-		e.settings.Database = *db
-	}
-
-	catcher := grip.NewBasicCatcher()
-	if e.session == nil {
-		catcher.Add(e.initDB(e.settings.Database))
-	}
-
-	catcher.Add(e.initJasper())
-	catcher.Add(e.initSenders(ctx))
-	catcher.Add(e.createQueues(ctx))
-	catcher.Extend(e.initQueues(ctx))
-
-	return catcher.Resolve()
 }
 
 func (e *envState) initSettings(path string) error {
@@ -202,7 +213,7 @@ func (e *envState) initSettings(path string) error {
 	return nil
 }
 
-func (e *envState) initDB(settings DBSettings) error {
+func (e *envState) initDB(ctx context.Context, settings DBSettings) error {
 	if legacyDB.HasGlobalSessionProvider() {
 		grip.Warning("database session configured; reconfiguring")
 	}
@@ -217,8 +228,30 @@ func (e *envState) initDB(settings DBSettings) error {
 	var err error
 
 	e.session, _, err = sf.GetSession()
+	if err != nil {
+		return errors.Wrap(err, "problem getting database session")
+	}
 
-	return errors.Wrap(err, "problem getting database session")
+	e.client, err = mongo.NewClient(options.Client().ApplyURI(settings.Url))
+	if err != nil {
+		return errors.Wrap(err, "problem constructing database")
+	}
+
+	return errors.Wrap(e.client.Connect(ctx), "problem connecting to the database")
+}
+
+func (e *envState) Client() *mongo.Client {
+	e.mu.RLock()
+	defer e.mu.RUnlock()
+
+	return e.client
+}
+
+func (e *envState) DB() *mongo.Database {
+	e.mu.RLock()
+	defer e.mu.RUnlock()
+
+	return e.client.Database(e.settings.Database.DB)
 }
 
 func (e *envState) createQueues(ctx context.Context) error {
@@ -530,11 +563,11 @@ func (e *envState) GenerateTasksQueue() amboy.Queue {
 	return e.generateTasksQueue
 }
 
-func (e *envState) Session() *mgo.Session {
+func (e *envState) Session() db.Session {
 	e.mu.RLock()
 	defer e.mu.RUnlock()
 
-	return e.session.Copy()
+	return db.WrapSession(e.session.Copy())
 }
 
 func (e *envState) ClientConfig() *ClientConfig {

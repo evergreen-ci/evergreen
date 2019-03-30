@@ -86,7 +86,6 @@ func (s *githubStatusUpdateSuite) SetupTest() {
 
 func (s *githubStatusUpdateSuite) TearDownTest() {
 	s.cancel()
-	evergreen.ResetEnvironment()
 }
 
 func (s *githubStatusUpdateSuite) TestRunInDegradedMode() {
@@ -245,17 +244,16 @@ func (s *githubStatusUpdateSuite) TestWithGithub() {
 	// this test in the suite will fail after the 1000th time).
 	// It's still useful for manual testing
 	s.T().Skip("Github Status API is limited")
-	evergreen.ResetEnvironment()
 	s.cancel()
 
 	ctx, cancel := context.WithCancel(context.Background())
 	s.cancel = cancel
 
-	s.Require().NoError(evergreen.GetEnvironment().Configure(ctx, filepath.Join(evergreen.FindEvergreenHome(), testutil.TestDir, testutil.TestSettings), nil))
+	env := testutil.NewEnvironment(ctx, s.T())
 
 	testutil.ConfigureIntegrationTest(s.T(), s.testConfig, "TestWithGithub")
-	evergreen.GetEnvironment().Settings().Credentials = s.testConfig.Credentials
-	evergreen.GetEnvironment().Settings().Ui.Url = "http://example.com"
+	env.Settings().Credentials = s.testConfig.Credentials
+	env.Settings().Ui.Url = "http://example.com"
 
 	s.patchDoc.GithubPatchData.BaseRepo = "sample"
 	s.patchDoc.GithubPatchData.HeadOwner = "richardsamuels"
