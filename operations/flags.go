@@ -40,7 +40,7 @@ const (
 	dbWriteNumFlagName = "w"
 	dbWmodeFlagName    = "wmode"
 
-	// Shared flags between agent and runner.
+	// Agent flags
 	hostIDFlagName           = "host_id"
 	hostSecretFlagName       = "host_secret"
 	apiServerURLFlagName     = "api_server"
@@ -229,30 +229,4 @@ func mergeFlagSlices(in ...[]cli.Flag) []cli.Flag {
 	}
 
 	return out
-}
-
-// addCommonAgentAndRunnerFlags adds all flags that are common to both the
-// agent and the runner.
-func addCommonAgentAndRunnerFlags(flags ...cli.Flag) []cli.Flag {
-	return append(flags,
-		cli.StringFlag{
-			Name:  hostIDFlagName,
-			Usage: "id of the current host",
-		},
-		cli.StringFlag{
-			Name:  hostSecretFlagName,
-			Usage: "secret for the current host",
-		},
-		cli.StringFlag{
-			Name:  apiServerURLFlagName,
-			Usage: "URL of the API server",
-		},
-		cli.StringFlag{
-			Name:  workingDirectoryFlagName,
-			Usage: "working directory for the agent",
-		},
-		cli.StringFlag{
-			Name:  logkeeperURLFlagName,
-			Usage: "URL of the logkeeper service to be used by tasks",
-		})
 }

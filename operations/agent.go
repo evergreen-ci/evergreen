@@ -29,7 +29,30 @@ func Agent() cli.Command {
 	return cli.Command{
 		Name:  "agent",
 		Usage: "run an evergreen agent",
-		Flags: append(addCommonAgentAndRunnerFlags(),
+		Subcommands: []cli.Command{
+			agentRunner(),
+		},
+		Flags: []cli.Flag{
+			cli.StringFlag{
+				Name:  hostIDFlagName,
+				Usage: "id of the current host",
+			},
+			cli.StringFlag{
+				Name:  hostSecretFlagName,
+				Usage: "secret for the current host",
+			},
+			cli.StringFlag{
+				Name:  apiServerURLFlagName,
+				Usage: "URL of the API server",
+			},
+			cli.StringFlag{
+				Name:  workingDirectoryFlagName,
+				Usage: "working directory for the agent",
+			},
+			cli.StringFlag{
+				Name:  logkeeperURLFlagName,
+				Usage: "URL of the logkeeper service to be used by tasks",
+			},
 			cli.StringFlag{
 				Name:  logPrefixFlagName,
 				Value: "evg.agent",
@@ -48,12 +71,16 @@ func Agent() cli.Command {
 				Name:  cleanupFlagName,
 				Usage: "clean up working directory and processes (do not set for smoke tests)",
 			},
-		),
+		},
 		Before: mergeBeforeFuncs(
-			append(requireAgentFlags(), func(c *cli.Context) error {
+			requireStringFlag(apiServerURLFlagName),
+			requireStringFlag(hostIDFlagName),
+			requireStringFlag(hostSecretFlagName),
+			requireStringFlag(workingDirectoryFlagName),
+			func(c *cli.Context) error {
 				grip.SetName("evergreen.agent")
 				return nil
-			})...,
+			},
 		),
 		Action: func(c *cli.Context) error {
 			s3Base := c.String(s3BaseFlagName)

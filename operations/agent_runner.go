@@ -3,6 +3,7 @@ package operations
 import (
 	"context"
 	"fmt"
+	"net/http"
 	"os"
 	"os/exec"
 	"os/signal"
@@ -10,6 +11,7 @@ import (
 	"syscall"
 
 	"github.com/evergreen-ci/evergreen/agent"
+	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/mongodb/grip/recovery"
@@ -25,8 +27,8 @@ type runnerArgs struct {
 	agentOpts    agent.Options
 }
 
-// hostRunner starts the runner that deploys the agent.
-func hostRunner() cli.Command {
+// agentRunner starts the runner that deploys the agent.
+func agentRunner() cli.Command {
 	const (
 		clientURLFlagName  = "client_url"
 		clientPathFlagName = "client_path"
@@ -35,7 +37,7 @@ func hostRunner() cli.Command {
 	return cli.Command{
 		Name:  "runner",
 		Usage: "start the runner on a host",
-		Flags: append(addCommonAgentAndRunnerFlags(),
+		Flags: []cli.Flag{
 			cli.StringFlag{
 				Name:  clientURLFlagName,
 				Usage: "the url to fetch the evergreen client from",
@@ -44,27 +46,25 @@ func hostRunner() cli.Command {
 				Name:  clientPathFlagName,
 				Usage: "the name of the agent's evergreen binary",
 			},
-		),
+		},
 		Before: mergeBeforeFuncs(
-			append(requireAgentFlags(),
-				requireStringFlag(clientURLFlagName),
-				requireStringFlag(clientPathFlagName),
-				func(_ *cli.Context) error {
-					grip.SetName("evergreen.runner")
-					return nil
-				},
-			)...,
+			requireStringFlag(clientURLFlagName),
+			requireStringFlag(clientPathFlagName),
+			func(*cli.Context) error {
+				grip.SetName("evergreen.agent.runner")
+				return nil
+			},
 		),
 		Action: func(c *cli.Context) error {
 			args := &runnerArgs{
 				clientURL:    c.String(clientURLFlagName),
 				clientPath:   c.String(clientPathFlagName),
-				apiServerURL: c.String(apiServerURLFlagName),
+				apiServerURL: c.Parent().String(apiServerURLFlagName),
 				agentOpts: agent.Options{
-					HostID:           c.String(hostIDFlagName),
-					HostSecret:       c.String(hostSecretFlagName),
-					LogkeeperURL:     c.String(logkeeperURLFlagName),
-					WorkingDirectory: c.String(workingDirectoryFlagName),
+					HostID:           c.Parent().String(hostIDFlagName),
+					HostSecret:       c.Parent().String(hostSecretFlagName),
+					LogkeeperURL:     c.Parent().String(logkeeperURLFlagName),
+					WorkingDirectory: c.Parent().String(workingDirectoryFlagName),
 				},
 			}
 
@@ -93,31 +93,26 @@ func handleRunnerSignals(ctx context.Context, serviceCanceler context.CancelFunc
 	os.Exit(2)
 }
 
-// curlClient curls the evergreen client.
+// fetchClient downloads the evergreen client.
 func (args *runnerArgs) fetchClient(ctx context.Context) error {
-	curlClientArgs := []string{
-		"curl",
-		"--create-dirs",
-		"-L",
-		args.clientURL,
-		"-o",
-		args.clientPath,
+	client := &http.Client{}
+	req, err := http.NewRequest(http.MethodGet, args.clientURL, nil)
+	if err != nil {
+		return errors.Wrapf(err, "failed to create client request from URL '%s'", args.clientURL)
+	}
+	resp, err := client.Do(req)
+	if err != nil {
+		return errors.Wrapf(err, "failed to fetch client from URL '%s'", args.clientURL)
 	}
 
-	curlCmd := exec.CommandContext(ctx, curlClientArgs[0], curlClientArgs[1:]...)
-	if err := curlCmd.Run(); err != nil {
-		return errors.Wrap(err, "failed to curl client")
+	if err := os.MkdirAll(filepath.Dir(args.clientPath), 0777); err != nil {
+		return errors.Wrapf(err, "error making directories for client binary file '%s'", args.clientPath)
 	}
-	grip.Info(curlClientArgs)
-
-	chmodArgs := []string{
-		"chmod",
-		"+x",
-		args.clientPath,
+	if err := util.WriteToFile(resp.Body, args.clientPath); err != nil {
+		return errors.Wrapf(err, "error writing client binary to file '%s'", args.clientPath)
 	}
-	chmodCmd := exec.CommandContext(ctx, chmodArgs[0], chmodArgs[1:]...)
 
-	return errors.Wrap(chmodCmd.Run(), "failed to chmod client")
+	return errors.Wrap(os.Chmod(args.clientPath, 0755), "failed to chmod client")
 }
 
 // runAgent runs the agent with the necessary args.
