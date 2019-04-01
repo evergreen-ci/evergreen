@@ -87,8 +87,6 @@ func listProjects(ctx context.Context, confPath string) error {
 		return errors.Wrap(err, "problem loading configuration")
 	}
 
-	_ = conf.GetRestCommunicator(ctx)
-
 	ac, _, err := conf.getLegacyClients()
 	if err != nil {
 		return errors.Wrap(err, "problem accessing evergreen service")
@@ -127,7 +125,6 @@ func listVariants(ctx context.Context, confPath, project, filename string) error
 	if err != nil {
 		return errors.Wrap(err, "problem loading configuration")
 	}
-	_ = conf.GetRestCommunicator(ctx)
 
 	var variants []model.BuildVariant
 	if project != "" {
@@ -177,7 +174,6 @@ func listTasks(ctx context.Context, confPath, project, filename string) error {
 	if err != nil {
 		return errors.Wrap(err, "problem loading configuration")
 	}
-	_ = conf.GetRestCommunicator(ctx)
 
 	var tasks []model.ProjectTask
 	if project != "" {
@@ -216,6 +212,7 @@ func listAliases(ctx context.Context, confPath, project, filename string) error 
 		return errors.Wrap(err, "problem loading configuration")
 	}
 	comm := conf.GetRestCommunicator(ctx)
+	defer comm.Close()
 
 	var aliases []model.ProjectAlias
 
@@ -252,6 +249,7 @@ func listDistros(ctx context.Context, confPath string, onlyUserSpawnable bool) e
 		return errors.Wrap(err, "problem loading configuration")
 	}
 	client := conf.GetRestCommunicator(ctx)
+	defer client.Close()
 
 	distros, err := client.GetDistrosList(ctx)
 	if err != nil {

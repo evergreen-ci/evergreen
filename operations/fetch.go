@@ -2,7 +2,6 @@ package operations
 
 import (
 	"bytes"
-	"context"
 	"fmt"
 	"io"
 	"net/http"
@@ -95,15 +94,10 @@ func Fetch() cli.Command {
 			noPatch := c.Bool(noPatchFlagName)
 			shallow := c.Bool(shallowFlagName)
 
-			ctx, cancel := context.WithCancel(context.Background())
-			defer cancel()
-
 			conf, err := NewClientSettings(confPath)
 			if err != nil {
 				return errors.Wrap(err, "problem loading configuration")
 			}
-
-			_ = conf.GetRestCommunicator(ctx)
 
 			ac, rc, err := conf.getLegacyClients()
 			if err != nil {

@@ -1,7 +1,6 @@
 package operations
 
 import (
-	"context"
 	"fmt"
 
 	"github.com/pkg/errors"
@@ -32,15 +31,10 @@ func PatchList() cli.Command {
 			number := c.Int(numberFlagName)
 			showSummary := c.Bool(showSummaryFlagName)
 
-			ctx, cancel := context.WithCancel(context.Background())
-			defer cancel()
-
 			conf, err := NewClientSettings(confPath)
 			if err != nil {
 				return errors.Wrap(err, "problem loading configuration")
 			}
-
-			_ = conf.GetRestCommunicator(ctx)
 
 			ac, _, err := conf.getLegacyClients()
 			if err != nil {

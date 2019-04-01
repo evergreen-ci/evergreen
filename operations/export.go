@@ -24,9 +24,9 @@ func Export() cli.Command {
 		granularityFlagName = "granularity"
 		jsonFlagName        = "json"
 
-		statHostUtilization   = "host"
-		statSecheduledToStart = "avg"
-		statOptimalMakespan   = "makespan"
+		statHostUtilization  = "host"
+		statScheduledToStart = "avg"
+		statOptimalMakespan  = "makespan"
 	)
 
 	return cli.Command{
@@ -65,7 +65,7 @@ func Export() cli.Command {
 			requireStringValueChoices(granularityFlagName,
 				[]string{granularityDays, granularityHours, granularityMinutes, granularitySeconds}),
 			requireStringValueChoices(statFlagName,
-				[]string{statHostUtilization, statSecheduledToStart, statOptimalMakespan}),
+				[]string{statHostUtilization, statScheduledToStart, statOptimalMakespan}),
 			requireIntValueBetween(daysFlagName, 1, 30),
 			requireStringFlag(pathFlagName)),
 		Action: func(c *cli.Context) error {
@@ -101,7 +101,7 @@ func Export() cli.Command {
 				if err != nil {
 					return err
 				}
-			case statSecheduledToStart:
+			case statScheduledToStart:
 				if distro == "" {
 					return errors.New("cannot have empty distro id")
 				}

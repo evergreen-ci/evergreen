@@ -1,7 +1,6 @@
 package operations
 
 import (
-	"context"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -22,15 +21,10 @@ func Validate() cli.Command {
 			confPath := c.Parent().String(confFlagName)
 			path := c.String(pathFlagName)
 
-			ctx, cancel := context.WithCancel(context.Background())
-			defer cancel()
-
 			conf, err := NewClientSettings(confPath)
 			if err != nil {
 				return errors.Wrap(err, "problem loading configuration")
 			}
-
-			_ = conf.GetRestCommunicator(ctx)
 
 			ac, _, err := conf.getLegacyClients()
 			if err != nil {

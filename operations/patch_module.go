@@ -1,7 +1,6 @@
 package operations
 
 import (
-	"context"
 	"fmt"
 	"strings"
 
@@ -34,15 +33,10 @@ func PatchSetModule() cli.Command {
 			committedOnly := c.Bool(committedFlagName)
 			args := c.Args()
 
-			ctx, cancel := context.WithCancel(context.Background())
-			defer cancel()
-
 			conf, err := NewClientSettings(confPath)
 			if err != nil {
 				return errors.Wrap(err, "problem loading configuration")
 			}
-
-			_ = conf.GetRestCommunicator(ctx)
 
 			ac, rc, err := conf.getLegacyClients()
 			if err != nil {
@@ -126,15 +120,10 @@ func PatchRemoveModule() cli.Command {
 			patchID := c.String(patchIDFlagName)
 			module := c.String(moduleFlagName)
 
-			ctx, cancel := context.WithCancel(context.Background())
-			defer cancel()
-
 			conf, err := NewClientSettings(confPath)
 			if err != nil {
 				return errors.Wrap(err, "problem loading configuration")
 			}
-
-			_ = conf.GetRestCommunicator(ctx)
 
 			ac, _, err := conf.getLegacyClients()
 			if err != nil {
