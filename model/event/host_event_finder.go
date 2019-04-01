@@ -3,8 +3,6 @@ package event
 import (
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/mongodb/anser/bsonutil"
-	"github.com/mongodb/grip"
-	"github.com/mongodb/grip/message"
 	"gopkg.in/mgo.v2/bson"
 )
 
@@ -45,12 +43,6 @@ func getRecentStatusesForHost(hostId string, n int) (int, []string) {
 
 func AllRecentHostEventsMatchStatus(hostId string, n int, status string) bool {
 	count, statuses := getRecentStatusesForHost(hostId, n)
-	grip.Info(message.Fields{
-		"id":     hostId,
-		"n":      n,
-		"status": status,
-		"count":  count,
-	})
 	if n == 0 || count == 0 {
 		return false
 	}

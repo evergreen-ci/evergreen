@@ -6,7 +6,6 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
-	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/mgo.v2/bson"
@@ -40,11 +39,8 @@ func TestRecentHostStatusFinder(t *testing.T) {
 	// current understanding of the state of the database
 	assert.False(AllRecentHostEventsMatchStatus(hostID, 3, "one"))
 	assert.False(AllRecentHostEventsMatchStatus(hostID, 3, "two"))
-	grip.Info("first")
 	assert.False(AllRecentHostEventsMatchStatus(hostID, 2, "one"))
-	grip.Info("second")
 	assert.True(AllRecentHostEventsMatchStatus(hostID, 2, "two"))
-	grip.Info("third")
 
 	// zero events should always be false.
 	assert.False(AllRecentHostEventsMatchStatus(hostID, 0, "two"))
