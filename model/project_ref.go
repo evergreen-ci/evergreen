@@ -63,7 +63,7 @@ type ProjectRef struct {
 type CommitQueueParams struct {
 	Enabled      bool   `bson:"enabled" json:"enabled"`
 	MergeMethod  string `bson:"merge_method" json:"merge_method"`
-	MergeAction  string `bson:"merge_action" json:"merge_action"`
+	PatchType    string `bson:"patch_type" json:"patch_type"`
 	StatusAction string `bson:"status_action" json:"status_action"`
 }
 

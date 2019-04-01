@@ -7,9 +7,9 @@ import (
 )
 
 const (
-	triggerComment    = "evergreen merge"
-	GitHubMergeAction = "github"
-	PatchMergeAction  = "patch"
+	triggerComment = "evergreen merge"
+	PRPatchType    = "PR"
+	CLIPatchType   = "CLI"
 )
 
 type Module struct {

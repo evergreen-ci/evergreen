@@ -11,13 +11,14 @@ import (
 )
 
 const (
-	GithubPullRequestSubscriberType = "github_pull_request"
-	JIRAIssueSubscriberType         = "jira-issue"
-	JIRACommentSubscriberType       = "jira-comment"
-	EvergreenWebhookSubscriberType  = "evergreen-webhook"
-	EmailSubscriberType             = "email"
-	SlackSubscriberType             = "slack"
-	GithubMergeSubscriberType       = "github-merge"
+	GithubPullRequestSubscriberType  = "github_pull_request"
+	JIRAIssueSubscriberType          = "jira-issue"
+	JIRACommentSubscriberType        = "jira-comment"
+	EvergreenWebhookSubscriberType   = "evergreen-webhook"
+	EmailSubscriberType              = "email"
+	SlackSubscriberType              = "slack"
+	GithubMergeSubscriberType        = "github-merge"
+	CommitQueueDequeueSubscriberType = "commit-queue-dequeue"
 )
 
 var SubscriberTypes = []string{
@@ -28,6 +29,7 @@ var SubscriberTypes = []string{
 	EmailSubscriberType,
 	SlackSubscriberType,
 	GithubMergeSubscriberType,
+	CommitQueueDequeueSubscriberType,
 }
 
 //nolint: deadcode, megacheck, unused
@@ -74,6 +76,9 @@ func (s *Subscriber) SetBSON(raw bson.Raw) error {
 	case GithubMergeSubscriberType:
 		s.Target = &GithubMergeSubscriber{}
 
+	case CommitQueueDequeueSubscriberType:
+		s.Target = &CommitQueueDequeueSubscriber{}
+
 	default:
 		return errors.Errorf("unknown subscriber type: '%s'", s.Type)
 	}
@@ -97,6 +102,11 @@ func (s *Subscriber) String() string {
 	case GithubMergeSubscriber:
 		subscriberStr = v.String()
 	case *GithubMergeSubscriber:
+		subscriberStr = v.String()
+
+	case CommitQueueDequeueSubscriber:
+		subscriberStr = v.String()
+	case *CommitQueueDequeueSubscriber:
 		subscriberStr = v.String()
 
 	case WebhookSubscriber:
@@ -188,6 +198,25 @@ func (s *GithubMergeSubscriber) String() string {
 func NewGithubMergeSubscriber(s GithubMergeSubscriber) Subscriber {
 	return Subscriber{
 		Type:   GithubMergeSubscriberType,
+		Target: s,
+	}
+}
+
+type CommitQueueDequeueSubscriber struct {
+	ProjectID string `bson:"project_id"`
+	Item      string `bson:"owner"`
+}
+
+func (s *CommitQueueDequeueSubscriber) String() string {
+	return fmt.Sprintf("%s-%s",
+		s.ProjectID,
+		s.Item,
+	)
+}
+
+func NewCommitQueueDequeueSubscriber(s CommitQueueDequeueSubscriber) Subscriber {
+	return Subscriber{
+		Type:   CommitQueueDequeueSubscriberType,
 		Target: s,
 	}
 }
