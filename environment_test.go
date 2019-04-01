@@ -12,7 +12,7 @@ import (
 	"github.com/stretchr/testify/suite"
 )
 
-type ironmentSuite struct {
+type EnvironmentSuite struct {
 	path string
 	env  *envState
 	suite.Suite
