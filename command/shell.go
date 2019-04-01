@@ -115,8 +115,8 @@ func (c *shellExec) Execute(ctx context.Context, _ client.Communicator, logger c
 	}
 	addTempDirs(env, taskTmpDir)
 
-	cmd := c.JasperManager().CreateCommand(ctx).Append(c.Shell).
-		Background(c.Background).Directory(c.WorkingDir).Environment(env).
+	cmd := c.JasperManager().CreateCommand(ctx).
+		Background(c.Background).Directory(c.WorkingDir).Environment(env).Append(c.Shell).
 		SuppressStandardError(c.IgnoreStandardError).SuppressStandardOutput(c.IgnoreStandardOutput).RedirectErrorToOutput(c.RedirectStandardErrorToOutput).
 		ProcConstructor(func(lctx context.Context, opts *jasper.CreateOptions) (jasper.Process, error) {
 			opts.StandardInput = strings.NewReader(c.Script)

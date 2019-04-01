@@ -72,7 +72,7 @@ func (s *shellExecuteCommandSuite) TestWorksWithEmptyShell() {
 }
 
 func (s *shellExecuteCommandSuite) TestSilentAndRedirectToStdOutError() {
-	cmd := &subprocessExec{}
+	cmd := &shellExec{}
 
 	s.NoError(cmd.ParseParams(map[string]interface{}{}))
 	s.False(cmd.IgnoreStandardError)
@@ -82,6 +82,49 @@ func (s *shellExecuteCommandSuite) TestSilentAndRedirectToStdOutError() {
 	s.NoError(cmd.ParseParams(map[string]interface{}{}))
 	s.True(cmd.IgnoreStandardError)
 	s.True(cmd.IgnoreStandardOutput)
+}
+
+func (s *shellExecuteCommandSuite) TestTerribleQuotingIsHandledProperly() {
+	for idx, script := range []string{
+		"echo \"hi\"; exit 0",
+		"echo '\"hi\"'; exit 0",
+		`echo '"'; exit 0`,
+		`echo "'"; exit 0`,
+		`echo \'; exit 0`,
+		`process_kill_list="(^cl\.exe$|bsondump|java|lein|lldb|mongo|python|_test$|_test\.exe$)"
+        process_exclude_list="(main|tuned|evergreen|go|godoc|gocode|make)"
+
+        if [ "Windows_NT" = "$OS" ]; then
+          processes=$(tasklist /fo:csv | awk -F'","' '{x=$1; gsub("\"","",x); print $2, x}' | grep -iE "$process_kill_list" | grep -ivE "$process_exclude_list")
+          kill_process () { pid=$(echo $1 | cut -f1 -d ' '); echo "Killing process $1"; taskkill /pid "$pid" /f; }
+        else
+          pgrep -f --list-full ".*" 2>&1 | grep -qE "(illegal|invalid|unrecognized) option"
+          if [ $? -ne 0 ]; then
+            pgrep_list=$(pgrep -f --list-full "$process_kill_list")
+          else
+            pgrep_list=$(pgrep -f -l "$process_kill_list")
+          fi
+
+          processes=$(echo "$pgrep_list" | grep -ivE "$process_exclude_list" | sed -e '/^ *[0-9]/!d; s/^ *//; s/[[:cntrl:]]//g;')
+          kill_process () { pid=$(echo $1 | cut -f1 -d ' '); echo "Killing process $1"; kill -9 $pid; }
+        fi
+        IFS=$(printf "\n\r")
+        for process in $processes
+        do
+          kill_process "$process"
+        done
+
+        exit 0
+`,
+	} {
+		cmd := &shellExec{
+			WorkingDir: testutil.GetDirectoryOfFile(),
+			Shell:      "bash",
+		}
+		cmd.SetJasperManager(s.jasper)
+		cmd.Script = script
+		s.NoError(cmd.Execute(s.ctx, s.comm, s.logger, s.conf), "%d: %s", idx, script)
+	}
 }
 
 func (s *shellExecuteCommandSuite) TestShellIsntChangedDuringExecution() {
