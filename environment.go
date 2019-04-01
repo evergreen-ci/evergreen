@@ -109,18 +109,17 @@ type Environment interface {
 	Close(context.Context) error
 }
 
-// Configure initializes the object. Some implementations may
-// not allow the same instance to be configured more than
-// once.
+// NewEnvironment constructs an Environment instance, establishing a
+// new connection to the database, and creating a new set of worker
+// queues.
 //
-// If Configure returns without an error, you should assume
+// When NewEnvironment returns without an error, you should assume
 // that the queues have been started, there was no issue
 // establishing a connection to the database, and that the
 // local and remote queues have started.
 //
-// Configure requires that either the path or DB is sent so that it
-// can construct the evergreen settings. If both are sent, the
-// settings will be from the file
+// NewEnvironment requires that either the path or DB is sent so that
+// it If both are specified, the settings are read from the file.
 func NewEnvironment(ctx context.Context, confPath string, db *DBSettings) (Environment, error) {
 	e := &envState{
 		senders: map[SenderKey]send.Sender{},

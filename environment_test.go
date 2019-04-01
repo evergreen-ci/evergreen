@@ -2,7 +2,6 @@ package evergreen
 
 import (
 	"context"
-	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -13,7 +12,7 @@ import (
 	"github.com/stretchr/testify/suite"
 )
 
-type EnvironmentSuite struct {
+type ironmentSuite struct {
 	path string
 	env  *envState
 	suite.Suite
@@ -65,7 +64,7 @@ func (s *EnvironmentSuite) TestLoadingConfig() {
 
 	env, err = NewEnvironment(ctx, "", &db)
 	s.Require().NoError(err)
-	fmt.Println(db, s.env.settings)
+
 	s.env = env.(*envState)
 	s.Equal(db, s.env.settings.Database)
 	s.Equal("http://localhost:8080", s.env.Settings().ApiUrl)
