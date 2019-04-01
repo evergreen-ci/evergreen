@@ -3,6 +3,7 @@ package jasper
 import (
 	"context"
 	"fmt"
+	"io"
 	"os"
 	"os/exec"
 	"time"
@@ -29,6 +30,7 @@ type CreateOptions struct {
 	OnSuccess        []*CreateOptions  `json:"on_success"`
 	OnFailure        []*CreateOptions  `json:"on_failure"`
 	OnTimeout        []*CreateOptions  `json:"on_timeout"`
+	StandardInput    io.Reader         `json:"-"`
 
 	closers []func() error
 	started bool
@@ -145,6 +147,10 @@ func (opts *CreateOptions) Resolve(ctx context.Context) (*exec.Cmd, error) {
 		return nil, errors.WithStack(err)
 	}
 	cmd.Env = env
+
+	if opts.StandardInput != nil {
+		cmd.Stdin = opts.StandardInput
+	}
 
 	// Senders require Close() or else command output is not guaranteed to log.
 	opts.closers = append(opts.closers, func() error {
