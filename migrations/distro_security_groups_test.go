@@ -29,20 +29,19 @@ type distro struct {
 }
 
 func TestSecurityGroupMigration(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	require := require.New(t)
 
-	mgoSession, database, err := evgdb.GetGlobalSessionFactory().GetSession()
+	session, database, err := evgdb.GetGlobalSessionFactory().GetSession()
 	require.NoError(err)
-	defer mgoSession.Close()
-
-	session := db.WrapSession(mgoSession.Copy())
 	defer session.Close()
 
-	ctx, cancel := context.WithCancel(context.Background())
 	s := &securityGroupSuite{
 		env:      &mock.Environment{},
 		session:  session,
-		database: database.Name,
+		database: database.Name(),
 	}
 
 	require.NoError(s.env.Configure(ctx, filepath.Join(evergreen.FindEvergreenHome(), testutil.TestDir, testutil.TestSettings), nil))

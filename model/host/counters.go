@@ -4,9 +4,9 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen/db"
+	adb "github.com/mongodb/anser/db"
 	"github.com/pkg/errors"
-	mgo "gopkg.in/mgo.v2"
-	"gopkg.in/mgo.v2/bson"
+	"go.mongodb.org/mongo-driver/bson"
 )
 
 func (h *Host) IncProvisionAttempts() error {
@@ -14,7 +14,7 @@ func (h *Host) IncProvisionAttempts() error {
 		IdKey: h.Id,
 	}
 
-	change := mgo.Change{
+	change := adb.Change{
 		ReturnNew: true,
 		Update: bson.M{
 			"$inc": bson.M{ProvisionAttemptsKey: 1},
@@ -38,7 +38,7 @@ func (h *Host) IncTaskCount() error {
 		IdKey: h.Id,
 	}
 
-	change := mgo.Change{
+	change := adb.Change{
 		ReturnNew: true,
 		Update: bson.M{
 			"$inc": bson.M{TaskCountKey: 1},
@@ -63,7 +63,7 @@ func (h *Host) IncContainerBuildAttempt() error {
 		IdKey: h.Id,
 	}
 
-	change := mgo.Change{
+	change := adb.Change{
 		ReturnNew: true,
 		Update: bson.M{
 			"$inc": bson.M{ContainerBuildAttempt: 1},
@@ -91,7 +91,7 @@ func (h *Host) IncIdleTime(dur time.Duration) error {
 		IdKey: h.Id,
 	}
 
-	change := mgo.Change{
+	change := adb.Change{
 		ReturnNew: true,
 		Update: bson.M{
 			"$inc": bson.M{TotalIdleTimeKey: dur},
@@ -117,7 +117,7 @@ func (h *Host) IncCost(amt float64) error {
 
 	query := bson.M{IdKey: h.Id}
 
-	change := mgo.Change{
+	change := adb.Change{
 		ReturnNew: true,
 		Update: bson.M{
 			"$inc": bson.M{TotalCostKey: amt},

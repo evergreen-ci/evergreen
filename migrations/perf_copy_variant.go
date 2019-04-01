@@ -5,7 +5,8 @@ import (
 	"github.com/mongodb/anser/db"
 	"github.com/mongodb/anser/model"
 	"github.com/pkg/errors"
-	"gopkg.in/mgo.v2/bson"
+	"go.mongodb.org/mongo-driver/bson"
+	mgobson "gopkg.in/mgo.v2/bson"
 )
 
 const (
@@ -44,9 +45,9 @@ func perfCopyVariantFactoryFactory(args map[string]string) migrationGeneratorFac
 }
 
 func makePerfCopyVariantMigration(database string, args map[string]string) db.MigrationOperation {
-	return func(session db.Session, rawD bson.RawD) error {
+	return func(session db.Session, rawD mgobson.RawD) error {
 		defer session.Close()
-		var id bson.ObjectId
+		var id mgobson.ObjectId
 		for _, raw := range rawD {
 			if raw.Name == idKey {
 				if err := raw.Value.Unmarshal(&id); err != nil {

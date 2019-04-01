@@ -16,16 +16,16 @@ import (
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/mongodb/anser"
-	anserdb "github.com/mongodb/anser/db"
+	adb "github.com/mongodb/anser/db"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
-	"gopkg.in/mgo.v2/bson"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
 type fixZeroDateSuite struct {
 	env      *mock.Environment
 	database string
-	session  anserdb.Session
+	session  adb.Session
 	cancel   func()
 
 	utc          *time.Location
@@ -40,23 +40,23 @@ type fixZeroDateSuite struct {
 }
 
 func TestFixZeroDateMigration(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	testConfig := testutil.TestConfig()
+
 	testutil.ConfigureIntegrationTest(t, testConfig, "TestFixZeroDateMigration")
 
 	require := require.New(t)
 
-	mgoSession, database, err := db.GetGlobalSessionFactory().GetSession()
+	session, database, err := db.GetGlobalSessionFactory().GetSession()
 	require.NoError(err)
-	defer mgoSession.Close()
-
-	session := anserdb.WrapSession(mgoSession.Copy())
 	defer session.Close()
 
-	ctx, cancel := context.WithCancel(context.Background())
 	s := &fixZeroDateSuite{
 		env:      &mock.Environment{},
 		session:  session,
-		database: database.Name,
+		database: database.Name(),
 		cancel:   cancel,
 	}
 
@@ -95,12 +95,12 @@ func (s *fixZeroDateSuite) SetupTest() {
 
 	s.patches = []patch.Patch{
 		{
-			Id:         bson.NewObjectId(),
+			Id:         primitive.NewObjectID(),
 			Version:    "no-errors",
 			CreateTime: s.nowTime,
 		},
 		{
-			Id:         bson.NewObjectId(),
+			Id:         primitive.NewObjectID(),
 			Version:    "v1",
 			CreateTime: zeroTime,
 		},

@@ -3,8 +3,8 @@ package artifact
 import (
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/mongodb/anser/bsonutil"
-	"gopkg.in/mgo.v2"
-	"gopkg.in/mgo.v2/bson"
+	adb "github.com/mongodb/anser/db"
+	"go.mongodb.org/mongo-driver/bson"
 )
 
 var (
@@ -107,7 +107,7 @@ func (e Entry) Upsert() error {
 func FindOne(query db.Q) (*Entry, error) {
 	entry := &Entry{}
 	err := db.FindOneQ(Collection, query, entry)
-	if err == mgo.ErrNotFound {
+	if adb.ResultsNotFound(err) {
 		return nil, nil
 	}
 	return entry, err

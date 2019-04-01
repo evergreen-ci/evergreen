@@ -3,7 +3,7 @@ package migrations
 import (
 	"github.com/mongodb/anser"
 	"github.com/mongodb/anser/model"
-	"gopkg.in/mgo.v2/bson"
+	"go.mongodb.org/mongo-driver/bson"
 )
 
 const (

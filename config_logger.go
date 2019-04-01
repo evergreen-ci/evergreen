@@ -1,11 +1,12 @@
 package evergreen
 
 import (
-	"github.com/evergreen-ci/evergreen/db"
 	"github.com/mongodb/grip/level"
 	"github.com/mongodb/grip/send"
 	"github.com/pkg/errors"
-	"gopkg.in/mgo.v2/bson"
+	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
 type LoggerConfig struct {
@@ -25,23 +26,41 @@ func (c LoggerConfig) Info() send.LevelInfo {
 func (c *LoggerConfig) SectionId() string { return "logger_config" }
 
 func (c *LoggerConfig) Get() error {
-	err := db.FindOneQ(ConfigCollection, db.Query(byId(c.SectionId())), c)
-	if err != nil && err.Error() == errNotFound {
-		*c = LoggerConfig{}
-		return nil
+	env := GetEnvironment()
+	ctx, cancel := env.Context()
+	defer cancel()
+	coll := env.DB().Collection(ConfigCollection)
+
+	res := coll.FindOne(ctx, byId(c.SectionId()))
+	if err := res.Err(); err != nil {
+		return errors.Wrapf(err, "error retrieving section %s", c.SectionId())
 	}
-	return errors.Wrapf(err, "error retrieving section %s", c.SectionId())
+
+	if err := res.Decode(c); err != nil {
+		if err == mongo.ErrNoDocuments {
+			*c = LoggerConfig{}
+			return nil
+		}
+		return errors.Wrapf(err, "error retrieving section %s", c.SectionId())
+	}
+	return nil
 }
 
 func (c *LoggerConfig) Set() error {
-	_, err := db.Upsert(ConfigCollection, byId(c.SectionId()), bson.M{
+	env := GetEnvironment()
+	ctx, cancel := env.Context()
+	defer cancel()
+	coll := env.DB().Collection(ConfigCollection)
+
+	_, err := coll.UpdateOne(ctx, byId(c.SectionId()), bson.M{
 		"$set": bson.M{
 			"buffer":          c.Buffer,
 			"default_level":   c.DefaultLevel,
 			"threshold_level": c.ThresholdLevel,
 			"logkeeper_url":   c.LogkeeperURL,
 		},
-	})
+	}, options.Update().SetUpsert(true))
+
 	return errors.Wrapf(err, "error updating section %s", c.SectionId())
 }
 

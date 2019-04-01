@@ -8,7 +8,8 @@ import (
 	"github.com/mongodb/anser/db"
 	"github.com/mongodb/anser/model"
 	"github.com/pkg/errors"
-	"gopkg.in/mgo.v2/bson"
+	"go.mongodb.org/mongo-driver/bson"
+	mgobson "gopkg.in/mgo.v2/bson"
 )
 
 //nolint: deadcode, megacheck, unused
@@ -45,7 +46,7 @@ func makeTaskCreateTimeMigrationFunction(database string) db.MigrationOperation 
 	const tasksCollection = "tasks"
 	const VersionCollection = "versions"
 
-	return func(session db.Session, rawD bson.RawD) error {
+	return func(session db.Session, rawD mgobson.RawD) error {
 		defer session.Close()
 
 		var id string

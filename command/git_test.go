@@ -43,13 +43,16 @@ type GitGetProjectSuite struct {
 }
 
 func init() {
-	db.SetGlobalSessionProvider(testutil.TestConfig().SessionFactory())
 	reporting.QuietMode()
 }
 
 func TestGitGetProjectSuite(t *testing.T) {
 	s := new(GitGetProjectSuite)
-	settings := testutil.TestConfig()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	env := testutil.NewEnvironment(ctx, t)
+	settings := env.Settings()
+
 	testutil.ConfigureIntegrationTest(t, settings, "TestGitGetProjectSuite")
 	s.settings = settings
 	var err error

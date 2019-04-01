@@ -13,17 +13,13 @@ import (
 	. "github.com/smartystreets/goconvey/convey"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"gopkg.in/mgo.v2/bson"
+	"go.mongodb.org/mongo-driver/bson"
 )
 
 var (
 	conf  = testutil.TestConfig()
 	oneMs = time.Millisecond
 )
-
-func init() {
-	db.SetGlobalSessionProvider(conf.SessionFactory())
-}
 
 var depTaskIds = []Dependency{
 	{"td1", evergreen.TaskSucceeded},

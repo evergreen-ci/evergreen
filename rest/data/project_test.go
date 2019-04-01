@@ -10,7 +10,7 @@ import (
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/stretchr/testify/suite"
-	"gopkg.in/mgo.v2/bson"
+	"go.mongodb.org/mongo-driver/bson"
 )
 
 ////////////////////////////////////////////////////////////////////////
@@ -72,7 +72,7 @@ func TestProjectConnectorGetSuite(t *testing.T) {
 		s.ctx = &DBConnector{}
 
 		testutil.ConfigureIntegrationTest(t, testConfig, "TestProjectConnectorGetSuite")
-		db.SetGlobalSessionProvider(testConfig.SessionFactory())
+		
 		s.Require().NoError(db.ClearCollections(model.ProjectRefCollection))
 
 		projects := []*model.ProjectRef{

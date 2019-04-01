@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
-	edb "github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/amboy/queue"
@@ -37,12 +36,14 @@ type Environment struct {
 	MongoClient          *mongo.Client
 	mu                   sync.RWMutex
 	DatabaseName         string
+	EnvContext           context.Context
 	InternalSender       *send.InternalSender
 }
 
 func (e *Environment) Configure(ctx context.Context, path string, db *evergreen.DBSettings) error {
 	e.mu.Lock()
 	defer e.mu.Unlock()
+	e.EnvContext = ctx
 
 	e.EvergreenSettings = testutil.TestConfig()
 	if db != nil {
@@ -62,8 +63,6 @@ func (e *Environment) Configure(ctx context.Context, path string, db *evergreen.
 	e.Remote = rq
 	e.Local = queue.NewLocalUnordered(2)
 
-	edb.SetGlobalSessionProvider(e.EvergreenSettings.SessionFactory())
-
 	e.InternalSender = send.MakeInternalLogger()
 
 	jpm, err := jasper.NewLocalManager(true)
@@ -74,6 +73,12 @@ func (e *Environment) Configure(ctx context.Context, path string, db *evergreen.
 	e.JasperProcessManager = jpm
 
 	return nil
+}
+
+func (e *Environment) Context() (context.Context, context.CancelFunc) {
+	e.mu.RLock()
+	defer e.mu.RUnlock()
+	return context.WithCancel(e.EnvContext)
 }
 
 func (e *Environment) RemoteQueue() amboy.Queue {
@@ -148,6 +153,10 @@ func (e *Environment) GetSender(key evergreen.SenderKey) (send.Sender, error) {
 	e.mu.RLock()
 	defer e.mu.RUnlock()
 	return e.InternalSender, nil
+}
+
+func (e *Environment) SetSender(key evergreen.SenderKey, s send.Sender) error {
+	return nil
 }
 
 func (e *Environment) RegisterCloser(name string, closer func(context.Context) error) {

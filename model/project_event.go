@@ -8,7 +8,9 @@ import (
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
-	"gopkg.in/mgo.v2/bson"
+	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/bson/primitive"
+	mgobson "gopkg.in/mgo.v2/bson"
 )
 
 const (
@@ -35,7 +37,15 @@ type ProjectChangeEventEntry struct {
 	event.EventLogEntry
 }
 
-func (e *ProjectChangeEventEntry) SetBSON(raw bson.Raw) error {
+func (e *ProjectChangeEventEntry) UnmarshalBSON(in []byte) error {
+	return mgobson.Unmarshal(in, e)
+}
+
+func (e *ProjectChangeEventEntry) MarshalBSON() ([]byte, error) {
+	return mgobson.Marshal(e)
+}
+
+func (e *ProjectChangeEventEntry) SetBSON(raw mgobson.Raw) error {
 	temp := event.UnmarshalEventLogEntry{}
 	if err := raw.Unmarshal(&temp); err != nil {
 		return errors.Wrap(err, "can't unmarshal event container type")
@@ -51,7 +61,9 @@ func (e *ProjectChangeEventEntry) SetBSON(raw bson.Raw) error {
 	switch v := temp.ID.(type) {
 	case string:
 		e.ID = v
-	case bson.ObjectId:
+	case mgobson.ObjectId:
+		e.ID = v.Hex()
+	case primitive.ObjectID:
 		e.ID = v.Hex()
 	default:
 		return errors.Errorf("unrecognized ID format for event %v", v)

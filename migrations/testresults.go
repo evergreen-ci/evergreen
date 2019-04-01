@@ -5,7 +5,8 @@ import (
 	"github.com/mongodb/anser/db"
 	"github.com/mongodb/anser/model"
 	"github.com/pkg/errors"
-	"gopkg.in/mgo.v2/bson"
+	"go.mongodb.org/mongo-driver/bson"
+	mgobson "gopkg.in/mgo.v2/bson"
 )
 
 const (
@@ -44,7 +45,7 @@ type testResult struct {
 }
 
 func makeTaskMigrationFunction(database, collection string) db.MigrationOperation {
-	return func(session db.Session, rawD bson.RawD) error {
+	return func(session db.Session, rawD mgobson.RawD) error {
 		defer session.Close()
 
 		testresults := []testResult{}

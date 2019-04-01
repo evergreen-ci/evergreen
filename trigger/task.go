@@ -21,7 +21,7 @@ import (
 	"github.com/mongodb/grip/message"
 	"github.com/mongodb/grip/sometimes"
 	"github.com/pkg/errors"
-	"gopkg.in/mgo.v2/bson"
+	mgobson "gopkg.in/mgo.v2/bson"
 )
 
 func init() {
@@ -63,7 +63,7 @@ func makeTaskTriggers() eventHandler {
 // with as much data from the triggerContext as possible
 func newAlertRecord(subID string, t *task.Task, alertType string) *alertrecord.AlertRecord {
 	return &alertrecord.AlertRecord{
-		Id:                  bson.NewObjectId(),
+		Id:                  mgobson.NewObjectId(),
 		SubscriptionID:      subID,
 		Type:                alertType,
 		ProjectId:           t.Project,

@@ -1164,7 +1164,7 @@ func AddNewBuilds(activated bool, v *Version, p *Project, tasks TaskVariantPairs
 
 	existingBuilds, err := build.Find(build.ByVersion(v.Id).WithFields(build.BuildVariantKey, build.IdKey))
 	if err != nil {
-		return err
+		return errors.WithStack(err)
 	}
 	variantsProcessed := map[string]bool{}
 	for _, b := range existingBuilds {
@@ -1190,11 +1190,16 @@ func AddNewBuilds(activated bool, v *Version, p *Project, tasks TaskVariantPairs
 			GeneratedBy:  generatedBy,
 		}
 		buildId, err := CreateBuildFromVersion(buildArgs)
-		grip.Infof("Creating build for version %s, buildVariant %s, activated=%t",
-			v.Id, pair.Variant, activated)
+		grip.Info(message.Fields{
+			"op":        "creating build for version",
+			"variant":   pair.Variant,
+			"activated": activated,
+			"version":   v.Id,
+		})
 		if err != nil {
-			return err
+			return errors.WithStack(err)
 		}
+
 		newBuildIds = append(newBuildIds, buildId)
 		newBuildStatuses = append(newBuildStatuses,
 			VersionBuildStatus{
@@ -1205,7 +1210,7 @@ func AddNewBuilds(activated bool, v *Version, p *Project, tasks TaskVariantPairs
 		)
 	}
 
-	return VersionUpdateOne(
+	return errors.WithStack(VersionUpdateOne(
 		bson.M{VersionIdKey: v.Id},
 		bson.M{
 			"$push": bson.M{
@@ -1213,12 +1218,16 @@ func AddNewBuilds(activated bool, v *Version, p *Project, tasks TaskVariantPairs
 				VersionBuildVariantsKey: bson.M{"$each": newBuildStatuses},
 			},
 		},
-	)
+	))
 }
 
 // Given a version and set of variant/task pairs, creates any tasks that don't exist yet,
 // within the set of already existing builds.
 func AddNewTasks(activated bool, v *Version, p *Project, pairs TaskVariantPairs, generatedBy string) error {
+	if v.BuildIds == nil {
+		return nil
+	}
+
 	builds, err := build.Find(build.ByIds(v.BuildIds).WithFields(build.IdKey, build.BuildVariantKey, build.CreateTimeKey))
 	if err != nil {
 		return err

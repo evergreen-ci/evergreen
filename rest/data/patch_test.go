@@ -12,7 +12,7 @@ import (
 	"github.com/google/go-github/github"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
-	"gopkg.in/mgo.v2/bson"
+	"go.mongodb.org/mongo-driver/bson"
 )
 
 ////////////////////////////////////////////////////////////////////////
@@ -34,7 +34,6 @@ func TestPatchConnectorFetchByProjectSuite(t *testing.T) {
 		s.time = time.Date(2009, time.November, 10, 23, 0, 0, 0, time.Local)
 
 		testutil.ConfigureIntegrationTest(t, testConfig, "TestPatchConnectorFetchByProjectSuite")
-		db.SetGlobalSessionProvider(testConfig.SessionFactory())
 
 		patches := []*patch.Patch{
 			{Project: "project1", CreateTime: s.time},
@@ -168,7 +167,6 @@ func TestPatchConnectorFetchByIdSuite(t *testing.T) {
 		s.ctx = &DBConnector{}
 
 		testutil.ConfigureIntegrationTest(t, testConfig, "TestPatchConnectorFetchByIdSuite")
-		db.SetGlobalSessionProvider(testConfig.SessionFactory())
 
 		s.obj_ids = []bson.ObjectId{bson.NewObjectId(), bson.NewObjectId()}
 
@@ -258,7 +256,7 @@ func TestPatchConnectorAbortByIdSuite(t *testing.T) {
 		s.ctx = &DBConnector{}
 
 		testutil.ConfigureIntegrationTest(t, testConfig, "TestPatchConnectorAbortByIdSuite")
-		db.SetGlobalSessionProvider(testConfig.SessionFactory())
+		
 
 		s.obj_ids = []bson.ObjectId{bson.NewObjectId(), bson.NewObjectId()}
 
@@ -404,7 +402,7 @@ func TestPatchConnectorChangeStatusSuite(t *testing.T) {
 		s.ctx = &DBConnector{}
 
 		testutil.ConfigureIntegrationTest(t, testConfig, "TestPatchConnectorAbortByIdSuite")
-		db.SetGlobalSessionProvider(testConfig.SessionFactory())
+		
 
 		s.obj_ids = []bson.ObjectId{bson.NewObjectId(), bson.NewObjectId()}
 
@@ -503,7 +501,7 @@ func TestPatchConnectorFetchByUserSuite(t *testing.T) {
 	s.time = time.Date(2009, time.November, 10, 23, 0, 0, 0, time.Local)
 
 	testutil.ConfigureIntegrationTest(t, testConfig, "TestPatchConnectorFetchByUserSuite")
-	db.SetGlobalSessionProvider(testConfig.SessionFactory())
+	
 
 	assert.NoError(t, db.Clear(patch.Collection))
 

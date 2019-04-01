@@ -6,7 +6,7 @@ import (
 	"github.com/mongodb/anser/db"
 	"github.com/mongodb/anser/model"
 	"github.com/pkg/errors"
-	"gopkg.in/mgo.v2/bson"
+	mgobson "gopkg.in/mgo.v2/bson"
 )
 
 const (
@@ -49,7 +49,7 @@ func makeDistroSecurityGroupMigration(database string) db.MigrationOperation {
 	const (
 		idKey = "_id"
 	)
-	return func(session db.Session, rawD bson.RawD) error {
+	return func(session db.Session, rawD mgobson.RawD) error {
 		defer session.Close()
 
 		var id string

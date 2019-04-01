@@ -7,13 +7,14 @@ import (
 
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/mongodb/anser"
-	anserdb "github.com/mongodb/anser/db"
+	adb "github.com/mongodb/anser/db"
 	"github.com/stretchr/testify/suite"
-	"gopkg.in/mgo.v2/bson"
+	"go.mongodb.org/mongo-driver/bson"
+	mgobson "gopkg.in/mgo.v2/bson"
 )
 
 type eventSetProcessedAtSuite struct {
-	events []anserdb.Document
+	events []adb.Document
 	left   time.Time
 	right  time.Time
 
@@ -36,38 +37,38 @@ func (s *eventSetProcessedAtSuite) SetupTest() {
 	s.left = time.Now().In(loc).Truncate(0).Round(time.Millisecond).Add(-24 * time.Hour)
 	s.right = time.Now().In(loc).Truncate(0).Round(time.Millisecond).Add(-12 * time.Hour)
 
-	c, err := s.session.DB(s.database).C(allLogCollection).RemoveAll(anserdb.Document{})
+	c, err := s.session.DB(s.database).C(allLogCollection).RemoveAll(adb.Document{})
 	s.Require().NoError(err)
 	s.Require().NotNil(c)
 
-	s.events = []anserdb.Document{
+	s.events = []adb.Document{
 		// within the time range, but already processed
-		anserdb.Document{
-			idKey:          bson.ObjectIdHex("5949645c9acd9604fdd202d7"),
+		adb.Document{
+			idKey:          mgobson.ObjectIdHex("5949645c9acd9604fdd202d7"),
 			tsKey:          s.right.Add(-time.Hour),
 			processedAtKey: s.right.Add(-time.Hour),
 		},
 		// too old
-		anserdb.Document{
-			idKey:          bson.ObjectIdHex("5949645c9acd9604fdd202d8"),
+		adb.Document{
+			idKey:          mgobson.ObjectIdHex("5949645c9acd9604fdd202d8"),
 			tsKey:          s.left.Add(-time.Hour),
 			processedAtKey: time.Time{},
 		},
 		// too new
-		anserdb.Document{
-			idKey:          bson.ObjectIdHex("5949645c9acd9604fdd202d9"),
+		adb.Document{
+			idKey:          mgobson.ObjectIdHex("5949645c9acd9604fdd202d9"),
 			tsKey:          s.right.Add(time.Hour),
 			processedAtKey: time.Time{},
 		},
 		// just right
-		anserdb.Document{
-			idKey:          bson.ObjectIdHex("5949645c9acd9604fdd202dA"),
+		adb.Document{
+			idKey:          mgobson.ObjectIdHex("5949645c9acd9604fdd202dA"),
 			tsKey:          s.right.Add(-time.Hour),
 			processedAtKey: time.Time{},
 		},
 		// right ts, but ineligible b/c field is missing
-		anserdb.Document{
-			idKey: bson.ObjectIdHex("5949645c9acd9604fdd202dB"),
+		adb.Document{
+			idKey: mgobson.ObjectIdHex("5949645c9acd9604fdd202dB"),
 			tsKey: s.right.Add(-time.Hour),
 		},
 	}
@@ -99,11 +100,11 @@ func (s *eventSetProcessedAtSuite) TestMigration() {
 	s.Equal(1, i)
 
 	out := struct {
-		ID          bson.ObjectId `bson:"_id"`
-		ProcessedAt time.Time     `bson:"processed_at"`
+		ID          mgobson.ObjectId `bson:"_id"`
+		ProcessedAt time.Time           `bson:"processed_at"`
 	}{}
 	s.Require().NoError(db.FindOneQ(allLogCollection, db.Query(bson.M{
-		"_id": bson.ObjectIdHex("5949645c9acd9604fdd202dA"),
+		"_id": mgobson.ObjectIdHex("5949645c9acd9604fdd202dA"),
 	}), &out))
 
 	loc, _ := time.LoadLocation("UTC")
@@ -112,7 +113,7 @@ func (s *eventSetProcessedAtSuite) TestMigration() {
 	s.True(bttf.Equal(out.ProcessedAt))
 
 	s.Require().NoError(db.FindOneQ(allLogCollection, db.Query(bson.M{
-		"_id": bson.ObjectIdHex("5949645c9acd9604fdd202dB"),
+		"_id": mgobson.ObjectIdHex("5949645c9acd9604fdd202dB"),
 	}), &out))
 
 	s.True(out.ProcessedAt.IsZero())

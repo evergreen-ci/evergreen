@@ -16,11 +16,11 @@ import (
 	"github.com/mongodb/amboy/dependency"
 	"github.com/mongodb/amboy/job"
 	"github.com/mongodb/amboy/registry"
+	adb "github.com/mongodb/anser/db"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/level"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
-	mgo "gopkg.in/mgo.v2"
 )
 
 const hostTerminationJobName = "host-termination-job"
@@ -184,7 +184,7 @@ func (j *hostTerminationJob) Run(ctx context.Context) {
 			// intent host from the database before this job got to it. If so, there is
 			// nothing to terminate with a cloud manager, since if there is a
 			// cloud-managed host, it has a different ID.
-			if err == mgo.ErrNotFound {
+			if adb.ResultsNotFound(err) {
 				return
 			}
 			j.AddError(errors.Wrap(err, "problem terminating intent host in db"))

@@ -10,11 +10,11 @@ import (
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/util"
+	adb "github.com/mongodb/anser/db"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
-	"gopkg.in/mgo.v2"
-	"gopkg.in/mgo.v2/bson"
+	"go.mongodb.org/mongo-driver/bson"
 )
 
 const (
@@ -50,7 +50,7 @@ func GetStatsStatus(projectId string) (StatsStatus, error) {
 	status := StatsStatus{}
 	query := statsStatusQuery(projectId)
 	err := db.FindOne(dailyStatsStatusCollection, query, db.NoProjection, db.NoSort, &status)
-	if err == mgo.ErrNotFound {
+	if adb.ResultsNotFound(err) {
 		return createDefaultStatsStatus(projectId), nil
 	}
 	if err != nil {
@@ -239,7 +239,7 @@ func FindStatsToUpdate(projectId string, start time.Time, end time.Time) ([]Stat
 	})
 	pipeline := statsToUpdatePipeline(projectId, start, end)
 	statsList := []StatsToUpdate{}
-	err := db.Aggregate(task.Collection, pipeline, &statsList)
+	err := db.Aggregate(task.Collection, pipeline, statsList)
 	if err != nil {
 		return nil, errors.Wrap(err, "Failed to aggregate finished tasks")
 	}

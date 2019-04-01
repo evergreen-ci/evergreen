@@ -6,7 +6,7 @@ import (
 	"github.com/mongodb/anser"
 	"github.com/mongodb/anser/bsonutil"
 	"github.com/mongodb/anser/model"
-	"gopkg.in/mgo.v2/bson"
+	"go.mongodb.org/mongo-driver/bson"
 )
 
 //nolint: deadcode, megacheck, unused

@@ -6,7 +6,7 @@ import (
 	"github.com/mongodb/anser/db"
 	"github.com/mongodb/anser/model"
 	"github.com/pkg/errors"
-	"gopkg.in/mgo.v2/bson"
+	mgobson "gopkg.in/mgo.v2/bson"
 )
 
 const (
@@ -48,7 +48,7 @@ func makeAdminMapMigration(database string) db.MigrationOperation {
 		newPluginsKey     = "plugins_new"
 	)
 
-	return func(session db.Session, rawD bson.RawD) error {
+	return func(session db.Session, rawD mgobson.RawD) error {
 		defer session.Close()
 
 		var credentials map[string]string

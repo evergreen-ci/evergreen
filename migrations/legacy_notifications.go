@@ -6,7 +6,7 @@ import (
 	"github.com/mongodb/anser/model"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
-	"gopkg.in/mgo.v2/bson"
+	mgobson "gopkg.in/mgo.v2/bson"
 )
 
 const migrationLegacyNotificationsToSubscriptions = "legacy-notifications-to-subscriptions"
@@ -57,7 +57,7 @@ func makeLegacyNotificationsMigration(database string) db.MigrationOperation {
 		identifierKey    = "identifier"
 	)
 
-	return func(session db.Session, rawD bson.RawD) error {
+	return func(session db.Session, rawD mgobson.RawD) error {
 		defer session.Close()
 
 		settings := map[string][]legacyNotification{}
@@ -166,7 +166,7 @@ type subscription struct {
 
 func oldTriggerToSubscription(projectID, trigger string, sub subscriber) (*subscription, error) {
 	s := subscription{
-		ID:        bson.NewObjectId().Hex(),
+		ID:        mgobson.NewObjectId().Hex(),
 		OwnerType: "project",
 		Owner:     projectID,
 		Selectors: []selector{

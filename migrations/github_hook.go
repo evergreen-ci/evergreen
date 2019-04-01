@@ -9,7 +9,8 @@ import (
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
-	"gopkg.in/mgo.v2/bson"
+	"go.mongodb.org/mongo-driver/bson"
+	mgobson "gopkg.in/mgo.v2/bson"
 )
 
 const migrationGithubHooksToCollection = "github-hooks-to-collection"
@@ -61,7 +62,7 @@ func makeGithubHooksMigration(database string) db.MigrationOperation {
 		identifierKey = "identifier"
 	)
 
-	return func(session db.Session, rawD bson.RawD) error {
+	return func(session db.Session, rawD mgobson.RawD) error {
 		defer session.Close()
 
 		projectVarsID := ""

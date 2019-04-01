@@ -152,8 +152,9 @@ func (d *mongoDriver) setupDB(ctx context.Context) error {
 			},
 		},
 	})
-
-	return errors.Wrap(err, "problem building indexes")
+	grip.Warning(err)
+	return nil
+	// return errors.Wrap(err, "problem building indexes")
 }
 
 func (d *mongoDriver) Close() {

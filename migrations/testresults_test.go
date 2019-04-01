@@ -6,20 +6,15 @@ import (
 	"testing"
 
 	evg "github.com/evergreen-ci/evergreen/db"
-	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/mongodb/amboy/queue"
 	"github.com/mongodb/anser"
 	"github.com/mongodb/anser/db"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
-	mgo "gopkg.in/mgo.v2"
-	"gopkg.in/mgo.v2/bson"
+	"go.mongodb.org/mongo-driver/bson"
+	mgobson "gopkg.in/mgo.v2/bson"
 )
-
-func init() {
-	evg.SetGlobalSessionProvider(testutil.TestConfig().SessionFactory())
-}
 
 type TestResultsMigrationSuite struct {
 	suite.Suite
@@ -29,19 +24,19 @@ type TestResultsMigrationSuite struct {
 	testResults   []bson.M
 	migration     db.MigrationOperation
 	collection    string
-	session       *mgo.Session
+	session       db.Session
 	taskID        string
 	oldTaskID     string
 }
 
 func TestTestResultsMigration(t *testing.T) {
-	mgoSession, database, _ := evg.GetGlobalSessionFactory().GetSession()
-	defer mgoSession.Close()
+	session, database, _ := evg.GetGlobalSessionFactory().GetSession()
+	defer session.Close()
 
 	s := &TestResultsMigrationSuite{
-		migration:  makeTaskMigrationFunction(database.Name, tasksCollection),
-		dbName:     database.Name,
-		session:    mgoSession,
+		migration:  makeTaskMigrationFunction(database.Name(), tasksCollection),
+		dbName:     database.Name(),
+		session:    session,
 		collection: tasksCollection,
 		task: bson.M{
 			"_id":       "taskid-1",
@@ -61,8 +56,8 @@ func TestOldTestsMigration(t *testing.T) {
 	defer mgoSession.Close()
 
 	s := &TestResultsMigrationSuite{
-		migration:  makeTaskMigrationFunction(database.Name, oldTasksCollection),
-		dbName:     database.Name,
+		migration:  makeTaskMigrationFunction(database.Name(), oldTasksCollection),
+		dbName:     database.Name(),
 		session:    mgoSession,
 		collection: oldTasksCollection,
 		task: bson.M{
@@ -128,37 +123,33 @@ func (s *TestResultsMigrationSuite) SetupSuite() {
 }
 
 func (s *TestResultsMigrationSuite) SetupTest() {
-	session := db.WrapSession(s.session.Copy())
-	defer session.Close()
-
-	info, err := session.DB(s.dbName).C(testResultsCollection).RemoveAll(bson.M{})
+	info, err := s.session.DB(s.dbName).C(testResultsCollection).RemoveAll(bson.M{})
 	s.Require().NoError(err, "%+v", info)
 
-	info, err = session.DB(s.dbName).C(s.collection).RemoveAll(bson.M{})
+	info, err = s.session.DB(s.dbName).C(s.collection).RemoveAll(bson.M{})
 	s.Require().NoError(err, "%+v", info)
 
-	err = session.DB(s.dbName).C(s.collection).Insert(s.invariantTask)
+	err = s.session.DB(s.dbName).C(s.collection).Insert(s.invariantTask)
 	s.Require().NoError(err)
 }
 
 func (s *TestResultsMigrationSuite) TestNoTestResults() {
-	session := db.WrapSession(s.session.Copy())
-	s.Require().NoError(session.DB(s.dbName).C(s.collection).Insert(s.task))
+	s.Require().NoError(s.session.DB(s.dbName).C(s.collection).Insert(s.task))
 
-	var doc bson.RawD
-	coll := session.DB(s.dbName).C(s.collection)
+	var doc mgobson.RawD
+	coll := s.session.DB(s.dbName).C(s.collection)
 	s.Require().NoError(coll.FindId(s.taskID).One(&doc))
-	s.Assert().NoError(s.migration(session.Copy(), doc))
+	s.Assert().NoError(s.migration(s.session.Copy(), doc))
 
-	count, err := session.DB(s.dbName).C(s.collection).Count()
+	count, err := s.session.DB(s.dbName).C(s.collection).Count()
 	s.NoError(err)
 	s.Equal(2, count)
 
 	var task bson.M
-	s.NoError(session.DB(s.dbName).C(s.collection).Find(bson.M{"_id": s.taskID}).One(&task))
+	s.NoError(s.session.DB(s.dbName).C(s.collection).Find(bson.M{"_id": s.taskID}).One(&task))
 	s.NotContains(task, "test_results")
 
-	count, err = session.DB(s.dbName).C(testResultsCollection).Count()
+	count, err = s.session.DB(s.dbName).C(testResultsCollection).Count()
 	s.NoError(err)
 	s.Equal(0, count, "%s.%s", s.dbName, s.collection)
 }
@@ -166,36 +157,35 @@ func (s *TestResultsMigrationSuite) TestNoTestResults() {
 func (s *TestResultsMigrationSuite) TestWithTestResults() {
 	s.task["test_results"] = s.testResults
 
-	session := db.WrapSession(s.session.Copy())
-	s.Require().NoError(session.DB(s.dbName).C(s.collection).Insert(s.task))
+	s.Require().NoError(s.session.DB(s.dbName).C(s.collection).Insert(s.task))
 
 	// the task has test_results
 	var task bson.M
-	s.NoError(session.DB(s.dbName).C(s.collection).Find(bson.M{"_id": s.taskID}).One(&task))
+	s.NoError(s.session.DB(s.dbName).C(s.collection).Find(bson.M{"_id": s.taskID}).One(&task))
 	s.Contains(task, "test_results")
 
 	// run the migration
-	var doc bson.RawD
-	coll := session.DB(s.dbName).C(s.collection)
+	var doc mgobson.RawD
+	coll := s.session.DB(s.dbName).C(s.collection)
 	s.Require().NoError(coll.FindId(s.taskID).One(&doc))
-	s.Assert().NoError(s.migration(session.Copy(), doc))
+	s.Assert().NoError(s.migration(s.session.Copy(), doc))
 
 	// there are still 2 tasks
-	count, err := session.DB(s.dbName).C(s.collection).Count()
+	count, err := s.session.DB(s.dbName).C(s.collection).Count()
 	s.NoError(err)
 	s.Equal(2, count)
 
 	// the task no longer contains test results
-	s.NoError(session.DB(s.dbName).C(s.collection).Find(bson.M{"_id": s.taskID}).One(&task))
+	s.NoError(s.session.DB(s.dbName).C(s.collection).Find(bson.M{"_id": s.taskID}).One(&task))
 	s.NotContains(task, "test_results")
 
 	// the test results collection has the correct items
-	count, err = session.DB(s.dbName).C(testResultsCollection).Count()
+	count, err = s.session.DB(s.dbName).C(testResultsCollection).Count()
 	s.NoError(err)
 	s.Equal(2, count)
 
 	var testresults []bson.M
-	s.NoError(session.DB(s.dbName).C(testResultsCollection).Find(bson.M{}).All(&testresults))
+	s.NoError(s.session.DB(s.dbName).C(testResultsCollection).Find(bson.M{}).All(&testresults))
 	for i, test := range testresults {
 		s.Equal("pass", test["status"])
 		s.Equal(fmt.Sprintf("file-%d", i+1), test["test_file"])
@@ -222,10 +212,9 @@ func TestTestResultsLegacyTask(t *testing.T) {
 	assert := assert.New(t)
 	require := require.New(t)
 
-	mgoSession, database, err := evg.GetGlobalSessionFactory().GetSession()
+	session, database, err := evg.GetGlobalSessionFactory().GetSession()
 	require.NoError(err)
-	dbName := database.Name
-	session := db.WrapSession(mgoSession.Copy())
+	dbName := database.Name()
 	defer session.Close()
 
 	require.NoError(evg.Clear(tasksCollection))
@@ -267,10 +256,9 @@ func TestAddExecutionMigration(t *testing.T) {
 	// setup the migration environment and get a database session
 	anser.ResetEnvironment()
 	env := anser.GetEnvironment()
-	mgoSession, database, err := evg.GetGlobalSessionFactory().GetSession()
+	session, database, err := evg.GetGlobalSessionFactory().GetSession()
 	require.NoError(err)
-	dbName := database.Name
-	session := db.WrapSession(mgoSession.Copy())
+	dbName := database.Name()
 	defer session.Close()
 	require.NoError(err)
 

@@ -3,7 +3,7 @@ package event
 import (
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/mongodb/anser/bsonutil"
-	"gopkg.in/mgo.v2/bson"
+	"go.mongodb.org/mongo-driver/bson"
 )
 
 func getRecentStatusesForHost(hostId string, n int) (int, []string) {
@@ -30,7 +30,7 @@ func getRecentStatusesForHost(hostId string, n int) (int, []string) {
 		Status []string `bson:"status"`
 	}{}
 
-	if err := db.Aggregate(AllLogCollection, pipeline, &out); err != nil {
+	if err := db.Aggregate(AllLogCollection, pipeline, out); err != nil {
 		return 0, []string{}
 	}
 

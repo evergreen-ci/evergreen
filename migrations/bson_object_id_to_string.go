@@ -7,7 +7,8 @@ import (
 	"github.com/mongodb/anser/db"
 	"github.com/mongodb/anser/model"
 	"github.com/pkg/errors"
-	"gopkg.in/mgo.v2/bson"
+	"go.mongodb.org/mongo-driver/bson"
+	mgobson "gopkg.in/mgo.v2/bson"
 )
 
 const (
@@ -42,7 +43,7 @@ func makeBSONObjectIDToStringGenerator(collection string) migrationGeneratorFact
 
 func makeBSONObjectIDToStringMigration(database, collection string) db.MigrationOperation {
 	const idKey = "_id"
-	return func(session db.Session, rawD bson.RawD) error {
+	return func(session db.Session, rawD mgobson.RawD) error {
 		defer session.Close()
 
 		doc := db.Document{}
@@ -53,7 +54,7 @@ func makeBSONObjectIDToStringMigration(database, collection string) db.Migration
 			}
 			doc[rawD[i].Name] = temp
 		}
-		v, ok := doc[idKey].(bson.ObjectId)
+		v, ok := doc[idKey].(mgobson.ObjectId)
 		if !ok || !v.Valid() {
 			return errors.Errorf("%v is not a BSON object ID", doc[idKey])
 		}

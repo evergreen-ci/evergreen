@@ -15,10 +15,8 @@ import (
 	"github.com/evergreen-ci/evergreen/rest/client"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/evergreen/util"
-	"github.com/mongodb/jasper"
 	. "github.com/smartystreets/goconvey/convey"
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 )
 
 func TestPatchPluginAPI(t *testing.T) {
@@ -93,15 +91,14 @@ func TestPatchPluginAPI(t *testing.T) {
 }
 
 func TestPatchPlugin(t *testing.T) {
-	settings := testutil.TestConfig()
-	testutil.ConfigureIntegrationTest(t, settings, "TestPatchPlugin")
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	cwd := testutil.GetDirectoryOfFile()
-	db.SetGlobalSessionProvider(settings.SessionFactory())
+	env := testutil.NewEnvironment(ctx, t)
+	settings := env.Settings()
 
-	jpm, err := jasper.NewLocalManager(false)
-	require.NoError(t, err)
+	testutil.ConfigureIntegrationTest(t, settings, "TestPatchPlugin")
+	cwd := testutil.GetDirectoryOfFile()
+	jpm := env.JasperManager()
 
 	Convey("With patch plugin installed into plugin registry", t, func() {
 		testutil.HandleTestingErr(db.Clear(model.VersionCollection), t,

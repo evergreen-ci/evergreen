@@ -33,10 +33,6 @@ func (s *SchedulerSuite) TearDownTest() {
 
 var schedulerTestConf = testutil.TestConfig()
 
-func init() {
-	db.SetGlobalSessionProvider(schedulerTestConf.SessionFactory())
-}
-
 func TestSpawnHosts(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()

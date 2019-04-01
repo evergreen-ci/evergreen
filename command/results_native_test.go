@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/task"
@@ -17,22 +18,21 @@ import (
 )
 
 func resetTasks(t *testing.T) {
-	db.SetGlobalSessionProvider(testutil.TestConfig().SessionFactory())
 	testutil.HandleTestingErr(
 		db.ClearCollections(task.Collection, model.TestLogCollection), t,
 		"error clearing test collections")
 }
 
 func TestAttachResults(t *testing.T) {
-	resetTasks(t)
-	testConfig := testutil.TestConfig()
-	cwd := testutil.GetDirectoryOfFile()
-
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
+	env := evergreen.GetEnvironment()
+	testConfig := env.Settings()
 
+	cwd := testutil.GetDirectoryOfFile()
 	comm := client.NewMock("http://localhost.com")
 
+	resetTasks(t)
 	SkipConvey("With attachResults plugin installed into plugin registry", t, func() {
 
 		configFile := filepath.Join(cwd, "testdata", "attach", "plugin_attach_results.yml")

@@ -12,7 +12,7 @@ import (
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
-	"gopkg.in/mgo.v2/bson"
+	mgobson "gopkg.in/mgo.v2/bson"
 )
 
 const migrationZeroDateFix = "zero-date-fix"
@@ -72,7 +72,7 @@ func makeZeroDateMigration(database, githubToken string) db.MigrationOperation {
 		repoKey  = "repo_name"
 	)
 
-	return func(session db.Session, rawD bson.RawD) error {
+	return func(session db.Session, rawD mgobson.RawD) error {
 		defer session.Close()
 
 		revision := ""

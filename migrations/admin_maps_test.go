@@ -20,20 +20,19 @@ type adminMapSuite struct {
 }
 
 func TestAdminMapMigration(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	require := require.New(t)
 
-	mgoSession, database, err := evgdb.GetGlobalSessionFactory().GetSession()
+	session, database, err := evgdb.GetGlobalSessionFactory().GetSession()
 	require.NoError(err)
-	defer mgoSession.Close()
-
-	session := db.WrapSession(mgoSession.Copy())
 	defer session.Close()
 
-	ctx, cancel := context.WithCancel(context.Background())
 	s := &adminMapSuite{}
 	s.env = &mock.Environment{}
 	s.session = session
-	s.database = database.Name
+	s.database = database.Name()
 	s.cancel = cancel
 
 	require.NoError(s.env.Configure(ctx, filepath.Join(evergreen.FindEvergreenHome(), testutil.TestDir, testutil.TestSettings), nil))

@@ -2,6 +2,7 @@ package migrations
 
 import (
 	"context"
+	"fmt"
 	"path/filepath"
 	"testing"
 	"time"
@@ -26,20 +27,21 @@ type adminEventSuite struct {
 }
 
 func TestAdminEventMigration(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	require := require.New(t)
 
-	mgoSession, database, err := evgdb.GetGlobalSessionFactory().GetSession()
+	session, database, err := evgdb.GetGlobalSessionFactory().GetSession()
 	require.NoError(err)
-	defer mgoSession.Close()
-
-	session := db.WrapSession(mgoSession.Copy())
+	require.NotNil(session)
+	require.NotNil(database)
 	defer session.Close()
 
-	ctx, cancel := context.WithCancel(context.Background())
 	s := &adminEventSuite{
 		env:      &mock.Environment{},
 		session:  session,
-		database: database.Name,
+		database: database.Name(),
 		cancel:   cancel,
 	}
 
@@ -107,7 +109,7 @@ func (s *adminEventSuite) TestMigration() {
 	}
 
 	gen, err := adminEventRestructureGenerator(anser.GetEnvironment(), args)
-	s.NoError(err)
+	s.Require().NoError(err)
 	gen.Run(context.Background())
 	s.NoError(gen.Error())
 
@@ -134,9 +136,13 @@ func (s *adminEventSuite) TestMigration() {
 		s.NotContains(data, "new_val")
 		s.NotContains(data, "old_flags")
 		s.NotContains(data, "new_flags")
-		changes := data["changes"].(db.Document)
-		after := changes["after"].(db.Document)
-		before := changes["before"].(db.Document)
+		fmt.Println(data)
+		changes, ok := data["changes"].(db.Document)
+		s.True(ok)
+		after, ok := changes["after"].(db.Document)
+		s.True(ok)
+		before, ok := changes["before"].(db.Document)
+		s.True(ok)
 		switch data["section"] {
 		case "global":
 			if before["banner_theme"] == "old theme" && after["banner_theme"] == "new theme" {

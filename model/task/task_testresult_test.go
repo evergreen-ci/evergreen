@@ -5,11 +5,10 @@ import (
 	"testing"
 	"time"
 
-	"gopkg.in/mgo.v2/bson"
+	"go.mongodb.org/mongo-driver/bson"
 
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/testresult"
-	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -24,8 +23,6 @@ func TestTaskTestResultSuite(t *testing.T) {
 }
 
 func (s *TaskTestResultSuite) SetupSuite() {
-	db.SetGlobalSessionProvider(testutil.TestConfig().SessionFactory())
-
 	s.tasks = []Task{}
 	for i := 0; i < 5; i++ {
 		s.tasks = append(s.tasks, Task{

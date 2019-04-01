@@ -4,7 +4,6 @@ import (
 	"testing"
 
 	"github.com/evergreen-ci/evergreen/db"
-	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -14,10 +13,6 @@ type hookSuite struct {
 
 func TestGithubHookSuite(t *testing.T) {
 	suite.Run(t, new(hookSuite))
-}
-
-func (s *hookSuite) SetupSuite() {
-	db.SetGlobalSessionProvider(testutil.TestConfig().SessionFactory())
 }
 
 func (s *hookSuite) SetupTest() {

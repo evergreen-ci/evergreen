@@ -8,11 +8,11 @@ import (
 
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/event"
-	"github.com/evergreen-ci/evergreen/testutil"
+	_ "github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/grip/message"
 	"github.com/stretchr/testify/suite"
-	"gopkg.in/mgo.v2/bson"
+	"go.mongodb.org/mongo-driver/bson"
 )
 
 type notificationSuite struct {
@@ -23,10 +23,6 @@ type notificationSuite struct {
 
 func TestNotifications(t *testing.T) {
 	suite.Run(t, &notificationSuite{})
-}
-
-func (s *notificationSuite) SetupSuite() {
-	db.SetGlobalSessionProvider(testutil.TestConfig().SessionFactory())
 }
 
 func (s *notificationSuite) SetupTest() {

@@ -8,7 +8,8 @@ import (
 	"github.com/mongodb/anser/db"
 	"github.com/mongodb/anser/model"
 	"github.com/pkg/errors"
-	"gopkg.in/mgo.v2/bson"
+	"go.mongodb.org/mongo-driver/bson"
+	mgobson "gopkg.in/mgo.v2/bson"
 )
 
 const (
@@ -96,10 +97,10 @@ func makeAdminEventMigration(database string) db.MigrationOperation {
 		dataKey = "data"
 	)
 
-	return func(session db.Session, rawD bson.RawD) error {
+	return func(session db.Session, rawD mgobson.RawD) error {
 		defer session.Close()
 
-		var docId bson.ObjectId
+		var docId mgobson.ObjectId
 		oldData := eventDataOld{}
 		changeType := ""
 		for _, raw := range rawD {

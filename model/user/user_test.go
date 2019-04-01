@@ -12,10 +12,6 @@ import (
 
 var userTestConfig = testutil.TestConfig()
 
-func init() {
-	db.SetGlobalSessionProvider(userTestConfig.SessionFactory())
-}
-
 type UserTestSuite struct {
 	suite.Suite
 	users []*DBUser

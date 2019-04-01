@@ -4,9 +4,9 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/mongodb/anser/bsonutil"
+	adb "github.com/mongodb/anser/db"
 	"github.com/pkg/errors"
-	"gopkg.in/mgo.v2"
-	"gopkg.in/mgo.v2/bson"
+	"go.mongodb.org/mongo-driver/bson"
 )
 
 // DecommissionInactiveStaticHosts marks static hosts
@@ -38,7 +38,7 @@ func MarkInactiveStaticHosts(activeStaticHosts []string, distroID string) error 
 			},
 		},
 	)
-	if err == mgo.ErrNotFound {
+	if adb.ResultsNotFound(err) {
 		return nil
 	}
 	return errors.Wrap(err, "could not terminate static hosts")

@@ -7,7 +7,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/gimlet"
-	mgo "gopkg.in/mgo.v2"
+	adb "github.com/mongodb/anser/db"
 )
 
 func perfGetTasksForVersion(w http.ResponseWriter, r *http.Request) {
@@ -40,7 +40,7 @@ func perfGetTasksForLatestVersion(w http.ResponseWriter, r *http.Request) {
 
 	data, err := model.PerfGetTasksForLatestVersion(project, name, skip)
 	if err != nil {
-		if err == mgo.ErrNotFound {
+		if adb.ResultsNotFound(err) {
 			http.Error(w, "{}", http.StatusNotFound)
 			return
 		}
@@ -68,7 +68,7 @@ func perfGetCommit(w http.ResponseWriter, r *http.Request) {
 	name := vars["name"]
 	jsonForTask, err := model.GetTaskJSONCommit(projectId, revision, variant, taskName, name)
 	if err != nil {
-		if err != mgo.ErrNotFound {
+		if !adb.ResultsNotFound(err) {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
@@ -111,7 +111,7 @@ func perfGetTaskById(w http.ResponseWriter, r *http.Request) {
 	name := vars["name"]
 	jsonForTask, err := model.GetTaskJSONById(taskId, name)
 	if err != nil {
-		if err != mgo.ErrNotFound {
+		if !adb.ResultsNotFound(err) {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
@@ -157,7 +157,7 @@ func perfHandleTaskTag(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err != nil {
-		if err == mgo.ErrNotFound {
+		if adb.ResultsNotFound(err) {
 			http.Error(w, "{}", http.StatusNotFound)
 			return
 		}
@@ -199,7 +199,7 @@ func perfGetTaskJSONByTag(w http.ResponseWriter, r *http.Request) {
 	jsonForTask, err := model.GetTaskJSONByTag(projectId, tag, variant, taskName, name)
 
 	if err != nil {
-		if err != mgo.ErrNotFound {
+		if !adb.ResultsNotFound(err) {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}

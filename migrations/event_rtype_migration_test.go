@@ -7,13 +7,14 @@ import (
 
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/mongodb/anser"
-	anserdb "github.com/mongodb/anser/db"
+	adb "github.com/mongodb/anser/db"
 	"github.com/stretchr/testify/suite"
-	"gopkg.in/mgo.v2/bson"
+	"go.mongodb.org/mongo-driver/bson"
+	mgobson "gopkg.in/mgo.v2/bson"
 )
 
 type eventRTypeMigrationSuite struct {
-	events []anserdb.Document
+	events []adb.Document
 
 	migrationSuite
 }
@@ -28,40 +29,40 @@ func (s *eventRTypeMigrationSuite) SetupTest() {
 	date, err := time.ParseInLocation(time.RFC3339Nano, "2017-06-20T18:07:24.991Z", loc)
 	s.NoError(err)
 
-	c, err := s.session.DB(s.database).C(allLogCollection).RemoveAll(anserdb.Document{})
+	c, err := s.session.DB(s.database).C(allLogCollection).RemoveAll(adb.Document{})
 	s.Require().NoError(err)
 	s.Require().NotNil(c)
 
-	s.events = []anserdb.Document{
-		anserdb.Document{
-			"_id":    bson.ObjectIdHex("5949645c9acd9604fdd202d7"),
+	s.events = []adb.Document{
+		adb.Document{
+			"_id":    mgobson.ObjectIdHex("5949645c9acd9604fdd202d7"),
 			"ts":     date,
 			"r_id":   "macos.example.com",
 			"e_type": "HOST_TASK_FINISHED",
-			"data": anserdb.Document{
+			"data": adb.Document{
 				"r_type": "HOST",
 				"t_id":   "mci_osx_dist_165359be9d1ca311e964ebc4a50e66da42998e65_17_06_20_16_14_44",
 				"t_st":   "success",
 			},
 		},
-		anserdb.Document{
-			"_id":          bson.ObjectIdHex("5949645c9acd9604fdd202d8"),
+		adb.Document{
+			"_id":          mgobson.ObjectIdHex("5949645c9acd9604fdd202d8"),
 			"ts":           date,
 			"r_id":         "macos.example.com",
 			"e_type":       "HOST_TASK_FINISHED",
 			"r_type":       "HOST",
 			"processed_at": time.Time{}.Add(-time.Hour),
-			"data": anserdb.Document{
+			"data": adb.Document{
 				"t_id": "mci_osx_dist_165359be9d1ca311e964ebc4a50e66da42998e65_17_06_20_16_14_44",
 				"t_st": "failed",
 			},
 		},
-		anserdb.Document{
-			"_id":    bson.ObjectIdHex("5949645c9acd9604fdd202d9"),
+		adb.Document{
+			"_id":    mgobson.ObjectIdHex("5949645c9acd9604fdd202d9"),
 			"ts":     date,
 			"r_id":   "macos.example.com",
 			"e_type": "SOMETHING_AWESOME",
-			"data": anserdb.Document{
+			"data": adb.Document{
 				"r_type": "SOMETHINGELSE",
 				"other":  "data",
 			},
@@ -110,7 +111,7 @@ func (s *eventRTypeMigrationSuite) TestMigration() {
 		eventDataBSON, ok := eventData.(bson.M)
 		s.True(ok)
 
-		id, ok := e["_id"].(bson.ObjectId)
+		id, ok := e["_id"].(mgobson.ObjectId)
 		s.True(ok)
 
 		var t time.Time

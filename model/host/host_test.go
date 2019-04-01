@@ -16,12 +16,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"gopkg.in/mgo.v2"
-	"gopkg.in/mgo.v2/bson"
+	"go.mongodb.org/mongo-driver/bson"
 )
-
-func init() {
-	db.SetGlobalSessionProvider(testutil.TestConfig().SessionFactory())
-}
 
 // IsActive is a query that returns all Evergreen hosts that are working or
 // capable of being assigned work to do.

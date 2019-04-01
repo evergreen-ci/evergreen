@@ -9,10 +9,11 @@ import (
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/anser/bsonutil"
+	adb "github.com/mongodb/anser/db"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
-	mgo "gopkg.in/mgo.v2"
-	"gopkg.in/mgo.v2/bson"
+	"go.mongodb.org/mongo-driver/bson"
+	mgobson "gopkg.in/mgo.v2/bson"
 )
 
 const (
@@ -75,7 +76,11 @@ type unmarshalSubscription struct {
 	TriggerData    map[string]string `bson:"trigger_data,omitempty"`
 }
 
-func (s *Subscription) SetBSON(raw bson.Raw) error {
+func (d *Subscription) UnmarshalBSON(in []byte) error {
+	return mgobson.Unmarshal(in, d)
+}
+
+func (s *Subscription) SetBSON(raw mgobson.Raw) error {
 	temp := unmarshalSubscription{}
 
 	if err := raw.Unmarshal(&temp); err != nil {
@@ -172,7 +177,7 @@ func findSelector(selectors []Selector, selectorResourceType string) *Selector {
 
 func (s *Subscription) Upsert() error {
 	if s.ID == "" {
-		s.ID = bson.NewObjectId().Hex()
+		s.ID = mgobson.NewObjectId().Hex()
 	}
 	update := bson.M{
 		subscriptionResourceTypeKey:   s.ResourceType,
@@ -209,18 +214,18 @@ func FindSubscriptionByID(id string) (*Subscription, error) {
 	query := bson.M{
 		subscriptionIDKey: id,
 	}
-	if bson.IsObjectIdHex(id) {
+	if mgobson.IsObjectIdHex(id) {
 		query = bson.M{
 			"$or": []bson.M{
 				query,
 				bson.M{
-					subscriptionIDKey: bson.ObjectIdHex(id),
+					subscriptionIDKey: mgobson.ObjectIdHex(id),
 				},
 			},
 		}
 	}
 	err := db.FindOneQ(SubscriptionsCollection, db.Query(query), &out)
-	if err == mgo.ErrNotFound {
+	if adb.ResultsNotFound(err) {
 		return nil, nil
 	}
 	if err != nil {
@@ -452,7 +457,7 @@ func NewPatchOutcomeSubscriptionByOwner(owner string, sub Subscriber) Subscripti
 
 func NewBuildBreakSubscriptionByOwner(owner string, sub Subscriber) Subscription {
 	return Subscription{
-		ID:           bson.NewObjectId().Hex(),
+		ID:           mgobson.NewObjectId().Hex(),
 		ResourceType: ResourceTypeTask,
 		Trigger:      "build-break",
 		Selectors: []Selector{
@@ -479,7 +484,7 @@ func NewSpawnhostExpirationSubscription(owner string, sub Subscriber) Subscripti
 
 func NewSubscriptionByOwner(owner string, sub Subscriber, resourceType, trigger string) Subscription {
 	return Subscription{
-		ID:           bson.NewObjectId().Hex(),
+		ID:           mgobson.NewObjectId().Hex(),
 		ResourceType: resourceType,
 		Trigger:      trigger,
 		Selectors: []Selector{

@@ -4,9 +4,9 @@ import (
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/util"
+	adb "github.com/mongodb/anser/db"
 	"github.com/pkg/errors"
-	"gopkg.in/mgo.v2"
-	"gopkg.in/mgo.v2/bson"
+	"go.mongodb.org/mongo-driver/bson"
 )
 
 // SaveUserSettings updates the settings stored for the given user id.
@@ -37,7 +37,7 @@ func FindUserByID(id string) (*user.DBUser, error) {
 func GetOrCreateUser(userId, displayName, email string) (*user.DBUser, error) {
 	u := &user.DBUser{}
 	_, err := db.FindAndModify(user.Collection, bson.M{user.IdKey: userId}, nil,
-		mgo.Change{
+		adb.Change{
 			Update: bson.M{
 				"$set": bson.M{
 					user.DispNameKey:     displayName,

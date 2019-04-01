@@ -10,7 +10,7 @@ import (
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/stretchr/testify/suite"
-	"gopkg.in/mgo.v2/bson"
+	"go.mongodb.org/mongo-driver/bson"
 )
 
 type GithubSuite struct {
@@ -29,7 +29,6 @@ func TestGithubSuite(t *testing.T) {
 }
 
 func (s *GithubSuite) SetupSuite() {
-	db.SetGlobalSessionProvider(testutil.TestConfig().SessionFactory())
 	s.pr = 5
 	s.hash = "67da19930b1b18d346477e99a8e18094a672f48a"
 	s.url = "https://www.example.com/1.diff"

@@ -8,7 +8,7 @@ import (
 	"github.com/mongodb/anser"
 	"github.com/mongodb/anser/db"
 	"github.com/stretchr/testify/suite"
-	"gopkg.in/mgo.v2/bson"
+	mgobson "gopkg.in/mgo.v2/bson"
 )
 
 type bsonObjectIDToStringSuite struct {
@@ -29,19 +29,19 @@ func (s *bsonObjectIDToStringSuite) SetupTest() {
 
 	s.docs = []db.Document{
 		{
-			"_id": bson.ObjectIdHex("aaaaaaaaaaaaaaaaaaaaaaa0"),
+			"_id": mgobson.ObjectIdHex("aaaaaaaaaaaaaaaaaaaaaaa0"),
 		},
 		{
-			"_id": bson.ObjectIdHex("aaaaaaaaaaaaaaaaaaaaaaa1"),
+			"_id": mgobson.ObjectIdHex("aaaaaaaaaaaaaaaaaaaaaaa1"),
 		},
 		{
-			"_id": bson.ObjectIdHex("aaaaaaaaaaaaaaaaaaaaaaa2"),
+			"_id": mgobson.ObjectIdHex("aaaaaaaaaaaaaaaaaaaaaaa2"),
 		},
 		{
-			"_id": bson.ObjectIdHex("aaaaaaaaaaaaaaaaaaaaaaa3"),
+			"_id": mgobson.ObjectIdHex("aaaaaaaaaaaaaaaaaaaaaaa3"),
 		},
 		{
-			"_id": bson.ObjectIdHex("aaaaaaaaaaaaaaaaaaaaaaa4"),
+			"_id": mgobson.ObjectIdHex("aaaaaaaaaaaaaaaaaaaaaaa4"),
 		},
 		{
 			"_id": "s0",
@@ -67,7 +67,7 @@ func (s *bsonObjectIDToStringSuite) SetupTest() {
 		case string:
 			s.found[v] = false
 
-		case bson.ObjectId:
+		case mgobson.ObjectId:
 			s.found[v.Hex()] = false
 		}
 	}

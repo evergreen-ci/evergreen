@@ -12,7 +12,6 @@ import (
 func TestFindProjectAliases(t *testing.T) {
 	assert := assert.New(t)
 	testutil.ConfigureIntegrationTest(t, testConfig, "TestFindAllAliases")
-	db.SetGlobalSessionProvider(testConfig.SessionFactory())
 	session, _, _ := db.GetGlobalSessionFactory().GetSession()
 	testutil.HandleTestingErr(session.DB(testConfig.Database.DB).DropDatabase(), t, "Error dropping database")
 

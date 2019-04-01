@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"gopkg.in/mgo.v2/bson"
+	"go.mongodb.org/mongo-driver/bson"
 
 	"github.com/evergreen-ci/evergreen"
 	evgdb "github.com/evergreen-ci/evergreen/db"

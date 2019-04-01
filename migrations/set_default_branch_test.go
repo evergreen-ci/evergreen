@@ -6,13 +6,13 @@ import (
 
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/mongodb/anser"
-	anserdb "github.com/mongodb/anser/db"
+	adb "github.com/mongodb/anser/db"
 	"github.com/stretchr/testify/suite"
-	"gopkg.in/mgo.v2/bson"
+	"go.mongodb.org/mongo-driver/bson"
 )
 
 type setDefaultBranchMigrationSuite struct {
-	refs []anserdb.Document
+	refs []adb.Document
 	migrationSuite
 }
 
@@ -23,11 +23,11 @@ func TestSetDefaultBranchMigration(t *testing.T) {
 func (s *setDefaultBranchMigrationSuite) SetupTest() {
 	const projectRefCollection = "project_ref"
 
-	c, err := s.session.DB(s.database).C(projectRefCollection).RemoveAll(anserdb.Document{})
+	c, err := s.session.DB(s.database).C(projectRefCollection).RemoveAll(adb.Document{})
 	s.Require().NoError(err)
 	s.Require().NotNil(c)
 
-	s.refs = []anserdb.Document{
+	s.refs = []adb.Document{
 		{
 			"identifier":  "1",
 			"branch_name": "",

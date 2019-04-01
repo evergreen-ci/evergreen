@@ -14,7 +14,7 @@ import (
 	"github.com/mongodb/anser/db"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
-	"gopkg.in/mgo.v2/bson"
+	mgobson "gopkg.in/mgo.v2/bson"
 )
 
 type preferenceMigrationSuite struct {
@@ -27,20 +27,19 @@ type preferenceMigrationSuite struct {
 }
 
 func TestSpawnhostPreferenceMigration(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	require := require.New(t)
 
-	mgoSession, database, err := evgdb.GetGlobalSessionFactory().GetSession()
+	session, database, err := evgdb.GetGlobalSessionFactory().GetSession()
 	require.NoError(err)
-	defer mgoSession.Close()
-
-	session := db.WrapSession(mgoSession.Copy())
 	defer session.Close()
 
-	ctx, cancel := context.WithCancel(context.Background())
 	s := &preferenceMigrationSuite{
 		env:      &mock.Environment{},
 		session:  session,
-		database: database.Name,
+		database: database.Name(),
 	}
 
 	require.NoError(s.env.Configure(ctx, filepath.Join(evergreen.FindEvergreenHome(), testutil.TestDir, testutil.TestSettings), nil))
@@ -116,7 +115,7 @@ func (s *preferenceMigrationSuite) TestMigration() {
 }
 
 func (s *preferenceMigrationSuite) TestNoChangeExistingData() {
-	id := bson.NewObjectId()
+	id := mgobson.NewObjectId()
 	user4 := db.Document{
 		"_id": "user4",
 		"settings": db.Document{

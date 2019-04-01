@@ -5,7 +5,8 @@ import (
 
 	"github.com/mongodb/anser/bsonutil"
 	"github.com/pkg/errors"
-	"gopkg.in/mgo.v2/bson"
+	"go.mongodb.org/mongo-driver/bson/primitive"
+	mgobson "gopkg.in/mgo.v2/bson"
 )
 
 const (
@@ -39,10 +40,10 @@ type UnmarshalEventLogEntry struct {
 	ResourceType string      `bson:"r_type,omitempty" json:"resource_type,omitempty"`
 	ProcessedAt  time.Time   `bson:"processed_at" json:"processed_at"`
 
-	Timestamp  time.Time `bson:"ts" json:"timestamp"`
-	ResourceId string    `bson:"r_id" json:"resource_id"`
-	EventType  string    `bson:"e_type" json:"event_type"`
-	Data       bson.Raw  `bson:"data" json:"data"`
+	Timestamp  time.Time   `bson:"ts" json:"timestamp"`
+	ResourceId string      `bson:"r_id" json:"resource_id"`
+	EventType  string      `bson:"e_type" json:"event_type"`
+	Data       mgobson.Raw `bson:"data" json:"data"`
 }
 
 var (
@@ -58,7 +59,10 @@ var (
 
 const resourceTypeKey = "r_type"
 
-func (e *EventLogEntry) SetBSON(raw bson.Raw) error {
+func (e *EventLogEntry) UnmarshalBSON(in []byte) error { return mgobson.Unmarshal(in, e) }
+func (e *EventLogEntry) MarshalBSON() ([]byte, error)  { return mgobson.Marshal(e) }
+
+func (e *EventLogEntry) SetBSON(raw mgobson.Raw) error {
 	temp := UnmarshalEventLogEntry{}
 	if err := raw.Unmarshal(&temp); err != nil {
 		return errors.Wrap(err, "can't unmarshal event container type")
@@ -76,7 +80,9 @@ func (e *EventLogEntry) SetBSON(raw bson.Raw) error {
 	switch v := temp.ID.(type) {
 	case string:
 		e.ID = v
-	case bson.ObjectId:
+	case mgobson.ObjectId:
+		e.ID = v.Hex()
+	case primitive.ObjectID:
 		e.ID = v.Hex()
 	default:
 		return errors.Errorf("unrecognized ID format for event %v", v)
@@ -98,7 +104,7 @@ func (e *EventLogEntry) validateEvent() error {
 		return errors.New("event log entry has no r_type")
 	}
 	if e.ID == "" {
-		e.ID = bson.NewObjectId().Hex()
+		e.ID = mgobson.NewObjectId().Hex()
 	}
 	if !registry.IsSubscribable(e.ResourceType, e.EventType) {
 		loc, _ := time.LoadLocation("UTC")

@@ -14,7 +14,7 @@ import (
 	"github.com/mongodb/anser/db"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
-	"gopkg.in/mgo.v2/bson"
+	"go.mongodb.org/mongo-driver/bson"
 )
 
 type projectAliasMigration struct {
@@ -26,20 +26,19 @@ type projectAliasMigration struct {
 }
 
 func TestProjectAliasMigration(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	require := require.New(t)
 
-	mgoSession, database, err := evgdb.GetGlobalSessionFactory().GetSession()
+	session, database, err := evgdb.GetGlobalSessionFactory().GetSession()
 	require.NoError(err)
-	defer mgoSession.Close()
-
-	session := db.WrapSession(mgoSession.Copy())
 	defer session.Close()
 
-	ctx, cancel := context.WithCancel(context.Background())
 	s := &projectAliasMigration{
 		env:      &mock.Environment{},
 		session:  session,
-		database: database.Name,
+		database: database.Name(),
 		cancel:   cancel,
 	}
 

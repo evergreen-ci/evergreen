@@ -3,10 +3,11 @@ package evergreen
 import (
 	"net/url"
 
-	"github.com/evergreen-ci/evergreen/db"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
-	"gopkg.in/mgo.v2/bson"
+	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
 // UIConfig holds relevant settings for the UI server.
@@ -33,16 +34,33 @@ type UIConfig struct {
 func (c *UIConfig) SectionId() string { return "ui" }
 
 func (c *UIConfig) Get() error {
-	err := db.FindOneQ(ConfigCollection, db.Query(byId(c.SectionId())), c)
-	if err != nil && err.Error() == errNotFound {
-		*c = UIConfig{}
-		return nil
+	env := GetEnvironment()
+	ctx, cancel := env.Context()
+	defer cancel()
+	coll := env.DB().Collection(ConfigCollection)
+
+	res := coll.FindOne(ctx, byId(c.SectionId()))
+	if err := res.Err(); err != nil {
+		return errors.Wrapf(err, "error retrieving section %s", c.SectionId())
 	}
-	return errors.Wrapf(err, "error retrieving section %s", c.SectionId())
+
+	if err := res.Decode(c); err != nil {
+		if err == mongo.ErrNoDocuments {
+			*c = UIConfig{}
+			return nil
+		}
+		return errors.Wrapf(err, "error retrieving section %s", c.SectionId())
+	}
+	return nil
 }
 
 func (c *UIConfig) Set() error {
-	_, err := db.Upsert(ConfigCollection, byId(c.SectionId()), bson.M{
+	env := GetEnvironment()
+	ctx, cancel := env.Context()
+	defer cancel()
+	coll := env.DB().Collection(ConfigCollection)
+
+	_, err := coll.UpdateOne(ctx, byId(c.SectionId()), bson.M{
 		"$set": bson.M{
 			"url":              c.Url,
 			"help_url":         c.HelpUrl,
@@ -53,7 +71,8 @@ func (c *UIConfig) Set() error {
 			"csrf_key":         c.CsrfKey,
 			"cors_origin":      c.CORSOrigin,
 		},
-	})
+	}, options.Update().SetUpsert(true))
+
 	return errors.Wrapf(err, "error updating section %s", c.SectionId())
 }
 

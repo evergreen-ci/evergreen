@@ -20,7 +20,7 @@ import (
 	"github.com/mongodb/grip"
 	. "github.com/smartystreets/goconvey/convey"
 	"github.com/stretchr/testify/assert"
-	"gopkg.in/mgo.v2/bson"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 	yaml "gopkg.in/yaml.v2"
 )
 
@@ -44,24 +44,9 @@ func init() {
 	current := testutil.GetDirectoryOfFile()
 	patchFile = filepath.Join(current, patchFile)
 	newProjectPatchFile = filepath.Join(current, newProjectPatchFile)
-
-	ctx, cancel := context.WithCancel(context.Background())
-
-	env, err := evergreen.NewEnvironment(ctx, filepath.Join(evergreen.FindEvergreenHome(), testutil.TestDir, testutil.TestSettings), nil)
-	if err != nil {
-		cancel()
-		panic(err)
-	}
-
-	env.RegisterCloser("close-context", func(ctx context.Context) error {
-		cancel()
-		return nil
-	})
-	evergreen.SetEnvironment(env)
 }
 
 func clearAll(t *testing.T) {
-
 	testutil.HandleTestingErr(
 		db.ClearCollections(
 			ProjectRefCollection,
@@ -108,7 +93,7 @@ func resetPatchSetup(t *testing.T, testPath string) *patch.Patch {
 
 	// this patch adds a new task to the existing build
 	configPatch := &patch.Patch{
-		Id:            "52549c143122",
+		Id:            primitive.NewObjectID(),
 		Project:       patchedProject,
 		Githash:       patchedRevision,
 		Tasks:         []string{"taskTwo", "taskOne"},
@@ -155,7 +140,7 @@ func resetProjectlessPatchSetup(t *testing.T) *patch.Patch {
 
 	// this patch adds a new task to the existing build
 	configPatch := &patch.Patch{
-		Id:            "52549c143123",
+		Id:            primitive.NewObjectID(),
 		Project:       patchedProject,
 		BuildVariants: []string{"linux-64-duroff"},
 		Githash:       patchedRevision,
@@ -202,7 +187,7 @@ func TestGetPatchedProject(t *testing.T) {
 			Convey("Calling GetPatchedProject on a patch with GridFS patches works", func() {
 				configPatch := resetProjectlessPatchSetup(t)
 
-				patchFileID := bson.NewObjectId()
+				patchFileID := primitive.NewObjectID()
 				So(db.WriteGridFile(patch.GridFSPrefix, patchFileID.Hex(), strings.NewReader(configPatch.Patches[0].PatchSet.Patch)), ShouldBeNil)
 				configPatch.Patches[0].PatchSet.Patch = ""
 				configPatch.Patches[0].PatchSet.PatchFileId = patchFileID.Hex()

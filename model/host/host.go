@@ -11,11 +11,11 @@ import (
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/anser/bsonutil"
+	adb "github.com/mongodb/anser/db"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
-	"gopkg.in/mgo.v2"
-	"gopkg.in/mgo.v2/bson"
+	"go.mongodb.org/mongo-driver/bson"
 )
 
 type Host struct {
@@ -361,7 +361,7 @@ func (h *Host) SetDNSName(dnsName string) error {
 		h.Host = dnsName
 		event.LogHostDNSNameSet(h.Id, dnsName)
 	}
-	if err == mgo.ErrNotFound {
+	if adb.ResultsNotFound(err) {
 		return nil
 	}
 	return err
@@ -519,7 +519,7 @@ func (h *Host) UpdateRunningTask(t *task.Task) (bool, error) {
 
 	err := UpdateOne(selector, update)
 	if err != nil {
-		if mgo.IsDup(err) {
+		if db.IsDuplicateKey(err) {
 			grip.Debug(message.Fields{
 				"message": "found duplicate running task",
 				"task":    t.Id,
@@ -627,7 +627,7 @@ func (h *Host) MarkReachable() error {
 		bson.M{"$set": bson.M{StatusKey: evergreen.HostRunning}})
 }
 
-func (h *Host) Upsert() (*mgo.ChangeInfo, error) {
+func (h *Host) Upsert() (*adb.ChangeInfo, error) {
 	return UpsertOne(
 		bson.M{
 			IdKey: h.Id,
@@ -1068,7 +1068,7 @@ func FindTerminatedHostsRunningTasks() ([]Host, error) {
 			{RunningTaskKey: bson.M{"$ne": ""}}},
 	}))
 
-	if err == mgo.ErrNotFound {
+	if adb.ResultsNotFound(err) {
 		err = nil
 	}
 

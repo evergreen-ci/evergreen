@@ -41,7 +41,6 @@ func TestEventNotificationJob(t *testing.T) {
 }
 
 func (s *eventNotificationSuite) SetupSuite() {
-	db.SetGlobalSessionProvider(testutil.TestConfig().SessionFactory())
 	s.ctx, s.cancel = context.WithCancel(context.Background())
 }
 

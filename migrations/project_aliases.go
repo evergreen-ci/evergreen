@@ -6,7 +6,8 @@ import (
 	"github.com/mongodb/anser/model"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
-	"gopkg.in/mgo.v2/bson"
+	"go.mongodb.org/mongo-driver/bson"
+	mgobson "gopkg.in/mgo.v2/bson"
 )
 
 const (
@@ -52,7 +53,7 @@ func makeProjectAliasMigration(database string) db.MigrationOperation {
 		idKey               = "_id"
 		patchDefinitionsKey = "patch_definitions"
 	)
-	return func(session db.Session, rawD bson.RawD) error {
+	return func(session db.Session, rawD mgobson.RawD) error {
 		defer session.Close()
 
 		projectID := ""

@@ -7,7 +7,7 @@ import (
 	"github.com/mongodb/anser/bsonutil"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
-	"gopkg.in/mgo.v2/bson"
+	mgobson "gopkg.in/mgo.v2/bson"
 )
 
 const (
@@ -43,11 +43,11 @@ type Subscriber struct {
 }
 
 type unmarshalSubscriber struct {
-	Type   string   `bson:"type"`
-	Target bson.Raw `bson:"target"`
+	Type   string         `bson:"type"`
+	Target mgobson.Raw `bson:"target"`
 }
 
-func (s *Subscriber) SetBSON(raw bson.Raw) error {
+func (s *Subscriber) SetBSON(raw mgobson.Raw) error {
 	temp := unmarshalSubscriber{}
 	if err := raw.Unmarshal(&temp); err != nil {
 		return errors.Wrap(err, "can't unmarshal subscriber data")

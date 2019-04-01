@@ -5,9 +5,8 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
-	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/stretchr/testify/suite"
-	"gopkg.in/mgo.v2/bson"
+	"go.mongodb.org/mongo-driver/bson"
 )
 
 type CliIntentSuite struct {
@@ -29,7 +28,6 @@ func TestCliIntentSuite(t *testing.T) {
 }
 
 func (s *CliIntentSuite) SetupSuite() {
-	db.SetGlobalSessionProvider(testutil.TestConfig().SessionFactory())
 	s.patchContent = "patch"
 	s.hash = "67da19930b1b18d346477e99a8e18094a672f48a"
 	s.user = "octocat"

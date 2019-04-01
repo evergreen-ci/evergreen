@@ -7,17 +7,15 @@ import (
 	"testing"
 	"time"
 
+	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/evergreen/model/stats"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/testresult"
+	_ "github.com/evergreen-ci/evergreen/testutil"
 	"github.com/pkg/errors"
-	"gopkg.in/mgo.v2/bson"
-
-	"github.com/evergreen-ci/evergreen/model"
-
-	"github.com/evergreen-ci/evergreen/db"
-	"github.com/evergreen-ci/evergreen/model/stats"
-	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/stretchr/testify/suite"
+	mgobson "gopkg.in/mgo.v2/bson"
 )
 
 type cacheHistoryTestDataSuite struct {
@@ -32,10 +30,6 @@ type cacheHistoryTestDataSuite struct {
 
 func TestCacheHistoricalTestDataJob(t *testing.T) {
 	suite.Run(t, new(cacheHistoryTestDataSuite))
-}
-
-func (s *cacheHistoryTestDataSuite) SetupSuite() {
-	db.SetGlobalSessionProvider(testutil.TestConfig().SessionFactory())
 }
 
 func (s *cacheHistoryTestDataSuite) SetupTest() {
@@ -476,8 +470,8 @@ func (s *cacheHistoryTestDataSuite) TestCacheHistoricalTestDataJob() {
 		Requester:    s.requester,
 		Date:         baseTime.Truncate(time.Hour * 24),
 	})
-	s.Nil(err)
-	s.NotNil(doc)
+	s.Require().Nil(err)
+	s.Require().NotNil(doc)
 	s.Equal(2, doc.NumFail)
 	s.Equal(0, doc.NumPass)
 
@@ -532,7 +526,7 @@ func (s *cacheHistoryTestDataSuite) createTestData(baseTime time.Time) {
 
 	taskList := [...]task.Task{
 		{
-			Id:          bson.NewObjectId().Hex(),
+			Id:          mgobson.NewObjectId().Hex(),
 			DisplayName: taskName,
 			Project:     s.projectId,
 			Requester:   s.requester,
@@ -541,7 +535,7 @@ func (s *cacheHistoryTestDataSuite) createTestData(baseTime time.Time) {
 			Execution:   1,
 		},
 		{
-			Id:          bson.NewObjectId().Hex(),
+			Id:          mgobson.NewObjectId().Hex(),
 			DisplayName: taskName,
 			Project:     s.projectId,
 			Requester:   s.requester,

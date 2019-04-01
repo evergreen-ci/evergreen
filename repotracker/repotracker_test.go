@@ -21,10 +21,6 @@ import (
 	"github.com/stretchr/testify/suite"
 )
 
-func init() {
-	db.SetGlobalSessionProvider(testConfig.SessionFactory())
-}
-
 func TestFetchRevisions(t *testing.T) {
 	dropTestDB(t)
 	testutil.ConfigureIntegrationTest(t, testConfig, "TestFetchRevisions")

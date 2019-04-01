@@ -6,7 +6,7 @@ import (
 	"github.com/mongodb/anser/db"
 	"github.com/mongodb/anser/model"
 	"github.com/pkg/errors"
-	"gopkg.in/mgo.v2/bson"
+	mgobson "gopkg.in/mgo.v2/bson"
 )
 
 const (
@@ -16,15 +16,15 @@ const (
 )
 
 type emailSubscription struct {
-	ID             bson.ObjectId   `bson:"_id"`
-	Subscriber     emailSubscriber `bson:"subscriber"`
-	Owner          string          `bson:"owner"`
-	OwnerType      string          `bson:"owner_type"`
-	TriggerData    interface{}     `bson:"trigger_data"`
-	Type           string          `bson:"type"`
-	Trigger        string          `bson:"trigger"`
-	Selectors      []emailSelector `bson:"selectors"`
-	RegexSelectors []interface{}   `bson:"regex_selectors"`
+	ID             mgobson.ObjectId `bson:"_id"`
+	Subscriber     emailSubscriber     `bson:"subscriber"`
+	Owner          string              `bson:"owner"`
+	OwnerType      string              `bson:"owner_type"`
+	TriggerData    interface{}         `bson:"trigger_data"`
+	Type           string              `bson:"type"`
+	Trigger        string              `bson:"trigger"`
+	Selectors      []emailSelector     `bson:"selectors"`
+	RegexSelectors []interface{}       `bson:"regex_selectors"`
 }
 
 type emailSubscriber struct {
@@ -48,8 +48,8 @@ type userSettings struct {
 }
 
 type notifications struct {
-	SpawnHostExpiration   string        `bson:"spawn_host_expiration"`
-	SpawnHostExpirationID bson.ObjectId `bson:"spawn_host_expiration_id"`
+	SpawnHostExpiration   string              `bson:"spawn_host_expiration"`
+	SpawnHostExpirationID mgobson.ObjectId `bson:"spawn_host_expiration_id"`
 }
 
 func setSpawnhostPreferenceGenerator(env anser.Environment, args migrationGeneratorFactoryOptions) (anser.Generator, error) {
@@ -80,7 +80,7 @@ func makeSpawnhostExpirationPreferenceMigration(database string) db.MigrationOpe
 		notificationsKey  = "notifications"
 		emailKey          = "email"
 	)
-	return func(session db.Session, rawD bson.RawD) error {
+	return func(session db.Session, rawD mgobson.RawD) error {
 		defer session.Close()
 
 		var userId string
@@ -124,7 +124,7 @@ func makeSpawnhostExpirationPreferenceMigration(database string) db.MigrationOpe
 
 func makeSubscription(user, email string) emailSubscription {
 	return emailSubscription{
-		ID:        bson.NewObjectId(),
+		ID:        mgobson.NewObjectId(),
 		Owner:     user,
 		OwnerType: "person",
 		Type:      "HOST",

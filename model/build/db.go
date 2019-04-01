@@ -6,8 +6,8 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/mongodb/anser/bsonutil"
-	"gopkg.in/mgo.v2"
-	"gopkg.in/mgo.v2/bson"
+	adb "github.com/mongodb/anser/db"
+	"go.mongodb.org/mongo-driver/bson"
 )
 
 // The MongoDB collection for build documents.
@@ -220,7 +220,7 @@ func ByRecentlyFinished(limit int) db.Q {
 func FindOne(query db.Q) (*Build, error) {
 	build := &Build{}
 	err := db.FindOneQ(Collection, query, build)
-	if err == mgo.ErrNotFound {
+	if adb.ResultsNotFound(err) {
 		return nil, nil
 	}
 	return build, err
@@ -235,7 +235,7 @@ func FindOneId(id string) (*Build, error) {
 func Find(query db.Q) ([]Build, error) {
 	builds := []Build{}
 	err := db.FindAllQ(Collection, query, &builds)
-	if err == mgo.ErrNotFound {
+	if adb.ResultsNotFound(err) {
 		return nil, nil
 	}
 	return builds, err
@@ -250,7 +250,7 @@ func UpdateOne(query interface{}, update interface{}) error {
 	)
 }
 
-func UpdateAllBuilds(query interface{}, update interface{}) (*mgo.ChangeInfo, error) {
+func UpdateAllBuilds(query interface{}, update interface{}) (*adb.ChangeInfo, error) {
 	return db.UpdateAll(
 		Collection,
 		query,

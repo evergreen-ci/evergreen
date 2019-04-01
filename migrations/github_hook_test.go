@@ -11,16 +11,16 @@ import (
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/mongodb/anser"
-	anserdb "github.com/mongodb/anser/db"
+	adb "github.com/mongodb/anser/db"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
-	"gopkg.in/mgo.v2/bson"
+	"go.mongodb.org/mongo-driver/bson"
 )
 
 type githubHookMigrationSuite struct {
 	env      *mock.Environment
 	database string
-	session  anserdb.Session
+	session  adb.Session
 	cancel   func()
 
 	projectRefs []model.ProjectRef
@@ -30,21 +30,19 @@ type githubHookMigrationSuite struct {
 }
 
 func TestGithubHookMigration(t *testing.T) {
-	require := require.New(t)
-
-	mgoSession, database, err := db.GetGlobalSessionFactory().GetSession()
-	require.NoError(err)
-	defer mgoSession.Close()
-
-	session := anserdb.WrapSession(mgoSession.Copy())
-	defer session.Close()
-
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
+
+	require := require.New(t)
+
+	session, database, err := db.GetGlobalSessionFactory().GetSession()
+	require.NoError(err)
+	defer session.Close()
+
 	s := &githubHookMigrationSuite{
 		env:      &mock.Environment{},
 		session:  session,
-		database: database.Name,
+		database: database.Name(),
 		cancel:   cancel,
 	}
 

@@ -6,7 +6,7 @@ import (
 
 	"github.com/mongodb/grip"
 	mgo "gopkg.in/mgo.v2"
-	"gopkg.in/mgo.v2/bson"
+	"go.mongodb.org/mongo-driver/bson"
 )
 
 func main() {
