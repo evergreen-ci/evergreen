@@ -70,7 +70,7 @@ func Export() cli.Command {
 			requireStringFlag(pathFlagName)),
 		Action: func(c *cli.Context) error {
 			confPath := c.Parent().String(confFlagName)
-			isCSV := c.Bool(jsonFlagName)
+			isCSV := !c.Bool(jsonFlagName)
 			statType := c.String(statFlagName)
 			granularity := c.String(granularityFlagName)
 			days := c.Int(daysFlagName)
