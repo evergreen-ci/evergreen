@@ -31,7 +31,7 @@ func (s *InternalSuite) TestInternalImplementsDriverInterface() {
 }
 
 func (s *InternalSuite) TestInternalInitialValues() {
-	stats := s.driver.Stats()
+	stats := s.driver.Stats(context.TODO())
 	s.Equal(0, stats.Completed)
 	s.Equal(0, stats.Blocked)
 	s.Equal(0, stats.Pending)
@@ -52,21 +52,24 @@ func (s *InternalSuite) TestOpenShouldReturnNilOnSuccessiveCalls() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	before := s.driver.Stats()
+	before := s.driver.Stats(ctx)
 	for i := 0; i < 200; i++ {
 		s.NoError(s.driver.Open(ctx))
 	}
-	after := s.driver.Stats()
+	after := s.driver.Stats(ctx)
 
 	s.Equal(before, after)
 }
 
 func (s *InternalSuite) TestCloseShouldBeANoop() {
-	before := s.driver.Stats()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	before := s.driver.Stats(ctx)
 	for i := 0; i < 200; i++ {
 		s.driver.Close()
 	}
-	after := s.driver.Stats()
+	after := s.driver.Stats(ctx)
 
 	s.Equal(before, after)
 }

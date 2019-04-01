@@ -48,8 +48,9 @@ func (s *EnvironmentSuite) TestLoadingConfig() {
 	defer cancel()
 
 	// first test loading config from a file
-	s.NoError(s.env.Configure(ctx, s.path, nil))
-	s.Error(s.env.Configure(ctx, s.path, nil))
+	env, err := NewEnvironment(ctx, s.path, nil)
+	s.Require().NoError(err)
+	s.env = env.(*envState)
 	s.Equal("http://localhost:8080", s.env.Settings().ApiUrl)
 
 	// persist to db
@@ -60,7 +61,11 @@ func (s *EnvironmentSuite) TestLoadingConfig() {
 	settings, err := NewSettings(s.path)
 	s.NoError(err)
 	db := settings.Database
-	s.NoError(s.env.Configure(ctx, "", &db))
+
+	env, err = NewEnvironment(ctx, "", &db)
+	s.Require().NoError(err)
+
+	s.env = env.(*envState)
 	s.Equal(db, s.env.settings.Database)
 	s.Equal("http://localhost:8080", s.env.Settings().ApiUrl)
 }

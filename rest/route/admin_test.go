@@ -219,8 +219,8 @@ func (s *AdminRouteSuite) TestRevertRoute() {
 
 func TestRestartRoute(t *testing.T) {
 	assert := assert.New(t)
-
 	ctx := gimlet.AttachUser(context.Background(), &user.DBUser{Id: "userName"})
+	testutil.SetGlobalEnvironment(ctx, t)
 
 	queue := evergreen.GetEnvironment().LocalQueue()
 	sc := &data.MockConnector{}

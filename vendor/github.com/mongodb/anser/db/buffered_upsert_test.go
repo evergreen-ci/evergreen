@@ -9,31 +9,67 @@ import (
 	"github.com/mongodb/grip"
 	uuid "github.com/satori/go.uuid"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
+	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/options"
 	mgo "gopkg.in/mgo.v2"
 )
 
 type BufferedUpsertSuite struct {
 	dbname  string
-	session *mgo.Session
+	factory func(context.Context) Session
+	ctx     context.Context
 	uuid    uuid.UUID
 	db      Database
 	bi      *anserBufUpsertImpl
 	suite.Suite
 }
 
-func TestBufferedUpsertSuite(t *testing.T) {
-	suite.Run(t, new(BufferedUpsertSuite))
-}
+func TestLegacyBufferedUpsertSuite(t *testing.T) {
+	s := new(BufferedUpsertSuite)
 
-func (s *BufferedUpsertSuite) SetupSuite() {
 	var err error
 	s.uuid, err = uuid.NewV4()
-	s.Require().NoError(err)
+	require.NoError(t, err)
+
 	s.dbname = fmt.Sprintf("anser_%s", s.uuid)
-	s.session, err = mgo.Dial("mongodb://localhost:27017")
-	s.Require().NoError(err)
-	s.db = WrapSession(s.session).DB(s.dbname)
+	var session *mgo.Session
+	session, err = mgo.DialWithTimeout("mongodb://localhost:27017", time.Second)
+	require.NoError(t, err)
+	s.factory = func(_ context.Context) Session {
+		return WrapSession(session)
+	}
+	s.db = s.factory(nil).DB(s.dbname)
+
+	suite.Run(t, s)
+}
+
+func TestBufferedUpsertSuite(t *testing.T) {
+	s := new(BufferedUpsertSuite)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	var err error
+	s.uuid, err = uuid.NewV4()
+	require.NoError(t, err)
+
+	s.dbname = fmt.Sprintf("anser_%s", s.uuid)
+	var client *mongo.Client
+	client, err = mongo.NewClient(options.Client().ApplyURI("mongodb://localhost:27017"))
+	require.NoError(t, err)
+
+	connCtx, cancel := context.WithTimeout(ctx, time.Second)
+	defer cancel()
+	err = client.Connect(connCtx)
+	require.NoError(t, err)
+
+	s.factory = func(ctx context.Context) Session {
+		return WrapClient(ctx, client)
+	}
+	defer client.Disconnect(ctx)
+	s.db = s.factory(ctx).DB(s.dbname)
+	suite.Run(t, s)
 }
 
 func (s *BufferedUpsertSuite) SetupTest() {
@@ -42,18 +78,19 @@ func (s *BufferedUpsertSuite) SetupTest() {
 		err:     make(chan error),
 		flusher: make(chan chan error),
 		closer:  make(chan chan error),
-		db:      WrapSession(s.session).DB(s.dbname),
+		db:      s.factory(s.ctx).DB(s.dbname),
 	}
 }
 
 func (s *BufferedUpsertSuite) takedown(collection string) {
-	s.NoError(s.session.DB(s.dbname).C(collection).DropCollection())
+	s.NoError(s.db.C(collection).DropCollection())
 }
 
 func (s *BufferedUpsertSuite) kickstart(ctx context.Context, collection string) {
 	ctx, s.bi.cancel = context.WithCancel(ctx)
 	s.bi.opts.Collection = collection
 	s.bi.opts.DB = s.dbname
+	s.bi.db = s.factory(s.ctx).DB(s.dbname)
 
 	if s.bi.opts.Count == 0 {
 		s.bi.opts.Count = 10
@@ -67,7 +104,7 @@ func (s *BufferedUpsertSuite) kickstart(ctx context.Context, collection string) 
 }
 
 func (s *BufferedUpsertSuite) TearDownSuite() {
-	s.Require().NoError(s.session.DB(s.dbname).DropDatabase())
+	s.Require().NoError(s.db.DropDatabase())
 }
 
 func (s *BufferedUpsertSuite) TestAppendErrorsForNilDocuments() {

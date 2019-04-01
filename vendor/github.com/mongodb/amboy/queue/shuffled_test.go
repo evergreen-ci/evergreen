@@ -30,7 +30,9 @@ func (s *ShuffledQueueSuite) SetupSuite() {
 }
 
 func (s *ShuffledQueueSuite) SetupTest() {
-	s.queue = &shuffledLocal{}
+	s.queue = &shuffledLocal{
+		capacity: defaultLocalQueueCapcity,
+	}
 }
 
 func (s *ShuffledQueueSuite) TestCannotStartQueueWithNilRunner() {

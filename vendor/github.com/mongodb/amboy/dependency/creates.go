@@ -2,35 +2,29 @@ package dependency
 
 import "os"
 
-// CreatesFile describes a task that is only ready to run if
-// a specific file doesn't exist. Specify that file as the FileName
-// attribute, or to the NewCreatesFile constructor.
-type CreatesFile struct {
+const createTypeName = "create-file"
+
+type createsFile struct {
 	FileName string   `bson:"file_name" json:"file_name" yaml:"file_name"`
 	T        TypeInfo `bson:"type" json:"type" yaml:"type"`
 	JobEdges
 }
 
-// NewCreatesFileInstance builds a new CreatesFile object,
-// used in the factory function for the registry, and for cases when
-// the dependent file is not known at construction time.
-func NewCreatesFileInstance() *CreatesFile {
-	c := &CreatesFile{
+func makeCreatesFile() *createsFile {
+	return &createsFile{
 		T: TypeInfo{
-			Name:    Create,
+			Name:    createTypeName,
 			Version: 0,
 		},
-		JobEdges: *NewJobEdges(),
+		JobEdges: NewJobEdges(),
 	}
-
-	return c
 }
 
-// NewCreatesFile constructs a CreatesFile object
-// in cases when the dependent FileName is known at object creation
-// time.
-func NewCreatesFile(name string) *CreatesFile {
-	c := NewCreatesFileInstance()
+// NewCreatesFile constructs a dependency manager object to support
+// tasks that are tasks are ready to run if a specific file doesn't
+// exist.
+func NewCreatesFile(name string) *createsFile {
+	c := makeCreatesFile()
 	c.FileName = name
 
 	return c
@@ -40,7 +34,7 @@ func NewCreatesFile(name string) *CreatesFile {
 // specified, and Passed if the file *does* exist. Jobs with Ready
 // states should be executed, while those with Passed states should be
 // a no-op.
-func (d *CreatesFile) State() State {
+func (d *createsFile) State() State {
 	if d.FileName == "" {
 		return Ready
 	}
@@ -54,6 +48,6 @@ func (d *CreatesFile) State() State {
 
 // Type returns the type information on the "creates-file" Manager
 // implementation.
-func (d *CreatesFile) Type() TypeInfo {
+func (d *createsFile) Type() TypeInfo {
 	return d.T
 }

@@ -47,8 +47,7 @@ func init() {
 
 	ctx, cancel := context.WithCancel(context.Background())
 
-	env := evergreen.GetEnvironment()
-	err := env.Configure(ctx, filepath.Join(evergreen.FindEvergreenHome(), testutil.TestDir, testutil.TestSettings), nil)
+	env, err := evergreen.NewEnvironment(ctx, filepath.Join(evergreen.FindEvergreenHome(), testutil.TestDir, testutil.TestSettings), nil)
 	if err != nil {
 		cancel()
 		panic(err)
@@ -58,9 +57,11 @@ func init() {
 		cancel()
 		return nil
 	})
+	evergreen.SetEnvironment(env)
 }
 
 func clearAll(t *testing.T) {
+
 	testutil.HandleTestingErr(
 		db.ClearCollections(
 			ProjectRefCollection,

@@ -16,7 +16,7 @@ import (
 )
 
 func flagIdleHosts(ctx context.Context, env evergreen.Environment) ([]string, error) {
-	queue := queue.NewAdaptiveOrderedLocalQueue(3)
+	queue := queue.NewAdaptiveOrderedLocalQueue(3, 1024)
 	if err := queue.Start(ctx); err != nil {
 		return nil, err
 	}

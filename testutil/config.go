@@ -1,10 +1,13 @@
 package testutil
 
 import (
+	"context"
 	"path/filepath"
+	"testing"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/mongodb/grip/send"
+	"github.com/stretchr/testify/require"
 )
 
 const (
@@ -12,6 +15,16 @@ const (
 	TestSettings               = "evg_settings.yml"
 	testSettingsWithAuthTokens = "evg_settings_with_3rd_party_defaults.yml"
 )
+
+func NewEnvironment(ctx context.Context, t *testing.T) evergreen.Environment {
+	env, err := evergreen.NewEnvironment(ctx, filepath.Join(evergreen.FindEvergreenHome(), TestDir, TestSettings), nil)
+	require.NoError(t, err)
+	return env
+}
+
+func SetGlobalEnvironment(ctx context.Context, t *testing.T) {
+	evergreen.SetEnvironment(NewEnvironment(ctx, t))
+}
 
 // TestConfig creates test settings from a test config.
 func TestConfig() *evergreen.Settings {

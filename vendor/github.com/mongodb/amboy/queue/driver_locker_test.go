@@ -44,15 +44,15 @@ func (s *LockManagerSuite) TearDownSuite() {
 
 func (s *LockManagerSuite) TestCannotLockOrUnlockANilJob() {
 	s.Error(s.lm.Lock(s.ctx, nil))
-	s.Error(s.lm.Unlock(nil))
+	s.Error(s.lm.Unlock(s.ctx, nil))
 	var j amboy.Job
 	s.Error(s.lm.Lock(s.ctx, j))
-	s.Error(s.lm.Unlock(j))
+	s.Error(s.lm.Unlock(s.ctx, j))
 }
 
 func (s *LockManagerSuite) TestSuccessiveAttemptsToTakeALockAreErrors() {
 	j := job.NewShellJob("echo hi", "")
-	s.NoError(s.driver.Put(j))
+	s.NoError(s.driver.Put(s.ctx, j))
 
 	s.NoError(s.lm.Lock(s.ctx, j))
 
@@ -63,19 +63,19 @@ func (s *LockManagerSuite) TestSuccessiveAttemptsToTakeALockAreErrors() {
 
 func (s *LockManagerSuite) TestLockAndUnlockCylcesWorkForOneJob() {
 	j := job.NewShellJob("echo hello", "")
-	s.NoError(s.driver.Put(j))
+	s.NoError(s.driver.Put(s.ctx, j))
 
 	for i := 0; i < 10; i++ {
 		s.NoError(s.lm.Lock(s.ctx, j))
-		s.NoError(s.lm.Unlock(j))
+		s.NoError(s.lm.Unlock(s.ctx, j))
 	}
 }
 
 func (s *LockManagerSuite) TestLocksArePerJob() {
 	jone := job.NewShellJob("echo hi", "")
 	jtwo := job.NewShellJob("echo world", "")
-	s.NoError(s.driver.Put(jone))
-	s.NoError(s.driver.Put(jtwo))
+	s.NoError(s.driver.Put(s.ctx, jone))
+	s.NoError(s.driver.Put(s.ctx, jtwo))
 	s.NotEqual(jone.ID(), jtwo.ID())
 
 	s.NoError(s.lm.Lock(s.ctx, jone))
@@ -84,7 +84,7 @@ func (s *LockManagerSuite) TestLocksArePerJob() {
 
 func (s *LockManagerSuite) TestLockReachesTimeout() {
 	j := job.NewShellJob("echo hello", "")
-	s.NoError(s.driver.Put(j))
+	s.NoError(s.driver.Put(s.ctx, j))
 
 	s.NoError(s.lm.Lock(s.ctx, j))
 	time.Sleep(s.lm.timeout * 3)
@@ -101,7 +101,7 @@ func (s *LockManagerSuite) TestPanicJobIsUnlocked() {
 
 	lastMod := j.Status().ModificationCount
 	s.Equal(0, lastMod)
-	s.NoError(s.driver.Put(j))
+	s.NoError(s.driver.Put(ctx, j))
 	lastMod = j.Status().ModificationCount
 	s.Equal(0, lastMod)
 

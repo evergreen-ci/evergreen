@@ -160,7 +160,6 @@ func (s *PatchIntentUnitsSuite) SetupTest() {
 }
 func (s *PatchIntentUnitsSuite) TearDownTest() {
 	s.cancel()
-	evergreen.ResetEnvironment()
 }
 
 func (s *PatchIntentUnitsSuite) makeJobAndPatch(intent patch.Intent) *patchIntentProcessor {

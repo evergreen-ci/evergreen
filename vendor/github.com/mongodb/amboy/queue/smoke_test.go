@@ -18,12 +18,12 @@ import (
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/level"
 	"github.com/mongodb/grip/send"
-	"github.com/mongodb/mongo-go-driver/mongo"
-	"github.com/mongodb/mongo-go-driver/mongo/options"
 	"github.com/pkg/errors"
 	"github.com/satori/go.uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/options"
 	"gopkg.in/mgo.v2"
 )
 
@@ -38,6 +38,8 @@ func init() {
 	job.RegisterDefaultJobs()
 }
 
+const defaultLocalQueueCapcity = 10000
+
 ////////////////////////////////////////////////////////////////////////////////
 //
 // Generic smoke/integration tests for queues.
@@ -45,8 +47,35 @@ func init() {
 ////////////////////////////////////////////////////////////////////////////////
 
 func runUnorderedSmokeTest(ctx context.Context, q amboy.Queue, size int, assert *assert.Assertions) {
+	numJobs := populateUnorderedSmokeTest(ctx, q, size, assert)
+	assert.Equal(numJobs, q.Stats().Total, fmt.Sprintf("with %d workers", size))
+
+	amboy.WaitCtxInterval(ctx, q, 100*time.Millisecond)
+
+	grip.Infof("workers complete for %d worker smoke test", size)
+	assert.Equal(numJobs, q.Stats().Completed, fmt.Sprintf("%+v", q.Stats()))
+	for result := range q.Results(ctx) {
+		assert.True(result.Status().Completed, fmt.Sprintf("with %d workers", size))
+
+		// assert that we had valid time info persisted
+		ti := result.TimeInfo()
+		assert.NotZero(ti.Start)
+		assert.NotZero(ti.End)
+	}
+
+	statCounter := 0
+	for stat := range q.JobStats(ctx) {
+		statCounter++
+		assert.True(stat.ID != "")
+	}
+	assert.Equal(numJobs, statCounter, fmt.Sprintf("want jobStats for every job"))
+
+	grip.Infof("completed results check for %d worker smoke test", size)
+}
+
+func populateUnorderedSmokeTest(ctx context.Context, q amboy.Queue, size int, assert *assert.Assertions) int {
 	if err := q.Start(ctx); !assert.NoError(err) {
-		return
+		return 0
 	}
 
 	testNames := []string{"test", "second", "workers", "forty-two", "true", "false", ""}
@@ -71,28 +100,9 @@ func runUnorderedSmokeTest(ctx context.Context, q amboy.Queue, size int, assert 
 	wg.Wait()
 	time.Sleep(100 * time.Millisecond)
 
-	assert.Equal(numJobs, q.Stats().Total, fmt.Sprintf("with %d workers", size))
 	amboy.WaitCtxInterval(ctx, q, 100*time.Millisecond)
 
-	grip.Infof("workers complete for %d worker smoke test", size)
-	assert.Equal(numJobs, q.Stats().Completed, fmt.Sprintf("%+v", q.Stats()))
-	for result := range q.Results(ctx) {
-		assert.True(result.Status().Completed, fmt.Sprintf("with %d workers", size))
-
-		// assert that we had valid time info persisted
-		ti := result.TimeInfo()
-		assert.NotZero(ti.Start)
-		assert.NotZero(ti.End)
-	}
-
-	statCounter := 0
-	for stat := range q.JobStats(ctx) {
-		statCounter++
-		assert.True(stat.ID != "")
-	}
-	assert.Equal(numJobs, statCounter, fmt.Sprintf("want jobStats for every job"))
-
-	grip.Infof("completed results check for %d worker smoke test", size)
+	return numJobs
 }
 
 // Simple does not check numJobs against Stats values in the case of Queue update delay
@@ -136,7 +146,7 @@ func runSimpleUnorderedSmokeTest(ctx context.Context, q amboy.Queue, size int,
 	}
 
 	stats := q.Stats()
-	grip.Alertln(stats)
+	grip.Debug(stats)
 
 	statCounter := 0
 	for stat := range q.JobStats(ctx) {
@@ -562,8 +572,7 @@ func TestSmokeRemoteUnorderedWorkerPoolsWithMgoDriver(t *testing.T) {
 
 		grip.Infof("test with %d jobs, duration = %s", poolSize, time.Since(start))
 		err := cleanupMgo(opts.DB, name, d.session.Clone())
-		grip.AlertWhenf(err != nil,
-			"encountered error cleaning up %s: %+v", name, err)
+		grip.AlertWhenf(err != nil, "encountered error cleaning up %s: %+v", name, err)
 	}
 }
 
@@ -589,9 +598,8 @@ func TestSmokeRemoteUnorderedWorkerPoolsWithMongoDriver(t *testing.T) {
 		d.Close()
 
 		grip.Infof("test with %d jobs, duration = %s", poolSize, time.Since(start))
-		err := cleanupMongo(baseCtx, opts.DB, name, d.client)
-		grip.AlertWhenf(err != nil,
-			"encountered error cleaning up %s: %+v", name, err)
+		err := cleanupMongo(ctx, opts.DB, name, d.client)
+		grip.AlertWhenf(err != nil, "encountered error cleaning up %s: %+v", name, err)
 	}
 }
 
@@ -601,7 +609,7 @@ func TestSmokePriorityQueueWithSingleWorker(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 	defer cancel()
 
-	q := NewLocalPriorityQueue(1)
+	q := NewLocalPriorityQueue(1, defaultLocalQueueCapcity)
 	runner := pool.NewSingle()
 	assert.NoError(runner.SetQueue(q))
 
@@ -619,7 +627,7 @@ func TestSmokePriorityQueueWithWorkerPools(t *testing.T) {
 		grip.Infoln("testing priority queue for:", poolSize)
 		ctx, cancel := context.WithTimeout(baseCtx, time.Minute)
 
-		q := NewLocalPriorityQueue(poolSize)
+		q := NewLocalPriorityQueue(poolSize, defaultLocalQueueCapcity)
 		runUnorderedSmokeTest(ctx, q, poolSize, assert)
 
 		cancel()
@@ -993,13 +1001,32 @@ func TestSmokeShuffledQueueWithSingleWorker(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	q := NewShuffledLocal(1)
+	q := NewShuffledLocal(1, defaultLocalQueueCapcity)
 	runner := pool.NewSingle()
 	assert.NoError(runner.SetQueue(q))
 
 	assert.NoError(q.SetRunner(runner))
 
 	runUnorderedSmokeTest(ctx, q, 1, assert)
+}
+
+func TestFixedSizeShuffledQueueWithSingleWorker(t *testing.T) {
+	assert := assert.New(t) // nolint
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	q := NewShuffledLocal(4, 50)
+	runner := pool.NewSingle()
+	assert.NoError(runner.SetQueue(q))
+
+	assert.NoError(q.SetRunner(runner))
+
+	num := populateUnorderedSmokeTest(ctx, q, 100, assert)
+	stat := q.Stats()
+	assert.NotEqual(num, stat.Total)
+	assert.Equal(50, stat.Completed)
+	assert.Equal(50, stat.Total)
 }
 
 func TestSmokeShuffledQueueWithWorkerPools(t *testing.T) {
@@ -1010,7 +1037,7 @@ func TestSmokeShuffledQueueWithWorkerPools(t *testing.T) {
 		grip.Infoln("testing shuffled queue for:", poolSize)
 		ctx, cancel := context.WithCancel(baseCtx)
 
-		q := NewShuffledLocal(poolSize)
+		q := NewShuffledLocal(poolSize, defaultLocalQueueCapcity)
 
 		runUnorderedSmokeTest(ctx, q, poolSize, assert)
 
@@ -1047,8 +1074,7 @@ func TestSmokeSimpleRemoteOrderedWorkerPoolsWithMgoDriver(t *testing.T) {
 
 		grip.Infof("test with %d jobs, duration = %s", poolSize, time.Since(start))
 		err = cleanupMgo(opts.DB, name, session.Clone())
-		grip.AlertWhenf(err != nil,
-			"encountered error cleaning up %s: %+v", name, err)
+		grip.AlertWhenf(err != nil, "encountered error cleaning up %s: %+v", name, err)
 	}
 }
 
@@ -1210,7 +1236,7 @@ func TestSmokeAdaptiveOrderingWithOrderedWorkAndVariablePools(t *testing.T) {
 
 	for _, poolSize := range []int{2, 4, 8, 16, 32, 64} {
 		ctx, cancel := context.WithCancel(context.Background())
-		q := NewAdaptiveOrderedLocalQueue(poolSize)
+		q := NewAdaptiveOrderedLocalQueue(poolSize, defaultLocalQueueCapcity)
 
 		runOrderedSmokeTest(ctx, q, poolSize, true, assert)
 		cancel()
@@ -1222,7 +1248,7 @@ func TestSmokeAdaptiveOrderingWithUnorderedWorkAndVariablePools(t *testing.T) {
 
 	for _, poolSize := range []int{2, 4, 8, 16, 32, 64} {
 		ctx, cancel := context.WithCancel(context.Background())
-		q := NewAdaptiveOrderedLocalQueue(poolSize)
+		q := NewAdaptiveOrderedLocalQueue(poolSize, defaultLocalQueueCapcity)
 
 		runUnorderedSmokeTest(ctx, q, poolSize, assert)
 		cancel()
@@ -1233,7 +1259,7 @@ func TestSmokeAdaptiveOrderingWithOrderedWorkAndSinglePools(t *testing.T) {
 	assert := assert.New(t) // nolint
 
 	ctx, cancel := context.WithCancel(context.Background())
-	q := NewAdaptiveOrderedLocalQueue(1)
+	q := NewAdaptiveOrderedLocalQueue(1, defaultLocalQueueCapcity)
 	assert.NoError(q.SetRunner(pool.NewSingle()))
 
 	runOrderedSmokeTest(ctx, q, 1, true, assert)
@@ -1244,7 +1270,7 @@ func TestSmokeAdaptiveOrderingWithUnorderedWorkAndSinglePools(t *testing.T) {
 	assert := assert.New(t) // nolint
 
 	ctx, cancel := context.WithCancel(context.Background())
-	q := NewAdaptiveOrderedLocalQueue(1)
+	q := NewAdaptiveOrderedLocalQueue(1, defaultLocalQueueCapcity)
 	assert.NoError(q.SetRunner(pool.NewSingle()))
 	runUnorderedSmokeTest(ctx, q, 1, assert)
 	cancel()
@@ -1286,7 +1312,7 @@ func TestSmokeRemoteOrderedWithWorkerPoolsAndMongoDriver(t *testing.T) {
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	client, err := mongo.Connect(ctx, opts.URI, options.Client().SetConnectTimeout(5*time.Second))
+	client, err := mongo.Connect(ctx, options.Client().ApplyURI(opts.URI).SetConnectTimeout(5*time.Second))
 	require.NoError(t, err)
 
 	for _, poolSize := range []int{2, 4, 8, 16, 32} {
@@ -1310,7 +1336,7 @@ func TestSmokeWaitUntilAdaptiveOrderQueuePools(t *testing.T) {
 
 	for _, poolSize := range []int{1, 2} {
 		ctx, cancel := context.WithCancel(context.Background())
-		q := NewAdaptiveOrderedLocalQueue(poolSize)
+		q := NewAdaptiveOrderedLocalQueue(poolSize, defaultLocalQueueCapcity)
 		runWaitUntilSmokeTest(ctx, q, poolSize, assert)
 		cancel()
 	}

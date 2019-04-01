@@ -2,10 +2,13 @@ package pool
 
 import (
 	"context"
+	"fmt"
 	"sync"
+	"time"
 
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
 	"github.com/mongodb/grip/recovery"
 	"github.com/pkg/errors"
 )
@@ -171,7 +174,23 @@ func (p *abortablePool) runJob(ctx context.Context, job amboy.Job) {
 		delete(p.jobs, job.ID())
 	}()
 
-	handleJob(ctx, job, p.queue)
+	start := time.Now()
+
+	executeJob(ctx, job, p.queue, start)
+
+	r := message.Fields{
+		"job":           job.ID(),
+		"job_type":      job.Type().Name,
+		"duration_secs": job.TimeInfo().Duration().Seconds(),
+		"queue_type":    fmt.Sprintf("%T", p.queue),
+		"pool_type":     "abortable",
+	}
+	if err := job.Error(); err != nil {
+		r["error"] = err.Error()
+		grip.Error(r)
+	} else {
+		grip.Debug(r)
+	}
 }
 
 func (p *abortablePool) IsRunning(id string) bool {

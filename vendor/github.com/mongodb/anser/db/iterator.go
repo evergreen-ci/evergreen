@@ -10,7 +10,7 @@ func NewCombinedIterator(ses Session, iter Iterator) Iterator {
 		Iterator: iter,
 	}
 
-	session, ok := ses.(sessionWrapper)
+	session, ok := ses.(sessionLegacyWrapper)
 	if ok {
 		c.ses = session.Session
 	}

@@ -30,17 +30,18 @@ import (
 // some of the other local queue implementations that predate LocalShuffled
 // (e.g. LocalUnordered,) there are no mutexes uses in the implementation.
 type shuffledLocal struct {
-	operations chan func(map[string]amboy.Job, map[string]amboy.Job, map[string]amboy.Job)
+	operations chan func(map[string]amboy.Job, map[string]amboy.Job, map[string]amboy.Job, *fixedStorage)
+	capacity   int
 	starter    sync.Once
 	runner     amboy.Runner
 }
 
 // NewShuffledLocal provides a queue implementation that shuffles the
 // order of jobs, relative the insertion order.
-func NewShuffledLocal(workers int) amboy.Queue {
+func NewShuffledLocal(workers, capacity int) amboy.Queue {
 	q := &shuffledLocal{}
 	q.runner = pool.NewLocalWorkers(workers, q)
-
+	q.capacity = capacity
 	return q
 }
 
@@ -53,7 +54,7 @@ func (q *shuffledLocal) Start(ctx context.Context) error {
 	}
 
 	q.starter.Do(func() {
-		q.operations = make(chan func(map[string]amboy.Job, map[string]amboy.Job, map[string]amboy.Job))
+		q.operations = make(chan func(map[string]amboy.Job, map[string]amboy.Job, map[string]amboy.Job, *fixedStorage))
 		go q.reactor(ctx)
 		grip.Error(q.runner.Start(ctx))
 		grip.Info("started shuffled job storage rector")
@@ -67,11 +68,12 @@ func (q *shuffledLocal) reactor(ctx context.Context) {
 	pending := make(map[string]amboy.Job)
 	completed := make(map[string]amboy.Job)
 	dispatched := make(map[string]amboy.Job)
+	toDelete := newFixedStorage(q.capacity)
 
 	for {
 		select {
 		case op := <-q.operations:
-			op(pending, completed, dispatched)
+			op(pending, completed, dispatched, toDelete)
 		case <-ctx.Done():
 			grip.Info("shuffled storage reactor closing")
 			return
@@ -89,9 +91,12 @@ func (q *shuffledLocal) Put(j amboy.Job) error {
 	}
 
 	ret := make(chan error)
-	q.operations <- func(pending map[string]amboy.Job,
+	q.operations <- func(
+		pending map[string]amboy.Job,
 		completed map[string]amboy.Job,
-		dispatched map[string]amboy.Job) {
+		dispatched map[string]amboy.Job,
+		toDelete *fixedStorage,
+	) {
 
 		_, isPending := pending[id]
 		_, isCompleted := completed[id]
@@ -120,9 +125,12 @@ func (q *shuffledLocal) Get(name string) (amboy.Job, bool) {
 	}
 
 	ret := make(chan amboy.Job)
-	q.operations <- func(pending map[string]amboy.Job,
+	q.operations <- func(
+		pending map[string]amboy.Job,
 		completed map[string]amboy.Job,
-		dispatched map[string]amboy.Job) {
+		dispatched map[string]amboy.Job,
+		toDelete *fixedStorage,
+	) {
 
 		defer close(ret)
 
@@ -156,9 +164,12 @@ func (q *shuffledLocal) Results(ctx context.Context) <-chan amboy.Job {
 		return output
 	}
 
-	q.operations <- func(pending map[string]amboy.Job,
+	q.operations <- func(
+		pending map[string]amboy.Job,
 		completed map[string]amboy.Job,
-		dispatched map[string]amboy.Job) {
+		dispatched map[string]amboy.Job,
+		toDelete *fixedStorage,
+	) {
 
 		defer close(output)
 
@@ -181,9 +192,12 @@ func (q *shuffledLocal) Results(ctx context.Context) <-chan amboy.Job {
 func (q *shuffledLocal) JobStats(ctx context.Context) <-chan amboy.JobStatusInfo {
 	out := make(chan amboy.JobStatusInfo)
 
-	q.operations <- func(pending map[string]amboy.Job,
+	q.operations <- func(
+		pending map[string]amboy.Job,
 		completed map[string]amboy.Job,
-		dispatched map[string]amboy.Job) {
+		dispatched map[string]amboy.Job,
+		toDelete *fixedStorage,
+	) {
 
 		defer close(out)
 		for _, j := range dispatched {
@@ -223,10 +237,12 @@ func (q *shuffledLocal) Stats() amboy.QueueStats {
 	}
 
 	ret := make(chan amboy.QueueStats)
-	q.operations <- func(pending map[string]amboy.Job,
+	q.operations <- func(
+		pending map[string]amboy.Job,
 		completed map[string]amboy.Job,
-		dispatched map[string]amboy.Job) {
-
+		dispatched map[string]amboy.Job,
+		toDelete *fixedStorage,
+	) {
 		stat := amboy.QueueStats{
 			Running:   len(dispatched),
 			Pending:   len(pending),
@@ -253,9 +269,12 @@ func (q *shuffledLocal) Started() bool {
 // no pending jobs.
 func (q *shuffledLocal) Next(ctx context.Context) amboy.Job {
 	ret := make(chan amboy.Job)
-	q.operations <- func(pending map[string]amboy.Job,
+	q.operations <- func(
+		pending map[string]amboy.Job,
 		completed map[string]amboy.Job,
-		dispatched map[string]amboy.Job) {
+		dispatched map[string]amboy.Job,
+		toDelete *fixedStorage,
+	) {
 
 		if ctx.Err() != nil {
 			close(ret)
@@ -283,9 +302,12 @@ func (q *shuffledLocal) Next(ctx context.Context) amboy.Job {
 // the context is canceled after calling Complete but before it
 // executes, no change occurs.
 func (q *shuffledLocal) Complete(ctx context.Context, j amboy.Job) {
-	q.operations <- func(pending map[string]amboy.Job,
+	q.operations <- func(
+		pending map[string]amboy.Job,
 		completed map[string]amboy.Job,
-		dispatched map[string]amboy.Job) {
+		dispatched map[string]amboy.Job,
+		toDelete *fixedStorage,
+	) {
 
 		id := j.ID()
 
@@ -297,6 +319,13 @@ func (q *shuffledLocal) Complete(ctx context.Context, j amboy.Job) {
 
 		completed[id] = j
 		delete(dispatched, id)
+		toDelete.Push(id)
+
+		if num := toDelete.Oversize(); num > 0 {
+			for i := 0; i < num; i++ {
+				delete(completed, toDelete.Pop())
+			}
+		}
 	}
 }
 

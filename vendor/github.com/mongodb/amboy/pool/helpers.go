@@ -2,51 +2,17 @@ package pool
 
 import (
 	"context"
-	"fmt"
 	"sync"
 	"time"
 
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/grip"
-	"github.com/mongodb/grip/message"
 	"github.com/mongodb/grip/recovery"
 )
 
 type workUnit struct {
 	job    amboy.Job
 	cancel context.CancelFunc
-}
-
-func runJob(ctx context.Context, job amboy.Job) {
-	maxTime := job.TimeInfo().MaxTime
-	if maxTime > 0 {
-		var cancel context.CancelFunc
-		ctx, cancel = context.WithTimeout(ctx, maxTime)
-		defer cancel()
-	}
-
-	job.Run(ctx)
-}
-
-func handleJob(ctx context.Context, job amboy.Job, q amboy.Queue) {
-	start := time.Now()
-
-	executeJob(ctx, job, q, start)
-
-	ti := job.TimeInfo()
-
-	r := message.Fields{
-		"job":           job.ID(),
-		"job_type":      job.Type().Name,
-		"duration_secs": ti.Duration().Seconds(),
-		"queue_type":    fmt.Sprintf("%T", q),
-	}
-	if err := job.Error(); err != nil {
-		r["error"] = err.Error()
-		grip.Error(r)
-	} else {
-		grip.Debug(r)
-	}
 }
 
 func executeJob(ctx context.Context, job amboy.Job, q amboy.Queue, startAt time.Time) {
@@ -66,7 +32,17 @@ func executeJob(ctx context.Context, job amboy.Job, q amboy.Queue, startAt time.
 	q.Complete(ctx, job)
 	ti.End = time.Now()
 	job.UpdateTimeInfo(ti)
+}
 
+func runJob(ctx context.Context, job amboy.Job) {
+	maxTime := job.TimeInfo().MaxTime
+	if maxTime > 0 {
+		var cancel context.CancelFunc
+		ctx, cancel = context.WithTimeout(ctx, maxTime)
+		defer cancel()
+	}
+
+	job.Run(ctx)
 }
 
 func worker(ctx context.Context, jobs <-chan workUnit, q amboy.Queue, wg *sync.WaitGroup) {

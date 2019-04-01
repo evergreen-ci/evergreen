@@ -10,7 +10,7 @@ import (
 // always returns the Ready dependency state. Does contain support for
 // dependency graph resolution, but the tasks will always run.
 type AlwaysRebuildSuite struct {
-	dep *Always
+	dep *alwaysManager
 	suite.Suite
 }
 
@@ -19,7 +19,7 @@ func TestAlwaysRebuildSuite(t *testing.T) {
 }
 
 func (s *AlwaysRebuildSuite) SetupTest() {
-	s.dep = NewAlways()
+	s.dep = NewAlways().(*alwaysManager)
 }
 
 func (s *AlwaysRebuildSuite) TestAlwaysImplementsDependencyManagerInterface() {
@@ -27,7 +27,6 @@ func (s *AlwaysRebuildSuite) TestAlwaysImplementsDependencyManagerInterface() {
 }
 
 func (s *AlwaysRebuildSuite) TestConstructorCreatesObjectWithExpectedValues() {
-	s.True(s.dep.ShouldRebuild)
 	s.Equal("always", s.dep.T.Name)
 	s.Equal(0, s.dep.T.Version)
 }
@@ -54,14 +53,4 @@ func (s *AlwaysRebuildSuite) TestHasComposedJobEdgesInstance() {
 func (s *AlwaysRebuildSuite) TestTypeAccessorProvidesAccessToTheCorrectTypeInfo() {
 	s.Equal("always", s.dep.Type().Name)
 	s.Equal(0, s.dep.Type().Version)
-}
-
-func (s *AlwaysRebuildSuite) TestAlwaysDependenciesHaveReadyState() {
-	s.Exactly(Ready, s.dep.State())
-
-	s.dep.ShouldRebuild = false
-	s.Exactly(Ready, s.dep.State())
-
-	s.dep.ShouldRebuild = true
-	s.Exactly(Ready, s.dep.State())
 }
