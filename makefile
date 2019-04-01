@@ -258,6 +258,7 @@ vendor-clean:
 	rm -rf vendor/github.com/mongodb/jasper/vendor/golang.org/x/net/
 	rm -rf vendor/github.com/mongodb/jasper/vendor/golang.org/x/sys/
 	rm -rf vendor/github.com/mongodb/jasper/vendor/github.com/stretchr/
+	rm -rf vendor/github.com/mongodb/jasper/vendor/google.golang.org/grpc/
 	rm -rf vendor/github.com/docker/docker/vendor/golang.org/x/net/
 	rm -rf vendor/github.com/docker/docker/vendor/github.com/docker/go-connections/
 	rm -rf vendor/github.com/docker/docker/vendor/github.com/Microsoft/go-winio/

@@ -2,6 +2,9 @@ package: github.com/evergreen-ci/evergreen
 import:
   - package: golang.org/x/crypto
   - package: golang.org/x/net
+    subpackages:
+      - context
+      - http2
   - package: golang.org/x/oauth2
   - package: golang.org/x/sys/windows
   - package: github.com/vaughan0/go-ini
@@ -54,6 +57,7 @@ import:
   - package: github.com/mholt/archiver
   - package: github.com/evergreen-ci/shrub
   - package: github.com/evergreen-ci/pail
+  - package: google.golang.org/grpc
 
   # git library and its dependencies
   - package: gopkg.in/src-d/go-git.v4

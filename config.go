@@ -340,6 +340,7 @@ func (settings *Settings) Validate() error {
 	return errors.WithStack(catcher.Resolve())
 }
 
+// kim: NOTE: this configures the grip backend to log to multiple logging services on the app server side.
 func (s *Settings) GetSender(env Environment) (send.Sender, error) {
 	var (
 		sender   send.Sender
