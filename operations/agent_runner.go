@@ -3,6 +3,7 @@ package operations
 import (
 	"context"
 	"fmt"
+	"net"
 	"net/http"
 	"os"
 	"os/signal"
@@ -25,26 +26,28 @@ import (
 	"google.golang.org/grpc"
 )
 
-// runnerArgs represents the args necessary for the runner to operate.
-type runnerArgs struct {
+// monitorArgs represents the args necessary for the monitor to operate.
+type monitorArgs struct {
 	clientURL    string
 	clientPath   string
 	apiServerURL string
 	jasperPort   int
+	port         int
 	agentOpts    agent.Options
 }
 
-// agentRunner starts the runner that deploys the agent.
-func agentRunner() cli.Command {
+// agentMonitor starts the monitor that deploys the agent.
+func agentMonitor() cli.Command {
 	const (
 		clientURLFlagName  = "client_url"
 		clientPathFlagName = "client_path"
 		jasperPortFlagName = "jasper_port"
+		portFlagName       = "port"
 	)
 
 	return cli.Command{
-		Name:  "runner",
-		Usage: "start the runner on a host",
+		Name:  "monitor",
+		Usage: "start the monitor on a host",
 		Flags: []cli.Flag{
 			cli.StringFlag{
 				Name:  clientURLFlagName,
@@ -58,22 +61,28 @@ func agentRunner() cli.Command {
 				Name:  jasperPortFlagName,
 				Usage: "the port that is running the Jasper RPC service",
 			},
+			cli.IntFlag{
+				Name:  portFlagName,
+				Usage: "the port that used by the monitor",
+			},
 		},
 		Before: mergeBeforeFuncs(
 			requireStringFlag(clientURLFlagName),
 			requireStringFlag(clientPathFlagName),
-			requireStringFlag(jasperPortFlagName),
+			requireIntFlag(jasperPortFlagName),
+			requireIntFlag(portFlagName),
 			func(*cli.Context) error {
-				grip.SetName("evergreen.agent.runner")
+				grip.SetName("evergreen.agent.monitor")
 				return nil
 			},
 		),
 		Action: func(c *cli.Context) error {
-			args := &runnerArgs{
+			args := &monitorArgs{
 				apiServerURL: c.Parent().String(apiServerURLFlagName),
 				clientURL:    c.String(clientURLFlagName),
 				clientPath:   c.String(clientPathFlagName),
 				jasperPort:   c.Int(jasperPortFlagName),
+				port:         c.Int(portFlagName),
 				agentOpts: agent.Options{
 					HostID:           c.Parent().String(hostIDFlagName),
 					HostSecret:       c.Parent().String(hostSecretFlagName),
@@ -85,23 +94,30 @@ func agentRunner() cli.Command {
 
 			ctx, cancel := context.WithCancel(context.Background())
 
-			go handleRunnerSignals(ctx, cancel)
+			go handleMonitorSignals(ctx, cancel)
 
 			if err := setupLogging(); err != nil {
 				return errors.Wrap(err, "error setting up logging")
 			}
 
-			args.startRunner(ctx)
+			// kim: TODO: start listening like a server on the given port.
+
+			_, err := net.Listen("tcp", fmt.Sprintf(":%d", args.port))
+			if err != nil {
+				return nil
+			}
+
+			args.startMonitor(ctx)
 
 			return nil
 		},
 	}
 }
 
-// setupLogging sets up the runner to log to Splunk.
+// setupLogging sets up the monitor to log to Splunk.
 func setupLogging() error {
 	if splunkInfo := send.GetSplunkConnectionInfo(); splunkInfo.Populated() {
-		sender, err := send.NewSplunkLogger("evergreen.agent.runner", splunkInfo, send.LevelInfo{Default: level.Alert, Threshold: level.Alert})
+		sender, err := send.NewSplunkLogger("evergreen.agent.monitor", splunkInfo, send.LevelInfo{Default: level.Alert, Threshold: level.Alert})
 		if err != nil {
 			return errors.Wrap(err, "problem creating the splunk logger")
 		}
@@ -112,8 +128,10 @@ func setupLogging() error {
 	return errors.New("splunk info is not populated")
 }
 
-func handleRunnerSignals(ctx context.Context, serviceCanceler context.CancelFunc) {
-	defer recovery.LogStackTraceAndExit("runner signal handler")
+// handleMonitorSignals gracefully shuts down the monitor process when it receives
+// a terminate signal.
+func handleMonitorSignals(ctx context.Context, serviceCanceler context.CancelFunc) {
+	defer recovery.LogStackTraceAndExit("monitor signal handler")
 	defer serviceCanceler()
 	sigChan := make(chan os.Signal, 1)
 	signal.Notify(sigChan, syscall.SIGTERM)
@@ -121,13 +139,13 @@ func handleRunnerSignals(ctx context.Context, serviceCanceler context.CancelFunc
 	select {
 	case <-ctx.Done():
 	case <-sigChan:
-		grip.Info("runner exiting after receiving signal")
+		grip.Info("monitor exiting after receiving signal")
 	}
 	os.Exit(2)
 }
 
 // fetchClient downloads the evergreen client.
-func (args *runnerArgs) fetchClient(ctx context.Context) error {
+func (args *monitorArgs) fetchClient(ctx context.Context) error {
 	req, err := http.NewRequest(http.MethodGet, args.clientURL, nil)
 	if err != nil {
 		return errors.Wrapf(err, "failed to create client request from URL '%s'", args.clientURL)
@@ -157,10 +175,9 @@ func (args *runnerArgs) fetchClient(ctx context.Context) error {
 	return errors.Wrap(os.Chmod(args.clientPath, 0755), "failed to chmod client")
 }
 
-// runAgent runs the agent with the necessary args.
-func (args *runnerArgs) runAgent(ctx context.Context) error {
-
-	maxAttempts := 5
+// connectToJasper attempts to connect to the Jasper RPC service running on this
+// host.
+func (args *monitorArgs) connectToJasper(ctx context.Context, maxAttempts int, maxDelay time.Duration) (*grpc.ClientConn, error) {
 	serverAddress := fmt.Sprintf("localhost:%d", args.jasperPort)
 	var conn *grpc.ClientConn
 	var err error
@@ -168,8 +185,6 @@ func (args *runnerArgs) runAgent(ctx context.Context) error {
 	if err := util.Retry(
 		ctx,
 		func() (bool, error) {
-			// kim: QUESTION: need SSL/TLS connection with RPC server if it's running locally?
-
 			conn, err = grpc.DialContext(ctx, serverAddress, grpc.WithInsecure(), grpc.WithBlock())
 			if err != nil {
 				return true, errors.Wrapf(err, "could not dial Jasper RPC service at '%s'", serverAddress)
@@ -178,14 +193,16 @@ func (args *runnerArgs) runAgent(ctx context.Context) error {
 		},
 		maxAttempts,
 		0,
-		time.Minute,
+		maxDelay,
 	); err != nil {
-		return errors.Wrapf(err, "failed to connect to Jasper RPC service after %d attempts", maxAttempts)
+		return nil, errors.Wrapf(err, "failed to connect to Jasper RPC service at '%s'", serverAddress)
 	}
 
-	defer conn.Close()
-	manager := rpc.NewRPCManager(conn)
+	return conn, nil
+}
 
+// createAgentProcess attempts to request that Jasper start an agent.
+func (args *monitorArgs) createAgentProcess(ctx context.Context, manager jasper.Manager, maxAttempts int, maxDelay time.Duration) (jasper.Process, error) {
 	agentCmdArgs := []string{
 		args.clientPath,
 		"agent",
@@ -200,7 +217,10 @@ func (args *runnerArgs) runAgent(ctx context.Context) error {
 	opts := &jasper.CreateOptions{
 		Args: agentCmdArgs,
 	}
+
 	var proc jasper.Process
+	var err error
+
 	if err := util.Retry(
 		ctx,
 		func() (bool, error) {
@@ -214,39 +234,59 @@ func (args *runnerArgs) runAgent(ctx context.Context) error {
 		0,
 		time.Minute,
 	); err != nil {
-		return errors.Wrapf(err, "failed to start agent process after %d attempts", maxAttempts)
+		return nil, errors.Wrapf(err, "failed to start agent process with args '%v'", agentCmdArgs)
+	}
+	return proc, nil
+}
+
+// waitUntilComplete waits until the given process to complete or the context
+// times out. maxDelay determines the time between checks on the process.
+func waitUntilComplete(ctx context.Context, proc jasper.Process, maxDelay time.Duration) (exitCode int, err error) {
+	timer := time.NewTimer(0)
+	defer timer.Stop()
+
+	for {
+		select {
+		case <-ctx.Done():
+			return proc.Wait(ctx)
+		case <-timer.C:
+			if proc.Complete(ctx) {
+				return proc.Wait(ctx)
+			}
+			timer.Reset(maxDelay)
+		}
+	}
+}
+
+// runAgent runs the agent with the necessary args.
+func (args *monitorArgs) runAgent(ctx context.Context) error {
+	maxAttempts := 5
+	maxDelay := time.Minute
+
+	conn, err := args.connectToJasper(ctx, maxAttempts, maxDelay)
+	if err != nil {
+		return errors.Wrapf(err, "failed to connect to RPC service after %d attempts", maxAttempts)
+	}
+	defer func() {
+		grip.Error(errors.Wrap(conn.Close(), "error closing gRPC connection"))
+	}()
+	manager := rpc.NewRPCManager(conn)
+
+	proc, err := args.createAgentProcess(ctx, manager, maxAttempts, maxDelay)
+	if err != nil {
+		return errors.Wrapf(err, "faileed to create agent process after %d attempts", maxAttempts)
 	}
 
-	agentFinished := make(chan struct{})
-	go func() {
-		timer := time.NewTimer(0)
-		defer timer.Stop()
-		defer close(agentFinished)
-		for {
-			select {
-			case <-ctx.Done():
-				return
-			case <-timer.C:
-				<-timer.C
-				if proc.Complete(ctx) {
-					return
-				}
-				timer.Reset(time.Second)
-			}
-		}
-	}()
-
-	<-agentFinished
-	exitCode, err := proc.Wait(ctx)
+	exitCode, err := waitUntilComplete(ctx, proc, maxDelay)
 
 	return errors.Wrapf(err, "agent exited with code %d", exitCode)
 }
 
-// startRunner fetches the agent, starts it, and repeats when the agent
-// terminates.
-func (args *runnerArgs) startRunner(ctx context.Context) {
+// startMonitor starts the monitor loop. It fetches the agent, starts it, and
+// repeats when the agent terminates.
+func (args *monitorArgs) startMonitor(ctx context.Context) {
 	for {
-		// The evergreen agent runs using a separate binary from the runner to
+		// The evergreen agent runs using a separate binary from the monitor to
 		// allow the agent to be updated.
 		if err := args.fetchClient(ctx); err != nil {
 			grip.Error(message.WrapError(err, message.Fields{
