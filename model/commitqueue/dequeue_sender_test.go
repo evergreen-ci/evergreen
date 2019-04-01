@@ -25,7 +25,7 @@ func TestCommitQueueDequeueLogger(t *testing.T) {
 		},
 	}
 	assert.NoError(InsertQueue(q))
-	q.SetProcessing(true)
+	assert.NoError(q.SetProcessing(true))
 
 	msg := NewDequeueItemMessage(level.Notice, DequeueItem{
 		ProjectID: "mci",

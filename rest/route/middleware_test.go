@@ -8,6 +8,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/evergreen/model/commitqueue"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/rest/data"
@@ -180,7 +181,7 @@ func TestCommitQueueItemOwnerMiddlewareUnauthorizedUserGitHub(t *testing.T) {
 		Repo:       "evergreen",
 		Branch:     "master",
 		CommitQueue: model.CommitQueueParams{
-			MergeAction: "github",
+			PatchType: commitqueue.PRPatchType,
 		},
 	}
 
@@ -224,7 +225,7 @@ func TestCommitQueueItemOwnerMiddlewareUserPatch(t *testing.T) {
 		Repo:       "evergreen",
 		Branch:     "master",
 		CommitQueue: model.CommitQueueParams{
-			MergeAction: "patch",
+			PatchType: commitqueue.CLIPatchType,
 		},
 	}
 

@@ -177,7 +177,7 @@ func (m *CommitQueueItemOwnerMiddleware) ServeHTTP(rw http.ResponseWriter, r *ht
 		return
 	}
 
-	if opCtx.ProjectRef.CommitQueue.MergeAction == commitqueue.CLIPatchType {
+	if opCtx.ProjectRef.CommitQueue.PatchType == commitqueue.CLIPatchType {
 		patch, err := m.sc.FindPatchById(item)
 		if err != nil {
 			gimlet.WriteResponse(rw, gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "can't find item")))
@@ -192,7 +192,7 @@ func (m *CommitQueueItemOwnerMiddleware) ServeHTTP(rw http.ResponseWriter, r *ht
 		}
 	}
 
-	if opCtx.ProjectRef.CommitQueue.MergeAction == commitqueue.PRPatchType {
+	if opCtx.ProjectRef.CommitQueue.PatchType == commitqueue.PRPatchType {
 		itemInt, err := strconv.Atoi(item)
 		if err != nil {
 			gimlet.WriteResponse(rw, gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
