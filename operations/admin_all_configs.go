@@ -1,6 +1,7 @@
 package operations
 
 import (
+	"context"
 	"io/ioutil"
 
 	"github.com/mongodb/grip"
@@ -28,10 +29,16 @@ func fetchAllProjectConfigs() cli.Command {
 		Action: func(c *cli.Context) error {
 			includeDisabled := c.BoolT(includeDisabledFlagName)
 
+			ctx, cancel := context.WithCancel(context.Background())
+			defer cancel()
+
 			settings, err := NewClientSettings(c.GlobalString("config"))
 			if err != nil {
 				return err
 			}
+
+			client := settings.GetRestCommunicator(ctx)
+			defer client.Close()
 
 			ac, rc, err := settings.getLegacyClients()
 			if err != nil {
