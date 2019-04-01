@@ -318,9 +318,9 @@ describe('PerfDiscoveryDataServiceTest', function() {
   it('Adds query based item to comp items', function() {
     const LEN24_A = '1234567890123456789012_A';
     const LEN24_B = '1234567890123456789012_B';
-    const item1 = {id: LEN24_A, revision: LEN24_A, name: 'name1'};
-    const item2 = {id: 'id2', revision: 'id2', name: 'name2'};
-    const item3 = {id: 'sys_perf_0fe17ec2e1aed45ca280afb8da06cb178219d261', revision: '0fe17ec2e1aed45ca280afb8da06cb178219d261', name: 'name2'};
+    const item1 = {id: LEN24_A, name: 'name1'};
+    const item2 = {id: 'id2', name: 'name2'};
+    const item3 = {id: 'sys_perf_0fe17ec2e1aed45ca280afb8da06cb178219d261', name: 'name2'};
     const items = [item1, item2, item3];
 
     expect(
@@ -340,7 +340,6 @@ describe('PerfDiscoveryDataServiceTest', function() {
     ).toEqual(items.concat({
       kind: PD.KIND_VERSION,
       id: LEN24_B,
-      revision: LEN24_B,
       name: LEN24_B,
     }));
 
@@ -349,7 +348,6 @@ describe('PerfDiscoveryDataServiceTest', function() {
     ).toEqual(items.concat({
       kind: PD.KIND_VERSION,
       id: project + '_' + githash,
-      revision: project + '_' + githash,
       name: githash,
     }))
   });
@@ -365,24 +363,24 @@ describe('PerfDiscoveryDataServiceTest', function() {
 
     expect(
       service.getQueryBasedItem(LEN24)
-    ).toEqual({kind: PD.KIND_VERSION, id: LEN24, revision: LEN24, name: LEN24});
+    ).toEqual({kind: PD.KIND_VERSION, id: LEN24, name: LEN24});
 
     expect(
       service.getQueryBasedItem(versionIdLong)
     ).toEqual({
-      kind: PD.KIND_VERSION, id: versionIdLong, revision: versionIdLong, name: versionIdLong
+      kind: PD.KIND_VERSION, id: versionIdLong, name: versionIdLong
     });
 
     expect(
       service.getQueryBasedItem(githash)
     ).toEqual({
-      kind: PD.KIND_VERSION, id: versionIdLong, revision: versionIdLong, name: githash
+      kind: PD.KIND_VERSION, id: versionIdLong, name: githash
     });
 
     expect(
       service.getQueryBasedItem(sysPerfIdLong)
     ).toEqual({
-      kind: PD.KIND_VERSION, id: sysPerfIdLong, revision: githash, name: sysPerfIdLong
+      kind: PD.KIND_VERSION, id: sysPerfIdLong, name: sysPerfIdLong
     });
   })
 });

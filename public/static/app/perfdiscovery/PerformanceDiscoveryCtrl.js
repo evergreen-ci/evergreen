@@ -56,7 +56,7 @@ mciModule.controller('PerformanceDiscoveryCtrl', function(
       // Sets 'compare from' version from the state if available
       // Sets the first revision from the list otherwise
       vm.fromSelect.selected = cascade(
-        _.bind(dataUtil.findVersionItem, null, items, state.from.replace('sys-perf', 'sys_perf')),
+        _.bind(dataUtil.findVersionItem, null, items),
         _.bind(dataUtil.getQueryBasedItem, null, state.from),
         _.bind(_.findWhere, null, items, {kind: PD.KIND_VERSION}),
         _.bind(_.first, null, items)

@@ -1,7 +1,7 @@
 /*
  * This service contains functions which can access the points collection.
  */
-if (_.isUndefined(_.isSet)) {
+if (!_.isFunction(_.isSet)) {
   _.mixin({
     isSet: function (obj) {
       return toString.call(obj) === '[object Set]';
