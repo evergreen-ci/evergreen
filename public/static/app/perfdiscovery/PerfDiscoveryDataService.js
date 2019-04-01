@@ -82,7 +82,6 @@ mciModule.factory('PerfDiscoveryDataService', function(
     if (uniformId) {
       return {
         id: uniformId,
-        revision: uniformId.replace(/(sys.perf.|sys.perf.[0-9]+\.[0-9]+.)/gi, ''),
         name: query,
         kind: kind,
       }

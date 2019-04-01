@@ -88,7 +88,7 @@ mciModule.controller('PerformanceDiscoveryCtrl', function(
   function loadCompOptions(fromVersion, toVersion) {
     // Set loading flag to display spinner
     vm.isLoading = true;
-    const outliersPromise = OutliersDataService.getOutliersQ(projectId, {revision:fromVersion.revision});
+    const outliersPromise = OutliersDataService.getOutliersQ(projectId, {revision:fromVersion.name});
 
     $q.all({
       fromVersionObj: dataUtil.getCompItemVersion(fromVersion),
