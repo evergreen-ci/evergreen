@@ -90,7 +90,8 @@ describe("PerfPluginTests", function () {
                             "99th_read_latency_us": 730,
                             "99th_read_latency_us_values": [730]
                         }
-                    }
+                    },
+                    "isExpandedMetric": true
                 }]
             }
         };
