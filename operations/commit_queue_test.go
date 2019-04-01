@@ -4,10 +4,8 @@ import (
 	"context"
 	"io/ioutil"
 	"os"
-	"path/filepath"
 	"testing"
 
-	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/commitqueue"
@@ -34,11 +32,7 @@ func TestCommitQueueSuite(t *testing.T) {
 func (s *CommitQueueSuite) SetupSuite() {
 	s.ctx = context.Background()
 	db.SetGlobalSessionProvider(testConfig.SessionFactory())
-
-	env := evergreen.GetEnvironment()
-	if env.Settings() == nil {
-		s.NoError(env.Configure(s.ctx, filepath.Join(evergreen.FindEvergreenHome(), testutil.TestDir, testutil.TestSettings), nil))
-	}
+	testutil.NewEnvironment(s.ctx, s.T())
 
 	var err error
 	s.server, err = service.CreateTestServer(testConfig, nil)

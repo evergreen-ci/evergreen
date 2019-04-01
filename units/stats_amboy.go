@@ -118,7 +118,7 @@ func (j *amboyStatsCollector) collectExtendedRemoteStats(ctx context.Context) er
 	opts.DB = settings.Amboy.DB
 	opts.Priority = true
 
-	reporter, err := reporting.MakeDBQueueState(settings.Amboy.Name, opts, j.env.Session())
+	reporter, err := reporting.MakeDBQueueState(ctx, settings.Amboy.Name, opts, j.env.Client())
 	if err != nil {
 		return err
 	}

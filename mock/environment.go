@@ -11,13 +11,14 @@ import (
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/amboy/queue"
+	"github.com/mongodb/anser/db"
 	anserMock "github.com/mongodb/anser/mock"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/mongodb/grip/send"
 	"github.com/mongodb/jasper"
 	"github.com/pkg/errors"
-	mgo "gopkg.in/mgo.v2"
+	"go.mongodb.org/mongo-driver/mongo"
 )
 
 // this is just a hack to ensure that compile breaks clearly if the
@@ -33,9 +34,10 @@ type Environment struct {
 	Closers              map[string]func(context.Context) error
 	DBSession            *anserMock.Session
 	EvergreenSettings    *evergreen.Settings
+	MongoClient          *mongo.Client
 	mu                   sync.RWMutex
-
-	InternalSender *send.InternalSender
+	DatabaseName         string
+	InternalSender       *send.InternalSender
 }
 
 func (e *Environment) Configure(ctx context.Context, path string, db *evergreen.DBSettings) error {
@@ -92,10 +94,24 @@ func (e *Environment) GenerateTasksQueue() amboy.Queue {
 	return e.SingleWorker
 }
 
-func (e *Environment) Session() *mgo.Session {
-	session, _, _ := edb.GetGlobalSessionFactory().GetSession()
+func (e *Environment) Session() db.Session {
+	e.mu.RLock()
+	defer e.mu.RUnlock()
+	return e.DBSession
+}
 
-	return session
+func (e *Environment) Client() *mongo.Client {
+	e.mu.RLock()
+	defer e.mu.RUnlock()
+
+	return e.MongoClient
+}
+
+func (e *Environment) DB() *mongo.Database {
+	e.mu.RLock()
+	defer e.mu.RUnlock()
+
+	return e.MongoClient.Database(e.DatabaseName)
 }
 
 func (e *Environment) JasperManager() jasper.Manager {

@@ -197,7 +197,7 @@ func (s *DependencyInterchangeSuite) SetupSuite() {
 }
 
 func (s *DependencyInterchangeSuite) SetupTest() {
-	s.dep = alwaysDependencyFactory()
+	s.dep = dependency.NewAlways()
 	s.Equal(s.dep.Type().Name, "always")
 }
 
@@ -217,11 +217,10 @@ func (s *DependencyInterchangeSuite) TestConvertFromDependencyInterchangeFormatM
 		dep, err := convertToDependency(amboy.BSON, i)
 		s.NoError(err)
 		s.require.IsType(dep, s.dep)
-		old := s.dep.(*dependency.Always)
-		new := dep.(*dependency.Always)
-		s.Equal(old.ShouldRebuild, new.ShouldRebuild)
-		s.Equal(old.T, new.T)
-		s.Equal(len(old.JobEdges.TaskEdges), len(new.JobEdges.TaskEdges))
+		old := s.dep
+		new := dep
+		s.Equal(old.Type(), new.Type())
+		s.Equal(len(old.Edges()), len(new.Edges()))
 	}
 
 }

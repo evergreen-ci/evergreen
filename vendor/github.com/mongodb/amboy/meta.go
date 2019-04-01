@@ -2,8 +2,11 @@ package amboy
 
 import (
 	"context"
+	"time"
 
 	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
+	"github.com/pkg/errors"
 )
 
 // ResolveErrors takes a queue object and iterates over the results
@@ -76,4 +79,37 @@ func Report(ctx context.Context, q Queue, limit int) QueueReport {
 	}
 
 	return out
+}
+
+// RunJob executes a single job directly, without a queue, with
+// similar semantics as it would execute in a queue: MaxTime is
+// respected, and it uses similar logging as is present in the queue,
+// with errors propogated functionally.
+func RunJob(ctx context.Context, job Job) error {
+	var cancel context.CancelFunc
+	ti := job.TimeInfo()
+	ti.Start = time.Now()
+	job.UpdateTimeInfo(ti)
+	if ti.MaxTime > 0 {
+		ctx, cancel = context.WithTimeout(ctx, ti.MaxTime)
+	} else {
+		ctx, cancel = context.WithCancel(ctx)
+	}
+	defer cancel()
+
+	job.Run(ctx)
+	ti.End = time.Now()
+	msg := message.Fields{
+		"job":           job.ID(),
+		"job_type":      job.Type().Name,
+		"duration_secs": ti.Duration().Seconds(),
+	}
+	err := errors.WithStack(job.Error())
+	if err != nil {
+		grip.Error(message.WrapError(err, msg))
+	} else {
+		grip.Debug(msg)
+	}
+
+	return err
 }

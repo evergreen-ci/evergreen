@@ -115,7 +115,7 @@ func (s *DriverSuite) TearDownSuite() {
 }
 
 func (s *DriverSuite) TestInitialValues() {
-	stats := s.driver.Stats()
+	stats := s.driver.Stats(s.ctx)
 	s.Equal(0, stats.Completed)
 	s.Equal(0, stats.Running)
 	s.Equal(0, stats.Pending)
@@ -130,43 +130,43 @@ func (s *DriverSuite) TestPutJobDoesNotAllowDuplicateIds() {
 
 	j := job.NewShellJob("echo foo", "")
 
-	err := s.driver.Put(j)
+	err := s.driver.Put(ctx, j)
 	s.NoError(err)
 
 	for i := 0; i < 10; i++ {
-		s.Error(s.driver.Put(j))
+		s.Error(s.driver.Put(ctx, j))
 	}
 }
 
 func (s *DriverSuite) TestSaveJobPersistsJobInDriver() {
 	j := job.NewShellJob("echo foo", "")
 
-	s.Equal(0, s.driver.Stats().Total)
+	s.Equal(0, s.driver.Stats(s.ctx).Total)
 
-	err := s.driver.Put(j)
+	err := s.driver.Put(s.ctx, j)
 	s.NoError(err)
 
-	s.Equal(1, s.driver.Stats().Total)
+	s.Equal(1, s.driver.Stats(s.ctx).Total)
 
 	// saving a job a second time shouldn't be an error on save
 	// and shouldn't result in a new job
-	err = s.driver.Save(j)
+	err = s.driver.Save(s.ctx, j)
 	s.NoError(err)
 
-	s.Equal(1, s.driver.Stats().Total)
+	s.Equal(1, s.driver.Stats(s.ctx).Total)
 }
 
 func (s *DriverSuite) TestSaveAndGetRoundTripObjects() {
 	j := job.NewShellJob("echo foo", "")
 	name := j.ID()
 
-	s.Equal(0, s.driver.Stats().Total)
+	s.Equal(0, s.driver.Stats(s.ctx).Total)
 
-	err := s.driver.Put(j)
+	err := s.driver.Put(s.ctx, j)
 	s.NoError(err)
 
-	s.Equal(1, s.driver.Stats().Total)
-	n, err := s.driver.Get(name)
+	s.Equal(1, s.driver.Stats(s.ctx).Total)
+	n, err := s.driver.Get(s.ctx, name)
 
 	if s.NoError(err) {
 		nsh := n.(*job.ShellJob)
@@ -174,7 +174,7 @@ func (s *DriverSuite) TestSaveAndGetRoundTripObjects() {
 		s.Equal(nsh.Command, j.Command)
 
 		s.Equal(n.ID(), name)
-		s.Equal(1, s.driver.Stats().Total)
+		s.Equal(1, s.driver.Stats(s.ctx).Total)
 	}
 }
 
@@ -182,19 +182,19 @@ func (s *DriverSuite) TestReloadRefreshesJobFromMemory() {
 	j := job.NewShellJob("echo foo", "")
 
 	originalCommand := j.Command
-	err := s.driver.Put(j)
+	err := s.driver.Put(s.ctx, j)
 	s.NoError(err)
 
-	s.Equal(1, s.driver.Stats().Total)
+	s.Equal(1, s.driver.Stats(s.ctx).Total)
 
 	newCommand := "echo bar"
 	j.Command = newCommand
 
-	err = s.driver.Save(j)
-	s.Equal(1, s.driver.Stats().Total)
+	err = s.driver.Save(s.ctx, j)
+	s.Equal(1, s.driver.Stats(s.ctx).Total)
 	s.NoError(err)
 
-	reloadedJob, err := s.driver.Get(j.ID())
+	reloadedJob, err := s.driver.Get(s.ctx, j.ID())
 	s.Require().NoError(err)
 	j = reloadedJob.(*job.ShellJob)
 	s.NotEqual(originalCommand, j.Command)
@@ -202,7 +202,7 @@ func (s *DriverSuite) TestReloadRefreshesJobFromMemory() {
 }
 
 func (s *DriverSuite) TestGetReturnsErrorIfJobDoesNotExist() {
-	j, err := s.driver.Get("does-not-exist")
+	j, err := s.driver.Get(s.ctx, "does-not-exist")
 	s.Error(err)
 	s.Nil(j)
 }
@@ -210,35 +210,35 @@ func (s *DriverSuite) TestGetReturnsErrorIfJobDoesNotExist() {
 func (s *DriverSuite) TestStatsCallReportsCompletedJobs() {
 	j := job.NewShellJob("echo foo", "")
 
-	s.Equal(0, s.driver.Stats().Total)
-	s.NoError(s.driver.Put(j))
-	s.Equal(1, s.driver.Stats().Total)
-	s.Equal(0, s.driver.Stats().Completed)
-	s.Equal(1, s.driver.Stats().Pending)
-	s.Equal(0, s.driver.Stats().Blocked)
-	s.Equal(0, s.driver.Stats().Running)
+	s.Equal(0, s.driver.Stats(s.ctx).Total)
+	s.NoError(s.driver.Put(s.ctx, j))
+	s.Equal(1, s.driver.Stats(s.ctx).Total)
+	s.Equal(0, s.driver.Stats(s.ctx).Completed)
+	s.Equal(1, s.driver.Stats(s.ctx).Pending)
+	s.Equal(0, s.driver.Stats(s.ctx).Blocked)
+	s.Equal(0, s.driver.Stats(s.ctx).Running)
 
 	j.MarkComplete()
-	s.NoError(s.driver.Save(j))
-	s.Equal(1, s.driver.Stats().Total)
-	s.Equal(1, s.driver.Stats().Completed)
-	s.Equal(0, s.driver.Stats().Pending)
-	s.Equal(0, s.driver.Stats().Blocked)
-	s.Equal(0, s.driver.Stats().Running)
+	s.NoError(s.driver.Save(s.ctx, j))
+	s.Equal(1, s.driver.Stats(s.ctx).Total)
+	s.Equal(1, s.driver.Stats(s.ctx).Completed)
+	s.Equal(0, s.driver.Stats(s.ctx).Pending)
+	s.Equal(0, s.driver.Stats(s.ctx).Blocked)
+	s.Equal(0, s.driver.Stats(s.ctx).Running)
 }
 
 func (s *DriverSuite) TestNextMethodReturnsJob() {
-	s.Equal(0, s.driver.Stats().Total)
+	s.Equal(0, s.driver.Stats(s.ctx).Total)
 
 	j := job.NewShellJob("echo foo", "")
 
-	s.NoError(s.driver.Put(j))
-	stats := s.driver.Stats()
-	s.Equal(1, stats.Total)
+	s.NoError(s.driver.Put(s.ctx, j))
+	stats := s.driver.Stats(s.ctx)
+	s.Equal(1, stats.Total, "%+v", stats)
 	s.Equal(1, stats.Pending)
 
 	nj := s.driver.Next(s.ctx)
-	stats = s.driver.Stats()
+	stats = s.driver.Stats(s.ctx)
 	s.Equal(0, stats.Completed)
 	s.Equal(1, stats.Pending)
 	s.Equal(0, stats.Blocked)
@@ -256,13 +256,13 @@ func (s *DriverSuite) TestNextMethodSkipsCompletedJos() {
 	j := job.NewShellJob("echo foo", "")
 	j.MarkComplete()
 
-	s.NoError(s.driver.Put(j))
-	s.Equal(1, s.driver.Stats().Total)
+	s.NoError(s.driver.Put(s.ctx, j))
+	s.Equal(1, s.driver.Stats(s.ctx).Total)
 
-	s.Equal(1, s.driver.Stats().Total)
-	s.Equal(0, s.driver.Stats().Blocked)
-	s.Equal(0, s.driver.Stats().Pending)
-	s.Equal(1, s.driver.Stats().Completed)
+	s.Equal(1, s.driver.Stats(s.ctx).Total)
+	s.Equal(0, s.driver.Stats(s.ctx).Blocked)
+	s.Equal(0, s.driver.Stats(s.ctx).Pending)
+	s.Equal(1, s.driver.Stats(s.ctx).Completed)
 
 	s.Nil(s.driver.Next(ctx), fmt.Sprintf("%T", s.driver))
 }
@@ -273,12 +273,12 @@ func (s *DriverSuite) TestJobsMethodReturnsAllJobs() {
 	for idx := range [24]int{} {
 		name := fmt.Sprintf("echo test num %d", idx)
 		j := job.NewShellJob(name, "")
-		s.NoError(s.driver.Put(j))
+		s.NoError(s.driver.Put(s.ctx, j))
 		mocks[j.ID()] = j
 	}
 
 	counter := 0
-	for j := range s.driver.Jobs() {
+	for j := range s.driver.Jobs(s.ctx) {
 		task := j.(*job.ShellJob)
 		counter++
 		mock, ok := mocks[j.ID()]
@@ -298,7 +298,7 @@ func (s *DriverSuite) TestStatsMethodReturnsAllJobs() {
 		cmd := fmt.Sprintf("echo 'foo: %d'", i)
 		j := job.NewShellJob(cmd, "")
 
-		s.NoError(s.driver.Put(j))
+		s.NoError(s.driver.Put(s.ctx, j))
 		names[j.ID()] = struct{}{}
 	}
 
