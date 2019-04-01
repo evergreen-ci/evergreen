@@ -10,7 +10,7 @@ import (
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 	"gopkg.in/mgo.v2/bson"
-	yaml "gopkg.in/yaml.v2"
+	"gopkg.in/yaml.v2"
 )
 
 const (
@@ -39,12 +39,14 @@ func MergeGeneratedProjects(projects []GeneratedProject) *GeneratedProject {
 	taskGroups := map[string]*parserTaskGroup{}
 
 	for _, p := range projects {
+	mergeBuildVariants:
 		for i, bv := range p.BuildVariants {
 			if len(bv.Tasks) == 0 {
 				if _, ok := bvs[bv.Name]; ok {
 					catcher.Add(errors.Errorf("found duplicate buildvariant (%s)", bv.Name))
 				} else {
 					bvs[bv.Name] = &p.BuildVariants[i]
+					continue mergeBuildVariants
 				}
 			}
 			if _, ok := bvs[bv.Name]; ok {
@@ -130,7 +132,7 @@ func (g *GeneratedProject) NewVersion() (*Project, *Version, *task.Task, *projec
 	p := &Project{}
 	if err = LoadProjectInto([]byte(v.Config), t.Project, p); err != nil {
 		return nil, nil, nil, nil, "",
-			gimlet.ErrorResponse{StatusCode: http.StatusBadRequest, Message: errors.Wrap(err, "error reading project yaml").Error()}
+			gimlet.ErrorResponse{StatusCode: http.StatusBadRequest, Message: errors.Wrapf(err, "error reading project yaml for version %s", t.Version).Error()}
 	}
 
 	// Cache project data in maps for quick lookup

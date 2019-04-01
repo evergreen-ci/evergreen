@@ -612,3 +612,24 @@ func (s *GenerateSuite) TestSaveNewTasksWithDependencies() {
 		s.True(expect, fmt.Sprintf("%s should be a dependency but wasn't", taskName))
 	}
 }
+
+func (s *GenerateSuite) TestMergeGeneratedProjectsWithNoTasks() {
+	smallGeneratedProject := GeneratedProject{
+		BuildVariants: []parserBV{
+			parserBV{
+				Name: "my_build_variant",
+				DisplayTasks: []displayTask{
+					displayTask{
+						Name:           "my_display_task",
+						ExecutionTasks: []string{"nonsense"},
+					},
+				},
+			},
+		},
+	}
+	projects := []GeneratedProject{smallGeneratedProject}
+	merged := MergeGeneratedProjects(projects)
+	s.Require().NotNil(merged)
+	s.Require().Len(merged.BuildVariants, 1)
+	s.Len(merged.BuildVariants[0].DisplayTasks, 1)
+}
