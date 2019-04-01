@@ -220,7 +220,7 @@ func (j *commitQueueJob) processGitHubPRItem(ctx context.Context, cq *commitqueu
 		j.logError(err, "can't subscribe for PR merge", nextItem)
 		if dequeue {
 			j.dequeue(cq, nextItem)
-			sendCommitQueueGithubStatus(j.env, pr, message.GithubStateFailure, "can't start merge", v.Id)
+			j.AddError(sendCommitQueueGithubStatus(j.env, pr, message.GithubStateFailure, "can't sign up merge", v.Id))
 		}
 	}
 
