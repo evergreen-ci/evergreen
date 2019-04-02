@@ -210,10 +210,10 @@ type Connector interface {
 	GetCLIUpdate() (*restModel.APICLIUpdate, error)
 
 	// GenerateTasks parses JSON files for `generate.tasks` and creates the new builds and tasks.
-	GenerateTasks(context.Context, string, []json.RawMessage, amboy.Queue) error
+	GenerateTasks(context.Context, string, []json.RawMessage, amboy.QueueGroup) error
 
 	// GeneratePoll checks to see if a `generate.tasks` job has finished.
-	GeneratePoll(context.Context, string, amboy.Queue) (bool, []string, error)
+	GeneratePoll(context.Context, string, amboy.QueueGroup) (bool, []string, error)
 
 	// SaveSubscriptions saves a set of notification subscriptions
 	SaveSubscriptions([]event.Subscription) error

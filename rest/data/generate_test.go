@@ -5,34 +5,72 @@ import (
 	"testing"
 	"time"
 
+	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/amboy/dependency"
 	"github.com/mongodb/amboy/job"
 	"github.com/mongodb/amboy/queue"
+	"github.com/mongodb/amboy/registry"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
+func remoteConstructor(ctx context.Context) (queue.Remote, error) {
+	return queue.NewRemoteUnordered(1), nil
+}
+
 func TestGeneratePoll(t *testing.T) {
-	assert := assert.New(t)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	require.NoError(t, db.ClearCollections(task.Collection))
+
+	uri := "mongodb://localhost:27017"
+	client, err := mongo.NewClient(options.Client().ApplyURI(uri))
+	require.NoError(t, err)
+	require.NoError(t, client.Connect(ctx))
+	require.NoError(t, client.Database("amboy_test").Drop(ctx))
+	opts := queue.RemoteQueueGroupOptions{
+		Client:      client,
+		Constructor: remoteConstructor,
+		MongoOptions: queue.MongoDBOptions{
+			URI: uri,
+			DB:  "amboy_test",
+		},
+		Prefix: "gen",
+	}
+	q, err := queue.NewRemoteQueueGroup(ctx, opts)
+	require.NoError(t, err)
+
+	require.NoError(t, (&task.Task{
+		Id:      "task-1",
+		Version: "version-1",
+	}).Insert())
 	gc := &GenerateConnector{}
-	q := queue.NewLocalUnordered(1)
-	finished, errs, err := gc.GeneratePoll(context.Background(), "1", q)
-	assert.Empty(errs)
-	assert.False(finished)
-	assert.Error(err)
-	j := &mockJob{}
-	j.SetID("generate-tasks-1")
-	assert.NoError(q.Start(context.Background()))
-	assert.NoError(q.Put(j))
-	finished, errs, err = gc.GeneratePoll(context.Background(), "1", q)
-	assert.False(finished)
-	assert.Empty(errs)
-	assert.NoError(err)
-	time.Sleep(20 * time.Millisecond)
-	finished, errs, err = gc.GeneratePoll(context.Background(), "1", q)
-	assert.True(finished)
-	assert.Empty(errs)
-	assert.NoError(err)
+	finished, errs, err := gc.GeneratePoll(context.Background(), "task-1", q)
+	assert.Empty(t, errs)
+	assert.False(t, finished)
+	assert.Error(t, err)
+
+	registry.AddJobType("mock", func() amboy.Job { return newMockJob() })
+	j := newMockJob()
+	j.SetID("generate-tasks-task-1")
+
+	taskQueue, err := q.Get(ctx, "version-1")
+	require.NoError(t, err)
+	require.NotNil(t, taskQueue)
+	require.NoError(t, taskQueue.Put(j))
+	finished, errs, err = gc.GeneratePoll(context.Background(), "task-1", q)
+	assert.False(t, finished)
+	assert.Empty(t, errs)
+	assert.NoError(t, err)
+	time.Sleep(time.Second)
+	finished, errs, err = gc.GeneratePoll(context.Background(), "task-1", q)
+	assert.True(t, finished)
+	assert.Empty(t, errs)
+	assert.NoError(t, err)
 }
 
 type mockJob struct {

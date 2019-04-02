@@ -271,7 +271,7 @@ func TestAssignNextAvailableTask(t *testing.T) {
 func TestNextTask(t *testing.T) {
 	conf := testutil.TestConfig()
 	queue := evergreen.GetEnvironment().LocalQueue()
-	generateQueue := evergreen.GetEnvironment().GenerateTasksQueue()
+	remoteQueue := evergreen.GetEnvironment().RemoteQueueGroup()
 
 	Convey("with tasks, a host, a build, and a task queue", t, func() {
 		if err := db.ClearCollections(host.Collection, task.Collection, model.TaskQueuesCollection, build.Collection, evergreen.ConfigCollection); err != nil {
@@ -284,7 +284,7 @@ func TestNextTask(t *testing.T) {
 			t.Fatalf("unable to create admin settings: %v", err)
 		}
 
-		as, err := NewAPIServer(conf, queue, generateQueue)
+		as, err := NewAPIServer(conf, queue, remoteQueue)
 		if err != nil {
 			t.Fatalf("creating test API server: %v", err)
 		}
@@ -554,6 +554,10 @@ func TestCheckHostHealth(t *testing.T) {
 	})
 }
 
+func localGroupConstructor(ctx context.Context) (amboy.Queue, error) {
+	return queue.NewLocalUnordered(1), nil
+}
+
 func TestTaskLifecycleEndpoints(t *testing.T) {
 	conf := testutil.TestConfig()
 	ctx, cancel := context.WithCancel(context.Background())
@@ -566,12 +570,14 @@ func TestTaskLifecycleEndpoints(t *testing.T) {
 		}
 
 		q := queue.NewLocalLimitedSize(4, 2048)
-		generateQueue := queue.NewLocalOrdered(1)
 		if err := q.Start(ctx); err != nil {
 			t.Fatalf("failed to start queue %s", err)
 		}
+		opts := queue.LocalQueueGroupOptions{Constructor: localGroupConstructor}
+		group, err := queue.NewLocalQueueGroup(ctx, opts)
+		So(err, ShouldBeNil)
 
-		as, err := NewAPIServer(conf, q, generateQueue)
+		as, err := NewAPIServer(conf, q, group)
 		if err != nil {
 			t.Fatalf("creating test API server: %v", err)
 		}
