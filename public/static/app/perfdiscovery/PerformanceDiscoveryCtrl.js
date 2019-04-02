@@ -89,7 +89,7 @@ mciModule.controller('PerformanceDiscoveryCtrl', function(
   const nameToRevision = (name) => {
     if(name) {
       const parts = name.split(/[-_]/);
-      name = parts[parts.length -1];
+      name = parts[parts.length - 1];
     }
     return name;
   };
