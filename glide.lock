@@ -112,7 +112,7 @@ imports:
   - name: github.com/mongodb/anser
     version: 2cc4f950b3f7a7f3a566460bcf965bb79727590f
   - name: github.com/mongodb/amboy
-    version: cad45a93e8718390055c165c0926a23f605b5fdf
+    version: b7056e934d332e0dfdf5f894eb33444624c85d22
   - name: github.com/evergreen-ci/gimlet
     version: 2174a9b1266e1b45c99cc80e00ccc8444c84ad38
   - name: github.com/evergreen-ci/shrub

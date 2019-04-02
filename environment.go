@@ -69,19 +69,20 @@ type Environment interface {
 	Client() *mongo.Client
 	DB() *mongo.Database
 
-	// The Environment provides access to three queues, a
+	// The Environment provides access to two queues, a
 	// local-process level queue that is not persisted between
-	// runs, a remote shared queue that all processes can use
-	// to distribute work amongst the application tier, and a queue
-	// for generate.tasks, which has a smaller number of workers
-	// per app server.
+	// runs and a remote shared queue that all processes can use
+	// to distribute work amongst the application tier
+	//
+	// It also exposes a queue group, which permits dynamically
+	// generating queues at runtime.
 	//
 	// The LocalQueue is not durable, and results aren't available
 	// between process restarts. The RemoteQueue is not
 	// (generally) started by default.
 	LocalQueue() amboy.Queue
 	RemoteQueue() amboy.Queue
-	GenerateTasksQueue() amboy.Queue
+	RemoteQueueGroup() amboy.QueueGroup
 
 	// Jasper is a process manager for running external
 	// commands. Every process has a manager service.
@@ -169,7 +170,7 @@ type ClientConfig struct {
 type envState struct {
 	remoteQueue        amboy.Queue
 	localQueue         amboy.Queue
-	generateTasksQueue amboy.Queue
+	remoteQueueGroup   amboy.QueueGroup
 	notificationsQueue amboy.Queue
 	jasperManager      jasper.Manager
 	settings           *Settings
@@ -253,6 +254,12 @@ func (e *envState) DB() *mongo.Database {
 	return e.client.Database(e.settings.Database.DB)
 }
 
+func remoteQueueGroupConstructor(ctx context.Context) (queue.Remote, error) {
+	q := queue.NewRemoteUnordered(1)
+	q.SetRunner(pool.NewAbortablePool(2, q))
+	return q, nil
+}
+
 func (e *envState) createQueues(ctx context.Context) error {
 	// configure the local-only (memory-backed) queue.
 	e.localQueue = queue.NewLocalLimitedSize(e.settings.Amboy.PoolSizeLocal, e.settings.Amboy.LocalStorage)
@@ -280,18 +287,19 @@ func (e *envState) createQueues(ctx context.Context) error {
 	}
 	e.remoteQueue = rq
 
-	singlemdb, err := queue.OpenNewMgoDriver(ctx, e.settings.Amboy.SingleName, opts, e.session)
+	remoteQueuGroupOpts := queue.RemoteQueueGroupOptions{
+		Client:         e.client,
+		Constructor:    remoteQueueGroupConstructor,
+		MongoOptions:   queue.DefaultMongoDBOptions(),
+		Prefix:         "gen",
+		PruneFrequency: time.Hour,
+		TTL:            7 * 24 * time.Hour,
+	}
+	remoteQueueGroup, err := queue.NewRemoteQueueGroup(ctx, remoteQueuGroupOpts)
 	if err != nil {
-		return errors.Wrap(err, "problem setting queue backend")
+		return errors.Wrap(err, "problem constructing remote queue group")
 	}
-	generateTasksQ := queue.NewRemoteUnordered(8)
-	if err = generateTasksQ.SetDriver(singlemdb); err != nil {
-		return errors.WithStack(err)
-	}
-	if err = generateTasksQ.SetRunner(pool.NewAbortablePool(1, generateTasksQ)); err != nil {
-		return errors.Wrap(err, "problem configuring worker pool for generate tasks queue")
-	}
-	e.generateTasksQueue = generateTasksQ
+	e.remoteQueueGroup = remoteQueueGroup
 
 	// Notifications queue w/ moving weight avg pool
 	e.notificationsQueue = queue.NewLocalLimitedSize(len(e.senders), e.settings.Amboy.LocalStorage)
@@ -556,10 +564,10 @@ func (e *envState) RemoteQueue() amboy.Queue {
 	return e.remoteQueue
 }
 
-func (e *envState) GenerateTasksQueue() amboy.Queue {
+func (e *envState) RemoteQueueGroup() amboy.QueueGroup {
 	e.mu.RLock()
 	defer e.mu.RUnlock()
-	return e.generateTasksQueue
+	return e.remoteQueueGroup
 }
 
 func (e *envState) Session() db.Session {
