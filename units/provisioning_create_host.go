@@ -156,8 +156,19 @@ func (j *createHostJob) Run(ctx context.Context) {
 			MaxTime: j.host.SpawnOptions.TimeoutSetup.Sub(j.start),
 		})
 	}
-
-	j.AddError(j.createHost(ctx))
+	err = j.createHost(ctx)
+	j.AddError(err)
+	if err != nil {
+		grip.Info(message.Fields{
+			"host_id":  j.HostID,
+			"attempt":  j.CurrentAttempt,
+			"distro":   j.host.Distro,
+			"error":    err.Error(),
+			"job":      j.ID(),
+			"provider": j.host.Provider,
+			"message":  "error provisioning host",
+		})
+	}
 }
 
 func (j *createHostJob) createHost(ctx context.Context) error {
