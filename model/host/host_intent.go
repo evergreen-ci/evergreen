@@ -3,6 +3,9 @@ package host
 import (
 	"time"
 
+	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
+
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/util"
@@ -71,7 +74,12 @@ func GenerateContainerHostIntents(d distro.Distro, newContainersNeeded int, host
 		return nil, errors.Wrap(err, "Could not find number of containers on each parent")
 	}
 	containerHostIntents := make([]Host, 0)
-
+	grip.Info(message.Fields{
+		"distro":           d.Id,
+		"num_parents":      len(parents),
+		"container_needed": newContainersNeeded,
+		"message":          "generating container host intents",
+	})
 	for _, parent := range parents {
 		// find out how many more containers this parent can fit
 		containerSpace := parent.ParentHost.ContainerPoolSettings.MaxContainers - parent.NumContainers
@@ -114,6 +122,10 @@ func generateParentCreateOptions(pool *evergreen.ContainerPool) CreateOptions {
 
 func InsertParentIntentsAndGetNumHostsToSpawn(pool *evergreen.ContainerPool, newHostsNeeded int, ignoreMaxHosts bool) ([]Host, int, error) {
 	// find all running parents with the specified container pool
+	grip.Info(message.Fields{
+		"containers_needed": newHostsNeeded,
+		"message":           "about to spawn parents",
+	})
 	numNewParentsToSpawn, newHostsNeeded, err := getNumNewParentsAndHostsToSpawn(pool, newHostsNeeded, ignoreMaxHosts)
 	if err != nil {
 		return nil, 0, errors.Wrap(err, "error getting number of parents to spawn")
@@ -131,5 +143,10 @@ func InsertParentIntentsAndGetNumHostsToSpawn(pool *evergreen.ContainerPool, new
 	if err = InsertMany(newParentHosts); err != nil {
 		return nil, 0, errors.Wrap(err, "error inserting new parent hosts")
 	}
+	grip.Info(message.Fields{
+		"new_parents":       len(newParentHosts),
+		"containers_needed": newHostsNeeded,
+		"message":           "generating container host intents",
+	})
 	return newParentHosts, newHostsNeeded, nil
 }
