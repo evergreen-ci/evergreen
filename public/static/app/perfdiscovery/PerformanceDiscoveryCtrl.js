@@ -37,7 +37,7 @@ mciModule.controller('PerformanceDiscoveryCtrl', function(
   var projectId = $window.project
 
   // For each argument of `arguments`
-  // if arguemnt is a function and return value is truthy
+  // if argument is a function and return value is truthy
   // or argument is truthy non-function return the value
   // If none arguments are truthy returns undefined
   function cascade() {
@@ -85,23 +85,48 @@ mciModule.controller('PerformanceDiscoveryCtrl', function(
 
   let oldFromVersion, oldToVersion;
 
+  // Convert the name to a revision that can be used to query atlas.
+  const nameToRevision = (name) => {
+    if(name) {
+      const parts = name.split(/[-_]/);
+      name = parts[parts.length - 1];
+    }
+    return name;
+  };
+
+  // Create an object that can be used with _.where().
+  const createMatcher = (outlier) => {
+    return {
+      buildVariant: outlier.variant,
+      task: outlier.task,
+      test: outlier.test,
+      threads: outlier.thread_level !== 'max' ? parseInt(outlier.thread_level) : outlier.thread_level,
+    };
+  };
+
   function loadCompOptions(fromVersion, toVersion) {
     // Set loading flag to display spinner
     vm.isLoading = true;
-    const outliersPromise = OutliersDataService.getOutliersQ(projectId, {revision:fromVersion.name});
+
+    // Load the marked and detected outliers for this revision. If no revision, don't load anything.
+    const revision = nameToRevision(fromVersion.name);
+    const outliersPromise = $q.all({
+      detected:revision ? OutliersDataService.getOutliersQ(projectId, {revision:revision})  : [],
+      marked:revision ? OutliersDataService.getMarkedOutliersQ(projectId, {revision:revision})  : [],
+    });
 
     $q.all({
       fromVersionObj: dataUtil.getCompItemVersion(fromVersion),
       toVersionObj: dataUtil.getCompItemVersion(toVersion),
     })
     // Load perf data
-    .then(function(promise) {
-      return dataUtil.getData(
-        promise.fromVersionObj, promise.toVersionObj
-      );
-    })
-    // Apply perf data
-    .then(function(res) {
+      .then(function(promise) {
+        return dataUtil.getData(
+          promise.fromVersionObj, promise.toVersionObj
+        );
+      })
+      // Apply perf data
+      .then(function(res) {
         vm.gridOptions.data = res
         // Apply options data to filter drop downs
         gridUtil.applyMultiselectOptions(
@@ -117,19 +142,33 @@ mciModule.controller('PerformanceDiscoveryCtrl', function(
       // Fetch BF tickets and outliers.
       .then(function() {
 
-        outliersPromise.then(function(outliers) {
-          _.each(outliers, function(outlier) {
-            const matcher = {
-              task: outlier.task,
-              buildVariant: outlier.variant,
-              test: outlier.test,
-              threads: outlier.thread_level !== 'max' ? parseInt(outlier.thread_level) : outlier.thread_level,
-            };
+        const projectRevisionMatcher = {
+          project: projectId,
+          revision:  revision
+        };
 
+        outliersPromise.then(function(outliers) {
+          // add 'm' for marked.
+          _.chain(outliers.marked).where(projectRevisionMatcher).each(function(outlier) {
             _.chain(vm.gridOptions.data)
-              .where(matcher)
-              .each(task => task.outlier = '✓');
+              .where(createMatcher(outlier))
+              .each(task =>  task.outlier = 'm');
           });
+
+          _.chain(outliers.detected).where(projectRevisionMatcher).each(function(outlier) {
+            // add '✓' for marked.
+            _.chain(vm.gridOptions.data)
+              .where(createMatcher(outlier))
+              .each(task => {
+                if(task.outlier) {
+                  if(task.outlier.indexOf('✓') == -1 ) {
+                    task.outlier += '✓';
+                  }
+                } else {
+                  task.outlier = '✓';
+                }
+              });
+          })
         });
 
         dataUtil.getBFTicketsForRows(vm.gridOptions.data).then(function(bfGroups) {
