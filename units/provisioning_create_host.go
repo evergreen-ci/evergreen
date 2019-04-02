@@ -285,34 +285,21 @@ func (j *createHostJob) tryRequeue(ctx context.Context) {
 
 func (j *createHostJob) shouldRetryCreateHost(ctx context.Context) bool {
 	return j.CurrentAttempt < j.MaxAttempts &&
-		(j.host.Status == evergreen.HostUninitialized || j.host.Status == evergreen.HostBuilding) &&
+		j.host.Status != evergreen.HostStarting &&
 		ctx.Err() == nil
 }
 
 func (j *createHostJob) isImageBuilt(ctx context.Context) (bool, error) {
-	parent, err := j.host.GetParent()
+	parent, err := host.FindOneId(j.host.ParentID)
 	if err != nil {
 		return false, errors.Wrapf(err, "problem getting parent for '%s'", j.host.Id)
-	}
-	if parent == nil {
-		grip.Error(message.Fields{
-			"error":     err.Error(),
-			"message":   "parent is empty",
-			"host":      j.host.Id,
-			"parent":    j.host.ParentID,
-			"operation": "spawning new parents",
-		})
-		return false, errors.Wrapf(err, "problem getting parent for '%s'", j.host.Id)
-	}
-
-	if parent.Status == evergreen.HostUninitialized || parent.Status == evergreen.HostBuilding {
-		return false, errors.Errorf("parent for host '%s' not running", j.host.Id)
 	}
 	if ok := parent.ContainerImages[j.host.DockerOptions.Image]; ok {
 		return true, nil
 	}
 
-	//  If the image is not already present on the parent, run job to build the new image
+	//  If the image is not already present on the parent, run job to build
+	// the new image
 	if j.CurrentAttempt == 1 {
 		buildingContainerJob := NewBuildingContainerImageJob(j.env, parent, j.host.DockerOptions, j.host.Provider)
 		err = j.env.RemoteQueue().Put(buildingContainerJob)

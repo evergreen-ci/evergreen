@@ -11,7 +11,6 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/apimodels"
 	dbModel "github.com/evergreen-ci/evergreen/model"
-	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/rest/model"
@@ -69,28 +68,6 @@ func (h *hostCreateHandler) Run(ctx context.Context) gimlet.Responder {
 	numHosts, err := strconv.Atoi(h.createHost.NumHosts)
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(err)
-	}
-
-	// need to first generate the number of container hosts if it's relevant
-	distro, err := distro.FindOne(distro.ById(h.createHost.Distro))
-	if err != nil {
-		return gimlet.NewJSONErrorResponse(errors.Wrapf(err, "error getting distro %s", h.createHost.Distro))
-	}
-	if distro.ContainerPool != "" && h.createHost.CloudProvider == evergreen.ProviderNameDocker {
-		settings, err := evergreen.GetConfig()
-		if err != nil {
-			return gimlet.NewJSONErrorResponse(errors.Wrap(err, "error getting settings config"))
-		}
-
-		containerPool := settings.ContainerPools.GetContainerPool(distro.ContainerPool)
-		if containerPool == nil {
-			return gimlet.NewJSONErrorResponse(errors.Errorf("container pool %s not found", distro.ContainerPool))
-		}
-
-		_, numHosts, err = host.InsertParentIntentsAndGetNumHostsToSpawn(containerPool, 1, true)
-		if err != nil {
-			return gimlet.NewJSONErrorResponse(errors.Wrap(err, "error creating parent intents and number of hosts to spawn"))
-		}
 	}
 
 	ids := []string{}

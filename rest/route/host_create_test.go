@@ -187,53 +187,43 @@ func TestHostCreateDocker(t *testing.T) {
 	handler := hostCreateHandler{
 		sc: &data.DBConnector{},
 	}
-	parent := distro.Distro{Id: "parent-distro", PoolSize: 3, Provider: evergreen.ProviderNameMock}
-	require.NoError(parent.Insert())
 
-	pool := &evergreen.ContainerPool{Distro: "parent-distro", Id: "test-pool", MaxContainers: 2}
-	parentHost := &host.Host{
-		Id:                    "host1",
-		Host:                  "host",
-		User:                  "user",
-		Distro:                distro.Distro{Id: "parent-distro"},
-		Status:                evergreen.HostRunning,
-		HasContainers:         true,
-		ContainerPoolSettings: pool,
+	d := distro.Distro{
+		Id: "archlinux-test",
+		ProviderSettings: &map[string]interface{}{
+			"ami": "ami-123456",
+		},
 	}
-	require.NoError(parentHost.Insert())
-
-	d := distro.Distro{Id: "distro", Provider: evergreen.ProviderNameMock, ContainerPool: "test-pool"}
 	require.NoError(d.Insert())
 
 	c := apimodels.CreateHost{
 		CloudProvider: apimodels.ProviderDocker,
 		NumHosts:      "1",
-		Distro:        "distro",
+		Distro:        "archlinux-test",
 		Image:         "my-image",
 		Command:       "echo hello",
 	}
 	c.Registry.Name = "myregistry"
 	handler.createHost = c
+
 	h, err := handler.sc.MakeIntentHost(handler.taskID, "", "", handler.createHost)
 	assert.NoError(err)
-	require.NotNil(h)
-	assert.Equal("distro", h.Distro.Id)
+	assert.NotNil(h)
+	assert.Equal("archlinux-test", h.Distro.Id)
 	assert.Equal("my-image", h.DockerOptions.Image)
 	assert.Equal("echo hello", h.DockerOptions.Command)
 	assert.Equal("myregistry", h.DockerOptions.RegistryName)
+
 	hosts, err := host.Find(db.Q{})
 	assert.NoError(err)
-	require.Len(hosts, 1)
+	require.Len(hosts, 0)
 
-	poolConfig := evergreen.ContainerPoolsConfig{Pools: []evergreen.ContainerPool{*pool}}
-	settings := evergreen.Settings{ContainerPools: poolConfig}
-	assert.NoError(evergreen.UpdateConfig(&settings))
 	assert.Equal(200, handler.Run(context.Background()).Status())
-
 	hosts, err = host.Find(db.Q{})
 	assert.NoError(err)
-	require.Len(hosts, 2)
-	assert.Equal(h.DockerOptions.Command, hosts[1].DockerOptions.Command)
+	require.Len(hosts, 1)
+	assert.Equal(h.DockerOptions.Command, hosts[0].DockerOptions.Command)
+
 }
 
 func TestGetDockerLogs(t *testing.T) {
@@ -245,45 +235,35 @@ func TestGetDockerLogs(t *testing.T) {
 		sc: &data.MockConnector{},
 	}
 
-	parent := distro.Distro{Id: "parent-distro", PoolSize: 3, Provider: evergreen.ProviderNameMock}
-	require.NoError(parent.Insert())
-
-	pool := &evergreen.ContainerPool{Distro: "parent-distro", Id: "test-pool", MaxContainers: 2}
-	parentHost := &host.Host{
-		Id:                    "host1",
-		Host:                  "host",
-		User:                  "user",
-		Distro:                distro.Distro{Id: "parent-distro"},
-		Status:                evergreen.HostRunning,
-		HasContainers:         true,
-		ContainerPoolSettings: pool,
+	d := distro.Distro{
+		Id: "archlinux-test",
+		ProviderSettings: &map[string]interface{}{
+			"ami": "ami-123456",
+		},
 	}
-	require.NoError(parentHost.Insert())
-
-	d := distro.Distro{Id: "distro", Provider: evergreen.ProviderNameMock, ContainerPool: "test-pool"}
 	require.NoError(d.Insert())
-
 	myTask := task.Task{
 		Id:      "task-id",
 		BuildId: "build-id",
 	}
 	require.NoError(myTask.Insert())
-	c := apimodels.CreateHost{
-		CloudProvider: apimodels.ProviderDocker,
+
+	h, err := handler.sc.MakeIntentHost("task-id", "", "", apimodels.CreateHost{
+		Distro:        "archlinux-test",
+		CloudProvider: "docker",
 		NumHosts:      "1",
-		Distro:        "distro",
-		Image:         "my-image",
-		Command:       "echo hello",
-	}
-	h, err := handler.sc.MakeIntentHost("task-id", "", "", c)
-	assert.NotEmpty(h.ParentID)
-	h.ExternalIdentifier = "my-container"
+		Scope:         "task",
+	})
 	require.NoError(err)
+	h.ParentID = "parent"
+	h.ExternalIdentifier = "my-container"
 	require.NoError(h.Insert())
 
-	poolConfig := evergreen.ContainerPoolsConfig{Pools: []evergreen.ContainerPool{*pool}}
-	settings := evergreen.Settings{ContainerPools: poolConfig}
-	assert.NoError(evergreen.UpdateConfig(&settings))
+	parent := host.Host{
+		Id:            "parent",
+		HasContainers: true,
+	}
+	require.NoError(parent.Insert())
 
 	// invalid tail
 	url := fmt.Sprintf("/hosts/%s/logs/output?tail=%s", h.Id, "invalid")
@@ -344,40 +324,35 @@ func TestGetDockerLogsError(t *testing.T) {
 	handler := containerLogsHandler{
 		sc: &data.MockConnector{},
 	}
-	parent := distro.Distro{Id: "parent-distro", PoolSize: 3, Provider: evergreen.ProviderNameMock}
-	require.NoError(parent.Insert())
 
-	pool := &evergreen.ContainerPool{Distro: "parent-distro", Id: "test-pool", MaxContainers: 2}
-	parentHost := &host.Host{
-		Id:                    "host1",
-		Host:                  "host",
-		User:                  "user",
-		Distro:                distro.Distro{Id: "parent-distro"},
-		Status:                evergreen.HostRunning,
-		HasContainers:         true,
-		ContainerPoolSettings: pool,
+	d := distro.Distro{
+		Id: "archlinux-test",
+		ProviderSettings: &map[string]interface{}{
+			"ami": "ami-123456",
+		},
 	}
-	require.NoError(parentHost.Insert())
-
-	d := distro.Distro{Id: "distro", Provider: evergreen.ProviderNameMock, ContainerPool: "test-pool"}
 	require.NoError(d.Insert())
-
 	myTask := task.Task{
 		Id:      "task-id",
 		BuildId: "build-id",
 	}
 	require.NoError(myTask.Insert())
-	c := apimodels.CreateHost{
-		CloudProvider: apimodels.ProviderDocker,
+
+	h, err := handler.sc.MakeIntentHost("task-id", "", "", apimodels.CreateHost{
+		Distro:        "archlinux-test",
+		CloudProvider: "docker",
 		NumHosts:      "1",
-		Distro:        "distro",
-		Image:         "my-image",
-		Command:       "echo hello",
-	}
-	h, err := handler.sc.MakeIntentHost("task-id", "", "", c)
-	assert.NotEmpty(h.ParentID)
+		Scope:         "task",
+	})
 	require.NoError(err)
+	h.ParentID = "parent"
 	require.NoError(h.Insert())
+
+	parent := host.Host{
+		Id:            "parent",
+		HasContainers: true,
+	}
+	require.NoError(parent.Insert())
 
 	url := fmt.Sprintf("/hosts/%s/logs/output", h.Id)
 
@@ -404,41 +379,35 @@ func TestGetDockerStatus(t *testing.T) {
 		sc: &data.MockConnector{},
 	}
 
-	parent := distro.Distro{Id: "parent-distro", PoolSize: 3, Provider: evergreen.ProviderNameMock}
-	require.NoError(parent.Insert())
-
-	pool := &evergreen.ContainerPool{Distro: "parent-distro", Id: "test-pool", MaxContainers: 2}
-	parentHost := &host.Host{
-		Id:                    "host1",
-		Host:                  "host",
-		User:                  "user",
-		Distro:                distro.Distro{Id: "parent-distro"},
-		Status:                evergreen.HostRunning,
-		HasContainers:         true,
-		ContainerPoolSettings: pool,
+	d := distro.Distro{
+		Id: "archlinux-test",
+		ProviderSettings: &map[string]interface{}{
+			"ami": "ami-123456",
+		},
 	}
-	require.NoError(parentHost.Insert())
-
-	d := distro.Distro{Id: "distro", Provider: evergreen.ProviderNameMock, ContainerPool: "test-pool"}
 	require.NoError(d.Insert())
-
 	myTask := task.Task{
 		Id:      "task-id",
 		BuildId: "build-id",
 	}
 	require.NoError(myTask.Insert())
-	c := apimodels.CreateHost{
-		CloudProvider: apimodels.ProviderDocker,
+
+	h, err := handler.sc.MakeIntentHost("task-id", "", "", apimodels.CreateHost{
+		Distro:        "archlinux-test",
+		CloudProvider: "docker",
 		NumHosts:      "1",
-		Distro:        "distro",
-		Image:         "my-image",
-		Command:       "echo hello",
-	}
-	h, err := handler.sc.MakeIntentHost("task-id", "", "", c)
-	assert.NotEmpty(h.ParentID)
-	h.ExternalIdentifier = "my-container"
+		Scope:         "task",
+	})
 	require.NoError(err)
+	h.ParentID = "parent"
+	h.ExternalIdentifier = "my-container"
 	require.NoError(h.Insert())
+
+	parent := host.Host{
+		Id:            "parent",
+		HasContainers: true,
+	}
+	require.NoError(parent.Insert())
 
 	url := fmt.Sprintf("/hosts/%s/logs/status", h.Id)
 	options := map[string]string{"host_id": h.Id}

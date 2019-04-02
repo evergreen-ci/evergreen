@@ -2,10 +2,26 @@ package cloud
 
 import (
 	"context"
+	"time"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/host"
 )
+
+// HostOptions is a struct of options that are commonly passed around when creating a
+// new cloud host.
+type HostOptions struct {
+	ProvisionOptions   *host.ProvisionOptions
+	ExpirationDuration *time.Duration
+	UserName           string
+	UserHost           bool
+
+	HasContainers         bool
+	ParentID              string
+	ContainerPoolSettings *evergreen.ContainerPool
+	SpawnOptions          host.SpawnOptions
+	DockerOptions         host.DockerOptions
+}
 
 //CloudHost is a provider-agnostic host object that delegates methods
 //like status checks, ssh options, DNS name checks, termination, etc. to the

@@ -2134,11 +2134,11 @@ func TestFindAllRunningParentsByContainerPool(t *testing.T) {
 	assert.NoError(host2.Insert())
 	assert.NoError(host3.Insert())
 
-	hosts, err := findAllRunningParentsByContainerPool("test-pool")
+	hosts, err := FindAllRunningParentsByContainerPool("test-pool")
 	assert.NoError(err)
 	assert.Equal([]Host{*host1}, hosts)
 
-	hosts, err = findAllRunningParentsByContainerPool("missing-test-pool")
+	hosts, err = FindAllRunningParentsByContainerPool("missing-test-pool")
 	assert.NoError(err)
 	assert.Empty(hosts)
 
@@ -2464,7 +2464,7 @@ func TestFindTerminatedHostsRunningTasksQuery(t *testing.T) {
 	})
 }
 
-func TestCountAndFindUphostParents(t *testing.T) {
+func TestCountUphostParents(t *testing.T) {
 	assert := assert.New(t)
 	assert.NoError(db.ClearCollections(Collection))
 
@@ -2510,13 +2510,9 @@ func TestCountAndFindUphostParents(t *testing.T) {
 	assert.NoError(h4.Insert())
 	assert.NoError(h5.Insert())
 
-	numUphostParents, err := countUphostParentsByContainerPool("test-pool")
+	numUphostParents, err := CountUphostParentsByContainerPool("test-pool")
 	assert.NoError(err)
 	assert.Equal(2, numUphostParents)
-
-	uphostParents, err := findUphostParentsByContainerPool("test-pool")
-	assert.NoError(err)
-	assert.Equal(2, len(uphostParents))
 }
 
 func TestRemoveStaleInitializing(t *testing.T) {
@@ -2701,299 +2697,4 @@ func TestStaleRunningTasksAgg(t *testing.T) {
 	assert.Len(tasks, 1)
 	assert.Equal(staleTask.Id, tasks[0].Id)
 	assert.Equal(staleTask.Execution, tasks[0].Execution)
-}
-
-func TestNumNewParentsNeeded(t *testing.T) {
-	assert := assert.New(t)
-	assert.NoError(db.ClearCollections("hosts", "distro", "tasks"))
-
-	d := distro.Distro{Id: "distro", PoolSize: 3, Provider: evergreen.ProviderNameMock,
-		ContainerPool: "test-pool"}
-	pool := &evergreen.ContainerPool{Distro: "distro", Id: "test-pool", MaxContainers: 2}
-	host1 := &Host{
-		Id:                    "host1",
-		Host:                  "host",
-		User:                  "user",
-		Distro:                distro.Distro{Id: "parent-distro"},
-		Status:                evergreen.HostRunning,
-		HasContainers:         true,
-		ContainerPoolSettings: pool,
-	}
-	host2 := &Host{
-		Id:       "host2",
-		Distro:   d,
-		Status:   evergreen.HostRunning,
-		ParentID: "host1",
-	}
-	host3 := &Host{
-		Id:       "host3",
-		Distro:   d,
-		Status:   evergreen.HostRunning,
-		ParentID: "host1",
-	}
-	host4 := &Host{
-		Id:                    "host4",
-		Distro:                d,
-		Status:                evergreen.HostUninitialized,
-		HasContainers:         true,
-		ContainerPoolSettings: pool,
-	}
-
-	assert.NoError(host1.Insert())
-	assert.NoError(host2.Insert())
-	assert.NoError(host3.Insert())
-	assert.NoError(host4.Insert())
-
-	currentParents, err := findAllRunningParentsByContainerPool(d.ContainerPool)
-	assert.NoError(err)
-	assert.Len(currentParents, 1)
-	numUphostParents, err := countUphostParentsByContainerPool("test-pool")
-	assert.NoError(err)
-	assert.Equal(2, numUphostParents)
-	existingContainers, err := HostGroup(currentParents).FindRunningContainersOnParents()
-	assert.NoError(err)
-	assert.Len(existingContainers, 2)
-
-	parentsParams := newParentsNeededParams{
-		numUphostParents:      numUphostParents,
-		numContainersNeeded:   4,
-		numExistingContainers: len(existingContainers),
-		maxContainers:         pool.MaxContainers,
-	}
-	num := numNewParentsNeeded(parentsParams)
-	assert.Equal(1, num)
-}
-
-func TestNumNewParentsNeeded2(t *testing.T) {
-	assert := assert.New(t)
-	assert.NoError(db.ClearCollections("hosts", "distro", "tasks"))
-
-	d := distro.Distro{Id: "distro", PoolSize: 3, Provider: evergreen.ProviderNameMock,
-		ContainerPool: "test-pool"}
-	pool := &evergreen.ContainerPool{Distro: "parent-distro", Id: "test-pool", MaxContainers: 3}
-
-	host1 := &Host{
-		Id:                    "host1",
-		Host:                  "host",
-		User:                  "user",
-		Distro:                distro.Distro{Id: "parent-distro"},
-		Status:                evergreen.HostRunning,
-		HasContainers:         true,
-		ContainerPoolSettings: pool,
-	}
-	host2 := &Host{
-		Id:       "host2",
-		Distro:   d,
-		Status:   evergreen.HostRunning,
-		ParentID: "host1",
-	}
-	host3 := &Host{
-		Id:       "host3",
-		Distro:   d,
-		Status:   evergreen.HostTerminated,
-		ParentID: "host1",
-	}
-
-	assert.NoError(host1.Insert())
-	assert.NoError(host2.Insert())
-	assert.NoError(host3.Insert())
-
-	currentParents, err := findAllRunningParentsByContainerPool(d.ContainerPool)
-	assert.NoError(err)
-	numUphostParents, err := countUphostParentsByContainerPool("test-pool")
-	assert.NoError(err)
-	existingContainers, err := HostGroup(currentParents).FindRunningContainersOnParents()
-	assert.NoError(err)
-
-	parentsParams := newParentsNeededParams{
-		numUphostParents:      numUphostParents,
-		numContainersNeeded:   1,
-		numExistingContainers: len(existingContainers),
-		maxContainers:         pool.MaxContainers,
-	}
-	num := numNewParentsNeeded(parentsParams)
-	assert.Equal(0, num)
-}
-
-func TestFindAvailableParent(t *testing.T) {
-	assert := assert.New(t)
-	assert.NoError(db.ClearCollections("hosts", "distro", "tasks"))
-
-	d := distro.Distro{Id: "distro", PoolSize: 3, Provider: evergreen.ProviderNameMock,
-		ContainerPool: "test-pool"}
-	pool := &evergreen.ContainerPool{Distro: "parent-distro", Id: "test-pool", MaxContainers: 2}
-	durationOne := 20 * time.Minute
-	durationTwo := 30 * time.Minute
-
-	host1 := &Host{
-		Id:                    "host1",
-		Host:                  "host",
-		User:                  "user",
-		Distro:                distro.Distro{Id: "parent-distro"},
-		Status:                evergreen.HostRunning,
-		HasContainers:         true,
-		ContainerPoolSettings: pool,
-	}
-	host2 := &Host{
-		Id:                    "host2",
-		Distro:                distro.Distro{Id: "parent-distro"},
-		Status:                evergreen.HostRunning,
-		HasContainers:         true,
-		ContainerPoolSettings: pool,
-	}
-	host3 := &Host{
-		Id:          "host3",
-		Distro:      d,
-		Status:      evergreen.HostRunning,
-		ParentID:    "host1",
-		RunningTask: "task1",
-	}
-	host4 := &Host{
-		Id:          "host4",
-		Distro:      d,
-		Status:      evergreen.HostRunning,
-		ParentID:    "host2",
-		RunningTask: "task2",
-	}
-	task1 := task.Task{
-		Id: "task1",
-		DurationPrediction: util.CachedDurationValue{
-			Value: durationOne,
-		},
-		BuildVariant: "bv1",
-		StartTime:    time.Now(),
-	}
-	task2 := task.Task{
-		Id: "task2",
-		DurationPrediction: util.CachedDurationValue{
-			Value: durationTwo,
-		},
-		BuildVariant: "bv1",
-		StartTime:    time.Now(),
-	}
-	assert.NoError(d.Insert())
-	assert.NoError(host1.Insert())
-	assert.NoError(host2.Insert())
-	assert.NoError(host3.Insert())
-	assert.NoError(host4.Insert())
-	assert.NoError(task1.Insert())
-	assert.NoError(task2.Insert())
-
-	availableParent, err := GetNumContainersOnParents(d)
-	assert.NoError(err)
-
-	assert.Equal(2, len(availableParent))
-}
-
-func TestFindNoAvailableParent(t *testing.T) {
-	assert := assert.New(t)
-	assert.NoError(db.ClearCollections("hosts", "distro", "tasks"))
-
-	d := distro.Distro{Id: "distro", PoolSize: 3, Provider: evergreen.ProviderNameMock}
-	pool := &evergreen.ContainerPool{Distro: "distro", Id: "test-pool", MaxContainers: 1}
-	durationOne := 20 * time.Minute
-	durationTwo := 30 * time.Minute
-
-	host1 := &Host{
-		Id:                    "host1",
-		Host:                  "host",
-		User:                  "user",
-		Distro:                distro.Distro{Id: "distro"},
-		Status:                evergreen.HostRunning,
-		HasContainers:         true,
-		ContainerPoolSettings: pool,
-	}
-	host2 := &Host{
-		Id:                    "host2",
-		Distro:                distro.Distro{Id: "distro"},
-		Status:                evergreen.HostRunning,
-		HasContainers:         true,
-		ContainerPoolSettings: pool,
-	}
-	host3 := &Host{
-		Id:          "host3",
-		Distro:      distro.Distro{Id: "distro", ContainerPool: "test-pool"},
-		Status:      evergreen.HostRunning,
-		ParentID:    "host1",
-		RunningTask: "task1",
-	}
-	host4 := &Host{
-		Id:          "host4",
-		Distro:      distro.Distro{Id: "distro", ContainerPool: "test-pool"},
-		Status:      evergreen.HostRunning,
-		ParentID:    "host2",
-		RunningTask: "task2",
-	}
-	task1 := task.Task{
-		Id: "task1",
-		DurationPrediction: util.CachedDurationValue{
-			Value: durationOne,
-		}, BuildVariant: "bv1",
-		StartTime: time.Now(),
-	}
-	task2 := task.Task{
-		Id: "task2",
-		DurationPrediction: util.CachedDurationValue{
-			Value: durationTwo,
-		}, BuildVariant: "bv1",
-		StartTime: time.Now(),
-	}
-	assert.NoError(d.Insert())
-	assert.NoError(host1.Insert())
-	assert.NoError(host2.Insert())
-	assert.NoError(host3.Insert())
-	assert.NoError(host4.Insert())
-	assert.NoError(task1.Insert())
-	assert.NoError(task2.Insert())
-
-	availableParent, err := GetNumContainersOnParents(d)
-	assert.NoError(err)
-	assert.Equal(0, len(availableParent))
-}
-
-func TestGetNumNewParentsAndHostsToSpawn(t *testing.T) {
-	assert := assert.New(t)
-	assert.NoError(db.ClearCollections("hosts", "distro", "tasks"))
-
-	d := distro.Distro{Id: "distro", PoolSize: 3, Provider: evergreen.ProviderNameMock}
-	pool := &evergreen.ContainerPool{Distro: "distro", Id: "test-pool", MaxContainers: 1}
-
-	host1 := &Host{
-		Id:                    "host1",
-		Host:                  "host",
-		User:                  "user",
-		Distro:                distro.Distro{Id: "distro"},
-		Status:                evergreen.HostRunning,
-		HasContainers:         true,
-		ContainerPoolSettings: pool,
-	}
-	host2 := &Host{
-		Id:                    "host2",
-		Distro:                distro.Distro{Id: "distro"},
-		Status:                evergreen.HostRunning,
-		HasContainers:         true,
-		ContainerPoolSettings: pool,
-	}
-	host3 := &Host{
-		Id:          "host3",
-		Distro:      distro.Distro{Id: "distro", ContainerPool: "test-pool"},
-		Status:      evergreen.HostRunning,
-		ParentID:    "host1",
-		RunningTask: "task1",
-	}
-	assert.NoError(d.Insert())
-	assert.NoError(host1.Insert())
-	assert.NoError(host2.Insert())
-	assert.NoError(host3.Insert())
-
-	parents, hosts, err := getNumNewParentsAndHostsToSpawn(pool, 3, false)
-	assert.NoError(err)
-	assert.Equal(1, parents) // need two parents, but can only spawn 1
-	assert.Equal(2, hosts)
-
-	parents, hosts, err = getNumNewParentsAndHostsToSpawn(pool, 3, true)
-	assert.NoError(err)
-	assert.Equal(2, parents)
-	assert.Equal(3, hosts)
-
 }

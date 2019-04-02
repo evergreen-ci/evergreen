@@ -158,7 +158,7 @@ func (j *hostTerminationJob) Run(ctx context.Context) {
 	// terminate containers in DB if parent already terminated
 	if j.host.ParentID != "" {
 		var parent *host.Host
-		parent, err = j.host.GetParent()
+		parent, err = host.FindOneId(j.host.ParentID)
 		if err != nil {
 			j.AddError(errors.Wrapf(err, "problem finding parent of '%s'", j.host.Id))
 			return
