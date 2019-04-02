@@ -18,6 +18,8 @@ import (
 	"github.com/urfave/cli"
 )
 
+const defaultAgentStatusPort = 2285
+
 func Agent() cli.Command {
 	const (
 		logPrefixFlagName  = "log_prefix"
@@ -30,7 +32,7 @@ func Agent() cli.Command {
 		Name:  "agent",
 		Usage: "run an evergreen agent",
 		Subcommands: []cli.Command{
-			agentRunner(),
+			agentMonitor(),
 		},
 		Flags: []cli.Flag{
 			cli.StringFlag{
@@ -64,7 +66,7 @@ func Agent() cli.Command {
 			},
 			cli.IntFlag{
 				Name:  statusPortFlagName,
-				Value: 2285,
+				Value: defaultAgentStatusPort,
 				Usage: "port to run the status server",
 			},
 			cli.BoolFlag{

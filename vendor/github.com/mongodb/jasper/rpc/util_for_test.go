@@ -99,6 +99,6 @@ func getClient(ctx context.Context, addr string) (jasper.Manager, error) {
 		conn.Close()
 	}()
 
-	return NewRPCManager(conn), nil
+	return NewClient(conn), nil
 
 }

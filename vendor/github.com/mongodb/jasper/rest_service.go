@@ -91,6 +91,27 @@ func (s *Service) App(ctx context.Context) *gimlet.APIApp {
 	return app
 }
 
+func (s *Service) SetDisableCachePruning(v bool) {
+	s.cacheMutex.Lock()
+	defer s.cacheMutex.Unlock()
+
+	s.cacheOpts.Disabled = v
+}
+
+func (s *Service) SetCacheMaxSize(size int) {
+	s.cacheMutex.Lock()
+	defer s.cacheMutex.Unlock()
+
+	s.cacheOpts.MaxSize = size
+}
+
+func (s *Service) SetPruneDelay(dur time.Duration) {
+	s.cacheMutex.Lock()
+	defer s.cacheMutex.Unlock()
+
+	s.cacheOpts.PruneDelay = dur
+}
+
 func (s *Service) backgroundPrune(ctx context.Context) {
 	defer func() {
 		err := recovery.HandlePanicWithError(recover(), nil, "background pruning")

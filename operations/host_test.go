@@ -4,7 +4,6 @@ import (
 	"context"
 	"io/ioutil"
 	"os"
-	"path/filepath"
 	"testing"
 	"time"
 
@@ -113,32 +112,4 @@ func TestHostTeardownScript(t *testing.T) {
 	err = runHostTeardownScript(ctx)
 	assert.Error(err)
 
-}
-
-func TestHostRunner(t *testing.T) {
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancel()
-
-	dir, err := ioutil.TempDir("", "")
-	require.NoError(t, err)
-	defer os.RemoveAll(dir)
-
-	args := &runnerArgs{
-		clientURL:  "www.example.com",
-		clientPath: filepath.Join(dir, "foo"),
-	}
-
-	require.NoError(t, args.fetchClient(ctx))
-
-	for {
-		select {
-		case <-ctx.Done():
-			assert.Fail(t, "context timed out before expected file was downloaded")
-			return
-		default:
-			if _, err = os.Stat(args.clientPath); err == nil {
-				return
-			}
-		}
-	}
 }

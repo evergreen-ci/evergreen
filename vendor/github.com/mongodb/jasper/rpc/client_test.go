@@ -19,7 +19,7 @@ import (
 
 func TestRPCManager(t *testing.T) {
 	assert.NotPanics(t, func() {
-		NewRPCManager(nil)
+		NewClient(nil)
 	})
 
 	ctx, cancel := context.WithCancel(context.Background())

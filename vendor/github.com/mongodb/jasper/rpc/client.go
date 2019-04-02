@@ -12,14 +12,27 @@ import (
 	grpc "google.golang.org/grpc"
 )
 
+// Client provides an interface access all functionality from the Jasper RPC
+// service. It includes an interface to interact with Jasper Managers over RPC.
+// to access RPC-specific functionality.
+type Client interface {
+	jasper.Manager
+	Status(context.Context) (string, bool, error)
+	ConfigureCache(context.Context, jasper.CacheOptions) error
+	DownloadFile(context.Context, jasper.DownloadInfo) error
+	DownloadMongoDB(context.Context, jasper.MongoDBDownloadOptions) error
+	GetBuildloggerURLs(ctx context.Context, name string) ([]string, error)
+	SignalEvent(ctx context.Context, name string) error
+}
+
 type rpcManager struct {
 	client internal.JasperProcessManagerClient
 }
 
 // TODO provide some better way of constructing this object
 
-// NewRPCManager is a constructor for a rpcManager.
-func NewRPCManager(cc *grpc.ClientConn) jasper.Manager {
+// NewClient is a constructor for an RPC client.
+func NewClient(cc *grpc.ClientConn) Client {
 	return &rpcManager{
 		client: internal.NewJasperProcessManagerClient(cc),
 	}
@@ -105,6 +118,70 @@ func (m *rpcManager) Clear(ctx context.Context) {
 
 func (m *rpcManager) Close(ctx context.Context) error {
 	resp, err := m.client.Close(ctx, &empty.Empty{})
+	if err != nil {
+		return errors.WithStack(err)
+	}
+	if resp.Success {
+		return nil
+	}
+
+	return errors.New(resp.Text)
+}
+
+func (m *rpcManager) Status(ctx context.Context) (string, bool, error) {
+	resp, err := m.client.Status(ctx, &empty.Empty{})
+	if err != nil {
+		return "", false, errors.WithStack(err)
+	}
+	return resp.HostId, resp.Active, nil
+}
+
+func (m *rpcManager) ConfigureCache(ctx context.Context, opts jasper.CacheOptions) error {
+	resp, err := m.client.ConfigureCache(ctx, internal.ConvertCacheOptions(opts))
+	if err != nil {
+		return errors.WithStack(err)
+	}
+	if resp.Success {
+		return nil
+	}
+
+	return errors.New(resp.Text)
+}
+
+func (m *rpcManager) DownloadFile(ctx context.Context, info jasper.DownloadInfo) error {
+	resp, err := m.client.DownloadFile(ctx, internal.ConvertDownloadInfo(info))
+	if err != nil {
+		return errors.WithStack(err)
+	}
+	if resp.Success {
+		return nil
+	}
+
+	return errors.New(resp.Text)
+}
+
+func (m *rpcManager) DownloadMongoDB(ctx context.Context, opts jasper.MongoDBDownloadOptions) error {
+	resp, err := m.client.DownloadMongoDB(ctx, internal.ConvertMongoDBDownloadOptions(opts))
+	if err != nil {
+		return errors.WithStack(err)
+	}
+	if resp.Success {
+		return nil
+	}
+
+	return errors.New(resp.Text)
+}
+
+func (m *rpcManager) GetBuildloggerURLs(ctx context.Context, name string) ([]string, error) {
+	resp, err := m.client.GetBuildloggerURLs(ctx, &internal.JasperProcessID{Value: name})
+	if err != nil {
+		return nil, errors.WithStack(err)
+	}
+	return resp.Urls, nil
+}
+
+func (m *rpcManager) SignalEvent(ctx context.Context, name string) error {
+	resp, err := m.client.SignalEvent(ctx, &internal.EventName{Value: name})
 	if err != nil {
 		return errors.WithStack(err)
 	}
