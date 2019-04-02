@@ -329,6 +329,11 @@
                            aria-label="origin">
                   Origin
                 </md-switch>
+                <md-switch ng-model="rangeModel.rejectMode"
+                           ng-click="$event.stopPropagation()"
+                           aria-label="origin">
+                  Reject
+                </md-switch>
               </md-fab-actions>
             </md-toolbar>
           </md-fab-toolbar>
