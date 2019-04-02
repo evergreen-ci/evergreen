@@ -953,9 +953,10 @@ func (h *Host) GetContainers() ([]Host, error) {
 	if !h.HasContainers {
 		return nil, errors.New("Host does not host containers")
 	}
-	query := db.Query(bson.M{
-		ParentIDKey: h.Id,
-	})
+	query := db.Query(bson.M{"$or": []bson.M{
+		{ParentIDKey: h.Id},
+		{ParentIDKey: h.Tag},
+	}})
 	hosts, err := Find(query)
 	if err != nil {
 		return nil, errors.Wrap(err, "Error finding containers")

@@ -89,6 +89,11 @@ func GenerateContainerHostIntents(d distro.Distro, newContainersNeeded int, host
 			containersToCreate = newContainersNeeded
 		}
 		for i := 0; i < containersToCreate; i++ {
+			grip.Info(message.Fields{
+				"distro":  d.Id,
+				"parent":  parent.ParentHost.Id,
+				"message": "container host intent",
+			})
 			hostOptions.ParentID = parent.ParentHost.Id
 			containerHostIntents = append(containerHostIntents, *NewIntent(d, d.GenerateName(), d.Provider, hostOptions))
 		}
