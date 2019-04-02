@@ -336,6 +336,7 @@ func (m *dockerManager) GetContainerImage(ctx context.Context, parent *host.Host
 	grip.Info(message.Fields{
 		"operation": "EnsureImageDownloaded",
 		"details":   "total",
+		"image":     image,
 		"duration":  time.Since(start),
 		"span":      time.Since(start).String(),
 	})

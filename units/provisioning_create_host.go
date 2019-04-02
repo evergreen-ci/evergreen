@@ -222,7 +222,12 @@ func (j *createHostJob) createHost(ctx context.Context) error {
 			return nil
 		}
 	}
-
+	grip.Info(message.Fields{
+		"message": "image is ready",
+		"job":     j.ID(),
+		"host":    j.HostID,
+		"image":   j.host.DockerOptions.Image,
+	})
 	if _, err = cloudManager.SpawnHost(ctx, j.host); err != nil {
 		return errors.Wrapf(err, "error spawning host %s", j.host.Id)
 	}
@@ -306,14 +311,7 @@ func (j *createHostJob) isImageBuilt(ctx context.Context) (bool, error) {
 		return false, errors.Wrapf(err, "problem getting parent for '%s'", j.host.Id)
 	}
 	if parent == nil {
-		grip.Error(message.Fields{
-			"error":     err.Error(),
-			"message":   "parent is empty",
-			"host":      j.host.Id,
-			"parent":    j.host.ParentID,
-			"operation": "spawning new parents",
-		})
-		return false, errors.Wrapf(err, "problem getting parent for '%s'", j.host.Id)
+		return false, errors.Wrapf(err, "parent for '%s' does not exist", j.host.Id)
 	}
 
 	if parent.Status == evergreen.HostUninitialized || parent.Status == evergreen.HostBuilding {

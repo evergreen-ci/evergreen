@@ -329,7 +329,10 @@ func (c *dockerClientImpl) CreateContainer(ctx context.Context, parentHost, cont
 
 	// Extract image name from url
 	baseName := path.Base(containerHost.DockerOptions.Image)
-	provisionedImage := fmt.Sprintf(provisionedImageTag, strings.TrimSuffix(baseName, filepath.Ext(baseName)))
+	provisionedImage := strings.TrimSuffix(baseName, filepath.Ext(baseName))
+	if !containerHost.DockerOptions.SkipImageBuild {
+		provisionedImage = fmt.Sprintf(provisionedImageTag, provisionedImage)
+	}
 
 	agentCmdParts := []string{containerHost.DockerOptions.Command}
 	if containerHost.DockerOptions.Command == "" {
