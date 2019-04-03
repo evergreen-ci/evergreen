@@ -2,6 +2,7 @@ package patch
 
 import (
 	"testing"
+	"time"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
@@ -118,6 +119,9 @@ func (s *CliIntentSuite) TestFindIntentSpecifically() {
 	found, err := FindIntent(intent.ID(), intent.GetType())
 	s.NoError(err)
 	s.NotNil(found)
+
+	found.(*cliIntent).ProcessedAt = time.Time{}
+	intent.(*cliIntent).ProcessedAt = time.Time{}
 
 	s.Equal(intent, found)
 	s.Equal(intent.NewPatch(), found.NewPatch())

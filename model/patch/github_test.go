@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
@@ -131,6 +132,9 @@ func (s *GithubSuite) TestFindIntentSpecifically() {
 	found, err := FindIntent(intent.ID(), intent.GetType())
 	s.NoError(err)
 	s.NotNil(found)
+
+	found.(*githubIntent).ProcessedAt = time.Time{}
+	intent.(*githubIntent).ProcessedAt = time.Time{}
 
 	s.Equal(intent, found)
 	s.Equal(intent.NewPatch().Description, found.NewPatch().Description)

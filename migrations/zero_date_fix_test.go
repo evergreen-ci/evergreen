@@ -19,7 +19,7 @@ import (
 	adb "github.com/mongodb/anser/db"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
-	"go.mongodb.org/mongo-driver/bson/primitive"
+	mgobson "gopkg.in/mgo.v2/bson"
 )
 
 type fixZeroDateSuite struct {
@@ -95,12 +95,12 @@ func (s *fixZeroDateSuite) SetupTest() {
 
 	s.patches = []patch.Patch{
 		{
-			Id:         primitive.NewObjectID(),
+			Id:         mgobson.NewObjectId(),
 			Version:    "no-errors",
 			CreateTime: s.nowTime,
 		},
 		{
-			Id:         primitive.NewObjectID(),
+			Id:         mgobson.NewObjectId(),
 			Version:    "v1",
 			CreateTime: zeroTime,
 		},

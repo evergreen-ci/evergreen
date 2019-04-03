@@ -21,6 +21,7 @@ import (
 	. "github.com/smartystreets/goconvey/convey"
 	"github.com/stretchr/testify/assert"
 	"go.mongodb.org/mongo-driver/bson/primitive"
+	mgobson "gopkg.in/mgo.v2/bson"
 	yaml "gopkg.in/yaml.v2"
 )
 
@@ -93,7 +94,7 @@ func resetPatchSetup(t *testing.T, testPath string) *patch.Patch {
 
 	// this patch adds a new task to the existing build
 	configPatch := &patch.Patch{
-		Id:            primitive.NewObjectID(),
+		Id:            mgobson.NewObjectId(),
 		Project:       patchedProject,
 		Githash:       patchedRevision,
 		Tasks:         []string{"taskTwo", "taskOne"},
@@ -140,7 +141,7 @@ func resetProjectlessPatchSetup(t *testing.T) *patch.Patch {
 
 	// this patch adds a new task to the existing build
 	configPatch := &patch.Patch{
-		Id:            primitive.NewObjectID(),
+		Id:            mgobson.NewObjectId(),
 		Project:       patchedProject,
 		BuildVariants: []string{"linux-64-duroff"},
 		Githash:       patchedRevision,
