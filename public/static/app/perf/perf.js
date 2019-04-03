@@ -663,7 +663,7 @@ mciModule.controller('PerfController', function PerfController(
               // Default filtered to all.
               $scope.filteredTrendSamples = $scope.allTrendSamples;
               if(rejects.length) {
-                let filtered = _.reject(resp.data, doc => _.contains(rejects, doc.task_id));
+                const filtered = _.reject(resp.data, doc => _.contains(rejects, doc.task_id));
                 if (rejects.length != filtered.length) {
                   $scope.filteredTrendSamples = new TrendSamples(filtered);
                 }
