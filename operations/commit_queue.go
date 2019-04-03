@@ -2,6 +2,7 @@ package operations
 
 import (
 	"context"
+	"net/http"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/rest/client"
@@ -26,6 +27,7 @@ func CommitQueue() cli.Command {
 			listQueue(),
 			deleteItem(),
 			mergeCommand(),
+			setModuleCommand(),
 		},
 	}
 }
@@ -150,6 +152,44 @@ func mergeCommand() cli.Command {
 	}
 }
 
+func setModuleCommand() cli.Command {
+	return cli.Command{
+		Name:  "set-module",
+		Usage: "update or add module to an existing merge patch",
+		Flags: mergeFlagSlices(addLargeFlag(), addPatchIDFlag(), addModuleFlag(), addYesFlag(
+			cli.StringFlag{
+				Name:  joinFlagNames(refFlagName, "r"),
+				Usage: "merge branch `REF`",
+				Value: "HEAD",
+			},
+		)),
+		Before: mergeBeforeFuncs(
+			requirePatchIDFlag,
+			requireModuleFlag,
+		),
+		Action: func(c *cli.Context) error {
+			params := moduleParams{
+				patchID:     c.String(patchIDFlagName),
+				module:      c.String(moduleFlagName),
+				ref:         c.String(refFlagName),
+				large:       c.Bool(largeFlagName),
+				skipConfirm: c.Bool(yesFlagName),
+			}
+
+			conf, err := NewClientSettings(c.Parent().String(confFlagName))
+			if err != nil {
+				return errors.Wrap(err, "problem loading configuration")
+			}
+			ac, rc, err := conf.getLegacyClients()
+			if err != nil {
+				return errors.Wrap(err, "problem accessing evergreen service")
+			}
+
+			return errors.WithStack(params.addModule(ac, rc))
+		},
+	}
+}
+
 func listCommitQueue(ctx context.Context, client client.Communicator, projectID string) error {
 	cq, err := client.GetCommitQueue(ctx, projectID)
 	if err != nil {
@@ -200,7 +240,7 @@ func (p *mergeParams) mergeBranch(ctx context.Context, conf *ClientSettings, cli
 	}
 
 	if !p.pause {
-		position, err := client.EnqueueItem(ctx, p.id)
+		position, err := client.EnqueueItem(ctx, p.projectID, p.id)
 		if err != nil {
 			return err
 		}
@@ -218,12 +258,20 @@ func (p *mergeParams) uploadMergePatch(conf *ClientSettings, ac *legacyClient) e
 		Large:       p.large,
 		Alias:       evergreen.CommitQueueAlias,
 	}
-	projectRef, err := patchParams.ValidateProjectID(conf, ac)
-	if err != nil {
+
+	if err := patchParams.loadProject(conf); err != nil {
 		return errors.Wrap(err, "invalid project ID")
 	}
 
-	diffData, err := getFeaturePatchInfo(projectRef.Branch, p.ref)
+	ref, err := ac.GetProjectRef(patchParams.Project)
+	if err != nil {
+		if apiErr, ok := err.(APIError); ok && apiErr.code == http.StatusNotFound {
+			err = errors.WithStack(err)
+		}
+		return errors.Wrap(err, "can't get project ref")
+	}
+
+	diffData, err := getFeaturePatchInfo(ref.Branch, p.ref)
 	if err != nil {
 		return errors.Wrap(err, "can't generate patches")
 	}
@@ -243,6 +291,67 @@ func (p *mergeParams) uploadMergePatch(conf *ClientSettings, ac *legacyClient) e
 	p.id = patch.Id.Hex()
 
 	return nil
+}
+
+type moduleParams struct {
+	patchID     string
+	module      string
+	ref         string
+	large       bool
+	skipConfirm bool
+}
+
+func (p *moduleParams) addModule(ac *legacyClient, rc *legacyClient) error {
+	diffData, err := p.getModulePatch(rc)
+	if err != nil {
+		return errors.Wrap(err, "can't get patch")
+	}
+
+	if len(diffData.fullPatch) == 0 {
+		if p.skipConfirm {
+			return errors.New("empty patch aborted")
+		}
+		if !confirm("Patch submission is empty. Continue?(y/n)", true) {
+			return errors.New("empty patch aborted")
+		}
+	}
+
+	if err = validatePatchSize(diffData, p.large); err != nil {
+		return err
+	}
+
+	if !p.skipConfirm {
+		grip.InfoWhen(diffData.patchSummary != "", diffData.patchSummary)
+		if !confirm("This is a summary of the patch to be submitted. Continue? (y/n):", true) {
+			return nil
+		}
+	}
+
+	err = ac.UpdatePatchModule(p.patchID, p.module, diffData.fullPatch, diffData.base)
+	if err != nil {
+		return errors.WithStack(err)
+	}
+
+	return nil
+}
+
+func (p *moduleParams) getModulePatch(rc *legacyClient) (*localDiff, error) {
+	proj, err := rc.GetPatchedConfig(p.patchID)
+	if err != nil {
+		return nil, err
+	}
+
+	moduleBranch, err := getModuleBranch(p.module, proj)
+	if err != nil {
+		return nil, errors.Wrapf(err, "could not set specified module: '%s'", p.module)
+	}
+
+	diffData, err := getFeaturePatchInfo(moduleBranch, p.ref)
+	if err != nil {
+		return nil, errors.Wrap(err, "can't get patch data")
+	}
+
+	return diffData, nil
 }
 
 func getFeaturePatchInfo(projectBranch, ref string) (*localDiff, error) {

@@ -2,7 +2,6 @@ package data
 
 import (
 	"context"
-	"path/filepath"
 	"testing"
 
 	"github.com/evergreen-ci/evergreen"
@@ -26,7 +25,8 @@ func TestUpdateConnector(t *testing.T) {
 	s.setup = func() {
 		ctx, cancel := context.WithCancel(context.Background())
 		s.cancel = cancel
-		s.NoError(evergreen.GetEnvironment().Configure(ctx, filepath.Join(evergreen.FindEvergreenHome(), testutil.TestDir, testutil.TestSettings), nil))
+
+		testutil.SetGlobalEnvironment(ctx, t)
 
 		s.NoError(db.ClearCollections(evergreen.ConfigCollection))
 	}
@@ -52,7 +52,6 @@ func TestMockUpdateConnector(t *testing.T) {
 }
 
 func (s *cliUpdateConnectorSuite) SetupSuite() {
-	evergreen.ResetEnvironment()
 	s.setup()
 }
 func (s *cliUpdateConnectorSuite) TearDownSuite() {

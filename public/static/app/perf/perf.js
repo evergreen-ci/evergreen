@@ -172,6 +172,10 @@ mciModule.controller('PerfController', function PerfController(
     name: 'Origin',
     originMode: Settings.perf.trendchart.originMode.enabled,
   }
+  $scope.rejectModel = {
+    name: 'Reject',
+    rejectMode: Settings.perf.trendchart.rejectMode.enabled,
+  };
 
   $scope.toolBar = {
     isOpen: false
@@ -190,6 +194,13 @@ mciModule.controller('PerfController', function PerfController(
     Settings.perf.trendchart.originMode.enabled = newVal
     $scope.redrawGraphs()
   })
+
+  $scope.$watch('rejectModel.rejectMode', function(newVal, oldVal) {
+    // Force comparison by value
+    if (oldVal === newVal) return;
+    Settings.perf.trendchart.rejectMode.enabled = newVal;
+    $scope.redrawGraphs();
+  });
 
   $scope.$watch('threadLevelsRadio.value', function(newVal, oldVal) {
     // Force comparison by value
@@ -216,7 +227,7 @@ mciModule.controller('PerfController', function PerfController(
       var testNames = $scope.perfSample.testNames()
 
       for(var i=0;i<testNames.length;i++){
-        var s = $scope.trendSamples.sampleInSeriesAtCommit(
+        var s = $scope.allTrendSamples.sampleInSeriesAtCommit(
           testNames[i], $scope.currentHash
         )
         $scope.hoverSamples[testNames[i]] = s
@@ -224,13 +235,24 @@ mciModule.controller('PerfController', function PerfController(
     }
   })
 
+  const getSamples = (scope) => {
+    if(scope.rejectModel.rejectMode){
+      return scope.filteredTrendSamples;
+    } else {
+      return scope.allTrendSamples;
+    }
+  };
+
   var drawTrendGraph = function(scope) {
+    if (!$scope.perfSample) {
+      return;
+    }
     scope.locked = false;
     // Extract params
-    var trendSamples = scope.trendSamples,
-        tests = scope.perfSample.testNames(),
-        taskId = scope.task.id,
-        compareSamples = scope.comparePerfSamples;
+    let trendSamples = getSamples(scope),
+      tests = scope.perfSample.testNames(),
+      taskId = scope.task.id,
+      compareSamples = scope.comparePerfSamples;
 
     // Creates new, non-isolated scope for charts
     var chartsScope = scope.$new()
@@ -303,6 +325,9 @@ mciModule.controller('PerfController', function PerfController(
   $scope.cleanId = cleanId
 
   function drawDetailGraph(sample, compareSamples, taskId){
+    if (!sample) {
+      return;
+    }
     var testNames = sample.testNames();
     for(var i=0;i<testNames.length;i++){
       var testName = testNames[i];
@@ -575,12 +600,12 @@ mciModule.controller('PerfController', function PerfController(
     setTimeout(function(){drawDetailGraph($scope.perfSample, $scope.comparePerfSamples, $scope.task.id)},0);
 
     // Get a list of rejected points.
-    const rejectedPointsPromise = PointsDataService.getRejectedPointsQ($scope.task.branch,
-                                                                       $scope.task.build_variant,
-                                                                       $scope.task.display_name);
+    const pointsPromise = PointsDataService.getOutlierPointsQ($scope.task.branch,
+                                                              $scope.task.build_variant,
+                                                              $scope.task.display_name);
 
     // This code loads change points for current task from the mdb cloud
-    var unprocessedPointsQ = Stitch.use(STITCH_CONFIG.PERF).query(function(db) {
+    const unprocessedPointsQ = Stitch.use(STITCH_CONFIG.PERF).query(function(db) {
       return db
         .db(STITCH_CONFIG.PERF.DB_PERF)
         .collection(STITCH_CONFIG.PERF.COLL_UNPROCESSED_POINTS)
@@ -589,13 +614,14 @@ mciModule.controller('PerfController', function PerfController(
           task: $scope.task.display_name,
           variant: $scope.task.build_variant,
         })
-        .execute()
+        .execute();
     }).then(
       function(docs) { return docs },
       function(err) {
-        $log.error('Cannot load change points!', err)
-        return {} // Try to recover an error
-    })
+        // Try to gracefully recover from an error
+        $log.error('Cannot load change points!', err);
+        return {}
+    });
 
     const processedPointsQ = Stitch.use(STITCH_CONFIG.PERF).query(function(db) {
       return db
@@ -606,13 +632,14 @@ mciModule.controller('PerfController', function PerfController(
           task: $scope.task.display_name,
           variant: $scope.task.build_variant,
         })
-        .execute()
+        .execute();
     }).then(
       function(docs) { return docs },
       function(err) {
-        $log.error('Cannot load processed change points!', err)
-        return {} // Try to recover an error
-    })
+        // Try to gracefully recover from an error
+        $log.error('Cannot load processed change points!', err);
+        return {};
+    });
     const changePointsQ = $q.all({
       processed: processedPointsQ,
       unprocessed: unprocessedPointsQ,
@@ -624,16 +651,16 @@ mciModule.controller('PerfController', function PerfController(
       const docs = _.reduce(points.unprocessed, function(m, d) {
         // If there are no processed change point with same revision
         if (!_.findWhere(m, {suspect_revision: d.suspect_revision})) {
-          return m.concat(d)
+          return m.concat(d);
         }
-        return m
+        return m;
       }, points.processed)
       // Group all items by test
-      $scope.changePoints = _.groupBy(docs, 'test')
-      return $scope.changePoints
-    })
+      $scope.changePoints = _.groupBy(docs, 'test');
+      return $scope.changePoints;
+    });
 
-    var buildFailuresQ = Stitch.use(STITCH_CONFIG.PERF).query(function(db) {
+    const buildFailuresQ = Stitch.use(STITCH_CONFIG.PERF).query(function(db) {
       return db
         .db(STITCH_CONFIG.PERF.DB_PERF)
         .collection(STITCH_CONFIG.PERF.COLL_BUILD_FAILURES)
@@ -646,34 +673,32 @@ mciModule.controller('PerfController', function PerfController(
           // Denormalization
           {$unwind: {path: '$tests', preserveNullAndEmptyArrays: true}},
           {$unwind: {path: '$first_failing_revision', preserveNullAndEmptyArrays: true}},
-        ])
+        ]);
     }).then(
       function(docs) {
-        return _.groupBy(docs, 'tests')
+        return _.groupBy(docs, 'tests');
       }, function(err) {
-        $log.error('Cannot load build failures!', err)
+        $log.error('Cannot load build failures!', err);
         return {} // Try to recover an error
     }).then(function(data) {
       $scope.buildFailures = data
-    })
+    });
 
     // Populate the trend data
-    var chartDataQ = $http.get("/plugin/json/history/" + $scope.task.id + "/perf").then(
+    const chartDataQ = $http.get("/plugin/json/history/" + $scope.task.id + "/perf").then(
       function(resp) {
-        rejectedPointsPromise.then(function(rejects){
-          let data = resp.data;
-          if(rejects.length){
-            data = _.reject(resp.data, (doc) => _.contains(rejects, doc.task_id));
-          }
-          $scope.trendSamples = new TrendSamples(data);
+        pointsPromise.then(function(outliers){
+          const rejects = outliers.rejects;
+          let filtered = _.reject(resp.data, doc => _.contains(rejects, doc.task_id));
+          $scope.allTrendSamples = new TrendSamples(resp.data);
+          $scope.filteredTrendSamples = new TrendSamples(filtered);
+
           $scope.metricSelect.options = [$scope.metricSelect.default].concat(
             _.map(
-              _.without($scope.trendSamples.metrics, $scope.metricSelect.default.key),
-              function(d) { return {key: d, name: d} }
-            )
-          )
+              _.without($scope.allTrendSamples.metrics, $scope.metricSelect.default.key), d => ({key: d, name: d}))
+          );
 
-          // Some copypasted checks
+          // Some copy pasted checks
           if ($scope.conf.enabled){
             if ($location.hash().length > 0) {
               try {
@@ -686,14 +711,12 @@ mciModule.controller('PerfController', function PerfController(
             }
           }
         })
-      })
+      });
 
     // Once trend chart data and change points get loaded
     $q.all([chartDataQ, changePointsQ.catch(), buildFailuresQ.catch()])
-      .then(function(ret) {
-        setTimeout(function() {
-          drawTrendGraph($scope)
-        }, 0)
+      .then(function() {
+        setTimeout(drawTrendGraph, 0, $scope);
       })
   }
 
@@ -742,13 +765,13 @@ mciModule.controller('PerfController', function PerfController(
 
     $http.get("/plugin/json/task/" + $scope.task.id + "/perf/tags").then(
       function(resp){
-        var d = resp.data;
+        const d = resp.data;
         $scope.tags = d.sort(function(a,b){return a.tag.localeCompare(b.tag)})
-    })
+    });
 
     if($scope.task.patch_info && $scope.task.patch_info.Patch.Githash){
       //pre-populate comparison vs. base commit of patch.
       $scope.addComparisonHash($scope.task.patch_info.Patch.Githash);
     }
   }
-})
+});

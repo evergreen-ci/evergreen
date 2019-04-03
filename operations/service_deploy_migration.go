@@ -6,7 +6,6 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/migrations"
 	"github.com/evergreen-ci/evergreen/util"
-	anserDB "github.com/mongodb/anser/db"
 	"github.com/mongodb/anser/model"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
@@ -25,9 +24,9 @@ func deployMigration() cli.Command {
 			defer cancel()
 
 			db := parseDB(c)
-			env := evergreen.GetEnvironment()
-			err := env.Configure(ctx, c.String(confFlagName), db)
+			env, err := evergreen.NewEnvironment(ctx, c.String(confFlagName), db)
 			grip.EmergencyFatal(errors.Wrap(err, "problem configuring application environment"))
+			evergreen.SetEnvironment(env)
 			settings := env.Settings()
 
 			// avoid working on remote jobs during migrations
@@ -40,7 +39,7 @@ func deployMigration() cli.Command {
 				DryRun:   c.Bool(anserDryRunFlagName),
 				Workers:  c.Int(anserWorkersFlagName),
 				IDs:      c.StringSlice(anserMigrationIDFlagName),
-				Session:  anserDB.WrapSession(env.Session()),
+				Session:  env.Session(),
 				Database: settings.Database.DB,
 			}
 
@@ -76,11 +75,9 @@ func deployDataTransforms() cli.Command {
 			defer cancel()
 
 			db := parseDB(c)
-			env := evergreen.GetEnvironment()
-			err := env.Configure(ctx, confPath, db)
-			if err != nil {
-				return errors.Wrap(err, "problem configuring application environment")
-			}
+			env, err := evergreen.NewEnvironment(ctx, confPath, db)
+			grip.EmergencyFatal(errors.Wrap(err, "problem configuring application environment"))
+			evergreen.SetEnvironment(env)
 			settings := env.Settings()
 
 			anserConf := &model.ConfigurationManualMigration{}
@@ -95,7 +92,7 @@ func deployDataTransforms() cli.Command {
 				Limit:    c.Int(anserLimitFlagName),
 				DryRun:   c.Bool(anserDryRunFlagName),
 				Workers:  c.Int(anserWorkersFlagName),
-				Session:  anserDB.WrapSession(env.Session()),
+				Session:  env.Session(),
 				Database: settings.Database.DB,
 			}
 

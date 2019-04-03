@@ -34,8 +34,9 @@ func startWebService() cli.Command {
 			db := parseDB(c)
 			ctx, cancel := context.WithCancel(context.Background())
 
-			env := evergreen.GetEnvironment()
-			grip.EmergencyFatal(errors.Wrap(env.Configure(ctx, confPath, db), "problem configuring application environment"))
+			env, err := evergreen.NewEnvironment(ctx, confPath, db)
+			grip.EmergencyFatal(errors.Wrap(err, "problem configuring application environment"))
+			evergreen.SetEnvironment(env)
 			if c.Bool(overwriteConfFlagName) {
 				grip.EmergencyFatal(errors.Wrap(env.SaveConfig(), "problem saving config"))
 			}
@@ -196,7 +197,7 @@ func getAdminService(ctx context.Context, env evergreen.Environment, settings *e
 	opts.DB = settings.Amboy.DB
 	opts.Priority = true
 
-	remoteReporter, err := reporting.MakeDBQueueState(settings.Amboy.Name, opts, env.Session())
+	remoteReporter, err := reporting.MakeDBQueueState(ctx, settings.Amboy.Name, opts, env.Client())
 	if err != nil {
 		return nil, errors.Wrap(err, "problem building queue reporter")
 	}

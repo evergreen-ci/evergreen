@@ -336,24 +336,22 @@ mciModule.controller('SignalProcessingCtrl', function(
         name: 'Variant',
         field: 'variant',
         type: 'string',
-        _link: function(row, col) {
-          return '/build/' + row.entity._buildId
-        },
+        _link: row => '/build/' + row.entity._buildId,
         cellTemplate: 'ui-grid-link',
       },
       {
         name: 'Task',
         field: 'task',
         type: 'string',
-        _link: function(row, col) {
-          return '/task/' + row.entity.task_id
-        },
+        _link: row => '/task/' + row.entity.task_id,
         cellTemplate: 'ui-grid-link',
       },
       {
         name: 'Test',
         field: 'test',
         type: 'string',
+        _link: row => '/task/' + row.entity.task_id + '##' + row.entity.test,
+        cellTemplate: 'ui-grid-link',
       },
       {
         name: 'Revision',

@@ -1,6 +1,7 @@
 package service
 
 import (
+	"context"
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
@@ -35,6 +36,10 @@ func TestCheckHostWrapper(t *testing.T) {
 	}
 
 	conf := testutil.TestConfig()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	testutil.SetGlobalEnvironment(ctx, t)
 	queue := evergreen.GetEnvironment().LocalQueue()
 	generateQueue := evergreen.GetEnvironment().GenerateTasksQueue()
 

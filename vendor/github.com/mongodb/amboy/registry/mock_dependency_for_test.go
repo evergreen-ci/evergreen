@@ -6,7 +6,7 @@ import "github.com/mongodb/amboy/dependency"
 
 type CheckTest struct {
 	T dependency.TypeInfo `json:"type" bson:"type" yaml:"type"`
-	*dependency.JobEdges
+	dependency.JobEdges
 }
 
 func init() {

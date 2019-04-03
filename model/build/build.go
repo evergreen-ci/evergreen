@@ -9,7 +9,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
-	"gopkg.in/mgo.v2"
+	mgo "gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
 )
 
@@ -46,7 +46,7 @@ type Build struct {
 	ActivatedBy         string        `bson:"activated_by" json:"activated_by,omitempty"`
 	ActivatedTime       time.Time     `bson:"activated_time" json:"activated_time,omitempty"`
 	RevisionOrderNumber int           `bson:"order,omitempty" json:"order,omitempty"`
-	Tasks               []TaskCache   `bson:"tasks" json:"tasks,omitempty"`
+	Tasks               []TaskCache   `bson:"tasks" json:"tasks"`
 	TimeTaken           time.Duration `bson:"time_taken" json:"time_taken,omitempty"`
 	DisplayName         string        `bson:"display_name" json:"display_name,omitempty"`
 	PredictedMakespan   time.Duration `bson:"predicted_makespan" json:"predicted_makespan,omitempty"`

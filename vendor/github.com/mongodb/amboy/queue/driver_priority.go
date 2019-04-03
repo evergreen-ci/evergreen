@@ -61,7 +61,7 @@ func (p *priorityDriver) Close() {
 
 // Get returns a job object, specified by name/ID from the backing
 // storage. If the job doesn't exist the error value is non-nil.
-func (p *priorityDriver) Get(name string) (amboy.Job, error) {
+func (p *priorityDriver) Get(_ context.Context, name string) (amboy.Job, error) {
 	job, ok := p.storage.Get(name)
 	if !ok {
 		return nil, errors.Errorf("job named '%s' does not exist", name)
@@ -73,22 +73,22 @@ func (p *priorityDriver) Get(name string) (amboy.Job, error) {
 // Save updates the stored version of the job in the Driver's backing
 // storage. If the job is not tracked by the Driver, this operation is
 // an error.
-func (p *priorityDriver) Save(j amboy.Job) error {
+func (p *priorityDriver) Save(_ context.Context, j amboy.Job) error {
 	p.storage.Save(j)
 
 	return nil
 }
 
 // Put saves a new job returning an error if that job already exists.
-func (p *priorityDriver) Put(j amboy.Job) error {
+func (p *priorityDriver) Put(_ context.Context, j amboy.Job) error {
 	return errors.WithStack(p.storage.Insert(j))
 }
 
 // SaveStatus persists only the status document in the job in the
 // persistence layer. If the job does not exist, this method produces
 // an error.
-func (p *priorityDriver) SaveStatus(j amboy.Job, stat amboy.JobStatusInfo) error {
-	job, err := p.Get(j.ID())
+func (p *priorityDriver) SaveStatus(ctx context.Context, j amboy.Job, stat amboy.JobStatusInfo) error {
+	job, err := p.Get(ctx, j.ID())
 	if err != nil {
 		return errors.Wrap(err, "problem saving status")
 	}
@@ -97,7 +97,7 @@ func (p *priorityDriver) SaveStatus(j amboy.Job, stat amboy.JobStatusInfo) error
 	stat.ModificationCount++
 
 	job.SetStatus(stat)
-	if err := p.Save(job); err != nil {
+	if err := p.Save(ctx, job); err != nil {
 		return errors.Wrap(err, "problem saving status")
 	}
 
@@ -105,7 +105,7 @@ func (p *priorityDriver) SaveStatus(j amboy.Job, stat amboy.JobStatusInfo) error
 }
 
 // Jobs returns an iterator of all Job objects tracked by the Driver.
-func (p *priorityDriver) Jobs() <-chan amboy.Job {
+func (p *priorityDriver) Jobs(_ context.Context) <-chan amboy.Job {
 	return p.storage.Contents()
 }
 
@@ -144,7 +144,7 @@ func (p *priorityDriver) Next(_ context.Context) amboy.Job {
 
 // Stats returns a report of the Driver's current state in the form of
 // a driver.Stats document.
-func (p *priorityDriver) Stats() amboy.QueueStats {
+func (p *priorityDriver) Stats(_ context.Context) amboy.QueueStats {
 	stats := amboy.QueueStats{
 		Total: p.storage.Size(),
 	}

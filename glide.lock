@@ -14,8 +14,8 @@ imports:
   - name: github.com/10gen/goamz # github.com/goamz/goamz
     version: fd18ac632eb1ce1a721c5fd2a58d982252e09cdd
     subpackages:
-      - s3
       - aws
+      - s3
       - ec2
   - name: github.com/codegangsta/inject
     version: 37d7f8432a3e684eef9b2edece76bdfa6ac85b39
@@ -110,9 +110,9 @@ imports:
   - name: github.com/mongodb/grip
     version: 8b8accd7a3ec9b31a2d3eea610d5bf906bddfd11
   - name: github.com/mongodb/anser
-    version: 64ab460ed9f323d675bcf7fec0df720d21fcb235
+    version: 2cc4f950b3f7a7f3a566460bcf965bb79727590f
   - name: github.com/mongodb/amboy
-    version: 484dad3e7eb8f9823afa861b35ba643208df9136
+    version: cad45a93e8718390055c165c0926a23f605b5fdf
   - name: github.com/evergreen-ci/gimlet
     version: 2174a9b1266e1b45c99cc80e00ccc8444c84ad38
   - name: github.com/evergreen-ci/shrub
@@ -120,7 +120,9 @@ imports:
   - name: github.com/evergreen-ci/pail
     version: 1d8f19c9a70ae650f7499bd07b6cf47e17fe89c9
   - name: github.com/mongodb/jasper
-    version: 3a34d8991a7518a05dcb2a55d04f3b6ea5273cc4
+    version: 2f8ec7e782929519b4990adcaab3e0ab4283bec4
+  - name: go.mongodb.org/mongo-driver
+    version: 1c3b9b9a41eecdf056560e07b68e6407b8d598c3
 
   # git library and its dependencies
   - name: gopkg.in/src-d/go-git.v4

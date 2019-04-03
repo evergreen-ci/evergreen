@@ -24,7 +24,7 @@ const LockTimeout = 5 * time.Minute
 // handles job mutexing.
 type LockManager interface {
 	Lock(context.Context, amboy.Job) error
-	Unlock(amboy.Job) error
+	Unlock(context.Context, amboy.Job) error
 }
 
 // lockManager provides an implementation of the Lock and Unlock
@@ -88,7 +88,7 @@ func (l *lockManager) lockPinger(ctx context.Context) {
 					continue
 				}
 
-				j, err := l.d.Get(name)
+				j, err := l.d.Get(ctx, name)
 				if err != nil {
 					// remove locks from the
 					// current queue if they no
@@ -142,7 +142,7 @@ func (l *lockManager) lockPinger(ctx context.Context) {
 					continue
 				}
 
-				if err := l.d.SaveStatus(j, stat); err != nil {
+				if err := l.d.SaveStatus(ctx, j, stat); err != nil {
 					grip.Debug(message.WrapError(err, message.Fields{
 						"message":  "problem updating lock",
 						"job_id":   name,
@@ -200,7 +200,7 @@ func (l *lockManager) Lock(ctx context.Context, j amboy.Job) error {
 	// function and the query handle the "do we own this? is the
 	// lock active? has it changed since we last saw it?"
 
-	job, err := l.d.Get(j.ID())
+	job, err := l.d.Get(ctx, j.ID())
 	if err != nil {
 		return errors.Wrapf(err, "couldn't find job named %s", j.ID())
 	}
@@ -222,7 +222,7 @@ func (l *lockManager) Lock(ctx context.Context, j amboy.Job) error {
 
 	job.SetStatus(stat)
 
-	if err := l.d.SaveStatus(job, stat); err != nil {
+	if err := l.d.SaveStatus(ctx, job, stat); err != nil {
 		return errors.Wrap(err, "problem saving stat")
 	}
 
@@ -235,7 +235,7 @@ func (l *lockManager) Lock(ctx context.Context, j amboy.Job) error {
 // and instructs the background job to begin updating the lock
 // regularly. Returns an error if no lock exists or if there was a
 // problem updating the lock in the persistence layer.
-func (l *lockManager) Unlock(j amboy.Job) error {
+func (l *lockManager) Unlock(ctx context.Context, j amboy.Job) error {
 	if j == nil {
 		return errors.New("cannot unlock nil job")
 	}
@@ -246,7 +246,7 @@ func (l *lockManager) Unlock(j amboy.Job) error {
 
 	l.removePing(j.ID())
 
-	if err := l.d.SaveStatus(j, stat); err != nil {
+	if err := l.d.SaveStatus(ctx, j, stat); err != nil {
 		grip.Info(message.WrapError(err, message.Fields{
 			"job":  j.ID(),
 			"stat": stat,

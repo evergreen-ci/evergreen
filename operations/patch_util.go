@@ -164,9 +164,8 @@ func findBrowserCommand() ([]string, error) {
 
 // Performs validation for patch or patch-file
 func (p *patchParams) validatePatchCommand(ctx context.Context, conf *ClientSettings, ac *legacyClient, comm client.Communicator) (*model.ProjectRef, error) {
-	ref, err := p.ValidateProjectID(conf, ac)
-	if err != nil {
-		return nil, errors.Wrap(err, "invalid project ID")
+	if err := p.loadProject(conf); err != nil {
+		grip.Warningf("warning - failed to set default project: %v\n", err)
 	}
 
 	if err := p.loadAlias(conf); err != nil {
@@ -179,6 +178,15 @@ func (p *patchParams) validatePatchCommand(ctx context.Context, conf *ClientSett
 
 	if err := p.loadTasks(conf); err != nil {
 		grip.Warningf("warning - failed to set default tasks: %v\n", err)
+	}
+
+	// Validate the project exists
+	ref, err := ac.GetProjectRef(p.Project)
+	if err != nil {
+		if apiErr, ok := err.(APIError); ok && apiErr.code == http.StatusNotFound {
+			err = errors.Errorf("%s \nRun `evergreen list --projects` to see all valid projects", err)
+		}
+		return nil, err
 	}
 
 	// Validate the alias exists
@@ -210,7 +218,7 @@ func (p *patchParams) validatePatchCommand(ctx context.Context, conf *ClientSett
 	return ref, nil
 }
 
-func (p *patchParams) ValidateProjectID(conf *ClientSettings, ac *legacyClient) (*model.ProjectRef, error) {
+func (p *patchParams) loadProject(conf *ClientSettings) error {
 	if p.Project == "" {
 		p.Project = conf.FindDefaultProject()
 	} else {
@@ -227,18 +235,10 @@ func (p *patchParams) ValidateProjectID(conf *ClientSettings, ac *legacyClient) 
 	}
 
 	if p.Project == "" {
-		return nil, errors.New("Need to specify a project")
+		return errors.New("Need to specify a project")
 	}
 
-	ref, err := ac.GetProjectRef(p.Project)
-	if err != nil {
-		if apiErr, ok := err.(APIError); ok && apiErr.code == http.StatusNotFound {
-			err = errors.Errorf("%s \nRun `evergreen list --projects` to see all valid projects", err)
-		}
-		return nil, err
-	}
-
-	return ref, nil
+	return nil
 }
 
 // Sets the patch's alias to either the passed in option or the default

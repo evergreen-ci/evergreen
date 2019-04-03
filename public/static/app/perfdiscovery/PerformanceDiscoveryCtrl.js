@@ -1,7 +1,7 @@
 mciModule.controller('PerformanceDiscoveryCtrl', function(
   $q, $scope, $timeout, $window, ApiTaskdata, ApiV1, ApiV2,
   EVG, EvgUiGridUtil, PERF_DISCOVERY, PerfDiscoveryDataService,
-  PerfDiscoveryStateService, uiGridConstants 
+  PerfDiscoveryStateService, uiGridConstants, OutliersDataService
 ) {
   var vm = this;
   var gridUtil = EvgUiGridUtil
@@ -37,7 +37,7 @@ mciModule.controller('PerformanceDiscoveryCtrl', function(
   var projectId = $window.project
 
   // For each argument of `arguments`
-  // if arguemnt is a function and return value is truthy
+  // if argument is a function and return value is truthy
   // or argument is truthy non-function return the value
   // If none arguments are truthy returns undefined
   function cascade() {
@@ -56,7 +56,7 @@ mciModule.controller('PerformanceDiscoveryCtrl', function(
       // Sets 'compare from' version from the state if available
       // Sets the first revision from the list otherwise
       vm.fromSelect.selected = cascade(
-        _.bind(dataUtil.findVersionItem, null, items, state.from),
+        _.bind(dataUtil.findVersionItem, null, items),
         _.bind(dataUtil.getQueryBasedItem, null, state.from),
         _.bind(_.findWhere, null, items, {kind: PD.KIND_VERSION}),
         _.bind(_.first, null, items)
@@ -83,21 +83,47 @@ mciModule.controller('PerformanceDiscoveryCtrl', function(
     item && vm.updateData()
   })
 
-  var oldFromVersion, oldToVersion
+  let oldFromVersion, oldToVersion;
+
+  // Convert the name to a revision that can be used to query atlas.
+  const nameToRevision = (name) => {
+    if(name) {
+      const parts = name.split(/[-_]/);
+      name = parts[parts.length - 1];
+    }
+    return name;
+  };
+
+  // Create an object that can be used with _.where().
+  const createMatcher = (outlier) => {
+    return {
+      buildVariant: outlier.variant,
+      task: outlier.task,
+      test: outlier.test,
+      threads: outlier.thread_level !== 'max' ? parseInt(outlier.thread_level) : outlier.thread_level,
+    };
+  };
 
   function loadCompOptions(fromVersion, toVersion) {
     // Set loading flag to display spinner
-    vm.isLoading = true
-  
+    vm.isLoading = true;
+
+    // Load the marked and detected outliers for this revision. If no revision, don't load anything.
+    const revision = nameToRevision(fromVersion.name);
+    const outliersPromise = $q.all({
+      detected:revision ? OutliersDataService.getOutliersQ(projectId, {revision:revision})  : [],
+      marked:revision ? OutliersDataService.getMarkedOutliersQ(projectId, {revision:revision})  : [],
+    });
+
     $q.all({
       fromVersionObj: dataUtil.getCompItemVersion(fromVersion),
       toVersionObj: dataUtil.getCompItemVersion(toVersion),
     })
-      // Load perf data
+    // Load perf data
       .then(function(promise) {
         return dataUtil.getData(
           promise.fromVersionObj, promise.toVersionObj
-        )
+        );
       })
       // Apply perf data
       .then(function(res) {
@@ -108,35 +134,63 @@ mciModule.controller('PerformanceDiscoveryCtrl', function(
           ['build', 'storageEngine', 'task', 'threads'],
           vm.gridApi,
           true
-        )
+        );
         return res
       })
       // Stop spinner
       .finally(function() { vm.isLoading = false })
-      // Fetch BF tickets
+      // Fetch BF tickets and outliers.
       .then(function() {
-        return dataUtil.getBFTicketsForRows(vm.gridOptions.data)
-      })
-      // Apply BF tickets to rows data
-      .then(function(bfGroups) {
 
-        // Match grouped points (by task, bv, test) w/ rows
-        _.each(bfGroups, function(bfGroup) {
-          // Dedupe by 'key' (BFs might have different revisions or other fields)
-          var bfs = _.uniq(bfGroup, function(d) { return d.key })
+        const projectRevisionMatcher = {
+          project: projectId,
+          revision:  revision
+        };
 
-          var bf = bfs[0] // using the first element as characteristic
+        outliersPromise.then(function(outliers) {
+          // add 'm' for marked.
+          _.chain(outliers.marked).where(projectRevisionMatcher).each(function(outlier) {
+            _.chain(vm.gridOptions.data)
+              .where(createMatcher(outlier))
+              .each(task =>  task.outlier = 'm');
+          });
 
-          var matcher = {
-            task: bf.tasks,
-            buildVariant: bf.buildvariants,
-          }
+          _.chain(outliers.detected).where(projectRevisionMatcher).each(function(outlier) {
+            // add '✓' for marked.
+            _.chain(vm.gridOptions.data)
+              .where(createMatcher(outlier))
+              .each(task => {
+                if(task.outlier) {
+                  if(task.outlier.indexOf('✓') == -1 ) {
+                    task.outlier += '✓';
+                  }
+                } else {
+                  task.outlier = '✓';
+                }
+              });
+          })
+        });
 
-          // If BF has associated test
-          bf.tests && (matcher['test'] = bf.tests)
+        dataUtil.getBFTicketsForRows(vm.gridOptions.data).then(function(bfGroups) {
 
-          _.each(_.where(vm.gridOptions.data, matcher), function(task) {
-            task.buildFailures = bfs
+          // Match grouped points (by task, bv, test) w/ rows
+          _.each(bfGroups, function(bfGroup) {
+            // Dedupe by 'key' (BFs might have different revisions or other fields)
+            var bfs = _.uniq(bfGroup, function(d) { return d.key })
+
+            var bf = bfs[0] // using the first element as characteristic
+
+            var matcher = {
+              task: bf.tasks,
+              buildVariant: bf.buildvariants,
+            }
+
+            // If BF has associated test
+            bf.tests && (matcher['test'] = bf.tests)
+
+            _.each(_.where(vm.gridOptions.data, matcher), function(task) {
+              task.buildFailures = bfs
+            })
           })
         })
       })
@@ -249,6 +303,8 @@ mciModule.controller('PerformanceDiscoveryCtrl', function(
       {
         name: 'Test',
         field: 'test',
+        _link: row => '/task/' + row.entity.taskId + '##' + row.entity.test,
+        cellTemplate: 'ui-grid-link',
       },
       gridUtil.multiselectColDefMixin({
         name: 'Threads',
@@ -305,6 +361,12 @@ mciModule.controller('PerformanceDiscoveryCtrl', function(
         enableFiltering: false,
         width: 120,
       },
+      {
+        name: 'Outlier',
+        field: 'outlier',
+        enableFiltering: false,
+        width: 120,
+      },
     ]
   }
-})
+});

@@ -4,8 +4,8 @@ import (
 	"encoding/json"
 
 	"github.com/mongodb/amboy"
-	"github.com/mongodb/mongo-go-driver/bson"
 	"github.com/pkg/errors"
+	"go.mongodb.org/mongo-driver/bson"
 	legacyBSON "gopkg.in/mgo.v2/bson"
 	yaml "gopkg.in/yaml.v2"
 )

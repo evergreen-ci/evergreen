@@ -2,7 +2,6 @@ package units
 
 import (
 	"context"
-	"path/filepath"
 	"testing"
 
 	"github.com/evergreen-ci/evergreen"
@@ -22,19 +21,15 @@ func TestRepotrackerJob(t *testing.T) {
 }
 
 func (s *repotrackerJobSuite) SetupTest() {
-	evergreen.ResetEnvironment()
-
 	ctx, cancel := context.WithCancel(context.Background())
 	s.cancel = cancel
-	s.Require().NoError(evergreen.GetEnvironment().Configure(ctx, filepath.Join(evergreen.FindEvergreenHome(), testutil.TestDir, testutil.TestSettings), nil))
+	testutil.SetGlobalEnvironment(ctx, s.T())
 	s.NoError(db.ClearCollections(model.ProjectRefCollection))
-
 }
 
 func (s *repotrackerJobSuite) TearDownTest() {
 	s.NoError(db.ClearCollections(evergreen.ConfigCollection))
 	s.cancel()
-	evergreen.ResetEnvironment()
 }
 
 func (s *repotrackerJobSuite) TestJob() {

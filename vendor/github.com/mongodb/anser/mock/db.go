@@ -30,6 +30,7 @@ func NewSession() *Session {
 func (s *Session) Clone() db.Session { return s }
 func (s *Session) Copy() db.Session  { return s }
 func (s *Session) Close()            { s.Closed = true }
+func (s *Session) Error() error      { return nil }
 func (s *Session) DB(n string) db.Database {
 	if _, ok := s.DBs[n]; !ok {
 		s.DBs[n] = &Database{

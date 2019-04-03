@@ -131,14 +131,14 @@ func CreateSpawnHost(so SpawnOptions) (*host.Host, error) {
 		OwnerId: so.Owner.Id,
 	}
 	expiration := DefaultSpawnHostExpiration
-	hostOptions := HostOptions{
+	hostOptions := host.CreateOptions{
 		ProvisionOptions:   provisionOptions,
 		UserName:           so.UserName,
 		ExpirationDuration: &expiration,
 		UserHost:           true,
 	}
 
-	intentHost := NewIntent(d, d.GenerateName(), d.Provider, hostOptions)
+	intentHost := host.NewIntent(d, d.GenerateName(), d.Provider, hostOptions)
 	if intentHost == nil { // theoretically this should not happen
 		return nil, errors.New("unable to intent host: NewIntent did not return a host")
 	}
@@ -165,12 +165,14 @@ func SetHostRDPPassword(ctx context.Context, env evergreen.Environment, host *ho
 
 	// update RDP and sshd password
 	if err = pwdUpdateCmd.Run(ctx); err != nil {
-		grip.Warning(message.WrapError(err, message.Fields{
+		grip.Warning(message.Fields{
 			"stdout":    stdout.Buffer.String(),
 			"stderr":    stderr.Buffer.String(),
 			"operation": "set host rdp password",
 			"host":      host.Id,
-		}))
+			"cmd":       pwdUpdateCmd.String(),
+			"err":       err,
+		})
 		return errors.Wrap(err, "Error updating host RDP password")
 	}
 
@@ -179,6 +181,7 @@ func SetHostRDPPassword(ctx context.Context, env evergreen.Environment, host *ho
 		"stderr":    stderr.Buffer.String(),
 		"operation": "set host rdp password",
 		"host":      host.Id,
+		"cmd":       pwdUpdateCmd.String(),
 	})
 
 	return nil
@@ -204,12 +207,12 @@ func constructPwdUpdateCommand(ctx context.Context, env evergreen.Environment, h
 	}
 
 	escapedPassword := strings.Replace(password, `\`, `\\`, -1)
-	updatePwdCmd := fmt.Sprintf(`net user %s "%s" && sc config sshd obj= '.\%s' password= "%s"`,
-		hostObj.User, escapedPassword, hostObj.User, escapedPassword)
+	updatePwdCmd := fmt.Sprintf(`'net user %s %s'`, hostObj.User, escapedPassword)
+	sshUpdatePwd := fmt.Sprintf(`'sc config sshd obj= \".%s\" password= \"%s\"'`, hostObj.User, escapedPassword)
 
 	return env.JasperManager().CreateCommand(ctx).Host(hostInfo.Hostname).User(hostObj.User).
 		ExtendSSHArgs("-p", hostInfo.Port).ExtendSSHArgs(sshOptions...).
-		Append(updatePwdCmd), nil
+		Append(updatePwdCmd).Append(sshUpdatePwd), nil
 }
 
 func TerminateSpawnHost(ctx context.Context, host *host.Host, settings *evergreen.Settings, user string) error {

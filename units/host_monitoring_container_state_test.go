@@ -2,7 +2,6 @@ package units
 
 import (
 	"context"
-	"path/filepath"
 	"testing"
 
 	"github.com/evergreen-ci/evergreen"
@@ -22,9 +21,7 @@ func TestHostMonitoringContainerStateJob(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	env := evergreen.GetEnvironment()
-	assert.NoError(env.Configure(ctx, filepath.Join(evergreen.FindEvergreenHome(), testutil.TestDir, testutil.TestSettings), nil))
-
+	env := testutil.NewEnvironment(ctx, t)
 	h1 := &host.Host{
 		Id:            "parent-1",
 		Status:        evergreen.HostRunning,
