@@ -583,6 +583,7 @@ mciModule.controller('PerfController', function PerfController(
   // merges two sets of test data, giving preference to the existing data in case of duplicated test names
   $scope.mergeSamples = function(toMerge) {
     if (!$scope.perfSample || !$scope.perfSample.sample || !$scope.perfSample.sample.data) {
+      $scope.perfSample = toMerge;
       return;
     }
     var samples = {};
