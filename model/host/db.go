@@ -83,7 +83,7 @@ var (
 // === Queries ===
 
 // All is a query that returns all hosts
-var All = db.Query(nil)
+var All = db.Query(struct{}{})
 
 // ByUserWithRunningStatus produces a query that returns all
 // running hosts for the given user id.

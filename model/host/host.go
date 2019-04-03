@@ -1086,9 +1086,9 @@ func FindTerminatedHostsRunningTasks() ([]Host, error) {
 // CountContainersOnParents counts how many containers are children of the given group of hosts
 func (hosts HostGroup) CountContainersOnParents() (int, error) {
 	ids := hosts.GetHostIds()
-	query := db.Query(bson.M{
-		StatusKey:   bson.M{"$in": evergreen.UpHostStatus},
-		ParentIDKey: bson.M{"$in": ids},
+	query := db.Query(mgobson.M{
+		StatusKey:   mgobson.M{"$in": evergreen.UpHostStatus},
+		ParentIDKey: mgobson.M{"$in": ids},
 	})
 	return Count(query)
 }

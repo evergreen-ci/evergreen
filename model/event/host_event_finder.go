@@ -58,5 +58,4 @@ func AllRecentHostEventsMatchStatus(hostId string, n int, status string) bool {
 	}
 
 	return true
-
 }
