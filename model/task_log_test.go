@@ -147,7 +147,8 @@ func TestAddLogMessage(t *testing.T) {
 			So(taskLog.MessageCount, ShouldEqual, 5)
 			So(len(taskLog.Messages), ShouldEqual, 5)
 
-			taskLogsFromDB, err := FindTaskLogsBeforeTime(taskLog.TaskId, 0,
+			var taskLogsFromDB []TaskLog
+			taskLogsFromDB, err = FindTaskLogsBeforeTime(taskLog.TaskId, 0,
 				time.Now().Add(time.Second), 1)
 			So(err, ShouldBeNil)
 			taskLogFromDB := &(taskLogsFromDB[0])

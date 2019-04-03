@@ -5,13 +5,13 @@ import (
 
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/stretchr/testify/assert"
-	"go.mongodb.org/mongo-driver/bson"
+	mgobson "gopkg.in/mgo.v2/bson"
 )
 
 func TestSubscriptionModels(t *testing.T) {
 	assert := assert.New(t)
 	subscription := event.Subscription{
-		ID:           bson.NewObjectId().Hex(),
+		ID:           mgobson.NewObjectId().Hex(),
 		ResourceType: "atype",
 		Trigger:      "atrigger",
 		Owner:        "me",

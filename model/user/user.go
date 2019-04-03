@@ -13,6 +13,7 @@ import (
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
+	mgobson "gopkg.in/mgo.v2/bson"
 )
 
 type DBUser struct {
@@ -29,6 +30,9 @@ type DBUser struct {
 	SystemRoles  []string     `bson:"roles"`
 	LoginCache   LoginCache   `bson:"login_cache,omitempty"`
 }
+
+func (u *DBUser) MarshalBSON() ([]byte, error)  { return mgobson.Marshal(u) }
+func (u *DBUser) UnmarshalBSON(in []byte) error { return mgobson.Unmarshal(in, u) }
 
 type LoginCache struct {
 	Token string    `bson:"token"`

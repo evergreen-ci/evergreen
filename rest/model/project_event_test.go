@@ -7,7 +7,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/stretchr/testify/suite"
-	"go.mongodb.org/mongo-driver/bson"
+	mgobson "gopkg.in/mgo.v2/bson"
 )
 
 const (
@@ -31,7 +31,7 @@ func getMockProjectSettings() model.ProjectSettingsEvent {
 			PrivateVars: map[string]bool{},
 		},
 		Aliases: []model.ProjectAlias{model.ProjectAlias{
-			ID:        bson.ObjectIdHex("5bedc72ee4055d31f0340b1d"),
+			ID:        mgobson.ObjectIdHex("5bedc72ee4055d31f0340b1d"),
 			ProjectID: projectId,
 			Alias:     "alias1",
 			Variant:   "ubuntu",

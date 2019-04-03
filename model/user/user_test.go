@@ -96,14 +96,14 @@ func (s *UserTestSuite) TestGetPublicKeyThatDoesntExist() {
 }
 
 func (s *UserTestSuite) TestAddKey() {
-	s.NoError(s.users[0].AddPublicKey("key1", "ssh-mock 67890"))
+	s.Require().NoError(s.users[0].AddPublicKey("key1", "ssh-mock 67890"))
 	key, err := s.users[0].GetPublicKey("key1")
+	s.Require().NoError(err)
 	s.Equal(key, "ssh-mock 67890")
-	s.NoError(err)
 
 	u, err := FindOne(ById(s.users[0].Id))
-	s.NoError(err)
-	s.NotNil(u)
+	s.Require().NoError(err)
+	s.Require().NotNil(u)
 
 	s.checkUserNotDestroyed(u, s.users[0])
 
