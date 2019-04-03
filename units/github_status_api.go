@@ -190,9 +190,10 @@ func (j *githubStatusUpdateJob) fetch() (*message.GithubStatus, error) {
 	}
 
 	if patchDoc == nil {
-		patchDoc, err := patch.FindOne(patch.ById(mgobson.ObjectIdHex(j.FetchID)))
+		var err error
+		patchDoc, err = patch.FindOne(patch.ById(mgobson.ObjectIdHex(j.FetchID)))
 		if err != nil {
-			return nil, err
+			return nil, errors.WithStack(err)
 		}
 		if patchDoc == nil {
 			return nil, errors.New("can't find patch")

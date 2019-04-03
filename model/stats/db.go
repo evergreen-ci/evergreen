@@ -1015,10 +1015,9 @@ func aggregateIntoCollection(collection string, pipeline []bson.M, outputCollect
 	}
 
 	for cursor.Next(ctx) {
-		doc := bson.D{}
-		if err = cursor.Decode(doc); err != nil {
-			return errors.Wrap(err, "problem decoding document")
-		}
+		doc := bson.Raw{}
+		copy(doc, cursor.Current)
+
 		if err = writer.Append(doc); err != nil {
 			return errors.Wrap(err, "problem with bulk insert")
 		}

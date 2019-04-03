@@ -49,8 +49,6 @@ import (
 	"sync"
 	"sync/atomic"
 	"time"
-
-	"go.mongodb.org/mongo-driver/bson/bsontype"
 )
 
 //go:generate go run bson_corpus_spec_test_generator.go
@@ -158,13 +156,6 @@ type Raw struct {
 // documents in general.
 type RawD []RawDocElem
 
-func (m M) MarshalBSON() ([]byte, error)     { return Marshal(m) }
-func (m M) UnmarshalBSON(in []byte) error    { return Unmarshal(in, m) }
-func (d D) MarshalBSON() ([]byte, error)     { return Marshal(d) }
-func (d D) UnmarshalBSON(in []byte) error    { return Unmarshal(in, &d) }
-func (r RawD) MarshalBSON() ([]byte, error)  { return Marshal(r) }
-func (r RawD) UnmarshalBSON(in []byte) error { return Unmarshal(in, &r) }
-
 // See the RawD type.
 type RawDocElem struct {
 	Name  string
@@ -177,15 +168,6 @@ type RawDocElem struct {
 //
 // http://www.mongodb.org/display/DOCS/Object+IDs
 type ObjectId string
-
-func (o ObjectId) MarshalBSONValue() (bsontype.Type, []byte, error) {
-	return bsontype.ObjectID, []byte(o), nil
-}
-
-func (o *ObjectId) UnmarshalBSONValue(t bsontype.Type, in []byte) error {
-	*o = ObjectId(in)
-	return nil
-}
 
 // ObjectIdHex returns an ObjectId from the provided hex representation.
 // Calling this function with an invalid hex representation will
