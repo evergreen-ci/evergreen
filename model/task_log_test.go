@@ -141,8 +141,7 @@ func TestAddLogMessage(t *testing.T) {
 				logMsg.Severity = apimodels.LogDebugPrefix
 				logMsg.Timestamp = time.Now()
 				logMsg.Type = apimodels.SystemLogPrefix
-				err := taskLog.AddLogMessage(logMsg)
-				So(err, ShouldBeNil)
+				So(taskLog.AddLogMessage(logMsg), ShouldBeNil)
 			}
 			So(taskLog.MessageCount, ShouldEqual, 5)
 			So(len(taskLog.Messages), ShouldEqual, 5)
