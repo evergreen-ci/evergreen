@@ -138,6 +138,10 @@ mciModule.controller('PerfController', function PerfController(
     name: 'Origin',
     originMode: Settings.perf.trendchart.originMode.enabled,
   }
+  $scope.rejectModel = {
+    name: 'Reject',
+    rejectMode: Settings.perf.trendchart.rejectMode.enabled,
+  };
 
   $scope.toolBar = {
     isOpen: false
@@ -156,6 +160,13 @@ mciModule.controller('PerfController', function PerfController(
     Settings.perf.trendchart.originMode.enabled = newVal
     $scope.redrawGraphs()
   })
+
+  $scope.$watch('rejectModel.rejectMode', function(newVal, oldVal) {
+    // Force comparison by value
+    if (oldVal === newVal) return;
+    Settings.perf.trendchart.rejectMode.enabled = newVal;
+    $scope.redrawGraphs();
+  });
 
   $scope.$watch('threadLevelsRadio.value', function(newVal, oldVal) {
     // Force comparison by value
@@ -182,7 +193,7 @@ mciModule.controller('PerfController', function PerfController(
       var testNames = $scope.perfSample.testNames()
 
       for(var i=0;i<testNames.length;i++){
-        var s = $scope.trendSamples.sampleInSeriesAtCommit(
+        var s = $scope.allTrendSamples.sampleInSeriesAtCommit(
           testNames[i], $scope.currentHash
         )
         $scope.hoverSamples[testNames[i]] = s
@@ -190,13 +201,21 @@ mciModule.controller('PerfController', function PerfController(
     }
   })
 
+  const getSamples = (scope) => {
+    if(scope.rejectModel.rejectMode){
+      return scope.filteredTrendSamples;
+    } else {
+      return scope.allTrendSamples;
+    }
+  };
+
   var drawTrendGraph = function(scope) {
     scope.locked = false;
     // Extract params
-    var trendSamples = scope.trendSamples,
-        tests = scope.perfSample.testNames(),
-        taskId = scope.task.id,
-        compareSamples = scope.comparePerfSamples;
+    let trendSamples = getSamples(scope),
+      tests = scope.perfSample.testNames(),
+      taskId = scope.task.id,
+      compareSamples = scope.comparePerfSamples;
 
     // Creates new, non-isolated scope for charts
     var chartsScope = scope.$new()
@@ -640,14 +659,13 @@ mciModule.controller('PerfController', function PerfController(
           function(resp) {
             pointsPromise.then(function(outliers){
               const rejects = outliers.rejects;
-              let data = resp.data;
-              if(rejects.length){
-                data = _.reject(data, doc => _.contains(rejects, doc.task_id));
-              }
-              $scope.trendSamples = new TrendSamples(data);
+              let filtered = _.reject(resp.data, doc => _.contains(rejects, doc.task_id));
+              $scope.allTrendSamples = new TrendSamples(resp.data);
+              $scope.filteredTrendSamples = new TrendSamples(filtered);
+
               $scope.metricSelect.options = [$scope.metricSelect.default].concat(
                 _.map(
-                  _.without($scope.trendSamples.metrics, $scope.metricSelect.default.key), d => ({key: d, name: d}))
+                  _.without($scope.allTrendSamples.metrics, $scope.metricSelect.default.key), d => ({key: d, name: d}))
               );
 
               // Some copy pasted checks

@@ -32,7 +32,14 @@ mciModule
         threadLevelMode: {
           type: String,
           default: 'maxonly',
-        }
+        },
+        // Filter Rejected Points, defaults to on.
+        rejectMode: {
+          enabled: {
+            type: Boolean,
+            default: true,
+          },
+        },
       },
     },
   })
