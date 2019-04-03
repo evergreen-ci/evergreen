@@ -40,11 +40,11 @@ func perfGetTasksForLatestVersion(w http.ResponseWriter, r *http.Request) {
 
 	data, err := model.PerfGetTasksForLatestVersion(project, name, skip)
 	if err != nil {
-		if adb.ResultsNotFound(err) {
-			http.Error(w, "{}", http.StatusNotFound)
-			return
-		}
 		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	if data == nil {
+		http.Error(w, "{}", http.StatusNotFound)
 		return
 	}
 

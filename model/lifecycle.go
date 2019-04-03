@@ -14,6 +14,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/util"
+	adb "github.com/mongodb/anser/db"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
@@ -266,8 +267,8 @@ func SetVersionPriority(versionId string, priority int64) error {
 func RestartVersion(versionId string, taskIds []string, abortInProgress bool, caller string) error {
 	// restart all the 'not in-progress' tasks for the version
 	allTasks, err := task.FindWithDisplayTasks(task.ByDispatchedWithIdsVersionAndStatus(taskIds, versionId, task.CompletedStatuses))
-	if err != nil && err != mgo.ErrNotFound {
-		return err
+	if err != nil && !adb.ResultsNotFound(err) {
+		return errors.WithStack(err)
 	}
 
 	restartIds := make([]string, 0)

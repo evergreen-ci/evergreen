@@ -5,7 +5,6 @@ import (
 
 	"github.com/evergreen-ci/evergreen/db"
 	adb "github.com/mongodb/anser/db"
-	mgo "gopkg.in/mgo.v2"
 	"go.mongodb.org/mongo-driver/bson"
 )
 
@@ -109,7 +108,7 @@ func PerfGetTasksForLatestVersion(project, name string, skip int) (*PerfVersionD
 		return nil, err
 	}
 	if len(tasksForVersions) == 0 {
-		return nil, mgo.ErrNotFound
+		return nil, nil
 	}
 
 	// we default have another revision

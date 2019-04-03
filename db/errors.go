@@ -3,8 +3,6 @@ package db
 import (
 	"strings"
 
-	anserDB "github.com/mongodb/anser/db"
-	"go.mongodb.org/mongo-driver/mongo"
 	mgo "gopkg.in/mgo.v2"
 )
 
@@ -22,8 +20,4 @@ func IsDuplicateKey(err error) bool {
 	}
 
 	return false
-}
-
-func ResultsNotFound(err error) bool {
-	return anserDB.ResultsNotFound(err) || err == mongo.ErrNoDocuments
 }
