@@ -23,7 +23,7 @@ import (
 	"github.com/evergreen-ci/gimlet"
 	. "github.com/smartystreets/goconvey/convey"
 	"github.com/stretchr/testify/assert"
-	"go.mongodb.org/mongo-driver/bson"
+	mgobson "gopkg.in/mgo.v2/bson"
 )
 
 func TestHostParseAndValidate(t *testing.T) {
@@ -622,7 +622,7 @@ func TestTestPaginator(t *testing.T) {
 					status = "fail"
 				}
 				nextTest := testresult.TestResult{
-					ID:     bson.ObjectId(fmt.Sprintf("object_id_%d_", i)),
+					ID:     mgobson.ObjectId(fmt.Sprintf("object_id_%d_", i)),
 					Status: status,
 				}
 				cachedTests = append(cachedTests, nextTest)

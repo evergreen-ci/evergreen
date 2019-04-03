@@ -14,6 +14,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.mongodb.org/mongo-driver/bson"
+	mgobson "gopkg.in/mgo.v2/bson"
 )
 
 var (
@@ -958,12 +959,12 @@ func TestFindOneIdOldOrNew(t *testing.T) {
 	require.NoError(taskDoc.Insert())
 	require.NoError(taskDoc.Archive())
 	result0 := testresult.TestResult{
-		ID:        bson.NewObjectId(),
+		ID:        mgobson.NewObjectId(),
 		TaskID:    "task",
 		Execution: 0,
 	}
 	result1 := testresult.TestResult{
-		ID:        bson.NewObjectId(),
+		ID:        mgobson.NewObjectId(),
 		TaskID:    "task",
 		Execution: 1,
 	}
