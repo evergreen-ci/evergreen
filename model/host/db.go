@@ -567,6 +567,23 @@ func FindOneId(id string) (*Host, error) {
 	return FindOne(ById(id))
 }
 
+func FindOneByIdOrTag(id string) (*Host, error) {
+	query := db.Query(bson.M{
+		TagKey: id,
+	})
+	host, err := FindOne(query) // try to find by tag
+	if err != nil {
+		return nil, err
+	}
+	if host == nil {
+		host, err = FindOneId(id)
+		if err != nil {
+			return nil, err
+		}
+	}
+	return host, nil
+}
+
 // Find gets all Hosts for the given query.
 func Find(query db.Q) ([]Host, error) {
 	hosts := []Host{}

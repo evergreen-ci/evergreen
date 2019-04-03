@@ -107,6 +107,7 @@ func (c *dockerClientImpl) generateClient(h *host.Host) (*docker.Client, error) 
 func (c *dockerClientImpl) changeTimeout(h *host.Host, newTimeout time.Duration) (*docker.Client, error) {
 	var err error
 	c.httpClient.Timeout = newTimeout
+	c.client = nil // don't want to use cached client
 	c.client, err = c.generateClient(h)
 	if err != nil {
 		return nil, errors.Wrap(err, "Failed to generate docker client")
@@ -326,7 +327,14 @@ func (c *dockerClientImpl) CreateContainer(ctx context.Context, parentHost, cont
 	if err != nil {
 		return errors.Wrap(err, "Failed to generate docker client")
 	}
-
+	grip.Info(message.Fields{
+		"message":    "trying to create container",
+		"image":      containerHost.DockerOptions.Image,
+		"container":  containerHost.Id,
+		"parent":     parentHost.Id,
+		"parent_tag": parentHost.Tag,
+		"purpose":    "dogfooding",
+	})
 	// Extract image name from url
 	baseName := path.Base(containerHost.DockerOptions.Image)
 	provisionedImage := strings.TrimSuffix(baseName, filepath.Ext(baseName))
@@ -378,6 +386,12 @@ func (c *dockerClientImpl) CreateContainer(ctx context.Context, parentHost, cont
 	info, err := dockerClient.ContainerCreate(ctx, containerConf, hostConf, networkConf, containerHost.Id)
 	if err != nil {
 		err = errors.Wrapf(err, "Docker create API call failed for container '%s'", containerHost.Id)
+		grip.Info(message.Fields{
+			"message": "failed to create container",
+			"error":   err.Error(),
+			"host":    containerHost,
+			"purpose": "dogfooding",
+		})
 		grip.Error(err)
 		return err
 	}

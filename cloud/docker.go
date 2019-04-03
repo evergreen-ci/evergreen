@@ -48,6 +48,12 @@ func (*dockerManager) GetSettings() ProviderSettings {
 
 // SpawnHost creates and starts a new Docker container
 func (m *dockerManager) SpawnHost(ctx context.Context, h *host.Host) (*host.Host, error) {
+	grip.Info(message.Fields{
+		"message": "attempting to spawn host",
+		"host":    h.Id,
+		"parent":  h.ParentID,
+		"purpose": "dogfooding",
+	})
 	if h.Distro.Provider != evergreen.ProviderNameDocker {
 		return nil, errors.Errorf("Can't spawn instance of %s for distro %s: provider is %s",
 			evergreen.ProviderNameDocker, h.Distro.Id, h.Distro.Provider)
@@ -75,7 +81,11 @@ func (m *dockerManager) SpawnHost(ctx context.Context, h *host.Host) (*host.Host
 	// Create container
 	if err = m.client.CreateContainer(ctx, parentHost, h); err != nil {
 		err = errors.Wrapf(err, "Failed to create container for host '%s'", hostIP)
-		grip.Error(err)
+		grip.Error(message.Fields{
+			"message": "spawn container host failed",
+			"host":    h.Id,
+			"error":   err.Error(),
+		})
 		return nil, err
 	}
 
@@ -95,7 +105,11 @@ func (m *dockerManager) SpawnHost(ctx context.Context, h *host.Host) (*host.Host
 		if err2 := m.client.RemoveContainer(ctx, parentHost, h.Id); err2 != nil {
 			err = errors.Wrapf(err, "Unable to cleanup: %+v", err2)
 		}
-		grip.Error(err)
+		grip.Error(message.Fields{
+			"message": "start container host failed",
+			"host":    h.Id,
+			"error":   err.Error(),
+		})
 		return nil, err
 	}
 

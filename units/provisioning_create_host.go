@@ -29,10 +29,11 @@ func init() {
 }
 
 type createHostJob struct {
-	HostID         string `bson:"host_id" json:"host_id" yaml:"host_id"`
-	CurrentAttempt int    `bson:"current_attempt" json:"current_attempt" yaml:"current_attempt"`
-	MaxAttempts    int    `bson:"max_attempts" json:"max_attempts" yaml:"max_attempts"`
-	job.Base       `bson:"metadata" json:"metadata" yaml:"metadata"`
+	HostID            string `bson:"host_id" json:"host_id" yaml:"host_id"`
+	CurrentAttempt    int    `bson:"current_attempt" json:"current_attempt" yaml:"current_attempt"`
+	MaxAttempts       int    `bson:"max_attempts" json:"max_attempts" yaml:"max_attempts"`
+	BuildImageStarted bool   `bson:"build_image_started" json:"build_image_started" yaml:"build_image_started"`
+	job.Base          `bson:"metadata" json:"metadata" yaml:"metadata"`
 
 	start time.Time
 	host  *host.Host
@@ -53,13 +54,14 @@ func makeCreateHostJob() *createHostJob {
 	return j
 }
 
-func NewHostCreateJob(env evergreen.Environment, h host.Host, id string, CurrentAttempt int, MaxAttempts int) amboy.Job {
+func NewHostCreateJob(env evergreen.Environment, h host.Host, id string, CurrentAttempt int, MaxAttempts int, buildImageStarted bool) amboy.Job {
 	j := makeCreateHostJob()
 	j.host = &h
 	j.HostID = h.Id
 	j.env = env
 	j.SetPriority(1)
 	j.SetID(fmt.Sprintf("%s.%s.%s", createHostJobName, j.HostID, id))
+	j.BuildImageStarted = buildImageStarted
 	j.CurrentAttempt = CurrentAttempt
 	if MaxAttempts > 0 {
 		j.MaxAttempts = MaxAttempts
@@ -160,13 +162,14 @@ func (j *createHostJob) Run(ctx context.Context) {
 	j.AddError(err)
 	if err != nil {
 		grip.Info(message.Fields{
-			"host_id":  j.HostID,
-			"attempt":  j.CurrentAttempt,
-			"distro":   j.host.Distro,
-			"error":    err.Error(),
-			"job":      j.ID(),
-			"provider": j.host.Provider,
-			"message":  "error provisioning host",
+			"host_id":   j.HostID,
+			"parent_id": j.host.ParentID,
+			"attempt":   j.CurrentAttempt,
+			"distro":    j.host.Distro,
+			"error":     err.Error(),
+			"job":       j.ID(),
+			"provider":  j.host.Provider,
+			"message":   "error provisioning host",
 		})
 	}
 }
@@ -205,6 +208,13 @@ func (j *createHostJob) createHost(ctx context.Context) error {
 	// SpawnHost returns, but NOT as as initializing hosts that could still be
 	// spawned by Evergreen.
 	if err = j.host.SetStatus(evergreen.HostBuilding, evergreen.User, ""); err != nil {
+		grip.Info(message.Fields{
+			"message": "error setting status",
+			"purpose": "dogfooding",
+			"hostid":  j.host.Id,
+			"job":     j.ID(),
+			"error":   err.Error(),
+		})
 		return errors.Wrapf(err, "problem setting host %s status to building", j.host.Id)
 	}
 
@@ -216,19 +226,37 @@ func (j *createHostJob) createHost(ctx context.Context) error {
 		j.MaxAttempts = maxPollAttempts
 		ready, err = j.isImageBuilt(ctx)
 		if err != nil {
+			grip.Info(message.Fields{
+				"message": "error building image",
+				"purpose": "dogfooding",
+				"job":     j.ID(),
+				"host":    j.HostID,
+				"image":   j.host.DockerOptions.Image,
+				"error":   err.Error(),
+			})
 			return errors.Wrap(err, "problem building container image")
 		}
 		if !ready {
 			return nil
 		}
+		grip.Info(message.Fields{
+			"message": "image is ready",
+			"purpose": "dogfooding",
+			"job":     j.ID(),
+			"host":    j.HostID,
+			"image":   j.host.DockerOptions.Image,
+		})
 	}
-	grip.Info(message.Fields{
-		"message": "image is ready",
-		"job":     j.ID(),
-		"host":    j.HostID,
-		"image":   j.host.DockerOptions.Image,
-	})
+
 	if _, err = cloudManager.SpawnHost(ctx, j.host); err != nil {
+		grip.Info(message.Fields{
+			"message": "error spawning host",
+			"purpose": "dogfooding",
+			"job":     j.ID(),
+			"host":    j.HostID,
+			"image":   j.host.DockerOptions.Image,
+			"error":   err.Error(),
+		})
 		return errors.Wrapf(err, "error spawning host %s", j.host.Id)
 	}
 
@@ -278,7 +306,7 @@ func (j *createHostJob) createHost(ctx context.Context) error {
 
 func (j *createHostJob) tryRequeue(ctx context.Context) {
 	if j.shouldRetryCreateHost(ctx) && j.env.RemoteQueue().Started() {
-		job := NewHostCreateJob(j.env, *j.host, fmt.Sprintf("attempt-%d", j.CurrentAttempt+1), j.CurrentAttempt+1, j.MaxAttempts)
+		job := NewHostCreateJob(j.env, *j.host, fmt.Sprintf("attempt-%d", j.CurrentAttempt+1), j.CurrentAttempt+1, j.MaxAttempts, j.BuildImageStarted)
 		wait := time.Minute
 		if j.host.ParentID != "" {
 			wait = 10 * time.Second
@@ -311,25 +339,39 @@ func (j *createHostJob) isImageBuilt(ctx context.Context) (bool, error) {
 		return false, errors.Wrapf(err, "problem getting parent for '%s'", j.host.Id)
 	}
 	if parent == nil {
+		grip.Info(message.Fields{
+			"message": "parent doesn't exist yet",
+			"purpose": "dogfooding",
+			"host":    j.host.Id,
+			"job":     j.ID(),
+			"image":   j.host.DockerOptions.Image,
+		})
 		return false, errors.Wrapf(err, "parent for '%s' does not exist", j.host.Id)
 	}
 
-	if parent.Status == evergreen.HostUninitialized || parent.Status == evergreen.HostBuilding {
+	if parent.Status != evergreen.HostRunning {
 		return false, errors.Errorf("parent for host '%s' not running", j.host.Id)
 	}
 	if ok := parent.ContainerImages[j.host.DockerOptions.Image]; ok {
 		grip.Info(message.Fields{
 			"message": "found image in parent",
+			"purpose": "dogfooding",
 			"host":    j.host.Id,
 			"job":     j.ID(),
-			"distro":  j.host.Distro.Id,
 			"image":   j.host.DockerOptions.Image,
 		})
 		return true, nil
 	}
 
 	//  If the image is not already present on the parent, run job to build the new image
-	if j.CurrentAttempt == 1 {
+	if j.BuildImageStarted == false {
+		grip.Info(message.Fields{
+			"message": "creating container image job",
+			"purpose": "dogfooding",
+			"host":    j.host.Id,
+			"job":     j.ID(),
+		})
+		j.BuildImageStarted = true
 		buildingContainerJob := NewBuildingContainerImageJob(j.env, parent, j.host.DockerOptions, j.host.Provider)
 		err = j.env.RemoteQueue().Put(buildingContainerJob)
 		grip.Debug(message.WrapError(err, message.Fields{

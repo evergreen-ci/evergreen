@@ -92,7 +92,9 @@ func GenerateContainerHostIntents(d distro.Distro, newContainersNeeded int, host
 			grip.Info(message.Fields{
 				"distro":  d.Id,
 				"parent":  parent.ParentHost.Id,
+				"purpose": "dogfooding",
 				"message": "container host intent",
+				"image":   hostOptions.DockerOptions.Image,
 			})
 			hostOptions.ParentID = parent.ParentHost.Id
 			containerHostIntents = append(containerHostIntents, *NewIntent(d, d.GenerateName(), d.Provider, hostOptions))

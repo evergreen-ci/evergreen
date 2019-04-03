@@ -75,9 +75,17 @@ func (j *buildingContainerImageJob) Run(ctx context.Context) {
 	defer cancel()
 	defer j.MarkComplete()
 
+	grip.Info(message.Fields{
+		"message":   "running containerImageJob",
+		"operation": "image",
+		"purpose":   "dogfooding",
+		"id":        j.ParentID,
+		"job":       j.ID(),
+		"image":     j.DockerOptions.Image,
+	})
 	var err error
 	if j.parent == nil {
-		j.parent, err = host.FindOneId(j.ParentID)
+		j.parent, err = host.FindOneByIdOrTag(j.ParentID)
 		j.AddError(err)
 	}
 	if j.env == nil {
@@ -123,11 +131,25 @@ func (j *buildingContainerImageJob) Run(ctx context.Context) {
 	// Get cloud manager
 	mgr, err := cloud.GetManager(ctx, j.Provider, j.settings)
 	if err != nil {
+		grip.Info(message.Fields{
+			"message":   "error getting cloud manager",
+			"operation": "image",
+			"purpose":   "dogfooding",
+			"id":        j.ParentID,
+			"job":       j.ID(),
+		})
 		j.AddError(errors.Wrap(err, "error getting Docker manager"))
 		return
 	}
 	containerMgr, err := cloud.ConvertContainerManager(mgr)
 	if err != nil {
+		grip.Info(message.Fields{
+			"message":   "error converting to container manager",
+			"operation": "image",
+			"purpose":   "dogfooding",
+			"id":        j.ParentID,
+			"job":       j.ID(),
+		})
 		j.AddError(errors.Wrap(err, "error getting Docker manager"))
 		return
 	}
@@ -137,9 +159,11 @@ func (j *buildingContainerImageJob) Run(ctx context.Context) {
 		grip.Info(message.Fields{
 			"message":   "error getting container image",
 			"operation": "image",
+			"purpose":   "dogfooding",
 			"job":       j.ID(),
 			"image":     j.DockerOptions.Image,
 			"error":     err.Error(),
+			"parent":    j.parent,
 		})
 		j.AddError(errors.Wrap(err, "error building and downloading container image"))
 		return
@@ -150,6 +174,7 @@ func (j *buildingContainerImageJob) Run(ctx context.Context) {
 	j.parent.ContainerImages[j.DockerOptions.Image] = true
 	grip.Info(message.Fields{
 		"message":   "setting image in parent",
+		"purpose":   "dogfooding",
 		"operation": "image",
 		"job":       j.ID(),
 		"image":     j.DockerOptions.Image,
