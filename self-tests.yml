@@ -304,10 +304,10 @@ tasks:
   - <<: *run-go-test-suite-with-mongodb
     tags: ["db", "test"]
     name: test-rest-route
-  - <<: *run-go-test-suite
+  - <<: *run-go-test-suite-with-mongodb
     tags: ["db", "test", "agent"]
     name: test-rest-client
-  - <<: *run-go-test-suite
+  - <<: *run-go-test-suite-with-mongodb
     tags: ["db", "test"]
     name: test-rest-model
   - <<: *run-go-test-suite-with-mongodb
