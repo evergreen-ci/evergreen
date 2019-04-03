@@ -262,6 +262,7 @@ func (s *SchedulerSuite) TestSpawnHostsOneNewParent() {
 	s.Equal(childHost.ParentID, parentHost.Id)
 	parentDoc, err := childHost.GetParent()
 	s.NoError(err)
+	s.Require().NotNil(parentDoc)
 	s.Equal(parentHost.Id, parentDoc.Id)
 }
 

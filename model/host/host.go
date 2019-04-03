@@ -1114,9 +1114,9 @@ func (hosts HostGroup) CountContainersOnParents() (int, error) {
 // FindRunningContainersOnParents returns the containers that are children of the given hosts
 func (hosts HostGroup) FindRunningContainersOnParents() ([]Host, error) {
 	ids := hosts.GetHostIds()
-	query := db.Query(bson.M{
+	query := db.Query(mgobson.M{
 		StatusKey:   evergreen.HostRunning,
-		ParentIDKey: bson.M{"$in": ids},
+		ParentIDKey: mgobson.M{"$in": ids},
 	})
 	return Find(query)
 }
@@ -1292,7 +1292,7 @@ func countUphostParentsByContainerPool(poolId string) (int, error) {
 func InsertMany(hosts []Host) error {
 	docs := make([]interface{}, len(hosts))
 	for idx := range hosts {
-		docs[idx] = hosts[idx]
+		docs[idx] = &hosts[idx]
 	}
 
 	return errors.WithStack(db.InsertMany(Collection, docs...))
