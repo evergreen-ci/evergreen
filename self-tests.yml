@@ -99,8 +99,6 @@ variables:
       - func: run-make
         vars:
           target: revendor
-      - func: run-make
-        vars: { target: "${task_name}" }
   - &run-smoke-test
     name: smoke
     commands:
@@ -116,6 +114,45 @@ variables:
         vars: { target: "set-project-var" }
       - func: run-make
         vars: { target: "load-smoke-data" }
+      - command: subprocess.exec
+        params:
+          silent: true
+          working_dir: gopath/src/github.com/evergreen-ci/evergreen
+          command: bash scripts/setup-smoke-config.sh ${github_token}
+      - func: run-make
+        vars:
+          target: set-smoke-vars
+      - func: run-make
+        vars:
+          target: "${task_name}"
+  - &run-smoke-test-with-client-url
+    name: smoke
+    commands:
+      - command: timeout.update
+        params:
+          exec_timeout_secs: 900
+          timeout_secs: 900
+      - func: get-project
+      - func: run-make
+        vars: {target: "cli"}
+      - command: s3.put
+        type: system
+        params:
+          aws_key: ${aws_key}
+          aws_secret: ${aws_secret}
+          local_file: gopath/src/github.com/evergreen-ci/evergreen/clients/${goos}_${goarch}/evergreen
+          remote_file: evergreen/${task_id}/evergreen-ci/evergreen/clients/${goos}_${goarch}/evergreen
+          bucket: mciuploads
+          content_type: application/octet-stream
+          permissions: public-read
+          display_name: evergreen
+      - func: set-up-mongodb
+      - func: run-make
+        vars: {target: "set-var"}
+      - func: run-make
+        vars: {target: "set-project-var"}
+      - func: run-make
+        vars: {target: "load-smoke-data"}
       - command: subprocess.exec
         params:
           silent: true
@@ -170,6 +207,7 @@ functions:
       env:
         AWS_KEY: ${aws_key}
         AWS_SECRET: ${aws_secret}
+        CLIENT_URL: https://s3.amazonaws.com/mciuploads/evergreen/${task_id}/evergreen-ci/evergreen/clients/${goos}_${goarch}/evergreen
         DEBUG_ENABLED: ${debug}
         DISABLE_COVERAGE: ${disable_coverage}
         DOCKER_HOST: ${docker_host}
@@ -291,6 +329,9 @@ tasks:
     tags: ["smoke"]
   - <<: *run-smoke-test
     name: smoke-test-endpoints
+    tags: ["smoke"]
+  - <<: *run-smoke-test-with-client-url
+    name: smoke-test-monitor
     tags: ["smoke"]
   - <<: *run-generate-lint
 
@@ -414,9 +455,11 @@ buildvariants:
     run_on:
       - ubuntu1604-test
     expansions:
-      gobin: /opt/go1.8/go/bin/go
       disable_coverage: yes
-      goroot: /opt/go1.8/go
+      goos: linux
+      goarch: amd64
+      gobin: /opt/golang/go1.9/bin/go
+      goroot: /opt/golang/go1.9
       mongodb_url: https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-ubuntu1604-4.0.3.tgz
     tasks:
       - name: "dist"
@@ -430,8 +473,9 @@ buildvariants:
       - ubuntu1604-container
     expansions:
       goos: linux
-      gobin: /opt/go1.8/go/bin/go
-      goroot: /opt/go1.8/go
+      goarch: amd64
+      gobin: /opt/golang/go1.9/bin/go
+      goroot: /opt/golang/go1.9
       mongodb_url: https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-4.0.3.tgz
       test_timeout: 15m
       nodebin: /opt/node/bin
@@ -478,8 +522,8 @@ buildvariants:
       - macos-1012
     expansions:
       disable_coverage: yes
-      gobin: /usr/local/go1.8/go/bin/go
-      goroot: /usr/local/go1.8/go
+      gobin: /usr/local/golang/go1.9/bin/go
+      goroot: /usr/local/golang/go1.9
       mongodb_url: https://fastdl.mongodb.org/osx/mongodb-osx-ssl-x86_64-4.0.3.tgz
     tasks:
       - name: "dist"
@@ -491,8 +535,8 @@ buildvariants:
       - windows-64-vs2015-small
     expansions:
       disable_coverage: yes
-      gobin: /cygdrive/c/go1.8/go/bin/go
-      goroot: c:/go1.8/go
+      gobin: /cygdrive/c/golang/go1.9/bin/go
+      goroot: c:/golang/go1.9
       mongodb_url: https://fastdl.mongodb.org/win32/mongodb-win32-x86_64-2008plus-ssl-4.0.3.zip
       extension: ".exe"
       archiveExt: ".zip"
@@ -509,9 +553,9 @@ buildvariants:
       disable_coverage: yes
       xc_build: yes
       goarch: ppc64le
-      gobin: /opt/go1.8/go/bin/go
+      gobin: /opt/golang/go1.9/bin/go
       goos: linux
-      goroot: /opt/go1.8/go
+      goroot: /opt/golang/go1.9
       mongodb_url: https://downloads.mongodb.com/linux/mongodb-linux-ppc64le-enterprise-rhel71-4.0.3.tgz
     tasks:
       - name: ".agent .test"
@@ -525,9 +569,9 @@ buildvariants:
       xc_build: yes
       disable_coverage: yes
       goarch: s390x
-      gobin: /opt/go1.8/go/bin/go
+      gobin: /opt/golang/go1.9/bin/go
       goos: linux
-      goroot: /opt/go1.8/go
+      goroot: /opt/golang/go1.9
       # No official release of 4.0 for rhel72 zseries
       mongodb_url: https://downloads.mongodb.com/linux/mongodb-linux-s390x-enterprise-rhel72-3.6.4.tgz
     tasks:
@@ -543,8 +587,8 @@ buildvariants:
       xc_build: yes
       goarch: arm64
       goos: linux
-      gobin: /opt/go1.8/go/bin/go
-      goroot: /opt/go1.8/go
+      gobin: /opt/golang/go1.9/bin/go
+      goroot: /opt/golang/go1.9
       mongodb_url: https://downloads.mongodb.com/linux/mongodb-linux-arm64-enterprise-ubuntu1604-4.0.3.tgz
     tasks:
       - name: ".agent .test"

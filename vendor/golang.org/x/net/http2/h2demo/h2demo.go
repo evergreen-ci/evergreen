@@ -8,7 +8,6 @@ package main
 
 import (
 	"bytes"
-	"context"
 	"crypto/tls"
 	"flag"
 	"fmt"
@@ -28,10 +27,8 @@ import (
 	"sync"
 	"time"
 
-	"cloud.google.com/go/storage"
+	"camlistore.org/pkg/googlestorage"
 	"go4.org/syncutil/singleflight"
-	"golang.org/x/build/autocertcache"
-	"golang.org/x/crypto/acme/autocert"
 	"golang.org/x/net/http2"
 )
 
@@ -46,10 +43,6 @@ var (
 )
 
 func homeOldHTTP(w http.ResponseWriter, r *http.Request) {
-	if r.Host == "http1.golang.org" {
-		http.Redirect(w, r, "https://http2.golang.org/", http.StatusFound)
-		return
-	}
 	io.WriteString(w, `<html>
 <body>
 <h1>Go + HTTP/2</h1>
@@ -93,7 +86,6 @@ href="https://golang.org/s/http2bug">file a bug</a>.</p>
   <li>GET <a href="/reqinfo">/reqinfo</a> to dump the request + headers received</li>
   <li>GET <a href="/clockstream">/clockstream</a> streams the current time every second</li>
   <li>GET <a href="/gophertiles">/gophertiles</a> to see a page with a bunch of images</li>
-  <li>GET <a href="/serverpush">/serverpush</a> to see a page with server push</li>
   <li>GET <a href="/file/gopher.png">/file/gopher.png</a> for a small file (does If-Modified-Since, Content-Range, etc)</li>
   <li>GET <a href="/file/go.src.tar.gz">/file/go.src.tar.gz</a> for a larger file (~10 MB)</li>
   <li>GET <a href="/redirect">/redirect</a> to redirect back to / (this page)</li>
@@ -164,9 +156,6 @@ func echoCapitalHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "PUT required.", 400)
 		return
 	}
-	if f, ok := w.(http.Flusher); ok {
-		f.Flush()
-	}
 	io.Copy(flushWriter{w}, capitalizeReader{r.Body})
 }
 
@@ -178,11 +167,8 @@ var (
 
 // fileServer returns a file-serving handler that proxies URL.
 // It lazily fetches URL on the first access and caches its contents forever.
-func fileServer(url string, latency time.Duration) http.Handler {
+func fileServer(url string) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if latency > 0 {
-			time.Sleep(latency)
-		}
 		hi, err := fsGrp.Do(url, func() (interface{}, error) {
 			fsMu.Lock()
 			if h, ok := fsCache[url]; ok {
@@ -240,18 +226,14 @@ func clockStreamHandler(w http.ResponseWriter, r *http.Request) {
 
 func registerHandlers() {
 	tiles := newGopherTilesHandler()
-	push := newPushHandler()
 
 	mux2 := http.NewServeMux()
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		switch {
-		case r.URL.Path == "/gophertiles":
-			tiles.ServeHTTP(w, r) // allow HTTP/2 + HTTP/1.x
-			return
-		case strings.HasPrefix(r.URL.Path, "/serverpush"):
-			push.ServeHTTP(w, r) // allow HTTP/2 + HTTP/1.x
-			return
-		case r.TLS == nil: // do not allow HTTP/1.x for anything else
+		if r.TLS == nil {
+			if r.URL.Path == "/gophertiles" {
+				tiles.ServeHTTP(w, r)
+				return
+			}
 			http.Redirect(w, r, "https://"+httpsHost()+"/", http.StatusFound)
 			return
 		}
@@ -266,8 +248,8 @@ func registerHandlers() {
 		mux2.ServeHTTP(w, r)
 	})
 	mux2.HandleFunc("/", home)
-	mux2.Handle("/file/gopher.png", fileServer("https://golang.org/doc/gopher/frontpage.png", 0))
-	mux2.Handle("/file/go.src.tar.gz", fileServer("https://storage.googleapis.com/golang/go1.4.1.src.tar.gz", 0))
+	mux2.Handle("/file/gopher.png", fileServer("https://golang.org/doc/gopher/frontpage.png"))
+	mux2.Handle("/file/go.src.tar.gz", fileServer("https://storage.googleapis.com/golang/go1.4.1.src.tar.gz"))
 	mux2.HandleFunc("/reqinfo", reqInfoHandler)
 	mux2.HandleFunc("/crc32", crcHandler)
 	mux2.HandleFunc("/ECHO", echoCapitalHandler)
@@ -281,46 +263,6 @@ func registerHandlers() {
 		w.Header().Set("Content-Type", "text/plain; charset=utf-8")
 		buf := make([]byte, 2<<20)
 		w.Write(stripHomedir.ReplaceAll(buf[:runtime.Stack(buf, true)], nil))
-	})
-}
-
-var pushResources = map[string]http.Handler{
-	"/serverpush/static/jquery.min.js": fileServer("https://ajax.googleapis.com/ajax/libs/jquery/1.8.2/jquery.min.js", 100*time.Millisecond),
-	"/serverpush/static/godocs.js":     fileServer("https://golang.org/lib/godoc/godocs.js", 100*time.Millisecond),
-	"/serverpush/static/playground.js": fileServer("https://golang.org/lib/godoc/playground.js", 100*time.Millisecond),
-	"/serverpush/static/style.css":     fileServer("https://golang.org/lib/godoc/style.css", 100*time.Millisecond),
-}
-
-func newPushHandler() http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		for path, handler := range pushResources {
-			if r.URL.Path == path {
-				handler.ServeHTTP(w, r)
-				return
-			}
-		}
-
-		cacheBust := time.Now().UnixNano()
-		if pusher, ok := w.(http.Pusher); ok {
-			for path := range pushResources {
-				url := fmt.Sprintf("%s?%d", path, cacheBust)
-				if err := pusher.Push(url, nil); err != nil {
-					log.Printf("Failed to push %v: %v", path, err)
-				}
-			}
-		}
-		time.Sleep(100 * time.Millisecond) // fake network latency + parsing time
-		if err := pushTmpl.Execute(w, struct {
-			CacheBust   int64
-			HTTPSHost   string
-			HTTP1Prefix string
-		}{
-			CacheBust:   cacheBust,
-			HTTPSHost:   httpsHost(),
-			HTTP1Prefix: http1Prefix(),
-		}); err != nil {
-			log.Printf("Executing server push template: %v", err)
-		}
 	})
 }
 
@@ -386,9 +328,9 @@ func newGopherTilesHandler() http.Handler {
 		fmt.Fprintf(w, "A grid of %d tiled images is below. Compare:<p>", xt*yt)
 		for _, ms := range []int{0, 30, 200, 1000} {
 			d := time.Duration(ms) * nanosPerMilli
-			fmt.Fprintf(w, "[<a href='https://%s/gophertiles?latency=%d'>HTTP/2, %v latency</a>] [<a href='%s/gophertiles?latency=%d'>HTTP/1, %v latency</a>]<br>\n",
+			fmt.Fprintf(w, "[<a href='https://%s/gophertiles?latency=%d'>HTTP/2, %v latency</a>] [<a href='http://%s/gophertiles?latency=%d'>HTTP/1, %v latency</a>]<br>\n",
 				httpsHost(), ms, d,
-				http1Prefix(), ms, d,
+				httpHost(), ms, d,
 			)
 		}
 		io.WriteString(w, "<p>\n")
@@ -424,13 +366,6 @@ func httpsHost() string {
 	}
 }
 
-func http1Prefix() string {
-	if *prod {
-		return "https://http1.golang.org"
-	}
-	return "http://" + httpHost()
-}
-
 func httpHost() string {
 	if *hostHTTP != "" {
 		return *hostHTTP
@@ -442,25 +377,41 @@ func httpHost() string {
 	}
 }
 
-func serveProdTLS(autocertManager *autocert.Manager) error {
+func serveProdTLS() error {
+	c, err := googlestorage.NewServiceClient()
+	if err != nil {
+		return err
+	}
+	slurp := func(key string) ([]byte, error) {
+		const bucket = "http2-demo-server-tls"
+		rc, _, err := c.GetObject(&googlestorage.Object{
+			Bucket: bucket,
+			Key:    key,
+		})
+		if err != nil {
+			return nil, fmt.Errorf("Error fetching GCS object %q in bucket %q: %v", key, bucket, err)
+		}
+		defer rc.Close()
+		return ioutil.ReadAll(rc)
+	}
+	certPem, err := slurp("http2.golang.org.chained.pem")
+	if err != nil {
+		return err
+	}
+	keyPem, err := slurp("http2.golang.org.key")
+	if err != nil {
+		return err
+	}
+	cert, err := tls.X509KeyPair(certPem, keyPem)
+	if err != nil {
+		return err
+	}
 	srv := &http.Server{
 		TLSConfig: &tls.Config{
-			GetCertificate: autocertManager.GetCertificate,
-			GetConfigForClient: func(hello *tls.ClientHelloInfo) (*tls.Config, error) {
-				if hello.ServerName == "http1.golang.org" {
-					return &tls.Config{
-						GetCertificate: autocertManager.GetCertificate,
-					}, nil
-				}
-				return nil, nil // fallback to other methods
-			},
+			Certificates: []tls.Certificate{cert},
 		},
 	}
-	http2.ConfigureServer(srv, &http2.Server{
-		NewWriteScheduler: func() http2.WriteScheduler {
-			return http2.NewPriorityWriteScheduler(nil)
-		},
-	})
+	http2.ConfigureServer(srv, &http2.Server{})
 	ln, err := net.Listen("tcp", ":443")
 	if err != nil {
 		return err
@@ -483,21 +434,9 @@ func (ln tcpKeepAliveListener) Accept() (c net.Conn, err error) {
 }
 
 func serveProd() error {
-	log.Printf("running in production mode.")
-
-	storageClient, err := storage.NewClient(context.Background())
-	if err != nil {
-		log.Fatalf("storage.NewClient: %v", err)
-	}
-	autocertManager := &autocert.Manager{
-		Prompt:     autocert.AcceptTOS,
-		HostPolicy: autocert.HostWhitelist("http1.golang.org", "http2.golang.org"),
-		Cache:      autocertcache.NewGoogleCloudStorageCache(storageClient, "golang-h2demo-autocert"),
-	}
-
 	errc := make(chan error, 2)
-	go func() { errc <- http.ListenAndServe(":80", autocertManager.HTTPHandler(http.DefaultServeMux)) }()
-	go func() { errc <- serveProdTLS(autocertManager) }()
+	go func() { errc <- http.ListenAndServe(":80", nil) }()
+	go func() { errc <- serveProdTLS() }()
 	return <-errc
 }
 

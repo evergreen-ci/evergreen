@@ -115,6 +115,11 @@ load-smoke-data:$(buildDir)/.load-smoke-data
 $(buildDir)/.load-smoke-data:$(buildDir)/load-smoke-data
 	./$<
 	@touch $@
+smoke-test-monitor:$(localClientBinary) load-smoke-data
+	./$< service deploy start-evergreen --web --binary ./$< &
+	./$< service deploy start-evergreen --monitor --binary ./$< --client_url ${CLIENT_URL} &
+	./$< service deploy test-endpoints --check-build --username admin --key abb623665fdbf368a1db980dde6ee0f0 || (pkill -f $<; exit 1)
+	pkill -f $<
 smoke-test-task:$(localClientBinary) load-smoke-data
 	./$< service deploy start-evergreen --web --binary ./$< &
 	./$< service deploy start-evergreen --agent --binary ./$< &
@@ -255,10 +260,7 @@ vendor-clean:
 	rm -rf vendor/github.com/mongodb/jasper/vendor/github.com/mholt/archiver/
 	rm -rf vendor/github.com/mongodb/jasper/vendor/github.com/evergreen-ci/gimlet/
 	rm -rf vendor/github.com/mongodb/jasper/vendor/github.com/pkg/
-	rm -rf vendor/github.com/mongodb/jasper/vendor/golang.org/x/net/
-	rm -rf vendor/github.com/mongodb/jasper/vendor/golang.org/x/sys/
 	rm -rf vendor/github.com/mongodb/jasper/vendor/github.com/stretchr/
-	rm -rf vendor/github.com/mongodb/jasper/vendor/google.golang.org/grpc/
 	rm -rf vendor/github.com/docker/docker/vendor/golang.org/x/net/
 	rm -rf vendor/github.com/docker/docker/vendor/github.com/docker/go-connections/
 	rm -rf vendor/github.com/docker/docker/vendor/github.com/Microsoft/go-winio/

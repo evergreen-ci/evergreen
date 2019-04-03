@@ -2,6 +2,8 @@ package rpc
 
 import (
 	"context"
+	"fmt"
+	"net"
 	"runtime"
 	"strings"
 	"syscall"
@@ -19,7 +21,7 @@ import (
 
 func TestRPCManager(t *testing.T) {
 	assert.NotPanics(t, func() {
-		NewClient(nil)
+		newRPCManager(nil)
 	})
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -29,10 +31,12 @@ func TestRPCManager(t *testing.T) {
 		"Basic": func(ctx context.Context, t *testing.T) jasper.Manager {
 			mngr, err := jasper.NewLocalManager(false)
 			require.NoError(t, err)
-			addr, err := startRPC(ctx, mngr)
+
+			addr, err := net.ResolveTCPAddr("tcp", fmt.Sprintf("localhost:%d", getPortNumber()))
 			require.NoError(t, err)
 
-			client, err := getClient(ctx, addr)
+			require.NoError(t, startTestServer(ctx, mngr, addr))
+			client, err := newTestClient(ctx, addr)
 			require.NoError(t, err)
 
 			return client
@@ -40,10 +44,12 @@ func TestRPCManager(t *testing.T) {
 		"Blocking": func(ctx context.Context, t *testing.T) jasper.Manager {
 			mngr, err := jasper.NewLocalManagerBlockingProcesses(false)
 			require.NoError(t, err)
-			addr, err := startRPC(ctx, mngr)
+
+			addr, err := net.ResolveTCPAddr("tcp", fmt.Sprintf("localhost:%d", getPortNumber()))
 			require.NoError(t, err)
 
-			client, err := getClient(ctx, addr)
+			require.NoError(t, startTestServer(ctx, mngr, addr))
+			client, err := newTestClient(ctx, addr)
 			require.NoError(t, err)
 
 			return client
@@ -247,7 +253,6 @@ func TestRPCManager(t *testing.T) {
 					require.NoError(t, jasper.Terminate(ctx, sleepProc)) // Clean up
 				},
 				// "": func(ctx context.Context, t *testing.T, manager jasper.Manager) {},
-				// "": func(ctx context.Context, t *testing.T, manager jasper.Manager) {},
 
 				///////////////////////////////////
 				//
@@ -313,35 +318,43 @@ func TestRPCProcess(t *testing.T) {
 	for cname, makeProc := range map[string]processConstructor{
 		"Basic": func(ctx context.Context, opts *jasper.CreateOptions) (jasper.Process, error) {
 			mngr, err := jasper.NewLocalManager(false)
-			require.NoError(t, err)
-			addr, err := startRPC(ctx, mngr)
 			if err != nil {
 				return nil, errors.WithStack(err)
 			}
+			addr, err := net.ResolveTCPAddr("tcp", fmt.Sprintf("localhost:%d", getPortNumber()))
+			if err != nil {
+				return nil, errors.WithStack(err)
+			}
+			if err := startTestServer(ctx, mngr, addr); err != nil {
+				return nil, errors.WithStack(err)
+			}
 
-			client, err := getClient(ctx, addr)
+			client, err := newTestClient(ctx, addr)
 			if err != nil {
 				return nil, errors.WithStack(err)
 			}
 
 			return client.CreateProcess(ctx, opts)
-
 		},
 		"Blocking": func(ctx context.Context, opts *jasper.CreateOptions) (jasper.Process, error) {
 			mngr, err := jasper.NewLocalManagerBlockingProcesses(false)
-			require.NoError(t, err)
-			addr, err := startRPC(ctx, mngr)
 			if err != nil {
 				return nil, errors.WithStack(err)
 			}
+			addr, err := net.ResolveTCPAddr("tcp", fmt.Sprintf("localhost:%d", getPortNumber()))
+			if err != nil {
+				return nil, errors.WithStack(err)
+			}
+			if err := startTestServer(ctx, mngr, addr); err != nil {
+				return nil, errors.WithStack(err)
+			}
 
-			client, err := getClient(ctx, addr)
+			client, err := newTestClient(ctx, addr)
 			if err != nil {
 				return nil, errors.WithStack(err)
 			}
 
 			return client.CreateProcess(ctx, opts)
-
 		},
 	} {
 		t.Run(cname, func(t *testing.T) {

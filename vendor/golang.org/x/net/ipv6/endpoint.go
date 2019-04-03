@@ -1,4 +1,4 @@
-// Copyright 2013 The Go Authors. All rights reserved.
+// Copyright 2013 The Go Authors.  All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
@@ -6,15 +6,11 @@ package ipv6
 
 import (
 	"net"
+	"syscall"
 	"time"
 
-	"golang.org/x/net/internal/socket"
+	"golang.org/x/net/internal/netreflect"
 )
-
-// BUG(mikio): On Windows, the JoinSourceSpecificGroup,
-// LeaveSourceSpecificGroup, ExcludeSourceSpecificGroup and
-// IncludeSourceSpecificGroup methods of PacketConn are not
-// implemented.
 
 // A Conn represents a network endpoint that uses IPv6 transport.
 // It allows to set basic IP-level socket options such as traffic
@@ -24,7 +20,7 @@ type Conn struct {
 }
 
 type genericOpt struct {
-	*socket.Conn
+	net.Conn
 }
 
 func (c *genericOpt) ok() bool { return c != nil && c.Conn != nil }
@@ -32,14 +28,14 @@ func (c *genericOpt) ok() bool { return c != nil && c.Conn != nil }
 // PathMTU returns a path MTU value for the destination associated
 // with the endpoint.
 func (c *Conn) PathMTU() (int, error) {
-	if !c.ok() {
-		return 0, errInvalidConn
+	if !c.genericOpt.ok() {
+		return 0, syscall.EINVAL
 	}
-	so, ok := sockOpts[ssoPathMTU]
-	if !ok {
-		return 0, errOpNoSupport
+	s, err := netreflect.SocketOf(c.genericOpt.Conn)
+	if err != nil {
+		return 0, err
 	}
-	_, mtu, err := so.getMTUInfo(c.Conn)
+	_, mtu, err := getMTUInfo(s, &sockOpts[ssoPathMTU])
 	if err != nil {
 		return 0, err
 	}
@@ -48,15 +44,14 @@ func (c *Conn) PathMTU() (int, error) {
 
 // NewConn returns a new Conn.
 func NewConn(c net.Conn) *Conn {
-	cc, _ := socket.NewConn(c)
 	return &Conn{
-		genericOpt: genericOpt{Conn: cc},
+		genericOpt: genericOpt{Conn: c},
 	}
 }
 
 // A PacketConn represents a packet network endpoint that uses IPv6
-// transport. It is used to control several IP-level socket options
-// including IPv6 header manipulation. It also provides datagram
+// transport.  It is used to control several IP-level socket options
+// including IPv6 header manipulation.  It also provides datagram
 // based network I/O methods specific to the IPv6 and higher layer
 // protocols such as OSPF, GRE, and UDP.
 type PacketConn struct {
@@ -66,25 +61,29 @@ type PacketConn struct {
 }
 
 type dgramOpt struct {
-	*socket.Conn
+	net.PacketConn
 }
 
-func (c *dgramOpt) ok() bool { return c != nil && c.Conn != nil }
+func (c *dgramOpt) ok() bool { return c != nil && c.PacketConn != nil }
 
 // SetControlMessage allows to receive the per packet basis IP-level
 // socket options.
 func (c *PacketConn) SetControlMessage(cf ControlFlags, on bool) error {
 	if !c.payloadHandler.ok() {
-		return errInvalidConn
+		return syscall.EINVAL
 	}
-	return setControlMessage(c.dgramOpt.Conn, &c.payloadHandler.rawOpt, cf, on)
+	s, err := netreflect.PacketSocketOf(c.dgramOpt.PacketConn)
+	if err != nil {
+		return err
+	}
+	return setControlMessage(s, &c.payloadHandler.rawOpt, cf, on)
 }
 
 // SetDeadline sets the read and write deadlines associated with the
 // endpoint.
 func (c *PacketConn) SetDeadline(t time.Time) error {
 	if !c.payloadHandler.ok() {
-		return errInvalidConn
+		return syscall.EINVAL
 	}
 	return c.payloadHandler.SetDeadline(t)
 }
@@ -93,7 +92,7 @@ func (c *PacketConn) SetDeadline(t time.Time) error {
 // endpoint.
 func (c *PacketConn) SetReadDeadline(t time.Time) error {
 	if !c.payloadHandler.ok() {
-		return errInvalidConn
+		return syscall.EINVAL
 	}
 	return c.payloadHandler.SetReadDeadline(t)
 }
@@ -102,7 +101,7 @@ func (c *PacketConn) SetReadDeadline(t time.Time) error {
 // endpoint.
 func (c *PacketConn) SetWriteDeadline(t time.Time) error {
 	if !c.payloadHandler.ok() {
-		return errInvalidConn
+		return syscall.EINVAL
 	}
 	return c.payloadHandler.SetWriteDeadline(t)
 }
@@ -110,7 +109,7 @@ func (c *PacketConn) SetWriteDeadline(t time.Time) error {
 // Close closes the endpoint.
 func (c *PacketConn) Close() error {
 	if !c.payloadHandler.ok() {
-		return errInvalidConn
+		return syscall.EINVAL
 	}
 	return c.payloadHandler.Close()
 }
@@ -118,10 +117,9 @@ func (c *PacketConn) Close() error {
 // NewPacketConn returns a new PacketConn using c as its underlying
 // transport.
 func NewPacketConn(c net.PacketConn) *PacketConn {
-	cc, _ := socket.NewConn(c.(net.Conn))
 	return &PacketConn{
-		genericOpt:     genericOpt{Conn: cc},
-		dgramOpt:       dgramOpt{Conn: cc},
-		payloadHandler: payloadHandler{PacketConn: c, Conn: cc},
+		genericOpt:     genericOpt{Conn: c.(net.Conn)},
+		dgramOpt:       dgramOpt{PacketConn: c},
+		payloadHandler: payloadHandler{PacketConn: c},
 	}
 }

@@ -2,6 +2,8 @@ package rpc
 
 import (
 	"context"
+	"fmt"
+	"net"
 	"syscall"
 	"testing"
 
@@ -45,10 +47,11 @@ func TestWindowsRPCService(t *testing.T) {
 
 					manager, err := makeManager(false)
 					require.NoError(t, err)
-					addr, err := startRPC(ctx, manager)
+					addr, err := net.ResolveTCPAddr("tcp", fmt.Sprintf("localhost:%d", getPortNumber()))
 					require.NoError(t, err)
+					require.NoError(t, startTestServer(ctx, manager, addr))
 
-					conn, err := grpc.DialContext(ctx, addr, grpc.WithInsecure(), grpc.WithBlock())
+					conn, err := grpc.DialContext(ctx, addr.String(), grpc.WithInsecure(), grpc.WithBlock())
 					require.NoError(t, err)
 					client := internal.NewJasperProcessManagerClient(conn)
 

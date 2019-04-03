@@ -1,4 +1,4 @@
-// Copyright 2012 The Go Authors. All rights reserved.
+// Copyright 2012 The Go Authors.  All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
@@ -9,8 +9,7 @@ import (
 	"fmt"
 	"net"
 	"runtime"
-
-	"golang.org/x/net/internal/socket"
+	"syscall"
 )
 
 const (
@@ -50,14 +49,10 @@ func (h *Header) String() string {
 	return fmt.Sprintf("ver=%d hdrlen=%d tos=%#x totallen=%d id=%#x flags=%#x fragoff=%#x ttl=%d proto=%d cksum=%#x src=%v dst=%v", h.Version, h.Len, h.TOS, h.TotalLen, h.ID, h.Flags, h.FragOff, h.TTL, h.Protocol, h.Checksum, h.Src, h.Dst)
 }
 
-// Marshal returns the binary encoding of h.
-//
-// The returned slice is in the format used by a raw IP socket on the
-// local system.
-// This may differ from the wire format, depending on the system.
+// Marshal returns the binary encoding of the IPv4 header h.
 func (h *Header) Marshal() ([]byte, error) {
 	if h == nil {
-		return nil, errInvalidConn
+		return nil, syscall.EINVAL
 	}
 	if h.Len < HeaderLen {
 		return nil, errHeaderTooShort
@@ -68,17 +63,9 @@ func (h *Header) Marshal() ([]byte, error) {
 	b[1] = byte(h.TOS)
 	flagsAndFragOff := (h.FragOff & 0x1fff) | int(h.Flags<<13)
 	switch runtime.GOOS {
-	case "darwin", "dragonfly", "netbsd":
-		socket.NativeEndian.PutUint16(b[2:4], uint16(h.TotalLen))
-		socket.NativeEndian.PutUint16(b[6:8], uint16(flagsAndFragOff))
-	case "freebsd":
-		if freebsdVersion < 1100000 {
-			socket.NativeEndian.PutUint16(b[2:4], uint16(h.TotalLen))
-			socket.NativeEndian.PutUint16(b[6:8], uint16(flagsAndFragOff))
-		} else {
-			binary.BigEndian.PutUint16(b[2:4], uint16(h.TotalLen))
-			binary.BigEndian.PutUint16(b[6:8], uint16(flagsAndFragOff))
-		}
+	case "darwin", "dragonfly", "freebsd", "netbsd":
+		nativeEndian.PutUint16(b[2:4], uint16(h.TotalLen))
+		nativeEndian.PutUint16(b[6:8], uint16(flagsAndFragOff))
 	default:
 		binary.BigEndian.PutUint16(b[2:4], uint16(h.TotalLen))
 		binary.BigEndian.PutUint16(b[6:8], uint16(flagsAndFragOff))
@@ -101,70 +88,45 @@ func (h *Header) Marshal() ([]byte, error) {
 	return b, nil
 }
 
-// Parse parses b as an IPv4 header and stores the result in h.
-//
-// The provided b must be in the format used by a raw IP socket on the
-// local system.
-// This may differ from the wire format, depending on the system.
-func (h *Header) Parse(b []byte) error {
-	if h == nil || len(b) < HeaderLen {
-		return errHeaderTooShort
+// ParseHeader parses b as an IPv4 header.
+func ParseHeader(b []byte) (*Header, error) {
+	if len(b) < HeaderLen {
+		return nil, errHeaderTooShort
 	}
 	hdrlen := int(b[0]&0x0f) << 2
 	if hdrlen > len(b) {
-		return errBufferTooShort
+		return nil, errBufferTooShort
 	}
-	h.Version = int(b[0] >> 4)
-	h.Len = hdrlen
-	h.TOS = int(b[1])
-	h.ID = int(binary.BigEndian.Uint16(b[4:6]))
-	h.TTL = int(b[8])
-	h.Protocol = int(b[9])
-	h.Checksum = int(binary.BigEndian.Uint16(b[10:12]))
-	h.Src = net.IPv4(b[12], b[13], b[14], b[15])
-	h.Dst = net.IPv4(b[16], b[17], b[18], b[19])
+	h := &Header{
+		Version:  int(b[0] >> 4),
+		Len:      hdrlen,
+		TOS:      int(b[1]),
+		ID:       int(binary.BigEndian.Uint16(b[4:6])),
+		TTL:      int(b[8]),
+		Protocol: int(b[9]),
+		Checksum: int(binary.BigEndian.Uint16(b[10:12])),
+		Src:      net.IPv4(b[12], b[13], b[14], b[15]),
+		Dst:      net.IPv4(b[16], b[17], b[18], b[19]),
+	}
 	switch runtime.GOOS {
 	case "darwin", "dragonfly", "netbsd":
-		h.TotalLen = int(socket.NativeEndian.Uint16(b[2:4])) + hdrlen
-		h.FragOff = int(socket.NativeEndian.Uint16(b[6:8]))
+		h.TotalLen = int(nativeEndian.Uint16(b[2:4])) + hdrlen
+		h.FragOff = int(nativeEndian.Uint16(b[6:8]))
 	case "freebsd":
-		if freebsdVersion < 1100000 {
-			h.TotalLen = int(socket.NativeEndian.Uint16(b[2:4]))
-			if freebsdVersion < 1000000 {
-				h.TotalLen += hdrlen
-			}
-			h.FragOff = int(socket.NativeEndian.Uint16(b[6:8]))
-		} else {
-			h.TotalLen = int(binary.BigEndian.Uint16(b[2:4]))
-			h.FragOff = int(binary.BigEndian.Uint16(b[6:8]))
+		h.TotalLen = int(nativeEndian.Uint16(b[2:4]))
+		if freebsdVersion < 1000000 {
+			h.TotalLen += hdrlen
 		}
+		h.FragOff = int(nativeEndian.Uint16(b[6:8]))
 	default:
 		h.TotalLen = int(binary.BigEndian.Uint16(b[2:4]))
 		h.FragOff = int(binary.BigEndian.Uint16(b[6:8]))
 	}
 	h.Flags = HeaderFlags(h.FragOff&0xe000) >> 13
 	h.FragOff = h.FragOff & 0x1fff
-	optlen := hdrlen - HeaderLen
-	if optlen > 0 && len(b) >= hdrlen {
-		if cap(h.Options) < optlen {
-			h.Options = make([]byte, optlen)
-		} else {
-			h.Options = h.Options[:optlen]
-		}
-		copy(h.Options, b[HeaderLen:hdrlen])
-	}
-	return nil
-}
-
-// ParseHeader parses b as an IPv4 header.
-//
-// The provided b must be in the format used by a raw IP socket on the
-// local system.
-// This may differ from the wire format, depending on the system.
-func ParseHeader(b []byte) (*Header, error) {
-	h := new(Header)
-	if err := h.Parse(b); err != nil {
-		return nil, err
+	if hdrlen-HeaderLen > 0 {
+		h.Options = make([]byte, hdrlen-HeaderLen)
+		copy(h.Options, b[HeaderLen:])
 	}
 	return h, nil
 }

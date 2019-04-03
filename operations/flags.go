@@ -39,13 +39,6 @@ const (
 	dbNameFlagName     = "db"
 	dbWriteNumFlagName = "w"
 	dbWmodeFlagName    = "wmode"
-
-	// Agent flags
-	hostIDFlagName           = "host_id"
-	hostSecretFlagName       = "host_secret"
-	apiServerURLFlagName     = "api_server"
-	logkeeperURLFlagName     = "logkeeper_url"
-	workingDirectoryFlagName = "working_directory"
 )
 
 func joinFlagNames(ids ...string) string { return strings.Join(ids, ", ") }

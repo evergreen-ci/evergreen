@@ -3,6 +3,7 @@ package rpc
 import (
 	"context"
 	"io"
+	"net"
 	"syscall"
 
 	empty "github.com/golang/protobuf/ptypes/empty"
@@ -10,6 +11,7 @@ import (
 	internal "github.com/mongodb/jasper/rpc/internal"
 	"github.com/pkg/errors"
 	grpc "google.golang.org/grpc"
+	"google.golang.org/grpc/credentials"
 )
 
 // Client provides an interface access all functionality from the Jasper RPC
@@ -29,10 +31,33 @@ type rpcManager struct {
 	client internal.JasperProcessManagerClient
 }
 
-// TODO provide some better way of constructing this object
+// NetClient creates a connection to the RPC service specified
+// in the address. If certFile is non-empty, the credentials will be read from
+// the file to establish a secure TLS connection; otherwise, it will establish
+// an insecure connection. The caller is responsible for closing the connection
+// using the returned CloseFunc.
+func NewClient(ctx context.Context, addr net.Addr, certFile string) (Client, CloseFunc, error) {
+	var credsDialOpt grpc.DialOption
+	if certFile != "" {
+		creds, err := credentials.NewClientTLSFromFile(certFile, "")
+		if err != nil {
+			return nil, nil, errors.Wrapf(err, "could not get client credentials from cert file '%s'", certFile)
+		}
+		credsDialOpt = grpc.WithTransportCredentials(creds)
+	} else {
+		credsDialOpt = grpc.WithInsecure()
+	}
 
-// NewClient is a constructor for an RPC client.
-func NewClient(cc *grpc.ClientConn) Client {
+	conn, err := grpc.DialContext(ctx, addr.String(), credsDialOpt, grpc.WithBlock())
+	if err != nil {
+		return nil, nil, errors.Wrapf(err, "could not establish connection to service at address '%s'", addr.String())
+	}
+
+	return newRPCManager(conn), conn.Close, nil
+}
+
+// newRPCManager is a constructor for an RPC client.
+func newRPCManager(cc *grpc.ClientConn) Client {
 	return &rpcManager{
 		client: internal.NewJasperProcessManagerClient(cc),
 	}

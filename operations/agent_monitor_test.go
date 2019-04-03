@@ -12,63 +12,41 @@ import (
 
 	"github.com/mongodb/jasper"
 	"github.com/mongodb/jasper/rpc"
-	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"google.golang.org/grpc"
 )
-
-// kim: TODO: integration tests with Jasper RPC service.
-// 1. Set up Jasper.
-// 2. Test fetch client using download.
-// 3. Test
-
-// startLocalJasperService starts the Jasper service on localhost.
-func startLocalJasperService(ctx context.Context, manager jasper.Manager, port int) error {
-	addr := fmt.Sprintf("localhost:%d", port)
-	lis, err := net.Listen("tcp", addr)
-	if err != nil {
-		return errors.WithStack(err)
-	}
-
-	service := grpc.NewServer()
-
-	if err = rpc.AttachService(manager, service); err != nil {
-		return errors.WithStack(err)
-	}
-
-	go service.Serve(lis)
-
-	go func() {
-		<-ctx.Done()
-		service.Stop()
-	}()
-
-	return nil
-}
 
 const monitorTestTimeout = 10 * time.Second
 
-func TestMonitorWithJasper(t *testing.T) {
+func TestAgentMonitorWithJasper(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	port := defaultMonitorPort
 	jasperPort := defaultJasperPort
+	port := defaultMonitorPort
 	manager, err := jasper.NewLocalManager(false)
 	require.NoError(t, err)
-	require.NoError(t, startLocalJasperService(ctx, manager, jasperPort))
+	addr, err := net.ResolveTCPAddr("tcp", fmt.Sprintf("localhost:%d", jasperPort))
+	require.NoError(t, err)
+	closeServer, err := rpc.StartServer(ctx, manager, addr, "", "")
+	require.NoError(t, err)
+	defer func() {
+		assert.NoError(t, closeServer())
+	}()
 
 	for testName, testCase := range map[string]func(context.Context, *testing.T, *monitor){
-		"FetchClientDownloadsFromURL": func(ctx context.Context, t *testing.T, mon *monitor) {
-			require.NoError(t, mon.fetchClient(ctx, time.Minute))
-			fileInfo, err := os.Stat(mon.clientPath)
+		"FetchClientDownloadsFromURL": func(ctx context.Context, t *testing.T, m *monitor) {
+			require.NoError(t, fetchClient(ctx, m, &retryArgs{
+				maxDelay:    time.Second,
+				maxAttempts: defaultMaxRequestAttempts,
+			}))
+			fileInfo, err := os.Stat(m.clientPath)
 			require.NoError(t, err)
 			assert.NotZero(t, fileInfo.Size())
 		},
-		"WaitUntilCompleteWaitsForProcessTermination": func(ctx context.Context, t *testing.T, mon *monitor) {
+		"WaitUntilCompleteWaitsForProcessTermination": func(ctx context.Context, t *testing.T, m *monitor) {
 			opts := &jasper.CreateOptions{Args: []string{"sleep", "1"}}
-			proc, err := mon.jasperClient.CreateProcess(ctx, opts)
+			proc, err := m.jasperClient.CreateProcess(ctx, opts)
 			require.NoError(t, err)
 			exitCode, err := waitUntilComplete(ctx, proc, time.Second)
 			require.NoError(t, err)
@@ -92,10 +70,17 @@ func TestMonitorWithJasper(t *testing.T) {
 				port:       port,
 			}
 
-			// Monitor should be able to connect without needing credentials when testing.
-			conn, err := m.setupJasperConnection(context.Background(), time.Minute)
+			// Monitor should be able to connect without needing credentials when
+			// testing.
+			client, closeClient, err := setupJasperConnection(tctx, m, &retryArgs{
+				maxDelay:    time.Second,
+				maxAttempts: defaultMaxRequestAttempts,
+			})
 			require.NoError(t, err)
-			defer conn.Close()
+			defer func() {
+				assert.NoError(t, closeClient())
+			}()
+			m.jasperClient = client
 
 			testCase(tctx, t, m)
 		})

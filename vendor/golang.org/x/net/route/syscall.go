@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-// +build dragonfly freebsd netbsd openbsd
+// +build darwin dragonfly freebsd netbsd openbsd
 
 package route
 
@@ -10,6 +10,10 @@ import (
 	"syscall"
 	"unsafe"
 )
+
+// TODO: replace with runtime.KeepAlive when available
+//go:noescape
+func keepAlive(p unsafe.Pointer)
 
 var zero uintptr
 
@@ -20,7 +24,8 @@ func sysctl(mib []int32, old *byte, oldlen *uintptr, new *byte, newlen uintptr) 
 	} else {
 		p = unsafe.Pointer(&zero)
 	}
-	_, _, errno := syscall.Syscall6(syscall.SYS___SYSCTL, uintptr(p), uintptr(len(mib)), uintptr(unsafe.Pointer(old)), uintptr(unsafe.Pointer(oldlen)), uintptr(unsafe.Pointer(new)), newlen)
+	_, _, errno := syscall.Syscall6(syscall.SYS___SYSCTL, uintptr(p), uintptr(len(mib)), uintptr(unsafe.Pointer(old)), uintptr(unsafe.Pointer(oldlen)), uintptr(unsafe.Pointer(new)), uintptr(newlen))
+	keepAlive(p)
 	if errno != 0 {
 		return error(errno)
 	}

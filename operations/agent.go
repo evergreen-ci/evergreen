@@ -22,10 +22,15 @@ const defaultAgentStatusPort = 2285
 
 func Agent() cli.Command {
 	const (
-		logPrefixFlagName  = "log_prefix"
-		statusPortFlagName = "status_port"
-		cleanupFlagName    = "cleanup"
-		s3BaseFlagName     = "s3_base_url"
+		hostIDFlagName           = "host_id"
+		hostSecretFlagName       = "host_secret"
+		apiServerURLFlagName     = "api_server"
+		workingDirectoryFlagName = "working_directory"
+		logkeeperURLFlagName     = "logkeeper_url"
+		logPrefixFlagName        = "log_prefix"
+		s3BaseURLFlagName        = "s3_base_url"
+		statusPortFlagName       = "status_port"
+		cleanupFlagName          = "cleanup"
 	)
 
 	return cli.Command{
@@ -37,7 +42,7 @@ func Agent() cli.Command {
 		Flags: []cli.Flag{
 			cli.StringFlag{
 				Name:  hostIDFlagName,
-				Usage: "id of the current host",
+				Usage: "id of machine agent is running on",
 			},
 			cli.StringFlag{
 				Name:  hostSecretFlagName,
@@ -52,16 +57,16 @@ func Agent() cli.Command {
 				Usage: "working directory for the agent",
 			},
 			cli.StringFlag{
-				Name:  logkeeperURLFlagName,
-				Usage: "URL of the logkeeper service to be used by tasks",
-			},
-			cli.StringFlag{
 				Name:  logPrefixFlagName,
 				Value: "evg.agent",
 				Usage: "prefix for the agent's log filename",
 			},
 			cli.StringFlag{
-				Name:  s3BaseFlagName,
+				Name:  logkeeperURLFlagName,
+				Usage: "URL of the logkeeper service to be used by tasks",
+			},
+			cli.StringFlag{
+				Name:  s3BaseURLFlagName,
 				Usage: "base URL for S3 uploads (defaults to 'https://s3.amazonaws.com'",
 			},
 			cli.IntFlag{
@@ -85,7 +90,7 @@ func Agent() cli.Command {
 			},
 		),
 		Action: func(c *cli.Context) error {
-			s3Base := c.String(s3BaseFlagName)
+			s3Base := c.String(s3BaseURLFlagName)
 			if s3Base == "" {
 				s3Base = "https://s3.amazonaws.com"
 			}

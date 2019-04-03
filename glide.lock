@@ -6,10 +6,9 @@ imports:
     subpackages:
       - ssh
   - name: golang.org/x/net
-    version: 3a22650c66bd7f4fb6d1e8072ffd7b75c8a27898
+    version: 1358eff22f0dd0c54fc521042cc607f6ff4b531a
     subpackages:
       - context
-      - http2
   - name: github.com/vaughan0/go-ini
     version: a98ad7ee00ec53921f08832bc06ecf7fd600e6a1
   - name: github.com/10gen/goamz # github.com/goamz/goamz
@@ -121,7 +120,7 @@ imports:
   - name: github.com/evergreen-ci/pail
     version: 1d8f19c9a70ae650f7499bd07b6cf47e17fe89c9
   - name: github.com/mongodb/jasper
-    version: 4afc4f697f569752676668de4fdafc654dd01307
+    version: b9e6f254de5d74b69e24755396603f047c55d2e8
 
   # git library and its dependencies
   - name: gopkg.in/src-d/go-git.v4
@@ -144,5 +143,3 @@ imports:
     version: ec4a0fea49c7b46c2aeb0b51aac55779c607e52b
   - name: golang.org/x/text
     version: 905a57155faa8230500121607930ebb9dd8e139c
-  - name: google.golang.org/grpc
-    version: 2773c7bbcf81cf358d3f0038b1469b2d44062acb

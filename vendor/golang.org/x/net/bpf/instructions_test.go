@@ -5,7 +5,6 @@
 package bpf
 
 import (
-	"fmt"
 	"io/ioutil"
 	"reflect"
 	"strconv"
@@ -64,22 +63,14 @@ var allInstructions = []Instruction{
 
 	NegateA{},
 
-	Jump{Skip: 17},
-	JumpIf{Cond: JumpEqual, Val: 42, SkipTrue: 15, SkipFalse: 16},
-	JumpIf{Cond: JumpNotEqual, Val: 42, SkipTrue: 15},
-	JumpIf{Cond: JumpLessThan, Val: 42, SkipTrue: 14},
-	JumpIf{Cond: JumpLessOrEqual, Val: 42, SkipTrue: 13},
-	JumpIf{Cond: JumpGreaterThan, Val: 42, SkipTrue: 11, SkipFalse: 12},
-	JumpIf{Cond: JumpGreaterOrEqual, Val: 42, SkipTrue: 10, SkipFalse: 11},
-	JumpIf{Cond: JumpBitsSet, Val: 42, SkipTrue: 9, SkipFalse: 10},
-
-	JumpIfX{Cond: JumpEqual, SkipTrue: 8, SkipFalse: 9},
-	JumpIfX{Cond: JumpNotEqual, SkipTrue: 8},
-	JumpIfX{Cond: JumpLessThan, SkipTrue: 7},
-	JumpIfX{Cond: JumpLessOrEqual, SkipTrue: 6},
-	JumpIfX{Cond: JumpGreaterThan, SkipTrue: 4, SkipFalse: 5},
-	JumpIfX{Cond: JumpGreaterOrEqual, SkipTrue: 3, SkipFalse: 4},
-	JumpIfX{Cond: JumpBitsSet, SkipTrue: 2, SkipFalse: 3},
+	Jump{Skip: 10},
+	JumpIf{Cond: JumpEqual, Val: 42, SkipTrue: 8, SkipFalse: 9},
+	JumpIf{Cond: JumpNotEqual, Val: 42, SkipTrue: 8},
+	JumpIf{Cond: JumpLessThan, Val: 42, SkipTrue: 7},
+	JumpIf{Cond: JumpLessOrEqual, Val: 42, SkipTrue: 6},
+	JumpIf{Cond: JumpGreaterThan, Val: 42, SkipTrue: 4, SkipFalse: 5},
+	JumpIf{Cond: JumpGreaterOrEqual, Val: 42, SkipTrue: 3, SkipFalse: 4},
+	JumpIf{Cond: JumpBitsSet, Val: 42, SkipTrue: 2, SkipFalse: 3},
 
 	TAX{},
 	TXA{},
@@ -152,6 +143,11 @@ func TestInterop(t *testing.T) {
 }
 
 // Check that assembly and disassembly match each other.
+//
+// Because we offer "fake" jump conditions that don't appear in the
+// machine code, disassembly won't be a 1:1 match with the original
+// source, although the behavior will be identical. However,
+// reassembling the disassembly should produce an identical program.
 func TestAsmDisasm(t *testing.T) {
 	prog1, err := Assemble(allInstructions)
 	if err != nil {
@@ -159,435 +155,30 @@ func TestAsmDisasm(t *testing.T) {
 	}
 	t.Logf("Assembled program is %d instructions long", len(prog1))
 
-	got, allDecoded := Disassemble(prog1)
+	src, allDecoded := Disassemble(prog1)
 	if !allDecoded {
 		t.Errorf("Disassemble(Assemble(allInstructions)) produced unrecognized instructions:")
-		for i, inst := range got {
+		for i, inst := range src {
 			if r, ok := inst.(RawInstruction); ok {
 				t.Logf("  insn %d, %#v --> %#v", i+1, allInstructions[i], r)
 			}
 		}
 	}
 
-	if len(allInstructions) != len(got) {
-		t.Fatalf("disassembly changed program size: %d insns before, %d insns after", len(allInstructions), len(got))
+	prog2, err := Assemble(src)
+	if err != nil {
+		t.Fatalf("assembly of Disassemble(Assemble(allInstructions)) failed: %s", err)
 	}
-	if !reflect.DeepEqual(allInstructions, got) {
+
+	if len(prog2) != len(prog1) {
+		t.Fatalf("disassembly changed program size: %d insns before, %d insns after", len(prog1), len(prog2))
+	}
+	if !reflect.DeepEqual(prog1, prog2) {
 		t.Errorf("program mutated by disassembly:")
-		for i := range got {
-			if !reflect.DeepEqual(allInstructions[i], got[i]) {
-				t.Logf("  insn %d, s: %#v, p1: %#v, got: %#v", i+1, allInstructions[i], prog1[i], got[i])
+		for i := range prog2 {
+			if !reflect.DeepEqual(prog1[i], prog2[i]) {
+				t.Logf("  insn %d, s: %#v, p1: %#v, p2: %#v", i+1, allInstructions[i], prog1[i], prog2[i])
 			}
-		}
-	}
-}
-
-type InvalidInstruction struct{}
-
-func (a InvalidInstruction) Assemble() (RawInstruction, error) {
-	return RawInstruction{}, fmt.Errorf("Invalid Instruction")
-}
-
-func (a InvalidInstruction) String() string {
-	return fmt.Sprintf("unknown instruction: %#v", a)
-}
-
-func TestString(t *testing.T) {
-	testCases := []struct {
-		instruction Instruction
-		assembler   string
-	}{
-		{
-			instruction: LoadConstant{Dst: RegA, Val: 42},
-			assembler:   "ld #42",
-		},
-		{
-			instruction: LoadConstant{Dst: RegX, Val: 42},
-			assembler:   "ldx #42",
-		},
-		{
-			instruction: LoadConstant{Dst: 0xffff, Val: 42},
-			assembler:   "unknown instruction: bpf.LoadConstant{Dst:0xffff, Val:0x2a}",
-		},
-		{
-			instruction: LoadScratch{Dst: RegA, N: 3},
-			assembler:   "ld M[3]",
-		},
-		{
-			instruction: LoadScratch{Dst: RegX, N: 3},
-			assembler:   "ldx M[3]",
-		},
-		{
-			instruction: LoadScratch{Dst: 0xffff, N: 3},
-			assembler:   "unknown instruction: bpf.LoadScratch{Dst:0xffff, N:3}",
-		},
-		{
-			instruction: LoadAbsolute{Off: 42, Size: 1},
-			assembler:   "ldb [42]",
-		},
-		{
-			instruction: LoadAbsolute{Off: 42, Size: 2},
-			assembler:   "ldh [42]",
-		},
-		{
-			instruction: LoadAbsolute{Off: 42, Size: 4},
-			assembler:   "ld [42]",
-		},
-		{
-			instruction: LoadAbsolute{Off: 42, Size: -1},
-			assembler:   "unknown instruction: bpf.LoadAbsolute{Off:0x2a, Size:-1}",
-		},
-		{
-			instruction: LoadIndirect{Off: 42, Size: 1},
-			assembler:   "ldb [x + 42]",
-		},
-		{
-			instruction: LoadIndirect{Off: 42, Size: 2},
-			assembler:   "ldh [x + 42]",
-		},
-		{
-			instruction: LoadIndirect{Off: 42, Size: 4},
-			assembler:   "ld [x + 42]",
-		},
-		{
-			instruction: LoadIndirect{Off: 42, Size: -1},
-			assembler:   "unknown instruction: bpf.LoadIndirect{Off:0x2a, Size:-1}",
-		},
-		{
-			instruction: LoadMemShift{Off: 42},
-			assembler:   "ldx 4*([42]&0xf)",
-		},
-		{
-			instruction: LoadExtension{Num: ExtLen},
-			assembler:   "ld #len",
-		},
-		{
-			instruction: LoadExtension{Num: ExtProto},
-			assembler:   "ld #proto",
-		},
-		{
-			instruction: LoadExtension{Num: ExtType},
-			assembler:   "ld #type",
-		},
-		{
-			instruction: LoadExtension{Num: ExtPayloadOffset},
-			assembler:   "ld #poff",
-		},
-		{
-			instruction: LoadExtension{Num: ExtInterfaceIndex},
-			assembler:   "ld #ifidx",
-		},
-		{
-			instruction: LoadExtension{Num: ExtNetlinkAttr},
-			assembler:   "ld #nla",
-		},
-		{
-			instruction: LoadExtension{Num: ExtNetlinkAttrNested},
-			assembler:   "ld #nlan",
-		},
-		{
-			instruction: LoadExtension{Num: ExtMark},
-			assembler:   "ld #mark",
-		},
-		{
-			instruction: LoadExtension{Num: ExtQueue},
-			assembler:   "ld #queue",
-		},
-		{
-			instruction: LoadExtension{Num: ExtLinkLayerType},
-			assembler:   "ld #hatype",
-		},
-		{
-			instruction: LoadExtension{Num: ExtRXHash},
-			assembler:   "ld #rxhash",
-		},
-		{
-			instruction: LoadExtension{Num: ExtCPUID},
-			assembler:   "ld #cpu",
-		},
-		{
-			instruction: LoadExtension{Num: ExtVLANTag},
-			assembler:   "ld #vlan_tci",
-		},
-		{
-			instruction: LoadExtension{Num: ExtVLANTagPresent},
-			assembler:   "ld #vlan_avail",
-		},
-		{
-			instruction: LoadExtension{Num: ExtVLANProto},
-			assembler:   "ld #vlan_tpid",
-		},
-		{
-			instruction: LoadExtension{Num: ExtRand},
-			assembler:   "ld #rand",
-		},
-		{
-			instruction: LoadAbsolute{Off: 0xfffff038, Size: 4},
-			assembler:   "ld #rand",
-		},
-		{
-			instruction: LoadExtension{Num: 0xfff},
-			assembler:   "unknown instruction: bpf.LoadExtension{Num:4095}",
-		},
-		{
-			instruction: StoreScratch{Src: RegA, N: 3},
-			assembler:   "st M[3]",
-		},
-		{
-			instruction: StoreScratch{Src: RegX, N: 3},
-			assembler:   "stx M[3]",
-		},
-		{
-			instruction: StoreScratch{Src: 0xffff, N: 3},
-			assembler:   "unknown instruction: bpf.StoreScratch{Src:0xffff, N:3}",
-		},
-		{
-			instruction: ALUOpConstant{Op: ALUOpAdd, Val: 42},
-			assembler:   "add #42",
-		},
-		{
-			instruction: ALUOpConstant{Op: ALUOpSub, Val: 42},
-			assembler:   "sub #42",
-		},
-		{
-			instruction: ALUOpConstant{Op: ALUOpMul, Val: 42},
-			assembler:   "mul #42",
-		},
-		{
-			instruction: ALUOpConstant{Op: ALUOpDiv, Val: 42},
-			assembler:   "div #42",
-		},
-		{
-			instruction: ALUOpConstant{Op: ALUOpOr, Val: 42},
-			assembler:   "or #42",
-		},
-		{
-			instruction: ALUOpConstant{Op: ALUOpAnd, Val: 42},
-			assembler:   "and #42",
-		},
-		{
-			instruction: ALUOpConstant{Op: ALUOpShiftLeft, Val: 42},
-			assembler:   "lsh #42",
-		},
-		{
-			instruction: ALUOpConstant{Op: ALUOpShiftRight, Val: 42},
-			assembler:   "rsh #42",
-		},
-		{
-			instruction: ALUOpConstant{Op: ALUOpMod, Val: 42},
-			assembler:   "mod #42",
-		},
-		{
-			instruction: ALUOpConstant{Op: ALUOpXor, Val: 42},
-			assembler:   "xor #42",
-		},
-		{
-			instruction: ALUOpConstant{Op: 0xffff, Val: 42},
-			assembler:   "unknown instruction: bpf.ALUOpConstant{Op:0xffff, Val:0x2a}",
-		},
-		{
-			instruction: ALUOpX{Op: ALUOpAdd},
-			assembler:   "add x",
-		},
-		{
-			instruction: ALUOpX{Op: ALUOpSub},
-			assembler:   "sub x",
-		},
-		{
-			instruction: ALUOpX{Op: ALUOpMul},
-			assembler:   "mul x",
-		},
-		{
-			instruction: ALUOpX{Op: ALUOpDiv},
-			assembler:   "div x",
-		},
-		{
-			instruction: ALUOpX{Op: ALUOpOr},
-			assembler:   "or x",
-		},
-		{
-			instruction: ALUOpX{Op: ALUOpAnd},
-			assembler:   "and x",
-		},
-		{
-			instruction: ALUOpX{Op: ALUOpShiftLeft},
-			assembler:   "lsh x",
-		},
-		{
-			instruction: ALUOpX{Op: ALUOpShiftRight},
-			assembler:   "rsh x",
-		},
-		{
-			instruction: ALUOpX{Op: ALUOpMod},
-			assembler:   "mod x",
-		},
-		{
-			instruction: ALUOpX{Op: ALUOpXor},
-			assembler:   "xor x",
-		},
-		{
-			instruction: ALUOpX{Op: 0xffff},
-			assembler:   "unknown instruction: bpf.ALUOpX{Op:0xffff}",
-		},
-		{
-			instruction: NegateA{},
-			assembler:   "neg",
-		},
-		{
-			instruction: Jump{Skip: 10},
-			assembler:   "ja 10",
-		},
-		{
-			instruction: JumpIf{Cond: JumpEqual, Val: 42, SkipTrue: 8, SkipFalse: 9},
-			assembler:   "jeq #42,8,9",
-		},
-		{
-			instruction: JumpIf{Cond: JumpEqual, Val: 42, SkipTrue: 8},
-			assembler:   "jeq #42,8",
-		},
-		{
-			instruction: JumpIf{Cond: JumpEqual, Val: 42, SkipFalse: 8},
-			assembler:   "jneq #42,8",
-		},
-		{
-			instruction: JumpIf{Cond: JumpNotEqual, Val: 42, SkipTrue: 8},
-			assembler:   "jneq #42,8",
-		},
-		{
-			instruction: JumpIf{Cond: JumpLessThan, Val: 42, SkipTrue: 7},
-			assembler:   "jlt #42,7",
-		},
-		{
-			instruction: JumpIf{Cond: JumpLessOrEqual, Val: 42, SkipTrue: 6},
-			assembler:   "jle #42,6",
-		},
-		{
-			instruction: JumpIf{Cond: JumpGreaterThan, Val: 42, SkipTrue: 4, SkipFalse: 5},
-			assembler:   "jgt #42,4,5",
-		},
-		{
-			instruction: JumpIf{Cond: JumpGreaterThan, Val: 42, SkipTrue: 4},
-			assembler:   "jgt #42,4",
-		},
-		{
-			instruction: JumpIf{Cond: JumpGreaterOrEqual, Val: 42, SkipTrue: 3, SkipFalse: 4},
-			assembler:   "jge #42,3,4",
-		},
-		{
-			instruction: JumpIf{Cond: JumpGreaterOrEqual, Val: 42, SkipTrue: 3},
-			assembler:   "jge #42,3",
-		},
-		{
-			instruction: JumpIf{Cond: JumpBitsSet, Val: 42, SkipTrue: 2, SkipFalse: 3},
-			assembler:   "jset #42,2,3",
-		},
-		{
-			instruction: JumpIf{Cond: JumpBitsSet, Val: 42, SkipTrue: 2},
-			assembler:   "jset #42,2",
-		},
-		{
-			instruction: JumpIf{Cond: JumpBitsNotSet, Val: 42, SkipTrue: 2, SkipFalse: 3},
-			assembler:   "jset #42,3,2",
-		},
-		{
-			instruction: JumpIf{Cond: JumpBitsNotSet, Val: 42, SkipTrue: 2},
-			assembler:   "jset #42,0,2",
-		},
-		{
-			instruction: JumpIf{Cond: 0xffff, Val: 42, SkipTrue: 1, SkipFalse: 2},
-			assembler:   "unknown JumpTest 0xffff",
-		},
-		{
-			instruction: JumpIfX{Cond: JumpEqual, SkipTrue: 8, SkipFalse: 9},
-			assembler:   "jeq x,8,9",
-		},
-		{
-			instruction: JumpIfX{Cond: JumpEqual, SkipTrue: 8},
-			assembler:   "jeq x,8",
-		},
-		{
-			instruction: JumpIfX{Cond: JumpEqual, SkipFalse: 8},
-			assembler:   "jneq x,8",
-		},
-		{
-			instruction: JumpIfX{Cond: JumpNotEqual, SkipTrue: 8},
-			assembler:   "jneq x,8",
-		},
-		{
-			instruction: JumpIfX{Cond: JumpLessThan, SkipTrue: 7},
-			assembler:   "jlt x,7",
-		},
-		{
-			instruction: JumpIfX{Cond: JumpLessOrEqual, SkipTrue: 6},
-			assembler:   "jle x,6",
-		},
-		{
-			instruction: JumpIfX{Cond: JumpGreaterThan, SkipTrue: 4, SkipFalse: 5},
-			assembler:   "jgt x,4,5",
-		},
-		{
-			instruction: JumpIfX{Cond: JumpGreaterThan, SkipTrue: 4},
-			assembler:   "jgt x,4",
-		},
-		{
-			instruction: JumpIfX{Cond: JumpGreaterOrEqual, SkipTrue: 3, SkipFalse: 4},
-			assembler:   "jge x,3,4",
-		},
-		{
-			instruction: JumpIfX{Cond: JumpGreaterOrEqual, SkipTrue: 3},
-			assembler:   "jge x,3",
-		},
-		{
-			instruction: JumpIfX{Cond: JumpBitsSet, SkipTrue: 2, SkipFalse: 3},
-			assembler:   "jset x,2,3",
-		},
-		{
-			instruction: JumpIfX{Cond: JumpBitsSet, SkipTrue: 2},
-			assembler:   "jset x,2",
-		},
-		{
-			instruction: JumpIfX{Cond: JumpBitsNotSet, SkipTrue: 2, SkipFalse: 3},
-			assembler:   "jset x,3,2",
-		},
-		{
-			instruction: JumpIfX{Cond: JumpBitsNotSet, SkipTrue: 2},
-			assembler:   "jset x,0,2",
-		},
-		{
-			instruction: JumpIfX{Cond: 0xffff, SkipTrue: 1, SkipFalse: 2},
-			assembler:   "unknown JumpTest 0xffff",
-		},
-		{
-			instruction: TAX{},
-			assembler:   "tax",
-		},
-		{
-			instruction: TXA{},
-			assembler:   "txa",
-		},
-		{
-			instruction: RetA{},
-			assembler:   "ret a",
-		},
-		{
-			instruction: RetConstant{Val: 42},
-			assembler:   "ret #42",
-		},
-		// Invalid instruction
-		{
-			instruction: InvalidInstruction{},
-			assembler:   "unknown instruction: bpf.InvalidInstruction{}",
-		},
-	}
-
-	for _, testCase := range testCases {
-		if input, ok := testCase.instruction.(fmt.Stringer); ok {
-			got := input.String()
-			if got != testCase.assembler {
-				t.Errorf("String did not return expected assembler notation, expected: %s, got: %s", testCase.assembler, got)
-			}
-		} else {
-			t.Errorf("Instruction %#v is not a fmt.Stringer", testCase.instruction)
 		}
 	}
 }
