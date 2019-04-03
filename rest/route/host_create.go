@@ -72,11 +72,11 @@ func (h *hostCreateHandler) Run(ctx context.Context) gimlet.Responder {
 	}
 
 	// need to first generate the number of container hosts if it's relevant
-	distro, err := distro.FindOne(distro.ById(h.createHost.Distro))
-	if err != nil {
-		return gimlet.NewJSONErrorResponse(errors.Wrapf(err, "error getting distro %s", h.createHost.Distro))
-	}
-	if distro.ContainerPool != "" && h.createHost.CloudProvider == evergreen.ProviderNameDocker {
+	if h.createHost.CloudProvider == evergreen.ProviderNameDocker {
+		distro, err := distro.FindOne(distro.ById(h.createHost.Distro))
+		if err != nil {
+			return gimlet.NewJSONErrorResponse(errors.Wrapf(err, "error getting distro '%s'", h.createHost.Distro))
+		}
 		settings, err := evergreen.GetConfig()
 		if err != nil {
 			return gimlet.NewJSONErrorResponse(errors.Wrap(err, "error getting settings config"))
@@ -84,7 +84,7 @@ func (h *hostCreateHandler) Run(ctx context.Context) gimlet.Responder {
 
 		containerPool := settings.ContainerPools.GetContainerPool(distro.ContainerPool)
 		if containerPool == nil {
-			return gimlet.NewJSONErrorResponse(errors.Errorf("container pool %s not found", distro.ContainerPool))
+			return gimlet.NewJSONErrorResponse(errors.Errorf("container pool '%s' not found", distro.ContainerPool))
 		}
 
 		_, numHosts, err = host.InsertParentIntentsAndGetNumHostsToSpawn(containerPool, 1, true)
