@@ -137,6 +137,12 @@ const (
 	PlannerVersionTunable = "tunable"
 
 	CommitQueueAlias = "__commit_queue"
+
+	// Bootstrapping mechanisms
+	BootstrapMethodLegacySSH          = "legacy-ssh"
+	BootstrapMethodSSH                = "ssh"
+	BootstrapMethodPreconfiguredImage = "preconfigured-image"
+	BootstrapMethodUserData           = "user-data"
 )
 
 func IsFinishedTaskStatus(status string) bool {
@@ -327,6 +333,15 @@ var (
 	ValidPlannerVersions = []string{
 		PlannerVersionLegacy,
 		PlannerVersionTunable,
+	}
+
+	// ValidBootstrapMethods is the set of of valid methods to bootstrap the
+	// host.
+	ValidBootstrapMethods = []string{
+		BootstrapMethodLegacySSH,
+		BootstrapMethodSSH,
+		BootstrapMethodPreconfiguredImage,
+		BootstrapMethodUserData,
 	}
 
 	// constant arrays for db update logic

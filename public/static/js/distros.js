@@ -11,6 +11,8 @@ mciModule.controller('DistrosCtrl', function($scope, $window, $location, $anchor
     $scope.distros[i].planner_settings = $scope.distros[i].planner_settings || {}
     $scope.distros[i].planner_settings.minimum_hosts = $scope.distros[i].planner_settings.minimum_hosts || 0;
     $scope.distros[i].planner_settings.version = $scope.distros[i].planner_settings.version || "legacy";
+    $scope.distros[i].bootstrap_method = $scope.distros[i].bootstrap_method || 'legacy-ssh';
+    $scope.distros[i].bootstrap_method = $scope.distros[i].bootstrap_method || 'legacy-ssh';
   }
 
   $scope.planner_versions = [{
@@ -77,6 +79,21 @@ mciModule.controller('DistrosCtrl', function($scope, $window, $location, $anchor
   }, {
     'id': 'solaris_amd64',
     'display': 'Solaris 64-bit'
+  }];
+
+  $scope.bootstrapMethods = [{
+      'id': 'legacy-ssh',
+      'display': 'Legacy SSH'
+    }, {
+      'id': 'ssh',
+      'display': 'SSH'
+    }, {
+      'id': 'preconfigured-image',
+      'display': 'Preconfigured Image'
+    }, {
+      'id': 'user-data',
+      'display': 'User Data'
+    }, {
   }];
 
   $scope.ids = [];
@@ -301,6 +318,7 @@ mciModule.controller('DistrosCtrl', function($scope, $window, $location, $anchor
 	'_id': 'new distro',
 	'arch': 'linux_amd64',
 	'provider': 'ec2',
+    'bootstrap_method': 'legacy',
 	'settings': {},
 	'new': true,
       };
@@ -331,6 +349,7 @@ mciModule.controller('DistrosCtrl', function($scope, $window, $location, $anchor
 	'setup': $scope.activeDistro.user_data,
 	'pool_size': $scope.activeDistro.pool_size,
 	'setup_as_sudo' : $scope.activeDistro.setup_as_sudo,
+    'bootstrap_method': $scope.activeDistro.bootstrap_method,
 
       }
       newDistro.settings = _.clone($scope.activeDistro.settings);
@@ -460,6 +479,12 @@ mciModule.filter("versionDisplay", function() {
     return scope.getKeyDisplay('planner_versions', version);
   }
 });
+
+mciModule.filter('bootstrapMethodDisplay', function() {
+  return function(bootstrapMethod, scope) {
+    return scope.getKeyDisplay('bootstrapMethods', bootstrapMethod);
+  }
+})
 
 mciModule.directive('unique', function() {
   return {

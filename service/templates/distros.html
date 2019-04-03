@@ -518,6 +518,18 @@ Evergreen - Distros
             user is required</div><br>
         </div>
         <div class="dropdown">
+          <span class="distro-menu-title">Bootstrap Method:</span>
+            <button class="btn btn-default dropdown-toggle" type="button" data-toggle="dropdown" aria-expanded="true" ng-disabled="readOnly">
+              <strong class="distro-menu-item">[[ activeDistro.bootstrap_method | bootstrapMethodDisplay:this]]<span class="fa fa-caret-down"></span></strong>
+            </button>
+            <ul class="dropdown-menu" style="margin-left: 125px; align: left" role="menu">
+              <li required name="bootstrapMethodForm" ng-click="form.$setDirty();activeDistro.bootstrap_method = bootstrapMethod.id" ng-repeat="bootstrapMethod in bootstrapMethods"
+                role="presentation"><a role="menuitem" tabindex="-1">[[bootstrapMethod.display]]</a></li>
+            </ul>
+        </div>
+        <br />
+        <div class="icon fa fa-warning distro-error" ng-show="form.bootstrapMethodForm.$dirty && form.bootstrapMethodForm.$invalid || bootstrapMethodForm.$error.required">Bootstrap method is required</div>
+        <div class="dropdown">
           <span class="distro-menu-title">SSH Key:</span>
           <button class="btn btn-default dropdown-toggle" ng-disabled="readOnly" type="button" data-toggle="dropdown">
             <strong class="distro-menu-item">[[activeDistro.ssh_key]]<span class="fa fa-caret-down"></span></strong>

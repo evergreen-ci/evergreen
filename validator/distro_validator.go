@@ -26,6 +26,7 @@ var distroSyntaxValidators = []distroValidator{
 	ensureValidExpansions,
 	ensureStaticHostsAreNotSpawnable,
 	ensureValidContainerPool,
+	ensureValidBootstrapMethod,
 	ensureHasNoUnauthorizedCharacters,
 	ensureHasValidPlannerVersion,
 }
@@ -164,6 +165,13 @@ func ensureValidSSHOptions(ctx context.Context, d *distro.Distro, s *evergreen.S
 		if o == "" {
 			return ValidationErrors{{Error, fmt.Sprintf("distro cannot be blank SSH option")}}
 		}
+	}
+	return nil
+}
+
+func ensureValidBootstrapMethod(ctx context.Context, d *distro.Distro, s *evergreen.Settings) ValidationErrors {
+	if !util.StringSliceContains(evergreen.ValidBootstrapMethods, d.BootstrapMethod) {
+		return ValidationErrors{{Level: Error, Message: fmt.Sprintf("invalid bootstrap method")}}
 	}
 	return nil
 }
