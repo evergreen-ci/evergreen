@@ -2653,7 +2653,7 @@ func TestStaleRunningTasksAgg(t *testing.T) {
 	now := time.Now()
 	staleness := 5 * time.Minute
 
-	staleTask := task.Task{
+	staleTask := &task.Task{
 		Id:            "stale",
 		Status:        evergreen.TaskStarted,
 		Execution:     2,
@@ -2661,36 +2661,31 @@ func TestStaleRunningTasksAgg(t *testing.T) {
 		HostId:        "staleHost",
 	}
 	assert.NoError(staleTask.Insert())
-	staleHost := Host{
+	staleHost := &Host{
 		Id:          "staleHost",
 		RunningTask: staleTask.Id,
 	}
 	assert.NoError(staleHost.Insert())
-	unstaleTask := task.Task{
+	unstaleTask := &task.Task{
 		Id:            "unstale",
 		Status:        evergreen.TaskStarted,
 		LastHeartbeat: now.Add(-1 * time.Second),
 		HostId:        "unstaleHost",
 	}
 	assert.NoError(unstaleTask.Insert())
-	unstaleHost := Host{
+	unstaleHost := &Host{
 		Id:          "unstaleHost",
 		RunningTask: unstaleTask.Id,
 	}
 	assert.NoError(unstaleHost.Insert())
 	// task assigned to host that is running teardown_group of the previous task
-	unrelatedTask := task.Task{
+	unrelatedTask := &task.Task{
 		Id:            "unrelatedTask",
 		Status:        evergreen.TaskStarted,
 		LastHeartbeat: now.Add(-2 * staleness),
 		HostId:        "teardownGroupHost",
 	}
 	assert.NoError(unrelatedTask.Insert())
-	teardownGroupHost := Host{
-		Id:          "teardownGroupHost",
-		RunningTask: staleTask.Id,
-	}
-	assert.NoError(teardownGroupHost.Insert())
 
 	tasks, err := StaleRunningTaskIDs(staleness)
 	assert.NoError(err)

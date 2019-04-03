@@ -556,7 +556,7 @@ func FindOne(query db.Q) (*Host, error) {
 	host := &Host{}
 	err := db.FindOneQ(Collection, query, host)
 	if adb.ResultsNotFound(err) {
-		return nil, errors.New("not found")
+		return nil, nil
 	}
 	return host, err
 }
