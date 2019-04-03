@@ -70,6 +70,7 @@ import (
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo/options"
+	mgobson "gopkg.in/mgo.v2/bson"
 )
 
 const (
@@ -134,6 +135,9 @@ type dbTestStats struct {
 	AvgDurationPass float64       `bson:"avg_duration_pass"`
 	LastUpdate      time.Time     `bson:"last_update"`
 }
+
+func (d *dbTestStats) MarshalBSON() ([]byte, error)  { return mgobson.Marshal(d) }
+func (d *dbTestStats) UnmarshalBSON(in []byte) error { return mgobson.Unmarshal(in, d) }
 
 var (
 	// BSON fields for the test stats id struct
@@ -1015,7 +1019,7 @@ func aggregateIntoCollection(collection string, pipeline []bson.M, outputCollect
 	}
 
 	for cursor.Next(ctx) {
-		doc := bson.Raw{}
+		doc := make(bson.Raw, len(cursor.Current))
 		copy(doc, cursor.Current)
 
 		if err = writer.Append(doc); err != nil {
@@ -1029,6 +1033,10 @@ func aggregateIntoCollection(collection string, pipeline []bson.M, outputCollect
 
 	if err = cursor.Close(ctx); err != nil {
 		return errors.Wrap(err, "problem closing cursor")
+	}
+
+	if err = writer.Close(); err != nil {
+		return errors.Wrap(err, "problem flushing to new collection")
 	}
 	return nil
 }

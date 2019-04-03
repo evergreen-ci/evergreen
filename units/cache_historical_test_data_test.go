@@ -127,7 +127,7 @@ func (s *cacheHistoryTestDataSuite) TestUpdateHourlyAndDailyStats() {
 	}
 
 	err := c.updateHourlyAndDailyStats(s.statsList, mockGenFns)
-	s.Nil(err)
+	s.NoError(err)
 	s.Equal(len(mockGenFns.HourlyFns)*3, callCountFn0)
 	s.Equal(len(mockGenFns.DailyFns)*2, callCountFn1)
 }
@@ -204,7 +204,7 @@ func (s *cacheHistoryTestDataSuite) TestIteratorOverHourlyStats() {
 		JobTime:   time.Now(),
 	}
 	err := c.iteratorOverHourlyStats(s.statsList, mockHourlyGenerateFn, "hourly")
-	s.Nil(err)
+	s.NoError(err)
 	s.Equal(len(s.statsList), callCount)
 }
 
@@ -234,7 +234,7 @@ func (s *cacheHistoryTestDataSuite) TestIteratorOverDailyStats() {
 		JobTime:   time.Now(),
 	}
 	err := c.iteratorOverDailyStats(statsRollup, mockDailyGenerateFn, "daily")
-	s.Nil(err)
+	s.NoError(err)
 	s.Equal(len(statsRollup), callCount)
 }
 
@@ -420,7 +420,7 @@ func (s *cacheHistoryTestDataSuite) TestSplitPatternsStringToRegexList() {
 	patternList := [...]string{".*.js", ".*fuzzer.*", "concurrency_tests"}
 
 	regexpList, err := createRegexpFromStrings(patternList[:])
-	s.Nil(err)
+	s.NoError(err)
 
 	s.Equal(3, len(regexpList))
 }
@@ -429,14 +429,14 @@ func (s *cacheHistoryTestDataSuite) TestSplitPatternsStringToRegexListWithEmptyL
 	patternList := [...]string{}
 
 	regexpList, err := createRegexpFromStrings(patternList[:])
-	s.Nil(err)
+	s.NoError(err)
 
 	s.Equal(0, len(regexpList))
 }
 
 func (s *cacheHistoryTestDataSuite) TestCacheHistoricalTestDataJob() {
 	err := clearStatsData()
-	s.Nil(err)
+	s.NoError(err)
 
 	// Our sample data will be 30 minutes apart and the Job will aggregation 1 hours worth of data.
 	// So need to be sure the sample data does not cross an hour boundary or only part of it will
@@ -453,7 +453,7 @@ func (s *cacheHistoryTestDataSuite) TestCacheHistoricalTestDataJob() {
 		Enabled:    true,
 	}
 	err = ref.Insert()
-	s.Nil(err)
+	s.NoError(err)
 
 	s.createTestData(baseTime)
 
@@ -470,10 +470,11 @@ func (s *cacheHistoryTestDataSuite) TestCacheHistoricalTestDataJob() {
 		Requester:    s.requester,
 		Date:         baseTime.Truncate(time.Hour * 24),
 	})
-	s.Require().Nil(err)
-	s.Require().NotNil(doc)
-	s.Equal(2, doc.NumFail)
-	s.Equal(0, doc.NumPass)
+	s.NoError(err)
+	if s.NotNil(doc) {
+		s.Equal(2, doc.NumFail)
+		s.Equal(0, doc.NumPass)
+	}
 
 	doc, err = stats.GetDailyTestDoc(stats.DbTestStatsId{
 		TestFile:     "test1.js",
@@ -484,10 +485,11 @@ func (s *cacheHistoryTestDataSuite) TestCacheHistoricalTestDataJob() {
 		Requester:    s.requester,
 		Date:         baseTime.Truncate(time.Hour * 24),
 	})
-	s.Nil(err)
-	s.NotNil(doc)
-	s.Equal(1, doc.NumFail)
-	s.Equal(1, doc.NumPass)
+	s.NoError(err)
+	if s.NotNil(doc) {
+		s.Equal(1, doc.NumFail)
+		s.Equal(1, doc.NumPass)
+	}
 
 	doc, err = stats.GetDailyTestDoc(stats.DbTestStatsId{
 		TestFile:     "test2.js",
@@ -498,10 +500,11 @@ func (s *cacheHistoryTestDataSuite) TestCacheHistoricalTestDataJob() {
 		Requester:    s.requester,
 		Date:         baseTime.Truncate(time.Hour * 24),
 	})
-	s.Nil(err)
-	s.NotNil(doc)
-	s.Equal(0, doc.NumFail)
-	s.Equal(2, doc.NumPass)
+	s.NoError(err)
+	if s.NotNil(doc) {
+		s.Equal(0, doc.NumFail)
+		s.Equal(2, doc.NumPass)
+	}
 }
 
 func (s *cacheHistoryTestDataSuite) createTestData(baseTime time.Time) {
@@ -510,7 +513,7 @@ func (s *cacheHistoryTestDataSuite) createTestData(baseTime time.Time) {
 
 	taskName := "taskName"
 
-	testStatusList := [...][]string{
+	testStatusList := [][]string{
 		{
 			"fail",
 			"pass",
@@ -524,7 +527,7 @@ func (s *cacheHistoryTestDataSuite) createTestData(baseTime time.Time) {
 	}
 	testStartTime := time.Now()
 
-	taskList := [...]task.Task{
+	taskList := []task.Task{
 		{
 			Id:          mgobson.NewObjectId().Hex(),
 			DisplayName: taskName,
@@ -546,7 +549,7 @@ func (s *cacheHistoryTestDataSuite) createTestData(baseTime time.Time) {
 	}
 	for i, task := range taskList {
 		err := task.Insert()
-		s.Nil(err)
+		s.NoError(err)
 
 		for j, testStatus := range testStatusList[i] {
 			testResult := testresult.TestResult{
@@ -558,7 +561,7 @@ func (s *cacheHistoryTestDataSuite) createTestData(baseTime time.Time) {
 				EndTime:   float64(testStartTime.Add(time.Duration(30) * time.Second).Unix()),
 			}
 			err := testResult.Insert()
-			s.Nil(err)
+			s.NoError(err)
 		}
 	}
 }
