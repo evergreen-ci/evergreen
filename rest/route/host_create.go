@@ -82,9 +82,6 @@ func (h *hostCreateHandler) Run(ctx context.Context) gimlet.Responder {
 			return gimlet.NewJSONErrorResponse(errors.Wrap(err, "error getting settings config"))
 		}
 
-		if distro.ContainerPool == "" {
-			return gimlet.NewJSONErrorResponse(errors.New("provided distro has no container pool"))
-		}
 		containerPool := settings.ContainerPools.GetContainerPool(distro.ContainerPool)
 		if containerPool == nil {
 			return gimlet.NewJSONErrorResponse(errors.Errorf("container pool '%s' not found", distro.ContainerPool))

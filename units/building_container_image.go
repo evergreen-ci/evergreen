@@ -134,6 +134,13 @@ func (j *buildingContainerImageJob) Run(ctx context.Context) {
 
 	err = containerMgr.GetContainerImage(ctx, j.parent, j.DockerOptions)
 	if err != nil {
+		grip.Info(message.Fields{
+			"message":   "error getting container image",
+			"operation": "image",
+			"job":       j.ID(),
+			"image":     j.DockerOptions.Image,
+			"error":     err.Error(),
+		})
 		j.AddError(errors.Wrap(err, "error building and downloading container image"))
 		return
 	}
@@ -141,6 +148,12 @@ func (j *buildingContainerImageJob) Run(ctx context.Context) {
 		j.parent.ContainerImages = make(map[string]bool)
 	}
 	j.parent.ContainerImages[j.DockerOptions.Image] = true
+	grip.Info(message.Fields{
+		"message":   "setting image in parent",
+		"operation": "image",
+		"job":       j.ID(),
+		"image":     j.DockerOptions.Image,
+	})
 	_, err = j.parent.Upsert()
 	if err != nil {
 		j.AddError(errors.Wrapf(err, "error upserting parent %s", j.parent.Id))

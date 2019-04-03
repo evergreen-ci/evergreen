@@ -318,6 +318,13 @@ func (j *createHostJob) isImageBuilt(ctx context.Context) (bool, error) {
 		return false, errors.Errorf("parent for host '%s' not running", j.host.Id)
 	}
 	if ok := parent.ContainerImages[j.host.DockerOptions.Image]; ok {
+		grip.Info(message.Fields{
+			"message": "found image in parent",
+			"host":    j.host.Id,
+			"job":     j.ID(),
+			"distro":  j.host.Distro.Id,
+			"image":   j.host.DockerOptions.Image,
+		})
 		return true, nil
 	}
 
