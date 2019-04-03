@@ -67,6 +67,16 @@ func SetAWSKeyForProject(projectId string, ssh *AWSSSHKey) error {
 	if err != nil {
 		return errors.Wrap(err, "problem getting project vars")
 	}
+	if vars == nil {
+		vars = &ProjectVars{}
+	}
+	if vars.Vars == nil {
+		vars.Vars = map[string]string{}
+	}
+	if vars.PrivateVars == nil {
+		vars.PrivateVars = map[string]bool{}
+	}
+
 	vars.Vars[ProjectAWSSSHKeyName] = ssh.Name
 	vars.Vars[ProjectAWSSSHKeyValue] = ssh.Value
 	vars.PrivateVars[ProjectAWSSSHKeyValue] = true // redact value, but not key name

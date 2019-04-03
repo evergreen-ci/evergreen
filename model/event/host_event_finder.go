@@ -52,7 +52,10 @@ func getRecentStatusesForHost(hostId string, n int) (int, []string) {
 	out := []hostStatusDistro{}
 	for cursor.Next(ctx) {
 		doc := hostStatusDistro{}
-		cursor.Decode(&doc)
+		if err := cursor.Decode(&doc); err != nil {
+			grip.Warning(err)
+			continue
+		}
 		out = append(out, doc)
 	}
 	grip.Warning(cursor.Close(ctx))
