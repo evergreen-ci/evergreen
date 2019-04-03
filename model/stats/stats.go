@@ -239,7 +239,7 @@ func FindStatsToUpdate(projectId string, start time.Time, end time.Time) ([]Stat
 	})
 	pipeline := statsToUpdatePipeline(projectId, start, end)
 	statsList := []StatsToUpdate{}
-	err := db.Aggregate(task.Collection, pipeline, statsList)
+	err := db.Aggregate(task.Collection, pipeline, &statsList)
 	if err != nil {
 		return nil, errors.Wrap(err, "Failed to aggregate finished tasks")
 	}

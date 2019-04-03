@@ -103,7 +103,12 @@ func (c *collectionWrapper) Count() (int, error) {
 }
 
 func (c *collectionWrapper) Insert(d ...interface{}) error {
-	_, err := c.coll.InsertMany(c.ctx, d)
+	var err error
+	if len(d) == 1 {
+		_, err = c.coll.InsertOne(c.ctx, d[0])
+	} else {
+		_, err = c.coll.InsertMany(c.ctx, d)
+	}
 	return errors.WithStack(err)
 }
 

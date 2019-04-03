@@ -16,6 +16,7 @@ import (
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson"
+	mgobson "gopkg.in/mgo.v2/bson"
 )
 
 type Host struct {
@@ -118,6 +119,9 @@ type Host struct {
 	// DockerOptions stores information for creating a container with a specific image and command
 	DockerOptions DockerOptions `bson:"docker_options,omitempty" json:"docker_options,omitempty"`
 }
+
+func (h *Host) MarshalBSON() ([]byte, error)  { return mgobson.Marshal(h) }
+func (h *Host) UnmarshalBSON(in []byte) error { return mgobson.Unmarshal(in, h) }
 
 type HostGroup []Host
 

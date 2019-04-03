@@ -15,7 +15,6 @@ import (
 	. "github.com/smartystreets/goconvey/convey"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"gopkg.in/mgo.v2"
 	"go.mongodb.org/mongo-driver/bson"
 )
 
@@ -381,7 +380,7 @@ func TestMarkAsProvisioned(t *testing.T) {
 			So(host.Status, ShouldEqual, evergreen.HostRunning)
 			So(host.Provisioned, ShouldEqual, true)
 
-			So(host2.MarkAsProvisioned(), ShouldEqual, mgo.ErrNotFound)
+			So(host2.MarkAsProvisioned().Error(), ShouldContainSubstring, "not found")
 			So(host2.Status, ShouldEqual, evergreen.HostTerminated)
 			So(host2.Provisioned, ShouldEqual, false)
 		})
@@ -1670,7 +1669,8 @@ func TestFindParentOfContainerCannotFindParent(t *testing.T) {
 	assert.NoError(host.Insert())
 
 	parent, err := host.GetParent()
-	assert.EqualError(err, "Parent not found")
+	require.Error(t, err)
+	assert.Contains(err.Error(), "not found")
 	assert.Nil(parent)
 }
 
