@@ -2678,23 +2678,42 @@ func TestStaleRunningTasksAgg(t *testing.T) {
 		RunningTask: unstaleTask.Id,
 	}
 	assert.NoError(unstaleHost.Insert())
-	// task assigned to host that is running teardown_group of the previous task
-	unrelatedTask := task.Task{
-		Id:            "unrelatedTask",
+	// task assigned to host that is running teardown_group of the previous task, but is not timed out
+	task3 := task.Task{
+		Id:            "task3",
 		Status:        evergreen.TaskStarted,
 		LastHeartbeat: now.Add(-2 * staleness),
 		HostId:        "teardownGroupHost",
 	}
-	assert.NoError(unrelatedTask.Insert())
+	assert.NoError(task3.Insert())
 	teardownGroupHost := Host{
-		Id:          "teardownGroupHost",
-		RunningTask: staleTask.Id,
+		Id:                     "teardownGroupHost",
+		RunningTask:            task3.Id,
+		RunningTeardownForTask: "somethingelse",
+		RunningTeardownSince:   time.Now().Add(-1 * time.Minute),
 	}
 	assert.NoError(teardownGroupHost.Insert())
+	// task assigned to host that is running teardown_group of the previous task that has timed out
+	task4 := task.Task{
+		Id:            "task4",
+		Status:        evergreen.TaskStarted,
+		LastHeartbeat: now.Add(-2 * staleness),
+		HostId:        "teardownGroupHost2",
+	}
+	assert.NoError(task4.Insert())
+	teardownGroupHost2 := Host{
+		Id:                     "teardownGroupHost2",
+		RunningTask:            task4.Id,
+		RunningTeardownForTask: "somethingelse",
+		RunningTeardownSince:   time.Now().Add(-40 * time.Minute),
+	}
+	assert.NoError(teardownGroupHost2.Insert())
 
 	tasks, err := StaleRunningTaskIDs(staleness)
 	assert.NoError(err)
-	assert.Len(tasks, 1)
+	assert.Len(tasks, 2)
 	assert.Equal(staleTask.Id, tasks[0].Id)
 	assert.Equal(staleTask.Execution, tasks[0].Execution)
+	assert.Equal(task4.Id, tasks[1].Id)
+	assert.Equal(task4.Execution, tasks[1].Execution)
 }

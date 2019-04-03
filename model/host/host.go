@@ -50,11 +50,13 @@ type Host struct {
 	RunningTaskProject      string `bson:"running_task_project,omitempty" json:"running_task_project,omitempty"`
 
 	// the task the most recently finished running on the host
-	LastTask         string `bson:"last_task" json:"last_task"`
-	LastGroup        string `bson:"last_group,omitempty" json:"last_group,omitempty"`
-	LastBuildVariant string `bson:"last_bv,omitempty" json:"last_bv,omitempty"`
-	LastVersion      string `bson:"last_version,omitempty" json:"last_version,omitempty"`
-	LastProject      string `bson:"last_project,omitempty" json:"last_project,omitempty"`
+	LastTask               string    `bson:"last_task" json:"last_task"`
+	LastGroup              string    `bson:"last_group,omitempty" json:"last_group,omitempty"`
+	LastBuildVariant       string    `bson:"last_bv,omitempty" json:"last_bv,omitempty"`
+	LastVersion            string    `bson:"last_version,omitempty" json:"last_version,omitempty"`
+	LastProject            string    `bson:"last_project,omitempty" json:"last_project,omitempty"`
+	RunningTeardownForTask string    `bson:"running_teardown,omitempty" json:"running_teardown,omitempty"`
+	RunningTeardownSince   time.Time `bson:"running_teardown_since,omitempty" json:"running_teardown_since,omitempty"`
 
 	// the full task struct that is running on the host (only populated by certain aggregations)
 	RunningTaskFull *task.Task `bson:"task_full,omitempty" json:"task_full,omitempty"`
@@ -784,6 +786,32 @@ func (h *Host) SetExtId() error {
 	)
 }
 
+// SetRunningTeardownGroup marks the host as running teardown_group for a task group, no-oping if it's already set to the same task
+func (h *Host) SetRunningTeardownGroup(taskID string) error {
+	if h.RunningTeardownForTask == taskID && !util.IsZeroTime(h.RunningTeardownSince) {
+		return nil
+	}
+
+	return UpdateOne(bson.M{IdKey: h.Id}, bson.M{
+		"$set": bson.M{
+			RunningTeardownForTaskKey: taskID,
+			RunningTeardownSinceKey:   time.Now(),
+		},
+	})
+}
+
+func (h *Host) ClearRunningTeardownGroup() error {
+	if h.RunningTeardownForTask == "" {
+		return nil
+	}
+	return UpdateOne(bson.M{IdKey: h.Id}, bson.M{
+		"$unset": bson.M{
+			RunningTeardownForTaskKey: "",
+			RunningTeardownSinceKey:   "",
+		},
+	})
+}
+
 func FindHostsToTerminate() ([]Host, error) {
 	const (
 		// provisioningCutoff is the threshold to consider as too long for a host to take provisioning
@@ -1194,7 +1222,18 @@ func StaleRunningTaskIDs(staleness time.Duration) ([]task.Task, error) {
 		}},
 		{"$match": bson.M{
 			"$expr": bson.M{
-				"$eq": []string{"$_id", bsonutil.GetDottedKeyName("$host", RunningTaskKey)},
+				"$and": []bson.M{
+					{"$eq": []string{"$_id", bsonutil.GetDottedKeyName("$host", RunningTaskKey)}},
+					{"$or": []bson.M{ // this expression checks that the host is not currently running teardown_group of a different task
+						{"$not": []bson.M{{"$ifNull": []interface{}{bsonutil.GetDottedKeyName("$host", RunningTeardownForTaskKey), nil}}}},
+						{"$eq": []string{bsonutil.GetDottedKeyName("$host", RunningTeardownForTaskKey), ""}},
+						{"$and": []bson.M{
+							{"$ifNull": []interface{}{bsonutil.GetDottedKeyName("$host", RunningTeardownForTaskKey), nil}},
+							{"$lt": []interface{}{bsonutil.GetDottedKeyName("$host", RunningTeardownSinceKey),
+								time.Now().Add(-1*evergreen.MaxTeardownGroupTimeoutSecs*time.Second - 5*time.Minute)}},
+						}},
+					}},
+				},
 			},
 		}},
 	}
