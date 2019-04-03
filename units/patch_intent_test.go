@@ -169,9 +169,9 @@ func (s *PatchIntentUnitsSuite) makeJobAndPatch(intent patch.Intent) *patchInten
 	j.env = s.env
 
 	patchDoc := intent.NewPatch()
-	s.Require().NoError(j.finishPatch(ctx, patchDoc, githubOauthToken))
-	s.Require().NoError(j.Error())
-	s.Require().False(j.HasErrors())
+	s.NoError(j.finishPatch(ctx, patchDoc, githubOauthToken))
+	s.NoError(j.Error())
+	s.False(j.HasErrors())
 
 	return j
 }
@@ -451,10 +451,10 @@ func (s *PatchIntentUnitsSuite) TestGithubPRTestFromUnknownUserDoesntCreateVersi
 	s.NotNil(j)
 	j.Run(context.Background())
 	s.Error(j.Error())
-
-	patchDoc, err := patch.FindOne(patch.ById(patchID))
+	filter := patch.ById(patchID)
+	patchDoc, err := patch.FindOne(filter)
 	s.NoError(err)
-	if s.NotNil(patchDoc) {
+	if !s.Nil(patchDoc) {
 		s.Empty(patchDoc.Version)
 	}
 
@@ -463,11 +463,8 @@ func (s *PatchIntentUnitsSuite) TestGithubPRTestFromUnknownUserDoesntCreateVersi
 	s.Nil(versionDoc)
 
 	unprocessedIntents, err := patch.FindUnprocessedGithubIntents()
-	s.NoError(err)
-	s.Empty(unprocessedIntents)
-
-	// third party patches should still create subscriptions
-	s.verifyGithubSubscriptions(patchDoc)
+	s.Require().NoError(err)
+	s.Require().Empty(unprocessedIntents)
 }
 
 func (s *PatchIntentUnitsSuite) verifyGithubSubscriptions(patchDoc *patch.Patch) {
@@ -475,6 +472,7 @@ func (s *PatchIntentUnitsSuite) verifyGithubSubscriptions(patchDoc *patch.Patch)
 	s.NoError(db.FindAllQ(event.SubscriptionsCollection, db.Query(bson.M{}), &out))
 	s.Require().Len(out, 2)
 
+	s.Require().NotNil(patchDoc)
 	ghSub := event.NewGithubStatusAPISubscriber(event.GithubPullRequestSubscriber{
 		Owner:    patchDoc.GithubPatchData.BaseOwner,
 		Repo:     patchDoc.GithubPatchData.BaseRepo,

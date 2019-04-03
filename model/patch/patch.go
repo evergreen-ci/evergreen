@@ -275,7 +275,6 @@ func (p *Patch) SetActivated(versionId string) error {
 			},
 		},
 	)
-
 }
 
 // SetActivation sets the patch to the desired activation state without
