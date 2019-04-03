@@ -63,6 +63,7 @@ describe('SettingsTest', function() {
       'perf.signalProcessing.persistentFiltering',
       'perf.trendchart.originMode.enabled',
       'perf.trendchart.linearMode.enabled',
+      'perf.trendchart.rejectMode.enabled',
       'perf.trendchart.threadLevelMode',
     ]
 

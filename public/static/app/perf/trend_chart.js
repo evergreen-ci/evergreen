@@ -1037,6 +1037,11 @@ mciModule.factory('DrawPerfTrendChart', function (
       if (scope.locked) return;
       var idx = Math.round(xScale.invert(d3.mouse(this)[0]))
       var d = series[idx]
+
+      // Handle the case where there is no data (it may be rejected).
+      if(!d) {
+        return;
+      }
       var hash = d.revision
 
       var hoveredChangePoint = _.filter(visibleChangePoints, function(d) {

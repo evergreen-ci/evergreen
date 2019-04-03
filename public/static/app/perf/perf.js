@@ -221,7 +221,7 @@ mciModule.controller('PerfController', function PerfController(
     var chartsScope = scope.$new()
     for (var i = 0; i < tests.length; i++) {
       var key = tests[i];
-      var series = trendSamples.seriesByName[key];
+      var series = trendSamples.seriesByName[key] || [];
       var containerId = 'perf-trendchart-' + cleanId(taskId) + '-' + i;
       var cps = scope.changePoints
       var bfs = scope.buildFailures
@@ -659,10 +659,15 @@ mciModule.controller('PerfController', function PerfController(
           function(resp) {
             pointsPromise.then(function(outliers){
               const rejects = outliers.rejects;
-              let filtered = _.reject(resp.data, doc => _.contains(rejects, doc.task_id));
               $scope.allTrendSamples = new TrendSamples(resp.data);
-              $scope.filteredTrendSamples = new TrendSamples(filtered);
-
+              // Default filtered to all.
+              $scope.filteredTrendSamples = $scope.allTrendSamples;
+              if(rejects.length) {
+                let filtered = _.reject(resp.data, doc => _.contains(rejects, doc.task_id));
+                if (rejects.length != filtered.length) {
+                  $scope.filteredTrendSamples = new TrendSamples(filtered);
+                }
+              }
               $scope.metricSelect.options = [$scope.metricSelect.default].concat(
                 _.map(
                   _.without($scope.allTrendSamples.metrics, $scope.metricSelect.default.key), d => ({key: d, name: d}))
