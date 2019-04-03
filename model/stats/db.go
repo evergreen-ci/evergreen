@@ -368,6 +368,9 @@ type dbTaskStats struct {
 	LastUpdate         time.Time     `bson:"last_update"`
 }
 
+func (d *dbTaskStats) MarshalBSON() ([]byte, error)  { return mgobson.Marshal(d) }
+func (d *dbTaskStats) UnmarshalBSON(in []byte) error { return mgobson.Unmarshal(in, d) }
+
 var (
 	// BSON fields for the task stats id struct
 	dbTaskStatsIdTaskNameKey     = bsonutil.MustHaveTag(DbTaskStatsId{}, "TaskName")
