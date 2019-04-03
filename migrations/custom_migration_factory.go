@@ -16,7 +16,7 @@ func (opts Options) CustomApplication(env anser.Environment, conf *model.Configu
 	}
 
 	customMigrationRegistry := map[string]customMigrationGeneratorFactory{
-		perfCopyVariantMigrationFactory: perfCopyVariantFactoryFactory,
+		// add custom migrations here
 	}
 
 	app := &anser.Application{
