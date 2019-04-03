@@ -18,7 +18,7 @@ type DockerSuite struct {
 	client     DockerClient
 	manager    *dockerManager
 	distro     distro.Distro
-	hostOpts   HostOptions
+	hostOpts   host.CreateOptions
 	parentHost host.Host
 	suite.Suite
 }
@@ -51,7 +51,7 @@ func (s *DockerSuite) SetupTest() {
 		Host:          "host",
 		HasContainers: true,
 	}
-	s.hostOpts = HostOptions{
+	s.hostOpts = host.CreateOptions{
 		ParentID: "parent",
 		DockerOptions: host.DockerOptions{
 			Image: "http://0.0.0.0:8000/docker_image.tgz",
@@ -113,7 +113,7 @@ func (s *DockerSuite) TestTerminateInstanceAPICall() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	hostA := NewIntent(s.distro, s.distro.GenerateName(), s.distro.Provider, s.hostOpts)
+	hostA := host.NewIntent(s.distro, s.distro.GenerateName(), s.distro.Provider, s.hostOpts)
 	s.NoError(hostA.Insert())
 	hostA, err := s.manager.SpawnHost(ctx, hostA)
 	s.NoError(err)
@@ -121,7 +121,7 @@ func (s *DockerSuite) TestTerminateInstanceAPICall() {
 	_, err = hostA.Upsert()
 	s.NoError(err)
 
-	hostB := NewIntent(s.distro, s.distro.GenerateName(), s.distro.Provider, s.hostOpts)
+	hostB := host.NewIntent(s.distro, s.distro.GenerateName(), s.distro.Provider, s.hostOpts)
 	s.NoError(hostB.Insert())
 	hostB, err = s.manager.SpawnHost(ctx, hostB)
 	s.NoError(err)
@@ -144,7 +144,7 @@ func (s *DockerSuite) TestTerminateInstanceDB() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	myHost := NewIntent(s.distro, s.distro.GenerateName(), s.distro.Provider, s.hostOpts)
+	myHost := host.NewIntent(s.distro, s.distro.GenerateName(), s.distro.Provider, s.hostOpts)
 	s.NoError(myHost.Insert())
 	myHost, err := s.manager.SpawnHost(ctx, myHost)
 	s.NotNil(myHost)
@@ -192,16 +192,16 @@ func (s *DockerSuite) TestSpawnInvalidSettings() {
 	defer cancel()
 
 	dProviderName := distro.Distro{Provider: "ec2"}
-	host := NewIntent(dProviderName, dProviderName.GenerateName(), dProviderName.Provider, s.hostOpts)
-	host, err := s.manager.SpawnHost(ctx, host)
+	h := host.NewIntent(dProviderName, dProviderName.GenerateName(), dProviderName.Provider, s.hostOpts)
+	h, err := s.manager.SpawnHost(ctx, h)
 	s.Error(err)
-	s.Nil(host)
+	s.Nil(h)
 
-	emptyHostOpts := HostOptions{}
-	host = NewIntent(s.distro, s.distro.GenerateName(), dProviderName.Provider, emptyHostOpts)
-	host, err = s.manager.SpawnHost(ctx, host)
+	emptyHostOpts := host.CreateOptions{}
+	h = host.NewIntent(s.distro, s.distro.GenerateName(), dProviderName.Provider, emptyHostOpts)
+	h, err = s.manager.SpawnHost(ctx, h)
 	s.Error(err)
-	s.Nil(host)
+	s.Nil(h)
 }
 
 func (s *DockerSuite) TestSpawnDuplicateHostID() {
@@ -210,13 +210,13 @@ func (s *DockerSuite) TestSpawnDuplicateHostID() {
 
 	// SpawnInstance should generate a unique ID for each instance, even
 	// when using the same distro. Otherwise the DB would return an error.
-	hostOne := NewIntent(s.distro, s.distro.GenerateName(), s.distro.Provider, s.hostOpts)
+	hostOne := host.NewIntent(s.distro, s.distro.GenerateName(), s.distro.Provider, s.hostOpts)
 	s.NoError(hostOne.Insert())
 	hostOne, err := s.manager.SpawnHost(ctx, hostOne)
 	s.NoError(err)
 	s.NotNil(hostOne)
 
-	hostTwo := NewIntent(s.distro, s.distro.GenerateName(), s.distro.Provider, s.hostOpts)
+	hostTwo := host.NewIntent(s.distro, s.distro.GenerateName(), s.distro.Provider, s.hostOpts)
 	s.NoError(hostTwo.Insert())
 	hostTwo, err = s.manager.SpawnHost(ctx, hostTwo)
 	s.NoError(err)
@@ -231,18 +231,18 @@ func (s *DockerSuite) TestSpawnCreateAPICall() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	host := NewIntent(s.distro, s.distro.GenerateName(), s.distro.Provider, s.hostOpts)
-	s.NoError(host.Insert())
-	host, err := s.manager.SpawnHost(ctx, host)
+	h := host.NewIntent(s.distro, s.distro.GenerateName(), s.distro.Provider, s.hostOpts)
+	s.NoError(h.Insert())
+	h, err := s.manager.SpawnHost(ctx, h)
 	s.NoError(err)
-	s.NotNil(host)
+	s.NotNil(h)
 
 	mock.failCreate = true
-	host = NewIntent(s.distro, s.distro.GenerateName(), s.distro.Provider, s.hostOpts)
-	s.NoError(host.Insert())
-	host, err = s.manager.SpawnHost(ctx, host)
+	h = host.NewIntent(s.distro, s.distro.GenerateName(), s.distro.Provider, s.hostOpts)
+	s.NoError(h.Insert())
+	h, err = s.manager.SpawnHost(ctx, h)
 	s.Error(err)
-	s.Nil(host)
+	s.Nil(h)
 }
 
 func (s *DockerSuite) TestSpawnStartRemoveAPICall() {
@@ -253,19 +253,19 @@ func (s *DockerSuite) TestSpawnStartRemoveAPICall() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	host := NewIntent(s.distro, s.distro.GenerateName(), s.distro.Provider, s.hostOpts)
-	s.NoError(host.Insert())
-	h, err := s.manager.SpawnHost(ctx, host)
+	intent := host.NewIntent(s.distro, s.distro.GenerateName(), s.distro.Provider, s.hostOpts)
+	s.NoError(intent.Insert())
+	h, err := s.manager.SpawnHost(ctx, intent)
 	s.NoError(err)
 	s.NotNil(h)
 
 	mock.failStart = true
-	h, err = s.manager.SpawnHost(ctx, host)
+	h, err = s.manager.SpawnHost(ctx, intent)
 	s.Error(err)
 	s.Nil(h)
 
 	mock.failRemove = true
-	h, err = s.manager.SpawnHost(ctx, host)
+	h, err = s.manager.SpawnHost(ctx, intent)
 	s.Error(err)
 	s.Nil(h)
 }
@@ -289,10 +289,10 @@ func (s *DockerSuite) TestSpawnDoesNotPanic() {
 
 	delete(*s.distro.ProviderSettings, "image_url")
 
-	host := NewIntent(s.distro, s.distro.GenerateName(), s.distro.Provider, s.hostOpts)
+	intent := host.NewIntent(s.distro, s.distro.GenerateName(), s.distro.Provider, s.hostOpts)
 
 	s.NotPanics(func() {
-		_, err := s.manager.SpawnHost(ctx, host)
+		_, err := s.manager.SpawnHost(ctx, intent)
 		s.Error(err)
 	})
 }

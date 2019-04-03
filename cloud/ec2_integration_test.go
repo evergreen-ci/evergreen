@@ -79,7 +79,7 @@ func TestSpawnEC2InstanceOnDemand(t *testing.T) {
 
 	d := fetchTestDistro()
 	d.Provider = evergreen.ProviderNameEc2OnDemand
-	h := NewIntent(d, d.GenerateName(), d.Provider, HostOptions{
+	h := host.NewIntent(d, d.GenerateName(), d.Provider, host.CreateOptions{
 		UserName: evergreen.User,
 		UserHost: false,
 	})
@@ -148,7 +148,7 @@ func TestSpawnEC2InstanceSpot(t *testing.T) {
 	require.NoError(m.client.Create(m.credentials, defaultRegion))
 	d := fetchTestDistro()
 	d.Provider = evergreen.ProviderNameEc2Spot
-	h := NewIntent(d, d.GenerateName(), d.Provider, HostOptions{
+	h := host.NewIntent(d, d.GenerateName(), d.Provider, host.CreateOptions{
 		UserName: evergreen.User,
 		UserHost: false,
 	})
