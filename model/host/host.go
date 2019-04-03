@@ -831,7 +831,7 @@ func FindHostsToTerminate() ([]Host, error) {
 	}
 	hosts, err := Find(db.Query(query))
 
-	if db.ResultsNotFound(err) {
+	if adb.ResultsNotFound(err) {
 		return []Host{}, nil
 	}
 
