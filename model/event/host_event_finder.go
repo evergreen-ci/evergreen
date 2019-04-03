@@ -1,10 +1,22 @@
 package event
 
 import (
-	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen"
 	"github.com/mongodb/anser/bsonutil"
+	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
 	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/mongo/options"
+	mgobson "gopkg.in/mgo.v2/bson"
 )
+
+type hostStatusDistro struct {
+	Count  int      `bson:"count"`
+	Status []string `bson:"status"`
+}
+
+func (s *hostStatusDistro) MarshalBSON() ([]byte, error)  { return mgobson.Marshal(s) }
+func (s *hostStatusDistro) UnmarshalBSON(in []byte) error { return mgobson.Unmarshal(in, s) }
 
 func getRecentStatusesForHost(hostId string, n int) (int, []string) {
 	or := ResourceTypeKeyIs(ResourceTypeHost)
@@ -25,14 +37,25 @@ func getRecentStatusesForHost(hostId string, n int) (int, []string) {
 			"status": 1}},
 	}
 
-	out := []struct {
-		Count  int      `bson:"count"`
-		Status []string `bson:"status"`
-	}{}
-
-	if err := db.Aggregate(AllLogCollection, pipeline, out); err != nil {
+	env := evergreen.GetEnvironment()
+	ctx, cancel := env.Context()
+	defer cancel()
+	cursor, err := env.DB().Collection(AllLogCollection).Aggregate(ctx, pipeline, options.Aggregate().SetAllowDiskUse(true))
+	if err != nil {
+		grip.Warning(message.WrapError(err,
+			message.Fields{
+				"op": "host stats for distro agg",
+			}))
 		return 0, []string{}
 	}
+
+	out := []hostStatusDistro{}
+	for cursor.Next(ctx) {
+		doc := hostStatusDistro{}
+		cursor.Decode(&doc)
+		out = append(out, doc)
+	}
+	grip.Warning(cursor.Close(ctx))
 
 	if len(out) != 1 {
 		return 0, []string{}
@@ -42,8 +65,12 @@ func getRecentStatusesForHost(hostId string, n int) (int, []string) {
 }
 
 func AllRecentHostEventsMatchStatus(hostId string, n int, status string) bool {
+	if n == 0 {
+		return false
+	}
+
 	count, statuses := getRecentStatusesForHost(hostId, n)
-	if n == 0 || count == 0 {
+	if count == 0 {
 		return false
 	}
 
@@ -58,4 +85,5 @@ func AllRecentHostEventsMatchStatus(hostId string, n int, status string) bool {
 	}
 
 	return true
+
 }
