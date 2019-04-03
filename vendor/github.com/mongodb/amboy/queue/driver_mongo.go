@@ -152,9 +152,8 @@ func (d *mongoDriver) setupDB(ctx context.Context) error {
 			},
 		},
 	})
-	grip.Warning(err)
-	return nil
-	// return errors.Wrap(err, "problem building indexes")
+
+	return errors.Wrap(err, "problem building indexes")
 }
 
 func (d *mongoDriver) Close() {
@@ -206,6 +205,7 @@ func isMongoDupKey(err error) bool {
 func (d *mongoDriver) Save(ctx context.Context, j amboy.Job) error {
 	name := j.ID()
 	stat := j.Status()
+	stat.Owner = d.instanceID
 	stat.ModificationCount++
 	stat.ModificationTime = time.Now()
 	j.SetStatus(stat)
@@ -248,7 +248,7 @@ func (d *mongoDriver) SaveStatus(ctx context.Context, j amboy.Job, stat amboy.Jo
 	}
 
 	if res.ModifiedCount != 1 {
-		return errors.Errorf("did not update any stats documents [matched=%d]", res.MatchedCount)
+		return errors.Errorf("did not update any status documents [matched=%d]", res.MatchedCount)
 	}
 
 	j.SetStatus(stat)
