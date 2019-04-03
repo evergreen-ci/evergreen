@@ -1154,57 +1154,6 @@ func (t *Task) Archive() error {
 
 // Aggregation
 
-// AverageTaskTimeDifference takes two field names (such that field2 happened
-// after field1), a field to group on, and a cutoff time.
-// It returns the average duration between fields 1 and 2, grouped by
-// the groupBy field, including only task documents where both time
-// fields happened after the given cutoff time. This information is returned
-// as a map from groupBy_field -> avg_time_difference
-//
-// NOTE: THIS FUNCTION DOES NOT SANITIZE INPUT!
-// BAD THINGS CAN HAPPEN IF NON-TIME FIELDNAMES ARE PASSED IN
-// OR IF A FIELD OF NON-STRING TYPE IS SUPPLIED FOR groupBy!
-func AverageTaskTimeDifference(field1 string, field2 string,
-	groupByField string, cutoff time.Time) (map[string]time.Duration, error) {
-
-	// This pipeline returns the average time difference between
-	// two time fields, grouped by a given field of "string" type.
-	// It assumes field2 happened later than field1.
-	// Time difference returned in milliseconds.
-	pipeline := []bson.M{
-		{"$match": bson.M{
-			field1: bson.M{"$gt": cutoff},
-			field2: bson.M{"$gt": cutoff}}},
-		{"$group": bson.M{
-			"_id": "$" + groupByField,
-			"avg_time": bson.M{
-				"$avg": bson.M{
-					"$subtract": []string{"$" + field2, "$" + field1},
-				},
-			},
-		}},
-	}
-
-	// anonymous struct for unmarshalling result bson
-	// NOTE: This means we can only group by string fields currently
-	var results []struct {
-		GroupId     string `bson:"_id"`
-		AverageTime int64  `bson:"avg_time"`
-	}
-
-	err := db.Aggregate(Collection, pipeline, &results)
-	if err != nil {
-		return nil, errors.Wrapf(err, "Error aggregating task times by [%v, %v]", field1, field2)
-	}
-
-	avgTimes := make(map[string]time.Duration)
-	for _, res := range results {
-		avgTimes[res.GroupId] = time.Duration(res.AverageTime) * time.Millisecond
-	}
-
-	return avgTimes, nil
-}
-
 // MergeNewTestResults returns the task with both old (embedded in
 // the tasks collection) and new (from the testresults collection) test results
 // merged in the Task's LocalTestResults field.
