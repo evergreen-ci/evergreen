@@ -39,6 +39,6 @@ func main() {
 		grip.Warningf("no documents updated: %+v", res)
 		os.Exit(2)
 	}
-	grip.Infof("set the value of '%s' for project '%s'", key, project)
+	grip.Infof("set the value of '%s' for document '%s' in collection '%s'", key, id, collection)
 	grip.Emergency(client.Disconnect(ctx))
 }
