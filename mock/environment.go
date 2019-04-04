@@ -18,6 +18,7 @@ import (
 	"github.com/mongodb/jasper"
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
 // this is just a hack to ensure that compile breaks clearly if the
@@ -72,6 +73,12 @@ func (e *Environment) Configure(ctx context.Context, path string, db *evergreen.
 
 	e.JasperProcessManager = jpm
 
+	e.MongoClient, err = mongo.Connect(ctx, options.Client().ApplyURI(e.EvergreenSettings.Database.Url))
+	if err != nil {
+		return errors.WithStack(err)
+	}
+	e.DatabaseName = e.EvergreenSettings.Database.DB
+
 	return nil
 }
 
@@ -108,7 +115,6 @@ func (e *Environment) Session() db.Session {
 func (e *Environment) Client() *mongo.Client {
 	e.mu.RLock()
 	defer e.mu.RUnlock()
-
 	return e.MongoClient
 }
 

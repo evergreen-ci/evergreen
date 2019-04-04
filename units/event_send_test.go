@@ -185,7 +185,7 @@ func (s *eventNotificationSuite) TestDegradedMode() {
 
 	for i := range s.notifications {
 		job := NewEventNotificationJob(s.notifications[i].ID).(*eventNotificationJob)
-		job.env = s.env
+		job.env = evergreen.GetEnvironment()
 
 		job.Run(s.ctx)
 		s.NoError(job.Error())
