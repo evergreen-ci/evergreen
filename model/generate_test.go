@@ -639,7 +639,7 @@ func (s *GenerateSuite) TestSaveNewTasksWithDependencies() {
 	}
 }
 
-func (s *GenerateSuite) TestSaveNewTaskWithOneExecutionTask() {
+func (s *GenerateSuite) TestSaveNewTaskWithExistingExecutionTask() {
 	taskThatExists := task.Task{
 		Id:      "task_that_called_generate_task",
 		Version: "version_that_called_generate_task",
@@ -668,16 +668,13 @@ func (s *GenerateSuite) TestSaveNewTaskWithOneExecutionTask() {
 	g.TaskID = "task_that_called_generate_task"
 	p, v, t, pm, prevConfig, err := g.NewVersion()
 	s.Require().NoError(err)
-
 	s.NoError(g.Save(p, v, t, pm, prevConfig))
 
 	tasks := []task.Task{}
-	err = db.FindAllQ(task.Collection, db.Query(bson.M{}), &tasks)
-	s.NoError(err)
-	err = db.FindAllQ(task.Collection, db.Query(bson.M{"display_name": "my_display_task_gen"}), &tasks)
+	s.NoError(db.FindAllQ(task.Collection, db.Query(bson.M{}), &tasks))
+	s.NoError(db.FindAllQ(task.Collection, db.Query(bson.M{"display_name": "my_display_task_gen"}), &tasks))
 	s.Len(tasks, 1)
-	err = db.FindAllQ(task.Collection, db.Query(bson.M{"display_name": "my_display_task"}), &tasks)
-	s.NoError(err)
+	s.NoError(db.FindAllQ(task.Collection, db.Query(bson.M{"display_name": "my_display_task"}), &tasks))
 	s.Len(tasks, 1)
 }
 
