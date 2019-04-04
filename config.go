@@ -34,7 +34,7 @@ type ConfigSection interface {
 	// SectionId() returns the ID of the section to be used in the database document and struct tag
 	SectionId() string
 	// Get() populates the section from the DB
-	Get() error
+	Get(Environment) error
 	// Set() upserts the section document into the DB
 	Set() error
 	// ValidateAndDefault() validates input and sets defaults
@@ -85,8 +85,7 @@ type Settings struct {
 
 func (c *Settings) SectionId() string { return ConfigDocID }
 
-func (c *Settings) Get() error {
-	env := GetEnvironment()
+func (c *Settings) Get(env Environment) error {
 	ctx, cancel := env.Context()
 	defer cancel()
 	coll := env.DB().Collection(ConfigCollection)
@@ -208,11 +207,14 @@ func NewSettings(filename string) (*Settings, error) {
 
 // GetConfig retrieves the Evergreen config document. If no document is
 // present in the DB, it will return the defaults
-func GetConfig() (*Settings, error) {
+func GetConfig() (*Settings, error) { return BootstrapConfig(GetEnvironment()) }
+
+// Bootstrap config gets a config from the database defined in the environment.
+func BootstrapConfig(env Environment) (*Settings, error) {
 	config := &Settings{}
 
 	// retrieve the root config document
-	if err := config.Get(); err != nil {
+	if err := config.Get(env); err != nil {
 		return nil, err
 	}
 
@@ -237,7 +239,7 @@ func GetConfig() (*Settings, error) {
 		}
 
 		// retrieve the section's document from the db
-		if err := section.Get(); err != nil {
+		if err := section.Get(env); err != nil {
 			catcher.Add(errors.Wrapf(err, "error populating section %s", sectionId))
 			continue
 		}
@@ -256,6 +258,7 @@ func GetConfig() (*Settings, error) {
 		return nil, errors.WithStack(catcher.Resolve())
 	}
 	return config, nil
+
 }
 
 // UpdateConfig updates all evergreen settings documents in DB
@@ -491,7 +494,7 @@ func GetServiceFlags() (*ServiceFlags, error) {
 	if section == nil {
 		return nil, errors.New("unable to retrieve config section")
 	}
-	if err := section.Get(); err != nil {
+	if err := section.Get(GetEnvironment()); err != nil {
 		return nil, errors.Wrap(err, "error retrieving section from DB")
 	}
 	flags, ok := section.(*ServiceFlags)

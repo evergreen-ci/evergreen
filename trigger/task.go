@@ -155,7 +155,7 @@ func (t *taskTriggers) Fetch(e *event.EventLogEntry) error {
 	}
 
 	var err error
-	if err = t.uiConfig.Get(); err != nil {
+	if err = t.uiConfig.Get(evergreen.GetEnvironment()); err != nil {
 		return errors.Wrap(err, "Failed to fetch ui config")
 	}
 
@@ -793,7 +793,7 @@ func JIRATaskPayload(subID, project, uiUrl, eventID, testNames string, t *task.T
 		data:     data,
 	}
 
-	if err = builder.mappings.Get(); err != nil {
+	if err = builder.mappings.Get(evergreen.GetEnvironment()); err != nil {
 		return nil, errors.Wrap(err, "failed to fetch jira custom field mappings while building jira task payload")
 	}
 

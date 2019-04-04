@@ -19,8 +19,7 @@ type JiraConfig struct {
 
 func (c *JiraConfig) SectionId() string { return "jira" }
 
-func (c *JiraConfig) Get() error {
-	env := GetEnvironment()
+func (c *JiraConfig) Get(env Environment) error {
 	ctx, cancel := env.Context()
 	defer cancel()
 	coll := env.DB().Collection(ConfigCollection)

@@ -53,8 +53,7 @@ type AuthConfig struct {
 
 func (c *AuthConfig) SectionId() string { return "auth" }
 
-func (c *AuthConfig) Get() error {
-	env := GetEnvironment()
+func (c *AuthConfig) Get(env Environment) error {
 	ctx, cancel := env.Context()
 	defer cancel()
 	coll := env.DB().Collection(ConfigCollection)

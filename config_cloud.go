@@ -18,8 +18,7 @@ type CloudProviders struct {
 
 func (c *CloudProviders) SectionId() string { return "providers" }
 
-func (c *CloudProviders) Get() error {
-	env := GetEnvironment()
+func (c *CloudProviders) Get(env Environment) error {
 	ctx, cancel := env.Context()
 	defer cancel()
 	coll := env.DB().Collection(ConfigCollection)

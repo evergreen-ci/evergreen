@@ -33,8 +33,7 @@ type UIConfig struct {
 
 func (c *UIConfig) SectionId() string { return "ui" }
 
-func (c *UIConfig) Get() error {
-	env := GetEnvironment()
+func (c *UIConfig) Get(env Environment) error {
 	ctx, cancel := env.Context()
 	defer cancel()
 	coll := env.DB().Collection(ConfigCollection)

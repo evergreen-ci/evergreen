@@ -76,8 +76,7 @@ type JIRANotificationsCustomField struct {
 
 func (c *JIRANotificationsConfig) SectionId() string { return "jira_notifications" }
 
-func (c *JIRANotificationsConfig) Get() error {
-	env := GetEnvironment()
+func (c *JIRANotificationsConfig) Get(env Environment) error {
 	ctx, cancel := env.Context()
 	defer cancel()
 	coll := env.DB().Collection(ConfigCollection)

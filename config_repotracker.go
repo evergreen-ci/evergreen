@@ -16,8 +16,7 @@ type RepoTrackerConfig struct {
 
 func (c *RepoTrackerConfig) SectionId() string { return "repotracker" }
 
-func (c *RepoTrackerConfig) Get() error {
-	env := GetEnvironment()
+func (c *RepoTrackerConfig) Get(env Environment) error {
 	ctx, cancel := env.Context()
 	defer cancel()
 	coll := env.DB().Collection(ConfigCollection)

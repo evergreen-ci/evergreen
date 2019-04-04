@@ -12,8 +12,7 @@ type TriggerConfig struct {
 }
 
 func (c *TriggerConfig) SectionId() string { return "triggers" }
-func (c *TriggerConfig) Get() error {
-	env := GetEnvironment()
+func (c *TriggerConfig) Get(env Environment) error {
 	ctx, cancel := env.Context()
 	defer cancel()
 	coll := env.DB().Collection(ConfigCollection)

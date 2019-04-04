@@ -174,7 +174,7 @@ func RevertConfig(guid string, user string) error {
 	if current == nil {
 		return errors.Errorf("unable to find section %s", data.Section)
 	}
-	err = current.Get()
+	err = current.Get(evergreen.GetEnvironment())
 	if err != nil {
 		return errors.Wrapf(err, "problem reading section %s", current.SectionId())
 	}

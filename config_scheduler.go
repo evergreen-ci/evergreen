@@ -18,8 +18,7 @@ type SchedulerConfig struct {
 
 func (c *SchedulerConfig) SectionId() string { return "scheduler" }
 
-func (c *SchedulerConfig) Get() error {
-	env := GetEnvironment()
+func (c *SchedulerConfig) Get(env Environment) error {
 	ctx, cancel := env.Context()
 	defer cancel()
 	coll := env.DB().Collection(ConfigCollection)

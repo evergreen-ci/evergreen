@@ -17,8 +17,7 @@ type SlackConfig struct {
 
 func (c *SlackConfig) SectionId() string { return "slack" }
 
-func (c *SlackConfig) Get() error {
-	env := GetEnvironment()
+func (c *SlackConfig) Get(env Environment) error {
 	ctx, cancel := env.Context()
 	defer cancel()
 	coll := env.DB().Collection(ConfigCollection)

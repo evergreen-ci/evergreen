@@ -15,8 +15,7 @@ type APIConfig struct {
 
 func (c *APIConfig) SectionId() string { return "api" }
 
-func (c *APIConfig) Get() error {
-	env := GetEnvironment()
+func (c *APIConfig) Get(env Environment) error {
 	ctx, cancel := env.Context()
 	defer cancel()
 	coll := env.DB().Collection(ConfigCollection)

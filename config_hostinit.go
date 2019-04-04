@@ -14,8 +14,7 @@ type HostInitConfig struct {
 
 func (c *HostInitConfig) SectionId() string { return "hostinit" }
 
-func (c *HostInitConfig) Get() error {
-	env := GetEnvironment()
+func (c *HostInitConfig) Get(env Environment) error {
 	ctx, cancel := env.Context()
 	defer cancel()
 	coll := env.DB().Collection(ConfigCollection)

@@ -37,8 +37,7 @@ type ServiceFlags struct {
 
 func (c *ServiceFlags) SectionId() string { return "service_flags" }
 
-func (c *ServiceFlags) Get() error {
-	env := GetEnvironment()
+func (c *ServiceFlags) Get(env Environment) error {
 	ctx, cancel := env.Context()
 	defer cancel()
 	coll := env.DB().Collection(ConfigCollection)

@@ -16,8 +16,7 @@ type NotifyConfig struct {
 
 func (c *NotifyConfig) SectionId() string { return "notify" }
 
-func (c *NotifyConfig) Get() error {
-	env := GetEnvironment()
+func (c *NotifyConfig) Get(env Environment) error {
 	ctx, cancel := env.Context()
 	defer cancel()
 	coll := env.DB().Collection(ConfigCollection)
@@ -73,8 +72,7 @@ type AlertsConfig struct {
 
 func (c *AlertsConfig) SectionId() string { return "alerts" }
 
-func (c *AlertsConfig) Get() error {
-	env := GetEnvironment()
+func (c *AlertsConfig) Get(env Environment) error {
 	ctx, cancel := env.Context()
 	defer cancel()
 	coll := env.DB().Collection(ConfigCollection)

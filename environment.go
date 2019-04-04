@@ -207,7 +207,7 @@ func (e *envState) initSettings(path string) error {
 				return errors.Wrap(err, "problem getting settings from file")
 			}
 		} else {
-			e.settings, err = GetConfig()
+			e.settings, err = BootstrapConfig(e)
 			if err != nil {
 				return errors.Wrap(err, "problem getting settings from DB")
 			}

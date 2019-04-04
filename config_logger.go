@@ -25,8 +25,7 @@ func (c LoggerConfig) Info() send.LevelInfo {
 
 func (c *LoggerConfig) SectionId() string { return "logger_config" }
 
-func (c *LoggerConfig) Get() error {
-	env := GetEnvironment()
+func (c *LoggerConfig) Get(env Environment) error {
 	ctx, cancel := env.Context()
 	defer cancel()
 	coll := env.DB().Collection(ConfigCollection)

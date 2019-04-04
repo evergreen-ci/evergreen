@@ -18,8 +18,7 @@ type AmboyConfig struct {
 
 func (c *AmboyConfig) SectionId() string { return "amboy" }
 
-func (c *AmboyConfig) Get() error {
-	env := GetEnvironment()
+func (c *AmboyConfig) Get(env Environment) error {
 	ctx, cancel := env.Context()
 	defer cancel()
 	coll := env.DB().Collection(ConfigCollection)

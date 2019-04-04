@@ -88,6 +88,7 @@ func TestGetGithubSettings(t *testing.T) {
 }
 
 type AdminSuite struct {
+	env Environment
 	suite.Suite
 }
 
@@ -100,6 +101,7 @@ func TestAdminSuite(t *testing.T) {
 	SetEnvironment(env)
 
 	s := new(AdminSuite)
+	s.env = env
 	suite.Run(t, s)
 }
 
@@ -468,7 +470,7 @@ func (s *AdminSuite) TestKeyValPairsToMap() {
 	s.NoError(config.ValidateAndDefault())
 	s.NoError(config.Set())
 	dbConfig := Settings{}
-	s.NoError(dbConfig.Get())
+	s.NoError(dbConfig.Get(s.env))
 	s.Len(dbConfig.CredentialsNew, 1)
 	s.Len(dbConfig.ExpansionsNew, 1)
 	s.Len(dbConfig.KeysNew, 1)
@@ -583,7 +585,7 @@ func (s *AdminSuite) TestJIRANotificationsConfig() {
 			},
 		},
 	}
-	s.NoError(c.Get())
+	s.NoError(c.Get(s.env))
 	s.NotNil(c)
 	s.Nil(c.CustomFields)
 	s.NotPanics(func() {
@@ -609,7 +611,7 @@ func (s *AdminSuite) TestJIRANotificationsConfig() {
 	s.Require().NoError(c.Set())
 
 	c = JIRANotificationsConfig{}
-	s.Require().NoError(c.Get())
+	s.Require().NoError(c.Get(s.env))
 	s.NoError(c.ValidateAndDefault())
 	m, err = c.CustomFields.ToMap()
 	s.NoError(err)

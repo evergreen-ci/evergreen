@@ -46,7 +46,6 @@ func resetRegistry() error {
 		&ServiceFlags{},
 		&SlackConfig{},
 		&UIConfig{},
-		&Settings{},
 		&JIRANotificationsConfig{},
 		&TriggerConfig{},
 	}

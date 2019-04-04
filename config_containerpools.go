@@ -25,8 +25,7 @@ type ContainerPoolsConfig struct {
 
 func (c *ContainerPoolsConfig) SectionId() string { return "container_pools" }
 
-func (c *ContainerPoolsConfig) Get() error {
-	env := GetEnvironment()
+func (c *ContainerPoolsConfig) Get(env Environment) error {
 	ctx, cancel := env.Context()
 	defer cancel()
 	coll := env.DB().Collection(ConfigCollection)

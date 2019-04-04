@@ -117,7 +117,7 @@ func (j *githubStatusUpdateJob) preamble() error {
 		j.env = evergreen.GetEnvironment()
 	}
 	uiConfig := evergreen.UIConfig{}
-	if err := uiConfig.Get(); err != nil {
+	if err := uiConfig.Get(j.env); err != nil {
 		return err
 	}
 	j.urlBase = uiConfig.Url
