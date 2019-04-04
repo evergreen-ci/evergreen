@@ -11,8 +11,40 @@ var findIndex = function(list, predicate) {
   }
 }
 
+// converts expanded metric data to old data format
+mciModule.filter('expandedMetricConverter', function () {
+  return function (data) {
+      var output = {
+          "data": {
+              "results": []
+          }
+      };
+
+      _.each(data, function(test) {
+          if (!test.info || !test.info.args) {
+              return;
+          }
+          let result = {};
+          let threads = test.info.args.thread_level;
+          result[threads] = {};
+          _.each(test.rollups.stats, function (stat) {
+              result[threads][stat.name] = stat.val[0].Value;
+              result[threads][stat.name + "_values"] = [stat.val[0].Value];
+          });
+          output.data.results.push({
+              "name": test.info.test_name,
+              "isExpandedMetric": true,
+              "results": result
+          });
+      })
+
+      return output;
+  }
+})
+
+
 mciModule.controller('PerfController', function PerfController(
-  $scope, $window, $http, $location, $log, $q, ChangePointsService,
+  $scope, $window, $http, $location, $log, $q, $filter, ChangePointsService,
   DrawPerfTrendChart, PROCESSED_TYPE, Settings, Stitch, STITCH_CONFIG,
   TestSample, TrendSamples, PointsDataService
 ) {
@@ -30,6 +62,8 @@ mciModule.controller('PerfController', function PerfController(
   }, function() {});
   */
 
+  const cedarApp = "https://cedar.mongodb.com"; //TODO make a configuration option
+  
   // set this to false if we want the display to happen after the plots are rendered
   $scope.showToolbar = true
   $scope.hiddenGraphs = {}
@@ -210,6 +244,9 @@ mciModule.controller('PerfController', function PerfController(
   };
 
   var drawTrendGraph = function(scope) {
+    if (!$scope.perfSample) {
+      return;
+    }
     scope.locked = false;
     // Extract params
     let trendSamples = getSamples(scope),
@@ -288,6 +325,9 @@ mciModule.controller('PerfController', function PerfController(
   $scope.cleanId = cleanId
 
   function drawDetailGraph(sample, compareSamples, taskId){
+    if (!sample) {
+      return;
+    }
     var testNames = sample.testNames();
     for(var i=0;i<testNames.length;i++){
       var testName = testNames[i];
@@ -540,6 +580,152 @@ mciModule.controller('PerfController', function PerfController(
       }, 0)
   }
 
+  // merges two sets of test data, giving preference to the existing data in case of duplicated test names
+  $scope.mergeSamples = function(toMerge) {
+    if (!$scope.perfSample || !$scope.perfSample.sample || !$scope.perfSample.sample.data) {
+      $scope.perfSample = toMerge;
+      return;
+    }
+    var samples = {};
+    _.each(toMerge.sample.data.results, function(result) {
+      samples[result.name] = result;
+    });
+    _.each($scope.perfSample.sample.data.results, function(result) {
+      samples[result.name] = result;
+    });
+
+    $scope.perfSample.sample.data.results = _.toArray(samples);
+  }
+
+  $scope.processAndDrawGraphs = function() {
+    setTimeout(function(){drawDetailGraph($scope.perfSample, $scope.comparePerfSamples, $scope.task.id)},0);
+
+    // Get a list of rejected points.
+    const pointsPromise = PointsDataService.getOutlierPointsQ($scope.task.branch,
+                                                              $scope.task.build_variant,
+                                                              $scope.task.display_name);
+
+    // This code loads change points for current task from the mdb cloud
+    const unprocessedPointsQ = Stitch.use(STITCH_CONFIG.PERF).query(function(db) {
+      return db
+        .db(STITCH_CONFIG.PERF.DB_PERF)
+        .collection(STITCH_CONFIG.PERF.COLL_UNPROCESSED_POINTS)
+        .find({
+          project: $scope.task.branch,
+          task: $scope.task.display_name,
+          variant: $scope.task.build_variant,
+        })
+        .execute();
+    }).then(
+      function(docs) { return docs },
+      function(err) {
+        // Try to gracefully recover from an error
+        $log.error('Cannot load change points!', err);
+        return {}
+    });
+
+    const processedPointsQ = Stitch.use(STITCH_CONFIG.PERF).query(function(db) {
+      return db
+        .db(STITCH_CONFIG.PERF.DB_PERF)
+        .collection(STITCH_CONFIG.PERF.COLL_PROCESSED_POINTS)
+        .find({
+          project: $scope.task.branch,
+          task: $scope.task.display_name,
+          variant: $scope.task.build_variant,
+        })
+        .execute();
+    }).then(
+      function(docs) { return docs },
+      function(err) {
+        // Try to gracefully recover from an error
+        $log.error('Cannot load processed change points!', err);
+        return {};
+    });
+    const changePointsQ = $q.all({
+      processed: processedPointsQ,
+      unprocessed: unprocessedPointsQ,
+    }).then(function(points) {
+      // Merge processed and unprocessed change points
+      // Processed ones always have a priority
+      // (in situations, when the revision has one processed
+      // and one unprocessed point)
+      const docs = _.reduce(points.unprocessed, function(m, d) {
+        // If there are no processed change point with same revision
+        if (!_.findWhere(m, {suspect_revision: d.suspect_revision})) {
+          return m.concat(d);
+        }
+        return m;
+      }, points.processed)
+      // Group all items by test
+      $scope.changePoints = _.groupBy(docs, 'test');
+      return $scope.changePoints;
+    });
+
+    const buildFailuresQ = Stitch.use(STITCH_CONFIG.PERF).query(function(db) {
+      return db
+        .db(STITCH_CONFIG.PERF.DB_PERF)
+        .collection(STITCH_CONFIG.PERF.COLL_BUILD_FAILURES)
+        .aggregate([
+          {$match: {
+            project: $scope.task.branch,
+            tasks: $scope.task.display_name,
+            buildvariants: $scope.task.build_variant,
+          }},
+          // Denormalization
+          {$unwind: {path: '$tests', preserveNullAndEmptyArrays: true}},
+          {$unwind: {path: '$first_failing_revision', preserveNullAndEmptyArrays: true}},
+        ]);
+    }).then(
+      function(docs) {
+        return _.groupBy(docs, 'tests');
+      }, function(err) {
+        $log.error('Cannot load build failures!', err);
+        return {} // Try to recover an error
+    }).then(function(data) {
+      $scope.buildFailures = data
+    });
+
+    // Populate the trend data
+    const chartDataQ = $http.get("/plugin/json/history/" + $scope.task.id + "/perf").then(
+      function(resp) {
+        pointsPromise.then(function(outliers){
+          const rejects = outliers.rejects;
+          $scope.allTrendSamples = new TrendSamples(resp.data);
+          // Default filtered to all.
+          $scope.filteredTrendSamples = $scope.allTrendSamples;
+          if(rejects.length) {
+            const filtered = _.reject(resp.data, doc => _.contains(rejects, doc.task_id));
+            if (rejects.length != filtered.length) {
+              $scope.filteredTrendSamples = new TrendSamples(filtered);
+            }
+          }
+          $scope.metricSelect.options = [$scope.metricSelect.default].concat(
+            _.map(
+              _.without($scope.allTrendSamples.metrics, $scope.metricSelect.default.key), d => ({key: d, name: d}))
+          );
+
+          // Some copy pasted checks
+          if ($scope.conf.enabled){
+            if ($location.hash().length > 0) {
+              try {
+                if ('metric' in hashparsed) {
+                  $scope.metricSelect.value = _.findWhere(
+                    $scope.metricSelect.options, {key: hashparsed.metric}
+                  ) || $scope.metricSelect.default
+                }
+              } catch (e) {}
+            }
+          }
+        })
+      });
+
+    // Once trend chart data and change points get loaded
+    $q.all([chartDataQ, changePointsQ.catch(), buildFailuresQ.catch()])
+      .then(function() {
+        setTimeout(drawTrendGraph, 0, $scope);
+      })
+  }
+
   if ($scope.conf.enabled){
     if ($location.hash().length > 0) {
       try {
@@ -560,139 +746,27 @@ mciModule.controller('PerfController', function PerfController(
       } catch (e) { }
     }
     // Populate the graph and table for this task
-    $http.get("/plugin/json/task/" + $scope.task.id + "/perf/").then(
-      function(resp){
-        const d = resp.data;
-        $scope.perfSample = new TestSample(d);
-        if("tag" in d && d.tag.length > 0){
-          $scope.perfTagData.tag = d.tag;
-        }
-        setTimeout(function(){drawDetailGraph($scope.perfSample, $scope.comparePerfSamples, $scope.task.id)},0);
-
-        // Get a list of rejected points.
-        const pointsPromise = PointsDataService.getOutlierPointsQ($scope.task.branch,
-                                                                  $scope.task.build_variant,
-                                                                  $scope.task.display_name);
-
-        // This code loads change points for current task from the mdb cloud
-        const unprocessedPointsQ = Stitch.use(STITCH_CONFIG.PERF).query(function(db) {
-          return db
-            .db(STITCH_CONFIG.PERF.DB_PERF)
-            .collection(STITCH_CONFIG.PERF.COLL_UNPROCESSED_POINTS)
-            .find({
-              project: $scope.task.branch,
-              task: $scope.task.display_name,
-              variant: $scope.task.build_variant,
-            })
-            .execute();
-        }).then(
-          function(docs) { return docs },
-          function(err) {
-            // Try to gracefully recover from an error
-            $log.error('Cannot load change points!', err);
-            return {}
-        });
-
-        const processedPointsQ = Stitch.use(STITCH_CONFIG.PERF).query(function(db) {
-          return db
-            .db(STITCH_CONFIG.PERF.DB_PERF)
-            .collection(STITCH_CONFIG.PERF.COLL_PROCESSED_POINTS)
-            .find({
-              project: $scope.task.branch,
-              task: $scope.task.display_name,
-              variant: $scope.task.build_variant,
-            })
-            .execute();
-        }).then(
-          function(docs) { return docs },
-          function(err) {
-            // Try to gracefully recover from an error
-            $log.error('Cannot load processed change points!', err);
-            return {};
-        });
-        const changePointsQ = $q.all({
-          processed: processedPointsQ,
-          unprocessed: unprocessedPointsQ,
-        }).then(function(points) {
-          // Merge processed and unprocessed change points
-          // Processed ones always have a priority
-          // (in situations, when the revision has one processed
-          // and one unprocessed point)
-          const docs = _.reduce(points.unprocessed, function(m, d) {
-            // If there are no processed change point with same revision
-            if (!_.findWhere(m, {suspect_revision: d.suspect_revision})) {
-              return m.concat(d);
-            }
-            return m;
-          }, points.processed)
-          // Group all items by test
-          $scope.changePoints = _.groupBy(docs, 'test');
-          return $scope.changePoints;
-        });
-
-        const buildFailuresQ = Stitch.use(STITCH_CONFIG.PERF).query(function(db) {
-          return db
-            .db(STITCH_CONFIG.PERF.DB_PERF)
-            .collection(STITCH_CONFIG.PERF.COLL_BUILD_FAILURES)
-            .aggregate([
-              {$match: {
-                project: $scope.task.branch,
-                tasks: $scope.task.display_name,
-                buildvariants: $scope.task.build_variant,
-              }},
-              // Denormalization
-              {$unwind: {path: '$tests', preserveNullAndEmptyArrays: true}},
-              {$unwind: {path: '$first_failing_revision', preserveNullAndEmptyArrays: true}},
-            ]);
-        }).then(
-          function(docs) {
-            return _.groupBy(docs, 'tests');
-          }, function(err) {
-            $log.error('Cannot load build failures!', err);
-            return {} // Try to recover an error
-        }).then(function(data) {
-          $scope.buildFailures = data
-        });
-
-        // Populate the trend data
-        const chartDataQ = $http.get("/plugin/json/history/" + $scope.task.id + "/perf").then(
-          function(resp) {
-            pointsPromise.then(function(outliers){
-              const rejects = outliers.rejects;
-              $scope.allTrendSamples = new TrendSamples(resp.data);
-              // Default filtered to all.
-              $scope.filteredTrendSamples = $scope.allTrendSamples;
-              if(rejects.length) {
-                const filtered = _.reject(resp.data, doc => _.contains(rejects, doc.task_id));
-                if (rejects.length != filtered.length) {
-                  $scope.filteredTrendSamples = new TrendSamples(filtered);
-                }
-              }
-              $scope.metricSelect.options = [$scope.metricSelect.default].concat(
-                _.map(
-                  _.without($scope.allTrendSamples.metrics, $scope.metricSelect.default.key), d => ({key: d, name: d}))
-              );
-
-              // Some copy pasted checks
-              if ($scope.conf.enabled){
-                if ($location.hash().length > 0) {
-                  try {
-                    if ('metric' in hashparsed) {
-                      $scope.metricSelect.value = _.findWhere(
-                        $scope.metricSelect.options, {key: hashparsed.metric}
-                      ) || $scope.metricSelect.default
-                    }
-                  } catch (e) {}
-                }
-              }
-            })
-          });
-
-        // Once trend chart data and change points get loaded
-        $q.all([chartDataQ, changePointsQ.catch(), buildFailuresQ.catch()])
-          .then(function() {
-            setTimeout(drawTrendGraph, 0, $scope);
-          })
+    var legacySuccess = function(resp){
+      var d = resp.data;
+      var results = new TestSample(d);
+      $scope.mergeSamples(results);
+      if("tag" in d && d.tag.length > 0){
+        $scope.perfTagData.tag = d.tag
+      }
+      $scope.processAndDrawGraphs();
+    }
+    var legacyError = function(error){
+      console.log(error);
+      $scope.processAndDrawGraphs();
+    }
+    $http.get(cedarApp + "/rest/v1/perf/task_id/" + $scope.task.id).then(
+      function(resp) {
+        var formatted = $filter("expandedMetricConverter")(resp.data);
+        $scope.perfSample = new TestSample(formatted);
+        $http.get("/plugin/json/task/" + $scope.task.id + "/perf/").then(legacySuccess,legacyError);
+      }, function(error){
+        console.log(error);
+        $http.get("/plugin/json/task/" + $scope.task.id + "/perf/").then(legacySuccess,legacyError);
       });
 
     $http.get("/plugin/json/task/" + $scope.task.id + "/perf/tags").then(
