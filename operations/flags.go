@@ -198,6 +198,7 @@ func addDbSettingsFlags(flags ...cli.Flag) []cli.Flag {
 		cli.StringFlag{
 			Name:  dbWmodeFlagName,
 			Usage: "Write mode. Only valid values are blank or 'majority'",
+			Value: evergreen.DefaultDatabaseWriteMode,
 		},
 	)
 }
