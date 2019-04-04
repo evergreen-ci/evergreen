@@ -523,7 +523,7 @@ func (wc WriteConcern) Resolve() *writeconcern.WriteConcern {
 	}
 	if wc.WMode == "majority" {
 		opts = append(opts, writeconcern.WMajority())
-	} else {
+	} else if wc.W > 0 {
 		opts = append(opts, writeconcern.W(wc.W))
 	}
 
