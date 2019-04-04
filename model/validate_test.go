@@ -18,7 +18,7 @@ func TestBadHostTaskRelationship(t *testing.T) {
 	db.SetGlobalSessionProvider(testutil.TestConfig().SessionFactory())
 	require.NoError(db.Clear(task.Collection))
 
-	var h *host.Host
+	h := &host.Host{}
 	var k *task.Task
 	assert.False(badHostTaskRelationship(h, k), "false for nil task")
 

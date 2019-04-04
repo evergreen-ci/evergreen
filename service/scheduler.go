@@ -63,6 +63,7 @@ func (uis *UIServer) schedulerHostUtilization(w http.ResponseWriter, r *http.Req
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
+
 	gimlet.WriteJSON(w, bucketData)
 }
 

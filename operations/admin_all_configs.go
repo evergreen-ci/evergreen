@@ -37,7 +37,8 @@ func fetchAllProjectConfigs() cli.Command {
 				return err
 			}
 
-			_ = settings.GetRestCommunicator(ctx)
+			client := settings.GetRestCommunicator(ctx)
+			defer client.Close()
 
 			ac, rc, err := settings.getLegacyClients()
 			if err != nil {
