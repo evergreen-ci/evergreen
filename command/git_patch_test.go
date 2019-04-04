@@ -11,7 +11,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
 	modelutil "github.com/evergreen-ci/evergreen/model/testutil"
-	"github.com/evergreen-ci/evergreen/plugin/plugintest"
 	"github.com/evergreen-ci/evergreen/rest/client"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/evergreen/util"
@@ -43,7 +42,7 @@ func TestPatchPluginAPI(t *testing.T) {
 		modelData.TaskConfig.Expansions = util.NewExpansions(settings.Credentials)
 
 		testutil.HandleTestingErr(err, t, "Couldn't set up test documents")
-		err = plugintest.SetupPatchData(modelData, patchFile, t)
+		err = setupTestPatchData(modelData, patchFile, t)
 		testutil.HandleTestingErr(err, t, "Couldn't set up test documents")
 
 		comm.PatchFiles[""] = patchFile
@@ -114,7 +113,7 @@ func TestPatchPlugin(t *testing.T) {
 		modelData.TaskConfig.Expansions = util.NewExpansions(settings.Credentials)
 		testutil.HandleTestingErr(err, t, "Couldn't set up test documents")
 
-		err = plugintest.SetupPatchData(modelData, patchFile, t)
+		err = setupTestPatchData(modelData, patchFile, t)
 		testutil.HandleTestingErr(err, t, "Couldn't set up patch documents")
 
 		taskConfig := modelData.TaskConfig
