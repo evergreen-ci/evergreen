@@ -103,7 +103,8 @@ func Fetch() cli.Command {
 				return errors.Wrap(err, "problem loading configuration")
 			}
 
-			_ = conf.GetRestCommunicator(ctx)
+			client := conf.GetRestCommunicator(ctx)
+			defer client.Close()
 
 			ac, rc, err := conf.getLegacyClients()
 			if err != nil {

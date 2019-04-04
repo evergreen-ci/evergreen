@@ -54,6 +54,7 @@ func Update() cli.Command {
 			}
 
 			client := conf.GetRestCommunicator(ctx)
+			defer client.Close()
 
 			update, err := checkUpdate(client, false, forceUpdate)
 			if err != nil {

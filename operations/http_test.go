@@ -38,6 +38,7 @@ func (s *CliHttpTestSuite) TestV2Client() {
 
 	settings, err := NewClientSettings(testFileName)
 	client := settings.GetRestCommunicator(ctx)
+	defer client.Close()
 	if s.NoError(err) {
 		s.NotNil(client)
 		s.NotNil(settings)

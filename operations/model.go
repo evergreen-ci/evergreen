@@ -127,6 +127,8 @@ func (s *ClientSettings) Write(fn string) error {
 	return errors.Wrap(ioutil.WriteFile(fn, yamlData, 0644), "could not write file")
 }
 
+// GetRestCommunicator returns a client for communicating with the API server.
+// Callers are responsible for calling (Communicator).Close() when finished with the client.
 func (s *ClientSettings) GetRestCommunicator(ctx context.Context) client.Communicator {
 	c := client.NewCommunicator(s.APIServerHost)
 
