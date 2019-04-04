@@ -129,7 +129,7 @@ func (restapi restAPI) getRecentVersions(w http.ResponseWriter, r *http.Request)
 		l, err = strconv.Atoi(limit)
 		if err != nil {
 			msg := fmt.Sprintf("Error parsing %s as an integer", limit)
-			gimlet.WriteJSONInternalError(w, responseError{Message: msg})
+			gimlet.WriteJSONError(w, responseError{Message: msg})
 			return
 		}
 	}
