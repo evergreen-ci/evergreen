@@ -19,10 +19,6 @@ var (
 	taskQueueTestConf = testutil.TestConfig()
 )
 
-func init() {
-	db.SetGlobalSessionProvider(taskQueueTestConf.SessionFactory())
-}
-
 func TestDequeueTask(t *testing.T) {
 	var taskIds []string
 	var distroId string

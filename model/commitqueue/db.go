@@ -3,9 +3,9 @@ package commitqueue
 import (
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/mongodb/anser/bsonutil"
+	adb "github.com/mongodb/anser/db"
 	"github.com/pkg/errors"
-	mgo "gopkg.in/mgo.v2"
-	"gopkg.in/mgo.v2/bson"
+	"go.mongodb.org/mongo-driver/bson"
 )
 
 const Collection = "commit_queue"
@@ -28,6 +28,9 @@ func updateOne(query interface{}, update interface{}) error {
 
 func updateAll(query interface{}, update interface{}) (int, error) {
 	results, err := db.UpdateAll(Collection, query, update)
+	if err != nil {
+		return 0, errors.WithStack(err)
+	}
 	return results.Updated, err
 }
 
@@ -38,6 +41,11 @@ func FindOneId(id string) (*CommitQueue, error) {
 func findOne(query db.Q) (*CommitQueue, error) {
 	queue := &CommitQueue{}
 	err := db.FindOneQ(Collection, query, &queue)
+
+	if adb.ResultsNotFound(err) {
+		return nil, nil
+	}
+
 	return queue, err
 }
 
@@ -54,9 +62,10 @@ func add(id string, queue []CommitQueueItem, item CommitQueueItem) error {
 		bson.M{"$push": bson.M{QueueKey: item}},
 	)
 
-	if err == mgo.ErrNotFound {
+	if adb.ResultsNotFound(err) {
 		return errors.New("queue has changed in the database")
 	}
+
 	return err
 }
 
@@ -76,7 +85,7 @@ func setProcessing(id string, status bool) error {
 
 func clearAll() (int, error) {
 	return updateAll(
-		bson.M{},
-		bson.M{"$set": bson.M{QueueKey: []CommitQueueItem{}}},
+		struct{}{},
+		bson.M{"$unset": bson.M{QueueKey: 1}},
 	)
 }

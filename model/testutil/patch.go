@@ -66,14 +66,14 @@ func SetupPatches(patchMode PatchTestMode, b *build.Build, patches ...PatchReque
 				PatchSet:   patch.PatchSet{Patch: string(patchContent)},
 			})
 		} else {
-			if err := db.WriteGridFile(patch.GridFSPrefix, string(ptch.Id), strings.NewReader(string(patchContent))); err != nil {
+			if err := db.WriteGridFile(patch.GridFSPrefix, ptch.Id.Hex(), strings.NewReader(string(patchContent))); err != nil {
 				return nil, err
 			}
 
 			ptch.Patches = append(ptch.Patches, patch.ModulePatch{
 				ModuleName: p.ModuleName,
 				Githash:    p.Githash,
-				PatchSet:   patch.PatchSet{PatchFileId: string(ptch.Id)},
+				PatchSet:   patch.PatchSet{PatchFileId: ptch.Id.Hex()},
 			})
 		}
 	}

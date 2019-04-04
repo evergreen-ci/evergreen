@@ -7,7 +7,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
-	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -21,10 +20,6 @@ type spawnHostTriggersSuite struct {
 	t *spawnHostTriggers
 
 	suite.Suite
-}
-
-func (s *spawnHostTriggersSuite) SetupSuite() {
-	db.SetGlobalSessionProvider(testutil.TestConfig().SessionFactory())
 }
 
 func (s *spawnHostTriggersSuite) SetupTest() {

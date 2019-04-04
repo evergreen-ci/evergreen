@@ -178,6 +178,33 @@ func (s *DriverSuite) TestSaveAndGetRoundTripObjects() {
 	}
 }
 
+func (s *DriverSuite) TestSaveAndSaveStatus() {
+	j := job.NewShellJob("echo foo", "")
+	name := j.ID()
+	status := j.Status()
+
+	s.Require().Equal(0, s.driver.Stats(s.ctx).Total)
+
+	s.Require().NoError(s.driver.Put(s.ctx, j))
+	s.Equal(1, s.driver.Stats(s.ctx).Total)
+
+	s.Require().NoError(s.driver.Save(s.ctx, j))
+
+	n, err := s.driver.Get(s.ctx, name)
+	s.Require().NoError(err)
+	status = n.Status()
+	status.Completed = true
+	status.InProgress = false
+	s.Require().NoError(s.driver.SaveStatus(s.ctx, j, status))
+
+	n, err = s.driver.Get(s.ctx, name)
+	s.Require().NoError(err)
+	s.Equal(name, n.ID())
+	s.Equal(status.Completed, n.Status().Completed)
+	s.Equal(status.InProgress, n.Status().InProgress)
+	s.Equal(1, s.driver.Stats(s.ctx).Total)
+}
+
 func (s *DriverSuite) TestReloadRefreshesJobFromMemory() {
 	j := job.NewShellJob("echo foo", "")
 
