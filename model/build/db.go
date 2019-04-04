@@ -204,13 +204,16 @@ func ByAfterRevision(project, buildVariant string, revision int) db.Q {
 }
 
 // ByRecentlyFinished builds a query that returns all builds for a given project
-// that are versions (not patches), that have finished.
-func ByRecentlyFinished(limit int) db.Q {
+// that are versions (not patches), that have finished and have non-zero
+// makespans.
+func ByRecentlyFinishedWithMakespans(limit int) db.Q {
 	return db.Query(bson.M{
 		RequesterKey: bson.M{
 			"$in": evergreen.SystemVersionRequesterTypes,
 		},
-		StatusKey: bson.M{"$in": evergreen.CompletedStatuses},
+		PredictedMakespanKey: bson.M{"$gt": 0},
+		ActualMakespanKey:    bson.M{"$gt": 0},
+		StatusKey:            bson.M{"$in": evergreen.CompletedStatuses},
 	}).Sort([]string{RevisionOrderNumberKey}).Limit(limit)
 }
 

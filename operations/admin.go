@@ -333,6 +333,7 @@ func revert() cli.Command {
 			}
 			client := conf.GetRestCommunicator(ctx)
 			defer client.Close()
+
 			err = client.RevertSettings(ctx, guid)
 			if err != nil {
 				return err

@@ -55,6 +55,7 @@ func (s *CommitQueueSuite) SetupSuite() {
 
 func (s *CommitQueueSuite) TearDownSuite() {
 	s.server.Close()
+	s.client.Close()
 }
 
 func (s *CommitQueueSuite) TestListContents() {

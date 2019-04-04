@@ -137,6 +137,8 @@ const (
 	PlannerVersionTunable = "tunable"
 
 	CommitQueueAlias = "__commit_queue"
+
+	MaxTeardownGroupTimeoutSecs = 30 * 60
 )
 
 func IsFinishedTaskStatus(status string) bool {
