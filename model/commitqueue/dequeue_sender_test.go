@@ -37,9 +37,12 @@ func TestCommitQueueDequeueLogger(t *testing.T) {
 	})
 	assert.NoError(err)
 
-	sender.Send(msg)
+	dequeueSender, ok := sender.(*commitQueueDequeueLogger)
+	assert.True(ok)
+	assert.NoError(dequeueSender.doSend(msg))
 
 	q, err = FindOneId("mci")
 	assert.NoError(err)
 	assert.False(q.Processing)
+	assert.Equal("2", q.Next().Issue)
 }

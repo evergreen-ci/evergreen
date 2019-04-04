@@ -37,30 +37,33 @@ func (cq *commitQueueDequeueLogger) Send(m message.Composer) {
 		return
 	}
 
+	if err := cq.doSend(m); err != nil {
+		cq.ErrorHandler(errors.Wrap(err, "can't process dequeue message"), m)
+	}
+}
+
+func (cq *commitQueueDequeueLogger) doSend(m message.Composer) error {
 	dequeue, ok := m.Raw().(*DequeueItem)
 	if !ok {
-		cq.ErrorHandler(errors.Errorf("message of type *DequeueItem is really of type %T", m), m)
-		return
+		return errors.Errorf("message of type *DequeueItem is really of type %T", m)
 	}
 
 	queue, err := FindOneId(dequeue.ProjectID)
 	if err != nil {
-		cq.ErrorHandler(errors.Wrapf(err, "no matching commit queue for project %s", dequeue.ProjectID), m)
-		return
+		return errors.Wrapf(err, "no matching commit queue for project %s", dequeue.ProjectID)
 	}
 
 	found, err := queue.Remove(dequeue.Item)
 	if err != nil {
-		cq.ErrorHandler(errors.Wrap(err, "can't remove item"), m)
-		return
+		return errors.Wrap(err, "can't remove item")
 	}
 	if !found {
-		cq.ErrorHandler(errors.Errorf("item %s not found on queue %s", dequeue.Item, dequeue.ProjectID), m)
-		return
+		return errors.Errorf("item %s not found on queue %s", dequeue.Item, dequeue.ProjectID)
 	}
 
 	if err = queue.SetProcessing(false); err != nil {
-		cq.ErrorHandler(errors.Wrap(err, "can't set processing to false"), m)
-		return
+		return errors.Wrap(err, "can't set processing to false")
 	}
+
+	return nil
 }

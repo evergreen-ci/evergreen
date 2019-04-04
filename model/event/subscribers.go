@@ -91,38 +91,18 @@ func (s *Subscriber) SetBSON(raw bson.Raw) error {
 }
 
 func (s *Subscriber) String() string {
-	subscriberStr := "NIL_SUBSCRIBER"
+	if stringer, ok := s.Target.(fmt.Stringer); ok {
+		return fmt.Sprintf("%s-%s", s.Type, stringer)
+	}
 
+	var subscriberStr string
 	switch v := s.Target.(type) {
-	case GithubPullRequestSubscriber:
-		subscriberStr = v.String()
-	case *GithubPullRequestSubscriber:
-		subscriberStr = v.String()
-
-	case GithubMergeSubscriber:
-		subscriberStr = v.String()
-	case *GithubMergeSubscriber:
-		subscriberStr = v.String()
-
-	case CommitQueueDequeueSubscriber:
-		subscriberStr = v.String()
-	case *CommitQueueDequeueSubscriber:
-		subscriberStr = v.String()
-
-	case WebhookSubscriber:
-		subscriberStr = v.String()
-	case *WebhookSubscriber:
-		subscriberStr = v.String()
-
-	case JIRAIssueSubscriber:
-		subscriberStr = v.String()
-	case *JIRAIssueSubscriber:
-		subscriberStr = v.String()
-
 	case string:
 		subscriberStr = v
 	case *string:
 		subscriberStr = *v
+	default:
+		subscriberStr = "NIL_SUBSCRIBER"
 	}
 
 	return fmt.Sprintf("%s-%s", s.Type, subscriberStr)
