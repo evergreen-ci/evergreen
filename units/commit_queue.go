@@ -126,7 +126,7 @@ func (j *commitQueueJob) Run(ctx context.Context) {
 		j.processGitHubPRItem(ctx, cq, nextItem, projectRef, githubToken)
 	}
 	if projectRef.CommitQueue.PatchType == commitqueue.CLIPatchType {
-		j.processCLIPatchItem(ctx, cq, nextItem, githubToken)
+		j.processCLIPatchItem(ctx, cq, nextItem, projectRef, githubToken)
 	}
 
 	grip.Info(message.Fields{
@@ -230,13 +230,29 @@ func (j *commitQueueJob) processGitHubPRItem(ctx context.Context, cq *commitqueu
 	}
 }
 
-func (j *commitQueueJob) processCLIPatchItem(ctx context.Context, cq *commitqueue.CommitQueue, nextItem *commitqueue.CommitQueueItem, githubToken string) {
+func (j *commitQueueJob) processCLIPatchItem(ctx context.Context, cq *commitqueue.CommitQueue, nextItem *commitqueue.CommitQueueItem, projectRef *model.ProjectRef, githubToken string) {
 	patchDoc, err := patch.FindOne(patch.ById(patch.NewId(nextItem.Issue)))
 	if err != nil {
 		j.logError(err, "can't find patch", nextItem)
 		j.dequeue(cq, nextItem)
 		return
 	}
+
+	branch, err := thirdparty.GetBranchEvent(ctx, githubToken, projectRef.Owner, projectRef.Repo, projectRef.Branch)
+	if err != nil {
+		j.logError(err, "can't get branch", nextItem)
+		j.dequeue(cq, nextItem)
+		return
+	}
+
+	if err = validateBranch(branch); err != nil {
+		j.logError(err, "GitHub returned invalid branch", nextItem)
+		j.dequeue(cq, nextItem)
+		return
+	}
+
+	sha := *branch.Commit.SHA
+	patchDoc.SetGithash(sha)
 
 	// TODO: Add merge task to the patch before finalizing
 
@@ -444,4 +460,17 @@ func subscribeGitHubPRs(pr *github.PullRequest, modulePRs []*github.PullRequest,
 	}
 
 	return false, nil
+}
+
+func validateBranch(branch *github.Branch) error {
+	if branch == nil {
+		return errors.New("branch is nil")
+	}
+	if branch.Commit == nil {
+		return errors.New("commit is nil")
+	}
+	if branch.Commit.SHA == nil {
+		return errors.New("SHA is nil")
+	}
+	return nil
 }

@@ -153,3 +153,19 @@ func (s *commitQueueSuite) TestWritePatchInfo() {
 	s.NoError(err)
 	s.Equal(patchContent, string(bytes))
 }
+
+func (s *commitQueueSuite) TestValidateBranch() {
+	var branch *github.Branch
+	s.Error(validateBranch(branch))
+
+	branch = &github.Branch{}
+	s.Error(validateBranch(branch))
+
+	branch.Commit = &github.RepositoryCommit{}
+	s.Error(validateBranch(branch))
+
+	sha := "abcdef"
+	branch.Commit.SHA = &sha
+
+	s.NoError(validateBranch(branch))
+}
