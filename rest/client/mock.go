@@ -178,7 +178,7 @@ func (c *Mock) GetVersion(ctx context.Context, td TaskData) (*serviceModel.Versi
 
 	_, file, _, _ := runtime.Caller(0)
 
-	data, err = ioutil.ReadFile(filepath.Join(file, "testdata", fmt.Sprintf("%s.yaml", td.ID)))
+	data, err = ioutil.ReadFile(filepath.Join(filepath.Dir(file), "testdata", fmt.Sprintf("%s.yaml", td.ID)))
 	if err != nil {
 		grip.Error(err)
 	}
