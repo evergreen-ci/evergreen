@@ -10,6 +10,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mitchellh/mapstructure"
+	"github.com/pkg/errors"
 )
 
 const (
@@ -170,8 +171,8 @@ func ensureValidSSHOptions(ctx context.Context, d *distro.Distro, s *evergreen.S
 }
 
 func ensureValidBootstrapMethod(ctx context.Context, d *distro.Distro, s *evergreen.Settings) ValidationErrors {
-	if !util.StringSliceContains(evergreen.ValidBootstrapMethods, d.BootstrapMethod) {
-		return ValidationErrors{{Level: Error, Message: fmt.Sprintf("invalid bootstrap method")}}
+	if err := distro.ValidateBootstrapMethod(d.BootstrapMethod); err != nil {
+		return ValidationErrors{{Level: Error, Message: errors.Wrap(err, "error validating bootstrap method").Error()}}
 	}
 	return nil
 }

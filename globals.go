@@ -335,15 +335,6 @@ var (
 		PlannerVersionTunable,
 	}
 
-	// ValidBootstrapMethods is the set of of valid methods to bootstrap the
-	// host.
-	ValidBootstrapMethods = []string{
-		BootstrapMethodLegacySSH,
-		BootstrapMethodSSH,
-		BootstrapMethodPreconfiguredImage,
-		BootstrapMethodUserData,
-	}
-
 	// constant arrays for db update logic
 	AbortableStatuses = []string{TaskStarted, TaskDispatched}
 	CompletedStatuses = []string{TaskSucceeded, TaskFailed}

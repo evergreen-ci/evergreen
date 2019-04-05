@@ -185,6 +185,15 @@ func ValidateContainerPoolDistros(s *evergreen.Settings) error {
 	return errors.WithStack(catcher.Resolve())
 }
 
+func ValidateBootstrapMethod(method string) error {
+	switch method {
+	case evergreen.BootstrapMethodLegacySSH, evergreen.BootstrapMethodSSH, evergreen.BootstrapMethodPreconfiguredImage, evergreen.BootstrapMethodUserData:
+		return nil
+	default:
+		return errors.New(fmt.Sprintf("'%s' is not a valid bootstrap method", method))
+	}
+}
+
 // GetDistroIds returns a slice of distro IDs for the given group of distros
 func (distros DistroGroup) GetDistroIds() []string {
 	var ids []string
