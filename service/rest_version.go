@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"strconv"
 	"strings"
 	"time"
 
@@ -118,8 +119,21 @@ func copyVersion(srcVersion *model.Version, destVersion *restVersion) {
 // most recent versions (sorted on commit order number descending).
 func (restapi restAPI) getRecentVersions(w http.ResponseWriter, r *http.Request) {
 	projectId := gimlet.GetVars(r)["project_id"]
+	limit := r.FormValue("limit")
 
-	versions, err := model.VersionFind(model.VersionByMostRecentSystemRequester(projectId).Limit(NumRecentVersions))
+	var l int
+	var err error
+	if limit == "" {
+		l = NumRecentVersions
+	} else {
+		l, err = strconv.Atoi(limit)
+		if err != nil {
+			msg := fmt.Sprintf("Error parsing %s as an integer", limit)
+			gimlet.WriteJSONError(w, responseError{Message: msg})
+			return
+		}
+	}
+	versions, err := model.VersionFind(model.VersionByMostRecentSystemRequester(projectId).Limit(l))
 
 	if err != nil {
 		msg := fmt.Sprintf("Error finding recent versions of project '%v'", projectId)
