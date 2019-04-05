@@ -61,6 +61,14 @@ const (
 	DockerImageBuildTypePull   = "pull"
 )
 
+const (
+	// Bootstrapping mechanisms
+	BootstrapMethodLegacySSH          = "legacy-ssh"
+	BootstrapMethodSSH                = "ssh"
+	BootstrapMethodPreconfiguredImage = "preconfigured-image"
+	BootstrapMethodUserData           = "user-data"
+)
+
 // Seed the random number generator for creating distro names
 func init() {
 	rand.Seed(time.Now().UnixNano())
@@ -185,12 +193,14 @@ func ValidateContainerPoolDistros(s *evergreen.Settings) error {
 	return errors.WithStack(catcher.Resolve())
 }
 
+// ValidateBootstrapMethod ensure that the bootstrap mechanism is one of the
+// supported methods.
 func ValidateBootstrapMethod(method string) error {
 	switch method {
-	case evergreen.BootstrapMethodLegacySSH, evergreen.BootstrapMethodSSH, evergreen.BootstrapMethodPreconfiguredImage, evergreen.BootstrapMethodUserData:
+	case BootstrapMethodLegacySSH, BootstrapMethodSSH, BootstrapMethodPreconfiguredImage, BootstrapMethodUserData:
 		return nil
 	default:
-		return errors.New(fmt.Sprintf("'%s' is not a valid bootstrap method", method))
+		return fmt.Errorf("'%s' is not a valid bootstrap method", method)
 	}
 }
 

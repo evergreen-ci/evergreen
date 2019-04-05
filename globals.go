@@ -137,12 +137,6 @@ const (
 	PlannerVersionTunable = "tunable"
 
 	CommitQueueAlias = "__commit_queue"
-
-	// Bootstrapping mechanisms
-	BootstrapMethodLegacySSH          = "legacy-ssh"
-	BootstrapMethodSSH                = "ssh"
-	BootstrapMethodPreconfiguredImage = "preconfigured-image"
-	BootstrapMethodUserData           = "user-data"
 )
 
 func IsFinishedTaskStatus(status string) bool {
