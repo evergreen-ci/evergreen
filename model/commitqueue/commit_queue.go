@@ -5,6 +5,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/level"
 	"github.com/mongodb/grip/send"
 	"github.com/pkg/errors"
 	mgobson "gopkg.in/mgo.v2/bson"
@@ -31,8 +32,22 @@ func setupEnv(env evergreen.Environment) error {
 		if err != nil {
 			return errors.Wrap(err, "Failed to setup github merge logger")
 		}
+		if err = env.SetSender(evergreen.SenderGithubMerge, sender); err != nil {
+			return errors.WithStack(err)
+		}
 
-		return errors.WithStack(env.SetSender(evergreen.SenderGithubMerge, sender))
+		// Dequeue
+		levelInfo := send.LevelInfo{
+			Default:   level.Notice,
+			Threshold: level.Notice,
+		}
+		sender, err = NewCommitQueueDequeueLogger("evergreen", levelInfo)
+		if err != nil {
+			return errors.Wrap(err, "Failed to setup commit queue dequeue logger")
+		}
+		if err = env.SetSender(evergreen.SenderCommitQueueDequeue, sender); err != nil {
+			return errors.WithStack(err)
+		}
 	}
 
 	return nil
