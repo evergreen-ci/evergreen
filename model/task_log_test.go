@@ -1,7 +1,6 @@
 package model
 
 import (
-	"fmt"
 	"testing"
 	"time"
 
@@ -9,10 +8,14 @@ import (
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/testutil"
 	. "github.com/smartystreets/goconvey/convey"
-	"go.mongodb.org/mongo-driver/bson"
+	"gopkg.in/mgo.v2/bson"
 )
 
 var taskLogTestConfig = testutil.TestConfig()
+
+func init() {
+	db.SetGlobalSessionProvider(taskLogTestConfig.SessionFactory())
+}
 
 func cleanUpLogDB() error {
 	session, _, err := db.GetGlobalSessionFactory().GetSession()
@@ -76,9 +79,7 @@ func TestFindTaskLogsBeforeTime(t *testing.T) {
 			startTime := time.Now()
 			// insert 5 logs, 4 before the specified time
 			for i := 0; i < 5; i++ {
-				taskLog := &TaskLog{
-					Id: fmt.Sprintf("log.%d", i),
-				}
+				taskLog := &TaskLog{}
 				taskLog.TaskId = "task_id"
 				taskLog.MessageCount = 1 // to differentiate these
 				taskLog.Messages = []apimodels.LogMessage{}
@@ -136,18 +137,17 @@ func TestAddLogMessage(t *testing.T) {
 			taskLog = &(taskLogs[0])
 
 			for i := 0; i < 5; i++ {
-				logMsg := apimodels.LogMessage{}
+				logMsg := &apimodels.LogMessage{}
 				logMsg.Message = "Hello"
 				logMsg.Severity = apimodels.LogDebugPrefix
 				logMsg.Timestamp = time.Now()
 				logMsg.Type = apimodels.SystemLogPrefix
-				So(taskLog.AddLogMessage(logMsg), ShouldBeNil)
+				So(taskLog.AddLogMessage(*logMsg), ShouldBeNil)
 			}
 			So(taskLog.MessageCount, ShouldEqual, 5)
 			So(len(taskLog.Messages), ShouldEqual, 5)
 
-			var taskLogsFromDB []TaskLog
-			taskLogsFromDB, err = FindTaskLogsBeforeTime(taskLog.TaskId, 0,
+			taskLogsFromDB, err := FindTaskLogsBeforeTime(taskLog.TaskId, 0,
 				time.Now().Add(time.Second), 1)
 			So(err, ShouldBeNil)
 			taskLogFromDB := &(taskLogsFromDB[0])

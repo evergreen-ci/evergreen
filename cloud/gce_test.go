@@ -9,8 +9,10 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
+	"github.com/evergreen-ci/evergreen/testutil"
 
 	"github.com/stretchr/testify/suite"
 )
@@ -25,6 +27,10 @@ type GCESuite struct {
 
 func TestGCESuite(t *testing.T) {
 	suite.Run(t, new(GCESuite))
+}
+
+func (s *GCESuite) SetupSuite() {
+	db.SetGlobalSessionProvider(testutil.TestConfig().SessionFactory())
 }
 
 func (s *GCESuite) SetupTest() {

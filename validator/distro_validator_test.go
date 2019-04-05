@@ -13,12 +13,15 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+var conf = testutil.TestConfig()
+
+func init() {
+	db.SetGlobalSessionProvider(conf.SessionFactory())
+}
+
 func TestCheckDistro(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-
-	env := evergreen.GetEnvironment()
-	conf := env.Settings()
 
 	Convey("When validating a distro", t, func() {
 
@@ -122,9 +125,6 @@ func TestEnsureHasRequiredFields(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	env := testutil.NewEnvironment(ctx, t)
-	conf := env.Settings()
-
 	i := -1
 	Convey("When validating a distro...", t, func() {
 		d := []distro.Distro{
@@ -214,9 +214,6 @@ func TestEnsureValidExpansions(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	env := evergreen.GetEnvironment()
-	conf := env.Settings()
-
 	Convey("When validating a distro's expansions...", t, func() {
 		Convey("if any key is blank, an error should be returned", func() {
 			d := &distro.Distro{
@@ -239,9 +236,6 @@ func TestEnsureValidExpansions(t *testing.T) {
 func TestEnsureValidSSHOptions(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-
-	env := evergreen.GetEnvironment()
-	conf := env.Settings()
 
 	Convey("When validating a distro's SSH options...", t, func() {
 		Convey("if any option is blank, an error should be returned", func() {
@@ -268,9 +262,6 @@ func TestEnsureNonZeroID(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	env := evergreen.GetEnvironment()
-	conf := env.Settings()
-
 	assert.NotNil(ensureHasNonZeroID(ctx, nil, conf))
 	assert.NotNil(ensureHasNonZeroID(ctx, &distro.Distro{}, conf))
 	assert.NotNil(ensureHasNonZeroID(ctx, &distro.Distro{Id: ""}, conf))
@@ -285,9 +276,6 @@ func TestEnsureNoUnauthorizedCharacters(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	env := evergreen.GetEnvironment()
-	conf := env.Settings()
-
 	assert.NotNil(ensureHasNoUnauthorizedCharacters(ctx, &distro.Distro{Id: "|distro"}, conf))
 	assert.NotNil(ensureHasNoUnauthorizedCharacters(ctx, &distro.Distro{Id: "distro|"}, conf))
 	assert.NotNil(ensureHasNoUnauthorizedCharacters(ctx, &distro.Distro{Id: "dist|ro"}, conf))
@@ -300,6 +288,7 @@ func TestEnsureValidContainerPool(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
+	db.SetGlobalSessionProvider(testutil.TestConfig().SessionFactory())
 	assert.NoError(db.Clear(distro.Collection))
 
 	conf := &evergreen.Settings{

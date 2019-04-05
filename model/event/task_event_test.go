@@ -11,10 +11,11 @@ import (
 	"github.com/smartystreets/goconvey/convey/reporting"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"go.mongodb.org/mongo-driver/bson"
+	"gopkg.in/mgo.v2/bson"
 )
 
 func init() {
+	db.SetGlobalSessionProvider(testutil.TestConfig().SessionFactory())
 	reporting.QuietMode()
 
 }

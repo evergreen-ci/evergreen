@@ -12,6 +12,11 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+func init() {
+	testConfig := testutil.TestConfig()
+	db.SetGlobalSessionProvider(testConfig.SessionFactory())
+}
+
 func TestMetadataFromVersion(t *testing.T) {
 	assert := assert.New(t)
 	assert.NoError(db.ClearCollections(user.Collection))

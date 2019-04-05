@@ -12,9 +12,9 @@ import (
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/anser/bsonutil"
-	adb "github.com/mongodb/anser/db"
 	"github.com/pkg/errors"
-	"go.mongodb.org/mongo-driver/bson"
+	mgo "gopkg.in/mgo.v2"
+	"gopkg.in/mgo.v2/bson"
 )
 
 // The ProjectRef struct contains general information, independent of any
@@ -178,7 +178,7 @@ func FindOneProjectRef(identifier string) (*ProjectRef, error) {
 		db.NoSort,
 		projectRef,
 	)
-	if adb.ResultsNotFound(err) {
+	if err == mgo.ErrNotFound {
 		return nil, nil
 	}
 	return projectRef, err

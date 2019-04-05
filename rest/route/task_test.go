@@ -13,6 +13,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/rest/model"
+	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -89,6 +90,7 @@ func TestFetchArtifacts(t *testing.T) {
 	assert := assert.New(t)
 	require := require.New(t)
 
+	db.SetGlobalSessionProvider(testutil.TestConfig().SessionFactory())
 	assert.NoError(db.ClearCollections(task.Collection, task.OldCollection, artifact.Collection))
 	task1 := task.Task{
 		Id:        "task1",

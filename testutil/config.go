@@ -6,8 +6,6 @@ import (
 	"testing"
 
 	"github.com/evergreen-ci/evergreen"
-	"github.com/mongodb/grip"
-	"github.com/mongodb/grip/message"
 	"github.com/mongodb/grip/send"
 	"github.com/stretchr/testify/require"
 )
@@ -18,25 +16,14 @@ const (
 	testSettingsWithAuthTokens = "evg_settings_with_3rd_party_defaults.yml"
 )
 
-func init() {
-	if evergreen.GetEnvironment() == nil {
-		ctx := context.Background()
-
-		path := filepath.Join(evergreen.FindEvergreenHome(), TestDir, TestSettings)
-		env, err := evergreen.NewEnvironment(ctx, path, nil)
-		grip.EmergencyPanic(message.WrapError(err, message.Fields{
-			"note": "could not initialize test environment",
-			"path": filepath.Join(evergreen.FindEvergreenHome(), TestDir, TestSettings),
-		}))
-
-		evergreen.SetEnvironment(env)
-	}
-}
-
 func NewEnvironment(ctx context.Context, t *testing.T) evergreen.Environment {
 	env, err := evergreen.NewEnvironment(ctx, filepath.Join(evergreen.FindEvergreenHome(), TestDir, TestSettings), nil)
 	require.NoError(t, err)
 	return env
+}
+
+func SetGlobalEnvironment(ctx context.Context, t *testing.T) {
+	evergreen.SetEnvironment(NewEnvironment(ctx, t))
 }
 
 // TestConfig creates test settings from a test config.

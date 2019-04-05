@@ -4,7 +4,7 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/mongodb/anser/bsonutil"
-	"go.mongodb.org/mongo-driver/bson"
+	"gopkg.in/mgo.v2/bson"
 )
 
 var (

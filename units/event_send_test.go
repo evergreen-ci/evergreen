@@ -41,6 +41,7 @@ func TestEventNotificationJob(t *testing.T) {
 }
 
 func (s *eventNotificationSuite) SetupSuite() {
+	db.SetGlobalSessionProvider(testutil.TestConfig().SessionFactory())
 	s.ctx, s.cancel = context.WithCancel(context.Background())
 }
 
@@ -185,7 +186,7 @@ func (s *eventNotificationSuite) TestDegradedMode() {
 
 	for i := range s.notifications {
 		job := NewEventNotificationJob(s.notifications[i].ID).(*eventNotificationJob)
-		job.env = evergreen.GetEnvironment()
+		job.env = s.env
 
 		job.Run(s.ctx)
 		s.NoError(job.Error())

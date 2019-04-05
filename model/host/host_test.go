@@ -15,8 +15,13 @@ import (
 	. "github.com/smartystreets/goconvey/convey"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"go.mongodb.org/mongo-driver/bson"
+	"gopkg.in/mgo.v2"
+	"gopkg.in/mgo.v2/bson"
 )
+
+func init() {
+	db.SetGlobalSessionProvider(testutil.TestConfig().SessionFactory())
+}
 
 // IsActive is a query that returns all Evergreen hosts that are working or
 // capable of being assigned work to do.
@@ -380,7 +385,7 @@ func TestMarkAsProvisioned(t *testing.T) {
 			So(host.Status, ShouldEqual, evergreen.HostRunning)
 			So(host.Provisioned, ShouldEqual, true)
 
-			So(host2.MarkAsProvisioned().Error(), ShouldContainSubstring, "not found")
+			So(host2.MarkAsProvisioned(), ShouldEqual, mgo.ErrNotFound)
 			So(host2.Status, ShouldEqual, evergreen.HostTerminated)
 			So(host2.Provisioned, ShouldEqual, false)
 		})
@@ -1669,8 +1674,7 @@ func TestFindParentOfContainerCannotFindParent(t *testing.T) {
 	assert.NoError(host.Insert())
 
 	parent, err := host.GetParent()
-	require.Error(t, err)
-	assert.Contains(err.Error(), "not found")
+	assert.EqualError(err, "Parent not found")
 	assert.Nil(parent)
 }
 
@@ -2653,7 +2657,7 @@ func TestStaleRunningTasksAgg(t *testing.T) {
 	now := time.Now()
 	staleness := 5 * time.Minute
 
-	staleTask := &task.Task{
+	staleTask := task.Task{
 		Id:            "stale",
 		Status:        evergreen.TaskStarted,
 		Execution:     2,
@@ -2661,32 +2665,23 @@ func TestStaleRunningTasksAgg(t *testing.T) {
 		HostId:        "staleHost",
 	}
 	assert.NoError(staleTask.Insert())
-	staleHost := &Host{
+	staleHost := Host{
 		Id:          "staleHost",
 		RunningTask: staleTask.Id,
 	}
 	assert.NoError(staleHost.Insert())
-	unstaleTask := &task.Task{
+	unstaleTask := task.Task{
 		Id:            "unstale",
 		Status:        evergreen.TaskStarted,
 		LastHeartbeat: now.Add(-1 * time.Second),
 		HostId:        "unstaleHost",
 	}
 	assert.NoError(unstaleTask.Insert())
-	unstaleHost := &Host{
+	unstaleHost := Host{
 		Id:          "unstaleHost",
 		RunningTask: unstaleTask.Id,
 	}
 	assert.NoError(unstaleHost.Insert())
-	// task assigned to host that is running teardown_group of the previous task
-	unrelatedTask := &task.Task{
-		Id:            "unrelatedTask",
-		Status:        evergreen.TaskStarted,
-		LastHeartbeat: now.Add(-2 * staleness),
-		HostId:        "teardownGroupHost",
-	}
-	assert.NoError(unrelatedTask.Insert())
-
 	// task assigned to host that is running teardown_group of the previous task, but is not timed out
 	task3 := task.Task{
 		Id:            "task3",
@@ -2695,7 +2690,6 @@ func TestStaleRunningTasksAgg(t *testing.T) {
 		HostId:        "teardownGroupHost",
 	}
 	assert.NoError(task3.Insert())
-
 	teardownGroupHost := Host{
 		Id:                     "teardownGroupHost",
 		RunningTask:            task3.Id,

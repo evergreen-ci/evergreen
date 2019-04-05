@@ -2,9 +2,9 @@ package evergreen
 
 import (
 	"os"
+	"time"
 
 	"github.com/mongodb/grip"
-	"github.com/pkg/errors"
 )
 
 const (
@@ -218,7 +218,6 @@ const (
 	DefaultServiceConfigurationFileName = "/etc/mci_settings.yml"
 	DefaultDatabaseUrl                  = "localhost:27017"
 	DefaultDatabaseName                 = "mci"
-	DefaultDatabaseWriteMode            = "majority"
 
 	// database and config directory, set to the testing version by default for safety
 	NotificationsFile = "mci-notifications.yml"
@@ -250,16 +249,6 @@ const (
 	SenderGithubMerge
 )
 
-func (k SenderKey) Validate() error {
-	switch k {
-	case SenderGithubStatus, SenderEvergreenWebhook, SenderSlack, SenderJIRAComment, SenderJIRAIssue,
-		SenderEmail, SenderGithubMerge:
-		return nil
-	default:
-		return errors.New("invalid sender defined")
-	}
-}
-
 func (k SenderKey) String() string {
 	switch k {
 	case SenderGithubStatus:
@@ -283,6 +272,7 @@ func (k SenderKey) String() string {
 
 const (
 	defaultLogBufferingDuration  = 20
+	defaultMgoDialTimeout        = 5 * time.Second
 	defaultAmboyPoolSize         = 2
 	defaultAmboyLocalStorageSize = 1024
 	defaultAmboyQueueName        = "evg.service"

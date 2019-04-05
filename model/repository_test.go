@@ -13,7 +13,12 @@ var (
 	projectName              = "mongodb-mongo-testing"
 )
 
+func init() {
+	db.SetGlobalSessionProvider(testConfig.SessionFactory())
+}
+
 func TestGetNewRevisionOrderNumber(t *testing.T) {
+
 	Convey("When requesting a new commit order number...", t, func() {
 
 		Convey("The returned commit order number should be 1 for a new"+

@@ -15,11 +15,14 @@ import (
 	"github.com/mongodb/grip"
 	. "github.com/smartystreets/goconvey/convey"
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
-	"go.mongodb.org/mongo-driver/bson"
+	"gopkg.in/mgo.v2/bson"
 )
 
 var taskHistoryTestConfig = testutil.TestConfig()
+
+func init() {
+	db.SetGlobalSessionProvider(taskHistoryTestConfig.SessionFactory())
+}
 
 func TestTaskHistory(t *testing.T) {
 
@@ -31,6 +34,7 @@ func TestTaskHistory(t *testing.T) {
 			buildVariants, projectName)
 
 		Convey("when finding task history items", func() {
+
 			testutil.HandleTestingErr(db.ClearCollections(VersionCollection, task.Collection),
 				t, "Error clearing test collections")
 
@@ -786,8 +790,8 @@ func TestGetTestHistory(t *testing.T) {
 		}
 		assert.NoError(params.SetDefaultsAndValidate())
 		testResults, err := testFunc(&params)
-		require.NoError(t, err)
-		require.Len(t, testResults, 4)
+		assert.NoError(err)
+		assert.Len(testResults, 4)
 		// the order of the test results should be in sorted order
 		assert.Equal("task1", testResults[0].TaskId)
 		assert.Equal("task1", testResults[1].TaskId)
@@ -1205,7 +1209,7 @@ func TestCompareQueryRunTimes(t *testing.T) {
 	startTime = time.Now()
 	resultsV2, err := GetTestHistoryV2(params)
 	elapsedV2 := time.Since(startTime)
-	require.NoError(t, err)
+	assert.NoError(err)
 	assert.Equal(len(resultsV1), len(resultsV2))
 	grip.Infof("elapsed time for aggregation test history query on task names: %s", elapsedV1.String())
 	grip.Infof("elapsed time for non-aggregation test history query on task names: %s", elapsedV2.String())
@@ -1312,8 +1316,8 @@ func TestTaskHistoryPickaxe(t *testing.T) {
 	}
 	params.Tests["test"] = evergreen.TestFailedStatus
 	results, err := TaskHistoryPickaxe(params)
-	require.NoError(t, err)
-	require.Len(t, results, 3)
+	assert.NoError(err)
+	assert.Len(results, 3)
 	for _, r := range results {
 		assert.Equal("test", r.LocalTestResults[0].TestFile)
 		assert.Equal(evergreen.TestFailedStatus, r.LocalTestResults[0].Status)

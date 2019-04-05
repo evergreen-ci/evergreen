@@ -20,6 +20,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
 	modelutil "github.com/evergreen-ci/evergreen/model/testutil"
+	"github.com/evergreen-ci/evergreen/plugin/plugintest"
 	"github.com/evergreen-ci/evergreen/rest/client"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/evergreen/util"
@@ -42,16 +43,13 @@ type GitGetProjectSuite struct {
 }
 
 func init() {
+	db.SetGlobalSessionProvider(testutil.TestConfig().SessionFactory())
 	reporting.QuietMode()
 }
 
 func TestGitGetProjectSuite(t *testing.T) {
 	s := new(GitGetProjectSuite)
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-	env := testutil.NewEnvironment(ctx, t)
-	settings := env.Settings()
-
+	settings := testutil.TestConfig()
 	testutil.ConfigureIntegrationTest(t, settings, "TestGitGetProjectSuite")
 	s.settings = settings
 	var err error
@@ -77,7 +75,7 @@ func (s *GitGetProjectSuite) SetupTest() {
 	s.modelData2.TaskConfig.Expansions = util.NewExpansions(s.settings.Credentials)
 	//SetupAPITestData always creates BuildVariant with no modules so this line works around that
 	s.modelData2.TaskConfig.BuildVariant.Modules = []string{"sample"}
-	err = setupTestPatchData(s.modelData1, patchPath, s.T())
+	err = plugintest.SetupPatchData(s.modelData1, patchPath, s.T())
 	s.NoError(err)
 
 	s.modelData3, err = modelutil.SetupAPITestData(s.settings, "testtask1", "rhel55", configPath2, modelutil.NoPatch)

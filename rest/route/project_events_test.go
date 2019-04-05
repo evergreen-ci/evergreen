@@ -6,9 +6,11 @@ import (
 	"testing"
 	"time"
 
+	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
+	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -22,7 +24,7 @@ type ProjectEventsTestSuite struct {
 }
 
 func TestProjectEventsTestSuite(t *testing.T) {
-
+	db.SetGlobalSessionProvider(testutil.TestConfig().SessionFactory())
 	suite.Run(t, new(ProjectEventsTestSuite))
 }
 

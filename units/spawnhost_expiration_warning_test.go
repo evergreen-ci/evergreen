@@ -9,6 +9,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/alertrecord"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
+	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -22,6 +23,7 @@ func TestSpawnHostExpiration(t *testing.T) {
 }
 
 func (s *spawnHostExpirationSuite) SetupSuite() {
+	db.SetGlobalSessionProvider(testutil.TestConfig().SessionFactory())
 	s.j = makeSpawnhostExpirationWarningsJob()
 }
 

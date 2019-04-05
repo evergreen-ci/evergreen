@@ -4,19 +4,19 @@ import (
 	"fmt"
 	"testing"
 
+	mgo "gopkg.in/mgo.v2"
+	"gopkg.in/mgo.v2/bson"
+
 	"github.com/evergreen-ci/evergreen/db"
-	_ "github.com/evergreen-ci/evergreen/testutil"
-	adb "github.com/mongodb/anser/db"
+	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/stretchr/testify/suite"
-	"go.mongodb.org/mongo-driver/bson"
-	mgobson "gopkg.in/mgo.v2/bson"
 )
 
 // FindOne returns one test result that satisfies the query. Returns nil if no tasks match.
 func findOne(query db.Q) (*TestResult, error) {
 	test := &TestResult{}
 	err := db.FindOneQ(Collection, query, &test)
-	if adb.ResultsNotFound(err) {
+	if err == mgo.ErrNotFound {
 		return nil, nil
 	}
 	return test, err
@@ -31,6 +31,11 @@ func TestTestResultSuite(t *testing.T) {
 	suite.Run(t, new(TestResultSuite))
 }
 
+func (s *TestResultSuite) SetupSuite() {
+	db.SetGlobalSessionProvider(testutil.TestConfig().SessionFactory())
+
+}
+
 func (s *TestResultSuite) SetupTest() {
 	err := db.Clear(Collection)
 	s.Require().NoError(err)
@@ -38,7 +43,7 @@ func (s *TestResultSuite) SetupTest() {
 	s.tests = []TestResult{}
 	for i := 0; i < 5; i++ {
 		s.tests = append(s.tests, TestResult{
-			ID:        mgobson.NewObjectId(),
+			ID:        bson.NewObjectId(),
 			Status:    "pass",
 			TestFile:  fmt.Sprintf("file-%d", i),
 			URL:       fmt.Sprintf("url-%d", i),
@@ -61,7 +66,7 @@ func (s *TestResultSuite) SetupTest() {
 	additionalTests := []TestResult{}
 	for i := 5; i < 10; i++ {
 		additionalTests = append(additionalTests, TestResult{
-			ID:        mgobson.NewObjectId(),
+			ID:        bson.NewObjectId(),
 			Status:    "pass",
 			TestFile:  fmt.Sprintf("file-%d", i),
 			URL:       fmt.Sprintf("url-%d", i),
@@ -87,7 +92,7 @@ func (s *TestResultSuite) TestInsertTestResultForTask() {
 	execution := 3
 	i := 10
 	t := TestResult{
-		ID:        mgobson.NewObjectId(),
+		ID:        bson.NewObjectId(),
 		TaskID:    taskID,
 		Execution: execution,
 		Status:    "pass",
@@ -113,7 +118,7 @@ func (s *TestResultSuite) TestInsertManyTestResultsForTask() {
 	toInsert := []TestResult{}
 	for i := 20; i < 30; i++ {
 		toInsert = append(toInsert, TestResult{
-			ID:        mgobson.NewObjectId(),
+			ID:        bson.NewObjectId(),
 			TaskID:    taskID,
 			Execution: execution,
 		})
@@ -130,7 +135,7 @@ func (s *TestResultSuite) TestInsertTestResultForTaskEmptyTaskShouldErr() {
 	execution := 3
 	i := 10
 	t := TestResult{
-		ID:        mgobson.NewObjectId(),
+		ID:        bson.NewObjectId(),
 		TaskID:    taskID,
 		Execution: execution,
 		Status:    "pass",

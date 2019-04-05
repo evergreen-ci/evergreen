@@ -7,8 +7,7 @@ import (
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/anser/bsonutil"
 	"github.com/pkg/errors"
-	"go.mongodb.org/mongo-driver/bson"
-	mgobson "gopkg.in/mgo.v2/bson"
+	"gopkg.in/mgo.v2/bson"
 )
 
 var (
@@ -46,12 +45,12 @@ const (
 // “linux”; and to run all tasks beginning with the string “compile” to run on all
 // variants beginning with the string “ubuntu1604”.
 type ProjectAlias struct {
-	ID        mgobson.ObjectId `bson:"_id" json:"_id"`
-	ProjectID string              `bson:"project_id" json:"project_id"`
-	Alias     string              `bson:"alias" json:"alias"`
-	Variant   string              `bson:"variant" json:"variant"`
-	Task      string              `bson:"task,omitempty" json:"task"`
-	Tags      []string            `bson:"tags,omitempty" json:"tags"`
+	ID        bson.ObjectId `bson:"_id" json:"_id"`
+	ProjectID string        `bson:"project_id" json:"project_id"`
+	Alias     string        `bson:"alias" json:"alias"`
+	Variant   string        `bson:"variant" json:"variant"`
+	Task      string        `bson:"task,omitempty" json:"task"`
+	Tags      []string      `bson:"tags,omitempty" json:"tags"`
 }
 
 type ProjectAliases []ProjectAlias
@@ -89,7 +88,7 @@ func (p *ProjectAlias) Upsert() error {
 		return errors.New("empty project ID")
 	}
 	if p.ID.Hex() == "" {
-		p.ID = mgobson.NewObjectId()
+		p.ID = bson.NewObjectId()
 	}
 	update := bson.M{
 		aliasKey:     p.Alias,
@@ -114,7 +113,7 @@ func RemoveProjectAlias(id string) error {
 	if id == "" {
 		return errors.New("can't remove project alias with empty id")
 	}
-	err := db.Remove(ProjectAliasCollection, bson.M{idKey: mgobson.ObjectIdHex(id)})
+	err := db.Remove(ProjectAliasCollection, bson.M{idKey: bson.ObjectIdHex(id)})
 	if err != nil {
 		return errors.Wrapf(err, "failed to remove project alias %s", id)
 	}

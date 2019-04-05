@@ -15,6 +15,7 @@ import (
 	"github.com/google/go-github/github"
 	"github.com/mongodb/jasper"
 	. "github.com/smartystreets/goconvey/convey"
+	"github.com/smartystreets/goconvey/convey/reporting"
 )
 
 var (
@@ -83,6 +84,8 @@ func resetProjectRefs() {
 }
 
 func init() {
+	db.SetGlobalSessionProvider(testConfig.SessionFactory())
+	reporting.QuietMode()
 	resetProjectRefs()
 }
 

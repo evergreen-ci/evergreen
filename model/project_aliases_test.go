@@ -5,9 +5,10 @@ import (
 	"testing"
 
 	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
-	"go.mongodb.org/mongo-driver/bson"
+	"gopkg.in/mgo.v2/bson"
 )
 
 type ProjectAliasSuite struct {
@@ -18,6 +19,10 @@ type ProjectAliasSuite struct {
 func TestProjectAliasSuite(t *testing.T) {
 	s := &ProjectAliasSuite{}
 	suite.Run(t, s)
+}
+
+func (s *ProjectAliasSuite) SetupSuite() {
+	db.SetGlobalSessionProvider(testutil.TestConfig().SessionFactory())
 }
 
 func (s *ProjectAliasSuite) SetupTest() {

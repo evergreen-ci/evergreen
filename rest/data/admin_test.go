@@ -29,6 +29,7 @@ type AdminDataSuite struct {
 func TestDataConnectorSuite(t *testing.T) {
 	s := new(AdminDataSuite)
 	s.ctx = &DBConnector{}
+	db.SetGlobalSessionProvider(testConfig.SessionFactory())
 	testutil.HandleTestingErr(db.ClearCollections(evergreen.ConfigCollection, task.Collection,
 		task.OldCollection, build.Collection, model.VersionCollection, event.AllLogCollection), t, "Error clearing collections")
 	b := &build.Build{

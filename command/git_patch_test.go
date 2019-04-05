@@ -11,11 +11,14 @@ import (
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
 	modelutil "github.com/evergreen-ci/evergreen/model/testutil"
+	"github.com/evergreen-ci/evergreen/plugin/plugintest"
 	"github.com/evergreen-ci/evergreen/rest/client"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/evergreen/util"
+	"github.com/mongodb/jasper"
 	. "github.com/smartystreets/goconvey/convey"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestPatchPluginAPI(t *testing.T) {
@@ -42,7 +45,7 @@ func TestPatchPluginAPI(t *testing.T) {
 		modelData.TaskConfig.Expansions = util.NewExpansions(settings.Credentials)
 
 		testutil.HandleTestingErr(err, t, "Couldn't set up test documents")
-		err = setupTestPatchData(modelData, patchFile, t)
+		err = plugintest.SetupPatchData(modelData, patchFile, t)
 		testutil.HandleTestingErr(err, t, "Couldn't set up test documents")
 
 		comm.PatchFiles[""] = patchFile
@@ -90,14 +93,15 @@ func TestPatchPluginAPI(t *testing.T) {
 }
 
 func TestPatchPlugin(t *testing.T) {
+	settings := testutil.TestConfig()
+	testutil.ConfigureIntegrationTest(t, settings, "TestPatchPlugin")
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	env := testutil.NewEnvironment(ctx, t)
-	settings := env.Settings()
-
-	testutil.ConfigureIntegrationTest(t, settings, "TestPatchPlugin")
 	cwd := testutil.GetDirectoryOfFile()
-	jpm := env.JasperManager()
+	db.SetGlobalSessionProvider(settings.SessionFactory())
+
+	jpm, err := jasper.NewLocalManager(false)
+	require.NoError(t, err)
 
 	Convey("With patch plugin installed into plugin registry", t, func() {
 		testutil.HandleTestingErr(db.Clear(model.VersionCollection), t,
@@ -113,7 +117,7 @@ func TestPatchPlugin(t *testing.T) {
 		modelData.TaskConfig.Expansions = util.NewExpansions(settings.Credentials)
 		testutil.HandleTestingErr(err, t, "Couldn't set up test documents")
 
-		err = setupTestPatchData(modelData, patchFile, t)
+		err = plugintest.SetupPatchData(modelData, patchFile, t)
 		testutil.HandleTestingErr(err, t, "Couldn't set up patch documents")
 
 		taskConfig := modelData.TaskConfig

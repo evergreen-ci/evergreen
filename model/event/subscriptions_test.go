@@ -4,8 +4,9 @@ import (
 	"testing"
 
 	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/stretchr/testify/suite"
-	mgobson "gopkg.in/mgo.v2/bson"
+	"gopkg.in/mgo.v2/bson"
 )
 
 func TestSubscriptions(t *testing.T) {
@@ -15,6 +16,10 @@ func TestSubscriptions(t *testing.T) {
 type subscriptionsSuite struct {
 	suite.Suite
 	subscriptions []Subscription
+}
+
+func (s *subscriptionsSuite) SetupSuite() {
+	db.SetGlobalSessionProvider(testutil.TestConfig().SessionFactory())
 }
 
 func (s *subscriptionsSuite) SetupTest() {
@@ -27,7 +32,7 @@ func (s *subscriptionsSuite) SetupTest() {
 	t5 := "slack_user"
 	s.subscriptions = []Subscription{
 		{
-			ID:           mgobson.NewObjectId().Hex(),
+			ID:           bson.NewObjectId().Hex(),
 			ResourceType: "type1",
 			Trigger:      "trigger1",
 			Selectors: []Selector{
@@ -45,7 +50,7 @@ func (s *subscriptionsSuite) SetupTest() {
 			OwnerType: OwnerTypePerson,
 		},
 		{
-			ID:           mgobson.NewObjectId().Hex(),
+			ID:           bson.NewObjectId().Hex(),
 			ResourceType: "type1",
 			Trigger:      "trigger1",
 			Selectors: []Selector{
@@ -63,7 +68,7 @@ func (s *subscriptionsSuite) SetupTest() {
 			OwnerType: OwnerTypePerson,
 		},
 		{
-			ID:           mgobson.NewObjectId().Hex(),
+			ID:           bson.NewObjectId().Hex(),
 			ResourceType: "type1",
 			Trigger:      "trigger1",
 			Selectors: []Selector{
@@ -111,7 +116,7 @@ func (s *subscriptionsSuite) SetupTest() {
 			},
 		},
 		{
-			ID:           mgobson.NewObjectId().Hex(),
+			ID:           bson.NewObjectId().Hex(),
 			ResourceType: "type2",
 			Trigger:      "trigger2",
 			Selectors: []Selector{

@@ -6,7 +6,6 @@ import (
 
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 )
 
 func TestSubscribers(t *testing.T) {
@@ -86,17 +85,10 @@ func TestSubscribers(t *testing.T) {
 		Type:   "something completely different",
 		Target: "*boom*",
 	}))
-	fetchedSubs = []Subscriber{}
 	err := db.FindAllQ(SubscriptionsCollection, db.Q{}, &fetchedSubs)
 
-	require.Error(t, err)
-	assert.Contains(err.Error(), "unknown subscriber type: 'something completely different'")
-
-	if len(fetchedSubs) == 1 {
-		assert.Zero(fetchedSubs[0])
-	} else {
-		assert.Empty(fetchedSubs)
-	}
+	assert.EqualError(err, "unknown subscriber type: 'something completely different'")
+	assert.Empty(fetchedSubs)
 }
 
 func TestSubscribersStringerWithMissingAttributes(t *testing.T) {

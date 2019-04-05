@@ -6,7 +6,7 @@ import (
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/stretchr/testify/assert"
-	mgobson "gopkg.in/mgo.v2/bson"
+	"gopkg.in/mgo.v2/bson"
 )
 
 func TestGetSubscriptions(t *testing.T) {
@@ -16,7 +16,7 @@ func TestGetSubscriptions(t *testing.T) {
 
 	subs := []event.Subscription{
 		{
-			ID:           mgobson.NewObjectId().Hex(),
+			ID:           bson.NewObjectId().Hex(),
 			Owner:        "someone",
 			OwnerType:    event.OwnerTypePerson,
 			ResourceType: "PATCH",
@@ -33,7 +33,7 @@ func TestGetSubscriptions(t *testing.T) {
 			},
 		},
 		{
-			ID:           mgobson.NewObjectId().Hex(),
+			ID:           bson.NewObjectId().Hex(),
 			Owner:        "someoneelse",
 			OwnerType:    event.OwnerTypePerson,
 			ResourceType: "PATCH",

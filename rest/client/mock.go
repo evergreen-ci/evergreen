@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"io/ioutil"
 	"path/filepath"
-	"runtime"
 	"sync"
 	"time"
 
@@ -21,6 +20,7 @@ import (
 	patchmodel "github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/rest/model"
+	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
@@ -175,10 +175,7 @@ func (c *Mock) GetDistro(ctx context.Context, td TaskData) (*distro.Distro, erro
 func (c *Mock) GetVersion(ctx context.Context, td TaskData) (*serviceModel.Version, error) {
 	var err error
 	var data []byte
-
-	_, file, _, _ := runtime.Caller(0)
-
-	data, err = ioutil.ReadFile(filepath.Join(filepath.Dir(file), "testdata", fmt.Sprintf("%s.yaml", td.ID)))
+	data, err = ioutil.ReadFile(filepath.Join(testutil.GetDirectoryOfFile(), "testdata", fmt.Sprintf("%s.yaml", td.ID)))
 	if err != nil {
 		grip.Error(err)
 	}
