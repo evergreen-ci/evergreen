@@ -563,7 +563,7 @@ func (t *Task) MarkGeneratedTasks() error {
 // SetTasksScheduledTime takes a list of tasks and a time, and then sets
 // the scheduled time in the database for the tasks if it is currently unset
 func SetTasksScheduledTime(tasks []Task, scheduledTime time.Time) error {
-	var ids []string
+	ids := []string{}
 	for i := range tasks {
 		tasks[i].ScheduledTime = scheduledTime
 		ids = append(ids, tasks[i].Id)
