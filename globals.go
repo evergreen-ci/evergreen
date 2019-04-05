@@ -254,7 +254,7 @@ const (
 func (k SenderKey) Validate() error {
 	switch k {
 	case SenderGithubStatus, SenderEvergreenWebhook, SenderSlack, SenderJIRAComment, SenderJIRAIssue,
-		SenderEmail, SenderGithubMerge:
+		SenderEmail, SenderGithubMerge, SenderCommitQueueDequeue:
 		return nil
 	default:
 		return errors.New("invalid sender defined")
