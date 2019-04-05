@@ -71,7 +71,7 @@ Evergreen - Distros
                 ng-disabled="readOnly">
                 <strong class="distro-menu-item">[[activeDistro.arch | archDisplay:this]]<span class="fa fa-caret-down"></span></strong>
               </button>
-              <ul class="dropdown-menu" style="margin-left: 125px; align: left;" role="menu">
+              <ul class="dropdown-menu" style="margin-left: 125px" role="menu">
                 <li ng-click="form.$setDirty();setKeyValue('arch', arch.id)" required name="agentArch" ng-repeat="arch in architectures | orderBy:'display'"
                   role="presentation"><a role="menuitem" tabindex="-1">[[arch.display]]</a></li>
               </ul>
@@ -93,7 +93,7 @@ Evergreen - Distros
               <button class="btn btn-default dropdown-toggle" ng-disabled="readOnly" type="button" data-toggle="dropdown">
                 <strong class="distro-menu-item">[[activeDistro.provider | providerDisplay:this]]<span class="fa fa-caret-down"></span></strong>
               </button>
-              <ul class="dropdown-menu" role="menu" style="margin-left: 60px; align: left;">
+              <ul class="dropdown-menu" role="menu" style="margin-left: 60px">
                 <li ng-click="form.$setDirty();setKeyValue('provider', provider.id)" required name="providerForm"
                   ng-repeat="provider in providers" role="presentation"><a role="menuitem" tabindex="-1">[[provider.display]]</a></li>
               </ul>
@@ -466,7 +466,7 @@ Evergreen - Distros
                 ng-disabled="readOnly">
                   <strong class="distro-menu-item">[[ activeDistro.planner_settings.version | versionDisplay:this]]<span class="fa fa-caret-down"></span></strong>
                 </button>
-                <ul class="dropdown-menu" style="margin-left: 125px; align: left;" role="menu">
+                <ul class="dropdown-menu" style="margin-left: 125px" role="menu">
                   <li required name="plannerVersion" ng-click="form.$setDirty();activeDistro.planner_settings.version = version.id" ng-repeat="version in planner_versions"
                     role="presentation"><a role="menuitem" tabindex="-1">[[version.display]]</a></li>
                 </ul>
@@ -520,9 +520,9 @@ Evergreen - Distros
         <div class="dropdown">
           <span class="distro-menu-title">Bootstrap Method:</span>
             <button class="btn btn-default dropdown-toggle" type="button" data-toggle="dropdown" aria-expanded="true" ng-disabled="readOnly">
-              <strong class="distro-menu-item">[[ activeDistro.bootstrap_method | bootstrapMethodDisplay:this]]<span class="fa fa-caret-down"></span></strong>
+              <strong class="distro-menu-item">[[activeDistro.bootstrap_method | bootstrapMethodDisplay:this]]<span class="fa fa-caret-down"></span></strong>
             </button>
-            <ul class="dropdown-menu" style="margin-left: 125px; align: left" role="menu">
+            <ul class="dropdown-menu" style="margin-left: 125px" role="menu">
               <li required name="bootstrapMethodForm" ng-click="form.$setDirty();activeDistro.bootstrap_method = bootstrapMethod.id" ng-repeat="bootstrapMethod in bootstrapMethods"
                 role="presentation"><a role="menuitem" tabindex="-1">[[bootstrapMethod.display]]</a></li>
             </ul>
@@ -534,7 +534,7 @@ Evergreen - Distros
           <button class="btn btn-default dropdown-toggle" ng-disabled="readOnly" type="button" data-toggle="dropdown">
             <strong class="distro-menu-item">[[activeDistro.ssh_key]]<span class="fa fa-caret-down"></span></strong>
           </button>
-          <ul class="dropdown-menu" role="menu" style="margin-left: 63px; align: left;">
+          <ul class="dropdown-menu" role="menu" style="margin-left: 63px">
             <li required name="sshKeyForm" ng-click="form.$setDirty();setKeyValue('ssh_key', key.name)" ng-repeat="key in keys"
               role="presentation"><a role="menuitem" tabindex="-1">[[key.name]] - [[key.location]]</a></li>
           </ul>
