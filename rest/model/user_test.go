@@ -55,7 +55,7 @@ func runTests(t *testing.T, in user.UserSettings) {
 func TestAPIUserAuthorInformation(t *testing.T) {
 	assert := assert.New(t)
 	apiUser := APIUserAuthorInformation{}
-	user := user.DBUser{
+	user := &user.DBUser{
 		DispName:     "octocat",
 		EmailAddress: "octocat@github.com",
 	}
