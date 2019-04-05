@@ -51,3 +51,16 @@ func runTests(t *testing.T, in user.UserSettings) {
 	assert.NoError(err)
 	assert.EqualValues(in, origSettings)
 }
+
+func TestAPIUserAuthorInformation(t *testing.T) {
+	assert := assert.New(t)
+	apiUser := APIUserAuthorInformation{}
+	user := user.DBUser{
+		DispName:     "octocat",
+		EmailAddress: "octocat@github.com",
+	}
+	assert.NoError(apiUser.BuildFromService(user))
+
+	_, err := apiUser.ToService()
+	assert.Error(err)
+}

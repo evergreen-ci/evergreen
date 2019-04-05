@@ -14,7 +14,6 @@ import (
 
 const (
 	itemFlagName       = "item"
-	refFlagName        = "ref"
 	pauseFlagName      = "pause"
 	identifierFlagName = "identifier"
 )
@@ -99,12 +98,7 @@ func mergeCommand() cli.Command {
 	return cli.Command{
 		Name:  "merge",
 		Usage: "test and merge a feature branch",
-		Flags: mergeFlagSlices(addProjectFlag(), addLargeFlag(), addYesFlag(
-			cli.StringFlag{
-				Name:  joinFlagNames(refFlagName, "r"),
-				Usage: "merge branch `REF`",
-				Value: "HEAD",
-			},
+		Flags: mergeFlagSlices(addProjectFlag(), addLargeFlag(), addRefFlag(), addYesFlag(
 			cli.StringFlag{
 				Name:  identifierFlagName,
 				Usage: "finalize a preexisting item with `ID`",
@@ -156,13 +150,7 @@ func setModuleCommand() cli.Command {
 	return cli.Command{
 		Name:  "set-module",
 		Usage: "update or add module to an existing merge patch",
-		Flags: mergeFlagSlices(addLargeFlag(), addPatchIDFlag(), addModuleFlag(), addYesFlag(
-			cli.StringFlag{
-				Name:  joinFlagNames(refFlagName, "r"),
-				Usage: "merge branch `REF`",
-				Value: "HEAD",
-			},
-		)),
+		Flags: mergeFlagSlices(addLargeFlag(), addPatchIDFlag(), addModuleFlag(), addYesFlag(), addRefFlag()),
 		Before: mergeBeforeFuncs(
 			requirePatchIDFlag,
 			requireModuleFlag,
@@ -271,7 +259,7 @@ func (p *mergeParams) uploadMergePatch(conf *ClientSettings, ac *legacyClient) e
 		return errors.Wrap(err, "can't get project ref")
 	}
 
-	diffData, err := getFeaturePatchInfo(ref.Branch, p.ref)
+	diffData, err := loadGitData(ref.Branch, p.ref)
 	if err != nil {
 		return errors.Wrap(err, "can't generate patches")
 	}
@@ -346,42 +334,10 @@ func (p *moduleParams) getModulePatch(rc *legacyClient) (*localDiff, error) {
 		return nil, errors.Wrapf(err, "could not set specified module: '%s'", p.module)
 	}
 
-	diffData, err := getFeaturePatchInfo(moduleBranch, p.ref)
+	diffData, err := loadGitData(moduleBranch, p.ref)
 	if err != nil {
 		return nil, errors.Wrap(err, "can't get patch data")
 	}
 
 	return diffData, nil
-}
-
-func getFeaturePatchInfo(projectBranch, ref string) (*localDiff, error) {
-	upstream := projectBranch + "@{upstream}"
-	revisionRange := upstream + ".." + ref
-
-	stat, err := gitCmd("diff", "--no-ext-diff", "--stat", revisionRange)
-	if err != nil {
-		return nil, errors.Wrap(err, "can't get stat")
-	}
-
-	log, err := gitCmd("log", "--oneline", revisionRange)
-	if err != nil {
-		return nil, errors.Wrap(err, "can't get log")
-	}
-
-	patches, err := gitCmd("format-patch", "--no-ext-diff", "--stdout", revisionRange)
-	if err != nil {
-		return nil, errors.Wrap(err, "can't generate patch")
-	}
-
-	mergeBase, err := gitMergeBase(upstream, ref)
-	if err != nil {
-		return nil, errors.Errorf("Error getting merge base: %v", err)
-	}
-
-	return &localDiff{
-		fullPatch:    patches,
-		patchSummary: stat,
-		log:          log,
-		base:         mergeBase,
-	}, nil
 }

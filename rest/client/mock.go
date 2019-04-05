@@ -591,6 +591,13 @@ func (c *Mock) EnqueueItem(ctx context.Context, projectID, item string) (int, er
 	return 1, nil
 }
 
+func (c *Mock) GetUserAuthorInfo(ctx context.Context, userID string) (*model.APIUserAuthorInformation, error) {
+	return &model.APIUserAuthorInformation{
+		DisplayName: model.ToAPIString("evergreen"),
+		Email:       model.ToAPIString("evergreen@mongodb.com"),
+	}, nil
+}
+
 func (c *Mock) SendNotification(_ context.Context, _ string, _ interface{}) error {
 	return nil
 }
