@@ -50,7 +50,6 @@ func parseDB(c *cli.Context) *evergreen.DBSettings {
 	}
 	return &evergreen.DBSettings{
 		Url: url,
-		SSL: c.Bool(dbSslFlagName),
 		DB:  c.String(dbNameFlagName),
 		WriteConcernSettings: evergreen.WriteConcern{
 			W:     c.Int(dbWriteNumFlagName),

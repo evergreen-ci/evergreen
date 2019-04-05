@@ -1,7 +1,6 @@
 package service
 
 import (
-	"context"
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
@@ -15,13 +14,7 @@ import (
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/gimlet"
 	. "github.com/smartystreets/goconvey/convey"
-	"github.com/smartystreets/goconvey/convey/reporting"
 )
-
-func init() {
-	reporting.QuietMode()
-	db.SetGlobalSessionProvider(testutil.TestConfig().SessionFactory())
-}
 
 func TestCheckHostWrapper(t *testing.T) {
 	h1 := host.Host{
@@ -36,10 +29,7 @@ func TestCheckHostWrapper(t *testing.T) {
 	}
 
 	conf := testutil.TestConfig()
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
 
-	testutil.SetGlobalEnvironment(ctx, t)
 	queue := evergreen.GetEnvironment().LocalQueue()
 	generateQueue := evergreen.GetEnvironment().GenerateTasksQueue()
 

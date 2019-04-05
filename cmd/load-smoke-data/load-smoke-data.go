@@ -2,6 +2,7 @@ package main
 
 import (
 	"bufio"
+	"context"
 	"encoding/json"
 	"flag"
 	"os"
@@ -9,10 +10,10 @@ import (
 	"strings"
 	"time"
 
-	mgo "gopkg.in/mgo.v2"
-
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
+	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
 func getFiles(root string) ([]string, error) {
@@ -48,11 +49,14 @@ func main() {
 	flag.StringVar(&dbName, "dbName", "mci_smoke", "database name for directory")
 	flag.Parse()
 
-	session, err := mgo.DialWithTimeout("mongodb://localhost:27017", 5*time.Second)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	client, err := mongo.Connect(ctx, options.Client().ApplyURI("mongodb://localhost:27017").SetConnectTimeout(5*time.Second))
 	grip.EmergencyFatal(err)
-	session.SetSocketTimeout(10 * time.Second)
-	db := session.DB(dbName)
-	grip.EmergencyFatal(db.DropDatabase())
+
+	db := client.Database(dbName)
+	grip.EmergencyFatal(db.Drop(ctx))
 
 	var file *os.File
 	files, err := getFiles(path)
@@ -69,7 +73,7 @@ func main() {
 		defer file.Close()
 
 		collName := strings.Split(filepath.Base(fn), ".")[0]
-		collection := db.C(collName)
+		collection := db.Collection(collName)
 
 		scanner := bufio.NewScanner(file)
 		count := 0
@@ -81,11 +85,13 @@ func main() {
 				continue
 			}
 
-			catcher.Add(collection.Insert(doc))
+			_, err := collection.InsertOne(ctx, doc)
+			catcher.Add(err)
 		}
 		catcher.Add(scanner.Err())
 		grip.Infof("imported %d documents into %s", count, collName)
 	}
 
+	catcher.Add(client.Disconnect(ctx))
 	grip.EmergencyFatal(catcher.Resolve())
 }

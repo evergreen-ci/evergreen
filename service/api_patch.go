@@ -16,7 +16,7 @@ import (
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/pkg/errors"
-	"gopkg.in/mgo.v2/bson"
+	mgobson "gopkg.in/mgo.v2/bson"
 	yaml "gopkg.in/yaml.v2"
 )
 
@@ -88,7 +88,7 @@ func (as *APIServer) submitPatch(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	patchID := bson.NewObjectId()
+	patchID := mgobson.NewObjectId()
 	job := units.NewPatchIntentProcessor(patchID, intent)
 	job.Run(r.Context())
 
@@ -201,7 +201,7 @@ func (as *APIServer) updatePatchModule(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// write the patch content into a GridFS file under a new ObjectId.
-	patchFileId := bson.NewObjectId().Hex()
+	patchFileId := mgobson.NewObjectId().Hex()
 	err = db.WriteGridFile(patch.GridFSPrefix, patchFileId, strings.NewReader(patchContent))
 	if err != nil {
 		as.LoggedError(w, r, http.StatusInternalServerError, errors.Wrap(err, "failed to write patch file to db"))

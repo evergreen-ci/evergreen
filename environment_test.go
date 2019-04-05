@@ -49,10 +49,11 @@ func (s *EnvironmentSuite) TestLoadingConfig() {
 
 	// first test loading config from a file
 	env, err := NewEnvironment(ctx, s.path, nil)
+	SetEnvironment(env)
+
 	s.Require().NoError(err)
 	s.env = env.(*envState)
 	s.Equal("http://localhost:8080", s.env.Settings().ApiUrl)
-
 	// persist to db
 	s.NoError(s.env.SaveConfig())
 
@@ -64,6 +65,7 @@ func (s *EnvironmentSuite) TestLoadingConfig() {
 
 	env, err = NewEnvironment(ctx, "", &db)
 	s.Require().NoError(err)
+	SetEnvironment(env)
 
 	s.env = env.(*envState)
 	s.Equal(db, s.env.settings.Database)

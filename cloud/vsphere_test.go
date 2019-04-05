@@ -7,10 +7,8 @@ import (
 	"testing"
 
 	"github.com/evergreen-ci/evergreen"
-	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
-	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/stretchr/testify/suite"
 	"github.com/vmware/govmomi/vim25/types"
 )
@@ -25,10 +23,6 @@ type VSphereSuite struct {
 
 func TestVSphereSuite(t *testing.T) {
 	suite.Run(t, new(VSphereSuite))
-}
-
-func (s *VSphereSuite) SetupSuite() {
-	db.SetGlobalSessionProvider(testutil.TestConfig().SessionFactory())
 }
 
 func (s *VSphereSuite) SetupTest() {

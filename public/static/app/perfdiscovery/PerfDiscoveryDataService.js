@@ -51,7 +51,7 @@ mciModule.factory('PerfDiscoveryDataService', function(
   }
 
   function githashToVersionId(githash) {
-    return $window.project + '_' + githash
+    return $window.project.replace('sys-perf','sys_perf') + '_' + githash
   }
 
   // For given `query` attempts to construct valid selctable

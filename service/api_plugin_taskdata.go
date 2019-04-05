@@ -3,11 +3,10 @@ package service
 import (
 	"net/http"
 
-	mgo "gopkg.in/mgo.v2"
-
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/gimlet"
+	adb "github.com/mongodb/anser/db"
 )
 
 func (as *APIServer) getTaskJSONTagsForTask(w http.ResponseWriter, r *http.Request) {
@@ -65,7 +64,7 @@ func (as *APIServer) getTaskJSONByName(w http.ResponseWriter, r *http.Request) {
 
 	jsonForTask, err := model.GetTaskJSONByName(t.Version, t.BuildId, taskName, name)
 	if err != nil {
-		if err == mgo.ErrNotFound {
+		if adb.ResultsNotFound(err) {
 			gimlet.WriteJSONResponse(w, http.StatusNotFound, nil)
 			return
 		}
@@ -98,7 +97,7 @@ func (as *APIServer) getTaskJSONForVariant(w http.ResponseWriter, r *http.Reques
 	jsonForTask, err := model.GetTaskJSONForVariant(t.Version, variantId, taskName, name)
 
 	if err != nil {
-		if err == mgo.ErrNotFound {
+		if adb.ResultsNotFound(err) {
 			gimlet.WriteJSONResponse(w, http.StatusNotFound, nil)
 			return
 		}

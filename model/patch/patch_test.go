@@ -47,7 +47,6 @@ func TestPatchSuite(t *testing.T) {
 
 func (s *patchSuite) SetupTest() {
 	s.testConfig = testutil.TestConfig()
-	db.SetGlobalSessionProvider(s.testConfig.SessionFactory())
 
 	s.NoError(db.ClearCollections(Collection))
 	s.time = time.Now().Add(-12 * time.Hour)

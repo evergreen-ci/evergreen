@@ -6,7 +6,7 @@ import (
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
-	"gopkg.in/mgo.v2/bson"
+	"go.mongodb.org/mongo-driver/bson"
 )
 
 const notSubscribableTimeString = "2015-10-21T16:29:01-07:00"

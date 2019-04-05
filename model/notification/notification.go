@@ -14,7 +14,7 @@ import (
 	"github.com/mongodb/grip/level"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
-	"gopkg.in/mgo.v2/bson"
+	"go.mongodb.org/mongo-driver/bson"
 )
 
 // makeNotificationID creates a string representing the notification generated

@@ -12,11 +12,12 @@ import (
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/anser/bsonutil"
+	adb "github.com/mongodb/anser/db"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
-	"gopkg.in/mgo.v2"
-	"gopkg.in/mgo.v2/bson"
+	"go.mongodb.org/mongo-driver/bson"
+	mgobson "gopkg.in/mgo.v2/bson"
 )
 
 type Host struct {
@@ -51,11 +52,13 @@ type Host struct {
 	RunningTaskProject      string `bson:"running_task_project,omitempty" json:"running_task_project,omitempty"`
 
 	// the task the most recently finished running on the host
-	LastTask         string `bson:"last_task" json:"last_task"`
-	LastGroup        string `bson:"last_group,omitempty" json:"last_group,omitempty"`
-	LastBuildVariant string `bson:"last_bv,omitempty" json:"last_bv,omitempty"`
-	LastVersion      string `bson:"last_version,omitempty" json:"last_version,omitempty"`
-	LastProject      string `bson:"last_project,omitempty" json:"last_project,omitempty"`
+	LastTask               string    `bson:"last_task" json:"last_task"`
+	LastGroup              string    `bson:"last_group,omitempty" json:"last_group,omitempty"`
+	LastBuildVariant       string    `bson:"last_bv,omitempty" json:"last_bv,omitempty"`
+	LastVersion            string    `bson:"last_version,omitempty" json:"last_version,omitempty"`
+	LastProject            string    `bson:"last_project,omitempty" json:"last_project,omitempty"`
+	RunningTeardownForTask string    `bson:"running_teardown,omitempty" json:"running_teardown,omitempty"`
+	RunningTeardownSince   time.Time `bson:"running_teardown_since,omitempty" json:"running_teardown_since,omitempty"`
 
 	// the full task struct that is running on the host (only populated by certain aggregations)
 	RunningTaskFull *task.Task `bson:"task_full,omitempty" json:"task_full,omitempty"`
@@ -119,6 +122,9 @@ type Host struct {
 	// DockerOptions stores information for creating a container with a specific image and command
 	DockerOptions DockerOptions `bson:"docker_options,omitempty" json:"docker_options,omitempty"`
 }
+
+func (h *Host) MarshalBSON() ([]byte, error)  { return mgobson.Marshal(h) }
+func (h *Host) UnmarshalBSON(in []byte) error { return mgobson.Unmarshal(in, h) }
 
 type HostGroup []Host
 
@@ -371,7 +377,7 @@ func (h *Host) SetDNSName(dnsName string) error {
 		h.Host = dnsName
 		event.LogHostDNSNameSet(h.Id, dnsName)
 	}
-	if err == mgo.ErrNotFound {
+	if adb.ResultsNotFound(err) {
 		return nil
 	}
 	return err
@@ -529,7 +535,7 @@ func (h *Host) UpdateRunningTask(t *task.Task) (bool, error) {
 
 	err := UpdateOne(selector, update)
 	if err != nil {
-		if mgo.IsDup(err) {
+		if db.IsDuplicateKey(err) {
 			grip.Debug(message.Fields{
 				"message": "found duplicate running task",
 				"task":    t.Id,
@@ -637,7 +643,7 @@ func (h *Host) MarkReachable() error {
 		bson.M{"$set": bson.M{StatusKey: evergreen.HostRunning}})
 }
 
-func (h *Host) Upsert() (*mgo.ChangeInfo, error) {
+func (h *Host) Upsert() (*adb.ChangeInfo, error) {
 	return UpsertOne(
 		bson.M{
 			IdKey: h.Id,
@@ -794,6 +800,32 @@ func (h *Host) SetExtId() error {
 	)
 }
 
+// SetRunningTeardownGroup marks the host as running teardown_group for a task group, no-oping if it's already set to the same task
+func (h *Host) SetRunningTeardownGroup(taskID string) error {
+	if h.RunningTeardownForTask == taskID && !util.IsZeroTime(h.RunningTeardownSince) {
+		return nil
+	}
+
+	return UpdateOne(bson.M{IdKey: h.Id}, bson.M{
+		"$set": bson.M{
+			RunningTeardownForTaskKey: taskID,
+			RunningTeardownSinceKey:   time.Now(),
+		},
+	})
+}
+
+func (h *Host) ClearRunningTeardownGroup() error {
+	if h.RunningTeardownForTask == "" {
+		return nil
+	}
+	return UpdateOne(bson.M{IdKey: h.Id}, bson.M{
+		"$unset": bson.M{
+			RunningTeardownForTaskKey: "",
+			RunningTeardownSinceKey:   "",
+		},
+	})
+}
+
 func FindHostsToTerminate() ([]Host, error) {
 	const (
 		// provisioningCutoff is the threshold to consider as too long for a host to take provisioning
@@ -837,7 +869,7 @@ func FindHostsToTerminate() ([]Host, error) {
 	}
 	hosts, err := Find(db.Query(query))
 
-	if db.ResultsNotFound(err) {
+	if adb.ResultsNotFound(err) {
 		return []Host{}, nil
 	}
 
@@ -1086,7 +1118,7 @@ func FindTerminatedHostsRunningTasks() ([]Host, error) {
 			{RunningTaskKey: bson.M{"$ne": ""}}},
 	}))
 
-	if err == mgo.ErrNotFound {
+	if adb.ResultsNotFound(err) {
 		err = nil
 	}
 
@@ -1100,9 +1132,9 @@ func FindTerminatedHostsRunningTasks() ([]Host, error) {
 // CountContainersOnParents counts how many containers are children of the given group of hosts
 func (hosts HostGroup) CountContainersOnParents() (int, error) {
 	ids := hosts.GetHostIds()
-	query := db.Query(bson.M{
-		StatusKey:   bson.M{"$in": evergreen.UpHostStatus},
-		ParentIDKey: bson.M{"$in": ids},
+	query := db.Query(mgobson.M{
+		StatusKey:   mgobson.M{"$in": evergreen.UpHostStatus},
+		ParentIDKey: mgobson.M{"$in": ids},
 	})
 	return Count(query)
 }
@@ -1110,9 +1142,9 @@ func (hosts HostGroup) CountContainersOnParents() (int, error) {
 // FindRunningContainersOnParents returns the containers that are children of the given hosts
 func (hosts HostGroup) FindRunningContainersOnParents() ([]Host, error) {
 	ids := hosts.GetHostIds()
-	query := db.Query(bson.M{
+	query := db.Query(mgobson.M{
 		StatusKey:   evergreen.HostRunning,
-		ParentIDKey: bson.M{"$in": ids},
+		ParentIDKey: mgobson.M{"$in": ids},
 	})
 	return Find(query)
 }
@@ -1288,7 +1320,7 @@ func countUphostParentsByContainerPool(poolId string) (int, error) {
 func InsertMany(hosts []Host) error {
 	docs := make([]interface{}, len(hosts))
 	for idx := range hosts {
-		docs[idx] = hosts[idx]
+		docs[idx] = &hosts[idx]
 	}
 
 	return errors.WithStack(db.InsertMany(Collection, docs...))
@@ -1349,7 +1381,18 @@ func StaleRunningTaskIDs(staleness time.Duration) ([]task.Task, error) {
 		}},
 		{"$match": bson.M{
 			"$expr": bson.M{
-				"$eq": []string{"$_id", bsonutil.GetDottedKeyName("$host", RunningTaskKey)},
+				"$and": []bson.M{
+					{"$eq": []string{"$_id", bsonutil.GetDottedKeyName("$host", RunningTaskKey)}},
+					{"$or": []bson.M{ // this expression checks that the host is not currently running teardown_group of a different task
+						{"$not": []bson.M{{"$ifNull": []interface{}{bsonutil.GetDottedKeyName("$host", RunningTeardownForTaskKey), nil}}}},
+						{"$eq": []string{bsonutil.GetDottedKeyName("$host", RunningTeardownForTaskKey), ""}},
+						{"$and": []bson.M{
+							{"$ifNull": []interface{}{bsonutil.GetDottedKeyName("$host", RunningTeardownForTaskKey), nil}},
+							{"$lt": []interface{}{bsonutil.GetDottedKeyName("$host", RunningTeardownSinceKey),
+								time.Now().Add(-1*evergreen.MaxTeardownGroupTimeoutSecs*time.Second - 5*time.Minute)}},
+						}},
+					}},
+				},
 			},
 		}},
 	}

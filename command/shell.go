@@ -4,6 +4,7 @@ import (
 	"context"
 	"os"
 	"strconv"
+	"strings"
 
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/rest/client"
@@ -114,10 +115,12 @@ func (c *shellExec) Execute(ctx context.Context, _ client.Communicator, logger c
 	}
 	addTempDirs(env, taskTmpDir)
 
-	cmd := c.JasperManager().CreateCommand(ctx).Add([]string{c.Shell, "-c", c.Script}).
-		Background(c.Background).Directory(c.WorkingDir).Environment(env).
+	cmd := c.JasperManager().CreateCommand(ctx).
+		Background(c.Background).Directory(c.WorkingDir).Environment(env).Append(c.Shell).
 		SuppressStandardError(c.IgnoreStandardError).SuppressStandardOutput(c.IgnoreStandardOutput).RedirectErrorToOutput(c.RedirectStandardErrorToOutput).
 		ProcConstructor(func(lctx context.Context, opts *jasper.CreateOptions) (jasper.Process, error) {
+			opts.StandardInput = strings.NewReader(c.Script)
+
 			var cancel context.CancelFunc
 			var ictx context.Context
 			if c.Background {

@@ -9,9 +9,9 @@ import (
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/anser/bsonutil"
+	adb "github.com/mongodb/anser/db"
 	"github.com/pkg/errors"
-	mgo "gopkg.in/mgo.v2"
-	"gopkg.in/mgo.v2/bson"
+	"go.mongodb.org/mongo-driver/bson"
 )
 
 const (
@@ -113,7 +113,7 @@ var (
 // ById creates a query that finds a task by its _id.
 func ById(id string) db.Q {
 	return db.Query(bson.D{{
-		Name:  IdKey,
+		Key:   IdKey,
 		Value: id,
 	}})
 }
@@ -127,11 +127,8 @@ func ByOldTaskID(id string) db.Q {
 // ByIds creates a query that finds all tasks with the given ids.
 func ByIds(ids []string) db.Q {
 	return db.Query(bson.D{{
-		Name: IdKey,
-		Value: bson.D{{
-			Name:  "$in",
-			Value: ids,
-		}},
+		Key:   IdKey,
+		Value: bson.M{"$in": ids},
 	}})
 }
 
@@ -612,7 +609,7 @@ func GetRecentTasks(period time.Duration) ([]Task, error) {
 	if err != nil {
 		return nil, errors.Wrap(err, "problem with stats query")
 	}
-	if err == mgo.ErrNotFound {
+	if adb.ResultsNotFound(err) {
 		return nil, nil
 	}
 
@@ -625,7 +622,7 @@ func GetRecentTasks(period time.Duration) ([]Task, error) {
 func FindOneNoMerge(query db.Q) (*Task, error) {
 	task := &Task{}
 	err := db.FindOneQ(Collection, query, task)
-	if err == mgo.ErrNotFound {
+	if adb.ResultsNotFound(err) {
 		return nil, nil
 	}
 	return task, err
@@ -651,7 +648,7 @@ func FindOneId(id string) (*Task, error) {
 	query := db.Query(bson.M{IdKey: id})
 	err := db.FindOneQ(Collection, query, task)
 
-	if err == mgo.ErrNotFound {
+	if adb.ResultsNotFound(err) {
 		return nil, nil
 	}
 	if err != nil {
@@ -669,7 +666,7 @@ func FindOneIdAndExecution(id string, execution int) (*Task, error) {
 	})
 	err := db.FindOneQ(Collection, query, task)
 
-	if err == mgo.ErrNotFound {
+	if adb.ResultsNotFound(err) {
 		return nil, nil
 	}
 	if err != nil {
@@ -683,7 +680,7 @@ func FindOneIdAndExecution(id string, execution int) (*Task, error) {
 func FindOneOldNoMerge(query db.Q) (*Task, error) {
 	task := &Task{}
 	err := db.FindOneQ(OldCollection, query, task)
-	if err == mgo.ErrNotFound {
+	if adb.ResultsNotFound(err) {
 		return nil, nil
 	}
 	return task, err
@@ -708,7 +705,7 @@ func FindOneIdWithFields(id string, projected ...string) (*Task, error) {
 
 	err := db.FindOneQ(Collection, query, task)
 
-	if err == mgo.ErrNotFound {
+	if adb.ResultsNotFound(err) {
 		return nil, nil
 	}
 	if err != nil {
@@ -721,7 +718,7 @@ func FindOneIdWithFields(id string, projected ...string) (*Task, error) {
 func findAllTaskIDs(q db.Q) ([]string, error) {
 	tasks := []Task{}
 	err := db.FindAllQ(Collection, q, &tasks)
-	if err == mgo.ErrNotFound {
+	if adb.ResultsNotFound(err) {
 		return nil, nil
 	}
 	if err != nil {
@@ -748,7 +745,7 @@ func FindAllTasksFromVersionWithDependencies(versionId string) ([]Task, error) {
 	}).WithFields(IdKey, DependsOnKey)
 	tasks := []Task{}
 	err := db.FindAllQ(Collection, q, &tasks)
-	if err == mgo.ErrNotFound {
+	if adb.ResultsNotFound(err) {
 		return nil, nil
 	}
 	if err != nil {
@@ -770,7 +767,7 @@ func FindTasksFromBuildWithDependencies(buildId string) ([]Task, error) {
 	}).WithFields(IdKey, DependsOnKey)
 	tasks := []Task{}
 	err := db.FindAllQ(Collection, q, &tasks)
-	if err == mgo.ErrNotFound {
+	if adb.ResultsNotFound(err) {
 		return nil, nil
 	}
 	if err != nil {
@@ -798,7 +795,7 @@ func FindOneOld(query db.Q) (*Task, error) {
 func FindOld(query db.Q) ([]Task, error) {
 	tasks := []Task{}
 	err := db.FindAllQ(OldCollection, query, &tasks)
-	if err == mgo.ErrNotFound {
+	if adb.ResultsNotFound(err) {
 		return nil, nil
 	}
 	for i, task := range tasks {
@@ -822,7 +819,7 @@ func FindOld(query db.Q) ([]Task, error) {
 func FindOldWithDisplayTasks(query db.Q) ([]Task, error) {
 	tasks := []Task{}
 	err := db.FindAllQ(OldCollection, query, &tasks)
-	if err == mgo.ErrNotFound {
+	if adb.ResultsNotFound(err) {
 		return nil, nil
 	}
 	for i, task := range tasks {
@@ -850,7 +847,7 @@ func FindOneIdOldOrNew(id string, execution int) (*Task, error) {
 func Find(query db.Q) ([]Task, error) {
 	tasks := []Task{}
 	err := db.FindAllQ(Collection, query, &tasks)
-	if err == mgo.ErrNotFound {
+	if adb.ResultsNotFound(err) {
 		return nil, nil
 	}
 
@@ -873,7 +870,7 @@ func Find(query db.Q) ([]Task, error) {
 func FindAll(query db.Q) ([]Task, error) {
 	tasks := []Task{}
 	err := db.FindAllQ(Collection, query, &tasks)
-	if err == mgo.ErrNotFound {
+	if adb.ResultsNotFound(err) {
 		return nil, nil
 	}
 	return tasks, err
@@ -882,7 +879,7 @@ func FindAll(query db.Q) ([]Task, error) {
 func FindWithDisplayTasks(query db.Q) ([]Task, error) {
 	tasks := []Task{}
 	err := db.FindAllQ(Collection, query, &tasks)
-	if err == mgo.ErrNotFound {
+	if adb.ResultsNotFound(err) {
 		return nil, nil
 	}
 
@@ -905,7 +902,7 @@ func UpdateOne(query interface{}, update interface{}) error {
 	)
 }
 
-func UpdateAll(query interface{}, update interface{}) (*mgo.ChangeInfo, error) {
+func UpdateAll(query interface{}, update interface{}) (*adb.ChangeInfo, error) {
 	return db.UpdateAll(
 		Collection,
 		query,

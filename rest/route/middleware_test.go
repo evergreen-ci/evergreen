@@ -12,7 +12,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/rest/data"
-	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/gimlet"
 	. "github.com/smartystreets/goconvey/convey"
 	"github.com/stretchr/testify/assert"
@@ -213,7 +212,6 @@ func TestCommitQueueItemOwnerMiddlewareUnauthorizedUserGitHub(t *testing.T) {
 
 func TestCommitQueueItemOwnerMiddlewareUserPatch(t *testing.T) {
 	assert := assert.New(t)
-	db.SetGlobalSessionProvider(testutil.TestConfig().SessionFactory())
 	assert.NoError(db.ClearCollections(patch.Collection))
 
 	ctx := context.Background()

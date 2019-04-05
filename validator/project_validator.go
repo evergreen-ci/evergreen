@@ -969,12 +969,18 @@ func validateTaskGroups(p *model.Project) ValidationErrors {
 				})
 			}
 		}
-		// validate that attach commands aren't used in the teardown_group phase
+		// validate that attach commands aren't used in the teardown_group phase, and that the timeout is not longer than 30 mins
 		if tg.TeardownGroup != nil {
 			for _, cmd := range tg.TeardownGroup.List() {
 				if cmd.Command == "attach.results" || cmd.Command == "attach.artifacts" {
 					errs = append(errs, ValidationError{
 						Message: fmt.Sprintf("%s cannot be used in the group teardown stage", cmd.Command),
+						Level:   Error,
+					})
+				}
+				if cmd.TimeoutSecs > evergreen.MaxTeardownGroupTimeoutSecs {
+					errs = append(errs, ValidationError{
+						Message: "teardown_group cannot take longer than 30 minutes",
 						Level:   Error,
 					})
 				}

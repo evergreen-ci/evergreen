@@ -1,7 +1,6 @@
 package operations
 
 import (
-	"context"
 	"io"
 
 	"github.com/evergreen-ci/evergreen/util"
@@ -25,9 +24,9 @@ func Export() cli.Command {
 		granularityFlagName = "granularity"
 		jsonFlagName        = "json"
 
-		statHostUtilization   = "host"
-		statSecheduledToStart = "avg"
-		statOptimalMakespan   = "makespan"
+		statHostUtilization  = "host"
+		statScheduledToStart = "avg"
+		statOptimalMakespan  = "makespan"
 	)
 
 	return cli.Command{
@@ -66,12 +65,12 @@ func Export() cli.Command {
 			requireStringValueChoices(granularityFlagName,
 				[]string{granularityDays, granularityHours, granularityMinutes, granularitySeconds}),
 			requireStringValueChoices(statFlagName,
-				[]string{statHostUtilization, statSecheduledToStart, statOptimalMakespan}),
+				[]string{statHostUtilization, statScheduledToStart, statOptimalMakespan}),
 			requireIntValueBetween(daysFlagName, 1, 30),
 			requireStringFlag(pathFlagName)),
 		Action: func(c *cli.Context) error {
 			confPath := c.Parent().String(confFlagName)
-			isCSV := c.Bool(jsonFlagName)
+			isCSV := !c.Bool(jsonFlagName)
 			statType := c.String(statFlagName)
 			granularity := c.String(granularityFlagName)
 			days := c.Int(daysFlagName)
@@ -79,15 +78,10 @@ func Export() cli.Command {
 			distro := c.String(distroFlagName)
 			filePath := c.String(pathFlagName)
 
-			ctx, cancel := context.WithCancel(context.Background())
-			defer cancel()
-
 			conf, err := NewClientSettings(confPath)
 			if err != nil {
 				return errors.Wrap(err, "problem loading configuration")
 			}
-
-			_ = conf.GetRestCommunicator(ctx)
 
 			_, rc, err := conf.getLegacyClients()
 			if err != nil {
@@ -107,7 +101,7 @@ func Export() cli.Command {
 				if err != nil {
 					return err
 				}
-			case statSecheduledToStart:
+			case statScheduledToStart:
 				if distro == "" {
 					return errors.New("cannot have empty distro id")
 				}
