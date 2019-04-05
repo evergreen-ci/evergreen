@@ -96,7 +96,7 @@ func (j *amboyStatsCollector) Run(ctx context.Context) {
 			"stats":   remoteQueue.Stats(),
 		})
 
-		if enableExtendedRemoteStats {
+		if evergreen.EnableAmboyRemoteReporting {
 			j.AddError(j.collectExtendedRemoteStats(ctx))
 		}
 	}

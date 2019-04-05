@@ -289,6 +289,8 @@ const (
 	defaultSingleAmboyQueueName  = "evg.single"
 	defaultAmboyDBName           = "amboy"
 	maxNotificationsPerSecond    = 100
+
+	EnableAmboyRemoteReporting = true
 )
 
 // NameTimeFormat is the format in which to log times like instance start time.
