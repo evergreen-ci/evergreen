@@ -415,7 +415,7 @@ func (s *DistroPutSuite) TestRunNewWithInValidEntity() {
 	err := (resp.Data()).(gimlet.ErrorResponse)
 	s.Contains(err.Message, "ERROR: distro 'ssh_key' cannot be blank")
 	s.Contains(err.Message, "ERROR: invalid distro.planner_settings.version 'invalid' for distro 'distro4'")
-	s.Contains(err.Message, "ERROR: invalid bootstrap method")
+	s.Contains(err.Message, "ERROR: 'foo' is not a valid bootstrap method")
 }
 
 func (s *DistroPutSuite) TestRunNewConflictingName() {
