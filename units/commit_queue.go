@@ -252,7 +252,10 @@ func (j *commitQueueJob) processCLIPatchItem(ctx context.Context, cq *commitqueu
 	}
 
 	sha := *branch.Commit.SHA
-	patchDoc.SetGithash(sha)
+	if err = patchDoc.SetGithash(sha); err != nil {
+		j.logError(err, "can't set githash", nextItem)
+		j.dequeue(cq, nextItem)
+	}
 
 	// TODO: Add merge task to the patch before finalizing
 
