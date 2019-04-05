@@ -74,12 +74,6 @@ func GenerateContainerHostIntents(d distro.Distro, newContainersNeeded int, host
 		return nil, errors.Wrap(err, "Could not find number of containers on each parent")
 	}
 	containerHostIntents := make([]Host, 0)
-	grip.Info(message.Fields{
-		"distro":           d.Id,
-		"num_parents":      len(parents),
-		"container_needed": newContainersNeeded,
-		"message":          "generating container host intents",
-	})
 	for _, parent := range parents {
 		// find out how many more containers this parent can fit
 		containerSpace := parent.ParentHost.ContainerPoolSettings.MaxContainers - parent.NumContainers
@@ -89,13 +83,6 @@ func GenerateContainerHostIntents(d distro.Distro, newContainersNeeded int, host
 			containersToCreate = newContainersNeeded
 		}
 		for i := 0; i < containersToCreate; i++ {
-			grip.Info(message.Fields{
-				"distro":  d.Id,
-				"parent":  parent.ParentHost.Id,
-				"purpose": "dogfooding",
-				"message": "container host intent",
-				"image":   hostOptions.DockerOptions.Image,
-			})
 			hostOptions.ParentID = parent.ParentHost.Id
 			containerHostIntents = append(containerHostIntents, *NewIntent(d, d.GenerateName(), d.Provider, hostOptions))
 		}
@@ -150,10 +137,5 @@ func InsertParentIntentsAndGetNumHostsToSpawn(pool *evergreen.ContainerPool, new
 	if err = InsertMany(newParentHosts); err != nil {
 		return nil, 0, errors.Wrap(err, "error inserting new parent hosts")
 	}
-	grip.Info(message.Fields{
-		"new_parents":       len(newParentHosts),
-		"containers_needed": newHostsNeeded,
-		"message":           "generating container host intents",
-	})
 	return newParentHosts, newHostsNeeded, nil
 }

@@ -208,13 +208,6 @@ func (j *createHostJob) createHost(ctx context.Context) error {
 	// SpawnHost returns, but NOT as as initializing hosts that could still be
 	// spawned by Evergreen.
 	if err = j.host.SetStatus(evergreen.HostBuilding, evergreen.User, ""); err != nil {
-		grip.Info(message.Fields{
-			"message": "error setting status",
-			"purpose": "dogfooding",
-			"hostid":  j.host.Id,
-			"job":     j.ID(),
-			"error":   err.Error(),
-		})
 		return errors.Wrapf(err, "problem setting host %s status to building", j.host.Id)
 	}
 
@@ -226,26 +219,11 @@ func (j *createHostJob) createHost(ctx context.Context) error {
 		j.MaxAttempts = maxPollAttempts
 		ready, err = j.isImageBuilt(ctx)
 		if err != nil {
-			grip.Info(message.Fields{
-				"message": "error building image",
-				"purpose": "dogfooding",
-				"job":     j.ID(),
-				"host":    j.HostID,
-				"image":   j.host.DockerOptions.Image,
-				"error":   err.Error(),
-			})
 			return errors.Wrap(err, "problem building container image")
 		}
 		if !ready {
 			return nil
 		}
-		grip.Info(message.Fields{
-			"message": "image is ready",
-			"purpose": "dogfooding",
-			"job":     j.ID(),
-			"host":    j.HostID,
-			"image":   j.host.DockerOptions.Image,
-		})
 	}
 
 	if _, err = cloudManager.SpawnHost(ctx, j.host); err != nil {

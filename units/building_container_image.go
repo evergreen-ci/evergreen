@@ -3,6 +3,7 @@ package units
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/cloud"
@@ -75,14 +76,6 @@ func (j *buildingContainerImageJob) Run(ctx context.Context) {
 	defer cancel()
 	defer j.MarkComplete()
 
-	grip.Info(message.Fields{
-		"message":   "running containerImageJob",
-		"operation": "image",
-		"purpose":   "dogfooding",
-		"id":        j.ParentID,
-		"job":       j.ID(),
-		"image":     j.DockerOptions.Image,
-	})
 	var err error
 	if j.parent == nil {
 		j.parent, err = host.FindOneByIdOrTag(j.ParentID)
@@ -100,6 +93,14 @@ func (j *buildingContainerImageJob) Run(ctx context.Context) {
 	}
 
 	defer func() {
+		grip.Debug(message.Fields{
+			"host_id":      j.parent.Id,
+			"job_id":       j.ID(),
+			"runner":       "taskrunner",
+			"distro":       j.parent.Distro,
+			"operation":    "container build complete",
+			"current_iter": j.parent.ContainerBuildAttempt,
+		})
 		if err = j.parent.IncContainerBuildAttempt(); err != nil {
 			j.AddError(err)
 			grip.Warning(message.WrapError(err, message.Fields{
@@ -112,14 +113,7 @@ func (j *buildingContainerImageJob) Run(ctx context.Context) {
 			}))
 			return
 		}
-		grip.Debug(message.Fields{
-			"host_id":      j.parent.Id,
-			"job_id":       j.ID(),
-			"runner":       "taskrunner",
-			"distro":       j.parent.Distro,
-			"operation":    "container build complete",
-			"current_iter": j.parent.ContainerBuildAttempt,
-		})
+		j.tryRequeue(ctx)
 	}()
 
 	if j.parent.ContainerBuildAttempt >= containerBuildRetries {
@@ -131,25 +125,11 @@ func (j *buildingContainerImageJob) Run(ctx context.Context) {
 	// Get cloud manager
 	mgr, err := cloud.GetManager(ctx, j.Provider, j.settings)
 	if err != nil {
-		grip.Info(message.Fields{
-			"message":   "error getting cloud manager",
-			"operation": "image",
-			"purpose":   "dogfooding",
-			"id":        j.ParentID,
-			"job":       j.ID(),
-		})
 		j.AddError(errors.Wrap(err, "error getting Docker manager"))
 		return
 	}
 	containerMgr, err := cloud.ConvertContainerManager(mgr)
 	if err != nil {
-		grip.Info(message.Fields{
-			"message":   "error converting to container manager",
-			"operation": "image",
-			"purpose":   "dogfooding",
-			"id":        j.ParentID,
-			"job":       j.ID(),
-		})
 		j.AddError(errors.Wrap(err, "error getting Docker manager"))
 		return
 	}
@@ -172,16 +152,37 @@ func (j *buildingContainerImageJob) Run(ctx context.Context) {
 		j.parent.ContainerImages = make(map[string]bool)
 	}
 	j.parent.ContainerImages[j.DockerOptions.Image] = true
-	grip.Info(message.Fields{
-		"message":   "setting image in parent",
-		"purpose":   "dogfooding",
-		"operation": "image",
-		"job":       j.ID(),
-		"image":     j.DockerOptions.Image,
-	})
 	_, err = j.parent.Upsert()
 	if err != nil {
 		j.AddError(errors.Wrapf(err, "error upserting parent %s", j.parent.Id))
 		return
 	}
+}
+
+func (j *buildingContainerImageJob) tryRequeue(ctx context.Context) {
+	if j.shouldRetry(ctx) && j.env.RemoteQueue().Started() {
+		grip.Info(message.Fields{
+			"message":   "retrying buildingContainerImageJob",
+			"purpose":   "dogfooding",
+			"operation": "image",
+			"attempt":   j.parent.ContainerBuildAttempt,
+		})
+		job := NewBuildingContainerImageJob(j.env, j.parent, j.DockerOptions, j.Provider)
+		job.UpdateTimeInfo(amboy.JobTimeInfo{
+			WaitUntil: time.Now().Add(time.Second * 10),
+		})
+		err := j.env.RemoteQueue().Put(job)
+		grip.Error(message.WrapError(err, message.Fields{
+			"message":  "failed to requeue setup job",
+			"host":     j.ParentID,
+			"job":      j.ID(),
+			"attempts": j.parent.ContainerBuildAttempt,
+		}))
+		j.AddError(err)
+	}
+}
+
+// retry if we're under retry limit, and the image isn't built yet
+func (j *buildingContainerImageJob) shouldRetry(ctx context.Context) bool {
+	return j.parent.ContainerBuildAttempt <= containerBuildRetries && !j.parent.ContainerImages[j.DockerOptions.Image]
 }
