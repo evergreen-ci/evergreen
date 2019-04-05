@@ -11,38 +11,6 @@ var findIndex = function(list, predicate) {
   }
 }
 
-// converts expanded metric data to old data format
-mciModule.filter('expandedMetricConverter', function () {
-  return function (data) {
-      var output = {
-          "data": {
-              "results": []
-          }
-      };
-
-      _.each(data, function(test) {
-          if (!test.info || !test.info.args) {
-              return;
-          }
-          let result = {};
-          let threads = test.info.args.thread_level;
-          result[threads] = {};
-          _.each(test.rollups.stats, function (stat) {
-              result[threads][stat.name] = stat.val[0].Value;
-              result[threads][stat.name + "_values"] = [stat.val[0].Value];
-          });
-          output.data.results.push({
-              "name": test.info.test_name,
-              "isExpandedMetric": true,
-              "results": result
-          });
-      })
-
-      return output;
-  }
-})
-
-
 mciModule.controller('PerfController', function PerfController(
   $scope, $window, $http, $location, $log, $q, $filter, ChangePointsService,
   DrawPerfTrendChart, PROCESSED_TYPE, Settings, Stitch, STITCH_CONFIG,
@@ -580,23 +548,6 @@ mciModule.controller('PerfController', function PerfController(
       }, 0)
   }
 
-  // merges two sets of test data, giving preference to the existing data in case of duplicated test names
-  $scope.mergeSamples = function(toMerge) {
-    if (!$scope.perfSample || !$scope.perfSample.sample || !$scope.perfSample.sample.data) {
-      $scope.perfSample = toMerge;
-      return;
-    }
-    var samples = {};
-    _.each(toMerge.sample.data.results, function(result) {
-      samples[result.name] = result;
-    });
-    _.each($scope.perfSample.sample.data.results, function(result) {
-      samples[result.name] = result;
-    });
-
-    $scope.perfSample.sample.data.results = _.toArray(samples);
-  }
-
   $scope.processAndDrawGraphs = function() {
     setTimeout(function(){drawDetailGraph($scope.perfSample, $scope.comparePerfSamples, $scope.task.id)},0);
 
@@ -748,8 +699,8 @@ mciModule.controller('PerfController', function PerfController(
     // Populate the graph and table for this task
     var legacySuccess = function(resp){
       var d = resp.data;
-      var results = new TestSample(d);
-      $scope.mergeSamples(results);
+      var merged = $filter("mergePerfResults")($scope.tempPerfSample, d)
+      $scope.perfSample = new TestSample(merged);
       if("tag" in d && d.tag.length > 0){
         $scope.perfTagData.tag = d.tag
       }
@@ -762,6 +713,7 @@ mciModule.controller('PerfController', function PerfController(
     $http.get(cedarApp + "/rest/v1/perf/task_id/" + $scope.task.id).then(
       function(resp) {
         var formatted = $filter("expandedMetricConverter")(resp.data);
+        $scope.tempPerfSample = formatted;
         $scope.perfSample = new TestSample(formatted);
         $http.get("/plugin/json/task/" + $scope.task.id + "/perf/").then(legacySuccess,legacyError);
       }, function(error){
