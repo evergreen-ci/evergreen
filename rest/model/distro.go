@@ -127,7 +127,7 @@ func (apiDistro *APIDistro) BuildFromService(h interface{}) error {
 	apiDistro.Teardown = ToAPIString(d.Teardown)
 	apiDistro.User = ToAPIString(d.User)
 	if d.BootstrapMethod == "" {
-		d.BootstrapMethod = evergreen.BootstrapMethodLegacySSH
+		d.BootstrapMethod = distro.BootstrapMethodLegacySSH
 	}
 	apiDistro.BootstrapMethod = ToAPIString(d.BootstrapMethod)
 	apiDistro.SSHKey = ToAPIString(d.SSHKey)

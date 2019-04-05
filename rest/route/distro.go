@@ -267,7 +267,7 @@ func (h *distroIDPutHandler) Run(ctx context.Context) gimlet.Responder {
 		PlannerSettings: model.APIPlannerSettings{
 			Version: model.ToAPIString(evergreen.PlannerVersionLegacy),
 		},
-		BootstrapMethod: model.ToAPIString(evergreen.BootstrapMethodLegacySSH),
+		BootstrapMethod: model.ToAPIString(distro.BootstrapMethodLegacySSH),
 	}
 	if err = json.Unmarshal(h.body, apiDistro); err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "API error while unmarshalling JSON"))

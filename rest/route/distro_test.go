@@ -273,7 +273,7 @@ func (s *DistroByIDSuite) SetupSuite() {
 					MainlineFirst:          false,
 					PatchFirst:             true,
 				},
-				BootstrapMethod: evergreen.BootstrapMethodLegacySSH,
+				BootstrapMethod: distro.BootstrapMethodLegacySSH,
 			},
 			{Id: "distro2"},
 		},
@@ -311,7 +311,7 @@ func (s *DistroByIDSuite) TestFindByIdFound() {
 	s.Equal(7, d.PlannerSettings.PatchZipperFactor)
 	s.Equal(false, d.PlannerSettings.MainlineFirst)
 	s.Equal(true, d.PlannerSettings.PatchFirst)
-	s.Equal(d.BootstrapMethod, model.ToAPIString(evergreen.BootstrapMethodLegacySSH))
+	s.Equal(d.BootstrapMethod, model.ToAPIString(distro.BootstrapMethodLegacySSH))
 }
 
 func (s *DistroByIDSuite) TestFindByIdFail() {
@@ -937,7 +937,7 @@ func (s *DistroPatchByIDSuite) TestRunValidBootstrapMethod() {
 
 	apiDistro, ok := (resp.Data()).(*model.APIDistro)
 	s.Require().True(ok)
-	s.Equal(model.ToAPIString(evergreen.BootstrapMethodLegacySSH), apiDistro.BootstrapMethod)
+	s.Equal(model.ToAPIString(distro.BootstrapMethodLegacySSH), apiDistro.BootstrapMethod)
 }
 
 func (s *DistroPatchByIDSuite) TestRunInvalidBootstrapMethod() {
@@ -1032,7 +1032,7 @@ func (s *DistroPatchByIDSuite) TestValidFindAndReplaceFullDocument() {
 	s.Equal(apiDistro.SetupAsSudo, false)
 	s.Equal(apiDistro.Setup, model.ToAPIString("~Set-up script"))
 	s.Equal(apiDistro.Teardown, model.ToAPIString("~Tear-down script"))
-	s.Equal(model.ToAPIString(evergreen.BootstrapMethodLegacySSH), apiDistro.BootstrapMethod)
+	s.Equal(model.ToAPIString(distro.BootstrapMethodLegacySSH), apiDistro.BootstrapMethod)
 	s.Equal(apiDistro.User, model.ToAPIString("~root"))
 	s.Equal(apiDistro.SSHKey, model.ToAPIString("~SSH string"))
 	s.Equal(apiDistro.SSHOptions, []string{"~StrictHostKeyChecking=no", "~BatchMode=no", "~ConnectTimeout=10"})
