@@ -17,10 +17,7 @@ import (
 	"github.com/mongodb/grip/message"
 )
 
-const (
-	amboyStatsCollectorJobName = "amboy-stats-collector"
-	enableExtendedRemoteStats  = false
-)
+const amboyStatsCollectorJobName = "amboy-stats-collector"
 
 func init() {
 	registry.AddJobType(amboyStatsCollectorJobName,
