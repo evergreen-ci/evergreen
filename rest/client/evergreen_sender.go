@@ -69,7 +69,7 @@ func (s *evergreenLogSender) Close() error {
 }
 
 func (s *evergreenLogSender) flush(ctx context.Context, buffer []apimodels.LogMessage) {
-	grip.Warning(s.comm.SendLogMessages(ctx, s.logTaskData, buffer))
+	grip.Critical(s.comm.SendLogMessages(ctx, s.logTaskData, buffer))
 }
 
 func (s *evergreenLogSender) startBackgroundSender(ctx context.Context) {

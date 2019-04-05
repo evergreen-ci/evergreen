@@ -9,7 +9,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/mongodb/grip"
 	"github.com/stretchr/testify/suite"
-	"gopkg.in/mgo.v2/bson"
+	"go.mongodb.org/mongo-driver/bson"
 )
 
 var (
@@ -86,6 +86,21 @@ var (
 			},
 		},
 	}
+
+	smallGeneratedProject = GeneratedProject{
+		BuildVariants: []parserBV{
+			parserBV{
+				Name: "my_build_variant",
+				DisplayTasks: []displayTask{
+					displayTask{
+						Name:           "my_display_task",
+						ExecutionTasks: []string{"my_display_task_gen"},
+					},
+				},
+			},
+		},
+	}
+
 	sampleGeneratedProjectAddToBVOnly = GeneratedProject{
 		BuildVariants: []parserBV{
 			parserBV{
@@ -98,6 +113,7 @@ var (
 			},
 		},
 	}
+
 	sampleProjYml = `
 tasks:
   - name: say-hi
@@ -159,6 +175,16 @@ buildvariants:
 functions:
   a_function:
     command: shell.exec
+`
+	smallYml = `
+tasks:
+  - name: my_display_task_gen
+
+buildvariants:
+  - name: my_build_variant
+    display_name: Variant Number One
+    tasks:
+    - name: my_display_task_gen
 `
 	sampleProjYmlNoFunctions = `
 tasks:
@@ -613,20 +639,46 @@ func (s *GenerateSuite) TestSaveNewTasksWithDependencies() {
 	}
 }
 
-func (s *GenerateSuite) TestMergeGeneratedProjectsWithNoTasks() {
-	smallGeneratedProject := GeneratedProject{
-		BuildVariants: []parserBV{
-			parserBV{
-				Name: "my_build_variant",
-				DisplayTasks: []displayTask{
-					displayTask{
-						Name:           "my_display_task",
-						ExecutionTasks: []string{"nonsense"},
-					},
-				},
-			},
-		},
+func (s *GenerateSuite) TestSaveNewTaskWithExistingExecutionTask() {
+	taskThatExists := task.Task{
+		Id:      "task_that_called_generate_task",
+		Version: "version_that_called_generate_task",
 	}
+	taskDisplayGen := task.Task{
+		Id:          "my_display_task_gen",
+		DisplayName: "my_display_task_gen",
+		Version:     "version_that_called_generate_task",
+	}
+	sampleBuild := build.Build{
+		Id:           "sample_build",
+		BuildVariant: "my_build_variant",
+		Version:      "version_that_called_generate_task",
+	}
+	v := &Version{
+		Id:       "version_that_called_generate_task",
+		BuildIds: []string{"sample_build"},
+		Config:   smallYml,
+	}
+	s.NoError(taskThatExists.Insert())
+	s.NoError(taskDisplayGen.Insert())
+	s.NoError(sampleBuild.Insert())
+	s.NoError(v.Insert())
+
+	g := smallGeneratedProject
+	g.TaskID = "task_that_called_generate_task"
+	p, v, t, pm, prevConfig, err := g.NewVersion()
+	s.Require().NoError(err)
+	s.NoError(g.Save(p, v, t, pm, prevConfig))
+
+	tasks := []task.Task{}
+	s.NoError(db.FindAllQ(task.Collection, db.Query(bson.M{}), &tasks))
+	s.NoError(db.FindAllQ(task.Collection, db.Query(bson.M{"display_name": "my_display_task_gen"}), &tasks))
+	s.Len(tasks, 1)
+	s.NoError(db.FindAllQ(task.Collection, db.Query(bson.M{"display_name": "my_display_task"}), &tasks))
+	s.Len(tasks, 1)
+}
+
+func (s *GenerateSuite) TestMergeGeneratedProjectsWithNoTasks() {
 	projects := []GeneratedProject{smallGeneratedProject}
 	merged := MergeGeneratedProjects(projects)
 	s.Require().NotNil(merged)

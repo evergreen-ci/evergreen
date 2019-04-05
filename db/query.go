@@ -1,6 +1,9 @@
 package db
 
-import "gopkg.in/mgo.v2/bson"
+import (
+	"github.com/pkg/errors"
+	"go.mongodb.org/mongo-driver/bson"
+)
 
 // Q holds all information necessary to execute a query
 type Q struct {
@@ -74,7 +77,7 @@ func FindOneQ(collection string, q Q, out interface{}) error {
 
 // FindAllQ runs a Q query against the given collection, applying the results to "out."
 func FindAllQ(collection string, q Q, out interface{}) error {
-	return FindAll(
+	return errors.WithStack(FindAll(
 		collection,
 		q.filter,
 		q.projection,
@@ -82,7 +85,7 @@ func FindAllQ(collection string, q Q, out interface{}) error {
 		q.skip,
 		q.limit,
 		out,
-	)
+	))
 }
 
 // CountQ runs a Q count query against the given collection.

@@ -18,7 +18,6 @@ import (
 func TestFindDistroById(t *testing.T) {
 	assert := assert.New(t)
 	testutil.ConfigureIntegrationTest(t, testConfig, "TestFindDistroById")
-	db.SetGlobalSessionProvider(testConfig.SessionFactory())
 	session, _, err := db.GetGlobalSessionFactory().GetSession()
 	assert.NoError(err)
 	require.NotNil(t, session)
@@ -41,7 +40,6 @@ func TestFindDistroById(t *testing.T) {
 func TestFindAllDistros(t *testing.T) {
 	assert := assert.New(t)
 	testutil.ConfigureIntegrationTest(t, testConfig, "TestFindAllDistros")
-	db.SetGlobalSessionProvider(testConfig.SessionFactory())
 	session, _, err := db.GetGlobalSessionFactory().GetSession()
 	assert.NoError(err)
 	require.NotNil(t, session)
@@ -81,7 +79,6 @@ func TestDistroCostConnectorSuite(t *testing.T) {
 	s := new(DistroCostConnectorSuite)
 	s.ctx = &DBConnector{}
 	testutil.ConfigureIntegrationTest(t, testConfig, "TestDistroCostConnectorSuite")
-	db.SetGlobalSessionProvider(testConfig.SessionFactory())
 
 	// Tear down
 	assert.NoError(db.Clear(task.Collection))

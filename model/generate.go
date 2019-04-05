@@ -1,6 +1,7 @@
 package model
 
 import (
+	"fmt"
 	"net/http"
 
 	"github.com/evergreen-ci/evergreen"
@@ -9,8 +10,8 @@ import (
 	"github.com/evergreen-ci/gimlet"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
-	"gopkg.in/mgo.v2/bson"
-	"gopkg.in/yaml.v2"
+	"go.mongodb.org/mongo-driver/bson"
+	yaml "gopkg.in/yaml.v2"
 )
 
 const (
@@ -113,7 +114,7 @@ func (g *GeneratedProject) NewVersion() (*Project, *Version, *task.Task, *projec
 	}
 	if t == nil {
 		return nil, nil, nil, nil, "",
-			gimlet.ErrorResponse{StatusCode: http.StatusBadRequest, Message: errors.Wrapf(err, "unable to find task %s", g.TaskID).Error()}
+			gimlet.ErrorResponse{StatusCode: http.StatusBadRequest, Message: fmt.Sprintf("unable to find task %s", g.TaskID)}
 	}
 	v, err := VersionFindOneId(t.Version)
 	if err != nil {
@@ -122,11 +123,11 @@ func (g *GeneratedProject) NewVersion() (*Project, *Version, *task.Task, *projec
 	}
 	if v == nil {
 		return nil, nil, nil, nil, "",
-			gimlet.ErrorResponse{StatusCode: http.StatusBadRequest, Message: errors.Wrapf(err, "unable to find version %s", t.Version).Error()}
+			gimlet.ErrorResponse{StatusCode: http.StatusBadRequest, Message: fmt.Sprintf("unable to find version %s", t.Version)}
 	}
 	if v.Config == "" {
 		return nil, nil, nil, nil, "",
-			gimlet.ErrorResponse{StatusCode: http.StatusBadRequest, Message: errors.Errorf("unable to find config string for version %s", t.Version).Error()}
+			gimlet.ErrorResponse{StatusCode: http.StatusBadRequest, Message: fmt.Sprintf("unable to find config string for version %s", t.Version)}
 	}
 	prevConfig := v.Config
 	p := &Project{}

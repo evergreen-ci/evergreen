@@ -10,10 +10,10 @@ import (
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/testresult"
-	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/stretchr/testify/suite"
-	"gopkg.in/mgo.v2/bson"
+	"go.mongodb.org/mongo-driver/bson"
+	mgobson "gopkg.in/mgo.v2/bson"
 )
 
 var baseTime = time.Date(2018, 7, 15, 16, 45, 0, 0, time.UTC)
@@ -31,10 +31,6 @@ type statsSuite struct {
 
 func TestStatsSuite(t *testing.T) {
 	suite.Run(t, new(statsSuite))
-}
-
-func (s *statsSuite) SetupSuite() {
-	db.SetGlobalSessionProvider(testutil.TestConfig().SessionFactory())
 }
 
 func (s *statsSuite) SetupTest() {
@@ -699,7 +695,7 @@ func (s *statsSuite) insertTestResult(taskId string, execution int, testFile str
 
 func (s *statsSuite) insertFinishedTask(project string, requester string, taskName string, createTime time.Time, finishTime time.Time) {
 	newTask := task.Task{
-		Id:          bson.NewObjectId().Hex(),
+		Id:          mgobson.NewObjectId().Hex(),
 		DisplayName: taskName,
 		Project:     project,
 		Requester:   requester,
@@ -712,7 +708,7 @@ func (s *statsSuite) insertFinishedTask(project string, requester string, taskNa
 
 func (s *statsSuite) insertFinishedOldTask(project string, requester string, taskName string, createTime time.Time, finishTime time.Time) {
 	newTask := task.Task{
-		Id:          bson.NewObjectId().String(),
+		Id:          mgobson.NewObjectId().String(),
 		DisplayName: taskName,
 		Project:     project,
 		Requester:   requester,

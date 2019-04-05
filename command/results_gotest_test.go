@@ -16,7 +16,6 @@ import (
 )
 
 func reset(t *testing.T) {
-	db.SetGlobalSessionProvider(testutil.TestConfig().SessionFactory())
 	testutil.HandleTestingErr(
 		db.ClearCollections(task.Collection, model.TestLogCollection), t,
 		"error clearing test collections")
@@ -24,9 +23,11 @@ func reset(t *testing.T) {
 
 func TestGotestPluginOnFailingTests(t *testing.T) {
 	currentDirectory := testutil.GetDirectoryOfFile()
-	testConfig := testutil.TestConfig()
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
+	env := testutil.NewEnvironment(ctx, t)
+	testConfig := env.Settings()
+
 	comm := client.NewMock("http://localhost.com")
 
 	SkipConvey("With gotest plugin installed into plugin registry", t, func() {

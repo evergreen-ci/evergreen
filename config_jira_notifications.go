@@ -4,9 +4,10 @@ import (
 	"fmt"
 	"text/template"
 
-	"github.com/evergreen-ci/evergreen/db"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
+	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
 type JIRANotificationsConfig struct {
@@ -75,18 +76,33 @@ type JIRANotificationsCustomField struct {
 
 func (c *JIRANotificationsConfig) SectionId() string { return "jira_notifications" }
 
-func (c *JIRANotificationsConfig) Get() error {
-	err := db.FindOneQ(ConfigCollection, db.Query(byId(c.SectionId())), c)
-	if err != nil && err.Error() == errNotFound {
-		*c = JIRANotificationsConfig{}
-		return nil
+func (c *JIRANotificationsConfig) Get(env Environment) error {
+	ctx, cancel := env.Context()
+	defer cancel()
+	coll := env.DB().Collection(ConfigCollection)
+
+	res := coll.FindOne(ctx, byId(c.SectionId()))
+	if err := res.Err(); err != nil {
+		return errors.Wrapf(err, "error retrieving section %s", c.SectionId())
 	}
 
-	return errors.Wrapf(err, "error retrieving section %s", c.SectionId())
+	if err := res.Decode(c); err != nil {
+		if err == mongo.ErrNoDocuments {
+			*c = JIRANotificationsConfig{}
+			return nil
+		}
+		return errors.Wrapf(err, "error retrieving section %s", c.SectionId())
+	}
+	return nil
 }
 
 func (c *JIRANotificationsConfig) Set() error {
-	_, err := db.Upsert(ConfigCollection, byId(c.SectionId()), c)
+	env := GetEnvironment()
+	ctx, cancel := env.Context()
+	defer cancel()
+	coll := env.DB().Collection(ConfigCollection)
+
+	_, err := coll.ReplaceOne(ctx, byId(c.SectionId()), c, options.Replace().SetUpsert(true))
 	return errors.Wrapf(err, "error updating section %s", c.SectionId())
 }
 

@@ -1,14 +1,16 @@
 package evergreen
 
 import (
+	"context"
+	"os"
 	"path/filepath"
 	"reflect"
 	"testing"
 
-	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/grip/send"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -86,19 +88,26 @@ func TestGetGithubSettings(t *testing.T) {
 }
 
 type AdminSuite struct {
+	env Environment
 	suite.Suite
 }
 
 func TestAdminSuite(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	env, err := NewEnvironment(ctx, os.Getenv("SETTINGS_OVERRIDE"), nil)
+	require.NoError(t, err)
+	SetEnvironment(env)
+
 	s := new(AdminSuite)
-	config := testConfig()
-	db.SetGlobalSessionProvider(config.SessionFactory())
+	s.env = env
 	suite.Run(t, s)
 }
 
 func (s *AdminSuite) SetupTest() {
-	s.NoError(db.Clear(ConfigCollection))
 	s.NoError(resetRegistry())
+
 }
 
 func (s *AdminSuite) TestBanner() {
@@ -407,8 +416,8 @@ func (s *AdminSuite) TestUiConfig() {
 }
 
 func (s *AdminSuite) TestConfigDefaults() {
-	config, err := GetConfig()
-	s.NoError(err)
+	config := testConfig()
+
 	s.Require().NotNil(config)
 	config.Database = DBSettings{
 		Url: "url",
@@ -461,7 +470,7 @@ func (s *AdminSuite) TestKeyValPairsToMap() {
 	s.NoError(config.ValidateAndDefault())
 	s.NoError(config.Set())
 	dbConfig := Settings{}
-	s.NoError(dbConfig.Get())
+	s.NoError(dbConfig.Get(s.env))
 	s.Len(dbConfig.CredentialsNew, 1)
 	s.Len(dbConfig.ExpansionsNew, 1)
 	s.Len(dbConfig.KeysNew, 1)
@@ -576,7 +585,7 @@ func (s *AdminSuite) TestJIRANotificationsConfig() {
 			},
 		},
 	}
-	s.NoError(c.Get())
+	s.NoError(c.Get(s.env))
 	s.NotNil(c)
 	s.Nil(c.CustomFields)
 	s.NotPanics(func() {
@@ -594,12 +603,17 @@ func (s *AdminSuite) TestJIRANotificationsConfig() {
 			},
 		},
 	}
-	s.NoError(c.Set())
+	m, err := c.CustomFields.ToMap()
+	s.NoError(err)
+	s.Require().Len(m, 1)
+	s.Require().Len(m["EVG"], 1)
+
+	s.Require().NoError(c.Set())
 
 	c = JIRANotificationsConfig{}
-	s.NoError(c.Get())
+	s.Require().NoError(c.Get(s.env))
 	s.NoError(c.ValidateAndDefault())
-	m, err := c.CustomFields.ToMap()
+	m, err = c.CustomFields.ToMap()
 	s.NoError(err)
 	s.Require().Len(m, 1)
 	s.Require().Len(m["EVG"], 1)

@@ -46,7 +46,7 @@ type Query interface {
 	Select(interface{}) Query
 	Skip(n int) Query
 	Sort(...string) Query
-
+	Apply(Change, interface{}) (*ChangeInfo, error)
 	Results
 }
 

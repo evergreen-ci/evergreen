@@ -16,7 +16,7 @@ import (
 
 func TestFindTestsByTaskId(t *testing.T) {
 	testutil.ConfigureIntegrationTest(t, testConfig, "TestFindTestsByTaskId")
-	db.SetGlobalSessionProvider(testConfig.SessionFactory())
+	
 	assert := assert.New(t)
 	assert.NoError(db.Clear(task.Collection))
 
@@ -104,7 +104,7 @@ func TestFindTestsByTaskId(t *testing.T) {
 
 func TestFindTestsByDisplayTaskId(t *testing.T) {
 	testutil.ConfigureIntegrationTest(t, testConfig, "TestFindTestsByTaskId")
-	db.SetGlobalSessionProvider(testConfig.SessionFactory())
+	
 	assert := assert.New(t)
 	assert.NoError(db.Clear(task.Collection))
 

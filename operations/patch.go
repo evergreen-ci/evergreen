@@ -77,6 +77,7 @@ func Patch() cli.Command {
 			}
 
 			comm := conf.GetRestCommunicator(ctx)
+			defer comm.Close()
 
 			ac, _, err := conf.getLegacyClients()
 			if err != nil {
@@ -143,6 +144,7 @@ func PatchFile() cli.Command {
 			}
 
 			comm := conf.GetRestCommunicator(ctx)
+			defer comm.Close()
 
 			ac, _, err := conf.getLegacyClients()
 			if err != nil {

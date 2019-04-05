@@ -8,19 +8,14 @@ import (
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/mock"
 	"github.com/evergreen-ci/evergreen/model/host"
-	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"gopkg.in/mgo.v2/bson"
+	"go.mongodb.org/mongo-driver/bson"
 )
 
 func TestCloudStatusJob(t *testing.T) {
 	assert := assert.New(t)
 	require := require.New(t)
-
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-	testutil.SetGlobalEnvironment(ctx, t)
 
 	require.NoError(db.ClearCollections(host.Collection))
 	hosts := []host.Host{

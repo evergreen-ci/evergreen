@@ -329,9 +329,9 @@
                            aria-label="origin">
                   Origin
                 </md-switch>
-                <md-switch ng-model="rangeModel.rejectMode"
+                <md-switch ng-model="rejectModel.rejectMode"
                            ng-click="$event.stopPropagation()"
-                           aria-label="origin">
+                           aria-label="reject">
                   Reject
                 </md-switch>
               </md-fab-actions>
@@ -361,7 +361,7 @@
       <div class="muted" ng-show="!locked">click on a graph to lock to a commit</div>
       <div class="perf-trendchart-wrapper" ng-repeat="k in perfSample.testNames()">
         <a name="[[k]]"></a>
-        <h4> <i class="fa" ng-class="isGraphHidden(k) ? 'fa-caret-right' : 'fa-caret-down'" ng-click="toggleGraph(k)"></i>&nbsp;[[k]]</h4>
+        <h4> <i class="fa" ng-class="isGraphHidden(k) ? 'fa-caret-right' : 'fa-caret-down'" ng-click="toggleGraph(k)"></i>&nbsp;[[k]] <i class="fa fa-sticky-note" ng-show="perfSample.resultForTest(k).isExpandedMetric" title="Expanded metric"></i></h4>
         <div class="row" ng-show="!isGraphHidden(k)">
           <div class="col-lg-1 perf-trendchart-sidebar">
               <div class="mono"><a ng-href="/task/[[hoverSamples[k].task_id]]">[[hoverSamples[k].revision | limitTo : 7]]</a></div>

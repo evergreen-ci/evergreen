@@ -15,8 +15,6 @@ func TestWarnSlowProvisioningHosts(t *testing.T) {
 
 	testConfig := testutil.TestConfigWithDefaultAuthTokens()
 
-	db.SetGlobalSessionProvider(testConfig.SessionFactory())
-
 	Convey("When building warnings for hosts that are taking a long time to"+
 		" provision", t, func() {
 

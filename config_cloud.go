@@ -1,9 +1,10 @@
 package evergreen
 
 import (
-	"github.com/evergreen-ci/evergreen/db"
 	"github.com/pkg/errors"
-	"gopkg.in/mgo.v2/bson"
+	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
 // CloudProviders stores configuration settings for the supported cloud host providers.
@@ -17,17 +18,35 @@ type CloudProviders struct {
 
 func (c *CloudProviders) SectionId() string { return "providers" }
 
-func (c *CloudProviders) Get() error {
-	err := db.FindOneQ(ConfigCollection, db.Query(byId(c.SectionId())), c)
-	if err != nil && err.Error() == errNotFound {
-		*c = CloudProviders{}
-		return nil
+func (c *CloudProviders) Get(env Environment) error {
+	ctx, cancel := env.Context()
+	defer cancel()
+	coll := env.DB().Collection(ConfigCollection)
+
+	res := coll.FindOne(ctx, byId(c.SectionId()))
+	if err := res.Err(); err != nil {
+		return errors.Wrapf(err, "error retrieving section %s", c.SectionId())
 	}
-	return errors.Wrapf(err, "error retrieving section %s", c.SectionId())
+
+	if err := res.Decode(c); err != nil {
+		if err == mongo.ErrNoDocuments {
+			*c = CloudProviders{}
+			return nil
+		}
+
+		return errors.Wrap(err, "problem decoding result")
+	}
+
+	return nil
 }
 
 func (c *CloudProviders) Set() error {
-	_, err := db.Upsert(ConfigCollection, byId(c.SectionId()), bson.M{
+	env := GetEnvironment()
+	ctx, cancel := env.Context()
+	defer cancel()
+	coll := env.DB().Collection(ConfigCollection)
+
+	_, err := coll.UpdateOne(ctx, byId(c.SectionId()), bson.M{
 		"$set": bson.M{
 			"aws":       c.AWS,
 			"docker":    c.Docker,
@@ -35,7 +54,8 @@ func (c *CloudProviders) Set() error {
 			"openstack": c.OpenStack,
 			"vsphere":   c.VSphere,
 		},
-	})
+	}, options.Update().SetUpsert(true))
+
 	return errors.Wrapf(err, "error updating section %s", c.SectionId())
 }
 

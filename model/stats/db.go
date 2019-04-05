@@ -58,7 +58,6 @@ package stats
 // }
 
 import (
-	"context"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
@@ -69,8 +68,9 @@ import (
 	"github.com/mongodb/anser/bsonutil"
 	adb "github.com/mongodb/anser/db"
 	"github.com/pkg/errors"
-	mgo "gopkg.in/mgo.v2"
-	"gopkg.in/mgo.v2/bson"
+	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/mongo/options"
+	mgobson "gopkg.in/mgo.v2/bson"
 )
 
 const (
@@ -135,6 +135,9 @@ type dbTestStats struct {
 	AvgDurationPass float64       `bson:"avg_duration_pass"`
 	LastUpdate      time.Time     `bson:"last_update"`
 }
+
+func (d *dbTestStats) MarshalBSON() ([]byte, error)  { return mgobson.Marshal(d) }
+func (d *dbTestStats) UnmarshalBSON(in []byte) error { return mgobson.Unmarshal(in, d) }
 
 var (
 	// BSON fields for the test stats id struct
@@ -270,12 +273,12 @@ func getHourlyTestStatsPipeline(projectId string, requester string, start time.T
 			"duration":                   bson.M{"$subtract": array{"$testresults." + testresult.EndTimeKey, "$testresults." + testresult.StartTimeKey}}}},
 		{"$group": bson.M{
 			"_id": bson.D{
-				{Name: dbTestStatsIdTestFileKey, Value: "$" + dbTestStatsIdTestFileKey},
-				{Name: dbTestStatsIdTaskNameKey, Value: "$" + dbTestStatsIdTaskNameKey},
-				{Name: dbTestStatsIdBuildVariantKey, Value: "$" + dbTestStatsIdBuildVariantKey},
-				{Name: dbTestStatsIdDistroKey, Value: "$" + dbTestStatsIdDistroKey},
-				{Name: dbTestStatsIdProjectKey, Value: "$" + dbTestStatsIdProjectKey},
-				{Name: dbTestStatsIdRequesterKey, Value: "$" + dbTestStatsIdRequesterKey},
+				{Key: dbTestStatsIdTestFileKey, Value: "$" + dbTestStatsIdTestFileKey},
+				{Key: dbTestStatsIdTaskNameKey, Value: "$" + dbTestStatsIdTaskNameKey},
+				{Key: dbTestStatsIdBuildVariantKey, Value: "$" + dbTestStatsIdBuildVariantKey},
+				{Key: dbTestStatsIdDistroKey, Value: "$" + dbTestStatsIdDistroKey},
+				{Key: dbTestStatsIdProjectKey, Value: "$" + dbTestStatsIdProjectKey},
+				{Key: dbTestStatsIdRequesterKey, Value: "$" + dbTestStatsIdRequesterKey},
 			},
 			dbTestStatsNumPassKey: makeSum(bson.M{"$eq": array{"$status", evergreen.TestSucceededStatus}}),
 			dbTestStatsNumFailKey: makeSum(bson.M{"$in": array{"$status", array{evergreen.TestFailedStatus, evergreen.TestSilentlyFailedStatus}}}),
@@ -308,12 +311,12 @@ func dailyTestStatsFromHourlyPipeline(projectId string, requester string, start 
 		{
 			"$group": bson.M{
 				"_id": bson.D{
-					{Name: dbTestStatsIdTestFileKey, Value: "$" + dbTestStatsIdTestFileKeyFull},
-					{Name: dbTestStatsIdTaskNameKey, Value: "$" + dbTestStatsIdTaskNameKeyFull},
-					{Name: dbTestStatsIdBuildVariantKey, Value: "$" + dbTestStatsIdBuildVariantKeyFull},
-					{Name: dbTestStatsIdDistroKey, Value: "$" + dbTestStatsIdDistroKeyFull},
-					{Name: dbTestStatsIdProjectKey, Value: "$" + dbTestStatsIdProjectKeyFull},
-					{Name: dbTestStatsIdRequesterKey, Value: "$" + dbTestStatsIdRequesterKeyFull},
+					{Key: dbTestStatsIdTestFileKey, Value: "$" + dbTestStatsIdTestFileKeyFull},
+					{Key: dbTestStatsIdTaskNameKey, Value: "$" + dbTestStatsIdTaskNameKeyFull},
+					{Key: dbTestStatsIdBuildVariantKey, Value: "$" + dbTestStatsIdBuildVariantKeyFull},
+					{Key: dbTestStatsIdDistroKey, Value: "$" + dbTestStatsIdDistroKeyFull},
+					{Key: dbTestStatsIdProjectKey, Value: "$" + dbTestStatsIdProjectKeyFull},
+					{Key: dbTestStatsIdRequesterKey, Value: "$" + dbTestStatsIdRequesterKeyFull},
 				},
 				dbTestStatsNumPassKey: bson.M{"$sum": "$" + dbTestStatsNumPassKey},
 				dbTestStatsNumFailKey: bson.M{"$sum": "$" + dbTestStatsNumFailKey},
@@ -364,6 +367,9 @@ type dbTaskStats struct {
 	AvgDurationSuccess float64       `bson:"avg_duration_success"`
 	LastUpdate         time.Time     `bson:"last_update"`
 }
+
+func (d *dbTaskStats) MarshalBSON() ([]byte, error)  { return mgobson.Marshal(d) }
+func (d *dbTaskStats) UnmarshalBSON(in []byte) error { return mgobson.Unmarshal(in, d) }
 
 var (
 	// BSON fields for the task stats id struct
@@ -486,11 +492,11 @@ func getDailyTaskStatsPipeline(projectId string, requester string, start time.Ti
 		{"$match": bson.M{"display_task": array{}}}, // Excluding the execution tasks
 		{"$group": bson.M{
 			"_id": bson.D{
-				{Name: dbTaskStatsIdTaskNameKey, Value: "$" + dbTaskStatsIdTaskNameKey},
-				{Name: dbTaskStatsIdBuildVariantKey, Value: "$" + dbTaskStatsIdBuildVariantKey},
-				{Name: dbTaskStatsIdDistroKey, Value: "$" + dbTaskStatsIdDistroKey},
-				{Name: dbTaskStatsIdProjectKey, Value: "$" + dbTaskStatsIdProjectKey},
-				{Name: dbTaskStatsIdRequesterKey, Value: "$" + dbTaskStatsIdRequesterKey}},
+				{Key: dbTaskStatsIdTaskNameKey, Value: "$" + dbTaskStatsIdTaskNameKey},
+				{Key: dbTaskStatsIdBuildVariantKey, Value: "$" + dbTaskStatsIdBuildVariantKey},
+				{Key: dbTaskStatsIdDistroKey, Value: "$" + dbTaskStatsIdDistroKey},
+				{Key: dbTaskStatsIdProjectKey, Value: "$" + dbTaskStatsIdProjectKey},
+				{Key: dbTaskStatsIdRequesterKey, Value: "$" + dbTaskStatsIdRequesterKey}},
 			dbTaskStatsNumSuccessKey: makeSum(bson.M{"$eq": array{"$status", "success"}}),
 			dbTaskStatsNumFailedKey:  makeSum(bson.M{"$eq": array{"$status", "failed"}}),
 			dbTaskStatsNumTimeoutKey: makeSum(bson.M{"$and": array{
@@ -560,9 +566,9 @@ func statsToUpdatePipeline(projectId string, start time.Time, end time.Time) []b
 			statsToUpdateTasksKey:     1,
 		}},
 		{"$sort": bson.D{
-			{Name: statsToUpdateProjectKey, Value: 1},
-			{Name: statsToUpdateHourKey, Value: 1},
-			{Name: statsToUpdateRequesterKey, Value: 1},
+			{Key: statsToUpdateProjectKey, Value: 1},
+			{Key: statsToUpdateHourKey, Value: 1},
+			{Key: statsToUpdateRequesterKey, Value: 1},
 		}},
 	}
 	return pipeline
@@ -626,11 +632,11 @@ func (filter StatsFilter) testStatsQueryPipeline() []bson.M {
 				"else": nil}},
 		}},
 		{"$sort": bson.D{
-			{Name: TestStatsDateKey, Value: sortDateOrder(filter.Sort)},
-			{Name: TestStatsBuildVariantKey, Value: 1},
-			{Name: TestStatsTaskNameKey, Value: 1},
-			{Name: TestStatsTestFileKey, Value: 1},
-			{Name: TestStatsDistroKey, Value: 1},
+			{Key: TestStatsDateKey, Value: sortDateOrder(filter.Sort)},
+			{Key: TestStatsBuildVariantKey, Value: 1},
+			{Key: TestStatsTaskNameKey, Value: 1},
+			{Key: TestStatsTestFileKey, Value: 1},
+			{Key: TestStatsDistroKey, Value: 1},
 		}},
 		{"$limit": filter.Limit},
 	}
@@ -808,10 +814,10 @@ func (filter StatsFilter) taskStatsQueryPipeline() []bson.M {
 				"else": nil}},
 		}},
 		{"$sort": bson.D{
-			{Name: TaskStatsDateKey, Value: sortDateOrder(filter.Sort)},
-			{Name: TaskStatsBuildVariantKey, Value: 1},
-			{Name: TaskStatsTaskNameKey, Value: 1},
-			{Name: TaskStatsDistroKey, Value: 1},
+			{Key: TaskStatsDateKey, Value: sortDateOrder(filter.Sort)},
+			{Key: TaskStatsBuildVariantKey, Value: 1},
+			{Key: TaskStatsTaskNameKey, Value: 1},
+			{Key: TaskStatsDistroKey, Value: 1},
 		}},
 		{"$limit": filter.Limit},
 	}
@@ -991,65 +997,49 @@ func (pf paginationField) getNextExpression() bson.M {
 // Internal helpers for writing documents, running aggregations //
 //////////////////////////////////////////////////////////////////
 
-// aggregateWithCallback runs an aggregation pipeline on a collection and calls the provided callback for each output document.
-func aggregateWithCallback(collection string, pipeline []bson.M, callback func(interface{}) error) error {
-	session, database, err := db.GetGlobalSessionFactory().GetSession()
-	if err != nil {
-		return errors.Wrap(err, "Error establishing db connection")
-	}
-	defer session.Close()
-
-	session.SetSocketTimeout(0)
-	pipe := database.C(collection).Pipe(pipeline).AllowDiskUse()
-	iter := pipe.Iter()
-	for {
-		raw := bson.RawD{}
-		if iter.Next(&raw) {
-			err = callback(raw)
-			if err != nil {
-				return errors.Wrap(err, "A callback call failed")
-			}
-		} else {
-			err = iter.Err()
-			if err != nil {
-				return errors.Wrap(err, "Error during aggregation")
-			}
-			break
-		}
-	}
-	return nil
-}
-
 // aggregateIntoCollection runs an aggregation pipeline on a collection and bulk upserts all the documents
 // into the target collection.
 func aggregateIntoCollection(collection string, pipeline []bson.M, outputCollection string) error {
-	session, database, err := db.GetGlobalSessionFactory().GetSession()
-	if err != nil {
-		err = errors.Wrap(err, "Error establishing db connection")
-		return err
-	}
-	defer session.Close()
-
-	ctx := context.TODO()
+	env := evergreen.GetEnvironment()
+	ctx, cancel := env.Context()
+	defer cancel()
 
 	opts := adb.BufferedWriteOptions{
-		DB:         database.Name,
+		DB:         env.Settings().Database.DB,
 		Collection: outputCollection,
 		Count:      bulkSize,
 		Duration:   10 * time.Second,
 	}
 
-	writer, err := adb.NewBufferedSessionUpsertByID(ctx, session, opts)
+	writer, err := adb.NewBufferedUpsertByID(ctx, env.Session().DB(opts.DB), opts)
 	if err != nil {
 		return errors.Wrap(err, "Failed to initialize document writer")
 	}
-	err = aggregateWithCallback(collection, pipeline, writer.Append)
+
+	cursor, err := env.DB().Collection(collection).Aggregate(ctx, pipeline, options.Aggregate().SetAllowDiskUse(true))
 	if err != nil {
-		return errors.Wrap(err, "Failed to aggregate with document writer callback")
+		return errors.Wrap(err, "problem running aggregation")
 	}
-	err = writer.Close()
-	if err != nil {
-		return errors.Wrap(err, "Failed to flush document writer")
+
+	for cursor.Next(ctx) {
+		doc := make(bson.Raw, len(cursor.Current))
+		copy(doc, cursor.Current)
+
+		if err = writer.Append(doc); err != nil {
+			return errors.Wrap(err, "problem with bulk insert")
+		}
+	}
+
+	if err = cursor.Err(); err != nil {
+		return errors.Wrap(err, "problem running aggregation")
+	}
+
+	if err = cursor.Close(ctx); err != nil {
+		return errors.Wrap(err, "problem closing cursor")
+	}
+
+	if err = writer.Close(); err != nil {
+		return errors.Wrap(err, "problem flushing to new collection")
 	}
 	return nil
 }
@@ -1066,7 +1056,7 @@ func makeSum(condition bson.M) bson.M {
 func GetDailyTestDoc(id DbTestStatsId) (*dbTestStats, error) {
 	doc := dbTestStats{}
 	err := db.FindOne(dailyTestStatsCollection, bson.M{"_id": id}, db.NoProjection, db.NoSort, &doc)
-	if err == mgo.ErrNotFound {
+	if adb.ResultsNotFound(err) {
 		return nil, nil
 	}
 	return &doc, err
@@ -1075,7 +1065,7 @@ func GetDailyTestDoc(id DbTestStatsId) (*dbTestStats, error) {
 func GetHourlyTestDoc(id DbTestStatsId) (*dbTestStats, error) {
 	doc := dbTestStats{}
 	err := db.FindOne(hourlyTestStatsCollection, bson.M{"_id": id}, db.NoProjection, db.NoSort, &doc)
-	if err == mgo.ErrNotFound {
+	if adb.ResultsNotFound(err) {
 		return nil, nil
 	}
 	return &doc, err
@@ -1084,7 +1074,7 @@ func GetHourlyTestDoc(id DbTestStatsId) (*dbTestStats, error) {
 func GetDailyTaskDoc(id DbTaskStatsId) (*dbTaskStats, error) {
 	doc := dbTaskStats{}
 	err := db.FindOne(dailyTaskStatsCollection, bson.M{"_id": id}, db.NoProjection, db.NoSort, &doc)
-	if err == mgo.ErrNotFound {
+	if adb.ResultsNotFound(err) {
 		return nil, nil
 	}
 	return &doc, err

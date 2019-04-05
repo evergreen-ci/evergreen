@@ -5,7 +5,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
 	modelutil "github.com/evergreen-ci/evergreen/model/testutil"
 	"github.com/evergreen-ci/evergreen/rest/client"
@@ -16,10 +16,10 @@ import (
 func TestS3CopyPluginExecution(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	comm := client.NewMock("http://localhost.com")
+	env := evergreen.GetEnvironment()
+	testConfig := env.Settings()
 
-	testConfig := testutil.TestConfig()
-	db.SetGlobalSessionProvider(testConfig.SessionFactory())
+	comm := client.NewMock("http://localhost.com")
 
 	testutil.ConfigureIntegrationTest(t, testConfig, "TestS3CopyPluginExecution")
 

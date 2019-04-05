@@ -51,9 +51,7 @@ func listQueue() cli.Command {
 				return errors.Wrap(err, "problem loading configuration")
 			}
 			client := conf.GetRestCommunicator(ctx)
-			if err != nil {
-				return errors.Wrap(err, "problem accessing evergreen service")
-			}
+			defer client.Close()
 
 			return listCommitQueue(ctx, client, projectID)
 		},
@@ -85,9 +83,7 @@ func deleteItem() cli.Command {
 				return errors.Wrap(err, "problem loading configuration")
 			}
 			client := conf.GetRestCommunicator(ctx)
-			if err != nil {
-				return errors.Wrap(err, "problem accessing evergreen service")
-			}
+			defer client.Close()
 
 			return deleteCommitQueueItem(ctx, client, projectID, item)
 		},
@@ -137,9 +133,7 @@ func mergeCommand() cli.Command {
 			}
 
 			client := conf.GetRestCommunicator(ctx)
-			if err != nil {
-				return errors.Wrap(err, "problem accessing evergreen service")
-			}
+			defer client.Close()
 
 			return params.mergeBranch(ctx, conf, client, ac)
 		},
