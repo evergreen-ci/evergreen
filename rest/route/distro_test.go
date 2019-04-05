@@ -110,7 +110,8 @@ func (s *DistroPatchSetupByIDSuite) TestRunValidId() {
 	s.NotNil(resp.Data())
 	s.Equal(resp.Status(), http.StatusOK)
 
-	apiDistro := (resp.Data()).(*model.APIDistro)
+	apiDistro, ok := (resp.Data()).(*model.APIDistro)
+	s.Require().True(ok)
 	s.Equal(apiDistro.Setup, model.ToAPIString("New set-up script"))
 }
 
@@ -217,7 +218,8 @@ func (s *DistroPatchTeardownByIDSuite) TestRunValidId() {
 	s.NotNil(resp.Data())
 	s.Equal(resp.Status(), http.StatusOK)
 
-	apiDistro := (resp.Data()).(*model.APIDistro)
+	apiDistro, ok := (resp.Data()).(*model.APIDistro)
+	s.Require().True(ok)
 	s.Equal(apiDistro.Teardown, model.ToAPIString("New tear-down script"))
 }
 
@@ -264,6 +266,7 @@ func (s *DistroByIDSuite) SetupSuite() {
 					MainlineFirst:          false,
 					PatchFirst:             true,
 				},
+				BootstrapMethod: distro.BootstrapMethodLegacySSH,
 			},
 			{Id: "distro2"},
 		},
@@ -301,6 +304,7 @@ func (s *DistroByIDSuite) TestFindByIdFound() {
 	s.Equal(7, d.PlannerSettings.PatchZipperFactor)
 	s.Equal(false, d.PlannerSettings.MainlineFirst)
 	s.Equal(true, d.PlannerSettings.PatchFirst)
+	s.Equal(d.BootstrapMethod, model.ToAPIString(distro.BootstrapMethodLegacySSH))
 }
 
 func (s *DistroByIDSuite) TestFindByIdFail() {
@@ -368,7 +372,8 @@ func (s *DistroPutSuite) TestParse() {
     		"patch_zipper_factor": 2,
     		"mainline_first": true,
     		"patch_first": false
-  		}
+  		},
+		"bootstrap_method": "legacy-ssh",
     }`,
 	)
 
@@ -391,7 +396,7 @@ func (s *DistroPutSuite) TestRunNewWithValidEntity() {
 
 func (s *DistroPutSuite) TestRunNewWithInValidEntity() {
 	ctx := context.Background()
-	json := []byte(`{"arch": "linux_amd64", "work_dir": "/data/mci", "ssh_key": "", "provider": "mock", "user": "tibor", "planner_settings": {"version": "invalid"}}`)
+	json := []byte(`{"arch": "linux_amd64", "work_dir": "/data/mci", "ssh_key": "", "bootstrap_method": "foo", "provider": "mock", "user": "tibor", "planner_settings": {"version": "invalid"}}`)
 	h := s.rm.(*distroIDPutHandler)
 	h.distroID = "distro4"
 	h.body = json
@@ -399,8 +404,10 @@ func (s *DistroPutSuite) TestRunNewWithInValidEntity() {
 	resp := s.rm.Run(ctx)
 	s.NotNil(resp.Data())
 	s.Equal(resp.Status(), http.StatusBadRequest)
-	error := (resp.Data()).(gimlet.ErrorResponse)
-	s.Equal("ERROR: distro 'ssh_key' cannot be blank\nERROR: invalid distro.planner_settings.version 'invalid' for distro 'distro4'", error.Message)
+	err := (resp.Data()).(gimlet.ErrorResponse)
+	s.Contains(err.Message, "ERROR: distro 'ssh_key' cannot be blank")
+	s.Contains(err.Message, "ERROR: invalid distro.planner_settings.version 'invalid' for distro 'distro4'")
+	s.Contains(err.Message, "ERROR: error validating bootstrap method: 'foo' is not a valid bootstrap method")
 }
 
 func (s *DistroPutSuite) TestRunNewConflictingName() {
@@ -616,7 +623,8 @@ func (s *DistroPatchByIDSuite) TestRunValidSpawnAllowed() {
 	s.NotNil(resp.Data())
 	s.Equal(resp.Status(), http.StatusOK)
 
-	apiDistro := (resp.Data()).(*model.APIDistro)
+	apiDistro, ok := (resp.Data()).(*model.APIDistro)
+	s.Require().True(ok)
 	s.Equal(apiDistro.UserSpawnAllowed, true)
 }
 
@@ -631,7 +639,8 @@ func (s *DistroPatchByIDSuite) TestRunValidProvider() {
 	s.NotNil(resp.Data())
 	s.Equal(resp.Status(), http.StatusOK)
 
-	apiDistro := (resp.Data()).(*model.APIDistro)
+	apiDistro, ok := (resp.Data()).(*model.APIDistro)
+	s.Require().True(ok)
 	s.Equal(apiDistro.Provider, model.ToAPIString("mock"))
 }
 
@@ -647,7 +656,8 @@ func (s *DistroPatchByIDSuite) TestRunValidProviderSettings() {
 	s.NotNil(resp.Data())
 	s.Equal(resp.Status(), http.StatusOK)
 
-	apiDistro := (resp.Data()).(*model.APIDistro)
+	apiDistro, ok := (resp.Data()).(*model.APIDistro)
+	s.Require().True(ok)
 	points := apiDistro.ProviderSettings["mount_points"]
 	mapped := points.(map[string]interface{})
 	s.Equal(mapped["device_name"], "/dev/xvdb")
@@ -670,7 +680,8 @@ func (s *DistroPatchByIDSuite) TestRunValidArch() {
 	s.NotNil(resp.Data())
 	s.Equal(resp.Status(), http.StatusOK)
 
-	apiDistro := (resp.Data()).(*model.APIDistro)
+	apiDistro, ok := (resp.Data()).(*model.APIDistro)
+	s.Require().True(ok)
 	s.Equal(apiDistro.Arch, model.ToAPIString("linux_amd32"))
 }
 
@@ -685,7 +696,8 @@ func (s *DistroPatchByIDSuite) TestRunValidWorkDir() {
 	s.NotNil(resp.Data())
 	s.Equal(resp.Status(), http.StatusOK)
 
-	apiDistro := (resp.Data()).(*model.APIDistro)
+	apiDistro, ok := (resp.Data()).(*model.APIDistro)
+	s.Require().True(ok)
 	s.Equal(apiDistro.WorkDir, model.ToAPIString("/tmp"))
 }
 
@@ -700,7 +712,8 @@ func (s *DistroPatchByIDSuite) TestRunValidPoolSize() {
 	s.NotNil(resp.Data())
 	s.Equal(resp.Status(), http.StatusOK)
 
-	apiDistro := (resp.Data()).(*model.APIDistro)
+	apiDistro, ok := (resp.Data()).(*model.APIDistro)
+	s.Require().True(ok)
 	s.Equal(apiDistro.PoolSize, 50)
 }
 
@@ -715,7 +728,8 @@ func (s *DistroPatchByIDSuite) TestRunValidSetupAsSudo() {
 	s.NotNil(resp.Data())
 	s.Equal(resp.Status(), http.StatusOK)
 
-	apiDistro := (resp.Data()).(*model.APIDistro)
+	apiDistro, ok := (resp.Data()).(*model.APIDistro)
+	s.Require().True(ok)
 	s.Equal(apiDistro.SetupAsSudo, false)
 }
 
@@ -730,7 +744,8 @@ func (s *DistroPatchByIDSuite) TestRunValidSetup() {
 	s.NotNil(resp.Data())
 	s.Equal(resp.Status(), http.StatusOK)
 
-	apiDistro := (resp.Data()).(*model.APIDistro)
+	apiDistro, ok := (resp.Data()).(*model.APIDistro)
+	s.Require().True(ok)
 	s.Equal(apiDistro.Setup, model.ToAPIString("New Set-up string"))
 }
 
@@ -745,7 +760,8 @@ func (s *DistroPatchByIDSuite) TestRunValidTearDown() {
 	s.NotNil(resp.Data())
 	s.Equal(resp.Status(), http.StatusOK)
 
-	apiDistro := (resp.Data()).(*model.APIDistro)
+	apiDistro, ok := (resp.Data()).(*model.APIDistro)
+	s.Require().True(ok)
 	s.Equal(apiDistro.Teardown, model.ToAPIString("New Tear-down string"))
 }
 
@@ -760,7 +776,8 @@ func (s *DistroPatchByIDSuite) TestRunValidUser() {
 	s.NotNil(resp.Data())
 	s.Equal(resp.Status(), http.StatusOK)
 
-	apiDistro := (resp.Data()).(*model.APIDistro)
+	apiDistro, ok := (resp.Data()).(*model.APIDistro)
+	s.Require().True(ok)
 	s.Equal(apiDistro.User, model.ToAPIString("user101"))
 }
 
@@ -775,7 +792,8 @@ func (s *DistroPatchByIDSuite) TestRunValidSSHKey() {
 	s.NotNil(resp.Data())
 	s.Equal(resp.Status(), http.StatusOK)
 
-	apiDistro := (resp.Data()).(*model.APIDistro)
+	apiDistro, ok := (resp.Data()).(*model.APIDistro)
+	s.Require().True(ok)
 	s.Equal(apiDistro.SSHKey, model.ToAPIString("New SSH key string"))
 }
 
@@ -790,7 +808,8 @@ func (s *DistroPatchByIDSuite) TestRunValidSSHOptions() {
 	s.NotNil(resp.Data())
 	s.Equal(resp.Status(), http.StatusOK)
 
-	apiDistro := (resp.Data()).(*model.APIDistro)
+	apiDistro, ok := (resp.Data()).(*model.APIDistro)
+	s.Require().True(ok)
 	s.Equal(apiDistro.SSHOptions, []string{"BatchMode=no"})
 }
 
@@ -805,7 +824,8 @@ func (s *DistroPatchByIDSuite) TestRunValidExpansions() {
 	s.NotNil(resp.Data())
 	s.Equal(resp.Status(), http.StatusOK)
 
-	apiDistro := (resp.Data()).(*model.APIDistro)
+	apiDistro, ok := (resp.Data()).(*model.APIDistro)
+	s.Require().True(ok)
 	expansion := model.APIExpansion{Key: model.ToAPIString("key1"), Value: model.ToAPIString("value1")}
 	s.Equal(apiDistro.Expansions, []model.APIExpansion{expansion})
 }
@@ -821,7 +841,8 @@ func (s *DistroPatchByIDSuite) TestRunValidDisabled() {
 	s.NotNil(resp.Data())
 	s.Equal(resp.Status(), http.StatusOK)
 
-	apiDistro := (resp.Data()).(*model.APIDistro)
+	apiDistro, ok := (resp.Data()).(*model.APIDistro)
+	s.Require().True(ok)
 	s.Equal(apiDistro.Disabled, true)
 }
 
@@ -836,7 +857,8 @@ func (s *DistroPatchByIDSuite) TestRunValidContainer() {
 	s.NotNil(resp.Data())
 	s.Equal(resp.Status(), http.StatusOK)
 
-	apiDistro := (resp.Data()).(*model.APIDistro)
+	apiDistro, ok := (resp.Data()).(*model.APIDistro)
+	s.Require().True(ok)
 	s.Equal(apiDistro.ContainerPool, model.ToAPIString(""))
 	s.Equal(apiDistro.PlannerSettings.Version, model.ToAPIString("legacy"))
 }
@@ -875,13 +897,42 @@ func (s *DistroPatchByIDSuite) TestRunValidPlannerSettingsVersion() {
 	resp := s.rm.Run(ctx)
 	s.NotNil(resp.Data())
 	s.Equal(resp.Status(), http.StatusOK)
-	apiDistro := (resp.Data()).(*model.APIDistro)
+	apiDistro, ok := (resp.Data()).(*model.APIDistro)
+	s.Require().True(ok)
 	s.Equal(model.ToAPIString("tunable"), apiDistro.PlannerSettings.Version)
 }
 
 func (s *DistroPatchByIDSuite) TestRunInValidPlannerSettingsVersion() {
 	ctx := context.Background()
 	json := []byte(`{"planner_settings": {"version": "invalid"}}`)
+	h := s.rm.(*distroIDPatchHandler)
+	h.distroID = "fedora8"
+	h.body = json
+
+	resp := s.rm.Run(ctx)
+	s.NotNil(resp.Data())
+	s.Equal(http.StatusBadRequest, resp.Status())
+}
+
+func (s *DistroPatchByIDSuite) TestRunValidBootstrapMethod() {
+	ctx := context.Background()
+	json := []byte(`{"bootstrap_method": "legacy-ssh"}`)
+	h := s.rm.(*distroIDPatchHandler)
+	h.distroID = "fedora8"
+	h.body = json
+
+	resp := s.rm.Run(ctx)
+	s.NotNil(resp.Data())
+	s.Equal(resp.Status(), http.StatusOK)
+
+	apiDistro, ok := (resp.Data()).(*model.APIDistro)
+	s.Require().True(ok)
+	s.Equal(model.ToAPIString(distro.BootstrapMethodLegacySSH), apiDistro.BootstrapMethod)
+}
+
+func (s *DistroPatchByIDSuite) TestRunInvalidBootstrapMethod() {
+	ctx := context.Background()
+	json := []byte(`{"bootstrap_method": "foobar"}`)
 	h := s.rm.(*distroIDPatchHandler)
 	h.distroID = "fedora8"
 	h.body = json
@@ -914,6 +965,7 @@ func (s *DistroPatchByIDSuite) TestValidFindAndReplaceFullDocument() {
 				"setup" : "~Set-up script",
 				"teardown" : "~Tear-down script",
 				"user" : "~root",
+				"bootstrap_method": "legacy-ssh",
 				"ssh_key" : "~SSH string",
 				"ssh_options" : [
 					"~StrictHostKeyChecking=no",
@@ -950,7 +1002,8 @@ func (s *DistroPatchByIDSuite) TestValidFindAndReplaceFullDocument() {
 	s.Equal(resp.Status(), http.StatusOK)
 
 	s.NotNil(resp.Data())
-	apiDistro := (resp.Data()).(*model.APIDistro)
+	apiDistro, ok := (resp.Data()).(*model.APIDistro)
+	s.Require().True(ok)
 	s.Equal(apiDistro.Disabled, false)
 	s.Equal(apiDistro.Name, model.ToAPIString("fedora8"))
 	s.Equal(apiDistro.WorkDir, model.ToAPIString("~/data/mci"))
@@ -969,6 +1022,7 @@ func (s *DistroPatchByIDSuite) TestValidFindAndReplaceFullDocument() {
 	s.Equal(apiDistro.SetupAsSudo, false)
 	s.Equal(apiDistro.Setup, model.ToAPIString("~Set-up script"))
 	s.Equal(apiDistro.Teardown, model.ToAPIString("~Tear-down script"))
+	s.Equal(model.ToAPIString(distro.BootstrapMethodLegacySSH), apiDistro.BootstrapMethod)
 	s.Equal(apiDistro.User, model.ToAPIString("~root"))
 	s.Equal(apiDistro.SSHKey, model.ToAPIString("~SSH string"))
 	s.Equal(apiDistro.SSHOptions, []string{"~StrictHostKeyChecking=no", "~BatchMode=no", "~ConnectTimeout=10"})

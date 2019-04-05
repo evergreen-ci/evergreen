@@ -10,6 +10,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mitchellh/mapstructure"
+	"github.com/pkg/errors"
 )
 
 const (
@@ -26,6 +27,7 @@ var distroSyntaxValidators = []distroValidator{
 	ensureValidExpansions,
 	ensureStaticHostsAreNotSpawnable,
 	ensureValidContainerPool,
+	ensureValidBootstrapMethod,
 	ensureHasNoUnauthorizedCharacters,
 	ensureHasValidPlannerVersion,
 }
@@ -164,6 +166,13 @@ func ensureValidSSHOptions(ctx context.Context, d *distro.Distro, s *evergreen.S
 		if o == "" {
 			return ValidationErrors{{Error, fmt.Sprintf("distro cannot be blank SSH option")}}
 		}
+	}
+	return nil
+}
+
+func ensureValidBootstrapMethod(ctx context.Context, d *distro.Distro, s *evergreen.Settings) ValidationErrors {
+	if err := distro.ValidateBootstrapMethod(d.BootstrapMethod); err != nil {
+		return ValidationErrors{{Level: Error, Message: errors.Wrap(err, "error validating bootstrap method").Error()}}
 	}
 	return nil
 }

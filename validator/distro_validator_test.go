@@ -35,6 +35,7 @@ func TestCheckDistro(t *testing.T) {
 				PlannerSettings: distro.PlannerSettings{
 					Version: evergreen.PlannerVersionTunable,
 				},
+				BootstrapMethod: distro.BootstrapMethodLegacySSH,
 			}
 			verrs, err := CheckDistro(ctx, d, conf, true)
 			So(err, ShouldBeNil)
@@ -51,6 +52,7 @@ func TestCheckDistro(t *testing.T) {
 					"security_group_ids": []string{"a"},
 					"mount_points":       nil,
 				},
+				BootstrapMethod: distro.BootstrapMethodLegacySSH,
 			}
 			// simulate duplicate id
 			dupe := distro.Distro{Id: "a"}
@@ -73,6 +75,7 @@ func TestCheckDistro(t *testing.T) {
 				PlannerSettings: distro.PlannerSettings{
 					Version: evergreen.PlannerVersionTunable,
 				},
+				BootstrapMethod: distro.BootstrapMethodLegacySSH,
 			}
 			verrs, err := CheckDistro(ctx, d, conf, false)
 			So(err, ShouldBeNil)
@@ -89,6 +92,7 @@ func TestCheckDistro(t *testing.T) {
 					"security_group_ids": []string{"a"},
 					"mount_points":       nil,
 				},
+				BootstrapMethod: distro.BootstrapMethodLegacySSH,
 			}
 			verrs, err := CheckDistro(ctx, d, conf, false)
 			So(err, ShouldBeNil)
@@ -348,4 +352,18 @@ func TestEnsureValidContainerPool(t *testing.T) {
 		"distro container pool does not exist"}})
 	err = ensureValidContainerPool(ctx, d4, conf)
 	assert.Nil(err)
+}
+
+func TestEnsureValidBootstrapMethod(t *testing.T) {
+	ctx := context.Background()
+	for _, bootstrapMethod := range []string{
+		distro.BootstrapMethodLegacySSH,
+		distro.BootstrapMethodSSH,
+		distro.BootstrapMethodPreconfiguredImage,
+		distro.BootstrapMethodUserData,
+	} {
+		assert.Nil(t, ensureValidBootstrapMethod(ctx, &distro.Distro{BootstrapMethod: bootstrapMethod}, &evergreen.Settings{}))
+	}
+	assert.NotNil(t, ensureValidBootstrapMethod(ctx, &distro.Distro{BootstrapMethod: "foobar"}, &evergreen.Settings{}))
+	assert.NotNil(t, ensureValidBootstrapMethod(ctx, &distro.Distro{BootstrapMethod: ""}, &evergreen.Settings{}))
 }
