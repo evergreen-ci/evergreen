@@ -8,7 +8,8 @@ import (
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
-	"gopkg.in/mgo.v2/bson"
+	"go.mongodb.org/mongo-driver/bson"
+	mgobson "gopkg.in/mgo.v2/bson"
 )
 
 func TestRecentHostStatusFinder(t *testing.T) {
@@ -56,7 +57,7 @@ func TestRecentHostStatusFinder(t *testing.T) {
 	assert.NoError(db.Clear(AllLogCollection))
 	data := []bson.M{
 		{
-			"_id":           bson.NewObjectId(),
+			"_id":           mgobson.NewObjectId(),
 			TimestampKey:    time.Now(),
 			ResourceIdKey:   "test",
 			ResourceTypeKey: ResourceTypeHost,
@@ -67,7 +68,7 @@ func TestRecentHostStatusFinder(t *testing.T) {
 			},
 		},
 		{
-			"_id":         bson.NewObjectId(),
+			"_id":         mgobson.NewObjectId(),
 			TimestampKey:  time.Now(),
 			ResourceIdKey: "test",
 			TypeKey:       EventTaskFinished,
@@ -77,7 +78,7 @@ func TestRecentHostStatusFinder(t *testing.T) {
 			},
 		},
 		{
-			"_id":           bson.NewObjectId(),
+			"_id":           mgobson.NewObjectId(),
 			TimestampKey:    time.Now(),
 			ResourceIdKey:   "test",
 			ResourceTypeKey: ResourceTypeHost,

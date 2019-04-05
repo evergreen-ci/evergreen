@@ -13,11 +13,11 @@ import (
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/util"
+	adb "github.com/mongodb/anser/db"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
-	mgo "gopkg.in/mgo.v2"
-	"gopkg.in/mgo.v2/bson"
+	"go.mongodb.org/mongo-driver/bson"
 )
 
 type StatusChanges struct {
@@ -766,7 +766,7 @@ func MarkStart(t *task.Task, updates *StatusChanges) error {
 		if err == nil {
 			updates.PatchNewStatus = evergreen.PatchStarted
 
-		} else if err != mgo.ErrNotFound {
+		} else if !adb.ResultsNotFound(err) {
 			return errors.WithStack(err)
 		}
 	}

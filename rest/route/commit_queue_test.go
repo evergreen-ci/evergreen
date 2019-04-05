@@ -8,7 +8,7 @@ import (
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/stretchr/testify/suite"
-	"gopkg.in/mgo.v2/bson"
+	mgobson "gopkg.in/mgo.v2/bson"
 )
 
 type CommitQueueSuite struct {
@@ -126,7 +126,7 @@ func (s *CommitQueueSuite) TestClearAll() {
 
 func (s *CommitQueueSuite) TestEnqueueItem() {
 	route := makeCommitQueueEnqueueItem(s.sc).(*commitQueueEnqueueItemHandler)
-	id := bson.NewObjectId()
+	id := mgobson.NewObjectId()
 	s.sc.CachedPatches = append(s.sc.CachedPatches, patch.Patch{
 		Id: id,
 	})

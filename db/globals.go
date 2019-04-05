@@ -1,8 +1,8 @@
 package db
 
 import (
-	"gopkg.in/mgo.v2"
-	"gopkg.in/mgo.v2/bson"
+	adb "github.com/mongodb/anser/db"
+	"go.mongodb.org/mongo-driver/bson"
 )
 
 const (
@@ -31,8 +31,8 @@ func GetNewBuildVariantBuildNumber(buildVariant string) (uint64, error) {
 
 	// if this is the first build for this
 	// this build variant, insert it
-	if err != nil && err == mgo.ErrNotFound {
-		change := mgo.Change{
+	if err != nil && adb.ResultsNotFound(err) {
+		change := adb.Change{
 			Update:    bson.M{"$inc": bson.M{"last_build_number": 1}},
 			Upsert:    true,
 			ReturnNew: true,
@@ -48,7 +48,7 @@ func GetNewBuildVariantBuildNumber(buildVariant string) (uint64, error) {
 	// At this point, we know we've
 	// seen this build variant before
 	// find and modify last build variant number
-	change := mgo.Change{
+	change := adb.Change{
 		Update:    bson.M{"$inc": bson.M{"last_build_number": 1}},
 		ReturnNew: true,
 	}

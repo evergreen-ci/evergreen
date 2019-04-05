@@ -3,9 +3,9 @@ package user
 import (
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/mongodb/anser/bsonutil"
+	adb "github.com/mongodb/anser/db"
 	"github.com/pkg/errors"
-	"gopkg.in/mgo.v2"
-	"gopkg.in/mgo.v2/bson"
+	"go.mongodb.org/mongo-driver/bson"
 )
 
 const (
@@ -47,7 +47,7 @@ func FindByGithubUID(uid int) (*DBUser, error) {
 	err := db.FindOneQ(Collection, db.Query(bson.M{
 		bsonutil.GetDottedKeyName(SettingsKey, userSettingsGithubUserKey, githubUserUID): uid,
 	}), &u)
-	if err == mgo.ErrNotFound {
+	if adb.ResultsNotFound(err) {
 		return nil, nil
 	}
 	if err != nil {
@@ -73,7 +73,7 @@ func ByIds(userIds ...string) db.Q {
 func FindOne(query db.Q) (*DBUser, error) {
 	u := &DBUser{}
 	err := db.FindOneQ(Collection, query, u)
-	if err == mgo.ErrNotFound {
+	if adb.ResultsNotFound(err) {
 		return nil, nil
 	}
 	return u, err
@@ -84,7 +84,7 @@ func FindOneByToken(token string) (*DBUser, error) {
 	u := &DBUser{}
 	query := db.Query(bson.M{bsonutil.GetDottedKeyName(LoginCacheKey, LoginCacheTokenKey): token})
 	err := db.FindOneQ(Collection, query, u)
-	if err == mgo.ErrNotFound {
+	if adb.ResultsNotFound(err) {
 		return nil, nil
 	}
 	if err != nil {
@@ -98,7 +98,7 @@ func FindOneById(id string) (*DBUser, error) {
 	u := &DBUser{}
 	query := ById(id)
 	err := db.FindOneQ(Collection, query, u)
-	if err == mgo.ErrNotFound {
+	if adb.ResultsNotFound(err) {
 		return nil, nil
 	}
 	if err != nil {
@@ -139,7 +139,7 @@ func UpdateAll(query interface{}, update interface{}) error {
 }
 
 // UpsertOne upserts a user.
-func UpsertOne(query interface{}, update interface{}) (*mgo.ChangeInfo, error) {
+func UpsertOne(query interface{}, update interface{}) (*adb.ChangeInfo, error) {
 	return db.Upsert(
 		Collection,
 		query,

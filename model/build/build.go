@@ -7,10 +7,10 @@ import (
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/task"
+	adb "github.com/mongodb/anser/db"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
-	mgo "gopkg.in/mgo.v2"
-	"gopkg.in/mgo.v2/bson"
+	"go.mongodb.org/mongo-driver/bson"
 )
 
 // IdTimeLayout is used time time.Time.Format() to produce timestamps for our ids.
@@ -210,7 +210,7 @@ func TryMarkStarted(buildId string, startTime time.Time) error {
 		StartTimeKey: startTime,
 	}}
 	err := UpdateOne(selector, update)
-	if err == mgo.ErrNotFound {
+	if adb.ResultsNotFound(err) {
 		return nil
 	}
 	return err

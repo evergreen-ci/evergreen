@@ -13,7 +13,6 @@ import (
 
 	"github.com/PuerkitoBio/rehttp"
 	"github.com/evergreen-ci/evergreen"
-	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/google/go-github/github"
@@ -36,10 +35,6 @@ type githubSuite struct {
 	token  string
 	ctx    context.Context
 	cancel func()
-}
-
-func (s *githubSuite) SetupSuite() {
-	db.SetGlobalSessionProvider(s.config.SessionFactory())
 }
 
 func (s *githubSuite) SetupTest() {

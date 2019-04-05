@@ -14,10 +14,12 @@ import (
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestModifyHostStatusWithUpdateStatus(t *testing.T) {
 	assert := assert.New(t)
+	require := require.New(t)
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
@@ -39,7 +41,7 @@ func TestModifyHostStatusWithUpdateStatus(t *testing.T) {
 	assert.NoError(err2)
 	assert.Len(events, 1)
 	hostevent, ok := events[0].Data.(*event.HostEventData)
-	assert.True(ok)
+	require.True(ok, "%T", events[0].Data)
 	assert.Equal("because I can", hostevent.Logs)
 
 	user2 := user.DBUser{Id: "user2"}

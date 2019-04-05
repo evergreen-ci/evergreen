@@ -1,12 +1,10 @@
 package data
 
 import (
-	"context"
 	"testing"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
-	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -15,7 +13,6 @@ type cliUpdateConnectorSuite struct {
 	ctx     Connector
 	setup   func()
 	degrade func()
-	cancel  func()
 }
 
 func TestUpdateConnector(t *testing.T) {
@@ -23,11 +20,6 @@ func TestUpdateConnector(t *testing.T) {
 		ctx: &DBConnector{},
 	}
 	s.setup = func() {
-		ctx, cancel := context.WithCancel(context.Background())
-		s.cancel = cancel
-
-		testutil.SetGlobalEnvironment(ctx, t)
-
 		s.NoError(db.ClearCollections(evergreen.ConfigCollection))
 	}
 	s.degrade = func() {
@@ -53,11 +45,6 @@ func TestMockUpdateConnector(t *testing.T) {
 
 func (s *cliUpdateConnectorSuite) SetupSuite() {
 	s.setup()
-}
-func (s *cliUpdateConnectorSuite) TearDownSuite() {
-	if s.cancel != nil {
-		s.cancel()
-	}
 }
 
 func (s *cliUpdateConnectorSuite) Test() {

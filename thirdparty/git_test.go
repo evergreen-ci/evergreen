@@ -3,7 +3,6 @@ package thirdparty
 import (
 	"testing"
 
-	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/stretchr/testify/assert"
 )
@@ -35,10 +34,6 @@ new file mode 100644
 index 0000000..e69de29
 `
 )
-
-func init() {
-	db.SetGlobalSessionProvider(testConfig.SessionFactory())
-}
 
 func TestGetPatchSummaries(t *testing.T) {
 	assert := assert.New(t)

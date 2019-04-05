@@ -7,11 +7,6 @@ import (
 	"github.com/mongodb/grip/message"
 )
 
-func init() {
-	registry.AddType(ResourceTypeBuild, buildEventDataFactory)
-	registry.AllowSubscription(ResourceTypeBuild, BuildStateChange)
-}
-
 func buildEventDataFactory() interface{} {
 	return &BuildEventData{}
 }

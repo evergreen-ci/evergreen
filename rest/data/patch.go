@@ -11,7 +11,7 @@ import (
 	"github.com/evergreen-ci/gimlet"
 	"github.com/google/go-github/github"
 	"github.com/pkg/errors"
-	"gopkg.in/mgo.v2/bson"
+	mgobson "gopkg.in/mgo.v2/bson"
 )
 
 // DBPatchConnector is a struct that implements the Patch related methods
@@ -31,7 +31,7 @@ func (pc *DBPatchConnector) FindPatchesByProject(projectId string, ts time.Time,
 
 // FindPatchById queries the backing database for the patch matching patchId.
 func (pc *DBPatchConnector) FindPatchById(patchId string) (*patch.Patch, error) {
-	p, err := patch.FindOne(patch.ById(bson.ObjectIdHex(patchId)))
+	p, err := patch.FindOne(patch.ById(mgobson.ObjectIdHex(patchId)))
 	if err != nil {
 		return nil, err
 	}
@@ -47,7 +47,7 @@ func (pc *DBPatchConnector) FindPatchById(patchId string) (*patch.Patch, error) 
 // AbortPatch uses the service level CancelPatch method to abort a single patch
 // with matching Id.
 func (pc *DBPatchConnector) AbortPatch(patchId string, user string) error {
-	p, err := patch.FindOne(patch.ById(bson.ObjectIdHex(patchId)))
+	p, err := patch.FindOne(patch.ById(mgobson.ObjectIdHex(patchId)))
 	if err != nil {
 		return err
 	}
