@@ -487,8 +487,6 @@ Evergreen - Distros
             <div class="icon fa fa-warning distro-error" ng-show="form.minimumHosts.$dirty && form.minimumHosts.$error.required || form.minimumHosts.$invalid">Numeric pool size is required</div>
           </div>
           <div ng-form name="hostProviderForm" ng-show="activeDistro.provider == 'static'">
-             <label class="distro-label">Hosts<span ng-show="activeDistro.settings.hosts && activeDistro.settings.hosts.length != 0">([[activeDistro.settings.hosts.length]])</span>:</label>
-          <div ng-form name="hostProviderForm" ng-show="activeDistro.provider == 'static'">
             <label class="distro-label">Hosts<span ng-show="activeDistro.settings.hosts && activeDistro.settings.hosts.length != 0">([[activeDistro.settings.hosts.length]])</span>:</label>
             <div id="hosts-table" class="distro-table-scroll">
               <table style="margin-left: -8px;" class="table distro-table" ng-show="activeDistro.settings.hosts">
