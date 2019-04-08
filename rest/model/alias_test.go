@@ -5,12 +5,12 @@ import (
 
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/stretchr/testify/assert"
-	mgobson "gopkg.in/mgo.v2/bson"
+	"gopkg.in/mgo.v2/bson"
 )
 
 func TestAliasBuildFromService(t *testing.T) {
 	d := model.ProjectAlias{
-		ID:        mgobson.NewObjectId(),
+		ID:        bson.NewObjectId(),
 		ProjectID: "hai",
 		Alias:     "alias",
 		Variant:   "variant",

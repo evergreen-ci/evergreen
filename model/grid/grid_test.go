@@ -21,6 +21,10 @@ const (
 	projName        = "crumpet"
 )
 
+func init() {
+	db.SetGlobalSessionProvider(testutil.TestConfig().SessionFactory())
+}
+
 func TestFetchFailures(t *testing.T) {
 	assert := assert.New(t)
 	testutil.HandleTestingErr(db.ClearCollections(model.VersionCollection, task.Collection, testresult.Collection), t, "error cleraing collections")

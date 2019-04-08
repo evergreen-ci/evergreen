@@ -7,9 +7,8 @@ import (
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/anser/bsonutil"
-	adb "github.com/mongodb/anser/db"
-	"go.mongodb.org/mongo-driver/bson"
-	mgobson "gopkg.in/mgo.v2/bson"
+	"gopkg.in/mgo.v2"
+	"gopkg.in/mgo.v2/bson"
 )
 
 const (
@@ -20,16 +19,13 @@ const (
 
 // a single chunk of a task log
 type TaskLog struct {
-	Id           string                 `bson:"_id" json:"_id,omitempty"`
+	Id           bson.ObjectId          `bson:"_id,omitempty" json:"_id,omitempty"`
 	TaskId       string                 `bson:"t_id" json:"t_id"`
 	Execution    int                    `bson:"e" json:"e"`
 	Timestamp    time.Time              `bson:"ts" json:"ts"`
 	MessageCount int                    `bson:"c" json:"c"`
 	Messages     []apimodels.LogMessage `bson:"m" json:"m"`
 }
-
-func (t *TaskLog) MarshalBSON() ([]byte, error)  { return mgobson.Marshal(t) }
-func (t *TaskLog) UnmarshalBSON(in []byte) error { return mgobson.Unmarshal(in, t) }
 
 var (
 	// bson fields for the task log struct
@@ -48,7 +44,7 @@ var (
 )
 
 // helper for getting the correct db
-func getSessionAndDB() (adb.Session, adb.Database, error) {
+func getSessionAndDB() (*mgo.Session, *mgo.Database, error) {
 	session, _, err := db.GetGlobalSessionFactory().GetSession()
 	if err != nil {
 		return nil, nil, err
@@ -66,9 +62,6 @@ func (self *TaskLog) Insert() error {
 		return err
 	}
 	defer session.Close()
-
-	self.Id = mgobson.NewObjectId().Hex()
-
 	return db.C(TaskLogCollection).Insert(self)
 }
 
@@ -79,8 +72,9 @@ func (self *TaskLog) AddLogMessage(msg apimodels.LogMessage) error {
 	}
 	defer session.Close()
 
-	// NOTE: this was previously set to fire-and-forget writes,
-	// but removed during the database migration
+	// set the mode to unsafe - it's not a total disaster
+	// if this gets lost and it'll save bandwidth
+	session.SetSafe(nil)
 
 	self.Messages = append(self.Messages, msg)
 	self.MessageCount = self.MessageCount + 1
@@ -111,7 +105,7 @@ func FindAllTaskLogs(taskId string, execution int) ([]TaskLog, error) {
 			TaskLogExecutionKey: execution,
 		},
 	).Sort("-" + TaskLogTimestampKey).All(&result)
-	if adb.ResultsNotFound(err) {
+	if err == mgo.ErrNotFound {
 		return nil, nil
 	}
 	return result, err
@@ -131,7 +125,7 @@ func FindMostRecentTaskLogs(taskId string, execution int, limit int) ([]TaskLog,
 			TaskLogExecutionKey: execution,
 		},
 	).Sort("-" + TaskLogTimestampKey).Limit(limit).All(&result)
-	if adb.ResultsNotFound(err) {
+	if err == mgo.ErrNotFound {
 		return nil, nil
 	}
 	return result, err
@@ -154,7 +148,7 @@ func FindTaskLogsBeforeTime(taskId string, execution int, ts time.Time, limit in
 
 	result := []TaskLog{}
 	err = db.C(TaskLogCollection).Find(query).Sort("-" + TaskLogTimestampKey).Limit(limit).All(&result)
-	if adb.ResultsNotFound(err) {
+	if err == mgo.ErrNotFound {
 		return nil, nil
 	}
 	return result, err

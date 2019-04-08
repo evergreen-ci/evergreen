@@ -17,7 +17,7 @@ import (
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/google/go-github/github"
 	"github.com/stretchr/testify/suite"
-	mgobson "gopkg.in/mgo.v2/bson"
+	"gopkg.in/mgo.v2/bson"
 )
 
 type commitQueueSuite struct {
@@ -35,6 +35,7 @@ func TestCommitQueueJob(t *testing.T) {
 }
 
 func (s *commitQueueSuite) SetupSuite() {
+	db.SetGlobalSessionProvider(testutil.TestConfig().SessionFactory())
 	s.NoError(db.ClearCollections(model.ProjectRefCollection))
 	var err error
 	s.prBody, err = ioutil.ReadFile(filepath.Join(testutil.GetDirectoryOfFile(), "testdata", "pull_request.json"))
@@ -121,7 +122,7 @@ func (s *commitQueueSuite) TestWritePatchInfo() {
 	s.NoError(db.ClearGridCollections(patch.GridFSPrefix))
 
 	patchDoc := &patch.Patch{
-		Id:      mgobson.ObjectIdHex("aabbccddeeff112233445566"),
+		Id:      bson.ObjectIdHex("aabbccddeeff112233445566"),
 		Githash: "abcdef",
 	}
 

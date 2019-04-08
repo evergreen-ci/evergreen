@@ -5,7 +5,14 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/stretchr/testify/assert"
+
+	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/testutil"
 )
+
+func init() {
+	db.SetGlobalSessionProvider(testutil.TestConfig().SessionFactory())
+}
 
 func TestBuildBaronPluginConfigure(t *testing.T) {
 	assert := assert.New(t)

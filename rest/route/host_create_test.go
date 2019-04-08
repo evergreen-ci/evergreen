@@ -18,12 +18,14 @@ import (
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/rest/data"
+	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/mitchellh/mapstructure"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
 func TestMakeIntentHost(t *testing.T) {
+	db.SetGlobalSessionProvider(testutil.TestConfig().SessionFactory())
 	assert := assert.New(t)
 	require := require.New(t)
 	require.NoError(db.ClearCollections(distro.Collection, host.Collection, task.Collection))
@@ -178,6 +180,7 @@ func TestMakeIntentHost(t *testing.T) {
 }
 
 func TestHostCreateDocker(t *testing.T) {
+	db.SetGlobalSessionProvider(testutil.TestConfig().SessionFactory())
 	assert := assert.New(t)
 	require := require.New(t)
 	require.NoError(db.ClearCollections(distro.Collection, host.Collection, task.Collection))
@@ -234,6 +237,7 @@ func TestHostCreateDocker(t *testing.T) {
 }
 
 func TestGetDockerLogs(t *testing.T) {
+	db.SetGlobalSessionProvider(testutil.TestConfig().SessionFactory())
 	assert := assert.New(t)
 	require := require.New(t)
 	require.NoError(db.ClearCollections(distro.Collection, host.Collection, task.Collection))
@@ -326,14 +330,14 @@ func TestGetDockerLogs(t *testing.T) {
 	// valid Run
 	res := handler.Run(context.Background())
 	require.NotNil(res)
-	logs, ok := res.Data().(*bytes.Buffer)
-	require.True(ok)
+	logs := res.Data().(*bytes.Buffer)
 	assert.NoError(err)
 	assert.Contains(logs.String(), "this is a log message")
 
 }
 
 func TestGetDockerLogsError(t *testing.T) {
+	db.SetGlobalSessionProvider(testutil.TestConfig().SessionFactory())
 	assert := assert.New(t)
 	require := require.New(t)
 	require.NoError(db.ClearCollections(distro.Collection, host.Collection, task.Collection))
@@ -392,6 +396,7 @@ func TestGetDockerLogsError(t *testing.T) {
 }
 
 func TestGetDockerStatus(t *testing.T) {
+	db.SetGlobalSessionProvider(testutil.TestConfig().SessionFactory())
 	assert := assert.New(t)
 	require := require.New(t)
 	require.NoError(db.ClearCollections(distro.Collection, host.Collection, task.Collection))

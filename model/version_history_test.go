@@ -9,6 +9,10 @@ import (
 	. "github.com/smartystreets/goconvey/convey"
 )
 
+func init() {
+	db.SetGlobalSessionProvider(taskQueueTestConf.SessionFactory())
+}
+
 func TestFindLastPassingVersionForBuildVariants(t *testing.T) {
 	Convey("works", t, func() {
 		So(db.ClearCollections(TaskQueuesCollection, VersionCollection, build.Collection), ShouldBeNil)

@@ -19,6 +19,10 @@ import (
 
 var projectTestConfig = testutil.TestConfig()
 
+func init() {
+	db.SetGlobalSessionProvider(projectTestConfig.SessionFactory())
+}
+
 func TestBucketResource(t *testing.T) {
 	Convey("With a start time and a bucket size of 10 and 10 buckets", t, func() {
 		frameStart := time.Now()

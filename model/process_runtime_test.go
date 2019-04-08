@@ -8,7 +8,7 @@ import (
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/mongodb/grip"
 	. "github.com/smartystreets/goconvey/convey"
-	"go.mongodb.org/mongo-driver/bson"
+	"gopkg.in/mgo.v2/bson"
 )
 
 var (
@@ -16,6 +16,10 @@ var (
 	allRuntimeIds = []string{runtimeId + "1", runtimeId + "2", runtimeId + "3"}
 	testConfig    = testutil.TestConfig()
 )
+
+func init() {
+	db.SetGlobalSessionProvider(testConfig.SessionFactory())
+}
 
 func resetCollection() {
 	grip.Error(db.Clear(RuntimesCollection))

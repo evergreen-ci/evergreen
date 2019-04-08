@@ -11,6 +11,10 @@ import (
 
 var notifyTimesTestConfig = testutil.TestConfig()
 
+func init() {
+	db.SetGlobalSessionProvider(notifyTimesTestConfig.SessionFactory())
+}
+
 func TestSetLastNotificationsEventTime(t *testing.T) {
 
 	Convey("When setting the last notification event time", t, func() {

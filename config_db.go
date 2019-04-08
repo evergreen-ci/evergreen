@@ -1,10 +1,9 @@
 package evergreen
 
 import (
+	"github.com/evergreen-ci/evergreen/db"
 	"github.com/mongodb/anser/bsonutil"
-	"github.com/pkg/errors"
-	"go.mongodb.org/mongo-driver/bson"
-	"go.mongodb.org/mongo-driver/mongo/options"
+	"gopkg.in/mgo.v2/bson"
 )
 
 var (
@@ -88,31 +87,29 @@ func byId(id string) bson.M {
 // SetBanner sets the text of the Evergreen site-wide banner. Setting a blank
 // string here means that there is no banner
 func SetBanner(bannerText string) error {
-	env := GetEnvironment()
-	ctx, cancel := env.Context()
-	defer cancel()
-	coll := env.DB().Collection(ConfigCollection)
+	_, err := db.Upsert(
+		ConfigCollection,
+		byId(ConfigDocID),
+		bson.M{
+			"$set": bson.M{bannerKey: bannerText},
+		},
+	)
 
-	_, err := coll.UpdateOne(ctx, byId(ConfigDocID), bson.M{
-		"$set": bson.M{bannerKey: bannerText},
-	}, options.Update().SetUpsert(true))
-
-	return errors.WithStack(err)
+	return err
 }
 
 // SetBanner sets the text of the Evergreen site-wide banner. Setting a blank
 // string here means that there is no banner
 func SetBannerTheme(theme BannerTheme) error {
-	env := GetEnvironment()
-	ctx, cancel := env.Context()
-	defer cancel()
-	coll := env.DB().Collection(ConfigCollection)
+	_, err := db.Upsert(
+		ConfigCollection,
+		byId(ConfigDocID),
+		bson.M{
+			"$set": bson.M{bannerThemeKey: theme},
+		},
+	)
 
-	_, err := coll.UpdateOne(ctx, byId(ConfigDocID), bson.M{
-		"$set": bson.M{bannerThemeKey: theme},
-	}, options.Update().SetUpsert(true))
-
-	return errors.WithStack(err)
+	return err
 }
 
 // SetServiceFlags sets whether each of the runner/API server processes is enabled

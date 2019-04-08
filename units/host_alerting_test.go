@@ -9,6 +9,7 @@ import (
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/task"
+	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/mongodb/grip/logging"
 	"github.com/mongodb/grip/send"
 	"github.com/stretchr/testify/suite"
@@ -25,6 +26,8 @@ func TestHostAlertingSuite(t *testing.T) {
 }
 
 func (s *hostAlertSuite) SetupSuite() {
+	testConfig := testutil.TestConfig()
+	db.SetGlobalSessionProvider(testConfig.SessionFactory())
 	s.sender = send.MakeInternalLogger()
 }
 

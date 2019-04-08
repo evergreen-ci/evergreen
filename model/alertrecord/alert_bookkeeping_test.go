@@ -5,10 +5,9 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen/db"
-	_ "github.com/evergreen-ci/evergreen/testutil"
+	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/stretchr/testify/suite"
-	"go.mongodb.org/mongo-driver/bson"
-	mgobson "gopkg.in/mgo.v2/bson"
+	"gopkg.in/mgo.v2/bson"
 )
 
 func TestAlertRecord(t *testing.T) {
@@ -17,6 +16,10 @@ func TestAlertRecord(t *testing.T) {
 
 type alertRecordSuite struct {
 	suite.Suite
+}
+
+func (s *alertRecordSuite) SetupSuite() {
+	db.SetGlobalSessionProvider(testutil.TestConfig().SessionFactory())
 }
 
 func (s *alertRecordSuite) SetupTest() {
@@ -56,7 +59,7 @@ func (s *alertRecordSuite) TestInsertNewTaskRegressionByTestRecord() {
 
 func (s *alertRecordSuite) TestByLastFailureTransition() {
 	alert1 := AlertRecord{
-		Id:                  mgobson.NewObjectId(),
+		Id:                  bson.NewObjectId(),
 		Type:                TaskFailTransitionId,
 		TaskName:            "t",
 		Variant:             "v",
@@ -66,7 +69,7 @@ func (s *alertRecordSuite) TestByLastFailureTransition() {
 	}
 	s.NoError(alert1.Insert())
 	alert2 := AlertRecord{
-		Id:                  mgobson.NewObjectId(),
+		Id:                  bson.NewObjectId(),
 		Type:                TaskFailTransitionId,
 		TaskName:            "t",
 		Variant:             "v",
@@ -80,7 +83,7 @@ func (s *alertRecordSuite) TestByLastFailureTransition() {
 	s.Equal("t2", alert.TaskId)
 
 	alert3 := AlertRecord{
-		Id:                  mgobson.NewObjectId(),
+		Id:                  bson.NewObjectId(),
 		Type:                TaskFailTransitionId,
 		TaskName:            "t",
 		Variant:             "v",
@@ -94,7 +97,7 @@ func (s *alertRecordSuite) TestByLastFailureTransition() {
 	s.Equal("t3", alert.TaskId)
 
 	alert4 := AlertRecord{
-		Id:                  mgobson.NewObjectId(),
+		Id:                  bson.NewObjectId(),
 		Type:                TaskFailTransitionId,
 		TaskName:            "t",
 		Variant:             "v",
@@ -109,7 +112,7 @@ func (s *alertRecordSuite) TestByLastFailureTransition() {
 	s.Equal("t4", alert.TaskId)
 
 	alert5 := AlertRecord{
-		Id:                  mgobson.NewObjectId(),
+		Id:                  bson.NewObjectId(),
 		Type:                TaskFailTransitionId,
 		TaskName:            "t",
 		Variant:             "v",
@@ -126,7 +129,7 @@ func (s *alertRecordSuite) TestByLastFailureTransition() {
 
 func (s *alertRecordSuite) TestFindOneWithUnsetIDQuery() {
 	oldStyle0 := bson.M{
-		"_id":                  mgobson.NewObjectId(),
+		"_id":                  bson.NewObjectId(),
 		TypeKey:                TaskFailTransitionId,
 		TaskNameKey:            "task",
 		VariantKey:             "variant",
@@ -134,7 +137,7 @@ func (s *alertRecordSuite) TestFindOneWithUnsetIDQuery() {
 		RevisionOrderNumberKey: 0,
 	}
 	oldStyle1 := bson.M{
-		"_id":                  mgobson.NewObjectId(),
+		"_id":                  bson.NewObjectId(),
 		TypeKey:                TaskFailTransitionId,
 		TaskNameKey:            "task",
 		VariantKey:             "variant",
@@ -142,7 +145,7 @@ func (s *alertRecordSuite) TestFindOneWithUnsetIDQuery() {
 		RevisionOrderNumberKey: 1,
 	}
 	oldStyle3 := bson.M{
-		"_id":                  mgobson.NewObjectId(),
+		"_id":                  bson.NewObjectId(),
 		TypeKey:                TaskFailTransitionId,
 		TaskNameKey:            "othertask",
 		VariantKey:             "othervariant",
@@ -159,7 +162,7 @@ func (s *alertRecordSuite) TestFindOneWithUnsetIDQuery() {
 
 	s.Equal(1, rec.RevisionOrderNumber)
 	newStyle := AlertRecord{
-		Id:                  mgobson.NewObjectId(),
+		Id:                  bson.NewObjectId(),
 		SubscriptionID:      legacyAlertsSubscription,
 		Type:                TaskFailTransitionId,
 		TaskName:            "task",
@@ -182,7 +185,7 @@ func (s *alertRecordSuite) TestFindOneWithUnsetIDQuery() {
 
 func (s *alertRecordSuite) TestFindByLastTaskRegressionByTest() {
 	alert1 := AlertRecord{
-		Id:                  mgobson.NewObjectId(),
+		Id:                  bson.NewObjectId(),
 		Type:                taskRegressionByTest,
 		TaskName:            "t",
 		Variant:             "v",
@@ -193,7 +196,7 @@ func (s *alertRecordSuite) TestFindByLastTaskRegressionByTest() {
 	}
 	s.NoError(alert1.Insert())
 	alert2 := AlertRecord{
-		Id:                  mgobson.NewObjectId(),
+		Id:                  bson.NewObjectId(),
 		Type:                taskRegressionByTest,
 		TaskName:            "t",
 		Variant:             "v",
@@ -211,7 +214,7 @@ func (s *alertRecordSuite) TestFindByLastTaskRegressionByTest() {
 
 	// test that sorting by time and revision with some times missing works
 	alert3 := AlertRecord{
-		Id:                  mgobson.NewObjectId(),
+		Id:                  bson.NewObjectId(),
 		Type:                taskRegressionByTest,
 		TaskName:            "t",
 		Variant:             "v",
@@ -228,7 +231,7 @@ func (s *alertRecordSuite) TestFindByLastTaskRegressionByTest() {
 
 	// test that an earlier alert for a later commit returns the latest alert
 	alert4 := AlertRecord{
-		Id:                  mgobson.NewObjectId(),
+		Id:                  bson.NewObjectId(),
 		Type:                taskRegressionByTest,
 		TaskName:            "t",
 		Variant:             "v",

@@ -14,7 +14,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/util"
-	adb "github.com/mongodb/anser/db"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
@@ -267,8 +266,8 @@ func SetVersionPriority(versionId string, priority int64) error {
 func RestartVersion(versionId string, taskIds []string, abortInProgress bool, caller string) error {
 	// restart all the 'not in-progress' tasks for the version
 	allTasks, err := task.FindWithDisplayTasks(task.ByDispatchedWithIdsVersionAndStatus(taskIds, versionId, task.CompletedStatuses))
-	if err != nil && !adb.ResultsNotFound(err) {
-		return errors.WithStack(err)
+	if err != nil && err != mgo.ErrNotFound {
+		return err
 	}
 
 	restartIds := make([]string, 0)
@@ -1168,7 +1167,7 @@ func AddNewBuilds(activated bool, v *Version, p *Project, tasks TaskVariantPairs
 
 	existingBuilds, err := build.Find(build.ByVersion(v.Id).WithFields(build.BuildVariantKey, build.IdKey))
 	if err != nil {
-		return errors.WithStack(err)
+		return err
 	}
 	variantsProcessed := map[string]bool{}
 	for _, b := range existingBuilds {
@@ -1194,16 +1193,11 @@ func AddNewBuilds(activated bool, v *Version, p *Project, tasks TaskVariantPairs
 			GeneratedBy:  generatedBy,
 		}
 		buildId, err := CreateBuildFromVersion(buildArgs)
-		grip.Info(message.Fields{
-			"op":        "creating build for version",
-			"variant":   pair.Variant,
-			"activated": activated,
-			"version":   v.Id,
-		})
+		grip.Infof("Creating build for version %s, buildVariant %s, activated=%t",
+			v.Id, pair.Variant, activated)
 		if err != nil {
-			return errors.WithStack(err)
+			return err
 		}
-
 		newBuildIds = append(newBuildIds, buildId)
 		newBuildStatuses = append(newBuildStatuses,
 			VersionBuildStatus{
@@ -1214,7 +1208,7 @@ func AddNewBuilds(activated bool, v *Version, p *Project, tasks TaskVariantPairs
 		)
 	}
 
-	return errors.WithStack(VersionUpdateOne(
+	return VersionUpdateOne(
 		bson.M{VersionIdKey: v.Id},
 		bson.M{
 			"$push": bson.M{
@@ -1222,16 +1216,12 @@ func AddNewBuilds(activated bool, v *Version, p *Project, tasks TaskVariantPairs
 				VersionBuildVariantsKey: bson.M{"$each": newBuildStatuses},
 			},
 		},
-	))
+	)
 }
 
 // Given a version and set of variant/task pairs, creates any tasks that don't exist yet,
 // within the set of already existing builds.
 func AddNewTasks(activated bool, v *Version, p *Project, pairs TaskVariantPairs, generatedBy string) error {
-	if v.BuildIds == nil {
-		return nil
-	}
-
 	builds, err := build.Find(build.ByIds(v.BuildIds).WithFields(build.IdKey, build.BuildVariantKey, build.CreateTimeKey))
 	if err != nil {
 		return err

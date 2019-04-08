@@ -24,6 +24,10 @@ var (
 	oneMs = time.Millisecond
 )
 
+func init() {
+	db.SetGlobalSessionProvider(testutil.TestConfig().SessionFactory())
+}
+
 func TestSetActiveState(t *testing.T) {
 	Convey("With one task with no dependencies", t, func() {
 		testutil.HandleTestingErr(db.ClearCollections(task.Collection, build.Collection, task.OldCollection), t,
@@ -942,6 +946,7 @@ func TestTryResetTask(t *testing.T) {
 				So(testTask.Status, ShouldEqual, evergreen.TaskUndispatched)
 				So(testTask.FinishTime, ShouldResemble, util.ZeroTime)
 				oldTaskId := fmt.Sprintf("%v_%v", testTask.Id, 1)
+				fmt.Println(oldTaskId)
 				oldTask, err := task.FindOneOld(task.ById(oldTaskId))
 				So(err, ShouldBeNil)
 				So(oldTask, ShouldNotBeNil)
@@ -2356,7 +2361,7 @@ tasks:
 	assert.NoError(b1.Insert())
 	assert.NoError(evalStepback(&finishedTask, "", evergreen.TaskFailed, false))
 	checkTask, err = task.FindOneId(stepbackTask.Id)
-	require.NoError(t, err)
+	assert.NoError(err)
 	assert.True(checkTask.Activated)
 
 	// generated task should step back its generator

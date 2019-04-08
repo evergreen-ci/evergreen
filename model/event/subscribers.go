@@ -7,7 +7,7 @@ import (
 	"github.com/mongodb/anser/bsonutil"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
-	mgobson "gopkg.in/mgo.v2/bson"
+	"gopkg.in/mgo.v2/bson"
 )
 
 const (
@@ -43,14 +43,11 @@ type Subscriber struct {
 }
 
 type unmarshalSubscriber struct {
-	Type   string      `bson:"type"`
-	Target mgobson.Raw `bson:"target"`
+	Type   string   `bson:"type"`
+	Target bson.Raw `bson:"target"`
 }
 
-func (s *Subscriber) MarshalBSON() ([]byte, error)  { return mgobson.Marshal(s) }
-func (s *Subscriber) UnmarshalBSON(in []byte) error { return mgobson.Unmarshal(in, s) }
-
-func (s *Subscriber) SetBSON(raw mgobson.Raw) error {
+func (s *Subscriber) SetBSON(raw bson.Raw) error {
 	temp := unmarshalSubscriber{}
 	if err := raw.Unmarshal(&temp); err != nil {
 		return errors.Wrap(err, "can't unmarshal subscriber data")
@@ -58,27 +55,32 @@ func (s *Subscriber) SetBSON(raw mgobson.Raw) error {
 	if len(temp.Type) == 0 {
 		return errors.New("could not find subscriber type")
 	}
-	switch temp.Type {
+	s.Type = temp.Type
+
+	switch s.Type {
 	case GithubPullRequestSubscriberType:
 		s.Target = &GithubPullRequestSubscriber{}
+
 	case EvergreenWebhookSubscriberType:
 		s.Target = &WebhookSubscriber{}
+
 	case JIRAIssueSubscriberType:
 		s.Target = &JIRAIssueSubscriber{}
+
 	case JIRACommentSubscriberType, EmailSubscriberType, SlackSubscriberType:
 		str := ""
 		s.Target = &str
+
 	case GithubMergeSubscriberType:
 		s.Target = &GithubMergeSubscriber{}
+
 	default:
-		return errors.Errorf("unknown subscriber type: '%s'", temp.Type)
+		return errors.Errorf("unknown subscriber type: '%s'", s.Type)
 	}
 
 	if err := temp.Target.Unmarshal(s.Target); err != nil {
 		return errors.Wrap(err, "couldn't unmarshal subscriber info")
 	}
-
-	s.Type = temp.Type
 
 	return nil
 }

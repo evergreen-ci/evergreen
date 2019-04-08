@@ -27,6 +27,7 @@ func TestBuildConnectorFetchByIdSuite(t *testing.T) {
 	s.mock = false
 
 	testutil.ConfigureIntegrationTest(t, testConfig, "TestBuildConnectorFetchByIdSuite")
+	db.SetGlobalSessionProvider(testConfig.SessionFactory())
 
 	assert.NoError(t, db.Clear(build.Collection))
 
@@ -101,6 +102,7 @@ func TestBuildConnectorChangeStatusSuite(t *testing.T) {
 	s.ctx = &DBConnector{}
 
 	testutil.ConfigureIntegrationTest(t, testConfig, "TestPatchConnectorAbortByIdSuite")
+	db.SetGlobalSessionProvider(testConfig.SessionFactory())
 
 	assert.NoError(t, db.Clear(build.Collection))
 
@@ -182,6 +184,7 @@ func TestBuildConnectorAbortSuite(t *testing.T) {
 	s.mock = false
 
 	testutil.ConfigureIntegrationTest(t, testConfig, "TestBuildConnectorAbortSuite")
+	db.SetGlobalSessionProvider(testConfig.SessionFactory())
 
 	assert.NoError(t, db.Clear(build.Collection))
 
@@ -236,6 +239,9 @@ func TestBuildConnectorRestartSuite(t *testing.T) {
 	s := new(BuildConnectorRestartSuite)
 
 	s.ctx = &DBConnector{}
+
+	testutil.ConfigureIntegrationTest(t, testConfig, "TestPatchConnectorAbortByIdSuite")
+	db.SetGlobalSessionProvider(testConfig.SessionFactory())
 
 	assert.NoError(t, db.Clear(build.Collection))
 

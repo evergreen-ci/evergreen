@@ -7,6 +7,7 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/stretchr/testify/suite"
 )
@@ -24,6 +25,7 @@ func TestTaskHistory(t *testing.T) {
 }
 
 func (s *TaskHistorySuite) SetupSuite() {
+	db.SetGlobalSessionProvider(testutil.TestConfig().SessionFactory())
 	s.projectID = "mci"
 }
 
@@ -73,7 +75,7 @@ func (s *TaskHistorySuite) SetupTest() {
 func (s *TaskHistorySuite) TestGetVersionsInWindow() {
 	radius := 20
 	versions, err := getVersionsInWindow("surround", s.projectID, radius, &s.middleVersion)
-	s.Require().NoError(err)
+	s.NoError(err)
 
 	for i := 0; i < radius; i++ {
 		// compare to the last _radius_ elements in s.versionsAfter

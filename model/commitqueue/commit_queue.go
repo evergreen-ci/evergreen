@@ -3,40 +3,8 @@ package commitqueue
 import (
 	"strings"
 
-	"github.com/evergreen-ci/evergreen"
-	"github.com/mongodb/grip"
-	"github.com/mongodb/grip/send"
 	"github.com/pkg/errors"
-	mgobson "gopkg.in/mgo.v2/bson"
 )
-
-func init() {
-	env := evergreen.GetEnvironment()
-	if env != nil {
-		grip.EmergencyPanic(setupEnv(env))
-	}
-}
-
-func setupEnv(env evergreen.Environment) error {
-	if env == nil {
-		return errors.New("no environment configured")
-	}
-	settings := env.Settings()
-	githubToken, err := settings.GetGithubOauthToken()
-	if err == nil && len(githubToken) > 0 {
-		ctx, _ := env.Context()
-		// Github PR Merge
-		var sender send.Sender
-		sender, err = NewGithubPRLogger(ctx, "evergreen", githubToken, sender)
-		if err != nil {
-			return errors.Wrap(err, "Failed to setup github merge logger")
-		}
-
-		return errors.WithStack(env.SetSender(evergreen.SenderGithubMerge, sender))
-	}
-
-	return nil
-}
 
 const (
 	triggerComment    = "evergreen merge"
@@ -48,26 +16,15 @@ type Module struct {
 	Module string `bson:"module" json:"module"`
 	Issue  string `bson:"issue" json:"issue"`
 }
-
-func (m *Module) MarshalBSON() ([]byte, error)  { return mgobson.Marshal(m) }
-func (m *Module) UnmarshalBSON(in []byte) error { return mgobson.Unmarshal(in, m) }
-
 type CommitQueueItem struct {
 	Issue   string   `bson:"issue"`
 	Modules []Module `bson:"modules"`
 }
-
-func (i *CommitQueueItem) MarshalBSON() ([]byte, error)  { return mgobson.Marshal(i) }
-func (i *CommitQueueItem) UnmarshalBSON(in []byte) error { return mgobson.Unmarshal(in, i) }
-
 type CommitQueue struct {
 	ProjectID  string            `bson:"_id"`
 	Processing bool              `bson:"processing"`
-	Queue      []CommitQueueItem `bson:"queue,omitempty"`
+	Queue      []CommitQueueItem `bson:"queue"`
 }
-
-func (q *CommitQueue) MarshalBSON() ([]byte, error)  { return mgobson.Marshal(q) }
-func (q *CommitQueue) UnmarshalBSON(in []byte) error { return mgobson.Unmarshal(in, q) }
 
 func InsertQueue(q *CommitQueue) error {
 	return insert(q)

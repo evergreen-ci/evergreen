@@ -1,4 +1,4 @@
-package command
+package plugintest
 
 import (
 	"io/ioutil"
@@ -10,7 +10,7 @@ import (
 	"github.com/evergreen-ci/evergreen/testutil"
 )
 
-func setupTestPatchData(apiData *modelutil.TestModelData, patchPath string, t *testing.T) error {
+func SetupPatchData(apiData *modelutil.TestModelData, patchPath string, t *testing.T) error {
 
 	if patchPath != "" {
 		modulePatchContent, err := ioutil.ReadFile(patchPath)

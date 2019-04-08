@@ -25,8 +25,7 @@ func TestFindOneProjectVar(t *testing.T) {
 	change, err := projectVars.Upsert()
 	assert.NotNil(change)
 	assert.NoError(err)
-	assert.NotNil(change.UpsertedId)
-	assert.Equal(1, change.Updated, "%+v", change)
+	assert.Equal(0, change.Updated)
 
 	projectVarsFromDB, err := FindOneProjectVars("mongodb")
 	assert.NoError(err)

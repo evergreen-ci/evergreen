@@ -100,7 +100,7 @@ ui:
     secret: "this is a secret"
     defaultproject: "mongodb-mongo-master"
     logfile: "/tmp/ui_test.log"
-    url: "http://localhost"
+    url: "localhost"
     httplistenaddr: ":9090"
 
 monitor:

@@ -17,7 +17,10 @@ import (
 )
 
 func TestLastContainerFinishTimeJob(t *testing.T) {
+
 	assert := assert.New(t)
+	testConfig := testutil.TestConfig()
+	db.SetGlobalSessionProvider(testConfig.SessionFactory())
 
 	mockCloud := cloud.GetMockProvider()
 	mockCloud.Reset()
