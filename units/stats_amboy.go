@@ -17,10 +17,7 @@ import (
 	"github.com/mongodb/grip/message"
 )
 
-const (
-	amboyStatsCollectorJobName = "amboy-stats-collector"
-	enableExtendedRemoteStats  = false
-)
+const amboyStatsCollectorJobName = "amboy-stats-collector"
 
 func init() {
 	registry.AddJobType(amboyStatsCollectorJobName,
@@ -96,7 +93,7 @@ func (j *amboyStatsCollector) Run(ctx context.Context) {
 			"stats":   remoteQueue.Stats(),
 		})
 
-		if enableExtendedRemoteStats {
+		if evergreen.EnableAmboyRemoteReporting {
 			j.AddError(j.collectExtendedRemoteStats(ctx))
 		}
 	}
