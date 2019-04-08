@@ -290,7 +290,7 @@ const (
 	defaultAmboyDBName           = "amboy"
 	maxNotificationsPerSecond    = 100
 
-	EnableAmboyRemoteReporting = true
+	EnableAmboyRemoteReporting = false
 )
 
 // NameTimeFormat is the format in which to log times like instance start time.
