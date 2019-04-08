@@ -262,15 +262,54 @@ func (s *GitGetProjectSuite) TestBuildHTTPCloneCommand() {
 	s.Equal("git clone https://GITHUBTOKEN@someothergithost.com/deafgoat/mci_test.git 'dir' --branch 'master'", cmds[2])
 }
 
+func (s *GitGetProjectSuite) TestBuildSSHCloneCommand() {
+	projectRef := &model.ProjectRef{
+		Owner:  "deafgoat",
+		Repo:   "mci_test",
+		Branch: "master",
+	}
+
+	// ssh clone command with branch
+	location, err := projectRef.Location()
+	s.NoError(err)
+	cmds, err := buildSSHCloneCommand(location, projectRef.Branch, "dir")
+	s.NoError(err)
+	s.Len(cmds, 2)
+	s.Equal("git clone 'git@github.com:deafgoat/mci_test.git' 'dir' --branch 'master'", cmds[0])
+	s.Equal("cd dir", cmds[1])
+
+	// ssh clone command without branch
+	projectRef.Branch = ""
+	location, err = projectRef.Location()
+	s.NoError(err)
+	cmds, err = buildSSHCloneCommand(location, projectRef.Branch, "dir")
+	s.NoError(err)
+	s.Len(cmds, 2)
+	s.Equal("git clone 'git@github.com:deafgoat/mci_test.git' 'dir'", cmds[0])
+	s.Equal("cd dir", cmds[1])
+}
+
 func (s *GitGetProjectSuite) TestBuildCommand() {
 	conf := s.modelData1.TaskConfig
 
 	c := gitFetchProject{
 		Directory: "dir",
-		Token:     "GITHUBTOKEN",
 	}
 
+	// ensure clone command without specified token uses ssh
 	cmds, err := c.buildCloneCommand(conf)
+	s.NoError(err)
+	s.Require().Len(cmds, 6)
+	s.Equal("set -o xtrace", cmds[0])
+	s.Equal("set -o errexit", cmds[1])
+	s.Equal("rm -rf dir", cmds[2])
+	s.Equal("git clone 'git@github.com:deafgoat/mci_test.git' 'dir' --branch 'master'", cmds[3])
+	s.Equal("cd dir", cmds[4])
+	s.Equal("git reset --hard ", cmds[5])
+
+	// ensure clone command with a token uses http
+	c.Token = "GITHUBTOKEN"
+	cmds, err = c.buildCloneCommand(conf)
 	s.NoError(err)
 	s.Require().Len(cmds, 9)
 	s.Equal("set -o xtrace", cmds[0])
@@ -293,29 +332,27 @@ func (s *GitGetProjectSuite) TestBuildCommand() {
 func (s *GitGetProjectSuite) TestBuildCommandForPullRequests() {
 	c := gitFetchProject{
 		Directory: "dir",
-		Token:     "GITHUBTOKEN",
 	}
 
 	cmds, err := c.buildCloneCommand(s.modelData3.TaskConfig)
 	s.NoError(err)
-	s.Len(cmds, 11)
-	s.True(strings.HasPrefix(cmds[8], "git fetch origin \"pull/9001/head:evg-pr-test-"))
-	s.True(strings.HasPrefix(cmds[9], "git checkout \"evg-pr-test-"))
-	s.Equal("git reset --hard 55ca6286e3e4f4fba5d0448333fa99fc5a404a73", cmds[10])
+	s.Len(cmds, 8)
+	s.True(strings.HasPrefix(cmds[5], "git fetch origin \"pull/9001/head:evg-pr-test-"))
+	s.True(strings.HasPrefix(cmds[6], "git checkout \"evg-pr-test-"))
+	s.Equal("git reset --hard 55ca6286e3e4f4fba5d0448333fa99fc5a404a73", cmds[7])
 }
 
 func (s *GitGetProjectSuite) TestBuildCommandForPRMergeTests() {
 	c := gitFetchProject{
 		Directory: "dir",
-		Token:     "GITHUBTOKEN",
 	}
 
 	cmds, err := c.buildCloneCommand(s.modelData4.TaskConfig)
 	s.NoError(err)
-	s.Len(cmds, 11)
-	s.True(strings.HasPrefix(cmds[8], "git fetch origin \"pull/9001/merge:evg-merge-test-"))
-	s.True(strings.HasPrefix(cmds[9], "git checkout \"evg-merge-test-"))
-	s.Equal("git reset --hard abcdef", cmds[10])
+	s.Len(cmds, 8)
+	s.True(strings.HasPrefix(cmds[5], "git fetch origin \"pull/9001/merge:evg-merge-test-"))
+	s.True(strings.HasPrefix(cmds[6], "git checkout \"evg-merge-test-"))
+	s.Equal("git reset --hard abcdef", cmds[7])
 }
 
 func (s *GitGetProjectSuite) TestBuildCommandForCLIMergeTests() {
@@ -337,8 +374,18 @@ func (s *GitGetProjectSuite) TestBuildModuleCommand() {
 		Token:     "GITHUBTOKEN",
 	}
 
+	// ensure module clone command with ssh URL does not inject token
+	cmds, err := c.buildModuleCloneCommand("git@github.com:deafgoat/mci_test.git", "deafgoat", "mci_test", "module", "master", s.modelData2.TaskConfig, nil)
+	s.NoError(err)
+	s.Require().Len(cmds, 5)
+	s.Equal("set -o xtrace", cmds[0])
+	s.Equal("set -o errexit", cmds[1])
+	s.Equal("git clone 'git@github.com:deafgoat/mci_test.git' 'module'", cmds[2])
+	s.Equal("cd module", cmds[3])
+	s.Equal("git checkout 'master'", cmds[4])
+
 	// ensure module clone command with http URL injects token
-	cmds, err := c.buildModuleCloneCommand("https://github.com/deafgoat/mci_test.git", "deafgoat", "mci_test", "module", "master", s.modelData2.TaskConfig, nil)
+	cmds, err = c.buildModuleCloneCommand("https://github.com/deafgoat/mci_test.git", "deafgoat", "mci_test", "module", "master", s.modelData2.TaskConfig, nil)
 	s.NoError(err)
 	s.Require().Len(cmds, 8)
 	s.Equal("set -o xtrace", cmds[0])
@@ -367,17 +414,14 @@ func (s *GitGetProjectSuite) TestBuildModuleCommand() {
 	}
 	cmds, err = c.buildModuleCloneCommand("git@github.com:deafgoat/mci_test.git", "deafgoat", "mci_test", "module", "master", s.modelData4.TaskConfig, module)
 	s.NoError(err)
-	s.Require().Len(cmds, 10)
+	s.Require().Len(cmds, 7)
 	s.Equal("set -o xtrace", cmds[0])
 	s.Equal("set -o errexit", cmds[1])
-	s.Equal("set +o xtrace", cmds[2])
-	s.Equal("echo \"git clone https://[redacted oauth token]@github.com/deafgoat/mci_test.git 'module'\"", cmds[3])
-	s.Equal("git clone https://GITHUBTOKEN@github.com/deafgoat/mci_test.git 'module'", cmds[4])
-	s.Equal("set -o xtrace", cmds[5])
-	s.Equal("cd module", cmds[6])
-	s.Regexp("^git fetch origin \"pull/1234/merge:evg-merge-test-", cmds[7])
-	s.Regexp("^git checkout 'evg-merge-test-", cmds[8])
-	s.Equal("git reset --hard 1234abcd", cmds[9])
+	s.Equal("git clone 'git@github.com:deafgoat/mci_test.git' 'module'", cmds[2])
+	s.Equal("cd module", cmds[3])
+	s.Regexp("^git fetch origin \"pull/1234/merge:evg-merge-test-", cmds[4])
+	s.Regexp("^git checkout 'evg-merge-test-", cmds[5])
+	s.Equal("git reset --hard 1234abcd", cmds[6])
 }
 
 func (s *GitGetProjectSuite) TestIsMailboxPatch() {

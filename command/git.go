@@ -61,7 +61,7 @@ func (c *gitFetchProject) ParseParams(params map[string]interface{}) error {
 	}
 
 	if c.Directory == "" {
-		return errors.Errorf("error parsing '%v' params: value for directory "+
+		return errors.Errorf("error parsing '%s' params: value for directory "+
 			"must not be blank", c.Name())
 	}
 
@@ -84,6 +84,18 @@ func buildHTTPCloneCommand(opts cloneOpts) ([]string, error) {
 	}, nil
 }
 
+func buildSSHCloneCommand(location, branch, dir string) ([]string, error) {
+	cloneCmd := fmt.Sprintf("git clone '%s' '%s'", location, dir)
+	if branch != "" {
+		cloneCmd = fmt.Sprintf("%s --branch '%s'", cloneCmd, branch)
+	}
+
+	return []string{
+		cloneCmd,
+		fmt.Sprintf("cd %s", dir),
+	}, nil
+}
+
 func (c *gitFetchProject) buildCloneCommand(conf *model.TaskConfig) ([]string, error) {
 	gitCommands := []string{
 		"set -o xtrace",
@@ -92,21 +104,33 @@ func (c *gitFetchProject) buildCloneCommand(conf *model.TaskConfig) ([]string, e
 	}
 
 	var cloneCmd []string
-	location, err := conf.ProjectRef.HTTPLocation()
-	if err != nil {
-		return nil, err
-	}
-	opts := cloneOpts{
-		location: location,
-		owner:    conf.ProjectRef.Owner,
-		repo:     conf.ProjectRef.Repo,
-		branch:   conf.ProjectRef.Branch,
-		dir:      c.Directory,
-		token:    c.Token,
-	}
-	cloneCmd, err = buildHTTPCloneCommand(opts)
-	if err != nil {
-		return nil, err
+	if c.Token == "" {
+		location, err := conf.ProjectRef.Location()
+		if err != nil {
+			return nil, err
+		}
+		cloneCmd, err = buildSSHCloneCommand(location, conf.ProjectRef.Branch, c.Directory)
+		if err != nil {
+			return nil, err
+		}
+
+	} else {
+		location, err := conf.ProjectRef.HTTPLocation()
+		if err != nil {
+			return nil, err
+		}
+		opts := cloneOpts{
+			location: location,
+			owner:    conf.ProjectRef.Owner,
+			repo:     conf.ProjectRef.Repo,
+			branch:   conf.ProjectRef.Branch,
+			dir:      c.Directory,
+			token:    c.Token,
+		}
+		cloneCmd, err = buildHTTPCloneCommand(opts)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	gitCommands = append(gitCommands, cloneCmd...)
@@ -163,24 +187,32 @@ func (c *gitFetchProject) buildModuleCloneCommand(cloneURI, owner, repo, moduleB
 		"set -o errexit",
 	}
 
-	location := &url.URL{
-		Scheme: "https",
-		Host:   "github.com",
-		Path:   fmt.Sprintf("/%s/%s.git", owner, repo),
-	}
+	if strings.Contains(cloneURI, "git@github.com:") {
+		cmds, err := buildSSHCloneCommand(cloneURI, "", moduleBase)
+		if err != nil {
+			return nil, err
+		}
+		gitCommands = append(gitCommands, cmds...)
 
-	opts := cloneOpts{
-		location: location,
-		owner:    owner,
-		repo:     repo,
-		dir:      moduleBase,
-		token:    c.Token,
+	} else {
+		url, err := url.Parse(cloneURI)
+		if err != nil {
+			return nil, errors.Wrap(err, "repository URL is invalid")
+		}
+
+		opts := cloneOpts{
+			location: url,
+			owner:    owner,
+			repo:     repo,
+			dir:      moduleBase,
+			token:    c.Token,
+		}
+		cmds, err := buildHTTPCloneCommand(opts)
+		if err != nil {
+			return nil, err
+		}
+		gitCommands = append(gitCommands, cmds...)
 	}
-	cmds, err := buildHTTPCloneCommand(opts)
-	if err != nil {
-		return nil, err
-	}
-	gitCommands = append(gitCommands, cmds...)
 
 	if isGitHubPRModulePatch(conf, modulePatch) {
 		branchName := fmt.Sprintf("evg-merge-test-%s", util.RandomString())
