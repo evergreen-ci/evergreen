@@ -10,7 +10,6 @@ import (
 )
 
 func TestManifest(t *testing.T) {
-	db.SetGlobalSessionProvider(testutil.TestConfig().SessionFactory())
 	testutil.HandleTestingErr(
 		db.ClearCollections(manifest.Collection), t,
 		"error clearing test collections")

@@ -13,7 +13,7 @@ import (
 	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/stretchr/testify/suite"
-	"gopkg.in/mgo.v2/bson"
+	mgobson "gopkg.in/mgo.v2/bson"
 )
 
 ////////////////////////////////////////////////////////////////////////
@@ -22,7 +22,7 @@ import (
 
 type PatchByIdSuite struct {
 	sc     *data.MockConnector
-	objIds []bson.ObjectId
+	objIds []mgobson.ObjectId
 	data   data.MockPatchConnector
 	route  *patchByIdHandler
 	suite.Suite
@@ -33,7 +33,7 @@ func TestPatchByIdSuite(t *testing.T) {
 }
 
 func (s *PatchByIdSuite) SetupSuite() {
-	s.objIds = []bson.ObjectId{bson.NewObjectId(), bson.NewObjectId()}
+	s.objIds = []mgobson.ObjectId{mgobson.NewObjectId(), mgobson.NewObjectId()}
 
 	s.data = data.MockPatchConnector{
 		CachedPatches: []patch.Patch{
@@ -62,7 +62,7 @@ func (s *PatchByIdSuite) TestFindById() {
 	s.Equal(model.ToAPIString(s.objIds[0].Hex()), p.Id)
 }
 func (s *PatchByIdSuite) TestFindByIdFail() {
-	new_id := bson.NewObjectId()
+	new_id := mgobson.NewObjectId()
 	for _, i := range s.objIds {
 		s.NotEqual(new_id, i)
 	}
@@ -186,7 +186,7 @@ func (s *PatchesByProjectSuite) TestEmptyTimeShouldSetNow() {
 
 type PatchAbortSuite struct {
 	sc     *data.MockConnector
-	objIds []bson.ObjectId
+	objIds []mgobson.ObjectId
 	data   data.MockPatchConnector
 
 	suite.Suite
@@ -197,7 +197,7 @@ func TestPatchAbortSuite(t *testing.T) {
 }
 
 func (s *PatchAbortSuite) SetupSuite() {
-	s.objIds = []bson.ObjectId{bson.NewObjectId(), bson.NewObjectId()}
+	s.objIds = []mgobson.ObjectId{mgobson.NewObjectId(), mgobson.NewObjectId()}
 
 	s.data = data.MockPatchConnector{
 		CachedPatches: []patch.Patch{
@@ -247,7 +247,7 @@ func (s *PatchAbortSuite) TestAbortFail() {
 	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "user1"})
 
 	rm := makeAbortPatch(s.sc).(*patchAbortHandler)
-	new_id := bson.NewObjectId()
+	new_id := mgobson.NewObjectId()
 	for _, i := range s.objIds {
 		s.NotEqual(new_id, i)
 	}
@@ -263,7 +263,7 @@ func (s *PatchAbortSuite) TestAbortFail() {
 
 type PatchesChangeStatusSuite struct {
 	sc     *data.MockConnector
-	objIds []bson.ObjectId
+	objIds []mgobson.ObjectId
 	data   data.MockPatchConnector
 
 	suite.Suite
@@ -274,7 +274,7 @@ func TestPatchesChangeStatusSuite(t *testing.T) {
 }
 
 func (s *PatchesChangeStatusSuite) SetupSuite() {
-	s.objIds = []bson.ObjectId{bson.NewObjectId(), bson.NewObjectId()}
+	s.objIds = []mgobson.ObjectId{mgobson.NewObjectId(), mgobson.NewObjectId()}
 
 	s.data = data.MockPatchConnector{
 		CachedPatches: []patch.Patch{
@@ -315,7 +315,7 @@ func (s *PatchesChangeStatusSuite) TestChangeStatus() {
 
 type PatchRestartSuite struct {
 	sc          *data.MockConnector
-	objIds      []bson.ObjectId
+	objIds      []mgobson.ObjectId
 	patchData   data.MockPatchConnector
 	versionData data.MockVersionConnector
 
@@ -327,7 +327,7 @@ func TestPatchRestartSuite(t *testing.T) {
 }
 
 func (s *PatchRestartSuite) SetupSuite() {
-	s.objIds = []bson.ObjectId{bson.NewObjectId(), bson.NewObjectId()}
+	s.objIds = []mgobson.ObjectId{mgobson.NewObjectId(), mgobson.NewObjectId()}
 
 	s.patchData = data.MockPatchConnector{
 		CachedPatches: []patch.Patch{

@@ -49,9 +49,6 @@ func TestFlaggingIdleHosts(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	testConfig := testutil.TestConfig()
-	db.SetGlobalSessionProvider(testConfig.SessionFactory())
-
 	env := evergreen.GetEnvironment()
 
 	Convey("When flagging idle hosts to be terminated", t, func() {

@@ -11,14 +11,10 @@ import (
 	"github.com/evergreen-ci/evergreen/testutil"
 	. "github.com/smartystreets/goconvey/convey"
 	"github.com/stretchr/testify/assert"
-	"gopkg.in/mgo.v2/bson"
+	"go.mongodb.org/mongo-driver/bson"
 )
 
 var buildTestConfig = testutil.TestConfig()
-
-func init() {
-	db.SetGlobalSessionProvider(buildTestConfig.SessionFactory())
-}
 
 func buildIdInSlice(builds []Build, id string) bool {
 	for _, build := range builds {
@@ -710,18 +706,28 @@ func TestBuildSetCachedTaskFinished(t *testing.T) {
 
 	assert.NoError(b.SetCachedTaskFinished("t1", evergreen.TaskFailed, &detail, timeTaken))
 	assert.NoError(b.SetCachedTaskFinished("t2", evergreen.TaskFailed, &detail, timeTaken))
-	assert.EqualError(b.SetCachedTaskFinished("t3", evergreen.TaskFailed, &detail, timeTaken), "not found")
+	assert.EqualError(b.SetCachedTaskFinished("t3", evergreen.TaskFailed, &detail, timeTaken), "document not found")
 
 	assert.NoError(SetCachedTaskFinished("b2", "t1", evergreen.TaskFailed, &detail, timeTaken))
 	assert.NoError(SetCachedTaskFinished("b2", "t2", evergreen.TaskFailed, &detail, timeTaken))
-	assert.EqualError(SetCachedTaskFinished("b2", "t3", evergreen.TaskFailed, &detail, timeTaken), "not found")
+	assert.EqualError(SetCachedTaskFinished("b2", "t3", evergreen.TaskFailed, &detail, timeTaken), "document not found")
 
 	// Results from build.SetCachedTaskFinished and SetCachedTaskFinished
 	// should be the same
 	b2, err := FindOneId("b2")
 	assert.NoError(err)
 	assert.NotNil(b2)
+
+	// we want the time to actually equal and it won't because
+	// timezone on nils
 	b.Id = ""
 	b2.Id = ""
+	b.CreateTime = b2.CreateTime
+	b.StartTime = b2.StartTime
+	b.FinishTime = b2.FinishTime
+	b.ActivatedTime = b2.ActivatedTime
+	for idx := range b.Tasks {
+		b.Tasks[idx].StartTime = b2.Tasks[idx].StartTime
+	}
 	assert.EqualValues(b2, b)
 }

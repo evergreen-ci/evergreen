@@ -13,7 +13,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/rest/data"
-	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/mongodb/amboy/queue"
 	"github.com/stretchr/testify/assert"
@@ -63,7 +62,7 @@ func TestGenerateExecute(t *testing.T) {
 func TestGeneratePollParse(t *testing.T) {
 	require := require.New(t)
 	assert := assert.New(t)
-	db.SetGlobalSessionProvider(testutil.TestConfig().SessionFactory())
+
 	require.NoError(db.ClearCollections(task.Collection, host.Collection))
 	sc := &data.MockConnector{}
 	ctx := context.Background()

@@ -11,10 +11,6 @@ import (
 
 var pushTestConfig = testutil.TestConfig()
 
-func init() {
-	db.SetGlobalSessionProvider(pushTestConfig.SessionFactory())
-}
-
 func TestFindPushLogAfter(t *testing.T) {
 
 	Convey("When checking for duplicate pushes", t, func() {

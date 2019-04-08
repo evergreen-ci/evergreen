@@ -5,12 +5,10 @@ import (
 	"testing"
 	"time"
 
-	"gopkg.in/mgo.v2/bson"
-
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/testresult"
-	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/stretchr/testify/suite"
+	mgobson "gopkg.in/mgo.v2/bson"
 )
 
 type TaskTestResultSuite struct {
@@ -24,8 +22,6 @@ func TestTaskTestResultSuite(t *testing.T) {
 }
 
 func (s *TaskTestResultSuite) SetupSuite() {
-	db.SetGlobalSessionProvider(testutil.TestConfig().SessionFactory())
-
 	s.tasks = []Task{}
 	for i := 0; i < 5; i++ {
 		s.tasks = append(s.tasks, Task{
@@ -42,7 +38,7 @@ func (s *TaskTestResultSuite) SetupSuite() {
 	s.tests = []testresult.TestResult{}
 	for i := 6; i < 10; i++ {
 		s.tests = append(s.tests, testresult.TestResult{
-			ID:        bson.NewObjectId(),
+			ID:        mgobson.NewObjectId(),
 			Status:    "pass",
 			TestFile:  fmt.Sprintf("file-%d", i),
 			URL:       fmt.Sprintf("url-%d", i),
@@ -109,7 +105,7 @@ func (s *TaskTestResultSuite) TestNoOldNewTestResults() {
 	testResults := []testresult.TestResult{}
 	for i := 11; i < 20; i++ {
 		testResults = append(testResults, testresult.TestResult{
-			ID:        bson.NewObjectId(),
+			ID:        mgobson.NewObjectId(),
 			Status:    "pass",
 			TestFile:  fmt.Sprintf("file-%d", i),
 			URL:       fmt.Sprintf("url-%d", i),
@@ -163,7 +159,7 @@ func (s *TaskTestResultSuite) TestArchivedTask() {
 	testResults := []testresult.TestResult{}
 	for i := 11; i < 20; i++ {
 		testResults = append(testResults, testresult.TestResult{
-			ID:        bson.NewObjectId(),
+			ID:        mgobson.NewObjectId(),
 			Status:    "pass",
 			TestFile:  fmt.Sprintf("file-%d", i),
 			URL:       fmt.Sprintf("url-%d", i),

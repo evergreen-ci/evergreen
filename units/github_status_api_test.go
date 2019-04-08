@@ -20,7 +20,7 @@ import (
 	"github.com/mongodb/grip/send"
 	"github.com/stretchr/testify/suite"
 	"golang.org/x/oauth2"
-	"gopkg.in/mgo.v2/bson"
+	mgobson "gopkg.in/mgo.v2/bson"
 )
 
 type githubStatusUpdateSuite struct {
@@ -37,11 +37,6 @@ func TestGithubStatusUpdate(t *testing.T) {
 	suite.Run(t, new(githubStatusUpdateSuite))
 }
 
-func (s *githubStatusUpdateSuite) SetupSuite() {
-	testConfig := testutil.TestConfig()
-	db.SetGlobalSessionProvider(testConfig.SessionFactory())
-}
-
 func (s *githubStatusUpdateSuite) SetupTest() {
 	s.NoError(db.ClearCollections(evergreen.ConfigCollection, patch.Collection, patch.IntentCollection, model.ProjectRefCollection, evergreen.ConfigCollection))
 
@@ -56,7 +51,7 @@ func (s *githubStatusUpdateSuite) SetupTest() {
 	s.Require().NoError(s.env.Configure(ctx, filepath.Join(evergreen.FindEvergreenHome(), testutil.TestDir, testutil.TestSettings), nil))
 
 	startTime := time.Now().Truncate(time.Millisecond)
-	id := bson.NewObjectId()
+	id := mgobson.NewObjectId()
 	s.patchDoc = &patch.Patch{
 		Id:         id,
 		Version:    id.Hex(),
@@ -74,7 +69,7 @@ func (s *githubStatusUpdateSuite) SetupTest() {
 	}
 
 	s.buildDoc = &build.Build{
-		Id:           bson.NewObjectId().Hex(),
+		Id:           mgobson.NewObjectId().Hex(),
 		BuildVariant: "testvariant",
 		Version:      s.patchDoc.Version,
 		Status:       evergreen.BuildFailed,

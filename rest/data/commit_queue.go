@@ -11,7 +11,6 @@ import (
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/google/go-github/github"
 	"github.com/pkg/errors"
-	mgo "gopkg.in/mgo.v2"
 )
 
 type DBCommitQueueConnector struct{}
@@ -59,9 +58,6 @@ func (pc *DBCommitQueueConnector) EnqueueItem(projectID string, item restModel.A
 func (pc *DBCommitQueueConnector) FindCommitQueueByID(id string) (*restModel.APICommitQueue, error) {
 	cqService, err := commitqueue.FindOneId(id)
 	if err != nil {
-		if err == mgo.ErrNotFound {
-			return nil, nil
-		}
 		return nil, errors.Wrap(err, "can't get commit queue from database")
 	}
 

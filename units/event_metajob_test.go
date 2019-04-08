@@ -16,7 +16,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/notification"
 	"github.com/evergreen-ci/evergreen/model/patch"
-	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/grip"
@@ -24,7 +23,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
-	"gopkg.in/mgo.v2/bson"
+	mgobson "gopkg.in/mgo.v2/bson"
 )
 
 type eventMetaJobSuite struct {
@@ -39,11 +38,9 @@ func TestEventMetaJob(t *testing.T) {
 	s := &eventMetaJobSuite{}
 	s.ctx, s.cancel = context.WithCancel(context.Background())
 
-	env := testutil.NewEnvironment(s.ctx, t)
-	evergreen.SetEnvironment(env)
+	env := evergreen.GetEnvironment()
 	require.NoError(t, env.RemoteQueue().Start(s.ctx))
 	s.env = env
-	db.SetGlobalSessionProvider(testutil.TestConfig().SessionFactory())
 	suite.Run(t, s)
 }
 
@@ -200,7 +197,7 @@ func (s *eventMetaJobSuite) TestEndToEnd() {
 	defer ln.Close()
 
 	p := &patch.Patch{
-		Id:      bson.NewObjectId(),
+		Id:      mgobson.NewObjectId(),
 		Project: "test",
 		Status:  evergreen.PatchFailed,
 		Author:  "somebody",
@@ -221,7 +218,7 @@ func (s *eventMetaJobSuite) TestEndToEnd() {
 
 	subs := []event.Subscription{
 		{
-			ID:           bson.NewObjectId().Hex(),
+			ID:           mgobson.NewObjectId().Hex(),
 			ResourceType: e.ResourceType,
 			Trigger:      "outcome",
 			Selectors: []event.Selector{
@@ -239,7 +236,7 @@ func (s *eventMetaJobSuite) TestEndToEnd() {
 			},
 		},
 		{
-			ID:           bson.NewObjectId().Hex(),
+			ID:           mgobson.NewObjectId().Hex(),
 			ResourceType: e.ResourceType,
 			Trigger:      "outcome",
 			Selectors: []event.Selector{
