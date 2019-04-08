@@ -2,26 +2,33 @@ package model
 
 import (
 	"github.com/evergreen-ci/evergreen/model/host"
+	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 )
 
 type CreateHost struct {
-	DNSName    string `json:"dns_name"`
-	IP         string `json:"ip_address"`
-	InstanceID string `json:"instance_id"`
+	DNSName    string `json:"dns_name,omitempty"`
+	IP         string `json:"ip_address,omitempty"`
+	InstanceID string `json:"instance_id,omitempty"`
 
-	HostID      string `json:"host_id"`
-	ContainerID string `json:"container_id"`
-	ParentID    string `json:"parent_id"`
-	Image       string `json:"image"`
-	Command     string `json:"command"`
-	Port        int    `json:"port"`
+	HostID      string `json:"host_id,omitempty"`
+	ContainerID string `json:"container_id,omitempty"`
+	ParentID    string `json:"parent_id,omitempty"`
+	Image       string `json:"image,omitempty"`
+	Command     string `json:"command,omitempty"`
 }
 
 func (createHost *CreateHost) BuildFromService(h interface{}) error {
 	switch v := h.(type) {
 	case host.Host:
 		// container
+		grip.Info(message.Fields{
+			"message":   "created container (in host.Host)",
+			"host":      v,
+			"purpose":   "dogfooding",
+			"operation": "host.list",
+		})
 		if v.ParentID != "" {
 			createHost.HostID = v.Id
 			createHost.ContainerID = v.ExternalIdentifier
@@ -35,6 +42,12 @@ func (createHost *CreateHost) BuildFromService(h interface{}) error {
 		createHost.IP = v.IP
 		createHost.InstanceID = v.ExternalIdentifier
 	case *host.Host:
+		grip.Info(message.Fields{
+			"message":   "created container (in *host.Host)",
+			"host":      v,
+			"purpose":   "dogfooding",
+			"operation": "host.list",
+		})
 		// container
 		if v.ParentID != "" {
 			createHost.HostID = v.Id

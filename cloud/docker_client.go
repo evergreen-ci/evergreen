@@ -386,16 +386,22 @@ func (c *dockerClientImpl) CreateContainer(ctx context.Context, parentHost, cont
 	info, err := dockerClient.ContainerCreate(ctx, containerConf, hostConf, networkConf, containerHost.Id)
 	if err != nil {
 		err = errors.Wrapf(err, "Docker create API call failed for container '%s'", containerHost.Id)
-		grip.Info(message.Fields{
-			"message": "failed to create container",
-			"error":   err.Error(),
-			"host":    containerHost,
-			"purpose": "dogfooding",
-		})
 		grip.Error(err)
 		return err
 	}
+	grip.Info(message.Fields{
+		"message": "created container (before assigning ext. identifier)",
+		"info":    info,
+		"host":    containerHost,
+		"purpose": "dogfooding",
+	})
 	containerHost.ExternalIdentifier = info.ID
+	grip.Info(message.Fields{
+		"message": "created container (after assigning ext. identifier)",
+		"info":    info,
+		"host":    containerHost,
+		"purpose": "dogfooding",
+	})
 	grip.Info(msg)
 
 	return nil

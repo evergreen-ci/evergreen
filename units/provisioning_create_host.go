@@ -98,7 +98,7 @@ func (j *createHostJob) Run(ctx context.Context) {
 	}
 
 	if j.host == nil {
-		j.host, err = host.FindOneId(j.HostID)
+		j.host, err = host.FindOneByIdOrTag(j.HostID)
 		if err != nil {
 			j.AddError(err)
 			return

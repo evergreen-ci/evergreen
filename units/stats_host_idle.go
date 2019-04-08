@@ -6,6 +6,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/pkg/errors"
+
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/cloud"
 	"github.com/evergreen-ci/evergreen/model/host"
@@ -94,6 +96,9 @@ func (j *collectHostIdleDataJob) Run(ctx context.Context) {
 	if j.host == nil {
 		j.host, err = host.FindOneId(j.HostID)
 		j.AddError(err)
+		if j.host == nil {
+			j.AddError(errors.Errorf("unable to retrieve host %s", j.HostID))
+		}
 	}
 
 	if j.task == nil && j.TaskID != "" {
