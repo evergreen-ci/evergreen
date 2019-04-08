@@ -109,7 +109,7 @@ func agentMonitor() cli.Command {
 			},
 			cli.IntFlag{
 				Name:  jasperPortFlagName,
-				Value: defaultAgentStatusPort - 2,
+				Value: defaultJasperPort,
 				Usage: "the port that is running the Jasper RPC service",
 			},
 			cli.IntFlag{
@@ -144,12 +144,12 @@ func agentMonitor() cli.Command {
 			}
 			m.agentArgs = args
 
-			if err := setupLogging(m); err != nil {
+			if err = setupLogging(m); err != nil {
 				return errors.Wrap(err, "error setting up logging")
 			}
 
 			// Reserve the given port to prevent other monitors from starting.
-			if _, err := net.Listen("tcp", fmt.Sprintf(":%d", m.port)); err != nil {
+			if _, err = net.Listen("tcp", fmt.Sprintf(":%d", m.port)); err != nil {
 				if err == syscall.EADDRINUSE {
 					return nil
 				}
@@ -323,7 +323,7 @@ func createAgentProcess(ctx context.Context, m *monitor, retry *retryArgs) (jasp
 	var proc jasper.Process
 	var err error
 
-	if err := retryWithArgs(ctx, func() (bool, error) {
+	if err = retryWithArgs(ctx, func() (bool, error) {
 		opts := &jasper.CreateOptions{Environment: env}
 		cmd := m.jasperClient.CreateCommand(ctx).
 			Add(agentCmdArgs).
@@ -331,7 +331,7 @@ func createAgentProcess(ctx context.Context, m *monitor, retry *retryArgs) (jasp
 			SetErrorSender(level.Error, grip.GetSender()).
 			ApplyFromOpts(opts).
 			Background(true)
-		if err := cmd.Run(ctx); err != nil {
+		if err = cmd.Run(ctx); err != nil {
 			return true, errors.Wrap(err, "failed to create process")
 		}
 
@@ -342,7 +342,7 @@ func createAgentProcess(ctx context.Context, m *monitor, retry *retryArgs) (jasp
 			catcher := grip.NewBasicCatcher()
 
 			for _, jasperID := range jasperIDs {
-				proc, err := m.jasperClient.Get(ctx, jasperID)
+				proc, err = m.jasperClient.Get(ctx, jasperID)
 				if err != nil {
 					catcher.Add(errors.Wrap(err, "could not find erroneous process"))
 					continue
