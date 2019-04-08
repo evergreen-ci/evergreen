@@ -248,7 +248,7 @@ func (d *mongoDriver) SaveStatus(ctx context.Context, j amboy.Job, stat amboy.Jo
 	}
 
 	if res.ModifiedCount != 1 {
-		return errors.Errorf("did not update any status documents [matched=%d]", res.MatchedCount)
+		return errors.Errorf("did not update any status documents [matched=%d, modified=%d]", res.MatchedCount, res.ModifiedCount)
 	}
 
 	j.SetStatus(stat)
@@ -478,7 +478,7 @@ func (d *mongoDriver) Next(ctx context.Context) amboy.Job {
 func (d *mongoDriver) Stats(ctx context.Context) amboy.QueueStats {
 	coll := d.getCollection()
 
-	numJobs, err := coll.CountDocuments(ctx, struct{}{})
+	numJobs, err := coll.EstimatedDocumentCount(ctx)
 	grip.Warning(message.WrapError(err, message.Fields{
 		"id":         d.instanceID,
 		"service":    "amboy.queue.mongo",
