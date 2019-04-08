@@ -115,7 +115,7 @@ load-smoke-data:$(buildDir)/.load-smoke-data
 $(buildDir)/.load-smoke-data:$(buildDir)/load-smoke-data
 	./$<
 	@touch $@
-smoke-test-monitor:$(localClientBinary) load-smoke-data
+smoke-test-agent-monitor:$(localClientBinary) load-smoke-data
 	./$< service deploy start-evergreen --web --binary ./$< &
 	./$< service deploy start-evergreen --monitor --binary ./$< --client_url ${CLIENT_URL} &
 	./$< service deploy test-endpoints --check-build --username admin --key abb623665fdbf368a1db980dde6ee0f0 || (pkill -f $<; exit 1)

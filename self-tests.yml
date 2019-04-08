@@ -331,7 +331,7 @@ tasks:
     name: smoke-test-endpoints
     tags: ["smoke"]
   - <<: *run-smoke-test-with-client-url
-    name: smoke-test-monitor
+    name: smoke-test-agent-monitor
     tags: ["smoke"]
   - <<: *run-generate-lint
 
