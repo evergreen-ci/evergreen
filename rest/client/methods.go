@@ -321,9 +321,8 @@ func (c *communicatorImpl) SendLogMessages(ctx context.Context, taskData TaskDat
 	backupTimer := time.NewTimer(15 * time.Minute)
 	start := time.Now()
 	defer backupTimer.Stop()
-	doneChan := make(chan bool)
+	doneChan := make(chan struct{})
 	defer func() {
-		doneChan <- true
 		close(doneChan)
 	}()
 	go func() {

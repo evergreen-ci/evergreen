@@ -31,7 +31,7 @@ func TestTerminateHosts(t *testing.T) {
 	testConfig := testutil.TestConfig()
 	testutil.ConfigureIntegrationTest(t, testConfig, "TestTerminateHosts")
 	assert := assert.New(t)
-	db.SetGlobalSessionProvider(testConfig.SessionFactory())
+
 	testutil.HandleTestingErr(db.Clear(host.Collection), t, "error clearing host collection")
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -69,7 +69,7 @@ func TestHostCosts(t *testing.T) {
 	testConfig := testutil.TestConfig()
 	testutil.ConfigureIntegrationTest(t, testConfig, "TestHostCosts")
 	assert := assert.New(t)
-	db.SetGlobalSessionProvider(testConfig.SessionFactory())
+
 	testutil.HandleTestingErr(db.ClearCollections(host.Collection, task.Collection), t, "error clearing host collection")
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -124,11 +124,6 @@ func TestHostCosts(t *testing.T) {
 // At some point these can/should move to the model package.
 
 func TestFlaggingDecommissionedHosts(t *testing.T) {
-
-	testConfig := testutil.TestConfig()
-
-	db.SetGlobalSessionProvider(testConfig.SessionFactory())
-
 	Convey("When flagging decommissioned hosts", t, func() {
 
 		Convey("only hosts in the database who are marked decommissioned"+
@@ -190,11 +185,6 @@ func TestFlaggingDecommissionedHosts(t *testing.T) {
 }
 
 func TestFlaggingUnprovisionedHosts(t *testing.T) {
-
-	testConfig := testutil.TestConfig()
-
-	db.SetGlobalSessionProvider(testConfig.SessionFactory())
-
 	Convey("When flagging unprovisioned hosts to be terminated", t, func() {
 
 		// reset the db
@@ -276,11 +266,6 @@ func TestFlaggingUnprovisionedHosts(t *testing.T) {
 }
 
 func TestFlaggingProvisioningFailedHosts(t *testing.T) {
-
-	testConfig := testutil.TestConfig()
-
-	db.SetGlobalSessionProvider(testConfig.SessionFactory())
-
 	Convey("When flagging hosts whose provisioning failed", t, func() {
 
 		// reset the db
@@ -322,11 +307,6 @@ func TestFlaggingProvisioningFailedHosts(t *testing.T) {
 }
 
 func TestFlaggingExpiredHosts(t *testing.T) {
-
-	testConfig := testutil.TestConfig()
-
-	db.SetGlobalSessionProvider(testConfig.SessionFactory())
-
 	Convey("When flagging expired hosts to be terminated", t, func() {
 
 		// reset the db

@@ -5,14 +5,12 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
-	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/commitqueue"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/google/go-github/github"
 	"github.com/pkg/errors"
-	mgo "gopkg.in/mgo.v2"
 )
 
 type DBCommitQueueConnector struct{}
@@ -37,40 +35,29 @@ func (pc *DBCommitQueueConnector) GetGitHubPR(ctx context.Context, owner, repo s
 	return pr, nil
 }
 
-func (pc *DBCommitQueueConnector) EnqueueItem(owner, repo, baseBranch string, item restModel.APICommitQueueItem) error {
-	proj, err := model.FindOneProjectRefWithCommitQByOwnerRepoAndBranch(owner, repo, baseBranch)
-	if err != nil {
-		return errors.Wrapf(err, "can't query for matching project with commit queue enabled. owner: %s, repo: %s, branch: %s", owner, repo, baseBranch)
-	}
-	if proj == nil {
-		return errors.Errorf("no matching project with commit queue enabled. owner: %s, repo: %s, branch: %s", owner, repo, baseBranch)
-	}
-
-	projectID := proj.Identifier
+func (pc *DBCommitQueueConnector) EnqueueItem(projectID string, item restModel.APICommitQueueItem) (int, error) {
 	q, err := commitqueue.FindOneId(projectID)
 	if err != nil {
-		return errors.Wrapf(err, "can't query for queue id %s", projectID)
+		return 0, errors.Wrapf(err, "can't query for queue id %s", projectID)
 	}
 
 	itemInterface, err := item.ToService()
 	if err != nil {
-		return errors.Wrap(err, "item cannot be converted to DB model")
+		return 0, errors.Wrap(err, "item cannot be converted to DB model")
 	}
 
 	itemService := itemInterface.(commitqueue.CommitQueueItem)
-	if err := q.Enqueue(itemService); err != nil {
-		return errors.Wrapf(err, "can't enqueue item to queue %s", projectID)
+	position, err := q.Enqueue(itemService)
+	if err != nil {
+		return 0, errors.Wrapf(err, "can't enqueue item to queue %s", projectID)
 	}
 
-	return nil
+	return position, nil
 }
 
 func (pc *DBCommitQueueConnector) FindCommitQueueByID(id string) (*restModel.APICommitQueue, error) {
 	cqService, err := commitqueue.FindOneId(id)
 	if err != nil {
-		if err == mgo.ErrNotFound {
-			return nil, nil
-		}
 		return nil, errors.Wrap(err, "can't get commit queue from database")
 	}
 
@@ -155,15 +142,14 @@ func (pc *MockCommitQueueConnector) GetGitHubPR(ctx context.Context, owner, repo
 	}, nil
 }
 
-func (pc *MockCommitQueueConnector) EnqueueItem(owner, repo, baseBranch string, item restModel.APICommitQueueItem) error {
+func (pc *MockCommitQueueConnector) EnqueueItem(projectID string, item restModel.APICommitQueueItem) (int, error) {
 	if pc.Queue == nil {
 		pc.Queue = make(map[string][]restModel.APICommitQueueItem)
 	}
 
-	queueID := owner + "." + repo + "." + baseBranch
-	pc.Queue[queueID] = append(pc.Queue[queueID], item)
+	pc.Queue[projectID] = append(pc.Queue[projectID], item)
 
-	return nil
+	return len(pc.Queue[projectID]), nil
 }
 
 func (pc *MockCommitQueueConnector) FindCommitQueueByID(id string) (*restModel.APICommitQueue, error) {

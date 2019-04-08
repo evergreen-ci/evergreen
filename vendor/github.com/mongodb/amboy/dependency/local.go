@@ -30,6 +30,8 @@ type LocalFile struct {
 	JobEdges
 }
 
+const localFileTypeName = "local-file"
+
 // NewLocalFile creates a dependency object that checks if
 // dependencies on the local file system are created. This constructor
 // takes, as arguments, a target name and a variable number of
@@ -37,26 +39,21 @@ type LocalFile struct {
 // file names, relative to the working directory of the
 // program.
 func NewLocalFile(target string, dependencies ...string) *LocalFile {
-	d := NewLocalFileInstance()
+	d := MakeLocalFile()
 	d.Targets = []string{target}
 	d.Dependencies = dependencies
 
 	return d
 }
 
-// The factory function for this type is in the registry package to
-// avoid a dependency cycle.
-
-// NewLocalFileInstance is a constructor that returns an initialized
-// LocalFile object, and can be used instead of NewLocalFile when the
-// targets and dependencies are not known at construction time.
-func NewLocalFileInstance() *LocalFile {
+// MakesLocalFile constructs an empty local file instance.
+func MakeLocalFile() *LocalFile {
 	return &LocalFile{
 		T: TypeInfo{
-			Name:    LocalFileRelationship,
+			Name:    localFileTypeName,
 			Version: 0,
 		},
-		JobEdges: *NewJobEdges(),
+		JobEdges: NewJobEdges(),
 	}
 }
 

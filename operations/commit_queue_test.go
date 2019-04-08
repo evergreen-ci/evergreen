@@ -4,16 +4,13 @@ import (
 	"context"
 	"io/ioutil"
 	"os"
-	"path/filepath"
 	"testing"
 
-	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/commitqueue"
 	"github.com/evergreen-ci/evergreen/rest/client"
 	"github.com/evergreen-ci/evergreen/service"
-	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/send"
 	"github.com/stretchr/testify/suite"
@@ -33,12 +30,6 @@ func TestCommitQueueSuite(t *testing.T) {
 
 func (s *CommitQueueSuite) SetupSuite() {
 	s.ctx = context.Background()
-	db.SetGlobalSessionProvider(testConfig.SessionFactory())
-
-	env := evergreen.GetEnvironment()
-	if env.Settings() == nil {
-		s.NoError(env.Configure(s.ctx, filepath.Join(evergreen.FindEvergreenHome(), testutil.TestDir, testutil.TestSettings), nil))
-	}
 
 	var err error
 	s.server, err = service.CreateTestServer(testConfig, nil)
@@ -64,6 +55,7 @@ func (s *CommitQueueSuite) SetupSuite() {
 
 func (s *CommitQueueSuite) TearDownSuite() {
 	s.server.Close()
+	s.client.Close()
 }
 
 func (s *CommitQueueSuite) TestListContents() {

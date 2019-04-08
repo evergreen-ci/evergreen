@@ -12,7 +12,7 @@ func TestMongoDBConstructors(t *testing.T) {
 	t.Run("NilSessionShouldError", func(t *testing.T) {
 		opts := queue.DefaultMongoDBOptions()
 		opts.DB = "amboy_test"
-		db, err := MakeDBQueueState("foo", opts, nil)
+		db, err := MakeLegacyDBQueueState("foo", opts, nil)
 		assert.Error(t, err)
 		assert.Nil(t, db)
 	})
@@ -23,7 +23,7 @@ func TestMongoDBConstructors(t *testing.T) {
 		assert.NoError(t, err)
 		session.Close()
 
-		db, err := MakeDBQueueState("foo", opts, session)
+		db, err := MakeLegacyDBQueueState("foo", opts, session)
 		assert.Error(t, err)
 		assert.Nil(t, db)
 	})
@@ -34,11 +34,11 @@ func TestMongoDBConstructors(t *testing.T) {
 		assert.NoError(t, err)
 		defer session.Close()
 
-		db, err := MakeDBQueueState("foo", opts, session)
+		db, err := MakeLegacyDBQueueState("foo", opts, session)
 		assert.NoError(t, err)
 		assert.NotNil(t, db)
 
-		r, ok := db.(*dbQueueStat)
+		r, ok := db.(*dbLegacyQueueStat)
 		assert.True(t, ok)
 
 		assert.NotZero(t, r.collection)
@@ -46,17 +46,17 @@ func TestMongoDBConstructors(t *testing.T) {
 	t.Run("DialWithNewConstructor", func(t *testing.T) {
 		opts := queue.DefaultMongoDBOptions()
 		opts.DB = "amboy_test"
-		r, err := NewDBQueueState("foo", opts)
+		r, err := NewLegacyDBQueueState("foo", opts)
 		assert.NoError(t, err)
 		assert.NotNil(t, r)
-		db := r.(*dbQueueStat)
+		db := r.(*dbLegacyQueueStat)
 		db.session.Close()
 	})
 	t.Run("DialWithBadURI", func(t *testing.T) {
 		opts := queue.DefaultMongoDBOptions()
 		opts.DB = "amboy_test"
 		opts.URI = "mongodb://lochost:26016"
-		r, err := NewDBQueueState("foo", opts)
+		r, err := NewLegacyDBQueueState("foo", opts)
 		assert.Error(t, err)
 		assert.Nil(t, r)
 	})

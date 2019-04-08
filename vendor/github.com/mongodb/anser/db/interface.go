@@ -10,6 +10,7 @@ type Session interface {
 	Close()
 	DB(string) Database
 	SetSocketTimeout(time.Duration)
+	Error() error
 }
 
 // Database provides a very limited subset of the mgo.DB type.
@@ -45,13 +46,14 @@ type Query interface {
 	Select(interface{}) Query
 	Skip(n int) Query
 	Sort(...string) Query
-
+	Apply(Change, interface{}) (*ChangeInfo, error)
 	Results
 }
 
 type Bulk interface {
 	Insert(...interface{})
 	Remove(...interface{})
+	RemoveAll(...interface{})
 	Update(...interface{})
 	UpdateAll(...interface{})
 	Upsert(...interface{})

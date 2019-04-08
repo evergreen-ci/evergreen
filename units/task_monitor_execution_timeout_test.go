@@ -11,18 +11,10 @@ import (
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/testutil"
 	. "github.com/smartystreets/goconvey/convey"
-	"github.com/smartystreets/goconvey/convey/reporting"
 )
 
 func TestCleanupTask(t *testing.T) {
-	reporting.QuietMode()
-
-	testConfig := testutil.TestConfig()
-
-	db.SetGlobalSessionProvider(testConfig.SessionFactory())
-
 	Convey("When cleaning up a task", t, func() {
-
 		// reset the db
 		testutil.HandleTestingErr(db.ClearCollections(task.Collection, task.OldCollection, build.Collection),
 			t, "error clearing tasks collection")

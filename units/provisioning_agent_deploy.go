@@ -110,6 +110,26 @@ func (j *agentDeployJob) Run(ctx context.Context) {
 	}
 
 	settings := j.env.Settings()
+
+	// Occasionally an agent deploy job will be dispatched around the same time that
+	// PopulateAgentDeployJobs creates another job. These jobs can race. An atomic update on the
+	// needs new agent field will cause the job to fail early here. Updating the last
+	// communicated time prevents the other branches of the PopulateAgentDeployJobs from
+	// immediately applying. Instead MaxLCTInterval must pass.
+	if err = j.host.SetNeedsNewAgent(false); err != nil {
+		j.AddError(errors.Wrapf(err, "error setting needs agent flag to false on host %s", j.host.Id))
+	}
+	if err = j.host.UpdateLastCommunicated(); err != nil {
+		j.AddError(errors.Wrapf(err, "error setting LCT on host %s", j.host.Id))
+	}
+	defer func() {
+		if j.HasErrors() {
+			if err = j.host.SetNeedsNewAgent(true); err != nil {
+				j.AddError(errors.Wrapf(err, "error setting needs agent flag to true on host %s", j.host.Id))
+			}
+		}
+	}()
+
 	j.AddError(j.startAgentOnHost(ctx, settings, *j.host))
 
 	stat, err := event.GetRecentAgentDeployStatuses(j.HostID, agentPutRetries)
@@ -228,12 +248,6 @@ func (j *agentDeployJob) startAgentOnHost(ctx context.Context, settings *evergre
 	if err = hostObj.SetAgentRevision(evergreen.BuildRevision); err != nil {
 		return errors.Wrapf(err, "error setting agent revision on host %s", hostObj.Id)
 	}
-	if err = hostObj.UpdateLastCommunicated(); err != nil {
-		return errors.Wrapf(err, "error setting LCT on host %s", hostObj.Id)
-	}
-	if err = hostObj.SetNeedsNewAgent(false); err != nil {
-		return errors.Wrapf(err, "error setting needs agent flag on host %s", hostObj.Id)
-	}
 	return nil
 }
 
@@ -309,7 +323,7 @@ func (j *agentDeployJob) startAgentOnRemote(ctx context.Context, settings *everg
 	})
 
 	// compute any info necessary to ssh into the host
-	hostInfo, err := util.ParseSSHInfo(hostObj.Host)
+	hostInfo, err := hostObj.GetSSHInfo()
 	if err != nil {
 		return errors.Wrapf(err, "error parsing ssh info %v", hostObj.Host)
 	}
@@ -336,8 +350,10 @@ func (j *agentDeployJob) startAgentOnRemote(ctx context.Context, settings *everg
 	ctx, cancel := context.WithTimeout(ctx, sshTimeout)
 	defer cancel()
 
+	remoteCmd = fmt.Sprintf("nohup %s > /tmp/start 2>1 &", remoteCmd)
+
 	startAgentCmd := j.env.JasperManager().CreateCommand(ctx).Environment(env).Append(remoteCmd).
-		User(hostObj.User).Host(hostInfo.Hostname).ExtendSSHArgs("-p", hostInfo.Port).ExtendSSHArgs(sshOptions...).Background(true)
+		User(hostObj.User).Host(hostInfo.Hostname).ExtendSSHArgs("-p", hostInfo.Port).ExtendSSHArgs(sshOptions...)
 
 	if err = startAgentCmd.Run(ctx); err != nil {
 		return errors.Wrapf(err, "error starting agent (%v)", hostObj.Id)

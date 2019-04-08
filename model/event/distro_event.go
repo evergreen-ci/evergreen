@@ -7,10 +7,6 @@ import (
 	"github.com/mongodb/grip/message"
 )
 
-func init() {
-	registry.AddType(ResourceTypeDistro, distroEventDataFactory)
-}
-
 const (
 	// resource type
 	ResourceTypeDistro = "DISTRO"

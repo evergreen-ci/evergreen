@@ -1,6 +1,7 @@
 package model
 
 import (
+	"fmt"
 	"net/http"
 
 	"github.com/evergreen-ci/evergreen"
@@ -9,7 +10,7 @@ import (
 	"github.com/evergreen-ci/gimlet"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
-	"gopkg.in/mgo.v2/bson"
+	"go.mongodb.org/mongo-driver/bson"
 	yaml "gopkg.in/yaml.v2"
 )
 
@@ -39,12 +40,14 @@ func MergeGeneratedProjects(projects []GeneratedProject) *GeneratedProject {
 	taskGroups := map[string]*parserTaskGroup{}
 
 	for _, p := range projects {
+	mergeBuildVariants:
 		for i, bv := range p.BuildVariants {
 			if len(bv.Tasks) == 0 {
 				if _, ok := bvs[bv.Name]; ok {
 					catcher.Add(errors.Errorf("found duplicate buildvariant (%s)", bv.Name))
 				} else {
 					bvs[bv.Name] = &p.BuildVariants[i]
+					continue mergeBuildVariants
 				}
 			}
 			if _, ok := bvs[bv.Name]; ok {
@@ -111,7 +114,7 @@ func (g *GeneratedProject) NewVersion() (*Project, *Version, *task.Task, *projec
 	}
 	if t == nil {
 		return nil, nil, nil, nil, "",
-			gimlet.ErrorResponse{StatusCode: http.StatusBadRequest, Message: errors.Wrapf(err, "unable to find task %s", g.TaskID).Error()}
+			gimlet.ErrorResponse{StatusCode: http.StatusBadRequest, Message: fmt.Sprintf("unable to find task %s", g.TaskID)}
 	}
 	v, err := VersionFindOneId(t.Version)
 	if err != nil {
@@ -120,17 +123,17 @@ func (g *GeneratedProject) NewVersion() (*Project, *Version, *task.Task, *projec
 	}
 	if v == nil {
 		return nil, nil, nil, nil, "",
-			gimlet.ErrorResponse{StatusCode: http.StatusBadRequest, Message: errors.Wrapf(err, "unable to find version %s", t.Version).Error()}
+			gimlet.ErrorResponse{StatusCode: http.StatusBadRequest, Message: fmt.Sprintf("unable to find version %s", t.Version)}
 	}
 	if v.Config == "" {
 		return nil, nil, nil, nil, "",
-			gimlet.ErrorResponse{StatusCode: http.StatusBadRequest, Message: errors.Errorf("unable to find config string for version %s", t.Version).Error()}
+			gimlet.ErrorResponse{StatusCode: http.StatusBadRequest, Message: fmt.Sprintf("unable to find config string for version %s", t.Version)}
 	}
 	prevConfig := v.Config
 	p := &Project{}
 	if err = LoadProjectInto([]byte(v.Config), t.Project, p); err != nil {
 		return nil, nil, nil, nil, "",
-			gimlet.ErrorResponse{StatusCode: http.StatusBadRequest, Message: errors.Wrap(err, "error reading project yaml").Error()}
+			gimlet.ErrorResponse{StatusCode: http.StatusBadRequest, Message: errors.Wrapf(err, "error reading project yaml for version %s", t.Version).Error()}
 	}
 
 	// Cache project data in maps for quick lookup

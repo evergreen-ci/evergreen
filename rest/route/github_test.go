@@ -14,6 +14,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/commitqueue"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/rest/data"
+	restModel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/gimlet"
@@ -33,17 +34,18 @@ type GithubWebhookRouteSuite struct {
 	commentBody []byte
 	h           *githubHookApi
 	queue       amboy.Queue
+	env         evergreen.Environment
 	suite.Suite
 }
 
 func (s *GithubWebhookRouteSuite) SetupSuite() {
 	ctx, cancel := context.WithCancel(context.Background())
 	s.canceler = cancel
-	err := evergreen.GetEnvironment().Configure(ctx, filepath.Join(evergreen.FindEvergreenHome(), testutil.TestDir, testutil.TestSettings), nil)
-	s.NoError(err)
-	s.NotNil(evergreen.GetEnvironment().Settings())
-	s.NotNil(evergreen.GetEnvironment().Settings().Api)
-	s.NotEmpty(evergreen.GetEnvironment().Settings().Api.GithubWebhookSecret)
+
+	s.env = testutil.NewEnvironment(ctx, s.T())
+	s.NotNil(s.env.Settings())
+	s.NotNil(s.env.Settings().Api)
+	s.NotEmpty(s.env.Settings().Api.GithubWebhookSecret)
 
 	s.conf = testutil.TestConfig()
 	s.NotNil(s.conf)
@@ -51,7 +53,6 @@ func (s *GithubWebhookRouteSuite) SetupSuite() {
 
 func (s *GithubWebhookRouteSuite) TearDownSuite() {
 	s.canceler()
-	evergreen.ResetEnvironment()
 }
 
 func (s *GithubWebhookRouteSuite) SetupTest() {
@@ -61,9 +62,23 @@ func (s *GithubWebhookRouteSuite) SetupTest() {
 	s.NoError(db.Clear(commitqueue.Collection))
 
 	s.queue = evergreen.GetEnvironment().LocalQueue()
-	s.sc = &data.MockConnector{MockPatchIntentConnector: data.MockPatchIntentConnector{
-		CachedIntents: map[data.MockPatchIntentKey]patch.Intent{},
-	}}
+	s.sc = &data.MockConnector{
+		MockPatchIntentConnector: data.MockPatchIntentConnector{
+			CachedIntents: map[data.MockPatchIntentKey]patch.Intent{},
+		},
+		MockProjectConnector: data.MockProjectConnector{
+			CachedProjects: []model.ProjectRef{
+				model.ProjectRef{
+					Identifier:  "bth",
+					Enabled:     true,
+					Owner:       "baxterthehacker",
+					Repo:        "public-repo",
+					Branch:      "master",
+					CommitQueue: model.CommitQueueParams{Enabled: true},
+				},
+			},
+		},
+	}
 
 	s.rm = makeGithubHooksRoute(s.sc, s.queue, []byte(s.conf.Api.GithubWebhookSecret), evergreen.GetEnvironment().Settings())
 
@@ -76,7 +91,7 @@ func (s *GithubWebhookRouteSuite) SetupTest() {
 	s.Len(s.pushBody, 7603)
 	s.commentBody, err = ioutil.ReadFile(filepath.Join(testutil.GetDirectoryOfFile(), "testdata", "comment_event.json"))
 	s.NoError(err)
-	s.Len(s.commentBody, 11534)
+	s.Len(s.commentBody, 11496)
 
 	var ok bool
 	s.h, ok = s.rm.Factory().(*githubHookApi)
@@ -213,5 +228,9 @@ func (s *GithubWebhookRouteSuite) TestCommitQueueCommentTrigger() {
 	}
 
 	s.NoError(err)
-	s.Len(s.sc.MockCommitQueueConnector.Queue, 1)
+	if s.Len(s.sc.MockCommitQueueConnector.Queue, 1) {
+		s.Equal("1", restModel.FromAPIString(s.sc.MockCommitQueueConnector.Queue["bth"][0].Issue))
+		s.Equal("test_module", restModel.FromAPIString(s.sc.MockCommitQueueConnector.Queue["bth"][0].Modules[0].Module))
+		s.Equal("1234", restModel.FromAPIString(s.sc.MockCommitQueueConnector.Queue["bth"][0].Modules[0].Issue))
+	}
 }

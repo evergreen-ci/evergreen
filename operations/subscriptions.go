@@ -33,8 +33,9 @@ func subscriptionsList() cli.Command {
 				return errors.Wrap(err, "problem loading configuration")
 			}
 
-			com := conf.GetRestCommunicator(ctx)
-			subs, err := com.GetSubscriptions(ctx)
+			comm := conf.GetRestCommunicator(ctx)
+			defer comm.Close()
+			subs, err := comm.GetSubscriptions(ctx)
 			if err != nil {
 				return errors.Wrap(err, "error fetching subscriptions")
 			}

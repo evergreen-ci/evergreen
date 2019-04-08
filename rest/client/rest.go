@@ -712,6 +712,39 @@ func (c *communicatorImpl) DeleteCommitQueueItem(ctx context.Context, projectID,
 	return nil
 }
 
+func (c *communicatorImpl) EnqueueItem(ctx context.Context, projectID, item string) (int, error) {
+	info := requestInfo{
+		method:  put,
+		version: apiVersion2,
+		path:    fmt.Sprintf("/projects/%s/commit_queue/%s", projectID, item),
+	}
+
+	resp, err := c.request(ctx, info, nil)
+	if err != nil {
+		return 0, err
+	}
+	defer resp.Body.Close()
+	bytes, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return 0, errors.Wrap(err, "failed to read response")
+	}
+	if resp.StatusCode != http.StatusOK {
+		restErr := gimlet.ErrorResponse{}
+		if err = json.Unmarshal(bytes, &restErr); err != nil {
+			return 0, errors.Errorf("received an error but was unable to parse: %s", string(bytes))
+		}
+
+		return 0, restErr
+	}
+
+	positionResp := model.APICommitQueuePosition{}
+	if err = util.ReadJSONInto(resp.Body, &positionResp); err != nil {
+		return 0, errors.Wrap(err, "error parsing position response")
+	}
+
+	return positionResp.Position, nil
+}
+
 func (c *communicatorImpl) SendNotification(ctx context.Context, notificationType string, data interface{}) error {
 	info := requestInfo{
 		method:  post,

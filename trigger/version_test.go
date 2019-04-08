@@ -10,9 +10,9 @@ import (
 	"github.com/evergreen-ci/evergreen/model/alertrecord"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/task"
-	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/stretchr/testify/suite"
-	"gopkg.in/mgo.v2/bson"
+	"go.mongodb.org/mongo-driver/bson"
+	mgobson "gopkg.in/mgo.v2/bson"
 )
 
 func TestVersionTriggers(t *testing.T) {
@@ -28,10 +28,6 @@ type VersionSuite struct {
 	t *versionTriggers
 
 	suite.Suite
-}
-
-func (s *VersionSuite) SetupSuite() {
-	db.SetGlobalSessionProvider(testutil.TestConfig().SessionFactory())
 }
 
 func (s *VersionSuite) SetupTest() {
@@ -75,7 +71,7 @@ func (s *VersionSuite) SetupTest() {
 		event.NewSubscriptionByID(event.ResourceTypeVersion, triggerFailure, s.event.ResourceId, apiSub),
 		event.NewSubscriptionByID(event.ResourceTypeVersion, triggerRegression, s.event.ResourceId, apiSub),
 		{
-			ID:           bson.NewObjectId().Hex(),
+			ID:           mgobson.NewObjectId().Hex(),
 			ResourceType: event.ResourceTypeVersion,
 			Trigger:      triggerExceedsDuration,
 			Selectors: []event.Selector{
@@ -94,7 +90,7 @@ func (s *VersionSuite) SetupTest() {
 			},
 		},
 		{
-			ID:           bson.NewObjectId().Hex(),
+			ID:           mgobson.NewObjectId().Hex(),
 			ResourceType: event.ResourceTypeVersion,
 			Trigger:      triggerRuntimeChangeByPercent,
 			Selectors: []event.Selector{

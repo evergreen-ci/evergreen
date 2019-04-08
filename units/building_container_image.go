@@ -57,6 +57,7 @@ func makeBuildingContainerImageJob() *buildingContainerImageJob {
 func NewBuildingContainerImageJob(env evergreen.Environment, h *host.Host, dockerOptions host.DockerOptions, providerName string) amboy.Job {
 	job := makeBuildingContainerImageJob()
 
+	job.env = env
 	job.parent = h
 	job.DockerOptions = dockerOptions
 	job.ParentID = h.Id

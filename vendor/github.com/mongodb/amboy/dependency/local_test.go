@@ -26,7 +26,7 @@ func TestLocalFileSuite(t *testing.T) {
 }
 
 func (s *LocalFileSuite) SetupTest() {
-	s.dep = NewLocalFileInstance()
+	s.dep = MakeLocalFile()
 }
 
 func (s *LocalFileSuite) SetupSuite() {

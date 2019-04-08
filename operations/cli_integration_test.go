@@ -1,7 +1,6 @@
 package operations
 
 import (
-	"context"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -21,9 +20,7 @@ import (
 	"github.com/evergreen-ci/evergreen/service"
 	"github.com/evergreen-ci/evergreen/testutil"
 	. "github.com/smartystreets/goconvey/convey"
-	"github.com/smartystreets/goconvey/convey/reporting"
-	"github.com/stretchr/testify/assert"
-	"gopkg.in/mgo.v2/bson"
+	"go.mongodb.org/mongo-driver/bson"
 	yaml "gopkg.in/yaml.v2"
 )
 
@@ -49,11 +46,6 @@ index 0000000..ce01362
 `
 
 var emptyPatch = ``
-
-func init() {
-	db.SetGlobalSessionProvider(testConfig.SessionFactory())
-	reporting.QuietMode()
-}
 
 type cliTestHarness struct {
 	testServer       *service.TestServer
@@ -118,12 +110,6 @@ func setupCLITestHarness() cliTestHarness {
 }
 
 func TestCLIFetchSource(t *testing.T) {
-	evergreen.ResetEnvironment()
-
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-	assert.NoError(t, evergreen.GetEnvironment().Configure(ctx, filepath.Join(evergreen.FindEvergreenHome(), testutil.TestDir, testutil.TestSettings), nil))
-
 	testutil.ConfigureIntegrationTest(t, testConfig, "TestCLIFetchSource")
 	evergreen.GetEnvironment().Settings().Credentials = testConfig.Credentials
 
@@ -185,12 +171,6 @@ func TestCLIFetchSource(t *testing.T) {
 }
 
 func TestCLIFetchArtifacts(t *testing.T) {
-	evergreen.ResetEnvironment()
-
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-	assert.NoError(t, evergreen.GetEnvironment().Configure(ctx, filepath.Join(evergreen.FindEvergreenHome(), testutil.TestDir, testutil.TestSettings), nil))
-
 	testutil.ConfigureIntegrationTest(t, testConfig, "TestCLIFetchArtifacts")
 	evergreen.GetEnvironment().Settings().Credentials = testConfig.Credentials
 
@@ -327,11 +307,6 @@ func TestCLITestHistory(t *testing.T) {
 }
 
 func TestCLIFunctions(t *testing.T) {
-	evergreen.ResetEnvironment()
-
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-	assert.NoError(t, evergreen.GetEnvironment().Configure(ctx, filepath.Join(evergreen.FindEvergreenHome(), testutil.TestDir, testutil.TestSettings), nil))
 	testutil.ConfigureIntegrationTest(t, testConfig, "TestCLIFunctions")
 	evergreen.GetEnvironment().Settings().Credentials = testConfig.Credentials
 

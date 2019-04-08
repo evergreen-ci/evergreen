@@ -2,26 +2,21 @@ package units
 
 import (
 	"context"
-	"path/filepath"
 	"testing"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/mock"
 	"github.com/evergreen-ci/evergreen/model/host"
-	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"gopkg.in/mgo.v2/bson"
+	"go.mongodb.org/mongo-driver/bson"
 )
 
 func TestCloudStatusJob(t *testing.T) {
 	assert := assert.New(t)
 	require := require.New(t)
-	evergreen.ResetEnvironment()
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-	require.NoError(evergreen.GetEnvironment().Configure(ctx, filepath.Join(evergreen.FindEvergreenHome(), testutil.TestDir, testutil.TestSettings), nil))
+
 	require.NoError(db.ClearCollections(host.Collection))
 	hosts := []host.Host{
 		{

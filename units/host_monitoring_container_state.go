@@ -113,11 +113,14 @@ func (j *hostMonitorContainerStateJob) Run(ctx context.Context) {
 	}
 
 	// for each non-terminated container in DB that is not actually running on
-	// Docker, mark it as terminated
+	// Docker, remove container from Docker and mark it as terminated
 	for _, container := range containersFromDB {
 		if container.Status == evergreen.HostRunning || container.Status == evergreen.HostDecommissioned {
 			if !isRunningInDocker[container.Id] {
-				j.AddError(container.SetTerminated(evergreen.User))
+				if err := containerMgr.TerminateInstance(ctx, &container, evergreen.User); err != nil {
+					j.AddError(errors.Wrap(err, "error terminating instance on Docker"))
+					j.AddError(container.SetTerminated(evergreen.User))
+				}
 			}
 		}
 	}

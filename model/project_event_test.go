@@ -5,9 +5,8 @@ import (
 
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/event"
-	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/stretchr/testify/suite"
-	"gopkg.in/mgo.v2/bson"
+	mgobson "gopkg.in/mgo.v2/bson"
 )
 
 type ProjectEventSuite struct {
@@ -16,7 +15,6 @@ type ProjectEventSuite struct {
 
 func TestProjectEventSuite(t *testing.T) {
 	s := new(ProjectEventSuite)
-	db.SetGlobalSessionProvider(testutil.TestConfig().SessionFactory())
 	suite.Run(t, s)
 }
 
@@ -45,7 +43,7 @@ func getMockProjectSettings() ProjectSettingsEvent {
 			PrivateVars: map[string]bool{},
 		},
 		Aliases: []ProjectAlias{ProjectAlias{
-			ID:        bson.ObjectIdHex("5bedc72ee4055d31f0340b1d"),
+			ID:        mgobson.ObjectIdHex("5bedc72ee4055d31f0340b1d"),
 			ProjectID: projectId,
 			Alias:     "alias1",
 			Variant:   "ubuntu",
@@ -76,6 +74,7 @@ func (s *ProjectEventSuite) TestModifyProjectEvent() {
 	s.NoError(err)
 	s.Require().Len(projectEvents, 1)
 
+	s.Require().NotNil(projectEvents[0].Data)
 	eventData := projectEvents[0].Data.(*ProjectChangeEvent)
 
 	s.Equal(username, eventData.User)
@@ -103,6 +102,7 @@ func (s *ProjectEventSuite) TestAddProject() {
 	s.Require().Len(projectEvents, 1)
 	s.Equal(projectId, projectEvents[0].ResourceId)
 
+	s.Require().NotNil(projectEvents[0].Data)
 	eventData := projectEvents[0].Data.(*ProjectChangeEvent)
 	s.Equal(username, eventData.User)
 

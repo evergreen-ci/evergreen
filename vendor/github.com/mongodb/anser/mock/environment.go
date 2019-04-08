@@ -98,9 +98,10 @@ func (e *Environment) GetDocumentProcessor(name string) (db.Processor, bool) {
 func (e *Environment) MetadataNamespace() model.Namespace { return e.MetaNS }
 
 func (e *Environment) NewDependencyManager(n string) dependency.Manager {
+	edges := dependency.NewJobEdges()
 	e.DependencyManagers[n] = &DependencyManager{
 		Name:     n,
-		JobEdges: dependency.NewJobEdges(),
+		JobEdges: &edges,
 	}
 
 	return e.DependencyManagers[n]

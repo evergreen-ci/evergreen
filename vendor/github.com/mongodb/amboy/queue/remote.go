@@ -10,6 +10,8 @@ import (
 	"github.com/mongodb/grip/message"
 )
 
+const dispatchWarningThreshold = time.Second
+
 // Remote queues extend the queue interface to allow a
 // pluggable-storage backend, or "driver"
 type Remote interface {
@@ -48,6 +50,9 @@ func (q *remoteUnordered) Next(ctx context.Context) amboy.Job {
 
 	start := time.Now()
 	count := 0
+	lockingErrors := 0
+	getErrors := 0
+	dispatchableErrors := 0
 	for {
 		count++
 		select {
@@ -58,8 +63,9 @@ func (q *remoteUnordered) Next(ctx context.Context) amboy.Job {
 				continue
 			}
 
-			job, err = q.driver.Get(job.ID())
+			job, err = q.driver.Get(ctx, job.ID())
 			if job == nil {
+				getErrors++
 				continue
 			}
 
@@ -68,12 +74,13 @@ func (q *remoteUnordered) Next(ctx context.Context) amboy.Job {
 					"id":        job.ID(),
 					"operation": "problem refreshing job in dispatching from remote queue",
 				}))
-
-				grip.Debug(message.WrapError(q.driver.Unlock(job),
+				grip.Debug(message.WrapError(q.driver.Unlock(ctx, job),
 					message.Fields{
 						"id":        job.ID(),
 						"operation": "unlocking job, may leave a stale job",
 					}))
+
+				getErrors++
 				continue
 			}
 
@@ -87,18 +94,20 @@ func (q *remoteUnordered) Next(ctx context.Context) amboy.Job {
 			job.UpdateTimeInfo(ti)
 
 			if err := q.driver.Lock(ctx, job); err != nil {
-				grip.Debug(message.WrapError(err, message.Fields{
-					"id":        job.ID(),
-					"operation": "locking job",
-					"attempt":   count,
-				}))
+				lockingErrors++
 				continue
 			}
 
-			grip.Debug(message.Fields{
-				"message":       "returning job from remote source",
-				"dispatch_secs": time.Since(start).Seconds(),
-				"attempts":      count,
+			dispatchSecs := time.Since(start).Seconds()
+			grip.DebugWhen(dispatchSecs > dispatchWarningThreshold.Seconds() || count > 3, message.Fields{
+				"message":             "returning job from remote source",
+				"threshold_secs":      dispatchWarningThreshold.Seconds(),
+				"dispatch_secs":       dispatchSecs,
+				"attempts":            count,
+				"job":                 job.ID(),
+				"get_errors":          getErrors,
+				"locking_errors":      lockingErrors,
+				"dispatchable_errors": dispatchableErrors,
 			})
 
 			return job

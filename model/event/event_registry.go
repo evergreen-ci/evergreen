@@ -14,9 +14,18 @@ type eventRegistry struct {
 	isSubscribable map[EventLogEntry]bool
 }
 
-var registry eventRegistry = eventRegistry{
-	types:          map[string]eventDataFactory{},
-	isSubscribable: map[EventLogEntry]bool{},
+var registry *eventRegistry
+
+func init() {
+	registry = &eventRegistry{
+		types:          map[string]eventDataFactory{},
+		isSubscribable: map[EventLogEntry]bool{},
+	}
+
+	registry.AddType(ResourceTypeAdmin, adminEventDataFactory)
+	registry.AddType(ResourceTypeBuild, buildEventDataFactory)
+	registry.AddType(ResourceTypeDistro, distroEventDataFactory)
+	registry.AllowSubscription(ResourceTypeBuild, BuildStateChange)
 }
 
 // AddType adds an event data factory to the registry with the given resource

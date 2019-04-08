@@ -73,6 +73,7 @@ func Patch() cli.Command {
 			}
 
 			comm := conf.GetRestCommunicator(ctx)
+			defer comm.Close()
 
 			ac, _, err := conf.getLegacyClients()
 			if err != nil {
@@ -89,7 +90,8 @@ func Patch() cli.Command {
 				return err
 			}
 
-			return params.createPatch(ac, conf, diffData)
+			_, err = params.createPatch(ac, conf, diffData)
+			return err
 		},
 	}
 }
@@ -138,6 +140,7 @@ func PatchFile() cli.Command {
 			}
 
 			comm := conf.GetRestCommunicator(ctx)
+			defer comm.Close()
 
 			ac, _, err := conf.getLegacyClients()
 			if err != nil {
@@ -155,7 +158,8 @@ func PatchFile() cli.Command {
 
 			diffData := &localDiff{string(fullPatch), "", "", base}
 
-			return params.createPatch(ac, conf, diffData)
+			_, err = params.createPatch(ac, conf, diffData)
+			return err
 		},
 	}
 }

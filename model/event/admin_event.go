@@ -10,12 +10,8 @@ import (
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
-	"gopkg.in/mgo.v2/bson"
+	mgobson "gopkg.in/mgo.v2/bson"
 )
-
-func init() {
-	registry.AddType(ResourceTypeAdmin, adminEventDataFactory)
-}
 
 const (
 	ResourceTypeAdmin     = "ADMIN"
@@ -36,8 +32,8 @@ type ConfigDataChange struct {
 }
 
 type rawConfigDataChange struct {
-	Before bson.Raw `bson:"before" json:"before"`
-	After  bson.Raw `bson:"after" json:"after"`
+	Before mgobson.Raw `bson:"before" json:"before"`
+	After  mgobson.Raw `bson:"after" json:"after"`
 }
 
 type rawAdminEventData struct {
@@ -178,7 +174,7 @@ func RevertConfig(guid string, user string) error {
 	if current == nil {
 		return errors.Errorf("unable to find section %s", data.Section)
 	}
-	err = current.Get()
+	err = current.Get(evergreen.GetEnvironment())
 	if err != nil {
 		return errors.Wrapf(err, "problem reading section %s", current.SectionId())
 	}

@@ -4,8 +4,8 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen/db"
-	mgo "gopkg.in/mgo.v2"
-	"gopkg.in/mgo.v2/bson"
+	adb "github.com/mongodb/anser/db"
+	"go.mongodb.org/mongo-driver/bson"
 )
 
 // CommitInfo represents the information about the commit
@@ -55,7 +55,7 @@ func PerfGetTasksForVersion(versionId, name string) ([]TaskJSON, error) {
 			TaskJSONVersionIdKey: versionId,
 			TaskJSONNameKey:      name}).WithFields(TaskJSONDataKey, TaskJSONTaskIdKey, TaskJSONTaskNameKey), &jsonForTasks)
 	if err != nil {
-		if err != mgo.ErrNotFound {
+		if !adb.ResultsNotFound(err) {
 			return nil, err
 		}
 		return nil, err
@@ -108,7 +108,7 @@ func PerfGetTasksForLatestVersion(project, name string, skip int) (*PerfVersionD
 		return nil, err
 	}
 	if len(tasksForVersions) == 0 {
-		return nil, mgo.ErrNotFound
+		return nil, nil
 	}
 
 	// we default have another revision

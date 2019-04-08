@@ -6,8 +6,6 @@ import (
 	"github.com/pkg/errors"
 )
 
-const perfCopyVariantMigrationFactory = "perf-copy-variant-factory"
-
 type customMigrationGeneratorFactory func(args map[string]string) migrationGeneratorFactory
 
 func (opts Options) CustomApplication(env anser.Environment, conf *model.ConfigurationManualMigration) (*anser.Application, error) {
@@ -16,7 +14,7 @@ func (opts Options) CustomApplication(env anser.Environment, conf *model.Configu
 	}
 
 	customMigrationRegistry := map[string]customMigrationGeneratorFactory{
-		perfCopyVariantMigrationFactory: perfCopyVariantFactoryFactory,
+		// add custom migrations here
 	}
 
 	app := &anser.Application{

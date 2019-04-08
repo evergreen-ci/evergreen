@@ -6,7 +6,7 @@ package dependency
 type MockDependency struct {
 	Response State
 	T        TypeInfo
-	*JobEdges
+	JobEdges
 }
 
 // NewMock constructs a new mocked dependency object.

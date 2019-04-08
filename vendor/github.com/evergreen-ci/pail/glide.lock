@@ -12,4 +12,6 @@ imports:
 - name: github.com/stretchr/testify
   version: 890a5c3458b43e6104ff5da8dfa139d013d77544
 - name: github.com/mitchellh/go-homedir
-  version: 981ab348d865cf048eb7d17e78ac7192632d8415g
+  version: 981ab348d865cf048eb7d17e78ac7192632d8415
+- name: go.mongodb.org/mongo-driver
+  version: 82905e3077cb5ce7f194748a47b55bf7fff65ccf

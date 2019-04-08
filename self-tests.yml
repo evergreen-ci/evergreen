@@ -345,12 +345,12 @@ tasks:
   - <<: *run-go-test-suite-with-mongodb
     tags: ["db", "test"]
     name: test-rest-route
-  - <<: *run-go-test-suite
-    tags: ["nodb", "test"]
-    name: test-rest-model
-  - <<: *run-go-test-suite
-    tags: ["nodb", "test", "agent"]
+  - <<: *run-go-test-suite-with-mongodb
+    tags: ["db", "test", "agent"]
     name: test-rest-client
+  - <<: *run-go-test-suite-with-mongodb
+    tags: ["db", "test"]
+    name: test-rest-model
   - <<: *run-go-test-suite-with-mongodb
     tags: ["test", "db", "agent"]
     name: test-command
@@ -394,7 +394,7 @@ tasks:
     tags: ["db", "test"]
     name: test-trigger
   - <<: *run-go-test-suite-with-mongodb
-    tags: ["db", "test", "agent"]
+    tags: ["nodb", "test", "agent"]
     name: test-util
   - <<: *run-go-test-suite-with-mongodb
     tags: ["db", "test"]

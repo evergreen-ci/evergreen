@@ -221,7 +221,7 @@ func (p *ewmaRateLimiting) runJob(ctx context.Context, j amboy.Job) time.Duratio
 		r["error"] = err.Error()
 		grip.Error(r)
 	} else {
-		grip.Debug(r)
+		grip.Info(r)
 	}
 
 	return interval

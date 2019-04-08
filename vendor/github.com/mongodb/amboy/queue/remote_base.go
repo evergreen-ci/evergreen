@@ -43,7 +43,7 @@ func (q *remoteBase) Put(j amboy.Job) error {
 		Created: time.Now(),
 	})
 
-	return q.driver.Put(j)
+	return q.driver.Put(context.TODO(), j)
 }
 
 // Get retrieves a job from the queue's storage. The second value
@@ -54,9 +54,8 @@ func (q *remoteBase) Get(name string) (amboy.Job, bool) {
 		return nil, false
 	}
 
-	job, err := q.driver.Get(name)
+	job, err := q.driver.Get(context.TODO(), name)
 	if err != nil {
-		grip.Debug(err)
 		return nil, false
 	}
 
@@ -123,7 +122,7 @@ func (q *remoteBase) Complete(ctx context.Context, j amboy.Job) {
 				End:   time.Now(),
 			})
 
-			if err := q.driver.Save(j); err != nil {
+			if err := q.driver.Save(ctx, j); err != nil {
 				if time.Since(startAt) > time.Minute+LockTimeout {
 					grip.Error(message.WrapError(err, message.Fields{
 						"job_id":      id,
@@ -148,7 +147,7 @@ func (q *remoteBase) Complete(ctx context.Context, j amboy.Job) {
 				}
 			}
 
-			grip.Error(message.WrapError(q.driver.Unlock(j),
+			grip.Error(message.WrapError(q.driver.Unlock(ctx, j),
 				message.Fields{
 					"job_id":      id,
 					"job_type":    j.Type().Name,
@@ -178,7 +177,7 @@ func (q *remoteBase) Results(ctx context.Context) <-chan amboy.Job {
 	output := make(chan amboy.Job)
 	go func() {
 		defer close(output)
-		for j := range q.driver.Jobs() {
+		for j := range q.driver.Jobs(ctx) {
 			if ctx.Err() != nil {
 				return
 			}
@@ -197,7 +196,7 @@ func (q *remoteBase) JobStats(ctx context.Context) <-chan amboy.JobStatusInfo {
 // Stats returns a amboy. QueueStats object that reflects the progress
 // jobs in the queue.
 func (q *remoteBase) Stats() amboy.QueueStats {
-	output := q.driver.Stats()
+	output := q.driver.Stats(context.TODO())
 
 	q.mutex.RLock()
 	defer q.mutex.RUnlock()

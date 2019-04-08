@@ -22,6 +22,10 @@ type APIModule struct {
 	Issue  APIString `json:"issue"`
 }
 
+type APICommitQueuePosition struct {
+	Position int `json:"position"`
+}
+
 func (cq *APICommitQueue) BuildFromService(h interface{}) error {
 	cqService, ok := h.(commitqueue.CommitQueue)
 	if !ok {

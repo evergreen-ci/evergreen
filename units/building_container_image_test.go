@@ -2,7 +2,6 @@ package units
 
 import (
 	"context"
-	"path/filepath"
 	"testing"
 
 	"github.com/evergreen-ci/evergreen"
@@ -15,16 +14,12 @@ import (
 
 func TestBuildingContainerImageJob(t *testing.T) {
 	assert := assert.New(t)
-	testConfig := testutil.TestConfig()
-	db.SetGlobalSessionProvider(testConfig.SessionFactory())
 
 	assert.NoError(db.Clear(host.Collection))
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-
-	env := evergreen.GetEnvironment()
-	assert.NoError(env.Configure(ctx, filepath.Join(evergreen.FindEvergreenHome(), testutil.TestDir, testutil.TestSettings), nil))
+	env := testutil.NewEnvironment(ctx, t)
 
 	h1 := &host.Host{
 		Id:            "parent-1",
@@ -48,7 +43,7 @@ func TestBuildingContainerImageJob(t *testing.T) {
 	j := NewBuildingContainerImageJob(env, h1, host.DockerOptions{Image: "image-url", Method: distro.DockerImageBuildTypeImport}, evergreen.ProviderNameDockerMock)
 	assert.False(j.Status().Completed)
 
-	j.Run(context.Background())
+	j.Run(ctx)
 
 	assert.NoError(j.Error())
 	assert.True(j.Status().Completed)

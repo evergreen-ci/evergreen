@@ -4,6 +4,7 @@ import (
 	"context"
 	"os"
 	"strconv"
+	"strings"
 
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/rest/client"
@@ -114,14 +115,34 @@ func (c *shellExec) Execute(ctx context.Context, _ client.Communicator, logger c
 	}
 	addTempDirs(env, taskTmpDir)
 
-	cmd := c.JasperManager().CreateCommand(ctx).Add([]string{c.Shell, "-c", c.Script}).
-		Background(c.Background).Directory(c.WorkingDir).Environment(env).
+	cmd := c.JasperManager().CreateCommand(ctx).
+		Background(c.Background).Directory(c.WorkingDir).Environment(env).Append(c.Shell).
 		SuppressStandardError(c.IgnoreStandardError).SuppressStandardOutput(c.IgnoreStandardOutput).RedirectErrorToOutput(c.RedirectStandardErrorToOutput).
-		ProcConstructor(func(ctx context.Context, opts *jasper.CreateOptions) (jasper.Process, error) {
+		ProcConstructor(func(lctx context.Context, opts *jasper.CreateOptions) (jasper.Process, error) {
+			opts.StandardInput = strings.NewReader(c.Script)
+
+			var cancel context.CancelFunc
+			var ictx context.Context
+			if c.Background {
+				ictx, cancel = context.WithCancel(context.Background())
+			} else {
+				ictx = lctx
+			}
+
 			var proc jasper.Process
-			proc, err = c.JasperManager().CreateProcess(ctx, opts)
+			proc, err = c.JasperManager().CreateProcess(ictx, opts)
 			if err != nil {
+				if cancel != nil {
+					cancel()
+				}
+
 				return proc, errors.WithStack(err)
+			}
+
+			if cancel != nil {
+				grip.Warning(message.WrapError(proc.RegisterTrigger(lctx, func(info jasper.ProcessInfo) {
+					cancel()
+				}), "problem registering cancellation for process"))
 			}
 
 			pid := proc.Info(ctx).PID

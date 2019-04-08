@@ -36,7 +36,8 @@ func LastGreen() cli.Command {
 				return errors.Wrap(err, "problem loading configuration")
 			}
 
-			_ = conf.GetRestCommunicator(ctx)
+			client := conf.GetRestCommunicator(ctx)
+			defer client.Close()
 
 			_, rc, err := conf.getLegacyClients()
 			if err != nil {

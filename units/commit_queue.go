@@ -29,7 +29,6 @@ import (
 
 const (
 	commitQueueJobName = "commit-queue"
-	commitQueueAlias   = "__commit_queue"
 )
 
 func init() {
@@ -133,7 +132,7 @@ func (j *commitQueueJob) Run(ctx context.Context) {
 		return
 	}
 
-	patchDoc, err := patch.MakeMergePatch(pr, projectRef.Identifier, commitQueueAlias)
+	patchDoc, err := patch.MakeMergePatch(pr, projectRef.Identifier, evergreen.CommitQueueAlias)
 	if err != nil {
 		j.logError(err, "can't make patch", nextItem)
 		j.AddError(sendCommitQueueGithubStatus(j.env, pr, message.GithubStateFailure, "can't make patch", ""))
@@ -362,7 +361,7 @@ func sendCommitQueueGithubStatus(env evergreen.Environment, pr *github.PullReque
 	var url string
 	if versionID != "" {
 		uiConfig := evergreen.UIConfig{}
-		if err := uiConfig.Get(); err == nil {
+		if err := uiConfig.Get(env); err == nil {
 			urlBase := uiConfig.Url
 			url = fmt.Sprintf("%s/version/%s", urlBase, versionID)
 		}

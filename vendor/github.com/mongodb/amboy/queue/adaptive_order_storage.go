@@ -51,6 +51,20 @@ func (items *adaptiveOrderItems) add(j amboy.Job) error {
 	return nil
 }
 
+func (items *adaptiveOrderItems) remove(id string) {
+	new := make([]string, 0, cap(items.completed))
+	for _, jid := range items.completed {
+		if id != jid {
+			new = append(new, jid)
+			continue
+		}
+
+		delete(items.jobs, id)
+	}
+
+	items.completed = new
+}
+
 func (items *adaptiveOrderItems) updateWaiting(ctx context.Context) {
 	new := []string{}
 	now := time.Now()

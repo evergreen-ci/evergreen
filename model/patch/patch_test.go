@@ -47,7 +47,6 @@ func TestPatchSuite(t *testing.T) {
 
 func (s *patchSuite) SetupTest() {
 	s.testConfig = testutil.TestConfig()
-	db.SetGlobalSessionProvider(s.testConfig.SessionFactory())
 
 	s.NoError(db.ClearCollections(Collection))
 	s.time = time.Now().Add(-12 * time.Hour)
@@ -158,7 +157,7 @@ func (s *patchSuite) TestMakeMergePatch() {
 		MergeCommitSHA: &shaTemp,
 	}
 
-	p, err := MakeMergePatch(pr, "mci", "__commit_queue")
+	p, err := MakeMergePatch(pr, "mci", evergreen.CommitQueueAlias)
 	s.NoError(err)
 	s.Equal("mci", p.Project)
 	s.Equal(evergreen.PatchCreated, p.Status)

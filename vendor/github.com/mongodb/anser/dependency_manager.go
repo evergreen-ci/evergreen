@@ -32,8 +32,9 @@ type migrationDependency struct {
 }
 
 func makeMigrationDependencyManager() *migrationDependency {
+	edges := dependency.NewJobEdges()
 	return &migrationDependency{
-		JobEdges: dependency.NewJobEdges(),
+		JobEdges: &edges,
 		T: dependency.TypeInfo{
 			Name:    "anser-migration",
 			Version: 0,

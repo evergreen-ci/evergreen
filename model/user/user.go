@@ -9,9 +9,11 @@ import (
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/mongodb/anser/bsonutil"
+	adb "github.com/mongodb/anser/db"
 	"github.com/pkg/errors"
-	mgo "gopkg.in/mgo.v2"
-	"gopkg.in/mgo.v2/bson"
+	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/bson/primitive"
+	mgobson "gopkg.in/mgo.v2/bson"
 )
 
 type DBUser struct {
@@ -28,6 +30,9 @@ type DBUser struct {
 	SystemRoles  []string     `bson:"roles"`
 	LoginCache   LoginCache   `bson:"login_cache,omitempty"`
 }
+
+func (u *DBUser) MarshalBSON() ([]byte, error)  { return mgobson.Marshal(u) }
+func (u *DBUser) UnmarshalBSON(in []byte) error { return mgobson.Unmarshal(in, u) }
 
 type LoginCache struct {
 	Token string    `bson:"token"`
@@ -123,7 +128,7 @@ func (u *DBUser) DeletePublicKey(keyName string) error {
 		IdKey: u.Id,
 		bsonutil.GetDottedKeyName(PubKeysKey, PubKeyNameKey): bson.M{"$eq": keyName},
 	}
-	c := mgo.Change{
+	c := adb.Change{
 		Update: bson.M{
 			"$pull": bson.M{
 				PubKeysKey: bson.M{
@@ -160,7 +165,7 @@ func (u *DBUser) IncPatchNumber() (int, error) {
 			IdKey: u.Id,
 		},
 		nil,
-		mgo.Change{
+		adb.Change{
 			Update: bson.M{
 				"$inc": bson.M{
 					PatchNumberKey: 1,
@@ -213,11 +218,8 @@ func IsValidSubscriptionPreference(in string) bool {
 	}
 }
 
-func FormatObjectID(id string) (bson.ObjectId, error) {
-	if !bson.IsObjectIdHex(id) {
-		return "", errors.Errorf("%s is not a valid ObjectId", id)
-	}
-	return bson.ObjectIdHex(id), nil
+func FormatObjectID(id string) (primitive.ObjectID, error) {
+	return primitive.ObjectIDFromHex(id)
 }
 
 // PutLoginCache generates a token if one does not exist, and sets the TTL to now.

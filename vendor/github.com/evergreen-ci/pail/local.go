@@ -17,6 +17,7 @@ type localFileSystem struct {
 	deleteOnSync bool
 }
 
+// LocalOptions describes the configuration of a local Bucket.
 type LocalOptions struct {
 	Path         string
 	DryRun       bool
@@ -32,7 +33,7 @@ func NewLocalBucket(opts LocalOptions) (Bucket, error) {
 		dryRun:       opts.DryRun,
 		deleteOnSync: opts.DeleteOnSync,
 	}
-	if err := b.Check(nil); err != nil {
+	if err := b.Check(context.TODO()); err != nil {
 		return nil, errors.WithStack(err)
 
 	}

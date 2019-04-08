@@ -21,7 +21,7 @@ import (
 	"github.com/mongodb/grip/message"
 	"github.com/mongodb/grip/sometimes"
 	"github.com/pkg/errors"
-	"gopkg.in/mgo.v2/bson"
+	mgobson "gopkg.in/mgo.v2/bson"
 )
 
 func init() {
@@ -63,7 +63,7 @@ func makeTaskTriggers() eventHandler {
 // with as much data from the triggerContext as possible
 func newAlertRecord(subID string, t *task.Task, alertType string) *alertrecord.AlertRecord {
 	return &alertrecord.AlertRecord{
-		Id:                  bson.NewObjectId(),
+		Id:                  mgobson.NewObjectId(),
 		SubscriptionID:      subID,
 		Type:                alertType,
 		ProjectId:           t.Project,
@@ -155,7 +155,7 @@ func (t *taskTriggers) Fetch(e *event.EventLogEntry) error {
 	}
 
 	var err error
-	if err = t.uiConfig.Get(); err != nil {
+	if err = t.uiConfig.Get(evergreen.GetEnvironment()); err != nil {
 		return errors.Wrap(err, "Failed to fetch ui config")
 	}
 
@@ -793,7 +793,7 @@ func JIRATaskPayload(subID, project, uiUrl, eventID, testNames string, t *task.T
 		data:     data,
 	}
 
-	if err = builder.mappings.Get(); err != nil {
+	if err = builder.mappings.Get(evergreen.GetEnvironment()); err != nil {
 		return nil, errors.Wrap(err, "failed to fetch jira custom field mappings while building jira task payload")
 	}
 
