@@ -103,13 +103,8 @@ func (c *gitPush) Execute(ctx context.Context, comm client.Communicator, logger 
 		}
 
 		logger.Execution().Infof("Pushing patch for module %s", module.Name)
-		params = pushParams{
-			directory:   moduleBase,
-			authorName:  restModel.FromAPIString(u.DisplayName),
-			authorEmail: restModel.FromAPIString(u.Email),
-			description: p.Description,
-			branch:      module.Branch,
-		}
+		params.directory = moduleBase
+		params.branch = module.Branch
 		if err = c.pushPatch(ctx, logger, params); err != nil {
 			return errors.Wrap(err, "can't push module patch")
 		}
