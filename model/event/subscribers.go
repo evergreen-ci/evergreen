@@ -89,16 +89,14 @@ func (s *Subscriber) SetBSON(raw mgobson.Raw) error {
 }
 
 func (s *Subscriber) String() string {
-	if stringer, ok := s.Target.(fmt.Stringer); ok {
-		return fmt.Sprintf("%s-%s", s.Type, stringer)
-	}
-
 	var subscriberStr string
 	switch v := s.Target.(type) {
 	case string:
 		subscriberStr = v
 	case *string:
 		subscriberStr = *v
+	case fmt.Stringer:
+		subscriberStr = v.String()
 	default:
 		subscriberStr = "NIL_SUBSCRIBER"
 	}
