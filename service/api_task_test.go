@@ -570,6 +570,9 @@ func TestTaskLifecycleEndpoints(t *testing.T) {
 		}
 
 		q := queue.NewLocalLimitedSize(4, 2048)
+		if err := q.Start(ctx); err != nil {
+			t.Fatalf("failed to start queue %s", err)
+		}
 		opts := queue.LocalQueueGroupOptions{Constructor: localGroupConstructor}
 		group, err := queue.NewLocalQueueGroup(ctx, opts)
 		So(err, ShouldBeNil)
