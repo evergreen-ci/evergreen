@@ -7,9 +7,6 @@ database:
 configdir: "config_test"
 client_binaries_dir: "clients"
 
-curator_url: "https://example.com"
-curator_version: "version"
-
 api_url: http://localhost:8080
 api:
   github_webhook_secret: "test"

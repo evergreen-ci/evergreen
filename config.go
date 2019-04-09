@@ -154,12 +154,6 @@ func (c *Settings) ValidateAndDefault() error {
 	if c.ConfigDir == "" {
 		catcher.Add(errors.New("Config directory must not be empty"))
 	}
-	if c.CuratorURL == "" {
-		catcher.Add(errors.New("Curator URL must not be empty"))
-	}
-	if c.CuratorVersion == "" {
-		catcher.Add(errors.New("Curator version must not be empty"))
-	}
 	if len(c.CredentialsNew) > 0 {
 		if c.Credentials, err = c.CredentialsNew.Map(); err != nil {
 			catcher.Add(errors.Wrap(err, "error parsing credentials"))
