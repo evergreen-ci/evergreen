@@ -95,7 +95,9 @@ func Clear(collection string) error {
 		return err
 	}
 	defer session.Close()
+
 	_, err = db.C(collection).RemoveAll(bson.M{})
+
 	return err
 }
 

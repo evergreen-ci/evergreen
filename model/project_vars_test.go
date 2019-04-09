@@ -4,7 +4,6 @@ import (
 	"testing"
 
 	"github.com/evergreen-ci/evergreen/db"
-	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -12,7 +11,7 @@ import (
 func TestFindOneProjectVar(t *testing.T) {
 	assert := assert.New(t)
 
-	testutil.HandleTestingErr(db.Clear(ProjectVarsCollection), t,
+	require.NoError(t, db.Clear(ProjectVarsCollection),
 		"Error clearing collection")
 	vars := map[string]string{
 		"a": "b",
@@ -38,7 +37,7 @@ func TestFindOneProjectVar(t *testing.T) {
 func TestProjectVarsInsert(t *testing.T) {
 	assert := assert.New(t)
 
-	testutil.HandleTestingErr(db.Clear(ProjectVarsCollection), t,
+	require.NoError(t, db.Clear(ProjectVarsCollection),
 		"Error clearing collection")
 
 	vars := &ProjectVars{

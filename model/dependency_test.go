@@ -5,8 +5,8 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/task"
-	"github.com/evergreen-ci/evergreen/testutil"
 	. "github.com/smartystreets/goconvey/convey"
+	"github.com/stretchr/testify/require"
 	"go.mongodb.org/mongo-driver/bson"
 	mgobson "gopkg.in/mgo.v2/bson"
 )
@@ -23,7 +23,7 @@ func TestDependencyBSON(t *testing.T) {
 			bytes, err := mgobson.Marshal(map[string]interface{}{
 				"depends_on": []string{"t1", "t2", "t3"},
 			})
-			testutil.HandleTestingErr(err, t, "failed to marshal test BSON")
+			require.NoError(t, err, "failed to marshal test BSON")
 
 			Convey("unmarshalling the BSON into a Dependency slice should succeed", func() {
 				var deps depTask
@@ -48,7 +48,7 @@ func TestDependencyBSON(t *testing.T) {
 				{TaskId: "t3", Status: evergreen.TaskFailed},
 			}}
 			bytes, err := bson.Marshal(inputDeps)
-			testutil.HandleTestingErr(err, t, "failed to marshal test BSON")
+			require.NoError(t, err, "failed to marshal test BSON")
 
 			Convey("unmarshalling the BSON into a Dependency slice should succeed", func() {
 				var deps depTask

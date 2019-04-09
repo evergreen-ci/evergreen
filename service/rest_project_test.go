@@ -14,6 +14,7 @@ import (
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/gimlet"
 	. "github.com/smartystreets/goconvey/convey"
+	"github.com/stretchr/testify/require"
 )
 
 var projectTestConfig = testutil.TestConfig()
@@ -37,11 +38,10 @@ func TestProjectRoutes(t *testing.T) {
 		HeaderUserName: evergreen.APIUserHeader,
 	}))
 	n, err := app.Handler()
-	testutil.HandleTestingErr(err, t, "error setting up router")
+	require.NoError(t, err, "error setting up router")
 
 	Convey("When loading a public project, it should be found", t, func() {
-		testutil.HandleTestingErr(db.Clear(model.ProjectRefCollection), t,
-			"Error clearing '%v' collection", model.ProjectRefCollection)
+		require.NoError(t, db.Clear(model.ProjectRefCollection), "Error clearing '%v' collection", model.ProjectRefCollection)
 
 		publicId := "pub"
 		public := &model.ProjectRef{
@@ -93,8 +93,7 @@ func TestProjectRoutes(t *testing.T) {
 	})
 
 	Convey("When loading a private project", t, func() {
-		testutil.HandleTestingErr(db.Clear(model.ProjectRefCollection), t,
-			"Error clearing '%v' collection", model.ProjectRefCollection)
+		require.NoError(t, db.Clear(model.ProjectRefCollection), "Error clearing '%v' collection", model.ProjectRefCollection)
 
 		privateId := "priv"
 		private := &model.ProjectRef{

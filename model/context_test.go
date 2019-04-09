@@ -5,13 +5,13 @@ import (
 
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/task"
-	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestLoadContext(t *testing.T) {
-	testutil.HandleTestingErr(db.ClearCollections(task.Collection,
-		task.OldCollection, ProjectRefCollection), t, "problem clearing collection")
+	require.NoError(t, db.ClearCollections(task.Collection, task.OldCollection, ProjectRefCollection), "problem clearing collection")
+
 	assert := assert.New(t)
 	myProject := ProjectRef{
 		Identifier: "proj",

@@ -11,6 +11,7 @@ import (
 	"github.com/evergreen-ci/evergreen/rest/client"
 	"github.com/evergreen-ci/evergreen/testutil"
 	. "github.com/smartystreets/goconvey/convey"
+	"github.com/stretchr/testify/require"
 )
 
 func TestS3CopyPluginExecution(t *testing.T) {
@@ -18,10 +19,9 @@ func TestS3CopyPluginExecution(t *testing.T) {
 	defer cancel()
 	env := evergreen.GetEnvironment()
 	testConfig := env.Settings()
+	testutil.ConfigureIntegrationTest(t, testConfig, "TestS3CopyPluginExecution")
 
 	comm := client.NewMock("http://localhost.com")
-
-	testutil.ConfigureIntegrationTest(t, testConfig, "TestS3CopyPluginExecution")
 
 	Convey("With a SimpleRegistry and test project file", t, func() {
 		version := &model.Version{
@@ -32,7 +32,7 @@ func TestS3CopyPluginExecution(t *testing.T) {
 		pwd := testutil.GetDirectoryOfFile()
 		configFile := filepath.Join(pwd, "testdata", "plugin_s3_copy.yml")
 		modelData, err := modelutil.SetupAPITestData(testConfig, "copyTask", "linux-64", configFile, modelutil.NoPatch)
-		testutil.HandleTestingErr(err, t, "failed to setup test data")
+		require.NoError(t, err, "failed to setup test data")
 		conf := modelData.TaskConfig
 		conf.WorkDir = pwd
 		logger, err := comm.GetLoggerProducer(ctx, client.TaskData{ID: conf.Task.Id, Secret: conf.Task.Secret}, nil)
@@ -47,7 +47,7 @@ func TestS3CopyPluginExecution(t *testing.T) {
 			for _, task := range conf.Project.Tasks {
 				for _, command := range task.Commands {
 					pluginCmds, err := Render(command, conf.Project.Functions)
-					testutil.HandleTestingErr(err, t, "Couldn't get plugin command: %s", command.Command)
+					require.NoError(t, err, "Couldn't get plugin command: %s", command.Command)
 					So(pluginCmds, ShouldNotBeNil)
 					So(err, ShouldBeNil)
 					err = pluginCmds[0].Execute(ctx, comm, logger, conf)

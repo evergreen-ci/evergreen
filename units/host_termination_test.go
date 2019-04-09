@@ -12,11 +12,11 @@ import (
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/task"
-	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/evergreen/util"
 	. "github.com/smartystreets/goconvey/convey"
 	"github.com/smartystreets/goconvey/convey/reporting"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func init() {
@@ -28,11 +28,9 @@ func init() {
 }
 
 func TestTerminateHosts(t *testing.T) {
-	testConfig := testutil.TestConfig()
-	testutil.ConfigureIntegrationTest(t, testConfig, "TestTerminateHosts")
 	assert := assert.New(t)
 
-	testutil.HandleTestingErr(db.Clear(host.Collection), t, "error clearing host collection")
+	require.NoError(t, db.Clear(host.Collection), "error clearing host collection")
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
@@ -66,11 +64,9 @@ func TestTerminateHosts(t *testing.T) {
 }
 
 func TestHostCosts(t *testing.T) {
-	testConfig := testutil.TestConfig()
-	testutil.ConfigureIntegrationTest(t, testConfig, "TestHostCosts")
 	assert := assert.New(t)
 
-	testutil.HandleTestingErr(db.ClearCollections(host.Collection, task.Collection), t, "error clearing host collection")
+	require.NoError(t, db.ClearCollections(host.Collection, task.Collection), "error clearing host collection")
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
@@ -130,8 +126,7 @@ func TestFlaggingDecommissionedHosts(t *testing.T) {
 			" should be returned", func() {
 
 			// reset the db
-			testutil.HandleTestingErr(db.ClearCollections(host.Collection),
-				t, "error clearing hosts collection")
+			require.NoError(t, db.ClearCollections(host.Collection), "error clearing hosts collection")
 
 			// insert hosts with different statuses
 
@@ -140,35 +135,35 @@ func TestFlaggingDecommissionedHosts(t *testing.T) {
 				Id:       "h1",
 				Status:   evergreen.HostRunning,
 			}
-			testutil.HandleTestingErr(host1.Insert(), t, "error inserting host")
+			require.NoError(t, host1.Insert(), "error inserting host")
 
 			host2 := &host.Host{
 				Provider: evergreen.ProviderNameMock,
 				Id:       "h2",
 				Status:   evergreen.HostTerminated,
 			}
-			testutil.HandleTestingErr(host2.Insert(), t, "error inserting host")
+			require.NoError(t, host2.Insert(), "error inserting host")
 
 			host3 := &host.Host{
 				Provider: evergreen.ProviderNameMock,
 				Id:       "h3",
 				Status:   evergreen.HostDecommissioned,
 			}
-			testutil.HandleTestingErr(host3.Insert(), t, "error inserting host")
+			require.NoError(t, host3.Insert(), "error inserting host")
 
 			host4 := &host.Host{
 				Provider: evergreen.ProviderNameMock,
 				Id:       "h4",
 				Status:   evergreen.HostDecommissioned,
 			}
-			testutil.HandleTestingErr(host4.Insert(), t, "error inserting host")
+			require.NoError(t, host4.Insert(), "error inserting host")
 
 			host5 := &host.Host{
 				Provider: evergreen.ProviderNameMock,
 				Id:       "h5",
 				Status:   evergreen.HostQuarantined,
 			}
-			testutil.HandleTestingErr(host5.Insert(), t, "error inserting host")
+			require.NoError(t, host5.Insert(), "error inserting host")
 
 			// flag the decommissioned hosts - there should be 2 of them
 			decommissioned, err := host.FindHostsToTerminate()
@@ -188,8 +183,7 @@ func TestFlaggingUnprovisionedHosts(t *testing.T) {
 	Convey("When flagging unprovisioned hosts to be terminated", t, func() {
 
 		// reset the db
-		testutil.HandleTestingErr(db.ClearCollections(host.Collection),
-			t, "error clearing hosts collection")
+		require.NoError(t, db.ClearCollections(host.Collection), "error clearing hosts collection")
 
 		Convey("hosts that have not hit the provisioning limit should"+
 			" be ignored", func() {
@@ -200,7 +194,7 @@ func TestFlaggingUnprovisionedHosts(t *testing.T) {
 				Provider:     evergreen.ProviderNameMock,
 				CreationTime: time.Now().Add(-time.Minute * 10),
 			}
-			testutil.HandleTestingErr(host1.Insert(), t, "error inserting host")
+			require.NoError(t, host1.Insert(), "error inserting host")
 
 			unprovisioned, err := host.FindHostsToTerminate()
 			So(err, ShouldBeNil)
@@ -217,7 +211,7 @@ func TestFlaggingUnprovisionedHosts(t *testing.T) {
 				CreationTime: time.Now().Add(-time.Minute * 60),
 				Status:       evergreen.HostTerminated,
 			}
-			testutil.HandleTestingErr(host1.Insert(), t, "error inserting host")
+			require.NoError(t, host1.Insert(), "error inserting host")
 
 			unprovisioned, err := host.FindHostsToTerminate()
 			So(err, ShouldBeNil)
@@ -234,7 +228,7 @@ func TestFlaggingUnprovisionedHosts(t *testing.T) {
 				CreationTime: time.Now().Add(-time.Minute * 60),
 				Provisioned:  true,
 			}
-			testutil.HandleTestingErr(host1.Insert(), t, "error inserting host")
+			require.NoError(t, host1.Insert(), "error inserting host")
 
 			unprovisioned, err := host.FindHostsToTerminate()
 			So(err, ShouldBeNil)
@@ -253,7 +247,7 @@ func TestFlaggingUnprovisionedHosts(t *testing.T) {
 				Status:       evergreen.HostStarting,
 				Provider:     evergreen.ProviderNameMock,
 			}
-			testutil.HandleTestingErr(host1.Insert(), t, "error inserting host")
+			require.NoError(t, host1.Insert(), "error inserting host")
 
 			unprovisioned, err := host.FindHostsToTerminate()
 			So(err, ShouldBeNil)
@@ -269,8 +263,7 @@ func TestFlaggingProvisioningFailedHosts(t *testing.T) {
 	Convey("When flagging hosts whose provisioning failed", t, func() {
 
 		// reset the db
-		testutil.HandleTestingErr(db.ClearCollections(host.Collection),
-			t, "error clearing hosts collection")
+		require.NoError(t, db.ClearCollections(host.Collection), "error clearing hosts collection")
 
 		Convey("only hosts whose provisioning failed should be"+
 			" picked up", func() {
@@ -280,21 +273,21 @@ func TestFlaggingProvisioningFailedHosts(t *testing.T) {
 				Provider: evergreen.ProviderNameMock,
 				Status:   evergreen.HostRunning,
 			}
-			testutil.HandleTestingErr(host1.Insert(), t, "error inserting host")
+			require.NoError(t, host1.Insert(), "error inserting host")
 
 			host2 := &host.Host{
 				Id:       "h2",
 				Status:   evergreen.HostUninitialized,
 				Provider: evergreen.ProviderNameMock,
 			}
-			testutil.HandleTestingErr(host2.Insert(), t, "error inserting host")
+			require.NoError(t, host2.Insert(), "error inserting host")
 
 			host3 := &host.Host{
 				Id:       "h3",
 				Status:   evergreen.HostProvisionFailed,
 				Provider: evergreen.ProviderNameMock,
 			}
-			testutil.HandleTestingErr(host3.Insert(), t, "error inserting host")
+			require.NoError(t, host3.Insert(), "error inserting host")
 
 			unprovisioned, err := host.FindHostsToTerminate()
 			So(err, ShouldBeNil)
@@ -310,8 +303,7 @@ func TestFlaggingExpiredHosts(t *testing.T) {
 	Convey("When flagging expired hosts to be terminated", t, func() {
 
 		// reset the db
-		testutil.HandleTestingErr(db.ClearCollections(host.Collection),
-			t, "error clearing hosts collection")
+		require.NoError(t, db.ClearCollections(host.Collection), "error clearing hosts collection")
 
 		Convey("hosts started by the default user should be filtered"+
 			" out", func() {
@@ -323,7 +315,7 @@ func TestFlaggingExpiredHosts(t *testing.T) {
 				Provider:    evergreen.ProviderNameMock,
 				Provisioned: true,
 			}
-			testutil.HandleTestingErr(host1.Insert(), t, "error inserting host")
+			require.NoError(t, host1.Insert(), "error inserting host")
 
 			expired, err := host.FindHostsToTerminate()
 			So(err, ShouldBeNil)
@@ -339,14 +331,14 @@ func TestFlaggingExpiredHosts(t *testing.T) {
 				Provider: evergreen.ProviderNameMock,
 				Status:   evergreen.HostQuarantined,
 			}
-			testutil.HandleTestingErr(host1.Insert(), t, "error inserting host")
+			require.NoError(t, host1.Insert(), "error inserting host")
 
 			host2 := &host.Host{
 				Id:       "h2",
 				Provider: evergreen.ProviderNameMock,
 				Status:   evergreen.HostTerminated,
 			}
-			testutil.HandleTestingErr(host2.Insert(), t, "error inserting host")
+			require.NoError(t, host2.Insert(), "error inserting host")
 
 			expired, err := host.FindHostsToTerminate()
 			So(err, ShouldBeNil)
@@ -364,7 +356,7 @@ func TestFlaggingExpiredHosts(t *testing.T) {
 				Provider:       evergreen.ProviderNameMock,
 				ExpirationTime: time.Now().Add(time.Minute * 10),
 			}
-			testutil.HandleTestingErr(host1.Insert(), t, "error inserting host")
+			require.NoError(t, host1.Insert(), "error inserting host")
 
 			// expired
 			host2 := &host.Host{
@@ -373,7 +365,7 @@ func TestFlaggingExpiredHosts(t *testing.T) {
 				Provider:       evergreen.ProviderNameMock,
 				ExpirationTime: time.Now().Add(-time.Minute * 10),
 			}
-			testutil.HandleTestingErr(host2.Insert(), t, "error inserting host")
+			require.NoError(t, host2.Insert(), "error inserting host")
 
 			expired, err := host.FindHostsToTerminate()
 			So(err, ShouldBeNil)

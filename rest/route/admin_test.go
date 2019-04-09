@@ -34,8 +34,7 @@ type AdminRouteSuite struct {
 func TestAdminRouteSuiteWithDB(t *testing.T) {
 	s := new(AdminRouteSuite)
 	s.sc = &data.DBConnector{}
-	testutil.HandleTestingErr(db.ClearCollections(evergreen.ConfigCollection), t,
-		"Error clearing collections")
+	require.NoError(t, db.ClearCollections(evergreen.ConfigCollection), "Error clearing collections")
 
 	// run the rest of the tests
 	suite.Run(t, s)
@@ -266,8 +265,7 @@ func TestRestartRoute(t *testing.T) {
 func TestAdminEventRoute(t *testing.T) {
 	assert := assert.New(t)
 	require := require.New(t)
-	testutil.HandleTestingErr(db.ClearCollections(evergreen.ConfigCollection, event.AllLogCollection), t,
-		"Error clearing collections")
+	require.NoError(db.ClearCollections(evergreen.ConfigCollection, event.AllLogCollection), "Error clearing collections")
 
 	// log some changes in the event log with the /admin/settings route
 	ctx := context.Background()
