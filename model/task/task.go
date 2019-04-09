@@ -255,7 +255,7 @@ func IsAbortable(t Task) bool {
 		t.Status == evergreen.TaskDispatched
 }
 
-// IsFinished returns true if the project is no longer running
+// IsFinished returns true if the task is no longer running
 func (t *Task) IsFinished() bool {
 	return evergreen.IsFinishedTaskStatus(t.Status)
 }

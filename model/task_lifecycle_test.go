@@ -12,6 +12,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/event"
+	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/evergreen/util"
@@ -2109,6 +2110,77 @@ func TestMarkEndWithBlockedDependenciesTriggersNotifications(t *testing.T) {
 	e, err := event.FindUnprocessedEvents()
 	assert.NoError(err)
 	assert.Len(e, 3)
+}
+
+func TestClearAndResetStrandedTask(t *testing.T) {
+	testutil.HandleTestingErr(db.ClearCollections(host.Collection, task.Collection, task.OldCollection, build.Collection), t, "error clearing collection")
+	assert := assert.New(t)
+
+	runningTask := &task.Task{
+		Id:            "t",
+		Status:        evergreen.TaskStarted,
+		Activated:     true,
+		ActivatedTime: time.Now(),
+		BuildId:       "b",
+	}
+	assert.NoError(runningTask.Insert())
+
+	h := &host.Host{
+		Id:          "h1",
+		RunningTask: "t",
+	}
+	assert.NoError(h.Insert())
+
+	b := build.Build{
+		Id: "b",
+		Tasks: []build.TaskCache{
+			build.TaskCache{
+				Id: "t",
+			},
+		},
+	}
+	assert.NoError(b.Insert())
+
+	assert.NoError(ClearAndResetStrandedTask(h))
+	runningTask, err := task.FindOne(task.ById("t"))
+	assert.NoError(err)
+	assert.Equal(evergreen.TaskUndispatched, runningTask.Status)
+}
+
+func TestClearAndResetStaleStrandedTask(t *testing.T) {
+	testutil.HandleTestingErr(db.ClearCollections(host.Collection, task.Collection, task.OldCollection, build.Collection), t, "error clearing collection")
+	assert := assert.New(t)
+
+	runningTask := &task.Task{
+		Id:            "t",
+		Status:        evergreen.TaskStarted,
+		Activated:     true,
+		ActivatedTime: util.ZeroTime,
+		BuildId:       "b",
+	}
+	assert.NoError(runningTask.Insert())
+
+	h := &host.Host{
+		Id:          "h1",
+		RunningTask: "t",
+	}
+	assert.NoError(h.Insert())
+
+	b := build.Build{
+		Id: "b",
+		Tasks: []build.TaskCache{
+			build.TaskCache{
+				Id: "t",
+			},
+		},
+	}
+	assert.NoError(b.Insert())
+
+	assert.NoError(ClearAndResetStrandedTask(h))
+	runningTask, err := task.FindOne(task.ById("t"))
+	assert.NoError(err)
+	assert.Equal(evergreen.TaskFailed, runningTask.Status)
+	assert.Equal("system", runningTask.Details.Type)
 }
 
 func TestDisplayTaskUpdates(t *testing.T) {
