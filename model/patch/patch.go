@@ -291,6 +291,19 @@ func (p *Patch) SetActivation(activated bool) error {
 	)
 }
 
+// SetGithash updates the patch's githash
+func (p *Patch) SetGithash(githash string) error {
+	p.Githash = githash
+	return UpdateOne(
+		bson.M{IdKey: p.Id},
+		bson.M{
+			"$set": bson.M{
+				GithashKey: githash,
+			},
+		},
+	)
+}
+
 // UpdateModulePatch adds or updates a module within a patch.
 func (p *Patch) UpdateModulePatch(modulePatch ModulePatch) error {
 	// check that a patch for this module exists
