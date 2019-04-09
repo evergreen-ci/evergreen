@@ -48,8 +48,10 @@ type APIAdminSettings struct {
 	BannerTheme        APIString                         `json:"banner_theme,omitempty"`
 	ClientBinariesDir  APIString                         `json:"client_binaries_dir,omitempty"`
 	ConfigDir          APIString                         `json:"configdir,omitempty"`
-	Credentials        map[string]string                 `json:"credentials,omitempty"`
 	ContainerPools     *APIContainerPoolsConfig          `json:"container_pools,omitempty"`
+	Credentials        map[string]string                 `json:"credentials,omitempty"`
+	CuratorURL         APIString                         `json:"curator_url,omitempty"`
+	CuratorVersion     APIString                         `json:"curator_version,omitempty"`
 	Expansions         map[string]string                 `json:"expansions,omitempty"`
 	GoogleAnalyticsID  APIString                         `json:"google_analytics,omitempty"`
 	GithubPRCreatorOrg APIString                         `json:"github_pr_creator_org,omitempty"`
@@ -106,6 +108,8 @@ func (as *APIAdminSettings) BuildFromService(h interface{}) error {
 		as.BannerTheme = &tmp
 		as.ClientBinariesDir = &v.ClientBinariesDir
 		as.ConfigDir = &v.ConfigDir
+		as.CuratorURL = ToAPIString(v.CuratorURL)
+		as.CuratorVersion = ToAPIString(v.CuratorVersion)
 		as.GoogleAnalyticsID = ToAPIString(v.GoogleAnalyticsID)
 		as.GithubPRCreatorOrg = &v.GithubPRCreatorOrg
 		as.LogPath = &v.LogPath
@@ -145,6 +149,8 @@ func (as *APIAdminSettings) ToService() (interface{}, error) {
 	if as.ConfigDir != nil {
 		settings.ConfigDir = *as.ConfigDir
 	}
+	settings.CuratorURL = FromAPIString(as.CuratorURL)
+	settings.CuratorVersion = FromAPIString(as.CuratorVersion)
 	settings.GoogleAnalyticsID = FromAPIString(as.GoogleAnalyticsID)
 	if as.GithubPRCreatorOrg != nil {
 		settings.GithubPRCreatorOrg = *as.GithubPRCreatorOrg
@@ -155,6 +161,7 @@ func (as *APIAdminSettings) ToService() (interface{}, error) {
 	if as.PprofPort != nil {
 		settings.PprofPort = *as.PprofPort
 	}
+
 	apiModelReflect := reflect.ValueOf(*as)
 	dbModelReflect := reflect.ValueOf(&settings).Elem()
 	for i := 0; i < apiModelReflect.NumField(); i++ {

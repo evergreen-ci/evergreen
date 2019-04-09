@@ -21,6 +21,8 @@ var (
 	configDirKey          = bsonutil.MustHaveTag(Settings{}, "ConfigDir")
 	apiUrlKey             = bsonutil.MustHaveTag(Settings{}, "ApiUrl")
 	clientBinariesDirKey  = bsonutil.MustHaveTag(Settings{}, "ClientBinariesDir")
+	curatorURLKey         = bsonutil.MustHaveTag(Settings{}, "CuratorURL")
+	curatorVersionKey     = bsonutil.MustHaveTag(Settings{}, "CuratorVersion")
 	superUsersKey         = bsonutil.MustHaveTag(Settings{}, "SuperUsers")
 	jiraKey               = bsonutil.MustHaveTag(Settings{}, "Jira")
 	splunkKey             = bsonutil.MustHaveTag(Settings{}, "Splunk")

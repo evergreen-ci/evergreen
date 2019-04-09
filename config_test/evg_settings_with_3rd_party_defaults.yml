@@ -16,6 +16,9 @@ amboy:
   pool_size_remote: 2
   local_storage_size: 2048
 
+curator_url: "https://example.com"
+curator_version: "version"
+
 api_url: "https://localhost:8443"
 
 providers:

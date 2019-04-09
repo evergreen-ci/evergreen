@@ -6,6 +6,9 @@ aws_id: "AWS ID VALUE"
 github_oauth: "token GITHUB OAUTH TOKEN"
 api_url: "mci-motu.10gen.cc"
 
+curator_url: "https://example.com"
+curator_version: "version"
+
 keys:
     mci: "/data/home/etc/mci.pem"
 

@@ -56,6 +56,8 @@ type Settings struct {
 	ContainerPools     ContainerPoolsConfig      `yaml:"container_pools" bson:"container_pools" json:"container_pools" id:"container_pools"`
 	Credentials        map[string]string         `yaml:"credentials" bson:"credentials" json:"credentials"`
 	CredentialsNew     util.KeyValuePairSlice    `yaml:"credentials_new" bson:"credentials_new" json:"credentials_new"`
+	CuratorURL         string                    `yaml:"curator_url" bson:"curator_url" json:"curator_url"`
+	CuratorVersion     string                    `yaml:"curator_version" bson:"curator_version" json:"curator_version"`
 	Database           DBSettings                `yaml:"database"`
 	Expansions         map[string]string         `yaml:"expansions" bson:"expansions" json:"expansions"`
 	ExpansionsNew      util.KeyValuePairSlice    `yaml:"expansions_new" bson:"expansions_new" json:"expansions_new"`
@@ -123,6 +125,8 @@ func (c *Settings) Set() error {
 			containerPoolsKey:     c.ContainerPools,
 			credentialsKey:        c.Credentials,
 			credentialsNewKey:     c.CredentialsNew,
+			curatorURLKey:         c.CuratorURL,
+			curatorVersionKey:     c.CuratorVersion,
 			expansionsKey:         c.Expansions,
 			expansionsNewKey:      c.ExpansionsNew,
 			googleAnalyticsKey:    c.GoogleAnalyticsID,
@@ -149,6 +153,12 @@ func (c *Settings) ValidateAndDefault() error {
 	}
 	if c.ConfigDir == "" {
 		catcher.Add(errors.New("Config directory must not be empty"))
+	}
+	if c.CuratorURL == "" {
+		catcher.Add(errors.New("Curator URL must not be empty"))
+	}
+	if c.CuratorVersion == "" {
+		catcher.Add(errors.New("Curator version must not be empty"))
 	}
 	if len(c.CredentialsNew) > 0 {
 		if c.Credentials, err = c.CredentialsNew.Map(); err != nil {
