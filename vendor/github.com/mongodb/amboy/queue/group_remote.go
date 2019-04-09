@@ -117,6 +117,7 @@ func NewRemoteQueueGroup(ctx context.Context, opts RemoteQueueGroupOptions) (amb
 }
 
 func (g *remoteQueueGroup) startProcessingRemoteQueue(ctx context.Context, coll string) (Remote, error) {
+	coll = trimJobsSuffix(coll)
 	q, err := g.constructor(ctx)
 	if err != nil {
 		return nil, errors.Wrap(err, "problem starting queue")
@@ -252,7 +253,7 @@ func (g *remoteQueueGroup) Prune(ctx context.Context) error {
 	for i, coll := range colls {
 		// This is an optimization. If we've added to the queue recently enough, there's no
 		// need to query its contents, since it cannot be old enough to prune.
-		if t, ok := g.ttlMap[coll]; ok && time.Since(t) < g.ttl {
+		if t, ok := g.ttlMap[g.idFromCollection(coll)]; ok && time.Since(t) < g.ttl {
 			g.remove(colls, i)
 		}
 	}
@@ -276,7 +277,11 @@ func (g *remoteQueueGroup) Prune(ctx context.Context) error {
 			defer wg.Done()
 			for nextColl := range collsDropChan {
 				c := g.client.Database(g.mongooptions.DB).Collection(nextColl)
-				one := c.FindOne(ctx, bson.M{"status.mod_ts": bson.M{"$gte": time.Now().Add(-g.ttl)}})
+				one := c.FindOne(ctx, bson.M{
+					"status.completed": true,
+					"status.in_prog":   false,
+					"status.mod_ts":    bson.M{"$gte": time.Now().Add(-g.ttl)},
+				})
 				if err := one.Err(); err != nil {
 					catcher.Add(err)
 					return
@@ -385,11 +390,11 @@ func (g *remoteQueueGroup) Close(ctx context.Context) {
 }
 
 func (g *remoteQueueGroup) collectionFromID(id string) string {
-	return g.prefix + id
+	return addJobsSuffix(g.prefix + id)
 }
 
 func (g *remoteQueueGroup) idFromCollection(collection string) string {
-	return strings.TrimPrefix(collection, g.prefix)
+	return trimJobsSuffix(strings.TrimPrefix(collection, g.prefix))
 }
 
 // remove efficiently from a slice if order doesn't matter https://stackoverflow.com/a/37335777.
