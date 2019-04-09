@@ -10,7 +10,6 @@ import (
 	"time"
 
 	"github.com/docker/docker/api/types"
-
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/cloud"
@@ -195,7 +194,14 @@ func makeDockerIntentHost(taskID, userID string, createHost apimodels.CreateHost
 		SkipImageBuild:   true,
 	}
 
-	return cloud.NewIntent(d, d.GenerateName(), d.Provider, *options), nil
+	hostIntents, err := host.GenerateContainerHostIntents(d, 1, *options)
+	if err != nil {
+		return nil, errors.Wrap(err, "error generating host intent")
+	}
+	if len(hostIntents) != 1 {
+		return nil, errors.New("Programmer error: should have created one new container")
+	}
+	return &hostIntents[0], nil
 
 }
 
@@ -272,11 +278,11 @@ func makeEC2IntentHost(taskID, userID, publicKey string, createHost apimodels.Cr
 		return nil, errors.Wrap(err, "error making host options for EC2")
 	}
 
-	return cloud.NewIntent(d, d.GenerateName(), provider, *options), nil
+	return host.NewIntent(d, d.GenerateName(), provider, *options), nil
 }
 
-func getAgentOptions(taskID, userID string, createHost apimodels.CreateHost) (*cloud.HostOptions, error) {
-	options := cloud.HostOptions{}
+func getAgentOptions(taskID, userID string, createHost apimodels.CreateHost) (*host.CreateOptions, error) {
+	options := host.CreateOptions{}
 	if userID != "" {
 		options.UserName = userID
 		options.UserHost = true

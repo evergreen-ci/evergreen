@@ -60,8 +60,11 @@ func TestSpawnEC2InstanceOnDemand(t *testing.T) {
 	assert := assert.New(t)
 	require := require.New(t)
 
-	testConfig := testutil.TestConfig()
-	db.SetGlobalSessionProvider(testConfig.SessionFactory())
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	env := testutil.NewEnvironment(ctx, t)
+	testConfig := env.Settings()
+
 	testutil.ConfigureIntegrationTest(t, testConfig, "TestSpawnEC2Instance")
 	require.NoError(db.Clear(host.Collection))
 
@@ -70,16 +73,13 @@ func TestSpawnEC2InstanceOnDemand(t *testing.T) {
 		provider: onDemandProvider,
 	}
 
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
 	m := NewEC2Manager(opts).(*ec2Manager)
 	require.NoError(m.Configure(ctx, testConfig))
 	require.NoError(m.client.Create(m.credentials, defaultRegion))
 
 	d := fetchTestDistro()
 	d.Provider = evergreen.ProviderNameEc2OnDemand
-	h := NewIntent(d, d.GenerateName(), d.Provider, HostOptions{
+	h := host.NewIntent(d, d.GenerateName(), d.Provider, host.CreateOptions{
 		UserName: evergreen.User,
 		UserHost: false,
 	})
@@ -130,23 +130,25 @@ func TestSpawnEC2InstanceSpot(t *testing.T) {
 	assert := assert.New(t)
 	require := require.New(t)
 
-	testConfig := testutil.TestConfig()
-	db.SetGlobalSessionProvider(testConfig.SessionFactory())
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	env := testutil.NewEnvironment(ctx, t)
+	testConfig := env.Settings()
+
 	testutil.ConfigureIntegrationTest(t, testConfig, "TestSpawnSpotInstance")
 	require.NoError(db.Clear(host.Collection))
 	opts := &EC2ManagerOptions{
 		client:   &awsClientImpl{},
 		provider: spotProvider,
 	}
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
 
 	m := NewEC2Manager(opts).(*ec2Manager)
 	require.NoError(m.Configure(ctx, testConfig))
 	require.NoError(m.client.Create(m.credentials, defaultRegion))
 	d := fetchTestDistro()
 	d.Provider = evergreen.ProviderNameEc2Spot
-	h := NewIntent(d, d.GenerateName(), d.Provider, HostOptions{
+	h := host.NewIntent(d, d.GenerateName(), d.Provider, host.CreateOptions{
 		UserName: evergreen.User,
 		UserHost: false,
 	})

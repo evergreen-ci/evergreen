@@ -115,13 +115,15 @@ func (c *Collection) UpdateId(id, u interface{}) error {
 }
 
 type Query struct {
-	Query    interface{}
-	Project  interface{}
-	SortKeys []string
-	NumLimit int
-	NumSkip  int
-	Error    error
-	CountNum int
+	Query           interface{}
+	Project         interface{}
+	SortKeys        []string
+	NumLimit        int
+	NumSkip         int
+	Error           error
+	CountNum        int
+	ApplyChangeSpec db.Change
+	ApplyChangeInfo *db.ChangeInfo
 }
 
 func (q *Query) Count() (int, error)           { return q.CountNum, q.Error }
@@ -132,6 +134,11 @@ func (q *Query) Iter() db.Iterator             { return &Iterator{Error: q.Error
 func (q *Query) One(r interface{}) error       { return q.Error }
 func (q *Query) All(r interface{}) error       { return q.Error }
 func (q *Query) Sort(keys ...string) db.Query  { q.SortKeys = keys; return q }
+
+func (q *Query) Apply(ch db.Change, r interface{}) (*db.ChangeInfo, error) {
+	q.ApplyChangeSpec = ch
+	return q.ApplyChangeInfo, q.Error
+}
 
 type Iterator struct {
 	Query       *Query

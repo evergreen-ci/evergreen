@@ -19,16 +19,6 @@ type gridfsLegacyBucket struct {
 	session *mgo.Session
 }
 
-// GridFSOptions support the use and creation of GridFS backed
-// buckets.
-type GridFSOptions struct {
-	Prefix       string
-	Database     string
-	MongoDBURI   string
-	DryRun       bool
-	DeleteOnSync bool
-}
-
 // NewLegacyGridFSBucket creates a Bucket implementation backed by
 // GridFS as implemented by the legacy "mgo" MongoDB driver. This
 // constructor creates a new connection and mgo session.
@@ -279,11 +269,10 @@ func (b *gridfsLegacyBucket) Copy(ctx context.Context, options CopyOptions) erro
 
 	to, err := options.DestinationBucket.Writer(ctx, options.DestinationKey)
 	if err != nil {
-		return errors.Wrap(err, "problem getting writer for dst")
+		return errors.Wrap(err, "problem getting writer for destination")
 	}
 
-	_, err = io.Copy(to, from)
-	if err != nil {
+	if _, err = io.Copy(to, from); err != nil {
 		return errors.Wrap(err, "problem copying data")
 	}
 

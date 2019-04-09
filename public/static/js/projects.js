@@ -325,8 +325,8 @@ mciModule.controller('ProjectCtrl', function($scope, $window, $http, $location, 
         if(!$scope.settingsFormData.commit_queue.merge_method) {
           $scope.settingsFormData.commit_queue.merge_method = $scope.validMergeMethods[0];
         }
-        if(!$scope.settingsFormData.commit_queue.merge_action) {
-          $scope.settingsFormData.commit_queue.merge_action = $scope.validMergeActions[0];
+        if(!$scope.settingsFormData.commit_queue.patch_type) {
+          $scope.settingsFormData.commit_queue.patch_type = $scope.validPatchTypes[0];
         }
         if(!$scope.settingsFormData.commit_queue.status_action) {
           $scope.settingsFormData.commit_queue.status_action = $scope.validStatusActions[0];
@@ -716,7 +716,7 @@ mciModule.controller('ProjectCtrl', function($scope, $window, $http, $location, 
 
   $scope.show_build_break = true;
   $scope.validMergeMethods = ["squash", "merge", "rebase"];
-  $scope.validMergeActions = ["github"];
+  $scope.validPatchTypes = ["PR", "CLI"];
   $scope.validStatusActions = ["github"];
 });
 

@@ -73,7 +73,10 @@ func remoteConstructor(ctx context.Context) (queue.Remote, error) {
 
 func TestGeneratePollParse(t *testing.T) {
 	db.SetGlobalSessionProvider(testutil.TestConfig().SessionFactory())
-	require.NoError(t, db.ClearCollections(task.Collection, host.Collection))
+	require := require.New(t)
+	assert := assert.New(t)
+
+	require.NoError(db.ClearCollections(task.Collection, host.Collection))
 	sc := &data.MockConnector{}
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()

@@ -28,19 +28,22 @@ type s3BucketLarge struct {
 }
 
 type s3Bucket struct {
-	name         string
-	prefix       string
+	dryRun       bool
+	deleteOnSync bool
+	batchSize    int
 	sess         *session.Session
 	svc          *s3.S3
+	name         string
+	prefix       string
 	permission   string
 	contentType  string
-	dryRun       bool
-	batchSize    int
-	deleteOnSync bool
 }
 
 // S3Options support the use and creation of S3 backed buckets.
 type S3Options struct {
+	DryRun                    bool
+	DeleteOnSync              bool
+	MaxRetries                int
 	Credentials               *credentials.Credentials
 	SharedCredentialsFilepath string
 	SharedCredentialsProfile  string
@@ -49,12 +52,9 @@ type S3Options struct {
 	Prefix                    string
 	Permission                string
 	ContentType               string
-	DryRun                    bool
-	MaxRetries                int
-	DeleteOnSync              bool
 }
 
-// Wrapper for creating AWS credentials.
+// CreateAWSCredentials is a wrapper for creating AWS credentials.
 func CreateAWSCredentials(awsKey, awsPassword, awsToken string) *credentials.Credentials {
 	return credentials.NewStaticCredentials(awsKey, awsPassword, awsToken)
 }
@@ -198,32 +198,32 @@ func (s *s3Bucket) Check(ctx context.Context) error {
 }
 
 type smallWriteCloser struct {
-	buffer      []byte
 	isClosed    bool
-	name        string
+	dryRun      bool
 	svc         *s3.S3
+	buffer      []byte
+	name        string
 	ctx         context.Context
 	key         string
 	permission  string
 	contentType string
-	dryRun      bool
 }
 
 type largeWriteCloser struct {
-	buffer         []byte
-	maxSize        int
 	isCreated      bool
 	isClosed       bool
-	name           string
+	dryRun         bool
+	partNumber     int64
+	maxSize        int
 	svc            *s3.S3
 	ctx            context.Context
+	buffer         []byte
+	completedParts []*s3.CompletedPart
+	name           string
 	key            string
 	permission     string
 	contentType    string
-	dryRun         bool
-	partNumber     int64
-	uploadId       string
-	completedParts []*s3.CompletedPart
+	uploadID       string
 }
 
 func (w *largeWriteCloser) create() error {
@@ -239,7 +239,7 @@ func (w *largeWriteCloser) create() error {
 		if err != nil {
 			return errors.Wrap(err, "problem creating a multipart upload")
 		}
-		w.uploadId = *result.UploadId
+		w.uploadID = *result.UploadId
 	}
 	w.isCreated = true
 	w.partNumber++
@@ -254,7 +254,7 @@ func (w *largeWriteCloser) complete() error {
 			MultipartUpload: &s3.CompletedMultipartUpload{
 				Parts: w.completedParts,
 			},
-			UploadId: aws.String(w.uploadId),
+			UploadId: aws.String(w.uploadID),
 		}
 
 		_, err := w.svc.CompleteMultipartUploadWithContext(w.ctx, input)
@@ -273,7 +273,7 @@ func (w *largeWriteCloser) abort() error {
 	input := &s3.AbortMultipartUploadInput{
 		Bucket:   aws.String(w.name),
 		Key:      aws.String(w.key),
-		UploadId: aws.String(w.uploadId),
+		UploadId: aws.String(w.uploadID),
 	}
 
 	_, err := w.svc.AbortMultipartUploadWithContext(w.ctx, input)
@@ -289,11 +289,11 @@ func (w *largeWriteCloser) flush() error {
 	}
 	if !w.dryRun {
 		input := &s3.UploadPartInput{
-			Body:       aws.ReadSeekCloser(strings.NewReader(string(w.buffer))),
+			Body:       aws.ReadSeekCloser(strings.NewReader(string(w.buffer))), // nolint:staticcheck
 			Bucket:     aws.String(w.name),
 			Key:        aws.String(w.key),
 			PartNumber: aws.Int64(w.partNumber),
-			UploadId:   aws.String(w.uploadId),
+			UploadId:   aws.String(w.uploadID),
 		}
 		result, err := w.svc.UploadPartWithContext(w.ctx, input)
 		if err != nil {
@@ -315,7 +315,7 @@ func (w *largeWriteCloser) flush() error {
 
 func (w *smallWriteCloser) Write(p []byte) (int, error) {
 	if w.isClosed {
-		return 0, errors.New("writer already closed!")
+		return 0, errors.New("writer already closed")
 	}
 	w.buffer = append(w.buffer, p...)
 	return len(p), nil
@@ -323,7 +323,7 @@ func (w *smallWriteCloser) Write(p []byte) (int, error) {
 
 func (w *largeWriteCloser) Write(p []byte) (int, error) {
 	if w.isClosed {
-		return 0, errors.New("writer already closed!")
+		return 0, errors.New("writer already closed")
 	}
 	if len(w.buffer)+len(p) > w.maxSize {
 		err := w.flush()
@@ -337,14 +337,14 @@ func (w *largeWriteCloser) Write(p []byte) (int, error) {
 
 func (w *smallWriteCloser) Close() error {
 	if w.isClosed {
-		return errors.New("writer already closed!")
+		return errors.New("writer already closed")
 	}
 	if w.dryRun {
 		return nil
 	}
 
 	input := &s3.PutObjectInput{
-		Body:        aws.ReadSeekCloser(strings.NewReader(string(w.buffer))),
+		Body:        aws.ReadSeekCloser(strings.NewReader(string(w.buffer))), // nolint:staticcheck
 		Bucket:      aws.String(w.name),
 		Key:         aws.String(w.key),
 		ACL:         aws.String(w.permission),
@@ -358,7 +358,7 @@ func (w *smallWriteCloser) Close() error {
 
 func (w *largeWriteCloser) Close() error {
 	if w.isClosed {
-		return errors.New("writer already closed!")
+		return errors.New("writer already closed")
 	}
 	if len(w.buffer) > 0 || w.partNumber == 0 {
 		err := w.flush()
@@ -408,7 +408,7 @@ func (s *s3Bucket) Reader(ctx context.Context, key string) (io.ReadCloser, error
 	return result.Body, nil
 }
 
-func putHelper(b Bucket, ctx context.Context, key string, r io.Reader) error {
+func putHelper(ctx context.Context, b Bucket, key string, r io.Reader) error {
 	f, err := b.Writer(ctx, key)
 	if err != nil {
 		return errors.WithStack(err)
@@ -422,18 +422,18 @@ func putHelper(b Bucket, ctx context.Context, key string, r io.Reader) error {
 }
 
 func (s *s3BucketSmall) Put(ctx context.Context, key string, r io.Reader) error {
-	return putHelper(s, ctx, key, r)
+	return putHelper(ctx, s, key, r)
 }
 
 func (s *s3BucketLarge) Put(ctx context.Context, key string, r io.Reader) error {
-	return putHelper(s, ctx, key, r)
+	return putHelper(ctx, s, key, r)
 }
 
 func (s *s3Bucket) Get(ctx context.Context, key string) (io.ReadCloser, error) {
 	return s.Reader(ctx, key)
 }
 
-func uploadHelper(b Bucket, ctx context.Context, key, path string) error {
+func uploadHelper(ctx context.Context, b Bucket, key, path string) error {
 	f, err := os.Open(path)
 	if err != nil {
 		return errors.Wrapf(err, "problem opening file %s", path)
@@ -444,11 +444,11 @@ func uploadHelper(b Bucket, ctx context.Context, key, path string) error {
 }
 
 func (s *s3BucketSmall) Upload(ctx context.Context, key, path string) error {
-	return uploadHelper(s, ctx, key, path)
+	return uploadHelper(ctx, s, key, path)
 }
 
 func (s *s3BucketLarge) Upload(ctx context.Context, key, path string) error {
-	return uploadHelper(s, ctx, key, path)
+	return uploadHelper(ctx, s, key, path)
 }
 
 func (s *s3Bucket) Download(ctx context.Context, key, path string) error {
@@ -657,8 +657,8 @@ func (s *s3BucketLarge) RemoveMatching(ctx context.Context, expression string) e
 	return removeMatching(ctx, expression, s)
 }
 
-func (s *s3Bucket) listHelper(b Bucket, ctx context.Context, prefix string) (BucketIterator, error) {
-	contents, isTruncated, err := getObjectsWrapper(s, ctx, prefix)
+func (s *s3Bucket) listHelper(ctx context.Context, b Bucket, prefix string) (BucketIterator, error) {
+	contents, isTruncated, err := getObjectsWrapper(ctx, s, prefix)
 	if err != nil {
 		return nil, err
 	}
@@ -672,14 +672,14 @@ func (s *s3Bucket) listHelper(b Bucket, ctx context.Context, prefix string) (Buc
 }
 
 func (s *s3BucketSmall) List(ctx context.Context, prefix string) (BucketIterator, error) {
-	return s.listHelper(s, ctx, s.normalizeKey(prefix))
+	return s.listHelper(ctx, s, s.normalizeKey(prefix))
 }
 
 func (s *s3BucketLarge) List(ctx context.Context, prefix string) (BucketIterator, error) {
-	return s.listHelper(s, ctx, s.normalizeKey(prefix))
+	return s.listHelper(ctx, s, s.normalizeKey(prefix))
 }
 
-func getObjectsWrapper(s *s3Bucket, ctx context.Context, prefix string) ([]*s3.Object, bool, error) {
+func getObjectsWrapper(ctx context.Context, s *s3Bucket, prefix string) ([]*s3.Object, bool, error) {
 	input := &s3.ListObjectsInput{
 		Bucket: aws.String(s.name),
 		Prefix: aws.String(prefix),
@@ -710,7 +710,7 @@ func (iter *s3BucketIterator) Next(ctx context.Context) bool {
 	iter.idx++
 	if iter.idx > len(iter.contents)-1 {
 		if iter.isTruncated {
-			contents, isTruncated, err := getObjectsWrapper(iter.s, ctx,
+			contents, isTruncated, err := getObjectsWrapper(ctx, iter.s,
 				*iter.contents[iter.idx-1].Key)
 			if err != nil {
 				iter.err = err

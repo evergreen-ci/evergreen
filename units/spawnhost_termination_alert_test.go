@@ -18,8 +18,7 @@ import (
 func TestSpawnhostAlertJob(t *testing.T) {
 	assert := assert.New(t)
 	config := testutil.TestConfig()
-	db.SetGlobalSessionProvider(config.SessionFactory())
-	assert.NoError(db.ClearCollections(user.Collection), t, "error clearing collections")
+	assert.NoError(db.ClearCollections(user.Collection))
 	assert.NoError(evergreen.UpdateConfig(config))
 	u := user.DBUser{
 		Id:           "me",

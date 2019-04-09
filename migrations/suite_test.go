@@ -10,7 +10,7 @@ import (
 	"github.com/evergreen-ci/evergreen/mock"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/mongodb/anser"
-	anserdb "github.com/mongodb/anser/db"
+	adb "github.com/mongodb/anser/db"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -21,7 +21,7 @@ import (
 type migrationSuite struct {
 	env      *mock.Environment
 	database string
-	session  anserdb.Session
+	session  adb.Session
 	cancel   context.CancelFunc
 
 	suite.Suite
@@ -37,12 +37,10 @@ func (s *migrationSuite) SetupSuite() {
 	require.NoError(s.env.LocalQueue().Start(ctx))
 
 	var err error
-	mgoSession, database, err := db.GetGlobalSessionFactory().GetSession()
+	session, database, err := db.GetGlobalSessionFactory().GetSession()
 	require.NoError(err)
-	defer mgoSession.Close()
-	s.database = database.Name
-
-	s.session = anserdb.WrapSession(mgoSession.Copy())
+	s.database = database.Name()
+	s.session = session
 
 	anser.ResetEnvironment()
 	require.NoError(anser.GetEnvironment().Setup(s.env.LocalQueue(), s.session))

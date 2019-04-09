@@ -84,6 +84,7 @@ type APIDistro struct {
 	Setup            APIString              `json:"setup"`
 	Teardown         APIString              `json:"teardown"`
 	User             APIString              `json:"user"`
+	BootstrapMethod  APIString              `json:"bootstrap_method"`
 	SSHKey           APIString              `json:"ssh_key"`
 	SSHOptions       []string               `json:"ssh_options"`
 	Expansions       []APIExpansion         `json:"expansions"`
@@ -125,6 +126,10 @@ func (apiDistro *APIDistro) BuildFromService(h interface{}) error {
 	apiDistro.Setup = ToAPIString(d.Setup)
 	apiDistro.Teardown = ToAPIString(d.Teardown)
 	apiDistro.User = ToAPIString(d.User)
+	if d.BootstrapMethod == "" {
+		d.BootstrapMethod = distro.BootstrapMethodLegacySSH
+	}
+	apiDistro.BootstrapMethod = ToAPIString(d.BootstrapMethod)
 	apiDistro.SSHKey = ToAPIString(d.SSHKey)
 	apiDistro.Disabled = d.Disabled
 	apiDistro.ContainerPool = ToAPIString(d.ContainerPool)
@@ -163,6 +168,7 @@ func (apiDistro *APIDistro) ToService() (interface{}, error) {
 	d.Setup = FromAPIString(apiDistro.Setup)
 	d.Teardown = FromAPIString(apiDistro.Teardown)
 	d.User = FromAPIString(apiDistro.User)
+	d.BootstrapMethod = FromAPIString(apiDistro.BootstrapMethod)
 	d.SSHKey = FromAPIString(apiDistro.SSHKey)
 	d.SSHOptions = apiDistro.SSHOptions
 	d.SpawnAllowed = apiDistro.UserSpawnAllowed

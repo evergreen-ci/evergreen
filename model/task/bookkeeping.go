@@ -4,9 +4,11 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen/db"
+	adb "github.com/mongodb/anser/db"
 	"github.com/mongodb/grip"
-	"gopkg.in/mgo.v2"
-	"gopkg.in/mgo.v2/bson"
+	"github.com/pkg/errors"
+	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
 const (
@@ -16,7 +18,7 @@ const (
 
 type TaskBookkeeping struct {
 	// standard object id
-	Id bson.ObjectId `bson:"_id"`
+	Id primitive.ObjectID `bson:"_id"`
 
 	// info that tasks with the same guessed duration will share
 	Name         string `bson:"name"`
@@ -42,7 +44,8 @@ func findOneTaskBk(matcher interface{}, selector interface{}) (*TaskBookkeeping,
 	// establish a database connection
 	session, db, err := db.GetGlobalSessionFactory().GetSession()
 	if err != nil {
-		grip.Errorf("Error establishing database connection: %+v", err)
+		err = errors.Wrap(err, "error establishing database connection")
+		grip.Warning(err)
 		return nil, err
 	}
 
@@ -54,14 +57,14 @@ func findOneTaskBk(matcher interface{}, selector interface{}) (*TaskBookkeeping,
 	err = db.C(TaskBookkeepingCollection).Find(matcher).Select(selector).One(taskBk)
 
 	// no entry was found
-	if err == mgo.ErrNotFound {
+	if adb.ResultsNotFound(err) {
 		return nil, nil
 	}
 
 	// failure
 	if err != nil {
-		grip.Errorf("Unexpected error retrieving task bookkeeping entry from database: %+v",
-			err)
+		err = errors.Wrap(err, "Unexpected error retrieving task bookkeeping entry from database")
+		grip.Warning(err)
 		return nil, err
 	}
 
@@ -75,7 +78,7 @@ func upsertOneTaskBk(matcher interface{}, update interface{}) error {
 	// establish a database connection
 	session, db, err := db.GetGlobalSessionFactory().GetSession()
 	if err != nil {
-		grip.Errorf("Error establishing database connection: %+v", err)
+		err = errors.Wrap(err, "Error establishing database connection")
 		return err
 	}
 

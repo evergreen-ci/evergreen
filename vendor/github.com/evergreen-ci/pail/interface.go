@@ -33,7 +33,6 @@ import (
 //  - we might need to have variants that Put/Get byte slices rather
 //    than readers.
 //  - pass contexts to requests for timeouts.
-
 type Bucket interface {
 	// Check validity of the bucket. This is dependent on the underlying
 	// implementation.
@@ -89,6 +88,8 @@ type Bucket interface {
 	List(context.Context, string) (BucketIterator, error)
 }
 
+// CopyOptions describes the arguments to the Copy method for moving
+// objects between Buckets.
 type CopyOptions struct {
 	SourceKey         string
 	DestinationKey    string
@@ -99,19 +100,22 @@ type CopyOptions struct {
 ////////////////////////////////////////////////////////////////////////
 //
 // Iterator
-
 // While iterators (typically) use channels internally, this is a
 // fairly standard paradigm for iterating through resources, and is
 // use heavily in the FTDC library (https://github.com/mongodb/ftdc)
 // and bson (https://godoc.org/github.com/mongodb/mongo-go-driver/bson)
 // libraries.
 
+// BucketIterator provides a way to interact with the contents of a
+// bucket, as in the output of the List operation.
 type BucketIterator interface {
 	Next(context.Context) bool
 	Err() error
 	Item() BucketItem
 }
 
+// BucketItem provides a basic interface for getting an object from a
+// bucket.
 type BucketItem interface {
 	Bucket() string
 	Name() string

@@ -75,6 +75,11 @@ func (q queryLegacyWrapper) Limit(n int) Query          { return queryLegacyWrap
 func (q queryLegacyWrapper) Skip(n int) Query           { return queryLegacyWrapper{q.Query.Skip(n)} }
 func (q queryLegacyWrapper) Select(p interface{}) Query { return queryLegacyWrapper{q.Query.Select(p)} }
 
+func (q queryLegacyWrapper) Apply(ch Change, result interface{}) (*ChangeInfo, error) {
+	i, err := q.Query.Apply(buildChange(ch), result)
+	return buildChangeInfo(i), errors.WithStack(err)
+}
+
 type pipelineLegacyWrapper struct {
 	*mgo.Pipe
 }
@@ -95,6 +100,15 @@ func buildChangeInfo(i *mgo.ChangeInfo) *ChangeInfo {
 		return nil
 	}
 	return &ChangeInfo{i.Updated, i.Removed, i.UpsertedId}
+}
+
+func buildChange(ch Change) mgo.Change {
+	return mgo.Change{
+		Update:    ch.Update,
+		Upsert:    ch.Upsert,
+		Remove:    ch.Remove,
+		ReturnNew: ch.ReturnNew,
+	}
 }
 
 func buildBulkResult(r *mgo.BulkResult) *BulkResult {

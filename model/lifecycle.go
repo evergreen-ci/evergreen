@@ -14,6 +14,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/util"
+	adb "github.com/mongodb/anser/db"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
@@ -266,8 +267,8 @@ func SetVersionPriority(versionId string, priority int64) error {
 func RestartVersion(versionId string, taskIds []string, abortInProgress bool, caller string) error {
 	// restart all the 'not in-progress' tasks for the version
 	allTasks, err := task.FindWithDisplayTasks(task.ByDispatchedWithIdsVersionAndStatus(taskIds, versionId, task.CompletedStatuses))
-	if err != nil && err != mgo.ErrNotFound {
-		return err
+	if err != nil && !adb.ResultsNotFound(err) {
+		return errors.WithStack(err)
 	}
 
 	restartIds := make([]string, 0)
@@ -451,7 +452,6 @@ func RefreshTasksCache(buildId string) error {
 // AddTasksToBuild creates the tasks for the given build of a project
 func AddTasksToBuild(b *build.Build, project *Project, v *Version, taskNames []string,
 	displayNames []string, generatedBy string, tasksInBuild []task.Task) (*build.Build, error) {
-
 	// find the build variant for this project/build
 	buildVariant := project.FindBuildVariant(b.BuildVariant)
 	if buildVariant == nil {
@@ -618,7 +618,11 @@ func createTasksForBuild(project *Project, buildVariant *BuildVariant, b *build.
 	// the list of tasks we should create.  if tasks are passed in, then
 	// use those, else use the default set
 	tasksToCreate := []BuildVariantTaskUnit{}
-	createAll := len(taskNames) == 0
+
+	createAll := false
+	if len(taskNames) == 0 && len(displayNames) == 0 {
+		createAll = true
+	}
 	execTable := taskIds.ExecutionTasks
 	displayTable := taskIds.DisplayTasks
 
@@ -1164,7 +1168,7 @@ func AddNewBuilds(activated bool, v *Version, p *Project, tasks TaskVariantPairs
 
 	existingBuilds, err := build.Find(build.ByVersion(v.Id).WithFields(build.BuildVariantKey, build.IdKey))
 	if err != nil {
-		return err
+		return errors.WithStack(err)
 	}
 	variantsProcessed := map[string]bool{}
 	for _, b := range existingBuilds {
@@ -1190,11 +1194,16 @@ func AddNewBuilds(activated bool, v *Version, p *Project, tasks TaskVariantPairs
 			GeneratedBy:  generatedBy,
 		}
 		buildId, err := CreateBuildFromVersion(buildArgs)
-		grip.Infof("Creating build for version %s, buildVariant %s, activated=%t",
-			v.Id, pair.Variant, activated)
+		grip.Info(message.Fields{
+			"op":        "creating build for version",
+			"variant":   pair.Variant,
+			"activated": activated,
+			"version":   v.Id,
+		})
 		if err != nil {
-			return err
+			return errors.WithStack(err)
 		}
+
 		newBuildIds = append(newBuildIds, buildId)
 		newBuildStatuses = append(newBuildStatuses,
 			VersionBuildStatus{
@@ -1205,7 +1214,7 @@ func AddNewBuilds(activated bool, v *Version, p *Project, tasks TaskVariantPairs
 		)
 	}
 
-	return VersionUpdateOne(
+	return errors.WithStack(VersionUpdateOne(
 		bson.M{VersionIdKey: v.Id},
 		bson.M{
 			"$push": bson.M{
@@ -1213,12 +1222,16 @@ func AddNewBuilds(activated bool, v *Version, p *Project, tasks TaskVariantPairs
 				VersionBuildVariantsKey: bson.M{"$each": newBuildStatuses},
 			},
 		},
-	)
+	))
 }
 
 // Given a version and set of variant/task pairs, creates any tasks that don't exist yet,
 // within the set of already existing builds.
 func AddNewTasks(activated bool, v *Version, p *Project, pairs TaskVariantPairs, generatedBy string) error {
+	if v.BuildIds == nil {
+		return nil
+	}
+
 	builds, err := build.Find(build.ByIds(v.BuildIds).WithFields(build.IdKey, build.BuildVariantKey, build.CreateTimeKey))
 	if err != nil {
 		return err
@@ -1254,7 +1267,7 @@ func AddNewTasks(activated bool, v *Version, p *Project, pairs TaskVariantPairs,
 			}
 			displayTasksToAdd = append(displayTasksToAdd, taskname)
 		}
-		if len(tasksToAdd) == 0 { // no tasks to add, so we do nothing.
+		if len(tasksToAdd) == 0 && len(displayTasksToAdd) == 0 { // no tasks to add, so we do nothing.
 			continue
 		}
 		// Add the new set of tasks to the build.

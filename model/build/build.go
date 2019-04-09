@@ -7,10 +7,11 @@ import (
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/task"
+	adb "github.com/mongodb/anser/db"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
-	mgo "gopkg.in/mgo.v2"
-	"gopkg.in/mgo.v2/bson"
+	"go.mongodb.org/mongo-driver/bson"
+	mgobson "gopkg.in/mgo.v2/bson"
 )
 
 // IdTimeLayout is used time time.Time.Format() to produce timestamps for our ids.
@@ -64,6 +65,9 @@ type Build struct {
 	TriggerType  string `bson:"trigger_type,omitempty" json:"trigger_type,omitempty"`
 	TriggerEvent string `bson:"trigger_event,omitempty" json:"trigger_event,omitempty"`
 }
+
+func (b *Build) MarshalBSON() ([]byte, error)  { return mgobson.Marshal(b) }
+func (b *Build) UnmarshalBSON(in []byte) error { return mgobson.Unmarshal(in, b) }
 
 // Returns whether or not the build has finished, based on its status.
 // In spite of the name, a build with status BuildFailed may still be in
@@ -210,7 +214,7 @@ func TryMarkStarted(buildId string, startTime time.Time) error {
 		StartTimeKey: startTime,
 	}}
 	err := UpdateOne(selector, update)
-	if err == mgo.ErrNotFound {
+	if adb.ResultsNotFound(err) {
 		return nil
 	}
 	return err

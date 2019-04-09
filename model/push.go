@@ -7,8 +7,9 @@ import (
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/mongodb/anser/bsonutil"
-	"gopkg.in/mgo.v2"
-	"gopkg.in/mgo.v2/bson"
+	adb "github.com/mongodb/anser/db"
+	"go.mongodb.org/mongo-driver/bson"
+	mgobson "gopkg.in/mgo.v2/bson"
 )
 
 const (
@@ -18,7 +19,7 @@ const (
 )
 
 type PushLog struct {
-	Id bson.ObjectId `bson:"_id,omitempty"`
+	Id mgobson.ObjectId `bson:"_id,omitempty"`
 
 	//the permanent location of the pushed file.
 	Location string `bson:"location"`
@@ -47,7 +48,7 @@ var (
 
 func NewPushLog(v *Version, task *task.Task, location string) *PushLog {
 	return &PushLog{
-		Id:                  bson.NewObjectId(),
+		Id:                  mgobson.NewObjectId(),
 		Location:            location,
 		TaskId:              task.Id,
 		CreateTime:          time.Now(),
@@ -85,7 +86,7 @@ func FindOnePushLog(query interface{}, projection interface{},
 		sort,
 		pushLog,
 	)
-	if err == mgo.ErrNotFound {
+	if adb.ResultsNotFound(err) {
 		return nil, nil
 	}
 	return pushLog, err

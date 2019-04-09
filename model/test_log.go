@@ -5,9 +5,10 @@ import (
 
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/mongodb/anser/bsonutil"
+	adb "github.com/mongodb/anser/db"
 	"github.com/pkg/errors"
-	"gopkg.in/mgo.v2"
-	"gopkg.in/mgo.v2/bson"
+	"go.mongodb.org/mongo-driver/bson"
+	mgobson "gopkg.in/mgo.v2/bson"
 )
 
 const TestLogCollection = "test_logs"
@@ -39,7 +40,7 @@ func FindOneTestLogById(id string) (*TestLog, error) {
 		db.NoSort,
 		tl,
 	)
-	if err == mgo.ErrNotFound {
+	if adb.ResultsNotFound(err) {
 		return nil, nil
 	}
 	return tl, errors.WithStack(err)
@@ -60,7 +61,7 @@ func FindOneTestLog(name, task string, execution int) (*TestLog, error) {
 		db.NoSort,
 		tl,
 	)
-	if err == mgo.ErrNotFound {
+	if adb.ResultsNotFound(err) {
 		return nil, nil
 	}
 	return tl, errors.WithStack(err)
@@ -68,7 +69,7 @@ func FindOneTestLog(name, task string, execution int) (*TestLog, error) {
 
 // Insert inserts the TestLog into the database
 func (self *TestLog) Insert() error {
-	self.Id = bson.NewObjectId().Hex()
+	self.Id = mgobson.NewObjectId().Hex()
 	if err := self.Validate(); err != nil {
 		return errors.Wrap(err, "cannot insert invalid test log")
 	}

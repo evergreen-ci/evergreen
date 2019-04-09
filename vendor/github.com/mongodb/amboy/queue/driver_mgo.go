@@ -140,7 +140,7 @@ func (d *mgoDriver) getJobsCollection() (*mgo.Session, *mgo.Collection) {
 	defer d.mu.RUnlock()
 	session := d.session.Copy()
 
-	return session, session.DB(d.dbName).C(d.name + ".jobs")
+	return session, session.DB(d.dbName).C(addJobsSuffix(d.name))
 }
 
 func (d *mgoDriver) setupDB() error {
