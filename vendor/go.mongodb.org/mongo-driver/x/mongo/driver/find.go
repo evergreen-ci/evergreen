@@ -40,6 +40,9 @@ func Find(
 	opts ...*options.FindOptions,
 ) (*BatchCursor, error) {
 
+	if cmd.Session != nil && cmd.Session.PinnedServer != nil {
+		selector = cmd.Session.PinnedServer
+	}
 	ss, err := topo.SelectServer(ctx, selector)
 	if err != nil {
 		return nil, err
@@ -61,6 +64,7 @@ func Find(
 		return nil, err
 	}
 	cmd.ReadPref = rp
+
 	// If no explicit session and deployment supports sessions, start implicit session.
 	if cmd.Session == nil && topo.SupportsSessions() {
 		cmd.Session, err = session.NewClientSession(pool, clientID, session.Implicit)

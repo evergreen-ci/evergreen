@@ -15,6 +15,7 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/readpref"
 	"go.mongodb.org/mongo-driver/mongo/writeconcern"
 	"go.mongodb.org/mongo-driver/x/mongo/driver/uuid"
+	"go.mongodb.org/mongo-driver/x/network/description"
 )
 
 // ErrSessionEnded is returned when a client session is used after a call to endSession().
@@ -84,8 +85,10 @@ type Client struct {
 	transactionRp *readpref.ReadPref
 	transactionWc *writeconcern.WriteConcern
 
-	pool  *Pool
-	state state
+	pool          *Pool
+	state         state
+	PinnedServer  *description.Server
+	RecoveryToken bson.Raw
 }
 
 func getClusterTime(clusterTime bson.Raw) (uint32, uint32) {
@@ -196,6 +199,27 @@ func (c *Client) UpdateUseTime() error {
 	return nil
 }
 
+// UpdateRecoveryToken updates the session's recovery token from the server response.
+func (c *Client) UpdateRecoveryToken(response bson.Raw) {
+	if c == nil {
+		return
+	}
+
+	token, err := response.LookupErr("recoveryToken")
+	if err != nil {
+		return
+	}
+
+	c.RecoveryToken = token.Document()
+}
+
+// ClearPinnedServer sets the PinnedServer to nil.
+func (c *Client) ClearPinnedServer() {
+	if c != nil {
+		c.PinnedServer = nil
+	}
+}
+
 // EndSession ends the session.
 func (c *Client) EndSession() {
 	if c.Terminated {
@@ -273,6 +297,7 @@ func (c *Client) StartTransaction(opts *TransactionOptions) error {
 	}
 
 	c.state = Starting
+	c.PinnedServer = nil
 	return nil
 }
 
@@ -311,7 +336,7 @@ func (c *Client) CheckAbortTransaction() error {
 	return nil
 }
 
-// AbortTransaction updates the state for a successfully committed transaction and returns
+// AbortTransaction updates the state for a successfully aborted transaction and returns
 // an error if not permissible.  It does not actually perform the abort.
 func (c *Client) AbortTransaction() error {
 	err := c.CheckAbortTransaction()
@@ -324,13 +349,17 @@ func (c *Client) AbortTransaction() error {
 }
 
 // ApplyCommand advances the state machine upon command execution.
-func (c *Client) ApplyCommand() {
+func (c *Client) ApplyCommand(desc description.Server) {
 	if c.Committing {
 		// Do not change state if committing after already committed
 		return
 	}
 	if c.state == Starting {
 		c.state = InProgress
+		// If this is in a transaction and the server is a mongos, pin it
+		if desc.Kind == description.Mongos {
+			c.PinnedServer = &desc
+		}
 	} else if c.state == Committed || c.state == Aborted {
 		c.clearTransactionOpts()
 		c.state = None
@@ -344,4 +373,6 @@ func (c *Client) clearTransactionOpts() {
 	c.CurrentWc = nil
 	c.CurrentRp = nil
 	c.CurrentRc = nil
+	c.PinnedServer = nil
+	c.RecoveryToken = nil
 }

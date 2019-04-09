@@ -37,6 +37,9 @@ func FindOneAndUpdate(
 	opts ...*options.FindOneAndUpdateOptions,
 ) (result.FindAndModify, error) {
 
+	if cmd.Session != nil && cmd.Session.PinnedServer != nil {
+		selector = cmd.Session.PinnedServer
+	}
 	ss, err := topo.SelectServer(ctx, selector)
 	if err != nil {
 		return result.FindAndModify{}, err

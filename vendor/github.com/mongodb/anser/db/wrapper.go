@@ -338,10 +338,18 @@ type resultsWrapper struct {
 }
 
 func (r *resultsWrapper) All(result interface{}) error {
+	if r.err != nil {
+		return errors.WithStack(r.err)
+	}
+
 	return errors.WithStack(ResolveCursorAll(r.ctx, r.cursor, result))
 }
 
 func (r *resultsWrapper) One(result interface{}) error {
+	if r.err != nil {
+		return errors.WithStack(r.err)
+	}
+
 	return errors.WithStack(ResolveCursorOne(r.ctx, r.cursor, result))
 }
 
@@ -444,8 +452,7 @@ func (q *queryWrapper) Apply(ch Change, result interface{}) (*ChangeInfo, error)
 		}
 		out.Updated++
 	} else {
-		return nil, errors.New("invalid change ")
-
+		return nil, errors.New("invalid change defined")
 	}
 
 	if err := res.Err(); err != nil {
@@ -526,6 +533,9 @@ func (q *queryWrapper) Iter() Iterator {
 // ResolveCursorAll uses legacy mgo code to resolve a new driver's
 // cursor into an array.
 func ResolveCursorAll(ctx context.Context, iter *mongo.Cursor, result interface{}) error {
+	if iter == nil {
+		return errors.New("cannot resolve nil cursor")
+	}
 	resultv := reflect.ValueOf(result)
 	if resultv.Kind() != reflect.Ptr || resultv.Elem().Kind() != reflect.Slice {
 		return errors.Errorf("result argument must be a slice address '%T'", result)
