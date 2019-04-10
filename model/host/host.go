@@ -196,6 +196,11 @@ type ContainersOnParents struct {
 
 const (
 	MaxLCTInterval = 5 * time.Minute
+
+	// Potential init systems supported by a Linux host.
+	InitSystemSystemd = "systemd"
+	InitSystemSysV    = "sysv"
+	InitSystemUpstart = "upstart"
 )
 
 func (h *Host) GetTaskGroupString() string {
