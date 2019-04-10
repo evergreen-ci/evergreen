@@ -18,6 +18,7 @@ import (
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 )
 
@@ -150,6 +151,11 @@ func (h *hostListHandler) Run(ctx context.Context) gimlet.Responder {
 	catcher := grip.NewBasicCatcher()
 	results := make([]model.Model, len(hosts))
 	for i := range hosts {
+		grip.Info(message.Fields{
+			"host":      hosts[i],
+			"purpose":   "dogfooding",
+			"operation": "host.list",
+		})
 		createHost := model.CreateHost{}
 		if err := createHost.BuildFromService(&hosts[i]); err != nil {
 			catcher.Add(errors.Wrap(err, "error building api host from service"))

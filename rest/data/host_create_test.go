@@ -240,7 +240,7 @@ tasks:
   commands:
   - command: host.create
     params:
-      image: my-image
+      image: docker.io/library/hello-world
       distro: distro
       command: echo hi
       provider: docker
@@ -301,7 +301,8 @@ buildvariants:
 	require.Len(createdHosts, 1)
 	h := createdHosts[0]
 	assert.Equal("me", h.StartedBy)
-	assert.Equal("my-image", h.DockerOptions.Image)
+	assert.Equal("docker.io/library/hello-world", h.DockerOptions.Image)
 	assert.Equal("echo hi", h.DockerOptions.Command)
 	assert.Empty("", h.ExternalIdentifier)
+	assert.Equal(distro.DockerImageBuildTypePull, h.DockerOptions.Method)
 }

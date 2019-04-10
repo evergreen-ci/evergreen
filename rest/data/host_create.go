@@ -6,7 +6,9 @@ import (
 	"io"
 	"net/http"
 	"path"
+	"path/filepath"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/mongodb/grip/message"
@@ -185,8 +187,11 @@ func makeDockerIntentHost(taskID, userID string, createHost apimodels.CreateHost
 	}
 
 	method := distro.DockerImageBuildTypeImport
-	// not a URL
-	if path.Base(createHost.Image) == createHost.Image {
+
+	base := path.Base(createHost.Image)
+	hasPrefix := strings.HasPrefix(base, "http")
+	filepathExt := filepath.Ext(createHost.Image)
+	if filepathExt == "" && !hasPrefix { // not a url
 		method = distro.DockerImageBuildTypePull
 	}
 

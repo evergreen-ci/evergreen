@@ -2,8 +2,6 @@ package model
 
 import (
 	"github.com/evergreen-ci/evergreen/model/host"
-	"github.com/mongodb/grip"
-	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 )
 
@@ -23,12 +21,6 @@ func (createHost *CreateHost) BuildFromService(h interface{}) error {
 	switch v := h.(type) {
 	case host.Host:
 		// container
-		grip.Info(message.Fields{
-			"message":   "created container (in host.Host)",
-			"host":      v,
-			"purpose":   "dogfooding",
-			"operation": "host.list",
-		})
 		if v.ParentID != "" {
 			createHost.HostID = v.Id
 			createHost.ContainerID = v.ExternalIdentifier
@@ -42,12 +34,6 @@ func (createHost *CreateHost) BuildFromService(h interface{}) error {
 		createHost.IP = v.IP
 		createHost.InstanceID = v.ExternalIdentifier
 	case *host.Host:
-		grip.Info(message.Fields{
-			"message":   "created container (in *host.Host)",
-			"host":      v,
-			"purpose":   "dogfooding",
-			"operation": "host.list",
-		})
 		// container
 		if v.ParentID != "" {
 			createHost.HostID = v.Id
