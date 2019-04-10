@@ -13,7 +13,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/rest/data"
-	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/amboy/queue"
@@ -72,11 +71,7 @@ func remoteConstructor(ctx context.Context) (queue.Remote, error) {
 }
 
 func TestGeneratePollParse(t *testing.T) {
-	db.SetGlobalSessionProvider(testutil.TestConfig().SessionFactory())
-	require := require.New(t)
-	assert := assert.New(t)
-
-	require.NoError(db.ClearCollections(task.Collection, host.Collection))
+	require.NoError(t, db.ClearCollections(task.Collection, host.Collection))
 	sc := &data.MockConnector{}
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()

@@ -263,7 +263,9 @@ func (e *envState) DB() *mongo.Database {
 
 func remoteQueueGroupConstructor(ctx context.Context) (queue.Remote, error) {
 	q := queue.NewRemoteUnordered(1)
-	q.SetRunner(pool.NewAbortablePool(2, q))
+	if err := q.SetRunner(pool.NewAbortablePool(1, q)); err != nil {
+		return nil, errors.WithStack(err)
+	}
 	return q, nil
 }
 
