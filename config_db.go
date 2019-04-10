@@ -21,6 +21,8 @@ var (
 	configDirKey          = bsonutil.MustHaveTag(Settings{}, "ConfigDir")
 	apiUrlKey             = bsonutil.MustHaveTag(Settings{}, "ApiUrl")
 	clientBinariesDirKey  = bsonutil.MustHaveTag(Settings{}, "ClientBinariesDir")
+	jasperURLKey          = bsonutil.MustHaveTag(Settings{}, "JasperURL")
+	jasperVersionKey      = bsonutil.MustHaveTag(Settings{}, "JasperVersion")
 	superUsersKey         = bsonutil.MustHaveTag(Settings{}, "SuperUsers")
 	jiraKey               = bsonutil.MustHaveTag(Settings{}, "Jira")
 	splunkKey             = bsonutil.MustHaveTag(Settings{}, "Splunk")

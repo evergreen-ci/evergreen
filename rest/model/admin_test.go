@@ -58,6 +58,8 @@ func TestModelConversion(t *testing.T) {
 	assert.EqualValues(testSettings.BannerTheme, *apiSettings.BannerTheme)
 	assert.Equal(testSettings.ClientBinariesDir, *apiSettings.ClientBinariesDir)
 	assert.Equal(testSettings.ConfigDir, *apiSettings.ConfigDir)
+	assert.Equal(testSettings.JasperURL, FromAPIString(apiSettings.JasperURL))
+	assert.Equal(testSettings.JasperVersion, FromAPIString(apiSettings.JasperVersion))
 	assert.Equal(testSettings.GithubPRCreatorOrg, *apiSettings.GithubPRCreatorOrg)
 	assert.Equal(testSettings.LogPath, *apiSettings.LogPath)
 	assert.Equal(testSettings.PprofPort, *apiSettings.PprofPort)

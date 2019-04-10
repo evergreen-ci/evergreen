@@ -135,6 +135,8 @@ func (s *AdminSuite) TestBaseConfig() {
 		BannerTheme:        Important,
 		ClientBinariesDir:  "bin_dir",
 		ConfigDir:          "cfg_dir",
+		JasperURL:          "url",
+		JasperVersion:      "version",
 		Credentials:        map[string]string{"k1": "v1"},
 		Expansions:         map[string]string{"k2": "v2"},
 		GoogleAnalyticsID:  "u-12345",
@@ -162,6 +164,8 @@ func (s *AdminSuite) TestBaseConfig() {
 	s.Equal(config.ClientBinariesDir, settings.ClientBinariesDir)
 	s.Equal(config.ConfigDir, settings.ConfigDir)
 	s.Equal(config.Credentials, settings.Credentials)
+	s.Equal(config.JasperURL, settings.JasperURL)
+	s.Equal(config.JasperVersion, settings.JasperVersion)
 	s.Equal(config.Expansions, settings.Expansions)
 	s.Equal(config.GoogleAnalyticsID, settings.GoogleAnalyticsID)
 	s.Equal(config.GithubPRCreatorOrg, settings.GithubPRCreatorOrg)
@@ -437,6 +441,8 @@ func (s *AdminSuite) TestConfigDefaults() {
 		{Key: "k1", Value: "v1"},
 		{Key: "k2", Value: "v2"},
 	}
+	config.JasperURL = "url"
+	config.JasperVersion = "version"
 	s.NoError(config.Validate())
 
 	// spot check the defaults
@@ -455,6 +461,8 @@ func (s *AdminSuite) TestKeyValPairsToMap() {
 		CredentialsNew: util.KeyValuePairSlice{
 			{Key: "cred1key", Value: "cred1val"},
 		},
+		JasperURL:     "url",
+		JasperVersion: "version",
 		ExpansionsNew: util.KeyValuePairSlice{
 			{Key: "exp1key", Value: "exp1val"},
 		},
