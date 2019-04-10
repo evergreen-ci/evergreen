@@ -37,6 +37,7 @@ type GitGetProjectSuite struct {
 	modelData2 *modelutil.TestModelData // test model for TestValidateGitCommands
 	modelData3 *modelutil.TestModelData
 	modelData4 *modelutil.TestModelData
+	modelData5 *modelutil.TestModelData
 
 	suite.Suite
 }
@@ -67,6 +68,7 @@ func (s *GitGetProjectSuite) SetupTest() {
 	s.NoError(err)
 	configPath1 := filepath.Join(testutil.GetDirectoryOfFile(), "testdata", "git", "plugin_clone.yml")
 	configPath2 := filepath.Join(testutil.GetDirectoryOfFile(), "testdata", "git", "test_config.yml")
+	configPath3 := filepath.Join(testutil.GetDirectoryOfFile(), "testdata", "git", "no_token.yml")
 	patchPath := filepath.Join(testutil.GetDirectoryOfFile(), "testdata", "git", "test.patch")
 	s.modelData1, err = modelutil.SetupAPITestData(s.settings, "testtask1", "rhel55", configPath1, modelutil.NoPatch)
 	s.NoError(err)
@@ -101,6 +103,8 @@ func (s *GitGetProjectSuite) SetupTest() {
 		PRNumber:       9001,
 		MergeCommitSHA: "abcdef",
 	}
+	s.modelData5, err = modelutil.SetupAPITestData(s.settings, "testtask1", "rhel55", configPath3, modelutil.MergePatch)
+	s.NoError(err)
 }
 
 func (s *GitGetProjectSuite) TestGitPlugin() {
@@ -162,6 +166,43 @@ func (s *GitGetProjectSuite) TestTokenScrubbedFromLogger() {
 		}
 	}
 	s.True(found)
+}
+
+func (s *GitGetProjectSuite) TestStdErrLogged() {
+	conf := s.modelData5.TaskConfig
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	comm := client.NewMock("http://localhost.com")
+	logger, err := comm.GetLoggerProducer(ctx, client.TaskData{ID: conf.Task.Id, Secret: conf.Task.Secret}, nil)
+	s.NoError(err)
+
+	for _, task := range conf.Project.Tasks {
+		s.NotEqual(len(task.Commands), 0)
+		for _, command := range task.Commands {
+			pluginCmds, err := Render(command, conf.Project.Functions)
+			s.NoError(err)
+			s.NotNil(pluginCmds)
+			pluginCmds[0].SetJasperManager(s.jasper)
+			err = pluginCmds[0].Execute(ctx, comm, logger, conf)
+			s.Error(err)
+		}
+	}
+
+	s.NoError(logger.Close())
+	foundCloneCommand := false
+	foundCloneErr := false
+	for _, msgs := range comm.GetMockMessages() {
+		for _, msg := range msgs {
+			if strings.Contains(msg.Message, "git clone git@github.com:evergreen-ci/doesntexist.git src --branch master") {
+				foundCloneCommand = true
+			}
+			if strings.Contains(msg.Message, "ERROR: Repository not found.") {
+				foundCloneErr = true
+			}
+		}
+	}
+	s.True(foundCloneCommand)
+	s.True(foundCloneErr)
 }
 
 func (s *GitGetProjectSuite) TestValidateGitCommands() {
