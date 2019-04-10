@@ -536,7 +536,7 @@ func (e *envState) initJasper() error {
 
 	e.jasperManager = jpm
 
-	e.closers["jasper-manaer"] = func(ctx context.Context) error {
+	e.closers["jasper-manager"] = func(ctx context.Context) error {
 		return errors.WithStack(jpm.Close(ctx))
 	}
 

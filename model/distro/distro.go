@@ -63,6 +63,16 @@ const (
 	BootstrapMethodSSH                = "ssh"
 	BootstrapMethodPreconfiguredImage = "preconfigured-image"
 	BootstrapMethodUserData           = "user-data"
+
+	// Recognized architectures, should be in the form ${GOOS}_${GOARCH}.
+	ArchDarwinAmd64  = "darwin_amd64"
+	ArchLinux386     = "linux_386"
+	ArchLinuxPpc64le = "linux_ppc64le"
+	ArchLinuxS390x   = "linux_s390x"
+	ArchLinuxArm64   = "linux_arm64"
+	ArchLinuxAmd64   = "linux_amd64"
+	ArchWindows386   = "windows_386"
+	ArchWindowsAmd64 = "windows_amd64"
 )
 
 // Seed the random number generator for creating distro names
@@ -115,6 +125,24 @@ func (d *Distro) IsEphemeral() bool {
 
 func (d *Distro) BinaryName() string {
 	name := "evergreen"
+	if d.IsWindows() {
+		return name + ".exe"
+	}
+	return name
+}
+
+// JasperFileName returns the name of the tarball file for its binary by
+// platform.
+// TODO: move this out of distro package.
+func (d *Distro) JasperFileName(version string) string {
+	arch := strings.Replace(d.Arch, "_", "-", 1)
+	return fmt.Sprintf("curator-dist-%s-%s.tar.gz", arch, version)
+}
+
+// JasperBinaryName returns the name of the curator binary by platform.
+// TODO: move this out of distro package.
+func (d *Distro) JasperBinaryName() string {
+	name := "curator"
 	if d.IsWindows() {
 		return name + ".exe"
 	}
@@ -194,7 +222,23 @@ func ValidateContainerPoolDistros(s *evergreen.Settings) error {
 	return errors.WithStack(catcher.Resolve())
 }
 
-// ValidateBootstrapMethod ensure that the bootstrap mechanism is one of the
+// ValidateArch checks that the architecture is one of the supported
+// architectures.
+func ValidateArch(arch string) error {
+	osAndArch := strings.Split(arch, "_")
+	if len(osAndArch) != 2 {
+		return fmt.Errorf("architecture '%s' is not in the form ${GOOS}_${GOARCH}", arch)
+	}
+
+	switch arch {
+	case ArchDarwinAmd64, ArchLinux386, ArchLinuxPpc64le, ArchLinuxS390x, ArchLinuxArm64, ArchLinuxAmd64, ArchWindows386, ArchWindowsAmd64:
+		return nil
+	default:
+		return fmt.Errorf("'%s' is not a recognized architecture", arch)
+	}
+}
+
+// ValidateBootstrapMethod checks that the bootstrap mechanism is one of the
 // supported methods.
 func ValidateBootstrapMethod(method string) error {
 	switch method {

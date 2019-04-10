@@ -67,6 +67,23 @@ func (h *Host) CurlCommand(url string) string {
 		h.Distro.BinaryName())
 }
 
+// JasperCurlCommand builds the command to fetch and extract the Jasper binary.
+func (h *Host) JasperCurlCommand(settings *evergreen.Settings) string {
+	downloadFileName := fmt.Sprintf("%s-%s-%s-%s.tar.gz", settings.JasperConfig.DownloadFileName, h.Distro.Platform(), settings.JasperConfig.Version)
+	binaryName := settings.JasperConfig.BinaryName
+	if h.Distro.IsWindows() {
+		binaryName = binaryName + ".exe"
+	}
+
+	return fmt.Sprintf("cd ~ && "+
+		"curl -LO %s/%s && "+
+		"tar xzf %s && chmod +x %s && "+
+		"rm -rf %s",
+		url, downloadFileName,
+		downloadFileName, binaryName,
+		downloadFileName)
+}
+
 const (
 	// sshTimeout is the timeout for SSH commands.
 	sshTimeout = 2 * time.Minute

@@ -263,3 +263,10 @@ func TestGetImageID(t *testing.T) {
 		})
 	}
 }
+
+func TestJasperFileName(t *testing.T) {
+	distro := Distro{Arch: ArchLinuxArm64}
+	version := "abc123"
+	expected := "curator-dist-linux-arm64-abc123.tar.gz"
+	assert.Equal(t, expected, distro.JasperFileName(version))
+}
