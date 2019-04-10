@@ -95,12 +95,7 @@ func Clear(collection string) error {
 		return err
 	}
 	defer session.Close()
-	info, err := db.C(collection).RemoveAll(bson.M{})
-	grip.Info(message.Fields{
-		"coll":    collection,
-		"removed": info.Removed,
-		"err":     err != nil,
-	})
+	_, err = db.C(collection).RemoveAll(bson.M{})
 	return err
 }
 
@@ -113,16 +108,11 @@ func ClearCollections(collections ...string) error {
 	}
 	defer session.Close()
 	for _, collection := range collections {
-		info, err := db.C(collection).RemoveAll(bson.M{})
+		_, err := db.C(collection).RemoveAll(bson.M{})
 
 		if err != nil {
 			return errors.Wrapf(err, "Couldn't clear collection '%v'", collection)
 		}
-
-		grip.Info(message.Fields{
-			"coll":    collection,
-			"removed": info.Removed,
-		})
 	}
 	return nil
 }
