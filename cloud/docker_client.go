@@ -228,11 +228,6 @@ func (c *dockerClientImpl) pullImage(ctx context.Context, h *host.Host, url, use
 			Username: username,
 			Password: password,
 		}
-		grip.Info(message.Fields{
-			"message":     "registry information",
-			"purpose":     "dogfooding",
-			"auth_config": authConfig,
-		})
 		var jsonBytes []byte
 		jsonBytes, err = json.Marshal(authConfig)
 		if err != nil {
@@ -400,10 +395,6 @@ func (c *dockerClientImpl) GetDockerLogs(ctx context.Context, containerID string
 	if err != nil {
 		return nil, errors.Wrap(err, "Failed to generate docker client")
 	}
-
-	if containerID == "" { // container not started yet
-		return nil, errors.New("container has not started")
-	}
 	stream, err := dockerClient.ContainerLogs(ctx, containerID, options)
 	if err != nil {
 		return nil, errors.Wrapf(err, "Docker logs API call failed for container %s", containerID)
@@ -423,19 +414,20 @@ func (c *dockerClientImpl) GetDockerLogs(ctx context.Context, containerID string
 }
 
 func (c *dockerClientImpl) GetDockerStatus(ctx context.Context, containerID string, parent *host.Host) (*ContainerStatus, error) {
-	if containerID == "" {
-		return &ContainerStatus{HasStarted: false}, nil
-	}
-	status := ContainerStatus{HasStarted: true}
 	container, err := c.GetContainer(ctx, parent, containerID)
 	if err != nil {
+		if strings.Contains(err.Error(), "not found") {
+			return &ContainerStatus{HasStarted: false}, nil
+		}
 		return nil, errors.Wrapf(err, "Error getting container %s", containerID)
 	}
 	if container == nil {
 		return nil, errors.Errorf("Container %s returned empty", containerID)
 	}
-
-	status.IsRunning = container.State.Running
+	status := ContainerStatus{
+		HasStarted: true,
+		IsRunning:  container.State.Running,
+	}
 	grip.Info(message.Fields{
 		"message":   "getDockerStatus",
 		"status":    status,

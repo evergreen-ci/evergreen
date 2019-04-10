@@ -160,18 +160,6 @@ func (j *createHostJob) Run(ctx context.Context) {
 	}
 	err = j.createHost(ctx)
 	j.AddError(err)
-	if err != nil {
-		grip.Info(message.Fields{
-			"host_id":   j.HostID,
-			"parent_id": j.host.ParentID,
-			"attempt":   j.CurrentAttempt,
-			"distro":    j.host.Distro,
-			"error":     err.Error(),
-			"job":       j.ID(),
-			"provider":  j.host.Provider,
-			"message":   "error provisioning host",
-		})
-	}
 }
 
 func (j *createHostJob) createHost(ctx context.Context) error {
@@ -331,13 +319,6 @@ func (j *createHostJob) isImageBuilt(ctx context.Context) (bool, error) {
 		return false, errors.Errorf("parent for host '%s' not running", j.host.Id)
 	}
 	if ok := parent.ContainerImages[j.host.DockerOptions.Image]; ok {
-		grip.Info(message.Fields{
-			"message": "found image in parent",
-			"purpose": "dogfooding",
-			"host":    j.host.Id,
-			"job":     j.ID(),
-			"image":   j.host.DockerOptions.Image,
-		})
 		return true, nil
 	}
 

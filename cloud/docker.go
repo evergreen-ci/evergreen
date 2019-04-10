@@ -48,12 +48,6 @@ func (*dockerManager) GetSettings() ProviderSettings {
 
 // SpawnHost creates and starts a new Docker container
 func (m *dockerManager) SpawnHost(ctx context.Context, h *host.Host) (*host.Host, error) {
-	grip.Info(message.Fields{
-		"message": "attempting to spawn host",
-		"host":    h.Id,
-		"parent":  h.ParentID,
-		"purpose": "dogfooding",
-	})
 	if h.Distro.Provider != evergreen.ProviderNameDocker {
 		return nil, errors.Errorf("Can't spawn instance of %s for distro %s: provider is %s",
 			evergreen.ProviderNameDocker, h.Distro.Id, h.Distro.Provider)
@@ -80,7 +74,7 @@ func (m *dockerManager) SpawnHost(ctx context.Context, h *host.Host) (*host.Host
 
 	// Create container
 	if err = m.client.CreateContainer(ctx, parentHost, h); err != nil {
-		err = errors.Wrapf(err, "Failed to create container for host '%s'", hostIP)
+		err = errors.Wrapf(err, "Failed to create container for host '%s'", h.Id)
 		grip.Error(message.Fields{
 			"message": "spawn container host failed",
 			"host":    h.Id,
@@ -88,11 +82,6 @@ func (m *dockerManager) SpawnHost(ctx context.Context, h *host.Host) (*host.Host
 		})
 		return nil, err
 	}
-	grip.Info(message.Fields{
-		"message": "in spawn host, check ext_identifier",
-		"host":    h,
-		"purpose": "dogfooding",
-	})
 
 	if err = h.SetAgentRevision(evergreen.BuildRevision); err != nil {
 		return nil, errors.Wrapf(err, "error setting agent revision on host %s", h.Id)
