@@ -39,40 +39,40 @@ func NewConfigModel() *APIAdminSettings {
 
 // APIAdminSettings is the structure of a response to the admin route
 type APIAdminSettings struct {
-	Alerts              *APIAlertsConfig                  `json:"alerts,omitempty"`
-	Amboy               *APIAmboyConfig                   `json:"amboy,omitempty"`
-	Api                 *APIapiConfig                     `json:"api,omitempty"`
-	ApiUrl              APIString                         `json:"api_url,omitempty"`
-	AuthConfig          *APIAuthConfig                    `json:"auth,omitempty"`
-	Banner              APIString                         `json:"banner,omitempty"`
-	BannerTheme         APIString                         `json:"banner_theme,omitempty"`
-	ClientBinariesDir   APIString                         `json:"client_binaries_dir,omitempty"`
-	ConfigDir           APIString                         `json:"configdir,omitempty"`
-	ContainerPools      *APIContainerPoolsConfig          `json:"container_pools,omitempty"`
-	Credentials         map[string]string                 `json:"credentials,omitempty"`
-	JasperBinaryURL     APIString                         `json:"jasper_binary_url,omitempty"`
-	JasperBinaryVersion APIString                         `json:"jasper_binary_version,omitempty"`
-	Expansions          map[string]string                 `json:"expansions,omitempty"`
-	GoogleAnalyticsID   APIString                         `json:"google_analytics,omitempty"`
-	GithubPRCreatorOrg  APIString                         `json:"github_pr_creator_org,omitempty"`
-	HostInit            *APIHostInitConfig                `json:"hostinit,omitempty"`
-	Jira                *APIJiraConfig                    `json:"jira,omitempty"`
-	JIRANotifications   *APIJIRANotificationsConfig       `json:"jira_notifications,omitempty"`
-	Keys                map[string]string                 `json:"keys,omitempty"`
-	LoggerConfig        *APILoggerConfig                  `json:"logger_config,omitempty"`
-	LogPath             APIString                         `json:"log_path,omitempty"`
-	Notify              *APINotifyConfig                  `json:"notify,omitempty"`
-	Plugins             map[string]map[string]interface{} `json:"plugins,omitempty"`
-	PprofPort           APIString                         `json:"pprof_port,omitempty"`
-	Providers           *APICloudProviders                `json:"providers,omitempty"`
-	RepoTracker         *APIRepoTrackerConfig             `json:"repotracker,omitempty"`
-	Scheduler           *APISchedulerConfig               `json:"scheduler,omitempty"`
-	ServiceFlags        *APIServiceFlags                  `json:"service_flags,omitempty"`
-	Slack               *APISlackConfig                   `json:"slack,omitempty"`
-	Splunk              *APISplunkConnectionInfo          `json:"splunk,omitempty"`
-	SuperUsers          []string                          `json:"superusers,omitempty"`
-	Triggers            *APITriggerConfig                 `json:"triggers,omitempty"`
-	Ui                  *APIUIConfig                      `json:"ui,omitempty"`
+	Alerts             *APIAlertsConfig                  `json:"alerts,omitempty"`
+	Amboy              *APIAmboyConfig                   `json:"amboy,omitempty"`
+	Api                *APIapiConfig                     `json:"api,omitempty"`
+	ApiUrl             APIString                         `json:"api_url,omitempty"`
+	AuthConfig         *APIAuthConfig                    `json:"auth,omitempty"`
+	Banner             APIString                         `json:"banner,omitempty"`
+	BannerTheme        APIString                         `json:"banner_theme,omitempty"`
+	ClientBinariesDir  APIString                         `json:"client_binaries_dir,omitempty"`
+	ConfigDir          APIString                         `json:"configdir,omitempty"`
+	ContainerPools     *APIContainerPoolsConfig          `json:"container_pools,omitempty"`
+	Credentials        map[string]string                 `json:"credentials,omitempty"`
+	JasperURL          APIString                         `json:"jasper_url,omitempty"`
+	JasperVersion      APIString                         `json:"jasper_version,omitempty"`
+	Expansions         map[string]string                 `json:"expansions,omitempty"`
+	GoogleAnalyticsID  APIString                         `json:"google_analytics,omitempty"`
+	GithubPRCreatorOrg APIString                         `json:"github_pr_creator_org,omitempty"`
+	HostInit           *APIHostInitConfig                `json:"hostinit,omitempty"`
+	Jira               *APIJiraConfig                    `json:"jira,omitempty"`
+	JIRANotifications  *APIJIRANotificationsConfig       `json:"jira_notifications,omitempty"`
+	Keys               map[string]string                 `json:"keys,omitempty"`
+	LoggerConfig       *APILoggerConfig                  `json:"logger_config,omitempty"`
+	LogPath            APIString                         `json:"log_path,omitempty"`
+	Notify             *APINotifyConfig                  `json:"notify,omitempty"`
+	Plugins            map[string]map[string]interface{} `json:"plugins,omitempty"`
+	PprofPort          APIString                         `json:"pprof_port,omitempty"`
+	Providers          *APICloudProviders                `json:"providers,omitempty"`
+	RepoTracker        *APIRepoTrackerConfig             `json:"repotracker,omitempty"`
+	Scheduler          *APISchedulerConfig               `json:"scheduler,omitempty"`
+	ServiceFlags       *APIServiceFlags                  `json:"service_flags,omitempty"`
+	Slack              *APISlackConfig                   `json:"slack,omitempty"`
+	Splunk             *APISplunkConnectionInfo          `json:"splunk,omitempty"`
+	SuperUsers         []string                          `json:"superusers,omitempty"`
+	Triggers           *APITriggerConfig                 `json:"triggers,omitempty"`
+	Ui                 *APIUIConfig                      `json:"ui,omitempty"`
 }
 
 // BuildFromService builds a model from the service layer
@@ -108,8 +108,8 @@ func (as *APIAdminSettings) BuildFromService(h interface{}) error {
 		as.BannerTheme = &tmp
 		as.ClientBinariesDir = &v.ClientBinariesDir
 		as.ConfigDir = &v.ConfigDir
-		as.JasperBinaryURL = ToAPIString(v.JasperBinaryURL)
-		as.JasperBinaryVersion = ToAPIString(v.JasperBinaryVersion)
+		as.JasperURL = ToAPIString(v.JasperURL)
+		as.JasperVersion = ToAPIString(v.JasperVersion)
 		as.GoogleAnalyticsID = ToAPIString(v.GoogleAnalyticsID)
 		as.GithubPRCreatorOrg = &v.GithubPRCreatorOrg
 		as.LogPath = &v.LogPath
@@ -149,8 +149,8 @@ func (as *APIAdminSettings) ToService() (interface{}, error) {
 	if as.ConfigDir != nil {
 		settings.ConfigDir = *as.ConfigDir
 	}
-	settings.JasperBinaryURL = FromAPIString(as.JasperBinaryURL)
-	settings.JasperBinaryVersion = FromAPIString(as.JasperBinaryVersion)
+	settings.JasperURL = FromAPIString(as.JasperURL)
+	settings.JasperVersion = FromAPIString(as.JasperVersion)
 	settings.GoogleAnalyticsID = FromAPIString(as.GoogleAnalyticsID)
 	if as.GithubPRCreatorOrg != nil {
 		settings.GithubPRCreatorOrg = *as.GithubPRCreatorOrg
