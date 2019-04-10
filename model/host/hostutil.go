@@ -108,3 +108,62 @@ func (h *Host) RunSSHCommand(ctx context.Context, cmd string, sshOptions []strin
 
 	return output.String(), errors.Wrap(err, "error running shell cmd")
 }
+
+// InitSystem determines the current Linux init system used by this host.
+func (h *Host) InitSystem(ctx context.Context, sshOptions []string) (string, error) {
+	logs, err := h.RunSSHCommand(ctx, initSystemCommand(), sshOptions)
+	if err != nil {
+		return "", errors.Wrapf(err, "init system command returned: %v", logs)
+	}
+
+	if strings.Contains(logs, InitSystemSystemd) {
+		return InitSystemSystemd, nil
+	} else if strings.Contains(logs, InitSystemSysV) {
+		return InitSystemSysV, nil
+	} else if strings.Contains(logs, InitSystemUpstart) {
+		return InitSystemUpstart, nil
+	}
+
+	return "", errors.Errorf("could not determine init system: init system command returned: %v", logs)
+}
+
+// initSystemCommand returns the string command to determine a Linux host's
+// init system. If it succeeds, it returns the init system as a string.
+func initSystemCommand() string {
+	return `
+	if type rpm >/dev/null 2>&1; then
+		if rpm -qf /sbin/init 2>/dev/null | grep -i 'systemd' >/dev/null 2>&1; then
+			echo 'systemd';
+			exit 0;
+		elif rpm -qf /sbin/init 2>/dev/null | grep -i 'upstart' >/dev/null 2>&1; then
+			echo 'upstart';
+			exit 0;
+		elif rpm -qf /sbin/init 2>/dev/null | grep -i 'sysv' >/dev/null 2>&1; then
+			echo 'sysv';
+			exit 0;
+		fi
+	fi
+	if [[ -x /sbin/init ]] && /sbin/init --version 2>/dev/null | grep -i 'upstart' >/dev/null 2>&1; then
+		echo 'upstart';
+		exit 0;
+	fi
+	if file /sbin/init 2>/dev/null | grep -i 'systemd' >/dev/null 2>&1; then
+		echo 'systemd';
+		exit 0;
+	elif file /sbin/init 2>/dev/null | grep -i 'upstart' >/dev/null 2>&1; then
+		echo 'upstart'
+		exit 0;
+	elif file /sbin/init 2>/dev/null | grep -i 'sysv' >/dev/null 2>&1; then
+		echo 'sysv'
+		exit 0;
+	fi
+	if type systemctl >/dev/null 2>&1; then
+		echo 'systemd'
+		exit 0;
+	fi
+	if ps -p 1 2>/dev/null | grep -i 'systemd' >/dev/null 2>&1; then
+		echo 'systemd';
+		exit 0;
+	fi
+	`
+}

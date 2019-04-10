@@ -196,6 +196,11 @@ type ContainersOnParents struct {
 
 const (
 	MaxLCTInterval = 5 * time.Minute
+
+	// Potential init systems supported by a Linux host.
+	InitSystemSystemd = "systemd"
+	InitSystemSysV    = "sysv"
+	InitSystemUpstart = "upstart"
 )
 
 func (h *Host) GetTaskGroupString() string {
@@ -681,6 +686,7 @@ func (h *Host) Upsert() (*adb.ChangeInfo, error) {
 func (h *Host) CacheHostData() error {
 	_, err := UpsertOne(
 		bson.M{
+			IdKey: h.Id,
 			IdKey: h.Id,
 		},
 		bson.M{
