@@ -122,6 +122,7 @@ func (c *createHost) waitForLogs(ctx context.Context, comm client.Communicator, 
 			logger.Task().Infof("context finished waiting for host %s to exit", hostID)
 			return nil
 		case <-pollTicker.C:
+			logger.Task().Info("tick -- check for logs")
 			batchEnd := time.Now()
 			status, err := comm.GetDockerStatus(ctx, hostID)
 			if err != nil {

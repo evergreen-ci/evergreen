@@ -165,6 +165,7 @@ func (c *dockerClientImpl) EnsureImageDownloaded(ctx context.Context, h *host.Ho
 			grip.Info(message.Fields{
 				"operation":     "EnsureImageDownloaded",
 				"details":       "import image",
+				"options_image": options.Image,
 				"duration_secs": time.Since(start).Seconds(),
 			})
 			return imageName, errors.Wrap(err, "error importing image")
@@ -177,6 +178,7 @@ func (c *dockerClientImpl) EnsureImageDownloaded(ctx context.Context, h *host.Ho
 			grip.Info(message.Fields{
 				"operation":     "EnsureImageDownloaded",
 				"details":       "pull image",
+				"options_image": options.Image,
 				"duration_secs": time.Since(start).Seconds(),
 			})
 			return imageName, errors.Wrap(err, "error pulling image")
@@ -226,6 +228,11 @@ func (c *dockerClientImpl) pullImage(ctx context.Context, h *host.Host, url, use
 			Username: username,
 			Password: password,
 		}
+		grip.Info(message.Fields{
+			"message":     "registry information",
+			"purpose":     "dogfooding",
+			"auth_config": authConfig,
+		})
 		var jsonBytes []byte
 		jsonBytes, err = json.Marshal(authConfig)
 		if err != nil {
@@ -233,6 +240,7 @@ func (c *dockerClientImpl) pullImage(ctx context.Context, h *host.Host, url, use
 		}
 		auth = base64.URLEncoding.EncodeToString(jsonBytes)
 	}
+
 	resp, err := dockerClient.ImagePull(ctx, url, types.ImagePullOptions{RegistryAuth: auth})
 	if err != nil {
 		return errors.Wrap(err, "error pulling image from registry")
@@ -327,14 +335,7 @@ func (c *dockerClientImpl) CreateContainer(ctx context.Context, parentHost, cont
 	if err != nil {
 		return errors.Wrap(err, "Failed to generate docker client")
 	}
-	grip.Info(message.Fields{
-		"message":    "trying to create container",
-		"image":      containerHost.DockerOptions.Image,
-		"container":  containerHost.Id,
-		"parent":     parentHost.Id,
-		"parent_tag": parentHost.Tag,
-		"purpose":    "dogfooding",
-	})
+
 	// Extract image name from url
 	baseName := path.Base(containerHost.DockerOptions.Image)
 	provisionedImage := strings.TrimSuffix(baseName, filepath.Ext(baseName))
@@ -389,15 +390,9 @@ func (c *dockerClientImpl) CreateContainer(ctx context.Context, parentHost, cont
 		grip.Error(err)
 		return err
 	}
-	grip.Info(message.Fields{
-		"message": "created container (before assigning ext. identifier)",
-		"info":    info,
-		"host":    containerHost,
-		"purpose": "dogfooding",
-	})
 	containerHost.ExternalIdentifier = info.ID
 	grip.Info(message.Fields{
-		"message": "created container (after assigning ext. identifier)",
+		"message": "created container",
 		"info":    info,
 		"host":    containerHost,
 		"purpose": "dogfooding",
@@ -450,6 +445,11 @@ func (c *dockerClientImpl) GetDockerStatus(ctx context.Context, containerID stri
 	}
 
 	status.IsRunning = container.State.Running
+	grip.Info(message.Fields{
+		"message":   "getDockerStatus",
+		"status":    status,
+		"operation": "dogfooding",
+	})
 	return &status, nil
 }
 
@@ -552,7 +552,7 @@ func (c *dockerClientImpl) StartContainer(ctx context.Context, h *host.Host, con
 
 	opts := types.ContainerStartOptions{}
 	if err := dockerClient.ContainerStart(ctx, containerID, opts); err != nil {
-		return errors.Wrapf(err, "Failed to start container %s", containerID)
+		return errors.Wrapf(err, "Failed to start container '%s'", containerID)
 	}
 
 	return nil

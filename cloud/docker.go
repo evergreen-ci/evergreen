@@ -88,6 +88,11 @@ func (m *dockerManager) SpawnHost(ctx context.Context, h *host.Host) (*host.Host
 		})
 		return nil, err
 	}
+	grip.Info(message.Fields{
+		"message": "in spawn host, check ext_identifier",
+		"host":    h,
+		"purpose": "dogfooding",
+	})
 
 	if err = h.SetAgentRevision(evergreen.BuildRevision); err != nil {
 		return nil, errors.Wrapf(err, "error setting agent revision on host %s", h.Id)
@@ -115,7 +120,9 @@ func (m *dockerManager) SpawnHost(ctx context.Context, h *host.Host) (*host.Host
 
 	grip.Info(message.Fields{
 		"message":   "created and started Docker container",
-		"container": h.Id,
+		"host":      h,
+		"purpose":   "dogfooding", // only remove this and next line
+		"operation": "check ext_identifier",
 	})
 	event.LogHostStarted(h.Id)
 

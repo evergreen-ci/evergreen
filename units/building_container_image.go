@@ -119,6 +119,13 @@ func (j *buildingContainerImageJob) Run(ctx context.Context) {
 	if j.parent.ContainerBuildAttempt >= containerBuildRetries {
 		j.AddError(errors.Wrapf(j.parent.SetTerminated(evergreen.User),
 			"failed 5 times to build and download image '%s' on parent '%s'", j.DockerOptions.Image, j.parent.Id))
+		grip.Warning(message.WrapError(j.Error(), message.Fields{
+			"message":   "building container image job failed",
+			"job_id":    j.ID(),
+			"host_id":   j.parent.Id,
+			"operation": "container build",
+			"num_iters": j.parent.ContainerBuildAttempt,
+		}))
 		return
 	}
 
@@ -136,15 +143,6 @@ func (j *buildingContainerImageJob) Run(ctx context.Context) {
 
 	err = containerMgr.GetContainerImage(ctx, j.parent, j.DockerOptions)
 	if err != nil {
-		grip.Info(message.Fields{
-			"message":   "error getting container image",
-			"operation": "image",
-			"purpose":   "dogfooding",
-			"job":       j.ID(),
-			"image":     j.DockerOptions.Image,
-			"error":     err.Error(),
-			"parent":    j.parent,
-		})
 		j.AddError(errors.Wrap(err, "error building and downloading container image"))
 		return
 	}
@@ -161,22 +159,17 @@ func (j *buildingContainerImageJob) Run(ctx context.Context) {
 
 func (j *buildingContainerImageJob) tryRequeue(ctx context.Context) {
 	if j.shouldRetry(ctx) && j.env.RemoteQueue().Started() {
-		grip.Info(message.Fields{
-			"message":   "retrying buildingContainerImageJob",
-			"purpose":   "dogfooding",
-			"operation": "image",
-			"attempt":   j.parent.ContainerBuildAttempt,
-		})
 		job := NewBuildingContainerImageJob(j.env, j.parent, j.DockerOptions, j.Provider)
 		job.UpdateTimeInfo(amboy.JobTimeInfo{
 			WaitUntil: time.Now().Add(time.Second * 10),
 		})
 		err := j.env.RemoteQueue().Put(job)
 		grip.Error(message.WrapError(err, message.Fields{
-			"message":  "failed to requeue setup job",
-			"host":     j.ParentID,
-			"job":      j.ID(),
-			"attempts": j.parent.ContainerBuildAttempt,
+			"message":   "failed to requeue setup job",
+			"operation": "container build",
+			"host":      j.ParentID,
+			"job":       j.ID(),
+			"attempts":  j.parent.ContainerBuildAttempt,
 		}))
 		j.AddError(err)
 	}
