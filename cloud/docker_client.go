@@ -428,11 +428,6 @@ func (c *dockerClientImpl) GetDockerStatus(ctx context.Context, containerID stri
 		HasStarted: true,
 		IsRunning:  container.State.Running,
 	}
-	grip.Info(message.Fields{
-		"message":   "getDockerStatus",
-		"status":    status,
-		"operation": "dogfooding",
-	})
 	return &status, nil
 }
 

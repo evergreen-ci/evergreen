@@ -215,14 +215,6 @@ func (j *createHostJob) createHost(ctx context.Context) error {
 	}
 
 	if _, err = cloudManager.SpawnHost(ctx, j.host); err != nil {
-		grip.Info(message.Fields{
-			"message": "error spawning host",
-			"purpose": "dogfooding",
-			"job":     j.ID(),
-			"host":    j.HostID,
-			"image":   j.host.DockerOptions.Image,
-			"error":   err.Error(),
-		})
 		return errors.Wrapf(err, "error spawning host %s", j.host.Id)
 	}
 
@@ -305,13 +297,6 @@ func (j *createHostJob) isImageBuilt(ctx context.Context) (bool, error) {
 		return false, errors.Wrapf(err, "problem getting parent for '%s'", j.host.Id)
 	}
 	if parent == nil {
-		grip.Info(message.Fields{
-			"message": "parent doesn't exist yet",
-			"purpose": "dogfooding",
-			"host":    j.host.Id,
-			"job":     j.ID(),
-			"image":   j.host.DockerOptions.Image,
-		})
 		return false, errors.Wrapf(err, "parent for '%s' does not exist", j.host.Id)
 	}
 
@@ -324,12 +309,6 @@ func (j *createHostJob) isImageBuilt(ctx context.Context) (bool, error) {
 
 	//  If the image is not already present on the parent, run job to build the new image
 	if j.BuildImageStarted == false {
-		grip.Info(message.Fields{
-			"message": "creating container image job",
-			"purpose": "dogfooding",
-			"host":    j.host.Id,
-			"job":     j.ID(),
-		})
 		j.BuildImageStarted = true
 		buildingContainerJob := NewBuildingContainerImageJob(j.env, parent, j.host.DockerOptions, j.host.Provider)
 		err = j.env.RemoteQueue().Put(buildingContainerJob)

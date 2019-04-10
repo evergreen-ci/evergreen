@@ -3,9 +3,6 @@ package host
 import (
 	"time"
 
-	"github.com/mongodb/grip"
-	"github.com/mongodb/grip/message"
-
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/util"
@@ -116,10 +113,6 @@ func generateParentCreateOptions(pool *evergreen.ContainerPool) CreateOptions {
 
 func InsertParentIntentsAndGetNumHostsToSpawn(pool *evergreen.ContainerPool, newHostsNeeded int, ignoreMaxHosts bool) ([]Host, int, error) {
 	// find all running parents with the specified container pool
-	grip.Info(message.Fields{
-		"containers_needed": newHostsNeeded,
-		"message":           "about to spawn parents",
-	})
 	numNewParentsToSpawn, newHostsNeeded, err := getNumNewParentsAndHostsToSpawn(pool, newHostsNeeded, ignoreMaxHosts)
 	if err != nil {
 		return nil, 0, errors.Wrap(err, "error getting number of parents to spawn")

@@ -11,8 +11,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/mongodb/grip/message"
-
 	"github.com/docker/docker/api/types"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/apimodels"
@@ -158,11 +156,6 @@ func createHostFromCommand(cmd model.PluginCommandConf) (*apimodels.CreateHost, 
 }
 
 func (dc *DBCreateHostConnector) MakeIntentHost(taskID, userID, publicKey string, createHost apimodels.CreateHost) (*host.Host, error) {
-	grip.Info(message.Fields{
-		"message":  "making intent host",
-		"task":     taskID,
-		"provider": createHost.CloudProvider,
-	})
 	if createHost.CloudProvider == evergreen.ProviderNameDocker {
 		return makeDockerIntentHost(taskID, userID, createHost)
 	}
