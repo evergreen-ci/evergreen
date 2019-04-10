@@ -75,7 +75,7 @@ const (
 func (h *Host) GetSSHInfo() (*util.StaticHostInfo, error) {
 	hostInfo, err := util.ParseSSHInfo(h.Host)
 	if err != nil {
-		return nil, errors.Wrapf(err, "error parsing ssh info %v", h.Host)
+		return nil, errors.Wrapf(err, "error parsing ssh info %s", h.Host)
 	}
 	if hostInfo.User == "" {
 		hostInfo.User = h.User
@@ -113,7 +113,7 @@ func (h *Host) RunSSHCommand(ctx context.Context, cmd string, sshOptions []strin
 func (h *Host) InitSystem(ctx context.Context, sshOptions []string) (string, error) {
 	logs, err := h.RunSSHCommand(ctx, initSystemCommand(), sshOptions)
 	if err != nil {
-		return "", errors.Wrapf(err, "init system command returned: %v", logs)
+		return "", errors.Wrapf(err, "init system command returned: %s", logs)
 	}
 
 	if strings.Contains(logs, InitSystemSystemd) {
@@ -124,25 +124,13 @@ func (h *Host) InitSystem(ctx context.Context, sshOptions []string) (string, err
 		return InitSystemUpstart, nil
 	}
 
-	return "", errors.Errorf("could not determine init system: init system command returned: %v", logs)
+	return "", errors.Errorf("could not determine init system: init system command returned: %s", logs)
 }
 
 // initSystemCommand returns the string command to determine a Linux host's
 // init system. If it succeeds, it returns the init system as a string.
 func initSystemCommand() string {
 	return `
-	if type rpm >/dev/null 2>&1; then
-		if rpm -qf /sbin/init 2>/dev/null | grep -i 'systemd' >/dev/null 2>&1; then
-			echo 'systemd';
-			exit 0;
-		elif rpm -qf /sbin/init 2>/dev/null | grep -i 'upstart' >/dev/null 2>&1; then
-			echo 'upstart';
-			exit 0;
-		elif rpm -qf /sbin/init 2>/dev/null | grep -i 'sysv' >/dev/null 2>&1; then
-			echo 'sysv';
-			exit 0;
-		fi
-	fi
 	if [[ -x /sbin/init ]] && /sbin/init --version 2>/dev/null | grep -i 'upstart' >/dev/null 2>&1; then
 		echo 'upstart';
 		exit 0;

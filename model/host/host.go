@@ -687,7 +687,6 @@ func (h *Host) CacheHostData() error {
 	_, err := UpsertOne(
 		bson.M{
 			IdKey: h.Id,
-			IdKey: h.Id,
 		},
 		bson.M{
 			"$set": bson.M{
