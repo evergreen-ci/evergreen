@@ -18,8 +18,11 @@ import (
 type gitPush struct {
 	// The root directory (locally) that the code is checked out into.
 	// Must be a valid non-blank directory name.
-	Directory string `plugin:"expand"`
-	DryRun    bool
+	Directory      string `plugin:"expand"`
+	DryRun         bool   `yaml:"dry_run"`
+	CommitterName  string `yaml:"committer_name"`
+	CommitterEmail string `yaml:"committer_email"`
+
 	base
 }
 
@@ -129,11 +132,11 @@ type pushParams struct {
 func (c *gitPush) pushPatch(ctx context.Context, logger client.LoggerProducer, p pushParams) error {
 	author := fmt.Sprintf("%s <%s>", p.authorName, p.authorEmail)
 	commitCommand := fmt.Sprintf("git "+
-		`-c "user.name=Evergreen Agent" `+
-		`-c "user.email=no-reply@evergreen.mongodb.com" `+
+		`-c "user.name=%s" `+
+		`-c "user.email=%s" `+
 		`commit -m "%s" `+
 		`--author="%s"`,
-		p.description, author)
+		c.CommitterName, c.CommitterEmail, p.description, author)
 	logger.Execution().Debugf("git commit command: %s", commitCommand)
 
 	commands := []string{
