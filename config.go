@@ -43,46 +43,46 @@ type ConfigSection interface {
 
 // Settings contains all configuration settings for running Evergreen.
 type Settings struct {
-	Id                 string                    `bson:"_id" json:"id"`
-	Alerts             AlertsConfig              `yaml:"alerts" bson:"alerts" json:"alerts" id:"alerts"`
-	Amboy              AmboyConfig               `yaml:"amboy" bson:"amboy" json:"amboy" id:"amboy"`
-	Api                APIConfig                 `yaml:"api" bson:"api" json:"api" id:"api"`
-	ApiUrl             string                    `yaml:"api_url" bson:"api_url" json:"api_url"`
-	AuthConfig         AuthConfig                `yaml:"auth" bson:"auth" json:"auth" id:"auth"`
-	Banner             string                    `bson:"banner" json:"banner"`
-	BannerTheme        BannerTheme               `bson:"banner_theme" json:"banner_theme"`
-	ClientBinariesDir  string                    `yaml:"client_binaries_dir" bson:"client_binaries_dir" json:"client_binaries_dir"`
-	ConfigDir          string                    `yaml:"configdir" bson:"configdir" json:"configdir"`
-	ContainerPools     ContainerPoolsConfig      `yaml:"container_pools" bson:"container_pools" json:"container_pools" id:"container_pools"`
-	Credentials        map[string]string         `yaml:"credentials" bson:"credentials" json:"credentials"`
-	CredentialsNew     util.KeyValuePairSlice    `yaml:"credentials_new" bson:"credentials_new" json:"credentials_new"`
-	CuratorURL         string                    `yaml:"curator_url" bson:"curator_url" json:"curator_url"`
-	CuratorVersion     string                    `yaml:"curator_version" bson:"curator_version" json:"curator_version"`
-	Database           DBSettings                `yaml:"database"`
-	Expansions         map[string]string         `yaml:"expansions" bson:"expansions" json:"expansions"`
-	ExpansionsNew      util.KeyValuePairSlice    `yaml:"expansions_new" bson:"expansions_new" json:"expansions_new"`
-	GithubPRCreatorOrg string                    `yaml:"github_pr_creator_org" bson:"github_pr_creator_org" json:"github_pr_creator_org"`
-	GoogleAnalyticsID  string                    `yaml:"google_analytics" bson:"google_analytics" json:"google_analytics"`
-	HostInit           HostInitConfig            `yaml:"hostinit" bson:"hostinit" json:"hostinit" id:"hostinit"`
-	Jira               JiraConfig                `yaml:"jira" bson:"jira" json:"jira" id:"jira"`
-	JIRANotifications  JIRANotificationsConfig   `yaml:"jira_notifications" json:"jira_notifications" bson:"jira_notifications" id:"jira_notifications"`
-	Keys               map[string]string         `yaml:"keys" bson:"keys" json:"keys"`
-	KeysNew            util.KeyValuePairSlice    `yaml:"keys_new" bson:"keys_new" json:"keys_new"`
-	LoggerConfig       LoggerConfig              `yaml:"logger_config" bson:"logger_config" json:"logger_config" id:"logger_config"`
-	LogPath            string                    `yaml:"log_path" bson:"log_path" json:"log_path"`
-	Notify             NotifyConfig              `yaml:"notify" bson:"notify" json:"notify" id:"notify"`
-	Plugins            PluginConfig              `yaml:"plugins" bson:"plugins" json:"plugins"`
-	PluginsNew         util.KeyValuePairSlice    `yaml:"plugins_new" bson:"plugins_new" json:"plugins_new"`
-	PprofPort          string                    `yaml:"pprof_port" bson:"pprof_port" json:"pprof_port"`
-	Providers          CloudProviders            `yaml:"providers" bson:"providers" json:"providers" id:"providers"`
-	RepoTracker        RepoTrackerConfig         `yaml:"repotracker" bson:"repotracker" json:"repotracker" id:"repotracker"`
-	Scheduler          SchedulerConfig           `yaml:"scheduler" bson:"scheduler" json:"scheduler" id:"scheduler"`
-	ServiceFlags       ServiceFlags              `bson:"service_flags" json:"service_flags" id:"service_flags"`
-	Slack              SlackConfig               `yaml:"slack" bson:"slack" json:"slack" id:"slack"`
-	Splunk             send.SplunkConnectionInfo `yaml:"splunk" bson:"splunk" json:"splunk"`
-	SuperUsers         []string                  `yaml:"superusers" bson:"superusers" json:"superusers"`
-	Triggers           TriggerConfig             `yaml:"triggers" bson:"triggers" json:"triggers" id:"triggers"`
-	Ui                 UIConfig                  `yaml:"ui" bson:"ui" json:"ui" id:"ui"`
+	Id                  string                    `bson:"_id" json:"id"`
+	Alerts              AlertsConfig              `yaml:"alerts" bson:"alerts" json:"alerts" id:"alerts"`
+	Amboy               AmboyConfig               `yaml:"amboy" bson:"amboy" json:"amboy" id:"amboy"`
+	Api                 APIConfig                 `yaml:"api" bson:"api" json:"api" id:"api"`
+	ApiUrl              string                    `yaml:"api_url" bson:"api_url" json:"api_url"`
+	AuthConfig          AuthConfig                `yaml:"auth" bson:"auth" json:"auth" id:"auth"`
+	Banner              string                    `bson:"banner" json:"banner"`
+	BannerTheme         BannerTheme               `bson:"banner_theme" json:"banner_theme"`
+	ClientBinariesDir   string                    `yaml:"client_binaries_dir" bson:"client_binaries_dir" json:"client_binaries_dir"`
+	ConfigDir           string                    `yaml:"configdir" bson:"configdir" json:"configdir"`
+	ContainerPools      ContainerPoolsConfig      `yaml:"container_pools" bson:"container_pools" json:"container_pools" id:"container_pools"`
+	Credentials         map[string]string         `yaml:"credentials" bson:"credentials" json:"credentials"`
+	CredentialsNew      util.KeyValuePairSlice    `yaml:"credentials_new" bson:"credentials_new" json:"credentials_new"`
+	JasperBinaryURL     string                    `yaml:"jasper_binary_url" bson:"jasper_binary_url" json:"jasper_binary_url"`
+	JasperBinaryVersion string                    `yaml:"jasper_binary_version" bson:"jasper_binary_version" json:"jasper_binary_version"`
+	Database            DBSettings                `yaml:"database"`
+	Expansions          map[string]string         `yaml:"expansions" bson:"expansions" json:"expansions"`
+	ExpansionsNew       util.KeyValuePairSlice    `yaml:"expansions_new" bson:"expansions_new" json:"expansions_new"`
+	GithubPRCreatorOrg  string                    `yaml:"github_pr_creator_org" bson:"github_pr_creator_org" json:"github_pr_creator_org"`
+	GoogleAnalyticsID   string                    `yaml:"google_analytics" bson:"google_analytics" json:"google_analytics"`
+	HostInit            HostInitConfig            `yaml:"hostinit" bson:"hostinit" json:"hostinit" id:"hostinit"`
+	Jira                JiraConfig                `yaml:"jira" bson:"jira" json:"jira" id:"jira"`
+	JIRANotifications   JIRANotificationsConfig   `yaml:"jira_notifications" json:"jira_notifications" bson:"jira_notifications" id:"jira_notifications"`
+	Keys                map[string]string         `yaml:"keys" bson:"keys" json:"keys"`
+	KeysNew             util.KeyValuePairSlice    `yaml:"keys_new" bson:"keys_new" json:"keys_new"`
+	LoggerConfig        LoggerConfig              `yaml:"logger_config" bson:"logger_config" json:"logger_config" id:"logger_config"`
+	LogPath             string                    `yaml:"log_path" bson:"log_path" json:"log_path"`
+	Notify              NotifyConfig              `yaml:"notify" bson:"notify" json:"notify" id:"notify"`
+	Plugins             PluginConfig              `yaml:"plugins" bson:"plugins" json:"plugins"`
+	PluginsNew          util.KeyValuePairSlice    `yaml:"plugins_new" bson:"plugins_new" json:"plugins_new"`
+	PprofPort           string                    `yaml:"pprof_port" bson:"pprof_port" json:"pprof_port"`
+	Providers           CloudProviders            `yaml:"providers" bson:"providers" json:"providers" id:"providers"`
+	RepoTracker         RepoTrackerConfig         `yaml:"repotracker" bson:"repotracker" json:"repotracker" id:"repotracker"`
+	Scheduler           SchedulerConfig           `yaml:"scheduler" bson:"scheduler" json:"scheduler" id:"scheduler"`
+	ServiceFlags        ServiceFlags              `bson:"service_flags" json:"service_flags" id:"service_flags"`
+	Slack               SlackConfig               `yaml:"slack" bson:"slack" json:"slack" id:"slack"`
+	Splunk              send.SplunkConnectionInfo `yaml:"splunk" bson:"splunk" json:"splunk"`
+	SuperUsers          []string                  `yaml:"superusers" bson:"superusers" json:"superusers"`
+	Triggers            TriggerConfig             `yaml:"triggers" bson:"triggers" json:"triggers" id:"triggers"`
+	Ui                  UIConfig                  `yaml:"ui" bson:"ui" json:"ui" id:"ui"`
 }
 
 func (c *Settings) SectionId() string { return ConfigDocID }
@@ -117,28 +117,28 @@ func (c *Settings) Set() error {
 
 	_, err := coll.UpdateOne(ctx, byId(c.SectionId()), bson.M{
 		"$set": bson.M{
-			apiUrlKey:             c.ApiUrl,
-			bannerKey:             c.Banner,
-			bannerThemeKey:        c.BannerTheme,
-			clientBinariesDirKey:  c.ClientBinariesDir,
-			configDirKey:          c.ConfigDir,
-			containerPoolsKey:     c.ContainerPools,
-			credentialsKey:        c.Credentials,
-			credentialsNewKey:     c.CredentialsNew,
-			curatorURLKey:         c.CuratorURL,
-			curatorVersionKey:     c.CuratorVersion,
-			expansionsKey:         c.Expansions,
-			expansionsNewKey:      c.ExpansionsNew,
-			googleAnalyticsKey:    c.GoogleAnalyticsID,
-			githubPRCreatorOrgKey: c.GithubPRCreatorOrg,
-			keysKey:               c.Keys,
-			keysNewKey:            c.KeysNew,
-			logPathKey:            c.LogPath,
-			pprofPortKey:          c.PprofPort,
-			pluginsKey:            c.Plugins,
-			pluginsNewKey:         c.PluginsNew,
-			splunkKey:             c.Splunk,
-			superUsersKey:         c.SuperUsers,
+			apiUrlKey:              c.ApiUrl,
+			bannerKey:              c.Banner,
+			bannerThemeKey:         c.BannerTheme,
+			clientBinariesDirKey:   c.ClientBinariesDir,
+			configDirKey:           c.ConfigDir,
+			containerPoolsKey:      c.ContainerPools,
+			credentialsKey:         c.Credentials,
+			credentialsNewKey:      c.CredentialsNew,
+			jasperBinaryURLKey:     c.JasperBinaryURL,
+			jasperBinaryVersionKey: c.JasperBinaryVersion,
+			expansionsKey:          c.Expansions,
+			expansionsNewKey:       c.ExpansionsNew,
+			googleAnalyticsKey:     c.GoogleAnalyticsID,
+			githubPRCreatorOrgKey:  c.GithubPRCreatorOrg,
+			keysKey:                c.Keys,
+			keysNewKey:             c.KeysNew,
+			logPathKey:             c.LogPath,
+			pprofPortKey:           c.PprofPort,
+			pluginsKey:             c.Plugins,
+			pluginsNewKey:          c.PluginsNew,
+			splunkKey:              c.Splunk,
+			superUsersKey:          c.SuperUsers,
 		},
 	}, options.Update().SetUpsert(true))
 
