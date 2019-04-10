@@ -9,6 +9,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/testutil"
 	. "github.com/smartystreets/goconvey/convey"
+	"github.com/stretchr/testify/require"
 )
 
 func TestWarnSlowProvisioningHosts(t *testing.T) {
@@ -19,8 +20,7 @@ func TestWarnSlowProvisioningHosts(t *testing.T) {
 		" provision", t, func() {
 
 		// reset the db
-		testutil.HandleTestingErr(db.ClearCollections(host.Collection),
-			t, "error clearing hosts collection")
+		require.NoError(t, db.ClearCollections(host.Collection), "error clearing hosts collection")
 
 		Convey("hosts that have not hit the threshold should not trigger a"+
 			" warning", func() {
@@ -30,7 +30,7 @@ func TestWarnSlowProvisioningHosts(t *testing.T) {
 				StartedBy:    evergreen.User,
 				CreationTime: time.Now().Add(-10 * time.Minute),
 			}
-			testutil.HandleTestingErr(host1.Insert(), t, "error inserting host")
+			require.NoError(t, host1.Insert(), "error inserting host")
 
 			warnings, err := SlowProvisioningWarnings(testConfig)
 			So(err, ShouldBeNil)
@@ -49,7 +49,7 @@ func TestWarnSlowProvisioningHosts(t *testing.T) {
 					slowProvisioningWarning: true,
 				},
 			}
-			testutil.HandleTestingErr(host1.Insert(), t, "error inserting host")
+			require.NoError(t, host1.Insert(), "error inserting host")
 
 			warnings, err := SlowProvisioningWarnings(testConfig)
 			So(err, ShouldBeNil)
@@ -65,7 +65,7 @@ func TestWarnSlowProvisioningHosts(t *testing.T) {
 				Status:       evergreen.HostTerminated,
 				CreationTime: time.Now().Add(-1 * time.Hour),
 			}
-			testutil.HandleTestingErr(host1.Insert(), t, "error inserting host")
+			require.NoError(t, host1.Insert(), "error inserting host")
 
 			warnings, err := SlowProvisioningWarnings(testConfig)
 			So(err, ShouldBeNil)
@@ -81,7 +81,7 @@ func TestWarnSlowProvisioningHosts(t *testing.T) {
 				StartedBy:    evergreen.User,
 				CreationTime: time.Now().Add(-1 * time.Hour),
 			}
-			testutil.HandleTestingErr(host1.Insert(), t, "error inserting host")
+			require.NoError(t, host1.Insert(), "error inserting host")
 
 			warnings, err := SlowProvisioningWarnings(testConfig)
 			So(err, ShouldBeNil)

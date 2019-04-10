@@ -10,8 +10,8 @@ import (
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/testresult"
-	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 const (
@@ -23,7 +23,7 @@ const (
 
 func TestFetchFailures(t *testing.T) {
 	assert := assert.New(t)
-	testutil.HandleTestingErr(db.ClearCollections(model.VersionCollection, task.Collection, testresult.Collection), t, "error cleraing collections")
+	require.NoError(t, db.ClearCollections(model.VersionCollection, task.Collection, testresult.Collection), "error cleraing collections")
 	generateData(assert)
 	current := model.Version{
 		RevisionOrderNumber: numVersions + 1,
@@ -42,7 +42,7 @@ func TestFetchFailures(t *testing.T) {
 
 func TestFetchRevisionOrderFailures(t *testing.T) {
 	assert := assert.New(t)
-	testutil.HandleTestingErr(db.ClearCollections(model.VersionCollection, task.Collection, testresult.Collection), t, "error cleraing collections")
+	require.NoError(t, db.ClearCollections(model.VersionCollection, task.Collection, testresult.Collection), "error cleraing collections")
 	generateData(assert)
 	current := model.Version{
 		RevisionOrderNumber: numVersions + 1,

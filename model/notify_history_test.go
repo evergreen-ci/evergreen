@@ -6,6 +6,7 @@ import (
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/testutil"
 	. "github.com/smartystreets/goconvey/convey"
+	"github.com/stretchr/testify/require"
 	"go.mongodb.org/mongo-driver/bson"
 	mgobson "gopkg.in/mgo.v2/bson"
 )
@@ -16,8 +17,7 @@ func TestGenericNotificationFinding(t *testing.T) {
 
 	Convey("When finding notifications", t, func() {
 
-		testutil.HandleTestingErr(db.Clear(NotifyHistoryCollection),
-			t, "Error clearing '%v' collection", NotifyHistoryCollection)
+		require.NoError(t, db.Clear(NotifyHistoryCollection), "Error clearing '%v' collection", NotifyHistoryCollection)
 
 		Convey("when finding one notification", func() {
 
@@ -62,8 +62,7 @@ func TestUpdatingNotifications(t *testing.T) {
 
 	Convey("When updating notifications", t, func() {
 
-		testutil.HandleTestingErr(db.Clear(NotifyHistoryCollection),
-			t, "Error clearing '%v' collection", NotifyHistoryCollection)
+		require.NoError(t, db.Clear(NotifyHistoryCollection), "Error clearing '%v' collection", NotifyHistoryCollection)
 
 		Convey("updating one notification should update the specified"+
 			" notification in the database", func() {

@@ -9,17 +9,15 @@ import (
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/task"
-	"github.com/evergreen-ci/evergreen/testutil"
 	. "github.com/smartystreets/goconvey/convey"
+	"github.com/stretchr/testify/require"
 )
 
 func TestCleanupTask(t *testing.T) {
 	Convey("When cleaning up a task", t, func() {
 		// reset the db
-		testutil.HandleTestingErr(db.ClearCollections(task.Collection, task.OldCollection, build.Collection),
-			t, "error clearing tasks collection")
-		testutil.HandleTestingErr(db.ClearCollections(host.Collection),
-			t, "error clearing hosts collection")
+		require.NoError(t, db.ClearCollections(task.Collection, task.OldCollection, build.Collection), "error clearing tasks collection")
+		require.NoError(t, db.ClearCollections(host.Collection), "error clearing hosts collection")
 
 		Convey("an error should be thrown if the passed-in projects slice"+
 			" does not contain the task's project", func() {
@@ -35,16 +33,11 @@ func TestCleanupTask(t *testing.T) {
 		Convey("if the task's heartbeat timed out", func() {
 
 			// reset the db
-			testutil.HandleTestingErr(db.ClearCollections(task.Collection),
-				t, "error clearing tasks collection")
-			testutil.HandleTestingErr(db.ClearCollections(host.Collection),
-				t, "error clearing hosts collection")
-			testutil.HandleTestingErr(db.ClearCollections(build.Collection),
-				t, "error clearing builds collection")
-			testutil.HandleTestingErr(db.ClearCollections(task.OldCollection),
-				t, "error clearing old tasks collection")
-			testutil.HandleTestingErr(db.ClearCollections(model.VersionCollection),
-				t, "error clearing versions collection")
+			require.NoError(t, db.ClearCollections(task.Collection), "error clearing tasks collection")
+			require.NoError(t, db.ClearCollections(host.Collection), "error clearing hosts collection")
+			require.NoError(t, db.ClearCollections(build.Collection), "error clearing builds collection")
+			require.NoError(t, db.ClearCollections(task.OldCollection), "error clearing old tasks collection")
+			require.NoError(t, db.ClearCollections(model.VersionCollection), "error clearing versions collection")
 
 			Convey("the task should be reset", func() {
 
@@ -56,7 +49,7 @@ func TestCleanupTask(t *testing.T) {
 					Project:  "proj",
 					Restarts: 1,
 				}
-				testutil.HandleTestingErr(newTask.Insert(), t, "error inserting task")
+				require.NoError(t, newTask.Insert(), "error inserting task")
 
 				host := &host.Host{
 					Id:          "h1",
@@ -134,7 +127,7 @@ func TestCleanupTask(t *testing.T) {
 					Project:  "proj",
 					Restarts: 1,
 				}
-				testutil.HandleTestingErr(newTask.Insert(), t, "error inserting task")
+				require.NoError(t, newTask.Insert(), "error inserting task")
 
 				h := &host.Host{
 					Id:          "h1",

@@ -127,7 +127,7 @@ func TestBucketResource(t *testing.T) {
 }
 
 func TestCreateHostBuckets(t *testing.T) {
-	testutil.HandleTestingErr(db.ClearCollections(host.Collection), t, "couldnt reset host")
+	require.NoError(t, db.ClearCollections(host.Collection), "couldnt reset host")
 	Convey("With a starting time and a minute bucket size and inserting dynamic hosts with different time frames", t, func() {
 		now := time.Now()
 		bucketSize := time.Duration(10) * time.Second
@@ -186,7 +186,7 @@ func TestCreateHostBuckets(t *testing.T) {
 }
 
 func TestCreateTaskBuckets(t *testing.T) {
-	testutil.HandleTestingErr(db.ClearCollections(task.Collection), t, "couldnt reset host")
+	require.NoError(t, db.ClearCollections(task.Collection), "couldnt reset host")
 	Convey("With a starting time and a minute bucket size and inserting tasks with different start and finish", t, func() {
 		now := time.Now()
 		bucketSize := time.Duration(10) * time.Second
@@ -243,7 +243,7 @@ func TestCreateTaskBuckets(t *testing.T) {
 }
 
 func TestAverageStatistics(t *testing.T) {
-	testutil.HandleTestingErr(db.ClearCollections(task.Collection), t, "couldnt reset host")
+	require.NoError(t, db.ClearCollections(task.Collection), "couldnt reset host")
 	Convey("With a distro sampleDistro inserted", t, func() {
 		d := distro.Distro{
 			Id: "sampleDistro",

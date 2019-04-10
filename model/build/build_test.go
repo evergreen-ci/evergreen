@@ -11,6 +11,7 @@ import (
 	"github.com/evergreen-ci/evergreen/testutil"
 	. "github.com/smartystreets/goconvey/convey"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"go.mongodb.org/mongo-driver/bson"
 )
 
@@ -28,7 +29,7 @@ func buildIdInSlice(builds []Build, id string) bool {
 func TestGenericBuildFinding(t *testing.T) {
 
 	Convey("When finding builds", t, func() {
-		testutil.HandleTestingErr(db.Clear(Collection), t, "Error clearing"+
+		require.NoError(t, db.Clear(Collection), "Error clearing"+
 			" '%v' collection", Collection)
 
 		Convey("when finding one build", func() {
@@ -71,7 +72,7 @@ func TestFindIntermediateBuilds(t *testing.T) {
 
 	Convey("When finding intermediate builds", t, func() {
 
-		testutil.HandleTestingErr(db.Clear(Collection), t, "Error clearing"+
+		require.NoError(t, db.Clear(Collection), "Error clearing"+
 			" '%v' collection", Collection)
 
 		// the two builds to use as endpoints
@@ -243,7 +244,7 @@ func TestFindPreviousActivatedBuild(t *testing.T) {
 
 	Convey("When finding the previous activated build", t, func() {
 
-		testutil.HandleTestingErr(db.Clear(Collection), t, "Error clearing"+
+		require.NoError(t, db.Clear(Collection), "Error clearing"+
 			" '%v' collection", Collection)
 
 		currBuild := &Build{
@@ -349,7 +350,7 @@ func TestRecentlyFinishedBuilds(t *testing.T) {
 
 	Convey("When finding all recently finished builds", t, func() {
 
-		testutil.HandleTestingErr(db.Clear(Collection), t, "Error clearing"+
+		require.NoError(t, db.Clear(Collection), "Error clearing"+
 			" '%v' collection", Collection)
 
 		Convey("all builds returned should be finished", func() {
@@ -489,7 +490,7 @@ func TestGenericBuildUpdating(t *testing.T) {
 	Convey("When updating builds", t, func() {
 
 		Reset(func() {
-			testutil.HandleTestingErr(db.Clear(Collection), t, "Error clearing '%v' collection", Collection)
+			require.NoError(t, db.Clear(Collection), "Error clearing '%v' collection", Collection)
 		})
 
 		Convey("updating a single build should update the specified build"+
@@ -515,7 +516,7 @@ func TestBuildUpdateStatus(t *testing.T) {
 	Convey("With a build", t, func() {
 
 		Reset(func() {
-			testutil.HandleTestingErr(db.Clear(Collection), t, "Error clearing '%v' collection", Collection)
+			require.NoError(t, db.Clear(Collection), "Error clearing '%v' collection", Collection)
 		})
 
 		var err error
@@ -536,7 +537,7 @@ func TestBuildUpdateStatus(t *testing.T) {
 func TestAllTasksFinished(t *testing.T) {
 	assert := assert.New(t)
 
-	testutil.HandleTestingErr(db.ClearCollections(task.Collection), t, "error clearing collection")
+	require.NoError(t, db.ClearCollections(task.Collection), "error clearing collection")
 	b := &Build{
 		Id:        "b1",
 		Status:    evergreen.BuildStarted,

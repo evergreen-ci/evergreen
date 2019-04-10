@@ -2,6 +2,7 @@ package testutil
 
 import (
 	"context"
+	"flag"
 	"path/filepath"
 	"testing"
 
@@ -19,7 +20,9 @@ const (
 )
 
 func init() {
-	if evergreen.GetEnvironment() == nil {
+	if flag.Lookup("test.v") == nil {
+		grip.Alert("called init() in testutil for production code.")
+	} else if evergreen.GetEnvironment() == nil {
 		ctx := context.Background()
 
 		path := filepath.Join(evergreen.FindEvergreenHome(), TestDir, TestSettings)

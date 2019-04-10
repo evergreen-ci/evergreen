@@ -7,6 +7,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/testutil"
 	. "github.com/smartystreets/goconvey/convey"
+	"github.com/stretchr/testify/require"
 )
 
 var pushTestConfig = testutil.TestConfig()
@@ -15,8 +16,7 @@ func TestFindPushLogAfter(t *testing.T) {
 
 	Convey("When checking for duplicate pushes", t, func() {
 
-		testutil.HandleTestingErr(db.Clear(PushlogCollection), t, "Error clearing"+
-			" '%v' collection", PushlogCollection)
+		require.NoError(t, db.Clear(PushlogCollection), "Error clearing '%v' collection", PushlogCollection)
 
 		fileLoc := "s3://test/location"
 
