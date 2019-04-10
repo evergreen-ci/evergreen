@@ -273,7 +273,6 @@ func TestGetDockerLogs(t *testing.T) {
 	}
 	h, err := handler.sc.MakeIntentHost("task-id", "", "", c)
 	assert.NotEmpty(h.ParentID)
-	h.ExternalIdentifier = "my-container"
 	require.NoError(err)
 	require.NoError(h.Insert())
 
@@ -431,7 +430,6 @@ func TestGetDockerStatus(t *testing.T) {
 	}
 	h, err := handler.sc.MakeIntentHost("task-id", "", "", c)
 	assert.NotEmpty(h.ParentID)
-	h.ExternalIdentifier = "my-container"
 	require.NoError(err)
 	require.NoError(h.Insert())
 

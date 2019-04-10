@@ -25,9 +25,8 @@ func TestCreateHostBuildFromService(t *testing.T) {
 func TestCreateHostBuildFromServiceWithContainer(t *testing.T) {
 	assert := assert.New(t)
 	h := host.Host{
-		Id:                 "i-1234",
-		ExternalIdentifier: "container-1234",
-		ParentID:           "i-5678",
+		Id:       "i-1234",
+		ParentID: "i-5678",
 		DockerOptions: host.DockerOptions{
 			Image:   "my-image",
 			Command: "echo hi",
@@ -38,7 +37,6 @@ func TestCreateHostBuildFromServiceWithContainer(t *testing.T) {
 	assert.NoError(err)
 	assert.Equal(c.Image, h.DockerOptions.Image)
 	assert.Equal(c.Command, h.DockerOptions.Command)
-	assert.Equal(c.ContainerID, h.ExternalIdentifier)
 	assert.Equal(c.ParentID, h.ParentID)
 
 	assert.Empty(c.DNSName)

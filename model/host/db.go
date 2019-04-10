@@ -569,17 +569,14 @@ func FindOneId(id string) (*Host, error) {
 
 func FindOneByIdOrTag(id string) (*Host, error) {
 	query := db.Query(bson.M{
-		TagKey: id,
+		"$or": []bson.M{
+			bson.M{TagKey: id},
+			bson.M{IdKey: id},
+		},
 	})
 	host, err := FindOne(query) // try to find by tag
 	if err != nil {
 		return nil, err
-	}
-	if host == nil {
-		host, err = FindOneId(id)
-		if err != nil {
-			return nil, err
-		}
 	}
 	return host, nil
 }

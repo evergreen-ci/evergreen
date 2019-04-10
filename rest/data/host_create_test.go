@@ -66,9 +66,8 @@ func TestListHostsForTask(t *testing.T) {
 			},
 		},
 		{
-			Id:                 "7",
-			ExternalIdentifier: "container-1234",
-			Status:             evergreen.HostRunning,
+			Id:     "7",
+			Status: evergreen.HostRunning,
 			SpawnOptions: host.SpawnOptions{
 				TaskID: "task_1",
 			},
@@ -86,7 +85,6 @@ func TestListHostsForTask(t *testing.T) {
 	require.Len(found, 3)
 	assert.Equal("4.com", found[0].Host)
 	assert.Equal("1.com", found[1].Host)
-	assert.Equal("container-1234", found[2].ExternalIdentifier)
 	assert.Equal("abcd:1234:459c:2d00:cfe4:843b:1d60:8e47", found[1].IP)
 }
 
@@ -303,6 +301,5 @@ buildvariants:
 	assert.Equal("me", h.StartedBy)
 	assert.Equal("docker.io/library/hello-world", h.DockerOptions.Image)
 	assert.Equal("echo hi", h.DockerOptions.Command)
-	assert.Empty("", h.ExternalIdentifier)
 	assert.Equal(distro.DockerImageBuildTypePull, h.DockerOptions.Method)
 }

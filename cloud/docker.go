@@ -119,10 +119,8 @@ func (m *dockerManager) SpawnHost(ctx context.Context, h *host.Host) (*host.Host
 	}
 
 	grip.Info(message.Fields{
-		"message":   "created and started Docker container",
-		"host":      h,
-		"purpose":   "dogfooding", // only remove this and next line
-		"operation": "check ext_identifier",
+		"message": "created and started Docker container",
+		"host":    h,
 	})
 	event.LogHostStarted(h.Id)
 

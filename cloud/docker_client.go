@@ -374,7 +374,6 @@ func (c *dockerClientImpl) CreateContainer(ctx context.Context, parentHost, cont
 	containerConf := &container.Config{
 		Cmd:   agentCmdParts,
 		Image: provisionedImage,
-		User:  containerHost.Distro.User,
 	}
 	networkConf := &network.NetworkingConfig{}
 	hostConf := &container.HostConfig{}
@@ -384,19 +383,11 @@ func (c *dockerClientImpl) CreateContainer(ctx context.Context, parentHost, cont
 	})
 
 	// Build container
-	info, err := dockerClient.ContainerCreate(ctx, containerConf, hostConf, networkConf, containerHost.Id)
-	if err != nil {
+	if _, err := dockerClient.ContainerCreate(ctx, containerConf, hostConf, networkConf, containerHost.Id); err != nil {
 		err = errors.Wrapf(err, "Docker create API call failed for container '%s'", containerHost.Id)
 		grip.Error(err)
 		return err
 	}
-	containerHost.ExternalIdentifier = info.ID
-	grip.Info(message.Fields{
-		"message": "created container",
-		"info":    info,
-		"host":    containerHost,
-		"purpose": "dogfooding",
-	})
 	grip.Info(msg)
 
 	return nil

@@ -30,7 +30,7 @@ type Host struct {
 	Provider string        `bson:"host_type" json:"host_type"`
 	IP       string        `bson:"ip_address" json:"ip_address"`
 
-	// secondary (external) identifier for the host (the containerID for containers)
+	// secondary (external) identifier for the host
 	ExternalIdentifier string `bson:"ext_identifier" json:"ext_identifier"`
 
 	// physical location of host

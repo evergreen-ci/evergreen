@@ -80,6 +80,9 @@ func (j *buildingContainerImageJob) Run(ctx context.Context) {
 	if j.parent == nil {
 		j.parent, err = host.FindOneByIdOrTag(j.ParentID)
 		j.AddError(err)
+		if j.parent == nil {
+			j.AddError(errors.Errorf("parent %s not found", j.ParentID))
+		}
 	}
 	if j.env == nil {
 		j.env = evergreen.GetEnvironment()

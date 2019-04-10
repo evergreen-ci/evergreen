@@ -10,11 +10,10 @@ type CreateHost struct {
 	IP         string `json:"ip_address,omitempty"`
 	InstanceID string `json:"instance_id,omitempty"`
 
-	HostID      string `json:"host_id,omitempty"`
-	ContainerID string `json:"container_id,omitempty"`
-	ParentID    string `json:"parent_id,omitempty"`
-	Image       string `json:"image,omitempty"`
-	Command     string `json:"command,omitempty"`
+	HostID   string `json:"host_id,omitempty"`
+	ParentID string `json:"parent_id,omitempty"`
+	Image    string `json:"image,omitempty"`
+	Command  string `json:"command,omitempty"`
 }
 
 func (createHost *CreateHost) BuildFromService(h interface{}) error {
@@ -23,7 +22,6 @@ func (createHost *CreateHost) BuildFromService(h interface{}) error {
 		// container
 		if v.ParentID != "" {
 			createHost.HostID = v.Id
-			createHost.ContainerID = v.ExternalIdentifier
 			createHost.ParentID = v.ParentID
 			createHost.Image = v.DockerOptions.Image
 			createHost.Command = v.DockerOptions.Command
@@ -37,7 +35,6 @@ func (createHost *CreateHost) BuildFromService(h interface{}) error {
 		// container
 		if v.ParentID != "" {
 			createHost.HostID = v.Id
-			createHost.ContainerID = v.ExternalIdentifier
 			createHost.ParentID = v.ParentID
 			createHost.Image = v.DockerOptions.Image
 			createHost.Command = v.DockerOptions.Command
