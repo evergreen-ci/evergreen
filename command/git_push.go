@@ -5,7 +5,6 @@ import (
 	"context"
 	"fmt"
 	"path/filepath"
-	"strings"
 
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/rest/client"
@@ -20,6 +19,7 @@ type gitPush struct {
 	// The root directory (locally) that the code is checked out into.
 	// Must be a valid non-blank directory name.
 	Directory string `plugin:"expand"`
+	DryRun    bool
 	base
 }
 
@@ -49,9 +49,12 @@ func (c *gitPush) Execute(ctx context.Context, comm client.Communicator, logger 
 		return errors.Wrap(err, "Failed to get patch")
 	}
 
-	checkoutCommand := []string{"git", "checkout", conf.ProjectRef.Branch}
-	logger.Execution().Debugf("git checkout command %s", strings.Join(checkoutCommand, ", "))
-	if err = c.runCommand(ctx, checkoutCommand, c.Directory, logger); err != nil {
+	checkoutCommand := fmt.Sprintf("git checkout %s", conf.ProjectRef.Branch)
+	logger.Execution().Debugf("git checkout command %s", checkoutCommand)
+	jpm := c.JasperManager()
+	cmd := jpm.CreateCommand(ctx).Directory(c.Directory).Append(checkoutCommand).
+		SetOutputSender(level.Info, logger.Task().GetSender()).SetErrorSender(level.Error, logger.Task().GetSender())
+	if err = cmd.Run(ctx); err != nil {
 		return errors.Wrapf(err, "can't checkout '%s' branch", conf.ProjectRef.Branch)
 	}
 
@@ -96,9 +99,11 @@ func (c *gitPush) Execute(ctx context.Context, comm client.Communicator, logger 
 		}
 		moduleBase := filepath.Join(module.Prefix, module.Name)
 
-		checkoutCommand = []string{"git", "checkout", module.Branch}
-		logger.Execution().Debugf("git checkout command %s", strings.Join(checkoutCommand, ", "))
-		if err = c.runCommand(ctx, checkoutCommand, moduleBase, logger); err != nil {
+		checkoutCommand = fmt.Sprintf("git checkout %s", module.Branch)
+		logger.Execution().Debugf("git checkout command: %s", checkoutCommand)
+		cmd := jpm.CreateCommand(ctx).Directory(moduleBase).Append(checkoutCommand).
+			SetOutputSender(level.Info, logger.Task().GetSender()).SetErrorSender(level.Error, logger.Task().GetSender())
+		if err = cmd.Run(ctx); err != nil {
 			return errors.Wrapf(err, "can't checkout '%s' branch", module.Branch)
 		}
 
@@ -122,48 +127,31 @@ type pushParams struct {
 }
 
 func (c *gitPush) pushPatch(ctx context.Context, logger client.LoggerProducer, p pushParams) error {
-	addCommand := []string{"git", "add", "-A"}
-	logger.Execution().Debugf("git add command: %s", strings.Join(addCommand, ", "))
-	if err := c.runCommand(ctx, addCommand, p.directory, logger); err != nil {
-		return errors.Wrap(err, "can't add changes to git index")
-	}
-
 	author := fmt.Sprintf("%s <%s>", p.authorName, p.authorEmail)
-	commitCommand := []string{
-		"git",
-		"-c",
-		`"user.name=Evergreen Agent"`,
-		"-c",
-		`"user.email=no-reply@evergreen.mongodb.com"`,
-		"commit",
-		"-m",
-		p.description,
-		fmt.Sprintf("--author=%s", author),
-	}
-	logger.Execution().Debugf("git commit command: %s", strings.Join(commitCommand, ", "))
-	if err := c.runCommand(ctx, commitCommand, p.directory, logger); err != nil {
-		return errors.Wrap(err, "can't create git commit")
+	commitCommand := fmt.Sprintf("git "+
+		`-c "user.name=Evergreen Agent" `+
+		`-c "user.email=no-reply@evergreen.mongodb.com" `+
+		`commit -m "%s" `+
+		`--author="%s"`,
+		p.description, author)
+	logger.Execution().Debugf("git commit command: %s", commitCommand)
+
+	commands := []string{
+		"git add -A",
+		commitCommand,
 	}
 
-	pushCommand := []string{"git", "push", "origin", p.branch}
-	logger.Execution().Debugf("git push command: %s", strings.Join(pushCommand, ", "))
-	if err := c.runCommand(ctx, pushCommand, c.Directory, logger); err != nil {
-		return errors.Wrap(err, "can't push changes to remote repository")
+	if !c.DryRun {
+		pushCommand := fmt.Sprintf("git push origin %s", p.branch)
+		logger.Execution().Debugf("git push command: %s", pushCommand)
+		commands = append(commands, pushCommand)
 	}
 
-	return nil
-}
-
-func (c *gitPush) runCommand(ctx context.Context, command []string, workDir string, logger client.LoggerProducer) error {
 	jpm := c.JasperManager()
-	cmd := jpm.CreateCommand(ctx).Directory(workDir).Add(command).
+	cmd := jpm.CreateCommand(ctx).Directory(p.directory).Append(commands...).
 		SetOutputSender(level.Info, logger.Task().GetSender()).SetErrorSender(level.Error, logger.Task().GetSender())
 
-	if err := cmd.Run(ctx); err != nil {
-		return errors.WithStack(err)
-	}
-
-	return nil
+	return errors.Wrap(cmd.Run(ctx), "can't run push commands")
 }
 
 func (c *gitPush) revParse(ctx context.Context, logger client.LoggerProducer, ref string) (string, error) {
@@ -172,10 +160,10 @@ func (c *gitPush) revParse(ctx context.Context, logger client.LoggerProducer, re
 	}
 	jpm := c.JasperManager()
 
-	revParseCommand := []string{"git", "rev-parse", ref}
-	logger.Execution().Debugf("git rev-parse command: %s", strings.Join(revParseCommand, ", "))
-	cmd := jpm.CreateCommand(ctx).Directory(c.Directory).Add(revParseCommand).
-		SetOutputWriter(stdout)
+	revParseCommand := fmt.Sprintf("git rev-parse %s", ref)
+	logger.Execution().Debugf("git rev-parse command: %s", revParseCommand)
+	cmd := jpm.CreateCommand(ctx).Directory(c.Directory).Append(revParseCommand).SetOutputWriter(stdout).
+		SetOutputSender(level.Info, logger.Task().GetSender()).SetErrorSender(level.Error, logger.Task().GetSender())
 
 	if err := cmd.Run(ctx); err != nil {
 		return "", errors.WithStack(err)
