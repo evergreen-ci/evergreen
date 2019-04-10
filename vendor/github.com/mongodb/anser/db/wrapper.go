@@ -505,6 +505,8 @@ func (q *queryWrapper) All(result interface{}) error {
 }
 
 func (q *queryWrapper) One(result interface{}) error {
+	q.limit = 1
+
 	if err := q.exec(); err != nil {
 		return errors.WithStack(err)
 	}
@@ -579,14 +581,17 @@ func ResolveCursorOne(ctx context.Context, iter *mongo.Cursor, result interface{
 		return errors.New("cannot resolve result from cursor")
 	}
 
+	catcher := grip.NewCatcher()
+	defer func() {
+		catcher.Add(iter.Close(ctx))
+	}()
+
 	if !iter.Next(ctx) {
 		return errors.WithStack(errNotFound)
 	}
 
-	catcher := grip.NewCatcher()
 	catcher.Add(iter.Decode(result))
 	catcher.Add(iter.Err())
-	catcher.Add(iter.Close(ctx))
 
 	return errors.Wrap(catcher.Resolve(), "problem resolving result")
 }
