@@ -169,6 +169,9 @@ func (apiDistro *APIDistro) ToService() (interface{}, error) {
 	d.Teardown = FromAPIString(apiDistro.Teardown)
 	d.User = FromAPIString(apiDistro.User)
 	d.BootstrapMethod = FromAPIString(apiDistro.BootstrapMethod)
+	if d.BootstrapMethod == "" {
+		d.BootstrapMethod = distro.BootstrapMethodLegacySSH
+	}
 	d.SSHKey = FromAPIString(apiDistro.SSHKey)
 	d.SSHOptions = apiDistro.SSHOptions
 	d.SpawnAllowed = apiDistro.UserSpawnAllowed

@@ -81,14 +81,18 @@ func (uis *UIServer) modifyDistro(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	newDistro := oldDistro
-
 	// attempt to unmarshal data into distros field for type validation
 	if err = json.Unmarshal(b, &newDistro); err != nil {
 		message := fmt.Sprintf("error unmarshaling request: %v", err)
 		PushFlash(uis.CookieStore, r, w, NewErrorFlash(message))
 		http.Error(w, message, http.StatusBadRequest)
 		return
+	}
+
+	newDistro := oldDistro
+
+	if newDistro.BootstrapMethod == "" {
+		newDistro.BootstrapMethod = distro.BootstrapMethodLegacySSH
 	}
 
 	// check that the resulting distro is valid
