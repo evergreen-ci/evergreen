@@ -140,11 +140,11 @@ func (s *AdminSuite) TestBaseConfig() {
 		GoogleAnalyticsID:  "u-12345",
 		GithubPRCreatorOrg: "org",
 		JasperConfig: JasperConfig{
-			BinaryName: "binary",
-			DownloadFileName: "download"
-			Port:       12345,
-			URL:        "url",
-			Version:    "version",
+			BinaryName:       "binary",
+			DownloadFileName: "download",
+			Port:             12345,
+			URL:              "url",
+			Version:          "version",
 		},
 		Keys:      map[string]string{"k3": "v3"},
 		LogPath:   "logpath",

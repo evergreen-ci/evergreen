@@ -1417,11 +1417,11 @@ func (c *APITriggerConfig) ToService() (interface{}, error) {
 }
 
 type APIJasperConfig struct {
-	BinaryName       APIString `json:"binary_name"`
-	DownloadFileName APIString `json:"download_file_name"`
-	Port             int       `json:"port"`
-	URL              APIString `json:"url"`
-	Version          APIString `json:"version"`
+	BinaryName       APIString `json:"binary_name,omitempty"`
+	DownloadFileName APIString `json:"download_file_name,omitempty"`
+	Port             int       `json:"port,omitempty"`
+	URL              APIString `json:"url,omitempty"`
+	Version          APIString `json:"version,omitempty"`
 }
 
 func (c *APIJasperConfig) BuildFromService(h interface{}) error {
