@@ -288,10 +288,6 @@ func (t *Task) IsPatchRequest() bool {
 	return util.StringSliceContains(evergreen.PatchRequesters, t.Requester)
 }
 
-func (t *Task) IsMergeRequest() bool {
-	return t.Requester == evergreen.MergeTestRequester
-}
-
 func (t *Task) SetOverrideDependencies(userID string) error {
 	t.OverrideDependencies = true
 	event.LogTaskDependenciesOverridden(t.Id, t.Execution, userID)
