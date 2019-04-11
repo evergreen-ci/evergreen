@@ -87,18 +87,23 @@ func TestCleanupTask(t *testing.T) {
 						Project:        "proj",
 						Restarts:       0,
 						DisplayOnly:    true,
-						ExecutionTasks: []string{"et"},
+						ExecutionTasks: []string{"et1", "et2"},
 					}
-					et := &task.Task{
-						Id:       "et",
+					et1 := &task.Task{
+						Id:       "et1",
 						Status:   evergreen.TaskStarted,
 						HostId:   "h1",
 						BuildId:  "b2",
 						Project:  "proj",
 						Restarts: 0,
 					}
+					et2 := &task.Task{
+						Id:     "et2",
+						Status: evergreen.TaskStarted,
+					}
 					So(dt.Insert(), ShouldBeNil)
-					So(et.Insert(), ShouldBeNil)
+					So(et1.Insert(), ShouldBeNil)
+					So(et2.Insert(), ShouldBeNil)
 					b := &build.Build{
 						Id:      "b2",
 						Tasks:   []build.TaskCache{{Id: "dt"}},
@@ -106,13 +111,14 @@ func TestCleanupTask(t *testing.T) {
 					}
 					So(b.Insert(), ShouldBeNil)
 
-					So(cleanUpTimedOutTask(et), ShouldBeNil)
-					et, err := task.FindOneId(et.Id)
+					So(cleanUpTimedOutTask(et1), ShouldBeNil)
+					et1, err := task.FindOneId(et1.Id)
 					So(err, ShouldBeNil)
-					So(et.Status, ShouldEqual, evergreen.TaskFailed)
+					So(et1.Status, ShouldEqual, evergreen.TaskFailed)
 					dt, err = task.FindOneId(dt.Id)
 					So(err, ShouldBeNil)
-					So(dt.Status, ShouldEqual, evergreen.TaskSystemUnresponse)
+					So(dt.Status, ShouldEqual, evergreen.TaskStarted)
+					So(dt.ResetWhenFinished, ShouldBeTrue)
 				})
 			})
 
