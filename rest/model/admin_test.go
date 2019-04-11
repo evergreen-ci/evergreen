@@ -59,7 +59,7 @@ func TestModelConversion(t *testing.T) {
 	assert.Equal(testSettings.ClientBinariesDir, *apiSettings.ClientBinariesDir)
 	assert.Equal(testSettings.ConfigDir, *apiSettings.ConfigDir)
 	assert.Equal(testSettings.JasperConfig.BinaryName, FromAPIString(apiSettings.JasperConfig.BinaryName))
-	assert.Equal(testSettings.JasperConfig.Port, FromAPIString(apiSettings.JasperConfig.Port))
+	assert.Equal(testSettings.JasperConfig.Port, apiSettings.JasperConfig.Port)
 	assert.Equal(testSettings.JasperConfig.URL, FromAPIString(apiSettings.JasperConfig.URL))
 	assert.Equal(testSettings.JasperConfig.Version, FromAPIString(apiSettings.JasperConfig.Version))
 	assert.Equal(testSettings.GithubPRCreatorOrg, *apiSettings.GithubPRCreatorOrg)
