@@ -3,6 +3,7 @@ package service
 import (
 	"fmt"
 	"net/http"
+	"strings"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
@@ -48,6 +49,78 @@ func (uis *UIServer) login(w http.ResponseWriter, r *http.Request) {
 
 	uis.umconf.AttachCookie(token, w)
 	gimlet.WriteJSON(w, map[string]string{})
+}
+
+func (uis *UIServer) userGetKey(w http.ResponseWriter, r *http.Request) {
+	creds := struct {
+		Username string `json:"username"`
+		Password string `json:"password"`
+	}{}
+
+	if err := util.ReadJSONInto(util.NewRequestReader(r), &creds); err != nil {
+		gimlet.WriteResponse(w, gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+			Message:    "malformed request",
+			StatusCode: http.StatusBadRequest,
+		}))
+		return
+	}
+
+	if creds.Username == "" || creds.Password == "" {
+		gimlet.WriteResponse(w, gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+			Message:    "user not specified",
+			StatusCode: http.StatusBadRequest,
+		}))
+		return
+	}
+
+	token, err := uis.UserManager.CreateUserToken(creds.Username, creds.Password)
+	if err != nil {
+		gimlet.WriteResponse(w, gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+			Message:    "could not find user",
+			StatusCode: http.StatusUnauthorized,
+		}))
+		return
+	}
+	uis.umconf.AttachCookie(token, w)
+
+	user, err := uis.UserManager.GetUserByToken(r.Context(), token)
+	if err != nil {
+		gimlet.WriteResponse(w, gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+			Message:    "could not find user",
+			StatusCode: http.StatusUnauthorized,
+		}))
+		return
+	}
+
+	key := user.GetAPIKey()
+	if key == "" {
+		key = util.RandomString()
+		if err := model.SetUserAPIKey(user.Username(), key); err != nil {
+			gimlet.WriteResponse(w, gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+				Message:    "could not generate key",
+				StatusCode: http.StatusInternalServerError,
+			}))
+			return
+		}
+	}
+
+	out := struct {
+		User string `json:"user" yaml:"user" `
+		Key  string `json:"api_key" yaml:"api_key"`
+		UI   string `json:"ui_server_host" yaml:"ui_server_host"`
+		API  string `json:"api_server_host" yaml:"api_server_host"`
+	}{
+		User: creds.Username,
+		Key:  key,
+		UI:   uis.RootURL,
+		API:  uis.RootURL + "/api",
+	}
+
+	if ct := r.Header.Get("content-type"); strings.Contains(ct, "yaml") {
+		gimlet.WriteYAML(w, out)
+	} else {
+		gimlet.WriteJSON(w, out)
+	}
 }
 
 func (uis *UIServer) logout(w http.ResponseWriter, r *http.Request) {
