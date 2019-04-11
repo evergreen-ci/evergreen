@@ -109,6 +109,15 @@ func requireStringFlag(name string) cli.BeforeFunc {
 	}
 }
 
+func requireStringSliceFlag(name string) cli.BeforeFunc {
+	return func(c *cli.Context) error {
+		if len(c.StringSlice(name)) == 0 {
+			return errors.Errorf("flag '--%s' was not specified", name)
+		}
+		return nil
+	}
+}
+
 // nolint: unused, deadcode
 func requireStringSliceValueChoices(name string, options []string) cli.BeforeFunc {
 	return func(c *cli.Context) error {
