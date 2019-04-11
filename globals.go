@@ -216,7 +216,7 @@ var (
 
 const (
 	DefaultServiceConfigurationFileName = "/etc/mci_settings.yml"
-	DefaultDatabaseUrl                  = "localhost:27017"
+	DefaultDatabaseUrl                  = "mongodb://localhost:27017"
 	DefaultDatabaseName                 = "mci"
 	DefaultDatabaseWriteMode            = "majority"
 
