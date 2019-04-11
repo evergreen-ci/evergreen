@@ -86,6 +86,7 @@ Admin Settings
 						<li class="link" ng-click="scrollTo('misc')">Misc Settings</li>
 						<li class="link" ng-click="scrollTo('credentials')">Credentials</li>
 						<li class="link" ng-click="scrollTo('expansions')">Expansions</li>
+                        <li class="link" ng-click="scrollTo('jasper')">Jasper</li>
 						<li class="link" ng-click="scrollTo('plugins')">Plugins</li>
 						<li class="link" ng-click="scrollTo('jira_notifications')">JIRA Custom Field Mappings</li>
 						<div>Non-Configuration</div>
@@ -1161,14 +1162,6 @@ Admin Settings
 										<label>Pprof port</label>
 										<input type="text" ng-model="Settings.pprof_port">
 									</md-input-container>
-									<md-input-container class="control" style="width:45%">
-										<label>Jasper URL</label>
-										<input type="text" ng-model="Settings.jasper_url">
-									</md-input-container>
-									<md-input-container class="control" style="width:45%; margin-left:50px;">
-										<label>Jasper Version</label>
-										<input type="text" ng-model="Settings.jasper_version">
-									</md-input-container>
 									<md-input-container class="control" style="width:45%;">
 										<label>Superusers</label>
 										<textarea ng-model="Settings.superusers" ng-list="&#10;" ng-trim="false" rows="3" md-select-on-focus></textarea>
@@ -1207,6 +1200,38 @@ Admin Settings
 						</section>
 
 						<section layout="row" flex>
+							<md-card flex=50 id="jasper" style="max-width:49%">
+								<md-card-title>
+									<md-card-title-text>
+										<span>Jasper</span>
+									</md-card-title-text>
+									<md-button ng-click="clearSection('jasper')">
+										<i class="fa fa-trash"></i>
+									</md-button>
+								</md-card-title>
+								<md-card-content>
+									<md-input-container class="control" style="width:45%;">
+										<label>Binary Name</label>
+										<input type="text" ng-model="Settings.jasper.binary_name">
+									</md-input-container>
+									<md-input-container class="control" style="width:45%; margin-left:50px;">
+										<label>Download File Name</label>
+										<input type="text" ng-model="Settings.jasper.download_file_name">
+									</md-input-container>
+									<md-input-container class="control" style="width:45%;">
+										<label>Port</label>
+										<input type="number" ng-model="Settings.jasper.port">
+									</md-input-container>
+									<md-input-container class="control" style="width:45%; margin-left:50px;">
+										<label>URL</label>
+										<input type="text" ng-model="Settings.jasper.url">
+									</md-input-container>
+									<md-input-container class="control" style="width:45%;">
+										<label>Version</label>
+										<input type="text" ng-model="Settings.jasper.version">
+									</md-input-container>
+								</md-card-content>
+							</md-card>
 
 							<md-card flex=50 id="plugins" style="max-width:49%">
 								<md-card-title>
