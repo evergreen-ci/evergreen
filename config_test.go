@@ -141,6 +141,7 @@ func (s *AdminSuite) TestBaseConfig() {
 		GithubPRCreatorOrg: "org",
 		JasperConfig: JasperConfig{
 			BinaryName: "binary",
+			DownloadFileName: "download"
 			Port:       12345,
 			URL:        "url",
 			Version:    "version",
@@ -169,6 +170,7 @@ func (s *AdminSuite) TestBaseConfig() {
 	s.Equal(config.ConfigDir, settings.ConfigDir)
 	s.Equal(config.Credentials, settings.Credentials)
 	s.Equal(config.JasperConfig.BinaryName, settings.JasperConfig.BinaryName)
+	s.Equal(config.JasperConfig.DownloadFileName, settings.JasperConfig.DownloadFileName)
 	s.Equal(config.JasperConfig.Port, settings.JasperConfig.Port)
 	s.Equal(config.JasperConfig.URL, settings.JasperConfig.URL)
 	s.Equal(config.JasperConfig.Version, settings.JasperConfig.Version)

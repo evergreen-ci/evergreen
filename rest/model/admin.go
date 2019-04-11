@@ -1417,16 +1417,18 @@ func (c *APITriggerConfig) ToService() (interface{}, error) {
 }
 
 type APIJasperConfig struct {
-	BinaryName APIString `json:"binary_name"`
-	Port       int       `json:"port"`
-	URL        APIString `json:"url"`
-	Version    APIString `json:"version"`
+	BinaryName       APIString `json:"binary_name"`
+	DownloadFileName APIString `json:"download_file_name"`
+	Port             int       `json:"port"`
+	URL              APIString `json:"url"`
+	Version          APIString `json:"version"`
 }
 
 func (c *APIJasperConfig) BuildFromService(h interface{}) error {
 	switch v := h.(type) {
 	case evergreen.JasperConfig:
 		c.BinaryName = ToAPIString(v.BinaryName)
+		c.DownloadFileName = ToAPIString(v.DownloadFileName)
 		c.Port = v.Port
 		c.URL = ToAPIString(v.URL)
 		c.Version = ToAPIString(v.Version)
@@ -1438,9 +1440,10 @@ func (c *APIJasperConfig) BuildFromService(h interface{}) error {
 
 func (c *APIJasperConfig) ToService() (interface{}, error) {
 	return evergreen.JasperConfig{
-		BinaryName: FromAPIString(c.BinaryName),
-		Port:       c.Port,
-		URL:        FromAPIString(c.URL),
-		Version:    FromAPIString(c.Version),
+		BinaryName:       FromAPIString(c.BinaryName),
+		DownloadFileName: FromAPIString(c.DownloadFileName),
+		Port:             c.Port,
+		URL:              FromAPIString(c.URL),
+		Version:          FromAPIString(c.Version),
 	}, nil
 }

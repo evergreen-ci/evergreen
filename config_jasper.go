@@ -8,10 +8,11 @@ import (
 )
 
 type JasperConfig struct {
-	BinaryName string `yaml:"binary_name" bson:"binary_name" json:"binary_name"`
-	Port       int    `yaml:"port" bson:"port" json:"port"`
-	URL        string `yaml:"url" bson:"url" json:"url"`
-	Version    string `yaml:"version" bson:"version" json:"version"`
+	BinaryName       string `yaml:"binary_name" bson:"binary_name" json:"binary_name"`
+	DownloadFileName string `yaml:"download_file_name" bson:"download_file_name" json:"download_file_name"`
+	Port             int    `yaml:"port" bson:"port" json:"port"`
+	URL              string `yaml:"url" bson:"url" json:"url"`
+	Version          string `yaml:"version" bson:"version" json:"version"`
 }
 
 func (c *JasperConfig) SectionId() string { return "jasper" }
@@ -47,10 +48,11 @@ func (c *JasperConfig) Set() error {
 
 	_, err := coll.UpdateOne(ctx, byId(c.SectionId()), bson.M{
 		"$set": bson.M{
-			jasperBinaryNameKey: c.BinaryName,
-			jasperPortKey:       c.Port,
-			jasperURLKey:        c.URL,
-			jasperVersionKey:    c.Version,
+			jasperBinaryNameKey:       c.BinaryName,
+			jasperDownloadFileNameKey: c.DownloadFileName,
+			jasperPortKey:             c.Port,
+			jasperURLKey:              c.URL,
+			jasperVersionKey:          c.Version,
 		},
 	}, options.Update().SetUpsert(true))
 	return errors.Wrapf(err, "error updating section %s", c.SectionId())

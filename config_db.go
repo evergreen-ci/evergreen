@@ -82,10 +82,11 @@ var (
 	ContainerPoolIdKey = bsonutil.MustHaveTag(ContainerPool{}, "Id")
 
 	// JasperConfig keys
-	jasperBinaryNameKey = bsonutil.MustHaveTag(JasperConfig{}, "BinaryName")
-	jasperPortKey       = bsonutil.MustHaveTag(JasperConfig{}, "Port")
-	jasperURLKey        = bsonutil.MustHaveTag(JasperConfig{}, "URL")
-	jasperVersionKey    = bsonutil.MustHaveTag(JasperConfig{}, "Version")
+	jasperBinaryNameKey       = bsonutil.MustHaveTag(JasperConfig{}, "BinaryName")
+	jasperDownloadFileNameKey = bsonutil.MustHaveTag(JasperConfig{}, "DownloadFileName")
+	jasperPortKey             = bsonutil.MustHaveTag(JasperConfig{}, "Port")
+	jasperURLKey              = bsonutil.MustHaveTag(JasperConfig{}, "URL")
+	jasperVersionKey          = bsonutil.MustHaveTag(JasperConfig{}, "Version")
 )
 
 func byId(id string) bson.M {
