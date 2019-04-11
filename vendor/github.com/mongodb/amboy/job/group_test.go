@@ -124,6 +124,6 @@ func (s *JobGroupSuite) TestJobGroupReturnsAlwaysDependency() {
 
 func (s *JobGroupSuite) TestJobGroupSetIsANoOp() {
 	s.Equal(s.job.Dependency().Type().Name, "always")
-	s.job.SetDependency(dependency.NewLocalFileInstance())
+	s.job.SetDependency(dependency.MakeLocalFile())
 	s.Equal(s.job.Dependency().Type().Name, "always")
 }

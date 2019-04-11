@@ -27,7 +27,6 @@ func TestHostConnectorSuite(t *testing.T) {
 	testutil.ConfigureIntegrationTest(t, testConfig, "TestHostConnectorSuite")
 	s := new(HostConnectorSuite)
 	s.ctx = &DBConnector{}
-	db.SetGlobalSessionProvider(testConfig.SessionFactory())
 
 	s.setup = func(s *HostConnectorSuite) {
 		s.NoError(db.ClearCollections(user.Collection, host.Collection))
@@ -118,7 +117,6 @@ func (s *HostConnectorSuite) SetupTest() {
 }
 
 func (s *HostConnectorSuite) TearDownSuite() {
-	db.SetGlobalSessionProvider(testConfig.SessionFactory())
 	session, _, _ := db.GetGlobalSessionFactory().GetSession()
 	if session != nil {
 		err := session.DB(testConfig.Database.DB).DropDatabase()

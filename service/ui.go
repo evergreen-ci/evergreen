@@ -109,6 +109,8 @@ func NewUIServer(settings *evergreen.Settings, queue amboy.Queue, home string, f
 		return nil, errors.Wrap(err, "problem initializing plugins")
 	}
 
+	taskQueueService = model.NewTaskQueueService(taskQueueServiceTTL)
+
 	catcher := grip.NewBasicCatcher()
 	for _, pl := range plugins {
 		// get the settings

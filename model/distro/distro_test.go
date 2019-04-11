@@ -7,7 +7,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
-	"github.com/evergreen-ci/evergreen/testutil"
+	_ "github.com/evergreen-ci/evergreen/testutil"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -55,7 +55,6 @@ func TestGenerateGceName(t *testing.T) {
 
 func TestIsParent(t *testing.T) {
 	assert := assert.New(t)
-	db.SetGlobalSessionProvider(testutil.TestConfig().SessionFactory())
 	assert.NoError(db.Clear(Collection))
 	assert.NoError(db.Clear(evergreen.ConfigCollection))
 
@@ -97,7 +96,6 @@ func TestIsParent(t *testing.T) {
 
 func TestValidateContainerPoolDistros(t *testing.T) {
 	assert := assert.New(t)
-	db.SetGlobalSessionProvider(testutil.TestConfig().SessionFactory())
 	assert.NoError(db.Clear(Collection))
 
 	d1 := &Distro{

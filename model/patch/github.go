@@ -10,7 +10,8 @@ import (
 	"github.com/google/go-github/github"
 	"github.com/mongodb/anser/bsonutil"
 	"github.com/pkg/errors"
-	"gopkg.in/mgo.v2/bson"
+	"go.mongodb.org/mongo-driver/bson"
+	mgobson "gopkg.in/mgo.v2/bson"
 )
 
 const (
@@ -219,7 +220,7 @@ func (g *githubIntent) NewPatch() *Patch {
 	headRepo := strings.Split(g.HeadRepoName, "/")
 	pullURL := fmt.Sprintf("https://github.com/%s/pull/%d", g.BaseRepoName, g.PRNumber)
 	patchDoc := &Patch{
-		Id:          bson.NewObjectId(),
+		Id:          mgobson.NewObjectId(),
 		Alias:       GithubAlias,
 		Description: fmt.Sprintf("'%s' pull request #%d by %s: %s (%s)", g.BaseRepoName, g.PRNumber, g.User, g.Title, pullURL),
 		Author:      evergreen.GithubPatchUser,

@@ -493,7 +493,7 @@ func TestMakeSpecificTaskStatus(t *testing.T) {
 
 	doc.Details.Type = evergreen.CommandTypeSystem
 	doc.Details.TimedOut = true
-	assert.Equal(evergreen.TaskSystemFailed, makeSpecificTaskStatus(doc))
+	assert.Equal(evergreen.TaskSystemTimedOut, makeSpecificTaskStatus(doc))
 
 	doc.Details.Description = "heartbeat"
 	assert.Equal(evergreen.TaskSystemUnresponse, makeSpecificTaskStatus(doc))
@@ -509,21 +509,24 @@ func TestMakeSummaryPrefix(t *testing.T) {
 			Type:     evergreen.CommandTypeTest,
 		},
 	}
-	assert.Equal("Succeeded: ", makeSummaryPrefix(doc, 1))
+	assert.Equal("Succeeded: ", makeSummaryPrefix(doc, 0))
 
 	doc.Status = evergreen.TaskFailed
 	assert.Equal("Failure: ", makeSummaryPrefix(doc, 1))
 	assert.Equal("Failed: ", makeSummaryPrefix(doc, 0))
 
 	doc.Details.TimedOut = true
-	assert.Equal(evergreen.TaskTimedOut, makeSpecificTaskStatus(doc))
-	assert.Equal("Timed Out: ", makeSummaryPrefix(doc, 1))
-
-	doc.Details.TimedOut = false
-	doc.Details.Type = evergreen.CommandTypeSetup
-	assert.Equal("Setup Failure: ", makeSummaryPrefix(doc, 1))
+	assert.Equal("Timed Out: ", makeSummaryPrefix(doc, 0))
 
 	doc.Details.Type = evergreen.CommandTypeSystem
-	assert.Equal("System Failure: ", makeSummaryPrefix(doc, 1))
+	assert.Equal("System Timed Out: ", makeSummaryPrefix(doc, 0))
 
+	doc.Details.Description = "heartbeat"
+	assert.Equal("System Unresponsive: ", makeSummaryPrefix(doc, 0))
+
+	doc.Details.TimedOut = false
+	assert.Equal("System Failure: ", makeSummaryPrefix(doc, 0))
+
+	doc.Details.Type = evergreen.CommandTypeSetup
+	assert.Equal("Setup Failure: ", makeSummaryPrefix(doc, 0))
 }

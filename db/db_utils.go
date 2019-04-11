@@ -4,11 +4,15 @@ import (
 	"fmt"
 	"io"
 
+	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/pail"
+	"github.com/mongodb/anser/db"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
-	"gopkg.in/mgo.v2"
-	"gopkg.in/mgo.v2/bson"
+	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
 var (
@@ -17,6 +21,36 @@ var (
 	NoSkip       = 0
 	NoLimit      = 0
 )
+
+type SessionFactory interface {
+	GetSession() (db.Session, db.Database, error)
+}
+
+type shimFactoryImpl struct {
+	env evergreen.Environment
+	db  string
+}
+
+func GetGlobalSessionFactory() SessionFactory {
+	env := evergreen.GetEnvironment()
+	return &shimFactoryImpl{
+		env: env,
+		db:  env.Settings().Database.DB,
+	}
+}
+
+func (s *shimFactoryImpl) GetSession() (db.Session, db.Database, error) {
+	if s.env == nil {
+		return nil, nil, errors.New("undefined environment")
+	}
+
+	session := s.env.Session()
+	if session == nil {
+		return nil, nil, errors.New("session is not defined")
+	}
+
+	return session, session.DB(s.db), nil
+}
 
 // Insert inserts the specified item into the specified collection.
 func Insert(collection string, item interface{}) error {
@@ -46,13 +80,12 @@ func InsertManyUnordered(c string, items ...interface{}) error {
 	if len(items) == 0 {
 		return nil
 	}
-	session, db, err := GetGlobalSessionFactory().GetSession()
-	if err != nil {
-		return errors.WithStack(err)
-	}
-	defer session.Close()
+	env := evergreen.GetEnvironment()
+	ctx, cancel := env.Context()
+	defer cancel()
+	_, err := env.DB().Collection(c).InsertMany(ctx, items, options.InsertMany().SetOrdered(false))
 
-	return db.C(c).InsertUnordered(items...)
+	return errors.WithStack(err)
 }
 
 // Clear removes all documents from a specified collection.
@@ -75,7 +108,8 @@ func ClearCollections(collections ...string) error {
 	}
 	defer session.Close()
 	for _, collection := range collections {
-		_, err = db.C(collection).RemoveAll(bson.M{})
+		_, err := db.C(collection).RemoveAll(bson.M{})
+
 		if err != nil {
 			return errors.Wrapf(err, "Couldn't clear collection '%v'", collection)
 		}
@@ -84,23 +118,22 @@ func ClearCollections(collections ...string) error {
 }
 
 // EnsureIndex takes in a collection and ensures that the
-func EnsureIndex(collection string, index mgo.Index) error {
-	session, db, err := GetGlobalSessionFactory().GetSession()
-	if err != nil {
-		return errors.WithStack(err)
-	}
-	defer session.Close()
-	return db.C(collection).EnsureIndex(index)
+func EnsureIndex(collection string, index mongo.IndexModel) error {
+	env := evergreen.GetEnvironment()
+	ctx, cancel := env.Context()
+	defer cancel()
+	_, err := env.DB().Collection(collection).Indexes().CreateOne(ctx, index)
+
+	return errors.WithStack(err)
 }
 
 // DropIndex takes in a collection and a slice of keys and drops those indexes
-func DropIndex(collection string, key ...string) error {
-	session, db, err := GetGlobalSessionFactory().GetSession()
-	if err != nil {
-		return err
-	}
-	defer session.Close()
-	return db.C(collection).DropIndex(key...)
+func DropAllIndexes(collection string) error {
+	env := evergreen.GetEnvironment()
+	ctx, cancel := env.Context()
+	defer cancel()
+	_, err := env.DB().Collection(collection).Indexes().DropAll(ctx)
+	return errors.WithStack(err)
 }
 
 // Remove removes one item matching the query from the specified collection.
@@ -154,22 +187,24 @@ func FindAll(collection string, query interface{},
 	session, db, err := GetGlobalSessionFactory().GetSession()
 	if err != nil {
 		grip.Errorf("error establishing db connection: %+v", err)
-
-		return err
+		return errors.WithStack(err)
 	}
 	defer session.Close()
 
-	q := db.C(collection).Find(query).Select(projection)
+	q := db.C(collection).Find(query)
+	if projection != nil {
+		q = q.Select(projection)
+	}
+
 	if len(sort) != 0 {
 		q = q.Sort(sort...)
 	}
-	return q.Skip(skip).Limit(limit).All(out)
+
+	return errors.WithStack(q.Skip(skip).Limit(limit).All(out))
 }
 
 // Update updates one matching document in the collection.
-func Update(collection string, query interface{},
-	update interface{}) error {
-
+func Update(collection string, query interface{}, update interface{}) error {
 	session, db, err := GetGlobalSessionFactory().GetSession()
 	if err != nil {
 		grip.Errorf("error establishing db connection: %+v", err)
@@ -196,7 +231,7 @@ func UpdateId(collection string, id, update interface{}) error {
 }
 
 // UpdateAll updates all matching documents in the collection.
-func UpdateAll(collection string, query interface{}, update interface{}) (*mgo.ChangeInfo, error) {
+func UpdateAll(collection string, query interface{}, update interface{}) (*db.ChangeInfo, error) {
 	switch query.(type) {
 	case *Q, Q:
 		grip.EmergencyPanic(message.Fields{
@@ -225,8 +260,7 @@ func UpdateAll(collection string, query interface{}, update interface{}) (*mgo.C
 }
 
 // Upsert run the specified update against the collection as an upsert operation.
-func Upsert(collection string, query interface{},
-	update interface{}) (*mgo.ChangeInfo, error) {
+func Upsert(collection string, query interface{}, update interface{}) (*db.ChangeInfo, error) {
 
 	session, db, err := GetGlobalSessionFactory().GetSession()
 	if err != nil {
@@ -241,7 +275,6 @@ func Upsert(collection string, query interface{},
 
 // Count run a count command with the specified query against the collection.
 func Count(collection string, query interface{}) (int, error) {
-
 	session, db, err := GetGlobalSessionFactory().GetSession()
 	if err != nil {
 		grip.Errorf("error establishing db connection: %+v", err)
@@ -255,9 +288,7 @@ func Count(collection string, query interface{}) (int, error) {
 
 // FindAndModify runs the specified query and change against the collection,
 // unmarshaling the result into the specified interface.
-func FindAndModify(collection string, query interface{}, sort []string,
-	change mgo.Change, out interface{}) (*mgo.ChangeInfo, error) {
-
+func FindAndModify(collection string, query interface{}, sort []string, change db.Change, out interface{}) (*db.ChangeInfo, error) {
 	session, db, err := GetGlobalSessionFactory().GetSession()
 	if err != nil {
 		grip.Errorf("error establishing db connection: %+v", err)
@@ -271,45 +302,35 @@ func FindAndModify(collection string, query interface{}, sort []string,
 // WriteGridFile writes the data in the source Reader to a GridFS collection with
 // the given prefix and filename.
 func WriteGridFile(fsPrefix, name string, source io.Reader) error {
-	session, db, err := GetGlobalSessionFactory().GetSession()
+	env := evergreen.GetEnvironment()
+	ctx, cancel := env.Context()
+	defer cancel()
+	bucket, err := pail.NewGridFSBucketWithClient(ctx, env.Client(), pail.GridFSOptions{
+		Database: env.DB().Name(),
+		Prefix:   fsPrefix,
+	})
+
 	if err != nil {
-		return err
+		return errors.Wrap(err, "problem constructing bucket access")
 	}
-	defer session.Close()
-
-	file, err := db.GridFS(fsPrefix).Create(name)
-	if err != nil {
-		return err
-	}
-	defer file.Close()
-	_, err = io.Copy(file, source)
-	return err
-}
-
-type sessionBackedGridFile struct {
-	*mgo.GridFile
-	session *mgo.Session
-}
-
-func (sbgf *sessionBackedGridFile) Close() error {
-	err := sbgf.GridFile.Close()
-	sbgf.session.Close()
-	return err
+	return errors.Wrap(bucket.Put(ctx, name, source), "problem writing file")
 }
 
 // GetGridFile returns a ReadCloser for a file stored with the given name under the GridFS prefix.
 func GetGridFile(fsPrefix, name string) (io.ReadCloser, error) {
-	session, db, err := GetGlobalSessionFactory().GetSession()
+	env := evergreen.GetEnvironment()
+	ctx, cancel := env.Context()
+	defer cancel()
+	bucket, err := pail.NewGridFSBucketWithClient(ctx, env.Client(), pail.GridFSOptions{
+		Database: env.DB().Name(),
+		Prefix:   fsPrefix,
+	})
+
 	if err != nil {
-		err = errors.Wrap(err, "error establishing db connection")
-		grip.Error(err)
-		return nil, err
+		return nil, errors.Wrap(err, "problem constructing bucket access")
 	}
-	file, err := db.GridFS(fsPrefix).Open(name)
-	if err != nil {
-		return nil, errors.WithStack(err)
-	}
-	return &sessionBackedGridFile{file, session}, nil
+
+	return bucket.Get(ctx, name)
 }
 
 func ClearGridCollections(fsPrefix string) error {
@@ -328,7 +349,11 @@ func Aggregate(collection string, pipeline interface{}, out interface{}) error {
 	}
 	defer session.Close()
 
-	session.SetSocketTimeout(0)
-	pipe := db.C(collection).Pipe(pipeline).AllowDiskUse()
+	// NOTE: with the legacy driver, this function unset the
+	// socket timeout, which isn't really an option here. (other
+	// operations had a 90s timeout, which is no longer specified)
+
+	pipe := db.C(collection).Pipe(pipeline)
+
 	return errors.WithStack(pipe.All(out))
 }

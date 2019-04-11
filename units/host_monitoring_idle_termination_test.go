@@ -16,7 +16,7 @@ import (
 )
 
 func flagIdleHosts(ctx context.Context, env evergreen.Environment) ([]string, error) {
-	queue := queue.NewAdaptiveOrderedLocalQueue(3)
+	queue := queue.NewAdaptiveOrderedLocalQueue(3, 1024)
 	if err := queue.Start(ctx); err != nil {
 		return nil, err
 	}
@@ -48,9 +48,6 @@ func flagIdleHosts(ctx context.Context, env evergreen.Environment) ([]string, er
 func TestFlaggingIdleHosts(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-
-	testConfig := testutil.TestConfig()
-	db.SetGlobalSessionProvider(testConfig.SessionFactory())
 
 	env := evergreen.GetEnvironment()
 

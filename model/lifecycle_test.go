@@ -11,14 +11,8 @@ import (
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/evergreen/util"
 	. "github.com/smartystreets/goconvey/convey"
-	"github.com/smartystreets/goconvey/convey/reporting"
 	"github.com/stretchr/testify/assert"
 )
-
-func init() {
-	db.SetGlobalSessionProvider(testutil.TestConfig().SessionFactory())
-	reporting.QuietMode()
-}
 
 func taskIdInSlice(tasks []task.Task, id string) bool {
 	for _, task := range tasks {
@@ -996,7 +990,8 @@ buildvariants:
 			So(len(b.Tasks), ShouldEqual, 2)
 			So(b.CreateTime.Truncate(time.Second), ShouldResemble,
 				v.CreateTime.Truncate(time.Second))
-			So(b.Activated, ShouldEqual, v.BuildVariants[2].Activated)
+			So(b.Activated, ShouldBeFalse)
+			So(b.ActivatedTime.Equal(util.ZeroTime), ShouldBeTrue)
 			So(b.Project, ShouldEqual, project.Identifier)
 			So(b.Revision, ShouldEqual, v.Revision)
 			So(b.Status, ShouldEqual, evergreen.BuildCreated)
@@ -1040,6 +1035,7 @@ buildvariants:
 				b.CreateTime.Truncate(time.Second))
 			So(tasks[0].Status, ShouldEqual, evergreen.TaskUndispatched)
 			So(tasks[0].Activated, ShouldEqual, b.Activated)
+			So(tasks[0].ActivatedTime.Equal(b.ActivatedTime), ShouldBeTrue)
 			So(tasks[0].RevisionOrderNumber, ShouldEqual, b.RevisionOrderNumber)
 			So(tasks[0].Requester, ShouldEqual, b.Requester)
 			So(tasks[0].Version, ShouldEqual, v.Id)
@@ -1056,6 +1052,7 @@ buildvariants:
 				b.CreateTime.Truncate(time.Second))
 			So(tasks[1].Status, ShouldEqual, evergreen.TaskUndispatched)
 			So(tasks[1].Activated, ShouldEqual, b.Activated)
+			So(tasks[1].ActivatedTime.Equal(b.ActivatedTime), ShouldBeTrue)
 			So(tasks[1].RevisionOrderNumber, ShouldEqual, b.RevisionOrderNumber)
 			So(tasks[1].Requester, ShouldEqual, b.Requester)
 			So(tasks[1].Version, ShouldEqual, v.Id)
@@ -1072,6 +1069,7 @@ buildvariants:
 				b.CreateTime.Truncate(time.Second))
 			So(tasks[2].Status, ShouldEqual, evergreen.TaskUndispatched)
 			So(tasks[2].Activated, ShouldEqual, b.Activated)
+			So(tasks[2].ActivatedTime.Equal(b.ActivatedTime), ShouldBeTrue)
 			So(tasks[2].RevisionOrderNumber, ShouldEqual, b.RevisionOrderNumber)
 			So(tasks[2].Requester, ShouldEqual, b.Requester)
 			So(tasks[2].Version, ShouldEqual, v.Id)
@@ -1088,6 +1086,7 @@ buildvariants:
 				b.CreateTime.Truncate(time.Second))
 			So(tasks[3].Status, ShouldEqual, evergreen.TaskUndispatched)
 			So(tasks[3].Activated, ShouldEqual, b.Activated)
+			So(tasks[3].ActivatedTime.Equal(b.ActivatedTime), ShouldBeTrue)
 			So(tasks[3].RevisionOrderNumber, ShouldEqual, b.RevisionOrderNumber)
 			So(tasks[3].Requester, ShouldEqual, b.Requester)
 			So(tasks[3].Version, ShouldEqual, v.Id)
@@ -1114,6 +1113,7 @@ buildvariants:
 				b, err := build.FindOne(build.ById(buildId))
 				So(err, ShouldBeNil)
 				So(b.Activated, ShouldBeTrue)
+				So(b.ActivatedTime.Equal(util.ZeroTime), ShouldBeFalse)
 
 				// find the tasks, make sure they were all created
 				tasks, err := task.Find(task.All.Sort([]string{task.DisplayNameKey}))
@@ -1130,6 +1130,7 @@ buildvariants:
 					b.CreateTime.Truncate(time.Second))
 				So(tasks[0].Status, ShouldEqual, evergreen.TaskUndispatched)
 				So(tasks[0].Activated, ShouldEqual, b.Activated)
+				So(tasks[0].ActivatedTime.Equal(b.ActivatedTime), ShouldBeTrue)
 				So(tasks[0].RevisionOrderNumber, ShouldEqual, b.RevisionOrderNumber)
 				So(tasks[0].Requester, ShouldEqual, b.Requester)
 				So(tasks[0].Version, ShouldEqual, v.Id)
@@ -1146,6 +1147,7 @@ buildvariants:
 					b.CreateTime.Truncate(time.Second))
 				So(tasks[1].Status, ShouldEqual, evergreen.TaskUndispatched)
 				So(tasks[1].Activated, ShouldEqual, b.Activated)
+				So(tasks[1].ActivatedTime.Equal(b.ActivatedTime), ShouldBeTrue)
 				So(tasks[1].RevisionOrderNumber, ShouldEqual, b.RevisionOrderNumber)
 				So(tasks[1].Requester, ShouldEqual, b.Requester)
 				So(tasks[1].Version, ShouldEqual, v.Id)
@@ -1162,6 +1164,7 @@ buildvariants:
 					b.CreateTime.Truncate(time.Second))
 				So(tasks[2].Status, ShouldEqual, evergreen.TaskUndispatched)
 				So(tasks[2].Activated, ShouldEqual, b.Activated)
+				So(tasks[2].ActivatedTime.Equal(b.ActivatedTime), ShouldBeTrue)
 				So(tasks[2].RevisionOrderNumber, ShouldEqual, b.RevisionOrderNumber)
 				So(tasks[2].Requester, ShouldEqual, b.Requester)
 				So(tasks[2].Version, ShouldEqual, v.Id)
@@ -1178,6 +1181,7 @@ buildvariants:
 					b.CreateTime.Truncate(time.Second))
 				So(tasks[3].Status, ShouldEqual, evergreen.TaskUndispatched)
 				So(tasks[3].Activated, ShouldEqual, b.Activated)
+				So(tasks[3].ActivatedTime.Equal(b.ActivatedTime), ShouldBeTrue)
 				So(tasks[3].RevisionOrderNumber, ShouldEqual, b.RevisionOrderNumber)
 				So(tasks[3].Requester, ShouldEqual, b.Requester)
 				So(tasks[3].Version, ShouldEqual, v.Id)

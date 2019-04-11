@@ -77,10 +77,6 @@ func runSmokeMultipleQueuesRunJobsOnce(ctx context.Context, drivers []Driver, cl
 		amboy.WaitCtxInterval(ctx, q, 100*time.Millisecond)
 	}
 
-	for idx, q := range queues {
-		grip.Alertln(idx, q.Stats())
-	}
-
 	assert.Equal(len(drivers)*inside*outside, mockJobCounters.Count())
 	cleanup()
 }
@@ -233,7 +229,6 @@ func TestSQSFifoQueueRunsJobsOnlyOnce(t *testing.T) {
 
 	amboy.WaitCtxInterval(ctx, q, 20*time.Second)
 	stats := q.Stats()
-	grip.Alertln(stats)
 	assert.True(stats.Total <= inside*outside)
 	assert.Equal(stats.Total, stats.Pending+stats.Completed)
 }
@@ -285,8 +280,6 @@ func TestMultipleSQSFifoQueueRunsJobsOnlyOnce(t *testing.T) {
 
 	stats1 := q.Stats()
 	stats2 := q2.Stats()
-	grip.Alertln("one", stats1)
-	grip.Alertln("two", stats2)
 	assert.Equal(stats1.Pending, stats2.Pending)
 
 	sum := stats1.Pending + stats2.Pending + stats1.Completed + stats2.Completed

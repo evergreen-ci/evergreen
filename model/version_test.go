@@ -12,10 +12,6 @@ import (
 	. "github.com/smartystreets/goconvey/convey"
 )
 
-func init() {
-	db.SetGlobalSessionProvider(testutil.TestConfig().SessionFactory())
-}
-
 func TestLastKnownGoodConfig(t *testing.T) {
 	Convey("When calling LastKnownGoodConfig..", t, func() {
 		identifier := "identifier"

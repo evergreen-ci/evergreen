@@ -34,17 +34,18 @@ type GithubWebhookRouteSuite struct {
 	commentBody []byte
 	h           *githubHookApi
 	queue       amboy.Queue
+	env         evergreen.Environment
 	suite.Suite
 }
 
 func (s *GithubWebhookRouteSuite) SetupSuite() {
 	ctx, cancel := context.WithCancel(context.Background())
 	s.canceler = cancel
-	err := evergreen.GetEnvironment().Configure(ctx, filepath.Join(evergreen.FindEvergreenHome(), testutil.TestDir, testutil.TestSettings), nil)
-	s.NoError(err)
-	s.NotNil(evergreen.GetEnvironment().Settings())
-	s.NotNil(evergreen.GetEnvironment().Settings().Api)
-	s.NotEmpty(evergreen.GetEnvironment().Settings().Api.GithubWebhookSecret)
+
+	s.env = testutil.NewEnvironment(ctx, s.T())
+	s.NotNil(s.env.Settings())
+	s.NotNil(s.env.Settings().Api)
+	s.NotEmpty(s.env.Settings().Api.GithubWebhookSecret)
 
 	s.conf = testutil.TestConfig()
 	s.NotNil(s.conf)
@@ -52,7 +53,6 @@ func (s *GithubWebhookRouteSuite) SetupSuite() {
 
 func (s *GithubWebhookRouteSuite) TearDownSuite() {
 	s.canceler()
-	evergreen.ResetEnvironment()
 }
 
 func (s *GithubWebhookRouteSuite) SetupTest() {

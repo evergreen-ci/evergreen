@@ -92,12 +92,26 @@ func ValidateHost(hostId string, r *http.Request) (*host.Host, int, error) {
 
 func badHostTaskRelationship(h *host.Host, t *task.Task) bool {
 	if t == nil {
+		grip.Error(message.WrapError(h.ClearRunningTeardownGroup(), message.Fields{
+			"message": "error clearing running_teardown_group",
+			"host":    h.Id,
+		}))
 		return false
 	}
 	if t.Id == h.RunningTask {
+		grip.Error(message.WrapError(h.ClearRunningTeardownGroup(), message.Fields{
+			"message": "error clearing running_teardown_group",
+			"host":    h.Id,
+			"task":    t.Id,
+		}))
 		return false
 	}
 	if t.Id == h.LastTask {
+		grip.Error(message.WrapError(h.SetRunningTeardownGroup(t.Id), message.Fields{
+			"message": "error setting running_teardown_group",
+			"host":    h.Id,
+			"task":    t.Id,
+		}))
 		if h.RunningTask == "" {
 			return false
 		}

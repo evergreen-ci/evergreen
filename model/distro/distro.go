@@ -25,6 +25,7 @@ type Distro struct {
 	Setup            string                  `bson:"setup,omitempty" json:"setup,omitempty" mapstructure:"setup,omitempty"`
 	Teardown         string                  `bson:"teardown,omitempty" json:"teardown,omitempty" mapstructure:"teardown,omitempty"`
 	User             string                  `bson:"user,omitempty" json:"user,omitempty" mapstructure:"user,omitempty"`
+	BootstrapMethod  string                  `bson:"bootstrap_method,omitempty" json:"bootstrap_method,omitempty" mapstructure:"bootstrap_method,omitempty"`
 	SSHKey           string                  `bson:"ssh_key,omitempty" json:"ssh_key,omitempty" mapstructure:"ssh_key,omitempty"`
 	SSHOptions       []string                `bson:"ssh_options,omitempty" json:"ssh_options,omitempty" mapstructure:"ssh_options,omitempty"`
 	SpawnAllowed     bool                    `bson:"spawn_allowed" json:"spawn_allowed,omitempty" mapstructure:"spawn_allowed,omitempty"`
@@ -48,8 +49,6 @@ type PlannerSettings struct {
 
 type DistroGroup []Distro
 
-type ValidateFormat string
-
 type Expansion struct {
 	Key   string `bson:"key,omitempty" json:"key,omitempty"`
 	Value string `bson:"value,omitempty" json:"value,omitempty"`
@@ -58,6 +57,12 @@ type Expansion struct {
 const (
 	DockerImageBuildTypeImport = "import"
 	DockerImageBuildTypePull   = "pull"
+
+	// Bootstrapping mechanisms
+	BootstrapMethodLegacySSH          = "legacy-ssh"
+	BootstrapMethodSSH                = "ssh"
+	BootstrapMethodPreconfiguredImage = "preconfigured-image"
+	BootstrapMethodUserData           = "user-data"
 )
 
 // Seed the random number generator for creating distro names
@@ -97,6 +102,11 @@ func (d *Distro) IsWindows() bool {
 	// XXX: if this is-windows check is updated, make sure to also update
 	// public/static/js/spawned_hosts.js as well
 	return strings.Contains(d.Arch, "windows")
+}
+
+func (d *Distro) Platform() (string, string) {
+	osAndArch := strings.Split(d.Arch, "_")
+	return osAndArch[0], osAndArch[1]
 }
 
 func (d *Distro) IsEphemeral() bool {
@@ -182,6 +192,17 @@ func ValidateContainerPoolDistros(s *evergreen.Settings) error {
 		}
 	}
 	return errors.WithStack(catcher.Resolve())
+}
+
+// ValidateBootstrapMethod ensure that the bootstrap mechanism is one of the
+// supported methods.
+func ValidateBootstrapMethod(method string) error {
+	switch method {
+	case BootstrapMethodLegacySSH, BootstrapMethodSSH, BootstrapMethodPreconfiguredImage, BootstrapMethodUserData:
+		return nil
+	default:
+		return fmt.Errorf("'%s' is not a valid bootstrap method", method)
+	}
 }
 
 // GetDistroIds returns a slice of distro IDs for the given group of distros

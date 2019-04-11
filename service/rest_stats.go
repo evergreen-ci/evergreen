@@ -39,7 +39,7 @@ type restMakespanStats struct {
 // getMakespanRatios returns a list of MakespanRatio structs that contain
 // the actual and predicted makespans for a certain number of recent builds.
 func getMakespanRatios(numberBuilds int) ([]restMakespanStats, error) {
-	builds, err := build.Find(build.ByRecentlyFinished(numberBuilds))
+	builds, err := build.Find(build.ByRecentlyFinishedWithMakespans(numberBuilds))
 	if err != nil {
 		return nil, err
 	}

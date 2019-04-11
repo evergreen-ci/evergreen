@@ -34,8 +34,9 @@ func startWebService() cli.Command {
 			db := parseDB(c)
 			ctx, cancel := context.WithCancel(context.Background())
 
-			env := evergreen.GetEnvironment()
-			grip.EmergencyFatal(errors.Wrap(env.Configure(ctx, confPath, db), "problem configuring application environment"))
+			env, err := evergreen.NewEnvironment(ctx, confPath, db)
+			grip.EmergencyFatal(errors.Wrap(err, "problem configuring application environment"))
+			evergreen.SetEnvironment(env)
 			if c.Bool(overwriteConfFlagName) {
 				grip.EmergencyFatal(errors.Wrap(env.SaveConfig(), "problem saving config"))
 			}
@@ -196,30 +197,38 @@ func getAdminService(ctx context.Context, env evergreen.Environment, settings *e
 	opts.DB = settings.Amboy.DB
 	opts.Priority = true
 
-	remoteReporter, err := reporting.MakeDBQueueState(settings.Amboy.Name, opts, env.Session())
-	if err != nil {
-		return nil, errors.Wrap(err, "problem building queue reporter")
-	}
+	app := gimlet.NewApp()
+	app.AddMiddleware(gimlet.MakeRecoveryLogger())
+	apps := []*gimlet.APIApp{app}
 
 	localAbort := rest.NewManagementService(localPool).App()
 	localAbort.SetPrefix("/amboy/local/pool")
+
 	remoteAbort := rest.NewManagementService(remotePool).App()
 	remoteAbort.SetPrefix("/amboy/remote/pool")
 
 	localReporting := rest.NewReportingService(reporting.NewQueueReporter(env.LocalQueue())).App()
 	localReporting.SetPrefix("/amboy/local/reporting")
-	remoteReporting := rest.NewReportingService(remoteReporter).App()
-	remoteReporting.SetPrefix("/amboy/remote/reporting")
 
-	app := gimlet.NewApp()
-	app.AddMiddleware(gimlet.MakeRecoveryLogger())
+	apps = append(apps, localAbort, remoteAbort, localReporting)
+	if evergreen.EnableAmboyRemoteReporting {
+		remoteReporter, err := reporting.MakeDBQueueState(ctx, settings.Amboy.Name, opts, env.Client())
+		if err != nil {
+			return nil, errors.Wrap(err, "problem building queue reporter")
+		}
+
+		remoteReporting := rest.NewReportingService(remoteReporter).App()
+		remoteReporting.SetPrefix("/amboy/remote/reporting")
+		apps = append(apps, remoteReporting)
+	}
 
 	jpm := jasper.NewManagerService(env.JasperManager())
 	jpmapp := jpm.App(ctx)
 	jpmapp.SetPrefix("jasper")
 	jpm.SetDisableCachePruning(true)
+	apps = append(apps, jpmapp, gimlet.GetPProfApp())
 
-	handler, err := gimlet.MergeApplications(app, localAbort, remoteAbort, localReporting, remoteReporting, jpmapp, gimlet.GetPProfApp())
+	handler, err := gimlet.MergeApplications(apps...)
 	if err != nil {
 		return nil, errors.Wrap(err, "problem assembling handler")
 	}

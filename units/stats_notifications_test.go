@@ -8,11 +8,10 @@ import (
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/notification"
-	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/mongodb/grip/logging"
 	"github.com/mongodb/grip/send"
 	"github.com/stretchr/testify/suite"
-	"gopkg.in/mgo.v2/bson"
+	mgobson "gopkg.in/mgo.v2/bson"
 )
 
 type notificationsStatsCollectorSuite struct {
@@ -24,27 +23,23 @@ func TestNotificationsStatsCollectorJob(t *testing.T) {
 	suite.Run(t, &notificationsStatsCollectorSuite{})
 }
 
-func (s *notificationsStatsCollectorSuite) SetupSuite() {
-	db.SetGlobalSessionProvider(testutil.TestConfig().SessionFactory())
-}
-
 func (s *notificationsStatsCollectorSuite) SetupTest() {
 	s.NoError(db.ClearCollections(event.AllLogCollection, notification.Collection))
 	s.expectedTime = time.Time{}.Add(time.Second)
 
 	events := []event.EventLogEntry{
 		{
-			ID:           bson.NewObjectId().Hex(),
+			ID:           mgobson.NewObjectId().Hex(),
 			ResourceType: event.ResourceTypeHost,
 			Data:         event.HostEventData{},
 		},
 		{
-			ID:           bson.NewObjectId().Hex(),
+			ID:           mgobson.NewObjectId().Hex(),
 			ResourceType: event.ResourceTypeHost,
 			Data:         event.HostEventData{},
 		},
 		{
-			ID:           bson.NewObjectId().Hex(),
+			ID:           mgobson.NewObjectId().Hex(),
 			ResourceType: event.ResourceTypeHost,
 			Data:         event.HostEventData{},
 			ProcessedAt:  s.expectedTime,

@@ -16,17 +16,16 @@ import (
 // ManifestFetchCmd integration tests
 
 func TestManifestLoad(t *testing.T) {
-	db.SetGlobalSessionProvider(testutil.TestConfig().SessionFactory())
 	testutil.HandleTestingErr(
 		db.ClearCollections(manifest.Collection), t,
 		"error clearing test collections")
 
-	testConfig := testutil.TestConfig()
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	comm := client.NewMock("http://localhost.com")
+	env := testutil.NewEnvironment(ctx, t)
+	testConfig := env.Settings()
 
-	db.SetGlobalSessionProvider(testConfig.SessionFactory())
 	testutil.ConfigureIntegrationTest(t, testConfig, "TestManifestFetch")
 
 	// Skiping: this test runs the manifest command and then

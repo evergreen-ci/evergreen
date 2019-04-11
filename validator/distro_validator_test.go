@@ -13,15 +13,12 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-var conf = testutil.TestConfig()
-
-func init() {
-	db.SetGlobalSessionProvider(conf.SessionFactory())
-}
-
 func TestCheckDistro(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
+
+	env := evergreen.GetEnvironment()
+	conf := env.Settings()
 
 	Convey("When validating a distro", t, func() {
 
@@ -38,6 +35,7 @@ func TestCheckDistro(t *testing.T) {
 				PlannerSettings: distro.PlannerSettings{
 					Version: evergreen.PlannerVersionTunable,
 				},
+				BootstrapMethod: distro.BootstrapMethodLegacySSH,
 			}
 			verrs, err := CheckDistro(ctx, d, conf, true)
 			So(err, ShouldBeNil)
@@ -54,6 +52,7 @@ func TestCheckDistro(t *testing.T) {
 					"security_group_ids": []string{"a"},
 					"mount_points":       nil,
 				},
+				BootstrapMethod: distro.BootstrapMethodLegacySSH,
 			}
 			// simulate duplicate id
 			dupe := distro.Distro{Id: "a"}
@@ -76,6 +75,7 @@ func TestCheckDistro(t *testing.T) {
 				PlannerSettings: distro.PlannerSettings{
 					Version: evergreen.PlannerVersionTunable,
 				},
+				BootstrapMethod: distro.BootstrapMethodLegacySSH,
 			}
 			verrs, err := CheckDistro(ctx, d, conf, false)
 			So(err, ShouldBeNil)
@@ -92,6 +92,7 @@ func TestCheckDistro(t *testing.T) {
 					"security_group_ids": []string{"a"},
 					"mount_points":       nil,
 				},
+				BootstrapMethod: distro.BootstrapMethodLegacySSH,
 			}
 			verrs, err := CheckDistro(ctx, d, conf, false)
 			So(err, ShouldBeNil)
@@ -124,6 +125,9 @@ func TestEnsureUniqueId(t *testing.T) {
 func TestEnsureHasRequiredFields(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
+
+	env := testutil.NewEnvironment(ctx, t)
+	conf := env.Settings()
 
 	i := -1
 	Convey("When validating a distro...", t, func() {
@@ -214,6 +218,9 @@ func TestEnsureValidExpansions(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
+	env := evergreen.GetEnvironment()
+	conf := env.Settings()
+
 	Convey("When validating a distro's expansions...", t, func() {
 		Convey("if any key is blank, an error should be returned", func() {
 			d := &distro.Distro{
@@ -236,6 +243,9 @@ func TestEnsureValidExpansions(t *testing.T) {
 func TestEnsureValidSSHOptions(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
+
+	env := evergreen.GetEnvironment()
+	conf := env.Settings()
 
 	Convey("When validating a distro's SSH options...", t, func() {
 		Convey("if any option is blank, an error should be returned", func() {
@@ -262,6 +272,9 @@ func TestEnsureNonZeroID(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
+	env := evergreen.GetEnvironment()
+	conf := env.Settings()
+
 	assert.NotNil(ensureHasNonZeroID(ctx, nil, conf))
 	assert.NotNil(ensureHasNonZeroID(ctx, &distro.Distro{}, conf))
 	assert.NotNil(ensureHasNonZeroID(ctx, &distro.Distro{Id: ""}, conf))
@@ -276,6 +289,9 @@ func TestEnsureNoUnauthorizedCharacters(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
+	env := evergreen.GetEnvironment()
+	conf := env.Settings()
+
 	assert.NotNil(ensureHasNoUnauthorizedCharacters(ctx, &distro.Distro{Id: "|distro"}, conf))
 	assert.NotNil(ensureHasNoUnauthorizedCharacters(ctx, &distro.Distro{Id: "distro|"}, conf))
 	assert.NotNil(ensureHasNoUnauthorizedCharacters(ctx, &distro.Distro{Id: "dist|ro"}, conf))
@@ -288,7 +304,6 @@ func TestEnsureValidContainerPool(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	db.SetGlobalSessionProvider(testutil.TestConfig().SessionFactory())
 	assert.NoError(db.Clear(distro.Collection))
 
 	conf := &evergreen.Settings{
@@ -337,4 +352,18 @@ func TestEnsureValidContainerPool(t *testing.T) {
 		"distro container pool does not exist"}})
 	err = ensureValidContainerPool(ctx, d4, conf)
 	assert.Nil(err)
+}
+
+func TestEnsureValidBootstrapMethod(t *testing.T) {
+	ctx := context.Background()
+	for _, bootstrapMethod := range []string{
+		distro.BootstrapMethodLegacySSH,
+		distro.BootstrapMethodSSH,
+		distro.BootstrapMethodPreconfiguredImage,
+		distro.BootstrapMethodUserData,
+	} {
+		assert.Nil(t, ensureValidBootstrapMethod(ctx, &distro.Distro{BootstrapMethod: bootstrapMethod}, &evergreen.Settings{}))
+	}
+	assert.NotNil(t, ensureValidBootstrapMethod(ctx, &distro.Distro{BootstrapMethod: "foobar"}, &evergreen.Settings{}))
+	assert.NotNil(t, ensureValidBootstrapMethod(ctx, &distro.Distro{BootstrapMethod: ""}, &evergreen.Settings{}))
 }

@@ -1,3 +1,13 @@
+loggers:
+  task:
+    - type: logkeeper
+    - type: evergreen
+  agent:
+    - type: logkeeper
+    - type: evergreen
+  system:
+    - type: logkeeper
+    - type: evergreen
 #######################################
 #         YAML Templates              #
 #######################################

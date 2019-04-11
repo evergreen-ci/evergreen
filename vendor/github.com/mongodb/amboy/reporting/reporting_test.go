@@ -10,6 +10,8 @@ import (
 	uuid "github.com/satori/go.uuid"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
+	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/options"
 	mgo "gopkg.in/mgo.v2"
 )
 
@@ -25,7 +27,7 @@ type ReportingSuite struct {
 	suite.Suite
 }
 
-func TestReportingSuiteBackedByMongoDB(t *testing.T) {
+func TestReportingSuiteBackedByLegacyMongoDB(t *testing.T) {
 	s := new(ReportingSuite)
 	dbName := "amboy_test"
 	opts := queue.DefaultMongoDBOptions()
@@ -34,20 +36,53 @@ func TestReportingSuiteBackedByMongoDB(t *testing.T) {
 	s.factory = func() Reporter {
 		name := uuid.NewV4().String()
 		opts.DB = dbName
-		reporter, err := MakeDBQueueState(name, opts, session)
+		reporter, err := MakeLegacyDBQueueState(name, opts, session)
 		s.Require().NoError(err)
 		return reporter
 	}
 
 	s.setup = func() {
 		remote := queue.NewRemoteUnordered(2)
-		driver := queue.NewMongoDBDriver(dbName, opts)
+		driver := queue.NewMgoDriver(dbName, opts)
 		s.NoError(remote.SetDriver(driver))
 		s.queue = remote
 	}
 
 	s.cleanup = func() error {
 		session.Close()
+		s.queue.Runner().Close()
+		return nil
+	}
+
+	suite.Run(t, s)
+}
+
+func TestReportingSuiteBackedByMongoDB(t *testing.T) {
+	s := new(ReportingSuite)
+	dbName := "amboy_test"
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	opts := queue.DefaultMongoDBOptions()
+	client, err := mongo.Connect(ctx, options.Client().ApplyURI(opts.URI))
+	require.NoError(t, err)
+	s.factory = func() Reporter {
+		name := uuid.NewV4().String()
+		opts.DB = dbName
+		reporter, err := MakeDBQueueState(ctx, name, opts, client)
+		require.NoError(t, err)
+		return reporter
+	}
+
+	s.setup = func() {
+		remote := queue.NewRemoteUnordered(2)
+		driver, err := queue.OpenNewMongoDriver(ctx, dbName, opts, client)
+		require.NoError(t, err)
+		require.NoError(t, remote.SetDriver(driver))
+		s.queue = remote
+	}
+
+	s.cleanup = func() error {
+		require.NoError(t, client.Disconnect(ctx))
 		s.queue.Runner().Close()
 		return nil
 	}

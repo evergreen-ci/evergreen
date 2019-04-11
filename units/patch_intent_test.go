@@ -22,7 +22,8 @@ import (
 	"github.com/mongodb/amboy/registry"
 	"github.com/mongodb/grip/send"
 	"github.com/stretchr/testify/suite"
-	"gopkg.in/mgo.v2/bson"
+	"go.mongodb.org/mongo-driver/bson"
+	mgobson "gopkg.in/mgo.v2/bson"
 )
 
 type PatchIntentUnitsSuite struct {
@@ -47,11 +48,6 @@ type PatchIntentUnitsSuite struct {
 
 func TestPatchIntentUnitsSuite(t *testing.T) {
 	suite.Run(t, new(PatchIntentUnitsSuite))
-}
-
-func (s *PatchIntentUnitsSuite) SetupSuite() {
-	testConfig := testutil.TestConfig()
-	db.SetGlobalSessionProvider(testConfig.SessionFactory())
 }
 
 func (s *PatchIntentUnitsSuite) SetupTest() {
@@ -160,7 +156,6 @@ func (s *PatchIntentUnitsSuite) SetupTest() {
 }
 func (s *PatchIntentUnitsSuite) TearDownTest() {
 	s.cancel()
-	evergreen.ResetEnvironment()
 }
 
 func (s *PatchIntentUnitsSuite) makeJobAndPatch(intent patch.Intent) *patchIntentProcessor {
@@ -170,13 +165,13 @@ func (s *PatchIntentUnitsSuite) makeJobAndPatch(intent patch.Intent) *patchInten
 	githubOauthToken, err := s.env.Settings().GetGithubOauthToken()
 	s.Require().NoError(err)
 
-	j := NewPatchIntentProcessor(bson.NewObjectId(), intent).(*patchIntentProcessor)
+	j := NewPatchIntentProcessor(mgobson.NewObjectId(), intent).(*patchIntentProcessor)
 	j.env = s.env
 
 	patchDoc := intent.NewPatch()
-	s.Require().NoError(j.finishPatch(ctx, patchDoc, githubOauthToken))
-	s.Require().NoError(j.Error())
-	s.Require().False(j.HasErrors())
+	s.NoError(j.finishPatch(ctx, patchDoc, githubOauthToken))
+	s.NoError(j.Error())
+	s.False(j.HasErrors())
 
 	return j
 }
@@ -199,7 +194,7 @@ func (s *PatchIntentUnitsSuite) TestCantFinalizePatchWithNoTasksAndVariants() {
 	githubOauthToken, err := s.env.Settings().GetGithubOauthToken()
 	s.Require().NoError(err)
 
-	j := NewPatchIntentProcessor(bson.NewObjectId(), intent).(*patchIntentProcessor)
+	j := NewPatchIntentProcessor(mgobson.NewObjectId(), intent).(*patchIntentProcessor)
 	j.env = s.env
 
 	patchDoc := intent.NewPatch()
@@ -325,7 +320,7 @@ func (s *PatchIntentUnitsSuite) TestFindEvergreenUserForPR() {
 	s.Equal(evergreen.GithubPatchUser, u.Id)
 }
 
-func (s *PatchIntentUnitsSuite) verifyPatchDoc(patchDoc *patch.Patch, expectedPatchID bson.ObjectId) {
+func (s *PatchIntentUnitsSuite) verifyPatchDoc(patchDoc *patch.Patch, expectedPatchID mgobson.ObjectId) {
 	s.Equal(evergreen.PatchCreated, patchDoc.Status)
 	s.Equal(expectedPatchID, patchDoc.Id)
 	s.NotEmpty(patchDoc.Patches)
@@ -418,7 +413,7 @@ func (s *PatchIntentUnitsSuite) TestRunInDegradedModeWithGithubIntent() {
 	s.NotNil(intent)
 	s.NoError(intent.Insert())
 
-	patchID := bson.NewObjectId()
+	patchID := mgobson.NewObjectId()
 	j, ok := NewPatchIntentProcessor(patchID, intent).(*patchIntentProcessor)
 	j.env = s.env
 	s.True(ok)
@@ -432,8 +427,8 @@ func (s *PatchIntentUnitsSuite) TestRunInDegradedModeWithGithubIntent() {
 	s.Nil(patchDoc)
 
 	unprocessedIntents, err := patch.FindUnprocessedGithubIntents()
-	s.NoError(err)
-	s.Len(unprocessedIntents, 1)
+	s.Require().NoError(err)
+	s.Require().Len(unprocessedIntents, 1)
 
 	s.Equal(intent.ID(), unprocessedIntents[0].ID())
 }
@@ -449,15 +444,15 @@ func (s *PatchIntentUnitsSuite) TestGithubPRTestFromUnknownUserDoesntCreateVersi
 	s.NotNil(intent)
 	s.NoError(intent.Insert())
 
-	patchID := bson.NewObjectId()
+	patchID := mgobson.NewObjectId()
 	j, ok := NewPatchIntentProcessor(patchID, intent).(*patchIntentProcessor)
 	j.env = s.env
 	s.True(ok)
 	s.NotNil(j)
 	j.Run(context.Background())
 	s.Error(j.Error())
-
-	patchDoc, err := patch.FindOne(patch.ById(patchID))
+	filter := patch.ById(patchID)
+	patchDoc, err := patch.FindOne(filter)
 	s.NoError(err)
 	if s.NotNil(patchDoc) {
 		s.Empty(patchDoc.Version)
@@ -468,11 +463,8 @@ func (s *PatchIntentUnitsSuite) TestGithubPRTestFromUnknownUserDoesntCreateVersi
 	s.Nil(versionDoc)
 
 	unprocessedIntents, err := patch.FindUnprocessedGithubIntents()
-	s.NoError(err)
-	s.Empty(unprocessedIntents)
-
-	// third party patches should still create subscriptions
-	s.verifyGithubSubscriptions(patchDoc)
+	s.Require().NoError(err)
+	s.Require().Empty(unprocessedIntents)
 }
 
 func (s *PatchIntentUnitsSuite) verifyGithubSubscriptions(patchDoc *patch.Patch) {
@@ -480,6 +472,7 @@ func (s *PatchIntentUnitsSuite) verifyGithubSubscriptions(patchDoc *patch.Patch)
 	s.NoError(db.FindAllQ(event.SubscriptionsCollection, db.Query(bson.M{}), &out))
 	s.Require().Len(out, 2)
 
+	s.Require().NotNil(patchDoc)
 	ghSub := event.NewGithubStatusAPISubscriber(event.GithubPullRequestSubscriber{
 		Owner:    patchDoc.GithubPatchData.BaseOwner,
 		Repo:     patchDoc.GithubPatchData.BaseRepo,

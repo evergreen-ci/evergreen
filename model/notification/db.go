@@ -13,8 +13,9 @@ import (
 	adb "github.com/mongodb/anser/db"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
-	mgo "gopkg.in/mgo.v2"
-	"gopkg.in/mgo.v2/bson"
+	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/bson/primitive"
+	mgobson "gopkg.in/mgo.v2/bson"
 )
 
 const (
@@ -33,14 +34,18 @@ var (
 type unmarshalNotification struct {
 	ID         string           `bson:"_id"`
 	Subscriber event.Subscriber `bson:"subscriber"`
-	Payload    bson.Raw         `bson:"payload"`
+	Payload    mgobson.Raw      `bson:"payload"`
 
 	SentAt   time.Time            `bson:"sent_at,omitempty"`
 	Error    string               `bson:"error,omitempty"`
 	Metadata NotificationMetadata `bson:"metadata,omitempty"`
 }
 
-func (n *Notification) SetBSON(raw bson.Raw) error {
+func (d *Notification) UnmarshalBSON(in []byte) error {
+	return mgobson.Unmarshal(in, d)
+}
+
+func (n *Notification) SetBSON(raw mgobson.Raw) error {
 	temp := unmarshalNotification{}
 	if err := raw.Unmarshal(&temp); err != nil {
 		return errors.Wrap(err, "can't unmarshal notification")
@@ -69,6 +74,9 @@ func (n *Notification) SetBSON(raw bson.Raw) error {
 	case event.GithubMergeSubscriberType:
 		n.Payload = &commitqueue.GithubMergePR{}
 
+	case event.CommitQueueDequeueSubscriberType:
+		n.Payload = &commitqueue.DequeueItem{}
+
 	default:
 		return errors.Errorf("unknown payload type %s", temp.Subscriber.Type)
 	}
@@ -87,19 +95,19 @@ func (n *Notification) SetBSON(raw bson.Raw) error {
 }
 
 func BulkInserter(ctx context.Context) (adb.BufferedWriter, error) {
-	session, mdb, err := db.GetGlobalSessionFactory().GetSession()
+	_, mdb, err := db.GetGlobalSessionFactory().GetSession()
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}
 
 	opts := adb.BufferedWriteOptions{
-		DB:         mdb.Name,
+		DB:         mdb.Name(),
 		Count:      50,
 		Duration:   5 * time.Second,
 		Collection: Collection,
 	}
 
-	bi, err := adb.NewBufferedSessionInserter(ctx, session, opts)
+	bi, err := adb.NewBufferedInserter(ctx, mdb, opts)
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}
@@ -126,7 +134,7 @@ func Find(id string) (*Notification, error) {
 	notification := Notification{}
 	err := db.FindOneQ(Collection, byID(id), &notification)
 
-	if err == mgo.ErrNotFound {
+	if adb.ResultsNotFound(err) {
 		return nil, nil
 	}
 
@@ -136,7 +144,7 @@ func Find(id string) (*Notification, error) {
 func FindByEventID(id string) ([]Notification, error) {
 	notifications := []Notification{}
 	query := db.Query(bson.M{
-		idKey: bson.RegEx{Pattern: fmt.Sprintf("^%s-", id)},
+		idKey: primitive.Regex{Pattern: fmt.Sprintf("^%s-", id)},
 	},
 	)
 

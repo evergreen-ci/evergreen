@@ -8,9 +8,9 @@ import (
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/patch"
-	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/stretchr/testify/suite"
-	"gopkg.in/mgo.v2/bson"
+	"go.mongodb.org/mongo-driver/bson"
+	mgobson "gopkg.in/mgo.v2/bson"
 )
 
 func TestPatchTriggers(t *testing.T) {
@@ -30,14 +30,13 @@ type patchSuite struct {
 
 func (s *patchSuite) SetupSuite() {
 	s.Require().Implements((*eventHandler)(nil), &patchTriggers{})
-	db.SetGlobalSessionProvider(testutil.TestConfig().SessionFactory())
 }
 
 func (s *patchSuite) SetupTest() {
 	s.NoError(db.ClearCollections(event.AllLogCollection, patch.Collection, event.SubscriptionsCollection))
 	startTime := time.Now().Truncate(time.Millisecond)
 
-	patchID := bson.ObjectIdHex("5aeb4514f27e4f9984646d97")
+	patchID := mgobson.ObjectIdHex("5aeb4514f27e4f9984646d97")
 
 	s.patch = patch.Patch{
 		Id:         patchID,

@@ -7,7 +7,7 @@ import (
 )
 
 type EdgeHandlerSuite struct {
-	edges *JobEdges
+	edges JobEdges
 	suite.Suite
 }
 

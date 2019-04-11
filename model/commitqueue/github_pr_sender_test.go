@@ -19,9 +19,6 @@ func TestGitHubPRSenderSuite(t *testing.T) {
 }
 
 func (s *GitHubPRSenderSuite) SetupTest() {
-	dbSessionFactory, err := getDBSessionFactory()
-	s.NoError(err)
-	db.SetGlobalSessionProvider(dbSessionFactory)
 	s.NoError(db.ClearCollections(Collection))
 	cq := &CommitQueue{
 		ProjectID: "mci",

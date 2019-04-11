@@ -105,6 +105,9 @@ func makeSpecificTaskStatus(t *task.Task) string {
 		if t.Details.TimedOut && t.Details.Description == "heartbeat" {
 			return evergreen.TaskSystemUnresponse
 		}
+		if t.Details.TimedOut {
+			return evergreen.TaskSystemTimedOut
+		}
 		return evergreen.TaskSystemFailed
 	}
 	if t.Details.Type == evergreen.CommandTypeSetup {
@@ -121,6 +124,8 @@ func makeSummaryPrefix(t *task.Task, failed int) string {
 	switch {
 	case s == evergreen.TaskSucceeded:
 		return "Succeeded: "
+	case s == evergreen.TaskSystemTimedOut:
+		return "System Timed Out: "
 	case s == evergreen.TaskTimedOut:
 		return "Timed Out: "
 	case s == evergreen.TaskSystemUnresponse:

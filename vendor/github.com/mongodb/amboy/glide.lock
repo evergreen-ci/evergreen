@@ -24,13 +24,12 @@ imports:
 - name: gopkg.in/yaml.v2
   version: e4d366fc3c7938e2958e662b4258c7a89e1f0e3e
 
-- name: github.com/mongodb/mongo-go-driver
-  version: bc25b34a523bda7bc5980c618bc362df9cb36ef9
-
 - name: github.com/mongodb/grip
-  version: af5d4f01dce67c1dafa9c9a9334f9cae31b2b437
+  version: 8b8accd7a3ec9b31a2d3eea610d5bf906bddfd11
 - name: github.com/evergreen-ci/gimlet
   version: afeadc9b9f628ce2a9d11a7e5b25dac8a0970727
 
+- name: go.mongodb.org/mongo-driver
+  version: 1c3b9b9a41eecdf056560e07b68e6407b8d598c3
 
 devImports: []

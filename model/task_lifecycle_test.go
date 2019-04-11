@@ -12,6 +12,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/event"
+	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/evergreen/util"
@@ -23,10 +24,6 @@ import (
 var (
 	oneMs = time.Millisecond
 )
-
-func init() {
-	db.SetGlobalSessionProvider(testutil.TestConfig().SessionFactory())
-}
 
 func TestSetActiveState(t *testing.T) {
 	Convey("With one task with no dependencies", t, func() {
@@ -946,7 +943,6 @@ func TestTryResetTask(t *testing.T) {
 				So(testTask.Status, ShouldEqual, evergreen.TaskUndispatched)
 				So(testTask.FinishTime, ShouldResemble, util.ZeroTime)
 				oldTaskId := fmt.Sprintf("%v_%v", testTask.Id, 1)
-				fmt.Println(oldTaskId)
 				oldTask, err := task.FindOneOld(task.ById(oldTaskId))
 				So(err, ShouldBeNil)
 				So(oldTask, ShouldNotBeNil)
@@ -2116,6 +2112,77 @@ func TestMarkEndWithBlockedDependenciesTriggersNotifications(t *testing.T) {
 	assert.Len(e, 3)
 }
 
+func TestClearAndResetStrandedTask(t *testing.T) {
+	testutil.HandleTestingErr(db.ClearCollections(host.Collection, task.Collection, task.OldCollection, build.Collection), t, "error clearing collection")
+	assert := assert.New(t)
+
+	runningTask := &task.Task{
+		Id:            "t",
+		Status:        evergreen.TaskStarted,
+		Activated:     true,
+		ActivatedTime: time.Now(),
+		BuildId:       "b",
+	}
+	assert.NoError(runningTask.Insert())
+
+	h := &host.Host{
+		Id:          "h1",
+		RunningTask: "t",
+	}
+	assert.NoError(h.Insert())
+
+	b := build.Build{
+		Id: "b",
+		Tasks: []build.TaskCache{
+			build.TaskCache{
+				Id: "t",
+			},
+		},
+	}
+	assert.NoError(b.Insert())
+
+	assert.NoError(ClearAndResetStrandedTask(h))
+	runningTask, err := task.FindOne(task.ById("t"))
+	assert.NoError(err)
+	assert.Equal(evergreen.TaskUndispatched, runningTask.Status)
+}
+
+func TestClearAndResetStaleStrandedTask(t *testing.T) {
+	testutil.HandleTestingErr(db.ClearCollections(host.Collection, task.Collection, task.OldCollection, build.Collection), t, "error clearing collection")
+	assert := assert.New(t)
+
+	runningTask := &task.Task{
+		Id:            "t",
+		Status:        evergreen.TaskStarted,
+		Activated:     true,
+		ActivatedTime: util.ZeroTime,
+		BuildId:       "b",
+	}
+	assert.NoError(runningTask.Insert())
+
+	h := &host.Host{
+		Id:          "h1",
+		RunningTask: "t",
+	}
+	assert.NoError(h.Insert())
+
+	b := build.Build{
+		Id: "b",
+		Tasks: []build.TaskCache{
+			build.TaskCache{
+				Id: "t",
+			},
+		},
+	}
+	assert.NoError(b.Insert())
+
+	assert.NoError(ClearAndResetStrandedTask(h))
+	runningTask, err := task.FindOne(task.ById("t"))
+	assert.NoError(err)
+	assert.Equal(evergreen.TaskFailed, runningTask.Status)
+	assert.Equal("system", runningTask.Details.Type)
+}
+
 func TestDisplayTaskUpdates(t *testing.T) {
 	testutil.HandleTestingErr(db.ClearCollections(task.Collection, event.AllLogCollection), t, "error clearing collection")
 	assert := assert.New(t)
@@ -2361,7 +2428,7 @@ tasks:
 	assert.NoError(b1.Insert())
 	assert.NoError(evalStepback(&finishedTask, "", evergreen.TaskFailed, false))
 	checkTask, err = task.FindOneId(stepbackTask.Id)
-	assert.NoError(err)
+	require.NoError(t, err)
 	assert.True(checkTask.Activated)
 
 	// generated task should step back its generator

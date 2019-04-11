@@ -4,7 +4,7 @@ import (
 	"testing"
 
 	. "github.com/smartystreets/goconvey/convey"
-	"gopkg.in/mgo.v2/bson"
+	"go.mongodb.org/mongo-driver/bson"
 )
 
 func TestQueryExecution(t *testing.T) {
@@ -52,7 +52,7 @@ func TestQueryExecution(t *testing.T) {
 			BelowFive := Query(bson.M{"two": bson.M{"$lt": 5}})
 			BelowFiveSorted := BelowFive.Sort([]string{"-two"})
 			BelowFiveLimit := BelowFive.Limit(2).Skip(1)
-			JustOneField := Query(bson.M{"two": 7}).Project(bson.D{{Name: "three", Value: 1}})
+			JustOneField := Query(bson.M{"two": 7}).Project(bson.D{{Key: "three", Value: 1}})
 
 			Convey("BelowFive should return 4 documents", func() {
 				out := []insertableStruct{}

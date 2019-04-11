@@ -17,7 +17,7 @@ import (
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/google/go-github/github"
 	"github.com/stretchr/testify/suite"
-	"gopkg.in/mgo.v2/bson"
+	mgobson "gopkg.in/mgo.v2/bson"
 )
 
 type commitQueueSuite struct {
@@ -35,7 +35,6 @@ func TestCommitQueueJob(t *testing.T) {
 }
 
 func (s *commitQueueSuite) SetupSuite() {
-	db.SetGlobalSessionProvider(testutil.TestConfig().SessionFactory())
 	s.NoError(db.ClearCollections(model.ProjectRefCollection))
 	var err error
 	s.prBody, err = ioutil.ReadFile(filepath.Join(testutil.GetDirectoryOfFile(), "testdata", "pull_request.json"))
@@ -122,7 +121,7 @@ func (s *commitQueueSuite) TestWritePatchInfo() {
 	s.NoError(db.ClearGridCollections(patch.GridFSPrefix))
 
 	patchDoc := &patch.Patch{
-		Id:      bson.ObjectIdHex("aabbccddeeff112233445566"),
+		Id:      mgobson.ObjectIdHex("aabbccddeeff112233445566"),
 		Githash: "abcdef",
 	}
 
@@ -152,4 +151,20 @@ func (s *commitQueueSuite) TestWritePatchInfo() {
 	bytes, err := ioutil.ReadAll(reader)
 	s.NoError(err)
 	s.Equal(patchContent, string(bytes))
+}
+
+func (s *commitQueueSuite) TestValidateBranch() {
+	var branch *github.Branch
+	s.Error(validateBranch(branch))
+
+	branch = &github.Branch{}
+	s.Error(validateBranch(branch))
+
+	branch.Commit = &github.RepositoryCommit{}
+	s.Error(validateBranch(branch))
+
+	sha := "abcdef"
+	branch.Commit.SHA = &sha
+
+	s.NoError(validateBranch(branch))
 }
