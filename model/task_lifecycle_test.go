@@ -2112,7 +2112,7 @@ func TestMarkEndWithBlockedDependenciesTriggersNotifications(t *testing.T) {
 }
 
 func TestClearAndResetStrandedTask(t *testing.T) {
-	testutil.HandleTestingErr(db.ClearCollections(host.Collection, task.Collection, task.OldCollection, build.Collection), t, "error clearing collection")
+	require.NoError(t, db.ClearCollections(host.Collection, task.Collection, task.OldCollection, build.Collection), t, "error clearing collection")
 	assert := assert.New(t)
 
 	runningTask := &task.Task{
@@ -2147,7 +2147,7 @@ func TestClearAndResetStrandedTask(t *testing.T) {
 }
 
 func TestClearAndResetStaleStrandedTask(t *testing.T) {
-	testutil.HandleTestingErr(db.ClearCollections(host.Collection, task.Collection, task.OldCollection, build.Collection), t, "error clearing collection")
+	require.NoError(t, db.ClearCollections(host.Collection, task.Collection, task.OldCollection, build.Collection), t, "error clearing collection")
 	assert := assert.New(t)
 
 	runningTask := &task.Task{
