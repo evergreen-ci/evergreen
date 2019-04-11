@@ -126,13 +126,17 @@ func MockConfig() *evergreen.Settings {
 			},
 		},
 		Credentials:        map[string]string{"k1": "v1"},
-		JasperURL:          "url",
-		JasperVersion:      "version",
 		Expansions:         map[string]string{"k2": "v2"},
 		GoogleAnalyticsID:  "u-12345",
 		GithubPRCreatorOrg: "org",
 		HostInit: evergreen.HostInitConfig{
 			SSHTimeoutSeconds: 10,
+		},
+		JasperConfig: evergreen.JasperConfig{
+			BinaryName: "binary",
+			Port:       12345,
+			URL:        "url",
+			Version:    "version",
 		},
 		Jira: evergreen.JiraConfig{
 			Host:           "host",
