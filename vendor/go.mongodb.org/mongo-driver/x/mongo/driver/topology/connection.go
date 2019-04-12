@@ -60,7 +60,7 @@ func (sc *sconn) processErr(err error) {
 		return
 	}
 
-	ne, ok := err.(connection.Error)
+	ne, ok := err.(connection.NetworkError)
 	if !ok {
 		return
 	}

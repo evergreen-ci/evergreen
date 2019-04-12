@@ -209,7 +209,7 @@ func TestServerSelection(t *testing.T) {
 		topo, err := New()
 		noerr(t, err)
 		atomic.StoreInt32(&topo.connectionstate, connected)
-		srvr, err := NewServer(address.Address("one"), func(desc description.Server) { topo.apply(context.Background(), desc) })
+		srvr, err := NewServer(address.Address("one"))
 		noerr(t, err)
 		topo.servers[address.Address("one")] = srvr
 		desc := topo.desc.Load().(description.Topology)
@@ -243,7 +243,7 @@ func TestServerSelection(t *testing.T) {
 
 		// manually add the servers to the topology
 		for _, srv := range desc.Servers {
-			s, err := NewServer(srv.Addr, func(desc description.Server) { topo.apply(context.Background(), desc) })
+			s, err := NewServer(srv.Addr)
 			noerr(t, err)
 			topo.servers[srv.Addr] = s
 		}
@@ -298,126 +298,156 @@ func TestSessionTimeout(t *testing.T) {
 	t.Run("UpdateSessionTimeout", func(t *testing.T) {
 		topo, err := New()
 		noerr(t, err)
-		topo.servers["foo"] = nil
+		doneCh := make(chan struct{}, 1)
 
-		ctx, cancel := context.WithTimeout(context.Background(), testTimeout)
-		defer cancel()
+		// update topology and signal when done
+		go func() {
+			topo.changeswg.Add(1)
+			topo.update()
+			doneCh <- struct{}{}
+		}()
 
-		desc := description.Server{
-			Addr:                  "foo",
+		timeoutChan := time.After(testTimeout)
+		topo.changes <- description.Server{
 			Kind:                  description.RSPrimary,
 			SessionTimeoutMinutes: 30,
 		}
-		topo.apply(ctx, desc)
+		topo.done <- struct{}{}
 
-		currDesc := topo.desc.Load().(description.Topology)
-		if currDesc.SessionTimeoutMinutes != 30 {
-			t.Errorf("session timeout minutes mismatch. got: %d. expected: 30", currDesc.SessionTimeoutMinutes)
+		select {
+		case <-doneCh:
+			currDesc := topo.desc.Load().(description.Topology)
+			if currDesc.SessionTimeoutMinutes != 30 {
+				t.Errorf("session timeout minutes mismatch. got: %d. expected: 30", currDesc.SessionTimeoutMinutes)
+			}
+		case <-timeoutChan:
+			t.Errorf("test case timed out")
 		}
 	})
 	t.Run("MultipleUpdates", func(t *testing.T) {
 		topo, err := New()
 		noerr(t, err)
-		topo.servers["foo"] = nil
-		topo.servers["bar"] = nil
+		doneCh := make(chan struct{}, 2)
 
-		ctx, cancel := context.WithTimeout(context.Background(), testTimeout)
-		defer cancel()
+		// update topology and signal when done
+		go func() {
+			topo.changeswg.Add(1)
+			topo.update()
+			doneCh <- struct{}{}
+		}()
 
-		desc1 := description.Server{
-			Addr:                  "foo",
+		timeoutChan := time.After(testTimeout)
+		topo.changes <- description.Server{
 			Kind:                  description.RSPrimary,
 			SessionTimeoutMinutes: 30,
 		}
 		// should update because new timeout is lower
-		desc2 := description.Server{
-			Addr:                  "bar",
+		topo.changes <- description.Server{
 			Kind:                  description.RSPrimary,
 			SessionTimeoutMinutes: 20,
 		}
-		topo.apply(ctx, desc1)
-		topo.apply(ctx, desc2)
+		topo.done <- struct{}{}
 
-		currDesc := topo.Description()
-		if currDesc.SessionTimeoutMinutes != 20 {
-			t.Errorf("session timeout minutes mismatch. got: %d. expected: 20", currDesc.SessionTimeoutMinutes)
+		select {
+		case <-doneCh:
+			currDesc := topo.Description()
+			if currDesc.SessionTimeoutMinutes != 20 {
+				t.Errorf("session timeout minutes mismatch. got: %d. expected: 20", currDesc.SessionTimeoutMinutes)
+			}
+		case <-timeoutChan:
+			t.Errorf("test case timed out")
 		}
 	})
 	t.Run("NoUpdate", func(t *testing.T) {
 		topo, err := New()
 		noerr(t, err)
-		topo.servers["foo"] = nil
-		topo.servers["bar"] = nil
+		doneCh := make(chan struct{}, 2)
 
-		ctx, cancel := context.WithTimeout(context.Background(), testTimeout)
-		defer cancel()
+		// update topology and signal when done
+		go func() {
+			topo.changeswg.Add(1)
+			topo.update()
+			doneCh <- struct{}{}
+		}()
 
-		desc1 := description.Server{
-			Addr:                  "foo",
+		timeoutChan := time.After(testTimeout)
+		topo.changes <- description.Server{
 			Kind:                  description.RSPrimary,
 			SessionTimeoutMinutes: 20,
 		}
 		// should not update because new timeout is higher
-		desc2 := description.Server{
-			Addr:                  "bar",
+		topo.changes <- description.Server{
 			Kind:                  description.RSPrimary,
 			SessionTimeoutMinutes: 30,
 		}
-		topo.apply(ctx, desc1)
-		topo.apply(ctx, desc2)
+		topo.done <- struct{}{}
 
-		currDesc := topo.desc.Load().(description.Topology)
-		if currDesc.SessionTimeoutMinutes != 20 {
-			t.Errorf("session timeout minutes mismatch. got: %d. expected: 20", currDesc.SessionTimeoutMinutes)
+		select {
+		case <-doneCh:
+			currDesc := topo.desc.Load().(description.Topology)
+			if currDesc.SessionTimeoutMinutes != 20 {
+				t.Errorf("session timeout minutes mismatch. got: %d. expected: 20", currDesc.SessionTimeoutMinutes)
+			}
+		case <-timeoutChan:
+			t.Errorf("test case timed out")
 		}
 	})
 	t.Run("TimeoutDataBearing", func(t *testing.T) {
 		topo, err := New()
 		noerr(t, err)
-		topo.servers["foo"] = nil
-		topo.servers["bar"] = nil
+		doneCh := make(chan struct{}, 2)
 
-		ctx, cancel := context.WithTimeout(context.Background(), testTimeout)
-		defer cancel()
+		// update topology and signal when done
+		go func() {
+			topo.changeswg.Add(1)
+			topo.update()
+			doneCh <- struct{}{}
+		}()
 
-		desc1 := description.Server{
-			Addr:                  "foo",
+		timeoutChan := time.After(testTimeout)
+		topo.changes <- description.Server{
 			Kind:                  description.RSPrimary,
 			SessionTimeoutMinutes: 20,
 		}
 		// should not update because not a data bearing server
-		desc2 := description.Server{
-			Addr:                  "bar",
+		topo.changes <- description.Server{
 			Kind:                  description.Unknown,
 			SessionTimeoutMinutes: 10,
 		}
-		topo.apply(ctx, desc1)
-		topo.apply(ctx, desc2)
+		topo.done <- struct{}{}
 
-		currDesc := topo.desc.Load().(description.Topology)
-		if currDesc.SessionTimeoutMinutes != 20 {
-			t.Errorf("session timeout minutes mismatch. got: %d. expected: 20", currDesc.SessionTimeoutMinutes)
+		select {
+		case <-doneCh:
+			currDesc := topo.desc.Load().(description.Topology)
+			if currDesc.SessionTimeoutMinutes != 20 {
+				t.Errorf("session timeout minutes mismatch. got: %d. expected: 20", currDesc.SessionTimeoutMinutes)
+			}
+		case <-timeoutChan:
+			t.Errorf("test case timed out")
 		}
 	})
 	t.Run("MixedSessionSupport", func(t *testing.T) {
 		topo, err := New()
 		noerr(t, err)
+		doneCh := make(chan struct{}, 2)
+
 		topo.fsm.Kind = description.ReplicaSetWithPrimary
-		topo.servers["one"] = nil
-		topo.servers["two"] = nil
-		topo.servers["three"] = nil
 		topo.fsm.Servers = []description.Server{
 			{Addr: address.Address("one"), Kind: description.RSPrimary, SessionTimeoutMinutes: 20},
 			{Addr: address.Address("two"), Kind: description.RSSecondary}, // does not support sessions
+			{Addr: address.Address("three"), Kind: description.RSSecondary, SessionTimeoutMinutes: 30},
 		}
 
-		ctx, cancel := context.WithTimeout(context.Background(), testTimeout)
-		defer cancel()
+		// update topology and signal when done
+		go func() {
+			topo.changeswg.Add(1)
+			topo.update()
+			doneCh <- struct{}{}
+		}()
 
-		desc := description.Server{
-			Addr: address.Address("three"), Kind: description.RSSecondary, SessionTimeoutMinutes: 30}
-		topo.apply(ctx, desc)
+		topo.done <- struct{}{}
 
+		<-doneCh
 		currDesc := topo.desc.Load().(description.Topology)
 		if currDesc.SessionTimeoutMinutes != 0 {
 			t.Errorf("session timeout minutes mismatch. got: %d. expected: 0", currDesc.SessionTimeoutMinutes)

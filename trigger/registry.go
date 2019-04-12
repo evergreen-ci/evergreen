@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 )
@@ -13,10 +12,6 @@ var registry = triggerRegistry{
 	handlers:               map[registryKey]eventHandlerFactory{},
 	handlersByResourceType: map[string][]eventHandlerFactory{},
 	lock:                   sync.RWMutex{},
-}
-
-func init() {
-	registry.registerEventHandler(event.ResourceTypePatch, event.PatchStateChange, makePatchTriggers)
 }
 
 type registryKey struct {

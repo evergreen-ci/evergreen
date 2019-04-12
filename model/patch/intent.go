@@ -3,7 +3,7 @@ package patch
 import (
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/pkg/errors"
-	"go.mongodb.org/mongo-driver/bson"
+	"gopkg.in/mgo.v2/bson"
 )
 
 // Intent represents an intent to create a patch build and is processed by an amboy queue.

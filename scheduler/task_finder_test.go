@@ -17,8 +17,6 @@ import (
 	"github.com/mongodb/grip/message"
 	"github.com/smartystreets/goconvey/convey/reporting"
 	"github.com/stretchr/testify/suite"
-	"go.mongodb.org/mongo-driver/bson"
-	"go.mongodb.org/mongo-driver/mongo"
 )
 
 func init() {
@@ -186,20 +184,14 @@ func (s *TaskFinderComparisonSuite) TearDownSuite() {
 }
 
 func (s *TaskFinderComparisonSuite) SetupTest() {
+	session, mdb, err := db.GetGlobalSessionFactory().GetSession()
+	s.NoError(err)
+	s.NotNil(session)
+	defer session.Close()
 	s.NoError(db.Clear(task.Collection))
 
-	env := evergreen.GetEnvironment()
-	ctx, cancel := env.Context()
-	defer cancel()
-	_, err := env.DB().Collection(task.Collection).Indexes().CreateMany(ctx, []mongo.IndexModel{
-		{
-			Keys: bson.D{{Key: "activated", Value: 1}, {Key: "status", Value: 1}, {Key: "priority", Value: 1}},
-		},
-		{
-			Keys: bson.D{{Key: "depends_on._id", Value: 1}},
-		},
-	})
-	s.Require().NoError(err)
+	s.NoError(mdb.C(task.Collection).EnsureIndexKey("activated", "status", "priority"))
+	s.NoError(mdb.C(task.Collection).EnsureIndexKey("depends_on._id"))
 
 	s.tasks = s.tasksGenerator()
 	s.NotEmpty(s.tasks)

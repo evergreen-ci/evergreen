@@ -11,22 +11,23 @@ import (
 	evgmock "github.com/evergreen-ci/evergreen/mock"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/mongodb/anser"
+	"github.com/mongodb/anser/db"
 	"github.com/mongodb/anser/mock"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestAnserBasicPlaceholder(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
 	assert := assert.New(t)
-	session, _, err := evg.GetGlobalSessionFactory().GetSession()
+	mgoSession, _, err := evg.GetGlobalSessionFactory().GetSession()
 	assert.NoError(err)
+	session := db.WrapSession(mgoSession.Clone())
 	defer session.Close()
 
 	anser.ResetEnvironment()
 
 	evgEnv := &evgmock.Environment{}
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 
 	assert.NoError(evgEnv.Configure(ctx, filepath.Join(evergreen.FindEvergreenHome(), testutil.TestDir, testutil.TestSettings), nil))
 

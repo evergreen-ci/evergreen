@@ -5,8 +5,8 @@ import (
 
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/mongodb/anser/bsonutil"
-	adb "github.com/mongodb/anser/db"
-	"go.mongodb.org/mongo-driver/bson"
+	mgo "gopkg.in/mgo.v2"
+	"gopkg.in/mgo.v2/bson"
 )
 
 const (
@@ -48,7 +48,7 @@ func FindGithubHook(owner, repo string) (*GithubHook, error) {
 		repoKey:  repo,
 	}), hook)
 
-	if adb.ResultsNotFound(err) {
+	if err == mgo.ErrNotFound {
 		return nil, nil
 	}
 	if err != nil {

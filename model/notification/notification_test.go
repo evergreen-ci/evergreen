@@ -8,11 +8,11 @@ import (
 
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/event"
-	_ "github.com/evergreen-ci/evergreen/testutil"
+	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/grip/message"
 	"github.com/stretchr/testify/suite"
-	mgobson "gopkg.in/mgo.v2/bson"
+	"gopkg.in/mgo.v2/bson"
 )
 
 type notificationSuite struct {
@@ -23,6 +23,10 @@ type notificationSuite struct {
 
 func TestNotifications(t *testing.T) {
 	suite.Run(t, &notificationSuite{})
+}
+
+func (s *notificationSuite) SetupSuite() {
+	db.SetGlobalSessionProvider(testutil.TestConfig().SessionFactory())
 }
 
 func (s *notificationSuite) SetupTest() {
@@ -385,13 +389,13 @@ func (s *notificationSuite) TestCollectUnsentNotificationStats() {
 	// add one of every notification, unsent
 	for i, type_ := range types {
 		n = append(n, s.n)
-		n[i].ID = mgobson.NewObjectId().Hex()
+		n[i].ID = bson.NewObjectId().Hex()
 		n[i].Subscriber.Type = type_
 		s.NoError(db.Insert(Collection, n[i]))
 	}
 
 	// add one more, mark it sent
-	s.n.ID = mgobson.NewObjectId().Hex()
+	s.n.ID = bson.NewObjectId().Hex()
 	s.n.SentAt = time.Now()
 	s.NoError(db.Insert(Collection, s.n))
 

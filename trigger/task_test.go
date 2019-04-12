@@ -16,12 +16,12 @@ import (
 	"github.com/evergreen-ci/evergreen/model/testresult"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/repotracker"
+	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
-	"go.mongodb.org/mongo-driver/bson"
-	mgobson "gopkg.in/mgo.v2/bson"
+	"gopkg.in/mgo.v2/bson"
 )
 
 func TestBuildBreakNotificationsFromRepotracker(t *testing.T) {
@@ -143,6 +143,7 @@ type taskSuite struct {
 
 func (s *taskSuite) SetupSuite() {
 	s.Require().Implements((*eventHandler)(nil), &taskTriggers{})
+	db.SetGlobalSessionProvider(testutil.TestConfig().SessionFactory())
 }
 
 func (s *taskSuite) SetupTest() {
@@ -203,7 +204,7 @@ func (s *taskSuite) SetupTest() {
 		event.NewSubscriptionByID(event.ResourceTypeTask, triggerSuccess, s.event.ResourceId, apiSub),
 		event.NewSubscriptionByID(event.ResourceTypeTask, triggerFailure, s.event.ResourceId, apiSub),
 		{
-			ID:           mgobson.NewObjectId().Hex(),
+			ID:           bson.NewObjectId().Hex(),
 			ResourceType: event.ResourceTypeTask,
 			Trigger:      triggerExceedsDuration,
 			Selectors: []event.Selector{
@@ -222,7 +223,7 @@ func (s *taskSuite) SetupTest() {
 			},
 		},
 		{
-			ID:           mgobson.NewObjectId().Hex(),
+			ID:           bson.NewObjectId().Hex(),
 			ResourceType: event.ResourceTypeTask,
 			Trigger:      triggerRuntimeChangeByPercent,
 			Selectors: []event.Selector{
@@ -241,7 +242,7 @@ func (s *taskSuite) SetupTest() {
 			},
 		},
 		{
-			ID:           mgobson.NewObjectId().Hex(),
+			ID:           bson.NewObjectId().Hex(),
 			ResourceType: event.ResourceTypeTask,
 			Trigger:      triggerRuntimeChangeByPercent,
 			Selectors: []event.Selector{
@@ -295,7 +296,7 @@ func (s *taskSuite) SetupTest() {
 func (s *taskSuite) TestTriggerEvent() {
 	s.NoError(db.ClearCollections(task.Collection, event.SubscriptionsCollection))
 	sub := &event.Subscription{
-		ID:           mgobson.NewObjectId().Hex(),
+		ID:           bson.NewObjectId().Hex(),
 		ResourceType: event.ResourceTypeTask,
 		Trigger:      triggerOutcome,
 		Selectors: []event.Selector{
@@ -691,7 +692,7 @@ func (s *taskSuite) makeTest(n, execution int, testName, testStatus string) {
 		testName = "test_0"
 	}
 	results := testresult.TestResult{
-		ID:        mgobson.NewObjectId(),
+		ID:        bson.NewObjectId(),
 		TestFile:  testName,
 		TaskID:    s.task.Id,
 		Execution: execution,
@@ -860,7 +861,7 @@ func (s *taskSuite) TestRegressionByTestWithDuplicateTestNames() {
 
 func (s *taskSuite) TestRegressionByTestWithRegex() {
 	sub := event.Subscription{
-		ID:           mgobson.NewObjectId().Hex(),
+		ID:           bson.NewObjectId().Hex(),
 		ResourceType: event.ResourceTypeTask,
 		Trigger:      triggerTaskRegressionByTest,
 		Selectors: []event.Selector{
@@ -908,13 +909,13 @@ func (s *taskSuite) TestRegressionByTestWithRegex() {
 	s.NoError(t2.Insert())
 
 	results := []testresult.TestResult{
-		{ID: mgobson.NewObjectId(), TaskID: "t1", TestFile: "test1", Status: evergreen.TestFailedStatus},
-		{ID: mgobson.NewObjectId(), TaskID: "t1", TestFile: "something", Status: evergreen.TestSucceededStatus},
+		{ID: bson.NewObjectId(), TaskID: "t1", TestFile: "test1", Status: evergreen.TestFailedStatus},
+		{ID: bson.NewObjectId(), TaskID: "t1", TestFile: "something", Status: evergreen.TestSucceededStatus},
 	}
 	s.NoError(testresult.InsertMany(results))
 	results = []testresult.TestResult{
-		{ID: mgobson.NewObjectId(), TaskID: "t2", TestFile: "test1", Status: evergreen.TestSucceededStatus},
-		{ID: mgobson.NewObjectId(), TaskID: "t2", TestFile: "something", Status: evergreen.TestFailedStatus},
+		{ID: bson.NewObjectId(), TaskID: "t2", TestFile: "test1", Status: evergreen.TestSucceededStatus},
+		{ID: bson.NewObjectId(), TaskID: "t2", TestFile: "something", Status: evergreen.TestFailedStatus},
 	}
 	s.NoError(testresult.InsertMany(results))
 

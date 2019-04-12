@@ -47,12 +47,12 @@ func TestPatchSuite(t *testing.T) {
 
 func (s *patchSuite) SetupTest() {
 	s.testConfig = testutil.TestConfig()
+	db.SetGlobalSessionProvider(s.testConfig.SessionFactory())
 
 	s.NoError(db.ClearCollections(Collection))
 	s.time = time.Now().Add(-12 * time.Hour)
 	s.patches = []*Patch{
 		{
-			Author:     "octocat",
 			CreateTime: s.time,
 			GithubPatchData: GithubPatch{
 				PRNumber:  9001,
@@ -163,18 +163,4 @@ func (s *patchSuite) TestMakeMergePatch() {
 	s.Equal("mci", p.Project)
 	s.Equal(evergreen.PatchCreated, p.Status)
 	s.Equal(*pr.MergeCommitSHA, p.GithubPatchData.MergeCommitSHA)
-}
-
-func (s *patchSuite) TestSetGithash() {
-	patch, err := FindOne(ByUser("octocat"))
-	s.NoError(err)
-	s.Empty(patch.Githash)
-	newSHA := "abcdef"
-
-	s.NoError(patch.SetGithash(newSHA))
-	s.Equal(newSHA, patch.Githash)
-
-	dbPatch, err := FindOne(ById(patch.Id))
-	s.NoError(err)
-	s.Equal(newSHA, dbPatch.Githash)
 }

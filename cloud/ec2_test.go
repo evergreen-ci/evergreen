@@ -15,6 +15,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/task"
+	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -36,6 +37,10 @@ type EC2Suite struct {
 
 func TestEC2Suite(t *testing.T) {
 	suite.Run(t, new(EC2Suite))
+}
+
+func (s *EC2Suite) SetupSuite() {
+	db.SetGlobalSessionProvider(testutil.TestConfig().SessionFactory())
 }
 
 func (s *EC2Suite) SetupTest() {

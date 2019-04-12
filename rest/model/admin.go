@@ -20,7 +20,6 @@ func NewConfigModel() *APIAdminSettings {
 		Credentials:       map[string]string{},
 		Expansions:        map[string]string{},
 		HostInit:          &APIHostInitConfig{},
-		JasperConfig:      &APIJasperConfig{},
 		Jira:              &APIJiraConfig{},
 		JIRANotifications: &APIJIRANotificationsConfig{},
 		Keys:              map[string]string{},
@@ -51,7 +50,8 @@ type APIAdminSettings struct {
 	ConfigDir          APIString                         `json:"configdir,omitempty"`
 	ContainerPools     *APIContainerPoolsConfig          `json:"container_pools,omitempty"`
 	Credentials        map[string]string                 `json:"credentials,omitempty"`
-	JasperConfig       *APIJasperConfig                  `json:"jasper,omitempty"`
+	JasperURL          APIString                         `json:"jasper_url,omitempty"`
+	JasperVersion      APIString                         `json:"jasper_version,omitempty"`
 	Expansions         map[string]string                 `json:"expansions,omitempty"`
 	GoogleAnalyticsID  APIString                         `json:"google_analytics,omitempty"`
 	GithubPRCreatorOrg APIString                         `json:"github_pr_creator_org,omitempty"`
@@ -108,6 +108,8 @@ func (as *APIAdminSettings) BuildFromService(h interface{}) error {
 		as.BannerTheme = &tmp
 		as.ClientBinariesDir = &v.ClientBinariesDir
 		as.ConfigDir = &v.ConfigDir
+		as.JasperURL = ToAPIString(v.JasperURL)
+		as.JasperVersion = ToAPIString(v.JasperVersion)
 		as.GoogleAnalyticsID = ToAPIString(v.GoogleAnalyticsID)
 		as.GithubPRCreatorOrg = &v.GithubPRCreatorOrg
 		as.LogPath = &v.LogPath
@@ -147,6 +149,8 @@ func (as *APIAdminSettings) ToService() (interface{}, error) {
 	if as.ConfigDir != nil {
 		settings.ConfigDir = *as.ConfigDir
 	}
+	settings.JasperURL = FromAPIString(as.JasperURL)
+	settings.JasperVersion = FromAPIString(as.JasperVersion)
 	settings.GoogleAnalyticsID = FromAPIString(as.GoogleAnalyticsID)
 	if as.GithubPRCreatorOrg != nil {
 		settings.GithubPRCreatorOrg = *as.GithubPRCreatorOrg
@@ -1413,37 +1417,5 @@ func (c *APITriggerConfig) BuildFromService(h interface{}) error {
 func (c *APITriggerConfig) ToService() (interface{}, error) {
 	return evergreen.TriggerConfig{
 		GenerateTaskDistro: FromAPIString(c.GenerateTaskDistro),
-	}, nil
-}
-
-type APIJasperConfig struct {
-	BinaryName       APIString `json:"binary_name,omitempty"`
-	DownloadFileName APIString `json:"download_file_name,omitempty"`
-	Port             int       `json:"port,omitempty"`
-	URL              APIString `json:"url,omitempty"`
-	Version          APIString `json:"version,omitempty"`
-}
-
-func (c *APIJasperConfig) BuildFromService(h interface{}) error {
-	switch v := h.(type) {
-	case evergreen.JasperConfig:
-		c.BinaryName = ToAPIString(v.BinaryName)
-		c.DownloadFileName = ToAPIString(v.DownloadFileName)
-		c.Port = v.Port
-		c.URL = ToAPIString(v.URL)
-		c.Version = ToAPIString(v.Version)
-	default:
-		return errors.Errorf("expected evergreen.JasperConfig but got %T instead", h)
-	}
-	return nil
-}
-
-func (c *APIJasperConfig) ToService() (interface{}, error) {
-	return evergreen.JasperConfig{
-		BinaryName:       FromAPIString(c.BinaryName),
-		DownloadFileName: FromAPIString(c.DownloadFileName),
-		Port:             c.Port,
-		URL:              FromAPIString(c.URL),
-		Version:          FromAPIString(c.Version),
 	}, nil
 }

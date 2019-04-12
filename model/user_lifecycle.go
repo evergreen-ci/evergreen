@@ -1,12 +1,12 @@
 package model
 
 import (
-	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/pkg/errors"
-	"go.mongodb.org/mongo-driver/bson"
-	"go.mongodb.org/mongo-driver/mongo/options"
+	"gopkg.in/mgo.v2"
+	"gopkg.in/mgo.v2/bson"
 )
 
 // SaveUserSettings updates the settings stored for the given user id.
@@ -36,30 +36,22 @@ func FindUserByID(id string) (*user.DBUser, error) {
 // that userId, inserts it along with the provided display name and email.
 func GetOrCreateUser(userId, displayName, email string) (*user.DBUser, error) {
 	u := &user.DBUser{}
-	env := evergreen.GetEnvironment()
-	ctx, cancel := env.Context()
-	defer cancel()
-	res := env.DB().Collection(user.Collection).FindOneAndUpdate(ctx,
-		bson.M{user.IdKey: userId},
-		bson.M{
-			"$set": bson.M{
-				user.DispNameKey:     displayName,
-				user.EmailAddressKey: email,
+	_, err := db.FindAndModify(user.Collection, bson.M{user.IdKey: userId}, nil,
+		mgo.Change{
+			Update: bson.M{
+				"$set": bson.M{
+					user.DispNameKey:     displayName,
+					user.EmailAddressKey: email,
+				},
+				"$setOnInsert": bson.M{
+					user.APIKeyKey: util.RandomString(),
+				},
 			},
-			"$setOnInsert": bson.M{
-				user.APIKeyKey: util.RandomString(),
-			},
-		},
-		options.FindOneAndUpdate().SetUpsert(true).SetReturnDocument(options.After),
-	)
-
-	if err := res.Err(); err != nil {
+			ReturnNew: true,
+			Upsert:    true,
+		}, u)
+	if err != nil {
 		return nil, errors.Wrapf(err, "problem find/create user '%s'", userId)
-	}
-
-	if err := res.Decode(u); err != nil {
-		return nil, errors.Wrapf(err, "problem decoding result for user '%s'", userId)
-
 	}
 	return u, nil
 }

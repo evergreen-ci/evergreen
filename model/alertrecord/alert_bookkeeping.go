@@ -6,10 +6,9 @@ import (
 
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/mongodb/anser/bsonutil"
-	adb "github.com/mongodb/anser/db"
 	"github.com/pkg/errors"
-	"go.mongodb.org/mongo-driver/bson"
-	mgobson "gopkg.in/mgo.v2/bson"
+	"gopkg.in/mgo.v2"
+	"gopkg.in/mgo.v2/bson"
 )
 
 const (
@@ -41,23 +40,20 @@ const (
 const legacyAlertsSubscription = "legacy-alerts"
 
 type AlertRecord struct {
-	Id                  mgobson.ObjectId `bson:"_id"`
-	SubscriptionID      string           `bson:"subscription_id"`
-	Type                string           `bson:"type"`
-	HostId              string           `bson:"host_id,omitempty"`
-	TaskId              string           `bson:"task_id,omitempty"`
-	TaskStatus          string           `bson:"task_status,omitempty"`
-	ProjectId           string           `bson:"project_id,omitempty"`
-	VersionId           string           `bson:"version_id,omitempty"`
-	TaskName            string           `bson:"task_name,omitempty"`
-	Variant             string           `bson:"variant,omitempty"`
-	TestName            string           `bson:"test_name,omitempty"`
-	RevisionOrderNumber int              `bson:"order,omitempty"`
-	AlertTime           time.Time        `bson:"alert_time,omitempty"`
+	Id                  bson.ObjectId `bson:"_id"`
+	SubscriptionID      string        `bson:"subscription_id"`
+	Type                string        `bson:"type"`
+	HostId              string        `bson:"host_id,omitempty"`
+	TaskId              string        `bson:"task_id,omitempty"`
+	TaskStatus          string        `bson:"task_status,omitempty"`
+	ProjectId           string        `bson:"project_id,omitempty"`
+	VersionId           string        `bson:"version_id,omitempty"`
+	TaskName            string        `bson:"task_name,omitempty"`
+	Variant             string        `bson:"variant,omitempty"`
+	TestName            string        `bson:"test_name,omitempty"`
+	RevisionOrderNumber int           `bson:"order,omitempty"`
+	AlertTime           time.Time     `bson:"alert_time,omitempty"`
 }
-
-func (ar *AlertRecord) MarshalBSON() ([]byte, error)  { return mgobson.Marshal(ar) }
-func (ar *AlertRecord) UnmarshalBSON(in []byte) error { return mgobson.Unmarshal(in, ar) }
 
 func (ar *AlertRecord) Insert() error {
 	return db.Insert(Collection, ar)
@@ -84,7 +80,7 @@ var (
 func FindOne(query db.Q) (*AlertRecord, error) {
 	alertRec := &AlertRecord{}
 	err := db.FindOneQ(Collection, query, alertRec)
-	if adb.ResultsNotFound(err) {
+	if err == mgo.ErrNotFound {
 		return nil, nil
 	}
 	return alertRec, err
@@ -175,7 +171,7 @@ func FindBySpawnHostExpirationWithHours(hostID string, hours int) (*AlertRecord,
 
 func InsertNewTaskRegressionByTestRecord(subscriptionID, taskID, testName, taskDisplayName, variant, projectID string, revision int) error {
 	record := AlertRecord{
-		Id:                  mgobson.NewObjectId(),
+		Id:                  bson.NewObjectId(),
 		SubscriptionID:      subscriptionID,
 		Type:                taskRegressionByTest,
 		TaskId:              taskID,
@@ -193,7 +189,7 @@ func InsertNewTaskRegressionByTestRecord(subscriptionID, taskID, testName, taskD
 func InsertNewSpawnHostExpirationRecord(hostID string, hours int) error {
 	alerttype := fmt.Sprintf(spawnHostWarningTemplate, hours)
 	record := AlertRecord{
-		Id:             mgobson.NewObjectId(),
+		Id:             bson.NewObjectId(),
 		SubscriptionID: legacyAlertsSubscription,
 		Type:           alerttype,
 		HostId:         hostID,

@@ -5,8 +5,7 @@ import (
 	"github.com/mongodb/anser/bsonutil"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
-	"go.mongodb.org/mongo-driver/bson"
-	mgobson "gopkg.in/mgo.v2/bson"
+	"gopkg.in/mgo.v2/bson"
 )
 
 const (
@@ -16,16 +15,16 @@ const (
 
 // TestResult contains test data for a task.
 type TestResult struct {
-	ID        mgobson.ObjectId `bson:"_id,omitempty" json:"id"`
-	Status    string              `json:"status" bson:"status"`
-	TestFile  string              `json:"test_file" bson:"test_file"`
-	URL       string              `json:"url" bson:"url,omitempty"`
-	URLRaw    string              `json:"url_raw" bson:"url_raw,omitempty"`
-	LogID     string              `json:"log_id,omitempty" bson:"log_id,omitempty"`
-	LineNum   int                 `json:"line_num,omitempty" bson:"line_num,omitempty"`
-	ExitCode  int                 `json:"exit_code" bson:"exit_code"`
-	StartTime float64             `json:"start" bson:"start"`
-	EndTime   float64             `json:"end" bson:"end"`
+	ID        bson.ObjectId `bson:"_id,omitempty" json:"id"`
+	Status    string        `json:"status" bson:"status"`
+	TestFile  string        `json:"test_file" bson:"test_file"`
+	URL       string        `json:"url" bson:"url,omitempty"`
+	URLRaw    string        `json:"url_raw" bson:"url_raw,omitempty"`
+	LogID     string        `json:"log_id,omitempty" bson:"log_id,omitempty"`
+	LineNum   int           `json:"line_num,omitempty" bson:"line_num,omitempty"`
+	ExitCode  int           `json:"exit_code" bson:"exit_code"`
+	StartTime float64       `json:"start" bson:"start"`
+	EndTime   float64       `json:"end" bson:"end"`
 
 	// Together, TaskID and Execution identify the task which created this TestResult
 	TaskID    string `bson:"task_id" json:"task_id"`
@@ -50,9 +49,6 @@ var (
 	TaskIDKey    = bsonutil.MustHaveTag(TestResult{}, "TaskID")
 	ExecutionKey = bsonutil.MustHaveTag(TestResult{}, "Execution")
 )
-
-func (t *TestResult) MarshalBSON() ([]byte, error)  { return mgobson.Marshal(t) }
-func (t *TestResult) UnmarshalBSON(in []byte) error { return mgobson.Unmarshal(in, t) }
 
 // FindByTaskIDAndExecution returns test results from the testresults collection for a given task.
 func FindByTaskIDAndExecution(taskID string, execution int) ([]TestResult, error) {
@@ -120,7 +116,7 @@ func TestResultsQuery(taskIds []string, testId, status string, limit, execution 
 		match[StatusKey] = status
 	}
 	if testId != "" {
-		match[IDKey] = bson.M{"$gte": mgobson.ObjectId(testId)}
+		match[IDKey] = bson.M{"$gte": bson.ObjectId(testId)}
 	}
 
 	q := db.Query(match).Sort([]string{IDKey}).Project(bson.M{

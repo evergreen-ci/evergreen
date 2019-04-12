@@ -10,13 +10,18 @@ import (
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/task"
-	_ "github.com/evergreen-ci/evergreen/testutil"
+	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/evergreen/util"
 	. "github.com/smartystreets/goconvey/convey"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"go.mongodb.org/mongo-driver/bson"
+	"gopkg.in/mgo.v2"
+	"gopkg.in/mgo.v2/bson"
 )
+
+func init() {
+	db.SetGlobalSessionProvider(testutil.TestConfig().SessionFactory())
+}
 
 // IsActive is a query that returns all Evergreen hosts that are working or
 // capable of being assigned work to do.
@@ -43,7 +48,7 @@ func hostIdInSlice(hosts []Host, id string) bool {
 func TestGenericHostFinding(t *testing.T) {
 
 	Convey("When finding hosts", t, func() {
-		require.NoError(t, db.Clear(Collection), "Error clearing"+
+		testutil.HandleTestingErr(db.Clear(Collection), t, "Error clearing"+
 			" '%v' collection", Collection)
 
 		Convey("when finding one host", func() {
@@ -151,7 +156,7 @@ func TestGenericHostFinding(t *testing.T) {
 
 func TestFindingHostsWithRunningTasks(t *testing.T) {
 	Convey("With a host with no running task that is not terminated", t, func() {
-		require.NoError(t, db.Clear(Collection), "Error clearing"+
+		testutil.HandleTestingErr(db.Clear(Collection), t, "Error clearing"+
 			" '%v' collection", Collection)
 		h := Host{
 			Id:     "sample_host",
@@ -162,7 +167,7 @@ func TestFindingHostsWithRunningTasks(t *testing.T) {
 		So(err, ShouldBeNil)
 		So(len(found), ShouldEqual, 0)
 		Convey("with a host that is terminated with no running task", func() {
-			require.NoError(t, db.Clear(Collection), "Error clearing"+
+			testutil.HandleTestingErr(db.Clear(Collection), t, "Error clearing"+
 				" '%v' collection", Collection)
 			h1 := Host{
 				Id:     "another",
@@ -179,7 +184,7 @@ func TestFindingHostsWithRunningTasks(t *testing.T) {
 
 func TestMonitorHosts(t *testing.T) {
 	Convey("With a host with no reachability check", t, func() {
-		require.NoError(t, db.Clear(Collection), "Error clearing"+
+		testutil.HandleTestingErr(db.Clear(Collection), t, "Error clearing"+
 			" '%v' collection", Collection)
 		now := time.Now()
 		h := Host{
@@ -192,7 +197,7 @@ func TestMonitorHosts(t *testing.T) {
 		So(err, ShouldBeNil)
 		So(len(found), ShouldEqual, 1)
 		Convey("a host that has a running task and no reachability check should not return", func() {
-			require.NoError(t, db.Clear(Collection), "Error clearing"+
+			testutil.HandleTestingErr(db.Clear(Collection), t, "Error clearing"+
 				" '%v' collection", Collection)
 			anotherHost := Host{
 				Id:          "anotherHost",
@@ -211,7 +216,7 @@ func TestMonitorHosts(t *testing.T) {
 func TestUpdatingHostStatus(t *testing.T) {
 
 	Convey("With a host", t, func() {
-		require.NoError(t, db.Clear(Collection), "Error"+
+		testutil.HandleTestingErr(db.Clear(Collection), t, "Error"+
 			" clearing '%v' collection", Collection)
 
 		var err error
@@ -255,7 +260,7 @@ func TestSetHostTerminated(t *testing.T) {
 
 	Convey("With a host", t, func() {
 
-		require.NoError(t, db.Clear(Collection), "Error"+
+		testutil.HandleTestingErr(db.Clear(Collection), t, "Error"+
 			" clearing '%v' collection", Collection)
 
 		var err error
@@ -289,7 +294,7 @@ func TestHostSetDNSName(t *testing.T) {
 
 	Convey("With a host", t, func() {
 
-		require.NoError(t, db.Clear(Collection), "Error"+
+		testutil.HandleTestingErr(db.Clear(Collection), t, "Error"+
 			" clearing '%v' collection", Collection)
 
 		host := &Host{
@@ -351,7 +356,7 @@ func TestMarkAsProvisioned(t *testing.T) {
 
 	Convey("With a host", t, func() {
 
-		require.NoError(t, db.Clear(Collection), "Error"+
+		testutil.HandleTestingErr(db.Clear(Collection), t, "Error"+
 			" clearing '%v' collection", Collection)
 
 		var err error
@@ -380,7 +385,7 @@ func TestMarkAsProvisioned(t *testing.T) {
 			So(host.Status, ShouldEqual, evergreen.HostRunning)
 			So(host.Provisioned, ShouldEqual, true)
 
-			So(host2.MarkAsProvisioned().Error(), ShouldContainSubstring, "not found")
+			So(host2.MarkAsProvisioned(), ShouldEqual, mgo.ErrNotFound)
 			So(host2.Status, ShouldEqual, evergreen.HostTerminated)
 			So(host2.Provisioned, ShouldEqual, false)
 		})
@@ -391,7 +396,7 @@ func TestMarkAsProvisioned(t *testing.T) {
 func TestHostCreateSecret(t *testing.T) {
 	Convey("With a host with no secret", t, func() {
 
-		require.NoError(t, db.Clear(Collection),
+		testutil.HandleTestingErr(db.Clear(Collection), t,
 			"Error clearing '%v' collection", Collection)
 
 		host := &Host{Id: "hostOne"}
@@ -418,7 +423,7 @@ func TestHostSetExpirationTime(t *testing.T) {
 
 	Convey("With a host", t, func() {
 
-		require.NoError(t, db.Clear(Collection), "Error"+
+		testutil.HandleTestingErr(db.Clear(Collection), t, "Error"+
 			" clearing '%v' collection", Collection)
 
 		initialExpirationTime := time.Now()
@@ -469,7 +474,7 @@ func TestSetExpirationNotification(t *testing.T) {
 
 	Convey("With a host", t, func() {
 
-		require.NoError(t, db.Clear(Collection), "Error"+
+		testutil.HandleTestingErr(db.Clear(Collection), t, "Error"+
 			" clearing '%v' collection", Collection)
 
 		notifications := make(map[string]bool)
@@ -508,7 +513,7 @@ func TestHostClearRunningAndSetLastTask(t *testing.T) {
 
 	Convey("With a host", t, func() {
 
-		require.NoError(t, db.Clear(Collection), "Error"+
+		testutil.HandleTestingErr(db.Clear(Collection), t, "Error"+
 			" clearing '%v' collection", Collection)
 
 		var err error
@@ -566,7 +571,7 @@ func TestHostClearRunningAndSetLastTask(t *testing.T) {
 
 func TestUpdateHostRunningTask(t *testing.T) {
 	Convey("With a host", t, func() {
-		require.NoError(t, db.Clear(Collection), "Error"+
+		testutil.HandleTestingErr(db.Clear(Collection), t, "Error"+
 			" clearing '%v' collection", Collection)
 		oldTaskId := "oldId"
 		newTaskId := "newId"
@@ -597,7 +602,7 @@ func TestUpsert(t *testing.T) {
 
 	Convey("With a host", t, func() {
 
-		require.NoError(t, db.Clear(Collection), "Error"+
+		testutil.HandleTestingErr(db.Clear(Collection), t, "Error"+
 			" clearing '%v' collection", Collection)
 
 		host := &Host{
@@ -679,7 +684,7 @@ func TestDecommissionHostsWithDistroId(t *testing.T) {
 
 	Convey("With a multiple hosts of different distros", t, func() {
 
-		require.NoError(t, db.Clear(Collection), "Error"+
+		testutil.HandleTestingErr(db.Clear(Collection), t, "Error"+
 			" clearing '%v' collection", Collection)
 
 		distroA := "distro_a"
@@ -703,9 +708,9 @@ func TestDecommissionHostsWithDistroId(t *testing.T) {
 				Status: evergreen.HostRunning,
 			}
 
-			require.NoError(t, hostWithDistroA.Insert(), "Error inserting"+
+			testutil.HandleTestingErr(hostWithDistroA.Insert(), t, "Error inserting"+
 				"host into database")
-			require.NoError(t, hostWithDistroB.Insert(), "Error inserting"+
+			testutil.HandleTestingErr(hostWithDistroB.Insert(), t, "Error inserting"+
 				"host into database")
 		}
 
@@ -737,7 +742,7 @@ func TestDecommissionHostsWithDistroId(t *testing.T) {
 
 func TestFindNeedsNewAgent(t *testing.T) {
 	Convey("with the a given time for checking and an empty hosts collection", t, func() {
-		require.NoError(t, db.Clear(Collection), "Error"+
+		testutil.HandleTestingErr(db.Clear(Collection), t, "Error"+
 			" clearing '%v' collection", Collection)
 		now := time.Now()
 		Convey("with a host that has no last communication time", func() {
@@ -924,7 +929,7 @@ func TestHostStats(t *testing.T) {
 	const d1 = "distro1"
 	const d2 = "distro2"
 
-	require.NoError(t, db.Clear(Collection), "error clearing hosts collection")
+	testutil.HandleTestingErr(db.Clear(Collection), t, "error clearing hosts collection")
 	host1 := &Host{
 		Id:          "host1",
 		Distro:      distro.Distro{Id: d1},
@@ -1002,7 +1007,7 @@ func TestHostStats(t *testing.T) {
 }
 
 func TestHostFindingWithTask(t *testing.T) {
-	require.NoError(t, db.ClearCollections(Collection, task.Collection), "error clearing collections")
+	testutil.HandleTestingErr(db.ClearCollections(Collection, task.Collection), t, "error clearing collections")
 	assert := assert.New(t)
 	task1 := task.Task{
 		Id: "task1",
@@ -1050,7 +1055,7 @@ func TestHostFindingWithTask(t *testing.T) {
 }
 
 func TestInactiveHostCountPipeline(t *testing.T) {
-	require.NoError(t, db.ClearCollections(Collection), "error clearing collections")
+	testutil.HandleTestingErr(db.ClearCollections(Collection), t, "error clearing collections")
 	assert := assert.New(t)
 
 	h1 := Host{
@@ -1669,8 +1674,7 @@ func TestFindParentOfContainerCannotFindParent(t *testing.T) {
 	assert.NoError(host.Insert())
 
 	parent, err := host.GetParent()
-	require.Error(t, err)
-	assert.Contains(err.Error(), "not found")
+	assert.EqualError(err, "Parent not found")
 	assert.Nil(parent)
 }
 
@@ -1703,8 +1707,8 @@ func TestFindParentOfContainerNotParent(t *testing.T) {
 
 func TestLastContainerFinishTimePipeline(t *testing.T) {
 
-	require.NoError(t, db.Clear(Collection), "error clearing %v collections", Collection)
-	require.NoError(t, db.Clear(task.Collection), "Error clearing '%v' collection", task.Collection)
+	testutil.HandleTestingErr(db.Clear(Collection), t, "error clearing %v collections", Collection)
+	testutil.HandleTestingErr(db.Clear(task.Collection), t, "Error clearing '%v' collection", task.Collection)
 	assert := assert.New(t)
 
 	startTimeOne := time.Now()
@@ -2653,7 +2657,7 @@ func TestStaleRunningTasksAgg(t *testing.T) {
 	now := time.Now()
 	staleness := 5 * time.Minute
 
-	staleTask := &task.Task{
+	staleTask := task.Task{
 		Id:            "stale",
 		Status:        evergreen.TaskStarted,
 		Execution:     2,
@@ -2661,32 +2665,23 @@ func TestStaleRunningTasksAgg(t *testing.T) {
 		HostId:        "staleHost",
 	}
 	assert.NoError(staleTask.Insert())
-	staleHost := &Host{
+	staleHost := Host{
 		Id:          "staleHost",
 		RunningTask: staleTask.Id,
 	}
 	assert.NoError(staleHost.Insert())
-	unstaleTask := &task.Task{
+	unstaleTask := task.Task{
 		Id:            "unstale",
 		Status:        evergreen.TaskStarted,
 		LastHeartbeat: now.Add(-1 * time.Second),
 		HostId:        "unstaleHost",
 	}
 	assert.NoError(unstaleTask.Insert())
-	unstaleHost := &Host{
+	unstaleHost := Host{
 		Id:          "unstaleHost",
 		RunningTask: unstaleTask.Id,
 	}
 	assert.NoError(unstaleHost.Insert())
-	// task assigned to host that is running teardown_group of the previous task
-	unrelatedTask := &task.Task{
-		Id:            "unrelatedTask",
-		Status:        evergreen.TaskStarted,
-		LastHeartbeat: now.Add(-2 * staleness),
-		HostId:        "teardownGroupHost",
-	}
-	assert.NoError(unrelatedTask.Insert())
-
 	// task assigned to host that is running teardown_group of the previous task, but is not timed out
 	task3 := task.Task{
 		Id:            "task3",
@@ -2695,7 +2690,6 @@ func TestStaleRunningTasksAgg(t *testing.T) {
 		HostId:        "teardownGroupHost",
 	}
 	assert.NoError(task3.Insert())
-
 	teardownGroupHost := Host{
 		Id:                     "teardownGroupHost",
 		RunningTask:            task3.Id,

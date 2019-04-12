@@ -15,7 +15,6 @@ import (
 	"go.mongodb.org/mongo-driver/internal/testutil/helpers"
 	"go.mongodb.org/mongo-driver/x/bsonx/bsoncore"
 	"go.mongodb.org/mongo-driver/x/mongo/driver/uuid"
-	"go.mongodb.org/mongo-driver/x/network/description"
 )
 
 var consistent = true
@@ -149,7 +148,7 @@ func TestClientSession(t *testing.T) {
 			t.Errorf("expected error, got %v", err)
 		}
 
-		sess.ApplyCommand(description.Server{Kind: description.Standalone})
+		sess.ApplyCommand()
 		if sess.state != InProgress {
 			t.Errorf("incorrect session state, expected InProgress, received %v", sess.state)
 		}

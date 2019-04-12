@@ -11,10 +11,10 @@ import (
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/anser/bsonutil"
-	adb "github.com/mongodb/anser/db"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
-	"go.mongodb.org/mongo-driver/bson"
+	"gopkg.in/mgo.v2"
+	"gopkg.in/mgo.v2/bson"
 )
 
 const (
@@ -85,7 +85,7 @@ var (
 // === Queries ===
 
 // All is a query that returns all hosts
-var All = db.Query(struct{}{})
+var All = db.Query(nil)
 
 // ByUserWithRunningStatus produces a query that returns all
 // running hosts for the given user id.
@@ -344,17 +344,17 @@ func ByDistroId(distroId string) db.Q {
 
 // ById produces a query that returns a host with the given id.
 func ById(id string) db.Q {
-	return db.Query(bson.D{{Key: IdKey, Value: id}})
+	return db.Query(bson.D{{Name: IdKey, Value: id}})
 }
 
 // ByIds produces a query that returns all hosts in the given list of ids.
 func ByIds(ids []string) db.Q {
 	return db.Query(bson.D{
 		{
-			Key: IdKey,
+			Name: IdKey,
 			Value: bson.D{
 				{
-					Key:   "$in",
+					Name:  "$in",
 					Value: ids,
 				},
 			},
@@ -364,7 +364,7 @@ func ByIds(ids []string) db.Q {
 
 // ByRunningTaskId returns a host running the task with the given id.
 func ByRunningTaskId(taskId string) db.Q {
-	return db.Query(bson.D{{Key: RunningTaskKey, Value: taskId}})
+	return db.Query(bson.D{{Name: RunningTaskKey, Value: taskId}})
 }
 
 // ByDynamicWithinTime is a query that returns all dynamic hosts running between a certain time and another time.
@@ -557,7 +557,7 @@ func RemoveStaleInitializing(distroID string) error {
 func FindOne(query db.Q) (*Host, error) {
 	host := &Host{}
 	err := db.FindOneQ(Collection, query, host)
-	if adb.ResultsNotFound(err) {
+	if err == mgo.ErrNotFound {
 		return nil, nil
 	}
 	return host, err
@@ -570,7 +570,8 @@ func FindOneId(id string) (*Host, error) {
 // Find gets all Hosts for the given query.
 func Find(query db.Q) ([]Host, error) {
 	hosts := []Host{}
-	return hosts, errors.WithStack(db.FindAllQ(Collection, query, &hosts))
+	err := db.FindAllQ(Collection, query, &hosts)
+	return hosts, err
 }
 
 // Count returns the number of hosts that satisfy the given query.
@@ -598,7 +599,7 @@ func UpdateAll(query interface{}, update interface{}) error {
 }
 
 // UpsertOne upserts a host.
-func UpsertOne(query interface{}, update interface{}) (*adb.ChangeInfo, error) {
+func UpsertOne(query interface{}, update interface{}) (*mgo.ChangeInfo, error) {
 	return db.Upsert(
 		Collection,
 		query,

@@ -12,7 +12,7 @@ import (
 	"github.com/google/go-github/github"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
-	mgobson "gopkg.in/mgo.v2/bson"
+	"gopkg.in/mgo.v2/bson"
 )
 
 ////////////////////////////////////////////////////////////////////////
@@ -32,6 +32,9 @@ func TestPatchConnectorFetchByProjectSuite(t *testing.T) {
 	s.setup = func() error {
 		s.ctx = &DBConnector{}
 		s.time = time.Date(2009, time.November, 10, 23, 0, 0, 0, time.Local)
+
+		testutil.ConfigureIntegrationTest(t, testConfig, "TestPatchConnectorFetchByProjectSuite")
+		db.SetGlobalSessionProvider(testConfig.SessionFactory())
 
 		patches := []*patch.Patch{
 			{Project: "project1", CreateTime: s.time},
@@ -153,7 +156,7 @@ func (s *PatchConnectorFetchByProjectSuite) TestFetchKeyOutOfBound() {
 
 type PatchConnectorFetchByIdSuite struct {
 	ctx      Connector
-	obj_ids  []mgobson.ObjectId
+	obj_ids  []bson.ObjectId
 	setup    func() error
 	teardown func() error
 	suite.Suite
@@ -164,7 +167,10 @@ func TestPatchConnectorFetchByIdSuite(t *testing.T) {
 	s.setup = func() error {
 		s.ctx = &DBConnector{}
 
-		s.obj_ids = []mgobson.ObjectId{mgobson.NewObjectId(), mgobson.NewObjectId()}
+		testutil.ConfigureIntegrationTest(t, testConfig, "TestPatchConnectorFetchByIdSuite")
+		db.SetGlobalSessionProvider(testConfig.SessionFactory())
+
+		s.obj_ids = []bson.ObjectId{bson.NewObjectId(), bson.NewObjectId()}
 
 		patches := []*patch.Patch{
 			{Id: s.obj_ids[0]},
@@ -191,7 +197,7 @@ func TestMockPatchConnectorFetchByIdSuite(t *testing.T) {
 	s := new(PatchConnectorFetchByIdSuite)
 	s.setup = func() error {
 
-		s.obj_ids = []mgobson.ObjectId{mgobson.NewObjectId(), mgobson.NewObjectId()}
+		s.obj_ids = []bson.ObjectId{bson.NewObjectId(), bson.NewObjectId()}
 
 		s.ctx = &MockConnector{MockPatchConnector: MockPatchConnector{
 			CachedPatches: []patch.Patch{
@@ -216,13 +222,13 @@ func (s *PatchConnectorFetchByIdSuite) TearDownSuite() {
 
 func (s *PatchConnectorFetchByIdSuite) TestFetchById() {
 	p, err := s.ctx.FindPatchById(s.obj_ids[0].Hex())
-	s.Require().NoError(err)
-	s.Require().NotNil(p)
+	s.NoError(err)
+	s.NotNil(p)
 	s.Equal(s.obj_ids[0], p.Id)
 }
 
 func (s *PatchConnectorFetchByIdSuite) TestFetchByIdFail() {
-	new_id := mgobson.NewObjectId()
+	new_id := bson.NewObjectId()
 	for _, i := range s.obj_ids {
 		s.NotEqual(new_id, i)
 	}
@@ -237,7 +243,7 @@ func (s *PatchConnectorFetchByIdSuite) TestFetchByIdFail() {
 
 type PatchConnectorAbortByIdSuite struct {
 	ctx      Connector
-	obj_ids  []mgobson.ObjectId
+	obj_ids  []bson.ObjectId
 	mock     bool
 	setup    func() error
 	teardown func() error
@@ -251,7 +257,10 @@ func TestPatchConnectorAbortByIdSuite(t *testing.T) {
 	s.setup = func() error {
 		s.ctx = &DBConnector{}
 
-		s.obj_ids = []mgobson.ObjectId{mgobson.NewObjectId(), mgobson.NewObjectId()}
+		testutil.ConfigureIntegrationTest(t, testConfig, "TestPatchConnectorAbortByIdSuite")
+		db.SetGlobalSessionProvider(testConfig.SessionFactory())
+
+		s.obj_ids = []bson.ObjectId{bson.NewObjectId(), bson.NewObjectId()}
 
 		patches := []*patch.Patch{
 			{Id: s.obj_ids[0], Version: "version1"},
@@ -279,7 +288,7 @@ func TestMockPatchConnectorAbortByIdSuite(t *testing.T) {
 	s := new(PatchConnectorAbortByIdSuite)
 	s.setup = func() error {
 
-		s.obj_ids = []mgobson.ObjectId{mgobson.NewObjectId(), mgobson.NewObjectId()}
+		s.obj_ids = []bson.ObjectId{bson.NewObjectId(), bson.NewObjectId()}
 
 		s.ctx = &MockConnector{MockPatchConnector: MockPatchConnector{
 			CachedPatches: []patch.Patch{
@@ -314,8 +323,8 @@ func (s *PatchConnectorAbortByIdSuite) TestAbort() {
 	err := s.ctx.AbortPatch(s.obj_ids[0].Hex(), "user1")
 	s.NoError(err)
 	p, err := s.ctx.FindPatchById(s.obj_ids[0].Hex())
-	s.Require().NoError(err)
-	s.Require().NotNil(p)
+	s.NoError(err)
+	s.NotNil(p)
 	s.Equal(s.obj_ids[0], p.Id)
 	if s.mock {
 		s.Equal("user1", s.ctx.(*MockConnector).MockPatchConnector.CachedAborted[s.obj_ids[0].Hex()])
@@ -331,7 +340,7 @@ func (s *PatchConnectorAbortByIdSuite) TestAbort() {
 }
 
 func (s *PatchConnectorAbortByIdSuite) TestAbortFail() {
-	new_id := mgobson.NewObjectId()
+	new_id := bson.NewObjectId()
 	for _, i := range s.obj_ids {
 		s.NotEqual(new_id, i)
 	}
@@ -382,7 +391,7 @@ func (s *PatchConnectorAbortByIdSuite) TestVerifyPullRequestEventForAbort() {
 
 type PatchConnectorChangeStatusSuite struct {
 	ctx      Connector
-	obj_ids  []mgobson.ObjectId
+	obj_ids  []bson.ObjectId
 	mock     bool
 	setup    func() error
 	teardown func() error
@@ -394,7 +403,10 @@ func TestPatchConnectorChangeStatusSuite(t *testing.T) {
 	s.setup = func() error {
 		s.ctx = &DBConnector{}
 
-		s.obj_ids = []mgobson.ObjectId{mgobson.NewObjectId(), mgobson.NewObjectId()}
+		testutil.ConfigureIntegrationTest(t, testConfig, "TestPatchConnectorAbortByIdSuite")
+		db.SetGlobalSessionProvider(testConfig.SessionFactory())
+
+		s.obj_ids = []bson.ObjectId{bson.NewObjectId(), bson.NewObjectId()}
 
 		patches := []*patch.Patch{
 			{Id: s.obj_ids[0]},
@@ -422,7 +434,7 @@ func TestMockPatchConnectorChangeStatusSuite(t *testing.T) {
 	s := new(PatchConnectorChangeStatusSuite)
 	s.setup = func() error {
 
-		s.obj_ids = []mgobson.ObjectId{mgobson.NewObjectId(), mgobson.NewObjectId()}
+		s.obj_ids = []bson.ObjectId{bson.NewObjectId(), bson.NewObjectId()}
 
 		s.ctx = &MockConnector{MockPatchConnector: MockPatchConnector{
 			CachedPatches: []patch.Patch{
@@ -465,7 +477,6 @@ func (s *PatchConnectorChangeStatusSuite) TestSetActivation() {
 	s.NoError(err)
 	p, err := s.ctx.FindPatchById(s.obj_ids[0].Hex())
 	s.NoError(err)
-	s.Require().NotNil(p)
 	s.True(p.Activated)
 
 	err = s.ctx.SetPatchActivated(s.obj_ids[0].Hex(), "user1", false)
@@ -490,6 +501,9 @@ func TestPatchConnectorFetchByUserSuite(t *testing.T) {
 	s := new(PatchConnectorFetchByUserSuite)
 	s.ctx = &DBConnector{}
 	s.time = time.Date(2009, time.November, 10, 23, 0, 0, 0, time.Local)
+
+	testutil.ConfigureIntegrationTest(t, testConfig, "TestPatchConnectorFetchByUserSuite")
+	db.SetGlobalSessionProvider(testConfig.SessionFactory())
 
 	assert.NoError(t, db.Clear(patch.Collection))
 

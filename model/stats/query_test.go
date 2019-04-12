@@ -5,9 +5,9 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen/db"
-	_ "github.com/evergreen-ci/evergreen/testutil"
+	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/stretchr/testify/suite"
-	"go.mongodb.org/mongo-driver/bson"
+	"gopkg.in/mgo.v2/bson"
 )
 
 var (
@@ -25,6 +25,10 @@ type statsQuerySuite struct {
 
 func TestStatsQuerySuite(t *testing.T) {
 	suite.Run(t, new(statsQuerySuite))
+}
+
+func (s *statsQuerySuite) SetupSuite() {
+	db.SetGlobalSessionProvider(testutil.TestConfig().SessionFactory())
 }
 
 func (s *statsQuerySuite) SetupTest() {

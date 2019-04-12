@@ -58,9 +58,6 @@ func BulkWrite(
 	registry *bsoncodec.Registry,
 	opts ...*options.BulkWriteOptions,
 ) (result.BulkWrite, error) {
-	if sess != nil && sess.PinnedServer != nil {
-		selector = sess.PinnedServer
-	}
 	ss, err := topo.SelectServer(ctx, selector)
 	if err != nil {
 		return result.BulkWrite{}, err
@@ -93,7 +90,6 @@ func BulkWrite(
 		WriteErrors: make([]BulkWriteError, 0),
 	}
 
-	var lastErr error
 	var opIndex int64 // the operation index for the upsertedIDs map
 	continueOnError := !ordered
 	for _, batch := range batches {
@@ -113,26 +109,16 @@ func BulkWrite(
 
 		if !continueOnError && (err != nil || len(batchErr.WriteErrors) > 0 || batchErr.WriteConcernError != nil) {
 			if err != nil {
-				return bwRes, err
+				return result.BulkWrite{}, err
 			}
 
-			return bwRes, bwErr
-		}
-
-		if err != nil {
-			lastErr = err
+			return result.BulkWrite{}, bwErr
 		}
 
 		opIndex += int64(len(batch.models))
 	}
 
 	bwRes.MatchedCount -= bwRes.UpsertedCount
-	if lastErr != nil {
-		return bwRes, lastErr
-	}
-	if len(bwErr.WriteErrors) > 0 || bwErr.WriteConcernError != nil {
-		return bwRes, bwErr
-	}
 	return bwRes, nil
 }
 
@@ -239,9 +225,8 @@ func runInsert(
 		WriteConcern:    wc,
 	}
 
-	cmd.Opts = []bsonx.Elem{{"ordered", bsonx.Boolean(!continueOnError)}}
 	if bypassDocValidation != nil {
-		cmd.Opts = append(cmd.Opts, bsonx.Elem{"bypassDocumentValidation", bsonx.Boolean(*bypassDocValidation)})
+		cmd.Opts = []bsonx.Elem{{"bypassDocumentValidation", bsonx.Boolean(*bypassDocValidation)}}
 	}
 
 	if !retrySupported(topo, ss.Description(), cmd.Session, cmd.WriteConcern) || !retryWrite || !batch.canRetry {
@@ -310,7 +295,6 @@ func runDelete(
 		Clock:           clock,
 		WriteConcern:    wc,
 	}
-	cmd.Opts = []bsonx.Elem{{"ordered", bsonx.Boolean(!continueOnError)}}
 
 	if !retrySupported(topo, ss.Description(), cmd.Session, cmd.WriteConcern) || !retryWrite || !batch.canRetry {
 		if cmd.Session != nil {
@@ -382,11 +366,9 @@ func runUpdate(
 		Clock:           clock,
 		WriteConcern:    wc,
 	}
-
-	cmd.Opts = []bsonx.Elem{{"ordered", bsonx.Boolean(!continueOnError)}}
 	if bypassDocValidation != nil {
 		// TODO this is temporary!
-		cmd.Opts = append(cmd.Opts, bsonx.Elem{"bypassDocumentValidation", bsonx.Boolean(*bypassDocValidation)})
+		cmd.Opts = []bsonx.Elem{{"bypassDocumentValidation", bsonx.Boolean(*bypassDocValidation)}}
 		//cmd.Opts = []option.UpdateOptioner{option.OptBypassDocumentValidation(bypassDocValidation)}
 	}
 

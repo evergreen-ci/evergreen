@@ -8,8 +8,8 @@ import (
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/task"
+	"github.com/evergreen-ci/evergreen/testutil"
 	. "github.com/smartystreets/goconvey/convey"
-	"github.com/stretchr/testify/require"
 )
 
 func TestHostTaskAuditing(t *testing.T) {
@@ -51,9 +51,9 @@ func TestHostTaskAuditing(t *testing.T) {
 	})
 
 	Convey("With tasks and hosts stored in the db", t, func() {
-		require.NoError(t, db.Clear(host.Collection),
+		testutil.HandleTestingErr(db.Clear(host.Collection), t,
 			"Error clearing '%v' collection", host.Collection)
-		require.NoError(t, db.Clear(task.Collection),
+		testutil.HandleTestingErr(db.Clear(task.Collection), t,
 			"Error clearing '%v' collection", task.Collection)
 		Convey("no mappings should load with an empty db", func() {
 			h2t, t2h, err := loadHostTaskMapping()
@@ -101,9 +101,9 @@ func TestHostTaskAuditing(t *testing.T) {
 			})
 		})
 		Convey("with a task that has a host but a host that does not have a task", func() {
-			require.NoError(t, db.Clear(host.Collection),
+			testutil.HandleTestingErr(db.Clear(host.Collection), t,
 				"Error clearing '%v' collection", host.Collection)
-			require.NoError(t, db.Clear(task.Collection),
+			testutil.HandleTestingErr(db.Clear(task.Collection), t,
 				"Error clearing '%v' collection", task.Collection)
 			h := host.Host{
 				Id:     "host1",
@@ -124,9 +124,9 @@ func TestHostTaskAuditing(t *testing.T) {
 
 		})
 		Convey("with a host that has a task but a task that does not have a host", func() {
-			require.NoError(t, db.Clear(host.Collection),
+			testutil.HandleTestingErr(db.Clear(host.Collection), t,
 				"Error clearing '%v' collection", host.Collection)
-			require.NoError(t, db.Clear(task.Collection),
+			testutil.HandleTestingErr(db.Clear(task.Collection), t,
 				"Error clearing '%v' collection", task.Collection)
 			h := host.Host{
 				Id:          "host1",
@@ -152,9 +152,9 @@ func TestHostTaskAuditing(t *testing.T) {
 
 func TestStuckHostAuditing(t *testing.T) {
 	Convey("With tasks and hosts inserted into the db", t, func() {
-		require.NoError(t, db.Clear(host.Collection),
+		testutil.HandleTestingErr(db.Clear(host.Collection), t,
 			"Error clearing '%v' collection", host.Collection)
-		require.NoError(t, db.Clear(task.Collection),
+		testutil.HandleTestingErr(db.Clear(task.Collection), t,
 			"Error clearing '%v' collection", task.Collection)
 		h1 := host.Host{Id: "h1", Status: evergreen.HostRunning, RunningTask: "t1"}
 		h2 := host.Host{Id: "h2", Status: evergreen.HostRunning, RunningTask: "t2"}

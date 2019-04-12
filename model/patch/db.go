@@ -5,9 +5,8 @@ import (
 
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/mongodb/anser/bsonutil"
-	adb "github.com/mongodb/anser/db"
-	"go.mongodb.org/mongo-driver/bson"
-	mgobson "gopkg.in/mgo.v2/bson"
+	mgo "gopkg.in/mgo.v2"
+	"gopkg.in/mgo.v2/bson"
 )
 
 const (
@@ -67,16 +66,18 @@ var (
 
 // IsValidId returns whether the supplied Id is a valid patch doc id (BSON ObjectId).
 func IsValidId(id string) bool {
-	return mgobson.IsObjectIdHex(id)
+	return bson.IsObjectIdHex(id)
 }
 
 // NewId constructs a valid patch Id from the given hex string.
-func NewId(id string) mgobson.ObjectId { return mgobson.ObjectIdHex(id) }
+func NewId(id string) bson.ObjectId {
+	return bson.ObjectIdHex(id)
+}
 
 // Queries
 
 // ById produces a query to return the patch with the given _id.
-func ById(id mgobson.ObjectId) db.Q {
+func ById(id bson.ObjectId) db.Q {
 	return db.Query(bson.M{IdKey: id})
 }
 
@@ -130,7 +131,7 @@ var ExcludePatchDiff = bson.M{
 func FindOne(query db.Q) (*Patch, error) {
 	patch := &Patch{}
 	err := db.FindOneQ(Collection, query, patch)
-	if adb.ResultsNotFound(err) {
+	if err == mgo.ErrNotFound {
 		return nil, nil
 	}
 	return patch, err
@@ -140,7 +141,7 @@ func FindOne(query db.Q) (*Patch, error) {
 func Find(query db.Q) ([]Patch, error) {
 	patches := []Patch{}
 	err := db.FindAllQ(Collection, query, &patches)
-	if adb.ResultsNotFound(err) {
+	if err == mgo.ErrNotFound {
 		return nil, nil
 	}
 	return patches, err
@@ -157,7 +158,7 @@ func Remove(query db.Q) error {
 }
 
 // UpdateAll runs an update on all patch documents.
-func UpdateAll(query interface{}, update interface{}) (info *adb.ChangeInfo, err error) {
+func UpdateAll(query interface{}, update interface{}) (info *mgo.ChangeInfo, err error) {
 	return db.UpdateAll(Collection, query, update)
 }
 

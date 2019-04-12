@@ -169,7 +169,7 @@ func (m *CommitQueueItemOwnerMiddleware) ServeHTTP(rw http.ResponseWriter, r *ht
 	// The owner of the patch can also pass
 	vars := gimlet.GetVars(r)
 	item, ok := vars["item"]
-	if !ok || item == "" {
+	if !ok {
 		gimlet.WriteResponse(rw, gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
 			StatusCode: http.StatusBadRequest,
 			Message:    "No item provided",
@@ -177,7 +177,7 @@ func (m *CommitQueueItemOwnerMiddleware) ServeHTTP(rw http.ResponseWriter, r *ht
 		return
 	}
 
-	if opCtx.ProjectRef.CommitQueue.PatchType == commitqueue.CLIPatchType {
+	if opCtx.ProjectRef.CommitQueue.MergeAction == commitqueue.PatchMergeAction {
 		patch, err := m.sc.FindPatchById(item)
 		if err != nil {
 			gimlet.WriteResponse(rw, gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "can't find item")))
@@ -192,7 +192,7 @@ func (m *CommitQueueItemOwnerMiddleware) ServeHTTP(rw http.ResponseWriter, r *ht
 		}
 	}
 
-	if opCtx.ProjectRef.CommitQueue.PatchType == commitqueue.PRPatchType {
+	if opCtx.ProjectRef.CommitQueue.MergeAction == commitqueue.GitHubMergeAction {
 		itemInt, err := strconv.Atoi(item)
 		if err != nil {
 			gimlet.WriteResponse(rw, gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{

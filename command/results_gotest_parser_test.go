@@ -11,7 +11,6 @@ import (
 
 	"github.com/evergreen-ci/evergreen/testutil"
 	. "github.com/smartystreets/goconvey/convey"
-	"github.com/stretchr/testify/require"
 )
 
 func TestParserRegex(t *testing.T) {
@@ -72,7 +71,7 @@ func TestParserFunctionality(t *testing.T) {
 
 	Convey("With a simple log file and parser", t, func() {
 		logdata, err := ioutil.ReadFile(filepath.Join(cwd, "testdata", "gotest", "1_simple.log"))
-		require.NoError(t, err, "couldn't open log file")
+		testutil.HandleTestingErr(err, t, "couldn't open log file")
 		parser := &goTestParser{Suite: "test"}
 
 		Convey("running parse on the given log file should succeed", func() {
@@ -109,7 +108,7 @@ func TestParserFunctionality(t *testing.T) {
 	})
 	Convey("With a gocheck log file and parser", t, func() {
 		logdata, err := ioutil.ReadFile(filepath.Join(cwd, "testdata", "gotest", "2_simple.log"))
-		require.NoError(t, err, "couldn't open log file")
+		testutil.HandleTestingErr(err, t, "couldn't open log file")
 		parser := &goTestParser{Suite: "gocheck_test"}
 
 		Convey("running parse on the given log file should succeed", func() {
@@ -139,7 +138,7 @@ func TestParserFunctionality(t *testing.T) {
 	})
 	Convey("un-terminated tests are failures", t, func() {
 		logdata, err := ioutil.ReadFile(filepath.Join(cwd, "testdata", "gotest", "3_simple.log"))
-		require.NoError(t, err, "couldn't open log file")
+		testutil.HandleTestingErr(err, t, "couldn't open log file")
 		parser := &goTestParser{Suite: "gocheck_test"}
 		err = parser.Parse(bytes.NewBuffer(logdata))
 		So(err, ShouldBeNil)

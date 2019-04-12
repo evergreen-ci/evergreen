@@ -7,7 +7,9 @@ import (
 	"testing"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/db"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
+	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/stretchr/testify/suite"
 )
@@ -24,6 +26,7 @@ type JiraCommentNotificationSuite struct {
 }
 
 func TestJiraCommentNotificationSuite(t *testing.T) {
+	db.SetGlobalSessionProvider(testutil.TestConfig().SessionFactory())
 	suite.Run(t, new(JiraCommentNotificationSuite))
 }
 
@@ -58,6 +61,7 @@ type JiraIssueNotificationSuite struct {
 }
 
 func TestJiraIssueNotificationSuite(t *testing.T) {
+	db.SetGlobalSessionProvider(testutil.TestConfig().SessionFactory())
 	suite.Run(t, new(JiraIssueNotificationSuite))
 }
 
@@ -112,7 +116,7 @@ type SlackNotificationSuite struct {
 }
 
 func TestSlackNotificationSuite(t *testing.T) {
-
+	db.SetGlobalSessionProvider(testutil.TestConfig().SessionFactory())
 	suite.Run(t, new(SlackNotificationSuite))
 }
 
@@ -207,7 +211,7 @@ type EmailNotificationSuite struct {
 }
 
 func TestEmailNotificationSuite(t *testing.T) {
-
+	db.SetGlobalSessionProvider(testutil.TestConfig().SessionFactory())
 	suite.Run(t, new(EmailNotificationSuite))
 }
 

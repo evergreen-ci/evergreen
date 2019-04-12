@@ -1,11 +1,16 @@
 package commitqueue
 
 import (
+	"io/ioutil"
+	"os"
+	"path/filepath"
 	"testing"
+	"time"
 
 	"github.com/evergreen-ci/evergreen/db"
-	_ "github.com/evergreen-ci/evergreen/testutil"
 	"github.com/stretchr/testify/suite"
+	mgo "gopkg.in/mgo.v2"
+	yaml "gopkg.in/yaml.v2"
 )
 
 type CommitQueueSuite struct {
@@ -29,6 +34,9 @@ func TestCommitQueueSuite(t *testing.T) {
 }
 
 func (s *CommitQueueSuite) SetupTest() {
+	dbSessionFactory, err := getDBSessionFactory()
+	s.Require().NoError(err)
+	db.SetGlobalSessionProvider(dbSessionFactory)
 	s.Require().NoError(db.ClearCollections(Collection))
 
 	s.q = &CommitQueue{
@@ -43,9 +51,9 @@ func (s *CommitQueueSuite) SetupTest() {
 
 func (s *CommitQueueSuite) TestEnqueue() {
 	pos, err := s.q.Enqueue(sampleCommitQueueItem)
-	s.Require().NoError(err)
+	s.NoError(err)
 	s.Equal(1, pos)
-	s.Require().Len(s.q.Queue, 1)
+	s.Len(s.q.Queue, 1)
 	s.Equal("c123", s.q.Next().Issue)
 	s.NotEqual(-1, s.q.findItem("c123"))
 
@@ -67,7 +75,7 @@ func (s *CommitQueueSuite) TestNext() {
 	s.Nil(s.q.Next())
 
 	s.NoError(s.q.SetProcessing(false))
-	s.Require().NotNil(s.q.Next())
+	s.NotNil(s.q.Next())
 	s.Equal(s.q.Next().Issue, "c123")
 }
 
@@ -173,4 +181,47 @@ func (s *CommitQueueSuite) TestCommentTrigger() {
 
 	action = "deleted"
 	s.False(TriggersCommitQueue(action, comment))
+}
+
+// Duplicated here from testutil to avoid import cycle
+// (evergreen package requires github_pr_sender and testutil requires evergreen)
+type settings struct {
+	Database dbSettings `yaml:"database"`
+}
+type dbSettings struct {
+	Url                  string       `yaml:"url"`
+	SSL                  bool         `yaml:"ssl"`
+	DB                   string       `yaml:"db"`
+	WriteConcernSettings writeConcern `yaml:"write_concern"`
+}
+type writeConcern struct {
+	W        int    `yaml:"w"`
+	WMode    string `yaml:"wmode"`
+	WTimeout int    `yaml:"wtimeout"`
+	FSync    bool   `yaml:"fsync"`
+	J        bool   `yaml:"j"`
+}
+
+func getDBSessionFactory() (*db.SessionFactory, error) {
+	evgHome := os.Getenv("EVGHOME")
+	testDir := "config_test"
+	testSettings := "evg_settings.yml"
+	configPath := filepath.Join(evgHome, testDir, testSettings)
+	configData, err := ioutil.ReadFile(configPath)
+	if err != nil {
+		return nil, err
+	}
+	settings := &settings{}
+	err = yaml.Unmarshal(configData, settings)
+	if err != nil {
+		return nil, err
+	}
+
+	safety := mgo.Safe{}
+	safety.W = settings.Database.WriteConcernSettings.W
+	safety.WMode = settings.Database.WriteConcernSettings.WMode
+	safety.WTimeout = settings.Database.WriteConcernSettings.WTimeout
+	safety.FSync = settings.Database.WriteConcernSettings.FSync
+	safety.J = settings.Database.WriteConcernSettings.J
+	return db.NewSessionFactory(settings.Database.Url, settings.Database.DB, settings.Database.SSL, safety, 5*time.Second), nil
 }

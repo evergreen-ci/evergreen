@@ -9,6 +9,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/alertrecord"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
+	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -26,6 +27,7 @@ type hostSuite struct {
 
 func (s *hostSuite) SetupSuite() {
 	s.Require().Implements((*eventHandler)(nil), &hostTriggers{})
+	db.SetGlobalSessionProvider(testutil.TestConfig().SessionFactory())
 }
 
 func (s *hostSuite) SetupTest() {
