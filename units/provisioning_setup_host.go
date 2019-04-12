@@ -224,7 +224,7 @@ func (j *setupHostJob) runHostSetup(ctx context.Context, targetHost *host.Host, 
 	}
 
 	if targetHost.Distro.BootstrapMethod == distro.BootstrapMethodSSH {
-		if err := j.fetchJasper(ctx); err != nil {
+		if err = j.fetchJasper(ctx); err != nil {
 			return errors.Wrapf(err, "error putting Jasper on host '%s'", targetHost.Id)
 		}
 	}
@@ -710,7 +710,6 @@ func (j *setupHostJob) loadClient(ctx context.Context, target *host.Host, settin
 func (j *setupHostJob) fetchRemoteTaskData(ctx context.Context, taskId, cliPath, confPath string, target *host.Host, settings *evergreen.Settings) error {
 	hostSSHInfo, err := target.GetSSHInfo()
 	if err != nil {
-		return errors.Wrapf(err, "error parsing ssh info %s", target.Host)
 		return errors.Wrapf(err, "error parsing ssh info %s", target.Host)
 	}
 
