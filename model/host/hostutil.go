@@ -71,18 +71,31 @@ func (h *Host) CurlCommand(url string) string {
 // binary into the directory dir.
 func (h *Host) JasperFetchCommand(settings *evergreen.Settings, dir string) string {
 	os, arch := h.Distro.Platform()
-	downloadURL := fmt.Sprintf("%s/%s-%s-%s-%s.tar.gz", settings.JasperConfig.URL, settings.JasperConfig.DownloadFileName, os, arch, settings.JasperConfig.Version)
+	downloadFile := fmt.Sprintf("%s-%s-%s-%s.tar.gz", settings.JasperConfig.DownloadFileName, os, arch, settings.JasperConfig.Version)
 
 	fileName := settings.JasperConfig.BinaryName
 	if h.Distro.IsWindows() {
 		fileName = fileName + ".exe"
 	}
 
-	evergreenBinaryPath := filepath.Join("~", h.Distro.BinaryName())
+	cmds := []string{fmt.Sprintf("cd \"%s\"", dir),
+		fmt.Sprintf("curl -LO '%s/%s'", settings.JasperConfig.URL, downloadFile),
+		fmt.Sprintf("tar xzf '%s'", downloadFile),
+		fmt.Sprintf("chmod +x '%s'", fileName),
+		fmt.Sprintf("rm -f '%s'", downloadFile),
+	}
+	return strings.Join(cmds, " && ")
 
-	return fmt.Sprintf("cd ~ && "+
-		"%s host download --url='%s' --dir='%s' --file='%s' --extract=true --mode=755",
-		evergreenBinaryPath, downloadURL, dir, fileName)
+	// return fmt.Sprintf("cd \"%s\" && "+
+	//     "curl -LO '%s/%s' && "+
+	//     "tar xzf '%s' && "+
+	//     "chmod +x '%s' && "+
+	//     "rm -f '%s'",
+	//     dir,
+	//     settings.JasperConfig.URL, downloadFile,
+	//     downloadFile,
+	//     fileName,
+	//     downloadFile)
 }
 
 const (

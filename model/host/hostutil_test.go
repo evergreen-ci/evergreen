@@ -37,14 +37,11 @@ func TestJasperCurlCommand(t *testing.T) {
 		},
 	}
 	outDir := "foo"
-	expectedParts := []string{"cd ~ && ",
-		"~/evergreen",
-		"host download",
-		"--url='www.example.com/download_file-linux-amd64-abc123.tar.gz'",
-		"--dir='foo'",
-		"--file='jasper_cli'",
-		"--extract=true",
-		"--mode=755"}
+	expectedParts := []string{"cd \"foo\"",
+		"curl -LO 'www.example.com/download_file-linux-amd64-abc123.tar.gz'",
+		"tar xzf 'download_file-linux-amd64-abc123.tar.gz'",
+		"chmod +x 'jasper_cli'",
+		"rm -f 'download_file-linux-amd64-abc123.tar.gz'"}
 	cmd := h.JasperFetchCommand(settings, outDir)
 	for _, expected := range expectedParts {
 		assert.Contains(t, cmd, expected)
