@@ -131,24 +131,6 @@ func (d *Distro) BinaryName() string {
 	return name
 }
 
-// JasperFileName returns the name of the tarball file for its binary by
-// platform.
-// TODO: move this out of distro package.
-func (d *Distro) JasperFileName(version string) string {
-	arch := strings.Replace(d.Arch, "_", "-", 1)
-	return fmt.Sprintf("curator-dist-%s-%s.tar.gz", arch, version)
-}
-
-// JasperBinaryName returns the name of the curator binary by platform.
-// TODO: move this out of distro package.
-func (d *Distro) JasperBinaryName() string {
-	name := "curator"
-	if d.IsWindows() {
-		return name + ".exe"
-	}
-	return name
-}
-
 // ExecutableSubPath returns the directory containing the compiled agents.
 func (d *Distro) ExecutableSubPath() string {
 	return filepath.Join(d.Arch, d.BinaryName())
