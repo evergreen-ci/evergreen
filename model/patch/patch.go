@@ -291,19 +291,6 @@ func (p *Patch) SetActivation(activated bool) error {
 	)
 }
 
-// SetGithash updates the patch's githash
-func (p *Patch) SetGithash(githash string) error {
-	p.Githash = githash
-	return UpdateOne(
-		bson.M{IdKey: p.Id},
-		bson.M{
-			"$set": bson.M{
-				GithashKey: githash,
-			},
-		},
-	)
-}
-
 // UpdateModulePatch adds or updates a module within a patch.
 func (p *Patch) UpdateModulePatch(modulePatch ModulePatch) error {
 	// check that a patch for this module exists
@@ -343,6 +330,23 @@ func (p *Patch) RemoveModulePatch(moduleName string) error {
 			PatchesKey: bson.M{ModulePatchNameKey: moduleName},
 		},
 	}
+	return UpdateOne(query, update)
+}
+
+func (p *Patch) UpdateGithashProjectAndTasks() error {
+	query := bson.M{
+		IdKey: p.Id,
+	}
+	update := bson.M{
+		"$set": bson.M{
+			GithashKey:       p.Githash,
+			PatchedConfigKey: p.PatchedConfig,
+			VariantsTasksKey: p.VariantsTasks,
+			BuildVariantsKey: p.BuildVariants,
+			TasksKey:         p.Tasks,
+		},
+	}
+
 	return UpdateOne(query, update)
 }
 

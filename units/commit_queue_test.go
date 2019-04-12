@@ -168,3 +168,20 @@ func (s *commitQueueSuite) TestValidateBranch() {
 
 	s.NoError(validateBranch(branch))
 }
+
+func (s *commitQueueSuite) TestAddMergeTaskAndVariant() {
+	project := &model.Project{}
+	patchDoc := &patch.Patch{}
+
+	s.NoError(addMergeTaskAndVariant(patchDoc, project))
+
+	s.Len(patchDoc.BuildVariants, 1)
+	s.Equal("commit-queue-merge", patchDoc.BuildVariants[0])
+	s.Len(patchDoc.Tasks, 1)
+	s.Equal("merge-patch", patchDoc.Tasks[0])
+
+	s.Len(project.BuildVariants, 1)
+	s.Equal("commit-queue-merge", project.BuildVariants[0].Name)
+	s.Len(project.Tasks, 1)
+	s.Equal("merge-patch", project.Tasks[0].Name)
+}
