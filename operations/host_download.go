@@ -4,11 +4,17 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"strconv"
 
 	"github.com/mongodb/grip"
 	"github.com/mongodb/jasper"
 	"github.com/pkg/errors"
 	"github.com/urfave/cli"
+)
+
+const (
+	modeLength   = 3
+	maxModeValue = 0777
 )
 
 // hostDownload creates a command to download a file from a URL and extract it
@@ -31,33 +37,35 @@ func hostDownload() cli.Command {
 			},
 			cli.StringFlag{
 				Name:  destDirFlagName,
-				Usage: "destination directory for the resource (if extract is set, the directory for the extracted resource)",
+				Usage: "destination directory for the resource",
 			},
 			cli.StringSliceFlag{
 				Name:  fileNameFlagName,
-				Usage: "the name of the file(s) to be written",
+				Usage: "the name of the output file in the destination directory (can be multiple if extracting)",
 			},
 			cli.StringFlag{
 				Name:  extractFlagName,
-				Usage: "extract the resource and put in the destination",
+				Usage: "extract the resource and put in the destination directory",
 			},
-			cli.IntFlag{
+			cli.StringFlag{
 				Name:  modeFlagName,
-				Usage: "mode bits for the files (if 0, no change)",
+				Usage: "permission bits for the files (if unset, no change)",
 			},
 		},
 		Before: mergeBeforeFuncs(
 			requireStringFlag(urlFlagName),
 			requireStringFlag(destDirFlagName),
 			requireStringSliceFlag(fileNameFlagName),
-			requireIntValueBetween(modeFlagName, 0, 0777),
 		),
 		Action: func(c *cli.Context) error {
 			url := c.String(urlFlagName)
-			extract := c.Bool(extractFlagName)
 			destDir := c.String(destDirFlagName)
-			mode := c.Int(modeFlagName)
 			fileNames := c.StringSlice(fileNameFlagName)
+			extract := c.Bool(extractFlagName)
+			mode, err := validateAndParseMode(c.String(modeFlagName))
+			if err != nil {
+				return errors.Wrap(err, "error parsing mode")
+			}
 
 			if !extract && len(fileNames) != 1 {
 				return errors.New("must specify exactly one file name if not extracting")
@@ -83,56 +91,20 @@ func hostDownload() cli.Command {
 			}
 
 			if mode != 0 {
-				if err := chmodFiles(fileNames, mode); err != nil {
+				if err := setFileModes(filePaths, mode); err != nil {
 					return errors.Wrap(err, "error occurred while changing file modes")
 				}
 			}
-
-			// download the resource
-			// req, err := http.NewRequest(http.MethodGet, url, nil)
-			// if err != nil {
-			//     return errors.Wrap(err, "error building request")
-			// }
-			//
-			// resp, err := http.DefaultClient.Do(req)
-			// if err != nil {
-			//     return errors.Wrap(err, "error making request")
-			// }
-			// defer resp.Body.Close()
-			//
-			// if err := os.MkdirAll(dest, 0777); err != nil {
-			//     return errors.Wrap(err, "error making directory structure")
-			// }
-			//
-			// if extract {
-			//     // Extract from temporary file to destination and remove the
-			//     // temporary.
-			//     tmpFile, err := ioutil.TempFile("", "tmp")
-			//     if err != nil {
-			//         return errors.Wrap(err, "error creating temporary file")
-			//     }
-			//     defer os.Remove(tmpFile.Name())
-			//
-			//     if _, err := io.Copy(tmpFile, resp.Body); err != nil {
-			//         return errors.Wrap(err, "error writing to temporary file")
-			//     }
-			//
-			//     if err := archiver.Unarchive(tmpFile.Name(), dest); err != nil {
-			//         return errors.Wrap(err, "error extracting archive")
-			//     }
-			// } else {
-			//     file, err := os.OpenFile(dest, os.O_RDWR|os.O_CREATE, 0666)
-			//     if err != nil {
-			//         return errors.Wrap(err, "error opening file to write")
-			//     }
-			// }
 
 			return nil
 		},
 	}
 }
 
-func downloadAndExtract(url, filePath string) error {
+// downloadAndExtract downloads the archive file from url as a temporary
+// file, extracts the archive file to the directory destDir, and removes the
+// temporary archive.
+func downloadAndExtract(url, destDir string) error {
 	tempFile, err := ioutil.TempFile("", "evergreen")
 	if err != nil {
 		return errors.Wrap(err, "error creating temporary archive file")
@@ -143,11 +115,12 @@ func downloadAndExtract(url, filePath string) error {
 	info.Path = tempFile.Name()
 	info.ArchiveOpts.ShouldExtract = true
 	info.ArchiveOpts.Format = jasper.ArchiveAuto
-	info.ArchiveOpts.TargetPath = filePath
+	info.ArchiveOpts.TargetPath = destDir
 
-	return errors.Wrapf(info.Download(), "error downloading archive file '%s' to path '%s'", url, filePath)
+	return errors.Wrapf(info.Download(), "error downloading archive file '%s' to path '%s'", url, destDir)
 }
 
+// download downloads the file from url to the given filePath.
 func download(url, filePath string) error {
 	info := jasper.DownloadInfo{
 		URL:  url,
@@ -157,7 +130,28 @@ func download(url, filePath string) error {
 	return errors.Wrapf(info.Download(), "error downloading file '%s' to file '%s'", url, filePath)
 }
 
-func chmodFiles(filePaths []string, mode int) error {
+// validateAndParseMode checks that the mode string is the correct length and
+// within the allowed range of file permission mode bits (000-777).
+func validateAndParseMode(modeStr string) (uint64, error) {
+	if len(modeStr) == 0 {
+		return 0, nil
+	}
+	if len(modeStr) != modeLength {
+		return 0, errors.New("mode string must be exactly three digits")
+	}
+
+	mode, err := strconv.ParseUint(modeStr, 8, 32)
+	if err != nil {
+		return 0, errors.Wrap(err, "error parsing octal mode bits")
+	}
+	if mode > maxModeValue {
+		return 0, errors.Errorf("mode bits must be between %03o and %03o", 0, maxModeValue)
+	}
+	return mode, nil
+}
+
+// setFileModes changes the mode on the files in filePaths to the given mode.
+func setFileModes(filePaths []string, mode uint64) error {
 	catcher := grip.NewBasicCatcher()
 	for _, filePath := range filePaths {
 		if err := os.Chmod(filePath, os.FileMode(mode)); err != nil {

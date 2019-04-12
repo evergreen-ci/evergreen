@@ -103,7 +103,27 @@ func TestDownloadAndExtractWithoutArchive(t *testing.T) {
 	assert.Error(t, downloadAndExtract(fmt.Sprintf("%s/%s", server.URL, tempFiles[0]), destDir))
 }
 
-func TestChmodFile(t *testing.T) {
+func TestValidateAndParseMode(t *testing.T) {
+	for octal := uint64(0); octal < maxModeValue+1; octal++ {
+		parsedVal, err := validateAndParseMode(fmt.Sprintf("%03o", octal))
+		require.NoError(t, err)
+		assert.Equal(t, octal, parsedVal)
+	}
+	octal := maxModeValue + 1
+	_, err := validateAndParseMode(fmt.Sprintf("%03o", octal))
+	assert.Error(t, err)
+
+	octal = -1
+	_, err = validateAndParseMode(fmt.Sprintf("%03o", octal))
+	assert.Error(t, err)
+
+	octal = 0
+	parsedVal, err := validateAndParseMode(fmt.Sprintf("%03o", octal))
+	assert.NoError(t, err)
+	assert.Equal(t, uint64(octal), parsedVal)
+}
+
+func TestSetFileModes(t *testing.T) {
 	if runtime.GOOS == "windows" {
 		t.Skip("cannot test chmod on Windows")
 	}
@@ -115,7 +135,7 @@ func TestChmodFile(t *testing.T) {
 		require.NotEqual(t, os.FileMode(0777), info.Mode().Perm())
 	}
 
-	require.NoError(t, chmodFiles(tempFiles, 0777))
+	require.NoError(t, setFileModes(tempFiles, 0777))
 	for _, tempFile := range tempFiles {
 		info, err := os.Stat(tempFile)
 		require.NoError(t, err)
