@@ -67,9 +67,9 @@ func (h *Host) CurlCommand(url string) string {
 		h.Distro.BinaryName())
 }
 
-// JasperFetchCommand builds the command to download and extract the Jasper
+// FetchJasperCommand builds the command to download and extract the Jasper
 // binary into the directory dir.
-func (h *Host) JasperFetchCommand(settings *evergreen.Settings, dir string) string {
+func (h *Host) FetchJasperCommand(settings *evergreen.Settings, dir string) string {
 	os, arch := h.Distro.Platform()
 	downloadFile := fmt.Sprintf("%s-%s-%s-%s.tar.gz", settings.JasperConfig.DownloadFileName, os, arch, settings.JasperConfig.Version)
 
@@ -85,17 +85,6 @@ func (h *Host) JasperFetchCommand(settings *evergreen.Settings, dir string) stri
 		fmt.Sprintf("rm -f '%s'", downloadFile),
 	}
 	return strings.Join(cmds, " && ")
-
-	// return fmt.Sprintf("cd \"%s\" && "+
-	//     "curl -LO '%s/%s' && "+
-	//     "tar xzf '%s' && "+
-	//     "chmod +x '%s' && "+
-	//     "rm -f '%s'",
-	//     dir,
-	//     settings.JasperConfig.URL, downloadFile,
-	//     downloadFile,
-	//     fileName,
-	//     downloadFile)
 }
 
 const (

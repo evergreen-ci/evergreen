@@ -302,10 +302,10 @@ func (j *setupHostJob) fetchJasper(ctx context.Context) error {
 	return nil
 }
 
-// doFetchJasper runs the command over that fetches the Jasper instance and puts
+// doFetchJasper runs the command over that fetches the Jasper binary and puts
 // it in the given directory.
 func (j *setupHostJob) doFetchJasper(ctx context.Context, dir string, sshOptions []string) error {
-	cmd := j.host.JasperFetchCommand(j.env.Settings(), dir)
+	cmd := j.host.FetchJasperCommand(j.env.Settings(), dir)
 	if logs, err := j.host.RunSSHCommand(ctx, cmd, sshOptions); err != nil {
 		return errors.Wrapf(err, "error fetching Jasper binary on remote host: command returned %s", logs)
 	}

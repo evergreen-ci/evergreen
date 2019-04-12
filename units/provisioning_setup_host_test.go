@@ -13,7 +13,6 @@ import (
 	"testing"
 
 	"github.com/evergreen-ci/evergreen"
-	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/mock"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
@@ -31,11 +30,6 @@ func makeFileServer(t *testing.T, dir string) *httptest.Server {
 }
 
 func TestFetchJasper(t *testing.T) {
-	require.NoError(t, db.ClearCollections(host.Collection))
-	defer func() {
-		assert.NoError(t, db.ClearCollections(host.Collection))
-	}()
-
 	// Set up a file system server that can serve the Jasper file to download
 	// and extract.
 	tmpDir, err := ioutil.TempDir("", "fetch_jasper_test")

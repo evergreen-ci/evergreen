@@ -26,7 +26,7 @@ func TestCurlCommand(t *testing.T) {
 	assert.Equal(expected, h.CurlCommand(url))
 }
 
-func TestJasperCurlCommand(t *testing.T) {
+func TestFetchJasperCommand(t *testing.T) {
 	h := &Host{Distro: distro.Distro{Arch: distro.ArchLinuxAmd64}}
 	settings := &evergreen.Settings{
 		JasperConfig: evergreen.JasperConfig{
@@ -42,7 +42,7 @@ func TestJasperCurlCommand(t *testing.T) {
 		"tar xzf 'download_file-linux-amd64-abc123.tar.gz'",
 		"chmod +x 'jasper_cli'",
 		"rm -f 'download_file-linux-amd64-abc123.tar.gz'"}
-	cmd := h.JasperFetchCommand(settings, outDir)
+	cmd := h.FetchJasperCommand(settings, outDir)
 	for _, expected := range expectedParts {
 		assert.Contains(t, cmd, expected)
 	}
