@@ -2,6 +2,7 @@ package units
 
 import (
 	"context"
+	"fmt"
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
@@ -12,7 +13,6 @@ import (
 	"testing"
 
 	"github.com/evergreen-ci/evergreen"
-	"github.com/evergreen-ci/evergreen/cloud"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/mock"
 	"github.com/evergreen-ci/evergreen/model/distro"
@@ -23,9 +23,9 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// makeTestFileServer creates a local http test server that returns files from
+// makeFileServer creates a local http server that returns files from
 // the given directory.
-func makeTestFileServer(t *testing.T, dir string) *httptest.Server {
+func makeFileServer(t *testing.T, dir string) *httptest.Server {
 	handler := http.FileServer(http.Dir(dir))
 	return httptest.NewServer(handler)
 }
@@ -36,16 +36,32 @@ func TestFetchJasper(t *testing.T) {
 		assert.NoError(t, db.ClearCollections(host.Collection))
 	}()
 
-	tmpDir, err := ioutil.TempDir("", "")
+	// Set up a file system server that can serve the Jasper file to download
+	// and extract.
+	tmpDir, err := ioutil.TempDir("", "fetch_jasper_test")
 	require.NoError(t, err)
 	defer os.RemoveAll(tmpDir)
 
-	tmpFile, err := ioutil.TempFile(tmpDir, "")
-	require.NoError(t, err)
-	tmpFile.Close()
-	require.NoError(t, archiver.TarGz.Make(tmpDir, []string{tmpFile.Name()}))
+	jasperDownloadFileNameBase := "jasper_dist"
+	jasperBinaryName := "jasper_cli"
+	jasperVersion := "jasper_version"
 
-	server := makeTestFileServer(t, tmpDir)
+	downloadFileName := fmt.Sprintf("%s-%s-%s-%s.tar.gz", jasperDownloadFileNameBase, runtime.GOOS, runtime.GOARCH, jasperVersion)
+
+	binaryFileContents := []byte("foobar")
+	tmpBinaryFile, err := os.Create(filepath.Join(tmpDir, jasperBinaryName))
+	require.NoError(t, err)
+	n, err := tmpBinaryFile.Write(binaryFileContents)
+	require.NoError(t, err)
+	require.Len(t, binaryFileContents, n)
+	require.NoError(t, tmpBinaryFile.Close())
+
+	tmpArchiveFile, err := os.Create(filepath.Join(tmpDir, downloadFileName))
+	require.NoError(t, err)
+	require.NoError(t, tmpArchiveFile.Close())
+	require.NoError(t, archiver.TarGz.Make(tmpArchiveFile.Name(), []string{tmpBinaryFile.Name()}))
+
+	server := makeFileServer(t, tmpDir)
 	defer server.Close()
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -64,13 +80,6 @@ func TestFetchJasper(t *testing.T) {
 		Provider: evergreen.ProviderNameMock,
 	}
 
-	instance := cloud.MockInstance{
-		IsUp:           true,
-		IsSSHReachable: true,
-	}
-	provider := cloud.GetMockProvider()
-	provider.Set(h.Id, instance)
-
 	require.NoError(t, distro.ValidateArch(h.Distro.Arch))
 	require.NoError(t, h.Insert())
 
@@ -78,8 +87,12 @@ func TestFetchJasper(t *testing.T) {
 	require.NoError(t, err)
 	env := &mock.Environment{
 		EvergreenSettings: &evergreen.Settings{
-			JasperURL:     server.URL,
-			JasperVersion: tmpFile.Name(),
+			JasperConfig: evergreen.JasperConfig{
+				BinaryName:       jasperBinaryName,
+				DownloadFileName: jasperDownloadFileNameBase,
+				URL:              server.URL,
+				Version:          jasperVersion,
+			},
 		},
 		JasperProcessManager: manager,
 	}
@@ -87,18 +100,23 @@ func TestFetchJasper(t *testing.T) {
 	setupJob, ok := job.(*setupHostJob)
 	require.True(t, ok)
 
-	sshOptions := []string{}
-	require.NoError(t, setupJob.doFetchJasper(ctx, sshOptions))
-	defer os.Remove(filepath.Join(currentUser.HomeDir, h.Distro.JasperBinaryName()))
-	defer os.Remove(filepath.Join(currentUser.HomeDir, h.Distro.JasperFileName(env.Settings().JasperVersion)))
-
-	_, err = os.Stat(filepath.Join("~", h.Distro.JasperFileName(env.Settings().JasperVersion)))
-	require.Equal(t, os.IsNotExist, err)
-
-	info, err := os.Stat(filepath.Join("~", h.Distro.JasperBinaryName()))
+	outDir, err := ioutil.TempDir("", "out")
 	require.NoError(t, err)
-	assert.NotZero(t, info.Size())
+	defer os.RemoveAll(outDir)
+
+	sshOptions := []string{}
+	require.NoError(t, setupJob.doFetchJasper(ctx, outDir, sshOptions))
+
+	fileInfo, err := os.Stat(filepath.Join(outDir, env.EvergreenSettings.JasperConfig.BinaryName))
+	require.NoError(t, err)
+	assert.Equal(t, len(binaryFileContents), int(fileInfo.Size()))
 	if runtime.GOOS != "windows" {
-		assert.NotZero(t, info.Mode()|0100)
+		assert.NotZero(t, fileInfo.Mode()&0100)
 	}
+
+	file, err := os.Open(filepath.Join(outDir, env.EvergreenSettings.JasperConfig.BinaryName))
+	require.NoError(t, err)
+	fileContents, err := ioutil.ReadAll(file)
+	require.NoError(t, err)
+	assert.Equal(t, binaryFileContents, fileContents)
 }

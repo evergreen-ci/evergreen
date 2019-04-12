@@ -67,21 +67,22 @@ func (h *Host) CurlCommand(url string) string {
 		h.Distro.BinaryName())
 }
 
-// JasperCurlCommand builds the command to fetch and extract the Jasper binary.
-func (h *Host) JasperCurlCommand(settings *evergreen.Settings) string {
-	downloadFileName := fmt.Sprintf("%s-%s-%s-%s.tar.gz", settings.JasperConfig.DownloadFileName, h.Distro.Platform(), settings.JasperConfig.Version)
-	binaryName := settings.JasperConfig.BinaryName
+// JasperFetchCommand builds the command to download and extract the Jasper
+// binary into the directory dir.
+func (h *Host) JasperFetchCommand(settings *evergreen.Settings, dir string) string {
+	os, arch := h.Distro.Platform()
+	downloadURL := fmt.Sprintf("%s/%s-%s-%s-%s.tar.gz", settings.JasperConfig.URL, settings.JasperConfig.DownloadFileName, os, arch, settings.JasperConfig.Version)
+
+	fileName := settings.JasperConfig.BinaryName
 	if h.Distro.IsWindows() {
-		binaryName = binaryName + ".exe"
+		fileName = fileName + ".exe"
 	}
 
+	evergreenBinaryPath := filepath.Join("~", h.Distro.BinaryName())
+
 	return fmt.Sprintf("cd ~ && "+
-		"curl -LO %s/%s && "+
-		"tar xzf %s && chmod +x %s && "+
-		"rm -rf %s",
-		url, downloadFileName,
-		downloadFileName, binaryName,
-		downloadFileName)
+		"%s host download --url='%s' --dir='%s' --file='%s' --extract=true --mode=755",
+		evergreenBinaryPath, downloadURL, dir, fileName)
 }
 
 const (

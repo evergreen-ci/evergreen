@@ -7,6 +7,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -27,10 +28,27 @@ func TestCurlCommand(t *testing.T) {
 
 func TestJasperCurlCommand(t *testing.T) {
 	h := &Host{Distro: distro.Distro{Arch: distro.ArchLinuxAmd64}}
-	url := "www.example.com"
-	version := "abc123"
-	expected := "cd ~ && curl -LO www.example.com/curator-dist-linux-amd64-abc123.tar.gz && tar xvzf curator-dist-linux-amd64-abc123.tar.gz && chmod +x curator"
-	assert.Equal(t, expected, h.JasperCurlCommand(url, version))
+	settings := &evergreen.Settings{
+		JasperConfig: evergreen.JasperConfig{
+			BinaryName:       "jasper_cli",
+			DownloadFileName: "download_file",
+			URL:              "www.example.com",
+			Version:          "abc123",
+		},
+	}
+	outDir := "foo"
+	expectedParts := []string{"cd ~ && ",
+		"~/evergreen",
+		"host download",
+		"--url='www.example.com/download_file-linux-amd64-abc123.tar.gz'",
+		"--dir='foo'",
+		"--file='jasper_cli'",
+		"--extract=true",
+		"--mode=755"}
+	cmd := h.JasperFetchCommand(settings, outDir)
+	for _, expected := range expectedParts {
+		assert.Contains(t, cmd, expected)
+	}
 }
 
 func TestTeardownCommandOverSSH(t *testing.T) {

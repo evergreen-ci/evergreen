@@ -257,7 +257,7 @@ func (j *setupHostJob) runHostSetup(ctx context.Context, targetHost *host.Host, 
 func (j *setupHostJob) fetchJasper(ctx context.Context) error {
 	d, err := distro.FindOne(distro.ById(j.host.Distro.Id))
 	if err != nil {
-		grip.Error(message.WrapError(h.SetUnprovisioned(), message.Fields{
+		grip.Error(message.WrapError(j.host.SetUnprovisioned(), message.Fields{
 			"operation": "setting host unprovisioned",
 			"distro":    j.host.Distro.Id,
 			"job":       j.ID(),
@@ -283,7 +283,7 @@ func (j *setupHostJob) fetchJasper(ctx context.Context) error {
 		return errors.Wrapf(err, "error getting ssh options for host %v", j.host.Id)
 	}
 
-	if err := j.doFetchJasper(ctx, sshOptions); err != nil {
+	if err := j.doFetchJasper(ctx, "/usr/local/bin", sshOptions); err != nil {
 		grip.Error(message.WrapError(j.host.SetUnprovisioned(), message.Fields{
 			"operation": "setting host unprovisioned",
 			"distro":    j.host.Distro.Id,
@@ -302,9 +302,10 @@ func (j *setupHostJob) fetchJasper(ctx context.Context) error {
 	return nil
 }
 
-// doFetchJasper runs the command over that fetches the Jasper instance.
-func (j *setupHostJob) doFetchJasper(ctx context.Context, sshOptions []string) error {
-	cmd := j.host.JasperCurlCommand("~", j.env.Settings().JasperURL, j.env.Settings().JasperVersion)
+// doFetchJasper runs the command over that fetches the Jasper instance and puts
+// it in the given directory.
+func (j *setupHostJob) doFetchJasper(ctx context.Context, dir string, sshOptions []string) error {
+	cmd := j.host.JasperFetchCommand(j.env.Settings(), dir)
 	if logs, err := j.host.RunSSHCommand(ctx, cmd, sshOptions); err != nil {
 		return errors.Wrapf(err, "error fetching Jasper binary on remote host: command returned %s", logs)
 	}
