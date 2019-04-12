@@ -71,8 +71,10 @@ func TestDownloadAndExtract(t *testing.T) {
 	archivedFile, err := os.OpenFile(tempFiles[0], os.O_WRONLY, 0222)
 	require.NoError(t, err)
 	archivedFileContents := "foobar"
-	archivedFile.Write([]byte(archivedFileContents))
-	archivedFile.Close()
+	n, err := archivedFile.Write([]byte(archivedFileContents))
+	require.NoError(t, err)
+	require.Len(t, archivedFileContents, n)
+	require.NoError(t, archivedFile.Close())
 
 	require.NoError(t, archiver.TarGz.Make(tempFiles[1], []string{tempFiles[0]}))
 
