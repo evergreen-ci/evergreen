@@ -17,7 +17,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/user"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/testutil"
-	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -30,7 +29,9 @@ type AdminDataSuite struct {
 func TestDataConnectorSuite(t *testing.T) {
 	s := new(AdminDataSuite)
 	s.ctx = &DBConnector{}
-	require.NoError(t, db.ClearCollections(evergreen.ConfigCollection, task.Collection, task.OldCollection, build.Collection, model.VersionCollection, event.AllLogCollection), "Error clearing collections")
+	db.SetGlobalSessionProvider(testConfig.SessionFactory())
+	testutil.HandleTestingErr(db.ClearCollections(evergreen.ConfigCollection, task.Collection,
+		task.OldCollection, build.Collection, model.VersionCollection, event.AllLogCollection), t, "Error clearing collections")
 	b := &build.Build{
 		Id:      "buildtest",
 		Status:  evergreen.BuildStarted,
@@ -85,12 +86,12 @@ func TestDataConnectorSuite(t *testing.T) {
 			Id: testTask3.Id,
 		},
 	}
-	require.NoError(t, b.Insert(), "error inserting documents")
-	require.NoError(t, v.Insert(), "error inserting documents")
-	require.NoError(t, testTask1.Insert(), "error inserting documents")
-	require.NoError(t, testTask2.Insert(), "error inserting documents")
-	require.NoError(t, testTask3.Insert(), "error inserting documents")
-	require.NoError(t, p.Insert(), "error inserting documents")
+	testutil.HandleTestingErr(b.Insert(), t, "error inserting documents")
+	testutil.HandleTestingErr(v.Insert(), t, "error inserting documents")
+	testutil.HandleTestingErr(testTask1.Insert(), t, "error inserting documents")
+	testutil.HandleTestingErr(testTask2.Insert(), t, "error inserting documents")
+	testutil.HandleTestingErr(testTask3.Insert(), t, "error inserting documents")
+	testutil.HandleTestingErr(p.Insert(), t, "error inserting documents")
 	suite.Run(t, s)
 }
 

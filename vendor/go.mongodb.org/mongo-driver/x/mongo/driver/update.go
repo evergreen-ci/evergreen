@@ -34,9 +34,6 @@ func Update(
 	opts ...*options.UpdateOptions,
 ) (result.Update, error) {
 
-	if cmd.Session != nil && cmd.Session.PinnedServer != nil {
-		selector = cmd.Session.PinnedServer
-	}
 	ss, err := topo.SelectServer(ctx, selector)
 	if err != nil {
 		return result.Update{}, err

@@ -5,18 +5,22 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/assert"
+
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/cloud"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/task"
+	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/evergreen/util"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 )
 
 func TestLastContainerFinishTimeJob(t *testing.T) {
+
 	assert := assert.New(t)
+	testConfig := testutil.TestConfig()
+	db.SetGlobalSessionProvider(testConfig.SessionFactory())
 
 	mockCloud := cloud.GetMockProvider()
 	mockCloud.Reset()
@@ -26,8 +30,8 @@ func TestLastContainerFinishTimeJob(t *testing.T) {
 	durationOne := 5 * time.Minute
 	durationTwo := 30 * time.Minute
 
-	require.NoError(t, db.Clear(host.Collection), "error clearing %v collections", host.Collection)
-	require.NoError(t, db.Clear(task.Collection), "Error clearing '%v' collection", task.Collection)
+	testutil.HandleTestingErr(db.Clear(host.Collection), t, "error clearing %v collections", host.Collection)
+	testutil.HandleTestingErr(db.Clear(task.Collection), t, "Error clearing '%v' collection", task.Collection)
 
 	// this host p1 is the parent of hosts h1 and h2 below
 	p1 := &host.Host{

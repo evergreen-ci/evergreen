@@ -9,10 +9,9 @@ import (
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/google/go-github/github"
-	adb "github.com/mongodb/anser/db"
 	"github.com/pkg/errors"
-	"go.mongodb.org/mongo-driver/bson"
-	mgobson "gopkg.in/mgo.v2/bson"
+	mgo "gopkg.in/mgo.v2"
+	"gopkg.in/mgo.v2/bson"
 )
 
 // SizeLimit is a hard limit on patch size.
@@ -32,29 +31,26 @@ type DisplayTask struct {
 
 // Patch stores all details related to a patch request
 type Patch struct {
-	Id              mgobson.ObjectId `bson:"_id,omitempty"`
-	Description     string           `bson:"desc"`
-	Project         string           `bson:"branch"`
-	Githash         string           `bson:"githash"`
-	PatchNumber     int              `bson:"patch_number"`
-	Author          string           `bson:"author"`
-	Version         string           `bson:"version"`
-	Status          string           `bson:"status"`
-	CreateTime      time.Time        `bson:"create_time"`
-	StartTime       time.Time        `bson:"start_time"`
-	FinishTime      time.Time        `bson:"finish_time"`
-	BuildVariants   []string         `bson:"build_variants"`
-	Tasks           []string         `bson:"tasks"`
-	VariantsTasks   []VariantTasks   `bson:"variants_tasks"`
-	Patches         []ModulePatch    `bson:"patches"`
-	Activated       bool             `bson:"activated"`
-	PatchedConfig   string           `bson:"patched_config"`
-	Alias           string           `bson:"alias"`
-	GithubPatchData GithubPatch      `bson:"github_patch_data,omitempty"`
+	Id              bson.ObjectId  `bson:"_id,omitempty"`
+	Description     string         `bson:"desc"`
+	Project         string         `bson:"branch"`
+	Githash         string         `bson:"githash"`
+	PatchNumber     int            `bson:"patch_number"`
+	Author          string         `bson:"author"`
+	Version         string         `bson:"version"`
+	Status          string         `bson:"status"`
+	CreateTime      time.Time      `bson:"create_time"`
+	StartTime       time.Time      `bson:"start_time"`
+	FinishTime      time.Time      `bson:"finish_time"`
+	BuildVariants   []string       `bson:"build_variants"`
+	Tasks           []string       `bson:"tasks"`
+	VariantsTasks   []VariantTasks `bson:"variants_tasks"`
+	Patches         []ModulePatch  `bson:"patches"`
+	Activated       bool           `bson:"activated"`
+	PatchedConfig   string         `bson:"patched_config"`
+	Alias           string         `bson:"alias"`
+	GithubPatchData GithubPatch    `bson:"github_patch_data,omitempty"`
 }
-
-func (p *Patch) MarshalBSON() ([]byte, error)  { return mgobson.Marshal(p) }
-func (p *Patch) UnmarshalBSON(in []byte) error { return mgobson.Unmarshal(in, p) }
 
 // GithubPatch stores patch data for patches create from GitHub pull requests
 type GithubPatch struct {
@@ -189,7 +185,7 @@ func (p *Patch) SetVariantsTasks(variantsTasks []VariantTasks) error {
 // AddBuildVariants adds more buildvarints to a patch document.
 // This is meant to be used after initial patch creation.
 func (p *Patch) AddBuildVariants(bvs []string) error {
-	change := adb.Change{
+	change := mgo.Change{
 		Update: bson.M{
 			"$addToSet": bson.M{BuildVariantsKey: bson.M{"$each": bvs}},
 		},
@@ -202,7 +198,7 @@ func (p *Patch) AddBuildVariants(bvs []string) error {
 // AddTasks adds more tasks to a patch document.
 // This is meant to be used after initial patch creation, to reconfigure the patch.
 func (p *Patch) AddTasks(tasks []string) error {
-	change := adb.Change{
+	change := mgo.Change{
 		Update: bson.M{
 			"$addToSet": bson.M{TasksKey: bson.M{"$each": tasks}},
 		},
@@ -275,6 +271,7 @@ func (p *Patch) SetActivated(versionId string) error {
 			},
 		},
 	)
+
 }
 
 // SetActivation sets the patch to the desired activation state without
@@ -286,19 +283,6 @@ func (p *Patch) SetActivation(activated bool) error {
 		bson.M{
 			"$set": bson.M{
 				ActivatedKey: activated,
-			},
-		},
-	)
-}
-
-// SetGithash updates the patch's githash
-func (p *Patch) SetGithash(githash string) error {
-	p.Githash = githash
-	return UpdateOne(
-		bson.M{IdKey: p.Id},
-		bson.M{
-			"$set": bson.M{
-				GithashKey: githash,
 			},
 		},
 	)
@@ -367,7 +351,7 @@ func MakeMergePatch(pr *github.PullRequest, projectID, alias string) (*Patch, er
 		return nil, errors.Wrap(err, "error computing patch num")
 	}
 
-	id := mgobson.NewObjectId()
+	id := bson.NewObjectId()
 
 	if pr.Base == nil {
 		return nil, errors.New("pr contains no base branch data")

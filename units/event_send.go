@@ -66,7 +66,7 @@ func (j *eventNotificationJob) setup() error {
 	}
 	if j.flags == nil {
 		j.flags = &evergreen.ServiceFlags{}
-		if err := j.flags.Get(j.env); err != nil {
+		if err := j.flags.Get(); err != nil {
 			return errors.Wrap(err, "error retrieving service flags")
 
 		} else if j.flags == nil {

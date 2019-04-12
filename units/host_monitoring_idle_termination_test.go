@@ -9,10 +9,10 @@ import (
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/host"
 	modelUtil "github.com/evergreen-ci/evergreen/model/testutil"
+	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/amboy/queue"
 	. "github.com/smartystreets/goconvey/convey"
-	"github.com/stretchr/testify/require"
 )
 
 func flagIdleHosts(ctx context.Context, env evergreen.Environment) ([]string, error) {
@@ -49,13 +49,18 @@ func TestFlaggingIdleHosts(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
+	testConfig := testutil.TestConfig()
+	db.SetGlobalSessionProvider(testConfig.SessionFactory())
+
 	env := evergreen.GetEnvironment()
 
 	Convey("When flagging idle hosts to be terminated", t, func() {
 
 		// reset the db
-		require.NoError(t, db.ClearCollections(host.Collection), "error clearing hosts collection")
-		require.NoError(t, modelUtil.AddTestIndexes(host.Collection, true, true, host.RunningTaskKey), "error adding host index")
+		testutil.HandleTestingErr(db.ClearCollections(host.Collection),
+			t, "error clearing hosts collection")
+		testutil.HandleTestingErr(modelUtil.AddTestIndexes(host.Collection,
+			true, true, host.RunningTaskKey), t, "error adding host index")
 		Convey("hosts currently running a task should never be"+
 			" flagged", func() {
 
@@ -69,7 +74,7 @@ func TestFlaggingIdleHosts(t *testing.T) {
 				Status:       evergreen.HostRunning,
 				StartedBy:    evergreen.User,
 			}
-			require.NoError(t, host1.Insert(), "error inserting host")
+			testutil.HandleTestingErr(host1.Insert(), t, "error inserting host")
 
 			// finding idle hosts should not return the host
 			idle, err := flagIdleHosts(ctx, env)
@@ -86,7 +91,7 @@ func TestFlaggingIdleHosts(t *testing.T) {
 					LastCommunicationTime: time.Now().Add(-30 * time.Minute),
 					StartedBy:             evergreen.User,
 				}
-				require.NoError(t, h2.Insert(), "error inserting host")
+				testutil.HandleTestingErr(h2.Insert(), t, "error inserting host")
 				// finding idle hosts should not return the host
 				idle, err := flagIdleHosts(ctx, env)
 				So(err, ShouldBeNil)
@@ -113,7 +118,7 @@ func TestFlaggingIdleHosts(t *testing.T) {
 				StartedBy:             evergreen.User,
 				Provisioned:           true,
 			}
-			require.NoError(t, host1.Insert(), "error inserting host")
+			testutil.HandleTestingErr(host1.Insert(), t, "error inserting host")
 
 			host2 := host.Host{
 				Id:                    "h3",
@@ -125,7 +130,7 @@ func TestFlaggingIdleHosts(t *testing.T) {
 				StartedBy:             evergreen.User,
 				Provisioned:           true,
 			}
-			require.NoError(t, host2.Insert(), "error inserting host")
+			testutil.HandleTestingErr(host2.Insert(), t, "error inserting host")
 
 			// finding idle hosts should only return the first host
 			idle, err := flagIdleHosts(ctx, env)

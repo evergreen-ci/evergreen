@@ -13,7 +13,6 @@ import (
 	"github.com/evergreen-ci/evergreen/util"
 	. "github.com/smartystreets/goconvey/convey"
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 )
 
 const TotalResultCount = 677
@@ -35,7 +34,7 @@ func runTest(t *testing.T, configPath string, customTests func(string)) {
 
 	SkipConvey("With attachResults plugin installed into plugin registry", t, func() {
 		modelData, err := modelutil.SetupAPITestData(testConfig, "test", "rhel55", configPath, modelutil.NoPatch)
-		require.NoError(t, err, "failed to setup test data")
+		testutil.HandleTestingErr(err, t, "failed to setup test data")
 
 		conf := modelData.TaskConfig
 		conf.WorkDir = "."
@@ -47,14 +46,14 @@ func runTest(t *testing.T, configPath string, customTests func(string)) {
 				So(len(projTask.Commands), ShouldNotEqual, 0)
 				for _, command := range projTask.Commands {
 					pluginCmds, err := Render(command, conf.Project.Functions)
-					require.NoError(t, err, "Couldn't get plugin command: %s", command.Command)
+					testutil.HandleTestingErr(err, t, "Couldn't get plugin command: %s", command.Command)
 					So(pluginCmds, ShouldNotBeNil)
 					So(err, ShouldBeNil)
 
 					err = pluginCmds[0].Execute(ctx, comm, logger, conf)
 					So(err, ShouldBeNil)
 					testTask, err := task.FindOne(task.ById(conf.Task.Id))
-					require.NoError(t, err, "Couldn't find task")
+					testutil.HandleTestingErr(err, t, "Couldn't find task")
 					So(testTask, ShouldNotBeNil)
 				}
 			}
@@ -146,7 +145,7 @@ func TestParseAndUpload(t *testing.T) {
 	defer cancel()
 	comm := client.NewMock("/dev/null")
 	modelData, err := modelutil.SetupAPITestData(testConfig, "aggregation", "rhel55", WildcardConfig, modelutil.NoPatch)
-	require.NoError(t, err, "failed to setup test data")
+	testutil.HandleTestingErr(err, t, "failed to setup test data")
 
 	conf := modelData.TaskConfig
 	conf.WorkDir = filepath.Join(testutil.GetDirectoryOfFile(), "testdata", "xunit")

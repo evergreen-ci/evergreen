@@ -13,14 +13,17 @@ import (
 	. "github.com/smartystreets/goconvey/convey"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"go.mongodb.org/mongo-driver/bson"
-	mgobson "gopkg.in/mgo.v2/bson"
+	"gopkg.in/mgo.v2/bson"
 )
 
 var (
 	conf  = testutil.TestConfig()
 	oneMs = time.Millisecond
 )
+
+func init() {
+	db.SetGlobalSessionProvider(conf.SessionFactory())
+}
 
 var depTaskIds = []Dependency{
 	{"td1", evergreen.TaskSucceeded},
@@ -34,11 +37,17 @@ var depTaskIds = []Dependency{
 func updateTestDepTasks(t *testing.T) {
 	// cases for success/default
 	for _, depTaskId := range depTaskIds[:3] {
-		require.NoError(t, UpdateOne(bson.M{"_id": depTaskId.TaskId}, bson.M{"$set": bson.M{"status": evergreen.TaskSucceeded}}), "Error setting task status")
+		testutil.HandleTestingErr(UpdateOne(
+			bson.M{"_id": depTaskId.TaskId},
+			bson.M{"$set": bson.M{"status": evergreen.TaskSucceeded}},
+		), t, "Error setting task status")
 	}
 	// cases for * and failure
 	for _, depTaskId := range depTaskIds[3:] {
-		require.NoError(t, UpdateOne(bson.M{"_id": depTaskId.TaskId}, bson.M{"$set": bson.M{"status": evergreen.TaskFailed}}), "Error setting task status")
+		testutil.HandleTestingErr(UpdateOne(
+			bson.M{"_id": depTaskId.TaskId},
+			bson.M{"$set": bson.M{"status": evergreen.TaskFailed}},
+		), t, "Error setting task status")
 	}
 }
 
@@ -280,7 +289,7 @@ func TestTaskSetPriority(t *testing.T) {
 
 	Convey("With a task", t, func() {
 
-		require.NoError(t, db.Clear(Collection), "Error clearing"+
+		testutil.HandleTestingErr(db.Clear(Collection), t, "Error clearing"+
 			" '%v' collection", Collection)
 
 		tasks := []Task{
@@ -542,6 +551,92 @@ func TestCountSimilarFailingTasks(t *testing.T) {
 	})
 }
 
+func TestTimeAggregations(t *testing.T) {
+	Convey("With multiple tasks with different times", t, func() {
+		So(db.Clear(Collection), ShouldBeNil)
+		task1 := Task{Id: "bogus",
+			ScheduledTime: time.Unix(1000, 0),
+			StartTime:     time.Unix(1010, 0),
+			FinishTime:    time.Unix(1030, 0),
+			DistroId:      "osx"}
+		task2 := Task{Id: "fake",
+			ScheduledTime: time.Unix(1000, 0),
+			StartTime:     time.Unix(1020, 0),
+			FinishTime:    time.Unix(1050, 0),
+			DistroId:      "osx"}
+		task3 := Task{Id: "placeholder",
+			ScheduledTime: time.Unix(1000, 0),
+			StartTime:     time.Unix(1060, 0),
+			FinishTime:    time.Unix(1180, 0),
+			DistroId:      "templOS"}
+		So(task1.Insert(), ShouldBeNil)
+		So(task2.Insert(), ShouldBeNil)
+		So(task3.Insert(), ShouldBeNil)
+
+		Convey("on an aggregation on FinishTime - StartTime", func() {
+			timeMap, err := AverageTaskTimeDifference(
+				StartTimeKey,
+				FinishTimeKey,
+				DistroIdKey,
+				util.ZeroTime)
+			So(err, ShouldBeNil)
+
+			Convey("the proper averages should be computed", func() {
+				// osx = ([1030-1010] + [1050-1020])/2 = (20+30)/2 = 25
+				So(timeMap["osx"].Seconds(), ShouldEqual, 25)
+				// templOS = (1180 - 1060)/1 = 120/1 = 120
+				So(timeMap["templOS"].Seconds(), ShouldEqual, 120)
+			})
+		})
+
+		Convey("on an aggregation on StartTime - ScheduledTime", func() {
+			timeMap, err := AverageTaskTimeDifference(
+				ScheduledTimeKey,
+				StartTimeKey,
+				DistroIdKey,
+				util.ZeroTime)
+			So(err, ShouldBeNil)
+
+			Convey("the proper averages should be computed", func() {
+				// osx = ([1010-1000] + [1020-1000])/2 = (10+20)/2 = 15
+				So(timeMap["osx"].Seconds(), ShouldEqual, 15)
+				// templOS = (1060-1000)/1 = 60/1 = 60
+				So(timeMap["templOS"].Seconds(), ShouldEqual, 60)
+			})
+		})
+
+		Convey("but when given non-time fields", func() {
+
+			Convey("most cases should return an empty map", func() {
+				timeMap, err := AverageTaskTimeDifference(
+					IdKey,
+					DistroIdKey,
+					DistroIdKey,
+					util.ZeroTime)
+				So(len(timeMap), ShouldEqual, 0)
+				So(err, ShouldBeNil)
+				timeMap, err = AverageTaskTimeDifference(
+					DistroIdKey,
+					SecretKey,
+					DistroIdKey,
+					util.ZeroTime)
+				So(len(timeMap), ShouldEqual, 0)
+				So(err, ShouldBeNil)
+			})
+
+			Convey("special key cases should cause real agg errors", func() {
+				timeMap, err := AverageTaskTimeDifference(
+					StartTimeKey,
+					"$$$$$$",
+					DistroIdKey,
+					util.ZeroTime)
+				So(len(timeMap), ShouldEqual, 0)
+				So(err, ShouldNotBeNil)
+			})
+		})
+	})
+}
+
 func TestEndingTask(t *testing.T) {
 	Convey("With tasks that are attempting to be marked as finished", t, func() {
 		So(db.Clear(Collection), ShouldBeNil)
@@ -653,7 +748,7 @@ func TestTaskResultOutcome(t *testing.T) {
 }
 
 func TestMergeTestResultsBulk(t *testing.T) {
-	require.NoError(t, db.Clear(testresult.Collection), "error clearing collections")
+	testutil.HandleTestingErr(db.Clear(testresult.Collection), t, "error clearing collections")
 	assert := assert.New(t)
 
 	tasks := []Task{
@@ -867,12 +962,12 @@ func TestFindOneIdOldOrNew(t *testing.T) {
 	require.NoError(taskDoc.Insert())
 	require.NoError(taskDoc.Archive())
 	result0 := testresult.TestResult{
-		ID:        mgobson.NewObjectId(),
+		ID:        bson.NewObjectId(),
 		TaskID:    "task",
 		Execution: 0,
 	}
 	result1 := testresult.TestResult{
-		ID:        mgobson.NewObjectId(),
+		ID:        bson.NewObjectId(),
 		TaskID:    "task",
 		Execution: 1,
 	}

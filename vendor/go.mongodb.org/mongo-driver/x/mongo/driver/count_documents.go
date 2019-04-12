@@ -33,9 +33,6 @@ func CountDocuments(
 	opts ...*options.CountOptions,
 ) (int64, error) {
 
-	if cmd.Session != nil && cmd.Session.PinnedServer != nil {
-		selector = cmd.Session.PinnedServer
-	}
 	ss, err := topo.SelectServer(ctx, selector)
 	if err != nil {
 		return 0, err

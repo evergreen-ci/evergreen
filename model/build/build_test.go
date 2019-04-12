@@ -11,11 +11,14 @@ import (
 	"github.com/evergreen-ci/evergreen/testutil"
 	. "github.com/smartystreets/goconvey/convey"
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
-	"go.mongodb.org/mongo-driver/bson"
+	"gopkg.in/mgo.v2/bson"
 )
 
 var buildTestConfig = testutil.TestConfig()
+
+func init() {
+	db.SetGlobalSessionProvider(buildTestConfig.SessionFactory())
+}
 
 func buildIdInSlice(builds []Build, id string) bool {
 	for _, build := range builds {
@@ -29,7 +32,7 @@ func buildIdInSlice(builds []Build, id string) bool {
 func TestGenericBuildFinding(t *testing.T) {
 
 	Convey("When finding builds", t, func() {
-		require.NoError(t, db.Clear(Collection), "Error clearing"+
+		testutil.HandleTestingErr(db.Clear(Collection), t, "Error clearing"+
 			" '%v' collection", Collection)
 
 		Convey("when finding one build", func() {
@@ -72,7 +75,7 @@ func TestFindIntermediateBuilds(t *testing.T) {
 
 	Convey("When finding intermediate builds", t, func() {
 
-		require.NoError(t, db.Clear(Collection), "Error clearing"+
+		testutil.HandleTestingErr(db.Clear(Collection), t, "Error clearing"+
 			" '%v' collection", Collection)
 
 		// the two builds to use as endpoints
@@ -244,7 +247,7 @@ func TestFindPreviousActivatedBuild(t *testing.T) {
 
 	Convey("When finding the previous activated build", t, func() {
 
-		require.NoError(t, db.Clear(Collection), "Error clearing"+
+		testutil.HandleTestingErr(db.Clear(Collection), t, "Error clearing"+
 			" '%v' collection", Collection)
 
 		currBuild := &Build{
@@ -350,7 +353,7 @@ func TestRecentlyFinishedBuilds(t *testing.T) {
 
 	Convey("When finding all recently finished builds", t, func() {
 
-		require.NoError(t, db.Clear(Collection), "Error clearing"+
+		testutil.HandleTestingErr(db.Clear(Collection), t, "Error clearing"+
 			" '%v' collection", Collection)
 
 		Convey("all builds returned should be finished", func() {
@@ -490,7 +493,7 @@ func TestGenericBuildUpdating(t *testing.T) {
 	Convey("When updating builds", t, func() {
 
 		Reset(func() {
-			require.NoError(t, db.Clear(Collection), "Error clearing '%v' collection", Collection)
+			testutil.HandleTestingErr(db.Clear(Collection), t, "Error clearing '%v' collection", Collection)
 		})
 
 		Convey("updating a single build should update the specified build"+
@@ -516,7 +519,7 @@ func TestBuildUpdateStatus(t *testing.T) {
 	Convey("With a build", t, func() {
 
 		Reset(func() {
-			require.NoError(t, db.Clear(Collection), "Error clearing '%v' collection", Collection)
+			testutil.HandleTestingErr(db.Clear(Collection), t, "Error clearing '%v' collection", Collection)
 		})
 
 		var err error
@@ -537,7 +540,7 @@ func TestBuildUpdateStatus(t *testing.T) {
 func TestAllTasksFinished(t *testing.T) {
 	assert := assert.New(t)
 
-	require.NoError(t, db.ClearCollections(task.Collection), "error clearing collection")
+	testutil.HandleTestingErr(db.ClearCollections(task.Collection), t, "error clearing collection")
 	b := &Build{
 		Id:        "b1",
 		Status:    evergreen.BuildStarted,
@@ -707,28 +710,18 @@ func TestBuildSetCachedTaskFinished(t *testing.T) {
 
 	assert.NoError(b.SetCachedTaskFinished("t1", evergreen.TaskFailed, &detail, timeTaken))
 	assert.NoError(b.SetCachedTaskFinished("t2", evergreen.TaskFailed, &detail, timeTaken))
-	assert.EqualError(b.SetCachedTaskFinished("t3", evergreen.TaskFailed, &detail, timeTaken), "document not found")
+	assert.EqualError(b.SetCachedTaskFinished("t3", evergreen.TaskFailed, &detail, timeTaken), "not found")
 
 	assert.NoError(SetCachedTaskFinished("b2", "t1", evergreen.TaskFailed, &detail, timeTaken))
 	assert.NoError(SetCachedTaskFinished("b2", "t2", evergreen.TaskFailed, &detail, timeTaken))
-	assert.EqualError(SetCachedTaskFinished("b2", "t3", evergreen.TaskFailed, &detail, timeTaken), "document not found")
+	assert.EqualError(SetCachedTaskFinished("b2", "t3", evergreen.TaskFailed, &detail, timeTaken), "not found")
 
 	// Results from build.SetCachedTaskFinished and SetCachedTaskFinished
 	// should be the same
 	b2, err := FindOneId("b2")
 	assert.NoError(err)
 	assert.NotNil(b2)
-
-	// we want the time to actually equal and it won't because
-	// timezone on nils
 	b.Id = ""
 	b2.Id = ""
-	b.CreateTime = b2.CreateTime
-	b.StartTime = b2.StartTime
-	b.FinishTime = b2.FinishTime
-	b.ActivatedTime = b2.ActivatedTime
-	for idx := range b.Tasks {
-		b.Tasks[idx].StartTime = b2.Tasks[idx].StartTime
-	}
 	assert.EqualValues(b2, b)
 }

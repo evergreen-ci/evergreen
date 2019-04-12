@@ -11,9 +11,11 @@ import (
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
 	modelutil "github.com/evergreen-ci/evergreen/model/testutil"
+	"github.com/evergreen-ci/evergreen/plugin/plugintest"
 	"github.com/evergreen-ci/evergreen/rest/client"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/evergreen/util"
+	"github.com/mongodb/jasper"
 	. "github.com/smartystreets/goconvey/convey"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -42,9 +44,9 @@ func TestPatchPluginAPI(t *testing.T) {
 		modelData, err := modelutil.SetupAPITestData(settings, "testTask", "testvar", configPath, modelutil.NoPatch)
 		modelData.TaskConfig.Expansions = util.NewExpansions(settings.Credentials)
 
-		require.NoError(t, err, "Couldn't set up test documents")
-		err = setupTestPatchData(modelData, patchFile, t)
-		require.NoError(t, err, "Couldn't set up test documents")
+		testutil.HandleTestingErr(err, t, "Couldn't set up test documents")
+		err = plugintest.SetupPatchData(modelData, patchFile, t)
+		testutil.HandleTestingErr(err, t, "Couldn't set up test documents")
 
 		comm.PatchFiles[""] = patchFile
 
@@ -54,12 +56,12 @@ func TestPatchPluginAPI(t *testing.T) {
 			err = testCommand.getPatchContents(ctx, comm, logger, conf, patch)
 			So(err, ShouldBeNil)
 			So(patch, ShouldNotBeNil)
-			require.NoError(t, db.Clear(model.VersionCollection),
+			testutil.HandleTestingErr(db.Clear(model.VersionCollection), t,
 				"unable to clear versions collection")
 		})
 		Convey("calls to non-existing tasks should fail", func() {
 			v := model.Version{Id: ""}
-			require.NoError(t, v.Insert(), "Couldn't insert dummy version")
+			testutil.HandleTestingErr(v.Insert(), t, "Couldn't insert dummy version")
 			modelData.Task = &task.Task{
 				Id: "BAD_TASK_ID",
 			}
@@ -67,23 +69,23 @@ func TestPatchPluginAPI(t *testing.T) {
 			So(err, ShouldNotBeNil)
 			So(err.Error(), ShouldContainSubstring, "not found")
 			So(patch, ShouldBeNil)
-			require.NoError(t, db.Clear(model.VersionCollection),
+			testutil.HandleTestingErr(db.Clear(model.VersionCollection), t,
 				"unable to clear versions collection")
 		})
 		Convey("calls to existing tasks without patches should fail", func() {
 			noPatchTask := task.Task{Id: "noPatchTask", BuildId: "a"}
-			require.NoError(t, noPatchTask.Insert(), "Couldn't insert patch task")
+			testutil.HandleTestingErr(noPatchTask.Insert(), t, "Couldn't insert patch task")
 			noPatchVersion := model.Version{Id: "noPatchVersion", BuildIds: []string{"a"}}
-			require.NoError(t, noPatchVersion.Insert(), "Couldn't insert patch version")
+			testutil.HandleTestingErr(noPatchVersion.Insert(), t, "Couldn't insert patch version")
 			v := model.Version{Id: ""}
-			require.NoError(t, v.Insert(), "Couldn't insert dummy version")
+			testutil.HandleTestingErr(v.Insert(), t, "Couldn't insert dummy version")
 			modelData.Task = &noPatchTask
 
 			err := testCommand.getPatchContents(ctx, comm, logger, conf, patch)
 			So(err, ShouldNotBeNil)
 			So(err.Error(), ShouldContainSubstring, "no patch found for task")
 			So(patch, ShouldBeNil)
-			require.NoError(t, db.Clear(model.VersionCollection),
+			testutil.HandleTestingErr(db.Clear(model.VersionCollection), t,
 				"unable to clear versions collection")
 		})
 
@@ -91,17 +93,18 @@ func TestPatchPluginAPI(t *testing.T) {
 }
 
 func TestPatchPlugin(t *testing.T) {
+	settings := testutil.TestConfig()
+	testutil.ConfigureIntegrationTest(t, settings, "TestPatchPlugin")
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	env := testutil.NewEnvironment(ctx, t)
-	settings := env.Settings()
-
-	testutil.ConfigureIntegrationTest(t, settings, "TestPatchPlugin")
 	cwd := testutil.GetDirectoryOfFile()
-	jpm := env.JasperManager()
+	db.SetGlobalSessionProvider(settings.SessionFactory())
+
+	jpm, err := jasper.NewLocalManager(false)
+	require.NoError(t, err)
 
 	Convey("With patch plugin installed into plugin registry", t, func() {
-		require.NoError(t, db.Clear(model.VersionCollection),
+		testutil.HandleTestingErr(db.Clear(model.VersionCollection), t,
 			"unable to clear versions collection")
 		version := &model.Version{
 			Id: "",
@@ -112,10 +115,10 @@ func TestPatchPlugin(t *testing.T) {
 		configPath := filepath.Join(testutil.GetDirectoryOfFile(), "testdata", "git", "plugin_patch.yml")
 		modelData, err := modelutil.SetupAPITestData(settings, "testtask1", "testvar", configPath, modelutil.InlinePatch)
 		modelData.TaskConfig.Expansions = util.NewExpansions(settings.Credentials)
-		require.NoError(t, err, "Couldn't set up test documents")
+		testutil.HandleTestingErr(err, t, "Couldn't set up test documents")
 
-		err = setupTestPatchData(modelData, patchFile, t)
-		require.NoError(t, err, "Couldn't set up patch documents")
+		err = plugintest.SetupPatchData(modelData, patchFile, t)
+		testutil.HandleTestingErr(err, t, "Couldn't set up patch documents")
 
 		taskConfig := modelData.TaskConfig
 
@@ -130,7 +133,7 @@ func TestPatchPlugin(t *testing.T) {
 				So(len(task.Commands), ShouldNotEqual, 0)
 				for _, command := range task.Commands {
 					pluginCmds, err := Render(command, taskConfig.Project.Functions)
-					require.NoError(t, err, "Couldn't get plugin command: %s", command.Command)
+					testutil.HandleTestingErr(err, t, "Couldn't get plugin command: %s", command.Command)
 					So(pluginCmds, ShouldNotBeNil)
 					So(err, ShouldBeNil)
 

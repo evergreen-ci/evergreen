@@ -373,7 +373,6 @@ func FinalizePatch(ctx context.Context, p *patch.Patch, requester string, github
 	if err = patchVersion.Insert(); err != nil {
 		return nil, errors.WithStack(err)
 	}
-
 	if err = p.SetActivated(patchVersion.Id); err != nil {
 		return nil, errors.WithStack(err)
 	}

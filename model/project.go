@@ -837,7 +837,6 @@ bvLoop:
 	for bv := range variantsMap {
 		variantsList = append(variantsList, bv)
 	}
-
 	return variantsList
 }
 

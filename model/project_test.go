@@ -12,12 +12,12 @@ import (
 	"github.com/evergreen-ci/evergreen/model/manifest"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
+	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/evergreen/util"
 	. "github.com/smartystreets/goconvey/convey"
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
-	"go.mongodb.org/mongo-driver/bson"
+	"gopkg.in/mgo.v2/bson"
 	yaml "gopkg.in/yaml.v2"
 )
 
@@ -56,7 +56,7 @@ func TestFindProject(t *testing.T) {
 				Repo:       "fakerepo",
 				Branch:     "fakebranch",
 			}
-			require.NoError(t, v.Insert(), "failed to insert test version: %v", v)
+			testutil.HandleTestingErr(v.Insert(), t, "failed to insert test version: %v", v)
 			_, err := FindProject("", p)
 			So(err, ShouldBeNil)
 
@@ -285,7 +285,7 @@ func boolPtr(b bool) *bool {
 
 func TestGetTaskGroup(t *testing.T) {
 	assert := assert.New(t)
-	require.NoError(t, db.ClearCollections(VersionCollection), "failed to clear collections")
+	testutil.HandleTestingErr(db.ClearCollections(VersionCollection), t, "failed to clear collections")
 	tgName := "example_task_group"
 	projYml := `
 tasks:

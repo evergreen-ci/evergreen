@@ -19,7 +19,7 @@ import (
 	"github.com/mongodb/grip/send"
 	"github.com/mongodb/grip/sometimes"
 	"github.com/pkg/errors"
-	mgobson "gopkg.in/mgo.v2/bson"
+	"gopkg.in/mgo.v2/bson"
 )
 
 const (
@@ -117,7 +117,7 @@ func (j *githubStatusUpdateJob) preamble() error {
 		j.env = evergreen.GetEnvironment()
 	}
 	uiConfig := evergreen.UIConfig{}
-	if err := uiConfig.Get(j.env); err != nil {
+	if err := uiConfig.Get(); err != nil {
 		return err
 	}
 	j.urlBase = uiConfig.Url
@@ -150,6 +150,7 @@ func (j *githubStatusUpdateJob) preamble() error {
 
 func (j *githubStatusUpdateJob) fetch() (*message.GithubStatus, error) {
 	var patchDoc *patch.Patch
+	var err error
 	status := message.GithubStatus{}
 
 	if j.UpdateType == githubUpdateTypeBadConfig {
@@ -190,10 +191,9 @@ func (j *githubStatusUpdateJob) fetch() (*message.GithubStatus, error) {
 	}
 
 	if patchDoc == nil {
-		var err error
-		patchDoc, err = patch.FindOne(patch.ById(mgobson.ObjectIdHex(j.FetchID)))
+		patchDoc, err = patch.FindOne(patch.ById(bson.ObjectIdHex(j.FetchID)))
 		if err != nil {
-			return nil, errors.WithStack(err)
+			return nil, err
 		}
 		if patchDoc == nil {
 			return nil, errors.New("can't find patch")

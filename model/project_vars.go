@@ -3,9 +3,9 @@ package model
 import (
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/mongodb/anser/bsonutil"
-	adb "github.com/mongodb/anser/db"
 	"github.com/pkg/errors"
-	"go.mongodb.org/mongo-driver/bson"
+	"gopkg.in/mgo.v2"
+	"gopkg.in/mgo.v2/bson"
 )
 
 var (
@@ -53,7 +53,7 @@ func FindOneProjectVars(projectId string) (*ProjectVars, error) {
 		db.NoSort,
 		projectVars,
 	)
-	if adb.ResultsNotFound(err) {
+	if err == mgo.ErrNotFound {
 		return nil, nil
 	}
 	if err != nil {
@@ -67,16 +67,6 @@ func SetAWSKeyForProject(projectId string, ssh *AWSSSHKey) error {
 	if err != nil {
 		return errors.Wrap(err, "problem getting project vars")
 	}
-	if vars == nil {
-		vars = &ProjectVars{}
-	}
-	if vars.Vars == nil {
-		vars.Vars = map[string]string{}
-	}
-	if vars.PrivateVars == nil {
-		vars.PrivateVars = map[string]bool{}
-	}
-
 	vars.Vars[ProjectAWSSSHKeyName] = ssh.Name
 	vars.Vars[ProjectAWSSSHKeyValue] = ssh.Value
 	vars.PrivateVars[ProjectAWSSSHKeyValue] = true // redact value, but not key name
@@ -95,7 +85,7 @@ func GetAWSKeyForProject(projectId string) (*AWSSSHKey, error) {
 	}, nil
 }
 
-func (projectVars *ProjectVars) Upsert() (*adb.ChangeInfo, error) {
+func (projectVars *ProjectVars) Upsert() (*mgo.ChangeInfo, error) {
 	return db.Upsert(
 		ProjectVarsCollection,
 		bson.M{

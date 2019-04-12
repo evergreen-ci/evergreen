@@ -14,6 +14,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/task"
+	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/evergreen/util"
 	. "github.com/smartystreets/goconvey/convey"
 	"github.com/stretchr/testify/assert"
@@ -24,9 +25,13 @@ var (
 	oneMs = time.Millisecond
 )
 
+func init() {
+	db.SetGlobalSessionProvider(testutil.TestConfig().SessionFactory())
+}
+
 func TestSetActiveState(t *testing.T) {
 	Convey("With one task with no dependencies", t, func() {
-		require.NoError(t, db.ClearCollections(task.Collection, build.Collection, task.OldCollection),
+		testutil.HandleTestingErr(db.ClearCollections(task.Collection, build.Collection, task.OldCollection), t,
 			"Error clearing task and build collections")
 		var err error
 
@@ -131,7 +136,7 @@ func TestSetActiveState(t *testing.T) {
 		})
 	})
 	Convey("With one task has tasks it depends on", t, func() {
-		require.NoError(t, db.ClearCollections(task.Collection, build.Collection),
+		testutil.HandleTestingErr(db.ClearCollections(task.Collection, build.Collection), t,
 			"Error clearing task and build collections")
 		displayName := "testName"
 		userName := "testUser"
@@ -242,7 +247,7 @@ func TestSetActiveState(t *testing.T) {
 
 func TestActivatePreviousTask(t *testing.T) {
 	Convey("With two tasks and a build", t, func() {
-		require.NoError(t, db.ClearCollections(task.Collection, build.Collection),
+		testutil.HandleTestingErr(db.ClearCollections(task.Collection, build.Collection), t,
 			"Error clearing task and build collections")
 		// create two tasks
 		displayName := "testTask"
@@ -293,7 +298,7 @@ func TestActivatePreviousTask(t *testing.T) {
 
 func TestDeactivatePreviousTask(t *testing.T) {
 	Convey("With two tasks and a build", t, func() {
-		require.NoError(t, db.ClearCollections(task.Collection, build.Collection),
+		testutil.HandleTestingErr(db.ClearCollections(task.Collection, build.Collection), t,
 			"Error clearing task and build collections")
 		// create two tasks
 		displayName := "testTask"
@@ -347,7 +352,7 @@ func TestDeactivatePreviousTask(t *testing.T) {
 		})
 	})
 	Convey("With a display task", t, func() {
-		require.NoError(t, db.ClearCollections(task.Collection, build.Collection),
+		testutil.HandleTestingErr(db.ClearCollections(task.Collection, build.Collection), t,
 			"Error clearing task and build collections")
 		userName := "user"
 		b1 := &build.Build{
@@ -511,7 +516,7 @@ func TestDeactivatePreviousTask(t *testing.T) {
 
 func TestUpdateBuildStatusForTask(t *testing.T) {
 	Convey("With two tasks and a build", t, func() {
-		require.NoError(t, db.ClearCollections(task.Collection, build.Collection, VersionCollection),
+		testutil.HandleTestingErr(db.ClearCollections(task.Collection, build.Collection, VersionCollection), t,
 			"Error clearing task and build collections")
 		displayName := "testName"
 		b := &build.Build{
@@ -623,7 +628,7 @@ func TestTaskStatusImpactedByFailedTest(t *testing.T) {
 				},
 			}
 
-			require.NoError(t, db.ClearCollections(ProjectRefCollection, task.Collection, build.Collection, VersionCollection),
+			testutil.HandleTestingErr(db.ClearCollections(ProjectRefCollection, task.Collection, build.Collection, VersionCollection), t,
 				"Error clearing task and build collections")
 			So(b.Insert(), ShouldBeNil)
 			So(testTask.Insert(), ShouldBeNil)
@@ -884,7 +889,7 @@ func TestMarkEnd(t *testing.T) {
 func TestTryResetTask(t *testing.T) {
 	Convey("With a task, a build, version and a project", t, func() {
 		Convey("resetting a task without a max number of executions", func() {
-			require.NoError(t, db.ClearCollections(task.Collection, task.OldCollection, build.Collection, VersionCollection),
+			testutil.HandleTestingErr(db.ClearCollections(task.Collection, task.OldCollection, build.Collection, VersionCollection), t,
 				"Error clearing task and build collections")
 			displayName := "testName"
 			userName := "testUser"
@@ -942,6 +947,7 @@ func TestTryResetTask(t *testing.T) {
 				So(testTask.Status, ShouldEqual, evergreen.TaskUndispatched)
 				So(testTask.FinishTime, ShouldResemble, util.ZeroTime)
 				oldTaskId := fmt.Sprintf("%v_%v", testTask.Id, 1)
+				fmt.Println(oldTaskId)
 				oldTask, err := task.FindOneOld(task.ById(oldTaskId))
 				So(err, ShouldBeNil)
 				So(oldTask, ShouldNotBeNil)
@@ -957,7 +963,7 @@ func TestTryResetTask(t *testing.T) {
 
 		})
 		Convey("resetting a task with a max number of excutions", func() {
-			require.NoError(t, db.ClearCollections(task.Collection, build.Collection, VersionCollection),
+			testutil.HandleTestingErr(db.ClearCollections(task.Collection, build.Collection, VersionCollection), t,
 				"Error clearing task and build collections")
 			displayName := "testName"
 			userName := "testUser"
@@ -1075,7 +1081,7 @@ func TestTryResetTask(t *testing.T) {
 
 func TestAbortTask(t *testing.T) {
 	Convey("With a task and a build", t, func() {
-		require.NoError(t, db.ClearCollections(task.Collection, build.Collection, VersionCollection),
+		testutil.HandleTestingErr(db.ClearCollections(task.Collection, build.Collection, VersionCollection), t,
 			"Error clearing task, build, and version collections")
 		displayName := "testName"
 		userName := "testUser"
@@ -1159,7 +1165,7 @@ func TestAbortTask(t *testing.T) {
 }
 func TestMarkStart(t *testing.T) {
 	Convey("With a task, build and version", t, func() {
-		require.NoError(t, db.ClearCollections(task.Collection, build.Collection, VersionCollection),
+		testutil.HandleTestingErr(db.ClearCollections(task.Collection, build.Collection, VersionCollection), t,
 			"Error clearing task and build collections")
 		displayName := "testName"
 		b := &build.Build{
@@ -1264,7 +1270,7 @@ func TestMarkStart(t *testing.T) {
 
 func TestMarkUndispatched(t *testing.T) {
 	Convey("With a task, build and version", t, func() {
-		require.NoError(t, db.ClearCollections(task.Collection, build.Collection, VersionCollection),
+		testutil.HandleTestingErr(db.ClearCollections(task.Collection, build.Collection, VersionCollection), t,
 			"Error clearing task and build collections")
 		displayName := "testName"
 		b := &build.Build{
@@ -1312,7 +1318,7 @@ func TestMarkUndispatched(t *testing.T) {
 
 func TestMarkDispatched(t *testing.T) {
 	Convey("With a task, build and version", t, func() {
-		require.NoError(t, db.ClearCollections(task.Collection, build.Collection, VersionCollection),
+		testutil.HandleTestingErr(db.ClearCollections(task.Collection, build.Collection, VersionCollection), t,
 			"Error clearing task and build collections")
 		displayName := "testName"
 		b := &build.Build{
@@ -1372,7 +1378,7 @@ buildvariants:
 `
 
 	Convey("When the project has a stepback policy set to true", t, func() {
-		require.NoError(t, db.ClearCollections(ProjectRefCollection, task.Collection, build.Collection, VersionCollection),
+		testutil.HandleTestingErr(db.ClearCollections(ProjectRefCollection, task.Collection, build.Collection, VersionCollection), t,
 			"Error clearing collections")
 
 		ref := &ProjectRef{
@@ -1447,7 +1453,7 @@ buildvariants:
 
 func TestFailedTaskRestart(t *testing.T) {
 	assert := assert.New(t)
-	require.NoError(t, db.ClearCollections(task.Collection, task.OldCollection, build.Collection, VersionCollection),
+	testutil.HandleTestingErr(db.ClearCollections(task.Collection, task.OldCollection, build.Collection, VersionCollection), t,
 		"Error clearing task and build collections")
 	userName := "testUser"
 	b := &build.Build{
@@ -1589,7 +1595,7 @@ func TestFailedTaskRestart(t *testing.T) {
 
 func TestStepback(t *testing.T) {
 	assert := assert.New(t)
-	require.NoError(t, db.ClearCollections(task.Collection, task.OldCollection, build.Collection, VersionCollection),
+	testutil.HandleTestingErr(db.ClearCollections(task.Collection, task.OldCollection, build.Collection, VersionCollection), t,
 		"Error clearing task and build collections")
 	b1 := &build.Build{
 		Id:        "build1",
@@ -2112,7 +2118,7 @@ func TestMarkEndWithBlockedDependenciesTriggersNotifications(t *testing.T) {
 }
 
 func TestClearAndResetStrandedTask(t *testing.T) {
-	require.NoError(t, db.ClearCollections(host.Collection, task.Collection, task.OldCollection, build.Collection), t, "error clearing collection")
+	testutil.HandleTestingErr(db.ClearCollections(host.Collection, task.Collection, task.OldCollection, build.Collection), t, "error clearing collection")
 	assert := assert.New(t)
 
 	runningTask := &task.Task{
@@ -2147,7 +2153,7 @@ func TestClearAndResetStrandedTask(t *testing.T) {
 }
 
 func TestClearAndResetStaleStrandedTask(t *testing.T) {
-	require.NoError(t, db.ClearCollections(host.Collection, task.Collection, task.OldCollection, build.Collection), t, "error clearing collection")
+	testutil.HandleTestingErr(db.ClearCollections(host.Collection, task.Collection, task.OldCollection, build.Collection), t, "error clearing collection")
 	assert := assert.New(t)
 
 	runningTask := &task.Task{
@@ -2183,7 +2189,7 @@ func TestClearAndResetStaleStrandedTask(t *testing.T) {
 }
 
 func TestDisplayTaskUpdates(t *testing.T) {
-	require.NoError(t, db.ClearCollections(task.Collection, event.AllLogCollection), "error clearing collection")
+	testutil.HandleTestingErr(db.ClearCollections(task.Collection, event.AllLogCollection), t, "error clearing collection")
 	assert := assert.New(t)
 	dt := task.Task{
 		Id:          "dt",
@@ -2287,7 +2293,7 @@ func TestDisplayTaskUpdates(t *testing.T) {
 }
 
 func TestDisplayTaskDelayedRestart(t *testing.T) {
-	require.NoError(t, db.ClearCollections(task.Collection, task.OldCollection, build.Collection), "error clearing collection")
+	testutil.HandleTestingErr(db.ClearCollections(task.Collection, task.OldCollection, build.Collection), t, "error clearing collection")
 	assert := assert.New(t)
 	dt := task.Task{
 		Id:          "dt",
@@ -2427,7 +2433,7 @@ tasks:
 	assert.NoError(b1.Insert())
 	assert.NoError(evalStepback(&finishedTask, "", evergreen.TaskFailed, false))
 	checkTask, err = task.FindOneId(stepbackTask.Id)
-	require.NoError(t, err)
+	assert.NoError(err)
 	assert.True(checkTask.Activated)
 
 	// generated task should step back its generator

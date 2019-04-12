@@ -16,7 +16,7 @@ func TestAPITestStatsBuildFromService(t *testing.T) {
 		TaskName:     "task1",
 		BuildVariant: "variant1",
 		Distro:       "distro1",
-		Date:         time.Now().UTC(),
+		Date:         time.Now(),
 
 		NumPass:         17,
 		NumFail:         99,
@@ -63,7 +63,7 @@ func TestAPITaskStatsBuildFromService(t *testing.T) {
 		TaskName:     "task1",
 		BuildVariant: "variant1",
 		Distro:       "distro1",
-		Date:         time.Now().UTC(),
+		Date:         time.Now(),
 
 		NumSuccess:         17,
 		NumFailed:          99,

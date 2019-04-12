@@ -7,11 +7,13 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/stretchr/testify/suite"
 )
 
 type repotrackerJobSuite struct {
 	suite.Suite
+	cancel func()
 }
 
 func TestRepotrackerJob(t *testing.T) {
@@ -19,11 +21,15 @@ func TestRepotrackerJob(t *testing.T) {
 }
 
 func (s *repotrackerJobSuite) SetupTest() {
+	ctx, cancel := context.WithCancel(context.Background())
+	s.cancel = cancel
+	testutil.SetGlobalEnvironment(ctx, s.T())
 	s.NoError(db.ClearCollections(model.ProjectRefCollection))
 }
 
 func (s *repotrackerJobSuite) TearDownTest() {
 	s.NoError(db.ClearCollections(evergreen.ConfigCollection))
+	s.cancel()
 }
 
 func (s *repotrackerJobSuite) TestJob() {

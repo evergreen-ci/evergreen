@@ -2,9 +2,9 @@ package model
 
 import (
 	"github.com/evergreen-ci/evergreen/db"
-	adb "github.com/mongodb/anser/db"
 	"github.com/pkg/errors"
-	"go.mongodb.org/mongo-driver/bson"
+	mgo "gopkg.in/mgo.v2"
+	"gopkg.in/mgo.v2/bson"
 )
 
 const KeyValCollection = "keyval_plugin"
@@ -16,7 +16,7 @@ type KeyVal struct {
 
 func (kv *KeyVal) Inc() error {
 	key := kv.Key
-	change := adb.Change{
+	change := mgo.Change{
 		Update: bson.M{
 			"$inc": bson.M{"value": 1},
 		},

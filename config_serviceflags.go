@@ -1,10 +1,9 @@
 package evergreen
 
 import (
+	"github.com/evergreen-ci/evergreen/db"
 	"github.com/pkg/errors"
-	"go.mongodb.org/mongo-driver/bson"
-	"go.mongodb.org/mongo-driver/mongo"
-	"go.mongodb.org/mongo-driver/mongo/options"
+	"gopkg.in/mgo.v2/bson"
 )
 
 // ServiceFlags holds the state of each of the runner/API processes
@@ -37,33 +36,17 @@ type ServiceFlags struct {
 
 func (c *ServiceFlags) SectionId() string { return "service_flags" }
 
-func (c *ServiceFlags) Get(env Environment) error {
-	ctx, cancel := env.Context()
-	defer cancel()
-	coll := env.DB().Collection(ConfigCollection)
-
-	res := coll.FindOne(ctx, byId(c.SectionId()))
-	if err := res.Err(); err != nil {
-		return errors.Wrapf(err, "error retrieving section %s", c.SectionId())
+func (c *ServiceFlags) Get() error {
+	err := db.FindOneQ(ConfigCollection, db.Query(byId(c.SectionId())), c)
+	if err != nil && err.Error() == errNotFound {
+		*c = ServiceFlags{}
+		return nil
 	}
-
-	if err := res.Decode(c); err != nil {
-		if err == mongo.ErrNoDocuments {
-			*c = ServiceFlags{}
-			return nil
-		}
-		return errors.Wrapf(err, "error retrieving section %s", c.SectionId())
-	}
-	return nil
+	return errors.Wrapf(err, "error retrieving section %s", c.SectionId())
 }
 
 func (c *ServiceFlags) Set() error {
-	env := GetEnvironment()
-	ctx, cancel := env.Context()
-	defer cancel()
-	coll := env.DB().Collection(ConfigCollection)
-
-	_, err := coll.UpdateOne(ctx, byId(c.SectionId()), bson.M{
+	_, err := db.Upsert(ConfigCollection, byId(c.SectionId()), bson.M{
 		"$set": bson.M{
 			taskDispatchKey:                 c.TaskDispatchDisabled,
 			hostInitKey:                     c.HostInitDisabled,
@@ -88,8 +71,7 @@ func (c *ServiceFlags) Set() error {
 			plannerDisabledKey:              c.PlannerDisabled,
 			hostAllocatorDisabledKey:        c.HostAllocatorDisabled,
 		},
-	}, options.Update().SetUpsert(true))
-
+	})
 	return errors.Wrapf(err, "error updating section %s", c.SectionId())
 }
 

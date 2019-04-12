@@ -8,10 +8,9 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen/db"
-	amboyRegistry "github.com/mongodb/amboy/registry"
+	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/stretchr/testify/suite"
-	"go.mongodb.org/mongo-driver/bson"
-	mgobson "gopkg.in/mgo.v2/bson"
+	"gopkg.in/mgo.v2/bson"
 )
 
 type eventSuite struct {
@@ -19,8 +18,11 @@ type eventSuite struct {
 }
 
 func TestEventSuite(t *testing.T) {
-	amboyRegistry.JobTypeNames()
 	suite.Run(t, &eventSuite{})
+}
+
+func (s *eventSuite) SetupSuite() {
+	db.SetGlobalSessionProvider(testutil.TestConfig().SessionFactory())
 }
 
 func (s *eventSuite) SetupTest() {
@@ -62,7 +64,7 @@ func (s *eventSuite) TestWithRealData() {
 
 	// unmarshaller works with r_type in the root document set
 	data := bson.M{
-		idKey:           mgobson.ObjectIdHex("5949645c9acd9604fdd202d8"),
+		idKey:           bson.ObjectIdHex("5949645c9acd9604fdd202d8"),
 		TimestampKey:    date,
 		ResourceIdKey:   "macos.example.com",
 		TypeKey:         "HOST_TASK_FINISHED",
@@ -74,7 +76,7 @@ func (s *eventSuite) TestWithRealData() {
 		},
 	}
 	s.NoError(db.Insert(AllLogCollection, data))
-	entries, err := Find(AllLogCollection, db.Query(bson.M{idKey: mgobson.ObjectIdHex("5949645c9acd9604fdd202d8")}))
+	entries, err := Find(AllLogCollection, db.Query(bson.M{idKey: bson.ObjectIdHex("5949645c9acd9604fdd202d8")}))
 	s.NoError(err)
 	s.Len(entries, 1)
 	s.NotPanics(func() {
@@ -96,7 +98,7 @@ func (s *eventSuite) TestWithRealData() {
 
 	// unmarshaller works with both r_type fields set
 	data = bson.M{
-		idKey:           mgobson.ObjectIdHex("5949645c9acd9604fdd202d9"),
+		idKey:           bson.ObjectIdHex("5949645c9acd9604fdd202d9"),
 		TimestampKey:    date,
 		ResourceIdKey:   "macos.example.com",
 		TypeKey:         "HOST_TASK_FINISHED",
@@ -109,7 +111,7 @@ func (s *eventSuite) TestWithRealData() {
 		},
 	}
 	s.NoError(db.Insert(AllLogCollection, data))
-	entries, err = Find(AllLogCollection, db.Query(bson.M{idKey: mgobson.ObjectIdHex("5949645c9acd9604fdd202d9")}))
+	entries, err = Find(AllLogCollection, db.Query(bson.M{idKey: bson.ObjectIdHex("5949645c9acd9604fdd202d9")}))
 	s.NoError(err)
 	s.Len(entries, 1)
 	s.NotPanics(func() {
@@ -142,20 +144,19 @@ func (s *eventSuite) TestWithRealData() {
 func (s *eventSuite) TestEventWithNilData() {
 	logger := NewDBEventLogger(AllLogCollection)
 	event := EventLogEntry{
-		ID:         mgobson.NewObjectId().Hex(),
+		ID:         bson.NewObjectId().Hex(),
 		ResourceId: "TEST1",
 		EventType:  "TEST2",
 		Timestamp:  time.Now().Round(time.Millisecond).Truncate(time.Millisecond),
 	}
-	s.Nil(event.Data)
 	s.Errorf(logger.LogEvent(&event), "event log entry cannot have nil Data")
 
 	s.NotPanics(func() {
 		// But reading this back should not panic, if it somehow got into the db
 		s.NoError(db.Insert(AllLogCollection, event))
 		fetchedEvents, err := Find(AllLogCollection, db.Query(bson.M{}))
-		s.Require().Error(err)
-		s.Nil(fetchedEvents)
+		s.Error(err)
+		s.Empty(fetchedEvents)
 	})
 }
 
@@ -249,7 +250,7 @@ func (s *eventSuite) TestMarkProcessed() {
 	startTime := time.Now()
 
 	logger := NewDBEventLogger(AllLogCollection)
-	event := &EventLogEntry{
+	event := EventLogEntry{
 		ResourceType: ResourceTypeHost,
 		ResourceId:   "TEST1",
 		EventType:    "TEST2",
@@ -260,10 +261,11 @@ func (s *eventSuite) TestMarkProcessed() {
 	s.False(processed)
 	s.Zero(ptime)
 
-	s.EqualError(logger.MarkProcessed(event), "event has no ID")
-	event.ID = mgobson.NewObjectId().Hex()
-	s.EqualError(logger.MarkProcessed(event), "failed to update 'processed at' time: document not found")
-	s.NoError(logger.LogEvent(event))
+	s.EqualError(logger.MarkProcessed(&event), "event has no ID")
+	event.ID = bson.NewObjectId().Hex()
+	s.EqualError(logger.MarkProcessed(&event), "failed to update 'processed at' time: not found")
+
+	s.NoError(logger.LogEvent(&event))
 
 	s.NoError(db.UpdateId(AllLogCollection, event.ID, bson.M{
 		"$set": bson.M{
@@ -272,7 +274,8 @@ func (s *eventSuite) TestMarkProcessed() {
 	}))
 
 	var fetchedEvent EventLogEntry
-	s.NoError(db.FindOneQ(AllLogCollection, db.Q{}, &fetchedEvent))
+	err := db.FindOneQ(AllLogCollection, db.Q{}, &fetchedEvent)
+	s.NoError(err)
 
 	processed, ptime = fetchedEvent.Processed()
 	s.False(processed)
@@ -337,7 +340,7 @@ func (s *eventSuite) TestFindUnprocessedEvents() {
 func (s *eventSuite) TestFindLastProcessedEvent() {
 	events := []EventLogEntry{
 		{
-			ID:           mgobson.NewObjectId().Hex(),
+			ID:           bson.NewObjectId().Hex(),
 			Timestamp:    time.Now().Add(-2 * time.Hour),
 			ResourceId:   "macos.example.com",
 			EventType:    "HOST_TASK_FINISHED",
@@ -349,7 +352,7 @@ func (s *eventSuite) TestFindLastProcessedEvent() {
 			},
 		},
 		{
-			ID:           mgobson.NewObjectId().Hex(),
+			ID:           bson.NewObjectId().Hex(),
 			Timestamp:    time.Now().Add(-1 * time.Hour),
 			ResourceId:   "macos.example.com2",
 			EventType:    "HOST_TASK_FINISHED",
@@ -361,7 +364,7 @@ func (s *eventSuite) TestFindLastProcessedEvent() {
 			},
 		},
 		{
-			ID:           mgobson.NewObjectId().Hex(),
+			ID:           bson.NewObjectId().Hex(),
 			Timestamp:    time.Now().Add(-1 * time.Hour),
 			ResourceId:   "macos.example.com3",
 			EventType:    "HOST_TASK_FINISHED",
@@ -385,7 +388,7 @@ func (s *eventSuite) TestFindLastProcessedEvent() {
 func (s *eventSuite) TestCountUnprocessedEvents() {
 	events := []EventLogEntry{
 		{
-			ID:           mgobson.NewObjectId().Hex(),
+			ID:           bson.NewObjectId().Hex(),
 			Timestamp:    time.Now().Add(-2 * time.Hour),
 			ResourceId:   "macos.example.com",
 			EventType:    "HOST_TASK_FINISHED",
@@ -396,7 +399,7 @@ func (s *eventSuite) TestCountUnprocessedEvents() {
 			},
 		},
 		{
-			ID:           mgobson.NewObjectId().Hex(),
+			ID:           bson.NewObjectId().Hex(),
 			Timestamp:    time.Now().Add(-1 * time.Hour),
 			ResourceId:   "macos.example.com2",
 			EventType:    "HOST_TASK_FINISHED",
@@ -408,7 +411,7 @@ func (s *eventSuite) TestCountUnprocessedEvents() {
 			},
 		},
 		{
-			ID:           mgobson.NewObjectId().Hex(),
+			ID:           bson.NewObjectId().Hex(),
 			Timestamp:    time.Now().Add(-1 * time.Hour),
 			ResourceId:   "macos.example.com3",
 			EventType:    "HOST_TASK_FINISHED",
@@ -476,7 +479,7 @@ func findResourceTypeIn(data interface{}) (bool, string) {
 func (s *eventSuite) TestLogManyEvents() {
 	logger := NewDBEventLogger(AllLogCollection)
 	event1 := EventLogEntry{
-		ID:           mgobson.NewObjectId().Hex(),
+		ID:           bson.NewObjectId().Hex(),
 		ResourceId:   "resource_id_1",
 		EventType:    "some_type",
 		Timestamp:    time.Now().Round(time.Millisecond).Truncate(time.Millisecond),
@@ -484,7 +487,7 @@ func (s *eventSuite) TestLogManyEvents() {
 		ResourceType: "TASK",
 	}
 	event2 := EventLogEntry{
-		ID:           mgobson.NewObjectId().Hex(),
+		ID:           bson.NewObjectId().Hex(),
 		ResourceId:   "resource_id_1",
 		EventType:    "some_type",
 		Timestamp:    time.Now().Round(time.Millisecond).Truncate(time.Millisecond),

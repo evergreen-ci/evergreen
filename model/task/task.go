@@ -16,8 +16,7 @@ import (
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 	"github.com/tychoish/tarjan"
-	"go.mongodb.org/mongo-driver/bson"
-	mgobson "gopkg.in/mgo.v2/bson"
+	"gopkg.in/mgo.v2/bson"
 )
 
 const (
@@ -158,9 +157,6 @@ type Task struct {
 	TriggerEvent string `bson:"trigger_event,omitempty" json:"trigger_event,omitempty"`
 }
 
-func (t *Task) MarshalBSON() ([]byte, error)  { return mgobson.Marshal(t) }
-func (t *Task) UnmarshalBSON(in []byte) error { return mgobson.Unmarshal(in, t) }
-
 func (t *Task) GetTaskGroupString() string {
 	return fmt.Sprintf("%s_%s_%s_%s", t.TaskGroup, t.BuildVariant, t.Project, t.Version)
 }
@@ -191,14 +187,10 @@ type DistroCost struct {
 	NumTasks         int                    `bson:"num_tasks"`
 }
 
-func (d *Dependency) UnmarshalBSON(in []byte) error {
-	return mgobson.Unmarshal(in, d)
-}
-
 // SetBSON allows us to use dependency representation of both
 // just task Ids and of true Dependency structs.
 //  TODO eventually drop all of this switching
-func (d *Dependency) SetBSON(raw mgobson.Raw) error {
+func (d *Dependency) SetBSON(raw bson.Raw) error {
 	// copy the Dependency type to remove this SetBSON method but preserve bson struct tags
 	type nakedDep Dependency
 	var depCopy nakedDep
@@ -210,11 +202,11 @@ func (d *Dependency) SetBSON(raw mgobson.Raw) error {
 	}
 
 	// hack to support the legacy depends_on, since we can't just unmarshal a string
-	strBytes, _ := mgobson.Marshal(mgobson.RawD{{Name: "str", Value: raw}})
+	strBytes, _ := bson.Marshal(bson.RawD{{Name: "str", Value: raw}})
 	var strStruct struct {
 		String string `bson:"str"`
 	}
-	if err := mgobson.Unmarshal(strBytes, &strStruct); err == nil {
+	if err := bson.Unmarshal(strBytes, &strStruct); err == nil {
 		if strStruct.String != "" {
 			d.TaskId = strStruct.String
 			d.Status = evergreen.TaskSucceeded
@@ -222,7 +214,7 @@ func (d *Dependency) SetBSON(raw mgobson.Raw) error {
 		}
 	}
 
-	return mgobson.SetZero
+	return bson.SetZero
 }
 
 // LocalTestResults is only used when transferring data from agent to api.
@@ -791,6 +783,7 @@ func displayTaskPriority(status string) int {
 // Reset sets the task state to be activated, with a new secret,
 // undispatched status and zero time on Start, Scheduled, Dispatch and FinishTime
 func (t *Task) Reset() error {
+
 	if t.DisplayOnly {
 		for _, et := range t.ExecutionTasks {
 			execTask, err := FindOne(ById(et))
@@ -1149,6 +1142,57 @@ func (t *Task) Archive() error {
 }
 
 // Aggregation
+
+// AverageTaskTimeDifference takes two field names (such that field2 happened
+// after field1), a field to group on, and a cutoff time.
+// It returns the average duration between fields 1 and 2, grouped by
+// the groupBy field, including only task documents where both time
+// fields happened after the given cutoff time. This information is returned
+// as a map from groupBy_field -> avg_time_difference
+//
+// NOTE: THIS FUNCTION DOES NOT SANITIZE INPUT!
+// BAD THINGS CAN HAPPEN IF NON-TIME FIELDNAMES ARE PASSED IN
+// OR IF A FIELD OF NON-STRING TYPE IS SUPPLIED FOR groupBy!
+func AverageTaskTimeDifference(field1 string, field2 string,
+	groupByField string, cutoff time.Time) (map[string]time.Duration, error) {
+
+	// This pipeline returns the average time difference between
+	// two time fields, grouped by a given field of "string" type.
+	// It assumes field2 happened later than field1.
+	// Time difference returned in milliseconds.
+	pipeline := []bson.M{
+		{"$match": bson.M{
+			field1: bson.M{"$gt": cutoff},
+			field2: bson.M{"$gt": cutoff}}},
+		{"$group": bson.M{
+			"_id": "$" + groupByField,
+			"avg_time": bson.M{
+				"$avg": bson.M{
+					"$subtract": []string{"$" + field2, "$" + field1},
+				},
+			},
+		}},
+	}
+
+	// anonymous struct for unmarshalling result bson
+	// NOTE: This means we can only group by string fields currently
+	var results []struct {
+		GroupId     string `bson:"_id"`
+		AverageTime int64  `bson:"avg_time"`
+	}
+
+	err := db.Aggregate(Collection, pipeline, &results)
+	if err != nil {
+		return nil, errors.Wrapf(err, "Error aggregating task times by [%v, %v]", field1, field2)
+	}
+
+	avgTimes := make(map[string]time.Duration)
+	for _, res := range results {
+		avgTimes[res.GroupId] = time.Duration(res.AverageTime) * time.Millisecond
+	}
+
+	return avgTimes, nil
+}
 
 // MergeNewTestResults returns the task with both old (embedded in
 // the tasks collection) and new (from the testresults collection) test results

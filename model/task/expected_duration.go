@@ -8,15 +8,15 @@ import (
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/mongodb/anser/bsonutil"
 	"github.com/pkg/errors"
-	"go.mongodb.org/mongo-driver/bson"
+	"gopkg.in/mgo.v2/bson"
 )
 
 // this is about a month.
 const oneMonthIsh = 30 * 24 * time.Hour
 
 type expectedDurationResults struct {
-	DisplayName      string  `bson:"_id"`
-	ExpectedDuration float64 `bson:"exp_dur"`
+	DisplayName      string `bson:"_id"`
+	ExpectedDuration int64  `bson:"exp_dur"`
 }
 
 func getExpectedDurationsForWindow(name, project, buildvariant string, start, end time.Time) ([]expectedDurationResults, error) {

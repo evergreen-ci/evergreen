@@ -18,12 +18,16 @@ import (
 	"github.com/pkg/errors"
 	. "github.com/smartystreets/goconvey/convey"
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 )
 
+func init() {
+	db.SetGlobalSessionProvider(testConfig.SessionFactory())
+}
+
 func TestFetchRevisions(t *testing.T) {
 	dropTestDB(t)
+	testutil.ConfigureIntegrationTest(t, testConfig, "TestFetchRevisions")
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -49,10 +53,10 @@ func TestFetchRevisions(t *testing.T) {
 		Convey("Only get 2 revisions from the given repository if given a "+
 			"limit of 2 commits where 3 exist", func() {
 			testConfig.RepoTracker.NumNewRepoRevisionsToFetch = 2
-			require.NoError(t, repoTracker.FetchRevisions(ctx),
+			testutil.HandleTestingErr(repoTracker.FetchRevisions(ctx), t,
 				"Error running repository process %s", repoTracker.Id)
 			numVersions, err := model.VersionCount(model.VersionAll)
-			require.NoError(t, err, "Error finding all versions")
+			testutil.HandleTestingErr(err, t, "Error finding all versions")
 			So(numVersions, ShouldEqual, 2)
 		})
 
@@ -64,6 +68,7 @@ func TestFetchRevisions(t *testing.T) {
 
 func TestStoreRepositoryRevisions(t *testing.T) {
 	dropTestDB(t)
+	testutil.ConfigureIntegrationTest(t, testConfig, "TestStoreRepositoryRevisions")
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	Convey("When storing revisions gotten from a repository...", t, func() {
@@ -87,10 +92,10 @@ func TestStoreRepositoryRevisions(t *testing.T) {
 			revisions := []model.Revision{revisionOne}
 
 			err := repoTracker.StoreRevisions(ctx, revisions)
-			require.NoError(t, err, "Error storing repository revisions %s", revisionOne.Revision)
+			testutil.HandleTestingErr(err, t, "Error storing repository revisions %s", revisionOne.Revision)
 
 			newestVersion, err := model.VersionFindOne(model.VersionByMostRecentSystemRequester(evgProjectRef.String()))
-			require.NoError(t, err, "Error retreiving newest version %s", newestVersion.Id)
+			testutil.HandleTestingErr(err, t, "Error retreiving newest version %s", newestVersion.Id)
 
 			So(newestVersion.AuthorID, ShouldEqual, "")
 		})
@@ -106,12 +111,12 @@ func TestStoreRepositoryRevisions(t *testing.T) {
 			revisions := []model.Revision{revisionOne, revisionTwo}
 
 			err := repoTracker.StoreRevisions(ctx, revisions)
-			require.NoError(t, err, "Error storing repository revisions %s, %s", revisionOne.Revision, revisionTwo.Revision)
+			testutil.HandleTestingErr(err, t, "Error storing repository revisions %s, %s", revisionOne.Revision, revisionTwo.Revision)
 
 			versionOne, err := model.VersionFindOne(model.VersionByProjectIdAndRevision(evgProjectRef.Identifier, revisionOne.Revision))
-			require.NoError(t, err, "Error retrieving first stored version %s", versionOne.Id)
+			testutil.HandleTestingErr(err, t, "Error retrieving first stored version %s", versionOne.Id)
 			versionTwo, err := model.VersionFindOne(model.VersionByProjectIdAndRevision(evgProjectRef.Identifier, revisionTwo.Revision))
-			require.NoError(t, err, "Error retreiving second stored version %s", versionTwo.Revision)
+			testutil.HandleTestingErr(err, t, "Error retreiving second stored version %s", versionTwo.Revision)
 
 			So(versionOne.Revision, ShouldEqual, revisionOne.Revision)
 			So(versionTwo.Revision, ShouldEqual, revisionTwo.Revision)

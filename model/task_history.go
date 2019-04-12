@@ -13,11 +13,10 @@ import (
 	"github.com/evergreen-ci/evergreen/model/testresult"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/anser/bsonutil"
-	adb "github.com/mongodb/anser/db"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
-	"go.mongodb.org/mongo-driver/bson"
-	"go.mongodb.org/mongo-driver/bson/primitive"
+	"gopkg.in/mgo.v2"
+	"gopkg.in/mgo.v2/bson"
 )
 
 const (
@@ -259,6 +258,7 @@ func (iter *taskHistoryIterator) GetChunk(v *Version, numBefore, numAfter int, i
 	if err != nil {
 		return chunk, errors.Wrap(err, "problem getting database session")
 	}
+
 	defer session.Close()
 
 	versionsBefore, exhausted, err := iter.findAllVersions(v, numBefore, true, include)
@@ -364,7 +364,7 @@ func (self *taskHistoryIterator) GetDistinctTestNames(numCommits int) ([]string,
 					task.DisplayNameKey:  self.TaskName,
 				},
 			},
-			{"$sort": bson.D{{Key: task.RevisionOrderNumberKey, Value: -1}}},
+			{"$sort": bson.D{{Name: task.RevisionOrderNumberKey, Value: -1}}},
 			{"$limit": numCommits},
 			{"$lookup": bson.M{
 				"from":         testresult.Collection,
@@ -407,7 +407,7 @@ func (self *taskHistoryIterator) GetDistinctTestNames(numCommits int) ([]string,
 
 // GetFailedTests returns a mapping of task id to a slice of failed tasks
 // extracted from a pipeline of aggregated tasks
-func (self *taskHistoryIterator) GetFailedTests(aggregatedTasks adb.Results) (map[string][]task.TestResult, error) {
+func (self *taskHistoryIterator) GetFailedTests(aggregatedTasks *mgo.Pipe) (map[string][]task.TestResult, error) {
 	// get the ids of the failed task
 	var failedTaskIds []string
 	var taskHistory TaskHistory
@@ -425,20 +425,14 @@ func (self *taskHistoryIterator) GetFailedTests(aggregatedTasks adb.Results) (ma
 	}
 
 	if err := iter.Err(); err != nil {
-		return nil, errors.WithStack(err)
-	}
-
-	if failedTaskIds == nil {
-		// this is an added hack to make tests pass when
-		// transitioning between mongodb drivers
-		return nil, nil
+		return nil, err
 	}
 
 	// find all the relevant failed tests
 	failedTestsMap := make(map[string][]task.TestResult)
 	tasks, err := task.Find(task.ByIds(failedTaskIds))
 	if err != nil {
-		return nil, errors.WithStack(err)
+		return nil, err
 	}
 
 	// create the mapping of the task id to the list of failed tasks
@@ -730,9 +724,9 @@ func buildTestHistoryQuery(testHistoryParameters *TestHistoryParameters) ([]bson
 		bson.M{"$unwind": "$test_results"},
 		bson.M{"$match": testMatchQuery},
 		bson.M{"$sort": bson.D{
-			{Key: task.RevisionOrderNumberKey, Value: testHistoryParameters.Sort},
-			{Key: testResultsKey + "." + testresult.TaskIDKey, Value: testHistoryParameters.Sort},
-			{Key: testResultsKey + "." + testresult.TestFileKey, Value: testHistoryParameters.Sort},
+			{Name: task.RevisionOrderNumberKey, Value: testHistoryParameters.Sort},
+			{Name: testResultsKey + "." + testresult.TaskIDKey, Value: testHistoryParameters.Sort},
+			{Name: testResultsKey + "." + testresult.TestFileKey, Value: testHistoryParameters.Sort},
 		}})
 	if testHistoryParameters.Limit > 0 {
 		pipeline = append(pipeline, bson.M{"$limit": testHistoryParameters.Limit})
@@ -837,7 +831,7 @@ func formQueryFromTasks(params *TestHistoryParameters) (bson.M, error) {
 	}
 	revisionQuery, err := formRevisionQuery(params)
 	if err != nil {
-		return bson.M{}, errors.WithStack(err)
+		return bson.M{}, err
 	}
 	if revisionQuery != nil {
 		query[task.RevisionOrderNumberKey] = *revisionQuery
@@ -930,7 +924,7 @@ func formRevisionQuery(params *TestHistoryParameters) (*bson.M, error) {
 		v, err := VersionFindOne(VersionByProjectIdAndRevision(params.Project,
 			params.BeforeRevision).WithFields(VersionRevisionOrderNumberKey))
 		if err != nil {
-			return nil, errors.WithStack(err)
+			return nil, err
 		}
 		if v == nil {
 			return nil, errors.Errorf("invalid revision : %v", params.BeforeRevision)
@@ -942,7 +936,7 @@ func formRevisionQuery(params *TestHistoryParameters) (*bson.M, error) {
 		v, err := VersionFindOne(VersionByProjectIdAndRevision(params.Project,
 			params.AfterRevision).WithFields(VersionRevisionOrderNumberKey))
 		if err != nil {
-			return nil, errors.WithStack(err)
+			return nil, err
 		}
 		if v == nil {
 			return nil, errors.Errorf("invalid revision : %v", params.AfterRevision)
@@ -977,7 +971,7 @@ func GetTestHistoryV2(testHistoryParameters *TestHistoryParameters) ([]TestHisto
 	var results []TestHistoryResult
 	tasks, err := testHistoryV2Results(testHistoryParameters)
 	if err != nil {
-		return nil, errors.WithStack(err)
+		return nil, err
 	}
 	for _, t := range tasks {
 		for _, result := range t.LocalTestResults {
@@ -1093,11 +1087,11 @@ func TaskHistoryPickaxe(params PickaxeParams) ([]task.Task, error) {
 			// Special case: if asking for tasks where the test ran, don't care
 			// about the test status
 			elemMatchOr = append(elemMatchOr, bson.M{
-				"test_file": primitive.Regex{Pattern: regexp},
+				"test_file": bson.RegEx{Pattern: regexp},
 			})
 		} else {
 			elemMatchOr = append(elemMatchOr, bson.M{
-				"test_file": primitive.Regex{Pattern: regexp},
+				"test_file": bson.RegEx{Pattern: regexp},
 				"status":    result,
 			})
 		}

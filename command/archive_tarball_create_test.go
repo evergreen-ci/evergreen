@@ -14,7 +14,6 @@ import (
 	"github.com/mongodb/grip/level"
 	"github.com/mongodb/jasper"
 	. "github.com/smartystreets/goconvey/convey"
-	"github.com/stretchr/testify/require"
 )
 
 func TestTarGzPackParseParams(t *testing.T) {
@@ -97,8 +96,8 @@ func TestTarGzCommandMakeArchive(t *testing.T) {
 				target := filepath.Join(testDataDir, "target.tgz")
 				outputDir := filepath.Join(testDataDir, "output")
 
-				require.NoError(t, os.RemoveAll(target), "Error removing tgz file")
-				require.NoError(t, os.RemoveAll(outputDir), "Error removing output dir")
+				testutil.HandleTestingErr(os.RemoveAll(target), t, "Error removing tgz file")
+				testutil.HandleTestingErr(os.RemoveAll(outputDir), t, "Error removing output dir")
 
 				params := map[string]interface{}{
 					"target":        target,

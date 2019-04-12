@@ -4,7 +4,7 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/task"
-	"go.mongodb.org/mongo-driver/bson"
+	"gopkg.in/mgo.v2/bson"
 )
 
 type buildVariantHistoryIterator struct {
@@ -98,7 +98,7 @@ func (self *buildVariantHistoryIterator) GetItems(beforeCommit *Version, numRevi
 
 	pipeline := []bson.M{
 		{"$match": matchFilter},
-		{"$sort": bson.D{{Key: task.RevisionOrderNumberKey, Value: 1}}},
+		{"$sort": bson.D{{Name: task.RevisionOrderNumberKey, Value: 1}}},
 		{
 			"$group": bson.M{
 				"_id":   "$" + task.RevisionKey,

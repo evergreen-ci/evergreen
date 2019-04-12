@@ -4,10 +4,14 @@ import (
 	"testing"
 
 	"github.com/evergreen-ci/evergreen/db"
-	_ "github.com/evergreen-ci/evergreen/testutil"
+	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/stretchr/testify/suite"
-	"go.mongodb.org/mongo-driver/bson"
+	"gopkg.in/mgo.v2/bson"
 )
+
+func init() {
+	db.SetGlobalSessionProvider(testutil.TestConfig().SessionFactory())
+}
 
 type TestArtifactFileSuite struct {
 	testEntries []Entry

@@ -22,7 +22,7 @@ import (
 	. "github.com/smartystreets/goconvey/convey"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"go.mongodb.org/mongo-driver/bson"
+	"gopkg.in/mgo.v2/bson"
 )
 
 var taskTestConfig = testutil.TestConfig()
@@ -72,7 +72,7 @@ func insertTaskForTesting(taskId, versionId, projectName string, testResults []t
 func TestGetTaskInfo(t *testing.T) {
 
 	userManager, _, err := auth.LoadUserManager(taskTestConfig.AuthConfig)
-	require.NoError(t, err, "Failure in loading UserManager from config")
+	testutil.HandleTestingErr(err, t, "Failure in loading UserManager from config")
 
 	uis := UIServer{
 		RootURL:     taskTestConfig.Ui.Url,
@@ -90,10 +90,10 @@ func TestGetTaskInfo(t *testing.T) {
 	app := GetRESTv1App(&uis)
 	app.AddMiddleware(gimlet.UserMiddleware(uis.UserManager, gimlet.UserMiddlewareConfiguration{}))
 	router, err := app.Handler()
-	require.NoError(t, err, "error setting up router")
+	testutil.HandleTestingErr(err, t, "error setting up router")
 
 	Convey("When finding info on a particular task", t, func() {
-		require.NoError(t, db.ClearCollections(task.Collection, testresult.Collection),
+		testutil.HandleTestingErr(db.ClearCollections(task.Collection, testresult.Collection), t,
 			"Error clearing '%v' collection", task.Collection)
 
 		taskId := "my-task"
@@ -271,7 +271,7 @@ func TestGetTaskInfo(t *testing.T) {
 func TestGetTaskStatus(t *testing.T) {
 
 	userManager, _, err := auth.LoadUserManager(taskTestConfig.AuthConfig)
-	require.NoError(t, err, "Failure in loading UserManager from config")
+	testutil.HandleTestingErr(err, t, "Failure in loading UserManager from config")
 
 	uis := UIServer{
 		RootURL:     taskTestConfig.Ui.Url,
@@ -289,10 +289,10 @@ func TestGetTaskStatus(t *testing.T) {
 	app := GetRESTv1App(&uis)
 	app.AddMiddleware(gimlet.UserMiddleware(uis.UserManager, gimlet.UserMiddlewareConfiguration{}))
 	router, err := app.Handler()
-	require.NoError(t, err, "error setting up router")
+	testutil.HandleTestingErr(err, t, "error setting up router")
 
 	Convey("When finding the status of a particular task", t, func() {
-		require.NoError(t, db.ClearCollections(task.Collection, testresult.Collection),
+		testutil.HandleTestingErr(db.ClearCollections(task.Collection, testresult.Collection), t,
 			"Error clearing '%v' collection", task.Collection)
 
 		taskId := "my-task"
@@ -420,7 +420,7 @@ func TestGetDisplayTaskInfo(t *testing.T) {
 	app := GetRESTv1App(&uis)
 	app.AddMiddleware(gimlet.UserMiddleware(uis.UserManager, gimlet.UserMiddlewareConfiguration{}))
 	router, err := app.Handler()
-	require.NoError(err, "error setting up router")
+	testutil.HandleTestingErr(err, t, "error setting up router")
 
 	require.NoError(db.ClearCollections(task.Collection, testresult.Collection))
 

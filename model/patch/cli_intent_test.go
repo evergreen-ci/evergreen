@@ -2,12 +2,12 @@ package patch
 
 import (
 	"testing"
-	"time"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/stretchr/testify/suite"
-	"go.mongodb.org/mongo-driver/bson"
+	"gopkg.in/mgo.v2/bson"
 )
 
 type CliIntentSuite struct {
@@ -29,6 +29,7 @@ func TestCliIntentSuite(t *testing.T) {
 }
 
 func (s *CliIntentSuite) SetupSuite() {
+	db.SetGlobalSessionProvider(testutil.TestConfig().SessionFactory())
 	s.patchContent = "patch"
 	s.hash = "67da19930b1b18d346477e99a8e18094a672f48a"
 	s.user = "octocat"
@@ -119,9 +120,6 @@ func (s *CliIntentSuite) TestFindIntentSpecifically() {
 	found, err := FindIntent(intent.ID(), intent.GetType())
 	s.NoError(err)
 	s.NotNil(found)
-
-	found.(*cliIntent).ProcessedAt = time.Time{}
-	intent.(*cliIntent).ProcessedAt = time.Time{}
 
 	s.Equal(intent, found)
 	s.Equal(intent.NewPatch(), found.NewPatch())

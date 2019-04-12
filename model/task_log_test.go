@@ -1,7 +1,6 @@
 package model
 
 import (
-	"fmt"
 	"testing"
 	"time"
 
@@ -9,11 +8,14 @@ import (
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/testutil"
 	. "github.com/smartystreets/goconvey/convey"
-	"github.com/stretchr/testify/require"
-	"go.mongodb.org/mongo-driver/bson"
+	"gopkg.in/mgo.v2/bson"
 )
 
 var taskLogTestConfig = testutil.TestConfig()
+
+func init() {
+	db.SetGlobalSessionProvider(taskLogTestConfig.SessionFactory())
+}
 
 func cleanUpLogDB() error {
 	session, _, err := db.GetGlobalSessionFactory().GetSession()
@@ -29,7 +31,8 @@ func TestFindMostRecentTaskLogs(t *testing.T) {
 
 	Convey("When finding the most recent task logs", t, func() {
 
-		require.NoError(t, cleanUpLogDB(), "Error cleaning up task log database")
+		testutil.HandleTestingErr(cleanUpLogDB(), t, "Error cleaning up task log"+
+			" database")
 
 		Convey("the ones with the most recent timestamp should be retrieved,"+
 			" in backwards time order", func() {
@@ -66,7 +69,8 @@ func TestFindTaskLogsBeforeTime(t *testing.T) {
 
 	Convey("When finding task logs before a specified time", t, func() {
 
-		require.NoError(t, cleanUpLogDB(), "Error cleaning up task log database")
+		testutil.HandleTestingErr(cleanUpLogDB(), t, "Error cleaning up task log"+
+			" database")
 
 		Convey("the specified number of task logs should be returned, in"+
 			" backwards time order, all from before the specified"+
@@ -75,9 +79,7 @@ func TestFindTaskLogsBeforeTime(t *testing.T) {
 			startTime := time.Now()
 			// insert 5 logs, 4 before the specified time
 			for i := 0; i < 5; i++ {
-				taskLog := &TaskLog{
-					Id: fmt.Sprintf("log.%d", i),
-				}
+				taskLog := &TaskLog{}
 				taskLog.TaskId = "task_id"
 				taskLog.MessageCount = 1 // to differentiate these
 				taskLog.Messages = []apimodels.LogMessage{}
@@ -113,7 +115,8 @@ func TestAddLogMessage(t *testing.T) {
 
 	Convey("When adding a log message to a task log", t, func() {
 
-		require.NoError(t, cleanUpLogDB(), "Error cleaning up task log database")
+		testutil.HandleTestingErr(cleanUpLogDB(), t, "Error cleaning up task log"+
+			" database")
 
 		Convey("both the in-memory and database copies of the task log should"+
 			" be updated", func() {
@@ -134,18 +137,17 @@ func TestAddLogMessage(t *testing.T) {
 			taskLog = &(taskLogs[0])
 
 			for i := 0; i < 5; i++ {
-				logMsg := apimodels.LogMessage{}
+				logMsg := &apimodels.LogMessage{}
 				logMsg.Message = "Hello"
 				logMsg.Severity = apimodels.LogDebugPrefix
 				logMsg.Timestamp = time.Now()
 				logMsg.Type = apimodels.SystemLogPrefix
-				So(taskLog.AddLogMessage(logMsg), ShouldBeNil)
+				So(taskLog.AddLogMessage(*logMsg), ShouldBeNil)
 			}
 			So(taskLog.MessageCount, ShouldEqual, 5)
 			So(len(taskLog.Messages), ShouldEqual, 5)
 
-			var taskLogsFromDB []TaskLog
-			taskLogsFromDB, err = FindTaskLogsBeforeTime(taskLog.TaskId, 0,
+			taskLogsFromDB, err := FindTaskLogsBeforeTime(taskLog.TaskId, 0,
 				time.Now().Add(time.Second), 1)
 			So(err, ShouldBeNil)
 			taskLogFromDB := &(taskLogsFromDB[0])
@@ -163,7 +165,7 @@ func TestInsertLogMessage(t *testing.T) {
 
 	Convey("When inserting a log message", t, func() {
 
-		require.NoError(t, cleanUpLogDB(), "Error cleaning up task log"+
+		testutil.HandleTestingErr(cleanUpLogDB(), t, "Error cleaning up task log"+
 			" database")
 
 		Convey("the log message should be added to the most recent task log"+
@@ -207,7 +209,8 @@ func TestFindMostRecentLogMessages(t *testing.T) {
 
 	Convey("When finding the most recent log messages", t, func() {
 
-		require.NoError(t, cleanUpLogDB(), "Error cleaning up task log database")
+		testutil.HandleTestingErr(cleanUpLogDB(), t, "Error cleaning up task log"+
+			" database")
 
 		Convey("the specified number of log messages should be retrieved,"+
 			" using the specified severity and log type filters", func() {
