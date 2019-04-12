@@ -412,3 +412,58 @@ filters.common.filter('conditional', function() {
     return "block-status-inactive";
   }
 })
+.filter('expandedMetricConverter', function() {
+  return function(data) {
+    if (!data) {
+      return null;
+    }
+    var output = {
+        "data": {
+            "results": []
+        }
+    };
+
+    _.each(data, function(test) {
+        if (!test.info || !test.info.args) {
+            return;
+        }
+        let result = {};
+        let threads = test.info.args.thread_level;
+        result[threads] = {};
+        _.each(test.rollups.stats, function (stat) {
+            result[threads][stat.name] = stat.val[0].Value;
+            result[threads][stat.name + "_values"] = [stat.val[0].Value];
+        });
+        output.data.results.push({
+            "name": test.info.test_name,
+            "isExpandedMetric": true,
+            "results": result
+        });
+    })
+
+    return output;
+  }
+})
+// merges two sets of perf results, taking metadata from the second sample but giving test result preference to the first one
+.filter('mergePerfResults', function() {
+  return function(firstSample, secondSample) {
+    if (!firstSample) {
+      return secondSample;
+    }
+    if (!secondSample) {
+      return firstSample;
+    }
+    var toReturn = Object.assign({}, secondSample);
+    tempResults = {};
+
+    _.each(secondSample.data.results, function(result) {
+      tempResults[result.name] = result;
+    })
+    _.each(firstSample.data.results, function(result) {
+      tempResults[result.name] = result;
+    })
+    toReturn.data.results = _.toArray(tempResults);
+
+    return toReturn;
+  }
+})
