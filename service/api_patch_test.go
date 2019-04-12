@@ -12,14 +12,13 @@ import (
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/evergreen/util"
 	. "github.com/smartystreets/goconvey/convey"
-	"github.com/stretchr/testify/require"
 )
 
 func TestPatchListModulesEndPoints(t *testing.T) {
 	testDirectory := testutil.GetDirectoryOfFile()
 	testConfig := testutil.TestConfig()
 	testApiServer, err := CreateTestServer(testConfig, nil)
-	require.NoError(t, err, "failed to create new API server")
+	testutil.HandleTestingErr(err, t, "failed to create new API server")
 	defer testApiServer.Close()
 
 	const (
@@ -35,14 +34,14 @@ func TestPatchListModulesEndPoints(t *testing.T) {
 			request.AddCookie(&http.Cookie{Name: evergreen.AuthTokenCookie, Value: "token"})
 			So(err, ShouldBeNil)
 			resp, err := http.DefaultClient.Do(request)
-			require.NoError(t, err, "problem making request")
+			testutil.HandleTestingErr(err, t, "problem making request")
 			So(resp.StatusCode, ShouldEqual, 404)
 		})
 
 		Convey("with a patch", func() {
 			testData, err := modelUtil.SetupAPITestData(testConfig, "compile", "linux-64",
 				filepath.Join(testDirectory, "testdata/base_project.yaml"), modelUtil.ExternalPatch)
-			require.NoError(t, err, "problem setting up test server")
+			testutil.HandleTestingErr(err, t, "problem setting up test server")
 
 			_, err = modelUtil.SetupPatches(modelUtil.ExternalPatch, testData.Build,
 				modelUtil.PatchRequest{
@@ -50,13 +49,13 @@ func TestPatchListModulesEndPoints(t *testing.T) {
 					FilePath:   filepath.Join(testDirectory, "testdata/testmodule.patch"),
 					Githash:    githash,
 				})
-			require.NoError(t, err, "problem setting up patch")
+			testutil.HandleTestingErr(err, t, "problem setting up patch")
 
 			request, err := http.NewRequest("GET", fmt.Sprintf(url, modelUtil.PatchId, testData.Build.Id), nil)
 			request.AddCookie(&http.Cookie{Name: evergreen.AuthTokenCookie, Value: "token"})
 			So(err, ShouldBeNil)
 			resp, err := http.DefaultClient.Do(request)
-			require.NoError(t, err, "problem making request")
+			testutil.HandleTestingErr(err, t, "problem making request")
 			data := struct {
 				Project string   `json:"project"`
 				Modules []string `json:"modules"`
@@ -71,20 +70,20 @@ func TestPatchListModulesEndPoints(t *testing.T) {
 		Convey("with a patch that adds a module", func() {
 			testData, err := modelUtil.SetupAPITestData(testConfig, "compile", "linux-64",
 				filepath.Join(testDirectory, "testdata/base_project.yaml"), modelUtil.ExternalPatch)
-			require.NoError(t, err, "problem setting up test server")
+			testutil.HandleTestingErr(err, t, "problem setting up test server")
 			_, err = modelUtil.SetupPatches(modelUtil.InlinePatch, testData.Build,
 				modelUtil.PatchRequest{
 					ModuleName: "evgHome",
 					FilePath:   filepath.Join(testDirectory, "testdata/testaddsmodule.patch"),
 					Githash:    githash,
 				})
-			require.NoError(t, err, "problem setting up patch")
+			testutil.HandleTestingErr(err, t, "problem setting up patch")
 
 			request, err := http.NewRequest("GET", fmt.Sprintf(url, modelUtil.PatchId, testData.Build.Id), nil)
 			request.AddCookie(&http.Cookie{Name: evergreen.AuthTokenCookie, Value: "token"})
 			So(err, ShouldBeNil)
 			resp, err := http.DefaultClient.Do(request)
-			require.NoError(t, err, "problem making request")
+			testutil.HandleTestingErr(err, t, "problem making request")
 			data := struct {
 				Project string   `json:"project"`
 				Modules []string `json:"modules"`

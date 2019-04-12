@@ -7,6 +7,7 @@ import (
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
+	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -20,11 +21,14 @@ type SchedulerConnectorSuite struct {
 func TestSchedulerSuite(t *testing.T) {
 	s := new(SchedulerConnectorSuite)
 	s.scheduler = &Scheduler{}
+	testutil.ConfigureIntegrationTest(t, schedulerTestConf, "TestSchedulerSuite")
+	db.SetGlobalSessionProvider(schedulerTestConf.SessionFactory())
 
 	suite.Run(t, s)
 }
 
 func (s *SchedulerConnectorSuite) TestFindUsableHosts() {
+	testutil.ConfigureIntegrationTest(s.T(), schedulerTestConf, "TestFindUsableHosts")
 	session, _, _ := db.GetGlobalSessionFactory().GetSession()
 	s.NotNil(session)
 	s.NoError(session.DB(schedulerTestConf.Database.DB).DropDatabase())

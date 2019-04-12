@@ -20,7 +20,7 @@ import (
 	"github.com/mongodb/grip/level"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
-	mgobson "gopkg.in/mgo.v2/bson"
+	"gopkg.in/mgo.v2/bson"
 	yaml "gopkg.in/yaml.v2"
 )
 
@@ -654,7 +654,7 @@ func shellVersionFromRevision(ref *model.ProjectRef, metadata VersionMetadata) (
 		v.Requester = evergreen.TriggerRequester
 		v.CreateTime = metadata.SourceVersion.CreateTime
 	} else if metadata.IsAdHoc {
-		v.Id = mgobson.NewObjectId().Hex()
+		v.Id = bson.NewObjectId().Hex()
 		v.Requester = evergreen.AdHocRequester
 		v.CreateTime = time.Now()
 		v.Message = metadata.Message

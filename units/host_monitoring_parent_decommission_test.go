@@ -6,23 +6,26 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/cloud"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
+	"github.com/evergreen-ci/evergreen/testutil"
 )
 
 func TestDecommissioningContainersOnParent(t *testing.T) {
+
 	assert := assert.New(t)
+	testConfig := testutil.TestConfig()
+	db.SetGlobalSessionProvider(testConfig.SessionFactory())
 
 	mockCloud := cloud.GetMockProvider()
 	mockCloud.Reset()
 
-	require.NoError(t, db.Clear(host.Collection), "error clearing %v collections", host.Collection)
-	require.NoError(t, db.Clear(distro.Collection), "Error clearing '%v' collection", distro.Collection)
+	testutil.HandleTestingErr(db.Clear(host.Collection), t, "error clearing %v collections", host.Collection)
+	testutil.HandleTestingErr(db.Clear(distro.Collection), t, "Error clearing '%v' collection", distro.Collection)
 
 	d1 := &distro.Distro{Id: "d1"}
 	assert.NoError(d1.Insert())
@@ -122,13 +125,16 @@ func TestDecommissioningContainersOnParent(t *testing.T) {
 }
 
 func TestDecommissioningParentWithTerminatedContainers(t *testing.T) {
+
 	assert := assert.New(t)
+	testConfig := testutil.TestConfig()
+	db.SetGlobalSessionProvider(testConfig.SessionFactory())
 
 	mockCloud := cloud.GetMockProvider()
 	mockCloud.Reset()
 
-	require.NoError(t, db.Clear(host.Collection), "error clearing %v collections", host.Collection)
-	require.NoError(t, db.Clear(distro.Collection), "Error clearing '%v' collection", distro.Collection)
+	testutil.HandleTestingErr(db.Clear(host.Collection), t, "error clearing %v collections", host.Collection)
+	testutil.HandleTestingErr(db.Clear(distro.Collection), t, "Error clearing '%v' collection", distro.Collection)
 
 	d2 := &distro.Distro{Id: "d2"}
 	assert.NoError(d2.Insert())

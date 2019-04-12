@@ -6,6 +6,7 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/distro"
+	"github.com/evergreen-ci/evergreen/testutil"
 	. "github.com/smartystreets/goconvey/convey"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -15,7 +16,7 @@ func TestDecommissionInactiveStaticHosts(t *testing.T) {
 
 	Convey("When decommissioning unused static hosts", t, func() {
 
-		require.NoError(t, db.Clear(Collection), "Error clearing"+
+		testutil.HandleTestingErr(db.Clear(Collection), t, "Error clearing"+
 			" '%v' collection", Collection)
 
 		Convey("if a non-nil slice is passed in, any static hosts with ids not in"+

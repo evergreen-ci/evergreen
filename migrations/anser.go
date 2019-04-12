@@ -77,9 +77,32 @@ func (opts Options) Application(env anser.Environment, evgEnv evergreen.Environm
 		},
 	}
 
-	generatorFactories := map[string]migrationGeneratorFactory{
-		// Add migrations here!
+	githubToken, err := evgEnv.Settings().GetGithubOauthToken()
+	if err != nil {
+		return nil, err
+	}
 
+	generatorFactories := map[string]migrationGeneratorFactory{
+		// Early Migrations, disabled because the generator queries are not properly indexed.
+		//
+		// migrationTestResultsLegacyExecution: addExecutionToTasksGenerator,
+		// migrationTestResultsOldTasks: oldTestResultsGenerator,
+		// migrationTestResultstasks: testResultsGenerator,
+
+		// Migration disabled because it iterates over all existing tasks.
+		// migrationTaskCreateTime:                     taskCreateTimeGenerator,
+
+		migrationProjectAliasesToCollection:         projectAliasesToCollectionGenerator,
+		migrationGithubHooksToCollection:            githubHooksToCollectionGenerator,
+		migrationZeroDateFix:                        zeroDateFixGenerator(githubToken),
+		migrationAdminEventRestructure:              adminEventRestructureGenerator,
+		migrationEventRtypeRestructureAllLogs:       eventRTypeMigration,
+		migrationSetDefaultBranch:                   setDefaultBranchMigrationGenerator,
+		migrationAdminMapRestructure:                adminMapRestructureGenerator,
+		migrationSpawnhostExpirationPreference:      setSpawnhostPreferenceGenerator,
+		migrationDistroSecurityGroups:               distroSecurityGroupsGenerator,
+		migrationLegacyNotificationsToSubscriptions: legacyNotificationsToSubscriptionsGenerator,
+		migrationSubscriptionBSONObjectIDToString:   makeBSONObjectIDToStringGenerator("subscriptions"),
 	}
 	catcher := grip.NewBasicCatcher()
 

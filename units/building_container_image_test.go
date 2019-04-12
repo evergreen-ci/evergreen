@@ -14,6 +14,8 @@ import (
 
 func TestBuildingContainerImageJob(t *testing.T) {
 	assert := assert.New(t)
+	testConfig := testutil.TestConfig()
+	db.SetGlobalSessionProvider(testConfig.SessionFactory())
 
 	assert.NoError(db.Clear(host.Collection))
 

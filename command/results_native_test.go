@@ -6,7 +6,6 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/task"
@@ -15,31 +14,32 @@ import (
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/evergreen/util"
 	. "github.com/smartystreets/goconvey/convey"
-	"github.com/stretchr/testify/require"
 )
 
 func resetTasks(t *testing.T) {
-	require.NoError(t, db.ClearCollections(task.Collection, model.TestLogCollection),
+	db.SetGlobalSessionProvider(testutil.TestConfig().SessionFactory())
+	testutil.HandleTestingErr(
+		db.ClearCollections(task.Collection, model.TestLogCollection), t,
 		"error clearing test collections")
 }
 
 func TestAttachResults(t *testing.T) {
+	resetTasks(t)
+	testConfig := testutil.TestConfig()
+	cwd := testutil.GetDirectoryOfFile()
+
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	env := evergreen.GetEnvironment()
-	testConfig := env.Settings()
 
-	cwd := testutil.GetDirectoryOfFile()
 	comm := client.NewMock("http://localhost.com")
 
-	resetTasks(t)
 	SkipConvey("With attachResults plugin installed into plugin registry", t, func() {
 
 		configFile := filepath.Join(cwd, "testdata", "attach", "plugin_attach_results.yml")
 		resultsLoc := filepath.Join(cwd, "testdata", "attach", "plugin_attach_results.json")
 
 		modelData, err := modelutil.SetupAPITestData(testConfig, "test", "rhel55", configFile, modelutil.NoPatch)
-		require.NoError(t, err, "failed to setup test data")
+		testutil.HandleTestingErr(err, t, "failed to setup test data")
 		So(err, ShouldBeNil)
 		modelData.TaskConfig.WorkDir = "."
 
@@ -52,24 +52,24 @@ func TestAttachResults(t *testing.T) {
 				So(len(projTask.Commands), ShouldNotEqual, 0)
 				for _, command := range projTask.Commands {
 					pluginCmds, err := Render(command, conf.Project.Functions)
-					require.NoError(t, err, "Couldn't get plugin command: %s", command.Command)
+					testutil.HandleTestingErr(err, t, "Couldn't get plugin command: %s", command.Command)
 					So(pluginCmds, ShouldNotBeNil)
 					So(err, ShouldBeNil)
 					err = pluginCmds[0].Execute(ctx, comm, logger, conf)
 					So(err, ShouldBeNil)
 					testTask, err := task.FindOne(task.ById(conf.Task.Id))
-					require.NoError(t, err, "Couldn't find task")
+					testutil.HandleTestingErr(err, t, "Couldn't find task")
 					So(testTask, ShouldNotBeNil)
 					// ensure test results are exactly as expected
 					// attempt to open the file
 					reportFile, err := os.Open(resultsLoc)
-					require.NoError(t, err, "Couldn't open report file: '%v'", err)
+					testutil.HandleTestingErr(err, t, "Couldn't open report file: '%v'", err)
 					results := &task.LocalTestResults{}
 					err = util.ReadJSONInto(reportFile, results)
-					require.NoError(t, err, "Couldn't read report file: '%v'", err)
+					testutil.HandleTestingErr(err, t, "Couldn't read report file: '%v'", err)
 					testResults := *results
 					So(testTask.LocalTestResults, ShouldResemble, testResults.Results)
-					require.NoError(t, err, "Couldn't clean up test temp dir")
+					testutil.HandleTestingErr(err, t, "Couldn't clean up test temp dir")
 				}
 			}
 		})
@@ -89,7 +89,7 @@ func TestAttachRawResults(t *testing.T) {
 		resultsLoc := filepath.Join(cwd, "testdata", "attach", "plugin_attach_results_raw.json")
 
 		modelData, err := modelutil.SetupAPITestData(testConfig, "test", "rhel55", configFile, modelutil.NoPatch)
-		require.NoError(t, err, "failed to setup test data")
+		testutil.HandleTestingErr(err, t, "failed to setup test data")
 
 		modelData.TaskConfig.WorkDir = "."
 		conf := modelData.TaskConfig
@@ -102,7 +102,7 @@ func TestAttachRawResults(t *testing.T) {
 				for _, command := range projTask.Commands {
 
 					pluginCmds, err := Render(command, conf.Project.Functions)
-					require.NoError(t, err, "Couldn't get plugin command: %s", command.Command)
+					testutil.HandleTestingErr(err, t, "Couldn't get plugin command: %s", command.Command)
 					So(pluginCmds, ShouldNotBeNil)
 					So(err, ShouldBeNil)
 					// create a plugin communicator
@@ -112,16 +112,16 @@ func TestAttachRawResults(t *testing.T) {
 					Convey("when retrieving task", func() {
 						// fetch the task
 						testTask, err := task.FindOne(task.ById(conf.Task.Id))
-						require.NoError(t, err, "Couldn't find task")
+						testutil.HandleTestingErr(err, t, "Couldn't find task")
 						So(testTask, ShouldNotBeNil)
 
 						Convey("test results should match and raw log should be in appropriate collection", func() {
 
 							reportFile, err := os.Open(resultsLoc)
-							require.NoError(t, err, "Couldn't open report file: '%v'", err)
+							testutil.HandleTestingErr(err, t, "Couldn't open report file: '%v'", err)
 							results := &task.LocalTestResults{}
 							err = util.ReadJSONInto(reportFile, results)
-							require.NoError(t, err, "Couldn't read report file: '%v'", err)
+							testutil.HandleTestingErr(err, t, "Couldn't read report file: '%v'", err)
 
 							testResults := *results
 							So(len(testResults.Results), ShouldEqual, 3)

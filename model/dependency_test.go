@@ -5,10 +5,9 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/task"
+	"github.com/evergreen-ci/evergreen/testutil"
 	. "github.com/smartystreets/goconvey/convey"
-	"github.com/stretchr/testify/require"
-	"go.mongodb.org/mongo-driver/bson"
-	mgobson "gopkg.in/mgo.v2/bson"
+	"gopkg.in/mgo.v2/bson"
 )
 
 // We have to define a wrapper for the dependencies,
@@ -20,14 +19,14 @@ type depTask struct {
 func TestDependencyBSON(t *testing.T) {
 	Convey("With BSON bytes", t, func() {
 		Convey("representing legacy dependency format (i.e. just strings)", func() {
-			bytes, err := mgobson.Marshal(map[string]interface{}{
+			bytes, err := bson.Marshal(map[string]interface{}{
 				"depends_on": []string{"t1", "t2", "t3"},
 			})
-			require.NoError(t, err, "failed to marshal test BSON")
+			testutil.HandleTestingErr(err, t, "failed to marshal test BSON")
 
 			Convey("unmarshalling the BSON into a Dependency slice should succeed", func() {
 				var deps depTask
-				So(mgobson.Unmarshal(bytes, &deps), ShouldBeNil)
+				So(bson.Unmarshal(bytes, &deps), ShouldBeNil)
 				So(len(deps.DependsOn), ShouldEqual, 3)
 
 				Convey("with the proper tasks", func() {
@@ -48,7 +47,7 @@ func TestDependencyBSON(t *testing.T) {
 				{TaskId: "t3", Status: evergreen.TaskFailed},
 			}}
 			bytes, err := bson.Marshal(inputDeps)
-			require.NoError(t, err, "failed to marshal test BSON")
+			testutil.HandleTestingErr(err, t, "failed to marshal test BSON")
 
 			Convey("unmarshalling the BSON into a Dependency slice should succeed", func() {
 				var deps depTask

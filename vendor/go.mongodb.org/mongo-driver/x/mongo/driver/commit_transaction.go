@@ -57,9 +57,6 @@ func commitTransaction(
 	selector description.ServerSelector,
 	oldErr error,
 ) (result.TransactionResult, error) {
-	if cmd.Session != nil && cmd.Session.PinnedServer != nil {
-		selector = cmd.Session.PinnedServer
-	}
 	ss, err := topo.SelectServer(ctx, selector)
 	if err != nil {
 		// If retrying server selection, return the original error if it fails

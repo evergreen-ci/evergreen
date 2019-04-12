@@ -33,7 +33,7 @@ func (n netErr) Temporary() bool {
 }
 
 type connect struct {
-	err *connection.Error
+	err *connection.NetworkError
 }
 
 func (c connect) WriteWireMessage(ctx context.Context, wm wiremessage.WireMessage) error {
@@ -58,7 +58,7 @@ func (c connect) ID() string {
 // Test case for sconn processErr
 func TestConnectionProcessErrSpec(t *testing.T) {
 	ctx := context.Background()
-	s, err := NewServer(address.Address("localhost"), nil)
+	s, err := NewServer(address.Address("localhost"))
 	require.NoError(t, err)
 
 	desc := s.Description()
@@ -67,7 +67,7 @@ func TestConnectionProcessErrSpec(t *testing.T) {
 	s.connectionstate = connected
 
 	innerErr := netErr{}
-	connectErr := connection.Error{ConnectionID: "blah", Wrapped: innerErr}
+	connectErr := connection.NetworkError{"blah", innerErr}
 	c := connect{&connectErr}
 	sc := sconn{c, s, 1}
 	err = sc.WriteWireMessage(ctx, nil)

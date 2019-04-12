@@ -1,4 +1,4 @@
-package command
+package plugintest
 
 import (
 	"io/ioutil"
@@ -7,14 +7,14 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	modelutil "github.com/evergreen-ci/evergreen/model/testutil"
-	"github.com/stretchr/testify/require"
+	"github.com/evergreen-ci/evergreen/testutil"
 )
 
-func setupTestPatchData(apiData *modelutil.TestModelData, patchPath string, t *testing.T) error {
+func SetupPatchData(apiData *modelutil.TestModelData, patchPath string, t *testing.T) error {
 
 	if patchPath != "" {
 		modulePatchContent, err := ioutil.ReadFile(patchPath)
-		require.NoError(t, err, "failed to read test module patch file")
+		testutil.HandleTestingErr(err, t, "failed to read test module patch file")
 
 		patch := &patch.Patch{
 			Status:  evergreen.PatchCreated,
@@ -28,7 +28,7 @@ func setupTestPatchData(apiData *modelutil.TestModelData, patchPath string, t *t
 			},
 		}
 
-		require.NoError(t, patch.Insert(), "failed to insert patch")
+		testutil.HandleTestingErr(patch.Insert(), t, "failed to insert patch")
 
 	}
 

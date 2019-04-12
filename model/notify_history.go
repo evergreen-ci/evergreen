@@ -5,9 +5,8 @@ import (
 
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/mongodb/anser/bsonutil"
-	adb "github.com/mongodb/anser/db"
-	"go.mongodb.org/mongo-driver/bson"
-	mgobson "gopkg.in/mgo.v2/bson"
+	"gopkg.in/mgo.v2"
+	"gopkg.in/mgo.v2/bson"
 )
 
 const (
@@ -15,29 +14,38 @@ const (
 )
 
 type NotificationHistory struct {
-	Id                    mgobson.ObjectId `bson:"_id,omitempty"`
-	PrevNotificationId    string              `bson:"p_nid"`
-	CurrNotificationId    string              `bson:"c_nid"`
-	NotificationName      string              `bson:"n_name"`
-	NotificationType      string              `bson:"n_type"`
-	NotificationTime      time.Time           `bson:"n_time"`
-	NotificationProject   string              `bson:"n_branch"`
-	NotificationRequester string              `bson:"n_requester"`
+	Id                    bson.ObjectId `bson:"_id,omitempty"`
+	PrevNotificationId    string        `bson:"p_nid"`
+	CurrNotificationId    string        `bson:"c_nid"`
+	NotificationName      string        `bson:"n_name"`
+	NotificationType      string        `bson:"n_type"`
+	NotificationTime      time.Time     `bson:"n_time"`
+	NotificationProject   string        `bson:"n_branch"`
+	NotificationRequester string        `bson:"n_requester"`
 }
 
 var (
 	// bson fields for the notification history struct
-	NHIdKey        = bsonutil.MustHaveTag(NotificationHistory{}, "Id")
-	NHPrevIdKey    = bsonutil.MustHaveTag(NotificationHistory{}, "PrevNotificationId")
-	NHCurrIdKey    = bsonutil.MustHaveTag(NotificationHistory{}, "CurrNotificationId")
-	NHNameKey      = bsonutil.MustHaveTag(NotificationHistory{}, "NotificationName")
-	NHTypeKey      = bsonutil.MustHaveTag(NotificationHistory{}, "NotificationType")
-	NHTimeKey      = bsonutil.MustHaveTag(NotificationHistory{}, "NotificationTime")
-	NHProjectKey   = bsonutil.MustHaveTag(NotificationHistory{}, "NotificationProject")
-	NHRequesterKey = bsonutil.MustHaveTag(NotificationHistory{}, "NotificationRequester")
+	NHIdKey     = bsonutil.MustHaveTag(NotificationHistory{}, "Id")
+	NHPrevIdKey = bsonutil.MustHaveTag(NotificationHistory{},
+		"PrevNotificationId")
+	NHCurrIdKey = bsonutil.MustHaveTag(NotificationHistory{},
+		"CurrNotificationId")
+	NHNameKey = bsonutil.MustHaveTag(NotificationHistory{},
+		"NotificationName")
+	NHTypeKey = bsonutil.MustHaveTag(NotificationHistory{},
+		"NotificationType")
+	NHTimeKey = bsonutil.MustHaveTag(NotificationHistory{},
+		"NotificationTime")
+	NHProjectKey = bsonutil.MustHaveTag(NotificationHistory{},
+		"NotificationProject")
+	NHRequesterKey = bsonutil.MustHaveTag(NotificationHistory{},
+		"NotificationRequester")
 )
 
-func FindNotificationRecord(notificationId, notificationName, notificationType, notificationProject, notificationRequester string) (*NotificationHistory, error) {
+func FindNotificationRecord(notificationId, notificationName, notificationType,
+	notificationProject, notificationRequester string) (*NotificationHistory,
+	error) {
 	return FindOneNotification(
 		bson.M{
 			NHPrevIdKey:    notificationId,
@@ -82,7 +90,7 @@ func FindOneNotification(query interface{},
 		db.NoSort,
 		notificationHistory,
 	)
-	if adb.ResultsNotFound(err) {
+	if err == mgo.ErrNotFound {
 		return nil, nil
 	}
 	return notificationHistory, err

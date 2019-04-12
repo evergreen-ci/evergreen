@@ -9,12 +9,14 @@ import (
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/testresult"
+	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 )
 
 func TestFindTestsByTaskId(t *testing.T) {
+	testutil.ConfigureIntegrationTest(t, testConfig, "TestFindTestsByTaskId")
+	db.SetGlobalSessionProvider(testConfig.SessionFactory())
 	assert := assert.New(t)
 	assert.NoError(db.Clear(task.Collection))
 
@@ -27,8 +29,10 @@ func TestFindTestsByTaskId(t *testing.T) {
 	}
 	sort.StringSlice(testObjects).Sort()
 
-	require.NoError(t, db.Clear(task.Collection), "Error clearing '%v' collection", task.Collection)
-	require.NoError(t, db.Clear(testresult.Collection), "Error clearing '%v' collection", testresult.Collection)
+	testutil.HandleTestingErr(db.Clear(task.Collection), t, "Error clearing"+
+		" '%v' collection", task.Collection)
+	testutil.HandleTestingErr(db.Clear(testresult.Collection), t, "Error clearing"+
+		" '%v' collection", testresult.Collection)
 	for i := 0; i < numTasks; i++ {
 		id := fmt.Sprintf("task_%d", i)
 		testTask := &task.Task{
@@ -99,6 +103,8 @@ func TestFindTestsByTaskId(t *testing.T) {
 }
 
 func TestFindTestsByDisplayTaskId(t *testing.T) {
+	testutil.ConfigureIntegrationTest(t, testConfig, "TestFindTestsByTaskId")
+	db.SetGlobalSessionProvider(testConfig.SessionFactory())
 	assert := assert.New(t)
 	assert.NoError(db.Clear(task.Collection))
 
@@ -111,8 +117,10 @@ func TestFindTestsByDisplayTaskId(t *testing.T) {
 	}
 	sort.StringSlice(testObjects).Sort()
 
-	require.NoError(t, db.Clear(task.Collection), "Error clearing '%v' collection", task.Collection)
-	require.NoError(t, db.Clear(testresult.Collection), "Error clearing '%v' collection", testresult.Collection)
+	testutil.HandleTestingErr(db.Clear(task.Collection), t, "Error clearing"+
+		" '%v' collection", task.Collection)
+	testutil.HandleTestingErr(db.Clear(testresult.Collection), t, "Error clearing"+
+		" '%v' collection", testresult.Collection)
 	for i := 0; i < numTasks; i++ {
 		id := fmt.Sprintf("task_%d", i)
 		testTask := &task.Task{

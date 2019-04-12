@@ -8,8 +8,9 @@ import (
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/event"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
+	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/stretchr/testify/suite"
-	mgobson "gopkg.in/mgo.v2/bson"
+	"gopkg.in/mgo.v2/bson"
 )
 
 ////////////////////////////////////////////////////////////////////////
@@ -45,7 +46,7 @@ func getMockProjectSettings() model.ProjectSettingsEvent {
 			PrivateVars: map[string]bool{},
 		},
 		Aliases: []model.ProjectAlias{model.ProjectAlias{
-			ID:        mgobson.ObjectIdHex("5bedc72ee4055d31f0340b1d"),
+			ID:        bson.ObjectIdHex("5bedc72ee4055d31f0340b1d"),
 			ProjectID: projectId,
 			Alias:     "alias1",
 			Variant:   "ubuntu",
@@ -70,6 +71,8 @@ func TestProjectConnectorGetSuite(t *testing.T) {
 	s.setup = func() error {
 		s.ctx = &DBConnector{}
 
+		testutil.ConfigureIntegrationTest(t, testConfig, "TestProjectConnectorGetSuite")
+		db.SetGlobalSessionProvider(testConfig.SessionFactory())
 		s.Require().NoError(db.ClearCollections(model.ProjectRefCollection))
 
 		projects := []*model.ProjectRef{

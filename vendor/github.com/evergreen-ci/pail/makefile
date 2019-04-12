@@ -22,6 +22,7 @@ lintArgs := --tests --deadline=13m --vendor
 #   gotype produces false positives because it reads .a files which
 #   are rarely up to date.
 lintArgs += --disable="gotype" --disable="gosec" --disable="gocyclo" --enable="golint"
+lintArgs += --enable="megacheck" --enable="unused" --enable="gosimple"
 lintArgs += --skip="build"
 #   enable and configure additional linters
 lintArgs += --line-length=100 --dupl-threshold=150
@@ -41,10 +42,7 @@ lintArgs += --exclude="error return value not checked .defer.*"
 
 # start dependency installation tools
 #   implementation details for being able to lazily install dependencies
-gopath := $(GOPATH)
-ifeq ($(OS),Windows_NT)
-gopath := $(shell cygpath -m $(gopath))
-endif
+gopath := $(shell $(gobin) env GOPATH)
 lintDeps := $(addprefix $(gopath)/src/,$(lintDeps))
 $(gopath)/src/%:
 	@-[ ! -d $(gopath) ] && mkdir -p $(gopath) || true
@@ -76,16 +74,16 @@ endif
 $(buildDir)/:
 	mkdir -p $@
 $(buildDir)/output.%.test:$(buildDir)/ .FORCE
-	GOPATH=$(gopath) $(gobin) test $(testArgs) ./$(if $(subst $(name),,$*),$*,) | tee $@
+	$(gobin) test $(testArgs) ./$(if $(subst $(name),,$*),$*,) | tee $@
 	@! grep -s -q -e "^FAIL" $@ && ! grep -s -q "^WARNING: DATA RACE" $@
 $(buildDir)/output.test:$(buildDir)/ .FORCE
-	GOPATH=$(gopath) $(gobin) test $(testArgs) ./... | tee $@
+	$(gobin) test $(testArgs) ./... | tee $@
 	@! grep -s -q -e "^FAIL" $@ && ! grep -s -q "^WARNING: DATA RACE" $@
 $(buildDir)/output.%.coverage:$(buildDir)/ .FORCE
-	GOPATH=$(gopath) $(gobin) test $(testArgs) ./$(if $(subst $(name),,$*),$*,) -covermode=count -coverprofile $@ | tee $(buildDir)/output.$*.test
+	$(gobin) test $(testArgs) ./$(if $(subst $(name),,$*),$*,) -covermode=count -coverprofile $@ | tee $(buildDir)/output.$*.test
 	@-[ -f $@ ] && $(gobin) tool cover -func=$@ | sed 's%$(projectPath)/%%' | column -t
 $(buildDir)/output.%.coverage.html:$(buildDir)/output.%.coverage
-	GOPATH=$(gopath) $(gobin) tool cover -html=$< -o $@
+	$(gobin) tool cover -html=$< -o $@
 #  targets to generate gotest output from the linter.
 $(buildDir)/output.%.lint:$(buildDir)/run-linter $(buildDir)/ .FORCE
 	@./$< --output=$@ --lintArgs='$(lintArgs)' --packages='$*'
@@ -97,14 +95,14 @@ $(buildDir)/output.lint:$(buildDir)/run-linter $(buildDir)/ .FORCE
 
 # userfacing targets for basic build and development operations
 compile:
-	GOPATH=$(gopath) $(gobin) build ./
+	$(gobin) build ./
 test:$(buildDir)/test.out
 $(buildDir)/test.out:.FORCE
 	@mkdir -p $(buildDir)
-	GOPATH=$(gopath) $(gobin) test $(testArgs) ./ | tee $@
+	$(gobin) test $(testArgs) ./ | tee $@
 	@grep -s -q -e "^PASS" $@
 coverage:$(buildDir)/cover.out
-	GOPATH=$(gopath) @$(gobin) tool cover -func=$< | sed -E 's%github.com/.*/ftdc/%%' | column -t
+	@$(gobin) tool cover -func=$< | sed -E 's%github.com/.*/ftdc/%%' | column -t
 coverage-html:$(buildDir)/cover.html
 
 benchmark:
@@ -115,6 +113,8 @@ phony += lint lint-deps build build-race race test coverage coverage-html
 .PRECIOUS:$(foreach target,$(packages),$(buildDir)/output.$(target).lint)
 .PRECIOUS:$(buildDir)/output.lint
 # end front-ends
+
+
 
 
 $(buildDir):$(srcFiles) compile
@@ -128,10 +128,6 @@ $(buildDir)/cover.html:$(buildDir)/cover.out
 vendor-clean:
 	find vendor/ -name "*.gif" -o -name "*.gz" -o -name "*.png" -o -name "*.ico" -o -name "*testdata*" | xargs rm -rf
 	rm -rf vendor/github.com/mongodb/grip/vendor/github.com/stretchr/testify
-	rm -rf vendor/go.mongodb.org/mongo-driver/vendor/github.com/pmezard
-	rm -rf vendor/go.mongodb.org/mongo-driver/vendor/github.com/stretchr
-	rm -rf vendor/go.mongodb.org/mongo-driver/vendor/github.com/davecgh
-	rm -rf vendor/go.mongodb.org/mongo-driver/vendor/github.com/montanaflynn
 phony += vendor-clean
 
 # mongodb utility targets

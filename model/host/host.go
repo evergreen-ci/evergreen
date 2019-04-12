@@ -12,12 +12,11 @@ import (
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/anser/bsonutil"
-	adb "github.com/mongodb/anser/db"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
-	"go.mongodb.org/mongo-driver/bson"
-	mgobson "gopkg.in/mgo.v2/bson"
+	"gopkg.in/mgo.v2"
+	"gopkg.in/mgo.v2/bson"
 )
 
 type Host struct {
@@ -122,9 +121,6 @@ type Host struct {
 	// DockerOptions stores information for creating a container with a specific image and command
 	DockerOptions DockerOptions `bson:"docker_options,omitempty" json:"docker_options,omitempty"`
 }
-
-func (h *Host) MarshalBSON() ([]byte, error)  { return mgobson.Marshal(h) }
-func (h *Host) UnmarshalBSON(in []byte) error { return mgobson.Unmarshal(in, h) }
 
 type HostGroup []Host
 
@@ -382,7 +378,7 @@ func (h *Host) SetDNSName(dnsName string) error {
 		h.Host = dnsName
 		event.LogHostDNSNameSet(h.Id, dnsName)
 	}
-	if adb.ResultsNotFound(err) {
+	if err == mgo.ErrNotFound {
 		return nil
 	}
 	return err
@@ -540,7 +536,7 @@ func (h *Host) UpdateRunningTask(t *task.Task) (bool, error) {
 
 	err := UpdateOne(selector, update)
 	if err != nil {
-		if db.IsDuplicateKey(err) {
+		if mgo.IsDup(err) {
 			grip.Debug(message.Fields{
 				"message": "found duplicate running task",
 				"task":    t.Id,
@@ -648,7 +644,7 @@ func (h *Host) MarkReachable() error {
 		bson.M{"$set": bson.M{StatusKey: evergreen.HostRunning}})
 }
 
-func (h *Host) Upsert() (*adb.ChangeInfo, error) {
+func (h *Host) Upsert() (*mgo.ChangeInfo, error) {
 	return UpsertOne(
 		bson.M{
 			IdKey: h.Id,
@@ -874,7 +870,7 @@ func FindHostsToTerminate() ([]Host, error) {
 	}
 	hosts, err := Find(db.Query(query))
 
-	if adb.ResultsNotFound(err) {
+	if db.ResultsNotFound(err) {
 		return []Host{}, nil
 	}
 
@@ -1123,7 +1119,7 @@ func FindTerminatedHostsRunningTasks() ([]Host, error) {
 			{RunningTaskKey: bson.M{"$ne": ""}}},
 	}))
 
-	if adb.ResultsNotFound(err) {
+	if err == mgo.ErrNotFound {
 		err = nil
 	}
 
@@ -1137,9 +1133,9 @@ func FindTerminatedHostsRunningTasks() ([]Host, error) {
 // CountContainersOnParents counts how many containers are children of the given group of hosts
 func (hosts HostGroup) CountContainersOnParents() (int, error) {
 	ids := hosts.GetHostIds()
-	query := db.Query(mgobson.M{
-		StatusKey:   mgobson.M{"$in": evergreen.UpHostStatus},
-		ParentIDKey: mgobson.M{"$in": ids},
+	query := db.Query(bson.M{
+		StatusKey:   bson.M{"$in": evergreen.UpHostStatus},
+		ParentIDKey: bson.M{"$in": ids},
 	})
 	return Count(query)
 }
@@ -1147,9 +1143,9 @@ func (hosts HostGroup) CountContainersOnParents() (int, error) {
 // FindRunningContainersOnParents returns the containers that are children of the given hosts
 func (hosts HostGroup) FindRunningContainersOnParents() ([]Host, error) {
 	ids := hosts.GetHostIds()
-	query := db.Query(mgobson.M{
+	query := db.Query(bson.M{
 		StatusKey:   evergreen.HostRunning,
-		ParentIDKey: mgobson.M{"$in": ids},
+		ParentIDKey: bson.M{"$in": ids},
 	})
 	return Find(query)
 }
@@ -1325,7 +1321,7 @@ func countUphostParentsByContainerPool(poolId string) (int, error) {
 func InsertMany(hosts []Host) error {
 	docs := make([]interface{}, len(hosts))
 	for idx := range hosts {
-		docs[idx] = &hosts[idx]
+		docs[idx] = hosts[idx]
 	}
 
 	return errors.WithStack(db.InsertMany(Collection, docs...))

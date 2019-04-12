@@ -410,9 +410,6 @@ func makeCommonPayload(sub *event.Subscription, selectors []event.Selector,
 		}
 		return msg, nil
 
-	case event.CommitQueueDequeueSubscriberType:
-		return &commitqueue.DequeueItem{}, nil
-
 	case event.JIRAIssueSubscriberType:
 		return jiraIssue(data)
 

@@ -6,6 +6,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/task"
+	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
 )
@@ -22,6 +23,8 @@ func TestTaskConnectorSuite(t *testing.T) {
 	// Set up
 	s := new(TaskConnectorSuite)
 	s.ctx = &DBConnector{}
+	testutil.ConfigureIntegrationTest(t, testConfig, "TestTaskConnectorSuite")
+	db.SetGlobalSessionProvider(testConfig.SessionFactory())
 
 	// Tear down
 	assert.NoError(db.Clear(task.Collection))

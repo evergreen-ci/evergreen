@@ -4,14 +4,18 @@ import (
 	"io/ioutil"
 	"strings"
 	"testing"
+	"time"
 
-	_ "github.com/evergreen-ci/evergreen/testutil"
-	adb "github.com/mongodb/anser/db"
 	. "github.com/smartystreets/goconvey/convey"
 	"github.com/stretchr/testify/assert"
-	"go.mongodb.org/mongo-driver/bson"
-	mgobson "gopkg.in/mgo.v2/bson"
+	"gopkg.in/mgo.v2"
+	"gopkg.in/mgo.v2/bson"
 )
+
+func init() {
+	sf := NewSessionFactory("mongodb://localhost:27017", "mci_test", false, mgo.Safe{}, 10*time.Second)
+	SetGlobalSessionProvider(sf)
+}
 
 func TestDBUtils(t *testing.T) {
 
@@ -82,7 +86,7 @@ func TestDBUtils(t *testing.T) {
 
 			So(Clear("testfiles.chunks"), ShouldBeNil)
 			So(Clear("testfiles.files"), ShouldBeNil)
-			id := mgobson.NewObjectId().Hex()
+			id := bson.NewObjectId().Hex()
 			So(WriteGridFile("testfiles", id, strings.NewReader(id)), ShouldBeNil)
 			file, err := GetGridFile("testfiles", id)
 			So(err, ShouldBeNil)
@@ -427,7 +431,7 @@ func TestDBUtils(t *testing.T) {
 			So(Insert(collection, in), ShouldBeNil)
 			in.FieldTwo = 2
 
-			change := adb.Change{
+			change := mgo.Change{
 				Update: bson.M{
 					"$set": bson.M{
 						"field_two": in.FieldTwo,

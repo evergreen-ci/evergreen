@@ -19,7 +19,6 @@ import (
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -33,8 +32,10 @@ type AdminRouteSuite struct {
 
 func TestAdminRouteSuiteWithDB(t *testing.T) {
 	s := new(AdminRouteSuite)
+	db.SetGlobalSessionProvider(testutil.TestConfig().SessionFactory())
 	s.sc = &data.DBConnector{}
-	require.NoError(t, db.ClearCollections(evergreen.ConfigCollection), "Error clearing collections")
+	testutil.HandleTestingErr(db.ClearCollections(evergreen.ConfigCollection), t,
+		"Error clearing collections")
 
 	// run the rest of the tests
 	suite.Run(t, s)
@@ -60,6 +61,7 @@ func (s *AdminRouteSuite) TestAdminRoute() {
 	ctx := context.Background()
 	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "user"})
 
+	db.SetGlobalSessionProvider(testutil.TestConfig().SessionFactory())
 	s.NoError(db.Clear(distro.Collection))
 	d1 := &distro.Distro{
 		Id: "valid-distro",
@@ -182,10 +184,9 @@ func (s *AdminRouteSuite) TestRevertRoute() {
 	}
 	before := evergreen.Settings{}
 	_, err := s.sc.SetEvergreenSettings(&changes, &before, user, true)
-	s.Require().NoError(err)
+	s.NoError(err)
 	dbEvents, err := event.FindAdmin(event.RecentAdminEvents(1))
-	s.Require().NoError(err)
-	s.Require().True(len(dbEvents) >= 1)
+	s.NoError(err)
 	eventData := dbEvents[0].Data.(*event.AdminEventData)
 	guid := eventData.GUID
 	s.NotEmpty(guid)
@@ -219,6 +220,7 @@ func (s *AdminRouteSuite) TestRevertRoute() {
 func TestRestartRoute(t *testing.T) {
 	assert := assert.New(t)
 	ctx := gimlet.AttachUser(context.Background(), &user.DBUser{Id: "userName"})
+	testutil.SetGlobalEnvironment(ctx, t)
 
 	queue := evergreen.GetEnvironment().LocalQueue()
 	sc := &data.MockConnector{}
@@ -264,8 +266,9 @@ func TestRestartRoute(t *testing.T) {
 
 func TestAdminEventRoute(t *testing.T) {
 	assert := assert.New(t)
-	require := require.New(t)
-	require.NoError(db.ClearCollections(evergreen.ConfigCollection, event.AllLogCollection), "Error clearing collections")
+	db.SetGlobalSessionProvider(testutil.TestConfig().SessionFactory())
+	testutil.HandleTestingErr(db.ClearCollections(evergreen.ConfigCollection, event.AllLogCollection), t,
+		"Error clearing collections")
 
 	// log some changes in the event log with the /admin/settings route
 	ctx := context.Background()
@@ -308,8 +311,8 @@ func TestAdminEventRoute(t *testing.T) {
 	}
 	assert.Equal(10, count)
 	pagination := response.Pages()
-	require.NotNil(pagination)
-	require.NotNil(pagination.Next)
+	assert.NotNil(pagination)
+	assert.NotNil(pagination.Next)
 	assert.NotZero(pagination.Next.KeyQueryParam)
 	assert.Equal("limit", pagination.Next.LimitQueryParam)
 	assert.Equal("next", pagination.Next.Relation)

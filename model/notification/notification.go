@@ -14,7 +14,7 @@ import (
 	"github.com/mongodb/grip/level"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
-	"go.mongodb.org/mongo-driver/bson"
+	"gopkg.in/mgo.v2/bson"
 )
 
 // makeNotificationID creates a string representing the notification generated
@@ -83,9 +83,6 @@ func (n *Notification) SenderKey() (evergreen.SenderKey, error) {
 
 	case event.GithubMergeSubscriberType:
 		return evergreen.SenderGithubMerge, nil
-
-	case event.CommitQueueDequeueSubscriberType:
-		return evergreen.SenderCommitQueueDequeue, nil
 
 	default:
 		return evergreen.SenderEmail, errors.Errorf("unknown type '%s'", n.Subscriber.Type)
@@ -203,20 +200,6 @@ func (n *Notification) Composer() (message.Composer, error) {
 		payload.MergeMethod = sub.MergeMethod
 
 		return commitqueue.NewGithubMergePRMessage(level.Notice, *payload), nil
-
-	case event.CommitQueueDequeueSubscriberType:
-		sub, ok := n.Subscriber.Target.(*event.CommitQueueDequeueSubscriber)
-		if !ok {
-			return nil, errors.New("commit-queue-dequeue subscriber is invalid")
-		}
-		payload, ok := n.Payload.(*commitqueue.DequeueItem)
-		if !ok || payload == nil {
-			return nil, errors.New("commit-queue-dequeue payload is invalid")
-		}
-		payload.ProjectID = sub.ProjectID
-		payload.Item = sub.Item
-
-		return commitqueue.NewDequeueItemMessage(level.Notice, *payload), nil
 
 	default:
 		return nil, errors.Errorf("unknown type '%s'", n.Subscriber.Type)

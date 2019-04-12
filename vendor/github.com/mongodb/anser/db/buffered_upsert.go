@@ -6,10 +6,8 @@ import (
 
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
-	"go.mongodb.org/mongo-driver/bson"
-	"go.mongodb.org/mongo-driver/bson/bsontype"
 	mgo "gopkg.in/mgo.v2"
-	mgobson "gopkg.in/mgo.v2/bson"
+	"gopkg.in/mgo.v2/bson"
 )
 
 type anserBufUpsertImpl struct {
@@ -192,40 +190,11 @@ func (bu *anserBufUpsertImpl) Append(doc interface{}) error {
 
 func getDocID(doc interface{}) (interface{}, bool) {
 	switch d := doc.(type) {
-	case mgobson.RawD:
+	case bson.RawD:
 		for _, raw := range d {
 			if raw.Name == "_id" {
 				return raw.Value, true
 			}
-		}
-		return nil, false
-	case bson.Raw:
-		rv, err := d.LookupErr("_id")
-		if err != nil {
-			return nil, false
-		}
-
-		switch rv.Type {
-		case bsontype.Double:
-			return rv.DoubleOK()
-		case bsontype.EmbeddedDocument:
-			return rv.DocumentOK()
-		case bsontype.String:
-			return rv.StringValueOK()
-		case bsontype.ObjectID:
-			return rv.ObjectIDOK()
-		case bsontype.Boolean:
-			return rv.BooleanOK()
-		case bsontype.DateTime:
-			return rv.DateTimeOK()
-		case bsontype.Int32:
-			return rv.Int32OK()
-		case bsontype.Int64:
-			return rv.Int64OK()
-		case bsontype.Decimal128:
-			return rv.Decimal128OK()
-		default:
-			return nil, false
 		}
 	case map[string]interface{}:
 		id, ok := d["_id"]
@@ -236,15 +205,13 @@ func getDocID(doc interface{}) (interface{}, bool) {
 	case bson.M:
 		id, ok := d["_id"]
 		return id, ok
-	case mgobson.M:
-		id, ok := d["_id"]
-		return id, ok
 	case map[string]string:
 		id, ok := d["_id"]
 		return id, ok
-	default:
-		return nil, false
 	}
+
+	return nil, false
+
 }
 
 func (bu *anserBufUpsertImpl) Flush() error {

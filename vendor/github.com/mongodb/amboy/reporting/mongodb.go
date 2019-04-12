@@ -59,7 +59,7 @@ func MakeDBQueueState(ctx context.Context, name string, opts queue.MongoDBOption
 		name:       name,
 		opts:       opts,
 		client:     client,
-		collection: client.Database(opts.DB).Collection(addJobsSuffix(name)),
+		collection: client.Database(opts.DB).Collection(name + ".jobs"),
 	}
 
 	return db, nil

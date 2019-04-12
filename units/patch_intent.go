@@ -25,7 +25,7 @@ import (
 	"github.com/mongodb/grip/message"
 	"github.com/mongodb/grip/sometimes"
 	"github.com/pkg/errors"
-	mgobson "gopkg.in/mgo.v2/bson"
+	"gopkg.in/mgo.v2/bson"
 	yaml "gopkg.in/yaml.v2"
 )
 
@@ -43,9 +43,9 @@ type patchIntentProcessor struct {
 	job.Base `bson:"job_base" json:"job_base" yaml:"job_base"`
 	env      evergreen.Environment
 
-	IntentID   string           `bson:"intent_id" json:"intent_id" yaml:"intent_id"`
-	IntentType string           `bson:"intent_type" json:"intent_type" yaml:"intent_type"`
-	PatchID    mgobson.ObjectId `bson:"patch_id,omitempty" json:"patch_id" yaml:"patch_id"`
+	IntentID   string        `bson:"intent_id" json:"intent_id" yaml:"intent_id"`
+	IntentType string        `bson:"intent_type" json:"intent_type" yaml:"intent_type"`
+	PatchID    bson.ObjectId `bson:"patch_id,omitempty" json:"patch_id" yaml:"patch_id"`
 
 	user   *user.DBUser
 	intent patch.Intent
@@ -53,7 +53,7 @@ type patchIntentProcessor struct {
 
 // NewPatchIntentProcessor creates an amboy job to create a patch from the
 // given patch intent with the given object ID for the patch
-func NewPatchIntentProcessor(patchID mgobson.ObjectId, intent patch.Intent) amboy.Job {
+func NewPatchIntentProcessor(patchID bson.ObjectId, intent patch.Intent) amboy.Job {
 	j := makePatchIntentProcessor()
 	j.IntentID = intent.ID()
 	j.IntentType = intent.GetType()

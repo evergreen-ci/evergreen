@@ -4,14 +4,15 @@ import (
 	"testing"
 
 	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/testutil"
 	. "github.com/smartystreets/goconvey/convey"
-	"github.com/stretchr/testify/require"
 )
 
 func TestTestLogInsertAndFind(t *testing.T) {
 	Convey("With a test log", t, func() {
 
-		require.NoError(t, db.Clear(TestLogCollection),
+		testutil.HandleTestingErr(
+			db.Clear(TestLogCollection), t,
 			"error clearing test log collection")
 
 		log := &TestLog{

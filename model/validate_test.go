@@ -7,6 +7,7 @@ import (
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/task"
+	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -14,6 +15,7 @@ import (
 func TestBadHostTaskRelationship(t *testing.T) {
 	assert := assert.New(t)
 	require := require.New(t)
+	db.SetGlobalSessionProvider(testutil.TestConfig().SessionFactory())
 	require.NoError(db.Clear(task.Collection))
 
 	h := &host.Host{}

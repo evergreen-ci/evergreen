@@ -3,11 +3,10 @@ package evergreen
 import (
 	"fmt"
 
+	"github.com/evergreen-ci/evergreen/db"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
-	"go.mongodb.org/mongo-driver/bson"
-	"go.mongodb.org/mongo-driver/mongo"
-	"go.mongodb.org/mongo-driver/mongo/options"
+	"gopkg.in/mgo.v2/bson"
 )
 
 // AuthUser configures a user for our Naive authentication setup.
@@ -53,42 +52,23 @@ type AuthConfig struct {
 
 func (c *AuthConfig) SectionId() string { return "auth" }
 
-func (c *AuthConfig) Get(env Environment) error {
-	ctx, cancel := env.Context()
-	defer cancel()
-	coll := env.DB().Collection(ConfigCollection)
-
-	res := coll.FindOne(ctx, byId(c.SectionId()))
-	if err := res.Err(); err != nil {
-		return errors.Wrapf(err, "error retrieving section %s", c.SectionId())
+func (c *AuthConfig) Get() error {
+	err := db.FindOneQ(ConfigCollection, db.Query(byId(c.SectionId())), c)
+	if err != nil && err.Error() == errNotFound {
+		*c = AuthConfig{}
+		return nil
 	}
-
-	if err := res.Decode(c); err != nil {
-		if err == mongo.ErrNoDocuments {
-			*c = AuthConfig{}
-			return nil
-		}
-
-		return errors.Wrap(err, "problem decoding result")
-	}
-
-	return nil
+	return errors.Wrapf(err, "error retrieving section %s", c.SectionId())
 }
 
 func (c *AuthConfig) Set() error {
-	env := GetEnvironment()
-	ctx, cancel := env.Context()
-	defer cancel()
-	coll := env.DB().Collection(ConfigCollection)
-
-	_, err := coll.UpdateOne(ctx, byId(c.SectionId()), bson.M{
+	_, err := db.Upsert(ConfigCollection, byId(c.SectionId()), bson.M{
 		"$set": bson.M{
 			"ldap":   c.LDAP,
 			"naive":  c.Naive,
 			"github": c.Github,
 		},
-	}, options.Update().SetUpsert(true))
-
+	})
 	return errors.Wrapf(err, "error updating section %s", c.SectionId())
 }
 

@@ -3,9 +3,9 @@ package manifest
 import (
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/mongodb/anser/bsonutil"
-	adb "github.com/mongodb/anser/db"
 	"github.com/pkg/errors"
-	"go.mongodb.org/mongo-driver/bson"
+	"gopkg.in/mgo.v2"
+	"gopkg.in/mgo.v2/bson"
 )
 
 var (
@@ -25,7 +25,7 @@ var (
 func FindOne(query db.Q) (*Manifest, error) {
 	m := &Manifest{}
 	err := db.FindOneQ(Collection, query, m)
-	if adb.ResultsNotFound(err) {
+	if err == mgo.ErrNotFound {
 		return nil, nil
 	}
 	return m, err
@@ -36,7 +36,7 @@ func FindOne(query db.Q) (*Manifest, error) {
 // If it does not it will return false and the error
 func (m *Manifest) TryInsert() (bool, error) {
 	err := db.Insert(Collection, m)
-	if db.IsDuplicateKey(err) {
+	if mgo.IsDup(err) {
 		return true, nil
 	}
 	return false, err

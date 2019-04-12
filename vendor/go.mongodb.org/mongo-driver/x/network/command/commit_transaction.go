@@ -32,10 +32,6 @@ func (ct *CommitTransaction) Encode(desc description.SelectedServer) (wiremessag
 
 func (ct *CommitTransaction) encode(desc description.SelectedServer) *Write {
 	cmd := bsonx.Doc{{"commitTransaction", bsonx.Int32(1)}}
-	if ct.Session.RecoveryToken != nil {
-		tokenDoc, _ := bsonx.ReadDoc(ct.Session.RecoveryToken)
-		cmd = append(cmd, bsonx.Elem{"recoveryToken", bsonx.Document(tokenDoc)})
-	}
 	return &Write{
 		DB:           "admin",
 		Command:      cmd,

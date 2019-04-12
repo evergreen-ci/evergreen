@@ -7,14 +7,14 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/stretchr/testify/assert"
-	mgobson "gopkg.in/mgo.v2/bson"
+	"gopkg.in/mgo.v2/bson"
 )
 
 func TestAPIPatch(t *testing.T) {
 	assert := assert.New(t)
 	baseTime := time.Now()
 	p := patch.Patch{
-		Id:            mgobson.NewObjectId(),
+		Id:            bson.NewObjectId(),
 		Description:   "test",
 		Project:       "mci",
 		Githash:       "hash",

@@ -19,6 +19,7 @@ func TestHostMonitoringCheckJob(t *testing.T) {
 	assert := assert.New(t)
 	require := require.New(t)
 	testConfig := testutil.TestConfig()
+	db.SetGlobalSessionProvider(testConfig.SessionFactory())
 
 	env := &mock.Environment{
 		EvergreenSettings: testConfig,

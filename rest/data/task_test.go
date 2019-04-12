@@ -31,6 +31,7 @@ type TaskConnectorFetchByIdSuite struct {
 }
 
 func TestTaskConnectorFetchByIdSuite(t *testing.T) {
+	db.SetGlobalSessionProvider(testConfig.SessionFactory())
 
 	s := &TaskConnectorFetchByIdSuite{
 		ctx: &DBConnector{},
@@ -122,6 +123,9 @@ type TaskConnectorFetchByBuildSuite struct {
 func TestTaskConnectorFetchByBuildSuite(t *testing.T) {
 	s := new(TaskConnectorFetchByBuildSuite)
 	s.ctx = &DBConnector{}
+
+	testutil.ConfigureIntegrationTest(t, testConfig, "TestTaskConnectorFetchByBuildSuite")
+	db.SetGlobalSessionProvider(testConfig.SessionFactory())
 
 	assert.NoError(t, db.Clear(task.Collection))
 
@@ -269,6 +273,9 @@ type TaskConnectorFetchByProjectAndCommitSuite struct {
 func TestTaskConnectorFetchByProjectAndCommitSuite(t *testing.T) {
 	s := new(TaskConnectorFetchByProjectAndCommitSuite)
 	s.ctx = &DBConnector{}
+
+	testutil.ConfigureIntegrationTest(t, testConfig, "TestTaskConnectorFetchByProjectAndCommitSuite")
+	db.SetGlobalSessionProvider(testConfig.SessionFactory())
 
 	assert.NoError(t, db.Clear(task.Collection))
 

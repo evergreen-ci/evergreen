@@ -5,8 +5,10 @@ import (
 	"testing"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
+	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -21,6 +23,10 @@ type OpenStackSuite struct {
 
 func TestOpenStackSuite(t *testing.T) {
 	suite.Run(t, new(OpenStackSuite))
+}
+
+func (s *OpenStackSuite) SetupSuite() {
+	db.SetGlobalSessionProvider(testutil.TestConfig().SessionFactory())
 }
 
 func (s *OpenStackSuite) SetupTest() {

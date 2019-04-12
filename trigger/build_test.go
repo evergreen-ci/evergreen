@@ -8,9 +8,9 @@ import (
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/event"
+	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/stretchr/testify/suite"
-	"go.mongodb.org/mongo-driver/bson"
-	mgobson "gopkg.in/mgo.v2/bson"
+	"gopkg.in/mgo.v2/bson"
 )
 
 func TestBuildTriggers(t *testing.T) {
@@ -30,6 +30,7 @@ type buildSuite struct {
 
 func (s *buildSuite) SetupSuite() {
 	s.Require().Implements((*eventHandler)(nil), &buildTriggers{})
+	db.SetGlobalSessionProvider(testutil.TestConfig().SessionFactory())
 }
 
 func (s *buildSuite) SetupTest() {
@@ -67,7 +68,7 @@ func (s *buildSuite) SetupTest() {
 		event.NewSubscriptionByID(event.ResourceTypeBuild, triggerSuccess, s.event.ResourceId, apiSub),
 		event.NewSubscriptionByID(event.ResourceTypeBuild, triggerFailure, s.event.ResourceId, apiSub),
 		{
-			ID:           mgobson.NewObjectId().Hex(),
+			ID:           bson.NewObjectId().Hex(),
 			ResourceType: event.ResourceTypeBuild,
 			Trigger:      triggerExceedsDuration,
 			Selectors: []event.Selector{
@@ -86,7 +87,7 @@ func (s *buildSuite) SetupTest() {
 			},
 		},
 		{
-			ID:           mgobson.NewObjectId().Hex(),
+			ID:           bson.NewObjectId().Hex(),
 			ResourceType: event.ResourceTypeBuild,
 			Trigger:      triggerRuntimeChangeByPercent,
 			Selectors: []event.Selector{
@@ -206,7 +207,7 @@ func (s *buildSuite) TestOutcome() {
 
 func (s *buildSuite) TestTaskStatusToDesc() {
 	b := &build.Build{
-		Id:           mgobson.NewObjectId().Hex(),
+		Id:           bson.NewObjectId().Hex(),
 		BuildVariant: "testvariant",
 		Version:      "testversion",
 		Status:       evergreen.BuildFailed,

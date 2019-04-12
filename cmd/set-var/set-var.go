@@ -1,15 +1,12 @@
 package main
 
 import (
-	"context"
 	"flag"
-	"os"
 	"time"
 
 	"github.com/mongodb/grip"
-	"go.mongodb.org/mongo-driver/bson"
-	"go.mongodb.org/mongo-driver/mongo"
-	"go.mongodb.org/mongo-driver/mongo/options"
+	mgo "gopkg.in/mgo.v2"
+	"gopkg.in/mgo.v2/bson"
 )
 
 func main() {
@@ -28,17 +25,10 @@ func main() {
 	flag.StringVar(&value, "value", "", "value of key")
 	flag.Parse()
 
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	session, err := mgo.DialWithTimeout("mongodb://localhost:27017", 2*time.Second)
+	grip.EmergencyFatal(err)
+	c := session.DB(dbName).C(collection)
 
-	client, err := mongo.Connect(ctx, options.Client().ApplyURI("mongodb://localhost:27017").SetConnectTimeout(2*time.Second))
-	grip.EmergencyFatal(err)
-	res, err := client.Database(dbName).Collection(collection).UpdateOne(ctx, bson.M{"_id": id}, bson.M{"$set": bson.M{key: value}})
-	grip.EmergencyFatal(err)
-	if res.ModifiedCount != 1 {
-		grip.Warningf("no documents updated: %+v", res)
-		os.Exit(2)
-	}
+	grip.EmergencyFatal(c.UpdateId(id, bson.M{"$set": bson.M{key: value}}))
 	grip.Infof("set the value of '%s' for document '%s' in collection '%s'", key, id, collection)
-	grip.Emergency(client.Disconnect(ctx))
 }

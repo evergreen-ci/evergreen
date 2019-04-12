@@ -5,14 +5,19 @@ import (
 	"testing"
 
 	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"go.mongodb.org/mongo-driver/bson"
+	"gopkg.in/mgo.v2/bson"
 )
+
+func init() {
+	db.SetGlobalSessionProvider(testutil.TestConfig().SessionFactory())
+}
 
 func TestFindOneProjectRef(t *testing.T) {
 	assert := assert.New(t)
-	require.NoError(t, db.Clear(ProjectRefCollection),
+	testutil.HandleTestingErr(db.Clear(ProjectRefCollection), t,
 		"Error clearing collection")
 	projectRef := &ProjectRef{
 		Owner:      "mongodb",

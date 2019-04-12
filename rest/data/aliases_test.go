@@ -5,14 +5,16 @@ import (
 
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 )
 
 func TestFindProjectAliases(t *testing.T) {
 	assert := assert.New(t)
+	testutil.ConfigureIntegrationTest(t, testConfig, "TestFindAllAliases")
+	db.SetGlobalSessionProvider(testConfig.SessionFactory())
 	session, _, _ := db.GetGlobalSessionFactory().GetSession()
-	require.NoError(t, session.DB(testConfig.Database.DB).DropDatabase(), "Error dropping database")
+	testutil.HandleTestingErr(session.DB(testConfig.Database.DB).DropDatabase(), t, "Error dropping database")
 
 	sc := &DBConnector{}
 

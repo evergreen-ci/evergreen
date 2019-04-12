@@ -1,23 +1,6 @@
 package db
 
-import (
-	"strings"
+import mgo "gopkg.in/mgo.v2"
 
-	mgo "gopkg.in/mgo.v2"
-)
-
-func IsDuplicateKey(err error) bool {
-	if err == nil {
-		return false
-	}
-
-	if mgo.IsDup(err) {
-		return true
-	}
-
-	if strings.Contains(err.Error(), "duplicate key") {
-		return true
-	}
-
-	return false
-}
+func IsDuplicateKey(err error) bool  { return mgo.IsDup(err) }
+func ResultsNotFound(err error) bool { return err == mgo.ErrNotFound }
