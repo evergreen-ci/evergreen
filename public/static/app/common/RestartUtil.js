@@ -16,7 +16,8 @@ mciModule.factory('RestartUtil', function($filter) {
       SYSTEM_FAILURES: {
         name: 'System Failures',
         matches: function(task) {
-          return $filter('statusFilter')(task) == 'system-failed'
+          var status = $filter('statusFilter')(task);
+          return (status == 'system-failed' || status == 'system-unresponsive');
         }
       },
       SETUP_FAILURES: {
