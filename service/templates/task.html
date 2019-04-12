@@ -361,7 +361,7 @@ Evergreen - {{Trunc .Task.Revision 10}} / {{.Task.BuildVariantDisplay}} / {{.Tas
                 <ul class="dropdown-menu" role="menu" aria-labelledby="dLabel">
                   <li role="presentation" class="dropdown-header">Sort Options</li>
                   <li role="presentation" ng-repeat="order in sortOrders">
-                    <a role="menuitem" ng-click="setSortBy(order);" href="javascript:return false;">
+                    <a role="menuitem" ng-click="setSortBy(order);">
                       [[order.name]]
                     </a>
                   </li>
