@@ -697,9 +697,9 @@ mciModule.controller('PerfController', function PerfController(
       } catch (e) { }
     }
     // Populate the graph and table for this task
-    var legacySuccess = function(resp){
+    var legacySuccess = function(toMerge, resp){
       var d = resp.data;
-      var merged = $filter("mergePerfResults")($scope.tempPerfSample, d)
+      var merged = $filter("mergePerfResults")(toMerge, d)
       $scope.perfSample = new TestSample(merged);
       if("tag" in d && d.tag.length > 0){
         $scope.perfTagData.tag = d.tag
@@ -713,12 +713,11 @@ mciModule.controller('PerfController', function PerfController(
     $http.get(cedarApp + "/rest/v1/perf/task_id/" + $scope.task.id).then(
       function(resp) {
         var formatted = $filter("expandedMetricConverter")(resp.data);
-        $scope.tempPerfSample = formatted;
         $scope.perfSample = new TestSample(formatted);
-        $http.get("/plugin/json/task/" + $scope.task.id + "/perf/").then(legacySuccess,legacyError);
+        $http.get("/plugin/json/task/" + $scope.task.id + "/perf/").then((resp) => legacySuccess(formatted, resp),legacyError);
       }, function(error){
         console.log(error);
-        $http.get("/plugin/json/task/" + $scope.task.id + "/perf/").then(legacySuccess,legacyError);
+        $http.get("/plugin/json/task/" + $scope.task.id + "/perf/").then((resp) => legacySuccess(null, resp),legacyError);
       });
 
     $http.get("/plugin/json/task/" + $scope.task.id + "/perf/tags").then(
