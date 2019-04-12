@@ -6,7 +6,6 @@ import (
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/build"
-	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
 )
@@ -25,9 +24,6 @@ func TestBuildConnectorFetchByIdSuite(t *testing.T) {
 	s := new(BuildConnectorFetchByIdSuite)
 	s.ctx = &DBConnector{}
 	s.mock = false
-
-	testutil.ConfigureIntegrationTest(t, testConfig, "TestBuildConnectorFetchByIdSuite")
-	db.SetGlobalSessionProvider(testConfig.SessionFactory())
 
 	assert.NoError(t, db.Clear(build.Collection))
 
@@ -100,9 +96,6 @@ func TestBuildConnectorChangeStatusSuite(t *testing.T) {
 	s := new(BuildConnectorChangeStatusSuite)
 
 	s.ctx = &DBConnector{}
-
-	testutil.ConfigureIntegrationTest(t, testConfig, "TestPatchConnectorAbortByIdSuite")
-	db.SetGlobalSessionProvider(testConfig.SessionFactory())
 
 	assert.NoError(t, db.Clear(build.Collection))
 
@@ -183,9 +176,6 @@ func TestBuildConnectorAbortSuite(t *testing.T) {
 	s.ctx = &DBConnector{}
 	s.mock = false
 
-	testutil.ConfigureIntegrationTest(t, testConfig, "TestBuildConnectorAbortSuite")
-	db.SetGlobalSessionProvider(testConfig.SessionFactory())
-
 	assert.NoError(t, db.Clear(build.Collection))
 
 	build1 := &build.Build{Id: "build1"}
@@ -239,9 +229,6 @@ func TestBuildConnectorRestartSuite(t *testing.T) {
 	s := new(BuildConnectorRestartSuite)
 
 	s.ctx = &DBConnector{}
-
-	testutil.ConfigureIntegrationTest(t, testConfig, "TestPatchConnectorAbortByIdSuite")
-	db.SetGlobalSessionProvider(testConfig.SessionFactory())
 
 	assert.NoError(t, db.Clear(build.Collection))
 

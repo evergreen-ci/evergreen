@@ -5,9 +5,9 @@ import (
 
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/mongodb/anser/bsonutil"
+	adb "github.com/mongodb/anser/db"
 	"github.com/pkg/errors"
-	"gopkg.in/mgo.v2"
-	"gopkg.in/mgo.v2/bson"
+	"go.mongodb.org/mongo-driver/bson"
 )
 
 var EarliestDateToConsider time.Time
@@ -81,7 +81,7 @@ func LastNotificationsEventTime(projectName string) (time.Time,
 	if err != nil {
 		return EarliestDateToConsider, err
 	}
-	if err == mgo.ErrNotFound {
+	if adb.ResultsNotFound(err) {
 		return EarliestDateToConsider, nil
 	}
 

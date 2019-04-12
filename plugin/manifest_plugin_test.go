@@ -5,15 +5,12 @@ import (
 
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/manifest"
-	"github.com/evergreen-ci/evergreen/testutil"
 	. "github.com/smartystreets/goconvey/convey"
+	"github.com/stretchr/testify/require"
 )
 
 func TestManifest(t *testing.T) {
-	db.SetGlobalSessionProvider(testutil.TestConfig().SessionFactory())
-	testutil.HandleTestingErr(
-		db.ClearCollections(manifest.Collection), t,
-		"error clearing test collections")
+	require.NoError(t, db.ClearCollections(manifest.Collection), "error clearing test collections")
 
 	Convey("With a pre-existing manifest for a revision existing", t, func() {
 		m := manifest.Manifest{

@@ -9,12 +9,13 @@ import (
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/mongodb/anser/bsonutil"
+	adb "github.com/mongodb/anser/db"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 	"github.com/tychoish/tarjan"
-	mgo "gopkg.in/mgo.v2"
-	"gopkg.in/mgo.v2/bson"
+	"go.mongodb.org/mongo-driver/bson"
+	mgobson "gopkg.in/mgo.v2/bson"
 )
 
 const (
@@ -58,11 +59,11 @@ func GetDistroQueueInfo(distroID string) (DistroQueueInfo, error) {
 
 // represents the next n tasks to be run on hosts of the distro
 type TaskQueue struct {
-	Id              bson.ObjectId   `bson:"_id,omitempty" json:"_id"`
-	Distro          string          `bson:"distro" json:"distro"`
-	GeneratedAt     time.Time       `bson:"generated_at" json:"generated_at"`
-	Queue           []TaskQueueItem `bson:"queue" json:"queue"`
-	DistroQueueInfo DistroQueueInfo `bson:"distro_queue_info" json:"distro_queue_info"`
+	Id              mgobson.ObjectId `bson:"_id,omitempty" json:"_id"`
+	Distro          string              `bson:"distro" json:"distro"`
+	GeneratedAt     time.Time           `bson:"generated_at" json:"generated_at"`
+	Queue           []TaskQueueItem     `bson:"queue" json:"queue"`
+	DistroQueueInfo DistroQueueInfo     `bson:"distro_queue_info" json:"distro_queue_info"`
 
 	useModerDequeueOp bool
 }
@@ -404,7 +405,7 @@ func findTaskQueueForDistro(distroId string) (*TaskQueue, error) {
 
 	err := db.Aggregate(TaskQueuesCollection, pipeline, &out)
 	if err != nil {
-		if errors.Cause(err) == mgo.ErrNotFound {
+		if adb.ResultsNotFound(err) {
 			return nil, nil
 		}
 		return nil, errors.Wrapf(err, "problem building task queue for '%s'", distroId)
@@ -541,7 +542,7 @@ outer:
 
 	var err error
 	err = dequeue(taskId, self.Distro)
-	if errors.Cause(err) == mgo.ErrNotFound {
+	if adb.ResultsNotFound(err) {
 		return nil
 	}
 

@@ -245,6 +245,7 @@ vendor-clean:
 	rm -rf vendor/github.com/evergreen-ci/pail/vendor/github.com/pkg/errors/
 	rm -rf vendor/github.com/evergreen-ci/pail/vendor/github.com/stretchr/testify/
 	rm -rf vendor/github.com/evergreen-ci/pail/vendor/gopkg.in/mgo.v2/
+	rm -rf vendor/github.com/evergreen-ci/pail/vendor/go.mongodb.org/mongo-driver/
 	rm -rf vendor/github.com/gorilla/csrf/vendor/github.com/gorilla/context/
 	rm -rf vendor/github.com/gorilla/csrf/vendor/github.com/pkg/
 	rm -rf vendor/github.com/mholt/archiver/rar.go

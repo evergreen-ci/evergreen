@@ -8,15 +8,15 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/task"
-	"github.com/evergreen-ci/evergreen/testutil"
 	. "github.com/smartystreets/goconvey/convey"
+	"github.com/stretchr/testify/require"
 )
 
 func dropTestDB(t *testing.T) {
 	session, _, err := db.GetGlobalSessionFactory().GetSession()
-	testutil.HandleTestingErr(err, t, "Error opening database session")
+	require.NoError(t, err, "Error opening database session")
 	defer session.Close()
-	testutil.HandleTestingErr(session.DB(testConfig.Database.DB).DropDatabase(), t, "Error dropping test database")
+	require.NoError(t, session.DB(testConfig.Database.DB).DropDatabase(), "Error dropping test database")
 }
 
 func createVersion(order int, project string, buildVariants []string) error {

@@ -10,7 +10,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/task"
-	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -141,7 +140,6 @@ var sampleGeneratedProject = []json.RawMessage{json.RawMessage(`
 `)}
 
 func TestGenerateTasks(t *testing.T) {
-	db.SetGlobalSessionProvider(testutil.TestConfig().SessionFactory())
 	assert := assert.New(t)
 	require := require.New(t)
 	require.NoError(db.ClearCollections(model.VersionCollection, build.Collection, task.Collection, distro.Collection))

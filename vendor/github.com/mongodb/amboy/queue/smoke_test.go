@@ -1407,7 +1407,7 @@ func cleanupMgo(dbname, name string, session *mgo.Session) error {
 	start := time.Now()
 	defer session.Close()
 
-	if err := session.DB(dbname).C(name + ".jobs").DropCollection(); err != nil {
+	if err := session.DB(dbname).C(addJobsSuffix(name)).DropCollection(); err != nil {
 		return errors.WithStack(err)
 	}
 
@@ -1418,7 +1418,7 @@ func cleanupMgo(dbname, name string, session *mgo.Session) error {
 func cleanupMongo(ctx context.Context, dbname, name string, client *mongo.Client) error {
 	start := time.Now()
 
-	if err := client.Database(dbname).Collection(name + ".jobs").Drop(ctx); err != nil {
+	if err := client.Database(dbname).Collection(addJobsSuffix(name)).Drop(ctx); err != nil {
 		return errors.WithStack(err)
 	}
 

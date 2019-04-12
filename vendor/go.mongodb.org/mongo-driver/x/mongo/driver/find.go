@@ -40,6 +40,9 @@ func Find(
 	opts ...*options.FindOptions,
 ) (*BatchCursor, error) {
 
+	if cmd.Session != nil && cmd.Session.PinnedServer != nil {
+		selector = cmd.Session.PinnedServer
+	}
 	ss, err := topo.SelectServer(ctx, selector)
 	if err != nil {
 		return nil, err

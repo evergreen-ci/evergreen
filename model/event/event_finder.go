@@ -5,9 +5,9 @@ import (
 
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/mongodb/anser/bsonutil"
+	adb "github.com/mongodb/anser/db"
 	"github.com/pkg/errors"
-	mgo "gopkg.in/mgo.v2"
-	"gopkg.in/mgo.v2/bson"
+	"go.mongodb.org/mongo-driver/bson"
 )
 
 // unprocessedEvents returns a bson.M query to fetch all unprocessed events
@@ -32,7 +32,11 @@ func ResourceTypeKeyIs(key string) bson.M {
 func Find(coll string, query db.Q) ([]EventLogEntry, error) {
 	events := []EventLogEntry{}
 	err := db.FindAllQ(coll, query, &events)
-	return events, err
+	if err != nil || adb.ResultsNotFound(err) {
+		return nil, errors.WithStack(err)
+	}
+
+	return events, nil
 }
 
 // FindUnprocessedEvents returns all unprocessed events in AllLogCollection.
@@ -56,7 +60,7 @@ func FindLastProcessedEvent() (*EventLogEntry, error) {
 
 	e := EventLogEntry{}
 	if err := db.FindOneQ(AllLogCollection, q, &e); err != nil {
-		if err == mgo.ErrNotFound {
+		if adb.ResultsNotFound(err) {
 			return nil, nil
 		}
 		return nil, errors.Wrap(err, "failed to fetch most recently processed event")

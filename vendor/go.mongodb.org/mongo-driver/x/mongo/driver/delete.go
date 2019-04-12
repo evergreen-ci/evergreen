@@ -33,7 +33,9 @@ func Delete(
 	retryWrite bool,
 	opts ...*options.DeleteOptions,
 ) (result.Delete, error) {
-
+	if cmd.Session != nil && cmd.Session.PinnedServer != nil {
+		selector = cmd.Session.PinnedServer
+	}
 	ss, err := topo.SelectServer(ctx, selector)
 	if err != nil {
 		return result.Delete{}, err

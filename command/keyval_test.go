@@ -11,11 +11,8 @@ import (
 	"github.com/evergreen-ci/evergreen/rest/client"
 	"github.com/evergreen-ci/evergreen/testutil"
 	. "github.com/smartystreets/goconvey/convey"
+	"github.com/stretchr/testify/require"
 )
-
-func init() {
-	db.SetGlobalSessionProvider(testutil.TestConfig().SessionFactory())
-}
 
 func TestIncKey(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
@@ -23,8 +20,8 @@ func TestIncKey(t *testing.T) {
 
 	Convey("With keyval plugin installed", t, func() {
 		err := db.Clear(model.KeyValCollection)
-		testutil.HandleTestingErr(err, t, "Couldn't clear test collection: %s", model.KeyValCollection)
-		testutil.HandleTestingErr(err, t, "Couldn't register keyval plugin")
+		require.NoError(t, err, "Couldn't clear test collection: %s", model.KeyValCollection)
+		require.NoError(t, err, "Couldn't register keyval plugin")
 
 		testConfig := testutil.TestConfig()
 		configPath := filepath.Join(testutil.GetDirectoryOfFile(), "testdata", "plugin_keyval.yml")
@@ -32,7 +29,7 @@ func TestIncKey(t *testing.T) {
 		comm := client.NewMock("http://localhost.com")
 
 		modelData, err := modelutil.SetupAPITestData(testConfig, "testinc", "rhel55", configPath, modelutil.NoPatch)
-		testutil.HandleTestingErr(err, t, "couldn't create test task")
+		require.NoError(t, err, "couldn't create test task")
 
 		Convey("Inc command should increment a key successfully", func() {
 			conf := modelData.TaskConfig
@@ -42,7 +39,7 @@ func TestIncKey(t *testing.T) {
 				So(len(task.Commands), ShouldNotEqual, 0)
 				for _, command := range task.Commands {
 					pluginCmds, err := Render(command, nil)
-					testutil.HandleTestingErr(err, t, "Couldn't get plugin command: %s", command.Command)
+					require.NoError(t, err, "Couldn't get plugin command: %s", command.Command)
 					So(pluginCmds, ShouldNotBeNil)
 					So(err, ShouldBeNil)
 					for _, cmd := range pluginCmds {

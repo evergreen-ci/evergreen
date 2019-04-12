@@ -3,8 +3,8 @@ package model
 import (
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/mongodb/anser/bsonutil"
-	mgo "gopkg.in/mgo.v2"
-	"gopkg.in/mgo.v2/bson"
+	adb "github.com/mongodb/anser/db"
+	"go.mongodb.org/mongo-driver/bson"
 )
 
 const NotesCollection = "build_baron_notes"
@@ -38,7 +38,7 @@ func NoteForTask(taskId string) (*Note, error) {
 		db.Query(bson.M{NoteTaskIdKey: taskId}),
 		n,
 	)
-	if err == mgo.ErrNotFound {
+	if adb.ResultsNotFound(err) {
 		return nil, nil
 	}
 	return n, err

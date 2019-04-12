@@ -5,15 +5,10 @@ import (
 
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model"
-	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/google/go-github/github"
 	"github.com/stretchr/testify/assert"
 )
-
-func init() {
-	db.SetGlobalSessionProvider(testutil.TestConfig().SessionFactory())
-}
 
 func TestValidatePushEvent(t *testing.T) {
 	assert := assert.New(t)
