@@ -5,7 +5,6 @@ import (
 	"context"
 	"fmt"
 	"net/http"
-	"strings"
 	"testing"
 
 	"github.com/evergreen-ci/evergreen"
@@ -446,8 +445,10 @@ func (s *DistroPutSuite) TestRunExistingWithInValidEntity() {
 	resp := s.rm.Run(ctx)
 	s.NotNil(resp.Data())
 	s.Equal(resp.Status(), http.StatusBadRequest)
-	error := (resp.Data()).(gimlet.ErrorResponse)
-	s.Equal("ERROR: distro 'arch' cannot be blank\nERROR: distro 'user' cannot be blank\nERROR: distro 'provider' cannot be blank", error.Message)
+	err := (resp.Data()).(gimlet.ErrorResponse)
+	s.Contains(err.Message, "ERROR: distro 'arch' cannot be blank")
+	s.Contains(err.Message, "ERROR: distro 'user' cannot be blank")
+	s.Contains(err.Message, "ERROR: distro 'provider' cannot be blank")
 }
 
 func (s *DistroPutSuite) TestRunExistingConflictingName() {
@@ -671,7 +672,7 @@ func (s *DistroPatchByIDSuite) TestRunValidProviderSettings() {
 
 func (s *DistroPatchByIDSuite) TestRunValidArch() {
 	ctx := context.Background()
-	json := []byte(`{"arch": "linux_amd32"}`)
+	json := []byte(`{"arch": "linux_amd64"}`)
 	h := s.rm.(*distroIDPatchHandler)
 	h.distroID = "fedora8"
 	h.body = json
@@ -682,7 +683,7 @@ func (s *DistroPatchByIDSuite) TestRunValidArch() {
 
 	apiDistro, ok := (resp.Data()).(*model.APIDistro)
 	s.Require().True(ok)
-	s.Equal(apiDistro.Arch, model.ToAPIString("linux_amd32"))
+	s.Equal(apiDistro.Arch, model.ToAPIString("linux_amd64"))
 }
 
 func (s *DistroPatchByIDSuite) TestRunValidWorkDir() {
@@ -884,7 +885,9 @@ func (s *DistroPatchByIDSuite) TestRunInValidEmptyStringValues() {
 	}
 
 	error := (resp.Data()).(gimlet.ErrorResponse)
-	s.Equal(strings.Join(errors, "\n"), error.Message)
+	for _, err := range errors {
+		s.Contains(error.Message, err)
+	}
 }
 
 func (s *DistroPatchByIDSuite) TestRunValidPlannerSettingsVersion() {
@@ -946,7 +949,7 @@ func (s *DistroPatchByIDSuite) TestValidFindAndReplaceFullDocument() {
 	ctx := context.Background()
 	json := []byte(
 		`{
-				"arch" : "~linux_amd64",
+				"arch" : "linux_amd64",
 				"work_dir" : "~/data/mci",
 				"pool_size" : 20,
 				"provider" : "mock",
