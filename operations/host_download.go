@@ -21,9 +21,9 @@ const (
 // if desired.
 func hostDownload() cli.Command {
 	const (
-		destDirFlagName  = "dest"
+		destDirFlagName  = "dir"
 		extractFlagName  = "extract"
-		fileNameFlagName = "file_name"
+		fileNameFlagName = "file"
 		modeFlagName     = "mode"
 		urlFlagName      = "url"
 	)
@@ -32,23 +32,23 @@ func hostDownload() cli.Command {
 		Usage: "download resources from a URL on a host and optionally extract",
 		Flags: []cli.Flag{
 			cli.StringFlag{
-				Name:  urlFlagName,
+				Name:  joinFlagNames(urlFlagName, "u"),
 				Usage: "URL to download",
 			},
 			cli.StringFlag{
-				Name:  destDirFlagName,
+				Name:  joinFlagNames(destDirFlagName, "d"),
 				Usage: "destination directory for the resource",
 			},
 			cli.StringSliceFlag{
-				Name:  fileNameFlagName,
+				Name:  joinFlagNames(fileNameFlagName, "f"),
 				Usage: "the name of the output file in the destination directory (can be multiple if extracting)",
 			},
 			cli.StringFlag{
-				Name:  extractFlagName,
+				Name:  joinFlagNames(extractFlagName, "e"),
 				Usage: "extract the resource and put in the destination directory",
 			},
 			cli.StringFlag{
-				Name:  modeFlagName,
+				Name:  joinFlagNames(modeFlagName, "m"),
 				Usage: "permission bits for the files (if unset, no change)",
 			},
 		},
@@ -81,10 +81,12 @@ func hostDownload() cli.Command {
 			}
 
 			if extract {
+				// If extracting, must extract to a directory.
 				if err := downloadAndExtract(url, destDir); err != nil {
 					return errors.Wrap(err, "error occurred during download and extract")
 				}
 			} else {
+				// If not extracting, just download directly into the file.
 				if err := download(url, filePaths[0]); err != nil {
 					return errors.Wrap(err, "error occurred during file download")
 				}
