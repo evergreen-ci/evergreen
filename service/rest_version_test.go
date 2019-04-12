@@ -21,6 +21,7 @@ import (
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/gimlet"
 	. "github.com/smartystreets/goconvey/convey"
+	"github.com/stretchr/testify/require"
 )
 
 var versionTestConfig = testutil.TestConfig()
@@ -28,7 +29,7 @@ var versionTestConfig = testutil.TestConfig()
 func TestGetRecentVersions(t *testing.T) {
 
 	userManager, _, err := auth.LoadUserManager(versionTestConfig.AuthConfig)
-	testutil.HandleTestingErr(err, t, "Failure in loading UserManager from config")
+	require.NoError(t, err, "Failure in loading UserManager from config")
 
 	uis := UIServer{
 		RootURL:     versionTestConfig.Ui.Url,
@@ -46,16 +47,16 @@ func TestGetRecentVersions(t *testing.T) {
 	app := GetRESTv1App(&uis)
 	app.AddMiddleware(gimlet.UserMiddleware(uis.UserManager, gimlet.UserMiddlewareConfiguration{}))
 	router, err := app.Handler()
-	testutil.HandleTestingErr(err, t, "error setting up router")
+	require.NoError(t, err, "error setting up router")
 
 	err = modelutil.CreateTestLocalConfig(buildTestConfig, "mci-test", "")
-	testutil.HandleTestingErr(err, t, "Error loading local config mci-test")
+	require.NoError(t, err, "Error loading local config mci-test")
 
 	err = modelutil.CreateTestLocalConfig(buildTestConfig, "render", "")
-	testutil.HandleTestingErr(err, t, "Error loading local config render")
+	require.NoError(t, err, "Error loading local config render")
 
 	Convey("When finding recent versions", t, func() {
-		testutil.HandleTestingErr(db.ClearCollections(model.VersionCollection, build.Collection), t,
+		require.NoError(t, db.ClearCollections(model.VersionCollection, build.Collection),
 			"Error clearing '%v' collection", model.VersionCollection)
 
 		projectName := "project_test"
@@ -251,16 +252,16 @@ func TestGetVersionInfo(t *testing.T) {
 	app := GetRESTv1App(&uis)
 	app.AddMiddleware(gimlet.UserMiddleware(uis.UserManager, gimlet.UserMiddlewareConfiguration{}))
 	router, err := app.Handler()
-	testutil.HandleTestingErr(err, t, "error setting up router")
+	require.NoError(t, err, "error setting up router")
 
 	err = modelutil.CreateTestLocalConfig(buildTestConfig, "mci-test", "")
-	testutil.HandleTestingErr(err, t, "Error loading local config mci-test")
+	require.NoError(t, err, "Error loading local config mci-test")
 
 	err = modelutil.CreateTestLocalConfig(buildTestConfig, "render", "")
-	testutil.HandleTestingErr(err, t, "Error loading local config render")
+	require.NoError(t, err, "Error loading local config render")
 
 	Convey("When finding info on a particular version", t, func() {
-		testutil.HandleTestingErr(db.Clear(model.VersionCollection), t,
+		require.NoError(t, db.Clear(model.VersionCollection),
 			"Error clearing '%v' collection", model.VersionCollection)
 
 		versionId := "my-version"
@@ -337,7 +338,7 @@ func TestGetVersionInfo(t *testing.T) {
 func TestGetVersionInfoViaRevision(t *testing.T) {
 
 	userManager, _, err := auth.LoadUserManager(versionTestConfig.AuthConfig)
-	testutil.HandleTestingErr(err, t, "Failure in loading UserManager from config")
+	require.NoError(t, err, "Failure in loading UserManager from config")
 
 	uis := UIServer{
 		RootURL:     versionTestConfig.Ui.Url,
@@ -355,12 +356,12 @@ func TestGetVersionInfoViaRevision(t *testing.T) {
 	app := GetRESTv1App(&uis)
 	app.AddMiddleware(gimlet.UserMiddleware(uis.UserManager, gimlet.UserMiddlewareConfiguration{}))
 	router, err := app.Handler()
-	testutil.HandleTestingErr(err, t, "error setting up router")
+	require.NoError(t, err, "error setting up router")
 
 	projectName := "project_test"
 
 	Convey("When finding info on a particular version by its revision", t, func() {
-		testutil.HandleTestingErr(db.Clear(model.VersionCollection), t,
+		require.NoError(t, db.Clear(model.VersionCollection),
 			"Error clearing '%v' collection", model.VersionCollection)
 
 		versionId := "my-version"
@@ -454,10 +455,10 @@ func TestActivateVersion(t *testing.T) {
 		HeaderUserName: evergreen.APIUserHeader,
 	}))
 	router, err := app.Handler()
-	testutil.HandleTestingErr(err, t, "error setting up router")
+	require.NoError(t, err, "error setting up router")
 
 	Convey("When marking a particular version as active", t, func() {
-		testutil.HandleTestingErr(db.ClearCollections(model.VersionCollection, build.Collection), t,
+		require.NoError(t, db.ClearCollections(model.VersionCollection, build.Collection),
 			"Error clearing collections")
 
 		versionId := "my-version"
@@ -574,7 +575,7 @@ func TestActivateVersion(t *testing.T) {
 func TestGetVersionStatus(t *testing.T) {
 
 	userManager, _, err := auth.LoadUserManager(versionTestConfig.AuthConfig)
-	testutil.HandleTestingErr(err, t, "Failure in loading UserManager from config")
+	require.NoError(t, err, "Failure in loading UserManager from config")
 
 	uis := UIServer{
 		RootURL:     versionTestConfig.Ui.Url,
@@ -592,10 +593,10 @@ func TestGetVersionStatus(t *testing.T) {
 	app := GetRESTv1App(&uis)
 	app.AddMiddleware(gimlet.UserMiddleware(uis.UserManager, gimlet.UserMiddlewareConfiguration{}))
 	router, err := app.Handler()
-	testutil.HandleTestingErr(err, t, "error setting up router")
+	require.NoError(t, err, "error setting up router")
 
 	Convey("When finding the status of a particular version", t, func() {
-		testutil.HandleTestingErr(db.Clear(build.Collection), t,
+		require.NoError(t, db.Clear(build.Collection),
 			"Error clearing '%v' collection", build.Collection)
 
 		versionId := "my-version"

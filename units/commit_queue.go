@@ -432,14 +432,13 @@ func sendCommitQueueGithubStatus(env evergreen.Environment, pr *github.PullReque
 
 func subscribeMerge(projectID, owner, repo, mergeMethod, patchID string, pr *github.PullRequest) error {
 	mergeSubscriber := event.NewGithubMergeSubscriber(event.GithubMergeSubscriber{
-		ProjectID:     projectID,
-		Owner:         owner,
-		Repo:          repo,
-		PRNumber:      *pr.Number,
-		Ref:           *pr.Head.SHA,
-		CommitMessage: "Merged by commit queue",
-		MergeMethod:   mergeMethod,
-		CommitTitle:   *pr.Title,
+		ProjectID:   projectID,
+		Owner:       owner,
+		Repo:        repo,
+		PRNumber:    *pr.Number,
+		Ref:         *pr.Head.SHA,
+		MergeMethod: mergeMethod,
+		CommitTitle: *pr.Title,
 	})
 	patchSub := event.NewPatchOutcomeSubscription(patchID, mergeSubscriber)
 	if err := patchSub.Upsert(); err != nil {

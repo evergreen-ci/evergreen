@@ -202,3 +202,27 @@ func ApplyUserChanges(current user.UserSettings, changes APIUserSettings) (APIUs
 
 	return oldSettings, nil
 }
+
+type APIUserAuthorInformation struct {
+	DisplayName APIString
+	Email       APIString
+}
+
+func (u *APIUserAuthorInformation) BuildFromService(h interface{}) error {
+	v, ok := h.(*user.DBUser)
+	if !ok {
+		return errors.Errorf("incorrect type '%T' for user", h)
+	}
+	if v == nil {
+		return errors.New("can't build from nil user")
+	}
+
+	u.DisplayName = ToAPIString(v.DisplayName())
+	u.Email = ToAPIString(v.Email())
+
+	return nil
+}
+
+func (u *APIUserAuthorInformation) ToService() (interface{}, error) {
+	return nil, errors.New("not implemented for read-only route")
+}

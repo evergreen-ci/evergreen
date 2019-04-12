@@ -670,11 +670,6 @@ func UpdateBuildAndVersionStatusForTask(taskId string, updates *StatusChanges) e
 		updates.BuildComplete = true
 	}
 
-	// if a compile task didn't fail, then the
-	// build is only finished when both the compile
-	// and test tasks are completed or when those are
-	// both completed in addition to a push (a push
-	// does not occur if there's a failed task)
 	if buildComplete {
 		if !failedTask {
 			if err = b.MarkFinished(evergreen.BuildSucceeded, finishTime); err != nil {
@@ -951,18 +946,31 @@ func ClearAndResetStrandedTask(h *host.Host) error {
 		return errors.Wrap(err, "problem marking task failed")
 	}
 
-	if time.Since(t.ActivatedTime) < task.UnschedulableThreshold {
-		if t.IsPartOfDisplay() {
-			return t.DisplayTask.SetResetWhenFinished()
+	detail := &apimodels.TaskEndDetail{
+		Status: evergreen.TaskFailed,
+		Type:   "system",
+	}
+	if time.Since(t.ActivatedTime) > task.UnschedulableThreshold {
+		updates := StatusChanges{}
+		if t.DisplayOnly {
+			for _, etID := range t.ExecutionTasks {
+				execTask, err := task.FindOne(task.ById(etID))
+				if err != nil {
+					return errors.Wrap(err, "error finding execution task")
+				}
+				if err = MarkEnd(execTask, evergreen.MonitorPackage, time.Now(), detail, false, &updates); err != nil {
+					return errors.Wrap(err, "error marking execution task as ended")
+				}
+			}
 		}
-		detail := &apimodels.TaskEndDetail{
-			Status: evergreen.TaskFailed,
-			Type:   "system",
-		}
-		return errors.Wrap(TryResetTask(t.Id, "mci", evergreen.MonitorPackage, detail), "problem resetting task")
+		return errors.WithStack(MarkEnd(t, evergreen.MonitorPackage, time.Now(), detail, false, &updates))
 	}
 
-	return nil
+	if t.IsPartOfDisplay() {
+		return t.DisplayTask.SetResetWhenFinished()
+	}
+
+	return errors.Wrap(TryResetTask(t.Id, "mci", evergreen.MonitorPackage, detail), "problem resetting task")
 }
 
 func UpdateDisplayTask(t *task.Task) error {

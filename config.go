@@ -56,6 +56,7 @@ type Settings struct {
 	ContainerPools     ContainerPoolsConfig      `yaml:"container_pools" bson:"container_pools" json:"container_pools" id:"container_pools"`
 	Credentials        map[string]string         `yaml:"credentials" bson:"credentials" json:"credentials"`
 	CredentialsNew     util.KeyValuePairSlice    `yaml:"credentials_new" bson:"credentials_new" json:"credentials_new"`
+	JasperConfig       JasperConfig              `yaml:"jasper" bson:"jasper" json:"jasper"`
 	Database           DBSettings                `yaml:"database"`
 	Expansions         map[string]string         `yaml:"expansions" bson:"expansions" json:"expansions"`
 	ExpansionsNew      util.KeyValuePairSlice    `yaml:"expansions_new" bson:"expansions_new" json:"expansions_new"`
@@ -123,6 +124,7 @@ func (c *Settings) Set() error {
 			containerPoolsKey:     c.ContainerPools,
 			credentialsKey:        c.Credentials,
 			credentialsNewKey:     c.CredentialsNew,
+			jasperKey:             c.JasperConfig,
 			expansionsKey:         c.Expansions,
 			expansionsNewKey:      c.ExpansionsNew,
 			googleAnalyticsKey:    c.GoogleAnalyticsID,

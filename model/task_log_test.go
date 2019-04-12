@@ -9,6 +9,7 @@ import (
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/testutil"
 	. "github.com/smartystreets/goconvey/convey"
+	"github.com/stretchr/testify/require"
 	"go.mongodb.org/mongo-driver/bson"
 )
 
@@ -28,8 +29,7 @@ func TestFindMostRecentTaskLogs(t *testing.T) {
 
 	Convey("When finding the most recent task logs", t, func() {
 
-		testutil.HandleTestingErr(cleanUpLogDB(), t, "Error cleaning up task log"+
-			" database")
+		require.NoError(t, cleanUpLogDB(), "Error cleaning up task log database")
 
 		Convey("the ones with the most recent timestamp should be retrieved,"+
 			" in backwards time order", func() {
@@ -66,8 +66,7 @@ func TestFindTaskLogsBeforeTime(t *testing.T) {
 
 	Convey("When finding task logs before a specified time", t, func() {
 
-		testutil.HandleTestingErr(cleanUpLogDB(), t, "Error cleaning up task log"+
-			" database")
+		require.NoError(t, cleanUpLogDB(), "Error cleaning up task log database")
 
 		Convey("the specified number of task logs should be returned, in"+
 			" backwards time order, all from before the specified"+
@@ -114,8 +113,7 @@ func TestAddLogMessage(t *testing.T) {
 
 	Convey("When adding a log message to a task log", t, func() {
 
-		testutil.HandleTestingErr(cleanUpLogDB(), t, "Error cleaning up task log"+
-			" database")
+		require.NoError(t, cleanUpLogDB(), "Error cleaning up task log database")
 
 		Convey("both the in-memory and database copies of the task log should"+
 			" be updated", func() {
@@ -165,7 +163,7 @@ func TestInsertLogMessage(t *testing.T) {
 
 	Convey("When inserting a log message", t, func() {
 
-		testutil.HandleTestingErr(cleanUpLogDB(), t, "Error cleaning up task log"+
+		require.NoError(t, cleanUpLogDB(), "Error cleaning up task log"+
 			" database")
 
 		Convey("the log message should be added to the most recent task log"+
@@ -209,8 +207,7 @@ func TestFindMostRecentLogMessages(t *testing.T) {
 
 	Convey("When finding the most recent log messages", t, func() {
 
-		testutil.HandleTestingErr(cleanUpLogDB(), t, "Error cleaning up task log"+
-			" database")
+		require.NoError(t, cleanUpLogDB(), "Error cleaning up task log database")
 
 		Convey("the specified number of log messages should be retrieved,"+
 			" using the specified severity and log type filters", func() {

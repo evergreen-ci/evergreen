@@ -49,8 +49,6 @@ type PlannerSettings struct {
 
 type DistroGroup []Distro
 
-type ValidateFormat string
-
 type Expansion struct {
 	Key   string `bson:"key,omitempty" json:"key,omitempty"`
 	Value string `bson:"value,omitempty" json:"value,omitempty"`
@@ -59,9 +57,7 @@ type Expansion struct {
 const (
 	DockerImageBuildTypeImport = "import"
 	DockerImageBuildTypePull   = "pull"
-)
 
-const (
 	// Bootstrapping mechanisms
 	BootstrapMethodLegacySSH          = "legacy-ssh"
 	BootstrapMethodSSH                = "ssh"
@@ -106,6 +102,11 @@ func (d *Distro) IsWindows() bool {
 	// XXX: if this is-windows check is updated, make sure to also update
 	// public/static/js/spawned_hosts.js as well
 	return strings.Contains(d.Arch, "windows")
+}
+
+func (d *Distro) Platform() (string, string) {
+	osAndArch := strings.Split(d.Arch, "_")
+	return osAndArch[0], osAndArch[1]
 }
 
 func (d *Distro) IsEphemeral() bool {

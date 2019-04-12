@@ -18,7 +18,7 @@ import (
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
-	"gopkg.in/mgo.v2"
+	mgo "gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
 )
 
@@ -518,11 +518,17 @@ func CreateBuildFromVersion(args BuildCreateArgs) (string, error) {
 		rev,
 		args.Version.CreateTime.Format(build.IdTimeLayout))
 
+	activatedTime := util.ZeroTime
+	if args.Activated {
+		activatedTime = time.Now()
+	}
+
 	// create the build itself
 	b := &build.Build{
 		Id:                  util.CleanName(buildId),
 		CreateTime:          args.Version.CreateTime,
 		Activated:           args.Activated,
+		ActivatedTime:       activatedTime,
 		Project:             args.Project.Identifier,
 		Revision:            args.Version.Revision,
 		Status:              evergreen.BuildCreated,
@@ -946,6 +952,7 @@ func createOneTask(id string, buildVarTask BuildVariantTaskUnit, project *Projec
 		LastHeartbeat:       util.ZeroTime,
 		Status:              evergreen.TaskUndispatched,
 		Activated:           b.Activated,
+		ActivatedTime:       b.ActivatedTime,
 		RevisionOrderNumber: v.RevisionOrderNumber,
 		Requester:           v.Requester,
 		Version:             v.Id,

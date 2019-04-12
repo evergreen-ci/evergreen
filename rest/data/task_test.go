@@ -31,7 +31,6 @@ type TaskConnectorFetchByIdSuite struct {
 }
 
 func TestTaskConnectorFetchByIdSuite(t *testing.T) {
-	
 
 	s := &TaskConnectorFetchByIdSuite{
 		ctx: &DBConnector{},
@@ -123,9 +122,6 @@ type TaskConnectorFetchByBuildSuite struct {
 func TestTaskConnectorFetchByBuildSuite(t *testing.T) {
 	s := new(TaskConnectorFetchByBuildSuite)
 	s.ctx = &DBConnector{}
-
-	testutil.ConfigureIntegrationTest(t, testConfig, "TestTaskConnectorFetchByBuildSuite")
-	
 
 	assert.NoError(t, db.Clear(task.Collection))
 
@@ -273,9 +269,6 @@ type TaskConnectorFetchByProjectAndCommitSuite struct {
 func TestTaskConnectorFetchByProjectAndCommitSuite(t *testing.T) {
 	s := new(TaskConnectorFetchByProjectAndCommitSuite)
 	s.ctx = &DBConnector{}
-
-	testutil.ConfigureIntegrationTest(t, testConfig, "TestTaskConnectorFetchByProjectAndCommitSuite")
-	
 
 	assert.NoError(t, db.Clear(task.Collection))
 

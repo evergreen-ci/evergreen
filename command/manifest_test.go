@@ -11,13 +11,13 @@ import (
 	"github.com/evergreen-ci/evergreen/rest/client"
 	"github.com/evergreen-ci/evergreen/testutil"
 	. "github.com/smartystreets/goconvey/convey"
+	"github.com/stretchr/testify/require"
 )
 
 // ManifestFetchCmd integration tests
 
 func TestManifestLoad(t *testing.T) {
-	testutil.HandleTestingErr(
-		db.ClearCollections(manifest.Collection), t,
+	require.NoError(t, db.ClearCollections(manifest.Collection),
 		"error clearing test collections")
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -37,7 +37,7 @@ func TestManifestLoad(t *testing.T) {
 
 		configPath := filepath.Join(testutil.GetDirectoryOfFile(), "testdata", "manifest", "mongodb-mongo-master.yml")
 		modelData, err := modelutil.SetupAPITestData(testConfig, "test", "rhel55", configPath, modelutil.NoPatch)
-		testutil.HandleTestingErr(err, t, "failed to setup test data")
+		require.NoError(t, err, "failed to setup test data")
 		taskConfig := modelData.TaskConfig
 		logger, err := comm.GetLoggerProducer(ctx, client.TaskData{ID: taskConfig.Task.Id, Secret: taskConfig.Task.Secret}, nil)
 		So(err, ShouldBeNil)
@@ -47,7 +47,7 @@ func TestManifestLoad(t *testing.T) {
 				So(len(task.Commands), ShouldNotEqual, 0)
 				for _, command := range task.Commands {
 					pluginCmds, err := Render(command, taskConfig.Project.Functions)
-					testutil.HandleTestingErr(err, t, "Couldn't get plugin command: %s", command.Command)
+					require.NoError(t, err, "Couldn't get plugin command: %s", command.Command)
 					So(pluginCmds, ShouldNotBeNil)
 					So(err, ShouldBeNil)
 
@@ -75,7 +75,7 @@ func TestManifestLoad(t *testing.T) {
 				So(len(task.Commands), ShouldNotEqual, 0)
 				for _, command := range task.Commands {
 					pluginCmds, err := Render(command, taskConfig.Project.Functions)
-					testutil.HandleTestingErr(err, t, "Couldn't get plugin command: %s", command.Command)
+					require.NoError(t, err, "Couldn't get plugin command: %s", command.Command)
 					So(pluginCmds, ShouldNotBeNil)
 					So(err, ShouldBeNil)
 					err = pluginCmds[0].Execute(ctx, comm, logger, taskConfig)

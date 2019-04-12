@@ -1,10 +1,15 @@
 package host
 
 import (
+	"context"
+	"os/exec"
+	"runtime"
+	"strings"
 	"testing"
 
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestCurlCommand(t *testing.T) {
@@ -23,4 +28,19 @@ func TestCurlCommand(t *testing.T) {
 func TestTeardownCommandOverSSH(t *testing.T) {
 	cmd := TearDownCommandOverSSH()
 	assert.Equal(t, "chmod +x teardown.sh && sh teardown.sh", cmd)
+}
+
+func TestInitSystemCommand(t *testing.T) {
+	if runtime.GOOS != "linux" {
+		t.Skip("init system test is relevant to Linux only")
+	}
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	cmd := exec.CommandContext(ctx, "/bin/sh", "-c", initSystemCommand())
+	res, err := cmd.Output()
+	require.NoError(t, err)
+	initSystem := strings.TrimSpace(string(res))
+	assert.Contains(t, []string{InitSystemSystemd, InitSystemSysV, InitSystemUpstart}, initSystem)
 }

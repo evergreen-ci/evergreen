@@ -31,8 +31,7 @@ func TestTaskHistory(t *testing.T) {
 			buildVariants, projectName)
 
 		Convey("when finding task history items", func() {
-			testutil.HandleTestingErr(db.ClearCollections(VersionCollection, task.Collection),
-				t, "Error clearing test collections")
+			require.NoError(t, db.ClearCollections(VersionCollection, task.Collection), "Error clearing test collections")
 
 			for i := 10; i < 20; i++ {
 				projectToUse := projectName
@@ -49,7 +48,7 @@ func TestTaskHistory(t *testing.T) {
 					Identifier:          projectToUse,
 				}
 
-				testutil.HandleTestingErr(ver.Insert(), t,
+				require.NoError(t, ver.Insert(),
 					"Error inserting version")
 				for j := 0; j < 3; j++ {
 					newTask := &task.Task{
@@ -61,7 +60,7 @@ func TestTaskHistory(t *testing.T) {
 						Requester:           evergreen.RepotrackerVersionRequester,
 						Project:             projectToUse,
 					}
-					testutil.HandleTestingErr(newTask.Insert(), t,
+					require.NoError(t, newTask.Insert(),
 						"Error inserting task")
 				}
 
@@ -269,8 +268,7 @@ func TestSetDefaultsAndValidate(t *testing.T) {
 
 func TestBuildTestHistoryQuery(t *testing.T) {
 	Convey("With a version", t, func() {
-		testutil.HandleTestingErr(db.ClearCollections(task.Collection, VersionCollection),
-			t, "Error clearing task collections")
+		require.NoError(t, db.ClearCollections(task.Collection, VersionCollection), "Error clearing task collections")
 		testVersion := Version{
 			Id:                  "testVersion",
 			Revision:            "abc",
@@ -650,8 +648,7 @@ func TestGetTestHistory(t *testing.T) {
 		GetTestHistoryV2,
 	}
 	for _, testFunc := range testFuncs {
-		testutil.HandleTestingErr(db.ClearCollections(task.Collection, VersionCollection, testresult.Collection),
-			t, "Error clearing task collections")
+		require.NoError(t, db.ClearCollections(task.Collection, VersionCollection, testresult.Collection), "Error clearing task collections")
 		project := "proj"
 		now := time.Now()
 
@@ -1125,8 +1122,7 @@ func TestCompareQueryRunTimes(t *testing.T) {
 	taskStatuses := []string{evergreen.TaskFailed, evergreen.TaskSucceeded}
 	testStatuses := []string{evergreen.TestFailedStatus, evergreen.TestSucceededStatus, evergreen.TestSkippedStatus, evergreen.TestSilentlyFailedStatus}
 	systemTypes := []string{evergreen.CommandTypeTest, evergreen.CommandTypeSystem, evergreen.CommandTypeSetup}
-	testutil.HandleTestingErr(db.ClearCollections(task.Collection, VersionCollection, testresult.Collection),
-		t, "Error clearing collections")
+	require.NoError(t, db.ClearCollections(task.Collection, VersionCollection, testresult.Collection), "Error clearing collections")
 	project := "proj"
 	now := time.Now()
 
@@ -1234,12 +1230,11 @@ func TestCompareQueryRunTimes(t *testing.T) {
 	grip.Infof("elapsed time for aggregation test history query on test names: %s", elapsedV1.String())
 	grip.Infof("elapsed time for non-aggregation test history query on test names: %s", elapsedV2.String())
 
-	testutil.HandleTestingErr(db.ClearCollections(task.Collection, VersionCollection, testresult.Collection),
-		t, "Error clearing collections")
+	require.NoError(t, db.ClearCollections(task.Collection, VersionCollection, testresult.Collection), "Error clearing collections")
 }
 
 func TestTaskHistoryPickaxe(t *testing.T) {
-	testutil.HandleTestingErr(db.ClearCollections(task.Collection, testresult.Collection), t, "error clearing collections")
+	require.NoError(t, db.ClearCollections(task.Collection, testresult.Collection), "error clearing collections")
 	assert := assert.New(t)
 	proj := Project{
 		Identifier: "proj",

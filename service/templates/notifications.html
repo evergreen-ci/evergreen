@@ -29,8 +29,9 @@ Notifications Preferences
             <input type="text" placeholder="octocat" ng-model="settings.github_user.last_known_as" />
           </md-input-container>
           <md-input-container style="width:50%;">
+            <md-tooltip md-direction="top" md-delay="500">Check https://mongodb.slack.com/account/settings#username. Usually your default Google account (firstname.lastname).</md-tooltip>
             <label>Slack Username</label>
-            <input type="text" ng-model="settings.slack_username">
+            <input type="text" placeholder="john.doe" ng-model="settings.slack_username">
           </md-input-container>
           <table class="notificationTable">
             <thead>

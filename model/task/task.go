@@ -255,7 +255,7 @@ func IsAbortable(t Task) bool {
 		t.Status == evergreen.TaskDispatched
 }
 
-// IsFinished returns true if the project is no longer running
+// IsFinished returns true if the task is no longer running
 func (t *Task) IsFinished() bool {
 	return evergreen.IsFinishedTaskStatus(t.Status)
 }
@@ -286,10 +286,6 @@ func (t *Task) satisfiesDependency(depTask *Task) bool {
 
 func (t *Task) IsPatchRequest() bool {
 	return util.StringSliceContains(evergreen.PatchRequesters, t.Requester)
-}
-
-func (t *Task) IsMergeRequest() bool {
-	return t.Requester == evergreen.MergeTestRequester
 }
 
 func (t *Task) SetOverrideDependencies(userID string) error {

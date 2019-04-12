@@ -450,7 +450,7 @@ func (j *setupHostJob) provisionHost(ctx context.Context, h *host.Host, settings
 				"job":       j.ID(),
 				"host":      h.Id,
 			}))
-
+			return errors.Wrapf(err, "Error finding distro for host %s", h.Id)
 		}
 		h.Distro = d
 

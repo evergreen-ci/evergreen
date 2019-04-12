@@ -7,14 +7,14 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	modelutil "github.com/evergreen-ci/evergreen/model/testutil"
-	"github.com/evergreen-ci/evergreen/testutil"
+	"github.com/stretchr/testify/require"
 )
 
 func setupTestPatchData(apiData *modelutil.TestModelData, patchPath string, t *testing.T) error {
 
 	if patchPath != "" {
 		modulePatchContent, err := ioutil.ReadFile(patchPath)
-		testutil.HandleTestingErr(err, t, "failed to read test module patch file")
+		require.NoError(t, err, "failed to read test module patch file")
 
 		patch := &patch.Patch{
 			Status:  evergreen.PatchCreated,
@@ -28,7 +28,7 @@ func setupTestPatchData(apiData *modelutil.TestModelData, patchPath string, t *t
 			},
 		}
 
-		testutil.HandleTestingErr(patch.Insert(), t, "failed to insert patch")
+		require.NoError(t, patch.Insert(), "failed to insert patch")
 
 	}
 

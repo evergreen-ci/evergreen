@@ -1,0 +1,20 @@
+owner: evergreen-ci
+repo: doesntexist
+branch: master
+enabled: true
+batch_time: 180
+
+tasks:
+    - name: testtask1
+      commands:
+        - command: git.get_project
+          params:
+            directory: src
+
+buildvariants:
+- name: linux-64
+  display_name: Linux 64-bit
+  test_flags: --continue-on-failure
+  expansions:
+    blah: "blah"
+  push: true
