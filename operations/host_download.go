@@ -5,6 +5,7 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/mongodb/grip"
 	"github.com/mongodb/jasper"
 	"github.com/pkg/errors"
 	"github.com/urfave/cli"
@@ -14,7 +15,7 @@ import (
 // if desired.
 func hostDownload() cli.Command {
 	const (
-		destFlagName     = "dest"
+		destDirFlagName  = "dest"
 		extractFlagName  = "extract"
 		fileNameFlagName = "file_name"
 		modeFlagName     = "mode"
@@ -29,7 +30,7 @@ func hostDownload() cli.Command {
 				Usage: "URL to download",
 			},
 			cli.StringFlag{
-				Name:  destFlagName,
+				Name:  destDirFlagName,
 				Usage: "destination directory for the resource (if extract is set, the directory for the extracted resource)",
 			},
 			cli.StringSliceFlag{
@@ -47,51 +48,43 @@ func hostDownload() cli.Command {
 		},
 		Before: mergeBeforeFuncs(
 			requireStringFlag(urlFlagName),
-			requireStringFlag(destFlagName),
+			requireStringFlag(destDirFlagName),
 			requireStringSliceFlag(fileNameFlagName),
 			requireIntValueBetween(modeFlagName, 0, 0777),
 		),
 		Action: func(c *cli.Context) error {
 			url := c.String(urlFlagName)
 			extract := c.Bool(extractFlagName)
-			dest := c.String(destFlagName)
+			destDir := c.String(destDirFlagName)
 			mode := c.Int(modeFlagName)
 			fileNames := c.StringSlice(fileNameFlagName)
 
 			if !extract && len(fileNames) != 1 {
-				return errors.New("if not extracting files, must specify exactly 1 file name")
+				return errors.New("must specify exactly one file name if not extracting")
 			}
 
 			filePaths := make([]string, 0, len(fileNames))
 			for _, fileName := range fileNames {
-				filePaths = append(filePaths, filepath.Join(dest, fileName))
+				filePaths = append(filePaths, filepath.Join(destDir, fileName))
 			}
 
-			info := jasper.DownloadInfo{URL: url}
+			if err := os.MkdirAll(destDir, 0755); err != nil {
+				return errors.Wrap(err, "error making destination directory")
+			}
+
 			if extract {
-				tempDir, err := ioutil.TempDir("", "evergreen")
-				if err != nil {
-					return errors.Wrap(err, "error creating temporary directory")
+				if err := downloadAndExtract(url, destDir); err != nil {
+					return errors.Wrap(err, "error occurred during download and extract")
 				}
-				defer os.RemoveAll(tempDir)
-
-				info.ArchiveOpts.ShouldExtract = true
-				info.ArchiveOpts.Format = jasper.ArchiveAuto
-				info.ArchiveOpts.TargetPath = dest
-				info.Path = tempDir
 			} else {
-				info.Path = filePaths[0]
-			}
-
-			if err := info.Download(); err != nil {
-				return errors.Wrap(err, "failed to download")
+				if err := download(url, filePaths[0]); err != nil {
+					return errors.Wrap(err, "error occurred during file download")
+				}
 			}
 
 			if mode != 0 {
-				for _, filePath := range filePaths {
-					if err := os.Chmod(filePath, os.FileMode(mode)); err != nil {
-						return errors.Wrap(err, "error changing mode bits")
-					}
+				if err := chmodFiles(fileNames, mode); err != nil {
+					return errors.Wrap(err, "error occurred while changing file modes")
 				}
 			}
 
@@ -137,4 +130,39 @@ func hostDownload() cli.Command {
 			return nil
 		},
 	}
+}
+
+func downloadAndExtract(url, filePath string) error {
+	tempFile, err := ioutil.TempFile("", "evergreen")
+	if err != nil {
+		return errors.Wrap(err, "error creating temporary archive file")
+	}
+	defer os.Remove(tempFile.Name())
+
+	info := jasper.DownloadInfo{URL: url}
+	info.Path = tempFile.Name()
+	info.ArchiveOpts.ShouldExtract = true
+	info.ArchiveOpts.Format = jasper.ArchiveAuto
+	info.ArchiveOpts.TargetPath = filePath
+
+	return errors.Wrapf(info.Download(), "error downloading archive file '%s' to path '%s'", url, filePath)
+}
+
+func download(url, filePath string) error {
+	info := jasper.DownloadInfo{
+		URL:  url,
+		Path: filePath,
+	}
+
+	return errors.Wrapf(info.Download(), "error downloading file '%s' to file '%s'", url, filePath)
+}
+
+func chmodFiles(filePaths []string, mode int) error {
+	catcher := grip.NewBasicCatcher()
+	for _, filePath := range filePaths {
+		if err := os.Chmod(filePath, os.FileMode(mode)); err != nil {
+			catcher.Add(errors.Wrapf(err, "error changing mode bits on file '%s'", filePath))
+		}
+	}
+	return catcher.Resolve()
 }
