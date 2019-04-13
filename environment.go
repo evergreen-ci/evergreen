@@ -32,6 +32,12 @@ var (
 	globalEnvLock *sync.RWMutex
 )
 
+const (
+	// duration of wait time during queue chut down.
+	queueShutdownWaitInterval = 10 * time.Millisecond
+	queueShutdownWaitTimeout  = 10 * time.Second
+)
+
 func init() { globalEnvLock = &sync.RWMutex{} }
 
 // GetEnvironment returns the global application level
@@ -157,7 +163,10 @@ func NewEnvironment(ctx context.Context, confPath string, db *DBSettings) (Envir
 
 	catcher.Add(e.initJasper())
 	catcher.Add(e.initSenders(ctx))
-	catcher.Add(e.createQueues(ctx))
+	catcher.Add(e.createLocalQueue(ctx))
+	catcher.Add(e.createApplicationQueue(ctx))
+	catcher.Add(e.createNotificationQueue(ctx))
+	catcher.Add(e.createRemoteQueueGroup(ctx))
 	catcher.Extend(e.initQueues(ctx))
 
 	if catcher.HasErrors() {
@@ -261,13 +270,17 @@ func (e *envState) DB() *mongo.Database {
 	return e.client.Database(e.dbName)
 }
 
-func (e *envState) createQueues(ctx context.Context) error {
+func (e *envState) createLocalQueue(ctx context.Context) error {
 	// configure the local-only (memory-backed) queue.
 	e.localQueue = queue.NewLocalLimitedSize(e.settings.Amboy.PoolSizeLocal, e.settings.Amboy.LocalStorage)
 	if err := e.localQueue.SetRunner(pool.NewAbortablePool(e.settings.Amboy.PoolSizeLocal, e.localQueue)); err != nil {
 		return errors.Wrap(err, "problem configuring worker pool for local queue")
 	}
 
+	return nil
+}
+
+func (e *envState) createApplicationQueue(ctx context.Context) error {
 	// configure the remote mongodb-backed amboy
 	// queue.
 	opts := queue.DefaultMongoDBOptions()
@@ -275,6 +288,28 @@ func (e *envState) createQueues(ctx context.Context) error {
 	opts.DB = e.settings.Amboy.DB
 	opts.Priority = true
 
+	qmdb, err := queue.OpenNewMongoDriver(ctx, e.settings.Amboy.Name, opts, e.client)
+	if err != nil {
+		return errors.Wrap(err, "problem setting main queue backend")
+	}
+	rq := queue.NewRemoteUnordered(e.settings.Amboy.PoolSizeRemote)
+	if err = rq.SetDriver(qmdb); err != nil {
+		return errors.WithStack(err)
+	}
+	if err = rq.SetRunner(pool.NewAbortablePool(e.settings.Amboy.PoolSizeRemote, rq)); err != nil {
+		return errors.Wrap(err, "problem configuring worker pool for main remote queue")
+	}
+	e.remoteQueue = rq
+
+	e.closers["background-local-queue"] = func(ctx context.Context) error {
+		e.localQueue.Runner().Close()
+		return nil
+	}
+
+	return nil
+}
+
+func (e *envState) createNotificationQueue(ctx context.Context) error {
 	// Notifications queue w/ moving weight avg pool
 	e.notificationsQueue = queue.NewLocalLimitedSize(len(e.senders), e.settings.Amboy.LocalStorage)
 
@@ -293,66 +328,12 @@ func (e *envState) createQueues(ctx context.Context) error {
 		rootSenders = append(rootSenders, s)
 	}
 
-	qmdb, err := queue.OpenNewMongoDriver(ctx, e.settings.Amboy.Name, opts, e.client)
-	if err != nil {
-		return errors.Wrap(err, "problem setting main queue backend")
-	}
-	rq := queue.NewRemoteUnordered(e.settings.Amboy.PoolSizeRemote)
-	if err = rq.SetDriver(qmdb); err != nil {
-		return errors.WithStack(err)
-	}
-	if err = rq.SetRunner(pool.NewAbortablePool(e.settings.Amboy.PoolSizeRemote, rq)); err != nil {
-		return errors.Wrap(err, "problem configuring worker pool for main remote queue")
-	}
-	e.remoteQueue = rq
-
-	remoteQueuGroupOpts := queue.RemoteQueueGroupOptions{
-		Client: e.client,
-		Constructor: func(_ context.Context) (queue.Remote, error) {
-			q := queue.NewRemoteUnordered(1)
-			if err := q.SetRunner(pool.NewAbortablePool(1, q)); err != nil {
-				return nil, errors.WithStack(err)
-			}
-			return q, nil
-		},
-		MongoOptions:   queue.DefaultMongoDBOptions(),
-		Prefix:         "gen",
-		PruneFrequency: time.Hour,
-		TTL:            7 * 24 * time.Hour,
-	}
-	remoteQueueGroup, err := queue.NewRemoteQueueGroup(ctx, remoteQueuGroupOpts)
-	if err != nil {
-		return errors.Wrap(err, "problem constructing remote queue group")
-	}
-	e.remoteQueueGroup = remoteQueueGroup
-
-	// duration of time in between calls to queue.Status() within
-	// the amboy.Wait* function.
-	const queueWaitInterval = 10 * time.Millisecond
-	const queueWaitTimeout = 10 * time.Second
-
-	e.closers["background-local-queue"] = func(ctx context.Context) error {
-		var cancel context.CancelFunc
-		ctx, cancel = context.WithTimeout(ctx, queueWaitTimeout)
-		defer cancel()
-		if !amboy.WaitCtxInterval(ctx, e.localQueue, queueWaitInterval) {
-			grip.Critical(message.Fields{
-				"message": "pending jobs failed to finish",
-				"queue":   "system",
-				"status":  e.notificationsQueue.Stats(),
-			})
-			return errors.New("failed to stop with running jobs")
-		}
-		e.localQueue.Runner().Close()
-		return nil
-	}
-
 	e.closers["notification-queue"] = func(ctx context.Context) error {
 		var cancel context.CancelFunc
 		catcher := grip.NewBasicCatcher()
-		ctx, cancel = context.WithTimeout(ctx, queueWaitTimeout)
+		ctx, cancel = context.WithTimeout(ctx, queueShutdownWaitTimeout)
 		defer cancel()
-		if !amboy.WaitCtxInterval(ctx, e.notificationsQueue, queueWaitInterval) {
+		if !amboy.WaitCtxInterval(ctx, e.notificationsQueue, queueShutdownWaitInterval) {
 			grip.Critical(message.Fields{
 				"message": "pending jobs failed to finish",
 				"queue":   "notifications",
@@ -383,6 +364,33 @@ func (e *envState) createQueues(ctx context.Context) error {
 
 	for k := range e.senders {
 		e.senders[k] = logger.MakeQueueSender(e.notificationsQueue, e.senders[k])
+	}
+
+	return nil
+}
+
+func (e *envState) createRemoteQueueGroup(ctx context.Context) error {
+	remoteQueueGroup, err := queue.NewRemoteQueueGroup(ctx, queue.RemoteQueueGroupOptions{
+		Client: e.client,
+		Constructor: func(_ context.Context) (queue.Remote, error) {
+			q := queue.NewRemoteUnordered(1)
+			if err := q.SetRunner(pool.NewAbortablePool(1, q)); err != nil {
+				return nil, errors.WithStack(err)
+			}
+			return q, nil
+		},
+		MongoOptions:   queue.DefaultMongoDBOptions(),
+		Prefix:         "gen",
+		PruneFrequency: time.Hour,
+		TTL:            7 * 24 * time.Hour,
+	})
+	if err != nil {
+		return errors.Wrap(err, "problem constructing remote queue group")
+	}
+	e.remoteQueueGroup = remoteQueueGroup
+	e.closers["queue-group-shutdown"] = func(ctx context.Context) error {
+		e.remoteQueueGroup.Close(ctx)
+		return nil
 	}
 
 	return nil
