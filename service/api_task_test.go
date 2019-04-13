@@ -28,6 +28,7 @@ import (
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/amboy/queue"
 	. "github.com/smartystreets/goconvey/convey"
+	"github.com/stretchr/testify/require"
 )
 
 var (
@@ -53,7 +54,7 @@ func getNextTaskEndpoint(t *testing.T, as *APIServer, hostId string, details *ap
 	request.Header.Add(evergreen.HostHeader, hostId)
 	request.Header.Add(evergreen.HostSecretHeader, hostSecret)
 	jsonBytes, err := json.Marshal(*details)
-	testutil.HandleTestingErr(err, t, "error marshalling json")
+	require.NoError(t, err, "error marshalling json")
 	request.Body = ioutil.NopCloser(bytes.NewReader(jsonBytes))
 
 	w := httptest.NewRecorder()
@@ -81,7 +82,7 @@ func getEndTaskEndpoint(t *testing.T, as *APIServer, hostId, taskId string, deta
 	request.Header.Add(evergreen.TaskSecretHeader, taskSecret)
 
 	jsonBytes, err := json.Marshal(*details)
-	testutil.HandleTestingErr(err, t, "error marshalling json")
+	require.NoError(t, err, "error marshalling json")
 	request.Body = ioutil.NopCloser(bytes.NewReader(jsonBytes))
 
 	w := httptest.NewRecorder()

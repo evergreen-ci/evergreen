@@ -1,9 +1,10 @@
 package evergreen
 
 import (
-	"github.com/evergreen-ci/evergreen/db"
 	"github.com/pkg/errors"
-	"gopkg.in/mgo.v2/bson"
+	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
 type AmboyConfig struct {
@@ -17,17 +18,35 @@ type AmboyConfig struct {
 
 func (c *AmboyConfig) SectionId() string { return "amboy" }
 
-func (c *AmboyConfig) Get() error {
-	err := db.FindOneQ(ConfigCollection, db.Query(byId(c.SectionId())), c)
-	if err != nil && err.Error() == errNotFound {
-		*c = AmboyConfig{}
-		return nil
+func (c *AmboyConfig) Get(env Environment) error {
+	ctx, cancel := env.Context()
+	defer cancel()
+	coll := env.DB().Collection(ConfigCollection)
+
+	res := coll.FindOne(ctx, byId(c.SectionId()))
+	if err := res.Err(); err != nil {
+		return errors.Wrapf(err, "error retrieving section %s", c.SectionId())
 	}
-	return errors.Wrapf(err, "error retrieving section %s", c.SectionId())
+
+	if err := res.Decode(c); err != nil {
+		if err == mongo.ErrNoDocuments {
+			*c = AmboyConfig{}
+			return nil
+		}
+
+		return errors.Wrap(err, "problem decoding result")
+	}
+
+	return nil
 }
 
 func (c *AmboyConfig) Set() error {
-	_, err := db.Upsert(ConfigCollection, byId(c.SectionId()), bson.M{
+	env := GetEnvironment()
+	ctx, cancel := env.Context()
+	defer cancel()
+	coll := env.DB().Collection(ConfigCollection)
+
+	_, err := coll.UpdateOne(ctx, byId(c.SectionId()), bson.M{
 		"$set": bson.M{
 			"name":               c.Name,
 			"single_name":        c.SingleName,
@@ -36,7 +55,8 @@ func (c *AmboyConfig) Set() error {
 			"pool_size_remote":   c.PoolSizeRemote,
 			"local_storage_size": c.LocalStorage,
 		},
-	})
+	}, options.Update().SetUpsert(true))
+
 	return errors.Wrapf(err, "error updating section %s", c.SectionId())
 }
 

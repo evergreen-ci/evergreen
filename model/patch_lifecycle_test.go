@@ -20,7 +20,9 @@ import (
 	"github.com/mongodb/grip"
 	. "github.com/smartystreets/goconvey/convey"
 	"github.com/stretchr/testify/assert"
-	"gopkg.in/mgo.v2/bson"
+	"github.com/stretchr/testify/require"
+	"go.mongodb.org/mongo-driver/bson/primitive"
+	mgobson "gopkg.in/mgo.v2/bson"
 	yaml "gopkg.in/yaml.v2"
 )
 
@@ -44,33 +46,10 @@ func init() {
 	current := testutil.GetDirectoryOfFile()
 	patchFile = filepath.Join(current, patchFile)
 	newProjectPatchFile = filepath.Join(current, newProjectPatchFile)
-
-	ctx, cancel := context.WithCancel(context.Background())
-
-	env, err := evergreen.NewEnvironment(ctx, filepath.Join(evergreen.FindEvergreenHome(), testutil.TestDir, testutil.TestSettings), nil)
-	if err != nil {
-		cancel()
-		panic(err)
-	}
-
-	env.RegisterCloser("close-context", func(ctx context.Context) error {
-		cancel()
-		return nil
-	})
-	evergreen.SetEnvironment(env)
 }
 
 func clearAll(t *testing.T) {
-
-	testutil.HandleTestingErr(
-		db.ClearCollections(
-			ProjectRefCollection,
-			patch.Collection,
-			VersionCollection,
-			build.Collection,
-			task.Collection,
-			distro.Collection,
-		), t, "Error clearing test collection")
+	require.NoError(t, db.ClearCollections(ProjectRefCollection, patch.Collection, VersionCollection, build.Collection, task.Collection, distro.Collection), "Error clearing test collection")
 }
 
 // resetPatchSetup clears the ProjectRef, Patch, Version, Build, and Task Collections
@@ -88,11 +67,11 @@ func resetPatchSetup(t *testing.T, testPath string) *patch.Patch {
 	distros := []distro.Distro{{Id: "d1"}, {Id: "d2"}}
 	for _, d := range distros {
 		err := d.Insert()
-		testutil.HandleTestingErr(err, t, "Couldn't insert test distro: %v", err)
+		require.NoError(t, err, "Couldn't insert test distro: %v", err)
 	}
 
 	err := projectRef.Insert()
-	testutil.HandleTestingErr(err, t, "Couldn't insert test project ref: %v", err)
+	require.NoError(t, err, "Couldn't insert test project ref: %v", err)
 
 	baseVersion := &Version{
 		Identifier: patchedProject,
@@ -101,14 +80,14 @@ func resetPatchSetup(t *testing.T, testPath string) *patch.Patch {
 		Requester:  evergreen.RepotrackerVersionRequester,
 	}
 	err = baseVersion.Insert()
-	testutil.HandleTestingErr(err, t, "Couldn't insert test base version: %v", err)
+	require.NoError(t, err, "Couldn't insert test base version: %v", err)
 
 	fileBytes, err := ioutil.ReadFile(patchFile)
-	testutil.HandleTestingErr(err, t, "Couldn't read patch file: %v", err)
+	require.NoError(t, err, "Couldn't read patch file: %v", err)
 
 	// this patch adds a new task to the existing build
 	configPatch := &patch.Patch{
-		Id:            "52549c143122",
+		Id:            mgobson.NewObjectId(),
 		Project:       patchedProject,
 		Githash:       patchedRevision,
 		Tasks:         []string{"taskTwo", "taskOne"},
@@ -127,7 +106,7 @@ func resetPatchSetup(t *testing.T, testPath string) *patch.Patch {
 		},
 	}
 	err = configPatch.Insert()
-	testutil.HandleTestingErr(err, t, "Couldn't insert test patch: %v", err)
+	require.NoError(t, err, "Couldn't insert test patch: %v", err)
 	return configPatch
 }
 
@@ -144,18 +123,18 @@ func resetProjectlessPatchSetup(t *testing.T) *patch.Patch {
 	distros := []distro.Distro{{Id: "d1"}, {Id: "d2"}}
 	for _, d := range distros {
 		err := d.Insert()
-		testutil.HandleTestingErr(err, t, "Couldn't insert test distro: %v", err)
+		require.NoError(t, err, "Couldn't insert test distro: %v", err)
 	}
 
 	err := projectRef.Insert()
-	testutil.HandleTestingErr(err, t, "Couldn't insert test project ref: %v", err)
+	require.NoError(t, err, "Couldn't insert test project ref: %v", err)
 
 	fileBytes, err := ioutil.ReadFile(newProjectPatchFile)
-	testutil.HandleTestingErr(err, t, "Couldn't read patch file: %v", err)
+	require.NoError(t, err, "Couldn't read patch file: %v", err)
 
 	// this patch adds a new task to the existing build
 	configPatch := &patch.Patch{
-		Id:            "52549c143123",
+		Id:            mgobson.NewObjectId(),
 		Project:       patchedProject,
 		BuildVariants: []string{"linux-64-duroff"},
 		Githash:       patchedRevision,
@@ -170,7 +149,7 @@ func resetProjectlessPatchSetup(t *testing.T) *patch.Patch {
 		},
 	}
 	err = configPatch.Insert()
-	testutil.HandleTestingErr(err, t, "Couldn't insert test patch: %v", err)
+	require.NoError(t, err, "Couldn't insert test patch: %v", err)
 	return configPatch
 }
 
@@ -202,7 +181,7 @@ func TestGetPatchedProject(t *testing.T) {
 			Convey("Calling GetPatchedProject on a patch with GridFS patches works", func() {
 				configPatch := resetProjectlessPatchSetup(t)
 
-				patchFileID := bson.NewObjectId()
+				patchFileID := primitive.NewObjectID()
 				So(db.WriteGridFile(patch.GridFSPrefix, patchFileID.Hex(), strings.NewReader(configPatch.Patches[0].PatchSet.Patch)), ShouldBeNil)
 				configPatch.Patches[0].PatchSet.Patch = ""
 				configPatch.Patches[0].PatchSet.PatchFileId = patchFileID.Hex()
@@ -618,7 +597,7 @@ func TestVariantTasksToTVPairs(t *testing.T) {
 func TestAddNewPatch(t *testing.T) {
 	assert := assert.New(t)
 
-	testutil.HandleTestingErr(db.ClearCollections(patch.Collection, VersionCollection, build.Collection, task.Collection), t, "problem clearing collections")
+	require.NoError(t, db.ClearCollections(patch.Collection, VersionCollection, build.Collection, task.Collection), "problem clearing collections")
 	p := &patch.Patch{
 		Activated: true,
 	}
@@ -697,7 +676,7 @@ func TestAddNewPatch(t *testing.T) {
 func TestAddNewPatchWithMissingBaseVersion(t *testing.T) {
 	assert := assert.New(t)
 
-	testutil.HandleTestingErr(db.ClearCollections(patch.Collection, VersionCollection, build.Collection, task.Collection), t, "problem clearing collections")
+	require.NoError(t, db.ClearCollections(patch.Collection, VersionCollection, build.Collection, task.Collection), "problem clearing collections")
 	p := &patch.Patch{
 		Activated: true,
 	}

@@ -16,6 +16,7 @@ import (
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/evergreen/util"
 	. "github.com/smartystreets/goconvey/convey"
+	"github.com/stretchr/testify/require"
 )
 
 // getCTAEndpoint is a helper that creates a test API server,
@@ -152,7 +153,7 @@ func TestConsistentTaskAssignment(t *testing.T) {
 func TestServiceStatusEndPoints(t *testing.T) {
 	testConfig := testutil.TestConfig()
 	testServer, err := CreateTestServer(testConfig, nil)
-	testutil.HandleTestingErr(err, t, "Couldn't create apiserver: %v", err)
+	require.NoError(t, err, "Couldn't create apiserver: %v", err)
 	defer testServer.Close()
 
 	url := fmt.Sprintf("%s/api/status/info", testServer.URL)
@@ -179,7 +180,7 @@ func TestStuckHostEndpoints(t *testing.T) {
 	Convey("With a test server and test config", t, func() {
 		testConfig := testutil.TestConfig()
 		testServer, err := CreateTestServer(testConfig, nil)
-		testutil.HandleTestingErr(err, t, "Couldn't create apiserver: %v", err)
+		require.NoError(t, err, "Couldn't create apiserver: %v", err)
 		defer testServer.Close()
 
 		if err := db.ClearCollections(host.Collection, task.Collection); err != nil {

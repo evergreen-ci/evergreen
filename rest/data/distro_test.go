@@ -9,7 +9,6 @@ import (
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/task"
-	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
@@ -17,14 +16,12 @@ import (
 
 func TestFindDistroById(t *testing.T) {
 	assert := assert.New(t)
-	testutil.ConfigureIntegrationTest(t, testConfig, "TestFindDistroById")
-	db.SetGlobalSessionProvider(testConfig.SessionFactory())
 	session, _, err := db.GetGlobalSessionFactory().GetSession()
 	assert.NoError(err)
 	require.NotNil(t, session)
 	defer session.Close()
 
-	testutil.HandleTestingErr(session.DB(testConfig.Database.DB).DropDatabase(), t, "Error dropping database")
+	require.NoError(t, session.DB(testConfig.Database.DB).DropDatabase(), "Error dropping database")
 
 	sc := &DBConnector{}
 	id := fmt.Sprintf("distro_%d", rand.Int())
@@ -40,13 +37,11 @@ func TestFindDistroById(t *testing.T) {
 
 func TestFindAllDistros(t *testing.T) {
 	assert := assert.New(t)
-	testutil.ConfigureIntegrationTest(t, testConfig, "TestFindAllDistros")
-	db.SetGlobalSessionProvider(testConfig.SessionFactory())
 	session, _, err := db.GetGlobalSessionFactory().GetSession()
 	assert.NoError(err)
 	require.NotNil(t, session)
 	defer session.Close()
-	testutil.HandleTestingErr(session.DB(testConfig.Database.DB).DropDatabase(), t, "Error dropping database")
+	require.NoError(t, session.DB(testConfig.Database.DB).DropDatabase(), "Error dropping database")
 
 	sc := &DBConnector{}
 
@@ -80,8 +75,6 @@ func TestDistroCostConnectorSuite(t *testing.T) {
 	// Set up
 	s := new(DistroCostConnectorSuite)
 	s.ctx = &DBConnector{}
-	testutil.ConfigureIntegrationTest(t, testConfig, "TestDistroCostConnectorSuite")
-	db.SetGlobalSessionProvider(testConfig.SessionFactory())
 
 	// Tear down
 	assert.NoError(db.Clear(task.Collection))

@@ -24,13 +24,16 @@ func ReadCursor(
 	ctx context.Context,
 	cmd command.Read,
 	topo *topology.Topology,
-	selecctor description.ServerSelector,
+	selector description.ServerSelector,
 	clientID uuid.UUID,
 	pool *session.Pool,
 	cursorOpts ...bsonx.Elem,
 ) (*BatchCursor, error) {
 
-	ss, err := topo.SelectServer(ctx, selecctor)
+	if cmd.Session != nil && cmd.Session.PinnedServer != nil {
+		selector = cmd.Session.PinnedServer
+	}
+	ss, err := topo.SelectServer(ctx, selector)
 	if err != nil {
 		return nil, err
 	}

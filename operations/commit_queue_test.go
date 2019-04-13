@@ -11,7 +11,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/commitqueue"
 	"github.com/evergreen-ci/evergreen/rest/client"
 	"github.com/evergreen-ci/evergreen/service"
-	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/send"
 	"github.com/stretchr/testify/suite"
@@ -31,8 +30,6 @@ func TestCommitQueueSuite(t *testing.T) {
 
 func (s *CommitQueueSuite) SetupSuite() {
 	s.ctx = context.Background()
-	db.SetGlobalSessionProvider(testConfig.SessionFactory())
-	testutil.NewEnvironment(s.ctx, s.T())
 
 	var err error
 	s.server, err = service.CreateTestServer(testConfig, nil)

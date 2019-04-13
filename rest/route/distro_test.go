@@ -9,13 +9,11 @@ import (
 	"testing"
 
 	"github.com/evergreen-ci/evergreen"
-	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/rest/model"
-	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/stretchr/testify/suite"
 )
@@ -32,7 +30,6 @@ type DistroSetupByIDSuite struct {
 }
 
 func TestDistroSetupByIDSuite(t *testing.T) {
-	db.SetGlobalSessionProvider(testutil.TestConfig().SessionFactory())
 	suite.Run(t, new(DistroSetupByIDSuite))
 }
 
@@ -76,7 +73,6 @@ type DistroPatchSetupByIDSuite struct {
 }
 
 func TestDistroPatchSetupByIDSuite(t *testing.T) {
-	db.SetGlobalSessionProvider(testutil.TestConfig().SessionFactory())
 	suite.Run(t, new(DistroPatchSetupByIDSuite))
 }
 
@@ -142,7 +138,6 @@ type DistroTeardownByIDSuite struct {
 }
 
 func TestDistroTeardownByIDSuite(t *testing.T) {
-	db.SetGlobalSessionProvider(testutil.TestConfig().SessionFactory())
 	suite.Run(t, new(DistroTeardownByIDSuite))
 }
 
@@ -186,7 +181,6 @@ type DistroPatchTeardownByIDSuite struct {
 }
 
 func TestDistroPatchTeardownByIDSuite(t *testing.T) {
-	db.SetGlobalSessionProvider(testutil.TestConfig().SessionFactory())
 	suite.Run(t, new(DistroPatchTeardownByIDSuite))
 }
 
@@ -253,7 +247,6 @@ type DistroByIDSuite struct {
 }
 
 func TestDistroByIDSuite(t *testing.T) {
-	db.SetGlobalSessionProvider(testutil.TestConfig().SessionFactory())
 	suite.Run(t, new(DistroByIDSuite))
 }
 
@@ -336,7 +329,6 @@ type DistroPutSuite struct {
 }
 
 func TestDistroPutSuite(t *testing.T) {
-	db.SetGlobalSessionProvider(testutil.TestConfig().SessionFactory())
 	suite.Run(t, new(DistroPutSuite))
 }
 
@@ -485,7 +477,6 @@ type DistroDeleteByIDSuite struct {
 }
 
 func TestDistroDeleteSuite(t *testing.T) {
-	db.SetGlobalSessionProvider(testutil.TestConfig().SessionFactory())
 	suite.Run(t, new(DistroDeleteByIDSuite))
 }
 
@@ -553,7 +544,6 @@ type DistroPatchByIDSuite struct {
 }
 
 func TestDistroPatchSuite(t *testing.T) {
-	db.SetGlobalSessionProvider(testutil.TestConfig().SessionFactory())
 	suite.Run(t, new(DistroPatchByIDSuite))
 }
 

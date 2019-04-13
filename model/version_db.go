@@ -6,8 +6,8 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/mongodb/anser/bsonutil"
-	"gopkg.in/mgo.v2"
-	"gopkg.in/mgo.v2/bson"
+	adb "github.com/mongodb/anser/db"
+	"go.mongodb.org/mongo-driver/bson"
 )
 
 const (
@@ -214,7 +214,7 @@ func VersionBaseVersionFromPatch(projectId, revision string) db.Q {
 func VersionFindOne(query db.Q) (*Version, error) {
 	version := &Version{}
 	err := db.FindOneQ(VersionCollection, query, version)
-	if err == mgo.ErrNotFound {
+	if adb.ResultsNotFound(err) {
 		return nil, nil
 	}
 	return version, err
@@ -234,7 +234,7 @@ func VersionFindByIds(ids []string) ([]Version, error) {
 func VersionFind(query db.Q) ([]Version, error) {
 	versions := []Version{}
 	err := db.FindAllQ(VersionCollection, query, &versions)
-	if err == mgo.ErrNotFound {
+	if adb.ResultsNotFound(err) {
 		return nil, nil
 	}
 	return versions, err

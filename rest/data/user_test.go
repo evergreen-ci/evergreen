@@ -11,7 +11,7 @@ import (
 )
 
 func init() {
-	db.SetGlobalSessionProvider(testConfig.SessionFactory())
+	
 }
 
 type DBUserConnectorSuite struct {

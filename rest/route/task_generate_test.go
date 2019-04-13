@@ -72,6 +72,7 @@ func remoteConstructor(ctx context.Context) (queue.Remote, error) {
 
 func TestGeneratePollParse(t *testing.T) {
 	require.NoError(t, db.ClearCollections(task.Collection, host.Collection))
+
 	sc := &data.MockConnector{}
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()

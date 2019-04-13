@@ -6,16 +6,14 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
-	"github.com/evergreen-ci/evergreen/testutil"
 	. "github.com/smartystreets/goconvey/convey"
 	"github.com/smartystreets/goconvey/convey/reporting"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"gopkg.in/mgo.v2/bson"
+	"go.mongodb.org/mongo-driver/bson"
 )
 
 func init() {
-	db.SetGlobalSessionProvider(testutil.TestConfig().SessionFactory())
 	reporting.QuietMode()
 
 }
@@ -23,7 +21,7 @@ func init() {
 func TestLoggingTaskEvents(t *testing.T) {
 	Convey("Test task event logging", t, func() {
 
-		testutil.HandleTestingErr(db.Clear(AllLogCollection), t,
+		require.NoError(t, db.Clear(AllLogCollection),
 			"Error clearing '%v' collection", AllLogCollection)
 
 		Convey("All task events should be logged correctly", func() {

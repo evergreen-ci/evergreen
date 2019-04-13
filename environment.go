@@ -10,8 +10,6 @@ import (
 	"sync"
 	"time"
 
-	legacyDB "github.com/evergreen-ci/evergreen/db"
-	"github.com/evergreen-ci/evergreen/model/commitqueue"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mitchellh/mapstructure"
 	"github.com/mongodb/amboy"
@@ -27,7 +25,6 @@ import (
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
-	mgo "gopkg.in/mgo.v2"
 )
 
 var (
@@ -64,6 +61,7 @@ type Environment interface {
 	// Returns the settings object. The settings object is not
 	// necessarily safe for concurrent access.
 	Settings() *Settings
+	Context() (context.Context, context.CancelFunc)
 
 	Session() db.Session
 	Client() *mongo.Client
@@ -99,6 +97,7 @@ type Environment interface {
 	// settings. These Grip senders must be used with Composers that specify
 	// all message details.
 	GetSender(SenderKey) (send.Sender, error)
+	SetSender(SenderKey, send.Sender) error
 
 	// RegisterCloser adds a function object to an internal
 	// tracker to be called by the Close method before process
@@ -120,27 +119,39 @@ type Environment interface {
 // local and remote queues have started.
 //
 // NewEnvironment requires that either the path or DB is sent so that
-// it If both are specified, the settings are read from the file.
+// if both are specified, the settings are read from the file.
 func NewEnvironment(ctx context.Context, confPath string, db *DBSettings) (Environment, error) {
+	ctx, cancel := context.WithCancel(ctx)
 	e := &envState{
+		ctx:     ctx,
 		senders: map[SenderKey]send.Sender{},
-		closers: map[string]func(context.Context) error{},
+		closers: map[string]func(context.Context) error{
+			"root-context": func(_ context.Context) error {
+				cancel()
+				return nil
+			},
+		},
 	}
 
 	if db != nil && confPath == "" {
 		if err := e.initDB(ctx, *db); err != nil {
 			return nil, errors.Wrap(err, "error configuring db")
 		}
+		e.dbName = db.DB
 	}
+
 	if err := e.initSettings(confPath); err != nil {
 		return nil, errors.WithStack(err)
 	}
+
 	if db != nil && confPath == "" {
 		e.settings.Database = *db
 	}
 
+	e.dbName = e.settings.Database.DB
+
 	catcher := grip.NewBasicCatcher()
-	if e.session == nil {
+	if e.client == nil {
 		catcher.Add(e.initDB(ctx, e.settings.Database))
 	}
 
@@ -172,9 +183,10 @@ type envState struct {
 	localQueue         amboy.Queue
 	remoteQueueGroup   amboy.QueueGroup
 	notificationsQueue amboy.Queue
+	ctx                context.Context
 	jasperManager      jasper.Manager
 	settings           *Settings
-	session            *mgo.Session
+	dbName             string
 	client             *mongo.Client
 	mu                 sync.RWMutex
 	clientConfig       *ClientConfig
@@ -196,7 +208,7 @@ func (e *envState) initSettings(path string) error {
 				return errors.Wrap(err, "problem getting settings from file")
 			}
 		} else {
-			e.settings, err = GetConfig()
+			e.settings, err = BootstrapConfig(e)
 			if err != nil {
 				return errors.Wrap(err, "problem getting settings from DB")
 			}
@@ -214,30 +226,25 @@ func (e *envState) initSettings(path string) error {
 }
 
 func (e *envState) initDB(ctx context.Context, settings DBSettings) error {
-	if legacyDB.HasGlobalSessionProvider() {
-		grip.Warning("database session configured; reconfiguring")
-	}
-
-	// set up the database connection configuration using the
-	// legacy session factory mechanism. in the future the
-	// environment can and should be the only provider of database
-	// sessions.
-	sf := CreateSession(settings)
-	legacyDB.SetGlobalSessionProvider(sf)
-
 	var err error
-
-	e.session, _, err = sf.GetSession()
-	if err != nil {
-		return errors.Wrap(err, "problem getting database session")
-	}
-
-	e.client, err = mongo.NewClient(options.Client().ApplyURI(settings.Url))
+	opts := options.Client().ApplyURI(settings.Url).SetWriteConcern(settings.WriteConcernSettings.Resolve()).SetConnectTimeout(5 * time.Second)
+	e.client, err = mongo.NewClient(opts)
 	if err != nil {
 		return errors.Wrap(err, "problem constructing database")
 	}
 
-	return errors.Wrap(e.client.Connect(ctx), "problem connecting to the database")
+	if err = e.client.Connect(ctx); err != nil {
+		return errors.Wrap(err, "problem connecting to the database")
+	}
+
+	return nil
+}
+
+func (e *envState) Context() (context.Context, context.CancelFunc) {
+	e.mu.RLock()
+	defer e.mu.RUnlock()
+
+	return context.WithCancel(e.ctx)
 }
 
 func (e *envState) Client() *mongo.Client {
@@ -251,15 +258,7 @@ func (e *envState) DB() *mongo.Database {
 	e.mu.RLock()
 	defer e.mu.RUnlock()
 
-	return e.client.Database(e.settings.Database.DB)
-}
-
-func remoteQueueGroupConstructor(ctx context.Context) (queue.Remote, error) {
-	q := queue.NewRemoteUnordered(1)
-	if err := q.SetRunner(pool.NewAbortablePool(1, q)); err != nil {
-		return nil, errors.WithStack(err)
-	}
-	return q, nil
+	return e.client.Database(e.dbName)
 }
 
 func (e *envState) createQueues(ctx context.Context) error {
@@ -275,33 +274,6 @@ func (e *envState) createQueues(ctx context.Context) error {
 	opts.URI = e.settings.Database.Url
 	opts.DB = e.settings.Amboy.DB
 	opts.Priority = true
-
-	qmdb, err := queue.OpenNewMgoDriver(ctx, e.settings.Amboy.Name, opts, e.session)
-	if err != nil {
-		return errors.Wrap(err, "problem setting queue backend")
-	}
-	rq := queue.NewRemoteUnordered(e.settings.Amboy.PoolSizeRemote)
-	if err = rq.SetDriver(qmdb); err != nil {
-		return errors.WithStack(err)
-	}
-	if err = rq.SetRunner(pool.NewAbortablePool(e.settings.Amboy.PoolSizeRemote, rq)); err != nil {
-		return errors.Wrap(err, "problem configuring worker pool for remote queue")
-	}
-	e.remoteQueue = rq
-
-	remoteQueuGroupOpts := queue.RemoteQueueGroupOptions{
-		Client:         e.client,
-		Constructor:    remoteQueueGroupConstructor,
-		MongoOptions:   queue.DefaultMongoDBOptions(),
-		Prefix:         "gen",
-		PruneFrequency: time.Hour,
-		TTL:            7 * 24 * time.Hour,
-	}
-	remoteQueueGroup, err := queue.NewRemoteQueueGroup(ctx, remoteQueuGroupOpts)
-	if err != nil {
-		return errors.Wrap(err, "problem constructing remote queue group")
-	}
-	e.remoteQueueGroup = remoteQueueGroup
 
 	// Notifications queue w/ moving weight avg pool
 	e.notificationsQueue = queue.NewLocalLimitedSize(len(e.senders), e.settings.Amboy.LocalStorage)
@@ -320,6 +292,39 @@ func (e *envState) createQueues(ctx context.Context) error {
 	for _, s := range e.senders {
 		rootSenders = append(rootSenders, s)
 	}
+
+	qmdb, err := queue.OpenNewMongoDriver(ctx, e.settings.Amboy.Name, opts, e.client)
+	if err != nil {
+		return errors.Wrap(err, "problem setting main queue backend")
+	}
+	rq := queue.NewRemoteUnordered(e.settings.Amboy.PoolSizeRemote)
+	if err = rq.SetDriver(qmdb); err != nil {
+		return errors.WithStack(err)
+	}
+	if err = rq.SetRunner(pool.NewAbortablePool(e.settings.Amboy.PoolSizeRemote, rq)); err != nil {
+		return errors.Wrap(err, "problem configuring worker pool for main remote queue")
+	}
+	e.remoteQueue = rq
+
+	remoteQueuGroupOpts := queue.RemoteQueueGroupOptions{
+		Client: e.client,
+		Constructor: func(_ context.Context) (queue.Remote, error) {
+			q := queue.NewRemoteUnordered(1)
+			if err := q.SetRunner(pool.NewAbortablePool(1, q)); err != nil {
+				return nil, errors.WithStack(err)
+			}
+			return q, nil
+		},
+		MongoOptions:   queue.DefaultMongoDBOptions(),
+		Prefix:         "gen",
+		PruneFrequency: time.Hour,
+		TTL:            7 * 24 * time.Hour,
+	}
+	remoteQueueGroup, err := queue.NewRemoteQueueGroup(ctx, remoteQueuGroupOpts)
+	if err != nil {
+		return errors.Wrap(err, "problem constructing remote queue group")
+	}
+	e.remoteQueueGroup = remoteQueueGroup
 
 	// duration of time in between calls to queue.Status() within
 	// the amboy.Wait* function.
@@ -385,9 +390,16 @@ func (e *envState) createQueues(ctx context.Context) error {
 
 func (e *envState) initQueues(ctx context.Context) []error {
 	catcher := grip.NewBasicCatcher()
+	catcher.NewWhen(e.localQueue == nil, "local queue is not defined")
+	catcher.NewWhen(e.notificationsQueue == nil, "notification queue is not defined")
 
-	catcher.Add(e.localQueue.Start(ctx))
-	catcher.Add(e.notificationsQueue.Start(ctx))
+	if e.localQueue != nil {
+		catcher.Add(e.localQueue.Start(ctx))
+	}
+
+	if e.notificationsQueue != nil {
+		catcher.Add(e.notificationsQueue.Start(ctx))
+	}
 
 	return catcher.Errors()
 }
@@ -455,7 +467,6 @@ func (e *envState) initSenders(ctx context.Context) error {
 	}
 
 	var sender send.Sender
-
 	githubToken, err := e.settings.GetGithubOauthToken()
 	if err == nil && len(githubToken) > 0 {
 		// Github Status
@@ -466,13 +477,6 @@ func (e *envState) initSenders(ctx context.Context) error {
 			return errors.Wrap(err, "Failed to setup github status logger")
 		}
 		e.senders[SenderGithubStatus] = sender
-
-		// Github PR Merge
-		sender, err = commitqueue.NewGithubPRLogger(ctx, "evergreen", githubToken, sender)
-		if err != nil {
-			return errors.Wrap(err, "Failed to setup github merge logger")
-		}
-		e.senders[SenderGithubMerge] = sender
 	}
 
 	if jira := &e.settings.Jira; len(jira.GetHostURL()) != 0 {
@@ -576,7 +580,7 @@ func (e *envState) Session() db.Session {
 	e.mu.RLock()
 	defer e.mu.RUnlock()
 
-	return db.WrapSession(e.session.Copy())
+	return db.WrapClient(e.ctx, e.client).Clone()
 }
 
 func (e *envState) ClientConfig() *ClientConfig {
@@ -666,6 +670,22 @@ func (e *envState) GetSender(key SenderKey) (send.Sender, error) {
 	}
 
 	return sender, nil
+}
+
+func (e *envState) SetSender(key SenderKey, impl send.Sender) error {
+	if impl == nil {
+		return errors.New("cannot add a nil sender")
+	}
+
+	if err := key.Validate(); err != nil {
+		return errors.WithStack(err)
+	}
+
+	e.mu.Lock()
+	defer e.mu.Unlock()
+	e.senders[key] = impl
+
+	return nil
 }
 
 func (e *envState) RegisterCloser(name string, closer func(context.Context) error) {

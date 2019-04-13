@@ -7,15 +7,16 @@ import (
 	"strings"
 	"time"
 
-	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/amboy/logger"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/level"
 	"github.com/mongodb/grip/send"
 	"github.com/pkg/errors"
-	mgo "gopkg.in/mgo.v2"
-	"gopkg.in/mgo.v2/bson"
+	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/options"
+	"go.mongodb.org/mongo-driver/mongo/writeconcern"
 	"gopkg.in/yaml.v2"
 )
 
@@ -25,8 +26,6 @@ var (
 
 	// Commandline Version String; used to control auto-updating.
 	ClientVersion = "2019-04-04"
-
-	errNotFound = "not found"
 )
 
 // ConfigSection defines a sub-document in the evegreen config
@@ -35,7 +34,7 @@ type ConfigSection interface {
 	// SectionId() returns the ID of the section to be used in the database document and struct tag
 	SectionId() string
 	// Get() populates the section from the DB
-	Get() error
+	Get(Environment) error
 	// Set() upserts the section document into the DB
 	Set() error
 	// ValidateAndDefault() validates input and sets defaults
@@ -57,8 +56,7 @@ type Settings struct {
 	ContainerPools     ContainerPoolsConfig      `yaml:"container_pools" bson:"container_pools" json:"container_pools" id:"container_pools"`
 	Credentials        map[string]string         `yaml:"credentials" bson:"credentials" json:"credentials"`
 	CredentialsNew     util.KeyValuePairSlice    `yaml:"credentials_new" bson:"credentials_new" json:"credentials_new"`
-	JasperURL          string                    `yaml:"jasper_url" bson:"jasper_url" json:"jasper_url"`
-	JasperVersion      string                    `yaml:"jasper_version" bson:"jasper_version" json:"jasper_version"`
+	JasperConfig       JasperConfig              `yaml:"jasper" bson:"jasper" json:"jasper"`
 	Database           DBSettings                `yaml:"database"`
 	Expansions         map[string]string         `yaml:"expansions" bson:"expansions" json:"expansions"`
 	ExpansionsNew      util.KeyValuePairSlice    `yaml:"expansions_new" bson:"expansions_new" json:"expansions_new"`
@@ -88,17 +86,35 @@ type Settings struct {
 
 func (c *Settings) SectionId() string { return ConfigDocID }
 
-func (c *Settings) Get() error {
-	err := db.FindOneQ(ConfigCollection, db.Query(byId(c.SectionId())), c)
-	if err != nil && err.Error() == errNotFound {
-		*c = Settings{}
-		return nil
+func (c *Settings) Get(env Environment) error {
+	ctx, cancel := env.Context()
+	defer cancel()
+	coll := env.DB().Collection(ConfigCollection)
+
+	res := coll.FindOne(ctx, byId(c.SectionId()))
+	if err := res.Err(); err != nil {
+		return errors.Wrapf(err, "error retrieving section %s", c.SectionId())
 	}
-	return errors.Wrapf(err, "error retrieving section %s", c.SectionId())
+
+	if err := res.Decode(c); err != nil {
+		if err == mongo.ErrNoDocuments {
+			*c = Settings{}
+			return nil
+		}
+
+		return errors.Wrap(err, "problem decoding result")
+	}
+
+	return nil
 }
 
 func (c *Settings) Set() error {
-	_, err := db.Upsert(ConfigCollection, byId(c.SectionId()), bson.M{
+	env := GetEnvironment()
+	ctx, cancel := env.Context()
+	defer cancel()
+	coll := env.DB().Collection(ConfigCollection)
+
+	_, err := coll.UpdateOne(ctx, byId(c.SectionId()), bson.M{
 		"$set": bson.M{
 			apiUrlKey:             c.ApiUrl,
 			bannerKey:             c.Banner,
@@ -108,8 +124,7 @@ func (c *Settings) Set() error {
 			containerPoolsKey:     c.ContainerPools,
 			credentialsKey:        c.Credentials,
 			credentialsNewKey:     c.CredentialsNew,
-			jasperURLKey:          c.JasperURL,
-			jasperVersionKey:      c.JasperVersion,
+			jasperKey:             c.JasperConfig,
 			expansionsKey:         c.Expansions,
 			expansionsNewKey:      c.ExpansionsNew,
 			googleAnalyticsKey:    c.GoogleAnalyticsID,
@@ -123,7 +138,8 @@ func (c *Settings) Set() error {
 			splunkKey:             c.Splunk,
 			superUsersKey:         c.SuperUsers,
 		},
-	})
+	}, options.Update().SetUpsert(true))
+
 	return errors.Wrapf(err, "error updating section %s", c.SectionId())
 }
 
@@ -193,11 +209,14 @@ func NewSettings(filename string) (*Settings, error) {
 
 // GetConfig retrieves the Evergreen config document. If no document is
 // present in the DB, it will return the defaults
-func GetConfig() (*Settings, error) {
+func GetConfig() (*Settings, error) { return BootstrapConfig(GetEnvironment()) }
+
+// Bootstrap config gets a config from the database defined in the environment.
+func BootstrapConfig(env Environment) (*Settings, error) {
 	config := &Settings{}
 
 	// retrieve the root config document
-	if err := config.Get(); err != nil {
+	if err := config.Get(env); err != nil {
 		return nil, err
 	}
 
@@ -222,7 +241,7 @@ func GetConfig() (*Settings, error) {
 		}
 
 		// retrieve the section's document from the db
-		if err := section.Get(); err != nil {
+		if err := section.Get(env); err != nil {
 			catcher.Add(errors.Wrapf(err, "error populating section %s", sectionId))
 			continue
 		}
@@ -241,6 +260,7 @@ func GetConfig() (*Settings, error) {
 		return nil, errors.WithStack(catcher.Resolve())
 	}
 	return config, nil
+
 }
 
 // UpdateConfig updates all evergreen settings documents in DB
@@ -446,22 +466,6 @@ func (s *Settings) GetSender(env Environment) (send.Sender, error) {
 	return send.NewConfiguredMultiSender(senders...), nil
 }
 
-// SessionFactory creates a usable SessionFactory from
-// the Evergreen settings.
-func (settings *Settings) SessionFactory() *db.SessionFactory {
-	return CreateSession(settings.Database)
-}
-
-func CreateSession(settings DBSettings) *db.SessionFactory {
-	safety := mgo.Safe{}
-	safety.W = settings.WriteConcernSettings.W
-	safety.WMode = settings.WriteConcernSettings.WMode
-	safety.WTimeout = settings.WriteConcernSettings.WTimeout
-	safety.FSync = settings.WriteConcernSettings.FSync
-	safety.J = settings.WriteConcernSettings.J
-	return db.NewSessionFactory(settings.Url, settings.DB, settings.SSL, safety, defaultMgoDialTimeout)
-}
-
 func (s *Settings) GetGithubOauthString() (string, error) {
 	token, ok := s.Credentials["github"]
 	if ok && token != "" {
@@ -472,6 +476,10 @@ func (s *Settings) GetGithubOauthString() (string, error) {
 }
 
 func (s *Settings) GetGithubOauthToken() (string, error) {
+	if s == nil {
+		return "", errors.New("not defined")
+	}
+
 	oauthString, err := s.GetGithubOauthString()
 	if err != nil {
 		return "", err
@@ -488,7 +496,7 @@ func GetServiceFlags() (*ServiceFlags, error) {
 	if section == nil {
 		return nil, errors.New("unable to retrieve config section")
 	}
-	if err := section.Get(); err != nil {
+	if err := section.Get(GetEnvironment()); err != nil {
 		return nil, errors.Wrap(err, "error retrieving section from DB")
 	}
 	flags, ok := section.(*ServiceFlags)
@@ -506,13 +514,30 @@ type WriteConcern struct {
 	W        int    `yaml:"w"`
 	WMode    string `yaml:"wmode"`
 	WTimeout int    `yaml:"wtimeout"`
-	FSync    bool   `yaml:"fsync"`
 	J        bool   `yaml:"j"`
+}
+
+func (wc WriteConcern) Resolve() *writeconcern.WriteConcern {
+	opts := []writeconcern.Option{}
+
+	if wc.J {
+		opts = append(opts, writeconcern.J(true))
+	}
+	if wc.WMode == "majority" {
+		opts = append(opts, writeconcern.WMajority())
+	} else if wc.W > 0 {
+		opts = append(opts, writeconcern.W(wc.W))
+	}
+
+	if wc.WTimeout > 0 {
+		opts = append(opts, writeconcern.WTimeout(time.Duration(wc.WTimeout)*time.Millisecond))
+	}
+
+	return writeconcern.New().WithOptions(opts...)
 }
 
 type DBSettings struct {
 	Url                  string       `yaml:"url"`
-	SSL                  bool         `yaml:"ssl"`
 	DB                   string       `yaml:"db"`
 	WriteConcernSettings WriteConcern `yaml:"write_concern"`
 }

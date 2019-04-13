@@ -70,12 +70,12 @@ func TestRemoteMgoOrderedQueueSuiteFourWorkers(t *testing.T) {
 	s.tearDown = func() {
 		cancel()
 
-		grip.Error(session.DB("amboy_test").C(name + ".jobs").DropCollection())
+		grip.Error(session.DB("amboy_test").C(addJobsSuffix(name)).DropCollection())
 		grip.Error(session.DB("amboy_test").C(name + ".locks").DropCollection())
 	}
 
 	s.reset = func() {
-		_, err = session.DB("amboy_test").C(name + ".jobs").RemoveAll(bson.M{})
+		_, err = session.DB("amboy_test").C(addJobsSuffix(name)).RemoveAll(bson.M{})
 		grip.Error(err)
 		_, err = session.DB("amboy_test").C(name + ".locks").RemoveAll(bson.M{})
 		grip.Error(err)

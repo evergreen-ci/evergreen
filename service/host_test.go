@@ -14,17 +14,19 @@ import (
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestModifyHostStatusWithUpdateStatus(t *testing.T) {
 	assert := assert.New(t)
+	require := require.New(t)
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
 	env := mock.Environment{}
 	assert.NoError(env.Configure(ctx, filepath.Join(evergreen.FindEvergreenHome(), testutil.TestDir, testutil.TestSettings), nil))
 	assert.NoError(env.LocalQueue().Start(ctx))
-	testutil.HandleTestingErr(db.ClearCollections(event.AllLogCollection), t, "error clearing collections")
+	require.NoError(db.ClearCollections(event.AllLogCollection), "error clearing collections")
 
 	// Normal test, changing a host from running to quarantined
 	user1 := user.DBUser{Id: "user1"}
@@ -39,7 +41,7 @@ func TestModifyHostStatusWithUpdateStatus(t *testing.T) {
 	assert.NoError(err2)
 	assert.Len(events, 1)
 	hostevent, ok := events[0].Data.(*event.HostEventData)
-	assert.True(ok)
+	require.True(ok, "%T", events[0].Data)
 	assert.Equal("because I can", hostevent.Logs)
 
 	user2 := user.DBUser{Id: "user2"}

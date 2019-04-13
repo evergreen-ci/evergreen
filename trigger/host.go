@@ -52,7 +52,7 @@ func (t *hostBase) Fetch(e *event.EventLogEntry) error {
 		return errors.New("couldn't find host")
 	}
 
-	if err = t.uiConfig.Get(); err != nil {
+	if err = t.uiConfig.Get(evergreen.GetEnvironment()); err != nil {
 		return errors.Wrap(err, "Failed to fetch ui config")
 	}
 

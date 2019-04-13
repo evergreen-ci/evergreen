@@ -40,7 +40,7 @@ func (s *MongoDBDriverSuite) SetupTest() {
 	name := uuid.NewV4().String()
 	s.driver = NewMgoDriver(name, DefaultMongoDBOptions()).(*mgoDriver)
 	s.driver.dbName = s.dbName
-	s.collections = append(s.collections, name+".jobs", name+".locks")
+	s.collections = append(s.collections, addJobsSuffix(name), name+".locks")
 
 	db := s.session.DB(s.dbName)
 	count, err := db.C(s.collections[0]).Count()

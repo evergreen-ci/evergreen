@@ -15,18 +15,15 @@ import (
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/user"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
-	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 )
 
 func TestFindCostByVersionId(t *testing.T) {
 	assert := assert.New(t)
-	testutil.ConfigureIntegrationTest(t, testConfig, "TestFindCostByVersionId")
-	db.SetGlobalSessionProvider(testConfig.SessionFactory())
-	testutil.HandleTestingErr(db.Clear(task.Collection), t, "Error clearing"+
-		" '%v' collection", task.Collection)
+	require.NoError(t, db.Clear(task.Collection), "Error clearing '%v' collection", task.Collection)
 
 	sc := &DBConnector{}
 	numTaskSet := 10
@@ -83,7 +80,6 @@ func TestVersionConnectorSuite(t *testing.T) {
 	s.ctx = &DBConnector{}
 
 	s.isMock = false
-	db.SetGlobalSessionProvider(testConfig.SessionFactory())
 
 	// Run the suite
 	suite.Run(t, s)

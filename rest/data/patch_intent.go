@@ -11,7 +11,7 @@ import (
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
-	"gopkg.in/mgo.v2/bson"
+	mgobson "gopkg.in/mgo.v2/bson"
 )
 
 type DBPatchIntentConnector struct{}
@@ -40,7 +40,7 @@ func (p *DBPatchIntentConnector) AddPatchIntent(intent patch.Intent, queue amboy
 		}
 	}
 
-	job := units.NewPatchIntentProcessor(bson.NewObjectId(), intent)
+	job := units.NewPatchIntentProcessor(mgobson.NewObjectId(), intent)
 	job.SetPriority(1)
 	if err := queue.Put(job); err != nil {
 		grip.Error(message.WrapError(err, message.Fields{

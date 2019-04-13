@@ -30,10 +30,6 @@ func (s *SchedulerSuite) SetupTest() {
 
 var schedulerTestConf = testutil.TestConfig()
 
-func init() {
-	db.SetGlobalSessionProvider(schedulerTestConf.SessionFactory())
-}
-
 func TestSpawnHosts(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -266,6 +262,7 @@ func (s *SchedulerSuite) TestSpawnHostsOneNewParent() {
 	s.Equal(childHost.ParentID, parentHost.Id)
 	parentDoc, err := childHost.GetParent()
 	s.NoError(err)
+	s.Require().NotNil(parentDoc)
 	s.Equal(parentHost.Id, parentDoc.Id)
 }
 

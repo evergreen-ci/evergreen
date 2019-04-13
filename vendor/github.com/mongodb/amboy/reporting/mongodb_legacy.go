@@ -71,7 +71,7 @@ func MakeLegacyDBQueueState(name string, opts queue.MongoDBOptions, session *mgo
 		name:       name,
 		opts:       opts,
 		session:    session,
-		collection: session.DB(opts.DB).C(name + ".jobs"),
+		collection: session.DB(opts.DB).C(addJobsSuffix(name)),
 	}
 
 	return db, nil

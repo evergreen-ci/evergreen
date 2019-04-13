@@ -249,6 +249,7 @@ func (l *lockManager) Unlock(ctx context.Context, j amboy.Job) error {
 	if err := l.d.SaveStatus(ctx, j, stat); err != nil {
 		grip.Info(message.WrapError(err, message.Fields{
 			"job":  j.ID(),
+			"type": j.Type(),
 			"stat": stat,
 			"op":   "unlocking job",
 		}))
