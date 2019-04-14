@@ -206,9 +206,8 @@ func constructPwdUpdateCommand(ctx context.Context, env evergreen.Environment, h
 		return nil, err
 	}
 
-	escapedPassword := strings.Replace(password, `\`, `\\`, -1)
-	updatePwdCmd := fmt.Sprintf(`'net user %s %s'`, hostObj.User, escapedPassword)
-	sshUpdatePwd := fmt.Sprintf(`'sc config sshd obj= \".%s\" password= \"%s\"'`, hostObj.User, escapedPassword)
+	updatePwdCmd := fmt.Sprintf(`'net user %s %s'`, hostObj.User, password)
+	sshUpdatePwd := fmt.Sprintf(`'sc config sshd obj= \".%s\" password= \"%s\"'`, hostObj.User, password)
 
 	return env.JasperManager().CreateCommand(ctx).Host(hostInfo.Hostname).User(hostObj.User).
 		ExtendSSHArgs("-p", hostInfo.Port).ExtendSSHArgs(sshOptions...).
