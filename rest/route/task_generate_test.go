@@ -66,19 +66,19 @@ func TestGeneratePollParse(t *testing.T) {
 	ctx := context.Background()
 
 	r, err := http.NewRequest("GET", "/task/1/generate", nil)
-	assert.NoError(err)
+	assert.NoError(t, err)
 	r = gimlet.SetURLVars(r, map[string]string{"task_id": "1"})
 	r.Header.Set(evergreen.HostHeader, "1")
 	r.Header.Set(evergreen.HostSecretHeader, "secret")
 	h := makeGenerateTasksPollHandler(sc, queue.NewLocalUnordered(1))
 
-	assert.Error(h.Parse(ctx, r))
+	assert.Error(t, h.Parse(ctx, r))
 	task_1 := &task.Task{Id: "1"}
-	assert.NoError(task_1.Insert())
-	assert.Error(h.Parse(ctx, r))
+	assert.NoError(t, task_1.Insert())
+	assert.Error(t, h.Parse(ctx, r))
 	host_1 := &host.Host{Id: "1", Secret: "secret"}
-	assert.NoError(host_1.Insert())
-	assert.NoError(h.Parse(ctx, r))
+	assert.NoError(t, host_1.Insert())
+	assert.NoError(t, h.Parse(ctx, r))
 }
 
 func TestGeneratePollRun(t *testing.T) {
