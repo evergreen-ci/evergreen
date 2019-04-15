@@ -130,13 +130,10 @@ func (s *AdminSuite) TestBanner() {
 
 func (s *AdminSuite) TestBaseConfig() {
 	config := Settings{
-		ApiUrl:            "api",
-		Banner:            "banner",
-		BannerTheme:       Important,
-		ClientBinariesDir: "bin_dir",
-		CommitQueue: CommitQueueConfig{
-			MergeTaskDistro: "distro",
-		},
+		ApiUrl:             "api",
+		Banner:             "banner",
+		BannerTheme:        Important,
+		ClientBinariesDir:  "bin_dir",
 		ConfigDir:          "cfg_dir",
 		Credentials:        map[string]string{"k1": "v1"},
 		Expansions:         map[string]string{"k2": "v2"},
@@ -170,7 +167,6 @@ func (s *AdminSuite) TestBaseConfig() {
 	s.Equal(config.Banner, settings.Banner)
 	s.Equal(config.BannerTheme, settings.BannerTheme)
 	s.Equal(config.ClientBinariesDir, settings.ClientBinariesDir)
-	s.Equal(config.CommitQueue, settings.CommitQueue)
 	s.Equal(config.ConfigDir, settings.ConfigDir)
 	s.Equal(config.Credentials, settings.Credentials)
 	s.Equal(config.JasperConfig.BinaryName, settings.JasperConfig.BinaryName)
@@ -656,11 +652,10 @@ func (s *AdminSuite) TestJIRANotificationsConfig() {
 func (s *AdminSuite) TestCommitQueueConfig() {
 	config := CommitQueueConfig{
 		MergeTaskDistro: "distro",
+		CommitterName:   "Evergreen",
+		CommitterEmail:  "evergreen@mongodb.com",
 	}
-	s.Error(config.ValidateAndDefault())
 
-	config.CommitterName = "Evergreen"
-	config.CommitterEmail = "evergreen@mongodb.com"
 	s.NoError(config.ValidateAndDefault())
 	s.NoError(config.Set())
 

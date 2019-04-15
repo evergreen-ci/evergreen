@@ -2,7 +2,6 @@ package evergreen
 
 import (
 	"github.com/mongodb/anser/bsonutil"
-	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -63,16 +62,5 @@ func (c *CommitQueueConfig) Set() error {
 }
 
 func (c *CommitQueueConfig) ValidateAndDefault() error {
-	catcher := grip.NewBasicCatcher()
-	if c.MergeTaskDistro == "" {
-		catcher.Add(errors.New("Merge task distro can't be empty"))
-	}
-	if c.CommitterName == "" {
-		catcher.Add(errors.New("Committer name can't be empty"))
-	}
-	if c.CommitterEmail == "" {
-		catcher.Add(errors.New("Committer email can't be empty"))
-	}
-
-	return catcher.Resolve()
+	return nil
 }
