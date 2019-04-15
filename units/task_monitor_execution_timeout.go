@@ -22,10 +22,10 @@ import (
 )
 
 const (
-	heartbeatTimeoutThreshold           = 7 * time.Minute
-	taskExecutionTimeoutJobName         = "task-execution-timeout"
-	taskExecutionTimeoutPulationJobName = "task-execution-timeout-populate"
-	maxAttempts                         = 10
+	heartbeatTimeoutThreshold             = 7 * time.Minute
+	taskExecutionTimeoutJobName           = "task-execution-timeout"
+	taskExecutionTimeoutPopulationJobName = "task-execution-timeout-populate"
+	maxAttempts                           = 10
 )
 
 func init() {
@@ -202,15 +202,15 @@ func cleanUpTimedOutTask(t *task.Task) error {
 //
 // Population Job
 
-type taskExcutionTimeoutPopulateJob struct {
+type taskExecutionTimeoutPopulationJob struct {
 	job.Base `bson:"metadata" json:"metadata" yaml:"metadata"`
 }
 
-func makeTaskExecutionTimeoutPopulateJob() *taskExecutionTimeoutPulateJob {
-	j := &taskExcutionTimeoutPopulateJob{
+func makeTaskExecutionTimeoutPopulateJob() *taskExecutionTimeoutPopulationJob {
+	j := &taskExecutionTimeoutPopulationJob{
 		Base: job.Base{
 			JobType: amboy.JobType{
-				Name:    taskExecutionTimeoutPulationJobName,
+				Name:    taskExecutionTimeoutPopulationJobName,
 				Version: 0,
 			},
 		},
@@ -226,7 +226,7 @@ func NewTaskExecutionMonitorPopulateJob(id string) amboy.Job {
 	return j
 }
 
-func (j *taskExcutionTimeoutPopulateJob) Run(ctx context.Context) {
+func (j *taskExecutionTimeoutPopulationJob) Run(ctx context.Context) {
 	defer j.MarkComplete()
 
 	flags, err := evergreen.GetServiceFlags()
