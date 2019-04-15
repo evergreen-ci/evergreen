@@ -1,10 +1,11 @@
 package evergreen
 
 import (
-	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/pkg/errors"
-	"gopkg.in/mgo.v2/bson"
+	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
 // SchedulerConfig holds relevant settings for the scheduler process.
@@ -17,23 +18,40 @@ type SchedulerConfig struct {
 
 func (c *SchedulerConfig) SectionId() string { return "scheduler" }
 
-func (c *SchedulerConfig) Get() error {
-	err := db.FindOneQ(ConfigCollection, db.Query(byId(c.SectionId())), c)
-	if err != nil && err.Error() == errNotFound {
-		*c = SchedulerConfig{}
-		return nil
+func (c *SchedulerConfig) Get(env Environment) error {
+	ctx, cancel := env.Context()
+	defer cancel()
+	coll := env.DB().Collection(ConfigCollection)
+
+	res := coll.FindOne(ctx, byId(c.SectionId()))
+	if err := res.Err(); err != nil {
+		return errors.Wrapf(err, "error retrieving section %s", c.SectionId())
 	}
-	return errors.Wrapf(err, "error retrieving section %s", c.SectionId())
+
+	if err := res.Decode(c); err != nil {
+		if err == mongo.ErrNoDocuments {
+			*c = SchedulerConfig{}
+			return nil
+		}
+		return errors.Wrapf(err, "error retrieving section %s", c.SectionId())
+	}
+	return nil
 }
 
 func (c *SchedulerConfig) Set() error {
-	_, err := db.Upsert(ConfigCollection, byId(c.SectionId()), bson.M{
+	env := GetEnvironment()
+	ctx, cancel := env.Context()
+	defer cancel()
+	coll := env.DB().Collection(ConfigCollection)
+
+	_, err := coll.UpdateOne(ctx, byId(c.SectionId()), bson.M{
 		"$set": bson.M{
 			"task_finder":        c.TaskFinder,
 			"host_allocator":     c.HostAllocator,
 			"free_host_fraction": c.FreeHostFraction,
 		},
-	})
+	}, options.Update().SetUpsert(true))
+
 	return errors.Wrapf(err, "error updating section %s", c.SectionId())
 }
 

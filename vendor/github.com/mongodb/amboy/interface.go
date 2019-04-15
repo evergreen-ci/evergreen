@@ -157,6 +157,23 @@ type Queue interface {
 	Start(context.Context) error
 }
 
+// QueueGroup describes a group of queues. Each queue is indexed by a
+// string. Users can use these queues if there are many different types
+// of work or if the types of work are only knowable at runtime.
+type QueueGroup interface {
+	// Get a queue with the given index.
+	Get(context.Context, string) (Queue, error)
+
+	// Put a queue at the given index.
+	Put(context.Context, string, Queue) error
+
+	// Prune old queues.
+	Prune(context.Context) error
+
+	// Close the queues.
+	Close(context.Context)
+}
+
 // Runner describes a simple worker interface for executing jobs in
 // the context of a Queue. Used by queue implementations to run
 // tasks. Generally Queue implementations will spawn a runner as part

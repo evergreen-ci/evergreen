@@ -9,25 +9,15 @@ import (
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/task"
-	"github.com/evergreen-ci/evergreen/testutil"
 	. "github.com/smartystreets/goconvey/convey"
-	"github.com/smartystreets/goconvey/convey/reporting"
+	"github.com/stretchr/testify/require"
 )
 
 func TestCleanupTask(t *testing.T) {
-	reporting.QuietMode()
-
-	testConfig := testutil.TestConfig()
-
-	db.SetGlobalSessionProvider(testConfig.SessionFactory())
-
 	Convey("When cleaning up a task", t, func() {
-
 		// reset the db
-		testutil.HandleTestingErr(db.ClearCollections(task.Collection, task.OldCollection, build.Collection),
-			t, "error clearing tasks collection")
-		testutil.HandleTestingErr(db.ClearCollections(host.Collection),
-			t, "error clearing hosts collection")
+		require.NoError(t, db.ClearCollections(task.Collection, task.OldCollection, build.Collection), "error clearing tasks collection")
+		require.NoError(t, db.ClearCollections(host.Collection), "error clearing hosts collection")
 
 		Convey("an error should be thrown if the passed-in projects slice"+
 			" does not contain the task's project", func() {
@@ -43,16 +33,11 @@ func TestCleanupTask(t *testing.T) {
 		Convey("if the task's heartbeat timed out", func() {
 
 			// reset the db
-			testutil.HandleTestingErr(db.ClearCollections(task.Collection),
-				t, "error clearing tasks collection")
-			testutil.HandleTestingErr(db.ClearCollections(host.Collection),
-				t, "error clearing hosts collection")
-			testutil.HandleTestingErr(db.ClearCollections(build.Collection),
-				t, "error clearing builds collection")
-			testutil.HandleTestingErr(db.ClearCollections(task.OldCollection),
-				t, "error clearing old tasks collection")
-			testutil.HandleTestingErr(db.ClearCollections(model.VersionCollection),
-				t, "error clearing versions collection")
+			require.NoError(t, db.ClearCollections(task.Collection), "error clearing tasks collection")
+			require.NoError(t, db.ClearCollections(host.Collection), "error clearing hosts collection")
+			require.NoError(t, db.ClearCollections(build.Collection), "error clearing builds collection")
+			require.NoError(t, db.ClearCollections(task.OldCollection), "error clearing old tasks collection")
+			require.NoError(t, db.ClearCollections(model.VersionCollection), "error clearing versions collection")
 
 			Convey("the task should be reset", func() {
 
@@ -64,7 +49,7 @@ func TestCleanupTask(t *testing.T) {
 					Project:  "proj",
 					Restarts: 1,
 				}
-				testutil.HandleTestingErr(newTask.Insert(), t, "error inserting task")
+				require.NoError(t, newTask.Insert(), "error inserting task")
 
 				host := &host.Host{
 					Id:          "h1",
@@ -102,18 +87,23 @@ func TestCleanupTask(t *testing.T) {
 						Project:        "proj",
 						Restarts:       0,
 						DisplayOnly:    true,
-						ExecutionTasks: []string{"et"},
+						ExecutionTasks: []string{"et1", "et2"},
 					}
-					et := &task.Task{
-						Id:       "et",
+					et1 := &task.Task{
+						Id:       "et1",
 						Status:   evergreen.TaskStarted,
 						HostId:   "h1",
 						BuildId:  "b2",
 						Project:  "proj",
 						Restarts: 0,
 					}
+					et2 := &task.Task{
+						Id:     "et2",
+						Status: evergreen.TaskStarted,
+					}
 					So(dt.Insert(), ShouldBeNil)
-					So(et.Insert(), ShouldBeNil)
+					So(et1.Insert(), ShouldBeNil)
+					So(et2.Insert(), ShouldBeNil)
 					b := &build.Build{
 						Id:      "b2",
 						Tasks:   []build.TaskCache{{Id: "dt"}},
@@ -121,13 +111,14 @@ func TestCleanupTask(t *testing.T) {
 					}
 					So(b.Insert(), ShouldBeNil)
 
-					So(cleanUpTimedOutTask(et), ShouldBeNil)
-					et, err := task.FindOneId(et.Id)
+					So(cleanUpTimedOutTask(et1), ShouldBeNil)
+					et1, err := task.FindOneId(et1.Id)
 					So(err, ShouldBeNil)
-					So(et.Status, ShouldEqual, evergreen.TaskFailed)
+					So(et1.Status, ShouldEqual, evergreen.TaskFailed)
 					dt, err = task.FindOneId(dt.Id)
 					So(err, ShouldBeNil)
-					So(dt.Status, ShouldEqual, evergreen.TaskSystemUnresponse)
+					So(dt.Status, ShouldEqual, evergreen.TaskStarted)
+					So(dt.ResetWhenFinished, ShouldBeTrue)
 				})
 			})
 
@@ -142,7 +133,7 @@ func TestCleanupTask(t *testing.T) {
 					Project:  "proj",
 					Restarts: 1,
 				}
-				testutil.HandleTestingErr(newTask.Insert(), t, "error inserting task")
+				require.NoError(t, newTask.Insert(), "error inserting task")
 
 				h := &host.Host{
 					Id:          "h1",

@@ -54,6 +54,7 @@ func Update() cli.Command {
 			}
 
 			client := conf.GetRestCommunicator(ctx)
+			defer client.Close()
 
 			update, err := checkUpdate(client, false, forceUpdate)
 			if err != nil {
@@ -84,7 +85,7 @@ func Update() cli.Command {
 					return err
 				}
 				grip.Infoln("Moving upgraded binary to:", binaryDest)
-				err = os.Rename(updatedBin, binaryDest)
+				err = copyFile(binaryDest, updatedBin)
 				if err != nil {
 					return err
 				}
@@ -115,6 +116,24 @@ func Update() cli.Command {
 			return nil
 		},
 	}
+}
+func copyFile(dst, src string) error {
+	s, err := os.Open(src)
+	if err != nil {
+		return err
+	}
+	// no need to check errors on read only file, we already got everything
+	// we need from the filesystem, so nothing can go wrong now.
+	defer s.Close()
+	d, err := os.Create(dst)
+	if err != nil {
+		return err
+	}
+	if _, err := io.Copy(d, s); err != nil {
+		_ = d.Close()
+		return err
+	}
+	return d.Close()
 }
 
 // prepareUpdate fetches the update at the given URL, writes it to a temporary file, and returns

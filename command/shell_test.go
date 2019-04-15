@@ -13,6 +13,7 @@ import (
 	"github.com/evergreen-ci/evergreen/rest/client"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/evergreen/util"
+	"github.com/mongodb/jasper"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -24,11 +25,19 @@ type shellExecuteCommandSuite struct {
 	logger client.LoggerProducer
 	shells []string
 
+	jasper jasper.Manager
+
 	suite.Suite
 }
 
 func TestShellExecuteCommand(t *testing.T) {
 	suite.Run(t, new(shellExecuteCommandSuite))
+}
+
+func (s *shellExecuteCommandSuite) SetupSuite() {
+	var err error
+	s.jasper, err = jasper.NewLocalManager(false)
+	s.Require().NoError(err)
 }
 
 func (s *shellExecuteCommandSuite) SetupTest() {
@@ -52,13 +61,18 @@ func (s *shellExecuteCommandSuite) TearDownTest() {
 }
 
 func (s *shellExecuteCommandSuite) TestWorksWithEmptyShell() {
-	cmd := &shellExec{WorkingDir: testutil.GetDirectoryOfFile()}
+	cmd := &shellExec{
+		WorkingDir: testutil.GetDirectoryOfFile(),
+	}
+	cmd.SetJasperManager(s.jasper)
 	s.Empty(cmd.Shell)
+	s.NoError(cmd.ParseParams(map[string]interface{}{}))
+	s.NotEmpty(cmd.Shell)
 	s.NoError(cmd.Execute(s.ctx, s.comm, s.logger, s.conf))
 }
 
 func (s *shellExecuteCommandSuite) TestSilentAndRedirectToStdOutError() {
-	cmd := &subprocessExec{}
+	cmd := &shellExec{}
 
 	s.NoError(cmd.ParseParams(map[string]interface{}{}))
 	s.False(cmd.IgnoreStandardError)
@@ -70,10 +84,53 @@ func (s *shellExecuteCommandSuite) TestSilentAndRedirectToStdOutError() {
 	s.True(cmd.IgnoreStandardOutput)
 }
 
+func (s *shellExecuteCommandSuite) TestTerribleQuotingIsHandledProperly() {
+	for idx, script := range []string{
+		"echo \"hi\"; exit 0",
+		"echo '\"hi\"'; exit 0",
+		`echo '"'; exit 0`,
+		`echo "'"; exit 0`,
+		`echo \'; exit 0`,
+		`process_kill_list="(^cl\.exe$|bsondump|java|lein|lldb|mongo|python|_test$|_test\.exe$)"
+        process_exclude_list="(main|tuned|evergreen|go|godoc|gocode|make)"
+
+        if [ "Windows_NT" = "$OS" ]; then
+          processes=$(tasklist /fo:csv | awk -F'","' '{x=$1; gsub("\"","",x); print $2, x}' | grep -iE "$process_kill_list" | grep -ivE "$process_exclude_list")
+          kill_process () { pid=$(echo $1 | cut -f1 -d ' '); echo "Killing process $1"; taskkill /pid "$pid" /f; }
+        else
+          pgrep -f --list-full ".*" 2>&1 | grep -qE "(illegal|invalid|unrecognized) option"
+          if [ $? -ne 0 ]; then
+            pgrep_list=$(pgrep -f --list-full "$process_kill_list")
+          else
+            pgrep_list=$(pgrep -f -l "$process_kill_list")
+          fi
+
+          processes=$(echo "$pgrep_list" | grep -ivE "$process_exclude_list" | sed -e '/^ *[0-9]/!d; s/^ *//; s/[[:cntrl:]]//g;')
+          kill_process () { pid=$(echo $1 | cut -f1 -d ' '); echo "Killing process $1"; kill -9 $pid; }
+        fi
+        IFS=$(printf "\n\r")
+        for process in $processes
+        do
+          kill_process "$process"
+        done
+
+        exit 0
+`,
+	} {
+		cmd := &shellExec{
+			WorkingDir: testutil.GetDirectoryOfFile(),
+			Shell:      "bash",
+		}
+		cmd.SetJasperManager(s.jasper)
+		cmd.Script = script
+		s.NoError(cmd.Execute(s.ctx, s.comm, s.logger, s.conf), "%d: %s", idx, script)
+	}
+}
+
 func (s *shellExecuteCommandSuite) TestShellIsntChangedDuringExecution() {
 	for _, sh := range s.shells {
 		cmd := &shellExec{Shell: sh, WorkingDir: testutil.GetDirectoryOfFile()}
-
+		cmd.SetJasperManager(s.jasper)
 		s.NoError(cmd.Execute(s.ctx, s.comm, s.logger, s.conf))
 		s.Equal(sh, cmd.Shell)
 	}
@@ -103,11 +160,12 @@ func (s *shellExecuteCommandSuite) TestCancellingContextShouldCancelCommand() {
 		Script:     "sleep 60",
 		WorkingDir: testutil.GetDirectoryOfFile(),
 	}
+	cmd.SetJasperManager(s.jasper)
 	ctx, cancel := context.WithTimeout(s.ctx, time.Nanosecond)
 	time.Sleep(time.Millisecond)
 	defer cancel()
 
 	err := cmd.Execute(ctx, s.comm, s.logger, s.conf)
-	s.Contains("context deadline exceeded", err.Error())
+	s.Contains("shell command interrupted", err.Error())
 	s.NotContains("error while stopping process", err.Error())
 }

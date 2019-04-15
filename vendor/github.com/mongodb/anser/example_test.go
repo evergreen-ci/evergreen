@@ -19,7 +19,7 @@ func proofOfConcept() error {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	q := queue.NewAdaptiveOrderedLocalQueue(3)
+	q := queue.NewAdaptiveOrderedLocalQueue(3, 3)
 
 	if err := q.Start(ctx); err != nil {
 		return err

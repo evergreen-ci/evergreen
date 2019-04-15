@@ -9,7 +9,8 @@ import (
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/mongodb/anser/bsonutil"
 	"github.com/pkg/errors"
-	"gopkg.in/mgo.v2/bson"
+	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
 const (
@@ -199,7 +200,7 @@ func GetTaskJSONCommit(projectId, revision, variant, taskName, name string) (Tas
 	err := db.FindOneQ(TaskJSONCollection,
 		db.Query(bson.M{
 			TaskJSONProjectIdKey: projectId,
-			TaskJSONRevisionKey: bson.RegEx{
+			TaskJSONRevisionKey: primitive.Regex{
 				Pattern: "^" + regexp.QuoteMeta(revision),
 				Options: "i", // make it case insensitive
 			},

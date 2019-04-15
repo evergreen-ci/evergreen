@@ -11,7 +11,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/rest/data"
-	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/stretchr/testify/suite"
 )
@@ -24,7 +23,7 @@ type UserRouteSuite struct {
 
 func TestUserRouteSuiteWithDB(t *testing.T) {
 	s := new(UserRouteSuite)
-	db.SetGlobalSessionProvider(testutil.TestConfig().SessionFactory())
+
 	s.sc = &data.DBConnector{}
 
 	suite.Run(t, s)

@@ -1,7 +1,6 @@
 package units
 
 import (
-	"bytes"
 	"context"
 	"fmt"
 	"path/filepath"
@@ -13,7 +12,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
-	"github.com/evergreen-ci/evergreen/subprocess"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/amboy/dependency"
@@ -112,6 +110,26 @@ func (j *agentDeployJob) Run(ctx context.Context) {
 	}
 
 	settings := j.env.Settings()
+
+	// Occasionally an agent deploy job will be dispatched around the same time that
+	// PopulateAgentDeployJobs creates another job. These jobs can race. An atomic update on the
+	// needs new agent field will cause the job to fail early here. Updating the last
+	// communicated time prevents the other branches of the PopulateAgentDeployJobs from
+	// immediately applying. Instead MaxLCTInterval must pass.
+	if err = j.host.SetNeedsNewAgent(false); err != nil {
+		j.AddError(errors.Wrapf(err, "error setting needs agent flag to false on host %s", j.host.Id))
+	}
+	if err = j.host.UpdateLastCommunicated(); err != nil {
+		j.AddError(errors.Wrapf(err, "error setting LCT on host %s", j.host.Id))
+	}
+	defer func() {
+		if j.HasErrors() {
+			if err = j.host.SetNeedsNewAgent(true); err != nil {
+				j.AddError(errors.Wrapf(err, "error setting needs agent flag to true on host %s", j.host.Id))
+			}
+		}
+	}()
+
 	j.AddError(j.startAgentOnHost(ctx, settings, *j.host))
 
 	stat, err := event.GetRecentAgentDeployStatuses(j.HostID, agentPutRetries)
@@ -218,24 +236,17 @@ func (j *agentDeployJob) startAgentOnHost(ctx context.Context, settings *evergre
 	grip.Info(j.getHostMessage(hostObj))
 	if err = j.startAgentOnRemote(ctx, settings, &hostObj, sshOptions); err != nil {
 		event.LogHostAgentDeployFailed(hostObj.Id, err)
-		grip.Info(message.Fields{
+		grip.Info(message.WrapError(err, message.Fields{
 			"message": "error starting agent on remote",
 			"host":    j.HostID,
 			"job":     j.ID(),
-			"error":   err.Error(),
-		})
+		}))
 		return nil
 	}
 	grip.Info(message.Fields{"runner": "taskrunner", "message": "agent successfully started for host", "host": hostObj.Id})
 
 	if err = hostObj.SetAgentRevision(evergreen.BuildRevision); err != nil {
 		return errors.Wrapf(err, "error setting agent revision on host %s", hostObj.Id)
-	}
-	if err = hostObj.UpdateLastCommunicated(); err != nil {
-		return errors.Wrapf(err, "error setting LCT on host %s", hostObj.Id)
-	}
-	if err = hostObj.SetNeedsNewAgent(false); err != nil {
-		return errors.Wrapf(err, "error setting needs agent flag on host %s", hostObj.Id)
 	}
 	return nil
 }
@@ -251,6 +262,7 @@ func (j *agentDeployJob) prepRemoteHost(ctx context.Context, hostObj host.Host, 
 	if hostObj.Distro.Setup == "" {
 		return nil
 	}
+
 	if logs, err := hostObj.RunSSHCommand(ctx, hostObj.SetupCommand(), sshOptions); err != nil {
 		event.LogProvisionFailed(hostObj.Id, logs)
 
@@ -311,7 +323,7 @@ func (j *agentDeployJob) startAgentOnRemote(ctx context.Context, settings *everg
 	})
 
 	// compute any info necessary to ssh into the host
-	hostInfo, err := util.ParseSSHInfo(hostObj.Host)
+	hostInfo, err := hostObj.GetSSHInfo()
 	if err != nil {
 		return errors.Wrapf(err, "error parsing ssh info %v", hostObj.Host)
 	}
@@ -335,42 +347,16 @@ func (j *agentDeployJob) startAgentOnRemote(ctx context.Context, settings *everg
 	env["S3_SECRET"] = settings.Providers.AWS.S3Secret
 	env["S3_BUCKET"] = settings.Providers.AWS.Bucket
 
-	startAgentCmd := subprocess.NewRemoteCommand(
-		remoteCmd,
-		hostInfo.Hostname,
-		hostObj.User,
-		env,
-		true, // background
-		append([]string{"-p", hostInfo.Port}, sshOptions...),
-		false, // loggingDisabled
-	)
-	cmdOutBuff := &bytes.Buffer{}
-	output := subprocess.OutputOptions{Output: cmdOutBuff, SendErrorToOutput: true}
-	if err = startAgentCmd.SetOutput(output); err != nil {
-		grip.Alert(message.WrapError(err, message.Fields{
-			"runner":    "taskrunner",
-			"operation": "setting up copy cli config command",
-			"distro":    hostObj.Distro.Id,
-			"host":      hostObj.Host,
-			"output":    output,
-			"cause":     "programmer error",
-		}))
-
-		return errors.Wrap(err, "problem configuring command output")
-	}
-
 	ctx, cancel := context.WithTimeout(ctx, sshTimeout)
 	defer cancel()
-	err = startAgentCmd.Run(ctx)
 
-	// run cleanup regardless of what happens.
-	grip.Notice(message.WrapError(startAgentCmd.Stop(), message.Fields{
-		"runner":  "taskrunner",
-		"message": "cleaning command failed",
-	}))
+	remoteCmd = fmt.Sprintf("nohup %s > /tmp/start 2>1 &", remoteCmd)
 
-	if err != nil {
-		return errors.Wrapf(err, "error starting agent (%v): %v", hostObj.Id, cmdOutBuff.String())
+	startAgentCmd := j.env.JasperManager().CreateCommand(ctx).Environment(env).Append(remoteCmd).
+		User(hostObj.User).Host(hostInfo.Hostname).ExtendSSHArgs("-p", hostInfo.Port).ExtendSSHArgs(sshOptions...)
+
+	if err = startAgentCmd.Run(ctx); err != nil {
+		return errors.Wrapf(err, "error starting agent (%v)", hostObj.Id)
 	}
 
 	event.LogHostAgentDeployed(hostObj.Id)

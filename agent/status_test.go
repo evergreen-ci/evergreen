@@ -8,12 +8,12 @@ import (
 	"testing"
 	"time"
 
-	"github.com/evergreen-ci/evergreen/subprocess"
 	"github.com/evergreen-ci/evergreen/util"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/rest/client"
 	"github.com/mongodb/grip"
+	"github.com/mongodb/jasper"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -62,7 +62,8 @@ func (s *StatusSuite) TestProcessTreeInfo() {
 }
 
 func (s *StatusSuite) TestAgentStartsStatusServer() {
-	agt := New(s.testOpts, client.NewMock("url"))
+	agt, err := New(s.testOpts, client.NewMock("url"))
+	s.Require().NoError(err)
 
 	mockCommunicator := agt.comm.(*client.Mock)
 	mockCommunicator.NextTaskIsNil = true
@@ -82,7 +83,9 @@ func (s *StatusSuite) TestAgentFailsToStartTwice() {
 	s.Error(err)
 
 	s.testOpts.StatusPort = 2287
-	agt := New(s.testOpts, client.NewMock("url"))
+	agt, err := New(s.testOpts, client.NewMock("url"))
+	s.Require().NoError(err)
+
 	mockCommunicator := agt.comm.(*client.Mock)
 	mockCommunicator.NextTaskIsNil = true
 	ctx, cancel := context.WithCancel(context.Background())
@@ -113,7 +116,8 @@ func (s *StatusSuite) TestAgentFailsToStartTwice() {
 }
 
 func (s *StatusSuite) TestCheckOOMSucceeds() {
-	agt := New(s.testOpts, client.NewMock("url"))
+	agt, err := New(s.testOpts, client.NewMock("url"))
+	s.Require().NoError(err)
 	mockCommunicator := agt.comm.(*client.Mock)
 	mockCommunicator.NextTaskIsNil = true
 	ctx, cancel := context.WithCancel(context.Background())
@@ -123,12 +127,13 @@ func (s *StatusSuite) TestCheckOOMSucceeds() {
 	}()
 	time.Sleep(100 * time.Millisecond)
 
-	resp, err := http.Get("http://127.0.0.1:2286/oom/check")
+	resp, err := http.Get("http://127.0.0.1:2286/jasper/v1/list/oom")
 	s.Require().NoError(err)
 	s.Equal(200, resp.StatusCode)
 
-	tracker := subprocess.OOMTracker{}
-	s.NoError(util.ReadJSONInto(resp.Body, &tracker))
-	s.Equal(false, tracker.WasOOMKilled)
-	s.Len(tracker.Pids, 0)
+	tracker := jasper.NewOOMTracker()
+	s.NoError(util.ReadJSONInto(resp.Body, tracker))
+	wasOomKilled, pids := tracker.Report()
+	s.False(wasOomKilled)
+	s.Len(pids, 0)
 }

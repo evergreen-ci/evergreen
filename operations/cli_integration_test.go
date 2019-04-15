@@ -1,7 +1,6 @@
 package operations
 
 import (
-	"context"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -14,16 +13,15 @@ import (
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/artifact"
 	"github.com/evergreen-ci/evergreen/model/build"
+	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/service"
 	"github.com/evergreen-ci/evergreen/testutil"
 	. "github.com/smartystreets/goconvey/convey"
-	"github.com/smartystreets/goconvey/convey/reporting"
-	"github.com/stretchr/testify/assert"
-	"gopkg.in/mgo.v2/bson"
-	"gopkg.in/yaml.v2"
+	"go.mongodb.org/mongo-driver/bson"
+	yaml "gopkg.in/yaml.v2"
 )
 
 var testConfig = testutil.TestConfig()
@@ -49,11 +47,6 @@ index 0000000..ce01362
 
 var emptyPatch = ``
 
-func init() {
-	db.SetGlobalSessionProvider(testConfig.SessionFactory())
-	reporting.QuietMode()
-}
-
 type cliTestHarness struct {
 	testServer       *service.TestServer
 	settingsFilePath string
@@ -72,6 +65,7 @@ func setupCLITestHarness() cliTestHarness {
 			model.ProjectRefCollection,
 			artifact.Collection,
 			model.VersionCollection,
+			distro.Collection,
 		),
 		ShouldBeNil)
 	So(db.Clear(patch.Collection), ShouldBeNil)
@@ -93,6 +87,11 @@ func setupCLITestHarness() cliTestHarness {
 	}
 	So(projectRef.Insert(), ShouldBeNil)
 
+	d := distro.Distro{Id: "localtestdistro"}
+	So(d.Insert(), ShouldBeNil)
+	d = distro.Distro{Id: "ubuntu1404-test"}
+	So(d.Insert(), ShouldBeNil)
+
 	// create a settings file for the command line client
 	settings := ClientSettings{
 		APIServerHost: testServer.URL + "/api",
@@ -111,12 +110,6 @@ func setupCLITestHarness() cliTestHarness {
 }
 
 func TestCLIFetchSource(t *testing.T) {
-	evergreen.ResetEnvironment()
-
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-	assert.NoError(t, evergreen.GetEnvironment().Configure(ctx, filepath.Join(evergreen.FindEvergreenHome(), testutil.TestDir, testutil.TestSettings), nil))
-
 	testutil.ConfigureIntegrationTest(t, testConfig, "TestCLIFetchSource")
 	evergreen.GetEnvironment().Settings().Credentials = testConfig.Credentials
 
@@ -178,12 +171,6 @@ func TestCLIFetchSource(t *testing.T) {
 }
 
 func TestCLIFetchArtifacts(t *testing.T) {
-	evergreen.ResetEnvironment()
-
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-	assert.NoError(t, evergreen.GetEnvironment().Configure(ctx, filepath.Join(evergreen.FindEvergreenHome(), testutil.TestDir, testutil.TestSettings), nil))
-
 	testutil.ConfigureIntegrationTest(t, testConfig, "TestCLIFetchArtifacts")
 	evergreen.GetEnvironment().Settings().Credentials = testConfig.Credentials
 
@@ -321,6 +308,7 @@ func TestCLITestHistory(t *testing.T) {
 
 func TestCLIFunctions(t *testing.T) {
 	testutil.ConfigureIntegrationTest(t, testConfig, "TestCLIFunctions")
+	evergreen.GetEnvironment().Settings().Credentials = testConfig.Credentials
 
 	var patches []patch.Patch
 

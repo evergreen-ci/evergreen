@@ -10,12 +10,12 @@ import (
 
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model"
-	"github.com/evergreen-ci/evergreen/subprocess"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/google/go-github/github"
+	"github.com/mongodb/jasper"
 	. "github.com/smartystreets/goconvey/convey"
-	"github.com/smartystreets/goconvey/convey/reporting"
+	"github.com/stretchr/testify/require"
 )
 
 var (
@@ -30,26 +30,22 @@ var (
 	evgProjectRef *model.ProjectRef
 )
 
+type bufCloser struct {
+	*bytes.Buffer
+}
+
+func (b *bufCloser) Close() error { return nil }
+
 func getDistantEVGRevision() (string, error) {
 	cwd, err := os.Getwd()
 	if err != nil {
 		return "", err
 	}
 
-	cmd, err := subprocess.NewLocalExec("git", []string{"rev-list", "--reverse", "HEAD~100", "--max-count=1"}, nil, cwd)
-	if err != nil {
-		return "", err
-	}
+	buf := &bufCloser{&bytes.Buffer{}}
 
-	buf := &bytes.Buffer{}
-
-	err = cmd.SetOutput(subprocess.OutputOptions{
-		SuppressError: true,
-		Output:        buf,
-	})
-	if err != nil {
-		return "", err
-	}
+	cmd := jasper.NewCommand().Add([]string{"git", "rev-list", "--reverse", "HEAD~100", "--max-count=1"}).Directory(cwd).
+		SuppressStandardError(true).SetOutputWriter(buf)
 
 	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
 	defer cancel()
@@ -88,16 +84,14 @@ func resetProjectRefs() {
 }
 
 func init() {
-	db.SetGlobalSessionProvider(testConfig.SessionFactory())
-	reporting.QuietMode()
 	resetProjectRefs()
 }
 
 func dropTestDB(t *testing.T) {
 	session, _, err := db.GetGlobalSessionFactory().GetSession()
-	testutil.HandleTestingErr(err, t, "Error opening database session")
+	require.NoError(t, err, "Error opening database session")
 	defer session.Close()
-	testutil.HandleTestingErr(session.DB(testConfig.Database.DB).DropDatabase(), t,
+	require.NoError(t, session.DB(testConfig.Database.DB).DropDatabase(),
 		"Error dropping test database")
 }
 
@@ -143,7 +137,7 @@ func TestGetRevisionsSince(t *testing.T) {
 				// 99162ee5bc41eb314f5bb01bd12f0c43e9cb5f32 being the first
 				// revision
 				revisions, err := self.GetRevisionsSince(firstRevision, 10)
-				testutil.HandleTestingErr(err, t, "Error fetching github revisions")
+				require.NoError(t, err, "Error fetching github revisions")
 				So(len(revisions), ShouldEqual, 2)
 
 				// Friday, February 15, 2008 2:59:14 PM GMT-05:00
@@ -161,7 +155,7 @@ func TestGetRevisionsSince(t *testing.T) {
 			// The test repository contains only 3 revisions with revision
 			// d0d878e81b303fd2abbf09331e54af41d6cd0c7d being the last revision
 			revisions, err := self.GetRevisionsSince(lastRevision, 10)
-			testutil.HandleTestingErr(err, t, "Error fetching github revisions")
+			require.NoError(t, err, "Error fetching github revisions")
 			So(len(revisions), ShouldEqual, 0)
 		})
 
@@ -211,12 +205,12 @@ func TestGetRemoteConfig(t *testing.T) {
 			Convey("The config file at the requested revision should be "+
 				"exactly what is returned", func() {
 				projectConfig, err := self.GetRemoteConfig(ctx, firstRemoteConfigRef)
-				testutil.HandleTestingErr(err, t, "Error fetching github "+
+				require.NoError(t, err, "Error fetching github "+
 					"configuration file")
 				So(projectConfig, ShouldNotBeNil)
 				So(len(projectConfig.Tasks), ShouldEqual, 0)
 				projectConfig, err = self.GetRemoteConfig(ctx, secondRemoteConfigRef)
-				testutil.HandleTestingErr(err, t, "Error fetching github "+
+				require.NoError(t, err, "Error fetching github "+
 					"configuration file")
 				So(projectConfig, ShouldNotBeNil)
 				So(len(projectConfig.Tasks), ShouldEqual, 1)
@@ -251,7 +245,7 @@ func TestGetAllRevisions(t *testing.T) {
 		Convey("There should be only three revisions even if you request more "+
 			"than 3", func() {
 			revisions, err := self.GetRecentRevisions(123)
-			testutil.HandleTestingErr(err, t, "Error fetching github revisions")
+			require.NoError(t, err, "Error fetching github revisions")
 			So(len(revisions), ShouldEqual, 3)
 		})
 
@@ -259,7 +253,7 @@ func TestGetAllRevisions(t *testing.T) {
 		Convey("There should be only be one if you request 1 and it should be "+
 			"the latest", func() {
 			revisions, err := self.GetRecentRevisions(1)
-			testutil.HandleTestingErr(err, t, "Error fetching github revisions")
+			require.NoError(t, err, "Error fetching github revisions")
 			So(len(revisions), ShouldEqual, 1)
 			So(revisions[0].Revision, ShouldEqual, lastRevision)
 		})
@@ -267,7 +261,7 @@ func TestGetAllRevisions(t *testing.T) {
 		// Get no recent revisions
 		Convey("There should be no revisions if you request 0", func() {
 			revisions, err := self.GetRecentRevisions(0)
-			testutil.HandleTestingErr(err, t, "Error fetching github revisions")
+			require.NoError(t, err, "Error fetching github revisions")
 			So(len(revisions), ShouldEqual, 0)
 		})
 	})

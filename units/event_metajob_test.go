@@ -7,7 +7,6 @@ import (
 	"io/ioutil"
 	"net"
 	"net/http"
-	"path/filepath"
 	"strings"
 	"testing"
 	"time"
@@ -17,14 +16,14 @@ import (
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/notification"
 	"github.com/evergreen-ci/evergreen/model/patch"
-	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
+	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
-	"gopkg.in/mgo.v2/bson"
+	mgobson "gopkg.in/mgo.v2/bson"
 )
 
 type eventMetaJobSuite struct {
@@ -32,25 +31,24 @@ type eventMetaJobSuite struct {
 	cancel func()
 	n      []notification.Notification
 	ctx    context.Context
+	env    evergreen.Environment
 }
 
 func TestEventMetaJob(t *testing.T) {
-	suite.Run(t, &eventMetaJobSuite{})
+	s := &eventMetaJobSuite{}
+	s.ctx, s.cancel = context.WithCancel(context.Background())
+
+	env := evergreen.GetEnvironment()
+	require.NoError(t, env.RemoteQueue().Start(s.ctx))
+	s.env = env
+	suite.Run(t, s)
 }
 
-func (s *eventMetaJobSuite) TearDownTest() {
+func (s *eventMetaJobSuite) TearDownSuite() {
 	s.cancel()
 }
 
 func (s *eventMetaJobSuite) SetupTest() {
-	evergreen.ResetEnvironment()
-	env := evergreen.GetEnvironment()
-	s.ctx, s.cancel = context.WithCancel(context.Background())
-	s.Require().NoError(evergreen.GetEnvironment().Configure(s.ctx, filepath.Join(evergreen.FindEvergreenHome(), testutil.TestDir, testutil.TestSettings), nil))
-	s.Require().NoError(env.RemoteQueue().Start(s.ctx))
-
-	db.SetGlobalSessionProvider(testutil.TestConfig().SessionFactory())
-
 	s.NoError(db.ClearCollections(event.AllLogCollection, event.TaskLogCollection, evergreen.ConfigCollection, notification.Collection, event.SubscriptionsCollection, patch.Collection))
 
 	events := []event.EventLogEntry{
@@ -199,7 +197,7 @@ func (s *eventMetaJobSuite) TestEndToEnd() {
 	defer ln.Close()
 
 	p := &patch.Patch{
-		Id:      bson.NewObjectId(),
+		Id:      mgobson.NewObjectId(),
 		Project: "test",
 		Status:  evergreen.PatchFailed,
 		Author:  "somebody",
@@ -220,7 +218,7 @@ func (s *eventMetaJobSuite) TestEndToEnd() {
 
 	subs := []event.Subscription{
 		{
-			ID:           bson.NewObjectId().Hex(),
+			ID:           mgobson.NewObjectId().Hex(),
 			ResourceType: e.ResourceType,
 			Trigger:      "outcome",
 			Selectors: []event.Selector{
@@ -238,7 +236,7 @@ func (s *eventMetaJobSuite) TestEndToEnd() {
 			},
 		},
 		{
-			ID:           bson.NewObjectId().Hex(),
+			ID:           mgobson.NewObjectId().Hex(),
 			ResourceType: e.ResourceType,
 			Trigger:      "outcome",
 			Selectors: []event.Selector{

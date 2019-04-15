@@ -14,13 +14,7 @@ import (
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/gimlet"
 	. "github.com/smartystreets/goconvey/convey"
-	"github.com/smartystreets/goconvey/convey/reporting"
 )
-
-func init() {
-	reporting.QuietMode()
-	db.SetGlobalSessionProvider(testutil.TestConfig().SessionFactory())
-}
 
 func TestCheckHostWrapper(t *testing.T) {
 	h1 := host.Host{
@@ -35,6 +29,7 @@ func TestCheckHostWrapper(t *testing.T) {
 	}
 
 	conf := testutil.TestConfig()
+
 	queue := evergreen.GetEnvironment().LocalQueue()
 	generateQueue := evergreen.GetEnvironment().GenerateTasksQueue()
 

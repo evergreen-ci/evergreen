@@ -94,6 +94,12 @@ func (j *taskExecutionTimeoutJob) Run(ctx context.Context) {
 		return
 	}
 
+	// if the task has heartbeat since this job was queued, let it run
+	if t.LastHeartbeat.Add(heartbeatTimeoutThreshold).After(time.Now()) {
+		j.successful = true
+		return
+	}
+
 	msg := message.Fields{
 		"operation": j.Type().Name,
 		"id":        j.ID(),
@@ -132,7 +138,7 @@ func (j *taskExecutionTimeoutJob) tryRequeue() {
 
 // function to clean up a single task
 func cleanUpTimedOutTask(t *task.Task) error {
-	// get tlhe host for the task
+	// get the host for the task
 	host, err := host.FindOne(host.ById(t.HostId))
 	if err != nil {
 		return errors.Wrapf(err, "error finding host %s for task %s",
@@ -183,6 +189,9 @@ func cleanUpTimedOutTask(t *task.Task) error {
 
 	// try to reset the task
 	if t.IsPartOfDisplay() {
+		if err = t.DisplayTask.SetResetWhenFinished(); err != nil {
+			return errors.Wrap(err, "can't mark display task for reset")
+		}
 		return errors.Wrap(model.MarkEnd(t, "monitor", time.Now(), detail, false, &model.StatusChanges{}), "error marking task ended")
 	}
 	return errors.Wrapf(model.TryResetTask(t.Id, "", "monitor", detail), "error trying to reset task %s", t.Id)

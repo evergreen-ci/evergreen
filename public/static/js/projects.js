@@ -90,7 +90,7 @@ mciModule.controller('ProjectCtrl', function($scope, $window, $http, $location, 
       label: "a previously passing task fails",
       regex_selectors: taskRegexSelectors(),
       extraFields: [
-        {text: "Re-notify after how many hours", key: "renotify-interval", validator: validateDuration, default: 48},
+        {text: "Re-notify after how many hours", key: "renotify-interval", validator: validateDuration, default: "48"},
         {text: "Failure type", key:"failure-type", type:"select", options:["any","test","system","setup"], default: "any"}
       ]
     },
@@ -101,7 +101,7 @@ mciModule.controller('ProjectCtrl', function($scope, $window, $http, $location, 
       regex_selectors: taskRegexSelectors(),
       extraFields: [
         {text: "Test names matching regex", key: "test-regex", validator: null},
-        {text: "Re-notify after how many hours", key: "renotify-interval", validator: validateDuration, default: 48},
+        {text: "Re-notify after how many hours", key: "renotify-interval", validator: validateDuration, default: "48"},
         {text: "Failure type", key:"failure-type", type:"select", options:["any","test","system","setup"], default: "any"}
       ]
     },
@@ -325,8 +325,8 @@ mciModule.controller('ProjectCtrl', function($scope, $window, $http, $location, 
         if(!$scope.settingsFormData.commit_queue.merge_method) {
           $scope.settingsFormData.commit_queue.merge_method = $scope.validMergeMethods[0];
         }
-        if(!$scope.settingsFormData.commit_queue.merge_action) {
-          $scope.settingsFormData.commit_queue.merge_action = $scope.validMergeActions[0];
+        if(!$scope.settingsFormData.commit_queue.patch_type) {
+          $scope.settingsFormData.commit_queue.patch_type = $scope.validPatchTypes[0];
         }
         if(!$scope.settingsFormData.commit_queue.status_action) {
           $scope.settingsFormData.commit_queue.status_action = $scope.validStatusActions[0];
@@ -716,7 +716,7 @@ mciModule.controller('ProjectCtrl', function($scope, $window, $http, $location, 
 
   $scope.show_build_break = true;
   $scope.validMergeMethods = ["squash", "merge", "rebase"];
-  $scope.validMergeActions = ["github"];
+  $scope.validPatchTypes = ["PR", "CLI"];
   $scope.validStatusActions = ["github"];
 });
 

@@ -1,9 +1,10 @@
 package evergreen
 
 import (
-	"github.com/evergreen-ci/evergreen/db"
 	"github.com/mongodb/anser/bsonutil"
-	"gopkg.in/mgo.v2/bson"
+	"github.com/pkg/errors"
+	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
 var (
@@ -20,6 +21,8 @@ var (
 	configDirKey          = bsonutil.MustHaveTag(Settings{}, "ConfigDir")
 	apiUrlKey             = bsonutil.MustHaveTag(Settings{}, "ApiUrl")
 	clientBinariesDirKey  = bsonutil.MustHaveTag(Settings{}, "ClientBinariesDir")
+	jasperURLKey          = bsonutil.MustHaveTag(Settings{}, "JasperURL")
+	jasperVersionKey      = bsonutil.MustHaveTag(Settings{}, "JasperVersion")
 	superUsersKey         = bsonutil.MustHaveTag(Settings{}, "SuperUsers")
 	jiraKey               = bsonutil.MustHaveTag(Settings{}, "Jira")
 	splunkKey             = bsonutil.MustHaveTag(Settings{}, "Splunk")
@@ -45,6 +48,7 @@ var (
 	loggerConfigKey       = bsonutil.MustHaveTag(Settings{}, "LoggerConfig")
 	logPathKey            = bsonutil.MustHaveTag(Settings{}, "LogPath")
 	pprofPortKey          = bsonutil.MustHaveTag(Settings{}, "PprofPort")
+	googleAnalyticsKey    = bsonutil.MustHaveTag(Settings{}, "GoogleAnalyticsID")
 	githubPRCreatorOrgKey = bsonutil.MustHaveTag(Settings{}, "GithubPRCreatorOrg")
 	containerPoolsKey     = bsonutil.MustHaveTag(Settings{}, "ContainerPools")
 
@@ -86,29 +90,31 @@ func byId(id string) bson.M {
 // SetBanner sets the text of the Evergreen site-wide banner. Setting a blank
 // string here means that there is no banner
 func SetBanner(bannerText string) error {
-	_, err := db.Upsert(
-		ConfigCollection,
-		byId(ConfigDocID),
-		bson.M{
-			"$set": bson.M{bannerKey: bannerText},
-		},
-	)
+	env := GetEnvironment()
+	ctx, cancel := env.Context()
+	defer cancel()
+	coll := env.DB().Collection(ConfigCollection)
 
-	return err
+	_, err := coll.UpdateOne(ctx, byId(ConfigDocID), bson.M{
+		"$set": bson.M{bannerKey: bannerText},
+	}, options.Update().SetUpsert(true))
+
+	return errors.WithStack(err)
 }
 
 // SetBanner sets the text of the Evergreen site-wide banner. Setting a blank
 // string here means that there is no banner
 func SetBannerTheme(theme BannerTheme) error {
-	_, err := db.Upsert(
-		ConfigCollection,
-		byId(ConfigDocID),
-		bson.M{
-			"$set": bson.M{bannerThemeKey: theme},
-		},
-	)
+	env := GetEnvironment()
+	ctx, cancel := env.Context()
+	defer cancel()
+	coll := env.DB().Collection(ConfigCollection)
 
-	return err
+	_, err := coll.UpdateOne(ctx, byId(ConfigDocID), bson.M{
+		"$set": bson.M{bannerThemeKey: theme},
+	}, options.Update().SetUpsert(true))
+
+	return errors.WithStack(err)
 }
 
 // SetServiceFlags sets whether each of the runner/API server processes is enabled

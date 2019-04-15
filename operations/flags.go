@@ -25,6 +25,7 @@ const (
 	limitFlagName         = "limit"
 	messageFlagName       = "message"
 	activeFlagName        = "active"
+	committedFlagName     = "committed-only"
 
 	anserDryRunFlagName      = "dry-run"
 	anserLimitFlagName       = "limit"
@@ -34,7 +35,6 @@ const (
 	anserMigrationIDFlagName = "id"
 
 	dbUrlFlagName      = "url"
-	dbSslFlagName      = "ssl"
 	dbNameFlagName     = "db"
 	dbWriteNumFlagName = "w"
 	dbWmodeFlagName    = "wmode"
@@ -186,10 +186,6 @@ func addDbSettingsFlags(flags ...cli.Flag) []cli.Flag {
 			Usage: "Database URL(s). For a replica set, list all members separated by a comma.",
 			Value: evergreen.DefaultDatabaseUrl,
 		},
-		cli.BoolFlag{
-			Name:  dbSslFlagName,
-			Usage: "True to use SSL in the DB connection",
-		},
 		cli.StringFlag{
 			Name:  dbNameFlagName,
 			Usage: "Database name",
@@ -202,8 +198,16 @@ func addDbSettingsFlags(flags ...cli.Flag) []cli.Flag {
 		cli.StringFlag{
 			Name:  dbWmodeFlagName,
 			Usage: "Write mode. Only valid values are blank or 'majority'",
+			Value: evergreen.DefaultDatabaseWriteMode,
 		},
 	)
+}
+
+func addCommittedOnlyFlag(flags ...cli.Flag) []cli.Flag {
+	return append(flags, cli.BoolFlag{
+		Name:  committedFlagName,
+		Usage: "diff with HEAD, ignoring working tree changes",
+	})
 }
 
 func mergeFlagSlices(in ...[]cli.Flag) []cli.Flag {

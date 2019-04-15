@@ -16,6 +16,7 @@ import (
 	"github.com/evergreen-ci/evergreen/rest/client"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 )
 
@@ -47,16 +48,17 @@ type localDiff struct {
 }
 
 type patchParams struct {
-	Project     string
-	Variants    []string
-	Tasks       []string
-	Description string
-	Alias       string
-	SkipConfirm bool
-	Finalize    bool
-	Browse      bool
-	Large       bool
-	ShowSummary bool
+	Project       string
+	Variants      []string
+	Tasks         []string
+	Description   string
+	Alias         string
+	SkipConfirm   bool
+	Finalize      bool
+	Browse        bool
+	Large         bool
+	ShowSummary   bool
+	CommittedOnly bool
 }
 
 type patchSubmission struct {
@@ -70,13 +72,13 @@ type patchSubmission struct {
 	finalize    bool
 }
 
-func (p *patchParams) createPatch(ac *legacyClient, conf *ClientSettings, diffData *localDiff) error {
+func (p *patchParams) createPatch(ac *legacyClient, conf *ClientSettings, diffData *localDiff) (*patch.Patch, error) {
 	if err := validatePatchSize(diffData, p.Large); err != nil {
-		return err
+		return nil, err
 	}
 	if !p.SkipConfirm && len(diffData.fullPatch) == 0 {
 		if !confirm("Patch submission is empty. Continue?(y/n)", true) {
-			return nil
+			return nil, errors.New("patch aborted")
 		}
 	} else if !p.SkipConfirm && diffData.patchSummary != "" {
 		grip.Info(diffData.patchSummary)
@@ -85,7 +87,7 @@ func (p *patchParams) createPatch(ac *legacyClient, conf *ClientSettings, diffDa
 		}
 
 		if !confirm("This is a summary of the patch to be submitted. Continue? (y/n):", true) {
-			return nil
+			return nil, errors.New("patch aborted")
 		}
 	}
 
@@ -103,11 +105,11 @@ func (p *patchParams) createPatch(ac *legacyClient, conf *ClientSettings, diffDa
 
 	newPatch, err := ac.PutPatch(patchSub)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	patchDisp, err := getPatchDisplay(newPatch, p.ShowSummary, conf.UIServerHost)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	grip.Info("Patch successfully created.")
@@ -117,7 +119,7 @@ func (p *patchParams) createPatch(ac *legacyClient, conf *ClientSettings, diffDa
 		browserCmd, err := findBrowserCommand()
 		if err != nil || len(browserCmd) == 0 {
 			grip.Warningf("cannot find browser command: %s", err)
-			return nil
+			return newPatch, nil
 		}
 
 		var url string
@@ -129,10 +131,10 @@ func (p *patchParams) createPatch(ac *legacyClient, conf *ClientSettings, diffDa
 
 		browserCmd = append(browserCmd, url)
 		cmd := exec.Command(browserCmd[0], browserCmd[1:]...)
-		return cmd.Run()
+		return newPatch, cmd.Run()
 	}
 
-	return nil
+	return newPatch, nil
 }
 
 func findBrowserCommand() ([]string, error) {
@@ -162,20 +164,8 @@ func findBrowserCommand() ([]string, error) {
 
 // Performs validation for patch or patch-file
 func (p *patchParams) validatePatchCommand(ctx context.Context, conf *ClientSettings, ac *legacyClient, comm client.Communicator) (*model.ProjectRef, error) {
-	if p.Project == "" {
-		p.Project = conf.FindDefaultProject()
-	} else {
-		if conf.FindDefaultProject() == "" &&
-			!p.SkipConfirm && confirm(fmt.Sprintf("Make %v your default project?", p.Project), true) {
-			conf.SetDefaultProject(p.Project)
-			if err := conf.Write(""); err != nil {
-				grip.Warningf("warning - failed to set default project: %v\n", err)
-			}
-		}
-	}
-
-	if p.Project == "" {
-		return nil, errors.Errorf("Need to specify a project.")
+	if err := p.loadProject(conf); err != nil {
+		grip.Warningf("warning - failed to set default project: %v\n", err)
 	}
 
 	if err := p.loadAlias(conf); err != nil {
@@ -188,6 +178,15 @@ func (p *patchParams) validatePatchCommand(ctx context.Context, conf *ClientSett
 
 	if err := p.loadTasks(conf); err != nil {
 		grip.Warningf("warning - failed to set default tasks: %v\n", err)
+	}
+
+	// Validate the project exists
+	ref, err := ac.GetProjectRef(p.Project)
+	if err != nil {
+		if apiErr, ok := err.(APIError); ok && apiErr.code == http.StatusNotFound {
+			err = errors.Errorf("%s \nRun `evergreen list --projects` to see all valid projects", err)
+		}
+		return nil, err
 	}
 
 	// Validate the alias exists
@@ -208,15 +207,6 @@ func (p *patchParams) validatePatchCommand(ctx context.Context, conf *ClientSett
 		}
 	}
 
-	// Validate the project exists
-	ref, err := ac.GetProjectRef(p.Project)
-	if err != nil {
-		if apiErr, ok := err.(APIError); ok && apiErr.code == http.StatusNotFound {
-			err = errors.Errorf("%v \nRun `evergreen list --projects` to see all valid projects", err)
-		}
-		return nil, err
-	}
-
 	if (len(p.Tasks) == 0 || len(p.Variants) == 0) && p.Alias == "" && p.Finalize {
 		return ref, errors.Errorf("Need to specify at least one task/variant or alias when finalizing.")
 	}
@@ -226,6 +216,29 @@ func (p *patchParams) validatePatchCommand(ctx context.Context, conf *ClientSett
 	}
 
 	return ref, nil
+}
+
+func (p *patchParams) loadProject(conf *ClientSettings) error {
+	if p.Project == "" {
+		p.Project = conf.FindDefaultProject()
+	} else {
+		if conf.FindDefaultProject() == "" &&
+			!p.SkipConfirm && confirm(fmt.Sprintf("Make %s your default project?", p.Project), true) {
+			conf.SetDefaultProject(p.Project)
+			if err := conf.Write(""); err != nil {
+				grip.Warning(message.WrapError(err, message.Fields{
+					"message": "failed to set default project",
+					"project": p.Project,
+				}))
+			}
+		}
+	}
+
+	if p.Project == "" {
+		return errors.New("Need to specify a project")
+	}
+
+	return nil
 }
 
 // Sets the patch's alias to either the passed in option or the default
@@ -331,7 +344,7 @@ func getPatchDisplay(p *patch.Patch, summarize bool, uiHost string) (string, err
 // loadGitData inspects the current git working directory and returns a patch and its summary.
 // The branch argument is used to determine where to generate the merge base from, and any extra
 // arguments supplied are passed directly in as additional args to git diff.
-func loadGitData(branch string, extraArgs ...string) (*localDiff, error) {
+func loadGitData(branch string, committedOnly bool, extraArgs ...string) (*localDiff, error) {
 	// branch@{upstream} refers to the branch that the branch specified by branchname is set to
 	// build on top of. This allows automatically detecting a branch based on the correct remote,
 	// if the user's repo is a fork, for example.
@@ -344,7 +357,7 @@ func loadGitData(branch string, extraArgs ...string) (*localDiff, error) {
 	if len(extraArgs) > 0 {
 		statArgs = append(statArgs, extraArgs...)
 	}
-	stat, err := gitDiff(mergeBase, statArgs...)
+	stat, err := gitDiff(mergeBase, committedOnly, statArgs...)
 	if err != nil {
 		return nil, errors.Errorf("Error getting diff summary: %v", err)
 	}
@@ -357,7 +370,7 @@ func loadGitData(branch string, extraArgs ...string) (*localDiff, error) {
 		extraArgs = append(extraArgs, "--binary")
 	}
 
-	patch, err := gitDiff(mergeBase, extraArgs...)
+	patch, err := gitDiff(mergeBase, committedOnly, extraArgs...)
 	if err != nil {
 		return nil, errors.Errorf("Error getting patch: %v", err)
 	}
@@ -376,30 +389,30 @@ func gitMergeBase(branch1, branch2 string) (string, error) {
 }
 
 // gitDiff runs "git diff <base> <diffargs ...>" and returns the output of the command as a string
-func gitDiff(base string, diffArgs ...string) (string, error) {
-	args := append([]string{
-		"--no-ext-diff",
-	}, diffArgs...)
-	return gitCmd("diff", base, args...)
+func gitDiff(base string, committedOnly bool, diffArgs ...string) (string, error) {
+	args := []string{base}
+	if committedOnly {
+		args = append(args, "HEAD")
+	}
+	args = append(args, "--no-ext-diff")
+	args = append(args, diffArgs...)
+	return gitCmd("diff", args...)
 }
 
 // getLog runs "git log <base>
-func gitLog(base string, logArgs ...string) (string, error) {
-	args := append(logArgs, "--oneline")
-	return gitCmd("log", fmt.Sprintf("...%v", base), args...)
+func gitLog(base string) (string, error) {
+	args := []string{fmt.Sprintf("...%s", base), "--oneline"}
+	return gitCmd("log", args...)
 }
 
-func gitCmd(cmdName, base string, gitArgs ...string) (string, error) {
+func gitCmd(cmdName string, gitArgs ...string) (string, error) {
 	args := make([]string, 0, 1+len(gitArgs))
 	args = append(args, cmdName)
-	if base != "" {
-		args = append(args, base)
-	}
 	args = append(args, gitArgs...)
 	cmd := exec.Command("git", args...)
 	out, err := cmd.CombinedOutput()
 	if err != nil {
 		return "", errors.Errorf("'git %s' failed with err %s", strings.Join(args, " "), err)
 	}
-	return string(out), err
+	return string(out), nil
 }

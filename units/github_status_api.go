@@ -19,7 +19,7 @@ import (
 	"github.com/mongodb/grip/send"
 	"github.com/mongodb/grip/sometimes"
 	"github.com/pkg/errors"
-	"gopkg.in/mgo.v2/bson"
+	mgobson "gopkg.in/mgo.v2/bson"
 )
 
 const (
@@ -99,12 +99,15 @@ func NewGithubStatusUpdateJobForPushToCommitQueue(owner, repo, ref string, prNum
 
 // NewGithubStatusUpdateJobForBadConfig marks a ref as failed because the
 // evergreen configuration is bad
-func NewGithubStatusUpdateJobForBadConfig(intentID string) amboy.Job {
+func NewGithubStatusUpdateJobForBadConfig(projectRef *model.ProjectRef, hash, senderID string) amboy.Job {
 	job := makeGithubStatusUpdateJob()
-	job.FetchID = intentID
+	job.FetchID = projectRef.Identifier
+	job.Owner = projectRef.Owner
+	job.Repo = projectRef.Repo
+	job.Ref = hash
 	job.UpdateType = githubUpdateTypeBadConfig
 
-	job.SetID(fmt.Sprintf("%s:%s-%s-%s", githubStatusUpdateJobName, job.UpdateType, intentID, time.Now().String()))
+	job.SetID(fmt.Sprintf("%s:%s-%s-%s", githubStatusUpdateJobName, job.UpdateType, senderID, time.Now().String()))
 
 	return job
 }
@@ -114,7 +117,7 @@ func (j *githubStatusUpdateJob) preamble() error {
 		j.env = evergreen.GetEnvironment()
 	}
 	uiConfig := evergreen.UIConfig{}
-	if err := uiConfig.Get(); err != nil {
+	if err := uiConfig.Get(j.env); err != nil {
 		return err
 	}
 	j.urlBase = uiConfig.Url
@@ -147,34 +150,20 @@ func (j *githubStatusUpdateJob) preamble() error {
 
 func (j *githubStatusUpdateJob) fetch() (*message.GithubStatus, error) {
 	var patchDoc *patch.Patch
-	var err error
 	status := message.GithubStatus{}
 
 	if j.UpdateType == githubUpdateTypeBadConfig {
-		var intent patch.Intent
-		intent, err = patch.FindIntent(j.FetchID, patch.GithubIntentType)
-		if err != nil {
-			return nil, errors.Wrap(err, "can't fetch patch intent")
-		}
-		patchDoc = intent.NewPatch()
-		if patchDoc == nil {
-			return nil, errors.New("patch is missing")
-		}
-
-		var projectRef *model.ProjectRef
-		projectRef, err = model.FindOneProjectRefByRepoAndBranchWithPRTesting(patchDoc.GithubPatchData.BaseOwner,
-			patchDoc.GithubPatchData.BaseRepo, patchDoc.GithubPatchData.BaseBranch)
-		if err != nil {
-			return nil, errors.Wrap(err, "can't fetch project ref")
-		}
-		if projectRef == nil {
-			return nil, errors.New("can't find project ref")
-		}
-
-		status.URL = fmt.Sprintf("%s/waterfall/%s", j.urlBase, projectRef.Identifier)
+		status.URL = fmt.Sprintf("%s/waterfall/%s", j.urlBase, j.FetchID)
 		status.Context = "evergreen"
 		status.State = message.GithubStateFailure
 		status.Description = "project config was invalid"
+
+		status.Owner = j.Owner
+		status.Repo = j.Repo
+		status.Ref = j.Ref
+
+		// Since there is no patch document, we return early.
+		return &status, nil
 
 	} else if j.UpdateType == githubUpdateTypeNewPatch {
 		status.URL = fmt.Sprintf("%s/version/%s", j.urlBase, j.FetchID)
@@ -201,9 +190,10 @@ func (j *githubStatusUpdateJob) fetch() (*message.GithubStatus, error) {
 	}
 
 	if patchDoc == nil {
-		patchDoc, err = patch.FindOne(patch.ById(bson.ObjectIdHex(j.FetchID)))
+		var err error
+		patchDoc, err = patch.FindOne(patch.ById(mgobson.ObjectIdHex(j.FetchID)))
 		if err != nil {
-			return nil, err
+			return nil, errors.WithStack(err)
 		}
 		if patchDoc == nil {
 			return nil, errors.New("can't find patch")

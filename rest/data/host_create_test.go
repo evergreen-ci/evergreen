@@ -219,3 +219,89 @@ buildvariants:
 		assert.InDelta(time.Now().Add(cloud.DefaultSpawnHostExpiration).Unix(), h.ExpirationTime.Unix(), float64(1*time.Millisecond))
 	}
 }
+
+func TestCreateContainerFromTask(t *testing.T) {
+	assert := assert.New(t)
+	require := require.New(t)
+	assert.NoError(db.ClearCollections(task.Collection, model.VersionCollection, distro.Collection, model.ProjectRefCollection, model.ProjectVarsCollection, host.Collection))
+	t1 := task.Task{
+		Id:           "t1",
+		DisplayName:  "t1",
+		Version:      "v1",
+		DistroId:     "distro",
+		Project:      "p",
+		BuildVariant: "bv",
+		HostId:       "h1",
+	}
+	assert.NoError(t1.Insert())
+	versionYaml := `
+tasks:
+- name: t1
+  commands:
+  - command: host.create
+    params:
+      image: my-image
+      distro: distro
+      command: echo hi
+      provider: docker
+      num_hosts: 1
+      background: false
+
+buildvariants:
+- name: "bv"
+  tasks:
+  - name: t1
+`
+
+	v1 := model.Version{
+		Id:         "v1",
+		Config:     versionYaml,
+		Identifier: "p",
+	}
+	assert.NoError(v1.Insert())
+	h1 := host.Host{
+		Id:          "h1",
+		RunningTask: t1.Id,
+	}
+	assert.NoError(h1.Insert())
+
+	parent := distro.Distro{Id: "parent-distro", PoolSize: 3, Provider: evergreen.ProviderNameMock}
+	require.NoError(parent.Insert())
+
+	pool := &evergreen.ContainerPool{Distro: "parent-distro", Id: "test-pool", MaxContainers: 2}
+	parentHost := &host.Host{
+		Id:                    "host1",
+		Host:                  "host",
+		User:                  "user",
+		Distro:                distro.Distro{Id: "parent-distro"},
+		Status:                evergreen.HostRunning,
+		HasContainers:         true,
+		ContainerPoolSettings: pool,
+	}
+	require.NoError(parentHost.Insert())
+
+	d := distro.Distro{Id: "distro", Provider: evergreen.ProviderNameMock, ContainerPool: "test-pool"}
+	require.NoError(d.Insert())
+
+	p := model.ProjectRef{
+		Identifier: "p",
+	}
+	assert.NoError(p.Insert())
+	pvars := model.ProjectVars{
+		Id: "p",
+	}
+	assert.NoError(pvars.Insert())
+
+	dc := DBCreateHostConnector{}
+	err := dc.CreateHostsFromTask(&t1, user.DBUser{Id: "me"}, "")
+	assert.NoError(err)
+
+	createdHosts, err := host.Find(host.IsUninitialized)
+	assert.NoError(err)
+	require.Len(createdHosts, 1)
+	h := createdHosts[0]
+	assert.Equal("me", h.StartedBy)
+	assert.Equal("my-image", h.DockerOptions.Image)
+	assert.Equal("echo hi", h.DockerOptions.Command)
+	assert.Empty("", h.ExternalIdentifier)
+}

@@ -136,6 +136,13 @@ func (s *priorityStorage) Get(name string) (amboy.Job, bool) {
 	return job.job, true
 }
 
+func (s *priorityStorage) Remove(name string) {
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
+
+	delete(s.table, name)
+}
+
 // Size returns the total number of jobs stored in the instance.
 func (s *priorityStorage) Size() int {
 	s.mutex.RLock()

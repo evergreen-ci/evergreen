@@ -9,10 +9,12 @@ import (
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/rest/client"
-	"github.com/evergreen-ci/evergreen/subprocess"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/evergreen/util"
+	"github.com/mongodb/grip/level"
+	"github.com/mongodb/jasper"
 	. "github.com/smartystreets/goconvey/convey"
+	"github.com/stretchr/testify/require"
 )
 
 func TestTarGzPackParseParams(t *testing.T) {
@@ -95,8 +97,8 @@ func TestTarGzCommandMakeArchive(t *testing.T) {
 				target := filepath.Join(testDataDir, "target.tgz")
 				outputDir := filepath.Join(testDataDir, "output")
 
-				testutil.HandleTestingErr(os.RemoveAll(target), t, "Error removing tgz file")
-				testutil.HandleTestingErr(os.RemoveAll(outputDir), t, "Error removing output dir")
+				require.NoError(t, os.RemoveAll(target), "Error removing tgz file")
+				require.NoError(t, os.RemoveAll(outputDir), "Error removing output dir")
 
 				params := map[string]interface{}{
 					"target":        target,
@@ -116,7 +118,7 @@ func TestTarGzCommandMakeArchive(t *testing.T) {
 
 				// untar the file
 				So(os.MkdirAll(outputDir, 0755), ShouldBeNil)
-				untarCmd := subprocess.NewLocalCommand("tar xvf ../target.tgz", outputDir, "bash", nil, false)
+				untarCmd := jasper.BuildCommand("extract test", level.Info, []string{"tar", "-zxvf", "../target.tgz"}, outputDir, nil)
 				So(untarCmd.Run(context.TODO()), ShouldBeNil)
 
 				// make sure that the correct files were included
@@ -130,9 +132,7 @@ func TestTarGzCommandMakeArchive(t *testing.T) {
 				)
 				So(err, ShouldBeNil)
 				So(exists, ShouldBeFalse)
-
 			})
-
 		})
 	})
 }

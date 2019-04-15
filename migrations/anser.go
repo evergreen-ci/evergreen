@@ -35,7 +35,7 @@ func (opts Options) Setup(ctx context.Context) (anser.Environment, error) {
 	env := anser.GetEnvironment()
 	env.RegisterCloser(func() error { cancel(); return nil })
 
-	q := queue.NewAdaptiveOrderedLocalQueue(1)
+	q := queue.NewAdaptiveOrderedLocalQueue(1, 10*opts.Target*opts.Workers)
 	runner, err := pool.NewMovingAverageRateLimitedWorkers(opts.Workers, opts.Target, opts.Period, q)
 	if err != nil {
 		return nil, errors.WithStack(err)
@@ -77,32 +77,9 @@ func (opts Options) Application(env anser.Environment, evgEnv evergreen.Environm
 		},
 	}
 
-	githubToken, err := evgEnv.Settings().GetGithubOauthToken()
-	if err != nil {
-		return nil, err
-	}
-
 	generatorFactories := map[string]migrationGeneratorFactory{
-		// Early Migrations, disabled because the generator queries are not properly indexed.
-		//
-		// migrationTestResultsLegacyExecution: addExecutionToTasksGenerator,
-		// migrationTestResultsOldTasks: oldTestResultsGenerator,
-		// migrationTestResultstasks: testResultsGenerator,
+		// Add migrations here!
 
-		// Migration disabled because it iterates over all existing tasks.
-		// migrationTaskCreateTime:                     taskCreateTimeGenerator,
-
-		migrationProjectAliasesToCollection:         projectAliasesToCollectionGenerator,
-		migrationGithubHooksToCollection:            githubHooksToCollectionGenerator,
-		migrationZeroDateFix:                        zeroDateFixGenerator(githubToken),
-		migrationAdminEventRestructure:              adminEventRestructureGenerator,
-		migrationEventRtypeRestructureAllLogs:       eventRTypeMigration,
-		migrationSetDefaultBranch:                   setDefaultBranchMigrationGenerator,
-		migrationAdminMapRestructure:                adminMapRestructureGenerator,
-		migrationSpawnhostExpirationPreference:      setSpawnhostPreferenceGenerator,
-		migrationDistroSecurityGroups:               distroSecurityGroupsGenerator,
-		migrationLegacyNotificationsToSubscriptions: legacyNotificationsToSubscriptionsGenerator,
-		migrationSubscriptionBSONObjectIDToString:   makeBSONObjectIDToStringGenerator("subscriptions"),
 	}
 	catcher := grip.NewBasicCatcher()
 

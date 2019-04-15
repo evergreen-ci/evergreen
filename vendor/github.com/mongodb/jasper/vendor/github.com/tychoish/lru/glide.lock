@@ -1,0 +1,8 @@
+hash: ef30e240f708c13e4ab176f9773496ec6278440aa6a6aefe8e7a40ce2fd3d649
+updated: 2016-10-20T15:27:27.862131876-04:00
+imports:
+- name: github.com/pkg/errors
+  version: 839d9e913e063e28dfd0e6c7b7512793e0a48be9
+- name: github.com/mongodb/grip
+  version: 07578aa100ecdf0d5a1611e2ef43742ff6c77240
+devImports: []

@@ -15,9 +15,9 @@ import (
 	"github.com/mongodb/amboy/dependency"
 	"github.com/mongodb/amboy/job"
 	"github.com/mongodb/amboy/registry"
+	adb "github.com/mongodb/anser/db"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
-	mgo "gopkg.in/mgo.v2"
 )
 
 const (
@@ -82,7 +82,7 @@ func (j *generateTasksJob) Run(ctx context.Context) {
 				return false, err
 			}
 			err = g.Save(p, v, t, pm, prevConfig)
-			if err != nil && errors.Cause(err) == mgo.ErrNotFound {
+			if err != nil && adb.ResultsNotFound(err) {
 				return true, gimlet.ErrorResponse{
 					StatusCode: http.StatusInternalServerError,
 					Message:    errors.Wrap(err, "error updating config in `generate.tasks`").Error(),

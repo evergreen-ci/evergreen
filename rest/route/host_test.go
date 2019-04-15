@@ -15,6 +15,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/rest/model"
+	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/stretchr/testify/suite"
 )
@@ -495,19 +496,26 @@ func (s *hostTerminateHostHandlerSuite) TestRegularUserCannotTerminateAnyHost() 
 ////////////////////////////////////////////////////////////////////////
 
 type hostChangeRDPPasswordHandlerSuite struct {
-	rm gimlet.RouteHandler
-	sc *data.MockConnector
+	rm  gimlet.RouteHandler
+	sc  *data.MockConnector
+	env evergreen.Environment
 	suite.Suite
 }
 
 func TestHostChangeRDPPasswordHandler(t *testing.T) {
 	s := &hostChangeRDPPasswordHandlerSuite{}
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	s.env = testutil.NewEnvironment(ctx, t)
+
 	suite.Run(t, s)
 }
 
 func (s *hostChangeRDPPasswordHandlerSuite) SetupTest() {
 	s.sc = getMockHostsConnector()
-	s.rm = makeHostChangePassword(s.sc)
+	s.rm = makeHostChangePassword(s.sc, s.env)
 }
 
 func (s *hostChangeRDPPasswordHandlerSuite) TestExecuteWithNoUserPanics() {

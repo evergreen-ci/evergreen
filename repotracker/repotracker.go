@@ -20,7 +20,7 @@ import (
 	"github.com/mongodb/grip/level"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
-	"gopkg.in/mgo.v2/bson"
+	mgobson "gopkg.in/mgo.v2/bson"
 	yaml "gopkg.in/yaml.v2"
 )
 
@@ -590,10 +590,7 @@ func CreateVersionFromConfig(ref *model.ProjectRef, config *model.Project, metad
 	v.Ignored = ignore
 
 	// validate the project
-	verrs, err := validator.CheckProjectSyntax(config)
-	if err != nil {
-		return nil, errors.Wrap(err, "error validating project")
-	}
+	verrs := validator.CheckProjectSyntax(config)
 	if len(verrs) > 0 || versionErrs != nil {
 		// We have syntax errors in the project.
 		// Format them, as we need to store + display them to the user
@@ -657,7 +654,7 @@ func shellVersionFromRevision(ref *model.ProjectRef, metadata VersionMetadata) (
 		v.Requester = evergreen.TriggerRequester
 		v.CreateTime = metadata.SourceVersion.CreateTime
 	} else if metadata.IsAdHoc {
-		v.Id = bson.NewObjectId().Hex()
+		v.Id = mgobson.NewObjectId().Hex()
 		v.Requester = evergreen.AdHocRequester
 		v.CreateTime = time.Now()
 		v.Message = metadata.Message

@@ -7,6 +7,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/apimodels"
+	"github.com/evergreen-ci/evergreen/cloud"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/artifact"
 	"github.com/evergreen-ci/evergreen/model/distro"
@@ -104,7 +105,7 @@ type Communicator interface {
 	GenerateTasksPoll(context.Context, TaskData) (*apimodels.GeneratePollResponse, error)
 
 	// Spawn-hosts for tasks methods
-	CreateHost(context.Context, TaskData, apimodels.CreateHost) error
+	CreateHost(context.Context, TaskData, apimodels.CreateHost) ([]string, error)
 	ListHosts(context.Context, TaskData) ([]restmodel.CreateHost, error)
 
 	// ---------------------------------------------------------------------
@@ -170,7 +171,12 @@ type Communicator interface {
 	// Commit Queue
 	GetCommitQueue(ctx context.Context, projectID string) (*restmodel.APICommitQueue, error)
 	DeleteCommitQueueItem(ctx context.Context, projectID string, item string) error
+	EnqueueItem(ctx context.Context, projectID, item string) (int, error)
 
 	// Notifications
 	SendNotification(ctx context.Context, notificationType string, data interface{}) error
+
+	// GetDockerLogs returns logs for the given docker container
+	GetDockerLogs(ctx context.Context, hostID string, startTime time.Time, endTime time.Time, isError bool) ([]byte, error)
+	GetDockerStatus(ctx context.Context, hostID string) (*cloud.ContainerStatus, error)
 }

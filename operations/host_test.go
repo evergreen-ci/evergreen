@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -30,6 +31,7 @@ func TestHostSetupScript(t *testing.T) {
 	content := []byte("echo \"hello, world\"")
 	err = ioutil.WriteFile(evergreen.SetupScriptName, content, 0644)
 	require.NoError(err)
+	defer os.Remove(evergreen.TempSetupScriptName)
 	defer os.Remove(evergreen.SetupScriptName)
 	ctx, cancel = context.WithTimeout(context.Background(), time.Second)
 	defer cancel()
@@ -38,6 +40,8 @@ func TestHostSetupScript(t *testing.T) {
 
 	// Ensure the script is deleted after running
 	_, err = os.Stat(evergreen.SetupScriptName)
+	assert.True(os.IsNotExist(err))
+	_, err = os.Stat(evergreen.TempSetupScriptName)
 	assert.True(os.IsNotExist(err))
 
 	// Script should time out with context and return an error
@@ -64,10 +68,10 @@ func TestHostSetupScript(t *testing.T) {
 func TestHostSudoShHelper(t *testing.T) {
 	assert := assert.New(t)
 
-	cmd := getShCommandWithSudo(context.Background(), "foo", false)
+	cmd := host.ShCommandWithSudo(context.Background(), "foo", false)
 	assert.Equal([]string{"sh", "foo"}, cmd.Args)
 
-	cmd = getShCommandWithSudo(context.Background(), "foo", true)
+	cmd = host.ShCommandWithSudo(context.Background(), "foo", true)
 	assert.Equal([]string{"sudo", "sh", "foo"}, cmd.Args)
 }
 

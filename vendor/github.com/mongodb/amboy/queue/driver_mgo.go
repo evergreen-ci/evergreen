@@ -14,7 +14,7 @@ import (
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 	uuid "github.com/satori/go.uuid"
-	"gopkg.in/mgo.v2"
+	mgo "gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
 )
 
@@ -140,7 +140,7 @@ func (d *mgoDriver) getJobsCollection() (*mgo.Session, *mgo.Collection) {
 	defer d.mu.RUnlock()
 	session := d.session.Copy()
 
-	return session, session.DB(d.dbName).C(d.name + ".jobs")
+	return session, session.DB(d.dbName).C(addJobsSuffix(d.name))
 }
 
 func (d *mgoDriver) setupDB() error {
@@ -176,20 +176,13 @@ func (d *mgoDriver) Close() {
 
 // Get takes the name of a job and returns an amboy.Job object from
 // the persistence layer for the job matching that unique id.
-func (d *mgoDriver) Get(name string) (amboy.Job, error) {
+func (d *mgoDriver) Get(_ context.Context, name string) (amboy.Job, error) {
 	session, jobs := d.getJobsCollection()
 	defer session.Close()
 
 	j := &registry.JobInterchange{}
 
 	err := jobs.FindId(name).One(j)
-
-	grip.Debug(message.WrapError(err, message.Fields{
-		"operation": "get job",
-		"name":      name,
-		"id":        d.instanceID,
-		"service":   "amboy.queue.mgo",
-	}))
 
 	if err != nil {
 		return nil, errors.Wrapf(err, "GET problem fetching '%s'", name)
@@ -225,7 +218,7 @@ func getAtomicQuery(owner, jobName string, modCount int) bson.M {
 }
 
 // Put inserts the job into the collection, returning an error when that job already exists.
-func (d *mgoDriver) Put(j amboy.Job) error {
+func (d *mgoDriver) Put(_ context.Context, j amboy.Job) error {
 	job, err := registry.MakeJobInterchange(j, amboy.BSON)
 	if err != nil {
 		return errors.Wrap(err, "problem converting job to interchange format")
@@ -239,19 +232,12 @@ func (d *mgoDriver) Put(j amboy.Job) error {
 		return errors.Wrapf(err, "problem saving new job %s", name)
 	}
 
-	grip.Debug(message.Fields{
-		"id":        d.instanceID,
-		"service":   "amboy.queue.mgo",
-		"operation": "put job",
-		"name":      name,
-	})
-
 	return nil
 }
 
 // Save takes a job object and updates that job in the persistence
 // layer. Replaces or updates an existing job with the same ID.
-func (d *mgoDriver) Save(j amboy.Job) error {
+func (d *mgoDriver) Save(_ context.Context, j amboy.Job) error {
 	name := j.ID()
 	session, jobs := d.getJobsCollection()
 	defer session.Close()
@@ -285,13 +271,6 @@ func (d *mgoDriver) Save(j amboy.Job) error {
 		return errors.Wrapf(err, "problem saving document %s", name)
 	}
 
-	grip.Debug(message.Fields{
-		"id":        d.instanceID,
-		"service":   "amboy.queue.mgo",
-		"operation": "save job",
-		"name":      name,
-	})
-
 	return nil
 }
 
@@ -299,7 +278,7 @@ func (d *mgoDriver) Save(j amboy.Job) error {
 // persistence layer. If the job does not exist, or the underlying
 // status document has changed incompatibly this operation produces
 // an error.
-func (d *mgoDriver) SaveStatus(j amboy.Job, stat amboy.JobStatusInfo) error {
+func (d *mgoDriver) SaveStatus(_ context.Context, j amboy.Job, stat amboy.JobStatusInfo) error {
 	session, jobs := d.getJobsCollection()
 	defer session.Close()
 
@@ -325,7 +304,7 @@ func (d *mgoDriver) SaveStatus(j amboy.Job, stat amboy.JobStatusInfo) error {
 // driver. This includes all completed, pending, and locked
 // jobs. Errors, including those with connections to MongoDB or with
 // corrupt job documents, are logged.
-func (d *mgoDriver) Jobs() <-chan amboy.Job {
+func (d *mgoDriver) Jobs(ctx context.Context) <-chan amboy.Job {
 	output := make(chan amboy.Job)
 	go func() {
 		defer close(output)
@@ -345,9 +324,19 @@ func (d *mgoDriver) Jobs() <-chan amboy.Job {
 					"operation": "job iterator",
 					"message":   "problem converting job obj",
 				}))
+
+				if ctx.Err() != nil {
+					return
+				}
+
 				continue
 			}
-			output <- job
+			select {
+			case <-ctx.Done():
+				return
+			case output <- job:
+				continue
+			}
 		}
 
 		grip.Error(message.WrapError(results.Err(), message.Fields{
@@ -503,7 +492,7 @@ func (d *mgoDriver) Next(ctx context.Context) amboy.Job {
 // performs a number of asynchronous queries to collect data, and in
 // an active system with a number of active queues, stats may report
 // incongruous data.
-func (d *mgoDriver) Stats() amboy.QueueStats {
+func (d *mgoDriver) Stats(_ context.Context) amboy.QueueStats {
 	session, jobs := d.getJobsCollection()
 	defer session.Close()
 

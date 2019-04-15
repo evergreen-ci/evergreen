@@ -86,6 +86,15 @@ func (ac *DBProjectConnector) GetProjectEventLog(id string, before time.Time, n 
 	return out, catcher.Resolve()
 }
 
+func (ac *DBProjectConnector) GetProjectWithCommitQueueByOwnerRepoAndBranch(owner, repo, branch string) (*model.ProjectRef, error) {
+	proj, err := model.FindOneProjectRefWithCommitQueueByOwnerRepoAndBranch(owner, repo, branch)
+	if err != nil {
+		return nil, errors.Wrapf(err, "can't query for projectRef %s/%s tracking %s", owner, repo, branch)
+	}
+
+	return proj, nil
+}
+
 // MockPatchConnector is a struct that implements the Patch related methods
 // from the Connector through interactions with he backing database.
 type MockProjectConnector struct {
@@ -162,4 +171,14 @@ func (pc *MockProjectConnector) UpdateProject(projectRef *model.ProjectRef) erro
 
 func (pc *MockProjectConnector) GetProjectEventLog(id string, before time.Time, n int) ([]restModel.APIProjectEvent, error) {
 	return pc.CachedEvents, nil
+}
+
+func (pc *MockProjectConnector) GetProjectWithCommitQueueByOwnerRepoAndBranch(owner, repo, branch string) (*model.ProjectRef, error) {
+	for _, p := range pc.CachedProjects {
+		if p.Owner == owner && p.Repo == repo && p.Branch == branch {
+			return &p, nil
+		}
+	}
+
+	return nil, errors.Errorf("can't query for projectRef %s/%s tracking %s", owner, repo, branch)
 }

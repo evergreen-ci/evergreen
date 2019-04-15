@@ -12,9 +12,9 @@ import (
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/anser/bsonutil"
+	adb "github.com/mongodb/anser/db"
 	"github.com/pkg/errors"
-	mgo "gopkg.in/mgo.v2"
-	"gopkg.in/mgo.v2/bson"
+	"go.mongodb.org/mongo-driver/bson"
 )
 
 // The ProjectRef struct contains general information, independent of any
@@ -63,7 +63,7 @@ type ProjectRef struct {
 type CommitQueueParams struct {
 	Enabled      bool   `bson:"enabled" json:"enabled"`
 	MergeMethod  string `bson:"merge_method" json:"merge_method"`
-	MergeAction  string `bson:"merge_action" json:"merge_action"`
+	PatchType    string `bson:"patch_type" json:"patch_type"`
 	StatusAction string `bson:"status_action" json:"status_action"`
 }
 
@@ -178,7 +178,7 @@ func FindOneProjectRef(identifier string) (*ProjectRef, error) {
 		db.NoSort,
 		projectRef,
 	)
-	if err == mgo.ErrNotFound {
+	if adb.ResultsNotFound(err) {
 		return nil, nil
 	}
 	return projectRef, err
@@ -331,9 +331,9 @@ func FindOneProjectRefByRepoAndBranchWithPRTesting(owner, repo, branch string) (
 	return &projectRefs[target], nil
 }
 
-func FindOneProjectRefWithCommitQByOwnerRepoAndBranch(owner, repo, branch string) (*ProjectRef, error) {
+func FindOneProjectRefWithCommitQueueByOwnerRepoAndBranch(owner, repo, branch string) (*ProjectRef, error) {
 	projRef := &ProjectRef{}
-	if err := db.FindOne(
+	err := db.FindOne(
 		ProjectRefCollection,
 		bson.M{
 			ProjectRefOwnerKey:  owner,
@@ -344,9 +344,8 @@ func FindOneProjectRefWithCommitQByOwnerRepoAndBranch(owner, repo, branch string
 		db.NoProjection,
 		db.NoSort,
 		projRef,
-	); err == mgo.ErrNotFound {
-		return nil, nil
-	} else if err != nil {
+	)
+	if err != nil {
 		return nil, errors.Wrapf(err, "can't query for project with commit queue. owner: %s, repo: %s, branch: %s", owner, repo, branch)
 	}
 

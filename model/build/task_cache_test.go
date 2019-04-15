@@ -6,13 +6,13 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
-	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestUpdateCachedTask(t *testing.T) {
 	assert := assert.New(t)
-	testutil.HandleTestingErr(db.Clear(Collection), t, "Error clearing build collection")
+	require.NoError(t, db.Clear(Collection), "Error clearing build collection")
 	b := &Build{
 		Id: "build1",
 		Tasks: []TaskCache{

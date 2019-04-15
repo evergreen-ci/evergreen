@@ -23,7 +23,6 @@ type AdminEventSuite struct {
 
 func TestAdminEventSuite(t *testing.T) {
 	s := new(AdminEventSuite)
-	db.SetGlobalSessionProvider(testConfig.SessionFactory())
 	s.username = "user"
 	suite.Run(t, s)
 }
@@ -212,7 +211,7 @@ func (s *AdminEventSuite) TestRevertingRoot() {
 }
 
 func TestAdminEventsBeforeQuery(t *testing.T) {
-	testutil.HandleTestingErr(db.Clear(AllLogCollection), t, "error clearing collection")
+	require.NoError(t, db.Clear(AllLogCollection), "error clearing collection")
 	assert := assert.New(t)
 	before := &evergreen.ServiceFlags{}
 	after := &evergreen.ServiceFlags{HostInitDisabled: true}

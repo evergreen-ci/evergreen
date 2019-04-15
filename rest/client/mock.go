@@ -6,11 +6,13 @@ import (
 	"fmt"
 	"io/ioutil"
 	"path/filepath"
+	"runtime"
 	"sync"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/apimodels"
+	"github.com/evergreen-ci/evergreen/cloud"
 	serviceModel "github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/artifact"
 	"github.com/evergreen-ci/evergreen/model/distro"
@@ -19,7 +21,6 @@ import (
 	patchmodel "github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/rest/model"
-	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
@@ -174,7 +175,10 @@ func (c *Mock) GetDistro(ctx context.Context, td TaskData) (*distro.Distro, erro
 func (c *Mock) GetVersion(ctx context.Context, td TaskData) (*serviceModel.Version, error) {
 	var err error
 	var data []byte
-	data, err = ioutil.ReadFile(filepath.Join(testutil.GetDirectoryOfFile(), "testdata", fmt.Sprintf("%s.yaml", td.ID)))
+
+	_, file, _, _ := runtime.Caller(0)
+
+	data, err = ioutil.ReadFile(filepath.Join(filepath.Dir(file), "testdata", fmt.Sprintf("%s.yaml", td.ID)))
 	if err != nil {
 		grip.Error(err)
 	}
@@ -515,15 +519,15 @@ func (c *Mock) GenerateTasksPoll(ctx context.Context, td TaskData) (*apimodels.G
 	}, nil
 }
 
-func (c *Mock) CreateHost(ctx context.Context, td TaskData, options apimodels.CreateHost) error {
+func (c *Mock) CreateHost(ctx context.Context, td TaskData, options apimodels.CreateHost) ([]string, error) {
 	if td.ID == "" {
-		return errors.New("no task ID sent to CreateHost")
+		return []string{}, errors.New("no task ID sent to CreateHost")
 	}
 	if td.Secret == "" {
-		return errors.New("no task secret sent to CreateHost")
+		return []string{}, errors.New("no task secret sent to CreateHost")
 	}
 	c.CreatedHost = options
-	return options.Validate()
+	return []string{"id"}, options.Validate()
 }
 
 func (c *Mock) ListHosts(_ context.Context, _ TaskData) ([]model.CreateHost, error) { return nil, nil }
@@ -586,6 +590,18 @@ func (c *Mock) DeleteCommitQueueItem(ctx context.Context, projectID, item string
 	return nil
 }
 
+func (c *Mock) EnqueueItem(ctx context.Context, projectID, item string) (int, error) {
+	return 1, nil
+}
+
 func (c *Mock) SendNotification(_ context.Context, _ string, _ interface{}) error {
 	return nil
+}
+
+func (c *Mock) GetDockerLogs(context.Context, string, time.Time, time.Time, bool) ([]byte, error) {
+	return []byte("this is a log"), nil
+}
+
+func (c *Mock) GetDockerStatus(context.Context, string) (*cloud.ContainerStatus, error) {
+	return &cloud.ContainerStatus{HasStarted: true}, nil
 }

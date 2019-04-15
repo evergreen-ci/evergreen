@@ -10,12 +10,8 @@ import (
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
-	"gopkg.in/mgo.v2/bson"
+	mgobson "gopkg.in/mgo.v2/bson"
 )
-
-func init() {
-	registry.registerEventHandler(event.ResourceTypePatch, event.PatchStateChange, makePatchTriggers)
-}
 
 const (
 	objectPatch         = "patch"
@@ -44,11 +40,13 @@ func makePatchTriggers() eventHandler {
 
 func (t *patchTriggers) Fetch(e *event.EventLogEntry) error {
 	var err error
-
-	if err = t.uiConfig.Get(); err != nil {
+	if err = t.uiConfig.Get(evergreen.GetEnvironment()); err != nil {
 		return errors.Wrap(err, "Failed to fetch ui config")
 	}
-	t.patch, err = patch.FindOne(patch.ById(bson.ObjectIdHex(e.ResourceId)))
+
+	oid := mgobson.ObjectIdHex(e.ResourceId)
+
+	t.patch, err = patch.FindOne(patch.ById(oid))
 	if err != nil {
 		return errors.Wrapf(err, "failed to fetch patch '%s'", e.ResourceId)
 	}

@@ -7,20 +7,16 @@ import (
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/testutil"
 	. "github.com/smartystreets/goconvey/convey"
+	"github.com/stretchr/testify/require"
 )
 
 var notifyTimesTestConfig = testutil.TestConfig()
-
-func init() {
-	db.SetGlobalSessionProvider(notifyTimesTestConfig.SessionFactory())
-}
 
 func TestSetLastNotificationsEventTime(t *testing.T) {
 
 	Convey("When setting the last notification event time", t, func() {
 
-		testutil.HandleTestingErr(db.Clear(NotifyTimesCollection),
-			t, "Error clearing '%v' collection", NotifyTimesCollection)
+		require.NoError(t, db.Clear(NotifyTimesCollection), "Error clearing '%v' collection", NotifyTimesCollection)
 
 		Convey("the last notification time for only the specified project"+
 			" should be set to the specified time", func() {
@@ -66,8 +62,7 @@ func TestLastNotificationsEventTime(t *testing.T) {
 	Convey("When checking the last notifications event time for a"+
 		" project", t, func() {
 
-		testutil.HandleTestingErr(db.Clear(NotifyTimesCollection),
-			t, "Error clearing '%v' collection", NotifyTimesCollection)
+		require.NoError(t, db.Clear(NotifyTimesCollection), "Error clearing '%v' collection", NotifyTimesCollection)
 
 		Convey("if there are no times stored, the earliest date to consider"+
 			" should be returned", func() {

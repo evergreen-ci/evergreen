@@ -4,8 +4,6 @@ import (
 	"testing"
 	"time"
 
-	"gopkg.in/mgo.v2/bson"
-
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model"
@@ -16,6 +14,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
+	mgobson "gopkg.in/mgo.v2/bson"
 )
 
 type projectTriggerSuite struct {
@@ -297,7 +296,7 @@ func TestProjectTriggerIntegration(t *testing.T) {
 	}
 	assert.NoError(downstreamProjectRef.Insert())
 	alias := model.ProjectAlias{
-		ID:        bson.NewObjectId(),
+		ID:        mgobson.NewObjectId(),
 		ProjectID: downstreamProjectRef.Identifier,
 		Alias:     "a1",
 		Variant:   "ubuntu1604",

@@ -2,7 +2,7 @@ mciModule.config(function($routeProvider, $locationProvider) {
   function applyProject(_, url) {
     //FIXME (minor) $window might be a more idiomatic choice
     //      $window could not be used in $config
-    return url + '/' + window.project
+    return url + '/' + window.project;
   }
 
   $routeProvider
@@ -26,13 +26,22 @@ mciModule.config(function($routeProvider, $locationProvider) {
       controller: 'PerfBBFailuresCtrl',
       controllerAs: 'pfvm',
     })
+    // Redirects to the same URL with filled in project id
+    .when('/perf-bb/outliers', {
+      redirectTo: applyProject,
+    })
+    .when('/perf-bb/outliers/:projectId', {
+      templateUrl: '/static/app/perf-bb/outliers.html',
+      controller: 'PerfBBOutliersCtrl',
+      controllerAs: 'outvm',
+    })
     // This was added for compatibility with server-side routing
     .otherwise({
       redirectTo: function(_, url) {
         // When UI route doesn't exist, redirect user to the URL
-        window.location = url
+        window.location = url;
       }
-    })
+    });
   // Enable client-side routing and history
-  $locationProvider.html5Mode({enabled: true, requireBase: false})
-})
+  $locationProvider.html5Mode({enabled: true, requireBase: false});
+});

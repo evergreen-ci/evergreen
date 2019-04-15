@@ -144,7 +144,7 @@ func CheckProjectSemantics(project *model.Project) ValidationErrors {
 }
 
 // verify that the project configuration syntax is valid
-func CheckProjectSyntax(project *model.Project) (ValidationErrors, error) {
+func CheckProjectSyntax(project *model.Project) ValidationErrors {
 	validationErrs := ValidationErrors{}
 	for _, projectSyntaxValidator := range projectSyntaxValidators {
 		validationErrs = append(validationErrs,
@@ -154,21 +154,15 @@ func CheckProjectSyntax(project *model.Project) (ValidationErrors, error) {
 	// get distroIds for ensureReferentialIntegrity validation
 	distroIds, err := getDistroIds()
 	if err != nil {
-		return nil, err
+		validationErrs = append(validationErrs, ValidationError{Message: "can't get distros from database"})
 	}
 	validationErrs = append(validationErrs, ensureReferentialIntegrity(project, distroIds)...)
-	return validationErrs, nil
+	return validationErrs
 }
 
 // verify that the project configuration semantics and configuration syntax is valid
 func CheckProjectConfigurationIsValid(project *model.Project) error {
-	syntaxErrs, err := CheckProjectSyntax(project)
-	if err != nil {
-		return gimlet.ErrorResponse{
-			StatusCode: http.StatusBadRequest,
-			Message:    errors.Wrap(err, "error checking project syntax").Error(),
-		}
-	}
+	syntaxErrs := CheckProjectSyntax(project)
 	if len(syntaxErrs) > 0 {
 		syntaxErrsAtErrorLevel := ValidationErrors{}
 		for _, err := range syntaxErrs {
@@ -975,12 +969,18 @@ func validateTaskGroups(p *model.Project) ValidationErrors {
 				})
 			}
 		}
-		// validate that attach commands aren't used in the teardown_group phase
+		// validate that attach commands aren't used in the teardown_group phase, and that the timeout is not longer than 30 mins
 		if tg.TeardownGroup != nil {
 			for _, cmd := range tg.TeardownGroup.List() {
 				if cmd.Command == "attach.results" || cmd.Command == "attach.artifacts" {
 					errs = append(errs, ValidationError{
 						Message: fmt.Sprintf("%s cannot be used in the group teardown stage", cmd.Command),
+						Level:   Error,
+					})
+				}
+				if cmd.TimeoutSecs > evergreen.MaxTeardownGroupTimeoutSecs {
+					errs = append(errs, ValidationError{
+						Message: "teardown_group cannot take longer than 30 minutes",
 						Level:   Error,
 					})
 				}

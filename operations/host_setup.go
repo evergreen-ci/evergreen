@@ -3,10 +3,10 @@ package operations
 import (
 	"context"
 	"os"
-	"os/exec"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 	"github.com/urfave/cli"
@@ -47,19 +47,22 @@ func runSetupScript(ctx context.Context, wd string, setupAsSudo bool) error {
 	if _, err := os.Stat(evergreen.SetupScriptName); os.IsNotExist(err) {
 		return nil
 	}
+	if err := os.Rename(evergreen.SetupScriptName, evergreen.TempSetupScriptName); os.IsNotExist(err) {
+		return nil
+	}
 
-	chmod := getChmodCommandWithSudo(ctx, evergreen.SetupScriptName, setupAsSudo)
+	chmod := host.ChmodCommandWithSudo(ctx, evergreen.TempSetupScriptName, setupAsSudo)
 	out, err := chmod.CombinedOutput()
 	if err != nil {
 		return errors.Wrap(err, string(out))
 	}
 
-	cmd := getShCommandWithSudo(ctx, evergreen.SetupScriptName, setupAsSudo)
+	cmd := host.ShCommandWithSudo(ctx, evergreen.TempSetupScriptName, setupAsSudo)
 	out, err = cmd.CombinedOutput()
 
 	catcher := grip.NewSimpleCatcher()
 	catcher.Add(err)
-	catcher.Add(os.Remove(evergreen.SetupScriptName))
+	catcher.Add(os.Remove(evergreen.TempSetupScriptName))
 
 	grip.Warning(os.MkdirAll(wd, 0777))
 
@@ -85,33 +88,17 @@ func runHostTeardownScript(ctx context.Context) error {
 		return errors.Errorf("no teardown script '%s' found", evergreen.TeardownScriptName)
 	}
 
-	chmod := getChmodCommandWithSudo(ctx, evergreen.TeardownScriptName, false)
+	chmod := host.ChmodCommandWithSudo(ctx, evergreen.TeardownScriptName, false)
 	out, err := chmod.CombinedOutput()
 	if err != nil {
 		return errors.Wrap(err, string(out))
 	}
 
-	cmd := getShCommandWithSudo(ctx, evergreen.TeardownScriptName, false)
+	cmd := host.ShCommandWithSudo(ctx, evergreen.TeardownScriptName, false)
 	out, err = cmd.CombinedOutput()
 	if err != nil {
 		return errors.Wrap(err, string(out))
 	}
 
 	return nil
-}
-
-func getShCommandWithSudo(ctx context.Context, script string, sudo bool) *exec.Cmd {
-	if sudo {
-		return exec.CommandContext(ctx, "sudo", "sh", script)
-	}
-	return exec.CommandContext(ctx, "sh", script)
-}
-
-func getChmodCommandWithSudo(ctx context.Context, script string, sudo bool) *exec.Cmd {
-	args := []string{}
-	if sudo {
-		args = append(args, "sudo")
-	}
-	args = append(args, "chmod", "+x", script)
-	return exec.CommandContext(ctx, args[0], args[1:]...)
 }

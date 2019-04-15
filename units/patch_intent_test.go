@@ -13,6 +13,7 @@ import (
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/mock"
 	"github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/user"
@@ -21,7 +22,8 @@ import (
 	"github.com/mongodb/amboy/registry"
 	"github.com/mongodb/grip/send"
 	"github.com/stretchr/testify/suite"
-	"gopkg.in/mgo.v2/bson"
+	"go.mongodb.org/mongo-driver/bson"
+	mgobson "gopkg.in/mgo.v2/bson"
 )
 
 type PatchIntentUnitsSuite struct {
@@ -45,12 +47,8 @@ type PatchIntentUnitsSuite struct {
 }
 
 func TestPatchIntentUnitsSuite(t *testing.T) {
-	suite.Run(t, new(PatchIntentUnitsSuite))
-}
 
-func (s *PatchIntentUnitsSuite) SetupSuite() {
-	testConfig := testutil.TestConfig()
-	db.SetGlobalSessionProvider(testConfig.SessionFactory())
+	suite.Run(t, new(PatchIntentUnitsSuite))
 }
 
 func (s *PatchIntentUnitsSuite) SetupTest() {
@@ -60,11 +58,11 @@ func (s *PatchIntentUnitsSuite) SetupTest() {
 	ctx, cancel := context.WithCancel(context.Background())
 	s.cancel = cancel
 	s.Require().NoError(s.env.Configure(ctx, filepath.Join(evergreen.FindEvergreenHome(), testutil.TestDir, testutil.TestSettings), nil))
-	testutil.ConfigureIntegrationTest(s.T(), s.env.Settings(), "TestPatchIntentUnitsSuite")
 
+	testutil.ConfigureIntegrationTest(s.T(), s.env.Settings(), "TestPatchIntentUnitsSuite")
 	s.NotNil(s.env.Settings())
 
-	s.NoError(db.ClearCollections(evergreen.ConfigCollection, model.ProjectVarsCollection, model.VersionCollection, user.Collection, model.ProjectRefCollection, patch.Collection, patch.IntentCollection, event.SubscriptionsCollection))
+	s.NoError(db.ClearCollections(evergreen.ConfigCollection, model.ProjectVarsCollection, model.VersionCollection, user.Collection, model.ProjectRefCollection, patch.Collection, patch.IntentCollection, event.SubscriptionsCollection, distro.Collection))
 	s.NoError(db.ClearGridCollections(patch.GridFSPrefix))
 
 	s.NoError((&model.ProjectRef{
@@ -106,6 +104,23 @@ func (s *PatchIntentUnitsSuite) SetupTest() {
 		Task:      "fake",
 	}).Upsert())
 
+	s.NoError((&distro.Distro{Id: "ubuntu1604-test"}).Insert())
+	s.NoError((&distro.Distro{Id: "ubuntu1604-build"}).Insert())
+	s.NoError((&distro.Distro{Id: "archlinux-test"}).Insert())
+	s.NoError((&distro.Distro{Id: "archlinux-build"}).Insert())
+	s.NoError((&distro.Distro{Id: "windows-64-vs2015-small"}).Insert())
+	s.NoError((&distro.Distro{Id: "rhel71-power8-test"}).Insert())
+	s.NoError((&distro.Distro{Id: "rhel72-zseries-test"}).Insert())
+	s.NoError((&distro.Distro{Id: "ubuntu1604-arm64-small"}).Insert())
+	s.NoError((&distro.Distro{Id: "rhel62-test"}).Insert())
+	s.NoError((&distro.Distro{Id: "rhel70-small"}).Insert())
+	s.NoError((&distro.Distro{Id: "rhel62-small"}).Insert())
+	s.NoError((&distro.Distro{Id: "linux-64-amzn-test"}).Insert())
+	s.NoError((&distro.Distro{Id: "debian81-test"}).Insert())
+	s.NoError((&distro.Distro{Id: "debian71-test"}).Insert())
+	s.NoError((&distro.Distro{Id: "ubuntu1404-test"}).Insert())
+	s.NoError((&distro.Distro{Id: "macos-1012"}).Insert())
+
 	s.repo = "evergreen-ci/evergreen"
 	s.headRepo = "tychoish/evergreen"
 	s.prNumber = 448
@@ -142,7 +157,6 @@ func (s *PatchIntentUnitsSuite) SetupTest() {
 }
 func (s *PatchIntentUnitsSuite) TearDownTest() {
 	s.cancel()
-	evergreen.ResetEnvironment()
 }
 
 func (s *PatchIntentUnitsSuite) makeJobAndPatch(intent patch.Intent) *patchIntentProcessor {
@@ -152,13 +166,13 @@ func (s *PatchIntentUnitsSuite) makeJobAndPatch(intent patch.Intent) *patchInten
 	githubOauthToken, err := s.env.Settings().GetGithubOauthToken()
 	s.Require().NoError(err)
 
-	j := NewPatchIntentProcessor(bson.NewObjectId(), intent).(*patchIntentProcessor)
+	j := NewPatchIntentProcessor(mgobson.NewObjectId(), intent).(*patchIntentProcessor)
 	j.env = s.env
 
 	patchDoc := intent.NewPatch()
-	s.Require().NoError(j.finishPatch(ctx, patchDoc, githubOauthToken))
-	s.Require().NoError(j.Error())
-	s.Require().False(j.HasErrors())
+	s.NoError(j.finishPatch(ctx, patchDoc, githubOauthToken))
+	s.NoError(j.Error())
+	s.False(j.HasErrors())
 
 	return j
 }
@@ -181,7 +195,7 @@ func (s *PatchIntentUnitsSuite) TestCantFinalizePatchWithNoTasksAndVariants() {
 	githubOauthToken, err := s.env.Settings().GetGithubOauthToken()
 	s.Require().NoError(err)
 
-	j := NewPatchIntentProcessor(bson.NewObjectId(), intent).(*patchIntentProcessor)
+	j := NewPatchIntentProcessor(mgobson.NewObjectId(), intent).(*patchIntentProcessor)
 	j.env = s.env
 
 	patchDoc := intent.NewPatch()
@@ -307,7 +321,7 @@ func (s *PatchIntentUnitsSuite) TestFindEvergreenUserForPR() {
 	s.Equal(evergreen.GithubPatchUser, u.Id)
 }
 
-func (s *PatchIntentUnitsSuite) verifyPatchDoc(patchDoc *patch.Patch, expectedPatchID bson.ObjectId) {
+func (s *PatchIntentUnitsSuite) verifyPatchDoc(patchDoc *patch.Patch, expectedPatchID mgobson.ObjectId) {
 	s.Equal(evergreen.PatchCreated, patchDoc.Status)
 	s.Equal(expectedPatchID, patchDoc.Id)
 	s.NotEmpty(patchDoc.Patches)
@@ -400,7 +414,7 @@ func (s *PatchIntentUnitsSuite) TestRunInDegradedModeWithGithubIntent() {
 	s.NotNil(intent)
 	s.NoError(intent.Insert())
 
-	patchID := bson.NewObjectId()
+	patchID := mgobson.NewObjectId()
 	j, ok := NewPatchIntentProcessor(patchID, intent).(*patchIntentProcessor)
 	j.env = s.env
 	s.True(ok)
@@ -414,8 +428,8 @@ func (s *PatchIntentUnitsSuite) TestRunInDegradedModeWithGithubIntent() {
 	s.Nil(patchDoc)
 
 	unprocessedIntents, err := patch.FindUnprocessedGithubIntents()
-	s.NoError(err)
-	s.Len(unprocessedIntents, 1)
+	s.Require().NoError(err)
+	s.Require().Len(unprocessedIntents, 1)
 
 	s.Equal(intent.ID(), unprocessedIntents[0].ID())
 }
@@ -431,15 +445,15 @@ func (s *PatchIntentUnitsSuite) TestGithubPRTestFromUnknownUserDoesntCreateVersi
 	s.NotNil(intent)
 	s.NoError(intent.Insert())
 
-	patchID := bson.NewObjectId()
+	patchID := mgobson.NewObjectId()
 	j, ok := NewPatchIntentProcessor(patchID, intent).(*patchIntentProcessor)
 	j.env = s.env
 	s.True(ok)
 	s.NotNil(j)
 	j.Run(context.Background())
 	s.Error(j.Error())
-
-	patchDoc, err := patch.FindOne(patch.ById(patchID))
+	filter := patch.ById(patchID)
+	patchDoc, err := patch.FindOne(filter)
 	s.NoError(err)
 	if s.NotNil(patchDoc) {
 		s.Empty(patchDoc.Version)
@@ -450,11 +464,8 @@ func (s *PatchIntentUnitsSuite) TestGithubPRTestFromUnknownUserDoesntCreateVersi
 	s.Nil(versionDoc)
 
 	unprocessedIntents, err := patch.FindUnprocessedGithubIntents()
-	s.NoError(err)
-	s.Empty(unprocessedIntents)
-
-	// third party patches should still create subscriptions
-	s.verifyGithubSubscriptions(patchDoc)
+	s.Require().NoError(err)
+	s.Require().Empty(unprocessedIntents)
 }
 
 func (s *PatchIntentUnitsSuite) verifyGithubSubscriptions(patchDoc *patch.Patch) {
@@ -462,6 +473,7 @@ func (s *PatchIntentUnitsSuite) verifyGithubSubscriptions(patchDoc *patch.Patch)
 	s.NoError(db.FindAllQ(event.SubscriptionsCollection, db.Query(bson.M{}), &out))
 	s.Require().Len(out, 2)
 
+	s.Require().NotNil(patchDoc)
 	ghSub := event.NewGithubStatusAPISubscriber(event.GithubPullRequestSubscriber{
 		Owner:    patchDoc.GithubPatchData.BaseOwner,
 		Repo:     patchDoc.GithubPatchData.BaseRepo,

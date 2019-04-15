@@ -48,7 +48,7 @@ func makeVersionTriggers() eventHandler {
 
 func (t *versionTriggers) Fetch(e *event.EventLogEntry) error {
 	var err error
-	if err = t.uiConfig.Get(); err != nil {
+	if err = t.uiConfig.Get(evergreen.GetEnvironment()); err != nil {
 		return errors.Wrap(err, "Failed to fetch ui config")
 	}
 

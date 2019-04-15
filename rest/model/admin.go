@@ -48,9 +48,12 @@ type APIAdminSettings struct {
 	BannerTheme        APIString                         `json:"banner_theme,omitempty"`
 	ClientBinariesDir  APIString                         `json:"client_binaries_dir,omitempty"`
 	ConfigDir          APIString                         `json:"configdir,omitempty"`
-	Credentials        map[string]string                 `json:"credentials,omitempty"`
 	ContainerPools     *APIContainerPoolsConfig          `json:"container_pools,omitempty"`
+	Credentials        map[string]string                 `json:"credentials,omitempty"`
+	JasperURL          APIString                         `json:"jasper_url,omitempty"`
+	JasperVersion      APIString                         `json:"jasper_version,omitempty"`
 	Expansions         map[string]string                 `json:"expansions,omitempty"`
+	GoogleAnalyticsID  APIString                         `json:"google_analytics,omitempty"`
 	GithubPRCreatorOrg APIString                         `json:"github_pr_creator_org,omitempty"`
 	HostInit           *APIHostInitConfig                `json:"hostinit,omitempty"`
 	Jira               *APIJiraConfig                    `json:"jira,omitempty"`
@@ -105,6 +108,9 @@ func (as *APIAdminSettings) BuildFromService(h interface{}) error {
 		as.BannerTheme = &tmp
 		as.ClientBinariesDir = &v.ClientBinariesDir
 		as.ConfigDir = &v.ConfigDir
+		as.JasperURL = ToAPIString(v.JasperURL)
+		as.JasperVersion = ToAPIString(v.JasperVersion)
+		as.GoogleAnalyticsID = ToAPIString(v.GoogleAnalyticsID)
 		as.GithubPRCreatorOrg = &v.GithubPRCreatorOrg
 		as.LogPath = &v.LogPath
 		as.Plugins = v.Plugins
@@ -143,6 +149,9 @@ func (as *APIAdminSettings) ToService() (interface{}, error) {
 	if as.ConfigDir != nil {
 		settings.ConfigDir = *as.ConfigDir
 	}
+	settings.JasperURL = FromAPIString(as.JasperURL)
+	settings.JasperVersion = FromAPIString(as.JasperVersion)
+	settings.GoogleAnalyticsID = FromAPIString(as.GoogleAnalyticsID)
 	if as.GithubPRCreatorOrg != nil {
 		settings.GithubPRCreatorOrg = *as.GithubPRCreatorOrg
 	}
@@ -152,6 +161,7 @@ func (as *APIAdminSettings) ToService() (interface{}, error) {
 	if as.PprofPort != nil {
 		settings.PprofPort = *as.PprofPort
 	}
+
 	apiModelReflect := reflect.ValueOf(*as)
 	dbModelReflect := reflect.ValueOf(&settings).Elem()
 	for i := 0; i < apiModelReflect.NumField(); i++ {

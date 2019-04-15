@@ -19,10 +19,10 @@ import (
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/google/go-github/github"
+	adb "github.com/mongodb/anser/db"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
-	mgo "gopkg.in/mgo.v2"
 )
 
 const tsFormat = "2006-01-02.15-04-05"
@@ -318,7 +318,7 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 
 	if commitQueueParams.Enabled {
 		var projRef *model.ProjectRef
-		projRef, err = model.FindOneProjectRefWithCommitQByOwnerRepoAndBranch(responseRef.Owner, responseRef.Repo, responseRef.Branch)
+		projRef, err = model.FindOneProjectRefWithCommitQueueByOwnerRepoAndBranch(responseRef.Owner, responseRef.Repo, responseRef.Branch)
 		if err != nil {
 			uis.LoggedError(w, r, http.StatusInternalServerError, err)
 			return
@@ -335,7 +335,7 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 
 		_, err = commitqueue.FindOneId(responseRef.Identifier)
 		if err != nil {
-			if err == mgo.ErrNotFound {
+			if adb.ResultsNotFound(err) {
 				cq := &commitqueue.CommitQueue{ProjectID: responseRef.Identifier}
 				if err = commitqueue.InsertQueue(cq); err != nil {
 					uis.LoggedError(w, r, http.StatusInternalServerError, err)

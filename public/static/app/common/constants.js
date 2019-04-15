@@ -32,7 +32,14 @@ mciModule
         threadLevelMode: {
           type: String,
           default: 'maxonly',
-        }
+        },
+        // Filter Rejected Points, defaults to on.
+        rejectMode: {
+          enabled: {
+            type: Boolean,
+            default: true,
+          },
+        },
       },
     },
   })
@@ -52,10 +59,14 @@ mciModule
       appId: 'evergreen_perf_plugin-wwdoa',
       // Assets associated with this instance
       DB_PERF: 'perf',
+      COLL_POINTS: 'points',
       COLL_CHANGE_POINTS: 'change_points',
       COLL_UNPROCESSED_POINTS: 'unprocessed_change_points',
       COLL_PROCESSED_POINTS: 'processed_change_points',
       COLL_BUILD_FAILURES: 'build_failures',
+      COLL_OUTLIERS: 'outliers',
+      COLL_MUTE_OUTLIERS: 'mute_outliers',
+      COLL_MARKED_OUTLIERS: 'marked_outliers',
     }
   })
 

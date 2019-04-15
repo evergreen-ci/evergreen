@@ -11,10 +11,11 @@ import (
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/anser/bsonutil"
+	adb "github.com/mongodb/anser/db"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
-	"gopkg.in/mgo.v2"
-	"gopkg.in/mgo.v2/bson"
+	"go.mongodb.org/mongo-driver/bson"
+	mgobson "gopkg.in/mgo.v2/bson"
 )
 
 const (
@@ -74,6 +75,8 @@ var (
 	LastContainerFinishTimeKey   = bsonutil.MustHaveTag(Host{}, "LastContainerFinishTime")
 	SpawnOptionsKey              = bsonutil.MustHaveTag(Host{}, "SpawnOptions")
 	ContainerPoolSettingsKey     = bsonutil.MustHaveTag(Host{}, "ContainerPoolSettings")
+	RunningTeardownForTaskKey    = bsonutil.MustHaveTag(Host{}, "RunningTeardownForTask")
+	RunningTeardownSinceKey      = bsonutil.MustHaveTag(Host{}, "RunningTeardownSince")
 	SpawnOptionsTaskIDKey        = bsonutil.MustHaveTag(SpawnOptions{}, "TaskID")
 	SpawnOptionsBuildIDKey       = bsonutil.MustHaveTag(SpawnOptions{}, "BuildID")
 	SpawnOptionsTimeoutKey       = bsonutil.MustHaveTag(SpawnOptions{}, "TimeoutTeardown")
@@ -89,7 +92,7 @@ var (
 // === Queries ===
 
 // All is a query that returns all hosts
-var All = db.Query(nil)
+var All = db.Query(struct{}{})
 
 // ByUserWithRunningStatus produces a query that returns all
 // running hosts for the given user id.
@@ -139,30 +142,30 @@ func AllIdleEphemeral() ([]Host, error) {
 // - the total number of ephemeral hosts with status: evergreen.HostRunning
 func IdleEphemeralGroupedByDistroId() ([]IdleHostsByDistroID, error) {
 	var idlehostsByDistroID []IdleHostsByDistroID
-	pipeline := []bson.M{
+	pipeline := []mgobson.M{
 		{
-			"$match": bson.M{
+			"$match": mgobson.M{
 				StartedByKey:     evergreen.User,
 				StatusKey:        evergreen.HostRunning,
-				ProviderKey:      bson.M{"$in": evergreen.ProviderSpawnable},
-				HasContainersKey: bson.M{"$ne": true},
+				ProviderKey:      mgobson.M{"$in": evergreen.ProviderSpawnable},
+				HasContainersKey: mgobson.M{"$ne": true},
 			},
 		},
 		{
-			"$sort": bson.M{CreateTimeKey: 1},
+			"$sort": mgobson.M{CreateTimeKey: 1},
 		},
 		{
-			"$group": bson.M{
+			"$group": mgobson.M{
 				"_id":                             "$" + bsonutil.GetDottedKeyName(DistroKey, distro.IdKey),
-				HostsByDistroRunningHostsCountKey: bson.M{"$sum": 1},
-				HostsByDistroIdleHostsKey:         bson.M{"$push": bson.M{"$cond": []interface{}{bson.M{"$eq": []interface{}{"$running_task", bson.Undefined}}, "$$ROOT", bson.Undefined}}},
+				HostsByDistroRunningHostsCountKey: mgobson.M{"$sum": 1},
+				HostsByDistroIdleHostsKey:         mgobson.M{"$push": bson.M{"$cond": []interface{}{mgobson.M{"$eq": []interface{}{"$running_task", mgobson.Undefined}}, "$$ROOT", mgobson.Undefined}}},
 			},
 		},
 		{
-			"$sort": bson.M{"_id": 1},
+			"$sort": mgobson.M{"_id": 1},
 		},
 		{
-			"$project": bson.M{"_id": 0, HostsByDistroDistroIDKey: "$_id", HostsByDistroIdleHostsKey: 1, HostsByDistroRunningHostsCountKey: 1},
+			"$project": mgobson.M{"_id": 0, HostsByDistroDistroIDKey: "$_id", HostsByDistroIdleHostsKey: 1, HostsByDistroRunningHostsCountKey: 1},
 		},
 	}
 
@@ -387,17 +390,17 @@ func ByDistroId(distroId string) db.Q {
 
 // ById produces a query that returns a host with the given id.
 func ById(id string) db.Q {
-	return db.Query(bson.D{{Name: IdKey, Value: id}})
+	return db.Query(bson.D{{Key: IdKey, Value: id}})
 }
 
 // ByIds produces a query that returns all hosts in the given list of ids.
 func ByIds(ids []string) db.Q {
 	return db.Query(bson.D{
 		{
-			Name: IdKey,
+			Key: IdKey,
 			Value: bson.D{
 				{
-					Name:  "$in",
+					Key:   "$in",
 					Value: ids,
 				},
 			},
@@ -407,7 +410,7 @@ func ByIds(ids []string) db.Q {
 
 // ByRunningTaskId returns a host running the task with the given id.
 func ByRunningTaskId(taskId string) db.Q {
-	return db.Query(bson.D{{Name: RunningTaskKey, Value: taskId}})
+	return db.Query(bson.D{{Key: RunningTaskKey, Value: taskId}})
 }
 
 // ByDynamicWithinTime is a query that returns all dynamic hosts running between a certain time and another time.
@@ -600,7 +603,7 @@ func RemoveStaleInitializing(distroID string) error {
 func FindOne(query db.Q) (*Host, error) {
 	host := &Host{}
 	err := db.FindOneQ(Collection, query, host)
-	if err == mgo.ErrNotFound {
+	if adb.ResultsNotFound(err) {
 		return nil, nil
 	}
 	return host, err
@@ -613,8 +616,7 @@ func FindOneId(id string) (*Host, error) {
 // Find gets all Hosts for the given query.
 func Find(query db.Q) ([]Host, error) {
 	hosts := []Host{}
-	err := db.FindAllQ(Collection, query, &hosts)
-	return hosts, err
+	return hosts, errors.WithStack(db.FindAllQ(Collection, query, &hosts))
 }
 
 // Count returns the number of hosts that satisfy the given query.
@@ -642,7 +644,7 @@ func UpdateAll(query interface{}, update interface{}) error {
 }
 
 // UpsertOne upserts a host.
-func UpsertOne(query interface{}, update interface{}) (*mgo.ChangeInfo, error) {
+func UpsertOne(query interface{}, update interface{}) (*adb.ChangeInfo, error) {
 	return db.Upsert(
 		Collection,
 		query,

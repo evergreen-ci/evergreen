@@ -3,12 +3,12 @@ mciModule.controller('SignalProcessingCtrl', function(
   EvgUiGridUtil, EvgUtil, FORMAT, MDBQueryAdaptor, PROCESSED_TYPE,
   Settings, STITCH_CONFIG, Stitch, uiGridConstants,
 ) {
-  var vm = this
+  const vm = this;
   // Ui grid col accessor
-  var getCol
+  let getCol;
 
   // TODO later this might be replaced with some sort of pagination
-  var LIMIT = 500
+  const LIMIT = 500;
 
   vm.mode = {
     options: [{
@@ -19,21 +19,21 @@ mciModule.controller('SignalProcessingCtrl', function(
       name: 'Unprocessed',
     }],
     value: 'unprocessed',
-  }
+  };
 
   // Holds currently selected items
-  vm.selection = []
+  vm.selection = [];
 
-  // Could not be overriden by persistent user settings
+  // Could not be overridden by persistent user settings
   const mandatoryDefaultFiltering = {
     create_time: '>' + moment().subtract(2, 'weeks').format(FORMAT.ISO_DATE),
     project: '=' + $window.project,
-  }
+  };
 
-  // Might be overriden by persistent user settings
+  // Might be overridden by persistent user settings
   const secondaryDefaultFiltering = {
     probability: '>0.05',
-  }
+  };
 
   const getDefaultFiltering = function() {
     return _.extend(
@@ -41,10 +41,10 @@ mciModule.controller('SignalProcessingCtrl', function(
       secondaryDefaultFiltering,
       Settings.perf.signalProcessing.persistentFiltering,
       mandatoryDefaultFiltering
-    )
-  }
+    );
+  };
 
-  var state = {
+  let state = {
     sorting: [{
       field: 'suspect_revision',
       direction: 'asc',
@@ -54,32 +54,32 @@ mciModule.controller('SignalProcessingCtrl', function(
     }],
     filtering: getDefaultFiltering(),
     mode: vm.mode.value,
-  }
+  };
 
-  var modeToCollMap = {
+  const modeToCollMap = {
     unprocessed: STITCH_CONFIG.PERF.COLL_UNPROCESSED_POINTS,
     processed: STITCH_CONFIG.PERF.COLL_PROCESSED_POINTS,
-  }
+  };
 
-  var modeToItemVisibilityMap = {
-    unprocessed: function(item) { return item.processed_type != PROCESSED_TYPE.HIDDEN },
-    processed: function(item) { return item.processed_type != PROCESSED_TYPE.NONE },
-  }
+  const modeToItemVisibilityMap = {
+    unprocessed: function(item) { return item.processed_type !== PROCESSED_TYPE.HIDDEN },
+    processed: function(item) { return item.processed_type !== PROCESSED_TYPE.NONE },
+  };
 
   function refreshGridData(gridOptions) {
-    gridOptions.data = _.filter(gridOptions.data, modeToItemVisibilityMap[state.mode])
-    vm.gridApi.selection.clearSelectedRows()
-    handleRowSelectionChange(vm.gridApi)
+    gridOptions.data = _.filter(gridOptions.data, modeToItemVisibilityMap[state.mode]);
+    vm.gridApi.selection.clearSelectedRows();
+    handleRowSelectionChange(vm.gridApi);
   }
 
-  var markFn = function(mark, items) {
+  const markFn = function(mark, items) {
     ChangePointsService.markPoints(items, mark, state.mode).then(function(ok) {
-      if (!ok) return
-      refreshGridData(vm.gridOptions)
+      if (!ok) return;
+      refreshGridData(vm.gridOptions);
       // Update selection
-      handleRowSelectionChange(vm.gridApi)
-    })
-  }
+      handleRowSelectionChange(vm.gridApi);
+    });
+  };
 
   vm.actions = [{
     title:    'Hide',
@@ -96,153 +96,153 @@ mciModule.controller('SignalProcessingCtrl', function(
     action:   _.partial(markFn, PROCESSED_TYPE.NONE),
     visible:  function() { return state.mode == 'processed' },
     disabled: _.isEmpty,
-  }]
+  }];
 
   // Required by loadData.
-  var theMostRecentPromise
+  let theMostRecentPromise;
 
   function loadData(state) {
-    vm.isLoading = true
-    vm.gridOptions.data = []
+    vm.isLoading = true;
+    vm.gridOptions.data = [];
     theMostRecentPromise = Stitch.use(STITCH_CONFIG.PERF).query(function(db) {
       return db
         .db(STITCH_CONFIG.PERF.DB_PERF)
         .collection(modeToCollMap[state.mode])
         .aggregate(getAggChain(state))
-    })
+    });
     // Storing this promise in closure.
-    var thisPromise = theMostRecentPromise
+    const thisPromise = theMostRecentPromise;
     thisPromise.then(function(docs) {
       // There more than one concurring promises - we want the most recent one
-      if (thisPromise != theMostRecentPromise) {
-        return
+      if (thisPromise !== theMostRecentPromise) {
+        return;
       }
       theMostRecentPromise
         .then(function() {
           // Hydrate data (generate build id and version id)
-          hydrateData(docs)
-          vm.gridOptions.data = docs
+          hydrateData(docs);
+          vm.gridOptions.data = docs;
         }, function(err) {
-          $log.error(err)
+          $log.error(err);
         }).finally(function() {
-          vm.isLoading = false
+          vm.isLoading = false;
         })
     })
   }
 
   function hydrateData(docs) {
     _.each(docs, function(doc) {
-      // '_' is reqiored to distinguish generate data
+      // '_' is required to distinguish generate data
       doc._versionId = EvgUtil.generateVersionId({
         project: project,
         revision: doc.suspect_revision,
-      })
+      });
       doc._buildId = EvgUtil.generateBuildId({
         project: project,
         revision: doc.suspect_revision,
         buildVariant: doc.variant,
         createTime: doc.create_time,
-      })
-    })
+      });
+    });
   }
 
   // Enhances filtering state with some contextual meta data
   // This data is required by expression compiler
   function getFilteringContext(state) {
     return _.reduce(state.filtering, function(m, v, k) {
-      var col = getCol(k)
-      if (!col) return m // Error! Associated col does not found
+      const col = getCol(k);
+      if (!col) return m;  // Error! Associated col does not found
       return m.concat({
         field: k,
         term: v,
         type: col.colDef.type || 'string',
-      })
-    }, [])
+      });
+    }, []);
   }
 
   // Creates aggregation expression, which could be used by Stitch
   // for given `state`
   function getAggChain(state) {
-    var chain = []
+    let chain = [];
 
     // Check if the state has filtering
     if (!_.isEmpty(state.filtering)) {
-      var filteringChain = MDBQueryAdaptor.compileFiltering(
-        // filtering context enhaces state data with important meta data
+      const filteringChain = MDBQueryAdaptor.compileFiltering(
+        // filtering context enhances state data with important meta data
         getFilteringContext(state)
-      )
+      );
       // check if filtering query was compiled into something
-      filteringChain && chain.push(filteringChain)
+      filteringChain && chain.push(filteringChain);
     }
 
     if (state.sorting) {
-      var sortingChain = MDBQueryAdaptor.compileSorting(state.sorting)
+      const sortingChain = MDBQueryAdaptor.compileSorting(state.sorting);
       // check if sorting query was compiled into something
-      sortingChain && chain.push(sortingChain)
+      sortingChain && chain.push(sortingChain);
     }
 
-    chain.push({$limit: LIMIT})
-    return chain
+    chain.push({$limit: LIMIT});
+    return chain;
   }
 
   vm.modeChanged = function() {
-    state.mode = vm.mode.value
+    state.mode = vm.mode.value;
     // Show/hide column depending on mode
-    var col = getCol('processed_type')
+    const col = getCol('processed_type');
 
-    if (state.mode == 'processed') {
-      col.showColumn()
+    if (state.mode === 'processed') {
+      col.showColumn();
       // Add filtering by processed_type
-      state.filtering.processed_type = '=' + PROCESSED_TYPE.ACKNOWLEDGED
+      state.filtering.processed_type = '=' + PROCESSED_TYPE.ACKNOWLEDGED;
     } else {
-      col.hideColumn()
+      col.hideColumn();
       // Remove filter by processed type
-      delete state.filtering.processed_type
+      delete state.filtering.processed_type;
     }
 
     // Push state changes to the grid api
-    setInitialGridState(vm.gridApi, state)
+    setInitialGridState(vm.gridApi, state);
 
     // Raise col visibility change event
-    vm.gridApi.core.notifyDataChange(uiGridConstants.dataChange.COLUMN)
+    vm.gridApi.core.notifyDataChange(uiGridConstants.dataChange.COLUMN);
 
     // Clear selection
-    vm.selection = []
+    vm.selection = [];
 
-    loadData(state)
-  }
+    loadData(state);
+  };
 
   function setInitialGridFiltering(gridApi, state) {
     _.each(state.filtering, function(term, colName) {
-      var col = getCol(colName)
-      if (!col) return // Error! Associated col does not found
-      col.filters = [{term: term}]
-    })
+      const col = getCol(colName);
+      if (!col) return;  // Error! Associated col does not found
+      col.filters = [{term: term}];
+    });
   }
 
   // Sets `state` to grid filters
   function setInitialGridState(gridApi, state) {
-    setInitialGridFiltering(gridApi, state)
+    setInitialGridFiltering(gridApi, state);
 
     _.each(state.sorting, function(sortingItem) {
-      var col = getCol(sortingItem.field)
-      if (!col) return // Error! Associated col does not found
-      col.sort.direction = sortingItem.direction
-    })
+      const col = getCol(sortingItem.field);
+      if (!col) return; // Error! Associated col does not found
+      col.sort.direction = sortingItem.direction;
+    });
   }
 
   function handleRowSelectionChange(gridApi) {
-    vm.selection = gridApi.selection.getSelectedRows()
+    vm.selection = gridApi.selection.getSelectedRows();
   }
 
-  vm.refCtx = 0
+  vm.refCtx = 0;
   function updateChartContext(grid) {
     // Update context chart data for given rendered rows
     vm.refCtx = d3.max(
       _.map(grid.renderContainers.body.renderedRows, function(d) {
-        return d.treeNode.children.length
+        return d.treeNode.children.length;
       })
-    )
+    );
   }
 
   vm.gridOptions = {
@@ -254,74 +254,74 @@ mciModule.controller('SignalProcessingCtrl', function(
     useExternalFiltering: true,
     useExternalSorting: false,
     onRegisterApi: function(api) {
-      vm.gridApi = api
-      getCol = EvgUiGridUtil.getColAccessor(api)
+      vm.gridApi = api;
+      getCol = EvgUiGridUtil.getColAccessor(api);
       api.core.on.sortChanged($scope, function(grid, cols) {
         state.sorting = _.map(cols, function(col) {
           return {
             field: col.field,
             direction: col.sort.direction
-          }
-        })
+          };
+        });
         // NOTE do loadData(state) here for server-side sorting
-      })
+      });
 
-      var onFilterChanged = _.debounce(function() {
+      const onFilterChanged = _.debounce(function() {
         const filtering = _.reduce(api.grid.columns, function(m, d) {
-          var term = d.filters[0].term
-          if (term) m[d.field] = term
-          return m
-        }, {})
+          const term = d.filters[0].term;
+          if (term) m[d.field] = term;
+          return m;
+        }, {});
 
-        Settings.perf.signalProcessing.persistentFiltering = filtering
+        Settings.perf.signalProcessing.persistentFiltering = filtering;
 
         // When user clicks 'Clear all filters'
         // FIXME and when clear all filters mnually. Either patching
         //       of uigrid either standalone button required
         if (_.isEmpty(filtering)) {
-          state.filtering = getDefaultFiltering()
-          setInitialGridFiltering(vm.gridApi, state)
+          state.filtering = getDefaultFiltering();
+          setInitialGridFiltering(vm.gridApi, state);
         } else {
-          state.filtering = filtering
+          state.filtering = filtering;
         }
 
-        loadData(state)
-      }, 200)
+        loadData(state);
+      }, 200);
 
-      api.core.on.filterChanged($scope, onFilterChanged)
+      api.core.on.filterChanged($scope, onFilterChanged);
 
-      // Load intial set of data once `columns` are populated
+      // Load initial set of data once `columns` are populated
       api.core.on.rowsRendered(null, _.once(function() {
-        setInitialGridState(api, state)
-        loadData(state)
-      }))
+        setInitialGridState(api, state);
+        loadData(state);
+      }));
 
-      // Deounce is neat when selecting multiple items
+      // Debounce is neat when selecting multiple items
       api.selection.on.rowSelectionChanged(null, _.debounce(function() {
-        handleRowSelectionChange(api)
+        handleRowSelectionChange(api);
         // This function executed asynchronously, so we should call $apply manually
-        $scope.$apply()
-      }))
+        $scope.$apply();
+      }));
 
       // This is required when user selects all items
       // (rowSelecionChanged doesn't work)
       api.selection.on.rowSelectionChangedBatch(null, function() {
-        handleRowSelectionChange(api)
-      })
+        handleRowSelectionChange(api);
+      });
 
       // Using _.once, because this behavior is required on init only
       api.core.on.rowsRendered($scope, function() {
         // Timeout forces underlying code to be executed at the end
         $timeout(
           _.bind(updateChartContext, null, api.grid) // When rendered, update charts context
-        )
-      })
+        );
+      });
 
       $scope.$watch(
         'grid.renderContainers.body.currentTopRow', function() {
-          updateChartContext(api.grid)
+          updateChartContext(api.grid);
         }
-      )
+      );
     },
     columnDefs: [
       {
@@ -336,24 +336,22 @@ mciModule.controller('SignalProcessingCtrl', function(
         name: 'Variant',
         field: 'variant',
         type: 'string',
-        _link: function(row, col) {
-          return '/build/' + row.entity._buildId
-        },
+        _link: row => '/build/' + row.entity._buildId,
         cellTemplate: 'ui-grid-link',
       },
       {
         name: 'Task',
         field: 'task',
         type: 'string',
-        _link: function(row, col) {
-          return '/task/' + row.entity.task_id
-        },
+        _link: row => '/task/' + row.entity.task_id,
         cellTemplate: 'ui-grid-link',
       },
       {
         name: 'Test',
         field: 'test',
         type: 'string',
+        _link: row => '/task/' + row.entity.task_id + '##' + row.entity.test,
+        cellTemplate: 'ui-grid-link',
       },
       {
         name: 'Revision',
@@ -457,5 +455,5 @@ mciModule.controller('SignalProcessingCtrl', function(
         visible: false,
       },
     ]
-  }
-})
+  };
+});

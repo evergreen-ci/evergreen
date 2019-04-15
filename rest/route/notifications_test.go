@@ -11,9 +11,8 @@ import (
 	"github.com/evergreen-ci/evergreen/model/notification"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/rest/model"
-	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/stretchr/testify/suite"
-	"gopkg.in/mgo.v2/bson"
+	mgobson "gopkg.in/mgo.v2/bson"
 )
 
 type notificationSuite struct {
@@ -26,7 +25,7 @@ func TestNotificationSuite(t *testing.T) {
 }
 
 func (s *notificationSuite) SetupSuite() {
-	db.SetGlobalSessionProvider(testutil.TestConfig().SessionFactory())
+
 }
 
 func (s *notificationSuite) SetupTest() {
@@ -35,17 +34,17 @@ func (s *notificationSuite) SetupTest() {
 
 	events := []event.EventLogEntry{
 		{
-			ID:           bson.NewObjectId().Hex(),
+			ID:           mgobson.NewObjectId().Hex(),
 			ResourceType: event.ResourceTypeHost,
 			Data:         event.HostEventData{},
 		},
 		{
-			ID:           bson.NewObjectId().Hex(),
+			ID:           mgobson.NewObjectId().Hex(),
 			ResourceType: event.ResourceTypeHost,
 			Data:         event.HostEventData{},
 		},
 		{
-			ID:           bson.NewObjectId().Hex(),
+			ID:           mgobson.NewObjectId().Hex(),
 			ResourceType: event.ResourceTypeHost,
 			Data:         event.HostEventData{},
 			ProcessedAt:  s.expectedTime,

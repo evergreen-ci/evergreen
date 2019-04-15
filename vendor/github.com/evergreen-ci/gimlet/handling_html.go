@@ -6,7 +6,7 @@ import (
 
 // WriteHTMLResponse writes an HTML response with the specified error code.
 func WriteHTMLResponse(w http.ResponseWriter, code int, data interface{}) {
-	writeResponse(HTML, w, code, convertToBytes(data))
+	writeResponse(HTML, w, code, data)
 }
 
 // WriteHTML writes the data, converted to text as possible, to the

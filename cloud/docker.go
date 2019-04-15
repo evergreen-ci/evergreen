@@ -2,7 +2,6 @@ package cloud
 
 import (
 	"context"
-	"fmt"
 	"strings"
 	"time"
 
@@ -55,7 +54,7 @@ func (m *dockerManager) SpawnHost(ctx context.Context, h *host.Host) (*host.Host
 	}
 
 	if h.DockerOptions.Image == "" {
-		return nil, errors.New(fmt.Sprintf("Docker image empty for host '%s'", h.Id))
+		return nil, errors.Errorf("Docker image empty for host '%s'", h.Id)
 	}
 
 	// get parent of host

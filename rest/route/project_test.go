@@ -7,11 +7,9 @@ import (
 	"net/http"
 	"testing"
 
-	"github.com/evergreen-ci/evergreen/db"
 	serviceModel "github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/rest/model"
-	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/stretchr/testify/suite"
 )
@@ -29,7 +27,7 @@ type ProjectPatchByIDSuite struct {
 }
 
 func TestProjectPatchSuite(t *testing.T) {
-	db.SetGlobalSessionProvider(testutil.TestConfig().SessionFactory())
+
 	suite.Run(t, new(ProjectPatchByIDSuite))
 }
 
@@ -90,7 +88,7 @@ type ProjectPutSuite struct {
 }
 
 func TestProjectPutSuite(t *testing.T) {
-	db.SetGlobalSessionProvider(testutil.TestConfig().SessionFactory())
+
 	suite.Run(t, new(ProjectPutSuite))
 }
 
@@ -241,7 +239,7 @@ type ProjectGetByIDSuite struct {
 }
 
 func TestProjectGetByIDSuite(t *testing.T) {
-	db.SetGlobalSessionProvider(testutil.TestConfig().SessionFactory())
+
 	suite.Run(t, new(ProjectGetByIDSuite))
 }
 

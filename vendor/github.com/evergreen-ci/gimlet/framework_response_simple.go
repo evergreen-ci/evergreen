@@ -62,7 +62,7 @@ func NewBinaryResponse(data interface{}) Responder {
 
 func NewBinaryErrorResponse(data interface{}) Responder {
 	return &responderImpl{
-		data:   convertToBin(data),
+		data:   data,
 		status: http.StatusBadRequest,
 		format: BINARY,
 	}

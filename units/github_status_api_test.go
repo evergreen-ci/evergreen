@@ -20,7 +20,7 @@ import (
 	"github.com/mongodb/grip/send"
 	"github.com/stretchr/testify/suite"
 	"golang.org/x/oauth2"
-	"gopkg.in/mgo.v2/bson"
+	mgobson "gopkg.in/mgo.v2/bson"
 )
 
 type githubStatusUpdateSuite struct {
@@ -37,11 +37,6 @@ func TestGithubStatusUpdate(t *testing.T) {
 	suite.Run(t, new(githubStatusUpdateSuite))
 }
 
-func (s *githubStatusUpdateSuite) SetupSuite() {
-	testConfig := testutil.TestConfig()
-	db.SetGlobalSessionProvider(testConfig.SessionFactory())
-}
-
 func (s *githubStatusUpdateSuite) SetupTest() {
 	s.NoError(db.ClearCollections(evergreen.ConfigCollection, patch.Collection, patch.IntentCollection, model.ProjectRefCollection, evergreen.ConfigCollection))
 
@@ -56,7 +51,7 @@ func (s *githubStatusUpdateSuite) SetupTest() {
 	s.Require().NoError(s.env.Configure(ctx, filepath.Join(evergreen.FindEvergreenHome(), testutil.TestDir, testutil.TestSettings), nil))
 
 	startTime := time.Now().Truncate(time.Millisecond)
-	id := bson.NewObjectId()
+	id := mgobson.NewObjectId()
 	s.patchDoc = &patch.Patch{
 		Id:         id,
 		Version:    id.Hex(),
@@ -74,7 +69,7 @@ func (s *githubStatusUpdateSuite) SetupTest() {
 	}
 
 	s.buildDoc = &build.Build{
-		Id:           bson.NewObjectId().Hex(),
+		Id:           mgobson.NewObjectId().Hex(),
 		BuildVariant: "testvariant",
 		Version:      s.patchDoc.Version,
 		Status:       evergreen.BuildFailed,
@@ -86,7 +81,6 @@ func (s *githubStatusUpdateSuite) SetupTest() {
 
 func (s *githubStatusUpdateSuite) TearDownTest() {
 	s.cancel()
-	evergreen.ResetEnvironment()
 }
 
 func (s *githubStatusUpdateSuite) TestRunInDegradedMode() {
@@ -167,7 +161,7 @@ func (s *githubStatusUpdateSuite) TestForBadConfig() {
 	}
 	s.NoError(ref.Insert())
 
-	job, ok := NewGithubStatusUpdateJobForBadConfig(intent.ID()).(*githubStatusUpdateJob)
+	job, ok := NewGithubStatusUpdateJobForBadConfig(&ref, "776f608b5b12cd27b8d931c8ee4ca0c13f857299", "sender-id").(*githubStatusUpdateJob)
 	s.Require().NotNil(job)
 	s.Require().True(ok)
 	s.Require().Equal(githubUpdateTypeBadConfig, job.UpdateType)
@@ -245,17 +239,16 @@ func (s *githubStatusUpdateSuite) TestWithGithub() {
 	// this test in the suite will fail after the 1000th time).
 	// It's still useful for manual testing
 	s.T().Skip("Github Status API is limited")
-	evergreen.ResetEnvironment()
 	s.cancel()
 
 	ctx, cancel := context.WithCancel(context.Background())
 	s.cancel = cancel
 
-	s.Require().NoError(evergreen.GetEnvironment().Configure(ctx, filepath.Join(evergreen.FindEvergreenHome(), testutil.TestDir, testutil.TestSettings), nil))
+	env := testutil.NewEnvironment(ctx, s.T())
 
 	testutil.ConfigureIntegrationTest(s.T(), s.testConfig, "TestWithGithub")
-	evergreen.GetEnvironment().Settings().Credentials = s.testConfig.Credentials
-	evergreen.GetEnvironment().Settings().Ui.Url = "http://example.com"
+	env.Settings().Credentials = s.testConfig.Credentials
+	env.Settings().Ui.Url = "http://example.com"
 
 	s.patchDoc.GithubPatchData.BaseRepo = "sample"
 	s.patchDoc.GithubPatchData.HeadOwner = "richardsamuels"

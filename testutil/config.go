@@ -1,10 +1,16 @@
 package testutil
 
 import (
+	"context"
+	"flag"
 	"path/filepath"
+	"testing"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
 	"github.com/mongodb/grip/send"
+	"github.com/stretchr/testify/require"
 )
 
 const (
@@ -12,6 +18,29 @@ const (
 	TestSettings               = "evg_settings.yml"
 	testSettingsWithAuthTokens = "evg_settings_with_3rd_party_defaults.yml"
 )
+
+func init() {
+	if flag.Lookup("test.v") == nil {
+		grip.Alert("called init() in testutil for production code.")
+	} else if evergreen.GetEnvironment() == nil {
+		ctx := context.Background()
+
+		path := filepath.Join(evergreen.FindEvergreenHome(), TestDir, TestSettings)
+		env, err := evergreen.NewEnvironment(ctx, path, nil)
+		grip.EmergencyPanic(message.WrapError(err, message.Fields{
+			"note": "could not initialize test environment",
+			"path": filepath.Join(evergreen.FindEvergreenHome(), TestDir, TestSettings),
+		}))
+
+		evergreen.SetEnvironment(env)
+	}
+}
+
+func NewEnvironment(ctx context.Context, t *testing.T) evergreen.Environment {
+	env, err := evergreen.NewEnvironment(ctx, filepath.Join(evergreen.FindEvergreenHome(), TestDir, TestSettings), nil)
+	require.NoError(t, err)
+	return env
+}
 
 // TestConfig creates test settings from a test config.
 func TestConfig() *evergreen.Settings {
@@ -97,7 +126,10 @@ func MockConfig() *evergreen.Settings {
 			},
 		},
 		Credentials:        map[string]string{"k1": "v1"},
+		JasperURL:          "url",
+		JasperVersion:      "version",
 		Expansions:         map[string]string{"k2": "v2"},
+		GoogleAnalyticsID:  "u-12345",
 		GithubPRCreatorOrg: "org",
 		HostInit: evergreen.HostInitConfig{
 			SSHTimeoutSeconds: 10,

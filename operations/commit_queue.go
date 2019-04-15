@@ -2,7 +2,9 @@ package operations
 
 import (
 	"context"
+	"net/http"
 
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/rest/client"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/mongodb/grip"
@@ -10,7 +12,12 @@ import (
 	"github.com/urfave/cli"
 )
 
-const itemFlagName = "item"
+const (
+	itemFlagName       = "item"
+	refFlagName        = "ref"
+	pauseFlagName      = "pause"
+	identifierFlagName = "identifier"
+)
 
 func CommitQueue() cli.Command {
 	return cli.Command{
@@ -19,6 +26,8 @@ func CommitQueue() cli.Command {
 		Subcommands: []cli.Command{
 			listQueue(),
 			deleteItem(),
+			mergeCommand(),
+			setModuleCommand(),
 		},
 	}
 }
@@ -33,7 +42,7 @@ func listQueue() cli.Command {
 			setPlainLogger,
 		),
 		Action: func(c *cli.Context) error {
-			confPath := c.Parent().String(confFlagName)
+			confPath := c.Parent().Parent().String(confFlagName)
 			projectID := c.String(projectFlagName)
 
 			ctx, cancel := context.WithCancel(context.Background())
@@ -43,9 +52,7 @@ func listQueue() cli.Command {
 				return errors.Wrap(err, "problem loading configuration")
 			}
 			client := conf.GetRestCommunicator(ctx)
-			if err != nil {
-				return errors.Wrap(err, "problem accessing evergreen service")
-			}
+			defer client.Close()
 
 			return listCommitQueue(ctx, client, projectID)
 		},
@@ -66,7 +73,7 @@ func deleteItem() cli.Command {
 			setPlainLogger,
 		),
 		Action: func(c *cli.Context) error {
-			confPath := c.Parent().String(confFlagName)
+			confPath := c.Parent().Parent().String(confFlagName)
 			projectID := c.String(projectFlagName)
 			item := c.String(itemFlagName)
 
@@ -77,11 +84,102 @@ func deleteItem() cli.Command {
 				return errors.Wrap(err, "problem loading configuration")
 			}
 			client := conf.GetRestCommunicator(ctx)
+			defer client.Close()
+
+			return deleteCommitQueueItem(ctx, client, projectID, item)
+		},
+	}
+}
+
+func mergeCommand() cli.Command {
+	return cli.Command{
+		Name:  "merge",
+		Usage: "test and merge a feature branch",
+		Flags: mergeFlagSlices(addProjectFlag(), addLargeFlag(), addYesFlag(
+			cli.StringFlag{
+				Name:  joinFlagNames(refFlagName, "r"),
+				Usage: "merge branch `REF`",
+				Value: "HEAD",
+			},
+			cli.StringFlag{
+				Name:  identifierFlagName,
+				Usage: "finalize a preexisting item with `ID`",
+			},
+			cli.BoolFlag{
+				Name:  pauseFlagName,
+				Usage: "wait to enqueue an item until finalized",
+			},
+			cli.StringFlag{
+				Name:  joinFlagNames(patchDescriptionFlagName, "d"),
+				Usage: "description for the patch",
+			},
+		)),
+		Action: func(c *cli.Context) error {
+			ctx, cancel := context.WithCancel(context.Background())
+			defer cancel()
+
+			params := mergeParams{
+				projectID:   c.String(projectFlagName),
+				ref:         c.String(refFlagName),
+				id:          c.String(identifierFlagName),
+				pause:       c.Bool(pauseFlagName),
+				description: c.String(patchDescriptionFlagName),
+				skipConfirm: c.Bool(yesFlagName),
+				large:       c.Bool(largeFlagName),
+			}
+
+			conf, err := NewClientSettings(c.Parent().String(confFlagName))
+			if err != nil {
+				return errors.Wrap(err, "problem loading configuration")
+			}
+
+			ac, _, err := conf.getLegacyClients()
+			if err != nil {
+				return errors.Wrap(err, "problem accessing legacy evergreen client")
+			}
+
+			client := conf.GetRestCommunicator(ctx)
+			defer client.Close()
+
+			return params.mergeBranch(ctx, conf, client, ac)
+		},
+	}
+}
+
+func setModuleCommand() cli.Command {
+	return cli.Command{
+		Name:  "set-module",
+		Usage: "update or add module to an existing merge patch",
+		Flags: mergeFlagSlices(addLargeFlag(), addPatchIDFlag(), addModuleFlag(), addYesFlag(
+			cli.StringFlag{
+				Name:  joinFlagNames(refFlagName, "r"),
+				Usage: "merge branch `REF`",
+				Value: "HEAD",
+			},
+		)),
+		Before: mergeBeforeFuncs(
+			requirePatchIDFlag,
+			requireModuleFlag,
+		),
+		Action: func(c *cli.Context) error {
+			params := moduleParams{
+				patchID:     c.String(patchIDFlagName),
+				module:      c.String(moduleFlagName),
+				ref:         c.String(refFlagName),
+				large:       c.Bool(largeFlagName),
+				skipConfirm: c.Bool(yesFlagName),
+			}
+
+			conf, err := NewClientSettings(c.Parent().String(confFlagName))
+			if err != nil {
+				return errors.Wrap(err, "problem loading configuration")
+			}
+			ac, rc, err := conf.getLegacyClients()
 			if err != nil {
 				return errors.Wrap(err, "problem accessing evergreen service")
 			}
 
-			return deleteCommitQueueItem(ctx, client, projectID, item)
+			return errors.WithStack(params.addModule(ac, rc))
 		},
 	}
 }
@@ -116,4 +214,168 @@ func deleteCommitQueueItem(ctx context.Context, client client.Communicator, proj
 	grip.Infof("Item '%s' deleted\n", item)
 
 	return nil
+}
+
+type mergeParams struct {
+	projectID   string
+	ref         string
+	id          string
+	pause       bool
+	description string
+	skipConfirm bool
+	large       bool
+}
+
+func (p *mergeParams) mergeBranch(ctx context.Context, conf *ClientSettings, client client.Communicator, ac *legacyClient) error {
+	if p.id == "" {
+		if err := p.uploadMergePatch(conf, ac); err != nil {
+			return err
+		}
+	}
+
+	if !p.pause {
+		position, err := client.EnqueueItem(ctx, p.projectID, p.id)
+		if err != nil {
+			return err
+		}
+		grip.Infof("Queue position is %d", position)
+	}
+
+	return nil
+}
+
+func (p *mergeParams) uploadMergePatch(conf *ClientSettings, ac *legacyClient) error {
+	patchParams := &patchParams{
+		Project:     p.projectID,
+		SkipConfirm: p.skipConfirm,
+		Description: p.description,
+		Large:       p.large,
+		Alias:       evergreen.CommitQueueAlias,
+	}
+
+	if err := patchParams.loadProject(conf); err != nil {
+		return errors.Wrap(err, "invalid project ID")
+	}
+
+	ref, err := ac.GetProjectRef(patchParams.Project)
+	if err != nil {
+		if apiErr, ok := err.(APIError); ok && apiErr.code == http.StatusNotFound {
+			err = errors.WithStack(err)
+		}
+		return errors.Wrap(err, "can't get project ref")
+	}
+
+	diffData, err := getFeaturePatchInfo(ref.Branch, p.ref)
+	if err != nil {
+		return errors.Wrap(err, "can't generate patches")
+	}
+
+	if p.description == "" {
+		p.description, err = gitCmd("rev-parse", "--abbrev-ref", p.ref)
+		if err != nil {
+			return errors.Wrapf(err, "can't get branch name for ref %s", p.ref)
+		}
+	}
+
+	patch, err := patchParams.createPatch(ac, conf, diffData)
+	if err != nil {
+		return err
+	}
+
+	p.id = patch.Id.Hex()
+
+	return nil
+}
+
+type moduleParams struct {
+	patchID     string
+	module      string
+	ref         string
+	large       bool
+	skipConfirm bool
+}
+
+func (p *moduleParams) addModule(ac *legacyClient, rc *legacyClient) error {
+	diffData, err := p.getModulePatch(rc)
+	if err != nil {
+		return errors.Wrap(err, "can't get patch")
+	}
+
+	if len(diffData.fullPatch) == 0 {
+		if p.skipConfirm {
+			return errors.New("empty patch aborted")
+		}
+		if !confirm("Patch submission is empty. Continue?(y/n)", true) {
+			return errors.New("empty patch aborted")
+		}
+	}
+
+	if err = validatePatchSize(diffData, p.large); err != nil {
+		return err
+	}
+
+	if !p.skipConfirm {
+		grip.InfoWhen(diffData.patchSummary != "", diffData.patchSummary)
+		if !confirm("This is a summary of the patch to be submitted. Continue? (y/n):", true) {
+			return nil
+		}
+	}
+
+	err = ac.UpdatePatchModule(p.patchID, p.module, diffData.fullPatch, diffData.base)
+	if err != nil {
+		return errors.WithStack(err)
+	}
+
+	return nil
+}
+
+func (p *moduleParams) getModulePatch(rc *legacyClient) (*localDiff, error) {
+	proj, err := rc.GetPatchedConfig(p.patchID)
+	if err != nil {
+		return nil, err
+	}
+
+	moduleBranch, err := getModuleBranch(p.module, proj)
+	if err != nil {
+		return nil, errors.Wrapf(err, "could not set specified module: '%s'", p.module)
+	}
+
+	diffData, err := getFeaturePatchInfo(moduleBranch, p.ref)
+	if err != nil {
+		return nil, errors.Wrap(err, "can't get patch data")
+	}
+
+	return diffData, nil
+}
+
+func getFeaturePatchInfo(projectBranch, ref string) (*localDiff, error) {
+	upstream := projectBranch + "@{upstream}"
+	revisionRange := upstream + ".." + ref
+
+	stat, err := gitCmd("diff", "--no-ext-diff", "--stat", revisionRange)
+	if err != nil {
+		return nil, errors.Wrap(err, "can't get stat")
+	}
+
+	log, err := gitCmd("log", "--oneline", revisionRange)
+	if err != nil {
+		return nil, errors.Wrap(err, "can't get log")
+	}
+
+	patches, err := gitCmd("format-patch", "--no-ext-diff", "--stdout", revisionRange)
+	if err != nil {
+		return nil, errors.Wrap(err, "can't generate patch")
+	}
+
+	mergeBase, err := gitMergeBase(upstream, ref)
+	if err != nil {
+		return nil, errors.Errorf("Error getting merge base: %v", err)
+	}
+
+	return &localDiff{
+		fullPatch:    patches,
+		patchSummary: stat,
+		log:          log,
+		base:         mergeBase,
+	}, nil
 }

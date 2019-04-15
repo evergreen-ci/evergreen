@@ -2,6 +2,7 @@ package model
 
 import (
 	"context"
+	"encoding/base64"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -13,13 +14,11 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/patch"
-	"github.com/evergreen-ci/evergreen/subprocess"
 	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/level"
 	"github.com/mongodb/grip/message"
-	"github.com/mongodb/grip/send"
 	"github.com/pkg/errors"
 )
 
@@ -104,11 +103,80 @@ func IncludePatchDependencies(project *Project, tvpairs []TVPair) []TVPair {
 	return di.Include(tvpairs)
 }
 
+// GetPatchedProject creates and validates a project created by fetching latest commit information from GitHub
+// and applying the patch to the latest remote configuration. The error returned can be a validation error.
+func GetPatchedProject(ctx context.Context, p *patch.Patch, githubOauthToken string) (*Project, error) {
+	if p.Version != "" {
+		return nil, errors.Errorf("Patch %v already finalized", p.Version)
+	}
+
+	projectRef, err := FindOneProjectRef(p.Project)
+	if err != nil {
+		return nil, errors.WithStack(err)
+	}
+
+	project := &Project{}
+	// if the patched config exists, use that as the project file bytes.
+	if p.PatchedConfig != "" {
+		if err = LoadProjectInto([]byte(p.PatchedConfig), projectRef.Identifier, project); err != nil {
+			return nil, errors.WithStack(err)
+		}
+		return project, nil
+	}
+
+	var cancel context.CancelFunc
+	ctx, cancel = context.WithTimeout(ctx, 10*time.Second)
+	defer cancel()
+	env := evergreen.GetEnvironment()
+
+	// try to get the remote project file data at the requested revision
+	var projectFileBytes []byte
+	hash := p.Githash
+	if p.IsGithubPRPatch() {
+		hash = p.GithubPatchData.HeadHash
+	}
+	if p.IsPRMergePatch() {
+		hash = p.GithubPatchData.MergeCommitSHA
+	}
+
+	githubFile, err := thirdparty.GetGithubFile(ctx, githubOauthToken, projectRef.Owner,
+		projectRef.Repo, projectRef.RemotePath, hash)
+	if err != nil {
+		// if the project file doesn't exist, but our patch includes a project file,
+		// we try to apply the diff and proceed.
+		if !(p.ConfigChanged(projectRef.RemotePath) && thirdparty.IsFileNotFound(err)) {
+			// return an error if the github error is network/auth-related or we aren't patching the config
+			return nil, errors.Wrapf(err, "Could not get github file at '%s/%s'@%s: %s", projectRef.Owner,
+				projectRef.Repo, projectRef.RemotePath, hash)
+		}
+	} else {
+		// we successfully got the project file in base64, so we decode it
+		projectFileBytes, err = base64.StdEncoding.DecodeString(*githubFile.Content)
+		if err != nil {
+			return nil, errors.Wrapf(err, "Could not decode github file at '%s/%s'@%s: %s", projectRef.Owner,
+				projectRef.Repo, projectRef.RemotePath, hash)
+		}
+	}
+
+	// apply remote configuration patch if needed
+	if !(p.IsGithubPRPatch() || p.IsPRMergePatch()) && p.ConfigChanged(projectRef.RemotePath) {
+		projectFileBytes, err = MakePatchedConfig(ctx, env, p, projectRef.RemotePath, string(projectFileBytes))
+		if err != nil {
+			return nil, errors.Wrapf(err, "Could not patch remote configuration file")
+		}
+	}
+
+	if err := LoadProjectInto(projectFileBytes, projectRef.Identifier, project); err != nil {
+		return nil, errors.WithStack(err)
+	}
+
+	return project, nil
+}
+
 // MakePatchedConfig takes in the path to a remote configuration a stringified version
 // of the current project and returns an unmarshalled version of the project
 // with the patch applied
-func MakePatchedConfig(ctx context.Context, p *patch.Patch, remoteConfigPath, projectConfig string) (
-	*Project, error) {
+func MakePatchedConfig(ctx context.Context, env evergreen.Environment, p *patch.Patch, remoteConfigPath, projectConfig string) ([]byte, error) {
 	for _, patchPart := range p.Patches {
 		// we only need to patch the main project and not any other modules
 		if patchPart.ModuleName != "" {
@@ -135,7 +203,6 @@ func MakePatchedConfig(ctx context.Context, p *patch.Patch, remoteConfigPath, pr
 			if err != nil {
 				return nil, errors.Wrap(err, "could not write temporary patch file")
 			}
-
 		} else {
 			patchFilePath, err = util.WriteToTempFile(patchPart.PatchSet.Patch)
 			if err != nil {
@@ -186,36 +253,19 @@ func MakePatchedConfig(ctx context.Context, p *patch.Patch, remoteConfigPath, pr
 				remoteConfigPath, patchFilePath),
 		}
 
-		stderr := send.MakeWriterSender(grip.GetSender(), level.Error)
-		defer stderr.Close() //nolint: evg
-		stdout := send.MakeWriterSender(grip.GetSender(), level.Info)
-		defer stdout.Close() //nolint: evg
-		output := subprocess.OutputOptions{Output: stdout, Error: stderr}
-
-		patchCmd := subprocess.NewLocalCommand(
-			strings.Join(patchCommandStrings, "\n"),
-			workingDirectory,
-			"bash",
-			nil,
-			true)
-
-		if err = patchCmd.SetOutput(output); err != nil {
-			return nil, errors.Wrap(err, "problem configuring command output")
+		err = env.JasperManager().CreateCommand(ctx).Add([]string{"bash", "-c", strings.Join(patchCommandStrings, "\n")}).
+			SetErrorSender(level.Error, grip.GetSender()).SetOutputSender(level.Info, grip.GetSender()).
+			Directory(workingDirectory).Run(ctx)
+		if err != nil {
+			return nil, errors.Wrap(err, "could not run patch command")
 		}
 
-		if err = patchCmd.Run(ctx); err != nil {
-			return nil, errors.Errorf("could not run patch command: %v", err)
-		}
 		// read in the patched config file
 		data, err := ioutil.ReadFile(localConfigPath)
 		if err != nil {
 			return nil, errors.Wrap(err, "could not read patched config file")
 		}
-		project := &Project{}
-		if err = LoadProjectInto(data, p.Project, project); err != nil {
-			return nil, errors.WithStack(err)
-		}
-		return project, nil
+		return data, nil
 	}
 	return nil, errors.New("no patch on project")
 }
@@ -323,6 +373,7 @@ func FinalizePatch(ctx context.Context, p *patch.Patch, requester string, github
 	if err = patchVersion.Insert(); err != nil {
 		return nil, errors.WithStack(err)
 	}
+
 	if err = p.SetActivated(patchVersion.Id); err != nil {
 		return nil, errors.WithStack(err)
 	}

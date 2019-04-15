@@ -13,10 +13,10 @@ import (
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/user"
-	"github.com/evergreen-ci/evergreen/subprocess"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
+	"github.com/mongodb/jasper"
 	"github.com/pkg/errors"
 )
 
@@ -131,22 +131,22 @@ func CreateSpawnHost(so SpawnOptions) (*host.Host, error) {
 		OwnerId: so.Owner.Id,
 	}
 	expiration := DefaultSpawnHostExpiration
-	hostOptions := HostOptions{
+	hostOptions := host.CreateOptions{
 		ProvisionOptions:   provisionOptions,
 		UserName:           so.UserName,
 		ExpirationDuration: &expiration,
 		UserHost:           true,
 	}
 
-	intentHost := NewIntent(d, d.GenerateName(), d.Provider, hostOptions)
+	intentHost := host.NewIntent(d, d.GenerateName(), d.Provider, hostOptions)
 	if intentHost == nil { // theoretically this should not happen
 		return nil, errors.New("unable to intent host: NewIntent did not return a host")
 	}
 	return intentHost, nil
 }
 
-func SetHostRDPPassword(ctx context.Context, host *host.Host, password string) error {
-	pwdUpdateCmd, err := constructPwdUpdateCommand(ctx, evergreen.GetEnvironment().Settings(), host, password)
+func SetHostRDPPassword(ctx context.Context, env evergreen.Environment, host *host.Host, password string) error {
+	pwdUpdateCmd, err := constructPwdUpdateCommand(ctx, env, host, password)
 	if err != nil {
 		return errors.Wrap(err, "Error constructing host RDP password")
 	}
@@ -161,19 +161,18 @@ func SetHostRDPPassword(ctx context.Context, host *host.Host, password string) e
 		MaxBytes: 1024 * 1024,
 	}
 
-	opts := subprocess.OutputOptions{Error: stderr, Output: stdout}
-	if err = pwdUpdateCmd.SetOutput(opts); err != nil {
-		return errors.WithStack(err)
-	}
+	pwdUpdateCmd.SetErrorWriter(stderr).SetOutputWriter(stdout)
 
 	// update RDP and sshd password
 	if err = pwdUpdateCmd.Run(ctx); err != nil {
-		grip.Warning(message.WrapError(err, message.Fields{
+		grip.Warning(message.Fields{
 			"stdout":    stdout.Buffer.String(),
 			"stderr":    stderr.Buffer.String(),
 			"operation": "set host rdp password",
 			"host":      host.Id,
-		}))
+			"cmd":       pwdUpdateCmd.String(),
+			"err":       err,
+		})
 		return errors.Wrap(err, "Error updating host RDP password")
 	}
 
@@ -182,6 +181,7 @@ func SetHostRDPPassword(ctx context.Context, host *host.Host, password string) e
 		"stderr":    stderr.Buffer.String(),
 		"operation": "set host rdp password",
 		"host":      host.Id,
+		"cmd":       pwdUpdateCmd.String(),
 	})
 
 	return nil
@@ -189,13 +189,14 @@ func SetHostRDPPassword(ctx context.Context, host *host.Host, password string) e
 
 // constructPwdUpdateCommand returns a RemoteCommand struct used to
 // set the RDP password on a remote windows machine.
-func constructPwdUpdateCommand(ctx context.Context, settings *evergreen.Settings, hostObj *host.Host, password string) (subprocess.Command, error) {
+func constructPwdUpdateCommand(ctx context.Context, env evergreen.Environment, hostObj *host.Host, password string) (*jasper.Command, error) {
+	settings := env.Settings()
 	cloudHost, err := GetCloudHost(ctx, hostObj, settings)
 	if err != nil {
 		return nil, err
 	}
 
-	hostInfo, err := util.ParseSSHInfo(hostObj.Host)
+	hostInfo, err := hostObj.GetSSHInfo()
 	if err != nil {
 		return nil, err
 	}
@@ -206,21 +207,12 @@ func constructPwdUpdateCommand(ctx context.Context, settings *evergreen.Settings
 	}
 
 	escapedPassword := strings.Replace(password, `\`, `\\`, -1)
-	updatePwdCmd := fmt.Sprintf(`net user %s "%s" && sc config sshd obj= '.\%s' password= "%s"`,
-		hostObj.User, escapedPassword, hostObj.User, escapedPassword)
+	updatePwdCmd := fmt.Sprintf(`'net user %s %s'`, hostObj.User, escapedPassword)
+	sshUpdatePwd := fmt.Sprintf(`'sc config sshd obj= \".%s\" password= \"%s\"'`, hostObj.User, escapedPassword)
 
-	// construct the required termination command
-	remoteCommand := subprocess.NewRemoteCommand(
-		updatePwdCmd,
-		hostInfo.Hostname,
-		hostObj.User,
-		nil,   // env
-		false, // background
-		append([]string{"-p", hostInfo.Port}, sshOptions...),
-		true, // logging disabled
-	)
-
-	return remoteCommand, nil
+	return env.JasperManager().CreateCommand(ctx).Host(hostInfo.Hostname).User(hostObj.User).
+		ExtendSSHArgs("-p", hostInfo.Port).ExtendSSHArgs(sshOptions...).
+		Append(updatePwdCmd).Append(sshUpdatePwd), nil
 }
 
 func TerminateSpawnHost(ctx context.Context, host *host.Host, settings *evergreen.Settings, user string) error {

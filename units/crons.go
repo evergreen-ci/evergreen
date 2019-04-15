@@ -785,7 +785,7 @@ func PopulatePeriodicNotificationJobs(parts int) amboy.QueueOperation {
 	}
 }
 
-func CacheHistoricalTestDataJob(part int) amboy.QueueOperation {
+func PopulateCacheHistoricalTestDataJob(part int) amboy.QueueOperation {
 	return func(queue amboy.Queue) error {
 		projects, err := model.FindAllTrackedProjectRefs()
 		if err != nil {
@@ -817,5 +817,12 @@ func CacheHistoricalTestDataJob(part int) amboy.QueueOperation {
 		}
 
 		return catcher.Resolve()
+	}
+}
+
+func PopulateJasperCleanup(env evergreen.Environment) amboy.QueueOperation {
+	return func(queue amboy.Queue) error {
+		ts := util.RoundPartOfHour(1).Format(tsFormat)
+		return queue.Put(NewJasperManagerCleanup(ts, env))
 	}
 }

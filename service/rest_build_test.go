@@ -17,6 +17,7 @@ import (
 	modelutil "github.com/evergreen-ci/evergreen/model/testutil"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/gimlet"
+	"github.com/stretchr/testify/require"
 
 	. "github.com/smartystreets/goconvey/convey"
 )
@@ -26,7 +27,7 @@ var buildTestConfig = testutil.TestConfig()
 func TestGetBuildInfo(t *testing.T) {
 
 	userManager, _, err := auth.LoadUserManager(buildTestConfig.AuthConfig)
-	testutil.HandleTestingErr(err, t, "Failure in loading UserManager from config")
+	require.NoError(t, err, "Failure in loading UserManager from config")
 
 	uis := UIServer{
 		RootURL:     buildTestConfig.Ui.Url,
@@ -44,10 +45,10 @@ func TestGetBuildInfo(t *testing.T) {
 	app := GetRESTv1App(&uis)
 	app.AddMiddleware(gimlet.UserMiddleware(uis.UserManager, gimlet.UserMiddlewareConfiguration{}))
 	router, err := app.Handler()
-	testutil.HandleTestingErr(err, t, "error setting up router")
+	require.NoError(t, err, "error setting up router")
 
 	Convey("When finding info on a particular build", t, func() {
-		testutil.HandleTestingErr(db.Clear(build.Collection), t,
+		require.NoError(t, db.Clear(build.Collection),
 			"Error clearing '%v' collection", build.Collection)
 
 		buildId := "my-build"
@@ -189,7 +190,7 @@ func TestGetBuildInfo(t *testing.T) {
 func TestGetBuildStatus(t *testing.T) {
 
 	userManager, _, err := auth.LoadUserManager(buildTestConfig.AuthConfig)
-	testutil.HandleTestingErr(err, t, "Failure in loading UserManager from config")
+	require.NoError(t, err, "Failure in loading UserManager from config")
 
 	uis := UIServer{
 		RootURL:     buildTestConfig.Ui.Url,
@@ -207,11 +208,10 @@ func TestGetBuildStatus(t *testing.T) {
 	app := GetRESTv1App(&uis)
 	app.AddMiddleware(gimlet.UserMiddleware(uis.UserManager, gimlet.UserMiddlewareConfiguration{}))
 	router, err := app.Handler()
-	testutil.HandleTestingErr(err, t, "error setting up router")
+	require.NoError(t, err, "error setting up router")
 
 	Convey("When finding the status of a particular build", t, func() {
-		testutil.HandleTestingErr(db.Clear(build.Collection), t,
-			"Error clearing '%v' collection", build.Collection)
+		require.NoError(t, db.Clear(build.Collection), "Error clearing '%v' collection", build.Collection)
 
 		buildId := "my-build"
 		versionId := "my-version"

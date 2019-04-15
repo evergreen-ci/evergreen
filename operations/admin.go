@@ -72,7 +72,7 @@ func adminSetBanner() cli.Command {
 			},
 		),
 		Action: func(c *cli.Context) error {
-			confPath := c.Parent().String(confFlagName)
+			confPath := c.Parent().Parent().String(confFlagName)
 			themeName := c.String(themeFlagName)
 			msgContent := c.String(messageFlagName)
 
@@ -122,7 +122,7 @@ func adminEnableService() cli.Command {
 
 func adminServiceChange(disable bool) cli.ActionFunc {
 	return func(c *cli.Context) error {
-		confPath := c.Parent().String(confFlagName)
+		confPath := c.Parent().Parent().String(confFlagName)
 		flagsToSet := c.StringSlice(adminFlagsFlagName)
 
 		ctx, cancel := context.WithCancel(context.Background())
@@ -189,7 +189,7 @@ func viewSettings() cli.Command {
 
 func doViewSettings() cli.ActionFunc {
 	return func(c *cli.Context) error {
-		confPath := c.Parent().String(confFlagName)
+		confPath := c.Parent().Parent().String(confFlagName)
 
 		ctx, cancel := context.WithCancel(context.Background())
 		defer cancel()
@@ -231,7 +231,7 @@ func updateSettings() cli.Command {
 			},
 		},
 		Action: func(c *cli.Context) error {
-			confPath := c.Parent().String(confFlagName)
+			confPath := c.Parent().Parent().String(confFlagName)
 			updateString := c.String(updateFlagName)
 
 			updateSettings := &model.APIAdminSettings{}
@@ -274,7 +274,7 @@ func listEvents() cli.Command {
 		Usage:  "print the admin event log",
 		Flags:  mergeFlagSlices(addStartTimeFlag(), addLimitFlag()),
 		Action: func(c *cli.Context) error {
-			confPath := c.Parent().String(confFlagName)
+			confPath := c.Parent().Parent().String(confFlagName)
 			timeString := c.String(startTimeFlagName)
 			var ts time.Time
 			var err error
@@ -319,7 +319,7 @@ func revert() cli.Command {
 		Before: mergeBeforeFuncs(setPlainLogger),
 		Usage:  "revert a specific change to the admin settings",
 		Action: func(c *cli.Context) error {
-			confPath := c.Parent().String(confFlagName)
+			confPath := c.Parent().Parent().String(confFlagName)
 			guid := c.Args().Get(0)
 			if guid == "" {
 				return errors.New("must specify a guid to revert")
@@ -333,6 +333,7 @@ func revert() cli.Command {
 			}
 			client := conf.GetRestCommunicator(ctx)
 			defer client.Close()
+
 			err = client.RevertSettings(ctx, guid)
 			if err != nil {
 				return err
