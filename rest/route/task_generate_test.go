@@ -14,12 +14,9 @@ import (
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/gimlet"
-	"github.com/mongodb/amboy"
 	"github.com/mongodb/amboy/queue"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"go.mongodb.org/mongo-driver/mongo"
-	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
 type Thing struct {
@@ -62,100 +59,50 @@ func TestGenerateExecute(t *testing.T) {
 	assert.Equal(t, r.Status(), http.StatusOK)
 }
 
-func localConstructor(ctx context.Context) (amboy.Queue, error) {
-	return queue.NewLocalUnordered(1), nil
-}
-
-func remoteConstructor(ctx context.Context) (queue.Remote, error) {
-	return queue.NewRemoteUnordered(1), nil
-}
-
 func TestGeneratePollParse(t *testing.T) {
 	require.NoError(t, db.ClearCollections(task.Collection, host.Collection))
 
 	sc := &data.MockConnector{}
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := context.Background()
 
 	r, err := http.NewRequest("GET", "/task/1/generate", nil)
-	require.NoError(t, err)
+	assert.NoError(err)
 	r = gimlet.SetURLVars(r, map[string]string{"task_id": "1"})
 	r.Header.Set(evergreen.HostHeader, "1")
 	r.Header.Set(evergreen.HostSecretHeader, "secret")
+	h := makeGenerateTasksPollHandler(sc, queue.NewLocalUnordered(1))
 
-	// opts := queue.LocalQueueGroupOptions{Constructor: localConstructor}
-	// q, err := queue.NewLocalQueueGroup(ctx, opts)
-	// require.NoError(t, err)
-	uri := "mongodb://localhost:27017"
-	client, err := mongo.NewClient(options.Client().ApplyURI(uri))
-	require.NoError(t, err)
-	require.NoError(t, client.Connect(ctx))
-	require.NoError(t, client.Database("amboy_test").Drop(ctx))
-	opts := queue.RemoteQueueGroupOptions{
-		Client:      client,
-		Constructor: remoteConstructor,
-		MongoOptions: queue.MongoDBOptions{
-			URI: uri,
-			DB:  "amboy_test",
-		},
-		Prefix: "gen",
-	}
-	q, err := queue.NewRemoteQueueGroup(ctx, opts)
-	require.NoError(t, err)
-
-	h := makeGenerateTasksPollHandler(sc, q)
-	require.Error(t, h.Parse(ctx, r))
+	assert.Error(h.Parse(ctx, r))
 	task_1 := &task.Task{Id: "1"}
-	require.NoError(t, task_1.Insert())
-	require.Error(t, h.Parse(ctx, r))
+	assert.NoError(task_1.Insert())
+	assert.Error(h.Parse(ctx, r))
 	host_1 := &host.Host{Id: "1", Secret: "secret"}
-	require.NoError(t, host_1.Insert())
-	require.NoError(t, h.Parse(ctx, r))
+	assert.NoError(host_1.Insert())
+	assert.NoError(h.Parse(ctx, r))
 }
 
 func TestGeneratePollRun(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	assert := assert.New(t)
+	ctx := context.Background()
 	sc := &data.MockConnector{}
-
-	// opts := queue.LocalQueueGroupOptions{Constructor: localConstructor}
-	// q, err := queue.NewLocalQueueGroup(ctx, opts)
-	// require.NoError(t, err)
-	uri := "mongodb://localhost:27017"
-	client, err := mongo.NewClient(options.Client().ApplyURI(uri))
-	require.NoError(t, err)
-	require.NoError(t, client.Connect(ctx))
-	require.NoError(t, client.Database("amboy_test").Drop(ctx))
-	opts := queue.RemoteQueueGroupOptions{
-		Client:      client,
-		Constructor: remoteConstructor,
-		MongoOptions: queue.MongoDBOptions{
-			URI: uri,
-			DB:  "amboy_test",
-		},
-		Prefix: "gen",
-	}
-	q, err := queue.NewRemoteQueueGroup(ctx, opts)
-	require.NoError(t, err)
-
-	h := makeGenerateTasksPollHandler(sc, q)
+	h := makeGenerateTasksPollHandler(sc, queue.NewLocalUnordered(1))
 
 	impl, ok := h.(*generatePollHandler)
-	require.True(t, ok)
+	assert.True(ok)
 	impl.taskID = "0"
 	resp := h.Run(ctx)
-	require.NotNil(t, resp)
-	require.Equal(t, http.StatusInternalServerError, resp.Status())
+	assert.NotNil(resp)
+	assert.Equal(http.StatusInternalServerError, resp.Status())
 
 	impl.taskID = "1"
 	resp = h.Run(ctx)
-	require.NotNil(t, resp)
-	require.Equal(t, http.StatusOK, resp.Status())
-	require.Equal(t, true, resp.Data().(*apimodels.GeneratePollResponse).Finished)
+	assert.NotNil(resp)
+	assert.Equal(http.StatusOK, resp.Status())
+	assert.Equal(true, resp.Data().(*apimodels.GeneratePollResponse).Finished)
 
 	impl.taskID = "2"
 	resp = h.Run(ctx)
-	require.NotNil(t, resp)
-	require.Equal(t, http.StatusOK, resp.Status())
-	require.Equal(t, false, resp.Data().(*apimodels.GeneratePollResponse).Finished)
+	assert.NotNil(resp)
+	assert.Equal(http.StatusOK, resp.Status())
+	assert.Equal(false, resp.Data().(*apimodels.GeneratePollResponse).Finished)
 }
