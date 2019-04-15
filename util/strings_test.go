@@ -1,6 +1,7 @@
 package util
 
 import (
+	"sort"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -20,10 +21,11 @@ func TestGetSetDifference(t *testing.T) {
 	setA := []string{"one", "four", "five", "three", "two"}
 	setB := []string{"five", "two"}
 	difference := GetSetDifference(setA, setB)
+	sort.Strings(difference)
 
 	// GetSetDifference returns the elements in A that are not in B
 	assert.Equal(3, len(difference))
-	assert.Equal("one", difference[0])
-	assert.Equal("four", difference[1])
+	assert.Equal("four", difference[0])
+	assert.Equal("one", difference[1])
 	assert.Equal("three", difference[2])
 }
