@@ -16,7 +16,7 @@ import (
 	"github.com/mongodb/grip/message"
 )
 
-func makeGenerateTasksHandler(sc data.Connector, q amboy.QueueGroup) gimlet.RouteHandler {
+func makeGenerateTasksHandler(sc data.Connector, q amboy.Queue) gimlet.RouteHandler {
 	return &generateHandler{
 		sc:    sc,
 		queue: q,
@@ -27,7 +27,7 @@ type generateHandler struct {
 	files  []json.RawMessage
 	taskID string
 	sc     data.Connector
-	queue  amboy.QueueGroup
+	queue  amboy.Queue
 }
 
 func (h *generateHandler) Factory() gimlet.RouteHandler {
@@ -69,9 +69,7 @@ func parseJson(r *http.Request) ([]json.RawMessage, error) {
 }
 
 func (h *generateHandler) Run(ctx context.Context) gimlet.Responder {
-	// TODO Use the environment's context. Do NOT use the context passed by this function, as the context
-	// passed to h.sc.GenerateTasks needs to persist longer than the lifetime of the request.
-	if err := h.sc.GenerateTasks(context.Background(), h.taskID, h.files, h.queue); err != nil {
+	if err := h.sc.GenerateTasks(ctx, h.taskID, h.files, h.queue); err != nil {
 		grip.Error(message.WrapError(err, message.Fields{
 			"message": "error generating tasks",
 			"task_id": h.taskID,
@@ -82,7 +80,7 @@ func (h *generateHandler) Run(ctx context.Context) gimlet.Responder {
 	return gimlet.NewJSONResponse(struct{}{})
 }
 
-func makeGenerateTasksPollHandler(sc data.Connector, q amboy.QueueGroup) gimlet.RouteHandler {
+func makeGenerateTasksPollHandler(sc data.Connector, q amboy.Queue) gimlet.RouteHandler {
 	return &generatePollHandler{
 		sc:    sc,
 		queue: q,
@@ -92,7 +90,7 @@ func makeGenerateTasksPollHandler(sc data.Connector, q amboy.QueueGroup) gimlet.
 type generatePollHandler struct {
 	taskID string
 	sc     data.Connector
-	queue  amboy.QueueGroup
+	queue  amboy.Queue
 }
 
 func (h *generatePollHandler) Factory() gimlet.RouteHandler {

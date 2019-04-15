@@ -30,7 +30,7 @@ type Environment struct {
 	Driver               queue.Driver
 	Local                amboy.Queue
 	JasperProcessManager jasper.Manager
-	RemoteGroup          amboy.QueueGroup
+	SingleWorker         amboy.Queue
 	Closers              map[string]func(context.Context) error
 	DBSession            *anserMock.Session
 	EvergreenSettings    *evergreen.Settings
@@ -100,10 +100,10 @@ func (e *Environment) LocalQueue() amboy.Queue {
 	return e.Local
 }
 
-func (e *Environment) RemoteQueueGroup() amboy.QueueGroup {
+func (e *Environment) GenerateTasksQueue() amboy.Queue {
 	e.mu.RLock()
 	defer e.mu.RUnlock()
-	return e.RemoteGroup
+	return e.SingleWorker
 }
 
 func (e *Environment) Session() db.Session {

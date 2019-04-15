@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/units"
 	"github.com/mongodb/amboy"
 	"github.com/pkg/errors"
@@ -14,29 +13,12 @@ import (
 type GenerateConnector struct{}
 
 // GenerateTasks parses JSON files for `generate.tasks` and creates the new builds and tasks.
-func (gc *GenerateConnector) GenerateTasks(ctx context.Context, taskID string, jsonBytes []json.RawMessage, group amboy.QueueGroup) error {
-	t, err := task.FindOneId(taskID)
-	if err != nil {
-		return errors.Wrapf(err, "problem finding task %s", taskID)
-	}
-	q, err := group.Get(ctx, t.Version)
-	if err != nil {
-		return errors.Wrapf(err, "problem getting queue for version %s", t.Version)
-	}
+func (gc *GenerateConnector) GenerateTasks(ctx context.Context, taskID string, jsonBytes []json.RawMessage, q amboy.Queue) error {
 	return q.Put(units.NewGenerateTasksJob(taskID, jsonBytes))
 }
 
-func (gc *GenerateConnector) GeneratePoll(ctx context.Context, taskID string, group amboy.QueueGroup) (bool, []string, error) {
-	t, err := task.FindOneId(taskID)
-	if err != nil {
-		return false, nil, errors.Wrapf(err, "problem finding task %s", taskID)
-	}
-	q, err := group.Get(ctx, t.Version)
-	if err != nil {
-		return false, nil, errors.Wrapf(err, "problem getting queue for version %s", t.Version)
-	}
-	jobID := fmt.Sprintf("generate-tasks-%s", taskID)
-	j, exists := q.Get(jobID)
+func (gc *GenerateConnector) GeneratePoll(ctx context.Context, taskID string, queue amboy.Queue) (bool, []string, error) {
+	j, exists := queue.Get(fmt.Sprintf("generate-tasks-%s", taskID))
 	if !exists {
 		return false, nil, errors.Errorf("task %s not in queue", taskID)
 	}
@@ -45,11 +27,11 @@ func (gc *GenerateConnector) GeneratePoll(ctx context.Context, taskID string, gr
 
 type MockGenerateConnector struct{}
 
-func (gc *MockGenerateConnector) GenerateTasks(ctx context.Context, taskID string, jsonBytes []json.RawMessage, group amboy.QueueGroup) error {
+func (gc *MockGenerateConnector) GenerateTasks(ctx context.Context, taskID string, jsonBytes []json.RawMessage, q amboy.Queue) error {
 	return nil
 }
 
-func (gc *MockGenerateConnector) GeneratePoll(ctx context.Context, taskID string, queue amboy.QueueGroup) (bool, []string, error) {
+func (gc *MockGenerateConnector) GeneratePoll(ctx context.Context, taskID string, queue amboy.Queue) (bool, []string, error) {
 	// no task
 	if taskID == "0" {
 		return false, nil, errors.New("No task called '0'")
