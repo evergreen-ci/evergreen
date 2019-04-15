@@ -257,7 +257,7 @@ func TestFlaggingIdleHostsWithMissingDistroIDs(t *testing.T) {
 		require.NoError(t, distro1.Insert(), "error inserting distro '%s'", distro1.Id)
 		require.NoError(t, distro2.Insert(), "error inserting distro '%s'", distro2.Id)
 
-		// add a gaggle of hosts with referenced host.Distro that DO NOT exist in the distro collection
+		// insert a gaggle of hosts, some of which reference a host.Distro that doesn't exist in the distro collection
 		host1 := host.Host{
 			Id:           "h1",
 			Distro:       distro.Distro{Id: "distro2"},
@@ -276,7 +276,7 @@ func TestFlaggingIdleHostsWithMissingDistroIDs(t *testing.T) {
 		}
 		host3 := host.Host{
 			Id:           "h3",
-			Distro:       distro.Distro{Id: "c"},
+			Distro:       distro.Distro{Id: "z"},
 			Provider:     evergreen.ProviderNameMock,
 			CreationTime: time.Now().Add(-30 * time.Minute),
 			Status:       evergreen.HostRunning,
@@ -292,7 +292,7 @@ func TestFlaggingIdleHostsWithMissingDistroIDs(t *testing.T) {
 		}
 		host5 := host.Host{
 			Id:           "h5",
-			Distro:       distro.Distro{Id: "z"},
+			Distro:       distro.Distro{Id: "c"},
 			Provider:     evergreen.ProviderNameMock,
 			CreationTime: time.Now().Add(-20 * time.Minute),
 			Status:       evergreen.HostRunning,

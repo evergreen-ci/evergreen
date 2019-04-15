@@ -2,6 +2,7 @@ package units
 
 import (
 	"fmt"
+	"sort"
 	"strings"
 	"time"
 
@@ -333,7 +334,7 @@ func PopulateIdleHostJobs(env evergreen.Environment) amboy.QueueOperation {
 		}
 		distrosFound, err := distro.Find(distro.ByIds(distroIDsToFind))
 		if err != nil {
-			return errors.Wrapf(err, "database error for find() by distro ids in [%s]", strings.Join(distroIDsToFind[:], ","))
+			return errors.Wrapf(err, "database error for find() by distro ids in [%s]", strings.Join(distroIDsToFind, ","))
 		}
 
 		if len(distroIDsToFind) > len(distrosFound) {
@@ -342,7 +343,8 @@ func PopulateIdleHostJobs(env evergreen.Environment) amboy.QueueOperation {
 				distroIDsFound = append(distroIDsFound, d.Id)
 			}
 			invalidDistroIDs := util.GetSetDifference(distroIDsToFind, distroIDsFound)
-			return fmt.Errorf("distro ids %s not found", strings.Join(invalidDistroIDs[:], ","))
+			sort.Strings(invalidDistroIDs)
+			return fmt.Errorf("distro ids %s not found", strings.Join(invalidDistroIDs, ","))
 		}
 
 		for i, info := range distroHosts {
