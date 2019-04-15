@@ -657,10 +657,11 @@ func (s *AdminSuite) TestCommitQueueConfig() {
 	config := CommitQueueConfig{
 		MergeTaskDistro: "distro",
 	}
-	s.Error(config.Set())
+	s.Error(config.ValidateAndDefault())
 
 	config.CommitterName = "Evergreen"
 	config.CommitterEmail = "evergreen@mongodb.com"
+	s.NoError(config.ValidateAndDefault())
 	s.NoError(config.Set())
 
 	settings, err := GetConfig()

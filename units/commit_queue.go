@@ -269,7 +269,7 @@ func (j *commitQueueJob) processCLIPatchItem(ctx context.Context, cq *commitqueu
 
 	project.BuildProjectTVPairs(patchDoc, patchDoc.Alias)
 
-	if err := patchDoc.UpdateGithashProjectAndTasks(); err != nil {
+	if err = patchDoc.UpdateGithashProjectAndTasks(); err != nil {
 		j.logError(err, "can't update patch in db", nextItem)
 		j.dequeue(cq, nextItem)
 		return
