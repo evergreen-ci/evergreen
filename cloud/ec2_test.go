@@ -916,3 +916,17 @@ func (s *EC2Suite) TestGetSecurityGroup() {
 	}
 	s.Equal([]*string{aws.String("sg-1"), aws.String("sg-2")}, settings.getSecurityGroups())
 }
+
+func (s *EC2Suite) TestMakeMultipartMIMEUserData() {
+	customUserData := "#!/bin/bash\necho 'foobar'"
+	userData, err := makeMultipartMIMEUserData(customUserData)
+	s.NoError(err)
+}
+
+// Test (host.Host).FetchJasperCommand is substring of multipart command
+func (s *EC2Sutie) TestMakeMultipartMIMEUserDataContainsJasperCommand() {
+	customUserData := "#!/bin/bash\necho 'foobar'"
+	userData, err := makeMultipartMIMEUserData(customUserData)
+	s.NoError(err)
+	s.Contains(userData, "TODO curl command here")
+}

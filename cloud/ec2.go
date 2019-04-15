@@ -1,9 +1,12 @@
 package cloud
 
 import (
+	"bytes"
 	"context"
 	"encoding/base64"
 	"fmt"
+	"mime/multipart"
+	"net/textproto"
 	"strings"
 	"time"
 
@@ -13,6 +16,7 @@ import (
 	"github.com/aws/aws-sdk-go/service/ec2"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/task"
@@ -167,6 +171,38 @@ func (m *ec2Manager) Configure(ctx context.Context, settings *evergreen.Settings
 	return nil
 }
 
+// Content-Type: multipart/mixed; boundary="===============8590331813792542444=="
+// MIME-Version: 1.0
+//
+// --===============8590331813792542444==
+// MIME-Version: 1.0
+// Content-Type: text/x-shellscript; charset="us-ascii"
+// Content-Transfer-Encoding: 7bit
+// Content-Disposition: attachment; filename="foo.sh"
+//
+// #!/bin/sh
+//
+// echo "hello world!" >> /usr/local/bin/test.txt
+//
+// --===============8590331813792542444==
+// MIME-Version: 1.0
+// Content-Type: text/x-shellscript; charset="us-ascii"
+// Content-Transfer-Encoding: 7bit
+// Content-Disposition: attachment; filename="bar.sh"
+//
+// #!/bin/bash
+//
+// echo "Hello world again!" >> /usr/local/bin/test2.txt
+//
+// --===============8590331813792542444==--
+func makeMultipartMIMEUserData(customUserData string) (string, error) {
+	userData := &bytes.Buffer{}
+	mimeWriter := multipart.NewWriter(userData)
+	defer mimeWriter.Close()
+
+	return userData, nil
+}
+
 func (m *ec2Manager) spawnOnDemandHost(ctx context.Context, h *host.Host, ec2Settings *EC2ProviderSettings, blockDevices []*ec2.BlockDeviceMapping) ([]*string, error) {
 	input := &ec2.RunInstancesInput{
 		MinCount:            aws.Int64(1),
@@ -193,11 +229,74 @@ func (m *ec2Manager) spawnOnDemandHost(ctx context.Context, h *host.Host, ec2Set
 		input.SecurityGroups = ec2Settings.getSecurityGroups()
 	}
 
+	if h.Distro.BootstrapMethod == distro.BootstrapMethodUserData {
+		// kim: TODO: wrap ec2Settings.UserData with multipart MIME.
+		// kim: the test on my own AWS console worked. The procedure for this
+		// should not be much different, aside from detecting what they're
+		// running (most likely just check for "#!", "#cloud-config", etc)
+
+		// TODO: it might be better to mark this as a failure earlier than here.
+		// (e.g. after receiving REST request, after host is set)
+		// TODO: import "mime/multipart"
+
+		// kim: TODO: write a note in the PR saying that it's possible that the
+		// user has inputted an actual mime multipart, but it's more likely that
+		// they just wrote a shell script or something like that.
+
+		// TODO: create part for the curl command shell script.
+
+		// if ec2Settings.UserData != "" {
+		//     // Determine the content type of the custom user data based on the
+		//     // first line.
+		//     var contentType string
+		//     var firstLine string
+		//     index := strings.IndexByte(ec2Settings.UserData, '\n')
+		//     if index == -1 {
+		//         firstLine = ec2Settings.UserData
+		//     } else {
+		//         firstLine = ec2Settings.UserData[:index]
+		//     }
+        //
+		//     // Find the content type based on the first line of the user data.
+		//     if strings.HasPrefix(firstLine, "#!") {
+		//         contentType = "text/x-shellscript"
+		//     } else if strings.HasPrefix(firstLine, "#include") {
+		//         contentType = "text/x-include-url"
+		//     } else if strings.HasPrefix(firstLine, "#cloud-config") {
+		//         contentType = "text/cloud-config"
+		//     } else if strings.HasPrefix(firstLine, "#upstart-job") {
+		//         contentType = "text/upstart-job"
+		//     } else if strings.HasPrefix(firstLine, "#cloud-boothook") {
+		//         contentType = "text/cloud-boothook"
+		//     } else if strings.HasPrefix(firstLine, "#part-handler") {
+		//         contentType = "text/part-handler"
+		//     } else {
+		//         return nil, errors.New("user data format is not supported")
+		//     }
+        //
+		//     // Construct the header for the input user data.
+		//     header := textproto.MIMEHeader{}
+		//     header.Add("MIME-Version", "1.0")
+		//     header.Add("Content-Type", contentType)
+		//     header.Add("Content-Transfer-Encoding", "7bit")
+		//     header.Add("Content-Disposition", "attachment; filename=\"userdata.txt\"")
+		//     // Make the part for the input user data.
+		//     partWriter, err := mimeWriter.CreatePart(header)
+		//     if err != nil {
+		//         return nil, errors.Wrap(err, "error making mime part for user data")
+		//     }
+		//     // Write the input user data as the body to the part.
+		//     if _, err = partWriter.Write([]byte(ec2Settings.UserData)); err != nil {
+		//         return nil, errors.Wrap(err, "failed to write input user data body")
+		//     }
+		// }
+
 	if ec2Settings.UserData != "" {
 		expanded, err := m.expandUserData(ec2Settings.UserData)
 		if err != nil {
 			return nil, errors.Wrap(err, "problem expanding user data")
 		}
+
 		userData := base64.StdEncoding.EncodeToString([]byte(expanded))
 		input.UserData = &userData
 	}
