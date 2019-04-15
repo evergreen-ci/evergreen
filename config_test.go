@@ -130,10 +130,13 @@ func (s *AdminSuite) TestBanner() {
 
 func (s *AdminSuite) TestBaseConfig() {
 	config := Settings{
-		ApiUrl:             "api",
-		Banner:             "banner",
-		BannerTheme:        Important,
-		ClientBinariesDir:  "bin_dir",
+		ApiUrl:            "api",
+		Banner:            "banner",
+		BannerTheme:       Important,
+		ClientBinariesDir: "bin_dir",
+		CommitQueue: CommitQueueConfig{
+			MergeTaskDistro: "distro",
+		},
 		ConfigDir:          "cfg_dir",
 		Credentials:        map[string]string{"k1": "v1"},
 		Expansions:         map[string]string{"k2": "v2"},
@@ -167,6 +170,7 @@ func (s *AdminSuite) TestBaseConfig() {
 	s.Equal(config.Banner, settings.Banner)
 	s.Equal(config.BannerTheme, settings.BannerTheme)
 	s.Equal(config.ClientBinariesDir, settings.ClientBinariesDir)
+	s.Equal(config.CommitQueue, settings.CommitQueue)
 	s.Equal(config.ConfigDir, settings.ConfigDir)
 	s.Equal(config.Credentials, settings.Credentials)
 	s.Equal(config.JasperConfig.BinaryName, settings.JasperConfig.BinaryName)
@@ -647,4 +651,21 @@ func (s *AdminSuite) TestJIRANotificationsConfig() {
 		},
 	}
 	s.EqualError(c.ValidateAndDefault(), "template: this-is:1: unexpected \"}\" in operand")
+}
+
+func (s *AdminSuite) TestCommitQueueConfig() {
+	config := CommitQueueConfig{
+		MergeTaskDistro: "distro",
+	}
+	s.Error(config.Set())
+
+	config.CommitterName = "Evergreen"
+	config.CommitterEmail = "evergreen@mongodb.com"
+	s.NoError(config.Set())
+
+	settings, err := GetConfig()
+	s.NoError(err)
+	s.Require().NotNil(settings)
+
+	s.Equal(config, settings.CommitQueue)
 }

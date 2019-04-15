@@ -16,6 +16,7 @@ func NewConfigModel() *APIAdminSettings {
 		Amboy:             &APIAmboyConfig{},
 		Api:               &APIapiConfig{},
 		AuthConfig:        &APIAuthConfig{},
+		CommitQueue:       &APICommitQueueConfig{},
 		ContainerPools:    &APIContainerPoolsConfig{},
 		Credentials:       map[string]string{},
 		Expansions:        map[string]string{},
@@ -48,6 +49,7 @@ type APIAdminSettings struct {
 	Banner             APIString                         `json:"banner,omitempty"`
 	BannerTheme        APIString                         `json:"banner_theme,omitempty"`
 	ClientBinariesDir  APIString                         `json:"client_binaries_dir,omitempty"`
+	CommitQueue        *APICommitQueueConfig             `json:"commit_queue,omitempty"`
 	ConfigDir          APIString                         `json:"configdir,omitempty"`
 	ContainerPools     *APIContainerPoolsConfig          `json:"container_pools,omitempty"`
 	Credentials        map[string]string                 `json:"credentials,omitempty"`
@@ -765,6 +767,32 @@ func (a *APICloudProviders) ToService() (interface{}, error) {
 		GCE:       gce.(evergreen.GCEConfig),
 		OpenStack: openstack.(evergreen.OpenStackConfig),
 		VSphere:   vsphere.(evergreen.VSphereConfig),
+	}, nil
+}
+
+type APICommitQueueConfig struct {
+	MergeTaskDistro APIString `json:"merge_task_distro"`
+	CommitterName   APIString `json:"committer_name"`
+	CommitterEmail  APIString `json:"committer_email"`
+}
+
+func (a *APICommitQueueConfig) BuildFromService(h interface{}) error {
+	if v, ok := h.(evergreen.CommitQueueConfig); ok {
+		a.MergeTaskDistro = ToAPIString(v.MergeTaskDistro)
+		a.CommitterName = ToAPIString(v.CommitterName)
+		a.CommitterEmail = ToAPIString(v.CommitterEmail)
+
+		return nil
+	}
+
+	return errors.Errorf("Received CommitQueueConfig of type %T", h)
+}
+
+func (a *APICommitQueueConfig) ToService() (interface{}, error) {
+	return evergreen.CommitQueueConfig{
+		MergeTaskDistro: FromAPIString(a.MergeTaskDistro),
+		CommitterName:   FromAPIString(a.CommitterName),
+		CommitterEmail:  FromAPIString(a.CommitterEmail),
 	}, nil
 }
 

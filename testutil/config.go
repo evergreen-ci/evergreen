@@ -114,7 +114,12 @@ func MockConfig() *evergreen.Settings {
 		Banner:            "banner",
 		BannerTheme:       "important",
 		ClientBinariesDir: "bin_dir",
-		ConfigDir:         "cfg_dir",
+		CommitQueue: evergreen.CommitQueueConfig{
+			MergeTaskDistro: "distro",
+			CommitterName:   "Evergreen Commit Queue",
+			CommitterEmail:  "evergreen@mongodb.com",
+		},
+		ConfigDir: "cfg_dir",
 		ContainerPools: evergreen.ContainerPoolsConfig{
 			Pools: []evergreen.ContainerPool{
 				evergreen.ContainerPool{

@@ -17,7 +17,7 @@ import (
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 	"go.mongodb.org/mongo-driver/mongo/writeconcern"
-	"gopkg.in/yaml.v2"
+	yaml "gopkg.in/yaml.v2"
 )
 
 var (
@@ -52,6 +52,7 @@ type Settings struct {
 	Banner             string                    `bson:"banner" json:"banner"`
 	BannerTheme        BannerTheme               `bson:"banner_theme" json:"banner_theme"`
 	ClientBinariesDir  string                    `yaml:"client_binaries_dir" bson:"client_binaries_dir" json:"client_binaries_dir"`
+	CommitQueue        CommitQueueConfig         `yaml:"commit_queue" bson:"commit_queue" json:"commit_queue"`
 	ConfigDir          string                    `yaml:"configdir" bson:"configdir" json:"configdir"`
 	ContainerPools     ContainerPoolsConfig      `yaml:"container_pools" bson:"container_pools" json:"container_pools" id:"container_pools"`
 	Credentials        map[string]string         `yaml:"credentials" bson:"credentials" json:"credentials"`
@@ -120,6 +121,7 @@ func (c *Settings) Set() error {
 			bannerKey:             c.Banner,
 			bannerThemeKey:        c.BannerTheme,
 			clientBinariesDirKey:  c.ClientBinariesDir,
+			commitQueueKey:        c.CommitQueue,
 			configDirKey:          c.ConfigDir,
 			containerPoolsKey:     c.ContainerPools,
 			credentialsKey:        c.Credentials,

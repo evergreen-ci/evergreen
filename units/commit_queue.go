@@ -495,15 +495,15 @@ func validateBranch(branch *github.Branch) error {
 }
 
 func addMergeTaskAndVariant(patchDoc *patch.Patch, project *model.Project) error {
-	// settings, err := evergreen.GetConfig()
-	// if err != nil {
-	// 	return errors.Wrap(err, "error retrieving Evergreen config")
-	// }
+	settings, err := evergreen.GetConfig()
+	if err != nil {
+		return errors.Wrap(err, "error retrieving Evergreen config")
+	}
 
 	mergeBuildVariant := model.BuildVariant{
 		Name:        "commit-queue-merge",
 		DisplayName: "Commit Queue Merge",
-		RunOn:       []string{"TODO"}, //settings.CommitQueue.MergeTaskDistro},
+		RunOn:       []string{settings.CommitQueue.MergeTaskDistro},
 		Tasks: []model.BuildVariantTaskUnit{
 			{Name: "merge-patch"},
 		},
@@ -523,8 +523,8 @@ func addMergeTaskAndVariant(patchDoc *patch.Patch, project *model.Project) error
 				Command: "git.push",
 				Params: map[string]interface{}{
 					"directory":       "${workdir}/src",
-					"committer_name":  "TODO", //settings.CommitQueue.Committer_Name,
-					"committer_email": "TODO", //settings.CommitQueue.Committer_Email,
+					"committer_name":  settings.CommitQueue.CommitterName,
+					"committer_email": settings.CommitQueue.CommitterEmail,
 				},
 			},
 		},
