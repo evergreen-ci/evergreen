@@ -32,10 +32,12 @@ type sessionWrapper struct {
 	isClone  bool
 }
 
-func (s *sessionWrapper) Clone() Session                   { s.isClone = true; return s }
-func (s *sessionWrapper) Copy() Session                    { s.isClone = true; return s }
-func (s *sessionWrapper) Error() error                     { return s.catcher.Resolve() }
-func (s *sessionWrapper) SetSocketTimeout(d time.Duration) { s.ctx, s.canceler = context.WithTimeout(d) }
+func (s *sessionWrapper) Clone() Session { s.isClone = true; return s }
+func (s *sessionWrapper) Copy() Session  { s.isClone = true; return s }
+func (s *sessionWrapper) Error() error   { return s.catcher.Resolve() }
+func (s *sessionWrapper) SetSocketTimeout(d time.Duration) {
+	s.ctx, s.canceler = context.WithTimeout(s.ctx, d)
+}
 
 func (s *sessionWrapper) DB(name string) Database {
 	return &databaseWrapper{
