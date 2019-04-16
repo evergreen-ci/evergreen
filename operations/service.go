@@ -78,6 +78,7 @@ func startSystemCronJobs(ctx context.Context, env evergreen.Environment) {
 		units.PopulateIdleHostJobs(env),
 		units.PopulateHostTerminationJobs(env),
 		units.PopulateHostMonitoring(env),
+		units.PopulateTaskMonitoring(5),
 		units.PopulateEventAlertProcessing(1),
 		units.PopulateBackgroundStatsJobs(env, 0),
 		units.PopulateLastContainerFinishTimeJobs(),
@@ -95,7 +96,6 @@ func startSystemCronJobs(ctx context.Context, env evergreen.Environment) {
 
 	amboy.IntervalQueueOperation(ctx, env.RemoteQueue(), 150*time.Second, time.Now(), opts, amboy.GroupQueueOperationFactory(
 		units.PopulateActivationJobs(6),
-		units.PopulateTaskMonitoring(5),
 		units.PopulateRepotrackerPollingJobs(5)))
 
 	amboy.IntervalQueueOperation(ctx, env.RemoteQueue(), 15*time.Minute, time.Now(), opts, amboy.GroupQueueOperationFactory(
