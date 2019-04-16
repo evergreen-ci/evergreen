@@ -211,53 +211,37 @@ func bootstrapScript(fetchJasperCmd string, isWindows bool) string {
 			"<powershell>",
 			"TODO",
 			"</powershell>",
-		})
+		}, "\r\n")
 	}
 	return strings.Join([]string{"#!/bin/bash", fetchJasperCmd}, "\n")
 }
 
-// writeBootstrappingUserDataPart writes the user data part that bootstraps the
-// host.
-func writeBootstrappingUserDataPart(writer *multipart.Writer, bootstrapCommand string) error {
-	header := textproto.MIMEHeader{}
-	header.Add("MIME-Version", "1.0")
-	header.Add("Content-Type", "text/x-shellscript")
-	header.Add("Content-Disposition", "attachment; filename=\"bootstrap.txt\"")
-
-	part, err := writer.CreatePart(header)
-	if err != nil {
-		return errors.Wrap(err, "error making bootstrap user data part")
-	}
-
-	if _, err := part.Write([]byte(bootstrapCommand)); err != nil {
-		return errors.Wrap(err, "error writing custom user data")
-	}
-	return nil
-}
-
-// writeCustomUserDataPart writes the user data part for the custom input given
-// by the user.
-func writeCustomUserDataPart(writer *multipart.Writer, customUserData string) error {
-	if customUserData == "" {
+// writeUserDataPart creates a part in the user data multipart with the given
+// contents and name.
+func writeUserDataPart(writer *multipart.Writer, userDataPart, fileName string) error {
+	if userDataPart == "" {
 		return nil
 	}
+	if fileName == "" {
+		return errors.New("user data file name cannot be empty")
+	}
 
-	contentType, err := userDataContentType(customUserData)
+	contentType, err := userDataContentType(userDataPart)
 	if err != nil {
-		return errors.Wrap(err, "error determining custom user data content type")
+		return errors.Wrap(err, "error determining user data content type")
 	}
 
 	header := textproto.MIMEHeader{}
 	header.Add("MIME-Version", "1.0")
 	header.Add("Content-Type", contentType)
-	header.Add("Content-Disposition", "attachment; filename=\"userdata.txt\"")
+	header.Add("Content-Disposition", fmt.Sprintf("attachment; filename=\"%s\"", fileName))
 
 	part, err := writer.CreatePart(header)
 	if err != nil {
 		return errors.Wrap(err, "error making custom user data part")
 	}
 
-	if _, err := part.Write([]byte(customUserData)); err != nil {
+	if _, err := part.Write([]byte(userDataPart)); err != nil {
 		return errors.Wrap(err, "error writing custom user data")
 	}
 
@@ -275,15 +259,15 @@ var userDataPrefixToContentType = map[string]string{
 	"<script>":        "text/x-shellscript",
 }
 
-// userDataContentType detects the content type based on the first line of the
-// user data.
-func userDataContentType(customUserData string) (string, error) {
+// userDataContentType detects the content type based on the directive on the
+// first line of the user data.
+func userDataContentType(userData string) (string, error) {
 	var firstLine string
-	index := strings.IndexByte(customUserData, '\n')
+	index := strings.IndexByte(userData, '\n')
 	if index == -1 {
-		firstLine = customUserData
+		firstLine = userData
 	} else {
-		firstLine = customUserData[:index]
+		firstLine = userData[:index]
 	}
 
 	for key, val := range userDataPrefixToContentType {
@@ -291,7 +275,7 @@ func userDataContentType(customUserData string) (string, error) {
 			return val, nil
 		}
 	}
-	return "", errors.New("user data format is not supported")
+	return "", errors.New("user data format is not recognized")
 }
 
 // makeMultipartUserData returns user data in a multipart MIME format with user data
@@ -305,14 +289,12 @@ func makeMultipartUserData(bootstrapCommand, customUserData string) (string, err
 		return "", errors.Wrap(err, "error writing multipart MIME headers")
 	}
 
-	if err := writeBootstrappingUserDataPart(parts, bootstrapCommand); err != nil {
-		return "", errors.Wrap(err, "error writing bootstrap instructions part of user data")
+	if err := writeUserDataPart(parts, bootstrapCommand, "bootstrap.txt"); err != nil {
+		return "", errors.Wrap(err, "error writing bootstrap instructions into user data")
 	}
 
-	if customUserData != "" {
-		if err := writeCustomUserDataPart(parts, customUserData); err != nil {
-			return "", errors.Wrap(err, "error writing custom part of user data")
-		}
+	if err := writeUserDataPart(parts, customUserData, "user-data.txt"); err != nil {
+		return "", errors.Wrap(err, "error writing custom user data")
 	}
 
 	if err := parts.Close(); err != nil {

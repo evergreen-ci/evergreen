@@ -930,39 +930,66 @@ func (s *EC2Suite) TestWriteUserDataHeaders() {
 	s.Equal(1, strings.Count(res, boundary))
 }
 
-func (s *EC2Suite) TestWriteBootstrappingUserDataPart() {
-
+func (s *EC2Suite) TestUserDataContentType() {
+	for _, userData := range []string{
+		"#!/bin/bash\necho 'foobar'",
+		"#include\nhttps://example.com/foobar.txt",
+		"#cloud-config\nruncmd:\n  - echo 'foobar'",
+		"#upstart-job\ndescription: \"foobar\"",
+		"#cloud-boothook\necho 'foobar'",
+		"#part-handler\ndef list_types():\nreturn(['foobar'])\ndef handle_part(data,ctype,filename,payload):\nprint 'foobar'\nreturn",
+	} {
+		contentType, err := userDataContentType(userData)
+		s.NoError(err)
+		s.NotEmpty(contentType)
+	}
 }
 
-func (s *EC2Suite) TestWriteCustomUserDataPart() {
+func (s *EC2Suite) TestWriteUserDataPart() {
 	buf := &strings.Builder{}
 	mimeWriter := multipart.NewWriter(buf)
 	boundary := "some_boundary"
 	mimeWriter.SetBoundary(boundary)
 	userData := "#!/bin/bash\necho 'foobar'"
-	s.NoError(writeCustomUserDataPart(mimeWriter, userData))
+	s.NoError(writeUserDataPart(mimeWriter, userData, "foobar.txt"))
 	res := strings.ToLower(buf.String())
 	s.Contains(res, "mime-version: 1.0")
 	s.Contains(res, "content-type: text/x-shellscript")
-	s.Contains(res, "content-disposition: attachment; filename=\"userdata.txt\"")
+	s.Contains(res, "content-disposition: attachment; filename=\"foobar.txt\"")
 	s.Contains(res, userData)
 	s.Equal(1, strings.Count(res, boundary))
 }
 
-func (s *EC2Suite) TestWriteCustomUserDataPartInvalidFormat() {
+func (s *EC2Suite) TestWriteUserDataPartInvalidFormat() {
 	buf := &strings.Builder{}
 	mimeWriter := multipart.NewWriter(buf)
-	userData := "invalid input"
-	s.Error(writeCustomUserDataPart(mimeWriter, userData))
+	userData := "this is an invalid user data format"
+	s.Error(writeUserDataPart(mimeWriter, userData, "foo.txt"))
+}
+
+func (s *EC2Suite) TestWriteUserDataPartEmptyFileName() {
+	buf := &strings.Builder{}
+	mimeWriter := multipart.NewWriter(buf)
+	userData := "#!/bin/bash\necho 'foobar'"
+	s.Error(writeUserDataPart(mimeWriter, userData, ""))
 }
 
 func (s *EC2Suite) TestMakeMultipartUserData() {
 	userData := "#!/bin/bash\necho 'foobar'"
-	res, err := makeMultipartUserData(userData)
+	noUserData := ""
+	res, err := makeMultipartUserData(userData, userData)
 	s.NoError(err)
 	s.Contains(res, userData)
 
-	res, err = makeMultipartUserData("")
+	res, err = makeMultipartUserData(noUserData, userData)
+	s.NoError(err)
+	s.NotEmpty(res)
+
+	res, err = makeMultipartUserData(userData, noUserData)
+	s.NoError(err)
+	s.NotEmpty(res)
+
+	res, err = makeMultipartUserData(noUserData, noUserData)
 	s.NoError(err)
 	s.NotEmpty(res)
 }
