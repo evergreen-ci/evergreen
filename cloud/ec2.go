@@ -191,25 +191,13 @@ func writeUserDataHeaders(writer io.Writer, boundary string) error {
 	return nil
 }
 
-// func bootstrapScript(outputPath, url string) string {
-//     if runtime.GOOS == "windows" {
-//         outputPath = strings.Replace(outputPath, "/", "\\")
-//         outputPath = filepath.Join("C:\\cygwin\\", outputPath)
-//         return strings.Join([]string{"<powershell>",
-//             fmt.Sprintf("Invoke-RestMethod -Uri %s -OutFile %s", url, outputPath),
-//             "</powershell>"}, "\r\n")
-//     }
-//     return strings.Join([]string{"#!/bin/bash",
-//         fmt.Sprintf("curl -L -o %s", "%s", outputPath, url)}, "\n")
-// }
-
-// kim: TODO: implement
+// bootstrapScript returns the user data script that bootstraps the host.
 func bootstrapScript(fetchJasperCmd string, isWindows bool) string {
-	// do something completely different for Windows
 	if isWindows {
 		return strings.Join([]string{
 			"<powershell>",
-			"TODO",
+			// Escape powershell single quotes.
+			fmt.Sprintf("bash.exe -c '%s'", strings.Replace(fetchJasperCmd, "'", "''", -1)),
 			"</powershell>",
 		}, "\r\n")
 	}
@@ -228,7 +216,8 @@ func writeUserDataPart(writer *multipart.Writer, userDataPart, fileName string) 
 
 	contentType, err := userDataContentType(userDataPart)
 	if err != nil {
-		return errors.Wrap(err, "error determining user data content type")
+		grip.Warning(errors.Wrap(err, "error determining user data content type"))
+		contentType = userDataPrefixToContentType["#!"]
 	}
 
 	header := textproto.MIMEHeader{}
@@ -276,7 +265,7 @@ func userDataContentType(userData string) (string, error) {
 			return val, nil
 		}
 	}
-	return "", errors.New("user data format is not recognized")
+	return "", errors.Errorf("user data format is not recognized from first line: '%s'", firstLine)
 }
 
 // makeMultipartUserData returns user data in a multipart MIME format with user data
@@ -338,8 +327,6 @@ func (m *ec2Manager) spawnOnDemandHost(ctx context.Context, h *host.Host, ec2Set
 	ec2Settings.UserData = expanded
 
 	if h.Distro.BootstrapMethod == distro.BootstrapMethodUserData {
-		// TODO: it might be better to mark this as a failure earlier than here.
-		// (e.g. after receiving REST request, after host is set)
 		env := evergreen.GetEnvironment()
 		settings := env.Settings()
 		userData, err := makeMultipartUserData(ec2Settings.UserData, bootstrapScript(h.FetchJasperCommand(settings, "/usr/local/bin"), h.Distro.IsWindows()))
