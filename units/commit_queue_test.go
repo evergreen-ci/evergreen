@@ -11,6 +11,7 @@ import (
 	"github.com/evergreen-ci/evergreen/mock"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/commitqueue"
+	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/user"
@@ -170,18 +171,25 @@ func (s *commitQueueSuite) TestValidateBranch() {
 }
 
 func (s *commitQueueSuite) TestAddMergeTaskAndVariant() {
+	config, err := evergreen.GetConfig()
+	s.NoError(err)
+	s.NoError(db.ClearCollections(distro.Collection))
+	s.NoError((&distro.Distro{
+		Id: config.CommitQueue.MergeTaskDistro,
+	}).Insert())
+
 	project := &model.Project{}
 	patchDoc := &patch.Patch{}
 
 	s.NoError(addMergeTaskAndVariant(patchDoc, project))
 
-	s.Len(patchDoc.BuildVariants, 1)
+	s.Require().Len(patchDoc.BuildVariants, 1)
 	s.Equal("commit-queue-merge", patchDoc.BuildVariants[0])
-	s.Len(patchDoc.Tasks, 1)
+	s.Require().Len(patchDoc.Tasks, 1)
 	s.Equal("merge-patch", patchDoc.Tasks[0])
 
-	s.Len(project.BuildVariants, 1)
+	s.Require().Len(project.BuildVariants, 1)
 	s.Equal("commit-queue-merge", project.BuildVariants[0].Name)
-	s.Len(project.Tasks, 1)
+	s.Require().Len(project.Tasks, 1)
 	s.Equal("merge-patch", project.Tasks[0].Name)
 }
