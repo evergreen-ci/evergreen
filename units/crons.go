@@ -211,7 +211,7 @@ func PopulateEventAlertProcessing(parts int) amboy.QueueOperation {
 	}
 }
 
-func PopulateTaskMonitoring() amboy.QueueOperation {
+func PopulateTaskMonitoring(mins int) amboy.QueueOperation {
 	return func(queue amboy.Queue) error {
 		flags, err := evergreen.GetServiceFlags()
 		if err != nil {
@@ -227,7 +227,7 @@ func PopulateTaskMonitoring() amboy.QueueOperation {
 			return nil
 		}
 
-		return queue.Put(NewTaskExecutionMonitorPopulateJob(util.RoundPartOfMinute(0).Format(tsFormat)))
+		return queue.Put(NewTaskExecutionMonitorPopulateJob(util.RoundPartOfMinute(mins).Format(tsFormat)))
 	}
 }
 
