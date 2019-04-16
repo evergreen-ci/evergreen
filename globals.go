@@ -140,7 +140,6 @@ const (
 	FinderVersionParallel  = "parallel"
 	FinderVersionPipeline  = "pipeline"
 	FinderVersionAlternate = "alternate"
-	// FinderVersionTunable = "tunable"
 
 	CommitQueueAlias = "__commit_queue"
 
@@ -355,9 +354,9 @@ var (
 	// Set of valid FinderSettings.Version strings that can be user set via the API
 	ValidFinderVersions = []string{
 		FinderVersionLegacy,
-		// FinderVersionParallel,
-		// FinderVersionPipeline,
-		// FinderVersionAlternate,
+		FinderVersionParallel,
+		FinderVersionPipeline,
+		FinderVersionAlternate,
 	}
 
 	// constant arrays for db update logic
