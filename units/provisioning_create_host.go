@@ -119,7 +119,8 @@ func (j *createHostJob) Run(ctx context.Context) {
 	}
 
 	if j.host.ParentID == "" && !j.host.SpawnOptions.SpawnedByTask {
-		numHosts, err := host.CountRunningHosts(j.host.Distro.Id)
+		var numHosts int
+		numHosts, err = host.CountRunningHosts(j.host.Distro.Id)
 		if err != nil {
 			j.AddError(errors.Wrap(err, "problem getting count of existing pool size"))
 			return
@@ -218,23 +219,24 @@ func (j *createHostJob) createHost(ctx context.Context) error {
 		return errors.Wrapf(err, "error spawning host %s", j.host.Id)
 	}
 
-	// On the first attempt, remove the intent host to insert started host
-	if j.CurrentAttempt == 1 {
-		intentHost, err := host.FindOneId(j.HostID)
-		if err != nil {
-			return errors.Wrapf(err, "problem retrieving intent host '%s'", j.HostID)
-		}
-		if intentHost == nil {
-			return errors.Wrapf(err, "no intent host '%s' found", j.HostID)
-		}
-		if err := intentHost.Remove(); err != nil {
-			grip.Notice(message.WrapError(err, message.Fields{
-				"message": "problem removing intent host",
-				"job":     j.ID(),
-				"host":    j.HostID,
-			}))
-			return errors.Wrapf(errIgnorableCreateHost, "problem removing intent host '%s' [%s]", j.HostID, err.Error())
-		}
+	// remove the intent host to insert started host
+	intentHost, err := host.FindOneId(j.HostID)
+	if err != nil {
+		return errors.Wrapf(err, "problem retrieving intent host '%s'", j.HostID)
+	}
+	if intentHost == nil {
+		grip.Warning(message.Fields{
+			"message": "no intent host found",
+			"job":     j.ID(),
+			"host":    j.HostID,
+		})
+	} else if err := intentHost.Remove(); err != nil {
+		grip.Notice(message.WrapError(err, message.Fields{
+			"message": "problem removing intent host",
+			"job":     j.ID(),
+			"host":    j.HostID,
+		}))
+		return errors.Wrapf(errIgnorableCreateHost, "problem removing intent host '%s' [%s]", j.HostID, err.Error())
 	}
 
 	// Don't mark containers as starting. SpawnHost already marks containers as

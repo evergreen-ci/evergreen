@@ -576,7 +576,7 @@ func FindOneByIdOrTag(id string) (*Host, error) {
 	})
 	host, err := FindOne(query) // try to find by tag
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "error finding '%s' by _id or tag field")
 	}
 	return host, nil
 }

@@ -15,7 +15,7 @@ const (
 	ScopeBuild                      = "build"
 	DefaultSetupTimeoutSecs         = 600
 	DefaultTeardownTimeoutSecs      = 21600
-	DefaultContainerWaitTimeoutSecs = 900
+	DefaultContainerWaitTimeoutSecs = 600
 	DefaultPollFrequency            = 30
 )
 
