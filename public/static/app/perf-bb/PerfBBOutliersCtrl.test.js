@@ -120,16 +120,14 @@ describe('PerfBBOutliersCtrlTest', () => {
       });
       expect(chain.length).toEqual(2);
       expect(chain[0]).toEqual('sort 1');
-      expect(chain[1].$limit).toEqual(500);
+      expect(chain[1].$limit).toEqual(2000);
     });
 
     it('should include sort and filter if specified', () => {
       const chain = scope.getAggChain({
-        filtering: () => {
-          return {
-            filter1: 'value1',
-            filter2: 'value2',
-          }
+        filtering: {
+          filter1: 'value1',
+          filter2: 'value2',
         },
         sorting: 'sort 1',
       });
@@ -137,7 +135,7 @@ describe('PerfBBOutliersCtrlTest', () => {
       expect(chain[0]).toContain({field: 'filter1', term: 'value1', type: 'filter1'});
       expect(chain[0]).toContain({field: 'filter2', term: 'value2', type: 'filter2'});
       expect(chain[1]).toEqual('sort 1');
-      expect(chain[2].$limit).toEqual(500);
+      expect(chain[2].$limit).toEqual(2000);
     });
 
     it('should using string for filter if not type', () => {
@@ -145,32 +143,28 @@ describe('PerfBBOutliersCtrlTest', () => {
         return {colDef: {}};
       };
       const chain = scope.getAggChain({
-        filtering: () => {
-          return {
-            filter1: 'value1',
-            filter2: 'value2',
-          }
+        filtering: {
+          filter1: 'value1',
+          filter2: 'value2',
         }
       });
       expect(chain.length).toEqual(2);
       expect(chain[0]).toContain({field: 'filter1', term: 'value1', type: 'string'});
       expect(chain[0]).toContain({field: 'filter2', term: 'value2', type: 'string'});
-      expect(chain[1].$limit).toEqual(500);
+      expect(chain[1].$limit).toEqual(2000);
     });
 
     it('should return an empty filter if getCol is not defined', () => {
       scope.getCol = undefined;
       const chain = scope.getAggChain({
-        filtering: () => {
-          return {
-            filter1: 'value1',
-            filter2: 'value2',
-          }
+        filtering: {
+          filter1: 'value1',
+          filter2: 'value2',
         }
       });
       expect(chain.length).toEqual(2);
       expect(chain[0]).toEqual([]);
-      expect(chain[1].$limit).toEqual(500);
+      expect(chain[1].$limit).toEqual(2000);
     });
 
     it('should not use a filter if getCol cannot find the column', () => {
@@ -186,17 +180,15 @@ describe('PerfBBOutliersCtrlTest', () => {
         return null;
       };
       const chain = scope.getAggChain({
-        filtering: () => {
-          return {
-            filter1: 'value1',
-            filter2: 'value2',
-          }
+        filtering: {
+          filter1: 'value1',
+          filter2: 'value2',
         }
       });
       expect(chain.length).toEqual(2);
       expect(chain[0]).not.toContain({field: 'filter1', term: 'value1', type: 'filter1'});
       expect(chain[0]).toContain({field: 'filter2', term: 'value2', type: 'filter2'});
-      expect(chain[1].$limit).toEqual(500);
+      expect(chain[1].$limit).toEqual(2000);
     });
   });
 

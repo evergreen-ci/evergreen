@@ -1,11 +1,11 @@
 mciModule.controller('PerfBBOutliersCtrl', function (
   $scope, $window, EvgUiGridUtil, EvgUtil, FORMAT, MDBQueryAdaptor, uiGridConstants,
-  STITCH_CONFIG, Stitch,
+  STITCH_CONFIG, Stitch, Settings
 ) {
   // Perf Failures View-Model.
   const vm = this;
   const project = window.project;
-  const LIMIT = 500;
+  const LIMIT = 2000;
 
   const OUTLIERS_TYPE = {
     DETECTED: 'detected',
@@ -65,10 +65,16 @@ mciModule.controller('PerfBBOutliersCtrl', function (
   ]);
 
   // Could not be overridden by persistent user settings.
-  const mandatoryDefaultFiltering = (state) => {
+  const mandatoryDefaultFiltering = {
+    project: '=' + $window.project,
+    variant: '^((?!wtdevelop).)*$',
+    test: '^((?!canary|fio|NetworkB).)*$',
+  };
+
+  // Might be overridden by persistent user settings
+  const secondaryDefaultFiltering = (state) => {
     return {
       create_time: '>' + state.lookBack.format(FORMAT.ISO_DATE),
-      project: '=' + $window.project,
     };
   };
 
@@ -80,17 +86,22 @@ mciModule.controller('PerfBBOutliersCtrl', function (
       };
     }
     return _.extend(
-      {},
-      mandatoryDefaultFiltering(vm.state),
-      typeFilter
+      typeFilter,
+      secondaryDefaultFiltering(vm.state),
+      Settings.perf.outlierProcessing.persistentFiltering,
+      mandatoryDefaultFiltering
     );
   };
 
   vm.state = {
-    filtering: $scope.getDefaultFiltering,
+    sorting: [{
+      field: 'order',
+      direction: 'desc',
+    }],
     lookBack: moment().subtract(2, 'weeks'),
     mode: vm.mode.value,
   };
+  vm.state.filtering = $scope.getDefaultFiltering(vm.state);
 
   const modeToCollMap = {
     detected: STITCH_CONFIG.PERF.COLL_OUTLIERS,
@@ -102,7 +113,7 @@ mciModule.controller('PerfBBOutliersCtrl', function (
   // Enhances filtering state with some contextual meta data
   // This data is required by expression compiler
   function getFilteringContext(state) {
-    return _.reduce(state.filtering(), (accum, filter_value, filter_key) => {
+    return _.reduce(state.filtering, (accum, filter_value, filter_key) => {
       if (!$scope.getCol) {
         return accum;
       }
@@ -178,6 +189,25 @@ mciModule.controller('PerfBBOutliersCtrl', function (
   // Required by loadData.
   let theMostRecentPromise;
 
+  function setInitialGridFiltering(gridApi, state) {
+    _.each(state.filtering, function (term, colName) {
+      const col = $scope.getCol(colName);
+      if (!col) return;  // Error! Associated col does not found
+      col.filters = [{term: term}];
+    });
+  }
+
+  // Sets `state` to grid filters
+  function setInitialGridState(gridApi, state) {
+    setInitialGridFiltering(gridApi, state);
+
+    _.each(state.sorting, function (sortingItem) {
+      const col = $scope.getCol(sortingItem.field);
+      if (!col) return; // Error! Associated col does not found
+      col.sort.direction = sortingItem.direction;
+    });
+  }
+
   function loadData() {
     vm.isLoading = true;
     vm.gridOptions.data = [];
@@ -207,6 +237,10 @@ mciModule.controller('PerfBBOutliersCtrl', function (
 
   vm.modeChanged = () => {
     vm.state.mode = vm.mode.value;
+    vm.state.filtering = $scope.getDefaultFiltering(vm.state);
+
+    // Push state changes to the grid api
+    setInitialGridState(vm.gridApi, vm.state);
 
     // Push state changes to the grid api
     // setInitialGridState(vm.gridApi, state);
@@ -237,6 +271,39 @@ mciModule.controller('PerfBBOutliersCtrl', function (
       vm.gridApi = api;
       $scope.getCol = EvgUiGridUtil.getColAccessor(api);
 
+      api.core.on.sortChanged($scope, function (grid, cols) {
+        vm.state.sorting = _.map(cols, function (col) {
+          return {
+            field: col.field,
+            direction: col.sort.direction
+          };
+        });
+        // NOTE do loadData() here for server-side sorting
+      });
+
+      const onFilterChanged = _.debounce(function () {
+        const filtering = _.reduce(api.grid.columns, function (m, d) {
+          const term = d.filters[0].term;
+          if (term) m[d.field] = term;
+          return m;
+        }, {});
+
+        Settings.perf.outlierProcessing.persistentFiltering = filtering;
+
+        // When user clicks 'Clear all filters'
+        // FIXME and when clear all filters manually. Either patching
+        //       of uigrid either standalone button required
+        if (_.isEmpty(filtering)) {
+          vm.state.filtering = getDefaultFiltering();
+          setInitialGridFiltering(vm.gridApi, state);
+        } else {
+          vm.state.filtering = filtering;
+        }
+
+        loadData();
+      }, 200);
+      api.core.on.filterChanged($scope, onFilterChanged);
+
       api.selection.on.rowSelectionChanged(null, _.debounce(() => {
         handleRowSelectionChange(api);
         $scope.$apply();
@@ -247,6 +314,12 @@ mciModule.controller('PerfBBOutliersCtrl', function (
       api.selection.on.rowSelectionChangedBatch(null, () => {
         handleRowSelectionChange(api);
       });
+
+      // Load initial set of data once `columns` are populated
+      api.core.on.rowsRendered(null, _.once(function () {
+        setInitialGridState(api, vm.state);
+        loadData();
+      }));
     },
 
     columnDefs: [
@@ -292,8 +365,17 @@ mciModule.controller('PerfBBOutliersCtrl', function (
           groupPriority: 0,
         },
       },
+      {
+        name: 'Project',
+        field: 'project',
+        type: 'string',
+        visible: false,
+      },
+      {
+        name: 'Create Time',
+        field: 'create_time',
+        type: 'date',
+      },
     ],
   };
-
-  loadData();
 });
