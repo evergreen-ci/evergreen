@@ -33,6 +33,7 @@ type Distro struct {
 	Disabled         bool                    `bson:"disabled,omitempty" json:"disabled,omitempty" mapstructure:"disabled,omitempty"`
 	ContainerPool    string                  `bson:"container_pool,omitempty" json:"container_pool,omitempty" mapstructure:"container_pool,omitempty"`
 	PlannerSettings  PlannerSettings         `bson:"planner_settings" json:"planner_settings,omitempty" mapstructure:"planner_settings,omitempty"`
+	FinderSettings   FinderSettings          `bson:"finder_settings" json:"finder_settings,omitempty" mapstructure:"finder_settings,omitempty"`
 }
 
 type PlannerSettings struct {
@@ -45,6 +46,10 @@ type PlannerSettings struct {
 	PatchZipperFactor      int           `bson:"patch_zipper_factor" json:"patch_zipper_factor,omitempty" mapstructure:"patch_zipper_factor,omitempty"`
 	MainlineFirst          bool          `bson:"mainline_first" json:"mainline_first,omitempty" mapstructure:"mainline_first,omitempty"`
 	PatchFirst             bool          `bson:"patch_first" json:"patch_first,omitempty" mapstructure:"patch_first,omitempty"`
+}
+
+type FinderSettings struct {
+	Version string `bson:"version" json:"version" mapstructure:"version"`
 }
 
 type DistroGroup []Distro
