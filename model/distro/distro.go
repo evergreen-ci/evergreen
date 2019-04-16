@@ -75,6 +75,26 @@ const (
 	ArchWindowsAmd64 = "windows_amd64"
 )
 
+// ValidArches includes all recognized architectures.
+var ValidArches = []string{
+	ArchDarwinAmd64,
+	ArchLinux386,
+	ArchLinuxPpc64le,
+	ArchLinuxS390x,
+	ArchLinuxArm64,
+	ArchLinuxAmd64,
+	ArchWindows386,
+	ArchWindowsAmd64,
+}
+
+// ValidBootstrapMethods includes all recognized bootstrap methods.
+var ValidBootstrapMethods = []string{
+	BootstrapMethodLegacySSH,
+	BootstrapMethodSSH,
+	BootstrapMethodPreconfiguredImage,
+	BootstrapMethodUserData,
+}
+
 // Seed the random number generator for creating distro names
 func init() {
 	rand.Seed(time.Now().UnixNano())
@@ -212,23 +232,19 @@ func ValidateArch(arch string) error {
 		return fmt.Errorf("architecture '%s' is not in the form ${GOOS}_${GOARCH}", arch)
 	}
 
-	switch arch {
-	case ArchDarwinAmd64, ArchLinux386, ArchLinuxPpc64le, ArchLinuxS390x, ArchLinuxArm64, ArchLinuxAmd64, ArchWindows386, ArchWindowsAmd64:
-		return nil
-	default:
+	if !util.StringSliceContains(ValidArches, arch) {
 		return fmt.Errorf("'%s' is not a recognized architecture", arch)
 	}
+	return nil
 }
 
 // ValidateBootstrapMethod checks that the bootstrap mechanism is one of the
 // supported methods.
 func ValidateBootstrapMethod(method string) error {
-	switch method {
-	case BootstrapMethodLegacySSH, BootstrapMethodSSH, BootstrapMethodPreconfiguredImage, BootstrapMethodUserData:
-		return nil
-	default:
+	if !util.StringSliceContains(ValidBootstrapMethods, method) {
 		return fmt.Errorf("'%s' is not a valid bootstrap method", method)
 	}
+	return nil
 }
 
 // GetDistroIds returns a slice of distro IDs for the given group of distros
