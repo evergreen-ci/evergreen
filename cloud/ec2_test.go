@@ -3,6 +3,8 @@ package cloud
 import (
 	"context"
 	"encoding/base64"
+	"fmt"
+	"mime/multipart"
 	"strings"
 	"testing"
 	"time"
@@ -917,16 +919,50 @@ func (s *EC2Suite) TestGetSecurityGroup() {
 	s.Equal([]*string{aws.String("sg-1"), aws.String("sg-2")}, settings.getSecurityGroups())
 }
 
-func (s *EC2Suite) TestMakeMultipartMIMEUserData() {
-	customUserData := "#!/bin/bash\necho 'foobar'"
-	userData, err := makeMultipartMIMEUserData(customUserData)
-	s.NoError(err)
+func (s *EC2Suite) TestWriteUserDataHeaders() {
+	buf := &strings.Builder{}
+	boundary := "some_boundary"
+	s.NoError(writeUserDataHeaders(buf, boundary))
+	res := strings.ToLower(buf.String())
+	s.Contains(res, "mime-version: 1.0")
+	s.Contains(res, "content-type: multipart/mixed")
+	s.Contains(res, fmt.Sprintf("boundary=\"%s\"", boundary))
+	s.Equal(1, strings.Count(res, boundary))
 }
 
-// Test (host.Host).FetchJasperCommand is substring of multipart command
-func (s *EC2Sutie) TestMakeMultipartMIMEUserDataContainsJasperCommand() {
-	customUserData := "#!/bin/bash\necho 'foobar'"
-	userData, err := makeMultipartMIMEUserData(customUserData)
+func (s *EC2Suite) TestWriteBootstrappingUserDataPart() {
+
+}
+
+func (s *EC2Suite) TestWriteCustomUserDataPart() {
+	buf := &strings.Builder{}
+	mimeWriter := multipart.NewWriter(buf)
+	boundary := "some_boundary"
+	mimeWriter.SetBoundary(boundary)
+	userData := "#!/bin/bash\necho 'foobar'"
+	s.NoError(writeCustomUserDataPart(mimeWriter, userData))
+	res := strings.ToLower(buf.String())
+	s.Contains(res, "mime-version: 1.0")
+	s.Contains(res, "content-type: text/x-shellscript")
+	s.Contains(res, "content-disposition: attachment; filename=\"userdata.txt\"")
+	s.Contains(res, userData)
+	s.Equal(1, strings.Count(res, boundary))
+}
+
+func (s *EC2Suite) TestWriteCustomUserDataPartInvalidFormat() {
+	buf := &strings.Builder{}
+	mimeWriter := multipart.NewWriter(buf)
+	userData := "invalid input"
+	s.Error(writeCustomUserDataPart(mimeWriter, userData))
+}
+
+func (s *EC2Suite) TestMakeMultipartUserData() {
+	userData := "#!/bin/bash\necho 'foobar'"
+	res, err := makeMultipartUserData(userData)
 	s.NoError(err)
-	s.Contains(userData, "TODO curl command here")
+	s.Contains(res, userData)
+
+	res, err = makeMultipartUserData("")
+	s.NoError(err)
+	s.NotEmpty(res)
 }

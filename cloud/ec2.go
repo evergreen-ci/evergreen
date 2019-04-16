@@ -25,7 +25,6 @@ import (
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
-	"golang.org/x/net/html/charset"
 )
 
 func isHostSpot(h *host.Host) bool {
@@ -184,40 +183,72 @@ func writeUserDataHeaders(writer io.Writer, boundary string) error {
 			return errors.Wrapf(err, "error writing top-level header '%s'", header)
 		}
 	}
+
 	if _, err := writer.Write([]byte("\r\n")); err != nil {
-		return errors.Wrap(err, "error writing top-level header's CRLF ending")
+		return errors.Wrap(err, "error writing top-level header line break")
 	}
 
 	return nil
 }
 
+// func bootstrapScript(outputPath, url string) string {
+//     if runtime.GOOS == "windows" {
+//         outputPath = strings.Replace(outputPath, "/", "\\")
+//         outputPath = filepath.Join("C:\\cygwin\\", outputPath)
+//         return strings.Join([]string{"<powershell>",
+//             fmt.Sprintf("Invoke-RestMethod -Uri %s -OutFile %s", url, outputPath),
+//             "</powershell>"}, "\r\n")
+//     }
+//     return strings.Join([]string{"#!/bin/bash",
+//         fmt.Sprintf("curl -L -o %s", "%s", outputPath, url)}, "\n")
+// }
+
 // kim: TODO: implement
-// writeBootstrappingUserData writes the user data part that bootstraps the
+func bootstrapScript(fetchJasperCmd string) string {
+	return ""
+}
+
+// writeBootstrappingUserDataPart writes the user data part that bootstraps the
 // host.
-func writeBootstrappingUserData(writer *multipart.Writer) error {
+func writeBootstrappingUserDataPart(writer *multipart.Writer, bootstrapCommand string) error {
+	header := textproto.MIMEHeader{}
+	header.Add("MIME-Version", "1.0")
+	header.Add("Content-Type", "text/x-shellscript")
+	header.Add("Content-Disposition", "attachment; filename=\"bootstrap.txt\"")
+
+	part, err := writer.CreatePart(header)
+	if err != nil {
+		return errors.Wrap(err, "error making bootstrap user data part")
+	}
+
+	env := evergreen.GetEnvironment()
+	settings := env.Settings()
+	if _, err := part.Write([]byte(bootstrapCommand)); err != nil {
+		return errors.Wrap(err, "error writing custom user data")
+	}
 	return nil
 }
 
-// writeCustomUserData writes the user data part for the custom input given by
-// the user.
-func writeCustomUserData(writer *multipart.Writer, customUserData string) error {
-	// Construct the necessary headers for the part.
+// writeCustomUserDataPart writes the user data part for the custom input given
+// by the user.
+func writeCustomUserDataPart(writer *multipart.Writer, customUserData string) error {
+	if customUserData == "" {
+		return nil
+	}
+
 	contentType, err := userDataContentType(customUserData)
 	if err != nil {
 		return errors.Wrap(err, "error determining custom user data content type")
 	}
 
-	_, charSet, _ := charset.DetermineEncoding([]byte(customUserData), contentType)
-
 	header := textproto.MIMEHeader{}
 	header.Add("MIME-Version", "1.0")
-	header.Add("Content-Type", fmt.Sprintf("%s; charset=%s", contentType, charSet))
+	header.Add("Content-Type", contentType)
 	header.Add("Content-Disposition", "attachment; filename=\"userdata.txt\"")
 
-	// Make the part for the custom user data.
 	part, err := writer.CreatePart(header)
 	if err != nil {
-		return errors.Wrap(err, "error making mime part for user data")
+		return errors.Wrap(err, "error making custom user data part")
 	}
 
 	if _, err := part.Write([]byte(customUserData)); err != nil {
@@ -257,58 +288,32 @@ func userDataContentType(customUserData string) (string, error) {
 	return "", errors.New("user data format is not supported")
 }
 
-// kim: NOTE: example MIMEe multipart message:
-// Content-Type: multipart/mixed; boundary="===============8590331813792542444=="
-// MIME-Version: 1.0
-//
-// --===============8590331813792542444==
-// MIME-Version: 1.0
-// Content-Type: text/x-shellscript; charset="us-ascii"
-// Content-Transfer-Encoding: 7bit
-// Content-Disposition: attachment; filename="foo.sh"
-//
-// #!/bin/sh
-//
-// echo "hello world!" >> /usr/local/bin/test.txt
-//
-// --===============8590331813792542444==
-// MIME-Version: 1.0
-// Content-Type: text/x-shellscript; charset="us-ascii"
-// Content-Transfer-Encoding: 7bit
-// Content-Disposition: attachment; filename="bar.sh"
-//
-// #!/bin/bash
-//
-// echo "Hello world again!" >> /usr/local/bin/test2.txt
-//
-// --===============8590331813792542444==--
-
 // makeMultipartUserData returns user data in a multipart MIME format with user data
 // to bootstrap the machine as well as the custom user data given by the
 // Evergreen user.
-func makeMultipartUserData(customUserData string) (string, error) {
-	userData := &strings.Builder{}
-	mimeWriter := multipart.NewWriter(userData)
+func makeMultipartUserData(bootstrapCommand, customUserData string) (string, error) {
+	partsBuf := &strings.Builder{}
+	parts := multipart.NewWriter(partsBuf)
 
-	if err := writeUserDataHeaders(userData, mimeWriter.Boundary()); err != nil {
+	if err := writeUserDataHeaders(partsBuf, parts.Boundary()); err != nil {
 		return "", errors.Wrap(err, "error writing multipart MIME headers")
 	}
 
-	if err := writeBootstrappingUserData(mimeWriter); err != nil {
+	if err := writeBootstrappingUserDataPart(parts, bootstrapCommand); err != nil {
 		return "", errors.Wrap(err, "error writing bootstrap instructions part of user data")
 	}
 
 	if customUserData != "" {
-		if err := writeCustomUserData(mimeWriter, customUserData); err != nil {
+		if err := writeCustomUserDataPart(parts, customUserData); err != nil {
 			return "", errors.Wrap(err, "error writing custom part of user data")
 		}
 	}
 
-	if err := mimeWriter.Close(); err != nil {
+	if err := parts.Close(); err != nil {
 		return "", errors.Wrap(err, "error closing MIME writer")
 	}
 
-	return userData.String(), nil
+	return partsBuf.String(), nil
 }
 
 func (m *ec2Manager) spawnOnDemandHost(ctx context.Context, h *host.Host, ec2Settings *EC2ProviderSettings, blockDevices []*ec2.BlockDeviceMapping) ([]*string, error) {
@@ -346,7 +351,9 @@ func (m *ec2Manager) spawnOnDemandHost(ctx context.Context, h *host.Host, ec2Set
 	if h.Distro.BootstrapMethod == distro.BootstrapMethodUserData {
 		// TODO: it might be better to mark this as a failure earlier than here.
 		// (e.g. after receiving REST request, after host is set)
-		userData, err := makeMultipartUserData(ec2Settings.UserData)
+		// env := evergreen.GetEnvironment()
+		// settings := env.Settings()
+		userData, err := makeMultipartUserData(ec2Settings.UserData, "" /*bootstrapScript(h.FetchJasperCommand(settings, "/usr/local/bin"))*/)
 		if err != nil {
 			return nil, errors.Wrap(err, "error creating user data with multiple parts")
 		}
