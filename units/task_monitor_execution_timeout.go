@@ -32,6 +32,9 @@ func init() {
 	registry.AddJobType(taskExecutionTimeoutJobName, func() amboy.Job {
 		return makeTaskExecutionTimeoutMonitorJob()
 	})
+	registry.AddJobType(taskExecutionTimeoutPopulationJobName, func() amboy.Job {
+		return makeTaskExecutionTimeoutPopulateJob()
+	})
 }
 
 type taskExecutionTimeoutJob struct {
