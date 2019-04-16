@@ -204,8 +204,16 @@ func writeUserDataHeaders(writer io.Writer, boundary string) error {
 // }
 
 // kim: TODO: implement
-func bootstrapScript(fetchJasperCmd string) string {
-	return ""
+func bootstrapScript(fetchJasperCmd string, isWindows bool) string {
+	// do something completely different for Windows
+	if isWindows {
+		return strings.Join([]string{
+			"<powershell>",
+			"TODO",
+			"</powershell>",
+		})
+	}
+	return strings.Join([]string{"#!/bin/bash", fetchJasperCmd}, "\n")
 }
 
 // writeBootstrappingUserDataPart writes the user data part that bootstraps the
@@ -221,8 +229,6 @@ func writeBootstrappingUserDataPart(writer *multipart.Writer, bootstrapCommand s
 		return errors.Wrap(err, "error making bootstrap user data part")
 	}
 
-	env := evergreen.GetEnvironment()
-	settings := env.Settings()
 	if _, err := part.Write([]byte(bootstrapCommand)); err != nil {
 		return errors.Wrap(err, "error writing custom user data")
 	}
@@ -351,9 +357,9 @@ func (m *ec2Manager) spawnOnDemandHost(ctx context.Context, h *host.Host, ec2Set
 	if h.Distro.BootstrapMethod == distro.BootstrapMethodUserData {
 		// TODO: it might be better to mark this as a failure earlier than here.
 		// (e.g. after receiving REST request, after host is set)
-		// env := evergreen.GetEnvironment()
-		// settings := env.Settings()
-		userData, err := makeMultipartUserData(ec2Settings.UserData, "" /*bootstrapScript(h.FetchJasperCommand(settings, "/usr/local/bin"))*/)
+		env := evergreen.GetEnvironment()
+		settings := env.Settings()
+		userData, err := makeMultipartUserData(ec2Settings.UserData, bootstrapScript(h.FetchJasperCommand(settings, "/usr/local/bin"), h.Distro.IsWindows()))
 		if err != nil {
 			return nil, errors.Wrap(err, "error creating user data with multiple parts")
 		}
