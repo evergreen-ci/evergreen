@@ -230,14 +230,14 @@ func containsTask(tasks []string, task string) bool {
 
 // FidnStatsToUpdate finds the stats that need to be updated as a result of tasks finishing between 'start' and 'end'.
 // The results are ordered by project id, then hour, then requester.
-func FindStatsToUpdate(projectId string, start time.Time, end time.Time) ([]StatsToUpdate, error) {
+func FindStatsToUpdate(projectID string, requester []string, start, end time.Time) ([]StatsToUpdate, error) {
 	grip.Info(message.Fields{
 		"message": "Finding tasks that need their stats updated",
-		"project": projectId,
+		"project": projectID,
 		"start":   start,
 		"end":     end,
 	})
-	pipeline := statsToUpdatePipeline(projectId, start, end)
+	pipeline := statsToUpdatePipeline(projectID, requester, start, end)
 	statsList := []StatsToUpdate{}
 	err := db.Aggregate(task.Collection, pipeline, &statsList)
 	if err != nil {

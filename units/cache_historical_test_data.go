@@ -109,7 +109,7 @@ func (j *cacheHistoricalTestDataJob) Run(ctx context.Context) {
 		"message":   "running sync",
 	})
 
-	statsToUpdate, err := stats.FindStatsToUpdate(j.ProjectId, syncFromTime, syncToTime)
+	statsToUpdate, err := stats.FindStatsToUpdate(j.ProjectId, []string{evergreen.RepotrackerVersionRequester}, syncFromTime, syncToTime)
 	if err != nil {
 		j.AddError(errors.Wrap(err, "error finding tasks to update"))
 		return
