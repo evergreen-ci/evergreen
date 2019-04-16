@@ -539,7 +539,7 @@ func addMergeTaskAndVariant(patchDoc *patch.Patch, project *model.Project) error
 	project.BuildVariants = append(project.BuildVariants, mergeBuildVariant)
 	project.Tasks = append(project.Tasks, mergeTask)
 
-	validationErrors := validator.CheckProjectSemantics(project)
+	validationErrors := validator.CheckProjectSyntax(project)
 	if len(validationErrors) != 0 {
 		return errors.Errorf("project validation failed: %s", validationErrors)
 	}
