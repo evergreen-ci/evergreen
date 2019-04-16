@@ -25,16 +25,19 @@ func WrapClient(ctx context.Context, client *mongo.Client) Session {
 }
 
 type sessionWrapper struct {
-	ctx     context.Context
-	client  *mongo.Client
-	catcher grip.Catcher
-	isClone bool
+	ctx      context.Context
+	canceler context.CancelFunc
+	client   *mongo.Client
+	catcher  grip.Catcher
+	isClone  bool
 }
 
-func (s *sessionWrapper) Clone() Session                   { s.isClone = true; return s }
-func (s *sessionWrapper) Copy() Session                    { s.isClone = true; return s }
-func (s *sessionWrapper) Error() error                     { return s.catcher.Resolve() }
-func (s *sessionWrapper) SetSocketTimeout(d time.Duration) {}
+func (s *sessionWrapper) Clone() Session { s.isClone = true; return s }
+func (s *sessionWrapper) Copy() Session  { s.isClone = true; return s }
+func (s *sessionWrapper) Error() error   { return s.catcher.Resolve() }
+func (s *sessionWrapper) SetSocketTimeout(d time.Duration) {
+	s.ctx, s.canceler = context.WithTimeout(s.ctx, d)
+}
 
 func (s *sessionWrapper) DB(name string) Database {
 	return &databaseWrapper{
@@ -44,6 +47,10 @@ func (s *sessionWrapper) DB(name string) Database {
 }
 
 func (s *sessionWrapper) Close() {
+	if s.canceler != nil {
+		s.canceler()
+	}
+
 	if s.isClone {
 		return
 	}
