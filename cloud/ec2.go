@@ -269,6 +269,7 @@ func userDataContentType(userData string) (string, error) {
 	} else {
 		firstLine = userData[:index]
 	}
+	firstLine = strings.TrimSpace(firstLine)
 
 	for key, val := range userDataPrefixToContentType {
 		if strings.HasPrefix(firstLine, key) {
