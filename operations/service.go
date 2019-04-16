@@ -78,7 +78,7 @@ func startSystemCronJobs(ctx context.Context, env evergreen.Environment) {
 		units.PopulateIdleHostJobs(env),
 		units.PopulateHostTerminationJobs(env),
 		units.PopulateHostMonitoring(env),
-		units.PopulateTaskMonitoring(),
+		units.PopulateTaskMonitoring(5),
 		units.PopulateEventAlertProcessing(1),
 		units.PopulateBackgroundStatsJobs(env, 0),
 		units.PopulateLastContainerFinishTimeJobs(),

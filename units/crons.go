@@ -211,7 +211,7 @@ func PopulateEventAlertProcessing(parts int) amboy.QueueOperation {
 	}
 }
 
-func PopulateTaskMonitoring() amboy.QueueOperation {
+func PopulateTaskMonitoring(mins int) amboy.QueueOperation {
 	return func(queue amboy.Queue) error {
 		flags, err := evergreen.GetServiceFlags()
 		if err != nil {
@@ -227,33 +227,7 @@ func PopulateTaskMonitoring() amboy.QueueOperation {
 			return nil
 		}
 
-		taskIDs := map[string]int{}
-		tasks, err := host.FindStaleRunningTasks(heartbeatTimeoutThreshold)
-		if err != nil {
-			return errors.Wrap(err, "error finding tasks with timed-out or stale heartbeats")
-		}
-		for _, t := range tasks {
-			taskIDs[t.Id] = t.Execution
-		}
-		tasks, err = host.StaleRunningTaskIDs(heartbeatTimeoutThreshold)
-		if err != nil {
-			return errors.Wrap(err, "error finding tasks with timed-out or stale heartbeats")
-		}
-		for _, t := range tasks {
-			taskIDs[t.Id] = t.Execution
-		}
-
-		catcher := grip.NewBasicCatcher()
-		for id, execution := range taskIDs {
-			ts := util.RoundPartOfHour(15)
-			catcher.Add(queue.Put(NewTaskExecutionMonitorJob(id, execution, 1, ts.Format(tsFormat))))
-		}
-		grip.Info(message.Fields{
-			"operation": "task-execution-timeout",
-			"num_tasks": len(tasks),
-		})
-
-		return catcher.Resolve()
+		return queue.Put(NewTaskExecutionMonitorPopulateJob(util.RoundPartOfMinute(mins).Format(tsFormat)))
 	}
 }
 
