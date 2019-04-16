@@ -751,11 +751,6 @@ func PopulatePeriodicNotificationJobs(parts int) amboy.QueueOperation {
 
 func PopulateCacheHistoricalTestDataJob(part int) amboy.QueueOperation {
 	return func(queue amboy.Queue) error {
-		projects, err := model.FindAllTrackedProjectRefs()
-		if err != nil {
-			return errors.WithStack(err)
-		}
-
 		flags, err := evergreen.GetServiceFlags()
 		if err != nil {
 			return errors.WithStack(err)
@@ -767,6 +762,11 @@ func PopulateCacheHistoricalTestDataJob(part int) amboy.QueueOperation {
 				"mode":    "degraded",
 			})
 			return nil
+		}
+
+		projects, err := model.FindAllTrackedProjectRefs()
+		if err != nil {
+			return errors.WithStack(err)
 		}
 
 		ts := util.RoundPartOfDay(part).Format(tsFormat)
