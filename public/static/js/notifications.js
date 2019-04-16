@@ -19,11 +19,16 @@ mciModule.controller('NotificationsController', function($scope, $window, mciUse
       var patchFinishId = $scope.settings.notifications.patch_finish_id;
       var buildBreakId = $scope.settings.notifications.build_break_id;
       var spawnhostExpirationId = $scope.settings.notifications.spawn_host_expiration_id;
+      var commitQueueId = $scope.settings.notifications.commit_queue_id;
       if (!Array.isArray(resp.data)) {
         resp.data = [resp.data];
       }
       $scope.subscriptions = _.filter(resp.data, function(subscription){
-        if (subscription.id === patchFinishId || subscription.id === buildBreakId || subscription.id === spawnhostExpirationId) {
+        if (
+          subscription.id === patchFinishId || 
+          subscription.id === buildBreakId || 
+          subscription.id === spawnhostExpirationId || 
+          subscription.id === commitQueueId) {
           return false;
         }
         return true;

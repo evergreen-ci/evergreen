@@ -98,6 +98,8 @@ const (
 
 	PushStage = "push"
 
+	MergeTestStarted = "started"
+
 	// maximum task (zero based) execution number
 	MaxTaskExecution = 3
 

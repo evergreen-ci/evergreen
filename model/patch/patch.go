@@ -347,7 +347,7 @@ func (p *Patch) RemoveModulePatch(moduleName string) error {
 }
 
 func (p *Patch) IsGithubPRPatch() bool {
-	return p.GithubPatchData.BaseOwner != ""
+	return p.GithubPatchData.HeadOwner != ""
 }
 
 func (p *Patch) IsPRMergePatch() bool {

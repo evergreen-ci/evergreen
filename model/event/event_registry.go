@@ -14,14 +14,12 @@ type eventRegistry struct {
 	isSubscribable map[EventLogEntry]bool
 }
 
-var registry *eventRegistry
+var registry = &eventRegistry{
+	types:          map[string]eventDataFactory{},
+	isSubscribable: map[EventLogEntry]bool{},
+}
 
 func init() {
-	registry = &eventRegistry{
-		types:          map[string]eventDataFactory{},
-		isSubscribable: map[EventLogEntry]bool{},
-	}
-
 	registry.AddType(ResourceTypeAdmin, adminEventDataFactory)
 	registry.AddType(ResourceTypeBuild, buildEventDataFactory)
 	registry.AddType(ResourceTypeDistro, distroEventDataFactory)

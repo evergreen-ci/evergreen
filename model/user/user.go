@@ -67,6 +67,8 @@ type NotificationPreferences struct {
 	SpawnHostExpirationID string                     `bson:"spawn_host_expiration_id,omitempty" json:"-"`
 	SpawnHostOutcome      UserSubscriptionPreference `bson:"spawn_host_outcome" json:"spawn_host_outcome"`
 	SpawnHostOutcomeID    string                     `bson:"spawn_host_outcome_id,omitempty" json:"-"`
+	CommitQueue           UserSubscriptionPreference `bson:"commit_queue" json:"commit_queue"`
+	CommitQueueID         string                     `bson:"commit_queue_id,omitempty" json:"-"`
 }
 
 type UserSubscriptionPreference string
