@@ -949,7 +949,7 @@ func (s *EC2Suite) TestWriteUserDataPart() {
 	buf := &strings.Builder{}
 	mimeWriter := multipart.NewWriter(buf)
 	boundary := "some_boundary"
-	mimeWriter.SetBoundary(boundary)
+	s.NoError(mimeWriter.SetBoundary(boundary))
 	userData := "#!/bin/bash\necho 'foobar'"
 	s.NoError(writeUserDataPart(mimeWriter, userData, "foobar.txt"))
 	res := strings.ToLower(buf.String())

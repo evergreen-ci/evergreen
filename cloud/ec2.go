@@ -320,11 +320,13 @@ func (m *ec2Manager) spawnOnDemandHost(ctx context.Context, h *host.Host, ec2Set
 		input.SecurityGroups = ec2Settings.getSecurityGroups()
 	}
 
-	expanded, err := m.expandUserData(ec2Settings.UserData)
-	if err != nil {
-		return nil, errors.Wrap(err, "problem expanding user data")
+	if ec2Settings.UserData != "" {
+		expanded, err := m.expandUserData(ec2Settings.UserData)
+		if err != nil {
+			return nil, errors.Wrap(err, "problem expanding user data")
+		}
+		ec2Settings.UserData = expanded
 	}
-	ec2Settings.UserData = expanded
 
 	if h.Distro.BootstrapMethod == distro.BootstrapMethodUserData {
 		env := evergreen.GetEnvironment()
