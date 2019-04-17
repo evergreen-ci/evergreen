@@ -42,7 +42,7 @@ func (s *GitHubPRSenderSuite) TestGithubPRLogger() {
 	s.NoError(err)
 
 	msg := GithubMergePR{
-		PastTenseStatus: evergreen.PatchFailed,
+		PastTenseStatus: evergreen.PatchSucceeded,
 		ProjectID:       "mci",
 		Owner:           "evergreen-ci",
 		Repo:            "evergreen",

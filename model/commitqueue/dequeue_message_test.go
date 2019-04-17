@@ -14,6 +14,7 @@ func TestDequeueItem(t *testing.T) {
 	dequeue := DequeueItem{
 		ProjectID: "mci",
 		Item:      "abcdef",
+		Status:    "failed",
 	}
 	c := NewDequeueItemMessage(level.Info, dequeue)
 	assert.NotNil(c)
