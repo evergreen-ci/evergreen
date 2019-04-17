@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
-
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/google/go-github/github"
@@ -80,7 +79,7 @@ func (s *githubPRLogger) Send(m message.Composer) {
 	}
 
 	s.sendPatchResult(msg)
-	if !(msg.PastTenseStatus == evergreen.PatchSucceeded) {
+	if !(msg.Status == evergreen.PatchSucceeded) {
 		s.ErrorHandler(errors.New("not proceeding with merge for failed patch"), m)
 		if msg.ProjectID != "" {
 			event.LogCommitQueueConcludeTest(msg.PatchID, evergreen.MergeTestFailed)
@@ -145,7 +144,7 @@ func (s *githubPRLogger) sendMergeFailedStatus(githubMessage string, msg *Github
 func (s *githubPRLogger) sendPatchResult(msg *GithubMergePR) {
 	var state message.GithubState
 	var description string
-	if msg.PastTenseStatus == evergreen.PatchSucceeded {
+	if msg.Status == evergreen.PatchSucceeded {
 		state = message.GithubStateSuccess
 		description = "merge test succeeded"
 	} else {
