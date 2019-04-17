@@ -208,8 +208,7 @@ func constructPwdUpdateCommand(ctx context.Context, env evergreen.Environment, h
 
 	return env.JasperManager().CreateCommand(ctx).Host(hostInfo.Hostname).User(hostObj.User).
 		ExtendSSHArgs("-p", hostInfo.Port).ExtendSSHArgs(sshOptions...).
-		Append(fmt.Sprintf(`'net user %s "%s"'`, hostObj.User, password)).
-		Append(fmt.Sprintf(`'sc config sshd obj= \".\%s\" password= \"%s\"'`, hostObj.User, password)), nil
+		Append(fmt.Sprintf("echo -e \"%s\" | passwd", password)), nil
 }
 
 func TerminateSpawnHost(ctx context.Context, host *host.Host, settings *evergreen.Settings, user string) error {
