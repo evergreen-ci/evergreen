@@ -13,7 +13,7 @@ Use only the computing resources you need.
 Easily navigate the state of your tests, logs, and commit history.
 
 #### Multiplatform Support
-Run jobs on Linux (including PowerPC and ZSeries), Windows, OSX, Solaris, and BSD.
+Run jobs on Linux (including PowerPC and ZSeries), Windows, OSX, and BSD.
 
 #### Spawn Hosts
 Spin up a copy of any machine in your test infrastructure for debugging.
@@ -31,7 +31,7 @@ Evergreen requires the configuration of a main server along with a cloud provide
 Please refer to [our tutorial](https://github.com/evergreen-ci/evergreen/wiki/Getting-Started) for full installation instructions.
 
 ## System Requirements
-The Evergreen Agent and Command Line Tool are supported on Linux, OSX, Windows, and Solaris operating systems.
+The Evergreen Agent and Command Line Tool are supported on Linux, OSX, and Windows operating systems.
 However, the Evergreen API Server, UI Server, and Runner program are currently only supported and tested on Linux and OSX.
 
 ## Go Requirements

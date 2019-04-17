@@ -27,6 +27,7 @@ var distroSyntaxValidators = []distroValidator{
 	ensureValidExpansions,
 	ensureStaticHostsAreNotSpawnable,
 	ensureValidContainerPool,
+	ensureValidArch,
 	ensureValidBootstrapMethod,
 	ensureHasNoUnauthorizedCharacters,
 	ensureHasValidPlannerVersion,
@@ -170,6 +171,17 @@ func ensureValidSSHOptions(ctx context.Context, d *distro.Distro, s *evergreen.S
 	return nil
 }
 
+// ensureValidArch checks that the architecture is one of the supported
+// architectures.
+func ensureValidArch(ctx context.Context, d *distro.Distro, s *evergreen.Settings) ValidationErrors {
+	if err := distro.ValidateArch(d.Arch); err != nil {
+		return ValidationErrors{{Level: Error, Message: errors.Wrap(err, "error validating arch").Error()}}
+	}
+	return nil
+}
+
+// ensureValidBootstrapMethod checks that the bootstrap method is one of the
+// supported methods.
 func ensureValidBootstrapMethod(ctx context.Context, d *distro.Distro, s *evergreen.Settings) ValidationErrors {
 	if err := distro.ValidateBootstrapMethod(d.BootstrapMethod); err != nil {
 		return ValidationErrors{{Level: Error, Message: errors.Wrap(err, "error validating bootstrap method").Error()}}
