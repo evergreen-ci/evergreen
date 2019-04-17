@@ -6,14 +6,14 @@ import (
 )
 
 type CreateHost struct {
-	DNSName    string `json:"dns_name,omitempty"`
-	IP         string `json:"ip_address,omitempty"`
-	InstanceID string `json:"instance_id,omitempty"`
+	DNSName    APIString `json:"dns_name"`
+	IP         APIString `json:"ip_address"`
+	InstanceID APIString `json:"instance_id"`
 
-	HostID   string `json:"host_id,omitempty"`
-	ParentID string `json:"parent_id,omitempty"`
-	Image    string `json:"image,omitempty"`
-	Command  string `json:"command,omitempty"`
+	HostID   APIString `json:"host_id"`
+	ParentID APIString `json:"parent_id"`
+	Image    APIString `json:"image"`
+	Command  APIString `json:"command"`
 }
 
 func (createHost *CreateHost) BuildFromService(h interface{}) error {
@@ -21,29 +21,29 @@ func (createHost *CreateHost) BuildFromService(h interface{}) error {
 	case host.Host:
 		// container
 		if v.ParentID != "" {
-			createHost.HostID = v.Id
-			createHost.ParentID = v.ParentID
-			createHost.Image = v.DockerOptions.Image
-			createHost.Command = v.DockerOptions.Command
+			createHost.HostID = ToAPIString(v.Id)
+			createHost.ParentID = ToAPIString(v.ParentID)
+			createHost.Image = ToAPIString(v.DockerOptions.Image)
+			createHost.Command = ToAPIString(v.DockerOptions.Command)
 			return nil
 		}
-		createHost.DNSName = v.Host
-		createHost.InstanceID = v.Id
-		createHost.IP = v.IP
-		createHost.InstanceID = v.ExternalIdentifier
+		createHost.DNSName = ToAPIString(v.Host)
+		createHost.InstanceID = ToAPIString(v.Id)
+		createHost.IP = ToAPIString(v.IP)
+		createHost.InstanceID = ToAPIString(v.ExternalIdentifier)
 	case *host.Host:
 		// container
 		if v.ParentID != "" {
-			createHost.HostID = v.Id
-			createHost.ParentID = v.ParentID
-			createHost.Image = v.DockerOptions.Image
-			createHost.Command = v.DockerOptions.Command
+			createHost.HostID = ToAPIString(v.Id)
+			createHost.ParentID = ToAPIString(v.ParentID)
+			createHost.Image = ToAPIString(v.DockerOptions.Image)
+			createHost.Command = ToAPIString(v.DockerOptions.Command)
 			return nil
 		}
-		createHost.DNSName = v.Host
-		createHost.InstanceID = v.Id
-		createHost.IP = v.IP
-		createHost.InstanceID = v.ExternalIdentifier
+		createHost.DNSName = ToAPIString(v.Host)
+		createHost.InstanceID = ToAPIString(v.Id)
+		createHost.IP = ToAPIString(v.IP)
+		createHost.InstanceID = ToAPIString(v.ExternalIdentifier)
 	default:
 		return errors.Errorf("Invalid type passed to *CreateHost.BuildFromService (%T)", h)
 	}
