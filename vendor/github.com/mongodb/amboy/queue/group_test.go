@@ -2,12 +2,14 @@ package queue
 
 import (
 	"context"
+	"fmt"
 	"testing"
 	"time"
 
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/amboy/job"
 	"github.com/stretchr/testify/require"
+	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
@@ -513,4 +515,36 @@ func TestQueueGroupTTL(t *testing.T) {
 			require.Zero(t, stats2.Total)
 		})
 	}
+}
+
+func TestQueueGroupConstructorPruneSmokeTest(t *testing.T) {
+	client, err := mongo.NewClient(options.Client().ApplyURI("mongodb://localhost:27017"))
+	require.NoError(t, err)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	require.NoError(t, client.Connect(ctx))
+	for i := 0; i < 10; i++ {
+		_, err := client.Database("amboy_test").Collection(fmt.Sprintf("gen-%d.jobs", i)).InsertOne(ctx, bson.M{"foo": "bar"})
+		require.NoError(t, err)
+	}
+	remoteOpts := RemoteQueueGroupOptions{
+		Client: client,
+		MongoOptions: MongoDBOptions{
+			DB:  "amboy_test",
+			URI: "mongodb://localhost:27017",
+		},
+		Prefix:         "gen",
+		Constructor:    remoteConstructor,
+		TTL:            time.Second,
+		PruneFrequency: time.Second,
+	}
+	_, err = NewRemoteQueueGroup(ctx, remoteOpts)
+	require.NoError(t, err)
+	time.Sleep(time.Second)
+	for i := 0; i < 10; i++ {
+		count, err := client.Database("amboy_test").Collection(fmt.Sprintf("gen-%d.jobs", i)).CountDocuments(ctx, bson.M{})
+		require.NoError(t, err)
+		require.Zero(t, count, fmt.Sprintf("gen-%d.jobs not dropped", i))
+	}
+
 }
