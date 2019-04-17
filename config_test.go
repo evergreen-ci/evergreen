@@ -648,3 +648,20 @@ func (s *AdminSuite) TestJIRANotificationsConfig() {
 	}
 	s.EqualError(c.ValidateAndDefault(), "template: this-is:1: unexpected \"}\" in operand")
 }
+
+func (s *AdminSuite) TestCommitQueueConfig() {
+	config := CommitQueueConfig{
+		MergeTaskDistro: "distro",
+		CommitterName:   "Evergreen",
+		CommitterEmail:  "evergreen@mongodb.com",
+	}
+
+	s.NoError(config.ValidateAndDefault())
+	s.NoError(config.Set())
+
+	settings, err := GetConfig()
+	s.NoError(err)
+	s.Require().NotNil(settings)
+
+	s.Equal(config, settings.CommitQueue)
+}

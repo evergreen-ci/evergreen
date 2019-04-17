@@ -9,6 +9,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/rest/client"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
+	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mitchellh/mapstructure"
 	"github.com/mongodb/grip/level"
 	"github.com/pkg/errors"
@@ -18,7 +19,7 @@ import (
 type gitPush struct {
 	// The root directory (locally) that the code is checked out into.
 	// Must be a valid non-blank directory name.
-	Directory      string `plugin:"expand"`
+	Directory      string `yaml:"directory" plugin:"expand"`
 	DryRun         bool   `yaml:"dry_run"`
 	CommitterName  string `yaml:"committer_name"`
 	CommitterEmail string `yaml:"committer_email"`
@@ -29,8 +30,6 @@ type gitPush struct {
 func gitPushFactory() Command   { return &gitPush{} }
 func (c *gitPush) Name() string { return "git.push" }
 
-// ParseParams parses the command's configuration.
-// Fulfills the Command interface.
 func (c *gitPush) ParseParams(params map[string]interface{}) error {
 	err := mapstructure.Decode(params, c)
 	if err != nil {
@@ -47,6 +46,10 @@ func (c *gitPush) ParseParams(params map[string]interface{}) error {
 
 // Execute gets the source code required by the project
 func (c *gitPush) Execute(ctx context.Context, comm client.Communicator, logger client.LoggerProducer, conf *model.TaskConfig) error {
+	if err := util.ExpandValues(c, conf.Expansions); err != nil {
+		return errors.Wrap(err, "can't apply expansions")
+	}
+
 	p, err := comm.GetTaskPatch(ctx, client.TaskData{ID: conf.Task.Id, Secret: conf.Task.Secret})
 	if err != nil {
 		return errors.Wrap(err, "Failed to get patch")
