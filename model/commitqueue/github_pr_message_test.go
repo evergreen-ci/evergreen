@@ -16,6 +16,7 @@ func TestGithubPRMerge(t *testing.T) {
 		Ref:           "deadbeef",
 		CommitMessage: "merged by cq",
 		PRNum:         1,
+		Status:        "failed",
 	}
 	c := NewGithubMergePRMessage(level.Info, pr)
 	assert.NotNil(c)
@@ -49,6 +50,7 @@ func TestGithubMergePRMessageValidator(t *testing.T) {
 		Ref:           "deadbeef",
 		CommitMessage: "merged by cq",
 		PRNum:         1,
+		Status:        "failed",
 	}
 	c = NewGithubMergePRMessage(level.Info, missingMergeMethod)
 	assert.True(c.Loggable())
