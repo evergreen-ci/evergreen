@@ -228,6 +228,8 @@ func (j *commitQueueJob) processGitHubPRItem(ctx context.Context, cq *commitqueu
 	for _, modulePR := range modulePRs {
 		j.AddError(sendCommitQueueGithubStatus(j.env, modulePR, message.GithubStatePending, "preparing to test merge", v.Id))
 	}
+
+	event.LogCommitQueueStartTestEvent(v.Id)
 }
 
 func (j *commitQueueJob) processCLIPatchItem(ctx context.Context, cq *commitqueue.CommitQueue, nextItem *commitqueue.CommitQueueItem, projectRef *model.ProjectRef, githubToken string) {
@@ -259,22 +261,21 @@ func (j *commitQueueJob) processCLIPatchItem(ctx context.Context, cq *commitqueu
 
 	// TODO: Add merge task to the patch before finalizing
 
-	_, err = model.FinalizePatch(ctx, patchDoc, evergreen.MergeTestRequester, githubToken)
+	v, err := model.FinalizePatch(ctx, patchDoc, evergreen.MergeTestRequester, githubToken)
 	if err != nil {
 		j.logError(err, "can't finalize patch", nextItem)
 		j.dequeue(cq, nextItem)
 	}
 
-	subscriber := event.NewCommitQueueDequeueSubscriber(event.CommitQueueDequeueSubscriber{
-		ProjectID: cq.ProjectID,
-		Item:      nextItem.Issue,
-	})
+	subscriber := event.NewCommitQueueDequeueSubscriber()
 
 	patchSub := event.NewPatchOutcomeSubscription(nextItem.Issue, subscriber)
 	if err := patchSub.Upsert(); err != nil {
 		j.logError(err, "failed to insert patch subscription", nextItem)
 		j.dequeue(cq, nextItem)
 	}
+
+	event.LogCommitQueueStartTestEvent(v.Id)
 }
 
 func (j *commitQueueJob) logError(err error, msg string, item *commitqueue.CommitQueueItem) {
@@ -432,7 +433,6 @@ func sendCommitQueueGithubStatus(env evergreen.Environment, pr *github.PullReque
 
 func subscribeMerge(projectID, owner, repo, mergeMethod, patchID string, pr *github.PullRequest) error {
 	mergeSubscriber := event.NewGithubMergeSubscriber(event.GithubMergeSubscriber{
-		ProjectID:   projectID,
 		Owner:       owner,
 		Repo:        repo,
 		PRNumber:    *pr.Number,

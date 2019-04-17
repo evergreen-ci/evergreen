@@ -18,16 +18,17 @@ const (
 )
 
 type GithubMergePR struct {
-	PatchSucceeded bool   `bson:"patch_succeeded"`
-	URL            string `bson:"url"`
-	ProjectID      string `bson:"project_id"`
-	Owner          string `bson:"owner"`
-	Repo           string `bson:"repo"`
-	Ref            string `bson:"ref"`
-	PRNum          int    `bson:"pr_number"`
-	CommitMessage  string `bson:"commit_message"`
-	CommitTitle    string `bson:"commit_title"`
-	MergeMethod    string `bson:"merge_method"`
+	PastTenseStatus string `bson:"past_tense_status"`
+	PatchID         string `bson:"patch_id"`
+	URL             string `bson:"url"`
+	ProjectID       string `bson:"project_id"`
+	Owner           string `bson:"owner"`
+	Repo            string `bson:"repo"`
+	Ref             string `bson:"ref"`
+	PRNum           int    `bson:"pr_number"`
+	CommitMessage   string `bson:"commit_message"`
+	CommitTitle     string `bson:"commit_title"`
+	MergeMethod     string `bson:"merge_method"`
 }
 
 func (m *GithubMergePR) MarshalBSON() ([]byte, error)  { return mgobson.Marshal(m) }

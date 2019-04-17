@@ -12,6 +12,11 @@ import (
 	mgobson "gopkg.in/mgo.v2/bson"
 )
 
+func init() {
+	registry.registerEventHandler(event.ResourceTypeCommitQueue, event.CommitQueueStartTest, makeCommitQueueTriggers)
+	registry.registerEventHandler(event.ResourceTypeCommitQueue, event.CommitQueueConcludeTest, makeCommitQueueTriggers)
+}
+
 type commitQueueTriggers struct {
 	event    *event.EventLogEntry
 	data     *event.CommitQueueEventData

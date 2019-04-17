@@ -3,6 +3,8 @@ package commitqueue
 import (
 	"testing"
 
+	"github.com/evergreen-ci/evergreen"
+
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/mongodb/grip/level"
 	"github.com/stretchr/testify/suite"
@@ -40,13 +42,13 @@ func (s *GitHubPRSenderSuite) TestGithubPRLogger() {
 	s.NoError(err)
 
 	msg := GithubMergePR{
-		PatchSucceeded: true,
-		ProjectID:      "mci",
-		Owner:          "evergreen-ci",
-		Repo:           "evergreen",
-		Ref:            "deadbeef",
-		CommitMessage:  "merged by cq",
-		PRNum:          1,
+		PastTenseStatus: evergreen.PatchFailed,
+		ProjectID:       "mci",
+		Owner:           "evergreen-ci",
+		Repo:            "evergreen",
+		Ref:             "deadbeef",
+		CommitMessage:   "merged by cq",
+		PRNum:           1,
 	}
 	c := NewGithubMergePRMessage(level.Info, msg)
 	ghPRLogger.Send(c)

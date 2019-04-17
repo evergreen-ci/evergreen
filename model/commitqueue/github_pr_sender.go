@@ -6,6 +6,9 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/evergreen-ci/evergreen"
+
+	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/google/go-github/github"
 	"github.com/mongodb/grip"
@@ -77,9 +80,10 @@ func (s *githubPRLogger) Send(m message.Composer) {
 	}
 
 	s.sendPatchResult(msg)
-	if !msg.PatchSucceeded {
+	if !(msg.PastTenseStatus == evergreen.PatchSucceeded) {
 		s.ErrorHandler(errors.New("not proceeding with merge for failed patch"), m)
 		if msg.ProjectID != "" {
+			event.LogCommitQueueConcludeTest(msg.PatchID, evergreen.MergeTestFailed)
 			s.ErrorHandler(dequeueFromCommitQueue(msg.ProjectID, msg.PRNum), m)
 		}
 		return
@@ -111,6 +115,11 @@ func (s *githubPRLogger) Send(m message.Composer) {
 	// Module merges are sent with the empty string as the projectID
 	// Wait for the main PR to be merged to dequeue
 	if msg.ProjectID != "" {
+		if res.GetMerged() {
+			event.LogCommitQueueConcludeTest(msg.PatchID, evergreen.MergeTestSucceeded)
+		} else {
+			event.LogCommitQueueConcludeTest(msg.PatchID, evergreen.MergeTestFailed)
+		}
 		s.ErrorHandler(dequeueFromCommitQueue(msg.ProjectID, msg.PRNum), m)
 	}
 }
@@ -136,7 +145,7 @@ func (s *githubPRLogger) sendMergeFailedStatus(githubMessage string, msg *Github
 func (s *githubPRLogger) sendPatchResult(msg *GithubMergePR) {
 	var state message.GithubState
 	var description string
-	if msg.PatchSucceeded {
+	if msg.PastTenseStatus == evergreen.PatchSucceeded {
 		state = message.GithubStateSuccess
 		description = "merge test succeeded"
 	} else {
