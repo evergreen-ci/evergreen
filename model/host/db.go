@@ -127,11 +127,11 @@ func ByUserWithUnterminatedStatus(user string) db.Q {
 // that have no running tasks.
 func AllIdleEphemeral() ([]Host, error) {
 	query := db.Query(bson.M{
-		RunningTaskKey:   bson.M{"$exists": false},
-		StartedByKey:     evergreen.User,
-		StatusKey:        evergreen.HostRunning,
-		ProviderKey:      bson.M{"$in": evergreen.ProviderSpawnable},
-		HasContainersKey: bson.M{"$ne": true},
+		RunningTaskKey: bson.M{"$exists": false},
+		StartedByKey:   evergreen.User,
+		StatusKey:      evergreen.HostRunning,
+		ProviderKey:    bson.M{"$in": evergreen.ProviderSpawnable},
+		// HasContainersKey: bson.M{"$ne": true},
 	})
 
 	return Find(query)
@@ -145,10 +145,10 @@ func IdleEphemeralGroupedByDistroId() ([]IdleHostsByDistroID, error) {
 	pipeline := []mgobson.M{
 		{
 			"$match": mgobson.M{
-				StartedByKey:     evergreen.User,
-				StatusKey:        evergreen.HostRunning,
-				ProviderKey:      mgobson.M{"$in": evergreen.ProviderSpawnable},
-				HasContainersKey: mgobson.M{"$ne": true},
+				StartedByKey: evergreen.User,
+				StatusKey:    evergreen.HostRunning,
+				ProviderKey:  mgobson.M{"$in": evergreen.ProviderSpawnable},
+				// HasContainersKey: mgobson.M{"$ne": true},
 			},
 		},
 		{

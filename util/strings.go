@@ -61,16 +61,17 @@ func EscapeJQLReservedChars(in string) string {
 }
 
 // GetSetDifference returns the elements in A that are not in B
-func GetSetDifference(a, b []string) (difference []string) {
-	setB := make(map[string]bool)
-	setDifference := make(map[string]bool)
+func GetSetDifference(a, b []string) []string {
+	setB := make(map[string]struct{})
+	setDifference := make(map[string]struct{})
+	var s struct{}
 
 	for _, e := range b {
-		setB[e] = true
+		setB[e] = s
 	}
 	for _, e := range a {
 		if _, ok := setB[e]; !ok {
-			setDifference[e] = true
+			setDifference[e] = s
 		}
 	}
 

@@ -87,5 +87,5 @@ func ByActiveOrStatic() db.Q {
 // ByIds creates a query that finds all distros for the given ids and implicitly
 // returns them ordered by {"_id": 1}
 func ByIds(ids []string) db.Q {
-	return db.Query(bson.M{IdKey: bson.M{"$in": ids}}) //.Sort([]string{IdKey})
+	return db.Query(bson.M{IdKey: bson.M{"$in": ids}})
 }
