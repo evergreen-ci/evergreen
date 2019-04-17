@@ -16,6 +16,13 @@ mciModule
                        // but there are some compute-time params
         },
       },
+      outlierProcessing: {
+        persistentFiltering: {
+          type: Object,
+          default: {}, // actually, we could store defaults here
+                       // but there are some compute-time params
+        },
+      },
       trendchart: {
         linearMode: {
           enabled: {
