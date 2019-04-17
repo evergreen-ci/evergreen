@@ -764,3 +764,10 @@ func PopulateJasperCleanup(env evergreen.Environment) amboy.QueueOperation {
 		return queue.Put(NewJasperManagerCleanup(ts, env))
 	}
 }
+
+func PopulatePruneRemoteQueueJobs() amboy.QueueOperation {
+	return func(queue amboy.Queue) error {
+		ts := util.RoundPartOfHour(0).Format(tsFormat)
+		return queue.Put(NewPruneRemoteQueueGroup(ts))
+	}
+}

@@ -83,9 +83,6 @@ func TestGeneratePollParse(t *testing.T) {
 	r.Header.Set(evergreen.HostHeader, "1")
 	r.Header.Set(evergreen.HostSecretHeader, "secret")
 
-	// opts := queue.LocalQueueGroupOptions{Constructor: localConstructor}
-	// q, err := queue.NewLocalQueueGroup(ctx, opts)
-	// require.NoError(t, err)
 	uri := "mongodb://localhost:27017"
 	client, err := mongo.NewClient(options.Client().ApplyURI(uri))
 	require.NoError(t, err)
@@ -118,9 +115,6 @@ func TestGeneratePollRun(t *testing.T) {
 	defer cancel()
 	sc := &data.MockConnector{}
 
-	// opts := queue.LocalQueueGroupOptions{Constructor: localConstructor}
-	// q, err := queue.NewLocalQueueGroup(ctx, opts)
-	// require.NoError(t, err)
 	uri := "mongodb://localhost:27017"
 	client, err := mongo.NewClient(options.Client().ApplyURI(uri))
 	require.NoError(t, err)

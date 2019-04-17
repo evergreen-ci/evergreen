@@ -155,17 +155,14 @@ func (opts RemoteQueueGroupOptions) validate() error {
 	if opts.TTL < 0 {
 		catcher.New("ttl must be greater than or equal to 0")
 	}
-	if opts.TTL > 0 && opts.TTL < time.Second {
-		catcher.New("ttl cannot be less than 1 second, unless it is 0")
-	}
 	if opts.PruneFrequency < 0 {
 		catcher.New("prune frequency must be greater than or equal to 0")
 	}
-	if opts.PruneFrequency > 0 && opts.TTL < time.Second {
+	if opts.PruneFrequency > 0 && opts.PruneFrequency < time.Second {
 		catcher.New("prune frequency cannot be less than 1 second, unless it is 0")
 	}
-	if (opts.TTL == 0 && opts.PruneFrequency != 0) || (opts.TTL != 0 && opts.PruneFrequency == 0) {
-		catcher.New("ttl and prune frequency must both be 0 or both be not 0")
+	if opts.PruneFrequency > 0 && opts.TTL <= 0 {
+		catcher.New("TTL must be set if prune frequency is set")
 	}
 	if opts.MongoOptions.DB == "" {
 		catcher.New("db must be set")

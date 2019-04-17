@@ -330,6 +330,7 @@ func (e *envState) createGenerateTasksQueue(ctx context.Context) error {
 		},
 		MongoOptions: queue.DefaultMongoDBOptions(),
 		Prefix:       "gen",
+		TTL:          7 * 24 * time.Hour,
 	}
 	remoteQueueGroup, err := queue.NewRemoteQueueGroup(ctx, remoteQueuGroupOpts)
 	if err != nil {
@@ -338,7 +339,8 @@ func (e *envState) createGenerateTasksQueue(ctx context.Context) error {
 	e.remoteQueueGroup = remoteQueueGroup
 
 	e.closers["single-queue-generate-tasks"] = func(ctx context.Context) error {
-		e.generateTasksQueue.Runner().Close()
+		closerCtx := context.Background()
+		e.remoteQueueGroup.Close(closerCtx)
 		return nil
 	}
 
