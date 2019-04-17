@@ -45,6 +45,7 @@ func TestPruneRemoteQueueGroup(t *testing.T) {
 	pruneJob := &pruneRemoteQueueGroup{env: env}
 
 	q, err := g.Get(ctx, "1")
+	require.NoError(t, err)
 	j := job.NewShellJob("true", "")
 	require.NoError(t, q.Put(j))
 
