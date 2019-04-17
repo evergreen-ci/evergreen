@@ -609,10 +609,10 @@ func UpdateBuildAndVersionStatusForTask(taskId string, updates *StatusChanges) e
 			return errors.WithStack(err)
 		}
 		if displayTask != nil {
-			if err := UpdateDisplayTask(displayTask); err != nil {
+			if err = UpdateDisplayTask(displayTask); err != nil {
 				return errors.Wrap(errors.WithStack(err), "error updating display task")
 			}
-			if err := build.UpdateCachedTask(displayTask.BuildId, displayTask.Id, displayTask.Status, 0); err != nil {
+			if err = build.UpdateCachedTask(displayTask.BuildId, displayTask.Id, displayTask.Status, 0); err != nil {
 				return errors.Wrap(errors.WithStack(err), "error updating cached display task")
 			}
 			t = *displayTask
@@ -1010,9 +1010,10 @@ func UpdateDisplayTask(t *task.Task) error {
 			}
 		} else if execTask.IsDispatchable() {
 			unfinishedTasks++
-			isBlocked, err := execTask.IsBlockedStateForExecTask(tasksWithDeps)
+			var isBlocked bool
+			isBlocked, err = execTask.IsBlockedStateForExecTask(tasksWithDeps)
 			if err != nil {
-				return errors.Wrap(err, "error determining if state blocked for execuction task")
+				return errors.Wrap(err, "error determining if state blocked for execution task")
 			} else if isBlocked {
 				blockedTasks++
 			}
