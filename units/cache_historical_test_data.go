@@ -30,8 +30,9 @@ func init() {
 }
 
 type cacheHistoricalTestDataJob struct {
-	ProjectId string `bson:"project_id" json:"project_id" yaml:"project_id"`
-	job.Base  `bson:"job_base" json:"job_base" yaml:"job_base"`
+	ProjectID  string   `bson:"project_id" json:"project_id" yaml:"project_id"`
+	Requesters []string `bson:"requesters" json:"requesters" yaml:"requesters"`
+	job.Base   `bson:"job_base" json:"job_base" yaml:"job_base"`
 }
 
 type dailyStatsRollup map[time.Time]map[string][]string
@@ -44,7 +45,8 @@ type generateFunctions struct {
 
 func NewCacheHistoricalTestDataJob(projectId string, id string) amboy.Job {
 	j := makeCacheHistoricalTestDataJob()
-	j.ProjectId = projectId
+	j.ProjectID = projectId
+	j.Requesters = []string{evergreen.RepotrackerVersionRequester}
 	j.SetID(fmt.Sprintf("%s.%s.%s", cacheHistoricalTestDataName, projectId, id))
 	return j
 }
@@ -77,20 +79,20 @@ func (j *cacheHistoricalTestDataJob) Run(ctx context.Context) {
 	}
 
 	// Lookup last sync date for project
-	statsStatus, err := stats.GetStatsStatus(j.ProjectId)
+	statsStatus, err := stats.GetStatsStatus(j.ProjectID)
 	if err != nil {
 		j.AddError(errors.Wrap(err, "error retrieving last sync date"))
 		return
 	}
 
-	tasksToIgnore, err := getTasksToIgnore(j.ProjectId)
+	tasksToIgnore, err := getTasksToIgnore(j.ProjectID)
 	if err != nil {
 		j.AddError(errors.Wrap(err, "error retrieving project settings"))
 		return
 	}
 
 	jobContext := cacheHistoricalJobContext{
-		ProjectId:     j.ProjectId,
+		ProjectID:     j.ProjectID,
 		JobTime:       time.Now(),
 		TasksToIgnore: tasksToIgnore,
 		ShouldFilterTasks: map[string]bool{
@@ -109,7 +111,7 @@ func (j *cacheHistoricalTestDataJob) Run(ctx context.Context) {
 		"message":   "running sync",
 	})
 
-	statsToUpdate, err := stats.FindStatsToUpdate(j.ProjectId, []string{evergreen.RepotrackerVersionRequester}, syncFromTime, syncToTime)
+	statsToUpdate, err := stats.FindStatsToUpdate(j.ProjectID, j.Requesters, syncFromTime, syncToTime)
 	if err != nil {
 		j.AddError(errors.Wrap(err, "error finding tasks to update"))
 		return
@@ -132,7 +134,7 @@ func (j *cacheHistoricalTestDataJob) Run(ctx context.Context) {
 	}
 
 	// update last sync
-	err = stats.UpdateStatsStatus(j.ProjectId, jobContext.JobTime, syncToTime)
+	err = stats.UpdateStatsStatus(j.ProjectID, jobContext.JobTime, syncToTime)
 	if err != nil {
 		j.AddError(errors.Wrap(err, "error updating last synced date"))
 		return
@@ -140,7 +142,7 @@ func (j *cacheHistoricalTestDataJob) Run(ctx context.Context) {
 }
 
 type cacheHistoricalJobContext struct {
-	ProjectId         string
+	ProjectID         string
 	JobTime           time.Time
 	TasksToIgnore     []*regexp.Regexp
 	ShouldFilterTasks map[string]bool
@@ -199,9 +201,9 @@ func (c *cacheHistoricalJobContext) iteratorOverDailyStats(dailyStats dailyStats
 		for requester, tasks := range stats {
 			taskList := c.filterIgnoredTasks(tasks, queryType)
 			if len(taskList) > 0 {
-				err := errors.Wrap(fn(c.ProjectId, requester, day, taskList, c.JobTime), "Could not sync daily stats")
+				err := errors.Wrap(fn(c.ProjectID, requester, day, taskList, c.JobTime), "Could not sync daily stats")
 				grip.Warning(message.WrapError(err, message.Fields{
-					"project_id": c.ProjectId,
+					"project_id": c.ProjectID,
 					"sync_date":  day,
 					"job_time":   c.JobTime,
 					"query_type": queryType,
