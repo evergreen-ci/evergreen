@@ -36,7 +36,7 @@ func (s *APIPlannerSettings) BuildFromService(h interface{}) error {
 		return errors.Errorf("%T is not an supported expansion type", h)
 	}
 
-	if len(settings.Version) == 0 {
+	if settings.Version == "" {
 		s.Version = ToAPIString(evergreen.PlannerVersionLegacy)
 	} else {
 		s.Version = ToAPIString(settings.Version)
@@ -57,7 +57,7 @@ func (s *APIPlannerSettings) BuildFromService(h interface{}) error {
 func (s *APIPlannerSettings) ToService() (interface{}, error) {
 	settings := distro.PlannerSettings{}
 	settings.Version = FromAPIString(s.Version)
-	if len(settings.Version) == 0 {
+	if settings.Version == "" {
 		settings.Version = evergreen.PlannerVersionLegacy
 	}
 	settings.MinimumHosts = s.MinimumHosts
@@ -92,7 +92,7 @@ func (s *APIFinderSettings) BuildFromService(h interface{}) error {
 		return errors.Errorf("%T is not an supported expansion type", h)
 	}
 
-	if len(settings.Version) == 0 {
+	if settings.Version == "" {
 		s.Version = ToAPIString(evergreen.FinderVersionLegacy)
 	} else {
 		s.Version = ToAPIString(settings.Version)
@@ -105,7 +105,7 @@ func (s *APIFinderSettings) BuildFromService(h interface{}) error {
 func (s *APIFinderSettings) ToService() (interface{}, error) {
 	settings := distro.FinderSettings{}
 	settings.Version = FromAPIString(s.Version)
-	if len(settings.Version) == 0 {
+	if settings.Version == "" {
 		settings.Version = evergreen.FinderVersionLegacy
 	}
 
