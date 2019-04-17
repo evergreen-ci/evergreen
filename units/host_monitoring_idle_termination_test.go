@@ -20,7 +20,7 @@ func flagIdleHosts(ctx context.Context, env evergreen.Environment) ([]string, er
 	if err := queue.Start(ctx); err != nil {
 		return nil, err
 	}
-	defer queue.Runner().Close()
+	defer queue.Runner().Close(ctx)
 
 	if err := PopulateIdleHostJobs(env)(queue); err != nil {
 		return nil, err
