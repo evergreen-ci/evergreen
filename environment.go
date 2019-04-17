@@ -339,7 +339,7 @@ func (e *envState) createGenerateTasksQueue(ctx context.Context) error {
 	e.remoteQueueGroup = remoteQueueGroup
 
 	e.closers["generate-tasks"] = func(ctx context.Context) error {
-		closerCtx, _ := context.WithTimeout(context.Background(), 30*time.Second)
+		closerCtx, _ := context.WithTimeout(context.Background(), 30*time.Second) // nolint
 		e.remoteQueueGroup.Close(closerCtx)
 		return nil
 	}
