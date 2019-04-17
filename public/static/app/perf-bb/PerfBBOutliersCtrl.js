@@ -1,24 +1,34 @@
 mciModule.controller('PerfBBOutliersCtrl', function (
   $scope, $window, EvgUiGridUtil, EvgUtil, FORMAT, MDBQueryAdaptor, uiGridConstants,
-  STITCH_CONFIG, Stitch, Settings
+  STITCH_CONFIG, Stitch, Settings, $timeout, $compile, $log
 ) {
+  // Monkey Patch the toolbar as I can't change outliers.html.
+  // TODO don't merge into master.
+  const element = $('div.toolbar div.control-group:nth-child(2)');
+  const checkbox = $compile('\
+<span class="legend">Include low confidence Outliers:</span>\
+  <div class="control-group">\
+    <input type="checkbox" ng-model="outvm.checkboxModel.lowConfidence"\
+     ng-true-value="true" ng-false-value="false" ng-change="outvm.lowConfidenceChanged()" name="checkboxModel">\
+    <br/>\
+  </div>\
+</span>\
+')($scope);
+  $timeout(() => element.after(checkbox));
+
   // Perf Failures View-Model.
   const vm = this;
   const project = window.project;
   const LIMIT = 2000;
 
-  const OUTLIERS_TYPE = {
-    DETECTED: 'detected',
-    SUSPICIOUS: 'suspicious',
+  vm.checkboxModel = {
+    lowConfidence : false,
   };
 
   vm.mode = {
     options: [{
-      id: 'detected',
-      name: 'Detected',
-    }, {
-      id: 'suspicious',
-      name: 'Suspicious',
+      id: 'outliers',
+      name: 'Outliers',
     }, {
       id: 'marked',
       name: 'Marked',
@@ -26,7 +36,7 @@ mciModule.controller('PerfBBOutliersCtrl', function (
       id: 'muted',
       name: 'Muted',
     }],
-    value: 'detected',
+    value: 'outliers',
   };
 
   // Holds currently selected items.
@@ -60,10 +70,6 @@ mciModule.controller('PerfBBOutliersCtrl', function (
     },
   ];
 
-  const modesRequiringFilters = new Set([
-    OUTLIERS_TYPE.DETECTED, OUTLIERS_TYPE.SUSPICIOUS
-  ]);
-
   // Could not be overridden by persistent user settings.
   const mandatoryDefaultFiltering = {
     project: '=' + $window.project,
@@ -78,13 +84,25 @@ mciModule.controller('PerfBBOutliersCtrl', function (
     };
   };
 
+  $scope.getFiltering = () => {
+    let filtering = {};
+    if(vm.gridApi) {
+      filtering = _.reduce(vm.gridApi.grid.columns, function (m, d) {
+        const term = d.filters[0].term;
+        if (term) m[d.field] = term;
+        return m;
+      }, {});
+    }
+    if (_.isEmpty(filtering)) {
+      filtering = $scope.getDefaultFiltering();
+    }
+    Settings.perf.outlierProcessing.persistentFiltering = omitTransientFilters(filtering);
+    return filtering;
+  };
+
   $scope.getDefaultFiltering = () => {
     let typeFilter = {};
-    if (modesRequiringFilters.has(vm.mode.value)) {
-      typeFilter = {
-        type: '=' + vm.mode.value,
-      };
-    }
+    // If we do not want low confidence outliers then set the type to detected.
     return _.extend(
       typeFilter,
       secondaryDefaultFiltering(vm.state),
@@ -100,12 +118,12 @@ mciModule.controller('PerfBBOutliersCtrl', function (
     }],
     lookBack: moment().subtract(2, 'weeks'),
     mode: vm.mode.value,
+    lowConfidence: vm.checkboxModel.value,
   };
-  vm.state.filtering = $scope.getDefaultFiltering(vm.state);
+  vm.state.filtering = $scope.getDefaultFiltering();
 
   const modeToCollMap = {
-    detected: STITCH_CONFIG.PERF.COLL_OUTLIERS,
-    suspicious: STITCH_CONFIG.PERF.COLL_OUTLIERS,
+    outliers: STITCH_CONFIG.PERF.COLL_OUTLIERS,
     muted: STITCH_CONFIG.PERF.COLL_MUTE_OUTLIERS,
     marked: STITCH_CONFIG.PERF.COLL_MARKED_OUTLIERS,
   };
@@ -113,7 +131,16 @@ mciModule.controller('PerfBBOutliersCtrl', function (
   // Enhances filtering state with some contextual meta data
   // This data is required by expression compiler
   function getFilteringContext(state) {
-    return _.reduce(state.filtering, (accum, filter_value, filter_key) => {
+    let defaultFilters = [];
+    if(!state.lowConfidence) {
+      defaultFilters = [{
+        field: 'type',
+        type: 'string',
+        term: '=detected'
+      }];
+    };
+
+    const filter = _.reduce(state.filtering, (accum, filter_value, filter_key) => {
       if (!$scope.getCol) {
         return accum;
       }
@@ -125,7 +152,8 @@ mciModule.controller('PerfBBOutliersCtrl', function (
         term: filter_value,
         type: col.colDef.type || 'string',
       })
-    }, []);
+    }, defaultFilters);
+    return filter.length ? filter : null;
   }
 
   // Creates aggregation expression, which could be used by Stitch
@@ -134,15 +162,13 @@ mciModule.controller('PerfBBOutliersCtrl', function (
     let chain = [];
 
     // Check if the state has filtering
-    if (state.filtering) {
-      const filteringChain = MDBQueryAdaptor.compileFiltering(
-        // filtering context enhances state data with important meta data
-        getFilteringContext(state)
-      );
-      // check if filtering query was compiled into something
-      if (filteringChain) {
-        chain.push(filteringChain);
-      }
+    const filteringChain = MDBQueryAdaptor.compileFiltering(
+      // filtering context enhances state data with important meta data
+      getFilteringContext(state)
+    );
+    // check if filtering query was compiled into something
+    if (filteringChain) {
+      chain.push(filteringChain);
     }
 
     if (state.sorting) {
@@ -196,6 +222,15 @@ mciModule.controller('PerfBBOutliersCtrl', function (
       col.filters = [{term: term}];
     });
   }
+  // Omit filter fields that we do not want to save in persistent state. At the moment the fields to omit are:
+  // 'type', 'create_time', 'project'
+  const omitTransientFilters = (filtering, ...fieldNames) => {
+    if( !fieldNames || fieldNames.length === 0) {
+      fieldNames = ['type', 'create_time', 'project'];
+    }
+    return _.omit(filtering, fieldNames);
+  };
+
 
   // Sets `state` to grid filters
   function setInitialGridState(gridApi, state) {
@@ -208,6 +243,13 @@ mciModule.controller('PerfBBOutliersCtrl', function (
     });
   }
 
+  // Load data:
+  //    starts the loading indicator
+  //    get the remote state from atlas
+  //    renders the data (if it is the latest data load event)
+  //    clears the loading indicator.
+  // Setting filters and updating other vm state is done through relaod() and most methods should
+  // use reload..
   function loadData() {
     vm.isLoading = true;
     vm.gridOptions.data = [];
@@ -229,21 +271,27 @@ mciModule.controller('PerfBBOutliersCtrl', function (
           vm.gridOptions.data = docs;
         }, (err) => {
           $log.error(err);
-        }).finally(() => {
-        vm.isLoading = false;
-      });
+        }).finally(() => $timeout(() => vm.isLoading = false));
+      // The finally and timeout clear loading on the next event loop iteration so that the Loading indicator
+      // disappears when the data load is complete. Otherwise there can be a gap.
     });
   }
 
+  vm.lowConfidenceChanged = () => {
+    $log.debug('Low Confidence changed : ' + vm.checkboxModel.lowConfidence);
+    vm.state.lowConfidence = vm.checkboxModel.lowConfidence;
+    vm.reload()
+  };
+
   vm.modeChanged = () => {
     vm.state.mode = vm.mode.value;
-    vm.state.filtering = $scope.getDefaultFiltering(vm.state);
+    vm.reload()
+  };
+
+  vm.reload = () => {
 
     // Push state changes to the grid api
     setInitialGridState(vm.gridApi, vm.state);
-
-    // Push state changes to the grid api
-    // setInitialGridState(vm.gridApi, state);
 
     // Raise col visibility change event
     vm.gridApi.core.notifyDataChange(uiGridConstants.dataChange.COLUMN);
@@ -278,29 +326,12 @@ mciModule.controller('PerfBBOutliersCtrl', function (
             direction: col.sort.direction
           };
         });
-        // NOTE do loadData() here for server-side sorting
+        // NOTE do reload() here for server-side sorting
       });
 
       const onFilterChanged = _.debounce(function () {
-        const filtering = _.reduce(api.grid.columns, function (m, d) {
-          const term = d.filters[0].term;
-          if (term) m[d.field] = term;
-          return m;
-        }, {});
-
-        Settings.perf.outlierProcessing.persistentFiltering = filtering;
-
-        // When user clicks 'Clear all filters'
-        // FIXME and when clear all filters manually. Either patching
-        //       of uigrid either standalone button required
-        if (_.isEmpty(filtering)) {
-          vm.state.filtering = getDefaultFiltering();
-          setInitialGridFiltering(vm.gridApi, state);
-        } else {
-          vm.state.filtering = filtering;
-        }
-
-        loadData();
+        vm.state.filtering = $scope.getFiltering(vm.state);
+        vm.reload();
       }, 200);
       api.core.on.filterChanged($scope, onFilterChanged);
 
@@ -317,8 +348,7 @@ mciModule.controller('PerfBBOutliersCtrl', function (
 
       // Load initial set of data once `columns` are populated
       api.core.on.rowsRendered(null, _.once(function () {
-        setInitialGridState(api, vm.state);
-        loadData();
+        vm.reload();
       }));
     },
 
@@ -348,6 +378,7 @@ mciModule.controller('PerfBBOutliersCtrl', function (
         name: 'Type',
         field: 'type',
         type: 'string',
+        enableFiltering: false,
       },
       {
         name: 'Revision',

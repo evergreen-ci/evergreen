@@ -42,25 +42,26 @@ describe('PerfBBOutliersCtrlTest', () => {
   }));
 
   describe('getDefaultFiltering', () => {
-    it('should filter by project, date, and type for detected', () => {
-      controller.mode.value = 'detected';
+    it('should filter by project, create_time, variant and task', () => {
+      controller.mode.value = 'outliers';
       const filter = scope.getDefaultFiltering();
 
       expect(filter.project).toEqual('=' + project);
       const expectedDate = controller.state.lookBack.format(format.ISO_DATE);
       expect(filter.create_time).toEqual('>' + expectedDate);
-      expect(filter.type).toEqual('=detected');
+      expect(filter.variant).toEqual('^((?!wtdevelop).)*$');
+      expect(filter.test).toEqual('^((?!canary|fio|NetworkB).)*$');
     });
 
-    it('should filter by project, date, and type for suspicious', () => {
-      controller.mode.value = 'suspicious';
-      const filter = scope.getDefaultFiltering();
-
-      expect(filter.project).toEqual('=' + project);
-      const expectedDate = controller.state.lookBack.format(format.ISO_DATE);
-      expect(filter.create_time).toEqual('>' + expectedDate);
-      expect(filter.type).toEqual('=suspicious');
-    });
+    // it('should filter by project, date, and type for suspicious', () => {
+    //   controller.mode.value = 'suspicious';
+    //   const filter = scope.getDefaultFiltering();
+    //
+    //   expect(filter.project).toEqual('=' + project);
+    //   const expectedDate = controller.state.lookBack.format(format.ISO_DATE);
+    //   expect(filter.create_time).toEqual('>' + expectedDate);
+    //   expect(filter.type).toEqual('=suspicious');
+    // });
 
     it('should filter by project and date for marked', () => {
       controller.mode.value = 'marked';
@@ -95,10 +96,21 @@ describe('PerfBBOutliersCtrlTest', () => {
 
     });
 
-    it('should only limit if not filtering or sorting', () => {
+    it('should add type by default', () => {
       const chain = scope.getAggChain({});
+      expect(chain.length).toEqual(2);
+      const filtering = chain.shift();
+      expect(filtering.length).toEqual(1);
+      expect(filtering[0].term).toEqual('=detected');
+      const sorting = chain.shift();
+      expect(sorting.$limit).toEqual(2000);
+    });
+
+    it('should not add type when lowConfidence is set', () => {
+      const chain = scope.getAggChain({lowConfidence: true});
       expect(chain.length).toEqual(1);
-      expect(chain[0].$limit).toEqual(2000);
+      const sorting = chain.shift();
+      expect(sorting.$limit).toEqual(2000);
     });
 
     it('should include filter if specified', () => {
@@ -118,9 +130,9 @@ describe('PerfBBOutliersCtrlTest', () => {
       const chain = scope.getAggChain({
         sorting: 'sort 1',
       });
-      expect(chain.length).toEqual(2);
-      expect(chain[0]).toEqual('sort 1');
-      expect(chain[1].$limit).toEqual(2000);
+      expect(chain.length).toEqual(3);
+      expect(chain[1]).toEqual('sort 1');
+      expect(chain[2].$limit).toEqual(2000);
     });
 
     it('should include sort and filter if specified', () => {
@@ -163,7 +175,11 @@ describe('PerfBBOutliersCtrlTest', () => {
         }
       });
       expect(chain.length).toEqual(2);
-      expect(chain[0]).toEqual([]);
+      expect(chain[0]).toEqual([{
+        "field": "type",
+        "type": "string",
+        "term": "=detected"
+      }]);
       expect(chain[1].$limit).toEqual(2000);
     });
 
