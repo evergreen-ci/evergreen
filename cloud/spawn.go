@@ -171,7 +171,7 @@ func SetHostRDPPassword(ctx context.Context, env evergreen.Environment, host *ho
 			"operation": "set host rdp password",
 			"host":      host.Id,
 			"cmd":       pwdUpdateCmd.String(),
-			"err":       err,
+			"err":       err.Error(),
 		})
 		return errors.Wrap(err, "Error updating host RDP password")
 	}
@@ -193,25 +193,23 @@ func constructPwdUpdateCommand(ctx context.Context, env evergreen.Environment, h
 	settings := env.Settings()
 	cloudHost, err := GetCloudHost(ctx, hostObj, settings)
 	if err != nil {
-		return nil, err
+		return nil, errors.WithStack(err)
 	}
 
 	hostInfo, err := hostObj.GetSSHInfo()
 	if err != nil {
-		return nil, err
+		return nil, errors.WithStack(err)
 	}
 
 	sshOptions, err := cloudHost.GetSSHOptions()
 	if err != nil {
-		return nil, err
+		return nil, errors.WithStack(err)
 	}
-
-	updatePwdCmd := fmt.Sprintf(`'net user %s %s'`, hostObj.User, password)
-	sshUpdatePwd := fmt.Sprintf(`'sc config sshd obj= \".%s\" password= \"%s\"'`, hostObj.User, password)
 
 	return env.JasperManager().CreateCommand(ctx).Host(hostInfo.Hostname).User(hostObj.User).
 		ExtendSSHArgs("-p", hostInfo.Port).ExtendSSHArgs(sshOptions...).
-		Append(updatePwdCmd).Append(sshUpdatePwd), nil
+		Append(fmt.Sprintf(`'net user %s "%s"'`, hostObj.User, passwordu)).
+		Append(fmt.Sprintf(`'sc config sshd obj= \".\%s\" password= \"%s\"'`, hostObj.User, password)), nil
 }
 
 func TerminateSpawnHost(ctx context.Context, host *host.Host, settings *evergreen.Settings, user string) error {
