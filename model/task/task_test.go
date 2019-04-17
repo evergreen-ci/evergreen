@@ -960,6 +960,35 @@ func TestBlockedState(t *testing.T) {
 	assert.Equal("blocked", state)
 }
 
+func TestBlockedStateForExecTasks(t *testing.T) {
+	assert := assert.New(t)
+	assert.NoError(db.ClearCollections(Collection))
+	task1 := Task{
+		Id:             "task1",
+		Activated:      true,
+		Status:         evergreen.TaskStarted,
+		ExecutionTasks: []string{"exec0", "exec1"},
+	}
+	assert.NoError(task1.Insert())
+	task2 := Task{
+		Id:        "exec0",
+		Status:    evergreen.TaskFailed,
+		TimeTaken: 2 * time.Minute,
+	}
+	assert.NoError(task2.Insert())
+	task3 := Task{
+		Id: "exec1",
+		DependsOn: []Dependency{
+			{TaskId: "exec0", Status: evergreen.TaskSucceeded},
+		},
+		Status: evergreen.TaskUndispatched,
+	}
+	assert.NoError(task3.Insert())
+	isBlocked, err := task3.IsBlockedStateForExecTask(nil)
+	assert.NoError(err)
+	assert.True(isBlocked)
+}
+
 func TestCircularDependency(t *testing.T) {
 	assert := assert.New(t)
 	assert.NoError(db.ClearCollections(Collection))

@@ -18,6 +18,7 @@ import (
 	. "github.com/smartystreets/goconvey/convey"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"go.mongodb.org/mongo-driver/bson"
 )
 
 var (
@@ -2336,6 +2337,111 @@ func TestDisplayTaskDelayedRestart(t *testing.T) {
 	oldTask, err := task.FindOneOld(task.ById("dt_0"))
 	assert.NoError(err)
 	assert.NotNil(oldTask)
+}
+
+func TestDisplayTaskBlocked(t *testing.T) {
+	assert := assert.New(t)
+	assert.NoError(db.ClearCollections(task.Collection, ProjectRefCollection, distro.Collection, build.Collection))
+	dt := task.Task{
+		Id:             "task",
+		BuildId:        "build",
+		Activated:      true,
+		DisplayOnly:    true,
+		Status:         evergreen.TaskStarted,
+		ExecutionTasks: []string{"exec0", "exec1"},
+	}
+	assert.NoError(dt.Insert())
+	task2 := task.Task{
+		Id:        "exec0",
+		BuildId:   "build",
+		Activated: true,
+		Status:    evergreen.TaskFailed,
+		TimeTaken: 2 * time.Minute,
+	}
+	assert.NoError(task2.Insert())
+	task3 := task.Task{
+		Id:        "exec1",
+		BuildId:   "build",
+		Activated: true,
+		DependsOn: []task.Dependency{
+			{TaskId: "exec0", Status: evergreen.TaskSucceeded},
+		},
+		Status: evergreen.TaskUndispatched,
+	}
+	assert.NoError(task3.Insert())
+	b := build.Build{
+		Id: "build",
+		Tasks: []build.TaskCache{
+			{Id: "task", Status: evergreen.TaskStarted, Activated: true},
+		},
+	}
+	assert.NoError(b.Insert())
+
+	assert.NoError(UpdateDisplayTask(&dt))
+	dbTask, err := task.FindOne(task.ById(dt.Id))
+	assert.NoError(err)
+	assert.Equal(evergreen.TaskFailed, dbTask.Status)
+}
+
+func TestDisplayTaskBlockedOnOutsideTask(t *testing.T) {
+	assert := assert.New(t)
+	assert.NoError(db.ClearCollections(task.Collection, ProjectRefCollection, distro.Collection, build.Collection))
+	dt := task.Task{
+		Id:             "task",
+		BuildId:        "build",
+		Activated:      true,
+		DisplayOnly:    true,
+		Status:         evergreen.TaskStarted,
+		ExecutionTasks: []string{"exec0", "exec1"},
+	}
+	assert.NoError(dt.Insert())
+	task2 := task.Task{
+		Id:        "exec0",
+		BuildId:   "build",
+		Activated: true,
+		Status:    evergreen.TaskSucceeded,
+		TimeTaken: 2 * time.Minute,
+	}
+	assert.NoError(task2.Insert())
+	task3 := task.Task{
+		Id:        "exec1",
+		BuildId:   "build",
+		Activated: true,
+		DependsOn: []task.Dependency{
+			{TaskId: "exec2", Status: evergreen.TaskSucceeded},
+		},
+		Status: evergreen.TaskUndispatched,
+	}
+	assert.NoError(task3.Insert())
+	task4 := task.Task{
+		Id:        "exec2",
+		BuildId:   "build",
+		Activated: true,
+		Status:    evergreen.TaskFailed,
+	}
+	assert.NoError(task4.Insert())
+	b := build.Build{
+		Id: "build",
+		Tasks: []build.TaskCache{
+			{Id: "task", Status: evergreen.TaskStarted, Activated: true},
+		},
+	}
+	assert.NoError(b.Insert())
+
+	assert.NoError(UpdateDisplayTask(&dt))
+	dbTask, err := task.FindOne(task.ById(dt.Id))
+	assert.NoError(err)
+	assert.NotEqual(evergreen.TaskFailed, dbTask.Status) // not failed because no other task has failed
+
+	task2.Status = evergreen.TaskFailed
+	assert.NoError(task.UpdateOne(
+		bson.M{task.IdKey: task2.Id},
+		bson.M{"$set": bson.M{task.StatusKey: evergreen.TaskFailed}}))
+
+	assert.NoError(UpdateDisplayTask(&dt))
+	dbTask, err = task.FindOne(task.ById(dt.Id))
+	assert.NoError(err)
+	assert.Equal(evergreen.TaskFailed, dbTask.Status)
 }
 
 func TestEvalStepback(t *testing.T) {

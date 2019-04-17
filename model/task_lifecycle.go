@@ -609,9 +609,11 @@ func UpdateBuildAndVersionStatusForTask(taskId string, updates *StatusChanges) e
 			return errors.WithStack(err)
 		}
 		if displayTask != nil {
-			err = UpdateDisplayTask(displayTask)
-			if err != nil {
-				return errors.WithStack(err)
+			if err := UpdateDisplayTask(displayTask); err != nil {
+				return errors.Wrap(errors.WithStack(err), "error updating display task")
+			}
+			if err := build.UpdateCachedTask(displayTask.BuildId, displayTask.Id, displayTask.Status, 0); err != nil {
+				return errors.Wrap(errors.WithStack(err), "error updating cached display task")
 			}
 			t = *displayTask
 			status = t.Status
@@ -977,7 +979,10 @@ func UpdateDisplayTask(t *task.Task) error {
 	if !t.DisplayOnly {
 		return fmt.Errorf("%s is not a display task", t.Id)
 	}
-
+	tasksWithDeps, err := task.FindAllTasksFromVersionWithDependencies(t.Version)
+	if err != nil {
+		return errors.Wrap(err, "error finding tasks with dependencies")
+	}
 	statuses := []string{}
 	var timeTaken time.Duration
 	var status string
@@ -987,7 +992,9 @@ func UpdateDisplayTask(t *task.Task) error {
 		return errors.Wrap(err, "error retrieving execution tasks")
 	}
 	hasFinishedTasks := false
-	hasUnfinishedTasks := false
+	hasFailedTasks := false
+	unfinishedTasks := 0
+	blockedTasks := 0
 	startTime := time.Unix(1<<62, 0)
 	endTime := util.ZeroTime
 	for _, execTask := range execTasks {
@@ -998,10 +1005,18 @@ func UpdateDisplayTask(t *task.Task) error {
 
 		if execTask.IsFinished() {
 			hasFinishedTasks = true
+			if evergreen.IsFailedTaskStatus(execTask.Status) {
+				hasFailedTasks = true
+			}
 		} else if execTask.IsDispatchable() {
-			hasUnfinishedTasks = true
+			unfinishedTasks++
+			isBlocked, err := execTask.IsBlockedStateForExecTask(tasksWithDeps)
+			if err != nil {
+				return errors.Wrap(err, "error determining if state blocked for execuction task")
+			} else if isBlocked {
+				blockedTasks++
+			}
 		}
-
 		// the display task's status will be the highest priority of its exec tasks
 		statuses = append(statuses, execTask.ResultStatus())
 
@@ -1017,7 +1032,11 @@ func UpdateDisplayTask(t *task.Task) error {
 		}
 	}
 
-	if hasFinishedTasks && hasUnfinishedTasks {
+	if hasFailedTasks && (unfinishedTasks == blockedTasks) && len(statuses) > 0 {
+		// if display task has a failed task and all unfinished tasks are blocked, update status
+		sort.Sort(task.ByPriority(statuses))
+		status = statuses[0]
+	} else if hasFinishedTasks && unfinishedTasks > 0 {
 		// if the display task has a mix of finished and unfinished tasks, the status
 		// will be "started"
 		status = evergreen.TaskStarted
@@ -1028,14 +1047,6 @@ func UpdateDisplayTask(t *task.Task) error {
 		status = statuses[0]
 	}
 
-	grip.InfoWhen(status == evergreen.TaskUndispatched && t.DispatchTime != util.ZeroTime, message.Fields{
-		"lookhere":                      "evg-3345",
-		"message":                       "update display tasks",
-		"task_id":                       t.Id,
-		"status":                        status,
-		"dispatch_time_is_go_zero_time": t.DispatchTime.IsZero(),
-	})
-
 	update := bson.M{
 		task.StatusKey:    status,
 		task.ActivatedKey: t.Activated,
@@ -1044,7 +1055,7 @@ func UpdateDisplayTask(t *task.Task) error {
 	if startTime != time.Unix(1<<62, 0) {
 		update[task.StartTimeKey] = startTime
 	}
-	if endTime != util.ZeroTime && !hasUnfinishedTasks {
+	if endTime != util.ZeroTime && unfinishedTasks == 0 {
 		update[task.FinishTimeKey] = endTime
 	}
 
