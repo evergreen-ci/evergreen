@@ -63,22 +63,36 @@ func (p *abortablePool) SetQueue(q amboy.Queue) error {
 	return nil
 }
 
-func (p *abortablePool) Close() {
+func (p *abortablePool) Close(ctx context.Context) {
 	p.mu.Lock()
 	defer p.mu.Unlock()
-
-	for id, closer := range p.jobs {
-		closer()
-		delete(p.jobs, id)
-	}
 
 	if p.canceler != nil {
 		p.canceler()
 		p.canceler = nil
 		p.started = false
-		p.wg.Wait()
 	}
 
+	for id, closer := range p.jobs {
+		if ctx.Err() != nil {
+			return
+		}
+
+		closer()
+		delete(p.jobs, id)
+	}
+
+	wait := make(chan struct{})
+	go func() {
+		defer recovery.LogStackTraceAndContinue("waiting for close")
+		defer close(wait)
+		p.wg.Wait()
+	}()
+
+	select {
+	case <-ctx.Done():
+	case <-wait:
+	}
 }
 
 func (p *abortablePool) Start(ctx context.Context) error {
@@ -128,8 +142,10 @@ func (p *abortablePool) worker(ctx context.Context, jobs <-chan workUnit) {
 				p.queue.Complete(ctx, job)
 			}
 
-			// start a replacement worker.
-			go p.worker(ctx, jobs)
+			if ctx.Err() == nil {
+				// start a replacement worker.
+				go p.worker(ctx, jobs)
+			}
 		}
 
 		if cancel != nil {

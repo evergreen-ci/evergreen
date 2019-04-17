@@ -196,7 +196,7 @@ type Runner interface {
 
 	// Termaintes all in progress work and waits for processes to
 	// return.
-	Close()
+	Close(context.Context)
 }
 
 // AbortableRunner provides a superset of the Runner interface but

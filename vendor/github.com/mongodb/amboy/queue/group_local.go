@@ -136,7 +136,7 @@ func (g *localQueueGroup) Prune(ctx context.Context) error {
 	for _, queue := range queues {
 		wg.Add(1)
 		go func(queue amboy.Queue) {
-			queue.Runner().Close()
+			queue.Runner().Close(ctx)
 			wg.Done()
 		}(queue)
 	}
@@ -157,7 +157,7 @@ func (g *localQueueGroup) Close(ctx context.Context) {
 			go func(queue amboy.Queue) {
 				defer recovery.LogStackTraceAndContinue("panic in local queue group closer")
 				defer wg.Done()
-				queue.Runner().Close()
+				queue.Runner().Close(ctx)
 			}(queue)
 		}
 		wg.Wait()

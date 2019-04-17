@@ -14,6 +14,7 @@ import (
 
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/recovery"
 )
 
 // NewLocalWorkers is a constructor for pool of worker processes that
@@ -88,11 +89,22 @@ func (r *localWorkers) Start(ctx context.Context) error {
 }
 
 // Close terminates all worker processes as soon as possible.
-func (r *localWorkers) Close() {
+func (r *localWorkers) Close(ctx context.Context) {
 	if r.canceler != nil {
 		r.canceler()
 		r.canceler = nil
 		r.started = false
 	}
-	r.wg.Wait()
+
+	wait := make(chan struct{})
+	go func() {
+		defer recovery.LogStackTraceAndContinue("waiting for close")
+		defer close(wait)
+		r.wg.Wait()
+	}()
+
+	select {
+	case <-ctx.Done():
+	case <-wait:
+	}
 }

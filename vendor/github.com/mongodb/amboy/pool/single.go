@@ -3,10 +3,10 @@ package pool
 import (
 	"context"
 	"sync"
-	"time"
 
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/recovery"
 	"github.com/pkg/errors"
 )
 
@@ -82,18 +82,24 @@ func (r *single) Start(ctx context.Context) error {
 // Close terminates the work on the Runner. If a job is executing, the
 // job will complete and the process will terminate before beginning a
 // new job. If the queue has not started, Close is a no-op.
-func (r *single) Close() {
+func (r *single) Close(ctx context.Context) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
 	if r.canceler != nil {
 		r.canceler()
-
-		// to let the workers cancel and exit before we start
-		// waiting.
-		time.Sleep(10 * time.Millisecond)
-
 		r.canceler = nil
+	}
+
+	wait := make(chan struct{})
+	go func() {
+		defer recovery.LogStackTraceAndContinue("waiting for close")
+		defer close(wait)
 		r.wg.Wait()
+	}()
+
+	select {
+	case <-ctx.Done():
+	case <-wait:
 	}
 }

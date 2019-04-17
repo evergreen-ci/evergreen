@@ -10,6 +10,7 @@ import (
 
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
 	"github.com/mongodb/grip/recovery"
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -79,6 +80,12 @@ func NewRemoteQueueGroup(ctx context.Context, opts RemoteQueueGroupOptions) (amb
 		ttlMap:         map[string]time.Time{},
 	}
 
+	if opts.PruneFrequency > 0 && opts.TTL > 0 {
+		if err := g.Prune(ctx); err != nil {
+			return nil, errors.Wrap(err, "problem pruning queue")
+		}
+	}
+
 	colls, err := g.getExistingCollections(ctx, g.client, g.mongooptions.DB, g.prefix)
 	if err != nil {
 		return nil, errors.Wrap(err, "problem getting existing collections")
@@ -100,6 +107,8 @@ func NewRemoteQueueGroup(ctx context.Context, opts RemoteQueueGroupOptions) (amb
 
 	if opts.PruneFrequency > 0 && opts.TTL > 0 {
 		go func() {
+			pruneCtx, pruneCancel := context.WithCancel(context.Background())
+			defer pruneCancel()
 			defer recovery.LogStackTraceAndContinue("panic in remote queue group ticker")
 			ticker := time.NewTicker(opts.PruneFrequency)
 			defer ticker.Stop()
@@ -108,7 +117,7 @@ func NewRemoteQueueGroup(ctx context.Context, opts RemoteQueueGroupOptions) (amb
 				case <-ctx.Done():
 					return
 				case <-ticker.C:
-					_ = g.Prune(ctx)
+					grip.Error(message.WrapError(g.Prune(pruneCtx), "problem pruning remote queue group database"))
 				}
 			}
 		}()
@@ -184,8 +193,11 @@ func (g *remoteQueueGroup) getExistingCollections(ctx context.Context, client *m
 		}
 		collections = append(collections, elem.Name)
 	}
-	if c.Err() != nil {
+	if err := c.Err(); err != nil {
 		return nil, errors.Wrap(err, "problem iterating over list collections cursor")
+	}
+	if err := c.Close(ctx); err != nil {
+		return nil, errors.Wrap(err, "problem closing cursor")
 	}
 	return collections, nil
 }
@@ -250,25 +262,24 @@ func (g *remoteQueueGroup) Prune(ctx context.Context) error {
 	if err != nil {
 		return errors.Wrap(err, "problem getting collections")
 	}
-	for i, coll := range colls {
+	collsToCheck := []string{}
+	for _, coll := range colls {
 		// This is an optimization. If we've added to the queue recently enough, there's no
 		// need to query its contents, since it cannot be old enough to prune.
-		if t, ok := g.ttlMap[coll]; ok && time.Since(t) < g.ttl {
-			g.remove(colls, i)
+		if t, ok := g.ttlMap[g.idFromCollection(coll)]; !ok || ok && time.Since(t) > g.ttl {
+			collsToCheck = append(collsToCheck, coll)
 		}
 	}
 	catcher := grip.NewBasicCatcher()
 	wg := &sync.WaitGroup{}
-	collsDeleteChan := make(chan string, len(colls))
-	collsDropChan := make(chan string)
+	collsDeleteChan := make(chan string, len(collsToCheck))
+	collsDropChan := make(chan string, len(collsToCheck))
 
-	go func() {
-		defer recovery.LogStackTraceAndContinue("panic in pruning collections")
-		for _, coll := range colls {
-			collsDropChan <- coll
-		}
-		close(collsDropChan)
-	}()
+	for _, coll := range collsToCheck {
+		collsDropChan <- coll
+	}
+	close(collsDropChan)
+
 	wg = &sync.WaitGroup{}
 	for i := 0; i < runtime.NumCPU(); i++ {
 		wg.Add(1)
@@ -277,34 +288,28 @@ func (g *remoteQueueGroup) Prune(ctx context.Context) error {
 			defer wg.Done()
 			for nextColl := range collsDropChan {
 				c := g.client.Database(g.mongooptions.DB).Collection(nextColl)
-				one := c.FindOne(ctx, bson.M{"status.mod_ts": bson.M{"$gte": time.Now().Add(-g.ttl)}})
-				if err := one.Err(); err != nil {
+				count, err := c.CountDocuments(ctx, bson.M{
+					"status.completed": true,
+					"status.in_prog":   false,
+					"status.mod_ts":    bson.M{"$gte": time.Now().Add(-g.ttl)},
+				})
+				if err != nil {
 					catcher.Add(err)
 					return
 				}
-				if err := one.Decode(struct{}{}); err != nil {
-					if err != mongo.ErrNoDocuments {
-						catcher.Add(err)
-						return
-					}
-				} else {
+				if count > 0 {
 					return
 				}
-				one = c.FindOne(ctx, bson.M{"status.completed": false})
-				if err := one.Err(); err != nil {
+				count, err = c.CountDocuments(ctx, bson.M{"status.completed": false})
+				if err != nil {
 					catcher.Add(err)
 					return
 				}
-				if err := one.Decode(struct{}{}); err != nil {
-					if err != mongo.ErrNoDocuments {
-						catcher.Add(err)
-						return
-					}
-				} else {
+				if count > 0 {
 					return
 				}
 				if queue, ok := g.queues[g.idFromCollection(nextColl)]; ok {
-					queue.Runner().Close()
+					queue.Runner().Close(ctx)
 					select {
 					case <-ctx.Done():
 						return
@@ -330,7 +335,7 @@ func (g *remoteQueueGroup) Prune(ctx context.Context) error {
 	wg = &sync.WaitGroup{}
 outer:
 	for id, q := range g.queues {
-		for _, coll := range colls {
+		for _, coll := range collsToCheck {
 			if id == g.idFromCollection(coll) {
 				continue outer
 			}
@@ -339,7 +344,7 @@ outer:
 		go func(queueID string, ch chan string, qu amboy.Queue) {
 			defer recovery.LogStackTraceAndContinue("panic in pruning queues")
 			defer wg.Done()
-			qu.Runner().Close()
+			qu.Runner().Close(ctx)
 			select {
 			case <-ctx.Done():
 				return
@@ -371,7 +376,7 @@ func (g *remoteQueueGroup) Close(ctx context.Context) {
 			go func(queue amboy.Queue) {
 				defer recovery.LogStackTraceAndContinue("panic in remote queue group closer")
 				defer wg.Done()
-				queue.Runner().Close()
+				queue.Runner().Close(ctx)
 			}(queue)
 		}
 		wg.Wait()
@@ -391,10 +396,4 @@ func (g *remoteQueueGroup) collectionFromID(id string) string {
 
 func (g *remoteQueueGroup) idFromCollection(collection string) string {
 	return trimJobsSuffix(strings.TrimPrefix(collection, g.prefix))
-}
-
-// remove efficiently from a slice if order doesn't matter https://stackoverflow.com/a/37335777.
-func (g *remoteQueueGroup) remove(s []string, i int) []string {
-	s[i] = s[len(s)-1]
-	return s[:len(s)-1]
 }
