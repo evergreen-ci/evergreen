@@ -519,7 +519,7 @@ func LastCommunicationTimeElapsed(currentTime time.Time) db.Q {
 	})
 }
 
-// NeedsNewAgent returns hosts with NeedsNewAgent set to true.
+// NeedsNewAgentFlagSet returns hosts with NeedsNewAgent set to true.
 func NeedsNewAgentFlagSet() db.Q {
 	return db.Query(bson.M{
 		StatusKey:        evergreen.HostRunning,
