@@ -1599,7 +1599,7 @@ func (t *Task) blockedStateForDisplayTask(tasksWithDeps []Task) (string, error) 
 	}
 	return state, nil
 }
-func (t *Task) IsBlockedStateForExecTask(tasksWithDeps []Task) (bool, error) {
+func (t *Task) IsBlocked(tasksWithDeps []Task) (bool, error) {
 	etState, err := t.BlockedState(tasksWithDeps)
 	if err != nil {
 		return false, errors.Wrap(err, "error finding blocked state")

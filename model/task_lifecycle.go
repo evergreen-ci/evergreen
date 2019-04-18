@@ -1011,7 +1011,7 @@ func UpdateDisplayTask(t *task.Task) error {
 		} else if execTask.IsDispatchable() {
 			unfinishedTasks++
 			var isBlocked bool
-			isBlocked, err = execTask.IsBlockedStateForExecTask(tasksWithDeps)
+			isBlocked, err = execTask.IsBlocked(tasksWithDeps)
 			if err != nil {
 				return errors.Wrap(err, "error determining if state blocked for execution task")
 			} else if isBlocked {
