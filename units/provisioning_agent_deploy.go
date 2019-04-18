@@ -116,7 +116,7 @@ func (j *agentDeployJob) Run(ctx context.Context) {
 	// needs new agent field will cause the job to fail early here. Updating the last
 	// communicated time prevents the other branches of the PopulateAgentDeployJobs from
 	// immediately applying. Instead MaxLCTInterval must pass.
-	if err = j.host.SetNeedsNewAgent(false); err != nil {
+	if err = j.host.SetNeedsNewAgentAtomically(false); err != nil {
 		grip.Info(message.WrapError(err, message.Fields{
 			"distro":  j.host.Distro,
 			"host":    j.host.Id,
@@ -135,7 +135,7 @@ func (j *agentDeployJob) Run(ctx context.Context) {
 					"distro":  j.host.Distro,
 					"host":    j.host.Id,
 					"job":     j.ID(),
-					"message": "needs new agent flag already true, so cannot set",
+					"message": "problem setting needs agent flag to true",
 				}))
 			}
 		}

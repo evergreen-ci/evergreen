@@ -553,11 +553,26 @@ func PopulateAgentDeployJobs(env evergreen.Environment) amboy.QueueOperation {
 			return nil
 		}
 
-		hosts, err := host.Find(host.NeedsNewAgent(time.Now()))
+		hosts, err := host.Find(host.LastCommunicationTimeElapsed(time.Now()))
 		grip.Error(message.WrapError(err, message.Fields{
 			"operation": "background task creation",
 			"cron":      agentDeployJobName,
 			"impact":    "agents cannot start",
+			"message":   "problem finding hosts with elapsed last communication time",
+		}))
+		if err != nil {
+			return errors.WithStack(err)
+		}
+		for _, h := range hosts {
+			h.SetNeedsNewAgent(true)
+		}
+
+		hosts, err = host.Find(host.NeedsNewAgentFlagSet())
+		grip.Error(message.WrapError(err, message.Fields{
+			"operation": "background task creation",
+			"cron":      agentDeployJobName,
+			"impact":    "agents cannot start",
+			"message":   "problem finding hosts that need a new agent",
 		}))
 		if err != nil {
 			return errors.WithStack(err)
@@ -567,6 +582,10 @@ func PopulateAgentDeployJobs(env evergreen.Environment) amboy.QueueOperation {
 		ts := util.RoundPartOfMinute(20).Format(tsFormat)
 		catcher := grip.NewBasicCatcher()
 
+		// For each host, set its last communication time to now and its needs new agent
+		// flag to true. This ensures a consistent state in the agent-deploy job. That job
+		// uses setting the NeedsNewAgent field to false to prevent other jobs from running
+		// concurrently. If we didn't set one or the other of those fields, then
 		for _, h := range hosts {
 			catcher.Add(queue.Put(NewAgentDeployJob(env, h, ts)))
 		}
