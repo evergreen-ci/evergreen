@@ -979,6 +979,13 @@ func TestTaskIsBlocked(t *testing.T) {
 	isBlocked, err := task2.IsBlocked(nil)
 	assert.NoError(err)
 	assert.True(isBlocked)
+
+	assert.NoError(UpdateOne(
+		bson.M{IdKey: task1.Id},
+		bson.M{"$set": bson.M{StatusKey: evergreen.TaskSucceeded}}))
+	isBlocked, err = task2.IsBlocked(nil)
+	assert.NoError(err)
+	assert.False(isBlocked)
 }
 
 func TestTaskIsBlockedOnOutsideTask(t *testing.T) {
@@ -1001,6 +1008,13 @@ func TestTaskIsBlockedOnOutsideTask(t *testing.T) {
 	isBlocked, err := task1.IsBlocked(nil)
 	assert.NoError(err)
 	assert.True(isBlocked)
+
+	assert.NoError(UpdateOne(
+		bson.M{IdKey: task2.Id},
+		bson.M{"$set": bson.M{StatusKey: evergreen.TaskSucceeded}}))
+	isBlocked, err = task1.IsBlocked(nil)
+	assert.NoError(err)
+	assert.False(isBlocked)
 }
 
 func TestCircularDependency(t *testing.T) {

@@ -1014,7 +1014,8 @@ func UpdateDisplayTask(t *task.Task) error {
 			isBlocked, err = execTask.IsBlocked(tasksWithDeps)
 			if err != nil {
 				return errors.Wrap(err, "error determining if state blocked for execution task")
-			} else if isBlocked {
+			}
+			if isBlocked {
 				blockedTasks++
 			}
 		}
@@ -1032,6 +1033,16 @@ func UpdateDisplayTask(t *task.Task) error {
 			endTime = execTask.FinishTime
 		}
 	}
+
+	grip.Debug(message.Fields{
+		"message":            "updating display task",
+		"task_id":            t.Id,
+		"has_finished_tasks": hasFinishedTasks,
+		"has_failed_tasks":   hasFailedTasks,
+		"blocked_tasks":      blockedTasks,
+		"unfinished_tasks":   unfinishedTasks,
+		"num_exec_tasks":     len(execTasks),
+	})
 
 	if hasFailedTasks && (unfinishedTasks == blockedTasks) && len(statuses) > 0 {
 		// if display task has a failed task and all unfinished tasks are blocked, update status
