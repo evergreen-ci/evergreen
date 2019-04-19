@@ -37,9 +37,9 @@ func makeUpdateBuildAndVersionJob() *updateBuildAndVersionJob {
 }
 
 // NewUpdateBuildAndVersionJob creates a job to update builds and version for a finished
-func NewUpdateBuildAndVersionJob(taskID string) amboy.Job {
+func NewUpdateBuildAndVersionJob(taskID string, execution int) amboy.Job {
 	job := makeUpdateBuildAndVersionJob()
-	job.SetID(fmt.Sprintf("update-build-and-version-%s", taskID))
+	job.SetID(fmt.Sprintf("update-build-and-version-%s-%d", taskID, execution))
 	job.TaskID = taskID
 	job.SetPriority(1)
 	return job
@@ -47,5 +47,5 @@ func NewUpdateBuildAndVersionJob(taskID string) amboy.Job {
 
 func (j *updateBuildAndVersionJob) Run(_ context.Context) {
 	defer j.MarkComplete()
-	j.AddError(errors.WithStack(model.UpdateBuildAndVersionStatus(j.TaskID, &StatusChanges{})))
+	j.AddError(errors.WithStack(model.UpdateBuildAndVersionStatus(j.TaskID, &model.StatusChanges{})))
 }

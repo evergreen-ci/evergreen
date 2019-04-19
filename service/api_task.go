@@ -192,7 +192,7 @@ func (as *APIServer) EndTask(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	job := units.NewUpdateBuildAndVersionJob(t.Id)
+	job := units.NewUpdateBuildAndVersionJob(t.Id, t.Execution)
 	if err := as.queue.Put(job); err != nil {
 		as.LoggedError(w, r, http.StatusInternalServerError, errors.Wrap(err, "problem putting update build and version job"))
 		return
