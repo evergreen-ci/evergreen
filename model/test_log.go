@@ -103,6 +103,7 @@ func (self *TestLog) URL() string {
 			"operation": "set test url",
 			"task":      self.Task,
 		}))
+		return ""
 	}
 	return fmt.Sprintf("%v/test_log/%v/%v/%v",
 		settings.Ui.Url,
