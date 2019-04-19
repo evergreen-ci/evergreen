@@ -413,7 +413,7 @@ filters.common.filter('conditional', function() {
   }
 })
 .filter('expandedMetricConverter', function() {
-  return function(data) {
+  return function(data, execution) {
     if (!data) {
       return null;
     }
@@ -424,21 +424,34 @@ filters.common.filter('conditional', function() {
     };
 
     _.each(data, function(test) {
-        if (!test.info || !test.info.args) {
-            return;
-        }
-        let result = {};
-        let threads = test.info.args.thread_level;
-        result[threads] = {};
+      if (execution && test.info.execution !== execution) {
+        return;
+      }
+      var result = {};
+      var threads
+      if (test.info && test.info.args) {
+        threads = test.info.args.thread_level;
+      } else {
         _.each(test.rollups.stats, function (stat) {
-            result[threads][stat.name] = stat.val[0].Value;
-            result[threads][stat.name + "_values"] = [stat.val[0].Value];
+          if (stat.name === "avgWorkers") {
+            threads = stat.val;
+          }
         });
-        output.data.results.push({
-            "name": test.info.test_name,
-            "isExpandedMetric": true,
-            "results": result
-        });
+      }
+      if (!threads) {
+        return;
+      }
+      result[threads] = {};
+
+      _.each(test.rollups.stats, function (stat) {
+          result[threads][stat.name] = stat.val[0] ? stat.val[0].Value:stat.val;
+          result[threads][stat.name + "_values"] = [stat.val[0] ? stat.val[0].Value:stat.val];
+      });
+      output.data.results.push({
+          "name": test.info.test_name,
+          "isExpandedMetric": true,
+          "results": result
+      });
     })
 
     return output;

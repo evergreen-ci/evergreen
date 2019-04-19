@@ -107,7 +107,11 @@ mciModule.factory('TrendSamples', function() {
     }
 
     this.sampleInSeriesAtCommit = function(testName, revision){
-      return this._sampleByCommitIndexes[testName][revision];
+      let sample = this._sampleByCommitIndexes[testName];
+      if (sample) {
+        return this._sampleByCommitIndexes[testName][revision];
+      }
+      return null;
     }
 
     this.indexOfCommitInSeries = function(testName, revision){

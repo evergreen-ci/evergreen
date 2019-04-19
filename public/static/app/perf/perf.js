@@ -234,8 +234,8 @@ mciModule.controller('PerfController', function PerfController(
       DrawPerfTrendChart({
         series: series,
         // Concat orfaned change points and build failures
-        changePoints: (cps[key] || []).concat(cps[undefined] || []),
-        buildFailures: (bfs[key] || []).concat(bfs[undefined] || []),
+        changePoints: (cps && cps[key] ? cps[key] : []).concat(cps[undefined] || []),
+        buildFailures: (bfs && bfs[key] ? bfs[key] : []).concat(bfs[undefined] || []),
         key: key,
         scope: chartsScope,
         containerId: containerId,
@@ -273,26 +273,12 @@ mciModule.controller('PerfController', function PerfController(
     return (val1 - val2)/Math.abs(val2);
   }
 
-  $scope.getPctDiff = function(referenceOps, sample, testKey){
-    if(sample == null) return "";
-    var compareTest = _.find(sample.data.results, function(x) {
-      return x.name == testKey
-    });
-    var compareMaxOps = $scope.getMax(compareTest.results);
-    var pctDiff = (referenceOps-compareMaxOps)/referenceOps;
-    return pctDiff;
-  }
-
-  $scope.getMax = function(r){
-    return _.max(_.filter(_.pluck(_.values(r), 'ops_per_sec'), numericFilter));
-  }
-
   let cleanId = function(id){
     return id.replace(/\./g,"-")
   }
   $scope.cleanId = cleanId
 
-  function drawDetailGraph(sample, compareSamples, taskId){
+  function drawDetailGraph(sample, compareSamples, taskId, metricName){
     if (!sample) {
       return;
     }
@@ -320,13 +306,13 @@ mciModule.controller('PerfController', function PerfController(
       }
 
       var y
-      if(d3.max(_.flatten(_.pluck(_.flatten(series), "ops_per_sec_values")))){
+      if(d3.max(_.flatten(_.pluck(_.flatten(series), metricName + "_values")))){
         y = d3.scale.linear()
-          .domain([0, d3.max(_.flatten(_.pluck(_.flatten(series), "ops_per_sec_values")))])
+          .domain([0, d3.max(_.flatten(_.pluck(_.flatten(series), metricName + "_values")))])
           .range([height, 0]);
       }else{
         y = d3.scale.linear()
-          .domain([0, d3.max(_.flatten(_.pluck(_.flatten(series), "ops_per_sec")))])
+          .domain([0, d3.max(_.flatten(_.pluck(_.flatten(series), metricName)))])
           .range([height, 0]);
       }
 
@@ -353,10 +339,10 @@ mciModule.controller('PerfController', function PerfController(
           return x(d.threads);
         })
         .attr('y', function(d){
-          return y(d.ops_per_sec)
+          return y(d[metricName])
         })
         .attr('height', function(d) {
-          return height-y(d.ops_per_sec)
+          return height-y(d[metricName]);
         })
         .attr("width", x1.rangeBand());
 
@@ -369,16 +355,16 @@ mciModule.controller('PerfController', function PerfController(
           return x(d.threads) + (x1.rangeBand() / 2);
         })
         .y0(function(d) {
-          return y(d3.min(d.ops_per_sec_values))
+          return y(d3.min(d[metricName + "_values"]))
         })
         .y1(function(d) {
-          return y(d3.max(d.ops_per_sec_values))
+          return y(d3.max(d[metricName + "_values"]))
         }).interpolate("linear");
 
       bar.selectAll(".err")
         .data(function(d) {
           return d.filter(function(d){
-            return ("ops_per_sec_values" in d) && (d.ops_per_sec_values != undefined && d.ops_per_sec_values.length > 1);
+            return (metricName + "_values" in d) && (d[metricName + "_values"] != undefined && d[metricName + "_values"].length > 1);
           })
         })
       .enter().append("svg")
@@ -544,12 +530,40 @@ mciModule.controller('PerfController', function PerfController(
   $scope.redrawGraphs = function(){
       setTimeout(function(){
         drawTrendGraph($scope);
-        drawDetailGraph($scope.perfSample, $scope.comparePerfSamples, $scope.task.id);
+        drawDetailGraph($scope.perfSample, $scope.comparePerfSamples, $scope.task.id, $scope.metricSelect.value.key);
       }, 0)
   }
 
+  $scope.enumerateMetrics = function(results) {
+    const metricNames = {
+      "avgDuration": "Average Duration",
+      "avgWorkers": "Average Workers",
+      "throughputOps": "Throughput Ops",
+      "throughputSize": "Throughput Size",
+      "errorRate": "Error Rate",
+      "latency": "Latency",
+      "totalTime": "Total Time",
+      "totalFailures": "Total Failures",
+      "totalErrors": "Total Errors",
+      "totalOperations": "Total Ops",
+      "totalSize": "Total Size",
+      "totalSamples": "Total Samples"
+    }
+
+    var metrics = {};
+    _.each(results, function(result) {
+      _.each(result.rollups.stats, function(metric) {
+        metrics[metric.name] = metricNames[metric.name]
+      })
+    })
+
+    for (var metric in metrics) {
+      $scope.metricSelect.options = $scope.metricSelect.options.concat({key: metric, name: metrics[metric]});
+    }
+  }
+
   $scope.processAndDrawGraphs = function() {
-    setTimeout(function(){drawDetailGraph($scope.perfSample, $scope.comparePerfSamples, $scope.task.id)},0);
+    setTimeout(function(){drawDetailGraph($scope.perfSample, $scope.comparePerfSamples, $scope.task.id, $scope.metricSelect.value.key)},0);
 
     // Get a list of rejected points.
     const pointsPromise = PointsDataService.getOutlierPointsQ($scope.task.branch,
@@ -650,7 +664,7 @@ mciModule.controller('PerfController', function PerfController(
               $scope.filteredTrendSamples = new TrendSamples(filtered);
             }
           }
-          $scope.metricSelect.options = [$scope.metricSelect.default].concat(
+          $scope.metricSelect.options = $scope.metricSelect.options.concat(
             _.map(
               _.without($scope.allTrendSamples.metrics, $scope.metricSelect.default.key), d => ({key: d, name: d}))
           );
@@ -712,8 +726,9 @@ mciModule.controller('PerfController', function PerfController(
     }
     $http.get(cedarApp + "/rest/v1/perf/task_id/" + $scope.task.id).then(
       function(resp) {
-        var formatted = $filter("expandedMetricConverter")(resp.data);
+        var formatted = $filter("expandedMetricConverter")(resp.data, $scope.task.execution);
         $scope.perfSample = new TestSample(formatted);
+        $scope.enumerateMetrics(resp.data);
         $http.get("/plugin/json/task/" + $scope.task.id + "/perf/").then((resp) => legacySuccess(formatted, resp),legacyError);
       }, function(error){
         console.log(error);
