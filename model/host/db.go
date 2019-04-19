@@ -567,6 +567,8 @@ func FindOneId(id string) (*Host, error) {
 	return FindOne(ById(id))
 }
 
+// FindOneByIdOrTag finds a host where the given id is stored in either the _id or tag field.
+// (The tag field is used for the id from the host's original intent host.)
 func FindOneByIdOrTag(id string) (*Host, error) {
 	query := db.Query(bson.M{
 		"$or": []bson.M{

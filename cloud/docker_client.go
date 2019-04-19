@@ -414,8 +414,7 @@ func (c *dockerClientImpl) GetDockerLogs(ctx context.Context, containerID string
 }
 
 func (c *dockerClientImpl) GetDockerStatus(ctx context.Context, containerID string, parent *host.Host) (*ContainerStatus, error) {
-	notRunningStatuses := []string{evergreen.HostUninitialized, evergreen.HostBuilding, evergreen.HostProvisioning, evergreen.HostStarting}
-	if util.StringSliceContains(notRunningStatuses, parent.Status) {
+	if util.StringSliceContains(evergreen.NotRunningStatus, parent.Status) {
 		return &ContainerStatus{HasStarted: false}, nil
 	}
 	container, err := c.GetContainer(ctx, parent, containerID)

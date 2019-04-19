@@ -75,7 +75,7 @@ func (m *dockerManager) SpawnHost(ctx context.Context, h *host.Host) (*host.Host
 	// Create container
 	if err = m.client.CreateContainer(ctx, parentHost, h); err != nil {
 		err = errors.Wrapf(err, "Failed to create container for host '%s'", h.Id)
-		grip.Error(message.WrapError(err, message.Fields{
+		grip.Info(message.WrapError(err, message.Fields{
 			"message": "spawn container host failed",
 			"host":    h.Id,
 		}))
@@ -98,7 +98,7 @@ func (m *dockerManager) SpawnHost(ctx context.Context, h *host.Host) (*host.Host
 		if err2 := m.client.RemoveContainer(ctx, parentHost, h.Id); err2 != nil {
 			err = errors.Wrapf(err, "Unable to cleanup: %+v", err2)
 		}
-		grip.Error(message.WrapError(err, message.Fields{
+		grip.Info(message.WrapError(err, message.Fields{
 			"message": "start container host failed",
 			"host":    h.Id,
 		}))
@@ -107,7 +107,7 @@ func (m *dockerManager) SpawnHost(ctx context.Context, h *host.Host) (*host.Host
 
 	grip.Info(message.Fields{
 		"message": "created and started Docker container",
-		"host":    h,
+		"host":    h.Id,
 	})
 	event.LogHostStarted(h.Id)
 

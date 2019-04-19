@@ -159,8 +159,7 @@ func (j *createHostJob) Run(ctx context.Context) {
 			MaxTime: j.host.SpawnOptions.TimeoutSetup.Sub(j.start),
 		})
 	}
-	err = j.createHost(ctx)
-	j.AddError(err)
+	j.AddError(j.createHost(ctx))
 }
 
 func (j *createHostJob) createHost(ctx context.Context) error {
