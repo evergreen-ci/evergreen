@@ -979,10 +979,6 @@ func UpdateDisplayTask(t *task.Task) error {
 	if !t.DisplayOnly {
 		return fmt.Errorf("%s is not a display task", t.Id)
 	}
-	tasksWithDeps, err := task.FindAllTasksFromVersionWithDependencies(t.Version)
-	if err != nil {
-		return errors.Wrap(err, "error finding tasks with dependencies")
-	}
 	statuses := []string{}
 	var timeTaken time.Duration
 	var status string
@@ -993,8 +989,7 @@ func UpdateDisplayTask(t *task.Task) error {
 	}
 	hasFinishedTasks := false
 	hasFailedTasks := false
-	unfinishedTasks := 0
-	blockedTasks := 0
+	hasUnfinishedTasks := false
 	startTime := time.Unix(1<<62, 0)
 	endTime := util.ZeroTime
 	for _, execTask := range execTasks {
@@ -1009,15 +1004,7 @@ func UpdateDisplayTask(t *task.Task) error {
 				hasFailedTasks = true
 			}
 		} else if execTask.IsDispatchable() {
-			unfinishedTasks++
-			var isBlocked bool
-			isBlocked, err = execTask.IsBlocked(tasksWithDeps)
-			if err != nil {
-				return errors.Wrap(err, "error determining if state blocked for execution task")
-			}
-			if isBlocked {
-				blockedTasks++
-			}
+			hasUnfinishedTasks = true
 		}
 		// the display task's status will be the highest priority of its exec tasks
 		statuses = append(statuses, execTask.ResultStatus())
@@ -1035,20 +1022,19 @@ func UpdateDisplayTask(t *task.Task) error {
 	}
 
 	grip.Debug(message.Fields{
-		"message":            "updating display task",
-		"task_id":            t.Id,
-		"has_finished_tasks": hasFinishedTasks,
-		"has_failed_tasks":   hasFailedTasks,
-		"blocked_tasks":      blockedTasks,
-		"unfinished_tasks":   unfinishedTasks,
-		"num_exec_tasks":     len(execTasks),
+		"message":              "updating display task",
+		"task_id":              t.Id,
+		"has_finished_tasks":   hasFinishedTasks,
+		"has_failed_tasks":     hasFailedTasks,
+		"has_unfinished_tasks": hasUnfinishedTasks,
+		"num_exec_tasks":       len(execTasks),
 	})
 
-	if hasFailedTasks && (unfinishedTasks == blockedTasks) && len(statuses) > 0 {
-		// if display task has a failed task and all unfinished tasks are blocked, update status
+	if hasFailedTasks {
+		// if display task has a failed task, update status
 		sort.Sort(task.ByPriority(statuses))
 		status = statuses[0]
-	} else if hasFinishedTasks && unfinishedTasks > 0 {
+	} else if hasFinishedTasks && hasUnfinishedTasks {
 		// if the display task has a mix of finished and unfinished tasks, the status
 		// will be "started"
 		status = evergreen.TaskStarted
@@ -1067,7 +1053,7 @@ func UpdateDisplayTask(t *task.Task) error {
 	if startTime != time.Unix(1<<62, 0) {
 		update[task.StartTimeKey] = startTime
 	}
-	if endTime != util.ZeroTime && unfinishedTasks == 0 {
+	if endTime != util.ZeroTime && !hasUnfinishedTasks {
 		update[task.FinishTimeKey] = endTime
 	}
 
