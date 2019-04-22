@@ -564,7 +564,10 @@ func PopulateAgentDeployJobs(env evergreen.Environment) amboy.QueueOperation {
 			return errors.WithStack(err)
 		}
 		for _, h := range hosts {
-			h.SetNeedsNewAgent(true)
+			grip.Error(message.WrapError(h.SetNeedsNewAgent(true), message.Fields{
+				"message": "problem settings needs new agent",
+				"host":    h.Id,
+			}))
 		}
 
 		hosts, err = host.Find(host.NeedsNewAgentFlagSet())
