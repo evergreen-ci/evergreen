@@ -88,17 +88,10 @@ func TestGeneratePollParse(t *testing.T) {
 	require.NoError(t, err)
 	require.NoError(t, client.Connect(ctx))
 	require.NoError(t, client.Database("amboy_test").Drop(ctx))
-	opts := queue.RemoteQueueGroupOptions{
-		Client:      client,
-		Constructor: remoteConstructor,
-		MongoOptions: queue.MongoDBOptions{
-			URI: uri,
-			DB:  "amboy_test",
-		},
-		Prefix: "gen",
-	}
-	q, err := queue.NewRemoteQueueGroup(ctx, opts)
-	require.NoError(t, err)
+	env := evergreen.GetEnvironment()
+	require.NotNil(t, env)
+	q := env.RemoteQueueGroup()
+	require.NotNil(t, q)
 
 	h := makeGenerateTasksPollHandler(sc, q)
 	require.Error(t, h.Parse(ctx, r))
@@ -115,22 +108,10 @@ func TestGeneratePollRun(t *testing.T) {
 	defer cancel()
 	sc := &data.MockConnector{}
 
-	uri := "mongodb://localhost:27017"
-	client, err := mongo.NewClient(options.Client().ApplyURI(uri))
-	require.NoError(t, err)
-	require.NoError(t, client.Connect(ctx))
-	require.NoError(t, client.Database("amboy_test").Drop(ctx))
-	opts := queue.RemoteQueueGroupOptions{
-		Client:      client,
-		Constructor: remoteConstructor,
-		MongoOptions: queue.MongoDBOptions{
-			URI: uri,
-			DB:  "amboy_test",
-		},
-		Prefix: "gen",
-	}
-	q, err := queue.NewRemoteQueueGroup(ctx, opts)
-	require.NoError(t, err)
+	env := evergreen.GetEnvironment()
+	require.NotNil(t, env)
+	q := env.RemoteQueueGroup()
+	require.NotNil(t, q)
 
 	h := makeGenerateTasksPollHandler(sc, q)
 

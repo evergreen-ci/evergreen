@@ -5,12 +5,12 @@ import (
 	"testing"
 	"time"
 
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/mock"
 	"github.com/mongodb/amboy/job"
 	"github.com/mongodb/amboy/queue"
 	"github.com/stretchr/testify/require"
-	"go.mongodb.org/mongo-driver/mongo"
-	"go.mongodb.org/mongo-driver/mongo/options"
+	"gopkg.in/mgo.v2/bson"
 )
 
 func remoteConstructor(ctx context.Context) (queue.Remote, error) {
@@ -21,35 +21,36 @@ func TestPruneRemoteQueueGroup(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	job.RegisterDefaultJobs()
-	uri := "mongodb://localhost:27017"
-	client, err := mongo.NewClient(options.Client().ApplyURI(uri))
-	require.NoError(t, err)
-	require.NoError(t, client.Connect(ctx))
+	client := evergreen.GetEnvironment().Client()
 	require.NoError(t, client.Database("amboy_test").Drop(ctx))
 
 	env := &mock.Environment{}
-	opts := queue.RemoteQueueGroupOptions{
-		Client:      client,
-		Constructor: remoteConstructor,
-		MongoOptions: queue.MongoDBOptions{
-			URI: uri,
-			DB:  "amboy_test",
+
+	var err error
+	env.RemoteGroup, err = queue.NewMongoRemoteSingleQueueGroup(ctx,
+		queue.RemoteQueueGroupOptions{
+			DefaultWorkers: 1,
+			Prefix:         "gen",
 		},
-		Prefix: "gen",
-		TTL:    time.Millisecond,
-	}
-	g, err := queue.NewRemoteQueueGroup(ctx, opts)
+		client,
+		queue.MongoDBOptions{
+			URI:             "mongodb://localhost:27017",
+			DB:              "amboy_test",
+			Priority:        false,
+			CheckWaitUntil:  true,
+			SkipIndexBuilds: true,
+		},
+	)
 	require.NoError(t, err)
-	env.RemoteGroup = g
 
 	pruneJob := &pruneRemoteQueueGroup{env: env}
 
-	q, err := g.Get(ctx, "1")
+	q, err := env.RemoteGroup.Get(ctx, "1")
 	require.NoError(t, err)
 	j := job.NewShellJob("true", "")
 	require.NoError(t, q.Put(j))
 
-	count, err := client.Database("amboy_test").Collection("gen1.jobs").EstimatedDocumentCount(ctx)
+	count, err := client.Database("amboy_test").Collection("gen.group").EstimatedDocumentCount(ctx)
 	require.NoError(t, err)
 	require.EqualValues(t, 1, count)
 	time.Sleep(100 * time.Millisecond)
@@ -57,7 +58,16 @@ func TestPruneRemoteQueueGroup(t *testing.T) {
 	pruneJob.Run(ctx)
 	require.NoError(t, pruneJob.Error())
 
-	count, err = client.Database("amboy_test").Collection("gen1.jobs").EstimatedDocumentCount(ctx)
+	count, err = client.Database("amboy_test").Collection("gen.group").EstimatedDocumentCount(ctx)
+	require.NoError(t, err)
+	require.EqualValues(t, 1, count)
+
+	// the single queue prune job doesn't delete jobs from the db,
+	// we need a Len() method on the queue group which isn't there
+	// yet... but this should give us some confidence:
+
+	count, err = client.Database("amboy_test").Collection("gen.group").CountDocuments(ctx, bson.M{"group": "1", "status.completed": false})
 	require.NoError(t, err)
 	require.EqualValues(t, 0, count)
+
 }
