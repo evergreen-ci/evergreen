@@ -66,7 +66,7 @@ func TestPruneRemoteQueueGroup(t *testing.T) {
 	// we need a Len() method on the queue group which isn't there
 	// yet... but this should give us some confidence:
 
-	count, err = client.Database("amboy_test").Collection("gen.group").CountDocuments(ctx, bson.M{"group": "1", "status.completed": false})
+	count, err = client.Database("amboy_test").Collection("gen.group").CountDocuments(ctx, bson.M{"group": "1", "status.completed": true})
 	require.NoError(t, err)
 	require.EqualValues(t, 0, count)
 
