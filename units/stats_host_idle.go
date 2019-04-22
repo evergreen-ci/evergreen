@@ -17,6 +17,7 @@ import (
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/level"
 	"github.com/mongodb/grip/message"
+	"github.com/pkg/errors"
 )
 
 const collectHostIdleDataJobName = "collect-host-idle-data"
@@ -94,6 +95,9 @@ func (j *collectHostIdleDataJob) Run(ctx context.Context) {
 	if j.host == nil {
 		j.host, err = host.FindOneId(j.HostID)
 		j.AddError(err)
+		if j.host == nil {
+			j.AddError(errors.Errorf("unable to retrieve host %s", j.HostID))
+		}
 	}
 
 	if j.task == nil && j.TaskID != "" {

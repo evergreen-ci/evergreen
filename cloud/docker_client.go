@@ -107,6 +107,7 @@ func (c *dockerClientImpl) generateClient(h *host.Host) (*docker.Client, error) 
 func (c *dockerClientImpl) changeTimeout(h *host.Host, newTimeout time.Duration) (*docker.Client, error) {
 	var err error
 	c.httpClient.Timeout = newTimeout
+	c.client = nil // don't want to use cached client
 	c.client, err = c.generateClient(h)
 	if err != nil {
 		return nil, errors.Wrap(err, "Failed to generate docker client")
@@ -164,6 +165,7 @@ func (c *dockerClientImpl) EnsureImageDownloaded(ctx context.Context, h *host.Ho
 			grip.Info(message.Fields{
 				"operation":     "EnsureImageDownloaded",
 				"details":       "import image",
+				"options_image": options.Image,
 				"duration_secs": time.Since(start).Seconds(),
 			})
 			return imageName, errors.Wrap(err, "error importing image")
@@ -176,6 +178,7 @@ func (c *dockerClientImpl) EnsureImageDownloaded(ctx context.Context, h *host.Ho
 			grip.Info(message.Fields{
 				"operation":     "EnsureImageDownloaded",
 				"details":       "pull image",
+				"options_image": options.Image,
 				"duration_secs": time.Since(start).Seconds(),
 			})
 			return imageName, errors.Wrap(err, "error pulling image")
@@ -232,6 +235,7 @@ func (c *dockerClientImpl) pullImage(ctx context.Context, h *host.Host, url, use
 		}
 		auth = base64.URLEncoding.EncodeToString(jsonBytes)
 	}
+
 	resp, err := dockerClient.ImagePull(ctx, url, types.ImagePullOptions{RegistryAuth: auth})
 	if err != nil {
 		return errors.Wrap(err, "error pulling image from registry")
@@ -329,7 +333,10 @@ func (c *dockerClientImpl) CreateContainer(ctx context.Context, parentHost, cont
 
 	// Extract image name from url
 	baseName := path.Base(containerHost.DockerOptions.Image)
-	provisionedImage := fmt.Sprintf(provisionedImageTag, strings.TrimSuffix(baseName, filepath.Ext(baseName)))
+	provisionedImage := strings.TrimSuffix(baseName, filepath.Ext(baseName))
+	if !containerHost.DockerOptions.SkipImageBuild {
+		provisionedImage = fmt.Sprintf(provisionedImageTag, provisionedImage)
+	}
 
 	agentCmdParts := []string{containerHost.DockerOptions.Command}
 	if containerHost.DockerOptions.Command == "" {
@@ -362,7 +369,6 @@ func (c *dockerClientImpl) CreateContainer(ctx context.Context, parentHost, cont
 	containerConf := &container.Config{
 		Cmd:   agentCmdParts,
 		Image: provisionedImage,
-		User:  containerHost.Distro.User,
 	}
 	networkConf := &network.NetworkingConfig{}
 	hostConf := &container.HostConfig{}
@@ -372,13 +378,11 @@ func (c *dockerClientImpl) CreateContainer(ctx context.Context, parentHost, cont
 	})
 
 	// Build container
-	info, err := dockerClient.ContainerCreate(ctx, containerConf, hostConf, networkConf, containerHost.Id)
-	if err != nil {
+	if _, err := dockerClient.ContainerCreate(ctx, containerConf, hostConf, networkConf, containerHost.Id); err != nil {
 		err = errors.Wrapf(err, "Docker create API call failed for container '%s'", containerHost.Id)
 		grip.Error(err)
 		return err
 	}
-	containerHost.ExternalIdentifier = info.ID
 	grip.Info(msg)
 
 	return nil
@@ -390,10 +394,6 @@ func (c *dockerClientImpl) GetDockerLogs(ctx context.Context, containerID string
 	dockerClient, err := c.generateClient(parent)
 	if err != nil {
 		return nil, errors.Wrap(err, "Failed to generate docker client")
-	}
-
-	if containerID == "" { // container not started yet
-		return nil, errors.New("container has not started")
 	}
 	stream, err := dockerClient.ContainerLogs(ctx, containerID, options)
 	if err != nil {
@@ -414,19 +414,23 @@ func (c *dockerClientImpl) GetDockerLogs(ctx context.Context, containerID string
 }
 
 func (c *dockerClientImpl) GetDockerStatus(ctx context.Context, containerID string, parent *host.Host) (*ContainerStatus, error) {
-	if containerID == "" {
+	if util.StringSliceContains(evergreen.NotRunningStatus, parent.Status) {
 		return &ContainerStatus{HasStarted: false}, nil
 	}
-	status := ContainerStatus{HasStarted: true}
 	container, err := c.GetContainer(ctx, parent, containerID)
 	if err != nil {
+		if strings.Contains(err.Error(), "No such container") {
+			return &ContainerStatus{HasStarted: false}, nil
+		}
 		return nil, errors.Wrapf(err, "Error getting container %s", containerID)
 	}
 	if container == nil {
 		return nil, errors.Errorf("Container %s returned empty", containerID)
 	}
-
-	status.IsRunning = container.State.Running
+	status := ContainerStatus{
+		HasStarted: true,
+		IsRunning:  container.State.Running,
+	}
 	return &status, nil
 }
 
@@ -529,7 +533,7 @@ func (c *dockerClientImpl) StartContainer(ctx context.Context, h *host.Host, con
 
 	opts := types.ContainerStartOptions{}
 	if err := dockerClient.ContainerStart(ctx, containerID, opts); err != nil {
-		return errors.Wrapf(err, "Failed to start container %s", containerID)
+		return errors.Wrapf(err, "Failed to start container '%s'", containerID)
 	}
 
 	return nil

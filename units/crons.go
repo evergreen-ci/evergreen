@@ -627,7 +627,7 @@ func PopulateHostCreationJobs(env evergreen.Environment, part int) amboy.QueueOp
 				break
 			}
 
-			catcher.Add(queue.Put(NewHostCreateJob(env, h, ts, 1, 0)))
+			catcher.Add(queue.Put(NewHostCreateJob(env, h, ts, 1, 0, false)))
 		}
 
 		return catcher.Resolve()

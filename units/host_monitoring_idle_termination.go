@@ -76,6 +76,9 @@ func (j *idleHostJob) Run(ctx context.Context) {
 		j.AddError(err)
 		if err != nil {
 			return
+		} else if j.host == nil {
+			j.AddError(errors.Errorf("unable to retrieve host %s", j.HostID))
+			return
 		}
 	}
 	if j.env == nil {

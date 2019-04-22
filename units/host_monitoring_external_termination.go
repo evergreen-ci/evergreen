@@ -82,6 +82,9 @@ func (j *hostMonitorExternalStateCheckJob) Run(ctx context.Context) {
 		if err != nil {
 			j.AddError(err)
 			return
+		} else if j.host == nil {
+			j.AddError(errors.Errorf("unable to retrieve host %s", j.HostID))
+			return
 		}
 	}
 

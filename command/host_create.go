@@ -11,6 +11,8 @@ import (
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/rest/client"
 	"github.com/mitchellh/mapstructure"
+	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 )
 
@@ -116,6 +118,7 @@ func (c *createHost) waitForLogs(ctx context.Context, comm client.Communicator, 
 
 	batchStart := startTime
 	// get logs in batches until container exits or we timeout
+	startedCollectingLogs := false
 	for {
 		select {
 		case <-ctx.Done():
@@ -125,9 +128,14 @@ func (c *createHost) waitForLogs(ctx context.Context, comm client.Communicator, 
 			batchEnd := time.Now()
 			status, err := comm.GetDockerStatus(ctx, hostID)
 			if err != nil {
-				return errors.Wrapf(err, "error getting docker status")
+				grip.Info(message.WrapError(err, "problem receiving docker logs in host.create"))
+				if startedCollectingLogs {
+					return nil // container has likely exited
+				}
+				continue
 			}
 			if status.HasStarted {
+				startedCollectingLogs = true
 				if err = c.getAndWriteLogBatch(ctx, comm, hostID, batchStart, batchEnd); err != nil {
 					return errors.Wrapf(err, "error getting and writing logs on started container")
 				}

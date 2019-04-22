@@ -30,7 +30,7 @@ type Host struct {
 	Provider string        `bson:"host_type" json:"host_type"`
 	IP       string        `bson:"ip_address" json:"ip_address"`
 
-	// secondary (external) identifier for the host (the containerID for containers)
+	// secondary (external) identifier for the host
 	ExternalIdentifier string `bson:"ext_identifier" json:"ext_identifier"`
 
 	// physical location of host
@@ -953,9 +953,10 @@ func (h *Host) GetContainers() ([]Host, error) {
 	if !h.HasContainers {
 		return nil, errors.New("Host does not host containers")
 	}
-	query := db.Query(bson.M{
-		ParentIDKey: h.Id,
-	})
+	query := db.Query(bson.M{"$or": []bson.M{
+		{ParentIDKey: h.Id},
+		{ParentIDKey: h.Tag},
+	}})
 	hosts, err := Find(query)
 	if err != nil {
 		return nil, errors.Wrap(err, "Error finding containers")
@@ -970,21 +971,12 @@ func (h *Host) GetParent() (*Host, error) {
 	if h.ParentID == "" {
 		return nil, errors.New("Host does not have a parent")
 	}
-	query := db.Query(bson.M{
-		TagKey: h.ParentID,
-	})
-	host, err := FindOne(query) // try to find by tag
+	host, err := FindOneByIdOrTag(h.ParentID)
 	if err != nil {
 		return nil, errors.Wrap(err, "Error finding parent")
 	}
 	if host == nil {
-		host, err = FindOneId(h.ParentID)
-		if err != nil {
-			return nil, errors.Wrap(err, "Error finding parent")
-		}
-		if host == nil {
-			return nil, errors.New("Parent not found")
-		}
+		return nil, errors.New("Parent not found")
 	}
 	if !host.HasContainers {
 		return nil, errors.New("Host found is not a parent")
