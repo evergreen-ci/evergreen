@@ -28,7 +28,7 @@ type pruneRemoteQueueGroup struct {
 
 func NewPruneRemoteQueueGroup(id string) amboy.Job {
 	j := makePruneRemoteQueueGroup()
-	j.SetID(fmt.Sprintf("%s-%s", pruneRemoteQueueGroupJobName, id))
+	j.SetID(fmt.Sprintf("%s.%s", pruneRemoteQueueGroupJobName, id))
 	j.SetPriority(-1)
 
 	return j

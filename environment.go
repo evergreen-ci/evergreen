@@ -321,7 +321,6 @@ func (e *envState) createGenerateTasksQueue(ctx context.Context) error {
 
 	remoteQueuGroupOpts := queue.RemoteQueueGroupOptions{
 		Prefix:                    e.settings.Amboy.Name,
-		TTL:                       7 * 24 * time.Hour,
 		BackgroundCreateFrequency: time.Hour,
 		DefaultWorkers:            1,
 		Ordered:                   false,

@@ -5,44 +5,25 @@ import (
 	"testing"
 	"time"
 
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/amboy/dependency"
 	"github.com/mongodb/amboy/job"
-	"github.com/mongodb/amboy/queue"
 	"github.com/mongodb/amboy/registry"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"go.mongodb.org/mongo-driver/mongo"
-	"go.mongodb.org/mongo-driver/mongo/options"
 )
-
-func remoteConstructor(ctx context.Context) (queue.Remote, error) {
-	return queue.NewRemoteUnordered(1), nil
-}
 
 func TestGeneratePoll(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	require.NoError(t, db.ClearCollections(task.Collection))
-
-	uri := "mongodb://localhost:27017"
-	client, err := mongo.NewClient(options.Client().ApplyURI(uri))
-	require.NoError(t, err)
-	require.NoError(t, client.Connect(ctx))
-	require.NoError(t, client.Database("amboy_test").Drop(ctx))
-	opts := queue.RemoteQueueGroupOptions{
-		Client:      client,
-		Constructor: remoteConstructor,
-		MongoOptions: queue.MongoDBOptions{
-			URI: uri,
-			DB:  "amboy_test",
-		},
-		Prefix: "gen",
-	}
-	q, err := queue.NewRemoteQueueGroup(ctx, opts)
-	require.NoError(t, err)
+	env := evergreen.GetEnvironment()
+	require.NotNil(t, env)
+	q := env.RemoteQueueGroup()
+	require.NotNil(t, q)
 
 	require.NoError(t, (&task.Task{
 		Id:      "task-1",
