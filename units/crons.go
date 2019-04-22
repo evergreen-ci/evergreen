@@ -14,6 +14,8 @@ import (
 	"github.com/mongodb/grip/message"
 	"github.com/mongodb/grip/sometimes"
 	"github.com/pkg/errors"
+	mgo "gopkg.in/mgo.v2"
+	"gopkg.in/mgo.v2/bson"
 )
 
 const tsFormat = "2006-01-02.15-04-05"
@@ -553,24 +555,18 @@ func PopulateAgentDeployJobs(env evergreen.Environment) amboy.QueueOperation {
 			return nil
 		}
 
-		hosts, err := host.Find(host.LastCommunicationTimeElapsed(time.Now()))
-		grip.Error(message.WrapError(err, message.Fields{
-			"operation": "background task creation",
-			"cron":      agentDeployJobName,
-			"impact":    "agents cannot start",
-			"message":   "problem finding hosts with elapsed last communication time",
-		}))
-		if err != nil {
+		err = host.UpdateAll(host.LastCommunicationTimeElapsed(time.Now()), bson.M{"$set": bson.M{host.NeedsNewAgentKey: true}})
+		if err != nil && err != mgo.ErrNotFound {
+			grip.Error(message.WrapError(err, message.Fields{
+				"operation": "background task creation",
+				"cron":      agentDeployJobName,
+				"impact":    "agents cannot start",
+				"message":   "problem updating hosts with elapsed last communication time",
+			}))
 			return errors.WithStack(err)
 		}
-		for _, h := range hosts {
-			grip.Error(message.WrapError(h.SetNeedsNewAgent(true), message.Fields{
-				"message": "problem settings needs new agent",
-				"host":    h.Id,
-			}))
-		}
 
-		hosts, err = host.Find(host.NeedsNewAgentFlagSet())
+		hosts, err := host.Find(host.NeedsNewAgentFlagSet())
 		grip.Error(message.WrapError(err, message.Fields{
 			"operation": "background task creation",
 			"cron":      agentDeployJobName,
