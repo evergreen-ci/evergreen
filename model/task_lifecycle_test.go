@@ -2149,6 +2149,7 @@ func TestClearAndResetStrandedTask(t *testing.T) {
 func TestClearAndResetStaleStrandedTask(t *testing.T) {
 	require.NoError(t, db.ClearCollections(host.Collection, task.Collection, task.OldCollection, build.Collection), t, "error clearing collection")
 	assert := assert.New(t)
+	require := require.New(t)
 
 	runningTask := &task.Task{
 		Id:            "t",
@@ -2180,6 +2181,13 @@ func TestClearAndResetStaleStrandedTask(t *testing.T) {
 	assert.NoError(err)
 	assert.Equal(evergreen.TaskFailed, runningTask.Status)
 	assert.Equal("system", runningTask.Details.Type)
+
+	updatedBuild, err := build.FindOneId("b")
+	assert.NoError(err)
+	require.NotNil(updatedBuild)
+	require.Len(updatedBuild.Tasks, 1)
+	assert.Equal("t", updatedBuild.Tasks[0].Id)
+	assert.Equal(evergreen.TaskFailed, updatedBuild.Tasks[0].Status)
 }
 
 func TestDisplayTaskUpdates(t *testing.T) {

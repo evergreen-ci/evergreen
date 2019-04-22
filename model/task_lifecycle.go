@@ -945,6 +945,9 @@ func ClearAndResetStrandedTask(h *host.Host) error {
 	if err = t.MarkSystemFailed(); err != nil {
 		return errors.Wrap(err, "problem marking task failed")
 	}
+	if err := build.UpdateCachedTask(t.BuildId, t.Id, t.Status, 0); err != nil {
+		return errors.Wrap(err, "problem resetting cached task")
+	}
 
 	detail := &apimodels.TaskEndDetail{
 		Status: evergreen.TaskFailed,
