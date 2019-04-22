@@ -320,19 +320,13 @@ func (e *envState) createGenerateTasksQueue(ctx context.Context) error {
 	opts.Priority = true
 
 	remoteQueuGroupOpts := queue.RemoteQueueGroupOptions{
-		Client: e.client,
-		Constructor: func(_ context.Context) (queue.Remote, error) {
-			q := queue.NewRemoteUnordered(1)
-			if err := q.SetRunner(pool.NewAbortablePool(1, q)); err != nil {
-				return nil, errors.WithStack(err)
-			}
-			return q, nil
-		},
-		MongoOptions: queue.DefaultMongoDBOptions(),
-		Prefix:       "gen",
-		TTL:          7 * 24 * time.Hour,
+		Prefix:                    e.settings.Amboy.Name,
+		TTL:                       7 * 24 * time.Hour,
+		BackgroundCreateFrequency: time.Hour,
+		DefaultWorkers:            1,
+		Ordered:                   false,
 	}
-	remoteQueueGroup, err := queue.NewRemoteQueueGroup(ctx, remoteQueuGroupOpts)
+	remoteQueueGroup, err := queue.NewMongoRemoteSingleQueueGroup(ctx, remoteQueuGroupOpts, e.client, opts)
 	if err != nil {
 		return errors.Wrap(err, "problem constructing remote queue group")
 	}
