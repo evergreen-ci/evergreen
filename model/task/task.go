@@ -1530,7 +1530,9 @@ func (t *Task) BlockedState(tasksWithDeps []Task) (string, error) {
 	if t.DisplayOnly {
 		return t.blockedStateForDisplayTask(tasksWithDeps)
 	}
-
+	if len(t.DependsOn) == 0 {
+		return "", nil
+	}
 	return t.blockedStatePrivate()
 }
 
@@ -1598,16 +1600,6 @@ func (t *Task) blockedStateForDisplayTask(tasksWithDeps []Task) (string, error) 
 		}
 	}
 	return state, nil
-}
-func (t *Task) IsBlocked(tasksWithDeps []Task) (bool, error) {
-	etState, err := t.BlockedState(tasksWithDeps)
-	if err != nil {
-		return false, errors.Wrap(err, "error finding blocked state")
-	}
-	if etState == taskBlocked {
-		return true, nil
-	}
-	return false, nil
 }
 
 func (t *Task) CircularDependencies() error {
