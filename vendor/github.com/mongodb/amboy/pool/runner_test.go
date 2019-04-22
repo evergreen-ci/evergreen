@@ -105,7 +105,7 @@ func TestRunnerImplementations(t *testing.T) {
 				assert.True(t, pool.Started())
 
 				assert.NotPanics(t, func() {
-					pool.Close()
+					pool.Close(ctx)
 				})
 
 				assert.False(t, pool.Started())

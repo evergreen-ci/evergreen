@@ -475,7 +475,7 @@ buildvariants:
     display_name: OSX
     batchtime: 2880
     run_on:
-      - macos-1012
+      - macos-1014
     expansions:
       disable_coverage: yes
       gobin: /usr/local/go1.8/go/bin/go

@@ -161,7 +161,7 @@ func (p *simpleRateLimited) SetQueue(q amboy.Queue) error {
 	return nil
 }
 
-func (p *simpleRateLimited) Close() {
+func (p *simpleRateLimited) Close(ctx context.Context) {
 	p.mu.Lock()
 	defer p.mu.Unlock()
 
@@ -177,5 +177,15 @@ func (p *simpleRateLimited) Close() {
 	// tests
 	defer func() { recover() }()
 
-	p.wg.Wait()
+	wait := make(chan struct{})
+	go func() {
+		defer recovery.LogStackTraceAndContinue("waiting for close")
+		defer close(wait)
+		p.wg.Wait()
+	}()
+
+	select {
+	case <-ctx.Done():
+	case <-wait:
+	}
 }

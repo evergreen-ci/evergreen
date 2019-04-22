@@ -3,6 +3,7 @@ package queue
 import (
 	"context"
 	"fmt"
+	"math/rand"
 	"os"
 	"strings"
 	"sync"
@@ -21,28 +22,25 @@ import (
 )
 
 type mongoDriver struct {
-	client           *mongo.Client
-	name             string
-	mongodbURI       string
-	dbName           string
-	instanceID       string
-	priority         bool
-	respectWaitUntil bool
-	mu               sync.RWMutex
-	canceler         context.CancelFunc
+	client     *mongo.Client
+	name       string
+	opts       MongoDBOptions
+	instanceID string
+	mu         sync.RWMutex
+	canceler   context.CancelFunc
 
 	LockManager
 }
 
+// NewMongoDriver constructs a MongoDB backed queue driver
+// implementation using the go.mongodb.org/mongo-driver as the
+// database interface.
 func NewMongoDriver(name string, opts MongoDBOptions) Driver {
-	host, _ := os.Hostname()
+	host, _ := os.Hostname() // nolint
 	return &mongoDriver{
-		name:             name,
-		dbName:           opts.DB,
-		mongodbURI:       opts.URI,
-		priority:         opts.Priority,
-		respectWaitUntil: opts.CheckWaitUntil,
-		instanceID:       fmt.Sprintf("%s.%s.%s", name, host, uuid.NewV4()),
+		name:       name,
+		opts:       opts,
+		instanceID: fmt.Sprintf("%s.%s.%s", name, host, uuid.NewV4()),
 	}
 }
 
@@ -71,9 +69,9 @@ func (d *mongoDriver) Open(ctx context.Context) error {
 		return nil
 	}
 
-	client, err := mongo.Connect(ctx, options.Client().ApplyURI(d.mongodbURI))
+	client, err := mongo.Connect(ctx, options.Client().ApplyURI(d.opts.URI))
 	if err != nil {
-		return errors.Wrapf(err, "problem opening connection to mongodb at '%s", d.mongodbURI)
+		return errors.Wrapf(err, "problem opening connection to mongodb at '%s", d.opts.URI)
 	}
 
 	return errors.Wrap(d.start(ctx, client), "problem starting driver")
@@ -109,10 +107,14 @@ func (d *mongoDriver) start(ctx context.Context, client *mongo.Client) error {
 }
 
 func (d *mongoDriver) getCollection() *mongo.Collection {
-	return d.client.Database(d.dbName).Collection(addJobsSuffix(d.name))
+	return d.client.Database(d.opts.DB).Collection(addJobsSuffix(d.name))
 }
 
 func (d *mongoDriver) setupDB(ctx context.Context) error {
+	if d.opts.SkipIndexBuilds {
+		return nil
+	}
+
 	keys := bsonx.Doc{
 		{
 			Key:   "status.completed",
@@ -123,7 +125,7 @@ func (d *mongoDriver) setupDB(ctx context.Context) error {
 			Value: bsonx.Int32(1),
 		},
 	}
-	if d.respectWaitUntil {
+	if d.opts.CheckWaitUntil {
 		keys = append(keys, bsonx.Elem{
 			Key:   "time_info.wait_until",
 			Value: bsonx.Int32(1),
@@ -131,7 +133,7 @@ func (d *mongoDriver) setupDB(ctx context.Context) error {
 	}
 
 	// priority must be at the end for the sort
-	if d.priority {
+	if d.opts.Priority {
 		keys = append(keys, bsonx.Elem{
 			Key:   "priority",
 			Value: bsonx.Int32(1),
@@ -359,9 +361,9 @@ func (d *mongoDriver) JobStats(ctx context.Context) <-chan amboy.JobStatusInfo {
 
 func (d *mongoDriver) Next(ctx context.Context) amboy.Job {
 	var (
-		qd  bson.M
-		err error
-		job amboy.Job
+		qd     bson.M
+		job    amboy.Job
+		misses int64
 	)
 
 	qd = bson.M{
@@ -378,7 +380,7 @@ func (d *mongoDriver) Next(ctx context.Context) amboy.Job {
 		},
 	}
 
-	if d.respectWaitUntil {
+	if d.opts.CheckWaitUntil {
 		qd = bson.M{
 			"$and": []bson.M{
 				qd,
@@ -390,75 +392,87 @@ func (d *mongoDriver) Next(ctx context.Context) amboy.Job {
 		}
 	}
 
-	opts := options.Find()
-	if d.priority {
+	opts := options.Find().SetBatchSize(4)
+	if d.opts.Priority {
 		opts.SetSort(bson.M{"priority": -1})
 	}
 
 	j := &registry.JobInterchange{}
+	timer := time.NewTimer(0)
+	defer timer.Stop()
 
-	iter, err := d.getCollection().Find(ctx, qd, opts)
-	if err != nil {
-		grip.Error(message.WrapError(err, message.Fields{
-			"id":        d.instanceID,
-			"service":   "amboy.queue.mongo",
-			"operation": "retrieving next job",
-			"message":   "problem regenerating query",
-		}))
-		return nil
-	}
-	coll := d.getCollection().Name()
-	for iter.Next(ctx) {
-		grip.Info(message.Fields{
-			"id":              d.instanceID,
-			"service":         "amboy.queue.mongo",
-			"operation":       "converting next job",
-			"message":         "iterating",
-			"collection_name": coll,
-		})
-		if err = iter.Decode(j); err != nil {
-			grip.Warning(message.WrapError(err, message.Fields{
-				"id":        d.instanceID,
-				"service":   "amboy.queue.mongo",
-				"operation": "converting next job",
-				"message":   "problem reading document from cursor",
-			}))
-			// try for the next thing in the iterator if we can
-			continue
+RETRY:
+	for {
+		select {
+		case <-ctx.Done():
+			return nil
+		case <-timer.C:
+			misses++
+			iter, err := d.getCollection().Find(ctx, qd, opts)
+			if err != nil {
+				grip.Debug(message.WrapError(err, message.Fields{
+					"id":        d.instanceID,
+					"service":   "amboy.queue.mongo",
+					"operation": "retrieving next job",
+					"message":   "problem generating query",
+				}))
+				return nil
+			}
+
+		CURSOR:
+			for iter.Next(ctx) {
+				if err = iter.Decode(j); err != nil {
+					grip.Warning(message.WrapError(err, message.Fields{
+						"id":        d.instanceID,
+						"service":   "amboy.queue.mongo",
+						"operation": "converting next job",
+						"message":   "problem reading document from cursor",
+					}))
+					// try for the next thing in the iterator if we can
+					continue CURSOR
+				}
+
+				job, err = j.Resolve(amboy.BSON2)
+				if err != nil {
+					grip.Warning(message.WrapError(err, message.Fields{
+						"id":        d.instanceID,
+						"service":   "amboy.queue.mongo",
+						"operation": "converting document",
+						"message":   "problem converting job from intermediate form",
+					}))
+					// try for the next thing in the iterator if we can
+					continue CURSOR
+				}
+				break CURSOR
+			}
+
+			if err = iter.Err(); err != nil {
+				grip.Warning(message.WrapError(err, message.Fields{
+					"id":        d.instanceID,
+					"service":   "amboy.queue.mongo",
+					"message":   "problem reported by iterator",
+					"operation": "retrieving next job",
+				}))
+				return nil
+			}
+
+			if err = iter.Close(ctx); err != nil {
+				grip.Warning(message.WrapError(err, message.Fields{
+					"id":        d.instanceID,
+					"service":   "amboy.queue.mongo",
+					"message":   "problem closing iterator",
+					"operation": "retrieving next job",
+				}))
+				return nil
+			}
+
+			if job != nil {
+				break RETRY
+			}
+
+			timer.Reset(time.Duration(misses * rand.Int63n(int64(time.Second))))
+			continue RETRY
 		}
-
-		job, err = j.Resolve(amboy.BSON2)
-		if err != nil {
-			grip.Warning(message.WrapError(err, message.Fields{
-				"id":        d.instanceID,
-				"service":   "amboy.queue.mongo",
-				"operation": "converting document",
-				"message":   "problem converting job from intermediate form",
-			}))
-			// try for the next thing in the iterator if we can
-			continue
-		}
-		break
-	}
-
-	if err = iter.Err(); err != nil {
-		grip.Warning(message.WrapError(err, message.Fields{
-			"id":              d.instanceID,
-			"service":         "amboy.queue.mongo",
-			"message":         "problem reported by iterator",
-			"operation":       "retrieving next job",
-			"collection_name": coll,
-		}))
-	}
-
-	if err = iter.Close(ctx); err != nil {
-		grip.Warning(message.WrapError(err, message.Fields{
-			"id":              d.instanceID,
-			"service":         "amboy.queue.mongo",
-			"message":         "problem closing iterator",
-			"operation":       "retrieving next job",
-			"collection_name": coll,
-		}))
 	}
 
 	return job

@@ -278,7 +278,7 @@ func (e *envState) createLocalQueue(ctx context.Context) error {
 	}
 
 	e.closers["background-local-queue"] = func(ctx context.Context) error {
-		e.localQueue.Runner().Close()
+		e.localQueue.Runner().Close(ctx)
 		return nil
 	}
 
@@ -306,7 +306,7 @@ func (e *envState) createApplicationQueue(ctx context.Context) error {
 	}
 	e.remoteQueue = rq
 	e.closers["application-queue"] = func(ctx context.Context) error {
-		e.remoteQueue.Runner().Close()
+		e.remoteQueue.Runner().Close(ctx)
 		return nil
 	}
 
@@ -379,7 +379,7 @@ func (e *envState) createNotificationQueue(ctx context.Context) error {
 			catcher.Add(errors.New("failed to stop with running jobs"))
 		}
 
-		e.notificationsQueue.Runner().Close()
+		e.notificationsQueue.Runner().Close(ctx)
 
 		grip.Debug(message.Fields{
 			"message":     "closed notification queue",
@@ -563,7 +563,7 @@ func (e *envState) initJasper() error {
 
 	e.jasperManager = jpm
 
-	e.closers["jasper-manaer"] = func(ctx context.Context) error {
+	e.closers["jasper-manager"] = func(ctx context.Context) error {
 		return errors.WithStack(jpm.Close(ctx))
 	}
 

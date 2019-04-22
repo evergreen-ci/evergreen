@@ -44,7 +44,7 @@ type uiParams struct {
 func (uis *UIServer) hostPage(w http.ResponseWriter, r *http.Request) {
 	id := gimlet.GetVars(r)["host_id"]
 
-	h, err := host.FindOne(host.ById(id))
+	h, err := host.FindOneByIdOrTag(id)
 	if err != nil {
 		uis.LoggedError(w, r, http.StatusInternalServerError, err)
 		return

@@ -6,6 +6,8 @@ import (
 	"time"
 
 	"github.com/mongodb/amboy"
+	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
 	"github.com/mongodb/grip/recovery"
 	"github.com/pkg/errors"
 )
@@ -59,7 +61,11 @@ func NewLocalQueueGroup(ctx context.Context, opts LocalQueueGroupOptions) (amboy
 				case <-ctx.Done():
 					return
 				case <-ticker.C:
-					_ = g.Prune(ctx)
+					grip.Error(message.WrapError(g.Prune(ctx),
+						message.Fields{
+							"group": "local queue group background pruning",
+							"ttl":   opts.TTL,
+						}))
 				}
 			}
 		}()
@@ -136,7 +142,7 @@ func (g *localQueueGroup) Prune(ctx context.Context) error {
 	for _, queue := range queues {
 		wg.Add(1)
 		go func(queue amboy.Queue) {
-			queue.Runner().Close()
+			queue.Runner().Close(ctx)
 			wg.Done()
 		}(queue)
 	}
@@ -157,7 +163,7 @@ func (g *localQueueGroup) Close(ctx context.Context) {
 			go func(queue amboy.Queue) {
 				defer recovery.LogStackTraceAndContinue("panic in local queue group closer")
 				defer wg.Done()
-				queue.Runner().Close()
+				queue.Runner().Close(ctx)
 			}(queue)
 		}
 		wg.Wait()

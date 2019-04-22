@@ -323,6 +323,14 @@ var (
 		HostDecommissioned,
 	}
 
+	// NotRunningStatus is a list of host statuses from before the host starts running.
+	NotRunningStatus = []string{
+		HostUninitialized,
+		HostBuilding,
+		HostProvisioning,
+		HostStarting,
+	}
+
 	// Hosts in "initializing" status aren't actually running yet:
 	// they're just intents, so this list omits that value.
 	ActiveStatus = []string{

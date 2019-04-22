@@ -68,17 +68,11 @@ mciModule.controller('DistrosCtrl', function($scope, $window, $location, $anchor
     'id': 'darwin_amd64',
     'display': 'OSX 64-bit'
   }, {
-    'id': 'darwin_386',
-    'display': 'OSX 32-bit'
-  }, {
     'id': 'linux_amd64',
     'display': 'Linux 64-bit'
   }, {
     'id': 'linux_386',
     'display': 'Linux 32-bit'
-  }, {
-    'id': 'solaris_amd64',
-    'display': 'Solaris 64-bit'
   }];
 
   $scope.bootstrapMethods = [{

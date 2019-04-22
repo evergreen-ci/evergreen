@@ -46,7 +46,7 @@ func NewLocalFile(target string, dependencies ...string) *LocalFile {
 	return d
 }
 
-// MakesLocalFile constructs an empty local file instance.
+// MakeLocalFile constructs an empty local file instance.
 func MakeLocalFile() *LocalFile {
 	return &LocalFile{
 		T: TypeInfo{

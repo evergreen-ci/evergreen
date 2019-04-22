@@ -27,7 +27,7 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/readconcern"
 	"go.mongodb.org/mongo-driver/mongo/readpref"
 	"go.mongodb.org/mongo-driver/mongo/writeconcern"
-	"go.mongodb.org/mongo-driver/x/mongo/driver"
+	"go.mongodb.org/mongo-driver/x/mongo/driverlegacy"
 	"go.mongodb.org/mongo-driver/x/network/command"
 )
 
@@ -1672,6 +1672,38 @@ func TestCollection_Find_found(t *testing.T) {
 	require.Equal(t, results, []int{1, 2, 3, 4, 5})
 }
 
+func TestCollection_Find_With_Limit_And_BatchSize(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping integration test in short mode")
+	}
+
+	coll := createTestCollection(t, nil, nil)
+	initCollection(t, coll)
+
+	batchSizes := []int32{2, 3, 4}
+	for _, b := range batchSizes {
+		name := fmt.Sprintf("Limit: 3, BatchSize: %v", b)
+		t.Run(name, func(t *testing.T) {
+			cursor, err := coll.Find(context.Background(), bson.D{}, options.Find().SetLimit(3).SetBatchSize(b))
+
+			numRecieved := 0
+			var doc bson.Raw
+			for cursor.Next(context.Background()) {
+				err = cursor.Decode(&doc)
+				require.NoError(t, err)
+
+				_, err = doc.LookupErr("_id")
+				require.NoError(t, err)
+
+				numRecieved++
+			}
+
+			require.NoError(t, cursor.Err())
+			require.Equal(t, 3, numRecieved)
+		})
+	}
+}
+
 func TestCollection_Find_notFound(t *testing.T) {
 	if testing.Short() {
 		t.Skip("skipping integration test in short mode")
@@ -1704,7 +1736,7 @@ func TestCollection_Find_Error(t *testing.T) {
 		require.True(t, c.Next(context.Background()))
 		require.True(t, c.Next(context.Background()))
 
-		_, err = driver.KillCursors(ctx, command.Namespace{
+		_, err = driverlegacy.KillCursors(ctx, command.Namespace{
 			DB:         coll.db.name,
 			Collection: coll.name,
 		}, c.bc.Server(), c.ID())
