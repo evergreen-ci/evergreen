@@ -584,19 +584,8 @@ func (h *Host) IsWaitingForAgent() bool {
 	return false
 }
 
-// SetNeedsNewAgent sets the "needs new agent" flag on the host.
+// SetNeedsNewAgent sets the "needs new agent" flag on the host
 func (h *Host) SetNeedsNewAgent(needsAgent bool) error {
-	err := UpdateOne(bson.M{IdKey: h.Id},
-		bson.M{"$set": bson.M{NeedsNewAgentKey: needsAgent}})
-	if err != nil {
-		return err
-	}
-	h.NeedsNewAgent = needsAgent
-	return nil
-}
-
-// SetNeedsNewAgentAtomically sets the "needs new agent" flag on the host atomically.
-func (h *Host) SetNeedsNewAgentAtomically(needsAgent bool) error {
 	err := UpdateOne(bson.M{IdKey: h.Id, NeedsNewAgentKey: !needsAgent},
 		bson.M{"$set": bson.M{NeedsNewAgentKey: needsAgent}})
 	if err != nil {
