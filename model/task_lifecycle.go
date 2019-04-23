@@ -1021,15 +1021,6 @@ func UpdateDisplayTask(t *task.Task) error {
 		}
 	}
 
-	grip.Debug(message.Fields{
-		"message":              "updating display task",
-		"task_id":              t.Id,
-		"has_finished_tasks":   hasFinishedTasks,
-		"has_failed_tasks":     hasFailedTasks,
-		"has_unfinished_tasks": hasUnfinishedTasks,
-		"num_exec_tasks":       len(execTasks),
-	})
-
 	if hasFailedTasks {
 		// if display task has a failed task, update status
 		sort.Sort(task.ByPriority(statuses))
