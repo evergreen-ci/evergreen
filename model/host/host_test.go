@@ -747,7 +747,7 @@ func TestFindNeedsNewAgent(t *testing.T) {
 				StartedBy: evergreen.User,
 			}
 			So(h.Insert(), ShouldBeNil)
-			hosts, err := Find(NeedsNewAgent(time.Now()))
+			hosts, err := Find(db.Query(LastCommunicationTimeElapsed(time.Now())))
 			So(err, ShouldBeNil)
 			So(len(hosts), ShouldEqual, 1)
 			So(hosts[0].Id, ShouldEqual, "id")
@@ -760,7 +760,7 @@ func TestFindNeedsNewAgent(t *testing.T) {
 				foundHost, err := FindOne(ById(h.Id))
 				So(err, ShouldBeNil)
 				So(foundHost, ShouldNotBeNil)
-				hosts, err := Find(NeedsNewAgent(time.Now()))
+				hosts, err := Find(db.Query(LastCommunicationTimeElapsed(time.Now())))
 				So(err, ShouldBeNil)
 				So(len(hosts), ShouldEqual, 1)
 				So(hosts[0].Id, ShouldEqual, h.Id)
@@ -775,7 +775,7 @@ func TestFindNeedsNewAgent(t *testing.T) {
 				StartedBy:             evergreen.User,
 			}
 			So(anotherHost.Insert(), ShouldBeNil)
-			hosts, err := Find(NeedsNewAgent(now))
+			hosts, err := Find(db.Query(LastCommunicationTimeElapsed(now)))
 			So(err, ShouldBeNil)
 			So(len(hosts), ShouldEqual, 1)
 			So(hosts[0].Id, ShouldEqual, anotherHost.Id)
@@ -789,13 +789,13 @@ func TestFindNeedsNewAgent(t *testing.T) {
 				StartedBy:             evergreen.User,
 			}
 			So(anotherHost.Insert(), ShouldBeNil)
-			hosts, err := Find(NeedsNewAgent(now))
+			hosts, err := Find(db.Query(LastCommunicationTimeElapsed(now)))
 			So(err, ShouldBeNil)
 			So(len(hosts), ShouldEqual, 0)
 			Convey("after resetting the LCT", func() {
 				So(anotherHost.ResetLastCommunicated(), ShouldBeNil)
 				So(anotherHost.LastCommunicationTime, ShouldResemble, time.Unix(0, 0))
-				h, err := Find(NeedsNewAgent(now))
+				h, err := Find(db.Query(LastCommunicationTimeElapsed(now)))
 				So(err, ShouldBeNil)
 				So(len(h), ShouldEqual, 1)
 				So(h[0].Id, ShouldEqual, "testhost")
@@ -808,7 +808,7 @@ func TestFindNeedsNewAgent(t *testing.T) {
 				StartedBy: evergreen.User,
 			}
 			So(h.Insert(), ShouldBeNil)
-			hosts, err := Find(NeedsNewAgent(now))
+			hosts, err := Find(db.Query(LastCommunicationTimeElapsed(now)))
 			So(err, ShouldBeNil)
 			So(len(hosts), ShouldEqual, 0)
 		})
@@ -819,7 +819,7 @@ func TestFindNeedsNewAgent(t *testing.T) {
 				StartedBy: "anotherUser",
 			}
 			So(h.Insert(), ShouldBeNil)
-			hosts, err := Find(NeedsNewAgent(now))
+			hosts, err := Find(db.Query(LastCommunicationTimeElapsed(now)))
 			So(err, ShouldBeNil)
 			So(len(hosts), ShouldEqual, 0)
 		})
@@ -831,7 +831,7 @@ func TestFindNeedsNewAgent(t *testing.T) {
 				NeedsNewAgent: true,
 			}
 			So(h.Insert(), ShouldBeNil)
-			hosts, err := Find(NeedsNewAgent(now))
+			hosts, err := Find(NeedsNewAgentFlagSet())
 			So(err, ShouldBeNil)
 			So(len(hosts), ShouldEqual, 1)
 			So(hosts[0].Id, ShouldEqual, "h")
