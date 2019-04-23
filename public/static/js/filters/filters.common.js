@@ -444,8 +444,8 @@ filters.common.filter('conditional', function() {
       result[threads] = {};
 
       _.each(test.rollups.stats, function (stat) {
-          result[threads][stat.name] = typeof(stat.val) === "string" ? stat.val : stat.val[0].Value ;
-          result[threads][stat.name + "_values"] = typeof(stat.val) === "string" ? stat.val : stat.val[0].Value;
+          result[threads][stat.name] = Array.isArray(stat.val) ? stat.val[0].Value : stat.val;
+          result[threads][stat.name + "_values"] = Array.isArray(stat.val) ? stat.val[0].Value : stat.val;
       });
       output.data.results.push({
           "name": test.info.test_name,
