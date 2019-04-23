@@ -10,6 +10,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mitchellh/mapstructure"
+	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 )
 
@@ -28,7 +29,7 @@ var distroSyntaxValidators = []distroValidator{
 	ensureStaticHostsAreNotSpawnable,
 	ensureValidContainerPool,
 	ensureValidArch,
-	ensureValidBootstrapMethod,
+	ensureValidBootstrapAndCommunicationMethods,
 	ensureHasNoUnauthorizedCharacters,
 	ensureHasValidPlannerVersion,
 }
@@ -180,11 +181,19 @@ func ensureValidArch(ctx context.Context, d *distro.Distro, s *evergreen.Setting
 	return nil
 }
 
-// ensureValidBootstrapMethod checks that the bootstrap method is one of the
-// supported methods.
-func ensureValidBootstrapMethod(ctx context.Context, d *distro.Distro, s *evergreen.Settings) ValidationErrors {
-	if err := distro.ValidateBootstrapMethod(d.BootstrapMethod); err != nil {
-		return ValidationErrors{{Level: Error, Message: errors.Wrap(err, "error validating bootstrap method").Error()}}
+// ensureValidBootstrapAndCommunicationMethods checks that the bootstrap method
+// is one of the supported methods, the communication method is one of the
+// supported methods, and the two together form a valid combination.
+func ensureValidBootstrapAndCommunicationMethods(ctx context.Context, d *distro.Distro, s *evergreen.Settings) ValidationErrors {
+	catcher := grip.NewBasicCatcher()
+	catcher.Add(distro.ValidateBootstrapMethod(d.BootstrapMethod))
+	catcher.Add(distro.ValidateCommunicationMethod(d.CommunicationMethod))
+	if catcher.HasErrors() {
+		return ValidationErrors{{Level: Error, Message: catcher.Resolve().Error()}}
+	}
+	if (d.BootstrapMethod == distro.BootstrapMethodLegacySSH && d.CommunicationMethod != distro.CommunicationMethodLegacySSH) ||
+		(d.CommunicationMethod == distro.CommunicationMethodLegacySSH && d.BootstrapMethod != distro.BootstrapMethodLegacySSH) {
+		return ValidationErrors{{Level: Error, Message: "legacy SSH is incompatible with all non-legacy methods"}}
 	}
 	return nil
 }

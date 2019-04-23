@@ -35,7 +35,8 @@ func TestCheckDistro(t *testing.T) {
 				PlannerSettings: distro.PlannerSettings{
 					Version: evergreen.PlannerVersionTunable,
 				},
-				BootstrapMethod: distro.BootstrapMethodLegacySSH,
+				BootstrapMethod:     distro.BootstrapMethodLegacySSH,
+				CommunicationMethod: distro.CommunicationMethodLegacySSH,
 			}
 			verrs, err := CheckDistro(ctx, d, conf, true)
 			So(err, ShouldBeNil)
@@ -52,7 +53,8 @@ func TestCheckDistro(t *testing.T) {
 					"security_group_ids": []string{"a"},
 					"mount_points":       nil,
 				},
-				BootstrapMethod: distro.BootstrapMethodLegacySSH,
+				BootstrapMethod:     distro.BootstrapMethodLegacySSH,
+				CommunicationMethod: distro.CommunicationMethodLegacySSH,
 			}
 			// simulate duplicate id
 			dupe := distro.Distro{Id: "a"}
@@ -75,7 +77,8 @@ func TestCheckDistro(t *testing.T) {
 				PlannerSettings: distro.PlannerSettings{
 					Version: evergreen.PlannerVersionTunable,
 				},
-				BootstrapMethod: distro.BootstrapMethodLegacySSH,
+				BootstrapMethod:     distro.BootstrapMethodLegacySSH,
+				CommunicationMethod: distro.CommunicationMethodLegacySSH,
 			}
 			verrs, err := CheckDistro(ctx, d, conf, false)
 			So(err, ShouldBeNil)
@@ -92,7 +95,8 @@ func TestCheckDistro(t *testing.T) {
 					"security_group_ids": []string{"a"},
 					"mount_points":       nil,
 				},
-				BootstrapMethod: distro.BootstrapMethodLegacySSH,
+				BootstrapMethod:     distro.BootstrapMethodLegacySSH,
+				CommunicationMethod: distro.CommunicationMethodLegacySSH,
 			}
 			verrs, err := CheckDistro(ctx, d, conf, false)
 			So(err, ShouldBeNil)
@@ -354,16 +358,25 @@ func TestEnsureValidContainerPool(t *testing.T) {
 	assert.Nil(err)
 }
 
-func TestEnsureValidBootstrapMethod(t *testing.T) {
+func TestEnsureValidBootstrapAndCommunicationMethods(t *testing.T) {
 	ctx := context.Background()
-	for _, bootstrapMethod := range []string{
-		distro.BootstrapMethodLegacySSH,
-		distro.BootstrapMethodSSH,
-		distro.BootstrapMethodPreconfiguredImage,
-		distro.BootstrapMethodUserData,
-	} {
-		assert.Nil(t, ensureValidBootstrapMethod(ctx, &distro.Distro{BootstrapMethod: bootstrapMethod}, &evergreen.Settings{}))
+	for _, bootstrapMethod := range distro.ValidBootstrapMethods {
+		for _, communicationMethod := range distro.ValidCommunicationMethods {
+			d := &distro.Distro{BootstrapMethod: bootstrapMethod, CommunicationMethod: communicationMethod}
+			if bootstrapMethod == distro.BootstrapMethodLegacySSH && communicationMethod == distro.CommunicationMethodLegacySSH {
+				assert.Nil(t, ensureValidBootstrapAndCommunicationMethods(ctx, d, &evergreen.Settings{}))
+			} else if bootstrapMethod == distro.BootstrapMethodLegacySSH || communicationMethod == distro.CommunicationMethodLegacySSH {
+				assert.NotNil(t, ensureValidBootstrapAndCommunicationMethods(ctx, d, &evergreen.Settings{}))
+			} else {
+				assert.Nil(t, ensureValidBootstrapAndCommunicationMethods(ctx, d, &evergreen.Settings{}))
+			}
+		}
 	}
-	assert.NotNil(t, ensureValidBootstrapMethod(ctx, &distro.Distro{BootstrapMethod: "foobar"}, &evergreen.Settings{}))
-	assert.NotNil(t, ensureValidBootstrapMethod(ctx, &distro.Distro{BootstrapMethod: ""}, &evergreen.Settings{}))
+	assert.NotNil(t, ensureValidBootstrapAndCommunicationMethods(ctx, &distro.Distro{BootstrapMethod: "foobar", CommunicationMethod: distro.CommunicationMethodLegacySSH}, &evergreen.Settings{}))
+	assert.NotNil(t, ensureValidBootstrapAndCommunicationMethods(ctx, &distro.Distro{BootstrapMethod: distro.BootstrapMethodLegacySSH}, &evergreen.Settings{}))
+	assert.NotNil(t, ensureValidBootstrapAndCommunicationMethods(ctx, &distro.Distro{CommunicationMethod: distro.CommunicationMethodLegacySSH}, &evergreen.Settings{}))
+
+	assert.NotNil(t, ensureValidBootstrapAndCommunicationMethods(ctx, &distro.Distro{BootstrapMethod: "foobar", CommunicationMethod: distro.CommunicationMethodSSH}, &evergreen.Settings{}))
+	assert.NotNil(t, ensureValidBootstrapAndCommunicationMethods(ctx, &distro.Distro{BootstrapMethod: distro.BootstrapMethodSSH}, &evergreen.Settings{}))
+	assert.NotNil(t, ensureValidBootstrapAndCommunicationMethods(ctx, &distro.Distro{CommunicationMethod: distro.CommunicationMethodSSH}, &evergreen.Settings{}))
 }
