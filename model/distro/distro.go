@@ -268,6 +268,14 @@ func ValidateCommunicationMethod(method string) error {
 	return nil
 }
 
+func ValidateBootstrapAndCommunicationMethods(bootstrap string, communication string) error {
+	if bootstrap == BootstrapMethodLegacySSH && communication != CommunicationMethodLegacySSH ||
+		communication == CommunicationMethodLegacySSH && bootstrap != BootstrapMethodLegacySSH {
+		return fmt.Errorf("'%s' and '%s' is not a valid bootstrap and communication combination", bootstrap, communication)
+	}
+	return nil
+}
+
 // GetDistroIds returns a slice of distro IDs for the given group of distros
 func (distros DistroGroup) GetDistroIds() []string {
 	var ids []string

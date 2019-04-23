@@ -265,7 +265,8 @@ func (s *DistroByIDSuite) SetupSuite() {
 					MainlineFirst:          false,
 					PatchFirst:             true,
 				},
-				BootstrapMethod: distro.BootstrapMethodLegacySSH,
+				BootstrapMethod:     distro.BootstrapMethodLegacySSH,
+				CommunicationMethod: distro.CommunicationMethodLegacySSH,
 			},
 			{Id: "distro2"},
 		},
@@ -303,7 +304,8 @@ func (s *DistroByIDSuite) TestFindByIdFound() {
 	s.Equal(7, d.PlannerSettings.PatchZipperFactor)
 	s.Equal(false, d.PlannerSettings.MainlineFirst)
 	s.Equal(true, d.PlannerSettings.PatchFirst)
-	s.Equal(d.BootstrapMethod, model.ToAPIString(distro.BootstrapMethodLegacySSH))
+	s.Equal(model.ToAPIString(distro.BootstrapMethodLegacySSH), d.BootstrapMethod)
+	s.Equal(model.ToAPIString(distro.CommunicationMethodLegacySSH), d.CommunicationMethod)
 }
 
 func (s *DistroByIDSuite) TestFindByIdFail() {
@@ -373,6 +375,7 @@ func (s *DistroPutSuite) TestParse() {
     		"patch_first": false
   		},
 		"bootstrap_method": "legacy-ssh",
+		"communication_method": "legacy-ssh",
     }`,
 	)
 
@@ -395,7 +398,7 @@ func (s *DistroPutSuite) TestRunNewWithValidEntity() {
 
 func (s *DistroPutSuite) TestRunNewWithInValidEntity() {
 	ctx := context.Background()
-	json := []byte(`{"arch": "linux_amd64", "work_dir": "/data/mci", "ssh_key": "", "bootstrap_method": "foo", "provider": "mock", "user": "tibor", "planner_settings": {"version": "invalid"}}`)
+	json := []byte(`{"arch": "linux_amd64", "work_dir": "/data/mci", "ssh_key": "", "bootstrap_method": "foo", "communication_method": "foo", "provider": "mock", "user": "tibor", "planner_settings": {"version": "invalid"}}`)
 	h := s.rm.(*distroIDPutHandler)
 	h.distroID = "distro4"
 	h.body = json
@@ -406,7 +409,8 @@ func (s *DistroPutSuite) TestRunNewWithInValidEntity() {
 	err := (resp.Data()).(gimlet.ErrorResponse)
 	s.Contains(err.Message, "ERROR: distro 'ssh_key' cannot be blank")
 	s.Contains(err.Message, "ERROR: invalid distro.planner_settings.version 'invalid' for distro 'distro4'")
-	s.Contains(err.Message, "ERROR: error validating bootstrap method: 'foo' is not a valid bootstrap method")
+	s.Contains(err.Message, "error validating bootstrap method: 'foo' is not a valid bootstrap method")
+	s.Contains(err.Message, "error validating communication method: 'foo' is not a valid communication method")
 }
 
 func (s *DistroPutSuite) TestRunNewConflictingName() {
@@ -933,9 +937,39 @@ func (s *DistroPatchByIDSuite) TestRunValidBootstrapMethod() {
 	s.Equal(model.ToAPIString(distro.BootstrapMethodLegacySSH), apiDistro.BootstrapMethod)
 }
 
+func (s *DistroPatchByIDSuite) TestRunValidCommunicationMethod() {
+	ctx := context.Background()
+	json := []byte(`{"communication_method": "legacy-ssh"}`)
+	h := s.rm.(*distroIDPatchHandler)
+	h.distroID = "fedora8"
+	h.body = json
+
+	resp := s.rm.Run(ctx)
+	s.NotNil(resp.Data())
+	s.Equal(resp.Status(), http.StatusOK)
+
+	apiDistro, ok := (resp.Data()).(*model.APIDistro)
+	s.Require().True(ok)
+	s.Equal(model.ToAPIString(distro.CommunicationMethodLegacySSH), apiDistro.CommunicationMethod)
+}
+
 func (s *DistroPatchByIDSuite) TestRunInvalidBootstrapMethod() {
 	ctx := context.Background()
 	json := []byte(`{"bootstrap_method": "foobar"}`)
+	h := s.rm.(*distroIDPatchHandler)
+	h.distroID = "fedora8"
+	h.body = json
+
+	resp := s.rm.Run(ctx)
+	s.NotNil(resp.Data())
+	s.Equal(http.StatusBadRequest, resp.Status())
+}
+
+// kim: TODO: add test to ensure that the communication method matches the
+// existing bootstrap method in the db, and vice versa.
+func (s *DistroPatchByIDSuite) TestRunInvalidCommunicationMethod() {
+	ctx := context.Background()
+	json := []byte(`{"communication_method": "foobar"}`)
 	h := s.rm.(*distroIDPatchHandler)
 	h.distroID = "fedora8"
 	h.body = json
@@ -969,6 +1003,7 @@ func (s *DistroPatchByIDSuite) TestValidFindAndReplaceFullDocument() {
 				"teardown" : "~Tear-down script",
 				"user" : "~root",
 				"bootstrap_method": "legacy-ssh",
+				"communication_method": "legacy-ssh",
 				"ssh_key" : "~SSH string",
 				"ssh_options" : [
 					"~StrictHostKeyChecking=no",
@@ -1026,6 +1061,7 @@ func (s *DistroPatchByIDSuite) TestValidFindAndReplaceFullDocument() {
 	s.Equal(apiDistro.Setup, model.ToAPIString("~Set-up script"))
 	s.Equal(apiDistro.Teardown, model.ToAPIString("~Tear-down script"))
 	s.Equal(model.ToAPIString(distro.BootstrapMethodLegacySSH), apiDistro.BootstrapMethod)
+	s.Equal(model.ToAPIString(distro.CommunicationMethodLegacySSH), apiDistro.CommunicationMethod)
 	s.Equal(apiDistro.User, model.ToAPIString("~root"))
 	s.Equal(apiDistro.SSHKey, model.ToAPIString("~SSH string"))
 	s.Equal(apiDistro.SSHOptions, []string{"~StrictHostKeyChecking=no", "~BatchMode=no", "~ConnectTimeout=10"})

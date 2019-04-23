@@ -185,9 +185,10 @@ func ensureValidArch(ctx context.Context, d *distro.Distro, s *evergreen.Setting
 // is one of the supported methods, the communication method is one of the
 // supported methods, and the two together form a valid combination.
 func ensureValidBootstrapAndCommunicationMethods(ctx context.Context, d *distro.Distro, s *evergreen.Settings) ValidationErrors {
+	grip.Infof("kim: b = %s, c = %s", d.BootstrapMethod, d.CommunicationMethod)
 	catcher := grip.NewBasicCatcher()
-	catcher.Add(distro.ValidateBootstrapMethod(d.BootstrapMethod))
-	catcher.Add(distro.ValidateCommunicationMethod(d.CommunicationMethod))
+	catcher.Add(errors.Wrap(distro.ValidateBootstrapMethod(d.BootstrapMethod), "error validating bootstrap method"))
+	catcher.Add(errors.Wrap(distro.ValidateCommunicationMethod(d.CommunicationMethod), "error validating communication method"))
 	if catcher.HasErrors() {
 		return ValidationErrors{{Level: Error, Message: catcher.Resolve().Error()}}
 	}
