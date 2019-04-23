@@ -195,7 +195,7 @@ func (j *collectHostIdleDataJob) getHostStatsMessage(cost float64, idleTime time
 	if j.host.Status == evergreen.HostTerminated {
 		msg["total_idle_secs"] = j.host.TotalIdleTime.Seconds()
 		msg["total_uptime_secs"] = j.host.TerminationTime.Sub(j.host.CreationTime).Seconds()
-		msg["total_utilization_secs"] = time.Duration(j.host.TerminationTime.Sub(j.host.CreationTime) - j.host.TotalIdleTime).Seconds()
+		msg["total_utilization_secs"] = (j.host.TerminationTime.Sub(j.host.CreationTime) - j.host.TotalIdleTime).Seconds()
 	}
 
 	return message.ConvertToComposer(level.Info, msg)
