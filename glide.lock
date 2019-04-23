@@ -122,7 +122,7 @@ imports:
   - name: github.com/mongodb/jasper
     version: 2f8ec7e782929519b4990adcaab3e0ab4283bec4
   - name: go.mongodb.org/mongo-driver
-    version: 607771253a891754764cfe486fd3914e1fa08163
+    version: 305bc4a5e4131420fe8ba5628e6faa9e6ade4e86
 
   # git library and its dependencies
   - name: gopkg.in/src-d/go-git.v4
