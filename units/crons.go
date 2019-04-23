@@ -10,11 +10,11 @@ import (
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/amboy"
+	adb "github.com/mongodb/anser/db"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/mongodb/grip/sometimes"
 	"github.com/pkg/errors"
-	mgo "gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
 )
 
@@ -556,7 +556,7 @@ func PopulateAgentDeployJobs(env evergreen.Environment) amboy.QueueOperation {
 		}
 
 		err = host.UpdateAll(host.LastCommunicationTimeElapsed(time.Now()), bson.M{"$set": bson.M{host.NeedsNewAgentKey: true}})
-		if err != nil && err != mgo.ErrNotFound {
+		if err != nil && !adb.ResultsNotFound(err) {
 			grip.Error(message.WrapError(err, message.Fields{
 				"operation": "background task creation",
 				"cron":      agentDeployJobName,
