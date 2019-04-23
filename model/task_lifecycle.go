@@ -609,9 +609,11 @@ func UpdateBuildAndVersionStatusForTask(taskId string, updates *StatusChanges) e
 			return errors.WithStack(err)
 		}
 		if displayTask != nil {
-			err = UpdateDisplayTask(displayTask)
-			if err != nil {
-				return errors.WithStack(err)
+			if err = UpdateDisplayTask(displayTask); err != nil {
+				return errors.Wrap(errors.WithStack(err), "error updating display task")
+			}
+			if err = build.UpdateCachedTask(displayTask.BuildId, displayTask.Id, displayTask.Status, 0); err != nil {
+				return errors.Wrap(errors.WithStack(err), "error updating cached display task")
 			}
 			t = *displayTask
 			status = t.Status
@@ -977,7 +979,6 @@ func UpdateDisplayTask(t *task.Task) error {
 	if !t.DisplayOnly {
 		return fmt.Errorf("%s is not a display task", t.Id)
 	}
-
 	statuses := []string{}
 	var timeTaken time.Duration
 	var status string
@@ -987,6 +988,7 @@ func UpdateDisplayTask(t *task.Task) error {
 		return errors.Wrap(err, "error retrieving execution tasks")
 	}
 	hasFinishedTasks := false
+	hasFailedTasks := false
 	hasUnfinishedTasks := false
 	startTime := time.Unix(1<<62, 0)
 	endTime := util.ZeroTime
@@ -998,10 +1000,12 @@ func UpdateDisplayTask(t *task.Task) error {
 
 		if execTask.IsFinished() {
 			hasFinishedTasks = true
+			if evergreen.IsFailedTaskStatus(execTask.Status) {
+				hasFailedTasks = true
+			}
 		} else if execTask.IsDispatchable() {
 			hasUnfinishedTasks = true
 		}
-
 		// the display task's status will be the highest priority of its exec tasks
 		statuses = append(statuses, execTask.ResultStatus())
 
@@ -1017,7 +1021,11 @@ func UpdateDisplayTask(t *task.Task) error {
 		}
 	}
 
-	if hasFinishedTasks && hasUnfinishedTasks {
+	if hasFailedTasks {
+		// if display task has a failed task, update status
+		sort.Sort(task.ByPriority(statuses))
+		status = statuses[0]
+	} else if hasFinishedTasks && hasUnfinishedTasks {
 		// if the display task has a mix of finished and unfinished tasks, the status
 		// will be "started"
 		status = evergreen.TaskStarted
@@ -1027,14 +1035,6 @@ func UpdateDisplayTask(t *task.Task) error {
 		sort.Sort(task.ByPriority(statuses))
 		status = statuses[0]
 	}
-
-	grip.InfoWhen(status == evergreen.TaskUndispatched && t.DispatchTime != util.ZeroTime, message.Fields{
-		"lookhere":                      "evg-3345",
-		"message":                       "update display tasks",
-		"task_id":                       t.Id,
-		"status":                        status,
-		"dispatch_time_is_go_zero_time": t.DispatchTime.IsZero(),
-	})
 
 	update := bson.M{
 		task.StatusKey:    status,

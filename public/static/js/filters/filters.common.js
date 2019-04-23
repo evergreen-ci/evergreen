@@ -276,13 +276,7 @@ filters.common.filter('conditional', function() {
       return task;
     }
     var cls = task.status;
-    if (task.status == 'undispatched' || (task.display_only && task.task_waiting)) {
-      if (!task.activated) {
-        cls = 'inactive';
-      } else {
-        cls = 'unstarted';
-      }
-    } else if (task.status == 'started') {
+    if (task.status == 'started') {
       cls = 'started';
     } else if (task.status == 'success') {
       cls = 'success';
@@ -307,6 +301,12 @@ filters.common.filter('conditional', function() {
           }
         }
       }
+    } else if (task.status == 'undispatched' || (task.display_only && task.task_waiting)) {
+        if (!task.activated) {
+            cls = 'inactive';
+        } else {
+            cls = 'unstarted';
+        }
     }
     return cls;
   }
@@ -314,9 +314,6 @@ filters.common.filter('conditional', function() {
 
 .filter('statusLabel', function() {
   return function(task) {
-    if (task.task_waiting && !task.override_dependencies) {
-      return task.task_waiting;
-    }
     if (task.status == 'started') {
       return 'started';
     } else if (task.status == 'undispatched' && task.activated) {
@@ -360,6 +357,9 @@ filters.common.filter('conditional', function() {
         }
         return 'failed';
       }
+    }
+    if (task.task_waiting && !task.override_dependencies) {
+        return task.task_waiting;
     }
     return task.status;
   }
