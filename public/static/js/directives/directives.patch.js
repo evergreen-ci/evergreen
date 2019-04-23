@@ -47,43 +47,50 @@ directives.patch.directive('patchDiffPanel', function() {
       scope.baselink = attrs.baselink;
       scope.type = attrs.type;
 
-      // lookup table with constants for sorting / displaying diff results.
-      // there is redundancy here between "success/pass" and "failed/fail"
-      // to allow this to work generically with both test and task statuses
-      scope.diffTypes = {
-        successfailed:    {icon:"fa-bug", type: 0},
-        passfail:         {icon:"fa-bug", type: 0},
-        failedfailed:     {icon:"fa-question", type: 1},
-        failfail:         {icon:"fa-question", type: 1},
-        failed:           {icon:"", type: 2},
-        fail:             {icon:"", type: 2},
-        undefinedfailed:  {icon:"", type: 2},
-        undefinedfail:    {icon:"", type: 2},
-        failedsuccess:    {icon:"fa-star", type: 3},
-        failpass:         {icon:"fa-star", type: 3},
-        success:          {icon:"", type: 4},
-        pass:             {icon:"", type: 4},
-        undefinedsuccess: {icon:"", type: 4},
-        undefinedpass:    {icon:"", type: 4},
-        successsuccess:   {icon:"", type: 5},
-        passpass:         {icon:"", type: 5},
+      const failedStrings = ["fail", "failed", "timed-out", "unresponsive"];
+      const successStrings = ["success", "pass"];
+      const failCategory = "fail";
+      const successCategory = "success";
+      const unknownCategory = "unknown";
+      
+      scope.category = function(status) {
+        if (failedStrings.includes(status)) {
+          return failCategory;
+        }
+        if (successStrings.includes(status)) {
+          return successCategory;
+        }
+        return unknownCategory;
       };
 
       // helper for ranking status combinations
       scope.getDisplayInfo = function(diff) {
-        // concat results for key lookup
+        var beforeCategory, afterCategory;
         if (typeof(diff.original) == "object") {
           // task diffs have an extra layer we need to extract
-          key = diff.original.status + diff.patch.status;
+          beforeCategory = scope.category(diff.original.status);
+          afterCategory = scope.category(diff.patch.status);
         } else {
-          // test diffs are simpler
-          key = diff.original + diff.patch;
+          beforeCategory = scope.category(diff.original);
+          afterCategory = scope.category(diff.patch);
         }
-        if (key in scope.diffTypes) {
-            return scope.diffTypes[key];
+        
+        if (beforeCategory === successCategory && afterCategory === failCategory) {
+          return {icon:"fa-bug", type: 0};
         }
-        // else return a default
-        return {icon: "", type:1000};
+        if (beforeCategory === failCategory && afterCategory === failCategory) {
+          return {icon:"fa-question", type: 1};
+        }
+        if (beforeCategory === unknownCategory && afterCategory === failCategory) {
+          return {icon:"", type: 2};
+        }
+        if (beforeCategory === failCategory && afterCategory === successCategory) {
+          return {icon:"fa-star", type: 3};
+        }
+        if (beforeCategory === unknownCategory && afterCategory === successCategory) {
+          return {icon:"", type: 4};
+        }
+        return {icon:"", type: 5};
       }
 
       scope.diffs = [];

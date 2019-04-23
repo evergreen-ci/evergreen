@@ -502,11 +502,10 @@ func FindStaleRunningTasks(cutoff time.Duration) ([]task.Task, error) {
 	return tasks, nil
 }
 
-// NeedsNewAgent returns hosts that are running and need a new agent, have no Last Commmunication Time,
-// or have one that exists that is greater than the MaxLTCInterval duration away from the current time.
-func NeedsNewAgent(currentTime time.Time) db.Q {
+// LastCommunicationTimeElapsed returns hosts which have never communicated or have not communicated in too long.
+func LastCommunicationTimeElapsed(currentTime time.Time) bson.M {
 	cutoffTime := currentTime.Add(-MaxLCTInterval)
-	return db.Query(bson.M{
+	return bson.M{
 		StatusKey:        evergreen.HostRunning,
 		StartedByKey:     evergreen.User,
 		HasContainersKey: bson.M{"$ne": true},
@@ -516,8 +515,19 @@ func NeedsNewAgent(currentTime time.Time) db.Q {
 			{LastCommunicationTimeKey: util.ZeroTime},
 			{LastCommunicationTimeKey: bson.M{"$lte": cutoffTime}},
 			{LastCommunicationTimeKey: bson.M{"$exists": false}},
-			{NeedsNewAgentKey: true},
 		},
+	}
+}
+
+// NeedsNewAgentFlagSet returns hosts with NeedsNewAgent set to true.
+func NeedsNewAgentFlagSet() db.Q {
+	return db.Query(bson.M{
+		StatusKey:        evergreen.HostRunning,
+		StartedByKey:     evergreen.User,
+		HasContainersKey: bson.M{"$ne": true},
+		ParentIDKey:      bson.M{"$exists": false},
+		RunningTaskKey:   bson.M{"$exists": false},
+		NeedsNewAgentKey: true,
 	})
 }
 

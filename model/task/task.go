@@ -1530,9 +1530,7 @@ func (t *Task) BlockedState(tasksWithDeps []Task) (string, error) {
 	if t.DisplayOnly {
 		return t.blockedStateForDisplayTask(tasksWithDeps)
 	}
-	if len(t.DependsOn) == 0 {
-		return "", nil
-	}
+
 	return t.blockedStatePrivate()
 }
 

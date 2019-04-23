@@ -2149,6 +2149,7 @@ func TestClearAndResetStrandedTask(t *testing.T) {
 func TestClearAndResetStaleStrandedTask(t *testing.T) {
 	require.NoError(t, db.ClearCollections(host.Collection, task.Collection, task.OldCollection, build.Collection), t, "error clearing collection")
 	assert := assert.New(t)
+	require := require.New(t)
 
 	runningTask := &task.Task{
 		Id:            "t",
@@ -2180,6 +2181,13 @@ func TestClearAndResetStaleStrandedTask(t *testing.T) {
 	assert.NoError(err)
 	assert.Equal(evergreen.TaskFailed, runningTask.Status)
 	assert.Equal("system", runningTask.Details.Type)
+
+	updatedBuild, err := build.FindOneId("b")
+	assert.NoError(err)
+	require.NotNil(updatedBuild)
+	require.Len(updatedBuild.Tasks, 1)
+	assert.Equal("t", updatedBuild.Tasks[0].Id)
+	assert.Equal(evergreen.TaskFailed, updatedBuild.Tasks[0].Status)
 }
 
 func TestDisplayTaskUpdates(t *testing.T) {
@@ -2336,6 +2344,89 @@ func TestDisplayTaskDelayedRestart(t *testing.T) {
 	oldTask, err := task.FindOneOld(task.ById("dt_0"))
 	assert.NoError(err)
 	assert.NotNil(oldTask)
+}
+
+func TestDisplayTaskFailedExecTasks(t *testing.T) {
+	assert := assert.New(t)
+	assert.NoError(db.ClearCollections(task.Collection, ProjectRefCollection, distro.Collection, build.Collection))
+	dt := task.Task{
+		Id:             "task",
+		BuildId:        "build",
+		Activated:      true,
+		DisplayOnly:    true,
+		Status:         evergreen.TaskStarted,
+		ExecutionTasks: []string{"exec0", "exec1"},
+	}
+	assert.NoError(dt.Insert())
+	task2 := task.Task{
+		Id:        "exec0",
+		BuildId:   "build",
+		Activated: true,
+		Status:    evergreen.TaskFailed,
+	}
+	assert.NoError(task2.Insert())
+	task3 := task.Task{
+		Id:        "exec1",
+		BuildId:   "build",
+		Activated: true,
+		DependsOn: []task.Dependency{
+			{TaskId: "exec0", Status: evergreen.TaskSucceeded},
+		},
+		Status: evergreen.TaskUndispatched,
+	}
+	assert.NoError(task3.Insert())
+	b := build.Build{
+		Id: "build",
+		Tasks: []build.TaskCache{
+			{Id: "task", Status: evergreen.TaskStarted, Activated: true},
+		},
+	}
+	assert.NoError(b.Insert())
+
+	assert.NoError(UpdateDisplayTask(&dt))
+	dbTask, err := task.FindOne(task.ById(dt.Id))
+	assert.NoError(err)
+	assert.Equal(evergreen.TaskFailed, dbTask.Status)
+}
+
+func TestDisplayTaskFailedAndSucceededExecTasks(t *testing.T) {
+	assert := assert.New(t)
+	assert.NoError(db.ClearCollections(task.Collection, ProjectRefCollection, distro.Collection, build.Collection))
+	dt := task.Task{
+		Id:             "task",
+		BuildId:        "build",
+		Activated:      true,
+		DisplayOnly:    true,
+		Status:         evergreen.TaskStarted,
+		ExecutionTasks: []string{"exec0", "exec1"},
+	}
+	assert.NoError(dt.Insert())
+	task2 := task.Task{
+		Id:        "exec0",
+		BuildId:   "build",
+		Activated: true,
+		Status:    evergreen.TaskFailed,
+	}
+	assert.NoError(task2.Insert())
+	task3 := task.Task{
+		Id:        "exec1",
+		BuildId:   "build",
+		Activated: true,
+		Status:    evergreen.TaskSucceeded,
+	}
+	assert.NoError(task3.Insert())
+	b := build.Build{
+		Id: "build",
+		Tasks: []build.TaskCache{
+			{Id: "task", Status: evergreen.TaskStarted, Activated: true},
+		},
+	}
+	assert.NoError(b.Insert())
+
+	assert.NoError(UpdateDisplayTask(&dt))
+	dbTask, err := task.FindOne(task.ById(dt.Id))
+	assert.NoError(err)
+	assert.Equal(evergreen.TaskFailed, dbTask.Status)
 }
 
 func TestEvalStepback(t *testing.T) {
