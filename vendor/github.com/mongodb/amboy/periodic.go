@@ -140,6 +140,11 @@ func IntervalQueueOperation(ctx context.Context, q Queue, interval time.Duration
 	go func() {
 		var err error
 
+		if interval <= time.Microsecond {
+			grip.Criticalf("invalid interval queue operation '%s'", interval)
+			return
+		}
+
 		defer func() {
 			err = recovery.HandlePanicWithError(recover(), err, "interval background job scheduler")
 
@@ -156,34 +161,25 @@ func IntervalQueueOperation(ctx context.Context, q Queue, interval time.Duration
 			}
 		}()
 
-		if startAt.Before(time.Now()) {
-			if interval > 0 {
-				for {
-					startAt = startAt.Add(interval)
-					if !startAt.Before(time.Now()) {
-						break
-					}
-				}
+		for {
+			if !startAt.Before(time.Now()) {
+				break
 			}
+			startAt = startAt.Add(interval)
 		}
 
-		initialWait := time.Since(startAt)
-		if initialWait > time.Second {
-			grip.InfoWhen(conf.DebugLogging, message.Fields{
-				"message": "waiting initial, interval to start scheduling jobs",
-				"period":  initialWait,
-				"conf":    conf,
-			})
-			time.Sleep(initialWait)
+		ticker := time.NewTicker(interval)
+		defer ticker.Stop()
+
+		if ctx.Err() != nil {
+			return
 		}
 
+		count := 1
 		if err = scheduleOp(q, op, conf); err != nil {
 			return
 		}
 
-		count := 0
-		ticker := time.NewTicker(interval)
-		defer ticker.Stop()
 		for {
 			select {
 			case <-ctx.Done():
