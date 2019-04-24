@@ -138,7 +138,7 @@ func (s *payloadSuite) TestGetFailedTestsFromTemplate() {
 		URL:    "/test_log/success",
 		Status: evergreen.TestSucceededStatus,
 	}
-	t := &task.Task{
+	t := task.Task{
 		Id:          "taskid",
 		DisplayName: "thetask",
 		Details: apimodels.TaskEndDetail{

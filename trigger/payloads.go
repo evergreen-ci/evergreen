@@ -378,7 +378,7 @@ func makeCommonPayload(sub *event.Subscription, selectors []event.Selector,
 
 	data.Headers = makeHeaders(selectors)
 	data.SubscriptionID = sub.ID
-	data.FailedTests, err = getFailedTestsFromTemplate(data.Task)
+	data.FailedTests, err = getFailedTestsFromTemplate(*data.Task)
 	if err != nil {
 		return nil, errors.Wrap(err, "error getting failed tests")
 	}
@@ -428,7 +428,7 @@ func makeCommonPayload(sub *event.Subscription, selectors []event.Selector,
 	return nil, errors.Errorf("unknown type: '%s'", sub.Subscriber.Type)
 }
 
-func getFailedTestsFromTemplate(t *task.Task) ([]task.TestResult, error) {
+func getFailedTestsFromTemplate(t task.Task) ([]task.TestResult, error) {
 	settings, err := evergreen.GetConfig()
 	if err != nil {
 		return nil, errors.Wrap(err, "problem getting evergreen config")
@@ -437,8 +437,9 @@ func getFailedTestsFromTemplate(t *task.Task) ([]task.TestResult, error) {
 	result := []task.TestResult{}
 	for i := range t.LocalTestResults {
 		if t.LocalTestResults[i].Status == evergreen.TestFailedStatus {
-			result = append(result, t.LocalTestResults[i])
-			result[len(result)-1].URL = settings.Ui.Url + t.LocalTestResults[i].URL
+			testResult := t.LocalTestResults[i]
+			testResult.URL = settings.Ui.Url + testResult.URL
+			result = append(result, testResult)
 		}
 	}
 	return result, nil
