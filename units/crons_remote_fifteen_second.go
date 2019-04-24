@@ -28,7 +28,7 @@ type cronsRemoteFifteenSecondJob struct {
 }
 
 func NewCronRemoteFifteenSecondJob() amboy.Job {
-	j := &generateTasksJob{
+	j := &cronsRemoteFifteenSecondJob{
 		Base: job.Base{
 			JobType: amboy.JobType{
 				Name:    cronsRemoteFifteenSecondJobName,
