@@ -15,51 +15,43 @@ import (
 	"github.com/pkg/errors"
 )
 
-const cronsRemoteMinuteJobName = "crons-remote-minute"
+const cronsRemoteFifteenSecondJobName = "crons-remote-fifteen-second"
 
 func init() {
-	registry.AddJobType(cronsRemoteMinuteJobName, NewCronRemoteMinuteJob)
+	registry.AddJobType(cronsRemoteFifteenSecondJobName, NewCronRemoteFifteenSecondJob)
 }
 
-type cronsRemoteMinuteJob struct {
+type cronsRemoteFifteenSecondJob struct {
 	job.Base   `bson:"job_base" json:"job_base" yaml:"job_base"`
 	ErrorCount int `bson:"error_count" json:"error_count" yaml:"error_count"`
 	env        evergreen.Environment
 }
 
-func NewCronRemoteMinuteJob() amboy.Job {
+func NewCronRemoteFifteenSecondJob() amboy.Job {
 	j := &generateTasksJob{
 		Base: job.Base{
 			JobType: amboy.JobType{
-				Name:    cronsRemoteMinuteJobName,
+				Name:    cronsRemoteFifteenSecondJobName,
 				Version: 0,
 			},
 		},
 	}
 	j.SetDependency(dependency.NewAlways())
-	j.SetID(fmt.Sprintf("%s.%s", cronsRemoteMinuteJobName, util.RoundPartOfMinute(0).Format(tsFormat)))
+	j.SetID(fmt.Sprintf("%s.%s", cronsRemoteFifteenSecondJobName, util.RoundPartOfMinute(15).Format(tsFormat)))
 	return j
 }
 
-func (j *cronsRemoteMinuteJob) Run(ctx context.Context) {
+func (j *cronsRemoteFifteenSecondJob) Run(ctx context.Context) {
 	defer j.MarkComplete()
 	if j.env == nil {
 		j.env = evergreen.GetEnvironment()
 	}
 
 	ops := []amboy.QueueOperation{
-		PopulateHostCreationJobs(j.env, 0),
-		PopulateIdleHostJobs(j.env),
-		PopulateHostTerminationJobs(j.env),
-		PopulateHostMonitoring(j.env),
-		PopulateEventAlertProcessing(1),
-		PopulateBackgroundStatsJobs(j.env, 0),
-		PopulateLastContainerFinishTimeJobs(),
-		PopulateParentDecommissionJobs(),
-		PopulatePeriodicNotificationJobs(1),
-		PopulateContainerStateJobs(j.env),
-		PopulateOldestImageRemovalJobs(),
-		PopulateCommitQueueJobs(j.env),
+		PopulateHostSetupJobs(j.env),
+		PopulateSchedulerJobs(j.env),
+		PopulateHostAllocatorJobs(j.env),
+		PopulateAgentDeployJobs(j.env),
 	}
 
 	queue := j.env.RemoteQueue()

@@ -2,7 +2,6 @@ package operations
 
 import (
 	"context"
-	"fmt"
 	"os"
 	"time"
 
@@ -10,9 +9,6 @@ import (
 	"github.com/evergreen-ci/evergreen/units"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/amboy"
-	"github.com/mongodb/grip"
-	"github.com/mongodb/grip/message"
-	"github.com/mongodb/grip/sometimes"
 	"github.com/pkg/errors"
 	"github.com/urfave/cli"
 )
@@ -82,7 +78,7 @@ func startSystemCronJobs(ctx context.Context, env evergreen.Environment) error {
 	}
 
 	amboy.IntervalQueueOperation(ctx, populateQueue, 15*time.Second, util.RoundPartOfMinute(0), opts, func(queue amboy.Queue) error {
-		return errors.WithStack(queue.Put(units.NewCronRemoteFifteenSecondsJob()))
+		return errors.WithStack(queue.Put(units.NewCronRemoteFifteenSecondJob()))
 	})
 	amboy.IntervalQueueOperation(ctx, populateQueue, time.Minute, util.RoundPartOfMinute(0), opts, func(queue amboy.Queue) error {
 		return errors.WithStack(queue.Put(units.NewCronRemoteMinuteJob()))
@@ -90,62 +86,16 @@ func startSystemCronJobs(ctx context.Context, env evergreen.Environment) error {
 	amboy.IntervalQueueOperation(ctx, populateQueue, 5*time.Minute, util.RoundPartOfHour(5), opts, func(queue amboy.Queue) error {
 		return errors.WithStack(queue.Put(units.NewCronRemoteFiveMinuteJob()))
 	})
-	amboy.IntervalQueueOperation(ctx, env.RemoteQueue(), 15*time.Minute, util.RoundPartOfMinute(0), opts, amboy.GroupQueueOperationFactory(
-		units.PopulateCatchupJobs(30),
-		units.PopulateHostAlertJobs(20),
-	))
+	amboy.IntervalQueueOperation(ctx, env.RemoteQueue(), 15*time.Minute, util.RoundPartOfHour(15), opts, func(queue amboy.Queue) error {
+		return errors.WithStack(queue.Put(units.NewCronRemoteFifteenMinuteJob()))
+	})
 
-	amboy.IntervalQueueOperation(ctx, env.RemoteQueue(), 3*time.Hour, util.RoundPartOfMinute(0), opts, amboy.GroupQueueOperationFactory(
-		units.PopulateCacheHistoricalTestDataJob(6)))
+	amboy.IntervalQueueOperation(ctx, env.RemoteQueue(), 3*time.Hour, util.RoundPartOfHour(0), opts, units.PopulateCacheHistoricalTestDataJob(6))
 
 	////////////////////////////////////////////////////////////////////////
 	//
 	// Local Queue Jobs
-	amboy.IntervalQueueOperation(ctx, env.LocalQueue(), 30*time.Second, util.RoundPartOfMinute(0), opts, func(queue amboy.Queue) error {
-		flags, err := evergreen.GetServiceFlags()
-		if err != nil {
-			grip.Alert(message.WrapError(err, message.Fields{
-				"message":   "problem fetching service flags",
-				"operation": "system stats",
-			}))
-			return err
-		}
-
-		if flags.BackgroundStatsDisabled {
-			grip.InfoWhen(sometimes.Percent(evergreen.DegradedLoggingPercent), message.Fields{
-				"message": "system stats ",
-				"impact":  "memory, cpu, runtime stats",
-				"mode":    "degraded",
-			})
-			return nil
-		}
-
-		return queue.Put(units.NewSysInfoStatsCollector(fmt.Sprintf("sys-info-stats-%d", time.Now().Unix())))
-	})
-
-	amboy.IntervalQueueOperation(ctx, env.LocalQueue(), time.Minute, util.RoundPartOfMinute(0), opts, amboy.GroupQueueOperationFactory(
-		units.PopulateJasperCleanup(env),
-		func(queue amboy.Queue) error {
-			flags, err := evergreen.GetServiceFlags()
-			if err != nil {
-				grip.Alert(message.WrapError(err, message.Fields{
-					"message":   "problem fetching service flags",
-					"operation": "background stats",
-				}))
-				return err
-			}
-
-			if flags.BackgroundStatsDisabled {
-				grip.InfoWhen(sometimes.Percent(evergreen.DegradedLoggingPercent), message.Fields{
-					"message": "background stats collection disabled",
-					"impact":  "amboy stats disabled",
-					"mode":    "degraded",
-				})
-				return nil
-			}
-
-			return queue.Put(units.NewLocalAmboyStatsCollector(env, fmt.Sprintf("amboy-local-stats-%d", time.Now().Unix())))
-		}))
+	amboy.IntervalQueueOperation(ctx, env.LocalQueue(), 30*time.Second, util.RoundPartOfMinute(0), opts, units.PopulateLocalQueueJobs(env))
 
 	return nil
 }

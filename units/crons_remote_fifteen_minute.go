@@ -15,47 +15,44 @@ import (
 	"github.com/pkg/errors"
 )
 
-const cronsRemoteFifteenSecondsJobName = "crons-remote-fifteen-seconds"
+const cronsRemoteFifteenMinuteJobName = "crons-remote-fifteen-minute"
 
 func init() {
-	registry.AddJobType(cronsRemoteFifteenSecondsJobName, NewCronRemoteFifteenSecondsJob)
+	registry.AddJobType(cronsRemoteFifteenMinuteJobName, NewCronRemoteFifteenMinuteJob)
 }
 
-type cronsRemoteFifteenSecondsJob struct {
+type cronsRemoteFifteenMinuteJob struct {
 	job.Base   `bson:"job_base" json:"job_base" yaml:"job_base"`
 	ErrorCount int `bson:"error_count" json:"error_count" yaml:"error_count"`
 	env        evergreen.Environment
 }
 
-func NewCronRemoteFifteenSecondsJob() amboy.Job {
+func NewCronRemoteFifteenMinuteJob() amboy.Job {
 	j := &generateTasksJob{
 		Base: job.Base{
 			JobType: amboy.JobType{
-				Name:    cronsRemoteFifteenSecondsJobName,
+				Name:    cronsRemoteFifteenMinuteJobName,
 				Version: 0,
 			},
 		},
 	}
 	j.SetDependency(dependency.NewAlways())
-	j.SetID(fmt.Sprintf("%s.%s", cronsRemoteFifteenSecondsJobName, util.RoundPartOfMinute(15).Format(tsFormat)))
+	j.SetID(fmt.Sprintf("%s.%s", cronsRemoteFifteenMinuteJobName, util.RoundPartOfHour(15).Format(tsFormat)))
 	return j
 }
 
-func (j *cronsRemoteFifteenSecondsJob) Run(ctx context.Context) {
+func (j *cronsRemoteFifteenMinuteJob) Run(ctx context.Context) {
 	defer j.MarkComplete()
 	if j.env == nil {
 		j.env = evergreen.GetEnvironment()
 	}
 
 	ops := []amboy.QueueOperation{
-		PopulateHostSetupJobs(j.env),
-		PopulateSchedulerJobs(j.env),
-		PopulateHostAllocatorJobs(j.env),
-		PopulateAgentDeployJobs(j.env),
+		PopulateCatchupJobs(30),
+		PopulateHostAlertJobs(20),
 	}
 
 	queue := j.env.RemoteQueue()
-
 	catcher := grip.NewBasicCatcher()
 	for _, op := range ops {
 		if ctx.Err() != nil {
@@ -67,9 +64,9 @@ func (j *cronsRemoteFifteenSecondsJob) Run(ctx context.Context) {
 	j.ErrorCount = catcher.Len()
 
 	grip.Debug(message.Fields{
+		"queue": "service",
 		"id":    j.ID(),
 		"type":  j.Type().Name,
-		"queue": "service",
 		"num":   len(ops),
 		"errs":  j.ErrorCount,
 	})
