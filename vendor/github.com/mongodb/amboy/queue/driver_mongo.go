@@ -166,9 +166,13 @@ func (d *mongoDriver) Close() {
 func (d *mongoDriver) Get(ctx context.Context, name string) (amboy.Job, error) {
 	j := &registry.JobInterchange{}
 
-	err := d.getCollection().FindOne(ctx, bson.M{"_id": name}).Decode(j)
-	if err != nil {
+	res := d.getCollection().FindOne(ctx, bson.M{"_id": name})
+	if err := res.Err(); err != nil {
 		return nil, errors.Wrapf(err, "GET problem fetching '%s'", name)
+	}
+
+	if err := res.Decode(j); err != nil {
+		return nil, errors.Wrapf(err, "GET problem decoding '%s'", name)
 	}
 
 	output, err := j.Resolve(amboy.BSON2)
