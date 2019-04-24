@@ -2,6 +2,13 @@ package dependency
 
 const checkTypeName = "check"
 
+// CheckFunc describes a function type that can be registered and used
+// with the CheckManager. These functions are called by the dependency
+// manager and passed a list of edges for this job, and should
+// return.
+//
+// In effect this makes it easy to write many plugable custom dependency
+// manager, without needing to implement a large number of types.
 type CheckFunc func([]string) State
 
 type checkManager struct {

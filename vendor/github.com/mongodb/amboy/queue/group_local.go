@@ -2,30 +2,25 @@ package queue
 
 import (
 	"context"
-	"sync"
 	"time"
 
 	"github.com/mongodb/amboy"
+	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
 	"github.com/mongodb/grip/recovery"
 	"github.com/pkg/errors"
 )
 
-// Constructor is a function passed by the client which makes a new queue for a QueueGroup.
-type Constructor func(ctx context.Context) (amboy.Queue, error)
-
 // localQueueGroup is a group of in-memory queues.
 type localQueueGroup struct {
-	mu          sync.RWMutex
-	canceler    context.CancelFunc
-	queues      map[string]amboy.Queue
-	constructor Constructor
-	ttlMap      map[string]time.Time
-	ttl         time.Duration
+	canceler context.CancelFunc
+	opts     LocalQueueGroupOptions
+	cache    GroupCache
 }
 
 // LocalQueueGroupOptions describe options passed to NewLocalQueueGroup.
 type LocalQueueGroupOptions struct {
-	Constructor Constructor
+	Constructor func(ctx context.Context) (amboy.Queue, error)
 	TTL         time.Duration
 }
 
@@ -41,14 +36,12 @@ func NewLocalQueueGroup(ctx context.Context, opts LocalQueueGroupOptions) (amboy
 	if opts.TTL > 0 && opts.TTL < time.Second {
 		return nil, errors.New("ttl cannot be less than 1 second, unless it is 0")
 	}
-	ctx, cancel := context.WithCancel(ctx)
 	g := &localQueueGroup{
-		canceler:    cancel,
-		queues:      map[string]amboy.Queue{},
-		constructor: opts.Constructor,
-		ttlMap:      map[string]time.Time{},
-		ttl:         opts.TTL,
+		opts:  opts,
+		cache: NewGroupCache(opts.TTL),
 	}
+	ctx, g.canceler = context.WithCancel(ctx)
+
 	if opts.TTL > 0 {
 		go func() {
 			defer recovery.LogStackTraceAndContinue("panic in local queue group ticker")
@@ -59,7 +52,11 @@ func NewLocalQueueGroup(ctx context.Context, opts LocalQueueGroupOptions) (amboy
 				case <-ctx.Done():
 					return
 				case <-ticker.C:
-					_ = g.Prune(ctx)
+					grip.Error(message.WrapError(g.Prune(ctx),
+						message.Fields{
+							"group": "local queue group background pruning",
+							"ttl":   opts.TTL,
+						}))
 				}
 			}
 		}()
@@ -67,106 +64,50 @@ func NewLocalQueueGroup(ctx context.Context, opts LocalQueueGroupOptions) (amboy
 	return g, nil
 }
 
+func (g *localQueueGroup) Len() int { return g.cache.Len() }
+
+func (g *localQueueGroup) Queues(_ context.Context) []string {
+	return g.cache.Names()
+}
+
 // Get a queue with the given index. Get sets the last accessed time to now. Note that this means
 // that the caller must add a job to the queue within the TTL, or else it may have attempted to add
 // a job to a closed queue.
 func (g *localQueueGroup) Get(ctx context.Context, id string) (amboy.Queue, error) {
-	g.mu.RLock()
-	if queue, ok := g.queues[id]; ok {
-		g.ttlMap[id] = time.Now()
-		g.mu.RUnlock()
-		return queue, nil
-	}
-	g.mu.RUnlock()
-	g.mu.Lock()
-	defer g.mu.Unlock()
-	// Check again in case the map was modified after we released the read lock.
-	if queue, ok := g.queues[id]; ok {
-		g.ttlMap[id] = time.Now()
-		return queue, nil
+	q := g.cache.Get(id)
+	if q != nil {
+		return q, nil
 	}
 
-	queue, err := g.constructor(ctx)
+	queue, err := g.opts.Constructor(ctx)
 	if err != nil {
 		return nil, errors.Wrap(err, "problem starting queue")
 	}
-	if err := queue.Start(ctx); err != nil {
-		return nil, errors.Wrap(err, "problem starting queue")
+
+	if err = g.cache.Set(id, queue, g.opts.TTL); err != nil {
+		// safe to throw away the partially constructed
+		// here, because another won and we  haven't started the workers.
+		if q := g.cache.Get(id); q != nil {
+			return q, nil
+		}
+
+		return nil, errors.Wrap(err, "problem caching queue")
 	}
-	g.queues[id] = queue
-	g.ttlMap[id] = time.Now()
+
+	if err = queue.Start(ctx); err != nil {
+		return nil, errors.WithStack(err)
+	}
+
 	return queue, nil
 }
 
 // Put a queue at the given index.
 func (g *localQueueGroup) Put(ctx context.Context, id string, queue amboy.Queue) error {
-	g.mu.RLock()
-	if _, ok := g.queues[id]; ok {
-		g.mu.RUnlock()
-		return errors.New("a queue already exists at this index")
-	}
-	g.mu.RUnlock()
-	g.mu.Lock()
-	defer g.mu.Unlock()
-	// Check again in case the map was modified after we released the read lock.
-	if _, ok := g.queues[id]; ok {
-		return errors.New("a queue already exists at this index")
-	}
-
-	g.queues[id] = queue
-	g.ttlMap[id] = time.Now()
-	return nil
+	return errors.WithStack(g.cache.Set(id, queue, g.opts.TTL))
 }
 
 // Prune old queues.
-func (g *localQueueGroup) Prune(ctx context.Context) error {
-	g.mu.Lock()
-	defer g.mu.Unlock()
-	queues := make([]amboy.Queue, 0, len(g.ttlMap))
-	for queueID, t := range g.ttlMap {
-		if time.Since(t) > g.ttl {
-			if q, ok := g.queues[queueID]; ok {
-				delete(g.queues, queueID)
-				queues = append(queues, q)
-			}
-			delete(g.ttlMap, queueID)
-		}
-	}
-	wg := &sync.WaitGroup{}
-	for _, queue := range queues {
-		wg.Add(1)
-		go func(queue amboy.Queue) {
-			queue.Runner().Close(ctx)
-			wg.Done()
-		}(queue)
-	}
-	wg.Wait()
-	return nil
-}
+func (g *localQueueGroup) Prune(ctx context.Context) error { return g.cache.Prune(ctx) }
 
 // Close the queues.
-func (g *localQueueGroup) Close(ctx context.Context) {
-	g.mu.Lock()
-	defer g.mu.Unlock()
-	g.canceler()
-	waitCh := make(chan struct{})
-	wg := &sync.WaitGroup{}
-	go func() {
-		for _, queue := range g.queues {
-			wg.Add(1)
-			go func(queue amboy.Queue) {
-				defer recovery.LogStackTraceAndContinue("panic in local queue group closer")
-				defer wg.Done()
-				queue.Runner().Close(ctx)
-			}(queue)
-		}
-		wg.Wait()
-		close(waitCh)
-	}()
-	select {
-	case <-waitCh:
-		return
-	case <-ctx.Done():
-		return
-	}
-}
+func (g *localQueueGroup) Close(ctx context.Context) error { return g.cache.Close(ctx) }

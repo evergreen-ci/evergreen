@@ -114,8 +114,10 @@ func TestRunnerImplementations(t *testing.T) {
 	}
 
 	for poolName, factory := range pools {
-		for caseName, test := range cases {
-			t.Run(poolName+caseName, test(factory))
-		}
+		t.Run(poolName, func(t *testing.T) {
+			for caseName, test := range cases {
+				t.Run(poolName+caseName, test(factory))
+			}
+		})
 	}
 }

@@ -675,7 +675,7 @@ func TestSmokeSQSFifoQueueWithAbortablePools(t *testing.T) {
 
 		q, err := NewSQSFifoQueue(randomString(4), 1)
 		assert.NoError(err)
-		q.SetRunner(pool.NewAbortablePool(poolSize, q))
+		assert.NoError(q.SetRunner(pool.NewAbortablePool(poolSize, q)))
 		runSimpleUnorderedSmokeTest(ctx, q, poolSize, assert)
 
 		cancel()
@@ -693,7 +693,7 @@ func TestSmokeSQSFifoQueueWithRateLimitingPools(t *testing.T) {
 		q, err := NewSQSFifoQueue(randomString(4), 1)
 		assert.NoError(err)
 		runner, _ := pool.NewSimpleRateLimitedWorkers(poolSize, time.Millisecond, q)
-		q.SetRunner(runner)
+		assert.NoError(q.SetRunner(runner))
 		runSimpleUnorderedSmokeTest(ctx, q, poolSize, assert)
 
 		cancel()

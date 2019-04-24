@@ -17,8 +17,8 @@ import (
 )
 
 const (
-	defaultClientPort int = 3000
-	maxClientPort         = 65535
+	defaultClientPort = 3000
+	maxClientPort     = 65535
 )
 
 // QueueClient provides an interface for interacting with a remote amboy
