@@ -223,22 +223,22 @@ functions:
         working_dir: gopath/src/github.com/evergreen-ci/evergreen
         command: make check-mongod
   setup-docker-host:
-    - command: host.create
-      type: setup
-      params:
-        distro: archlinux-parent
-        provider: ec2
-        retries: 3
-        scope: build
-        security_group_ids:
-          - sg-097bff6dd0d1d31d0
-    - command: host.list
-      type: setup
-      params:
-        wait: true
-        timeout_seconds: 900
-        num_hosts: 1
-        path: gopath/src/github.com/evergreen-ci/evergreen/spawned_hosts.json
+#    - command: host.create
+#      type: setup
+#      params:
+#        distro: archlinux-parent
+#        provider: ec2
+#        retries: 3
+#        scope: build
+#        security_group_ids:
+#          - sg-097bff6dd0d1d31d0
+#    - command: host.list
+#      type: setup
+#      params:
+#        wait: true
+#        timeout_seconds: 900
+#        num_hosts: 1
+#        path: gopath/src/github.com/evergreen-ci/evergreen/spawned_hosts.json
     - command: subprocess.exec
       type: setup
       params:

@@ -1,5 +1,6 @@
 package cloud
 
+/*
 import (
 	"context"
 	"os"
@@ -71,3 +72,4 @@ func (s *DockerIntegrationSuite) TestImagePull() {
 	grip.Info(images)
 	s.Contains(images[0].RepoTags, "hello-world:latest")
 }
+*/
