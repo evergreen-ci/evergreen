@@ -14,15 +14,13 @@ import (
 )
 
 type abortablePool struct {
-	queue amboy.Queue
-	jobs  map[string]context.CancelFunc
-
-	canceler context.CancelFunc
+	size     int
+	started  bool
 	wg       sync.WaitGroup
 	mu       sync.RWMutex
-
-	size    int
-	started bool
+	canceler context.CancelFunc
+	queue    amboy.Queue
+	jobs     map[string]context.CancelFunc
 }
 
 // NewAbortablePool produces a simple implementation of a worker pool

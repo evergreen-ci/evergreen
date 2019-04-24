@@ -112,7 +112,7 @@ imports:
   - name: github.com/mongodb/anser
     version: 1fb43a6d9968b19ddfd66e6a77373f9e4c54adeb
   - name: github.com/mongodb/amboy
-    version: 7cd8d05ee7bfe909746b70ed61043dc441890964
+    version: 325ee445629ba7cc4db7d78704ea99cb675f9a58
   - name: github.com/evergreen-ci/gimlet
     version: 2174a9b1266e1b45c99cc80e00ccc8444c84ad38
   - name: github.com/evergreen-ci/shrub
@@ -131,7 +131,7 @@ imports:
     version: 640f0ab560aeb89d523bb6ac322b1244d5c3796c
   - name: github.com/jbenet/go-context
     version: d14ea06fba99483203c19d92cfcd13ebe73135f4
-  - name: github.com/kevinburke/ssh_configgit 
+  - name: github.com/kevinburke/ssh_configgit
     version: 4fcc689beeab13c6dd7ab1d65cb9d7a1aeea9663
   - name: github.com/src-d/gcfg
     version: f187355171c936ac84a82793659ebb4936bc1c23

@@ -21,11 +21,18 @@ func init() {
 	RegisterManager(localFileTypeName, func() Manager { return MakeLocalFile() })
 }
 
-// RegisterManager stores dependency Manager factories to facilitate
-func RegisterManager(name string, f ManagerFactory)         { registry.addManager(name, f) }
+// RegisterManager stores a dependency Manager factory in the global
+// Manager registry.
+func RegisterManager(name string, f ManagerFactory) { registry.addManager(name, f) }
+
+// GetManagerFactory returns a globally registered manager factory by name.
 func GetManagerFactory(name string) (ManagerFactory, error) { return registry.getManager(name) }
-func RegisterCheck(name string, f CheckFactory)             { registry.addCheck(name, f) }
-func GetCheckFactory(name string) (CheckFactory, error)     { return registry.getCheck(name) }
+
+// RegisterCheck stores a CheckFactory in the global check registry.
+func RegisterCheck(name string, f CheckFactory) { registry.addCheck(name, f) }
+
+// GetCheckFactory returns a globally registered check factory by name.
+func GetCheckFactory(name string) (CheckFactory, error) { return registry.getCheck(name) }
 
 // ManagerFactory is a function that takes no arguments and returns
 // a dependency.Manager interface. When implementing a new dependency
