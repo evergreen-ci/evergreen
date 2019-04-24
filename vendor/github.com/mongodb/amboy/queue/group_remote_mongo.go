@@ -102,8 +102,14 @@ type listCollectionsOutput struct {
 	Name string `bson:"name"`
 }
 
-// NewMongoRemoteQueueGroup constructs a new remote queue group. If ttl is 0, the queues will not be
-// TTLed except when the client explicitly calls Prune.
+// NewMongoRemoteQueueGroup constructs a new remote queue group. If
+// ttl is 0, the queues will not be TTLed except when the client
+// explicitly calls Prune.
+//
+// The MongoRemoteQueue group creats a new collection for every queue,
+// unlike the other remote queue group implementations. This is
+// probably most viable for lower volume workloads; however, the
+// caching mechanism may be more responsive in some situations.
 func NewMongoRemoteQueueGroup(ctx context.Context, opts RemoteQueueGroupOptions, client *mongo.Client, mdbopts MongoDBOptions) (amboy.QueueGroup, error) {
 	if err := opts.validate(); err != nil {
 		return nil, errors.Wrap(err, "invalid remote queue options")
@@ -133,9 +139,52 @@ func NewMongoRemoteQueueGroup(ctx context.Context, opts RemoteQueueGroupOptions,
 		}
 	}
 
+	if opts.PruneFrequency > 0 && opts.TTL > 0 {
+		go func() {
+			defer recovery.LogStackTraceAndContinue("panic in remote queue group ticker")
+			ticker := time.NewTicker(opts.PruneFrequency)
+			defer ticker.Stop()
+			for {
+				select {
+				case <-ctx.Done():
+					return
+				case <-ticker.C:
+					grip.Error(message.WrapError(g.Prune(ctx), "problem pruning remote queue group database"))
+				}
+			}
+		}()
+	}
+
+	if opts.BackgroundCreateFrequency > 0 {
+		go func() {
+			defer recovery.LogStackTraceAndContinue("panic in remote queue group ticker")
+			ticker := time.NewTicker(opts.PruneFrequency)
+			defer ticker.Stop()
+			for {
+				select {
+				case <-ctx.Done():
+					return
+				case <-ticker.C:
+					grip.Error(message.WrapError(g.startQueues(ctx), "problem starting queues"))
+				}
+			}
+		}()
+	}
+
+	if err := g.startQueues(ctx); err != nil {
+		return nil, errors.WithStack(err)
+	}
+
+	return g, nil
+}
+
+func (g *remoteMongoQueueGroup) startQueues(ctx context.Context) error {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+
 	colls, err := g.getExistingCollections(ctx, g.client, g.dbOpts.DB, g.opts.Prefix)
 	if err != nil {
-		return nil, errors.Wrap(err, "problem getting existing collections")
+		return errors.Wrap(err, "problem getting existing collections")
 	}
 
 	catcher := grip.NewBasicCatcher()
@@ -148,28 +197,24 @@ func NewMongoRemoteQueueGroup(ctx context.Context, opts RemoteQueueGroupOptions,
 			g.ttlMap[g.idFromCollection(coll)] = time.Now()
 		}
 	}
-	if catcher.HasErrors() {
-		return nil, catcher.Resolve()
-	}
 
-	if opts.PruneFrequency > 0 && opts.TTL > 0 {
-		go func() {
-			pruneCtx, pruneCancel := context.WithCancel(context.Background())
-			defer pruneCancel()
-			defer recovery.LogStackTraceAndContinue("panic in remote queue group ticker")
-			ticker := time.NewTicker(opts.PruneFrequency)
-			defer ticker.Stop()
-			for {
-				select {
-				case <-ctx.Done():
-					return
-				case <-ticker.C:
-					grip.Error(message.WrapError(g.Prune(pruneCtx), "problem pruning remote queue group database"))
-				}
-			}
-		}()
-	}
-	return g, nil
+	return catcher.Resolve()
+}
+
+func (g *remoteMongoQueueGroup) Len() int {
+	g.mu.RLock()
+	defer g.mu.RUnlock()
+
+	return len(g.queues)
+}
+
+func (g *remoteMongoQueueGroup) Queues(ctx context.Context) []string {
+	g.mu.RLock()
+	defer g.mu.RUnlock()
+
+	out, _ := g.getExistingCollections(ctx, g.client, g.dbOpts.DB, g.opts.Prefix) // nolint
+
+	return out
 }
 
 func (g *remoteMongoQueueGroup) startProcessingRemoteQueue(ctx context.Context, coll string) (Remote, error) {
@@ -373,7 +418,7 @@ outer:
 }
 
 // Close the queues.
-func (g *remoteMongoQueueGroup) Close(ctx context.Context) {
+func (g *remoteMongoQueueGroup) Close(ctx context.Context) error {
 	g.mu.Lock()
 	defer g.mu.Unlock()
 	g.canceler()
@@ -394,9 +439,9 @@ func (g *remoteMongoQueueGroup) Close(ctx context.Context) {
 	}()
 	select {
 	case <-waitCh:
-		return
+		return nil
 	case <-ctx.Done():
-		return
+		return errors.WithStack(ctx.Err())
 	}
 }
 

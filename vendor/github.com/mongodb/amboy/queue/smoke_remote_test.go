@@ -297,22 +297,21 @@ func TestSQSFifoQueueRunsJobsOnlyOnce(t *testing.T) {
 	assert.NoError(err)
 	assert.NoError(q.Start(ctx))
 	wg := &sync.WaitGroup{}
-	count := 0
+
 	const (
 		inside  = 250
 		outside = 2
 	)
+
+	wg.Add(outside)
 	for i := 0; i < outside; i++ {
-		wg.Add(1)
 		go func(i int) {
+			defer wg.Done()
 			for ii := 0; ii < inside; ii++ {
-				count++
 				j := newMockJob()
-				jobID := fmt.Sprintf("%d-%d-%d", i, ii, count)
-				j.SetID(jobID)
+				j.SetID(fmt.Sprintf("%d-%d-%d", i, ii, job.GetNumber()))
 				assert.NoError(q.Put(j))
 			}
-			wg.Done()
 		}(i)
 	}
 
@@ -348,18 +347,15 @@ func TestMultipleSQSFifoQueueRunsJobsOnlyOnce(t *testing.T) {
 	)
 
 	wg := &sync.WaitGroup{}
-	count := 0
+	wg.Add(outside)
 	for i := 0; i < outside; i++ {
-		wg.Add(1)
 		go func(i int) {
+			defer wg.Done()
 			for ii := 0; ii < inside; ii++ {
-				count++
 				j := newMockJob()
-				jobID := fmt.Sprintf("%d-%d-%d", i, ii, count)
-				j.SetID(jobID)
+				j.SetID(fmt.Sprintf("%d-%d-%d", i, ii, job.GetNumber()))
 				assert.NoError(q2.Put(j))
 			}
-			wg.Done()
 		}(i)
 	}
 	grip.Notice("waiting to add all jobs")

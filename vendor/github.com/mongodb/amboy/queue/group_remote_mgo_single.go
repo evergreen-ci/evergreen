@@ -2,7 +2,6 @@ package queue
 
 import (
 	"context"
-	"sync"
 	"time"
 
 	"github.com/mongodb/amboy"
@@ -17,10 +16,9 @@ import (
 type remoteMgoQueueGroupSingle struct {
 	canceler context.CancelFunc
 	session  *mgo.Session
-	mu       sync.RWMutex
+	cache    GroupCache
 	opts     RemoteQueueGroupOptions
 	dbOpts   MongoDBOptions
-	queues   map[string]amboy.Queue
 }
 
 // NewMgoRemoteSingleQueueGroup constructs a new remote queue group
@@ -46,7 +44,7 @@ func NewMgoRemoteSingleQueueGroup(ctx context.Context, opts RemoteQueueGroupOpti
 		session:  session,
 		dbOpts:   mdbopts,
 		opts:     opts,
-		queues:   map[string]amboy.Queue{},
+		cache:    NewGroupCache(opts.TTL),
 	}
 
 	if opts.PruneFrequency > 0 {
@@ -90,7 +88,14 @@ func NewMgoRemoteSingleQueueGroup(ctx context.Context, opts RemoteQueueGroupOpti
 	return g, nil
 }
 
-func (g *remoteMgoQueueGroupSingle) startQueues(ctx context.Context) error {
+func (g *remoteMgoQueueGroupSingle) Len() int { return g.cache.Len() }
+
+func (g *remoteMgoQueueGroupSingle) Queues(ctx context.Context) []string {
+	out, _ := g.getQueues(ctx) // nolint
+	return out
+}
+
+func (g *remoteMgoQueueGroupSingle) getQueues(ctx context.Context) ([]string, error) {
 	session := g.session.Clone()
 	defer session.Close()
 
@@ -123,19 +128,27 @@ func (g *remoteMgoQueueGroupSingle) startQueues(ctx context.Context) error {
 		},
 	}).AllowDiskUse().All(&out)
 	if err != nil {
+		return nil, errors.WithStack(err)
+	}
+
+	switch len(out) {
+	case 0:
+		return nil, nil
+	case 1:
+		return out[0].Groups, nil
+	default:
+		return nil, errors.New("invalid inventory of existing queues")
+	}
+}
+
+func (g *remoteMgoQueueGroupSingle) startQueues(ctx context.Context) error {
+	queues, err := g.getQueues(ctx)
+	if err != nil {
 		return errors.WithStack(err)
 	}
 
-	if len(out) == 0 {
-		return nil
-	}
-
-	if len(out) != 1 {
-		return errors.New("invalid inventory of existing queues")
-	}
-
 	catcher := grip.NewBasicCatcher()
-	for _, id := range out[0].Groups {
+	for _, id := range queues {
 		_, err := g.Get(ctx, id)
 		catcher.Add(err)
 	}
@@ -144,17 +157,15 @@ func (g *remoteMgoQueueGroupSingle) startQueues(ctx context.Context) error {
 }
 
 func (g *remoteMgoQueueGroupSingle) Get(ctx context.Context, id string) (amboy.Queue, error) {
-	g.mu.RLock()
-	if queue, ok := g.queues[id]; ok {
-		g.mu.RUnlock()
-		return queue, nil
-	}
-	g.mu.RUnlock()
-	g.mu.Lock()
-	defer g.mu.Unlock()
-	// Check again in case the map was modified after we released the read lock.
-	if queue, ok := g.queues[id]; ok {
-		return queue, nil
+	var queue Remote
+
+	switch q := g.cache.Get(id).(type) {
+	case Remote:
+		return q, nil
+	case nil:
+		queue = g.opts.constructor(ctx, id)
+	default:
+		return q, nil
 	}
 
 	driver, err := OpenNewMgoGroupDriver(ctx, g.opts.Prefix, g.dbOpts, id, g.session.Clone())
@@ -162,12 +173,19 @@ func (g *remoteMgoQueueGroupSingle) Get(ctx context.Context, id string) (amboy.Q
 		return nil, errors.Wrap(err, "problem opening driver for queue")
 	}
 
-	queue := g.opts.constructor(ctx, id)
-	if err := queue.SetDriver(driver); err != nil {
+	if err = queue.SetDriver(driver); err != nil {
 		return nil, errors.Wrap(err, "problem setting driver")
-
 	}
-	g.queues[id] = queue
+
+	if err = g.cache.Set(id, queue, g.opts.TTL); err != nil {
+		// safe to throw away the partially constructed
+		// here, because another won and we  haven't started the workers.
+		if q := g.cache.Get(id); q != nil {
+			return q, nil
+		}
+
+		return nil, errors.Wrap(err, "problem caching queue")
+	}
 
 	if err := queue.Start(ctx); err != nil {
 		return nil, errors.Wrap(err, "problem starting queue")
@@ -177,49 +195,14 @@ func (g *remoteMgoQueueGroupSingle) Get(ctx context.Context, id string) (amboy.Q
 }
 
 func (g *remoteMgoQueueGroupSingle) Put(ctx context.Context, name string, queue amboy.Queue) error {
-	g.mu.Lock()
-	defer g.mu.Unlock()
-	if _, ok := g.queues[name]; ok {
-		return errors.New("cannot put a queue into group with existing name")
-	}
-
-	g.queues[name] = queue
-	return nil
+	return g.cache.Set(name, queue, g.opts.TTL)
 }
 
 func (g *remoteMgoQueueGroupSingle) Prune(ctx context.Context) error {
-	g.mu.Lock()
-	defer g.mu.Unlock()
-
-	var cancel context.CancelFunc
-	ctx, cancel = context.WithTimeout(ctx, time.Minute)
-	defer cancel()
-
-	for name, queue := range g.queues {
-		if err := ctx.Err(); err != nil {
-			return errors.WithStack(err)
-		}
-		if queue.Stats().IsComplete() {
-			queue.Runner().Close(ctx)
-			delete(g.queues, name)
-		}
-	}
-	return nil
+	return g.cache.Prune(ctx)
 }
 
-func (g *remoteMgoQueueGroupSingle) Close(ctx context.Context) {
-	g.mu.Lock()
-	defer g.mu.Unlock()
-
-	var cancel context.CancelFunc
-	ctx, cancel = context.WithTimeout(ctx, 3*time.Second)
-	defer cancel()
-	for name, queue := range g.queues {
-		if err := ctx.Err(); err != nil {
-			return
-		}
-		queue.Runner().Close(ctx)
-		delete(g.queues, name)
-	}
-	g.canceler()
+func (g *remoteMgoQueueGroupSingle) Close(ctx context.Context) error {
+	defer g.canceler()
+	return g.cache.Close(ctx)
 }

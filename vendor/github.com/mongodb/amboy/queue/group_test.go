@@ -39,7 +39,7 @@ func TestQueueGroupConstructor(t *testing.T) {
 	for _, test := range []struct {
 		name             string
 		valid            bool
-		localConstructor Constructor
+		localConstructor func(context.Context) (amboy.Queue, error)
 		ttl              time.Duration
 		skipRemote       bool
 	}{
@@ -227,36 +227,6 @@ func TestQueueGroupConstructor(t *testing.T) {
 				}
 			})
 
-			t.Run("LegacyMgo", func(t *testing.T) {
-				for _, remoteTest := range remoteTests {
-					t.Run(remoteTest.name, func(t *testing.T) {
-						require.NoError(t, err)
-						tctx, cancel := context.WithCancel(ctx)
-						defer cancel()
-						mopts := MongoDBOptions{
-							DB:  remoteTest.db,
-							URI: remoteTest.uri,
-						}
-
-						remoteOpts := RemoteQueueGroupOptions{
-							DefaultWorkers: remoteTest.workers,
-							WorkerPoolSize: remoteTest.workerFunc,
-							Prefix:         remoteTest.prefix,
-							TTL:            test.ttl,
-							PruneFrequency: test.ttl,
-						}
-						g, err := NewMgoRemoteQueueGroup(tctx, remoteOpts, session, mopts) // nolint
-						if test.valid && remoteTest.valid {
-							require.NoError(t, err)
-							require.NotNil(t, g)
-						} else {
-							require.Error(t, err)
-							require.Nil(t, g)
-						}
-					})
-				}
-			})
-
 			t.Run("LegacyMgoMerged", func(t *testing.T) {
 				for _, remoteTest := range remoteTests {
 					t.Run(remoteTest.name, func(t *testing.T) {
@@ -337,37 +307,6 @@ func remoteQueueGroupConstructor(ctx context.Context, ttl time.Duration) (amboy.
 	}
 
 	qg, err := NewMongoRemoteQueueGroup(ctx, opts, client, mopts)
-	return qg, closer, err
-}
-
-func remoteLegacyQueueGroupConstructor(ctx context.Context, ttl time.Duration) (amboy.QueueGroup, queueGroupCloser, error) {
-	mopts := MongoDBOptions{
-		DB:  "amboy_test",
-		URI: "mongodb://localhost:27017",
-	}
-
-	session, err := mgo.DialWithTimeout(mopts.URI, time.Second)
-	if err != nil {
-		return nil, func(_ context.Context) error { return nil }, err
-	}
-
-	closer := func(cctx context.Context) error {
-		defer session.Close()
-		return session.DB(mopts.DB).DropDatabase()
-	}
-
-	opts := RemoteQueueGroupOptions{
-		DefaultWorkers: 1,
-		Prefix:         "prefix",
-		TTL:            ttl,
-		PruneFrequency: ttl / 2,
-	}
-
-	if err = session.DB(mopts.DB).DropDatabase(); err != nil {
-		return nil, closer, err
-	}
-
-	qg, err := NewMgoRemoteQueueGroup(ctx, opts, session, mopts)
 	return qg, closer, err
 }
 
@@ -458,7 +397,6 @@ func TestQueueGroupOperations(t *testing.T) {
 		"Local":           localQueueGroupConstructor,
 		"Mongo":           remoteQueueGroupConstructor,
 		"MongoMerged":     remoteQueueGroupMergedConstructor,
-		"LegacyMgo":       remoteLegacyQueueGroupConstructor,
 		"LegacyMgoMerged": remoteLegacyQueueGroupMergedConstructor,
 	}
 
@@ -608,7 +546,7 @@ func TestQueueGroupOperations(t *testing.T) {
 				ctx, cancel := context.WithCancel(context.Background())
 				defer cancel()
 
-				g, closer, err := constructor(ctx, 0)
+				g, closer, err := constructor(ctx, time.Second)
 				defer func() { require.NoError(t, closer(ctx)) }()
 				require.NoError(t, err)
 				require.NotNil(t, g)
@@ -635,66 +573,23 @@ func TestQueueGroupOperations(t *testing.T) {
 				amboy.WaitCtxInterval(ctx, q1, 10*time.Millisecond)
 
 				// Queues should have completed work
-				stats1 := q1.Stats()
-				require.Zero(t, stats1.Running)
-				require.Equal(t, 1, stats1.Completed)
-				require.Zero(t, stats1.Pending)
-				require.Zero(t, stats1.Blocked)
-				require.Equal(t, 1, stats1.Total)
+				assert.True(t, q1.Stats().IsComplete())
+				assert.True(t, q2.Stats().IsComplete())
+				assert.Equal(t, 1, q1.Stats().Completed)
+				assert.Equal(t, 2, q2.Stats().Completed)
 
-				stats2 := q2.Stats()
-				require.Zero(t, stats2.Running)
-				require.Equal(t, 2, stats2.Completed)
-				require.Zero(t, stats2.Pending)
-				require.Zero(t, stats2.Blocked)
-				require.Equal(t, 2, stats2.Total)
+				require.Equal(t, 2, g.Len())
 
 				time.Sleep(2 * time.Second)
-
 				require.NoError(t, g.Prune(ctx))
 
-				// Try getting the queues again
-				q1, err = g.Get(ctx, "five")
-				require.NoError(t, err)
-				require.NotNil(t, q1)
-
-				q2, err = g.Get(ctx, "six")
-				require.NoError(t, err)
-				require.NotNil(t, q2)
-
-				switch mg := g.(type) {
-				case *remoteMongoQueueGroupSingle:
-					// we should be tracking no
-					// local queues
-					assert.Len(t, mg.queues, 2)
-					require.NoError(t, g.Prune(ctx))
-					assert.Len(t, mg.queues, 0)
-				case *remoteMgoQueueGroupSingle:
-					assert.Len(t, mg.queues, 2)
-					require.NoError(t, g.Prune(ctx))
-					assert.Len(t, mg.queues, 0)
-				default:
-					// Queues should be empty
-					stats1 = q1.Stats()
-					require.Zero(t, stats1.Running)
-					require.Zero(t, stats1.Completed)
-					require.Zero(t, stats1.Pending)
-					require.Zero(t, stats1.Blocked)
-					require.Zero(t, stats1.Total)
-
-					stats2 = q2.Stats()
-					require.Zero(t, stats2.Running)
-					require.Zero(t, stats2.Completed)
-					require.Zero(t, stats2.Pending)
-					require.Zero(t, stats2.Blocked)
-					require.Zero(t, stats2.Total)
-				}
+				require.Equal(t, 0, g.Len())
 			})
 			t.Run("PruneWithTTL", func(t *testing.T) {
 				ctx, cancel := context.WithTimeout(context.Background(), 40*time.Second)
 				defer cancel()
 
-				g, closer, err := constructor(ctx, 5*time.Second)
+				g, closer, err := constructor(ctx, 3*time.Second)
 				defer func() { require.NoError(t, closer(ctx)) }()
 				require.NoError(t, err)
 				require.NotNil(t, g)
@@ -721,65 +616,28 @@ func TestQueueGroupOperations(t *testing.T) {
 				amboy.WaitCtxInterval(ctx, q2, 100*time.Millisecond)
 
 				// Queues should have completed work
-				stats1 := q1.Stats()
-				require.Equal(t, 1, stats1.Total)
-				assert.Zero(t, stats1.Running)
-				assert.Equal(t, 1, stats1.Completed, stats1.String())
-				assert.Zero(t, stats1.Pending)
-				assert.Zero(t, stats1.Blocked)
+				assert.True(t, q1.Stats().IsComplete())
+				assert.True(t, q2.Stats().IsComplete())
+				assert.Equal(t, 1, q1.Stats().Completed)
+				assert.Equal(t, 2, q2.Stats().Completed)
 
-				stats2 := q2.Stats()
-				require.Equal(t, 2, stats2.Total)
-				assert.Zero(t, stats2.Running)
-				assert.Equal(t, 2, stats2.Completed, stats2.String())
-				assert.Zero(t, stats2.Pending)
-				assert.Zero(t, stats2.Blocked)
+				require.Equal(t, 2, g.Len())
 
-				time.Sleep(20 * time.Second)
+				// this is just a way for tests that
+				// prune more quickly to avoid a long sleep.
+				for i := 0; i < 30; i++ {
+					time.Sleep(time.Second)
 
-				switch mg := g.(type) {
-				case *remoteMongoQueueGroupSingle:
-					assert.Len(t, mg.queues, 0)
-				case *remoteMgoQueueGroupSingle:
-					assert.Len(t, mg.queues, 0)
+					if ctx.Err() != nil {
+						grip.Info(ctx.Err())
+						break
+					}
+					if g.Len() == 0 {
+						break
+					}
 				}
 
-				// Try getting the queues again
-				q1, err = g.Get(ctx, "seven")
-				require.NoError(t, err)
-				require.NotNil(t, q1)
-
-				q2, err = g.Get(ctx, "eight")
-				require.NoError(t, err)
-				require.NotNil(t, q2)
-
-				switch mg := g.(type) {
-				case *remoteMongoQueueGroupSingle:
-					// we should be tracking no
-					// local queues
-					assert.Len(t, mg.queues, 2)
-					require.NoError(t, g.Prune(ctx))
-					assert.Len(t, mg.queues, 0)
-				case *remoteMgoQueueGroupSingle:
-					assert.Len(t, mg.queues, 2)
-					require.NoError(t, g.Prune(ctx))
-					assert.Len(t, mg.queues, 0)
-				default:
-					// Queues should be empty
-					stats1 = q1.Stats()
-					require.Zero(t, stats1.Running)
-					require.Zero(t, stats1.Completed)
-					require.Zero(t, stats1.Pending)
-					require.Zero(t, stats1.Blocked)
-					require.Zero(t, stats1.Total)
-
-					stats2 = q2.Stats()
-					require.Zero(t, stats2.Running)
-					require.Zero(t, stats2.Completed)
-					require.Zero(t, stats2.Pending)
-					require.Zero(t, stats2.Blocked)
-					require.Zero(t, stats2.Total)
-				}
+				require.Equal(t, 0, g.Len())
 			})
 			t.Run("Close", func(t *testing.T) {
 				ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
@@ -810,7 +668,7 @@ func TestQueueGroupOperations(t *testing.T) {
 				amboy.WaitCtxInterval(ctx, q1, 10*time.Millisecond)
 				amboy.WaitCtxInterval(ctx, q2, 10*time.Millisecond)
 
-				g.Close(ctx)
+				require.NoError(t, g.Close(ctx))
 			})
 		})
 	}
