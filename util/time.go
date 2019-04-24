@@ -54,17 +54,17 @@ func JitterInterval(interval time.Duration) time.Duration {
 	return time.Duration(rand.Float64()*float64(interval)) + interval
 }
 
-// ParseRoundPartOfDay produces a time value with the hour value
+// RoundPartOfDay produces a time value with the hour value
 // rounded down to the most recent interval.
-func RoundPartOfDay(num int) time.Time { return findPartHour(time.Now(), num) }
+func RoundPartOfDay(n int) time.Time { return findPartHour(time.Now(), n) }
 
-// ParseRoundPartOfHour produces a time value with the minute value
+// RoundPartOfHour produces a time value with the minute value
 // rounded down to the most recent interval.
-func RoundPartOfHour(num int) time.Time { return findPartMin(time.Now(), num) }
+func RoundPartOfHour(n int) time.Time { return findPartMin(time.Now(), n) }
 
-// ParseRoundPartOfMinute produces a time value with the second value
+// RoundPartOfMinute produces a time value with the second value
 // rounded down to the most recent interval.
-func RoundPartOfMinute(num int) time.Time { return findPartSec(time.Now(), num) }
+func RoundPartOfMinute(n int) time.Time { return findPartSec(time.Now(), n) }
 
 // this implements the logic of RoundPartOfDay, but takes time as an
 // argument for testability.

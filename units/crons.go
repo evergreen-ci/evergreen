@@ -229,7 +229,7 @@ func PopulateTaskMonitoring(mins int) amboy.QueueOperation {
 			return nil
 		}
 
-		return queue.Put(NewTaskExecutionMonitorPopulateJob(util.RoundPartOfMinute(mins).Format(tsFormat)))
+		return queue.Put(NewTaskExecutionMonitorPopulateJob(util.RoundPartOfHour(mins).Format(tsFormat)))
 	}
 }
 

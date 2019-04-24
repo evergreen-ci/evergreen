@@ -156,6 +156,17 @@ func IntervalQueueOperation(ctx context.Context, q Queue, interval time.Duration
 			}
 		}()
 
+		if startAt.Before(time.Now()) {
+			if interval > 0 {
+				for {
+					startAt = startAt.Add(interval)
+					if !startAt.Before(time.Now()) {
+						break
+					}
+				}
+			}
+		}
+
 		initialWait := time.Since(startAt)
 		if initialWait > time.Second {
 			grip.InfoWhen(conf.DebugLogging, message.Fields{
