@@ -21,23 +21,51 @@ import (
 // mgoDriver is a type that represents and wraps a queues
 // persistence of jobs *and* locks to a mgoDriver instance.
 type mgoDriver struct {
-	session    *mgo.Session
-	opts       MongoDBOptions
-	name       string
-	instanceID string
-	canceler   context.CancelFunc
-	mu         sync.RWMutex
+	name             string
+	mongodbURI       string
+	dbName           string
+	session          *mgo.Session
+	canceler         context.CancelFunc
+	instanceID       string
+	priority         bool
+	respectWaitUntil bool
+	mu               sync.RWMutex
 	LockManager
+}
+
+// MongoDBOptions is a struct passed to the NewMgo constructor to
+// communicate mgoDriver specific settings about the driver's behavior
+// and operation.
+type MongoDBOptions struct {
+	URI            string
+	DB             string
+	Priority       bool
+	CheckWaitUntil bool
+}
+
+// DefaultMongoDBOptions constructs a new options object with default
+// values: connecting to a MongoDB instance on localhost, using the
+// "amboy" database, and *not* using priority ordering of jobs.
+func DefaultMongoDBOptions() MongoDBOptions {
+	return MongoDBOptions{
+		URI:            "mongodb://localhost:27017",
+		DB:             "amboy",
+		Priority:       false,
+		CheckWaitUntil: true,
+	}
 }
 
 // NewMgoDriver creates a driver object given a name, which
 // serves as a prefix for collection names, and a MongoDB connection
 func NewMgoDriver(name string, opts MongoDBOptions) Driver {
-	host, _ := os.Hostname() // nolint
+	host, _ := os.Hostname()
 	return &mgoDriver{
-		name:       name,
-		opts:       opts,
-		instanceID: fmt.Sprintf("%s.%s.%s", name, host, uuid.NewV4()),
+		name:             name,
+		dbName:           opts.DB,
+		mongodbURI:       opts.URI,
+		priority:         opts.Priority,
+		respectWaitUntil: opts.CheckWaitUntil,
+		instanceID:       fmt.Sprintf("%s.%s.%s", name, host, uuid.NewV4()),
 	}
 }
 
@@ -68,9 +96,9 @@ func (d *mgoDriver) Open(ctx context.Context) error {
 		return nil
 	}
 
-	session, err := mgo.Dial(d.opts.URI)
+	session, err := mgo.Dial(d.mongodbURI)
 	if err != nil {
-		return errors.Wrapf(err, "problem opening connection to mongodb at '%s", d.opts.URI)
+		return errors.Wrapf(err, "problem opening connection to mongodb at '%s", d.mongodbURI)
 	}
 
 	return errors.Wrap(d.start(ctx, session), "problem starting driver")
@@ -112,14 +140,10 @@ func (d *mgoDriver) getJobsCollection() (*mgo.Session, *mgo.Collection) {
 	defer d.mu.RUnlock()
 	session := d.session.Copy()
 
-	return session, session.DB(d.opts.DB).C(addJobsSuffix(d.name))
+	return session, session.DB(d.dbName).C(addJobsSuffix(d.name))
 }
 
 func (d *mgoDriver) setupDB() error {
-	if d.opts.SkipIndexBuilds {
-		return nil
-	}
-
 	catcher := grip.NewCatcher()
 	session, jobs := d.getJobsCollection()
 	defer session.Close()
@@ -128,12 +152,12 @@ func (d *mgoDriver) setupDB() error {
 		"status.completed",
 		"status.in_prog",
 	}
-	if d.opts.CheckWaitUntil {
+	if d.respectWaitUntil {
 		indexKey = append(indexKey, "time_info.wait_until")
 	}
 
 	// priority must be at the end for the sort
-	if d.opts.Priority {
+	if d.priority {
 		indexKey = append(indexKey, "priority")
 	}
 
@@ -385,7 +409,7 @@ func (d *mgoDriver) Next(ctx context.Context) amboy.Job {
 		},
 	}
 
-	if d.opts.CheckWaitUntil {
+	if d.respectWaitUntil {
 		qd = bson.M{
 			"$and": []bson.M{
 				qd,
@@ -399,7 +423,7 @@ func (d *mgoDriver) Next(ctx context.Context) amboy.Job {
 
 	query := jobs.Find(qd).Batch(4)
 
-	if d.opts.Priority {
+	if d.priority {
 		query = query.Sort("-priority")
 	}
 

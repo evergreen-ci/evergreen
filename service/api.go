@@ -31,15 +31,15 @@ const (
 
 // APIServer handles communication with Evergreen agents and other back-end requests.
 type APIServer struct {
-	UserManager      gimlet.UserManager
-	Settings         evergreen.Settings
-	queue            amboy.Queue
-	queueGroup       amboy.QueueGroup
-	taskQueueService model.TaskQueueService
+	UserManager        gimlet.UserManager
+	Settings           evergreen.Settings
+	queue              amboy.Queue
+	generateTasksQueue amboy.Queue
+	taskQueueService   model.TaskQueueService
 }
 
 // NewAPIServer returns an APIServer initialized with the given settings and plugins.
-func NewAPIServer(settings *evergreen.Settings, queue amboy.Queue, queueGroup amboy.QueueGroup) (*APIServer, error) {
+func NewAPIServer(settings *evergreen.Settings, queue amboy.Queue, generateTasksQueue amboy.Queue) (*APIServer, error) {
 	authManager, _, err := auth.LoadUserManager(settings.AuthConfig)
 	if err != nil {
 		return nil, errors.WithStack(err)
@@ -50,11 +50,11 @@ func NewAPIServer(settings *evergreen.Settings, queue amboy.Queue, queueGroup am
 	}
 
 	as := &APIServer{
-		UserManager:      authManager,
-		Settings:         *settings,
-		queue:            queue,
-		queueGroup:       queueGroup,
-		taskQueueService: model.NewTaskQueueService(20 * time.Second),
+		UserManager:        authManager,
+		Settings:           *settings,
+		queue:              queue,
+		generateTasksQueue: generateTasksQueue,
+		taskQueueService:   model.NewTaskQueueService(20 * time.Second),
 	}
 
 	return as, nil

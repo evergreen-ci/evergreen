@@ -39,9 +39,9 @@ func NewLocalWorkers(numWorkers int, q amboy.Queue) amboy.Runner {
 type localWorkers struct {
 	size     int
 	started  bool
-	wg       sync.WaitGroup
-	canceler context.CancelFunc
 	queue    amboy.Queue
+	canceler context.CancelFunc
+	wg       sync.WaitGroup
 }
 
 // SetQueue allows callers to inject alternate amboy.Queue objects into

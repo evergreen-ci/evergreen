@@ -16,6 +16,8 @@ define and run jobs, that would feel equally "native" for distributed
 applications and distributed web application, and move easily between
 different architectures.
 
+Use
+
 While amboy users will generally implement their own Job and
 dependency implementations, Amboy itself provides several example
 Queue implementations, as well as several generic examples and
@@ -35,7 +37,7 @@ Consider the following example:
       // handle error case
    }
 
-   err = queue.Start(ctx) // the queue starts a SimpleRunner object and
+   err = queue.Start() // the queue starts a SimpleRunner object and
 		       // creates required channels.
    if err != nil {
       // handle error case

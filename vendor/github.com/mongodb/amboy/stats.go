@@ -3,8 +3,10 @@ package amboy
 import (
 	"fmt"
 
+	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/level"
 	"github.com/mongodb/grip/message"
+	"github.com/mongodb/grip/sometimes"
 	"github.com/pkg/errors"
 )
 
@@ -26,18 +28,14 @@ type QueueStats struct {
 	priority level.Priority
 }
 
-// String prints a long form report of the queue for human consumption.
 func (s QueueStats) String() string {
 	return fmt.Sprintf("running='%d', completed='%d', pending='%d', blocked='%d', total='%d'",
 		s.Running, s.Completed, s.Pending, s.Blocked, s.Total)
 }
 
-// IsComplete reutrns true when the total number of tasks are equal to
-// the number completed, or if the number of completed and blocked are
-// greater than or equal to total. This method is used by the Wait<>
-// functions to determine when a queue has completed all actionable
-// work.
-func (s QueueStats) IsComplete() bool {
+func (s QueueStats) isComplete() bool {
+	grip.DebugWhen(sometimes.Fifth(), &s)
+
 	if s.Total == s.Completed {
 		return true
 	}

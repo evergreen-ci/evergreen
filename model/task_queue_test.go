@@ -485,7 +485,7 @@ func TestTaskQueueGenerationTimes(t *testing.T) {
 	require.NoError(db.ClearCollections(TaskQueuesCollection))
 	defer db.ClearCollections(TaskQueuesCollection)
 
-	now := time.Now().Round(time.Millisecond).UTC()
+	now := time.Now().Round(time.Millisecond)
 	taskQueue := &TaskQueue{
 		Distro:      "foo",
 		GeneratedAt: now,

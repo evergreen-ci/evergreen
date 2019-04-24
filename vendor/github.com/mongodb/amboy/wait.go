@@ -27,7 +27,7 @@ import (
 // complete.
 func Wait(q Queue) {
 	for {
-		if q.Stats().IsComplete() {
+		if q.Stats().isComplete() {
 			break
 		}
 	}
@@ -44,7 +44,7 @@ func WaitCtx(ctx context.Context, q Queue) bool {
 		}
 
 		stat := q.Stats()
-		if stat.IsComplete() {
+		if stat.isComplete() {
 			return true
 		}
 
@@ -55,7 +55,7 @@ func WaitCtx(ctx context.Context, q Queue) bool {
 // throttling the impact of repeated Stats calls to the queue.
 func WaitInterval(q Queue, interval time.Duration) {
 	for {
-		if q.Stats().IsComplete() {
+		if q.Stats().isComplete() {
 			break
 		}
 
@@ -76,7 +76,7 @@ func WaitCtxInterval(ctx context.Context, q Queue, interval time.Duration) bool 
 		case <-ctx.Done():
 			return false
 		case <-timer.C:
-			if q.Stats().IsComplete() {
+			if q.Stats().isComplete() {
 				return true
 			}
 

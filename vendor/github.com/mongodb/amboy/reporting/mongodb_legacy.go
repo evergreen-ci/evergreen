@@ -18,7 +18,7 @@ type dbLegacyQueueStat struct {
 	collection *mgo.Collection
 }
 
-// NewLegacyDBQueueState produces a queue Reporter for (remote) queues that persist
+// NewDBQueueState produces a queue Reporter for (remote) queues that persist
 // jobs in MongoDB. This implementation does not interact with a queue
 // directly, and reports by interacting with the database directly.
 //
@@ -37,7 +37,7 @@ func NewLegacyDBQueueState(name string, opts queue.MongoDBOptions) (Reporter, er
 	return db, nil
 }
 
-// MakeLegacyDBQueueState make it possible to produce a queue reporter with
+// MakeDBQueueState make it possible to produce a queue reporter with
 // an existing database Connection. This operations runs the "ping"
 // command and will return an error if there is no session or no
 // active server.

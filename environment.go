@@ -73,20 +73,19 @@ type Environment interface {
 	Client() *mongo.Client
 	DB() *mongo.Database
 
-	// The Environment provides access to two queues, a
+	// The Environment provides access to three queues, a
 	// local-process level queue that is not persisted between
-	// runs and a remote shared queue that all processes can use
-	// to distribute work amongst the application tier
-	//
-	// It also exposes a queue group, which permits dynamically
-	// generating queues at runtime.
+	// runs, a remote shared queue that all processes can use
+	// to distribute work amongst the application tier, and a queue
+	// for generate.tasks, which has a smaller number of workers
+	// per app server.
 	//
 	// The LocalQueue is not durable, and results aren't available
 	// between process restarts. The RemoteQueue is not
 	// (generally) started by default.
 	LocalQueue() amboy.Queue
 	RemoteQueue() amboy.Queue
-	RemoteQueueGroup() amboy.QueueGroup
+	GenerateTasksQueue() amboy.Queue
 
 	// Jasper is a process manager for running external
 	// commands. Every process has a manager service.
@@ -190,7 +189,7 @@ type ClientConfig struct {
 type envState struct {
 	remoteQueue        amboy.Queue
 	localQueue         amboy.Queue
-	remoteQueueGroup   amboy.QueueGroup
+	generateTasksQueue amboy.Queue
 	notificationsQueue amboy.Queue
 	ctx                context.Context
 	jasperManager      jasper.Manager
@@ -319,22 +318,22 @@ func (e *envState) createGenerateTasksQueue(ctx context.Context) error {
 	opts.DB = e.settings.Amboy.DB
 	opts.Priority = true
 
-	remoteQueuGroupOpts := queue.RemoteQueueGroupOptions{
-		Prefix:                    e.settings.Amboy.Name,
-		DefaultWorkers:            1,
-		Ordered:                   false,
-		BackgroundCreateFrequency: time.Hour,
-		PruneFrequency:            time.Hour,
-		TTL:                       time.Hour,
-	}
-	remoteQueueGroup, err := queue.NewMongoRemoteSingleQueueGroup(ctx, remoteQueuGroupOpts, e.client, opts)
+	singlemdb, err := queue.OpenNewMongoDriver(ctx, e.settings.Amboy.SingleName, opts, e.client)
 	if err != nil {
-		return errors.Wrap(err, "problem constructing remote queue group")
+		return errors.Wrap(err, "problem setting queue backend")
 	}
-	e.remoteQueueGroup = remoteQueueGroup
+	generateTasksQ := queue.NewRemoteUnordered(8)
+	if err = generateTasksQ.SetDriver(singlemdb); err != nil {
+		return errors.WithStack(err)
+	}
+	if err = generateTasksQ.SetRunner(pool.NewAbortablePool(1, generateTasksQ)); err != nil {
+		return errors.Wrap(err, "problem configuring worker pool for generate tasks queue")
+	}
+	e.generateTasksQueue = generateTasksQ
 
 	e.closers["generate-tasks"] = func(ctx context.Context) error {
-		return e.remoteQueueGroup.Close(ctx)
+		e.generateTasksQueue.Runner().Close(ctx)
+		return nil
 	}
 
 	return nil
@@ -583,10 +582,10 @@ func (e *envState) RemoteQueue() amboy.Queue {
 	return e.remoteQueue
 }
 
-func (e *envState) RemoteQueueGroup() amboy.QueueGroup {
+func (e *envState) GenerateTasksQueue() amboy.Queue {
 	e.mu.RLock()
 	defer e.mu.RUnlock()
-	return e.remoteQueueGroup
+	return e.generateTasksQueue
 }
 
 func (e *envState) Session() db.Session {

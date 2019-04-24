@@ -9,7 +9,7 @@ import (
 // RandomString returns a cryptographically random string.
 func randomString(x int) string {
 	b := make([]byte, x)
-	_, _ = rand.Read(b) // nolint
+	_, _ = rand.Read(b)
 	return hex.EncodeToString(b)
 }
 
@@ -19,8 +19,4 @@ func addJobsSuffix(s string) string {
 
 func trimJobsSuffix(s string) string {
 	return strings.TrimSuffix(s, ".jobs")
-}
-
-func addGroupSufix(s string) string {
-	return s + ".group"
 }

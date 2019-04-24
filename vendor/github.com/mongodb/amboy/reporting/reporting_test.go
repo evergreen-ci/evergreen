@@ -33,10 +33,6 @@ func TestReportingSuiteBackedByLegacyMongoDB(t *testing.T) {
 	opts := queue.DefaultMongoDBOptions()
 	session, err := mgo.Dial(opts.URI)
 	require.NoError(t, err)
-
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
 	s.factory = func() Reporter {
 		name := uuid.NewV4().String()
 		opts.DB = dbName
@@ -54,7 +50,7 @@ func TestReportingSuiteBackedByLegacyMongoDB(t *testing.T) {
 
 	s.cleanup = func() error {
 		session.Close()
-		s.queue.Runner().Close(ctx)
+		s.queue.Runner().Close()
 		return nil
 	}
 
@@ -87,7 +83,7 @@ func TestReportingSuiteBackedByMongoDB(t *testing.T) {
 
 	s.cleanup = func() error {
 		require.NoError(t, client.Disconnect(ctx))
-		s.queue.Runner().Close(ctx)
+		s.queue.Runner().Close()
 		return nil
 	}
 

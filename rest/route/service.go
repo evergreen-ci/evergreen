@@ -10,11 +10,11 @@ import (
 const defaultLimit = 100
 
 type HandlerOpts struct {
-	APIQueue     amboy.Queue
-	QueueGroup   amboy.QueueGroup
-	URL          string
-	SuperUsers   []string
-	GithubSecret []byte
+	APIQueue           amboy.Queue
+	GenerateTasksQueue amboy.Queue
+	URL                string
+	SuperUsers         []string
+	GithubSecret       []byte
 }
 
 // AttachHandler attaches the api's request handlers to the given mux router.
@@ -113,8 +113,8 @@ func AttachHandler(app *gimlet.APIApp, opts HandlerOpts) {
 	app.AddRoute("/tasks/{task_id}").Version(2).Get().Wrap(checkUser).RouteHandler(makeGetTaskRoute(sc))
 	app.AddRoute("/tasks/{task_id}").Version(2).Patch().Wrap(checkUser, addProject).RouteHandler(makeModifyTaskRoute(sc))
 	app.AddRoute("/tasks/{task_id}/abort").Version(2).Post().Wrap(checkUser).RouteHandler(makeTaskAbortHandler(sc))
-	app.AddRoute("/tasks/{task_id}/generate").Version(2).Post().RouteHandler(makeGenerateTasksHandler(sc, opts.QueueGroup))
-	app.AddRoute("/tasks/{task_id}/generate").Version(2).Get().RouteHandler(makeGenerateTasksPollHandler(sc, opts.QueueGroup))
+	app.AddRoute("/tasks/{task_id}/generate").Version(2).Post().RouteHandler(makeGenerateTasksHandler(sc, opts.GenerateTasksQueue))
+	app.AddRoute("/tasks/{task_id}/generate").Version(2).Get().RouteHandler(makeGenerateTasksPollHandler(sc, opts.GenerateTasksQueue))
 	app.AddRoute("/tasks/{task_id}/restart").Version(2).Post().Wrap(addProject, checkUser).RouteHandler(makeTaskRestartHandler(sc))
 	app.AddRoute("/tasks/{task_id}/tests").Version(2).Get().Wrap(addProject).RouteHandler(makeFetchTestsForTask(sc))
 	app.AddRoute("/user/settings").Version(2).Get().Wrap(checkUser).RouteHandler(makeFetchUserConfig())

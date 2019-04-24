@@ -171,14 +171,7 @@ type QueueGroup interface {
 	Prune(context.Context) error
 
 	// Close the queues.
-	Close(context.Context) error
-
-	// Len returns the number of active queues managed in the
-	// group.
-	Len() int
-
-	// Queues returns all currently registered and running queues
-	Queues(context.Context) []string
+	Close(context.Context)
 }
 
 // Runner describes a simple worker interface for executing jobs in

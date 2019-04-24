@@ -2,7 +2,6 @@ package queue
 
 import (
 	"context"
-	"os"
 	"testing"
 
 	"github.com/mongodb/amboy"
@@ -18,9 +17,6 @@ type SQSFifoQueueSuite struct {
 }
 
 func TestSQSFifoQueueSuite(t *testing.T) {
-	if os.Getenv("EVR_TASK_ID") != "" {
-		t.Skip("evergreen test environment not configured with credentials")
-	}
 	suite.Run(t, new(SQSFifoQueueSuite))
 }
 
@@ -29,10 +25,9 @@ func (s *SQSFifoQueueSuite) SetupTest() {
 	s.queue, err = NewSQSFifoQueue(randomString(4), 4)
 	s.NoError(err)
 	r := pool.NewSingle()
-	s.NoError(r.SetQueue(s.queue))
 	s.NoError(s.queue.SetRunner(r))
 	s.Equal(r, s.queue.Runner())
-	s.NoError(s.queue.Start(context.Background()))
+	s.queue.Start(context.Background())
 
 	stats := s.queue.Stats()
 	s.Equal(0, stats.Total)

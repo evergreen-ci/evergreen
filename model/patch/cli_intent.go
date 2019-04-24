@@ -94,7 +94,7 @@ func (c *cliIntent) Insert() error {
 
 	c.PatchContent = ""
 	c.PatchFileID = patchFileID
-	c.CreatedAt = time.Now().Round(time.Millisecond).UTC()
+	c.CreatedAt = time.Now().Round(time.Millisecond)
 
 	if err := db.Insert(IntentCollection, c); err != nil {
 		c.CreatedAt = time.Time{}

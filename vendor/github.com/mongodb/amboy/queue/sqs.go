@@ -36,10 +36,6 @@ type sqsFIFOQueue struct {
 	mutex  sync.RWMutex
 }
 
-// NewSQSFifoQueue constructs a AWS SQS backed Queue
-// implementation. This queue, generally is ephemeral: tasks are
-// removed from the queue, and therefore may not handle jobs across
-// restarts.
 func NewSQSFifoQueue(queueName string, workers int) (amboy.Queue, error) {
 	q := &sqsFIFOQueue{}
 	q.tasks.completed = make(map[string]bool)
@@ -122,13 +118,10 @@ func (q *sqsFIFOQueue) Next(ctx context.Context) amboy.Job {
 		return nil
 	}
 	message := messageOutput.Messages[0]
-	_, err = q.sqsClient.DeleteMessageWithContext(ctx, &sqs.DeleteMessageInput{
+	q.sqsClient.DeleteMessageWithContext(ctx, &sqs.DeleteMessageInput{
 		QueueUrl:      aws.String(q.sqsURL),
 		ReceiptHandle: message.ReceiptHandle,
 	})
-	if err != nil {
-		return nil
-	}
 
 	var jobItem *registry.JobInterchange
 	err = json.Unmarshal([]byte(*message.Body), jobItem)
@@ -236,8 +229,8 @@ func (q *sqsFIFOQueue) Stats() amboy.QueueStats {
 		return s
 	}
 
-	numMsgs, _ := strconv.Atoi(*output.Attributes["ApproximateNumberOfMessages"])                   // nolint
-	numMsgsInFlight, _ := strconv.Atoi(*output.Attributes["ApproximateNumberOfMessagesNotVisible"]) // nolint
+	numMsgs, _ := strconv.Atoi(*output.Attributes["ApproximateNumberOfMessages"])
+	numMsgsInFlight, _ := strconv.Atoi(*output.Attributes["ApproximateNumberOfMessagesNotVisible"])
 
 	s.Pending = numMsgs + numMsgsInFlight
 	s.Total = s.Pending + s.Completed

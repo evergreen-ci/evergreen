@@ -2,7 +2,6 @@ package queue
 
 import (
 	"context"
-	"fmt"
 	"runtime"
 	"strings"
 	"sync"
@@ -13,17 +12,14 @@ import (
 	"github.com/mongodb/grip/message"
 	"github.com/mongodb/grip/recovery"
 	"github.com/pkg/errors"
-	"go.mongodb.org/mongo-driver/mongo"
+	mgo "gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
 )
 
-// RemoteConstructor is a function passed by a client which makes a new remote queue for a QueueGroup.
-type RemoteConstructor func(ctx context.Context) (Remote, error)
-
-// remoteMongoQueueGroup is a group of database-backed queues.
-type remoteMongoQueueGroup struct {
+// remoteMgoQueueGroup is a group of database-backed queues.
+type remoteMgoQueueGroup struct {
 	canceler       context.CancelFunc
-	client         *mongo.Client
+	session        *mgo.Session
 	constructor    RemoteConstructor
 	mu             sync.RWMutex
 	mongooptions   MongoDBOptions
@@ -34,28 +30,9 @@ type remoteMongoQueueGroup struct {
 	ttlMap         map[string]time.Time
 }
 
-// RemoteQueueGroupOptions describe options passed to NewRemoteQueueGroup.
-type RemoteQueueGroupOptions struct {
-	// Constructor is a function passed by the client to construct a remote queue.
-	Constructor RemoteConstructor
-
-	// Prefix is a string prepended to the queue collections.
-	Prefix string
-
-	// PruneFrequency is how often Prune runs.
-	PruneFrequency time.Duration
-
-	// TTL is how old the oldest task in the queue must be for the collection to be pruned.
-	TTL time.Duration
-}
-
-type listCollectionsOutput struct {
-	Name string `bson:"name"`
-}
-
-// NewMongoRemoteQueueGroup constructs a new remote queue group. If ttl is 0, the queues will not be
+// NewMgoRemoteQueueGroup constructs a new remote queue group. If ttl is 0, the queues will not be
 // TTLed except when the client explicitly calls Prune.
-func NewMongoRemoteQueueGroup(ctx context.Context, opts RemoteQueueGroupOptions, client *mongo.Client, mdbopts MongoDBOptions) (amboy.QueueGroup, error) {
+func NewMgoRemoteQueueGroup(ctx context.Context, opts RemoteQueueGroupOptions, session *mgo.Session, mdbopts MongoDBOptions) (amboy.QueueGroup, error) {
 	if err := opts.validate(); err != nil {
 		return nil, errors.Wrap(err, "invalid remote queue options")
 	}
@@ -68,10 +45,11 @@ func NewMongoRemoteQueueGroup(ctx context.Context, opts RemoteQueueGroupOptions,
 		return nil, errors.New("no mongodb uri specified")
 	}
 
+	session = session.Clone()
 	ctx, cancel := context.WithCancel(ctx)
-	g := &remoteMongoQueueGroup{
+	g := &remoteMgoQueueGroup{
 		canceler:       cancel,
-		client:         client,
+		session:        session,
 		mongooptions:   mdbopts,
 		constructor:    opts.Constructor,
 		prefix:         opts.Prefix,
@@ -87,7 +65,7 @@ func NewMongoRemoteQueueGroup(ctx context.Context, opts RemoteQueueGroupOptions,
 		}
 	}
 
-	colls, err := g.getExistingCollections(ctx, g.client, g.mongooptions.DB, g.prefix)
+	colls, err := g.getExistingCollections(ctx, g.session, g.mongooptions.DB, g.prefix)
 	if err != nil {
 		return nil, errors.Wrap(err, "problem getting existing collections")
 	}
@@ -126,13 +104,13 @@ func NewMongoRemoteQueueGroup(ctx context.Context, opts RemoteQueueGroupOptions,
 	return g, nil
 }
 
-func (g *remoteMongoQueueGroup) startProcessingRemoteQueue(ctx context.Context, coll string) (Remote, error) {
+func (g *remoteMgoQueueGroup) startProcessingRemoteQueue(ctx context.Context, coll string) (Remote, error) {
 	coll = trimJobsSuffix(coll)
 	q, err := g.constructor(ctx)
 	if err != nil {
 		return nil, errors.Wrap(err, "problem starting queue")
 	}
-	d, err := OpenNewMongoDriver(ctx, coll, g.mongooptions, g.client)
+	d, err := OpenNewMgoDriver(ctx, coll, g.mongooptions, g.session.Clone())
 	if err != nil {
 		return nil, errors.Wrap(err, "problem opening driver")
 	}
@@ -145,33 +123,51 @@ func (g *remoteMongoQueueGroup) startProcessingRemoteQueue(ctx context.Context, 
 	return q, nil
 }
 
-func (g *remoteMongoQueueGroup) getExistingCollections(ctx context.Context, client *mongo.Client, db, prefix string) ([]string, error) {
-	c, err := client.Database(db).ListCollections(ctx, bson.M{"name": bson.M{"$regex": fmt.Sprintf("^%s.*", prefix)}})
+func (opts RemoteQueueGroupOptions) validate() error {
+	catcher := grip.NewBasicCatcher()
+	if opts.Constructor == nil {
+		catcher.New("must pass a constructor")
+	}
+	if opts.TTL < 0 {
+		catcher.New("ttl must be greater than or equal to 0")
+	}
+	if opts.TTL > 0 && opts.TTL < time.Second {
+		catcher.New("ttl cannot be less than 1 second, unless it is 0")
+	}
+	if opts.PruneFrequency < 0 {
+		catcher.New("prune frequency must be greater than or equal to 0")
+	}
+	if opts.PruneFrequency > 0 && opts.TTL < time.Second {
+		catcher.New("prune frequency cannot be less than 1 second, unless it is 0")
+	}
+	if (opts.TTL == 0 && opts.PruneFrequency != 0) || (opts.TTL != 0 && opts.PruneFrequency == 0) {
+		catcher.New("ttl and prune frequency must both be 0 or both be not 0")
+	}
+	if opts.Prefix == "" {
+		catcher.New("prefix must be set")
+	}
+	return catcher.Resolve()
+}
+
+func (g *remoteMgoQueueGroup) getExistingCollections(ctx context.Context, session *mgo.Session, db, prefix string) ([]string, error) {
+	colls, err := session.DB(db).CollectionNames()
 	if err != nil {
 		return nil, errors.Wrap(err, "problem calling listCollections")
 	}
-	defer c.Close(ctx)
 	var collections []string
-	for c.Next(ctx) {
-		elem := listCollectionsOutput{}
-		if err := c.Decode(&elem); err != nil {
-			return nil, errors.Wrap(err, "problem parsing listCollections output")
+	for _, c := range colls {
+		if strings.HasPrefix(c, prefix) {
+			collections = append(collections, c)
 		}
-		collections = append(collections, elem.Name)
 	}
-	if err := c.Err(); err != nil {
-		return nil, errors.Wrap(err, "problem iterating over list collections cursor")
-	}
-	if err := c.Close(ctx); err != nil {
-		return nil, errors.Wrap(err, "problem closing cursor")
-	}
+
 	return collections, nil
 }
 
 // Get a queue with the given index. Get sets the last accessed time to now. Note that this means
 // that the caller must add a job to the queue within the TTL, or else it may have attempted to add
 // a job to a closed queue.
-func (g *remoteMongoQueueGroup) Get(ctx context.Context, id string) (amboy.Queue, error) {
+func (g *remoteMgoQueueGroup) Get(ctx context.Context, id string) (amboy.Queue, error) {
 	g.mu.RLock()
 	if queue, ok := g.queues[id]; ok {
 		g.ttlMap[id] = time.Now()
@@ -197,7 +193,7 @@ func (g *remoteMongoQueueGroup) Get(ctx context.Context, id string) (amboy.Queue
 }
 
 // Put a queue at the given index. The caller is responsible for starting thq queue.
-func (g *remoteMongoQueueGroup) Put(ctx context.Context, id string, queue amboy.Queue) error {
+func (g *remoteMgoQueueGroup) Put(ctx context.Context, id string, queue amboy.Queue) error {
 	g.mu.RLock()
 	if _, ok := g.queues[id]; ok {
 		g.mu.RUnlock()
@@ -217,14 +213,14 @@ func (g *remoteMongoQueueGroup) Put(ctx context.Context, id string, queue amboy.
 }
 
 // Prune queues that have no pending work, and have completed work older than the TTL.
-func (g *remoteMongoQueueGroup) Prune(ctx context.Context) error {
+func (g *remoteMgoQueueGroup) Prune(ctx context.Context) error {
 	g.mu.Lock()
 	defer g.mu.Unlock()
 
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
-	colls, err := g.getExistingCollections(ctx, g.client, g.mongooptions.DB, g.prefix)
+	colls, err := g.getExistingCollections(ctx, g.session, g.mongooptions.DB, g.prefix)
 	if err != nil {
 		return errors.Wrap(err, "problem getting collections")
 	}
@@ -252,13 +248,15 @@ func (g *remoteMongoQueueGroup) Prune(ctx context.Context) error {
 		go func(ch chan string) {
 			defer recovery.LogStackTraceAndContinue("panic in pruning collections")
 			defer wg.Done()
+			session := g.session.Clone()
+			defer session.Close()
 			for nextColl := range collsDropChan {
-				c := g.client.Database(g.mongooptions.DB).Collection(nextColl)
-				count, err := c.CountDocuments(ctx, bson.M{
+				c := session.DB(g.mongooptions.DB).C(nextColl)
+				count, err := c.Find(bson.M{
 					"status.completed": true,
 					"status.in_prog":   false,
 					"status.mod_ts":    bson.M{"$gte": time.Now().Add(-g.ttl)},
-				})
+				}).Count()
 				if err != nil {
 					catcher.Add(err)
 					return
@@ -266,7 +264,7 @@ func (g *remoteMongoQueueGroup) Prune(ctx context.Context) error {
 				if count > 0 {
 					return
 				}
-				count, err = c.CountDocuments(ctx, bson.M{"status.completed": false})
+				count, err = c.Find(bson.M{"status.completed": false}).Count()
 				if err != nil {
 					catcher.Add(err)
 					return
@@ -283,9 +281,7 @@ func (g *remoteMongoQueueGroup) Prune(ctx context.Context) error {
 						// pass
 					}
 				}
-				if err := c.Drop(ctx); err != nil {
-					catcher.Add(err)
-				}
+				catcher.Add(c.DropCollection())
 			}
 		}(collsDeleteChan)
 	}
@@ -329,7 +325,7 @@ outer:
 }
 
 // Close the queues.
-func (g *remoteMongoQueueGroup) Close(ctx context.Context) {
+func (g *remoteMgoQueueGroup) Close(ctx context.Context) {
 	g.mu.Lock()
 	defer g.mu.Unlock()
 	g.canceler()
@@ -346,6 +342,7 @@ func (g *remoteMongoQueueGroup) Close(ctx context.Context) {
 			}(queue)
 		}
 		wg.Wait()
+		g.session.Close()
 		close(waitCh)
 	}()
 	select {
@@ -356,10 +353,10 @@ func (g *remoteMongoQueueGroup) Close(ctx context.Context) {
 	}
 }
 
-func (g *remoteMongoQueueGroup) collectionFromID(id string) string {
+func (g *remoteMgoQueueGroup) collectionFromID(id string) string {
 	return addJobsSuffix(g.prefix + id)
 }
 
-func (g *remoteMongoQueueGroup) idFromCollection(collection string) string {
+func (g *remoteMgoQueueGroup) idFromCollection(collection string) string {
 	return trimJobsSuffix(strings.TrimPrefix(collection, g.prefix))
 }
