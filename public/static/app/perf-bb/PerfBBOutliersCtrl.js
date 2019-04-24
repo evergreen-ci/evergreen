@@ -2,20 +2,6 @@ mciModule.controller('PerfBBOutliersCtrl', function (
   $scope, $window, EvgUiGridUtil, EvgUtil, FORMAT, MDBQueryAdaptor, uiGridConstants,
   STITCH_CONFIG, Stitch, Settings, $timeout, $compile, $log
 ) {
-  // Monkey Patch the toolbar as I can't change outliers.html.
-  // TODO don't merge into master.
-  const element = $('div.toolbar div.control-group:nth-child(2)');
-  const checkbox = $compile('\
-<span class="legend">Include low confidence Outliers:</span>\
-  <div class="control-group">\
-    <input type="checkbox" ng-model="outvm.checkboxModel.lowConfidence"\
-     ng-true-value="true" ng-false-value="false" ng-change="outvm.lowConfidenceChanged()" name="checkboxModel">\
-    <br/>\
-  </div>\
-</span>\
-')($scope);
-  $timeout(() => element.after(checkbox));
-
   // Perf Failures View-Model.
   const vm = this;
   const project = window.project;
@@ -280,12 +266,12 @@ mciModule.controller('PerfBBOutliersCtrl', function (
   vm.lowConfidenceChanged = () => {
     $log.debug('Low Confidence changed : ' + vm.checkboxModel.lowConfidence);
     vm.state.lowConfidence = vm.checkboxModel.lowConfidence;
-    vm.reload()
+    vm.reload();
   };
 
   vm.modeChanged = () => {
     vm.state.mode = vm.mode.value;
-    vm.reload()
+    vm.reload();
   };
 
   vm.reload = () => {

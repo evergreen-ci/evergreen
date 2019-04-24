@@ -53,16 +53,6 @@ describe('PerfBBOutliersCtrlTest', () => {
       expect(filter.test).toEqual('^((?!canary|fio|NetworkB).)*$');
     });
 
-    // it('should filter by project, date, and type for suspicious', () => {
-    //   controller.mode.value = 'suspicious';
-    //   const filter = scope.getDefaultFiltering();
-    //
-    //   expect(filter.project).toEqual('=' + project);
-    //   const expectedDate = controller.state.lookBack.format(format.ISO_DATE);
-    //   expect(filter.create_time).toEqual('>' + expectedDate);
-    //   expect(filter.type).toEqual('=suspicious');
-    // });
-
     it('should filter by project and date for marked', () => {
       controller.mode.value = 'marked';
       const filter = scope.getDefaultFiltering();
