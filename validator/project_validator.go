@@ -736,6 +736,15 @@ func validatePluginCommands(project *model.Project) ValidationErrors {
 
 	// validate each function definition
 	for funcName, commands := range project.Functions {
+		if commands == nil {
+			errs = append(errs,
+				ValidationError{
+					Message: fmt.Sprintf("'%s' project's '%s' function contains no commands",
+						project.Identifier, funcName),
+				},
+			)
+			continue
+		}
 		valErrs := validateCommands("functions", project, commands.List())
 		for _, err := range valErrs {
 			errs = append(errs,
