@@ -10,7 +10,6 @@ func Host() cli.Command {
 			hostCreate(),
 			hostlist(),
 			hostTerminate(),
-			hostStatus(),
 			hostSetup(),
 			hostTeardown(),
 		},
