@@ -97,6 +97,9 @@ func (c *generateTask) Execute(ctx context.Context, comm client.Communicator, lo
 			}
 			return true, errors.New("task generation unfinished")
 		}, 100, time.Second, 15*time.Second)
+	if err != nil {
+		return errors.WithMessage(err, "problem polling for generate tasks job")
+	}
 	if len(generateStatus.Errors) > 0 {
 		return errors.New(strings.Join(generateStatus.Errors, ", "))
 	}
