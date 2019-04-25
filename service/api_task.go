@@ -323,7 +323,7 @@ func assignNextAvailableTask(taskQueue *model.TaskQueue, currentHost *host.Host)
 	for taskQueue.Length() != 0 {
 		var queueItem *model.TaskQueueItem
 		var err error
-		d, err := distro.FindOne(currentHost.Distro.Id)
+		d, err := distro.FindOne(distro.ById(currentHost.Distro.Id))
 		if err != nil {
 			grip.Critical(message.WrapError(err, message.Fields{
 				"distro":  currentHost.Distro.Id,
@@ -331,7 +331,7 @@ func assignNextAvailableTask(taskQueue *model.TaskQueue, currentHost *host.Host)
 				"message": "problem finding distro",
 				"spec":    spec,
 			}))
-			return errors.Wrapf(err, "problem finding distro", currentHost.Distro.Id)
+			return nil, errors.Wrapf(err, "problem finding distro", currentHost.Distro.Id)
 		}
 		switch d.PlannerSettings.Version {
 		case evergreen.PlannerVersionTunable:
