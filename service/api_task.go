@@ -15,6 +15,7 @@ import (
 	"github.com/evergreen-ci/evergreen/units"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/gimlet"
+	adb "github.com/mongodb/anser/db"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/mongodb/grip/sometimes"
@@ -325,13 +326,16 @@ func assignNextAvailableTask(taskQueue *model.TaskQueue, currentHost *host.Host)
 		var err error
 		d, err := distro.FindOne(distro.ById(currentHost.Distro.Id))
 		if err != nil {
-			grip.Critical(message.WrapError(err, message.Fields{
-				"distro":  currentHost.Distro.Id,
-				"host":    currentHost.Id,
-				"message": "problem finding distro",
-				"spec":    spec,
-			}))
-			return nil, errors.Wrapf(err, "problem finding distro %s", currentHost.Distro.Id)
+			if adb.ResultsNotFound(err) {
+				grip.Warning(message.Fields{
+					"message": "distro not found",
+					"distro":  currentHost.Distro.Id,
+					"host":    currentHost.Id,
+				})
+				d = currentHost.Distro
+			} else {
+				return nil, errors.Wrapf(err, "problem finding distro %s", currentHost.Distro.Id)
+			}
 		}
 		switch d.PlannerSettings.Version {
 		case evergreen.PlannerVersionTunable:
