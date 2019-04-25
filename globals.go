@@ -136,6 +136,11 @@ const (
 	PlannerVersionLegacy  = "legacy"
 	PlannerVersionTunable = "tunable"
 
+	FinderVersionLegacy    = "legacy"
+	FinderVersionParallel  = "parallel"
+	FinderVersionPipeline  = "pipeline"
+	FinderVersionAlternate = "alternate"
+
 	CommitQueueAlias = "__commit_queue"
 
 	MaxTeardownGroupTimeoutSecs = 30 * 60
@@ -352,6 +357,14 @@ var (
 	ValidPlannerVersions = []string{
 		PlannerVersionLegacy,
 		PlannerVersionTunable,
+	}
+
+	// Set of valid FinderSettings.Version strings that can be user set via the API
+	ValidFinderVersions = []string{
+		FinderVersionLegacy,
+		FinderVersionParallel,
+		FinderVersionPipeline,
+		FinderVersionAlternate,
 	}
 
 	// constant arrays for db update logic
