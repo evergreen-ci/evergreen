@@ -8,6 +8,7 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/task"
@@ -322,7 +323,17 @@ func assignNextAvailableTask(taskQueue *model.TaskQueue, currentHost *host.Host)
 	for taskQueue.Length() != 0 {
 		var queueItem *model.TaskQueueItem
 		var err error
-		switch currentHost.Distro.PlannerSettings.Version {
+		d, err := distro.FindOne(currentHost.Distro.Id)
+		if err != nil {
+			grip.Critical(message.WrapError(err, message.Fields{
+				"distro":  currentHost.Distro.Id,
+				"host":    currentHost.Id,
+				"message": "problem finding distro",
+				"spec":    spec,
+			}))
+			return errors.Wrapf(err, "problem finding distro", currentHost.Distro.Id)
+		}
+		switch d.PlannerSettings.Version {
 		case evergreen.PlannerVersionTunable:
 			queueItem, err = taskQueueService.RefreshFindNextTask(currentHost.Distro.Id, spec)
 			if err != nil {
