@@ -268,13 +268,6 @@ func (as *APIServer) EndTask(w http.ResponseWriter, r *http.Request) {
 		endTaskResp.ShouldExit = true
 	}
 
-	grip.Info(message.Fields{
-		"message":   "Successfully marked task as finished",
-		"task":      t.Id,
-		"execution": t.Execution,
-		"operation": "mark end",
-		"duration":  time.Since(finishTime),
-	})
 	gimlet.WriteJSON(w, endTaskResp)
 }
 

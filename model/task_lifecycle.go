@@ -392,16 +392,9 @@ func doStepback(t *task.Task) error {
 func MarkEnd(t *task.Task, caller string, finishTime time.Time, detail *apimodels.TaskEndDetail,
 	deactivatePrevious bool, updates *StatusChanges) error {
 
-	now := time.Now()
 	if t.HasFailedTests() {
 		detail.Status = evergreen.TaskFailed
 	}
-	grip.Info(message.Fields{
-		"message":   "finished checking HasFailedTests",
-		"operation": "mark end",
-		"duration":  time.Since(now),
-	})
-	now = time.Now()
 
 	t.Details = *detail
 
@@ -420,25 +413,11 @@ func MarkEnd(t *task.Task, caller string, finishTime time.Time, detail *apimodel
 	}
 	err := t.MarkEnd(finishTime, detail)
 
-	grip.Info(message.Fields{
-		"message":   "finished marking the task ended",
-		"operation": "mark end",
-		"duration":  time.Since(now),
-	})
-	now = time.Now()
-
 	if err != nil {
 		return errors.Wrap(err, "could not mark task finished")
 	}
 	status := t.ResultStatus()
 	event.LogTaskFinished(t.Id, t.Execution, t.HostId, status)
-
-	grip.Info(message.Fields{
-		"message":   "finished logging task finished",
-		"operation": "mark end",
-		"duration":  time.Since(now),
-	})
-	now = time.Now()
 
 	if t.IsPartOfDisplay() {
 		if err = UpdateDisplayTask(t.DisplayTask); err != nil {
@@ -469,12 +448,6 @@ func MarkEnd(t *task.Task, caller string, finishTime time.Time, detail *apimodel
 			return errors.Wrap(err, "error updating build")
 		}
 	}
-	grip.Info(message.Fields{
-		"message":   "finished processing display task",
-		"operation": "mark end",
-		"duration":  time.Since(now),
-	})
-	now = time.Now()
 
 	// activate/deactivate other task if this is not a patch request's task
 	if !evergreen.IsPatchRequester(t.Requester) {
@@ -487,24 +460,11 @@ func MarkEnd(t *task.Task, caller string, finishTime time.Time, detail *apimodel
 			return err
 		}
 	}
-	grip.Info(message.Fields{
-		"message":   "finished processing non-patch task",
-		"operation": "mark end",
-		"duration":  time.Since(now),
-	})
-	now = time.Now()
 
 	// update the build
 	if err := UpdateBuildAndVersionStatusForTask(t.Id, updates); err != nil {
 		return errors.Wrap(err, "Error updating build status")
 	}
-
-	grip.Info(message.Fields{
-		"message":   "finished updating builds and version",
-		"operation": "mark end",
-		"duration":  time.Since(now),
-	})
-	now = time.Now()
 
 	isBuildCompleteStatus := updates.BuildNewStatus == evergreen.BuildFailed || updates.BuildNewStatus == evergreen.BuildSucceeded
 	if len(updates.BuildNewStatus) != 0 {
@@ -512,11 +472,6 @@ func MarkEnd(t *task.Task, caller string, finishTime time.Time, detail *apimodel
 			event.LogBuildStateChangeEvent(t.BuildId, updates.BuildNewStatus)
 		}
 	}
-	grip.Info(message.Fields{
-		"message":   "logged build state change",
-		"operation": "mark end",
-		"duration":  time.Since(now),
-	})
 
 	return nil
 }
