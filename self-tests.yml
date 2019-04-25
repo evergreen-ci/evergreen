@@ -406,6 +406,9 @@ tasks:
   - <<: *run-go-test-suite-with-mongodb
     tags: ["db", "test"]
     name: test-migrations
+  - <<: *run-go-test-suite-with-mongodb
+    tags: ["db", "test"]
+    name: test-grid
 
 
 buildvariants:
