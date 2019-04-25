@@ -83,7 +83,7 @@ type Environment interface {
 	// durable, and job data are not available between application
 	// restarts.
 	//
-	// The RemoteQueue provides a single, queue with many
+	// The RemoteQueue provides a single queue with many
 	// workers, distributed across all application servers. Each
 	// application dedicates a moderate pool of workers, and work
 	// enters this queue from periodic operations
@@ -93,7 +93,7 @@ type Environment interface {
 	//
 	// The RemoteQueueGroup provides logically distinct
 	// application queues in situations where we need to isolate
-	// workloads between. The queues are backed remotely, which
+	// workloads between queues. The queues are backed remotely, which
 	// means that their work persists between restarts.
 	LocalQueue() amboy.Queue
 	RemoteQueue() amboy.Queue
