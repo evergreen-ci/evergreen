@@ -76,9 +76,8 @@ type Host struct {
 	LastTaskCompletedTime time.Time `bson:"last_task_completed_time" json:"last_task_completed_time"`
 	LastCommunicationTime time.Time `bson:"last_communication" json:"last_communication"`
 
-	Status    string `bson:"status" json:"status"`
-	StartedBy string `bson:"started_by" json:"started_by"`
-	// UserHost is always false, and will be removed
+	Status        string `bson:"status" json:"status"`
+	StartedBy     string `bson:"started_by" json:"started_by"`
 	UserHost      bool   `bson:"user_host" json:"user_host"`
 	AgentRevision string `bson:"agent_revision" json:"agent_revision"`
 	NeedsNewAgent bool   `bson:"needs_agent" json:"needs_agent"`
