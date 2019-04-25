@@ -783,7 +783,6 @@ func UpdateBuildAndVersionStatusForTask(taskId string, updates *StatusChanges) e
 			"duration_secs": time.Since(now).Seconds(),
 		})
 	}
-	now = time.Now()
 
 	return nil
 }
