@@ -331,7 +331,7 @@ func assignNextAvailableTask(taskQueue *model.TaskQueue, currentHost *host.Host)
 				"message": "problem finding distro",
 				"spec":    spec,
 			}))
-			return nil, errors.Wrapf(err, "problem finding distro", currentHost.Distro.Id)
+			return nil, errors.Wrapf(err, "problem finding distro %s", currentHost.Distro.Id)
 		}
 		switch d.PlannerSettings.Version {
 		case evergreen.PlannerVersionTunable:
