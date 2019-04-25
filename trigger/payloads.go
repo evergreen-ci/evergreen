@@ -378,9 +378,11 @@ func makeCommonPayload(sub *event.Subscription, selectors []event.Selector,
 
 	data.Headers = makeHeaders(selectors)
 	data.SubscriptionID = sub.ID
-	data.FailedTests, err = getFailedTestsFromTemplate(*data.Task)
-	if err != nil {
-		return nil, errors.Wrap(err, "error getting failed tests")
+	if data.Task != nil {
+		data.FailedTests, err = getFailedTestsFromTemplate(*data.Task)
+		if err != nil {
+			return nil, errors.Wrap(err, "error getting failed tests")
+		}
 	}
 
 	switch sub.Subscriber.Type {
