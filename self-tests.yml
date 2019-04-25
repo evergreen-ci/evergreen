@@ -408,7 +408,7 @@ tasks:
     name: test-migrations
   - <<: *run-go-test-suite-with-mongodb
     tags: ["db", "test"]
-    name: test-grid
+    name: test-model-grid
 
 
 buildvariants:
