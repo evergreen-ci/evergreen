@@ -66,12 +66,7 @@ func TestCheckDistro(t *testing.T) {
 		})
 
 		Convey("if an existing distro passes all of the validation tests, no errors should be returned", func() {
-			d := &distro.Distro{
-				Id:       "a",
-				Arch:     "a",
-				User:     "a",
-				SSHKey:   "a",
-				WorkDir:  "a",
+			d := &distro.Distro{Id: "a", Arch: "linux_amd64", User: "a", SSHKey: "a", WorkDir: "a",
 				Provider: evergreen.ProviderNameEc2OnDemand,
 				ProviderSettings: &map[string]interface{}{
 					"ami":                "a",
