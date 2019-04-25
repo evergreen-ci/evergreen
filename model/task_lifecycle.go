@@ -572,6 +572,7 @@ func UpdateBuildAndVersionStatusForTask(taskId string, updates *StatusChanges) e
 				"operation":     "t.GetDisplayTask()",
 				"message":       "slow operation",
 				"duration_secs": time.Since(now).Seconds(),
+				"task":          t.Id,
 			})
 		}
 		now = time.Now()
@@ -594,6 +595,7 @@ func UpdateBuildAndVersionStatusForTask(taskId string, updates *StatusChanges) e
 				"operation":     "UpdateDisplayTask(), UpdateCachedTask()",
 				"message":       "slow operation",
 				"duration_secs": time.Since(now).Seconds(),
+				"task":          t.Id,
 			})
 		}
 		now = time.Now()
@@ -615,6 +617,7 @@ func UpdateBuildAndVersionStatusForTask(taskId string, updates *StatusChanges) e
 				"operation":     "b.UpdateStatus(BuildFailed)",
 				"message":       "slow operation",
 				"duration_secs": time.Since(now).Seconds(),
+				"task":          t.Id,
 			})
 		}
 		now = time.Now()
@@ -641,6 +644,7 @@ func UpdateBuildAndVersionStatusForTask(taskId string, updates *StatusChanges) e
 				"operation":     "b.SetCachedTaskFinished()",
 				"message":       "slow operation",
 				"duration_secs": time.Since(now).Seconds(),
+				"task":          t.Id,
 			})
 		}
 		now = time.Now()
