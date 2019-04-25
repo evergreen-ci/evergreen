@@ -90,7 +90,7 @@ func (c *generateTask) Execute(ctx context.Context, comm client.Communicator, lo
 		func() (bool, error) {
 			generateStatus, err = comm.GenerateTasksPoll(ctx, td)
 			if err != nil {
-				return false, errors.Wrapf(err, "error generating tasks for '%s'", conf.Task.Id)
+				return false, nil
 			}
 			if generateStatus.Finished {
 				return false, nil
