@@ -146,11 +146,14 @@ func (s *payloadSuite) TestGetFailedTestsFromTemplate() {
 		},
 		LocalTestResults: []task.TestResult{test1, test2},
 	}
+	settings, err := evergreen.GetConfig()
+	s.NoError(err)
+	s.Require().NotNil(settings)
 
 	tr, err := getFailedTestsFromTemplate(t)
 	s.NoError(err)
 	s.Require().Len(tr, 1)
-	s.Equal(tr[0].URL, "https://evergreen.mongodb.com/test_log/failed")
+	s.Equal(tr[0].URL, settings.Ui.Url+test1.URL)
 	s.NotEqual(tr[0].URL, test1.URL)
 }
 
