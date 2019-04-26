@@ -292,7 +292,7 @@ func (d *mongoDriver) Jobs(ctx context.Context) <-chan amboy.Job {
 				continue
 			}
 
-			job, err = j.Resolve(amboy.BSON)
+			job, err = j.Resolve(amboy.BSON2)
 			if err != nil {
 				grip.Warning(message.WrapError(err, message.Fields{
 					"id":        d.instanceID,
