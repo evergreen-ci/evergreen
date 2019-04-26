@@ -960,63 +960,6 @@ func TestBlockedState(t *testing.T) {
 	assert.Equal("blocked", state)
 }
 
-func TestTaskIsBlocked(t *testing.T) {
-	assert := assert.New(t)
-	assert.NoError(db.ClearCollections(Collection))
-	task1 := Task{
-		Id:     "exec0",
-		Status: evergreen.TaskFailed,
-	}
-	assert.NoError(task1.Insert())
-	task2 := Task{
-		Id: "exec1",
-		DependsOn: []Dependency{
-			{TaskId: "exec0", Status: evergreen.TaskSucceeded},
-		},
-		Status: evergreen.TaskUndispatched,
-	}
-	assert.NoError(task2.Insert())
-	isBlocked, err := task2.IsBlocked(nil)
-	assert.NoError(err)
-	assert.True(isBlocked)
-
-	assert.NoError(UpdateOne(
-		bson.M{IdKey: task1.Id},
-		bson.M{"$set": bson.M{StatusKey: evergreen.TaskSucceeded}}))
-	isBlocked, err = task2.IsBlocked(nil)
-	assert.NoError(err)
-	assert.False(isBlocked)
-}
-
-func TestTaskIsBlockedOnOutsideTask(t *testing.T) {
-	assert := assert.New(t)
-	assert.NoError(db.ClearCollections(Collection))
-	task1 := Task{
-		Id: "exec1",
-		DependsOn: []Dependency{
-			{TaskId: "outside_task", Status: evergreen.TaskSucceeded},
-		},
-		Status: evergreen.TaskUndispatched,
-	}
-	assert.NoError(task1.Insert())
-	task2 := Task{
-		Id:        "outside_task",
-		Activated: true,
-		Status:    evergreen.TaskFailed,
-	}
-	assert.NoError(task2.Insert())
-	isBlocked, err := task1.IsBlocked(nil)
-	assert.NoError(err)
-	assert.True(isBlocked)
-
-	assert.NoError(UpdateOne(
-		bson.M{IdKey: task2.Id},
-		bson.M{"$set": bson.M{StatusKey: evergreen.TaskSucceeded}}))
-	isBlocked, err = task1.IsBlocked(nil)
-	assert.NoError(err)
-	assert.False(isBlocked)
-}
-
 func TestCircularDependency(t *testing.T) {
 	assert := assert.New(t)
 	assert.NoError(db.ClearCollections(Collection))

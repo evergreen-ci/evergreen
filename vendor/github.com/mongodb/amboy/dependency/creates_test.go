@@ -42,7 +42,8 @@ func (s *CreatesFileSuite) TestInstanceImplementsManagerInterface() {
 
 func (s *CreatesFileSuite) TestConstructorCreatesObjectWithFileNameSet() {
 	for _, dir := range s.packages {
-		dep := NewCreatesFile(dir)
+		dep, ok := NewCreatesFile(dir).(*createsFile)
+		s.True(ok)
 		s.Equal(dir, dep.FileName)
 	}
 }

@@ -10,10 +10,12 @@ import (
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/amboy"
+	adb "github.com/mongodb/anser/db"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/mongodb/grip/sometimes"
 	"github.com/pkg/errors"
+	"gopkg.in/mgo.v2/bson"
 )
 
 const tsFormat = "2006-01-02.15-04-05"
@@ -553,11 +555,23 @@ func PopulateAgentDeployJobs(env evergreen.Environment) amboy.QueueOperation {
 			return nil
 		}
 
-		hosts, err := host.Find(host.NeedsNewAgent(time.Now()))
+		err = host.UpdateAll(host.LastCommunicationTimeElapsed(time.Now()), bson.M{"$set": bson.M{host.NeedsNewAgentKey: true}})
+		if err != nil && !adb.ResultsNotFound(err) {
+			grip.Error(message.WrapError(err, message.Fields{
+				"operation": "background task creation",
+				"cron":      agentDeployJobName,
+				"impact":    "agents cannot start",
+				"message":   "problem updating hosts with elapsed last communication time",
+			}))
+			return errors.WithStack(err)
+		}
+
+		hosts, err := host.Find(host.NeedsNewAgentFlagSet())
 		grip.Error(message.WrapError(err, message.Fields{
 			"operation": "background task creation",
 			"cron":      agentDeployJobName,
 			"impact":    "agents cannot start",
+			"message":   "problem finding hosts that need a new agent",
 		}))
 		if err != nil {
 			return errors.WithStack(err)
@@ -567,6 +581,10 @@ func PopulateAgentDeployJobs(env evergreen.Environment) amboy.QueueOperation {
 		ts := util.RoundPartOfMinute(20).Format(tsFormat)
 		catcher := grip.NewBasicCatcher()
 
+		// For each host, set its last communication time to now and its needs new agent
+		// flag to true. This ensures a consistent state in the agent-deploy job. That job
+		// uses setting the NeedsNewAgent field to false to prevent other jobs from running
+		// concurrently. If we didn't set one or the other of those fields, then
 		for _, h := range hosts {
 			catcher.Add(queue.Put(NewAgentDeployJob(env, h, ts)))
 		}
@@ -627,7 +645,7 @@ func PopulateHostCreationJobs(env evergreen.Environment, part int) amboy.QueueOp
 				break
 			}
 
-			catcher.Add(queue.Put(NewHostCreateJob(env, h, ts, 1, 0)))
+			catcher.Add(queue.Put(NewHostCreateJob(env, h, ts, 1, 0, false)))
 		}
 
 		return catcher.Resolve()

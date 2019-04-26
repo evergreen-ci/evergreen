@@ -331,7 +331,7 @@ func (e *envState) createGenerateTasksQueue(ctx context.Context) error {
 	}
 	e.generateTasksQueue = generateTasksQ
 
-	e.closers["single-queue-generate-tasks"] = func(ctx context.Context) error {
+	e.closers["generate-tasks"] = func(ctx context.Context) error {
 		e.generateTasksQueue.Runner().Close(ctx)
 		return nil
 	}

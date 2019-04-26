@@ -69,14 +69,20 @@ func (r *single) Start(ctx context.Context) error {
 
 	jobs := startWorkerServer(workerCtx, r.queue, &r.wg)
 
-	go func() {
-		worker(workerCtx, jobs, r.queue, &r.wg)
+	waiter := make(chan struct{})
+	go func(wg *sync.WaitGroup) {
+		close(waiter)
+		worker(workerCtx, jobs, r.queue, wg)
 		grip.Info("worker process complete")
-	}()
+	}(&r.wg)
 
-	grip.Info("started single queue worker")
-
-	return nil
+	select {
+	case <-ctx.Done():
+		return ctx.Err()
+	case <-waiter:
+		grip.Info("started single queue worker")
+		return nil
+	}
 }
 
 // Close terminates the work on the Runner. If a job is executing, the
@@ -92,11 +98,11 @@ func (r *single) Close(ctx context.Context) {
 	}
 
 	wait := make(chan struct{})
-	go func() {
+	go func(wg *sync.WaitGroup) {
 		defer recovery.LogStackTraceAndContinue("waiting for close")
 		defer close(wait)
-		r.wg.Wait()
-	}()
+		wg.Wait()
+	}(&r.wg)
 
 	select {
 	case <-ctx.Done():

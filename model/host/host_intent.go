@@ -71,7 +71,6 @@ func GenerateContainerHostIntents(d distro.Distro, newContainersNeeded int, host
 		return nil, errors.Wrap(err, "Could not find number of containers on each parent")
 	}
 	containerHostIntents := make([]Host, 0)
-
 	for _, parent := range parents {
 		// find out how many more containers this parent can fit
 		containerSpace := parent.ParentHost.ContainerPoolSettings.MaxContainers - parent.NumContainers

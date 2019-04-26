@@ -8,12 +8,14 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/units"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/gimlet"
+	adb "github.com/mongodb/anser/db"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/mongodb/grip/sometimes"
@@ -327,7 +329,20 @@ func assignNextAvailableTask(taskQueue *model.TaskQueue, currentHost *host.Host)
 	for taskQueue.Length() != 0 {
 		var queueItem *model.TaskQueueItem
 		var err error
-		switch currentHost.Distro.PlannerSettings.Version {
+		d, err := distro.FindOne(distro.ById(currentHost.Distro.Id))
+		if err != nil {
+			if adb.ResultsNotFound(err) {
+				grip.Warning(message.Fields{
+					"message": "distro not found",
+					"distro":  currentHost.Distro.Id,
+					"host":    currentHost.Id,
+				})
+				d = currentHost.Distro
+			} else {
+				return nil, errors.Wrapf(err, "problem finding distro %s", currentHost.Distro.Id)
+			}
+		}
+		switch d.PlannerSettings.Version {
 		case evergreen.PlannerVersionTunable:
 			queueItem, err = taskQueueService.RefreshFindNextTask(currentHost.Distro.Id, spec)
 			if err != nil {

@@ -2,7 +2,6 @@ package db
 
 import (
 	"context"
-	"reflect"
 	"strings"
 	"time"
 
@@ -349,7 +348,7 @@ func (r *resultsWrapper) All(result interface{}) error {
 		return errors.WithStack(r.err)
 	}
 
-	return errors.WithStack(ResolveCursorAll(r.ctx, r.cursor, result))
+	return errors.WithStack(r.cursor.All(r.ctx, result))
 }
 
 func (r *resultsWrapper) One(result interface{}) error {
@@ -508,7 +507,7 @@ func (q *queryWrapper) All(result interface{}) error {
 	if err := q.exec(); err != nil {
 		return errors.WithStack(err)
 	}
-	return errors.WithStack(ResolveCursorAll(q.ctx, q.cursor, result))
+	return errors.WithStack(q.cursor.All(q.ctx, result))
 }
 
 func (q *queryWrapper) One(result interface{}) error {
@@ -537,48 +536,6 @@ func (q *queryWrapper) Iter() Iterator {
 		cursor:  q.cursor,
 		catcher: catcher,
 	}
-}
-
-// ResolveCursorAll uses legacy mgo code to resolve a new driver's
-// cursor into an array.
-func ResolveCursorAll(ctx context.Context, iter *mongo.Cursor, result interface{}) error {
-	if iter == nil {
-		return errors.New("cannot resolve nil cursor")
-	}
-	resultv := reflect.ValueOf(result)
-	if resultv.Kind() != reflect.Ptr || resultv.Elem().Kind() != reflect.Slice {
-		return errors.Errorf("result argument must be a slice address '%T'", result)
-	}
-	slicev := resultv.Elem()
-	slicev = slicev.Slice(0, slicev.Cap())
-	elemt := slicev.Type().Elem()
-	catcher := grip.NewCatcher()
-	i := 0
-	for {
-		if slicev.Len() == i {
-			elemp := reflect.New(elemt)
-			if !iter.Next(ctx) {
-				if i == 0 {
-					return nil
-				}
-				break
-			}
-
-			catcher.Add(iter.Decode(elemp.Interface()))
-			slicev = reflect.Append(slicev, elemp.Elem())
-			slicev = slicev.Slice(0, slicev.Cap())
-		} else {
-			if !iter.Next(ctx) {
-				break
-			}
-			catcher.Add(iter.Decode(slicev.Index(i).Addr().Interface()))
-		}
-		i++
-	}
-	resultv.Elem().Set(slicev.Slice(0, i))
-	catcher.Add(iter.Err())
-	catcher.Add(iter.Close(ctx))
-	return catcher.Resolve()
 }
 
 // ResolveCursorOne decodes the first result in a cursor, for use in

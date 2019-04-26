@@ -102,10 +102,6 @@ func (c *dockerClientMock) GetContainer(context.Context, *host.Host, string) (*t
 }
 
 func (c *dockerClientMock) GetDockerLogs(_ context.Context, containerID string, _ *host.Host, _ types.ContainerLogsOptions) (io.Reader, error) {
-	if containerID == "" { // container not started yet
-		return nil, errors.New("Failed to generate docker client")
-	}
-
 	return bytes.NewBufferString("this is a log message"), nil
 }
 

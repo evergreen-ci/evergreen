@@ -17,6 +17,7 @@ import (
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/level"
 	"github.com/mongodb/grip/message"
+	"github.com/pkg/errors"
 )
 
 const collectHostIdleDataJobName = "collect-host-idle-data"
@@ -94,6 +95,9 @@ func (j *collectHostIdleDataJob) Run(ctx context.Context) {
 	if j.host == nil {
 		j.host, err = host.FindOneId(j.HostID)
 		j.AddError(err)
+		if j.host == nil {
+			j.AddError(errors.Errorf("unable to retrieve host %s", j.HostID))
+		}
 	}
 
 	if j.task == nil && j.TaskID != "" {
@@ -184,8 +188,14 @@ func (j *collectHostIdleDataJob) getHostStatsMessage(cost float64, idleTime time
 		msg["host_task_count"] = j.host.TaskCount
 	}
 
+	if j.host.TaskCount == 1 && j.TaskID != "" {
+		msg["startup_secs"] = j.task.StartTime.Sub(j.host.CreationTime).Seconds()
+	}
+
 	if j.host.Status == evergreen.HostTerminated {
 		msg["total_idle_secs"] = j.host.TotalIdleTime.Seconds()
+		msg["total_uptime_secs"] = j.host.TerminationTime.Sub(j.host.CreationTime).Seconds()
+		msg["total_utilization_secs"] = (j.host.TerminationTime.Sub(j.host.CreationTime) - j.host.TotalIdleTime).Seconds()
 	}
 
 	return message.ConvertToComposer(level.Info, msg)
