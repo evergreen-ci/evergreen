@@ -251,6 +251,10 @@ func (d *mongoGroupDriver) Save(ctx context.Context, j amboy.Job) error {
 		return errors.Wrapf(err, "problem saving document %s: %+v", name, res)
 	}
 
+	if res.MatchedCount == 0 {
+		return errors.Errorf("problem saving job [id=%s, matched=%d, modified=%d]", name, res.MatchedCount, res.ModifiedCount)
+	}
+
 	return nil
 }
 
@@ -266,8 +270,8 @@ func (d *mongoGroupDriver) SaveStatus(ctx context.Context, j amboy.Job, stat amb
 		return errors.Wrapf(err, "problem updating status document for %s", j.ID())
 	}
 
-	if res.ModifiedCount != 1 {
-		return errors.Errorf("did not update any status documents [matched=%d, modified=%d]", res.MatchedCount, res.ModifiedCount)
+	if res.MatchedCount == 0 {
+		return errors.Errorf("did not update any status documents [id=%s, matched=%d, modified=%d]", j.ID(), res.MatchedCount, res.ModifiedCount)
 	}
 
 	j.SetStatus(stat)
