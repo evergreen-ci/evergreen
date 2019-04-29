@@ -31,6 +31,7 @@ var distroSyntaxValidators = []distroValidator{
 	ensureValidBootstrapMethod,
 	ensureHasNoUnauthorizedCharacters,
 	ensureHasValidPlannerVersion,
+	ensureHasValidFinderVersion,
 }
 
 // CheckDistro checks if the distro configuration syntax is valid. Returns
@@ -233,7 +234,21 @@ func ensureHasValidPlannerVersion(ctx context.Context, d *distro.Distro, s *ever
 	if !util.StringSliceContains(evergreen.ValidPlannerVersions, d.PlannerSettings.Version) {
 		return ValidationErrors{
 			{
-				Message: fmt.Sprintf("invalid distro.planner_settings.version '%s' for distro '%s'", d.PlannerSettings.Version, d.Id),
+				Message: fmt.Sprintf("invalid PlannerSettings.Version '%s' for distro '%s'", d.PlannerSettings.Version, d.Id),
+				Level:   Error,
+			},
+		}
+	}
+
+	return nil
+}
+
+// ensureHasValidPlannerVersion checks that the distro's PlannerSetting.Version is valid
+func ensureHasValidFinderVersion(ctx context.Context, d *distro.Distro, s *evergreen.Settings) ValidationErrors {
+	if !util.StringSliceContains(evergreen.ValidFinderVersions, d.FinderSettings.Version) {
+		return ValidationErrors{
+			{
+				Message: fmt.Sprintf("invalid FinderSettings.Version '%s' for distro '%s'", d.FinderSettings.Version, d.Id),
 				Level:   Error,
 			},
 		}

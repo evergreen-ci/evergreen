@@ -152,7 +152,7 @@ func NewGithubIntent(msgDeliveryID string, event *github.PullRequestEvent) (Inte
 // SetProcessed should be called by an amboy queue after creating a patch from an intent.
 func (g *githubIntent) SetProcessed() error {
 	g.Processed = true
-	g.ProcessedAt = time.Now().Round(time.Millisecond).UTC()
+	g.ProcessedAt = time.Now().UTC().Round(time.Millisecond)
 	return updateOneIntent(
 		bson.M{documentIDKey: g.DocumentID},
 		bson.M{"$set": bson.M{
@@ -183,7 +183,7 @@ func (g *githubIntent) GetType() string {
 
 // Insert inserts a patch intent in the database.
 func (g *githubIntent) Insert() error {
-	g.CreatedAt = time.Now().Round(time.Millisecond).UTC()
+	g.CreatedAt = time.Now().UTC().Round(time.Millisecond)
 	err := db.Insert(IntentCollection, g)
 	if err != nil {
 		g.CreatedAt = time.Time{}

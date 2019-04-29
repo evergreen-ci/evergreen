@@ -38,6 +38,11 @@ type mongoGroupDriver struct {
 // distinct queues with a single MongoDB collection.
 func NewMongoGroupDriver(name string, opts MongoDBOptions, group string) Driver {
 	host, _ := os.Hostname() // nolint
+
+	if !opts.Format.IsValid() {
+		opts.Format = amboy.BSON
+	}
+
 	return &mongoGroupDriver{
 		name:       name,
 		group:      group,
@@ -190,7 +195,7 @@ func (d *mongoGroupDriver) Get(ctx context.Context, name string) (amboy.Job, err
 
 	j.Name = j.Name[len(d.group)+1:]
 
-	output, err := j.Resolve(amboy.BSON2)
+	output, err := j.Resolve(d.opts.Format)
 	if err != nil {
 		return nil, errors.Wrapf(err,
 			"GET problem converting '%s' to job object", name)
@@ -200,7 +205,7 @@ func (d *mongoGroupDriver) Get(ctx context.Context, name string) (amboy.Job, err
 }
 
 func (d *mongoGroupDriver) Put(ctx context.Context, j amboy.Job) error {
-	job, err := registry.MakeJobInterchange(j, amboy.BSON2)
+	job, err := registry.MakeJobInterchange(j, d.opts.Format)
 	if err != nil {
 		return errors.Wrap(err, "problem converting job to interchange format")
 	}
@@ -226,7 +231,7 @@ func (d *mongoGroupDriver) Save(ctx context.Context, j amboy.Job) error {
 	stat.ModificationTime = time.Now()
 	j.SetStatus(stat)
 
-	job, err := registry.MakeJobInterchange(j, amboy.BSON2)
+	job, err := registry.MakeJobInterchange(j, d.opts.Format)
 	if err != nil {
 		return errors.Wrap(err, "problem converting job to interchange format")
 	}
@@ -251,6 +256,10 @@ func (d *mongoGroupDriver) Save(ctx context.Context, j amboy.Job) error {
 		return errors.Wrapf(err, "problem saving document %s: %+v", name, res)
 	}
 
+	if res.MatchedCount == 0 {
+		return errors.Errorf("problem saving job [id=%s, matched=%d, modified=%d]", name, res.MatchedCount, res.ModifiedCount)
+	}
+
 	return nil
 }
 
@@ -266,8 +275,8 @@ func (d *mongoGroupDriver) SaveStatus(ctx context.Context, j amboy.Job, stat amb
 		return errors.Wrapf(err, "problem updating status document for %s", j.ID())
 	}
 
-	if res.ModifiedCount != 1 {
-		return errors.Errorf("did not update any status documents [matched=%d, modified=%d]", res.MatchedCount, res.ModifiedCount)
+	if res.MatchedCount == 0 {
+		return errors.Errorf("did not update any status documents [id=%s, matched=%d, modified=%d]", j.ID(), res.MatchedCount, res.ModifiedCount)
 	}
 
 	j.SetStatus(stat)
@@ -307,7 +316,7 @@ func (d *mongoGroupDriver) Jobs(ctx context.Context) <-chan amboy.Job {
 
 			j.Name = j.Name[len(d.group)+1:]
 
-			job, err = j.Resolve(amboy.BSON)
+			job, err = j.Resolve(d.opts.Format)
 			if err != nil {
 				grip.Warning(message.WrapError(err, message.Fields{
 					"id":        d.instanceID,
@@ -458,7 +467,7 @@ RETRY:
 					continue CURSOR
 				}
 
-				job, err = j.Resolve(amboy.BSON2)
+				job, err = j.Resolve(d.opts.Format)
 				if err != nil {
 					grip.Warning(message.WrapError(err, message.Fields{
 						"id":        d.instanceID,

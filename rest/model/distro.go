@@ -8,7 +8,10 @@ import (
 	"github.com/pkg/errors"
 )
 
+////////////////////////////////////////////////////////////////////////////////
+//
 // APIPlannerSettings is the model to be returned by the API whenever distro.PlannerSettings are fetched
+
 type APIPlannerSettings struct {
 	Version                APIString   `json:"version"`
 	MinimumHosts           int         `json:"minimum_hosts"`
@@ -33,7 +36,7 @@ func (s *APIPlannerSettings) BuildFromService(h interface{}) error {
 		return errors.Errorf("%T is not an supported expansion type", h)
 	}
 
-	if len(settings.Version) == 0 {
+	if settings.Version == "" {
 		s.Version = ToAPIString(evergreen.PlannerVersionLegacy)
 	} else {
 		s.Version = ToAPIString(settings.Version)
@@ -54,10 +57,9 @@ func (s *APIPlannerSettings) BuildFromService(h interface{}) error {
 func (s *APIPlannerSettings) ToService() (interface{}, error) {
 	settings := distro.PlannerSettings{}
 	settings.Version = FromAPIString(s.Version)
-	if len(settings.Version) == 0 {
+	if settings.Version == "" {
 		settings.Version = evergreen.PlannerVersionLegacy
 	}
-	settings.Version = FromAPIString(s.Version)
 	settings.MinimumHosts = s.MinimumHosts
 	settings.MaximumHosts = s.MaximumHosts
 	settings.TargetTime = s.TargetTime.ToDuration()
@@ -70,7 +72,50 @@ func (s *APIPlannerSettings) ToService() (interface{}, error) {
 	return interface{}(settings), nil
 }
 
+////////////////////////////////////////////////////////////////////////////////
+//
+// APIFinderSettings is the model to be returned by the API whenever distro.FinderSettings are fetched
+
+type APIFinderSettings struct {
+	Version APIString `json:"version"`
+}
+
+// BuildFromService converts from service level distro.FinderSettings to an APIFinderSettings
+func (s *APIFinderSettings) BuildFromService(h interface{}) error {
+	var settings distro.FinderSettings
+	switch v := h.(type) {
+	case distro.FinderSettings:
+		settings = v
+	case *distro.FinderSettings:
+		settings = *v
+	default:
+		return errors.Errorf("%T is not an supported expansion type", h)
+	}
+
+	if settings.Version == "" {
+		s.Version = ToAPIString(evergreen.FinderVersionLegacy)
+	} else {
+		s.Version = ToAPIString(settings.Version)
+	}
+
+	return nil
+}
+
+// ToService returns a service layer distro.FinderSettings using the data from APIFinderSettings
+func (s *APIFinderSettings) ToService() (interface{}, error) {
+	settings := distro.FinderSettings{}
+	settings.Version = FromAPIString(s.Version)
+	if settings.Version == "" {
+		settings.Version = evergreen.FinderVersionLegacy
+	}
+
+	return interface{}(settings), nil
+}
+
+////////////////////////////////////////////////////////////////////////////////
+//
 // APIDistro is the model to be returned by the API whenever distros are fetched
+
 type APIDistro struct {
 	Name             APIString              `json:"name"`
 	UserSpawnAllowed bool                   `json:"user_spawn_allowed"`
@@ -91,6 +136,7 @@ type APIDistro struct {
 	Disabled         bool                   `json:"disabled"`
 	ContainerPool    APIString              `json:"container_pool"`
 	PlannerSettings  APIPlannerSettings     `json:"planner_settings"`
+	FinderSettings   APIFinderSettings      `json:"finder_settings"`
 }
 
 // BuildFromService converts from service level distro.Distro to an APIDistro
@@ -144,11 +190,16 @@ func (apiDistro *APIDistro) BuildFromService(h interface{}) error {
 			apiDistro.Expansions = append(apiDistro.Expansions, expansion)
 		}
 	}
-	settings := APIPlannerSettings{}
-	if err := settings.BuildFromService(d.PlannerSettings); err != nil {
+	plannerSettings := APIPlannerSettings{}
+	if err := plannerSettings.BuildFromService(d.PlannerSettings); err != nil {
 		return errors.Wrap(err, "Error converting from distro.PlannerSettings to model.APIPlannerSettings")
 	}
-	apiDistro.PlannerSettings = settings
+	apiDistro.PlannerSettings = plannerSettings
+	finderSettings := APIFinderSettings{}
+	if err := finderSettings.BuildFromService(d.FinderSettings); err != nil {
+		return errors.Wrap(err, "Error converting from distro.FinderSettings to model.APIFinderSettings")
+	}
+	apiDistro.FinderSettings = finderSettings
 
 	return nil
 }
@@ -193,11 +244,20 @@ func (apiDistro *APIDistro) ToService() (interface{}, error) {
 	if err != nil {
 		return nil, errors.Wrap(err, "Error converting from model.APIPlannerSettings to distro.PlannerSetting")
 	}
-	settings, ok := i.(distro.PlannerSettings)
+	plannerSettings, ok := i.(distro.PlannerSettings)
 	if !ok {
 		return nil, errors.Errorf("Unexpected type %T for distro.PlannerSettings", i)
 	}
-	d.PlannerSettings = settings
+	d.PlannerSettings = plannerSettings
+	i, err = apiDistro.FinderSettings.ToService()
+	if err != nil {
+		return nil, errors.Wrap(err, "Error converting from model.APIFinderSettings to distro.FinderSetting")
+	}
+	finderSettings, ok := i.(distro.FinderSettings)
+	if !ok {
+		return nil, errors.Errorf("Unexpected type %T for distro.FinderSettings", i)
+	}
+	d.FinderSettings = finderSettings
 
 	return &d, nil
 }

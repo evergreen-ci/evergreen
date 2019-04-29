@@ -34,6 +34,11 @@ type mgoDriver struct {
 // serves as a prefix for collection names, and a MongoDB connection
 func NewMgoDriver(name string, opts MongoDBOptions) Driver {
 	host, _ := os.Hostname() // nolint
+
+	if !opts.Format.IsValid() {
+		opts.Format = amboy.BSON
+	}
+
 	return &mgoDriver{
 		name:       name,
 		opts:       opts,
@@ -164,7 +169,7 @@ func (d *mgoDriver) Get(_ context.Context, name string) (amboy.Job, error) {
 		return nil, errors.Wrapf(err, "GET problem fetching '%s'", name)
 	}
 
-	output, err := j.Resolve(amboy.BSON)
+	output, err := j.Resolve(d.opts.Format)
 	if err != nil {
 		return nil, errors.Wrapf(err,
 			"GET problem converting '%s' to job object", name)
@@ -195,7 +200,7 @@ func getAtomicQuery(owner, jobName string, modCount int) bson.M {
 
 // Put inserts the job into the collection, returning an error when that job already exists.
 func (d *mgoDriver) Put(_ context.Context, j amboy.Job) error {
-	job, err := registry.MakeJobInterchange(j, amboy.BSON)
+	job, err := registry.MakeJobInterchange(j, d.opts.Format)
 	if err != nil {
 		return errors.Wrap(err, "problem converting job to interchange format")
 	}
@@ -224,7 +229,7 @@ func (d *mgoDriver) Save(_ context.Context, j amboy.Job) error {
 	stat.ModificationTime = time.Now()
 	j.SetStatus(stat)
 
-	job, err := registry.MakeJobInterchange(j, amboy.BSON)
+	job, err := registry.MakeJobInterchange(j, d.opts.Format)
 	if err != nil {
 		return errors.Wrap(err, "problem converting job to interchange format")
 	}
@@ -292,7 +297,7 @@ func (d *mgoDriver) Jobs(ctx context.Context) <-chan amboy.Job {
 		defer results.Close()
 		j := &registry.JobInterchange{}
 		for results.Next(j) {
-			job, err := j.Resolve(amboy.BSON)
+			job, err := j.Resolve(d.opts.Format)
 			if err != nil {
 				grip.Warning(message.WrapError(err, message.Fields{
 					"id":        d.instanceID,
@@ -430,7 +435,7 @@ func (d *mgoDriver) Next(ctx context.Context) amboy.Job {
 				continue
 			}
 
-			job, err = j.Resolve(amboy.BSON)
+			job, err = j.Resolve(d.opts.Format)
 			if err != nil {
 				grip.Warning(message.WrapError(err, message.Fields{
 					"id":        d.instanceID,

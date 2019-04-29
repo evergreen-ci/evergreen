@@ -228,8 +228,8 @@ mciModule.controller('PerfController', function PerfController(
       var key = tests[i];
       var series = trendSamples.seriesByName[key] || [];
       var containerId = 'perf-trendchart-' + cleanId(taskId) + '-' + i;
-      var cps = scope.changePoints
-      var bfs = scope.buildFailures
+      var cps = scope.changePoints || {};
+      var bfs = scope.buildFailures || {};
 
       DrawPerfTrendChart({
         series: series,
@@ -548,12 +548,12 @@ mciModule.controller('PerfController', function PerfController(
       "totalOperations": "Total Ops",
       "totalSize": "Total Size",
       "totalSamples": "Total Samples"
-    }
+    };
 
     var metrics = {};
     _.each(results, function(result) {
       _.each(result.rollups.stats, function(metric) {
-        metrics[metric.name] = metricNames[metric.name]
+        metrics[metric.name] = metricNames[metric.name] ? metricNames[metric.name]:metric.name;
       })
     })
 

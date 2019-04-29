@@ -10,10 +10,10 @@ import (
 	"github.com/pkg/errors"
 )
 
-type TaskFinder func(string) ([]task.Task, error)
+type TaskFinder func(distroID string) ([]task.Task, error)
 
-func GetTaskFinder(name string) TaskFinder {
-	switch name {
+func GetTaskFinder(version string) TaskFinder {
+	switch version {
 	case "parallel":
 		return ParallelTaskFinder
 	case "legacy":

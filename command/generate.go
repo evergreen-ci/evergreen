@@ -90,13 +90,16 @@ func (c *generateTask) Execute(ctx context.Context, comm client.Communicator, lo
 		func() (bool, error) {
 			generateStatus, err = comm.GenerateTasksPoll(ctx, td)
 			if err != nil {
-				return false, errors.Wrapf(err, "error generating tasks for '%s'", conf.Task.Id)
+				return true, err
 			}
 			if generateStatus.Finished {
 				return false, nil
 			}
 			return true, errors.New("task generation unfinished")
 		}, 100, time.Second, 15*time.Second)
+	if err != nil {
+		return errors.WithMessage(err, "problem polling for generate tasks job")
+	}
 	if len(generateStatus.Errors) > 0 {
 		return errors.New(strings.Join(generateStatus.Errors, ", "))
 	}

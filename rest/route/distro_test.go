@@ -114,7 +114,7 @@ func (s *DistroPatchSetupByIDSuite) TestRunValidId() {
 	s.Equal(apiDistro.Setup, model.ToAPIString("New set-up script"))
 }
 
-func (s *DistroPatchSetupByIDSuite) TestRunInValidId() {
+func (s *DistroPatchSetupByIDSuite) TestRunInvalidId() {
 	ctx := context.Background()
 	h := s.rm.(*distroIDChangeSetupHandler)
 	h.distroID = "invalid"
@@ -158,7 +158,7 @@ func (s *DistroTeardownByIDSuite) TestRunValidId() {
 	s.Equal(script, model.ToAPIString("Tear-down script"))
 }
 
-func (s *DistroTeardownByIDSuite) TestRunInValidId() {
+func (s *DistroTeardownByIDSuite) TestRunInvalidId() {
 	ctx := context.Background()
 	h := s.rm.(*distroIDGetTeardownHandler)
 	h.distroID = "invalid"
@@ -222,7 +222,7 @@ func (s *DistroPatchTeardownByIDSuite) TestRunValidId() {
 	s.Equal(apiDistro.Teardown, model.ToAPIString("New tear-down script"))
 }
 
-func (s *DistroPatchTeardownByIDSuite) TestRunInValidId() {
+func (s *DistroPatchTeardownByIDSuite) TestRunInvalidId() {
 	ctx := context.Background()
 	h := s.rm.(*distroIDChangeTeardownHandler)
 	h.distroID = "invalid"
@@ -393,7 +393,7 @@ func (s *DistroPutSuite) TestRunNewWithValidEntity() {
 	s.Equal(resp.Status(), http.StatusCreated)
 }
 
-func (s *DistroPutSuite) TestRunNewWithInValidEntity() {
+func (s *DistroPutSuite) TestRunNewWithInvalidEntity() {
 	ctx := context.Background()
 	json := []byte(`{"arch": "linux_amd64", "work_dir": "/data/mci", "ssh_key": "", "bootstrap_method": "foo", "provider": "mock", "user": "tibor", "planner_settings": {"version": "invalid"}}`)
 	h := s.rm.(*distroIDPutHandler)
@@ -405,8 +405,8 @@ func (s *DistroPutSuite) TestRunNewWithInValidEntity() {
 	s.Equal(resp.Status(), http.StatusBadRequest)
 	err := (resp.Data()).(gimlet.ErrorResponse)
 	s.Contains(err.Message, "ERROR: distro 'ssh_key' cannot be blank")
-	s.Contains(err.Message, "ERROR: invalid distro.planner_settings.version 'invalid' for distro 'distro4'")
 	s.Contains(err.Message, "ERROR: error validating bootstrap method: 'foo' is not a valid bootstrap method")
+	s.Contains(err.Message, "ERROR: invalid PlannerSettings.Version 'invalid' for distro 'distro4'")
 }
 
 func (s *DistroPutSuite) TestRunNewConflictingName() {
@@ -435,7 +435,7 @@ func (s *DistroPutSuite) TestRunExistingWithValidEntity() {
 	s.Equal(resp.Status(), http.StatusOK)
 }
 
-func (s *DistroPutSuite) TestRunExistingWithInValidEntity() {
+func (s *DistroPutSuite) TestRunExistingWithInvalidEntity() {
 	ctx := context.Background()
 	json := []byte(`{"arch": "", "work_dir": "/data/mci", "ssh_key": "SSH Key", "provider": "", "user": ""}`)
 	h := s.rm.(*distroIDPutHandler)
@@ -519,7 +519,7 @@ func (s *DistroDeleteByIDSuite) TestRunValidDistroId() {
 	s.Equal(resp.Status(), http.StatusOK)
 }
 
-func (s *DistroDeleteByIDSuite) TestRunInValidDistroId() {
+func (s *DistroDeleteByIDSuite) TestRunInvalidDistroId() {
 	ctx := context.Background()
 	h := s.rm.(*distroIDDeleteHandler)
 	h.distroID = "distro4"
@@ -864,7 +864,7 @@ func (s *DistroPatchByIDSuite) TestRunValidContainer() {
 	s.Equal(apiDistro.PlannerSettings.Version, model.ToAPIString("legacy"))
 }
 
-func (s *DistroPatchByIDSuite) TestRunInValidEmptyStringValues() {
+func (s *DistroPatchByIDSuite) TestRunInvalidEmptyStringValues() {
 	ctx := context.Background()
 	json := []byte(`{"arch": "","user": "","work_dir": "","ssh_key": "","provider": ""}`)
 	h := s.rm.(*distroIDPatchHandler)
@@ -905,7 +905,7 @@ func (s *DistroPatchByIDSuite) TestRunValidPlannerSettingsVersion() {
 	s.Equal(model.ToAPIString("tunable"), apiDistro.PlannerSettings.Version)
 }
 
-func (s *DistroPatchByIDSuite) TestRunInValidPlannerSettingsVersion() {
+func (s *DistroPatchByIDSuite) TestRunInvalidPlannerSettingsVersion() {
 	ctx := context.Background()
 	json := []byte(`{"planner_settings": {"version": "invalid"}}`)
 	h := s.rm.(*distroIDPatchHandler)
@@ -915,6 +915,33 @@ func (s *DistroPatchByIDSuite) TestRunInValidPlannerSettingsVersion() {
 	resp := s.rm.Run(ctx)
 	s.NotNil(resp.Data())
 	s.Equal(http.StatusBadRequest, resp.Status())
+}
+
+func (s *DistroPatchByIDSuite) TestRunInvalidFinderSettingsVersion() {
+	ctx := context.Background()
+	json := []byte(`{"finder_settings": {"version": "invalid"}}`)
+	h := s.rm.(*distroIDPatchHandler)
+	h.distroID = "fedora8"
+	h.body = json
+
+	resp := s.rm.Run(ctx)
+	s.NotNil(resp.Data())
+	s.Equal(http.StatusBadRequest, resp.Status())
+}
+
+func (s *DistroPatchByIDSuite) TestRunValidFinderSettingsVersion() {
+	ctx := context.Background()
+	json := []byte(`{"finder_settings": {"version": "legacy"}}`)
+	h := s.rm.(*distroIDPatchHandler)
+	h.distroID = "fedora8"
+	h.body = json
+
+	resp := s.rm.Run(ctx)
+	s.NotNil(resp.Data())
+	s.Equal(resp.Status(), http.StatusOK)
+	apiDistro, ok := (resp.Data()).(*model.APIDistro)
+	s.Require().True(ok)
+	s.Equal(model.ToAPIString("legacy"), apiDistro.PlannerSettings.Version)
 }
 
 func (s *DistroPatchByIDSuite) TestRunValidBootstrapMethod() {
@@ -1039,7 +1066,7 @@ func (s *DistroPatchByIDSuite) TestValidFindAndReplaceFullDocument() {
 	})
 }
 
-func (s *DistroPatchByIDSuite) TestRunInValidNameChange() {
+func (s *DistroPatchByIDSuite) TestRunInvalidNameChange() {
 	ctx := context.Background()
 	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "user1"})
 	json := []byte(`{"name": "Updated distro name"}`)
