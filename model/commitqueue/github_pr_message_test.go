@@ -33,22 +33,20 @@ func TestGithubMergePRMessageValidator(t *testing.T) {
 	assert := assert.New(t)
 
 	missingPRNum := GithubMergePR{
-		ProjectID:     "mci",
-		Owner:         "evergreen-ci",
-		Repo:          "evergreen",
-		Ref:           "deadbeef",
-		CommitMessage: "merged by cq",
+		ProjectID: "mci",
+		Owner:     "evergreen-ci",
+		Repo:      "evergreen",
+		Ref:       "deadbeef",
 	}
 	c := NewGithubMergePRMessage(level.Info, missingPRNum)
 	assert.False(c.Loggable())
 
 	missingMergeMethod := GithubMergePR{
-		ProjectID:     "mci",
-		Owner:         "evergreen-ci",
-		Repo:          "evergreen",
-		Ref:           "deadbeef",
-		CommitMessage: "merged by cq",
-		PRNum:         1,
+		ProjectID: "mci",
+		Owner:     "evergreen-ci",
+		Repo:      "evergreen",
+		Ref:       "deadbeef",
+		PRNum:     1,
 	}
 	c = NewGithubMergePRMessage(level.Info, missingMergeMethod)
 	assert.True(c.Loggable())
