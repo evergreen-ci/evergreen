@@ -334,7 +334,7 @@ func (e *envState) createGenerateTasksQueue(ctx context.Context) error {
 	e.remoteQueueGroup = remoteQueueGroup
 
 	e.closers["generate-tasks"] = func(ctx context.Context) error {
-		return errors.WithSTack(e.remoteQueueGroup.Close(ctx), "problem waiting for remote queue group to close")
+		return errors.Wrap(e.remoteQueueGroup.Close(ctx), "problem waiting for remote queue group to close")
 	}
 
 	return nil
