@@ -2,7 +2,6 @@ package units
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"net/http"
 	"time"
@@ -30,8 +29,8 @@ func init() {
 
 type generateTasksJob struct {
 	job.Base `bson:"job_base" json:"job_base" yaml:"job_base"`
-	TaskID   string            `bson:"task_id" json:"task_id" yaml:"task_id"`
-	JSON     []json.RawMessage `bson:"json" json:"json" yaml:"json"`
+	TaskID   string   `bson:"task_id" json:"task_id" yaml:"task_id"`
+	JSON     [][]byte `bson:"json" json:"json" yaml:"json"`
 }
 
 func makeGenerateTaskJob() *generateTasksJob {
@@ -48,7 +47,7 @@ func makeGenerateTaskJob() *generateTasksJob {
 	return j
 }
 
-func NewGenerateTasksJob(id string, json []json.RawMessage) amboy.Job {
+func NewGenerateTasksJob(id string, json [][]byte) amboy.Job {
 	j := makeGenerateTaskJob()
 	j.TaskID = id
 	j.JSON = json
@@ -99,7 +98,7 @@ func (j *generateTasksJob) Run(ctx context.Context) {
 	j.AddError(err)
 }
 
-func parseProjects(jsonBytes []json.RawMessage) ([]model.GeneratedProject, error) {
+func parseProjects(jsonBytes [][]byte) ([]model.GeneratedProject, error) {
 	catcher := grip.NewBasicCatcher()
 	var projects []model.GeneratedProject
 	for _, f := range jsonBytes {

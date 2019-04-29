@@ -2,7 +2,6 @@ package data
 
 import (
 	"context"
-	"encoding/json"
 	"io"
 	"time"
 
@@ -210,7 +209,7 @@ type Connector interface {
 	GetCLIUpdate() (*restModel.APICLIUpdate, error)
 
 	// GenerateTasks parses JSON files for `generate.tasks` and creates the new builds and tasks.
-	GenerateTasks(context.Context, string, []json.RawMessage, amboy.Queue) error
+	GenerateTasks(context.Context, string, [][]byte, amboy.Queue) error
 
 	// GeneratePoll checks to see if a `generate.tasks` job has finished.
 	GeneratePoll(context.Context, string, amboy.Queue) (bool, []string, error)

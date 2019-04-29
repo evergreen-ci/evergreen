@@ -2,7 +2,6 @@ package route
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"net/http"
 
@@ -24,7 +23,7 @@ func makeGenerateTasksHandler(sc data.Connector, q amboy.Queue) gimlet.RouteHand
 }
 
 type generateHandler struct {
-	files  []json.RawMessage
+	files  [][]byte
 	taskID string
 	sc     data.Connector
 	queue  amboy.Queue
@@ -40,10 +39,9 @@ func (h *generateHandler) Factory() gimlet.RouteHandler {
 func (h *generateHandler) Parse(ctx context.Context, r *http.Request) error {
 	var err error
 	if h.files, err = parseJson(r); err != nil {
-		failedJson := []byte{}
 		return gimlet.ErrorResponse{
 			StatusCode: http.StatusBadRequest,
-			Message:    fmt.Sprintf("error reading JSON from body (%s):\n%s", err, string(failedJson)),
+			Message:    fmt.Sprintf("error reading JSON from body (%s)", err),
 		}
 	}
 	h.taskID = gimlet.GetVars(r)["task_id"]
@@ -62,8 +60,8 @@ func (h *generateHandler) Parse(ctx context.Context, r *http.Request) error {
 	return nil
 }
 
-func parseJson(r *http.Request) ([]json.RawMessage, error) {
-	var files []json.RawMessage
+func parseJson(r *http.Request) ([][]byte, error) {
+	var files [][]byte
 	err := util.ReadJSONInto(r.Body, &files)
 	return files, err
 }
