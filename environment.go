@@ -326,7 +326,7 @@ func (e *envState) createGenerateTasksQueue(ctx context.Context) error {
 	if err = generateTasksQ.SetDriver(singlemdb); err != nil {
 		return errors.WithStack(err)
 	}
-	if err = generateTasksQ.SetRunner(pool.NewAbortablePool(1, generateTasksQ)); err != nil {
+	if err = generateTasksQ.SetRunner(pool.NewAbortablePool(8, generateTasksQ)); err != nil {
 		return errors.Wrap(err, "problem configuring worker pool for generate tasks queue")
 	}
 	e.generateTasksQueue = generateTasksQ
