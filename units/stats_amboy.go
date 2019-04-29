@@ -97,14 +97,6 @@ func (j *amboyStatsCollector) Run(ctx context.Context) {
 			j.AddError(j.collectExtendedRemoteStats(ctx))
 		}
 	}
-
-	generateTasksQueue := j.env.GenerateTasksQueue()
-	if !j.ExcludeRemote && (generateTasksQueue != nil && generateTasksQueue.Started()) {
-		j.logger.Info(message.Fields{
-			"message": "amboy generate tasks queue stats",
-			"stats":   generateTasksQueue.Stats(),
-		})
-	}
 }
 
 func (j *amboyStatsCollector) collectExtendedRemoteStats(ctx context.Context) error {
