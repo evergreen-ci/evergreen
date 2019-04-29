@@ -35,6 +35,11 @@ type mgoGroupDriver struct {
 // serves as a prefix for collection names, and a MongoDB connection
 func NewMgoGroupDriver(name string, opts MongoDBOptions, group string) Driver {
 	host, _ := os.Hostname() // nolint
+
+	if !opts.Format.IsValid() {
+		opts.Format = amboy.BSON
+	}
+
 	return &mgoGroupDriver{
 		name:       name,
 		opts:       opts,
@@ -170,7 +175,7 @@ func (d *mgoGroupDriver) Get(_ context.Context, name string) (amboy.Job, error) 
 
 	j.Name = j.Name[len(d.group)+1:]
 
-	output, err := j.Resolve(amboy.BSON)
+	output, err := j.Resolve(d.opts.Format)
 	if err != nil {
 		return nil, errors.Wrapf(err,
 			"GET problem converting '%s' to job object", name)
@@ -181,7 +186,7 @@ func (d *mgoGroupDriver) Get(_ context.Context, name string) (amboy.Job, error) 
 
 // Put inserts the job into the collection, returning an error when that job already exists.
 func (d *mgoGroupDriver) Put(_ context.Context, j amboy.Job) error {
-	job, err := registry.MakeJobInterchange(j, amboy.BSON)
+	job, err := registry.MakeJobInterchange(j, d.opts.Format)
 	if err != nil {
 		return errors.Wrap(err, "problem converting job to interchange format")
 	}
@@ -212,7 +217,7 @@ func (d *mgoGroupDriver) Save(_ context.Context, j amboy.Job) error {
 	stat.ModificationTime = time.Now()
 	j.SetStatus(stat)
 
-	job, err := registry.MakeJobInterchange(j, amboy.BSON)
+	job, err := registry.MakeJobInterchange(j, d.opts.Format)
 	if err != nil {
 		return errors.Wrap(err, "problem converting job to interchange format")
 	}
@@ -285,7 +290,7 @@ func (d *mgoGroupDriver) Jobs(ctx context.Context) <-chan amboy.Job {
 		for results.Next(j) {
 			j.Name = j.Name[len(d.group)+1:]
 
-			job, err := j.Resolve(amboy.BSON)
+			job, err := j.Resolve(d.opts.Format)
 			if err != nil {
 				grip.Warning(message.WrapError(err, message.Fields{
 					"id":        d.instanceID,
@@ -428,7 +433,7 @@ func (d *mgoGroupDriver) Next(ctx context.Context) amboy.Job {
 			}
 			j.Name = j.Name[len(d.group)+1:]
 
-			job, err = j.Resolve(amboy.BSON)
+			job, err = j.Resolve(d.opts.Format)
 			if err != nil {
 				grip.Warning(message.WrapError(err, message.Fields{
 					"id":        d.instanceID,

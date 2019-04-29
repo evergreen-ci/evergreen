@@ -36,6 +36,7 @@ type MongoDBOptions struct {
 	Priority        bool
 	CheckWaitUntil  bool
 	SkipIndexBuilds bool
+	Format          amboy.Format
 }
 
 // DefaultMongoDBOptions constructs a new options object with default
@@ -48,5 +49,6 @@ func DefaultMongoDBOptions() MongoDBOptions {
 		Priority:        false,
 		CheckWaitUntil:  true,
 		SkipIndexBuilds: false,
+		Format:          amboy.BSON,
 	}
 }

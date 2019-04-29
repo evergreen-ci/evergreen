@@ -29,3 +29,13 @@ func (f Format) String() string {
 		return "INVALID"
 	}
 }
+
+// IsValid returns true if when a valid format is specified, and false otherwise
+func (f Format) IsValid() bool {
+	switch f {
+	case JSON, YAML, BSON, BSON2:
+		return true
+	default:
+		return false
+	}
+}

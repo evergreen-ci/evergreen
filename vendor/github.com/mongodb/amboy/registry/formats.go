@@ -6,7 +6,7 @@ import (
 	"github.com/mongodb/amboy"
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson"
-	legacyBSON "gopkg.in/mgo.v2/bson"
+	mgobson "gopkg.in/mgo.v2/bson"
 	yaml "gopkg.in/yaml.v2"
 )
 
@@ -24,7 +24,7 @@ func convertTo(f amboy.Format, v interface{}) ([]byte, error) {
 	case amboy.YAML:
 		output, err = yaml.Marshal(v)
 	case amboy.BSON:
-		output, err = legacyBSON.Marshal(v)
+		output, err = mgobson.Marshal(v)
 	case amboy.BSON2:
 		output, err = bson.Marshal(v)
 	default:
@@ -47,7 +47,7 @@ func convertFrom(f amboy.Format, data []byte, v interface{}) error {
 	case amboy.JSON:
 		return errors.Wrap(json.Unmarshal(data, v), "problem serializing data from json")
 	case amboy.BSON:
-		return errors.Wrap(legacyBSON.Unmarshal(data, v), "problem serializing data from bson")
+		return errors.Wrap(mgobson.Unmarshal(data, v), "problem serializing data from bson")
 	case amboy.BSON2:
 		return errors.Wrap(bson.Unmarshal(data, v), "problem serializing data from bson (new)")
 	case amboy.YAML:

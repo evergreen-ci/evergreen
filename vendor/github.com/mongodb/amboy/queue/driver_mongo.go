@@ -37,6 +37,11 @@ type mongoDriver struct {
 // database interface.
 func NewMongoDriver(name string, opts MongoDBOptions) Driver {
 	host, _ := os.Hostname() // nolint
+
+	if !opts.Format.IsValid() {
+		opts.Format = amboy.BSON
+	}
+
 	return &mongoDriver{
 		name:       name,
 		opts:       opts,
@@ -175,7 +180,7 @@ func (d *mongoDriver) Get(ctx context.Context, name string) (amboy.Job, error) {
 		return nil, errors.Wrapf(err, "GET problem decoding '%s'", name)
 	}
 
-	output, err := j.Resolve(amboy.BSON2)
+	output, err := j.Resolve(d.opts.Format)
 	if err != nil {
 		return nil, errors.Wrapf(err,
 			"GET problem converting '%s' to job object", name)
@@ -185,7 +190,7 @@ func (d *mongoDriver) Get(ctx context.Context, name string) (amboy.Job, error) {
 }
 
 func (d *mongoDriver) Put(ctx context.Context, j amboy.Job) error {
-	job, err := registry.MakeJobInterchange(j, amboy.BSON2)
+	job, err := registry.MakeJobInterchange(j, d.opts.Format)
 	if err != nil {
 		return errors.Wrap(err, "problem converting job to interchange format")
 	}
@@ -215,7 +220,7 @@ func (d *mongoDriver) Save(ctx context.Context, j amboy.Job) error {
 	stat.ModificationTime = time.Now()
 	j.SetStatus(stat)
 
-	job, err := registry.MakeJobInterchange(j, amboy.BSON2)
+	job, err := registry.MakeJobInterchange(j, d.opts.Format)
 	if err != nil {
 		return errors.Wrap(err, "problem converting job to interchange format")
 	}
@@ -292,7 +297,7 @@ func (d *mongoDriver) Jobs(ctx context.Context) <-chan amboy.Job {
 				continue
 			}
 
-			job, err = j.Resolve(amboy.BSON2)
+			job, err = j.Resolve(d.opts.Format)
 			if err != nil {
 				grip.Warning(message.WrapError(err, message.Fields{
 					"id":        d.instanceID,
@@ -439,7 +444,7 @@ RETRY:
 					continue CURSOR
 				}
 
-				job, err = j.Resolve(amboy.BSON2)
+				job, err = j.Resolve(d.opts.Format)
 				if err != nil {
 					grip.Warning(message.WrapError(err, message.Fields{
 						"id":        d.instanceID,
