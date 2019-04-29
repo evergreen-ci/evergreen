@@ -29,6 +29,7 @@ var patchDisplayTemplate = template.Must(template.New("patch").Parse(`
 	Created : {{.Patch.CreateTime}}
     Description : {{if .Patch.Description}}{{.Patch.Description}}{{else}}<none>{{end}}
 	  Build : {{.Link}}
+	 Status : {{.Patch.Status}}
       Finalized : {{if .Patch.Activated}}Yes{{else}}No{{end}}
 {{if .ShowSummary}}
 	Summary :
