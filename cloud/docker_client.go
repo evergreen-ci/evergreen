@@ -75,6 +75,9 @@ func GetDockerClient(s *evergreen.Settings) DockerClient {
 // machine. The Docker client must be exposed and available for requests at the
 // client port 3369 on the host machine.
 func (c *dockerClientImpl) generateClient(h *host.Host) (*docker.Client, error) {
+	if h == nil {
+		return nil, errors.New("host cannot be nil")
+	}
 	if h.Host == "" {
 		return nil, errors.New("HostIP must not be blank")
 	}
@@ -391,12 +394,35 @@ func (c *dockerClientImpl) CreateContainer(ctx context.Context, parentHost, cont
 // GetDockerLogs returns output logs or error logs, based on the given options.
 // This assumes the container is not using TTY.
 func (c *dockerClientImpl) GetDockerLogs(ctx context.Context, containerID string, parent *host.Host, options types.ContainerLogsOptions) (io.Reader, error) {
+	if parent != nil {
+		grip.Debug(message.Fields{
+			"message":       "at the start of GetDockerLogs",
+			"operation":     "docker logs",
+			"ticket":        "EVG-6100",
+			"host":          containerID,
+			"options":       options,
+			"parent_status": parent.Status,
+		})
+	}
+
 	dockerClient, err := c.generateClient(parent)
 	if err != nil {
+		grip.Debug(message.WrapError(err, message.Fields{
+			"message":   "problem generating client",
+			"operation": "docker logs",
+			"ticket":    "EVG-6100",
+			"host":      containerID,
+		}))
 		return nil, errors.Wrap(err, "Failed to generate docker client")
 	}
 	stream, err := dockerClient.ContainerLogs(ctx, containerID, options)
 	if err != nil {
+		grip.Debug(message.WrapError(err, message.Fields{
+			"message":   "problem getting docker logs",
+			"operation": "docker logs",
+			"ticket":    "EVG-6100",
+			"host":      containerID,
+		}))
 		return nil, errors.Wrapf(err, "Docker logs API call failed for container %s", containerID)
 	}
 	tempout := &bytes.Buffer{}
@@ -404,6 +430,12 @@ func (c *dockerClientImpl) GetDockerLogs(ctx context.Context, containerID string
 
 	_, err = stdcopy.StdCopy(tempout, temperr, stream)
 	if err != nil {
+		grip.Debug(message.WrapError(err, message.Fields{
+			"message":   "problem copying stream from docker logs",
+			"operation": "docker logs",
+			"ticket":    "EVG-6100",
+			"host":      containerID,
+		}))
 		return nil, errors.Wrapf(err, "Error copying stream for container %s", containerID)
 	}
 
