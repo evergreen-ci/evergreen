@@ -68,7 +68,7 @@ mciModule.controller('PerfBBRejectsCtrl', function (
       state.getFilteringContext()
     );
 
-    if(!filteringChain) {
+    if (!filteringChain) {
       filteringChain = {$match:{}};
     }
     if(!filteringChain['$match']) {
@@ -151,12 +151,12 @@ mciModule.controller('PerfBBRejectsCtrl', function (
     vm.isLoading = true;
     vm.gridOptions.data = [];
     const promises = {
-      docs:Stitch.use(STITCH_CONFIG.PERF).query((db) => {
+      docs: Stitch.use(STITCH_CONFIG.PERF).query((db) => {
         return db.db(STITCH_CONFIG.PERF.DB_PERF)
           .collection(STITCH_CONFIG.PERF.COLL_POINTS)
           .aggregate($scope.getAggChain(vm.state));
       }),
-      whitelist:WhitelistService.getWhitelistQ(project,{})
+      whitelist: WhitelistService.getWhitelistQ(project,{})
     };
     theMostRecentPromise = promises.docs;
     $q.all(promises).then((results) => {
