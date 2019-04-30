@@ -187,11 +187,16 @@ func (as *APIServer) EndTask(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// mark task as finished
-	updates := model.StatusChanges{}
-	err = model.MarkEnd(t, APIServerLockTitle, finishTime, details, projectRef.DeactivatePrevious, &updates)
+	err = model.MarkEnd(t, APIServerLockTitle, finishTime, details, projectRef.DeactivatePrevious)
 	if err != nil {
 		err = errors.Wrapf(err, "Error calling mark finish on task %v", t.Id)
 		as.LoggedError(w, r, http.StatusInternalServerError, err)
+		return
+	}
+
+	job := units.NewUpdateBuildAndVersionJob(t.Id, t.Execution)
+	if err = as.queue.Put(job); err != nil {
+		as.LoggedError(w, r, http.StatusInternalServerError, errors.Wrap(err, "problem putting update build and version job"))
 		return
 	}
 
@@ -223,7 +228,7 @@ func (as *APIServer) EndTask(w http.ResponseWriter, r *http.Request) {
 		})
 	}
 
-	job := units.NewCollectTaskEndDataJob(t, currentHost)
+	job = units.NewCollectTaskEndDataJob(t, currentHost)
 	if err = as.queue.Put(job); err != nil {
 		as.LoggedError(w, r, http.StatusInternalServerError,
 			errors.Wrap(err, "couldn't queue job to update task cost accounting"))
