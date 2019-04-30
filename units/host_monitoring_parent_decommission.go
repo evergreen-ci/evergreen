@@ -107,7 +107,7 @@ func (j *parentDecommissionJob) Run(ctx context.Context) {
 		}
 
 		for _, c := range containersToDeco {
-			if c.Status == evergreen.HostRunning {
+			if c.Status == evergreen.HostRunning && !c.SpawnOptions.SpawnedByTask {
 				j.AddError(c.SetDecommissioned(evergreen.User, ""))
 				continue
 			}
