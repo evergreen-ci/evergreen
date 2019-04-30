@@ -125,7 +125,7 @@ mciModule.controller('PerfController', function PerfController(
   $scope.metricSelect.options.push($scope.metricSelect.default)
   $scope.metricSelect.value = $scope.metricSelect.default
 
-  // perftab refers to which tab should be selected. 0=graph, 1=table, 2=trend, 3=trend-table
+  // perftab refers to which tab should be selected. 0=graph, 1=table, 2=trend
   $scope.perftab = 2;
   $scope.project = $window.project;
   $scope.compareHash = "ss";
