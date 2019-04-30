@@ -31,10 +31,14 @@ func (a *Agent) startTask(ctx context.Context, tc *taskContext, complete chan<- 
 			}
 			grip.Alert(m)
 			select {
-			case complete <- evergreen.TaskSystemFailed:
+			case complete <- evergreen.TaskFailed:
+				tc.getCurrentCommand().SetType(evergreen.CommandTypeSystem)
 				grip.Debug("marked task as system-failed after panic")
 			default:
 				grip.Debug("marking task system failed during panic handling, but complete channel was blocked")
+			}
+			if tc.logger != nil && !tc.logger.Closed() {
+				tc.logger.Execution().Error("Evergreen agent hit a runtime error, marking task system-failed")
 			}
 		}
 	}()
@@ -163,11 +167,21 @@ func (a *Agent) runPreTaskCommands(ctx context.Context, tc *taskContext) error {
 		tc.logger.Execution().Error(errors.Wrap(err, "error fetching task group for pre-task commands"))
 		return nil
 	}
+
 	if taskGroup.SetupTask != nil {
+		// TODO EVG-6009 uncomment the following line once we are ready to change the behavior
+		//opts.shouldSetupFail = taskGroup.SetupGroupFailTask
 		opts.shouldSetupFail = false
+		opts.isPre = true
 		err = a.runCommands(ctx, tc, taskGroup.SetupTask.List(), opts)
 	}
-	tc.logger.Task().ErrorWhenf(err != nil, "Running pre-task commands failed: %v", err)
+	if err != nil {
+		msg := fmt.Sprintf("Running pre-task commands failed: %v", err)
+		tc.logger.Task().Error(msg)
+		if opts.shouldSetupFail {
+			return errors.New(msg)
+		}
+	}
 	tc.logger.Task().InfoWhen(err == nil, "Finished running pre-task commands.")
 	return nil
 }

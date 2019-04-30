@@ -9,6 +9,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/rest/client"
 	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
 	"github.com/mongodb/grip/recovery"
 	"github.com/pkg/errors"
 )
@@ -16,6 +17,8 @@ import (
 type runCommandsOptions struct {
 	isTaskCommands  bool
 	shouldSetupFail bool
+	// TODO EVG-6009 remove the following once monitoring is done
+	isPre bool
 }
 
 func (a *Agent) runCommands(ctx context.Context, tc *taskContext, commands []model.PluginCommandConf,
@@ -123,6 +126,16 @@ func (a *Agent) runCommandSet(ctx context.Context, tc *taskContext, commandInfo 
 				tc.logger.Task().Errorf("Command failed: %v", err)
 				if options.isTaskCommands || options.shouldSetupFail {
 					return errors.Wrap(err, "command failed")
+				}
+				// TODO EVG-6009 remove the following once monitoring is done
+				if options.isPre {
+					grip.Alert(message.Fields{
+						"message": "command failed pre",
+						"ticket":  "EVG-6009",
+						"command": cmd,
+						"task":    tc.task.ID,
+						"project": tc.taskConfig.Project.Identifier,
+					})
 				}
 			}
 		case <-ctx.Done():
