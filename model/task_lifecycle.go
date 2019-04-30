@@ -135,6 +135,10 @@ func resetTask(taskId, caller string) error {
 		return errors.WithStack(err)
 	}
 
+	if err = build.SetCachedTaskActivated(t.BuildId, t.Id, true); err != nil {
+		return errors.WithStack(err)
+	}
+
 	// update the cached version of the task, in its build document
 	if err = build.ResetCachedTask(t.BuildId, t.Id); err != nil {
 		return errors.WithStack(err)
