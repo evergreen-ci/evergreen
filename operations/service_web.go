@@ -56,7 +56,7 @@ func startWebService() cli.Command {
 			grip.SetName("evergreen.service")
 			grip.Notice(message.Fields{"build": evergreen.BuildRevision, "process": grip.Name()})
 
-			startSystemCronJobs(ctx, env)
+			grip.EmergencyFatal(errors.Wrap(startSystemCronJobs(ctx, env), "problem starting background work"))
 
 			var (
 				apiServer *http.Server
