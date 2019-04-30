@@ -11,8 +11,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/rest/client"
 	"github.com/mitchellh/mapstructure"
-	"github.com/mongodb/grip"
-	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 )
 
@@ -129,8 +127,7 @@ func (c *createHost) waitForLogs(ctx context.Context, comm client.Communicator, 
 			batchEnd := time.Now()
 			status, err := comm.GetDockerStatus(ctx, hostID)
 			if err != nil {
-				logger.Task().Debugf("Tick -- problem receiving docker logs in host.create: '%s'", err.Error())
-				grip.Info(message.WrapError(err, "problem receiving docker logs in host.create"))
+				logger.Task().Infof("problem receiving docker logs in host.create: '%s'", err.Error())
 				if startedCollectingLogs {
 					return nil // container has likely exited
 				}
@@ -139,15 +136,14 @@ func (c *createHost) waitForLogs(ctx context.Context, comm client.Communicator, 
 			if status.HasStarted {
 				startedCollectingLogs = true
 				if err = c.getAndWriteLogBatch(ctx, comm, hostID, batchStart, batchEnd); err != nil {
-					logger.Task().Debugf("Tick -- error getting and writing logs on started container: '%s'", err.Error())
-					grip.Debug(message.WrapError(err, "error getting and writing logs on started container"))
+					logger.Task().Debugf("problem getting and writing logs on started container: '%s'", err.Error())
 					continue
 				}
-				logger.Task().Debug("Tick -- successful log batch")
+				logger.Task().Debug("successful log batch")
 				batchStart = batchEnd.Add(time.Nanosecond) // to prevent repeat logs
 
 				if !status.IsRunning { // container exited
-					logger.Task().Debugf("Tick -- Logs retrieved for container _id %s in %d seconds",
+					logger.Task().Infof("Logs retrieved for container _id %s in %d seconds",
 						hostID, int(time.Since(startTime).Seconds()))
 					return nil
 				}
