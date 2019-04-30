@@ -846,7 +846,7 @@ func (c *communicatorImpl) GetDockerLogs(ctx context.Context, hostID string, sta
 	}
 
 	info := requestInfo{
-		method:  post,
+		method:  get,
 		version: apiVersion2,
 		path:    path,
 	}
