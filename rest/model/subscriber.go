@@ -23,7 +23,6 @@ type APIGithubPRSubscriber struct {
 }
 
 type APIGithubMergeSubscriber struct {
-	ProjectID     APIString `json:"project_id" mapstructure:"project_id"`
 	Owner         APIString `json:"owner" mapstructure:"owner"`
 	Repo          APIString `json:"repo" mapstructure:"repo"`
 	PRNumber      int       `json:"pr_number" mapstructure:"pr_number"`
@@ -78,7 +77,7 @@ func (s *APISubscriber) BuildFromService(h interface{}) error {
 			target = sub
 
 		case event.JIRACommentSubscriberType, event.EmailSubscriberType,
-			event.SlackSubscriberType:
+			event.SlackSubscriberType, event.CommitQueueDequeueSubscriberType:
 			target = v.Target
 
 		default:
@@ -183,7 +182,7 @@ func (s *APISubscriber) ToService() (interface{}, error) {
 		}
 
 	case event.JIRACommentSubscriberType, event.EmailSubscriberType,
-		event.SlackSubscriberType:
+		event.SlackSubscriberType, event.CommitQueueDequeueSubscriberType:
 		target = s.Target
 
 	default:
@@ -226,7 +225,6 @@ func (s *APIGithubPRSubscriber) ToService() (interface{}, error) {
 func (s *APIGithubMergeSubscriber) BuildFromService(h interface{}) error {
 	switch v := h.(type) {
 	case *event.GithubMergeSubscriber:
-		s.ProjectID = ToAPIString(v.ProjectID)
 		s.Owner = ToAPIString(v.Owner)
 		s.Repo = ToAPIString(v.Repo)
 		s.PRNumber = v.PRNumber
@@ -244,7 +242,6 @@ func (s *APIGithubMergeSubscriber) BuildFromService(h interface{}) error {
 
 func (s *APIGithubMergeSubscriber) ToService() (interface{}, error) {
 	return event.GithubMergeSubscriber{
-		ProjectID:     FromAPIString(s.ProjectID),
 		Owner:         FromAPIString(s.Owner),
 		Repo:          FromAPIString(s.Repo),
 		PRNumber:      s.PRNumber,

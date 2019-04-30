@@ -351,7 +351,7 @@ func (p *Patch) UpdateGithashProjectAndTasks() error {
 }
 
 func (p *Patch) IsGithubPRPatch() bool {
-	return p.GithubPatchData.BaseOwner != ""
+	return p.GithubPatchData.HeadOwner != ""
 }
 
 func (p *Patch) IsPRMergePatch() bool {

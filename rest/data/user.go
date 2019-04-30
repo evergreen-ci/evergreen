@@ -46,6 +46,7 @@ func (u *DBUserConnector) UpdateSettings(dbUser *user.DBUser, settings user.User
 	settings.Notifications.PatchFinishID = dbUser.Settings.Notifications.PatchFinishID
 	settings.Notifications.SpawnHostOutcomeID = dbUser.Settings.Notifications.SpawnHostOutcomeID
 	settings.Notifications.SpawnHostExpirationID = dbUser.Settings.Notifications.SpawnHostExpirationID
+	settings.Notifications.CommitQueueID = dbUser.Settings.Notifications.CommitQueueID
 
 	var patchSubscriber event.Subscriber
 	switch settings.Notifications.PatchFinish {
@@ -117,6 +118,24 @@ func (u *DBUserConnector) UpdateSettings(dbUser *user.DBUser, settings user.User
 		settings.Notifications.SpawnHostOutcomeID = spawnHostOutcomeSubscription.ID
 	} else {
 		settings.Notifications.SpawnHostOutcomeID = ""
+	}
+
+	var commitQueueSubscriber event.Subscriber
+	switch settings.Notifications.CommitQueue {
+	case user.PreferenceSlack:
+		commitQueueSubscriber = event.NewSlackSubscriber(fmt.Sprintf("@%s", settings.SlackUsername))
+	case user.PreferenceEmail:
+		commitQueueSubscriber = event.NewEmailSubscriber(dbUser.Email())
+	}
+	commitQueueSubscription, err := event.CreateOrUpdateImplicitSubscription(event.ImplicitSubscriptionCommitQueue,
+		dbUser.Settings.Notifications.CommitQueueID, commitQueueSubscriber, dbUser.Id)
+	if err != nil {
+		return errors.Wrap(err, "failed to create commit queue subscription")
+	}
+	if commitQueueSubscription != nil {
+		settings.Notifications.CommitQueueID = commitQueueSubscription.ID
+	} else {
+		settings.Notifications.CommitQueueID = ""
 	}
 
 	return model.SaveUserSettings(dbUser.Id, settings)

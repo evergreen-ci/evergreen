@@ -50,6 +50,7 @@ const (
 	ImplicitSubscriptionBuildBreak                    = "build-break"
 	ImplicitSubscriptionSpawnhostExpiration           = "spawnhost-expiration"
 	ImplicitSubscriptionSpawnHostOutcome              = "spawnhost-outcome"
+	ImplicitSubscriptionCommitQueue                   = "commit-queue"
 )
 
 type Subscription struct {
@@ -408,6 +409,8 @@ func CreateOrUpdateImplicitSubscription(resourceType string, id string,
 				temp = NewSpawnhostExpirationSubscription(user, subscriber)
 			case ImplicitSubscriptionSpawnHostOutcome:
 				temp = NewSpawnHostOutcomeByOwner(user, subscriber)
+			case ImplicitSubscriptionCommitQueue:
+				temp = NewCommitQueueSubscriptionByOwner(user, subscriber)
 			default:
 				return nil, errors.Errorf("unknown subscription resource type: %s", resourceType)
 			}
@@ -527,4 +530,8 @@ func NewSpawnHostOutcomeByOwner(owner string, sub Subscriber) Subscription {
 		},
 		Subscriber: sub,
 	}
+}
+
+func NewCommitQueueSubscriptionByOwner(owner string, sub Subscriber) Subscription {
+	return NewSubscriptionByOwner(owner, sub, ResourceTypeCommitQueue, triggerOutcome)
 }

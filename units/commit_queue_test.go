@@ -112,7 +112,6 @@ func (s *commitQueueSuite) TestSubscribeMerge() {
 	s.Equal(event.ResourceTypePatch, subscription.ResourceType)
 	target, ok := subscription.Subscriber.Target.(*event.GithubMergeSubscriber)
 	s.True(ok)
-	s.Equal(s.projectRef.Identifier, target.ProjectID)
 	s.Equal(s.projectRef.Owner, target.Owner)
 	s.Equal(s.projectRef.Repo, target.Repo)
 	s.Equal(s.pr.GetTitle(), target.CommitTitle)

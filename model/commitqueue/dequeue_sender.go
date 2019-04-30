@@ -1,6 +1,8 @@
 package commitqueue
 
 import (
+	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/mongodb/grip/send"
@@ -31,7 +33,6 @@ func NewCommitQueueDequeueLogger(name string, l send.LevelInfo) (send.Sender, er
 	return cq, nil
 }
 
-// Send post issues via jiraCommentJournal with information in the message.Composer
 func (cq *commitQueueDequeueLogger) Send(m message.Composer) {
 	if !cq.Level().ShouldLog(m) {
 		return
@@ -47,6 +48,12 @@ func (cq *commitQueueDequeueLogger) doSend(m message.Composer) error {
 	if !ok {
 		return errors.Errorf("message of type *DequeueItem is really of type %T", m)
 	}
+
+	status := evergreen.MergeTestSucceeded
+	if dequeue.Status == evergreen.PatchFailed {
+		status = evergreen.MergeTestFailed
+	}
+	event.LogCommitQueueConcludeTest(dequeue.Item, status)
 
 	queue, err := FindOneId(dequeue.ProjectID)
 	if err != nil {

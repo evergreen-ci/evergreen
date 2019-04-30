@@ -10,6 +10,7 @@ import (
 type DequeueItem struct {
 	ProjectID string
 	Item      string
+	Status    string
 }
 
 type dequeueItemMessage struct {
@@ -30,7 +31,7 @@ func NewDequeueItemMessage(p level.Priority, dequeueMsg DequeueItem) message.Com
 }
 
 func (c *dequeueItemMessage) Loggable() bool {
-	return c.raw.ProjectID != "" && c.raw.Item != ""
+	return c.raw.ProjectID != "" && c.raw.Item != "" && c.raw.Status != ""
 }
 
 func (c *dequeueItemMessage) String() string {
