@@ -59,7 +59,7 @@ func TestRemoteUnorderedPriorityDriverSuite(t *testing.T) {
 	suite.Run(t, tests)
 }
 
-func TestRemoteUnorderedMongoDBSuite(t *testing.T) {
+func TestRemoteUnorderedMgoSuite(t *testing.T) {
 	tests := new(RemoteUnorderedSuite)
 	name := "test-" + uuid.NewV4().String()
 	uri := "mongodb://localhost"

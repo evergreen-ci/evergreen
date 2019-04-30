@@ -276,13 +276,7 @@ filters.common.filter('conditional', function() {
       return task;
     }
     var cls = task.status;
-    if (task.status == 'undispatched' || (task.display_only && task.task_waiting)) {
-      if (!task.activated) {
-        cls = 'inactive';
-      } else {
-        cls = 'unstarted';
-      }
-    } else if (task.status == 'started') {
+    if (task.status == 'started') {
       cls = 'started';
     } else if (task.status == 'success') {
       cls = 'success';
@@ -307,6 +301,12 @@ filters.common.filter('conditional', function() {
           }
         }
       }
+    } else if (task.status == 'undispatched' || (task.display_only && task.task_waiting)) {
+        if (!task.activated) {
+            cls = 'inactive';
+        } else {
+            cls = 'unstarted';
+        }
     }
     return cls;
   }
@@ -314,9 +314,6 @@ filters.common.filter('conditional', function() {
 
 .filter('statusLabel', function() {
   return function(task) {
-    if (task.task_waiting && !task.override_dependencies) {
-      return task.task_waiting;
-    }
     if (task.status == 'started') {
       return 'started';
     } else if (task.status == 'undispatched' && task.activated) {
@@ -360,6 +357,9 @@ filters.common.filter('conditional', function() {
         }
         return 'failed';
       }
+    }
+    if (task.task_waiting && !task.override_dependencies) {
+        return task.task_waiting;
     }
     return task.status;
   }
@@ -413,7 +413,7 @@ filters.common.filter('conditional', function() {
   }
 })
 .filter('expandedMetricConverter', function() {
-  return function(data) {
+  return function(data, execution) {
     if (!data) {
       return null;
     }
@@ -424,21 +424,34 @@ filters.common.filter('conditional', function() {
     };
 
     _.each(data, function(test) {
-        if (!test.info || !test.info.args) {
-            return;
-        }
-        let result = {};
-        let threads = test.info.args.thread_level;
-        result[threads] = {};
+      if (execution && test.info.execution !== execution) {
+        return;
+      }
+      var result = {};
+      var threads
+      if (test.info && test.info.args) {
+        threads = test.info.args.thread_level;
+      } else {
         _.each(test.rollups.stats, function (stat) {
-            result[threads][stat.name] = stat.val[0].Value;
-            result[threads][stat.name + "_values"] = [stat.val[0].Value];
+          if (stat.name === "avgWorkers") {
+            threads = stat.val;
+          }
         });
-        output.data.results.push({
-            "name": test.info.test_name,
-            "isExpandedMetric": true,
-            "results": result
-        });
+      }
+      if (!threads) {
+        return;
+      }
+      result[threads] = {};
+
+      _.each(test.rollups.stats, function (stat) {
+          result[threads][stat.name] = Array.isArray(stat.val) ? stat.val[0].Value : stat.val;
+          result[threads][stat.name + "_values"] = Array.isArray(stat.val) ? [stat.val[0].Value] : [stat.val];
+      });
+      output.data.results.push({
+          "name": test.info.test_name,
+          "isExpandedMetric": true,
+          "results": result
+      });
     })
 
     return output;

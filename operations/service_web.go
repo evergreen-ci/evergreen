@@ -41,14 +41,13 @@ func startWebService() cli.Command {
 				grip.EmergencyFatal(errors.Wrap(env.SaveConfig(), "problem saving config"))
 			}
 			grip.EmergencyFatal(errors.Wrap(env.RemoteQueue().Start(ctx), "problem starting remote queue"))
-			grip.EmergencyFatal(errors.Wrap(env.GenerateTasksQueue().Start(ctx), "problem starting generate tasks"))
 
 			settings := env.Settings()
 			sender, err := settings.GetSender(env)
 			grip.EmergencyFatal(err)
 			grip.EmergencyFatal(grip.SetSender(sender))
 			queue := env.RemoteQueue()
-			generateQueue := env.GenerateTasksQueue()
+			remoteQueueGroup := env.RemoteQueueGroup()
 
 			defer cancel()
 			defer sender.Close()
@@ -57,14 +56,14 @@ func startWebService() cli.Command {
 			grip.SetName("evergreen.service")
 			grip.Notice(message.Fields{"build": evergreen.BuildRevision, "process": grip.Name()})
 
-			startSystemCronJobs(ctx, env)
+			grip.EmergencyFatal(errors.Wrap(startSystemCronJobs(ctx, env), "problem starting background work"))
 
 			var (
 				apiServer *http.Server
 				uiServer  *http.Server
 			)
 
-			serviceHandler, err := getServiceRouter(settings, queue, generateQueue)
+			serviceHandler, err := getServiceRouter(settings, queue, remoteQueueGroup)
 			if err != nil {
 				return errors.WithStack(err)
 			}
@@ -158,7 +157,7 @@ func gracefulShutdownForSIGTERM(ctx context.Context, servers []*http.Server, wai
 	close(wait)
 }
 
-func getServiceRouter(settings *evergreen.Settings, queue amboy.Queue, generateQueue amboy.Queue) (http.Handler, error) {
+func getServiceRouter(settings *evergreen.Settings, queue amboy.Queue, remoteQueueGroup amboy.QueueGroup) (http.Handler, error) {
 	home := evergreen.FindEvergreenHome()
 	if home == "" {
 		return nil, errors.New("EVGHOME environment variable must be set to run UI server")
@@ -174,7 +173,7 @@ func getServiceRouter(settings *evergreen.Settings, queue amboy.Queue, generateQ
 		return nil, errors.Wrap(err, "failed to create UI server")
 	}
 
-	as, err := service.NewAPIServer(settings, queue, generateQueue)
+	as, err := service.NewAPIServer(settings, queue, remoteQueueGroup)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to create API server")
 	}

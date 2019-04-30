@@ -10,10 +10,12 @@ import (
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/amboy"
+	adb "github.com/mongodb/anser/db"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/mongodb/grip/sometimes"
 	"github.com/pkg/errors"
+	"gopkg.in/mgo.v2/bson"
 )
 
 const tsFormat = "2006-01-02.15-04-05"
@@ -211,7 +213,7 @@ func PopulateEventAlertProcessing(parts int) amboy.QueueOperation {
 	}
 }
 
-func PopulateTaskMonitoring() amboy.QueueOperation {
+func PopulateTaskMonitoring(mins int) amboy.QueueOperation {
 	return func(queue amboy.Queue) error {
 		flags, err := evergreen.GetServiceFlags()
 		if err != nil {
@@ -227,33 +229,7 @@ func PopulateTaskMonitoring() amboy.QueueOperation {
 			return nil
 		}
 
-		taskIDs := map[string]int{}
-		tasks, err := host.FindStaleRunningTasks(heartbeatTimeoutThreshold)
-		if err != nil {
-			return errors.Wrap(err, "error finding tasks with timed-out or stale heartbeats")
-		}
-		for _, t := range tasks {
-			taskIDs[t.Id] = t.Execution
-		}
-		tasks, err = host.StaleRunningTaskIDs(heartbeatTimeoutThreshold)
-		if err != nil {
-			return errors.Wrap(err, "error finding tasks with timed-out or stale heartbeats")
-		}
-		for _, t := range tasks {
-			taskIDs[t.Id] = t.Execution
-		}
-
-		catcher := grip.NewBasicCatcher()
-		for id, execution := range taskIDs {
-			ts := util.RoundPartOfHour(15)
-			catcher.Add(queue.Put(NewTaskExecutionMonitorJob(id, execution, 1, ts.Format(tsFormat))))
-		}
-		grip.Info(message.Fields{
-			"operation": "task-execution-timeout",
-			"num_tasks": len(tasks),
-		})
-
-		return catcher.Resolve()
+		return queue.Put(NewTaskExecutionMonitorPopulateJob(util.RoundPartOfHour(mins).Format(tsFormat)))
 	}
 }
 
@@ -579,11 +555,23 @@ func PopulateAgentDeployJobs(env evergreen.Environment) amboy.QueueOperation {
 			return nil
 		}
 
-		hosts, err := host.Find(host.NeedsNewAgent(time.Now()))
+		err = host.UpdateAll(host.LastCommunicationTimeElapsed(time.Now()), bson.M{"$set": bson.M{host.NeedsNewAgentKey: true}})
+		if err != nil && !adb.ResultsNotFound(err) {
+			grip.Error(message.WrapError(err, message.Fields{
+				"operation": "background task creation",
+				"cron":      agentDeployJobName,
+				"impact":    "agents cannot start",
+				"message":   "problem updating hosts with elapsed last communication time",
+			}))
+			return errors.WithStack(err)
+		}
+
+		hosts, err := host.Find(host.NeedsNewAgentFlagSet())
 		grip.Error(message.WrapError(err, message.Fields{
 			"operation": "background task creation",
 			"cron":      agentDeployJobName,
 			"impact":    "agents cannot start",
+			"message":   "problem finding hosts that need a new agent",
 		}))
 		if err != nil {
 			return errors.WithStack(err)
@@ -593,6 +581,10 @@ func PopulateAgentDeployJobs(env evergreen.Environment) amboy.QueueOperation {
 		ts := util.RoundPartOfMinute(20).Format(tsFormat)
 		catcher := grip.NewBasicCatcher()
 
+		// For each host, set its last communication time to now and its needs new agent
+		// flag to true. This ensures a consistent state in the agent-deploy job. That job
+		// uses setting the NeedsNewAgent field to false to prevent other jobs from running
+		// concurrently. If we didn't set one or the other of those fields, then
 		for _, h := range hosts {
 			catcher.Add(queue.Put(NewAgentDeployJob(env, h, ts)))
 		}
@@ -653,7 +645,7 @@ func PopulateHostCreationJobs(env evergreen.Environment, part int) amboy.QueueOp
 				break
 			}
 
-			catcher.Add(queue.Put(NewHostCreateJob(env, h, ts, 1, 0)))
+			catcher.Add(queue.Put(NewHostCreateJob(env, h, ts, 1, 0, false)))
 		}
 
 		return catcher.Resolve()
@@ -751,11 +743,6 @@ func PopulatePeriodicNotificationJobs(parts int) amboy.QueueOperation {
 
 func PopulateCacheHistoricalTestDataJob(part int) amboy.QueueOperation {
 	return func(queue amboy.Queue) error {
-		projects, err := model.FindAllTrackedProjectRefs()
-		if err != nil {
-			return errors.WithStack(err)
-		}
-
 		flags, err := evergreen.GetServiceFlags()
 		if err != nil {
 			return errors.WithStack(err)
@@ -767,6 +754,11 @@ func PopulateCacheHistoricalTestDataJob(part int) amboy.QueueOperation {
 				"mode":    "degraded",
 			})
 			return nil
+		}
+
+		projects, err := model.FindAllTrackedProjectRefs()
+		if err != nil {
+			return errors.WithStack(err)
 		}
 
 		ts := util.RoundPartOfDay(part).Format(tsFormat)
@@ -784,9 +776,32 @@ func PopulateCacheHistoricalTestDataJob(part int) amboy.QueueOperation {
 	}
 }
 
-func PopulateJasperCleanup(env evergreen.Environment) amboy.QueueOperation {
+func PopulateLocalQueueJobs(env evergreen.Environment) amboy.QueueOperation {
 	return func(queue amboy.Queue) error {
-		ts := util.RoundPartOfHour(1).Format(tsFormat)
-		return queue.Put(NewJasperManagerCleanup(ts, env))
+		catcher := grip.NewBasicCatcher()
+		catcher.Add(queue.Put(NewJasperManagerCleanup(util.RoundPartOfMinute(0).Format(tsFormat), env)))
+		flags, err := evergreen.GetServiceFlags()
+		if err != nil {
+			grip.Alert(message.WrapError(err, message.Fields{
+				"message":   "problem fetching service flags",
+				"operation": "system stats",
+			}))
+			catcher.Add(err)
+			return catcher.Resolve()
+		}
+
+		if flags.BackgroundStatsDisabled {
+			grip.InfoWhen(sometimes.Percent(evergreen.DegradedLoggingPercent), message.Fields{
+				"message": "system stats ",
+				"impact":  "memory, cpu, runtime stats",
+				"mode":    "degraded",
+			})
+			return nil
+		}
+
+		catcher.Add(queue.Put(NewSysInfoStatsCollector(fmt.Sprintf("sys-info-stats-%s", util.RoundPartOfMinute(30).Format(tsFormat)))))
+		catcher.Add(queue.Put(NewLocalAmboyStatsCollector(env, fmt.Sprintf("amboy-local-stats-%s", util.RoundPartOfMinute(0).Format(tsFormat)))))
+		return catcher.Resolve()
+
 	}
 }

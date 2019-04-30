@@ -831,7 +831,7 @@ func (c *communicatorImpl) GetDockerStatus(ctx context.Context, hostID string) (
 }
 
 func (c *communicatorImpl) GetDockerLogs(ctx context.Context, hostID string, startTime time.Time, endTime time.Time, isError bool) ([]byte, error) {
-	path := fmt.Sprintf("/host/%s/logs", hostID)
+	path := fmt.Sprintf("/hosts/%s/logs", hostID)
 	if isError {
 		path = fmt.Sprintf("%s/error", path)
 	} else {
@@ -846,7 +846,7 @@ func (c *communicatorImpl) GetDockerLogs(ctx context.Context, hostID string, sta
 	}
 
 	info := requestInfo{
-		method:  post,
+		method:  get,
 		version: apiVersion2,
 		path:    path,
 	}

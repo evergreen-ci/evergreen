@@ -114,7 +114,7 @@ mciModule.controller('SpawnedHostsCtrl', ['$scope','$window', '$timeout', 'mciSp
       $scope.curHostData.password = _.shuffle(
         SHA1(document.cookie + _.now()).slice(0, 9).concat(
           _.take(
-            _.shuffle('~!@#$%^&*_-+=`|\\(){}[]:;"\'<>,.?/'),
+            _.shuffle('~!@#$%^&*_-+=:,.?/'),
             3
           ).join('')
         )

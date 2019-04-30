@@ -73,19 +73,31 @@ type Environment interface {
 	Client() *mongo.Client
 	DB() *mongo.Database
 
-	// The Environment provides access to three queues, a
-	// local-process level queue that is not persisted between
-	// runs, a remote shared queue that all processes can use
-	// to distribute work amongst the application tier, and a queue
-	// for generate.tasks, which has a smaller number of workers
-	// per app server.
+	// The Environment provides access to several amboy queues for
+	// processing background work in the context of the Evergreen
+	// application.
 	//
-	// The LocalQueue is not durable, and results aren't available
-	// between process restarts. The RemoteQueue is not
-	// (generally) started by default.
+	// The LocalQueue provides process-local execution, to support
+	// reporting and cleanup operations local to a single instance
+	// of the evergreen application.  These queues are not
+	// durable, and job data are not available between application
+	// restarts.
+	//
+	// The RemoteQueue provides a single queue with many
+	// workers, distributed across all application servers. Each
+	// application dedicates a moderate pool of workers, and work
+	// enters this queue from periodic operations
+	// (e.g. "cron-like") as well as work that is submitted as a
+	// result of user requests. The service queue is
+	// mixed-workload.
+	//
+	// The RemoteQueueGroup provides logically distinct
+	// application queues in situations where we need to isolate
+	// workloads between queues. The queues are backed remotely, which
+	// means that their work persists between restarts.
 	LocalQueue() amboy.Queue
 	RemoteQueue() amboy.Queue
-	GenerateTasksQueue() amboy.Queue
+	RemoteQueueGroup() amboy.QueueGroup
 
 	// Jasper is a process manager for running external
 	// commands. Every process has a manager service.
@@ -139,6 +151,7 @@ func NewEnvironment(ctx context.Context, confPath string, db *DBSettings) (Envir
 	}
 
 	if db != nil && confPath == "" {
+
 		if err := e.initDB(ctx, *db); err != nil {
 			return nil, errors.Wrap(err, "error configuring db")
 		}
@@ -189,7 +202,7 @@ type ClientConfig struct {
 type envState struct {
 	remoteQueue        amboy.Queue
 	localQueue         amboy.Queue
-	generateTasksQueue amboy.Queue
+	remoteQueueGroup   amboy.QueueGroup
 	notificationsQueue amboy.Queue
 	ctx                context.Context
 	jasperManager      jasper.Manager
@@ -277,7 +290,7 @@ func (e *envState) createLocalQueue(ctx context.Context) error {
 	}
 
 	e.closers["background-local-queue"] = func(ctx context.Context) error {
-		e.localQueue.Runner().Close()
+		e.localQueue.Runner().Close(ctx)
 		return nil
 	}
 
@@ -305,7 +318,7 @@ func (e *envState) createApplicationQueue(ctx context.Context) error {
 	}
 	e.remoteQueue = rq
 	e.closers["application-queue"] = func(ctx context.Context) error {
-		e.remoteQueue.Runner().Close()
+		e.remoteQueue.Runner().Close(ctx)
 		return nil
 	}
 
@@ -318,22 +331,22 @@ func (e *envState) createGenerateTasksQueue(ctx context.Context) error {
 	opts.DB = e.settings.Amboy.DB
 	opts.Priority = true
 
-	singlemdb, err := queue.OpenNewMongoDriver(ctx, e.settings.Amboy.SingleName, opts, e.client)
+	remoteQueuGroupOpts := queue.RemoteQueueGroupOptions{
+		Prefix:                    e.settings.Amboy.Name,
+		DefaultWorkers:            1,
+		Ordered:                   false,
+		BackgroundCreateFrequency: time.Hour,
+		PruneFrequency:            time.Hour,
+		TTL:                       time.Hour,
+	}
+	remoteQueueGroup, err := queue.NewMongoRemoteSingleQueueGroup(ctx, remoteQueuGroupOpts, e.client, opts)
 	if err != nil {
-		return errors.Wrap(err, "problem setting queue backend")
+		return errors.Wrap(err, "problem constructing remote queue group")
 	}
-	generateTasksQ := queue.NewRemoteUnordered(8)
-	if err = generateTasksQ.SetDriver(singlemdb); err != nil {
-		return errors.WithStack(err)
-	}
-	if err = generateTasksQ.SetRunner(pool.NewAbortablePool(1, generateTasksQ)); err != nil {
-		return errors.Wrap(err, "problem configuring worker pool for generate tasks queue")
-	}
-	e.generateTasksQueue = generateTasksQ
+	e.remoteQueueGroup = remoteQueueGroup
 
-	e.closers["single-queue-generate-tasks"] = func(ctx context.Context) error {
-		e.generateTasksQueue.Runner().Close()
-		return nil
+	e.closers["generate-tasks"] = func(ctx context.Context) error {
+		return errors.Wrap(e.remoteQueueGroup.Close(ctx), "problem waiting for remote queue group to close")
 	}
 
 	return nil
@@ -372,7 +385,7 @@ func (e *envState) createNotificationQueue(ctx context.Context) error {
 			catcher.Add(errors.New("failed to stop with running jobs"))
 		}
 
-		e.notificationsQueue.Runner().Close()
+		e.notificationsQueue.Runner().Close(ctx)
 
 		grip.Debug(message.Fields{
 			"message":     "closed notification queue",
@@ -556,7 +569,7 @@ func (e *envState) initJasper() error {
 
 	e.jasperManager = jpm
 
-	e.closers["jasper-manaer"] = func(ctx context.Context) error {
+	e.closers["jasper-manager"] = func(ctx context.Context) error {
 		return errors.WithStack(jpm.Close(ctx))
 	}
 
@@ -582,10 +595,10 @@ func (e *envState) RemoteQueue() amboy.Queue {
 	return e.remoteQueue
 }
 
-func (e *envState) GenerateTasksQueue() amboy.Queue {
+func (e *envState) RemoteQueueGroup() amboy.QueueGroup {
 	e.mu.RLock()
 	defer e.mu.RUnlock()
-	return e.generateTasksQueue
+	return e.remoteQueueGroup
 }
 
 func (e *envState) Session() db.Session {

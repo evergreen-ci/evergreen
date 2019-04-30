@@ -239,7 +239,7 @@ func (p *ewmaRateLimiting) SetQueue(q amboy.Queue) error {
 	return nil
 }
 
-func (p *ewmaRateLimiting) Close() {
+func (p *ewmaRateLimiting) Close(ctx context.Context) {
 	p.mutex.Lock()
 	defer p.mutex.Unlock()
 
@@ -262,8 +262,17 @@ func (p *ewmaRateLimiting) Close() {
 	// which doesn't affect behavior but does cause this to panic in
 	// tests
 	defer func() { recover() }()
+	wait := make(chan struct{})
+	go func() {
+		defer recovery.LogStackTraceAndContinue("waiting for close")
+		defer close(wait)
+		p.wg.Wait()
+	}()
 
-	p.wg.Wait()
+	select {
+	case <-ctx.Done():
+	case <-wait:
+	}
 }
 
 func (p *ewmaRateLimiting) IsRunning(id string) bool {

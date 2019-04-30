@@ -39,7 +39,7 @@ func (s *LimitedSizeQueueSuite) SetupTest() {
 
 func (s *LimitedSizeQueueSuite) TestBufferForPendingWorkEqualToCapacityForResults() {
 	s.False(s.queue.Started())
-	s.queue.Runner().Close()
+	s.queue.Runner().Close(context.TODO())
 	s.Nil(s.queue.channel)
 	s.Error(s.queue.Put(job.NewShellJob("sleep 10", "")))
 

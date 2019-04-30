@@ -18,14 +18,11 @@ import (
 	"github.com/mongodb/amboy/registry"
 	adb "github.com/mongodb/anser/db"
 	"github.com/mongodb/grip"
-	"github.com/mongodb/grip/level"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 )
 
 const hostTerminationJobName = "host-termination-job"
-
-const teardownFailurePreface = "[TEARDOWN-FAILURE]"
 
 func init() {
 	registry.AddJobType(hostTerminationJobName, func() amboy.Job {
@@ -265,28 +262,6 @@ func (j *hostTerminationJob) Run(ctx context.Context) {
 			"message":  "Error running teardown script",
 			"host":     j.host.Id,
 		}))
-
-		subj := fmt.Sprintf("%v Error running teardown for host %v",
-			teardownFailurePreface, j.host.Id)
-
-		mailer, serr := j.env.GetSender(evergreen.SenderEmail)
-		if serr != nil {
-			grip.Alert(message.Fields{
-				"message":    "problem getting sender",
-				"operation":  "host termination issue",
-				"sender_err": serr,
-				"error":      err,
-				"host":       j.host.Id,
-				"subject":    subj,
-			})
-		} else if len(settings.Notify.SMTP.AdminEmail) > 0 {
-			mailer.Send(message.NewEmailMessage(level.Error, message.Email{
-				From:       settings.Notify.SMTP.From,
-				Recipients: settings.Notify.SMTP.AdminEmail,
-				Subject:    subj,
-				Body:       err.Error(),
-			}))
-		}
 	}
 
 	if err := cloudHost.TerminateInstance(ctx, evergreen.User); err != nil {

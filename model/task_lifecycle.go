@@ -165,19 +165,18 @@ func TryResetTask(taskId, user, origin string, detail *apimodels.TaskEndDetail) 
 		} else {
 			grip.Debugln(msg, "marking as failed")
 			if detail != nil {
-				updates := StatusChanges{}
 				if t.DisplayOnly {
 					for _, etId := range t.ExecutionTasks {
 						execTask, err = task.FindOne(task.ById(etId))
 						if err != nil {
 							return errors.Wrap(err, "error finding execution task")
 						}
-						if err = MarkEnd(execTask, origin, time.Now(), detail, false, &updates); err != nil {
+						if err = MarkEnd(execTask, origin, time.Now(), detail, false); err != nil {
 							return errors.Wrap(err, "error marking execution task as ended")
 						}
 					}
 				}
-				return errors.WithStack(MarkEnd(t, origin, time.Now(), detail, false, &updates))
+				return errors.WithStack(MarkEnd(t, origin, time.Now(), detail, false))
 			} else {
 				panic(fmt.Sprintf("TryResetTask called with nil TaskEndDetail by %s", origin))
 			}
@@ -389,20 +388,10 @@ func doStepback(t *task.Task) error {
 }
 
 // MarkEnd updates the task as being finished, performs a stepback if necessary, and updates the build status
-func MarkEnd(t *task.Task, caller string, finishTime time.Time, detail *apimodels.TaskEndDetail,
-	deactivatePrevious bool, updates *StatusChanges) error {
-
-	now := time.Now()
+func MarkEnd(t *task.Task, caller string, finishTime time.Time, detail *apimodels.TaskEndDetail, deactivatePrevious bool) error {
 	if t.HasFailedTests() {
 		detail.Status = evergreen.TaskFailed
 	}
-	grip.Info(message.Fields{
-		"message":   "finished checking HasFailedTests",
-		"operation": "mark end",
-		"duration":  time.Since(now),
-	})
-	now = time.Now()
-
 	t.Details = *detail
 
 	if t.Status == detail.Status {
@@ -420,25 +409,11 @@ func MarkEnd(t *task.Task, caller string, finishTime time.Time, detail *apimodel
 	}
 	err := t.MarkEnd(finishTime, detail)
 
-	grip.Info(message.Fields{
-		"message":   "finished marking the task ended",
-		"operation": "mark end",
-		"duration":  time.Since(now),
-	})
-	now = time.Now()
-
 	if err != nil {
 		return errors.Wrap(err, "could not mark task finished")
 	}
 	status := t.ResultStatus()
 	event.LogTaskFinished(t.Id, t.Execution, t.HostId, status)
-
-	grip.Info(message.Fields{
-		"message":   "finished logging task finished",
-		"operation": "mark end",
-		"duration":  time.Since(now),
-	})
-	now = time.Now()
 
 	if t.IsPartOfDisplay() {
 		if err = UpdateDisplayTask(t.DisplayTask); err != nil {
@@ -469,12 +444,6 @@ func MarkEnd(t *task.Task, caller string, finishTime time.Time, detail *apimodel
 			return errors.Wrap(err, "error updating build")
 		}
 	}
-	grip.Info(message.Fields{
-		"message":   "finished processing display task",
-		"operation": "mark end",
-		"duration":  time.Since(now),
-	})
-	now = time.Now()
 
 	// activate/deactivate other task if this is not a patch request's task
 	if !evergreen.IsPatchRequester(t.Requester) {
@@ -487,36 +456,6 @@ func MarkEnd(t *task.Task, caller string, finishTime time.Time, detail *apimodel
 			return err
 		}
 	}
-	grip.Info(message.Fields{
-		"message":   "finished processing non-patch task",
-		"operation": "mark end",
-		"duration":  time.Since(now),
-	})
-	now = time.Now()
-
-	// update the build
-	if err := UpdateBuildAndVersionStatusForTask(t.Id, updates); err != nil {
-		return errors.Wrap(err, "Error updating build status")
-	}
-
-	grip.Info(message.Fields{
-		"message":   "finished updating builds and version",
-		"operation": "mark end",
-		"duration":  time.Since(now),
-	})
-	now = time.Now()
-
-	isBuildCompleteStatus := updates.BuildNewStatus == evergreen.BuildFailed || updates.BuildNewStatus == evergreen.BuildSucceeded
-	if len(updates.BuildNewStatus) != 0 {
-		if updates.BuildComplete || !isBuildCompleteStatus {
-			event.LogBuildStateChangeEvent(t.BuildId, updates.BuildNewStatus)
-		}
-	}
-	grip.Info(message.Fields{
-		"message":   "logged build state change",
-		"operation": "mark end",
-		"duration":  time.Since(now),
-	})
 
 	return nil
 }
@@ -557,9 +496,27 @@ func updateMakespans(b *build.Build) error {
 	return errors.WithStack(b.UpdateMakespans(depPath.TotalTime, CalculateActualMakespan(tasks)))
 }
 
+func UpdateBuildAndVersionStatus(taskId string, updates *StatusChanges) error {
+	if err := UpdateBuildAndVersionStatusForTask(taskId, updates); err != nil {
+		return errors.Wrap(err, "Error updating build status")
+	}
+	isBuildCompleteStatus := updates.BuildNewStatus == evergreen.BuildFailed || updates.BuildNewStatus == evergreen.BuildSucceeded
+	if len(updates.BuildNewStatus) != 0 {
+		if updates.BuildComplete || !isBuildCompleteStatus {
+			t, err := task.FindOneId(taskId)
+			if err != nil {
+				return errors.Wrap(err, "Error finding task")
+			}
+			event.LogBuildStateChangeEvent(t.BuildId, updates.BuildNewStatus)
+		}
+	}
+	return nil
+}
+
 // UpdateBuildStatusForTask finds all the builds for a task and updates the
 // status of the build based on the task's status.
 func UpdateBuildAndVersionStatusForTask(taskId string, updates *StatusChanges) error {
+	const slowMS = 100 * time.Millisecond
 	// retrieve the task by the task id
 	t, err := task.FindOneNoMerge(task.ById(taskId))
 	if err != nil {
@@ -587,6 +544,7 @@ func UpdateBuildAndVersionStatusForTask(taskId string, updates *StatusChanges) e
 	finishedTasks := 0
 	tasksToNotify := 0
 
+	now := time.Now()
 	// update the build's status based on tasks for this build
 	for _, t := range buildTasks {
 		if !t.IsFinished() {
@@ -604,14 +562,27 @@ func UpdateBuildAndVersionStatusForTask(taskId string, updates *StatusChanges) e
 		finishedTasks++
 		tasksToNotify += 1
 
+		now = time.Now()
 		displayTask, err = t.GetDisplayTask()
 		if err != nil {
 			return errors.WithStack(err)
 		}
+		if time.Since(now) > slowMS {
+			grip.Debug(message.Fields{
+				"function":      "UpdateBuildAndVersionStatusForTask",
+				"operation":     "t.GetDisplayTask()",
+				"message":       "slow operation",
+				"duration_secs": time.Since(now).Seconds(),
+				"task":          t.Id,
+			})
+		}
+		now = time.Now()
 		if displayTask != nil {
-			err = UpdateDisplayTask(displayTask)
-			if err != nil {
-				return errors.WithStack(err)
+			if err = UpdateDisplayTask(displayTask); err != nil {
+				return errors.Wrap(errors.WithStack(err), "error updating display task")
+			}
+			if err = build.UpdateCachedTask(displayTask.BuildId, displayTask.Id, displayTask.Status, 0); err != nil {
+				return errors.Wrap(errors.WithStack(err), "error updating cached display task")
 			}
 			t = *displayTask
 			status = t.Status
@@ -619,6 +590,16 @@ func UpdateBuildAndVersionStatusForTask(taskId string, updates *StatusChanges) e
 				continue
 			}
 		}
+		if time.Since(now) > slowMS {
+			grip.Debug(message.Fields{
+				"function":      "UpdateBuildAndVersionStatusForTask",
+				"operation":     "UpdateDisplayTask(), UpdateCachedTask()",
+				"message":       "slow operation",
+				"duration_secs": time.Since(now).Seconds(),
+				"task":          t.Id,
+			})
+		}
+		now = time.Now()
 
 		// update the build's status when a test task isn't successful
 		if t.Status != evergreen.TaskSucceeded {
@@ -631,6 +612,16 @@ func UpdateBuildAndVersionStatusForTask(taskId string, updates *StatusChanges) e
 
 			failedTask = true
 		}
+		if time.Since(now) > slowMS {
+			grip.Debug(message.Fields{
+				"function":      "UpdateBuildAndVersionStatusForTask",
+				"operation":     "b.UpdateStatus(BuildFailed)",
+				"message":       "slow operation",
+				"duration_secs": time.Since(now).Seconds(),
+				"task":          t.Id,
+			})
+		}
+		now = time.Now()
 
 		// update the cached version of the task, in its build document
 		if status == "" {
@@ -648,6 +639,16 @@ func UpdateBuildAndVersionStatusForTask(taskId string, updates *StatusChanges) e
 			}))
 			return errors.Wrap(err, "error updating cached task")
 		}
+		if time.Since(now) > slowMS {
+			grip.Debug(message.Fields{
+				"function":      "UpdateBuildAndVersionStatusForTask",
+				"operation":     "b.SetCachedTaskFinished()",
+				"message":       "slow operation",
+				"duration_secs": time.Since(now).Seconds(),
+				"task":          t.Id,
+			})
+		}
+		now = time.Now()
 	}
 
 	if b.Status == evergreen.BuildCreated {
@@ -658,6 +659,15 @@ func UpdateBuildAndVersionStatusForTask(taskId string, updates *StatusChanges) e
 		}
 		updates.BuildNewStatus = evergreen.BuildStarted
 	}
+	if time.Since(now) > slowMS {
+		grip.Debug(message.Fields{
+			"function":      "UpdateBuildAndVersionStatusForTask",
+			"operation":     "b.UpdateStatus(BuildStarted)",
+			"message":       "slow operation",
+			"duration_secs": time.Since(now).Seconds(),
+		})
+	}
+	now = time.Now()
 
 	if finishedTasks >= len(buildTasks) {
 		buildComplete = true
@@ -687,6 +697,15 @@ func UpdateBuildAndVersionStatusForTask(taskId string, updates *StatusChanges) e
 			}
 		}
 	}
+	if time.Since(now) > slowMS {
+		grip.Debug(message.Fields{
+			"function":      "UpdateBuildAndVersionStatusForTask",
+			"operation":     "b.MarkFinished()",
+			"message":       "slow operation",
+			"duration_secs": time.Since(now).Seconds(),
+		})
+	}
+	now = time.Now()
 
 	// These are deliberately out of the buildComplete block to ensure versions
 	// are iterated so version and patch notifications can be sent out
@@ -695,6 +714,15 @@ func UpdateBuildAndVersionStatusForTask(taskId string, updates *StatusChanges) e
 		grip.Error(err)
 		return err
 	}
+	if time.Since(now) > slowMS {
+		grip.Debug(message.Fields{
+			"function":      "UpdateBuildAndVersionStatusForTask",
+			"operation":     "b.MarkVersionCompleted()",
+			"message":       "slow operation",
+			"duration_secs": time.Since(now).Seconds(),
+		})
+	}
+	now = time.Now()
 
 	if evergreen.IsPatchRequester(b.Requester) {
 		if err = TryMarkPatchBuildFinished(b, finishTime, updates); err != nil {
@@ -710,6 +738,15 @@ func UpdateBuildAndVersionStatusForTask(taskId string, updates *StatusChanges) e
 			event.LogPatchStateChangeEvent(t.Version, patchStatus)
 		}
 	}
+	if time.Since(now) > slowMS {
+		grip.Debug(message.Fields{
+			"function":      "UpdateBuildAndVersionStatusForTask",
+			"operation":     "TryMarkPatchBuildFinished()",
+			"message":       "slow operation",
+			"duration_secs": time.Since(now).Seconds(),
+		})
+	}
+	now = time.Now()
 
 	if buildComplete {
 		// update the build's makespan information if the task has finished
@@ -719,6 +756,15 @@ func UpdateBuildAndVersionStatusForTask(taskId string, updates *StatusChanges) e
 			return err
 		}
 	}
+	if time.Since(now) > slowMS {
+		grip.Debug(message.Fields{
+			"function":      "UpdateBuildAndVersionStatusForTask",
+			"operation":     "b.updateMakespans()",
+			"message":       "slow operation",
+			"duration_secs": time.Since(now).Seconds(),
+		})
+	}
+	now = time.Now()
 
 	// this is helpful for when we restart a compile task
 	if finishedTasks == 0 {
@@ -729,6 +775,14 @@ func UpdateBuildAndVersionStatusForTask(taskId string, updates *StatusChanges) e
 			grip.Error(err)
 			return err
 		}
+	}
+	if time.Since(now) > slowMS {
+		grip.Debug(message.Fields{
+			"function":      "UpdateBuildAndVersionStatusForTask",
+			"operation":     "b.UpdateStatus(BuildCreated)",
+			"message":       "slow operation",
+			"duration_secs": time.Since(now).Seconds(),
+		})
 	}
 
 	return nil
@@ -945,25 +999,27 @@ func ClearAndResetStrandedTask(h *host.Host) error {
 	if err = t.MarkSystemFailed(); err != nil {
 		return errors.Wrap(err, "problem marking task failed")
 	}
+	if err := build.UpdateCachedTask(t.BuildId, t.Id, t.Status, 0); err != nil {
+		return errors.Wrap(err, "problem resetting cached task")
+	}
 
 	detail := &apimodels.TaskEndDetail{
 		Status: evergreen.TaskFailed,
 		Type:   "system",
 	}
 	if time.Since(t.ActivatedTime) > task.UnschedulableThreshold {
-		updates := StatusChanges{}
 		if t.DisplayOnly {
 			for _, etID := range t.ExecutionTasks {
 				execTask, err := task.FindOne(task.ById(etID))
 				if err != nil {
 					return errors.Wrap(err, "error finding execution task")
 				}
-				if err = MarkEnd(execTask, evergreen.MonitorPackage, time.Now(), detail, false, &updates); err != nil {
+				if err = MarkEnd(execTask, evergreen.MonitorPackage, time.Now(), detail, false); err != nil {
 					return errors.Wrap(err, "error marking execution task as ended")
 				}
 			}
 		}
-		return errors.WithStack(MarkEnd(t, evergreen.MonitorPackage, time.Now(), detail, false, &updates))
+		return errors.WithStack(MarkEnd(t, evergreen.MonitorPackage, time.Now(), detail, false))
 	}
 
 	if t.IsPartOfDisplay() {
@@ -977,7 +1033,6 @@ func UpdateDisplayTask(t *task.Task) error {
 	if !t.DisplayOnly {
 		return fmt.Errorf("%s is not a display task", t.Id)
 	}
-
 	statuses := []string{}
 	var timeTaken time.Duration
 	var status string
@@ -987,6 +1042,7 @@ func UpdateDisplayTask(t *task.Task) error {
 		return errors.Wrap(err, "error retrieving execution tasks")
 	}
 	hasFinishedTasks := false
+	hasFailedTasks := false
 	hasUnfinishedTasks := false
 	startTime := time.Unix(1<<62, 0)
 	endTime := util.ZeroTime
@@ -998,10 +1054,12 @@ func UpdateDisplayTask(t *task.Task) error {
 
 		if execTask.IsFinished() {
 			hasFinishedTasks = true
+			if evergreen.IsFailedTaskStatus(execTask.Status) {
+				hasFailedTasks = true
+			}
 		} else if execTask.IsDispatchable() {
 			hasUnfinishedTasks = true
 		}
-
 		// the display task's status will be the highest priority of its exec tasks
 		statuses = append(statuses, execTask.ResultStatus())
 
@@ -1017,7 +1075,11 @@ func UpdateDisplayTask(t *task.Task) error {
 		}
 	}
 
-	if hasFinishedTasks && hasUnfinishedTasks {
+	if hasFailedTasks {
+		// if display task has a failed task, update status
+		sort.Sort(task.ByPriority(statuses))
+		status = statuses[0]
+	} else if hasFinishedTasks && hasUnfinishedTasks {
 		// if the display task has a mix of finished and unfinished tasks, the status
 		// will be "started"
 		status = evergreen.TaskStarted
@@ -1027,14 +1089,6 @@ func UpdateDisplayTask(t *task.Task) error {
 		sort.Sort(task.ByPriority(statuses))
 		status = statuses[0]
 	}
-
-	grip.InfoWhen(status == evergreen.TaskUndispatched && t.DispatchTime != util.ZeroTime, message.Fields{
-		"lookhere":                      "evg-3345",
-		"message":                       "update display tasks",
-		"task_id":                       t.Id,
-		"status":                        status,
-		"dispatch_time_is_go_zero_time": t.DispatchTime.IsZero(),
-	})
 
 	update := bson.M{
 		task.StatusKey:    status,

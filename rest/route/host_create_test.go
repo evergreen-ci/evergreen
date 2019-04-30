@@ -273,7 +273,6 @@ func TestGetDockerLogs(t *testing.T) {
 	}
 	h, err := handler.sc.MakeIntentHost("task-id", "", "", c)
 	assert.NotEmpty(h.ParentID)
-	h.ExternalIdentifier = "my-container"
 	require.NoError(err)
 	require.NoError(h.Insert())
 
@@ -333,64 +332,6 @@ func TestGetDockerLogs(t *testing.T) {
 
 }
 
-func TestGetDockerLogsError(t *testing.T) {
-	assert := assert.New(t)
-	require := require.New(t)
-	require.NoError(db.ClearCollections(distro.Collection, host.Collection, task.Collection))
-	handler := containerLogsHandler{
-		sc: &data.MockConnector{},
-	}
-	parent := distro.Distro{Id: "parent-distro", PoolSize: 3, Provider: evergreen.ProviderNameMock}
-	require.NoError(parent.Insert())
-
-	pool := &evergreen.ContainerPool{Distro: "parent-distro", Id: "test-pool", MaxContainers: 2}
-	parentHost := &host.Host{
-		Id:                    "host1",
-		Host:                  "host",
-		User:                  "user",
-		Distro:                distro.Distro{Id: "parent-distro"},
-		Status:                evergreen.HostRunning,
-		HasContainers:         true,
-		ContainerPoolSettings: pool,
-	}
-	require.NoError(parentHost.Insert())
-
-	d := distro.Distro{Id: "distro", Provider: evergreen.ProviderNameMock, ContainerPool: "test-pool"}
-	require.NoError(d.Insert())
-
-	myTask := task.Task{
-		Id:      "task-id",
-		BuildId: "build-id",
-	}
-	require.NoError(myTask.Insert())
-	c := apimodels.CreateHost{
-		CloudProvider: apimodels.ProviderDocker,
-		NumHosts:      "1",
-		Distro:        "distro",
-		Image:         "my-image",
-		Command:       "echo hello",
-	}
-	h, err := handler.sc.MakeIntentHost("task-id", "", "", c)
-	assert.NotEmpty(h.ParentID)
-	require.NoError(err)
-	require.NoError(h.Insert())
-
-	url := fmt.Sprintf("/hosts/%s/logs/output", h.Id)
-
-	request, err := http.NewRequest("GET", url, bytes.NewReader(nil))
-	assert.NoError(err)
-
-	options := map[string]string{"host_id": h.Id}
-	request = gimlet.SetURLVars(request, options)
-
-	assert.NoError(handler.Parse(context.Background(), request))
-	assert.Equal(h.Id, handler.host.Id)
-
-	res := handler.Run(context.Background())
-	require.NotNil(res)
-	assert.Equal(http.StatusBadRequest, res.Status())
-}
-
 func TestGetDockerStatus(t *testing.T) {
 	assert := assert.New(t)
 	require := require.New(t)
@@ -431,7 +372,6 @@ func TestGetDockerStatus(t *testing.T) {
 	}
 	h, err := handler.sc.MakeIntentHost("task-id", "", "", c)
 	assert.NotEmpty(h.ParentID)
-	h.ExternalIdentifier = "my-container"
 	require.NoError(err)
 	require.NoError(h.Insert())
 

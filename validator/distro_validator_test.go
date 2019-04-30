@@ -23,7 +23,7 @@ func TestCheckDistro(t *testing.T) {
 	Convey("When validating a distro", t, func() {
 
 		Convey("if a new distro passes all of the validation tests, no errors should be returned", func() {
-			d := &distro.Distro{Id: "a", Arch: "a", User: "a", SSHKey: "a", WorkDir: "a",
+			d := &distro.Distro{Id: "a", Arch: "linux_amd64", User: "a", SSHKey: "a", WorkDir: "a",
 				Provider: evergreen.ProviderNameEc2OnDemand,
 				ProviderSettings: &map[string]interface{}{
 					"ami":                "a",
@@ -35,6 +35,9 @@ func TestCheckDistro(t *testing.T) {
 				PlannerSettings: distro.PlannerSettings{
 					Version: evergreen.PlannerVersionTunable,
 				},
+				FinderSettings: distro.FinderSettings{
+					Version: evergreen.FinderVersionLegacy,
+				},
 				BootstrapMethod: distro.BootstrapMethodLegacySSH,
 			}
 			verrs, err := CheckDistro(ctx, d, conf, true)
@@ -43,7 +46,7 @@ func TestCheckDistro(t *testing.T) {
 		})
 
 		Convey("if a new distro fails a validation test, an error should be returned", func() {
-			d := &distro.Distro{Id: "a", Arch: "a", User: "a", SSHKey: "a", WorkDir: "a",
+			d := &distro.Distro{Id: "a", Arch: "linux_amd64", User: "a", SSHKey: "a", WorkDir: "a",
 				Provider: evergreen.ProviderNameEc2OnDemand,
 				ProviderSettings: &map[string]interface{}{
 					"ami":                "a",
@@ -63,7 +66,7 @@ func TestCheckDistro(t *testing.T) {
 		})
 
 		Convey("if an existing distro passes all of the validation tests, no errors should be returned", func() {
-			d := &distro.Distro{Id: "a", Arch: "a", User: "a", SSHKey: "a", WorkDir: "a",
+			d := &distro.Distro{Id: "a", Arch: "linux_amd64", User: "a", SSHKey: "a", WorkDir: "a",
 				Provider: evergreen.ProviderNameEc2OnDemand,
 				ProviderSettings: &map[string]interface{}{
 					"ami":                "a",
@@ -75,6 +78,9 @@ func TestCheckDistro(t *testing.T) {
 				PlannerSettings: distro.PlannerSettings{
 					Version: evergreen.PlannerVersionTunable,
 				},
+				FinderSettings: distro.FinderSettings{
+					Version: evergreen.FinderVersionLegacy,
+				},
 				BootstrapMethod: distro.BootstrapMethodLegacySSH,
 			}
 			verrs, err := CheckDistro(ctx, d, conf, false)
@@ -83,7 +89,7 @@ func TestCheckDistro(t *testing.T) {
 		})
 
 		Convey("if an existing distro fails a validation test, an error should be returned", func() {
-			d := &distro.Distro{Id: "a", Arch: "a", User: "a", SSHKey: "a", WorkDir: "a",
+			d := &distro.Distro{Id: "a", Arch: "linux_amd64", User: "a", SSHKey: "a", WorkDir: "a",
 				Provider: evergreen.ProviderNameEc2OnDemand,
 				ProviderSettings: &map[string]interface{}{
 					"ami":                "",
@@ -134,37 +140,37 @@ func TestEnsureHasRequiredFields(t *testing.T) {
 		d := []distro.Distro{
 			{},
 			{Id: "a"},
-			{Id: "a", Arch: "a"},
-			{Id: "a", Arch: "a", User: "a"},
-			{Id: "a", Arch: "a", User: "a", SSHKey: "a"},
-			{Id: "a", Arch: "a", User: "a", SSHKey: "a", WorkDir: "a"},
-			{Id: "a", Arch: "a", User: "a", SSHKey: "a", WorkDir: "a", Provider: "a"},
-			{Id: "a", Arch: "a", User: "a", SSHKey: "a", WorkDir: "a", Provider: evergreen.ProviderNameEc2OnDemand},
-			{Id: "a", Arch: "a", User: "a", SSHKey: "a", WorkDir: "a", Provider: evergreen.ProviderNameEc2OnDemand, ProviderSettings: &map[string]interface{}{
+			{Id: "a", Arch: "linux_amd64"},
+			{Id: "a", Arch: "linux_amd64", User: "a"},
+			{Id: "a", Arch: "linux_amd64", User: "a", SSHKey: "a"},
+			{Id: "a", Arch: "linux_amd64", User: "a", SSHKey: "a", WorkDir: "a"},
+			{Id: "a", Arch: "linux_amd64", User: "a", SSHKey: "a", WorkDir: "a", Provider: "a"},
+			{Id: "a", Arch: "linux_amd64", User: "a", SSHKey: "a", WorkDir: "a", Provider: evergreen.ProviderNameEc2OnDemand},
+			{Id: "a", Arch: "linux_amd64", User: "a", SSHKey: "a", WorkDir: "a", Provider: evergreen.ProviderNameEc2OnDemand, ProviderSettings: &map[string]interface{}{
 				"instance_type":      "a",
 				"security_group_ids": []string{"a"},
 				"key_name":           "a",
 				"mount_points":       nil,
 			}},
-			{Id: "a", Arch: "a", User: "a", SSHKey: "a", WorkDir: "a", Provider: evergreen.ProviderNameEc2OnDemand, ProviderSettings: &map[string]interface{}{
+			{Id: "a", Arch: "linux_amd64", User: "a", SSHKey: "a", WorkDir: "a", Provider: evergreen.ProviderNameEc2OnDemand, ProviderSettings: &map[string]interface{}{
 				"ami":                "a",
 				"security_group_ids": []string{"a"},
 				"key_name":           "a",
 				"mount_points":       nil,
 			}},
-			{Id: "a", Arch: "a", User: "a", SSHKey: "a", WorkDir: "a", Provider: evergreen.ProviderNameEc2OnDemand, ProviderSettings: &map[string]interface{}{
+			{Id: "a", Arch: "linux_amd64", User: "a", SSHKey: "a", WorkDir: "a", Provider: evergreen.ProviderNameEc2OnDemand, ProviderSettings: &map[string]interface{}{
 				"ami":           "a",
 				"instance_type": "a",
 				"key_name":      "a",
 				"mount_points":  nil,
 			}},
-			{Id: "a", Arch: "a", User: "a", SSHKey: "a", WorkDir: "a", Provider: evergreen.ProviderNameEc2OnDemand, ProviderSettings: &map[string]interface{}{
+			{Id: "a", Arch: "linux_amd64", User: "a", SSHKey: "a", WorkDir: "a", Provider: evergreen.ProviderNameEc2OnDemand, ProviderSettings: &map[string]interface{}{
 				"ami":                "a",
 				"instance_type":      "a",
 				"security_group_ids": []string{"a"},
 				"mount_points":       nil,
 			}},
-			{Id: "a", Arch: "a", User: "a", SSHKey: "a", WorkDir: "a", Provider: evergreen.ProviderNameEc2OnDemand, ProviderSettings: &map[string]interface{}{
+			{Id: "a", Arch: "linux_amd64", User: "a", SSHKey: "a", WorkDir: "a", Provider: evergreen.ProviderNameEc2OnDemand, ProviderSettings: &map[string]interface{}{
 				"ami":                "a",
 				"key_name":           "a",
 				"instance_type":      "a",

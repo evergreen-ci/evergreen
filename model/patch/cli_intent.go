@@ -94,7 +94,7 @@ func (c *cliIntent) Insert() error {
 
 	c.PatchContent = ""
 	c.PatchFileID = patchFileID
-	c.CreatedAt = time.Now().Round(time.Millisecond)
+	c.CreatedAt = time.Now().UTC().Round(time.Millisecond)
 
 	if err := db.Insert(IntentCollection, c); err != nil {
 		c.CreatedAt = time.Time{}
@@ -106,7 +106,7 @@ func (c *cliIntent) Insert() error {
 
 func (c *cliIntent) SetProcessed() error {
 	c.Processed = true
-	c.ProcessedAt = time.Now().Round(time.Millisecond)
+	c.ProcessedAt = time.Now().UTC().Round(time.Millisecond)
 	return updateOneIntent(
 		bson.M{cliDocumentIDKey: c.DocumentID},
 		bson.M{"$set": bson.M{

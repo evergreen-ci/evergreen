@@ -46,9 +46,6 @@ func (p *GithubMergePR) Valid() error {
 	if len(p.Repo) == 0 {
 		catcher.Add(errors.New("Repo can't be empty"))
 	}
-	if len(p.CommitMessage) == 0 {
-		catcher.Add(errors.New("Commit message can't be empty"))
-	}
 	if len(p.Ref) == 0 {
 		catcher.Add(errors.New("Ref can't be empty"))
 	}

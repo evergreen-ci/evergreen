@@ -10,11 +10,11 @@ import (
 const defaultLimit = 100
 
 type HandlerOpts struct {
-	APIQueue           amboy.Queue
-	GenerateTasksQueue amboy.Queue
-	URL                string
-	SuperUsers         []string
-	GithubSecret       []byte
+	APIQueue     amboy.Queue
+	QueueGroup   amboy.QueueGroup
+	URL          string
+	SuperUsers   []string
+	GithubSecret []byte
 }
 
 // AttachHandler attaches the api's request handlers to the given mux router.
@@ -58,7 +58,7 @@ func AttachHandler(app *gimlet.APIApp, opts HandlerOpts) {
 	app.AddRoute("/cost/distro/{distro_id}").Version(2).Get().Wrap(checkUser).RouteHandler(makeCostByDistroHandler(sc))
 	app.AddRoute("/cost/project/{project_id}/tasks").Version(2).Get().Wrap(checkUser).RouteHandler(makeTaskCostByProjectRoute(sc))
 	app.AddRoute("/cost/version/{version_id}").Version(2).Get().Wrap(checkUser).RouteHandler(makeCostByVersionHandler(sc))
-	app.AddRoute("/distros").Version(2).Get().Wrap(superUser).RouteHandler(makeDistroRoute(sc))
+	app.AddRoute("/distros").Version(2).Get().Wrap(checkUser).RouteHandler(makeDistroRoute(sc))
 	app.AddRoute("/distros/{distro_id}").Version(2).Get().Wrap(superUser).RouteHandler(makeGetDistroByID(sc))
 	app.AddRoute("/distros/{distro_id}").Version(2).Patch().Wrap(superUser).RouteHandler(makePatchDistroByID(sc, settings))
 	app.AddRoute("/distros/{distro_id}").Version(2).Delete().Wrap(superUser).RouteHandler(makeDeleteDistroByID(sc))
@@ -71,7 +71,7 @@ func AttachHandler(app *gimlet.APIApp, opts HandlerOpts) {
 	app.AddRoute("/hosts").Version(2).Get().RouteHandler(makeFetchHosts(sc))
 	app.AddRoute("/hosts").Version(2).Post().Wrap(checkUser).RouteHandler(makeSpawnHostCreateRoute(sc))
 	app.AddRoute("/hosts").Version(2).Patch().Wrap(superUser).RouteHandler(makeChangeHostsStatuses(sc))
-	app.AddRoute("/hosts/{host_id}").Version(2).Get().RouteHandler(makeGetHostByID(sc))
+	app.AddRoute("/hosts/{host_id}").Version(2).Get().Wrap(checkUser).RouteHandler(makeGetHostByID(sc))
 	app.AddRoute("/hosts/{host_id}").Version(2).Patch().Wrap(checkUser).RouteHandler(makeChangeHostStatus(sc))
 	app.AddRoute("/hosts/{host_id}/change_password").Version(2).Post().Wrap(checkUser).RouteHandler(makeHostChangePassword(sc, env))
 	app.AddRoute("/hosts/{host_id}/extend_expiration").Version(2).Post().Wrap(checkUser).RouteHandler(makeExtendHostExpiration(sc))
@@ -113,8 +113,8 @@ func AttachHandler(app *gimlet.APIApp, opts HandlerOpts) {
 	app.AddRoute("/tasks/{task_id}").Version(2).Get().Wrap(checkUser).RouteHandler(makeGetTaskRoute(sc))
 	app.AddRoute("/tasks/{task_id}").Version(2).Patch().Wrap(checkUser, addProject).RouteHandler(makeModifyTaskRoute(sc))
 	app.AddRoute("/tasks/{task_id}/abort").Version(2).Post().Wrap(checkUser).RouteHandler(makeTaskAbortHandler(sc))
-	app.AddRoute("/tasks/{task_id}/generate").Version(2).Post().RouteHandler(makeGenerateTasksHandler(sc, opts.GenerateTasksQueue))
-	app.AddRoute("/tasks/{task_id}/generate").Version(2).Get().RouteHandler(makeGenerateTasksPollHandler(sc, opts.GenerateTasksQueue))
+	app.AddRoute("/tasks/{task_id}/generate").Version(2).Post().RouteHandler(makeGenerateTasksHandler(sc, opts.QueueGroup))
+	app.AddRoute("/tasks/{task_id}/generate").Version(2).Get().RouteHandler(makeGenerateTasksPollHandler(sc, opts.QueueGroup))
 	app.AddRoute("/tasks/{task_id}/restart").Version(2).Post().Wrap(addProject, checkUser).RouteHandler(makeTaskRestartHandler(sc))
 	app.AddRoute("/tasks/{task_id}/tests").Version(2).Get().Wrap(addProject).RouteHandler(makeFetchTestsForTask(sc))
 	app.AddRoute("/user/settings").Version(2).Get().Wrap(checkUser).RouteHandler(makeFetchUserConfig())

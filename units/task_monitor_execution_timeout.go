@@ -22,14 +22,18 @@ import (
 )
 
 const (
-	heartbeatTimeoutThreshold   = 7 * time.Minute
-	taskExecutionTimeoutJobName = "task-execution-timeout"
-	maxAttempts                 = 10
+	heartbeatTimeoutThreshold             = 7 * time.Minute
+	taskExecutionTimeoutJobName           = "task-execution-timeout"
+	taskExecutionTimeoutPopulationJobName = "task-execution-timeout-populate"
+	maxAttempts                           = 10
 )
 
 func init() {
 	registry.AddJobType(taskExecutionTimeoutJobName, func() amboy.Job {
 		return makeTaskExecutionTimeoutMonitorJob()
+	})
+	registry.AddJobType(taskExecutionTimeoutPopulationJobName, func() amboy.Job {
+		return makeTaskExecutionTimeoutPopulateJob()
 	})
 }
 
@@ -192,7 +196,84 @@ func cleanUpTimedOutTask(t *task.Task) error {
 		if err = t.DisplayTask.SetResetWhenFinished(); err != nil {
 			return errors.Wrap(err, "can't mark display task for reset")
 		}
-		return errors.Wrap(model.MarkEnd(t, "monitor", time.Now(), detail, false, &model.StatusChanges{}), "error marking task ended")
+		return errors.Wrap(model.MarkEnd(t, "monitor", time.Now(), detail, false), "error marking task ended")
 	}
 	return errors.Wrapf(model.TryResetTask(t.Id, "", "monitor", detail), "error trying to reset task %s", t.Id)
+}
+
+////////////////////////////////////////////////////////////////////////
+//
+// Population Job
+
+type taskExecutionTimeoutPopulationJob struct {
+	job.Base `bson:"metadata" json:"metadata" yaml:"metadata"`
+}
+
+func makeTaskExecutionTimeoutPopulateJob() *taskExecutionTimeoutPopulationJob {
+	j := &taskExecutionTimeoutPopulationJob{
+		Base: job.Base{
+			JobType: amboy.JobType{
+				Name:    taskExecutionTimeoutPopulationJobName,
+				Version: 0,
+			},
+		},
+	}
+
+	j.SetDependency(dependency.NewAlways())
+	return j
+}
+
+func NewTaskExecutionMonitorPopulateJob(id string) amboy.Job {
+	j := makeTaskExecutionTimeoutPopulateJob()
+	j.SetID(fmt.Sprintf("%s.%s", j.Type().Name, id))
+	return j
+}
+
+func (j *taskExecutionTimeoutPopulationJob) Run(ctx context.Context) {
+	defer j.MarkComplete()
+
+	flags, err := evergreen.GetServiceFlags()
+	if err != nil {
+		j.AddError(err)
+		return
+	}
+	if flags.MonitorDisabled {
+		grip.InfoWhen(sometimes.Percent(evergreen.DegradedLoggingPercent), message.Fields{
+			"message":   "monitor is disabled",
+			"operation": j.Type().Name,
+			"impact":    "skipping task heartbeat cleanup job",
+			"mode":      "degraded",
+		})
+		return
+	}
+
+	queue := evergreen.GetEnvironment().RemoteQueue()
+
+	taskIDs := map[string]int{}
+	tasks, err := host.FindStaleRunningTasks(heartbeatTimeoutThreshold)
+	if err != nil {
+		j.AddError(errors.Wrap(err, "error finding tasks with timed-out or stale heartbeats"))
+		return
+	}
+	for _, t := range tasks {
+		taskIDs[t.Id] = t.Execution
+	}
+	tasks, err = host.StaleRunningTaskIDs(heartbeatTimeoutThreshold)
+	if err != nil {
+		j.AddError(errors.Wrap(err, "error finding tasks with timed-out or stale heartbeats"))
+		return
+	}
+	for _, t := range tasks {
+		taskIDs[t.Id] = t.Execution
+	}
+
+	for id, execution := range taskIDs {
+		ts := util.RoundPartOfHour(15)
+		j.AddError(queue.Put(NewTaskExecutionMonitorJob(id, execution, 1, ts.Format(tsFormat))))
+	}
+	grip.Info(message.Fields{
+		"operation": "task-execution-timeout-populate",
+		"num_tasks": len(tasks),
+		"errors":    j.HasErrors(),
+	})
 }

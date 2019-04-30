@@ -33,6 +33,7 @@ type Distro struct {
 	Disabled         bool                    `bson:"disabled,omitempty" json:"disabled,omitempty" mapstructure:"disabled,omitempty"`
 	ContainerPool    string                  `bson:"container_pool,omitempty" json:"container_pool,omitempty" mapstructure:"container_pool,omitempty"`
 	PlannerSettings  PlannerSettings         `bson:"planner_settings" json:"planner_settings,omitempty" mapstructure:"planner_settings,omitempty"`
+	FinderSettings   FinderSettings          `bson:"finder_settings" json:"finder_settings,omitempty" mapstructure:"finder_settings,omitempty"`
 }
 
 type PlannerSettings struct {
@@ -45,6 +46,10 @@ type PlannerSettings struct {
 	PatchZipperFactor      int           `bson:"patch_zipper_factor" json:"patch_zipper_factor,omitempty" mapstructure:"patch_zipper_factor,omitempty"`
 	MainlineFirst          bool          `bson:"mainline_first" json:"mainline_first,omitempty" mapstructure:"mainline_first,omitempty"`
 	PatchFirst             bool          `bson:"patch_first" json:"patch_first,omitempty" mapstructure:"patch_first,omitempty"`
+}
+
+type FinderSettings struct {
+	Version string `bson:"version" json:"version" mapstructure:"version"`
 }
 
 type DistroGroup []Distro
@@ -63,7 +68,37 @@ const (
 	BootstrapMethodSSH                = "ssh"
 	BootstrapMethodPreconfiguredImage = "preconfigured-image"
 	BootstrapMethodUserData           = "user-data"
+
+	// Recognized architectures, should be in the form ${GOOS}_${GOARCH}.
+	ArchDarwinAmd64  = "darwin_amd64"
+	ArchLinux386     = "linux_386"
+	ArchLinuxPpc64le = "linux_ppc64le"
+	ArchLinuxS390x   = "linux_s390x"
+	ArchLinuxArm64   = "linux_arm64"
+	ArchLinuxAmd64   = "linux_amd64"
+	ArchWindows386   = "windows_386"
+	ArchWindowsAmd64 = "windows_amd64"
 )
+
+// ValidArches includes all recognized architectures.
+var ValidArches = []string{
+	ArchDarwinAmd64,
+	ArchLinux386,
+	ArchLinuxPpc64le,
+	ArchLinuxS390x,
+	ArchLinuxArm64,
+	ArchLinuxAmd64,
+	ArchWindows386,
+	ArchWindowsAmd64,
+}
+
+// ValidBootstrapMethods includes all recognized bootstrap methods.
+var ValidBootstrapMethods = []string{
+	BootstrapMethodLegacySSH,
+	BootstrapMethodSSH,
+	BootstrapMethodPreconfiguredImage,
+	BootstrapMethodUserData,
+}
 
 // Seed the random number generator for creating distro names
 func init() {
@@ -194,15 +229,27 @@ func ValidateContainerPoolDistros(s *evergreen.Settings) error {
 	return errors.WithStack(catcher.Resolve())
 }
 
-// ValidateBootstrapMethod ensure that the bootstrap mechanism is one of the
+// ValidateArch checks that the architecture is one of the supported
+// architectures.
+func ValidateArch(arch string) error {
+	osAndArch := strings.Split(arch, "_")
+	if len(osAndArch) != 2 {
+		return fmt.Errorf("architecture '%s' is not in the form ${GOOS}_${GOARCH}", arch)
+	}
+
+	if !util.StringSliceContains(ValidArches, arch) {
+		return fmt.Errorf("'%s' is not a recognized architecture", arch)
+	}
+	return nil
+}
+
+// ValidateBootstrapMethod checks that the bootstrap mechanism is one of the
 // supported methods.
 func ValidateBootstrapMethod(method string) error {
-	switch method {
-	case BootstrapMethodLegacySSH, BootstrapMethodSSH, BootstrapMethodPreconfiguredImage, BootstrapMethodUserData:
-		return nil
-	default:
+	if !util.StringSliceContains(ValidBootstrapMethods, method) {
 		return fmt.Errorf("'%s' is not a valid bootstrap method", method)
 	}
+	return nil
 }
 
 // GetDistroIds returns a slice of distro IDs for the given group of distros

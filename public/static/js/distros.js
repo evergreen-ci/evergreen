@@ -8,10 +8,11 @@ mciModule.controller('DistrosCtrl', function($scope, $window, $location, $anchor
 
   for (var i = 0; i < $scope.distros.length; i++) {
     $scope.distros[i].pool_size = $scope.distros[i].pool_size || 0;
-    $scope.distros[i].planner_settings = $scope.distros[i].planner_settings || {}
+    $scope.distros[i].finder_settings = $scope.distros[i].finder_settings || {};
+    $scope.distros[i].finder_settings.version = $scope.distros[i].finder_settings.version || "legacy";
+    $scope.distros[i].planner_settings = $scope.distros[i].planner_settings || {};
     $scope.distros[i].planner_settings.minimum_hosts = $scope.distros[i].planner_settings.minimum_hosts || 0;
     $scope.distros[i].planner_settings.version = $scope.distros[i].planner_settings.version || "legacy";
-    $scope.distros[i].bootstrap_method = $scope.distros[i].bootstrap_method || 'legacy-ssh';
     $scope.distros[i].bootstrap_method = $scope.distros[i].bootstrap_method || 'legacy-ssh';
   }
 
@@ -68,17 +69,11 @@ mciModule.controller('DistrosCtrl', function($scope, $window, $location, $anchor
     'id': 'darwin_amd64',
     'display': 'OSX 64-bit'
   }, {
-    'id': 'darwin_386',
-    'display': 'OSX 32-bit'
-  }, {
     'id': 'linux_amd64',
     'display': 'Linux 64-bit'
   }, {
     'id': 'linux_386',
     'display': 'Linux 32-bit'
-  }, {
-    'id': 'solaris_amd64',
-    'display': 'Solaris 64-bit'
   }];
 
   $scope.bootstrapMethods = [{

@@ -69,7 +69,7 @@ func (j *ShellJob) Run(ctx context.Context) {
 	args := strings.Split(j.Command, " ")
 
 	j.mutex.RLock()
-	cmd := exec.CommandContext(ctx, args[0], args[1:]...)
+	cmd := exec.CommandContext(ctx, args[0], args[1:]...) // nolint
 	j.mutex.RUnlock()
 
 	cmd.Dir = j.WorkingDir
