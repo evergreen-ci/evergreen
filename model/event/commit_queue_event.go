@@ -8,19 +8,12 @@ import (
 	"github.com/mongodb/grip/message"
 )
 
-func init() {
-	registry.AddType(ResourceTypeCommitQueue, commitQueueEventDataFactory)
-	registry.AllowSubscription(ResourceTypeCommitQueue, CommitQueueStartTest)
-	registry.AllowSubscription(ResourceTypeCommitQueue, CommitQueueConcludeTest)
-}
-
 func commitQueueEventDataFactory() interface{} {
 	return &CommitQueueEventData{}
 }
 
 const (
 	ResourceTypeCommitQueue = "COMMIT_QUEUE"
-
 	CommitQueueStartTest    = "START_TEST"
 	CommitQueueConcludeTest = "CONCLUDE_TEST"
 )

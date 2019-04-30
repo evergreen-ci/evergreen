@@ -4,7 +4,6 @@ import (
 	"testing"
 
 	"github.com/evergreen-ci/evergreen"
-
 	"github.com/mongodb/grip/level"
 	"github.com/stretchr/testify/assert"
 )
@@ -14,7 +13,7 @@ func TestDequeueItem(t *testing.T) {
 	dequeue := DequeueItem{
 		ProjectID: "mci",
 		Item:      "abcdef",
-		Status:    "failed",
+		Status:    evergreen.PatchFailed,
 	}
 	c := NewDequeueItemMessage(level.Info, dequeue)
 	assert.NotNil(c)
