@@ -12,7 +12,6 @@ mciModule.controller('PerfBBRejectsCtrl', function (
                               map((item) => _.pick(item, 'revision', 'project', 'variant', 'task')).
                               uniq((item) => _.values(item).join('-')).
                               value();
-    $log.debug(task_revisions);
     const promise = func(task_revisions);
     promise.then(function(ok) {
       if (!ok) return;
