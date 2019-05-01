@@ -408,7 +408,6 @@ func (s *DistroPutSuite) TestRunNewWithInvalidEntity() {
 	s.Equal(resp.Status(), http.StatusBadRequest)
 	err := (resp.Data()).(gimlet.ErrorResponse)
 	s.Contains(err.Message, "ERROR: distro 'ssh_key' cannot be blank")
-	s.Contains(err.Message, "ERROR: invalid distro.planner_settings.version 'invalid' for distro 'distro4'")
 	s.Contains(err.Message, "'foo' is not a valid bootstrap method")
 	s.Contains(err.Message, "'bar' is not a valid communication method")
 	s.Contains(err.Message, "ERROR: invalid PlannerSettings.Version 'invalid' for distro 'distro4'")
