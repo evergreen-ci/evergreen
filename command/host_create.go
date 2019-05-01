@@ -123,7 +123,7 @@ func (c *createHost) waitForLogs(ctx context.Context, comm client.Communicator, 
 			logger.Task().Debugf("Tick -- context finished waiting for host %s to exit", hostID)
 			return nil
 		case <-pollTicker.C:
-			logger.Task().Info("Tick -- waiting for logs")
+			logger.Task().Debug("Tick -- waiting for logs")
 			batchEnd := time.Now()
 			status, err := comm.GetDockerStatus(ctx, hostID)
 			if err != nil {
@@ -139,7 +139,7 @@ func (c *createHost) waitForLogs(ctx context.Context, comm client.Communicator, 
 					logger.Task().Debugf("problem getting and writing logs on started container: '%s'", err.Error())
 					continue
 				}
-				logger.Task().Debug("successful log batch")
+				logger.Task().Debugf("successful log batch: '%s'", c.CreateHost.StdoutFile)
 				batchStart = batchEnd.Add(time.Nanosecond) // to prevent repeat logs
 
 				if !status.IsRunning { // container exited
