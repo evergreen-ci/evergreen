@@ -1,37 +1,55 @@
 mciModule.controller('PerfBBRejectsCtrl', function (
   $scope, $window, EvgUiGridUtil, EvgUtil, FORMAT, MDBQueryAdaptor, uiGridConstants,
-  STITCH_CONFIG, Stitch, Settings, $timeout, $compile, $log, WhitelistService, $q, RejectState
+  STITCH_CONFIG, Stitch, Settings, $timeout, $compile, $log, WhitelistDataService, $q, RejectState, $mdDialog
 ) {
   // Perf Rejects View-Model.
   const vm = this;
   const project = window.project;
   const LIMIT = 2000;
 
-  const updateToWhitelist = function(items, func, mark) {
-    const task_revisions = _.chain(items).
-                              map((item) => _.pick(item, 'revision', 'project', 'variant', 'task')).
-                              uniq((item) => _.values(item).join('-')).
-                              value();
-    const promise = func(task_revisions);
-    promise.then(function(ok) {
-      if (!ok) return;
-      _.each(task_revisions, (task_revision) => {
-        _.chain(vm.gridOptions.data).where(task_revision).each((doc)=> {
-          doc.whitelisted = mark;
-        }).value();
-      });
-      refreshGridData();
+  vm.locked = false;
+
+  $scope.lock = () => vm.locked = true;
+  $scope.unlock = () => vm.locked = false;
+  $scope.locked = () => vm.locked;
+
+  const  addDisabled = () => $scope.locked() || vm.selection.length === 0 || _.all(vm.selection, (doc)=> doc.whitelisted);
+  const  removeDisabled = ()  => $scope.locked() || vm.selection.length === 0 || _.all(vm.selection, (doc)=> !doc.whitelisted);
+
+  function confirmMarkAction(items, action) {
+    return $mdDialog.show(
+      $mdDialog.confirm()
+        .ok('Ok')
+        .cancel('Cancel')
+        .title('Confirm')
+        .textContent(action + ' ' + items.length + ' item(s)?')
+    );
+  }
+
+  const updateToWhitelist = function(items, func, action, mark) {
+    $scope.lock();
+    confirmMarkAction(items, action + ' whitelisting for').
+      then(() => {
+        const task_revisions = _.chain(items).
+                                 map((item) => _.pick(item, 'revision', 'project', 'variant', 'task')).
+                                 uniq((item) => _.values(item).join('-')).
+                                 value();
+        const promise = func(task_revisions);
+        promise.then(function(ok) {
+          if (!ok) return;
+          _.each(task_revisions, (task_revision) => {
+            _.chain(vm.gridOptions.data).where(task_revision).each((doc)=> {
+              doc.whitelisted = mark;
+            }).value();
+          });
+          refreshGridData();
+      })
+
       // Call vm.reload() to do a full reload from the server.
+    }).finally(() => {
+      $scope.unlock();
     });
 
-  };
-
-  $scope.addWhitelist = function(items) {
-    return updateToWhitelist(items, WhitelistService.addWhitelist, "✔");
-  };
-
-  $scope.removeWhitelist = function(items) {
-    return updateToWhitelist(items, WhitelistService.removeWhitelist);
   };
 
   function refreshGridData() {
@@ -41,16 +59,18 @@ mciModule.controller('PerfBBRejectsCtrl', function (
 
   // Holds currently selected items.
   vm.selection = [];
+  const ADD = 'Add';
+  const REMOVE = 'Remove';
   vm.actions = [
     {
-      title: 'Add',
-      action: $scope.addWhitelist,
-      disabled: () => vm.selection.length == 0 || _.all(vm.selection, (doc)=> doc.whitelisted)
+      title: ADD,
+      action: items => updateToWhitelist(items, WhitelistDataService.addWhitelist, ADD, "✔"),
+      disabled: addDisabled
     },
     {
-      title: 'Remove',
-      action: $scope.removeWhitelist,
-      disabled: () => vm.selection.length == 0 || _.all(vm.selection, (doc)=> !doc.whitelisted)
+      title: REMOVE,
+      action: items => updateToWhitelist(items, WhitelistDataService.removeWhitelist, REMOVE),
+      disabled: removeDisabled
     },
   ];
 
@@ -155,7 +175,7 @@ mciModule.controller('PerfBBRejectsCtrl', function (
           .collection(STITCH_CONFIG.PERF.COLL_POINTS)
           .aggregate($scope.getAggChain(vm.state));
       }),
-      whitelist: WhitelistService.getWhitelistQ(project,{})
+      whitelist: WhitelistDataService.getWhitelistQ({'project':project})
     };
     theMostRecentPromise = promises.docs;
     $q.all(promises).then((results) => {
@@ -187,7 +207,17 @@ mciModule.controller('PerfBBRejectsCtrl', function (
     loadData();
   };
 
-  function handleRowSelectionChange(gridApi) {
+  function isChild(row) {
+    return row && row.treeNode && !row.treeNode.treeLevel;
+  }
+
+  // When a parent node is toggled then set all the children to the parent state.
+  // When a child node is toggled then set all the siblings to the child state.
+  function handleRowSelectionChange(gridApi, row) {
+    if (isChild(row)) {
+      const isSelected = row.isSelected;
+      _.each(row.treeNode.parentRow.treeNode.children, child => child.row.isSelected = isSelected)
+    }
     vm.selection = gridApi.selection.getSelectedRows();
   }
 
@@ -213,19 +243,17 @@ mciModule.controller('PerfBBRejectsCtrl', function (
         // NOTE do reload() here for server-side sorting
       });
 
-      api.core.on.filterChanged($scope, _.debounce(() => vm.reload(), 200));
-
-      api.selection.on.rowSelectionChanged(null, _.debounce(() => {
-        handleRowSelectionChange(api);
+      // handle row selection events
+      const rowSelectionChange = _.partial(handleRowSelectionChange,api);
+      api.selection.on.rowSelectionChanged(null, _.debounce((row) => {
+        rowSelectionChange(row);
         $scope.$apply();
       }));
+      api.selection.on.rowSelectionChangedBatch(null, rowSelectionChange);
 
-      // This is required when user selects all items
-      // (rowSelectionChanged doesn't work)
-      api.selection.on.rowSelectionChangedBatch(null, () => handleRowSelectionChange(api));
-
-      // Load initial set of data once `columns` are populated
-      api.core.on.rowsRendered(null, _.once(() => vm.reload()));
+      // api.core.on.filterChanged($scope, _.debounce(vm.reload, 200));
+      api.core.on.filterChanged(null, _.debounce(vm.reload, 200));
+      api.core.on.rowsRendered(null, _.once(vm.reload)); // Load initial set of data once `columns` are populated
     },
 
     columnDefs: [
