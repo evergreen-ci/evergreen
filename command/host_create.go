@@ -128,7 +128,7 @@ func (c *createHost) waitForLogs(ctx context.Context, comm client.Communicator, 
 	for {
 		select {
 		case <-ctx.Done():
-			logger.Task().Infof("context finished waiting for host %s to exit", hostID)
+			logger.Task().Infof("context cancelled waiting for host %s to exit", hostID)
 			return nil
 		case <-pollTicker.C:
 			batchEnd := time.Now()
