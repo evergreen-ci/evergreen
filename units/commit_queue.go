@@ -565,6 +565,9 @@ func setDefaultNotification(username string) error {
 	if err != nil {
 		return errors.Wrap(err, "can't get user")
 	}
+	if u == nil {
+		return errors.Errorf("no matching user for %s", username)
+	}
 
 	// The user has never saved their notification settings
 	if u.Settings.Notifications.CommitQueue == "" {
