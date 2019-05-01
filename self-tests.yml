@@ -82,7 +82,7 @@ variables:
       - func: get-project
       - func: set-up-credentials
       - func: set-up-mongodb
-      - func: setup-docker-host
+#      - func: setup-docker-host
       - func: run-make
         vars:
           target: revendor
@@ -222,33 +222,33 @@ functions:
       params:
         working_dir: gopath/src/github.com/evergreen-ci/evergreen
         command: make check-mongod
-  setup-docker-host:
-    - command: host.create
-      type: setup
-      params:
-        distro: archlinux-parent
-        provider: ec2
-        retries: 3
-        scope: build
-        security_group_ids:
-          - sg-097bff6dd0d1d31d0
-    - command: host.list
-      type: setup
-      params:
-        wait: true
-        timeout_seconds: 900
-        num_hosts: 1
-        path: gopath/src/github.com/evergreen-ci/evergreen/spawned_hosts.json
-    - command: subprocess.exec
-      type: setup
-      params:
-        working_dir: gopath/src/github.com/evergreen-ci/evergreen
-        command: make parse-host-file
-        env:
-          HOST_FILE: spawned_hosts.json
-    - command: expansions.update
-      params:
-        file: gopath/src/github.com/evergreen-ci/evergreen/bin/expansions.yml
+#  setup-docker-host:
+#    - command: host.create
+#      type: setup
+#      params:
+#        distro: archlinux-parent
+#        provider: ec2
+#        retries: 3
+#        scope: build
+#        security_group_ids:
+#          - sg-097bff6dd0d1d31d0
+#    - command: host.list
+#      type: setup
+#      params:
+#        wait: true
+#        timeout_seconds: 900
+#        num_hosts: 1
+#        path: gopath/src/github.com/evergreen-ci/evergreen/spawned_hosts.json
+#   - command: subprocess.exec
+#     type: setup
+#     params:
+#       working_dir: gopath/src/github.com/evergreen-ci/evergreen
+#       command: make parse-host-file
+#       env:
+#         HOST_FILE: spawned_hosts.json
+#   - command: expansions.update
+#     params:
+#       file: gopath/src/github.com/evergreen-ci/evergreen/bin/expansions.yml
 
   attach-test-results:
     - command: gotest.parse_files
@@ -406,6 +406,9 @@ tasks:
   - <<: *run-go-test-suite-with-mongodb
     tags: ["db", "test"]
     name: test-migrations
+  - <<: *run-go-test-suite-with-mongodb
+    tags: ["db", "test"]
+    name: test-model-grid
 
 
 buildvariants:

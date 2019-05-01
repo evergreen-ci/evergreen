@@ -98,6 +98,10 @@ const (
 
 	PushStage = "push"
 
+	MergeTestStarted   = "started"
+	MergeTestSucceeded = "succeeded"
+	MergeTestFailed    = "failed"
+
 	// maximum task (zero based) execution number
 	MaxTaskExecution = 3
 
@@ -135,6 +139,11 @@ const (
 
 	PlannerVersionLegacy  = "legacy"
 	PlannerVersionTunable = "tunable"
+
+	FinderVersionLegacy    = "legacy"
+	FinderVersionParallel  = "parallel"
+	FinderVersionPipeline  = "pipeline"
+	FinderVersionAlternate = "alternate"
 
 	CommitQueueAlias = "__commit_queue"
 
@@ -352,6 +361,14 @@ var (
 	ValidPlannerVersions = []string{
 		PlannerVersionLegacy,
 		PlannerVersionTunable,
+	}
+
+	// Set of valid FinderSettings.Version strings that can be user set via the API
+	ValidFinderVersions = []string{
+		FinderVersionLegacy,
+		FinderVersionParallel,
+		FinderVersionPipeline,
+		FinderVersionAlternate,
 	}
 
 	// constant arrays for db update logic

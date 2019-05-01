@@ -23,7 +23,7 @@ func makeCreatesFile() *createsFile {
 // NewCreatesFile constructs a dependency manager object to support
 // tasks that are tasks are ready to run if a specific file doesn't
 // exist.
-func NewCreatesFile(name string) *createsFile {
+func NewCreatesFile(name string) Manager {
 	c := makeCreatesFile()
 	c.FileName = name
 

@@ -120,6 +120,8 @@ type APINotificationPreferences struct {
 	SpawnHostExpirationID APIString `json:"spawn_host_expiration_id,omitempty"`
 	SpawnHostOutcome      APIString `json:"spawn_host_outcome"`
 	SpawnHostOutcomeID    APIString `json:"spawn_host_outcome_id,omitempty"`
+	CommitQueue           APIString `json:"commit_queue"`
+	CommitQueueID         APIString `json:"commit_queue_id,omitempty"`
 }
 
 func (n *APINotificationPreferences) BuildFromService(h interface{}) error {
@@ -132,6 +134,7 @@ func (n *APINotificationPreferences) BuildFromService(h interface{}) error {
 		n.PatchFinish = ToAPIString(string(v.PatchFinish))
 		n.SpawnHostOutcome = ToAPIString(string(v.SpawnHostOutcome))
 		n.SpawnHostExpiration = ToAPIString(string(v.SpawnHostExpiration))
+		n.CommitQueue = ToAPIString(string(v.CommitQueue))
 		if v.BuildBreakID != "" {
 			n.BuildBreakID = ToAPIString(v.BuildBreakID)
 		}
@@ -143,6 +146,9 @@ func (n *APINotificationPreferences) BuildFromService(h interface{}) error {
 		}
 		if v.SpawnHostExpirationID != "" {
 			n.SpawnHostExpirationID = ToAPIString(v.SpawnHostExpirationID)
+		}
+		if v.CommitQueueID != "" {
+			n.CommitQueueID = ToAPIString(v.CommitQueueID)
 		}
 	default:
 		return errors.Errorf("incorrect type for APINotificationPreferences")
@@ -158,6 +164,7 @@ func (n *APINotificationPreferences) ToService() (interface{}, error) {
 	patchFinish := FromAPIString(n.PatchFinish)
 	spawnHostExpiration := FromAPIString(n.SpawnHostExpiration)
 	spawnHostOutcome := FromAPIString(n.SpawnHostOutcome)
+	commitQueue := FromAPIString(n.CommitQueue)
 	if !user.IsValidSubscriptionPreference(buildbreak) {
 		return nil, errors.New("Build break preference is not a valid type")
 	}
@@ -170,16 +177,21 @@ func (n *APINotificationPreferences) ToService() (interface{}, error) {
 	if !user.IsValidSubscriptionPreference(spawnHostOutcome) {
 		return nil, errors.New("Spawn Host Outcome preference is not a valid type")
 	}
+	if !user.IsValidSubscriptionPreference(commitQueue) {
+		return nil, errors.New("Commit Queue preference is not a valid type")
+	}
 	preferences := user.NotificationPreferences{
 		BuildBreak:          user.UserSubscriptionPreference(buildbreak),
 		PatchFinish:         user.UserSubscriptionPreference(patchFinish),
 		SpawnHostOutcome:    user.UserSubscriptionPreference(spawnHostOutcome),
 		SpawnHostExpiration: user.UserSubscriptionPreference(spawnHostExpiration),
+		CommitQueue:         user.UserSubscriptionPreference(commitQueue),
 	}
 	preferences.BuildBreakID = FromAPIString(n.BuildBreakID)
 	preferences.PatchFinishID = FromAPIString(n.PatchFinishID)
 	preferences.SpawnHostOutcomeID = FromAPIString(n.PatchFinishID)
 	preferences.SpawnHostExpirationID = FromAPIString(n.SpawnHostExpirationID)
+	preferences.CommitQueueID = FromAPIString(n.CommitQueueID)
 	return preferences, nil
 }
 

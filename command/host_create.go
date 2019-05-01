@@ -11,8 +11,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/rest/client"
 	"github.com/mitchellh/mapstructure"
-	"github.com/mongodb/grip"
-	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 )
 
@@ -122,13 +120,14 @@ func (c *createHost) waitForLogs(ctx context.Context, comm client.Communicator, 
 	for {
 		select {
 		case <-ctx.Done():
-			logger.Task().Infof("context finished waiting for host %s to exit", hostID)
+			logger.Task().Debugf("Tick -- context finished waiting for host %s to exit", hostID)
 			return nil
 		case <-pollTicker.C:
+			logger.Task().Info("Tick -- waiting for logs")
 			batchEnd := time.Now()
 			status, err := comm.GetDockerStatus(ctx, hostID)
 			if err != nil {
-				grip.Info(message.WrapError(err, "problem receiving docker logs in host.create"))
+				logger.Task().Infof("problem receiving docker logs in host.create: '%s'", err.Error())
 				if startedCollectingLogs {
 					return nil // container has likely exited
 				}
@@ -137,8 +136,10 @@ func (c *createHost) waitForLogs(ctx context.Context, comm client.Communicator, 
 			if status.HasStarted {
 				startedCollectingLogs = true
 				if err = c.getAndWriteLogBatch(ctx, comm, hostID, batchStart, batchEnd); err != nil {
-					return errors.Wrapf(err, "error getting and writing logs on started container")
+					logger.Task().Debugf("problem getting and writing logs on started container: '%s'", err.Error())
+					continue
 				}
+				logger.Task().Debug("successful log batch")
 				batchStart = batchEnd.Add(time.Nanosecond) // to prevent repeat logs
 
 				if !status.IsRunning { // container exited

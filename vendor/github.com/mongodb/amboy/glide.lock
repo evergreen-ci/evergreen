@@ -30,6 +30,6 @@ imports:
   version: afeadc9b9f628ce2a9d11a7e5b25dac8a0970727
 
 - name: go.mongodb.org/mongo-driver
-  version: 1c3b9b9a41eecdf056560e07b68e6407b8d598c3
+  version: 305bc4a5e4131420fe8ba5628e6faa9e6ade4e86
 
 devImports: []

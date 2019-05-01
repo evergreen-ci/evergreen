@@ -16,6 +16,13 @@
             >[[action.title]]</button>
         </div>
     </div>
+    <span class="legend">Include low confidence Outliers:</span>
+    <div class="control-group">
+        <input type="checkbox" ng-model="outvm.checkboxModel.lowConfidence"
+               ng-true-value="true" ng-false-value="false" ng-change="outvm.lowConfidenceChanged()" name="checkboxModel">
+        <br/>
+    </div>
+    </span>
     <span>Currently selected: [[outvm.selection.length]]</span>
 </div>
 

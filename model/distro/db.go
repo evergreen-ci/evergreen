@@ -27,6 +27,7 @@ var (
 	DisabledKey         = bsonutil.MustHaveTag(Distro{}, "Disabled")
 	ContainerPoolKey    = bsonutil.MustHaveTag(Distro{}, "ContainerPool")
 	PlannerSettingsKey  = bsonutil.MustHaveTag(Distro{}, "PlannerSettings")
+	FinderSettingsKey   = bsonutil.MustHaveTag(Distro{}, "FinderSettings")
 )
 
 const Collection = "distro"

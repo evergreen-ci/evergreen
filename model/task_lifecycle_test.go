@@ -562,7 +562,7 @@ func TestUpdateBuildStatusForTask(t *testing.T) {
 		Convey("updating the build for a task should update the build's status and the version's status", func() {
 			var err error
 			updates := StatusChanges{}
-			So(UpdateBuildAndVersionStatusForTask(testTask.Id, &updates), ShouldBeNil)
+			So(UpdateBuildAndVersionStatus(testTask.Id, &updates), ShouldBeNil)
 			So(updates.PatchNewStatus, ShouldBeEmpty)
 			So(updates.VersionNewStatus, ShouldBeEmpty)
 			So(updates.VersionComplete, ShouldBeFalse)
@@ -634,7 +634,8 @@ func TestTaskStatusImpactedByFailedTest(t *testing.T) {
 		Convey("task should not fail if there are no failed test, also logs should be updated", func() {
 			reset()
 			updates := StatusChanges{}
-			So(MarkEnd(testTask, "", time.Now(), detail, true, &updates), ShouldBeNil)
+			So(MarkEnd(testTask, "", time.Now(), detail, true), ShouldBeNil)
+			So(UpdateBuildAndVersionStatus(testTask.Id, &updates), ShouldBeNil)
 			So(updates.PatchNewStatus, ShouldBeEmpty)
 			So(updates.VersionNewStatus, ShouldEqual, evergreen.VersionSucceeded)
 			So(updates.VersionComplete, ShouldBeTrue)
@@ -669,7 +670,8 @@ func TestTaskStatusImpactedByFailedTest(t *testing.T) {
 				},
 			})
 			So(err, ShouldBeNil)
-			So(MarkEnd(testTask, "", time.Now(), detail, true, &updates), ShouldBeNil)
+			So(MarkEnd(testTask, "", time.Now(), detail, true), ShouldBeNil)
+			So(UpdateBuildAndVersionStatus(testTask.Id, &updates), ShouldBeNil)
 			So(updates.PatchNewStatus, ShouldBeEmpty)
 			So(updates.VersionNewStatus, ShouldEqual, evergreen.VersionSucceeded)
 			So(updates.VersionComplete, ShouldBeTrue)
@@ -698,7 +700,8 @@ func TestTaskStatusImpactedByFailedTest(t *testing.T) {
 
 			So(err, ShouldBeNil)
 			detail.Status = evergreen.TaskFailed
-			So(MarkEnd(testTask, "", time.Now(), detail, true, &updates), ShouldBeNil)
+			So(MarkEnd(testTask, "", time.Now(), detail, true), ShouldBeNil)
+			So(UpdateBuildAndVersionStatus(testTask.Id, &updates), ShouldBeNil)
 			So(updates.PatchNewStatus, ShouldBeEmpty)
 			So(updates.VersionNewStatus, ShouldEqual, evergreen.VersionFailed)
 			So(updates.VersionComplete, ShouldBeTrue)
@@ -723,7 +726,8 @@ func TestTaskStatusImpactedByFailedTest(t *testing.T) {
 			updates := StatusChanges{}
 			So(err, ShouldBeNil)
 			detail.Status = evergreen.TaskFailed
-			So(MarkEnd(testTask, "", time.Now(), detail, true, &updates), ShouldBeNil)
+			So(MarkEnd(testTask, "", time.Now(), detail, true), ShouldBeNil)
+			So(UpdateBuildAndVersionStatus(testTask.Id, &updates), ShouldBeNil)
 			So(updates.PatchNewStatus, ShouldBeEmpty)
 			So(updates.VersionNewStatus, ShouldEqual, evergreen.VersionFailed)
 			So(updates.VersionComplete, ShouldBeTrue)
@@ -731,7 +735,7 @@ func TestTaskStatusImpactedByFailedTest(t *testing.T) {
 			So(updates.BuildComplete, ShouldBeTrue)
 
 			updates = StatusChanges{}
-			So(UpdateBuildAndVersionStatusForTask(testTask.Id, &updates), ShouldBeNil)
+			So(UpdateBuildAndVersionStatus(testTask.Id, &updates), ShouldBeNil)
 			So(updates.PatchNewStatus, ShouldBeEmpty)
 			So(updates.VersionNewStatus, ShouldEqual, evergreen.VersionFailed)
 			So(updates.VersionComplete, ShouldBeTrue)
@@ -772,7 +776,8 @@ func TestTaskStatusImpactedByFailedTest(t *testing.T) {
 			So(err, ShouldBeNil)
 			updates := StatusChanges{}
 			detail.Status = evergreen.TaskFailed
-			So(MarkEnd(testTask, "", time.Now(), detail, true, &updates), ShouldBeNil)
+			So(MarkEnd(testTask, "", time.Now(), detail, true), ShouldBeNil)
+			So(UpdateBuildAndVersionStatus(testTask.Id, &updates), ShouldBeNil)
 			So(updates.PatchNewStatus, ShouldBeEmpty)
 			So(updates.VersionNewStatus, ShouldEqual, evergreen.VersionFailed)
 			So(updates.VersionComplete, ShouldBeTrue)
@@ -826,7 +831,8 @@ func TestMarkEnd(t *testing.T) {
 	details := apimodels.TaskEndDetail{
 		Status: evergreen.TaskFailed,
 	}
-	assert.NoError(MarkEnd(&testTask, userName, time.Now(), &details, false, &updates))
+	assert.NoError(MarkEnd(&testTask, userName, time.Now(), &details, false))
+	assert.NoError(UpdateBuildAndVersionStatus(testTask.Id, &updates))
 	assert.Equal(evergreen.BuildFailed, updates.BuildNewStatus)
 
 	Convey("with a task that is part of a display task", t, func() {
@@ -868,7 +874,8 @@ func TestMarkEnd(t *testing.T) {
 			Status: evergreen.TaskFailed,
 			Type:   evergreen.CommandTypeSystem,
 		}
-		So(MarkEnd(t1, "test", time.Now(), detail, false, &updates), ShouldBeNil)
+		So(MarkEnd(t1, "test", time.Now(), detail, false), ShouldBeNil)
+		So(UpdateBuildAndVersionStatus(t1.Id, &updates), ShouldBeNil)
 		t1FromDb, err := task.FindOne(task.ById(t1.Id))
 		So(err, ShouldBeNil)
 		So(t1FromDb.Status, ShouldEqual, evergreen.TaskFailed)
@@ -884,8 +891,11 @@ func TestMarkEnd(t *testing.T) {
 func TestTryResetTask(t *testing.T) {
 	Convey("With a task, a build, version and a project", t, func() {
 		Convey("resetting a task without a max number of executions", func() {
-			require.NoError(t, db.ClearCollections(task.Collection, task.OldCollection, build.Collection, VersionCollection),
+			require.NoError(t, db.ClearCollections(task.Collection, task.OldCollection, build.Collection, VersionCollection, ProjectRefCollection),
 				"Error clearing task and build collections")
+			p := &ProjectRef{Identifier: "sample"}
+			So(p.Insert(), ShouldBeNil)
+
 			displayName := "testName"
 			userName := "testUser"
 			b := &build.Build{
@@ -921,10 +931,12 @@ func TestTryResetTask(t *testing.T) {
 
 			b.Tasks = []build.TaskCache{
 				{
-					Id: testTask.Id,
+					Id:        testTask.Id,
+					Activated: false,
 				},
 				{
-					Id: otherTask.Id,
+					Id:        otherTask.Id,
+					Activated: true,
 				},
 			}
 
@@ -941,6 +953,7 @@ func TestTryResetTask(t *testing.T) {
 				So(testTask.Details, ShouldResemble, apimodels.TaskEndDetail{})
 				So(testTask.Status, ShouldEqual, evergreen.TaskUndispatched)
 				So(testTask.FinishTime, ShouldResemble, util.ZeroTime)
+				So(testTask.Activated, ShouldBeTrue)
 				oldTaskId := fmt.Sprintf("%v_%v", testTask.Id, 1)
 				oldTask, err := task.FindOneOld(task.ById(oldTaskId))
 				So(err, ShouldBeNil)
@@ -953,6 +966,7 @@ func TestTryResetTask(t *testing.T) {
 				buildFromDb, err := build.FindOne(build.ById(b.Id))
 				So(err, ShouldBeNil)
 				So(buildFromDb.Status, ShouldEqual, evergreen.BuildStarted)
+				So(buildFromDb.Tasks[0].Activated, ShouldBeTrue)
 			})
 
 		})
@@ -1894,7 +1908,8 @@ func TestMarkEndRequiresAllTasksToFinishToUpdateBuildStatus(t *testing.T) {
 	}
 
 	updates := StatusChanges{}
-	assert.NoError(MarkEnd(&testTask, "", time.Now(), details, false, &updates))
+	assert.NoError(MarkEnd(&testTask, "", time.Now(), details, false))
+	assert.NoError(UpdateBuildAndVersionStatus(testTask.Id, &updates))
 	assert.Empty(updates.BuildNewStatus)
 	assert.False(updates.BuildComplete)
 	assert.Empty(updates.VersionNewStatus)
@@ -1906,7 +1921,8 @@ func TestMarkEndRequiresAllTasksToFinishToUpdateBuildStatus(t *testing.T) {
 	assert.False(complete)
 
 	updates = StatusChanges{}
-	assert.NoError(MarkEnd(&anotherTask, "", time.Now(), details, false, &updates))
+	assert.NoError(MarkEnd(&anotherTask, "", time.Now(), details, false))
+	assert.NoError(UpdateBuildAndVersionStatus(anotherTask.Id, &updates))
 	assert.Empty(updates.BuildNewStatus)
 	assert.False(updates.BuildComplete)
 	assert.Empty(updates.VersionNewStatus)
@@ -1918,7 +1934,8 @@ func TestMarkEndRequiresAllTasksToFinishToUpdateBuildStatus(t *testing.T) {
 	assert.False(complete)
 
 	updates = StatusChanges{}
-	assert.NoError(MarkEnd(&exeTask0, "", time.Now(), details, false, &updates))
+	assert.NoError(MarkEnd(&exeTask0, "", time.Now(), details, false))
+	assert.NoError(UpdateBuildAndVersionStatus(exeTask0.Id, &updates))
 	assert.Empty(updates.BuildNewStatus)
 	assert.False(updates.BuildComplete)
 	assert.Empty(updates.VersionNewStatus)
@@ -1930,7 +1947,8 @@ func TestMarkEndRequiresAllTasksToFinishToUpdateBuildStatus(t *testing.T) {
 	assert.False(complete)
 
 	updates = StatusChanges{}
-	assert.NoError(MarkEnd(&exeTask1, "", time.Now(), details, false, &updates))
+	assert.NoError(MarkEnd(&exeTask1, "", time.Now(), details, false))
+	assert.NoError(UpdateBuildAndVersionStatus(exeTask1.Id, &updates))
 	assert.Equal(evergreen.BuildFailed, updates.BuildNewStatus)
 	assert.True(updates.BuildComplete)
 	assert.Equal(evergreen.VersionFailed, updates.VersionNewStatus)
@@ -2012,7 +2030,8 @@ func TestMarkEndRequiresAllTasksToFinishToUpdateBuildStatusWithCompileTask(t *te
 		Type:   "test",
 	}
 	updates := StatusChanges{}
-	assert.NoError(MarkEnd(&testTask, "", time.Now(), details, false, &updates))
+	assert.NoError(MarkEnd(&testTask, "", time.Now(), details, false))
+	assert.NoError(UpdateBuildAndVersionStatus(testTask.Id, &updates))
 	assert.Equal(evergreen.BuildFailed, updates.BuildNewStatus)
 	assert.True(updates.BuildComplete)
 	assert.Equal(evergreen.VersionFailed, updates.VersionNewStatus)
@@ -2094,7 +2113,8 @@ func TestMarkEndWithBlockedDependenciesTriggersNotifications(t *testing.T) {
 		Type:   "test",
 	}
 	updates := StatusChanges{}
-	assert.NoError(MarkEnd(&testTask, "", time.Now(), details, false, &updates))
+	assert.NoError(MarkEnd(&testTask, "", time.Now(), details, false))
+	assert.NoError(UpdateBuildAndVersionStatus(testTask.Id, &updates))
 	assert.Equal(evergreen.BuildFailed, updates.BuildNewStatus)
 	assert.True(updates.BuildComplete)
 	assert.Equal(evergreen.VersionFailed, updates.VersionNewStatus)

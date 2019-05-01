@@ -8,7 +8,9 @@ mciModule.controller('DistrosCtrl', function($scope, $window, $location, $anchor
 
   for (var i = 0; i < $scope.distros.length; i++) {
     $scope.distros[i].pool_size = $scope.distros[i].pool_size || 0;
-    $scope.distros[i].planner_settings = $scope.distros[i].planner_settings || {}
+    $scope.distros[i].finder_settings = $scope.distros[i].finder_settings || {};
+    $scope.distros[i].finder_settings.version = $scope.distros[i].finder_settings.version || "legacy";
+    $scope.distros[i].planner_settings = $scope.distros[i].planner_settings || {};
     $scope.distros[i].planner_settings.minimum_hosts = $scope.distros[i].planner_settings.minimum_hosts || 0;
     $scope.distros[i].planner_settings.version = $scope.distros[i].planner_settings.version || "legacy";
     $scope.distros[i].bootstrap_method = $scope.distros[i].bootstrap_method || 'legacy-ssh';

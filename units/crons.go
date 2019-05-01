@@ -229,7 +229,7 @@ func PopulateTaskMonitoring(mins int) amboy.QueueOperation {
 			return nil
 		}
 
-		return queue.Put(NewTaskExecutionMonitorPopulateJob(util.RoundPartOfMinute(mins).Format(tsFormat)))
+		return queue.Put(NewTaskExecutionMonitorPopulateJob(util.RoundPartOfHour(mins).Format(tsFormat)))
 	}
 }
 
@@ -776,9 +776,32 @@ func PopulateCacheHistoricalTestDataJob(part int) amboy.QueueOperation {
 	}
 }
 
-func PopulateJasperCleanup(env evergreen.Environment) amboy.QueueOperation {
+func PopulateLocalQueueJobs(env evergreen.Environment) amboy.QueueOperation {
 	return func(queue amboy.Queue) error {
-		ts := util.RoundPartOfHour(1).Format(tsFormat)
-		return queue.Put(NewJasperManagerCleanup(ts, env))
+		catcher := grip.NewBasicCatcher()
+		catcher.Add(queue.Put(NewJasperManagerCleanup(util.RoundPartOfMinute(0).Format(tsFormat), env)))
+		flags, err := evergreen.GetServiceFlags()
+		if err != nil {
+			grip.Alert(message.WrapError(err, message.Fields{
+				"message":   "problem fetching service flags",
+				"operation": "system stats",
+			}))
+			catcher.Add(err)
+			return catcher.Resolve()
+		}
+
+		if flags.BackgroundStatsDisabled {
+			grip.InfoWhen(sometimes.Percent(evergreen.DegradedLoggingPercent), message.Fields{
+				"message": "system stats ",
+				"impact":  "memory, cpu, runtime stats",
+				"mode":    "degraded",
+			})
+			return nil
+		}
+
+		catcher.Add(queue.Put(NewSysInfoStatsCollector(fmt.Sprintf("sys-info-stats-%s", util.RoundPartOfMinute(30).Format(tsFormat)))))
+		catcher.Add(queue.Put(NewLocalAmboyStatsCollector(env, fmt.Sprintf("amboy-local-stats-%s", util.RoundPartOfMinute(0).Format(tsFormat)))))
+		return catcher.Resolve()
+
 	}
 }

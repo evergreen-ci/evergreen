@@ -3,6 +3,7 @@ package commitqueue
 import (
 	"testing"
 
+	"github.com/evergreen-ci/evergreen"
 	"github.com/mongodb/grip/level"
 	"github.com/stretchr/testify/assert"
 )
@@ -16,6 +17,7 @@ func TestGithubPRMerge(t *testing.T) {
 		Ref:           "deadbeef",
 		CommitMessage: "merged by cq",
 		PRNum:         1,
+		Status:        evergreen.PatchFailed,
 	}
 	c := NewGithubMergePRMessage(level.Info, pr)
 	assert.NotNil(c)
@@ -33,22 +35,21 @@ func TestGithubMergePRMessageValidator(t *testing.T) {
 	assert := assert.New(t)
 
 	missingPRNum := GithubMergePR{
-		ProjectID:     "mci",
-		Owner:         "evergreen-ci",
-		Repo:          "evergreen",
-		Ref:           "deadbeef",
-		CommitMessage: "merged by cq",
+		ProjectID: "mci",
+		Owner:     "evergreen-ci",
+		Repo:      "evergreen",
+		Ref:       "deadbeef",
 	}
 	c := NewGithubMergePRMessage(level.Info, missingPRNum)
 	assert.False(c.Loggable())
 
 	missingMergeMethod := GithubMergePR{
-		ProjectID:     "mci",
-		Owner:         "evergreen-ci",
-		Repo:          "evergreen",
-		Ref:           "deadbeef",
-		CommitMessage: "merged by cq",
-		PRNum:         1,
+		ProjectID: "mci",
+		Owner:     "evergreen-ci",
+		Repo:      "evergreen",
+		Ref:       "deadbeef",
+		PRNum:     1,
+		Status:    evergreen.PatchFailed,
 	}
 	c = NewGithubMergePRMessage(level.Info, missingMergeMethod)
 	assert.True(c.Loggable())

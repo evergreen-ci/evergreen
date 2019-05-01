@@ -117,6 +117,12 @@ func (j *cloudHostReadyJob) Run(ctx context.Context) {
 func setCloudHostStatus(ctx context.Context, m cloud.Manager, h host.Host, hostStatus cloud.CloudStatus) error {
 	switch hostStatus {
 	case cloud.StatusFailed:
+		grip.Debug(message.Fields{
+			"ticket":     "EVG-6100",
+			"message":    "host status",
+			"host":       h,
+			"hostStatus": hostStatus.String(),
+		})
 		return errors.Wrap(m.TerminateInstance(ctx, &h, evergreen.User), "error terminating instance")
 	case cloud.StatusRunning:
 		return errors.Wrap(h.SetProvisioning(), "error setting host to provisioning")

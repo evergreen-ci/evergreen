@@ -37,6 +37,9 @@ func TestCheckDistro(t *testing.T) {
 				},
 				BootstrapMethod:     distro.BootstrapMethodLegacySSH,
 				CommunicationMethod: distro.CommunicationMethodLegacySSH,
+				FinderSettings: distro.FinderSettings{
+					Version: evergreen.FinderVersionLegacy,
+				},
 			}
 			verrs, err := CheckDistro(ctx, d, conf, true)
 			So(err, ShouldBeNil)
@@ -79,6 +82,9 @@ func TestCheckDistro(t *testing.T) {
 				},
 				BootstrapMethod:     distro.BootstrapMethodLegacySSH,
 				CommunicationMethod: distro.CommunicationMethodLegacySSH,
+				FinderSettings: distro.FinderSettings{
+					Version: evergreen.FinderVersionLegacy,
+				},
 			}
 			verrs, err := CheckDistro(ctx, d, conf, false)
 			So(err, ShouldBeNil)

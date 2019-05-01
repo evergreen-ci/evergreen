@@ -35,6 +35,15 @@ mciModule.config(function($routeProvider, $locationProvider) {
       controller: 'PerfBBOutliersCtrl',
       controllerAs: 'outvm',
     })
+    // Redirects to the same URL with filled in project id
+    .when('/perf-bb/rejects', {
+      redirectTo: applyProject,
+    })
+    .when('/perf-bb/rejects/:projectId', {
+      templateUrl: '/static/app/perf-bb/rejects.html',
+      controller: 'PerfBBRejectsCtrl',
+      controllerAs: 'rejectvm',
+    })
     // This was added for compatibility with server-side routing
     .otherwise({
       redirectTo: function(_, url) {
