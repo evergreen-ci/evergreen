@@ -14,7 +14,7 @@ var findIndex = function(list, predicate) {
 mciModule.controller('PerfController', function PerfController(
   $scope, $window, $http, $location, $log, $q, $filter, ChangePointsService,
   DrawPerfTrendChart, PROCESSED_TYPE, Settings, Stitch, STITCH_CONFIG,
-  TestSample, TrendSamples, PointsDataService
+  TestSample, TrendSamples, PointsDataService, WhitelistDataService
 ) {
     /* for debugging
     $sce, $compile){
@@ -570,6 +570,15 @@ mciModule.controller('PerfController', function PerfController(
                                                               $scope.task.build_variant,
                                                               $scope.task.display_name);
 
+    const whitelistPromise = WhitelistDataService.getWhitelistQ({'project': $scope.task.branch,
+                                                                        'variant': $scope.task.build_variant,
+                                                                        'task': $scope.task.display_name});
+
+    const promise = $q.all({
+      points: pointsPromise,
+      whitelist: whitelistPromise,
+    });
+
     // This code loads change points for current task from the mdb cloud
     const unprocessedPointsQ = Stitch.use(STITCH_CONFIG.PERF).query(function(db) {
       return db
@@ -653,12 +662,20 @@ mciModule.controller('PerfController', function PerfController(
     // Populate the trend data
     const chartDataQ = $http.get("/plugin/json/history/" + $scope.task.id + "/perf").then(
       function(resp) {
-        pointsPromise.then(function(outliers){
-          const rejects = outliers.rejects;
+        promise.then(function(results){
+          const whitelist = results.whitelist;
+
+          const outliers = results.points;
+          let rejects = outliers.rejects;
+
           $scope.allTrendSamples = new TrendSamples(resp.data);
           // Default filtered to all.
           $scope.filteredTrendSamples = $scope.allTrendSamples;
           if(rejects.length) {
+            rejects = _.filter(rejects, function(doc){
+              const matched = _.find(whitelist, _.pick(doc, 'revision', 'project', 'variant', 'task'));
+              return _.isUndefined(matched);
+            });
             const filtered = _.reject(resp.data, doc => _.contains(rejects, doc.task_id));
             if (rejects.length != filtered.length) {
               $scope.filteredTrendSamples = new TrendSamples(filtered);
