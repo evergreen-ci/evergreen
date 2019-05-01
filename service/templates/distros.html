@@ -526,6 +526,7 @@ Evergreen - Distros
             </ul>
         </div>
         <br />
+        <div class="icon fa fa-warning distro-error" ng-show="form.bootstrapMethodForm.$dirty && form.bootstrapMethodForm.$invalid || bootstrapMethodForm.$error.required">Bootstrap method is required</div>
         <div class="dropdown">
           <span class="distro-menu-title">Host Communication Method:</span>
             <button class="btn btn-default dropdown-toggle" type="button" data-toggle="dropdown" aria-expanded="true" ng-disabled="readOnly">
@@ -537,7 +538,7 @@ Evergreen - Distros
             </ul>
         </div>
         <br />
-        <div class="icon fa fa-warning distro-error" ng-show="form.bootstrapMethodForm.$dirty && form.bootstrapMethodForm.$invalid || bootstrapMethodForm.$error.required">Bootstrap method is required</div>
+        <div class="icon fa fa-warning distro-error" ng-show="form.communicationMethodForm.$dirty && form.communicationMethodForm.$invalid || communicationMethodForm.$error.required">Communication method is required</div>
         <div class="dropdown">
           <span class="distro-menu-title">SSH Key:</span>
           <button class="btn btn-default dropdown-toggle" ng-disabled="readOnly" type="button" data-toggle="dropdown">

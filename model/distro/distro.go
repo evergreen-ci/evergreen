@@ -65,6 +65,7 @@ const (
 	BootstrapMethodPreconfiguredImage = "preconfigured-image"
 	BootstrapMethodUserData           = "user-data"
 
+	// Means of communicating with hosts
 	CommunicationMethodLegacySSH = "legacy-ssh"
 	CommunicationMethodSSH       = "ssh"
 	CommunicationMethodRPC       = "rpc"
@@ -268,12 +269,18 @@ func ValidateCommunicationMethod(method string) error {
 	return nil
 }
 
+// ValidateBootstrapAndCommunicationMethods checks that the bootstrap and
+// communication mechanisms are recognized, and that the combination of the two
+// is allowed.
 func ValidateBootstrapAndCommunicationMethods(bootstrap string, communication string) error {
+	catcher := grip.NewBasicCatcher()
+	catcher.Add(ValidateBootstrapMethod(bootstrap))
+	catcher.Add(ValidateCommunicationMethod(communication))
 	if bootstrap == BootstrapMethodLegacySSH && communication != CommunicationMethodLegacySSH ||
 		communication == CommunicationMethodLegacySSH && bootstrap != BootstrapMethodLegacySSH {
-		return fmt.Errorf("'%s' and '%s' is not a valid bootstrap and communication combination", bootstrap, communication)
+		catcher.Add(fmt.Errorf("'%s' and '%s' is not a valid bootstrap and communication combination - legacy SSH is incompatible with non-legacy functionality", bootstrap, communication))
 	}
-	return nil
+	return catcher.Resolve()
 }
 
 // GetDistroIds returns a slice of distro IDs for the given group of distros

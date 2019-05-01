@@ -14,6 +14,7 @@ import (
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/gimlet"
+	"github.com/mongodb/grip"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -393,12 +394,12 @@ func (s *DistroPutSuite) TestRunNewWithValidEntity() {
 
 	resp := s.rm.Run(ctx)
 	s.NotNil(resp.Data())
-	s.Equal(resp.Status(), http.StatusCreated)
+	s.Equal(http.StatusCreated, resp.Status())
 }
 
 func (s *DistroPutSuite) TestRunNewWithInValidEntity() {
 	ctx := context.Background()
-	json := []byte(`{"arch": "linux_amd64", "work_dir": "/data/mci", "ssh_key": "", "bootstrap_method": "foo", "communication_method": "foo", "provider": "mock", "user": "tibor", "planner_settings": {"version": "invalid"}}`)
+	json := []byte(`{"arch": "linux_amd64", "work_dir": "/data/mci", "ssh_key": "", "bootstrap_method": "foo", "communication_method": "bar", "provider": "mock", "user": "tibor", "planner_settings": {"version": "invalid"}}`)
 	h := s.rm.(*distroIDPutHandler)
 	h.distroID = "distro4"
 	h.body = json
@@ -409,8 +410,8 @@ func (s *DistroPutSuite) TestRunNewWithInValidEntity() {
 	err := (resp.Data()).(gimlet.ErrorResponse)
 	s.Contains(err.Message, "ERROR: distro 'ssh_key' cannot be blank")
 	s.Contains(err.Message, "ERROR: invalid distro.planner_settings.version 'invalid' for distro 'distro4'")
-	s.Contains(err.Message, "error validating bootstrap method: 'foo' is not a valid bootstrap method")
-	s.Contains(err.Message, "error validating communication method: 'foo' is not a valid communication method")
+	s.Contains(err.Message, "'foo' is not a valid bootstrap method")
+	s.Contains(err.Message, "'bar' is not a valid communication method")
 }
 
 func (s *DistroPutSuite) TestRunNewConflictingName() {
@@ -436,7 +437,7 @@ func (s *DistroPutSuite) TestRunExistingWithValidEntity() {
 
 	resp := s.rm.Run(ctx)
 	s.NotNil(resp.Data())
-	s.Equal(resp.Status(), http.StatusOK)
+	s.Equal(http.StatusOK, resp.Status())
 }
 
 func (s *DistroPutSuite) TestRunExistingWithInValidEntity() {
@@ -937,22 +938,6 @@ func (s *DistroPatchByIDSuite) TestRunValidBootstrapMethod() {
 	s.Equal(model.ToAPIString(distro.BootstrapMethodLegacySSH), apiDistro.BootstrapMethod)
 }
 
-func (s *DistroPatchByIDSuite) TestRunValidCommunicationMethod() {
-	ctx := context.Background()
-	json := []byte(`{"communication_method": "legacy-ssh"}`)
-	h := s.rm.(*distroIDPatchHandler)
-	h.distroID = "fedora8"
-	h.body = json
-
-	resp := s.rm.Run(ctx)
-	s.NotNil(resp.Data())
-	s.Equal(resp.Status(), http.StatusOK)
-
-	apiDistro, ok := (resp.Data()).(*model.APIDistro)
-	s.Require().True(ok)
-	s.Equal(model.ToAPIString(distro.CommunicationMethodLegacySSH), apiDistro.CommunicationMethod)
-}
-
 func (s *DistroPatchByIDSuite) TestRunInvalidBootstrapMethod() {
 	ctx := context.Background()
 	json := []byte(`{"bootstrap_method": "foobar"}`)
@@ -965,11 +950,58 @@ func (s *DistroPatchByIDSuite) TestRunInvalidBootstrapMethod() {
 	s.Equal(http.StatusBadRequest, resp.Status())
 }
 
-// kim: TODO: add test to ensure that the communication method matches the
-// existing bootstrap method in the db, and vice versa.
+func (s *DistroPatchByIDSuite) TestRunValidCommunicationMethod() {
+	ctx := context.Background()
+	json := []byte(`{"communication_method": "legacy-ssh"}`)
+	h := s.rm.(*distroIDPatchHandler)
+	h.distroID = "fedora8"
+	h.body = json
+
+	resp := s.rm.Run(ctx)
+	s.NotNil(resp.Data())
+	s.Equal(http.StatusOK, resp.Status())
+
+	apiDistro, ok := (resp.Data()).(*model.APIDistro)
+	s.Require().True(ok)
+	s.Equal(model.ToAPIString(distro.CommunicationMethodLegacySSH), apiDistro.CommunicationMethod)
+}
+
 func (s *DistroPatchByIDSuite) TestRunInvalidCommunicationMethod() {
 	ctx := context.Background()
 	json := []byte(`{"communication_method": "foobar"}`)
+	h := s.rm.(*distroIDPatchHandler)
+	h.distroID = "fedora8"
+	h.body = json
+
+	resp := s.rm.Run(ctx)
+	s.NotNil(resp.Data())
+	s.Equal(http.StatusBadRequest, resp.Status())
+}
+
+func (s *DistroPatchByIDSuite) TestRunValidBootstrapAndCommunicationMethods() {
+	ctx := context.Background()
+	json := []byte(fmt.Sprintf(
+		`{"bootstrap_method": "%s", "communication_method": "%s"} `,
+		distro.BootstrapMethodLegacySSH, distro.CommunicationMethodLegacySSH))
+	h := s.rm.(*distroIDPatchHandler)
+	h.distroID = "fedora8"
+	h.body = json
+
+	resp := s.rm.Run(ctx)
+	s.NotNil(resp.Data())
+	s.Equal(http.StatusOK, resp.Status())
+
+	apiDistro, ok := (resp.Data()).(*model.APIDistro)
+	s.Require().True(ok)
+	s.Equal(model.ToAPIString(distro.BootstrapMethodLegacySSH), apiDistro.BootstrapMethod)
+	s.Equal(model.ToAPIString(distro.CommunicationMethodLegacySSH), apiDistro.CommunicationMethod)
+}
+
+func (s *DistroPatchByIDSuite) TestRunInvalidBootstrapAndCommunicationMethods() {
+	ctx := context.Background()
+	json := []byte(fmt.Sprintf(
+		`{"bootstrap_method": "%s", "communication_method": "%s"} `,
+		distro.BootstrapMethodUserData, distro.CommunicationMethodLegacySSH))
 	h := s.rm.(*distroIDPatchHandler)
 	h.distroID = "fedora8"
 	h.body = json

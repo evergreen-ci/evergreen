@@ -283,9 +283,9 @@ mciModule.controller('DistrosCtrl', function($scope, $window, $location, $anchor
       );
     } else {
       mciDistroRestService.modifyDistro(
-    $scope.activeDistro._id,
-    $scope.activeDistro,
-    $scope.shouldDeco,
+      $scope.activeDistro._id,
+      $scope.activeDistro,
+      $scope.shouldDeco,
     {
       success: function(resp) {
         $window.location.reload(true);

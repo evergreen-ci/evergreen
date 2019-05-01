@@ -10,7 +10,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mitchellh/mapstructure"
-	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 )
 
@@ -185,16 +184,8 @@ func ensureValidArch(ctx context.Context, d *distro.Distro, s *evergreen.Setting
 // is one of the supported methods, the communication method is one of the
 // supported methods, and the two together form a valid combination.
 func ensureValidBootstrapAndCommunicationMethods(ctx context.Context, d *distro.Distro, s *evergreen.Settings) ValidationErrors {
-	grip.Infof("kim: b = %s, c = %s", d.BootstrapMethod, d.CommunicationMethod)
-	catcher := grip.NewBasicCatcher()
-	catcher.Add(errors.Wrap(distro.ValidateBootstrapMethod(d.BootstrapMethod), "error validating bootstrap method"))
-	catcher.Add(errors.Wrap(distro.ValidateCommunicationMethod(d.CommunicationMethod), "error validating communication method"))
-	if catcher.HasErrors() {
-		return ValidationErrors{{Level: Error, Message: catcher.Resolve().Error()}}
-	}
-	if (d.BootstrapMethod == distro.BootstrapMethodLegacySSH && d.CommunicationMethod != distro.CommunicationMethodLegacySSH) ||
-		(d.CommunicationMethod == distro.CommunicationMethodLegacySSH && d.BootstrapMethod != distro.BootstrapMethodLegacySSH) {
-		return ValidationErrors{{Level: Error, Message: "legacy SSH is incompatible with all non-legacy methods"}}
+	if err := distro.ValidateBootstrapAndCommunicationMethods(d.BootstrapMethod, d.CommunicationMethod); err != nil {
+		return ValidationErrors{{Level: Error, Message: err.Error()}}
 	}
 	return nil
 }
