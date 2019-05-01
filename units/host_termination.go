@@ -73,7 +73,7 @@ func (j *hostTerminationJob) Run(ctx context.Context) {
 	if j.host == nil {
 		j.host, err = host.FindOneId(j.HostID)
 		if err != nil {
-			j.AddError(err)
+			j.AddError(errors.Wrapf(err, "error finding host '%s'", j.HostID))
 			return
 		}
 		if j.host == nil {
@@ -154,7 +154,7 @@ func (j *hostTerminationJob) Run(ctx context.Context) {
 
 	j.host, err = host.FindOneId(j.HostID)
 	if err != nil {
-		j.AddError(err)
+		j.AddError(errors.Wrapf(err, "error finding host '%s'", j.HostID))
 		return
 	}
 	if j.host == nil {
