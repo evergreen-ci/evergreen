@@ -604,10 +604,7 @@ func UnscheduleStaleUnderwaterTasks(distroID string) (int, error) {
 		query[DistroIdKey] = distroID
 	}
 
-	query["$and"] = []bson.M{
-		{ActivatedTimeKey: bson.M{"$lte": time.Now().Add(-UnschedulableThreshold)}},
-		{ActivatedTimeKey: bson.M{"$gt": util.ZeroTime}},
-	}
+	query[ActivatedTimeKey] = bson.M{"$lte": time.Now().Add(-UnschedulableThreshold)}
 
 	update := bson.M{
 		"$set": bson.M{
