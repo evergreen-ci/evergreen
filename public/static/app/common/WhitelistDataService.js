@@ -16,8 +16,7 @@ mciModule.factory('WhitelistDataService', function(
         return outliers_collection.updateOne(query, task_revision, {upsert: true});
       });
       return $q.all(promises);
-    })
-
+    });
   }
 
   // Removes whitelist entries for tasks
@@ -29,7 +28,7 @@ mciModule.factory('WhitelistDataService', function(
         .db(STITCH_CONFIG.PERF.DB_PERF)
         .collection(STITCH_CONFIG.PERF.COLL_WHITELISTED_OUTLIERS)
         .deleteMany(query);
-    })
+    });
   }
 
   // Get the whitelist as a promise
@@ -57,5 +56,5 @@ mciModule.factory('WhitelistDataService', function(
     addWhitelist: addWhitelist,
     removeWhitelist: removeWhitelist,
     getWhitelistQ:getWhitelistQ,
-  }
+  };
 });

@@ -70,12 +70,11 @@ describe('WhitelistDataServiceSpec', function () {
           $q = $injector.get('$q');
           deferred = $q.defer();
           spyOn($q, 'all').and.returnValue(deferred.promise);
-
           service = $injector.get('WhitelistDataService')
         });
 
-
       });
+
       it('should process a single task_revisions', function () {
         const task_revisions = setUpTaskRevisions();
         const query  = createTaskRevisionQuery();
@@ -85,6 +84,7 @@ describe('WhitelistDataServiceSpec', function () {
         expect($db.collection).toHaveBeenCalledWith(coll_whitelist);
         expect($db.updateOne).toHaveBeenCalledWith(query, task_revisions[0], {upsert: true});
       });
+
       it('should process multiple task_revisions', function () {
         const count = 2;
         const task_revisions = setUpTaskRevisions(count);
@@ -179,12 +179,14 @@ describe('WhitelistDataServiceSpec', function () {
 
         inject($injector => service = $injector.get('WhitelistDataService'));
       });
+
       it('should pass on query', function () {
         service.getWhitelistQ(query);
         expect($db.db).toHaveBeenCalledWith(db_perf);
         expect($db.collection).toHaveBeenCalledWith(coll_whitelist);
         expect($db.find).toHaveBeenCalledWith(query, undefined);
       });
+
       it('should pass on projection', function () {
         service.getWhitelistQ(query, mongo_filter);
         expect($db.db).toHaveBeenCalledWith(db_perf);
@@ -223,6 +225,7 @@ describe('WhitelistDataServiceSpec', function () {
           });
         });
       });
+
       describe('failure', () => {
         const setUpErrorResults = () => {
           module($provide => {

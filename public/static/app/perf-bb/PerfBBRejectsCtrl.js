@@ -251,7 +251,6 @@ mciModule.controller('PerfBBRejectsCtrl', function (
       }));
       api.selection.on.rowSelectionChangedBatch(null, rowSelectionChange);
 
-      // api.core.on.filterChanged($scope, _.debounce(vm.reload, 200));
       api.core.on.filterChanged(null, _.debounce(vm.reload, 200));
       api.core.on.rowsRendered(null, _.once(vm.reload)); // Load initial set of data once `columns` are populated
     },
