@@ -288,7 +288,7 @@ func (j *commitQueueJob) processCLIPatchItem(ctx context.Context, cq *commitqueu
 	subscriber := event.NewCommitQueueDequeueSubscriber()
 
 	patchSub := event.NewPatchOutcomeSubscription(nextItem.Issue, subscriber)
-	if err := patchSub.Upsert(); err != nil {
+	if err = patchSub.Upsert(); err != nil {
 		j.logError(err, "failed to insert patch subscription", nextItem)
 		j.dequeue(cq, nextItem)
 	}
