@@ -738,7 +738,7 @@ func (c *communicatorImpl) EnqueueItem(ctx context.Context, projectID, item stri
 	}
 
 	positionResp := model.APICommitQueuePosition{}
-	if err = util.ReadJSONInto(resp.Body, &positionResp); err != nil {
+	if err = json.Unmarshal(bytes, &positionResp); err != nil {
 		return 0, errors.Wrap(err, "error parsing position response")
 	}
 
