@@ -418,50 +418,23 @@ func (c *dockerClientImpl) GetDockerLogs(ctx context.Context, containerID string
 
 func (c *dockerClientImpl) GetDockerStatus(ctx context.Context, containerID string, parent *host.Host) (*ContainerStatus, error) {
 	if util.StringSliceContains(evergreen.NotRunningStatus, parent.Status) {
-		grip.Debug(message.Fields{
-			"parent_status": parent.Status,
-			"message":       "problem getting container",
-			"operation":     "docker status",
-			"ticket":        "EVG-6100",
-			"host":          containerID,
-		})
 		return &ContainerStatus{HasStarted: false}, nil
 	}
 	container, err := c.GetContainer(ctx, parent, containerID)
 	if err != nil {
-		grip.Debug(message.WrapError(err, message.Fields{
-			"parent_status": parent.Status,
-			"message":       "problem getting container",
-			"operation":     "docker status",
-			"ticket":        "EVG-6100",
-			"host":          containerID,
-		}))
 		if strings.Contains(err.Error(), "No such container") {
 			return &ContainerStatus{HasStarted: false}, nil
 		}
 		return nil, errors.Wrapf(err, "Error getting container %s", containerID)
 	}
 	if container == nil {
-		grip.Debug(message.WrapError(err, message.Fields{
-			"parent_status": parent.Status,
-			"message":       "container returned nil",
-			"operation":     "docker status",
-			"ticket":        "EVG-6100",
-			"host":          containerID,
-		}))
 		return nil, errors.Errorf("Container '%s' returned empty", containerID)
 	}
+
 	status := ContainerStatus{
 		HasStarted: true,
 		IsRunning:  container.State.Running,
 	}
-	grip.Debug(message.Fields{
-		"parent_status": parent.Status,
-		"operation":     "docker status",
-		"ticket":        "EVG-6100",
-		"host":          containerID,
-		"status":        status,
-	})
 	return &status, nil
 }
 
