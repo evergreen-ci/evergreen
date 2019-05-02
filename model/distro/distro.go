@@ -86,8 +86,8 @@ const (
 	ArchWindowsAmd64 = "windows_amd64"
 )
 
-// ValidArches includes all recognized architectures.
-var ValidArches = []string{
+// validArches includes all recognized architectures.
+var validArches = []string{
 	ArchDarwinAmd64,
 	ArchLinux386,
 	ArchLinuxPpc64le,
@@ -98,16 +98,16 @@ var ValidArches = []string{
 	ArchWindowsAmd64,
 }
 
-// ValidBootstrapMethods includes all recognized bootstrap methods.
-var ValidBootstrapMethods = []string{
+// validBootstrapMethods includes all recognized bootstrap methods.
+var validBootstrapMethods = []string{
 	BootstrapMethodLegacySSH,
 	BootstrapMethodSSH,
 	BootstrapMethodPreconfiguredImage,
 	BootstrapMethodUserData,
 }
 
-// ValidCommunicationMethods includes all recognized host communication methods.
-var ValidCommunicationMethods = []string{
+// validCommunicationMethods includes all recognized host communication methods.
+var validCommunicationMethods = []string{
 	CommunicationMethodLegacySSH,
 	CommunicationMethodSSH,
 	CommunicationMethodRPC,
@@ -250,7 +250,7 @@ func ValidateArch(arch string) error {
 		return fmt.Errorf("architecture '%s' is not in the form ${GOOS}_${GOARCH}", arch)
 	}
 
-	if !util.StringSliceContains(ValidArches, arch) {
+	if !util.StringSliceContains(validArches, arch) {
 		return fmt.Errorf("'%s' is not a recognized architecture", arch)
 	}
 	return nil
@@ -259,7 +259,7 @@ func ValidateArch(arch string) error {
 // ValidateBootstrapMethod checks that the bootstrap mechanism is one of the
 // supported methods.
 func ValidateBootstrapMethod(method string) error {
-	if !util.StringSliceContains(ValidBootstrapMethods, method) {
+	if !util.StringSliceContains(validBootstrapMethods, method) {
 		return fmt.Errorf("'%s' is not a valid bootstrap method", method)
 	}
 	return nil
@@ -268,7 +268,7 @@ func ValidateBootstrapMethod(method string) error {
 // ValidateCommunicationMethod checks that the communication mechanism is one of
 // the supported methods.
 func ValidateCommunicationMethod(method string) error {
-	if !util.StringSliceContains(ValidCommunicationMethods, method) {
+	if !util.StringSliceContains(validCommunicationMethods, method) {
 		return fmt.Errorf("'%s' is not a valid communication method", method)
 	}
 	return nil
@@ -281,9 +281,15 @@ func ValidateBootstrapAndCommunicationMethods(bootstrap string, communication st
 	catcher := grip.NewBasicCatcher()
 	catcher.Add(ValidateBootstrapMethod(bootstrap))
 	catcher.Add(ValidateCommunicationMethod(communication))
-	if bootstrap == BootstrapMethodLegacySSH && communication != CommunicationMethodLegacySSH ||
-		communication == CommunicationMethodLegacySSH && bootstrap != BootstrapMethodLegacySSH {
-		catcher.Add(fmt.Errorf("'%s' and '%s' is not a valid bootstrap and communication combination - legacy SSH is incompatible with non-legacy functionality", bootstrap, communication))
+	switch bootstrap {
+	case BootstrapMethodLegacySSH:
+		if communication != CommunicationMethodLegacySSH {
+			catcher.Add(fmt.Errorf("bootstrapping hosts using legacy SSH is incompatible with non-legacy host communication"))
+		}
+	default:
+		if communication == CommunicationMethodLegacySSH {
+			catcher.Add(fmt.Errorf("communicating with hosts using legacy SSH is incompatible with non-legacy host bootstrapping"))
+		}
 	}
 	return catcher.Resolve()
 }

@@ -366,15 +366,31 @@ func TestEnsureValidContainerPool(t *testing.T) {
 
 func TestEnsureValidBootstrapAndCommunicationMethods(t *testing.T) {
 	ctx := context.Background()
-	for _, bootstrapMethod := range distro.ValidBootstrapMethods {
-		for _, communicationMethod := range distro.ValidCommunicationMethods {
-			d := &distro.Distro{BootstrapMethod: bootstrapMethod, CommunicationMethod: communicationMethod}
-			if bootstrapMethod == distro.BootstrapMethodLegacySSH && communicationMethod == distro.CommunicationMethodLegacySSH {
-				assert.Nil(t, ensureValidBootstrapAndCommunicationMethods(ctx, d, &evergreen.Settings{}))
-			} else if bootstrapMethod == distro.BootstrapMethodLegacySSH || communicationMethod == distro.CommunicationMethodLegacySSH {
-				assert.NotNil(t, ensureValidBootstrapAndCommunicationMethods(ctx, d, &evergreen.Settings{}))
-			} else {
-				assert.Nil(t, ensureValidBootstrapAndCommunicationMethods(ctx, d, &evergreen.Settings{}))
+	for _, bootstrap := range []string{
+		distro.BootstrapMethodLegacySSH,
+		distro.BootstrapMethodSSH,
+		distro.BootstrapMethodUserData,
+		distro.BootstrapMethodPreconfiguredImage,
+	} {
+		for _, communication := range []string{
+			distro.CommunicationMethodLegacySSH,
+			distro.CommunicationMethodSSH,
+			distro.CommunicationMethodRPC,
+		} {
+			d := &distro.Distro{BootstrapMethod: bootstrap, CommunicationMethod: communication}
+			switch bootstrap {
+			case distro.BootstrapMethodLegacySSH:
+				if communication == distro.CommunicationMethodLegacySSH {
+					assert.Nil(t, ensureValidBootstrapAndCommunicationMethods(ctx, d, &evergreen.Settings{}))
+				} else {
+					assert.NotNil(t, ensureValidBootstrapAndCommunicationMethods(ctx, d, &evergreen.Settings{}))
+				}
+			default:
+				if communication == distro.CommunicationMethodLegacySSH {
+					assert.NotNil(t, ensureValidBootstrapAndCommunicationMethods(ctx, d, &evergreen.Settings{}))
+				} else {
+					assert.Nil(t, ensureValidBootstrapAndCommunicationMethods(ctx, d, &evergreen.Settings{}))
+				}
 			}
 		}
 	}
