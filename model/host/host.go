@@ -5,8 +5,6 @@ import (
 	"math"
 	"time"
 
-	"gopkg.in/mgo.v2"
-
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/distro"
@@ -1182,7 +1180,7 @@ func GetNumContainersOnParents(d distro.Distro) ([]ContainersOnParents, error) {
 	for i := len(allParents) - 1; i >= 0; i-- {
 		parent := allParents[i]
 		currentContainers, err := parent.GetContainers()
-		if err != nil && err != mgo.ErrNotFound {
+		if err != nil && !adb.ResultsNotFound(err) {
 			return nil, errors.Wrapf(err, "Problem finding containers for parent %s", parent.Id)
 		}
 		if len(currentContainers) < parent.ContainerPoolSettings.MaxContainers {
