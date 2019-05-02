@@ -7,11 +7,13 @@
 <script type="text/javascript" src="/static/app/perf-bb/SignalProcessingCtrl.js?hash={{ BuildRevision }}"></script>
 <script type="text/javascript" src="/static/app/perf-bb/PerfBBFailuresCtrl.js?hash={{ BuildRevision }}"></script>
 <script type="text/javascript" src="/static/app/perf-bb/PerfBBOutliersCtrl.js?hash={{ BuildRevision }}"></script>
+<script type="text/javascript" src="/static/app/perf-bb/PerfBBRejectsCtrl.js?hash={{ BuildRevision }}"></script>
 <script type="text/javascript" src="/static/app/perf-bb/hazardLevelCell.js?hash={{ BuildRevision }}"></script>
 <script type="text/javascript" src="/static/app/perf-bb/templates.js?hash={{ BuildRevision }}"></script>
 <script type="text/javascript" src="/static/app/perf-bb/routes.js?hash={{ BuildRevision }}"></script>
 <script type="text/javascript" src="/static/app/perf-bb/constants.js?hash={{ BuildRevision }}"></script>
 <script type="text/javascript" src="/static/app/perf-bb/ChangePointsService.js?hash={{ BuildRevision }}"></script>
+<script type="text/javascript" src="/static/app/perf-bb/WhitelistService.js?hash={{ BuildRevision }}"></script>
 <script type="text/javascript" src="/static/app/common/EvgUiGridUtil.js?hash={{ BuildRevision }}"></script>
 <script type="text/javascript" src="/static/app/common/MDBQueryAdaptor.js?hash={{ BuildRevision }}"></script>
 <script type="text/javascript" src="/static/app/common/ApiUtil.js?hash={{ BuildRevision }}"></script>
@@ -28,7 +30,7 @@ Signal Processing
 
 <div class="signal-processing">
   <ul class="nav nav-tabs" ng-init="vm = {mode: 'change-points'}">
-    <li ng-repeat="(id, name) in {'change-points': 'Change Points', 'failures': 'Failures', 'outliers': 'Outliers'}"
+    <li ng-repeat="(id, name) in {'change-points': 'Change Points', 'failures': 'Failures', 'outliers': 'Outliers', 'rejects': 'Rejected Outliers'}"
         ng-class="{active: (vm.mode==id)}"
     >
       <a ng-click="vm.mode = id" href="/perf-bb/[[id]]/">[[name]]</a>
