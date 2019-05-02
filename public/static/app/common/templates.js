@@ -15,7 +15,8 @@ mciModule.run(function($templateCache) {
 
   $templateCache.put('ui-grid-link',
     '<div class="ui-grid-cell-contents">' +
-      '<a ng-href="{{col.colDef._link(row, col)}}" target="_blank" rel="noopener">{{COL_FIELD}}</a>' +
+      '<a ng-if="!row.internalRow" ng-href="{{col.colDef._link(row, col)}}" target="_blank" rel="noopener">{{COL_FIELD}}</a>' +
+      '<div ng-if="row.internalRow">{{COL_FIELD}}</div>' +
     '</div>'
   )
 })
