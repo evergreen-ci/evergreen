@@ -8,9 +8,11 @@ mciModule.controller('DistrosCtrl', function($scope, $window, $location, $anchor
 
   for (var i = 0; i < $scope.distros.length; i++) {
     $scope.distros[i].pool_size = $scope.distros[i].pool_size || 0;
-    $scope.distros[i].planner_settings = $scope.distros[i].planner_settings || {}
+    $scope.distros[i].planner_settings = $scope.distros[i].planner_settings || {};
     $scope.distros[i].planner_settings.minimum_hosts = $scope.distros[i].planner_settings.minimum_hosts || 0;
     $scope.distros[i].planner_settings.version = $scope.distros[i].planner_settings.version || "legacy";
+    $scope.distros[i].finder_settings = $scope.distros[i].finder_settings || {};
+    $scope.distros[i].finder_settings.version = $scope.distros[i].finder_settings.version || "legacy";
     $scope.distros[i].bootstrap_method = $scope.distros[i].bootstrap_method || 'legacy-ssh';
     $scope.distros[i].bootstrap_method = $scope.distros[i].bootstrap_method || 'legacy-ssh';
   }
@@ -355,6 +357,7 @@ mciModule.controller('DistrosCtrl', function($scope, $window, $location, $anchor
       newDistro.settings = _.clone($scope.activeDistro.settings);
       newDistro.expansions = _.clone($scope.activeDistro.expansions);
       newDistro.planner_settings = _.clone($scope.activeDistro.planner_settings);
+      newDistro.finder_settings = _.clone($scope.activeDistro.finder_settings);
 
       $scope.distros.unshift(newDistro);
       $scope.hasNew = true;

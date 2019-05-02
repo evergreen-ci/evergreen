@@ -64,14 +64,13 @@ func EscapeJQLReservedChars(in string) string {
 func GetSetDifference(a, b []string) []string {
 	setB := make(map[string]struct{})
 	setDifference := make(map[string]struct{})
-	var s struct{}
 
 	for _, e := range b {
-		setB[e] = s
+		setB[e] = struct{}{}
 	}
 	for _, e := range a {
 		if _, ok := setB[e]; !ok {
-			setDifference[e] = s
+			setDifference[e] = struct{}{}
 		}
 	}
 
