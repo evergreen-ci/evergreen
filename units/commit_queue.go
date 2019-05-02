@@ -509,6 +509,20 @@ func addMergeTaskAndVariant(patchDoc *patch.Patch, project *model.Project) error
 		},
 	}
 
+	// Merge task depends on all commit queue tasks matching the alias
+	// (protect against a user removing tasks from the patch)
+	execPairs, _, err := project.BuildProjectTVPairsWithAlias(evergreen.CommitQueueAlias)
+	if err != nil {
+		return errors.Wrap(err, "can't get alias pairs")
+	}
+	dependencies := make([]model.TaskUnitDependency, 0, len(execPairs))
+	for _, pair := range execPairs {
+		dependencies = append(dependencies, model.TaskUnitDependency{
+			Name:    pair.TaskName,
+			Variant: pair.Variant,
+		})
+	}
+
 	mergeTask := model.ProjectTask{
 		Name: "merge-patch",
 		Commands: []model.PluginCommandConf{
@@ -528,12 +542,7 @@ func addMergeTaskAndVariant(patchDoc *patch.Patch, project *model.Project) error
 				},
 			},
 		},
-		DependsOn: []model.TaskUnitDependency{
-			{
-				Name:    "*",
-				Variant: "*",
-			},
-		},
+		DependsOn: dependencies,
 	}
 
 	project.BuildVariants = append(project.BuildVariants, mergeBuildVariant)
