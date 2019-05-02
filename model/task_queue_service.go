@@ -27,6 +27,17 @@ type taskDispatchService struct {
 }
 
 func NewTaskQueueService(ttl time.Duration) TaskQueueService {
+	grip.Info(message.Fields{
+		"logged_by": "brian",
+		"message":   "begin NewTaskDispatchService",
+		"ttl":       ttl,
+	})
+	defer func() {
+		grip.Info(message.Fields{
+			"logged_by": "brian",
+			"message":   "end NewTaskQueueService",
+		})
+	}()
 	return &taskDispatchService{
 		ttl:    ttl,
 		queues: map[string]*taskDistroDispatchService{},
@@ -34,6 +45,16 @@ func NewTaskQueueService(ttl time.Duration) TaskQueueService {
 }
 
 func (s *taskDispatchService) FindNextTask(distro string, spec TaskSpec) (*TaskQueueItem, error) {
+	grip.Info(message.Fields{
+		"logged_by": "brian",
+		"message":   "begin taskDispatchService.FindNextTask(distro, spec)",
+	})
+	defer func() {
+		grip.Info(message.Fields{
+			"logged_by": "brian",
+			"message":   "end taskDispatchService.FindNextTask(distro, spec)",
+		})
+	}()
 	queue, err := s.ensureQueue(distro)
 	if err != nil {
 		return nil, errors.WithStack(err)
@@ -52,6 +73,20 @@ func (s *taskDispatchService) Refresh(distro string) error {
 }
 
 func (s *taskDispatchService) RefreshFindNextTask(distro string, spec TaskSpec) (*TaskQueueItem, error) {
+	grip.Info(message.Fields{
+		"logged_by": "brian",
+		"message":   "begin taskDispatchService.RefreshFindNextTask(distro, spec)",
+		"distro":    distro,
+		"spec":      spec,
+	})
+	defer func() {
+		grip.Info(message.Fields{
+			"logged_by": "brian",
+			"message":   "end taskDispatchService.RefreshFindNextTask(distro, spec)",
+			"distro":    distro,
+			"spec":      spec,
+		})
+	}()
 	queue, err := s.ensureQueue(distro)
 	if err != nil {
 		return nil, errors.WithStack(err)
@@ -64,10 +99,31 @@ func (s *taskDispatchService) RefreshFindNextTask(distro string, spec TaskSpec) 
 }
 
 func (s *taskDispatchService) ensureQueue(distro string) (*taskDistroDispatchService, error) {
+	grip.Info(message.Fields{
+		"logged_by":    "brian",
+		"message":      "begin taskDispatchService.ensureQueue(distro)",
+		"distro":       distro,
+		"current_time": time.Now(),
+	})
+	defer func() {
+		grip.Info(message.Fields{
+			"logged_by":    "brian",
+			"message":      "end taskDispatchService.ensureQueue(distro)",
+			"distro":       distro,
+			"current_time": time.Now(),
+		})
+	}()
 	s.mu.RLock()
 	queue, ok := s.queues[distro]
 	s.mu.RUnlock()
 	if ok {
+		grip.Info(message.Fields{
+			"logged_by": "brian",
+			"message":   "We got a cached queue inside taskDispatchService.ensureQueue(distro)",
+			"len_order": len(queue.order),
+			"len_units": len(queue.units),
+			"distro":    distro,
+		})
 		return queue, nil
 	}
 
@@ -78,12 +134,34 @@ func (s *taskDispatchService) ensureQueue(distro string) (*taskDistroDispatchSer
 		return queue, nil
 	}
 
+	grip.Info(message.Fields{
+		"logged_by": "brian",
+		"message":   "We did NOT got a cached queue inside taskDispatchService.ensureQueue(distro)",
+		"distro":    distro,
+	})
+
+	grip.Info(message.Fields{
+		"logged_by":    "brian",
+		"message":      "Inside taskDispatchService.ensureQueue(distro) and constructing a newDistroTaskDispatchService(distro, nil, ttl)",
+		"current_time": time.Now(),
+	})
+
+	// STU: we will not call rebuild() inside newDistroTaskDispatchService as we are not nil instead of a slice of TaskQueueItems, right?
 	queue = newDistroTaskDispatchService(distro, nil, s.ttl)
 	s.queues[distro] = queue
+	grip.Info(message.Fields{
+		"logged_by": "brian",
+		"message":   "Inside taskDispatchService.ensureQueue(distro) and calling taskDistroDispatchService.Refresh()",
+	})
 
 	if err := queue.Refresh(); err != nil {
 		return nil, errors.WithStack(err)
 	}
+
+	grip.Info(message.Fields{
+		"logged_by": "brian",
+		"message":   "Inside taskDispatchService.ensureQueue(distro) and about to return the distro's queue which is a *taskDistroDispatchService",
+	})
 
 	return queue, nil
 }
@@ -112,13 +190,45 @@ type schedulableUnit struct {
 
 // newTaskDispatchService creates a taskDistroDispatchService from a slice of TaskQueueItems.
 func newDistroTaskDispatchService(distroID string, items []TaskQueueItem, ttl time.Duration) *taskDistroDispatchService {
+	grip.Info(message.Fields{
+		"logged_by":    "brian",
+		"message":      "begin newDistroTaskDispatchService",
+		"distro":       distroID,
+		"items_length": len(items),
+		"ttl":          ttl,
+	})
+	defer func() {
+		grip.Info(message.Fields{
+			"logged_by":    "brian",
+			"message":      "end newDistroTaskDispatchService",
+			"distro":       distroID,
+			"items_length": len(items),
+			"ttl":          ttl,
+		})
+	}()
 	t := &taskDistroDispatchService{
 		distroID: distroID,
 		ttl:      ttl,
+		// lastUpdated: time.Now(),
 	}
 
 	if items != nil {
+		grip.Info(message.Fields{
+			"logged_by":    "brian",
+			"message":      "I'm inside newDistroTaskDispatchService and I'm calling rebuild(items []TaskQueueItem])",
+			"distro":       distroID,
+			"items_length": len(items),
+			"ttl":          ttl,
+		})
 		t.rebuild(items)
+	} else {
+		grip.Info(message.Fields{
+			"logged_by":    "brian",
+			"message":      "I'm inside newDistroTaskDispatchService and I'm NOT calling rebuild(items []TaskQueueItem]), as items is nil",
+			"distro":       distroID,
+			"items_length": len(items),
+			"ttl":          ttl,
+		})
 	}
 
 	return t
@@ -128,37 +238,122 @@ func (t *taskDistroDispatchService) Refresh() error {
 	t.mu.Lock()
 	defer t.mu.Unlock()
 
-	if !t.shouldRefresh() {
+	// if !t.shouldRefresh() {
+	// 	return nil
+	// }
+
+	if !shouldRefreshCached(t.ttl, t.lastUpdated) {
+		grip.Info(message.Fields{
+			"logged_by": "brian",
+			"message":   "I'm inside taskDistroDispatchService.Refresh() and shouldRefreshCached() has returned false",
+			"distro":    t.distroID,
+			"ttl":       t.ttl,
+		})
 		return nil
 	}
+	grip.Info(message.Fields{
+		"logged_by": "brian",
+		"message":   "I'm inside taskDistroDispatchService.Refresh() and shouldRefreshCached() has returned true",
+		"distro":    t.distroID,
+		"ttl":       t.ttl,
+	})
 
 	queue, err := FindDistroTaskQueue(t.distroID)
 	if err != nil {
 		return errors.WithStack(err)
 	}
 
+	grip.Info(message.Fields{
+		"logged_by":    "brian",
+		"message":      "I'm inside taskDistroDispatchService.Refresh() and this is the queue returned by FindDistroTaskQueue",
+		"distro":       queue.Distro,
+		"generated_at": queue.GeneratedAt,
+		"queue_length": len(queue.Queue),
+	})
+
+	grip.Info(message.Fields{
+		"logged_by":    "brian",
+		"message":      "I'm inside taskDistroDispatchService.Refresh() and I'm going to call taskDistroDispatchService,rebuild(TaskQueue)",
+		"distro":       queue.Distro,
+		"generated_at": queue.GeneratedAt,
+		"queue_length": len(queue.Queue),
+	})
 	t.rebuild(queue.Queue)
 
 	return nil
 }
 
 func shouldRefreshCached(ttl time.Duration, lastUpdated time.Time) bool {
+	// last_updated:0001-01-01T00:00:00Z.IsZero() || time.Since(0001-01-01T00:00:00Z) > 60 seconds
+	grip.Info(message.Fields{
+		"logged_by":                     "brian",
+		"message":                       "Inside func shouldRefreshCached(ttl, lastupdated)",
+		"lastUpdated.IsZero()":          lastUpdated.IsZero(),
+		"ttl":                           ttl.Seconds(),
+		"last_updated":                  lastUpdated,
+		"time_since_lastupdated (secs)": time.Since(lastUpdated).Seconds(),
+		"current_time":                  time.Now(),
+		"shouldRefreshCached returned":  (lastUpdated.IsZero() || time.Since(lastUpdated) > ttl),
+	})
+
 	return lastUpdated.IsZero() || time.Since(lastUpdated) > ttl
 }
 
-func (t *taskDistroDispatchService) shouldRefresh() bool {
-	if shouldRefreshCached(t.ttl, t.lastUpdated) {
-		t.lastUpdated = time.Now()
-		return true
-	}
-
-	return false
-}
+// func (t *taskDistroDispatchService) shouldRefresh() bool {
+// 	if shouldRefreshCached(t.ttl, t.lastUpdated) {
+// 		t.lastUpdated = time.Now()
+// 		return true
+// 	}
+//
+// 	return false
+// }
 
 func (t *taskDistroDispatchService) rebuild(items []TaskQueueItem) {
+	grip.Info(message.Fields{
+		"logged_by":                     "brian",
+		"message":                       "beginning taskDistroDispatchService.rebuild(items []TaskQueueItem)",
+		"ttl":                           t.ttl.Seconds(),
+		"len_items":                     len(items),
+		"last_updated":                  t.lastUpdated,
+		"time_since_lastupdated (secs)": time.Since(t.lastUpdated).Seconds(),
+		"current_time":                  time.Now(),
+	})
+
+	// {    [-]
+	//       last_updated:   0001-01-01T00:00:00Z
+	//       len_items:      7
+	//       logged_by:      brian
+	//       message:        begin rebuild
+	//       metadata:      {       [+]
+	//      }
+	//       time_since_lastupdated (secs):  9223372036.854776
+	//       ttl:    60
+	//  }
+
 	if !shouldRefreshCached(t.ttl, t.lastUpdated) {
+		// STU: why does it appear that we are now no longer ever getting in here?
+		grip.Info(message.Fields{
+			"logged_by":    "brian",
+			"message":      "Inside taskDistroDispatchService.rebuild(items []TaskQueueItem) and shouldRefreshCached() has returned false",
+			"current_time": time.Now(),
+		})
+
 		return
 	}
+	grip.Info(message.Fields{
+		"logged_by":    "brian",
+		"message":      "Inside taskDistroDispatchService.rebuild(items []TaskQueueItem) and shouldRefreshCached() has returned true",
+		"current_time": time.Now(),
+	})
+
+	grip.Info(message.Fields{
+		"logged_by":    "brian",
+		"current_time": time.Now(),
+		"message":      fmt.Sprintf("Inside taskDistroDispatchService.rebuild(items []TaskQueueItem) and the current value of t.lastUpdated is %s", t.lastUpdated),
+		"next":         fmt.Sprintf("Inside taskDistroDispatchService.rebuild(items []TaskQueueItem) and now I'm going to set its value of %s", time.Now()),
+	})
+
+	t.lastUpdated = time.Now() // STU: Is this the correct place to do this?
 
 	// This slice likely has too much capacity, but it helps append performance.
 	order := make([]string, 0, len(items))
@@ -169,6 +364,10 @@ func (t *taskDistroDispatchService) rebuild(items []TaskQueueItem) {
 
 	for _, item := range items {
 		if item.Group == "" {
+			grip.Info(message.Fields{
+				"logged_by": "brian",
+				"message":   fmt.Sprintf("item.Group == \"\", so adding item.Id '%s' to order string slice", item.Id),
+			})
 			order = append(order, item.Id)
 			units[item.Id] = schedulableUnit{
 				id:       item.Id,
@@ -176,11 +375,17 @@ func (t *taskDistroDispatchService) rebuild(items []TaskQueueItem) {
 				tasks:    []TaskQueueItem{item},
 			}
 		} else {
+			// STU: we only get in here if we actually have taskGroups in play, right?
 			// If it's the first time encountering the task group, save it to the order
 			// and create an entry for it in the map. Otherwise, append to the
 			// TaskQueueItem array in the map.
 			id = compositeGroupId(item.Group, item.BuildVariant, item.Version)
 			if _, ok = units[id]; !ok {
+				// grip.Info(message.Fields{
+				//      "logged_by": "brian",
+				//      "message":   fmt.Sprintf("Setting '%s' key in the units map for the first time", item.Id),
+				//      "and":       fmt.Sprintf("adding compositeGroupId '%s' to order string slice", id),
+				// })
 				units[id] = schedulableUnit{
 					id:       id,
 					maxHosts: item.GroupMaxHosts,
@@ -188,12 +393,39 @@ func (t *taskDistroDispatchService) rebuild(items []TaskQueueItem) {
 				}
 				order = append(order, id)
 			} else {
+				// grip.Info(message.Fields{
+				//      "logged_by": "brian",
+				//      "message":   fmt.Sprintf("Updating item.Id '%s' key in the units map", item.Id),
+				// })
 				unit = units[id]
 				unit.tasks = append(unit.tasks, item)
 				units[id] = unit
 			}
 		}
 	}
+
+	grip.Info(message.Fields{
+		"logged_by": "brian",
+		"message":   "Inside taskDistroDispatchService.rebuild(items []TaskQueueItem) - finished rebuild",
+		"ttl":       t.ttl,
+		"len_order": len(order),
+		"len_units": len(units),
+	})
+
+	// {
+	//       len_order:      52
+	//       len_units:      52
+	//       logged_by:      brian
+	//       message:        post rebuild
+	//       metadata:      {       [-]
+	//       hostname:       evergreenapp-1.staging.build.10gen.cc
+	//       level:  40
+	//       pid:    11709
+	//       process:        /srv/evergreen/current/clients/linux_amd64/evergreen
+	//       time:   2019-04-29T17:10:17.747666363Z
+	//      }
+	//       ttl:    60000000000
+	// }
 
 	t.order = order
 	t.units = units
@@ -203,15 +435,40 @@ func (t *taskDistroDispatchService) rebuild(items []TaskQueueItem) {
 
 // FindNextTask returns the next dispatchable task in the queue.
 func (t *taskDistroDispatchService) FindNextTask(spec TaskSpec) *TaskQueueItem {
+	grip.Info(message.Fields{
+		"logged_by": "brian",
+		"message":   "beginning taskDistroDispatchService.FindNextTask(spec TaskSpec)",
+		"spec":      spec,
+	})
+	defer func() {
+		grip.Info(message.Fields{
+			"logged_by": "brian",
+			"message":   "end taskDistroDispatchService.FindNextTask(spec TaskSpec)",
+			"spec":      spec,
+		})
+	}()
 	t.mu.Lock()
 	defer t.mu.Unlock()
 
 	// If units is empty, the queue has been emptied. Reset order as an optimization so that the
 	// service no longer needs to iterate over it and check each item against the map.
 	if len(t.units) == 0 {
+		grip.Info(message.Fields{
+			"logged_by":       "brian",
+			"message":         "Inside taskDistroDispatchService.FindNextTask(spec TaskSpec) and len(t.units) == 0",
+			"spec":            spec,
+			"len_order_slice": len(t.order),
+		})
 		t.order = []string{}
 		return nil
 	}
+
+	grip.Info(message.Fields{
+		"logged_by":       "brian",
+		"message":         fmt.Sprintf("taskDistroDispatchService.FindNextTask(spec TaskSpec) and len(t.units) is %d", len(t.units)),
+		"len_order_slice": len(t.order),
+		"spec":            spec,
+	})
 
 	var unit schedulableUnit
 	var ok bool
@@ -227,15 +484,43 @@ func (t *taskDistroDispatchService) FindNextTask(spec TaskSpec) *TaskQueueItem {
 		// If the task group is not present in the task group map, it has been dispatched.
 		// Fall through to getting a task not in that group.
 	}
+
+	grip.Info(message.Fields{
+		"logged_by": "brian",
+		"message":   "taskDistroDispatchService.FindNextTask(spec TaskSpec) and falling through to getting a task not in that group",
+		"spec":      spec,
+		"unit":      unit,
+	})
+
 	var numHosts int
 	var err error
 	for _, schedulableUnitID := range t.order {
+		grip.Info(message.Fields{
+			"logged_by": "brian",
+			"message":   "got a unit",
+			"spec":      spec,
+			"unit":      unit,
+		})
 		unit, ok = t.units[schedulableUnitID]
 		if !ok {
 			continue
 		}
 		// If maxHosts is not set, this is not a task group.
 		if unit.maxHosts == 0 {
+			grip.Info(message.Fields{
+				"logged_by": "brian",
+				"message":   "maxHosts not set",
+				"spec":      spec,
+				"unit":      unit,
+			})
+			delete(t.units, schedulableUnitID)
+			grip.Info(message.Fields{
+				"logged_by":                 "brian",
+				"message":                   "taskDistroDispatchService.FindNextTask(spec TaskSpec) and Ahoy there from just after: delete(t.units, schedulableUnitID)",
+				"schedulable_unit_id":       schedulableUnitID,
+				"order_string_slice_length": len(t.order),
+				"units_strings_to_schedulableunits_length": len(t.units),
+			})
 			delete(t.units, schedulableUnitID)
 			return &unit.tasks[0]
 		}
@@ -249,6 +534,13 @@ func (t *taskDistroDispatchService) FindNextTask(spec TaskSpec) *TaskQueueItem {
 			// better by performing this query again, just before returning from this
 			// function.
 			numHosts, err = host.NumHostsByTaskSpec(spec.Group, spec.BuildVariant, spec.ProjectID, spec.Version)
+			grip.Info(message.Fields{
+				"logged_by": "brian",
+				"message":   "got numHosts",
+				"numHosts":  numHosts,
+				"spec":      spec,
+				"unit":      unit,
+			})
 			if err != nil {
 				grip.Error(message.WrapError(err, message.Fields{
 					"message": "problem running NumHostsByTaskSpec query",

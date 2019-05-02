@@ -60,10 +60,10 @@ func GetDistroQueueInfo(distroID string) (DistroQueueInfo, error) {
 // represents the next n tasks to be run on hosts of the distro
 type TaskQueue struct {
 	Id              mgobson.ObjectId `bson:"_id,omitempty" json:"_id"`
-	Distro          string              `bson:"distro" json:"distro"`
-	GeneratedAt     time.Time           `bson:"generated_at" json:"generated_at"`
-	Queue           []TaskQueueItem     `bson:"queue" json:"queue"`
-	DistroQueueInfo DistroQueueInfo     `bson:"distro_queue_info" json:"distro_queue_info"`
+	Distro          string           `bson:"distro" json:"distro"`
+	GeneratedAt     time.Time        `bson:"generated_at" json:"generated_at"`
+	Queue           []TaskQueueItem  `bson:"queue" json:"queue"`
+	DistroQueueInfo DistroQueueInfo  `bson:"distro_queue_info" json:"distro_queue_info"`
 
 	useModerDequeueOp bool
 }
@@ -476,7 +476,7 @@ func FindDistroTaskQueue(distroID string) (TaskQueue, error) {
 	queue := TaskQueue{}
 	err := db.FindOne(
 		TaskQueuesCollection,
-		bson.M{taskQueueIdKey: distroID},
+		bson.M{taskQueueDistroKey: distroID},
 		db.NoProjection,
 		db.NoSort,
 		&queue)

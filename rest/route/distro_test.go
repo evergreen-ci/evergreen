@@ -307,7 +307,11 @@ func (s *DistroByIDSuite) TestFindByIdFound() {
 	s.Equal(true, d.PlannerSettings.PatchFirst)
 	s.Equal(model.ToAPIString(distro.BootstrapMethodLegacySSH), d.BootstrapMethod)
 	s.Equal(model.ToAPIString(distro.CommunicationMethodLegacySSH), d.CommunicationMethod)
+<<<<<<< HEAD
 	s.Equal(model.ToAPIString(distro.CloneMethodLegacySSH), d.CloneMethod)
+=======
+	s.Equal(model.ToAPIString(evergreen.FinderVersionLegacy), d.FinderSettings.Version)
+>>>>>>> MCI-3032 WIP 1 - adding logging and addressing 3 issues
 }
 
 func (s *DistroByIDSuite) TestFindByIdFail() {
