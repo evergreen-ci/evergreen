@@ -342,11 +342,6 @@ func assignNextAvailableTask(taskQueue *model.TaskQueue, taskQueueService model.
 		}
 		switch d.PlannerSettings.Version {
 		case evergreen.PlannerVersionTunable:
-			grip.Info(message.Fields{
-				"logged_by":    "brian",
-				"message":      "Inside assignNextAvailableTask(taskQueue, taskQueueService, currentHost) and calling taskQueueService.RefreshFindNextTask(currentHost.Distro.Id, spec)",
-				"current_time": time.Now(),
-			})
 			queueItem, err = taskQueueService.RefreshFindNextTask(currentHost.Distro.Id, spec)
 			if err != nil {
 				grip.Critical(message.WrapError(err, message.Fields{

@@ -163,6 +163,125 @@ func TestAssignNextAvailableTask(t *testing.T) {
 
 		So(pref.Insert(), ShouldBeNil)
 		So(task2.Insert(), ShouldBeNil)
+		////////////////////////////////////////////////////////////////////////////
+		//
+		//func assignNextAvailableTask(taskQueue *model.TaskQueue, taskQueueService model.TaskQueueService, currentHost *host.Host) (*task.Task, error)
+		//
+		// model.TaskQueueService
+		//
+		// type TaskQueueService interface {
+		// 	FindNextTask(string, TaskSpec) (*TaskQueueItem, error)
+		// 	Refresh(string) error
+		// 	RefreshFindNextTask(string, TaskSpec) (*TaskQueueItem, error)
+		// }
+
+		////////////////////////////////////////////////////////////////////////////
+
+		// Convey("a host should get the task at the top of the queue", func() {
+		// 	t, err := assignNextAvailableTask(tq, &sampleHost)
+		// 	So(err, ShouldBeNil)
+		// 	So(t, ShouldNotBeNil)
+		// 	So(t.Id, ShouldEqual, "task1")
+		//
+		// 	currentTq, err := model.LoadTaskQueue(distroId)
+		// 	So(err, ShouldBeNil)
+		// 	So(currentTq.Length(), ShouldEqual, 1)
+		//
+		// 	h, err := host.FindOne(host.ById(sampleHost.Id))
+		// 	So(err, ShouldBeNil)
+		// 	So(h.RunningTask, ShouldEqual, "task1")
+		//
+		// 	Convey("a task that is not undispatched should not be updated in the host", func() {
+		// 		tq.Queue = []model.TaskQueueItem{
+		// 			{Id: "undispatchedTask"},
+		// 			{Id: "task2"},
+		// 		}
+		// 		So(tq.Save(), ShouldBeNil)
+		// 		undispatchedTask := task.Task{
+		// 			Id:     "undispatchedTask",
+		// 			Status: evergreen.TaskStarted,
+		// 		}
+		// 	So(undispatchedTask.Insert(), ShouldBeNil)
+		// 	t, err := assignNextAvailableTask(tq, &sampleHost)
+		// 	So(err, ShouldBeNil)
+		// 	So(t.Id, ShouldEqual, "task2")
+		//
+		// 	currentTq, err := model.LoadTaskQueue(distroId)
+		// 	So(err, ShouldBeNil)
+		// 	So(currentTq.Length(), ShouldEqual, 0)
+		// })
+		// Convey("an empty task queue should return a nil task", func() {
+		// 	tq.Queue = []model.TaskQueueItem{}
+		// 	So(tq.Save(), ShouldBeNil)
+		// 	t, err := assignNextAvailableTask(tq, &sampleHost)
+		// 	So(err, ShouldBeNil)
+		// 	So(t, ShouldBeNil)
+		// })
+		// Convey("a tasks queue with a task that does not exist should error", func() {
+		// 	tq.Queue = []model.TaskQueueItem{{Id: "notatask"}}
+		// 	So(tq.Save(), ShouldBeNil)
+		// 	_, err := assignNextAvailableTask(tq, h)
+		// 	So(err, ShouldNotBeNil)
+		// })
+		// Convey("with a host with a running task", func() {
+		// 	anotherHost := host.Host{
+		// 		Id:          "ahost",
+		// 		RunningTask: "sampleTask",
+		// 		Distro: distro.Distro{
+		// 			Id: distroId,
+		// 		},
+		// 		Secret: hostSecret,
+		// 	}
+		// 	So(anotherHost.Insert(), ShouldBeNil)
+		// 	h2 := host.Host{
+		// 		Id: "host2",
+		// 		Distro: distro.Distro{
+		// 			Id: distroId,
+		// 		},
+		// 		Secret: hostSecret,
+		// 		Status: evergreen.HostRunning,
+		// 	}
+		// 	So(h2.Insert(), ShouldBeNil)
+		//
+		// 	t1 := task.Task{
+		// 		Id:        "sampleTask",
+		// 		Status:    evergreen.TaskUndispatched,
+		// 		Project:   "exists",
+		// 		Activated: true,
+		// 	}
+		// 	So(t1.Insert(), ShouldBeNil)
+		// 	t2 := task.Task{
+		// 		Id:        "another",
+		// 		Status:    evergreen.TaskUndispatched,
+		// 		Project:   "exists",
+		// 		Activated: true,
+		// 	}
+		// 	So(t2.Insert(), ShouldBeNil)
+		//
+		// 	tq.Queue = []model.TaskQueueItem{
+		// 		{Id: t1.Id},
+		// 		{Id: t2.Id},
+		// 	}
+		// 	So(tq.Save(), ShouldBeNil)
+		// 	Convey("the task that is in the other host should not be assigned to another host", func() {
+		// 		t, err := assignNextAvailableTask(tq, &h2)
+		// 		So(err, ShouldBeNil)
+		// 		So(t, ShouldNotBeNil)
+		// 		So(t.Id, ShouldEqual, t2.Id)
+		// 		h, err := host.FindOne(host.ById(h2.Id))
+		// 		So(err, ShouldBeNil)
+		// 		So(h.RunningTask, ShouldEqual, t2.Id)
+		// 	})
+		// 	Convey("a host with a running task should return an error", func() {
+		// 		_, err := assignNextAvailableTask(tq, &anotherHost)
+		// 		So(err, ShouldNotBeNil)
+		// 	})
+		//
+		// 	})
+		// })
+
+		////////////////////////////////////////////////////////////////////////////
+
 		// Convey("a host should get the task at the top of the queue", func() {
 		// 	t, err := assignNextAvailableTask(tq, &sampleHost)
 		// 	So(err, ShouldBeNil)
