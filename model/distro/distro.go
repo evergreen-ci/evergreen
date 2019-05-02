@@ -284,11 +284,11 @@ func ValidateBootstrapAndCommunicationMethods(bootstrap string, communication st
 	switch bootstrap {
 	case BootstrapMethodLegacySSH:
 		if communication != CommunicationMethodLegacySSH {
-			catcher.Add(fmt.Errorf("bootstrapping hosts using legacy SSH is incompatible with non-legacy host communication"))
+			catcher.New("bootstrapping hosts using legacy SSH is incompatible with non-legacy host communication")
 		}
 	default:
 		if communication == CommunicationMethodLegacySSH {
-			catcher.Add(fmt.Errorf("communicating with hosts using legacy SSH is incompatible with non-legacy host bootstrapping"))
+			catcher.New("communicating with hosts using legacy SSH is incompatible with non-legacy host bootstrapping")
 		}
 	}
 	return catcher.Resolve()
