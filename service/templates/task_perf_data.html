@@ -259,7 +259,6 @@
       <li ng-class="{active:perftab==0}"><a href="#" ng-click="perftab=0; syncHash(0)">Graph</a></li>
       <li ng-class="{active:perftab==1}"><a href="#" ng-click="perftab=1; syncHash(1)">Table</a></li>
       <li ng-class="{active:perftab==2}"><a href="#" ng-click="perftab=2; syncHash(2)">Trend</a></li>
-      <li ng-class="{active:perftab==3}"><a href="#" ng-click="perftab=3; syncHash(3)">Trend Table</a></li>
     </ul>
     <div class="compare-about" ng-show="!!comparePerfSample">
       <br/>
@@ -413,36 +412,6 @@
             </div>
           <div class="col-lg-3 perf-trendchart" id="perf-trendchart-[[cleanId(task.id)]]-[[$index]]"></div>
         </div>
-      </div>
-    </div>
-    <div ng-show="perftab==3">
-      <h5>In each cell, display:</h5>
-      <div>
-        <div><label><input type="radio" ng-model="tablemode" value="maxthroughput" checked/>&nbsp;Max throughput</label></div>
-        <div><label><input type="radio" ng-model="tablemode" value="noise"/>&nbsp;Noisiness in samples</label></div>
-        <div><label ng-class="{muted:!comparePerfSample}">&nbsp;<input type="radio" ng-model="tablemode" value="percentdiff" ng-disabled="!comparePerfSample"/>&nbsp;Percent difference in throughput vs. <span class="mono compareColumn">[[compareHash]]</span></label></div>
-      </div>
-      <div style="overflow-x:scroll">
-        <table class="perf-table">
-          <tr>
-            <th>Test</th>
-            <td ng-repeat="t in trendSamples.tasksByCommitOrder() track by $index" class="mono" ng-class="{currentrev:t.revision==task.gitspec}" ng-class="{thisTaskColumn : t.task_id == task.id, compareColumn: t.revision == comparePerfSample.sample.revision}" >
-              <a href="/task/[[t.task_id]]">[[t.revision | limitTo:7]]</a>
-            </td>
-          </tr>
-          <tr ng-repeat="k in trendSamples.testNames">
-            <td>[[k]]</td>
-            <td ng-repeat="t in trendSamples.tasksByCommitOrder() track by $index" class="sample-cell" ng-show="tablemode=='maxthroughput'" ng-class="{thisTaskColumn : t.task_id == task.id, compareColumn: t.revision == comparePerfSample.sample.revision}" >
-              [[trendSamples.sampleInSeriesAtCommit(k, t.revision).ops_per_sec | number:0]]
-            </td>
-            <td ng-repeat="t in trendSamples.tasksByCommitOrder() track by $index" class="sample-cell" ng-show="tablemode=='noise'" ng-class="{thisTaskColumn : t.task_id == task.id, compareColumn: t.revision == comparePerfSample.sample.revision}" >
-              [[trendSamples.noiseAtCommit(k, t.revision)*100 | number:2]]%
-            </td>
-            <td ng-repeat="t in trendSamples.tasksByCommitOrder() track by $index" class="sample-cell" ng-show="tablemode=='percentdiff'" ng-class="{thisTaskColumn : t.task_id == task.id, compareColumn: t.revision == comparePerfSample.sample.revision}"
-              ng-style="{backgroundColor:percentToColor(100*percentDiff(trendSamples.sampleInSeriesAtCommit(k,t.revision).ops_per_sec, comparePerfSample.maxThroughputForTest(k)))}">
-              [[100*percentDiff(trendSamples.sampleInSeriesAtCommit(k,t.revision).ops_per_sec, comparePerfSample.maxThroughputForTest(k)) | number:2]]</td>
-          </tr>
-        </table>
       </div>
     </div>
   </div> 

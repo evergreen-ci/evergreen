@@ -80,12 +80,15 @@ func TestDriverSuiteWithMongoDBInstance(t *testing.T) {
 		"test-"+tests.uuid,
 		opts).(*mongoDriver)
 
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	tests.driverConstructor = func() Driver {
 		return mDriver
 	}
 
 	tests.tearDown = func() {
-		err := mDriver.getCollection().Drop(nil)
+		err := mDriver.getCollection().Drop(ctx)
 		grip.Infof("removed %s collection (%+v)", mDriver.getCollection().Name(), err)
 	}
 

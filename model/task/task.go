@@ -288,10 +288,6 @@ func (t *Task) IsPatchRequest() bool {
 	return util.StringSliceContains(evergreen.PatchRequesters, t.Requester)
 }
 
-func (t *Task) IsMergeRequest() bool {
-	return t.Requester == evergreen.MergeTestRequester
-}
-
 func (t *Task) SetOverrideDependencies(userID string) error {
 	t.OverrideDependencies = true
 	event.LogTaskDependenciesOverridden(t.Id, t.Execution, userID)
@@ -608,10 +604,7 @@ func UnscheduleStaleUnderwaterTasks(distroID string) (int, error) {
 		query[DistroIdKey] = distroID
 	}
 
-	query["$and"] = []bson.M{
-		{ActivatedTimeKey: bson.M{"$lte": time.Now().Add(-UnschedulableThreshold)}},
-		{ActivatedTimeKey: bson.M{"$gt": util.ZeroTime}},
-	}
+	query[ActivatedTimeKey] = bson.M{"$lte": time.Now().Add(-UnschedulableThreshold)}
 
 	update := bson.M{
 		"$set": bson.M{
@@ -1534,9 +1527,7 @@ func (t *Task) BlockedState(tasksWithDeps []Task) (string, error) {
 	if t.DisplayOnly {
 		return t.blockedStateForDisplayTask(tasksWithDeps)
 	}
-	if len(t.DependsOn) == 0 {
-		return "", nil
-	}
+
 	return t.blockedStatePrivate()
 }
 

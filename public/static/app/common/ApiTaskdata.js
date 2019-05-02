@@ -1,5 +1,7 @@
-mciModule.factory('ApiTaskdata', function($http, ApiUtil, API_TASKDATA) {
-  var get = ApiUtil.httpGetter(API_TASKDATA.BASE)
+mciModule.factory('ApiTaskdata', function($http, $filter, ApiUtil, API_TASKDATA) {
+  var get = ApiUtil.httpGetter(API_TASKDATA.BASE);
+  const cedarApp = "https://cedar.mongodb.com"; //TODO make a configuration option
+  var cedarAPI = ApiUtil.httpGetter(cedarApp);
 
   return {
     getTaskById: function(taskId, name) {
@@ -34,6 +36,10 @@ mciModule.factory('ApiTaskdata', function($http, ApiUtil, API_TASKDATA) {
 
     getProjectTags: function(projectId) {
       return get(API_TASKDATA.PROJECT_TAGS, {}, {project_id: projectId})
+    },
+
+    getExpandedTaskById: function(taskId) {
+      return cedarAPI("rest/v1/perf/task_id/" + taskId);
     },
   }
 })

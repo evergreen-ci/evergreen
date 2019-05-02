@@ -17,7 +17,7 @@ import (
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 	"go.mongodb.org/mongo-driver/mongo/writeconcern"
-	"gopkg.in/yaml.v2"
+	yaml "gopkg.in/yaml.v2"
 )
 
 var (
@@ -25,7 +25,7 @@ var (
 	BuildRevision = ""
 
 	// Commandline Version String; used to control auto-updating.
-	ClientVersion = "2019-04-04"
+	ClientVersion = "2019-04-30"
 )
 
 // ConfigSection defines a sub-document in the evegreen config
@@ -52,12 +52,12 @@ type Settings struct {
 	Banner             string                    `bson:"banner" json:"banner"`
 	BannerTheme        BannerTheme               `bson:"banner_theme" json:"banner_theme"`
 	ClientBinariesDir  string                    `yaml:"client_binaries_dir" bson:"client_binaries_dir" json:"client_binaries_dir"`
+	CommitQueue        CommitQueueConfig         `yaml:"commit_queue" bson:"commit_queue" json:"commit_queue" id:"commit_queue"`
 	ConfigDir          string                    `yaml:"configdir" bson:"configdir" json:"configdir"`
 	ContainerPools     ContainerPoolsConfig      `yaml:"container_pools" bson:"container_pools" json:"container_pools" id:"container_pools"`
 	Credentials        map[string]string         `yaml:"credentials" bson:"credentials" json:"credentials"`
 	CredentialsNew     util.KeyValuePairSlice    `yaml:"credentials_new" bson:"credentials_new" json:"credentials_new"`
-	JasperURL          string                    `yaml:"jasper_url" bson:"jasper_url" json:"jasper_url"`
-	JasperVersion      string                    `yaml:"jasper_version" bson:"jasper_version" json:"jasper_version"`
+	JasperConfig       JasperConfig              `yaml:"jasper" bson:"jasper" json:"jasper"`
 	Database           DBSettings                `yaml:"database"`
 	Expansions         map[string]string         `yaml:"expansions" bson:"expansions" json:"expansions"`
 	ExpansionsNew      util.KeyValuePairSlice    `yaml:"expansions_new" bson:"expansions_new" json:"expansions_new"`
@@ -121,12 +121,12 @@ func (c *Settings) Set() error {
 			bannerKey:             c.Banner,
 			bannerThemeKey:        c.BannerTheme,
 			clientBinariesDirKey:  c.ClientBinariesDir,
+			commitQueueKey:        c.CommitQueue,
 			configDirKey:          c.ConfigDir,
 			containerPoolsKey:     c.ContainerPools,
 			credentialsKey:        c.Credentials,
 			credentialsNewKey:     c.CredentialsNew,
-			jasperURLKey:          c.JasperURL,
-			jasperVersionKey:      c.JasperVersion,
+			jasperKey:             c.JasperConfig,
 			expansionsKey:         c.Expansions,
 			expansionsNewKey:      c.ExpansionsNew,
 			googleAnalyticsKey:    c.GoogleAnalyticsID,

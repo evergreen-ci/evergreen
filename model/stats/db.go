@@ -534,12 +534,20 @@ var (
 
 // statsToUpdatePipeline returns a pipeline aggregating task documents into documents describing tasks for which
 // the stats need to be updated.
-func statsToUpdatePipeline(projectId string, start time.Time, end time.Time) []bson.M {
-	pipeline := []bson.M{
-		{"$match": bson.M{
-			task.ProjectKey:    projectId,
-			task.FinishTimeKey: bson.M{"$gte": start, "$lt": end},
-		}},
+func statsToUpdatePipeline(projectID string, requester []string, start, end time.Time) []bson.M {
+	match := bson.M{
+		task.ProjectKey:    projectID,
+		task.FinishTimeKey: bson.M{"$gte": start, "$lt": end},
+	}
+
+	if len(requester) == 1 {
+		match[task.RequesterKey] = requester[0]
+	} else if len(requester) > 1 {
+		match[task.RequesterKey] = bson.M{"$in": requester}
+	}
+
+	return []bson.M{
+		{"$match": match},
 		{"$project": bson.M{
 			task.IdKey:                0,
 			statsToUpdateProjectKey:   taskProjectKeyRef,
@@ -571,7 +579,6 @@ func statsToUpdatePipeline(projectId string, start time.Time, end time.Time) []b
 			{Key: statsToUpdateRequesterKey, Value: 1},
 		}},
 	}
-	return pipeline
 }
 
 ///////////////////////////////////////////

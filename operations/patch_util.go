@@ -29,6 +29,7 @@ var patchDisplayTemplate = template.Must(template.New("patch").Parse(`
 	Created : {{.Patch.CreateTime}}
     Description : {{if .Patch.Description}}{{.Patch.Description}}{{else}}<none>{{end}}
 	  Build : {{.Link}}
+	 Status : {{.Patch.Status}}
       Finalized : {{if .Patch.Activated}}Yes{{else}}No{{end}}
 {{if .ShowSummary}}
 	Summary :
@@ -48,17 +49,17 @@ type localDiff struct {
 }
 
 type patchParams struct {
-	Project       string
-	Variants      []string
-	Tasks         []string
-	Description   string
-	Alias         string
-	SkipConfirm   bool
-	Finalize      bool
-	Browse        bool
-	Large         bool
-	ShowSummary   bool
-	CommittedOnly bool
+	Project     string
+	Variants    []string
+	Tasks       []string
+	Description string
+	Alias       string
+	SkipConfirm bool
+	Finalize    bool
+	Browse      bool
+	Large       bool
+	ShowSummary bool
+	Ref         string
 }
 
 type patchSubmission struct {
@@ -344,12 +345,18 @@ func getPatchDisplay(p *patch.Patch, summarize bool, uiHost string) (string, err
 // loadGitData inspects the current git working directory and returns a patch and its summary.
 // The branch argument is used to determine where to generate the merge base from, and any extra
 // arguments supplied are passed directly in as additional args to git diff.
-func loadGitData(branch string, committedOnly bool, extraArgs ...string) (*localDiff, error) {
+func loadGitData(branch string, ref string, extraArgs ...string) (*localDiff, error) {
 	// branch@{upstream} refers to the branch that the branch specified by branchname is set to
 	// build on top of. This allows automatically detecting a branch based on the correct remote,
 	// if the user's repo is a fork, for example.
 	// For details see: https://git-scm.com/docs/gitrevisions
-	mergeBase, err := gitMergeBase(branch+"@{upstream}", "HEAD")
+	var featureBranch string
+	if ref == "" {
+		featureBranch = "HEAD"
+	} else {
+		featureBranch = ref
+	}
+	mergeBase, err := gitMergeBase(branch+"@{upstream}", featureBranch)
 	if err != nil {
 		return nil, errors.Errorf("Error getting merge base: %v", err)
 	}
@@ -357,11 +364,11 @@ func loadGitData(branch string, committedOnly bool, extraArgs ...string) (*local
 	if len(extraArgs) > 0 {
 		statArgs = append(statArgs, extraArgs...)
 	}
-	stat, err := gitDiff(mergeBase, committedOnly, statArgs...)
+	stat, err := gitDiff(mergeBase, ref, statArgs...)
 	if err != nil {
 		return nil, errors.Errorf("Error getting diff summary: %v", err)
 	}
-	log, err := gitLog(mergeBase)
+	log, err := gitLog(mergeBase, ref)
 	if err != nil {
 		return nil, errors.Errorf("git log: %v", err)
 	}
@@ -370,7 +377,7 @@ func loadGitData(branch string, committedOnly bool, extraArgs ...string) (*local
 		extraArgs = append(extraArgs, "--binary")
 	}
 
-	patch, err := gitDiff(mergeBase, committedOnly, extraArgs...)
+	patch, err := gitDiff(mergeBase, ref, extraArgs...)
 	if err != nil {
 		return nil, errors.Errorf("Error getting patch: %v", err)
 	}
@@ -389,19 +396,19 @@ func gitMergeBase(branch1, branch2 string) (string, error) {
 }
 
 // gitDiff runs "git diff <base> <diffargs ...>" and returns the output of the command as a string
-func gitDiff(base string, committedOnly bool, diffArgs ...string) (string, error) {
+func gitDiff(base string, ref string, diffArgs ...string) (string, error) {
 	args := []string{base}
-	if committedOnly {
-		args = append(args, "HEAD")
+	if ref != "" {
+		args = append(args, ref)
 	}
 	args = append(args, "--no-ext-diff")
 	args = append(args, diffArgs...)
 	return gitCmd("diff", args...)
 }
 
-// getLog runs "git log <base>
-func gitLog(base string) (string, error) {
-	args := []string{fmt.Sprintf("...%s", base), "--oneline"}
+// getLog runs "git log <base>...<ref>
+func gitLog(base, ref string) (string, error) {
+	args := []string{fmt.Sprintf("%s...%s", base, ref), "--oneline"}
 	return gitCmd("log", args...)
 }
 

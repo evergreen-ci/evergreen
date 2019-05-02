@@ -1,16 +1,14 @@
 package registry
 
 import (
-	"encoding/json"
-
 	"github.com/mongodb/amboy"
 	"github.com/pkg/errors"
 	legacyBSON "gopkg.in/mgo.v2/bson"
 )
 
 type rawJob struct {
-	Body json.RawMessage `bson:"body" json:"body" yaml:"body"`
-	Type string          `bson:"type" json:"type" yaml:"type"`
+	Body []byte `bson:"body" json:"body" yaml:"body"`
+	Type string `bson:"type" json:"type" yaml:"type"`
 	job  interface{}
 }
 

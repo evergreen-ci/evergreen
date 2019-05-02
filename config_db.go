@@ -21,8 +21,7 @@ var (
 	configDirKey          = bsonutil.MustHaveTag(Settings{}, "ConfigDir")
 	apiUrlKey             = bsonutil.MustHaveTag(Settings{}, "ApiUrl")
 	clientBinariesDirKey  = bsonutil.MustHaveTag(Settings{}, "ClientBinariesDir")
-	jasperURLKey          = bsonutil.MustHaveTag(Settings{}, "JasperURL")
-	jasperVersionKey      = bsonutil.MustHaveTag(Settings{}, "JasperVersion")
+	jasperKey             = bsonutil.MustHaveTag(Settings{}, "JasperConfig")
 	superUsersKey         = bsonutil.MustHaveTag(Settings{}, "SuperUsers")
 	jiraKey               = bsonutil.MustHaveTag(Settings{}, "Jira")
 	splunkKey             = bsonutil.MustHaveTag(Settings{}, "Splunk")
@@ -51,6 +50,7 @@ var (
 	googleAnalyticsKey    = bsonutil.MustHaveTag(Settings{}, "GoogleAnalyticsID")
 	githubPRCreatorOrgKey = bsonutil.MustHaveTag(Settings{}, "GithubPRCreatorOrg")
 	containerPoolsKey     = bsonutil.MustHaveTag(Settings{}, "ContainerPools")
+	commitQueueKey        = bsonutil.MustHaveTag(Settings{}, "CommitQueue")
 
 	// degraded mode flags
 	taskDispatchKey                 = bsonutil.MustHaveTag(ServiceFlags{}, "TaskDispatchDisabled")
@@ -81,6 +81,13 @@ var (
 
 	// ContainerPool keys
 	ContainerPoolIdKey = bsonutil.MustHaveTag(ContainerPool{}, "Id")
+
+	// JasperConfig keys
+	jasperBinaryNameKey       = bsonutil.MustHaveTag(JasperConfig{}, "BinaryName")
+	jasperDownloadFileNameKey = bsonutil.MustHaveTag(JasperConfig{}, "DownloadFileName")
+	jasperPortKey             = bsonutil.MustHaveTag(JasperConfig{}, "Port")
+	jasperURLKey              = bsonutil.MustHaveTag(JasperConfig{}, "URL")
+	jasperVersionKey          = bsonutil.MustHaveTag(JasperConfig{}, "Version")
 )
 
 func byId(id string) bson.M {

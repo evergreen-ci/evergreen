@@ -3,6 +3,7 @@ package command
 import (
 	"bytes"
 	"context"
+	"fmt"
 	"io/ioutil"
 	"net/url"
 	"os"
@@ -382,7 +383,7 @@ func (s *GitGetProjectSuite) TestBuildCommandForPullRequests() {
 	s.Equal("git reset --hard 55ca6286e3e4f4fba5d0448333fa99fc5a404a73", cmds[7])
 }
 
-func (s *GitGetProjectSuite) TestBuildCommandForMergeTests() {
+func (s *GitGetProjectSuite) TestBuildCommandForPRMergeTests() {
 	c := gitFetchProject{
 		Directory: "dir",
 	}
@@ -395,6 +396,19 @@ func (s *GitGetProjectSuite) TestBuildCommandForMergeTests() {
 	s.Equal("git reset --hard abcdef", cmds[7])
 }
 
+func (s *GitGetProjectSuite) TestBuildCommandForCLIMergeTests() {
+	c := gitFetchProject{
+		Directory: "dir",
+		Token:     "GITHUBTOKEN",
+	}
+
+	s.modelData2.TaskConfig.Task.Requester = evergreen.MergeTestRequester
+	cmds, err := c.buildCloneCommand(s.modelData2.TaskConfig)
+	s.NoError(err)
+	s.Len(cmds, 9)
+	s.True(strings.HasPrefix(cmds[8], fmt.Sprintf("git checkout %s", s.modelData2.TaskConfig.ProjectRef.Branch)))
+}
+
 func (s *GitGetProjectSuite) TestBuildModuleCommand() {
 	c := gitFetchProject{
 		Directory: "dir",
@@ -402,7 +416,7 @@ func (s *GitGetProjectSuite) TestBuildModuleCommand() {
 	}
 
 	// ensure module clone command with ssh URL does not inject token
-	cmds, err := c.buildModuleCloneCommand("git@github.com:deafgoat/mci_test.git", "deafgoat", "mci_test", "module", "master", evergreen.PatchVersionRequester, nil)
+	cmds, err := c.buildModuleCloneCommand("git@github.com:deafgoat/mci_test.git", "deafgoat", "mci_test", "module", "master", s.modelData2.TaskConfig, nil)
 	s.NoError(err)
 	s.Require().Len(cmds, 5)
 	s.Equal("set -o xtrace", cmds[0])
@@ -412,7 +426,7 @@ func (s *GitGetProjectSuite) TestBuildModuleCommand() {
 	s.Equal("git checkout 'master'", cmds[4])
 
 	// ensure module clone command with http URL injects token
-	cmds, err = c.buildModuleCloneCommand("https://github.com/deafgoat/mci_test.git", "deafgoat", "mci_test", "module", "master", evergreen.PatchVersionRequester, nil)
+	cmds, err = c.buildModuleCloneCommand("https://github.com/deafgoat/mci_test.git", "deafgoat", "mci_test", "module", "master", s.modelData2.TaskConfig, nil)
 	s.NoError(err)
 	s.Require().Len(cmds, 8)
 	s.Equal("set -o xtrace", cmds[0])
@@ -425,7 +439,7 @@ func (s *GitGetProjectSuite) TestBuildModuleCommand() {
 	s.Equal("git checkout 'master'", cmds[7])
 
 	// ensure insecure github url is force to use https
-	cmds, err = c.buildModuleCloneCommand("http://github.com/deafgoat/mci_test.git", "deafgoat", "mci_test", "module", "master", evergreen.PatchVersionRequester, nil)
+	cmds, err = c.buildModuleCloneCommand("http://github.com/deafgoat/mci_test.git", "deafgoat", "mci_test", "module", "master", s.modelData2.TaskConfig, nil)
 	s.NoError(err)
 	s.Require().Len(cmds, 8)
 	s.Equal("echo \"git clone https://[redacted oauth token]@github.com/deafgoat/mci_test.git 'module'\"", cmds[3])
@@ -439,7 +453,7 @@ func (s *GitGetProjectSuite) TestBuildModuleCommand() {
 			Patch: "1234",
 		},
 	}
-	cmds, err = c.buildModuleCloneCommand("git@github.com:deafgoat/mci_test.git", "deafgoat", "mci_test", "module", "master", evergreen.MergeTestRequester, module)
+	cmds, err = c.buildModuleCloneCommand("git@github.com:deafgoat/mci_test.git", "deafgoat", "mci_test", "module", "master", s.modelData4.TaskConfig, module)
 	s.NoError(err)
 	s.Require().Len(cmds, 7)
 	s.Equal("set -o xtrace", cmds[0])
@@ -487,6 +501,7 @@ func (s *GitGetProjectSuite) TestAllowsEmptyPatches() {
 
 	c := gitFetchProject{
 		Directory: dir,
+		Token:     "GITHUBTOKEN",
 	}
 
 	ctx, cancel := context.WithTimeout(context.TODO(), 5*time.Second)

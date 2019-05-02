@@ -259,7 +259,7 @@ func (h *containerLogsHandler) Run(ctx context.Context) gimlet.Responder {
 	} else {
 		options.ShowStdout = true
 	}
-	logs, err := h.sc.GetDockerLogs(ctx, h.host.ExternalIdentifier, parent, settings, options)
+	logs, err := h.sc.GetDockerLogs(ctx, h.host.Id, parent, settings, options)
 	if err != nil {
 		return gimlet.NewJSONErrorResponse(errors.Wrap(err, "error getting docker logs"))
 	}
@@ -313,7 +313,7 @@ func (h *containerStatusHandler) Run(ctx context.Context) gimlet.Responder {
 	if err != nil {
 		return gimlet.NewJSONErrorResponse(errors.Wrap(err, "error getting settings config"))
 	}
-	status, err := h.sc.GetDockerStatus(ctx, h.host.ExternalIdentifier, parent, settings)
+	status, err := h.sc.GetDockerStatus(ctx, h.host.Id, parent, settings)
 	if err != nil {
 		return gimlet.NewJSONErrorResponse(errors.Wrap(err, "error getting docker status"))
 	}

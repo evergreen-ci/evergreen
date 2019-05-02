@@ -4,6 +4,7 @@ import (
 	"net/http"
 	"testing"
 
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/build"
@@ -126,6 +127,34 @@ func (s *payloadSuite) TestSlack() {
 
 	s.Equal("The patch <https://example.com/patch/1234|display-1234> in 'test' has failed!", m.Body)
 	s.Empty(m.Attachments)
+}
+
+func (s *payloadSuite) TestGetFailedTestsFromTemplate() {
+	test1 := task.TestResult{
+		URL:    "/test_log/failed",
+		Status: evergreen.TestFailedStatus,
+	}
+	test2 := task.TestResult{
+		URL:    "/test_log/success",
+		Status: evergreen.TestSucceededStatus,
+	}
+	t := task.Task{
+		Id:          "taskid",
+		DisplayName: "thetask",
+		Details: apimodels.TaskEndDetail{
+			TimedOut: false,
+		},
+		LocalTestResults: []task.TestResult{test1, test2},
+	}
+	settings, err := evergreen.GetConfig()
+	s.NoError(err)
+	s.Require().NotNil(settings)
+
+	tr, err := getFailedTestsFromTemplate(t)
+	s.NoError(err)
+	s.Require().Len(tr, 1)
+	s.Equal(tr[0].URL, settings.Ui.Url+test1.URL)
+	s.NotEqual(tr[0].URL, test1.URL)
 }
 
 func TestTruncateString(t *testing.T) {

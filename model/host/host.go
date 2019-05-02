@@ -30,7 +30,7 @@ type Host struct {
 	Provider string        `bson:"host_type" json:"host_type"`
 	IP       string        `bson:"ip_address" json:"ip_address"`
 
-	// secondary (external) identifier for the host (the containerID for containers)
+	// secondary (external) identifier for the host
 	ExternalIdentifier string `bson:"ext_identifier" json:"ext_identifier"`
 
 	// physical location of host
@@ -78,7 +78,7 @@ type Host struct {
 
 	Status    string `bson:"status" json:"status"`
 	StartedBy string `bson:"started_by" json:"started_by"`
-	// UserHost is always false, and will be removed
+	// True if this host was created manually by a user (i.e. with spawnhost)
 	UserHost      bool   `bson:"user_host" json:"user_host"`
 	AgentRevision string `bson:"agent_revision" json:"agent_revision"`
 	NeedsNewAgent bool   `bson:"needs_agent" json:"needs_agent"`
@@ -593,8 +593,19 @@ func (h *Host) IsWaitingForAgent() bool {
 	return false
 }
 
-// SetNeedsNewAgent sets the "needs new agent" flag on the host
+// SetNeedsNewAgent sets the "needs new agent" flag on the host.
 func (h *Host) SetNeedsNewAgent(needsAgent bool) error {
+	err := UpdateOne(bson.M{IdKey: h.Id},
+		bson.M{"$set": bson.M{NeedsNewAgentKey: needsAgent}})
+	if err != nil {
+		return err
+	}
+	h.NeedsNewAgent = needsAgent
+	return nil
+}
+
+// SetNeedsNewAgentAtomically sets the "needs new agent" flag on the host atomically.
+func (h *Host) SetNeedsNewAgentAtomically(needsAgent bool) error {
 	err := UpdateOne(bson.M{IdKey: h.Id, NeedsNewAgentKey: !needsAgent},
 		bson.M{"$set": bson.M{NeedsNewAgentKey: needsAgent}})
 	if err != nil {
@@ -962,9 +973,10 @@ func (h *Host) GetContainers() ([]Host, error) {
 	if !h.HasContainers {
 		return nil, errors.New("Host does not host containers")
 	}
-	query := db.Query(bson.M{
-		ParentIDKey: h.Id,
-	})
+	query := db.Query(bson.M{"$or": []bson.M{
+		{ParentIDKey: h.Id},
+		{ParentIDKey: h.Tag},
+	}})
 	hosts, err := Find(query)
 	if err != nil {
 		return nil, errors.Wrap(err, "Error finding containers")
@@ -979,21 +991,12 @@ func (h *Host) GetParent() (*Host, error) {
 	if h.ParentID == "" {
 		return nil, errors.New("Host does not have a parent")
 	}
-	query := db.Query(bson.M{
-		TagKey: h.ParentID,
-	})
-	host, err := FindOne(query) // try to find by tag
+	host, err := FindOneByIdOrTag(h.ParentID)
 	if err != nil {
 		return nil, errors.Wrap(err, "Error finding parent")
 	}
 	if host == nil {
-		host, err = FindOneId(h.ParentID)
-		if err != nil {
-			return nil, errors.Wrap(err, "Error finding parent")
-		}
-		if host == nil {
-			return nil, errors.New("Parent not found")
-		}
+		return nil, errors.New("Parent not found")
 	}
 	if !host.HasContainers {
 		return nil, errors.New("Host found is not a parent")

@@ -91,6 +91,13 @@ func (uis *UIServer) modifyDistro(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if newDistro.BootstrapMethod == "" {
+		newDistro.BootstrapMethod = distro.BootstrapMethodLegacySSH
+	}
+	if newDistro.CommunicationMethod == "" {
+		newDistro.CommunicationMethod = distro.BootstrapMethodLegacySSH
+	}
+
 	// check that the resulting distro is valid
 	vErrs, err := validator.CheckDistro(r.Context(), &newDistro, &uis.Settings, false)
 	if err != nil {

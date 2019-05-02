@@ -98,6 +98,10 @@ const (
 
 	PushStage = "push"
 
+	MergeTestStarted   = "started"
+	MergeTestSucceeded = "succeeded"
+	MergeTestFailed    = "failed"
+
 	// maximum task (zero based) execution number
 	MaxTaskExecution = 3
 
@@ -135,6 +139,11 @@ const (
 
 	PlannerVersionLegacy  = "legacy"
 	PlannerVersionTunable = "tunable"
+
+	FinderVersionLegacy    = "legacy"
+	FinderVersionParallel  = "parallel"
+	FinderVersionPipeline  = "pipeline"
+	FinderVersionAlternate = "alternate"
 
 	CommitQueueAlias = "__commit_queue"
 
@@ -323,6 +332,14 @@ var (
 		HostDecommissioned,
 	}
 
+	// NotRunningStatus is a list of host statuses from before the host starts running.
+	NotRunningStatus = []string{
+		HostUninitialized,
+		HostBuilding,
+		HostProvisioning,
+		HostStarting,
+	}
+
 	// Hosts in "initializing" status aren't actually running yet:
 	// they're just intents, so this list omits that value.
 	ActiveStatus = []string{
@@ -344,6 +361,14 @@ var (
 	ValidPlannerVersions = []string{
 		PlannerVersionLegacy,
 		PlannerVersionTunable,
+	}
+
+	// Set of valid FinderSettings.Version strings that can be user set via the API
+	ValidFinderVersions = []string{
+		FinderVersionLegacy,
+		FinderVersionParallel,
+		FinderVersionPipeline,
+		FinderVersionAlternate,
 	}
 
 	// constant arrays for db update logic

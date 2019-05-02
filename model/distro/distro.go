@@ -15,24 +15,26 @@ import (
 )
 
 type Distro struct {
-	Id               string                  `bson:"_id" json:"_id,omitempty" mapstructure:"_id,omitempty"`
-	Arch             string                  `bson:"arch" json:"arch,omitempty" mapstructure:"arch,omitempty"`
-	WorkDir          string                  `bson:"work_dir" json:"work_dir,omitempty" mapstructure:"work_dir,omitempty"`
-	PoolSize         int                     `bson:"pool_size,omitempty" json:"pool_size,omitempty" mapstructure:"pool_size,omitempty" yaml:"poolsize"`
-	Provider         string                  `bson:"provider" json:"provider,omitempty" mapstructure:"provider,omitempty"`
-	ProviderSettings *map[string]interface{} `bson:"settings" json:"settings,omitempty" mapstructure:"settings,omitempty"`
-	SetupAsSudo      bool                    `bson:"setup_as_sudo,omitempty" json:"setup_as_sudo,omitempty" mapstructure:"setup_as_sudo,omitempty"`
-	Setup            string                  `bson:"setup,omitempty" json:"setup,omitempty" mapstructure:"setup,omitempty"`
-	Teardown         string                  `bson:"teardown,omitempty" json:"teardown,omitempty" mapstructure:"teardown,omitempty"`
-	User             string                  `bson:"user,omitempty" json:"user,omitempty" mapstructure:"user,omitempty"`
-	BootstrapMethod  string                  `bson:"bootstrap_method,omitempty" json:"bootstrap_method,omitempty" mapstructure:"bootstrap_method,omitempty"`
-	SSHKey           string                  `bson:"ssh_key,omitempty" json:"ssh_key,omitempty" mapstructure:"ssh_key,omitempty"`
-	SSHOptions       []string                `bson:"ssh_options,omitempty" json:"ssh_options,omitempty" mapstructure:"ssh_options,omitempty"`
-	SpawnAllowed     bool                    `bson:"spawn_allowed" json:"spawn_allowed,omitempty" mapstructure:"spawn_allowed,omitempty"`
-	Expansions       []Expansion             `bson:"expansions,omitempty" json:"expansions,omitempty" mapstructure:"expansions,omitempty"`
-	Disabled         bool                    `bson:"disabled,omitempty" json:"disabled,omitempty" mapstructure:"disabled,omitempty"`
-	ContainerPool    string                  `bson:"container_pool,omitempty" json:"container_pool,omitempty" mapstructure:"container_pool,omitempty"`
-	PlannerSettings  PlannerSettings         `bson:"planner_settings" json:"planner_settings,omitempty" mapstructure:"planner_settings,omitempty"`
+	Id                  string                  `bson:"_id" json:"_id,omitempty" mapstructure:"_id,omitempty"`
+	Arch                string                  `bson:"arch" json:"arch,omitempty" mapstructure:"arch,omitempty"`
+	WorkDir             string                  `bson:"work_dir" json:"work_dir,omitempty" mapstructure:"work_dir,omitempty"`
+	PoolSize            int                     `bson:"pool_size,omitempty" json:"pool_size,omitempty" mapstructure:"pool_size,omitempty" yaml:"poolsize"`
+	Provider            string                  `bson:"provider" json:"provider,omitempty" mapstructure:"provider,omitempty"`
+	ProviderSettings    *map[string]interface{} `bson:"settings" json:"settings,omitempty" mapstructure:"settings,omitempty"`
+	SetupAsSudo         bool                    `bson:"setup_as_sudo,omitempty" json:"setup_as_sudo,omitempty" mapstructure:"setup_as_sudo,omitempty"`
+	Setup               string                  `bson:"setup,omitempty" json:"setup,omitempty" mapstructure:"setup,omitempty"`
+	Teardown            string                  `bson:"teardown,omitempty" json:"teardown,omitempty" mapstructure:"teardown,omitempty"`
+	User                string                  `bson:"user,omitempty" json:"user,omitempty" mapstructure:"user,omitempty"`
+	BootstrapMethod     string                  `bson:"bootstrap_method,omitempty" json:"bootstrap_method,omitempty" mapstructure:"bootstrap_method,omitempty"`
+	CommunicationMethod string                  `bson:"communication_method,omitempty" json:"communication_method,omitempty" mapstructure:"communication_method,omitempty"`
+	SSHKey              string                  `bson:"ssh_key,omitempty" json:"ssh_key,omitempty" mapstructure:"ssh_key,omitempty"`
+	SSHOptions          []string                `bson:"ssh_options,omitempty" json:"ssh_options,omitempty" mapstructure:"ssh_options,omitempty"`
+	SpawnAllowed        bool                    `bson:"spawn_allowed" json:"spawn_allowed,omitempty" mapstructure:"spawn_allowed,omitempty"`
+	Expansions          []Expansion             `bson:"expansions,omitempty" json:"expansions,omitempty" mapstructure:"expansions,omitempty"`
+	Disabled            bool                    `bson:"disabled,omitempty" json:"disabled,omitempty" mapstructure:"disabled,omitempty"`
+	ContainerPool       string                  `bson:"container_pool,omitempty" json:"container_pool,omitempty" mapstructure:"container_pool,omitempty"`
+	PlannerSettings     PlannerSettings         `bson:"planner_settings" json:"planner_settings,omitempty" mapstructure:"planner_settings,omitempty"`
+	FinderSettings      FinderSettings          `bson:"finder_settings" json:"finder_settings,omitempty" mapstructure:"finder_settings,omitempty"`
 }
 
 type PlannerSettings struct {
@@ -45,6 +47,10 @@ type PlannerSettings struct {
 	PatchZipperFactor      int           `bson:"patch_zipper_factor" json:"patch_zipper_factor,omitempty" mapstructure:"patch_zipper_factor,omitempty"`
 	MainlineFirst          bool          `bson:"mainline_first" json:"mainline_first,omitempty" mapstructure:"mainline_first,omitempty"`
 	PatchFirst             bool          `bson:"patch_first" json:"patch_first,omitempty" mapstructure:"patch_first,omitempty"`
+}
+
+type FinderSettings struct {
+	Version string `bson:"version" json:"version" mapstructure:"version"`
 }
 
 type DistroGroup []Distro
@@ -63,7 +69,49 @@ const (
 	BootstrapMethodSSH                = "ssh"
 	BootstrapMethodPreconfiguredImage = "preconfigured-image"
 	BootstrapMethodUserData           = "user-data"
+
+	// Means of communicating with hosts
+	CommunicationMethodLegacySSH = "legacy-ssh"
+	CommunicationMethodSSH       = "ssh"
+	CommunicationMethodRPC       = "rpc"
+
+	// Recognized architectures, should be in the form ${GOOS}_${GOARCH}.
+	ArchDarwinAmd64  = "darwin_amd64"
+	ArchLinux386     = "linux_386"
+	ArchLinuxPpc64le = "linux_ppc64le"
+	ArchLinuxS390x   = "linux_s390x"
+	ArchLinuxArm64   = "linux_arm64"
+	ArchLinuxAmd64   = "linux_amd64"
+	ArchWindows386   = "windows_386"
+	ArchWindowsAmd64 = "windows_amd64"
 )
+
+// validArches includes all recognized architectures.
+var validArches = []string{
+	ArchDarwinAmd64,
+	ArchLinux386,
+	ArchLinuxPpc64le,
+	ArchLinuxS390x,
+	ArchLinuxArm64,
+	ArchLinuxAmd64,
+	ArchWindows386,
+	ArchWindowsAmd64,
+}
+
+// validBootstrapMethods includes all recognized bootstrap methods.
+var validBootstrapMethods = []string{
+	BootstrapMethodLegacySSH,
+	BootstrapMethodSSH,
+	BootstrapMethodPreconfiguredImage,
+	BootstrapMethodUserData,
+}
+
+// validCommunicationMethods includes all recognized host communication methods.
+var validCommunicationMethods = []string{
+	CommunicationMethodLegacySSH,
+	CommunicationMethodSSH,
+	CommunicationMethodRPC,
+}
 
 // Seed the random number generator for creating distro names
 func init() {
@@ -194,15 +242,56 @@ func ValidateContainerPoolDistros(s *evergreen.Settings) error {
 	return errors.WithStack(catcher.Resolve())
 }
 
-// ValidateBootstrapMethod ensure that the bootstrap mechanism is one of the
+// ValidateArch checks that the architecture is one of the supported
+// architectures.
+func ValidateArch(arch string) error {
+	osAndArch := strings.Split(arch, "_")
+	if len(osAndArch) != 2 {
+		return fmt.Errorf("architecture '%s' is not in the form ${GOOS}_${GOARCH}", arch)
+	}
+
+	if !util.StringSliceContains(validArches, arch) {
+		return fmt.Errorf("'%s' is not a recognized architecture", arch)
+	}
+	return nil
+}
+
+// ValidateBootstrapMethod checks that the bootstrap mechanism is one of the
 // supported methods.
 func ValidateBootstrapMethod(method string) error {
-	switch method {
-	case BootstrapMethodLegacySSH, BootstrapMethodSSH, BootstrapMethodPreconfiguredImage, BootstrapMethodUserData:
-		return nil
-	default:
+	if !util.StringSliceContains(validBootstrapMethods, method) {
 		return fmt.Errorf("'%s' is not a valid bootstrap method", method)
 	}
+	return nil
+}
+
+// ValidateCommunicationMethod checks that the communication mechanism is one of
+// the supported methods.
+func ValidateCommunicationMethod(method string) error {
+	if !util.StringSliceContains(validCommunicationMethods, method) {
+		return fmt.Errorf("'%s' is not a valid communication method", method)
+	}
+	return nil
+}
+
+// ValidateBootstrapAndCommunicationMethods checks that the bootstrap and
+// communication mechanisms are recognized, and that the combination of the two
+// is allowed.
+func ValidateBootstrapAndCommunicationMethods(bootstrap string, communication string) error {
+	catcher := grip.NewBasicCatcher()
+	catcher.Add(ValidateBootstrapMethod(bootstrap))
+	catcher.Add(ValidateCommunicationMethod(communication))
+	switch bootstrap {
+	case BootstrapMethodLegacySSH:
+		if communication != CommunicationMethodLegacySSH {
+			catcher.New("bootstrapping hosts using legacy SSH is incompatible with non-legacy host communication")
+		}
+	default:
+		if communication == CommunicationMethodLegacySSH {
+			catcher.New("communicating with hosts using legacy SSH is incompatible with non-legacy host bootstrapping")
+		}
+	}
+	return catcher.Resolve()
 }
 
 // GetDistroIds returns a slice of distro IDs for the given group of distros

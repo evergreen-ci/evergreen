@@ -114,7 +114,12 @@ func MockConfig() *evergreen.Settings {
 		Banner:            "banner",
 		BannerTheme:       "important",
 		ClientBinariesDir: "bin_dir",
-		ConfigDir:         "cfg_dir",
+		CommitQueue: evergreen.CommitQueueConfig{
+			MergeTaskDistro: "distro",
+			CommitterName:   "Evergreen Commit Queue",
+			CommitterEmail:  "evergreen@mongodb.com",
+		},
+		ConfigDir: "cfg_dir",
 		ContainerPools: evergreen.ContainerPoolsConfig{
 			Pools: []evergreen.ContainerPool{
 				evergreen.ContainerPool{
@@ -126,13 +131,18 @@ func MockConfig() *evergreen.Settings {
 			},
 		},
 		Credentials:        map[string]string{"k1": "v1"},
-		JasperURL:          "url",
-		JasperVersion:      "version",
 		Expansions:         map[string]string{"k2": "v2"},
 		GoogleAnalyticsID:  "u-12345",
 		GithubPRCreatorOrg: "org",
 		HostInit: evergreen.HostInitConfig{
 			SSHTimeoutSeconds: 10,
+		},
+		JasperConfig: evergreen.JasperConfig{
+			BinaryName:       "binary",
+			DownloadFileName: "download",
+			Port:             12345,
+			URL:              "url",
+			Version:          "version",
 		},
 		Jira: evergreen.JiraConfig{
 			Host:           "host",

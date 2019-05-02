@@ -3,6 +3,7 @@ package units
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/cloud"
@@ -77,8 +78,11 @@ func (j *buildingContainerImageJob) Run(ctx context.Context) {
 
 	var err error
 	if j.parent == nil {
-		j.parent, err = host.FindOneId(j.ParentID)
+		j.parent, err = host.FindOneByIdOrTag(j.ParentID)
 		j.AddError(err)
+		if j.parent == nil {
+			j.AddError(errors.Errorf("parent %s not found", j.ParentID))
+		}
 	}
 	if j.env == nil {
 		j.env = evergreen.GetEnvironment()
@@ -92,6 +96,14 @@ func (j *buildingContainerImageJob) Run(ctx context.Context) {
 	}
 
 	defer func() {
+		grip.Debug(message.Fields{
+			"host_id":      j.parent.Id,
+			"job_id":       j.ID(),
+			"runner":       "taskrunner",
+			"distro":       j.parent.Distro,
+			"operation":    "container build complete",
+			"current_iter": j.parent.ContainerBuildAttempt,
+		})
 		if err = j.parent.IncContainerBuildAttempt(); err != nil {
 			j.AddError(err)
 			grip.Warning(message.WrapError(err, message.Fields{
@@ -104,19 +116,19 @@ func (j *buildingContainerImageJob) Run(ctx context.Context) {
 			}))
 			return
 		}
-		grip.Debug(message.Fields{
-			"host_id":      j.parent.Id,
-			"job_id":       j.ID(),
-			"runner":       "taskrunner",
-			"distro":       j.parent.Distro,
-			"operation":    "container build complete",
-			"current_iter": j.parent.ContainerBuildAttempt,
-		})
+		j.tryRequeue(ctx)
 	}()
 
 	if j.parent.ContainerBuildAttempt >= containerBuildRetries {
 		j.AddError(errors.Wrapf(j.parent.SetTerminated(evergreen.User),
 			"failed 5 times to build and download image '%s' on parent '%s'", j.DockerOptions.Image, j.parent.Id))
+		grip.Warning(message.WrapError(j.Error(), message.Fields{
+			"message":   "building container image job failed",
+			"job_id":    j.ID(),
+			"host_id":   j.parent.Id,
+			"operation": "container build",
+			"num_iters": j.parent.ContainerBuildAttempt,
+		}))
 		return
 	}
 
@@ -146,4 +158,27 @@ func (j *buildingContainerImageJob) Run(ctx context.Context) {
 		j.AddError(errors.Wrapf(err, "error upserting parent %s", j.parent.Id))
 		return
 	}
+}
+
+func (j *buildingContainerImageJob) tryRequeue(ctx context.Context) {
+	if j.shouldRetry(ctx) && j.env.RemoteQueue().Started() {
+		job := NewBuildingContainerImageJob(j.env, j.parent, j.DockerOptions, j.Provider)
+		job.UpdateTimeInfo(amboy.JobTimeInfo{
+			WaitUntil: time.Now().Add(time.Second * 10),
+		})
+		err := j.env.RemoteQueue().Put(job)
+		grip.Error(message.WrapError(err, message.Fields{
+			"message":   "failed to requeue setup job",
+			"operation": "container build",
+			"host":      j.ParentID,
+			"job":       j.ID(),
+			"attempts":  j.parent.ContainerBuildAttempt,
+		}))
+		j.AddError(err)
+	}
+}
+
+// retry if we're under retry limit, and the image isn't built yet
+func (j *buildingContainerImageJob) shouldRetry(ctx context.Context) bool {
+	return j.parent.ContainerBuildAttempt <= containerBuildRetries && !j.parent.ContainerImages[j.DockerOptions.Image]
 }

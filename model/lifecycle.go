@@ -936,6 +936,11 @@ func createOneTask(id string, buildVarTask BuildVariantTaskUnit, project *Projec
 		return nil, errors.Wrapf(err, "Failed to get create time for task %s", id)
 	}
 
+	activatedTime := util.ZeroTime
+	if b.Activated {
+		activatedTime = time.Now()
+	}
+
 	t := &task.Task{
 		Id:                  id,
 		Secret:              util.RandomString(),
@@ -952,7 +957,7 @@ func createOneTask(id string, buildVarTask BuildVariantTaskUnit, project *Projec
 		LastHeartbeat:       util.ZeroTime,
 		Status:              evergreen.TaskUndispatched,
 		Activated:           b.Activated,
-		ActivatedTime:       b.ActivatedTime,
+		ActivatedTime:       activatedTime,
 		RevisionOrderNumber: v.RevisionOrderNumber,
 		Requester:           v.Requester,
 		Version:             v.Id,
@@ -994,6 +999,11 @@ func createDisplayTask(id string, displayName string, execTasks []string,
 		return nil, errors.Wrapf(err, "Failed to get create time for task %s", id)
 	}
 
+	activatedTime := util.ZeroTime
+	if b.Activated {
+		activatedTime = time.Now()
+	}
+
 	t := &task.Task{
 		Id:                  id,
 		DisplayName:         displayName,
@@ -1012,6 +1022,7 @@ func createDisplayTask(id string, displayName string, execTasks []string,
 		StartTime:           util.ZeroTime,
 		FinishTime:          util.ZeroTime,
 		Activated:           b.Activated,
+		ActivatedTime:       activatedTime,
 		DispatchTime:        util.ZeroTime,
 		ScheduledTime:       util.ZeroTime,
 		TriggerID:           v.TriggerID,

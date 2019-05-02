@@ -745,6 +745,39 @@ func (c *communicatorImpl) EnqueueItem(ctx context.Context, projectID, item stri
 	return positionResp.Position, nil
 }
 
+func (c *communicatorImpl) GetUserAuthorInfo(ctx context.Context, userID string) (*model.APIUserAuthorInformation, error) {
+	info := requestInfo{
+		method:  get,
+		version: apiVersion2,
+		path:    fmt.Sprintf("/user/author/%s", userID),
+	}
+
+	resp, err := c.request(ctx, info, nil)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+	bytes, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to read response")
+	}
+	if resp.StatusCode != http.StatusOK {
+		restErr := gimlet.ErrorResponse{}
+		if err = json.Unmarshal(bytes, &restErr); err != nil {
+			return nil, errors.Errorf("received an error but was unable to parse: %s", string(bytes))
+		}
+
+		return nil, restErr
+	}
+
+	authorResp := &model.APIUserAuthorInformation{}
+	if err = util.ReadJSONInto(resp.Body, authorResp); err != nil {
+		return nil, errors.Wrap(err, "error parsing author response")
+	}
+
+	return authorResp, nil
+}
+
 func (c *communicatorImpl) SendNotification(ctx context.Context, notificationType string, data interface{}) error {
 	info := requestInfo{
 		method:  post,
@@ -798,7 +831,7 @@ func (c *communicatorImpl) GetDockerStatus(ctx context.Context, hostID string) (
 }
 
 func (c *communicatorImpl) GetDockerLogs(ctx context.Context, hostID string, startTime time.Time, endTime time.Time, isError bool) ([]byte, error) {
-	path := fmt.Sprintf("/host/%s/logs", hostID)
+	path := fmt.Sprintf("/hosts/%s/logs", hostID)
 	if isError {
 		path = fmt.Sprintf("%s/error", path)
 	} else {
@@ -813,7 +846,7 @@ func (c *communicatorImpl) GetDockerLogs(ctx context.Context, hostID string, sta
 	}
 
 	info := requestInfo{
-		method:  post,
+		method:  get,
 		version: apiVersion2,
 		path:    path,
 	}

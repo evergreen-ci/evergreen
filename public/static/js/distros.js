@@ -14,7 +14,7 @@ mciModule.controller('DistrosCtrl', function($scope, $window, $location, $anchor
     $scope.distros[i].finder_settings = $scope.distros[i].finder_settings || {};
     $scope.distros[i].finder_settings.version = $scope.distros[i].finder_settings.version || "legacy";
     $scope.distros[i].bootstrap_method = $scope.distros[i].bootstrap_method || 'legacy-ssh';
-    $scope.distros[i].bootstrap_method = $scope.distros[i].bootstrap_method || 'legacy-ssh';
+    $scope.distros[i].communication_method = $scope.distros[i].communication_method || 'legacy-ssh';
   }
 
   $scope.planner_versions = [{
@@ -70,17 +70,11 @@ mciModule.controller('DistrosCtrl', function($scope, $window, $location, $anchor
     'id': 'darwin_amd64',
     'display': 'OSX 64-bit'
   }, {
-    'id': 'darwin_386',
-    'display': 'OSX 32-bit'
-  }, {
     'id': 'linux_amd64',
     'display': 'Linux 64-bit'
   }, {
     'id': 'linux_386',
     'display': 'Linux 32-bit'
-  }, {
-    'id': 'solaris_amd64',
-    'display': 'Solaris 64-bit'
   }];
 
   $scope.bootstrapMethods = [{
@@ -97,6 +91,17 @@ mciModule.controller('DistrosCtrl', function($scope, $window, $location, $anchor
       'display': 'User Data'
     }, {
   }];
+
+  $scope.communicationMethods = [{
+      'id': 'legacy-ssh',
+      'display': 'Legacy SSH'
+  }, {
+      'id': 'ssh',
+      'display': 'SSH'
+  }, {
+      'id': 'rpc',
+      'display': 'RPC'
+  }]
 
   $scope.ids = [];
 
@@ -280,9 +285,9 @@ mciModule.controller('DistrosCtrl', function($scope, $window, $location, $anchor
       );
     } else {
       mciDistroRestService.modifyDistro(
-    $scope.activeDistro._id,
-    $scope.activeDistro,
-    $scope.shouldDeco,
+      $scope.activeDistro._id,
+      $scope.activeDistro,
+      $scope.shouldDeco,
     {
       success: function(resp) {
         $window.location.reload(true);
@@ -317,12 +322,13 @@ mciModule.controller('DistrosCtrl', function($scope, $window, $location, $anchor
   $scope.newDistro = function() {
     if (!$scope.hasNew) {
       var defaultOptions = {
-    '_id': 'new distro',
-    'arch': 'linux_amd64',
-    'provider': 'ec2',
-    'bootstrap_method': 'legacy',
-    'settings': {},
-    'new': true,
+        '_id': 'new distro',
+        'arch': 'linux_amd64',
+        'provider': 'ec2',
+        'bootstrap_method': 'legacy-ssh',
+        'communication_method': 'legacy-ssh',
+        'settings': {},
+        'new': true,
       };
 
       if ($scope.keys.length != 0) {
@@ -339,21 +345,21 @@ mciModule.controller('DistrosCtrl', function($scope, $window, $location, $anchor
   $scope.copyDistro = function(){
     if (!$scope.hasNew) {
       var newDistro = {
-    'arch': $scope.activeDistro.arch,
-    'work_dir': $scope.activeDistro.work_dir,
-    'provider': $scope.activeDistro.provider,
-    'new': true,
-    'user': $scope.activeDistro.user,
-    'ssh_key': $scope.activeDistro.ssh_key,
-    'ssh_options': $scope.activeDistro.ssh_options,
-    'setup': $scope.activeDistro.setup,
-    'setup': $scope.activeDistro.teardown,
-    'setup': $scope.activeDistro.user_data,
-    'pool_size': $scope.activeDistro.pool_size,
-    'setup_as_sudo' : $scope.activeDistro.setup_as_sudo,
-    'bootstrap_method': $scope.activeDistro.bootstrap_method,
-
-      }
+        'arch': $scope.activeDistro.arch,
+        'work_dir': $scope.activeDistro.work_dir,
+        'provider': $scope.activeDistro.provider,
+        'new': true,
+        'user': $scope.activeDistro.user,
+        'ssh_key': $scope.activeDistro.ssh_key,
+        'ssh_options': $scope.activeDistro.ssh_options,
+        'setup': $scope.activeDistro.setup,
+        'setup': $scope.activeDistro.teardown,
+        'setup': $scope.activeDistro.user_data,
+        'pool_size': $scope.activeDistro.pool_size,
+        'setup_as_sudo' : $scope.activeDistro.setup_as_sudo,
+        'bootstrap_method': $scope.activeDistro.bootstrap_method,
+        'communication_method': $scope.activeDistro.communication_method,
+      };
       newDistro.settings = _.clone($scope.activeDistro.settings);
       newDistro.expansions = _.clone($scope.activeDistro.expansions);
       newDistro.planner_settings = _.clone($scope.activeDistro.planner_settings);
@@ -487,7 +493,13 @@ mciModule.filter('bootstrapMethodDisplay', function() {
   return function(bootstrapMethod, scope) {
     return scope.getKeyDisplay('bootstrapMethods', bootstrapMethod);
   }
-})
+});
+
+mciModule.filter('communicationMethodDisplay', function() {
+  return function(communicationMethod, scope) {
+    return scope.getKeyDisplay('communicationMethods', communicationMethod);
+  }
+});
 
 mciModule.directive('unique', function() {
   return {

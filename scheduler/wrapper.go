@@ -57,7 +57,7 @@ func PlanDistro(ctx context.Context, conf Configuration, s *evergreen.Settings) 
 	finder := GetTaskFinder(conf.TaskFinder)
 	tasks, err := finder(distro.Id)
 	if err != nil {
-		return errors.Wrap(err, "problem calculating task finder")
+		return errors.Wrapf(err, "problem while running task finder for distro '%s'", distro.Id)
 	}
 	grip.Info(message.Fields{
 		"runner":        RunnerName,
@@ -92,9 +92,9 @@ func PlanDistro(ctx context.Context, conf Configuration, s *evergreen.Settings) 
 		maxDurationThreshold = MaxDurationPerDistroHostWithContainers
 	}
 
-	////////////////////////
-	// planning-distro phase
-	////////////////////////
+	/////////////////
+	// planning phase
+	/////////////////
 
 	planningPhaseBegins := time.Now()
 	prioritizedTasks, err := ds.scheduleDistro(distro.Id, runnableTasks, versions, maxDurationThreshold)

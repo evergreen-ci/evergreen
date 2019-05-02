@@ -17,7 +17,7 @@ const (
 )
 
 func getPatchFlags(flags ...cli.Flag) []cli.Flag {
-	return mergeFlagSlices(addProjectFlag(flags...), addVariantsFlag(), addTasksFlag(), addLargeFlag(), addCommittedOnlyFlag(), addYesFlag(
+	return mergeFlagSlices(addProjectFlag(flags...), addVariantsFlag(), addTasksFlag(), addLargeFlag(), addYesFlag(
 		cli.StringFlag{
 			Name:  joinFlagNames(patchDescriptionFlagName, "d"),
 			Usage: "description for the patch",
@@ -37,6 +37,10 @@ func getPatchFlags(flags ...cli.Flag) []cli.Flag {
 		cli.BoolFlag{
 			Name:  patchVerboseFlagName,
 			Usage: "show patch summary",
+		},
+		cli.StringFlag{
+			Name:  refFlagName,
+			Usage: "diff with `REF`, ignoring working tree changes",
 		}))
 }
 
@@ -51,17 +55,17 @@ func Patch() cli.Command {
 			confPath := c.Parent().String(confFlagName)
 			args := c.Args()
 			params := &patchParams{
-				Project:       c.String(projectFlagName),
-				Variants:      c.StringSlice(variantsFlagName),
-				Tasks:         c.StringSlice(tasksFlagName),
-				SkipConfirm:   c.Bool(yesFlagName),
-				Description:   c.String(patchDescriptionFlagName),
-				Finalize:      c.Bool(patchFinalizeFlagName),
-				Browse:        c.Bool(patchBrowseFlagName),
-				ShowSummary:   c.Bool(patchVerboseFlagName),
-				Large:         c.Bool(largeFlagName),
-				Alias:         c.String(patchAliasFlagName),
-				CommittedOnly: c.Bool(committedFlagName),
+				Project:     c.String(projectFlagName),
+				Variants:    c.StringSlice(variantsFlagName),
+				Tasks:       c.StringSlice(tasksFlagName),
+				SkipConfirm: c.Bool(yesFlagName),
+				Description: c.String(patchDescriptionFlagName),
+				Finalize:    c.Bool(patchFinalizeFlagName),
+				Browse:      c.Bool(patchBrowseFlagName),
+				ShowSummary: c.Bool(patchVerboseFlagName),
+				Large:       c.Bool(largeFlagName),
+				Alias:       c.String(patchAliasFlagName),
+				Ref:         c.String(refFlagName),
 			}
 
 			ctx, cancel := context.WithCancel(context.Background())
@@ -85,7 +89,7 @@ func Patch() cli.Command {
 				return err
 			}
 
-			diffData, err := loadGitData(ref.Branch, params.CommittedOnly, args...)
+			diffData, err := loadGitData(ref.Branch, params.Ref, args...)
 			if err != nil {
 				return err
 			}

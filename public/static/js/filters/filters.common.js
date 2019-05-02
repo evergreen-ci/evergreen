@@ -276,13 +276,7 @@ filters.common.filter('conditional', function() {
       return task;
     }
     var cls = task.status;
-    if (task.status == 'undispatched' || (task.display_only && task.task_waiting)) {
-      if (!task.activated) {
-        cls = 'inactive';
-      } else {
-        cls = 'unstarted';
-      }
-    } else if (task.status == 'started') {
+    if (task.status == 'started') {
       cls = 'started';
     } else if (task.status == 'success') {
       cls = 'success';
@@ -307,6 +301,12 @@ filters.common.filter('conditional', function() {
           }
         }
       }
+    } else if (task.status == 'undispatched' || (task.display_only && task.task_waiting)) {
+        if (!task.activated) {
+            cls = 'inactive';
+        } else {
+            cls = 'unstarted';
+        }
     }
     return cls;
   }
@@ -314,9 +314,6 @@ filters.common.filter('conditional', function() {
 
 .filter('statusLabel', function() {
   return function(task) {
-    if (task.task_waiting && !task.override_dependencies) {
-      return task.task_waiting;
-    }
     if (task.status == 'started') {
       return 'started';
     } else if (task.status == 'undispatched' && task.activated) {
@@ -360,6 +357,9 @@ filters.common.filter('conditional', function() {
         }
         return 'failed';
       }
+    }
+    if (task.task_waiting && !task.override_dependencies) {
+        return task.task_waiting;
     }
     return task.status;
   }
@@ -410,5 +410,73 @@ filters.common.filter('conditional', function() {
     }
     // no active tasks pending
     return "block-status-inactive";
+  }
+})
+.filter('expandedMetricConverter', function() {
+  return function(data, execution) {
+    if (!data) {
+      return null;
+    }
+    var output = {
+        "data": {
+            "results": []
+        }
+    };
+
+    _.each(data, function(test) {
+      if (execution && test.info.execution !== execution) {
+        return;
+      }
+      var result = {};
+      var threads
+      if (test.info && test.info.args) {
+        threads = test.info.args.thread_level;
+      } else {
+        _.each(test.rollups.stats, function (stat) {
+          if (stat.name === "avgWorkers") {
+            threads = stat.val;
+          }
+        });
+      }
+      if (!threads) {
+        return;
+      }
+      result[threads] = {};
+
+      _.each(test.rollups.stats, function (stat) {
+          result[threads][stat.name] = Array.isArray(stat.val) ? stat.val[0].Value : stat.val;
+          result[threads][stat.name + "_values"] = Array.isArray(stat.val) ? [stat.val[0].Value] : [stat.val];
+      });
+      output.data.results.push({
+          "name": test.info.test_name,
+          "isExpandedMetric": true,
+          "results": result
+      });
+    })
+
+    return output;
+  }
+})
+// merges two sets of perf results, taking metadata from the second sample but giving test result preference to the first one
+.filter('mergePerfResults', function() {
+  return function(firstSample, secondSample) {
+    if (!firstSample) {
+      return secondSample;
+    }
+    if (!secondSample) {
+      return firstSample;
+    }
+    var toReturn = Object.assign({}, secondSample);
+    tempResults = {};
+
+    _.each(secondSample.data.results, function(result) {
+      tempResults[result.name] = result;
+    })
+    _.each(firstSample.data.results, function(result) {
+      tempResults[result.name] = result;
+    })
+    toReturn.data.results = _.toArray(tempResults);
+
+    return toReturn;
   }
 })

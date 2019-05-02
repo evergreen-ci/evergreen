@@ -13,6 +13,7 @@ import (
 type JobInterchange struct {
 	Name       string                 `json:"name" bson:"_id" yaml:"name"`
 	Type       string                 `json:"type" bson:"type" yaml:"type"`
+	Group      string                 `bson:"group,omitempty" json:"group,omitempty" yaml:"group,omitempty"`
 	Version    int                    `json:"version" bson:"version" yaml:"version"`
 	Priority   int                    `json:"priority" bson:"priority" yaml:"priority"`
 	Status     amboy.JobStatusInfo    `bson:"status" json:"status" yaml:"status"`

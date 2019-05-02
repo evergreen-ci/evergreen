@@ -1059,3 +1059,23 @@ func TestBulkInsert(t *testing.T) {
 		assert.Equal("version", dbTask.Version)
 	}
 }
+
+func TestUnscheduleStaleUnderwaterTasks(t *testing.T) {
+	assert := assert.New(t)
+	assert.NoError(db.ClearCollections(Collection))
+	t1 := Task{
+		Id:            "t1",
+		Status:        evergreen.TaskUndispatched,
+		Activated:     true,
+		Priority:      0,
+		ActivatedTime: time.Time{},
+	}
+	assert.NoError(t1.Insert())
+
+	_, err := UnscheduleStaleUnderwaterTasks("")
+	assert.NoError(err)
+	dbTask, err := FindOneId("t1")
+	assert.NoError(err)
+	assert.False(dbTask.Activated)
+	assert.EqualValues(-1, dbTask.Priority)
+}

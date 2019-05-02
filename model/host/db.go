@@ -545,11 +545,10 @@ func FindStaleRunningTasks(cutoff time.Duration) ([]task.Task, error) {
 	return tasks, nil
 }
 
-// NeedsNewAgent returns hosts that are running and need a new agent, have no Last Commmunication Time,
-// or have one that exists that is greater than the MaxLTCInterval duration away from the current time.
-func NeedsNewAgent(currentTime time.Time) db.Q {
+// LastCommunicationTimeElapsed returns hosts which have never communicated or have not communicated in too long.
+func LastCommunicationTimeElapsed(currentTime time.Time) bson.M {
 	cutoffTime := currentTime.Add(-MaxLCTInterval)
-	return db.Query(bson.M{
+	return bson.M{
 		StatusKey:        evergreen.HostRunning,
 		StartedByKey:     evergreen.User,
 		HasContainersKey: bson.M{"$ne": true},
@@ -559,8 +558,19 @@ func NeedsNewAgent(currentTime time.Time) db.Q {
 			{LastCommunicationTimeKey: util.ZeroTime},
 			{LastCommunicationTimeKey: bson.M{"$lte": cutoffTime}},
 			{LastCommunicationTimeKey: bson.M{"$exists": false}},
-			{NeedsNewAgentKey: true},
 		},
+	}
+}
+
+// NeedsNewAgentFlagSet returns hosts with NeedsNewAgent set to true.
+func NeedsNewAgentFlagSet() db.Q {
+	return db.Query(bson.M{
+		StatusKey:        evergreen.HostRunning,
+		StartedByKey:     evergreen.User,
+		HasContainersKey: bson.M{"$ne": true},
+		ParentIDKey:      bson.M{"$exists": false},
+		RunningTaskKey:   bson.M{"$exists": false},
+		NeedsNewAgentKey: true,
 	})
 }
 
@@ -608,6 +618,22 @@ func FindOne(query db.Q) (*Host, error) {
 
 func FindOneId(id string) (*Host, error) {
 	return FindOne(ById(id))
+}
+
+// FindOneByIdOrTag finds a host where the given id is stored in either the _id or tag field.
+// (The tag field is used for the id from the host's original intent host.)
+func FindOneByIdOrTag(id string) (*Host, error) {
+	query := db.Query(bson.M{
+		"$or": []bson.M{
+			bson.M{TagKey: id},
+			bson.M{IdKey: id},
+		},
+	})
+	host, err := FindOne(query) // try to find by tag
+	if err != nil {
+		return nil, errors.Wrap(err, "error finding '%s' by _id or tag field")
+	}
+	return host, nil
 }
 
 // Find gets all Hosts for the given query.

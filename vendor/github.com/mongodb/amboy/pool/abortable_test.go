@@ -118,7 +118,7 @@ func (s *AbortablePoolSuite) TestCloserCancelsFuncs() {
 	s.Equal(0, closer.counter)
 	s.Len(s.pool.RunningJobs(), 1)
 
-	s.pool.Close()
+	s.pool.Close(context.TODO())
 	s.Equal(1, closer.counter)
 	s.Len(s.pool.RunningJobs(), 0)
 }

@@ -163,7 +163,6 @@ func (ch *CreateHost) ValidateDocker() error {
 		(ch.Registry.Username == "" && ch.Registry.Password != "") {
 		catcher.New("username and password must both be set or unset")
 	}
-
 	return catcher.Resolve()
 }
 

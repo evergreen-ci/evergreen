@@ -10,16 +10,6 @@ import (
 	"github.com/urfave/cli"
 )
 
-func hostStatus() cli.Command {
-	return cli.Command{
-		Name:  "status",
-		Usage: "print the status of spawn hosts",
-		Action: func(c *cli.Context) error {
-			return errors.New("not implemented")
-		},
-	}
-}
-
 func hostCreate() cli.Command {
 	const (
 		distroFlagName = "distro"

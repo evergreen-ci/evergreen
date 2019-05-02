@@ -607,6 +607,18 @@ func TestAllTasksFinished(t *testing.T) {
 		{
 			Id:        "t0",
 			Status:    evergreen.TaskFailed,
+			Activated: false,
+		},
+	}
+	complete, status, err := b.AllUnblockedTasksFinished(nil)
+	assert.NoError(err)
+	assert.True(complete)
+	assert.Equal(status, evergreen.BuildFailed)
+
+	b.Tasks = []TaskCache{
+		{
+			Id:        "t0",
+			Status:    evergreen.TaskFailed,
 			Activated: true,
 		},
 		{
@@ -665,7 +677,7 @@ func TestAllTasksFinished(t *testing.T) {
 	assert.NoError(d0.Insert())
 	assert.NoError(e0.Insert())
 	assert.NoError(e1.Insert())
-	complete, _, err := b.AllUnblockedTasksFinished(nil)
+	complete, _, err = b.AllUnblockedTasksFinished(nil)
 	assert.NoError(err)
 	assert.True(complete)
 

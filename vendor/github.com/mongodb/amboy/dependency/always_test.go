@@ -38,13 +38,13 @@ func (s *AlwaysRebuildSuite) TestHasComposedJobEdgesInstance() {
 	var dep interface{} = s.dep
 
 	_, ok = dep.(interface {
-		Edges() []string // nolint: megacheck
+		Edges() []string // nolint
 	})
 
 	s.True(ok)
 
 	_, ok = dep.(interface {
-		AddEdge(string) error // nolint: megacheck
+		AddEdge(string) error // nolint
 	})
 
 	s.True(ok)

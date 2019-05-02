@@ -30,7 +30,7 @@ func deployMigration() cli.Command {
 			settings := env.Settings()
 
 			// avoid working on remote jobs during migrations
-			env.RemoteQueue().Runner().Close()
+			env.RemoteQueue().Runner().Close(ctx)
 
 			opts := migrations.Options{
 				Period:   c.Duration(anserPeriodFlagName),

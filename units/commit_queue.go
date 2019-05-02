@@ -12,6 +12,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/commitqueue"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/patch"
+	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/evergreen-ci/evergreen/validator"
 	"github.com/google/go-github/github"
@@ -228,6 +229,8 @@ func (j *commitQueueJob) processGitHubPRItem(ctx context.Context, cq *commitqueu
 	for _, modulePR := range modulePRs {
 		j.AddError(sendCommitQueueGithubStatus(j.env, modulePR, message.GithubStatePending, "preparing to test merge", v.Id))
 	}
+
+	event.LogCommitQueueStartTestEvent(v.Id)
 }
 
 func (j *commitQueueJob) processCLIPatchItem(ctx context.Context, cq *commitqueue.CommitQueue, nextItem *commitqueue.CommitQueueItem, projectRef *model.ProjectRef, githubToken string) {
@@ -252,29 +255,48 @@ func (j *commitQueueJob) processCLIPatchItem(ctx context.Context, cq *commitqueu
 	}
 
 	sha := *branch.Commit.SHA
-	if err = patchDoc.SetGithash(sha); err != nil {
-		j.logError(err, "can't set githash", nextItem)
+	patchDoc.Githash = sha
+
+	project, err := model.GetPatchedProject(ctx, patchDoc, githubToken)
+	if err != nil {
+		j.logError(err, "can't get updated project config", nextItem)
 		j.dequeue(cq, nextItem)
+		return
 	}
 
-	// TODO: Add merge task to the patch before finalizing
+	if err = addMergeTaskAndVariant(patchDoc, project); err != nil {
+		j.logError(err, "can't set patch project config", nextItem)
+		j.dequeue(cq, nextItem)
+		return
+	}
 
-	_, err = model.FinalizePatch(ctx, patchDoc, evergreen.MergeTestRequester, githubToken)
+	project.BuildProjectTVPairs(patchDoc, patchDoc.Alias)
+
+	if err = patchDoc.UpdateGithashProjectAndTasks(); err != nil {
+		j.logError(err, "can't update patch in db", nextItem)
+		j.dequeue(cq, nextItem)
+		return
+	}
+
+	v, err := model.FinalizePatch(ctx, patchDoc, evergreen.MergeTestRequester, githubToken)
 	if err != nil {
 		j.logError(err, "can't finalize patch", nextItem)
 		j.dequeue(cq, nextItem)
+		return
 	}
 
-	subscriber := event.NewCommitQueueDequeueSubscriber(event.CommitQueueDequeueSubscriber{
-		ProjectID: cq.ProjectID,
-		Item:      nextItem.Issue,
-	})
+	subscriber := event.NewCommitQueueDequeueSubscriber()
 
 	patchSub := event.NewPatchOutcomeSubscription(nextItem.Issue, subscriber)
-	if err := patchSub.Upsert(); err != nil {
+	if err = patchSub.Upsert(); err != nil {
 		j.logError(err, "failed to insert patch subscription", nextItem)
 		j.dequeue(cq, nextItem)
 	}
+
+	if err = setDefaultNotification(patchDoc.Author); err != nil {
+		j.logError(err, "failed to set default notification", nextItem)
+	}
+	event.LogCommitQueueStartTestEvent(v.Id)
 }
 
 func (j *commitQueueJob) logError(err error, msg string, item *commitqueue.CommitQueueItem) {
@@ -432,14 +454,12 @@ func sendCommitQueueGithubStatus(env evergreen.Environment, pr *github.PullReque
 
 func subscribeMerge(projectID, owner, repo, mergeMethod, patchID string, pr *github.PullRequest) error {
 	mergeSubscriber := event.NewGithubMergeSubscriber(event.GithubMergeSubscriber{
-		ProjectID:     projectID,
-		Owner:         owner,
-		Repo:          repo,
-		PRNumber:      *pr.Number,
-		Ref:           *pr.Head.SHA,
-		CommitMessage: "Merged by commit queue",
-		MergeMethod:   mergeMethod,
-		CommitTitle:   *pr.Title,
+		Owner:       owner,
+		Repo:        repo,
+		PRNumber:    *pr.Number,
+		Ref:         *pr.Head.SHA,
+		MergeMethod: mergeMethod,
+		CommitTitle: *pr.Title,
 	})
 	patchSub := event.NewPatchOutcomeSubscription(patchID, mergeSubscriber)
 	if err := patchSub.Upsert(); err != nil {
@@ -475,5 +495,93 @@ func validateBranch(branch *github.Branch) error {
 	if branch.Commit.SHA == nil {
 		return errors.New("SHA is nil")
 	}
+	return nil
+}
+
+func addMergeTaskAndVariant(patchDoc *patch.Patch, project *model.Project) error {
+	settings, err := evergreen.GetConfig()
+	if err != nil {
+		return errors.Wrap(err, "error retrieving Evergreen config")
+	}
+
+	mergeBuildVariant := model.BuildVariant{
+		Name:        "commit-queue-merge",
+		DisplayName: "Commit Queue Merge",
+		RunOn:       []string{settings.CommitQueue.MergeTaskDistro},
+		Tasks: []model.BuildVariantTaskUnit{
+			{Name: "merge-patch"},
+		},
+	}
+
+	mergeTask := model.ProjectTask{
+		Name: "merge-patch",
+		Commands: []model.PluginCommandConf{
+			{
+				Command: "git.get_project",
+				Type:    evergreen.CommandTypeSetup,
+				Params: map[string]interface{}{
+					"directory": "${workdir}/src",
+				},
+			},
+			{
+				Command: "git.push",
+				Params: map[string]interface{}{
+					"directory":       "${workdir}/src",
+					"committer_name":  settings.CommitQueue.CommitterName,
+					"committer_email": settings.CommitQueue.CommitterEmail,
+				},
+			},
+		},
+		DependsOn: []model.TaskUnitDependency{
+			{
+				Name:    "*",
+				Variant: "*",
+			},
+		},
+	}
+
+	project.BuildVariants = append(project.BuildVariants, mergeBuildVariant)
+	project.Tasks = append(project.Tasks, mergeTask)
+
+	validationErrors := validator.CheckProjectSyntax(project)
+	if len(validationErrors) != 0 {
+		return errors.Errorf("project validation failed: %s", validationErrors)
+	}
+
+	yamlBytes, err := yaml.Marshal(project)
+	if err != nil {
+		return errors.Wrap(err, "can't marshall remote config file")
+	}
+
+	patchDoc.PatchedConfig = string(yamlBytes)
+	patchDoc.BuildVariants = append(patchDoc.BuildVariants, "commit-queue-merge")
+	patchDoc.Tasks = append(patchDoc.Tasks, "merge-patch")
+
+	return nil
+}
+
+func setDefaultNotification(username string) error {
+	u, err := user.FindOneById(username)
+	if err != nil {
+		return errors.Wrap(err, "can't get user")
+	}
+	if u == nil {
+		return errors.Errorf("no matching user for %s", username)
+	}
+
+	// The user has never saved their notification settings
+	if u.Settings.Notifications.CommitQueue == "" {
+		u.Settings.Notifications.CommitQueue = user.PreferenceEmail
+		commitQueueSubscriber := event.NewEmailSubscriber(u.Email())
+		commitQueueSubscription, err := event.CreateOrUpdateImplicitSubscription(event.ImplicitSubscriptionCommitQueue,
+			"", commitQueueSubscriber, u.Id)
+		if err != nil {
+			return errors.Wrap(err, "can't create default email subscription")
+		}
+		u.Settings.Notifications.CommitQueueID = commitQueueSubscription.ID
+
+		return model.SaveUserSettings(u.Id, u.Settings)
+	}
+
 	return nil
 }

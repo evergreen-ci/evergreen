@@ -23,7 +23,7 @@ func TestCheckDistro(t *testing.T) {
 	Convey("When validating a distro", t, func() {
 
 		Convey("if a new distro passes all of the validation tests, no errors should be returned", func() {
-			d := &distro.Distro{Id: "a", Arch: "a", User: "a", SSHKey: "a", WorkDir: "a",
+			d := &distro.Distro{Id: "a", Arch: "linux_amd64", User: "a", SSHKey: "a", WorkDir: "a",
 				Provider: evergreen.ProviderNameEc2OnDemand,
 				ProviderSettings: &map[string]interface{}{
 					"ami":                "a",
@@ -35,7 +35,11 @@ func TestCheckDistro(t *testing.T) {
 				PlannerSettings: distro.PlannerSettings{
 					Version: evergreen.PlannerVersionTunable,
 				},
-				BootstrapMethod: distro.BootstrapMethodLegacySSH,
+				BootstrapMethod:     distro.BootstrapMethodLegacySSH,
+				CommunicationMethod: distro.CommunicationMethodLegacySSH,
+				FinderSettings: distro.FinderSettings{
+					Version: evergreen.FinderVersionLegacy,
+				},
 			}
 			verrs, err := CheckDistro(ctx, d, conf, true)
 			So(err, ShouldBeNil)
@@ -43,7 +47,7 @@ func TestCheckDistro(t *testing.T) {
 		})
 
 		Convey("if a new distro fails a validation test, an error should be returned", func() {
-			d := &distro.Distro{Id: "a", Arch: "a", User: "a", SSHKey: "a", WorkDir: "a",
+			d := &distro.Distro{Id: "a", Arch: "linux_amd64", User: "a", SSHKey: "a", WorkDir: "a",
 				Provider: evergreen.ProviderNameEc2OnDemand,
 				ProviderSettings: &map[string]interface{}{
 					"ami":                "a",
@@ -52,7 +56,8 @@ func TestCheckDistro(t *testing.T) {
 					"security_group_ids": []string{"a"},
 					"mount_points":       nil,
 				},
-				BootstrapMethod: distro.BootstrapMethodLegacySSH,
+				BootstrapMethod:     distro.BootstrapMethodLegacySSH,
+				CommunicationMethod: distro.CommunicationMethodLegacySSH,
 			}
 			// simulate duplicate id
 			dupe := distro.Distro{Id: "a"}
@@ -63,7 +68,7 @@ func TestCheckDistro(t *testing.T) {
 		})
 
 		Convey("if an existing distro passes all of the validation tests, no errors should be returned", func() {
-			d := &distro.Distro{Id: "a", Arch: "a", User: "a", SSHKey: "a", WorkDir: "a",
+			d := &distro.Distro{Id: "a", Arch: "linux_amd64", User: "a", SSHKey: "a", WorkDir: "a",
 				Provider: evergreen.ProviderNameEc2OnDemand,
 				ProviderSettings: &map[string]interface{}{
 					"ami":                "a",
@@ -75,7 +80,11 @@ func TestCheckDistro(t *testing.T) {
 				PlannerSettings: distro.PlannerSettings{
 					Version: evergreen.PlannerVersionTunable,
 				},
-				BootstrapMethod: distro.BootstrapMethodLegacySSH,
+				BootstrapMethod:     distro.BootstrapMethodLegacySSH,
+				CommunicationMethod: distro.CommunicationMethodLegacySSH,
+				FinderSettings: distro.FinderSettings{
+					Version: evergreen.FinderVersionLegacy,
+				},
 			}
 			verrs, err := CheckDistro(ctx, d, conf, false)
 			So(err, ShouldBeNil)
@@ -83,7 +92,7 @@ func TestCheckDistro(t *testing.T) {
 		})
 
 		Convey("if an existing distro fails a validation test, an error should be returned", func() {
-			d := &distro.Distro{Id: "a", Arch: "a", User: "a", SSHKey: "a", WorkDir: "a",
+			d := &distro.Distro{Id: "a", Arch: "linux_amd64", User: "a", SSHKey: "a", WorkDir: "a",
 				Provider: evergreen.ProviderNameEc2OnDemand,
 				ProviderSettings: &map[string]interface{}{
 					"ami":                "",
@@ -92,7 +101,8 @@ func TestCheckDistro(t *testing.T) {
 					"security_group_ids": []string{"a"},
 					"mount_points":       nil,
 				},
-				BootstrapMethod: distro.BootstrapMethodLegacySSH,
+				BootstrapMethod:     distro.BootstrapMethodLegacySSH,
+				CommunicationMethod: distro.CommunicationMethodLegacySSH,
 			}
 			verrs, err := CheckDistro(ctx, d, conf, false)
 			So(err, ShouldBeNil)
@@ -134,37 +144,37 @@ func TestEnsureHasRequiredFields(t *testing.T) {
 		d := []distro.Distro{
 			{},
 			{Id: "a"},
-			{Id: "a", Arch: "a"},
-			{Id: "a", Arch: "a", User: "a"},
-			{Id: "a", Arch: "a", User: "a", SSHKey: "a"},
-			{Id: "a", Arch: "a", User: "a", SSHKey: "a", WorkDir: "a"},
-			{Id: "a", Arch: "a", User: "a", SSHKey: "a", WorkDir: "a", Provider: "a"},
-			{Id: "a", Arch: "a", User: "a", SSHKey: "a", WorkDir: "a", Provider: evergreen.ProviderNameEc2OnDemand},
-			{Id: "a", Arch: "a", User: "a", SSHKey: "a", WorkDir: "a", Provider: evergreen.ProviderNameEc2OnDemand, ProviderSettings: &map[string]interface{}{
+			{Id: "a", Arch: "linux_amd64"},
+			{Id: "a", Arch: "linux_amd64", User: "a"},
+			{Id: "a", Arch: "linux_amd64", User: "a", SSHKey: "a"},
+			{Id: "a", Arch: "linux_amd64", User: "a", SSHKey: "a", WorkDir: "a"},
+			{Id: "a", Arch: "linux_amd64", User: "a", SSHKey: "a", WorkDir: "a", Provider: "a"},
+			{Id: "a", Arch: "linux_amd64", User: "a", SSHKey: "a", WorkDir: "a", Provider: evergreen.ProviderNameEc2OnDemand},
+			{Id: "a", Arch: "linux_amd64", User: "a", SSHKey: "a", WorkDir: "a", Provider: evergreen.ProviderNameEc2OnDemand, ProviderSettings: &map[string]interface{}{
 				"instance_type":      "a",
 				"security_group_ids": []string{"a"},
 				"key_name":           "a",
 				"mount_points":       nil,
 			}},
-			{Id: "a", Arch: "a", User: "a", SSHKey: "a", WorkDir: "a", Provider: evergreen.ProviderNameEc2OnDemand, ProviderSettings: &map[string]interface{}{
+			{Id: "a", Arch: "linux_amd64", User: "a", SSHKey: "a", WorkDir: "a", Provider: evergreen.ProviderNameEc2OnDemand, ProviderSettings: &map[string]interface{}{
 				"ami":                "a",
 				"security_group_ids": []string{"a"},
 				"key_name":           "a",
 				"mount_points":       nil,
 			}},
-			{Id: "a", Arch: "a", User: "a", SSHKey: "a", WorkDir: "a", Provider: evergreen.ProviderNameEc2OnDemand, ProviderSettings: &map[string]interface{}{
+			{Id: "a", Arch: "linux_amd64", User: "a", SSHKey: "a", WorkDir: "a", Provider: evergreen.ProviderNameEc2OnDemand, ProviderSettings: &map[string]interface{}{
 				"ami":           "a",
 				"instance_type": "a",
 				"key_name":      "a",
 				"mount_points":  nil,
 			}},
-			{Id: "a", Arch: "a", User: "a", SSHKey: "a", WorkDir: "a", Provider: evergreen.ProviderNameEc2OnDemand, ProviderSettings: &map[string]interface{}{
+			{Id: "a", Arch: "linux_amd64", User: "a", SSHKey: "a", WorkDir: "a", Provider: evergreen.ProviderNameEc2OnDemand, ProviderSettings: &map[string]interface{}{
 				"ami":                "a",
 				"instance_type":      "a",
 				"security_group_ids": []string{"a"},
 				"mount_points":       nil,
 			}},
-			{Id: "a", Arch: "a", User: "a", SSHKey: "a", WorkDir: "a", Provider: evergreen.ProviderNameEc2OnDemand, ProviderSettings: &map[string]interface{}{
+			{Id: "a", Arch: "linux_amd64", User: "a", SSHKey: "a", WorkDir: "a", Provider: evergreen.ProviderNameEc2OnDemand, ProviderSettings: &map[string]interface{}{
 				"ami":                "a",
 				"key_name":           "a",
 				"instance_type":      "a",
@@ -354,16 +364,41 @@ func TestEnsureValidContainerPool(t *testing.T) {
 	assert.Nil(err)
 }
 
-func TestEnsureValidBootstrapMethod(t *testing.T) {
+func TestEnsureValidBootstrapAndCommunicationMethods(t *testing.T) {
 	ctx := context.Background()
-	for _, bootstrapMethod := range []string{
+	for _, bootstrap := range []string{
 		distro.BootstrapMethodLegacySSH,
 		distro.BootstrapMethodSSH,
-		distro.BootstrapMethodPreconfiguredImage,
 		distro.BootstrapMethodUserData,
+		distro.BootstrapMethodPreconfiguredImage,
 	} {
-		assert.Nil(t, ensureValidBootstrapMethod(ctx, &distro.Distro{BootstrapMethod: bootstrapMethod}, &evergreen.Settings{}))
+		for _, communication := range []string{
+			distro.CommunicationMethodLegacySSH,
+			distro.CommunicationMethodSSH,
+			distro.CommunicationMethodRPC,
+		} {
+			d := &distro.Distro{BootstrapMethod: bootstrap, CommunicationMethod: communication}
+			switch bootstrap {
+			case distro.BootstrapMethodLegacySSH:
+				if communication == distro.CommunicationMethodLegacySSH {
+					assert.Nil(t, ensureValidBootstrapAndCommunicationMethods(ctx, d, &evergreen.Settings{}))
+				} else {
+					assert.NotNil(t, ensureValidBootstrapAndCommunicationMethods(ctx, d, &evergreen.Settings{}))
+				}
+			default:
+				if communication == distro.CommunicationMethodLegacySSH {
+					assert.NotNil(t, ensureValidBootstrapAndCommunicationMethods(ctx, d, &evergreen.Settings{}))
+				} else {
+					assert.Nil(t, ensureValidBootstrapAndCommunicationMethods(ctx, d, &evergreen.Settings{}))
+				}
+			}
+		}
 	}
-	assert.NotNil(t, ensureValidBootstrapMethod(ctx, &distro.Distro{BootstrapMethod: "foobar"}, &evergreen.Settings{}))
-	assert.NotNil(t, ensureValidBootstrapMethod(ctx, &distro.Distro{BootstrapMethod: ""}, &evergreen.Settings{}))
+	assert.NotNil(t, ensureValidBootstrapAndCommunicationMethods(ctx, &distro.Distro{BootstrapMethod: "foobar", CommunicationMethod: distro.CommunicationMethodLegacySSH}, &evergreen.Settings{}))
+	assert.NotNil(t, ensureValidBootstrapAndCommunicationMethods(ctx, &distro.Distro{BootstrapMethod: distro.BootstrapMethodLegacySSH}, &evergreen.Settings{}))
+	assert.NotNil(t, ensureValidBootstrapAndCommunicationMethods(ctx, &distro.Distro{CommunicationMethod: distro.CommunicationMethodLegacySSH}, &evergreen.Settings{}))
+
+	assert.NotNil(t, ensureValidBootstrapAndCommunicationMethods(ctx, &distro.Distro{BootstrapMethod: "foobar", CommunicationMethod: distro.CommunicationMethodSSH}, &evergreen.Settings{}))
+	assert.NotNil(t, ensureValidBootstrapAndCommunicationMethods(ctx, &distro.Distro{BootstrapMethod: distro.BootstrapMethodSSH}, &evergreen.Settings{}))
+	assert.NotNil(t, ensureValidBootstrapAndCommunicationMethods(ctx, &distro.Distro{CommunicationMethod: distro.CommunicationMethodSSH}, &evergreen.Settings{}))
 }
