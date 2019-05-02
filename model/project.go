@@ -28,30 +28,30 @@ const (
 )
 
 type Project struct {
-	Enabled            bool                       `yaml:"enabled,omitempty" bson:"enabled"`
-	Stepback           bool                       `yaml:"stepback,omitempty" bson:"stepback"`
-	ContinueOnPreError bool                       `yaml:"continue_on_pre_err,omitempty" bson:"continue_on_pre_err,omitempty"`
-	BatchTime          int                        `yaml:"batchtime,omitempty" bson:"batch_time"`
-	Owner              string                     `yaml:"owner,omitempty" bson:"owner_name"`
-	Repo               string                     `yaml:"repo,omitempty" bson:"repo_name"`
-	RemotePath         string                     `yaml:"remote_path,omitempty" bson:"remote_path"`
-	RepoKind           string                     `yaml:"repokind,omitempty" bson:"repo_kind"`
-	Branch             string                     `yaml:"branch,omitempty" bson:"branch_name"`
-	Identifier         string                     `yaml:"identifier,omitempty" bson:"identifier"`
-	DisplayName        string                     `yaml:"display_name,omitempty" bson:"display_name"`
-	CommandType        string                     `yaml:"command_type,omitempty" bson:"command_type"`
-	Ignore             []string                   `yaml:"ignore,omitempty" bson:"ignore"`
-	Pre                *YAMLCommandSet            `yaml:"pre,omitempty" bson:"pre"`
-	Post               *YAMLCommandSet            `yaml:"post,omitempty" bson:"post"`
-	Timeout            *YAMLCommandSet            `yaml:"timeout,omitempty" bson:"timeout"`
-	CallbackTimeout    int                        `yaml:"callback_timeout_secs,omitempty" bson:"callback_timeout_secs"`
-	Modules            ModuleList                 `yaml:"modules,omitempty" bson:"modules"`
-	BuildVariants      BuildVariants              `yaml:"buildvariants,omitempty" bson:"build_variants"`
-	Functions          map[string]*YAMLCommandSet `yaml:"functions,omitempty" bson:"functions"`
-	TaskGroups         []TaskGroup                `yaml:"task_groups,omitempty" bson:"task_groups"`
-	Tasks              []ProjectTask              `yaml:"tasks,omitempty" bson:"tasks"`
-	ExecTimeoutSecs    int                        `yaml:"exec_timeout_secs,omitempty" bson:"exec_timeout_secs"`
-	Loggers            *LoggerConfig              `yaml:"loggers,omitempty" bson:"loggers,omitempty"`
+	Enabled         bool                       `yaml:"enabled,omitempty" bson:"enabled"`
+	Stepback        bool                       `yaml:"stepback,omitempty" bson:"stepback"`
+	IgnorePreError  bool                       `yaml:"ignore_pre_err,omitempty" bson:"ignore_pre_err,omitempty"`
+	BatchTime       int                        `yaml:"batchtime,omitempty" bson:"batch_time"`
+	Owner           string                     `yaml:"owner,omitempty" bson:"owner_name"`
+	Repo            string                     `yaml:"repo,omitempty" bson:"repo_name"`
+	RemotePath      string                     `yaml:"remote_path,omitempty" bson:"remote_path"`
+	RepoKind        string                     `yaml:"repokind,omitempty" bson:"repo_kind"`
+	Branch          string                     `yaml:"branch,omitempty" bson:"branch_name"`
+	Identifier      string                     `yaml:"identifier,omitempty" bson:"identifier"`
+	DisplayName     string                     `yaml:"display_name,omitempty" bson:"display_name"`
+	CommandType     string                     `yaml:"command_type,omitempty" bson:"command_type"`
+	Ignore          []string                   `yaml:"ignore,omitempty" bson:"ignore"`
+	Pre             *YAMLCommandSet            `yaml:"pre,omitempty" bson:"pre"`
+	Post            *YAMLCommandSet            `yaml:"post,omitempty" bson:"post"`
+	Timeout         *YAMLCommandSet            `yaml:"timeout,omitempty" bson:"timeout"`
+	CallbackTimeout int                        `yaml:"callback_timeout_secs,omitempty" bson:"callback_timeout_secs"`
+	Modules         ModuleList                 `yaml:"modules,omitempty" bson:"modules"`
+	BuildVariants   BuildVariants              `yaml:"buildvariants,omitempty" bson:"build_variants"`
+	Functions       map[string]*YAMLCommandSet `yaml:"functions,omitempty" bson:"functions"`
+	TaskGroups      []TaskGroup                `yaml:"task_groups,omitempty" bson:"task_groups"`
+	Tasks           []ProjectTask              `yaml:"tasks,omitempty" bson:"tasks"`
+	ExecTimeoutSecs int                        `yaml:"exec_timeout_secs,omitempty" bson:"exec_timeout_secs"`
+	Loggers         *LoggerConfig              `yaml:"loggers,omitempty" bson:"loggers,omitempty"`
 
 	// Flag that indicates a project as requiring user authentication
 	Private bool `yaml:"private,omitempty" bson:"private"`
@@ -915,7 +915,7 @@ func GetTaskGroup(taskGroup string, tc *TaskConfig) (*TaskGroup, error) {
 			SetupTask:          p.Pre,
 			TeardownTask:       p.Post,
 			Timeout:            p.Timeout,
-			SetupGroupFailTask: p.Pre == nil || !p.ContinueOnPreError,
+			SetupGroupFailTask: p.Pre == nil || !p.IgnorePreError,
 		}, nil
 	}
 	tg := p.FindTaskGroup(taskGroup)

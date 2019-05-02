@@ -37,30 +37,30 @@ import (
 // configuration YAML. It implements the Unmarshaler interface
 // to allow for flexible handling.
 type parserProject struct {
-	Enabled            bool                       `yaml:"enabled,omitempty"`
-	Stepback           bool                       `yaml:"stepback,omitempty"`
-	ContinueOnPreError bool                       `yaml:"continue_on_pre_err,omitempty"`
-	BatchTime          int                        `yaml:"batchtime,omitempty"`
-	Owner              string                     `yaml:"owner,omitempty"`
-	Repo               string                     `yaml:"repo,omitempty"`
-	RemotePath         string                     `yaml:"remote_path,omitempty"`
-	RepoKind           string                     `yaml:"repokind,omitempty"`
-	Branch             string                     `yaml:"branch,omitempty"`
-	Identifier         string                     `yaml:"identifier,omitempty"`
-	DisplayName        string                     `yaml:"display_name,omitempty"`
-	CommandType        string                     `yaml:"command_type,omitempty"`
-	Ignore             parserStringSlice          `yaml:"ignore,omitempty"`
-	Pre                *YAMLCommandSet            `yaml:"pre,omitempty"`
-	Post               *YAMLCommandSet            `yaml:"post,omitempty"`
-	Timeout            *YAMLCommandSet            `yaml:"timeout,omitempty"`
-	CallbackTimeout    int                        `yaml:"callback_timeout_secs,omitempty"`
-	Modules            []Module                   `yaml:"modules,omitempty"`
-	BuildVariants      []parserBV                 `yaml:"buildvariants,omitempty"`
-	Functions          map[string]*YAMLCommandSet `yaml:"functions,omitempty"`
-	TaskGroups         []parserTaskGroup          `yaml:"task_groups,omitempty"`
-	Tasks              []parserTask               `yaml:"tasks,omitempty"`
-	ExecTimeoutSecs    int                        `yaml:"exec_timeout_secs,omitempty"`
-	Loggers            *LoggerConfig              `yaml:"loggers,omitempty"`
+	Enabled         bool                       `yaml:"enabled,omitempty"`
+	Stepback        bool                       `yaml:"stepback,omitempty"`
+	IgnorePreError  bool                       `yaml:"ignore_pre_err,omitempty"`
+	BatchTime       int                        `yaml:"batchtime,omitempty"`
+	Owner           string                     `yaml:"owner,omitempty"`
+	Repo            string                     `yaml:"repo,omitempty"`
+	RemotePath      string                     `yaml:"remote_path,omitempty"`
+	RepoKind        string                     `yaml:"repokind,omitempty"`
+	Branch          string                     `yaml:"branch,omitempty"`
+	Identifier      string                     `yaml:"identifier,omitempty"`
+	DisplayName     string                     `yaml:"display_name,omitempty"`
+	CommandType     string                     `yaml:"command_type,omitempty"`
+	Ignore          parserStringSlice          `yaml:"ignore,omitempty"`
+	Pre             *YAMLCommandSet            `yaml:"pre,omitempty"`
+	Post            *YAMLCommandSet            `yaml:"post,omitempty"`
+	Timeout         *YAMLCommandSet            `yaml:"timeout,omitempty"`
+	CallbackTimeout int                        `yaml:"callback_timeout_secs,omitempty"`
+	Modules         []Module                   `yaml:"modules,omitempty"`
+	BuildVariants   []parserBV                 `yaml:"buildvariants,omitempty"`
+	Functions       map[string]*YAMLCommandSet `yaml:"functions,omitempty"`
+	TaskGroups      []parserTaskGroup          `yaml:"task_groups,omitempty"`
+	Tasks           []parserTask               `yaml:"tasks,omitempty"`
+	ExecTimeoutSecs int                        `yaml:"exec_timeout_secs,omitempty"`
+	Loggers         *LoggerConfig              `yaml:"loggers,omitempty"`
 
 	// Matrix code
 	Axes []matrixAxis `yaml:"axes,omitempty"`
@@ -450,27 +450,27 @@ func createIntermediateProject(yml []byte) (*parserProject, []error) {
 func translateProject(pp *parserProject) (*Project, []error) {
 	// Transfer top level fields
 	proj := &Project{
-		Enabled:            pp.Enabled,
-		Stepback:           pp.Stepback,
-		ContinueOnPreError: pp.ContinueOnPreError,
-		BatchTime:          pp.BatchTime,
-		Owner:              pp.Owner,
-		Repo:               pp.Repo,
-		RemotePath:         pp.RemotePath,
-		RepoKind:           pp.RepoKind,
-		Branch:             pp.Branch,
-		Identifier:         pp.Identifier,
-		DisplayName:        pp.DisplayName,
-		CommandType:        pp.CommandType,
-		Ignore:             pp.Ignore,
-		Pre:                pp.Pre,
-		Post:               pp.Post,
-		Timeout:            pp.Timeout,
-		CallbackTimeout:    pp.CallbackTimeout,
-		Modules:            pp.Modules,
-		Functions:          pp.Functions,
-		ExecTimeoutSecs:    pp.ExecTimeoutSecs,
-		Loggers:            pp.Loggers,
+		Enabled:         pp.Enabled,
+		Stepback:        pp.Stepback,
+		IgnorePreError:  pp.IgnorePreError,
+		BatchTime:       pp.BatchTime,
+		Owner:           pp.Owner,
+		Repo:            pp.Repo,
+		RemotePath:      pp.RemotePath,
+		RepoKind:        pp.RepoKind,
+		Branch:          pp.Branch,
+		Identifier:      pp.Identifier,
+		DisplayName:     pp.DisplayName,
+		CommandType:     pp.CommandType,
+		Ignore:          pp.Ignore,
+		Pre:             pp.Pre,
+		Post:            pp.Post,
+		Timeout:         pp.Timeout,
+		CallbackTimeout: pp.CallbackTimeout,
+		Modules:         pp.Modules,
+		Functions:       pp.Functions,
+		ExecTimeoutSecs: pp.ExecTimeoutSecs,
+		Loggers:         pp.Loggers,
 	}
 	tse := NewParserTaskSelectorEvaluator(pp.Tasks)
 	tgse := newTaskGroupSelectorEvaluator(pp.TaskGroups)
