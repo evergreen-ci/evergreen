@@ -20,6 +20,7 @@ var (
 	SSHKeyKey           = bsonutil.MustHaveTag(Distro{}, "SSHKey")
 	SSHOptionsKey       = bsonutil.MustHaveTag(Distro{}, "SSHOptions")
 	BootstrapMethod     = bsonutil.MustHaveTag(Distro{}, "BootstrapMethod")
+	CommunicationMethod = bsonutil.MustHaveTag(Distro{}, "CommunicationMethod")
 	WorkDirKey          = bsonutil.MustHaveTag(Distro{}, "WorkDir")
 	SpawnAllowedKey     = bsonutil.MustHaveTag(Distro{}, "SpawnAllowed")
 	ExpansionsKey       = bsonutil.MustHaveTag(Distro{}, "Expansions")
