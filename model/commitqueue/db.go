@@ -86,6 +86,9 @@ func setProcessing(id string, status bool) error {
 func clearAll() (int, error) {
 	return updateAll(
 		struct{}{},
-		bson.M{"$unset": bson.M{QueueKey: 1}},
+		bson.M{
+			"$unset": bson.M{QueueKey: 1},
+			"$set":   bson.M{ProcessingKey: false},
+		},
 	)
 }
