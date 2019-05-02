@@ -1236,19 +1236,19 @@ func getNumNewParentsAndHostsToSpawn(pool *evergreen.ContainerPool, newHostsNeed
 // numNewParentsNeeded returns the number of additional parents needed to
 // accommodate new containers
 func numNewParentsNeeded(params newParentsNeededParams) int {
-	numPossibleContainers := params.numExistingParents * params.maxContainers
-	numPossibleContainersNeeded := params.numExistingContainers + params.numContainersNeeded
-	numAvailableContainers := numPossibleContainers - params.numExistingContainers
+	existingCapacity := params.numExistingParents * params.maxContainers
+	newCapacityNeeded := params.numContainersNeeded - (existingCapacity - params.numExistingContainers)
 
 	// if we don't have enough space, calculate new parents
-	if numPossibleContainers < numPossibleContainersNeeded {
-		numTotalNewParents := int(math.Ceil(float64(params.numContainersNeeded-numAvailableContainers) / float64(params.maxContainers)))
+	if newCapacityNeeded > 0 {
+		numTotalNewParents := int(math.Ceil(float64(newCapacityNeeded) / float64(params.maxContainers)))
 		if numTotalNewParents < 0 {
 			return 0
 		}
 		return numTotalNewParents
 	}
 	return 0
+
 }
 
 // containerCapacity calculates how many containers to make
