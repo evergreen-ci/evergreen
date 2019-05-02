@@ -1171,17 +1171,24 @@ func TestIdleEphemeralGroupedByDistroId(t *testing.T) {
 	assert.NoError(err)
 	assert.Equal(2, len(idleHostsByDistroID))
 
-	// Confirm the distroIDs are ordered by {"distro._id": 1} and that IdleHosts are sorted from oldest to newest CreationTime.
-	assert.Equal("distro1", idleHostsByDistroID[0].DistroID)
-	assert.Equal(3, len(idleHostsByDistroID[0].IdleHosts))
-	assert.Equal(4, idleHostsByDistroID[0].RunningHostsCount)
-	assert.Equal("host4", idleHostsByDistroID[0].IdleHosts[0].Id)
-	assert.Equal("host1", idleHostsByDistroID[0].IdleHosts[1].Id)
-	assert.Equal("host2", idleHostsByDistroID[0].IdleHosts[2].Id)
-	assert.Equal(2, len(idleHostsByDistroID[1].IdleHosts))
-	assert.Equal(2, idleHostsByDistroID[1].RunningHostsCount)
-	assert.Equal("host5", idleHostsByDistroID[1].IdleHosts[0].Id)
-	assert.Equal("host3", idleHostsByDistroID[1].IdleHosts[1].Id)
+	// Confirm the hosts are sorted from oldest to newest CreationTime.
+	if idleHostsByDistroID[0].DistroID == d2 {
+		assert.Equal(2, len(idleHostsByDistroID[0].IdleHosts))
+		assert.Equal("host5", idleHostsByDistroID[0].IdleHosts[0].Id)
+		assert.Equal("host3", idleHostsByDistroID[0].IdleHosts[1].Id)
+		assert.Equal(3, len(idleHostsByDistroID[1].IdleHosts))
+		assert.Equal("host4", idleHostsByDistroID[1].IdleHosts[0].Id)
+		assert.Equal("host1", idleHostsByDistroID[1].IdleHosts[1].Id)
+		assert.Equal("host2", idleHostsByDistroID[1].IdleHosts[2].Id)
+	} else {
+		assert.Equal(3, len(idleHostsByDistroID[0].IdleHosts))
+		assert.Equal("host4", idleHostsByDistroID[0].IdleHosts[0].Id)
+		assert.Equal("host1", idleHostsByDistroID[0].IdleHosts[1].Id)
+		assert.Equal("host2", idleHostsByDistroID[0].IdleHosts[2].Id)
+		assert.Equal(2, len(idleHostsByDistroID[1].IdleHosts))
+		assert.Equal("host5", idleHostsByDistroID[1].IdleHosts[0].Id)
+		assert.Equal("host3", idleHostsByDistroID[1].IdleHosts[1].Id)
+	}
 }
 
 func TestFindAllRunningContainers(t *testing.T) {

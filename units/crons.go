@@ -2,7 +2,6 @@ package units
 
 import (
 	"fmt"
-	"sort"
 	"strings"
 	"time"
 
@@ -343,7 +342,6 @@ func PopulateIdleHostJobs(env evergreen.Environment) amboy.QueueOperation {
 				distroIDsFound = append(distroIDsFound, d.Id)
 			}
 			invalidDistroIDs := util.GetSetDifference(distroIDsToFind, distroIDsFound)
-			sort.Strings(invalidDistroIDs)
 			return fmt.Errorf("distro ids %s not found", strings.Join(invalidDistroIDs, ","))
 		}
 

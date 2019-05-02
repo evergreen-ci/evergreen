@@ -2,6 +2,7 @@ package units
 
 import (
 	"context"
+	"strings"
 	"testing"
 	"time"
 
@@ -276,7 +277,7 @@ func TestFlaggingIdleHostsWithMissingDistroIDs(t *testing.T) {
 		}
 		host3 := host.Host{
 			Id:           "h3",
-			Distro:       distro.Distro{Id: "z"},
+			Distro:       distro.Distro{Id: "distroZ"},
 			Provider:     evergreen.ProviderNameMock,
 			CreationTime: time.Now().Add(-30 * time.Minute),
 			Status:       evergreen.HostRunning,
@@ -284,7 +285,7 @@ func TestFlaggingIdleHostsWithMissingDistroIDs(t *testing.T) {
 		}
 		host4 := host.Host{
 			Id:           "h4",
-			Distro:       distro.Distro{Id: "a"},
+			Distro:       distro.Distro{Id: "distroA"},
 			Provider:     evergreen.ProviderNameMock,
 			CreationTime: time.Now().Add(-30 * time.Minute),
 			Status:       evergreen.HostRunning,
@@ -292,7 +293,7 @@ func TestFlaggingIdleHostsWithMissingDistroIDs(t *testing.T) {
 		}
 		host5 := host.Host{
 			Id:           "h5",
-			Distro:       distro.Distro{Id: "c"},
+			Distro:       distro.Distro{Id: "distroC"},
 			Provider:     evergreen.ProviderNameMock,
 			CreationTime: time.Now().Add(-20 * time.Minute),
 			Status:       evergreen.HostRunning,
@@ -304,10 +305,14 @@ func TestFlaggingIdleHostsWithMissingDistroIDs(t *testing.T) {
 		require.NoError(t, host4.Insert(), "error inserting host '%s'", host4.Id)
 		require.NoError(t, host5.Insert(), "error inserting host '%s'", host5.Id)
 
-		// If encountered missing distros, we exit early before we ever check for hosts to flag as idle
+		// If we encounter missing distros, we exit early before we ever evaluate if any hosts are idle
 		idle, err := flagIdleHosts(ctx, env)
 		assert.Error(t, err)
-		assert.Equal(t, "distro ids a,c,z not found", err.Error())
+		assert.True(t, strings.Contains(err.Error(), "distroZ"))
+		assert.True(t, strings.Contains(err.Error(), "distroA"))
+		assert.True(t, strings.Contains(err.Error(), "distroC"))
+		assert.False(t, strings.Contains(err.Error(), "distro1"))
+		assert.False(t, strings.Contains(err.Error(), "distro2"))
 		assert.Equal(t, 0, len(idle))
 	})
 }
