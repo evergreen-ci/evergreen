@@ -2,6 +2,7 @@ package model
 
 import (
 	"math"
+	"net/url"
 	"testing"
 
 	"github.com/evergreen-ci/evergreen/db"
@@ -70,24 +71,26 @@ func TestProjectRefHTTPLocation(t *testing.T) {
 		Repo:  "mci",
 	}
 
-	url, err := projectRef.HTTPLocation()
+	urlStr, err := projectRef.HTTPLocation()
 	assert.NoError(err)
-	assert.NotNil(url)
-	assert.Equal("https", url.Scheme)
-	assert.Equal("github.com", url.Host)
-	assert.Equal("/mongodb/mci.git", url.Path)
-	assert.Nil(url.User)
+	parsedURL, err := url.Parse(urlStr)
+	assert.NoError(err)
+	assert.NotNil(parsedURL)
+	assert.Equal("https", parsedURL.Scheme)
+	assert.Equal("github.com", parsedURL.Host)
+	assert.Equal("/mongodb/mci.git", parsedURL.Path)
+	assert.Nil(parsedURL.User)
 
 	projectRef.Owner = ""
-	url, err = projectRef.HTTPLocation()
+	urlStr, err = projectRef.HTTPLocation()
 	assert.Error(err)
-	assert.Nil(url)
+	assert.Empty(urlStr)
 
 	projectRef.Owner = "mongodb"
 	projectRef.Repo = ""
-	url, err = projectRef.HTTPLocation()
+	urlStr, err = projectRef.HTTPLocation()
 	assert.Error(err)
-	assert.Nil(url)
+	assert.Empty(urlStr)
 }
 
 func TestProjectRefLocation(t *testing.T) {

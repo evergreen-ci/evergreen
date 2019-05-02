@@ -429,9 +429,9 @@ buildvariants:
 	assert.NoError(VersionUpdateOne(bson.M{VersionIdKey: v.Id}, bson.M{
 		"$set": bson.M{VersionRequesterKey: evergreen.MergeTestRequester},
 	}))
-	expansions, err = PopulateExpansions(taskDoc, &h)
+	expansions, err = PopulateExpansions(taskDoc, &h, oauthToken)
 	assert.NoError(err)
-	assert.Len(map[string]string(expansions), 18)
+	assert.Len(map[string]string(expansions), 19)
 	assert.Equal("true", expansions.Get("is_patch"))
 	assert.Equal("true", expansions.Get("is_commit_queue"))
 
