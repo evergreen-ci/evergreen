@@ -31,7 +31,7 @@ mciModule.controller('PerfBBRejectsCtrl', function (
     confirmMarkAction(items, action + ' whitelisting for').
       then(() => {
         const task_revisions = _.chain(items).
-                                 map((item) => _.pick(item, 'revision', 'project', 'variant', 'task')).
+                                 map((item) => _.pick(item, 'revision', 'project', 'variant', 'task', 'order')).
                                  uniq((item) => _.values(item).join('-')).
                                  value();
         const promise = func(task_revisions);
