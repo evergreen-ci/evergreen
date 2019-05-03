@@ -85,3 +85,9 @@ func ByActiveOrStatic() db.Q {
 		bson.M{ProviderKey: evergreen.HostTypeStatic},
 	}})
 }
+
+// ByIds creates a query that finds all distros for the given ids and implicitly
+// returns them ordered by {"_id": 1}
+func ByIds(ids []string) db.Q {
+	return db.Query(bson.M{IdKey: bson.M{"$in": ids}})
+}
