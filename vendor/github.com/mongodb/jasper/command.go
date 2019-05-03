@@ -21,19 +21,18 @@ import (
 // ad-hoc processes for smaller tasks. Command immediately supports features
 // such as output and error functionality and remote execution.
 type Command struct {
-	cmds     [][]string
-	opts     *CreateOptions
-	priority level.Priority
-	id       string
-	procIDs  []string
-	remote   remoteCommandOptions
-
 	continueOnError bool
 	ignoreError     bool
-	runBackground   bool
+	opts            *CreateOptions
 	prerequisite    func() bool
+	priority        level.Priority
+	runBackground   bool
 
-	makep ProcessConstructor
+	cmds    [][]string
+	id      string
+	procIDs []string
+	remote  remoteCommandOptions
+	makep   ProcessConstructor
 }
 
 type remoteCommandOptions struct {
@@ -50,11 +49,12 @@ func (rco *remoteCommandOptions) hostString() string {
 	return fmt.Sprintf("%s@%s", rco.user, rco.host)
 }
 
-func getRemoteCreateOpt(ctx context.Context, rco remoteCommandOptions, args []string, dir string) (*CreateOptions, error) {
+func getRemoteCreateOpt(ctx context.Context, rco remoteCommandOptions, args []string, existingOpts *CreateOptions) (*CreateOptions, error) {
+	opts := existingOpts.Copy()
 	var remoteCmd string
 
-	if dir != "" {
-		remoteCmd = fmt.Sprintf("cd %s && ", dir)
+	if existingOpts.WorkingDirectory != "" {
+		remoteCmd = fmt.Sprintf("cd %s && ", existingOpts.WorkingDirectory)
 	}
 
 	switch len(args) {
@@ -66,7 +66,8 @@ func getRemoteCreateOpt(ctx context.Context, rco remoteCommandOptions, args []st
 		remoteCmd += strings.Join(args, " ")
 	}
 
-	return &CreateOptions{Args: append(append([]string{"ssh"}, rco.args...), rco.hostString(), remoteCmd)}, nil
+	opts.Args = append(append([]string{"ssh"}, rco.args...), rco.hostString(), remoteCmd)
+	return opts, nil
 }
 
 func getLogOutput(out []byte) string {
@@ -99,7 +100,14 @@ func (c *Command) ProcConstructor(processConstructor ProcessConstructor) *Comman
 // been created by the Command for execution.
 func (c *Command) GetProcIDs() []string { return c.procIDs }
 
-// ApplyFromOpts uses the CreateOptions to configure the Command.
+// ApplyFromOpts uses the CreateOptions to configure the Command. If Args is set
+// on the CreateOptions, it will be ignored; the Args can be added using Add,
+// Append, AppendArgs, or Extend.
+// This overwrites options that were previously set in the following functions:
+// AddEnv, Environment, RedirectErrorToOutput, RedirectOutputToError,
+// SetCombinedSender, SetErrorSender, SetErrorWriter, SetOutputOptions,
+// SetOutputSender, SetOutputWriter, SuppressStandardError, and
+// SuppressStandardOutput.
 func (c *Command) ApplyFromOpts(opts *CreateOptions) *Command { c.opts = opts; return c }
 
 // SetOutputOptions sets the output options for a command.
@@ -151,21 +159,23 @@ func (c *Command) ContinueOnError(cont bool) *Command { c.continueOnError = cont
 // error despite errors in its sub-command executions.
 func (c *Command) IgnoreError(ignore bool) *Command { c.ignoreError = ignore; return c }
 
-// SuppressStandardError, when set to true, discards all standard
-// error content.
+// SuppressStandardError sets a flag for determining if the Command should
+// discard all standard error content.
 func (c *Command) SuppressStandardError(v bool) *Command { c.opts.Output.SuppressError = v; return c }
 
-// SuppressStandardOutput, when set to true, discards all standard
-// output content.
+// SuppressStandardOutput sets a flag for determining if the Command should
+// discard all standard output content.
 func (c *Command) SuppressStandardOutput(v bool) *Command { c.opts.Output.SuppressOutput = v; return c }
 
-// RedirectOutputToError sends all standard output content to standard error.
+// RedirectOutputToError sets a flag for determining if the Command should send
+// all standard output content to standard error.
 func (c *Command) RedirectOutputToError(v bool) *Command {
 	c.opts.Output.SendOutputToError = v
 	return c
 }
 
-// RedirectOutputToError sends all standard error output to standard output.
+// RedirectErrorToOutput sets a flag for determining if the Command should send
+// all standard error content to standard output.
 func (c *Command) RedirectErrorToOutput(v bool) *Command {
 	c.opts.Output.SendOutputToError = v
 	return c
@@ -189,19 +199,19 @@ func (c *Command) Add(args []string) *Command { c.cmds = append(c.cmds, args); r
 // Extend adds on multiple sub-commands.
 func (c *Command) Extend(cmds [][]string) *Command { c.cmds = append(c.cmds, cmds...); return c }
 
-// ShellOperation adds an operation to the command that runs a shell
-// script, using the shell's "-c" option).
+// ShellScript adds an operation to the command that runs a shell script, using
+// the shell's "-c" option).
 func (c *Command) ShellScript(shell, script string) *Command {
 	c.cmds = append(c.cmds, []string{shell, "-c", script})
 	return c
 }
 
-// Bash adds a script using "bash -c", as syntactic sugar for the
-// ShellScript method.
+// Bash adds a script using "bash -c", as syntactic sugar for the ShellScript
+// method.
 func (c *Command) Bash(script string) *Command { return c.ShellScript("bash", script) }
 
-// Bash adds a script using "bash -c", as syntactic sugar for the
-// ShellScript method.
+// Sh adds a script using "sh -c", as syntactic sugar for the ShellScript
+// method.
 func (c *Command) Sh(script string) *Command { return c.ShellScript("sh", script) }
 
 // Append takes a series of strings and splits them into sub-commands and adds
@@ -402,8 +412,8 @@ func (c *Command) getCmd() string {
 	return strings.Join(out, "")
 }
 
-func getCreateOpt(ctx context.Context, args []string, dir string, env map[string]string) (*CreateOptions, error) {
-	var opts *CreateOptions
+func getCreateOpt(ctx context.Context, args []string, existingOpts *CreateOptions) (*CreateOptions, error) {
+	opts := existingOpts.Copy()
 	switch len(args) {
 	case 0:
 		return nil, errors.New("args invalid")
@@ -413,14 +423,12 @@ func getCreateOpt(ctx context.Context, args []string, dir string, env map[string
 			if err != nil {
 				return nil, errors.Wrap(err, "problem splitting argstring")
 			}
-			return getCreateOpt(ctx, spl, dir, env)
+			return getCreateOpt(ctx, spl, existingOpts)
 		}
-		opts = &CreateOptions{Args: args}
+		opts.Args = args
 	default:
-		opts = &CreateOptions{Args: args}
+		opts.Args = args
 	}
-	opts.WorkingDirectory = dir
-	opts.Environment = env
 
 	return opts, nil
 }
@@ -430,7 +438,7 @@ func (c *Command) getCreateOpts(ctx context.Context) ([]*CreateOptions, error) {
 	catcher := grip.NewBasicCatcher()
 	if c.remote.host != "" {
 		for _, args := range c.cmds {
-			cmd, err := getRemoteCreateOpt(ctx, c.remote, args, c.opts.WorkingDirectory)
+			cmd, err := getRemoteCreateOpt(ctx, c.remote, args, c.opts)
 			if err != nil {
 				catcher.Add(err)
 				continue
@@ -440,7 +448,7 @@ func (c *Command) getCreateOpts(ctx context.Context) ([]*CreateOptions, error) {
 		}
 	} else {
 		for _, args := range c.cmds {
-			cmd, err := getCreateOpt(ctx, args, c.opts.WorkingDirectory, c.opts.Environment)
+			cmd, err := getCreateOpt(ctx, args, c.opts)
 			if err != nil {
 				catcher.Add(err)
 				continue
@@ -468,7 +476,9 @@ func (c *Command) exec(ctx context.Context, opts *CreateOptions, idx int) error 
 	addOutOp := func(msg message.Fields) message.Fields { return msg }
 	var err error
 	var newProc Process
-	if c.opts.Output.Output == nil {
+	// TODO: the logic below this is not strictly correct if, for example,
+	// Output is redirected to Error and Error has been defined.
+	if opts.Output.Output == nil {
 		var out bytes.Buffer
 		opts.Output.Output = &out
 		opts.Output.Error = &out
@@ -483,8 +493,6 @@ func (c *Command) exec(ctx context.Context, opts *CreateOptions, idx int) error 
 			return msg
 		}
 	} else {
-		opts.Output.Error = c.opts.Output.Error
-		opts.Output.Output = c.opts.Output.Output
 		newProc, err = c.makep(ctx, opts)
 		if err != nil {
 			return errors.Wrapf(err, "problem starting command")

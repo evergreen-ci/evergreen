@@ -33,7 +33,6 @@ type CreateOptions struct {
 	StandardInput    io.Reader         `json:"-"`
 
 	closers []func() error
-	started bool
 }
 
 // MakeCreationOptions takes a command string and returns an equivalent
@@ -237,7 +236,6 @@ func (opts *CreateOptions) Copy() *CreateOptions {
 	optsCopy.Output = *opts.Output.Copy()
 
 	optsCopy.closers = nil
-	optsCopy.started = false
 
 	return &optsCopy
 }

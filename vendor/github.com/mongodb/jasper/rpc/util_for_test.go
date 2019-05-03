@@ -9,7 +9,6 @@ import (
 	"github.com/mongodb/grip"
 	"github.com/mongodb/jasper"
 	"github.com/pkg/errors"
-	grpc "google.golang.org/grpc"
 )
 
 var intSource <-chan int
@@ -68,37 +67,34 @@ func createProcs(ctx context.Context, opts *jasper.CreateOptions, manager jasper
 	return out, catcher.Resolve()
 }
 
-func startRPC(ctx context.Context, mngr jasper.Manager) (string, error) {
-	addr := fmt.Sprintf("localhost:%d", getPortNumber())
-	lis, err := net.Listen("tcp", addr)
+// startTestService creates a server for testing purposes that terminates when
+// the context is done.
+func startTestService(ctx context.Context, mngr jasper.Manager, addr net.Addr) error {
+	closeService, err := StartService(ctx, mngr, addr, "", "")
 	if err != nil {
-		return "", errors.WithStack(err)
+		return errors.Wrap(err, "could not start server")
 	}
-
-	rpcSrv := grpc.NewServer()
-
-	AttachService(mngr, rpcSrv)
-	go rpcSrv.Serve(lis)
 
 	go func() {
 		<-ctx.Done()
-		rpcSrv.Stop()
+		closeService()
 	}()
 
-	return addr, nil
+	return nil
 }
 
-func getClient(ctx context.Context, addr string) (jasper.Manager, error) {
-	conn, err := grpc.DialContext(ctx, addr, grpc.WithInsecure(), grpc.WithBlock())
+// newTestClient establishes a client for testing purposes that closes when
+// the context is done.
+func newTestClient(ctx context.Context, addr net.Addr) (jasper.Manager, error) {
+	client, err := NewClient(ctx, addr, "")
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "could not get client")
 	}
 
 	go func() {
 		<-ctx.Done()
-		conn.Close()
+		client.CloseConnection()
 	}()
 
-	return NewRPCManager(conn), nil
-
+	return client, nil
 }

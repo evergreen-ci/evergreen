@@ -18,7 +18,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-var (
+const (
 	echo, ls         = "echo", "ls"
 	arg1, arg2, arg3 = "ZXZlcmdyZWVu", "aXM=", "c28gY29vbCE="
 	lsErrorMsg       = "No such file or directory"
@@ -292,6 +292,45 @@ func TestCommandImplementation(t *testing.T) {
 							assert.False(t, cmd.opts.Output.SendOutputToError)
 							cmd.SetOutputOptions(opts)
 							assert.True(t, cmd.opts.Output.SendOutputToError)
+						},
+						"ApplyFromOptsOverridesExistingOptions": func(ctx context.Context, t *testing.T, cmd Command) {
+							_ = cmd.Add([]string{echo, arg1}).Directory("bar")
+							genOpts, err := cmd.getCreateOpts(ctx)
+							require.NoError(t, err)
+							require.Len(t, genOpts, 1)
+							assert.Equal(t, "bar", genOpts[0].WorkingDirectory)
+
+							opts := &CreateOptions{WorkingDirectory: "foo"}
+							_ = cmd.ApplyFromOpts(opts)
+							genOpts, err = cmd.getCreateOpts(ctx)
+							require.NoError(t, err)
+							require.Len(t, genOpts, 1)
+							assert.Equal(t, opts.WorkingDirectory, genOpts[0].WorkingDirectory)
+						},
+						"CreateOptionsAppliedInGeneratedCreateOptions": func(ctx context.Context, t *testing.T, cmd Command) {
+							for hostType, makeOpts := range map[string]func(ctx context.Context) ([]*CreateOptions, error){
+								"Local": func(ctx context.Context) ([]*CreateOptions, error) {
+									return cmd.Host("").getCreateOpts(ctx)
+								},
+								"Remote": func(ctx context.Context) ([]*CreateOptions, error) {
+									return cmd.Host("localhost").getCreateOpts(ctx)
+								},
+							} {
+								t.Run(hostType, func(t *testing.T) {
+									opts := &CreateOptions{
+										WorkingDirectory: "foo",
+										Environment:      map[string]string{"foo": "bar"},
+									}
+									args := []string{echo, arg1}
+									cmd.cmds = [][]string{}
+									_ = cmd.ApplyFromOpts(opts).Add(args)
+									genOpts, err := makeOpts(ctx)
+									require.NoError(t, err)
+									require.Len(t, genOpts, 1)
+									assert.Equal(t, opts.WorkingDirectory, genOpts[0].WorkingDirectory)
+									assert.Equal(t, opts.Environment, genOpts[0].Environment)
+								})
+							}
 						},
 						// "": func(ctx context.Context, t *testing.T, cmd Command) {},
 					} {
