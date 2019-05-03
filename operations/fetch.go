@@ -14,9 +14,10 @@ import (
 	"strings"
 	"sync"
 
-	humanize "github.com/dustin/go-humanize"
+	"github.com/dustin/go-humanize"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/evergreen/model/manifest"
 	"github.com/evergreen-ci/evergreen/service"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/grip"
@@ -263,16 +264,28 @@ func cloneSource(task *service.RestTask, project *model.ProjectRef, config *mode
 	if variant == nil {
 		return errors.Errorf("couldn't find build variant '%v' in config", task.BuildVariant)
 	}
+	mfest, err := manifest.FindFromVersion(task.Version, task.Project, task.Revision)
+	if err != nil {
+		return errors.Errorf("error finding manifest for version '%s'", task.Version)
+	}
+	if mfest == nil && len(variant.Modules) != 0 { // manifest only required if variant has modules
+		return errors.Errorf("couldn't find manifest for version '%s'", task.Version)
+	}
+
 	for _, moduleName := range variant.Modules {
 		module, err := config.GetModuleByName(moduleName)
 		if err != nil || module == nil {
 			return errors.Errorf("variant refers to a module '%v' that doesn't exist.", moduleName)
 		}
+		mfestModule, ok := mfest.Modules[moduleName]
+		if !ok {
+			return errors.Errorf("couldn't find module '%s' in manifest", moduleName)
+		}
 		moduleBase := filepath.Join(cloneDir, module.Prefix, module.Name)
 		fmt.Printf("Fetching module %v at %v\n", moduleName, module.Branch)
 		err = clone(cloneOptions{
 			repo:     module.Repo,
-			revision: module.Branch,
+			revision: mfestModule.Revision,
 			rootDir:  filepath.ToSlash(moduleBase),
 		})
 		if err != nil {

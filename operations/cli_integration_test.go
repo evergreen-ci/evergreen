@@ -14,6 +14,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/artifact"
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/distro"
+	"github.com/evergreen-ci/evergreen/model/manifest"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/user"
@@ -153,6 +154,21 @@ func TestCLIFetchSource(t *testing.T) {
 			}))
 		So(err, ShouldBeNil)
 		So(testTask, ShouldNotBeNil)
+
+		module := manifest.Module{
+			Revision: "1e5232709595db427893826ce19289461cba3f75",
+		}
+		mfest := manifest.Manifest{
+			Id:          testTask.Version,
+			Revision:    testTask.Revision,
+			ProjectName: testTask.Project,
+			Modules: map[string]*manifest.Module{
+				"render-module": &module,
+			},
+		}
+		exists, err := mfest.TryInsert()
+		So(exists, ShouldBeFalse)
+		So(err, ShouldBeNil)
 
 		err = fetchSource(ac, rc, "", testTask.Id, false)
 		So(err, ShouldBeNil)
