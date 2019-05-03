@@ -97,7 +97,7 @@ func (j *hostTerminationJob) Run(ctx context.Context) {
 
 	// we may be running these jobs on hosts that are already
 	// terminated.
-	grip.InfoWhen(!util.StringSliceContains(evergreen.UpHostStatus, j.host.Status),
+	grip.InfoWhen(j.host.Status == evergreen.HostTerminated,
 		message.Fields{
 			"host":     j.host.Id,
 			"provider": j.host.Distro.Provider,
