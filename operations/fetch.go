@@ -273,19 +273,23 @@ func cloneSource(task *service.RestTask, project *model.ProjectRef, config *mode
 	}
 
 	for _, moduleName := range variant.Modules {
+		var revision string
 		module, err := config.GetModuleByName(moduleName)
 		if err != nil || module == nil {
 			return errors.Errorf("variant refers to a module '%v' that doesn't exist.", moduleName)
 		}
 		mfestModule, ok := mfest.Modules[moduleName]
-		if !ok {
-			return errors.Errorf("couldn't find module '%s' in manifest", moduleName)
+		if !ok || mfestModule.Revision == "" {
+			revision = module.Branch
+		} else {
+			revision = mfestModule.Revision
 		}
+
 		moduleBase := filepath.Join(cloneDir, module.Prefix, module.Name)
 		fmt.Printf("Fetching module %v at %v\n", moduleName, module.Branch)
 		err = clone(cloneOptions{
 			repo:     module.Repo,
-			revision: mfestModule.Revision,
+			revision: revision,
 			rootDir:  filepath.ToSlash(moduleBase),
 		})
 		if err != nil {
