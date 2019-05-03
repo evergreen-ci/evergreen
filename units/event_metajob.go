@@ -50,6 +50,9 @@ func notificationIsEnabled(flags *evergreen.ServiceFlags, n *notification.Notifi
 	case event.SlackSubscriberType:
 		return !flags.SlackNotificationsDisabled
 
+	case event.CommitQueueDequeueSubscriberType:
+		return !flags.CommitQueueDisabled
+
 	default:
 		grip.Alert(message.Fields{
 			"message": "notificationIsEnabled saw unknown subscriber type",
