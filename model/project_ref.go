@@ -12,7 +12,6 @@ import (
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/anser/bsonutil"
 	adb "github.com/mongodb/anser/db"
-	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson"
 )
@@ -477,18 +476,19 @@ func (p *ProjectRef) GetBatchTime(variant *BuildVariant) int {
 	}
 }
 
-// checkOwnerAndRepo
-func (projectRef *ProjectRef) validateOwnerAndRepo() error {
-	catcher := grip.NewBasicCatcher()
-	if projectRef.Owner == "" {
-		catcher.Add(errors.Errorf("No owner in project ref: %v", projectRef.Identifier))
-	}
-	if projectRef.Repo == "" {
-		catcher.Add(errors.Errorf("No repo in project ref: %v", projectRef.Identifier))
-	}
-	return catcher.Resolve()
-}
+// kim: TODO: remove
+// func (projectRef *ProjectRef) validateOwnerAndRepo() error {
+//     catcher := grip.NewBasicCatcher()
+//     if projectRef.Owner == "" {
+//         catcher.Add(errors.Errorf("No owner in project ref: %v", projectRef.Identifier))
+//     }
+//     if projectRef.Repo == "" {
+//         catcher.Add(errors.Errorf("No repo in project ref: %v", projectRef.Identifier))
+//     }
+//     return catcher.Resolve()
+// }
 
+// kim: TODO: remove
 // Location generates and returns the ssh hostname and path to the repo.
 // func (projectRef *ProjectRef) Location() (string, error) {
 //     if projectRef.Owner == "" {
@@ -499,13 +499,14 @@ func (projectRef *ProjectRef) validateOwnerAndRepo() error {
 //     }
 //     return fmt.Sprintf("git@github.com:%v/%v.git", projectRef.Owner, projectRef.Repo), nil
 // }
-func (projectRef *ProjectRef) Location() (string, error) {
-	if err := projectRef.validateOwnerAndRepo(); err != nil {
-		return "", err
-	}
-	return fmt.Sprintf("git@github.com:%v/%v.git", projectRef.Owner, projectRef.Repo), nil
-}
+// func (projectRef *ProjectRef) Location() (string, error) {
+//     if err := projectRef.validateOwnerAndRepo(); err != nil {
+//         return "", err
+//     }
+//     return fmt.Sprintf("git@github.com:%v/%v.git", projectRef.Owner, projectRef.Repo), nil
+// }
 
+// kim: TODO: remove
 // HTTPLocation creates a url.URL for HTTPS checkout of a Github repository
 // func (projectRef *ProjectRef) HTTPLocation() (*url.URL, error) {
 //     if projectRef.Owner == "" {
@@ -522,12 +523,12 @@ func (projectRef *ProjectRef) Location() (string, error) {
 //     }, nil
 // }
 // HTTPLocation creates a URL string for HTTPS checkout of a Github repository.
-func (projectRef *ProjectRef) HTTPLocation() (string, error) {
-	if err := projectRef.validateOwnerAndRepo(); err != nil {
-		return "", err
-	}
-	return fmt.Sprintf("https://github.com/%s/%s.git", projectRef.Owner, projectRef.Repo), nil
-}
+// func (projectRef *ProjectRef) HTTPLocation() (string, error) {
+//     if err := projectRef.validateOwnerAndRepo(); err != nil {
+//         return "", err
+//     }
+//     return fmt.Sprintf("https://github.com/%s/%s.git", projectRef.Owner, projectRef.Repo), nil
+// }
 
 func (p *ProjectRef) IsAdmin(userID string, settings evergreen.Settings) bool {
 	return util.StringSliceContains(p.Admins, userID) || util.StringSliceContains(settings.SuperUsers, userID)

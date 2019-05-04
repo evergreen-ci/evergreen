@@ -2,7 +2,6 @@ package model
 
 import (
 	"math"
-	"net/url"
 	"testing"
 
 	"github.com/evergreen-ci/evergreen/db"
@@ -63,60 +62,62 @@ func TestGetBatchTimeDoesNotExceedMaxInt32(t *testing.T) {
 
 }
 
-func TestProjectRefHTTPLocation(t *testing.T) {
-	assert := assert.New(t)
+// kim: TODO: remove
+// func TestProjectRefHTTPLocation(t *testing.T) {
+//     assert := assert.New(t)
+//
+//     projectRef := &ProjectRef{
+//         Owner: "mongodb",
+//         Repo:  "mci",
+//     }
+//
+//     urlStr, err := projectRef.HTTPLocation()
+//     assert.NoError(err)
+//     parsedURL, err := url.Parse(urlStr)
+//     assert.NoError(err)
+//     assert.NotNil(parsedURL)
+//     assert.Equal("https", parsedURL.Scheme)
+//     assert.Equal("github.com", parsedURL.Host)
+//     assert.Equal("/mongodb/mci.git", parsedURL.Path)
+//     assert.Nil(parsedURL.User)
+//
+//     projectRef.Owner = ""
+//     urlStr, err = projectRef.HTTPLocation()
+//     assert.Error(err)
+//     assert.Empty(urlStr)
+//
+//     projectRef.Owner = "mongodb"
+//     projectRef.Repo = ""
+//     urlStr, err = projectRef.HTTPLocation()
+//     assert.Error(err)
+//     assert.Empty(urlStr)
+// }
 
-	projectRef := &ProjectRef{
-		Owner: "mongodb",
-		Repo:  "mci",
-	}
-
-	urlStr, err := projectRef.HTTPLocation()
-	assert.NoError(err)
-	parsedURL, err := url.Parse(urlStr)
-	assert.NoError(err)
-	assert.NotNil(parsedURL)
-	assert.Equal("https", parsedURL.Scheme)
-	assert.Equal("github.com", parsedURL.Host)
-	assert.Equal("/mongodb/mci.git", parsedURL.Path)
-	assert.Nil(parsedURL.User)
-
-	projectRef.Owner = ""
-	urlStr, err = projectRef.HTTPLocation()
-	assert.Error(err)
-	assert.Empty(urlStr)
-
-	projectRef.Owner = "mongodb"
-	projectRef.Repo = ""
-	urlStr, err = projectRef.HTTPLocation()
-	assert.Error(err)
-	assert.Empty(urlStr)
-}
-
-func TestProjectRefLocation(t *testing.T) {
-	assert := assert.New(t)
-
-	projectRef := &ProjectRef{
-		Owner: "mongodb",
-		Repo:  "mci",
-	}
-
-	location, err := projectRef.Location()
-	assert.NoError(err)
-	assert.NotEmpty(location)
-	assert.Equal("git@github.com:mongodb/mci.git", location)
-
-	projectRef.Owner = ""
-	location, err = projectRef.Location()
-	assert.Error(err)
-	assert.Empty(location)
-
-	projectRef.Owner = "mongodb"
-	projectRef.Repo = ""
-	location, err = projectRef.Location()
-	assert.Error(err)
-	assert.Empty(location)
-}
+// kim: TODO: remove
+// func TestProjectRefLocation(t *testing.T) {
+//     assert := assert.New(t)
+//
+//     projectRef := &ProjectRef{
+//         Owner: "mongodb",
+//         Repo:  "mci",
+//     }
+//
+//     location, err := projectRef.Location()
+//     assert.NoError(err)
+//     assert.NotEmpty(location)
+//     assert.Equal("git@github.com:mongodb/mci.git", location)
+//
+//     projectRef.Owner = ""
+//     location, err = projectRef.Location()
+//     assert.Error(err)
+//     assert.Empty(location)
+//
+//     projectRef.Owner = "mongodb"
+//     projectRef.Repo = ""
+//     location, err = projectRef.Location()
+//     assert.Error(err)
+//     assert.Empty(location)
+// }
 
 func TestFindProjectRefsByRepoAndBranch(t *testing.T) {
 	assert := assert.New(t)
