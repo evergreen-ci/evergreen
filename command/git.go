@@ -253,7 +253,6 @@ func (c *gitFetchProject) Execute(ctx context.Context,
 
 	// Token from the project's YAML file takes precedence over
 	// global OAuth token.
-	// kim: TODO: figure out where Token gets set for gitFetchProject.
 	if len(c.Token) == 0 {
 		c.Token = conf.Expansions.Get("global_github_oauth_token")
 	}
