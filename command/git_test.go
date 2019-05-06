@@ -119,7 +119,7 @@ func (s *GitGetProjectSuite) SetupTest() {
 	s.NoError(err)
 }
 
-func (s *GitGetProjectSuite) TestBuildCloneCommandUsesHTTPSProjectToken() {
+func (s *GitGetProjectSuite) TestBuildCloneCommandUsesHTTPS() {
 	c := &gitFetchProject{
 		Directory: "dir",
 		Token:     projectGitHubToken,
@@ -139,7 +139,7 @@ func (s *GitGetProjectSuite) TestBuildCloneCommandUsesHTTPSProjectToken() {
 	s.Equal("git clone https://PROJECT_GITHUB_TOKEN@github.com/deafgoat/mci_test.git 'dir' --branch 'master'", cmds[5])
 }
 
-func (s *GitGetProjectSuite) TestBuildCloneCommandUsesHTTPSGlobalToken() {
+func (s *GitGetProjectSuite) TestBuildCloneCommandWithHTTPSNeedsToken() {
 	c := &gitFetchProject{
 		Directory: "dir",
 	}
@@ -151,11 +151,11 @@ func (s *GitGetProjectSuite) TestBuildCloneCommandUsesHTTPSGlobalToken() {
 		repo:   conf.ProjectRef.Repo,
 		branch: conf.ProjectRef.Branch,
 		dir:    c.Directory,
-		token:  globalGitHubToken,
+		token:  "",
 	}
 	s.Require().NoError(opts.setLocation())
-	cmds, _ := c.buildCloneCommand(conf, opts)
-	s.Equal("git clone https://GLOBAL_GITHUB_TOKEN@github.com/deafgoat/mci_test.git 'dir' --branch 'master'", cmds[5])
+	_, err := c.buildCloneCommand(conf, opts)
+	s.Error(err)
 }
 
 func (s *GitGetProjectSuite) TestBuildCloneCommandUsesSSH() {
@@ -175,6 +175,24 @@ func (s *GitGetProjectSuite) TestBuildCloneCommandUsesSSH() {
 	}
 	s.Require().NoError(opts.setLocation())
 	cmds, _ := c.buildCloneCommand(conf, opts)
+	s.Equal("git clone 'git@github.com:deafgoat/mci_test.git' 'dir' --branch 'master'", cmds[3])
+}
+
+func (s *GitGetProjectSuite) TestBuildCloneCommandDefaultCloneMethodUsesSSH() {
+	c := &gitFetchProject{
+		Directory: "dir",
+	}
+	conf := s.modelData2.TaskConfig
+
+	opts := cloneOpts{
+		owner:  conf.ProjectRef.Owner,
+		repo:   conf.ProjectRef.Repo,
+		branch: conf.ProjectRef.Branch,
+		dir:    c.Directory,
+	}
+	s.Require().NoError(opts.setLocation())
+	cmds, err := c.buildCloneCommand(conf, opts)
+	s.NoError(err)
 	s.Equal("git clone 'git@github.com:deafgoat/mci_test.git' 'dir' --branch 'master'", cmds[3])
 }
 
@@ -666,12 +684,3 @@ func (s *GitGetProjectSuite) TestCloneOptsChecksValidCloneMethod() {
 
 	s.Error(opts.setLocation())
 }
-
-// kim: TODO:
-// * OAuth distro with token == pass, https://github.com, doesn't leak token
-// * OAuth distro but no project token available == pass, use global OAuth token
-// * OAuth distro but no project or global token available == fail
-// * Legacy SSH without token == pass, git@github.com
-// * Legacy SSH distro with token == pass, git@github.com
-// * Unspecified distro with token == pass, git@github.com
-// * Unspecified distro without token == pass, git@github.com

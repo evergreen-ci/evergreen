@@ -93,6 +93,9 @@ func (opts *cloneOpts) setLocation() error {
 }
 
 func (opts cloneOpts) getCloneCommand() ([]string, error) {
+	if err := opts.validate(); err != nil {
+		return nil, errors.Wrap(err, "cannot create clone command")
+	}
 	switch opts.method {
 	case "", distro.CloneMethodLegacySSH:
 		return buildSSHCloneCommand(opts)
