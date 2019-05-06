@@ -77,8 +77,7 @@ func (opts cloneOpts) httpLocation() string {
 	return fmt.Sprintf("https://github.com/%s/%s.git", opts.owner, opts.repo)
 }
 
-// setProjectLocation sets the location to clone from based on the method of
-// cloning.
+// setLocation sets the location to clone from based on the method of cloning.
 func (opts *cloneOpts) setLocation() error {
 	switch opts.method {
 	// No clone method specified is equivalent to using legacy SSH.
@@ -92,7 +91,7 @@ func (opts *cloneOpts) setLocation() error {
 	return nil
 }
 
-func (opts cloneOpts) getCloneCommand() ([]string, error) {
+func getCloneCommand(opts cloneOpts) ([]string, error) {
 	if err := opts.validate(); err != nil {
 		return nil, errors.Wrap(err, "cannot create clone command")
 	}
@@ -163,7 +162,7 @@ func (c *gitFetchProject) buildCloneCommand(conf *model.TaskConfig, opts cloneOp
 		fmt.Sprintf("rm -rf %s", c.Directory),
 	}
 
-	cloneCmd, err := opts.getCloneCommand()
+	cloneCmd, err := getCloneCommand(opts)
 	if err != nil {
 		return nil, errors.Wrap(err, "error getting command to clone repo")
 	}
@@ -220,7 +219,7 @@ func (c *gitFetchProject) buildModuleCloneCommand(conf *model.TaskConfig, opts c
 		return nil, errors.New("empty ref/branch to check out")
 	}
 
-	cloneCmd, err := opts.getCloneCommand()
+	cloneCmd, err := getCloneCommand(opts)
 	if err != nil {
 		return nil, errors.Wrap(err, "error getting command to clone repo")
 	}
