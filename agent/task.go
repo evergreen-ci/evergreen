@@ -148,6 +148,11 @@ func (a *Agent) runPreTaskCommands(ctx context.Context, tc *taskContext) error {
 		}
 		if taskGroup.SetupGroup != nil {
 			opts.shouldSetupFail = taskGroup.SetupGroupFailTask
+			if taskGroup.SetupGroupTimeoutSecs > 0 {
+				fmt.Println("THIS SHOULD BE PRETTY SHORT")
+				ctx, cancel = context.WithTimeout(ctx, time.Duration(taskGroup.SetupGroupTimeoutSecs)*time.Second)
+				defer cancel()
+			}
 			err = a.runCommands(ctx, tc, taskGroup.SetupGroup.List(), opts)
 			if err != nil {
 				tc.logger.Execution().Error(errors.Wrap(err, "error running task setup group"))
