@@ -75,7 +75,11 @@ func (c *gitPush) Execute(ctx context.Context, comm client.Communicator, logger 
 	}
 
 	// get author information
-	u, err := comm.GetUserAuthorInfo(ctx, p.Author)
+	taskData := client.TaskData{
+		ID:     conf.Task.Id,
+		Secret: conf.Task.Secret,
+	}
+	u, err := comm.GetUserAuthorInfo(ctx, taskData, p.Author)
 	if err != nil {
 		return errors.Wrapf(err, "can't get author information for user '%s'", p.Author)
 	}

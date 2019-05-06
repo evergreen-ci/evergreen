@@ -697,3 +697,37 @@ func (c *communicatorImpl) ListHosts(ctx context.Context, td TaskData) ([]restmo
 	}
 	return hosts, nil
 }
+
+func (c *communicatorImpl) GetUserAuthorInfo(ctx context.Context, td TaskData, userID string) (*restmodel.APIUserAuthorInformation, error) {
+	info := requestInfo{
+		method:   get,
+		taskData: &td,
+		version:  apiVersion2,
+		path:     fmt.Sprintf("/user/author/%s", userID),
+	}
+
+	resp, err := c.request(ctx, info, nil)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+	bytes, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to read response")
+	}
+	if resp.StatusCode != http.StatusOK {
+		restErr := gimlet.ErrorResponse{}
+		if err = json.Unmarshal(bytes, &restErr); err != nil {
+			return nil, errors.Errorf("received an error but was unable to parse: %s", string(bytes))
+		}
+
+		return nil, restErr
+	}
+
+	authorResp := &restmodel.APIUserAuthorInformation{}
+	if err = json.Unmarshal(bytes, authorResp); err != nil {
+		return nil, errors.Wrap(err, "error parsing author response")
+	}
+
+	return authorResp, nil
+}
