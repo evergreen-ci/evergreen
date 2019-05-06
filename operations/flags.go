@@ -206,7 +206,7 @@ func addDbSettingsFlags(flags ...cli.Flag) []cli.Flag {
 func addRefFlag(flags ...cli.Flag) []cli.Flag {
 	return append(flags, cli.StringFlag{
 		Name:  refFlagName,
-		Usage: "diff with `REF`, ignoring working tree changes",
+		Usage: "diff with `REF`",
 		Value: "HEAD",
 	})
 }
