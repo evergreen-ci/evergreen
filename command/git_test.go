@@ -32,8 +32,8 @@ import (
 )
 
 const (
-	globalGitHubToken  = "GLOBAL_GITHUB_TOKEN"
-	projectGitHubToken = "PROJECT_GITHUB_TOKEN"
+	globalGitHubToken  = "GLOBALTOKEN"
+	projectGitHubToken = "PROJECTTOKEN"
 )
 
 type GitGetProjectSuite struct {
@@ -76,12 +76,10 @@ func (s *GitGetProjectSuite) SetupTest() {
 	configPath2 := filepath.Join(testutil.GetDirectoryOfFile(), "testdata", "git", "test_config.yml")
 	configPath3 := filepath.Join(testutil.GetDirectoryOfFile(), "testdata", "git", "no_token.yml")
 	patchPath := filepath.Join(testutil.GetDirectoryOfFile(), "testdata", "git", "test.patch")
-	s.settings.Credentials = map[string]string{
-		"github": fmt.Sprintf("token %s", globalGitHubToken),
-	}
+
 	s.modelData1, err = modelutil.SetupAPITestData(s.settings, "testtask1", "rhel55", configPath1, modelutil.NoPatch)
 	s.NoError(err)
-	s.modelData1.TaskConfig.Expansions = util.NewExpansions(map[string]string{"global_github_oauth_token": s.settings.Credentials["github"]})
+	s.modelData1.TaskConfig.Expansions = util.NewExpansions(map[string]string{"global_github_oauth_token": fmt.Sprintf("token %s", globalGitHubToken)})
 
 	s.modelData2, err = modelutil.SetupAPITestData(s.settings, "testtask1", "rhel55", configPath2, modelutil.NoPatch)
 	s.NoError(err)
@@ -133,7 +131,7 @@ func (s *GitGetProjectSuite) TestBuildCloneCommandUsesHTTPS() {
 	}
 	s.Require().NoError(opts.setLocation())
 	cmds, _ := c.buildCloneCommand(conf, opts)
-	s.Equal("git clone https://PROJECT_GITHUB_TOKEN@github.com/deafgoat/mci_test.git 'dir' --branch 'master'", cmds[5])
+	s.Equal("git clone https://PROJECTTOKEN@github.com/deafgoat/mci_test.git 'dir' --branch 'master'", cmds[5])
 }
 
 func (s *GitGetProjectSuite) TestBuildCloneCommandWithHTTPSNeedsToken() {
@@ -218,42 +216,9 @@ func (s *GitGetProjectSuite) TestTokenScrubbedFromLogger() {
 	conf := s.modelData1.TaskConfig
 	conf.ProjectRef.Repo = "doesntexist"
 	conf.Distro.CloneMethod = distro.CloneMethodOAuth
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-	comm := client.NewMock("http://localhost.com")
-	logger, err := comm.GetLoggerProducer(ctx, client.TaskData{ID: conf.Task.Id, Secret: conf.Task.Secret}, nil)
+	token, err := s.settings.GetGithubOauthToken()
 	s.NoError(err)
-
-	for _, task := range conf.Project.Tasks {
-		s.NotEqual(len(task.Commands), 0)
-		for _, command := range task.Commands {
-			pluginCmds, err := Render(command, conf.Project.Functions)
-			s.NoError(err)
-			s.NotNil(pluginCmds)
-			pluginCmds[0].SetJasperManager(s.jasper)
-			err = pluginCmds[0].Execute(ctx, comm, logger, conf)
-			s.Error(err)
-		}
-	}
-
-	s.NoError(logger.Close())
-	found := false
-	for _, msgs := range comm.GetMockMessages() {
-		for _, msg := range msgs {
-			if strings.Contains(msg.Message, "https://[redacted oauth token]@github.com/deafgoat/doesntexist.git") {
-				found = true
-			}
-			if strings.Contains(msg.Message, projectGitHubToken) {
-				s.FailNow("token was leaked")
-			}
-		}
-	}
-	s.True(found)
-}
-
-func (s *GitGetProjectSuite) TestStdErrLogged() {
-	conf := s.modelData5.TaskConfig
-	conf.Distro.CloneMethod = distro.CloneMethodOAuth
+	conf.Expansions.Put("global_github_oauth_token", token)
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	comm := client.NewMock("http://localhost.com")
@@ -277,10 +242,51 @@ func (s *GitGetProjectSuite) TestStdErrLogged() {
 	foundCloneErr := false
 	for _, msgs := range comm.GetMockMessages() {
 		for _, msg := range msgs {
-			if strings.Contains(msg.Message, "git clone https://[redacted oauth token]@github.com/evergreen-ci/doesntexist.git 'src' --branch 'master'") {
+			if strings.Contains(msg.Message, "https://[redacted oauth token]@github.com/deafgoat/doesntexist.git") {
 				foundCloneCommand = true
 			}
 			if strings.Contains(msg.Message, "Repository not found.") {
+				foundCloneErr = true
+			}
+			if strings.Contains(msg.Message, globalGitHubToken) {
+				s.FailNow("token was leaked")
+			}
+		}
+	}
+	s.True(foundCloneCommand)
+	s.True(foundCloneErr)
+}
+
+func (s *GitGetProjectSuite) TestStdErrLogged() {
+	conf := s.modelData5.TaskConfig
+	conf.Distro.CloneMethod = distro.CloneMethodLegacySSH
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	comm := client.NewMock("http://localhost.com")
+	logger, err := comm.GetLoggerProducer(ctx, client.TaskData{ID: conf.Task.Id, Secret: conf.Task.Secret}, nil)
+	s.NoError(err)
+
+	for _, task := range conf.Project.Tasks {
+		s.NotEqual(len(task.Commands), 0)
+		for _, command := range task.Commands {
+			pluginCmds, err := Render(command, conf.Project.Functions)
+			s.NoError(err)
+			s.NotNil(pluginCmds)
+			pluginCmds[0].SetJasperManager(s.jasper)
+			err = pluginCmds[0].Execute(ctx, comm, logger, conf)
+			s.Error(err)
+		}
+	}
+
+	s.NoError(logger.Close())
+	foundCloneCommand := false
+	foundCloneErr := false
+	for _, msgs := range comm.GetMockMessages() {
+		for _, msg := range msgs {
+			if strings.Contains(msg.Message, "git clone 'git@github.com:evergreen-ci/doesntexist.git' 'src' --branch 'master'") {
+				foundCloneCommand = true
+			}
+			if strings.Contains(msg.Message, "ERROR: Repository not found.") {
 				foundCloneErr = true
 			}
 		}
@@ -343,7 +349,7 @@ func (s *GitGetProjectSuite) TestBuildHTTPCloneCommand() {
 	s.Require().Len(cmds, 5)
 	s.Equal("set +o xtrace", cmds[0])
 	s.Equal("echo \"git clone https://[redacted oauth token]@github.com/deafgoat/mci_test.git 'dir' --branch 'master'\"", cmds[1])
-	s.Equal("git clone https://PROJECT_GITHUB_TOKEN@github.com/deafgoat/mci_test.git 'dir' --branch 'master'", cmds[2])
+	s.Equal("git clone https://PROJECTTOKEN@github.com/deafgoat/mci_test.git 'dir' --branch 'master'", cmds[2])
 	s.Equal("set -o xtrace", cmds[3])
 	s.Equal("cd dir", cmds[4])
 
@@ -354,7 +360,7 @@ func (s *GitGetProjectSuite) TestBuildHTTPCloneCommand() {
 	s.Require().Len(cmds, 5)
 	s.Equal("set +o xtrace", cmds[0])
 	s.Equal("echo \"git clone https://[redacted oauth token]@github.com/deafgoat/mci_test.git 'dir'\"", cmds[1])
-	s.Equal("git clone https://PROJECT_GITHUB_TOKEN@github.com/deafgoat/mci_test.git 'dir'", cmds[2])
+	s.Equal("git clone https://PROJECTTOKEN@github.com/deafgoat/mci_test.git 'dir'", cmds[2])
 	s.Equal("set -o xtrace", cmds[3])
 	s.Equal("cd dir", cmds[4])
 
@@ -366,7 +372,7 @@ func (s *GitGetProjectSuite) TestBuildHTTPCloneCommand() {
 	s.NoError(err)
 	s.Require().Len(cmds, 5)
 	s.Equal("echo \"git clone https://[redacted oauth token]@github.com/deafgoat/mci_test.git 'dir' --branch 'master'\"", cmds[1])
-	s.Equal("git clone https://PROJECT_GITHUB_TOKEN@github.com/deafgoat/mci_test.git 'dir' --branch 'master'", cmds[2])
+	s.Equal("git clone https://PROJECTTOKEN@github.com/deafgoat/mci_test.git 'dir' --branch 'master'", cmds[2])
 
 	// ensure that we aren't sending the github oauth token to other
 	// servers
@@ -375,7 +381,7 @@ func (s *GitGetProjectSuite) TestBuildHTTPCloneCommand() {
 	s.NoError(err)
 	s.Require().Len(cmds, 5)
 	s.Equal("echo \"git clone https://[redacted oauth token]@someothergithost.com/deafgoat/mci_test.git 'dir' --branch 'master'\"", cmds[1])
-	s.Equal("git clone https://PROJECT_GITHUB_TOKEN@someothergithost.com/deafgoat/mci_test.git 'dir' --branch 'master'", cmds[2])
+	s.Equal("git clone https://PROJECTTOKEN@someothergithost.com/deafgoat/mci_test.git 'dir' --branch 'master'", cmds[2])
 }
 
 func (s *GitGetProjectSuite) TestBuildSSHCloneCommand() {
@@ -444,7 +450,7 @@ func (s *GitGetProjectSuite) TestBuildCommand() {
 	s.Equal("rm -rf dir", cmds[2])
 	s.Equal("set +o xtrace", cmds[3])
 	s.Equal("echo \"git clone https://[redacted oauth token]@github.com/deafgoat/mci_test.git 'dir' --branch 'master'\"", cmds[4])
-	s.Equal("git clone https://PROJECT_GITHUB_TOKEN@github.com/deafgoat/mci_test.git 'dir' --branch 'master'", cmds[5])
+	s.Equal("git clone https://PROJECTTOKEN@github.com/deafgoat/mci_test.git 'dir' --branch 'master'", cmds[5])
 	s.Equal("set -o xtrace", cmds[6])
 	s.Equal("cd dir", cmds[7])
 	s.Equal("git reset --hard ", cmds[8])
@@ -519,6 +525,7 @@ func (s *GitGetProjectSuite) TestBuildCommandForCLIMergeTests() {
 
 func (s *GitGetProjectSuite) TestBuildModuleCommand() {
 	conf := s.modelData2.TaskConfig
+	conf := s.modelData2.TaskConfig
 	c := gitFetchProject{
 		Directory: "dir",
 		Token:     projectGitHubToken,
@@ -553,7 +560,7 @@ func (s *GitGetProjectSuite) TestBuildModuleCommand() {
 	s.Equal("set -o errexit", cmds[1])
 	s.Equal("set +o xtrace", cmds[2])
 	s.Equal("echo \"git clone https://[redacted oauth token]@github.com/deafgoat/mci_test.git 'module'\"", cmds[3])
-	s.Equal("git clone https://PROJECT_GITHUB_TOKEN@github.com/deafgoat/mci_test.git 'module'", cmds[4])
+	s.Equal("git clone https://PROJECTTOKEN@github.com/deafgoat/mci_test.git 'module'", cmds[4])
 	s.Equal("set -o xtrace", cmds[5])
 	s.Equal("cd module", cmds[6])
 	s.Equal("git checkout 'master'", cmds[7])
@@ -564,7 +571,7 @@ func (s *GitGetProjectSuite) TestBuildModuleCommand() {
 	s.NoError(err)
 	s.Require().Len(cmds, 8)
 	s.Equal("echo \"git clone https://[redacted oauth token]@github.com/deafgoat/mci_test.git 'module'\"", cmds[3])
-	s.Equal("git clone https://PROJECT_GITHUB_TOKEN@github.com/deafgoat/mci_test.git 'module'", cmds[4])
+	s.Equal("git clone https://PROJECTTOKEN@github.com/deafgoat/mci_test.git 'module'", cmds[4])
 
 	conf = s.modelData4.TaskConfig
 	// with merge test-commit checkout
@@ -679,4 +686,3 @@ func (s *GitGetProjectSuite) TestCloneOptsChecksValidCloneMethod() {
 	}
 
 	s.Error(opts.setLocation())
-}
