@@ -271,10 +271,10 @@ func (c *gitFetchProject) Execute(ctx context.Context,
 		dir:    c.Directory,
 		token:  c.Token,
 	}
-	if err := opts.setLocation(); err != nil {
+	if err = opts.setLocation(); err != nil {
 		return err
 	}
-	if err := opts.validate(); err != nil {
+	if err = opts.validate(); err != nil {
 		return errors.Wrap(err, "could not validate options for cloning")
 	}
 
