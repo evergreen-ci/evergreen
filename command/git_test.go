@@ -193,7 +193,7 @@ func (s *GitGetProjectSuite) TestBuildCloneCommandDefaultCloneMethodUsesSSH() {
 	s.Require().NoError(opts.setLocation())
 	cmds, err := c.buildCloneCommand(conf, opts)
 	s.NoError(err)
-	s.Equal("git clone 'git@github.com:deafgoat/mci_test.git' 'dir' --branch 'master'", cmds[3])
+	s.Equal("git clone 'git@github.com:evergreen-ci/sample.git' 'dir' --branch 'master'", cmds[3])
 }
 
 func (s *GitGetProjectSuite) TestGitPlugin() {
