@@ -77,26 +77,24 @@ func (s *GitGetProjectSuite) SetupTest() {
 	configPath2 := filepath.Join(testutil.GetDirectoryOfFile(), "testdata", "git", "test_config.yml")
 	configPath3 := filepath.Join(testutil.GetDirectoryOfFile(), "testdata", "git", "no_token.yml")
 	patchPath := filepath.Join(testutil.GetDirectoryOfFile(), "testdata", "git", "test.patch")
-	settings := &evergreen.Settings{
-		Credentials: map[string]string{
-			"github": fmt.Sprintf("token %s", globalGitHubToken),
-		},
+	s.settings.Credentials = map[string]string{
+		"github": fmt.Sprintf("token %s", globalGitHubToken),
 	}
-	s.modelData1, err = modelutil.SetupAPITestData(settings, "testtask1", "rhel55", configPath1, modelutil.NoPatch)
+	s.modelData1, err = modelutil.SetupAPITestData(s.settings, "testtask1", "rhel55", configPath1, modelutil.NoPatch)
 	s.NoError(err)
-	s.modelData1.TaskConfig.Expansions = util.NewExpansions(map[string]string{"global_github_oauth_token": settings.Credentials["github"]})
+	s.modelData1.TaskConfig.Expansions = util.NewExpansions(map[string]string{"global_github_oauth_token": s.settings.Credentials["github"]})
 
-	s.modelData2, err = modelutil.SetupAPITestData(settings, "testtask1", "rhel55", configPath2, modelutil.NoPatch)
+	s.modelData2, err = modelutil.SetupAPITestData(s.settings, "testtask1", "rhel55", configPath2, modelutil.NoPatch)
 	s.NoError(err)
-	s.modelData2.TaskConfig.Expansions = util.NewExpansions(settings.Credentials)
+	s.modelData2.TaskConfig.Expansions = util.NewExpansions(s.settings.Credentials)
 	//SetupAPITestData always creates BuildVariant with no modules so this line works around that
 	s.modelData2.TaskConfig.BuildVariant.Modules = []string{"sample"}
 	err = setupTestPatchData(s.modelData1, patchPath, s.T())
 	s.NoError(err)
 
-	s.modelData3, err = modelutil.SetupAPITestData(settings, "testtask1", "rhel55", configPath2, modelutil.NoPatch)
+	s.modelData3, err = modelutil.SetupAPITestData(s.settings, "testtask1", "rhel55", configPath2, modelutil.NoPatch)
 	s.NoError(err)
-	s.modelData3.TaskConfig.Expansions = util.NewExpansions(settings.Credentials)
+	s.modelData3.TaskConfig.Expansions = util.NewExpansions(s.settings.Credentials)
 	s.modelData3.TaskConfig.GithubPatchData = patch.GithubPatch{
 		PRNumber:   9001,
 		BaseOwner:  "evergreen-ci",
@@ -220,7 +218,7 @@ func (s *GitGetProjectSuite) TestGitPlugin() {
 func (s *GitGetProjectSuite) TestTokenScrubbedFromLogger() {
 	conf := s.modelData1.TaskConfig
 	conf.ProjectRef.Repo = "doesntexist"
-	conf.Distro = &distro.Distro{CloneMethod: distro.CloneMethodOAuth}
+	conf.Distro.CloneMethod = distro.CloneMethodOAuth
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	comm := client.NewMock("http://localhost.com")
@@ -243,7 +241,6 @@ func (s *GitGetProjectSuite) TestTokenScrubbedFromLogger() {
 	found := false
 	for _, msgs := range comm.GetMockMessages() {
 		for _, msg := range msgs {
-			grip.Infof("kim: msg = %s", msg)
 			if strings.Contains(msg.Message, "https://[redacted oauth token]@github.com/deafgoat/doesntexist.git") {
 				found = true
 			}
@@ -257,7 +254,7 @@ func (s *GitGetProjectSuite) TestTokenScrubbedFromLogger() {
 
 func (s *GitGetProjectSuite) TestStdErrLogged() {
 	conf := s.modelData5.TaskConfig
-	conf.Distro = &distro.Distro{CloneMethod: distro.CloneMethodOAuth}
+	conf.Distro.CloneMethod = distro.CloneMethodOAuth
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	comm := client.NewMock("http://localhost.com")
@@ -297,7 +294,7 @@ func (s *GitGetProjectSuite) TestValidateGitCommands() {
 	const refToCompare = "cf46076567e4949f9fc68e0634139d4ac495c89b" //note: also defined in test_config.yml
 
 	conf := s.modelData2.TaskConfig
-	conf.Distro = &distro.Distro{CloneMethod: distro.CloneMethodOAuth}
+	conf.Distro.CloneMethod = distro.CloneMethodOAuth
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	comm := client.NewMock("http://localhost.com")
