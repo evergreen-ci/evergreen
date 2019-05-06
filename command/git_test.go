@@ -525,7 +525,6 @@ func (s *GitGetProjectSuite) TestBuildCommandForCLIMergeTests() {
 
 func (s *GitGetProjectSuite) TestBuildModuleCommand() {
 	conf := s.modelData2.TaskConfig
-	conf := s.modelData2.TaskConfig
 	c := gitFetchProject{
 		Directory: "dir",
 		Token:     projectGitHubToken,
