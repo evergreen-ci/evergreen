@@ -56,12 +56,12 @@ func (c *Command) getRemoteCreateOpt(ctx context.Context, args []string) (*Creat
 
 	var remoteCmd string
 
-	if env := c.opts.getEnvSlice(); len(env) != 0 {
-		remoteCmd += strings.Join(env, " ") + "; "
-	}
-
 	if c.opts.WorkingDirectory != "" {
 		remoteCmd += fmt.Sprintf("cd '%s' && ", c.opts.WorkingDirectory)
+	}
+
+	if env := c.opts.getEnvSlice(); len(env) != 0 {
+		remoteCmd += strings.Join(env, " ") + " "
 	}
 
 	switch len(args) {
