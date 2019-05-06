@@ -72,6 +72,10 @@ func (j *commitQueueJob) Run(ctx context.Context) {
 		j.env = evergreen.GetEnvironment()
 	}
 
+	if err := initializeSenders(j.env); err != nil {
+		j.AddError(errors.Wrap(err, "can't initialize senders"))
+	}
+
 	// stop if degraded
 	flags, err := evergreen.GetServiceFlags()
 	if err != nil {
@@ -563,4 +567,13 @@ func addMergeTaskAndVariant(patchDoc *patch.Patch, project *model.Project) error
 	patchDoc.Tasks = append(patchDoc.Tasks, "merge-patch")
 
 	return nil
+}
+
+func initializeSenders(env evergreen.Environment) error {
+	_, err := env.GetSender(evergreen.SenderCommitQueueDequeue)
+	if err == nil {
+		return nil
+	}
+
+	return errors.Wrap(commitqueue.SetupEnv(env), "can't setup commit queue senders")
 }
