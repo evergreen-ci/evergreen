@@ -686,3 +686,4 @@ func (s *GitGetProjectSuite) TestCloneOptsChecksValidCloneMethod() {
 	}
 
 	s.Error(opts.setLocation())
+}
