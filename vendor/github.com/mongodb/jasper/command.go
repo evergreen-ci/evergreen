@@ -49,24 +49,31 @@ func (rco *remoteCommandOptions) hostString() string {
 	return fmt.Sprintf("%s@%s", rco.user, rco.host)
 }
 
-func getRemoteCreateOpt(ctx context.Context, rco remoteCommandOptions, args []string, existingOpts *CreateOptions) (*CreateOptions, error) {
-	opts := existingOpts.Copy()
+func (c *Command) getRemoteCreateOpt(ctx context.Context, args []string) (*CreateOptions, error) {
+	opts := c.opts.Copy()
+	opts.WorkingDirectory = ""
+	opts.Environment = nil
+
 	var remoteCmd string
 
-	if existingOpts.WorkingDirectory != "" {
-		remoteCmd = fmt.Sprintf("cd %s && ", existingOpts.WorkingDirectory)
+	if env := c.opts.getEnvSlice(); len(env) != 0 {
+		remoteCmd += strings.Join(env, " ") + "; "
+	}
+
+	if c.opts.WorkingDirectory != "" {
+		remoteCmd += fmt.Sprintf("cd '%s' && ", c.opts.WorkingDirectory)
 	}
 
 	switch len(args) {
 	case 0:
-		return nil, errors.New("args invalid")
+		return nil, errors.New("cannot have empty args")
 	case 1:
 		remoteCmd += args[0]
 	default:
 		remoteCmd += strings.Join(args, " ")
 	}
 
-	opts.Args = append(append([]string{"ssh"}, rco.args...), rco.hostString(), remoteCmd)
+	opts.Args = append(append([]string{"ssh"}, c.remote.args...), c.remote.hostString(), remoteCmd)
 	return opts, nil
 }
 
@@ -100,9 +107,11 @@ func (c *Command) ProcConstructor(processConstructor ProcessConstructor) *Comman
 // been created by the Command for execution.
 func (c *Command) GetProcIDs() []string { return c.procIDs }
 
-// ApplyFromOpts uses the CreateOptions to configure the Command. If Args is set
-// on the CreateOptions, it will be ignored; the Args can be added using Add,
-// Append, AppendArgs, or Extend.
+// ApplyFromOpts uses the CreateOptions to configure the Command. If this is a
+// remote command (i.e. host has been set), the WorkingDirectory and Environment
+// will apply to the command being run on remote.
+// If Args is set on the CreateOptions, it will be ignored; the Args can be
+// added using Add, Append, AppendArgs, or Extend.
 // This overwrites options that were previously set in the following functions:
 // AddEnv, Environment, RedirectErrorToOutput, RedirectOutputToError,
 // SetCombinedSender, SetErrorSender, SetErrorWriter, SetOutputOptions,
@@ -118,7 +127,8 @@ func (c *Command) String() string {
 	return fmt.Sprintf("id='%s', remote='%s', cmd='%s'", c.id, c.remote.hostString(), c.getCmd())
 }
 
-// Directory sets the working directory.
+// Directory sets the working directory. If this is a remote command, it sets
+// the working directory of the command being run remotely.
 func (c *Command) Directory(d string) *Command { c.opts.WorkingDirectory = d; return c }
 
 // Host sets the hostname. A blank hostname implies local execution of the
@@ -182,11 +192,13 @@ func (c *Command) RedirectErrorToOutput(v bool) *Command {
 }
 
 // Environment replaces the current environment map with the given environment
-// map.
+// map. If this is a remote command, it sets the environment of the command
+// being run remotely.
 func (c *Command) Environment(e map[string]string) *Command { c.opts.Environment = e; return c }
 
 // AddEnv adds a key value pair of environment variable to value into the
-// Command's environment variable map.
+// Command's environment variable map. If this is a remote command, it sets the
+// environment of the command being run remotely.
 func (c *Command) AddEnv(k, v string) *Command { c.setupEnv(); c.opts.Environment[k] = v; return c }
 
 // Prerequisite sets a function on the Command such that the Command will only
@@ -395,16 +407,8 @@ func (c *Command) finalizeWriters() {
 	}
 }
 
-func (c *Command) getEnv() []string {
-	out := []string{}
-	for k, v := range c.opts.Environment {
-		out = append(out, fmt.Sprintf("%s=%s", k, v))
-	}
-	return out
-}
-
 func (c *Command) getCmd() string {
-	env := strings.Join(c.getEnv(), " ")
+	env := strings.Join(c.opts.getEnvSlice(), " ")
 	out := []string{}
 	for _, cmd := range c.cmds {
 		out = append(out, fmt.Sprintf("%s '%s';\n", env, strings.Join(cmd, " ")))
@@ -412,18 +416,18 @@ func (c *Command) getCmd() string {
 	return strings.Join(out, "")
 }
 
-func getCreateOpt(ctx context.Context, args []string, existingOpts *CreateOptions) (*CreateOptions, error) {
-	opts := existingOpts.Copy()
+func (c *Command) getCreateOpt(ctx context.Context, args []string) (*CreateOptions, error) {
+	opts := c.opts.Copy()
 	switch len(args) {
 	case 0:
-		return nil, errors.New("args invalid")
+		return nil, errors.New("cannot have empty args")
 	case 1:
 		if strings.Contains(args[0], " \"'") {
 			spl, err := shlex.Split(args[0])
 			if err != nil {
 				return nil, errors.Wrap(err, "problem splitting argstring")
 			}
-			return getCreateOpt(ctx, spl, existingOpts)
+			return c.getCreateOpt(ctx, spl)
 		}
 		opts.Args = args
 	default:
@@ -438,7 +442,7 @@ func (c *Command) getCreateOpts(ctx context.Context) ([]*CreateOptions, error) {
 	catcher := grip.NewBasicCatcher()
 	if c.remote.host != "" {
 		for _, args := range c.cmds {
-			cmd, err := getRemoteCreateOpt(ctx, c.remote, args, c.opts)
+			cmd, err := c.getRemoteCreateOpt(ctx, args)
 			if err != nil {
 				catcher.Add(err)
 				continue
@@ -448,7 +452,7 @@ func (c *Command) getCreateOpts(ctx context.Context) ([]*CreateOptions, error) {
 		}
 	} else {
 		for _, args := range c.cmds {
-			cmd, err := getCreateOpt(ctx, args, c.opts)
+			cmd, err := c.getCreateOpt(ctx, args)
 			if err != nil {
 				catcher.Add(err)
 				continue
@@ -516,8 +520,8 @@ func BuildCommand(id string, pri level.Priority, args []string, dir string, env 
 }
 
 // BuildRemoteCommand builds the Command remotely given the configuration of arguments.
-func BuildRemoteCommand(id string, pri level.Priority, host string, args []string, dir string) *Command {
-	return NewCommand().ID(id).Priority(pri).Host(host).Add(args).Directory(dir)
+func BuildRemoteCommand(id string, pri level.Priority, host string, args []string, dir string, env map[string]string) *Command {
+	return NewCommand().ID(id).Priority(pri).Host(host).Add(args).Directory(dir).Environment(env)
 }
 
 // BuildCommandGroupContinueOnError runs the group of sub-commands given the
