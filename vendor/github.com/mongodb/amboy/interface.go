@@ -171,7 +171,14 @@ type QueueGroup interface {
 	Prune(context.Context) error
 
 	// Close the queues.
-	Close(context.Context)
+	Close(context.Context) error
+
+	// Len returns the number of active queues managed in the
+	// group.
+	Len() int
+
+	// Queues returns all currently registered and running queues
+	Queues(context.Context) []string
 }
 
 // Runner describes a simple worker interface for executing jobs in
@@ -196,7 +203,7 @@ type Runner interface {
 
 	// Termaintes all in progress work and waits for processes to
 	// return.
-	Close()
+	Close(context.Context)
 }
 
 // AbortableRunner provides a superset of the Runner interface but

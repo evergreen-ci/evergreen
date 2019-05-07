@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
+	"path/filepath"
 	"time"
 
 	"github.com/evergreen-ci/evergreen/apimodels"
@@ -72,7 +73,7 @@ func (c *createHost) Execute(ctx context.Context, comm client.Communicator,
 	if err != nil {
 		return errors.Wrap(err, "error creating host")
 	} else if c.CreateHost.CloudProvider == apimodels.ProviderDocker {
-		if err = c.getLogsFromNewDockerHost(ctx, logger, comm, ids, startTime); err != nil {
+		if err = c.getLogsFromNewDockerHost(ctx, logger, comm, ids, startTime, conf.WorkDir); err != nil {
 			return errors.Wrap(err, "problem getting logs from created host")
 		}
 	}
@@ -81,16 +82,23 @@ func (c *createHost) Execute(ctx context.Context, comm client.Communicator,
 }
 
 func (c *createHost) getLogsFromNewDockerHost(ctx context.Context, logger client.LoggerProducer, comm client.Communicator,
-	ids []string, startTime time.Time) error {
+	ids []string, startTime time.Time, workDir string) error {
 	var err error
 	if len(ids) == 0 {
 		return errors.New("Programmer error: no intent host ID received")
 	}
+
 	if c.CreateHost.StderrFile == "" {
 		c.CreateHost.StderrFile = fmt.Sprintf("%s.err.log", ids[0])
 	}
+	if !filepath.IsAbs(c.CreateHost.StderrFile) {
+		c.CreateHost.StderrFile = filepath.Join(workDir, c.CreateHost.StderrFile)
+	}
 	if c.CreateHost.StdoutFile == "" {
 		c.CreateHost.StdoutFile = fmt.Sprintf("%s.out.log", ids[0])
+	}
+	if !filepath.IsAbs(c.CreateHost.StdoutFile) {
+		c.CreateHost.StdoutFile = filepath.Join(workDir, c.CreateHost.StdoutFile)
 	}
 
 	if !c.CreateHost.Background {
@@ -116,20 +124,26 @@ func (c *createHost) waitForLogs(ctx context.Context, comm client.Communicator, 
 
 	batchStart := startTime
 	// get logs in batches until container exits or we timeout
+	startedCollectingLogs := false
 	for {
 		select {
 		case <-ctx.Done():
-			logger.Task().Infof("context finished waiting for host %s to exit", hostID)
+			logger.Task().Infof("context cancelled waiting for host %s to exit", hostID)
 			return nil
 		case <-pollTicker.C:
 			batchEnd := time.Now()
 			status, err := comm.GetDockerStatus(ctx, hostID)
 			if err != nil {
-				return errors.Wrapf(err, "error getting docker status")
+				logger.Task().Infof("problem receiving docker logs in host.create: '%s'", err.Error())
+				if startedCollectingLogs {
+					return nil // container has likely exited
+				}
+				continue
 			}
 			if status.HasStarted {
+				startedCollectingLogs = true
 				if err = c.getAndWriteLogBatch(ctx, comm, hostID, batchStart, batchEnd); err != nil {
-					return errors.Wrapf(err, "error getting and writing logs on started container")
+					continue
 				}
 				batchStart = batchEnd.Add(time.Nanosecond) // to prevent repeat logs
 

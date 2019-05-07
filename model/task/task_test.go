@@ -34,17 +34,11 @@ var depTaskIds = []Dependency{
 func updateTestDepTasks(t *testing.T) {
 	// cases for success/default
 	for _, depTaskId := range depTaskIds[:3] {
-		testutil.HandleTestingErr(UpdateOne(
-			bson.M{"_id": depTaskId.TaskId},
-			bson.M{"$set": bson.M{"status": evergreen.TaskSucceeded}},
-		), t, "Error setting task status")
+		require.NoError(t, UpdateOne(bson.M{"_id": depTaskId.TaskId}, bson.M{"$set": bson.M{"status": evergreen.TaskSucceeded}}), "Error setting task status")
 	}
 	// cases for * and failure
 	for _, depTaskId := range depTaskIds[3:] {
-		testutil.HandleTestingErr(UpdateOne(
-			bson.M{"_id": depTaskId.TaskId},
-			bson.M{"$set": bson.M{"status": evergreen.TaskFailed}},
-		), t, "Error setting task status")
+		require.NoError(t, UpdateOne(bson.M{"_id": depTaskId.TaskId}, bson.M{"$set": bson.M{"status": evergreen.TaskFailed}}), "Error setting task status")
 	}
 }
 
@@ -286,7 +280,7 @@ func TestTaskSetPriority(t *testing.T) {
 
 	Convey("With a task", t, func() {
 
-		testutil.HandleTestingErr(db.Clear(Collection), t, "Error clearing"+
+		require.NoError(t, db.Clear(Collection), "Error clearing"+
 			" '%v' collection", Collection)
 
 		tasks := []Task{
@@ -659,7 +653,7 @@ func TestTaskResultOutcome(t *testing.T) {
 }
 
 func TestMergeTestResultsBulk(t *testing.T) {
-	testutil.HandleTestingErr(db.Clear(testresult.Collection), t, "error clearing collections")
+	require.NoError(t, db.Clear(testresult.Collection), "error clearing collections")
 	assert := assert.New(t)
 
 	tasks := []Task{
@@ -1064,4 +1058,24 @@ func TestBulkInsert(t *testing.T) {
 	for _, dbTask := range dbTasks {
 		assert.Equal("version", dbTask.Version)
 	}
+}
+
+func TestUnscheduleStaleUnderwaterTasks(t *testing.T) {
+	assert := assert.New(t)
+	assert.NoError(db.ClearCollections(Collection))
+	t1 := Task{
+		Id:            "t1",
+		Status:        evergreen.TaskUndispatched,
+		Activated:     true,
+		Priority:      0,
+		ActivatedTime: time.Time{},
+	}
+	assert.NoError(t1.Insert())
+
+	_, err := UnscheduleStaleUnderwaterTasks("")
+	assert.NoError(err)
+	dbTask, err := FindOneId("t1")
+	assert.NoError(err)
+	assert.False(dbTask.Activated)
+	assert.EqualValues(-1, dbTask.Priority)
 }

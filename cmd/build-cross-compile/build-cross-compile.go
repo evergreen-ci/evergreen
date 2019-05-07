@@ -91,6 +91,10 @@ func main() {
 		"GOCACHE=" + filepath.Join(absDirectory, ".cache"),
 	}
 
+	if tmpdir := os.Getenv("TMPDIR"); tmpdir != "" {
+		cmd.Env = append(cmd.Env, "TMPDIR="+strings.Replace(tmpdir, `\`, `\\`, -1))
+	}
+
 	if race && supportsRaceDetector(arch, system) {
 		cmd.Args = append(cmd.Args, "-race")
 		cmd.Env = append(cmd.Env, "CGO_ENABLED=1", "GORACE=\"halt_on_error=1\"")

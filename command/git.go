@@ -61,7 +61,7 @@ func (c *gitFetchProject) ParseParams(params map[string]interface{}) error {
 	}
 
 	if c.Directory == "" {
-		return errors.Errorf("error parsing '%v' params: value for directory "+
+		return errors.Errorf("error parsing '%s' params: value for directory "+
 			"must not be blank", c.Name())
 	}
 
@@ -135,9 +135,10 @@ func (c *gitFetchProject) buildCloneCommand(conf *model.TaskConfig) ([]string, e
 
 	gitCommands = append(gitCommands, cloneCmd...)
 
+	// if there's a PR checkout the ref containing the changes
 	if conf.GithubPatchData.PRNumber != 0 {
 		var ref, commitToTest, branchName string
-		if conf.Task.IsMergeRequest() {
+		if conf.Task.Requester == evergreen.MergeTestRequester {
 			// GitHub creates a ref at refs/pull/[pr number]/merge
 			// pointing to the test merge commit they generate
 			// See: https://developer.github.com/v3/git/#checking-mergeability-of-pull-requests
@@ -159,21 +160,24 @@ func (c *gitFetchProject) buildCloneCommand(conf *model.TaskConfig) ([]string, e
 		}...)
 
 	} else {
-		gitCommands = append(gitCommands,
-			fmt.Sprintf("git reset --hard %s", conf.Task.Revision))
+		if conf.Task.Requester == evergreen.MergeTestRequester {
+			gitCommands = append(gitCommands, fmt.Sprintf(`git checkout %s"`, conf.ProjectRef.Branch))
+		} else {
+			gitCommands = append(gitCommands, fmt.Sprintf("git reset --hard %s", conf.Task.Revision))
+		}
 	}
 
 	return gitCommands, nil
 }
 
-func (c *gitFetchProject) buildModuleCloneCommand(cloneURI, owner, repo, moduleBase, ref, requester string, modulePatch *patch.ModulePatch) ([]string, error) {
+func (c *gitFetchProject) buildModuleCloneCommand(cloneURI, owner, repo, moduleBase, ref string, conf *model.TaskConfig, modulePatch *patch.ModulePatch) ([]string, error) {
 	if cloneURI == "" {
 		return nil, errors.New("empty repository URI")
 	}
 	if moduleBase == "" {
 		return nil, errors.New("empty clone path")
 	}
-	if ref == "" {
+	if ref == "" && !isGitHubPRModulePatch(conf, modulePatch) {
 		return nil, errors.New("empty ref/branch to checkout")
 	}
 	moduleBase = filepath.ToSlash(moduleBase)
@@ -195,6 +199,7 @@ func (c *gitFetchProject) buildModuleCloneCommand(cloneURI, owner, repo, moduleB
 		if err != nil {
 			return nil, errors.Wrap(err, "repository URL is invalid")
 		}
+
 		opts := cloneOpts{
 			location: url,
 			owner:    owner,
@@ -209,7 +214,7 @@ func (c *gitFetchProject) buildModuleCloneCommand(cloneURI, owner, repo, moduleB
 		gitCommands = append(gitCommands, cmds...)
 	}
 
-	if modulePatchProvidedForMergeTest(requester, modulePatch) {
+	if isGitHubPRModulePatch(conf, modulePatch) {
 		branchName := fmt.Sprintf("evg-merge-test-%s", util.RandomString())
 		gitCommands = append(gitCommands,
 			fmt.Sprintf(`git fetch origin "pull/%s/merge:%s"`, modulePatch.PatchSet.Patch, branchName),
@@ -270,8 +275,10 @@ func (c *gitFetchProject) Execute(ctx context.Context,
 	if err = fetchSourceCmd.Run(ctx); err != nil {
 		errorOutput := stdErr.String()
 		if errorOutput != "" {
-			scrubbedOutput := strings.Replace(errorOutput, c.Token, "[redacted oauth token]", -1)
-			logger.Execution().Error(scrubbedOutput)
+			if c.Token != "" {
+				errorOutput = strings.Replace(errorOutput, c.Token, "[redacted oauth token]", -1)
+			}
+			logger.Execution().Error(errorOutput)
 		}
 		return errors.Wrap(err, "problem running fetch command")
 	}
@@ -304,14 +311,19 @@ func (c *gitFetchProject) Execute(ctx context.Context,
 		}
 
 		moduleBase := filepath.Join(module.Prefix, module.Name)
-		revision := c.Revisions[moduleName]
 
-		// if there is no revision, then use the revision from the module, then branch name
-		if revision == "" {
-			if module.Ref != "" {
-				revision = module.Ref
-			} else {
-				revision = module.Branch
+		var revision string
+		if conf.Task.Requester == evergreen.MergeTestRequester {
+			revision = module.Branch
+		} else {
+			revision = c.Revisions[moduleName]
+			// if there is no revision, then use the revision from the module, then branch name
+			if revision == "" {
+				if module.Ref != "" {
+					revision = module.Ref
+				} else {
+					revision = module.Branch
+				}
 			}
 		}
 		var owner, repo string
@@ -335,7 +347,7 @@ func (c *gitFetchProject) Execute(ctx context.Context,
 		}
 
 		var moduleCmds []string
-		moduleCmds, err = c.buildModuleCloneCommand(module.Repo, owner, repo, moduleBase, revision, conf.Task.Requester, modulePatch)
+		moduleCmds, err = c.buildModuleCloneCommand(module.Repo, owner, repo, moduleBase, revision, conf, modulePatch)
 		if err != nil {
 			return err
 		}
@@ -349,8 +361,8 @@ func (c *gitFetchProject) Execute(ctx context.Context,
 		}
 	}
 
-	//Apply patches if necessary
-	if conf.Task.Requester == evergreen.PatchVersionRequester {
+	//Apply patches if this is a patch and we haven't already gotten the changes from a PR
+	if evergreen.IsPatchRequester(conf.Task.Requester) && conf.GithubPatchData.PRNumber == 0 {
 		if err = c.getPatchContents(ctx, comm, logger, conf, p); err != nil {
 			err = errors.Wrap(err, "Failed to get patch contents")
 			logger.Execution().Error(err.Error())
@@ -541,11 +553,11 @@ func (c *gitFetchProject) applyPatch(ctx context.Context, logger client.LoggerPr
 	return nil
 }
 
-func modulePatchProvidedForMergeTest(requester string, modulePatch *patch.ModulePatch) bool {
-	isMergeTest := requester == evergreen.MergeTestRequester
+func isGitHubPRModulePatch(conf *model.TaskConfig, modulePatch *patch.ModulePatch) bool {
+	isGitHubMergeTest := conf.GithubPatchData.PRNumber != 0
 	patchProvided := (modulePatch != nil) && (modulePatch.PatchSet.Patch != "")
 
-	return isMergeTest && patchProvided
+	return isGitHubMergeTest && patchProvided
 }
 
 type noopWriteCloser struct {

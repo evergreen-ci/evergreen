@@ -200,9 +200,10 @@ func (j *setupHostJob) setDNSName(ctx context.Context, host *host.Host, cloudMgr
 	return nil
 }
 
-// runHostSetup runs the specified setup script for an individual host. Returns
-// the output from running the script remotely, as well as any error that
-// occurs. If the script exits with a non-zero exit code, the error will be non-nil.
+// runHostSetup transfers the specified setup script for an individual host.
+// Returns the output from running the script remotely, as well as any error
+// that occurs. If the script exits with a non-zero exit code, the error will be
+// non-nil.
 func (j *setupHostJob) runHostSetup(ctx context.Context, targetHost *host.Host, settings *evergreen.Settings) error {
 	// fetch the appropriate cloud provider for the host
 	cloudMgr, err := cloud.GetManager(ctx, targetHost.Provider, settings)
@@ -220,6 +221,12 @@ func (j *setupHostJob) runHostSetup(ctx context.Context, targetHost *host.Host, 
 	if err = cloudMgr.OnUp(ctx, targetHost); err != nil {
 		err = errors.Wrapf(err, "OnUp callback failed for host %s", targetHost.Id)
 		return err
+	}
+
+	if targetHost.Distro.BootstrapMethod == distro.BootstrapMethodSSH {
+		if err = j.fetchJasper(ctx); err != nil {
+			return errors.Wrapf(err, "error putting Jasper on host '%s'", targetHost.Id)
+		}
 	}
 
 	// Do not copy setup scripts to task-spawned hosts
@@ -243,6 +250,64 @@ func (j *setupHostJob) runHostSetup(ctx context.Context, targetHost *host.Host, 
 		}
 	}
 
+	return nil
+}
+
+// fetchJasper places the Jasper CLI on the host via SSH.
+func (j *setupHostJob) fetchJasper(ctx context.Context) error {
+	d, err := distro.FindOne(distro.ById(j.host.Distro.Id))
+	if err != nil {
+		grip.Error(message.WrapError(j.host.SetUnprovisioned(), message.Fields{
+			"operation": "setting host unprovisioned",
+			"distro":    j.host.Distro.Id,
+			"job":       j.ID(),
+			"host":      j.host.Id,
+		}))
+		return errors.Wrapf(err, "Error finding distro for host %s", j.host.Id)
+	}
+	j.host.Distro = d
+
+	cloudHost, err := cloud.GetCloudHost(ctx, j.host, j.env.Settings())
+	if err != nil {
+		return errors.Wrapf(err, "failed to get cloud host for %s", j.host.Id)
+	}
+
+	sshOptions, err := cloudHost.GetSSHOptions()
+	if err != nil {
+		grip.Error(message.WrapError(j.host.SetUnprovisioned(), message.Fields{
+			"operation": "setting host unprovisioned",
+			"distro":    j.host.Distro.Id,
+			"job":       j.ID(),
+			"host":      j.host.Id,
+		}))
+		return errors.Wrapf(err, "error getting ssh options for host %s", j.host.Id)
+	}
+
+	if err := j.doFetchJasper(ctx, sshOptions); err != nil {
+		grip.Error(message.WrapError(j.host.SetUnprovisioned(), message.Fields{
+			"operation": "setting host unprovisioned",
+			"distro":    j.host.Distro.Id,
+			"job":       j.ID(),
+			"host":      j.host.Id,
+		}))
+		return errors.Wrap(err, "error fetching Jasper binary on remote host")
+	}
+
+	grip.Info(message.Fields{
+		"message": "successfully fetched Jasper binary",
+		"host":    j.host.Id,
+		"job":     j.ID(),
+		"distro":  j.host.Distro.Id,
+	})
+	return nil
+}
+
+// doFetchJasper runs the command over that downloads the Jasper binary.
+func (j *setupHostJob) doFetchJasper(ctx context.Context, sshOptions []string) error {
+	cmd := j.host.FetchJasperCommand(j.env.Settings(), "/usr/local/bin")
+	if logs, err := j.host.RunSSHCommand(ctx, cmd, sshOptions); err != nil {
+		return errors.Wrapf(err, "error fetching Jasper binary on remote host: command returned %s", logs)
+	}
 	return nil
 }
 
@@ -451,7 +516,7 @@ func (j *setupHostJob) provisionHost(ctx context.Context, h *host.Host, settings
 				"job":       j.ID(),
 				"host":      h.Id,
 			}))
-
+			return errors.Wrapf(err, "Error finding distro for host %s", h.Id)
 		}
 		h.Distro = d
 

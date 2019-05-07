@@ -10,7 +10,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/user"
-	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/stretchr/testify/suite"
 )
@@ -24,7 +23,6 @@ type HostConnectorSuite struct {
 const testUser = "user1"
 
 func TestHostConnectorSuite(t *testing.T) {
-	testutil.ConfigureIntegrationTest(t, testConfig, "TestHostConnectorSuite")
 	s := new(HostConnectorSuite)
 	s.ctx = &DBConnector{}
 
@@ -191,7 +189,6 @@ func (s *HostConnectorSuite) TestSpawnHost() {
 	const testUserID = "TestSpawnHostUser"
 	const testUserAPIKey = "testApiKey"
 
-	testutil.ConfigureIntegrationTest(s.T(), testConfig, "TestSpawnHost")
 	distro := &distro.Distro{
 		Id:           testDistroID,
 		SpawnAllowed: true,

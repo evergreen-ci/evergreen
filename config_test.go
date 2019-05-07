@@ -139,10 +139,17 @@ func (s *AdminSuite) TestBaseConfig() {
 		Expansions:         map[string]string{"k2": "v2"},
 		GoogleAnalyticsID:  "u-12345",
 		GithubPRCreatorOrg: "org",
-		Keys:               map[string]string{"k3": "v3"},
-		LogPath:            "logpath",
-		Plugins:            map[string]map[string]interface{}{"k4": map[string]interface{}{"k5": "v5"}},
-		PprofPort:          "port",
+		JasperConfig: JasperConfig{
+			BinaryName:       "binary",
+			DownloadFileName: "download",
+			Port:             12345,
+			URL:              "url",
+			Version:          "version",
+		},
+		Keys:      map[string]string{"k3": "v3"},
+		LogPath:   "logpath",
+		Plugins:   map[string]map[string]interface{}{"k4": map[string]interface{}{"k5": "v5"}},
+		PprofPort: "port",
 		Splunk: send.SplunkConnectionInfo{
 			ServerURL: "server",
 			Token:     "token",
@@ -162,6 +169,11 @@ func (s *AdminSuite) TestBaseConfig() {
 	s.Equal(config.ClientBinariesDir, settings.ClientBinariesDir)
 	s.Equal(config.ConfigDir, settings.ConfigDir)
 	s.Equal(config.Credentials, settings.Credentials)
+	s.Equal(config.JasperConfig.BinaryName, settings.JasperConfig.BinaryName)
+	s.Equal(config.JasperConfig.DownloadFileName, settings.JasperConfig.DownloadFileName)
+	s.Equal(config.JasperConfig.Port, settings.JasperConfig.Port)
+	s.Equal(config.JasperConfig.URL, settings.JasperConfig.URL)
+	s.Equal(config.JasperConfig.Version, settings.JasperConfig.Version)
 	s.Equal(config.Expansions, settings.Expansions)
 	s.Equal(config.GoogleAnalyticsID, settings.GoogleAnalyticsID)
 	s.Equal(config.GithubPRCreatorOrg, settings.GithubPRCreatorOrg)
@@ -635,4 +647,21 @@ func (s *AdminSuite) TestJIRANotificationsConfig() {
 		},
 	}
 	s.EqualError(c.ValidateAndDefault(), "template: this-is:1: unexpected \"}\" in operand")
+}
+
+func (s *AdminSuite) TestCommitQueueConfig() {
+	config := CommitQueueConfig{
+		MergeTaskDistro: "distro",
+		CommitterName:   "Evergreen",
+		CommitterEmail:  "evergreen@mongodb.com",
+	}
+
+	s.NoError(config.ValidateAndDefault())
+	s.NoError(config.Set())
+
+	settings, err := GetConfig()
+	s.NoError(err)
+	s.Require().NotNil(settings)
+
+	s.Equal(config, settings.CommitQueue)
 }

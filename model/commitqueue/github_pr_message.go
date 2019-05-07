@@ -18,16 +18,17 @@ const (
 )
 
 type GithubMergePR struct {
-	PatchSucceeded bool   `bson:"patch_succeeded"`
-	URL            string `bson:"url"`
-	ProjectID      string `bson:"project_id"`
-	Owner          string `bson:"owner"`
-	Repo           string `bson:"repo"`
-	Ref            string `bson:"ref"`
-	PRNum          int    `bson:"pr_number"`
-	CommitMessage  string `bson:"commit_message"`
-	CommitTitle    string `bson:"commit_title"`
-	MergeMethod    string `bson:"merge_method"`
+	Status        string `bson:"status"`
+	PatchID       string `bson:"patch_id"`
+	URL           string `bson:"url"`
+	ProjectID     string `bson:"project_id"`
+	Owner         string `bson:"owner"`
+	Repo          string `bson:"repo"`
+	Ref           string `bson:"ref"`
+	PRNum         int    `bson:"pr_number"`
+	CommitMessage string `bson:"commit_message"`
+	CommitTitle   string `bson:"commit_title"`
+	MergeMethod   string `bson:"merge_method"`
 }
 
 func (m *GithubMergePR) MarshalBSON() ([]byte, error)  { return mgobson.Marshal(m) }
@@ -45,13 +46,12 @@ func (p *GithubMergePR) Valid() error {
 	if len(p.Repo) == 0 {
 		catcher.Add(errors.New("Repo can't be empty"))
 	}
-	if len(p.CommitMessage) == 0 {
-		catcher.Add(errors.New("Commit message can't be empty"))
-	}
 	if len(p.Ref) == 0 {
 		catcher.Add(errors.New("Ref can't be empty"))
 	}
-
+	if len(p.Status) == 0 {
+		catcher.Add(errors.New("Status can't be empty"))
+	}
 	if p.PRNum <= 0 {
 		catcher.Add(errors.New("Invalid pull request number"))
 	}

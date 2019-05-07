@@ -12,6 +12,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/commitqueue"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/patch"
+	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/evergreen-ci/evergreen/validator"
 	"github.com/google/go-github/github"
@@ -67,10 +68,12 @@ func NewCommitQueueJob(env evergreen.Environment, queueID string, id string) amb
 func (j *commitQueueJob) Run(ctx context.Context) {
 	defer j.MarkComplete()
 
+	// reconstitute the environment because it's not stored in the database
 	if j.env == nil {
 		j.env = evergreen.GetEnvironment()
 	}
 
+	// stop if degraded
 	flags, err := evergreen.GetServiceFlags()
 	if err != nil {
 		j.AddError(errors.New("can't get degraded mode flags"))
@@ -84,12 +87,12 @@ func (j *commitQueueJob) Run(ctx context.Context) {
 		return
 	}
 
+	// stop if project is disabled
 	projectRef, err := model.FindOneProjectRef(j.QueueID)
 	if err != nil {
 		j.AddError(errors.Wrapf(err, "can't find project for queue id %s", j.QueueID))
 		return
 	}
-
 	if !projectRef.CommitQueue.Enabled {
 		grip.Info(message.Fields{
 			"source":  "commit queue",
@@ -99,6 +102,7 @@ func (j *commitQueueJob) Run(ctx context.Context) {
 		return
 	}
 
+	// pull the next item off the queue
 	cq, err := commitqueue.FindOneId(j.QueueID)
 	if err != nil {
 		j.AddError(errors.Wrapf(err, "can't find commit queue for id %s", j.QueueID))
@@ -118,6 +122,23 @@ func (j *commitQueueJob) Run(ctx context.Context) {
 		return
 	}
 
+	// create a version with the item and subscribe to its completion
+	if projectRef.CommitQueue.PatchType == commitqueue.PRPatchType {
+		j.processGitHubPRItem(ctx, cq, nextItem, projectRef, githubToken)
+	}
+	if projectRef.CommitQueue.PatchType == commitqueue.CLIPatchType {
+		j.processCLIPatchItem(ctx, cq, nextItem, projectRef, githubToken)
+	}
+
+	grip.Info(message.Fields{
+		"source":  "commit queue",
+		"job_id":  j.ID(),
+		"item":    nextItem,
+		"message": "finished processing item",
+	})
+}
+
+func (j *commitQueueJob) processGitHubPRItem(ctx context.Context, cq *commitqueue.CommitQueue, nextItem *commitqueue.CommitQueueItem, projectRef *model.ProjectRef, githubToken string) {
 	pr, dequeue, err := checkPR(ctx, githubToken, nextItem.Issue, projectRef.Owner, projectRef.Repo)
 	if err != nil {
 		j.logError(err, "PR not valid for merge", nextItem)
@@ -127,7 +148,7 @@ func (j *commitQueueJob) Run(ctx context.Context) {
 			}
 			j.dequeue(cq, nextItem)
 		} else {
-			j.AddError(errors.Wrap(cq.SetProcessing(false), "can't set processing to false"))
+			j.logError(cq.SetProcessing(false), "can't set processing to false", nextItem)
 		}
 		return
 	}
@@ -153,7 +174,7 @@ func (j *commitQueueJob) Run(ctx context.Context) {
 		update := NewGithubStatusUpdateJobForBadConfig(projectRef, pr.Head.GetRef(), j.ID())
 		update.Run(ctx)
 		j.AddError(update.Error())
-		j.logError(err, "invalid config file", nextItem)
+		j.logError(errors.New(errs.String()), "invalid config file", nextItem)
 		j.AddError(sendCommitQueueGithubStatus(j.env, pr, message.GithubStateFailure, "can't make patch", ""))
 		j.dequeue(cq, nextItem)
 		return
@@ -173,18 +194,35 @@ func (j *commitQueueJob) Run(ctx context.Context) {
 			j.AddError(sendCommitQueueGithubStatus(j.env, pr, message.GithubStateFailure, "can't get modules", ""))
 			j.dequeue(cq, nextItem)
 		} else {
-			j.AddError(errors.Wrap(cq.SetProcessing(false), "can't set processing to false"))
+			j.logError(cq.SetProcessing(false), "can't set processing to false", nextItem)
 		}
 		return
 	}
 	patchDoc.Patches = append(patchDoc.Patches, modulePatches...)
 
-	v, err := makeVersion(ctx, githubToken, projectConfig, patchDoc)
-	if err != nil {
-		j.logError(err, "can't make version", nextItem)
-		j.AddError(sendCommitQueueGithubStatus(j.env, pr, message.GithubStateFailure, "can't make version", ""))
+	// populate tasks/variants matching the commitqueue alias
+	projectConfig.BuildProjectTVPairs(patchDoc, patchDoc.Alias)
+
+	if err = patchDoc.Insert(); err != nil {
+		j.logError(err, "can't insert patch", nextItem)
 		j.dequeue(cq, nextItem)
-		return
+		j.AddError(sendCommitQueueGithubStatus(j.env, pr, message.GithubStateFailure, "can't make patch", ""))
+	}
+
+	v, err := model.FinalizePatch(ctx, patchDoc, evergreen.MergeTestRequester, githubToken)
+	if err != nil {
+		j.logError(err, "can't finalize patch", nextItem)
+		j.dequeue(cq, nextItem)
+		j.AddError(sendCommitQueueGithubStatus(j.env, pr, message.GithubStateFailure, "can't finalize patch", ""))
+	}
+
+	dequeue, err = subscribeGitHubPRs(pr, modulePRs, projectRef, v.Id)
+	if err != nil {
+		j.logError(err, "can't subscribe for PR merge", nextItem)
+		if dequeue {
+			j.dequeue(cq, nextItem)
+			j.AddError(sendCommitQueueGithubStatus(j.env, pr, message.GithubStateFailure, "can't sign up merge", v.Id))
+		}
 	}
 
 	j.AddError(sendCommitQueueGithubStatus(j.env, pr, message.GithubStatePending, "preparing to test merge", v.Id))
@@ -192,27 +230,73 @@ func (j *commitQueueJob) Run(ctx context.Context) {
 		j.AddError(sendCommitQueueGithubStatus(j.env, modulePR, message.GithubStatePending, "preparing to test merge", v.Id))
 	}
 
-	err = subscribeMerge(projectRef.Identifier, projectRef.Owner, projectRef.Repo, projectRef.CommitQueue.MergeMethod, v.Id, pr)
+	event.LogCommitQueueStartTestEvent(v.Id)
+}
+
+func (j *commitQueueJob) processCLIPatchItem(ctx context.Context, cq *commitqueue.CommitQueue, nextItem *commitqueue.CommitQueueItem, projectRef *model.ProjectRef, githubToken string) {
+	patchDoc, err := patch.FindOne(patch.ById(patch.NewId(nextItem.Issue)))
 	if err != nil {
-		j.logError(err, "can't subscribe GitHub PR merge to version", nextItem)
-		j.AddError(sendCommitQueueGithubStatus(j.env, pr, message.GithubStateFailure, "can't start merge", ""))
+		j.logError(err, "can't find patch", nextItem)
+		j.dequeue(cq, nextItem)
+		return
+	}
+
+	branch, err := thirdparty.GetBranchEvent(ctx, githubToken, projectRef.Owner, projectRef.Repo, projectRef.Branch)
+	if err != nil {
+		j.logError(err, "can't get branch", nextItem)
+		j.dequeue(cq, nextItem)
+		return
+	}
+
+	if err = validateBranch(branch); err != nil {
+		j.logError(err, "GitHub returned invalid branch", nextItem)
+		j.dequeue(cq, nextItem)
+		return
+	}
+
+	sha := *branch.Commit.SHA
+	patchDoc.Githash = sha
+
+	project, err := model.GetPatchedProject(ctx, patchDoc, githubToken)
+	if err != nil {
+		j.logError(err, "can't get updated project config", nextItem)
+		j.dequeue(cq, nextItem)
+		return
+	}
+
+	if err = addMergeTaskAndVariant(patchDoc, project); err != nil {
+		j.logError(err, "can't set patch project config", nextItem)
+		j.dequeue(cq, nextItem)
+		return
+	}
+
+	project.BuildProjectTVPairs(patchDoc, patchDoc.Alias)
+
+	if err = patchDoc.UpdateGithashProjectAndTasks(); err != nil {
+		j.logError(err, "can't update patch in db", nextItem)
+		j.dequeue(cq, nextItem)
+		return
+	}
+
+	v, err := model.FinalizePatch(ctx, patchDoc, evergreen.MergeTestRequester, githubToken)
+	if err != nil {
+		j.logError(err, "can't finalize patch", nextItem)
+		j.dequeue(cq, nextItem)
+		return
+	}
+
+	subscriber := event.NewCommitQueueDequeueSubscriber()
+
+	patchSub := event.NewPatchOutcomeSubscription(nextItem.Issue, subscriber)
+	if err = patchSub.Upsert(); err != nil {
+		j.logError(err, "failed to insert patch subscription", nextItem)
 		j.dequeue(cq, nextItem)
 	}
 
-	for _, modulePR := range modulePRs {
-		err = subscribeMerge("", modulePR.Base.Repo.Owner.GetLogin(), *modulePR.Base.Repo.Name, projectRef.CommitQueue.MergeMethod, v.Id, modulePR)
-		if err != nil {
-			j.logError(err, "can't subscribe GitHub PR merge to version for module", nextItem)
-			j.AddError(sendCommitQueueGithubStatus(j.env, modulePR, message.GithubStateFailure, "can't start merge", ""))
-		}
+	if err = setDefaultNotification(patchDoc.Author); err != nil {
+		j.logError(err, "failed to set default notification", nextItem)
 	}
-
-	grip.Info(message.Fields{
-		"source":  "commit queue",
-		"job_id":  j.ID(),
-		"item":    nextItem,
-		"message": "finished processing item",
-	})
+	event.LogCommitQueueStartTestEvent(v.Id)
 }
 
 func (j *commitQueueJob) logError(err error, msg string, item *commitqueue.CommitQueueItem) {
@@ -337,21 +421,6 @@ func writePatchInfo(patchDoc *patch.Patch, patchSummaries []patch.Summary, patch
 	return nil
 }
 
-func makeVersion(ctx context.Context, githubToken string, project *model.Project, patchDoc *patch.Patch) (*model.Version, error) {
-	project.BuildProjectTVPairs(patchDoc, patchDoc.Alias)
-
-	if err := patchDoc.Insert(); err != nil {
-		return nil, errors.Wrap(err, "can't insert patch")
-	}
-
-	v, err := model.FinalizePatch(ctx, patchDoc, evergreen.MergeTestRequester, githubToken)
-	if err != nil {
-		return nil, errors.Wrap(err, "can't finalize patch")
-	}
-
-	return v, nil
-}
-
 func sendCommitQueueGithubStatus(env evergreen.Environment, pr *github.PullRequest, state message.GithubState, description, versionID string) error {
 	sender, err := env.GetSender(evergreen.SenderGithubStatus)
 	if err != nil {
@@ -385,18 +454,133 @@ func sendCommitQueueGithubStatus(env evergreen.Environment, pr *github.PullReque
 
 func subscribeMerge(projectID, owner, repo, mergeMethod, patchID string, pr *github.PullRequest) error {
 	mergeSubscriber := event.NewGithubMergeSubscriber(event.GithubMergeSubscriber{
-		ProjectID:     projectID,
-		Owner:         owner,
-		Repo:          repo,
-		PRNumber:      *pr.Number,
-		Ref:           *pr.Head.SHA,
-		CommitMessage: "Merged by commit queue",
-		MergeMethod:   mergeMethod,
-		CommitTitle:   *pr.Title,
+		Owner:       owner,
+		Repo:        repo,
+		PRNumber:    *pr.Number,
+		Ref:         *pr.Head.SHA,
+		MergeMethod: mergeMethod,
+		CommitTitle: *pr.Title,
 	})
 	patchSub := event.NewPatchOutcomeSubscription(patchID, mergeSubscriber)
 	if err := patchSub.Upsert(); err != nil {
 		return errors.Wrapf(err, "failed to insert patch subscription for commit queue merge on PR %d", *pr.Number)
+	}
+
+	return nil
+}
+
+func subscribeGitHubPRs(pr *github.PullRequest, modulePRs []*github.PullRequest, projectRef *model.ProjectRef, versionID string) (bool, error) {
+	err := subscribeMerge(projectRef.Identifier, projectRef.Owner, projectRef.Repo, projectRef.CommitQueue.MergeMethod, versionID, pr)
+	if err != nil {
+		return true, errors.Wrapf(err, "can't subscribe to merge main pr")
+	}
+
+	for _, modulePR := range modulePRs {
+		err = subscribeMerge("", modulePR.Base.Repo.Owner.GetLogin(), *modulePR.Base.Repo.Name, projectRef.CommitQueue.MergeMethod, versionID, modulePR)
+		if err != nil {
+			return false, errors.Wrapf(err, "can't subscribe to merge module %s pr", *modulePR.Base.Repo.Name)
+		}
+	}
+
+	return false, nil
+}
+
+func validateBranch(branch *github.Branch) error {
+	if branch == nil {
+		return errors.New("branch is nil")
+	}
+	if branch.Commit == nil {
+		return errors.New("commit is nil")
+	}
+	if branch.Commit.SHA == nil {
+		return errors.New("SHA is nil")
+	}
+	return nil
+}
+
+func addMergeTaskAndVariant(patchDoc *patch.Patch, project *model.Project) error {
+	settings, err := evergreen.GetConfig()
+	if err != nil {
+		return errors.Wrap(err, "error retrieving Evergreen config")
+	}
+
+	mergeBuildVariant := model.BuildVariant{
+		Name:        "commit-queue-merge",
+		DisplayName: "Commit Queue Merge",
+		RunOn:       []string{settings.CommitQueue.MergeTaskDistro},
+		Tasks: []model.BuildVariantTaskUnit{
+			{Name: "merge-patch"},
+		},
+	}
+
+	mergeTask := model.ProjectTask{
+		Name: "merge-patch",
+		Commands: []model.PluginCommandConf{
+			{
+				Command: "git.get_project",
+				Type:    evergreen.CommandTypeSetup,
+				Params: map[string]interface{}{
+					"directory": "${workdir}/src",
+				},
+			},
+			{
+				Command: "git.push",
+				Params: map[string]interface{}{
+					"directory":       "${workdir}/src",
+					"committer_name":  settings.CommitQueue.CommitterName,
+					"committer_email": settings.CommitQueue.CommitterEmail,
+				},
+			},
+		},
+		DependsOn: []model.TaskUnitDependency{
+			{
+				Name:    "*",
+				Variant: "*",
+			},
+		},
+	}
+
+	project.BuildVariants = append(project.BuildVariants, mergeBuildVariant)
+	project.Tasks = append(project.Tasks, mergeTask)
+
+	validationErrors := validator.CheckProjectSyntax(project)
+	if len(validationErrors) != 0 {
+		return errors.Errorf("project validation failed: %s", validationErrors)
+	}
+
+	yamlBytes, err := yaml.Marshal(project)
+	if err != nil {
+		return errors.Wrap(err, "can't marshall remote config file")
+	}
+
+	patchDoc.PatchedConfig = string(yamlBytes)
+	patchDoc.BuildVariants = append(patchDoc.BuildVariants, "commit-queue-merge")
+	patchDoc.Tasks = append(patchDoc.Tasks, "merge-patch")
+
+	return nil
+}
+
+func setDefaultNotification(username string) error {
+	u, err := user.FindOneById(username)
+	if err != nil {
+		return errors.Wrap(err, "can't get user")
+	}
+	if u == nil {
+		return errors.Errorf("no matching user for %s", username)
+	}
+
+	// The user has never saved their notification settings
+	if u.Settings.Notifications.CommitQueue == "" {
+		u.Settings.Notifications.CommitQueue = user.PreferenceEmail
+		commitQueueSubscriber := event.NewEmailSubscriber(u.Email())
+		commitQueueSubscription, err := event.CreateOrUpdateImplicitSubscription(event.ImplicitSubscriptionCommitQueue,
+			"", commitQueueSubscriber, u.Id)
+		if err != nil {
+			return errors.Wrap(err, "can't create default email subscription")
+		}
+		u.Settings.Notifications.CommitQueueID = commitQueueSubscription.ID
+
+		return model.SaveUserSettings(u.Id, u.Settings)
 	}
 
 	return nil

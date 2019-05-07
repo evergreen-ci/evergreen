@@ -333,8 +333,25 @@ func (p *Patch) RemoveModulePatch(moduleName string) error {
 	return UpdateOne(query, update)
 }
 
+func (p *Patch) UpdateGithashProjectAndTasks() error {
+	query := bson.M{
+		IdKey: p.Id,
+	}
+	update := bson.M{
+		"$set": bson.M{
+			GithashKey:       p.Githash,
+			PatchedConfigKey: p.PatchedConfig,
+			VariantsTasksKey: p.VariantsTasks,
+			BuildVariantsKey: p.BuildVariants,
+			TasksKey:         p.Tasks,
+		},
+	}
+
+	return UpdateOne(query, update)
+}
+
 func (p *Patch) IsGithubPRPatch() bool {
-	return p.GithubPatchData.BaseOwner != ""
+	return p.GithubPatchData.HeadOwner != ""
 }
 
 func (p *Patch) IsPRMergePatch() bool {

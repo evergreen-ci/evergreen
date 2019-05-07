@@ -39,8 +39,8 @@ func (s *MongoDBDriverSuite) SetupSuite() {
 func (s *MongoDBDriverSuite) SetupTest() {
 	name := uuid.NewV4().String()
 	s.driver = NewMgoDriver(name, DefaultMongoDBOptions()).(*mgoDriver)
-	s.driver.dbName = s.dbName
-	s.collections = append(s.collections, name+".jobs", name+".locks")
+	s.driver.opts.DB = s.dbName
+	s.collections = append(s.collections, addJobsSuffix(name), name+".locks")
 
 	db := s.session.DB(s.dbName)
 	count, err := db.C(s.collections[0]).Count()
@@ -57,7 +57,7 @@ func (s *MongoDBDriverSuite) TearDownSuite() {
 }
 
 func (s *MongoDBDriverSuite) TearDownTest() {
-	s.Equal(s.dbName, s.driver.dbName)
+	s.Equal(s.dbName, s.driver.opts.DB)
 }
 
 func (s *MongoDBDriverSuite) TestOpenCloseAffectState() {

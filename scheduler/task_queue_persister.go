@@ -10,7 +10,6 @@ import (
 // and saving it.
 type TaskQueuePersister interface {
 	// distro, tasks, duration cache
-	// TO DO: do we actually need to return []model.TaskQueueItem?
 	PersistTaskQueue(string, []task.Task, model.DistroQueueInfo) ([]model.TaskQueueItem, error)
 }
 
@@ -39,7 +38,7 @@ func (self *DBTaskQueuePersister) PersistTaskQueue(distro string, tasks []task.T
 	}
 
 	queue := model.NewTaskQueue(distro, taskQueue, distroQueueInfo)
-	err := queue.Save() // queue.Save() will only save the first 500 items
+	err := queue.Save() // queue.Save() will only save the first 500 tasks
 
 	return taskQueue, errors.WithStack(err)
 }

@@ -61,10 +61,9 @@ type ProjectRef struct {
 }
 
 type CommitQueueParams struct {
-	Enabled      bool   `bson:"enabled" json:"enabled"`
-	MergeMethod  string `bson:"merge_method" json:"merge_method"`
-	MergeAction  string `bson:"merge_action" json:"merge_action"`
-	StatusAction string `bson:"status_action" json:"status_action"`
+	Enabled     bool   `bson:"enabled" json:"enabled"`
+	MergeMethod string `bson:"merge_method" json:"merge_method"`
+	PatchType   string `bson:"patch_type" json:"patch_type"`
 }
 
 // RepositoryErrorDetails indicates whether or not there is an invalid revision and if there is one,

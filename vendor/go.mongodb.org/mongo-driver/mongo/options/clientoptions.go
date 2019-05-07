@@ -124,7 +124,7 @@ func (c *ClientOptions) ApplyURI(uri string) *ClientOptions {
 		c.AppName = &cs.AppName
 	}
 
-	if cs.AuthMechanism != "" || cs.AuthMechanismProperties != nil ||
+	if cs.AuthMechanism != "" || cs.AuthMechanismProperties != nil || cs.AuthSource != "admin" ||
 		cs.Username != "" || cs.PasswordSet {
 		c.Auth = &Credential{
 			AuthMechanism:           cs.AuthMechanism,
@@ -504,6 +504,9 @@ func MergeClientOptions(opts ...*ClientOptions) *ClientOptions {
 		}
 		if opt.ZlibLevel != nil {
 			c.ZlibLevel = opt.ZlibLevel
+		}
+		if opt.err != nil {
+			c.err = opt.err
 		}
 	}
 

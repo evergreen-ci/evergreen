@@ -17,17 +17,16 @@ func TestCreateHostBuildFromService(t *testing.T) {
 	c := &CreateHost{}
 	err := c.BuildFromService(h)
 	assert.NoError(err)
-	assert.Equal(c.DNSName, h.Host)
-	assert.Equal(c.InstanceID, h.ExternalIdentifier)
-	assert.Equal(c.IP, h.IP)
+	assert.Equal(FromAPIString(c.DNSName), h.Host)
+	assert.Equal(FromAPIString(c.InstanceID), h.ExternalIdentifier)
+	assert.Equal(FromAPIString(c.IP), h.IP)
 }
 
 func TestCreateHostBuildFromServiceWithContainer(t *testing.T) {
 	assert := assert.New(t)
 	h := host.Host{
-		Id:                 "i-1234",
-		ExternalIdentifier: "container-1234",
-		ParentID:           "i-5678",
+		Id:       "i-1234",
+		ParentID: "i-5678",
 		DockerOptions: host.DockerOptions{
 			Image:   "my-image",
 			Command: "echo hi",
@@ -36,11 +35,10 @@ func TestCreateHostBuildFromServiceWithContainer(t *testing.T) {
 	c := &CreateHost{}
 	err := c.BuildFromService(h)
 	assert.NoError(err)
-	assert.Equal(c.Image, h.DockerOptions.Image)
-	assert.Equal(c.Command, h.DockerOptions.Command)
-	assert.Equal(c.ContainerID, h.ExternalIdentifier)
-	assert.Equal(c.ParentID, h.ParentID)
+	assert.Equal(FromAPIString(c.Image), h.DockerOptions.Image)
+	assert.Equal(FromAPIString(c.Command), h.DockerOptions.Command)
+	assert.Equal(FromAPIString(c.ParentID), h.ParentID)
 
-	assert.Empty(c.DNSName)
-	assert.Empty(c.InstanceID)
+	assert.Nil(c.DNSName)
+	assert.Nil(c.InstanceID)
 }

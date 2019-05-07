@@ -6,7 +6,6 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
-	"github.com/evergreen-ci/evergreen/testutil"
 	. "github.com/smartystreets/goconvey/convey"
 	"github.com/smartystreets/goconvey/convey/reporting"
 	"github.com/stretchr/testify/assert"
@@ -22,7 +21,7 @@ func init() {
 func TestLoggingTaskEvents(t *testing.T) {
 	Convey("Test task event logging", t, func() {
 
-		testutil.HandleTestingErr(db.Clear(AllLogCollection), t,
+		require.NoError(t, db.Clear(AllLogCollection),
 			"Error clearing '%v' collection", AllLogCollection)
 
 		Convey("All task events should be logged correctly", func() {

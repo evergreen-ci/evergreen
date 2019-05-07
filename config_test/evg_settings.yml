@@ -1,5 +1,5 @@
 database:
-    url: "mongodb://localhost:27017/mci_test"
+    url: "mongodb://localhost:27017"
     db: "mci_test"
     write_concern:
       wmode: "majority"

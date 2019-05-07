@@ -367,7 +367,7 @@ func truncateString(s string, capacity int) (string, string) {
 
 func makeCommonPayload(sub *event.Subscription, selectors []event.Selector,
 	data *commonTemplateData) (interface{}, error) {
-
+	var err error
 	selectors = append(selectors, event.Selector{
 		Type: "trigger",
 		Data: sub.Trigger,
@@ -378,12 +378,10 @@ func makeCommonPayload(sub *event.Subscription, selectors []event.Selector,
 
 	data.Headers = makeHeaders(selectors)
 	data.SubscriptionID = sub.ID
-
 	if data.Task != nil {
-		for i := range data.Task.LocalTestResults {
-			if data.Task.LocalTestResults[i].Status == evergreen.TestFailedStatus {
-				data.FailedTests = append(data.FailedTests, data.Task.LocalTestResults[i])
-			}
+		data.FailedTests, err = getFailedTestsFromTemplate(*data.Task)
+		if err != nil {
+			return nil, errors.Wrap(err, "error getting failed tests")
 		}
 	}
 
@@ -405,10 +403,19 @@ func makeCommonPayload(sub *event.Subscription, selectors []event.Selector,
 
 	case event.GithubMergeSubscriberType:
 		msg := &commitqueue.GithubMergePR{
-			PatchSucceeded: data.PastTenseStatus == evergreen.PatchSucceeded,
-			URL:            data.URL,
+			Status:    data.PastTenseStatus,
+			PatchID:   data.ID,
+			URL:       data.URL,
+			ProjectID: data.Project,
 		}
 		return msg, nil
+
+	case event.CommitQueueDequeueSubscriberType:
+		return &commitqueue.DequeueItem{
+			Status:    data.PastTenseStatus,
+			ProjectID: data.Project,
+			Item:      data.ID,
+		}, nil
 
 	case event.JIRAIssueSubscriberType:
 		return jiraIssue(data)
@@ -427,6 +434,23 @@ func makeCommonPayload(sub *event.Subscription, selectors []event.Selector,
 	}
 
 	return nil, errors.Errorf("unknown type: '%s'", sub.Subscriber.Type)
+}
+
+func getFailedTestsFromTemplate(t task.Task) ([]task.TestResult, error) {
+	settings, err := evergreen.GetConfig()
+	if err != nil {
+		return nil, errors.Wrap(err, "problem getting evergreen config")
+	}
+
+	result := []task.TestResult{}
+	for i := range t.LocalTestResults {
+		if t.LocalTestResults[i].Status == evergreen.TestFailedStatus {
+			testResult := t.LocalTestResults[i]
+			testResult.URL = settings.Ui.Url + testResult.URL
+			result = append(result, testResult)
+		}
+	}
+	return result, nil
 }
 
 func taskLink(uiBase string, taskID string, execution int) string {

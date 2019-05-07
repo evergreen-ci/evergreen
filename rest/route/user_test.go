@@ -11,6 +11,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/rest/data"
+	restModel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/stretchr/testify/suite"
 )
@@ -99,4 +100,28 @@ func (s *UserRouteSuite) TestUndefinedInput() {
 	s.EqualValues(user.PreferenceSlack, dbUser.Settings.Notifications.BuildBreak)
 	s.EqualValues("something", dbUser.Settings.SlackUsername)
 	s.EqualValues("you", dbUser.Settings.GithubUser.LastKnownAs)
+}
+
+func (s *UserRouteSuite) TestUserAuthorInfo() {
+	route := makeFetchUserAuthor(s.sc)
+	authorInfoHandler, ok := route.(*userAuthorGetHandler)
+	s.True(ok)
+	authorInfoHandler.userID = "john.smith"
+
+	_, err := model.GetOrCreateUser("john.smith", "John Smith", "john@smith.com")
+	s.NoError(err)
+
+	ctx := context.Background()
+	resp := authorInfoHandler.Run(ctx)
+	s.NotNil(resp)
+	s.Equal(http.StatusOK, resp.Status())
+
+	data := resp.Data()
+	authorInfo, ok := data.(restModel.APIUserAuthorInformation)
+	s.True(ok)
+
+	dbUser, err := user.FindOne(user.ById("john.smith"))
+	s.NoError(err)
+	s.Equal(dbUser.DisplayName(), restModel.FromAPIString(authorInfo.DisplayName))
+	s.Equal(dbUser.Email(), restModel.FromAPIString(authorInfo.Email))
 }

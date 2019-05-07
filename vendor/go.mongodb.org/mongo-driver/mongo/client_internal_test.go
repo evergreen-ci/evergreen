@@ -26,8 +26,8 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/writeconcern"
 	"go.mongodb.org/mongo-driver/tag"
 	"go.mongodb.org/mongo-driver/x/bsonx"
-	"go.mongodb.org/mongo-driver/x/mongo/driver/session"
-	"go.mongodb.org/mongo-driver/x/mongo/driver/uuid"
+	"go.mongodb.org/mongo-driver/x/mongo/driverlegacy/session"
+	"go.mongodb.org/mongo-driver/x/mongo/driverlegacy/uuid"
 	"go.mongodb.org/mongo-driver/x/network/connstring"
 )
 
@@ -535,4 +535,13 @@ func TestClient_Disconnect_NilContext(t *testing.T) {
 	require.NoError(t, err)
 	err = c.Disconnect(nil)
 	require.NoError(t, err)
+}
+
+func TestClient_Watch_Disconnected(t *testing.T) {
+	cs := testutil.ConnString(t)
+	c, err := NewClient(options.Client().ApplyURI(cs.String()))
+	require.NoError(t, err)
+	change, err := c.Watch(context.Background(), []bson.D{})
+	require.Nil(t, change)
+	require.Equal(t, err, ErrClientDisconnected)
 }

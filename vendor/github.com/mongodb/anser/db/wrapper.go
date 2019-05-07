@@ -2,7 +2,6 @@ package db
 
 import (
 	"context"
-	"reflect"
 	"strings"
 	"time"
 
@@ -25,16 +24,19 @@ func WrapClient(ctx context.Context, client *mongo.Client) Session {
 }
 
 type sessionWrapper struct {
-	ctx     context.Context
-	client  *mongo.Client
-	catcher grip.Catcher
-	isClone bool
+	ctx      context.Context
+	canceler context.CancelFunc
+	client   *mongo.Client
+	catcher  grip.Catcher
+	isClone  bool
 }
 
-func (s *sessionWrapper) Clone() Session                   { s.isClone = true; return s }
-func (s *sessionWrapper) Copy() Session                    { s.isClone = true; return s }
-func (s *sessionWrapper) Error() error                     { return s.catcher.Resolve() }
-func (s *sessionWrapper) SetSocketTimeout(d time.Duration) {}
+func (s *sessionWrapper) Clone() Session { s.isClone = true; return s }
+func (s *sessionWrapper) Copy() Session  { s.isClone = true; return s }
+func (s *sessionWrapper) Error() error   { return s.catcher.Resolve() }
+func (s *sessionWrapper) SetSocketTimeout(d time.Duration) {
+	s.ctx, s.canceler = context.WithTimeout(s.ctx, d)
+}
 
 func (s *sessionWrapper) DB(name string) Database {
 	return &databaseWrapper{
@@ -44,6 +46,10 @@ func (s *sessionWrapper) DB(name string) Database {
 }
 
 func (s *sessionWrapper) Close() {
+	if s.canceler != nil {
+		s.canceler()
+	}
+
 	if s.isClone {
 		return
 	}
@@ -338,10 +344,18 @@ type resultsWrapper struct {
 }
 
 func (r *resultsWrapper) All(result interface{}) error {
-	return errors.WithStack(ResolveCursorAll(r.ctx, r.cursor, result))
+	if r.err != nil {
+		return errors.WithStack(r.err)
+	}
+
+	return errors.WithStack(r.cursor.All(r.ctx, result))
 }
 
 func (r *resultsWrapper) One(result interface{}) error {
+	if r.err != nil {
+		return errors.WithStack(r.err)
+	}
+
 	return errors.WithStack(ResolveCursorOne(r.ctx, r.cursor, result))
 }
 
@@ -444,8 +458,7 @@ func (q *queryWrapper) Apply(ch Change, result interface{}) (*ChangeInfo, error)
 		}
 		out.Updated++
 	} else {
-		return nil, errors.New("invalid change ")
-
+		return nil, errors.New("invalid change defined")
 	}
 
 	if err := res.Err(); err != nil {
@@ -494,10 +507,12 @@ func (q *queryWrapper) All(result interface{}) error {
 	if err := q.exec(); err != nil {
 		return errors.WithStack(err)
 	}
-	return errors.WithStack(ResolveCursorAll(q.ctx, q.cursor, result))
+	return errors.WithStack(q.cursor.All(q.ctx, result))
 }
 
 func (q *queryWrapper) One(result interface{}) error {
+	q.limit = 1
+
 	if err := q.exec(); err != nil {
 		return errors.WithStack(err)
 	}
@@ -523,53 +538,26 @@ func (q *queryWrapper) Iter() Iterator {
 	}
 }
 
-// ResolveCursorAll uses legacy mgo code to resolve a new driver's
-// cursor into an array.
-func ResolveCursorAll(ctx context.Context, iter *mongo.Cursor, result interface{}) error {
-	resultv := reflect.ValueOf(result)
-	if resultv.Kind() != reflect.Ptr || resultv.Elem().Kind() != reflect.Slice {
-		return errors.Errorf("result argument must be a slice address '%T'", result)
-	}
-	slicev := resultv.Elem()
-	slicev = slicev.Slice(0, slicev.Cap())
-	elemt := slicev.Type().Elem()
-	catcher := grip.NewCatcher()
-	i := 0
-	for {
-		if slicev.Len() == i {
-			elemp := reflect.New(elemt)
-			if !iter.Next(ctx) {
-				if i == 0 {
-					return nil
-				}
-				break
-			}
-
-			catcher.Add(iter.Decode(elemp.Interface()))
-			slicev = reflect.Append(slicev, elemp.Elem())
-			slicev = slicev.Slice(0, slicev.Cap())
-		} else {
-			if !iter.Next(ctx) {
-				break
-			}
-			catcher.Add(iter.Decode(slicev.Index(i).Addr().Interface()))
-		}
-		i++
-	}
-	resultv.Elem().Set(slicev.Slice(0, i))
-	catcher.Add(iter.Err())
-	catcher.Add(iter.Close(ctx))
-	return catcher.Resolve()
-}
-
 // ResolveCursorOne decodes the first result in a cursor, for use in
 // "FindOne" cases.
 func ResolveCursorOne(ctx context.Context, iter *mongo.Cursor, result interface{}) error {
+	if iter == nil {
+		return errors.New("cannot resolve result from cursor")
+	}
+
+	catcher := grip.NewCatcher()
+	defer func() {
+		catcher.Add(iter.Close(ctx))
+	}()
+
 	if !iter.Next(ctx) {
 		return errors.WithStack(errNotFound)
 	}
 
-	return errors.WithStack(iter.Decode(result))
+	catcher.Add(iter.Decode(result))
+	catcher.Add(iter.Err())
+
+	return errors.Wrap(catcher.Resolve(), "problem resolving result")
 }
 
 func transformDocument(val interface{}) (bsonx.Doc, error) {
@@ -617,6 +605,8 @@ func getSort(keys []string) bson.D {
 	for _, k := range keys {
 		if strings.HasPrefix(k, "-") {
 			sort = append(sort, bson.E{Key: k[1:], Value: -1})
+		} else if strings.HasPrefix(k, "+") {
+			sort = append(sort, bson.E{Key: k[1:], Value: 1})
 		} else {
 			sort = append(sort, bson.E{Key: k, Value: 1})
 		}

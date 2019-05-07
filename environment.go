@@ -32,6 +32,12 @@ var (
 	globalEnvLock *sync.RWMutex
 )
 
+const (
+	// duration of wait time during queue chut down.
+	queueShutdownWaitInterval = 10 * time.Millisecond
+	queueShutdownWaitTimeout  = 10 * time.Second
+)
+
 func init() { globalEnvLock = &sync.RWMutex{} }
 
 // GetEnvironment returns the global application level
@@ -67,19 +73,31 @@ type Environment interface {
 	Client() *mongo.Client
 	DB() *mongo.Database
 
-	// The Environment provides access to three queues, a
-	// local-process level queue that is not persisted between
-	// runs, a remote shared queue that all processes can use
-	// to distribute work amongst the application tier, and a queue
-	// for generate.tasks, which has a smaller number of workers
-	// per app server.
+	// The Environment provides access to several amboy queues for
+	// processing background work in the context of the Evergreen
+	// application.
 	//
-	// The LocalQueue is not durable, and results aren't available
-	// between process restarts. The RemoteQueue is not
-	// (generally) started by default.
+	// The LocalQueue provides process-local execution, to support
+	// reporting and cleanup operations local to a single instance
+	// of the evergreen application.  These queues are not
+	// durable, and job data are not available between application
+	// restarts.
+	//
+	// The RemoteQueue provides a single queue with many
+	// workers, distributed across all application servers. Each
+	// application dedicates a moderate pool of workers, and work
+	// enters this queue from periodic operations
+	// (e.g. "cron-like") as well as work that is submitted as a
+	// result of user requests. The service queue is
+	// mixed-workload.
+	//
+	// The RemoteQueueGroup provides logically distinct
+	// application queues in situations where we need to isolate
+	// workloads between queues. The queues are backed remotely, which
+	// means that their work persists between restarts.
 	LocalQueue() amboy.Queue
 	RemoteQueue() amboy.Queue
-	GenerateTasksQueue() amboy.Queue
+	RemoteQueueGroup() amboy.QueueGroup
 
 	// Jasper is a process manager for running external
 	// commands. Every process has a manager service.
@@ -133,6 +151,7 @@ func NewEnvironment(ctx context.Context, confPath string, db *DBSettings) (Envir
 	}
 
 	if db != nil && confPath == "" {
+
 		if err := e.initDB(ctx, *db); err != nil {
 			return nil, errors.Wrap(err, "error configuring db")
 		}
@@ -156,7 +175,10 @@ func NewEnvironment(ctx context.Context, confPath string, db *DBSettings) (Envir
 
 	catcher.Add(e.initJasper())
 	catcher.Add(e.initSenders(ctx))
-	catcher.Add(e.createQueues(ctx))
+	catcher.Add(e.createLocalQueue(ctx))
+	catcher.Add(e.createApplicationQueue(ctx))
+	catcher.Add(e.createNotificationQueue(ctx))
+	catcher.Add(e.createGenerateTasksQueue(ctx))
 	catcher.Extend(e.initQueues(ctx))
 
 	if catcher.HasErrors() {
@@ -180,7 +202,7 @@ type ClientConfig struct {
 type envState struct {
 	remoteQueue        amboy.Queue
 	localQueue         amboy.Queue
-	generateTasksQueue amboy.Queue
+	remoteQueueGroup   amboy.QueueGroup
 	notificationsQueue amboy.Queue
 	ctx                context.Context
 	jasperManager      jasper.Manager
@@ -260,13 +282,22 @@ func (e *envState) DB() *mongo.Database {
 	return e.client.Database(e.dbName)
 }
 
-func (e *envState) createQueues(ctx context.Context) error {
+func (e *envState) createLocalQueue(ctx context.Context) error {
 	// configure the local-only (memory-backed) queue.
 	e.localQueue = queue.NewLocalLimitedSize(e.settings.Amboy.PoolSizeLocal, e.settings.Amboy.LocalStorage)
 	if err := e.localQueue.SetRunner(pool.NewAbortablePool(e.settings.Amboy.PoolSizeLocal, e.localQueue)); err != nil {
 		return errors.Wrap(err, "problem configuring worker pool for local queue")
 	}
 
+	e.closers["background-local-queue"] = func(ctx context.Context) error {
+		e.localQueue.Runner().Close(ctx)
+		return nil
+	}
+
+	return nil
+}
+
+func (e *envState) createApplicationQueue(ctx context.Context) error {
 	// configure the remote mongodb-backed amboy
 	// queue.
 	opts := queue.DefaultMongoDBOptions()
@@ -274,6 +305,54 @@ func (e *envState) createQueues(ctx context.Context) error {
 	opts.DB = e.settings.Amboy.DB
 	opts.Priority = true
 
+	qmdb, err := queue.OpenNewMongoDriver(ctx, e.settings.Amboy.Name, opts, e.client)
+	if err != nil {
+		return errors.Wrap(err, "problem setting main queue backend")
+	}
+	rq := queue.NewRemoteUnordered(e.settings.Amboy.PoolSizeRemote)
+	if err = rq.SetDriver(qmdb); err != nil {
+		return errors.WithStack(err)
+	}
+	if err = rq.SetRunner(pool.NewAbortablePool(e.settings.Amboy.PoolSizeRemote, rq)); err != nil {
+		return errors.Wrap(err, "problem configuring worker pool for main remote queue")
+	}
+	e.remoteQueue = rq
+	e.closers["application-queue"] = func(ctx context.Context) error {
+		e.remoteQueue.Runner().Close(ctx)
+		return nil
+	}
+
+	return nil
+}
+
+func (e *envState) createGenerateTasksQueue(ctx context.Context) error {
+	opts := queue.DefaultMongoDBOptions()
+	opts.URI = e.settings.Database.Url
+	opts.DB = e.settings.Amboy.DB
+	opts.Priority = true
+
+	remoteQueuGroupOpts := queue.RemoteQueueGroupOptions{
+		Prefix:                    e.settings.Amboy.Name,
+		DefaultWorkers:            1,
+		Ordered:                   false,
+		BackgroundCreateFrequency: 30 * time.Minute,
+		PruneFrequency:            10 * time.Minute,
+		TTL:                       5 * time.Minute,
+	}
+	remoteQueueGroup, err := queue.NewMongoRemoteSingleQueueGroup(ctx, remoteQueuGroupOpts, e.client, opts)
+	if err != nil {
+		return errors.Wrap(err, "problem constructing remote queue group")
+	}
+	e.remoteQueueGroup = remoteQueueGroup
+
+	e.closers["generate-tasks"] = func(ctx context.Context) error {
+		return errors.Wrap(e.remoteQueueGroup.Close(ctx), "problem waiting for remote queue group to close")
+	}
+
+	return nil
+}
+
+func (e *envState) createNotificationQueue(ctx context.Context) error {
 	// Notifications queue w/ moving weight avg pool
 	e.notificationsQueue = queue.NewLocalLimitedSize(len(e.senders), e.settings.Amboy.LocalStorage)
 
@@ -292,59 +371,12 @@ func (e *envState) createQueues(ctx context.Context) error {
 		rootSenders = append(rootSenders, s)
 	}
 
-	qmdb, err := queue.OpenNewMongoDriver(ctx, e.settings.Amboy.Name, opts, e.client)
-	if err != nil {
-		return errors.Wrap(err, "problem setting main queue backend")
-	}
-	rq := queue.NewRemoteUnordered(e.settings.Amboy.PoolSizeRemote)
-	if err = rq.SetDriver(qmdb); err != nil {
-		return errors.WithStack(err)
-	}
-	if err = rq.SetRunner(pool.NewAbortablePool(e.settings.Amboy.PoolSizeRemote, rq)); err != nil {
-		return errors.Wrap(err, "problem configuring worker pool for main remote queue")
-	}
-	e.remoteQueue = rq
-
-	singlemdb, err := queue.OpenNewMongoDriver(ctx, e.settings.Amboy.SingleName, opts, e.client)
-	if err != nil {
-		return errors.Wrap(err, "problem setting single queue backend")
-	}
-	generateTasksQ := queue.NewRemoteUnordered(8)
-	if err = generateTasksQ.SetDriver(singlemdb); err != nil {
-		return errors.WithStack(err)
-	}
-	if err = generateTasksQ.SetRunner(pool.NewAbortablePool(1, generateTasksQ)); err != nil {
-		return errors.Wrap(err, "problem configuring worker pool for generate tasks queue")
-	}
-	e.generateTasksQueue = generateTasksQ
-
-	// duration of time in between calls to queue.Status() within
-	// the amboy.Wait* function.
-	const queueWaitInterval = 10 * time.Millisecond
-	const queueWaitTimeout = 10 * time.Second
-
-	e.closers["background-local-queue"] = func(ctx context.Context) error {
-		var cancel context.CancelFunc
-		ctx, cancel = context.WithTimeout(ctx, queueWaitTimeout)
-		defer cancel()
-		if !amboy.WaitCtxInterval(ctx, e.localQueue, queueWaitInterval) {
-			grip.Critical(message.Fields{
-				"message": "pending jobs failed to finish",
-				"queue":   "system",
-				"status":  e.notificationsQueue.Stats(),
-			})
-			return errors.New("failed to stop with running jobs")
-		}
-		e.localQueue.Runner().Close()
-		return nil
-	}
-
 	e.closers["notification-queue"] = func(ctx context.Context) error {
 		var cancel context.CancelFunc
 		catcher := grip.NewBasicCatcher()
-		ctx, cancel = context.WithTimeout(ctx, queueWaitTimeout)
+		ctx, cancel = context.WithTimeout(ctx, queueShutdownWaitTimeout)
 		defer cancel()
-		if !amboy.WaitCtxInterval(ctx, e.notificationsQueue, queueWaitInterval) {
+		if !amboy.WaitCtxInterval(ctx, e.notificationsQueue, queueShutdownWaitInterval) {
 			grip.Critical(message.Fields{
 				"message": "pending jobs failed to finish",
 				"queue":   "notifications",
@@ -353,7 +385,7 @@ func (e *envState) createQueues(ctx context.Context) error {
 			catcher.Add(errors.New("failed to stop with running jobs"))
 		}
 
-		e.notificationsQueue.Runner().Close()
+		e.notificationsQueue.Runner().Close(ctx)
 
 		grip.Debug(message.Fields{
 			"message":     "closed notification queue",
@@ -383,6 +415,7 @@ func (e *envState) createQueues(ctx context.Context) error {
 func (e *envState) initQueues(ctx context.Context) []error {
 	catcher := grip.NewBasicCatcher()
 	catcher.NewWhen(e.localQueue == nil, "local queue is not defined")
+	catcher.NewWhen(e.notificationsQueue == nil, "notification queue is not defined")
 	catcher.NewWhen(e.notificationsQueue == nil, "notification queue is not defined")
 
 	if e.localQueue != nil {
@@ -536,7 +569,7 @@ func (e *envState) initJasper() error {
 
 	e.jasperManager = jpm
 
-	e.closers["jasper-manaer"] = func(ctx context.Context) error {
+	e.closers["jasper-manager"] = func(ctx context.Context) error {
 		return errors.WithStack(jpm.Close(ctx))
 	}
 
@@ -562,10 +595,10 @@ func (e *envState) RemoteQueue() amboy.Queue {
 	return e.remoteQueue
 }
 
-func (e *envState) GenerateTasksQueue() amboy.Queue {
+func (e *envState) RemoteQueueGroup() amboy.QueueGroup {
 	e.mu.RLock()
 	defer e.mu.RUnlock()
-	return e.generateTasksQueue
+	return e.remoteQueueGroup
 }
 
 func (e *envState) Session() db.Session {

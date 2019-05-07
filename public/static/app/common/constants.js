@@ -16,6 +16,20 @@ mciModule
                        // but there are some compute-time params
         },
       },
+      outlierProcessing: {
+        persistentFiltering: {
+          type: Object,
+          default: {}, // actually, we could store defaults here
+                       // but there are some compute-time params
+        },
+      },
+      rejectProcessing: {
+        persistentFiltering: {
+          type: Object,
+          default: {}, // actually, we could store defaults here
+                       // but there are some compute-time params
+        },
+      },
       trendchart: {
         linearMode: {
           enabled: {
@@ -67,6 +81,7 @@ mciModule
       COLL_OUTLIERS: 'outliers',
       COLL_MUTE_OUTLIERS: 'mute_outliers',
       COLL_MARKED_OUTLIERS: 'marked_outliers',
+      COLL_WHITELISTED_OUTLIERS: 'whitelisted_outlier_tasks',
     }
   })
 

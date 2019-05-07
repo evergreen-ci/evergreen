@@ -790,8 +790,11 @@ func createVersionItems(v *model.Version, ref *model.ProjectRef, metadata Versio
 	}
 
 	err = v.Insert()
-	if err != nil && !db.IsDuplicateKey(err) {
-		grip.Error(message.WrapError(err, message.Fields{
+	if err != nil {
+		if db.IsDuplicateKey(err) {
+			return nil
+		}
+		grip.Critical(message.WrapError(err, message.Fields{
 			"message": "problem inserting version",
 			"runner":  RunnerName,
 			"id":      v.Id,
@@ -808,5 +811,12 @@ func createVersionItems(v *model.Version, ref *model.ProjectRef, metadata Versio
 		}
 		return errors.WithStack(err)
 	}
+	grip.Info(message.Fields{
+		"message": "successfully created version",
+		"version": v.Id,
+		"hash":    v.Revision,
+		"project": v.Branch,
+		"runner":  RunnerName,
+	})
 	return nil
 }

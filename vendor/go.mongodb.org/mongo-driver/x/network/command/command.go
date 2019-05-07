@@ -20,7 +20,7 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/writeconcern"
 	"go.mongodb.org/mongo-driver/x/bsonx"
 	"go.mongodb.org/mongo-driver/x/bsonx/bsoncore"
-	"go.mongodb.org/mongo-driver/x/mongo/driver/session"
+	"go.mongodb.org/mongo-driver/x/mongo/driverlegacy/session"
 	"go.mongodb.org/mongo-driver/x/network/description"
 	"go.mongodb.org/mongo-driver/x/network/result"
 	"go.mongodb.org/mongo-driver/x/network/wiremessage"
@@ -213,7 +213,7 @@ func addSessionFields(cmd bsonx.Doc, desc description.SelectedServer, client *se
 		cmd = addTransaction(cmd, client)
 	}
 
-	client.ApplyCommand() // advance the state machine based on a command executing
+	client.ApplyCommand(desc.Server) // advance the state machine based on a command executing
 
 	return cmd, nil
 }

@@ -110,9 +110,9 @@ imports:
   - name: github.com/mongodb/grip
     version: 8b8accd7a3ec9b31a2d3eea610d5bf906bddfd11
   - name: github.com/mongodb/anser
-    version: 2cc4f950b3f7a7f3a566460bcf965bb79727590f
+    version: 1fb43a6d9968b19ddfd66e6a77373f9e4c54adeb
   - name: github.com/mongodb/amboy
-    version: b7056e934d332e0dfdf5f894eb33444624c85d22
+    version: cc7973c7314ea8ade9b5ee863928af2a66871717
   - name: github.com/evergreen-ci/gimlet
     version: 2174a9b1266e1b45c99cc80e00ccc8444c84ad38
   - name: github.com/evergreen-ci/shrub
@@ -122,7 +122,7 @@ imports:
   - name: github.com/mongodb/jasper
     version: b9e6f254de5d74b69e24755396603f047c55d2e8
   - name: go.mongodb.org/mongo-driver
-    version: 1c3b9b9a41eecdf056560e07b68e6407b8d598c3
+    version: 305bc4a5e4131420fe8ba5628e6faa9e6ade4e86
 
   # git library and its dependencies
   - name: gopkg.in/src-d/go-git.v4
@@ -131,7 +131,7 @@ imports:
     version: 640f0ab560aeb89d523bb6ac322b1244d5c3796c
   - name: github.com/jbenet/go-context
     version: d14ea06fba99483203c19d92cfcd13ebe73135f4
-  - name: github.com/kevinburke/ssh_configgit 
+  - name: github.com/kevinburke/ssh_configgit
     version: 4fcc689beeab13c6dd7ab1d65cb9d7a1aeea9663
   - name: github.com/src-d/gcfg
     version: f187355171c936ac84a82793659ebb4936bc1c23

@@ -18,6 +18,7 @@ func TestFullUserSettings(t *testing.T) {
 		Notifications: user.NotificationPreferences{
 			BuildBreak:  user.PreferenceEmail,
 			PatchFinish: user.PreferenceSlack,
+			CommitQueue: user.PreferenceSlack,
 		},
 	}
 
@@ -35,6 +36,7 @@ func TestPartialSettings(t *testing.T) {
 		Notifications: user.NotificationPreferences{
 			BuildBreak:  user.PreferenceEmail,
 			PatchFinish: user.PreferenceSlack,
+			CommitQueue: user.PreferenceEmail,
 		},
 	}
 
@@ -50,4 +52,17 @@ func runTests(t *testing.T, in user.UserSettings) {
 	origSettings, err := apiSettings.ToService()
 	assert.NoError(err)
 	assert.EqualValues(in, origSettings)
+}
+
+func TestAPIUserAuthorInformation(t *testing.T) {
+	assert := assert.New(t)
+	apiUser := APIUserAuthorInformation{}
+	user := &user.DBUser{
+		DispName:     "octocat",
+		EmailAddress: "octocat@github.com",
+	}
+	assert.NoError(apiUser.BuildFromService(user))
+
+	_, err := apiUser.ToService()
+	assert.Error(err)
 }

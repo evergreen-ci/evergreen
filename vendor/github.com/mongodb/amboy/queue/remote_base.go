@@ -56,6 +56,11 @@ func (q *remoteBase) Get(name string) (amboy.Job, bool) {
 
 	job, err := q.driver.Get(context.TODO(), name)
 	if err != nil {
+		grip.Debug(message.WrapError(err, message.Fields{
+			"driver": q.driver.ID(),
+			"type":   q.driverType,
+			"name":   name,
+		}))
 		return nil, false
 	}
 

@@ -7,6 +7,7 @@ import (
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
+	mgobson "gopkg.in/mgo.v2/bson"
 )
 
 const (
@@ -237,6 +238,9 @@ type TestStats struct {
 	LastUpdate      time.Time `bson:"last_update"`
 }
 
+func (s *TestStats) MarshalBSON() ([]byte, error)  { return mgobson.Marshal(s) }
+func (s *TestStats) UnmarshalBSON(in []byte) error { return mgobson.Unmarshal(in, s) }
+
 // GetTestStats queries the precomputed test statistics using a filter.
 func GetTestStats(filter StatsFilter) ([]TestStats, error) {
 	err := filter.ValidateForTests()
@@ -273,6 +277,9 @@ type TaskStats struct {
 	AvgDurationSuccess float64   `bson:"avg_duration_success"`
 	LastUpdate         time.Time `bson:"last_update"`
 }
+
+func (s *TaskStats) MarshalBSON() ([]byte, error)  { return mgobson.Marshal(s) }
+func (s *TaskStats) UnmarshalBSON(in []byte) error { return mgobson.Unmarshal(in, s) }
 
 // GetTaskStats queries the precomputed task statistics using a filter.
 func GetTaskStats(filter StatsFilter) ([]TaskStats, error) {

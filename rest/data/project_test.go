@@ -8,7 +8,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/event"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
-	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/stretchr/testify/suite"
 	mgobson "gopkg.in/mgo.v2/bson"
 )
@@ -70,8 +69,6 @@ func TestProjectConnectorGetSuite(t *testing.T) {
 	s := new(ProjectConnectorGetSuite)
 	s.setup = func() error {
 		s.ctx = &DBConnector{}
-
-		testutil.ConfigureIntegrationTest(t, testConfig, "TestProjectConnectorGetSuite")
 
 		s.Require().NoError(db.ClearCollections(model.ProjectRefCollection))
 

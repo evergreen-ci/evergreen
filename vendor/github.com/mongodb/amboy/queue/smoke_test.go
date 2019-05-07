@@ -675,7 +675,7 @@ func TestSmokeSQSFifoQueueWithAbortablePools(t *testing.T) {
 
 		q, err := NewSQSFifoQueue(randomString(4), 1)
 		assert.NoError(err)
-		q.SetRunner(pool.NewAbortablePool(poolSize, q))
+		assert.NoError(q.SetRunner(pool.NewAbortablePool(poolSize, q)))
 		runSimpleUnorderedSmokeTest(ctx, q, poolSize, assert)
 
 		cancel()
@@ -693,7 +693,7 @@ func TestSmokeSQSFifoQueueWithRateLimitingPools(t *testing.T) {
 		q, err := NewSQSFifoQueue(randomString(4), 1)
 		assert.NoError(err)
 		runner, _ := pool.NewSimpleRateLimitedWorkers(poolSize, time.Millisecond, q)
-		q.SetRunner(runner)
+		assert.NoError(q.SetRunner(runner))
 		runSimpleUnorderedSmokeTest(ctx, q, poolSize, assert)
 
 		cancel()
@@ -1407,7 +1407,7 @@ func cleanupMgo(dbname, name string, session *mgo.Session) error {
 	start := time.Now()
 	defer session.Close()
 
-	if err := session.DB(dbname).C(name + ".jobs").DropCollection(); err != nil {
+	if err := session.DB(dbname).C(addJobsSuffix(name)).DropCollection(); err != nil {
 		return errors.WithStack(err)
 	}
 
@@ -1418,7 +1418,7 @@ func cleanupMgo(dbname, name string, session *mgo.Session) error {
 func cleanupMongo(ctx context.Context, dbname, name string, client *mongo.Client) error {
 	start := time.Now()
 
-	if err := client.Database(dbname).Collection(name + ".jobs").Drop(ctx); err != nil {
+	if err := client.Database(dbname).Collection(addJobsSuffix(name)).Drop(ctx); err != nil {
 		return errors.WithStack(err)
 	}
 

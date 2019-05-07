@@ -18,7 +18,7 @@ import (
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
-	"gopkg.in/mgo.v2"
+	mgo "gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
 )
 
@@ -518,11 +518,17 @@ func CreateBuildFromVersion(args BuildCreateArgs) (string, error) {
 		rev,
 		args.Version.CreateTime.Format(build.IdTimeLayout))
 
+	activatedTime := util.ZeroTime
+	if args.Activated {
+		activatedTime = time.Now()
+	}
+
 	// create the build itself
 	b := &build.Build{
 		Id:                  util.CleanName(buildId),
 		CreateTime:          args.Version.CreateTime,
 		Activated:           args.Activated,
+		ActivatedTime:       activatedTime,
 		Project:             args.Project.Identifier,
 		Revision:            args.Version.Revision,
 		Status:              evergreen.BuildCreated,
@@ -930,6 +936,11 @@ func createOneTask(id string, buildVarTask BuildVariantTaskUnit, project *Projec
 		return nil, errors.Wrapf(err, "Failed to get create time for task %s", id)
 	}
 
+	activatedTime := util.ZeroTime
+	if b.Activated {
+		activatedTime = time.Now()
+	}
+
 	t := &task.Task{
 		Id:                  id,
 		Secret:              util.RandomString(),
@@ -946,6 +957,7 @@ func createOneTask(id string, buildVarTask BuildVariantTaskUnit, project *Projec
 		LastHeartbeat:       util.ZeroTime,
 		Status:              evergreen.TaskUndispatched,
 		Activated:           b.Activated,
+		ActivatedTime:       activatedTime,
 		RevisionOrderNumber: v.RevisionOrderNumber,
 		Requester:           v.Requester,
 		Version:             v.Id,
@@ -987,6 +999,11 @@ func createDisplayTask(id string, displayName string, execTasks []string,
 		return nil, errors.Wrapf(err, "Failed to get create time for task %s", id)
 	}
 
+	activatedTime := util.ZeroTime
+	if b.Activated {
+		activatedTime = time.Now()
+	}
+
 	t := &task.Task{
 		Id:                  id,
 		DisplayName:         displayName,
@@ -1005,6 +1022,7 @@ func createDisplayTask(id string, displayName string, execTasks []string,
 		StartTime:           util.ZeroTime,
 		FinishTime:          util.ZeroTime,
 		Activated:           b.Activated,
+		ActivatedTime:       activatedTime,
 		DispatchTime:        util.ZeroTime,
 		ScheduledTime:       util.ZeroTime,
 		TriggerID:           v.TriggerID,

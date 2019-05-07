@@ -15,6 +15,7 @@ import (
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson"
+	mgobson "gopkg.in/mgo.v2/bson"
 )
 
 const (
@@ -82,6 +83,12 @@ var (
 	SpawnOptionsSpawnedByTaskKey = bsonutil.MustHaveTag(SpawnOptions{}, "SpawnedByTask")
 )
 
+var (
+	HostsByDistroDistroIDKey          = bsonutil.MustHaveTag(IdleHostsByDistroID{}, "DistroID")
+	HostsByDistroIdleHostsKey         = bsonutil.MustHaveTag(IdleHostsByDistroID{}, "IdleHosts")
+	HostsByDistroRunningHostsCountKey = bsonutil.MustHaveTag(IdleHostsByDistroID{}, "RunningHostsCount")
+)
+
 // === Queries ===
 
 // All is a query that returns all hosts
@@ -128,6 +135,42 @@ func AllIdleEphemeral() ([]Host, error) {
 	})
 
 	return Find(query)
+}
+
+// IdleEphemeralGroupedByDistroId groups and collates the following grouped and ordered by {distro.Id: 1}:
+// - []host.Host of ephemeral hosts without containers which having no running task, ordered by {host.CreationTime: 1}
+// - the total number of ephemeral hosts with status: evergreen.HostRunning
+func IdleEphemeralGroupedByDistroId() ([]IdleHostsByDistroID, error) {
+	var idlehostsByDistroID []IdleHostsByDistroID
+	pipeline := []mgobson.M{
+		{
+			"$match": mgobson.M{
+				StartedByKey:     evergreen.User,
+				StatusKey:        evergreen.HostRunning,
+				ProviderKey:      mgobson.M{"$in": evergreen.ProviderSpawnable},
+				HasContainersKey: mgobson.M{"$ne": true},
+			},
+		},
+		{
+			"$sort": mgobson.M{CreateTimeKey: 1},
+		},
+		{
+			"$group": mgobson.M{
+				"_id":                             "$" + bsonutil.GetDottedKeyName(DistroKey, distro.IdKey),
+				HostsByDistroRunningHostsCountKey: mgobson.M{"$sum": 1},
+				HostsByDistroIdleHostsKey:         mgobson.M{"$push": bson.M{"$cond": []interface{}{mgobson.M{"$eq": []interface{}{"$running_task", mgobson.Undefined}}, "$$ROOT", mgobson.Undefined}}},
+			},
+		},
+		{
+			"$project": mgobson.M{"_id": 0, HostsByDistroDistroIDKey: "$_id", HostsByDistroIdleHostsKey: 1, HostsByDistroRunningHostsCountKey: 1},
+		},
+	}
+
+	if err := db.Aggregate(Collection, pipeline, &idlehostsByDistroID); err != nil {
+		return nil, errors.Wrap(err, "problem grouping idle hosts by Distro.Id")
+	}
+
+	return idlehostsByDistroID, nil
 }
 
 func runningHostsQuery(distroID string) bson.M {
@@ -502,11 +545,10 @@ func FindStaleRunningTasks(cutoff time.Duration) ([]task.Task, error) {
 	return tasks, nil
 }
 
-// NeedsNewAgent returns hosts that are running and need a new agent, have no Last Commmunication Time,
-// or have one that exists that is greater than the MaxLTCInterval duration away from the current time.
-func NeedsNewAgent(currentTime time.Time) db.Q {
+// LastCommunicationTimeElapsed returns hosts which have never communicated or have not communicated in too long.
+func LastCommunicationTimeElapsed(currentTime time.Time) bson.M {
 	cutoffTime := currentTime.Add(-MaxLCTInterval)
-	return db.Query(bson.M{
+	return bson.M{
 		StatusKey:        evergreen.HostRunning,
 		StartedByKey:     evergreen.User,
 		HasContainersKey: bson.M{"$ne": true},
@@ -516,8 +558,19 @@ func NeedsNewAgent(currentTime time.Time) db.Q {
 			{LastCommunicationTimeKey: util.ZeroTime},
 			{LastCommunicationTimeKey: bson.M{"$lte": cutoffTime}},
 			{LastCommunicationTimeKey: bson.M{"$exists": false}},
-			{NeedsNewAgentKey: true},
 		},
+	}
+}
+
+// NeedsNewAgentFlagSet returns hosts with NeedsNewAgent set to true.
+func NeedsNewAgentFlagSet() db.Q {
+	return db.Query(bson.M{
+		StatusKey:        evergreen.HostRunning,
+		StartedByKey:     evergreen.User,
+		HasContainersKey: bson.M{"$ne": true},
+		ParentIDKey:      bson.M{"$exists": false},
+		RunningTaskKey:   bson.M{"$exists": false},
+		NeedsNewAgentKey: true,
 	})
 }
 
@@ -565,6 +618,22 @@ func FindOne(query db.Q) (*Host, error) {
 
 func FindOneId(id string) (*Host, error) {
 	return FindOne(ById(id))
+}
+
+// FindOneByIdOrTag finds a host where the given id is stored in either the _id or tag field.
+// (The tag field is used for the id from the host's original intent host.)
+func FindOneByIdOrTag(id string) (*Host, error) {
+	query := db.Query(bson.M{
+		"$or": []bson.M{
+			bson.M{TagKey: id},
+			bson.M{IdKey: id},
+		},
+	})
+	host, err := FindOne(query) // try to find by tag
+	if err != nil {
+		return nil, errors.Wrap(err, "error finding '%s' by _id or tag field")
+	}
+	return host, nil
 }
 
 // Find gets all Hosts for the given query.

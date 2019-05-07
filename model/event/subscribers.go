@@ -11,13 +11,14 @@ import (
 )
 
 const (
-	GithubPullRequestSubscriberType = "github_pull_request"
-	JIRAIssueSubscriberType         = "jira-issue"
-	JIRACommentSubscriberType       = "jira-comment"
-	EvergreenWebhookSubscriberType  = "evergreen-webhook"
-	EmailSubscriberType             = "email"
-	SlackSubscriberType             = "slack"
-	GithubMergeSubscriberType       = "github-merge"
+	GithubPullRequestSubscriberType  = "github_pull_request"
+	JIRAIssueSubscriberType          = "jira-issue"
+	JIRACommentSubscriberType        = "jira-comment"
+	EvergreenWebhookSubscriberType   = "evergreen-webhook"
+	EmailSubscriberType              = "email"
+	SlackSubscriberType              = "slack"
+	GithubMergeSubscriberType        = "github-merge"
+	CommitQueueDequeueSubscriberType = "commit-queue-dequeue"
 )
 
 var SubscriberTypes = []string{
@@ -28,6 +29,7 @@ var SubscriberTypes = []string{
 	EmailSubscriberType,
 	SlackSubscriberType,
 	GithubMergeSubscriberType,
+	CommitQueueDequeueSubscriberType,
 }
 
 //nolint: deadcode, megacheck, unused
@@ -70,6 +72,8 @@ func (s *Subscriber) SetBSON(raw mgobson.Raw) error {
 		s.Target = &str
 	case GithubMergeSubscriberType:
 		s.Target = &GithubMergeSubscriber{}
+	case CommitQueueDequeueSubscriberType:
+		s.Target = nil
 	default:
 		return errors.Errorf("unknown subscriber type: '%s'", temp.Type)
 	}
@@ -84,33 +88,16 @@ func (s *Subscriber) SetBSON(raw mgobson.Raw) error {
 }
 
 func (s *Subscriber) String() string {
-	subscriberStr := "NIL_SUBSCRIBER"
-
+	var subscriberStr string
 	switch v := s.Target.(type) {
-	case GithubPullRequestSubscriber:
-		subscriberStr = v.String()
-	case *GithubPullRequestSubscriber:
-		subscriberStr = v.String()
-
-	case GithubMergeSubscriber:
-		subscriberStr = v.String()
-	case *GithubMergeSubscriber:
-		subscriberStr = v.String()
-
-	case WebhookSubscriber:
-		subscriberStr = v.String()
-	case *WebhookSubscriber:
-		subscriberStr = v.String()
-
-	case JIRAIssueSubscriber:
-		subscriberStr = v.String()
-	case *JIRAIssueSubscriber:
-		subscriberStr = v.String()
-
 	case string:
 		subscriberStr = v
 	case *string:
 		subscriberStr = *v
+	case fmt.Stringer:
+		subscriberStr = v.String()
+	default:
+		subscriberStr = "NIL_SUBSCRIBER"
 	}
 
 	return fmt.Sprintf("%s-%s", s.Type, subscriberStr)
@@ -160,7 +147,6 @@ func (s *GithubPullRequestSubscriber) String() string {
 }
 
 type GithubMergeSubscriber struct {
-	ProjectID     string `bson:"project_id"`
 	Owner         string `bson:"owner"`
 	Repo          string `bson:"repo"`
 	PRNumber      int    `bson:"pr_number"`
@@ -171,8 +157,7 @@ type GithubMergeSubscriber struct {
 }
 
 func (s *GithubMergeSubscriber) String() string {
-	return fmt.Sprintf("%s-%s-%s-%d-%s-%s-%s-%s",
-		s.ProjectID,
+	return fmt.Sprintf("%s-%s-%d-%s-%s-%s-%s",
 		s.Owner,
 		s.Repo,
 		s.PRNumber,
@@ -187,6 +172,13 @@ func NewGithubMergeSubscriber(s GithubMergeSubscriber) Subscriber {
 	return Subscriber{
 		Type:   GithubMergeSubscriberType,
 		Target: s,
+	}
+}
+
+func NewCommitQueueDequeueSubscriber() Subscriber {
+	return Subscriber{
+		Type:   CommitQueueDequeueSubscriberType,
+		Target: nil,
 	}
 }
 

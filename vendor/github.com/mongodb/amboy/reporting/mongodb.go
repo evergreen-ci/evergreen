@@ -28,9 +28,7 @@ func NewDBQueueState(ctx context.Context, name string, opts queue.MongoDBOptions
 		return nil, errors.Wrap(err, "problem constructing mongodb client")
 	}
 
-	connctx, cancel := context.WithTimeout(ctx, time.Second)
-	defer cancel()
-	if err := client.Connect(connctx); err != nil {
+	if err = client.Connect(ctx); err != nil {
 		return nil, errors.Wrap(err, "problem connecting to database")
 	}
 
@@ -59,7 +57,7 @@ func MakeDBQueueState(ctx context.Context, name string, opts queue.MongoDBOption
 		name:       name,
 		opts:       opts,
 		client:     client,
-		collection: client.Database(opts.DB).Collection(name + ".jobs"),
+		collection: client.Database(opts.DB).Collection(addJobsSuffix(name)),
 	}
 
 	return db, nil

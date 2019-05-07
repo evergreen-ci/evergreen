@@ -30,7 +30,7 @@ type Host struct {
 	Provider string        `bson:"host_type" json:"host_type"`
 	IP       string        `bson:"ip_address" json:"ip_address"`
 
-	// secondary (external) identifier for the host (the containerID for containers)
+	// secondary (external) identifier for the host
 	ExternalIdentifier string `bson:"ext_identifier" json:"ext_identifier"`
 
 	// physical location of host
@@ -78,7 +78,7 @@ type Host struct {
 
 	Status    string `bson:"status" json:"status"`
 	StartedBy string `bson:"started_by" json:"started_by"`
-	// UserHost is always false, and will be removed
+	// True if this host was created manually by a user (i.e. with spawnhost)
 	UserHost      bool   `bson:"user_host" json:"user_host"`
 	AgentRevision string `bson:"agent_revision" json:"agent_revision"`
 	NeedsNewAgent bool   `bson:"needs_agent" json:"needs_agent"`
@@ -125,6 +125,15 @@ type Host struct {
 
 func (h *Host) MarshalBSON() ([]byte, error)  { return mgobson.Marshal(h) }
 func (h *Host) UnmarshalBSON(in []byte) error { return mgobson.Unmarshal(in, h) }
+
+type IdleHostsByDistroID struct {
+	DistroID          string `bson:"distro_id"`
+	IdleHosts         []Host `bson:"idle_hosts"`
+	RunningHostsCount int    `bson:"running_hosts_count"`
+}
+
+func (h *IdleHostsByDistroID) MarshalBSON() ([]byte, error)  { return mgobson.Marshal(h) }
+func (h *IdleHostsByDistroID) UnmarshalBSON(in []byte) error { return mgobson.Unmarshal(in, h) }
 
 type HostGroup []Host
 
@@ -186,7 +195,7 @@ type SpawnOptions struct {
 }
 
 type newParentsNeededParams struct {
-	numUphostParents, numContainersNeeded, numExistingContainers, maxContainers int
+	numExistingParents, numContainersNeeded, numExistingContainers, maxContainers int
 }
 
 type ContainersOnParents struct {
@@ -196,6 +205,11 @@ type ContainersOnParents struct {
 
 const (
 	MaxLCTInterval = 5 * time.Minute
+
+	// Potential init systems supported by a Linux host.
+	InitSystemSystemd = "systemd"
+	InitSystemSysV    = "sysv"
+	InitSystemUpstart = "upstart"
 )
 
 func (h *Host) GetTaskGroupString() string {
@@ -579,8 +593,19 @@ func (h *Host) IsWaitingForAgent() bool {
 	return false
 }
 
-// SetNeedsNewAgent sets the "needs new agent" flag on the host
+// SetNeedsNewAgent sets the "needs new agent" flag on the host.
 func (h *Host) SetNeedsNewAgent(needsAgent bool) error {
+	err := UpdateOne(bson.M{IdKey: h.Id},
+		bson.M{"$set": bson.M{NeedsNewAgentKey: needsAgent}})
+	if err != nil {
+		return err
+	}
+	h.NeedsNewAgent = needsAgent
+	return nil
+}
+
+// SetNeedsNewAgentAtomically sets the "needs new agent" flag on the host atomically.
+func (h *Host) SetNeedsNewAgentAtomically(needsAgent bool) error {
 	err := UpdateOne(bson.M{IdKey: h.Id, NeedsNewAgentKey: !needsAgent},
 		bson.M{"$set": bson.M{NeedsNewAgentKey: needsAgent}})
 	if err != nil {
@@ -948,9 +973,10 @@ func (h *Host) GetContainers() ([]Host, error) {
 	if !h.HasContainers {
 		return nil, errors.New("Host does not host containers")
 	}
-	query := db.Query(bson.M{
-		ParentIDKey: h.Id,
-	})
+	query := db.Query(bson.M{"$or": []bson.M{
+		{ParentIDKey: h.Id},
+		{ParentIDKey: h.Tag},
+	}})
 	hosts, err := Find(query)
 	if err != nil {
 		return nil, errors.Wrap(err, "Error finding containers")
@@ -965,21 +991,12 @@ func (h *Host) GetParent() (*Host, error) {
 	if h.ParentID == "" {
 		return nil, errors.New("Host does not have a parent")
 	}
-	query := db.Query(bson.M{
-		TagKey: h.ParentID,
-	})
-	host, err := FindOne(query) // try to find by tag
+	host, err := FindOneByIdOrTag(h.ParentID)
 	if err != nil {
 		return nil, errors.Wrap(err, "Error finding parent")
 	}
 	if host == nil {
-		host, err = FindOneId(h.ParentID)
-		if err != nil {
-			return nil, errors.Wrap(err, "Error finding parent")
-		}
-		if host == nil {
-			return nil, errors.New("Parent not found")
-		}
+		return nil, errors.New("Parent not found")
 	}
 	if !host.HasContainers {
 		return nil, errors.New("Host found is not a parent")
@@ -1139,11 +1156,11 @@ func (hosts HostGroup) CountContainersOnParents() (int, error) {
 	return Count(query)
 }
 
-// FindRunningContainersOnParents returns the containers that are children of the given hosts
-func (hosts HostGroup) FindRunningContainersOnParents() ([]Host, error) {
+// FindUphostContainersOnParents returns the containers that are children of the given hosts
+func (hosts HostGroup) FindUphostContainersOnParents() ([]Host, error) {
 	ids := hosts.GetHostIds()
 	query := db.Query(mgobson.M{
-		StatusKey:   evergreen.HostRunning,
+		StatusKey:   mgobson.M{"$in": evergreen.UpHostStatus},
 		ParentIDKey: mgobson.M{"$in": ids},
 	})
 	return Find(query)
@@ -1171,12 +1188,9 @@ func GetNumContainersOnParents(d distro.Distro) ([]ContainersOnParents, error) {
 	// parents come in sorted order from soonest to latest expected finish time
 	for i := len(allParents) - 1; i >= 0; i-- {
 		parent := allParents[i]
-		currentContainers := []Host{}
-		if parent.Status == evergreen.HostRunning {
-			currentContainers, err = parent.GetContainers()
-			if err != nil {
-				return nil, errors.Wrapf(err, "Could not find containers for parent %s", parent.Id)
-			}
+		currentContainers, err := parent.GetContainers()
+		if err != nil && !adb.ResultsNotFound(err) {
+			return nil, errors.Wrapf(err, "Problem finding containers for parent %s", parent.Id)
 		}
 		if len(currentContainers) < parent.ContainerPoolSettings.MaxContainers {
 			numContainersOnParents = append(numContainersOnParents,
@@ -1191,28 +1205,22 @@ func GetNumContainersOnParents(d distro.Distro) ([]ContainersOnParents, error) {
 }
 
 func getNumNewParentsAndHostsToSpawn(pool *evergreen.ContainerPool, newHostsNeeded int, ignoreMaxHosts bool) (int, int, error) {
-	currentParents, err := findAllRunningParentsByContainerPool(pool.Id)
+	existingParents, err := findUphostParentsByContainerPool(pool.Id)
 	if err != nil {
 		return 0, 0, errors.Wrap(err, "could not find running parents")
 	}
 
 	// find all child containers running on those parents
-	existingContainers, err := HostGroup(currentParents).FindRunningContainersOnParents()
+	existingContainers, err := HostGroup(existingParents).FindUphostContainersOnParents()
 	if err != nil {
 		return 0, 0, errors.Wrap(err, "could not find running containers")
 	}
 
-	// find all uphost parent intent documents
-	numUphostParents, err := countUphostParentsByContainerPool(pool.Id)
-	if err != nil {
-		return 0, 0, errors.Wrap(err, "could not count uphost parents")
-	}
-
 	// create numParentsNeededParams struct
 	parentsParams := newParentsNeededParams{
-		numUphostParents:      numUphostParents,
-		numContainersNeeded:   newHostsNeeded,
+		numExistingParents:    len(existingParents),
 		numExistingContainers: len(existingContainers),
+		numContainersNeeded:   newHostsNeeded,
 		maxContainers:         pool.MaxContainers,
 	}
 	// compute number of parents needed
@@ -1224,32 +1232,32 @@ func getNumNewParentsAndHostsToSpawn(pool *evergreen.ContainerPool, newHostsNeed
 	}
 
 	if !ignoreMaxHosts { // only want to spawn amount of parents allowed based on pool size
-		if numNewParentsToSpawn, err = parentCapacity(parentDistro, numNewParentsToSpawn, len(currentParents), pool); err != nil {
+		if numNewParentsToSpawn, err = parentCapacity(parentDistro, numNewParentsToSpawn, len(existingParents), pool); err != nil {
 			return 0, 0, errors.Wrap(err, "could not calculate number of parents needed to spawn")
 		}
 	}
 
 	// only want to spawn amount of containers we can fit on running/uninitialized parents
-	newHostsNeeded = containerCapacity(len(currentParents)+numNewParentsToSpawn, len(existingContainers), newHostsNeeded, pool.MaxContainers)
+	newHostsNeeded = containerCapacity(len(existingParents)+numNewParentsToSpawn, len(existingContainers), newHostsNeeded, pool.MaxContainers)
 	return numNewParentsToSpawn, newHostsNeeded, nil
 }
 
 // numNewParentsNeeded returns the number of additional parents needed to
 // accommodate new containers
 func numNewParentsNeeded(params newParentsNeededParams) int {
-	numPossibleContainers := params.numUphostParents * params.maxContainers
-	numPossibleContainersNeeded := params.numExistingContainers + params.numContainersNeeded
-	numAvailableContainers := numPossibleContainers - params.numExistingContainers
+	existingCapacity := params.numExistingParents * params.maxContainers
+	newCapacityNeeded := params.numContainersNeeded - (existingCapacity - params.numExistingContainers)
 
 	// if we don't have enough space, calculate new parents
-	if numPossibleContainers < numPossibleContainersNeeded {
-		numTotalNewParents := int(math.Ceil(float64(params.numContainersNeeded-numAvailableContainers) / float64(params.maxContainers)))
+	if newCapacityNeeded > 0 {
+		numTotalNewParents := int(math.Ceil(float64(newCapacityNeeded) / float64(params.maxContainers)))
 		if numTotalNewParents < 0 {
 			return 0
 		}
 		return numTotalNewParents
 	}
 	return 0
+
 }
 
 // containerCapacity calculates how many containers to make
@@ -1284,18 +1292,6 @@ func parentCapacity(parent distro.Distro, numNewParents, numCurrentParents int, 
 	return numNewParents, nil
 }
 
-// FindAllRunningParentsByContainerPool returns a slice of hosts that are parents
-// of the container pool specified by the given ID
-func findAllRunningParentsByContainerPool(poolId string) ([]Host, error) {
-	hostContainerPoolId := bsonutil.GetDottedKeyName(ContainerPoolSettingsKey, evergreen.ContainerPoolIdKey)
-	query := db.Query(bson.M{
-		HasContainersKey:    true,
-		StatusKey:           evergreen.HostRunning,
-		hostContainerPoolId: poolId,
-	}).Sort([]string{LastContainerFinishTimeKey})
-	return Find(query)
-}
-
 // findUphostParents returns the number of initializing parent host intent documents
 func findUphostParentsByContainerPool(poolId string) ([]Host, error) {
 	hostContainerPoolId := bsonutil.GetDottedKeyName(ContainerPoolSettingsKey, evergreen.ContainerPoolIdKey)
@@ -1305,16 +1301,6 @@ func findUphostParentsByContainerPool(poolId string) ([]Host, error) {
 		hostContainerPoolId: poolId,
 	}).Sort([]string{LastContainerFinishTimeKey})
 	return Find(query)
-}
-
-// countUphostParents returns the number of initializing parent host intent documents
-func countUphostParentsByContainerPool(poolId string) (int, error) {
-	hostContainerPoolId := bsonutil.GetDottedKeyName(ContainerPoolSettingsKey, evergreen.ContainerPoolIdKey)
-	return db.Count(Collection, bson.M{
-		HasContainersKey:    true,
-		StatusKey:           bson.M{"$in": evergreen.UpHostStatus},
-		hostContainerPoolId: poolId,
-	})
 }
 
 func InsertMany(hosts []Host) error {

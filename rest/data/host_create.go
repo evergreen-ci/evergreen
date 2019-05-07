@@ -6,7 +6,9 @@ import (
 	"io"
 	"net/http"
 	"path"
+	"path/filepath"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/docker/docker/api/types"
@@ -56,7 +58,6 @@ func (dc *DBCreateHostConnector) CreateHostsFromTask(t *task.Task, user user.DBU
 	if t == nil {
 		return errors.New("no task to create hosts from")
 	}
-
 	keyVal, err := user.GetPublicKey(keyNameOrVal)
 	if err != nil {
 		keyVal = keyNameOrVal
@@ -179,8 +180,11 @@ func makeDockerIntentHost(taskID, userID string, createHost apimodels.CreateHost
 	}
 
 	method := distro.DockerImageBuildTypeImport
-	// not a URL
-	if path.Base(createHost.Image) == createHost.Image {
+
+	base := path.Base(createHost.Image)
+	hasPrefix := strings.HasPrefix(base, "http")
+	filepathExt := filepath.Ext(createHost.Image)
+	if filepathExt == "" && !hasPrefix { // not a url
 		method = distro.DockerImageBuildTypePull
 	}
 
@@ -199,7 +203,7 @@ func makeDockerIntentHost(taskID, userID string, createHost apimodels.CreateHost
 		return nil, errors.Wrap(err, "error generating host intent")
 	}
 	if len(hostIntents) != 1 {
-		return nil, errors.New("Programmer error: should have created one new container")
+		return nil, errors.Errorf("Programmer error: should have created one new container, not %d", len(hostIntents))
 	}
 	return &hostIntents[0], nil
 

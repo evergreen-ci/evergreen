@@ -16,10 +16,12 @@ func NewConfigModel() *APIAdminSettings {
 		Amboy:             &APIAmboyConfig{},
 		Api:               &APIapiConfig{},
 		AuthConfig:        &APIAuthConfig{},
+		CommitQueue:       &APICommitQueueConfig{},
 		ContainerPools:    &APIContainerPoolsConfig{},
 		Credentials:       map[string]string{},
 		Expansions:        map[string]string{},
 		HostInit:          &APIHostInitConfig{},
+		JasperConfig:      &APIJasperConfig{},
 		Jira:              &APIJiraConfig{},
 		JIRANotifications: &APIJIRANotificationsConfig{},
 		Keys:              map[string]string{},
@@ -47,9 +49,11 @@ type APIAdminSettings struct {
 	Banner             APIString                         `json:"banner,omitempty"`
 	BannerTheme        APIString                         `json:"banner_theme,omitempty"`
 	ClientBinariesDir  APIString                         `json:"client_binaries_dir,omitempty"`
+	CommitQueue        *APICommitQueueConfig             `json:"commit_queue,omitempty"`
 	ConfigDir          APIString                         `json:"configdir,omitempty"`
-	Credentials        map[string]string                 `json:"credentials,omitempty"`
 	ContainerPools     *APIContainerPoolsConfig          `json:"container_pools,omitempty"`
+	Credentials        map[string]string                 `json:"credentials,omitempty"`
+	JasperConfig       *APIJasperConfig                  `json:"jasper,omitempty"`
 	Expansions         map[string]string                 `json:"expansions,omitempty"`
 	GoogleAnalyticsID  APIString                         `json:"google_analytics,omitempty"`
 	GithubPRCreatorOrg APIString                         `json:"github_pr_creator_org,omitempty"`
@@ -155,6 +159,7 @@ func (as *APIAdminSettings) ToService() (interface{}, error) {
 	if as.PprofPort != nil {
 		settings.PprofPort = *as.PprofPort
 	}
+
 	apiModelReflect := reflect.ValueOf(*as)
 	dbModelReflect := reflect.ValueOf(&settings).Elem()
 	for i := 0; i < apiModelReflect.NumField(); i++ {
@@ -762,6 +767,32 @@ func (a *APICloudProviders) ToService() (interface{}, error) {
 		GCE:       gce.(evergreen.GCEConfig),
 		OpenStack: openstack.(evergreen.OpenStackConfig),
 		VSphere:   vsphere.(evergreen.VSphereConfig),
+	}, nil
+}
+
+type APICommitQueueConfig struct {
+	MergeTaskDistro APIString `json:"merge_task_distro"`
+	CommitterName   APIString `json:"committer_name"`
+	CommitterEmail  APIString `json:"committer_email"`
+}
+
+func (a *APICommitQueueConfig) BuildFromService(h interface{}) error {
+	if v, ok := h.(evergreen.CommitQueueConfig); ok {
+		a.MergeTaskDistro = ToAPIString(v.MergeTaskDistro)
+		a.CommitterName = ToAPIString(v.CommitterName)
+		a.CommitterEmail = ToAPIString(v.CommitterEmail)
+
+		return nil
+	}
+
+	return errors.Errorf("Received CommitQueueConfig of type %T", h)
+}
+
+func (a *APICommitQueueConfig) ToService() (interface{}, error) {
+	return evergreen.CommitQueueConfig{
+		MergeTaskDistro: FromAPIString(a.MergeTaskDistro),
+		CommitterName:   FromAPIString(a.CommitterName),
+		CommitterEmail:  FromAPIString(a.CommitterEmail),
 	}, nil
 }
 
@@ -1410,5 +1441,37 @@ func (c *APITriggerConfig) BuildFromService(h interface{}) error {
 func (c *APITriggerConfig) ToService() (interface{}, error) {
 	return evergreen.TriggerConfig{
 		GenerateTaskDistro: FromAPIString(c.GenerateTaskDistro),
+	}, nil
+}
+
+type APIJasperConfig struct {
+	BinaryName       APIString `json:"binary_name,omitempty"`
+	DownloadFileName APIString `json:"download_file_name,omitempty"`
+	Port             int       `json:"port,omitempty"`
+	URL              APIString `json:"url,omitempty"`
+	Version          APIString `json:"version,omitempty"`
+}
+
+func (c *APIJasperConfig) BuildFromService(h interface{}) error {
+	switch v := h.(type) {
+	case evergreen.JasperConfig:
+		c.BinaryName = ToAPIString(v.BinaryName)
+		c.DownloadFileName = ToAPIString(v.DownloadFileName)
+		c.Port = v.Port
+		c.URL = ToAPIString(v.URL)
+		c.Version = ToAPIString(v.Version)
+	default:
+		return errors.Errorf("expected evergreen.JasperConfig but got %T instead", h)
+	}
+	return nil
+}
+
+func (c *APIJasperConfig) ToService() (interface{}, error) {
+	return evergreen.JasperConfig{
+		BinaryName:       FromAPIString(c.BinaryName),
+		DownloadFileName: FromAPIString(c.DownloadFileName),
+		Port:             c.Port,
+		URL:              FromAPIString(c.URL),
+		Version:          FromAPIString(c.Version),
 	}, nil
 }

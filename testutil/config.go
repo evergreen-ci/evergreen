@@ -2,6 +2,7 @@ package testutil
 
 import (
 	"context"
+	"flag"
 	"path/filepath"
 	"testing"
 
@@ -19,7 +20,9 @@ const (
 )
 
 func init() {
-	if evergreen.GetEnvironment() == nil {
+	if flag.Lookup("test.v") == nil {
+		grip.Alert("called init() in testutil for production code.")
+	} else if evergreen.GetEnvironment() == nil {
 		ctx := context.Background()
 
 		path := filepath.Join(evergreen.FindEvergreenHome(), TestDir, TestSettings)
@@ -111,7 +114,12 @@ func MockConfig() *evergreen.Settings {
 		Banner:            "banner",
 		BannerTheme:       "important",
 		ClientBinariesDir: "bin_dir",
-		ConfigDir:         "cfg_dir",
+		CommitQueue: evergreen.CommitQueueConfig{
+			MergeTaskDistro: "distro",
+			CommitterName:   "Evergreen Commit Queue",
+			CommitterEmail:  "evergreen@mongodb.com",
+		},
+		ConfigDir: "cfg_dir",
 		ContainerPools: evergreen.ContainerPoolsConfig{
 			Pools: []evergreen.ContainerPool{
 				evergreen.ContainerPool{
@@ -128,6 +136,13 @@ func MockConfig() *evergreen.Settings {
 		GithubPRCreatorOrg: "org",
 		HostInit: evergreen.HostInitConfig{
 			SSHTimeoutSeconds: 10,
+		},
+		JasperConfig: evergreen.JasperConfig{
+			BinaryName:       "binary",
+			DownloadFileName: "download",
+			Port:             12345,
+			URL:              "url",
+			Version:          "version",
 		},
 		Jira: evergreen.JiraConfig{
 			Host:           "host",

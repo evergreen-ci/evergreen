@@ -45,11 +45,11 @@ mciModule.factory('TestSample', function() {
 
       var keys = this.resultKeys(testName)
       for (var j = 0; j < keys.length; j++) {
-        result.push({
-          threads: parseInt(keys[j]),
-          ops_per_sec: series[keys[j]].ops_per_sec,
-          ops_per_sec_values: series[keys[j]].ops_per_sec_values,
-        });
+        let value = {threads: parseInt(keys[j])};
+        for (key in series[keys[j]]) {
+          value[key] = series[keys[j]][key];
+        }
+        result.push(value);
       }
       _.sortBy(result, "threads");
       return result;

@@ -33,8 +33,6 @@ func TestPatchConnectorFetchByProjectSuite(t *testing.T) {
 		s.ctx = &DBConnector{}
 		s.time = time.Date(2009, time.November, 10, 23, 0, 0, 0, time.Local)
 
-		testutil.ConfigureIntegrationTest(t, testConfig, "TestPatchConnectorFetchByProjectSuite")
-
 		patches := []*patch.Patch{
 			{Project: "project1", CreateTime: s.time},
 			{Project: "project2", CreateTime: s.time.Add(time.Second * 2)},
@@ -166,8 +164,6 @@ func TestPatchConnectorFetchByIdSuite(t *testing.T) {
 	s.setup = func() error {
 		s.ctx = &DBConnector{}
 
-		testutil.ConfigureIntegrationTest(t, testConfig, "TestPatchConnectorFetchByIdSuite")
-
 		s.obj_ids = []mgobson.ObjectId{mgobson.NewObjectId(), mgobson.NewObjectId()}
 
 		patches := []*patch.Patch{
@@ -254,8 +250,6 @@ func TestPatchConnectorAbortByIdSuite(t *testing.T) {
 	s := new(PatchConnectorAbortByIdSuite)
 	s.setup = func() error {
 		s.ctx = &DBConnector{}
-
-		testutil.ConfigureIntegrationTest(t, testConfig, "TestPatchConnectorAbortByIdSuite")
 
 		s.obj_ids = []mgobson.ObjectId{mgobson.NewObjectId(), mgobson.NewObjectId()}
 
@@ -400,8 +394,6 @@ func TestPatchConnectorChangeStatusSuite(t *testing.T) {
 	s.setup = func() error {
 		s.ctx = &DBConnector{}
 
-		testutil.ConfigureIntegrationTest(t, testConfig, "TestPatchConnectorAbortByIdSuite")
-
 		s.obj_ids = []mgobson.ObjectId{mgobson.NewObjectId(), mgobson.NewObjectId()}
 
 		patches := []*patch.Patch{
@@ -498,8 +490,6 @@ func TestPatchConnectorFetchByUserSuite(t *testing.T) {
 	s := new(PatchConnectorFetchByUserSuite)
 	s.ctx = &DBConnector{}
 	s.time = time.Date(2009, time.November, 10, 23, 0, 0, 0, time.Local)
-
-	testutil.ConfigureIntegrationTest(t, testConfig, "TestPatchConnectorFetchByUserSuite")
 
 	assert.NoError(t, db.Clear(patch.Collection))
 

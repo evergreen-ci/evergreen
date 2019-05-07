@@ -74,6 +74,9 @@ func (n *Notification) SetBSON(raw mgobson.Raw) error {
 	case event.GithubMergeSubscriberType:
 		n.Payload = &commitqueue.GithubMergePR{}
 
+	case event.CommitQueueDequeueSubscriberType:
+		n.Payload = &commitqueue.DequeueItem{}
+
 	default:
 		return errors.Errorf("unknown payload type %s", temp.Subscriber.Type)
 	}

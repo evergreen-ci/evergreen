@@ -13,12 +13,11 @@ import (
 	"github.com/evergreen-ci/evergreen/rest/client"
 	"github.com/evergreen-ci/evergreen/testutil"
 	. "github.com/smartystreets/goconvey/convey"
+	"github.com/stretchr/testify/require"
 )
 
 func reset(t *testing.T) {
-	testutil.HandleTestingErr(
-		db.ClearCollections(task.Collection, model.TestLogCollection), t,
-		"error clearing test collections")
+	require.NoError(t, db.ClearCollections(task.Collection, model.TestLogCollection), "error clearing test collections")
 }
 
 func TestGotestPluginOnFailingTests(t *testing.T) {
@@ -35,21 +34,21 @@ func TestGotestPluginOnFailingTests(t *testing.T) {
 
 		configPath := filepath.Join(currentDirectory, "testdata", "gotest", "bad.yml")
 		modelData, err := modelutil.SetupAPITestData(testConfig, "test", "rhel55", configPath, modelutil.NoPatch)
-		testutil.HandleTestingErr(err, t, "failed to setup test data")
+		require.NoError(t, err, "failed to setup test data")
 		conf := modelData.TaskConfig
 		logger, err := comm.GetLoggerProducer(ctx, client.TaskData{ID: conf.Task.Id, Secret: conf.Task.Secret}, nil)
 		So(err, ShouldBeNil)
 
 		Convey("all commands in test project should execute successfully", func() {
 			curWD, err := os.Getwd()
-			testutil.HandleTestingErr(err, t, "Couldn't get working directory: %s", curWD)
+			require.NoError(t, err, "Couldn't get working directory: %s", curWD)
 			conf.WorkDir = curWD
 
 			for _, testTask := range conf.Project.Tasks {
 				So(len(testTask.Commands), ShouldNotEqual, 0)
 				for _, command := range testTask.Commands {
 					pluginCmds, err := Render(command, conf.Project.Functions)
-					testutil.HandleTestingErr(err, t, "Couldn't get plugin command: %s", command.Command)
+					require.NoError(t, err, "Couldn't get plugin command: %s", command.Command)
 					So(pluginCmds, ShouldNotBeNil)
 					So(err, ShouldBeNil)
 					err = pluginCmds[0].Execute(ctx, comm, logger, conf)
@@ -89,12 +88,11 @@ func TestGotestPluginOnPassingTests(t *testing.T) {
 	SkipConvey("With gotest plugin installed into plugin registry", t, func() {
 		reset(t)
 		testConfig := testutil.TestConfig()
-		testutil.ConfigureIntegrationTest(t, testConfig, "TestGotestPluginOnPassingTests")
 
 		configPath := filepath.Join(currentDirectory, "testdata", "bad.yml")
 
 		modelData, err := modelutil.SetupAPITestData(testConfig, "test", "rhel55", configPath, modelutil.NoPatch)
-		testutil.HandleTestingErr(err, t, "failed to setup test data")
+		require.NoError(t, err, "failed to setup test data")
 
 		conf := modelData.TaskConfig
 		comm := client.NewMock("http://localhost.com")
@@ -103,14 +101,14 @@ func TestGotestPluginOnPassingTests(t *testing.T) {
 
 		Convey("all commands in test project should execute successfully", func() {
 			curWD, err := os.Getwd()
-			testutil.HandleTestingErr(err, t, "Couldn't get working directory: %s", curWD)
+			require.NoError(t, err, "Couldn't get working directory: %s", curWD)
 			conf.WorkDir = curWD
 
 			for _, testTask := range conf.Project.Tasks {
 				So(len(testTask.Commands), ShouldNotEqual, 0)
 				for _, command := range testTask.Commands {
 					pluginCmds, err := Render(command, conf.Project.Functions)
-					testutil.HandleTestingErr(err, t, "Couldn't get plugin command: %s", command.Command)
+					require.NoError(t, err, "Couldn't get plugin command: %s", command.Command)
 					So(pluginCmds, ShouldNotBeNil)
 					So(err, ShouldBeNil)
 

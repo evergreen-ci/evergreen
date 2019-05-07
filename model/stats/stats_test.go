@@ -406,16 +406,26 @@ func (s *statsSuite) TestFindStatsToUpdate() {
 	// Find stats for p5 for a period with no finished tasks
 	start := baseHour
 	end := baseHour.Add(time.Hour)
-	statsList, err := FindStatsToUpdate("p5", start, end)
+	statsList, err := FindStatsToUpdate("p5", nil, start, end)
 	require.NoError(err)
 	require.Len(statsList, 0)
 
 	// Find stats for p5 for a period around finish1
 	start = finish1.Add(-1 * time.Hour)
 	end = finish1.Add(time.Hour)
-	statsList, err = FindStatsToUpdate("p5", start, end)
+	statsList, err = FindStatsToUpdate("p5", nil, start, end)
 	require.NoError(err)
 	require.Len(statsList, 2)
+
+	// Find stats for p5 for a period around finished1, filtering
+	// by requester
+	statsList, err = FindStatsToUpdate("p5", []string{"r2"}, start, end)
+	require.NoError(err)
+	require.Len(statsList, 1)
+	statsList, err = FindStatsToUpdate("p5", []string{"r1", "r2"}, start, end)
+	require.NoError(err)
+	require.Len(statsList, 2)
+
 	// The results are sorted so we know the order
 	require.Equal("p5", statsList[0].ProjectId)
 	require.Equal("r1", statsList[0].Requester)
@@ -426,7 +436,7 @@ func (s *statsSuite) TestFindStatsToUpdate() {
 	// Find stats for p5 for a period around finish1
 	start = finish1.Add(-1 * time.Hour)
 	end = finish1.Add(time.Hour)
-	statsList, err = FindStatsToUpdate("p5", start, end)
+	statsList, err = FindStatsToUpdate("p5", nil, start, end)
 	require.NoError(err)
 	require.Len(statsList, 2)
 	// The results are sorted so we know the order

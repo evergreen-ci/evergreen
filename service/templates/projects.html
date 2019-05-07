@@ -409,12 +409,8 @@ Evergreen Projects
                 <select id="mergeMethodSelect" ng-model="settingsFormData.commit_queue.merge_method" ng-options="option for option in validMergeMethods"></select>
               </div>
               <div>
-                <label for="mergeActionSelect"> Merge Action: </label>
-                <select id="mergeActionSelect" ng-model="settingsFormData.commit_queue.merge_action" ng-options="option for option in validMergeActions"></select>
-              </div>
-              <div>
-                <label for="statusActionSelect"> Status Action: </label>
-                <select id="statusActionSelect" ng-model="settingsFormData.commit_queue.status_action" ng-options="option for option in validMergeActions"></select>
+                <label for="PatchTypeSelect"> Patch Type: </label>
+                <select id="PatchTypeSelect" ng-model="settingsFormData.commit_queue.patch_type" ng-options="option for option in validPatchTypes"></select>
               </div>
             </div>
             <div class="form-group">

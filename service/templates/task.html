@@ -13,6 +13,7 @@ window.user = {{.User}};
 <script type="text/javascript" src="{{Static "js" "task.js"}}?hash={{ BuildRevision }}"></script>
 <script type="text/javascript" src="/static/app/perf-bb/constants.js?hash={{ BuildRevision }}"></script>
 <script type="text/javascript" src="/static/app/perf-bb/ChangePointsService.js?hash={{ BuildRevision }}"></script>
+<script type="text/javascript" src="/static/app/common/WhitelistDataService.js?hash={{ BuildRevision }}"></script>
 
 {{if .User}}
 <script type="text/javascript" src="{{Static "js" "task_admin.js"}}?hash={{ BuildRevision }}"></script>
@@ -361,7 +362,7 @@ Evergreen - {{Trunc .Task.Revision 10}} / {{.Task.BuildVariantDisplay}} / {{.Tas
                 <ul class="dropdown-menu" role="menu" aria-labelledby="dLabel">
                   <li role="presentation" class="dropdown-header">Sort Options</li>
                   <li role="presentation" ng-repeat="order in sortOrders">
-                    <a role="menuitem" ng-click="setSortBy(order);" href="javascript:return false;">
+                    <a role="menuitem" ng-click="setSortBy(order);">
                       [[order.name]]
                     </a>
                   </li>
@@ -394,7 +395,7 @@ Evergreen - {{Trunc .Task.Revision 10}} / {{.Task.BuildVariantDisplay}} / {{.Tas
             <div id="tests-info">
               <md-list class="test-results-table table-new">
                 <md-virtual-repeat-container style="height:250px;width:100%;">
-                  <table class="table test-results-table table-new">
+                  <table class="table test-results-table">
                     <thead>
                         <tr>
                           <th class="col-lg-6">Test</th>

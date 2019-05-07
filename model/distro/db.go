@@ -20,12 +20,14 @@ var (
 	SSHKeyKey           = bsonutil.MustHaveTag(Distro{}, "SSHKey")
 	SSHOptionsKey       = bsonutil.MustHaveTag(Distro{}, "SSHOptions")
 	BootstrapMethod     = bsonutil.MustHaveTag(Distro{}, "BootstrapMethod")
+	CommunicationMethod = bsonutil.MustHaveTag(Distro{}, "CommunicationMethod")
 	WorkDirKey          = bsonutil.MustHaveTag(Distro{}, "WorkDir")
 	SpawnAllowedKey     = bsonutil.MustHaveTag(Distro{}, "SpawnAllowed")
 	ExpansionsKey       = bsonutil.MustHaveTag(Distro{}, "Expansions")
 	DisabledKey         = bsonutil.MustHaveTag(Distro{}, "Disabled")
 	ContainerPoolKey    = bsonutil.MustHaveTag(Distro{}, "ContainerPool")
 	PlannerSettingsKey  = bsonutil.MustHaveTag(Distro{}, "PlannerSettings")
+	FinderSettingsKey   = bsonutil.MustHaveTag(Distro{}, "FinderSettings")
 )
 
 const Collection = "distro"
@@ -82,4 +84,10 @@ func ByActiveOrStatic() db.Q {
 		bson.M{DisabledKey: bson.M{"$exists": false}},
 		bson.M{ProviderKey: evergreen.HostTypeStatic},
 	}})
+}
+
+// ByIds creates a query that finds all distros for the given ids and implicitly
+// returns them ordered by {"_id": 1}
+func ByIds(ids []string) db.Q {
+	return db.Query(bson.M{IdKey: bson.M{"$in": ids}})
 }

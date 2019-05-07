@@ -86,6 +86,7 @@ Admin Settings
 						<li class="link" ng-click="scrollTo('misc')">Misc Settings</li>
 						<li class="link" ng-click="scrollTo('credentials')">Credentials</li>
 						<li class="link" ng-click="scrollTo('expansions')">Expansions</li>
+                        <li class="link" ng-click="scrollTo('jasper')">Jasper</li>
 						<li class="link" ng-click="scrollTo('plugins')">Plugins</li>
 						<li class="link" ng-click="scrollTo('jira_notifications')">JIRA Custom Field Mappings</li>
 						<div>Non-Configuration</div>
@@ -550,7 +551,19 @@ Admin Settings
 												</md-card-title-text>
 											</md-card-title>
 											<md-card-content>
-												<button ng-click="clearCommitQueues()" class="btn btn-primary">Clear Commit Queues</button>
+												<md-input-container class="control" style="width:45%;">
+														<label>Merge Distro</label>
+														<input type="text" ng-model="Settings.commit_queue.merge_task_distro">
+												</md-input-container>
+												<md-input-container class="control" style="width:45%;">
+													<label>Committer Name</label>
+													<input type="text" ng-model="Settings.commit_queue.committer_name">
+												</md-input-container>
+												<md-input-container class="control" style="width:45%;">
+														<label>Committer Email</label>
+														<input type="text" ng-model="Settings.commit_queue.committer_email">
+													</md-input-container>
+												<button ng-click="clearCommitQueues()" class="md-raised md-button">Clear Commit Queues</button>
 											</md-card-content>
 									</md-card>
 							</section>
@@ -838,7 +851,7 @@ Admin Settings
 									</md-input-container>
 								</md-card-content>
 							</md-card>
-            </section>
+			            </section>
 
 
 						<section layout="row" flex>
@@ -857,23 +870,23 @@ Admin Settings
 										<label>Name</label>
 										<input type="text" ng-model="Settings.amboy.name">
 									</md-input-container>
-                  <md-input-container class="control" style="width:45%; margin-left:50px;">
+				                    <md-input-container class="control" style="width:45%; margin-left:50px;">
 										<label>Single Worker Name</label>
 										<input type="text" ng-model="Settings.amboy.single_name">
 									</md-input-container>
-                  <md-input-container class="control" style="width:45%;">
+				                    <md-input-container class="control" style="width:45%;">
 										<label>DB name</label>
 										<input type="text" ng-model="Settings.amboy.database">
 									</md-input-container>
-                  <md-input-container class="control" style="width:45%; margin-left:50px;">
+				                    <md-input-container class="control" style="width:45%; margin-left:50px;">
 										<label>Local pool size</label>
 										<input type="number" ng-model="Settings.amboy.pool_size_local">
 									</md-input-container>
-                  <md-input-container class="control" style="width:45%;">
+				                    <md-input-container class="control" style="width:45%;">
 										<label>Remote pool size</label>
 										<input type="number" ng-model="Settings.amboy.pool_size_remote">
 									</md-input-container>
-                  <md-input-container class="control" style="width:45%; margin-left:50px;">
+				                    <md-input-container class="control" style="width:45%; margin-left:50px;">
 										<label>Local storage size</label>
 										<input type="number" ng-model="Settings.amboy.local_storage_size">
 									</md-input-container>
@@ -1199,6 +1212,38 @@ Admin Settings
 						</section>
 
 						<section layout="row" flex>
+							<md-card flex=50 id="jasper" style="max-width:49%">
+								<md-card-title>
+									<md-card-title-text>
+										<span>Jasper</span>
+									</md-card-title-text>
+									<md-button ng-click="clearSection('jasper')">
+										<i class="fa fa-trash"></i>
+									</md-button>
+								</md-card-title>
+								<md-card-content>
+									<md-input-container class="control" style="width:45%;">
+										<label>Binary Name</label>
+										<input type="text" ng-model="Settings.jasper.binary_name">
+									</md-input-container>
+									<md-input-container class="control" style="width:45%; margin-left:50px;">
+										<label>Download File Name</label>
+										<input type="text" ng-model="Settings.jasper.download_file_name">
+									</md-input-container>
+									<md-input-container class="control" style="width:45%;">
+										<label>Port</label>
+										<input type="number" ng-model="Settings.jasper.port">
+									</md-input-container>
+									<md-input-container class="control" style="width:45%; margin-left:50px;">
+										<label>URL</label>
+										<input type="text" ng-model="Settings.jasper.url">
+									</md-input-container>
+									<md-input-container class="control" style="width:45%;">
+										<label>Version</label>
+										<input type="text" ng-model="Settings.jasper.version">
+									</md-input-container>
+								</md-card-content>
+							</md-card>
 
 							<md-card flex=50 id="plugins" style="max-width:49%">
 								<md-card-title>

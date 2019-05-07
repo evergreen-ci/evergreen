@@ -26,7 +26,7 @@ func TestModifyHostStatusWithUpdateStatus(t *testing.T) {
 	env := mock.Environment{}
 	assert.NoError(env.Configure(ctx, filepath.Join(evergreen.FindEvergreenHome(), testutil.TestDir, testutil.TestSettings), nil))
 	assert.NoError(env.LocalQueue().Start(ctx))
-	testutil.HandleTestingErr(db.ClearCollections(event.AllLogCollection), t, "error clearing collections")
+	require.NoError(db.ClearCollections(event.AllLogCollection), "error clearing collections")
 
 	// Normal test, changing a host from running to quarantined
 	user1 := user.DBUser{Id: "user1"}

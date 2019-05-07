@@ -25,7 +25,7 @@ const (
 	limitFlagName         = "limit"
 	messageFlagName       = "message"
 	activeFlagName        = "active"
-	committedFlagName     = "committed-only"
+	refFlagName           = "ref"
 
 	anserDryRunFlagName      = "dry-run"
 	anserLimitFlagName       = "limit"
@@ -203,10 +203,11 @@ func addDbSettingsFlags(flags ...cli.Flag) []cli.Flag {
 	)
 }
 
-func addCommittedOnlyFlag(flags ...cli.Flag) []cli.Flag {
-	return append(flags, cli.BoolFlag{
-		Name:  committedFlagName,
-		Usage: "diff with HEAD, ignoring working tree changes",
+func addRefFlag(flags ...cli.Flag) []cli.Flag {
+	return append(flags, cli.StringFlag{
+		Name:  refFlagName,
+		Usage: "diff with `REF`",
+		Value: "HEAD",
 	})
 }
 

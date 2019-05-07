@@ -90,13 +90,13 @@ func (b *Build) AllUnblockedTasksFinished(tasksWithDeps []task.Task) (bool, stri
 	status := evergreen.BuildSucceeded
 	catcher := grip.NewSimpleCatcher()
 	for i := range b.Tasks {
-		if !b.Tasks[i].Activated {
-			continue
-		}
 		if evergreen.IsFailedTaskStatus(b.Tasks[i].Status) {
 			status = evergreen.BuildFailed
 		}
 		if !evergreen.IsFinishedTaskStatus(b.Tasks[i].Status) {
+			if !b.Tasks[i].Activated {
+				continue
+			}
 			t, err := task.FindOneNoMerge(task.ById(b.Tasks[i].Id))
 			if err != nil {
 				return false, status, err
