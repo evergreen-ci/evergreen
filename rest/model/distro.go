@@ -117,26 +117,27 @@ func (s *APIFinderSettings) ToService() (interface{}, error) {
 // APIDistro is the model to be returned by the API whenever distros are fetched
 
 type APIDistro struct {
-	Name             APIString              `json:"name"`
-	UserSpawnAllowed bool                   `json:"user_spawn_allowed"`
-	Provider         APIString              `json:"provider"`
-	ProviderSettings map[string]interface{} `json:"settings"`
-	ImageID          APIString              `json:"image_id"`
-	Arch             APIString              `json:"arch"`
-	WorkDir          APIString              `json:"work_dir"`
-	PoolSize         int                    `json:"pool_size"`
-	SetupAsSudo      bool                   `json:"setup_as_sudo"`
-	Setup            APIString              `json:"setup"`
-	Teardown         APIString              `json:"teardown"`
-	User             APIString              `json:"user"`
-	BootstrapMethod  APIString              `json:"bootstrap_method"`
-	SSHKey           APIString              `json:"ssh_key"`
-	SSHOptions       []string               `json:"ssh_options"`
-	Expansions       []APIExpansion         `json:"expansions"`
-	Disabled         bool                   `json:"disabled"`
-	ContainerPool    APIString              `json:"container_pool"`
-	PlannerSettings  APIPlannerSettings     `json:"planner_settings"`
-	FinderSettings   APIFinderSettings      `json:"finder_settings"`
+	Name                APIString              `json:"name"`
+	UserSpawnAllowed    bool                   `json:"user_spawn_allowed"`
+	Provider            APIString              `json:"provider"`
+	ProviderSettings    map[string]interface{} `json:"settings"`
+	ImageID             APIString              `json:"image_id"`
+	Arch                APIString              `json:"arch"`
+	WorkDir             APIString              `json:"work_dir"`
+	PoolSize            int                    `json:"pool_size"`
+	SetupAsSudo         bool                   `json:"setup_as_sudo"`
+	Setup               APIString              `json:"setup"`
+	Teardown            APIString              `json:"teardown"`
+	User                APIString              `json:"user"`
+	BootstrapMethod     APIString              `json:"bootstrap_method"`
+	CommunicationMethod APIString              `json:"communication_method"`
+	SSHKey              APIString              `json:"ssh_key"`
+	SSHOptions          []string               `json:"ssh_options"`
+	Expansions          []APIExpansion         `json:"expansions"`
+	Disabled            bool                   `json:"disabled"`
+	ContainerPool       APIString              `json:"container_pool"`
+	PlannerSettings     APIPlannerSettings     `json:"planner_settings"`
+	FinderSettings      APIFinderSettings      `json:"finder_settings"`
 }
 
 // BuildFromService converts from service level distro.Distro to an APIDistro
@@ -176,6 +177,10 @@ func (apiDistro *APIDistro) BuildFromService(h interface{}) error {
 		d.BootstrapMethod = distro.BootstrapMethodLegacySSH
 	}
 	apiDistro.BootstrapMethod = ToAPIString(d.BootstrapMethod)
+	if d.CommunicationMethod == "" {
+		d.CommunicationMethod = distro.CommunicationMethodLegacySSH
+	}
+	apiDistro.CommunicationMethod = ToAPIString(d.CommunicationMethod)
 	apiDistro.SSHKey = ToAPIString(d.SSHKey)
 	apiDistro.Disabled = d.Disabled
 	apiDistro.ContainerPool = ToAPIString(d.ContainerPool)
@@ -222,6 +227,10 @@ func (apiDistro *APIDistro) ToService() (interface{}, error) {
 	d.BootstrapMethod = FromAPIString(apiDistro.BootstrapMethod)
 	if d.BootstrapMethod == "" {
 		d.BootstrapMethod = distro.BootstrapMethodLegacySSH
+	}
+	d.CommunicationMethod = FromAPIString(apiDistro.CommunicationMethod)
+	if d.CommunicationMethod == "" {
+		d.CommunicationMethod = distro.CommunicationMethodLegacySSH
 	}
 	d.SSHKey = FromAPIString(apiDistro.SSHKey)
 	d.SSHOptions = apiDistro.SSHOptions

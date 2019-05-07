@@ -49,7 +49,8 @@ func (s *distroScheduler) scheduleDistro(distroID string, runnableTasksForDistro
 
 	prioritizedTasks, err := s.PrioritizeTasks(distroID, runnableTasksForDistro, versions)
 	if err != nil {
-		return nil, errors.Wrap(err, "Error prioritizing tasks")
+		return nil, errors.Wrapf(err, "error prioritizing tasks for distro '%s'", distroID)
+
 	}
 
 	distroQueueInfo := GetDistroQueueInfo(prioritizedTasks, maxDurationThreshold)
@@ -64,13 +65,13 @@ func (s *distroScheduler) scheduleDistro(distroID string, runnableTasksForDistro
 	// persist the queue of tasks and its associated distroQueueInfo
 	_, err = s.PersistTaskQueue(distroID, prioritizedTasks, distroQueueInfo)
 	if err != nil {
-		return nil, errors.Wrapf(err, "Error processing distro %s saving task queue", distroID)
+		return nil, errors.Wrapf(err, "database error saving the task queue for distro '%s'", distroID)
 	}
 
 	// track scheduled time for prioritized tasks
 	err = task.SetTasksScheduledTime(prioritizedTasks, time.Now())
 	if err != nil {
-		return nil, errors.Wrapf(err, "Error setting scheduled time for prioritized tasks for distro '%s'", distroID)
+		return nil, errors.Wrapf(err, "error setting scheduled time for prioritized tasks for distro '%s'", distroID)
 	}
 
 	return prioritizedTasks, nil

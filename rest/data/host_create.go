@@ -203,7 +203,7 @@ func makeDockerIntentHost(taskID, userID string, createHost apimodels.CreateHost
 		return nil, errors.Wrap(err, "error generating host intent")
 	}
 	if len(hostIntents) != 1 {
-		return nil, errors.New("Programmer error: should have created one new container")
+		return nil, errors.Errorf("Programmer error: should have created one new container, not %d", len(hostIntents))
 	}
 	return &hostIntents[0], nil
 

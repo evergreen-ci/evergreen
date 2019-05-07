@@ -12,6 +12,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/commitqueue"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/patch"
+	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/evergreen-ci/evergreen/validator"
 	"github.com/google/go-github/github"
@@ -291,11 +292,14 @@ func (j *commitQueueJob) processCLIPatchItem(ctx context.Context, cq *commitqueu
 	subscriber := event.NewCommitQueueDequeueSubscriber()
 
 	patchSub := event.NewPatchOutcomeSubscription(nextItem.Issue, subscriber)
-	if err := patchSub.Upsert(); err != nil {
+	if err = patchSub.Upsert(); err != nil {
 		j.logError(err, "failed to insert patch subscription", nextItem)
 		j.dequeue(cq, nextItem)
 	}
 
+	if err = setDefaultNotification(patchDoc.Author); err != nil {
+		j.logError(err, "failed to set default notification", nextItem)
+	}
 	event.LogCommitQueueStartTestEvent(v.Id)
 }
 
@@ -576,4 +580,30 @@ func initializeSenders(env evergreen.Environment) error {
 	}
 
 	return errors.Wrap(commitqueue.SetupEnv(env), "can't setup commit queue senders")
+}
+
+func setDefaultNotification(username string) error {
+	u, err := user.FindOneById(username)
+	if err != nil {
+		return errors.Wrap(err, "can't get user")
+	}
+	if u == nil {
+		return errors.Errorf("no matching user for %s", username)
+	}
+
+	// The user has never saved their notification settings
+	if u.Settings.Notifications.CommitQueue == "" {
+		u.Settings.Notifications.CommitQueue = user.PreferenceEmail
+		commitQueueSubscriber := event.NewEmailSubscriber(u.Email())
+		commitQueueSubscription, err := event.CreateOrUpdateImplicitSubscription(event.ImplicitSubscriptionCommitQueue,
+			"", commitQueueSubscriber, u.Id)
+		if err != nil {
+			return errors.Wrap(err, "can't create default email subscription")
+		}
+		u.Settings.Notifications.CommitQueueID = commitQueueSubscription.ID
+
+		return model.SaveUserSettings(u.Id, u.Settings)
+	}
+
+	return nil
 }

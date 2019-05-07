@@ -424,9 +424,7 @@ mciModule.controller('TaskHistoryDrawerCtrl', function($scope, $window, $locatio
         $scope.maxTests = 1;
 
         var byName = function(a, b) {
-          if (a.test_result.test_file > b.test_result.test_file) { return 1; }
-          if (a.test_result.test_file < b.test_result.test_file) { return -1; }
-          return 0;
+          return a.test_result.display_name.localeCompare(b.test_result.display_name);
         }
         var byStatus = function(a, b) {
           if (ordinalForTestStatus(a) > ordinalForTestStatus(b)) { return 1; }
