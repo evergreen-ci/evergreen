@@ -993,6 +993,3 @@ func (s *EC2Suite) TestMakeMultipartUserData() {
 	s.NoError(err)
 	s.NotEmpty(res)
 }
-
-// TODO: tests with on-demand and spot hosts, with
-// distro.BootstrapMethod = BootstrapMethodUserData.
