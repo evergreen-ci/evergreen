@@ -15,8 +15,9 @@ import (
 )
 
 type runCommandsOptions struct {
-	isTaskCommands  bool
-	shouldSetupFail bool
+	isTaskCommands   bool
+	shouldSetupFail  bool
+	setupTimeoutSecs int
 	// TODO EVG-6009 remove the following once monitoring is done
 	isPre bool
 }

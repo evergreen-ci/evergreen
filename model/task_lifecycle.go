@@ -135,6 +135,10 @@ func resetTask(taskId, caller string) error {
 		return errors.WithStack(err)
 	}
 
+	if err = build.SetCachedTaskActivated(t.BuildId, t.Id, true); err != nil {
+		return errors.WithStack(err)
+	}
+
 	// update the cached version of the task, in its build document
 	if err = build.ResetCachedTask(t.BuildId, t.Id); err != nil {
 		return errors.WithStack(err)
@@ -165,19 +169,18 @@ func TryResetTask(taskId, user, origin string, detail *apimodels.TaskEndDetail) 
 		} else {
 			grip.Debugln(msg, "marking as failed")
 			if detail != nil {
-				updates := StatusChanges{}
 				if t.DisplayOnly {
 					for _, etId := range t.ExecutionTasks {
 						execTask, err = task.FindOne(task.ById(etId))
 						if err != nil {
 							return errors.Wrap(err, "error finding execution task")
 						}
-						if err = MarkEnd(execTask, origin, time.Now(), detail, false, &updates); err != nil {
+						if err = MarkEnd(execTask, origin, time.Now(), detail, false); err != nil {
 							return errors.Wrap(err, "error marking execution task as ended")
 						}
 					}
 				}
-				return errors.WithStack(MarkEnd(t, origin, time.Now(), detail, false, &updates))
+				return errors.WithStack(MarkEnd(t, origin, time.Now(), detail, false))
 			} else {
 				panic(fmt.Sprintf("TryResetTask called with nil TaskEndDetail by %s", origin))
 			}
@@ -389,13 +392,10 @@ func doStepback(t *task.Task) error {
 }
 
 // MarkEnd updates the task as being finished, performs a stepback if necessary, and updates the build status
-func MarkEnd(t *task.Task, caller string, finishTime time.Time, detail *apimodels.TaskEndDetail,
-	deactivatePrevious bool, updates *StatusChanges) error {
-
+func MarkEnd(t *task.Task, caller string, finishTime time.Time, detail *apimodels.TaskEndDetail, deactivatePrevious bool) error {
 	if t.HasFailedTests() {
 		detail.Status = evergreen.TaskFailed
 	}
-
 	t.Details = *detail
 
 	if t.Status == detail.Status {
@@ -461,18 +461,6 @@ func MarkEnd(t *task.Task, caller string, finishTime time.Time, detail *apimodel
 		}
 	}
 
-	// update the build
-	if err := UpdateBuildAndVersionStatusForTask(t.Id, updates); err != nil {
-		return errors.Wrap(err, "Error updating build status")
-	}
-
-	isBuildCompleteStatus := updates.BuildNewStatus == evergreen.BuildFailed || updates.BuildNewStatus == evergreen.BuildSucceeded
-	if len(updates.BuildNewStatus) != 0 {
-		if updates.BuildComplete || !isBuildCompleteStatus {
-			event.LogBuildStateChangeEvent(t.BuildId, updates.BuildNewStatus)
-		}
-	}
-
 	return nil
 }
 
@@ -510,6 +498,23 @@ func updateMakespans(b *build.Build) error {
 
 	depPath := FindPredictedMakespan(tasks)
 	return errors.WithStack(b.UpdateMakespans(depPath.TotalTime, CalculateActualMakespan(tasks)))
+}
+
+func UpdateBuildAndVersionStatus(taskId string, updates *StatusChanges) error {
+	if err := UpdateBuildAndVersionStatusForTask(taskId, updates); err != nil {
+		return errors.Wrap(err, "Error updating build status")
+	}
+	isBuildCompleteStatus := updates.BuildNewStatus == evergreen.BuildFailed || updates.BuildNewStatus == evergreen.BuildSucceeded
+	if len(updates.BuildNewStatus) != 0 {
+		if updates.BuildComplete || !isBuildCompleteStatus {
+			t, err := task.FindOneId(taskId)
+			if err != nil {
+				return errors.Wrap(err, "Error finding task")
+			}
+			event.LogBuildStateChangeEvent(t.BuildId, updates.BuildNewStatus)
+		}
+	}
+	return nil
 }
 
 // UpdateBuildStatusForTask finds all the builds for a task and updates the
@@ -1007,19 +1012,18 @@ func ClearAndResetStrandedTask(h *host.Host) error {
 		Type:   "system",
 	}
 	if time.Since(t.ActivatedTime) > task.UnschedulableThreshold {
-		updates := StatusChanges{}
 		if t.DisplayOnly {
 			for _, etID := range t.ExecutionTasks {
 				execTask, err := task.FindOne(task.ById(etID))
 				if err != nil {
 					return errors.Wrap(err, "error finding execution task")
 				}
-				if err = MarkEnd(execTask, evergreen.MonitorPackage, time.Now(), detail, false, &updates); err != nil {
+				if err = MarkEnd(execTask, evergreen.MonitorPackage, time.Now(), detail, false); err != nil {
 					return errors.Wrap(err, "error marking execution task as ended")
 				}
 			}
 		}
-		return errors.WithStack(MarkEnd(t, evergreen.MonitorPackage, time.Now(), detail, false, &updates))
+		return errors.WithStack(MarkEnd(t, evergreen.MonitorPackage, time.Now(), detail, false))
 	}
 
 	if t.IsPartOfDisplay() {

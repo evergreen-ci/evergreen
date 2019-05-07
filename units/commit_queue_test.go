@@ -2,6 +2,7 @@ package units
 
 import (
 	"context"
+	"fmt"
 	"io/ioutil"
 	"path/filepath"
 	"testing"
@@ -59,7 +60,7 @@ func (s *commitQueueSuite) SetupSuite() {
 }
 
 func (s *commitQueueSuite) SetupTest() {
-	s.Require().NoError(db.ClearCollections(commitqueue.Collection, user.Collection))
+	s.Require().NoError(db.ClearCollections(commitqueue.Collection))
 
 	webhookInterface, err := github.ParseWebHook("pull_request", s.prBody)
 	s.NoError(err)
@@ -112,10 +113,9 @@ func (s *commitQueueSuite) TestSubscribeMerge() {
 	s.Equal(event.ResourceTypePatch, subscription.ResourceType)
 	target, ok := subscription.Subscriber.Target.(*event.GithubMergeSubscriber)
 	s.True(ok)
-	s.Equal(s.projectRef.Identifier, target.ProjectID)
 	s.Equal(s.projectRef.Owner, target.Owner)
 	s.Equal(s.projectRef.Repo, target.Repo)
-	s.Equal(s.pr.GetTitle(), target.CommitTitle)
+	s.Equal(s.pr.GetTitle()+fmt.Sprintf(" (#%d)", *s.pr.Number), target.CommitTitle)
 }
 
 func (s *commitQueueSuite) TestWritePatchInfo() {
@@ -192,4 +192,41 @@ func (s *commitQueueSuite) TestAddMergeTaskAndVariant() {
 	s.Equal("commit-queue-merge", project.BuildVariants[0].Name)
 	s.Require().Len(project.Tasks, 1)
 	s.Equal("merge-patch", project.Tasks[0].Name)
+}
+
+func (s *commitQueueSuite) TestSetDefaultNotification() {
+	s.NoError(db.ClearCollections(user.Collection))
+
+	// User with no configuration for notifications is signed up for email notifications
+	u1 := &user.DBUser{
+		Id: "u1",
+	}
+	s.NoError(u1.Insert())
+
+	s.NoError(setDefaultNotification(u1.Id))
+
+	u1, err := user.FindOneById(u1.Id)
+	s.NoError(err)
+
+	s.Equal(user.PreferenceEmail, u1.Settings.Notifications.CommitQueue)
+	s.NotEqual("", u1.Settings.Notifications.CommitQueueID)
+
+	// User that opted out is not affected
+	u2 := &user.DBUser{
+		Id: "u2",
+		Settings: user.UserSettings{
+			Notifications: user.NotificationPreferences{
+				CommitQueue: "none",
+			},
+		},
+	}
+	s.NoError(u2.Insert())
+
+	s.NoError(setDefaultNotification(u2.Id))
+
+	u2, err = user.FindOneById(u2.Id)
+	s.NoError(err)
+
+	s.EqualValues("none", u2.Settings.Notifications.CommitQueue)
+	s.Equal("", u2.Settings.Notifications.CommitQueueID)
 }

@@ -73,17 +73,28 @@ type Environment interface {
 	Client() *mongo.Client
 	DB() *mongo.Database
 
-	// The Environment provides access to two queues, a
-	// local-process level queue that is not persisted between
-	// runs and a remote shared queue that all processes can use
-	// to distribute work amongst the application tier
+	// The Environment provides access to several amboy queues for
+	// processing background work in the context of the Evergreen
+	// application.
 	//
-	// It also exposes a queue group, which permits dynamically
-	// generating queues at runtime.
+	// The LocalQueue provides process-local execution, to support
+	// reporting and cleanup operations local to a single instance
+	// of the evergreen application.  These queues are not
+	// durable, and job data are not available between application
+	// restarts.
 	//
-	// The LocalQueue is not durable, and results aren't available
-	// between process restarts. The RemoteQueue is not
-	// (generally) started by default.
+	// The RemoteQueue provides a single queue with many
+	// workers, distributed across all application servers. Each
+	// application dedicates a moderate pool of workers, and work
+	// enters this queue from periodic operations
+	// (e.g. "cron-like") as well as work that is submitted as a
+	// result of user requests. The service queue is
+	// mixed-workload.
+	//
+	// The RemoteQueueGroup provides logically distinct
+	// application queues in situations where we need to isolate
+	// workloads between queues. The queues are backed remotely, which
+	// means that their work persists between restarts.
 	LocalQueue() amboy.Queue
 	RemoteQueue() amboy.Queue
 	RemoteQueueGroup() amboy.QueueGroup
@@ -140,6 +151,7 @@ func NewEnvironment(ctx context.Context, confPath string, db *DBSettings) (Envir
 	}
 
 	if db != nil && confPath == "" {
+
 		if err := e.initDB(ctx, *db); err != nil {
 			return nil, errors.Wrap(err, "error configuring db")
 		}
@@ -323,9 +335,9 @@ func (e *envState) createGenerateTasksQueue(ctx context.Context) error {
 		Prefix:                    e.settings.Amboy.Name,
 		DefaultWorkers:            1,
 		Ordered:                   false,
-		BackgroundCreateFrequency: time.Hour,
-		PruneFrequency:            time.Hour,
-		TTL:                       time.Hour,
+		BackgroundCreateFrequency: 30 * time.Minute,
+		PruneFrequency:            10 * time.Minute,
+		TTL:                       5 * time.Minute,
 	}
 	remoteQueueGroup, err := queue.NewMongoRemoteSingleQueueGroup(ctx, remoteQueuGroupOpts, e.client, opts)
 	if err != nil {

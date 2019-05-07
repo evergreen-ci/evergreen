@@ -60,6 +60,8 @@ func (s *Subscriber) SetBSON(raw mgobson.Raw) error {
 	if len(temp.Type) == 0 {
 		return errors.New("could not find subscriber type")
 	}
+	s.Type = temp.Type
+
 	switch temp.Type {
 	case GithubPullRequestSubscriberType:
 		s.Target = &GithubPullRequestSubscriber{}
@@ -73,8 +75,8 @@ func (s *Subscriber) SetBSON(raw mgobson.Raw) error {
 	case GithubMergeSubscriberType:
 		s.Target = &GithubMergeSubscriber{}
 	case CommitQueueDequeueSubscriberType:
-		s.Target = &CommitQueueDequeueSubscriber{}
-
+		s.Target = nil
+		return nil
 	default:
 		return errors.Errorf("unknown subscriber type: '%s'", temp.Type)
 	}
@@ -82,8 +84,6 @@ func (s *Subscriber) SetBSON(raw mgobson.Raw) error {
 	if err := temp.Target.Unmarshal(s.Target); err != nil {
 		return errors.Wrap(err, "couldn't unmarshal subscriber info")
 	}
-
-	s.Type = temp.Type
 
 	return nil
 }
@@ -148,7 +148,6 @@ func (s *GithubPullRequestSubscriber) String() string {
 }
 
 type GithubMergeSubscriber struct {
-	ProjectID     string `bson:"project_id"`
 	Owner         string `bson:"owner"`
 	Repo          string `bson:"repo"`
 	PRNumber      int    `bson:"pr_number"`
@@ -159,8 +158,7 @@ type GithubMergeSubscriber struct {
 }
 
 func (s *GithubMergeSubscriber) String() string {
-	return fmt.Sprintf("%s-%s-%s-%d-%s-%s-%s-%s",
-		s.ProjectID,
+	return fmt.Sprintf("%s-%s-%d-%s-%s-%s-%s",
 		s.Owner,
 		s.Repo,
 		s.PRNumber,
@@ -178,22 +176,10 @@ func NewGithubMergeSubscriber(s GithubMergeSubscriber) Subscriber {
 	}
 }
 
-type CommitQueueDequeueSubscriber struct {
-	ProjectID string `bson:"project_id"`
-	Item      string `bson:"owner"`
-}
-
-func (s *CommitQueueDequeueSubscriber) String() string {
-	return fmt.Sprintf("%s-%s",
-		s.ProjectID,
-		s.Item,
-	)
-}
-
-func NewCommitQueueDequeueSubscriber(s CommitQueueDequeueSubscriber) Subscriber {
+func NewCommitQueueDequeueSubscriber() Subscriber {
 	return Subscriber{
 		Type:   CommitQueueDequeueSubscriberType,
-		Target: s,
+		Target: nil,
 	}
 }
 

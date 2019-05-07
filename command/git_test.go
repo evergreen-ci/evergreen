@@ -406,7 +406,7 @@ func (s *GitGetProjectSuite) TestBuildCommandForCLIMergeTests() {
 	cmds, err := c.buildCloneCommand(s.modelData2.TaskConfig)
 	s.NoError(err)
 	s.Len(cmds, 9)
-	s.True(strings.HasPrefix(cmds[8], fmt.Sprintf("git checkout %s", s.modelData2.TaskConfig.ProjectRef.Branch)))
+	s.True(strings.HasPrefix(cmds[8], fmt.Sprintf("git checkout '%s'", s.modelData2.TaskConfig.ProjectRef.Branch)))
 }
 
 func (s *GitGetProjectSuite) TestBuildModuleCommand() {

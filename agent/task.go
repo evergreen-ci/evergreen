@@ -142,9 +142,8 @@ func (a *Agent) runPreTaskCommands(ctx context.Context, tc *taskContext) error {
 	opts := runCommandsOptions{}
 
 	if tc.runGroupSetup {
+		var ctx2 context.Context
 		var cancel context.CancelFunc
-		ctx, cancel = a.withCallbackTimeout(ctx, tc)
-		defer cancel()
 		taskGroup, err := model.GetTaskGroup(tc.taskGroup, tc.taskConfig)
 		if err != nil {
 			tc.logger.Execution().Error(errors.Wrap(err, "error fetching task group for pre-group commands"))
@@ -152,7 +151,13 @@ func (a *Agent) runPreTaskCommands(ctx context.Context, tc *taskContext) error {
 		}
 		if taskGroup.SetupGroup != nil {
 			opts.shouldSetupFail = taskGroup.SetupGroupFailTask
-			err = a.runCommands(ctx, tc, taskGroup.SetupGroup.List(), opts)
+			if taskGroup.SetupGroupTimeoutSecs > 0 {
+				ctx2, cancel = context.WithTimeout(ctx, time.Duration(taskGroup.SetupGroupTimeoutSecs)*time.Second)
+			} else {
+				ctx2, cancel = a.withCallbackTimeout(ctx, tc)
+			}
+			defer cancel()
+			err = a.runCommands(ctx2, tc, taskGroup.SetupGroup.List(), opts)
 			if err != nil {
 				tc.logger.Execution().Error(errors.Wrap(err, "error running task setup group"))
 				if taskGroup.SetupGroupFailTask {

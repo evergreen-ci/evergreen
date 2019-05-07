@@ -328,9 +328,6 @@ mciModule.controller('ProjectCtrl', function($scope, $window, $http, $location, 
         if(!$scope.settingsFormData.commit_queue.patch_type) {
           $scope.settingsFormData.commit_queue.patch_type = $scope.validPatchTypes[0];
         }
-        if(!$scope.settingsFormData.commit_queue.status_action) {
-          $scope.settingsFormData.commit_queue.status_action = $scope.validStatusActions[0];
-        }
 
         $scope.subscriptions = _.map(data.subscriptions || [], function(v) {
           t = lookupTrigger($scope.triggers, v.trigger, v.resource_type);
@@ -717,7 +714,6 @@ mciModule.controller('ProjectCtrl', function($scope, $window, $http, $location, 
   $scope.show_build_break = true;
   $scope.validMergeMethods = ["squash", "merge", "rebase"];
   $scope.validPatchTypes = ["PR", "CLI"];
-  $scope.validStatusActions = ["github"];
 });
 
 mciModule.directive('adminNewProject', function() {

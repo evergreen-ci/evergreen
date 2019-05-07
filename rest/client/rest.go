@@ -738,7 +738,7 @@ func (c *communicatorImpl) EnqueueItem(ctx context.Context, projectID, item stri
 	}
 
 	positionResp := model.APICommitQueuePosition{}
-	if err = util.ReadJSONInto(resp.Body, &positionResp); err != nil {
+	if err = json.Unmarshal(bytes, &positionResp); err != nil {
 		return 0, errors.Wrap(err, "error parsing position response")
 	}
 
@@ -846,7 +846,7 @@ func (c *communicatorImpl) GetDockerLogs(ctx context.Context, hostID string, sta
 	}
 
 	info := requestInfo{
-		method:  post,
+		method:  get,
 		version: apiVersion2,
 		path:    path,
 	}

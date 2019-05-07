@@ -403,13 +403,19 @@ func makeCommonPayload(sub *event.Subscription, selectors []event.Selector,
 
 	case event.GithubMergeSubscriberType:
 		msg := &commitqueue.GithubMergePR{
-			PatchSucceeded: data.PastTenseStatus == evergreen.PatchSucceeded,
-			URL:            data.URL,
+			Status:    data.PastTenseStatus,
+			PatchID:   data.ID,
+			URL:       data.URL,
+			ProjectID: data.Project,
 		}
 		return msg, nil
 
 	case event.CommitQueueDequeueSubscriberType:
-		return &commitqueue.DequeueItem{}, nil
+		return &commitqueue.DequeueItem{
+			Status:    data.PastTenseStatus,
+			ProjectID: data.Project,
+			Item:      data.ID,
+		}, nil
 
 	case event.JIRAIssueSubscriberType:
 		return jiraIssue(data)

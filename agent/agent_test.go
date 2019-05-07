@@ -628,6 +628,43 @@ task_groups:
 	s.Equal("Finished running pre-task commands.", msgs[len(msgs)-1].Message)
 }
 
+func (s *AgentSuite) TestGroupPreGroupSetupTimeout() {
+	s.tc.taskGroup = "task_group_name"
+	s.tc.taskConfig = &model.TaskConfig{
+		BuildVariant: &model.BuildVariant{
+			Name: "buildvariant_id",
+		},
+		Task: &task.Task{
+			Id:        "task_id",
+			TaskGroup: "task_group_name",
+			Version:   versionId,
+		},
+		Project: &model.Project{},
+		WorkDir: s.tc.taskDirectory,
+	}
+	s.tc.taskGroup = "task_group_name"
+	projYml := `
+task_groups:
+- name: task_group_name
+  setup_group_timeout_secs: 3
+  setup_group_can_fail_task: true
+  setup_group:
+  - command: shell.exec
+    params:
+      script: "sleep 10"
+`
+	v := &model.Version{
+		Id:     versionId,
+		Config: projYml,
+	}
+	s.tc.taskConfig.Version = v
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	err := s.a.runPreTaskCommands(ctx, s.tc)
+	s.Error(err)
+	s.Contains(err.Error(), "context deadline exceeded")
+}
+
 func (s *AgentSuite) TestGroupPreGroupCommandsFail() {
 	s.tc.taskGroup = "task_group_name"
 	s.tc.taskConfig = &model.TaskConfig{
