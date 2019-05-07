@@ -331,7 +331,7 @@ func (m *ec2Manager) spawnOnDemandHost(ctx context.Context, h *host.Host, ec2Set
 	if h.Distro.BootstrapMethod == distro.BootstrapMethodUserData {
 		env := evergreen.GetEnvironment()
 		settings := env.Settings()
-		userData, err := makeMultipartUserData(ec2Settings.UserData, bootstrapScript(h.FetchJasperCommand(settings, "/usr/local/bin"), h.Distro.IsWindows()))
+		userData, err := makeMultipartUserData(ec2Settings.UserData, bootstrapScript(h.FetchJasperCommand(settings, "/usr/bin"), h.Distro.IsWindows()))
 		if err != nil {
 			return nil, errors.Wrap(err, "error creating user data with multiple parts")
 		}
