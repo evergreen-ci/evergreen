@@ -276,7 +276,7 @@ func (s *HostConnectorSuite) TestCheckHostSecret() {
 
 	code, err := s.ctx.CheckHostSecret(r)
 	s.Error(err)
-	s.Equal(http.StatusUnauthorized, code)
+	s.Equal(http.StatusBadRequest, code)
 
 	r.Header.Set(evergreen.HostSecretHeader, "abcdef")
 	code, err = s.ctx.CheckHostSecret(r)

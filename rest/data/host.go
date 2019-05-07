@@ -254,7 +254,7 @@ func (hc *MockHostConnector) TerminateHost(ctx context.Context, host *host.Host,
 
 func (hc *MockHostConnector) CheckHostSecret(r *http.Request) (int, error) {
 	if r.Header.Get(evergreen.HostSecretHeader) == "" {
-		return http.StatusUnauthorized, errors.New("Not authorized")
+		return http.StatusBadRequest, errors.New("Bad request")
 	}
 	return http.StatusOK, nil
 }
