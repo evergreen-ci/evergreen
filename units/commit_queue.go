@@ -73,6 +73,10 @@ func (j *commitQueueJob) Run(ctx context.Context) {
 		j.env = evergreen.GetEnvironment()
 	}
 
+	if err := initializeSenders(j.env); err != nil {
+		j.AddError(errors.Wrap(err, "can't initialize senders"))
+	}
+
 	// stop if degraded
 	flags, err := evergreen.GetServiceFlags()
 	if err != nil {
@@ -514,6 +518,20 @@ func addMergeTaskAndVariant(patchDoc *patch.Patch, project *model.Project) error
 		},
 	}
 
+	// Merge task depends on all commit queue tasks matching the alias
+	// (protect against a user removing tasks from the patch)
+	execPairs, _, err := project.BuildProjectTVPairsWithAlias(evergreen.CommitQueueAlias)
+	if err != nil {
+		return errors.Wrap(err, "can't get alias pairs")
+	}
+	dependencies := make([]model.TaskUnitDependency, 0, len(execPairs))
+	for _, pair := range execPairs {
+		dependencies = append(dependencies, model.TaskUnitDependency{
+			Name:    pair.TaskName,
+			Variant: pair.Variant,
+		})
+	}
+
 	mergeTask := model.ProjectTask{
 		Name: "merge-patch",
 		Commands: []model.PluginCommandConf{
@@ -533,12 +551,7 @@ func addMergeTaskAndVariant(patchDoc *patch.Patch, project *model.Project) error
 				},
 			},
 		},
-		DependsOn: []model.TaskUnitDependency{
-			{
-				Name:    "*",
-				Variant: "*",
-			},
-		},
+		DependsOn: dependencies,
 	}
 
 	project.BuildVariants = append(project.BuildVariants, mergeBuildVariant)
@@ -559,6 +572,15 @@ func addMergeTaskAndVariant(patchDoc *patch.Patch, project *model.Project) error
 	patchDoc.Tasks = append(patchDoc.Tasks, "merge-patch")
 
 	return nil
+}
+
+func initializeSenders(env evergreen.Environment) error {
+	_, err := env.GetSender(evergreen.SenderCommitQueueDequeue)
+	if err == nil {
+		return nil
+	}
+
+	return errors.Wrap(commitqueue.SetupEnv(env), "can't setup commit queue senders")
 }
 
 func setDefaultNotification(username string) error {

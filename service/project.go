@@ -319,7 +319,7 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 	if commitQueueParams.Enabled {
 		var projRef *model.ProjectRef
 		projRef, err = model.FindOneProjectRefWithCommitQueueByOwnerRepoAndBranch(responseRef.Owner, responseRef.Repo, responseRef.Branch)
-		if err != nil {
+		if err != nil && !adb.ResultsNotFound(err) {
 			uis.LoggedError(w, r, http.StatusInternalServerError, err)
 			return
 		}
