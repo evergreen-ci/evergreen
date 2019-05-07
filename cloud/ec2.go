@@ -192,16 +192,8 @@ func writeUserDataHeaders(writer io.Writer, boundary string) error {
 }
 
 // bootstrapScript returns the user data script that bootstraps the host.
-func bootstrapScript(fetchJasperCmd string, isWindows bool) string {
-	if isWindows {
-		return strings.Join([]string{
-			"<powershell>",
-			// Escape powershell single quotes.
-			fmt.Sprintf("bash.exe -c '%s'", strings.Replace(fetchJasperCmd, "'", "''", -1)),
-			"</powershell>",
-		}, "\r\n")
-	}
-	return strings.Join([]string{"#!/bin/bash", fetchJasperCmd}, "\n")
+func bootstrapScript(cmds string) string {
+	return strings.Join([]string{"#!/bin/bash", cmds}, "\n")
 }
 
 // writeUserDataPart creates a part in the user data multipart with the given
@@ -331,7 +323,13 @@ func (m *ec2Manager) spawnOnDemandHost(ctx context.Context, h *host.Host, ec2Set
 	if h.Distro.BootstrapMethod == distro.BootstrapMethodUserData {
 		env := evergreen.GetEnvironment()
 		settings := env.Settings()
-		userData, err := makeMultipartUserData(ec2Settings.UserData, bootstrapScript(h.FetchJasperCommand(settings, "/usr/bin"), h.Distro.IsWindows()))
+		var commands string
+		if h.Distro.IsWindows() {
+			commands = h.PowerShellFetchJasperCommand(settings.JasperConfig, "C:\\Windows")
+		} else {
+			commands = h.FetchJasperCommand(settings.JasperConfig, "/usr/local/bin")
+		}
+		userData, err := makeMultipartUserData(ec2Settings.UserData, commands)
 		if err != nil {
 			return nil, errors.Wrap(err, "error creating user data with multiple parts")
 		}

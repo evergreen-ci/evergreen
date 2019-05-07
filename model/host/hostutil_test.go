@@ -28,21 +28,63 @@ func TestCurlCommand(t *testing.T) {
 
 func TestFetchJasperCommand(t *testing.T) {
 	h := &Host{Distro: distro.Distro{Arch: distro.ArchLinuxAmd64}}
-	settings := &evergreen.Settings{
-		JasperConfig: evergreen.JasperConfig{
-			BinaryName:       "jasper_cli",
-			DownloadFileName: "download_file",
-			URL:              "www.example.com",
-			Version:          "abc123",
-		},
+	config := evergreen.JasperConfig{
+		BinaryName:       "jasper_cli",
+		DownloadFileName: "download_file",
+		URL:              "www.example.com",
+		Version:          "abc123",
 	}
 	outDir := "foo"
-	expectedParts := []string{"cd \"foo\"",
+	expectedParts := []string{
+		"cd \"foo\"",
 		"curl -LO 'www.example.com/download_file-linux-amd64-abc123.tar.gz'",
 		"tar xzf 'download_file-linux-amd64-abc123.tar.gz'",
 		"chmod +x 'jasper_cli'",
-		"rm -f 'download_file-linux-amd64-abc123.tar.gz'"}
-	cmd := h.FetchJasperCommand(settings, outDir)
+		"rm -f 'download_file-linux-amd64-abc123.tar.gz'",
+	}
+	cmd := h.FetchJasperCommand(config, outDir)
+	for _, expected := range expectedParts {
+		assert.Contains(t, cmd, expected)
+	}
+}
+
+func TestPowerShellFetchJasperCommand(t *testing.T) {
+	h := &Host{Distro: distro.Distro{Arch: distro.ArchWindowsAmd64}}
+	config := evergreen.JasperConfig{
+		BinaryName:       "jasper_cli",
+		DownloadFileName: "download_file",
+		URL:              "www.example.com",
+		Version:          "abc123",
+	}
+	outDir := "/foo/bar"
+	expectedParts := []string{
+		"cd \"\\foo\\bar\"",
+		"Invoke-RestMethod -Method Get -Uri 'www.example.com/download_file-windows-amd64-abc123.tar.gz' -OutFile '\\foo\\bar\\download_file-windows-amd64-abc123.tar.gz'",
+		"tar xzf 'download_file-windows-amd64-abc123.tar.gz'",
+		"rm -f 'download_file-windows-amd64-abc123.tar.gz'",
+	}
+	cmd := h.PowerShellFetchJasperCommand(config, outDir)
+	for _, expected := range expectedParts {
+		assert.Contains(t, cmd, expected)
+	}
+}
+
+func TestPowerShellFetchJasperCommandWindowsDirectory(t *testing.T) {
+	h := &Host{Distro: distro.Distro{Arch: distro.ArchWindowsAmd64}}
+	config := evergreen.JasperConfig{
+		BinaryName:       "jasper_cli",
+		DownloadFileName: "download_file",
+		URL:              "www.example.com",
+		Version:          "abc123",
+	}
+	outDir := "C:\\windows\\style\\dir"
+	expectedParts := []string{
+		"cd \"C:\\windows\\style\\dir\"",
+		"Invoke-RestMethod -Method Get -Uri 'www.example.com/download_file-windows-amd64-abc123.tar.gz' -OutFile '\\foo\\bar\\download_file-windows-amd64-abc123.tar.gz'",
+		"tar xzf 'download_file-windows-amd64-abc123.tar.gz'",
+		"rm -f 'download_file-windows-amd64-abc123.tar.gz'",
+	}
+	cmd := h.PowerShellFetchJasperCommand(config, outDir)
 	for _, expected := range expectedParts {
 		assert.Contains(t, cmd, expected)
 	}

@@ -304,7 +304,7 @@ func (j *setupHostJob) fetchJasper(ctx context.Context) error {
 
 // doFetchJasper runs the command over that downloads the Jasper binary.
 func (j *setupHostJob) doFetchJasper(ctx context.Context, sshOptions []string) error {
-	cmd := j.host.FetchJasperCommand(j.env.Settings(), "/usr/local/bin")
+	cmd := j.host.FetchJasperCommand(j.env.Settings().JasperConfig, "/usr/local/bin")
 	if logs, err := j.host.RunSSHCommand(ctx, cmd, sshOptions); err != nil {
 		return errors.Wrapf(err, "error fetching Jasper binary on remote host: command returned %s", logs)
 	}

@@ -158,20 +158,41 @@ func initSystemCommand() string {
 
 // FetchJasperCommand builds the command to download and extract the Jasper
 // binary into the directory dir.
-func (h *Host) FetchJasperCommand(settings *evergreen.Settings, dir string) string {
-	os, arch := h.Distro.Platform()
-	downloadFile := fmt.Sprintf("%s-%s-%s-%s.tar.gz", settings.JasperConfig.DownloadFileName, os, arch, settings.JasperConfig.Version)
-
-	fileName := settings.JasperConfig.BinaryName
-	if h.Distro.IsWindows() {
-		fileName = fileName + ".exe"
-	}
-
-	cmds := []string{fmt.Sprintf("cd \"%s\"", dir),
-		fmt.Sprintf("curl -LO '%s/%s'", settings.JasperConfig.URL, downloadFile),
-		fmt.Sprintf("tar xzf '%s'", downloadFile),
-		fmt.Sprintf("chmod +x '%s'", fileName),
-		fmt.Sprintf("rm -f '%s'", downloadFile),
+func (h *Host) FetchJasperCommand(config evergreen.JasperConfig, dir string) string {
+	downloadedFile := h.jasperDownloadedFileName(config)
+	extractedFile := h.jasperExtractedFileName(config)
+	cmds := []string{
+		fmt.Sprintf("cd \"%s\"", dir),
+		fmt.Sprintf("curl -LO '%s/%s'", config.URL, downloadedFile),
+		fmt.Sprintf("tar xzf '%s'", downloadedFile),
+		fmt.Sprintf("chmod +x '%s'", extractedFile),
+		fmt.Sprintf("rm -f '%s'", downloadedFile),
 	}
 	return strings.Join(cmds, " && ")
+}
+
+// PowerShellFetchJasperCommand builds the command to download and extract the
+// Jasper binary into the directory dir using PowerShell.
+func (h *Host) PowerShellFetchJasperCommand(config evergreen.JasperConfig, dir string) string {
+	dir = filepath.FromSlash(dir)
+	downloadedFile := h.jasperDownloadedFileName(config)
+	cmds := []string{
+		fmt.Sprintf("cd \"%s\"", dir),
+		fmt.Sprintf("Invoke-RestMethod -Method Get -Uri '%s/%s' -OutFile '%s\\%s'", config.URL, downloadedFile, dir, downloadedFile),
+		fmt.Sprintf("tar xzf '%s'", downloadedFile),
+		fmt.Sprintf("rm -f '%s'", downloadedFile),
+	}
+	return strings.Join(cmds, "\r\n")
+}
+
+func (h *Host) jasperDownloadedFileName(config evergreen.JasperConfig) string {
+	os, arch := h.Distro.Platform()
+	return fmt.Sprintf("%s-%s-%s-%s.tar.gz", config.DownloadFileName, os, arch, config.Version)
+}
+
+func (h *Host) jasperExtractedFileName(config evergreen.JasperConfig) string {
+	if h.Distro.IsWindows() {
+		return config.BinaryName + ".exe"
+	}
+	return config.BinaryName
 }
