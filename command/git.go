@@ -385,11 +385,12 @@ func (c *gitFetchProject) Execute(ctx context.Context,
 			dir:      moduleBase,
 			token:    c.Token,
 		}
-		if err := opts.validate(); err != nil {
+		if err = opts.validate(); err != nil {
 			return errors.Wrap(err, "could not validate options for cloning")
 		}
 
-		moduleCmds, err := c.buildModuleCloneCommand(conf, opts, revision, modulePatch)
+		var moduleCmds []string
+		moduleCmds, err = c.buildModuleCloneCommand(conf, opts, revision, modulePatch)
 		if err != nil {
 			return err
 		}
