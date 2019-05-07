@@ -453,6 +453,7 @@ func sendCommitQueueGithubStatus(env evergreen.Environment, pr *github.PullReque
 }
 
 func subscribeMerge(projectID, owner, repo, mergeMethod, patchID string, pr *github.PullRequest) error {
+	commitTitle := *pr.Title + fmt.Sprintf(" (#%s)", *pr.Number)
 	mergeSubscriber := event.NewGithubMergeSubscriber(event.GithubMergeSubscriber{
 		Owner:       owner,
 		Repo:        repo,
