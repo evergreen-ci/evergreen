@@ -55,16 +55,16 @@ type cloneOpts struct {
 func (opts cloneOpts) validate() error {
 	catcher := grip.NewBasicCatcher()
 	if opts.owner == "" {
-		catcher.Add(errors.Errorf("missing required owner"))
+		catcher.Errorf("missing required owner")
 	}
 	if opts.repo == "" {
-		catcher.Add(errors.Errorf("missing required repo"))
+		catcher.Errorf("missing required repo")
 	}
 	if opts.method != "" && distro.ValidateCloneMethod(opts.method) != nil {
-		catcher.Add(errors.Errorf("method of cloning '%s' is invalid - must use legacy SSH or OAuth", opts.method))
+		catcher.Errorf("method of cloning '%s' is invalid - must use legacy SSH or OAuth", opts.method)
 	}
 	if opts.method == distro.CloneMethodOAuth && opts.token == "" {
-		catcher.Add(errors.New("cannot clone using OAuth if token is not set"))
+		catcher.New("cannot clone using OAuth if token is not set")
 	}
 	return catcher.Resolve()
 }
@@ -107,7 +107,7 @@ func getCloneCommand(opts cloneOpts) ([]string, error) {
 func buildHTTPCloneCommand(opts cloneOpts) ([]string, error) {
 	urlLocation, err := url.Parse(opts.location)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "failed to parse URL from location")
 	}
 	clone := fmt.Sprintf("git clone https://%s@%s/%s/%s.git '%s'", opts.token, urlLocation.Host, opts.owner, opts.repo, opts.dir)
 	if opts.branch != "" {
@@ -203,7 +203,6 @@ func (c *gitFetchProject) buildCloneCommand(conf *model.TaskConfig, opts cloneOp
 	return gitCommands, nil
 }
 
-// func (c *gitFetchProject) buildModuleCloneCommand(cloneURI, owner, repo, moduleBase, ref string, conf *model.TaskConfig, modulePatch *patch.ModulePatch, oauthToken string) ([]string, error) {
 func (c *gitFetchProject) buildModuleCloneCommand(conf *model.TaskConfig, opts cloneOpts, ref string, modulePatch *patch.ModulePatch) ([]string, error) {
 	gitCommands := []string{
 		"set -o xtrace",
@@ -272,7 +271,7 @@ func (c *gitFetchProject) Execute(ctx context.Context,
 		token:  c.Token,
 	}
 	if err = opts.setLocation(); err != nil {
-		return err
+		return errors.Wrap(err, "failed to set location to clone from")
 	}
 	if err = opts.validate(); err != nil {
 		return errors.Wrap(err, "could not validate options for cloning")

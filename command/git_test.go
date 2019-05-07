@@ -248,7 +248,7 @@ func (s *GitGetProjectSuite) TestTokenScrubbedFromLogger() {
 			if strings.Contains(msg.Message, "Repository not found.") {
 				foundCloneErr = true
 			}
-			if strings.Contains(msg.Message, globalGitHubToken) {
+			if strings.Contains(msg.Message, token) {
 				s.FailNow("token was leaked")
 			}
 		}
