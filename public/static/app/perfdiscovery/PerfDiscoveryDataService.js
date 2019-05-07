@@ -1,5 +1,5 @@
 mciModule.factory('PerfDiscoveryDataService', function(
-  $q, $window, $filter, ApiV1, ApiV2, ApiTaskdata, BF, EVG, MPA_UI,
+  $q, $window, ApiV1, ApiV2, ApiTaskdata, BF, EVG, MPA_UI,
   PERF_DISCOVERY, Stitch, STITCH_CONFIG
 ) {
   var PD = PERF_DISCOVERY
@@ -141,18 +141,16 @@ mciModule.factory('PerfDiscoveryDataService', function(
     _.each(data, function(d) {
       // Skip empty items
       if (d == null) return
-      d.expanded = $filter("expandedMetricConverter")(d.expanded);
 
       // TODO add group validation instead of individual
       // Process current (revision) data
-      var currentData = $filter("mergePerfResults")(d.expanded, d.current);
-      if (currentData) {
+      if (d.current) {
         // Copy storageEngine to the context
-        d.ctx.storageEngine = (currentData.data && currentData.data.storageEngine) || '(none)';
+        d.ctx.storageEngine = d.current.data.storageEngine || '(none)'
 
-        _.each(currentData.data.results, function(result) {
-          processItem(result, now, d.ctx);
-        });
+        _.each(d.current.data.results, function(result) {
+          processItem(result, now, d.ctx)
+        })
       }
 
       // Process baseline data
@@ -360,10 +358,8 @@ mciModule.factory('PerfDiscoveryDataService', function(
                 current: data,
                 history: ApiTaskdata.getTaskHistory(task.taskId, 'perf')
                   .then(respData, function(e) { return [] }),
-                baseline: ApiTaskdata.getTaskById(task.taskId, 'perf')
+                baseline: ApiTaskdata.getTaskById(baseline.taskId, 'perf')
                   .then(respData, function(e) { return null }),
-                expanded: ApiTaskdata.getExpandedTaskById(task.taskId)
-                  .then(respData, function(e) { return null })
               })
             } else {
               return null
