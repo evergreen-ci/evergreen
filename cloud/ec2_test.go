@@ -960,11 +960,12 @@ func (s *EC2Suite) TestWriteUserDataPart() {
 	s.Equal(1, strings.Count(res, boundary))
 }
 
-func (s *EC2Suite) TestWriteUserDataPartInvalidFormat() {
+func (s *EC2Suite) TestWriteUserDataPartUnrecognizedFormat() {
 	buf := &strings.Builder{}
 	mimeWriter := multipart.NewWriter(buf)
-	userData := "this is an invalid user data format"
-	s.Error(writeUserDataPart(mimeWriter, userData, "foo.txt"))
+	userData := "this user data has no cloud-init directive"
+	s.NoError(writeUserDataPart(mimeWriter, userData, "foo.txt"))
+	s.Contains(buf.String(), "Content-Type: text/x-shellscript")
 }
 
 func (s *EC2Suite) TestWriteUserDataPartEmptyFileName() {
@@ -992,4 +993,16 @@ func (s *EC2Suite) TestMakeMultipartUserData() {
 	res, err = makeMultipartUserData(noUserData, noUserData)
 	s.NoError(err)
 	s.NotEmpty(res)
+}
+
+func (s *EC2Suite) TestBootstrapScriptAddsDirectives() {
+	cmd := "echo foo"
+	script := bootstrapScript(cmd, false)
+	s.True(strings.HasPrefix(script, "#!/bin/bash"))
+	s.Contains(script, cmd)
+
+	script = bootstrapScript(cmd, true)
+	s.True(strings.HasPrefix(script, "<powershell>"))
+	s.True(strings.HasSuffix(script, "</powershell>"))
+	s.Contains(script, cmd)
 }
