@@ -1,34 +1,24 @@
 mciModule.controller('PerfBBRejectsCtrl', function (
-  $scope, $window, EvgUiGridUtil, EvgUtil, FORMAT, MDBQueryAdaptor, uiGridConstants,
-  STITCH_CONFIG, Stitch, Settings, $timeout, $compile, $log, WhitelistDataService, $q, RejectState, $mdDialog
+  $scope, $window, EvgUiGridUtil, EvgUtil, FORMAT, MDBQueryAdaptor, uiGridConstants, confirmDialogFactory,
+  STITCH_CONFIG, Stitch, Settings, $timeout, $compile, $log, WhitelistDataService, $q, RejectState, Lock
 ) {
   // Perf Rejects View-Model.
   const vm = this;
   const project = window.project;
   const LIMIT = 2000;
 
-  vm.locked = false;
+  vm.lock = new Lock();
 
-  $scope.lock = () => vm.locked = true;
-  $scope.unlock = () => vm.locked = false;
-  $scope.locked = () => vm.locked;
-
-  const  addDisabled = () => $scope.locked() || vm.selection.length === 0 || _.all(vm.selection, (doc)=> doc.whitelisted);
-  const  removeDisabled = ()  => $scope.locked() || vm.selection.length === 0 || _.all(vm.selection, (doc)=> !doc.whitelisted);
-
-  function confirmMarkAction(items, action) {
-    return $mdDialog.show(
-      $mdDialog.confirm()
-        .ok('Ok')
-        .cancel('Cancel')
-        .title('Confirm')
-        .textContent(action + ' ' + items.length + ' item(s)?')
-    );
-  }
+  $scope.lock = vm.lock;
+  const confirmAdd = confirmDialogFactory('Add whitelisting for');
+  const confirmRemove = confirmDialogFactory('Remove whitelisting for');
+  const  addDisabled = () => $scope.lock.locked || vm.selection.length === 0 || _.all(vm.selection, (doc)=> doc.whitelisted);
+  const  removeDisabled = ()  => $scope.lock.locked || vm.selection.length === 0 || _.all(vm.selection, (doc)=> !doc.whitelisted);
 
   const updateToWhitelist = function(items, func, action, mark) {
-    $scope.lock();
-    confirmMarkAction(items, action + ' whitelisting for').
+    $scope.lock.lock();
+    const confirm = (action === 'Add' ? confirmAdd : confirmRemove);
+    confirm(items).
       then(() => {
         const task_revisions = _.chain(items).
                                  map((item) => _.pick(item, 'revision', 'project', 'variant', 'task', 'order')).
@@ -47,7 +37,7 @@ mciModule.controller('PerfBBRejectsCtrl', function (
 
       // Call vm.reload() to do a full reload from the server.
     }).finally(() => {
-      $scope.unlock();
+      $scope.lock.unlock();
     });
 
   };
@@ -408,4 +398,23 @@ mciModule.controller('PerfBBRejectsCtrl', function (
     };
   }
   return RejectState;
+}).factory('Lock', function() {
+  class Lock {
+    constructor(initial) {
+      this._locked = !!initial;
+    }
+
+    get locked() {
+      return this._locked;
+    }
+
+    lock() {
+      this._locked = true;
+    };
+
+    unlock() {
+      this._locked = false;
+    };
+  }
+  return Lock;
 });

@@ -53,8 +53,18 @@ mciModule.factory('OutliersDataService', function($log, Stitch, STITCH_CONFIG) {
       });
   };
 
+  const aggregateQ = (pipeline) => {
+    return Stitch.use(STITCH_CONFIG.PERF).query(function (db) {
+      return db
+        .db(STITCH_CONFIG.PERF.DB_PERF)
+        .collection(STITCH_CONFIG.PERF.COLL_OUTLIERS)
+        .aggregate(pipeline);
+    });
+  };
+
   return {
     getOutliersQ: getOutliersQ,
-    getMarkedOutliersQ: getMarkedOutliersQ
+    getMarkedOutliersQ: getMarkedOutliersQ,
+    aggregateQ: aggregateQ,
   }
 });
