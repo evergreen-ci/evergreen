@@ -433,7 +433,7 @@ filters.common.filter('conditional', function() {
         threads = test.info.args.thread_level;
       } else {
         _.each(test.rollups.stats, function (stat) {
-          if (stat.name === "avgWorkers") {
+          if (stat.name === "WorkersMin") {
             threads = stat.val;
           }
         });
