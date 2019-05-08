@@ -51,15 +51,15 @@ type UIServer struct {
 
 // ViewData contains common data that is provided to all Evergreen pages
 type ViewData struct {
-	User              *user.DBUser
-	ProjectData       projectContext
-	Project           model.Project
-	Flashes           []interface{}
-	Banner            string
-	BannerTheme       string
-	Csrf              htmlTemplate.HTML
-	JiraHost          string
-	GoogleAnalyticsID string
+	User        *user.DBUser
+	ProjectData projectContext
+	Project     model.Project
+	Flashes     []interface{}
+	Banner      string
+	BannerTheme string
+	Csrf        htmlTemplate.HTML
+	JiraHost    string
+	Bugsnag     string
 }
 
 func NewUIServer(settings *evergreen.Settings, queue amboy.Queue, home string, fo TemplateFunctionOptions) (*UIServer, error) {
@@ -194,7 +194,7 @@ func (uis *UIServer) GetCommonViewData(w http.ResponseWriter, r *http.Request, n
 	viewData.Flashes = PopFlashes(uis.CookieStore, r, w)
 	viewData.Csrf = csrf.TemplateField(r)
 	viewData.JiraHost = uis.Settings.Jira.Host
-	viewData.GoogleAnalyticsID = settings.GoogleAnalyticsID
+	viewData.Bugsnag = settings.Bugsnag
 	return viewData
 }
 
