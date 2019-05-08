@@ -439,7 +439,6 @@ func (j *setupHostJob) provisionHost(ctx context.Context, h *host.Host, settings
 	err := j.runHostSetup(ctx, h, settings)
 	if err != nil {
 		if shouldRetryProvisioning(h) {
-			// kim: QUESTION: how does this get configured to send to Splunk? Maybe runner should do the same thing.
 			grip.Debug(message.Fields{
 				"host":     h.Id,
 				"attempts": h.ProvisionAttempts,

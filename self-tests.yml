@@ -123,8 +123,7 @@ variables:
         vars:
           target: set-smoke-vars
       - func: run-make
-        vars:
-          target: "${task_name}"
+        vars: { target: "${task_name}" }
   - &run-smoke-test-with-client-url
     name: smoke
     commands:
