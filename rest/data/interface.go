@@ -15,6 +15,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
+	"github.com/evergreen-ci/evergreen/model/manifest"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/stats"
 	"github.com/evergreen-ci/evergreen/model/task"
@@ -62,6 +63,9 @@ type Connector interface {
 
 	// FindBuildById is a method to find the build matching the same BuildId.
 	FindBuildById(string) (*build.Build, error)
+	// GetManifestByTask is a method to get the manifest for the given task.
+	GetManifestByTask(string) (*manifest.Manifest, error)
+
 	// SetBuildPriority and SetBuildActivated change the status of the input build
 	SetBuildPriority(string, int64) error
 	SetBuildActivated(string, string, bool) error

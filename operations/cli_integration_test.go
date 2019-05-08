@@ -1,6 +1,7 @@
 package operations
 
 import (
+	"context"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -130,9 +131,13 @@ func TestCLIFetchSource(t *testing.T) {
 			tasks:       []string{"all"},
 			finalize:    false,
 		}
+		ctx, cancel := context.WithCancel(context.Background())
+		defer cancel()
 
 		client, err := NewClientSettings(testSetup.settingsFilePath)
 		So(err, ShouldBeNil)
+		comm := client.GetRestCommunicator(ctx)
+		defer comm.Close()
 		ac, rc, err := client.getLegacyClients()
 		So(err, ShouldBeNil)
 
@@ -170,7 +175,7 @@ func TestCLIFetchSource(t *testing.T) {
 		So(exists, ShouldBeFalse)
 		So(err, ShouldBeNil)
 
-		err = fetchSource(ac, rc, "", testTask.Id, false)
+		err = fetchSource(ctx, ac, rc, comm, "", testTask.Id, false)
 		So(err, ShouldBeNil)
 
 		fileStat, err := os.Stat("./source-patch-1_sample/README.md")
