@@ -55,7 +55,7 @@ type APIAdminSettings struct {
 	Credentials        map[string]string                 `json:"credentials,omitempty"`
 	JasperConfig       *APIJasperConfig                  `json:"jasper,omitempty"`
 	Expansions         map[string]string                 `json:"expansions,omitempty"`
-	GoogleAnalyticsID  APIString                         `json:"google_analytics,omitempty"`
+	Bugsnag            APIString                         `json:"bugsnag,omitempty"`
 	GithubPRCreatorOrg APIString                         `json:"github_pr_creator_org,omitempty"`
 	HostInit           *APIHostInitConfig                `json:"hostinit,omitempty"`
 	Jira               *APIJiraConfig                    `json:"jira,omitempty"`
@@ -110,7 +110,7 @@ func (as *APIAdminSettings) BuildFromService(h interface{}) error {
 		as.BannerTheme = &tmp
 		as.ClientBinariesDir = &v.ClientBinariesDir
 		as.ConfigDir = &v.ConfigDir
-		as.GoogleAnalyticsID = ToAPIString(v.GoogleAnalyticsID)
+		as.Bugsnag = ToAPIString(v.Bugsnag)
 		as.GithubPRCreatorOrg = &v.GithubPRCreatorOrg
 		as.LogPath = &v.LogPath
 		as.Plugins = v.Plugins
@@ -149,7 +149,7 @@ func (as *APIAdminSettings) ToService() (interface{}, error) {
 	if as.ConfigDir != nil {
 		settings.ConfigDir = *as.ConfigDir
 	}
-	settings.GoogleAnalyticsID = FromAPIString(as.GoogleAnalyticsID)
+	settings.Bugsnag = FromAPIString(as.Bugsnag)
 	if as.GithubPRCreatorOrg != nil {
 		settings.GithubPRCreatorOrg = *as.GithubPRCreatorOrg
 	}
