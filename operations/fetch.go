@@ -22,6 +22,7 @@ import (
 	"github.com/evergreen-ci/evergreen/service"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 	"github.com/urfave/cli"
 )
@@ -155,7 +156,13 @@ func fetchSource(ctx context.Context, ac, rc *legacyClient, comm client.Communic
 	}
 	mfest, err := comm.GetManifestByTask(ctx, taskId)
 	if err != nil && !strings.Contains(err.Error(), "no manifest found") {
-		return errors.Wrapf(err, "problem getting manifest with task `%s`", taskId)
+		grip.Warning(message.WrapError(err, message.Fields{
+			"message":       "problem getting manifest",
+			"task":          taskId,
+			"task_version":  task.Version,
+			"task_project":  task.Project,
+			"task_revision": task.Revision,
+		}))
 	}
 
 	cloneDir := util.CleanForPath(fmt.Sprintf("source-%v", task.Project))
@@ -270,9 +277,6 @@ func cloneSource(task *service.RestTask, project *model.ProjectRef, config *mode
 	if variant == nil {
 		return errors.Errorf("couldn't find build variant '%v' in config", task.BuildVariant)
 	}
-	if mfest == nil && len(variant.Modules) != 0 { // manifest only required if variant has modules
-		return errors.Errorf("couldn't find manifest for version '%s'", task.Version)
-	}
 
 	for _, moduleName := range variant.Modules {
 		module, err := config.GetModuleByName(moduleName)
@@ -280,9 +284,11 @@ func cloneSource(task *service.RestTask, project *model.ProjectRef, config *mode
 			return errors.Errorf("variant refers to a module '%v' that doesn't exist.", moduleName)
 		}
 		revision := module.Branch
-		mfestModule, ok := mfest.Modules[moduleName]
-		if ok && mfestModule.Revision != "" {
-			revision = mfestModule.Revision //
+		if mfest != nil {
+			mfestModule, ok := mfest.Modules[moduleName]
+			if ok && mfestModule.Revision != "" {
+				revision = mfestModule.Revision
+			}
 		}
 
 		moduleBase := filepath.Join(cloneDir, module.Prefix, module.Name)

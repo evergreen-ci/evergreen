@@ -115,7 +115,7 @@ func AttachHandler(app *gimlet.APIApp, opts HandlerOpts) {
 	app.AddRoute("/tasks/{task_id}/abort").Version(2).Post().Wrap(checkUser).RouteHandler(makeTaskAbortHandler(sc))
 	app.AddRoute("/tasks/{task_id}/generate").Version(2).Post().RouteHandler(makeGenerateTasksHandler(sc, opts.QueueGroup))
 	app.AddRoute("/tasks/{task_id}/generate").Version(2).Get().RouteHandler(makeGenerateTasksPollHandler(sc, opts.QueueGroup))
-	app.AddRoute("/tasks/{task_id}/manifest").Version(2).Get().Wrap(checkUser).RouteHandler(makeGetManifestHandler(sc)).Get()
+	app.AddRoute("/tasks/{task_id}/manifest").Version(2).Get().RouteHandler(makeGetManifestHandler(sc)).Get()
 	app.AddRoute("/tasks/{task_id}/restart").Version(2).Post().Wrap(addProject, checkUser).RouteHandler(makeTaskRestartHandler(sc))
 	app.AddRoute("/tasks/{task_id}/tests").Version(2).Get().Wrap(addProject).RouteHandler(makeFetchTestsForTask(sc))
 	app.AddRoute("/user/settings").Version(2).Get().Wrap(checkUser).RouteHandler(makeFetchUserConfig())
