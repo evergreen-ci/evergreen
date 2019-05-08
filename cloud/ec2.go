@@ -191,11 +191,6 @@ func writeUserDataHeaders(writer io.Writer, boundary string) error {
 	return nil
 }
 
-// bootstrapScript returns the user data script that bootstraps the host.
-func bootstrapScript(cmds string) string {
-	return strings.Join([]string{"#!/bin/bash", cmds}, "\n")
-}
-
 // writeUserDataPart creates a part in the user data multipart with the given
 // contents and name.
 func writeUserDataPart(writer *multipart.Writer, userDataPart, fileName string) error {
@@ -260,23 +255,20 @@ func userDataContentType(userData string) (string, error) {
 	return "", errors.Errorf("user data format is not recognized from first line: '%s'", firstLine)
 }
 
-// makeMultipartUserData returns user data in a multipart MIME format with user data
-// to bootstrap the machine as well as the custom user data given by the
-// Evergreen user.
-func makeMultipartUserData(bootstrapCommand, customUserData string) (string, error) {
+// makeMultipartUserData returns user data in a multipart MIME format with the
+// given files and their content.
+func makeMultipartUserData(files map[string]string) (string, error) {
 	partsBuf := &strings.Builder{}
 	parts := multipart.NewWriter(partsBuf)
 
 	if err := writeUserDataHeaders(partsBuf, parts.Boundary()); err != nil {
-		return "", errors.Wrap(err, "error writing multipart MIME headers")
+		return "", errors.Wrap(err, "error writing MIME headers")
 	}
 
-	if err := writeUserDataPart(parts, bootstrapCommand, "bootstrap.txt"); err != nil {
-		return "", errors.Wrap(err, "error writing bootstrap instructions into user data")
-	}
-
-	if err := writeUserDataPart(parts, customUserData, "user-data.txt"); err != nil {
-		return "", errors.Wrap(err, "error writing custom user data")
+	for fileName, content := range files {
+		if err := writeUserDataPart(parts, content, fileName); err != nil {
+			return "", errors.Wrapf(err, "error writing user data '%s'", fileName)
+		}
 	}
 
 	if err := parts.Close(); err != nil {
@@ -284,6 +276,23 @@ func makeMultipartUserData(bootstrapCommand, customUserData string) (string, err
 	}
 
 	return partsBuf.String(), nil
+}
+
+// bootstrapScript creates the user data script that bootstraps the host.
+func bootstrapScript(h *host.Host, config evergreen.JasperConfig, dir string) string {
+	if h.Distro.IsWindows() {
+		cmds := h.FetchJasperCommandWithPath(config, dir, "/bin")
+		// PowerShell nested quotation marks are handled by using two quotation
+		// marks.
+		quotedCmds := strings.Replace(cmds, "'", "''", -1)
+		commands := []string{
+			"<powershell>",
+			fmt.Sprintf("C:\\cygwin\\bin\\bash.exe -c '%s'", quotedCmds),
+			"</powershell>",
+		}
+		return strings.Join(commands, "\r\n")
+	}
+	return strings.Join([]string{"#!/bin/bash", h.FetchJasperCommand(config, dir)}, "\n")
 }
 
 func (m *ec2Manager) spawnOnDemandHost(ctx context.Context, h *host.Host, ec2Settings *EC2ProviderSettings, blockDevices []*ec2.BlockDeviceMapping) ([]*string, error) {
@@ -323,13 +332,11 @@ func (m *ec2Manager) spawnOnDemandHost(ctx context.Context, h *host.Host, ec2Set
 	if h.Distro.BootstrapMethod == distro.BootstrapMethodUserData {
 		env := evergreen.GetEnvironment()
 		settings := env.Settings()
-		var commands string
-		if h.Distro.IsWindows() {
-			commands = h.PowerShellFetchJasperCommand(settings.JasperConfig, "C:\\Windows")
-		} else {
-			commands = h.FetchJasperCommand(settings.JasperConfig, "/usr/local/bin")
-		}
-		userData, err := makeMultipartUserData(ec2Settings.UserData, commands)
+		commands := bootstrapScript(h, settings.JasperConfig, "/usr/local/bin")
+		userData, err := makeMultipartUserData(map[string]string{
+			"bootstrap.txt": commands,
+			"user-data.txt": ec2Settings.UserData,
+		})
 		if err != nil {
 			return nil, errors.Wrap(err, "error creating user data with multiple parts")
 		}

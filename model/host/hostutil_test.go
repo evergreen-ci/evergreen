@@ -35,20 +35,18 @@ func TestFetchJasperCommand(t *testing.T) {
 		Version:          "abc123",
 	}
 	outDir := "foo"
-	expectedParts := []string{
-		"cd \"foo\"",
+	expectedCmds := []string{"cd \"foo\"",
 		"curl -LO 'www.example.com/download_file-linux-amd64-abc123.tar.gz'",
 		"tar xzf 'download_file-linux-amd64-abc123.tar.gz'",
 		"chmod +x 'jasper_cli'",
-		"rm -f 'download_file-linux-amd64-abc123.tar.gz'",
-	}
-	cmd := h.FetchJasperCommand(config, outDir)
-	for _, expected := range expectedParts {
-		assert.Contains(t, cmd, expected)
+		"rm -f 'download_file-linux-amd64-abc123.tar.gz'"}
+	cmds := h.FetchJasperCommand(config, outDir)
+	for _, expectedCmd := range expectedCmds {
+		assert.Contains(t, cmds, expectedCmd)
 	}
 }
 
-func TestPowerShellFetchJasperCommand(t *testing.T) {
+func TestFetchJasperCommandWithPath(t *testing.T) {
 	h := &Host{Distro: distro.Distro{Arch: distro.ArchWindowsAmd64}}
 	config := evergreen.JasperConfig{
 		BinaryName:       "jasper_cli",
@@ -56,37 +54,17 @@ func TestPowerShellFetchJasperCommand(t *testing.T) {
 		URL:              "www.example.com",
 		Version:          "abc123",
 	}
-	outDir := "/foo/bar"
-	expectedParts := []string{
-		"cd \"\\foo\\bar\"",
-		"Invoke-RestMethod -Method Get -Uri 'www.example.com/download_file-windows-amd64-abc123.tar.gz' -OutFile '\\foo\\bar\\download_file-windows-amd64-abc123.tar.gz'",
-		"tar xzf 'download_file-windows-amd64-abc123.tar.gz'",
-		"rm -f 'download_file-windows-amd64-abc123.tar.gz'",
-	}
-	cmd := h.PowerShellFetchJasperCommand(config, outDir)
-	for _, expected := range expectedParts {
-		assert.Contains(t, cmd, expected)
-	}
-}
-
-func TestPowerShellFetchJasperCommandWindowsDirectory(t *testing.T) {
-	h := &Host{Distro: distro.Distro{Arch: distro.ArchWindowsAmd64}}
-	config := evergreen.JasperConfig{
-		BinaryName:       "jasper_cli",
-		DownloadFileName: "download_file",
-		URL:              "www.example.com",
-		Version:          "abc123",
-	}
-	outDir := "C:\\windows\\style\\dir"
-	expectedParts := []string{
-		"cd \"C:\\windows\\style\\dir\"",
-		"Invoke-RestMethod -Method Get -Uri 'www.example.com/download_file-windows-amd64-abc123.tar.gz' -OutFile '\\foo\\bar\\download_file-windows-amd64-abc123.tar.gz'",
-		"tar xzf 'download_file-windows-amd64-abc123.tar.gz'",
-		"rm -f 'download_file-windows-amd64-abc123.tar.gz'",
-	}
-	cmd := h.PowerShellFetchJasperCommand(config, outDir)
-	for _, expected := range expectedParts {
-		assert.Contains(t, cmd, expected)
+	outDir := "/foo"
+	path := "/bar"
+	expectedCmds := []string{"cd \"/foo/bar\"",
+		"PATH=/bar cd \"foo\"",
+		"PATH=/bar curl -LO 'www.example.com/download_file-linux-amd64-abc123.tar.gz'",
+		"PATH=/bar tar xzf 'download_file-linux-amd64-abc123.tar.gz'",
+		"PATH=/bar chmod +x 'jasper_cli'",
+		"PATH=/bar rm -f 'download_file-linux-amd64-abc123.tar.gz'"}
+	cmds := h.FetchJasperCommandWithPath(config, outDir, path)
+	for _, expectedCmd := range expectedCmds {
+		assert.Contains(t, cmds, expectedCmd)
 	}
 }
 

@@ -156,33 +156,32 @@ func initSystemCommand() string {
 	`
 }
 
-// FetchJasperCommand builds the command to download and extract the Jasper
+// FetchJasperCommands builds the command to download and extract the Jasper
 // binary into the directory dir.
 func (h *Host) FetchJasperCommand(config evergreen.JasperConfig, dir string) string {
+	return strings.Join(h.fetchJasperCommands(config, dir), " && ")
+}
+
+func (h *Host) fetchJasperCommands(config evergreen.JasperConfig, dir string) []string {
 	downloadedFile := h.jasperDownloadedFileName(config)
 	extractedFile := h.jasperExtractedFileName(config)
-	cmds := []string{
+	return []string{
 		fmt.Sprintf("cd \"%s\"", dir),
 		fmt.Sprintf("curl -LO '%s/%s'", config.URL, downloadedFile),
 		fmt.Sprintf("tar xzf '%s'", downloadedFile),
 		fmt.Sprintf("chmod +x '%s'", extractedFile),
 		fmt.Sprintf("rm -f '%s'", downloadedFile),
 	}
-	return strings.Join(cmds, " && ")
 }
 
-// PowerShellFetchJasperCommand builds the command to download and extract the
-// Jasper binary into the directory dir using PowerShell.
-func (h *Host) PowerShellFetchJasperCommand(config evergreen.JasperConfig, dir string) string {
-	dir = filepath.FromSlash(dir)
-	downloadedFile := h.jasperDownloadedFileName(config)
-	cmds := []string{
-		fmt.Sprintf("cd \"%s\"", dir),
-		fmt.Sprintf("Invoke-RestMethod -Method Get -Uri '%s/%s' -OutFile '%s\\%s'", config.URL, downloadedFile, dir, downloadedFile),
-		fmt.Sprintf("tar xzf '%s'", downloadedFile),
-		fmt.Sprintf("rm -f '%s'", downloadedFile),
+// FetchJasperCommandWithPath is the same as FetchJasperCommand but sets the
+// PATH variable to path for each command.
+func (h *Host) FetchJasperCommandWithPath(config evergreen.JasperConfig, dir, path string) string {
+	cmds := h.fetchJasperCommands(config, dir)
+	for i := range cmds {
+		cmds[i] = fmt.Sprintf("PATH=%s, %s", path, cmds[i])
 	}
-	return strings.Join(cmds, "\r\n")
+	return strings.Join(cmds, " && ")
 }
 
 func (h *Host) jasperDownloadedFileName(config evergreen.JasperConfig) string {

@@ -960,7 +960,7 @@ func (s *EC2Suite) TestWriteUserDataPart() {
 	s.Equal(1, strings.Count(res, boundary))
 }
 
-func (s *EC2Suite) TestWriteUserDataPartUnrecognizedFormat() {
+func (s *EC2Suite) TestWriteUserDataPartDefaultForUnrecognizedFormat() {
 	buf := &strings.Builder{}
 	mimeWriter := multipart.NewWriter(buf)
 	userData := "this user data has no cloud-init directive"
@@ -978,31 +978,49 @@ func (s *EC2Suite) TestWriteUserDataPartEmptyFileName() {
 func (s *EC2Suite) TestMakeMultipartUserData() {
 	userData := "#!/bin/bash\necho 'foobar'"
 	noUserData := ""
-	res, err := makeMultipartUserData(userData, userData)
+	fileOne := "1.txt"
+	fileTwo := "2.txt"
+
+	res, err := makeMultipartUserData(map[string]string{})
 	s.NoError(err)
+	s.NotEmpty(res)
+
+	res, err = makeMultipartUserData(map[string]string{
+		fileOne: noUserData,
+	})
+	s.NoError(err)
+	s.NotEmpty(res)
+	s.False(strings.Contains(res, fileOne))
+
+	res, err = makeMultipartUserData(map[string]string{
+		fileOne: userData,
+		fileTwo: userData,
+	})
+	s.NoError(err)
+	s.Contains(res, fileOne)
+	s.Contains(res, fileTwo)
+	s.Equal(strings.Count(res, userData), 2)
+
+	res, err = makeMultipartUserData(map[string]string{
+		fileOne: noUserData,
+		fileTwo: userData,
+	})
+	s.NoError(err)
+	s.NotEmpty(res)
+	s.False(strings.Contains(res, fileOne))
+	s.Contains(res, fileTwo)
 	s.Contains(res, userData)
-
-	res, err = makeMultipartUserData(noUserData, userData)
-	s.NoError(err)
-	s.NotEmpty(res)
-
-	res, err = makeMultipartUserData(userData, noUserData)
-	s.NoError(err)
-	s.NotEmpty(res)
-
-	res, err = makeMultipartUserData(noUserData, noUserData)
-	s.NoError(err)
-	s.NotEmpty(res)
 }
 
 func (s *EC2Suite) TestBootstrapScriptAddsDirectives() {
-	cmd := "echo foo"
-	script := bootstrapScript(cmd, false)
+	h := &host.Host{Distro: distro.Distro{Arch: distro.ArchLinuxAmd64}}
+	config := evergreen.JasperConfig{}
+	dir := "/usr/local/bin"
+	script := bootstrapScript(h, config, dir)
 	s.True(strings.HasPrefix(script, "#!/bin/bash"))
-	s.Contains(script, cmd)
 
-	script = bootstrapScript(cmd, true)
+	h.Distro.Arch = distro.ArchWindowsAmd64
+	script = bootstrapScript(h, config, dir)
 	s.True(strings.HasPrefix(script, "<powershell>"))
 	s.True(strings.HasSuffix(script, "</powershell>"))
-	s.Contains(script, cmd)
 }
