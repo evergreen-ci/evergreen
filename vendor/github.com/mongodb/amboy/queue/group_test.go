@@ -173,8 +173,9 @@ func TestQueueGroupConstructor(t *testing.T) {
 						tctx, cancel := context.WithCancel(ctx)
 						defer cancel()
 						mopts := MongoDBOptions{
-							DB:  remoteTest.db,
-							URI: remoteTest.uri,
+							DB:           remoteTest.db,
+							URI:          remoteTest.uri,
+							WaitInterval: time.Millisecond,
 						}
 
 						remoteOpts := RemoteQueueGroupOptions{
@@ -203,8 +204,9 @@ func TestQueueGroupConstructor(t *testing.T) {
 						tctx, cancel := context.WithCancel(ctx)
 						defer cancel()
 						mopts := MongoDBOptions{
-							DB:  remoteTest.db,
-							URI: remoteTest.uri,
+							WaitInterval: time.Millisecond,
+							DB:           remoteTest.db,
+							URI:          remoteTest.uri,
 						}
 
 						remoteOpts := RemoteQueueGroupOptions{
@@ -234,8 +236,9 @@ func TestQueueGroupConstructor(t *testing.T) {
 						tctx, cancel := context.WithCancel(ctx)
 						defer cancel()
 						mopts := MongoDBOptions{
-							DB:  remoteTest.db,
-							URI: remoteTest.uri,
+							WaitInterval: time.Millisecond,
+							DB:           remoteTest.db,
+							URI:          remoteTest.uri,
 						}
 
 						remoteOpts := RemoteQueueGroupOptions{
@@ -272,8 +275,9 @@ func localQueueGroupConstructor(ctx context.Context, ttl time.Duration) (amboy.Q
 
 func remoteQueueGroupConstructor(ctx context.Context, ttl time.Duration) (amboy.QueueGroup, queueGroupCloser, error) {
 	mopts := MongoDBOptions{
-		DB:  "amboy_test",
-		URI: "mongodb://localhost:27017",
+		WaitInterval: time.Millisecond,
+		DB:           "amboy_test",
+		URI:          "mongodb://localhost:27017",
 	}
 
 	client, err := mongo.NewClient(options.Client().ApplyURI(mopts.URI).SetConnectTimeout(2 * time.Second))
@@ -312,8 +316,9 @@ func remoteQueueGroupConstructor(ctx context.Context, ttl time.Duration) (amboy.
 
 func remoteLegacyQueueGroupMergedConstructor(ctx context.Context, ttl time.Duration) (amboy.QueueGroup, queueGroupCloser, error) {
 	mopts := MongoDBOptions{
-		DB:  "amboy_test",
-		URI: "mongodb://localhost:27017",
+		WaitInterval: time.Millisecond,
+		DB:           "amboy_test",
+		URI:          "mongodb://localhost:27017",
 	}
 
 	session, err := mgo.DialWithTimeout(mopts.URI, time.Second)
@@ -351,8 +356,9 @@ func remoteLegacyQueueGroupMergedConstructor(ctx context.Context, ttl time.Durat
 
 func remoteQueueGroupMergedConstructor(ctx context.Context, ttl time.Duration) (amboy.QueueGroup, queueGroupCloser, error) {
 	mopts := MongoDBOptions{
-		DB:  "amboy_test",
-		URI: "mongodb://localhost:27017",
+		DB:           "amboy_test",
+		URI:          "mongodb://localhost:27017",
+		WaitInterval: time.Millisecond,
 	}
 
 	client, err := mongo.NewClient(options.Client().ApplyURI(mopts.URI).SetConnectTimeout(time.Second))
@@ -676,8 +682,9 @@ func TestQueueGroupOperations(t *testing.T) {
 
 func TestQueueGroupConstructorPruneSmokeTest(t *testing.T) {
 	mopts := MongoDBOptions{
-		DB:  "amboy_test",
-		URI: "mongodb://localhost:27017",
+		DB:           "amboy_test",
+		WaitInterval: time.Millisecond,
+		URI:          "mongodb://localhost:27017",
 	}
 
 	client, err := mongo.NewClient(options.Client().ApplyURI(mopts.URI).SetConnectTimeout(time.Second))
