@@ -1,6 +1,7 @@
 package cloud
 
 import (
+	"bytes"
 	"context"
 	"encoding/base64"
 	"fmt"
@@ -258,10 +259,10 @@ func userDataContentType(userData string) (string, error) {
 // makeMultipartUserData returns user data in a multipart MIME format with the
 // given files and their content.
 func makeMultipartUserData(files map[string]string) (string, error) {
-	partsBuf := &strings.Builder{}
-	parts := multipart.NewWriter(partsBuf)
+	buf := &bytes.Buffer{}
+	parts := multipart.NewWriter(buf)
 
-	if err := writeUserDataHeaders(partsBuf, parts.Boundary()); err != nil {
+	if err := writeUserDataHeaders(buf, parts.Boundary()); err != nil {
 		return "", errors.Wrap(err, "error writing MIME headers")
 	}
 
@@ -275,7 +276,7 @@ func makeMultipartUserData(files map[string]string) (string, error) {
 		return "", errors.Wrap(err, "error closing MIME writer")
 	}
 
-	return partsBuf.String(), nil
+	return buf.String(), nil
 }
 
 // bootstrapScript creates the user data script that bootstraps the host.

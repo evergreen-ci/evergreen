@@ -1,6 +1,7 @@
 package cloud
 
 import (
+	"bytes"
 	"context"
 	"encoding/base64"
 	"fmt"
@@ -920,7 +921,7 @@ func (s *EC2Suite) TestGetSecurityGroup() {
 }
 
 func (s *EC2Suite) TestWriteUserDataHeaders() {
-	buf := &strings.Builder{}
+	buf := &bytes.Buffer{}
 	boundary := "some_boundary"
 	s.NoError(writeUserDataHeaders(buf, boundary))
 	res := strings.ToLower(buf.String())
@@ -946,7 +947,7 @@ func (s *EC2Suite) TestUserDataContentType() {
 }
 
 func (s *EC2Suite) TestWriteUserDataPart() {
-	buf := &strings.Builder{}
+	buf := &bytes.Buffer{}
 	mimeWriter := multipart.NewWriter(buf)
 	boundary := "some_boundary"
 	s.NoError(mimeWriter.SetBoundary(boundary))
@@ -961,7 +962,7 @@ func (s *EC2Suite) TestWriteUserDataPart() {
 }
 
 func (s *EC2Suite) TestWriteUserDataPartDefaultForUnrecognizedFormat() {
-	buf := &strings.Builder{}
+	buf := &bytes.Buffer{}
 	mimeWriter := multipart.NewWriter(buf)
 	userData := "this user data has no cloud-init directive"
 	s.NoError(writeUserDataPart(mimeWriter, userData, "foo.txt"))
@@ -969,7 +970,7 @@ func (s *EC2Suite) TestWriteUserDataPartDefaultForUnrecognizedFormat() {
 }
 
 func (s *EC2Suite) TestWriteUserDataPartEmptyFileName() {
-	buf := &strings.Builder{}
+	buf := &bytes.Buffer{}
 	mimeWriter := multipart.NewWriter(buf)
 	userData := "#!/bin/bash\necho 'foobar'"
 	s.Error(writeUserDataPart(mimeWriter, userData, ""))
