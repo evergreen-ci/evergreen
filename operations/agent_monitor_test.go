@@ -28,7 +28,7 @@ func TestAgentMonitorWithJasper(t *testing.T) {
 	require.NoError(t, err)
 	addr, err := net.ResolveTCPAddr("tcp", fmt.Sprintf("localhost:%d", jasperPort))
 	require.NoError(t, err)
-	closeServer, err := rpc.StartServer(ctx, manager, addr, "", "")
+	closeServer, err := rpc.StartService(ctx, manager, addr, "", "")
 	require.NoError(t, err)
 	defer func() {
 		assert.NoError(t, closeServer())
@@ -72,13 +72,13 @@ func TestAgentMonitorWithJasper(t *testing.T) {
 
 			// Monitor should be able to connect without needing credentials when
 			// testing.
-			client, closeClient, err := setupJasperConnection(tctx, m, &retryArgs{
+			client, err := setupJasperConnection(tctx, m, &retryArgs{
 				maxDelay:    time.Second,
 				maxAttempts: defaultMaxRequestAttempts,
 			})
 			require.NoError(t, err)
 			defer func() {
-				assert.NoError(t, closeClient())
+				assert.NoError(t, client.CloseConnection())
 			}()
 			m.jasperClient = client
 

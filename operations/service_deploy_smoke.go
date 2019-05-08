@@ -134,7 +134,7 @@ func smokeStartEvergreen() cli.Command {
 				if err != nil {
 					return errors.Wrap(err, "error resolving Jasper network address")
 				}
-				closeServer, err := rpc.StartServer(ctx, manager, jasperAddr, "", "")
+				closeServer, err := rpc.StartService(ctx, manager, jasperAddr, "", "")
 				if err != nil {
 					return errors.Wrap(err, "error setting up Jasper RPC service")
 				}

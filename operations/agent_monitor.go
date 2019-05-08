@@ -56,7 +56,7 @@ type monitor struct {
 	agentArgs []string
 
 	// Set during runtime
-	jasperClient rpc.Client
+	jasperClient jasper.RemoteClient
 }
 
 // retryArgs defines the policy for retrying requests.
@@ -160,12 +160,12 @@ func agentMonitor() cli.Command {
 			defer cancel()
 			go handleMonitorSignals(ctx, cancel)
 
-			client, closeClient, err := setupJasperConnection(ctx, m, defaultRetryArgs())
+			client, err := setupJasperConnection(ctx, m, defaultRetryArgs())
 			if err != nil {
 				return errors.Wrap(err, "failed to connect to RPC service")
 			}
 			defer func() {
-				grip.Error(errors.Wrap(closeClient(), "failed to close RPC client connection"))
+				grip.Error(errors.Wrap(client.CloseConnection(), "failed to close RPC client connection"))
 			}()
 			m.jasperClient = client
 
@@ -285,28 +285,26 @@ func fetchClient(ctx context.Context, m *monitor, retry *retryArgs) error {
 
 // setupJasperConnection attempts to connect to the Jasper RPC service running
 // on this host and sets the RPC manager.
-func setupJasperConnection(ctx context.Context, m *monitor, retry *retryArgs) (rpc.Client, rpc.CloseFunc, error) {
+func setupJasperConnection(ctx context.Context, m *monitor, retry *retryArgs) (jasper.RemoteClient, error) {
 	var err error
-	var client rpc.Client
-	var closeFunc rpc.CloseFunc
+	var client jasper.RemoteClient
 	serverAddr, err := net.ResolveTCPAddr("tcp", fmt.Sprintf("localhost:%d", m.jasperPort))
 	if err != nil {
-		return nil, nil, errors.Wrapf(err, "failed to resolve Jasper server address at '%s'", serverAddr)
+		return nil, errors.Wrapf(err, "failed to resolve Jasper server address at '%s'", serverAddr)
 	}
 
 	if err = retryWithArgs(ctx, func() (bool, error) {
-		client, closeFunc, err = rpc.NewClient(ctx, serverAddr, m.certificatePath)
-
+		client, err = rpc.NewClient(ctx, serverAddr, m.certificatePath)
 		if err != nil {
 			return true, errors.Wrap(err, "could not connect to Jasper RPC service")
 		}
 
 		return false, nil
 	}, retry); err != nil {
-		return nil, nil, errors.Wrapf(err, "failed to connect to Jasper RPC service at '%s'", serverAddr)
+		return nil, errors.Wrapf(err, "failed to connect to Jasper RPC service at '%s'", serverAddr)
 	}
 
-	return client, closeFunc, nil
+	return client, nil
 }
 
 // createAgentProcess attempts to start an agent subprocess.

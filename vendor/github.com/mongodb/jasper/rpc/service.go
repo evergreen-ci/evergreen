@@ -18,14 +18,12 @@ func AttachService(manager jasper.Manager, s *grpc.Server) error {
 	return errors.WithStack(internal.AttachService(manager, s))
 }
 
-// CloseFunc is a function used to close the service or client.
-type CloseFunc func() error
-
-// StartServer starts an RPC server with the specified address. If certFile
+// StartService starts an RPC server with the specified address. If certFile
 // and keyFile are non-empty, the credentials will be read from the files to
 // start a TLS service; otherwise it will start an insecure service. The caller
-// is responsible for closing the connection using the returned CloseFunc.
-func StartServer(ctx context.Context, manager jasper.Manager, address net.Addr, certFile string, keyFile string) (CloseFunc, error) {
+// is responsible for closing the connection using the returned
+// jasper.CloseFunc.
+func StartService(ctx context.Context, manager jasper.Manager, address net.Addr, certFile string, keyFile string) (jasper.CloseFunc, error) {
 	lis, err := net.Listen(address.Network(), address.String())
 	if err != nil {
 		return nil, errors.WithStack(err)

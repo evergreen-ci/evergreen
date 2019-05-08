@@ -59,10 +59,6 @@ func newBlockingProcess(ctx context.Context, opts *CreateOptions) (Process, erro
 		return nil, errors.Wrap(err, "problem starting command")
 	}
 
-	p.info.Options.started = true
-	p.opts.started = true
-	opts.started = true
-
 	p.info = ProcessInfo{
 		ID:        id,
 		PID:       cmd.Process.Pid,
