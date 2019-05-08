@@ -179,7 +179,7 @@ func (h *Host) fetchJasperCommands(config evergreen.JasperConfig, dir string) []
 func (h *Host) FetchJasperCommandWithPath(config evergreen.JasperConfig, dir, path string) string {
 	cmds := h.fetchJasperCommands(config, dir)
 	for i := range cmds {
-		cmds[i] = fmt.Sprintf("PATH=%s, %s", path, cmds[i])
+		cmds[i] = fmt.Sprintf("PATH=%s %s", path, cmds[i])
 	}
 	return strings.Join(cmds, " && ")
 }
