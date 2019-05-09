@@ -16,7 +16,7 @@ type oomTrackerImpl struct {
 
 // OOMTracker provides a tool for detecting if there have been OOM
 // events on the system. The Clear operation may affect the state the
-// system logs and the data reported will reflect the entire system
+// system logs and the data reported will reflect the entire system,
 // not simply processes managed by Jasper tools.
 type OOMTracker interface {
 	Check(context.Context) error

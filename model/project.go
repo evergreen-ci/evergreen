@@ -30,6 +30,7 @@ const (
 type Project struct {
 	Enabled         bool                       `yaml:"enabled,omitempty" bson:"enabled"`
 	Stepback        bool                       `yaml:"stepback,omitempty" bson:"stepback"`
+	IgnorePreError  bool                       `yaml:"ignore_pre_err,omitempty" bson:"ignore_pre_err,omitempty"`
 	BatchTime       int                        `yaml:"batchtime,omitempty" bson:"batch_time"`
 	Owner           string                     `yaml:"owner,omitempty" bson:"owner_name"`
 	Repo            string                     `yaml:"repo,omitempty" bson:"repo_name"`
@@ -912,9 +913,10 @@ func GetTaskGroup(taskGroup string, tc *TaskConfig) (*TaskGroup, error) {
 	if taskGroup == "" {
 		// if there is no named task group, fall back to project definitions
 		return &TaskGroup{
-			SetupTask:    p.Pre,
-			TeardownTask: p.Post,
-			Timeout:      p.Timeout,
+			SetupTask:          p.Pre,
+			TeardownTask:       p.Post,
+			Timeout:            p.Timeout,
+			SetupGroupFailTask: p.Pre == nil || !p.IgnorePreError,
 		}, nil
 	}
 	tg := p.FindTaskGroup(taskGroup)

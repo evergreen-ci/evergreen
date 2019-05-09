@@ -15,7 +15,7 @@ type basicProcessManager struct {
 	procs              map[string]Process
 	skipDefaultTrigger bool
 	blocking           bool
-	tracker            processTracker
+	tracker            ProcessTracker
 }
 
 func newBasicProcessManager(procs map[string]Process, skipDefaultTrigger bool, blocking bool, trackProcs bool) (Manager, error) {
@@ -26,7 +26,7 @@ func newBasicProcessManager(procs map[string]Process, skipDefaultTrigger bool, b
 		id:                 uuid.Must(uuid.NewV4()).String(),
 	}
 	if trackProcs {
-		tracker, err := newProcessTracker("jasper" + uuid.Must(uuid.NewV4()).String())
+		tracker, err := NewProcessTracker(m.id)
 		if err != nil {
 			return nil, errors.Wrap(err, "failed to make process tracker")
 		}
@@ -59,9 +59,8 @@ func (m *basicProcessManager) CreateProcess(ctx context.Context, opts *CreateOpt
 	}
 
 	if m.tracker != nil {
-		pid := uint(proc.Info(ctx).PID)
 		// The process may have terminated already, so don't return on error.
-		if err := m.tracker.add(pid); err != nil {
+		if err := m.tracker.Add(proc.Info(ctx)); err != nil {
 			grip.Warning(message.WrapError(err, "problem adding local process to tracker during process creation"))
 		}
 	}
@@ -90,9 +89,8 @@ func (m *basicProcessManager) Register(ctx context.Context, proc Process) error 
 	}
 
 	if m.tracker != nil {
-		pid := uint(proc.Info(ctx).PID)
 		// The process may have terminated already, so don't return on error.
-		if err := m.tracker.add(pid); err != nil {
+		if err := m.tracker.Add(proc.Info(ctx)); err != nil {
 			grip.Warning(message.WrapError(err, "problem adding local process to tracker during process registration"))
 		}
 	}
@@ -122,25 +120,17 @@ func (m *basicProcessManager) List(ctx context.Context, f Filter) ([]Process, er
 			if info.IsRunning {
 				out = append(out, proc)
 			}
-			continue
 		case f == Successful:
 			if info.Successful {
 				out = append(out, proc)
 			}
-			continue
 		case f == Failed:
 			if info.Complete && !info.Successful {
 				out = append(out, proc)
 			}
-			continue
 		case f == All:
 			out = append(out, proc)
-			continue
 		}
-	}
-
-	if len(out) == 0 {
-		return nil, errors.New("no processes")
 	}
 
 	return out, nil
@@ -176,8 +166,8 @@ func (m *basicProcessManager) Close(ctx context.Context) error {
 	defer cancel()
 
 	if m.tracker != nil {
-		if err := m.tracker.cleanup(); err != nil {
-			grip.Warning(message.WrapError(err, "process tracker did not clean up successfully"))
+		if err := m.tracker.Cleanup(); err != nil {
+			grip.Warning(message.WrapError(err, "process tracker did not clean up all processes successfully"))
 		} else {
 			return nil
 		}
@@ -202,10 +192,6 @@ func (m *basicProcessManager) Group(ctx context.Context, name string) ([]Process
 		if sliceContains(proc.GetTags(), name) {
 			out = append(out, proc)
 		}
-	}
-
-	if len(out) == 0 {
-		return nil, errors.Errorf("no jobs tagged '%s'", name)
 	}
 
 	return out, nil

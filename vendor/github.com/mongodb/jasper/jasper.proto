@@ -155,14 +155,14 @@ message BuildOptions {
 }
 
 message MongoDBDownloadOptions {
-    BuildOptions build_options = 1;
+    BuildOptions build_opts = 1;
     string path = 2;
     repeated string releases = 3;
 }
 
 message CacheOptions {
     bool disabled = 1;
-    int64 prune_delay = 2;
+    int64 prune_delay_seconds = 2;
     int64 max_size = 3;
 }
 
@@ -204,23 +204,28 @@ message EventName {
 }
 
 service JasperProcessManager {
-  rpc Status(google.protobuf.Empty) returns (StatusResponse);
+  // Manager functions
   rpc Create(CreateOptions) returns (ProcessInfo);
   rpc List(Filter) returns (stream ProcessInfo);
   rpc Group(TagName) returns (stream ProcessInfo);
   rpc Get(JasperProcessID) returns (ProcessInfo);
-  rpc Wait(JasperProcessID) returns (OperationOutcome);
-  rpc Respawn(JasperProcessID) returns (ProcessInfo);
   rpc Signal(SignalProcess) returns (OperationOutcome);
   rpc Clear(google.protobuf.Empty) returns (OperationOutcome);
   rpc Close(google.protobuf.Empty) returns (OperationOutcome);
+
+  // Process functions
   rpc TagProcess(ProcessTags) returns (OperationOutcome);
   rpc ResetTags(JasperProcessID) returns (OperationOutcome);
   rpc GetTags(JasperProcessID) returns (ProcessTags);
+  rpc RegisterSignalTriggerID(SignalTriggerParams) returns (OperationOutcome);
+  rpc Wait(JasperProcessID) returns (OperationOutcome);
+  rpc Respawn(JasperProcessID) returns (ProcessInfo);
+
+  // RPC-specific functions
+  rpc Status(google.protobuf.Empty) returns (StatusResponse);
+  rpc ConfigureCache(CacheOptions) returns (OperationOutcome);
   rpc DownloadFile(DownloadInfo) returns (OperationOutcome);
   rpc DownloadMongoDB(MongoDBDownloadOptions) returns (OperationOutcome);
-  rpc ConfigureCache(CacheOptions) returns (OperationOutcome);
   rpc GetBuildloggerURLs(JasperProcessID) returns (BuildloggerURLs);
-  rpc RegisterSignalTriggerID(SignalTriggerParams) returns (OperationOutcome);
   rpc SignalEvent(EventName) returns (OperationOutcome);
 }
