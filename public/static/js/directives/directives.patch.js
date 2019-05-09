@@ -47,7 +47,7 @@ directives.patch.directive('patchDiffPanel', function() {
       scope.baselink = attrs.baselink;
       scope.type = attrs.type;
 
-      const failedStrings = ["fail", "failed", "timed-out", "unresponsive"];
+      const failedStrings = ["fail", "failed", "timed-out", "test-timed-out", "unresponsive"];
       const successStrings = ["success", "pass"];
       const failCategory = "fail";
       const successCategory = "success";
