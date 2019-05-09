@@ -472,7 +472,7 @@ func TestSmokeRemoteUnorderedSingleThreadedWithMgoDriver(t *testing.T) {
 	runUnorderedSmokeTest(ctx, q, 1, assert)
 	cancel()
 	d.Close()
-	grip.Error(cleanupMgo(opts.DB, name, d.session.Clone()))
+	grip.Error(cleanupMgo(opts.DB, name, d.session))
 }
 
 func TestSmokeRemoteUnorderedSingleThreadedWithMongoDriver(t *testing.T) {
@@ -521,7 +521,7 @@ func TestSmokeRemoteUnorderedSingleRunnerWithMgoDriver(t *testing.T) {
 	runUnorderedSmokeTest(ctx, q, 1, assert)
 	cancel()
 	d.Close()
-	grip.Error(cleanupMgo(opts.DB, name, d.session.Clone()))
+	grip.Error(cleanupMgo(opts.DB, name, d.session))
 }
 
 func TestSmokeRemoteUnorderedSingleRunnerWithMongoDriver(t *testing.T) {
@@ -571,7 +571,7 @@ func TestSmokeRemoteUnorderedWorkerPoolsWithMgoDriver(t *testing.T) {
 		d.Close()
 
 		grip.Infof("test with %d jobs, duration = %s", poolSize, time.Since(start))
-		err := cleanupMgo(opts.DB, name, d.session.Clone())
+		err := cleanupMgo(opts.DB, name, d.session)
 		grip.AlertWhenf(err != nil, "encountered error cleaning up %s: %+v", name, err)
 	}
 }
@@ -764,7 +764,7 @@ func TestSmokeMultipleMgoDriverRemoteUnorderedQueuesWithTheSameName(t *testing.T
 	cancel()
 
 	// do cleanup.
-	grip.Error(cleanupMgo(opts.DB, name, dOne.session.Clone()))
+	grip.Error(cleanupMgo(opts.DB, name, dOne.session))
 }
 
 func TestSmokeMultipleMongoDriverRemoteUnorderedQueuesWithTheSameName(t *testing.T) {
@@ -822,7 +822,7 @@ func TestSmokeMultipleMgoBackedRemoteUnorderedQueuesWithTheSameName(t *testing.T
 	cancel()
 
 	// do cleanup.
-	grip.Error(cleanupMgo(opts.DB, name, dOne.session.Clone()))
+	grip.Error(cleanupMgo(opts.DB, name, dOne.session))
 }
 
 func TestSmokeMultipleMongoBackedRemoteUnorderedQueuesWithTheSameName(t *testing.T) {
@@ -901,7 +901,7 @@ func TestSmokeMultipleMgoDriverRemoteOrderedQueuesWithTheSameName(t *testing.T) 
 	cancel()
 
 	// do cleanup.
-	grip.Error(cleanupMgo(opts.DB, name, dOne.session.Clone()))
+	grip.Error(cleanupMgo(opts.DB, name, dOne.session))
 }
 
 func TestSmokeMultipleMongoDriverRemoteOrderedQueuesWithTheSameName(t *testing.T) {
@@ -1064,7 +1064,7 @@ func TestSmokeSimpleRemoteOrderedWorkerPoolsWithMgoDriver(t *testing.T) {
 		name := strings.Replace(uuid.NewV4().String(), "-", ".", -1)
 
 		ctx, cancel := context.WithTimeout(baseCtx, 10*time.Second)
-		d, err := OpenNewMgoDriver(ctx, name, opts, session.Copy())
+		d, err := OpenNewMgoDriver(ctx, name, opts, session.Clone())
 		assert.NoError(err)
 		assert.NoError(q.SetDriver(d))
 
@@ -1098,7 +1098,7 @@ func TestSmokeSimpleRemoteOrderedWithSingleThreadedAndMgoDriver(t *testing.T) {
 	runUnorderedSmokeTest(ctx, q, 1, assert)
 	cancel()
 	d.Close()
-	grip.Error(cleanupMgo(opts.DB, name, d.session.Clone()))
+	grip.Error(cleanupMgo(opts.DB, name, d.session))
 }
 
 func TestSmokeSimpleRemoteOrderedWorkerPoolsWithInternalDriver(t *testing.T) {
@@ -1146,7 +1146,7 @@ func TestSmokeSimpleRemoteOrderedWithSingleRunnerAndMgoDriver(t *testing.T) {
 	runOrderedSmokeTest(ctx, q, 1, false, assert)
 	cancel()
 	d.Close()
-	grip.Error(cleanupMgo(opts.DB, name, d.session.Clone()))
+	grip.Error(cleanupMgo(opts.DB, name, d.session))
 }
 
 func TestSmokeSimpleRemoteOrderedWithSingleRunnerAndMongoDriver(t *testing.T) {
@@ -1361,7 +1361,7 @@ func TestSmokeWaitUntilMgoDriver(t *testing.T) {
 		runWaitUntilSmokeTest(ctx, q, poolSize, assert)
 		cancel()
 		driver.Close()
-		grip.Error(cleanupMgo(opts.DB, name, driver.session.Clone()))
+		grip.Error(cleanupMgo(opts.DB, name, driver.session))
 	}
 }
 
@@ -1423,5 +1423,5 @@ func cleanupMongo(ctx context.Context, dbname, name string, client *mongo.Client
 	}
 
 	grip.Infof("clean up operation for %s took %s", name, time.Since(start))
-	return nil
+	return client.Disconnect(ctx)
 }

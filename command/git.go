@@ -194,7 +194,7 @@ func (c *gitFetchProject) buildCloneCommand(conf *model.TaskConfig, opts cloneOp
 
 	} else {
 		if conf.Task.Requester == evergreen.MergeTestRequester {
-			gitCommands = append(gitCommands, fmt.Sprintf(`git checkout %s"`, conf.ProjectRef.Branch))
+			gitCommands = append(gitCommands, fmt.Sprintf("git checkout '%s'", conf.ProjectRef.Branch))
 		} else {
 			gitCommands = append(gitCommands, fmt.Sprintf("git reset --hard %s", conf.Task.Revision))
 		}

@@ -177,6 +177,7 @@ const (
 
 const (
 	AuthTokenCookie     = "mci-token"
+	TaskHeader          = "Task-Id"
 	TaskSecretHeader    = "Task-Secret"
 	HostHeader          = "Host-Id"
 	HostSecretHeader    = "Host-Secret"

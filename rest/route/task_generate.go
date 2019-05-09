@@ -7,7 +7,6 @@ import (
 	"net/http"
 
 	"github.com/evergreen-ci/evergreen/apimodels"
-	dbModel "github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/gimlet"
@@ -47,18 +46,7 @@ func (h *generateHandler) Parse(ctx context.Context, r *http.Request) error {
 		}
 	}
 	h.taskID = gimlet.GetVars(r)["task_id"]
-	if _, code, err := dbModel.ValidateTask(h.taskID, true, r); err != nil {
-		return gimlet.ErrorResponse{
-			StatusCode: code,
-			Message:    "task is invalid",
-		}
-	}
-	if _, code, err := dbModel.ValidateHost("", r); err != nil {
-		return gimlet.ErrorResponse{
-			StatusCode: code,
-			Message:    "host is invalid",
-		}
-	}
+
 	return nil
 }
 
@@ -104,18 +92,7 @@ func (h *generatePollHandler) Factory() gimlet.RouteHandler {
 
 func (h *generatePollHandler) Parse(ctx context.Context, r *http.Request) error {
 	h.taskID = gimlet.GetVars(r)["task_id"]
-	if _, code, err := dbModel.ValidateTask(h.taskID, true, r); err != nil {
-		return gimlet.ErrorResponse{
-			StatusCode: code,
-			Message:    "task is invalid",
-		}
-	}
-	if _, code, err := dbModel.ValidateHost("", r); err != nil {
-		return gimlet.ErrorResponse{
-			StatusCode: code,
-			Message:    "host is invalid",
-		}
-	}
+
 	return nil
 }
 

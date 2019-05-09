@@ -49,7 +49,7 @@ const (
 
 var HTTPConflictError = errors.New(evergreen.TaskConflict)
 
-func (c *communicatorImpl) newRequest(method, path, taskSecret, version string, data interface{}) (*http.Request, error) {
+func (c *communicatorImpl) newRequest(method, path, taskID, taskSecret, version string, data interface{}) (*http.Request, error) {
 	url := c.getPath(path, version)
 	r, err := http.NewRequest(method, url, nil)
 	if data != nil {
@@ -68,6 +68,9 @@ func (c *communicatorImpl) newRequest(method, path, taskSecret, version string, 
 
 	if err != nil {
 		return nil, errors.New("Error building request")
+	}
+	if taskID != "" {
+		r.Header.Add(evergreen.TaskHeader, taskID)
 	}
 	if taskSecret != "" {
 		r.Header.Add(evergreen.TaskSecretHeader, taskSecret)
@@ -97,11 +100,12 @@ func (c *communicatorImpl) createRequest(info requestInfo, data interface{}) (*h
 		return nil, errors.WithStack(err)
 	}
 
-	secret := ""
+	var taskID, secret string
 	if info.taskData != nil {
+		taskID = info.taskData.ID
 		secret = info.taskData.Secret
 	}
-	r, err := c.newRequest(string(info.method), info.path, secret, string(info.version), data)
+	r, err := c.newRequest(string(info.method), info.path, taskID, secret, string(info.version), data)
 	if err != nil {
 		return nil, errors.Wrap(err, "Error creating request")
 	}

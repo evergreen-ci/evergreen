@@ -133,11 +133,11 @@ func (s *AdminSuite) TestBaseConfig() {
 		ApiUrl:             "api",
 		Banner:             "banner",
 		BannerTheme:        Important,
+		Bugsnag:            "u-12345",
 		ClientBinariesDir:  "bin_dir",
 		ConfigDir:          "cfg_dir",
 		Credentials:        map[string]string{"k1": "v1"},
 		Expansions:         map[string]string{"k2": "v2"},
-		GoogleAnalyticsID:  "u-12345",
 		GithubPRCreatorOrg: "org",
 		JasperConfig: JasperConfig{
 			BinaryName:       "binary",
@@ -166,6 +166,7 @@ func (s *AdminSuite) TestBaseConfig() {
 	s.Equal(config.ApiUrl, settings.ApiUrl)
 	s.Equal(config.Banner, settings.Banner)
 	s.Equal(config.BannerTheme, settings.BannerTheme)
+	s.Equal(config.Bugsnag, settings.Bugsnag)
 	s.Equal(config.ClientBinariesDir, settings.ClientBinariesDir)
 	s.Equal(config.ConfigDir, settings.ConfigDir)
 	s.Equal(config.Credentials, settings.Credentials)
@@ -175,7 +176,6 @@ func (s *AdminSuite) TestBaseConfig() {
 	s.Equal(config.JasperConfig.URL, settings.JasperConfig.URL)
 	s.Equal(config.JasperConfig.Version, settings.JasperConfig.Version)
 	s.Equal(config.Expansions, settings.Expansions)
-	s.Equal(config.GoogleAnalyticsID, settings.GoogleAnalyticsID)
 	s.Equal(config.GithubPRCreatorOrg, settings.GithubPRCreatorOrg)
 	s.Equal(config.Keys, settings.Keys)
 	s.Equal(config.LogPath, settings.LogPath)
