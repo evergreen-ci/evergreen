@@ -168,6 +168,14 @@ func (tc *DBTaskConnector) AbortTask(taskId string, user string) error {
 	return serviceModel.AbortTask(taskId, user)
 }
 
+func (tc *DBTaskConnector) CheckTaskSecret(taskID string, r *http.Request) (int, error) {
+	_, code, err := serviceModel.ValidateTask(taskID, true, r)
+	if code == http.StatusConflict {
+		return http.StatusUnauthorized, errors.New("Not authorized")
+	}
+	return code, errors.WithStack(err)
+}
+
 // FindCostTaskByProject queries the backing database for tasks of a project
 // that finishes in the given time range.
 func (tc *DBTaskConnector) FindCostTaskByProject(project, taskId string, starttime,
@@ -381,6 +389,13 @@ func (tc *MockTaskConnector) AbortTask(taskId, user string) error {
 	}
 	tc.CachedAborted[taskId] = user
 	return nil
+}
+
+func (tc *MockTaskConnector) CheckTaskSecret(taskID string, r *http.Request) (int, error) {
+	if r.Header.Get(evergreen.TaskSecretHeader) == "" {
+		return http.StatusUnauthorized, errors.New("Not authorized")
+	}
+	return http.StatusOK, nil
 }
 
 func (tc *MockTaskConnector) GetManifestByTask(taskId string) (*manifest.Manifest, error) {

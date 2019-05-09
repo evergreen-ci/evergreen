@@ -173,7 +173,7 @@ type Communicator interface {
 	DeleteCommitQueueItem(ctx context.Context, projectID string, item string) error
 	EnqueueItem(ctx context.Context, projectID, item string) (int, error)
 
-	GetUserAuthorInfo(context.Context, string) (*restmodel.APIUserAuthorInformation, error)
+	GetUserAuthorInfo(context.Context, TaskData, string) (*restmodel.APIUserAuthorInformation, error)
 
 	// Notifications
 	SendNotification(ctx context.Context, notificationType string, data interface{}) error

@@ -80,8 +80,6 @@ func TestGeneratePollParse(t *testing.T) {
 	r, err := http.NewRequest("GET", "/task/1/generate", nil)
 	require.NoError(t, err)
 	r = gimlet.SetURLVars(r, map[string]string{"task_id": "1"})
-	r.Header.Set(evergreen.HostHeader, "1")
-	r.Header.Set(evergreen.HostSecretHeader, "secret")
 
 	uri := "mongodb://localhost:27017"
 	client, err := mongo.NewClient(options.Client().ApplyURI(uri))
@@ -94,12 +92,6 @@ func TestGeneratePollParse(t *testing.T) {
 	require.NotNil(t, q)
 
 	h := makeGenerateTasksPollHandler(sc, q)
-	require.Error(t, h.Parse(ctx, r))
-	task_1 := &task.Task{Id: "1"}
-	require.NoError(t, task_1.Insert())
-	require.Error(t, h.Parse(ctx, r))
-	host_1 := &host.Host{Id: "1", Secret: "secret"}
-	require.NoError(t, host_1.Insert())
 	require.NoError(t, h.Parse(ctx, r))
 }
 

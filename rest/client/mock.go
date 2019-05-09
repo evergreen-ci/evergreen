@@ -594,7 +594,7 @@ func (c *Mock) EnqueueItem(ctx context.Context, projectID, item string) (int, er
 	return 1, nil
 }
 
-func (c *Mock) GetUserAuthorInfo(ctx context.Context, userID string) (*model.APIUserAuthorInformation, error) {
+func (c *Mock) GetUserAuthorInfo(ctx context.Context, td TaskData, userID string) (*model.APIUserAuthorInformation, error) {
 	return &model.APIUserAuthorInformation{
 		DisplayName: model.ToAPIString("evergreen"),
 		Email:       model.ToAPIString("evergreen@mongodb.com"),

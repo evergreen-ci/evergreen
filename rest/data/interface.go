@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"io"
+	"net/http"
 	"time"
 
 	"github.com/docker/docker/api/types"
@@ -54,6 +55,7 @@ type Connector interface {
 	SetTaskActivated(string, string, bool) error
 	ResetTask(string, string) error
 	AbortTask(string, string) error
+	CheckTaskSecret(string, *http.Request) (int, error)
 
 	// FindTasksByBuildId is a method to find a set of tasks which all have the same
 	// BuildId. It takes the buildId being queried for as its first parameter,
@@ -202,6 +204,8 @@ type Connector interface {
 
 	// TerminateHost terminates the given host via the cloud provider's API
 	TerminateHost(context.Context, *host.Host, string) error
+
+	CheckHostSecret(*http.Request) (int, error)
 
 	// FindProjectAliases queries the database to find all aliases.
 	FindProjectAliases(string) ([]model.ProjectAlias, error)
