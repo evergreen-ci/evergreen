@@ -1,13 +1,9 @@
 package cloud
 
 import (
-	"bytes"
 	"context"
 	"encoding/base64"
 	"fmt"
-	"io"
-	"mime/multipart"
-	"net/textproto"
 	"strings"
 	"time"
 
@@ -172,130 +168,6 @@ func (m *ec2Manager) Configure(ctx context.Context, settings *evergreen.Settings
 	return nil
 }
 
-// writeUserDataHeaders writes the multipart MIME headers for user data.
-func writeUserDataHeaders(writer io.Writer, boundary string) error {
-	topLevelHeaders := textproto.MIMEHeader{}
-	topLevelHeaders.Add("MIME-Version", "1.0")
-	topLevelHeaders.Add("Content-Type", fmt.Sprintf("multipart/mixed; boundary=\"%s\"", boundary))
-
-	for key := range topLevelHeaders {
-		header := fmt.Sprintf("%s: %s", key, topLevelHeaders.Get(key))
-		if _, err := writer.Write([]byte(header + "\r\n")); err != nil {
-			return errors.Wrapf(err, "error writing top-level header '%s'", header)
-		}
-	}
-
-	if _, err := writer.Write([]byte("\r\n")); err != nil {
-		return errors.Wrap(err, "error writing top-level header line break")
-	}
-
-	return nil
-}
-
-// writeUserDataPart creates a part in the user data multipart with the given
-// contents and name.
-func writeUserDataPart(writer *multipart.Writer, userDataPart, fileName string) error {
-	if userDataPart == "" {
-		return nil
-	}
-	if fileName == "" {
-		return errors.New("user data file name cannot be empty")
-	}
-
-	contentType, err := userDataContentType(userDataPart)
-	if err != nil {
-		grip.Warning(errors.Wrap(err, "error determining user data content type"))
-		contentType = userDataPrefixToContentType["#!"]
-	}
-
-	header := textproto.MIMEHeader{}
-	header.Add("MIME-Version", "1.0")
-	header.Add("Content-Type", contentType)
-	header.Add("Content-Disposition", fmt.Sprintf("attachment; filename=\"%s\"", fileName))
-
-	part, err := writer.CreatePart(header)
-	if err != nil {
-		return errors.Wrap(err, "error making custom user data part")
-	}
-
-	if _, err := part.Write([]byte(userDataPart)); err != nil {
-		return errors.Wrap(err, "error writing custom user data")
-	}
-
-	return nil
-}
-
-var userDataPrefixToContentType = map[string]string{
-	"#!":              "text/x-shellscript",
-	"#include":        "text/x-include-url",
-	"#cloud-config":   "text/cloud-config",
-	"#upstart-job":    "text/upstart-job",
-	"#cloud-boothook": "text/cloud-boothook",
-	"#part-handler":   "text/part-handler",
-	"<powershell>":    "text/x-shellscript",
-	"<script>":        "text/x-shellscript",
-}
-
-// userDataContentType detects the content type based on the directive on the
-// first line of the user data.
-func userDataContentType(userData string) (string, error) {
-	var firstLine string
-	index := strings.IndexByte(userData, '\n')
-	if index == -1 {
-		firstLine = userData
-	} else {
-		firstLine = userData[:index]
-	}
-	firstLine = strings.TrimSpace(firstLine)
-
-	for key, val := range userDataPrefixToContentType {
-		if strings.HasPrefix(firstLine, key) {
-			return val, nil
-		}
-	}
-	return "", errors.Errorf("user data format is not recognized from first line: '%s'", firstLine)
-}
-
-// makeMultipartUserData returns user data in a multipart MIME format with the
-// given files and their content.
-func makeMultipartUserData(files map[string]string) (string, error) {
-	buf := &bytes.Buffer{}
-	parts := multipart.NewWriter(buf)
-
-	if err := writeUserDataHeaders(buf, parts.Boundary()); err != nil {
-		return "", errors.Wrap(err, "error writing MIME headers")
-	}
-
-	for fileName, content := range files {
-		if err := writeUserDataPart(parts, content, fileName); err != nil {
-			return "", errors.Wrapf(err, "error writing user data '%s'", fileName)
-		}
-	}
-
-	if err := parts.Close(); err != nil {
-		return "", errors.Wrap(err, "error closing MIME writer")
-	}
-
-	return buf.String(), nil
-}
-
-// bootstrapScript creates the user data script that bootstraps the host.
-func bootstrapScript(h *host.Host, config evergreen.JasperConfig, dir string) string {
-	if h.Distro.IsWindows() {
-		cmds := h.FetchJasperCommandWithPath(config, dir, "/bin")
-		// PowerShell nested quotation marks are handled by using two quotation
-		// marks.
-		quotedCmds := strings.Replace(cmds, "'", "''", -1)
-		commands := []string{
-			"<powershell>",
-			fmt.Sprintf("C:\\cygwin\\bin\\bash.exe -c '%s'", quotedCmds),
-			"</powershell>",
-		}
-		return strings.Join(commands, "\r\n")
-	}
-	return strings.Join([]string{"#!/bin/bash", h.FetchJasperCommand(config, dir)}, "\n")
-}
-
 func (m *ec2Manager) spawnOnDemandHost(ctx context.Context, h *host.Host, ec2Settings *EC2ProviderSettings, blockDevices []*ec2.BlockDeviceMapping) ([]*string, error) {
 	input := &ec2.RunInstancesInput{
 		MinCount:            aws.Int64(1),
@@ -333,7 +205,7 @@ func (m *ec2Manager) spawnOnDemandHost(ctx context.Context, h *host.Host, ec2Set
 	if h.Distro.BootstrapMethod == distro.BootstrapMethodUserData {
 		env := evergreen.GetEnvironment()
 		settings := env.Settings()
-		commands := bootstrapScript(h, settings.JasperConfig, "/usr/local/bin")
+		commands := h.BootstrapScript(settings.JasperConfig, "/usr/local/bin")
 		userData, err := makeMultipartUserData(map[string]string{
 			"bootstrap.txt": commands,
 			"user-data.txt": ec2Settings.UserData,

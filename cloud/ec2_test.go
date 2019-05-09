@@ -1,11 +1,8 @@
 package cloud
 
 import (
-	"bytes"
 	"context"
 	"encoding/base64"
-	"fmt"
-	"mime/multipart"
 	"strings"
 	"testing"
 	"time"
@@ -918,110 +915,4 @@ func (s *EC2Suite) TestGetSecurityGroup() {
 		SecurityGroupIDs: []string{"sg-1", "sg-2"},
 	}
 	s.Equal([]*string{aws.String("sg-1"), aws.String("sg-2")}, settings.getSecurityGroups())
-}
-
-func (s *EC2Suite) TestWriteUserDataHeaders() {
-	buf := &bytes.Buffer{}
-	boundary := "some_boundary"
-	s.NoError(writeUserDataHeaders(buf, boundary))
-	res := strings.ToLower(buf.String())
-	s.Contains(res, "mime-version: 1.0")
-	s.Contains(res, "content-type: multipart/mixed")
-	s.Contains(res, fmt.Sprintf("boundary=\"%s\"", boundary))
-	s.Equal(1, strings.Count(res, boundary))
-}
-
-func (s *EC2Suite) TestUserDataContentType() {
-	for _, userData := range []string{
-		"#!/bin/bash\necho 'foobar'",
-		"#include\nhttps://example.com/foobar.txt",
-		"#cloud-config\nruncmd:\n  - echo 'foobar'",
-		"#upstart-job\ndescription: \"foobar\"",
-		"#cloud-boothook\necho 'foobar'",
-		"#part-handler\ndef list_types():\nreturn(['foobar'])\ndef handle_part(data,ctype,filename,payload):\nprint 'foobar'\nreturn",
-	} {
-		contentType, err := userDataContentType(userData)
-		s.NoError(err)
-		s.NotEmpty(contentType)
-	}
-}
-
-func (s *EC2Suite) TestWriteUserDataPart() {
-	buf := &bytes.Buffer{}
-	mimeWriter := multipart.NewWriter(buf)
-	boundary := "some_boundary"
-	s.NoError(mimeWriter.SetBoundary(boundary))
-	userData := "#!/bin/bash\necho 'foobar'"
-	s.NoError(writeUserDataPart(mimeWriter, userData, "foobar.txt"))
-	res := strings.ToLower(buf.String())
-	s.Contains(res, "mime-version: 1.0")
-	s.Contains(res, "content-type: text/x-shellscript")
-	s.Contains(res, "content-disposition: attachment; filename=\"foobar.txt\"")
-	s.Contains(res, userData)
-	s.Equal(1, strings.Count(res, boundary))
-}
-
-func (s *EC2Suite) TestWriteUserDataPartDefaultForUnrecognizedFormat() {
-	buf := &bytes.Buffer{}
-	mimeWriter := multipart.NewWriter(buf)
-	userData := "this user data has no cloud-init directive"
-	s.NoError(writeUserDataPart(mimeWriter, userData, "foo.txt"))
-	s.Contains(buf.String(), "Content-Type: text/x-shellscript")
-}
-
-func (s *EC2Suite) TestWriteUserDataPartEmptyFileName() {
-	buf := &bytes.Buffer{}
-	mimeWriter := multipart.NewWriter(buf)
-	userData := "#!/bin/bash\necho 'foobar'"
-	s.Error(writeUserDataPart(mimeWriter, userData, ""))
-}
-
-func (s *EC2Suite) TestMakeMultipartUserData() {
-	userData := "#!/bin/bash\necho 'foobar'"
-	noUserData := ""
-	fileOne := "1.txt"
-	fileTwo := "2.txt"
-
-	res, err := makeMultipartUserData(map[string]string{})
-	s.NoError(err)
-	s.NotEmpty(res)
-
-	res, err = makeMultipartUserData(map[string]string{
-		fileOne: noUserData,
-	})
-	s.NoError(err)
-	s.NotEmpty(res)
-	s.False(strings.Contains(res, fileOne))
-
-	res, err = makeMultipartUserData(map[string]string{
-		fileOne: userData,
-		fileTwo: userData,
-	})
-	s.NoError(err)
-	s.Contains(res, fileOne)
-	s.Contains(res, fileTwo)
-	s.Equal(strings.Count(res, userData), 2)
-
-	res, err = makeMultipartUserData(map[string]string{
-		fileOne: noUserData,
-		fileTwo: userData,
-	})
-	s.NoError(err)
-	s.NotEmpty(res)
-	s.False(strings.Contains(res, fileOne))
-	s.Contains(res, fileTwo)
-	s.Contains(res, userData)
-}
-
-func (s *EC2Suite) TestBootstrapScriptAddsDirectives() {
-	h := &host.Host{Distro: distro.Distro{Arch: distro.ArchLinuxAmd64}}
-	config := evergreen.JasperConfig{}
-	dir := "/usr/local/bin"
-	script := bootstrapScript(h, config, dir)
-	s.True(strings.HasPrefix(script, "#!/bin/bash"))
-
-	h.Distro.Arch = distro.ArchWindowsAmd64
-	script = bootstrapScript(h, config, dir)
-	s.True(strings.HasPrefix(script, "<powershell>"))
-	s.True(strings.HasSuffix(script, "</powershell>"))
 }

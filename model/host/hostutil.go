@@ -195,3 +195,25 @@ func (h *Host) jasperExtractedFileName(config evergreen.JasperConfig) string {
 	}
 	return config.BinaryName
 }
+
+const (
+	windowsShell = "C:\\cygwin\\bin\\bash.exe"
+	windowsPath  = "/bin"
+)
+
+// BootstrapScript creates the user data script to bootstrap the host.
+func (h *Host) BootstrapScript(config evergreen.JasperConfig, dir string) string {
+	if h.Distro.IsWindows() {
+		cmds := h.FetchJasperCommandWithPath(config, dir, windowsPath)
+		// PowerShell nested quotation marks are handled by using two quotation
+		// marks.
+		quotedCmds := strings.Replace(cmds, "'", "''", -1)
+		commands := []string{
+			"<powershell>",
+			fmt.Sprintf("%s -c '%s'", windowsShell, quotedCmds),
+			"</powershell>",
+		}
+		return strings.Join(commands, "\r\n")
+	}
+	return strings.Join([]string{"#!/bin/bash", h.FetchJasperCommand(config, dir)}, "\n")
+}
