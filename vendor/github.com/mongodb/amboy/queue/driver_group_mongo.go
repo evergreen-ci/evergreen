@@ -508,7 +508,7 @@ RETRY:
 				break RETRY
 			}
 
-			timer.Reset(time.Duration(misses * rand.Int63n(int64(time.Second))))
+			timer.Reset(time.Duration(misses * rand.Int63n(int64(d.opts.WaitInterval))))
 			continue RETRY
 		}
 	}

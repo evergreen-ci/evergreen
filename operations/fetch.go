@@ -14,12 +14,15 @@ import (
 	"strings"
 	"sync"
 
-	humanize "github.com/dustin/go-humanize"
+	"github.com/dustin/go-humanize"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/evergreen/model/manifest"
+	"github.com/evergreen-ci/evergreen/rest/client"
 	"github.com/evergreen-ci/evergreen/service"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 	"github.com/urfave/cli"
 )
@@ -112,7 +115,7 @@ func Fetch() cli.Command {
 			}
 
 			if doFetchSource {
-				if err = fetchSource(ac, rc, wd, taskID, noPatch); err != nil {
+				if err = fetchSource(ctx, ac, rc, client, wd, taskID, noPatch); err != nil {
 					return err
 				}
 			}
@@ -132,7 +135,8 @@ func Fetch() cli.Command {
 //
 // Implementation details (legacy)
 
-func fetchSource(ac, rc *legacyClient, rootPath, taskId string, noPatch bool) error {
+func fetchSource(ctx context.Context, ac, rc *legacyClient, comm client.Communicator,
+	rootPath, taskId string, noPatch bool) error {
 	task, err := rc.GetTask(taskId)
 	if err != nil {
 		return err
@@ -150,6 +154,16 @@ func fetchSource(ac, rc *legacyClient, rootPath, taskId string, noPatch bool) er
 	if err != nil {
 		return err
 	}
+	mfest, err := comm.GetManifestByTask(ctx, taskId)
+	if err != nil && !strings.Contains(err.Error(), "no manifest found") {
+		grip.Warning(message.WrapError(err, message.Fields{
+			"message":       "problem getting manifest",
+			"task":          taskId,
+			"task_version":  task.Version,
+			"task_project":  task.Project,
+			"task_revision": task.Revision,
+		}))
+	}
 
 	cloneDir := util.CleanForPath(fmt.Sprintf("source-%v", task.Project))
 	var patch *service.RestPatch
@@ -165,8 +179,7 @@ func fetchSource(ac, rc *legacyClient, rootPath, taskId string, noPatch bool) er
 		}
 	}
 	cloneDir = filepath.Join(rootPath, cloneDir)
-
-	err = cloneSource(task, project, config, cloneDir)
+	err = cloneSource(task, project, config, cloneDir, mfest)
 	if err != nil {
 		return err
 	}
@@ -244,7 +257,8 @@ func clone(opts cloneOptions) error {
 	return nil
 }
 
-func cloneSource(task *service.RestTask, project *model.ProjectRef, config *model.Project, cloneDir string) error {
+func cloneSource(task *service.RestTask, project *model.ProjectRef, config *model.Project,
+	cloneDir string, mfest *manifest.Manifest) error {
 	// Fetch the outermost repo for the task
 	err := clone(cloneOptions{
 		repo:     fmt.Sprintf("git@github.com:%v/%v.git", project.Owner, project.Repo),
@@ -263,16 +277,25 @@ func cloneSource(task *service.RestTask, project *model.ProjectRef, config *mode
 	if variant == nil {
 		return errors.Errorf("couldn't find build variant '%v' in config", task.BuildVariant)
 	}
+
 	for _, moduleName := range variant.Modules {
 		module, err := config.GetModuleByName(moduleName)
 		if err != nil || module == nil {
 			return errors.Errorf("variant refers to a module '%v' that doesn't exist.", moduleName)
 		}
+		revision := module.Branch
+		if mfest != nil {
+			mfestModule, ok := mfest.Modules[moduleName]
+			if ok && mfestModule.Revision != "" {
+				revision = mfestModule.Revision
+			}
+		}
+
 		moduleBase := filepath.Join(cloneDir, module.Prefix, module.Name)
 		fmt.Printf("Fetching module %v at %v\n", moduleName, module.Branch)
 		err = clone(cloneOptions{
 			repo:     module.Repo,
-			revision: module.Branch,
+			revision: revision,
 			rootDir:  filepath.ToSlash(moduleBase),
 		})
 		if err != nil {

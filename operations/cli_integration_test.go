@@ -1,6 +1,7 @@
 package operations
 
 import (
+	"context"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -14,6 +15,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/artifact"
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/distro"
+	"github.com/evergreen-ci/evergreen/model/manifest"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/user"
@@ -129,9 +131,13 @@ func TestCLIFetchSource(t *testing.T) {
 			tasks:       []string{"all"},
 			finalize:    false,
 		}
+		ctx, cancel := context.WithCancel(context.Background())
+		defer cancel()
 
 		client, err := NewClientSettings(testSetup.settingsFilePath)
 		So(err, ShouldBeNil)
+		comm := client.GetRestCommunicator(ctx)
+		defer comm.Close()
 		ac, rc, err := client.getLegacyClients()
 		So(err, ShouldBeNil)
 
@@ -154,7 +160,22 @@ func TestCLIFetchSource(t *testing.T) {
 		So(err, ShouldBeNil)
 		So(testTask, ShouldNotBeNil)
 
-		err = fetchSource(ac, rc, "", testTask.Id, false)
+		module := manifest.Module{
+			Revision: "1e5232709595db427893826ce19289461cba3f75",
+		}
+		mfest := manifest.Manifest{
+			Id:          testTask.Version,
+			Revision:    testTask.Revision,
+			ProjectName: testTask.Project,
+			Modules: map[string]*manifest.Module{
+				"render-module": &module,
+			},
+		}
+		exists, err := mfest.TryInsert()
+		So(exists, ShouldBeFalse)
+		So(err, ShouldBeNil)
+
+		err = fetchSource(ctx, ac, rc, comm, "", testTask.Id, false)
 		So(err, ShouldBeNil)
 
 		fileStat, err := os.Stat("./source-patch-1_sample/README.md")

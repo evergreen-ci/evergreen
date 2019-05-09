@@ -60,6 +60,8 @@ func (s *Subscriber) SetBSON(raw mgobson.Raw) error {
 	if len(temp.Type) == 0 {
 		return errors.New("could not find subscriber type")
 	}
+	s.Type = temp.Type
+
 	switch temp.Type {
 	case GithubPullRequestSubscriberType:
 		s.Target = &GithubPullRequestSubscriber{}
@@ -74,6 +76,7 @@ func (s *Subscriber) SetBSON(raw mgobson.Raw) error {
 		s.Target = &GithubMergeSubscriber{}
 	case CommitQueueDequeueSubscriberType:
 		s.Target = nil
+		return nil
 	default:
 		return errors.Errorf("unknown subscriber type: '%s'", temp.Type)
 	}
@@ -81,8 +84,6 @@ func (s *Subscriber) SetBSON(raw mgobson.Raw) error {
 	if err := temp.Target.Unmarshal(s.Target); err != nil {
 		return errors.Wrap(err, "couldn't unmarshal subscriber info")
 	}
-
-	s.Type = temp.Type
 
 	return nil
 }

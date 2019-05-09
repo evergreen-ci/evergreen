@@ -140,7 +140,7 @@ func (p *simpleRateLimited) worker(ctx context.Context, jobs <-chan workUnit) {
 				job = wu.job
 				cancel = wu.cancel
 
-				executeJob(ctx, job, p.queue, time.Now())
+				executeJob(ctx, "rate-limited-simple", job, p.queue)
 
 				cancel()
 				timer.Reset(p.interval)

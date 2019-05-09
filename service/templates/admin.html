@@ -68,7 +68,7 @@ Admin Settings
 						<li class="link" ng-click="scrollTo('jira')">Jira</li>
 						<li class="link" ng-click="scrollTo('slack')">Slack</li>
 						<li class="link" ng-click="scrollTo('splunk')">Splunk</li>
-						<li class="link" ng-click="scrollTo('google_analytics')">Google Analytics</li>
+						<li class="link" ng-click="scrollTo('bugsnag')">Bugsnag</li>
 						<div>Background Processing</div>
 						<li class="link" ng-click="scrollTo('amboy')">Amboy</li>
 						<li class="link" ng-click="scrollTo('logger_config')">Logger Config</li>
@@ -745,19 +745,19 @@ Admin Settings
 								</md-card-content>
 							</md-card>
 
-							<md-card flex=50 id="google_analytics" style="height:280px">
+							<md-card flex=50 id="bugsnag" style="height:280px">
 								<md-card-title>
 									<md-card-title-text>
-										<span>Google Analytics</span>
+										<span>Bugsnag</span>
 									</md-card-title-text>
-									<md-button ng-click="clearSection('google_analytics')">
+									<md-button ng-click="clearSection('bugsnag')">
 										<i class="fa fa-trash"></i>
 									</md-button>
 								</md-card-title>
 								<md-card-content>
 									<md-input-container class="control" style="width:45%;">
 										<label>Tracking ID</label>
-										<input type="text" ng-model="Settings.google_analytics">
+										<input type="text" ng-model="Settings.bugsnag">
 									</md-input-container>
 								</md-card-content>
 							</md-card>

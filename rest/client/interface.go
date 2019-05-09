@@ -181,4 +181,7 @@ type Communicator interface {
 	// GetDockerLogs returns logs for the given docker container
 	GetDockerLogs(ctx context.Context, hostID string, startTime time.Time, endTime time.Time, isError bool) ([]byte, error)
 	GetDockerStatus(ctx context.Context, hostID string) (*cloud.ContainerStatus, error)
+
+	// GetManifestByTask returns the manifest corresponding to the given task
+	GetManifestByTask(ctx context.Context, taskId string) (*manifest.Manifest, error)
 }

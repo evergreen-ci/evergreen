@@ -20,6 +20,13 @@
         <!-- our css -->
         <link href="/static/dist/css/styles.min.css?hash={{ BuildRevision }}" rel="stylesheet" />
 
+        {{if .Bugsnag}}
+        {{if ne .Bugsnag ""}}
+        <script src="//d2wy8f7a9ursnm.cloudfront.net/v6/bugsnag.min.js"></script>
+        <script>window.bugsnagClient = bugsnag('{{.Bugsnag}}')</script>
+        {{end}}
+        {{end}}
+
         <!-- underscore.js js v1.4.4 js -->
         <script type="text/javascript" src="/static/thirdparty/underscore-min.js"></script>
 

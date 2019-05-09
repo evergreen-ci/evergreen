@@ -40,6 +40,7 @@ db.hosts.createIndex({ "status": 1, "spawn_options.spawned_by_task": 1 })
 
 //======pushes======//
 db.pushes.ensureIndex({ "status" : 1, "location" : 1, "order" : 1 })
+db.pushes.ensureIndex({ "task_id" : 1})
 
 //======patches======//
 db.patches.ensureIndex({ "branch" : 1, "create_time" : 1 })

@@ -12,6 +12,7 @@ import (
 	"github.com/evergreen-ci/evergreen/cloud"
 	serviceModel "github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/event"
+	"github.com/evergreen-ci/evergreen/model/manifest"
 	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/gimlet"
@@ -738,7 +739,7 @@ func (c *communicatorImpl) EnqueueItem(ctx context.Context, projectID, item stri
 	}
 
 	positionResp := model.APICommitQueuePosition{}
-	if err = util.ReadJSONInto(resp.Body, &positionResp); err != nil {
+	if err = json.Unmarshal(bytes, &positionResp); err != nil {
 		return 0, errors.Wrap(err, "error parsing position response")
 	}
 
@@ -838,4 +839,32 @@ func (c *communicatorImpl) GetDockerLogs(ctx context.Context, hostID string, sta
 			resp.StatusCode, hostID)
 	}
 	return body, nil
+}
+
+func (c *communicatorImpl) GetManifestByTask(ctx context.Context, taskId string) (*manifest.Manifest, error) {
+	info := requestInfo{
+		method:  get,
+		version: apiVersion2,
+		path:    fmt.Sprintf("/tasks/%s/manifest", taskId),
+	}
+	resp, err := c.request(ctx, info, "")
+	if err != nil {
+		return nil, errors.Wrapf(err, "problem getting manifest for task '%s'", taskId)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		restErr := gimlet.ErrorResponse{}
+		if err = util.ReadJSONInto(resp.Body, &restErr); err != nil {
+			return nil, errors.Wrap(err, "received an error but was unable to parse")
+		}
+		return nil, errors.Wrapf(restErr, "response code %d problem getting manifest for task '%s'",
+			resp.StatusCode, taskId)
+	}
+	mfest := manifest.Manifest{}
+	if err := util.ReadJSONInto(resp.Body, &mfest); err != nil {
+		return nil, errors.Wrap(err, "problem parsing manifest")
+	}
+
+	return &mfest, nil
 }
