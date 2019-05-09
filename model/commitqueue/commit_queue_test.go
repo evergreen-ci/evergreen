@@ -177,7 +177,7 @@ func (s *CommitQueueSuite) TestCommentTrigger() {
 }
 
 func (s *CommitQueueSuite) TestFindOneId() {
-	db.ClearCollections(Collection)
+	s.NoError(db.ClearCollections(Collection))
 	cq := &CommitQueue{ProjectID: "mci"}
 	s.NoError(InsertQueue(cq))
 
