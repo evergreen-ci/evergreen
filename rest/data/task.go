@@ -7,6 +7,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	serviceModel "github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/evergreen/model/manifest"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/gimlet"
@@ -180,11 +181,31 @@ func (tc *DBTaskConnector) FindCostTaskByProject(project, taskId string, startti
 	return tasks, nil
 }
 
+// GetManifestByTask finds the manifest corresponding to the given task.
+func (tc *DBTaskConnector) GetManifestByTask(taskId string) (*manifest.Manifest, error) {
+	t, err := task.FindOneId(taskId)
+	if err != nil {
+		return nil, errors.Wrapf(err, "problem finding task '%s'", t)
+	}
+	if t == nil {
+		return nil, errors.Errorf("task '%s' not found", t.Id)
+	}
+	mfest, err := manifest.FindFromVersion(t.Version, t.Project, t.Revision)
+	if err != nil {
+		return nil, errors.Wrapf(err, "problem finding manifest from version '%s'", t.Version)
+	}
+	if mfest == nil {
+		return nil, errors.Errorf("no manifest found for version '%s'", t.Version)
+	}
+	return mfest, nil
+}
+
 // MockTaskConnector stores a cached set of tasks that are queried against by the
 // implementations of the Connector interface's Task related functions.
 type MockTaskConnector struct {
 	CachedTasks    []task.Task
 	CachedOldTasks []task.Task
+	Manifests      []manifest.Manifest
 	CachedAborted  map[string]string
 	StoredError    error
 	FailOnAbort    bool
@@ -360,4 +381,18 @@ func (tc *MockTaskConnector) AbortTask(taskId, user string) error {
 	}
 	tc.CachedAborted[taskId] = user
 	return nil
+}
+
+func (tc *MockTaskConnector) GetManifestByTask(taskId string) (*manifest.Manifest, error) {
+	for _, t := range tc.CachedTasks {
+		if t.Id == taskId {
+			for _, m := range tc.Manifests {
+				if m.Id == t.Version {
+					return &m, nil
+				}
+			}
+			return nil, errors.Errorf("no manifest found for version '%s", t.Version)
+		}
+	}
+	return nil, errors.Errorf("task '%s' not found", taskId)
 }

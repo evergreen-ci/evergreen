@@ -19,7 +19,7 @@ import (
 	"github.com/pkg/errors"
 )
 
-// taskGetHandler implements the route GET /task/{task_id}. It fetches the associated
+// taskGetHandler implements the route GET /tasks/{task_id}. It fetches the associated
 // task and returns it to the user.
 type taskGetHandler struct {
 	taskID             string
