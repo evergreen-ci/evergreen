@@ -50,11 +50,13 @@ func GetDistroQueueInfo(distroID string) (DistroQueueInfo, error) {
 		db.NoSort,
 		taskQueue,
 	)
+
 	if err != nil {
+		err = errors.WithStack(err)
 		return DistroQueueInfo{}, errors.Wrapf(err, "Database error retrieving DistroQueueInfo for distro id '%s'", distroID)
 	}
 
-	return taskQueue.DistroQueueInfo, err
+	return taskQueue.DistroQueueInfo, nil
 }
 
 // represents the next n tasks to be run on hosts of the distro
@@ -72,6 +74,7 @@ type TaskDep struct {
 	Id          string `bson:"task_id,omitempty" json:"task_id"`
 	DisplayName string `bson:"display_name" json:"display_name"`
 }
+
 type TaskQueueItem struct {
 	Id                  string        `bson:"_id" json:"_id"`
 	IsDispatched        bool          `bson:"dispatched" json:"dispatched"`
@@ -523,6 +526,7 @@ func (self *TaskQueue) DequeueTask(taskId string) error {
 	// first, remove from the in-memory queue
 	found := false
 outer:
+	// STU: why would there be two or more TaskQueueItems in the []TaskQueueItem with the same TaskQueueItem.Id?
 	for {
 		for idx, queueItem := range self.Queue {
 			if queueItem.Id == taskId {
@@ -536,7 +540,7 @@ outer:
 
 	// validate that the task is there
 	if !found {
-		return errors.Errorf("task id %s was not present in queue for distro %s",
+		return errors.Errorf("task id '%s' was not found in the in-memory queue for distro '%s'",
 			taskId, self.Distro)
 	}
 

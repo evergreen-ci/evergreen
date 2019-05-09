@@ -53,7 +53,7 @@ func NewAPIServer(settings *evergreen.Settings, queue amboy.Queue, queueGroup am
 		Settings:         *settings,
 		queue:            queue,
 		queueGroup:       queueGroup,
-		taskQueueService: model.NewTaskQueueService(taskQueueServiceTTL),
+		taskQueueService: model.NewTaskDispatchService(taskQueueServiceTTL),
 	}
 
 	return as, nil

@@ -377,11 +377,20 @@ func assignNextAvailableTask(taskQueue *model.TaskQueue, taskQueueService model.
 				"activated": nextTask.Activated,
 				"host":      currentHost.Id,
 			})
+
 			// Dequeue the task so we don't get it on another iteration of the loop.
 			if err = taskQueue.DequeueTask(nextTask.Id); err != nil {
-				return nil, errors.Wrapf(err,
-					"error pulling task with id %s from queue for distro %s",
-					nextTask.Id, nextTask.DistroId)
+				// STU: should this be a grip.Info(), a grip.Alert() or a grip.Warning()?
+				grip.Info(message.WrapError(err, message.Fields{
+					"message": fmt.Sprintf("error pulling task with id '%s' from the taskQueue for distro '%s'", nextTask.Id, nextTask.DistroId),
+					"spec":    spec,
+					"host":    currentHost.Id,
+				}))
+
+				// return nil, errors.Wrapf(err,
+				// 	"error pulling task with id %s from queue for distro %s",
+				// 	nextTask.Id, nextTask.DistroId)
+
 			}
 			continue
 		}
@@ -524,12 +533,6 @@ func (as *APIServer) NextTask(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	setNextTask(nextTask, &response)
-	grip.Info(message.Fields{
-		"op":      "next_task",
-		"message": "assigned task to host",
-		"task_id": nextTask.Id,
-		"host_id": h.Id,
-	})
 	gimlet.WriteJSON(w, response)
 }
 

@@ -21,72 +21,81 @@ type TaskQueueService interface {
 }
 
 type taskDispatchService struct {
-	queues map[string]*taskDistroDispatchService
-	mu     sync.RWMutex
-	ttl    time.Duration
+	taskDistroDispatchServices map[string]*taskDistroDispatchService
+	mu                         sync.RWMutex
+	ttl                        time.Duration
 }
 
-// func NewTaskQueueService(ttl time.Duration) TaskQueueService {
 func NewTaskDispatchService(ttl time.Duration) TaskQueueService {
 	return &taskDispatchService{
-		ttl:    ttl,
-		queues: map[string]*taskDistroDispatchService{},
+		ttl:                        ttl,
+		taskDistroDispatchServices: map[string]*taskDistroDispatchService{},
 	}
 }
 
 func (s *taskDispatchService) FindNextTask(distro string, spec TaskSpec) (*TaskQueueItem, error) {
-	queue, err := s.ensureQueue(distro)
+	distroDispatchService, err := s.ensureQueue(distro)
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}
 
-	return queue.FindNextTask(spec), nil
+	return distroDispatchService.FindNextTask(spec), nil
+}
+
+func (s *taskDispatchService) RefreshFindNextTask(distro string, spec TaskSpec) (*TaskQueueItem, error) {
+	distroDispatchService, err := s.ensureQueue(distro)
+	if err != nil {
+		return nil, errors.WithStack(err)
+	}
+
+	if err := distroDispatchService.Refresh(); err != nil {
+		return nil, errors.WithStack(err)
+	}
+
+	return distroDispatchService.FindNextTask(spec), nil
 }
 
 func (s *taskDispatchService) Refresh(distro string) error {
-	queue, err := s.ensureQueue(distro)
+	distroDispatchService, err := s.ensureQueue(distro)
 	if err != nil {
 		return errors.WithStack(err)
 	}
 
-	return errors.WithStack(queue.Refresh())
-}
-
-func (s *taskDispatchService) RefreshFindNextTask(distro string, spec TaskSpec) (*TaskQueueItem, error) {
-	queue, err := s.ensureQueue(distro)
-	if err != nil {
-		return nil, errors.WithStack(err)
+	if err := distroDispatchService.Refresh(); err != nil {
+		return errors.WithStack(err)
 	}
 
-	if err := queue.Refresh(); err != nil {
-		return nil, errors.WithStack(queue.Refresh())
-	}
-	return queue.FindNextTask(spec), nil
+	return nil
 }
 
 func (s *taskDispatchService) ensureQueue(distro string) (*taskDistroDispatchService, error) {
+	// If there is a "distro": *taskDistroDispatchService in the taskDistroDispatchServices map, return that.
+	// Otherwise, get the "distro"'s taskQueue from the database; seed its taskDistroDispatchService; put that in the map and return it.
 	s.mu.RLock()
-	queue, ok := s.queues[distro]
+
+	distroDispatchService, ok := s.taskDistroDispatchServices[distro]
 	s.mu.RUnlock()
 	if ok {
-		return queue, nil
+		return distroDispatchService, nil
 	}
 
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	queue, ok = s.queues[distro]
+	distroDispatchService, ok = s.taskDistroDispatchServices[distro]
 	if ok {
-		return queue, nil
+		return distroDispatchService, nil
 	}
 
-	queue = newDistroTaskDispatchService(distro, nil, s.ttl)
-	s.queues[distro] = queue
-
-	if err := queue.Refresh(); err != nil {
+	taskQueue, err := FindDistroTaskQueue(distro)
+	if err != nil {
 		return nil, errors.WithStack(err)
 	}
 
-	return queue, nil
+	taskQueueItems := taskQueue.Queue
+	distroDispatchService = newDistroTaskDispatchService(distro, taskQueueItems, s.ttl)
+	s.taskDistroDispatchServices[distro] = distroDispatchService
+
+	return distroDispatchService, nil
 }
 
 // taskDistroDispatchService is an in-memory representation of schedulable tasks for a distro.
@@ -116,10 +125,9 @@ func newDistroTaskDispatchService(distroID string, items []TaskQueueItem, ttl ti
 	t := &taskDistroDispatchService{
 		distroID: distroID,
 		ttl:      ttl,
-		// lastUpdated: time.Now(),
 	}
 
-	if items != nil {
+	if len(items) != 0 {
 		t.rebuild(items)
 	}
 
@@ -130,20 +138,17 @@ func (t *taskDistroDispatchService) Refresh() error {
 	t.mu.Lock()
 	defer t.mu.Unlock()
 
-	// if !t.shouldRefresh() {
-	// 	return nil
-	// }
-
 	if !shouldRefreshCached(t.ttl, t.lastUpdated) {
 		return nil
 	}
 
-	queue, err := FindDistroTaskQueue(t.distroID)
+	taskQueue, err := FindDistroTaskQueue(t.distroID)
 	if err != nil {
 		return errors.WithStack(err)
 	}
 
-	t.rebuild(queue.Queue)
+	taskQueueItems := taskQueue.Queue
+	t.rebuild(taskQueueItems)
 
 	return nil
 }
@@ -152,23 +157,7 @@ func shouldRefreshCached(ttl time.Duration, lastUpdated time.Time) bool {
 	return lastUpdated.IsZero() || time.Since(lastUpdated) > ttl
 }
 
-// func (t *taskDistroDispatchService) shouldRefresh() bool {
-// 	if shouldRefreshCached(t.ttl, t.lastUpdated) {
-// 		t.lastUpdated = time.Now()
-// 		return true
-// 	}
-//
-// 	return false
-// }
-
 func (t *taskDistroDispatchService) rebuild(items []TaskQueueItem) {
-	if !shouldRefreshCached(t.ttl, t.lastUpdated) {
-		// STU: why does it appear that we are now no longer ever getting in here?
-		return
-	}
-
-	t.lastUpdated = time.Now()
-
 	// This slice likely has too much capacity, but it helps append performance.
 	order := make([]string, 0, len(items))
 	units := map[string]schedulableUnit{}
@@ -190,12 +179,12 @@ func (t *taskDistroDispatchService) rebuild(items []TaskQueueItem) {
 			// TaskQueueItem array in the map.
 			id = compositeGroupId(item.Group, item.BuildVariant, item.Version)
 			if _, ok = units[id]; !ok {
+				order = append(order, id)
 				units[id] = schedulableUnit{
 					id:       id,
 					maxHosts: item.GroupMaxHosts,
 					tasks:    []TaskQueueItem{item},
 				}
-				order = append(order, id)
 			} else {
 				unit = units[id]
 				unit.tasks = append(unit.tasks, item)
@@ -207,6 +196,7 @@ func (t *taskDistroDispatchService) rebuild(items []TaskQueueItem) {
 	t.order = order
 	t.units = units
 	t.lastUpdated = time.Now()
+
 	return
 }
 
@@ -215,7 +205,7 @@ func (t *taskDistroDispatchService) FindNextTask(spec TaskSpec) *TaskQueueItem {
 	t.mu.Lock()
 	defer t.mu.Unlock()
 
-	// If units is empty, the queue has been emptied. Reset order as an optimization so that the
+	// If units (map[string]schedulableUnit) is empty, the queue has been emptied. Reset order as an optimization so that the
 	// service no longer needs to iterate over it and check each item against the map.
 	if len(t.units) == 0 {
 		t.order = []string{}
@@ -239,6 +229,7 @@ func (t *taskDistroDispatchService) FindNextTask(spec TaskSpec) *TaskQueueItem {
 
 	var numHosts int
 	var err error
+
 	for _, schedulableUnitID := range t.order {
 		unit, ok = t.units[schedulableUnitID]
 		if !ok {
@@ -301,18 +292,21 @@ func (t *taskDistroDispatchService) nextTaskGroupTask(unit schedulableUnit) *Tas
 			return nil
 		}
 
-		if t.isBlockedSingleHostTaskGroup(unit, nextTaskFromDB) {
+		if isBlockedSingleHostTaskGroup(unit, nextTaskFromDB) {
+			delete(t.units, unit.id)
 			return nil
 		}
 
 		// Cache dispatched status.
 		t.units[unit.id].tasks[i].IsDispatched = true
+
+		// STU: is this necessary?
 		unit.tasks[i].IsDispatched = true
 
 		if nextTaskFromDB.StartTime != util.ZeroTime {
 			continue
 		}
-		// Don't cache dispatched status when returning nextTask, in case the task fails to start.
+		// Don't cache dispatched status when returning the next TaskQueueItem - in case the task fails to start.
 		return &nextTask
 	}
 	// If all the tasks have been dispatched, remove the unit.
@@ -320,13 +314,6 @@ func (t *taskDistroDispatchService) nextTaskGroupTask(unit schedulableUnit) *Tas
 	return nil
 }
 
-// isBlockedSingleHostTaskGroup checks if the task is running in a 1-host task group, has finished,
-// and did not succeed. If so it removes the unit from the local queue. But rely on EndTask to
-// block later tasks.
-func (t *taskDistroDispatchService) isBlockedSingleHostTaskGroup(unit schedulableUnit, dbTask *task.Task) bool {
-	if unit.maxHosts == 1 && !util.IsZeroTime(dbTask.FinishTime) && dbTask.Status != evergreen.TaskSucceeded {
-		delete(t.units, unit.id)
-		return true
-	}
-	return false
+func isBlockedSingleHostTaskGroup(unit schedulableUnit, dbTask *task.Task) bool {
+	return unit.maxHosts == 1 && !util.IsZeroTime(dbTask.FinishTime) && dbTask.Status != evergreen.TaskSucceeded
 }
