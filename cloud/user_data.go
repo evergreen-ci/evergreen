@@ -15,15 +15,18 @@ import (
 // This file contains utilities to support cloud-init user data passed to
 // providers to configure launch.
 
-var userDataPrefixToContentType = map[string]string{
-	"#!":              "text/x-shellscript",
-	"#include":        "text/x-include-url",
-	"#cloud-config":   "text/cloud-config",
-	"#upstart-job":    "text/upstart-job",
-	"#cloud-boothook": "text/cloud-boothook",
-	"#part-handler":   "text/part-handler",
-	"<powershell>":    "text/x-shellscript",
-	"<script>":        "text/x-shellscript",
+// directiveToContentType maps a cloud-init directive to its MIME content type.
+func directiveToContentType() map[string]string {
+	return map[string]string{
+		"#!":              "text/x-shellscript",
+		"#include":        "text/x-include-url",
+		"#cloud-config":   "text/cloud-config",
+		"#upstart-job":    "text/upstart-job",
+		"#cloud-boothook": "text/cloud-boothook",
+		"#part-handler":   "text/part-handler",
+		"<powershell>":    "text/x-shellscript",
+		"<script>":        "text/x-shellscript",
+	}
 }
 
 // makeMultipartUserData returns user data in a multipart MIME format with the
@@ -82,7 +85,7 @@ func writeUserDataPart(writer *multipart.Writer, userDataPart, fileName string) 
 	contentType, err := parseUserDataContentType(userDataPart)
 	if err != nil {
 		grip.Warning(errors.Wrap(err, "error determining user data content type"))
-		contentType = userDataPrefixToContentType["#!"]
+		contentType = directiveToContentType()["#!"]
 	}
 
 	header := textproto.MIMEHeader{}
@@ -114,9 +117,9 @@ func parseUserDataContentType(userData string) (string, error) {
 	}
 	firstLine = strings.TrimSpace(firstLine)
 
-	for key, val := range userDataPrefixToContentType {
-		if strings.HasPrefix(firstLine, key) {
-			return val, nil
+	for directive, contentType := range directiveToContentType() {
+		if strings.HasPrefix(firstLine, directive) {
+			return contentType, nil
 		}
 	}
 	return "", errors.Errorf("user data format is not recognized from first line: '%s'", firstLine)
