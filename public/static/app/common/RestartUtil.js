@@ -11,7 +11,7 @@ mciModule.factory('RestartUtil', function($filter) {
       },
       FAILURES: {
         name: 'Failures',
-        matches: function(task) { return task.status == 'failed' }
+        matches: function(task) { return task.status == 'failed' || task.status == 'test-timed-out'}
       },
       SYSTEM_FAILURES: {
         name: 'System Failures',
