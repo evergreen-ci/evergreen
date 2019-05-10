@@ -72,21 +72,21 @@ func (opts cloneOpts) validate() error {
 	return catcher.Resolve()
 }
 
-func (opts cloneOpts) sshLocationGitHub() string {
+func (opts cloneOpts) sshLocation() string {
 	return fmt.Sprintf("git@github.com:%s/%s.git", opts.owner, opts.repo)
 }
 
-func (opts cloneOpts) httpLocationGitHub() string {
+func (opts cloneOpts) httpLocation() string {
 	return fmt.Sprintf("https://github.com/%s/%s.git", opts.owner, opts.repo)
 }
 
-// setLocationGitHub sets the GitHub location to clone from.
-func (opts *cloneOpts) setLocationGitHub() error {
+// setLocation sets the location to clone from.
+func (opts *cloneOpts) setLocation() error {
 	switch opts.method {
 	case "", distro.CloneMethodLegacySSH:
-		opts.location = opts.sshLocationGitHub()
+		opts.location = opts.sshLocation()
 	case distro.CloneMethodOAuth:
-		opts.location = opts.httpLocationGitHub()
+		opts.location = opts.httpLocation()
 	default:
 		return errors.Errorf("unrecognized clone method '%s'", opts.method)
 	}
@@ -301,7 +301,7 @@ func (c *gitFetchProject) Execute(ctx context.Context,
 		dir:    c.Directory,
 		token:  projectToken,
 	}
-	if err = opts.setLocationGitHub(); err != nil {
+	if err = opts.setLocation(); err != nil {
 		return errors.Wrap(err, "failed to set location to clone from")
 	}
 	if err = opts.validate(); err != nil {

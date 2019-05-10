@@ -128,7 +128,7 @@ func (s *GitGetProjectSuite) TestBuildCloneCommandUsesHTTPS() {
 		dir:    c.Directory,
 		token:  c.Token,
 	}
-	s.Require().NoError(opts.setLocationGitHub())
+	s.Require().NoError(opts.setLocation())
 	cmds, _ := c.buildCloneCommand(conf, opts)
 	s.Equal("git clone https://PROJECTTOKEN@github.com/deafgoat/mci_test.git 'dir' --branch 'master'", cmds[5])
 }
@@ -147,7 +147,7 @@ func (s *GitGetProjectSuite) TestBuildCloneCommandWithHTTPSNeedsToken() {
 		dir:    c.Directory,
 		token:  "",
 	}
-	s.Require().NoError(opts.setLocationGitHub())
+	s.Require().NoError(opts.setLocation())
 	_, err := c.buildCloneCommand(conf, opts)
 	s.Error(err)
 }
@@ -166,7 +166,7 @@ func (s *GitGetProjectSuite) TestBuildCloneCommandUsesSSH() {
 		branch: "master",
 		dir:    c.Directory,
 	}
-	s.Require().NoError(opts.setLocationGitHub())
+	s.Require().NoError(opts.setLocation())
 	cmds, err := c.buildCloneCommand(conf, opts)
 	s.Require().NoError(err)
 	s.Equal("git clone 'git@github.com:deafgoat/mci_test.git' 'dir' --branch 'master'", cmds[3])
@@ -184,7 +184,7 @@ func (s *GitGetProjectSuite) TestBuildCloneCommandDefaultCloneMethodUsesSSH() {
 		branch: conf.ProjectRef.Branch,
 		dir:    c.Directory,
 	}
-	s.Require().NoError(opts.setLocationGitHub())
+	s.Require().NoError(opts.setLocation())
 	cmds, err := c.buildCloneCommand(conf, opts)
 	s.Require().NoError(err)
 	s.Equal("git clone 'git@github.com:evergreen-ci/sample.git' 'dir' --branch 'master'", cmds[3])
@@ -345,7 +345,7 @@ func (s *GitGetProjectSuite) TestBuildHTTPCloneCommand() {
 		dir:    "dir",
 		token:  projectGitHubToken,
 	}
-	s.Require().NoError(opts.setLocationGitHub())
+	s.Require().NoError(opts.setLocation())
 	cmds, err := opts.buildHTTPCloneCommand()
 	s.NoError(err)
 	s.Require().Len(cmds, 5)
@@ -395,7 +395,7 @@ func (s *GitGetProjectSuite) TestBuildSSHCloneCommand() {
 		branch: "master",
 		dir:    "dir",
 	}
-	s.Require().NoError(opts.setLocationGitHub())
+	s.Require().NoError(opts.setLocation())
 	cmds, err := opts.buildSSHCloneCommand()
 	s.NoError(err)
 	s.Len(cmds, 2)
@@ -427,7 +427,7 @@ func (s *GitGetProjectSuite) TestBuildCommand() {
 		repo:   conf.ProjectRef.Repo,
 		dir:    c.Directory,
 	}
-	s.Require().NoError(opts.setLocationGitHub())
+	s.Require().NoError(opts.setLocation())
 	cmds, err := c.buildCloneCommand(conf, opts)
 	s.NoError(err)
 	s.Require().Len(cmds, 6)
@@ -442,7 +442,7 @@ func (s *GitGetProjectSuite) TestBuildCommand() {
 	// HTTPS.
 	opts.method = distro.CloneMethodOAuth
 	opts.token = c.Token
-	s.Require().NoError(opts.setLocationGitHub())
+	s.Require().NoError(opts.setLocation())
 	s.Require().NoError(err)
 	cmds, err = c.buildCloneCommand(conf, opts)
 	s.NoError(err)
@@ -471,7 +471,7 @@ func (s *GitGetProjectSuite) TestBuildCommandForPullRequests() {
 		repo:   conf.ProjectRef.Repo,
 		dir:    c.Directory,
 	}
-	s.Require().NoError(opts.setLocationGitHub())
+	s.Require().NoError(opts.setLocation())
 
 	cmds, err := c.buildCloneCommand(conf, opts)
 	s.NoError(err)
@@ -494,7 +494,7 @@ func (s *GitGetProjectSuite) TestBuildCommandForPRMergeTests() {
 		repo:   conf.ProjectRef.Repo,
 		dir:    c.Directory,
 	}
-	s.Require().NoError(opts.setLocationGitHub())
+	s.Require().NoError(opts.setLocation())
 	cmds, err := c.buildCloneCommand(conf, opts)
 	s.NoError(err)
 	s.Require().Len(cmds, 8)
@@ -518,7 +518,7 @@ func (s *GitGetProjectSuite) TestBuildCommandForCLIMergeTests() {
 		dir:    c.Directory,
 		token:  c.Token,
 	}
-	s.Require().NoError(opts.setLocationGitHub())
+	s.Require().NoError(opts.setLocation())
 
 	s.modelData2.TaskConfig.Task.Requester = evergreen.MergeTestRequester
 	cmds, err := c.buildCloneCommand(conf, opts)
@@ -540,7 +540,7 @@ func (s *GitGetProjectSuite) TestBuildModuleCommand() {
 		repo:   "mci_test",
 		dir:    "module",
 	}
-	s.Require().NoError(opts.setLocationGitHub())
+	s.Require().NoError(opts.setLocation())
 
 	// ensure module clone command with ssh URL does not inject token
 	cmds, err := c.buildModuleCloneCommand(conf, opts, "master", nil)
@@ -555,7 +555,7 @@ func (s *GitGetProjectSuite) TestBuildModuleCommand() {
 	// ensure module clone command with http URL injects token
 	opts.method = distro.CloneMethodOAuth
 	opts.token = c.Token
-	s.Require().NoError(opts.setLocationGitHub())
+	s.Require().NoError(opts.setLocation())
 	cmds, err = c.buildModuleCloneCommand(conf, opts, "master", nil)
 	s.NoError(err)
 	s.Require().Len(cmds, 8)
@@ -586,7 +586,7 @@ func (s *GitGetProjectSuite) TestBuildModuleCommand() {
 		},
 	}
 	opts.method = distro.CloneMethodLegacySSH
-	s.Require().NoError(opts.setLocationGitHub())
+	s.Require().NoError(opts.setLocation())
 	cmds, err = c.buildModuleCloneCommand(conf, opts, "master", module)
 	s.NoError(err)
 	s.Require().Len(cmds, 7)
@@ -673,25 +673,25 @@ func (s *GitGetProjectSuite) TestCloneOptsSetLocationGitHub() {
 		repo:   "bar",
 		token:  "",
 	}
-	s.Require().NoError(opts.setLocationGitHub())
+	s.Require().NoError(opts.setLocation())
 	s.Equal("git@github.com:foo/bar.git", opts.location)
 
 	opts.method = distro.CloneMethodLegacySSH
-	s.Require().NoError(opts.setLocationGitHub())
+	s.Require().NoError(opts.setLocation())
 	s.Equal("git@github.com:foo/bar.git", opts.location)
 
 	opts.method = distro.CloneMethodOAuth
-	s.Require().NoError(opts.setLocationGitHub())
+	s.Require().NoError(opts.setLocation())
 	s.Equal("https://github.com/foo/bar.git", opts.location)
 
 	opts.method = distro.CloneMethodLegacySSH
 	opts.token = globalGitHubToken
-	s.Require().NoError(opts.setLocationGitHub())
+	s.Require().NoError(opts.setLocation())
 	s.Equal("git@github.com:foo/bar.git", opts.location)
 
 	opts.method = "foo"
 	opts.token = ""
-	s.Error(opts.setLocationGitHub())
+	s.Error(opts.setLocation())
 }
 
 func (s *GitGetProjectSuite) TestGetProjectMethodAndToken() {
