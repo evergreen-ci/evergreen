@@ -23,7 +23,7 @@
         {{if .Bugsnag}}
         {{if ne .Bugsnag ""}}
         <script src="//d2wy8f7a9ursnm.cloudfront.net/v6/bugsnag.min.js"></script>
-        <script>window.bugsnagClient = bugsnag('{{.Bugsnag}}')</script>
+        <script>window.bugsnagClient = bugsnag({apiKey: '{{.Bugsnag}}', appVersion: '{{BuildRevision}}'})</script>
         {{end}}
         {{end}}
 
