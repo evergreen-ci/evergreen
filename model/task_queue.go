@@ -52,7 +52,6 @@ func GetDistroQueueInfo(distroID string) (DistroQueueInfo, error) {
 	)
 
 	if err != nil {
-		err = errors.WithStack(err)
 		return DistroQueueInfo{}, errors.Wrapf(err, "Database error retrieving DistroQueueInfo for distro id '%s'", distroID)
 	}
 
@@ -526,7 +525,6 @@ func (self *TaskQueue) DequeueTask(taskId string) error {
 	// first, remove from the in-memory queue
 	found := false
 outer:
-	// STU: why would there be two or more TaskQueueItems in the []TaskQueueItem with the same TaskQueueItem.Id?
 	for {
 		for idx, queueItem := range self.Queue {
 			if queueItem.Id == taskId {

@@ -379,19 +379,14 @@ func assignNextAvailableTask(taskQueue *model.TaskQueue, taskQueueService model.
 			})
 
 			// Dequeue the task so we don't get it on another iteration of the loop.
-			if err = taskQueue.DequeueTask(nextTask.Id); err != nil {
-				// STU: should this be a grip.Info(), a grip.Alert() or a grip.Warning()?
-				grip.Info(message.WrapError(err, message.Fields{
-					"message": fmt.Sprintf("error pulling task with id '%s' from the taskQueue for distro '%s'", nextTask.Id, nextTask.DistroId),
-					"spec":    spec,
-					"host":    currentHost.Id,
-				}))
+			grip.Warning(message.WrapError(taskQueue.DequeueTask(nextTask.Id), message.Fields{
+				"message":   "could not find task in queue",
+				"next_task": nextTask.Id,
+				"distro":    nextTask.DistroId,
+				"spec":      spec,
+				"host":      currentHost.Id,
+			}))
 
-				// return nil, errors.Wrapf(err,
-				// 	"error pulling task with id %s from queue for distro %s",
-				// 	nextTask.Id, nextTask.DistroId)
-
-			}
 			continue
 		}
 
