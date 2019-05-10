@@ -15,11 +15,13 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/rest/client"
 	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mitchellh/mapstructure"
+	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/level"
 	"github.com/pkg/errors"
 )
@@ -35,18 +37,141 @@ type gitFetchProject struct {
 	// Note: If a module does not have a revision it will use the module's branch to get the project.
 	Revisions map[string]string `plugin:"expand"`
 
-	Token string `plugin:"expand"`
+	Token string `plugin:"expand" mapstructure:"token"`
 
 	base
 }
 
 type cloneOpts struct {
-	location *url.URL
+	method   string
+	location string
 	owner    string
 	repo     string
 	branch   string
 	dir      string
 	token    string
+}
+
+func (opts cloneOpts) validate() error {
+	catcher := grip.NewBasicCatcher()
+	if opts.owner == "" {
+		catcher.New("missing required owner")
+	}
+	if opts.repo == "" {
+		catcher.New("missing required repo")
+	}
+	if opts.location == "" {
+		catcher.New("missing required location")
+	}
+	if opts.method != "" {
+		catcher.Wrap(distro.ValidateCloneMethod(opts.method), "invalid clone method")
+	}
+	if opts.method == distro.CloneMethodOAuth && opts.token == "" {
+		catcher.New("cannot clone using OAuth if token is not set")
+	}
+	return catcher.Resolve()
+}
+
+func (opts cloneOpts) sshLocation() string {
+	return fmt.Sprintf("git@github.com:%s/%s.git", opts.owner, opts.repo)
+}
+
+func (opts cloneOpts) httpLocation() string {
+	return fmt.Sprintf("https://github.com/%s/%s.git", opts.owner, opts.repo)
+}
+
+// setLocation sets the location to clone from.
+func (opts *cloneOpts) setLocation() error {
+	switch opts.method {
+	case "", distro.CloneMethodLegacySSH:
+		opts.location = opts.sshLocation()
+	case distro.CloneMethodOAuth:
+		opts.location = opts.httpLocation()
+	default:
+		return errors.Errorf("unrecognized clone method '%s'", opts.method)
+	}
+	return nil
+}
+
+// getProjectMethodAndToken returns the project's clone method and token. If
+// set, the project token takes precedence over global settings.
+func getProjectMethodAndToken(projectToken, globalToken, globalCloneMethod string) (string, string, error) {
+	if projectToken != "" {
+		token, err := parseToken(projectToken)
+		return distro.CloneMethodOAuth, token, err
+	}
+
+	switch globalCloneMethod {
+	// No clone method specified is equivalent to using legacy SSH.
+	case "", distro.CloneMethodLegacySSH:
+		return distro.CloneMethodLegacySSH, "", nil
+	case distro.CloneMethodOAuth:
+		if globalToken == "" {
+			return "", "", errors.New("cannot clone using OAuth if global token is empty")
+		}
+		token, err := parseToken(globalToken)
+		return distro.CloneMethodOAuth, token, err
+	}
+
+	return "", "", errors.Errorf("unrecognized clone method '%s'", globalCloneMethod)
+}
+
+// parseToken parses the OAuth token, if it is in the format "token <token>";
+// otherwise, it returns the token unchanged.
+func parseToken(token string) (string, error) {
+	if !strings.HasPrefix(token, "token") {
+		return token, nil
+	}
+	splitToken := strings.Split(token, " ")
+	if len(splitToken) != 2 {
+		return "", errors.New("token format is invalid")
+	}
+	return splitToken[1], nil
+}
+
+func (opts cloneOpts) getCloneCommand() ([]string, error) {
+	if err := opts.validate(); err != nil {
+		return nil, errors.Wrap(err, "cannot create clone command")
+	}
+	switch opts.method {
+	case "", distro.CloneMethodLegacySSH:
+		return opts.buildSSHCloneCommand()
+	case distro.CloneMethodOAuth:
+		return opts.buildHTTPCloneCommand()
+	}
+	return nil, errors.New("unrecognized clone method in options")
+}
+
+func (opts cloneOpts) buildHTTPCloneCommand() ([]string, error) {
+	urlLocation, err := url.Parse(opts.location)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to parse URL from location")
+	}
+	clone := fmt.Sprintf("git clone https://%s@%s/%s/%s.git '%s'", opts.token, urlLocation.Host, opts.owner, opts.repo, opts.dir)
+	if opts.branch != "" {
+		clone = fmt.Sprintf("%s --branch '%s'", clone, opts.branch)
+	}
+
+	redactedClone := strings.Replace(clone, opts.token, "[redacted oauth token]", -1)
+	return []string{
+		"set +o xtrace",
+		fmt.Sprintf(`echo %s`, strconv.Quote(redactedClone)),
+		clone,
+		"set -o xtrace",
+		fmt.Sprintf("cd %s", opts.dir),
+	}, nil
+}
+
+func (opts cloneOpts) buildSSHCloneCommand() ([]string, error) {
+	cloneCmd := fmt.Sprintf("git clone '%s' '%s'", opts.location, opts.dir)
+	if opts.branch != "" {
+		cloneCmd = fmt.Sprintf("%s --branch '%s'", cloneCmd, opts.branch)
+	}
+
+	return []string{
+		cloneCmd,
+		fmt.Sprintf("cd %s", opts.dir),
+	}, nil
 }
 
 func gitFetchProjectFactory() Command   { return &gitFetchProject{} }
@@ -68,71 +193,17 @@ func (c *gitFetchProject) ParseParams(params map[string]interface{}) error {
 	return nil
 }
 
-func buildHTTPCloneCommand(opts cloneOpts) ([]string, error) {
-	clone := fmt.Sprintf("git clone https://%s@%s/%s/%s.git '%s'", opts.token, opts.location.Host, opts.owner, opts.repo, opts.dir)
-	if opts.branch != "" {
-		clone = fmt.Sprintf("%s --branch '%s'", clone, opts.branch)
-	}
-
-	redactedClone := strings.Replace(clone, opts.token, "[redacted oauth token]", -1)
-	return []string{
-		"set +o xtrace",
-		fmt.Sprintf(`echo %s`, strconv.Quote(redactedClone)),
-		clone,
-		"set -o xtrace",
-		fmt.Sprintf("cd %s", opts.dir),
-	}, nil
-}
-
-func buildSSHCloneCommand(location, branch, dir string) ([]string, error) {
-	cloneCmd := fmt.Sprintf("git clone '%s' '%s'", location, dir)
-	if branch != "" {
-		cloneCmd = fmt.Sprintf("%s --branch '%s'", cloneCmd, branch)
-	}
-
-	return []string{
-		cloneCmd,
-		fmt.Sprintf("cd %s", dir),
-	}, nil
-}
-
-func (c *gitFetchProject) buildCloneCommand(conf *model.TaskConfig) ([]string, error) {
+func (c *gitFetchProject) buildCloneCommand(conf *model.TaskConfig, opts cloneOpts) ([]string, error) {
 	gitCommands := []string{
 		"set -o xtrace",
 		"set -o errexit",
 		fmt.Sprintf("rm -rf %s", c.Directory),
 	}
 
-	var cloneCmd []string
-	if c.Token == "" {
-		location, err := conf.ProjectRef.Location()
-		if err != nil {
-			return nil, err
-		}
-		cloneCmd, err = buildSSHCloneCommand(location, conf.ProjectRef.Branch, c.Directory)
-		if err != nil {
-			return nil, err
-		}
-
-	} else {
-		location, err := conf.ProjectRef.HTTPLocation()
-		if err != nil {
-			return nil, err
-		}
-		opts := cloneOpts{
-			location: location,
-			owner:    conf.ProjectRef.Owner,
-			repo:     conf.ProjectRef.Repo,
-			branch:   conf.ProjectRef.Branch,
-			dir:      c.Directory,
-			token:    c.Token,
-		}
-		cloneCmd, err = buildHTTPCloneCommand(opts)
-		if err != nil {
-			return nil, err
-		}
+	cloneCmd, err := opts.getCloneCommand()
+	if err != nil {
+		return nil, errors.Wrap(err, "error getting command to clone repo")
 	}
-
 	gitCommands = append(gitCommands, cloneCmd...)
 
 	// if there's a PR checkout the ref containing the changes
@@ -170,49 +241,26 @@ func (c *gitFetchProject) buildCloneCommand(conf *model.TaskConfig) ([]string, e
 	return gitCommands, nil
 }
 
-func (c *gitFetchProject) buildModuleCloneCommand(cloneURI, owner, repo, moduleBase, ref string, conf *model.TaskConfig, modulePatch *patch.ModulePatch) ([]string, error) {
-	if cloneURI == "" {
-		return nil, errors.New("empty repository URI")
-	}
-	if moduleBase == "" {
-		return nil, errors.New("empty clone path")
-	}
-	if ref == "" && !isGitHubPRModulePatch(conf, modulePatch) {
-		return nil, errors.New("empty ref/branch to checkout")
-	}
-	moduleBase = filepath.ToSlash(moduleBase)
-
+func (c *gitFetchProject) buildModuleCloneCommand(conf *model.TaskConfig, opts cloneOpts, ref string, modulePatch *patch.ModulePatch) ([]string, error) {
 	gitCommands := []string{
 		"set -o xtrace",
 		"set -o errexit",
 	}
-
-	if strings.Contains(cloneURI, "git@github.com:") {
-		cmds, err := buildSSHCloneCommand(cloneURI, "", moduleBase)
-		if err != nil {
-			return nil, err
-		}
-		gitCommands = append(gitCommands, cmds...)
-
-	} else {
-		url, err := url.Parse(cloneURI)
-		if err != nil {
-			return nil, errors.Wrap(err, "repository URL is invalid")
-		}
-
-		opts := cloneOpts{
-			location: url,
-			owner:    owner,
-			repo:     repo,
-			dir:      moduleBase,
-			token:    c.Token,
-		}
-		cmds, err := buildHTTPCloneCommand(opts)
-		if err != nil {
-			return nil, err
-		}
-		gitCommands = append(gitCommands, cmds...)
+	if opts.location == "" {
+		return nil, errors.New("empty repository URI")
 	}
+	if opts.dir == "" {
+		return nil, errors.New("empty clone path")
+	}
+	if ref == "" && !isGitHubPRModulePatch(conf, modulePatch) {
+		return nil, errors.New("empty ref/branch to check out")
+	}
+
+	cloneCmd, err := opts.getCloneCommand()
+	if err != nil {
+		return nil, errors.Wrap(err, "error getting command to clone repo")
+	}
+	gitCommands = append(gitCommands, cloneCmd...)
 
 	if isGitHubPRModulePatch(conf, modulePatch) {
 		branchName := fmt.Sprintf("evg-merge-test-%s", util.RandomString())
@@ -236,18 +284,31 @@ func (c *gitFetchProject) Execute(ctx context.Context,
 
 	// expand the github parameters before running the task
 	if err = util.ExpandValues(c, conf.Expansions); err != nil {
-		return err
+		return errors.Wrap(err, "error expanding github parameters")
 	}
 
-	if strings.HasPrefix(c.Token, "token") {
-		splitToken := strings.Split(c.Token, " ")
-		if len(splitToken) != 2 {
-			return errors.New("token format is invalid")
-		}
-		c.Token = splitToken[1]
+	var projectMethod string
+	var projectToken string
+	projectMethod, projectToken, err = getProjectMethodAndToken(c.Token, conf.Expansions.Get("global_github_oauth_token"), conf.Distro.CloneMethod)
+	if err != nil {
+		return errors.Wrap(err, "failed to get method of cloning and token")
+	}
+	opts := cloneOpts{
+		method: projectMethod,
+		owner:  conf.ProjectRef.Owner,
+		repo:   conf.ProjectRef.Repo,
+		branch: conf.ProjectRef.Branch,
+		dir:    c.Directory,
+		token:  projectToken,
+	}
+	if err = opts.setLocation(); err != nil {
+		return errors.Wrap(err, "failed to set location to clone from")
+	}
+	if err = opts.validate(); err != nil {
+		return errors.Wrap(err, "could not validate options for cloning")
 	}
 
-	gitCommands, err := c.buildCloneCommand(conf)
+	gitCommands, err := c.buildCloneCommand(conf, opts)
 	if err != nil {
 		return errors.WithStack(err)
 	}
@@ -267,16 +328,16 @@ func (c *gitFetchProject) Execute(ctx context.Context,
 
 	logger.Execution().Info("Fetching source from git...")
 	redactedCmds := fetchScript
-	if c.Token != "" {
-		redactedCmds = strings.Replace(redactedCmds, c.Token, "[redacted oauth token]", -1)
+	if opts.token != "" {
+		redactedCmds = strings.Replace(redactedCmds, opts.token, "[redacted oauth token]", -1)
 	}
 	logger.Execution().Debug(fmt.Sprintf("Commands are: %s", redactedCmds))
 
 	if err = fetchSourceCmd.Run(ctx); err != nil {
 		errorOutput := stdErr.String()
 		if errorOutput != "" {
-			if c.Token != "" {
-				errorOutput = strings.Replace(errorOutput, c.Token, "[redacted oauth token]", -1)
+			if opts.token != "" {
+				errorOutput = strings.Replace(errorOutput, opts.token, "[redacted oauth token]", -1)
 			}
 			logger.Execution().Error(errorOutput)
 		}
@@ -310,7 +371,7 @@ func (c *gitFetchProject) Execute(ctx context.Context,
 			continue
 		}
 
-		moduleBase := filepath.Join(module.Prefix, module.Name)
+		moduleBase := filepath.ToSlash(filepath.Join(module.Prefix, module.Name))
 
 		var revision string
 		if conf.Task.Requester == evergreen.MergeTestRequester {
@@ -346,8 +407,27 @@ func (c *gitFetchProject) Execute(ctx context.Context,
 			}
 		}
 
+		opts := cloneOpts{
+			location: module.Repo,
+			owner:    owner,
+			repo:     repo,
+			branch:   "",
+			dir:      moduleBase,
+		}
+		// Module's location takes precedence over the project-level clone
+		// method.
+		if strings.Contains(opts.location, "git@github.com:") {
+			opts.method = distro.CloneMethodLegacySSH
+		} else {
+			opts.method = projectMethod
+			opts.token = projectToken
+		}
+		if err = opts.validate(); err != nil {
+			return errors.Wrap(err, "could not validate options for cloning")
+		}
+
 		var moduleCmds []string
-		moduleCmds, err = c.buildModuleCloneCommand(module.Repo, owner, repo, moduleBase, revision, conf, modulePatch)
+		moduleCmds, err = c.buildModuleCloneCommand(conf, opts, revision, modulePatch)
 		if err != nil {
 			return err
 		}
