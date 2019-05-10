@@ -21,18 +21,19 @@ import (
 // ad-hoc processes for smaller tasks. Command immediately supports features
 // such as output and error functionality and remote execution.
 type Command struct {
+	cmds     [][]string
+	opts     *CreateOptions
+	priority level.Priority
+	id       string
+	procIDs  []string
+	remote   remoteCommandOptions
+
 	continueOnError bool
 	ignoreError     bool
-	opts            *CreateOptions
-	prerequisite    func() bool
-	priority        level.Priority
 	runBackground   bool
+	prerequisite    func() bool
 
-	cmds    [][]string
-	id      string
-	procIDs []string
-	remote  remoteCommandOptions
-	makep   ProcessConstructor
+	makep ProcessConstructor
 }
 
 type remoteCommandOptions struct {
@@ -49,32 +50,23 @@ func (rco *remoteCommandOptions) hostString() string {
 	return fmt.Sprintf("%s@%s", rco.user, rco.host)
 }
 
-func (c *Command) getRemoteCreateOpt(ctx context.Context, args []string) (*CreateOptions, error) {
-	opts := c.opts.Copy()
-	opts.WorkingDirectory = ""
-	opts.Environment = nil
-
+func getRemoteCreateOpt(ctx context.Context, rco remoteCommandOptions, args []string, dir string) (*CreateOptions, error) {
 	var remoteCmd string
 
-	if c.opts.WorkingDirectory != "" {
-		remoteCmd += fmt.Sprintf("cd '%s' && ", c.opts.WorkingDirectory)
-	}
-
-	if env := c.opts.getEnvSlice(); len(env) != 0 {
-		remoteCmd += strings.Join(env, " ") + " "
+	if dir != "" {
+		remoteCmd = fmt.Sprintf("cd %s && ", dir)
 	}
 
 	switch len(args) {
 	case 0:
-		return nil, errors.New("cannot have empty args")
+		return nil, errors.New("args invalid")
 	case 1:
 		remoteCmd += args[0]
 	default:
 		remoteCmd += strings.Join(args, " ")
 	}
 
-	opts.Args = append(append([]string{"ssh"}, c.remote.args...), c.remote.hostString(), remoteCmd)
-	return opts, nil
+	return &CreateOptions{Args: append(append([]string{"ssh"}, rco.args...), rco.hostString(), remoteCmd)}, nil
 }
 
 func getLogOutput(out []byte) string {
@@ -107,16 +99,7 @@ func (c *Command) ProcConstructor(processConstructor ProcessConstructor) *Comman
 // been created by the Command for execution.
 func (c *Command) GetProcIDs() []string { return c.procIDs }
 
-// ApplyFromOpts uses the CreateOptions to configure the Command. If this is a
-// remote command (i.e. host has been set), the WorkingDirectory and Environment
-// will apply to the command being run on remote.
-// If Args is set on the CreateOptions, it will be ignored; the Args can be
-// added using Add, Append, AppendArgs, or Extend.
-// This overwrites options that were previously set in the following functions:
-// AddEnv, Environment, RedirectErrorToOutput, RedirectOutputToError,
-// SetCombinedSender, SetErrorSender, SetErrorWriter, SetOutputOptions,
-// SetOutputSender, SetOutputWriter, SuppressStandardError, and
-// SuppressStandardOutput.
+// ApplyFromOpts uses the CreateOptions to configure the Command.
 func (c *Command) ApplyFromOpts(opts *CreateOptions) *Command { c.opts = opts; return c }
 
 // SetOutputOptions sets the output options for a command.
@@ -127,8 +110,7 @@ func (c *Command) String() string {
 	return fmt.Sprintf("id='%s', remote='%s', cmd='%s'", c.id, c.remote.hostString(), c.getCmd())
 }
 
-// Directory sets the working directory. If this is a remote command, it sets
-// the working directory of the command being run remotely.
+// Directory sets the working directory.
 func (c *Command) Directory(d string) *Command { c.opts.WorkingDirectory = d; return c }
 
 // Host sets the hostname. A blank hostname implies local execution of the
@@ -169,36 +151,32 @@ func (c *Command) ContinueOnError(cont bool) *Command { c.continueOnError = cont
 // error despite errors in its sub-command executions.
 func (c *Command) IgnoreError(ignore bool) *Command { c.ignoreError = ignore; return c }
 
-// SuppressStandardError sets a flag for determining if the Command should
-// discard all standard error content.
+// SuppressStandardError, when set to true, discards all standard
+// error content.
 func (c *Command) SuppressStandardError(v bool) *Command { c.opts.Output.SuppressError = v; return c }
 
-// SuppressStandardOutput sets a flag for determining if the Command should
-// discard all standard output content.
+// SuppressStandardOutput, when set to true, discards all standard
+// output content.
 func (c *Command) SuppressStandardOutput(v bool) *Command { c.opts.Output.SuppressOutput = v; return c }
 
-// RedirectOutputToError sets a flag for determining if the Command should send
-// all standard output content to standard error.
+// RedirectOutputToError sends all standard output content to standard error.
 func (c *Command) RedirectOutputToError(v bool) *Command {
 	c.opts.Output.SendOutputToError = v
 	return c
 }
 
-// RedirectErrorToOutput sets a flag for determining if the Command should send
-// all standard error content to standard output.
+// RedirectOutputToError sends all standard error output to standard output.
 func (c *Command) RedirectErrorToOutput(v bool) *Command {
 	c.opts.Output.SendOutputToError = v
 	return c
 }
 
 // Environment replaces the current environment map with the given environment
-// map. If this is a remote command, it sets the environment of the command
-// being run remotely.
+// map.
 func (c *Command) Environment(e map[string]string) *Command { c.opts.Environment = e; return c }
 
 // AddEnv adds a key value pair of environment variable to value into the
-// Command's environment variable map. If this is a remote command, it sets the
-// environment of the command being run remotely.
+// Command's environment variable map.
 func (c *Command) AddEnv(k, v string) *Command { c.setupEnv(); c.opts.Environment[k] = v; return c }
 
 // Prerequisite sets a function on the Command such that the Command will only
@@ -211,19 +189,19 @@ func (c *Command) Add(args []string) *Command { c.cmds = append(c.cmds, args); r
 // Extend adds on multiple sub-commands.
 func (c *Command) Extend(cmds [][]string) *Command { c.cmds = append(c.cmds, cmds...); return c }
 
-// ShellScript adds an operation to the command that runs a shell script, using
-// the shell's "-c" option).
+// ShellOperation adds an operation to the command that runs a shell
+// script, using the shell's "-c" option).
 func (c *Command) ShellScript(shell, script string) *Command {
 	c.cmds = append(c.cmds, []string{shell, "-c", script})
 	return c
 }
 
-// Bash adds a script using "bash -c", as syntactic sugar for the ShellScript
-// method.
+// Bash adds a script using "bash -c", as syntactic sugar for the
+// ShellScript method.
 func (c *Command) Bash(script string) *Command { return c.ShellScript("bash", script) }
 
-// Sh adds a script using "sh -c", as syntactic sugar for the ShellScript
-// method.
+// Bash adds a script using "bash -c", as syntactic sugar for the
+// ShellScript method.
 func (c *Command) Sh(script string) *Command { return c.ShellScript("sh", script) }
 
 // Append takes a series of strings and splits them into sub-commands and adds
@@ -407,8 +385,16 @@ func (c *Command) finalizeWriters() {
 	}
 }
 
+func (c *Command) getEnv() []string {
+	out := []string{}
+	for k, v := range c.opts.Environment {
+		out = append(out, fmt.Sprintf("%s=%s", k, v))
+	}
+	return out
+}
+
 func (c *Command) getCmd() string {
-	env := strings.Join(c.opts.getEnvSlice(), " ")
+	env := strings.Join(c.getEnv(), " ")
 	out := []string{}
 	for _, cmd := range c.cmds {
 		out = append(out, fmt.Sprintf("%s '%s';\n", env, strings.Join(cmd, " ")))
@@ -416,23 +402,25 @@ func (c *Command) getCmd() string {
 	return strings.Join(out, "")
 }
 
-func (c *Command) getCreateOpt(ctx context.Context, args []string) (*CreateOptions, error) {
-	opts := c.opts.Copy()
+func getCreateOpt(ctx context.Context, args []string, dir string, env map[string]string) (*CreateOptions, error) {
+	var opts *CreateOptions
 	switch len(args) {
 	case 0:
-		return nil, errors.New("cannot have empty args")
+		return nil, errors.New("args invalid")
 	case 1:
 		if strings.Contains(args[0], " \"'") {
 			spl, err := shlex.Split(args[0])
 			if err != nil {
 				return nil, errors.Wrap(err, "problem splitting argstring")
 			}
-			return c.getCreateOpt(ctx, spl)
+			return getCreateOpt(ctx, spl, dir, env)
 		}
-		opts.Args = args
+		opts = &CreateOptions{Args: args}
 	default:
-		opts.Args = args
+		opts = &CreateOptions{Args: args}
 	}
+	opts.WorkingDirectory = dir
+	opts.Environment = env
 
 	return opts, nil
 }
@@ -442,7 +430,7 @@ func (c *Command) getCreateOpts(ctx context.Context) ([]*CreateOptions, error) {
 	catcher := grip.NewBasicCatcher()
 	if c.remote.host != "" {
 		for _, args := range c.cmds {
-			cmd, err := c.getRemoteCreateOpt(ctx, args)
+			cmd, err := getRemoteCreateOpt(ctx, c.remote, args, c.opts.WorkingDirectory)
 			if err != nil {
 				catcher.Add(err)
 				continue
@@ -452,7 +440,7 @@ func (c *Command) getCreateOpts(ctx context.Context) ([]*CreateOptions, error) {
 		}
 	} else {
 		for _, args := range c.cmds {
-			cmd, err := c.getCreateOpt(ctx, args)
+			cmd, err := getCreateOpt(ctx, args, c.opts.WorkingDirectory, c.opts.Environment)
 			if err != nil {
 				catcher.Add(err)
 				continue
@@ -480,9 +468,7 @@ func (c *Command) exec(ctx context.Context, opts *CreateOptions, idx int) error 
 	addOutOp := func(msg message.Fields) message.Fields { return msg }
 	var err error
 	var newProc Process
-	// TODO: the logic below this is not strictly correct if, for example,
-	// Output is redirected to Error and Error has been defined.
-	if opts.Output.Output == nil {
+	if c.opts.Output.Output == nil {
 		var out bytes.Buffer
 		opts.Output.Output = &out
 		opts.Output.Error = &out
@@ -497,6 +483,8 @@ func (c *Command) exec(ctx context.Context, opts *CreateOptions, idx int) error 
 			return msg
 		}
 	} else {
+		opts.Output.Error = c.opts.Output.Error
+		opts.Output.Output = c.opts.Output.Output
 		newProc, err = c.makep(ctx, opts)
 		if err != nil {
 			return errors.Wrapf(err, "problem starting command")
@@ -520,8 +508,8 @@ func BuildCommand(id string, pri level.Priority, args []string, dir string, env 
 }
 
 // BuildRemoteCommand builds the Command remotely given the configuration of arguments.
-func BuildRemoteCommand(id string, pri level.Priority, host string, args []string, dir string, env map[string]string) *Command {
-	return NewCommand().ID(id).Priority(pri).Host(host).Add(args).Directory(dir).Environment(env)
+func BuildRemoteCommand(id string, pri level.Priority, host string, args []string, dir string) *Command {
+	return NewCommand().ID(id).Priority(pri).Host(host).Add(args).Directory(dir)
 }
 
 // BuildCommandGroupContinueOnError runs the group of sub-commands given the

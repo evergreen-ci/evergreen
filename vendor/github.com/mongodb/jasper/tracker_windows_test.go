@@ -6,7 +6,10 @@ import (
 	"context"
 	"errors"
 	"os"
+	"os/exec"
+	"syscall"
 	"testing"
+	"time"
 
 	"github.com/satori/go.uuid"
 	"github.com/stretchr/testify/assert"
@@ -14,7 +17,7 @@ import (
 )
 
 func makeTracker() (*windowsProcessTracker, error) {
-	tracker, err := NewProcessTracker("foo" + uuid.Must(uuid.NewV4()).String())
+	tracker, err := newProcessTracker("foo" + uuid.Must(uuid.NewV4()).String())
 	if err != nil {
 		return nil, err
 	}
@@ -26,102 +29,80 @@ func makeTracker() (*windowsProcessTracker, error) {
 	return windowsTracker, nil
 }
 
+func makeAndStartYesCommand(ctx context.Context) (*exec.Cmd, error) {
+	cmd := exec.CommandContext(ctx, "yes", "yes")
+	err := cmd.Start()
+	return cmd, err
+}
+
 func TestWindowsProcessTracker(t *testing.T) {
-	for testName, testCase := range map[string]func(context.Context, *testing.T, *windowsProcessTracker, *CreateOptions){
-		"NewWindowsProcessTrackerCreatesJob": func(_ context.Context, t *testing.T, tracker *windowsProcessTracker, opts *CreateOptions) {
-			require.NotNil(t, tracker.job)
+	for testName, testCase := range map[string]func(context.Context, *testing.T, *windowsProcessTracker){
+		"NewWindowsProcessTrackerCreatesJob": func(_ context.Context, t *testing.T, tracker *windowsProcessTracker) {
 			info, err := QueryInformationJobObjectProcessIdList(tracker.job.handle)
 			assert.NoError(t, err)
 			assert.Equal(t, 0, int(info.NumberOfAssignedProcesses))
-		},
-		"AddProcessToTrackerAssignsPID": func(ctx context.Context, t *testing.T, tracker *windowsProcessTracker, opts *CreateOptions) {
-			opts1, opts2 := opts, opts.Copy()
-			proc1, err := newBasicProcess(ctx, opts1)
-			require.NoError(t, err)
-			assert.NoError(t, tracker.Add(proc1.Info(ctx)))
 
-			proc2, err := newBasicProcess(ctx, opts2)
+			assert.NoError(t, tracker.job.Close())
+		},
+		"AddProcessToTrackerAssignsPid": func(ctx context.Context, t *testing.T, tracker *windowsProcessTracker) {
+			cmd1, err := makeAndStartYesCommand(ctx)
 			require.NoError(t, err)
-			assert.NoError(t, tracker.Add(proc2.Info(ctx)))
+			pid1 := uint(cmd1.Process.Pid)
+			assert.NoError(t, tracker.add(pid1))
+
+			cmd2, err := makeAndStartYesCommand(ctx)
+			require.NoError(t, err)
+			pid2 := uint(cmd2.Process.Pid)
+			assert.NoError(t, tracker.add(pid2))
 
 			info, err := QueryInformationJobObjectProcessIdList(tracker.job.handle)
 			assert.NoError(t, err)
 			assert.Equal(t, 2, int(info.NumberOfAssignedProcesses))
-			assert.Contains(t, info.ProcessIdList, uint64(proc1.Info(ctx).PID))
-			assert.Contains(t, info.ProcessIdList, uint64(proc2.Info(ctx).PID))
-		},
-		"AddedProcessIsTerminatedOnCleanup": func(ctx context.Context, t *testing.T, tracker *windowsProcessTracker, opts *CreateOptions) {
-			proc, err := newBasicProcess(ctx, opts)
-			require.NoError(t, err)
+			assert.Equal(t, info.ProcessIdList[0], uint64(pid1))
+			assert.Equal(t, info.ProcessIdList[1], uint64(pid2))
 
-			assert.NoError(t, tracker.Add(proc.Info(ctx)))
+			assert.NoError(t, tracker.job.Close())
+		},
+		"AddedProcessIsTerminatedOnCleanup": func(ctx context.Context, t *testing.T, tracker *windowsProcessTracker) {
+			cmd, err := makeAndStartYesCommand(ctx)
+			require.NoError(t, err)
+			pid := uint(cmd.Process.Pid)
+
+			assert.NoError(t, tracker.add(pid))
 
 			info, err := QueryInformationJobObjectProcessIdList(tracker.job.handle)
 			assert.NoError(t, err)
 			assert.Equal(t, 1, int(info.NumberOfAssignedProcesses))
-			assert.Contains(t, info.ProcessIdList, uint64(proc.Info(ctx).PID))
 
-			assert.NoError(t, tracker.Cleanup())
-
-			exitCode, err := proc.Wait(ctx)
-			assert.Zero(t, exitCode)
+			procHandle, err := OpenProcess(PROCESS_ALL_ACCESS, false, uint32(pid))
 			assert.NoError(t, err)
-			assert.Nil(t, ctx.Err())
-			assert.True(t, proc.Complete(ctx))
-		},
-		"CleanupWithNoProcessesDoesNotError": func(ctx context.Context, t *testing.T, tracker *windowsProcessTracker, opts *CreateOptions) {
-			assert.NoError(t, tracker.Cleanup())
-		},
-		"DoubleCleanupDoesNotError": func(ctx context.Context, t *testing.T, tracker *windowsProcessTracker, opts *CreateOptions) {
-			proc, err := newBasicProcess(ctx, opts)
-			require.NoError(t, err)
 
-			assert.NoError(t, tracker.Add(proc.Info(ctx)))
+			assert.NoError(t, tracker.cleanup())
 
-			info, err := QueryInformationJobObjectProcessIdList(tracker.job.handle)
+			waitEvent, err := WaitForSingleObject(procHandle, 60*time.Second)
 			assert.NoError(t, err)
-			assert.Equal(t, 1, int(info.NumberOfAssignedProcesses))
-			assert.Contains(t, info.ProcessIdList, uint64(proc.Info(ctx).PID))
+			assert.Equal(t, WAIT_OBJECT_0, waitEvent)
+			assert.NoError(t, CloseHandle(procHandle))
 
-			assert.NoError(t, tracker.Cleanup())
-			assert.NoError(t, tracker.Cleanup())
-
-			exitCode, err := proc.Wait(ctx)
-			assert.Zero(t, exitCode)
-			assert.NoError(t, err)
-			assert.Nil(t, ctx.Err())
-			assert.True(t, proc.Complete(ctx))
+			assert.NoError(t, cmd.Wait())
+			assert.NotNil(t, cmd.ProcessState)
+			waitStatus := cmd.ProcessState.Sys().(syscall.WaitStatus)
+			assert.True(t, waitStatus.Exited())
 		},
-		"CanAddProcessAfterCleanup": func(ctx context.Context, t *testing.T, tracker *windowsProcessTracker, opts *CreateOptions) {
-			assert.NoError(t, tracker.Cleanup())
-
-			proc, err := newBasicProcess(ctx, opts)
-			require.NoError(t, err)
-
-			assert.NoError(t, tracker.Add(proc.Info(ctx)))
-			info, err := QueryInformationJobObjectProcessIdList(tracker.job.handle)
-			assert.NoError(t, err)
-			assert.Equal(t, 1, int(info.NumberOfAssignedProcesses))
-		},
-		// "": func(ctx context.Context, t *testing.T, tracker *windowsProcessTracker) {},
 	} {
 		t.Run(testName, func(t *testing.T) {
 			if _, runningInEvgAgent := os.LookupEnv("EVR_TASK_ID"); runningInEvgAgent {
 				t.Skip("Evergreen makes its own job object, so these will not pass in Evergreen tests ",
 					"(although they will pass if locally run).")
 			}
-			ctx, cancel := context.WithTimeout(context.Background(), taskTimeout)
+			ctx, cancel := context.WithCancel(context.Background())
 			defer cancel()
 
 			tracker, err := makeTracker()
-			defer func() {
-				assert.NoError(t, tracker.Cleanup())
-			}()
 			require.NoError(t, err)
 			require.NotNil(t, tracker)
-			opts := yesCreateOpts(taskTimeout)
 
-			testCase(ctx, t, tracker, &opts)
+			testCase(ctx, t, tracker)
 		})
 	}
 }

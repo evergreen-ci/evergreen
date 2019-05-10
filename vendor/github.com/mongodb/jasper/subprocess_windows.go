@@ -1,6 +1,7 @@
 package jasper
 
 import (
+	// "encoding/binary"
 	"fmt"
 	"syscall"
 	"time"

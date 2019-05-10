@@ -406,7 +406,8 @@ func (s *jasperService) RegisterSignalTriggerID(ctx context.Context, params *Sig
 		return &OperationOutcome{
 			Success:  false,
 			Text:     err.Error(),
-			ExitCode: -2}, nil
+			ExitCode: -2,
+		}, nil
 	}
 
 	makeTrigger, ok := jasper.GetSignalTriggerFactory(signalTriggerID)

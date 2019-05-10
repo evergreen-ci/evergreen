@@ -12,7 +12,7 @@ imports:
   - name: github.com/evergreen-ci/gimlet
     version: 713b8d22b5e93a0c25a9f71ca944c86d7ecefe84
   - name: github.com/tychoish/bond
-    version: b4258699e61406e09c9e4dcca2151eed6c228043
+    version: c5c97df78ea1091f5ac2da1d6e6054e588b4e3ce
   - name: github.com/tychoish/lru
     version: f77a748d12a924cfbfcf396426dd58de5aa3a9e2
   - name: github.com/mholt/archiver
@@ -23,22 +23,6 @@ imports:
     version: ba41957778899cce2775284bfdb7155475794657
   - name: github.com/google/shlex
     version: 6f45313302b9c56850fc17f99e40caebce98c716
-  - name: github.com/urfave/cli
-    version: 693af58b4d51b8fcc7f9d89576da170765980581
-
-  # cgroup requirements
-  - name: github.com/containerd/cgroups
-    version: dbea6f2bd41658b84b00417ceefa416b979cbf10
-  - name: github.com/opencontainers/runtime-spec
-    version: ad53dcdc39f1f7f7472b10aa0a45648fe4865496
-  - name: github.com/docker/go-units
-    version: 2fb04c6466a548a03cb009c5569ee1ab1e35398e
-  - name: github.com/coreos/go-systemd
-    version: 95778dfbb74eb7e4dbaf43bf7d71809650ef8076
-  - name: github.com/godbus/dbus
-    version: f93dedc6ceb4596891d18bae4a2adf9258f0acfb
-  - name: github.com/gogo/protobuf
-    version: 382325bbbb4d1c850eec1f3ec92a1a16f502d68b
 
   # grpc and dependencies
   - name: google.golang.org/grpc

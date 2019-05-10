@@ -162,6 +162,7 @@ type MockManager struct {
 	FailList     bool
 	FailGroup    bool
 	FailGet      bool
+	FailClear    bool
 	FailClose    bool
 	Process      *MockProcess
 	Array        []Process

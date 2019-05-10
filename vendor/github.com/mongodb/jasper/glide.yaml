@@ -10,5 +10,3 @@ import:
   - package: github.com/mholt/archiver
   - package: github.com/montanaflynn/stats
   - package: github.com/mongodb/amboy
-  - package: github.com/containerd/cgroups
-  - package: github.com/urfave/cli

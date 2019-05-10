@@ -6,40 +6,28 @@ import (
 )
 
 type windowsProcessTracker struct {
-	*processTrackerBase
-	job *Job
+	job        *Job
+	terminated bool
 }
 
-func (t *windowsProcessTracker) setJobIfInvalid() error {
-	if t.job != nil {
-		return nil
-	}
-	job, err := NewJob(t.Name)
+func newProcessTracker(name string) (processTracker, error) {
+	job, err := NewJob(name)
 	if err != nil {
-		return errors.Wrap(err, "error creating new job object")
+		return nil, err
 	}
-	t.job = job
-	return nil
+	return &windowsProcessTracker{job: job}, nil
 }
 
-func NewProcessTracker(name string) (ProcessTracker, error) {
-	t := &windowsProcessTracker{processTrackerBase: &processTrackerBase{Name: name}}
-	if err := t.setJobIfInvalid(); err != nil {
-		return nil, errors.Wrap(err, "problem creating job object for new process tracker")
-	}
-	return t, nil
-}
-
-func (t *windowsProcessTracker) Add(info ProcessInfo) error {
-	if err := t.setJobIfInvalid(); err != nil {
-		return errors.Wrap(err, "could not add process because job was not created properly")
-	}
-	return t.job.AssignProcess(uint(info.PID))
-}
-
-func (t *windowsProcessTracker) Cleanup() error {
+func (t *windowsProcessTracker) add(pid uint) error {
 	if t.job == nil {
-		return nil
+		return errors.New("cannot add process because job is invalid")
+	}
+	return t.job.AssignProcess(pid)
+}
+
+func (t *windowsProcessTracker) cleanup() error {
+	if t.job == nil {
+		return errors.New("cannot close because job is invalid")
 	}
 	catcher := grip.NewBasicCatcher()
 	catcher.Add(t.job.Terminate(0))

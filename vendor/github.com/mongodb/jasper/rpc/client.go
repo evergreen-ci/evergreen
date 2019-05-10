@@ -3,7 +3,6 @@ package rpc
 import (
 	"context"
 	"io"
-	"net"
 	"syscall"
 
 	empty "github.com/golang/protobuf/ptypes/empty"
@@ -11,52 +10,22 @@ import (
 	internal "github.com/mongodb/jasper/rpc/internal"
 	"github.com/pkg/errors"
 	grpc "google.golang.org/grpc"
-	"google.golang.org/grpc/credentials"
 )
 
-type rpcClient struct {
-	client       internal.JasperProcessManagerClient
-	clientCloser jasper.CloseFunc
+type rpcManager struct {
+	client internal.JasperProcessManagerClient
 }
 
-// NewClient creates a connection to the RPC service specified
-// in the address. If certFile is non-empty, the credentials will be read from
-// the file to establish a secure TLS connection; otherwise, it will establish
-// an insecure connection. The caller is responsible for closing the connection
-// using the returned jasper.CloseFunc.
-func NewClient(ctx context.Context, addr net.Addr, certFile string) (jasper.RemoteClient, error) {
-	var credsDialOpt grpc.DialOption
-	if certFile != "" {
-		creds, err := credentials.NewClientTLSFromFile(certFile, "")
-		if err != nil {
-			return nil, errors.Wrapf(err, "could not get client credentials from cert file '%s'", certFile)
-		}
-		credsDialOpt = grpc.WithTransportCredentials(creds)
-	} else {
-		credsDialOpt = grpc.WithInsecure()
-	}
+// TODO provide some better way of constructing this object
 
-	conn, err := grpc.DialContext(ctx, addr.String(), credsDialOpt, grpc.WithBlock())
-	if err != nil {
-		return nil, errors.Wrapf(err, "could not establish connection to service at address '%s'", addr.String())
-	}
-
-	return newRPCClient(conn), nil
-}
-
-// newRPCClient is a constructor for an RPC client.
-func newRPCClient(cc *grpc.ClientConn) jasper.RemoteClient {
-	return &rpcClient{
-		client:       internal.NewJasperProcessManagerClient(cc),
-		clientCloser: cc.Close,
+// NewRPCManager is a constructor for a rpcManager.
+func NewRPCManager(cc *grpc.ClientConn) jasper.Manager {
+	return &rpcManager{
+		client: internal.NewJasperProcessManagerClient(cc),
 	}
 }
 
-func (m *rpcClient) CloseConnection() error {
-	return m.clientCloser()
-}
-
-func (m *rpcClient) CreateProcess(ctx context.Context, opts *jasper.CreateOptions) (jasper.Process, error) {
+func (m *rpcManager) CreateProcess(ctx context.Context, opts *jasper.CreateOptions) (jasper.Process, error) {
 	proc, err := m.client.Create(ctx, internal.ConvertCreateOptions(opts))
 	if err != nil {
 		return nil, errors.WithStack(err)
@@ -65,15 +34,15 @@ func (m *rpcClient) CreateProcess(ctx context.Context, opts *jasper.CreateOption
 	return &rpcProcess{client: m.client, info: proc}, nil
 }
 
-func (m *rpcClient) CreateCommand(ctx context.Context) *jasper.Command {
+func (m *rpcManager) CreateCommand(ctx context.Context) *jasper.Command {
 	return jasper.NewCommand().ProcConstructor(m.CreateProcess)
 }
 
-func (m *rpcClient) Register(ctx context.Context, proc jasper.Process) error {
+func (m *rpcManager) Register(ctx context.Context, proc jasper.Process) error {
 	return errors.New("cannot register extant processes on remote systms")
 }
 
-func (m *rpcClient) List(ctx context.Context, f jasper.Filter) ([]jasper.Process, error) {
+func (m *rpcManager) List(ctx context.Context, f jasper.Filter) ([]jasper.Process, error) {
 	procs, err := m.client.List(ctx, internal.ConvertFilter(f))
 	if err != nil {
 		return nil, errors.Wrap(err, "problem getting streaming client")
@@ -97,7 +66,7 @@ func (m *rpcClient) List(ctx context.Context, f jasper.Filter) ([]jasper.Process
 	return out, nil
 }
 
-func (m *rpcClient) Group(ctx context.Context, name string) ([]jasper.Process, error) {
+func (m *rpcManager) Group(ctx context.Context, name string) ([]jasper.Process, error) {
 	procs, err := m.client.Group(ctx, &internal.TagName{Value: name})
 	if err != nil {
 		return nil, errors.Wrap(err, "problem getting streaming client")
@@ -121,7 +90,7 @@ func (m *rpcClient) Group(ctx context.Context, name string) ([]jasper.Process, e
 	return out, nil
 }
 
-func (m *rpcClient) Get(ctx context.Context, name string) (jasper.Process, error) {
+func (m *rpcManager) Get(ctx context.Context, name string) (jasper.Process, error) {
 	info, err := m.client.Get(ctx, &internal.JasperProcessID{Value: name})
 	if err != nil {
 		return nil, errors.Wrap(err, "problem finding process")
@@ -130,76 +99,12 @@ func (m *rpcClient) Get(ctx context.Context, name string) (jasper.Process, error
 	return &rpcProcess{client: m.client, info: info}, nil
 }
 
-func (m *rpcClient) Clear(ctx context.Context) {
+func (m *rpcManager) Clear(ctx context.Context) {
 	_, _ = m.client.Clear(ctx, &empty.Empty{})
 }
 
-func (m *rpcClient) Close(ctx context.Context) error {
+func (m *rpcManager) Close(ctx context.Context) error {
 	resp, err := m.client.Close(ctx, &empty.Empty{})
-	if err != nil {
-		return errors.WithStack(err)
-	}
-	if resp.Success {
-		return nil
-	}
-
-	return errors.New(resp.Text)
-}
-
-func (m *rpcClient) Status(ctx context.Context) (string, bool, error) {
-	resp, err := m.client.Status(ctx, &empty.Empty{})
-	if err != nil {
-		return "", false, errors.WithStack(err)
-	}
-	return resp.HostId, resp.Active, nil
-}
-
-func (m *rpcClient) ConfigureCache(ctx context.Context, opts jasper.CacheOptions) error {
-	resp, err := m.client.ConfigureCache(ctx, internal.ConvertCacheOptions(opts))
-	if err != nil {
-		return errors.WithStack(err)
-	}
-	if resp.Success {
-		return nil
-	}
-
-	return errors.New(resp.Text)
-}
-
-func (m *rpcClient) DownloadFile(ctx context.Context, info jasper.DownloadInfo) error {
-	resp, err := m.client.DownloadFile(ctx, internal.ConvertDownloadInfo(info))
-	if err != nil {
-		return errors.WithStack(err)
-	}
-	if resp.Success {
-		return nil
-	}
-
-	return errors.New(resp.Text)
-}
-
-func (m *rpcClient) DownloadMongoDB(ctx context.Context, opts jasper.MongoDBDownloadOptions) error {
-	resp, err := m.client.DownloadMongoDB(ctx, internal.ConvertMongoDBDownloadOptions(opts))
-	if err != nil {
-		return errors.WithStack(err)
-	}
-	if resp.Success {
-		return nil
-	}
-
-	return errors.New(resp.Text)
-}
-
-func (m *rpcClient) GetBuildloggerURLs(ctx context.Context, name string) ([]string, error) {
-	resp, err := m.client.GetBuildloggerURLs(ctx, &internal.JasperProcessID{Value: name})
-	if err != nil {
-		return nil, errors.WithStack(err)
-	}
-	return resp.Urls, nil
-}
-
-func (m *rpcClient) SignalEvent(ctx context.Context, name string) error {
-	resp, err := m.client.SignalEvent(ctx, &internal.EventName{Value: name})
 	if err != nil {
 		return errors.WithStack(err)
 	}
@@ -282,7 +187,7 @@ func (p *rpcProcess) Wait(ctx context.Context) (int, error) {
 
 	if resp.Success {
 		if resp.ExitCode != 0 {
-			return int(resp.ExitCode), errors.Wrap(errors.New(resp.Text), "operation failed")
+			return int(resp.ExitCode), errors.New("operation failed")
 		}
 		return int(resp.ExitCode), nil
 	}
