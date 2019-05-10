@@ -77,7 +77,8 @@ mciModule.factory('DrawPerfTrendChart', function (
     for (var i = 0; i < cfg.knownLevelsCount; i++) colors(i);
 
     var ops = _.pluck(series, cfg.valueAttr);
-    var opsValues = _.pluck(series, cfg.valueAttr + "_values");
+    var opsValues = _.pluck(series, 'ops_per_sec_values');
+    var avgOpsPerSec = d3.mean(ops)
 
     // Currently selcted revision item index
     var currentItemIdx = _.findIndex(series, function(d) {
@@ -125,7 +126,7 @@ mciModule.factory('DrawPerfTrendChart', function (
     // Depend on threadMode, key, activeLevelNames, cfg
     function getCompValues(compSample) {
       if (threadMode == MAXONLY) {
-        return [compSample.maxThroughputForTest(key, cfg.valueAttr)]
+        return [compSample.maxThroughputForTest(key)]
       } else { // All thread levels mode
         var testResult = compSample.resultForTest(key)
         if (testResult) {
@@ -232,7 +233,7 @@ mciModule.factory('DrawPerfTrendChart', function (
       // including undefined values for missing data
       return _.map(activeLevelNames, function(d) {
         var result = _.findWhere(sample.threadResults, {threadLevel: d})
-        return result && (result[cfg.valueAttr]);
+        return result && result[cfg.valueAttr]
       })
     }
 
@@ -242,9 +243,9 @@ mciModule.factory('DrawPerfTrendChart', function (
           if (threadMode == MAXONLY) {
             // In maxonly mode levels contain single (max) item
             // Extract just one ops item
-            return d.threadResults[maxLevelIdx][cfg.valueAttr];
+            return d.threadResults[maxLevelIdx][cfg.valueAttr]
           } else {
-            return getOpsValues(d);
+            return getOpsValues(d)
           }
         })
       )
@@ -321,12 +322,12 @@ mciModule.factory('DrawPerfTrendChart', function (
       var maxline = d3.svg.line()
         .defined(_.identity)
         .x(function(d, i) { return xScale(i) })
-        .y(function(d) { return yScale(d3.max(d[cfg.valueAttr + "_values"])) })
+        .y(function(d) { return yScale(d3.max(d.ops_per_sec_values)) })
 
       var minline = d3.svg.line()
         .defined(_.identity)
         .x(function(d, i) { return xScale(i) })
-        .y(function(d) { return yScale(d3.min(d[cfg.valueAttr + "_values"])) })
+        .y(function(d) { return yScale(d3.min(d.ops_per_sec_values)) })
     }
 
     // Y Axis

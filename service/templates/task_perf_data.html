@@ -184,7 +184,7 @@
       background-color: rgb(0,0,0);
     }
     md-switch.md-default-theme.md-checked .md-thumb, md-switch.md-checked .md-thumb {
-      background-color: rgb(92,184,92);
+      background-color: rgb(92,184,92); // green;//rgb(255,64,129);
     }
     md-switch.md-default-theme.md-checked .md-bar, md-switch.md-checked .md-bar {
       background-color: rgba(92,184,92,0.5);
@@ -287,11 +287,11 @@
         </tr>
         <tr ng-repeat="test in perfSample.testNames()" ng-class="{odd:$odd}">
           <td>[[test]]</td>
-          <td ng-repeat="k in perfSample.threads()">[[perfSample.resultForTest(test).results[k][metricSelect.value.key] | number:0]]</td>
-          <td>[[perfSample.maxThroughputForTest(test, metricSelect.value.key) | number:0]]</td>
-          <td ng-repeat="comparison in comparePerfSamples">[[comparison.maxThroughputForTest(test, metricSelect.value.key) | number:0]]</td>
-          <td ng-repeat="comparison in comparePerfSamples" ng-style="{backgroundColor:percentToColor(100*percentDiff(perfSample.maxThroughputForTest(test, metricSelect.value.key),comparison.maxThroughputForTest(test, metricSelect.value.key)))}">
-            [[100*percentDiff(perfSample.maxThroughputForTest(test, metricSelect.value.key),comparison.maxThroughputForTest(test, metricSelect.value.key)) | number:2]]%
+          <td ng-repeat="k in perfSample.threads()">[[perfSample.resultForTest(test).results[k].ops_per_sec | number:0]]</td>
+          <td>[[perfSample.maxThroughputForTest(test) | number:0]]</td>
+          <td ng-repeat="comparison in comparePerfSamples">[[comparison.maxThroughputForTest(test) | number:0]]</td>
+          <td ng-repeat="comparison in comparePerfSamples" ng-style="{backgroundColor:percentToColor(100*percentDiff(perfSample.maxThroughputForTest(test),comparison.maxThroughputForTest(test)))}">
+            [[100*percentDiff(perfSample.maxThroughputForTest(test),comparison.maxThroughputForTest(test)) | number:2]]%
           </td>
         </tr>
       </table>
@@ -365,8 +365,8 @@
           <div class="col-lg-1 perf-trendchart-sidebar">
               <div class="mono"><a ng-href="/task/[[hoverSamples[k].task_id]]">[[hoverSamples[k].revision | limitTo : 7]]</a></div>
               <div>[[dateLabel]]</div>
-              [[metricSelect.value.key]]:&nbsp;
-              <b>[[hoverSamples[k][metricSelect.value.key] | number:0]]</b>
+              ops/s:&nbsp;
+              <b>[[hoverSamples[k].ops_per_sec | number:0]]</b>
               <div>
                 bfs:&nbsp;
                 <span ng-repeat="bf in bfs">
@@ -402,9 +402,9 @@
                     metric has no data
                   </span>
                   <span ng-if="hoverSamples[k][metricSelect.value.key] != undefined"
-                        ng-style="{backgroundColor: percentToColor(100 * percentDiff(hoverSamples[k][metricSelect.value.key], compareSamp.maxThroughputForTest(k, metricSelect.value.key)))}"
+                        ng-style="{backgroundColor: percentToColor(100 * percentDiff(hoverSamples[k].ops_per_sec, compareSamp.maxThroughputForTest(k)))}"
                   >
-                    [[100*percentDiff(hoverSamples[k][metricSelect.value.key], compareSamp.maxThroughputForTest(k, metricSelect.value.key)) | number:1]]%
+                    [[100*percentDiff(hoverSamples[k][metricSelect.value.key], compareSamp.maxThroughputForTest(k)) | number:1]]%
                     vs [[compareSamp.getLegendName()]]
                   <span>
                 </b>
