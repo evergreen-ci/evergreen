@@ -42,10 +42,6 @@ func findOne(query db.Q) (*CommitQueue, error) {
 	queue := &CommitQueue{}
 	err := db.FindOneQ(Collection, query, &queue)
 
-	if adb.ResultsNotFound(err) {
-		return nil, nil
-	}
-
 	return queue, err
 }
 

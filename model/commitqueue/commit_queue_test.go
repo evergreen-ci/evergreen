@@ -5,6 +5,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen/db"
 	_ "github.com/evergreen-ci/evergreen/testutil"
+	adb "github.com/mongodb/anser/db"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -173,4 +174,18 @@ func (s *CommitQueueSuite) TestCommentTrigger() {
 
 	action = "deleted"
 	s.False(TriggersCommitQueue(action, comment))
+}
+
+func (s *CommitQueueSuite) TestFindOneId() {
+	s.NoError(db.ClearCollections(Collection))
+	cq := &CommitQueue{ProjectID: "mci"}
+	s.NoError(InsertQueue(cq))
+
+	_, err := FindOneId("mci")
+	s.NoError(err)
+	s.Equal("mci", cq.ProjectID)
+
+	_, err = FindOneId("not_here")
+	s.Error(err)
+	s.True(adb.ResultsNotFound(err))
 }
