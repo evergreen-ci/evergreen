@@ -173,7 +173,6 @@ func GetRawTaskLogChannel(taskId string, execution int, severities []string,
 	// performance, so just picked a buffer size out of thin air.
 	channel := make(chan apimodels.LogMessage, 100)
 
-	// TODO(EVG-227)
 	var query bson.M
 	if execution == 0 {
 		query = bson.M{"$and": []bson.M{
