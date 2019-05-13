@@ -2,6 +2,8 @@ describe('PerfBBOutliersCtrlTest', () => {
   beforeEach(module('MCI'));
 
   let controller;
+  let $log;
+  let $timeout;
   let scope;
   let format;
 
@@ -9,9 +11,12 @@ describe('PerfBBOutliersCtrlTest', () => {
 
   let OutlierState;
   let state;
+
   let MuteHandler;
   let mute_handler;
+
   let Operations;
+
   let Settings;
   let Lock;
   let vm;
@@ -22,7 +27,11 @@ describe('PerfBBOutliersCtrlTest', () => {
     scope = $rootScope;
     format = $injector.get('FORMAT');
     OutliersDataService = $injector.get('OutliersDataService');
-
+    $log = $injector.get('$log');
+    // $timeout = $injector.get('$timeout');
+    $timeout = function(fn) {
+      return fn();
+    };
     Operations = $injector.get('Operations');
     Settings = $injector.get('Settings');
     Lock = $injector.get('Lock');
@@ -32,7 +41,7 @@ describe('PerfBBOutliersCtrlTest', () => {
     state = jasmine.createSpyObj('OutlierState', ['sortRevision']);
     OutlierState = jasmine.createSpy('OutlierState').and.returnValue(state);
 
-    mute_handler = jasmine.createSpyObj('MuteHandler', ['muteOutliers', 'unmuteOutliers', 'muteDisabled', 'unmuteDisabled']);
+    mute_handler = jasmine.createSpyObj('muteHandler', ['muteOutliers', 'unmuteOutliers', 'muteDisabled', 'unmuteDisabled']);
     MuteHandler = jasmine.createSpy('MuteHandler').and.returnValue(mute_handler);
 
     controller = $controller('PerfBBOutliersCtrl', {
@@ -40,6 +49,7 @@ describe('PerfBBOutliersCtrlTest', () => {
       OutlierState: OutlierState,
       MuteHandler: MuteHandler,
       $window: $window,
+      $timeout: $timeout,
       Settings: Settings,
       EvgUiGridUtil: $injector.get('EvgUiGridUtil'),
       EvgUtil: $injector.get('EvgUtil'),
@@ -171,6 +181,160 @@ describe('PerfBBOutliersCtrlTest', () => {
       });
 
     });
+  });
+
+  describe('reload', () => {
+    let next_operation = {};
+    let promise;
+    beforeEach(() => {
+      promise = {
+        then: () => promise,
+        catch: () => promise,
+        finally: () => promise,
+      };
+      vm.state = {
+        loadData: () => promise,
+        hydrateData: () => promise,
+      };
+    });
+
+    it('should call load data with next operation', () => {
+
+      spyOn(vm.state, 'loadData').and.callThrough();
+      spyOnProperty(vm.promises, 'next', 'get').and.returnValue(next_operation);
+      vm.reload();
+      expect(vm.state.loadData).toHaveBeenCalledWith(next_operation);
+    });
+
+    it('should hydrate data if current', () => {
+      const results = {operation: next_operation};
+      promise.then = (success) => {
+        success(results);
+        return promise;
+      };
+      spyOn(vm.state, 'loadData').and.callThrough();
+      spyOn(vm.state, 'hydrateData').and.callThrough();
+      spyOn(vm.promises, 'isCurrent').and.returnValue(true);
+      spyOnProperty(vm.promises, 'next', 'get').and.returnValue(next_operation);
+      vm.reload();
+
+      expect(vm.promises.isCurrent).toHaveBeenCalledWith(next_operation);
+      expect(vm.state.hydrateData).toHaveBeenCalledWith(results);
+
+    });
+
+    it('should not hydrate data when not current', () => {
+      const results = {operation: next_operation};
+      promise.then = (success) => {
+        success(results);
+        return promise;
+      };
+      spyOn(vm.state, 'loadData').and.callThrough();
+      spyOn(vm.state, 'hydrateData').and.callThrough();
+      spyOn(vm.promises, 'isCurrent').and.returnValue(false);
+      spyOnProperty(vm.promises, 'next', 'get').and.returnValue(next_operation);
+      vm.reload();
+
+      expect(vm.promises.isCurrent).toHaveBeenCalledWith(next_operation);
+      expect(vm.state.hydrateData).not.toHaveBeenCalledWith(results);
+
+    });
+
+    it('should catch error', () => {
+      spyOn(promise, 'catch').and.callThrough();
+      vm.reload();
+
+      expect(promise.catch).toHaveBeenCalledWith($log.error);
+    });
+
+    it('should cancel loading when current', () => {
+      const next_operation = {};
+      spyOn(vm.promises, 'isCurrent').and.returnValue(true);
+      spyOnProperty(vm.promises, 'next', 'get').and.returnValue(next_operation);
+      promise.finally = (success) => {
+        success();
+        return promise;
+      };
+      vm.reload();
+
+      expect(vm.promises.isCurrent).toHaveBeenCalledWith(next_operation);
+      expect(vm.isLoading).toBe(false);
+    });
+
+    it('should skip cancel loading when not current', () => {
+      const next_operation = {};
+      spyOn(vm.promises, 'isCurrent').and.returnValue(false);
+      spyOnProperty(vm.promises, 'next', 'get').and.returnValue(next_operation);
+      promise.finally = (success) => {
+        success();
+        return promise;
+      };
+      vm.reload();
+
+      expect(vm.promises.isCurrent).toHaveBeenCalledWith(next_operation);
+      expect(vm.isLoading).toBe(true);
+    });
+
+  });
+
+  describe('lowConfidenceChanged', () => {
+
+    it('should call reload', () => {
+
+      spyOn(vm, 'reload').and.returnValue(undefined);
+      vm.lowConfidenceChanged();
+      expect(vm.reload).toHaveBeenCalled();
+    });
+
+  });
+
+  describe('modeChanged', () => {
+
+    it('should call reload', () => {
+
+      spyOn(vm, 'reload').and.returnValue(undefined);
+      vm.modeChanged();
+      expect(vm.reload).toHaveBeenCalled();
+    });
+
+  });
+
+  describe('onRegisterApi', () => {
+
+    it('should register callbacks', () => {
+
+      const api = {
+        core:{
+          on:{
+            sortChanged: () => {},
+            filterChanged: () => {},
+            rowsRendered: () => {},
+          }
+        }
+      };
+
+      spyOn(api.core.on, 'sortChanged').and.callThrough();
+      spyOn(api.core.on, 'filterChanged').and.callThrough();
+      spyOn(api.core.on, 'rowsRendered').and.callThrough();
+
+      const debounce = () => {};
+      const once = () => {};
+      const bind = () => {};
+      spyOn(_, 'debounce').and.returnValue(debounce);
+      spyOn(_, 'once').and.returnValue(once);
+      spyOn(_, 'bind').and.returnValue(bind);
+
+      vm.gridOptions.onRegisterApi(api);
+
+      expect(api.core.on.sortChanged).toHaveBeenCalledWith(scope, vm.state.onSortChanged);
+      expect(api.core.on.filterChanged).toHaveBeenCalledWith(scope, debounce);
+      expect(api.core.on.rowsRendered).toHaveBeenCalledWith(null, once);
+
+      expect(_.debounce).toHaveBeenCalledWith(vm.reload, 500);
+      expect(_.bind).toHaveBeenCalledWith(vm.state.onRowsRendered, vm.state);
+      expect(_.once).toHaveBeenCalledWith(bind, api);
+    });
+
   });
 
 });
@@ -665,13 +829,19 @@ describe('PerfBBOutliersFactoriesTest', () => {
     });
 
     describe('onRowsRendered', () => {
-      const api = {};
+      const api = {core:{notifyDataChange: () => {}}};
       const getCol = jasmine.createSpy("getCol");
       let EvgUiGridUtil;
+      let uiGridConstants;
 
       beforeEach(() => {
-        inject($injector => EvgUiGridUtil = $injector.get('EvgUiGridUtil'));
+        inject($injector => {
+          EvgUiGridUtil = $injector.get('EvgUiGridUtil');
+          uiGridConstants = $injector.get('uiGridConstants');
+        });
         spyOn(EvgUiGridUtil, 'getColAccessor').and.returnValue(getCol);
+        state.vm = {reload: () => {}};
+        spyOn(state.vm, 'reload').and.callThrough();
       });
 
       it('should setup the getCol accessor', () => {
@@ -708,6 +878,17 @@ describe('PerfBBOutliersFactoriesTest', () => {
         expect(spy).toHaveBeenCalled();
         expect(getCol).toHaveBeenCalledWith('1');
         expect(getCol).toHaveBeenCalledWith('2');
+      });
+
+      it('should notifyDataChange', () => {
+        spyOn(api.core, 'notifyDataChange').and.callThrough();
+        state.onRowsRendered(api);
+        expect(api.core.notifyDataChange).toHaveBeenCalledWith(uiGridConstants.dataChange.COLUMN);
+      });
+
+      it('should reload', () => {
+        state.onRowsRendered(api);
+        expect(state.vm.reload).toHaveBeenCalled();
       });
 
     });

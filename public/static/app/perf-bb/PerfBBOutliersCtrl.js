@@ -25,6 +25,10 @@ mciModule.controller('PerfBBOutliersCtrl', function (
   // Mute handler encapsulates the logic of adding / removing mutes.
   const mute_handler = new MuteHandler(state, new Lock());
 
+  // Required by loadData.
+  const promises = new Operations();
+
+  vm.promises = promises;
 
   // Set up the view model.
   vm.state = state;
@@ -74,9 +78,6 @@ mciModule.controller('PerfBBOutliersCtrl', function (
     },
   ];
 
-  // Required by loadData.
-  const promises = new Operations();
-
   // Load data:
   //    starts the loading indicator
   //    get the remote state from atlas
@@ -89,13 +90,13 @@ mciModule.controller('PerfBBOutliersCtrl', function (
     // get a Unique identifier for the this reload call. If the this is not the current id when we get the
     // results, then we ignore it and await the most recent results. The finally call also ignores out of date
     // calls.
-    const operation = promises.next;
+    const operation = vm.promises.next;
 
     // If there is more than one concurrent promise - we want the most recent.
     // The finally / timeout clear loading on the next event loop iteration so that the Loading indicator
     // disappears when the data load is complete. Otherwise there can be a gap.
     vm.state.loadData(operation)
-      .then(results => promises.isCurrent(results.operation) && vm.state.hydrateData(results))
+      .then(results => vm.promises.isCurrent(results.operation) && vm.state.hydrateData(results))
       .catch($log.error)
       .finally(() => promises.isCurrent(operation) && $timeout(() => vm.isLoading = false));
   };
@@ -115,16 +116,7 @@ mciModule.controller('PerfBBOutliersCtrl', function (
     onRegisterApi: (api) => {
       api.core.on.sortChanged($scope, vm.state.onSortChanged);
       api.core.on.filterChanged($scope, _.debounce(vm.reload, 500));
-      api.core.on.rowsRendered(null, _.once(() => {
-
-        // Push state changes to the grid api
-        vm.state.onRowsRendered(api);
-
-        // Raise col visibility change event
-        api.core.notifyDataChange(uiGridConstants.dataChange.COLUMN);
-
-        vm.reload()
-      }));
+      api.core.on.rowsRendered(null, _.once(_.bind(vm.state.onRowsRendered, vm.state), api));
     },
 
     columnDefs: [
@@ -274,7 +266,7 @@ mciModule.controller('PerfBBOutliersCtrl', function (
   }
 
   return MuteHandler;
-}).factory('OutlierState', function(FORMAT, MDBQueryAdaptor, EvgUtil, EvgUiGridUtil, OutliersDataService, MuteDataService, $q) {
+}).factory('OutlierState', function(FORMAT, MDBQueryAdaptor, EvgUtil, EvgUiGridUtil, uiGridConstants, OutliersDataService, MuteDataService, $q) {
   class OutlierState {
     // Create a new state instance to encapsulate filtering, sorting and generating queries.
     //
@@ -320,23 +312,24 @@ mciModule.controller('PerfBBOutliersCtrl', function (
       this.api = api;
       this.getCol = EvgUiGridUtil.getColAccessor(api);
 
-      const setInitialGridFiltering = () => {
-        _.each(this.defaultFilters, (term, colName) => {
-          const col = this.getCol(colName);
-          if (!col) return;  // Error! Associated col does not found
-          col.filters = [{term: term}];
-        });
-      };
-      const setInitialGridSorting = () => {
-        _.each(this.sorting, (sortingItem) => {
-          const col = this.getCol(sortingItem.field);
-          if (!col) return; // Error! Associated col does not found
-          col.sort.direction = sortingItem.direction;
-        });
-      };
+      //const setInitialGridFiltering = () => {
+      _.each(this.defaultFilters, (term, colName) => {
+        const col = this.getCol(colName);
+        if (!col) return;  // Error! Associated col does not found
+        col.filters = [{term: term}];
+      });
 
-      setInitialGridFiltering();
-      setInitialGridSorting();
+      //const setInitialGridSorting = () => {
+      _.each(this.sorting, (sortingItem) => {
+        const col = this.getCol(sortingItem.field);
+        if (!col) return; // Error! Associated col does not found
+        col.sort.direction = sortingItem.direction;
+      });
+
+      // Raise col visibility change event
+      this.api.core.notifyDataChange(uiGridConstants.dataChange.COLUMN);
+
+      this.vm.reload()
     };
 
     onMute(mutes) {
