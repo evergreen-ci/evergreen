@@ -58,11 +58,10 @@ func NewGenerateTasksJob(id string, json []json.RawMessage) amboy.Job {
 }
 
 func (j *generateTasksJob) Run(ctx context.Context) {
-	defer j.MarkComplete()
-
 	projects, err := parseProjects(j.JSON)
 	if err != nil {
 		j.AddError(errors.Wrap(err, "error parsing JSON from `generate.tasks`"))
+		j.MarkComplete()
 		return
 	}
 	g := model.MergeGeneratedProjects(projects)
@@ -96,7 +95,12 @@ func (j *generateTasksJob) Run(ctx context.Context) {
 			}
 			return false, nil
 		}, 100, time.Second, 15*time.Second)
+	// If the context has been canceled, this job should be requeued, as it has not finished.
+	if ctx.Err() != nil {
+		return
+	}
 	j.AddError(err)
+	j.MarkComplete()
 }
 
 func parseProjects(jsonBytes []json.RawMessage) ([]model.GeneratedProject, error) {
