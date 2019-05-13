@@ -506,6 +506,8 @@ mciModule.controller('PerfBBOutliersCtrl', function (
         const mute = _.findWhere(mutes, matcher);
         if (mute) {
           doc.muted = mute.enabled;
+        } else {
+          doc.muted = false;
         }
       });
       return this.vm.gridOptions.data;

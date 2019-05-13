@@ -1385,7 +1385,7 @@ describe('PerfBBOutliersFactoriesTest', () => {
         expect(_.all(results, (result) => result.muted)).toEqual(true);
       });
 
-      it('should only update matching', () => {
+      it('should update correctly', () => {
         const outliers = [
           create_outlier({i: 1}),
           create_outlier({i: 2}),
@@ -1407,7 +1407,7 @@ describe('PerfBBOutliersFactoriesTest', () => {
 
         const odd = _.chain(results).filter( (element, index) => index % 2 === 0).value();
         expect(odd.length).toEqual(3);
-        expect(_.all(odd, (result) => _.isUndefined(result.muted))).toEqual(true);
+        expect(_.all(odd, (result) => result.muted)).toEqual(false);
       });
 
     });
