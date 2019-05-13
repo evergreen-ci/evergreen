@@ -9,7 +9,7 @@ mciModule.controller('PerfBBOutliersCtrl', function (
   // Default values for sorting / searching etc.
   const LIMIT = 2000;
   const mandatory = {
-    project: '=' + this.project,
+    project: '=' + project,
     variant: '^((?!wtdevelop).)*$',
     test: '^(canary|fio|NetworkB).*$',
   };

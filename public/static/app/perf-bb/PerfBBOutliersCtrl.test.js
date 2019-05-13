@@ -68,12 +68,11 @@ describe('PerfBBOutliersCtrlTest', () => {
 
   describe('controller', () => {
     it('should setup', () => {
-      const mandatory = jasmine.any(Object);
-      // const mandatory = {
-      //   project: '=' + project,
-      //   variant: '^((?!wtdevelop).)*$',
-      //   test: '^(canary|fio|NetworkB).*$',
-      // };
+      const mandatory = {
+        project: '=' + project,
+        variant: '^((?!wtdevelop).)*$',
+        test: '^(canary|fio|NetworkB).*$',
+      };
       const transient = ['type', 'create_time', 'project'];
       const sorting = [{
         field: 'order',
