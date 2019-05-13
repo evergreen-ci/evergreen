@@ -6,7 +6,6 @@ mciModule.factory('MuteDataService', function(
   // :param projection: Specify the fields in the returned documents.
   const queryQ = (query, projection) => {
     return Stitch.use(STITCH_CONFIG.PERF).query(function (db) {
-      // Remove Undefined values, null and false are acceptable.
       return db
         .db(STITCH_CONFIG.PERF.DB_PERF)
         .collection(STITCH_CONFIG.PERF.COLL_MUTE_OUTLIERS)
@@ -25,7 +24,6 @@ mciModule.factory('MuteDataService', function(
   const addMute = (mute) => {
     const mute_identifier = _.pick(mute, 'revision', 'project', 'variant' ,'task' , 'test', 'thread_level');
     return Stitch.use(STITCH_CONFIG.PERF).query(function (db) {
-      // Remove Undefined values, null and false are acceptable.
       return db
         .db(STITCH_CONFIG.PERF.DB_PERF)
         .collection(STITCH_CONFIG.PERF.COLL_MUTE_OUTLIERS)
@@ -55,7 +53,6 @@ mciModule.factory('MuteDataService', function(
   const unMute = (mute) => {
     const mute_identifier = _.pick(mute, 'revision', 'project', 'variant' ,'task' , 'test', 'thread_level');
     return Stitch.use(STITCH_CONFIG.PERF).query(function (db) {
-      // Remove Undefined values, null and false are acceptable.
       return db
         .db(STITCH_CONFIG.PERF.DB_PERF)
         .collection(STITCH_CONFIG.PERF.COLL_MUTE_OUTLIERS)

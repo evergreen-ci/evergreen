@@ -36,7 +36,6 @@ mciModule.factory('WhitelistDataService', function(
   // :param projection: Specify the fields in the returned documents.
   const getWhitelistQ = (query, projection) => {
     return Stitch.use(STITCH_CONFIG.PERF).query(function (db) {
-      // Remove Undefined values, null and false are acceptable.
       return db
         .db(STITCH_CONFIG.PERF.DB_PERF)
         .collection(STITCH_CONFIG.PERF.COLL_WHITELISTED_OUTLIERS)

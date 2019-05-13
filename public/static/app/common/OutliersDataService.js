@@ -6,7 +6,8 @@ mciModule.factory('OutliersDataService', function($log, Stitch, STITCH_CONFIG) {
   // Destructuring http://exploringjs.com/es6/ch_destructuring.html
   const getOutliersQ = (project, {variant, task, test, revision, type = 'detected'}) => {
     return Stitch.use(STITCH_CONFIG.PERF).query(function (db) {
-      // Remove Undefined values, null and false are acceptable.
+      // The following omit call will remove keys with Undefined values.
+      // Keys with null and false are acceptable.
       const query  = _.omit({
         revision:revision,
         project: project,
@@ -31,7 +32,8 @@ mciModule.factory('OutliersDataService', function($log, Stitch, STITCH_CONFIG) {
 
   const getMarkedOutliersQ = (project, {variant, task, test, revision}) => {
     return Stitch.use(STITCH_CONFIG.PERF).query(function (db) {
-      // Remove Undefined values, null and false are acceptable.
+      // The following omit call will remove keys with Undefined values.
+      // Keys with null and false are acceptable.
       const query  = _.omit({
         revision:revision,
         project: project,

@@ -1,3 +1,15 @@
+const PROJECT = 'test-project';
+// Fake the current date.
+const NOW = '2019-04-30';
+
+// Used for 1 week and 7 days test.
+const ONE_WEEKS_AGO = '2019-04-23';
+
+// Default 2 weeks.
+const TWO_WEEKS_AGO = '2019-04-16';
+
+const TODAY = moment(NOW).toDate();
+
 describe('PerfBBOutliersCtrlTest', () => {
   beforeEach(module('MCI'));
 
@@ -21,14 +33,11 @@ describe('PerfBBOutliersCtrlTest', () => {
   let Lock;
   let vm;
 
-  const project = 'test-project';
-
   beforeEach(inject(function ($rootScope, $controller, $injector) {
     scope = $rootScope;
     format = $injector.get('FORMAT');
     OutliersDataService = $injector.get('OutliersDataService');
     $log = $injector.get('$log');
-    // $timeout = $injector.get('$timeout');
     $timeout = function(fn) {
       return fn();
     };
@@ -36,7 +45,7 @@ describe('PerfBBOutliersCtrlTest', () => {
     Settings = $injector.get('Settings');
     Lock = $injector.get('Lock');
     $window = $injector.get('$window');
-    $window.project = project;
+    $window.project = PROJECT;
 
     state = jasmine.createSpyObj('OutlierState', ['sortRevision']);
     OutlierState = jasmine.createSpy('OutlierState').and.returnValue(state);
@@ -79,7 +88,7 @@ describe('PerfBBOutliersCtrlTest', () => {
   describe('controller', () => {
     it('should setup', () => {
       const mandatory = {
-        project: '=' + project,
+        project: '=' + PROJECT,
         variant: '^((?!wtdevelop).)*$',
         test: '^(canary|fio|NetworkB).*$',
       };
@@ -89,7 +98,7 @@ describe('PerfBBOutliersCtrlTest', () => {
         direction: 'desc',
       }];
 
-      expect(OutlierState).toHaveBeenCalledWith(project, vm, mandatory, transient, sorting, Settings.perf.outlierProcessing, 2000);
+      expect(OutlierState).toHaveBeenCalledWith(PROJECT, vm, mandatory, transient, sorting, Settings.perf.outlierProcessing, 2000);
       expect(MuteHandler).toHaveBeenCalledWith(state, jasmine.any(Lock));
 
       expect(vm.state).toBe(state);
@@ -338,23 +347,12 @@ describe('PerfBBOutliersCtrlTest', () => {
   });
 
 });
+
 describe('PerfBBOutliersFactoriesTest', () => {
 
   beforeEach(module('MCI'));
 
-  const project = 'test-project';
-
-  // Fake the current date.
-  const NOW = '2019-04-30';
-
-  // Used for 1 week and 7 days test.
-  const ONE_WEEKS_AGO = '2019-04-23';
-
-  // Default 2 weeks.
-  const TWO_WEEKS_AGO = '2019-04-16';
-
-  const today = moment(NOW).toDate();
-  jasmine.clock().mockDate(today);
+  jasmine.clock().mockDate(TODAY);
 
   describe('MuteHandler', () => {
 
@@ -792,11 +790,11 @@ describe('PerfBBOutliersFactoriesTest', () => {
         OutlierState = $injector.get('OutlierState');
         format = $injector.get('FORMAT');
       });
-      state = new OutlierState(project, model, mandatory, transient, sorting, settings, limit);
+      state = new OutlierState(PROJECT, model, mandatory, transient, sorting, settings, limit);
     });
 
     it('should create a correct instance', () => {
-      expect(state.project).toEqual(project);
+      expect(state.project).toEqual(PROJECT);
       expect(state.vm).toBe(model);
       expect(state.mandatory).toBe(mandatory);
       expect(state.transient).toBe(transient);
@@ -810,7 +808,7 @@ describe('PerfBBOutliersFactoriesTest', () => {
     });
 
     it('should setup the lookback with values', () => {
-      state = new OutlierState(project, model, mandatory, transient, sorting, settings, limit, 7, 'days');
+      state = new OutlierState(PROJECT, model, mandatory, transient, sorting, settings, limit, 7, 'days');
       expect(state.lookBack.format(format.ISO_DATE)).toEqual(ONE_WEEKS_AGO);
     });
 
@@ -1226,9 +1224,6 @@ describe('PerfBBOutliersFactoriesTest', () => {
 
     describe('sortRevision', () => {
       let a, b, rowA, rowB;
-      // beforeEach(() => {
-      //   inject($injector => MDBQueryAdaptor = $injector.get('MDBQueryAdaptor'));
-      // });
 
       it('should handle no api', () => {
         state.api = null;
@@ -1297,7 +1292,7 @@ describe('PerfBBOutliersFactoriesTest', () => {
 
         expect(state.getAggChain).toHaveBeenCalled();
         expect(OutliersDataService.aggregateQ).toHaveBeenCalledWith(pipeline);
-        expect(MuteDataService.queryQ).toHaveBeenCalledWith({project: project});
+        expect(MuteDataService.queryQ).toHaveBeenCalledWith({project: PROJECT});
         expect($q.all).toHaveBeenCalledWith({
             outliers: aggregateQ,
             mutes: queryQ,

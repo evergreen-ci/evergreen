@@ -312,14 +312,14 @@ mciModule.controller('PerfBBOutliersCtrl', function (
       this.api = api;
       this.getCol = EvgUiGridUtil.getColAccessor(api);
 
-      //const setInitialGridFiltering = () => {
+      // Set initial uiGrid filtering.
       _.each(this.defaultFilters, (term, colName) => {
         const col = this.getCol(colName);
         if (!col) return;  // Error! Associated col does not found
         col.filters = [{term: term}];
       });
 
-      //const setInitialGridSorting = () => {
+      // Set initial uiGrid sorting.
       _.each(this.sorting, (sortingItem) => {
         const col = this.getCol(sortingItem.field);
         if (!col) return; // Error! Associated col does not found

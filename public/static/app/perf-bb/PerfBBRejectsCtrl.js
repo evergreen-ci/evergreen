@@ -12,8 +12,8 @@ mciModule.controller('PerfBBRejectsCtrl', function (
   $scope.lock = vm.lock;
   const confirmAdd = confirmDialogFactory('Add whitelisting for');
   const confirmRemove = confirmDialogFactory('Remove whitelisting for');
-  const  addDisabled = () => $scope.lock.locked || vm.selection.length === 0 || _.all(vm.selection, (doc)=> doc.whitelisted);
-  const  removeDisabled = ()  => $scope.lock.locked || vm.selection.length === 0 || _.all(vm.selection, (doc)=> !doc.whitelisted);
+  const  addDisabled = () => $scope.lock.locked || vm.selection.length === 0 || _.all(vm.selection, (doc) => doc.whitelisted);
+  const  removeDisabled = () => $scope.lock.locked || vm.selection.length === 0 || _.all(vm.selection, (doc) => !doc.whitelisted);
 
   const updateToWhitelist = function(items, func, action, mark) {
     $scope.lock.lock();
