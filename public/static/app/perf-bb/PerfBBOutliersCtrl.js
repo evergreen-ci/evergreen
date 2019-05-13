@@ -540,19 +540,6 @@ mciModule.controller('PerfBBOutliersCtrl', function (
   }
 
   return Operation;
-}).factory('confirmDialogFactory', function($mdDialog) {
-  return function(text_or_function) {
-    const formatter = _.isFunction(text_or_function) ? text_or_function : function() { return text_or_function};
-    return function(items) {
-      return $mdDialog.show(
-        $mdDialog.confirm()
-          .ok('Ok')
-          .cancel('Cancel')
-          .title('Confirm')
-          .textContent(formatter(items))
-      );
-    }
-  }
 }).filter('outlierTypeToConfidence', function() {
   return function(type) {
     if (type === 'detected') {
