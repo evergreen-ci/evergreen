@@ -21,9 +21,9 @@ type gitPush struct {
 	// The root directory (locally) that the code is checked out into.
 	// Must be a valid non-blank directory name.
 	Directory      string `yaml:"directory" plugin:"expand"`
-	DryRun         bool   `yaml:"dry_run"`
-	CommitterName  string `yaml:"committer_name"`
-	CommitterEmail string `yaml:"committer_email"`
+	DryRun         bool   `yaml:"dry_run" mapstructure:"dry_run"`
+	CommitterName  string `yaml:"committer_name" mapstructure:"committer_name"`
+	CommitterEmail string `yaml:"committer_email" mapstructure:"committer_email"`
 
 	base
 }

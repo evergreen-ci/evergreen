@@ -3,6 +3,7 @@ package operations
 import (
 	"context"
 	"net/http"
+	"strings"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/rest/client"
@@ -104,8 +105,8 @@ func mergeCommand() cli.Command {
 				Usage: "wait to enqueue an item until finalized",
 			},
 			cli.StringFlag{
-				Name:  joinFlagNames(patchDescriptionFlagName, "d"),
-				Usage: "description for the patch",
+				Name:  joinFlagNames(messageFlagName, "m"),
+				Usage: "commit message",
 			},
 		)),
 		Action: func(c *cli.Context) error {
@@ -117,7 +118,7 @@ func mergeCommand() cli.Command {
 				ref:         c.String(refFlagName),
 				id:          c.String(identifierFlagName),
 				pause:       c.Bool(pauseFlagName),
-				description: c.String(patchDescriptionFlagName),
+				message:     c.String(messageFlagName),
 				skipConfirm: c.Bool(yesFlagName),
 				large:       c.Bool(largeFlagName),
 			}
@@ -209,7 +210,7 @@ type mergeParams struct {
 	ref         string
 	id          string
 	pause       bool
-	description string
+	message     string
 	skipConfirm bool
 	large       bool
 }
@@ -233,10 +234,18 @@ func (p *mergeParams) mergeBranch(ctx context.Context, conf *ClientSettings, cli
 }
 
 func (p *mergeParams) uploadMergePatch(conf *ClientSettings, ac *legacyClient) error {
+	if p.message == "" {
+		msg, err := gitCmd("rev-parse", "--abbrev-ref", p.ref)
+		if err != nil {
+			return errors.Wrapf(err, "can't get branch name for ref %s", p.ref)
+		}
+		p.message = strings.TrimSpace(msg)
+	}
+
 	patchParams := &patchParams{
 		Project:     p.projectID,
 		SkipConfirm: p.skipConfirm,
-		Description: p.description,
+		Description: p.message,
 		Large:       p.large,
 		Alias:       evergreen.CommitQueueAlias,
 	}
@@ -256,13 +265,6 @@ func (p *mergeParams) uploadMergePatch(conf *ClientSettings, ac *legacyClient) e
 	diffData, err := loadGitData(ref.Branch, p.ref)
 	if err != nil {
 		return errors.Wrap(err, "can't generate patches")
-	}
-
-	if p.description == "" {
-		p.description, err = gitCmd("rev-parse", "--abbrev-ref", p.ref)
-		if err != nil {
-			return errors.Wrapf(err, "can't get branch name for ref %s", p.ref)
-		}
 	}
 
 	patch, err := patchParams.createPatch(ac, conf, diffData)
