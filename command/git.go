@@ -387,6 +387,8 @@ func (c *gitFetchProject) Execute(ctx context.Context,
 				}
 			}
 		}
+		logger.Execution().Infof("Using revision '%s' for module %s", revision, moduleName)
+
 		var owner, repo string
 		owner, repo, err = thirdparty.ParseGitUrl(module.Repo)
 		if err != nil {
