@@ -59,7 +59,7 @@ type patchParams struct {
 	Browse      bool
 	Large       bool
 	ShowSummary bool
-	WorkingTree bool
+	Uncommitted bool
 	Ref         string
 }
 
@@ -182,7 +182,7 @@ func (p *patchParams) validatePatchCommand(ctx context.Context, conf *ClientSett
 		grip.Warningf("warning - failed to set default tasks: %v\n", err)
 	}
 
-	if p.WorkingTree || conf.FindDefaultWorkingTree(p.Project) {
+	if p.Uncommitted || conf.UncommittedChanges {
 		p.Ref = ""
 	}
 

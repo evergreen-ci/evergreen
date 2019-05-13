@@ -201,16 +201,13 @@ func TestLoadWorkingChangesFromFile(t *testing.T) {
 	defer os.RemoveAll(tmpdir)
 	globalTestConfigPath := filepath.Join(tmpdir, ".evergreen.test.yml")
 
-	// Working tree : true
-	fileContents := `projects:
-- name: mci
-  default: true
-  include_working: true`
+	//Uncommitted changes : true
+	fileContents := `patch_uncommitted_changes: true`
 	require.NoError(ioutil.WriteFile(globalTestConfigPath, []byte(fileContents), 0644))
 	conf, err := NewClientSettings(globalTestConfigPath)
 	require.NoError(err)
 
-	assert.True(conf.FindDefaultWorkingTree("mci"))
+	assert.True(conf.UncommittedChanges)
 
 	// Working tree: false
 	fileContents = `projects:
@@ -220,5 +217,5 @@ func TestLoadWorkingChangesFromFile(t *testing.T) {
 	conf, err = NewClientSettings(globalTestConfigPath)
 	require.NoError(err)
 
-	assert.False(conf.FindDefaultWorkingTree("mci"))
+	assert.False(conf.UncommittedChanges)
 }

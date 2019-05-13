@@ -17,7 +17,7 @@ const (
 )
 
 func getPatchFlags(flags ...cli.Flag) []cli.Flag {
-	return mergeFlagSlices(addProjectFlag(flags...), addVariantsFlag(), addTasksFlag(), addLargeFlag(), addYesFlag(), addRefFlag(), addWorkingChangesFlag(
+	return mergeFlagSlices(addProjectFlag(flags...), addVariantsFlag(), addTasksFlag(), addLargeFlag(), addYesFlag(), addRefFlag(), addUncommittedChangesFlag(
 		cli.StringFlag{
 			Name:  joinFlagNames(patchDescriptionFlagName, "d"),
 			Usage: "description for the patch",
@@ -62,7 +62,7 @@ func Patch() cli.Command {
 				Large:       c.Bool(largeFlagName),
 				Alias:       c.String(patchAliasFlagName),
 				Ref:         c.String(refFlagName),
-				WorkingTree: c.Bool(workingChangesFlag),
+				Uncommitted: c.Bool(uncommittedChangesFlag),
 			}
 
 			ctx, cancel := context.WithCancel(context.Background())

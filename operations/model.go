@@ -20,12 +20,11 @@ import (
 const localConfigPath = ".evergreen.local.yml"
 
 type ClientProjectConf struct {
-	Name           string   `json:"name" yaml:"name,omitempty"`
-	Default        bool     `json:"default" yaml:"default,omitempty"`
-	Alias          string   `json:"alias" yaml:"alias,omitempty"`
-	Variants       []string `json:"variants" yaml:"variants,omitempty"`
-	Tasks          []string `json:"tasks" yaml:"tasks,omitempty"`
-	IncludeWorking bool     `json:"include_working" yaml:"include_working,omitempty"`
+	Name     string   `json:"name" yaml:"name,omitempty"`
+	Default  bool     `json:"default" yaml:"default,omitempty"`
+	Alias    string   `json:"alias" yaml:"alias,omitempty"`
+	Variants []string `json:"variants" yaml:"variants,omitempty"`
+	Tasks    []string `json:"tasks" yaml:"tasks,omitempty"`
 }
 
 func findConfigFilePath(fn string) (string, error) {
@@ -68,13 +67,14 @@ func findConfigFilePath(fn string) (string, error) {
 // located at ~/.evergreen.yml
 // If you change the JSON tags, you must also change an anonymous struct in hostinit/setup.go
 type ClientSettings struct {
-	APIServerHost string              `json:"api_server_host" yaml:"api_server_host,omitempty"`
-	UIServerHost  string              `json:"ui_server_host" yaml:"ui_server_host,omitempty"`
-	APIKey        string              `json:"api_key" yaml:"api_key,omitempty"`
-	User          string              `json:"user" yaml:"user,omitempty"`
-	Projects      []ClientProjectConf `json:"projects" yaml:"projects,omitempty"`
-	Admin         ClientAdminConf     `json:"admin" yaml:"admin,omitempty"`
-	LoadedFrom    string              `json:"-" yaml:"-"`
+	APIServerHost      string              `json:"api_server_host" yaml:"api_server_host,omitempty"`
+	UIServerHost       string              `json:"ui_server_host" yaml:"ui_server_host,omitempty"`
+	APIKey             string              `json:"api_key" yaml:"api_key,omitempty"`
+	User               string              `json:"user" yaml:"user,omitempty"`
+	UncommittedChanges bool                `json:"patch_uncommitted_changes" yaml:"patch_uncommitted_changes,omitempty"`
+	Projects           []ClientProjectConf `json:"projects" yaml:"projects,omitempty"`
+	Admin              ClientAdminConf     `json:"admin" yaml:"admin,omitempty"`
+	LoadedFrom         string              `json:"-" yaml:"-"`
 }
 
 func NewClientSettings(fn string) (*ClientSettings, error) {
@@ -292,13 +292,4 @@ func (s *ClientSettings) SetDefaultProject(name string) {
 			Tasks:    []string{},
 		})
 	}
-}
-
-func (s *ClientSettings) FindDefaultWorkingTree(project string) bool {
-	for _, p := range s.Projects {
-		if p.Name == project {
-			return p.IncludeWorking
-		}
-	}
-	return false
 }
