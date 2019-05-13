@@ -1,5 +1,5 @@
 mciModule.factory('WhitelistDataService', function(
-  $log, $mdDialog, PROCESSED_TYPE, Stitch, STITCH_CONFIG, $q
+  Stitch, STITCH_CONFIG, $q, $log
 ) {
   const conn = Stitch.use(STITCH_CONFIG.PERF);
 
@@ -31,12 +31,11 @@ mciModule.factory('WhitelistDataService', function(
     });
   }
 
-  // Get the whitelist as a promise
+  // Get the whitelists as a promise
   // :param query: The query to evaluate.
   // :param projection: Specify the fields in the returned documents.
   const getWhitelistQ = (query, projection) => {
     return Stitch.use(STITCH_CONFIG.PERF).query(function (db) {
-      // Remove Undefined values, null and false are acceptable.
       return db
         .db(STITCH_CONFIG.PERF.DB_PERF)
         .collection(STITCH_CONFIG.PERF.COLL_WHITELISTED_OUTLIERS)
