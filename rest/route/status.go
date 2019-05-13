@@ -18,10 +18,12 @@ const (
 )
 
 type recentTasksGetHandler struct {
-	minutes  int
-	verbose  bool
-	taskType string
-	sc       data.Connector
+	minutes   int
+	verbose   bool
+	byDistro  bool
+	byProject bool
+	taskType  string
+	sc        data.Connector
 }
 
 func makeRecentTaskStatusHandler(sc data.Connector) gimlet.RouteHandler {
@@ -52,6 +54,20 @@ func (h *recentTasksGetHandler) Parse(ctx context.Context, r *http.Request) erro
 	tasksStr := r.URL.Query().Get("verbose")
 	if tasksStr == "true" {
 		h.verbose = true
+	}
+
+	byDistroStr := r.URL.Query().Get("by_distro")
+	if byDistroStr == "true" || byDistroStr == "1" {
+		h.byDistro = true
+	}
+
+	byProjectStr := r.URL.Query().Get("by_project")
+	if byProjectStr == "true" || byProjectStr == "1" {
+		h.byProject = true
+	}
+
+	if h.byDistro && h.byProject {
+		return errors.New("by_distro and by_project can't both be true")
 	}
 
 	h.taskType = r.URL.Query().Get("status")
@@ -85,13 +101,29 @@ func (h *recentTasksGetHandler) Run(ctx context.Context) gimlet.Responder {
 		return gimlet.NewJSONResponse(response)
 	}
 
-	models := make([]model.Model, 1)
+	if h.byDistro || h.byProject {
+		var stats *task.ResultCountList
+		if h.byDistro {
+			stats, err = h.sc.FindRecentTaskListDistro(h.minutes)
+		} else {
+			stats, err = h.sc.FindRecentTaskListProject(h.minutes)
+		}
+		if err != nil {
+			return gimlet.MakeJSONErrorResponder(err)
+		}
+
+		statsModel := &model.APIRecentTaskStatsList{}
+		if err = statsModel.BuildFromService(stats); err != nil {
+			return gimlet.MakeJSONErrorResponder(err)
+		}
+		return gimlet.NewJSONResponse(statsModel)
+	}
+
 	statsModel := &model.APIRecentTaskStats{}
 	if err := statsModel.BuildFromService(stats); err != nil {
 		return gimlet.MakeJSONErrorResponder(err)
 	}
-	models[0] = statsModel
-	return gimlet.NewJSONResponse(models)
+	return gimlet.NewJSONResponse(statsModel)
 }
 
 // this is the route manager for /status/hosts/distros, which returns a count of up hosts grouped by distro

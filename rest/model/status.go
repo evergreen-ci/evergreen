@@ -47,6 +47,71 @@ func (apiStatus *APIRecentTaskStats) ToService() (interface{}, error) {
 	return nil, errors.Errorf("ToService() is not implemented for APIRecentTaskStats")
 }
 
+type APIResult struct {
+	Name  APIString `json:"name"`
+	Count int       `json:"count"`
+}
+
+type APIRecentTaskStatsList struct {
+	Total              []APIResult `json:"total"`
+	Inactive           []APIResult `json:"inactive"`
+	Unstarted          []APIResult `json:"unstarted"`
+	Started            []APIResult `json:"started"`
+	Succeeded          []APIResult `json:"succeeded"`
+	Failed             []APIResult `json:"failed"`
+	SetupFailed        []APIResult `json:"setup-failed"`
+	SystemFailed       []APIResult `json:"system-failed"`
+	SystemUnresponsive []APIResult `json:"system-unresponsive"`
+	SystemTimedOut     []APIResult `json:"system-timed-out"`
+	TestTimedOut       []APIResult `json:"test-timed-out"`
+}
+
+func (s *APIRecentTaskStatsList) BuildFromService(h interface{}) error {
+	switch v := h.(type) {
+	case *task.ResultCountList:
+		for _, result := range v.Total {
+			s.Total = append(s.Total, APIResult{Name: ToAPIString(result.Name), Count: result.Count})
+		}
+		for _, result := range v.Inactive {
+			s.Inactive = append(s.Inactive, APIResult{Name: ToAPIString(result.Name), Count: result.Count})
+		}
+		for _, result := range v.Unstarted {
+			s.Unstarted = append(s.Unstarted, APIResult{Name: ToAPIString(result.Name), Count: result.Count})
+		}
+		for _, result := range v.Started {
+			s.Started = append(s.Started, APIResult{Name: ToAPIString(result.Name), Count: result.Count})
+		}
+		for _, result := range v.Succeeded {
+			s.Succeeded = append(s.Succeeded, APIResult{Name: ToAPIString(result.Name), Count: result.Count})
+		}
+		for _, result := range v.Failed {
+			s.Failed = append(s.Failed, APIResult{Name: ToAPIString(result.Name), Count: result.Count})
+		}
+		for _, result := range v.SetupFailed {
+			s.SetupFailed = append(s.SetupFailed, APIResult{Name: ToAPIString(result.Name), Count: result.Count})
+		}
+		for _, result := range v.SystemFailed {
+			s.SystemFailed = append(s.SystemFailed, APIResult{Name: ToAPIString(result.Name), Count: result.Count})
+		}
+		for _, result := range v.SystemUnresponsive {
+			s.SystemUnresponsive = append(s.SystemUnresponsive, APIResult{Name: ToAPIString(result.Name), Count: result.Count})
+		}
+		for _, result := range v.SystemTimedOut {
+			s.SystemTimedOut = append(s.SystemTimedOut, APIResult{Name: ToAPIString(result.Name), Count: result.Count})
+		}
+		for _, result := range v.TestTimedOut {
+			s.TestTimedOut = append(s.TestTimedOut, APIResult{Name: ToAPIString(result.Name), Count: result.Count})
+		}
+	default:
+		return errors.Errorf("incorrect type when converting result count list (%T)", v)
+	}
+	return nil
+}
+
+func (s *APIRecentTaskStatsList) ToService() (interface{}, error) {
+	return nil, errors.Errorf("ToService() is not implemented for APIRecentTaskStatsList")
+}
+
 // APIHostStatsByDistro is a slice of host stats for a distro
 // the 3 structs below are nested within it
 type APIHostStatsByDistro struct {

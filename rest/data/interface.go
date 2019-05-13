@@ -190,6 +190,8 @@ type Connector interface {
 
 	// FindRecentTasks finds tasks that have recently finished.
 	FindRecentTasks(int) ([]task.Task, *task.ResultCounts, error)
+	FindRecentTaskListDistro(int) (*task.ResultCountList, error)
+	FindRecentTaskListProject(int) (*task.ResultCountList, error)
 	// GetHostStatsByDistro returns host stats broken down by distro
 	GetHostStatsByDistro() ([]host.StatsByDistro, error)
 

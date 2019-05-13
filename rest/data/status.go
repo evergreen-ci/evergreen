@@ -5,6 +5,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/task"
+	"github.com/pkg/errors"
 )
 
 // DBStatusConnector is a struct that implements the status related methods
@@ -25,6 +26,26 @@ func (c *DBStatusConnector) FindRecentTasks(minutes int) ([]task.Task, *task.Res
 	return tasks, stats, nil
 }
 
+func (c *DBStatusConnector) FindRecentTaskListDistro(minutes int) (*task.ResultCountList, error) {
+	list, err := FindRecentTaskList(minutes, task.DistroIdKey)
+	return list, errors.WithStack(err)
+}
+
+func (c *DBStatusConnector) FindRecentTaskListProject(minutes int) (*task.ResultCountList, error) {
+	list, err := FindRecentTaskList(minutes, task.ProjectKey)
+	return list, errors.WithStack(err)
+}
+
+func FindRecentTaskList(minutes int, key string) (*task.ResultCountList, error) {
+	stats, err := task.GetRecentTaskStatsList(time.Duration(minutes)*time.Minute, key)
+	if err != nil {
+		return nil, err
+	}
+
+	statList := task.GetResultCountList(stats)
+	return &statList, nil
+}
+
 // GetHostStatsByDistro returns counts of up hosts broken down by distro
 func (c *DBStatusConnector) GetHostStatsByDistro() ([]host.StatsByDistro, error) {
 	return host.GetStatsByDistro()
@@ -33,14 +54,23 @@ func (c *DBStatusConnector) GetHostStatsByDistro() ([]host.StatsByDistro, error)
 // MockStatusConnector is a struct that implements mock versions of
 // Distro-related methods for testing.
 type MockStatusConnector struct {
-	CachedTasks     []task.Task
-	CachedResults   *task.ResultCounts
-	CachedHostStats []host.StatsByDistro
+	CachedTasks           []task.Task
+	CachedResults         *task.ResultCounts
+	CachedResultCountList *task.ResultCountList
+	CachedHostStats       []host.StatsByDistro
 }
 
 // FindRecentTasks is a mock implementation for testing.
 func (c *MockStatusConnector) FindRecentTasks(minutes int) ([]task.Task, *task.ResultCounts, error) {
 	return c.CachedTasks, c.CachedResults, nil
+}
+
+func (c *MockStatusConnector) FindRecentTaskListDistro(minutes int) (*task.ResultCountList, error) {
+	return c.CachedResultCountList, nil
+}
+
+func (c *MockStatusConnector) FindRecentTaskListProject(minutes int) (*task.ResultCountList, error) {
+	return c.CachedResultCountList, nil
 }
 
 // GetHostStatsByDistro returns mock stats for hosts broken down by distro

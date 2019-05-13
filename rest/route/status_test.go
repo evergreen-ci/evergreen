@@ -67,6 +67,20 @@ func (s *StatusSuite) SetupSuite() {
 			SystemTimedOut:     9,
 			TestTimedOut:       10,
 		},
+		CachedResultCountList: &task.ResultCountList{
+			Total: []task.Result{
+				{Name: "d1", Count: 3},
+				{Name: "d2", Count: 2},
+			},
+			Inactive: []task.Result{
+				{Name: "d1", Count: 2},
+				{Name: "d2", Count: 1},
+			},
+			Succeeded: []task.Result{
+				{Name: "d1", Count: 1},
+				{Name: "d2", Count: 1},
+			},
+		},
 	}
 	s.sc = &data.MockConnector{
 		MockStatusConnector: s.data,
@@ -93,6 +107,29 @@ func (s *StatusSuite) TestParseAndValidateMinutes() {
 	s.NoError(err)
 	s.Equal(5, s.h.minutes)
 	s.Equal(false, s.h.verbose)
+}
+
+func (s *StatusSuite) TestParseAndValidateByDistro() {
+	r, err := http.NewRequest("GET", "https://evergreen.mongodb.com/rest/v2/status/recent_tasks?by_distro=true", &bytes.Buffer{})
+	s.Require().NoError(err)
+	err = s.h.Parse(context.Background(), r)
+	s.NoError(err)
+	s.True(s.h.byDistro)
+}
+
+func (s *StatusSuite) TestParseAndValidateByProject() {
+	r, err := http.NewRequest("GET", "https://evergreen.mongodb.com/rest/v2/status/recent_tasks?by_project=1", &bytes.Buffer{})
+	s.Require().NoError(err)
+	err = s.h.Parse(context.Background(), r)
+	s.NoError(err)
+	s.True(s.h.byProject)
+}
+
+func (s *StatusSuite) TestParseAndValidateByDistroAndProject() {
+	r, err := http.NewRequest("GET", "https://evergreen.mongodb.com/rest/v2/status/recent_tasks?by_distro=true&by_project=1", &bytes.Buffer{})
+	s.Require().NoError(err)
+	err = s.h.Parse(context.Background(), r)
+	s.Error(err)
 }
 
 func (s *StatusSuite) TestParseAndValidateMinutesAndVerbose() {
@@ -138,7 +175,7 @@ func (s *StatusSuite) TestExecuteDefault() {
 	resp := s.h.Run(context.Background())
 	s.Equal(http.StatusOK, resp.Status())
 	s.NotNil(resp)
-	res := resp.Data().([]model.Model)[0].(*model.APIRecentTaskStats)
+	res := resp.Data().(*model.APIRecentTaskStats)
 	s.Equal(1, res.Total)
 	s.Equal(2, res.Inactive)
 	s.Equal(3, res.Unstarted)
@@ -163,6 +200,30 @@ func (s *StatusSuite) TestExecuteVerbose() {
 		t := result.(*model.APITask)
 		s.Equal(model.ToAPIString(fmt.Sprintf("task%d", i+1)), t.Id)
 	}
+}
+
+func (s *StatusSuite) TestExecuteByDistro() {
+	s.h.byDistro = true
+
+	resp := s.h.Run(context.Background())
+	s.Equal(http.StatusOK, resp.Status())
+	s.NotNil(resp)
+	res := resp.Data().(*model.APIRecentTaskStatsList)
+
+	s.Equal(model.ToAPIString("d1"), res.Total[0].Name)
+	s.Equal(3, res.Total[0].Count)
+	s.Equal(model.ToAPIString("d2"), res.Total[1].Name)
+	s.Equal(2, res.Total[1].Count)
+
+	s.Equal(model.ToAPIString("d1"), res.Inactive[0].Name)
+	s.Equal(2, res.Inactive[0].Count)
+	s.Equal(model.ToAPIString("d2"), res.Inactive[1].Name)
+	s.Equal(1, res.Inactive[1].Count)
+
+	s.Equal(model.ToAPIString("d1"), res.Succeeded[0].Name)
+	s.Equal(1, res.Succeeded[0].Count)
+	s.Equal(model.ToAPIString("d2"), res.Succeeded[1].Name)
+	s.Equal(1, res.Succeeded[1].Count)
 }
 
 func (s *StatusSuite) TaskTaskType() {

@@ -2,6 +2,7 @@ package task
 
 import (
 	"encoding/json"
+	"reflect"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
@@ -132,4 +133,39 @@ func FilterTasksOnStatus(tasks []Task, statuses ...string) []Task {
 	}
 
 	return out
+}
+
+type Result struct {
+	Name  string `json:"name"`
+	Count int    `json:"count"`
+}
+type ResultCountList struct {
+	Total              []Result `json:"total"`
+	Inactive           []Result `json:"inactive"`
+	Unstarted          []Result `json:"unstarted"`
+	Started            []Result `json:"started"`
+	Succeeded          []Result `json:"succeeded"`
+	Failed             []Result `json:"failed"`
+	SetupFailed        []Result `json:"setup-failed"`
+	SystemFailed       []Result `json:"system-failed"`
+	SystemUnresponsive []Result `json:"system-unresponsive"`
+	SystemTimedOut     []Result `json:"system-timed-out"`
+	TestTimedOut       []Result `json:"test-timed-out"`
+}
+
+func GetResultCountList(results []StatsList) ResultCountList {
+	list := ResultCountList{}
+	listVal := reflect.ValueOf(&list).Elem()
+	listType := listVal.Type()
+	for i := 0; i < listVal.NumField(); i++ {
+		tag, _ := listType.Field(i).Tag.Lookup("json")
+		for _, result := range results {
+			if result.Status == tag {
+				listVal.Field(i).Set(reflect.ValueOf(result.Stats))
+				break
+			}
+		}
+	}
+
+	return list
 }

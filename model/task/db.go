@@ -616,6 +616,74 @@ func GetRecentTasks(period time.Duration) ([]Task, error) {
 	return tasks, nil
 }
 
+type StatsList struct {
+	Status string   `json:"status"`
+	Stats  []Result `json:"stats"`
+}
+
+func GetRecentTaskStatsList(period time.Duration, statKey string) ([]StatsList, error) {
+	pipeline := []bson.M{
+		{"$match": bson.M{
+			StatusKey: bson.M{"$exists": true},
+			FinishTimeKey: bson.M{
+				"$gt": time.Now().Add(-period),
+			},
+		}},
+		{"$group": bson.M{
+			"_id":   bson.M{StatusKey: "$" + StatusKey, statKey: "$" + statKey},
+			"count": bson.M{"$sum": 1},
+		}},
+		{"$sort": bson.M{
+			"count": -1,
+		}},
+		{"$group": bson.M{
+			"_id":   "$_id." + StatusKey,
+			"stats": bson.M{"$push": bson.M{"name": "$_id." + statKey, "count": "$count"}},
+			"total": bson.M{"$sum": "$count"},
+		}},
+		{"$project": bson.M{
+			"_id":    0,
+			"status": "$_id",
+			"stats":  bson.M{"$concatArrays": bson.A{bson.A{bson.M{"name": "total", "count": "$total"}}, "$stats"}},
+		}},
+	}
+
+	result := []StatsList{}
+	if err := Aggregate(pipeline, &result); err != nil {
+		return nil, errors.Wrap(err, "can't get stats list")
+	}
+
+	// get the totals (for all statuses)
+	pipeline = []bson.M{
+		{"$match": bson.M{
+			StatusKey: bson.M{"$exists": true},
+			FinishTimeKey: bson.M{
+				"$gt": time.Now().Add(-period),
+			},
+		}},
+		{"$group": bson.M{
+			"_id":   "$" + statKey,
+			"count": bson.M{"$sum": 1},
+		}},
+		{"$sort": bson.M{
+			"count": -1,
+		}},
+		{"$project": bson.M{
+			"_id":   0,
+			"name":  "$_id",
+			"count": 1,
+		}},
+	}
+
+	totals := []Result{}
+	if err := Aggregate(pipeline, &totals); err != nil {
+		return nil, errors.Wrap(err, "can't get totals list")
+	}
+	result = append(result, StatsList{Status: "total", Stats: totals})
+
+	return result, nil
+}
+
 // DB Boilerplate
 
 // FindOneNoMerge is a FindOne without merging test results.

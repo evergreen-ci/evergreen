@@ -1079,3 +1079,52 @@ func TestUnscheduleStaleUnderwaterTasks(t *testing.T) {
 	assert.False(dbTask.Activated)
 	assert.EqualValues(-1, dbTask.Priority)
 }
+
+func TestGetRecentTaskStatsList(t *testing.T) {
+	assert := assert.New(t)
+	assert.NoError(db.ClearCollections(Collection))
+	tasks := []Task{
+		Task{Id: "t1", Status: evergreen.TaskSucceeded, DistroId: "d1", FinishTime: time.Now()},
+		Task{Id: "t2", Status: evergreen.TaskSucceeded, DistroId: "d1", FinishTime: time.Now()},
+		Task{Id: "t3", Status: evergreen.TaskSucceeded, DistroId: "d2", FinishTime: time.Now()},
+		Task{Id: "t4", Status: evergreen.TaskSucceeded, DistroId: "d3", FinishTime: time.Now()},
+		Task{Id: "t5", Status: evergreen.TaskFailed, DistroId: "d1", FinishTime: time.Now()},
+		Task{Id: "t6", Status: evergreen.TaskFailed, DistroId: "d1", FinishTime: time.Now()},
+		Task{Id: "t7", Status: evergreen.TaskFailed, DistroId: "d2", FinishTime: time.Now()},
+		Task{Id: "t8", Status: evergreen.TaskFailed, DistroId: "d3", FinishTime: time.Now()},
+	}
+	for _, task := range tasks {
+		assert.NoError(task.Insert())
+	}
+
+	list, err := GetRecentTaskStatsList(time.Minute, DistroIdKey)
+	assert.NoError(err)
+
+	for _, status := range list {
+		if status.Status == evergreen.TaskSucceeded {
+			assert.Equal("total", status.Stats[0].Name)
+			assert.Equal(4, status.Stats[0].Count)
+			assert.Equal("d1", status.Stats[1].Name)
+			assert.Equal(2, status.Stats[1].Count)
+		}
+		if status.Status == "total" {
+			assert.Equal("d1", status.Stats[0].Name)
+			assert.Equal(4, status.Stats[0].Count)
+		}
+	}
+}
+
+func TestGetResultCountList(t *testing.T) {
+	assert := assert.New(t)
+	statsList := []StatsList{
+		{Status: "total", Stats: []Result{{Name: "d1", Count: 4}, {Name: "d2", Count: 2}}},
+		{Status: "inactive", Stats: []Result{{Name: "d1", Count: 2}, {Name: "d2", Count: 1}}},
+		{Status: "failed", Stats: []Result{{Name: "d1", Count: 2}, {Name: "d2", Count: 1}}},
+	}
+
+	list := GetResultCountList(statsList)
+	assert.Len(list.Total, 2)
+	assert.Len(list.Inactive, 2)
+	assert.Len(list.Failed, 2)
+	assert.Len(list.Unstarted, 0)
+}
