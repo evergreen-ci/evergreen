@@ -59,6 +59,7 @@ type patchParams struct {
 	Browse      bool
 	Large       bool
 	ShowSummary bool
+	WorkingTree bool
 	Ref         string
 }
 
@@ -179,6 +180,10 @@ func (p *patchParams) validatePatchCommand(ctx context.Context, conf *ClientSett
 
 	if err := p.loadTasks(conf); err != nil {
 		grip.Warningf("warning - failed to set default tasks: %v\n", err)
+	}
+
+	if p.WorkingTree || conf.FindDefaultWorkingTree(p.Project) {
+		p.Ref = ""
 	}
 
 	// Validate the project exists

@@ -20,11 +20,12 @@ import (
 const localConfigPath = ".evergreen.local.yml"
 
 type ClientProjectConf struct {
-	Name     string   `json:"name" yaml:"name,omitempty"`
-	Default  bool     `json:"default" yaml:"default,omitempty"`
-	Alias    string   `json:"alias" yaml:"alias,omitempty"`
-	Variants []string `json:"variants" yaml:"variants,omitempty"`
-	Tasks    []string `json:"tasks" yaml:"tasks,omitempty"`
+	Name           string   `json:"name" yaml:"name,omitempty"`
+	Default        bool     `json:"default" yaml:"default,omitempty"`
+	Alias          string   `json:"alias" yaml:"alias,omitempty"`
+	Variants       []string `json:"variants" yaml:"variants,omitempty"`
+	Tasks          []string `json:"tasks" yaml:"tasks,omitempty"`
+	IncludeWorking bool     `json:"include_working" yaml:"include_working,omitempty"`
 }
 
 func findConfigFilePath(fn string) (string, error) {
@@ -291,4 +292,13 @@ func (s *ClientSettings) SetDefaultProject(name string) {
 			Tasks:    []string{},
 		})
 	}
+}
+
+func (s *ClientSettings) FindDefaultWorkingTree(project string) bool {
+	for _, p := range s.Projects {
+		if p.Name == project {
+			return p.IncludeWorking
+		}
+	}
+	return false
 }

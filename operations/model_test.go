@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestFindDefaultAlias(t *testing.T) {
@@ -189,4 +190,35 @@ projects:
 			},
 		},
 	}, *localClientSettings)
+}
+
+func TestLoadWorkingChangesFromFile(t *testing.T) {
+	require := require.New(t)
+	assert := assert.New(t)
+
+	tmpdir, err := ioutil.TempDir("", "clientsettings")
+	assert.NoError(err)
+	defer os.RemoveAll(tmpdir)
+	globalTestConfigPath := filepath.Join(tmpdir, ".evergreen.test.yml")
+
+	// Working tree : true
+	fileContents := `projects:
+- name: mci
+  default: true
+  include_working: true`
+	require.NoError(ioutil.WriteFile(globalTestConfigPath, []byte(fileContents), 0644))
+	conf, err := NewClientSettings(globalTestConfigPath)
+	require.NoError(err)
+
+	assert.True(conf.FindDefaultWorkingTree("mci"))
+
+	// Working tree: false
+	fileContents = `projects:
+- name: mci
+  default: true`
+	require.NoError(ioutil.WriteFile(globalTestConfigPath, []byte(fileContents), 0644))
+	conf, err = NewClientSettings(globalTestConfigPath)
+	require.NoError(err)
+
+	assert.False(conf.FindDefaultWorkingTree("mci"))
 }

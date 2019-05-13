@@ -26,6 +26,7 @@ const (
 	messageFlagName       = "message"
 	activeFlagName        = "active"
 	refFlagName           = "ref"
+	workingChangesFlag    = "include-working"
 
 	anserDryRunFlagName      = "dry-run"
 	anserLimitFlagName       = "limit"
@@ -208,6 +209,13 @@ func addRefFlag(flags ...cli.Flag) []cli.Flag {
 		Name:  refFlagName,
 		Usage: "diff with `REF`",
 		Value: "HEAD",
+	})
+}
+
+func addWorkingChangesFlag(flags ...cli.Flag) []cli.Flag {
+	return append(flags, cli.BoolFlag{
+		Name:  workingChangesFlag,
+		Usage: "include non-committed changes",
 	})
 }
 
