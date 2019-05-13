@@ -131,8 +131,11 @@ func SetupEnv(env evergreen.Environment) error {
 	if err == nil && len(githubToken) > 0 {
 		ctx, _ := env.Context()
 		// Github PR Merge
-		var sender send.Sender
-		sender, err = NewGithubPRLogger(ctx, "evergreen", githubToken, sender)
+		githubStatusSender, err := env.GetSender(evergreen.SenderGithubStatus)
+		if err != nil {
+			return errors.Wrap(err, "can't get github status sender")
+		}
+		sender, err := NewGithubPRLogger(ctx, "evergreen", githubToken, githubStatusSender)
 		if err != nil {
 			return errors.Wrap(err, "Failed to setup github merge logger")
 		}
@@ -152,9 +155,9 @@ func SetupEnv(env evergreen.Environment) error {
 		if err = env.SetSender(evergreen.SenderCommitQueueDequeue, sender); err != nil {
 			return errors.WithStack(err)
 		}
-	}
 
-	evergreen.SetEnvironment(env)
+		evergreen.SetEnvironment(env)
+	}
 
 	return nil
 }
