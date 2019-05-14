@@ -9,10 +9,10 @@ import (
 
 func TestAPIRecentTaskStatsListBuildFromService(t *testing.T) {
 	assert := assert.New(t)
-	service := &task.ResultCountList{
-		Total:    []task.Result{{Name: "d1", Count: 5}, {Name: "d2", Count: 3}},
-		Inactive: []task.Result{{Name: "d1", Count: 3}, {Name: "d2", Count: 2}},
-		Failed:   []task.Result{{Name: "d1", Count: 2}, {Name: "d2", Count: 1}},
+	service := task.ResultCountList{
+		Total:    []task.Stat{{Name: "d1", Count: 5}, {Name: "d2", Count: 3}},
+		Inactive: []task.Stat{{Name: "d1", Count: 3}, {Name: "d2", Count: 2}},
+		Failed:   []task.Stat{{Name: "d1", Count: 2}, {Name: "d2", Count: 1}},
 	}
 
 	apiList := APIRecentTaskStatsList{}
