@@ -12,7 +12,7 @@ import (
 // This file contains the code for matrix generation.
 // Project matrices are a shortcut for defining many variants
 // by combining multiple axes. A full explanation of the matrix format
-// is available at #TODO GitHub wiki documentation (EVG-1175).
+// is available at https://github.com/evergreen-ci/evergreen/wiki/Project-Files#matrix-variant-definition.
 //
 // On a high level, matrix variant construction takes the following steps:
 //   1. Matrix definitions are read as part of a project's `buildvariants` field
