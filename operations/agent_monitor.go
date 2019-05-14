@@ -310,12 +310,11 @@ func (m *monitor) createAgentProcess(ctx context.Context, retry util.RetryArgs) 
 	var err error
 
 	if err = util.RetryWithArgs(ctx, func() (bool, error) {
-		opts := &jasper.CreateOptions{Environment: env}
 		cmd := m.jasperClient.CreateCommand(ctx).
 			Add(agentCmdArgs).
 			SetOutputSender(level.Info, grip.GetSender()).
 			SetErrorSender(level.Error, grip.GetSender()).
-			ApplyFromOpts(opts).
+			Environment(env).
 			Background(true)
 		if err = cmd.Run(ctx); err != nil {
 			return true, errors.Wrap(err, "failed to create process")
@@ -386,31 +385,41 @@ func (m *monitor) runAgent(ctx context.Context, retry util.RetryArgs) error {
 // runMonitor runs the monitor loop. It fetches the agent, starts it, and
 // repeats when the agent terminates.
 func (m *monitor) run(ctx context.Context) {
-	for ; ctx.Err() == nil; time.Sleep(defaultMaxRequestDelay) {
-		// The evergreen agent runs using a separate binary from the monitor
-		// to allow the agent to be updated.
-		if err := m.fetchClient(ctx, defaultRetryArgs()); err != nil {
-			grip.Error(message.WrapError(err, message.Fields{
-				"message":     "could not fetch client",
+	for {
+		if err := util.RetryWithArgs(ctx, func() (bool, error) {
+			// The evergreen agent runs using a separate binary from the monitor
+			// to allow the agent to be updated.
+			if err := m.fetchClient(ctx, defaultRetryArgs()); err != nil {
+				grip.Error(message.WrapError(err, message.Fields{
+					"message":     "could not fetch client",
+					"client_url":  m.clientURL,
+					"client_path": m.clientPath,
+				}))
+				return true, err
+			}
+
+			if _, err := os.Stat(m.clientPath); os.IsNotExist(err) {
+				grip.Error(errors.Wrapf(err, "could not stat client '%s'", m.clientPath))
+				return true, err
+			}
+
+			grip.InfoWhen(sometimes.Fifth(), message.Fields{
+				"message":     "starting agent on host via Jasper",
 				"client_url":  m.clientURL,
 				"client_path": m.clientPath,
-			}))
-			continue
-		}
-
-		if _, err := os.Stat(m.clientPath); os.IsNotExist(err) {
-			grip.Error(errors.Wrapf(err, "could not stat client '%s'", m.clientPath))
-			continue
-		}
-
-		grip.InfoWhen(sometimes.Fifth(), message.Fields{
-			"message":     "starting agent on host via Jasper",
-			"client_url":  m.clientURL,
-			"client_path": m.clientPath,
-			"jasper_port": m.jasperPort,
-		})
-		if err := m.runAgent(ctx, defaultRetryArgs()); err != nil {
-			grip.Error(errors.Wrap(err, "error occurred while running the agent"))
+				"jasper_port": m.jasperPort,
+			})
+			if err := m.runAgent(ctx, defaultRetryArgs()); err != nil {
+				grip.Error(errors.Wrap(err, "error occurred while running the agent"))
+				return true, err
+			}
+			return false, nil
+		}, defaultRetryArgs()); err != nil {
+			if ctx.Err() != nil {
+				grip.Warning(errors.Wrap(err, "context cancelled while running monitor"))
+				return
+			}
+			grip.Error(errors.Wrapf(err, "error while managing agent"))
 		}
 	}
 }
