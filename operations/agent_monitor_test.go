@@ -10,6 +10,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/jasper"
 	"github.com/mongodb/jasper/rpc"
 	"github.com/stretchr/testify/assert"
@@ -36,10 +37,7 @@ func TestAgentMonitorWithJasper(t *testing.T) {
 
 	for testName, testCase := range map[string]func(context.Context, *testing.T, *monitor){
 		"FetchClientDownloadsFromURL": func(ctx context.Context, t *testing.T, m *monitor) {
-			require.NoError(t, fetchClient(ctx, m, &retryArgs{
-				maxDelay:    time.Second,
-				maxAttempts: defaultMaxRequestAttempts,
-			}))
+			require.NoError(t, m.fetchClient(ctx, defaultRetryArgs()))
 			fileInfo, err := os.Stat(m.clientPath)
 			require.NoError(t, err)
 			assert.NotZero(t, fileInfo.Size())
@@ -72,15 +70,13 @@ func TestAgentMonitorWithJasper(t *testing.T) {
 
 			// Monitor should be able to connect without needing credentials when
 			// testing.
-			client, err := setupJasperConnection(tctx, m, &retryArgs{
+			require.NoError(t, m.setupJasperConnection(tctx, util.RetryArgs{
 				maxDelay:    time.Second,
 				maxAttempts: defaultMaxRequestAttempts,
-			})
-			require.NoError(t, err)
+			}))
 			defer func() {
-				assert.NoError(t, client.CloseConnection())
+				assert.NoError(t, m.jasperClient.CloseConnection())
 			}()
-			m.jasperClient = client
 
 			testCase(tctx, t, m)
 		})

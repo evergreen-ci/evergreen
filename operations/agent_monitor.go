@@ -3,6 +3,7 @@ package operations
 import (
 	"context"
 	"fmt"
+	"math"
 	"net"
 	"os"
 	"os/signal"
@@ -17,6 +18,7 @@ import (
 	"github.com/mongodb/grip/message"
 	"github.com/mongodb/grip/recovery"
 	"github.com/mongodb/grip/send"
+	"github.com/mongodb/grip/sometimes"
 	"github.com/mongodb/jasper"
 	"github.com/mongodb/jasper/rpc"
 	"github.com/pkg/errors"
@@ -59,21 +61,21 @@ type monitor struct {
 	jasperClient jasper.RemoteClient
 }
 
-// retryArgs defines the policy for retrying requests.
-type retryArgs struct {
-	maxAttempts int
-	minDelay    time.Duration
-	maxDelay    time.Duration
-}
-
 const (
 	defaultMonitorPort        = defaultAgentStatusPort - 1
 	defaultJasperPort         = defaultMonitorPort - 1
 	defaultMaxRequestDelay    = 30 * time.Second
-	defaultMaxRequestAttempts = 5
+	defaultMaxRequestAttempts = 10
 
 	monitorLoggerName = "evergreen.agent.monitor"
 )
+
+func defaultRetryArgs() util.RetryArgs {
+	return util.RetryArgs{
+		MaxDelay:    defaultMaxRequestDelay,
+		MaxAttempts: defaultMaxRequestAttempts,
+	}
+}
 
 // agentMonitor starts the monitor that deploys the agent.
 func agentMonitor() cli.Command {
@@ -84,6 +86,11 @@ func agentMonitor() cli.Command {
 		logPrefixFlagName       = "log_prefix"
 		jasperPortFlagName      = "jasper_port"
 		portFlagName            = "port"
+	)
+
+	const (
+		minPort = 1 << 10
+		maxPort = math.MaxUint16 - 1
 	)
 
 	return cli.Command{
@@ -114,15 +121,15 @@ func agentMonitor() cli.Command {
 			},
 			cli.IntFlag{
 				Name:  portFlagName,
-				Value: defaultAgentStatusPort - 1,
+				Value: defaultMonitorPort,
 				Usage: "the port that used by the monitor",
 			},
 		},
 		Before: mergeBeforeFuncs(
 			requireStringFlag(clientURLFlagName),
 			requireStringFlag(clientPathFlagName),
-			requireIntValueBetween(jasperPortFlagName, 0, 1<<16),
-			requireIntValueBetween(portFlagName, 0, 1<<16),
+			requireIntValueBetween(jasperPortFlagName, minPort, maxPort),
+			requireIntValueBetween(portFlagName, maxPort, maxPort),
 			func(*cli.Context) error {
 				grip.SetName(monitorLoggerName)
 				return nil
@@ -138,11 +145,11 @@ func agentMonitor() cli.Command {
 				logPrefix:       c.String(logPrefixFlagName),
 			}
 
-			args, err := getAgentArgs(c, os.Args)
+			var err error
+			m.agentArgs, err = getAgentArgs(c, os.Args)
 			if err != nil {
 				return errors.Wrap(err, "error getting agent args")
 			}
-			m.agentArgs = args
 
 			if err = setupLogging(m); err != nil {
 				return errors.Wrap(err, "error setting up logging")
@@ -150,9 +157,6 @@ func agentMonitor() cli.Command {
 
 			// Reserve the given port to prevent other monitors from starting.
 			if _, err = net.Listen("tcp", fmt.Sprintf(":%d", m.port)); err != nil {
-				if err == syscall.EADDRINUSE {
-					return nil
-				}
 				return errors.Wrapf(err, "failed to listen on port %d", m.port)
 			}
 
@@ -160,16 +164,14 @@ func agentMonitor() cli.Command {
 			defer cancel()
 			go handleMonitorSignals(ctx, cancel)
 
-			client, err := setupJasperConnection(ctx, m, defaultRetryArgs())
-			if err != nil {
+			if err := m.setupJasperConnection(ctx, defaultRetryArgs()); err != nil {
 				return errors.Wrap(err, "failed to connect to RPC service")
 			}
 			defer func() {
-				grip.Error(errors.Wrap(client.CloseConnection(), "failed to close RPC client connection"))
+				grip.Error(errors.Wrap(m.jasperClient.CloseConnection(), "failed to close RPC client connection"))
 			}()
-			m.jasperClient = client
 
-			runMonitor(ctx, m)
+			m.run(ctx)
 
 			return nil
 		},
@@ -190,21 +192,10 @@ func getAgentArgs(c *cli.Context, args []string) ([]string, error) {
 	}
 
 	if beginIndex == -1 || endIndex == -1 {
-		return nil, errors.Errorf("agent args are invalid: %v", args)
+		return nil, errors.Errorf("agent args are invalid: %s", strings.Join(args, " "))
 	}
 
 	return args[beginIndex+1 : endIndex], nil
-}
-
-func retryWithArgs(ctx context.Context, retry util.RetriableFunc, args *retryArgs) error {
-	return util.Retry(ctx, retry, args.maxAttempts, args.minDelay, args.maxDelay)
-}
-
-func defaultRetryArgs() *retryArgs {
-	return &retryArgs{
-		maxDelay:    defaultMaxRequestDelay,
-		maxAttempts: defaultMaxRequestAttempts,
-	}
 }
 
 // setupLogging sets up the monitor to log based on logPrefix. If the Splunk
@@ -264,14 +255,14 @@ func handleMonitorSignals(ctx context.Context, serviceCancel context.CancelFunc)
 }
 
 // fetchClient downloads the evergreen client.
-func fetchClient(ctx context.Context, m *monitor, retry *retryArgs) error {
+func (m *monitor) fetchClient(ctx context.Context, retry util.RetryArgs) error {
 	info := jasper.DownloadInfo{
 		URL:         m.clientURL,
 		Path:        m.clientPath,
 		ArchiveOpts: jasper.ArchiveOptions{ShouldExtract: false},
 	}
 
-	if err := retryWithArgs(ctx, func() (bool, error) {
+	if err := util.RetryWithArgs(ctx, func() (bool, error) {
 		if err := m.jasperClient.DownloadFile(ctx, info); err != nil {
 			return true, errors.Wrap(err, "failed to download file")
 		}
@@ -285,30 +276,27 @@ func fetchClient(ctx context.Context, m *monitor, retry *retryArgs) error {
 
 // setupJasperConnection attempts to connect to the Jasper RPC service running
 // on this host and sets the RPC manager.
-func setupJasperConnection(ctx context.Context, m *monitor, retry *retryArgs) (jasper.RemoteClient, error) {
-	var err error
-	var client jasper.RemoteClient
+func (m *monitor) setupJasperConnection(ctx context.Context, retry util.RetryArgs) error {
 	serverAddr, err := net.ResolveTCPAddr("tcp", fmt.Sprintf("localhost:%d", m.jasperPort))
 	if err != nil {
-		return nil, errors.Wrapf(err, "failed to resolve Jasper server address at '%s'", serverAddr)
+		return errors.Wrapf(err, "failed to resolve Jasper server address at '%s'", serverAddr)
 	}
 
-	if err = retryWithArgs(ctx, func() (bool, error) {
-		client, err = rpc.NewClient(ctx, serverAddr, m.certificatePath)
+	if err = util.RetryWithArgs(ctx, func() (bool, error) {
+		m.jasperClient, err = rpc.NewClient(ctx, serverAddr, m.certificatePath)
 		if err != nil {
 			return true, errors.Wrap(err, "could not connect to Jasper RPC service")
 		}
-
 		return false, nil
 	}, retry); err != nil {
-		return nil, errors.Wrapf(err, "failed to connect to Jasper RPC service at '%s'", serverAddr)
+		return errors.Wrapf(err, "failed to connect to Jasper RPC service at '%s'", serverAddr)
 	}
 
-	return client, nil
+	return nil
 }
 
 // createAgentProcess attempts to start an agent subprocess.
-func createAgentProcess(ctx context.Context, m *monitor, retry *retryArgs) (jasper.Process, error) {
+func (m *monitor) createAgentProcess(ctx context.Context, retry util.RetryArgs) (jasper.Process, error) {
 	agentCmdArgs := append([]string{m.clientPath, "agent"}, m.agentArgs...)
 
 	// Copy the monitor's environment to the agent.
@@ -321,7 +309,7 @@ func createAgentProcess(ctx context.Context, m *monitor, retry *retryArgs) (jasp
 	var proc jasper.Process
 	var err error
 
-	if err = retryWithArgs(ctx, func() (bool, error) {
+	if err = util.RetryWithArgs(ctx, func() (bool, error) {
 		opts := &jasper.CreateOptions{Environment: env}
 		cmd := m.jasperClient.CreateCommand(ctx).
 			Add(agentCmdArgs).
@@ -384,44 +372,45 @@ func waitUntilComplete(ctx context.Context, proc jasper.Process, maxDelay time.D
 
 // runAgent starts the agent with the necessary args and waits for it to
 // terminate.
-func runAgent(ctx context.Context, m *monitor, retry *retryArgs) error {
-	proc, err := createAgentProcess(ctx, m, retry)
+func (m *monitor) runAgent(ctx context.Context, retry util.RetryArgs) error {
+	proc, err := m.createAgentProcess(ctx, retry)
 	if err != nil {
 		return errors.Wrapf(err, "failed to create agent process")
 	}
 
-	exitCode, err := waitUntilComplete(ctx, proc, defaultRetryArgs().maxDelay)
+	exitCode, err := waitUntilComplete(ctx, proc, defaultMaxRequestDelay)
 
 	return errors.Wrapf(err, "agent exited with code %d", exitCode)
 }
 
 // runMonitor runs the monitor loop. It fetches the agent, starts it, and
 // repeats when the agent terminates.
-func runMonitor(ctx context.Context, m *monitor) {
-	for {
-		select {
-		case <-ctx.Done():
-			return
-		default:
-			// The evergreen agent runs using a separate binary from the monitor
-			// to allow the agent to be updated.
-			if err := fetchClient(ctx, m, defaultRetryArgs()); err != nil {
-				grip.Error(message.WrapError(err, message.Fields{
-					"message":     "could not fetch client",
-					"client_url":  m.clientURL,
-					"client_path": m.clientPath,
-				}))
-				continue
-			}
+func (m *monitor) run(ctx context.Context) {
+	for ; ctx.Err() == nil; time.Sleep(defaultMaxRequestDelay) {
+		// The evergreen agent runs using a separate binary from the monitor
+		// to allow the agent to be updated.
+		if err := m.fetchClient(ctx, defaultRetryArgs()); err != nil {
+			grip.Error(message.WrapError(err, message.Fields{
+				"message":     "could not fetch client",
+				"client_url":  m.clientURL,
+				"client_path": m.clientPath,
+			}))
+			continue
+		}
 
-			if _, err := os.Stat(m.clientPath); os.IsNotExist(err) {
-				grip.Error(errors.Wrapf(err, "could not stat client '%s'", m.clientPath))
-				continue
-			}
+		if _, err := os.Stat(m.clientPath); os.IsNotExist(err) {
+			grip.Error(errors.Wrapf(err, "could not stat client '%s'", m.clientPath))
+			continue
+		}
 
-			if err := runAgent(ctx, m, defaultRetryArgs()); err != nil {
-				grip.Error(errors.Wrap(err, "error occurred while running the agent"))
-			}
+		grip.InfoWhen(sometimes.Fifth(), message.Fields{
+			"message":     "starting agent on host via Jasper",
+			"client_url":  m.clientURL,
+			"client_path": m.clientPath,
+			"jasper_port": m.jasperPort,
+		})
+		if err := m.runAgent(ctx, defaultRetryArgs()); err != nil {
+			grip.Error(errors.Wrap(err, "error occurred while running the agent"))
 		}
 	}
 }

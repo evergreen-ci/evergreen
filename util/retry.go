@@ -79,6 +79,19 @@ func Retry(ctx context.Context, op RetriableFunc, attempts int, min time.Duratio
 	}
 }
 
+// RetryArgs defines the policy for retrying an operation.
+type RetryArgs struct {
+	MaxAttempts int
+	MinDelay    time.Duration
+	MaxDelay    time.Duration
+}
+
+// RetryWithArgs is a convenience wrapper around Retry that passes the
+// parameters from RetryArgs to Retry.
+func RetryWithArgs(ctx context.Context, op RetriableFunc, args RetryArgs) error {
+	return Retry(ctx, op, args.MaxAttempts, args.MinDelay, args.MaxDelay)
+}
+
 func RehttpDelay(initialSleep time.Duration, numAttempts int) rehttp.DelayFn {
 	backoff := getBackoff(numAttempts, initialSleep, 0)
 	return func(attempt rehttp.Attempt) time.Duration {
