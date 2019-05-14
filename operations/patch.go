@@ -4,6 +4,7 @@ import (
 	"context"
 	"io/ioutil"
 
+	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 	"github.com/urfave/cli"
 )
@@ -17,7 +18,7 @@ const (
 )
 
 func getPatchFlags(flags ...cli.Flag) []cli.Flag {
-	return mergeFlagSlices(addProjectFlag(flags...), addVariantsFlag(), addTasksFlag(), addLargeFlag(), addYesFlag(
+	return mergeFlagSlices(addProjectFlag(flags...), addVariantsFlag(), addTasksFlag(), addLargeFlag(), addYesFlag(), addRefFlag(), addUncommittedChangesFlag(
 		cli.StringFlag{
 			Name:  joinFlagNames(patchDescriptionFlagName, "d"),
 			Usage: "description for the patch",
@@ -37,10 +38,6 @@ func getPatchFlags(flags ...cli.Flag) []cli.Flag {
 		cli.BoolFlag{
 			Name:  patchVerboseFlagName,
 			Usage: "show patch summary",
-		},
-		cli.StringFlag{
-			Name:  refFlagName,
-			Usage: "diff with `REF`, ignoring working tree changes",
 		}))
 }
 
@@ -66,6 +63,16 @@ func Patch() cli.Command {
 				Large:       c.Bool(largeFlagName),
 				Alias:       c.String(patchAliasFlagName),
 				Ref:         c.String(refFlagName),
+				Uncommitted: c.Bool(uncommittedChangesFlag),
+			}
+
+			uncommittedChanges, err := gitUncommittedChanges()
+			if err != nil {
+				return errors.Wrap(err, "can't test for uncommitted changes")
+			}
+
+			if !params.Uncommitted && uncommittedChanges {
+				grip.Infof("Uncommitted changes are omitted from patches by default.\nUse the '--%s' flag to include uncommitted changes.", uncommittedChangesFlag)
 			}
 
 			ctx, cancel := context.WithCancel(context.Background())
