@@ -673,7 +673,7 @@ mciModule.controller('PerfController', function PerfController(
             const matched = _.find(whitelist, _.pick(doc, 'revision', 'project', 'variant', 'task'));
             return _.isUndefined(matched);
           });
-          const filtered = _.reject(data, doc => _.contains(rejects, doc.task_id));
+          const filtered = _.reject($scope.trendResults, doc => _.contains(rejects, doc.task_id));
           if (rejects.length != filtered.length) {
             $scope.filteredTrendSamples = new TrendSamples(filtered);
           }
@@ -682,6 +682,9 @@ mciModule.controller('PerfController', function PerfController(
           _.map(
             _.without($scope.allTrendSamples.metrics, $scope.metricSelect.default.key), d => ({key: d, name: d}))
         );
+        $scope.metricSelect.options = _.uniq($scope.metricSelect.options, false, function(option){
+          return option.key;
+        })
 
         // Some copy pasted checks
         if ($scope.conf.enabled){
@@ -699,23 +702,28 @@ mciModule.controller('PerfController', function PerfController(
     };
 
     // Populate the trend data
-    let expandedHistoryPromise = $http.get(cedarApp + "/rest/v1/perf/task_name/" + $scope.task.display_name).then(
+    let getLegactHistory = function() {
+      $http.get("/plugin/json/history/" + $scope.task.id + "/perf").then(function(resp){
+        trendDataSuccess(resp.data);
+      });
+    }
+
+    let historyPromise = $http.get(cedarApp + "/rest/v1/perf/task_name/" + $scope.task.display_name).then(
       function(resp) {
-        let converted = $filter("expandedMetricConverter")(resp.data, $scope.task.execution);
-        trendDataSuccess([converted]);
+        let converted = $filter("expandedHistoryConverter")(resp.data, $scope.task.execution);
+        trendDataSuccess(converted);
+        getLegactHistory();
+      }, function(err) {
+        getLegactHistory();
       }
     )
-    let legacyHistoryPromise = $http.get("/plugin/json/history/" + $scope.task.id + "/perf").then(function(resp){
-      trendDataSuccess(resp.data);
-    });
 
     // Once trend chart data and change points get loaded
     var onHistoryRetrieved = function() {
       $scope.hideEmptyGraphs();
-      //TODO: the 500 ms setTimeout is to work around an ordering inconsistency with $q.all. Need trendDataSuccess to run before drawTrendGraph
-      setTimeout(drawTrendGraph, 500, $scope);
+      setTimeout(drawTrendGraph, 0, $scope);
     };
-    $q.all([expandedHistoryPromise, legacyHistoryPromise, changePointsQ.catch(), buildFailuresQ.catch()])
+    $q.all([historyPromise, changePointsQ.catch(), buildFailuresQ.catch()])
       .then(onHistoryRetrieved, onHistoryRetrieved);
   }
 
