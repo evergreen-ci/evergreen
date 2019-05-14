@@ -35,6 +35,10 @@ func PatchSetModule() cli.Command {
 			uncommitted := c.Bool(uncommittedChangesFlag)
 			args := c.Args()
 
+			if !uncommitted {
+				grip.Infof("Uncommitted changes are omitted from patches by default.\nUse the '--%s' flag to include uncommitted changes.", uncommittedChangesFlag)
+			}
+
 			ctx, cancel := context.WithCancel(context.Background())
 			defer cancel()
 

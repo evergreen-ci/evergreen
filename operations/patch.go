@@ -4,6 +4,7 @@ import (
 	"context"
 	"io/ioutil"
 
+	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 	"github.com/urfave/cli"
 )
@@ -63,6 +64,10 @@ func Patch() cli.Command {
 				Alias:       c.String(patchAliasFlagName),
 				Ref:         c.String(refFlagName),
 				Uncommitted: c.Bool(uncommittedChangesFlag),
+			}
+
+			if !params.Uncommitted {
+				grip.Infof("Uncommitted changes are omitted from patches by default.\nUse the '--%s' flag to include uncommitted changes.", uncommittedChangesFlag)
 			}
 
 			ctx, cancel := context.WithCancel(context.Background())
