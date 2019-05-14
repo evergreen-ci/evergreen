@@ -555,6 +555,11 @@ func TestFindDistroTaskQueue(t *testing.T) {
 		{Id: "a"},
 		{Id: "b"},
 		{Id: "c"},
+		{Id: "d"},
+		{Id: "e"},
+		{Id: "f"},
+		{Id: "g"},
+		{Id: "h"},
 	}
 
 	taskQueueIn := NewTaskQueue(distroID, taskQueueItems, info)
