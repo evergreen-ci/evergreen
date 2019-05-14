@@ -32,6 +32,50 @@ var bannerText = function() {
   return escapeHtml(window.BannerText);
 }
 
+var convertSingleTest = function(test, execution) {
+  let output = {
+    data: {
+      "results": []
+    }
+  };
+  if (test.info) {
+    output.order = test.info.order;
+    output.version_id = test.info.version;
+    output.project_id = test.info.project;
+    output.task_name = test.info.task_name;
+  }
+  if (execution && test.info.execution !== execution) {
+    return output;
+  }
+  var result = {};
+  var threads
+  if (test.info && test.info.args) {
+    threads = test.info.args.thread_level;
+  } else {
+    _.each(test.rollups.stats, function (stat) {
+      if (stat.name === "WorkersMin") {
+        threads = stat.val;
+      }
+    });
+  }
+  if (!threads) {
+    return output;
+  }
+  result[threads] = {};
+
+  _.each(test.rollups.stats, function (stat) {
+      result[threads][stat.name] = Array.isArray(stat.val) ? stat.val[0].Value : stat.val;
+      result[threads][stat.name + "_values"] = Array.isArray(stat.val) ? [stat.val[0].Value] : [stat.val];
+  });
+  output.data.results.push({
+      "name": test.info.test_name,
+      "isExpandedMetric": true,
+      "results": result
+  });
+  
+  return output;
+}
+
 filters.common.filter('conditional', function() {
   return function(b, t, f) {
     return b ? t : f;
@@ -418,40 +462,28 @@ filters.common.filter('conditional', function() {
       return null;
     }
     var output = {
-        "data": {
-            "results": []
-        }
+      data: {
+          "results": []
+      }
     };
 
     _.each(data, function(test) {
-      if (execution && test.info.execution !== execution) {
-        return;
-      }
-      var result = {};
-      var threads
-      if (test.info && test.info.args) {
-        threads = test.info.args.thread_level;
-      } else {
-        _.each(test.rollups.stats, function (stat) {
-          if (stat.name === "avgWorkers") {
-            threads = stat.val;
-          }
-        });
-      }
-      if (!threads) {
-        return;
-      }
-      result[threads] = {};
+      let singleTest = convertSingleTest(test, execution);
+      output.data.results = output.data.results.concat(singleTest.data.results);
+    })
 
-      _.each(test.rollups.stats, function (stat) {
-          result[threads][stat.name] = Array.isArray(stat.val) ? stat.val[0].Value : stat.val;
-          result[threads][stat.name + "_values"] = Array.isArray(stat.val) ? [stat.val[0].Value] : [stat.val];
-      });
-      output.data.results.push({
-          "name": test.info.test_name,
-          "isExpandedMetric": true,
-          "results": result
-      });
+    return output;
+  }
+})
+.filter('expandedHistoryConverter', function() {
+  return function(data, execution) {
+    if (!data) {
+      return null;
+    }
+    let output = [];
+
+    _.each(data, function(test) {
+      output.push(convertSingleTest(test, execution));
     })
 
     return output;
