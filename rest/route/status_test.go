@@ -67,18 +67,18 @@ func (s *StatusSuite) SetupSuite() {
 			SystemTimedOut:     9,
 			TestTimedOut:       10,
 		},
-		CachedResultCountList: &task.ResultCountList{
-			Total: []task.Result{
-				{Name: "d1", Count: 3},
-				{Name: "d2", Count: 2},
+		CachedResultCountList: &model.APIRecentTaskStatsList{
+			Total: model.APIStatList{
+				{Name: model.ToAPIString("d1"), Count: 3},
+				{Name: model.ToAPIString("d2"), Count: 2},
 			},
-			Inactive: []task.Result{
-				{Name: "d1", Count: 2},
-				{Name: "d2", Count: 1},
+			Inactive: model.APIStatList{
+				{Name: model.ToAPIString("d1"), Count: 2},
+				{Name: model.ToAPIString("d2"), Count: 1},
 			},
-			Succeeded: []task.Result{
-				{Name: "d1", Count: 1},
-				{Name: "d2", Count: 1},
+			Succeeded: model.APIStatList{
+				{Name: model.ToAPIString("d1"), Count: 1},
+				{Name: model.ToAPIString("d2"), Count: 1},
 			},
 		},
 	}

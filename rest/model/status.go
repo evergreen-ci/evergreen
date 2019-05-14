@@ -3,6 +3,7 @@ package model
 import (
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/task"
+	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 )
 
@@ -47,65 +48,96 @@ func (apiStatus *APIRecentTaskStats) ToService() (interface{}, error) {
 	return nil, errors.Errorf("ToService() is not implemented for APIRecentTaskStats")
 }
 
-type APIResult struct {
+type APIStat struct {
 	Name  APIString `json:"name"`
 	Count int       `json:"count"`
 }
 
+type APIStatList []APIStat
+
+func (s *APIStatList) BuildFromService(h interface{}) error {
+	switch v := h.(type) {
+	case []task.Stat:
+		for _, stat := range v {
+			*s = append(*s, APIStat{Name: ToAPIString(stat.Name), Count: stat.Count})
+		}
+	default:
+		return errors.Errorf("incorrect type when converting API stat list (%T)", v)
+	}
+
+	return nil
+}
+
 type APIRecentTaskStatsList struct {
-	Total              []APIResult `json:"total"`
-	Inactive           []APIResult `json:"inactive"`
-	Unstarted          []APIResult `json:"unstarted"`
-	Started            []APIResult `json:"started"`
-	Succeeded          []APIResult `json:"succeeded"`
-	Failed             []APIResult `json:"failed"`
-	SetupFailed        []APIResult `json:"setup-failed"`
-	SystemFailed       []APIResult `json:"system-failed"`
-	SystemUnresponsive []APIResult `json:"system-unresponsive"`
-	SystemTimedOut     []APIResult `json:"system-timed-out"`
-	TestTimedOut       []APIResult `json:"test-timed-out"`
+	Total              APIStatList `json:"total"`
+	Inactive           APIStatList `json:"inactive"`
+	Unstarted          APIStatList `json:"unstarted"`
+	Started            APIStatList `json:"started"`
+	Succeeded          APIStatList `json:"succeeded"`
+	Failed             APIStatList `json:"failed"`
+	SetupFailed        APIStatList `json:"setup-failed"`
+	SystemFailed       APIStatList `json:"system-failed"`
+	SystemUnresponsive APIStatList `json:"system-unresponsive"`
+	SystemTimedOut     APIStatList `json:"system-timed-out"`
+	TestTimedOut       APIStatList `json:"test-timed-out"`
 }
 
 func (s *APIRecentTaskStatsList) BuildFromService(h interface{}) error {
+	catcher := grip.NewBasicCatcher()
 	switch v := h.(type) {
-	case *task.ResultCountList:
-		for _, result := range v.Total {
-			s.Total = append(s.Total, APIResult{Name: ToAPIString(result.Name), Count: result.Count})
-		}
-		for _, result := range v.Inactive {
-			s.Inactive = append(s.Inactive, APIResult{Name: ToAPIString(result.Name), Count: result.Count})
-		}
-		for _, result := range v.Unstarted {
-			s.Unstarted = append(s.Unstarted, APIResult{Name: ToAPIString(result.Name), Count: result.Count})
-		}
-		for _, result := range v.Started {
-			s.Started = append(s.Started, APIResult{Name: ToAPIString(result.Name), Count: result.Count})
-		}
-		for _, result := range v.Succeeded {
-			s.Succeeded = append(s.Succeeded, APIResult{Name: ToAPIString(result.Name), Count: result.Count})
-		}
-		for _, result := range v.Failed {
-			s.Failed = append(s.Failed, APIResult{Name: ToAPIString(result.Name), Count: result.Count})
-		}
-		for _, result := range v.SetupFailed {
-			s.SetupFailed = append(s.SetupFailed, APIResult{Name: ToAPIString(result.Name), Count: result.Count})
-		}
-		for _, result := range v.SystemFailed {
-			s.SystemFailed = append(s.SystemFailed, APIResult{Name: ToAPIString(result.Name), Count: result.Count})
-		}
-		for _, result := range v.SystemUnresponsive {
-			s.SystemUnresponsive = append(s.SystemUnresponsive, APIResult{Name: ToAPIString(result.Name), Count: result.Count})
-		}
-		for _, result := range v.SystemTimedOut {
-			s.SystemTimedOut = append(s.SystemTimedOut, APIResult{Name: ToAPIString(result.Name), Count: result.Count})
-		}
-		for _, result := range v.TestTimedOut {
-			s.TestTimedOut = append(s.TestTimedOut, APIResult{Name: ToAPIString(result.Name), Count: result.Count})
-		}
+	case task.ResultCountList:
+		apiList := APIStatList{}
+		catcher.Add(apiList.BuildFromService(v.Total))
+		s.Total = apiList
+
+		apiList = APIStatList{}
+		catcher.Add(apiList.BuildFromService(v.Inactive))
+		s.Inactive = apiList
+
+		apiList = APIStatList{}
+		catcher.Add(apiList.BuildFromService(v.Unstarted))
+		s.Unstarted = apiList
+
+		apiList = APIStatList{}
+		catcher.Add(apiList.BuildFromService(v.Started))
+		s.Started = apiList
+
+		apiList = APIStatList{}
+		catcher.Add(apiList.BuildFromService(v.Succeeded))
+		s.Succeeded = apiList
+
+		apiList = APIStatList{}
+		catcher.Add(apiList.BuildFromService(v.Failed))
+		s.Failed = apiList
+
+		apiList = APIStatList{}
+		catcher.Add(apiList.BuildFromService(v.SetupFailed))
+		s.SetupFailed = apiList
+
+		apiList = APIStatList{}
+		catcher.Add(apiList.BuildFromService(v.SystemFailed))
+		s.SystemFailed = apiList
+
+		apiList = APIStatList{}
+		catcher.Add(apiList.BuildFromService(v.SystemUnresponsive))
+		s.SystemUnresponsive = apiList
+
+		apiList = APIStatList{}
+		catcher.Add(apiList.BuildFromService(v.SetupFailed))
+		s.SetupFailed = apiList
+
+		apiList = APIStatList{}
+		catcher.Add(apiList.BuildFromService(v.Unstarted))
+		s.SystemTimedOut = apiList
+
+		apiList = APIStatList{}
+		catcher.Add(apiList.BuildFromService(v.TestTimedOut))
+		s.TestTimedOut = apiList
 	default:
 		return errors.Errorf("incorrect type when converting result count list (%T)", v)
 	}
-	return nil
+
+	return catcher.Resolve()
 }
 
 func (s *APIRecentTaskStatsList) ToService() (interface{}, error) {

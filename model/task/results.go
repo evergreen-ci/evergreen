@@ -2,7 +2,7 @@ package task
 
 import (
 	"encoding/json"
-	"reflect"
+	"sort"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
@@ -135,37 +135,61 @@ func FilterTasksOnStatus(tasks []Task, statuses ...string) []Task {
 	return out
 }
 
-type Result struct {
+type Stat struct {
 	Name  string `json:"name"`
 	Count int    `json:"count"`
 }
 type ResultCountList struct {
-	Total              []Result `json:"total"`
-	Inactive           []Result `json:"inactive"`
-	Unstarted          []Result `json:"unstarted"`
-	Started            []Result `json:"started"`
-	Succeeded          []Result `json:"succeeded"`
-	Failed             []Result `json:"failed"`
-	SetupFailed        []Result `json:"setup-failed"`
-	SystemFailed       []Result `json:"system-failed"`
-	SystemUnresponsive []Result `json:"system-unresponsive"`
-	SystemTimedOut     []Result `json:"system-timed-out"`
-	TestTimedOut       []Result `json:"test-timed-out"`
+	Total              []Stat `json:"total"`
+	Inactive           []Stat `json:"inactive"`
+	Unstarted          []Stat `json:"unstarted"`
+	Started            []Stat `json:"started"`
+	Succeeded          []Stat `json:"success"`
+	Failed             []Stat `json:"failed"`
+	SetupFailed        []Stat `json:"setup-failed"`
+	SystemFailed       []Stat `json:"system-failed"`
+	SystemUnresponsive []Stat `json:"system-unresponsive"`
+	SystemTimedOut     []Stat `json:"system-timed-out"`
+	TestTimedOut       []Stat `json:"test-timed-out"`
 }
 
-func GetResultCountList(results []StatsList) ResultCountList {
+func GetResultCountList(statuses []StatusItem) ResultCountList {
 	list := ResultCountList{}
-	listVal := reflect.ValueOf(&list).Elem()
-	listType := listVal.Type()
-	for i := 0; i < listVal.NumField(); i++ {
-		tag, _ := listType.Field(i).Tag.Lookup("json")
-		for _, result := range results {
-			if result.Status == tag {
-				listVal.Field(i).Set(reflect.ValueOf(result.Stats))
-				break
-			}
+	totals := make(map[string]int)
+	for _, status := range statuses {
+		switch status.Pair.Status {
+		case evergreen.TaskInactive:
+			list.Inactive = append(list.Inactive, Stat{Name: status.Pair.Name, Count: status.Count})
+		case evergreen.TaskUnstarted:
+			list.Unstarted = append(list.Unstarted, Stat{Name: status.Pair.Name, Count: status.Count})
+		case evergreen.TaskStarted:
+			list.Started = append(list.Started, Stat{Name: status.Pair.Name, Count: status.Count})
+		case evergreen.TaskSucceeded:
+			list.Succeeded = append(list.Succeeded, Stat{Name: status.Pair.Name, Count: status.Count})
+		case evergreen.TaskFailed:
+			list.Failed = append(list.Failed, Stat{Name: status.Pair.Name, Count: status.Count})
+		case evergreen.TaskSetupFailed:
+			list.SetupFailed = append(list.SetupFailed, Stat{Name: status.Pair.Name, Count: status.Count})
+		case evergreen.TaskSystemFailed:
+			list.SystemFailed = append(list.SystemFailed, Stat{Name: status.Pair.Name, Count: status.Count})
+		case evergreen.TaskSystemUnresponse:
+			list.SystemUnresponsive = append(list.SystemUnresponsive, Stat{Name: status.Pair.Name, Count: status.Count})
+		case evergreen.TaskSystemTimedOut:
+			list.SystemTimedOut = append(list.SystemTimedOut, Stat{Name: status.Pair.Name, Count: status.Count})
+		case evergreen.TaskTestTimedOut:
+			list.TestTimedOut = append(list.TestTimedOut, Stat{Name: status.Pair.Name, Count: status.Count})
 		}
+		totals[status.Pair.Name] += status.Count
 	}
+
+	totalsList := make([]Stat, 0, len(totals))
+	for name, count := range totals {
+		totalsList = append(totalsList, Stat{Name: name, Count: count})
+	}
+	sort.Slice(totalsList, func(i, j int) bool {
+		return totalsList[i].Count > totalsList[j].Count
+	})
+	list.Total = totalsList
 
 	return list
 }

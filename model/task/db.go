@@ -616,12 +616,17 @@ func GetRecentTasks(period time.Duration) ([]Task, error) {
 	return tasks, nil
 }
 
-type StatsList struct {
-	Status string   `json:"status"`
-	Stats  []Result `json:"stats"`
+type StatusPair struct {
+	Status string `bson:"status"`
+	Name   string `bson:"name"`
 }
 
-func GetRecentTaskStatsList(period time.Duration, statKey string) ([]StatsList, error) {
+type StatusItem struct {
+	Pair  StatusPair `bson:"pair"`
+	Count int        `bson:"count"`
+}
+
+func GetRecentTaskStats(period time.Duration, nameKey string) ([]StatusItem, error) {
 	pipeline := []bson.M{
 		{"$match": bson.M{
 			StatusKey: bson.M{"$exists": true},
@@ -630,39 +635,7 @@ func GetRecentTaskStatsList(period time.Duration, statKey string) ([]StatsList, 
 			},
 		}},
 		{"$group": bson.M{
-			"_id":   bson.M{StatusKey: "$" + StatusKey, statKey: "$" + statKey},
-			"count": bson.M{"$sum": 1},
-		}},
-		{"$sort": bson.M{
-			"count": -1,
-		}},
-		{"$group": bson.M{
-			"_id":   "$_id." + StatusKey,
-			"stats": bson.M{"$push": bson.M{"name": "$_id." + statKey, "count": "$count"}},
-			"total": bson.M{"$sum": "$count"},
-		}},
-		{"$project": bson.M{
-			"_id":    0,
-			"status": "$_id",
-			"stats":  bson.M{"$concatArrays": bson.A{bson.A{bson.M{"name": "total", "count": "$total"}}, "$stats"}},
-		}},
-	}
-
-	result := []StatsList{}
-	if err := Aggregate(pipeline, &result); err != nil {
-		return nil, errors.Wrap(err, "can't get stats list")
-	}
-
-	// get the totals (for all statuses)
-	pipeline = []bson.M{
-		{"$match": bson.M{
-			StatusKey: bson.M{"$exists": true},
-			FinishTimeKey: bson.M{
-				"$gt": time.Now().Add(-period),
-			},
-		}},
-		{"$group": bson.M{
-			"_id":   "$" + statKey,
+			"_id":   bson.M{"status": "$" + StatusKey, "name": "$" + nameKey},
 			"count": bson.M{"$sum": 1},
 		}},
 		{"$sort": bson.M{
@@ -670,16 +643,15 @@ func GetRecentTaskStatsList(period time.Duration, statKey string) ([]StatsList, 
 		}},
 		{"$project": bson.M{
 			"_id":   0,
-			"name":  "$_id",
+			"pair":  "$_id",
 			"count": 1,
 		}},
 	}
 
-	totals := []Result{}
-	if err := Aggregate(pipeline, &totals); err != nil {
-		return nil, errors.Wrap(err, "can't get totals list")
+	result := []StatusItem{}
+	if err := Aggregate(pipeline, &result); err != nil {
+		return nil, errors.Wrap(err, "can't get stats list")
 	}
-	result = append(result, StatsList{Status: "total", Stats: totals})
 
 	return result, nil
 }

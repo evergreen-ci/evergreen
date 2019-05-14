@@ -102,7 +102,7 @@ func (h *recentTasksGetHandler) Run(ctx context.Context) gimlet.Responder {
 	}
 
 	if h.byDistro || h.byProject {
-		var stats *task.ResultCountList
+		var stats *model.APIRecentTaskStatsList
 		if h.byDistro {
 			stats, err = h.sc.FindRecentTaskListDistro(h.minutes)
 		} else {
@@ -112,11 +112,7 @@ func (h *recentTasksGetHandler) Run(ctx context.Context) gimlet.Responder {
 			return gimlet.MakeJSONErrorResponder(err)
 		}
 
-		statsModel := &model.APIRecentTaskStatsList{}
-		if err = statsModel.BuildFromService(stats); err != nil {
-			return gimlet.MakeJSONErrorResponder(err)
-		}
-		return gimlet.NewJSONResponse(statsModel)
+		return gimlet.NewJSONResponse(stats)
 	}
 
 	statsModel := &model.APIRecentTaskStats{}
