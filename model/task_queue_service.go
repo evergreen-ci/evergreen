@@ -251,6 +251,13 @@ func (t *taskDistroDispatchService) FindNextTask(spec TaskSpec) *TaskQueueItem {
 			// function.
 			numHosts, err = host.NumHostsByTaskSpec(spec.Group, spec.BuildVariant, spec.ProjectID, spec.Version)
 			if err != nil {
+				grip.Error(message.WrapError(err, message.Fields{
+					"message": "problem running NumHostsByTaskSpec query",
+					"group":   spec.Group,
+					"variant": spec.BuildVariant,
+					"project": spec.ProjectID,
+					"version": spec.Version,
+				}))
 				return nil
 			}
 			unit.runningHosts = numHosts
@@ -299,8 +306,6 @@ func (t *taskDistroDispatchService) nextTaskGroupTask(unit schedulableUnit) *Tas
 
 		// Cache dispatched status.
 		t.units[unit.id].tasks[i].IsDispatched = true
-
-		// STU: is this necessary?
 		unit.tasks[i].IsDispatched = true
 
 		if nextTaskFromDB.StartTime != util.ZeroTime {
