@@ -10,7 +10,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/jasper"
 	"github.com/mongodb/jasper/rpc"
 	"github.com/stretchr/testify/assert"
@@ -70,10 +69,7 @@ func TestAgentMonitorWithJasper(t *testing.T) {
 
 			// Monitor should be able to connect without needing credentials when
 			// testing.
-			require.NoError(t, m.setupJasperConnection(tctx, util.RetryArgs{
-				maxDelay:    time.Second,
-				maxAttempts: defaultMaxRequestAttempts,
-			}))
+			require.NoError(t, m.setupJasperConnection(tctx, defaultRetryArgs()))
 			defer func() {
 				assert.NoError(t, m.jasperClient.CloseConnection())
 			}()
