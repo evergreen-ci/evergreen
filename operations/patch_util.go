@@ -417,6 +417,15 @@ func gitLog(base, ref string) (string, error) {
 	return gitCmd("log", args...)
 }
 
+func gitUncommittedChanges() (bool, error) {
+	args := "--porcelain"
+	out, err := gitCmd("status", args)
+	if err != nil {
+		return false, errors.Wrap(err, "can't run git status")
+	}
+	return len(out) != 0, nil
+}
+
 func gitCmd(cmdName string, gitArgs ...string) (string, error) {
 	args := make([]string, 0, 1+len(gitArgs))
 	args = append(args, cmdName)

@@ -32,10 +32,15 @@ func PatchSetModule() cli.Command {
 			skipConfirm := c.Bool(yesFlagName)
 			project := c.String(projectFlagName)
 			ref := c.String(refFlagName)
-			uncommitted := c.Bool(uncommittedChangesFlag)
+			uncommittedOk := c.Bool(uncommittedChangesFlag)
 			args := c.Args()
 
-			if !uncommitted {
+			uncommittedChanges, err := gitUncommittedChanges()
+			if err != nil {
+				return errors.Wrap(err, "can't test for uncommitted changes")
+			}
+
+			if !uncommittedOk && uncommittedChanges {
 				grip.Infof("Uncommitted changes are omitted from patches by default.\nUse the '--%s' flag to include uncommitted changes.", uncommittedChangesFlag)
 			}
 
@@ -75,7 +80,7 @@ func PatchSetModule() cli.Command {
 				return errors.Errorf("could not set specified module: \"%s\"", module)
 			}
 
-			if uncommitted || conf.UncommittedChanges {
+			if uncommittedOk || conf.UncommittedChanges {
 				ref = ""
 			}
 

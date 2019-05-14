@@ -66,7 +66,12 @@ func Patch() cli.Command {
 				Uncommitted: c.Bool(uncommittedChangesFlag),
 			}
 
-			if !params.Uncommitted {
+			uncommittedChanges, err := gitUncommittedChanges()
+			if err != nil {
+				return errors.Wrap(err, "can't test for uncommitted changes")
+			}
+
+			if !params.Uncommitted && uncommittedChanges {
 				grip.Infof("Uncommitted changes are omitted from patches by default.\nUse the '--%s' flag to include uncommitted changes.", uncommittedChangesFlag)
 			}
 
