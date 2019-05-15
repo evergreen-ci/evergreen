@@ -649,12 +649,10 @@ mciModule.controller('PerfController', function PerfController(
         ]);
     }).then(
       function(docs) {
-        return _.groupBy(docs, 'tests');
+        $scope.buildFailures = _.groupBy(docs, 'tests');
       }, function(err) {
         $log.error('Cannot load build failures!', err);
         return {} // Try to recover an error
-    }).then(function(data) {
-      $scope.buildFailures = data
     });
 
     let trendDataSuccess = function(data) {
