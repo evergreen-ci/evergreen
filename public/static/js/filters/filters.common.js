@@ -43,6 +43,14 @@ var convertSingleTest = function(test, execution) {
     output.version_id = test.info.version;
     output.project_id = test.info.project;
     output.task_name = test.info.task_name;
+    output.task_id = test.info.task_id;
+    output.create_time = test.info.created_at;
+    output.order = test.info.order;
+
+    let versionParts = output.version_id.split("_");
+    if (versionParts.length > 1) {
+      output.revision = versionParts[versionParts.length - 1];
+    }
   }
   if (execution && test.info.execution !== execution) {
     return output;
