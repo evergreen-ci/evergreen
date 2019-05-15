@@ -27,10 +27,15 @@ describe('PerfBBOutliersCtrlTest', () => {
   let MuteHandler;
   let mute_handler;
 
+  let MarkHandler;
+  let mark_handler;
+
+  let lock;
+  let Lock;
+
   let Operations;
 
   let Settings;
-  let Lock;
   let vm;
 
   beforeEach(inject(function ($rootScope, $controller, $injector) {
@@ -53,10 +58,18 @@ describe('PerfBBOutliersCtrlTest', () => {
     mute_handler = jasmine.createSpyObj('muteHandler', ['muteOutliers', 'unmuteOutliers', 'muteDisabled', 'unmuteDisabled']);
     MuteHandler = jasmine.createSpy('MuteHandler').and.returnValue(mute_handler);
 
+    lock = jasmine.createSpyObj('Lock', ['lock', 'unlock']);
+    Lock = jasmine.createSpy('Lock').and.returnValue(lock);
+
+    mark_handler = jasmine.createSpyObj('markHandler', ['markOutliers', 'unmarkOutliers', 'markDisabled', 'unmarkDisabled']);
+    MarkHandler = jasmine.createSpy('MarkHandler').and.returnValue(mark_handler);
+
     controller = $controller('PerfBBOutliersCtrl', {
       $scope: scope,
       OutlierState: OutlierState,
       MuteHandler: MuteHandler,
+      MarkHandler: MarkHandler,
+      Lock: Lock,
       $window: $window,
       $timeout: $timeout,
       Settings: Settings,
@@ -99,7 +112,8 @@ describe('PerfBBOutliersCtrlTest', () => {
       }];
 
       expect(OutlierState).toHaveBeenCalledWith(PROJECT, vm, mandatory, transient, sorting, Settings.perf.outlierProcessing, 2000);
-      expect(MuteHandler).toHaveBeenCalledWith(state, jasmine.any(Lock));
+      expect(MuteHandler).toHaveBeenCalledWith(state, lock);
+      expect(MarkHandler).toHaveBeenCalledWith(state, lock);
 
       expect(vm.state).toBe(state);
       expect(vm.checkboxModel).toEqual({lowConfidence : false});
@@ -131,7 +145,7 @@ describe('PerfBBOutliersCtrlTest', () => {
         useExternalSorting: false});
 
       expect(vm.gridOptions.onRegisterApi).toEqual(jasmine.any(Function));
-      expect(_.chain(vm.gridOptions.columnDefs).pluck('name').value()).toEqual(['Project', 'Revision', 'Variant' , 'Task', 'Test', 'Thread Level', 'Confidence', 'Muted', 'Create Time']);
+      expect(_.chain(vm.gridOptions.columnDefs).pluck('name').value()).toEqual(['Project', 'Revision', 'Variant' , 'Task', 'Test', 'Thread Level', 'Confidence', 'Muted', 'Marked', 'Create Time']);
     });
 
   });
@@ -190,6 +204,57 @@ describe('PerfBBOutliersCtrlTest', () => {
       });
 
     });
+
+    describe('Mark', () => {
+      let action;
+      beforeEach(() => action = vm.actions[2]);
+
+      it('should handle action', () => expect(action.title).toBe('Mark'));
+
+      it('should handle action', () => {
+        action.action();
+        expect(mark_handler.markOutliers).toHaveBeenCalledWith(boundMethod);
+        expect(_.bind).toHaveBeenCalledWith(state.onMark, state);
+      });
+
+      it('should handle visible', () => expect(action.visible()).toBe(true));
+
+      it('should handle disabled', () => {
+        const markDisabled = {};
+        mark_handler.markDisabled.and.returnValue(markDisabled);
+
+        expect(action.disabled()).toBe(markDisabled);
+
+        expect(mark_handler.markDisabled).toHaveBeenCalled();
+      });
+
+    });
+
+    describe('Unmark', () => {
+      let action;
+      beforeEach(() => action = vm.actions[3]);
+
+      it('should handle action', () => expect(action.title).toBe('Unmark'));
+
+      it('should handle action', () => {
+        action.action();
+        expect(mark_handler.unmarkOutliers).toHaveBeenCalledWith(boundMethod);
+        expect(_.bind).toHaveBeenCalledWith(state.onUnmark, state);
+      });
+
+      it('should handle visible', () => expect(action.visible()).toBe(true));
+
+      it('should handle disabled', () => {
+        const unmarkDisabled = {};
+        mark_handler.unmarkDisabled.and.returnValue(unmarkDisabled);
+
+        expect(action.disabled()).toBe(unmarkDisabled);
+
+        expect(mark_handler.unmarkDisabled).toHaveBeenCalled();
+      });
+
+    });
+
   });
 
   describe('reload', () => {
@@ -772,6 +837,426 @@ describe('PerfBBOutliersFactoriesTest', () => {
 
   });
 
+  describe('MarkHandler', () => {
+
+    const state = {};
+    const lock = {locked: true , lock: () => {}, unlock: () => {}};
+
+    let MarkHandler;
+    let OutliersDataService;
+    let handler;
+    let confirmDialogFactory;
+
+    beforeEach(() => {
+      inject($injector => {
+        MarkHandler = $injector.get('MarkHandler');
+        OutliersDataService = $injector.get('OutliersDataService');
+        confirmDialogFactory = $injector.get('confirmDialogFactory');
+      });
+      handler = new MarkHandler(state, lock);
+    });
+
+    it('should create a correct instance', () => {
+      expect(handler.state).toBe(state);
+      expect(handler.lock).toBe(lock);
+      expect(handler.confirmMarkAction).toEqual(jasmine.any(Function));
+      expect(handler.confirmUnmarkAction).toEqual(jasmine.any(Function));
+    });
+
+    describe('markSelected', () => {
+
+      it('should return false if no selection', () => {
+        handler.state = {selection:[]};
+        expect(handler.markSelected()).toBe(false);
+      });
+
+      it('should return true if any selection is muted', () => {
+        handler.state = {selection:[{marked: true}, {marked: false}]};
+        expect(handler.markSelected()).toBe(true);
+      });
+
+      it('should return false if no selection is muted', () => {
+        handler.state = {selection:[{marked: false}, {marked: false}]};
+        expect(handler.markSelected()).toBe(false);
+      });
+
+    });
+
+    describe('unmarkSelected', () => {
+
+      it('should return false if no selection', () => {
+        handler.state = {selection:[]};
+        expect(handler.unmarkSelected()).toBe(false);
+      });
+
+      it('should return true if any selection is marked', () => {
+        handler.state = {selection:[{marked: true}, {marked: false}]};
+        expect(handler.unmarkSelected()).toBe(true);
+      });
+
+      it('should return false if no selection is marked', () => {
+        handler.state = {selection:[{marked: true}, {marked: true}]};
+        expect(handler.unmarkSelected()).toBe(false);
+      });
+
+    });
+
+    describe('markDisabled', () => {
+
+      it('should return true if locked', () => {
+        handler.lock.locked = true;
+        handler.state ={selection: [1]};
+
+        spyOn(handler, 'unmarkSelected').and.callThrough();
+        spyOn(handler, 'markSelected').and.callThrough();
+
+        expect(handler.markDisabled()).toBe(true);
+
+        expect(handler.unmarkSelected).not.toHaveBeenCalled();
+        expect(handler.markSelected).not.toHaveBeenCalled();
+      });
+
+      it('should return true if no selection', () => {
+        handler.lock.locked = false;
+        handler.state ={selection: []};
+
+        spyOn(handler, 'unmarkSelected').and.callThrough();
+        spyOn(handler, 'markSelected').and.callThrough();
+
+        expect(handler.markDisabled()).toBe(true);
+
+        expect(handler.unmarkSelected).not.toHaveBeenCalled();
+        expect(handler.markSelected).not.toHaveBeenCalled();
+      });
+
+      it('should return false if unmark selected', () => {
+        handler.lock.locked = false;
+        handler.state ={selection: [1]};
+
+        spyOn(handler, 'unmarkSelected').and.returnValue(false);
+        spyOn(handler, 'markSelected').and.callThrough();
+
+        expect(handler.markDisabled()).toBe(true);
+
+        expect(handler.unmarkSelected).toHaveBeenCalled();
+        expect(handler.markSelected).not.toHaveBeenCalled();
+      });
+
+      it('should return true if no unmark selected', () => {
+        handler.lock.locked = false;
+        handler.state ={selection: [1]};
+
+        spyOn(handler, 'unmarkSelected').and.returnValue(true);
+        spyOn(handler, 'markSelected').and.callThrough();
+
+        expect(handler.markDisabled()).toBe(false);
+
+        expect(handler.unmarkSelected).toHaveBeenCalled();
+        expect(handler.markSelected).not.toHaveBeenCalled();
+      });
+
+    });
+
+    describe('unmarkDisabled', () => {
+
+      it('should return true if locked', () => {
+        handler.lock.locked = true;
+        handler.state ={selection: [1]};
+
+        spyOn(handler, 'unmarkSelected').and.callThrough();
+        spyOn(handler, 'markSelected').and.callThrough();
+
+        expect(handler.unmarkDisabled()).toBe(true);
+
+        expect(handler.unmarkSelected).not.toHaveBeenCalled();
+        expect(handler.markSelected).not.toHaveBeenCalled();
+      });
+
+      it('should return true if no selection', () => {
+        handler.lock.locked = false;
+        handler.state ={selection: []};
+
+        spyOn(handler, 'unmarkSelected').and.callThrough();
+        spyOn(handler, 'markSelected').and.callThrough();
+
+        expect(handler.unmarkDisabled()).toBe(true);
+
+        expect(handler.unmarkSelected).not.toHaveBeenCalled();
+        expect(handler.markSelected).not.toHaveBeenCalled();
+      });
+
+      it('should return false if no mark selected', () => {
+        handler.lock.locked = false;
+        handler.state ={selection: [1]};
+
+        spyOn(handler, 'unmarkSelected').and.callThrough();
+        spyOn(handler, 'markSelected').and.returnValue(true);
+
+        expect(handler.unmarkDisabled()).toBe(false);
+
+        expect(handler.unmarkSelected).not.toHaveBeenCalled();
+        expect(handler.markSelected).toHaveBeenCalled();
+      });
+
+      it('should return true if no mark selected', () => {
+        handler.lock.locked = false;
+        handler.state ={selection: [1]};
+
+        spyOn(handler, 'unmarkSelected').and.callThrough();
+        spyOn(handler, 'markSelected').and.returnValue(false);
+
+        expect(handler.unmarkDisabled()).toBe(true);
+
+        expect(handler.unmarkSelected).not.toHaveBeenCalled();
+        expect(handler.markSelected).toHaveBeenCalled();
+      });
+
+    });
+
+    describe('markOutliers', () => {
+      const addMark = {};
+      const mark = {};
+      const mark_identifier = {};
+      const item = {muted:false};
+
+      const success = () => {};
+      const error = () => {};
+      let OutliersDataService;
+
+      beforeEach(() => {
+        inject(($injector) => {
+          $q = $injector.get('$q');
+          OutliersDataService = $injector.get('OutliersDataService');
+        });
+      });
+
+      describe('body', () => {
+        beforeEach(() => {
+          spyOn(handler.lock, 'lock').and.callThrough();
+          spyOn(handler.lock, 'unlock').and.callThrough();
+          spyOn(OutliersDataService, 'addMark').and.returnValue(addMark);
+          spyOn(handler, 'confirmMarkAction').and.returnValue(confirmMarkAction);
+          spyOn($q, 'all').and.returnValue(promise);
+          spyOn(MarkHandler, 'getMarkIdentifier').and.returnValue(mark_identifier);
+        });
+
+        const promise = {
+          then: () => promise,
+          finally: (func) => {
+            func();
+            return promise;
+          },
+          catch: () => promise
+        };
+        const confirmMarkAction = {
+          then: (func)=> {
+            return func();
+          }
+        };
+
+        it('should lock and unlock', () => {
+          handler.state ={selection: [item]};
+
+          handler.markOutliers(success, error);
+          expect(handler.lock.lock).toHaveBeenCalled();
+          expect(handler.lock.unlock).toHaveBeenCalled();
+        });
+
+        it('should call addMark if marked', () => {
+          item.marked = false;
+          handler.state ={selection: [item]};
+
+          handler.markOutliers(success, error);
+          expect(handler.confirmMarkAction).toHaveBeenCalledWith(handler.state.selection);
+          expect(MarkHandler.getMarkIdentifier).toHaveBeenCalledWith(handler.state.selection[0]);
+          expect(OutliersDataService.addMark).toHaveBeenCalledWith(mark_identifier, mark);
+          expect($q.all).toHaveBeenCalledWith([addMark]);
+        });
+
+        it('should return identifier if not muted', () => {
+          item.marked = true;
+          handler.state ={selection: [item]};
+
+          handler.markOutliers(success, error);
+          expect(handler.confirmMarkAction).toHaveBeenCalledWith(handler.state.selection);
+          expect(MarkHandler.getMarkIdentifier).toHaveBeenCalledWith(handler.state.selection[0]);
+          expect(OutliersDataService.addMark).not.toHaveBeenCalled();
+          expect($q.all).toHaveBeenCalledWith([mark]);
+        });
+
+        it('should handle multiple mark', () => {
+          item.marked = false;
+          handler.state ={selection: [item, item]};
+
+          handler.markOutliers(success, error);
+          expect(MarkHandler.getMarkIdentifier).toHaveBeenCalledWith(handler.state.selection[0]);
+          expect(MarkHandler.getMarkIdentifier).toHaveBeenCalledWith(handler.state.selection[1]);
+          expect(OutliersDataService.addMark).toHaveBeenCalledTimes(2);
+          expect($q.all).toHaveBeenCalledWith([addMark, addMark]);
+        });
+
+        it('should handle multiple mutes where set', () => {
+          item.marked = false;
+          handler.state ={selection: [item, item]};
+
+          handler.markOutliers(success, error);
+          expect(MarkHandler.getMarkIdentifier).toHaveBeenCalledWith(handler.state.selection[0]);
+          expect(MarkHandler.getMarkIdentifier).toHaveBeenCalledWith(handler.state.selection[1]);
+          expect(OutliersDataService.addMark).toHaveBeenCalledTimes(2);
+          expect($q.all).toHaveBeenCalledWith([addMark, addMark]);
+        });
+
+      });
+
+      describe('callbacks', () => {
+        const promise = {
+          then: () => promise,
+          finally: () => promise,
+          catch: () => promise
+        };
+        const confirmMarkAction = { then: () =>  promise};
+
+        beforeEach(() => {
+          spyOn(handler.lock, 'lock').and.callThrough();
+          spyOn(handler.lock, 'unlock').and.callThrough();
+          spyOn(OutliersDataService, 'addMark').and.returnValue(addMark);
+          spyOn(handler, 'confirmMarkAction').and.returnValue(confirmMarkAction);
+          spyOn(MarkHandler, 'getMarkIdentifier').and.returnValue(mark);
+          spyOn($q, 'all').and.returnValue(promise);
+          spyOn(promise, 'then').and.callThrough();
+        });
+
+        it('should call then with callbacks', () => {
+          handler.markOutliers(success, error);
+          expect(promise.then).toHaveBeenCalledWith(success, error);
+        });
+
+      });
+
+    });
+
+    describe('unmarkOutliers', () => {
+      const removeMark = {};
+      const mark = {};
+      const item = {marked:false};
+
+      const success = () => {};
+      const error = () => {};
+
+      beforeEach(() => {
+        inject(($injector) => {
+          $q = $injector.get('$q');
+        });
+      });
+
+      describe('body', () => {
+        const promise = {
+          then: () => promise,
+          finally: (func) => {
+            func();
+            return promise;
+          },
+          catch: () => promise
+        };
+
+        const confirmUnmarkAction = {
+          then: (func)=> {
+            return func();
+          }
+        };
+
+        beforeEach(() => {
+
+          spyOn(handler.lock, 'lock').and.callThrough();
+          spyOn(handler.lock, 'unlock').and.callThrough();
+          spyOn(OutliersDataService, 'removeMark').and.returnValue(removeMark);
+          spyOn(handler, 'confirmUnmarkAction').and.returnValue(confirmUnmarkAction);
+          spyOn($q, 'all').and.returnValue(promise);
+          spyOn(MarkHandler, 'getMarkIdentifier').and.returnValue(mark);
+        });
+
+        it('should lock and unlock', () => {
+          handler.state = {selection: [item]};
+
+          handler.unmarkOutliers(success, error);
+          expect(handler.lock.lock).toHaveBeenCalled();
+          expect(handler.lock.unlock).toHaveBeenCalled();
+        });
+
+        it('should call unMark if marked', () => {
+          item.marked = true;
+          handler.state ={selection: [item]};
+
+          handler.unmarkOutliers(success, error);
+          expect(handler.confirmUnmarkAction).toHaveBeenCalledWith(handler.state.selection);
+          expect(MarkHandler.getMarkIdentifier).toHaveBeenCalledWith(handler.state.selection[0]);
+          expect(OutliersDataService.removeMark).toHaveBeenCalledWith(mark);
+          expect($q.all).toHaveBeenCalledWith([removeMark]);
+        });
+
+        it('should return identifier if not marked', () => {
+          item.marked = false;
+          handler.state ={selection: [item]};
+
+          handler.unmarkOutliers(success, error);
+          expect(handler.confirmUnmarkAction).toHaveBeenCalledWith(handler.state.selection);
+          expect(MarkHandler.getMarkIdentifier).toHaveBeenCalledWith(handler.state.selection[0]);
+          expect(OutliersDataService.removeMark).not.toHaveBeenCalled();
+          expect($q.all).toHaveBeenCalledWith([mark]);
+        });
+
+        it('should handle multiple unmarks', () => {
+          item.marked = true;
+          handler.state ={selection: [item, item]};
+
+          handler.unmarkOutliers(success, error);
+          expect(MarkHandler.getMarkIdentifier).toHaveBeenCalledWith(handler.state.selection[0]);
+          expect(MarkHandler.getMarkIdentifier).toHaveBeenCalledWith(handler.state.selection[1]);
+          expect(OutliersDataService.removeMark).toHaveBeenCalledTimes(2);
+          expect($q.all).toHaveBeenCalledWith([mark, mark]);
+        });
+
+        it('should handle multiple unmarks where set', () => {
+          handler.state ={selection: [item, _.chain(item).clone().tap((item) => item.marked = false).value()]};
+
+          handler.unmarkOutliers(success, error);
+          expect(MarkHandler.getMarkIdentifier).toHaveBeenCalledWith(handler.state.selection[0]);
+          expect(MarkHandler.getMarkIdentifier).toHaveBeenCalledWith(handler.state.selection[1]);
+          expect(OutliersDataService.removeMark).toHaveBeenCalledTimes(1);
+          expect($q.all).toHaveBeenCalledWith([mark, mark]);
+        });
+
+      });
+
+      describe('callbacks', () => {
+        const promise = {
+          then: () => promise,
+          finally: () => promise,
+          catch: () => promise
+        };
+        const confirmUnmarkAction = { then: () =>  promise};
+
+        beforeEach(() => {
+          spyOn(handler.lock, 'lock').and.callThrough();
+          spyOn(handler.lock, 'unlock').and.callThrough();
+          spyOn(OutliersDataService, 'removeMark').and.returnValue(removeMark);
+          spyOn(handler, 'confirmUnmarkAction').and.returnValue(confirmUnmarkAction);
+          spyOn(MarkHandler, 'getMarkIdentifier').and.returnValue(mark);
+          spyOn($q, 'all').and.returnValue(promise);
+          spyOn(promise, 'then').and.callThrough();
+        });
+
+        it('should call then with callbacks', () => {
+          handler.unmarkOutliers(success, error);
+          expect(promise.then).toHaveBeenCalledWith(success, error);
+        });
+
+      });
+
+    });
+
+  });
+
   describe('OutlierState', () => {
     const model = {};
     const mandatory = {};
@@ -1280,11 +1765,13 @@ describe('PerfBBOutliersFactoriesTest', () => {
         const pipeline = {};
         const aggregateQ = {};
         const queryQ = {};
+        const getMarkedOutliersQ = {};
         const operation = 1;
         const promise = {};
 
         spyOn(state, 'getAggChain').and.returnValue(pipeline);
         spyOn(OutliersDataService, 'aggregateQ').and.returnValue(aggregateQ);
+        spyOn(OutliersDataService, 'getMarkedOutliersQ').and.returnValue(getMarkedOutliersQ);
         spyOn(MuteDataService, 'queryQ').and.returnValue(aggregateQ);
         spyOn($q, 'all').and.returnValue(promise);
 
@@ -1292,10 +1779,12 @@ describe('PerfBBOutliersFactoriesTest', () => {
 
         expect(state.getAggChain).toHaveBeenCalled();
         expect(OutliersDataService.aggregateQ).toHaveBeenCalledWith(pipeline);
+        expect(OutliersDataService.getMarkedOutliersQ).toHaveBeenCalledWith({project: PROJECT});
         expect(MuteDataService.queryQ).toHaveBeenCalledWith({project: PROJECT});
         expect($q.all).toHaveBeenCalledWith({
             outliers: aggregateQ,
             mutes: queryQ,
+            marks: getMarkedOutliersQ,
             operation: operation
         });
       });
@@ -1313,6 +1802,18 @@ describe('PerfBBOutliersFactoriesTest', () => {
           test: test || 'canary_ping',
           thread_level: thread_level || '1',
           enabled: _.isUndefined(enabled) ? false : !!enabled,
+        }
+      };
+
+      const create_mark = params => {
+        const {i, revision, project, variant, task, test, thread_level} = params;
+        return {
+          revision: revision || `revision ${i}`,
+          project: project|| 'sys-perf',
+          variant: variant || 'linux-standalone',
+          task: task || 'bestbuy_agg',
+          test: test || 'canary_ping',
+          thread_level: thread_level || '1'
         }
       };
 
@@ -1336,80 +1837,192 @@ describe('PerfBBOutliersFactoriesTest', () => {
         expect(state.vm.gridOptions.data).toBe(data);
       });
 
-      it('should set matching to unmuted', () => {
-        const outliers = [create_outlier({i: 1})];
-        const mutes = [create_mute({i: 1})];
+      describe('mutes', () => {
+        it('should set matching to unmuted', () => {
+          const outliers = [create_outlier({i: 1})];
+          const mutes = [create_mute({i: 1})];
 
-        state.vm = {gridOptions:{data:{}}};
-        const results = state.hydrateData({outliers:outliers, mutes:mutes});
+          state.vm = {gridOptions:{data:{}}};
+          const results = state.hydrateData({outliers:outliers, mutes:mutes});
 
-        expect(results.length).toEqual(1);
-        expect(_.all(results, (result) => result.muted)).toEqual(false);
+          expect(results.length).toEqual(1);
+          expect(_.all(results, (result) => result.muted)).toEqual(false);
+        });
+
+        it('should set matching to muted', () => {
+          const outliers = [create_outlier({i: 1})];
+          const mutes = [create_mute({i: 1, enabled: true})];
+
+          state.vm = {gridOptions:{data:{}}};
+          const results = state.hydrateData({outliers: outliers, mutes: mutes});
+
+          expect(results.length).toEqual(1);
+
+          expect(results.length).toEqual(1);
+          expect(_.all(results, (result) => result.muted)).toEqual(true);
+        });
+
+        it('should toggle muted', () => {
+          const outliers = [create_outlier({i: 1})];
+          let mutes = [create_mute({i: 1, enabled: true})];
+
+          state.vm = {gridOptions:{data:{}}};
+          state.hydrateData({outliers: outliers, mutes: mutes});
+
+          mutes = [create_mute({i: 1, enabled: false})];
+          const results = state.hydrateData({outliers: outliers, mutes: mutes});
+
+          expect(results.length).toEqual(1);
+          expect(_.all(results, (result) => result.muted)).toEqual(false);
+        });
+
+        it('should handle multiple', () => {
+          const outliers = [create_outlier({i: 1}), create_outlier({i: 2})];
+          let mutes = [create_mute({i: 1, enabled: true}), create_mute({i: 2, enabled: true})];
+
+          state.vm = {gridOptions:{data:{}}};
+          const results = state.hydrateData({outliers: outliers, mutes: mutes});
+
+          expect(results.length).toEqual(2);
+          expect(_.all(results, (result) => result.muted)).toEqual(true);
+        });
+
+        it('should update correctly', () => {
+          const outliers = [
+            create_outlier({i: 1}),
+            create_outlier({i: 2}),
+            create_outlier({i: 3}),
+            create_outlier({i: 4}),
+            create_outlier({i: 5}),
+          ];
+          let mutes = [
+            create_mute({i: 2, enabled: true}),
+            create_mute({i: 4, enabled: true})
+          ];
+
+          state.vm = {gridOptions:{data:{}}};
+          const results = state.hydrateData({outliers: outliers, mutes: mutes});
+
+          const even = _.chain(results).filter((element, index) => index % 2 !== 0).value();
+          expect(even.length).toEqual(2);
+          expect(_.all(even, (result) => result.muted)).toEqual(true);
+
+          const odd = _.chain(results).filter( (element, index) => index % 2 === 0).value();
+          expect(odd.length).toEqual(3);
+          expect(_.all(odd, (result) => result.muted)).toEqual(false);
+        });
+
       });
 
-      it('should set matching to muted', () => {
-        const outliers = [create_outlier({i: 1})];
-        const mutes = [create_mute({i: 1, enabled: true})];
+      describe('marked', () => {
+        it('should set matching to unmarked', () => {
+          const outliers = [create_outlier({i: 1})];
+          const marks = [];
+          state.vm = {gridOptions:{data:{}}};
+          const results = state.hydrateData({outliers:outliers, marks:marks});
 
-        state.vm = {gridOptions:{data:{}}};
-        const results = state.hydrateData({outliers: outliers, mutes: mutes});
+          expect(results.length).toEqual(1);
+          expect(_.all(results, (result) => result.marked)).toEqual(false);
+        });
 
-        expect(results.length).toEqual(1);
+        it('should set matching to muted', () => {
+          const outliers = [create_outlier({i: 1})];
+          const marks = [create_mark({i: 1})];
 
-        expect(results.length).toEqual(1);
-        expect(_.all(results, (result) => result.muted)).toEqual(true);
+          state.vm = {gridOptions:{data:{}}};
+          const results = state.hydrateData({outliers: outliers, marks: marks});
+
+          expect(results.length).toEqual(1);
+
+          expect(results.length).toEqual(1);
+          expect(_.all(results, (result) => result.marked)).toEqual(true);
+        });
+
+        it('should toggle muted', () => {
+          const outliers = [create_outlier({i: 1})];
+          let marks = [create_mark({i: 1})];
+
+          state.vm = {gridOptions:{data:{}}};
+          state.hydrateData({outliers: outliers, marks: marks});
+
+          marks = [];
+          const results = state.hydrateData({outliers: outliers, marks: marks});
+
+          expect(results.length).toEqual(1);
+          expect(_.all(results, (result) => result.marked)).toEqual(false);
+        });
+
+        it('should handle multiple', () => {
+          const outliers = [create_outlier({i: 1}), create_outlier({i: 2})];
+          let marks = [create_mark({i: 1}), create_mark({i: 2})];
+
+          state.vm = {gridOptions:{data:{}}};
+          const results = state.hydrateData({outliers: outliers, marks: marks});
+
+          expect(results.length).toEqual(2);
+          expect(_.all(results, (result) => result.marked)).toEqual(true);
+        });
+
+        it('should update correctly', () => {
+          const outliers = [
+            create_outlier({i: 1}),
+            create_outlier({i: 2}),
+            create_outlier({i: 3}),
+            create_outlier({i: 4}),
+            create_outlier({i: 5}),
+          ];
+          let marks = [
+            create_mark({i: 2}),
+            create_mark({i: 4})
+          ];
+
+          state.vm = {gridOptions:{data:{}}};
+          const results = state.hydrateData({outliers: outliers, marks: marks});
+
+          const even = _.chain(results).filter((element, index) => index % 2 !== 0).value();
+          expect(even.length).toEqual(2);
+          expect(_.all(even, (result) => result.marked)).toEqual(true);
+
+          const odd = _.chain(results).filter( (element, index) => index % 2 === 0).value();
+          expect(odd.length).toEqual(3);
+          expect(_.all(odd, (result) => result.marked)).toEqual(false);
+        });
+
       });
+      describe('mutes and marks', () => {
+        it('should handle both', () => {
+          const outliers = [
+            create_outlier({i: 1}),
+            create_outlier({i: 2}),
+            create_outlier({i: 3}),
+            create_outlier({i: 4}),
+            create_outlier({i: 5}),
+          ];
+          let marks = [
+            create_mark({i: 1}),
+            create_mark({i: 3}),
+            create_mark({i: 5})
+          ];
+          let mutes = [
+            create_mute({i: 2, enabled: true}),
+            create_mute({i: 4, enabled: true})
+          ];
 
-      it('should toggle muted', () => {
-        const outliers = [create_outlier({i: 1})];
-        let mutes = [create_mute({i: 1, enabled: true})];
+          state.vm = {gridOptions:{data:{}}};
+          const results = state.hydrateData({outliers: outliers, mutes: mutes, marks: marks});
 
-        state.vm = {gridOptions:{data:{}}};
-        state.hydrateData({outliers: outliers, mutes: mutes});
+          const even = _.chain(results).filter((element, index) => index % 2 !== 0).value();
+          expect(even.length).toEqual(2);
+          expect(_.all(even, (result) => result.marked)).toEqual(false);
+          expect(_.all(even, (result) => result.muted)).toEqual(true);
 
-        mutes = [create_mute({i: 1, enabled: false})];
-        const results = state.hydrateData({outliers: outliers, mutes: mutes});
+          const odd = _.chain(results).filter( (element, index) => index % 2 === 0).value();
+          expect(odd.length).toEqual(3);
+          expect(_.all(odd, (result) => result.marked)).toEqual(true);
+          expect(_.all(odd, (result) => result.muted)).toEqual(false);
 
-        expect(results.length).toEqual(1);
-        expect(_.all(results, (result) => result.muted)).toEqual(false);
+        });
       });
-
-      it('should handle multiple', () => {
-        const outliers = [create_outlier({i: 1}), create_outlier({i: 2})];
-        let mutes = [create_mute({i: 1, enabled: true}), create_mute({i: 2, enabled: true})];
-
-        state.vm = {gridOptions:{data:{}}};
-        const results = state.hydrateData({outliers: outliers, mutes: mutes});
-
-        expect(results.length).toEqual(2);
-        expect(_.all(results, (result) => result.muted)).toEqual(true);
-      });
-
-      it('should update correctly', () => {
-        const outliers = [
-          create_outlier({i: 1}),
-          create_outlier({i: 2}),
-          create_outlier({i: 3}),
-          create_outlier({i: 4}),
-          create_outlier({i: 5}),
-        ];
-        let mutes = [
-          create_mute({i: 2, enabled: true}),
-          create_mute({i: 4, enabled: true})
-        ];
-
-        state.vm = {gridOptions:{data:{}}};
-        const results = state.hydrateData({outliers: outliers, mutes: mutes});
-
-        const even = _.chain(results).filter((element, index) => index % 2 !== 0).value();
-        expect(even.length).toEqual(2);
-        expect(_.all(even, (result) => result.muted)).toEqual(true);
-
-        const odd = _.chain(results).filter( (element, index) => index % 2 === 0).value();
-        expect(odd.length).toEqual(3);
-        expect(_.all(odd, (result) => result.muted)).toEqual(false);
-      });
-
     });
 
     describe('omitTransientFilters', () => {

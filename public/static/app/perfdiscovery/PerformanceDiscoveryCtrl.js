@@ -112,7 +112,7 @@ mciModule.controller('PerformanceDiscoveryCtrl', function(
     const revision = nameToRevision(fromVersion.name);
     const outliersPromise = $q.all({
       detected:revision ? OutliersDataService.getOutliersQ(projectId, {revision:revision})  : [],
-      marked:revision ? OutliersDataService.getMarkedOutliersQ(projectId, {revision:revision})  : [],
+      marked:revision ? OutliersDataService.getMarkedOutliersQ({project: projectId, revision:revision})  : [],
     });
 
     $q.all({

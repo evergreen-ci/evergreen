@@ -1,6 +1,6 @@
 mciModule.controller('PerfBBOutliersCtrl', function (
   $scope, $window, uiGridConstants, OutlierState,
-  STITCH_CONFIG, Stitch, Settings, $timeout, $log, OutliersDataService, Lock, $q, MuteHandler, Operations
+  STITCH_CONFIG, Stitch, Settings, $timeout, $log, OutliersDataService, Lock, $q, MuteHandler, MarkHandler, Operations
 ) {
   // Perf Outliers View-Model.
   const vm = this;
@@ -23,7 +23,9 @@ mciModule.controller('PerfBBOutliersCtrl', function (
   const state = new OutlierState(project, vm, mandatory, transient, sorting, Settings.perf.outlierProcessing, LIMIT);
 
   // Mute handler encapsulates the logic of adding / removing mutes.
-  const mute_handler = new MuteHandler(state, new Lock());
+  const lock = new Lock();
+  const mute_handler = new MuteHandler(state, lock);
+  const mark_handler = new MarkHandler(state, lock);
 
   // Required by loadData.
   const promises = new Operations();
@@ -66,15 +68,15 @@ mciModule.controller('PerfBBOutliersCtrl', function (
     },
     {
       title: 'Mark',
-      action: console.log,
-      visible: () => vm.state.mode !== 'marked',
-      disabled: () => true,
+      action: () => mark_handler.markOutliers(_.bind(state.onMark, state)),
+      visible: () => true,
+      disabled: () => mark_handler.markDisabled(),
     },
     {
       title: 'Unmark',
-      action: console.log,
-      visible: () => vm.state.mode === 'marked',
-      disabled: () => true,
+      action: () => mark_handler.unmarkOutliers(_.bind(state.onUnmark, state)),
+      visible: () => true,
+      disabled: () => mark_handler.unmarkDisabled(),
     },
   ];
 
@@ -184,6 +186,14 @@ mciModule.controller('PerfBBOutliersCtrl', function (
         cellFilter: 'checkStatus',
       },
       {
+        name: 'Marked',
+        field: 'marked',
+        type: 'sting',
+        enableFiltering: false,
+        enableSorting: false,
+        cellFilter: 'checkStatus',
+      },
+      {
         name: 'Create Time',
         field: 'create_time',
         type: 'date',
@@ -266,6 +276,97 @@ mciModule.controller('PerfBBOutliersCtrl', function (
   }
 
   return MuteHandler;
+}).factory('MarkHandler', function(OutliersDataService, confirmDialogFactory, $log, $q) {
+  class MarkHandler {
+    constructor(state, lock) {
+      this.state = state;
+      this.lock = lock;
+      this.confirmMarkAction = confirmDialogFactory(function (outliers) {
+        return `Add mark for ${outliers.length} Outliers?`
+      });
+      this.confirmUnmarkAction = confirmDialogFactory(function (outliers) {
+        return `Remove mark for ${outliers.length} Outliers?`
+      });
+    }
+
+    markSelected() {
+      return _.any(this.state.selection, {marked: true});
+    }
+
+    unmarkSelected() {
+      return _.any(this.state.selection, {marked: false});
+    }
+
+    markDisabled() {
+      return this.lock.locked || this.state.selection.length === 0 || !this.unmarkSelected();
+    }
+
+    unmarkDisabled() {
+      return this.lock.locked || this.state.selection.length === 0 || !this.markSelected();
+    }
+
+    markOutliers(success, error) {
+      const outliers = this.state.selection;
+      this.lock.lock();
+      this.confirmMarkAction(outliers)
+        .then(() => {
+          const promises = _.map(outliers, function (outlier) {
+            const mark_identifier = MarkHandler.getMarkIdentifier(outlier);
+            if (outlier.marked) {
+              return mark_identifier;
+            } else {
+              const mark = MarkHandler.getMark(outlier);
+              return OutliersDataService.addMark(mark_identifier, mark);
+            }
+          });
+          return $q.all(promises)
+        })
+        .then(success, error)
+        .finally(() => this.lock.unlock())
+        .catch($log.debug);
+    };
+
+    unmarkOutliers(success, error) {
+      const outliers = this.state.selection;
+      this.lock.lock();
+      this.confirmUnmarkAction(outliers)
+        .then(() => {
+          const promises = _.map(outliers, function (outlier) {
+            const mark_identifier = MarkHandler.getMarkIdentifier(outlier);
+            if (outlier.marked) {
+              return OutliersDataService.removeMark(mark_identifier);
+            } else {
+              return mark_identifier;
+            }
+          });
+          return $q.all(promises)
+        })
+        .then(success, error)
+        .finally(() => this.lock.unlock())
+        .catch($log.debug);
+    };
+
+
+    // Get the subset of fields required to create a mark for an outlier.
+    // The fields selected are project, revision, task, test, thread_level, variant, create_time, end, last_updated_at,
+    // order, task_id, version_id.
+    // :param outlier: The outlier.
+    // :return: A mark.
+    static getMark(outlier) {
+      return _.pick(outlier, "project", "revision", "task", "test", "thread_level", "variant", "create_time", "end", "last_updated_at", "order", "task_id", "version_id");
+    }
+
+    // Get the mark identifier for an outlier.
+    // The fields selected are project, revision, task, test, thread_level, variant.
+    // :param outlier: The outlier.
+    // :return: A mark or null.
+    static getMarkIdentifier(outlier) {
+      return _.pick(outlier, "project", "revision", "task", "test", "thread_level", "variant");
+    }
+
+  }
+
+  return MarkHandler;
 }).factory('OutlierState', function(FORMAT, MDBQueryAdaptor, EvgUtil, EvgUiGridUtil, uiGridConstants, OutliersDataService, MuteDataService, $q) {
   class OutlierState {
     // Create a new state instance to encapsulate filtering, sorting and generating queries.
@@ -342,6 +443,20 @@ mciModule.controller('PerfBBOutliersCtrl', function (
     onUnmute(mutes) {
       if (!mutes || mutes.length === 0) return;
       _.each(mutes, mute => _.chain(this.vm.gridOptions.data).where(mute).each(doc => doc.muted = false).value());
+
+      this.refreshGridData();
+    }
+
+    onMark(marks) {
+      if (!marks || marks.length === 0) return;
+      _.each(marks, mark => _.chain(this.vm.gridOptions.data).where(mark).each(doc => doc.marked = true).value());
+
+      this.refreshGridData();
+    }
+
+    onUnmark(marks) {
+      if (!marks || marks.length === 0) return;
+      _.each(marks, mark => _.chain(this.vm.gridOptions.data).where(mark).each(doc => doc.marked = false).value());
 
       this.refreshGridData();
     }
@@ -489,12 +604,13 @@ mciModule.controller('PerfBBOutliersCtrl', function (
       return $q.all({
         outliers: OutliersDataService.aggregateQ(pipeline),
         mutes: MuteDataService.queryQ({project: this.project}),
+        marks: OutliersDataService.getMarkedOutliersQ({project: this.project}),
         operation: operation
       });
     }
 
     hydrateData(results) {
-      const {outliers, mutes} = results;
+      const {outliers, mutes, marks} = results;
       this.vm.gridOptions.data = _.each(outliers, (doc) => {
         doc._buildId = EvgUtil.generateBuildId({
           project: this.project,
@@ -509,6 +625,8 @@ mciModule.controller('PerfBBOutliersCtrl', function (
         } else {
           doc.muted = false;
         }
+        const mark = _.findWhere(marks, matcher);
+        doc.marked = !!mark;
       });
       return this.vm.gridOptions.data;
     }
