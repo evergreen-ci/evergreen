@@ -9,24 +9,23 @@ import (
 )
 
 const (
-	confFlagName           = "conf"
-	overwriteConfFlagName  = "overwrite"
-	adminFlagsFlagName     = "flags"
-	pathFlagName           = "path"
-	projectFlagName        = "project"
-	variantsFlagName       = "variants"
-	patchIDFlagName        = "patch"
-	moduleFlagName         = "module"
-	yesFlagName            = "yes"
-	tasksFlagName          = "tasks"
-	largeFlagName          = "large"
-	hostFlagName           = "host"
-	startTimeFlagName      = "time"
-	limitFlagName          = "limit"
-	messageFlagName        = "message"
-	activeFlagName         = "active"
-	refFlagName            = "ref"
-	uncommittedChangesFlag = "uncommitted"
+	confFlagName          = "conf"
+	overwriteConfFlagName = "overwrite"
+	adminFlagsFlagName    = "flags"
+	pathFlagName          = "path"
+	projectFlagName       = "project"
+	variantsFlagName      = "variants"
+	patchIDFlagName       = "patch"
+	moduleFlagName        = "module"
+	yesFlagName           = "yes"
+	tasksFlagName         = "tasks"
+	largeFlagName         = "large"
+	hostFlagName          = "host"
+	startTimeFlagName     = "time"
+	limitFlagName         = "limit"
+	messageFlagName       = "message"
+	activeFlagName        = "active"
+	refFlagName           = "ref"
 
 	anserDryRunFlagName      = "dry-run"
 	anserLimitFlagName       = "limit"
@@ -209,13 +208,6 @@ func addRefFlag(flags ...cli.Flag) []cli.Flag {
 		Name:  refFlagName,
 		Usage: "diff with `REF`",
 		Value: "HEAD",
-	})
-}
-
-func addUncommittedChangesFlag(flags ...cli.Flag) []cli.Flag {
-	return append(flags, cli.BoolFlag{
-		Name:  joinFlagNames(uncommittedChangesFlag, "u"),
-		Usage: "include uncommitted changes",
 	})
 }
 

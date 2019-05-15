@@ -59,7 +59,6 @@ type patchParams struct {
 	Browse      bool
 	Large       bool
 	ShowSummary bool
-	Uncommitted bool
 	Ref         string
 }
 
@@ -180,10 +179,6 @@ func (p *patchParams) validatePatchCommand(ctx context.Context, conf *ClientSett
 
 	if err := p.loadTasks(conf); err != nil {
 		grip.Warningf("warning - failed to set default tasks: %v\n", err)
-	}
-
-	if p.Uncommitted || conf.UncommittedChanges {
-		p.Ref = ""
 	}
 
 	// Validate the project exists
@@ -415,15 +410,6 @@ func gitDiff(base string, ref string, diffArgs ...string) (string, error) {
 func gitLog(base, ref string) (string, error) {
 	args := []string{fmt.Sprintf("%s...%s", base, ref), "--oneline"}
 	return gitCmd("log", args...)
-}
-
-func gitUncommittedChanges() (bool, error) {
-	args := "--porcelain"
-	out, err := gitCmd("status", args)
-	if err != nil {
-		return false, errors.Wrap(err, "can't run git status")
-	}
-	return len(out) != 0, nil
 }
 
 func gitCmd(cmdName string, gitArgs ...string) (string, error) {

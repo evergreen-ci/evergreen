@@ -18,10 +18,14 @@ func PatchSetModule() cli.Command {
 		Name:    "patch-set-module",
 		Aliases: []string{"set-module"},
 		Usage:   "update or add module to an existing patch",
-		Flags: mergeFlagSlices(addPatchIDFlag(), addPathFlag(), addModuleFlag(), addYesFlag(), addRefFlag(), addUncommittedChangesFlag(
+		Flags: mergeFlagSlices(addPatchIDFlag(), addPathFlag(), addModuleFlag(), addYesFlag(
 			cli.BoolFlag{
 				Name:  largeFlagName,
 				Usage: "enable submitting larger patches (>16MB)",
+			},
+			cli.StringFlag{
+				Name:  refFlagName,
+				Usage: "diff with `REF`, ignoring working tree changes",
 			})),
 		Before: mergeBeforeFuncs(requirePatchIDFlag, requireModuleFlag),
 		Action: func(c *cli.Context) error {
@@ -32,17 +36,7 @@ func PatchSetModule() cli.Command {
 			skipConfirm := c.Bool(yesFlagName)
 			project := c.String(projectFlagName)
 			ref := c.String(refFlagName)
-			uncommittedOk := c.Bool(uncommittedChangesFlag)
 			args := c.Args()
-
-			uncommittedChanges, err := gitUncommittedChanges()
-			if err != nil {
-				return errors.Wrap(err, "can't test for uncommitted changes")
-			}
-
-			if !uncommittedOk && uncommittedChanges {
-				grip.Infof("Uncommitted changes are omitted from patches by default.\nUse the '--%s' flag to include uncommitted changes.", uncommittedChangesFlag)
-			}
 
 			ctx, cancel := context.WithCancel(context.Background())
 			defer cancel()
@@ -78,10 +72,6 @@ func PatchSetModule() cli.Command {
 				}
 
 				return errors.Errorf("could not set specified module: \"%s\"", module)
-			}
-
-			if uncommittedOk || conf.UncommittedChanges {
-				ref = ""
 			}
 
 			// diff against the module branch.
