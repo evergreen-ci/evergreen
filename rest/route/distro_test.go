@@ -1062,7 +1062,7 @@ func (s *DistroPatchByIDSuite) TestValidFindAndReplaceFullDocument() {
 				"user" : "~root",
 				"bootstrap_method": "legacy-ssh",
 				"communication_method": "legacy-ssh",
-				"shell_path": "/usr/bin/bash",
+				"shell_binary": "/usr/bin/bash",
 				"ssh_key" : "~SSH string",
 				"ssh_options" : [
 					"~StrictHostKeyChecking=no",
@@ -1121,7 +1121,7 @@ func (s *DistroPatchByIDSuite) TestValidFindAndReplaceFullDocument() {
 	s.Equal(apiDistro.Teardown, model.ToAPIString("~Tear-down script"))
 	s.Equal(model.ToAPIString(distro.BootstrapMethodLegacySSH), apiDistro.BootstrapMethod)
 	s.Equal(model.ToAPIString(distro.CommunicationMethodLegacySSH), apiDistro.CommunicationMethod)
-	s.Equal(model.ToAPIString("/usr/bin/bash"), apiDistro.ShellPath)
+	s.Equal(model.ToAPIString("/usr/bin/bash"), apiDistro.ShellBinary)
 	s.Equal(apiDistro.User, model.ToAPIString("~root"))
 	s.Equal(apiDistro.SSHKey, model.ToAPIString("~SSH string"))
 	s.Equal(apiDistro.SSHOptions, []string{"~StrictHostKeyChecking=no", "~BatchMode=no", "~ConnectTimeout=10"})

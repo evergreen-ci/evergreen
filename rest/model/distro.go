@@ -131,7 +131,7 @@ type APIDistro struct {
 	User                APIString              `json:"user"`
 	BootstrapMethod     APIString              `json:"bootstrap_method"`
 	CommunicationMethod APIString              `json:"communication_method"`
-	ShellPath           APIString              `json:"shell_path"`
+	ShellBinary         APIString              `json:"shell_binary"`
 	SSHKey              APIString              `json:"ssh_key"`
 	SSHOptions          []string               `json:"ssh_options"`
 	Expansions          []APIExpansion         `json:"expansions"`

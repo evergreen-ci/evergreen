@@ -205,7 +205,7 @@ func (h *Host) BootstrapScript(config evergreen.JasperConfig, dir string) string
 		quotedCmds := strings.Replace(cmds, "'", "''", -1)
 		commands := []string{
 			"<powershell>",
-			fmt.Sprintf("%s -c '%s'", h.Distro.ShellPath, quotedCmds),
+			fmt.Sprintf("%s -c '%s'", h.Distro.ShellBinary, quotedCmds),
 			"</powershell>",
 		}
 		return strings.Join(commands, "\r\n")
