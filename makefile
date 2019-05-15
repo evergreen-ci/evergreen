@@ -1,6 +1,7 @@
 # start project configuration
 name := evergreen
 buildDir := bin
+tmpDir := $(buildDir)/tmp
 nodeDir := public
 packages := $(name) agent operations cloud command db util plugin units
 packages += thirdparty auth scheduler model validator service monitor repotracker
@@ -331,6 +332,11 @@ endif
 ifneq (,$(SETTINGS_OVERRIDE))
 testRunEnv += SETTINGS_OVERRIDE=$(SETTINGS_OVERRIDE)
 endif
+ifneq (,$(TMPDIR))
+testRunEnv += TMPDIR=$(TMPDIR)
+else
+testRunEnv += TMPDIR=$(tmpDir)
+endif
 ifneq (,$(RUN_TEST))
 testArgs += -run='$(RUN_TEST)'
 endif
@@ -352,8 +358,10 @@ endif
 $(buildDir)/:
 	mkdir -p $@
 $(buildDir)/output.%.test:$(buildDir)/ .FORCE
+	@mkdir -p $(tmpDir)
 	$(testRunEnv) $(gobin) test $(testArgs) ./$(if $(subst $(name),,$*),$(subst -,/,$*),) 2>&1 | tee $@
 $(buildDir)/output.%.coverage:$(buildDir)/ .FORCE
+	@mkdir -p $(tmpDir)
 	$(testRunEnv) $(gobin) test $(testArgs) ./$(if $(subst $(name),,$*),$(subst -,/,$*),) -covermode=count -coverprofile $@ | tee $(buildDir)/output.$*.test
 	@-[ -f $@ ] && go tool cover -func=$@ | sed 's%$(projectPath)/%%' | column -t
 #  targets to generate gotest output from the linter.
@@ -369,7 +377,7 @@ $(buildDir)/output.%.coverage.html:$(buildDir)/output.%.coverage
 
 # clean and other utility targets
 clean:
-	rm -rf $(lintDeps) $(buildDir)/test.* $(buildDir)/output.* $(clientBuildDir)
+	rm -rf $(lintDeps) $(buildDir)/test.* $(buildDir)/output.* $(clientBuildDir) $(tmpDir)
 	rm -rf $(gopath)/pkg/
 phony += clean
 # end dependency targets
