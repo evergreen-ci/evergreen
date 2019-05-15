@@ -316,6 +316,9 @@ func (c *gitFetchProject) Execute(ctx context.Context,
 	stdErr := noopWriteCloser{
 		&bytes.Buffer{},
 	}
+	stdOut := noopWriteCloser{
+		&bytes.Buffer{},
+	}
 
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
@@ -387,8 +390,6 @@ func (c *gitFetchProject) Execute(ctx context.Context,
 				}
 			}
 		}
-		logger.Execution().Infof("Using revision '%s' for module %s", revision, moduleName)
-
 		var owner, repo string
 		owner, repo, err = thirdparty.ParseGitUrl(module.Repo)
 		if err != nil {
@@ -436,8 +437,15 @@ func (c *gitFetchProject) Execute(ctx context.Context,
 
 		err = jpm.CreateCommand(ctx).Add([]string{"bash", "-c", strings.Join(moduleCmds, "\n")}).
 			Directory(filepath.ToSlash(filepath.Join(conf.WorkDir, c.Directory))).
-			SetOutputSender(level.Info, logger.Task().GetSender()).SetErrorWriter(stdErr).Run(ctx)
+			SetOutputSender(level.Info, logger.Task().GetSender()).SetErrorWriter(stdErr).SetOutputWriter(stdOut).Run(ctx)
 
+		output := stdOut.String()
+		if output != "" {
+			if opts.token != "" {
+				output = strings.Replace(output, opts.token, "[redacted oauth token]", -1)
+			}
+			logger.Execution().Info(output)
+		}
 		if err != nil {
 			return errors.Wrap(err, "problem with git command")
 		}
