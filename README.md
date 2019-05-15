@@ -42,7 +42,7 @@ Setup:
 
 Possible Targets:
 
-* run `make build` to compile all binaries for your local
+* run `make build` to compile a binary for your local
   system.
 * run `make dist` to compile binaries for all supported systems
   and create a *dist* tarball with all artifacts.
