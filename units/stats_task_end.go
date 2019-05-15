@@ -139,21 +139,23 @@ func (j *collectTaskEndDataJob) Run(ctx context.Context) {
 	}
 
 	msg := message.Fields{
-		"stat":         "task-end-stats",
-		"task_id":      j.task.Id,
-		"task":         j.task.DisplayName,
-		"execution":    j.task.Execution,
-		"requester":    j.task.Requester,
-		"activated_by": j.task.ActivatedBy,
-		"project":      j.task.Project,
-		"variant":      j.task.BuildVariant,
-		"version":      j.task.Version,
-		"build":        j.task.BuildId,
-		"distro":       j.host.Distro.Id,
-		"provider":     j.host.Distro.Provider,
-		"host":         j.host.Id,
-		"status":       j.task.ResultStatus(),
-		"priority":     j.task.Priority,
+		"stat":            "task-end-stats",
+		"task_id":         j.task.Id,
+		"task":            j.task.DisplayName,
+		"execution":       j.task.Execution,
+		"requester":       j.task.Requester,
+		"activated_by":    j.task.ActivatedBy,
+		"project":         j.task.Project,
+		"variant":         j.task.BuildVariant,
+		"version":         j.task.Version,
+		"build":           j.task.BuildId,
+		"distro":          j.host.Distro.Id,
+		"provider":        j.host.Distro.Provider,
+		"host":            j.host.Id,
+		"status":          j.task.ResultStatus(),
+		"priority":        j.task.Priority,
+		"group":           j.task.TaskGroup,
+		"group_max_hosts": j.task.TaskGroupMaxHosts,
 	}
 	totalWaitSecs := j.task.FinishTime.Sub(j.task.ActivatedTime)
 	msg["total_wait_secs"] = totalWaitSecs.Seconds()
