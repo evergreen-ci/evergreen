@@ -67,7 +67,7 @@ mciModule.factory('OutliersDataService', function($log, Stitch, STITCH_CONFIG) {
       const { matchedCount, modifiedCount, upsertedId } = result;
       if(!upsertedId && !modifiedCount) {
         if(matchedCount) {
-          $log.warn('Outlier was already muted.');
+          $log.warn('Outlier was already marked.');
         } else {
           $log.warn('No outlier was matched.');
         }
