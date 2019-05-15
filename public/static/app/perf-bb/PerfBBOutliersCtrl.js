@@ -630,10 +630,13 @@ mciModule.controller('PerfBBOutliersCtrl', function (
         return doc;
       });
 
-      if (this.mode === 'muted')
+      if (this.mode === 'muted') {
         data = data.filter(doc => doc.muted);
-      if(this.mode === 'marked')
+      }
+
+      if(this.mode === 'marked') {
         data = data.filter(doc => doc.marked);
+      }
 
       this.vm.gridOptions.data = data.value();
       return this.vm.gridOptions.data;
