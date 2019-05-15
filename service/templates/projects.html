@@ -383,7 +383,11 @@ Evergreen Projects
           </div>
 
           <div class="form-group">
-            <div class="col-header col-lg-6 form-control-static"> <h3>Commit Queue</h3> </div>
+            <div class="col-header col-lg-6 form-control-static"> 
+              <h3>Commit Queue</h3> 
+              <div class="muted small">The commit queue merges changes onto the project's branch after they've passed a set of tests.</div>
+            </div>
+           
           </div>
 
           <div id="patch-variants-list-header" class="form-group" ng-show="commitQueueConflicts.length !== 0">
@@ -411,10 +415,15 @@ Evergreen Projects
               <div>
                 <label for="PatchTypeSelect"> Patch Type: </label>
                 <select id="PatchTypeSelect" ng-model="settingsFormData.commit_queue.patch_type" ng-options="option for option in validPatchTypes"></select>
+                <div class="muted small">Patch Type is PR for merging GitHub PRs or CLI for merging patches submitted through Evergreen's CLI.</div>
               </div>
             </div>
             <div class="form-group">
                 <div class="col-header col-lg-6 form-control-static"> <h4> Commit Queue Patch Definitions </h4>
+                  <div class="muted small">
+                    Changes on the Commit Queue are tested with all variants and tasks that match each variant and task regex pair. 
+                    All regular expressions must be valid Golang regular expressions.
+                  </div>
                 </div>
             </div>
 
