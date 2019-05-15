@@ -80,7 +80,7 @@ func Patch() cli.Command {
 			}
 
 			if (!params.Uncommitted && !conf.UncommittedChanges) && uncommittedChanges {
-				grip.Infof("Uncommitted changes are omitted from patches by default.\nUse the '--%s, -u' flag or the 'patch_uncommitted_changes' field in the Evergreen yaml file to include uncommitted changes.", uncommittedChangesFlag)
+				grip.Infof("Uncommitted changes are omitted from patches by default.\nUse the '--%s, -u' flag or set 'patch_uncommitted_changes: true' in your ~/.evergreen.yml file to include uncommitted changes.", uncommittedChangesFlag)
 			}
 
 			comm := conf.GetRestCommunicator(ctx)
