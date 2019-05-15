@@ -109,7 +109,7 @@ func TestJasperCommandsWindows(t *testing.T) {
 		},
 		"FetchJasperCommandWithPath": func(t *testing.T, h *Host, config evergreen.JasperConfig, dir string) {
 			expectedCmds := h.fetchJasperCommands(config, dir)
-			path := windowsPath
+			path := "/bin"
 			for i := range expectedCmds {
 				expectedCmds[i] = fmt.Sprintf("PATH=%s ", path) + expectedCmds[i]
 			}
@@ -120,7 +120,7 @@ func TestJasperCommandsWindows(t *testing.T) {
 		},
 		"BootstrapScript": func(t *testing.T, h *Host, config evergreen.JasperConfig, dir string) {
 			expectedCmds := h.fetchJasperCommands(config, dir)
-			path := windowsPath
+			path := "/bin"
 			for i := range expectedCmds {
 				expectedCmds[i] = strings.Replace(fmt.Sprintf("PATH=%s ", path)+expectedCmds[i], "'", "''", -1)
 			}
