@@ -120,7 +120,7 @@ describe('PerfBBOutliersCtrlTest', () => {
       expect(vm.mode).toEqual({
         options: [{
           id: 'outliers',
-          name: 'Outliers',
+          name: 'All',
         }, {
           id: 'marked',
           name: 'Marked',
@@ -1824,17 +1824,61 @@ describe('PerfBBOutliersFactoriesTest', () => {
         return outlier;
       };
 
-      it('should set data and return', () => {
+      beforeEach(() => {
+        state.vm = {gridOptions: {data: {}}, mode: {value: 'outliers'}};
+      });
+
+      describe('modes', () => {
+
         const data = [];
         const outliers = [];
         const mutes = [];
-        spyOn(_, 'each').and.returnValue(data);
+        const underscore = {
+          chain: () => underscore,
+          each: () => underscore,
+          filter: () => underscore,
+          value: () => data,
+        };
+        beforeEach(() => {
+          spyOn(_, 'chain').and.returnValue(underscore);
+          spyOn(underscore, 'each').and.callThrough();
+          spyOn(underscore, 'filter').and.callThrough();
+        });
 
-        state.vm = {gridOptions:{data:{}}};
-        expect(state.hydrateData({outliers:outliers, mutes:mutes})).toBe(data);
+        it('should chain and return all outliers', () => {
 
-        expect(_.each).toHaveBeenCalledWith(outliers, jasmine.any(Function));
-        expect(state.vm.gridOptions.data).toBe(data);
+          expect(state.hydrateData({outliers: outliers, mutes: mutes})).toBe(data);
+
+          expect(_.chain).toHaveBeenCalled();
+          expect(underscore.each).toHaveBeenCalled();
+          expect(underscore.filter).not.toHaveBeenCalled();
+
+          expect(state.vm.gridOptions.data).toBe(data);
+        });
+
+        it('should chain and filter mutes', () => {
+
+          state.vm.mode.value = 'muted';
+          expect(state.hydrateData({outliers: outliers, mutes: mutes})).toBe(data);
+
+          expect(_.chain).toHaveBeenCalled();
+          expect(underscore.each).toHaveBeenCalled();
+          expect(underscore.filter).toHaveBeenCalled();
+
+          expect(state.vm.gridOptions.data).toBe(data);
+        });
+
+        it('should chain and filter marked', () => {
+          state.vm.mode.value = 'muted';
+          expect(state.hydrateData({outliers: outliers, mutes: mutes})).toBe(data);
+
+          expect(_.chain).toHaveBeenCalled();
+          expect(underscore.each).toHaveBeenCalled();
+          expect(underscore.filter).toHaveBeenCalled();
+
+          expect(state.vm.gridOptions.data).toBe(data);
+        });
+
       });
 
       describe('mutes', () => {
@@ -1842,7 +1886,6 @@ describe('PerfBBOutliersFactoriesTest', () => {
           const outliers = [create_outlier({i: 1})];
           const mutes = [create_mute({i: 1})];
 
-          state.vm = {gridOptions:{data:{}}};
           const results = state.hydrateData({outliers:outliers, mutes:mutes});
 
           expect(results.length).toEqual(1);
@@ -1853,7 +1896,6 @@ describe('PerfBBOutliersFactoriesTest', () => {
           const outliers = [create_outlier({i: 1})];
           const mutes = [create_mute({i: 1, enabled: true})];
 
-          state.vm = {gridOptions:{data:{}}};
           const results = state.hydrateData({outliers: outliers, mutes: mutes});
 
           expect(results.length).toEqual(1);
@@ -1866,7 +1908,6 @@ describe('PerfBBOutliersFactoriesTest', () => {
           const outliers = [create_outlier({i: 1})];
           let mutes = [create_mute({i: 1, enabled: true})];
 
-          state.vm = {gridOptions:{data:{}}};
           state.hydrateData({outliers: outliers, mutes: mutes});
 
           mutes = [create_mute({i: 1, enabled: false})];
@@ -1880,7 +1921,6 @@ describe('PerfBBOutliersFactoriesTest', () => {
           const outliers = [create_outlier({i: 1}), create_outlier({i: 2})];
           let mutes = [create_mute({i: 1, enabled: true}), create_mute({i: 2, enabled: true})];
 
-          state.vm = {gridOptions:{data:{}}};
           const results = state.hydrateData({outliers: outliers, mutes: mutes});
 
           expect(results.length).toEqual(2);
@@ -1900,7 +1940,6 @@ describe('PerfBBOutliersFactoriesTest', () => {
             create_mute({i: 4, enabled: true})
           ];
 
-          state.vm = {gridOptions:{data:{}}};
           const results = state.hydrateData({outliers: outliers, mutes: mutes});
 
           const even = _.chain(results).filter((element, index) => index % 2 !== 0).value();
@@ -1918,7 +1957,6 @@ describe('PerfBBOutliersFactoriesTest', () => {
         it('should set matching to unmarked', () => {
           const outliers = [create_outlier({i: 1})];
           const marks = [];
-          state.vm = {gridOptions:{data:{}}};
           const results = state.hydrateData({outliers:outliers, marks:marks});
 
           expect(results.length).toEqual(1);
@@ -1929,7 +1967,6 @@ describe('PerfBBOutliersFactoriesTest', () => {
           const outliers = [create_outlier({i: 1})];
           const marks = [create_mark({i: 1})];
 
-          state.vm = {gridOptions:{data:{}}};
           const results = state.hydrateData({outliers: outliers, marks: marks});
 
           expect(results.length).toEqual(1);
@@ -1942,7 +1979,6 @@ describe('PerfBBOutliersFactoriesTest', () => {
           const outliers = [create_outlier({i: 1})];
           let marks = [create_mark({i: 1})];
 
-          state.vm = {gridOptions:{data:{}}};
           state.hydrateData({outliers: outliers, marks: marks});
 
           marks = [];
@@ -1956,7 +1992,6 @@ describe('PerfBBOutliersFactoriesTest', () => {
           const outliers = [create_outlier({i: 1}), create_outlier({i: 2})];
           let marks = [create_mark({i: 1}), create_mark({i: 2})];
 
-          state.vm = {gridOptions:{data:{}}};
           const results = state.hydrateData({outliers: outliers, marks: marks});
 
           expect(results.length).toEqual(2);
@@ -1976,7 +2011,6 @@ describe('PerfBBOutliersFactoriesTest', () => {
             create_mark({i: 4})
           ];
 
-          state.vm = {gridOptions:{data:{}}};
           const results = state.hydrateData({outliers: outliers, marks: marks});
 
           const even = _.chain(results).filter((element, index) => index % 2 !== 0).value();
@@ -1990,25 +2024,30 @@ describe('PerfBBOutliersFactoriesTest', () => {
 
       });
       describe('mutes and marks', () => {
-        it('should handle both', () => {
-          const outliers = [
+        let outliers;
+        let marks;
+        let mutes;
+        beforeEach(() => {
+          outliers = [
             create_outlier({i: 1}),
             create_outlier({i: 2}),
             create_outlier({i: 3}),
             create_outlier({i: 4}),
             create_outlier({i: 5}),
           ];
-          let marks = [
+          marks = [
             create_mark({i: 1}),
             create_mark({i: 3}),
             create_mark({i: 5})
           ];
-          let mutes = [
+          mutes = [
             create_mute({i: 2, enabled: true}),
             create_mute({i: 4, enabled: true})
           ];
+        });
 
-          state.vm = {gridOptions:{data:{}}};
+        it('should handle both', () => {
+
           const results = state.hydrateData({outliers: outliers, mutes: mutes, marks: marks});
 
           const even = _.chain(results).filter((element, index) => index % 2 !== 0).value();
@@ -2022,6 +2061,41 @@ describe('PerfBBOutliersFactoriesTest', () => {
           expect(_.all(odd, (result) => result.muted)).toEqual(false);
 
         });
+
+        it('should handle muted mode', () => {
+
+          state.vm.mode.value = 'muted';
+          const results = state.hydrateData({outliers: outliers, mutes: mutes, marks: marks});
+
+          const even = _.chain(results).filter((element, index) => index % 2 !== 0).value();
+          expect(even.length).toEqual(1);
+          expect(even[0].marked).toEqual(false);
+          expect(even[0].muted).toEqual(true);
+
+          const odd = _.chain(results).filter( (element, index) => index % 2 === 0).value();
+          expect(odd.length).toEqual(1);
+          expect(odd[0].marked).toEqual(false);
+          expect(odd[0].muted).toEqual(true);
+
+        });
+
+        it('should handle markd mode', () => {
+
+          state.vm.mode.value = 'marked';
+          const results = state.hydrateData({outliers: outliers, mutes: mutes, marks: marks});
+
+          const even = _.chain(results).filter((element, index) => index % 2 !== 0).value();
+          expect(even.length).toEqual(1);
+          expect(even[0].marked).toEqual(true);
+          expect(even[0].muted).toEqual(false);
+
+          const odd = _.chain(results).filter( (element, index) => index % 2 === 0).value();
+          expect(odd.length).toEqual(2);
+          expect(_.all(odd, (result) => result.marked)).toEqual(true);
+          expect(_.all(odd, (result) => result.muted)).toEqual(false);
+
+        });
+
       });
     });
 
