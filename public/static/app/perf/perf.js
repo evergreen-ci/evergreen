@@ -705,6 +705,13 @@ mciModule.controller('PerfController', function PerfController(
     let getLegactHistory = function() {
       $http.get("/plugin/json/history/" + $scope.task.id + "/perf").then(function(resp){
         trendDataSuccess(resp.data);
+      }, function() {
+        if (!$scope.allTrendSamples) {
+          $scope.allTrendSamples = new TrendSamples([]);
+        }
+        if (!$scope.filteredTrendSamples) {
+          $scope.filteredTrendSamples = new TrendSamples([]);
+        }
       });
     }
 
