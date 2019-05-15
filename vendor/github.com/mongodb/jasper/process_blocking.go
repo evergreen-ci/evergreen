@@ -59,10 +59,6 @@ func newBlockingProcess(ctx context.Context, opts *CreateOptions) (Process, erro
 		return nil, errors.Wrap(err, "problem starting command")
 	}
 
-	p.info.Options.started = true
-	p.opts.started = true
-	opts.started = true
-
 	p.info = ProcessInfo{
 		ID:        id,
 		PID:       cmd.Process.Pid,
@@ -150,7 +146,9 @@ func (p *blockingProcess) reactor(ctx context.Context, cmd *exec.Cmd) {
 				}))
 			}()
 
+			p.mu.RLock()
 			p.triggers.Run(info)
+			p.mu.RUnlock()
 			p.setErr(err)
 			p.setInfo(info)
 			return
@@ -162,7 +160,9 @@ func (p *blockingProcess) reactor(ctx context.Context, cmd *exec.Cmd) {
 			info.IsRunning = false
 			info.Successful = false
 
+			p.mu.RLock()
 			p.triggers.Run(info)
+			p.mu.RUnlock()
 			p.setInfo(info)
 			return
 		case op := <-p.ops:

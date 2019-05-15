@@ -5,6 +5,7 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 )
 
@@ -37,12 +38,15 @@ func writeFile(reader io.Reader, path string) error {
 
 	file, err := os.Create(path)
 	if err != nil {
-		return err
+		return errors.Wrap(err, "problem creating file")
 	}
 
+	catcher := grip.NewBasicCatcher()
 	if _, err := io.Copy(file, reader); err != nil {
-		return err
+		catcher.Add(errors.Wrap(err, "problem writing file"))
 	}
 
-	return nil
+	catcher.Add(errors.Wrap(file.Close(), "problem closing file"))
+
+	return catcher.Resolve()
 }

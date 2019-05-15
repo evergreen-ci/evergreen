@@ -11,7 +11,7 @@ import (
 type SignalTriggerFactory func() SignalTrigger
 
 type signalTriggerRegistry struct {
-	mu             *sync.RWMutex
+	mu             sync.RWMutex
 	signalTriggers map[SignalTriggerID]SignalTriggerFactory
 }
 
@@ -30,7 +30,7 @@ func init() {
 }
 
 func newSignalTriggerRegistry() *signalTriggerRegistry {
-	return &signalTriggerRegistry{mu: &sync.RWMutex{}, signalTriggers: map[SignalTriggerID]SignalTriggerFactory{}}
+	return &signalTriggerRegistry{signalTriggers: map[SignalTriggerID]SignalTriggerFactory{}}
 }
 
 // RegisterSignalTriggerFactory registers a factory to create the signal trigger

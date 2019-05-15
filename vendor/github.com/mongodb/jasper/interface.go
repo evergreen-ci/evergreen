@@ -6,9 +6,8 @@ import (
 )
 
 const (
-	// EnvironID is the environment variable that is set on all managed
-	// processes. The value of this environment variable is always the
-	// ID of the process.
+	// EnvironID is the environment variable that is set on all processes. The
+	// value of this environment variable is always the ID of the process.
 	EnvironID = "JASPER_ID"
 
 	// ManagerEnvironID is the environment variable that is set on
@@ -51,12 +50,10 @@ type Process interface {
 	Info(context.Context) ProcessInfo
 
 	// Running provides a quick predicate for checking to see if a
-	// process is running. Processes that haven't been started
-	// are neither complete nor running.
+	// process is running.
 	Running(context.Context) bool
 	// Complete provides a quick predicate for checking if a
-	// process has finished. Processes that haven't been started
-	// are neither complete nor running.
+	// process has finished.
 	Complete(context.Context) bool
 
 	// Signal sends the specified signals to the underlying
@@ -111,13 +108,13 @@ type ProcessConstructor func(context.Context, *CreateOptions) (Process, error)
 // returned and passed by value, and reflects the state of the process
 // when it was created.
 type ProcessInfo struct {
-	ID         string
-	Host       string
-	PID        int
-	ExitCode   int
-	IsRunning  bool
-	Successful bool
-	Complete   bool
-	Timeout    bool
-	Options    CreateOptions
+	ID         string        `json:"id"`
+	Host       string        `json:"host"`
+	PID        int           `json:"pid"`
+	ExitCode   int           `json:"exit_code"`
+	IsRunning  bool          `json:"is_running"`
+	Successful bool          `json:"successful"`
+	Complete   bool          `json:"complete"`
+	Timeout    bool          `json:"timeout"`
+	Options    CreateOptions `json:"options"`
 }

@@ -232,6 +232,36 @@ pre:
 	s.Contains(msgs[len(msgs)-1].Message, "Finished running pre-task commands")
 }
 
+func (s *AgentSuite) TestPreFailsTask() {
+	s.tc.taskConfig = &model.TaskConfig{
+		BuildVariant: &model.BuildVariant{
+			Name: "buildvariant_id",
+		},
+		Task: &task.Task{
+			Id:      "task_id",
+			Version: versionId,
+		},
+		Project: &model.Project{},
+		WorkDir: s.tc.taskDirectory,
+	}
+	projYml := `
+pre:
+  - command: subprocess.exec
+    params:
+      command: "doesntexist"
+`
+	v := &model.Version{
+		Id:     versionId,
+		Config: projYml,
+	}
+	s.tc.taskConfig.Version = v
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	// TODO EVG-6009 change the next line to s.Error when ready
+	s.NoError(s.a.runPreTaskCommands(ctx, s.tc))
+	s.NoError(s.tc.logger.Close())
+}
+
 func (s *AgentSuite) TestPost() {
 	s.tc.taskConfig = &model.TaskConfig{
 		BuildVariant: &model.BuildVariant{
