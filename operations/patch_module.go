@@ -35,21 +35,21 @@ func PatchSetModule() cli.Command {
 			uncommittedOk := c.Bool(uncommittedChangesFlag)
 			args := c.Args()
 
-			uncommittedChanges, err := gitUncommittedChanges()
-			if err != nil {
-				return errors.Wrap(err, "can't test for uncommitted changes")
-			}
-
-			if !uncommittedOk && uncommittedChanges {
-				grip.Infof("Uncommitted changes are omitted from patches by default.\nUse the '--%s' flag to include uncommitted changes.", uncommittedChangesFlag)
-			}
-
 			ctx, cancel := context.WithCancel(context.Background())
 			defer cancel()
 
 			conf, err := NewClientSettings(confPath)
 			if err != nil {
 				return errors.Wrap(err, "problem loading configuration")
+			}
+
+			uncommittedChanges, err := gitUncommittedChanges()
+			if err != nil {
+				return errors.Wrap(err, "can't test for uncommitted changes")
+			}
+
+			if (!uncommittedOk && !conf.UncommittedChanges) && uncommittedChanges {
+				grip.Infof("Uncommitted changes are omitted from patches by default.\nUse the '--%s, -u' flag or the 'patch_uncommitted_changes' field in the Evergreen yaml file to include uncommitted changes.", uncommittedChangesFlag)
 			}
 
 			client := conf.GetRestCommunicator(ctx)
