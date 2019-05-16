@@ -203,9 +203,7 @@ func (m *ec2Manager) spawnOnDemandHost(ctx context.Context, h *host.Host, ec2Set
 	}
 
 	if h.Distro.BootstrapMethod == distro.BootstrapMethodUserData {
-		env := evergreen.GetEnvironment()
-		settings := env.Settings()
-		commands := h.BootstrapScript(settings.JasperConfig, "/usr/local/bin")
+		commands := h.BootstrapScript(m.settings.JasperConfig, "/usr/local/bin")
 		userData, err := makeMultipartUserData(map[string]string{
 			"bootstrap.txt": commands,
 			"user-data.txt": ec2Settings.UserData,
