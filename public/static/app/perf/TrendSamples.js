@@ -38,8 +38,8 @@ mciModule.factory('TrendSamples', function() {
           this.seriesByName[rec.name] = [];
         }
 
-        var maxThreadOpsPerSecItem = _.max(rec.results, function(d) {
-          return d.ops_per_sec
+        var maxValues = _.max(rec.results, function(d) {
+          return null;
         })
 
         // Sort items by thread level
@@ -54,15 +54,17 @@ mciModule.factory('TrendSamples', function() {
           .sortBy('-threadLevel')
           .value()
 
-        this.seriesByName[rec.name].push({
+        let newSample = {
           revision: sample.revision,
           task_id: sample.task_id,
-          ops_per_sec: maxThreadOpsPerSecItem.ops_per_sec,
-          ops_per_sec_values: maxThreadOpsPerSecItem.ops_per_sec_values,
           order: sample.order,
           createTime: sample.create_time,
           threadResults: threadResults,
-        });
+        }
+
+        Object.assign(newSample, maxValues);
+
+        this.seriesByName[rec.name].push(newSample);
       }
     }
 
