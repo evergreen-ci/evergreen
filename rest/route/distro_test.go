@@ -426,7 +426,7 @@ func (s *DistroPutSuite) TestRunNewWithInvalidEntity() {
 	s.Contains(err.Message, "'foo' is not a valid bootstrap method")
 	s.Contains(err.Message, "'bar' is not a valid communication method")
 	s.Contains(err.Message, "'bat' is not a valid clone method")
-	s.Contains(err.Message, "ERROR: invalid PlannerSettings.Version 'invalid' for distro 'distro4'")
+	s.Contains(err.Message, "ERROR: invalid planner_settings.version 'invalid' for distro 'distro4'")
 }
 
 func (s *DistroPutSuite) TestRunNewConflictingName() {
@@ -925,9 +925,9 @@ func (s *DistroPatchByIDSuite) TestRunValidPlannerSettingsVersion() {
 	s.Equal(model.ToAPIString("tunable"), apiDistro.PlannerSettings.Version)
 }
 
-func (s *DistroPatchByIDSuite) TestRunInvalidPlannerSettingsVersion() {
+func (s *DistroPatchByIDSuite) TestRunInvalidPlannerSettings() {
 	ctx := context.Background()
-	json := []byte(`{"planner_settings": {"version": "invalid"}}`)
+	json := []byte(`{"planner_settings": {"version": "invalid", "minimum_hosts": -1, "maximum_hosts": -1, "patch_zipper_factor": -1}}`)
 	h := s.rm.(*distroIDPatchHandler)
 	h.distroID = "fedora8"
 	h.body = json
@@ -935,6 +935,18 @@ func (s *DistroPatchByIDSuite) TestRunInvalidPlannerSettingsVersion() {
 	resp := s.rm.Run(ctx)
 	s.NotNil(resp.Data())
 	s.Equal(http.StatusBadRequest, resp.Status())
+
+	errors := []string{
+		"ERROR: invalid planner_settings.version 'invalid' for distro 'fedora8'",
+		"ERROR: invalid planner_settings.minimum_hosts value of -1 for distro 'fedora8' - the value must be a non-negative integer",
+		"ERROR: invalid planner_settings.maximum_hosts value of -1 for distro 'fedora8' - the value must be a non-negative integer",
+		"ERROR: invalid planner_settings.patch_zipper_factor value of -1 for distro 'fedora8' - the value must be a non-negative integer",
+	}
+
+	error := (resp.Data()).(gimlet.ErrorResponse)
+	for _, err := range errors {
+		s.Contains(error.Message, err)
+	}
 }
 
 func (s *DistroPatchByIDSuite) TestRunInvalidFinderSettingsVersion() {

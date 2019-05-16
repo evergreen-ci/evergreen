@@ -463,15 +463,64 @@ Evergreen - Distros
             <div class="dropdown">
               <span class="distro-menu-title">Planner Version:</span>
                 <button class="btn btn-default dropdown-toggle" type="button" data-toggle="dropdown" aria-expanded="true"
-                ng-disabled="readOnly">
+                  ng-disabled="readOnly">
                   <strong class="distro-menu-item">[[ activeDistro.planner_settings.version | versionDisplay:this]]<span class="fa fa-caret-down"></span></strong>
                 </button>
                 <ul class="dropdown-menu" style="margin-left: 125px" role="menu">
-                  <li required name="plannerVersion" ng-click="form.$setDirty();activeDistro.planner_settings.version = version.id" ng-repeat="version in planner_versions"
+                  <li required name="plannerSettingsVersion" ng-click="form.$setDirty();activeDistro.planner_settings.version = version.id" ng-repeat="version in planner_versions"
                     role="presentation"><a role="menuitem" tabindex="-1">[[version.display]]</a></li>
                 </ul>
             </div>
-            <div class="icon fa fa-warning distro-error" ng-show="form.plannerVersion.$dirty && form.plannerVersion.$error.required || form.plannerVersion.$invalid">Planner Version is required</div>
+            <div class="icon fa fa-warning distro-error" ng-show="form.plannerSettingsVersion.$dirty && form.plannerSettingsVersion.$error.required ||
+              form.plannerSettingsVersion.$invalid">Planner Version is required</div>
+            <div ng-show="activeDistro.planner_settings.version == 'tunable'">
+              <div>
+                <label class="distro-label">Minimum Hosts:</label>
+                <input ng-readonly="readOnly" type="number" ng-required="activeDistro.planner_settings.version == 'tunable'"
+                  name="plannerSettingsMinimumHosts" class="form-control" ng-model="activeDistro.planner_settings.minimum_hosts">
+              </div>
+              <div class="icon fa fa-warning distro-error" ng-show="form.plannerSettingsMinimumHosts.$dirty && form.plannerSettingsMinimumHosts.$error.required ||
+                form.plannerSettingsMinimumHosts.$invalid ||
+                form.plannerSettingsMinimumHosts.$modelValue < 0 ||
+                form.plannerSettingsMinimumHosts.$modelValue % 1 != 0">A non-negative integer value for Minimum Hosts is required</div>
+              <div>
+               <label class="distro-label">Target Time (sec):</label>
+               <input ng-readonly="readOnly" type="number" ng-required="activeDistro.planner_settings.version == 'tunable'"
+               name="plannerSettingsTargetTime" class="form-control" ng-model="activeDistro.planner_settings.target_time">
+              </div>
+              <div class="icon fa fa-warning distro-error" ng-show="form.plannerSettingsTargetTime.$dirty && form.plannerSettingsTargetTime.$error.required ||
+                form.plannerSettingsTargetTime.$invalid ||
+                form.plannerSettingsTargetTime.$modelValue < 0 ||
+                form.plannerSettingsTargetTime.$modelValue % 1 != 0">A non-negative integer value for Target Time is required</div>
+              <div>
+               <label class="distro-label">Acceptable Host Idle Time (sec):</label>
+               <input ng-readonly="readOnly" type="number" ng-required="activeDistro.planner_settings.version == 'tunable'"
+                 name="plannerSettingsAcceptableHostIdleTime" class="form-control" ng-model="activeDistro.planner_settings.acceptable_host_idle_time">
+              </div>
+              <div class="icon fa fa-warning distro-error" ng-show="form.plannerSettingsAcceptableHostIdleTime.$dirty && form.plannerSettingsAcceptableHostIdleTime.$error.required ||
+                form.plannerSettingsAcceptableHostIdleTime.$invalid ||
+                form.plannerSettingsAcceptableHostIdleTime.$modelValue < 0 ||
+                form.plannerSettingsAcceptableHostIdleTime.$modelValue % 1 != 0">A non-negative integer value for Acceptable Host Idle Time is required</div>
+              <div>
+               <label class="distro-label">Patch Zipper Factor (integer between 0 and 100, inclusive):</label>
+               <input ng-readonly="readOnly" type="number" ng-required="activeDistro.planner_settings.version == 'tunable'"
+                name="plannerSettingsPatchZipperFactor" class="form-control" ng-model="activeDistro.planner_settings.patch_zipper_factor">
+              </div>
+              <div class="icon fa fa-warning distro-error" ng-show="form.plannerSettingsPatchZipperFactor.$dirty && form.plannerSettingsPatchZipperFactor.$error.required ||
+                form.plannerSettingsPatchZipperFactor.$invalid ||
+                form.plannerSettingsPatchZipperFactor.$modelValue > 100 ||
+                form.plannerSettingsPatchZipperFactor.$modelValue < 0 ||
+                form.plannerSettingsPatchZipperFactor.$modelValue % 1 != 0">An integer value for Patch Zipper Factor between 0 and 100 is required</div>
+              <div>
+                <span style="margin-right:10px;" class="distro-checkbox checkbox"><input ng-disabled="readOnly" type="checkbox" ng-model="activeDistro.planner_settings.group_versions">Group Versions</span>
+              </div>
+              <div>
+                <span style="margin-right:10px;" class="distro-checkbox checkbox"><input ng-disabled="readOnly" type="checkbox" ng-model="activeDistro.planner_settings.mainline_first">Mainline First</span>
+              </div>
+              <div>
+                <span style="margin-right:10px;" class="distro-checkbox checkbox"><input ng-disabled="readOnly" type="checkbox" ng-model="activeDistro.planner_settings.patch_first">Patch First</span>
+              </div>
+            </div>
           </div>
           <div ng-show="activeDistro.provider != 'static' && activeDistro.provider != 'docker'">
             <label class="distro-label">Maximum number of hosts allowed:</label>

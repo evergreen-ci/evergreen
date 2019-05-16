@@ -31,7 +31,7 @@ var distroSyntaxValidators = []distroValidator{
 	ensureValidBootstrapAndCommunicationMethods,
 	ensureValidCloneMethod,
 	ensureHasNoUnauthorizedCharacters,
-	ensureHasValidPlannerVersion,
+	ensureHasValidPlannerSettings,
 	ensureHasValidFinderVersion,
 }
 
@@ -240,26 +240,55 @@ func ensureValidContainerPool(ctx context.Context, d *distro.Distro, s *evergree
 	return nil
 }
 
-// ensureHasValidPlannerVersion checks that the distro's PlannerSetting.Version is valid
-func ensureHasValidPlannerVersion(ctx context.Context, d *distro.Distro, s *evergreen.Settings) ValidationErrors {
+// ensureHasValidPlannerSettings checks that the distro's PlannerSettings are valid
+func ensureHasValidPlannerSettings(ctx context.Context, d *distro.Distro, s *evergreen.Settings) ValidationErrors {
+	errs := ValidationErrors{}
 	if !util.StringSliceContains(evergreen.ValidPlannerVersions, d.PlannerSettings.Version) {
-		return ValidationErrors{
-			{
-				Message: fmt.Sprintf("invalid PlannerSettings.Version '%s' for distro '%s'", d.PlannerSettings.Version, d.Id),
-				Level:   Error,
-			},
-		}
+		errs = append(errs, ValidationError{
+			Message: fmt.Sprintf("invalid planner_settings.version '%s' for distro '%s'", d.PlannerSettings.Version, d.Id),
+			Level:   Error,
+		})
+	}
+	if d.PlannerSettings.MinimumHosts < 0 {
+		errs = append(errs, ValidationError{
+			Message: fmt.Sprintf("invalid planner_settings.minimum_hosts value of %d for distro '%s' - the value must be a non-negative integer", d.PlannerSettings.MinimumHosts, d.Id),
+			Level:   Error,
+		})
+	}
+	if d.PlannerSettings.MaximumHosts < 0 {
+		errs = append(errs, ValidationError{
+			Message: fmt.Sprintf("invalid planner_settings.maximum_hosts value of %d for distro '%s' - the value must be a non-negative integer", d.PlannerSettings.MaximumHosts, d.Id),
+			Level:   Error,
+		})
+	}
+	if d.PlannerSettings.TargetTime < 0 {
+		errs = append(errs, ValidationError{
+			Message: fmt.Sprintf("invalid planner_settings.target_time value of %d for distro '%s' - the value must be a non-negative integer", d.PlannerSettings.TargetTime, d.Id),
+			Level:   Error,
+		})
+	}
+	if d.PlannerSettings.AcceptableHostIdleTime < 0 {
+		errs = append(errs, ValidationError{
+			Message: fmt.Sprintf("invalid planner_settings.acceptable_host_idle_time value of %d for distro '%s' - the value must be a non-negative integer", d.PlannerSettings.AcceptableHostIdleTime, d.Id),
+			Level:   Error,
+		})
+	}
+	if d.PlannerSettings.PatchZipperFactor < 0 {
+		errs = append(errs, ValidationError{
+			Message: fmt.Sprintf("invalid planner_settings.patch_zipper_factor value of %d for distro '%s' - the value must be a non-negative integer", d.PlannerSettings.PatchZipperFactor, d.Id),
+			Level:   Error,
+		})
 	}
 
-	return nil
+	return errs
 }
 
-// ensureHasValidPlannerVersion checks that the distro's PlannerSetting.Version is valid
+// ensureHasValidFinderVersion checks that the distro's PlannerSetting.Version is valid
 func ensureHasValidFinderVersion(ctx context.Context, d *distro.Distro, s *evergreen.Settings) ValidationErrors {
 	if !util.StringSliceContains(evergreen.ValidFinderVersions, d.FinderSettings.Version) {
 		return ValidationErrors{
 			{
-				Message: fmt.Sprintf("invalid FinderSettings.Version '%s' for distro '%s'", d.FinderSettings.Version, d.Id),
+				Message: fmt.Sprintf("invalid finder_settings.version '%s' for distro '%s'", d.FinderSettings.Version, d.Id),
 				Level:   Error,
 			},
 		}

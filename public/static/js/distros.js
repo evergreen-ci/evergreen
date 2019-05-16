@@ -9,8 +9,15 @@ mciModule.controller('DistrosCtrl', function($scope, $window, $location, $anchor
   for (var i = 0; i < $scope.distros.length; i++) {
     $scope.distros[i].pool_size = $scope.distros[i].pool_size || 0;
     $scope.distros[i].planner_settings = $scope.distros[i].planner_settings || {};
-    $scope.distros[i].planner_settings.minimum_hosts = $scope.distros[i].planner_settings.minimum_hosts || 0;
     $scope.distros[i].planner_settings.version = $scope.distros[i].planner_settings.version || "legacy";
+    $scope.distros[i].planner_settings.minimum_hosts = $scope.distros[i].planner_settings.minimum_hosts || 0;
+    $scope.distros[i].planner_settings.maximum_hosts = $scope.distros[i].planner_settings.maximum_hosts || 0;
+    $scope.distros[i].planner_settings.target_time = $scope.distros[i].planner_settings.target_time || 0;
+    $scope.distros[i].planner_settings.acceptable_host_idle_time = $scope.distros[i].planner_settings.acceptable_host_idle_time || 0;
+    $scope.distros[i].planner_settings.patch_zipper_factor = $scope.distros[i].planner_settings.patch_zipper_factor || 0;
+    $scope.distros[i].planner_settings.group_versions = $scope.distros[i].planner_settings.group_versions || false;
+    $scope.distros[i].planner_settings.mainline_first = $scope.distros[i].planner_settings.mainline_first || false;
+    $scope.distros[i].planner_settings.patch_first = $scope.distros[i].planner_settings.patch_first || false;
     $scope.distros[i].finder_settings = $scope.distros[i].finder_settings || {};
     $scope.distros[i].finder_settings.version = $scope.distros[i].finder_settings.version || "legacy";
     $scope.distros[i].bootstrap_method = $scope.distros[i].bootstrap_method || 'legacy-ssh';
