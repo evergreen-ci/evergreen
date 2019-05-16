@@ -159,9 +159,6 @@ func (q *sqsFIFOQueue) Started() bool {
 // Used to mark a Job complete and remove it from the pending
 // work of the queue.
 func (q *sqsFIFOQueue) Complete(ctx context.Context, job amboy.Job) {
-	if ctx.Err() != nil {
-		return
-	}
 	name := job.ID()
 	q.mutex.Lock()
 	defer q.mutex.Unlock()

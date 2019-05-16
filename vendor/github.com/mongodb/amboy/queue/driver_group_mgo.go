@@ -54,7 +54,7 @@ func NewMgoGroupDriver(name string, opts MongoDBOptions, group string) Driver {
 func OpenNewMgoGroupDriver(ctx context.Context, name string, opts MongoDBOptions, group string, session *mgo.Session) (Driver, error) {
 	d := NewMgoGroupDriver(name, opts, group).(*mgoGroupDriver)
 
-	if err := d.start(ctx, session.Clone()); err != nil {
+	if err := d.start(ctx, session.Copy()); err != nil {
 		return nil, errors.Wrap(err, "problem starting driver")
 	}
 
@@ -477,17 +477,7 @@ func (d *mgoGroupDriver) Stats(_ context.Context) amboy.QueueStats {
 	session, jobs := d.getJobsCollection()
 	defer session.Close()
 
-	total, err := jobs.Find(bson.M{"group": d.group}).Count()
-	grip.Warning(message.WrapError(err, message.Fields{
-		"id":         d.instanceID,
-		"group":      d.group,
-		"service":    "amboy.queue.group.mgo",
-		"collection": jobs.Name,
-		"operation":  "queue stats",
-		"message":    "problem all jobs",
-	}))
-
-	pending, err := jobs.Find(bson.M{"group": d.group, "status.completed": false}).Count()
+	pending, err := jobs.Find(bson.M{"group": d.group, "status.completed": false, "status.in_prog": false}).Count()
 	grip.Warning(message.WrapError(err, message.Fields{
 		"id":         d.instanceID,
 		"service":    "amboy.queue.group.mgo",
@@ -506,11 +496,20 @@ func (d *mgoGroupDriver) Stats(_ context.Context) amboy.QueueStats {
 		"operation":  "queue stats",
 		"message":    "problem counting locked jobs",
 	}))
+	numCompleted, err := jobs.Find(bson.M{"group": d.group, "status.completed": true}).Count()
+	grip.Warning(message.WrapError(err, message.Fields{
+		"id":         d.instanceID,
+		"group":      d.group,
+		"service":    "amboy.queue.group.mgo",
+		"collection": jobs.Name,
+		"operation":  "queue stats",
+		"message":    "problem counting locked jobs",
+	}))
 
 	return amboy.QueueStats{
-		Total:     total,
+		Total:     pending + numCompleted + numLocked,
 		Pending:   pending,
-		Completed: total - pending,
+		Completed: numCompleted,
 		Running:   numLocked,
 	}
 }
