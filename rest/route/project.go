@@ -391,11 +391,6 @@ func (h *projectIDGetHandler) Run(ctx context.Context) gimlet.Responder {
 		return gimlet.MakeJSONErrorResponder(err)
 	}
 
-	resp := gimlet.NewResponseBuilder()
-	if err = resp.SetFormat(gimlet.JSON); err != nil {
-		return gimlet.MakeJSONErrorResponder(err)
-	}
-
 	projectModel := &model.APIProject{}
 
 	if err = projectModel.BuildFromService(project); err != nil {

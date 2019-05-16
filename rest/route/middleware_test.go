@@ -89,6 +89,42 @@ func TestPrefetchProject(t *testing.T) {
 	})
 }
 
+func TestNewProjectAdminMiddleware(t *testing.T) {
+	assert := assert.New(t)
+
+	ctx := context.Background()
+	opCtx := model.Context{}
+	opCtx.ProjectRef = &model.ProjectRef{
+		Private:    true,
+		Identifier: "orchard",
+		Owner:      "evergreen-ci",
+		Repo:       "evergreen",
+		Branch:     "master",
+		Admins:     []string{"johnny.appleseed"},
+	}
+
+	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "giving.tree"})
+	r, err := http.NewRequest("GET", "/projects/orchard", nil)
+	assert.NoError(err)
+	assert.NotNil(r)
+
+	r = r.WithContext(context.WithValue(ctx, RequestContext, &opCtx))
+
+	mockConnector := &data.MockConnector{}
+	mw := NewProjectAdminMiddleware(mockConnector)
+	rw := httptest.NewRecorder()
+
+	mw.ServeHTTP(rw, r, func(rw http.ResponseWriter, r *http.Request) {})
+	assert.Equal(http.StatusUnauthorized, rw.Code)
+
+	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "johnny.appleseed"})
+	r = r.WithContext(context.WithValue(ctx, RequestContext, &opCtx))
+
+	rw = httptest.NewRecorder()
+	mw.ServeHTTP(rw, r, func(rw http.ResponseWriter, r *http.Request) {})
+	assert.Equal(http.StatusOK, rw.Code)
+}
+
 func TestCommitQueueItemOwnerMiddlewarePROwner(t *testing.T) {
 	assert := assert.New(t)
 
