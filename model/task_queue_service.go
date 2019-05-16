@@ -319,6 +319,8 @@ func (t *taskDistroDispatchService) nextTaskGroupTask(unit schedulableUnit) *Tas
 	return nil
 }
 
+// isBlockedSingleHostTaskGroup checks if the task is running in a 1-host task group, has finished,
+// and did not succeed. But rely on EndTask to block later tasks.
 func isBlockedSingleHostTaskGroup(unit schedulableUnit, dbTask *task.Task) bool {
 	return unit.maxHosts == 1 && !util.IsZeroTime(dbTask.FinishTime) && dbTask.Status != evergreen.TaskSucceeded
 }

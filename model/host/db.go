@@ -137,7 +137,7 @@ func AllIdleEphemeral() ([]Host, error) {
 	return Find(query)
 }
 
-// IdleEphemeralGroupedByDistroId groups and collates the following grouped by {distro.Id: 1}:
+// IdleEphemeralGroupedByDistroId groups and collates the following by distro.Id:
 // - []host.Host of ephemeral hosts without containers which having no running task, ordered by {host.CreationTime: 1}
 // - the total number of ephemeral hosts with status: evergreen.HostRunning
 func IdleEphemeralGroupedByDistroID() ([]IdleHostsByDistroID, error) {
