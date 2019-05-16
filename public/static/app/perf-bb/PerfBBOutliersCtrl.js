@@ -42,7 +42,7 @@ mciModule.controller('PerfBBOutliersCtrl', function (
   vm.mode = {
     options: [{
       id: 'outliers',
-      name: 'Outliers',
+      name: 'All',
     }, {
       id: 'marked',
       name: 'Marked',
@@ -611,7 +611,7 @@ mciModule.controller('PerfBBOutliersCtrl', function (
 
     hydrateData(results) {
       const {outliers, mutes, marks} = results;
-      this.vm.gridOptions.data = _.each(outliers, (doc) => {
+      let data = _.chain(outliers).each(doc => {
         doc._buildId = EvgUtil.generateBuildId({
           project: this.project,
           revision: doc.revision,
@@ -627,7 +627,18 @@ mciModule.controller('PerfBBOutliersCtrl', function (
         }
         const mark = _.findWhere(marks, matcher);
         doc.marked = !!mark;
+        return doc;
       });
+
+      if (this.mode === 'muted') {
+        data = data.filter(doc => doc.muted);
+      }
+
+      if(this.mode === 'marked') {
+        data = data.filter(doc => doc.marked);
+      }
+
+      this.vm.gridOptions.data = data.value();
       return this.vm.gridOptions.data;
     }
 
