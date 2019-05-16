@@ -357,11 +357,11 @@ endif
 #  targets to run any tests in the top-level package
 $(buildDir)/:
 	mkdir -p $@
-$(buildDir)/output.%.test:$(buildDir)/ .FORCE
-	@mkdir -p $(tmpDir)
+$(tmpDir)/:$(buildDir)
+	mkdir -p $@
+$(buildDir)/output.%.test:$(tmpDir)/ .FORCE
 	$(testRunEnv) $(gobin) test $(testArgs) ./$(if $(subst $(name),,$*),$(subst -,/,$*),) 2>&1 | tee $@
-$(buildDir)/output.%.coverage:$(buildDir)/ .FORCE
-	@mkdir -p $(tmpDir)
+$(buildDir)/output.%.coverage:$(tmpDir)/ .FORCE
 	$(testRunEnv) $(gobin) test $(testArgs) ./$(if $(subst $(name),,$*),$(subst -,/,$*),) -covermode=count -coverprofile $@ | tee $(buildDir)/output.$*.test
 	@-[ -f $@ ] && go tool cover -func=$@ | sed 's%$(projectPath)/%%' | column -t
 #  targets to generate gotest output from the linter.
