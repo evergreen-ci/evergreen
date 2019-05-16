@@ -119,6 +119,22 @@ func TestVerifyTaskDependencies(t *testing.T) {
 			}
 			So(verifyTaskDependencies(project), ShouldResemble, ValidationErrors{})
 		})
+		Convey("hiding a nonexistent dependency in a task group is found", func() {
+			p := &model.Project{
+				Tasks: []model.ProjectTask{
+					{Name: "1"},
+					{Name: "2"},
+					{Name: "3", DependsOn: []model.TaskUnitDependency{{Name: "nonexistent"}}},
+				},
+				TaskGroups: []model.TaskGroup{
+					{Name: "tg", Tasks: []string{"3"}},
+				},
+				BuildVariants: []model.BuildVariant{
+					{Name: "v1", Tasks: []model.BuildVariantTaskUnit{{Name: "1"}, {Name: "2"}, {Name: "tg", IsGroup: true}}},
+				},
+			}
+			So(verifyTaskDependencies(p)[0].Message, ShouldResemble, "project '' contains a non-existent task name 'nonexistent' in dependencies for task '3'")
+		})
 	})
 }
 
@@ -615,6 +631,22 @@ func TestVerifyTaskRequirements(t *testing.T) {
 				},
 			}
 			So(verifyTaskRequirements(p), ShouldResemble, ValidationErrors{})
+		})
+		Convey("hiding a nonexistent requirement in a task group is found", func() {
+			p := &model.Project{
+				Tasks: []model.ProjectTask{
+					{Name: "1"},
+					{Name: "2"},
+					{Name: "3", Requires: []model.TaskUnitRequirement{{Name: "nonexistent"}}},
+				},
+				TaskGroups: []model.TaskGroup{
+					{Name: "tg", Tasks: []string{"3"}},
+				},
+				BuildVariants: []model.BuildVariant{
+					{Name: "v1", Tasks: []model.BuildVariantTaskUnit{{Name: "1"}, {Name: "2"}, {Name: "tg", IsGroup: true}}},
+				},
+			}
+			So(verifyTaskRequirements(p)[0].Message, ShouldResemble, "task 'tg' requires non-existent task 'nonexistent'")
 		})
 	})
 }
