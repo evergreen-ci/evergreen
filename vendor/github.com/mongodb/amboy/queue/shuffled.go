@@ -302,6 +302,9 @@ func (q *shuffledLocal) Next(ctx context.Context) amboy.Job {
 // the context is canceled after calling Complete but before it
 // executes, no change occurs.
 func (q *shuffledLocal) Complete(ctx context.Context, j amboy.Job) {
+	if ctx.Err() != nil {
+		return
+	}
 	q.operations <- func(
 		pending map[string]amboy.Job,
 		completed map[string]amboy.Job,

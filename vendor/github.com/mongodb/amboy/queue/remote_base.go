@@ -102,6 +102,9 @@ func (q *remoteBase) Started() bool {
 // Complete takes a context and, asynchronously, marks the job
 // complete, in the queue.
 func (q *remoteBase) Complete(ctx context.Context, j amboy.Job) {
+	if ctx.Err() != nil {
+		return
+	}
 	const retryInterval = time.Second
 	timer := time.NewTimer(0)
 	defer timer.Stop()

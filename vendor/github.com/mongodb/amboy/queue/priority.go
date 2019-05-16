@@ -158,6 +158,9 @@ func (q *priorityLocalQueue) Stats() amboy.QueueStats {
 // Complete marks a job complete. The operation is asynchronous in
 // this implementation.
 func (q *priorityLocalQueue) Complete(ctx context.Context, j amboy.Job) {
+	if ctx.Err() != nil {
+		return
+	}
 	id := j.ID()
 	grip.Debugf("marking job (%s) as complete", id)
 	q.counters.Lock()

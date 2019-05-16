@@ -143,6 +143,34 @@ func (s *RemoteUnorderedSuite) TestJobPutIntoQueueFetchableViaGetMethod() {
 	}
 }
 
+func (s *RemoteUnorderedSuite) TestJobsDoNotCompleteWithCanceledQueueContext() {
+	s.NoError(s.queue.SetDriver(s.driver))
+	s.NotNil(s.queue.Driver())
+
+	ctx, cancel := context.WithCancel(context.Background())
+	s.NoError(s.queue.Start(ctx))
+
+	j1 := job.NewShellJob("echo foo", "")
+	name := j1.ID()
+	s.NoError(s.queue.Put(j1))
+	amboy.WaitCtxInterval(ctx, s.queue, 10*time.Millisecond)
+	fetchedJob, ok := s.queue.Get(name)
+	nj := fetchedJob.(*job.ShellJob)
+	s.True(ok)
+	s.True(nj.Status().Completed, "before canceling the context, a job will complete")
+
+	cancel()
+
+	j2 := job.NewShellJob("echo foo", "")
+	name = j2.ID()
+	s.NoError(s.queue.Put(j2))
+	amboy.WaitCtxInterval(ctx, s.queue, 10*time.Millisecond)
+	fetchedJob, ok = s.queue.Get(name)
+	nj = fetchedJob.(*job.ShellJob)
+	s.True(ok)
+	s.False(nj.Status().Completed, "after canceling the context, a job will not complete")
+}
+
 func (s *RemoteUnorderedSuite) TestGetMethodHandlesMissingJobs() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()

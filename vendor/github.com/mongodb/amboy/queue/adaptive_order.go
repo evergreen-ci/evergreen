@@ -220,6 +220,9 @@ func (q *adaptiveLocalOrdering) Next(ctx context.Context) amboy.Job {
 }
 
 func (q *adaptiveLocalOrdering) Complete(ctx context.Context, j amboy.Job) {
+	if ctx.Err() != nil {
+		return
+	}
 	wait := make(chan struct{})
 	q.operations <- func(ctx context.Context, items *adaptiveOrderItems, fixed *fixedStorage) {
 		id := j.ID()

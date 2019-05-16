@@ -518,7 +518,17 @@ RETRY:
 
 func (d *mongoGroupDriver) Stats(ctx context.Context) amboy.QueueStats {
 	coll := d.getCollection()
-	pending, err := coll.CountDocuments(ctx, bson.M{"group": d.group, "status.completed": false, "status.in_prog": false})
+	total, err := coll.CountDocuments(ctx, bson.M{"group": d.group})
+	grip.Warning(message.WrapError(err, message.Fields{
+		"id":         d.instanceID,
+		"group":      d.group,
+		"service":    "amboy.queue.group.mongo",
+		"collection": coll.Name(),
+		"operation":  "queue stats",
+		"message":    "problem counting all jobs jobs",
+	}))
+
+	pending, err := coll.CountDocuments(ctx, bson.M{"group": d.group, "status.completed": false})
 	grip.Warning(message.WrapError(err, message.Fields{
 		"id":         d.instanceID,
 		"group":      d.group,
@@ -538,20 +548,10 @@ func (d *mongoGroupDriver) Stats(ctx context.Context) amboy.QueueStats {
 		"message":    "problem counting locked jobs",
 	}))
 
-	numCompleted, err := coll.CountDocuments(ctx, bson.M{"group": d.group, "status.completed": true})
-	grip.Warning(message.WrapError(err, message.Fields{
-		"id":         d.instanceID,
-		"group":      d.group,
-		"service":    "amboy.queue.group.mongo",
-		"collection": coll.Name(),
-		"operation":  "queue stats",
-		"message":    "problem counting completed jobs",
-	}))
-
 	return amboy.QueueStats{
-		Total:     int(pending + numCompleted + numLocked),
+		Total:     int(total),
 		Pending:   int(pending),
-		Completed: int(numCompleted),
+		Completed: int(total - pending),
 		Running:   int(numLocked),
 	}
 }

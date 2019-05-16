@@ -239,6 +239,9 @@ func (q *unorderedLocal) Stats() amboy.QueueStats {
 // Complete marks a job as complete, moving it from the in progress
 // state to the completed state. This operation is asynchronous and non-blocking.
 func (q *unorderedLocal) Complete(ctx context.Context, j amboy.Job) {
+	if ctx.Err() != nil {
+		return
+	}
 	go func() {
 		grip.Debugf("marking job (%s) as complete", j.ID())
 		q.tasks.Lock()
