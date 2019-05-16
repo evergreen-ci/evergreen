@@ -28,16 +28,29 @@ type GroupCache interface {
 // default TTL setting, and supports cloning and closing operations.
 func NewGroupCache(ttl time.Duration) GroupCache {
 	return &cacheImpl{
-		ttl: ttl,
-		mu:  &sync.RWMutex{},
-		q:   map[string]cacheItem{},
+		ttl:  ttl,
+		mu:   &sync.RWMutex{},
+		q:    map[string]cacheItem{},
+		hook: func(_ context.Context, _ string) error { return nil },
+	}
+}
+
+// NewCacheWithCleanupHook defines a cache but allows implementations
+// to add additional cleanup logic to the prune and Close operations.
+func NewCacheWithCleanupHook(ttl time.Duration, hook func(ctx context.Context, id string) error) GroupCache {
+	return &cacheImpl{
+		ttl:  ttl,
+		hook: hook,
+		mu:   &sync.RWMutex{},
+		q:    map[string]cacheItem{},
 	}
 }
 
 type cacheImpl struct {
-	ttl time.Duration
-	mu  *sync.RWMutex
-	q   map[string]cacheItem
+	ttl  time.Duration
+	mu   *sync.RWMutex
+	q    map[string]cacheItem
+	hook func(ctx context.Context, id string) error
 }
 
 type cacheItem struct {
@@ -174,9 +187,9 @@ func (c *cacheImpl) Prune(ctx context.Context) error {
 							defer close(wait)
 
 							item.q.Runner().Close(ctx)
-
 							c.mu.Lock()
 							defer c.mu.Unlock()
+							catcher.Add(c.hook(ctx, item.name))
 							delete(c.q, item.name)
 						}()
 						select {

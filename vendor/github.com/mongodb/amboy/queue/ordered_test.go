@@ -268,17 +268,17 @@ func (s *OrderedQueueSuite) TestPassedIsCompletedButDoesNotRun() {
 
 	s.NoError(s.queue.Start(ctx))
 
-	amboy.WaitCtxInterval(ctx, s.queue, 250*time.Millisecond)
+	amboy.WaitCtxInterval(ctx, s.queue, 10*time.Millisecond)
 
 	j1Refreshed, ok1 := s.queue.Get(j1.ID())
 	j2Refreshed, ok2 := s.queue.Get(j2.ID())
 	if s.True(ok1) {
 		stat := j1Refreshed.Status()
-		s.False(stat.Completed || stat.InProgress)
+		s.False(stat.Completed)
 	}
 	if s.True(ok2) {
 		stat := j2Refreshed.Status()
-		s.True(stat.Completed || stat.InProgress, "%+v", j2Refreshed.Status())
+		s.True(stat.Completed)
 	}
 }
 

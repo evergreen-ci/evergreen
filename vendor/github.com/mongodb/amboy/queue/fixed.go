@@ -184,6 +184,9 @@ func (q *limitedSizeLocal) Stats() amboy.QueueStats {
 
 // Complete marks a job complete in the queue.
 func (q *limitedSizeLocal) Complete(ctx context.Context, j amboy.Job) {
+	if ctx.Err() != nil {
+		return
+	}
 	q.mu.Lock()
 	defer q.mu.Unlock()
 

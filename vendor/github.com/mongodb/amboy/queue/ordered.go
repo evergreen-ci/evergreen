@@ -61,7 +61,7 @@ type depGraphOrderedLocal struct {
 // argument is passed to a default pool.SimplePool object.
 func NewLocalOrdered(workers int) amboy.Queue {
 	q := &depGraphOrderedLocal{
-		channel: make(chan amboy.Job, 100),
+		channel: make(chan amboy.Job, workers*10),
 	}
 	q.tasks.m = make(map[string]amboy.Job)
 	q.tasks.ids = make(map[string]int64)
@@ -365,6 +365,9 @@ func (q *depGraphOrderedLocal) jobDispatch(ctx context.Context, orderedJobs []gr
 
 // Complete marks a job as complete in the context of this queue instance.
 func (q *depGraphOrderedLocal) Complete(ctx context.Context, j amboy.Job) {
+	if ctx.Err() != nil {
+		return
+	}
 	grip.Debugf("marking job (%s) as complete", j.ID())
 	q.mutex.Lock()
 	defer q.mutex.Unlock()
