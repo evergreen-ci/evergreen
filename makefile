@@ -355,9 +355,9 @@ else
 testArgs += -timeout=10m
 endif
 #  targets to run any tests in the top-level package
-$(buildDir)/:
+$(buildDir):
 	mkdir -p $@
-$(tmpDir)/:$(buildDir)
+$(tmpDir):$(buildDir)
 	mkdir -p $@
 $(buildDir)/output.%.test:$(tmpDir)/ .FORCE
 	$(testRunEnv) $(gobin) test $(testArgs) ./$(if $(subst $(name),,$*),$(subst -,/,$*),) 2>&1 | tee $@
