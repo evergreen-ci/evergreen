@@ -2,16 +2,10 @@ package jasper
 
 // TODO: implement
 
-type freebsdProcessTracker struct{}
-
-func newProcessTracker(name string) (processTracker, error) {
-	return &freebsdProcessTracker{}, nil
+type freebsdProcessTracker struct {
+	*processTrackerBase
 }
 
-func (_ *freebsdProcessTracker) add(pid uint) error {
-	return nil
-}
-
-func (_ *freebsdProcessTracker) cleanup() error {
-	return nil
+func NewProcessTracker(name string) (ProcessTracker, error) {
+	return &freebsdProcessTracker{processTrackerBase: &processTrackerBase{Name: name}}, nil
 }

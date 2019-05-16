@@ -58,10 +58,7 @@ func newBasicProcess(ctx context.Context, opts *CreateOptions) (Process, error) 
 	p.info.ID = p.id
 	p.info.Options = p.opts
 	p.info.Host, _ = os.Hostname()
-
-	p.info.Options.started = true
-	p.opts.started = true
-	opts.started = true
+	p.info.IsRunning = true
 
 	go p.transition(ctx, cmd)
 

@@ -33,7 +33,6 @@ type CreateOptions struct {
 	StandardInput    io.Reader         `json:"-"`
 
 	closers []func() error
-	started bool
 }
 
 // MakeCreationOptions takes a command string and returns an equivalent
@@ -120,9 +119,7 @@ func (opts *CreateOptions) Resolve(ctx context.Context) (*exec.Cmd, error) {
 		env = os.Environ()
 	}
 
-	for k, v := range opts.Environment {
-		env = append(env, fmt.Sprintf("%s=%s", k, v))
-	}
+	env = append(env, opts.getEnvSlice()...)
 
 	var args []string
 	if len(opts.Args) > 1 {
@@ -173,6 +170,16 @@ func (opts *CreateOptions) Resolve(ctx context.Context) (*exec.Cmd, error) {
 	})
 
 	return cmd, nil
+}
+
+// getEnvSlice returns the (CreateOptions).Environment as a slice of environment
+// variables in the form "key=value".
+func (opts *CreateOptions) getEnvSlice() []string {
+	env := []string{}
+	for k, v := range opts.Environment {
+		env = append(env, fmt.Sprintf("%s=%s", k, v))
+	}
+	return env
 }
 
 // AddEnvVar adds an environment variable to the CreateOptions struct on which
@@ -237,7 +244,6 @@ func (opts *CreateOptions) Copy() *CreateOptions {
 	optsCopy.Output = *opts.Output.Copy()
 
 	optsCopy.closers = nil
-	optsCopy.started = false
 
 	return &optsCopy
 }

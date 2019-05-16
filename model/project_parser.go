@@ -39,6 +39,7 @@ import (
 type parserProject struct {
 	Enabled         bool                       `yaml:"enabled,omitempty"`
 	Stepback        bool                       `yaml:"stepback,omitempty"`
+	IgnorePreError  bool                       `yaml:"ignore_pre_err,omitempty"`
 	BatchTime       int                        `yaml:"batchtime,omitempty"`
 	Owner           string                     `yaml:"owner,omitempty"`
 	Repo            string                     `yaml:"repo,omitempty"`
@@ -452,6 +453,7 @@ func translateProject(pp *parserProject) (*Project, []error) {
 	proj := &Project{
 		Enabled:         pp.Enabled,
 		Stepback:        pp.Stepback,
+		IgnorePreError:  pp.IgnorePreError,
 		BatchTime:       pp.BatchTime,
 		Owner:           pp.Owner,
 		Repo:            pp.Repo,

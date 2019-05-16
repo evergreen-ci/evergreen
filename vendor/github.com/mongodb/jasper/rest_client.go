@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"net"
 	"net/http"
 	"strings"
 	"syscall"
@@ -16,9 +17,22 @@ import (
 	"github.com/pkg/errors"
 )
 
+// NewRESTClient creates a REST client that connecst to the given address
+// running the Jasper REST service.
+func NewRESTClient(addr net.Addr) RemoteClient {
+	return &restClient{
+		prefix: fmt.Sprintf("http://%s/jasper/v1", addr.String()),
+		client: http.DefaultClient,
+	}
+}
+
 type restClient struct {
 	prefix string
 	client *http.Client
+}
+
+func (c *restClient) CloseConnection() error {
+	return nil
 }
 
 func (c *restClient) getURL(route string, args ...interface{}) string {

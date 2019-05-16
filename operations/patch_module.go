@@ -18,14 +18,10 @@ func PatchSetModule() cli.Command {
 		Name:    "patch-set-module",
 		Aliases: []string{"set-module"},
 		Usage:   "update or add module to an existing patch",
-		Flags: mergeFlagSlices(addPatchIDFlag(), addPathFlag(), addModuleFlag(), addYesFlag(
+		Flags: mergeFlagSlices(addPatchIDFlag(), addPathFlag(), addModuleFlag(), addYesFlag(), addRefFlag(), addUncommittedChangesFlag(
 			cli.BoolFlag{
 				Name:  largeFlagName,
 				Usage: "enable submitting larger patches (>16MB)",
-			},
-			cli.StringFlag{
-				Name:  refFlagName,
-				Usage: "diff with `REF`, ignoring working tree changes",
 			})),
 		Before: mergeBeforeFuncs(requirePatchIDFlag, requireModuleFlag),
 		Action: func(c *cli.Context) error {
@@ -36,6 +32,7 @@ func PatchSetModule() cli.Command {
 			skipConfirm := c.Bool(yesFlagName)
 			project := c.String(projectFlagName)
 			ref := c.String(refFlagName)
+			uncommittedOk := c.Bool(uncommittedChangesFlag)
 			args := c.Args()
 
 			ctx, cancel := context.WithCancel(context.Background())
@@ -44,6 +41,15 @@ func PatchSetModule() cli.Command {
 			conf, err := NewClientSettings(confPath)
 			if err != nil {
 				return errors.Wrap(err, "problem loading configuration")
+			}
+
+			uncommittedChanges, err := gitUncommittedChanges()
+			if err != nil {
+				return errors.Wrap(err, "can't test for uncommitted changes")
+			}
+
+			if (!uncommittedOk && !conf.UncommittedChanges) && uncommittedChanges {
+				grip.Infof("Uncommitted changes are omitted from patches by default.\nUse the '--%s, -u' flag or set 'patch_uncommitted_changes: true' in your ~/.evergreen.yml file to include uncommitted changes.", uncommittedChangesFlag)
 			}
 
 			client := conf.GetRestCommunicator(ctx)
@@ -72,6 +78,10 @@ func PatchSetModule() cli.Command {
 				}
 
 				return errors.Errorf("could not set specified module: \"%s\"", module)
+			}
+
+			if uncommittedOk || conf.UncommittedChanges {
+				ref = ""
 			}
 
 			// diff against the module branch.

@@ -178,10 +178,8 @@ func (c *BuildCatalog) Get(version, edition, target, arch string, debug bool) (s
 					return "", errors.Wrap(err, "could not parse version for comparison")
 				}
 				if parsedVersion.IsGreaterThanOrEqualTo(macosVersion) {
-					grip.Debug("kim: renamed target to macos while building catalog")
 					target = "macos"
 				} else {
-					grip.Debug("kim: renamed target to osx while building catalog")
 					target = "osx"
 				}
 			} else {

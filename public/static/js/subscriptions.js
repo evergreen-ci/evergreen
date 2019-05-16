@@ -266,11 +266,17 @@ function subCtrl($scope, $mdDialog, mciUserSettingsService) {
           return;
         }
         $scope.bindTrigger();
+        // The subscription's trigger_data fields are now set to their default values (if declared) via bindTrigger().
         _.each($scope.c.subscription.regex_selectors, function(selector){
           var typeLabel = $scope.findRegexTypeLabel(selector.type);
           $scope.regexSelectors[selector.type] = {type_label: typeLabel.type_label, data: selector.data};
         });
-        $scope.extraData = $scope.c.subscription.trigger_data;
+        // If there is an explicit value for a trigger_data field, its default value is overridden.
+        if($scope.c.subscription.trigger_data) {
+           _.each($scope.c.subscription.trigger_data, function(value, key) {
+             $scope.extraData[key] = value;
+           });
+        };
     }
 
     $scope.loadFromSubscription();
@@ -341,11 +347,11 @@ function addProjectSelectors(subscription, project) {
 }
 
 function validateDuration(duration) {
-  if (!Number.isInteger(+duration)) {
-    return duration + " must be an integer";
+  if (duration === "" || !Number.isInteger(+duration)) {
+    return "A duration must be an integer: " + duration;
   }
   if (+duration < 0) {
-    return duration + " cannot be negative";
+    return "A duration cannot be negative: " + duration;
   }
   return "";
 }

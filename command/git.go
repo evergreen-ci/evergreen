@@ -436,6 +436,13 @@ func (c *gitFetchProject) Execute(ctx context.Context,
 			Directory(filepath.ToSlash(filepath.Join(conf.WorkDir, c.Directory))).
 			SetOutputSender(level.Info, logger.Task().GetSender()).SetErrorWriter(stdErr).Run(ctx)
 
+		errOutput := stdErr.String()
+		if errOutput != "" {
+			if opts.token != "" {
+				errOutput = strings.Replace(errOutput, opts.token, "[redacted oauth token]", -1)
+			}
+			logger.Execution().Info(errOutput)
+		}
 		if err != nil {
 			return errors.Wrap(err, "problem with git command")
 		}
