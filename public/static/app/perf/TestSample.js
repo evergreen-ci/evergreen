@@ -33,7 +33,7 @@ mciModule.factory('TestSample', function() {
     // Returns only the keys that have results stored in them
     this.resultKeys = function(testName){
       var testInfo = this.resultForTest(testName);
-      return _.pluck(_(testInfo.results).pairs().filter(function(x){return typeof(x[1]) == "object"}), 0)
+      return _.pluck(_(testInfo.results).pairs().filter(function(x){return typeof(x[1]) == "object" && "ops_per_sec" in x[1]}), 0)
     }
 
     this.threadsVsOps = function(testName) {
@@ -61,7 +61,7 @@ mciModule.factory('TestSample', function() {
       );
     }
 
-    this.maxThroughputForTest = function(testName, metric){
+    this.maxThroughputForTest = function(testName){
       if(!_.has(this._maxes, testName)){
         var d = this.resultForTest(testName);
         if(!d){
@@ -70,7 +70,7 @@ mciModule.factory('TestSample', function() {
         this._maxes[testName] = _.max(
           _.filter(
             _.pluck(
-              _.values(d.results), metric
+              _.values(d.results), 'ops_per_sec'
             ), numericFilter
           )
         );
