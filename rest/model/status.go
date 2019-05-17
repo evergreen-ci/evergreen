@@ -68,73 +68,19 @@ func (s *APIStatList) BuildFromService(h interface{}) error {
 	return nil
 }
 
-type APIRecentTaskStatsList struct {
-	Total              APIStatList `json:"total"`
-	Inactive           APIStatList `json:"inactive"`
-	Unstarted          APIStatList `json:"unstarted"`
-	Started            APIStatList `json:"started"`
-	Succeeded          APIStatList `json:"succeeded"`
-	Failed             APIStatList `json:"failed"`
-	SetupFailed        APIStatList `json:"setup-failed"`
-	SystemFailed       APIStatList `json:"system-failed"`
-	SystemUnresponsive APIStatList `json:"system-unresponsive"`
-	SystemTimedOut     APIStatList `json:"system-timed-out"`
-	TestTimedOut       APIStatList `json:"test-timed-out"`
-}
+type APIRecentTaskStatsList map[string][]APIStat
 
 func (s *APIRecentTaskStatsList) BuildFromService(h interface{}) error {
 	catcher := grip.NewBasicCatcher()
 	switch v := h.(type) {
-	case task.ResultCountList:
-		apiList := APIStatList{}
-		catcher.Add(apiList.BuildFromService(v.Total))
-		s.Total = apiList
-
-		apiList = APIStatList{}
-		catcher.Add(apiList.BuildFromService(v.Inactive))
-		s.Inactive = apiList
-
-		apiList = APIStatList{}
-		catcher.Add(apiList.BuildFromService(v.Unstarted))
-		s.Unstarted = apiList
-
-		apiList = APIStatList{}
-		catcher.Add(apiList.BuildFromService(v.Started))
-		s.Started = apiList
-
-		apiList = APIStatList{}
-		catcher.Add(apiList.BuildFromService(v.Succeeded))
-		s.Succeeded = apiList
-
-		apiList = APIStatList{}
-		catcher.Add(apiList.BuildFromService(v.Failed))
-		s.Failed = apiList
-
-		apiList = APIStatList{}
-		catcher.Add(apiList.BuildFromService(v.SetupFailed))
-		s.SetupFailed = apiList
-
-		apiList = APIStatList{}
-		catcher.Add(apiList.BuildFromService(v.SystemFailed))
-		s.SystemFailed = apiList
-
-		apiList = APIStatList{}
-		catcher.Add(apiList.BuildFromService(v.SystemUnresponsive))
-		s.SystemUnresponsive = apiList
-
-		apiList = APIStatList{}
-		catcher.Add(apiList.BuildFromService(v.SetupFailed))
-		s.SetupFailed = apiList
-
-		apiList = APIStatList{}
-		catcher.Add(apiList.BuildFromService(v.Unstarted))
-		s.SystemTimedOut = apiList
-
-		apiList = APIStatList{}
-		catcher.Add(apiList.BuildFromService(v.TestTimedOut))
-		s.TestTimedOut = apiList
+	case map[string][]task.Stat:
+		for status, stat := range v {
+			list := APIStatList{}
+			catcher.Add(list.BuildFromService(stat))
+			(*s)[status] = list
+		}
 	default:
-		return errors.Errorf("incorrect type when converting result count list (%T)", v)
+		return errors.Errorf("incorrect type when converting APIRecentTaskStatsList (%T)", v)
 	}
 
 	return catcher.Resolve()

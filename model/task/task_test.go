@@ -1080,13 +1080,14 @@ func TestUnscheduleStaleUnderwaterTasks(t *testing.T) {
 	assert.EqualValues(-1, dbTask.Priority)
 }
 
-func TestGetRecentTaskStatsList(t *testing.T) {
+func TestGetRecentTaskStats(t *testing.T) {
 	assert := assert.New(t)
 	assert.NoError(db.ClearCollections(Collection))
 	tasks := []Task{
 		Task{Id: "t1", Status: evergreen.TaskSucceeded, DistroId: "d1", FinishTime: time.Now()},
 		Task{Id: "t2", Status: evergreen.TaskSucceeded, DistroId: "d1", FinishTime: time.Now()},
 		Task{Id: "t3", Status: evergreen.TaskSucceeded, DistroId: "d1", FinishTime: time.Now()},
+		Task{Id: "t4", Status: evergreen.TaskSucceeded, DistroId: "d2", FinishTime: time.Now()},
 		Task{Id: "t5", Status: evergreen.TaskFailed, DistroId: "d1", FinishTime: time.Now()},
 		Task{Id: "t6", Status: evergreen.TaskFailed, DistroId: "d1", FinishTime: time.Now()},
 		Task{Id: "t7", Status: evergreen.TaskFailed, DistroId: "d2", FinishTime: time.Now()},
@@ -1098,43 +1099,45 @@ func TestGetRecentTaskStatsList(t *testing.T) {
 	list, err := GetRecentTaskStats(time.Minute, DistroIdKey)
 	assert.NoError(err)
 
-	// List sorted in ascending order by count
-	assert.Equal("d1", list[0].Pair.Name)
-	assert.Equal(evergreen.TaskSucceeded, list[0].Pair.Status)
-	assert.Equal(3, list[0].Count)
+	// Two statuses
+	assert.Len(list, 2)
+	// Two distros to report status for
+	assert.Len(list[0].Stats, 2)
 
-	assert.Equal("d1", list[1].Pair.Name)
-	assert.Equal(evergreen.TaskFailed, list[1].Pair.Status)
-	assert.Equal(2, list[1].Count)
-
-	assert.Equal("d2", list[2].Pair.Name)
-	assert.Equal(evergreen.TaskFailed, list[2].Pair.Status)
-	assert.Equal(1, list[2].Count)
+	for _, status := range list {
+		if status.Status == evergreen.TaskSucceeded {
+			// Sorted order
+			assert.Equal("d1", status.Stats[0].Name)
+			assert.Equal(3, status.Stats[0].Count)
+			assert.Equal("d2", status.Stats[1].Name)
+			assert.Equal(1, status.Stats[1].Count)
+		}
+		if status.Status == evergreen.TaskFailed {
+			// Sorted order
+			assert.Equal("d1", status.Stats[0].Name)
+			assert.Equal(2, status.Stats[0].Count)
+			assert.Equal("d2", status.Stats[1].Name)
+			assert.Equal(1, status.Stats[1].Count)
+		}
+	}
 }
 
 func TestGetResultCountList(t *testing.T) {
 	assert := assert.New(t)
 	statsList := []StatusItem{
-		{Pair: StatusPair{Status: evergreen.TaskSucceeded, Name: "d1"}, Count: 3},
-		{Pair: StatusPair{Status: evergreen.TaskSucceeded, Name: "d2"}, Count: 2},
-		{Pair: StatusPair{Status: evergreen.TaskFailed, Name: "d1"}, Count: 2},
-		{Pair: StatusPair{Status: evergreen.TaskFailed, Name: "d2"}, Count: 1},
+		{Status: evergreen.TaskSucceeded, Stats: []Stat{{Name: "d1", Count: 2}, {Name: "d2", Count: 1}}},
+		{Status: evergreen.TaskFailed, Stats: []Stat{{Name: "d1", Count: 3}, {Name: "d2", Count: 2}}},
 	}
 
 	list := GetResultCountList(statsList)
-	assert.Len(list.Succeeded, 2)
-	assert.Equal(3, list.Succeeded[0].Count)
-	assert.Equal("d1", list.Succeeded[0].Name)
-	assert.Equal(2, list.Succeeded[1].Count)
-	assert.Equal("d2", list.Succeeded[1].Name)
+	_, ok := list[evergreen.TaskSucceeded]
+	assert.True(ok)
+	_, ok = list[evergreen.TaskFailed]
+	assert.True(ok)
 
-	assert.Len(list.Failed, 2)
-	assert.Equal(2, list.Failed[0].Count)
-	assert.Equal("d1", list.Failed[0].Name)
-	assert.Equal(1, list.Failed[1].Count)
-	assert.Equal("d2", list.Failed[1].Name)
-
-	assert.Len(list.Total, 2)
-	assert.Equal(5, list.Total[0].Count)
-	assert.Equal(3, list.Total[1].Count)
+	assert.Len(list["totals"], 2)
+	assert.Equal("d1", list["totals"][0].Name)
+	assert.Equal(5, list["totals"][0].Count)
+	assert.Equal("d2", list["totals"][1].Name)
+	assert.Equal(3, list["totals"][1].Count)
 }

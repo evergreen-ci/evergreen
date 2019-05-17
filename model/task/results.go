@@ -135,53 +135,17 @@ func FilterTasksOnStatus(tasks []Task, statuses ...string) []Task {
 	return out
 }
 
-type Stat struct {
-	Name  string `json:"name"`
-	Count int    `json:"count"`
-}
-type ResultCountList struct {
-	Total              []Stat `json:"total"`
-	Inactive           []Stat `json:"inactive"`
-	Unstarted          []Stat `json:"unstarted"`
-	Started            []Stat `json:"started"`
-	Succeeded          []Stat `json:"success"`
-	Failed             []Stat `json:"failed"`
-	SetupFailed        []Stat `json:"setup-failed"`
-	SystemFailed       []Stat `json:"system-failed"`
-	SystemUnresponsive []Stat `json:"system-unresponsive"`
-	SystemTimedOut     []Stat `json:"system-timed-out"`
-	TestTimedOut       []Stat `json:"test-timed-out"`
-}
-
-func GetResultCountList(statuses []StatusItem) ResultCountList {
-	list := ResultCountList{}
+func GetResultCountList(statuses []StatusItem) map[string][]Stat {
+	statMap := make(map[string][]Stat)
 	totals := make(map[string]int)
 	for _, status := range statuses {
-		switch status.Pair.Status {
-		case evergreen.TaskInactive:
-			list.Inactive = append(list.Inactive, Stat{Name: status.Pair.Name, Count: status.Count})
-		case evergreen.TaskUnstarted:
-			list.Unstarted = append(list.Unstarted, Stat{Name: status.Pair.Name, Count: status.Count})
-		case evergreen.TaskStarted:
-			list.Started = append(list.Started, Stat{Name: status.Pair.Name, Count: status.Count})
-		case evergreen.TaskSucceeded:
-			list.Succeeded = append(list.Succeeded, Stat{Name: status.Pair.Name, Count: status.Count})
-		case evergreen.TaskFailed:
-			list.Failed = append(list.Failed, Stat{Name: status.Pair.Name, Count: status.Count})
-		case evergreen.TaskSetupFailed:
-			list.SetupFailed = append(list.SetupFailed, Stat{Name: status.Pair.Name, Count: status.Count})
-		case evergreen.TaskSystemFailed:
-			list.SystemFailed = append(list.SystemFailed, Stat{Name: status.Pair.Name, Count: status.Count})
-		case evergreen.TaskSystemUnresponse:
-			list.SystemUnresponsive = append(list.SystemUnresponsive, Stat{Name: status.Pair.Name, Count: status.Count})
-		case evergreen.TaskSystemTimedOut:
-			list.SystemTimedOut = append(list.SystemTimedOut, Stat{Name: status.Pair.Name, Count: status.Count})
-		case evergreen.TaskTestTimedOut:
-			list.TestTimedOut = append(list.TestTimedOut, Stat{Name: status.Pair.Name, Count: status.Count})
+		statMap[status.Status] = status.Stats
+		for _, stat := range status.Stats {
+			totals[stat.Name] += stat.Count
 		}
-		totals[status.Pair.Name] += status.Count
 	}
 
+	// Reshape totals
 	totalsList := make([]Stat, 0, len(totals))
 	for name, count := range totals {
 		totalsList = append(totalsList, Stat{Name: name, Count: count})
@@ -189,7 +153,7 @@ func GetResultCountList(statuses []StatusItem) ResultCountList {
 	sort.Slice(totalsList, func(i, j int) bool {
 		return totalsList[i].Count > totalsList[j].Count
 	})
-	list.Total = totalsList
+	statMap["totals"] = totalsList
 
-	return list
+	return statMap
 }

@@ -616,14 +616,14 @@ func GetRecentTasks(period time.Duration) ([]Task, error) {
 	return tasks, nil
 }
 
-type StatusPair struct {
-	Status string `bson:"status"`
-	Name   string `bson:"name"`
+type Stat struct {
+	Name  string `bson:"name"`
+	Count int    `bson:"count"`
 }
 
 type StatusItem struct {
-	Pair  StatusPair `bson:"pair"`
-	Count int        `bson:"count"`
+	Status string `bson:"status"`
+	Stats  []Stat `bson:"stats"`
 }
 
 func GetRecentTaskStats(period time.Duration, nameKey string) ([]StatusItem, error) {
@@ -641,10 +641,14 @@ func GetRecentTaskStats(period time.Duration, nameKey string) ([]StatusItem, err
 		{"$sort": bson.M{
 			"count": -1,
 		}},
+		{"$group": bson.M{
+			"_id":   "$_id.status",
+			"stats": bson.M{"$push": bson.M{"name": "$_id.name", "count": "$count"}},
+		}},
 		{"$project": bson.M{
-			"_id":   0,
-			"pair":  "$_id",
-			"count": 1,
+			"_id":    0,
+			"status": "$_id",
+			"stats":  1,
 		}},
 	}
 
