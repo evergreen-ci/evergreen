@@ -12,6 +12,7 @@ import (
 	"github.com/pkg/errors"
 	. "github.com/smartystreets/goconvey/convey"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"golang.org/x/oauth2"
 )
 
@@ -151,4 +152,10 @@ func TestRetryableOauthClient4xxDoesntRetry(t *testing.T) {
 	assert.NotNil(resp)
 	assert.Equal(1, transport.count)
 	assert.Equal(http.StatusForbidden, resp.StatusCode)
+}
+
+func TestRetryDoesNotPauseBeforeFirstTry(t *testing.T) {
+	now := time.Now()
+	Retry(context.Background(), func() (bool, error) { return false, nil }, 10, time.Second, time.Minute)
+	require.True(t, time.Since(now) < time.Millisecond)
 }
