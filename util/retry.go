@@ -54,7 +54,17 @@ func Retry(ctx context.Context, op RetriableFunc, attempts int, min time.Duratio
 	if attempts < 1 {
 		attempts = 1
 	}
-	attempt := 0
+
+	shouldRetry, err := op()
+	if err == nil {
+		return nil
+	} else if !shouldRetry {
+		return err
+	} else if attempts == 1 {
+		return errors.Wrap(err, "operation failed after 1 attempt")
+	}
+	attempt := 1
+
 	backoff := getBackoff(attempts, min, max)
 	timer := time.NewTimer(backoff.Duration())
 	for {
