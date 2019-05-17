@@ -1136,15 +1136,31 @@ func (p *Project) FindAllVariants() []string {
 // FindAllBuildVariantTasks returns every BuildVariantTaskUnit, fully populated,
 // for all variants of a project.
 func (p *Project) FindAllBuildVariantTasks() []BuildVariantTaskUnit {
-	tasksByName := map[string]*ProjectTask{}
-	for i, t := range p.Tasks {
-		tasksByName[t.Name] = &p.Tasks[i]
+	tasksByName := map[string]ProjectTask{}
+	taskGroups := map[string]TaskGroup{}
+	for _, t := range p.Tasks {
+		tasksByName[t.Name] = t
+	}
+	for _, tg := range p.TaskGroups {
+		taskGroups[tg.Name] = tg
 	}
 	allBVTs := []BuildVariantTaskUnit{}
 	for _, b := range p.BuildVariants {
 		for _, t := range b.Tasks {
-			if pTask := tasksByName[t.Name]; pTask != nil {
-				t.Populate(*pTask)
+			tasksToPopulate := []ProjectTask{}
+			if t.IsGroup {
+				group, exists := taskGroups[t.Name]
+				if !exists {
+					continue
+				}
+				for _, groupTask := range group.Tasks {
+					tasksToPopulate = append(tasksToPopulate, tasksByName[groupTask])
+				}
+			} else {
+				tasksToPopulate = append(tasksToPopulate, tasksByName[t.Name])
+			}
+			for _, pTask := range tasksToPopulate {
+				t.Populate(pTask)
 				t.Variant = b.Name
 				allBVTs = append(allBVTs, t)
 			}
