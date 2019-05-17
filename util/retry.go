@@ -56,7 +56,7 @@ func Retry(ctx context.Context, op RetriableFunc, attempts int, min time.Duratio
 	}
 	attempt := 0
 	backoff := getBackoff(attempts, min, max)
-	timer := time.NewTimer(backoff.Duration())
+	timer := time.NewTimer(0)
 	for {
 		select {
 		case <-ctx.Done():
