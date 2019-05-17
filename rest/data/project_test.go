@@ -453,3 +453,52 @@ func (s *ProjectConnectorGetSuite) TestGetProjectWithCommitQueueByOwnerRepoAndBr
 	s.NoError(err)
 	s.Equal("projectB", projRef.Identifier)
 }
+
+func (s *ProjectConnectorGetSuite) TestFindProjectVarsById() {
+	s.Require().NoError(db.ClearCollections(model.ProjectVarsCollection))
+
+	vars := &model.ProjectVars{
+		Id:          projectId,
+		Vars:        map[string]string{"a": "1", "b": "3"},
+		PrivateVars: map[string]bool{"b": true},
+	}
+	s.NoError(vars.Insert())
+
+	res, err := s.ctx.FindProjectVarsById(projectId)
+	s.NoError(err)
+	s.Equal(vars, res)
+}
+
+func (s *ProjectConnectorGetSuite) TestUpdateProjectVars() {
+	s.Require().NoError(db.ClearCollections(model.ProjectVarsCollection))
+
+	vars := model.ProjectVars{
+		Id:          projectId,
+		Vars:        map[string]string{"a": "1", "b": "3"},
+		PrivateVars: map[string]bool{"b": true},
+	}
+
+	s.NoError(vars.Insert())
+
+	//successful update
+	newVars2 := model.ProjectVars{
+		Id:          projectId,
+		Vars:        map[string]string{"b": "2", "c": "3"},
+		PrivateVars: map[string]bool{"b": false, "c": true},
+	}
+	varsToDelete := []string{"a"}
+	s.NoError(s.ctx.UpdateProjectVars(&newVars2, varsToDelete))
+	s.Equal(newVars2.Vars["b"], "2")
+	s.Equal(newVars2.Vars["c"], "3")
+	_, ok := newVars2.Vars["a"]
+	s.False(ok)
+
+	s.Equal(newVars2.PrivateVars["b"], false)
+	s.Equal(newVars2.PrivateVars["c"], true)
+	_, ok = newVars2.PrivateVars["a"]
+	s.False(ok)
+
+	//unsuccessful update
+	newVars2.Id = "not-an-id"
+	s.Error(s.ctx.UpdateProjectVars(&newVars2, varsToDelete))
+}

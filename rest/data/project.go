@@ -65,6 +65,31 @@ func (pc *DBProjectConnector) FindProjects(key string, limit int, sortDir int, i
 	return projects, nil
 }
 
+// FindProjectVarsById returns the variables associated with the given project.
+func (pc *DBProjectConnector) FindProjectVarsById(id string) (*model.ProjectVars, error) {
+	vars, err := model.FindOneProjectVars(id)
+	if err != nil {
+		return nil, errors.Wrapf(err, "problem fetching variables for project '%s'", id)
+	}
+	if vars == nil {
+		return nil, gimlet.ErrorResponse{
+			StatusCode: http.StatusNotFound,
+			Message:    fmt.Sprintf("variables for project '%s' not found", id),
+		}
+	}
+	return vars, nil
+}
+
+// UpdateProjectVars adds new variables, overwrites variables, and deletes variables for the given project.
+func (pc *DBProjectConnector) UpdateProjectVars(vars *model.ProjectVars, varsToDelete []string) error {
+	_, err := vars.FindAndModify(varsToDelete)
+	if err != nil {
+		return errors.Wrapf(err, "problem updating variables for project '%s'", vars.Id)
+	}
+
+	return nil
+}
+
 func (ac *DBProjectConnector) GetProjectEventLog(id string, before time.Time, n int) ([]restModel.APIProjectEvent, error) {
 	events, err := model.ProjectEventsBefore(id, before, n)
 	if err != nil {
@@ -166,6 +191,45 @@ func (pc *MockProjectConnector) UpdateProject(projectRef *model.ProjectRef) erro
 	return gimlet.ErrorResponse{
 		StatusCode: http.StatusInternalServerError,
 		Message:    fmt.Sprintf("project with id '%s' was not updated", projectRef.Identifier),
+	}
+}
+
+func (pc *MockProjectConnector) FindProjectVarsById(id string) (*model.ProjectVars, error) {
+	for _, v := range pc.CachedVars {
+		if v.Id == id {
+			return v, nil
+		}
+	}
+	return nil, gimlet.ErrorResponse{
+		StatusCode: http.StatusNotFound,
+		Message:    fmt.Sprintf("variables for project '%s' not found", id),
+	}
+}
+
+func (pc *MockProjectConnector) UpdateProjectVars(vars *model.ProjectVars, varsToDelete []string) error {
+	for _, cachedVars := range pc.CachedVars {
+		if cachedVars.Id == vars.Id {
+			// update cached variables by adding new variables and deleting variables
+			for key, val := range vars.Vars {
+				cachedVars.Vars[key] = val
+			}
+			for key, val := range vars.PrivateVars {
+				cachedVars.PrivateVars[key] = val
+			}
+			for _, varToDelete := range varsToDelete {
+				delete(cachedVars.Vars, varToDelete)
+				delete(cachedVars.PrivateVars, varToDelete)
+			}
+
+			// return modified variables
+			vars.Vars = cachedVars.Vars
+			vars.PrivateVars = cachedVars.PrivateVars
+			return nil
+		}
+	}
+	return gimlet.ErrorResponse{
+		StatusCode: http.StatusNotFound,
+		Message:    fmt.Sprintf("variables for project '%s' not found", vars.Id),
 	}
 }
 

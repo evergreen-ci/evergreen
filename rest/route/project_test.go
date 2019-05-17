@@ -398,6 +398,12 @@ func getMockProjectsConnector() *data.MockConnector {
 					NotifyOnBuildFailure: false,
 				},
 			},
+			CachedVars: []*serviceModel.ProjectVars{
+				&serviceModel.ProjectVars{
+					Id:   "dimoxinil",
+					Vars: map[string]string{"apple": "green", "banana": "yellow"},
+				},
+			},
 		},
 	}
 	return &connector

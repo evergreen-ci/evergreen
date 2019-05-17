@@ -26,8 +26,9 @@ type APIProjectSettings struct {
 }
 
 type APIProjectVars struct {
-	Vars        map[string]string `json:"vars"`
-	PrivateVars map[string]bool   `json:"private_vars"`
+	Vars         map[string]string `json:"vars"`
+	PrivateVars  map[string]bool   `json:"private_vars"`
+	VarsToDelete []string          `json:"vars_to_delete,omitempty"`
 }
 
 type APIProjectAlias struct {
@@ -92,6 +93,13 @@ func DbProjectSettingsToRestModel(settings model.ProjectSettingsEvent) (APIProje
 
 func DbProjectVarsToRestModel(vars model.ProjectVars) APIProjectVars {
 	return APIProjectVars{
+		Vars:        vars.Vars,
+		PrivateVars: vars.PrivateVars,
+	}
+}
+
+func DbProjectVarsFromRestModel(vars APIProjectVars) model.ProjectVars {
+	return model.ProjectVars{
 		Vars:        vars.Vars,
 		PrivateVars: vars.PrivateVars,
 	}
