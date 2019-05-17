@@ -563,6 +563,16 @@ func SetTasksScheduledTime(tasks []Task, scheduledTime time.Time) error {
 	for i := range tasks {
 		tasks[i].ScheduledTime = scheduledTime
 		ids = append(ids, tasks[i].Id)
+
+		// Display tasks are considered scheduled when their first exec task is scheduled
+		displayTask, err := tasks[i].GetDisplayTask()
+		if err != nil {
+			return errors.Wrapf(err, "can't get display task for task %s", tasks[i].Id)
+		}
+		if displayTask != nil {
+			ids = append(ids, displayTask.Id)
+		}
+
 	}
 	info, err := UpdateAll(
 		bson.M{
