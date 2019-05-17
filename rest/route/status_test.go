@@ -68,15 +68,15 @@ func (s *StatusSuite) SetupSuite() {
 			TestTimedOut:       10,
 		},
 		CachedResultCountList: &model.APIRecentTaskStatsList{
-			Total: model.APIStatList{
+			"total": model.APIStatList{
 				{Name: model.ToAPIString("d1"), Count: 3},
 				{Name: model.ToAPIString("d2"), Count: 2},
 			},
-			Inactive: model.APIStatList{
+			evergreen.TaskInactive: model.APIStatList{
 				{Name: model.ToAPIString("d1"), Count: 2},
 				{Name: model.ToAPIString("d2"), Count: 1},
 			},
-			Succeeded: model.APIStatList{
+			evergreen.TaskSucceeded: model.APIStatList{
 				{Name: model.ToAPIString("d1"), Count: 1},
 				{Name: model.ToAPIString("d2"), Count: 1},
 			},
@@ -208,22 +208,22 @@ func (s *StatusSuite) TestExecuteByDistro() {
 	resp := s.h.Run(context.Background())
 	s.Equal(http.StatusOK, resp.Status())
 	s.NotNil(resp)
-	res := resp.Data().(*model.APIRecentTaskStatsList)
+	res := *resp.Data().(*model.APIRecentTaskStatsList)
 
-	s.Equal(model.ToAPIString("d1"), res.Total[0].Name)
-	s.Equal(3, res.Total[0].Count)
-	s.Equal(model.ToAPIString("d2"), res.Total[1].Name)
-	s.Equal(2, res.Total[1].Count)
+	s.Equal(model.ToAPIString("d1"), res["total"][0].Name)
+	s.Equal(3, res["total"][0].Count)
+	s.Equal(model.ToAPIString("d2"), res["total"][1].Name)
+	s.Equal(2, res["total"][1].Count)
 
-	s.Equal(model.ToAPIString("d1"), res.Inactive[0].Name)
-	s.Equal(2, res.Inactive[0].Count)
-	s.Equal(model.ToAPIString("d2"), res.Inactive[1].Name)
-	s.Equal(1, res.Inactive[1].Count)
+	s.Equal(model.ToAPIString("d1"), res[evergreen.TaskInactive][0].Name)
+	s.Equal(2, res[evergreen.TaskInactive][0].Count)
+	s.Equal(model.ToAPIString("d2"), res[evergreen.TaskInactive][1].Name)
+	s.Equal(1, res[evergreen.TaskInactive][1].Count)
 
-	s.Equal(model.ToAPIString("d1"), res.Succeeded[0].Name)
-	s.Equal(1, res.Succeeded[0].Count)
-	s.Equal(model.ToAPIString("d2"), res.Succeeded[1].Name)
-	s.Equal(1, res.Succeeded[1].Count)
+	s.Equal(model.ToAPIString("d1"), res[evergreen.TaskSucceeded][0].Name)
+	s.Equal(1, res[evergreen.TaskSucceeded][0].Count)
+	s.Equal(model.ToAPIString("d2"), res[evergreen.TaskSucceeded][1].Name)
+	s.Equal(1, res[evergreen.TaskSucceeded][1].Count)
 }
 
 func (s *StatusSuite) TaskTaskType() {
