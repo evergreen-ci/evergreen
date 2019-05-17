@@ -103,7 +103,7 @@ func TestNewProjectAdminMiddleware(t *testing.T) {
 		Admins:     []string{"johnny.appleseed"},
 	}
 
-	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "giving.tree"})
+	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "not.admin"})
 	r, err := http.NewRequest("GET", "/projects/orchard", nil)
 	assert.NoError(err)
 	assert.NotNil(r)
