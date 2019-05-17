@@ -431,6 +431,11 @@ func (c *gitFetchProject) Execute(ctx context.Context,
 		if err != nil {
 			return err
 		}
+		redactedModuleCmds := strings.Join(moduleCmds, "\n")
+		if opts.token != "" {
+			redactedModuleCmds = strings.Replace(redactedModuleCmds, opts.token, "[redacted oauth token]", -1)
+		}
+		logger.Execution().Debug(fmt.Sprintf("Commands are: %s", redactedModuleCmds))
 
 		err = jpm.CreateCommand(ctx).Add([]string{"bash", "-c", strings.Join(moduleCmds, "\n")}).
 			Directory(filepath.ToSlash(filepath.Join(conf.WorkDir, c.Directory))).
