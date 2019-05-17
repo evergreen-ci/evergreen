@@ -5,7 +5,6 @@ import (
 	"io/ioutil"
 	"net/http"
 	"strings"
-	"time"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/apimodels"
@@ -54,7 +53,7 @@ func NewAPIServer(settings *evergreen.Settings, queue amboy.Queue, queueGroup am
 		Settings:         *settings,
 		queue:            queue,
 		queueGroup:       queueGroup,
-		taskQueueService: model.NewTaskQueueService(20 * time.Second),
+		taskQueueService: model.NewTaskDispatchService(taskQueueServiceTTL),
 	}
 
 	return as, nil

@@ -308,6 +308,7 @@ func (s *DistroByIDSuite) TestFindByIdFound() {
 	s.Equal(model.ToAPIString(distro.BootstrapMethodLegacySSH), d.BootstrapMethod)
 	s.Equal(model.ToAPIString(distro.CommunicationMethodLegacySSH), d.CommunicationMethod)
 	s.Equal(model.ToAPIString(distro.CloneMethodLegacySSH), d.CloneMethod)
+	s.Equal(model.ToAPIString(evergreen.FinderVersionLegacy), d.FinderSettings.Version)
 }
 
 func (s *DistroByIDSuite) TestFindByIdFail() {

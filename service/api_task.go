@@ -26,8 +26,6 @@ import (
 const consecutiveSystemFailureThreshold = 3
 const taskQueueServiceTTL = time.Minute
 
-var taskQueueService model.TaskQueueService
-
 // StartTask is the handler function that retrieves the task from the request
 // and acquires the global lock
 // With the lock, it marks associated tasks, builds, and versions as started.
@@ -282,7 +280,7 @@ func (as *APIServer) EndTask(w http.ResponseWriter, r *http.Request) {
 
 // assignNextAvailableTask gets the next task from the queue and sets the running task field
 // of currentHost.
-func assignNextAvailableTask(taskQueue *model.TaskQueue, currentHost *host.Host) (*task.Task, error) {
+func assignNextAvailableTask(taskQueue *model.TaskQueue, taskQueueService model.TaskQueueService, currentHost *host.Host) (*task.Task, error) {
 	if currentHost.RunningTask != "" {
 		grip.Error(message.Fields{
 			"message":      "tried to assign task to a host already running task",
@@ -374,12 +372,16 @@ func assignNextAvailableTask(taskQueue *model.TaskQueue, currentHost *host.Host)
 				"activated": nextTask.Activated,
 				"host":      currentHost.Id,
 			})
+
 			// Dequeue the task so we don't get it on another iteration of the loop.
-			if err = taskQueue.DequeueTask(nextTask.Id); err != nil {
-				return nil, errors.Wrapf(err,
-					"error pulling task with id %s from queue for distro %s",
-					nextTask.Id, nextTask.DistroId)
-			}
+			grip.Warning(message.WrapError(taskQueue.DequeueTask(nextTask.Id), message.Fields{
+				"message":   "could not find task in queue",
+				"next_task": nextTask.Id,
+				"distro":    nextTask.DistroId,
+				"spec":      spec,
+				"host":      currentHost.Id,
+			}))
+
 			continue
 		}
 
@@ -495,7 +497,7 @@ func (as *APIServer) NextTask(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// assign the task to a host and retrieve the task
-	nextTask, err := assignNextAvailableTask(taskQueue, h)
+	nextTask, err := assignNextAvailableTask(taskQueue, as.taskQueueService, h)
 	if err != nil {
 		err = errors.WithStack(err)
 		grip.Error(err)
@@ -521,12 +523,6 @@ func (as *APIServer) NextTask(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	setNextTask(nextTask, &response)
-	grip.Info(message.Fields{
-		"op":      "next_task",
-		"message": "assigned task to host",
-		"task_id": nextTask.Id,
-		"host_id": h.Id,
-	})
 	gimlet.WriteJSON(w, response)
 }
 

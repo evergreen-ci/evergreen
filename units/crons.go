@@ -297,8 +297,8 @@ func PopulateIdleHostJobs(env evergreen.Environment) amboy.QueueOperation {
 
 		catcher := grip.NewBasicCatcher()
 		ts := util.RoundPartOfHour(1).Format(tsFormat)
-		// []distroHosts is ordered by {"distro._id": 1}; each DistroID's idleHosts are sorted from oldest to newest CreationTime.
-		distroHosts, err := host.IdleEphemeralGroupedByDistroId()
+		// Each DistroID's idleHosts are sorted from oldest to newest CreationTime.
+		distroHosts, err := host.IdleEphemeralGroupedByDistroID()
 		if err != nil {
 			return errors.Wrap(err, "database error grouping idle hosts by Distro.Id")
 		}

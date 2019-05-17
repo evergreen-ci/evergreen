@@ -533,3 +533,80 @@ func TestClearTaskQueue(t *testing.T) {
 	assert.NoError(err)
 	assert.Len(otherQueueFromDb.Queue, 3)
 }
+
+func TestFindDistroTaskQueue(t *testing.T) {
+	assert := assert.New(t)
+	require := require.New(t)
+	require.NoError(db.ClearCollections(TaskQueuesCollection))
+	defer db.ClearCollections(TaskQueuesCollection)
+
+	distroID := "distro1"
+	info := DistroQueueInfo{
+		Length: 8,
+		TaskGroupInfos: []TaskGroupInfo{
+			{
+				Name:             "taskGroupInfo1",
+				Count:            8,
+				ExpectedDuration: 2600127105386,
+			},
+		},
+	}
+	taskQueueItems := []TaskQueueItem{
+		{Id: "a"},
+		{Id: "b"},
+		{Id: "c"},
+		{Id: "d"},
+		{Id: "e"},
+		{Id: "f"},
+		{Id: "g"},
+		{Id: "h"},
+	}
+
+	taskQueueIn := NewTaskQueue(distroID, taskQueueItems, info)
+	assert.NoError(taskQueueIn.Save())
+
+	taskQueueOut, err := FindDistroTaskQueue(distroID)
+	assert.NoError(err)
+	assert.Equal(distroID, taskQueueOut.Distro)
+	assert.Len(taskQueueOut.Queue, 8)
+	assert.Equal(taskQueueOut.DistroQueueInfo.Length, 8)
+	assert.Len(taskQueueOut.DistroQueueInfo.TaskGroupInfos, 1)
+	assert.Equal(taskQueueOut.DistroQueueInfo.TaskGroupInfos[0].Name, "taskGroupInfo1")
+	assert.Equal(taskQueueOut.DistroQueueInfo.TaskGroupInfos[0].Count, 8)
+	assert.Equal(taskQueueOut.DistroQueueInfo.TaskGroupInfos[0].ExpectedDuration, time.Duration(2600127105386))
+}
+
+func TestGetDistroQueueInfo(t *testing.T) {
+	assert := assert.New(t)
+	require := require.New(t)
+	require.NoError(db.ClearCollections(TaskQueuesCollection))
+	defer db.ClearCollections(TaskQueuesCollection)
+
+	distroID := "distro1"
+	info := DistroQueueInfo{
+		Length: 8,
+		TaskGroupInfos: []TaskGroupInfo{
+			{
+				Name:             "taskGroupInfo1",
+				Count:            8,
+				ExpectedDuration: 2600127105386,
+			},
+		},
+	}
+	taskQueueItems := []TaskQueueItem{
+		{Id: "a"},
+		{Id: "b"},
+		{Id: "c"},
+	}
+
+	taskQueueIn := NewTaskQueue(distroID, taskQueueItems, info)
+	assert.NoError(taskQueueIn.Save())
+
+	distroQueueInfoOut, err := GetDistroQueueInfo(distroID)
+	assert.NoError(err)
+	assert.Equal(distroQueueInfoOut.Length, 8)
+	assert.Len(distroQueueInfoOut.TaskGroupInfos, 1)
+	assert.Equal(distroQueueInfoOut.TaskGroupInfos[0].Name, "taskGroupInfo1")
+	assert.Equal(distroQueueInfoOut.TaskGroupInfos[0].Count, 8)
+	assert.Equal(distroQueueInfoOut.TaskGroupInfos[0].ExpectedDuration, time.Duration(2600127105386))
+}

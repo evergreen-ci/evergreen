@@ -1097,7 +1097,7 @@ func TestInactiveHostCountPipeline(t *testing.T) {
 	}
 }
 
-func TestIdleEphemeralGroupedByDistroId(t *testing.T) {
+func TestIdleEphemeralGroupedByDistroID(t *testing.T) {
 	assert := assert.New(t)
 	assert.NoError(db.ClearCollections(Collection))
 
@@ -1167,7 +1167,7 @@ func TestIdleEphemeralGroupedByDistroId(t *testing.T) {
 	assert.NoError(host5.Insert())
 	assert.NoError(host6.Insert())
 
-	idleHostsByDistroID, err := IdleEphemeralGroupedByDistroId()
+	idleHostsByDistroID, err := IdleEphemeralGroupedByDistroID()
 	assert.NoError(err)
 	assert.Equal(2, len(idleHostsByDistroID))
 
