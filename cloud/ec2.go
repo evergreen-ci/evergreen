@@ -13,6 +13,7 @@ import (
 	"github.com/aws/aws-sdk-go/service/ec2"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/task"
@@ -198,7 +199,23 @@ func (m *ec2Manager) spawnOnDemandHost(ctx context.Context, h *host.Host, ec2Set
 		if err != nil {
 			return nil, errors.Wrap(err, "problem expanding user data")
 		}
-		userData := base64.StdEncoding.EncodeToString([]byte(expanded))
+		ec2Settings.UserData = expanded
+	}
+
+	if h.Distro.BootstrapMethod == distro.BootstrapMethodUserData {
+		commands := h.BootstrapScript(m.settings.JasperConfig, "/usr/local/bin")
+		userData, err := makeMultipartUserData(map[string]string{
+			"bootstrap.txt": commands,
+			"user-data.txt": ec2Settings.UserData,
+		})
+		if err != nil {
+			return nil, errors.Wrap(err, "error creating user data with multiple parts")
+		}
+		ec2Settings.UserData = userData
+	}
+
+	if ec2Settings.UserData != "" {
+		userData := base64.StdEncoding.EncodeToString([]byte(ec2Settings.UserData))
 		input.UserData = &userData
 	}
 

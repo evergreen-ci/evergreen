@@ -282,15 +282,15 @@ mciModule.controller('DistrosCtrl', function($scope, $window, $location, $anchor
   $scope.saveConfiguration = function() {
     if ($scope.activeDistro.new) {
       mciDistroRestService.addDistro(
-    $scope.activeDistro, {
+      $scope.activeDistro, {
       success: function(resp) {
         $window.location.reload(true);
       },
       error: function(resp) {
         $window.location.reload(true);
         console.log(resp.data.error);
+        }
       }
-    }
       );
     } else {
       mciDistroRestService.modifyDistro(

@@ -587,6 +587,12 @@ Evergreen - Distros
             ng-click="form.$setDirty();addSSHOption()"><i class="fa fa-plus"></i>Add SSH Option</button>
         </div>
         <div>
+          <label class="distro-label">Shell Path:</label>
+          <input type="text" ng-readonly="readOnly" name="shellPath"
+            class="form-control" ng-model="activeDistro.settings.shell_path" placeholder="Absolute native path to the shell binary file (bash)"
+            ng-readonly="readOnly">
+        </div>
+        <div>
           <div>
             <span style="float: right; margin-top: 20px;" class="distro-checkbox checkbox"><input ng-disabled="readOnly"
                 type="checkbox" ng-model="activeDistro.setup_as_sudo">Run scripts as sudo</span>

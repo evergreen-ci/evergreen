@@ -67,26 +67,6 @@ func (h *Host) CurlCommand(url string) string {
 		h.Distro.BinaryName())
 }
 
-// FetchJasperCommand builds the command to download and extract the Jasper
-// binary into the directory dir.
-func (h *Host) FetchJasperCommand(settings *evergreen.Settings, dir string) string {
-	os, arch := h.Distro.Platform()
-	downloadFile := fmt.Sprintf("%s-%s-%s-%s.tar.gz", settings.JasperConfig.DownloadFileName, os, arch, settings.JasperConfig.Version)
-
-	fileName := settings.JasperConfig.BinaryName
-	if h.Distro.IsWindows() {
-		fileName = fileName + ".exe"
-	}
-
-	cmds := []string{fmt.Sprintf("cd \"%s\"", dir),
-		fmt.Sprintf("curl -LO '%s/%s'", settings.JasperConfig.URL, downloadFile),
-		fmt.Sprintf("tar xzf '%s'", downloadFile),
-		fmt.Sprintf("chmod +x '%s'", fileName),
-		fmt.Sprintf("rm -f '%s'", downloadFile),
-	}
-	return strings.Join(cmds, " && ")
-}
-
 const (
 	// sshTimeout is the timeout for SSH commands.
 	sshTimeout = 2 * time.Minute
@@ -174,4 +154,61 @@ func initSystemCommand() string {
 		exit 0;
 	fi
 	`
+}
+
+// FetchJasperCommands builds the command to download and extract the Jasper
+// binary into the directory dir.
+func (h *Host) FetchJasperCommand(config evergreen.JasperConfig, dir string) string {
+	return strings.Join(h.fetchJasperCommands(config, dir), " && ")
+}
+
+func (h *Host) fetchJasperCommands(config evergreen.JasperConfig, dir string) []string {
+	downloadedFile := h.jasperDownloadedFileName(config)
+	extractedFile := h.jasperExtractedFileName(config)
+	return []string{
+		fmt.Sprintf("cd \"%s\"", dir),
+		fmt.Sprintf("curl -LO '%s/%s'", config.URL, downloadedFile),
+		fmt.Sprintf("tar xzf '%s'", downloadedFile),
+		fmt.Sprintf("chmod +x '%s'", extractedFile),
+		fmt.Sprintf("rm -f '%s'", downloadedFile),
+	}
+}
+
+// FetchJasperCommandWithPath is the same as FetchJasperCommand but sets the
+// PATH variable to path for each command.
+func (h *Host) FetchJasperCommandWithPath(config evergreen.JasperConfig, dir, path string) string {
+	cmds := h.fetchJasperCommands(config, dir)
+	for i := range cmds {
+		cmds[i] = fmt.Sprintf("PATH=%s %s", path, cmds[i])
+	}
+	return strings.Join(cmds, " && ")
+}
+
+func (h *Host) jasperDownloadedFileName(config evergreen.JasperConfig) string {
+	os, arch := h.Distro.Platform()
+	return fmt.Sprintf("%s-%s-%s-%s.tar.gz", config.DownloadFileName, os, arch, config.Version)
+}
+
+func (h *Host) jasperExtractedFileName(config evergreen.JasperConfig) string {
+	if h.Distro.IsWindows() {
+		return config.BinaryName + ".exe"
+	}
+	return config.BinaryName
+}
+
+// BootstrapScript creates the user data script to bootstrap the host.
+func (h *Host) BootstrapScript(config evergreen.JasperConfig, dir string) string {
+	if h.Distro.IsWindows() {
+		cmds := h.FetchJasperCommandWithPath(config, dir, "/bin")
+		// PowerShell nested quotation marks are handled by using two quotation
+		// marks.
+		quotedCmds := strings.Replace(cmds, "'", "''", -1)
+		commands := []string{
+			"<powershell>",
+			fmt.Sprintf("%s -c '%s'", h.Distro.ShellPath, quotedCmds),
+			"</powershell>",
+		}
+		return strings.Join(commands, "\r\n")
+	}
+	return strings.Join([]string{"#!/bin/bash", h.FetchJasperCommand(config, dir)}, "\n")
 }
