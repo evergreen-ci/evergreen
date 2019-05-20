@@ -39,6 +39,7 @@ mciModule.controller('PerfController', function PerfController(
   $scope.perfTagData = {}
   $scope.compareForm = {}
   $scope.savedCompares = []
+  $scope.trendResults = [];
   $scope.jiraHost = $window.jiraHost
 
   $scope.isGraphHidden = function(k){
@@ -301,7 +302,9 @@ mciModule.controller('PerfController', function PerfController(
       if(compareSamples){
         for(var j=0;j<compareSamples.length;j++){
           var compareSeries = compareSamples[j].threadsVsOps(testName);
-          series.push(compareSeries);
+          if (compareSeries) {
+            series.push(compareSeries);
+          }
         }
       }
 
@@ -329,7 +332,13 @@ mciModule.controller('PerfController', function PerfController(
         .data(series)
         .enter().append("g")
         .style("fill", function(d, i) { return z(i); })
-        .attr("transform", function(d, i) { return "translate(" + x1(i) + ",0)"; });
+        .attr("transform", function(d, i) { 
+          let x = x1(i);
+          if (Number.isNaN(x)) {
+            x = 0;
+          }
+          return "translate(" + x + ",0)"; 
+        });
 
       bar.selectAll("rect")
         .data(function(d){return d})
@@ -524,41 +533,30 @@ mciModule.controller('PerfController', function PerfController(
     $scope.addComparisonForm({hash:hash}, true)
   }
 
-  $scope.updateCompares = function(){
-  }
-
   $scope.redrawGraphs = function(){
       setTimeout(function(){
+        $scope.hideEmptyGraphs();
         drawTrendGraph($scope);
         drawDetailGraph($scope.perfSample, $scope.comparePerfSamples, $scope.task.id, $scope.metricSelect.value.key);
       }, 0)
   }
 
-  $scope.enumerateMetrics = function(results) {
-    const metricNames = {
-      "avgDuration": "Average Duration",
-      "avgWorkers": "Average Workers",
-      "throughputOps": "Throughput Ops",
-      "throughputSize": "Throughput Size",
-      "errorRate": "Error Rate",
-      "latency": "Latency",
-      "totalTime": "Total Time",
-      "totalFailures": "Total Failures",
-      "totalErrors": "Total Errors",
-      "totalOperations": "Total Ops",
-      "totalSize": "Total Size",
-      "totalSamples": "Total Samples"
-    };
-
-    var metrics = {};
-    _.each(results, function(result) {
-      _.each(result.rollups.stats, function(metric) {
-        metrics[metric.name] = metricNames[metric.name] ? metricNames[metric.name]:metric.name;
+  $scope.hideEmptyGraphs = function() {
+    let tests = $scope.perfSample && $scope.perfSample.sample && $scope.perfSample.sample.data && $scope.perfSample.sample.data.results;
+    let metric = $scope.metricSelect.value.key;
+    if (tests) {
+      $scope.hiddenGraphs = {};
+      _.each(tests, function(test) {
+        let hasMetric = false;
+        _.each(test.results, function(metrics, threadLevel) {
+          if (metrics[metric]) {
+            hasMetric = true;
+          }
+        })
+        if (!hasMetric) {
+          $scope.hiddenGraphs[test.name] = true;
+        }
       })
-    })
-
-    for (var metric in metrics) {
-      $scope.metricSelect.options = $scope.metricSelect.options.concat({key: metric, name: metrics[metric]});
     }
   }
 
@@ -657,53 +655,81 @@ mciModule.controller('PerfController', function PerfController(
         return {} // Try to recover an error
     });
 
-    // Populate the trend data
-    const chartDataQ = $http.get("/plugin/json/history/" + $scope.task.id + "/perf").then(
-      function(resp) {
-        promise.then(function(results){
-          const whitelist = results.whitelist;
+    let trendDataSuccess = function(data) {
+      promise.then(function(results){
+        $scope.trendResults = $scope.trendResults.concat(data);
+        const whitelist = results.whitelist;
 
-          const outliers = results.points;
-          let rejects = outliers.rejects;
+        const outliers = results.points;
+        let rejects = outliers.rejects;
 
-          $scope.allTrendSamples = new TrendSamples(resp.data);
-          // Default filtered to all.
-          $scope.filteredTrendSamples = $scope.allTrendSamples;
-          if(rejects.length) {
-            rejects = _.filter(rejects, function(doc){
-              const matched = _.find(whitelist, _.pick(doc, 'revision', 'project', 'variant', 'task'));
-              return _.isUndefined(matched);
-            });
-            const filtered = _.reject(resp.data, doc => _.contains(rejects, doc.task_id));
-            if (rejects.length != filtered.length) {
-              $scope.filteredTrendSamples = new TrendSamples(filtered);
-            }
+        $scope.allTrendSamples = new TrendSamples($scope.trendResults);
+        // Default filtered to all.
+        $scope.filteredTrendSamples = $scope.allTrendSamples;
+        if(rejects.length) {
+          rejects = _.filter(rejects, function(doc){
+            const matched = _.find(whitelist, _.pick(doc, 'revision', 'project', 'variant', 'task'));
+            return _.isUndefined(matched);
+          });
+          const filtered = _.reject($scope.trendResults, doc => _.contains(rejects, doc.task_id));
+          if (rejects.length != filtered.length) {
+            $scope.filteredTrendSamples = new TrendSamples(filtered);
           }
-          $scope.metricSelect.options = $scope.metricSelect.options.concat(
-            _.map(
-              _.without($scope.allTrendSamples.metrics, $scope.metricSelect.default.key), d => ({key: d, name: d}))
-          );
-
-          // Some copy pasted checks
-          if ($scope.conf.enabled){
-            if ($location.hash().length > 0) {
-              try {
-                if ('metric' in hashparsed) {
-                  $scope.metricSelect.value = _.findWhere(
-                    $scope.metricSelect.options, {key: hashparsed.metric}
-                  ) || $scope.metricSelect.default
-                }
-              } catch (e) {}
-            }
-          }
+        }
+        $scope.metricSelect.options = $scope.metricSelect.options.concat(
+          _.map(
+            _.without($scope.allTrendSamples.metrics, $scope.metricSelect.default.key), d => ({key: d, name: d}))
+        );
+        $scope.metricSelect.options = _.uniq($scope.metricSelect.options, false, function(option){
+          return option.key;
         })
+
+        // Some copy pasted checks
+        if ($scope.conf.enabled){
+          if ($location.hash().length > 0) {
+            try {
+              if ('metric' in hashparsed) {
+                $scope.metricSelect.value = _.findWhere(
+                  $scope.metricSelect.options, {key: hashparsed.metric}
+                ) || $scope.metricSelect.default
+              }
+            } catch (e) {}
+          }
+        }
+      })
+    };
+
+    // Populate the trend data
+    let getLegactHistory = function() {
+      $http.get("/plugin/json/history/" + $scope.task.id + "/perf").then(function(resp){
+        trendDataSuccess(resp.data);
+      }, function() {
+        if (!$scope.allTrendSamples) {
+          $scope.allTrendSamples = new TrendSamples([]);
+        }
+        if (!$scope.filteredTrendSamples) {
+          $scope.filteredTrendSamples = new TrendSamples([]);
+        }
       });
+    }
+
+    let historyPromise = $http.get(cedarApp + "/rest/v1/perf/task_name/" + $scope.task.display_name + "?variant=" + $scope.task.build_variant).then(
+      function(resp) {
+        let converted = $filter("expandedHistoryConverter")(resp.data, $scope.task.execution);
+        trendDataSuccess(converted);
+        getLegactHistory();
+      }, function(err) {
+        getLegactHistory();
+      }
+    )
 
     // Once trend chart data and change points get loaded
-    $q.all([chartDataQ, changePointsQ.catch(), buildFailuresQ.catch()])
-      .then(function() {
-        setTimeout(drawTrendGraph, 0, $scope);
-      })
+    var onHistoryRetrieved = function() {
+      $scope.hideEmptyGraphs();
+      setTimeout(drawTrendGraph, 0, $scope);
+    };
+    $q.all([historyPromise, changePointsQ.catch(), buildFailuresQ.catch()])
+      .then(onHistoryRetrieved, onHistoryRetrieved);
   }
 
   if ($scope.conf.enabled){
@@ -743,7 +769,6 @@ mciModule.controller('PerfController', function PerfController(
       function(resp) {
         var formatted = $filter("expandedMetricConverter")(resp.data, $scope.task.execution);
         $scope.perfSample = new TestSample(formatted);
-        $scope.enumerateMetrics(resp.data);
         $http.get("/plugin/json/task/" + $scope.task.id + "/perf/").then((resp) => legacySuccess(formatted, resp),legacyError);
       }, function(error){
         console.log(error);
