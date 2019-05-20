@@ -220,6 +220,7 @@ func TestSetTasksScheduledTime(t *testing.T) {
 		So(db.Clear(Collection), ShouldBeNil)
 
 		tasks := []Task{
+			{Id: "t0", ScheduledTime: util.ZeroTime, ExecutionTasks: []string{"t1", "t2"}},
 			{Id: "t1", ScheduledTime: util.ZeroTime},
 			{Id: "t2", ScheduledTime: util.ZeroTime},
 			{Id: "t3", ScheduledTime: util.ZeroTime},
@@ -229,18 +230,21 @@ func TestSetTasksScheduledTime(t *testing.T) {
 		}
 		Convey("when updating ScheduledTime for some of the tasks", func() {
 			testTime := time.Unix(31337, 0)
-			So(SetTasksScheduledTime(tasks[1:], testTime), ShouldBeNil)
+			So(SetTasksScheduledTime(tasks[2:], testTime), ShouldBeNil)
 
 			Convey("the tasks should be updated in memory", func() {
-				So(tasks[0].ScheduledTime, ShouldResemble, util.ZeroTime)
-				So(tasks[1].ScheduledTime, ShouldResemble, testTime)
+				So(tasks[1].ScheduledTime, ShouldResemble, util.ZeroTime)
 				So(tasks[2].ScheduledTime, ShouldResemble, testTime)
+				So(tasks[3].ScheduledTime, ShouldResemble, testTime)
 
 				Convey("and in the db", func() {
 					// Need to use a margin of error on time tests
 					// because of minor differences between how mongo
 					// and golang store dates. The date from the db
 					// can be interpreted as being a few nanoseconds off
+					t0, err := FindOne(ById("t0"))
+					So(err, ShouldBeNil)
+					So(t0.ScheduledTime.Round(oneMs), ShouldResemble, testTime)
 					t1, err := FindOne(ById("t1"))
 					So(err, ShouldBeNil)
 					So(t1.ScheduledTime.Round(oneMs), ShouldResemble, util.ZeroTime)
@@ -258,6 +262,9 @@ func TestSetTasksScheduledTime(t *testing.T) {
 					So(SetTasksScheduledTime(tasks, newTime), ShouldBeNil)
 
 					Convey("only unset scheduled times should be updated", func() {
+						t0, err := FindOne(ById("t0"))
+						So(err, ShouldBeNil)
+						So(t0.ScheduledTime.Round(oneMs), ShouldResemble, testTime)
 						t1, err := FindOne(ById("t1"))
 						So(err, ShouldBeNil)
 						So(t1.ScheduledTime.Round(oneMs), ShouldResemble, newTime)
