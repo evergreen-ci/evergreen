@@ -79,6 +79,7 @@ func (s *PatchVarsSuite) TestParse() {
 		VarsToDelete: []string{"apple"},
 	}
 	body, err := json.Marshal(vars)
+	s.NoError(err)
 
 	ctx := context.Background()
 	request, err := http.NewRequest("PATCH", "/rest/v2/projects/dimoxinil/variables", bytes.NewReader(body))

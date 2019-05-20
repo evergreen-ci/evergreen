@@ -221,6 +221,13 @@ func TestMockProjectConnectorGetSuite(t *testing.T) {
 				{Identifier: "projectF", Private: true},
 			},
 			CachedEvents: projectEvents,
+			CachedVars: []*model.ProjectVars{
+				{
+					Id:          projectId,
+					Vars:        map[string]string{"a": "1", "b": "3"},
+					PrivateVars: map[string]bool{"b": true},
+				},
+			},
 		}}
 
 		return nil
@@ -456,29 +463,16 @@ func (s *ProjectConnectorGetSuite) TestGetProjectWithCommitQueueByOwnerRepoAndBr
 
 func (s *ProjectConnectorGetSuite) TestFindProjectVarsById() {
 	s.Require().NoError(db.ClearCollections(model.ProjectVarsCollection))
-
-	vars := &model.ProjectVars{
-		Id:          projectId,
-		Vars:        map[string]string{"a": "1", "b": "3"},
-		PrivateVars: map[string]bool{"b": true},
-	}
-	s.NoError(vars.Insert())
-
 	res, err := s.ctx.FindProjectVarsById(projectId)
 	s.NoError(err)
-	s.Equal(vars, res)
+	s.NotNil(res)
+	s.Equal("1", res.Vars["a"])
+	s.Equal("3", res.Vars["b"])
+	s.True(res.PrivateVars["b"])
 }
 
 func (s *ProjectConnectorGetSuite) TestUpdateProjectVars() {
 	s.Require().NoError(db.ClearCollections(model.ProjectVarsCollection))
-
-	vars := model.ProjectVars{
-		Id:          projectId,
-		Vars:        map[string]string{"a": "1", "b": "3"},
-		PrivateVars: map[string]bool{"b": true},
-	}
-
-	s.NoError(vars.Insert())
 
 	//successful update
 	newVars2 := model.ProjectVars{
