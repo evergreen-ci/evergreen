@@ -143,6 +143,9 @@ func (t *taskTriggers) Process(sub *event.Subscription) (*notification.Notificat
 	if t.task.DisplayOnly {
 		return nil, nil
 	}
+	if t.task.Aborted {
+		return nil, nil
+	}
 
 	return t.base.Process(sub)
 }

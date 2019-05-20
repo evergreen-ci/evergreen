@@ -362,6 +362,19 @@ func (s *taskSuite) TestAllTriggers() {
 	n, err = NotificationsFromEvent(&s.event)
 	s.NoError(err)
 	s.Empty(n)
+
+}
+
+func (s *taskSuite) TestAbortedTaskDoesNotNotify() {
+	n, err := NotificationsFromEvent(&s.event)
+	s.NoError(err)
+	s.NotEmpty(n)
+
+	s.task.Aborted = true
+	s.NoError(db.Update(task.Collection, bson.M{"_id": s.task.Id}, &s.task))
+	n, err = NotificationsFromEvent(&s.event)
+	s.NoError(err)
+	s.Empty(n)
 }
 
 func (s *taskSuite) TestExecutionTask() {
