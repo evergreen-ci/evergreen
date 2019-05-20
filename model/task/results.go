@@ -2,6 +2,7 @@ package task
 
 import (
 	"encoding/json"
+	"sort"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
@@ -132,4 +133,27 @@ func FilterTasksOnStatus(tasks []Task, statuses ...string) []Task {
 	}
 
 	return out
+}
+
+func GetResultCountList(statuses []StatusItem) map[string][]Stat {
+	statMap := make(map[string][]Stat)
+	totals := make(map[string]int)
+	for _, status := range statuses {
+		statMap[status.Status] = status.Stats
+		for _, stat := range status.Stats {
+			totals[stat.Name] += stat.Count
+		}
+	}
+
+	// Reshape totals
+	totalsList := make([]Stat, 0, len(totals))
+	for name, count := range totals {
+		totalsList = append(totalsList, Stat{Name: name, Count: count})
+	}
+	sort.Slice(totalsList, func(i, j int) bool {
+		return totalsList[i].Count > totalsList[j].Count
+	})
+	statMap["totals"] = totalsList
+
+	return statMap
 }

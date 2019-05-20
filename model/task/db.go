@@ -616,6 +616,50 @@ func GetRecentTasks(period time.Duration) ([]Task, error) {
 	return tasks, nil
 }
 
+type Stat struct {
+	Name  string `bson:"name"`
+	Count int    `bson:"count"`
+}
+
+type StatusItem struct {
+	Status string `bson:"status"`
+	Stats  []Stat `bson:"stats"`
+}
+
+func GetRecentTaskStats(period time.Duration, nameKey string) ([]StatusItem, error) {
+	pipeline := []bson.M{
+		{"$match": bson.M{
+			StatusKey: bson.M{"$exists": true},
+			FinishTimeKey: bson.M{
+				"$gt": time.Now().Add(-period),
+			},
+		}},
+		{"$group": bson.M{
+			"_id":   bson.M{"status": "$" + StatusKey, "name": "$" + nameKey},
+			"count": bson.M{"$sum": 1},
+		}},
+		{"$sort": bson.M{
+			"count": -1,
+		}},
+		{"$group": bson.M{
+			"_id":   "$_id.status",
+			"stats": bson.M{"$push": bson.M{"name": "$_id.name", "count": "$count"}},
+		}},
+		{"$project": bson.M{
+			"_id":    0,
+			"status": "$_id",
+			"stats":  1,
+		}},
+	}
+
+	result := []StatusItem{}
+	if err := Aggregate(pipeline, &result); err != nil {
+		return nil, errors.Wrap(err, "can't get stats list")
+	}
+
+	return result, nil
+}
+
 // DB Boilerplate
 
 // FindOneNoMerge is a FindOne without merging test results.

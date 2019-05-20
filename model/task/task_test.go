@@ -1086,3 +1086,65 @@ func TestUnscheduleStaleUnderwaterTasks(t *testing.T) {
 	assert.False(dbTask.Activated)
 	assert.EqualValues(-1, dbTask.Priority)
 }
+
+func TestGetRecentTaskStats(t *testing.T) {
+	assert := assert.New(t)
+	assert.NoError(db.ClearCollections(Collection))
+	tasks := []Task{
+		Task{Id: "t1", Status: evergreen.TaskSucceeded, DistroId: "d1", FinishTime: time.Now()},
+		Task{Id: "t2", Status: evergreen.TaskSucceeded, DistroId: "d1", FinishTime: time.Now()},
+		Task{Id: "t3", Status: evergreen.TaskSucceeded, DistroId: "d1", FinishTime: time.Now()},
+		Task{Id: "t4", Status: evergreen.TaskSucceeded, DistroId: "d2", FinishTime: time.Now()},
+		Task{Id: "t5", Status: evergreen.TaskFailed, DistroId: "d1", FinishTime: time.Now()},
+		Task{Id: "t6", Status: evergreen.TaskFailed, DistroId: "d1", FinishTime: time.Now()},
+		Task{Id: "t7", Status: evergreen.TaskFailed, DistroId: "d2", FinishTime: time.Now()},
+	}
+	for _, task := range tasks {
+		assert.NoError(task.Insert())
+	}
+
+	list, err := GetRecentTaskStats(time.Minute, DistroIdKey)
+	assert.NoError(err)
+
+	// Two statuses
+	assert.Len(list, 2)
+	// Two distros to report status for
+	assert.Len(list[0].Stats, 2)
+
+	for _, status := range list {
+		if status.Status == evergreen.TaskSucceeded {
+			// Sorted order
+			assert.Equal("d1", status.Stats[0].Name)
+			assert.Equal(3, status.Stats[0].Count)
+			assert.Equal("d2", status.Stats[1].Name)
+			assert.Equal(1, status.Stats[1].Count)
+		}
+		if status.Status == evergreen.TaskFailed {
+			// Sorted order
+			assert.Equal("d1", status.Stats[0].Name)
+			assert.Equal(2, status.Stats[0].Count)
+			assert.Equal("d2", status.Stats[1].Name)
+			assert.Equal(1, status.Stats[1].Count)
+		}
+	}
+}
+
+func TestGetResultCountList(t *testing.T) {
+	assert := assert.New(t)
+	statsList := []StatusItem{
+		{Status: evergreen.TaskSucceeded, Stats: []Stat{{Name: "d1", Count: 2}, {Name: "d2", Count: 1}}},
+		{Status: evergreen.TaskFailed, Stats: []Stat{{Name: "d1", Count: 3}, {Name: "d2", Count: 2}}},
+	}
+
+	list := GetResultCountList(statsList)
+	_, ok := list[evergreen.TaskSucceeded]
+	assert.True(ok)
+	_, ok = list[evergreen.TaskFailed]
+	assert.True(ok)
+
+	assert.Len(list["totals"], 2)
+	assert.Equal("d1", list["totals"][0].Name)
+	assert.Equal(5, list["totals"][0].Count)
+	assert.Equal("d2", list["totals"][1].Name)
+	assert.Equal(3, list["totals"][1].Count)
+}

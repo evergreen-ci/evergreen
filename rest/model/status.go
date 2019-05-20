@@ -3,6 +3,7 @@ package model
 import (
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/task"
+	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 )
 
@@ -45,6 +46,48 @@ func (apiStatus *APIRecentTaskStats) BuildFromService(h interface{}) error {
 // ToService returns a service layer distro using the data from APIRecentTaskStats.
 func (apiStatus *APIRecentTaskStats) ToService() (interface{}, error) {
 	return nil, errors.Errorf("ToService() is not implemented for APIRecentTaskStats")
+}
+
+type APIStat struct {
+	Name  APIString `json:"name"`
+	Count int       `json:"count"`
+}
+
+type APIStatList []APIStat
+
+func (s *APIStatList) BuildFromService(h interface{}) error {
+	switch v := h.(type) {
+	case []task.Stat:
+		for _, stat := range v {
+			*s = append(*s, APIStat{Name: ToAPIString(stat.Name), Count: stat.Count})
+		}
+	default:
+		return errors.Errorf("incorrect type when converting API stat list (%T)", v)
+	}
+
+	return nil
+}
+
+type APIRecentTaskStatsList map[string][]APIStat
+
+func (s *APIRecentTaskStatsList) BuildFromService(h interface{}) error {
+	catcher := grip.NewBasicCatcher()
+	switch v := h.(type) {
+	case map[string][]task.Stat:
+		for status, stat := range v {
+			list := APIStatList{}
+			catcher.Add(list.BuildFromService(stat))
+			(*s)[status] = list
+		}
+	default:
+		return errors.Errorf("incorrect type when converting APIRecentTaskStatsList (%T)", v)
+	}
+
+	return catcher.Resolve()
+}
+
+func (s *APIRecentTaskStatsList) ToService() (interface{}, error) {
+	return nil, errors.Errorf("ToService() is not implemented for APIRecentTaskStatsList")
 }
 
 // APIHostStatsByDistro is a slice of host stats for a distro
