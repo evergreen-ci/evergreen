@@ -70,7 +70,7 @@ func TestProjectConnectorGetSuite(t *testing.T) {
 	s.setup = func() error {
 		s.ctx = &DBConnector{}
 
-		s.Require().NoError(db.ClearCollections(model.ProjectRefCollection))
+		s.Require().NoError(db.ClearCollections(model.ProjectRefCollection, model.ProjectVarsCollection))
 
 		projects := []*model.ProjectRef{
 			{
@@ -107,6 +107,13 @@ func TestProjectConnectorGetSuite(t *testing.T) {
 				return err
 			}
 		}
+
+		vars := &model.ProjectVars{
+			Id:          projectId,
+			Vars:        map[string]string{"a": "1", "b": "3"},
+			PrivateVars: map[string]bool{"b": true},
+		}
+		s.NoError(vars.Insert())
 
 		before := getMockProjectSettings()
 		after := getMockProjectSettings()
@@ -462,18 +469,15 @@ func (s *ProjectConnectorGetSuite) TestGetProjectWithCommitQueueByOwnerRepoAndBr
 }
 
 func (s *ProjectConnectorGetSuite) TestFindProjectVarsById() {
-	s.Require().NoError(db.ClearCollections(model.ProjectVarsCollection))
 	res, err := s.ctx.FindProjectVarsById(projectId)
 	s.NoError(err)
-	s.NotNil(res)
+	s.Require().NotNil(res)
 	s.Equal("1", res.Vars["a"])
 	s.Equal("3", res.Vars["b"])
 	s.True(res.PrivateVars["b"])
 }
 
 func (s *ProjectConnectorGetSuite) TestUpdateProjectVars() {
-	s.Require().NoError(db.ClearCollections(model.ProjectVarsCollection))
-
 	//successful update
 	newVars2 := model.ProjectVars{
 		Id:          projectId,
