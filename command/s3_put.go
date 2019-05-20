@@ -104,12 +104,6 @@ func (s3pc *s3put) ParseParams(params map[string]interface{}) error {
 	if err := decoder.Decode(params); err != nil {
 		return errors.Wrapf(err, "error decoding %s params", s3pc.Name())
 	}
-	// create pail bucket
-	httpClient := util.GetHTTPClient()
-	defer util.PutHTTPClient(httpClient)
-	if err := s3pc.createPailBucket(httpClient); err != nil {
-		return errors.Wrap(err, "problem connecting to s3")
-	}
 
 	return s3pc.validate()
 }
@@ -215,8 +209,15 @@ func (s3pc *s3put) Execute(ctx context.Context,
 		return errors.WithStack(err)
 	}
 
+	// create pail bucket
+	httpClient := util.GetHTTPClient()
+	defer util.PutHTTPClient(httpClient)
+	if err := s3pc.createPailBucket(httpClient); err != nil {
+		return errors.Wrap(err, "problem connecting to s3")
+	}
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
+
 	if err := s3pc.bucket.Check(ctx); err != nil {
 		return errors.Wrap(err, "invalid bucket")
 	}
@@ -390,6 +391,9 @@ func (s3pc *s3put) attachFiles(ctx context.Context, comm client.Communicator, lo
 }
 
 func (s3pc *s3put) createPailBucket(httpClient *http.Client) error {
+	if s3pc.bucket != nil {
+		return
+	}
 	opts := pail.S3Options{
 		Credentials: pail.CreateAWSCredentials(s3pc.AwsKey, s3pc.AwsSecret, ""),
 		Region:      endpoints.UsEast1RegionID,
