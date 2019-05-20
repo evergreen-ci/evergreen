@@ -5,6 +5,7 @@ import (
 	"context"
 	"fmt"
 	"path/filepath"
+	"strings"
 
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/rest/client"
@@ -20,9 +21,9 @@ type gitPush struct {
 	// The root directory (locally) that the code is checked out into.
 	// Must be a valid non-blank directory name.
 	Directory      string `yaml:"directory" plugin:"expand"`
-	DryRun         bool   `yaml:"dry_run"`
-	CommitterName  string `yaml:"committer_name"`
-	CommitterEmail string `yaml:"committer_email"`
+	DryRun         bool   `yaml:"dry_run" mapstructure:"dry_run"`
+	CommitterName  string `yaml:"committer_name" mapstructure:"committer_name"`
+	CommitterEmail string `yaml:"committer_email" mapstructure:"committer_email"`
 
 	base
 }
@@ -75,7 +76,11 @@ func (c *gitPush) Execute(ctx context.Context, comm client.Communicator, logger 
 	}
 
 	// get author information
-	u, err := comm.GetUserAuthorInfo(ctx, p.Author)
+	taskData := client.TaskData{
+		ID:     conf.Task.Id,
+		Secret: conf.Task.Secret,
+	}
+	u, err := comm.GetUserAuthorInfo(ctx, taskData, p.Author)
 	if err != nil {
 		return errors.Wrapf(err, "can't get author information for user '%s'", p.Author)
 	}
@@ -169,11 +174,11 @@ func (c *gitPush) revParse(ctx context.Context, logger client.LoggerProducer, re
 	revParseCommand := fmt.Sprintf("git rev-parse %s", ref)
 	logger.Execution().Debugf("git rev-parse command: %s", revParseCommand)
 	cmd := jpm.CreateCommand(ctx).Directory(c.Directory).Append(revParseCommand).SetOutputWriter(stdout).
-		SetOutputSender(level.Info, logger.Task().GetSender()).SetErrorSender(level.Error, logger.Task().GetSender())
+		SetErrorSender(level.Error, logger.Task().GetSender())
 
 	if err := cmd.Run(ctx); err != nil {
 		return "", errors.WithStack(err)
 	}
 
-	return stdout.String(), nil
+	return strings.TrimSpace(stdout.String()), nil
 }

@@ -42,10 +42,6 @@ func findOne(query db.Q) (*CommitQueue, error) {
 	queue := &CommitQueue{}
 	err := db.FindOneQ(Collection, query, &queue)
 
-	if adb.ResultsNotFound(err) {
-		return nil, nil
-	}
-
 	return queue, err
 }
 
@@ -86,6 +82,9 @@ func setProcessing(id string, status bool) error {
 func clearAll() (int, error) {
 	return updateAll(
 		struct{}{},
-		bson.M{"$unset": bson.M{QueueKey: 1}},
+		bson.M{
+			"$unset": bson.M{QueueKey: 1},
+			"$set":   bson.M{ProcessingKey: false},
+		},
 	)
 }

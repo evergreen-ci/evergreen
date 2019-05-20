@@ -1,10 +1,15 @@
 package commitqueue
 
 import (
+	"context"
 	"testing"
 
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/testutil"
 	_ "github.com/evergreen-ci/evergreen/testutil"
+	adb "github.com/mongodb/anser/db"
+	"github.com/mongodb/grip/send"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -173,4 +178,49 @@ func (s *CommitQueueSuite) TestCommentTrigger() {
 
 	action = "deleted"
 	s.False(TriggersCommitQueue(action, comment))
+}
+
+func (s *CommitQueueSuite) TestFindOneId() {
+	s.NoError(db.ClearCollections(Collection))
+	cq := &CommitQueue{ProjectID: "mci"}
+	s.NoError(InsertQueue(cq))
+
+	_, err := FindOneId("mci")
+	s.NoError(err)
+	s.Equal("mci", cq.ProjectID)
+
+	_, err = FindOneId("not_here")
+	s.Error(err)
+	s.True(adb.ResultsNotFound(err))
+}
+
+func (s *CommitQueueSuite) TestSetupEnv() {
+	ctx := context.Background()
+	env := testutil.NewEnvironment(ctx, s.T())
+	testConfig := env.Settings()
+	githubToken, err := testConfig.GetGithubOauthToken()
+	s.NoError(err)
+
+	githubStatusSender, err := send.NewGithubStatusLogger("evergreen", &send.GithubOptions{
+		Token: githubToken,
+	}, "")
+	s.NoError(err)
+	s.NotNil(githubStatusSender)
+	s.NoError(env.SetSender(evergreen.SenderGithubStatus, githubStatusSender))
+
+	sender, err := env.GetSender(evergreen.SenderCommitQueueDequeue)
+	s.Nil(sender)
+	s.Error(err)
+	sender, err = env.GetSender(evergreen.SenderGithubMerge)
+	s.Nil(sender)
+	s.Error(err)
+
+	s.NoError(SetupEnv(env))
+
+	sender, err = env.GetSender(evergreen.SenderCommitQueueDequeue)
+	s.NotNil(sender)
+	s.NoError(err)
+	sender, err = env.GetSender(evergreen.SenderGithubMerge)
+	s.NotNil(sender)
+	s.NoError(err)
 }

@@ -1,5 +1,5 @@
 mciModule.factory('ChangePointsService', function(
-  $log, $mdDialog, PROCESSED_TYPE, Stitch, STITCH_CONFIG
+  $log, $mdDialog, PROCESSED_TYPE, Stitch, STITCH_CONFIG, confirmDialogFactory
 ) {
   var conn = Stitch.use(STITCH_CONFIG.PERF)
 
@@ -49,15 +49,7 @@ mciModule.factory('ChangePointsService', function(
     }
   }
 
-  function confirmMarkAction(points) {
-    return $mdDialog.show(
-      $mdDialog.confirm()
-        .ok('Ok')
-        .cancel('Cancel')
-        .title('Confirm')
-        .textContent('Modify ' + points.length + ' item(s)?')
-    )
-  }
+  const confirmMarkAction = confirmDialogFactory(function(points) { return 'Modify ' + points.length + ' item(s)?';});
 
   // Sets processed_type for the change points
   // :param points: list of change point objects
@@ -76,4 +68,4 @@ mciModule.factory('ChangePointsService', function(
   return {
     markPoints: markPoints,
   }
-})
+});

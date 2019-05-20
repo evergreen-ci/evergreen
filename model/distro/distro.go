@@ -27,6 +27,7 @@ type Distro struct {
 	User                string                  `bson:"user,omitempty" json:"user,omitempty" mapstructure:"user,omitempty"`
 	BootstrapMethod     string                  `bson:"bootstrap_method,omitempty" json:"bootstrap_method,omitempty" mapstructure:"bootstrap_method,omitempty"`
 	CommunicationMethod string                  `bson:"communication_method,omitempty" json:"communication_method,omitempty" mapstructure:"communication_method,omitempty"`
+	CloneMethod         string                  `bson:"clone_method" json:"clone_method,omitempty" mapstructure:"clone_method,omitempty"`
 	SSHKey              string                  `bson:"ssh_key,omitempty" json:"ssh_key,omitempty" mapstructure:"ssh_key,omitempty"`
 	SSHOptions          []string                `bson:"ssh_options,omitempty" json:"ssh_options,omitempty" mapstructure:"ssh_options,omitempty"`
 	SpawnAllowed        bool                    `bson:"spawn_allowed" json:"spawn_allowed,omitempty" mapstructure:"spawn_allowed,omitempty"`
@@ -64,6 +65,16 @@ const (
 	DockerImageBuildTypeImport = "import"
 	DockerImageBuildTypePull   = "pull"
 
+	// Recognized architectures, should be in the form ${GOOS}_${GOARCH}.
+	ArchDarwinAmd64  = "darwin_amd64"
+	ArchLinux386     = "linux_386"
+	ArchLinuxPpc64le = "linux_ppc64le"
+	ArchLinuxS390x   = "linux_s390x"
+	ArchLinuxArm64   = "linux_arm64"
+	ArchLinuxAmd64   = "linux_amd64"
+	ArchWindows386   = "windows_386"
+	ArchWindowsAmd64 = "windows_amd64"
+
 	// Bootstrapping mechanisms
 	BootstrapMethodLegacySSH          = "legacy-ssh"
 	BootstrapMethodSSH                = "ssh"
@@ -75,15 +86,8 @@ const (
 	CommunicationMethodSSH       = "ssh"
 	CommunicationMethodRPC       = "rpc"
 
-	// Recognized architectures, should be in the form ${GOOS}_${GOARCH}.
-	ArchDarwinAmd64  = "darwin_amd64"
-	ArchLinux386     = "linux_386"
-	ArchLinuxPpc64le = "linux_ppc64le"
-	ArchLinuxS390x   = "linux_s390x"
-	ArchLinuxArm64   = "linux_arm64"
-	ArchLinuxAmd64   = "linux_amd64"
-	ArchWindows386   = "windows_386"
-	ArchWindowsAmd64 = "windows_amd64"
+	CloneMethodLegacySSH = "legacy-ssh"
+	CloneMethodOAuth     = "oauth"
 )
 
 // validArches includes all recognized architectures.
@@ -111,6 +115,12 @@ var validCommunicationMethods = []string{
 	CommunicationMethodLegacySSH,
 	CommunicationMethodSSH,
 	CommunicationMethodRPC,
+}
+
+// validCloneMethods includes all recognized clone methods.
+var validCloneMethods = []string{
+	CloneMethodLegacySSH,
+	CloneMethodOAuth,
 }
 
 // Seed the random number generator for creating distro names
@@ -247,11 +257,11 @@ func ValidateContainerPoolDistros(s *evergreen.Settings) error {
 func ValidateArch(arch string) error {
 	osAndArch := strings.Split(arch, "_")
 	if len(osAndArch) != 2 {
-		return fmt.Errorf("architecture '%s' is not in the form ${GOOS}_${GOARCH}", arch)
+		return errors.Errorf("architecture '%s' is not in the form ${GOOS}_${GOARCH}", arch)
 	}
 
 	if !util.StringSliceContains(validArches, arch) {
-		return fmt.Errorf("'%s' is not a recognized architecture", arch)
+		return errors.Errorf("'%s' is not a recognized architecture", arch)
 	}
 	return nil
 }
@@ -260,7 +270,7 @@ func ValidateArch(arch string) error {
 // supported methods.
 func ValidateBootstrapMethod(method string) error {
 	if !util.StringSliceContains(validBootstrapMethods, method) {
-		return fmt.Errorf("'%s' is not a valid bootstrap method", method)
+		return errors.Errorf("'%s' is not a valid bootstrap method", method)
 	}
 	return nil
 }
@@ -269,7 +279,7 @@ func ValidateBootstrapMethod(method string) error {
 // the supported methods.
 func ValidateCommunicationMethod(method string) error {
 	if !util.StringSliceContains(validCommunicationMethods, method) {
-		return fmt.Errorf("'%s' is not a valid communication method", method)
+		return errors.Errorf("'%s' is not a valid communication method", method)
 	}
 	return nil
 }
@@ -292,6 +302,15 @@ func ValidateBootstrapAndCommunicationMethods(bootstrap string, communication st
 		}
 	}
 	return catcher.Resolve()
+}
+
+// ValidateCloneMethod checks that the clone mechanism is one of the supported
+// methods.
+func ValidateCloneMethod(method string) error {
+	if !util.StringSliceContains(validCloneMethods, method) {
+		return errors.Errorf("'%s' is not a valid clone method", method)
+	}
+	return nil
 }
 
 // GetDistroIds returns a slice of distro IDs for the given group of distros

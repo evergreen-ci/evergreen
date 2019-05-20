@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"io"
+	"net/http"
 	"time"
 
 	"github.com/docker/docker/api/types"
@@ -15,6 +16,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
+	"github.com/evergreen-ci/evergreen/model/manifest"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/stats"
 	"github.com/evergreen-ci/evergreen/model/task"
@@ -53,6 +55,7 @@ type Connector interface {
 	SetTaskActivated(string, string, bool) error
 	ResetTask(string, string) error
 	AbortTask(string, string) error
+	CheckTaskSecret(string, *http.Request) (int, error)
 
 	// FindTasksByBuildId is a method to find a set of tasks which all have the same
 	// BuildId. It takes the buildId being queried for as its first parameter,
@@ -62,6 +65,9 @@ type Connector interface {
 
 	// FindBuildById is a method to find the build matching the same BuildId.
 	FindBuildById(string) (*build.Build, error)
+	// GetManifestByTask is a method to get the manifest for the given task.
+	GetManifestByTask(string) (*manifest.Manifest, error)
+
 	// SetBuildPriority and SetBuildActivated change the status of the input build
 	SetBuildPriority(string, int64) error
 	SetBuildActivated(string, string, bool) error
@@ -198,6 +204,8 @@ type Connector interface {
 
 	// TerminateHost terminates the given host via the cloud provider's API
 	TerminateHost(context.Context, *host.Host, string) error
+
+	CheckHostSecret(*http.Request) (int, error)
 
 	// FindProjectAliases queries the database to find all aliases.
 	FindProjectAliases(string) ([]model.ProjectAlias, error)

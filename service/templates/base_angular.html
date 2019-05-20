@@ -20,6 +20,13 @@
         <!-- our css -->
         <link href="/static/dist/css/styles.min.css?hash={{ BuildRevision }}" rel="stylesheet" />
 
+        {{if .Bugsnag}}
+        {{if ne .Bugsnag ""}}
+        <script src="//d2wy8f7a9ursnm.cloudfront.net/v6/bugsnag.min.js"></script>
+        <script>window.bugsnagClient = bugsnag({apiKey: '{{.Bugsnag}}', appVersion: '{{BuildRevision}}'})</script>
+        {{end}}
+        {{end}}
+
         <!-- underscore.js js v1.4.4 js -->
         <script type="text/javascript" src="/static/thirdparty/underscore-min.js"></script>
 
@@ -81,6 +88,7 @@
         <script type="text/javascript" src="/static/app/common/RestartUtil.js?hash={{ BuildRevision }}"></script>
         <script type="text/javascript" src="/static/app/common/PointsDataService.js?hash={{ BuildRevision }}"></script>
         <script type="text/javascript" src="/static/app/common/OutliersDataService.js?hash={{ BuildRevision }}"></script>
+        <script type="text/javascript" src="/static/app/common/MuteDataService.js?hash={{ BuildRevision }}"></script>
 
         <style type="text/css">
           #footer{ font-size:.8em; color:#888; }

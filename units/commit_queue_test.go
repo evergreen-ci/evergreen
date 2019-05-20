@@ -2,6 +2,7 @@ package units
 
 import (
 	"context"
+	"fmt"
 	"io/ioutil"
 	"path/filepath"
 	"testing"
@@ -114,7 +115,7 @@ func (s *commitQueueSuite) TestSubscribeMerge() {
 	s.True(ok)
 	s.Equal(s.projectRef.Owner, target.Owner)
 	s.Equal(s.projectRef.Repo, target.Repo)
-	s.Equal(s.pr.GetTitle(), target.CommitTitle)
+	s.Equal(s.pr.GetTitle()+fmt.Sprintf(" (#%d)", *s.pr.Number), target.CommitTitle)
 }
 
 func (s *commitQueueSuite) TestWritePatchInfo() {

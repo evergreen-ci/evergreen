@@ -180,6 +180,8 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	origProjectRef := *projectRef
+
 	responseRef := struct {
 		Identifier         string                         `json:"identifier"`
 		DisplayName        string                         `json:"display_name"`
@@ -319,7 +321,7 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 	if commitQueueParams.Enabled {
 		var projRef *model.ProjectRef
 		projRef, err = model.FindOneProjectRefWithCommitQueueByOwnerRepoAndBranch(responseRef.Owner, responseRef.Repo, responseRef.Branch)
-		if err != nil {
+		if err != nil && !adb.ResultsNotFound(err) {
 			uis.LoggedError(w, r, http.StatusInternalServerError, err)
 			return
 		}
@@ -347,7 +349,6 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 	}
-	projectRef.CommitQueue = commitQueueParams
 
 	catcher := grip.NewSimpleCatcher()
 	for i, trigger := range responseRef.Triggers {
@@ -360,8 +361,6 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 		uis.LoggedError(w, r, http.StatusBadRequest, catcher.Resolve())
 		return
 	}
-
-	origProjectRef := *projectRef
 
 	projectRef.DisplayName = responseRef.DisplayName
 	projectRef.RemotePath = responseRef.RemotePath
@@ -376,6 +375,7 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 	projectRef.Identifier = id
 	projectRef.TracksPushEvents = responseRef.TracksPushEvents
 	projectRef.PRTestingEnabled = responseRef.PRTestingEnabled
+	projectRef.CommitQueue = commitQueueParams
 	projectRef.PatchingDisabled = responseRef.PatchingDisabled
 	projectRef.NotifyOnBuildFailure = responseRef.NotifyOnBuildFailure
 	projectRef.Triggers = responseRef.Triggers

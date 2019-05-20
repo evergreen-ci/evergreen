@@ -29,6 +29,7 @@ var distroSyntaxValidators = []distroValidator{
 	ensureValidContainerPool,
 	ensureValidArch,
 	ensureValidBootstrapAndCommunicationMethods,
+	ensureValidCloneMethod,
 	ensureHasNoUnauthorizedCharacters,
 	ensureHasValidPlannerVersion,
 	ensureHasValidFinderVersion,
@@ -186,6 +187,15 @@ func ensureValidArch(ctx context.Context, d *distro.Distro, s *evergreen.Setting
 // supported methods, and the two together form a valid combination.
 func ensureValidBootstrapAndCommunicationMethods(ctx context.Context, d *distro.Distro, s *evergreen.Settings) ValidationErrors {
 	if err := distro.ValidateBootstrapAndCommunicationMethods(d.BootstrapMethod, d.CommunicationMethod); err != nil {
+		return ValidationErrors{{Level: Error, Message: err.Error()}}
+	}
+	return nil
+}
+
+// ensureValidCloneMethod checks that the clone method is one of the supported
+// methods.
+func ensureValidCloneMethod(ctx context.Context, d *distro.Distro, s *evergreen.Settings) ValidationErrors {
+	if err := distro.ValidateCloneMethod(d.CloneMethod); err != nil {
 		return ValidationErrors{{Level: Error, Message: err.Error()}}
 	}
 	return nil

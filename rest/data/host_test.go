@@ -2,6 +2,7 @@ package data
 
 import (
 	"fmt"
+	"net/http"
 	"testing"
 	"time"
 
@@ -33,6 +34,7 @@ func TestHostConnectorSuite(t *testing.T) {
 			StartedBy:      testUser,
 			Status:         evergreen.HostRunning,
 			ExpirationTime: time.Now().Add(time.Hour),
+			Secret:         "abcdef",
 		}
 		host2 := &host.Host{
 			Id:             "host2",
@@ -79,7 +81,7 @@ func TestMockHostConnectorSuite(t *testing.T) {
 		s.ctx = &MockConnector{
 			MockHostConnector: MockHostConnector{
 				CachedHosts: []host.Host{
-					{Id: "host1", StartedBy: testUser, Status: evergreen.HostRunning, ExpirationTime: time.Now().Add(time.Hour)},
+					{Id: "host1", StartedBy: testUser, Status: evergreen.HostRunning, ExpirationTime: time.Now().Add(time.Hour), Secret: "abcdef"},
 					{Id: "host2", StartedBy: "user2", Status: evergreen.HostTerminated, ExpirationTime: time.Now().Add(time.Hour)},
 					{Id: "host3", StartedBy: "user3", Status: evergreen.HostTerminated, ExpirationTime: time.Now().Add(time.Hour)},
 					{Id: "host4", StartedBy: "user4", Status: evergreen.HostTerminated, ExpirationTime: time.Now().Add(time.Hour)}},
@@ -263,4 +265,21 @@ func (s *HostConnectorSuite) TestFindHostByIdWithSuperUser() {
 	h, err := s.ctx.FindHostByIdWithOwner("host2", u)
 	s.NoError(err)
 	s.NotNil(h)
+}
+
+func (s *HostConnectorSuite) TestCheckHostSecret() {
+	r := &http.Request{
+		Header: http.Header{
+			evergreen.HostHeader: []string{"host1"},
+		},
+	}
+
+	code, err := s.ctx.CheckHostSecret(r)
+	s.Error(err)
+	s.Equal(http.StatusBadRequest, code)
+
+	r.Header.Set(evergreen.HostSecretHeader, "abcdef")
+	code, err = s.ctx.CheckHostSecret(r)
+	s.NoError(err)
+	s.Equal(http.StatusOK, code)
 }

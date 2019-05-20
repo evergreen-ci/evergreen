@@ -132,7 +132,7 @@ func MockConfig() *evergreen.Settings {
 		},
 		Credentials:        map[string]string{"k1": "v1"},
 		Expansions:         map[string]string{"k2": "v2"},
-		GoogleAnalyticsID:  "u-12345",
+		Bugsnag:            "u-12345",
 		GithubPRCreatorOrg: "org",
 		HostInit: evergreen.HostInitConfig{
 			SSHTimeoutSeconds: 10,

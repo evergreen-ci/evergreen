@@ -70,6 +70,7 @@ import (
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo/options"
+	"go.mongodb.org/mongo-driver/mongo/readpref"
 	mgobson "gopkg.in/mgo.v2/bson"
 )
 
@@ -1023,7 +1024,7 @@ func aggregateIntoCollection(collection string, pipeline []bson.M, outputCollect
 		return errors.Wrap(err, "Failed to initialize document writer")
 	}
 
-	cursor, err := env.DB().Collection(collection).Aggregate(ctx, pipeline, options.Aggregate().SetAllowDiskUse(true))
+	cursor, err := env.DB().Collection(collection, options.Collection().SetReadPreference(readpref.SecondaryPreferred())).Aggregate(ctx, pipeline, options.Aggregate().SetAllowDiskUse(true))
 	if err != nil {
 		return errors.Wrap(err, "problem running aggregation")
 	}

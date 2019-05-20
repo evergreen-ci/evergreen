@@ -11,6 +11,7 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/auth"
 	"github.com/evergreen-ci/evergreen/cloud"
+	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/user"
@@ -113,6 +114,11 @@ func (hc *DBHostConnector) SetHostExpirationTime(host *host.Host, newExp time.Ti
 
 func (hc *DBHostConnector) TerminateHost(ctx context.Context, host *host.Host, user string) error {
 	return errors.WithStack(cloud.TerminateSpawnHost(ctx, host, evergreen.GetEnvironment().Settings(), user))
+}
+
+func (hc *DBHostConnector) CheckHostSecret(r *http.Request) (int, error) {
+	_, code, err := model.ValidateHost("", r)
+	return code, errors.WithStack(err)
 }
 
 // MockHostConnector is a struct that implements the Host related methods
@@ -244,6 +250,13 @@ func (hc *MockHostConnector) TerminateHost(ctx context.Context, host *host.Host,
 	}
 
 	return errors.New("can't find host")
+}
+
+func (hc *MockHostConnector) CheckHostSecret(r *http.Request) (int, error) {
+	if r.Header.Get(evergreen.HostSecretHeader) == "" {
+		return http.StatusBadRequest, errors.New("Bad request")
+	}
+	return http.StatusOK, nil
 }
 
 func (dbc *MockConnector) FindHostByIdWithOwner(hostID string, user gimlet.User) (*host.Host, error) {

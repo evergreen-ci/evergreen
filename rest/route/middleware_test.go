@@ -6,6 +6,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/commitqueue"
@@ -263,5 +264,26 @@ func TestCommitQueueItemOwnerMiddlewareUserPatch(t *testing.T) {
 	})
 	rw = httptest.NewRecorder()
 	mw.ServeHTTP(rw, r, func(rw http.ResponseWriter, r *http.Request) {})
+	assert.Equal(http.StatusOK, rw.Code)
+}
+
+func TestTaskAuthMiddleware(t *testing.T) {
+	assert := assert.New(t)
+	m := NewTaskAuthMiddleware(&data.MockConnector{})
+	r := &http.Request{
+		Header: http.Header{
+			evergreen.HostHeader:       []string{"host1"},
+			evergreen.HostSecretHeader: []string{"abcdef"},
+			evergreen.TaskHeader:       []string{"task1"},
+		},
+	}
+
+	rw := httptest.NewRecorder()
+	m.ServeHTTP(rw, r, func(rw http.ResponseWriter, r *http.Request) {})
+	assert.Equal(http.StatusUnauthorized, rw.Code)
+
+	r.Header.Set(evergreen.TaskSecretHeader, "abcdef")
+	rw = httptest.NewRecorder()
+	m.ServeHTTP(rw, r, func(rw http.ResponseWriter, r *http.Request) {})
 	assert.Equal(http.StatusOK, rw.Code)
 }

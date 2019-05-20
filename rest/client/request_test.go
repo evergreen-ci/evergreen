@@ -29,8 +29,9 @@ func (s *RequestTestSuite) SetupTest() {
 }
 
 func (s *RequestTestSuite) TestNewRequest() {
-	r, err := s.evergreenREST.newRequest("method", "path", "taskSecret", string(apiVersion1), nil)
+	r, err := s.evergreenREST.newRequest("method", "path", "task1", "taskSecret", string(apiVersion1), nil)
 	s.NoError(err)
+	s.Equal("task1", r.Header.Get(evergreen.TaskHeader))
 	s.Equal("taskSecret", r.Header.Get(evergreen.TaskSecretHeader))
 	s.Equal(s.evergreenREST.hostID, r.Header.Get(evergreen.HostHeader))
 	s.Equal(s.evergreenREST.hostSecret, r.Header.Get(evergreen.HostSecretHeader))

@@ -14,8 +14,9 @@ import (
 )
 
 type runCommandsOptions struct {
-	isTaskCommands  bool
-	shouldSetupFail bool
+	isTaskCommands   bool
+	shouldSetupFail  bool
+	setupTimeoutSecs int
 }
 
 func (a *Agent) runCommands(ctx context.Context, tc *taskContext, commands []model.PluginCommandConf,

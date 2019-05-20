@@ -15,6 +15,7 @@ mciModule.controller('DistrosCtrl', function($scope, $window, $location, $anchor
     $scope.distros[i].finder_settings.version = $scope.distros[i].finder_settings.version || "legacy";
     $scope.distros[i].bootstrap_method = $scope.distros[i].bootstrap_method || 'legacy-ssh';
     $scope.distros[i].communication_method = $scope.distros[i].communication_method || 'legacy-ssh';
+    $scope.distros[i].clone_method = $scope.distros[i].clone_method || 'legacy-ssh';
   }
 
   $scope.planner_versions = [{
@@ -102,6 +103,14 @@ mciModule.controller('DistrosCtrl', function($scope, $window, $location, $anchor
       'id': 'rpc',
       'display': 'RPC'
   }]
+
+    $scope.cloneMethods = [{
+      'id': 'legacy-ssh',
+      'display': 'Legacy SSH'
+    }, {
+      'id':  'oauth',
+      'display': 'OAuth Token'
+    }]
 
   $scope.ids = [];
 
@@ -327,6 +336,7 @@ mciModule.controller('DistrosCtrl', function($scope, $window, $location, $anchor
         'provider': 'ec2',
         'bootstrap_method': 'legacy-ssh',
         'communication_method': 'legacy-ssh',
+        'clone_method': 'legacy-ssh',
         'settings': {},
         'new': true,
       };
@@ -359,6 +369,7 @@ mciModule.controller('DistrosCtrl', function($scope, $window, $location, $anchor
         'setup_as_sudo' : $scope.activeDistro.setup_as_sudo,
         'bootstrap_method': $scope.activeDistro.bootstrap_method,
         'communication_method': $scope.activeDistro.communication_method,
+        'clone_method': $scope.activeDistro.clone_method,
       };
       newDistro.settings = _.clone($scope.activeDistro.settings);
       newDistro.expansions = _.clone($scope.activeDistro.expansions);
@@ -500,6 +511,12 @@ mciModule.filter('communicationMethodDisplay', function() {
     return scope.getKeyDisplay('communicationMethods', communicationMethod);
   }
 });
+
+mciModule.filter('cloneMethodDisplay', function() {
+  return function(cloneMethod, scope) {
+    return scope.getKeyDisplay('cloneMethods', cloneMethod);
+  }
+})
 
 mciModule.directive('unique', function() {
   return {
