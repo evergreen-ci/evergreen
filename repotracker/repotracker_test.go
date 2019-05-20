@@ -657,7 +657,7 @@ tasks:
 	p := &model.Project{}
 	err := model.LoadProjectInto([]byte(configYml), s.ref.Identifier, p)
 	s.NoError(err)
-	v, err := CreateVersionFromConfig(s.ref, p, VersionMetadata{Revision: *s.rev, SourceVersion: s.sourceVersion}, false, nil)
+	v, err := CreateVersionFromConfig(context.Background(), s.ref, p, VersionMetadata{Revision: *s.rev, SourceVersion: s.sourceVersion}, false, nil)
 	s.NoError(err)
 	s.Require().NotNil(v)
 
@@ -691,7 +691,7 @@ tasks:
 	p := &model.Project{}
 	err := model.LoadProjectInto([]byte(configYml), s.ref.Identifier, p)
 	s.NoError(err)
-	v, err := CreateVersionFromConfig(s.ref, p, VersionMetadata{Revision: *s.rev}, false, nil)
+	v, err := CreateVersionFromConfig(context.Background(), s.ref, p, VersionMetadata{Revision: *s.rev}, false, nil)
 	s.NoError(err)
 	s.Require().NotNil(v)
 
@@ -728,7 +728,7 @@ tasks:
 		Errors:   []string{"err1"},
 		Warnings: []string{"warn1", "warn2"},
 	}
-	v, err := CreateVersionFromConfig(s.ref, p, VersionMetadata{Revision: *s.rev}, false, &vErrs)
+	v, err := CreateVersionFromConfig(context.Background(), s.ref, p, VersionMetadata{Revision: *s.rev}, false, &vErrs)
 	s.NoError(err)
 	s.Require().NotNil(v)
 
@@ -737,6 +737,36 @@ tasks:
 	s.Equal(v.Config, dbVersion.Config)
 	s.Len(dbVersion.Errors, 2)
 	s.Len(dbVersion.Warnings, 2)
+}
+
+func (s *CreateVersionFromConfigSuite) TestTransactionAbort() {
+	configYml := `
+buildvariants:
+- name: bv
+  run_on: d
+  tasks:
+  - name: task1
+  - name: task2
+tasks:
+- name: task1
+- name: task2
+`
+	p := &model.Project{}
+	err := model.LoadProjectInto([]byte(configYml), s.ref.Identifier, p)
+	s.NoError(err)
+
+	//force a duplicate key error with the version
+	v := &model.Version{
+		Id: makeVersionId(s.ref.String(), s.rev.Revision),
+	}
+	s.NoError(v.Insert())
+
+	v, err = CreateVersionFromConfig(context.Background(), s.ref, p, VersionMetadata{Revision: *s.rev, SourceVersion: s.sourceVersion}, false, nil)
+	s.Error(err)
+
+	tasks, err := task.Find(task.ByVersion(v.Id))
+	s.NoError(err)
+	s.Len(tasks, 0)
 }
 
 func TestCreateManifest(t *testing.T) {

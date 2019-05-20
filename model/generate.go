@@ -1,6 +1,7 @@
 package model
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 
@@ -158,7 +159,7 @@ func (g *GeneratedProject) NewVersion() (*Project, *Version, *task.Task, *projec
 	return p, v, t, &cachedProject, prevConfig, nil
 }
 
-func (g *GeneratedProject) Save(p *Project, v *Version, t *task.Task, pm *projectMaps, prevConfig string) error {
+func (g *GeneratedProject) Save(ctx context.Context, p *Project, v *Version, t *task.Task, pm *projectMaps, prevConfig string) error {
 	query := bson.M{
 		VersionIdKey:     v.Id,
 		VersionConfigKey: prevConfig,
@@ -170,7 +171,7 @@ func (g *GeneratedProject) Save(p *Project, v *Version, t *task.Task, pm *projec
 		return errors.Wrapf(err, "error updating version %s", v.Id)
 	}
 
-	if err := g.saveNewBuildsAndTasks(pm, v, p, t.Priority); err != nil {
+	if err := g.saveNewBuildsAndTasks(ctx, pm, v, p, t.Priority); err != nil {
 		return errors.Wrap(err, "error savings new builds and tasks")
 	}
 	return nil
@@ -195,7 +196,7 @@ func cacheProjectData(p *Project) projectMaps {
 }
 
 // saveNewBuildsAndTasks saves new builds and tasks to the db.
-func (g *GeneratedProject) saveNewBuildsAndTasks(cachedProject *projectMaps, v *Version, p *Project, parentPriority int64) error {
+func (g *GeneratedProject) saveNewBuildsAndTasks(ctx context.Context, cachedProject *projectMaps, v *Version, p *Project, parentPriority int64) error {
 	newTVPairsForExistingVariants := TaskVariantPairs{}
 	newTVPairsForNewVariants := TaskVariantPairs{}
 	builds, err := build.Find(build.ByVersion(v.Id).WithFields(build.IdKey, build.BuildVariantKey))
@@ -226,7 +227,7 @@ func (g *GeneratedProject) saveNewBuildsAndTasks(cachedProject *projectMaps, v *
 
 	dependencies := IncludePatchDependencies(p, newTVPairsForExistingVariants.ExecTasks)
 	newTVPairsForExistingVariants.ExecTasks = append(newTVPairsForExistingVariants.ExecTasks, dependencies...)
-	if err := AddNewTasks(true, v, p, newTVPairsForExistingVariants, g.TaskID); err != nil {
+	if err := AddNewTasks(ctx, true, v, p, newTVPairsForExistingVariants, g.TaskID); err != nil {
 		return errors.Wrap(err, "errors adding new tasks")
 	}
 	dependencies = IncludePatchDependencies(p, newTVPairsForNewVariants.ExecTasks)

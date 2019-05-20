@@ -8,8 +8,12 @@ import (
 	"testing"
 	"time"
 
+	"github.com/evergreen-ci/evergreen"
+
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/evergreen/model/build"
+	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/google/go-github/github"
@@ -93,6 +97,18 @@ func dropTestDB(t *testing.T) {
 	defer session.Close()
 	require.NoError(t, session.DB(testConfig.Database.DB).DropDatabase(),
 		"Error dropping test database")
+	createTaskCollections()
+}
+
+func createTaskCollections() {
+	cmd := map[string]string{
+		"create": task.Collection,
+	}
+	_ = evergreen.GetEnvironment().DB().RunCommand(nil, cmd)
+	cmd["create"] = build.Collection
+	_ = evergreen.GetEnvironment().DB().RunCommand(nil, cmd)
+	cmd["create"] = model.VersionCollection
+	_ = evergreen.GetEnvironment().DB().RunCommand(nil, cmd)
 }
 
 func TestGetRevisionsSinceWithPaging(t *testing.T) {

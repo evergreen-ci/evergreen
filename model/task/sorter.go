@@ -1,6 +1,11 @@
 package task
 
-import "github.com/evergreen-ci/evergreen/db"
+import (
+	"context"
+
+	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/db"
+)
 
 type Tasks []*Task
 
@@ -21,8 +26,9 @@ func (t Tasks) Insert() error {
 	return db.InsertMany(Collection, t.getPayload()...)
 }
 
-func (t Tasks) InsertUnordered() error {
-	return db.InsertManyUnordered(Collection, t.getPayload()...)
+func (t Tasks) InsertUnordered(ctx context.Context) error {
+	_, err := evergreen.GetEnvironment().DB().Collection(Collection).InsertMany(ctx, t.getPayload())
+	return err
 }
 
 type ByPriority []string

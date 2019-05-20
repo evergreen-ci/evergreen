@@ -90,8 +90,8 @@ func AddNewBuildsForPatch(p *patch.Patch, patchVersion *Version, project *Projec
 
 // Given a patch version and set of variant/task pairs, creates any tasks that don't exist yet,
 // within the set of already existing builds.
-func AddNewTasksForPatch(p *patch.Patch, patchVersion *Version, project *Project, pairs TaskVariantPairs) error {
-	return AddNewTasks(p.Activated, patchVersion, project, pairs, "")
+func AddNewTasksForPatch(ctx context.Context, p *patch.Patch, patchVersion *Version, project *Project, pairs TaskVariantPairs) error {
+	return AddNewTasks(ctx, p.Activated, patchVersion, project, pairs, "")
 }
 
 // IncludePatchDependencies takes a project and a slice of variant/task pairs names

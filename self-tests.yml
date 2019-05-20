@@ -70,7 +70,7 @@ variables:
     name: test
     commands:
       - func: get-project
-      - func: set-up-credentials
+      - func: setup-credentials
       - func: run-make
         vars:
           target: revendor
@@ -80,8 +80,8 @@ variables:
     name: test
     commands:
       - func: get-project
-      - func: set-up-credentials
-      - func: set-up-mongodb
+      - func: setup-credentials
+      - func: setup-mongodb
 #      - func: setup-docker-host
       - func: run-make
         vars:
@@ -94,8 +94,8 @@ variables:
     name: test
     commands:
       - func: get-project
-      - func: set-up-credentials
-      - func: set-up-mongodb
+      - func: setup-credentials
+      - func: setup-mongodb
       - func: run-make
         vars:
           target: revendor
@@ -109,7 +109,7 @@ variables:
           exec_timeout_secs: 900
           timeout_secs: 900
       - func: get-project
-      - func: set-up-mongodb
+      - func: setup-mongodb
       - func: run-make
         vars: { target: "set-var" }
       - func: run-make
@@ -187,7 +187,7 @@ functions:
         VENDOR_PKG: "github.com/${trigger_repo_owner}/${trigger_repo_name}"
         VENDOR_REVISION: ${trigger_revision}
         XC_BUILD: ${xc_build}
-  set-up-credentials:
+  setup-credentials:
     command: subprocess.exec
     type: setup
     params:
@@ -202,7 +202,7 @@ functions:
         AWS_KEY: ${aws_key}
         AWS_SECRET: ${aws_secret}
       command: bash scripts/setup-credentials.sh
-  set-up-mongodb:
+  setup-mongodb:
     - command: subprocess.exec
       type: setup
       params:
@@ -222,6 +222,11 @@ functions:
       params:
         working_dir: gopath/src/github.com/evergreen-ci/evergreen
         command: make check-mongod
+    - command: subprocess.exec
+      type: setup
+      params:
+        working_dir: gopath/src/github.com/evergreen-ci/evergreen/
+        command: make init-rs
 #  setup-docker-host:
 #    - command: host.create
 #      type: setup
@@ -280,8 +285,8 @@ tasks:
     tags: [ "report" ]
     commands:
       - func: get-project
-      - func: set-up-credentials
-      - func: set-up-mongodb
+      - func: setup-credentials
+      - func: setup-mongodb
       - func: run-make
         vars:
           target: "coverage-html"
