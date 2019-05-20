@@ -25,7 +25,7 @@ var (
 	BuildRevision = ""
 
 	// Commandline Version String; used to control auto-updating.
-	ClientVersion = "2019-05-03"
+	ClientVersion = "2019-05-13"
 )
 
 // ConfigSection defines a sub-document in the evegreen config
@@ -51,6 +51,7 @@ type Settings struct {
 	AuthConfig         AuthConfig                `yaml:"auth" bson:"auth" json:"auth" id:"auth"`
 	Banner             string                    `bson:"banner" json:"banner"`
 	BannerTheme        BannerTheme               `bson:"banner_theme" json:"banner_theme"`
+	Bugsnag            string                    `yaml:"bugsnag" bson:"bugsnag" json:"bugsnag"`
 	ClientBinariesDir  string                    `yaml:"client_binaries_dir" bson:"client_binaries_dir" json:"client_binaries_dir"`
 	CommitQueue        CommitQueueConfig         `yaml:"commit_queue" bson:"commit_queue" json:"commit_queue" id:"commit_queue"`
 	ConfigDir          string                    `yaml:"configdir" bson:"configdir" json:"configdir"`
@@ -62,7 +63,6 @@ type Settings struct {
 	Expansions         map[string]string         `yaml:"expansions" bson:"expansions" json:"expansions"`
 	ExpansionsNew      util.KeyValuePairSlice    `yaml:"expansions_new" bson:"expansions_new" json:"expansions_new"`
 	GithubPRCreatorOrg string                    `yaml:"github_pr_creator_org" bson:"github_pr_creator_org" json:"github_pr_creator_org"`
-	GoogleAnalyticsID  string                    `yaml:"google_analytics" bson:"google_analytics" json:"google_analytics"`
 	HostInit           HostInitConfig            `yaml:"hostinit" bson:"hostinit" json:"hostinit" id:"hostinit"`
 	Jira               JiraConfig                `yaml:"jira" bson:"jira" json:"jira" id:"jira"`
 	JIRANotifications  JIRANotificationsConfig   `yaml:"jira_notifications" json:"jira_notifications" bson:"jira_notifications" id:"jira_notifications"`
@@ -120,6 +120,7 @@ func (c *Settings) Set() error {
 			apiUrlKey:             c.ApiUrl,
 			bannerKey:             c.Banner,
 			bannerThemeKey:        c.BannerTheme,
+			bugsnagKey:            c.Bugsnag,
 			clientBinariesDirKey:  c.ClientBinariesDir,
 			commitQueueKey:        c.CommitQueue,
 			configDirKey:          c.ConfigDir,
@@ -129,7 +130,6 @@ func (c *Settings) Set() error {
 			jasperKey:             c.JasperConfig,
 			expansionsKey:         c.Expansions,
 			expansionsNewKey:      c.ExpansionsNew,
-			googleAnalyticsKey:    c.GoogleAnalyticsID,
 			githubPRCreatorOrgKey: c.GithubPRCreatorOrg,
 			keysKey:               c.Keys,
 			keysNewKey:            c.KeysNew,

@@ -6,6 +6,7 @@ import (
 	"sort"
 	"testing"
 
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/testutil"
@@ -449,4 +450,31 @@ func (s *TaskConnectorAbortTaskSuite) TestAbortFail() {
 	s.ctx.(*MockConnector).MockTaskConnector.FailOnAbort = true
 	err := s.ctx.AbortTask("task1", "user1")
 	s.Error(err)
+}
+
+func TestCheckTaskSecret(t *testing.T) {
+	assert := assert.New(t)
+	assert.NoError(db.ClearCollections(task.Collection))
+
+	ctx := &DBConnector{}
+
+	task := task.Task{
+		Id:     "task1",
+		Secret: "abcdef",
+	}
+	assert.NoError(task.Insert())
+
+	r := &http.Request{
+		Header: http.Header{
+			evergreen.TaskHeader: []string{"task1"},
+		},
+	}
+	code, err := ctx.CheckTaskSecret("task1", r)
+	assert.Error(err)
+	assert.Equal(http.StatusUnauthorized, code)
+
+	r.Header.Set(evergreen.TaskSecretHeader, "abcdef")
+	code, err = ctx.CheckTaskSecret("task1", r)
+	assert.NoError(err)
+	assert.Equal(http.StatusOK, code)
 }

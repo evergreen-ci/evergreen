@@ -143,6 +143,48 @@ func (m *projectAdminMiddleware) ServeHTTP(rw http.ResponseWriter, r *http.Reque
 	next(rw, r)
 }
 
+func NewTaskAuthMiddleware(sc data.Connector) gimlet.Middleware {
+	return &TaskAuthMiddleware{
+		sc: sc,
+	}
+}
+
+type TaskAuthMiddleware struct {
+	sc data.Connector
+}
+
+func (m *TaskAuthMiddleware) ServeHTTP(rw http.ResponseWriter, r *http.Request, next http.HandlerFunc) {
+	vars := gimlet.GetVars(r)
+	taskID, ok := vars["task_id"]
+	if !ok {
+		taskID = r.Header.Get(evergreen.TaskHeader)
+		if taskID == "" {
+			gimlet.WriteResponse(rw, gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+				StatusCode: http.StatusUnauthorized,
+				Message:    "Not authorized",
+			}))
+			return
+		}
+	}
+
+	if code, err := m.sc.CheckTaskSecret(taskID, r); err != nil {
+		gimlet.WriteResponse(rw, gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+			StatusCode: code,
+			Message:    err.Error(),
+		}))
+		return
+	}
+	if code, err := m.sc.CheckHostSecret(r); err != nil {
+		gimlet.WriteResponse(rw, gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+			StatusCode: code,
+			Message:    err.Error(),
+		}))
+		return
+	}
+
+	next(rw, r)
+}
+
 func NewCommitQueueItemOwnerMiddleware(sc data.Connector) gimlet.Middleware {
 	return &CommitQueueItemOwnerMiddleware{
 		sc: sc,

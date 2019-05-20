@@ -1,5 +1,9 @@
 package manifest
 
+import (
+	"github.com/pkg/errors"
+)
+
 const Collection = "manifest"
 
 // Manifest is a representation of the modules associated with the a version.
@@ -28,4 +32,19 @@ type Module struct {
 	Revision string `json:"revision" bson:"revision"`
 	Owner    string `json:"owner" bson:"owner"`
 	URL      string `json:"url" bson:"url"`
+}
+
+func (m *Manifest) UpdateModuleRevision(moduleName, newRevision string) error {
+	wasUpdated := false
+	for name, module := range m.Modules {
+		if name == moduleName {
+			module.Revision = newRevision
+			wasUpdated = true
+		}
+	}
+	if !wasUpdated {
+		return errors.Errorf("no module named %s found", moduleName)
+	}
+
+	return updateRevision(m.Id, moduleName, newRevision)
 }

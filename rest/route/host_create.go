@@ -10,7 +10,6 @@ import (
 	"github.com/docker/docker/api/types"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/apimodels"
-	dbModel "github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/rest/data"
@@ -43,18 +42,7 @@ func (h *hostCreateHandler) Parse(ctx context.Context, r *http.Request) error {
 		}
 	}
 	h.taskID = taskID
-	if _, code, err := dbModel.ValidateTask(h.taskID, true, r); err != nil {
-		return gimlet.ErrorResponse{
-			StatusCode: code,
-			Message:    "task is invalid",
-		}
-	}
-	if _, code, err := dbModel.ValidateHost("", r); err != nil {
-		return gimlet.ErrorResponse{
-			StatusCode: code,
-			Message:    "host is invalid",
-		}
-	}
+
 	if err := util.ReadJSONInto(r.Body, &h.createHost); err != nil {
 		return gimlet.ErrorResponse{
 			StatusCode: http.StatusBadRequest,
@@ -132,12 +120,6 @@ func (h *hostListHandler) Parse(ctx context.Context, r *http.Request) error {
 		}
 	}
 	h.taskID = taskID
-	if _, code, err := dbModel.ValidateTask(h.taskID, true, r); err != nil {
-		return gimlet.ErrorResponse{
-			StatusCode: code,
-			Message:    "task is invalid",
-		}
-	}
 
 	return nil
 }

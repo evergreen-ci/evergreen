@@ -205,7 +205,7 @@ func (p *ewmaRateLimiting) runJob(ctx context.Context, j amboy.Job) time.Duratio
 		delete(p.jobs, j.ID())
 	}()
 
-	executeJob(ctx, j, p.queue, start)
+	runJob(ctx, j, p.queue, start)
 
 	duration := time.Since(start)
 	interval := p.getNextTime(duration)
@@ -215,7 +215,7 @@ func (p *ewmaRateLimiting) runJob(ctx context.Context, j amboy.Job) time.Duratio
 		"duration_secs": duration.Seconds(),
 		"queue_type":    fmt.Sprintf("%T", p.queue),
 		"interval_secs": interval.Seconds(),
-		"pool":          "rate limiting, moving average",
+		"pool":          "rate-limited-average",
 	}
 	if err := j.Error(); err != nil {
 		r["error"] = err.Error()

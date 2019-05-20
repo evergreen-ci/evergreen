@@ -144,8 +144,12 @@ buildvariants:
 		Id: "p",
 	}
 	assert.NoError(pvars.Insert())
-
+	settings := &evergreen.Settings{
+		Credentials: map[string]string{"github": "token globalGitHubOauthToken"},
+	}
+	assert.NoError(settings.Set())
 	dc := DBCreateHostConnector{}
+
 	err := dc.CreateHostsFromTask(&t1, user.DBUser{Id: "me"}, "")
 	assert.NoError(err)
 

@@ -345,15 +345,16 @@ type TaskGroup struct {
 	Name string `yaml:"name" bson:"name"`
 
 	// data about the task group
-	MaxHosts           int             `yaml:"max_hosts" bson:"max_hosts"`
-	SetupGroupFailTask bool            `yaml:"setup_group_can_fail_task" bson:"setup_group_can_fail_task"`
-	SetupGroup         *YAMLCommandSet `yaml:"setup_group" bson:"setup_group"`
-	TeardownGroup      *YAMLCommandSet `yaml:"teardown_group" bson:"teardown_group"`
-	SetupTask          *YAMLCommandSet `yaml:"setup_task" bson:"setup_task"`
-	TeardownTask       *YAMLCommandSet `yaml:"teardown_task" bson:"teardown_task"`
-	Timeout            *YAMLCommandSet `yaml:"timeout,omitempty" bson:"timeout"`
-	Tasks              []string        `yaml:"tasks" bson:"tasks"`
-	Tags               []string        `yaml:"tags,omitempty" bson:"tags"`
+	MaxHosts              int             `yaml:"max_hosts" bson:"max_hosts"`
+	SetupGroupFailTask    bool            `yaml:"setup_group_can_fail_task" bson:"setup_group_can_fail_task"`
+	SetupGroupTimeoutSecs int             `yaml:"setup_group_timeout_secs" bson:"setup_group_timeout_secs"`
+	SetupGroup            *YAMLCommandSet `yaml:"setup_group" bson:"setup_group"`
+	TeardownGroup         *YAMLCommandSet `yaml:"teardown_group" bson:"teardown_group"`
+	SetupTask             *YAMLCommandSet `yaml:"setup_task" bson:"setup_task"`
+	TeardownTask          *YAMLCommandSet `yaml:"teardown_task" bson:"teardown_task"`
+	Timeout               *YAMLCommandSet `yaml:"timeout,omitempty" bson:"timeout"`
+	Tasks                 []string        `yaml:"tasks" bson:"tasks"`
+	Tags                  []string        `yaml:"tags,omitempty" bson:"tags"`
 	// ShareProcs causes processes to persist between task group tasks.
 	ShareProcs bool `yaml:"share_processes" bson:"share_processes"`
 }
@@ -672,13 +673,14 @@ var (
 	ProjectTasksKey         = bsonutil.MustHaveTag(Project{}, "Tasks")
 )
 
-func PopulateExpansions(t *task.Task, h *host.Host) (util.Expansions, error) {
+func PopulateExpansions(t *task.Task, h *host.Host, oauthToken string) (util.Expansions, error) {
 	if t == nil {
 		return nil, errors.New("task cannot be nil")
 	}
 	if h == nil {
 		return nil, errors.New("host cannot be nil")
 	}
+
 	expansions := util.Expansions{}
 	expansions.Put("execution", fmt.Sprintf("%v", t.Execution))
 	expansions.Put("version_id", t.Version)
@@ -688,7 +690,7 @@ func PopulateExpansions(t *task.Task, h *host.Host) (util.Expansions, error) {
 	expansions.Put("build_variant", t.BuildVariant)
 	expansions.Put("revision", t.Revision)
 	expansions.Put("project", t.Project)
-
+	expansions.Put("global_github_oauth_token", oauthToken)
 	expansions.Put("distro_id", h.Distro.Id)
 
 	if t.TriggerID != "" {

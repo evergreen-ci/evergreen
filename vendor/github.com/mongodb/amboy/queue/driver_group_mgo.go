@@ -427,7 +427,7 @@ func (d *mgoGroupDriver) Next(ctx context.Context) amboy.Job {
 					}))
 					return nil
 				}
-				timer.Reset(time.Duration(misses * rand.Int63n(int64(time.Second))))
+				timer.Reset(time.Duration(misses * rand.Int63n(int64(d.opts.WaitInterval))))
 				iter = query.Iter()
 				continue
 			}

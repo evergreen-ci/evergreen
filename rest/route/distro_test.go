@@ -267,6 +267,7 @@ func (s *DistroByIDSuite) SetupSuite() {
 				},
 				BootstrapMethod:     distro.BootstrapMethodLegacySSH,
 				CommunicationMethod: distro.CommunicationMethodLegacySSH,
+				CloneMethod:         distro.CloneMethodLegacySSH,
 			},
 			{Id: "distro2"},
 		},
@@ -306,6 +307,7 @@ func (s *DistroByIDSuite) TestFindByIdFound() {
 	s.Equal(true, d.PlannerSettings.PatchFirst)
 	s.Equal(model.ToAPIString(distro.BootstrapMethodLegacySSH), d.BootstrapMethod)
 	s.Equal(model.ToAPIString(distro.CommunicationMethodLegacySSH), d.CommunicationMethod)
+	s.Equal(model.ToAPIString(distro.CloneMethodLegacySSH), d.CloneMethod)
 }
 
 func (s *DistroByIDSuite) TestFindByIdFail() {
@@ -358,7 +360,7 @@ func (s *DistroPutSuite) TestParse() {
 	ctx := context.Background()
 	json := []byte(`
   	{
-			"arch": "linux_amd64",
+		"arch": "linux_amd64",
     	"work_dir": "/data/mci",
     	"ssh_key": "SSH string",
     	"provider": "mock",
@@ -376,6 +378,7 @@ func (s *DistroPutSuite) TestParse() {
   		},
 		"bootstrap_method": "legacy-ssh",
 		"communication_method": "legacy-ssh",
+		"clone_method": "legacy-ssh",
     }`,
 	)
 
@@ -398,7 +401,19 @@ func (s *DistroPutSuite) TestRunNewWithValidEntity() {
 
 func (s *DistroPutSuite) TestRunNewWithInvalidEntity() {
 	ctx := context.Background()
-	json := []byte(`{"arch": "linux_amd64", "work_dir": "/data/mci", "ssh_key": "", "bootstrap_method": "foo", "communication_method": "bar", "provider": "mock", "user": "tibor", "planner_settings": {"version": "invalid"}}`)
+	json := []byte(`
+	{
+		"arch": "linux_amd64",
+		"work_dir": "/data/mci",
+		"ssh_key": "",
+		"bootstrap_method": "foo",
+		"communication_method": "bar",
+		"clone_method": "bat",
+		"provider": "mock",
+		"user": "tibor",
+		"planner_settings": {"version": "invalid"}
+	}
+	`)
 	h := s.rm.(*distroIDPutHandler)
 	h.distroID = "distro4"
 	h.body = json
@@ -410,6 +425,7 @@ func (s *DistroPutSuite) TestRunNewWithInvalidEntity() {
 	s.Contains(err.Message, "ERROR: distro 'ssh_key' cannot be blank")
 	s.Contains(err.Message, "'foo' is not a valid bootstrap method")
 	s.Contains(err.Message, "'bar' is not a valid communication method")
+	s.Contains(err.Message, "'bat' is not a valid clone method")
 	s.Contains(err.Message, "ERROR: invalid PlannerSettings.Version 'invalid' for distro 'distro4'")
 }
 
@@ -1037,6 +1053,34 @@ func (s *DistroPatchByIDSuite) TestRunInvalidBootstrapAndCommunicationMethods() 
 	s.Equal(http.StatusBadRequest, resp.Status())
 }
 
+func (s *DistroPatchByIDSuite) TestRunValidCloneMethod() {
+	ctx := context.Background()
+	json := []byte(fmt.Sprintf(`{"clone_method": "%s"}`, distro.CloneMethodLegacySSH))
+	h := s.rm.(*distroIDPatchHandler)
+	h.distroID = "fedora8"
+	h.body = json
+
+	resp := s.rm.Run(ctx)
+	s.NotNil(resp.Data())
+	s.Equal(resp.Status(), http.StatusOK)
+
+	apiDistro, ok := (resp.Data()).(*model.APIDistro)
+	s.Require().True(ok)
+	s.Equal(model.ToAPIString(distro.CloneMethodLegacySSH), apiDistro.CloneMethod)
+}
+
+func (s *DistroPatchByIDSuite) TestRunInvalidCloneMethod() {
+	ctx := context.Background()
+	json := []byte(`{"clone_method": "foobar"}`)
+	h := s.rm.(*distroIDPatchHandler)
+	h.distroID = "fedora8"
+	h.body = json
+
+	resp := s.rm.Run(ctx)
+	s.NotNil(resp.Data())
+	s.Equal(http.StatusBadRequest, resp.Status())
+}
+
 func (s *DistroPatchByIDSuite) TestValidFindAndReplaceFullDocument() {
 	ctx := context.Background()
 	json := []byte(
@@ -1062,6 +1106,7 @@ func (s *DistroPatchByIDSuite) TestValidFindAndReplaceFullDocument() {
 				"user" : "~root",
 				"bootstrap_method": "legacy-ssh",
 				"communication_method": "legacy-ssh",
+				"clone_method": "legacy-ssh",
 				"shell_path": "/usr/bin/bash",
 				"ssh_key" : "~SSH string",
 				"ssh_options" : [
@@ -1121,6 +1166,7 @@ func (s *DistroPatchByIDSuite) TestValidFindAndReplaceFullDocument() {
 	s.Equal(apiDistro.Teardown, model.ToAPIString("~Tear-down script"))
 	s.Equal(model.ToAPIString(distro.BootstrapMethodLegacySSH), apiDistro.BootstrapMethod)
 	s.Equal(model.ToAPIString(distro.CommunicationMethodLegacySSH), apiDistro.CommunicationMethod)
+	s.Equal(model.ToAPIString(distro.CloneMethodLegacySSH), apiDistro.CloneMethod)
 	s.Equal(model.ToAPIString("/usr/bin/bash"), apiDistro.ShellPath)
 	s.Equal(apiDistro.User, model.ToAPIString("~root"))
 	s.Equal(apiDistro.SSHKey, model.ToAPIString("~SSH string"))

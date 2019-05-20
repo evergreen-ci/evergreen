@@ -67,3 +67,11 @@ func FindFromVersion(versionID, project, revision string) (*Manifest, error) {
 	}
 	return manifest, err
 }
+
+func updateRevision(manifestId, moduleName, newRevision string) error {
+	return db.UpdateId(Collection, manifestId, bson.M{
+		"$set": bson.M{
+			bsonutil.GetDottedKeyName(ModulesKey, moduleName, ModuleRevisionKey): newRevision,
+		},
+	})
+}

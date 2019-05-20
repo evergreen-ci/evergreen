@@ -42,12 +42,15 @@ type localWorkers struct {
 	wg       sync.WaitGroup
 	canceler context.CancelFunc
 	queue    amboy.Queue
+	mu       sync.RWMutex
 }
 
 // SetQueue allows callers to inject alternate amboy.Queue objects into
 // constructed Runner objects. Returns an error if the Runner has
 // started.
 func (r *localWorkers) SetQueue(q amboy.Queue) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
 	if r.started {
 		return errors.New("cannot add new queue after starting a runner")
 	}
@@ -59,12 +62,17 @@ func (r *localWorkers) SetQueue(q amboy.Queue) error {
 // Started returns true when the Runner has begun executing tasks. For
 // localWorkers this means that workers are running.
 func (r *localWorkers) Started() bool {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
 	return r.started
 }
 
 // Start initializes all worker process, and returns an error if the
 // Runner has already started.
 func (r *localWorkers) Start(ctx context.Context) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
 	if r.started {
 		return nil
 	}
@@ -77,19 +85,22 @@ func (r *localWorkers) Start(ctx context.Context) error {
 	r.canceler = cancel
 	jobs := startWorkerServer(workerCtx, r.queue, &r.wg)
 
-	r.started = true
-	grip.Debugf("running %d workers", r.size)
-
 	for w := 1; w <= r.size; w++ {
-		go worker(workerCtx, jobs, r.queue, &r.wg)
+		go worker(workerCtx, "local", jobs, r.queue, &r.wg)
 		grip.Debugf("started worker %d of %d waiting for jobs", w, r.size)
 	}
+
+	r.started = true
+	grip.Debugf("running %d workers", r.size)
 
 	return nil
 }
 
 // Close terminates all worker processes as soon as possible.
 func (r *localWorkers) Close(ctx context.Context) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
 	if r.canceler != nil {
 		r.canceler()
 		r.canceler = nil

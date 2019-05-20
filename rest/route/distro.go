@@ -269,6 +269,7 @@ func (h *distroIDPutHandler) Run(ctx context.Context) gimlet.Responder {
 		},
 		BootstrapMethod:     model.ToAPIString(distro.BootstrapMethodLegacySSH),
 		CommunicationMethod: model.ToAPIString(distro.CommunicationMethodLegacySSH),
+		CloneMethod:         model.ToAPIString(distro.CloneMethodLegacySSH),
 	}
 	if err = json.Unmarshal(h.body, apiDistro); err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "API error while unmarshalling JSON"))

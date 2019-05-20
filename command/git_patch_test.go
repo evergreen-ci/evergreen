@@ -8,6 +8,7 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
 	modelutil "github.com/evergreen-ci/evergreen/model/testutil"
@@ -41,6 +42,7 @@ func TestPatchPluginAPI(t *testing.T) {
 		testCommand := &gitFetchProject{Directory: "dir"}
 		modelData, err := modelutil.SetupAPITestData(settings, "testTask", "testvar", configPath, modelutil.NoPatch)
 		modelData.TaskConfig.Expansions = util.NewExpansions(settings.Credentials)
+		modelData.TaskConfig.Distro = &distro.Distro{CloneMethod: distro.CloneMethodOAuth}
 
 		require.NoError(t, err, "Couldn't set up test documents")
 		err = setupTestPatchData(modelData, patchFile, t)
@@ -112,6 +114,7 @@ func TestPatchPlugin(t *testing.T) {
 		configPath := filepath.Join(testutil.GetDirectoryOfFile(), "testdata", "git", "plugin_patch.yml")
 		modelData, err := modelutil.SetupAPITestData(settings, "testtask1", "testvar", configPath, modelutil.InlinePatch)
 		modelData.TaskConfig.Expansions = util.NewExpansions(settings.Credentials)
+		modelData.TaskConfig.Distro = &distro.Distro{CloneMethod: distro.CloneMethodOAuth}
 		require.NoError(t, err, "Couldn't set up test documents")
 
 		err = setupTestPatchData(modelData, patchFile, t)
