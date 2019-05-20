@@ -37,6 +37,9 @@ type s3put struct {
 	// included in this upload.
 	LocalFilesIncludeFilter []string `mapstructure:"local_files_include_filter" plugin:"expand"`
 
+	// LocalFilesIncludeFilterPrefix is an optional path to start processing the LocalFilesIncludeFilter, relative to the working directory.
+	LocalFilesIncludeFilterPrefix string `mapstructure:"local_files_include_filter_prefix" plugin:"expand"`
+
 	// RemoteFile is the filepath to store the file to,
 	// within an s3 bucket. Is a prefix when multiple files are uploaded via LocalFilesIncludeFilter.
 	RemoteFile string `mapstructure:"remote_file" plugin:"expand"`
@@ -209,12 +212,12 @@ func (s3pc *s3put) Execute(ctx context.Context,
 	// create pail bucket
 	httpClient := util.GetHTTPClient()
 	defer util.PutHTTPClient(httpClient)
-	err := s3pc.createPailBucket(httpClient)
-	if err != nil {
+	if err := s3pc.createPailBucket(httpClient); err != nil {
 		return errors.Wrap(err, "problem connecting to s3")
 	}
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
+
 	if err := s3pc.bucket.Check(ctx); err != nil {
 		return errors.Wrap(err, "invalid bucket")
 	}
@@ -276,7 +279,7 @@ retryLoop:
 			filesList = []string{s3pc.LocalFile}
 
 			if s3pc.isMulti() {
-				filesList, err = util.BuildFileList(s3pc.workDir, s3pc.LocalFilesIncludeFilter...)
+				filesList, err = util.BuildFileList(filepath.Join(s3pc.workDir, s3pc.LocalFilesIncludeFilterPrefix), s3pc.LocalFilesIncludeFilter...)
 				if err != nil {
 					return errors.Wrapf(err, "error processing filter %s",
 						strings.Join(s3pc.LocalFilesIncludeFilter, " "))
@@ -302,7 +305,7 @@ retryLoop:
 					remoteName = fmt.Sprintf("%s%s", s3pc.RemoteFile, fname)
 				}
 
-				fpath = filepath.Join(s3pc.workDir, fpath)
+				fpath = filepath.Join(filepath.Join(s3pc.workDir, s3pc.LocalFilesIncludeFilterPrefix), fpath)
 				err = s3pc.bucket.Upload(ctx, remoteName, fpath)
 				if err != nil {
 					// retry errors other than "file doesn't exist", which we handle differently based on what
@@ -388,6 +391,9 @@ func (s3pc *s3put) attachFiles(ctx context.Context, comm client.Communicator, lo
 }
 
 func (s3pc *s3put) createPailBucket(httpClient *http.Client) error {
+	if s3pc.bucket != nil {
+		return nil
+	}
 	opts := pail.S3Options{
 		Credentials: pail.CreateAWSCredentials(s3pc.AwsKey, s3pc.AwsSecret, ""),
 		Region:      endpoints.UsEast1RegionID,

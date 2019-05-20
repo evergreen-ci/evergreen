@@ -1,12 +1,21 @@
 package command
 
 import (
+	"context"
+	"io/ioutil"
+	"os"
+	"path/filepath"
 	"testing"
 
+	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/artifact"
+	"github.com/evergreen-ci/evergreen/model/task"
+	"github.com/evergreen-ci/evergreen/rest/client"
 	"github.com/evergreen-ci/evergreen/util"
+	"github.com/evergreen-ci/pail"
 	. "github.com/smartystreets/goconvey/convey"
+	"github.com/stretchr/testify/require"
 )
 
 func TestS3PutValidateParams(t *testing.T) {
@@ -291,4 +300,73 @@ func TestExpandS3PutParams(t *testing.T) {
 		})
 
 	})
+}
+
+func TestS3LocalFilesIncludeFilterPrefix(t *testing.T) {
+	for _, prefix := range []string{"emptyPrefix", "subDir"} {
+		t.Run(prefix, func(t *testing.T) {
+			ctx, cancel := context.WithCancel(context.Background())
+			defer cancel()
+			var err error
+
+			dir, err := ioutil.TempDir("", "s3put")
+			require.NoError(t, err)
+			_, err = os.Create(filepath.Join(dir, "foo"))
+			require.NoError(t, err)
+			require.NoError(t, os.Mkdir(filepath.Join(dir, "subDir"), 0755))
+			_, err = os.Create(filepath.Join(dir, "subDir", "bar"))
+			require.NoError(t, err)
+
+			var localFilesIncludeFilterPrefix string
+			if prefix == "emptyPrefix" {
+				localFilesIncludeFilterPrefix = ""
+			} else {
+				localFilesIncludeFilterPrefix = prefix
+			}
+			s := s3put{
+				AwsKey:                        "key",
+				AwsSecret:                     "secret",
+				Bucket:                        "bucket",
+				BuildVariants:                 []string{},
+				ContentType:                   "content-type",
+				LocalFilesIncludeFilter:       []string{"*"},
+				LocalFilesIncludeFilterPrefix: localFilesIncludeFilterPrefix,
+				Permissions:                   s3.BucketCannedACLPublicRead,
+				RemoteFile:                    "remote",
+			}
+			opts := pail.LocalOptions{}
+			s.bucket, err = pail.NewLocalTemporaryBucket(opts)
+			require.NoError(t, err)
+			comm := client.NewMock("http://localhost.com")
+			conf := &model.TaskConfig{
+				Expansions:   &util.Expansions{},
+				Task:         &task.Task{Id: "mock_id", Secret: "mock_secret"},
+				Project:      &model.Project{},
+				WorkDir:      dir,
+				BuildVariant: &model.BuildVariant{},
+			}
+			logger, err := comm.GetLoggerProducer(ctx, client.TaskData{ID: conf.Task.Id, Secret: conf.Task.Secret}, nil)
+			require.NoError(t, err)
+
+			require.NoError(t, s.Execute(ctx, comm, logger, conf))
+			it, err := s.bucket.List(ctx, "")
+			require.NoError(t, err)
+			expected := map[string]bool{
+				"remotefoo": false,
+				"remotebar": false,
+			}
+			for it.Next(ctx) {
+				expected[it.Item().Name()] = true
+			}
+			require.Len(t, expected, 2)
+			if localFilesIncludeFilterPrefix == "" {
+				for item, exists := range expected {
+					require.True(t, exists, item)
+				}
+			} else {
+				require.True(t, expected["remotebar"])
+				require.False(t, expected["remotefoo"])
+			}
+		})
+	}
 }
