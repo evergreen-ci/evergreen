@@ -144,8 +144,8 @@ func TestCreateOptions(t *testing.T) {
 
 			cmd, err := opts.Resolve(ctx)
 			assert.NoError(t, err)
-			assert.Contains(t, cmd.Env, "foo='bar'")
-			assert.NotContains(t, cmd.Env, "bar='foo'")
+			assert.Contains(t, cmd.Env, "foo=bar")
+			assert.NotContains(t, cmd.Env, "bar=foo")
 		},
 		"MultipleArgsArePropagated": func(t *testing.T, opts *CreateOptions) {
 			opts.Args = append(opts.Args, "-lha")

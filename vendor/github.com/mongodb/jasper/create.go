@@ -177,7 +177,7 @@ func (opts *CreateOptions) Resolve(ctx context.Context) (*exec.Cmd, error) {
 func (opts *CreateOptions) getEnvSlice() []string {
 	env := []string{}
 	for k, v := range opts.Environment {
-		env = append(env, fmt.Sprintf("%s='%s'", k, v))
+		env = append(env, fmt.Sprintf("%s=%s", k, v))
 	}
 	return env
 }
