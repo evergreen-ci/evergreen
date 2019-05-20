@@ -126,7 +126,6 @@ func (projectVars *ProjectVars) FindAndModify(varsToDelete []string) (*adb.Chang
 	}
 	for key, val := range projectVars.PrivateVars {
 		setUpdate[bsonutil.GetDottedKeyName(privateVarsMapKey, key)] = val
-
 	}
 	if len(projectVars.Vars) > 0 || len(projectVars.PrivateVars) > 0 {
 		update["$set"] = setUpdate

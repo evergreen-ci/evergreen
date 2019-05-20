@@ -90,7 +90,7 @@ func (s *PatchVarsSuite) TestParse() {
 	s.NoError(err)
 	s.NoError(s.route.Parse(ctx, request))
 	s.Equal("dimoxinil", s.route.projectID)
-	s.Equal(body, s.route.body)
+	s.Equal(vars, s.route.varsModel)
 }
 
 func (s *PatchVarsSuite) TestRunNonExistingId() {

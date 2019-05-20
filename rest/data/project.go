@@ -66,7 +66,7 @@ func (pc *DBProjectConnector) FindProjects(key string, limit int, sortDir int, i
 }
 
 // FindProjectVarsById returns the variables associated with the given project.
-func (pc *DBProjectConnector) FindProjectVarsById(id string) (*model.ProjectVars, error) {
+func (pc *DBProjectConnector) FindProjectVarsById(id string) (*restModel.APIProjectVars, error) {
 	vars, err := model.FindOneProjectVars(id)
 	if err != nil {
 		return nil, errors.Wrapf(err, "problem fetching variables for project '%s'", id)
@@ -77,7 +77,9 @@ func (pc *DBProjectConnector) FindProjectVarsById(id string) (*model.ProjectVars
 			Message:    fmt.Sprintf("variables for project '%s' not found", id),
 		}
 	}
-	return vars, nil
+	vars.RedactPrivateVars()
+	varsModel := restModel.DbProjectVarsToRestModel(*vars)
+	return &varsModel, nil
 }
 
 // UpdateProjectVars adds new variables, overwrites variables, and deletes variables for the given project.
@@ -194,10 +196,11 @@ func (pc *MockProjectConnector) UpdateProject(projectRef *model.ProjectRef) erro
 	}
 }
 
-func (pc *MockProjectConnector) FindProjectVarsById(id string) (*model.ProjectVars, error) {
+func (pc *MockProjectConnector) FindProjectVarsById(id string) (*restModel.APIProjectVars, error) {
 	for _, v := range pc.CachedVars {
 		if v.Id == id {
-			return v, nil
+			res := restModel.DbProjectVarsToRestModel(*v)
+			return &res, nil
 		}
 	}
 	return nil, gimlet.ErrorResponse{

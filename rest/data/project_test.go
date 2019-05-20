@@ -473,7 +473,7 @@ func (s *ProjectConnectorGetSuite) TestFindProjectVarsById() {
 	s.NoError(err)
 	s.Require().NotNil(res)
 	s.Equal("1", res.Vars["a"])
-	s.Equal("3", res.Vars["b"])
+	s.Equal("", res.Vars["b"])
 	s.True(res.PrivateVars["b"])
 }
 

@@ -78,7 +78,7 @@ type Connector interface {
 	RestartBuild(string, string) error
 
 	// Find project variables matching given projectId.
-	FindProjectVarsById(string) (*model.ProjectVars, error)
+	FindProjectVarsById(string) (*restModel.APIProjectVars, error)
 	// UpdateProjectVars updates the project using the variables given in the model,
 	// and additionally accepts a list of variables to remove.
 	// If successful, updates the given projectVars with the updated projectVars.
