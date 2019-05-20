@@ -42,7 +42,7 @@ func (h *versionCreateHandler) Parse(ctx context.Context, r *http.Request) error
 
 func (h *versionCreateHandler) Run(ctx context.Context) gimlet.Responder {
 	u := gimlet.GetUser(ctx).(*user.DBUser)
-	newVersion, err := h.sc.CreateVersionFromConfig(h.ProjectID, h.Config, u, h.Message, h.Active)
+	newVersion, err := h.sc.CreateVersionFromConfig(ctx, h.ProjectID, h.Config, u, h.Message, h.Active)
 	if err != nil {
 		return gimlet.NewJSONErrorResponse(err)
 	}

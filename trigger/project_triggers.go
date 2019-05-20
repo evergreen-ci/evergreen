@@ -51,7 +51,7 @@ func TriggerDownstreamVersion(args ProcessorArgs) (*model.Version, error) {
 	}
 
 	// create version
-	v, err := repotracker.CreateVersionFromConfig(&args.DownstreamProject, config, metadata, false, nil)
+	v, err := repotracker.CreateVersionFromConfig(context.Background(), &args.DownstreamProject, config, metadata, false, nil)
 	if err != nil {
 		return nil, errors.Wrap(err, "error creating version")
 	}

@@ -1,6 +1,7 @@
 package data
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	"sort"
@@ -306,7 +307,7 @@ func addFailedAndStartedTests(rows map[string]restModel.BuildList, failedAndStar
 	return nil
 }
 
-func (vc *DBVersionConnector) CreateVersionFromConfig(projectID string, config []byte, user *user.DBUser, message string, active bool) (*model.Version, error) {
+func (vc *DBVersionConnector) CreateVersionFromConfig(ctx context.Context, projectID string, config []byte, user *user.DBUser, message string, active bool) (*model.Version, error) {
 	ref, err := model.FindOneProjectRef(projectID)
 	if err != nil {
 		return nil, gimlet.ErrorResponse{
@@ -333,7 +334,7 @@ func (vc *DBVersionConnector) CreateVersionFromConfig(projectID string, config [
 		User:    user,
 		Message: message,
 	}
-	newVersion, err := repotracker.CreateVersionFromConfig(ref, project, metadata, false, nil)
+	newVersion, err := repotracker.CreateVersionFromConfig(ctx, ref, project, metadata, false, nil)
 	if err != nil {
 		return nil, gimlet.ErrorResponse{
 			StatusCode: http.StatusInternalServerError,
@@ -430,6 +431,6 @@ func (mvc *MockVersionConnector) GetVersionsAndVariants(skip, numVersionElements
 	return nil, nil
 }
 
-func (mvc *MockVersionConnector) CreateVersionFromConfig(projectID string, config []byte, user *user.DBUser, message string, active bool) (*model.Version, error) {
+func (mvc *MockVersionConnector) CreateVersionFromConfig(ctx context.Context, projectID string, config []byte, user *user.DBUser, message string, active bool) (*model.Version, error) {
 	return nil, nil
 }

@@ -1,6 +1,7 @@
 package data
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	"testing"
@@ -429,7 +430,7 @@ func TestCreateVersionFromConfig(t *testing.T) {
 		}`
 
 	dc := DBVersionConnector{}
-	newVersion, err := dc.CreateVersionFromConfig(ref.Identifier, []byte(config1), &u, "my message", true)
+	newVersion, err := dc.CreateVersionFromConfig(context.Background(), ref.Identifier, []byte(config1), &u, "my message", true)
 	assert.NoError(err)
 	assert.Equal("my message", newVersion.Message)
 	assert.Equal(evergreen.VersionCreated, newVersion.Status)
@@ -460,7 +461,7 @@ tasks:
 - name: t1
 `
 
-	newVersion, err = dc.CreateVersionFromConfig(ref.Identifier, []byte(config2), &u, "message 2", true)
+	newVersion, err = dc.CreateVersionFromConfig(context.Background(), ref.Identifier, []byte(config2), &u, "message 2", true)
 	assert.NoError(err)
 	assert.Equal("message 2", newVersion.Message)
 	assert.Equal(evergreen.VersionCreated, newVersion.Status)

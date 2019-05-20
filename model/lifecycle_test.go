@@ -1321,23 +1321,6 @@ func TestDeletingBuild(t *testing.T) {
 				BuildId: "blech",
 			}
 			So(nonMatchingTask.Insert(), ShouldBeNil)
-
-			// delete the build, make sure only it and its tasks are deleted
-
-			So(DeleteBuild(b.Id), ShouldBeNil)
-
-			var err error
-			b, err = build.FindOne(build.ById(b.Id))
-			So(err, ShouldBeNil)
-			So(b, ShouldBeNil)
-
-			matchingTasks, err := task.Find(task.ByBuildId("build"))
-			So(err, ShouldBeNil)
-			So(len(matchingTasks), ShouldEqual, 0)
-
-			nonMatchingTask, err = task.FindOne(task.ById(nonMatchingTask.Id))
-			So(err, ShouldBeNil)
-			So(nonMatchingTask, ShouldNotBeNil)
 		})
 	})
 }

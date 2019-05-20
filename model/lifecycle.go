@@ -1036,16 +1036,6 @@ func createDisplayTask(id string, displayName string, execTasks []string,
 	return t, nil
 }
 
-// DeleteBuild removes any record of the build by removing it and all of the tasks that
-// are a part of it from the database.
-func DeleteBuild(id string) error {
-	err := task.RemoveAllWithBuild(id)
-	if err != nil && err != mgo.ErrNotFound {
-		return errors.WithStack(err)
-	}
-	return errors.WithStack(build.Remove(id))
-}
-
 // sortTasks topologically sorts the tasks by dependency, grouping tasks with common dependencies,
 // and alphabetically sorting within groups.
 // All tasks with cross-variant dependencies are at the far right.
