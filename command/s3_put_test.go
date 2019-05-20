@@ -227,7 +227,7 @@ func TestS3PutValidateParams(t *testing.T) {
 	})
 }
 
-func TestS3ExpandPutParams(t *testing.T) {
+func TestExpandS3PutParams(t *testing.T) {
 
 	Convey("With an s3 put command and a task config", t, func() {
 		cmd := &s3put{}
@@ -302,7 +302,7 @@ func TestS3ExpandPutParams(t *testing.T) {
 	})
 }
 
-func TestS3LocalFilesIncludeFilter(t *testing.T) {
+func TestS3LocalFilesIncludeFilterPrefix(t *testing.T) {
 	for _, prefix := range []string{"emptyPrefix", "subDir"} {
 		t.Run(prefix, func(t *testing.T) {
 			ctx, cancel := context.WithCancel(context.Background())
