@@ -156,6 +156,6 @@ func TestRetryableOauthClient4xxDoesntRetry(t *testing.T) {
 
 func TestRetryDoesNotPauseBeforeFirstTry(t *testing.T) {
 	now := time.Now()
-	Retry(context.Background(), func() (bool, error) { return false, nil }, 10, time.Second, time.Minute)
+	require.NoError(t, Retry(context.Background(), func() (bool, error) { return false, nil }, 10, time.Second, time.Minute))
 	require.True(t, time.Since(now) < time.Millisecond)
 }
