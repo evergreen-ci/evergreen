@@ -392,7 +392,7 @@ func (s3pc *s3put) attachFiles(ctx context.Context, comm client.Communicator, lo
 
 func (s3pc *s3put) createPailBucket(httpClient *http.Client) error {
 	if s3pc.bucket != nil {
-		return
+		return nil
 	}
 	opts := pail.S3Options{
 		Credentials: pail.CreateAWSCredentials(s3pc.AwsKey, s3pc.AwsSecret, ""),
