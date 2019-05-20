@@ -133,6 +133,7 @@ func PatchFile() cli.Command {
 				Project:     c.String(projectFlagName),
 				Variants:    c.StringSlice(variantsFlagName),
 				Tasks:       c.StringSlice(tasksFlagName),
+				Alias:       c.String(patchAliasFlagName),
 				SkipConfirm: c.Bool(yesFlagName),
 				Description: c.String(patchDescriptionFlagName),
 				Finalize:    c.Bool(patchFinalizeFlagName),
