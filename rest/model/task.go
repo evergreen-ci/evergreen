@@ -53,6 +53,8 @@ type APITask struct {
 	DisplayOnly        bool             `json:"display_only"`
 	ExecutionTasks     []APIString      `json:"execution_tasks,omitempty"`
 	Mainline           bool             `json:"mainline"`
+	TaskGroup          string           `json:"task_group,omitempty"`
+	TaskGroupMaxHosts  int              `json:"task_group_max_hosts,omitempty"`
 }
 
 type logLinks struct {
@@ -113,14 +115,16 @@ func (at *APITask) BuildFromService(t interface{}) error {
 				Description: ToAPIString(v.Details.Description),
 				TimedOut:    v.Details.TimedOut,
 			},
-			Status:           ToAPIString(v.Status),
-			TimeTaken:        NewAPIDuration(v.TimeTaken),
-			ExpectedDuration: NewAPIDuration(v.ExpectedDuration),
-			EstimatedCost:    v.Cost,
-			GenerateTask:     v.GenerateTask,
-			GeneratedBy:      v.GeneratedBy,
-			DisplayOnly:      v.DisplayOnly,
-			Mainline:         (v.Requester == evergreen.RepotrackerVersionRequester),
+			Status:            ToAPIString(v.Status),
+			TimeTaken:         NewAPIDuration(v.TimeTaken),
+			ExpectedDuration:  NewAPIDuration(v.ExpectedDuration),
+			EstimatedCost:     v.Cost,
+			GenerateTask:      v.GenerateTask,
+			GeneratedBy:       v.GeneratedBy,
+			DisplayOnly:       v.DisplayOnly,
+			Mainline:          (v.Requester == evergreen.RepotrackerVersionRequester),
+			TaskGroup:         v.TaskGroup,
+			TaskGroupMaxHosts: v.TaskGroupMaxHosts,
 		}
 		if len(v.ExecutionTasks) > 0 {
 			ets := []APIString{}
