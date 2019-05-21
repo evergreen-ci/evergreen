@@ -2225,8 +2225,12 @@ func TestDisplayTaskUpdates(t *testing.T) {
 	}
 	assert.NoError(dt2.Insert())
 	task1 := task.Task{
-		Id:         "task1",
-		Status:     evergreen.TaskFailed,
+		Id:     "task1",
+		Status: evergreen.TaskFailed,
+		Details: apimodels.TaskEndDetail{
+			Status: evergreen.TaskFailed,
+			Type:   evergreen.CommandTypeSetup,
+		},
 		TimeTaken:  3 * time.Minute,
 		StartTime:  time.Date(2000, 0, 0, 1, 1, 1, 0, time.Local),
 		FinishTime: time.Date(2000, 0, 0, 1, 9, 1, 0, time.Local),

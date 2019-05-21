@@ -1065,7 +1065,7 @@ func UpdateDisplayTask(t *task.Task) error {
 			hasUnfinishedTasks = true
 		}
 		// the display task's status will be the highest priority of its exec tasks
-		statuses = append(statuses, execTask.ResultStatus())
+		statuses = append(statuses, execTask.Status)
 
 		// add up the duration of the execution tasks as the cumulative time taken
 		timeTaken += execTask.TimeTaken
