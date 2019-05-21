@@ -8,6 +8,8 @@ import (
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/google/go-github/github"
+	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 )
 
@@ -216,6 +218,20 @@ func (gRepoPoller *GithubRepositoryPoller) GetRevisionsSince(revision string, ma
 		}
 
 		return []model.Revision{}, revisionError
+	}
+
+	if len(revisions) == 0 {
+		commitSHAs := make([]string, 0, len(commits))
+		for i := range commits {
+			commitSHAs = append(commitSHAs, commits[i].GetSHA())
+		}
+		grip.Info(message.Fields{
+			"source":        "github poller",
+			"message":       "no new revisions",
+			"last_revision": revision,
+			"project":       gRepoPoller.ProjectRef,
+			"commits":       commitSHAs,
+		})
 	}
 
 	return revisions, nil
