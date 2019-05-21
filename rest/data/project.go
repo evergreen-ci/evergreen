@@ -199,6 +199,7 @@ func (pc *MockProjectConnector) UpdateProject(projectRef *model.ProjectRef) erro
 func (pc *MockProjectConnector) FindProjectVarsById(id string) (*restModel.APIProjectVars, error) {
 	for _, v := range pc.CachedVars {
 		if v.Id == id {
+			v.RedactPrivateVars()
 			res := restModel.DbProjectVarsToRestModel(*v)
 			return &res, nil
 		}
