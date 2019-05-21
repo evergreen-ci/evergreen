@@ -798,52 +798,6 @@ func (p *Project) GetVariantMappings() map[string]string {
 	return mappings
 }
 
-// GetVariantsWithTask returns the names of all buildvariants that contain a certain task.
-// Searches tasks, task groups, and display tasks
-func (p *Project) GetVariantsWithTask(taskName string) []string {
-	variantsMap := map[string]bool{}
-bvLoop:
-	for _, buildVariant := range p.BuildVariants {
-
-		for _, task := range buildVariant.Tasks {
-			if task.Name == taskName {
-				variantsMap[buildVariant.Name] = true
-				continue bvLoop
-			}
-			if task.IsGroup {
-				tg := p.FindTaskGroup(task.Name)
-				if tg != nil {
-					for _, tgTask := range tg.Tasks {
-						if tgTask == taskName {
-							variantsMap[buildVariant.Name] = true
-							continue bvLoop
-						}
-					}
-				}
-			}
-		}
-
-		for _, displayTask := range buildVariant.DisplayTasks {
-			if displayTask.Name == taskName {
-				variantsMap[buildVariant.Name] = true
-				continue bvLoop
-			}
-			for _, execTask := range displayTask.ExecutionTasks {
-				if execTask == taskName {
-					variantsMap[buildVariant.Name] = true
-					continue bvLoop
-				}
-			}
-		}
-	}
-	variantsList := []string{}
-	for bv := range variantsMap {
-		variantsList = append(variantsList, bv)
-	}
-
-	return variantsList
-}
-
 // RunOnVariant returns true if the plugin command should run on variant; returns false otherwise
 func (p PluginCommandConf) RunOnVariant(variant string) bool {
 	return len(p.Variants) == 0 || util.StringSliceContains(p.Variants, variant)

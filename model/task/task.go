@@ -1375,6 +1375,35 @@ func FindRunnable(distroID string) ([]Task, error) {
 	return runnableTasks, nil
 }
 
+// FindVariantsWithTask returns a list of build variants between specified commmits that contain a specific task name
+func FindVariantsWithTask(taskName, project string, orderMin, orderMax int) ([]string, error) {
+	pipeline := []bson.M{
+		{
+			"$match": bson.M{
+				ProjectKey:     project,
+				RequesterKey:   evergreen.RepotrackerVersionRequester,
+				DisplayNameKey: taskName,
+				"$and": []bson.M{
+					{RevisionOrderNumberKey: bson.M{"$gte": orderMin}},
+					{RevisionOrderNumberKey: bson.M{"$lte": orderMax}},
+				},
+			},
+		},
+		{
+			"$group": bson.M{
+				"_id": "$" + BuildVariantKey,
+			},
+		},
+	}
+	docs := []map[string]string{}
+	err := Aggregate(pipeline, &docs)
+	variants := []string{}
+	for _, doc := range docs {
+		variants = append(variants, doc["_id"])
+	}
+	return variants, errors.Wrapf(err, "error finding variants with task %s", taskName)
+}
+
 func (t *Task) IsPartOfDisplay() bool {
 	dt, err := t.GetDisplayTask()
 	if err != nil {

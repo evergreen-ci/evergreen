@@ -1148,3 +1148,21 @@ func TestGetResultCountList(t *testing.T) {
 	assert.Equal("d2", list["totals"][1].Name)
 	assert.Equal(3, list["totals"][1].Count)
 }
+
+func TestFindVariantsWithTask(t *testing.T) {
+	assert := assert.New(t)
+	assert.NoError(db.Clear(Collection))
+	tasks := Tasks{
+		&Task{Id: "1", DisplayName: "match", Project: "p", Requester: evergreen.RepotrackerVersionRequester, RevisionOrderNumber: 15, BuildVariant: "bv1"},
+		&Task{Id: "2", DisplayName: "match", Project: "p", Requester: evergreen.RepotrackerVersionRequester, RevisionOrderNumber: 12, BuildVariant: "bv2"},
+		&Task{Id: "3", DisplayName: "nomatch", Project: "p", Requester: evergreen.RepotrackerVersionRequester, RevisionOrderNumber: 14, BuildVariant: "bv1"},
+		&Task{Id: "4", DisplayName: "match", Project: "p", Requester: evergreen.RepotrackerVersionRequester, RevisionOrderNumber: 50, BuildVariant: "bv1"},
+	}
+	assert.NoError(tasks.Insert())
+
+	bvs, err := FindVariantsWithTask("match", "p", 10, 20)
+	assert.NoError(err)
+	require.Len(t, bvs, 2)
+	assert.Equal(bvs[0], "bv2")
+	assert.Equal(bvs[1], "bv1")
+}
