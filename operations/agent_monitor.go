@@ -129,7 +129,7 @@ func agentMonitor() cli.Command {
 			requireStringFlag(clientURLFlagName),
 			requireStringFlag(clientPathFlagName),
 			requireIntValueBetween(jasperPortFlagName, minPort, maxPort),
-			requireIntValueBetween(portFlagName, maxPort, maxPort),
+			requireIntValueBetween(portFlagName, minPort, maxPort),
 			func(*cli.Context) error {
 				grip.SetName(monitorLoggerName)
 				return nil
