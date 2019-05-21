@@ -765,7 +765,10 @@ func createVersionItems(ctx context.Context, v *model.Version, ref *model.Projec
 			var lastActivated *model.Version
 			lastActivated, err = model.VersionFindOne(model.VersionByLastVariantActivation(ref.Identifier, buildvariant.Name))
 			if err != nil {
-				return errors.Wrap(err, "problem getting activatation time for variant")
+				grip.Error(message.WrapError(err, message.Fields{
+					"message": "error finding last activated",
+					"version": v.Id,
+				}))
 			}
 
 			var lastActivation *time.Time
