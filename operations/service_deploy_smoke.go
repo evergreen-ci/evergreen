@@ -1,16 +1,21 @@
 package operations
 
 import (
+	"context"
 	"fmt"
 	"io/ioutil"
+	"net"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"runtime"
+	"strconv"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/send"
+	"github.com/mongodb/jasper"
+	"github.com/mongodb/jasper/rpc"
 	"github.com/pkg/errors"
 	"github.com/urfave/cli"
 	yaml "gopkg.in/yaml.v2"
@@ -28,9 +33,12 @@ func setupSmokeTest(err error) cli.BeforeFunc {
 
 func smokeStartEvergreen() cli.Command {
 	const (
-		binaryFlagName = "binary"
-		agentFlagName  = "agent"
-		webFlagName    = "web"
+		binaryFlagName       = "binary"
+		agentFlagName        = "agent"
+		webFlagName          = "web"
+		agentMonitorFlagName = "monitor"
+		// The URL of the client for the monitor.
+		clientURLFlagName = "client_url"
 
 		// apiPort is the local port the API will listen on.
 		apiPort = ":8080"
@@ -38,6 +46,9 @@ func smokeStartEvergreen() cli.Command {
 		hostId     = "localhost"
 		hostSecret = "de249183582947721fdfb2ea1796574b"
 		statusPort = "2287"
+
+		monitorPort = 2288
+		jasperPort  = 2289
 	)
 
 	wd, err := os.Getwd()
@@ -68,13 +79,23 @@ func smokeStartEvergreen() cli.Command {
 				Name:  agentFlagName,
 				Usage: "start an evergreen agent",
 			},
+			cli.BoolFlag{
+				Name:  agentMonitorFlagName,
+				Usage: "start an evergreen agent monitor",
+			},
+			cli.StringFlag{
+				Name:  clientURLFlagName,
+				Usage: "the URL of the client for the monitor to fetch",
+			},
 		},
-		Before: mergeBeforeFuncs(setupSmokeTest(err), requireFileExists(confFlagName), requireAtLeastOneBool(webFlagName, agentFlagName)),
+		Before: mergeBeforeFuncs(setupSmokeTest(err), requireFileExists(confFlagName), requireAtLeastOneBool(webFlagName, agentFlagName, agentMonitorFlagName)),
 		Action: func(c *cli.Context) error {
 			confPath := c.String(confFlagName)
 			binary := c.String(binaryFlagName)
 			startWeb := c.Bool(webFlagName)
 			startAgent := c.Bool(agentFlagName)
+			startAgentMonitor := c.Bool(agentMonitorFlagName)
+			clientURL := c.String(clientURLFlagName)
 
 			exit := make(chan error, 3)
 
@@ -98,6 +119,54 @@ func smokeStartEvergreen() cli.Command {
 
 				if err != nil {
 					return errors.Wrap(err, "error running agent")
+				}
+			} else if startAgentMonitor {
+				if clientURL == "" {
+					return errors.New("client URL cannot be empty when starting monitor")
+				}
+				ctx, cancel := context.WithCancel(context.Background())
+				defer cancel()
+				manager, err := jasper.NewLocalManager(false)
+				if err != nil {
+					return errors.Wrap(err, "error setting up Jasper process manager")
+				}
+				jasperAddr, err := net.ResolveTCPAddr("tcp", fmt.Sprintf("localhost:%d", jasperPort))
+				if err != nil {
+					return errors.Wrap(err, "error resolving Jasper network address")
+				}
+				closeServer, err := rpc.StartService(ctx, manager, jasperAddr, "", "")
+				if err != nil {
+					return errors.Wrap(err, "error setting up Jasper RPC service")
+				}
+				defer closeServer()
+
+				clientFile, err := ioutil.TempFile("", "evergreen")
+				if err != nil {
+					return errors.Wrap(err, "error setting up monitor client directory")
+				}
+				defer os.Remove(clientFile.Name())
+
+				err = smokeRunBinary(
+					exit,
+					"monitor",
+					wd,
+					binary,
+					"agent",
+					"--host_id", hostId,
+					"--host_secret", hostSecret,
+					"--api_server", smokeUrlPrefix+apiPort,
+					"--log_prefix", evergreen.StandardOutputLoggingOverride,
+					"--status_port", statusPort,
+					"--working_directory", wd,
+					"monitor",
+					"--client_url", clientURL,
+					"--client_path", clientFile.Name(),
+					"--log_prefix", evergreen.StandardOutputLoggingOverride,
+					"--port", strconv.Itoa(monitorPort),
+					"--jasper_port", strconv.Itoa(jasperPort),
+				)
+				if err != nil {
+					return errors.Wrap(err, "error running monitor")
 				}
 			}
 

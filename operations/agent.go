@@ -18,22 +18,27 @@ import (
 	"github.com/urfave/cli"
 )
 
+const defaultAgentStatusPort = 2285
+
 func Agent() cli.Command {
 	const (
 		hostIDFlagName           = "host_id"
 		hostSecretFlagName       = "host_secret"
-		apiServerFlagName        = "api_server"
+		apiServerURLFlagName     = "api_server"
 		workingDirectoryFlagName = "working_directory"
+		logkeeperURLFlagName     = "logkeeper_url"
 		logPrefixFlagName        = "log_prefix"
+		s3BaseURLFlagName        = "s3_base_url"
 		statusPortFlagName       = "status_port"
 		cleanupFlagName          = "cleanup"
-		logkeeperFlagName        = "logkeeper_url"
-		s3BaseFlagName           = "s3_base_url"
 	)
 
 	return cli.Command{
 		Name:  "agent",
 		Usage: "run an evergreen agent",
+		Subcommands: []cli.Command{
+			agentMonitor(),
+		},
 		Flags: []cli.Flag{
 			cli.StringFlag{
 				Name:  hostIDFlagName,
@@ -44,7 +49,7 @@ func Agent() cli.Command {
 				Usage: "secret for the current host",
 			},
 			cli.StringFlag{
-				Name:  apiServerFlagName,
+				Name:  apiServerURLFlagName,
 				Usage: "URL of the API server",
 			},
 			cli.StringFlag{
@@ -57,16 +62,16 @@ func Agent() cli.Command {
 				Usage: "prefix for the agent's log filename",
 			},
 			cli.StringFlag{
-				Name:  logkeeperFlagName,
-				Usage: "URL of a logkeeper service to be used by tasks",
+				Name:  logkeeperURLFlagName,
+				Usage: "URL of the logkeeper service to be used by tasks",
 			},
 			cli.StringFlag{
-				Name:  s3BaseFlagName,
+				Name:  s3BaseURLFlagName,
 				Usage: "base URL for S3 uploads (defaults to 'https://s3.amazonaws.com'",
 			},
 			cli.IntFlag{
 				Name:  statusPortFlagName,
-				Value: 2285,
+				Value: defaultAgentStatusPort,
 				Usage: "port to run the status server",
 			},
 			cli.BoolFlag{
@@ -75,17 +80,17 @@ func Agent() cli.Command {
 			},
 		},
 		Before: mergeBeforeFuncs(
+			requireStringFlag(apiServerURLFlagName),
+			requireStringFlag(hostIDFlagName),
+			requireStringFlag(hostSecretFlagName),
+			requireStringFlag(workingDirectoryFlagName),
 			func(c *cli.Context) error {
 				grip.SetName("evergreen.agent")
 				return nil
 			},
-			requireStringFlag(apiServerFlagName),
-			requireStringFlag(hostIDFlagName),
-			requireStringFlag(hostSecretFlagName),
-			requireStringFlag(workingDirectoryFlagName),
 		),
 		Action: func(c *cli.Context) error {
-			s3Base := c.String(s3BaseFlagName)
+			s3Base := c.String(s3BaseURLFlagName)
 			if s3Base == "" {
 				s3Base = "https://s3.amazonaws.com"
 			}
@@ -96,7 +101,7 @@ func Agent() cli.Command {
 				LogPrefix:        c.String(logPrefixFlagName),
 				WorkingDirectory: c.String(workingDirectoryFlagName),
 				Cleanup:          c.Bool(cleanupFlagName),
-				LogkeeperURL:     c.String(logkeeperFlagName),
+				LogkeeperURL:     c.String(logkeeperURLFlagName),
 				S3BaseURL:        s3Base,
 				S3Opts: pail.S3Options{
 					Credentials: pail.CreateAWSCredentials(os.Getenv("S3_KEY"), os.Getenv("S3_SECRET"), ""),
@@ -118,12 +123,12 @@ func Agent() cli.Command {
 				"host":     opts.HostID,
 			})
 
-			comm := client.NewCommunicator(c.String("api_server"))
+			comm := client.NewCommunicator(c.String(apiServerURLFlagName))
 			defer comm.Close()
 
 			agt, err := agent.New(opts, comm)
 			if err != nil {
-				return errors.Wrap(err, "problem constructing agetn")
+				return errors.Wrap(err, "problem constructing agent")
 			}
 
 			ctx, cancel := context.WithCancel(context.Background())

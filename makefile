@@ -116,6 +116,11 @@ load-smoke-data:$(buildDir)/.load-smoke-data
 $(buildDir)/.load-smoke-data:$(buildDir)/load-smoke-data
 	./$<
 	@touch $@
+smoke-test-agent-monitor:$(localClientBinary) load-smoke-data
+	./$< service deploy start-evergreen --web --binary ./$< &
+	./$< service deploy start-evergreen --monitor --binary ./$< --client_url ${CLIENT_URL} &
+	./$< service deploy test-endpoints --check-build --username admin --key abb623665fdbf368a1db980dde6ee0f0 || (pkill -f $<; exit 1)
+	pkill -f $<
 smoke-test-task:$(localClientBinary) load-smoke-data
 	./$< service deploy start-evergreen --web --binary ./$< &
 	./$< service deploy start-evergreen --agent --binary ./$< &
@@ -274,8 +279,6 @@ vendor-clean:
 	rm -rf vendor/github.com/mongodb/jasper/vendor/github.com/mongodb/grip/
 	rm -rf vendor/github.com/mongodb/jasper/vendor/github.com/pkg/
 	rm -rf vendor/github.com/mongodb/jasper/vendor/github.com/stretchr/
-	rm -rf vendor/github.com/mongodb/jasper/vendor/golang.org/x/net/
-	rm -rf vendor/github.com/mongodb/jasper/vendor/golang.org/x/sys/
 	rm -rf vendor/github.com/smartystreets/goconvey/web/
 	rm -rf vendor/go.mongodb.org/mongo-driver/data/
 	rm -rf vendor/go.mongodb.org/mongo-driver/vendor/github.com/davecgh
