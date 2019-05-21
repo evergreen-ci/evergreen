@@ -820,6 +820,10 @@ func createVersionItems(ctx context.Context, v *model.Version, ref *model.Projec
 		}
 		err = sessCtx.CommitTransaction(sessCtx)
 		if err != nil {
+			grip.Error(message.WrapError(err, message.Fields{
+				"message": "unable to commit transaction",
+				"version": v.Id,
+			}))
 			return errors.Wrapf(err, "error committing transaction for version %s", v.Id)
 		}
 		grip.Info(message.Fields{
