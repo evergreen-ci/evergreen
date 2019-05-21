@@ -750,12 +750,15 @@ func createVersionItems(ctx context.Context, v *model.Version, ref *model.Projec
 			var buildId string
 			buildId, err = model.CreateBuildFromVersion(args)
 			if err != nil {
-				grip.Notice(message.WrapError(sessCtx.AbortTransaction(sessCtx), message.Fields{
-					"message": "aborting transaction",
-					"cause":   "can't insert build items",
-					"variant": buildvariant.Name,
-					"version": v.Id,
-				}))
+				abortErr := sessCtx.AbortTransaction(sessCtx)
+				grip.Notice(message.Fields{
+					"message":    "aborting transaction",
+					"cause":      "can't insert build items",
+					"variant":    buildvariant.Name,
+					"version":    v.Id,
+					"insert_err": err.Error(),
+					"abort_err":  abortErr.Error(),
+				})
 				return errors.Wrapf(err, "error inserting build %s", buildId)
 			}
 
@@ -802,11 +805,14 @@ func createVersionItems(ctx context.Context, v *model.Version, ref *model.Projec
 
 		_, err = evergreen.GetEnvironment().DB().Collection(model.VersionCollection).InsertOne(sessCtx, v)
 		if err != nil {
-			grip.Notice(message.WrapError(sessCtx.AbortTransaction(sessCtx), message.Fields{
-				"message": "aborting transaction",
-				"cause":   "can't insert version",
-				"version": v.Id,
-			}))
+			abortErr := sessCtx.AbortTransaction(sessCtx)
+			grip.Notice(message.Fields{
+				"message":    "aborting transaction",
+				"cause":      "can't insert version",
+				"version":    v.Id,
+				"insert_err": err.Error(),
+				"abort_err":  abortErr.Error(),
+			})
 			return errors.Wrapf(err, "error inserting version %s", v.Id)
 		}
 		err = sessCtx.CommitTransaction(sessCtx)
