@@ -466,13 +466,8 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 	projectAliases = append(projectAliases, responseRef.GitHubAliases...)
 	projectAliases = append(projectAliases, responseRef.CommitQueueAliases...)
 	projectAliases = append(projectAliases, responseRef.PatchAliases...)
-	for i := range projectAliases {
-		if projectAliases[i].ProjectID != id { // new project, so we need a new document (new ID)
-			projectAliases[i].ProjectID = id
-			projectAliases[i].ID = ""
-		}
-		catcher.Add(projectAliases[i].Upsert())
-	}
+
+	catcher.Add(model.UpsertAliasesForProject(projectAliases, id))
 
 	for _, alias := range responseRef.DeleteAliases {
 		catcher.Add(model.RemoveProjectAlias(alias))
