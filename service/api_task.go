@@ -336,7 +336,7 @@ func assignNextAvailableTask(taskQueue *model.TaskQueue, taskQueueService model.
 			}
 		}
 		switch d.PlannerSettings.Version {
-		case evergreen.PlannerVersionTunable:
+		case evergreen.PlannerVersionTunable, evergreen.PlannerVersionRevised:
 			queueItem, err = taskQueueService.RefreshFindNextTask(currentHost.Distro.Id, spec)
 			if err != nil {
 				grip.Critical(message.WrapError(err, message.Fields{
