@@ -377,7 +377,15 @@ func (c *gitFetchProject) Execute(ctx context.Context,
 		if conf.Task.Requester == evergreen.MergeTestRequester {
 			revision = module.Branch
 		} else {
-			revision = c.Revisions[moduleName]
+			if p != nil {
+				module := p.FindModule(moduleName)
+				if module != nil {
+					revision = module.Githash
+				}
+			}
+			if revision == "" {
+				revision = c.Revisions[moduleName]
+			}
 			// if there is no revision, then use the revision from the module, then branch name
 			if revision == "" {
 				if module.Ref != "" {

@@ -99,6 +99,8 @@ variables:
       - func: run-make
         vars:
           target: revendor
+      - func: run-make
+        vars: { target: "${task_name}" }
   - &run-smoke-test
     name: smoke
     commands:
