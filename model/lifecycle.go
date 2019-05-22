@@ -1,11 +1,14 @@
 package model
 
 import (
+	"context"
 	"fmt"
 	"sort"
 	"strconv"
 	"strings"
 	"time"
+
+	"go.mongodb.org/mongo-driver/mongo"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
@@ -450,7 +453,7 @@ func RefreshTasksCache(buildId string) error {
 }
 
 // AddTasksToBuild creates the tasks for the given build of a project
-func AddTasksToBuild(b *build.Build, project *Project, v *Version, taskNames []string,
+func AddTasksToBuild(ctx context.Context, b *build.Build, project *Project, v *Version, taskNames []string,
 	displayNames []string, generatedBy string, tasksInBuild []task.Task) (*build.Build, error) {
 	// find the build variant for this project/build
 	buildVariant := project.FindBuildVariant(b.BuildVariant)
@@ -466,7 +469,7 @@ func AddTasksToBuild(b *build.Build, project *Project, v *Version, taskNames []s
 		return nil, errors.Wrapf(err, "error creating tasks for build '%s'", b.Id)
 	}
 
-	if err = tasks.InsertUnordered(); err != nil {
+	if err = tasks.InsertUnordered(ctx); err != nil {
 		return nil, errors.Wrapf(err, "error inserting tasks for build '%s'", b.Id)
 	}
 
@@ -480,17 +483,18 @@ func AddTasksToBuild(b *build.Build, project *Project, v *Version, taskNames []s
 
 // BuildCreateArgs is the set of parameters used in CreateBuildFromVersion
 type BuildCreateArgs struct {
-	Project      Project        // project to create the build for
-	Version      Version        // the version the build belong to
-	TaskIDs      TaskIdConfig   // pre-generated IDs for the tasks to be created
-	BuildName    string         // name of the buildvariant
-	Activated    bool           // true if the build should be scheduled
-	TaskNames    []string       // names of tasks to create (used in patches). Will create all if nil
-	DisplayNames []string       // names of display tasks to create (used in patches). Will create all if nil
-	GeneratedBy  string         // ID of the task that generated this build
-	SourceRev    string         // githash of the revision that triggered this build
-	DefinitionID string         // definition ID of the trigger used to create this build
-	Aliases      ProjectAliases // project aliases to use to filter tasks created
+	Project      Project              // project to create the build for
+	Version      Version              // the version the build belong to
+	TaskIDs      TaskIdConfig         // pre-generated IDs for the tasks to be created
+	BuildName    string               // name of the buildvariant
+	Activated    bool                 // true if the build should be scheduled
+	TaskNames    []string             // names of tasks to create (used in patches). Will create all if nil
+	DisplayNames []string             // names of display tasks to create (used in patches). Will create all if nil
+	GeneratedBy  string               // ID of the task that generated this build
+	SourceRev    string               // githash of the revision that triggered this build
+	DefinitionID string               // definition ID of the trigger used to create this build
+	Aliases      ProjectAliases       // project aliases to use to filter tasks created
+	Session      mongo.SessionContext // session context to use for transactions
 }
 
 // CreateBuildFromVersion creates a build given all of the necessary information
@@ -556,7 +560,7 @@ func CreateBuildFromVersion(args BuildCreateArgs) (string, error) {
 		return "", errors.Wrapf(err, "error creating tasks for build %s", b.Id)
 	}
 
-	if err = tasksForBuild.InsertUnordered(); err != nil {
+	if err = tasksForBuild.InsertUnordered(args.Session); err != nil {
 		return "", errors.Wrapf(err, "error inserting task for build '%s'", buildId)
 	}
 
@@ -571,8 +575,8 @@ func CreateBuildFromVersion(args BuildCreateArgs) (string, error) {
 	b.Tasks = CreateTasksCache(tasks)
 
 	// insert the build
-	err = b.Insert()
-	if err != nil && !db.IsDuplicateKey(err) {
+	_, err = evergreen.GetEnvironment().DB().Collection(build.Collection).InsertOne(args.Session, b)
+	if err != nil {
 		return "", errors.Wrapf(err, "error inserting build %v", b.Id)
 	}
 
@@ -1032,16 +1036,6 @@ func createDisplayTask(id string, displayName string, execTasks []string,
 	return t, nil
 }
 
-// DeleteBuild removes any record of the build by removing it and all of the tasks that
-// are a part of it from the database.
-func DeleteBuild(id string) error {
-	err := task.RemoveAllWithBuild(id)
-	if err != nil && err != mgo.ErrNotFound {
-		return errors.WithStack(err)
-	}
-	return errors.WithStack(build.Remove(id))
-}
-
 // sortTasks topologically sorts the tasks by dependency, grouping tasks with common dependencies,
 // and alphabetically sorting within groups.
 // All tasks with cross-variant dependencies are at the far right.
@@ -1245,7 +1239,7 @@ func AddNewBuilds(activated bool, v *Version, p *Project, tasks TaskVariantPairs
 
 // Given a version and set of variant/task pairs, creates any tasks that don't exist yet,
 // within the set of already existing builds.
-func AddNewTasks(activated bool, v *Version, p *Project, pairs TaskVariantPairs, generatedBy string) error {
+func AddNewTasks(ctx context.Context, activated bool, v *Version, p *Project, pairs TaskVariantPairs, generatedBy string) error {
 	if v.BuildIds == nil {
 		return nil
 	}
@@ -1289,7 +1283,7 @@ func AddNewTasks(activated bool, v *Version, p *Project, pairs TaskVariantPairs,
 			continue
 		}
 		// Add the new set of tasks to the build.
-		if _, err = AddTasksToBuild(&b, p, v, tasksToAdd, displayTasksToAdd, generatedBy, tasksInBuild); err != nil {
+		if _, err = AddTasksToBuild(ctx, &b, p, v, tasksToAdd, displayTasksToAdd, generatedBy, tasksInBuild); err != nil {
 			return err
 		}
 	}

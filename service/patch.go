@@ -172,7 +172,7 @@ func (uis *UIServer) schedulePatch(w http.ResponseWriter, r *http.Request) {
 		}
 
 		// First add new tasks to existing builds, if necessary
-		err = model.AddNewTasksForPatch(projCtx.Patch, projCtx.Version, project, tasks)
+		err = model.AddNewTasksForPatch(context.Background(), projCtx.Patch, projCtx.Version, project, tasks)
 		if err != nil {
 			uis.LoggedError(w, r, http.StatusInternalServerError,
 				errors.Wrapf(err, "Error creating new tasks for version `%s`", projCtx.Version.Id))

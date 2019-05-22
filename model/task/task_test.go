@@ -1,6 +1,7 @@
 package task
 
 import (
+	"context"
 	"testing"
 	"time"
 
@@ -1058,7 +1059,7 @@ func TestBulkInsert(t *testing.T) {
 		Version: "version",
 	}
 	tasks := Tasks{&t1, &t2, &t3}
-	assert.NoError(tasks.InsertUnordered())
+	assert.NoError(tasks.InsertUnordered(context.Background()))
 	dbTasks, err := Find(ByVersion("version"))
 	assert.NoError(err)
 	assert.Len(dbTasks, 3)

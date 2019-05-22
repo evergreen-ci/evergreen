@@ -395,8 +395,10 @@ mongodb/.get-mongodb:
 get-mongodb: mongodb/.get-mongodb
 	@touch $<
 start-mongod: mongodb/.get-mongodb
-	./mongodb/mongod --dbpath ./mongodb/db_files
+	./mongodb/mongod --dbpath ./mongodb/db_files --port 27017 --replSet evg --bind_ip localhost --smallfiles --oplogSize 10
 	@echo "waiting for mongod to start up"
+init-rs: mongodb/.get-mongodb
+	./mongodb/mongo --eval 'rs.initiate()'
 check-mongod: mongodb/.get-mongodb
 	./mongodb/mongo --nodb --eval "assert.soon(function(x){try{var d = new Mongo(\"localhost:27017\"); return true}catch(e){return false}}, \"timed out connecting\")"
 	@echo "mongod is up"

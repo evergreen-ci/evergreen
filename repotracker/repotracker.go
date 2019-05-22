@@ -3,11 +3,11 @@ package repotracker
 import (
 	"context"
 	"fmt"
-	"strings"
 	"time"
 
+	"go.mongodb.org/mongo-driver/mongo"
+
 	"github.com/evergreen-ci/evergreen"
-	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/manifest"
@@ -299,7 +299,7 @@ func (repoTracker *RepoTracker) StoreRevisions(ctx context.Context, revisions []
 		metadata := VersionMetadata{
 			Revision: revisions[i],
 		}
-		v, err := CreateVersionFromConfig(ref, project, metadata, ignore, versionErrs)
+		v, err := CreateVersionFromConfig(ctx, ref, project, metadata, ignore, versionErrs)
 		if err != nil {
 			grip.Error(message.WrapError(err, message.Fields{
 				"message":  "error creating version",
@@ -569,7 +569,8 @@ func CreateManifest(v model.Version, proj *model.Project, branch string, setting
 	return newManifest, errors.Wrap(err, "error inserting manifest")
 }
 
-func CreateVersionFromConfig(ref *model.ProjectRef, config *model.Project, metadata VersionMetadata, ignore bool, versionErrs *VersionErrors) (*model.Version, error) {
+func CreateVersionFromConfig(ctx context.Context, ref *model.ProjectRef, config *model.Project,
+	metadata VersionMetadata, ignore bool, versionErrs *VersionErrors) (*model.Version, error) {
 	if ref == nil || config == nil {
 		return nil, errors.New("project ref and project cannot be nil")
 	}
@@ -614,8 +615,15 @@ func CreateVersionFromConfig(ref *model.ProjectRef, config *model.Project, metad
 			return v, errors.Wrap(v.Insert(), "error inserting version")
 		}
 	}
+	var aliases model.ProjectAliases
+	if metadata.Alias != "" {
+		aliases, err = model.FindAliasInProject(ref.Identifier, metadata.Alias)
+		if err != nil {
+			return v, errors.Wrap(err, "error finding project alias")
+		}
+	}
 
-	return v, errors.Wrap(createVersionItems(v, ref, metadata, config), "error creating version items")
+	return v, errors.Wrap(createVersionItems(ctx, v, ref, metadata, config, aliases), "error creating version items")
 }
 
 // shellVersionFromRevision populates a new Version with metadata from a model.Revision.
@@ -666,12 +674,16 @@ func shellVersionFromRevision(ref *model.ProjectRef, metadata VersionMetadata) (
 			v.RevisionOrderNumber = num
 		}
 	} else {
-		v.Id = util.CleanName(fmt.Sprintf("%s_%s", ref.String(), metadata.Revision.Revision))
+		v.Id = makeVersionId(ref.String(), metadata.Revision.Revision)
 	}
 	if u != nil {
 		v.AuthorID = u.Id
 	}
 	return v, nil
+}
+
+func makeVersionId(project, revision string) string {
+	return util.CleanName(fmt.Sprintf("%s_%s", project, revision))
 }
 
 // Verifies that the given revision order number is higher than the latest number stored for the project.
@@ -693,130 +705,134 @@ func sanityCheckOrderNum(revOrderNum int, projectId, revision string) error {
 
 // createVersionItems populates and stores all the tasks and builds for a version according to
 // the given project config.
-func createVersionItems(v *model.Version, ref *model.ProjectRef, metadata VersionMetadata, project *model.Project) error {
-	// generate all task Ids so that we can easily reference them for dependencies
-	sourceRev := ""
-	if metadata.SourceVersion != nil {
-		sourceRev = metadata.SourceVersion.Revision
-	}
-	var aliases model.ProjectAliases
-	var err error
-	if metadata.Alias != "" {
-		aliases, err = model.FindAliasInProject(ref.Identifier, metadata.Alias)
-		if err != nil {
-			return errors.Wrap(err, "error finding project alias")
-		}
-	}
-	taskIds := model.NewTaskIdTable(project, v, sourceRev, metadata.DefinitionID)
+func createVersionItems(ctx context.Context, v *model.Version, ref *model.ProjectRef, metadata VersionMetadata, project *model.Project, aliases model.ProjectAliases) error {
+	client := evergreen.GetEnvironment().Client()
 
-	// create all builds for the version
-	for _, buildvariant := range project.BuildVariants {
-		if buildvariant.Disabled {
-			continue
+	return client.UseSession(ctx, func(sessCtx mongo.SessionContext) error {
+		// generate all task Ids so that we can easily reference them for dependencies
+		sourceRev := ""
+		if metadata.SourceVersion != nil {
+			sourceRev = metadata.SourceVersion.Revision
 		}
-		var match bool
-		if len(aliases) > 0 {
-			match, err = aliases.HasMatchingVariant(buildvariant.Name)
-			if err != nil {
-				grip.Error(err)
+		taskIds := model.NewTaskIdTable(project, v, sourceRev, metadata.DefinitionID)
+
+		err := sessCtx.StartTransaction()
+		if err != nil {
+			return errors.Wrap(err, "error starting transaction")
+		}
+		// create all builds for the version
+		for _, buildvariant := range project.BuildVariants {
+			if buildvariant.Disabled {
 				continue
 			}
-			if !match {
-				continue
-			}
-		}
-		args := model.BuildCreateArgs{
-			Project:      *project,
-			Version:      *v,
-			TaskIDs:      taskIds,
-			BuildName:    buildvariant.Name,
-			Activated:    false,
-			SourceRev:    sourceRev,
-			DefinitionID: metadata.DefinitionID,
-			Aliases:      aliases,
-		}
-		var buildId string
-		buildId, err = model.CreateBuildFromVersion(args)
-		if err != nil {
-			if metadata.TriggerID == "" || !strings.Contains(err.Error(), "E11000") {
-				grip.Error(message.WrapError(err, message.Fields{
-					"message": "error inserting build",
-					"version": v.Id,
-					"variant": buildvariant.DisplayName,
-				}))
-			}
-			continue
-		}
-
-		var lastActivated *model.Version
-		lastActivated, err = model.VersionFindOne(model.VersionByLastVariantActivation(ref.Identifier, buildvariant.Name))
-		if err != nil {
-			return errors.Wrap(err, "problem getting activatation time for variant")
-		}
-
-		var lastActivation *time.Time
-		if lastActivated != nil {
-			for _, buildStatus := range lastActivated.BuildVariants {
-				if buildStatus.BuildVariant == buildvariant.Name && buildStatus.Activated {
-					lastActivation = &buildStatus.ActivateAt
-					break
+			var match bool
+			if len(aliases) > 0 {
+				match, err = aliases.HasMatchingVariant(buildvariant.Name)
+				if err != nil {
+					grip.Error(err)
+					continue
+				}
+				if !match {
+					continue
 				}
 			}
-		}
+			args := model.BuildCreateArgs{
+				Project:      *project,
+				Version:      *v,
+				TaskIDs:      taskIds,
+				BuildName:    buildvariant.Name,
+				Activated:    false,
+				SourceRev:    sourceRev,
+				DefinitionID: metadata.DefinitionID,
+				Aliases:      aliases,
+				Session:      sessCtx,
+			}
+			var buildId string
+			buildId, err = model.CreateBuildFromVersion(args)
+			if err != nil {
+				abortErr := sessCtx.AbortTransaction(sessCtx)
+				grip.Notice(message.Fields{
+					"message":    "aborting transaction",
+					"cause":      "can't insert build items",
+					"variant":    buildvariant.Name,
+					"version":    v.Id,
+					"insert_err": err.Error(),
+					"abort_err":  abortErr.Error(),
+				})
+				return errors.Wrapf(err, "error inserting build %s", buildId)
+			}
 
-		var activateAt time.Time
-		if lastActivation == nil {
-			// if we don't have a last activation time then prepare to activate it immediately.
-			activateAt = time.Now()
-		} else {
-			activateAt = lastActivation.Add(time.Minute * time.Duration(ref.GetBatchTime(&buildvariant)))
-		}
-
-		grip.Debug(message.Fields{
-			"message": "activating build",
-			"name":    buildvariant.Name,
-			"project": ref.Identifier,
-			"version": v.Id,
-			"time":    activateAt,
-			"runner":  RunnerName,
-		})
-		v.BuildIds = append(v.BuildIds, buildId)
-		v.BuildVariants = append(v.BuildVariants, model.VersionBuildStatus{
-			BuildVariant: buildvariant.Name,
-			Activated:    false,
-			ActivateAt:   activateAt,
-			BuildId:      buildId,
-		})
-	}
-
-	err = v.Insert()
-	if err != nil {
-		if db.IsDuplicateKey(err) {
-			return nil
-		}
-		grip.Critical(message.WrapError(err, message.Fields{
-			"message": "problem inserting version",
-			"runner":  RunnerName,
-			"id":      v.Id,
-		}))
-		for _, buildStatus := range v.BuildVariants {
-			if buildErr := model.DeleteBuild(buildStatus.BuildId); buildErr != nil {
-				grip.Error(message.WrapError(buildErr, message.Fields{
-					"message":    "issue deleting build",
-					"runner":     RunnerName,
-					"version_id": v.Id,
-					"build_id":   buildStatus.BuildId,
+			var lastActivated *model.Version
+			lastActivated, err = model.VersionFindOne(model.VersionByLastVariantActivation(ref.Identifier, buildvariant.Name))
+			if err != nil {
+				grip.Error(message.WrapError(err, message.Fields{
+					"message": "error finding last activated",
+					"version": v.Id,
 				}))
 			}
+
+			var lastActivation *time.Time
+			if lastActivated != nil {
+				for _, buildStatus := range lastActivated.BuildVariants {
+					if buildStatus.BuildVariant == buildvariant.Name && buildStatus.Activated {
+						lastActivation = &buildStatus.ActivateAt
+						break
+					}
+				}
+			}
+
+			var activateAt time.Time
+			if lastActivation == nil {
+				// if we don't have a last activation time then prepare to activate it immediately.
+				activateAt = time.Now()
+			} else {
+				activateAt = lastActivation.Add(time.Minute * time.Duration(ref.GetBatchTime(&buildvariant)))
+			}
+
+			grip.Debug(message.Fields{
+				"message": "activating build",
+				"name":    buildvariant.Name,
+				"project": ref.Identifier,
+				"version": v.Id,
+				"time":    activateAt,
+				"runner":  RunnerName,
+			})
+			v.BuildIds = append(v.BuildIds, buildId)
+			v.BuildVariants = append(v.BuildVariants, model.VersionBuildStatus{
+				BuildVariant: buildvariant.Name,
+				Activated:    false,
+				ActivateAt:   activateAt,
+				BuildId:      buildId,
+			})
 		}
-		return errors.WithStack(err)
-	}
-	grip.Info(message.Fields{
-		"message": "successfully created version",
-		"version": v.Id,
-		"hash":    v.Revision,
-		"project": v.Branch,
-		"runner":  RunnerName,
+
+		_, err = evergreen.GetEnvironment().DB().Collection(model.VersionCollection).InsertOne(sessCtx, v)
+		if err != nil {
+			abortErr := sessCtx.AbortTransaction(sessCtx)
+			grip.Notice(message.Fields{
+				"message":    "aborting transaction",
+				"cause":      "can't insert version",
+				"version":    v.Id,
+				"insert_err": err.Error(),
+				"abort_err":  abortErr.Error(),
+			})
+			return errors.Wrapf(err, "error inserting version %s", v.Id)
+		}
+		err = sessCtx.CommitTransaction(sessCtx)
+		if err != nil {
+			grip.Error(message.WrapError(err, message.Fields{
+				"message": "unable to commit transaction",
+				"version": v.Id,
+			}))
+			return errors.Wrapf(err, "error committing transaction for version %s", v.Id)
+		}
+		grip.Info(message.Fields{
+			"message": "successfully created version",
+			"version": v.Id,
+			"hash":    v.Revision,
+			"project": v.Branch,
+			"runner":  RunnerName,
+		})
+		return nil
 	})
-	return nil
 }

@@ -1,6 +1,7 @@
 package model
 
 import (
+	"context"
 	"fmt"
 	"testing"
 
@@ -561,7 +562,7 @@ func (s *GenerateSuite) TestSaveNewBuildsAndTasks() {
 	g.TaskID = "task_that_called_generate_task"
 	p, v, t, pm, prevConfig, err := g.NewVersion()
 	s.NoError(err)
-	s.NoError(g.Save(p, v, t, pm, prevConfig))
+	s.NoError(g.Save(context.Background(), p, v, t, pm, prevConfig))
 	builds, err := build.Find(db.Query(bson.M{}))
 	s.NoError(err)
 	tasks := []task.Task{}
@@ -623,7 +624,7 @@ func (s *GenerateSuite) TestSaveNewTasksWithDependencies() {
 	g.TaskID = "task_that_called_generate_task"
 	p, v, t, pm, prevConfig, err := g.NewVersion()
 	s.NoError(err)
-	s.NoError(g.Save(p, v, t, pm, prevConfig))
+	s.NoError(g.Save(context.Background(), p, v, t, pm, prevConfig))
 	tasks := []task.Task{}
 	err = db.FindAllQ(task.Collection, db.Query(bson.M{}), &tasks)
 	s.NoError(err)
@@ -668,7 +669,7 @@ func (s *GenerateSuite) TestSaveNewTaskWithExistingExecutionTask() {
 	g.TaskID = "task_that_called_generate_task"
 	p, v, t, pm, prevConfig, err := g.NewVersion()
 	s.Require().NoError(err)
-	s.NoError(g.Save(p, v, t, pm, prevConfig))
+	s.NoError(g.Save(context.Background(), p, v, t, pm, prevConfig))
 
 	tasks := []task.Task{}
 	s.NoError(db.FindAllQ(task.Collection, db.Query(bson.M{}), &tasks))
