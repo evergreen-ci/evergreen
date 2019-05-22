@@ -6,6 +6,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/apimodels"
+	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/util"
 	"go.mongodb.org/mongo-driver/bson"
 )
@@ -113,19 +114,23 @@ func ResetCachedTask(buildId, taskId string) error {
 
 // UpdateCachedTask sets the status and increments the time taken for a task
 // in the build cache. It is intended for use with display tasks
-func UpdateCachedTask(buildId, taskId, status string, timeTaken time.Duration) error {
-	if buildId == "" {
+func UpdateCachedTask(t *task.Task, timeTaken time.Duration) error {
+	if t == nil {
+		return errors.New("unable to update a cached task with a nil task")
+	}
+	if t.BuildId == "" {
 		return errors.New("unable to update a cached task with a blank build")
 	}
-	if taskId == "" {
+	if t.Id == "" {
 		return errors.New("unable to update a cached task with a blank task")
 	}
-	if status == "" {
+	if t.Status == "" {
 		return errors.New("unable to update a cached task with a blank status")
 	}
-	return updateOneTaskCache(buildId, taskId, bson.M{
+	return updateOneTaskCache(t.BuildId, t.Id, bson.M{
 		"$set": bson.M{
-			TasksKey + ".$." + TaskCacheStatusKey: status,
+			TasksKey + ".$." + TaskCacheStatusKey:        t.Status,
+			TasksKey + ".$." + TaskCacheStatusDetailsKey: t.Details,
 		},
 		"$inc": bson.M{
 			TasksKey + ".$." + TaskCacheTimeTakenKey: timeTaken,
