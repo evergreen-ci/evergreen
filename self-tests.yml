@@ -145,7 +145,7 @@ variables:
           content_type: application/octet-stream
           permissions: public-read
           display_name: evergreen
-      - func: set-up-mongodb
+      - func: setup-mongodb
       - func: run-make
         vars: {target: "set-var"}
       - func: run-make
