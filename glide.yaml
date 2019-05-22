@@ -54,6 +54,7 @@ import:
   - package: github.com/mholt/archiver
   - package: github.com/evergreen-ci/shrub
   - package: github.com/evergreen-ci/pail
+  - package: gonum.org/v1/gonum
 
   # git library and its dependencies
   - package: gopkg.in/src-d/go-git.v4

@@ -145,3 +145,5 @@ imports:
     version: ec4a0fea49c7b46c2aeb0b51aac55779c607e52b
   - name: golang.org/x/text
     version: 905a57155faa8230500121607930ebb9dd8e139c
+  - name: gonum.org/v1/gonum
+    version: aff0e10c44138b1247d90efb9117f68ba7c76f0c

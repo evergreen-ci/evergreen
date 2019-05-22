@@ -88,6 +88,7 @@ type TaskQueueItem struct {
 	Project             string        `bson:"project" json:"project"`
 	ExpectedDuration    time.Duration `bson:"exp_dur" json:"exp_dur"`
 	Priority            int64         `bson:"priority" json:"priority"`
+	Dependencies        []string      `bson:"dependencies" json:"dependencies"`
 }
 
 // must not no-lint these values

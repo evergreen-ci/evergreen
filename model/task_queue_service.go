@@ -20,16 +20,23 @@ type TaskQueueService interface {
 	RefreshFindNextTask(string, TaskSpec) (*TaskQueueItem, error)
 }
 
+type TaskDistroQueueService interface {
+	Refresh() error
+	FindNextTask(TaskSpec) *TaskQueueItem
+}
+
+type TaskDistroQueueServiceConstructor func(string, []TaskQueueItem, time.Duration) TaskDistroQueueService
+
 type taskDispatchService struct {
-	taskDistroDispatchServices map[string]*taskDistroDispatchService
-	mu                         sync.RWMutex
-	ttl                        time.Duration
+	taskDistroQueueServices map[string]TaskDistroQueueService
+	mu                      sync.RWMutex
+	ttl                     time.Duration
 }
 
 func NewTaskDispatchService(ttl time.Duration) TaskQueueService {
 	return &taskDispatchService{
-		ttl:                        ttl,
-		taskDistroDispatchServices: map[string]*taskDistroDispatchService{},
+		ttl:                     ttl,
+		taskDistroQueueServices: map[string]TaskDistroQueueService{},
 	}
 }
 
@@ -68,12 +75,12 @@ func (s *taskDispatchService) Refresh(distro string) error {
 	return nil
 }
 
-func (s *taskDispatchService) ensureQueue(distro string) (*taskDistroDispatchService, error) {
-	// If there is a "distro": *taskDistroDispatchService in the taskDistroDispatchServices map, return that.
+func (s *taskDispatchService) ensureQueue(distro string) (TaskDistroQueueService, error) {
+	// If there is a "distro": *taskDistroDispatchService in the taskDistroQueueServices map, return that.
 	// Otherwise, get the "distro"'s taskQueue from the database; seed its taskDistroDispatchService; put that in the map and return it.
 	s.mu.RLock()
 
-	distroDispatchService, ok := s.taskDistroDispatchServices[distro]
+	distroDispatchService, ok := s.taskDistroQueueServices[distro]
 	s.mu.RUnlock()
 	if ok {
 		return distroDispatchService, nil
@@ -81,7 +88,7 @@ func (s *taskDispatchService) ensureQueue(distro string) (*taskDistroDispatchSer
 
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	distroDispatchService, ok = s.taskDistroDispatchServices[distro]
+	distroDispatchService, ok = s.taskDistroQueueServices[distro]
 	if ok {
 		return distroDispatchService, nil
 	}
@@ -93,7 +100,7 @@ func (s *taskDispatchService) ensureQueue(distro string) (*taskDistroDispatchSer
 
 	taskQueueItems := taskQueue.Queue
 	distroDispatchService = newDistroTaskDispatchService(distro, taskQueueItems, s.ttl)
-	s.taskDistroDispatchServices[distro] = distroDispatchService
+	s.taskDistroQueueServices[distro] = distroDispatchService
 
 	return distroDispatchService, nil
 }
@@ -121,7 +128,7 @@ type schedulableUnit struct {
 }
 
 // newTaskDispatchService creates a taskDistroDispatchService from a slice of TaskQueueItems.
-func newDistroTaskDispatchService(distroID string, items []TaskQueueItem, ttl time.Duration) *taskDistroDispatchService {
+func newDistroTaskDispatchService(distroID string, items []TaskQueueItem, ttl time.Duration) TaskDistroQueueService {
 	t := &taskDistroDispatchService{
 		distroID: distroID,
 		ttl:      ttl,
@@ -299,7 +306,7 @@ func (t *taskDistroDispatchService) nextTaskGroupTask(unit schedulableUnit) *Tas
 			return nil
 		}
 
-		if isBlockedSingleHostTaskGroup(unit, nextTaskFromDB) {
+		if t.isBlockedSingleHostTaskGroup(unit, nextTaskFromDB) {
 			delete(t.units, unit.id)
 			return nil
 		}
@@ -321,6 +328,6 @@ func (t *taskDistroDispatchService) nextTaskGroupTask(unit schedulableUnit) *Tas
 
 // isBlockedSingleHostTaskGroup checks if the task is running in a 1-host task group, has finished,
 // and did not succeed. But rely on EndTask to block later tasks.
-func isBlockedSingleHostTaskGroup(unit schedulableUnit, dbTask *task.Task) bool {
+func (t *taskDistroDispatchService) isBlockedSingleHostTaskGroup(unit schedulableUnit, dbTask *task.Task) bool {
 	return unit.maxHosts == 1 && !util.IsZeroTime(dbTask.FinishTime) && dbTask.Status != evergreen.TaskSucceeded
 }
