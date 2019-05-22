@@ -325,11 +325,13 @@ func (c *Mock) GetPatchFile(ctx context.Context, td TaskData, patchFileID string
 
 func (c *Mock) GetTaskPatch(ctx context.Context, td TaskData) (*patchmodel.Patch, error) {
 	val, _ := ctx.Value("githash").(string)
-	return &patchmodel.Patch{
-		Patches: []patchmodel.ModulePatch{
+	p := &patchmodel.Patch{}
+	if val != "" {
+		p.Patches = []patchmodel.ModulePatch{
 			{ModuleName: "sample", Githash: val},
-		},
-	}, nil
+		}
+	}
+	return p, nil
 }
 
 // GetHostsByUser will return an array with a single mock host
