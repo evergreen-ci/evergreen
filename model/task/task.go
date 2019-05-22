@@ -1260,17 +1260,23 @@ func FindSchedulable(distroID string) ([]Task, error) {
 	return Find(db.Query(query))
 }
 
-func FindRunnable(distroID string) ([]Task, error) {
+func FindRunnable(distroID string, removeDeps bool) ([]Task, error) {
 	expectedStatuses := []string{evergreen.TaskSucceeded, evergreen.TaskFailed, ""}
 
 	match := scheduleableTasksQuery()
 	if distroID != "" {
 		match[DistroIdKey] = distroID
-
 	}
 
 	matchActivatedUndispatchedTasks := bson.M{
 		"$match": match,
+	}
+
+	removeFields := bson.M{
+		"$project": bson.M{
+			LogsKey:      0,
+			OldTaskIdKey: 0,
+		},
 	}
 
 	graphLookupTaskDeps := bson.M{
@@ -1356,16 +1362,25 @@ func FindRunnable(distroID string) ([]Task, error) {
 
 	pipeline := []bson.M{
 		matchActivatedUndispatchedTasks,
+		removeFields,
 		graphLookupTaskDeps,
-		reshapeTasksAndEdges,
-		removeEdgesFromTask,
-		redactUnrunnableTasks,
-		replaceRoot,
+	}
+
+	if removeDeps {
+		pipeline = append(pipeline,
+			reshapeTasksAndEdges,
+			removeEdgesFromTask,
+			redactUnrunnableTasks,
+			replaceRoot,
+		)
+	}
+
+	pipeline = append(pipeline,
 		joinProjectRef,
 		filterDisabledProejcts,
 		filterPatchingDisabledProjects,
 		removeProjectRef,
-	}
+	)
 
 	runnableTasks := []Task{}
 	if err := Aggregate(pipeline, &runnableTasks); err != nil {

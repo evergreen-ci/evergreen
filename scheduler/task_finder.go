@@ -3,14 +3,16 @@ package scheduler
 import (
 	"sync"
 
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 )
 
-type TaskFinder func(distroID string) ([]task.Task, error)
+type TaskFinder func(distro.Distro) ([]task.Task, error)
 
 func GetTaskFinder(version string) TaskFinder {
 	switch version {
@@ -27,15 +29,15 @@ func GetTaskFinder(version string) TaskFinder {
 	}
 }
 
-func RunnableTasksPipeline(distroID string) ([]task.Task, error) {
-	return task.FindRunnable(distroID)
+func RunnableTasksPipeline(d distro.Distro) ([]task.Task, error) {
+	return task.FindRunnable(d.Id, d.PlannerSettings.Version == evergreen.PlannerVersionLegacy)
 }
 
 // The old Task finderDBTaskFinder, with the dependency check implemented in Go,
 // instead of using $graphLookup
-func LegacyFindRunnableTasks(distroID string) ([]task.Task, error) {
+func LegacyFindRunnableTasks(d distro.Distro) ([]task.Task, error) {
 	// find all of the undispatched tasks
-	undispatchedTasks, err := task.FindSchedulable(distroID)
+	undispatchedTasks, err := task.FindSchedulable(d.Id)
 	if err != nil {
 		return nil, err
 	}
@@ -54,6 +56,7 @@ func LegacyFindRunnableTasks(distroID string) ([]task.Task, error) {
 			grip.Notice(message.Fields{
 				"runner":  RunnerName,
 				"message": "could not find project for task",
+				"planner": d.PlannerSettings.Version,
 				"outcome": "skipping",
 				"task":    t.Id,
 				"project": t.Project,
@@ -67,6 +70,7 @@ func LegacyFindRunnableTasks(distroID string) ([]task.Task, error) {
 				"message": "project disabled",
 				"outcome": "skipping",
 				"task":    t.Id,
+				"planner": d.PlannerSettings.Version,
 				"project": t.Project,
 			})
 			continue
@@ -77,25 +81,29 @@ func LegacyFindRunnableTasks(distroID string) ([]task.Task, error) {
 				"runner":  RunnerName,
 				"message": "patch testing disabled",
 				"outcome": "skipping",
+				"planner": d.PlannerSettings.Version,
 				"task":    t.Id,
 				"project": t.Project,
 			})
 			continue
 		}
 
-		depsMet, err := t.DependenciesMet(dependencyCaches)
-		if err != nil {
-			grip.Warning(message.Fields{
-				"runner":  RunnerName,
-				"message": "error checking dependencies for task",
-				"outcome": "skipping",
-				"task":    t.Id,
-				"error":   err.Error(),
-			})
-			continue
-		}
-		if !depsMet {
-			continue
+		if d.PlannerSettings.Version == evergreen.PlannerVersionLegacy {
+			depsMet, err := t.DependenciesMet(dependencyCaches)
+			if err != nil {
+				grip.Warning(message.Fields{
+					"runner":  RunnerName,
+					"message": "error checking dependencies for task",
+					"outcome": "skipping",
+					"planner": d.PlannerSettings.Version,
+					"task":    t.Id,
+					"error":   err.Error(),
+				})
+				continue
+			}
+			if !depsMet {
+				continue
+			}
 		}
 
 		runnableTasks = append(runnableTasks, t)
@@ -104,8 +112,8 @@ func LegacyFindRunnableTasks(distroID string) ([]task.Task, error) {
 	return runnableTasks, nil
 }
 
-func AlternateTaskFinder(distroID string) ([]task.Task, error) {
-	undispatchedTasks, err := task.FindSchedulable(distroID)
+func AlternateTaskFinder(d distro.Distro) ([]task.Task, error) {
+	undispatchedTasks, err := task.FindSchedulable(d.Id)
 	if err != nil {
 		return nil, err
 	}
@@ -150,6 +158,7 @@ func AlternateTaskFinder(distroID string) ([]task.Task, error) {
 			grip.Notice(message.Fields{
 				"runner":  RunnerName,
 				"message": "could not find project for task",
+				"planner": d.PlannerSettings.Version,
 				"outcome": "skipping",
 				"task":    t.Id,
 				"project": t.Project,
@@ -163,6 +172,7 @@ func AlternateTaskFinder(distroID string) ([]task.Task, error) {
 				"message": "project disabled",
 				"outcome": "skipping",
 				"task":    t.Id,
+				"planner": d.PlannerSettings.Version,
 				"project": t.Project,
 			})
 			continue
@@ -173,16 +183,19 @@ func AlternateTaskFinder(distroID string) ([]task.Task, error) {
 				"runner":  RunnerName,
 				"message": "patch testing disabled",
 				"outcome": "skipping",
+				"planner": d.PlannerSettings.Version,
 				"task":    t.Id,
 				"project": t.Project,
 			})
 			continue
 		}
 
-		depsMet, err := t.AllDependenciesSatisfied(cache)
-		catcher.Add(err)
-		if !depsMet {
-			continue
+		if d.PlannerSettings.Version == evergreen.PlannerVersionLegacy {
+			depsMet, err := t.AllDependenciesSatisfied(cache)
+			catcher.Add(err)
+			if !depsMet {
+				continue
+			}
 		}
 		runnabletasks = append(runnabletasks, t)
 
@@ -195,8 +208,8 @@ func AlternateTaskFinder(distroID string) ([]task.Task, error) {
 	return runnabletasks, nil
 }
 
-func ParallelTaskFinder(distroID string) ([]task.Task, error) {
-	undispatchedTasks, err := task.FindSchedulable(distroID)
+func ParallelTaskFinder(d distro.Distro) ([]task.Task, error) {
+	undispatchedTasks, err := task.FindSchedulable(d.Id)
 	if err != nil {
 		return nil, err
 	}
@@ -284,20 +297,22 @@ func ParallelTaskFinder(distroID string) ([]task.Task, error) {
 			continue
 		}
 
-		depsMet, err := t.AllDependenciesSatisfied(cache)
-		if err != nil {
-			catcher.Add(err)
-			continue
-		}
+		if d.PlannerSettings.Version == evergreen.PlannerVersionLegacy {
+			depsMet, err := t.AllDependenciesSatisfied(cache)
+			if err != nil {
+				catcher.Add(err)
+				continue
+			}
 
-		if !depsMet {
-			continue
+			if !depsMet {
+				continue
+			}
 		}
-
 		runnabletasks = append(runnabletasks, t)
 	}
 	grip.Info(message.WrapError(catcher.Resolve(), message.Fields{
 		"runner":             RunnerName,
+		"planner":            d.PlannerSettings.Version,
 		"scheduleable_tasks": len(undispatchedTasks),
 	}))
 
