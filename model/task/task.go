@@ -769,28 +769,28 @@ func (t *Task) MarkEnd(finishTime time.Time, detail *apimodels.TaskEndDetail) er
 
 }
 
-func displayTaskPriority(status string) int {
-	switch status {
-	case evergreen.TaskStarted:
-		return 10
-	case evergreen.TaskUndispatched:
-		return 40
+func displayTaskPriority(t Task) int {
+	switch t.ResultStatus() {
 	case evergreen.TaskFailed:
-		return 50
+		return 10
 	case evergreen.TaskTestTimedOut:
-		return 60
+		return 20
 	case evergreen.TaskSystemFailed:
-		return 70
+		return 30
 	case evergreen.TaskSystemTimedOut:
-		return 80
+		return 40
 	case evergreen.TaskSystemUnresponse:
-		return 90
+		return 50
 	case evergreen.TaskSetupFailed:
-		return 95
+		return 60
 	case evergreen.TaskSucceeded:
-		return 100
+		return 70
 	case evergreen.TaskInactive:
-		return 110
+		return 80
+	case evergreen.TaskStarted:
+		return 90
+	case evergreen.TaskUndispatched:
+		return 100
 	}
 	return 1000
 }
