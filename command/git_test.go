@@ -610,7 +610,8 @@ func (s *GitGetProjectSuite) TestCorrectModuleRevision() {
 	for _, task := range conf.Project.Tasks {
 		s.NotEqual(len(task.Commands), 0)
 		for _, command := range task.Commands {
-			pluginCmds, err := Render(command, conf.Project.Functions)
+			var pluginCmds []Command
+			pluginCmds, err = Render(command, conf.Project.Functions)
 			s.NoError(err)
 			s.NotNil(pluginCmds)
 			pluginCmds[0].SetJasperManager(s.jasper)
