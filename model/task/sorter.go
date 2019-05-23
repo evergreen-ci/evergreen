@@ -31,8 +31,10 @@ func (t Tasks) InsertUnordered(ctx context.Context) error {
 	return err
 }
 
-type ByPriority []string
+type ByPriority []Task
 
-func (p ByPriority) Len() int           { return len(p) }
-func (p ByPriority) Swap(i, j int)      { p[i], p[j] = p[j], p[i] }
-func (p ByPriority) Less(i, j int) bool { return displayTaskPriority(p[i]) < displayTaskPriority(p[j]) }
+func (p ByPriority) Len() int      { return len(p) }
+func (p ByPriority) Swap(i, j int) { p[i], p[j] = p[j], p[i] }
+func (p ByPriority) Less(i, j int) bool {
+	return p[i].displayTaskPriority() < p[j].displayTaskPriority()
+}
