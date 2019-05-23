@@ -427,7 +427,7 @@ func MarkEnd(t *task.Task, caller string, finishTime time.Time, detail *apimodel
 		if err = UpdateDisplayTask(t.DisplayTask); err != nil {
 			return err
 		}
-		if err = build.UpdateCachedTask(t, t.TimeTaken); err != nil {
+		if err = build.UpdateCachedTask(t.DisplayTask.BuildId, t.DisplayTask.Id, t.DisplayTask.Status, t.TimeTaken); err != nil {
 			grip.Error(message.WrapError(err, message.Fields{
 				"message":    "failed to update cached display task",
 				"function":   "MarkEnd",
@@ -584,7 +584,7 @@ func UpdateBuildAndVersionStatusForTask(taskId string, updates *StatusChanges) e
 			if err = UpdateDisplayTask(displayTask); err != nil {
 				return errors.Wrap(errors.WithStack(err), "error updating display task")
 			}
-			if err = build.UpdateCachedTask(displayTask, 0); err != nil {
+			if err = build.UpdateCachedTask(displayTask.BuildId, displayTask.Id, displayTask.Status, 0); err != nil {
 				return errors.Wrap(errors.WithStack(err), "error updating cached display task")
 			}
 			t = *displayTask
@@ -875,7 +875,7 @@ func updateDisplayTaskAndCache(t *task.Task) error {
 	if err != nil {
 		return errors.Wrap(err, "error updating display task")
 	}
-	return build.UpdateCachedTask(t.DisplayTask, 0)
+	return build.UpdateCachedTask(t.DisplayTask.BuildId, t.DisplayTask.Id, t.DisplayTask.Status, 0)
 }
 
 type RestartTaskOptions struct {
@@ -1002,7 +1002,7 @@ func ClearAndResetStrandedTask(h *host.Host) error {
 	if err = t.MarkSystemFailed(); err != nil {
 		return errors.Wrap(err, "problem marking task failed")
 	}
-	if err := build.UpdateCachedTask(t, 0); err != nil {
+	if err := build.UpdateCachedTask(t.BuildId, t.Id, t.Status, 0); err != nil {
 		return errors.Wrap(err, "problem resetting cached task")
 	}
 
@@ -1037,15 +1037,16 @@ func UpdateDisplayTask(t *task.Task) error {
 	if !t.DisplayOnly {
 		return fmt.Errorf("%s is not a display task", t.Id)
 	}
-
+	statuses := []string{}
 	var timeTaken time.Duration
-	var statusTask task.Task
+	var status string
 	wasFinished := t.IsFinished()
 	execTasks, err := task.Find(task.ByIds(t.ExecutionTasks))
 	if err != nil {
 		return errors.Wrap(err, "error retrieving execution tasks")
 	}
 	hasFinishedTasks := false
+	hasFailedTasks := false
 	hasUnfinishedTasks := false
 	startTime := time.Unix(1<<62, 0)
 	endTime := util.ZeroTime
@@ -1057,10 +1058,14 @@ func UpdateDisplayTask(t *task.Task) error {
 
 		if execTask.IsFinished() {
 			hasFinishedTasks = true
-		}
-		if execTask.IsDispatchable() {
+			if evergreen.IsFailedTaskStatus(execTask.Status) {
+				hasFailedTasks = true
+			}
+		} else if execTask.IsDispatchable() {
 			hasUnfinishedTasks = true
 		}
+		// the display task's status will be the highest priority of its exec tasks
+		statuses = append(statuses, execTask.ResultStatus())
 
 		// add up the duration of the execution tasks as the cumulative time taken
 		timeTaken += execTask.TimeTaken
@@ -1074,20 +1079,25 @@ func UpdateDisplayTask(t *task.Task) error {
 		}
 	}
 
-	sort.Sort(task.ByPriority(execTasks))
-	statusTask = execTasks[0]
-	if statusTask.Status != evergreen.TaskFailed && (hasFinishedTasks && hasUnfinishedTasks) {
+	if hasFailedTasks {
+		// if display task has a failed task, update status
+		sort.Sort(task.ByPriority(statuses))
+		status = statuses[0]
+	} else if hasFinishedTasks && hasUnfinishedTasks {
 		// if the display task has a mix of finished and unfinished tasks, the status
 		// will be "started"
-		statusTask.Status = evergreen.TaskStarted
-		statusTask.Details = apimodels.TaskEndDetail{}
+		status = evergreen.TaskStarted
+	} else if len(statuses) > 0 {
+		// the status of the display task will be the status of its constituent task
+		// that is logically the most exclusive
+		sort.Sort(task.ByPriority(statuses))
+		status = statuses[0]
 	}
 
 	update := bson.M{
-		task.StatusKey:    statusTask.Status,
+		task.StatusKey:    status,
 		task.ActivatedKey: t.Activated,
 		task.TimeTakenKey: timeTaken,
-		task.DetailsKey:   statusTask.Details,
 	}
 	if startTime != time.Unix(1<<62, 0) {
 		update[task.StartTimeKey] = startTime
@@ -1107,11 +1117,10 @@ func UpdateDisplayTask(t *task.Task) error {
 		return errors.Wrap(err, "error updating display task")
 	}
 
-	t.Status = statusTask.Status
-	t.Details = statusTask.Details
+	t.Status = status
 	t.TimeTaken = timeTaken
 	if !wasFinished && t.IsFinished() {
-		event.LogDisplayTaskFinished(t.Id, t.Execution, t.ResultStatus())
+		event.LogDisplayTaskFinished(t.Id, t.Execution, t.Status)
 		if t.ResetWhenFinished {
 
 			details := &apimodels.TaskEndDetail{

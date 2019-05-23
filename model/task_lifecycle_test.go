@@ -2225,12 +2225,8 @@ func TestDisplayTaskUpdates(t *testing.T) {
 	}
 	assert.NoError(dt2.Insert())
 	task1 := task.Task{
-		Id:     "task1",
-		Status: evergreen.TaskFailed,
-		Details: apimodels.TaskEndDetail{
-			Status: evergreen.TaskFailed,
-			Type:   evergreen.CommandTypeSetup,
-		},
+		Id:         "task1",
+		Status:     evergreen.TaskFailed,
 		TimeTaken:  3 * time.Minute,
 		StartTime:  time.Date(2000, 0, 0, 1, 1, 1, 0, time.Local),
 		FinishTime: time.Date(2000, 0, 0, 1, 9, 1, 0, time.Local),
@@ -2359,65 +2355,85 @@ func TestDisplayTaskDelayedRestart(t *testing.T) {
 
 func TestDisplayTaskFailedExecTasks(t *testing.T) {
 	assert := assert.New(t)
-	assert.NoError(db.ClearCollections(task.Collection))
+	assert.NoError(db.ClearCollections(task.Collection, ProjectRefCollection, distro.Collection, build.Collection))
 	dt := task.Task{
 		Id:             "task",
+		BuildId:        "build",
+		Activated:      true,
 		DisplayOnly:    true,
-		Status:         evergreen.TaskUndispatched,
+		Status:         evergreen.TaskStarted,
 		ExecutionTasks: []string{"exec0", "exec1"},
 	}
 	assert.NoError(dt.Insert())
-	execTask0 := task.Task{
+	task2 := task.Task{
 		Id:        "exec0",
+		BuildId:   "build",
 		Activated: true,
 		Status:    evergreen.TaskFailed,
-		Details: apimodels.TaskEndDetail{
-			Status: evergreen.TaskFailed,
-			Type:   evergreen.CommandTypeSystem,
-		}}
-	assert.NoError(execTask0.Insert())
-
-	execTask1 := task.Task{Id: "exec1", Status: evergreen.TaskUndispatched}
-	assert.NoError(execTask1.Insert())
+	}
+	assert.NoError(task2.Insert())
+	task3 := task.Task{
+		Id:        "exec1",
+		BuildId:   "build",
+		Activated: true,
+		DependsOn: []task.Dependency{
+			{TaskId: "exec0", Status: evergreen.TaskSucceeded},
+		},
+		Status: evergreen.TaskUndispatched,
+	}
+	assert.NoError(task3.Insert())
+	b := build.Build{
+		Id: "build",
+		Tasks: []build.TaskCache{
+			{Id: "task", Status: evergreen.TaskStarted, Activated: true},
+		},
+	}
+	assert.NoError(b.Insert())
 
 	assert.NoError(UpdateDisplayTask(&dt))
 	dbTask, err := task.FindOne(task.ById(dt.Id))
 	assert.NoError(err)
 	assert.Equal(evergreen.TaskFailed, dbTask.Status)
-	assert.Equal(evergreen.CommandTypeSystem, dbTask.Details.Type)
-	assert.True(dbTask.Activated)
 }
 
 func TestDisplayTaskFailedAndSucceededExecTasks(t *testing.T) {
 	assert := assert.New(t)
-	assert.NoError(db.ClearCollections(task.Collection))
+	assert.NoError(db.ClearCollections(task.Collection, ProjectRefCollection, distro.Collection, build.Collection))
 	dt := task.Task{
 		Id:             "task",
+		BuildId:        "build",
+		Activated:      true,
 		DisplayOnly:    true,
-		Status:         evergreen.TaskUndispatched,
+		Status:         evergreen.TaskStarted,
 		ExecutionTasks: []string{"exec0", "exec1"},
 	}
 	assert.NoError(dt.Insert())
-	execTask0 := task.Task{
+	task2 := task.Task{
 		Id:        "exec0",
+		BuildId:   "build",
 		Activated: true,
 		Status:    evergreen.TaskFailed,
-		Details: apimodels.TaskEndDetail{
-			Status: evergreen.TaskFailed,
-			Type:   evergreen.CommandTypeSetup,
+	}
+	assert.NoError(task2.Insert())
+	task3 := task.Task{
+		Id:        "exec1",
+		BuildId:   "build",
+		Activated: true,
+		Status:    evergreen.TaskSucceeded,
+	}
+	assert.NoError(task3.Insert())
+	b := build.Build{
+		Id: "build",
+		Tasks: []build.TaskCache{
+			{Id: "task", Status: evergreen.TaskStarted, Activated: true},
 		},
 	}
-	assert.NoError(execTask0.Insert())
-
-	execTask1 := task.Task{Id: "exec1", Activated: true, Status: evergreen.TaskSucceeded}
-	assert.NoError(execTask1.Insert())
+	assert.NoError(b.Insert())
 
 	assert.NoError(UpdateDisplayTask(&dt))
 	dbTask, err := task.FindOne(task.ById(dt.Id))
 	assert.NoError(err)
 	assert.Equal(evergreen.TaskFailed, dbTask.Status)
-	assert.Equal(evergreen.CommandTypeSetup, dbTask.Details.Type)
-	assert.True(dbTask.Activated)
 }
 
 func TestEvalStepback(t *testing.T) {
