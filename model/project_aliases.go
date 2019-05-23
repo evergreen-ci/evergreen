@@ -6,6 +6,7 @@ import (
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/anser/bsonutil"
+	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson"
 	mgobson "gopkg.in/mgo.v2/bson"
@@ -47,11 +48,11 @@ const (
 // variants beginning with the string “ubuntu1604”.
 type ProjectAlias struct {
 	ID        mgobson.ObjectId `bson:"_id" json:"_id"`
-	ProjectID string              `bson:"project_id" json:"project_id"`
-	Alias     string              `bson:"alias" json:"alias"`
-	Variant   string              `bson:"variant" json:"variant"`
-	Task      string              `bson:"task,omitempty" json:"task"`
-	Tags      []string            `bson:"tags,omitempty" json:"tags"`
+	ProjectID string           `bson:"project_id" json:"project_id"`
+	Alias     string           `bson:"alias" json:"alias"`
+	Variant   string           `bson:"variant" json:"variant"`
+	Task      string           `bson:"task,omitempty" json:"task"`
+	Tags      []string         `bson:"tags,omitempty" json:"tags"`
 }
 
 type ProjectAliases []ProjectAlias
@@ -106,6 +107,18 @@ func (p *ProjectAlias) Upsert() error {
 		return errors.Wrapf(err, "failed to insert project alias '%s'", p.ID)
 	}
 	return nil
+}
+
+func UpsertAliasesForProject(aliases []ProjectAlias, projectId string) error {
+	catcher := grip.NewBasicCatcher()
+	for i := range aliases {
+		if aliases[i].ProjectID != projectId { // new project, so we need a new document (new ID)
+			aliases[i].ProjectID = projectId
+			aliases[i].ID = ""
+		}
+		catcher.Add(aliases[i].Upsert())
+	}
+	return catcher.Resolve()
 }
 
 // RemoveProjectAlias removes a project alias with the given document ID from the
