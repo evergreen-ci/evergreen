@@ -27,6 +27,9 @@ func (t Tasks) Insert() error {
 }
 
 func (t Tasks) InsertUnordered(ctx context.Context) error {
+	if t.Len() == 0 {
+		return nil
+	}
 	_, err := evergreen.GetEnvironment().DB().Collection(Collection).InsertMany(ctx, t.getPayload())
 	return err
 }
