@@ -769,7 +769,7 @@ func (t *Task) MarkEnd(finishTime time.Time, detail *apimodels.TaskEndDetail) er
 
 }
 
-func displayTaskPriority(t Task) int {
+func (t *Task) displayTaskPriority() int {
 	switch t.ResultStatus() {
 	case evergreen.TaskFailed:
 		return 10
