@@ -85,6 +85,7 @@ func (s *GitGetProjectSuite) SetupTest() {
 	s.modelData2.TaskConfig.Expansions = util.NewExpansions(s.settings.Credentials)
 	//SetupAPITestData always creates BuildVariant with no modules so this line works around that
 	s.modelData2.TaskConfig.BuildVariant.Modules = []string{"sample"}
+	s.modelData2.Task.Requester = evergreen.PatchVersionRequester
 	err = setupTestPatchData(s.modelData1, patchPath, s.T())
 	s.Require().NoError(err)
 
@@ -597,6 +598,36 @@ func (s *GitGetProjectSuite) TestBuildModuleCommand() {
 	s.Regexp("^git fetch origin \"pull/1234/merge:evg-merge-test-", cmds[4])
 	s.Regexp("^git checkout 'evg-merge-test-", cmds[5])
 	s.Equal("git reset --hard 1234abcd", cmds[6])
+}
+
+func (s *GitGetProjectSuite) TestCorrectModuleRevision() {
+	conf := s.modelData2.TaskConfig
+	ctx := context.WithValue(context.Background(), "githash", "b27779f856b211ffaf97cbc124b7082a20ea8bc0")
+	comm := client.NewMock("http://localhost.com")
+	logger, err := comm.GetLoggerProducer(ctx, client.TaskData{ID: conf.Task.Id, Secret: conf.Task.Secret}, nil)
+	s.NoError(err)
+
+	for _, task := range conf.Project.Tasks {
+		s.NotEqual(len(task.Commands), 0)
+		for _, command := range task.Commands {
+			var pluginCmds []Command
+			pluginCmds, err = Render(command, conf.Project.Functions)
+			s.NoError(err)
+			s.NotNil(pluginCmds)
+			pluginCmds[0].SetJasperManager(s.jasper)
+			err = pluginCmds[0].Execute(ctx, comm, logger, conf)
+			s.NoError(err)
+		}
+	}
+
+	cmd := exec.Command("git", "rev-parse", "HEAD")
+	cmd.Dir = conf.WorkDir + "/src/module/sample/"
+	var out bytes.Buffer
+	cmd.Stdout = &out
+	err = cmd.Run()
+	s.NoError(err)
+	ref := strings.Trim(out.String(), "\n")
+	s.Equal("b27779f856b211ffaf97cbc124b7082a20ea8bc0", ref) // this revision is defined in the patch, returned by GetTaskPatch
 }
 
 func (s *GitGetProjectSuite) TestIsMailboxPatch() {

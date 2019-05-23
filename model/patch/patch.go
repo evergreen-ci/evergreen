@@ -212,6 +212,15 @@ func (p *Patch) AddTasks(tasks []string) error {
 	return err
 }
 
+func (p *Patch) FindModule(moduleName string) *ModulePatch {
+	for _, module := range p.Patches {
+		if module.ModuleName == moduleName {
+			return &module
+		}
+	}
+	return nil
+}
+
 // TryMarkStarted attempts to mark a patch as started if it
 // isn't already marked as such
 func TryMarkStarted(versionId string, startTime time.Time) error {
