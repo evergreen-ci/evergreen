@@ -748,7 +748,14 @@ func createVersionItems(ctx context.Context, v *model.Version, ref *model.Projec
 				Session:      sessCtx,
 			}
 			var buildId string
+			start := time.Now()
 			buildId, err = model.CreateBuildFromVersion(args)
+			grip.Debug(message.Fields{
+				"ticket":          "EVG-5823",
+				"op":              "CreateBuildFromVersion",
+				"duration":        time.Since(start),
+				"duration_string": time.Since(start).String(),
+			})
 			if err != nil {
 				abortErr := sessCtx.AbortTransaction(sessCtx)
 				grip.Notice(message.Fields{
