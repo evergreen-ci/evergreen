@@ -8,7 +8,6 @@ import (
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/task"
 	adb "github.com/mongodb/anser/db"
-	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson"
 	mgobson "gopkg.in/mgo.v2/bson"
@@ -77,7 +76,7 @@ func (b *Build) IsFinished() bool {
 		b.Status == evergreen.BuildSucceeded
 }
 
-// AllUnblockedTasksOrCompileFinished returns true when all activated tasks in the task cache have
+// AllUnblockedTasksOrCompileFinished returns true when all activated tasks in the build have
 // one of the statuses in IsFinishedTaskStatus or the task is considered blocked
 //
 // returns boolean to indicate if tasks are complete, string with either BuildFailed or
@@ -88,23 +87,18 @@ func (b *Build) AllUnblockedTasksFinished(tasksWithDeps []task.Task) (bool, stri
 	}
 	allFinished := true
 	status := evergreen.BuildSucceeded
-	catcher := grip.NewSimpleCatcher()
-	for i := range b.Tasks {
-		if evergreen.IsFailedTaskStatus(b.Tasks[i].Status) {
+	tasks, err := task.Find(task.ByBuildId(b.Id))
+	if err != nil {
+		return false, "", errors.Wrapf(err, "can't get tasks for build '%s'", b.Id)
+	}
+	for _, t := range tasks {
+		if evergreen.IsFailedTaskStatus(t.Status) {
 			status = evergreen.BuildFailed
 		}
-		if !evergreen.IsFinishedTaskStatus(b.Tasks[i].Status) {
-			if !b.Tasks[i].Activated {
+		if !evergreen.IsFinishedTaskStatus(t.Status) {
+			if !t.Activated {
 				continue
 			}
-			t, err := task.FindOneNoMerge(task.ById(b.Tasks[i].Id))
-			if err != nil {
-				return false, status, err
-			}
-			if t == nil {
-				return false, status, errors.Errorf("task %s doesn't exist", b.Tasks[i].Id)
-			}
-
 			blockedStatus, err := t.BlockedState(tasksWithDeps)
 			if err != nil {
 				return false, status, err
@@ -114,7 +108,6 @@ func (b *Build) AllUnblockedTasksFinished(tasksWithDeps []task.Task) (bool, stri
 			}
 		}
 	}
-	err := catcher.Resolve()
 	if allFinished && err != nil {
 		return false, status, err
 	}

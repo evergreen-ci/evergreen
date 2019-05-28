@@ -427,7 +427,7 @@ func MarkEnd(t *task.Task, caller string, finishTime time.Time, detail *apimodel
 		if err = UpdateDisplayTask(t.DisplayTask); err != nil {
 			return err
 		}
-		if err = build.UpdateCachedTask(t, t.TimeTaken); err != nil {
+		if err = build.UpdateCachedTask(t.DisplayTask, t.TimeTaken); err != nil {
 			grip.Error(message.WrapError(err, message.Fields{
 				"message":    "failed to update cached display task",
 				"function":   "MarkEnd",
@@ -437,6 +437,9 @@ func MarkEnd(t *task.Task, caller string, finishTime time.Time, detail *apimodel
 				"time_taken": t.TimeTaken,
 			}))
 			return errors.Wrap(err, "error updating cached display task")
+		}
+		if err = checkResetDisplayTask(t.DisplayTask); err != nil {
+			return errors.Wrap(err, "can't check display task reset")
 		}
 	} else {
 		err = build.SetCachedTaskFinished(t.BuildId, t.Id, detail.Status, detail, t.TimeTaken)
@@ -1112,14 +1115,29 @@ func UpdateDisplayTask(t *task.Task) error {
 	t.TimeTaken = timeTaken
 	if !wasFinished && t.IsFinished() {
 		event.LogDisplayTaskFinished(t.Id, t.Execution, t.ResultStatus())
-		if t.ResetWhenFinished {
+	}
+	return nil
+}
 
-			details := &apimodels.TaskEndDetail{
-				Type:   evergreen.CommandTypeSystem,
-				Status: evergreen.TaskFailed,
-			}
-			return errors.Wrap(TryResetTask(t.Id, evergreen.User, evergreen.User, details), "error resetting display task")
+func checkResetDisplayTask(t *task.Task) error {
+	finishedNow := true
+	execTasks, err := task.Find(task.ByIds(t.ExecutionTasks))
+	if err != nil {
+		return errors.Wrapf(err, "can't get exec tasks for '%s'", t.Id)
+	}
+	for _, execTask := range execTasks {
+		if !execTask.IsFinished() {
+			finishedNow = false
 		}
 	}
+
+	if finishedNow && t.ResetWhenFinished {
+		details := &apimodels.TaskEndDetail{
+			Type:   evergreen.CommandTypeSystem,
+			Status: evergreen.TaskFailed,
+		}
+		return errors.Wrap(TryResetTask(t.Id, evergreen.User, evergreen.User, details), "error resetting display task")
+	}
+
 	return nil
 }
