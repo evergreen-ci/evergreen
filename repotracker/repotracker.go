@@ -709,6 +709,7 @@ func createVersionItems(ctx context.Context, v *model.Version, ref *model.Projec
 	client := evergreen.GetEnvironment().Client()
 
 	return client.UseSession(ctx, func(sessCtx mongo.SessionContext) error {
+		start := time.Now()
 		// generate all task Ids so that we can easily reference them for dependencies
 		sourceRev := ""
 		if metadata.SourceVersion != nil {
@@ -748,13 +749,14 @@ func createVersionItems(ctx context.Context, v *model.Version, ref *model.Projec
 				Session:      sessCtx,
 			}
 			var buildId string
-			start := time.Now()
+			buildStart := time.Now()
 			buildId, err = model.CreateBuildFromVersion(args)
 			grip.Debug(message.Fields{
 				"ticket":          "EVG-5823",
 				"op":              "CreateBuildFromVersion",
-				"duration":        time.Since(start),
-				"duration_string": time.Since(start).String(),
+				"duration":        time.Since(buildStart),
+				"duration_string": time.Since(buildStart).String(),
+				"version":         v.Id,
 			})
 			if err != nil {
 				abortErr := sessCtx.AbortTransaction(sessCtx)
@@ -839,6 +841,13 @@ func createVersionItems(ctx context.Context, v *model.Version, ref *model.Projec
 			"hash":    v.Revision,
 			"project": v.Branch,
 			"runner":  RunnerName,
+		})
+		grip.Debug(message.Fields{
+			"ticket":          "EVG-5823",
+			"op":              "createVersionItems",
+			"duration":        time.Since(start),
+			"duration_string": time.Since(start).String(),
+			"version":         v.Id,
 		})
 		return nil
 	})

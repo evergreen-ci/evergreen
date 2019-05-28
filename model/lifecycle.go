@@ -561,7 +561,9 @@ func CreateBuildFromVersion(args BuildCreateArgs) (string, error) {
 		"step":            "initial",
 		"duration":        time.Since(start),
 		"duration_string": time.Since(start).String(),
+		"version":         args.Version.Id,
 	})
+	start = time.Now()
 	// create all of the necessary tasks for the build
 	tasksForBuild, err := createTasksForBuild(&args.Project, buildVariant, b, &args.Version, args.TaskIDs, args.TaskNames, args.DisplayNames, args.GeneratedBy, args.Aliases, nil)
 	if err != nil {
@@ -573,7 +575,9 @@ func CreateBuildFromVersion(args BuildCreateArgs) (string, error) {
 		"step":            "createTasksForBuild",
 		"duration":        time.Since(start),
 		"duration_string": time.Since(start).String(),
+		"version":         args.Version.Id,
 	})
+	start = time.Now()
 
 	if err = tasksForBuild.InsertUnordered(args.Session); err != nil {
 		return "", errors.Wrapf(err, "error inserting task for build '%s'", buildId)
@@ -585,7 +589,9 @@ func CreateBuildFromVersion(args BuildCreateArgs) (string, error) {
 		"step":            "InsertUnordered",
 		"duration":        time.Since(start),
 		"duration_string": time.Since(start).String(),
+		"version":         args.Version.Id,
 	})
+	start = time.Now()
 
 	// create task caches for all of the tasks, and place them into the build
 	tasks := []task.Task{}
@@ -609,6 +615,7 @@ func CreateBuildFromVersion(args BuildCreateArgs) (string, error) {
 		"step":            "end",
 		"duration":        time.Since(start),
 		"duration_string": time.Since(start).String(),
+		"version":         args.Version.Id,
 	})
 
 	// success!
@@ -726,7 +733,9 @@ func createTasksForBuild(project *Project, buildVariant *BuildVariant, b *build.
 		"step":            "task spec",
 		"duration":        time.Since(start),
 		"duration_string": time.Since(start).String(),
+		"version":         v.Id,
 	})
+	start = time.Now()
 
 	// if any tasks already exist in the build, add them to the id table
 	// so they can be used as dependencies
@@ -779,7 +788,9 @@ func createTasksForBuild(project *Project, buildVariant *BuildVariant, b *build.
 		"step":            "create display tasks",
 		"duration":        time.Since(start),
 		"duration_string": time.Since(start).String(),
+		"version":         v.Id,
 	})
+	start = time.Now()
 
 	for _, t := range tasksToCreate {
 		id := execTable.GetId(b.BuildVariant, t.Name)
@@ -870,7 +881,9 @@ func createTasksForBuild(project *Project, buildVariant *BuildVariant, b *build.
 		"step":            "create execution tasks",
 		"duration":        time.Since(start),
 		"duration_string": time.Since(start).String(),
+		"version":         v.Id,
 	})
+	start = time.Now()
 
 	// Set the NumDependents field
 	// Existing tasks in the db and tasks in other builds are not updated
@@ -884,6 +897,7 @@ func createTasksForBuild(project *Project, buildVariant *BuildVariant, b *build.
 		"step":            "sort",
 		"duration":        time.Since(start),
 		"duration_string": time.Since(start).String(),
+		"version":         v.Id,
 	})
 
 	// return all of the tasks created
