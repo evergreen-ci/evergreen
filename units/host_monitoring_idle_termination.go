@@ -144,7 +144,7 @@ func (j *idleHostJob) Run(ctx context.Context) {
 	if communicationTime >= idleTimeCutoff || idleTime >= idleTimeCutoff {
 		j.Terminated = true
 		tjob := NewHostTerminationJob(j.env, *j.host, false)
-		tjob.Run(ctx)
-		j.AddError(tjob.Error())
+		queue := j.env.RemoteQueue()
+		j.AddError(queue.Put(tjob))
 	}
 }
