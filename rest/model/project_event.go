@@ -82,27 +82,43 @@ func DbProjectSettingsToRestModel(settings model.ProjectSettingsEvent) (APIProje
 		return APIProjectSettings{}, err
 	}
 
+	apiProjectVars := APIProjectVars{}
+	if err := apiProjectVars.BuildFromService(&settings.Vars); err != nil {
+		return APIProjectSettings{}, err
+	}
+
 	return APIProjectSettings{
 		ProjectRef:            apiProjectRef,
 		GitHubWebhooksEnabled: settings.GitHubHooksEnabled,
-		Vars:                  DbProjectVarsToRestModel(settings.Vars),
+		Vars:                  apiProjectVars,
 		Aliases:               DbProjectAliasesToRestModel(settings.Aliases),
 		Subscriptions:         apiSubscriptions,
 	}, nil
 }
 
-func DbProjectVarsToRestModel(vars model.ProjectVars) APIProjectVars {
-	return APIProjectVars{
-		Vars:        vars.Vars,
-		PrivateVars: vars.PrivateVars,
+func (p *APIProjectVars) ToService() (interface{}, error) {
+	privateVars := map[string]bool{}
+	// ignore false inputs
+	for key, val := range p.PrivateVars {
+		if val {
+			privateVars[key] = val
+		}
 	}
+	return &model.ProjectVars{
+		Vars:        p.Vars,
+		PrivateVars: p.PrivateVars,
+	}, nil
 }
 
-func DbProjectVarsFromRestModel(vars APIProjectVars) model.ProjectVars {
-	return model.ProjectVars{
-		Vars:        vars.Vars,
-		PrivateVars: vars.PrivateVars,
+func (p *APIProjectVars) BuildFromService(h interface{}) error {
+	switch v := h.(type) {
+	case *model.ProjectVars:
+		p.PrivateVars = v.PrivateVars
+		p.Vars = v.Vars
+	default:
+		return errors.New("Invalid type of the argument")
 	}
+	return nil
 }
 
 func DbProjectAliasesToRestModel(aliases []model.ProjectAlias) []APIProjectAlias {

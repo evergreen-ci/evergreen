@@ -82,7 +82,7 @@ type Connector interface {
 	// UpdateProjectVars updates the project using the variables given in the model,
 	// and additionally accepts a list of variables to remove.
 	// If successful, updates the given projectVars with the updated projectVars.
-	UpdateProjectVars(*model.ProjectVars, []string) error
+	UpdateProjectVars(string, *restModel.APIProjectVars) error
 
 	// Find the project matching the given ProjectId.
 	FindProjectById(string) (*model.ProjectRef, error)

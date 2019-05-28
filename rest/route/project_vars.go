@@ -81,13 +81,9 @@ func (h *patchProjectVarsHandler) Parse(ctx context.Context, r *http.Request) er
 }
 
 func (h *patchProjectVarsHandler) Run(ctx context.Context) gimlet.Responder {
-	newVars := model.DbProjectVarsFromRestModel(h.varsModel)
-	newVars.Id = h.projectID
-	varsToDelete := h.varsModel.VarsToDelete
-	if err := h.sc.UpdateProjectVars(&newVars, varsToDelete); err != nil {
+	if err := h.sc.UpdateProjectVars(h.projectID, &h.varsModel); err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "problem updating variables for project '%s'", h.projectID))
 	}
 
-	newVars.RedactPrivateVars()
-	return gimlet.NewJSONResponse(model.DbProjectVarsToRestModel(newVars))
+	return gimlet.NewJSONResponse(h.varsModel)
 }

@@ -479,24 +479,23 @@ func (s *ProjectConnectorGetSuite) TestFindProjectVarsById() {
 
 func (s *ProjectConnectorGetSuite) TestUpdateProjectVars() {
 	//successful update
-	newVars2 := model.ProjectVars{
-		Id:          projectId,
-		Vars:        map[string]string{"b": "2", "c": "3"},
-		PrivateVars: map[string]bool{"b": false, "c": true},
-	}
 	varsToDelete := []string{"a"}
-	s.NoError(s.ctx.UpdateProjectVars(&newVars2, varsToDelete))
-	s.Equal(newVars2.Vars["b"], "2")
-	s.Equal(newVars2.Vars["c"], "3")
-	_, ok := newVars2.Vars["a"]
+	newVars := restModel.APIProjectVars{
+		Vars:         map[string]string{"b": "2", "c": "3"},
+		PrivateVars:  map[string]bool{"b": false, "c": true},
+		VarsToDelete: varsToDelete,
+	}
+	s.NoError(s.ctx.UpdateProjectVars(projectId, &newVars))
+	s.Equal(newVars.Vars["b"], "2")
+	s.Equal(newVars.Vars["c"], "")
+	_, ok := newVars.Vars["a"]
 	s.False(ok)
 
-	s.Equal(newVars2.PrivateVars["b"], false)
-	s.Equal(newVars2.PrivateVars["c"], true)
-	_, ok = newVars2.PrivateVars["a"]
+	s.Equal(newVars.PrivateVars["b"], false)
+	s.Equal(newVars.PrivateVars["c"], true)
+	_, ok = newVars.PrivateVars["a"]
 	s.False(ok)
 
 	//unsuccessful update
-	newVars2.Id = "not-an-id"
-	s.Error(s.ctx.UpdateProjectVars(&newVars2, varsToDelete))
+	s.Error(s.ctx.UpdateProjectVars("not-an-id", &newVars))
 }

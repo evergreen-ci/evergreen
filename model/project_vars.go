@@ -156,7 +156,7 @@ func (projectVars *ProjectVars) RedactPrivateVars() {
 		projectVars.PrivateVars != nil {
 		// Redact private variables
 		for k := range projectVars.Vars {
-			if _, ok := projectVars.PrivateVars[k]; ok {
+			if val, ok := projectVars.PrivateVars[k]; ok && val {
 				projectVars.Vars[k] = ""
 			}
 		}
