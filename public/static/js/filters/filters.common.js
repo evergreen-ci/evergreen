@@ -353,7 +353,7 @@ filters.common.filter('conditional', function() {
           }
         }
       }
-    } else if (task.status == 'undispatched' || (task.display_only && task.task_waiting)) {
+    } else if (task.status == 'undispatched' || task.status == 'inactive' || task.status == 'unstarted' || (task.display_only && task.task_waiting)) {
         if (!task.activated) {
             cls = 'inactive';
         } else {
