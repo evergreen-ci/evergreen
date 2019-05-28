@@ -1397,11 +1397,14 @@ func FindVariantsWithTask(taskName, project string, orderMin, orderMax int) ([]s
 	}
 	docs := []map[string]string{}
 	err := Aggregate(pipeline, &docs)
+	if err != nil {
+		return nil, errors.Wrapf(err, "error finding variants with task %s", taskName)
+	}
 	variants := []string{}
 	for _, doc := range docs {
 		variants = append(variants, doc["_id"])
 	}
-	return variants, errors.Wrapf(err, "error finding variants with task %s", taskName)
+	return variants, nil
 }
 
 func (t *Task) IsPartOfDisplay() bool {
