@@ -99,7 +99,8 @@ func (b *Build) AllUnblockedTasksFinished(tasksWithDeps []task.Task) (bool, stri
 			if !t.Activated {
 				continue
 			}
-			blockedStatus, err := t.BlockedState(tasksWithDeps)
+			var blockedStatus string
+			blockedStatus, err = t.BlockedState(tasksWithDeps)
 			if err != nil {
 				return false, status, err
 			}

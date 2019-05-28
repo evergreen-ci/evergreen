@@ -615,7 +615,7 @@ func TestAllTasksFinished(t *testing.T) {
 		assert.NoError(task.Insert())
 	}
 	assert.False(b.AllUnblockedTasksFinished(nil))
-	tasks[0].MarkFailed()
+	assert.NoError(tasks[0].MarkFailed())
 	assert.True(b.AllUnblockedTasksFinished(nil))
 
 	// Build is finished
