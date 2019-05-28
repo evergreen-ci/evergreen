@@ -138,6 +138,7 @@ const (
 	RoutePaginatorNextPageHeaderKey = "Link"
 
 	PlannerVersionLegacy  = "legacy"
+	PlannerVersionRevised = "revised"
 	PlannerVersionTunable = "tunable"
 
 	FinderVersionLegacy    = "legacy"
@@ -361,6 +362,7 @@ var (
 	// Set of valid PlannerSettings.Version strings that can be user set via the API
 	ValidPlannerVersions = []string{
 		PlannerVersionLegacy,
+		PlannerVersionRevised,
 		PlannerVersionTunable,
 	}
 

@@ -12,6 +12,7 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
@@ -31,11 +32,12 @@ type TaskFinderSuite struct {
 	FindRunnableTasks TaskFinder
 	tasks             []task.Task
 	depTasks          []task.Task
+	distro            distro.Distro
 }
 
 func TestDBTaskFinder(t *testing.T) {
 	s := new(TaskFinderSuite)
-	s.FindRunnableTasks = task.FindRunnable
+	s.FindRunnableTasks = func(d distro.Distro) ([]task.Task, error) { return task.FindRunnable(d.Id, true) }
 
 	suite.Run(t, s)
 }
@@ -67,6 +69,8 @@ func (s *TaskFinderSuite) SetupSuite() {
 		Identifier: "exists",
 		Enabled:    true,
 	}
+
+	s.distro.PlannerSettings.Version = evergreen.PlannerVersionLegacy
 	s.NoError(ref.Insert())
 }
 
@@ -107,7 +111,7 @@ func (s *TaskFinderSuite) insertTasks() {
 
 func (s *TaskFinderSuite) TestNoRunnableTasksReturnsEmptySlice() {
 	// XXX: collection is deliberately empty
-	runnableTasks, err := s.FindRunnableTasks("")
+	runnableTasks, err := s.FindRunnableTasks(s.distro)
 	s.NoError(err)
 	s.Empty(runnableTasks)
 }
@@ -118,7 +122,7 @@ func (s *TaskFinderSuite) TestInactiveTasksNeverReturned() {
 	s.insertTasks()
 
 	// finding the runnable tasks should return two tasks
-	runnableTasks, err := s.FindRunnableTasks("")
+	runnableTasks, err := s.FindRunnableTasks(s.distro)
 	s.NoError(err)
 	s.Len(runnableTasks, 2)
 }
@@ -140,7 +144,7 @@ func (s *TaskFinderSuite) TestTasksWithUnsatisfiedDependenciesNeverReturned() {
 
 	// finding the runnable tasks should return two tasks (the one with
 	// no dependencies and the one with successfully met dependencies
-	runnableTasks, err := s.FindRunnableTasks("")
+	runnableTasks, err := s.FindRunnableTasks(s.distro)
 	s.NoError(err)
 	s.Len(runnableTasks, 2)
 }
@@ -148,6 +152,7 @@ func (s *TaskFinderSuite) TestTasksWithUnsatisfiedDependenciesNeverReturned() {
 type TaskFinderComparisonSuite struct {
 	suite.Suite
 	tasksGenerator   func() []task.Task
+	distro           distro.Distro
 	tasks            []task.Task
 	oldRunnableTasks []task.Task
 	newRunnableTasks []task.Task
@@ -179,6 +184,7 @@ func (s *TaskFinderComparisonSuite) SetupSuite() {
 
 	s.NoError(ref.Insert())
 
+	s.distro.PlannerSettings.Version = evergreen.PlannerVersionLegacy
 }
 
 func (s *TaskFinderComparisonSuite) TearDownSuite() {
@@ -211,28 +217,28 @@ func (s *TaskFinderComparisonSuite) SetupTest() {
 
 	grip.Info("start new")
 	s2start := time.Now()
-	s.newRunnableTasks, err = RunnableTasksPipeline("")
+	s.newRunnableTasks, err = RunnableTasksPipeline(s.distro)
 	s2dur := time.Since(s2start)
 	s.NoError(err)
 	grip.Info("end db")
 
 	grip.Info("start legacy")
 	s1start := time.Now()
-	s.oldRunnableTasks, err = LegacyFindRunnableTasks("")
+	s.oldRunnableTasks, err = LegacyFindRunnableTasks(s.distro)
 	s1dur := time.Since(s1start)
 	s.NoError(err)
 	grip.Info("end legacy")
 
 	grip.Info("start alternate")
 	s3start := time.Now()
-	s.altRunnableTasks, err = AlternateTaskFinder("")
+	s.altRunnableTasks, err = AlternateTaskFinder(s.distro)
 	s3dur := time.Since(s3start)
 	s.NoError(err)
 	grip.Info("end alt")
 
 	grip.Info("start parallel")
 	s4start := time.Now()
-	s.pllRunnableTasks, err = ParallelTaskFinder("")
+	s.pllRunnableTasks, err = ParallelTaskFinder(s.distro)
 	s4dur := time.Since(s4start)
 	s.NoError(err)
 	grip.Info("end parallel")

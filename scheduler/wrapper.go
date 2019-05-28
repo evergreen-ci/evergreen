@@ -55,7 +55,7 @@ func PlanDistro(ctx context.Context, conf Configuration, s *evergreen.Settings) 
 
 	taskFindingBegins := time.Now()
 	finder := GetTaskFinder(conf.TaskFinder)
-	tasks, err := finder(distro.Id)
+	tasks, err := finder(distro)
 	if err != nil {
 		return errors.Wrapf(err, "problem while running task finder for distro '%s'", distro.Id)
 	}

@@ -20,16 +20,21 @@ type TaskQueueService interface {
 	RefreshFindNextTask(string, TaskSpec) (*TaskQueueItem, error)
 }
 
+type CachedDispatcher interface {
+	Refresh() error
+	FindNextTask(TaskSpec) *TaskQueueItem
+}
+
 type taskDispatchService struct {
-	taskDistroDispatchServices map[string]*taskDistroDispatchService
-	mu                         sync.RWMutex
-	ttl                        time.Duration
+	cachedDispatchers map[string]CachedDispatcher
+	mu                sync.RWMutex
+	ttl               time.Duration
 }
 
 func NewTaskDispatchService(ttl time.Duration) TaskQueueService {
 	return &taskDispatchService{
-		ttl:                        ttl,
-		taskDistroDispatchServices: map[string]*taskDistroDispatchService{},
+		ttl:               ttl,
+		cachedDispatchers: map[string]CachedDispatcher{},
 	}
 }
 
@@ -68,12 +73,12 @@ func (s *taskDispatchService) Refresh(distro string) error {
 	return nil
 }
 
-func (s *taskDispatchService) ensureQueue(distro string) (*taskDistroDispatchService, error) {
-	// If there is a "distro": *taskDistroDispatchService in the taskDistroDispatchServices map, return that.
-	// Otherwise, get the "distro"'s taskQueue from the database; seed its taskDistroDispatchService; put that in the map and return it.
+func (s *taskDispatchService) ensureQueue(distro string) (CachedDispatcher, error) {
+	// If there is a "distro": *basicCachedDispatcherImpl in the cachedDispatchers map, return that.
+	// Otherwise, get the "distro"'s taskQueue from the database; seed its cachedDispatcher; put that in the map and return it.
 	s.mu.RLock()
 
-	distroDispatchService, ok := s.taskDistroDispatchServices[distro]
+	distroDispatchService, ok := s.cachedDispatchers[distro]
 	s.mu.RUnlock()
 	if ok {
 		return distroDispatchService, nil
@@ -81,7 +86,7 @@ func (s *taskDispatchService) ensureQueue(distro string) (*taskDistroDispatchSer
 
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	distroDispatchService, ok = s.taskDistroDispatchServices[distro]
+	distroDispatchService, ok = s.cachedDispatchers[distro]
 	if ok {
 		return distroDispatchService, nil
 	}
@@ -93,15 +98,15 @@ func (s *taskDispatchService) ensureQueue(distro string) (*taskDistroDispatchSer
 
 	taskQueueItems := taskQueue.Queue
 	distroDispatchService = newDistroTaskDispatchService(distro, taskQueueItems, s.ttl)
-	s.taskDistroDispatchServices[distro] = distroDispatchService
+	s.cachedDispatchers[distro] = distroDispatchService
 
 	return distroDispatchService, nil
 }
 
-// taskDistroDispatchService is an in-memory representation of schedulable tasks for a distro.
+// cachedDispatcher is an in-memory representation of schedulable tasks for a distro.
 //
 // TODO Pass all task group tasks, not just dispatchable ones, to the constructor.
-type taskDistroDispatchService struct {
+type basicCachedDispatcherImpl struct {
 	mu          sync.RWMutex
 	distroID    string
 	order       []string
@@ -120,9 +125,9 @@ type schedulableUnit struct {
 	tasks        []TaskQueueItem
 }
 
-// newTaskDispatchService creates a taskDistroDispatchService from a slice of TaskQueueItems.
-func newDistroTaskDispatchService(distroID string, items []TaskQueueItem, ttl time.Duration) *taskDistroDispatchService {
-	t := &taskDistroDispatchService{
+// newTaskDispatchService creates a basicCachedDispatcherImpl from a slice of TaskQueueItems.
+func newDistroTaskDispatchService(distroID string, items []TaskQueueItem, ttl time.Duration) *basicCachedDispatcherImpl {
+	t := &basicCachedDispatcherImpl{
 		distroID: distroID,
 		ttl:      ttl,
 	}
@@ -134,7 +139,7 @@ func newDistroTaskDispatchService(distroID string, items []TaskQueueItem, ttl ti
 	return t
 }
 
-func (t *taskDistroDispatchService) Refresh() error {
+func (t *basicCachedDispatcherImpl) Refresh() error {
 	t.mu.Lock()
 	defer t.mu.Unlock()
 
@@ -157,7 +162,7 @@ func shouldRefreshCached(ttl time.Duration, lastUpdated time.Time) bool {
 	return lastUpdated.IsZero() || time.Since(lastUpdated) > ttl
 }
 
-func (t *taskDistroDispatchService) rebuild(items []TaskQueueItem) {
+func (t *basicCachedDispatcherImpl) rebuild(items []TaskQueueItem) {
 	// This slice likely has too much capacity, but it helps append performance.
 	order := make([]string, 0, len(items))
 	units := map[string]schedulableUnit{}
@@ -201,7 +206,7 @@ func (t *taskDistroDispatchService) rebuild(items []TaskQueueItem) {
 }
 
 // FindNextTask returns the next dispatchable task in the queue.
-func (t *taskDistroDispatchService) FindNextTask(spec TaskSpec) *TaskQueueItem {
+func (t *basicCachedDispatcherImpl) FindNextTask(spec TaskSpec) *TaskQueueItem {
 	t.mu.Lock()
 	defer t.mu.Unlock()
 
@@ -277,7 +282,7 @@ func compositeGroupId(group, variant, version string) string {
 	return fmt.Sprintf("%s-%s-%s", group, variant, version)
 }
 
-func (t *taskDistroDispatchService) nextTaskGroupTask(unit schedulableUnit) *TaskQueueItem {
+func (t *basicCachedDispatcherImpl) nextTaskGroupTask(unit schedulableUnit) *TaskQueueItem {
 	for i, nextTask := range unit.tasks {
 		if nextTask.IsDispatched == true {
 			continue
