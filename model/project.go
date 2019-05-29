@@ -847,7 +847,8 @@ func (p *Project) FindTaskGroup(name string) *TaskGroup {
 	return nil
 }
 
-// GetTaskGroup returns the task group for a given task from its project
+// GetTaskGroup returns the task group for a given task from its project. Note that this is a potentially expensive function
+// because it will parse the project yaml
 func GetTaskGroup(taskGroup string, tc *TaskConfig) (*TaskGroup, error) {
 	if tc == nil {
 		return nil, errors.New("unable to get task group: TaskConfig is nil")
@@ -862,8 +863,12 @@ func GetTaskGroup(taskGroup string, tc *TaskConfig) (*TaskGroup, error) {
 		return nil, errors.New("version is nil")
 	}
 	var p Project
-	if err := LoadProjectInto([]byte(tc.Version.Config), tc.Task.Project, &p); err != nil {
-		return nil, errors.Wrap(err, "error retrieving project for task group")
+	if tc.Project != nil {
+		p = *tc.Project
+	} else {
+		if err := LoadProjectInto([]byte(tc.Version.Config), tc.Task.Project, &p); err != nil {
+			return nil, errors.Wrap(err, "error retrieving project for task group")
+		}
 	}
 	if taskGroup == "" {
 		// if there is no named task group, fall back to project definitions
