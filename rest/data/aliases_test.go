@@ -3,18 +3,25 @@ package data
 import (
 	"testing"
 
+	"github.com/stretchr/testify/suite"
+
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 )
 
-func TestFindProjectAliases(t *testing.T) {
-	assert := assert.New(t)
-	session, _, _ := db.GetGlobalSessionFactory().GetSession()
-	require.NoError(t, session.DB(testConfig.Database.DB).DropDatabase(), "Error dropping database")
+type AliasSuite struct {
+	sc *DBConnector
+	suite.Suite
+}
 
-	sc := &DBConnector{}
+func TestAliasSuite(t *testing.T) {
+	suite.Run(t, new(AliasSuite))
+}
+
+func (a *AliasSuite) SetupTest() {
+	a.sc = &DBConnector{}
+	session, _, _ := db.GetGlobalSessionFactory().GetSession()
+	a.Require().NoError(session.DB(testConfig.Database.DB).DropDatabase(), "Error dropping database")
 
 	aliases := []model.ProjectAlias{
 		{
@@ -43,9 +50,33 @@ func TestFindProjectAliases(t *testing.T) {
 		},
 	}
 	for _, v := range aliases {
-		assert.NoError(v.Upsert())
+		a.NoError(v.Upsert())
 	}
-	found, err := sc.FindProjectAliases("project_id")
-	assert.Nil(err)
-	assert.Len(found, 3)
+}
+
+func (a *AliasSuite) TestFindProjectAliases() {
+	found, err := a.sc.FindProjectAliases("project_id")
+	a.Nil(err)
+	a.Len(found, 3)
+
+	found, err = a.sc.FindProjectAliases("non-existent")
+	a.Nil(err)
+	a.Len(found, 0)
+}
+
+func (a *AliasSuite) TestCopyProjectAliases() {
+	res, err := a.sc.FindProjectAliases("new_project_id")
+	a.NoError(err)
+	a.Len(res, 0)
+
+	a.NoError(a.sc.CopyProjectAliases("project_id", "new_project_id"))
+
+	res, err = a.sc.FindProjectAliases("project_id")
+	a.NoError(err)
+	a.Len(res, 3)
+
+	res, err = a.sc.FindProjectAliases("new_project_id")
+	a.NoError(err)
+	a.Len(res, 3)
+
 }

@@ -106,6 +106,15 @@ func (pc *DBProjectConnector) UpdateProjectVars(projectId string, varsModel *res
 	return nil
 }
 
+func (pc *DBProjectConnector) CopyProjectVars(oldProjectId, newProjectId string) error {
+	vars, err := model.FindOneProjectVars(oldProjectId)
+	if err != nil {
+		return errors.Wrapf(err, "error finding variables for project '%s'", oldProjectId)
+	}
+	vars.Id = newProjectId
+	return errors.Wrapf(vars.Insert(), "error inserting variables for project '%s", newProjectId)
+}
+
 func (ac *DBProjectConnector) GetProjectEventLog(id string, before time.Time, n int) ([]restModel.APIProjectEvent, error) {
 	events, err := model.ProjectEventsBefore(id, before, n)
 	if err != nil {
@@ -195,6 +204,7 @@ func (pc *MockProjectConnector) CreateProject(projectRef *model.ProjectRef) erro
 			}
 		}
 	}
+	pc.CachedProjects = append(pc.CachedProjects, *projectRef)
 	return nil
 }
 
@@ -257,6 +267,20 @@ func (pc *MockProjectConnector) UpdateProjectVars(projectId string, varsModel *r
 		StatusCode: http.StatusNotFound,
 		Message:    fmt.Sprintf("variables for project '%s' not found", projectId),
 	}
+}
+
+func (pc *MockProjectConnector) CopyProjectVars(oldProjectId, newProjectId string) error {
+	newVars := model.ProjectVars{Id: newProjectId}
+	for _, v := range pc.CachedVars {
+		if v.Id == oldProjectId {
+			newVars.Vars = v.Vars
+			newVars.PrivateVars = v.PrivateVars
+			pc.CachedVars = append(pc.CachedVars, &newVars)
+			fmt.Println("len: ", len(pc.CachedVars))
+			return nil
+		}
+	}
+	return errors.Errorf("error finding variables for project '%s'", oldProjectId)
 }
 
 func (pc *MockProjectConnector) GetProjectEventLog(id string, before time.Time, n int) ([]restModel.APIProjectEvent, error) {
