@@ -90,12 +90,13 @@ func TestCleanupTask(t *testing.T) {
 						ExecutionTasks: []string{"et1", "et2"},
 					}
 					et1 := &task.Task{
-						Id:       "et1",
-						Status:   evergreen.TaskStarted,
-						HostId:   "h1",
-						BuildId:  "b2",
-						Project:  "proj",
-						Restarts: 0,
+						Id:        "et1",
+						Status:    evergreen.TaskStarted,
+						HostId:    "h1",
+						BuildId:   "b2",
+						Project:   "proj",
+						Restarts:  0,
+						Requester: evergreen.PatchVersionRequester,
 					}
 					et2 := &task.Task{
 						Id:     "et2",
@@ -117,7 +118,7 @@ func TestCleanupTask(t *testing.T) {
 					So(et1.Status, ShouldEqual, evergreen.TaskFailed)
 					dt, err = task.FindOneId(dt.Id)
 					So(err, ShouldBeNil)
-					So(dt.Status, ShouldEqual, evergreen.TaskStarted)
+					So(dt.Status, ShouldEqual, evergreen.TaskFailed)
 					So(dt.ResetWhenFinished, ShouldBeTrue)
 				})
 			})

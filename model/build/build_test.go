@@ -538,112 +538,115 @@ func TestAllTasksFinished(t *testing.T) {
 	assert := assert.New(t)
 
 	require.NoError(t, db.ClearCollections(task.Collection), "error clearing collection")
-	b := &Build{
-		Id:        "b1",
-		Status:    evergreen.BuildStarted,
-		Activated: true,
-		Version:   "abc",
-		Tasks: []TaskCache{
-			{
-				Id:        "t1",
-				Status:    evergreen.TaskStarted,
-				Activated: true,
-			},
-			{
-				Id:        "t2",
-				Activated: true,
-				Status:    evergreen.TaskStarted,
-			},
-			{
-				Id:        "t3",
-				Status:    evergreen.TaskStarted,
-				Activated: true,
-			},
-			{
-				Id:        "t4",
-				Status:    evergreen.TaskStarted,
-				Activated: true,
-			},
-			// this task is unscheduled
-			{
-				Id:     "t5",
-				Status: evergreen.TaskUndispatched,
-			},
+	b := &Build{Id: "b1", Activated: true}
+	tasks := []task.Task{
+		{
+			Id:        "t1",
+			BuildId:   "b1",
+			Status:    evergreen.TaskStarted,
+			Activated: true,
+		},
+		{
+			Id:        "t2",
+			BuildId:   "b1",
+			Activated: true,
+			Status:    evergreen.TaskStarted,
+		},
+		{
+			Id:        "t3",
+			BuildId:   "b1",
+			Status:    evergreen.TaskStarted,
+			Activated: true,
+		},
+		{
+			Id:        "t4",
+			BuildId:   "b1",
+			Status:    evergreen.TaskStarted,
+			Activated: true,
+		},
+		// this task is unscheduled
+		{
+			Id:      "t5",
+			BuildId: "b1",
+			Status:  evergreen.TaskUndispatched,
 		},
 	}
+	for _, task := range tasks {
+		assert.NoError(task.Insert())
+	}
+
 	assert.False(b.AllUnblockedTasksFinished(nil))
-	b.Tasks[0].Status = evergreen.TaskFailed
+
+	assert.NoError(tasks[0].MarkFailed())
 	assert.False(b.AllUnblockedTasksFinished(nil))
-	b.Tasks[1].Status = evergreen.TaskSucceeded
+
+	assert.NoError(tasks[1].MarkFailed())
 	assert.False(b.AllUnblockedTasksFinished(nil))
-	b.Tasks[2].Status = evergreen.TaskSystemFailed
+
+	assert.NoError(tasks[2].MarkFailed())
 	assert.False(b.AllUnblockedTasksFinished(nil))
-	b.Tasks[3].Status = evergreen.TaskTestTimedOut
+
+	assert.NoError(tasks[3].MarkFailed())
 	assert.True(b.AllUnblockedTasksFinished(nil))
 
-	b.Tasks = []TaskCache{
+	// Only one activated task
+	require.NoError(t, db.ClearCollections(task.Collection), "error clearing collection")
+	tasks = []task.Task{
 		{
 			Id:          "t1",
+			BuildId:     "b1",
 			DisplayName: "compile",
 			Status:      evergreen.TaskStarted,
 			Activated:   true,
 		},
 		{
-			Id:     "t2",
-			Status: evergreen.TaskStarted,
+			Id:      "t2",
+			BuildId: "b1",
+			Status:  evergreen.TaskStarted,
 		},
 		{
 			Id:          "t3",
+			BuildId:     "b1",
 			DisplayName: evergreen.PushStage,
 			Status:      evergreen.TaskStarted,
 		},
 	}
-
+	for _, task := range tasks {
+		assert.NoError(task.Insert())
+	}
 	assert.False(b.AllUnblockedTasksFinished(nil))
-	b.Tasks[0].Status = evergreen.TaskFailed
+	assert.NoError(tasks[0].MarkFailed())
 	assert.True(b.AllUnblockedTasksFinished(nil))
 
-	b.Tasks = []TaskCache{
-		{
-			Id:        "t0",
-			Status:    evergreen.TaskFailed,
-			Activated: false,
-		},
+	// Build is finished
+	require.NoError(t, db.ClearCollections(task.Collection), "error clearing collection")
+	task1 := task.Task{
+		Id:        "t0",
+		BuildId:   "b1",
+		Status:    evergreen.TaskFailed,
+		Activated: false,
 	}
+	assert.NoError(task1.Insert())
 	complete, status, err := b.AllUnblockedTasksFinished(nil)
 	assert.NoError(err)
 	assert.True(complete)
 	assert.Equal(status, evergreen.BuildFailed)
 
-	b.Tasks = []TaskCache{
-		{
-			Id:        "t0",
-			Status:    evergreen.TaskFailed,
-			Activated: true,
-		},
-		{
-			Id:        "t1",
-			Activated: true,
-			Status:    evergreen.TaskUnstarted,
-		},
-		{
-			Id:        "d0",
-			Activated: true,
-			Status:    evergreen.TaskStarted,
-		},
-	}
-
+	// Display task
+	require.NoError(t, db.ClearCollections(task.Collection), "error clearing collection")
 	t0 := task.Task{
-		Id:     "t0",
-		Status: evergreen.TaskFailed,
+		Id:      "t0",
+		BuildId: "b1",
+		Status:  evergreen.TaskFailed,
 		Details: apimodels.TaskEndDetail{
 			Status: evergreen.TaskFailed,
 			Type:   "test",
 		},
 	}
 	t1 := task.Task{
-		Id:     "t1",
-		Status: evergreen.TaskUndispatched,
+		Id:      "t1",
+		BuildId: "b1",
+		Status:  evergreen.TaskUndispatched,
 		DependsOn: []task.Dependency{
 			{
 				TaskId: t0.Id,
@@ -653,16 +656,19 @@ func TestAllTasksFinished(t *testing.T) {
 	}
 	d0 := task.Task{
 		Id:             "d0",
+		BuildId:        "b1",
 		Status:         evergreen.TaskStarted,
 		DisplayOnly:    true,
 		ExecutionTasks: []string{"e0", "e1"},
 	}
 	e0 := task.Task{
-		Id:     "e0",
-		Status: evergreen.TaskFailed,
+		Id:      "e0",
+		BuildId: "b1",
+		Status:  evergreen.TaskFailed,
 	}
 	e1 := task.Task{
-		Id: "e1",
+		Id:      "e1",
+		BuildId: "b1",
 		DependsOn: []task.Dependency{
 			{
 				TaskId: e0.Id,
