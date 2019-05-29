@@ -1053,20 +1053,9 @@ func createOneTask(id string, buildVarTask BuildVariantTaskUnit, project *Projec
 	}
 	if buildVarTask.IsGroup {
 		t.TaskGroup = buildVarTask.GroupName
-		tg, err := GetTaskGroup(buildVarTask.GroupName, &TaskConfig{
-			Task: &task.Task{
-				Project: project.Identifier,
-				Version: v.Id,
-			},
-			Version: v,
-		})
-		if err != nil {
-			grip.Error(message.WrapError(err, message.Fields{
-				"message":    "error getting task group",
-				"task_id":    id,
-				"task_group": t.TaskGroup,
-			}))
-			return nil, err
+		tg := project.FindTaskGroup(buildVarTask.GroupName)
+		if tg == nil {
+			return nil, errors.Errorf("unable to find task group %s in project %s", buildVarTask.GroupName, project.Identifier)
 		}
 		t.TaskGroupMaxHosts = tg.MaxHosts
 	}
