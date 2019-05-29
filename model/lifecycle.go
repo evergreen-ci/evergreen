@@ -580,7 +580,7 @@ func CreateBuildFromVersion(args BuildCreateArgs) (string, error) {
 	start = time.Now()
 
 	if err = tasksForBuild.InsertUnordered(args.Session); err != nil {
-		return "", errors.Wrapf(err, "error inserting task for build '%s'", buildId)
+		return "", err
 	}
 
 	grip.Debug(message.Fields{
