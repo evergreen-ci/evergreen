@@ -12,7 +12,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/manifest"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
-	"github.com/evergreen-ci/evergreen/util"
 	. "github.com/smartystreets/goconvey/convey"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -100,52 +99,6 @@ func TestGetVariantMappings(t *testing.T) {
 
 	})
 
-}
-
-func TestGetVariantsWithTask(t *testing.T) {
-
-	Convey("With a project", t, func() {
-
-		project := &Project{
-			BuildVariants: []BuildVariant{
-				{
-					Name:  "bv1",
-					Tasks: []BuildVariantTaskUnit{{Name: "suite1"}},
-				},
-				{
-					Name: "bv2",
-					Tasks: []BuildVariantTaskUnit{
-						{Name: "suite1"},
-						{Name: "suite2"},
-					},
-				},
-				{
-					Name:  "bv3",
-					Tasks: []BuildVariantTaskUnit{{Name: "suite2"}},
-				},
-			},
-		}
-
-		Convey("when getting the build variants where a task applies", func() {
-
-			Convey("it should be run on any build variants where the test is"+
-				" specified to run", func() {
-
-				variants := project.GetVariantsWithTask("suite1")
-				So(len(variants), ShouldEqual, 2)
-				So(util.StringSliceContains(variants, "bv1"), ShouldBeTrue)
-				So(util.StringSliceContains(variants, "bv2"), ShouldBeTrue)
-
-				variants = project.GetVariantsWithTask("suite2")
-				So(len(variants), ShouldEqual, 2)
-				So(util.StringSliceContains(variants, "bv2"), ShouldBeTrue)
-				So(util.StringSliceContains(variants, "bv3"), ShouldBeTrue)
-
-			})
-
-		})
-
-	})
 }
 
 func TestGetModuleRepoName(t *testing.T) {

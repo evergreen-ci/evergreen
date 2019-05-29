@@ -1056,9 +1056,22 @@ func TaskHistoryPickaxe(params PickaxeParams) ([]task.Task, error) {
 	// If there are no build variants, use all of them for the given task name.
 	// Need this because without the build_variant specified, no amount of hinting
 	// will get sort to use the proper index
+	repo, err := FindRepository(params.Project.Identifier)
+	if err != nil {
+		return nil, errors.Wrap(err, "error finding repository")
+	}
+	if repo == nil {
+		return nil, errors.New("unable to find repository")
+	}
+	grip.Info(repo)
+	buildVariants, err := task.FindVariantsWithTask(params.TaskName, params.Project.Identifier, repo.RevisionOrderNumber-50, repo.RevisionOrderNumber)
+	if err != nil {
+		return nil, errors.Wrap(err, "error finding build variants")
+	}
+	grip.Notice(buildVariants)
 	query := bson.M{
 		"build_variant": bson.M{
-			"$in": params.Project.GetVariantsWithTask(params.TaskName),
+			"$in": buildVariants,
 		},
 		"display_name": params.TaskName,
 		"order": bson.M{

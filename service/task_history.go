@@ -84,7 +84,16 @@ func (uis *UIServer) taskHistoryPage(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
-	buildVariants := project.GetVariantsWithTask(taskName)
+	repo, err := model.FindRepository(project.Identifier)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	buildVariants, err := task.FindVariantsWithTask(taskName, project.Identifier, repo.RevisionOrderNumber-50, repo.RevisionOrderNumber)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
 
 	if revision := r.FormValue("revision"); revision != "" {
 		v, err = model.VersionFindOne(model.VersionByProjectIdAndRevision(project.Identifier, revision))
@@ -264,7 +273,16 @@ func (uis *UIServer) taskHistoryTestNames(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	buildVariants := project.GetVariantsWithTask(taskName)
+	repo, err := model.FindRepository(project.Identifier)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	buildVariants, err := task.FindVariantsWithTask(taskName, project.Identifier, repo.RevisionOrderNumber-50, repo.RevisionOrderNumber)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
 
 	taskHistoryIterator := model.NewTaskHistoryIterator(taskName, buildVariants,
 		project.Identifier)
