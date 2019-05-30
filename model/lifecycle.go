@@ -561,7 +561,7 @@ func CreateBuildFromVersion(args BuildCreateArgs) (string, error) {
 	}
 
 	if err = tasksForBuild.InsertUnordered(args.Session); err != nil {
-		return "", err
+		return "", errors.Wrapf(err, "error inserting task for build '%s'", buildId)
 	}
 
 	// create task caches for all of the tasks, and place them into the build

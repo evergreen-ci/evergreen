@@ -751,13 +751,7 @@ func createVersionItems(ctx context.Context, v *model.Version, ref *model.Projec
 			var buildId string
 			buildId, err = model.CreateBuildFromVersion(args)
 			if err != nil {
-				cmdErr, isCmdErr := err.(mongo.CommandError)
-				if isCmdErr && cmdErr.HasErrorLabel(command.TransientTransactionError) {
-					grip.Notice(message.Fields{
-						"message":    "hit transient transaction error, will retry",
-						"version":    v.Id,
-						"insert_err": err.Error(),
-					})
+				if isTransientTxErr(err, v) {
 					return true, nil
 				}
 				abortErr := sessCtx.AbortTransaction(sessCtx)
@@ -839,13 +833,7 @@ func createVersionItems(ctx context.Context, v *model.Version, ref *model.Projec
 		}
 		err = sessCtx.CommitTransaction(sessCtx)
 		if err != nil {
-			cmdErr, isCmdErr := err.(mongo.CommandError)
-			if isCmdErr && cmdErr.HasErrorLabel(command.TransientTransactionError) {
-				grip.Notice(message.Fields{
-					"message":    "hit transient transaction error, will retry",
-					"version":    v.Id,
-					"insert_err": err.Error(),
-				})
+			if isTransientTxErr(err, v) {
 				return true, nil
 			}
 			grip.Error(message.WrapError(err, message.Fields{
@@ -879,4 +867,17 @@ func createVersionItems(ctx context.Context, v *model.Version, ref *model.Projec
 		}
 		return nil
 	})
+}
+
+func isTransientTxErr(err error, version *model.Version) bool {
+	rootErr := errors.Cause(err)
+	cmdErr, isCmdErr := rootErr.(mongo.CommandError)
+	if isCmdErr && cmdErr.HasErrorLabel(command.TransientTransactionError) {
+		grip.Notice(message.WrapError(err, message.Fields{
+			"message": "hit transient transaction error, will retry",
+			"version": version.Id,
+		}))
+		return true
+	}
+	return false
 }
