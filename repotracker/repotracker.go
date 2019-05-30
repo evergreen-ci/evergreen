@@ -710,7 +710,6 @@ func createVersionItems(ctx context.Context, v *model.Version, ref *model.Projec
 	const retryCount = 5
 
 	txFunc := func(sessCtx mongo.SessionContext) (bool, error) {
-		start := time.Now()
 		// generate all task Ids so that we can easily reference them for dependencies
 		sourceRev := ""
 		if metadata.SourceVersion != nil {
@@ -750,15 +749,7 @@ func createVersionItems(ctx context.Context, v *model.Version, ref *model.Projec
 				Session:      sessCtx,
 			}
 			var buildId string
-			buildStart := time.Now()
 			buildId, err = model.CreateBuildFromVersion(args)
-			grip.Debug(message.Fields{
-				"ticket":          "EVG-5823",
-				"op":              "CreateBuildFromVersion",
-				"duration":        time.Since(buildStart),
-				"duration_string": time.Since(buildStart).String(),
-				"version":         v.Id,
-			})
 			if err != nil {
 				cmdErr, isCmdErr := err.(mongo.CommandError)
 				if isCmdErr && cmdErr.HasErrorLabel(command.TransientTransactionError) {
@@ -869,13 +860,6 @@ func createVersionItems(ctx context.Context, v *model.Version, ref *model.Projec
 			"hash":    v.Revision,
 			"project": v.Branch,
 			"runner":  RunnerName,
-		})
-		grip.Debug(message.Fields{
-			"ticket":          "EVG-5823",
-			"op":              "createVersionItems",
-			"duration":        time.Since(start),
-			"duration_string": time.Since(start).String(),
-			"version":         v.Id,
 		})
 		return false, nil
 	}

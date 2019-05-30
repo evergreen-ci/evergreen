@@ -500,7 +500,6 @@ type BuildCreateArgs struct {
 // CreateBuildFromVersion creates a build given all of the necessary information
 // from the corresponding version and project and a list of tasks.
 func CreateBuildFromVersion(args BuildCreateArgs) (string, error) {
-	start := time.Now()
 	// find the build variant for this project/build
 	buildVariant := args.Project.FindBuildVariant(args.BuildName)
 	if buildVariant == nil {
@@ -555,43 +554,15 @@ func CreateBuildFromVersion(args BuildCreateArgs) (string, error) {
 	}
 	b.BuildNumber = strconv.FormatUint(buildNumber, 10)
 
-	grip.Debug(message.Fields{
-		"ticket":          "EVG-5823",
-		"op":              "CreateBuildFromVersion",
-		"step":            "initial",
-		"duration":        time.Since(start),
-		"duration_string": time.Since(start).String(),
-		"version":         args.Version.Id,
-	})
-	start = time.Now()
 	// create all of the necessary tasks for the build
 	tasksForBuild, err := createTasksForBuild(&args.Project, buildVariant, b, &args.Version, args.TaskIDs, args.TaskNames, args.DisplayNames, args.GeneratedBy, args.Aliases, nil)
 	if err != nil {
 		return "", errors.Wrapf(err, "error creating tasks for build %s", b.Id)
 	}
-	grip.Debug(message.Fields{
-		"ticket":          "EVG-5823",
-		"op":              "CreateBuildFromVersion",
-		"step":            "createTasksForBuild",
-		"duration":        time.Since(start),
-		"duration_string": time.Since(start).String(),
-		"version":         args.Version.Id,
-	})
-	start = time.Now()
 
 	if err = tasksForBuild.InsertUnordered(args.Session); err != nil {
 		return "", err
 	}
-
-	grip.Debug(message.Fields{
-		"ticket":          "EVG-5823",
-		"op":              "CreateBuildFromVersion",
-		"step":            "InsertUnordered",
-		"duration":        time.Since(start),
-		"duration_string": time.Since(start).String(),
-		"version":         args.Version.Id,
-	})
-	start = time.Now()
 
 	// create task caches for all of the tasks, and place them into the build
 	tasks := []task.Task{}
@@ -608,15 +579,6 @@ func CreateBuildFromVersion(args BuildCreateArgs) (string, error) {
 	if err != nil {
 		return "", errors.Wrapf(err, "error inserting build %v", b.Id)
 	}
-
-	grip.Debug(message.Fields{
-		"ticket":          "EVG-5823",
-		"op":              "CreateBuildFromVersion",
-		"step":            "end",
-		"duration":        time.Since(start),
-		"duration_string": time.Since(start).String(),
-		"version":         args.Version.Id,
-	})
 
 	// success!
 	return b.Id, nil
@@ -662,7 +624,6 @@ func CreateTasksFromGroup(in BuildVariantTaskUnit, proj *Project) []BuildVariant
 func createTasksForBuild(project *Project, buildVariant *BuildVariant, b *build.Build, v *Version,
 	taskIds TaskIdConfig, taskNames []string, displayNames []string, generatedBy string,
 	aliases ProjectAliases, tasksInBuild []task.Task) (task.Tasks, error) {
-	start := time.Now()
 
 	// the list of tasks we should create.  if tasks are passed in, then
 	// use those, else use the default set
@@ -727,16 +688,6 @@ func createTasksForBuild(project *Project, buildVariant *BuildVariant, b *build.
 		}
 	}
 
-	grip.Debug(message.Fields{
-		"ticket":          "EVG-5823",
-		"op":              "createTasksForBuild",
-		"step":            "task spec",
-		"duration":        time.Since(start),
-		"duration_string": time.Since(start).String(),
-		"version":         v.Id,
-	})
-	start = time.Now()
-
 	// if any tasks already exist in the build, add them to the id table
 	// so they can be used as dependencies
 	for _, task := range tasksInBuild {
@@ -781,16 +732,6 @@ func createTasksForBuild(project *Project, buildVariant *BuildVariant, b *build.
 			displayTasks[et] = t
 		}
 	}
-
-	grip.Debug(message.Fields{
-		"ticket":          "EVG-5823",
-		"op":              "createTasksForBuild",
-		"step":            "create display tasks",
-		"duration":        time.Since(start),
-		"duration_string": time.Since(start).String(),
-		"version":         v.Id,
-	})
-	start = time.Now()
 
 	for _, t := range tasksToCreate {
 		id := execTable.GetId(b.BuildVariant, t.Name)
@@ -875,30 +816,11 @@ func createTasksForBuild(project *Project, buildVariant *BuildVariant, b *build.
 		tasks = append(tasks, newTask)
 	}
 
-	grip.Debug(message.Fields{
-		"ticket":          "EVG-5823",
-		"op":              "createTasksForBuild",
-		"step":            "create execution tasks",
-		"duration":        time.Since(start),
-		"duration_string": time.Since(start).String(),
-		"version":         v.Id,
-	})
-	start = time.Now()
-
 	// Set the NumDependents field
 	// Existing tasks in the db and tasks in other builds are not updated
 	setNumDeps(tasks)
 
 	sort.Stable(tasks)
-
-	grip.Debug(message.Fields{
-		"ticket":          "EVG-5823",
-		"op":              "createTasksForBuild",
-		"step":            "sort",
-		"duration":        time.Since(start),
-		"duration_string": time.Since(start).String(),
-		"version":         v.Id,
-	})
 
 	// return all of the tasks created
 	return tasks, nil
