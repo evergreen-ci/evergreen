@@ -42,7 +42,7 @@ func TestProjectVarsInsert(t *testing.T) {
 
 	vars := &ProjectVars{
 		Id:   "mongodb",
-		Vars: map[string]string{"a": "1"},
+		Vars: map[string]string{"a": "1", "b": "2"},
 	}
 	assert.NoError(vars.Insert())
 
@@ -51,6 +51,48 @@ func TestProjectVarsInsert(t *testing.T) {
 	assert.Equal("mongodb", projectVarsFromDB.Id)
 	assert.NotEmpty(projectVarsFromDB.Vars)
 	assert.Equal("1", projectVarsFromDB.Vars["a"])
+}
+
+func TestProjectVarsFindAndModify(t *testing.T) {
+	assert := assert.New(t)
+
+	require.NoError(t, db.Clear(ProjectVarsCollection),
+		"Error clearing collection")
+
+	vars := &ProjectVars{
+		Id:          "123",
+		Vars:        map[string]string{"a": "1", "b": "3", "d": "4"},
+		PrivateVars: map[string]bool{"b": true, "d": true},
+	}
+	assert.NoError(vars.Insert())
+
+	// want to "fix" b, add c, delete d
+	newVars := &ProjectVars{
+		Id:          "123",
+		Vars:        map[string]string{"b": "2", "c": "3"},
+		PrivateVars: map[string]bool{"b": false, "a": true},
+	}
+	varsToDelete := []string{"d"}
+
+	info, err := newVars.FindAndModify(varsToDelete)
+	assert.NoError(err)
+	assert.NotNil(info)
+	assert.Equal(info.Updated, 1)
+
+	assert.Equal(newVars.Vars["a"], "1")
+	assert.Equal(newVars.Vars["b"], "2")
+	assert.Equal(newVars.Vars["c"], "3")
+	_, ok := newVars.Vars["d"]
+	assert.False(ok)
+
+	assert.Equal(newVars.PrivateVars["b"], false)
+	assert.Equal(newVars.PrivateVars["a"], true)
+	_, ok = newVars.Vars["d"]
+	assert.False(ok)
+
+	newVars.Id = "234"
+	info, err = newVars.FindAndModify(varsToDelete)
+	assert.Error(err)
 }
 
 func TestRedactPrivateVars(t *testing.T) {

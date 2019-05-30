@@ -77,6 +77,13 @@ type Connector interface {
 	// RestartBuild is a method to restart the build matching the same BuildId.
 	RestartBuild(string, string) error
 
+	// Find project variables matching given projectId.
+	FindProjectVarsById(string) (*restModel.APIProjectVars, error)
+	// UpdateProjectVars updates the project using the variables given in the model,
+	// and additionally accepts a list of variables to remove.
+	// If successful, updates the given projectVars with the updated projectVars.
+	UpdateProjectVars(string, *restModel.APIProjectVars) error
+
 	// Find the project matching the given ProjectId.
 	FindProjectById(string) (*model.ProjectRef, error)
 	// Create/Update a project the given projectRef

@@ -65,6 +65,47 @@ func (pc *DBProjectConnector) FindProjects(key string, limit int, sortDir int, i
 	return projects, nil
 }
 
+// FindProjectVarsById returns the variables associated with the given project.
+func (pc *DBProjectConnector) FindProjectVarsById(id string) (*restModel.APIProjectVars, error) {
+	vars, err := model.FindOneProjectVars(id)
+	if err != nil {
+		return nil, errors.Wrapf(err, "problem fetching variables for project '%s'", id)
+	}
+	if vars == nil {
+		return nil, gimlet.ErrorResponse{
+			StatusCode: http.StatusNotFound,
+			Message:    fmt.Sprintf("variables for project '%s' not found", id),
+		}
+	}
+	vars.RedactPrivateVars()
+
+	varsModel := restModel.APIProjectVars{}
+	if err := varsModel.BuildFromService(vars); err != nil {
+		return nil, errors.Wrap(err, "error building project variables from service")
+	}
+	return &varsModel, nil
+}
+
+// UpdateProjectVars adds new variables, overwrites variables, and deletes variables for the given project.
+func (pc *DBProjectConnector) UpdateProjectVars(projectId string, varsModel *restModel.APIProjectVars) error {
+	v, err := varsModel.ToService()
+	if err != nil {
+		return errors.Wrap(err, "problem converting to project variable model")
+	}
+	vars := v.(*model.ProjectVars)
+	vars.Id = projectId
+	_, err = vars.FindAndModify(varsModel.VarsToDelete)
+	if err != nil {
+		return errors.Wrapf(err, "problem updating variables for project '%s'", vars.Id)
+	}
+
+	vars.RedactPrivateVars()
+	varsModel.Vars = vars.Vars
+	varsModel.PrivateVars = vars.PrivateVars
+	varsModel.VarsToDelete = []string{}
+	return nil
+}
+
 func (ac *DBProjectConnector) GetProjectEventLog(id string, before time.Time, n int) ([]restModel.APIProjectEvent, error) {
 	events, err := model.ProjectEventsBefore(id, before, n)
 	if err != nil {
@@ -166,6 +207,55 @@ func (pc *MockProjectConnector) UpdateProject(projectRef *model.ProjectRef) erro
 	return gimlet.ErrorResponse{
 		StatusCode: http.StatusInternalServerError,
 		Message:    fmt.Sprintf("project with id '%s' was not updated", projectRef.Identifier),
+	}
+}
+
+func (pc *MockProjectConnector) FindProjectVarsById(id string) (*restModel.APIProjectVars, error) {
+	varsModel := &restModel.APIProjectVars{}
+	for _, v := range pc.CachedVars {
+		if v.Id == id {
+			v.RedactPrivateVars()
+			if err := varsModel.BuildFromService(v); err != nil {
+				return nil, errors.Wrapf(err, "error building project variables from service")
+			}
+			return varsModel, nil
+		}
+	}
+	return nil, gimlet.ErrorResponse{
+		StatusCode: http.StatusNotFound,
+		Message:    fmt.Sprintf("variables for project '%s' not found", id),
+	}
+}
+
+func (pc *MockProjectConnector) UpdateProjectVars(projectId string, varsModel *restModel.APIProjectVars) error {
+	tempVars := model.ProjectVars{}
+	for _, cachedVars := range pc.CachedVars {
+		if cachedVars.Id == projectId {
+			// update cached variables by adding new variables and deleting variables
+			for key, val := range varsModel.Vars {
+				cachedVars.Vars[key] = val
+			}
+			for key, val := range varsModel.PrivateVars {
+				cachedVars.PrivateVars[key] = val
+			}
+			for _, varToDelete := range varsModel.VarsToDelete {
+				delete(cachedVars.Vars, varToDelete)
+				delete(cachedVars.PrivateVars, varToDelete)
+			}
+			tempVars.Vars = cachedVars.Vars
+			tempVars.PrivateVars = cachedVars.PrivateVars
+			tempVars.RedactPrivateVars()
+
+			// return modified variables
+			varsModel.Vars = tempVars.Vars
+			varsModel.PrivateVars = tempVars.PrivateVars
+			varsModel.VarsToDelete = []string{}
+			return nil
+		}
+	}
+	return gimlet.ErrorResponse{
+		StatusCode: http.StatusNotFound,
+		Message:    fmt.Sprintf("variables for project '%s' not found", projectId),
 	}
 }
 

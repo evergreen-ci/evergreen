@@ -70,7 +70,7 @@ func TestProjectConnectorGetSuite(t *testing.T) {
 	s.setup = func() error {
 		s.ctx = &DBConnector{}
 
-		s.Require().NoError(db.ClearCollections(model.ProjectRefCollection))
+		s.Require().NoError(db.ClearCollections(model.ProjectRefCollection, model.ProjectVarsCollection))
 
 		projects := []*model.ProjectRef{
 			{
@@ -107,6 +107,13 @@ func TestProjectConnectorGetSuite(t *testing.T) {
 				return err
 			}
 		}
+
+		vars := &model.ProjectVars{
+			Id:          projectId,
+			Vars:        map[string]string{"a": "1", "b": "3"},
+			PrivateVars: map[string]bool{"b": true},
+		}
+		s.NoError(vars.Insert())
 
 		before := getMockProjectSettings()
 		after := getMockProjectSettings()
@@ -221,6 +228,13 @@ func TestMockProjectConnectorGetSuite(t *testing.T) {
 				{Identifier: "projectF", Private: true},
 			},
 			CachedEvents: projectEvents,
+			CachedVars: []*model.ProjectVars{
+				{
+					Id:          projectId,
+					Vars:        map[string]string{"a": "1", "b": "3"},
+					PrivateVars: map[string]bool{"b": true},
+				},
+			},
 		}}
 
 		return nil
@@ -452,4 +466,36 @@ func (s *ProjectConnectorGetSuite) TestGetProjectWithCommitQueueByOwnerRepoAndBr
 	projRef, err = s.ctx.GetProjectWithCommitQueueByOwnerRepoAndBranch("evergreen-ci", "evergreen", "master")
 	s.NoError(err)
 	s.Equal("projectB", projRef.Identifier)
+}
+
+func (s *ProjectConnectorGetSuite) TestFindProjectVarsById() {
+	res, err := s.ctx.FindProjectVarsById(projectId)
+	s.NoError(err)
+	s.Require().NotNil(res)
+	s.Equal("1", res.Vars["a"])
+	s.Equal("", res.Vars["b"])
+	s.True(res.PrivateVars["b"])
+}
+
+func (s *ProjectConnectorGetSuite) TestUpdateProjectVars() {
+	//successful update
+	varsToDelete := []string{"a"}
+	newVars := restModel.APIProjectVars{
+		Vars:         map[string]string{"b": "2", "c": "3"},
+		PrivateVars:  map[string]bool{"b": false, "c": true},
+		VarsToDelete: varsToDelete,
+	}
+	s.NoError(s.ctx.UpdateProjectVars(projectId, &newVars))
+	s.Equal(newVars.Vars["b"], "2")
+	s.Equal(newVars.Vars["c"], "")
+	_, ok := newVars.Vars["a"]
+	s.False(ok)
+
+	s.Equal(newVars.PrivateVars["b"], false)
+	s.Equal(newVars.PrivateVars["c"], true)
+	_, ok = newVars.PrivateVars["a"]
+	s.False(ok)
+
+	//unsuccessful update
+	s.Error(s.ctx.UpdateProjectVars("not-an-id", &newVars))
 }
