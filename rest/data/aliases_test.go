@@ -3,10 +3,9 @@ package data
 import (
 	"testing"
 
-	"github.com/stretchr/testify/suite"
-
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model"
+	"github.com/stretchr/testify/suite"
 )
 
 type AliasSuite struct {

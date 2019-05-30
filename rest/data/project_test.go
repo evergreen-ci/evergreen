@@ -499,3 +499,15 @@ func (s *ProjectConnectorGetSuite) TestUpdateProjectVars() {
 	//unsuccessful update
 	s.Error(s.ctx.UpdateProjectVars("not-an-id", &newVars))
 }
+
+func (s *ProjectConnectorGetSuite) TestCopyProjectVars() {
+	s.NoError(s.ctx.CopyProjectVars(projectId, "project-copy"))
+	origProj, err := s.ctx.FindProjectVarsById(projectId)
+	s.NoError(err)
+
+	newProj, err := s.ctx.FindProjectVarsById("project-copy")
+	s.NoError(err)
+
+	s.Equal(origProj.PrivateVars, newProj.PrivateVars)
+	s.Equal(origProj.Vars, newProj.Vars)
+}
