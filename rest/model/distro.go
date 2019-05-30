@@ -133,6 +133,7 @@ type APIDistro struct {
 	CommunicationMethod APIString              `json:"communication_method"`
 	CloneMethod         APIString              `json:"clone_method"`
 	ShellPath           APIString              `json:"shell_path"`
+	CuratorDir          APIString              `json:"curator_dir"`
 	SSHKey              APIString              `json:"ssh_key"`
 	SSHOptions          []string               `json:"ssh_options"`
 	Expansions          []APIExpansion         `json:"expansions"`
@@ -188,6 +189,7 @@ func (apiDistro *APIDistro) BuildFromService(h interface{}) error {
 	}
 	apiDistro.CloneMethod = ToAPIString(d.CloneMethod)
 	apiDistro.ShellPath = ToAPIString(d.ShellPath)
+	apiDistro.CuratorDir = ToAPIString(d.CuratorDir)
 	apiDistro.SSHKey = ToAPIString(d.SSHKey)
 	apiDistro.Disabled = d.Disabled
 	apiDistro.ContainerPool = ToAPIString(d.ContainerPool)
@@ -244,6 +246,7 @@ func (apiDistro *APIDistro) ToService() (interface{}, error) {
 		d.CloneMethod = distro.CloneMethodLegacySSH
 	}
 	d.ShellPath = FromAPIString(apiDistro.ShellPath)
+	d.CuratorDir = FromAPIString(apiDistro.CuratorDir)
 	d.SSHKey = FromAPIString(apiDistro.SSHKey)
 	d.SSHOptions = apiDistro.SSHOptions
 	d.SpawnAllowed = apiDistro.UserSpawnAllowed

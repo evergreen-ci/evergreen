@@ -593,6 +593,12 @@ Evergreen - Distros
             ng-readonly="readOnly">
         </div>
         <div>
+          <label class="distro-label">Curator Directory:</label>
+          <input type="text" ng-readonly="readOnly" name="curatorDir"
+            class="form-control" ng-model="activeDistro.settings.curator_dir" placeholder="Absolute native path to the directory containing curator binary"
+            ng-readonly="readOnly">
+        </div>
+        <div>
           <div>
             <span style="float: right; margin-top: 20px;" class="distro-checkbox checkbox"><input ng-disabled="readOnly"
                 type="checkbox" ng-model="activeDistro.setup_as_sudo">Run scripts as sudo</span>
