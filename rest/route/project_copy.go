@@ -56,9 +56,11 @@ func (p *projectCopyHandler) Run(ctx context.Context) gimlet.Responder {
 		}
 	}
 
-	// copy project
+	// copy project, disable necessary settings
 	projectToCopy.Identifier = p.newProjectId
 	projectToCopy.Enabled = false
+	projectToCopy.PRTestingEnabled = false
+	projectToCopy.CommitQueue.Enabled = false
 	if err = p.sc.CreateProject(projectToCopy); err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "Database error creating project for id '%s'", p.newProjectId))
 	}

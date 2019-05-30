@@ -276,7 +276,6 @@ func (pc *MockProjectConnector) CopyProjectVars(oldProjectId, newProjectId strin
 			newVars.Vars = v.Vars
 			newVars.PrivateVars = v.PrivateVars
 			pc.CachedVars = append(pc.CachedVars, &newVars)
-			fmt.Println("len: ", len(pc.CachedVars))
 			return nil
 		}
 	}
