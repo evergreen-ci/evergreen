@@ -28,8 +28,8 @@ func TestCurlCommand(t *testing.T) {
 }
 
 func TestJasperCommands(t *testing.T) {
-	for testName, testCase := range map[string]func(t *testing.T, h *Host, config evergreen.JasperConfig, dir string){
-		"VerifyBaseFetchCommands": func(t *testing.T, h *Host, config evergreen.JasperConfig, dir string) {
+	for testName, testCase := range map[string]func(t *testing.T, h *Host, config evergreen.JasperConfig){
+		"VerifyBaseFetchCommands": func(t *testing.T, h *Host, config evergreen.JasperConfig) {
 			expectedCmds := []string{
 				"cd \"/foo\"",
 				"curl -LO 'www.example.com/download_file-linux-amd64-abc123.tar.gz'",
@@ -37,33 +37,33 @@ func TestJasperCommands(t *testing.T) {
 				"chmod +x 'jasper_cli'",
 				"rm -f 'download_file-linux-amd64-abc123.tar.gz'",
 			}
-			cmds := h.fetchJasperCommands(config, dir)
+			cmds := h.fetchJasperCommands(config)
 			require.Len(t, cmds, len(expectedCmds))
 			for i := range expectedCmds {
 				assert.Equal(t, expectedCmds[i], cmds[i])
 			}
 		},
-		"FetchJasperCommand": func(t *testing.T, h *Host, config evergreen.JasperConfig, dir string) {
-			expectedCmds := h.fetchJasperCommands(config, dir)
-			cmds := h.FetchJasperCommand(config, dir)
+		"FetchJasperCommand": func(t *testing.T, h *Host, config evergreen.JasperConfig) {
+			expectedCmds := h.fetchJasperCommands(config)
+			cmds := h.FetchJasperCommand(config)
 			for _, expectedCmd := range expectedCmds {
 				assert.Contains(t, cmds, expectedCmd)
 			}
 		},
-		"FetchJasperCommandWithPath": func(t *testing.T, h *Host, config evergreen.JasperConfig, dir string) {
+		"FetchJasperCommandWithPath": func(t *testing.T, h *Host, config evergreen.JasperConfig) {
 			path := "/bar"
-			expectedCmds := h.fetchJasperCommands(config, dir)
+			expectedCmds := h.fetchJasperCommands(config)
 			for i := range expectedCmds {
 				expectedCmds[i] = "PATH=/bar " + expectedCmds[i]
 			}
-			cmds := h.FetchJasperCommandWithPath(config, dir, path)
+			cmds := h.FetchJasperCommandWithPath(config, path)
 			for _, expectedCmd := range expectedCmds {
 				assert.Contains(t, cmds, expectedCmd)
 			}
 		},
-		"BootstrapScript": func(t *testing.T, h *Host, config evergreen.JasperConfig, dir string) {
-			expectedCmds := h.fetchJasperCommands(config, dir)
-			script := h.BootstrapScript(config, dir)
+		"BootstrapScript": func(t *testing.T, h *Host, config evergreen.JasperConfig) {
+			expectedCmds := h.fetchJasperCommands(config)
+			script := h.BootstrapScript(config)
 			assert.True(t, strings.HasPrefix(script, "#!/bin/bash"))
 			for _, expectedCmd := range expectedCmds {
 				assert.Contains(t, script, expectedCmd)
@@ -71,22 +71,21 @@ func TestJasperCommands(t *testing.T) {
 		},
 	} {
 		t.Run(testName, func(t *testing.T) {
-			h := &Host{Distro: distro.Distro{Arch: distro.ArchLinuxAmd64}}
+			h := &Host{Distro: distro.Distro{Arch: distro.ArchLinuxAmd64, CuratorDir: "/foo"}}
 			config := evergreen.JasperConfig{
 				BinaryName:       "jasper_cli",
 				DownloadFileName: "download_file",
 				URL:              "www.example.com",
 				Version:          "abc123",
 			}
-			dir := "/foo"
-			testCase(t, h, config, dir)
+			testCase(t, h, config)
 		})
 	}
 }
 
 func TestJasperCommandsWindows(t *testing.T) {
-	for testName, testCase := range map[string]func(t *testing.T, h *Host, config evergreen.JasperConfig, dir string){
-		"VerifyBaseFetchCommands": func(t *testing.T, h *Host, config evergreen.JasperConfig, dir string) {
+	for testName, testCase := range map[string]func(t *testing.T, h *Host, config evergreen.JasperConfig){
+		"VerifyBaseFetchCommands": func(t *testing.T, h *Host, config evergreen.JasperConfig) {
 			expectedCmds := []string{
 				"cd \"/foo\"",
 				"curl -LO 'www.example.com/download_file-windows-amd64-abc123.tar.gz'",
@@ -94,37 +93,37 @@ func TestJasperCommandsWindows(t *testing.T) {
 				"chmod +x 'jasper_cli.exe'",
 				"rm -f 'download_file-windows-amd64-abc123.tar.gz'",
 			}
-			cmds := h.fetchJasperCommands(config, dir)
+			cmds := h.fetchJasperCommands(config)
 			require.Len(t, cmds, len(expectedCmds))
 			for i := range expectedCmds {
 				assert.Equal(t, expectedCmds[i], cmds[i])
 			}
 		},
-		"FetchJasperCommand": func(t *testing.T, h *Host, config evergreen.JasperConfig, dir string) {
-			expectedCmds := h.fetchJasperCommands(config, dir)
-			cmds := h.FetchJasperCommand(config, dir)
+		"FetchJasperCommand": func(t *testing.T, h *Host, config evergreen.JasperConfig) {
+			expectedCmds := h.fetchJasperCommands(config)
+			cmds := h.FetchJasperCommand(config)
 			for _, expectedCmd := range expectedCmds {
 				assert.Contains(t, cmds, expectedCmd)
 			}
 		},
-		"FetchJasperCommandWithPath": func(t *testing.T, h *Host, config evergreen.JasperConfig, dir string) {
-			expectedCmds := h.fetchJasperCommands(config, dir)
+		"FetchJasperCommandWithPath": func(t *testing.T, h *Host, config evergreen.JasperConfig) {
+			expectedCmds := h.fetchJasperCommands(config)
 			path := "/bin"
 			for i := range expectedCmds {
 				expectedCmds[i] = fmt.Sprintf("PATH=%s ", path) + expectedCmds[i]
 			}
-			cmds := h.FetchJasperCommandWithPath(config, dir, path)
+			cmds := h.FetchJasperCommandWithPath(config, path)
 			for _, expectedCmd := range expectedCmds {
 				assert.Contains(t, cmds, expectedCmd)
 			}
 		},
-		"BootstrapScript": func(t *testing.T, h *Host, config evergreen.JasperConfig, dir string) {
-			expectedCmds := h.fetchJasperCommands(config, dir)
+		"BootstrapScript": func(t *testing.T, h *Host, config evergreen.JasperConfig) {
+			expectedCmds := h.fetchJasperCommands(config)
 			path := "/bin"
 			for i := range expectedCmds {
 				expectedCmds[i] = strings.Replace(fmt.Sprintf("PATH=%s ", path)+expectedCmds[i], "'", "''", -1)
 			}
-			script := h.BootstrapScript(config, dir)
+			script := h.BootstrapScript(config)
 			assert.True(t, strings.HasPrefix(script, "<powershell>"))
 			assert.True(t, strings.HasSuffix(script, "</powershell>"))
 			for _, expectedCmd := range expectedCmds {
@@ -133,15 +132,14 @@ func TestJasperCommandsWindows(t *testing.T) {
 		},
 	} {
 		t.Run(testName, func(t *testing.T) {
-			h := &Host{Distro: distro.Distro{Arch: distro.ArchWindowsAmd64}}
+			h := &Host{Distro: distro.Distro{Arch: distro.ArchWindowsAmd64, CuratorDir: "/foo"}}
 			config := evergreen.JasperConfig{
 				BinaryName:       "jasper_cli",
 				DownloadFileName: "download_file",
 				URL:              "www.example.com",
 				Version:          "abc123",
 			}
-			dir := "/foo"
-			testCase(t, h, config, dir)
+			testCase(t, h, config)
 		})
 	}
 

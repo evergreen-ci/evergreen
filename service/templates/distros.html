@@ -589,8 +589,12 @@ Evergreen - Distros
         <div>
           <label class="distro-label">Shell Path:</label>
           <input type="text" ng-readonly="readOnly" name="shellPath"
-            class="form-control" ng-model="activeDistro.settings.shell_path" placeholder="Absolute native path to the shell binary file (bash)"
-            ng-readonly="readOnly">
+            class="form-control" ng-model="activeDistro.settings.shell_path" placeholder="Absolute native path to the shell binary file (bash)">
+        </div>
+        <div>
+          <label class="distro-label">Curator Directory:</label>
+          <input type="text" ng-readonly="readOnly" name="curatorDir"
+            class="form-control" ng-model="activeDistro.settings.curator_dir" placeholder="Absolute native path to the directory containing curator binary">
         </div>
         <div>
           <div>

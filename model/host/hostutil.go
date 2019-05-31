@@ -157,16 +157,16 @@ func initSystemCommand() string {
 }
 
 // FetchJasperCommands builds the command to download and extract the Jasper
-// binary into the directory dir.
-func (h *Host) FetchJasperCommand(config evergreen.JasperConfig, dir string) string {
-	return strings.Join(h.fetchJasperCommands(config, dir), " && ")
+// binary into the distro-specific binary directory.
+func (h *Host) FetchJasperCommand(config evergreen.JasperConfig) string {
+	return strings.Join(h.fetchJasperCommands(config), " && ")
 }
 
-func (h *Host) fetchJasperCommands(config evergreen.JasperConfig, dir string) []string {
+func (h *Host) fetchJasperCommands(config evergreen.JasperConfig) []string {
 	downloadedFile := h.jasperDownloadedFileName(config)
 	extractedFile := h.jasperExtractedFileName(config)
 	return []string{
-		fmt.Sprintf("cd \"%s\"", dir),
+		fmt.Sprintf("cd \"%s\"", h.Distro.CuratorDir),
 		fmt.Sprintf("curl -LO '%s/%s'", config.URL, downloadedFile),
 		fmt.Sprintf("tar xzf '%s'", downloadedFile),
 		fmt.Sprintf("chmod +x '%s'", extractedFile),
@@ -176,8 +176,8 @@ func (h *Host) fetchJasperCommands(config evergreen.JasperConfig, dir string) []
 
 // FetchJasperCommandWithPath is the same as FetchJasperCommand but sets the
 // PATH variable to path for each command.
-func (h *Host) FetchJasperCommandWithPath(config evergreen.JasperConfig, dir, path string) string {
-	cmds := h.fetchJasperCommands(config, dir)
+func (h *Host) FetchJasperCommandWithPath(config evergreen.JasperConfig, path string) string {
+	cmds := h.fetchJasperCommands(config)
 	for i := range cmds {
 		cmds[i] = fmt.Sprintf("PATH=%s %s", path, cmds[i])
 	}
@@ -197,9 +197,9 @@ func (h *Host) jasperExtractedFileName(config evergreen.JasperConfig) string {
 }
 
 // BootstrapScript creates the user data script to bootstrap the host.
-func (h *Host) BootstrapScript(config evergreen.JasperConfig, dir string) string {
+func (h *Host) BootstrapScript(config evergreen.JasperConfig) string {
 	if h.Distro.IsWindows() {
-		cmds := h.FetchJasperCommandWithPath(config, dir, "/bin")
+		cmds := h.FetchJasperCommandWithPath(config, "/bin")
 		// PowerShell nested quotation marks are handled by using two quotation
 		// marks.
 		quotedCmds := strings.Replace(cmds, "'", "''", -1)
@@ -210,5 +210,5 @@ func (h *Host) BootstrapScript(config evergreen.JasperConfig, dir string) string
 		}
 		return strings.Join(commands, "\r\n")
 	}
-	return strings.Join([]string{"#!/bin/bash", h.FetchJasperCommand(config, dir)}, "\n")
+	return strings.Join([]string{"#!/bin/bash", h.FetchJasperCommand(config)}, "\n")
 }
