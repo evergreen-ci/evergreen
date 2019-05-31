@@ -149,6 +149,8 @@ const (
 	CommitQueueAlias = "__commit_queue"
 
 	MaxTeardownGroupTimeoutSecs = 30 * 60
+
+	DefaultJasperPort = 2385
 )
 
 func IsFinishedTaskStatus(status string) bool {

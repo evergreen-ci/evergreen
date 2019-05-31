@@ -224,7 +224,7 @@ func (j *setupHostJob) runHostSetup(ctx context.Context, targetHost *host.Host, 
 	}
 
 	if targetHost.Distro.BootstrapMethod == distro.BootstrapMethodSSH {
-		if err = j.fetchJasper(ctx); err != nil {
+		if err = j.setupJasper(ctx); err != nil {
 			return errors.Wrapf(err, "error putting Jasper on host '%s'", targetHost.Id)
 		}
 	}
@@ -253,8 +253,9 @@ func (j *setupHostJob) runHostSetup(ctx context.Context, targetHost *host.Host, 
 	return nil
 }
 
-// fetchJasper places the Jasper CLI on the host via SSH.
-func (j *setupHostJob) fetchJasper(ctx context.Context) error {
+// setupJasper sets up the Jasper service on the host by downloading the latest
+// version of Jasper and restarting the Jasper service.
+func (j *setupHostJob) setupJasper(ctx context.Context) error {
 	d, err := distro.FindOne(distro.ById(j.host.Distro.Id))
 	if err != nil {
 		grip.Error(message.WrapError(j.host.SetUnprovisioned(), message.Fields{
@@ -269,6 +270,12 @@ func (j *setupHostJob) fetchJasper(ctx context.Context) error {
 
 	cloudHost, err := cloud.GetCloudHost(ctx, j.host, j.env.Settings())
 	if err != nil {
+		grip.Error(message.WrapError(j.host.SetUnprovisioned(), message.Fields{
+			"operation": "setting host unprovisioned",
+			"distro":    j.host.Distro.Id,
+			"job":       j.ID(),
+			"host":      j.host.Id,
+		}))
 		return errors.Wrapf(err, "failed to get cloud host for %s", j.host.Id)
 	}
 
@@ -283,7 +290,7 @@ func (j *setupHostJob) fetchJasper(ctx context.Context) error {
 		return errors.Wrapf(err, "error getting ssh options for host %s", j.host.Id)
 	}
 
-	if err := j.doFetchJasper(ctx, sshOptions); err != nil {
+	if err := j.doFetchAndReinstallJasper(ctx, sshOptions); err != nil {
 		grip.Error(message.WrapError(j.host.SetUnprovisioned(), message.Fields{
 			"operation": "setting host unprovisioned",
 			"distro":    j.host.Distro.Id,
@@ -302,11 +309,12 @@ func (j *setupHostJob) fetchJasper(ctx context.Context) error {
 	return nil
 }
 
-// doFetchJasper runs the command over that downloads the Jasper binary.
-func (j *setupHostJob) doFetchJasper(ctx context.Context, sshOptions []string) error {
-	cmd := j.host.FetchJasperCommand(j.env.Settings().JasperConfig)
+// doFetchAndReinstallJasper runs the SSH command over that downloads the latest
+// Jasper binary and restarts the service.
+func (j *setupHostJob) doFetchAndReinstallJasper(ctx context.Context, sshOptions []string) error {
+	cmd := j.host.FetchAndReinstallJasperCommand(j.env.Settings().JasperConfig)
 	if logs, err := j.host.RunSSHCommand(ctx, cmd, sshOptions); err != nil {
-		return errors.Wrapf(err, "error fetching Jasper binary on remote host: command returned %s", logs)
+		return errors.Wrapf(err, "error while fetching Jasper binary and installing service on remote host: command returned %s", logs)
 	}
 	return nil
 }
