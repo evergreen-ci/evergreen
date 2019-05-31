@@ -848,6 +848,27 @@ func TestCheckAllDependenciesSpec(t *testing.T) {
 			}
 			So(checkAllDependenciesSpec(project), ShouldResemble, ValidationErrors{})
 		})
+		Convey("if a task references all dependencies on multiple variants, no error should "+
+			" be returned", func() {
+			project := &model.Project{
+				Tasks: []model.ProjectTask{
+					{
+						Name: "coverage",
+						DependsOn: []model.TaskUnitDependency{
+							{
+								Name:    "*",
+								Variant: "ubuntu1604",
+							},
+							{
+								Name:    "*",
+								Variant: "coverage",
+							},
+						},
+					},
+				},
+			}
+			So(checkAllDependenciesSpec(project), ShouldResemble, ValidationErrors{})
+		})
 	})
 }
 
