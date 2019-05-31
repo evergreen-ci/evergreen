@@ -205,7 +205,7 @@ func (h *Host) fetchJasperCommands(config evergreen.JasperConfig) []string {
 	}
 }
 
-// FetchJasperCommandWithPath is the same as FetchJasperCommand but sets the
+// FetchJasperCommandsWithPath is the same as FetchJasperCommand but sets the
 // PATH variable to path for each command.
 func (h *Host) FetchJasperCommandWithPath(config evergreen.JasperConfig, path string) string {
 	cmds := h.fetchJasperCommands(config)
@@ -230,10 +230,16 @@ func (h *Host) jasperExtractedFileName(config evergreen.JasperConfig) string {
 // BootstrapScript creates the user data script to bootstrap the host.
 func (h *Host) BootstrapScript(config evergreen.JasperConfig) string {
 	if h.Distro.IsWindows() {
-		cmds := h.FetchJasperCommandWithPath(config, "/bin")
+		cmds := []string{
+			h.FetchJasperCommandWithPath(config, "/bin"),
+			h.ForceReinstallJasperCommand(config),
+		}
 		// PowerShell nested quotation marks are handled by using two quotation
 		// marks.
-		quotedCmds := strings.Replace(cmds, "'", "''", -1)
+		quotedCmds := make([]string, 0, len(cmds))
+		for _, cmd := range cmds {
+			quotedCmds = append(quotedCmds, strings.Replace(cmd, "'", "''", -1))
+		}
 		commands := []string{
 			"<powershell>",
 			fmt.Sprintf("%s -c '%s'", h.Distro.ShellPath, quotedCmds),
@@ -241,5 +247,5 @@ func (h *Host) BootstrapScript(config evergreen.JasperConfig) string {
 		}
 		return strings.Join(commands, "\r\n")
 	}
-	return strings.Join([]string{"#!/bin/bash", h.FetchJasperCommand(config)}, "\n")
+	return strings.Join([]string{"#!/bin/bash", h.FetchJasperCommand(config), h.ForceReinstallJasperCommand(config)}, "\n")
 }
