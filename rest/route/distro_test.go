@@ -1170,7 +1170,7 @@ func (s *DistroPatchByIDSuite) TestValidFindAndReplaceFullDocument() {
 	s.Equal(model.ToAPIString(distro.CommunicationMethodLegacySSH), apiDistro.CommunicationMethod)
 	s.Equal(model.ToAPIString(distro.CloneMethodLegacySSH), apiDistro.CloneMethod)
 	s.Equal(model.ToAPIString("/usr/bin/bash"), apiDistro.ShellPath)
-	s.Equal(model.ToAPIString("/usr/local/bin", apiDistro.CuratorDir))
+	s.Equal(model.ToAPIString("/usr/local/bin"), apiDistro.CuratorDir)
 	s.Equal(apiDistro.User, model.ToAPIString("~root"))
 	s.Equal(apiDistro.SSHKey, model.ToAPIString("~SSH string"))
 	s.Equal(apiDistro.SSHOptions, []string{"~StrictHostKeyChecking=no", "~BatchMode=no", "~ConnectTimeout=10"})
