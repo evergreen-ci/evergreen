@@ -24,23 +24,25 @@ const (
 	ResourceTypeHost = "HOST"
 
 	// event types
-	EventHostCreated               = "HOST_CREATED"
-	EventHostStarted               = "HOST_STARTED"
-	EventHostAgentDeployed         = "HOST_AGENT_DEPLOYED"
-	EventHostAgentDeployFailed     = "HOST_AGENT_DEPLOY_FAILED"
-	EventHostStatusChanged         = "HOST_STATUS_CHANGED"
-	EventHostDNSNameSet            = "HOST_DNS_NAME_SET"
-	EventHostProvisionError        = "HOST_PROVISION_ERROR"
-	EventHostProvisionFailed       = "HOST_PROVISION_FAILED"
-	EventHostProvisioned           = "HOST_PROVISIONED"
-	EventHostRunningTaskSet        = "HOST_RUNNING_TASK_SET"
-	EventHostRunningTaskCleared    = "HOST_RUNNING_TASK_CLEARED"
-	EventHostTaskPidSet            = "HOST_TASK_PID_SET"
-	EventHostMonitorFlag           = "HOST_MONITOR_FLAG"
-	EventTaskFinished              = "HOST_TASK_FINISHED"
-	EventHostTeardown              = "HOST_TEARDOWN"
-	EventHostTerminatedExternally  = "HOST_TERMINATED_EXTERNALLY"
-	EventHostExpirationWarningSent = "HOST_EXPIRATION_WARNING_SENT"
+	EventHostCreated                  = "HOST_CREATED"
+	EventHostStarted                  = "HOST_STARTED"
+	EventHostAgentDeployed            = "HOST_AGENT_DEPLOYED"
+	EventHostAgentDeployFailed        = "HOST_AGENT_DEPLOY_FAILED"
+	EventHostAgentMonitorDeployed     = "HOST_AGENT_MONITOR_DEPLOYED"
+	EventHostAgentMonitorDeployFailed = "HOST_AGENT_MONITOR_DEPLOY_FAILED"
+	EventHostStatusChanged            = "HOST_STATUS_CHANGED"
+	EventHostDNSNameSet               = "HOST_DNS_NAME_SET"
+	EventHostProvisionError           = "HOST_PROVISION_ERROR"
+	EventHostProvisionFailed          = "HOST_PROVISION_FAILED"
+	EventHostProvisioned              = "HOST_PROVISIONED"
+	EventHostRunningTaskSet           = "HOST_RUNNING_TASK_SET"
+	EventHostRunningTaskCleared       = "HOST_RUNNING_TASK_CLEARED"
+	EventHostTaskPidSet               = "HOST_TASK_PID_SET"
+	EventHostMonitorFlag              = "HOST_MONITOR_FLAG"
+	EventTaskFinished                 = "HOST_TASK_FINISHED"
+	EventHostTeardown                 = "HOST_TEARDOWN"
+	EventHostTerminatedExternally     = "HOST_TERMINATED_EXTERNALLY"
+	EventHostExpirationWarningSent    = "HOST_EXPIRATION_WARNING_SENT"
 )
 
 // implements EventData
@@ -98,6 +100,14 @@ func LogHostAgentDeployed(hostId string) {
 
 func LogHostAgentDeployFailed(hostId string, err error) {
 	LogHostEvent(hostId, EventHostAgentDeployFailed, HostEventData{Logs: err.Error()})
+}
+
+func LogHostAgentMonitorDeployed(hostId string) {
+	LogHostEvent(hostId, EventHostAgentMonitorDeployed, HostEventData{AgentRevision: evergreen.BuildRevision})
+}
+
+func LogHostAgentMonitorDeployFailed(hostId string, err error) {
+	LogHostEvent(hostId, EventHostAgentMonitorDeployFailed, HostEventData{Logs: err.Error()})
 }
 
 // LogHostProvisionError is used to log each failed provision attempt
