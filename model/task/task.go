@@ -22,8 +22,8 @@ import (
 )
 
 const (
-	edgesKey = "edges"
-	taskKey  = "task"
+	dependencyKey = "dependencies"
+	taskKey       = "task"
 
 	// tasks should be unscheduled after ~a week
 	UnschedulableThreshold = 7 * 24 * time.Hour
@@ -279,7 +279,7 @@ func (t *Task) satisfiesDependency(depTask *Task) bool {
 			case AllStatuses:
 				return depTask.Status == evergreen.TaskFailed || depTask.Status == evergreen.TaskSucceeded
 			case AnyStatus:
-				return depTask.Status == evergreen.TaskFailed || depTask.Status == evergreen.TaskSucceeded || t.Blocked()
+				return depTask.Status == evergreen.TaskFailed || depTask.Status == evergreen.TaskSucceeded || dep.Unattainable
 			}
 		}
 	}
@@ -1282,8 +1282,6 @@ func FindSchedulable(distroID string) ([]Task, error) {
 }
 
 func FindRunnable(distroID string, removeDeps bool) ([]Task, error) {
-	expectedStatuses := []string{evergreen.TaskSucceeded, evergreen.TaskFailed, ""}
-
 	match := scheduleableTasksQuery()
 	if distroID != "" {
 		match[DistroIdKey] = distroID
@@ -1306,48 +1304,69 @@ func FindRunnable(distroID string, removeDeps bool) ([]Task, error) {
 			"startWith":        "$" + DependsOnKey + "." + IdKey,
 			"connectFromField": DependsOnKey + "." + IdKey,
 			"connectToField":   IdKey,
-			"as":               edgesKey,
+			"as":               dependencyKey,
 			// restrict graphLookup to only direct dependencies
 			"maxDepth": 0,
-			"restrictSearchWithMatch": bson.M{
-				StatusKey: bson.M{
-					"$in": expectedStatuses,
-				},
-			},
 		},
 	}
 
-	reshapeTasksAndEdges := bson.M{
-		"$project": bson.M{
-			edgesKey + "." + IdKey:     1,
-			edgesKey + "." + StatusKey: 1,
-			taskKey:                    "$$ROOT",
+	unwindDependencies := bson.M{
+		"$unwind": bson.M{
+			"path":                       "$" + dependencyKey,
+			"preserveNullAndEmptyArrays": true,
 		},
 	}
 
-	removeEdgesFromTask := bson.M{
-		"$project": bson.M{
-			taskKey + "." + edgesKey: 0,
+	unwindDependsOn := bson.M{
+		"$unwind": bson.M{
+			"path":                       "$" + DependsOnKey,
+			"preserveNullAndEmptyArrays": true,
 		},
 	}
 
-	redactUnrunnableTasks := bson.M{
+	redactUnsatisfiedDependencies := bson.M{
 		"$redact": bson.M{
-			"$cond": bson.M{
-				"if": bson.M{
-					"$setEquals": []string{"$" + taskKey + "." + DependsOnKey, "$" + edgesKey},
+			"$cond": bson.A{
+				bson.M{
+					"$and": []bson.M{
+						{
+							"$eq": bson.A{"$" + bsonutil.GetDottedKeyName(DependsOnKey, DependencyTaskIdKey), "$" + bsonutil.GetDottedKeyName(dependencyKey, IdKey)},
+						},
+						{
+							"$or": []bson.M{
+								{"$eq": bson.A{"$" + bsonutil.GetDottedKeyName(DependsOnKey, DependencyStatusKey), "$" + bsonutil.GetDottedKeyName(dependencyKey, StatusKey)}},
+								{"$and": []bson.M{
+									{"$in": bson.A{"$" + bsonutil.GetDottedKeyName(dependencyKey, StatusKey), CompletedStatuses}},
+									{"$or": []bson.M{
+										{"$eq": bson.A{"$" + bsonutil.GetDottedKeyName(DependsOnKey, DependencyStatusKey), "*"}},
+										{"$eq": bson.A{"$" + bsonutil.GetDottedKeyName(DependsOnKey, DependencyStatusKey), "any"}},
+									}},
+								},
+								},
+								{
+									"$and": []bson.M{
+										{"$eq": bson.A{"$" + bsonutil.GetDottedKeyName(DependsOnKey, DependencyUnattainableKey), true}},
+										{"$eq": bson.A{"$" + bsonutil.GetDottedKeyName(DependsOnKey, DependencyStatusKey), "any"}},
+									},
+								},
+							},
+						},
+					},
 				},
-				"then": "$$KEEP",
-				"else": "$$PRUNE",
+				"$$KEEP",
+				"$$PRUNE",
 			},
 		},
 	}
 
-	replaceRoot := bson.M{
-		"$replaceRoot": bson.M{
-			"newRoot": "$" + taskKey,
+	regroupTasks := bson.M{
+		"$group": bson.M{
+			"_id":  "$_id",
+			"root": bson.M{"$first": "$$ROOT"},
 		},
 	}
+
+	replaceRoot := bson.M{"$replaceRoot": bson.M{"newRoot": "$root"}}
 
 	joinProjectRef := bson.M{
 		"$lookup": bson.M{
@@ -1358,7 +1377,7 @@ func FindRunnable(distroID string, removeDeps bool) ([]Task, error) {
 		},
 	}
 
-	filterDisabledProejcts := bson.M{
+	filterDisabledProjects := bson.M{
 		"$match": bson.M{
 			"project_ref.0." + "enabled": true,
 		},
@@ -1389,16 +1408,17 @@ func FindRunnable(distroID string, removeDeps bool) ([]Task, error) {
 
 	if removeDeps {
 		pipeline = append(pipeline,
-			reshapeTasksAndEdges,
-			removeEdgesFromTask,
-			redactUnrunnableTasks,
+			unwindDependencies,
+			unwindDependsOn,
+			redactUnsatisfiedDependencies,
+			regroupTasks,
 			replaceRoot,
 		)
 	}
 
 	pipeline = append(pipeline,
 		joinProjectRef,
-		filterDisabledProejcts,
+		filterDisabledProjects,
 		filterPatchingDisabledProjects,
 		removeProjectRef,
 	)

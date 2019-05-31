@@ -79,12 +79,14 @@ func (s *TaskFinderSuite) TearDownSuite() {
 }
 
 func (s *TaskFinderSuite) SetupTest() {
-	taskIds := []string{"t1", "t2", "t3", "t4", "t5"}
+	taskIds := []string{"t0", "t1", "t2", "t3", "t4", "t5"}
 	s.tasks = []task.Task{
 		{Id: taskIds[0], Status: evergreen.TaskUndispatched, Activated: true, Project: "exists", CreateTime: time.Now()},
 		{Id: taskIds[1], Status: evergreen.TaskUndispatched, Activated: true, Project: "exists", CreateTime: time.Now()},
 		{Id: taskIds[2], Status: evergreen.TaskUndispatched, Activated: true, Project: "exists", CreateTime: time.Now()},
-		{Id: taskIds[3], Status: evergreen.TaskUndispatched, Activated: true, Priority: -1, Project: "exists", CreateTime: time.Now()},
+		{Id: taskIds[3], Status: evergreen.TaskUndispatched, Activated: true, Project: "exists", CreateTime: time.Now()},
+		{Id: taskIds[4], Status: evergreen.TaskUndispatched, Activated: true, Project: "exists", CreateTime: time.Now()},
+		{Id: taskIds[5], Status: evergreen.TaskUndispatched, Activated: true, Priority: -1, Project: "exists", CreateTime: time.Now()},
 	}
 
 	depTaskIds := []string{"td1", "td2"}
@@ -118,27 +120,29 @@ func (s *TaskFinderSuite) TestNoRunnableTasksReturnsEmptySlice() {
 
 func (s *TaskFinderSuite) TestInactiveTasksNeverReturned() {
 	// insert the tasks, setting one to inactive
-	s.tasks[2].Activated = false
+	s.tasks[4].Activated = false
 	s.insertTasks()
 
-	// finding the runnable tasks should return two tasks
+	// finding the runnable tasks should return four tasks
 	runnableTasks, err := s.FindRunnableTasks(s.distro)
 	s.NoError(err)
-	s.Len(runnableTasks, 2)
+	s.Len(runnableTasks, 4)
 }
 
 func (s *TaskFinderSuite) TestTasksWithUnsatisfiedDependenciesNeverReturned() {
 	// edit the dependency tasks, setting one to have finished
 	// successfully and one to have finished unsuccessfully
 	s.depTasks[0].Status = evergreen.TaskFailed
-	s.depTasks[1].Status = evergreen.TaskSucceeded
+	s.depTasks[1].Status = evergreen.TaskUndispatched
 
-	// edit the tasks, setting one to have unmet dependencies, one to
-	// have no dependencies, and one to have successfully met
-	// dependencies
-	s.tasks[0].DependsOn = []task.Dependency{}
+	// Matching dependency - runnable
+	s.tasks[0].DependsOn = []task.Dependency{{TaskId: s.depTasks[0].Id, Status: evergreen.TaskFailed}}
+	// Not matching - not runnable
 	s.tasks[1].DependsOn = []task.Dependency{{TaskId: s.depTasks[0].Id, Status: evergreen.TaskSucceeded}}
-	s.tasks[2].DependsOn = []task.Dependency{{TaskId: s.depTasks[1].Id, Status: evergreen.TaskSucceeded}}
+	// Dependent task is blocked and status is any - runnable
+	s.tasks[2].DependsOn = []task.Dependency{{TaskId: s.depTasks[1].Id, Status: "any", Unattainable: true}}
+	// * status matches any finished status - runnable
+	s.tasks[3].DependsOn = []task.Dependency{{TaskId: s.depTasks[0].Id, Status: "*"}}
 
 	s.insertTasks()
 
@@ -146,7 +150,7 @@ func (s *TaskFinderSuite) TestTasksWithUnsatisfiedDependenciesNeverReturned() {
 	// no dependencies and the one with successfully met dependencies
 	runnableTasks, err := s.FindRunnableTasks(s.distro)
 	s.NoError(err)
-	s.Len(runnableTasks, 2)
+	s.Len(runnableTasks, 3)
 }
 
 type TaskFinderComparisonSuite struct {
