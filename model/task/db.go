@@ -88,6 +88,13 @@ var (
 	TaskEndDetailDescription = bsonutil.MustHaveTag(apimodels.TaskEndDetail{}, "Description")
 )
 
+var (
+	// BSON fields for task dependency struct
+	DependencyTaskIdKey       = bsonutil.MustHaveTag(Dependency{}, "TaskId")
+	DependencyStatusKey       = bsonutil.MustHaveTag(Dependency{}, "Status")
+	DependencyUnattainableKey = bsonutil.MustHaveTag(Dependency{}, "Unattainable")
+)
+
 // Queries
 
 // All returns all tasks.
@@ -444,8 +451,12 @@ func scheduleableTasksQuery() bson.M {
 	return bson.M{
 		ActivatedKey: true,
 		StatusKey:    evergreen.TaskUndispatched,
+
 		//Filter out blacklisted tasks
 		PriorityKey: bson.M{"$gte": 0},
+
+		//Filter tasks containing unattainable dependencies
+		bsonutil.GetDottedKeyName(DependsOnKey, DependencyUnattainableKey): bson.M{"$ne": true},
 	}
 }
 
@@ -935,6 +946,33 @@ func FindWithDisplayTasks(query db.Q) ([]Task, error) {
 	}
 
 	return tasks, err
+}
+
+func FindAllUnmarkedBlockedDependencies(t *Task, blocked bool) ([]Task, error) {
+	okStatusSet := []string{AnyStatus}
+	if !blocked {
+		okStatusSet = append(okStatusSet, t.Status, AllStatuses)
+	}
+	query := db.Query(bson.M{
+		DependsOnKey: bson.M{"$elemMatch": bson.M{
+			DependencyTaskIdKey:       t.Id,
+			DependencyStatusKey:       bson.M{"$nin": okStatusSet},
+			DependencyUnattainableKey: false,
+		},
+		}})
+
+	return FindAll(query)
+}
+
+func FindAllMarkedUnattainableDependencies(t *Task) ([]Task, error) {
+	query := db.Query(bson.M{
+		DependsOnKey: bson.M{"$elemMatch": bson.M{
+			DependencyTaskIdKey:       t.Id,
+			DependencyUnattainableKey: true,
+		},
+		}})
+
+	return FindAll(query)
 }
 
 // UpdateOne updates one task.

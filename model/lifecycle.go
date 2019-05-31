@@ -29,6 +29,7 @@ const (
 	AllDependencies = "*"
 	AllVariants     = "*"
 	AllStatuses     = "*"
+	AnyStatus       = "any"
 )
 
 // cacheFromTask is helper for creating a build.TaskCache from a real Task model.
@@ -188,7 +189,6 @@ func MarkVersionCompleted(versionId string, finishTime time.Time, updates *Statu
 	buildsWithAllActiveTasksComplete := 0
 	activeBuilds := 0
 	finished := true
-	tasksWithDeps, err := task.FindAllTasksFromVersionWithDependencies(versionId)
 	if err != nil {
 		return errors.Wrap(err, "error finding tasks with dependencies")
 	}
@@ -196,7 +196,7 @@ func MarkVersionCompleted(versionId string, finishTime time.Time, updates *Statu
 		if b.Activated {
 			activeBuilds += 1
 		}
-		complete, buildStatus, err := b.AllUnblockedTasksFinished(tasksWithDeps)
+		complete, buildStatus, err := b.AllUnblockedTasksFinished()
 		if err != nil {
 			return errors.WithStack(err)
 		}
@@ -868,6 +868,10 @@ func createTasksForBuild(project *Project, buildVariant *BuildVariant, b *build.
 				newTask.DependsOn = append(newTask.DependsOn, newDeps...)
 			}
 		}
+
+		// Display tasks depend on all exec task dependencies
+		displayTasks[newTask.DisplayName].DependsOn = append(displayTasks[newTask.DisplayName].DependsOn, newTask.DependsOn...)
+
 		newTask.DisplayTask = displayTasks[newTask.DisplayName]
 
 		newTask.GeneratedBy = generatedBy

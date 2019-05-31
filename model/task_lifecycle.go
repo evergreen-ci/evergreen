@@ -189,7 +189,7 @@ func TryResetTask(taskId, user, origin string, detail *apimodels.TaskEndDetail) 
 	}
 
 	// only allow re-execution for failed or successful tasks
-	if !t.IsFinished() && !t.IsBlockedDisplayTask() {
+	if !t.IsFinished() {
 		// this is to disallow terminating running tasks via the UI
 		if origin == evergreen.UIPackage || origin == evergreen.RESTV2Package {
 			grip.Debugf("Unsatisfiable '%s' reset request on '%s' (status: '%s')",
@@ -416,10 +416,14 @@ func MarkEnd(t *task.Task, caller string, finishTime time.Time, detail *apimodel
 		})
 	}
 	err := t.MarkEnd(finishTime, detail)
-
 	if err != nil {
 		return errors.Wrap(err, "could not mark task finished")
 	}
+
+	if err = t.UpdateBlockedDependencies(false); err != nil {
+		return errors.Wrap(err, "could not update blocked dependencies")
+	}
+
 	status := t.ResultStatus()
 	event.LogTaskFinished(t.Id, t.Execution, t.HostId, status)
 
@@ -540,10 +544,6 @@ func UpdateBuildAndVersionStatusForTask(taskId string, updates *StatusChanges) e
 	if err != nil {
 		return errors.WithStack(err)
 	}
-	tasksWithDeps, err := task.FindAllTasksFromVersionWithDependencies(t.Version)
-	if err != nil {
-		return errors.Wrap(err, "error finding tasks with dependencies")
-	}
 
 	failedTask := false
 	buildComplete := false
@@ -554,9 +554,8 @@ func UpdateBuildAndVersionStatusForTask(taskId string, updates *StatusChanges) e
 	// update the build's status based on tasks for this build
 	for _, t := range buildTasks {
 		if !t.IsFinished() {
-			state, _ := t.BlockedState(tasksWithDeps)
-			if state == "blocked" {
-				tasksToNotify += 1
+			if t.Blocked() {
+				tasksToNotify++
 				if evergreen.IsFailedTaskStatus(t.Status) {
 					failedTask = true
 				}
@@ -566,7 +565,7 @@ func UpdateBuildAndVersionStatusForTask(taskId string, updates *StatusChanges) e
 		var displayTask *task.Task
 		status := ""
 		finishedTasks++
-		tasksToNotify += 1
+		tasksToNotify++
 
 		now = time.Now()
 		displayTask, err = t.GetDisplayTask()
