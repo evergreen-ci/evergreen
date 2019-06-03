@@ -208,9 +208,9 @@ func checkAllDependenciesSpec(project *model.Project) ValidationErrors {
 					if dependency.Variant == "" || coveredVariants[dependency.Variant] {
 						errs = append(errs,
 							ValidationError{
-								Message: fmt.Sprintf("task '%v' in project '%v' "+
-									"contains the all dependencies (%v)' "+
-									"specification and other explicit dependencies",
+								Message: fmt.Sprintf("task '%s' in project '%s' "+
+									"contains the all dependencies (%s)' "+
+									"specification and other explicit dependencies or duplicate variants",
 									task.Name, project.Identifier,
 									model.AllDependencies),
 							},
