@@ -220,7 +220,7 @@ func TestAssignNextAvailableTaskWithPlannerSettingVersionLegacy(t *testing.T) {
 				So(taskQueue.Save(), ShouldBeNil)
 				t, err := assignNextAvailableTask(taskQueue, model.NewTaskDispatchService(taskQueueServiceTTL), &theHostWhoCanBoastTheMostRoast)
 				So(err, ShouldBeNil)
-				So(err, ShouldBeNil)
+				So(t, ShouldBeNil)
 			})
 			Convey("with a host with a running task", func() {
 				anotherHost := host.Host{
