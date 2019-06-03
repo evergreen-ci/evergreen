@@ -344,10 +344,16 @@ Evergreen - {{Trunc .Task.Revision 10}} / {{.Task.BuildVariantDisplay}} / {{.Tas
           </div>
           <div class="col-lg-5">
             <div class="row">
-              <div class="col-md-4">
+              <div class="col-md-3">
                 <h3 class="section-heading"><i class="fa fa-flask"></i> Tests</h3>
               </div>
-              <div class="col-md-8">
+              <div class="col-md-5">
+                <div ng-hide="!task.test_results || task.test_results.length === 0"
+                class="pull-right" style="margin-top:15px">
+                      <input type="text" class="form-control" ng-change="filterTests()" ng-model="task.searchField" placeholder="Filter tests"/>
+                </div>
+              </div>
+              <div class="col-md-4">
                 <div ng-hide="!task.test_results || task.test_results.length == 0"
                 class="dropdown pull-right" style="margin-top:15px">
                 <button class="btn btn-default" data-toggle="dropdown" href="#" id="dLabel">
@@ -404,7 +410,7 @@ Evergreen - {{Trunc .Task.Revision 10}} / {{.Task.BuildVariantDisplay}} / {{.Tas
                         </tr>
                       </thead>
                       <tbody data-test-results="task.test_results">
-                        <tr md-virtual-repeat="test in task.test_results" ng-show="test.test_result.status != 'skip'"
+                        <tr md-virtual-repeat="test in task.filtered_results" ng-show="test.test_result.status != 'skip'"
                         class="test-result-row" ng-class="test.test_result.display_name == hash.test | conditional:'highlight-bg':''">
                           <td class="col-lg-6">
                             <div class="test-result-link-wrapper">

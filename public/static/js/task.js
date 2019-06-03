@@ -400,6 +400,22 @@ mciModule.controller('TaskHistoryDrawerCtrl', function($scope, $window, $locatio
         return orderedTestStatuses.indexOf(task.test_result.status);
       }
 
+      // filter tests in a task based on their display name
+      $scope.filterTests = function() {
+        if ($scope.task.searchField != "") {
+          $scope.task.filtered_results = []
+          $scope.task.test_results.forEach(function(result){
+            let name = result.test_result.display_name;
+            if(name.includes($scope.task.searchField)) {
+              $scope.task.filtered_results.push(result);
+            }
+          });
+        } else {
+          // special case for when the search box is empty
+          $scope.task.filtered_results = $scope.task.test_results;
+        }
+      };
+
       $scope.setSortBy = function(order) {
         $scope.sortBy = order;
         hash.sort = order.name;
@@ -477,6 +493,9 @@ mciModule.controller('TaskHistoryDrawerCtrl', function($scope, $window, $locatio
         if ($scope.task.test_results) {
           $scope.task.test_results.sort($scope.sortBy.compareFunc);
         };
+
+        // search box is initially empty, so filtered results = all test results
+        $scope.task.filtered_results = $scope.task.test_results;
 
         $scope.isMet = function(dependency) {
           // check if a dependency is met, unmet, or in progress
