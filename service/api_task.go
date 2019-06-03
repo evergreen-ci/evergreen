@@ -354,12 +354,12 @@ func assignNextAvailableTask(taskQueue *model.TaskQueue, taskQueueService model.
 			return nil, nil
 		}
 
-		nextTask, err := task.FindOne(task.ById(queueItem.Id))
+		nextTask, err := task.FindOneNoMerge(task.ById(queueItem.Id))
 		if err != nil {
 			return nil, err
 		}
 		if nextTask == nil {
-			return nil, errors.New("nil task on the queue")
+			return nil, nil
 		}
 
 		// validate that the task can be run, if not fetch the next one in
