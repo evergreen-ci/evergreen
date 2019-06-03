@@ -812,13 +812,7 @@ func createVersionItems(ctx context.Context, v *model.Version, ref *model.Projec
 
 		_, err = evergreen.GetEnvironment().DB().Collection(model.VersionCollection).InsertOne(sessCtx, v)
 		if err != nil {
-			cmdErr, isCmdErr := err.(mongo.CommandError)
-			if isCmdErr && cmdErr.HasErrorLabel(command.TransientTransactionError) {
-				grip.Notice(message.Fields{
-					"message":    "hit transient transaction error, will retry",
-					"version":    v.Id,
-					"insert_err": err.Error(),
-				})
+			if isTransientTxErr(err, v) {
 				return true, nil
 			}
 			abortErr := sessCtx.AbortTransaction(sessCtx)
