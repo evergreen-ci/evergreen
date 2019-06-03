@@ -348,7 +348,7 @@ Evergreen - {{Trunc .Task.Revision 10}} / {{.Task.BuildVariantDisplay}} / {{.Tas
                 <h3 class="section-heading"><i class="fa fa-flask"></i> Tests</h3>
               </div>
               <div class="col-md-5">
-                <div ng-hide="!task.test_results || task.test_results.length == 0"
+                <div ng-hide="!task.test_results || task.test_results.length === 0"
                 class="pull-right" style="margin-top:15px">
                       <input type="text" class="form-control" ng-change="filterTests()" ng-model="task.searchField" placeholder="Filter tests"/>
                 </div>

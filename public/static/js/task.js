@@ -402,18 +402,15 @@ mciModule.controller('TaskHistoryDrawerCtrl', function($scope, $window, $locatio
 
       // filter tests in a task based on their display name
       $scope.filterTests = function() {
-        if($scope.task.searchField != "")
-        {
+        if ($scope.task.searchField != "") {
           $scope.task.filtered_results = []
           $scope.task.test_results.forEach(function(result){
-            var name = result.test_result.display_name;
+            let name = result.test_result.display_name;
             if(name.includes($scope.task.searchField)) {
               $scope.task.filtered_results.push(result);
             }
           });
-        }
-        else
-        {
+        } else {
           // special case for when the search box is empty
           $scope.task.filtered_results = $scope.task.test_results;
         }
