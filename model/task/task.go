@@ -23,7 +23,6 @@ import (
 
 const (
 	dependencyKey = "dependencies"
-	taskKey       = "task"
 
 	// tasks should be unscheduled after ~a week
 	UnschedulableThreshold = 7 * 24 * time.Hour
