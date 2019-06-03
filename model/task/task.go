@@ -1044,7 +1044,7 @@ func (t *Task) MarkUnattainableDependency(dependecy *Task, unattainable bool) er
 			bsonutil.GetDottedKeyName(DependsOnKey, DependencyTaskIdKey): dependecy.Id,
 		},
 		bson.M{
-			bsonutil.GetDottedKeyName(DependsOnKey, "$", DependencyUnattainableKey): unattainable,
+			"$set": bson.M{bsonutil.GetDottedKeyName(DependsOnKey, "$", DependencyUnattainableKey): unattainable},
 		},
 	)
 }

@@ -457,7 +457,12 @@ func getTaskDependencies(t *task.Task) ([]uiDep, string, error) {
 		return nil, "", err
 	}
 
-	return uiDependencies, t.BlockedState(), nil
+	state, err := t.BlockedState()
+	if err != nil {
+		return nil, "", errors.Wrap(err, "can't get blocked state")
+	}
+
+	return uiDependencies, state, nil
 }
 
 // async handler for polling the task log

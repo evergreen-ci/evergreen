@@ -1372,7 +1372,7 @@ func TestFindAllUnmarkedBlockedDependencies(t *testing.T) {
 
 	deps, err = FindAllUnmarkedBlockedDependencies(t1, true)
 	assert.NoError(err)
-	assert.Len(deps, 2)
+	assert.Len(deps, 3)
 }
 
 func TestFindAllMarkedUnattainableDependencies(t *testing.T) {
