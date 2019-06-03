@@ -79,10 +79,11 @@ type Connector interface {
 
 	// Find project variables matching given projectId.
 	FindProjectVarsById(string) (*restModel.APIProjectVars, error)
-	// UpdateProjectVars updates the project using the variables given in the model,
-	// and additionally accepts a list of variables to remove.
+	// UpdateProjectVars updates the project using the variables given in the model.
 	// If successful, updates the given projectVars with the updated projectVars.
 	UpdateProjectVars(string, *restModel.APIProjectVars) error
+	// CopyProjectVars copies the variables for the first project to the second
+	CopyProjectVars(string, string) error
 
 	// Find the project matching the given ProjectId.
 	FindProjectById(string) (*model.ProjectRef, error)
@@ -218,6 +219,8 @@ type Connector interface {
 
 	// FindProjectAliases queries the database to find all aliases.
 	FindProjectAliases(string) ([]model.ProjectAlias, error)
+	// CopyProjectAliases copies aliases from the first project for the second project.
+	CopyProjectAliases(string, string) error
 
 	// TriggerRepotracker creates an amboy job to get the commits from a
 	// Github Push Event
