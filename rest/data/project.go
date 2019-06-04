@@ -330,10 +330,11 @@ func (pc *MockProjectConnector) UpdateProjectVars(projectId string, varsModel *r
 			return nil
 		}
 	}
-	return gimlet.ErrorResponse{
-		StatusCode: http.StatusNotFound,
-		Message:    fmt.Sprintf("variables for project '%s' not found", projectId),
-	}
+	tempVars.Vars = varsModel.Vars
+	tempVars.PrivateVars = varsModel.PrivateVars
+	tempVars.Id = projectId
+	pc.CachedVars = append(pc.CachedVars, &tempVars)
+	return nil
 }
 
 func (pc *MockProjectConnector) GetProjectEventLog(id string, before time.Time, n int) ([]restModel.APIProjectEvent, error) {

@@ -272,45 +272,48 @@ func (h *projectIDPatchHandler) Run(ctx context.Context) gimlet.Responder {
 		})
 	}
 
-	var hasHook bool
-	hasHook, err = h.sc.EnableWebhooks(dbProjectRef)
-	if err != nil {
-		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "Error enabling webhooks for project '%s'", h.projectID))
-	}
+	if dbProjectRef.Enabled {
+		var hasHook bool
+		hasHook, err = h.sc.EnableWebhooks(dbProjectRef)
+		if err != nil {
+			return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "Error enabling webhooks for project '%s'", h.projectID))
+		}
 
-	// verify enabling PR testing valid
-	if dbProjectRef.PRTestingEnabled {
-		if hasHook {
+		// verify enabling PR testing valid
+		if dbProjectRef.PRTestingEnabled {
+			if hasHook {
+				return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+					StatusCode: http.StatusBadRequest,
+					Message:    "Cannot enable PR Testing in this repo, must enable GitHub webhooks first",
+				})
+			}
+			if err = h.sc.EnablePRTesting(dbProjectRef); err != nil {
+				return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "Error enabling PR testing for project '%s'", h.projectID))
+			}
+		}
+		// verify enabling commit queue valid
+		var temp interface{}
+		temp, err = apiProjectRef.CommitQueue.ToService()
+		if err != nil {
+			return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "API error converting from APICommitQueueParams to CommitQueueParams"))
+		}
+		commitQueueParams, ok := temp.(dbModel.CommitQueueParams)
+		if !ok {
 			return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
-				StatusCode: http.StatusBadRequest,
-				Message:    "Cannot enable PR Testing in this repo, must enable GitHub webhooks first",
+				StatusCode: http.StatusInternalServerError,
+				Message:    fmt.Sprintf("Unexpected type %T for APICommitQueueParams", i),
 			})
 		}
-		if err = h.sc.EnablePRTesting(dbProjectRef); err != nil {
-			return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "Error enabling PR testing for project '%s'", h.projectID))
-		}
-	}
-	// verify enabling commit queue valid
-	temp, err := apiProjectRef.CommitQueue.ToService()
-	if err != nil {
-		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "API error converting from APICommitQueueParams to CommitQueueParams"))
-	}
-	commitQueueParams, ok := temp.(dbModel.CommitQueueParams)
-	if !ok {
-		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
-			StatusCode: http.StatusInternalServerError,
-			Message:    fmt.Sprintf("Unexpected type %T for APICommitQueueParams", i),
-		})
-	}
-	if commitQueueParams.Enabled {
-		if hasHook {
-			gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
-				StatusCode: http.StatusBadRequest,
-				Message:    "Cannot enable commit queue in this repo, must enable GitHub webhooks first",
-			})
-		}
-		if err = h.sc.EnableCommitQueue(dbProjectRef, commitQueueParams); err != nil {
-			return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "Error enabling commit queue for project '%s'", h.projectID))
+		if commitQueueParams.Enabled {
+			if hasHook {
+				gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+					StatusCode: http.StatusBadRequest,
+					Message:    "Cannot enable commit queue in this repo, must enable GitHub webhooks first",
+				})
+			}
+			if err = h.sc.EnableCommitQueue(dbProjectRef, commitQueueParams); err != nil {
+				return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "Error enabling commit queue for project '%s'", h.projectID))
+			}
 		}
 	}
 
