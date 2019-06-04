@@ -404,10 +404,9 @@ mciModule.controller('TaskHistoryDrawerCtrl', function($scope, $window, $locatio
       $scope.filterTests = function() {
         if ($scope.task.searchField != "") {
           $scope.task.filtered_results = []
-          let searchValue = $scope.task.searchField.toLowerCase();
           $scope.task.test_results.forEach(function(result){
-            let name = result.test_result.display_name.toLowerCase();
-            if(name.includes(searchValue)) {
+            let name = result.test_result.display_name;
+            if(name.includes($scope.task.searchField)) {
               $scope.task.filtered_results.push(result);
             }
           });
