@@ -196,22 +196,27 @@ func CheckProjectConfigurationIsValid(project *model.Project) error {
 }
 
 // ensure that if any task spec references 'model.AllDependencies', it
-// references no other dependency
+// references no other dependency within the variant
 func checkAllDependenciesSpec(project *model.Project) ValidationErrors {
 	errs := ValidationErrors{}
 	for _, task := range project.Tasks {
+		coveredVariants := map[string]bool{}
 		if len(task.DependsOn) > 1 {
 			for _, dependency := range task.DependsOn {
 				if dependency.Name == model.AllDependencies {
-					errs = append(errs,
-						ValidationError{
-							Message: fmt.Sprintf("task '%v' in project '%v' "+
-								"contains the all dependencies (%v)' "+
-								"specification and other explicit dependencies",
-								project.Identifier, task.Name,
-								model.AllDependencies),
-						},
-					)
+					// incorrect if no variant specified or this variant has already been covered
+					if dependency.Variant == "" || coveredVariants[dependency.Variant] {
+						errs = append(errs,
+							ValidationError{
+								Message: fmt.Sprintf("task '%s' in project '%s' "+
+									"contains the all dependencies (%s)' "+
+									"specification and other explicit dependencies or duplicate variants",
+									task.Name, project.Identifier,
+									model.AllDependencies),
+							},
+						)
+					}
+					coveredVariants[dependency.Variant] = true
 				}
 			}
 		}
