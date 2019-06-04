@@ -1,6 +1,7 @@
 package data
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	"time"
@@ -60,7 +61,7 @@ func (pc *DBProjectConnector) UpdateProject(projectRef *model.ProjectRef) error 
 }
 
 // EnableWebhooks returns true if a hook for the given owner/repo exists or was inserted.
-func (pc *DBProjectConnector) EnableWebhooks(projectRef *model.ProjectRef) (bool, error) {
+func (pc *DBProjectConnector) EnableWebhooks(ctx context.Context, projectRef *model.ProjectRef) (bool, error) {
 	hook, err := model.FindGithubHook(projectRef.Owner, projectRef.Repo)
 	if err != nil {
 		return false, errors.Wrapf(err, "Database error finding github hook for project '%s'", projectRef.Identifier)
@@ -74,7 +75,7 @@ func (pc *DBProjectConnector) EnableWebhooks(projectRef *model.ProjectRef) (bool
 		return true, errors.Wrap(err, "error finding evergreen settings")
 	}
 
-	hook, err = model.SetupNewGithubHook(*settings, projectRef.Owner, projectRef.Repo)
+	hook, err = model.SetupNewGithubHook(ctx, *settings, projectRef.Owner, projectRef.Repo)
 	if err != nil {
 		// don't return error:
 		// sometimes people change a project to track a personal
@@ -110,16 +111,13 @@ func (pc *DBProjectConnector) EnablePRTesting(projectRef *model.ProjectRef) erro
 }
 
 func (pc *DBProjectConnector) EnableCommitQueue(projectRef *model.ProjectRef, commitQueueParams model.CommitQueueParams) error {
-	resultRef, err := model.FindOneProjectRefWithCommitQueueByOwnerRepoAndBranch(projectRef.Owner, projectRef.Repo, projectRef.Branch)
-	if err != nil && !adb.ResultsNotFound(err) {
-		return errors.Wrapf(err, "")
-	}
-	if resultRef != nil && resultRef.CommitQueue.Enabled && resultRef.Identifier != projectRef.Identifier {
-		return errors.Errorf("Cannot enable Commit Queue in this repo, must disable in other projects first")
+	if ok, err := projectRef.CanEnableCommitQueue(); err != nil {
+		return errors.Wrap(err, "error enabling commit queue")
+	} else if !ok {
+		return errors.Errorf("Cannot enable commit queue in this repo, must disable in other projects first")
 	}
 
-	_, err = commitqueue.FindOneId(projectRef.Identifier)
-	if err != nil {
+	if _, err := commitqueue.FindOneId(projectRef.Identifier); err != nil {
 		if adb.ResultsNotFound(err) {
 			cq := &commitqueue.CommitQueue{ProjectID: projectRef.Identifier}
 			if err = commitqueue.InsertQueue(cq); err != nil {
@@ -350,7 +348,7 @@ func (pc *MockProjectConnector) GetProjectWithCommitQueueByOwnerRepoAndBranch(ow
 
 	return nil, errors.Errorf("can't query for projectRef %s/%s tracking %s", owner, repo, branch)
 }
-func (pc *MockProjectConnector) EnableWebhooks(projectRef *model.ProjectRef) (bool, error) {
+func (pc *MockProjectConnector) EnableWebhooks(ctx context.Context, projectRef *model.ProjectRef) (bool, error) {
 	return false, nil
 }
 

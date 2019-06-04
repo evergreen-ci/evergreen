@@ -274,7 +274,7 @@ func (h *projectIDPatchHandler) Run(ctx context.Context) gimlet.Responder {
 
 	if dbProjectRef.Enabled {
 		var hasHook bool
-		hasHook, err = h.sc.EnableWebhooks(dbProjectRef)
+		hasHook, err = h.sc.EnableWebhooks(ctx, dbProjectRef)
 		if err != nil {
 			return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "Error enabling webhooks for project '%s'", h.projectID))
 		}

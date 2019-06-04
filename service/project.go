@@ -1,6 +1,7 @@
 package service
 
 import (
+	"context"
 	"fmt"
 	"io/ioutil"
 	"net/http"
@@ -250,7 +251,7 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 	}
 	origGithubWebhookEnabled := (hook != nil)
 	if hook == nil {
-		hook, err = model.SetupNewGithubHook(uis.Settings, responseRef.Owner, responseRef.Repo)
+		hook, err = model.SetupNewGithubHook(context.Background(), uis.Settings, responseRef.Owner, responseRef.Repo)
 		if err != nil {
 			grip.Error(message.WrapError(err, message.Fields{
 				"source":  "project edit",

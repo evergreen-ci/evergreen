@@ -65,7 +65,7 @@ func FindGithubHook(owner, repo string) (*GithubHook, error) {
 	return hook, nil
 }
 
-func SetupNewGithubHook(settings evergreen.Settings, owner string, repo string) (*GithubHook, error) {
+func SetupNewGithubHook(ctx context.Context, settings evergreen.Settings, owner string, repo string) (*GithubHook, error) {
 	token, err := settings.GetGithubOauthToken()
 	if err != nil {
 		return nil, err
@@ -91,13 +91,12 @@ func SetupNewGithubHook(settings evergreen.Settings, owner string, repo string) 
 			"insecure_ssl": github.String("0"),
 		},
 	}
-
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	newCtx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
 
 	resp := &github.Response{}
 	respHook := &github.Hook{}
-	respHook, resp, err = client.Repositories.CreateHook(ctx, owner, repo, &hookObj)
+	respHook, resp, err = client.Repositories.CreateHook(newCtx, owner, repo, &hookObj)
 	if err != nil {
 		return nil, err
 	}

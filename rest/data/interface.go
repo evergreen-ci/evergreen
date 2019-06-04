@@ -92,9 +92,9 @@ type Connector interface {
 
 	// EnableWebhooks creates a webhook for the project's owner/repo if one does not exist.
 	// If unable to setup the new webhook, returns false but no error.
-	EnableWebhooks(*model.ProjectRef) (bool, error)
+	EnableWebhooks(context.Context, *model.ProjectRef) (bool, error)
 	// EnablePRTesting determines if PR testing can be enabled for the given project.
-	EnablePRTesting(projectRef *model.ProjectRef) error
+	EnablePRTesting(*model.ProjectRef) error
 
 	// FindProjects is a method to find projects as ordered by name
 	FindProjects(string, int, int, bool) ([]model.ProjectRef, error)
