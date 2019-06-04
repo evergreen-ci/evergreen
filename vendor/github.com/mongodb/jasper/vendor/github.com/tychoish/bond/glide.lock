@@ -15,6 +15,6 @@ imports:
 - name: github.com/mongodb/grip
   version: 8b8accd7a3ec9b31a2d3eea610d5bf906bddfd11
 - name: github.com/mongodb/amboy
-  version: 9c9d8e1dc99960bf9d2e5c67da9e4bc800700942
+  version: 2b8431d235ec6c322dba74eff51988ebd8ac1f7f
 
 devImports: []

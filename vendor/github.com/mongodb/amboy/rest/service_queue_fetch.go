@@ -14,7 +14,7 @@ import (
 func (s *QueueService) Fetch(w http.ResponseWriter, r *http.Request) {
 	name := gimlet.GetVars(r)["name"]
 
-	job, ok := s.queue.Get(name)
+	job, ok := s.queue.Get(r.Context(), name)
 	if !ok {
 		grip.Infof("job named %s does not exist in the queue", name)
 		gimlet.WriteJSONResponse(w, http.StatusNotFound, nil)

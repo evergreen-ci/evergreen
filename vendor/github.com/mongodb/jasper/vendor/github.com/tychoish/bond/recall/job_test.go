@@ -197,7 +197,8 @@ func (s *DownloadJobSuite) TestJobSmokeTests() {
 		_, err = os.Stat(filepath.Join(s.tempDir, fn))
 		s.False(os.IsNotExist(err))
 		stat, err := os.Stat(filepath.Join(s.tempDir, fn[:len(fn)-4]))
-		s.False(os.IsNotExist(err))
+		s.Require().False(os.IsNotExist(err))
+		s.Require().NotNil(stat)
 		s.True(stat.IsDir())
 	}
 }

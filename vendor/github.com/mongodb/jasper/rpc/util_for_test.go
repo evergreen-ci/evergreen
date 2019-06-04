@@ -85,7 +85,7 @@ func startTestService(ctx context.Context, mngr jasper.Manager, addr net.Addr) e
 
 // newTestClient establishes a client for testing purposes that closes when
 // the context is done.
-func newTestClient(ctx context.Context, addr net.Addr) (jasper.Manager, error) {
+func newTestClient(ctx context.Context, addr net.Addr) (jasper.RemoteClient, error) {
 	client, err := NewClient(ctx, addr, "")
 	if err != nil {
 		return nil, errors.Wrap(err, "could not get client")

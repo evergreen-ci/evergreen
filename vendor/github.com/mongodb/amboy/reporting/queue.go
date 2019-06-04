@@ -42,7 +42,7 @@ func (r *queueReporter) JobStatus(ctx context.Context, f CounterFilter) (*JobSta
 	case InProgress:
 		for stat := range r.queue.JobStats(ctx) {
 			if stat.InProgress {
-				job, ok := r.queue.Get(stat.ID)
+				job, ok := r.queue.Get(ctx, stat.ID)
 				if ok {
 					counters[job.Type().Name]++
 				}
@@ -51,7 +51,7 @@ func (r *queueReporter) JobStatus(ctx context.Context, f CounterFilter) (*JobSta
 	case Pending:
 		for stat := range r.queue.JobStats(ctx) {
 			if !stat.Completed && !stat.InProgress {
-				job, ok := r.queue.Get(stat.ID)
+				job, ok := r.queue.Get(ctx, stat.ID)
 				if ok {
 					counters[job.Type().Name]++
 				}
@@ -60,7 +60,7 @@ func (r *queueReporter) JobStatus(ctx context.Context, f CounterFilter) (*JobSta
 	case Stale:
 		for stat := range r.queue.JobStats(ctx) {
 			if !stat.Completed && stat.InProgress && time.Since(stat.ModificationTime) > queue.LockTimeout {
-				job, ok := r.queue.Get(stat.ID)
+				job, ok := r.queue.Get(ctx, stat.ID)
 				if ok {
 					counters[job.Type().Name]++
 				}
@@ -111,7 +111,7 @@ func (r *queueReporter) RecentTiming(ctx context.Context, window time.Duration, 
 		}
 	case Latency:
 		for stat := range r.queue.JobStats(ctx) {
-			job, ok := r.queue.Get(stat.ID)
+			job, ok := r.queue.Get(ctx, stat.ID)
 			if !ok {
 				continue
 			}
@@ -124,7 +124,7 @@ func (r *queueReporter) RecentTiming(ctx context.Context, window time.Duration, 
 	case Running:
 		for stat := range r.queue.JobStats(ctx) {
 			if !stat.Completed && stat.InProgress {
-				job, ok := r.queue.Get(stat.ID)
+				job, ok := r.queue.Get(ctx, stat.ID)
 				if !ok {
 					continue
 				}
@@ -177,7 +177,7 @@ func (r *queueReporter) JobIDsByState(ctx context.Context, jobType string, f Cou
 	case InProgress:
 		for stat := range r.queue.JobStats(ctx) {
 			if jobType != "" {
-				job, ok := r.queue.Get(stat.ID)
+				job, ok := r.queue.Get(ctx, stat.ID)
 				if !ok && job.Type().Name != jobType {
 					continue
 				}
@@ -189,7 +189,7 @@ func (r *queueReporter) JobIDsByState(ctx context.Context, jobType string, f Cou
 	case Pending:
 		for stat := range r.queue.JobStats(ctx) {
 			if jobType != "" {
-				job, ok := r.queue.Get(stat.ID)
+				job, ok := r.queue.Get(ctx, stat.ID)
 				if !ok && job.Type().Name != jobType {
 					continue
 				}
@@ -201,7 +201,7 @@ func (r *queueReporter) JobIDsByState(ctx context.Context, jobType string, f Cou
 	case Stale:
 		for stat := range r.queue.JobStats(ctx) {
 			if jobType != "" {
-				job, ok := r.queue.Get(stat.ID)
+				job, ok := r.queue.Get(ctx, stat.ID)
 				if !ok && job.Type().Name != jobType {
 					continue
 				}
@@ -241,7 +241,7 @@ func (r *queueReporter) RecentErrors(ctx context.Context, window time.Duration, 
 	case UniqueErrors:
 		for stat := range r.queue.JobStats(ctx) {
 			if stat.Completed && stat.ErrorCount > 0 {
-				job, ok := r.queue.Get(stat.ID)
+				job, ok := r.queue.Get(ctx, stat.ID)
 				if !ok {
 					continue
 				}
@@ -277,7 +277,7 @@ func (r *queueReporter) RecentErrors(ctx context.Context, window time.Duration, 
 	case AllErrors:
 		for stat := range r.queue.JobStats(ctx) {
 			if stat.Completed && stat.ErrorCount > 0 {
-				job, ok := r.queue.Get(stat.ID)
+				job, ok := r.queue.Get(ctx, stat.ID)
 				if !ok {
 					continue
 				}
@@ -299,7 +299,7 @@ func (r *queueReporter) RecentErrors(ctx context.Context, window time.Duration, 
 	case StatsOnly:
 		for stat := range r.queue.JobStats(ctx) {
 			if stat.Completed && stat.ErrorCount > 0 {
-				job, ok := r.queue.Get(stat.ID)
+				job, ok := r.queue.Get(ctx, stat.ID)
 				if !ok {
 					continue
 				}
@@ -357,7 +357,7 @@ func (r *queueReporter) RecentJobErrors(ctx context.Context, jobType string, win
 	case UniqueErrors:
 		for stat := range r.queue.JobStats(ctx) {
 			if stat.Completed && stat.ErrorCount > 0 {
-				job, ok := r.queue.Get(stat.ID)
+				job, ok := r.queue.Get(ctx, stat.ID)
 				if !ok {
 					continue
 				}
@@ -395,7 +395,7 @@ func (r *queueReporter) RecentJobErrors(ctx context.Context, jobType string, win
 	case AllErrors:
 		for stat := range r.queue.JobStats(ctx) {
 			if stat.Completed && stat.ErrorCount > 0 {
-				job, ok := r.queue.Get(stat.ID)
+				job, ok := r.queue.Get(ctx, stat.ID)
 				if !ok {
 					continue
 				}
@@ -419,7 +419,7 @@ func (r *queueReporter) RecentJobErrors(ctx context.Context, jobType string, win
 	case StatsOnly:
 		for stat := range r.queue.JobStats(ctx) {
 			if stat.Completed && stat.ErrorCount > 0 {
-				job, ok := r.queue.Get(stat.ID)
+				job, ok := r.queue.Get(ctx, stat.ID)
 				if !ok {
 					continue
 				}

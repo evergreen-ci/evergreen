@@ -12,8 +12,7 @@ import (
 // Process creates a cli.Command that interfaces with a Jasper process.
 func Process() cli.Command {
 	return cli.Command{
-		Name:  "process",
-		Flags: []cli.Flag{},
+		Name: "process",
 		Subcommands: []cli.Command{
 			processInfo(),
 			processRunning(),
@@ -31,7 +30,9 @@ func Process() cli.Command {
 
 func processInfo() cli.Command {
 	return cli.Command{
-		Name: "info",
+		Name:   "info",
+		Flags:  clientFlags(),
+		Before: clientBefore(),
 		Action: func(c *cli.Context) error {
 			input := &IDInput{}
 			return doPassthroughInputOutput(c, input, func(ctx context.Context, client jasper.RemoteClient) interface{} {
@@ -47,7 +48,9 @@ func processInfo() cli.Command {
 
 func processRunning() cli.Command {
 	return cli.Command{
-		Name: "running",
+		Name:   "running",
+		Flags:  clientFlags(),
+		Before: clientBefore(),
 		Action: func(c *cli.Context) error {
 			input := &IDInput{}
 			return doPassthroughInputOutput(c, input, func(ctx context.Context, client jasper.RemoteClient) interface{} {
@@ -63,7 +66,9 @@ func processRunning() cli.Command {
 
 func processComplete() cli.Command {
 	return cli.Command{
-		Name: "complete",
+		Name:   "complete",
+		Flags:  clientFlags(),
+		Before: clientBefore(),
 		Action: func(c *cli.Context) error {
 			input := &IDInput{}
 			return doPassthroughInputOutput(c, input, func(ctx context.Context, client jasper.RemoteClient) interface{} {
@@ -95,7 +100,9 @@ func processSignal() cli.Command {
 
 func processWait() cli.Command {
 	return cli.Command{
-		Name: "wait",
+		Name:   "wait",
+		Flags:  clientFlags(),
+		Before: clientBefore(),
 		Action: func(c *cli.Context) error {
 			input := &IDInput{}
 			return doPassthroughInputOutput(c, input, func(ctx context.Context, client jasper.RemoteClient) interface{} {
@@ -135,7 +142,9 @@ func processRespawn() cli.Command {
 
 func processRegisterSignalTriggerID() cli.Command {
 	return cli.Command{
-		Name: "register-signal-trigger-id",
+		Name:   "register-signal-trigger-id",
+		Flags:  clientFlags(),
+		Before: clientBefore(),
 		Action: func(c *cli.Context) error {
 			input := &SignalTriggerIDInput{}
 			return doPassthroughInputOutput(c, input, func(ctx context.Context, client jasper.RemoteClient) interface{} {
@@ -151,7 +160,9 @@ func processRegisterSignalTriggerID() cli.Command {
 
 func processTag() cli.Command {
 	return cli.Command{
-		Name: "tag",
+		Name:   "tag",
+		Flags:  clientFlags(),
+		Before: clientBefore(),
 		Action: func(c *cli.Context) error {
 			input := &TagIDInput{}
 			return doPassthroughInputOutput(c, input, func(ctx context.Context, client jasper.RemoteClient) interface{} {
@@ -168,7 +179,9 @@ func processTag() cli.Command {
 
 func processGetTags() cli.Command {
 	return cli.Command{
-		Name: "get-tags",
+		Name:   "get-tags",
+		Flags:  clientFlags(),
+		Before: clientBefore(),
 		Action: func(c *cli.Context) error {
 			input := &IDInput{}
 			return doPassthroughInputOutput(c, input, func(ctx context.Context, client jasper.RemoteClient) interface{} {
@@ -184,7 +197,9 @@ func processGetTags() cli.Command {
 
 func processResetTags() cli.Command {
 	return cli.Command{
-		Name: "reset-tags",
+		Name:   "reset-tags",
+		Flags:  clientFlags(),
+		Before: clientBefore(),
 		Action: func(c *cli.Context) error {
 			input := &IDInput{}
 			return doPassthroughInputOutput(c, input, func(ctx context.Context, client jasper.RemoteClient) interface{} {

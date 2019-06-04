@@ -367,6 +367,16 @@ func TestCommandImplementation(t *testing.T) {
 							}
 							assert.True(t, setsEnv)
 						},
+						"GetJobs": func(ctx context.Context, t *testing.T, cmd Command) {
+							jobs, err := cmd.Append("ls", "echo hi", "ls -lha").Jobs(ctx)
+							assert.NoError(t, err)
+							assert.Len(t, jobs, 3)
+						},
+						"GetJobsForeground": func(ctx context.Context, t *testing.T, cmd Command) {
+							jobs, err := cmd.Append("ls", "echo hi", "ls -lha").JobsForeground(ctx)
+							assert.NoError(t, err)
+							assert.Len(t, jobs, 3)
+						},
 						// "": func(ctx context.Context, t *testing.T, cmd Command) {},
 					} {
 						t.Run(name, func(t *testing.T) {

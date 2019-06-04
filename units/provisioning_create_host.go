@@ -274,7 +274,7 @@ func (j *createHostJob) tryRequeue(ctx context.Context) {
 			WaitUntil: j.start.Add(wait),
 			MaxTime:   j.TimeInfo().MaxTime - (time.Since(j.start)) - time.Minute,
 		})
-		err := j.env.RemoteQueue().Put(job)
+		err := j.env.RemoteQueue().Put(ctx, job)
 		grip.Error(message.WrapError(err, message.Fields{
 			"message":  "failed to requeue setup job",
 			"host":     j.host.Id,
@@ -312,7 +312,7 @@ func (j *createHostJob) isImageBuilt(ctx context.Context) (bool, error) {
 	if j.BuildImageStarted == false {
 		j.BuildImageStarted = true
 		buildingContainerJob := NewBuildingContainerImageJob(j.env, parent, j.host.DockerOptions, j.host.Provider)
-		err = j.env.RemoteQueue().Put(buildingContainerJob)
+		err = j.env.RemoteQueue().Put(ctx, buildingContainerJob)
 		grip.Debug(message.WrapError(err, message.Fields{
 			"message": "Duplicate key being added to job to block building containers",
 		}))

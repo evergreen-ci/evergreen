@@ -145,6 +145,6 @@ func (j *idleHostJob) Run(ctx context.Context) {
 		j.Terminated = true
 		tjob := NewHostTerminationJob(j.env, *j.host, false)
 		queue := j.env.RemoteQueue()
-		j.AddError(queue.Put(tjob))
+		j.AddError(queue.Put(ctx, tjob))
 	}
 }

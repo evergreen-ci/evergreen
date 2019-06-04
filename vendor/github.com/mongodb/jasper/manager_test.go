@@ -92,7 +92,6 @@ func TestManagerInterface(t *testing.T) {
 					assert.Nil(t, proc)
 				},
 				"ListAllOperations": func(ctx context.Context, t *testing.T, manager Manager) {
-					t.Skip("this often deadlocks")
 					created, err := createProcs(ctx, trueCreateOpts(), manager, 10)
 					require.NoError(t, err)
 					assert.Len(t, created, 10)

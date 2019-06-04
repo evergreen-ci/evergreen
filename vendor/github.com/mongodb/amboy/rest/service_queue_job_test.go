@@ -37,7 +37,7 @@ func (s *JobStatusSuite) SetupSuite() {
 
 	j := job.NewShellJob("echo foo", "")
 	s.jobName = j.ID()
-	s.NoError(s.service.queue.Put(j))
+	s.NoError(s.service.queue.Put(ctx, j))
 
 	s.NoError(s.service.App().Resolve())
 }
@@ -47,8 +47,11 @@ func (s *JobStatusSuite) TearDownSuite() {
 }
 
 func (s *JobStatusSuite) TestIncorrectOrInvalidJobNamesReturnExpectedResults() {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	for _, name := range []string{"", " ", "123", "DOES-NOT-EXIST", "foo"} {
-		resp, err := s.service.getJobStatusResponse(name)
+		resp, err := s.service.getJobStatusResponse(ctx, name)
 		s.Error(err)
 
 		s.Equal(err.Error(), resp.Error)
@@ -60,9 +63,12 @@ func (s *JobStatusSuite) TestIncorrectOrInvalidJobNamesReturnExpectedResults() {
 }
 
 func (s *JobStatusSuite) TestJobNameReturnsSuccessfulResponse() {
-	amboy.Wait(s.service.queue)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 
-	resp, err := s.service.getJobStatusResponse(s.jobName)
+	amboy.Wait(ctx, s.service.queue)
+
+	resp, err := s.service.getJobStatusResponse(ctx, s.jobName)
 	s.NoError(err)
 
 	s.Equal("", resp.Error)

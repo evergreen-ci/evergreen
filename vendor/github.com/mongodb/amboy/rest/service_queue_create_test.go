@@ -44,30 +44,39 @@ func (s *CreateJobSuite) TearDownSuite() {
 }
 
 func (s *CreateJobSuite) TestBaseResponseCreatorHasExpectedValues() {
-	resp := s.service.createJobResponseBase()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 
-	s.Equal(s.service.queue.Stats().Pending, resp.QueueDepth)
-	s.Equal(s.service.getStatus(), resp.Status)
+	resp := s.service.createJobResponseBase(ctx)
+
+	s.Equal(s.service.queue.Stats(ctx).Pending, resp.QueueDepth)
+	s.Equal(s.service.getStatus(ctx), resp.Status)
 	s.False(resp.Registered)
 	s.Equal("", resp.ID)
 	s.Equal("", resp.Error)
 }
 
 func (s *CreateJobSuite) TestNilJobPayloadResultsInError() {
-	resp, err := s.service.createJob(&registry.JobInterchange{})
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	resp, err := s.service.createJob(ctx, &registry.JobInterchange{})
 	s.Error(err)
 	s.Equal(err.Error(), resp.Error)
 	s.False(resp.Registered)
 }
 
 func (s *CreateJobSuite) TestAddingAJobThatAlreadyExistsResultsInError() {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	j := job.NewShellJob("true", "")
 	payload, err := registry.MakeJobInterchange(j, amboy.JSON)
 	s.NoError(err)
 
-	s.NoError(s.service.queue.Put(j))
+	s.NoError(s.service.queue.Put(ctx, j))
 
-	resp, err := s.service.createJob(payload)
+	resp, err := s.service.createJob(ctx, payload)
 	s.Error(err, fmt.Sprintf("%+v", resp))
 
 	s.Equal(err.Error(), resp.Error)
@@ -75,12 +84,15 @@ func (s *CreateJobSuite) TestAddingAJobThatAlreadyExistsResultsInError() {
 }
 
 func (s *CreateJobSuite) TestAddingJobSuccessfuly() {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	j := job.NewShellJob("true", "")
 
 	payload, err := registry.MakeJobInterchange(j, amboy.JSON)
 	s.NoError(err)
 
-	resp, err := s.service.createJob(payload)
+	resp, err := s.service.createJob(ctx, payload)
 	s.NoError(err)
 
 	s.Equal(j.ID(), resp.ID)
@@ -109,6 +121,9 @@ func (s *CreateJobSuite) TestRequestWithNilPayload() {
 }
 
 func (s *CreateJobSuite) TestRequestToAddJobThatAlreadyExists() {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	router, err := s.service.App().Handler()
 	s.NoError(err)
 
@@ -121,7 +136,7 @@ func (s *CreateJobSuite) TestRequestToAddJobThatAlreadyExists() {
 	j, err := payload.Resolve(amboy.JSON)
 	s.NoError(err)
 
-	s.NoError(s.service.queue.Put(j))
+	s.NoError(s.service.queue.Put(ctx, j))
 
 	w := httptest.NewRecorder()
 	req := httptest.NewRequest("POST", "http://example.com/v1/job/create", bytes.NewBuffer(rb))
@@ -138,10 +153,13 @@ func (s *CreateJobSuite) TestRequestToAddJobThatAlreadyExists() {
 }
 
 func (s *CreateJobSuite) TestRequestToAddNewJobRegistersJob() {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	router, err := s.service.App().Handler()
 	s.NoError(err)
 
-	startingTotal := s.service.queue.Stats().Total
+	startingTotal := s.service.queue.Stats(ctx).Total
 	j := job.NewShellJob("true", "")
 	payload, err := registry.MakeJobInterchange(j, amboy.JSON)
 	s.NoError(err)
@@ -162,5 +180,5 @@ func (s *CreateJobSuite) TestRequestToAddNewJobRegistersJob() {
 	s.True(resp.Error == "")
 	s.True(resp.Registered)
 	s.Equal(j.ID(), resp.ID)
-	s.Equal(s.service.queue.Stats().Total, startingTotal+1)
+	s.Equal(s.service.queue.Stats(ctx).Total, startingTotal+1)
 }

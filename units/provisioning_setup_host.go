@@ -99,7 +99,7 @@ func (j *setupHostJob) Run(ctx context.Context) {
 	if j.env == nil {
 		j.env = evergreen.GetEnvironment()
 	}
-	defer j.tryRequeue()
+	defer j.tryRequeue(ctx)
 
 	settings := j.env.Settings()
 
@@ -751,13 +751,13 @@ func (j *setupHostJob) fetchRemoteTaskData(ctx context.Context, taskId, cliPath,
 	return errors.WithStack(err)
 }
 
-func (j *setupHostJob) tryRequeue() {
+func (j *setupHostJob) tryRequeue(ctx context.Context) {
 	if shouldRetryProvisioning(j.host) && j.env.RemoteQueue().Started() {
 		job := NewHostSetupJob(j.env, *j.host, fmt.Sprintf("attempt-%d", j.host.ProvisionAttempts))
 		job.UpdateTimeInfo(amboy.JobTimeInfo{
 			WaitUntil: time.Now().Add(time.Minute),
 		})
-		err := j.env.RemoteQueue().Put(job)
+		err := j.env.RemoteQueue().Put(ctx, job)
 		grip.Critical(message.WrapError(err, message.Fields{
 			"message":  "failed to requeue setup job",
 			"host":     j.host.Id,

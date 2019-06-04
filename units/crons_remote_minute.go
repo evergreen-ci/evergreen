@@ -70,7 +70,7 @@ func (j *cronsRemoteMinuteJob) Run(ctx context.Context) {
 			j.AddError(errors.New("operation aborted"))
 		}
 
-		catcher.Add(op(queue))
+		catcher.Add(op(ctx, queue))
 	}
 	j.ErrorCount = catcher.Len()
 

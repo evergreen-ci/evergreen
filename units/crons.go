@@ -1,6 +1,7 @@
 package units
 
 import (
+	"context"
 	"fmt"
 	"strings"
 	"time"
@@ -22,7 +23,7 @@ import (
 const tsFormat = "2006-01-02.15-04-05"
 
 func PopulateCatchupJobs(part int) amboy.QueueOperation {
-	return func(queue amboy.Queue) error {
+	return func(ctx context.Context, queue amboy.Queue) error {
 		flags, err := evergreen.GetServiceFlags()
 		if err != nil {
 			return errors.WithStack(err)
@@ -66,7 +67,7 @@ func PopulateCatchupJobs(part int) amboy.QueueOperation {
 			if mostRecentVersion.CreateTime.Before(time.Now().Add(-2 * time.Hour)) {
 				j := NewRepotrackerJob(fmt.Sprintf("catchup-%s", ts), proj.Identifier)
 				j.SetPriority(-1)
-				catcher.Add(queue.Put(j))
+				catcher.Add(queue.Put(ctx, j))
 			}
 		}
 
@@ -75,7 +76,7 @@ func PopulateCatchupJobs(part int) amboy.QueueOperation {
 }
 
 func PopulateRepotrackerPollingJobs(part int) amboy.QueueOperation {
-	return func(queue amboy.Queue) error {
+	return func(ctx context.Context, queue amboy.Queue) error {
 		flags, err := evergreen.GetServiceFlags()
 		if err != nil {
 			return errors.WithStack(err)
@@ -105,7 +106,7 @@ func PopulateRepotrackerPollingJobs(part int) amboy.QueueOperation {
 
 			j := NewRepotrackerJob(fmt.Sprintf("polling-%s", ts), proj.Identifier)
 			j.SetPriority(-1)
-			catcher.Add(queue.Put(j))
+			catcher.Add(queue.Put(ctx, j))
 		}
 
 		return catcher.Resolve()
@@ -113,7 +114,7 @@ func PopulateRepotrackerPollingJobs(part int) amboy.QueueOperation {
 }
 
 func PopulateActivationJobs(part int) amboy.QueueOperation {
-	return func(queue amboy.Queue) error {
+	return func(ctx context.Context, queue amboy.Queue) error {
 		flags, err := evergreen.GetServiceFlags()
 		if err != nil {
 			return errors.WithStack(err)
@@ -141,7 +142,7 @@ func PopulateActivationJobs(part int) amboy.QueueOperation {
 				continue
 			}
 
-			catcher.Add(queue.Put(NewVersionActivationJob(proj.Identifier, ts)))
+			catcher.Add(queue.Put(ctx, NewVersionActivationJob(proj.Identifier, ts)))
 		}
 
 		return catcher.Resolve()
@@ -151,7 +152,7 @@ func PopulateActivationJobs(part int) amboy.QueueOperation {
 func PopulateHostMonitoring(env evergreen.Environment) amboy.QueueOperation {
 	const reachabilityCheckInterval = 10 * time.Minute
 
-	return func(queue amboy.Queue) error {
+	return func(ctx context.Context, queue amboy.Queue) error {
 		flags, err := evergreen.GetServiceFlags()
 		if err != nil {
 			return errors.WithStack(err)
@@ -183,17 +184,17 @@ func PopulateHostMonitoring(env evergreen.Environment) amboy.QueueOperation {
 
 		for _, host := range hosts {
 			job := NewHostMonitorExternalStateJob(env, &host, ts)
-			catcher.Add(queue.Put(job))
+			catcher.Add(queue.Put(ctx, job))
 		}
 
-		catcher.Add(queue.Put(NewStrandedTaskCleanupJob(ts)))
+		catcher.Add(queue.Put(ctx, NewStrandedTaskCleanupJob(ts)))
 
 		return catcher.Resolve()
 	}
 }
 
 func PopulateEventAlertProcessing(parts int) amboy.QueueOperation {
-	return func(queue amboy.Queue) error {
+	return func(ctx context.Context, queue amboy.Queue) error {
 		flags, err := evergreen.GetServiceFlags()
 		if err != nil {
 			return errors.WithStack(err)
@@ -210,12 +211,12 @@ func PopulateEventAlertProcessing(parts int) amboy.QueueOperation {
 
 		ts := util.RoundPartOfHour(parts).Format(tsFormat)
 
-		return errors.Wrap(queue.Put(NewEventMetaJob(queue, ts)), "failed to queue event-metajob")
+		return errors.Wrap(queue.Put(ctx, NewEventMetaJob(queue, ts)), "failed to queue event-metajob")
 	}
 }
 
 func PopulateTaskMonitoring(mins int) amboy.QueueOperation {
-	return func(queue amboy.Queue) error {
+	return func(ctx context.Context, queue amboy.Queue) error {
 		flags, err := evergreen.GetServiceFlags()
 		if err != nil {
 			return errors.WithStack(err)
@@ -230,12 +231,12 @@ func PopulateTaskMonitoring(mins int) amboy.QueueOperation {
 			return nil
 		}
 
-		return queue.Put(NewTaskExecutionMonitorPopulateJob(util.RoundPartOfHour(mins).Format(tsFormat)))
+		return queue.Put(ctx, NewTaskExecutionMonitorPopulateJob(util.RoundPartOfHour(mins).Format(tsFormat)))
 	}
 }
 
 func PopulateHostTerminationJobs(env evergreen.Environment) amboy.QueueOperation {
-	return func(queue amboy.Queue) error {
+	return func(ctx context.Context, queue amboy.Queue) error {
 		flags, err := evergreen.GetServiceFlags()
 		if err != nil {
 			return errors.WithStack(err)
@@ -260,7 +261,7 @@ func PopulateHostTerminationJobs(env evergreen.Environment) amboy.QueueOperation
 		catcher.Add(err)
 
 		for _, h := range hosts {
-			catcher.Add(queue.Put(NewHostTerminationJob(env, h, true)))
+			catcher.Add(queue.Put(ctx, NewHostTerminationJob(env, h, true)))
 		}
 
 		hosts, err = host.AllHostsSpawnedByTasksToTerminate()
@@ -272,7 +273,7 @@ func PopulateHostTerminationJobs(env evergreen.Environment) amboy.QueueOperation
 		catcher.Add(err)
 
 		for _, h := range hosts {
-			catcher.Add(queue.Put(NewHostTerminationJob(env, h, true)))
+			catcher.Add(queue.Put(ctx, NewHostTerminationJob(env, h, true)))
 		}
 
 		return catcher.Resolve()
@@ -280,7 +281,7 @@ func PopulateHostTerminationJobs(env evergreen.Environment) amboy.QueueOperation
 }
 
 func PopulateIdleHostJobs(env evergreen.Environment) amboy.QueueOperation {
-	return func(queue amboy.Queue) error {
+	return func(ctx context.Context, queue amboy.Queue) error {
 		flags, err := evergreen.GetServiceFlags()
 		if err != nil {
 			return errors.WithStack(err)
@@ -338,7 +339,7 @@ func PopulateIdleHostJobs(env evergreen.Environment) amboy.QueueOperation {
 			hostsToEvaluateForTermination := make([]host.Host, 0, nHostsToEvaluateForTermination)
 			for j := 0; j < nHostsToEvaluateForTermination; j++ {
 				hostsToEvaluateForTermination = append(hostsToEvaluateForTermination, info.IdleHosts[j])
-				catcher.Add(queue.Put(NewIdleHostTerminationJob(env, info.IdleHosts[j], ts)))
+				catcher.Add(queue.Put(ctx, NewIdleHostTerminationJob(env, info.IdleHosts[j], ts)))
 			}
 
 			grip.InfoWhen(sometimes.Percent(10), message.Fields{
@@ -358,10 +359,10 @@ func PopulateIdleHostJobs(env evergreen.Environment) amboy.QueueOperation {
 }
 
 func PopulateLastContainerFinishTimeJobs() amboy.QueueOperation {
-	return func(queue amboy.Queue) error {
+	return func(ctx context.Context, queue amboy.Queue) error {
 		catcher := grip.NewBasicCatcher()
 		ts := util.RoundPartOfHour(1).Format(tsFormat)
-		err := queue.Put(NewLastContainerFinishTimeJob(ts))
+		err := queue.Put(ctx, NewLastContainerFinishTimeJob(ts))
 		catcher.Add(err)
 
 		return catcher.Resolve()
@@ -369,7 +370,7 @@ func PopulateLastContainerFinishTimeJobs() amboy.QueueOperation {
 }
 
 func PopulateParentDecommissionJobs() amboy.QueueOperation {
-	return func(queue amboy.Queue) error {
+	return func(ctx context.Context, queue amboy.Queue) error {
 		catcher := grip.NewBasicCatcher()
 		ts := util.RoundPartOfHour(1).Format(tsFormat)
 
@@ -381,7 +382,7 @@ func PopulateParentDecommissionJobs() amboy.QueueOperation {
 
 		// Create ParentDecommissionJob for each distro
 		for _, c := range containerPools {
-			catcher.Add(queue.Put(NewParentDecommissionJob(ts, c.Distro, c.MaxContainers)))
+			catcher.Add(queue.Put(ctx, NewParentDecommissionJob(ts, c.Distro, c.MaxContainers)))
 		}
 
 		return catcher.Resolve()
@@ -389,7 +390,7 @@ func PopulateParentDecommissionJobs() amboy.QueueOperation {
 }
 
 func PopulateContainerStateJobs(env evergreen.Environment) amboy.QueueOperation {
-	return func(queue amboy.Queue) error {
+	return func(ctx context.Context, queue amboy.Queue) error {
 		catcher := grip.NewBasicCatcher()
 		ts := util.RoundPartOfHour(1).Format(tsFormat)
 
@@ -400,7 +401,7 @@ func PopulateContainerStateJobs(env evergreen.Environment) amboy.QueueOperation 
 
 		// create job to check container state consistency for each parent
 		for _, p := range parents {
-			catcher.Add(queue.Put(NewHostMonitorContainerStateJob(env, &p, evergreen.ProviderNameDocker, ts)))
+			catcher.Add(queue.Put(ctx, NewHostMonitorContainerStateJob(env, &p, evergreen.ProviderNameDocker, ts)))
 		}
 
 		return catcher.Resolve()
@@ -408,7 +409,7 @@ func PopulateContainerStateJobs(env evergreen.Environment) amboy.QueueOperation 
 }
 
 func PopulateOldestImageRemovalJobs() amboy.QueueOperation {
-	return func(queue amboy.Queue) error {
+	return func(ctx context.Context, queue amboy.Queue) error {
 		catcher := grip.NewBasicCatcher()
 		ts := util.RoundPartOfHour(1).Format(tsFormat)
 
@@ -419,14 +420,14 @@ func PopulateOldestImageRemovalJobs() amboy.QueueOperation {
 
 		// Create oldestImageJob when images take up too much disk space
 		for _, p := range parents {
-			catcher.Add(queue.Put(NewOldestImageRemovalJob(&p, evergreen.ProviderNameDocker, ts)))
+			catcher.Add(queue.Put(ctx, NewOldestImageRemovalJob(&p, evergreen.ProviderNameDocker, ts)))
 		}
 		return catcher.Resolve()
 	}
 }
 
 func PopulateCommitQueueJobs(env evergreen.Environment) amboy.QueueOperation {
-	return func(queue amboy.Queue) error {
+	return func(ctx context.Context, queue amboy.Queue) error {
 		flags, err := evergreen.GetServiceFlags()
 		if err != nil {
 			return errors.WithStack(err)
@@ -449,14 +450,14 @@ func PopulateCommitQueueJobs(env evergreen.Environment) amboy.QueueOperation {
 			return errors.Wrap(err, "can't find projectRefs with Commit Queue enabled")
 		}
 		for _, p := range projectRefs {
-			catcher.Add(queue.Put(NewCommitQueueJob(env, p.Identifier, ts)))
+			catcher.Add(queue.Put(ctx, NewCommitQueueJob(env, p.Identifier, ts)))
 		}
 		return catcher.Resolve()
 	}
 }
 
 func PopulateHostAllocatorJobs(env evergreen.Environment) amboy.QueueOperation {
-	return func(queue amboy.Queue) error {
+	return func(ctx context.Context, queue amboy.Queue) error {
 		flags, err := evergreen.GetServiceFlags()
 		if err != nil {
 			return errors.WithStack(err)
@@ -481,7 +482,7 @@ func PopulateHostAllocatorJobs(env evergreen.Environment) amboy.QueueOperation {
 		catcher := grip.NewBasicCatcher()
 
 		for _, d := range distros {
-			catcher.Add(queue.Put(NewHostAllocatorJob(env, d.Id, ts)))
+			catcher.Add(queue.Put(ctx, NewHostAllocatorJob(env, d.Id, ts)))
 		}
 
 		return catcher.Resolve()
@@ -489,7 +490,7 @@ func PopulateHostAllocatorJobs(env evergreen.Environment) amboy.QueueOperation {
 }
 
 func PopulateSchedulerJobs(env evergreen.Environment) amboy.QueueOperation {
-	return func(queue amboy.Queue) error {
+	return func(ctx context.Context, queue amboy.Queue) error {
 		flags, err := evergreen.GetServiceFlags()
 		if err != nil {
 			return errors.WithStack(err)
@@ -540,7 +541,7 @@ func PopulateSchedulerJobs(env evergreen.Environment) amboy.QueueOperation {
 				continue
 			}
 
-			catcher.Add(queue.Put(NewDistroSchedulerJob(env, d.Id, ts)))
+			catcher.Add(queue.Put(ctx, NewDistroSchedulerJob(env, d.Id, ts)))
 		}
 
 		return catcher.Resolve()
@@ -550,7 +551,7 @@ func PopulateSchedulerJobs(env evergreen.Environment) amboy.QueueOperation {
 // PopulateHostAlertJobs adds alerting tasks infrequently for host
 // utilization monitoring.
 func PopulateHostAlertJobs(parts int) amboy.QueueOperation {
-	return func(queue amboy.Queue) error {
+	return func(ctx context.Context, queue amboy.Queue) error {
 		catcher := grip.NewBasicCatcher()
 
 		ts := util.RoundPartOfHour(parts).Format(tsFormat)
@@ -565,18 +566,18 @@ func PopulateHostAlertJobs(parts int) amboy.QueueOperation {
 		catcher.Add(err)
 		if err == nil {
 			for _, host := range hosts {
-				catcher.Add(queue.Put(NewHostAlertingJob(host, ts)))
+				catcher.Add(queue.Put(ctx, NewHostAlertingJob(host, ts)))
 			}
 		}
 
-		catcher.Add(queue.Put(NewHostStatsJob(ts)))
+		catcher.Add(queue.Put(ctx, NewHostStatsJob(ts)))
 
 		return catcher.Resolve()
 	}
 }
 
 func PopulateAgentDeployJobs(env evergreen.Environment) amboy.QueueOperation {
-	return func(queue amboy.Queue) error {
+	return func(ctx context.Context, queue amboy.Queue) error {
 		flags, err := evergreen.GetServiceFlags()
 		if err != nil {
 			return errors.WithStack(err)
@@ -622,7 +623,7 @@ func PopulateAgentDeployJobs(env evergreen.Environment) amboy.QueueOperation {
 		// uses setting the NeedsNewAgent field to false to prevent other jobs from running
 		// concurrently. If we didn't set one or the other of those fields, then
 		for _, h := range hosts {
-			catcher.Add(queue.Put(NewAgentDeployJob(env, h, ts)))
+			catcher.Add(queue.Put(ctx, NewAgentDeployJob(env, h, ts)))
 		}
 
 		return catcher.Resolve()
@@ -631,7 +632,7 @@ func PopulateAgentDeployJobs(env evergreen.Environment) amboy.QueueOperation {
 }
 
 func PopulateHostCreationJobs(env evergreen.Environment, part int) amboy.QueueOperation {
-	return func(queue amboy.Queue) error {
+	return func(ctx context.Context, queue amboy.Queue) error {
 		flags, err := evergreen.GetServiceFlags()
 		if err != nil {
 			return errors.WithStack(err)
@@ -681,7 +682,7 @@ func PopulateHostCreationJobs(env evergreen.Environment, part int) amboy.QueueOp
 				break
 			}
 
-			catcher.Add(queue.Put(NewHostCreateJob(env, h, ts, 1, 0, false)))
+			catcher.Add(queue.Put(ctx, NewHostCreateJob(env, h, ts, 1, 0, false)))
 		}
 
 		return catcher.Resolve()
@@ -689,7 +690,7 @@ func PopulateHostCreationJobs(env evergreen.Environment, part int) amboy.QueueOp
 }
 
 func PopulateHostSetupJobs(env evergreen.Environment) amboy.QueueOperation {
-	return func(queue amboy.Queue) error {
+	return func(ctx context.Context, queue amboy.Queue) error {
 		flags, err := evergreen.GetServiceFlags()
 		if err != nil {
 			return errors.WithStack(err)
@@ -717,17 +718,17 @@ func PopulateHostSetupJobs(env evergreen.Environment) amboy.QueueOperation {
 		ts := util.RoundPartOfMinute(30).Format(tsFormat)
 		catcher := grip.NewBasicCatcher()
 		for _, h := range hosts {
-			catcher.Add(queue.Put(NewHostSetupJob(env, h, ts)))
+			catcher.Add(queue.Put(ctx, NewHostSetupJob(env, h, ts)))
 		}
 
-		catcher.Add(queue.Put(NewCloudHostReadyJob(env, ts)))
+		catcher.Add(queue.Put(ctx, NewCloudHostReadyJob(env, ts)))
 
 		return catcher.Resolve()
 	}
 }
 
 func PopulateBackgroundStatsJobs(env evergreen.Environment, part int) amboy.QueueOperation {
-	return func(queue amboy.Queue) error {
+	return func(ctx context.Context, queue amboy.Queue) error {
 		flags, err := evergreen.GetServiceFlags()
 		if err != nil {
 			grip.Alert(message.WrapError(err, message.Fields{
@@ -749,19 +750,19 @@ func PopulateBackgroundStatsJobs(env evergreen.Environment, part int) amboy.Queu
 		catcher := grip.NewBasicCatcher()
 		ts := util.RoundPartOfMinute(part).Format(tsFormat)
 
-		catcher.Add(queue.Put(NewRemoteAmboyStatsCollector(env, ts)))
-		catcher.Add(queue.Put(NewHostStatsCollector(ts)))
-		catcher.Add(queue.Put(NewTaskStatsCollector(ts)))
-		catcher.Add(queue.Put(NewLatencyStatsCollector(ts, time.Minute)))
-		catcher.Add(queue.Put(NewNotificationStatsCollector(ts)))
-		catcher.Add(queue.Put(NewQueueStatsCollector(ts)))
+		catcher.Add(queue.Put(ctx, NewRemoteAmboyStatsCollector(env, ts)))
+		catcher.Add(queue.Put(ctx, NewHostStatsCollector(ts)))
+		catcher.Add(queue.Put(ctx, NewTaskStatsCollector(ts)))
+		catcher.Add(queue.Put(ctx, NewLatencyStatsCollector(ts, time.Minute)))
+		catcher.Add(queue.Put(ctx, NewNotificationStatsCollector(ts)))
+		catcher.Add(queue.Put(ctx, NewQueueStatsCollector(ts)))
 
 		return catcher.Resolve()
 	}
 }
 
 func PopulatePeriodicNotificationJobs(parts int) amboy.QueueOperation {
-	return func(queue amboy.Queue) error {
+	return func(ctx context.Context, queue amboy.Queue) error {
 		flags, err := evergreen.GetServiceFlags()
 		if err != nil {
 			return errors.WithStack(err)
@@ -772,13 +773,13 @@ func PopulatePeriodicNotificationJobs(parts int) amboy.QueueOperation {
 
 		ts := util.RoundPartOfHour(parts).Format(tsFormat)
 		catcher := grip.NewBasicCatcher()
-		catcher.Add(queue.Put(NewSpawnhostExpirationWarningsJob(ts)))
+		catcher.Add(queue.Put(ctx, NewSpawnhostExpirationWarningsJob(ts)))
 		return catcher.Resolve()
 	}
 }
 
 func PopulateCacheHistoricalTestDataJob(part int) amboy.QueueOperation {
-	return func(queue amboy.Queue) error {
+	return func(ctx context.Context, queue amboy.Queue) error {
 		flags, err := evergreen.GetServiceFlags()
 		if err != nil {
 			return errors.WithStack(err)
@@ -805,7 +806,7 @@ func PopulateCacheHistoricalTestDataJob(part int) amboy.QueueOperation {
 				continue
 			}
 
-			catcher.Add(queue.Put(NewCacheHistoricalTestDataJob(project.Identifier, ts)))
+			catcher.Add(queue.Put(ctx, NewCacheHistoricalTestDataJob(project.Identifier, ts)))
 		}
 
 		return catcher.Resolve()
@@ -813,9 +814,9 @@ func PopulateCacheHistoricalTestDataJob(part int) amboy.QueueOperation {
 }
 
 func PopulateLocalQueueJobs(env evergreen.Environment) amboy.QueueOperation {
-	return func(queue amboy.Queue) error {
+	return func(ctx context.Context, queue amboy.Queue) error {
 		catcher := grip.NewBasicCatcher()
-		catcher.Add(queue.Put(NewJasperManagerCleanup(util.RoundPartOfMinute(0).Format(tsFormat), env)))
+		catcher.Add(queue.Put(ctx, NewJasperManagerCleanup(util.RoundPartOfMinute(0).Format(tsFormat), env)))
 		flags, err := evergreen.GetServiceFlags()
 		if err != nil {
 			grip.Alert(message.WrapError(err, message.Fields{
@@ -835,8 +836,8 @@ func PopulateLocalQueueJobs(env evergreen.Environment) amboy.QueueOperation {
 			return nil
 		}
 
-		catcher.Add(queue.Put(NewSysInfoStatsCollector(fmt.Sprintf("sys-info-stats-%s", util.RoundPartOfMinute(30).Format(tsFormat)))))
-		catcher.Add(queue.Put(NewLocalAmboyStatsCollector(env, fmt.Sprintf("amboy-local-stats-%s", util.RoundPartOfMinute(0).Format(tsFormat)))))
+		catcher.Add(queue.Put(ctx, NewSysInfoStatsCollector(fmt.Sprintf("sys-info-stats-%s", util.RoundPartOfMinute(30).Format(tsFormat)))))
+		catcher.Add(queue.Put(ctx, NewLocalAmboyStatsCollector(env, fmt.Sprintf("amboy-local-stats-%s", util.RoundPartOfMinute(0).Format(tsFormat)))))
 		return catcher.Resolve()
 
 	}

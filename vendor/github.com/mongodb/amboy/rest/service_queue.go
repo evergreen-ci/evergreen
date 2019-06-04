@@ -104,7 +104,7 @@ func (s *QueueService) OpenWithOptions(ctx context.Context, opts QueueServiceOpt
 		if opts.ForceTimeout != 0 {
 			waiterCtx, cancel := context.WithTimeout(ctx, opts.ForceTimeout)
 			grip.Info("waiting for jobs to complete")
-			amboy.WaitCtx(waiterCtx, s.queue)
+			amboy.Wait(waiterCtx, s.queue)
 			cancel()
 		}
 		grip.Info("releasing remaining queue resources")

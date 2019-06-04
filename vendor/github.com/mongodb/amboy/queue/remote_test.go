@@ -120,13 +120,16 @@ func (s *RemoteUnorderedSuite) TestRemoteUnorderdImplementsQueueInterface() {
 }
 
 func (s *RemoteUnorderedSuite) TestJobPutIntoQueueFetchableViaGetMethod() {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	s.NoError(s.queue.SetDriver(s.driver))
 	s.NotNil(s.queue.Driver())
 
 	j := job.NewShellJob("echo foo", "")
 	name := j.ID()
-	s.NoError(s.queue.Put(j))
-	fetchedJob, ok := s.queue.Get(name)
+	s.NoError(s.queue.Put(ctx, j))
+	fetchedJob, ok := s.queue.Get(ctx, name)
 
 	if s.True(ok) {
 		s.IsType(j.Dependency(), fetchedJob.Dependency())
@@ -143,6 +146,34 @@ func (s *RemoteUnorderedSuite) TestJobPutIntoQueueFetchableViaGetMethod() {
 	}
 }
 
+func (s *RemoteUnorderedSuite) TestJobsDoNotCompleteWithCanceledQueueContext() {
+	s.NoError(s.queue.SetDriver(s.driver))
+	s.NotNil(s.queue.Driver())
+
+	ctx, cancel := context.WithCancel(context.Background())
+	s.NoError(s.queue.Start(ctx))
+
+	j1 := job.NewShellJob("echo foo", "")
+	name := j1.ID()
+	s.NoError(s.queue.Put(ctx, j1))
+	amboy.WaitInterval(ctx, s.queue, 10*time.Millisecond)
+	fetchedJob, ok := s.queue.Get(ctx, name)
+	nj := fetchedJob.(*job.ShellJob)
+	s.True(ok)
+	s.True(nj.Status().Completed, "before canceling the context, a job will complete")
+
+	cancel()
+
+	j2 := job.NewShellJob("echo foo", "")
+	name = j2.ID()
+	s.NoError(s.queue.Put(ctx, j2))
+	amboy.WaitInterval(ctx, s.queue, 10*time.Millisecond)
+	fetchedJob, ok = s.queue.Get(ctx, name)
+	nj = fetchedJob.(*job.ShellJob)
+	s.True(ok)
+	s.False(nj.Status().Completed, "after canceling the context, a job will not complete")
+}
+
 func (s *RemoteUnorderedSuite) TestGetMethodHandlesMissingJobs() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -157,14 +188,14 @@ func (s *RemoteUnorderedSuite) TestGetMethodHandlesMissingJobs() {
 	name := j.ID()
 
 	// before putting a job in the queue, it shouldn't exist.
-	fetchedJob, ok := s.queue.Get(name)
+	fetchedJob, ok := s.queue.Get(ctx, name)
 	s.False(ok)
 	s.Nil(fetchedJob)
 
-	s.NoError(s.queue.Put(j))
+	s.NoError(s.queue.Put(ctx, j))
 
 	// wrong name also returns error case
-	fetchedJob, ok = s.queue.Get(name + name)
+	fetchedJob, ok = s.queue.Get(ctx, name+name)
 	s.False(ok)
 	s.Nil(fetchedJob)
 }
@@ -202,16 +233,16 @@ func (s *RemoteUnorderedSuite) TestPuttingAJobIntoAQueueImpactsStats() {
 
 	s.NoError(s.queue.SetDriver(s.driver))
 
-	existing := s.queue.Stats()
+	existing := s.queue.Stats(ctx)
 	s.NoError(s.queue.Start(ctx))
 
 	j := job.NewShellJob("true", "")
-	s.NoError(s.queue.Put(j))
+	s.NoError(s.queue.Put(ctx, j))
 
-	_, ok := s.queue.Get(j.ID())
+	_, ok := s.queue.Get(ctx, j.ID())
 	s.True(ok)
 
-	stats := s.queue.Stats()
+	stats := s.queue.Stats(ctx)
 
 	report := fmt.Sprintf("%+v", stats)
 	s.Equal(existing.Total+1, stats.Total, report)
@@ -280,7 +311,7 @@ func (s *RemoteUnorderedSuite) TestNextMethodSkipsLockedJobs() {
 		cmd := fmt.Sprintf("echo 'foo: %d'", i)
 		j := job.NewShellJob(cmd, "")
 
-		if s.NoError(s.queue.Put(j)) {
+		if s.NoError(s.queue.Put(ctx, j)) {
 			created++
 		}
 
@@ -316,21 +347,23 @@ checkResults:
 
 			_, ok := lockedJobs[work.ID()]
 			s.False(ok, fmt.Sprintf("%s\n\tjob: %+v\n\tqueue: %+v",
-				work.ID(), work.Status(), s.queue.Stats()))
+				work.ID(), work.Status(), s.queue.Stats(ctx)))
 
 			if observed == created || observed+numLocked == created {
 				break checkResults
 			}
 		}
 	}
-	qStat := s.queue.Stats()
+	qStat := s.queue.Stats(ctx)
 	s.True(qStat.Running >= numLocked)
 	s.True(qStat.Total == created)
 	s.True(qStat.Completed <= observed, fmt.Sprintf("%d <= %d", qStat.Completed, observed))
-	s.Equal(created-numLocked, observed, fmt.Sprintf("%+v", s.queue.Stats()))
+	s.Equal(created-numLocked, observed, fmt.Sprintf("%+v", s.queue.Stats(ctx)))
 }
 
 func (s *RemoteUnorderedSuite) TestJobStatsIterator() {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 	s.require.NoError(s.queue.SetDriver(s.driver))
 
 	names := make(map[string]struct{})
@@ -339,12 +372,10 @@ func (s *RemoteUnorderedSuite) TestJobStatsIterator() {
 		cmd := fmt.Sprintf("echo 'foo: %d'", i)
 		j := job.NewShellJob(cmd, "")
 
-		s.NoError(s.queue.Put(j))
+		s.NoError(s.queue.Put(ctx, j))
 		names[j.ID()] = struct{}{}
 	}
 
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
 	counter := 0
 	for stat := range s.queue.JobStats(ctx) {
 		_, ok := names[stat.ID]
@@ -361,7 +392,7 @@ func (s *RemoteUnorderedSuite) TestTimeInfoPersists() {
 	s.require.NoError(s.queue.SetDriver(s.driver))
 	j := newMockJob()
 	s.Zero(j.TimeInfo())
-	s.NoError(s.queue.Put(j))
+	s.NoError(s.queue.Put(ctx, j))
 	go s.queue.jobServer(ctx)
 	j2 := s.queue.Next(ctx)
 	s.NotZero(j2.TimeInfo())

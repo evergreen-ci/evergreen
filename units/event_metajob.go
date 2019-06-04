@@ -201,7 +201,7 @@ func (j *eventMetaJob) dispatchLoop(ctx context.Context) error {
 					catcher.Add(err)
 				}
 
-				catcher.Add(j.dispatch(n))
+				catcher.Add(j.dispatch(ctx, n))
 			}
 		}()
 	}
@@ -226,11 +226,11 @@ func (j *eventMetaJob) dispatchLoop(ctx context.Context) error {
 	return catcher.Resolve()
 }
 
-func (j *eventMetaJob) dispatch(notifications []notification.Notification) error {
+func (j *eventMetaJob) dispatch(ctx context.Context, notifications []notification.Notification) error {
 	catcher := grip.NewSimpleCatcher()
 	for i := range notifications {
 		if notificationIsEnabled(j.flags, &notifications[i]) {
-			catcher.Add(j.q.Put(NewEventNotificationJob(notifications[i].ID)))
+			catcher.Add(j.q.Put(ctx, NewEventNotificationJob(notifications[i].ID)))
 		} else {
 			catcher.Add(notifications[i].MarkError(errors.New("sender disabled")))
 		}

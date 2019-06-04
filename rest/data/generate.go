@@ -23,7 +23,7 @@ func (gc *GenerateConnector) GenerateTasks(ctx context.Context, taskID string, j
 	if err != nil {
 		return errors.Wrapf(err, "problem getting queue for version %s", t.Version)
 	}
-	return q.Put(units.NewGenerateTasksJob(taskID, jsonBytes))
+	return q.Put(ctx, units.NewGenerateTasksJob(taskID, jsonBytes))
 }
 
 func (gc *GenerateConnector) GeneratePoll(ctx context.Context, taskID string, group amboy.QueueGroup) (bool, []string, error) {
@@ -36,7 +36,7 @@ func (gc *GenerateConnector) GeneratePoll(ctx context.Context, taskID string, gr
 		return false, nil, errors.Wrapf(err, "problem getting queue for version %s", t.Version)
 	}
 	jobID := fmt.Sprintf("generate-tasks-%s", taskID)
-	j, exists := q.Get(jobID)
+	j, exists := q.Get(ctx, jobID)
 	if !exists {
 		return false, nil, errors.Errorf("task %s not in queue", taskID)
 	}

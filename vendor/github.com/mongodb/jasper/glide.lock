@@ -8,11 +8,11 @@ imports:
   - name: github.com/stretchr/testify
     version: 890a5c3458b43e6104ff5da8dfa139d013d77544
   - name: github.com/mongodb/grip
-    version: 12c3fdeb2dbd5bc0b124a884f8f5bb3418c49cca
+    version: 0e6bc551430dcc6e74a79ba8937a4f8ff185e907
   - name: github.com/evergreen-ci/gimlet
-    version: 713b8d22b5e93a0c25a9f71ca944c86d7ecefe84
+    version: 8a317d725d0315a97c5d0c08ec04921f3ba498d5
   - name: github.com/tychoish/bond
-    version: b4258699e61406e09c9e4dcca2151eed6c228043
+    version: d08240643c676e2d06c340a41ce66f62988fcfa1
   - name: github.com/tychoish/lru
     version: f77a748d12a924cfbfcf396426dd58de5aa3a9e2
   - name: github.com/mholt/archiver
@@ -20,11 +20,13 @@ imports:
   - name: github.com/montanaflynn/stats
     version: db72e6cae808b936b0c01fd330ff1fcd2c86c95e
   - name: github.com/mongodb/amboy
-    version: ba41957778899cce2775284bfdb7155475794657
+    version: 2b8431d235ec6c322dba74eff51988ebd8ac1f7f
   - name: github.com/google/shlex
     version: 6f45313302b9c56850fc17f99e40caebce98c716
   - name: github.com/urfave/cli
     version: 693af58b4d51b8fcc7f9d89576da170765980581
+  - name: github.com/kardianos/service
+    version: fffe6c52ed0fd8653543bbe72432dbf6ea02f300
 
   # cgroup requirements
   - name: github.com/containerd/cgroups

@@ -156,7 +156,7 @@ func (j *agentDeployJob) Run(ctx context.Context) {
 		}
 
 		job := NewDecoHostNotifyJob(j.env, j.host, nil, "error starting agent on host")
-		grip.Error(message.WrapError(j.env.RemoteQueue().Put(job),
+		grip.Error(message.WrapError(j.env.RemoteQueue().Put(ctx, job),
 			message.Fields{
 				"message": fmt.Sprintf("tried %d times to put agent on host", agentPutRetries),
 				"host_id": j.host.Id,
@@ -291,7 +291,7 @@ func (j *agentDeployJob) prepRemoteHost(ctx context.Context, hostObj host.Host, 
 		}
 
 		job := NewDecoHostNotifyJob(j.env, j.host, nil, "error running setup script on host")
-		grip.Error(message.WrapError(j.env.RemoteQueue().Put(job),
+		grip.Error(message.WrapError(j.env.RemoteQueue().Put(ctx, job),
 			message.Fields{
 				"message": fmt.Sprintf("tried %d times to put agent on host", agentPutRetries),
 				"host_id": hostObj.Id,

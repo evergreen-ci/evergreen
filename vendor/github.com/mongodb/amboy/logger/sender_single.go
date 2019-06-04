@@ -10,15 +10,17 @@ import (
 )
 
 type queueSender struct {
+	ctx      context.Context
 	queue    amboy.Queue
 	canceler context.CancelFunc
 	send.Sender
 }
 
-func newSender(q amboy.Queue, sender send.Sender) *queueSender {
+func newSender(ctx context.Context, q amboy.Queue, sender send.Sender) *queueSender {
 	return &queueSender{
 		Sender: sender,
 		queue:  q,
+		ctx:    ctx,
 	}
 }
 
@@ -33,7 +35,9 @@ func newSender(q amboy.Queue, sender send.Sender) *queueSender {
 //
 // In the event that the sender's Put method returns an error, the
 // message (and its error) will be logged directly (and synchronously)
-func MakeQueueSender(q amboy.Queue, sender send.Sender) send.Sender { return newSender(q, sender) }
+func MakeQueueSender(ctx context.Context, q amboy.Queue, sender send.Sender) send.Sender {
+	return newSender(ctx, q, sender)
+}
 
 // NewQueueBackedSender creates a new LimitedSize queue, and creates a
 // sender implementation wrapping this sender. The queue is not shared.
@@ -43,10 +47,10 @@ func MakeQueueSender(q amboy.Queue, sender send.Sender) send.Sender { return new
 // queue to empty.
 func NewQueueBackedSender(ctx context.Context, sender send.Sender, workers, capacity int) (send.Sender, error) {
 	q := queue.NewLocalLimitedSize(workers, capacity)
-	s := newSender(q, sender)
+	s := newSender(ctx, q, sender)
 
-	ctx, s.canceler = context.WithCancel(ctx)
-	if err := q.Start(ctx); err != nil {
+	s.ctx, s.canceler = context.WithCancel(s.ctx)
+	if err := q.Start(s.ctx); err != nil {
 		return nil, err
 	}
 
@@ -55,7 +59,7 @@ func NewQueueBackedSender(ctx context.Context, sender send.Sender, workers, capa
 
 func (s *queueSender) Send(m message.Composer) {
 	if s.Level().ShouldLog(m) {
-		err := s.queue.Put(NewSendMessageJob(m, s.Sender))
+		err := s.queue.Put(s.ctx, NewSendMessageJob(m, s.Sender))
 
 		if err != nil {
 			s.Send(message.NewErrorWrap(err, m.String()))

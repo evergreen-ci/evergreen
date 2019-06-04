@@ -225,7 +225,7 @@ func (uis *UIServer) schedulePatch(w http.ResponseWriter, r *http.Request) {
 
 		if projCtx.Patch.IsGithubPRPatch() {
 			job := units.NewGithubStatusUpdateJobForNewPatch(projCtx.Patch.Id.Hex())
-			if err := uis.queue.Put(job); err != nil {
+			if err := uis.queue.Put(ctx, job); err != nil {
 				uis.LoggedError(w, r, http.StatusInternalServerError,
 					errors.Wrap(err, "Error adding github status update job to queue"))
 				return

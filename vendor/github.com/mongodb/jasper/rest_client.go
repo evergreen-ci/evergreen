@@ -238,19 +238,19 @@ func (c *restClient) GetBuildloggerURLs(ctx context.Context, id string) ([]strin
 	return urls, nil
 }
 
-func (c *restClient) GetLogs(ctx context.Context, id string) ([]string, error) {
-	resp, err := c.doRequest(ctx, http.MethodGet, c.getURL("/process/%s/logs", id), nil)
+func (c *restClient) GetLogStream(ctx context.Context, id string, count int) (LogStream, error) {
+	resp, err := c.doRequest(ctx, http.MethodGet, c.getURL("/process/%s/logs/%d", id, count), nil)
 	if err != nil {
-		return nil, err
+		return LogStream{}, err
 	}
 	defer resp.Body.Close()
 
-	logs := []string{}
-	if err = gimlet.GetJSON(resp.Body, &logs); err != nil {
-		return nil, errors.Wrap(err, "problem reading logs from response")
+	stream := LogStream{}
+	if err = gimlet.GetJSON(resp.Body, &stream); err != nil {
+		return LogStream{}, errors.Wrap(err, "problem reading logs from response")
 	}
 
-	return logs, nil
+	return stream, nil
 }
 
 func (c *restClient) DownloadFile(ctx context.Context, info DownloadInfo) error {

@@ -19,31 +19,20 @@ import (
 	"time"
 )
 
-// Wait takes a queue and blocks until all tasks are completed. This
+// Wait takes a queue and blocks until all tasks are completed or the
+// context is canceled. This
 // operation runs in a tight-loop, which means that the Wait will
 // return *as soon* as possible all tasks or complete. Conversely,
 // it's also possible that frequent repeated calls to Stats() may
 // contend with resources needed for dispatching jobs or marking them
 // complete.
-func Wait(q Queue) {
-	for {
-		if q.Stats().IsComplete() {
-			break
-		}
-	}
-}
-
-// WaitCtx make it possible to cancel, either directly or using a
-// deadline or timeout, a Wait operation using a context object. The
-// return value is true if all tasks are complete, and false if the
-// operation returns early because it was canceled.
-func WaitCtx(ctx context.Context, q Queue) bool {
+func Wait(ctx context.Context, q Queue) bool {
 	for {
 		if ctx.Err() != nil {
 			return false
 		}
 
-		stat := q.Stats()
+		stat := q.Stats(ctx)
 		if stat.IsComplete() {
 			return true
 		}
@@ -51,23 +40,11 @@ func WaitCtx(ctx context.Context, q Queue) bool {
 	}
 }
 
-// WaitInterval adds a sleep between stats calls, as a way of
-// throttling the impact of repeated Stats calls to the queue.
-func WaitInterval(q Queue, interval time.Duration) {
-	for {
-		if q.Stats().IsComplete() {
-			break
-		}
-
-		time.Sleep(interval)
-	}
-}
-
-// WaitCtxInterval provides the Wait operation and accepts a context
+// WaitInterval provides the Wait operation and accepts a context
 // for cancellation while also waiting for an interval between stats
 // calls. The return value reports if the operation was canceled or if
 // all tasks are complete.
-func WaitCtxInterval(ctx context.Context, q Queue, interval time.Duration) bool {
+func WaitInterval(ctx context.Context, q Queue, interval time.Duration) bool {
 	timer := time.NewTimer(0)
 	defer timer.Stop()
 
@@ -76,7 +53,7 @@ func WaitCtxInterval(ctx context.Context, q Queue, interval time.Duration) bool 
 		case <-ctx.Done():
 			return false
 		case <-timer.C:
-			if q.Stats().IsComplete() {
+			if q.Stats(ctx).IsComplete() {
 				return true
 			}
 
@@ -85,9 +62,9 @@ func WaitCtxInterval(ctx context.Context, q Queue, interval time.Duration) bool 
 	}
 }
 
-// WaitCtxIntervalNum waits for a certain number of jobs to complete,
+// WaitIntervalNum waits for a certain number of jobs to complete,
 // with the same semantics as WaitCtxInterval.
-func WaitCtxIntervalNum(ctx context.Context, q Queue, interval time.Duration, num int) bool {
+func WaitIntervalNum(ctx context.Context, q Queue, interval time.Duration, num int) bool {
 	timer := time.NewTimer(0)
 	defer timer.Stop()
 
@@ -96,7 +73,7 @@ func WaitCtxIntervalNum(ctx context.Context, q Queue, interval time.Duration, nu
 		case <-ctx.Done():
 			return false
 		case <-timer.C:
-			if q.Stats().Completed >= num {
+			if q.Stats(ctx).Completed >= num {
 				return true
 			}
 		}
@@ -104,37 +81,17 @@ func WaitCtxIntervalNum(ctx context.Context, q Queue, interval time.Duration, nu
 }
 
 // WaitJob blocks until the job, based on its ID, is marked complete
-// in the queue. The return value is false if the job does not exist
-// (or is removed) and true when the job completes. This operation could
-// block indefinitely.
-func WaitJob(j Job, q Queue) bool {
-	var ok bool
-
-	for {
-		j, ok = q.Get(j.ID())
-		if !ok {
-			return false
-		}
-
-		if j.Status().Completed {
-			return true
-		}
-	}
-}
-
-// WaitJobCtx blocks until the job, based on its ID, is marked complete
-// in the queue. This operation blocks indefinitely, unless the
-// context is canceled or reaches its timeout. The return value is
-// false if the job does not exist or if the context is canceled, and
-// only returns true when the job is complete.
-func WaitJobCtx(ctx context.Context, j Job, q Queue) bool {
+// in the queue, or the context is canceled. The return value is false
+// if the job does not exist (or is removed) and true when the job
+// completes.
+func WaitJob(ctx context.Context, j Job, q Queue) bool {
 	var ok bool
 	for {
 		if ctx.Err() != nil {
 			return false
 		}
 
-		j, ok = q.Get(j.ID())
+		j, ok = q.Get(ctx, j.ID())
 		if !ok {
 			return false
 		}
@@ -154,27 +111,7 @@ func WaitJobCtx(ctx context.Context, j Job, q Queue) bool {
 // operation waits between checks, and can be used to limit the impact
 // of waiting on a busy queue. The operation returns false if the job
 // is not registered in the queue, and true when the job completes.
-func WaitJobInterval(j Job, q Queue, interval time.Duration) bool {
-	var ok bool
-
-	for {
-		j, ok = q.Get(j.ID())
-		if !ok {
-			return false
-		}
-
-		if j.Status().Completed {
-			return true
-		}
-
-		time.Sleep(interval)
-	}
-}
-
-// WaitJobCtxInterval waits for a job in a queue to complete. Returns
-// false if the context has been canceled, or if the job does not exist
-// in the queue, and true only after the job is marked complete.
-func WaitJobCtxInterval(ctx context.Context, j Job, q Queue, interval time.Duration) bool {
+func WaitJobInterval(ctx context.Context, j Job, q Queue, interval time.Duration) bool {
 	var ok bool
 
 	timer := time.NewTimer(0)
@@ -185,7 +122,7 @@ func WaitJobCtxInterval(ctx context.Context, j Job, q Queue, interval time.Durat
 		case <-ctx.Done():
 			return false
 		case <-timer.C:
-			j, ok = q.Get(j.ID())
+			j, ok = q.Get(ctx, j.ID())
 			if !ok {
 				return false
 			}

@@ -39,7 +39,7 @@ func PopulateQueue(ctx context.Context, q Queue, jobs <-chan Job) error {
 			break
 		}
 
-		catcher.Add(q.Put(j))
+		catcher.Add(q.Put(ctx, j))
 	}
 
 	return catcher.Resolve()

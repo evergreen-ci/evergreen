@@ -43,7 +43,7 @@ func NewLocalPriorityQueue(workers, capacity int) amboy.Queue {
 // Put adds a job to the priority queue. If the Job already exists,
 // this operation updates it in the queue, potentially reordering the
 // queue accordingly.
-func (q *priorityLocalQueue) Put(j amboy.Job) error {
+func (q *priorityLocalQueue) Put(ctx context.Context, j amboy.Job) error {
 	j.UpdateTimeInfo(amboy.JobTimeInfo{
 		Created: time.Now(),
 	})
@@ -54,7 +54,7 @@ func (q *priorityLocalQueue) Put(j amboy.Job) error {
 // Get takes the name of a job and returns the job from the queue that
 // matches that ID. Use the second return value to check if a job
 // object with that ID exists in the queue.e
-func (q *priorityLocalQueue) Get(name string) (amboy.Job, bool) {
+func (q *priorityLocalQueue) Get(ctx context.Context, name string) (amboy.Job, bool) {
 	return q.storage.Get(name)
 }
 
@@ -111,7 +111,12 @@ func (q *priorityLocalQueue) JobStats(ctx context.Context) <-chan amboy.JobStatu
 			}
 			stat := job.Status()
 			stat.ID = job.ID()
-			out <- stat
+			select {
+			case <-ctx.Done():
+				return
+			case out <- stat:
+			}
+
 		}
 	}()
 
@@ -140,7 +145,7 @@ func (q *priorityLocalQueue) SetRunner(r amboy.Runner) error {
 
 // Stats returns an amboy.QueueStats object that reflects the queue's
 // current state.
-func (q *priorityLocalQueue) Stats() amboy.QueueStats {
+func (q *priorityLocalQueue) Stats(ctx context.Context) amboy.QueueStats {
 	stats := amboy.QueueStats{
 		Total:   q.storage.Size(),
 		Pending: q.storage.Pending(),
@@ -158,6 +163,9 @@ func (q *priorityLocalQueue) Stats() amboy.QueueStats {
 // Complete marks a job complete. The operation is asynchronous in
 // this implementation.
 func (q *priorityLocalQueue) Complete(ctx context.Context, j amboy.Job) {
+	if ctx.Err() != nil {
+		return
+	}
 	id := j.ID()
 	grip.Debugf("marking job (%s) as complete", id)
 	q.counters.Lock()

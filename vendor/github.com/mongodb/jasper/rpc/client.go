@@ -190,8 +190,19 @@ func (m *rpcClient) DownloadMongoDB(ctx context.Context, opts jasper.MongoDBDown
 	return errors.New(resp.Text)
 }
 
-func (m *rpcClient) GetBuildloggerURLs(ctx context.Context, name string) ([]string, error) {
-	resp, err := m.client.GetBuildloggerURLs(ctx, &internal.JasperProcessID{Value: name})
+func (m *rpcClient) GetLogStream(ctx context.Context, id string, count int) (jasper.LogStream, error) {
+	stream, err := m.client.GetLogStream(ctx, &internal.LogRequest{
+		Id:    &internal.JasperProcessID{Value: id},
+		Count: int64(count),
+	})
+	if err != nil {
+		return jasper.LogStream{}, errors.WithStack(err)
+	}
+	return stream.Export(), nil
+}
+
+func (m *rpcClient) GetBuildloggerURLs(ctx context.Context, id string) ([]string, error) {
+	resp, err := m.client.GetBuildloggerURLs(ctx, &internal.JasperProcessID{Value: id})
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}

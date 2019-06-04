@@ -69,7 +69,7 @@ func addMigrationJobs(ctx context.Context, q amboy.Queue, dryRun bool, limit int
 			if limit > 0 && count >= limit {
 				return count, catcher.Resolve()
 			}
-			catcher.Add(q.Put(j))
+			catcher.Add(q.Put(ctx, j))
 			count++
 		}
 	}

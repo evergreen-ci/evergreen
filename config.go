@@ -1,6 +1,7 @@
 package evergreen
 
 import (
+	"context"
 	"fmt"
 	"io/ioutil"
 	"reflect"
@@ -366,7 +367,7 @@ func (settings *Settings) Validate() error {
 	return errors.WithStack(catcher.Resolve())
 }
 
-func (s *Settings) GetSender(env Environment) (send.Sender, error) {
+func (s *Settings) GetSender(ctx context.Context, env Environment) (send.Sender, error) {
 	var (
 		sender   send.Sender
 		fallback send.Sender
@@ -460,7 +461,7 @@ func (s *Settings) GetSender(env Environment) (send.Sender, error) {
 				return nil, errors.Wrap(err, "problem setting error handler")
 			}
 
-			senders = append(senders, logger.MakeQueueSender(env.LocalQueue(), sender))
+			senders = append(senders, logger.MakeQueueSender(ctx, env.LocalQueue(), sender))
 		}
 		grip.Warning(errors.Wrap(err, "problem setting up slack alert logger"))
 	}
