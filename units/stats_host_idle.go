@@ -203,19 +203,20 @@ func (j *collectHostIdleDataJob) getHostStatsMessage(cost float64, idleTime time
 
 func (j *collectHostIdleDataJob) getTaskStartStatsMessage() message.Composer {
 	msg := message.Fields{
-		"stat":            "task-start-stats",
-		"task_id":         j.task.Id,
-		"task":            j.task.DisplayName,
-		"execution":       j.task.Execution,
-		"requester":       j.task.Requester,
-		"project":         j.task.Project,
-		"variant":         j.task.BuildVariant,
-		"distro":          j.host.Distro.Id,
-		"provider":        j.host.Distro.Provider,
-		"host":            j.host.Id,
-		"latency_secs":    j.task.StartTime.Sub(j.task.ActivatedTime).Seconds(),
-		"group":           j.task.TaskGroup,
-		"group_max_hosts": j.task.TaskGroupMaxHosts,
+		"stat":                   "task-start-stats",
+		"task_id":                j.task.Id,
+		"task":                   j.task.DisplayName,
+		"execution":              j.task.Execution,
+		"requester":              j.task.Requester,
+		"project":                j.task.Project,
+		"variant":                j.task.BuildVariant,
+		"distro":                 j.host.Distro.Id,
+		"provider":               j.host.Distro.Provider,
+		"host":                   j.host.Id,
+		"activated_latency_secs": j.task.StartTime.Sub(j.task.ActivatedTime).Seconds(),
+		"scheduled_latency_secs": j.task.StartTime.Sub(j.task.ScheduledTime).Seconds(),
+		"group":                  j.task.TaskGroup,
+		"group_max_hosts":        j.task.TaskGroupMaxHosts,
 	}
 
 	if strings.HasPrefix(j.host.Distro.Provider, "ec2") {
