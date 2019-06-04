@@ -1366,11 +1366,11 @@ func TestFindAllUnmarkedBlockedDependencies(t *testing.T) {
 		assert.NoError(task.Insert())
 	}
 
-	deps, err := FindAllUnmarkedBlockedDependencies(t1, false)
+	deps, err := t1.FindAllUnmarkedBlockedDependencies(false)
 	assert.NoError(err)
 	assert.Len(deps, 1)
 
-	deps, err = FindAllUnmarkedBlockedDependencies(t1, true)
+	deps, err = t1.FindAllUnmarkedBlockedDependencies(true)
 	assert.NoError(err)
 	assert.Len(deps, 3)
 }
@@ -1408,7 +1408,7 @@ func TestFindAllMarkedUnattainableDependencies(t *testing.T) {
 		assert.NoError(task.Insert())
 	}
 
-	unattainableTasks, err := FindAllMarkedUnattainableDependencies(t1)
+	unattainableTasks, err := t1.FindAllMarkedUnattainableDependencies()
 	assert.NoError(err)
 	assert.Len(unattainableTasks, 1)
 }

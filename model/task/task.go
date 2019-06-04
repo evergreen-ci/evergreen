@@ -1672,8 +1672,24 @@ func (t *Task) CircularDependencies() error {
 	return catcher.Resolve()
 }
 
+func (t *Task) FindAllUnmarkedBlockedDependencies(blocked bool) ([]Task, error) {
+	okStatusSet := []string{AnyStatus}
+	if !blocked {
+		okStatusSet = append(okStatusSet, t.Status, AllStatuses)
+	}
+	query := db.Query(bson.M{
+		DependsOnKey: bson.M{"$elemMatch": bson.M{
+			DependencyTaskIdKey:       t.Id,
+			DependencyStatusKey:       bson.M{"$nin": okStatusSet},
+			DependencyUnattainableKey: false,
+		},
+		}})
+
+	return FindAll(query)
+}
+
 func (t *Task) UpdateBlockedDependencies(blocked bool) error {
-	dependentTasks, err := FindAllUnmarkedBlockedDependencies(t, blocked)
+	dependentTasks, err := t.FindAllUnmarkedBlockedDependencies(blocked)
 	if err != nil {
 		return errors.Wrapf(err, "can't get tasks depending on task '%s'", t.Id)
 	}
@@ -1688,8 +1704,19 @@ func (t *Task) UpdateBlockedDependencies(blocked bool) error {
 	return nil
 }
 
+func (t *Task) FindAllMarkedUnattainableDependencies() ([]Task, error) {
+	query := db.Query(bson.M{
+		DependsOnKey: bson.M{"$elemMatch": bson.M{
+			DependencyTaskIdKey:       t.Id,
+			DependencyUnattainableKey: true,
+		},
+		}})
+
+	return FindAll(query)
+}
+
 func (t *Task) UpdateUnblockedDependencies() error {
-	blockedTasks, err := FindAllMarkedUnattainableDependencies(t)
+	blockedTasks, err := t.FindAllMarkedUnattainableDependencies()
 	if err != nil {
 		return errors.Wrap(err, "can't get dependencies marked unattainable")
 	}
