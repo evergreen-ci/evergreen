@@ -359,6 +359,12 @@ func assignNextAvailableTask(taskQueue *model.TaskQueue, taskQueueService model.
 			return nil, err
 		}
 		if nextTask == nil {
+			grip.Error(message.Fields{
+				"distro":  currentHost.Distro.Id,
+				"host":    currentHost.Id,
+				"message": "queue item with invalid id",
+				"id":      queueItem.Id,
+			})
 			return nil, nil
 		}
 
