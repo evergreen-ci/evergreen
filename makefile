@@ -1,7 +1,7 @@
 # start project configuration
 name := evergreen
 buildDir := bin
-tmpDir := $(buildDir)/tmp
+tmpDir := $(abspath $(buildDir)/tmp)
 nodeDir := public
 packages := $(name) agent operations cloud command db util plugin units
 packages += thirdparty auth scheduler model validator service monitor repotracker
