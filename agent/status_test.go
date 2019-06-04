@@ -88,15 +88,36 @@ func (s *StatusSuite) TestAgentFailsToStartTwice() {
 
 	mockCommunicator := agt.comm.(*client.Mock)
 	mockCommunicator.NextTaskIsNil = true
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	s.cancel = cancel
 
 	first := make(chan error, 1)
 	go func(c chan error) {
 		c <- agt.Start(ctx)
 	}(first)
-	time.Sleep(100 * time.Millisecond)
+
 	resp, err = http.Get("http://127.0.0.1:2287/status")
+	if err != nil {
+		// the service hasn't started.
+
+		timer := time.NewTimer(0)
+		defer timer.Stop()
+	retryLoop:
+		for {
+			select {
+			case <-ctx.Done():
+				break retryLoop
+			case <-timer.C:
+				resp, err = http.Get("http://127.0.0.1:2287/status")
+				if err == nil {
+					break retryLoop
+				}
+				timer.Reset(10 * time.Millisecond)
+			}
+		}
+	}
+
+	s.Require().NoError(err)
 	s.Equal(200, resp.StatusCode)
 
 	second := make(chan error, 1)
