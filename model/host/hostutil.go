@@ -170,7 +170,7 @@ func (h *Host) FetchAndReinstallJasperCommand(config evergreen.JasperConfig) str
 // new configuration, and restart the service.
 func (h *Host) ForceReinstallJasperCommand(config evergreen.JasperConfig) string {
 	port := config.Port
-	if config.Port == 0 {
+	if port == 0 {
 		port = evergreen.DefaultJasperPort
 	}
 	return h.jasperServiceCommand(config, "force-reinstall", fmt.Sprintf("--port=%d", port))
