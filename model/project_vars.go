@@ -145,6 +145,7 @@ func (projectVars *ProjectVars) FindAndModify(varsToDelete []string) (*adb.Chang
 		adb.Change{
 			Update:    update,
 			ReturnNew: true,
+			Upsert:    true,
 		},
 		projectVars,
 	)

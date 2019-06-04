@@ -1,13 +1,11 @@
 package service
 
 import (
-	"context"
 	"fmt"
 	"io/ioutil"
 	"net/http"
 	"regexp"
 	"strings"
-	"time"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
@@ -18,7 +16,6 @@ import (
 	"github.com/evergreen-ci/evergreen/units"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/gimlet"
-	"github.com/google/go-github/github"
 	adb "github.com/mongodb/anser/db"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
@@ -253,8 +250,7 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 	}
 	origGithubWebhookEnabled := (hook != nil)
 	if hook == nil {
-		var hookID int
-		hookID, err = uis.setupGithubHook(responseRef.Owner, responseRef.Repo)
+		hook, err = model.SetupNewGithubHook(uis.Settings, responseRef.Owner, responseRef.Repo)
 		if err != nil {
 			grip.Error(message.WrapError(err, message.Fields{
 				"source":  "project edit",
@@ -268,11 +264,6 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 			// branch we don't have access to
 			projectRef.TracksPushEvents = false
 		} else {
-			hook := model.GithubHook{
-				HookID: hookID,
-				Owner:  responseRef.Owner,
-				Repo:   responseRef.Repo,
-			}
 			if err = hook.Insert(); err != nil {
 				// A github hook as been created, but we couldn't
 				// save the hook ID in our database. This needs
@@ -283,7 +274,7 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 					"project": id,
 					"owner":   responseRef.Owner,
 					"repo":    responseRef.Repo,
-					"hook_id": hookID,
+					"hook_id": hook.HookID,
 				}))
 				uis.LoggedError(w, r, http.StatusInternalServerError, err)
 				return
@@ -624,48 +615,6 @@ func (uis *UIServer) setRevision(w http.ResponseWriter, r *http.Request) {
 		grip.Error(errors.Wrap(err, "problem creating catchup job from UI"))
 	}
 	gimlet.WriteJSON(w, nil)
-}
-
-func (uis *UIServer) setupGithubHook(owner, repo string) (int, error) {
-	token, err := uis.Settings.GetGithubOauthToken()
-	if err != nil {
-		return 0, err
-	}
-
-	if uis.Settings.Api.GithubWebhookSecret == "" {
-		return 0, errors.New("Evergreen is not configured for Github Webhooks")
-	}
-
-	httpClient, err := util.GetOAuth2HTTPClient(token)
-	if err != nil {
-		return 0, err
-	}
-	defer util.PutHTTPClient(httpClient)
-	client := github.NewClient(httpClient)
-	newHook := github.Hook{
-		Name:   github.String("web"),
-		Active: github.Bool(true),
-		Events: []string{"*"},
-		Config: map[string]interface{}{
-			"url":          github.String(fmt.Sprintf("%s/rest/v2/hooks/github", uis.Settings.ApiUrl)),
-			"content_type": github.String("json"),
-			"secret":       github.String(uis.Settings.Api.GithubWebhookSecret),
-			"insecure_ssl": github.String("0"),
-		},
-	}
-
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancel()
-	hook, resp, err := client.Repositories.CreateHook(ctx, owner, repo, &newHook)
-	if err != nil {
-		return 0, err
-	}
-	defer resp.Body.Close()
-	if resp.StatusCode != http.StatusCreated || hook == nil || hook.ID == nil {
-		return 0, errors.New("unexpected data from github")
-	}
-
-	return *hook.ID, nil
 }
 
 func (uis *UIServer) projectEvents(w http.ResponseWriter, r *http.Request) {

@@ -14,6 +14,7 @@ import (
 	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/gimlet"
+	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 )
 
@@ -261,6 +262,68 @@ func (h *projectIDPatchHandler) Run(ctx context.Context) gimlet.Responder {
 			StatusCode: http.StatusInternalServerError,
 			Message:    fmt.Sprintf("Unexpected type %T for model.ProjectRef", i),
 		})
+	}
+
+	// verify input and webhooks
+	if dbProjectRef.Owner == "" || dbProjectRef.Repo == "" {
+		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+			StatusCode: http.StatusBadRequest,
+			Message:    "no owner/repo specified",
+		})
+	}
+
+	var hasHook bool
+	hasHook, err = h.sc.EnableWebhooks(dbProjectRef)
+	if err != nil {
+		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "Error enabling webhooks for project '%s'", h.projectID))
+	}
+
+	// verify enabling PR testing valid
+	if dbProjectRef.PRTestingEnabled {
+		if hasHook {
+			return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+				StatusCode: http.StatusBadRequest,
+				Message:    "Cannot enable PR Testing in this repo, must enable GitHub webhooks first",
+			})
+		}
+		if err = h.sc.EnablePRTesting(dbProjectRef); err != nil {
+			return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "Error enabling PR testing for project '%s'", h.projectID))
+		}
+	}
+	// verify enabling commit queue valid
+	temp, err := apiProjectRef.CommitQueue.ToService()
+	if err != nil {
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "API error converting from APICommitQueueParams to CommitQueueParams"))
+	}
+	commitQueueParams, ok := temp.(dbModel.CommitQueueParams)
+	if !ok {
+		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+			StatusCode: http.StatusInternalServerError,
+			Message:    fmt.Sprintf("Unexpected type %T for APICommitQueueParams", i),
+		})
+	}
+	if commitQueueParams.Enabled {
+		if hasHook {
+			gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+				StatusCode: http.StatusBadRequest,
+				Message:    "Cannot enable commit queue in this repo, must enable GitHub webhooks first",
+			})
+		}
+		if err = h.sc.EnableCommitQueue(dbProjectRef, commitQueueParams); err != nil {
+			return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "Error enabling commit queue for project '%s'", h.projectID))
+		}
+	}
+
+	// validate triggers before updating project
+	catcher := grip.NewSimpleCatcher()
+	for i, trigger := range dbProjectRef.Triggers {
+		catcher.Add(trigger.Validate(dbProjectRef.Identifier))
+		if trigger.DefinitionID == "" {
+			dbProjectRef.Triggers[i].DefinitionID = util.RandomString()
+		}
+	}
+	if catcher.HasErrors() {
+		return gimlet.MakeJSONErrorResponder(errors.Wrap(catcher.Resolve(), "error validating triggers"))
 	}
 
 	if err = h.sc.UpdateProject(dbProjectRef); err != nil {

@@ -5,10 +5,14 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/evergreen/model/commitqueue"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/gimlet"
+	adb "github.com/mongodb/anser/db"
 	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 )
 
@@ -50,6 +54,79 @@ func (pc *DBProjectConnector) UpdateProject(projectRef *model.ProjectRef) error 
 		return gimlet.ErrorResponse{
 			StatusCode: http.StatusInternalServerError,
 			Message:    fmt.Sprintf("project with id '%s' was not updated", projectRef.Identifier),
+		}
+	}
+	return nil
+}
+
+// EnableWebhooks returns true if a hook for the given owner/repo exists or was inserted.
+func (pc *DBProjectConnector) EnableWebhooks(projectRef *model.ProjectRef) (bool, error) {
+	hook, err := model.FindGithubHook(projectRef.Owner, projectRef.Repo)
+	if err != nil {
+		return false, errors.Wrapf(err, "Database error finding github hook for project '%s'", projectRef.Identifier)
+	}
+	if hook != nil {
+		return true, nil
+	}
+
+	settings, err := evergreen.GetConfig()
+	if err != nil {
+		return true, errors.Wrap(err, "error finding evergreen settings")
+	}
+
+	hook, err = model.SetupNewGithubHook(*settings, projectRef.Owner, projectRef.Repo)
+	if err != nil {
+		// don't return error:
+		// sometimes people change a project to track a personal
+		// branch we don't have access to
+		grip.Error(message.WrapError(err, message.Fields{
+			"source":  "patch project",
+			"message": "can't setup webhook",
+			"project": projectRef.Identifier,
+			"owner":   projectRef.Owner,
+			"repo":    projectRef.Repo,
+		}))
+		projectRef.TracksPushEvents = false
+		return false, nil
+	}
+
+	if err = hook.Insert(); err != nil {
+		return false, errors.Wrapf(err, "error inserting new webhook for project '%s'", projectRef.Identifier)
+	}
+	return true, nil
+}
+
+func (pc *DBProjectConnector) EnablePRTesting(projectRef *model.ProjectRef) error {
+	conflictingRefs, err := model.FindProjectRefsByRepoAndBranch(projectRef.Owner, projectRef.Repo, projectRef.Branch)
+	if err != nil {
+		return errors.Wrap(err, "error finding project refs")
+	}
+	for _, ref := range conflictingRefs {
+		if ref.PRTestingEnabled && ref.Identifier != projectRef.Identifier {
+			return errors.Errorf("Cannot enable PR Testing in this repo, must disable in other projects first")
+		}
+	}
+	return nil
+}
+
+func (pc *DBProjectConnector) EnableCommitQueue(projectRef *model.ProjectRef, commitQueueParams model.CommitQueueParams) error {
+	resultRef, err := model.FindOneProjectRefWithCommitQueueByOwnerRepoAndBranch(projectRef.Owner, projectRef.Repo, projectRef.Branch)
+	if err != nil && !adb.ResultsNotFound(err) {
+		return errors.Wrapf(err, "")
+	}
+	if resultRef != nil && resultRef.CommitQueue.Enabled && resultRef.Identifier != projectRef.Identifier {
+		return errors.Errorf("Cannot enable Commit Queue in this repo, must disable in other projects first")
+	}
+
+	_, err = commitqueue.FindOneId(projectRef.Identifier)
+	if err != nil {
+		if adb.ResultsNotFound(err) {
+			cq := &commitqueue.CommitQueue{ProjectID: projectRef.Identifier}
+			if err = commitqueue.InsertQueue(cq); err != nil {
+				return errors.Wrapf(err, "problem inserting new commit queue")
+			}
+		} else {
+			return errors.Wrapf(err, "database error finding commit queue")
 		}
 	}
 	return nil
@@ -271,4 +348,15 @@ func (pc *MockProjectConnector) GetProjectWithCommitQueueByOwnerRepoAndBranch(ow
 	}
 
 	return nil, errors.Errorf("can't query for projectRef %s/%s tracking %s", owner, repo, branch)
+}
+func (pc *MockProjectConnector) EnableWebhooks(projectRef *model.ProjectRef) (bool, error) {
+	return false, nil
+}
+
+func (pc *MockProjectConnector) EnableCommitQueue(projectRef *model.ProjectRef, commitQueueParams model.CommitQueueParams) error {
+	return nil
+}
+
+func (pc *MockProjectConnector) EnablePRTesting(projectRef *model.ProjectRef) error {
+	return nil
 }
