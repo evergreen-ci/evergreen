@@ -256,10 +256,6 @@ func (s *TaskFinderComparisonSuite) SetupTest() {
 	})
 }
 
-func (s *TaskFinderComparisonSuite) TearDownTest() {
-	s.NoError(db.Clear(task.Collection))
-}
-
 func (s *TaskFinderComparisonSuite) TestFindRunnableHostsIsIdentical() {
 	idsOldMethod := []string{}
 	for _, task := range s.oldRunnableTasks {
@@ -498,7 +494,7 @@ func makeRandomSubTasks(statuses []string, parentTasks *[]task.Task) []task.Task
 		dependsOn := []task.Dependency{
 			task.Dependency{
 				TaskId: parentTask.Id,
-				Status: parentTask.Status,
+				Status: getRandomDependsOnStatus(),
 			},
 		}
 
@@ -508,7 +504,7 @@ func makeRandomSubTasks(statuses []string, parentTasks *[]task.Task) []task.Task
 			dependsOn = append(dependsOn,
 				task.Dependency{
 					TaskId: (*parentTasks)[anotherParent].Id,
-					Status: (*parentTasks)[anotherParent].Status,
+					Status: getRandomDependsOnStatus(),
 				},
 			)
 		}
@@ -529,6 +525,11 @@ func makeRandomSubTasks(statuses []string, parentTasks *[]task.Task) []task.Task
 	}
 
 	return depTasks
+}
+
+func getRandomDependsOnStatus() string {
+	dependsOnStatuses := []string{evergreen.TaskSucceeded, evergreen.TaskFailed, task.AnyStatus, task.AllStatuses}
+	return dependsOnStatuses[rand.Intn(len(dependsOnStatuses))]
 }
 
 func hugeString(suffix string) string {
