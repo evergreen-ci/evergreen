@@ -13,8 +13,8 @@ import (
 
 func TestCLIManager(t *testing.T) {
 	for remoteType, makeService := range map[string]func(ctx context.Context, t *testing.T, port int, manager jasper.Manager) jasper.CloseFunc{
-		serviceREST: makeRESTService,
-		serviceRPC:  makeRPCService,
+		restService: makeTestRESTService,
+		rpcService:  makeTestRPCService,
 	} {
 		t.Run(remoteType, func(t *testing.T) {
 			for testName, testCase := range map[string]func(ctx context.Context, t *testing.T, c *cli.Context, jasperProcID string){
@@ -111,15 +111,14 @@ func TestCLIManager(t *testing.T) {
 						assert.NoError(t, closeService())
 					}()
 
-					cmdCtx := cli.NewContext(nil, nil, c)
 					resp := &InfoResponse{}
 					input, err := json.Marshal(trueCreateOpts())
 					require.NoError(t, err)
-					require.NoError(t, execCLICommandInputOutput(t, cmdCtx, managerCreateProcess(), input, resp))
+					require.NoError(t, execCLICommandInputOutput(t, c, managerCreateProcess(), input, resp))
 					require.True(t, resp.Successful())
 					require.NotZero(t, resp.Info.ID)
 
-					testCase(ctx, t, cmdCtx, resp.Info.ID)
+					testCase(ctx, t, c, resp.Info.ID)
 				})
 			}
 		})

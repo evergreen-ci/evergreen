@@ -1,6 +1,7 @@
 package data
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	"strings"
@@ -80,7 +81,7 @@ func (c *RepoTrackerConnector) TriggerRepotracker(q amboy.Queue, msgID string, e
 		job := units.NewRepotrackerJob(fmt.Sprintf("github-push-%s", msgID), refs[i].Identifier)
 		job.SetPriority(1)
 
-		if err := q.Put(job); err != nil {
+		if err := q.Put(context.TODO(), job); err != nil {
 			catcher.Add(errors.Errorf("failed to add repotracker job to queue for project: '%s'", refs[i].Identifier))
 			failed = append(failed, refs[i].Identifier)
 

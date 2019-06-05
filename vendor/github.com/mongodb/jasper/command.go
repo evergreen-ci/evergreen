@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/google/shlex"
+	"github.com/mongodb/amboy"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/level"
 	"github.com/mongodb/grip/message"
@@ -19,7 +20,8 @@ import (
 
 // Command objects allow a quick and lightweight interface for firing off
 // ad-hoc processes for smaller tasks. Command immediately supports features
-// such as output and error functionality and remote execution.
+// such as output and error functionality and remote execution. Command methods
+// are not thread-safe.
 type Command struct {
 	continueOnError bool
 	ignoreError     bool
@@ -27,12 +29,14 @@ type Command struct {
 	prerequisite    func() bool
 	priority        level.Priority
 	runBackground   bool
+	tags            []string
 
-	cmds    [][]string
-	id      string
-	procIDs []string
-	remote  remoteCommandOptions
-	makep   ProcessConstructor
+	cmds   [][]string
+	id     string
+	remote remoteCommandOptions
+	makep  ProcessConstructor
+
+	procs []Process
 }
 
 type remoteCommandOptions struct {
@@ -77,10 +81,6 @@ func (c *Command) getRemoteCreateOpt(ctx context.Context, args []string) (*Creat
 	return opts, nil
 }
 
-func getLogOutput(out []byte) string {
-	return strings.Trim(strings.Replace(string(out), "\n", "\n\t out -> ", -1), "\n\t out->")
-}
-
 func splitCmdToArgs(cmd string) []string {
 	args, err := shlex.Split(cmd)
 	if err != nil {
@@ -93,7 +93,9 @@ func splitCmdToArgs(cmd string) []string {
 // NewCommand returns a blank Command.
 // New blank Commands will use basicProcess as their default Process for
 // executing sub-commands unless it is changed via ProcConstructor().
-func NewCommand() *Command { return &Command{opts: &CreateOptions{}, makep: newBasicProcess} }
+func NewCommand() *Command {
+	return &Command{opts: &CreateOptions{}, makep: newBasicProcess}
+}
 
 // ProcConstructor returns a blank Command that will use the process created
 // by the given ProcessConstructor.
@@ -105,7 +107,13 @@ func (c *Command) ProcConstructor(processConstructor ProcessConstructor) *Comman
 // GetProcIDs returns an array of Process IDs associated with the sub-commands
 // being run. This method will return a nil slice until processes have actually
 // been created by the Command for execution.
-func (c *Command) GetProcIDs() []string { return c.procIDs }
+func (c *Command) GetProcIDs() []string {
+	ids := []string{}
+	for _, proc := range c.procs {
+		ids = append(ids, proc.ID())
+	}
+	return ids
+}
 
 // ApplyFromOpts uses the CreateOptions to configure the Command. If this is a
 // remote command (i.e. host has been set), the WorkingDirectory and Environment
@@ -155,6 +163,19 @@ func (c *Command) Priority(l level.Priority) *Command { c.priority = l; return c
 
 // ID sets the ID.
 func (c *Command) ID(id string) *Command { c.id = id; return c }
+
+// SetTags overrides any existing tags for a process with the
+// specified list. Tags are used to filter process with the manager.
+func (c *Command) SetTags(tags []string) *Command { c.tags = tags; return c }
+
+// AppendTags adds the specified tags to the existing tag slice. Tags
+// are used to filter process with the manager.
+func (c *Command) AppendTags(t ...string) *Command { c.tags = append(c.tags, t...); return c }
+
+// ExtendTags adds all tags in the specified slice to the tags will be
+// added to the process after creation. Tags are used to filter
+// process with the manager.
+func (c *Command) ExtendTags(t []string) *Command { c.tags = append(c.tags, t...); return c }
 
 // Background allows you to set the command to run in the background
 // when you call Run(), the command will begin executing but will not
@@ -290,7 +311,7 @@ func (c *Command) Run(ctx context.Context) error {
 }
 
 // RunParallel is the same as Run(), but will run all sub-commands in parallel.
-// Use of this function effectively ignores the the ContinueOnError flag.
+// Use of this function effectively ignores the ContinueOnError flag.
 func (c *Command) RunParallel(ctx context.Context) error {
 	// Avoid paying the copy-costs in between command structs by doing the work
 	// before executing the commands.
@@ -302,30 +323,41 @@ func (c *Command) RunParallel(ctx context.Context) error {
 		splitCmd.opts = &optsCopy
 		splitCmd.opts.closers = []func() error{}
 		splitCmd.cmds = [][]string{cmd}
+		splitCmd.procs = []Process{}
 		parallelCmds[idx] = splitCmd
 	}
 
-	errs := make(chan error, len(c.cmds))
+	type cmdResult struct {
+		procs []Process
+		err   error
+	}
+	cmdResults := make(chan cmdResult, len(c.cmds))
 	for _, parallelCmd := range parallelCmds {
 		go func(innerCmd Command) {
 			defer func() {
 				err := recovery.HandlePanicWithError(recover(), nil, "parallel command encountered error")
 				if err != nil {
-					errs <- err
+					cmdResults <- cmdResult{err: err}
 				}
 			}()
-			errs <- innerCmd.Run(ctx)
+			err := innerCmd.Run(ctx)
+			select {
+			case cmdResults <- cmdResult{procs: innerCmd.procs, err: err}:
+			case <-ctx.Done():
+			}
 		}(parallelCmd)
 	}
 
 	catcher := grip.NewBasicCatcher()
 	for i := 0; i < len(c.cmds); i++ {
 		select {
-		case err := <-errs:
+		case cmdRes := <-cmdResults:
 			if !c.ignoreError {
-				catcher.Add(err)
+				catcher.Add(cmdRes.err)
 			}
+			c.procs = append(c.procs, cmdRes.procs...)
 		case <-ctx.Done():
+			c.procs = []Process{}
 			catcher.Add(c.Close())
 			catcherErr := catcher.Resolve()
 			if catcherErr != nil {
@@ -395,6 +427,74 @@ func (c *Command) SetCombinedWriter(writer io.WriteCloser) *Command {
 	c.opts.Output.Error = writer
 	c.opts.Output.Output = writer
 	return c
+}
+
+// EnqueueForeground adds separate jobs to the queue for every operation
+// captured in the command. These operations will execute in
+// parallel. The output of the commands are logged, using the default
+// grip sender in the foreground.
+func (c *Command) EnqueueForeground(ctx context.Context, q amboy.Queue) error {
+	jobs, err := c.JobsForeground(ctx)
+	if err != nil {
+		return errors.WithStack(err)
+	}
+
+	catcher := grip.NewBasicCatcher()
+	for _, j := range jobs {
+		catcher.Add(q.Put(ctx, j))
+	}
+
+	return catcher.Resolve()
+}
+
+// Enqueue adds separate jobs to the queue for every operation
+// captured in the command. These operations will execute in
+// parallel. The output of the operations is captured in the body of
+// the job.
+func (c *Command) Enqueue(ctx context.Context, q amboy.Queue) error {
+	jobs, err := c.Jobs(ctx)
+	if err != nil {
+		return errors.WithStack(err)
+	}
+
+	catcher := grip.NewBasicCatcher()
+	for _, j := range jobs {
+		catcher.Add(q.Put(ctx, j))
+	}
+
+	return catcher.Resolve()
+}
+
+// JobseForeground returns a slice of jobs for every operation
+// captured in the command. The output of the commands are logged,
+// using the default grip sender in the foreground.
+func (c *Command) JobsForeground(ctx context.Context) ([]amboy.Job, error) {
+	opts, err := c.getCreateOpts(ctx)
+	if err != nil {
+		return nil, errors.WithStack(err)
+	}
+
+	out := make([]amboy.Job, len(opts))
+	for idx := range opts {
+		out[idx] = NewJobForeground(c.makep, opts[idx])
+	}
+	return out, nil
+}
+
+// Jobs returns a slice of jobs for every operation in the
+// command. The output of the commands are captured in the body of the
+// job.
+func (c *Command) Jobs(ctx context.Context) ([]amboy.Job, error) {
+	opts, err := c.getCreateOpts(ctx)
+	if err != nil {
+		return nil, errors.WithStack(err)
+	}
+
+	out := make([]amboy.Job, len(opts))
+	for idx := range opts {
+		out[idx] = NewJobOptions(c.makep, opts[idx])
+	}
+	return out, nil
 }
 
 func (c *Command) finalizeWriters() {
@@ -475,43 +575,63 @@ func (c *Command) exec(ctx context.Context, opts *CreateOptions, idx int) error 
 		"idx": idx,
 		"len": len(c.cmds),
 		"bkg": c.runBackground,
+		"tag": c.tags,
 	}
 
-	addOutOp := func(msg message.Fields) message.Fields { return msg }
 	var err error
-	var newProc Process
-	// TODO: the logic below this is not strictly correct if, for example,
-	// Output is redirected to Error and Error has been defined.
-	if opts.Output.Output == nil {
-		var out bytes.Buffer
-		opts.Output.Output = &out
-		opts.Output.Error = &out
-		newProc, err = c.makep(ctx, opts)
-		if err != nil {
-			return errors.Wrapf(err, "problem starting command")
+	var out bytes.Buffer
+	addOutOp := func(msg message.Fields) message.Fields { return msg }
+	if opts.Output.Output == nil || opts.Output.Error == nil {
+		if opts.Output.Output == nil {
+			opts.Output.Output = &out
 		}
-
-		c.procIDs = append(c.procIDs, newProc.ID())
+		if opts.Output.Error == nil {
+			opts.Output.Error = &out
+		}
 		addOutOp = func(msg message.Fields) message.Fields {
-			getLogOutput(out.Bytes())
+			msg["out"] = out.String()
 			return msg
 		}
-	} else {
-		newProc, err = c.makep(ctx, opts)
-		if err != nil {
-			return errors.Wrapf(err, "problem starting command")
-		}
-
-		c.procIDs = append(c.procIDs, newProc.ID())
 	}
+
+	proc, err := c.makep(ctx, opts)
+	if err != nil {
+		return errors.Wrap(err, "problem starting command")
+	}
+	c.procs = append(c.procs, proc)
 
 	if !c.runBackground {
-		_, err = newProc.Wait(ctx)
-		msg["err"] = err
+		waitCatcher := grip.NewBasicCatcher()
+		for _, proc := range c.procs {
+			_, err = proc.Wait(ctx)
+			waitCatcher.Add(errors.Wrapf(err, "error waiting on process '%s'", proc.ID()))
+		}
+		msg["err"] = waitCatcher.Resolve()
+	}
+	grip.Log(c.priority, addOutOp(msg))
+
+	return errors.WithStack(err)
+}
+
+// Wait returns the exit code and error waiting for the underlying process to
+// complete.
+// For commands run with RunParallel, Wait only returns a zero exit code if all
+// the underlying processes return exit code zero; otherwise, it returns a
+// non-zero exit code. Similarly, it will return a non-nil error if any of the
+// underlying processes encounter an error while waiting.
+func (c *Command) Wait(ctx context.Context) (int, error) {
+	if len(c.procs) == 0 {
+		return 0, errors.New("cannot call wait on a command if no processes have started yet")
 	}
 
-	grip.Log(c.priority, addOutOp(msg))
-	return errors.WithStack(err)
+	for _, proc := range c.procs {
+		exitCode, err := proc.Wait(ctx)
+		if err != nil || exitCode != 0 {
+			return exitCode, errors.Wrapf(err, "error waiting on process '%s'", proc.ID())
+		}
+	}
+
+	return 0, nil
 }
 
 // BuildCommand builds the Command given the configuration of arguments.

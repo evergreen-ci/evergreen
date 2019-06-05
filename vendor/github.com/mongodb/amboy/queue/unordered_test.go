@@ -54,15 +54,15 @@ func (s *LocalQueueSuite) TestPutReturnsErrorForDuplicateNameTasks() {
 
 	s.NoError(s.queue.Start(ctx))
 
-	s.NoError(s.queue.Put(j))
-	s.Error(s.queue.Put(j))
+	s.NoError(s.queue.Put(ctx, j))
+	s.Error(s.queue.Put(ctx, j))
 }
 
 func (s *LocalQueueSuite) TestPuttingAJobIntoAQueueImpactsStats() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	stats := s.queue.Stats()
+	stats := s.queue.Stats(ctx)
 	s.Equal(0, stats.Total)
 	s.Equal(0, stats.Pending)
 	s.Equal(0, stats.Running)
@@ -71,13 +71,13 @@ func (s *LocalQueueSuite) TestPuttingAJobIntoAQueueImpactsStats() {
 	s.NoError(s.queue.Start(ctx))
 
 	j := job.NewShellJob("true", "")
-	s.NoError(s.queue.Put(j))
+	s.NoError(s.queue.Put(ctx, j))
 
-	jReturn, ok := s.queue.Get(j.ID())
+	jReturn, ok := s.queue.Get(ctx, j.ID())
 	s.True(ok)
 	s.Exactly(jReturn, j)
 
-	stats = s.queue.Stats()
+	stats = s.queue.Stats(ctx)
 	s.Equal(1, stats.Total)
 	s.Equal(1, stats.Pending)
 	s.Equal(1, stats.Running)
@@ -92,9 +92,9 @@ func (s *LocalQueueSuite) TestResultsChannelProducesPointersToConsistentJobObjec
 	s.False(j.Status().Completed)
 
 	s.NoError(s.queue.Start(ctx))
-	s.NoError(s.queue.Put(j))
+	s.NoError(s.queue.Put(ctx, j))
 
-	amboy.Wait(s.queue)
+	amboy.Wait(ctx, s.queue)
 
 	result, ok := <-s.queue.Results(ctx)
 	s.True(ok)
@@ -114,10 +114,10 @@ func (s *LocalQueueSuite) TestJobsChannelProducesJobObjects() {
 
 	for name := range names {
 		j := job.NewShellJob("echo "+name, "")
-		s.NoError(s.queue.Put(j))
+		s.NoError(s.queue.Put(ctx, j))
 	}
 
-	amboy.Wait(s.queue)
+	amboy.Wait(ctx, s.queue)
 
 	for j := range s.queue.Results(ctx) {
 		shellJob, ok := j.(*job.ShellJob)
@@ -157,7 +157,7 @@ func (s *LocalQueueSuite) TestQueueCanOnlyBeStartedOnce() {
 	s.NoError(s.queue.Start(ctx))
 	s.True(s.queue.Started())
 
-	amboy.Wait(s.queue)
+	amboy.Wait(ctx, s.queue)
 	s.True(s.queue.Started())
 
 	// you can call start more than once until the queue has
@@ -167,7 +167,10 @@ func (s *LocalQueueSuite) TestQueueCanOnlyBeStartedOnce() {
 }
 
 func (s *LocalQueueSuite) TestPutReturnsErrorIfQueueIsNotStarted() {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	s.False(s.queue.started)
 	j := job.NewShellJob("true", "")
-	s.Error(s.queue.Put(j))
+	s.Error(s.queue.Put(ctx, j))
 }

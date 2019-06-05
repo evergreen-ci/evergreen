@@ -1,6 +1,7 @@
 package rest
 
 import (
+	"context"
 	"net/http"
 
 	"github.com/evergreen-ci/gimlet"
@@ -17,15 +18,15 @@ type createResponse struct {
 	Status     status `bson:"status,omitempty" json:"status,omitempty" yaml:"status,omitempty"`
 }
 
-func (s *QueueService) createJobResponseBase() *createResponse {
+func (s *QueueService) createJobResponseBase(ctx context.Context) *createResponse {
 	return &createResponse{
-		QueueDepth: s.queue.Stats().Pending,
-		Status:     s.getStatus(),
+		QueueDepth: s.queue.Stats(ctx).Pending,
+		Status:     s.getStatus(ctx),
 	}
 }
 
-func (s *QueueService) createJob(payload *registry.JobInterchange) (*createResponse, error) {
-	resp := s.createJobResponseBase()
+func (s *QueueService) createJob(ctx context.Context, payload *registry.JobInterchange) (*createResponse, error) {
+	resp := s.createJobResponseBase(ctx)
 	j, err := payload.Resolve(amboy.JSON)
 
 	if err != nil {
@@ -35,7 +36,7 @@ func (s *QueueService) createJob(payload *registry.JobInterchange) (*createRespo
 
 	resp.ID = j.ID()
 
-	err = s.queue.Put(j)
+	err = s.queue.Put(ctx, j)
 	if err != nil {
 		resp.Error = err.Error()
 		return resp, err
@@ -49,7 +50,8 @@ func (s *QueueService) createJob(payload *registry.JobInterchange) (*createRespo
 // local queue that backs the service.
 func (s *QueueService) Create(w http.ResponseWriter, r *http.Request) {
 	jobPayload := &registry.JobInterchange{}
-	resp := s.createJobResponseBase()
+	ctx := r.Context()
+	resp := s.createJobResponseBase(ctx)
 
 	err := gimlet.GetJSON(r.Body, jobPayload)
 	if err != nil {
@@ -59,7 +61,7 @@ func (s *QueueService) Create(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	resp, err = s.createJob(jobPayload)
+	resp, err = s.createJob(ctx, jobPayload)
 	if err != nil {
 		resp.Error = err.Error()
 		grip.Error(err)

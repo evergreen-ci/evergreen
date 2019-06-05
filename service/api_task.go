@@ -87,7 +87,7 @@ func (as *APIServer) StartTask(w http.ResponseWriter, r *http.Request) {
 
 	if h.Distro.IsEphemeral() {
 		job := units.NewCollectHostIdleDataJob(h, t, idleTimeStartAt, t.StartTime)
-		if err = as.queue.Put(job); err != nil {
+		if err = as.queue.Put(r.Context(), job); err != nil {
 			as.LoggedError(w, r, http.StatusInternalServerError, errors.Wrapf(err, "error queuing host idle stats for %s", msg))
 			return
 		}
@@ -222,7 +222,7 @@ func (as *APIServer) EndTask(w http.ResponseWriter, r *http.Request) {
 	}
 
 	job := units.NewCollectTaskEndDataJob(t, currentHost)
-	if err = as.queue.Put(job); err != nil {
+	if err = as.queue.Put(r.Context(), job); err != nil {
 		as.LoggedError(w, r, http.StatusInternalServerError,
 			errors.Wrap(err, "couldn't queue job to update task cost accounting"))
 		return
@@ -254,7 +254,7 @@ func (as *APIServer) EndTask(w http.ResponseWriter, r *http.Request) {
 			env := evergreen.GetEnvironment()
 
 			job := units.NewDecoHostNotifyJob(env, currentHost, err, msg)
-			grip.Critical(message.WrapError(as.queue.Put(job),
+			grip.Critical(message.WrapError(as.queue.Put(r.Context(), job),
 				message.Fields{
 					"host_id": currentHost.Id,
 					"task_id": t.Id,

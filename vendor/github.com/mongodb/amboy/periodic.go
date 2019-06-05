@@ -15,7 +15,7 @@ import (
 // to a queue, or could be used to perform periodic maintenance
 // (e.g. removing stale jobs or removing stuck jobs in a dependency
 // queue.)
-type QueueOperation func(Queue) error
+type QueueOperation func(context.Context, Queue) error
 
 // QueueOperationConfig describes the behavior of the periodic
 // interval schedulers.
@@ -28,8 +28,8 @@ type QueueOperationConfig struct {
 // ScheduleJobFactory produces a QueueOpertion that calls a single
 // function which returns a Job and puts that job into the queue.
 func ScheduleJobFactory(op func() Job) QueueOperation {
-	return func(q Queue) error {
-		return q.Put(op())
+	return func(ctx context.Context, q Queue) error {
+		return q.Put(ctx, op())
 	}
 }
 
@@ -40,10 +40,10 @@ func ScheduleJobFactory(op func() Job) QueueOperation {
 // (e.g. continue-on-error semantics). The error returned aggregates
 // all errors encountered.
 func ScheduleManyJobsFactory(op func() []Job) QueueOperation {
-	return func(q Queue) error {
+	return func(ctx context.Context, q Queue) error {
 		catcher := grip.NewCatcher()
 		for _, j := range op() {
-			catcher.Add(q.Put(j))
+			catcher.Add(q.Put(ctx, j))
 		}
 		return catcher.Resolve()
 	}
@@ -56,10 +56,19 @@ func ScheduleManyJobsFactory(op func() []Job) QueueOperation {
 // any (e.g. continue-on-error semantics). The error returned aggregates
 // all errors encountered.
 func ScheduleJobsFromGeneratorFactory(op func() <-chan Job) QueueOperation {
-	return func(q Queue) error {
+	return func(ctx context.Context, q Queue) error {
 		catcher := grip.NewCatcher()
-		for j := range op() {
-			catcher.Add(q.Put(j))
+
+		jobs := op()
+	waitLoop:
+		for {
+			select {
+			case j := <-jobs:
+				catcher.Add(q.Put(ctx, j))
+			case <-ctx.Done():
+				catcher.Add(ctx.Err())
+				break waitLoop
+			}
 		}
 		return catcher.Resolve()
 	}
@@ -71,15 +80,18 @@ func ScheduleJobsFromGeneratorFactory(op func() <-chan Job) QueueOperation {
 // QueueOperations fail, but attempts to run all specified
 // QueueOperations before propagating errors.
 func GroupQueueOperationFactory(first QueueOperation, ops ...QueueOperation) QueueOperation {
-	return func(q Queue) error {
+	return func(ctx context.Context, q Queue) error {
 		catcher := grip.NewCatcher()
 
-		catcher.Add(first(q))
+		catcher.Add(first(ctx, q))
 
 		for _, op := range ops {
-			catcher.Add(op(q))
+			if err := ctx.Err(); err != nil {
+				catcher.Add(err)
+				break
+			}
+			catcher.Add(op(ctx, q))
 		}
-
 		return catcher.Resolve()
 	}
 }
@@ -122,7 +134,7 @@ func PeriodicQueueOperation(ctx context.Context, q Queue, interval time.Duration
 				})
 				return
 			case <-timer.C:
-				if err = scheduleOp(q, op, conf); err != nil {
+				if err = scheduleOp(ctx, q, op, conf); err != nil {
 					return
 				}
 
@@ -176,7 +188,7 @@ func IntervalQueueOperation(ctx context.Context, q Queue, interval time.Duration
 		}
 
 		count := 1
-		if err = scheduleOp(q, op, conf); err != nil {
+		if err = scheduleOp(ctx, q, op, conf); err != nil {
 			return
 		}
 
@@ -191,7 +203,7 @@ func IntervalQueueOperation(ctx context.Context, q Queue, interval time.Duration
 				})
 				return
 			case <-ticker.C:
-				if err = scheduleOp(q, op, conf); err != nil {
+				if err = scheduleOp(ctx, q, op, conf); err != nil {
 					return
 				}
 
@@ -201,8 +213,8 @@ func IntervalQueueOperation(ctx context.Context, q Queue, interval time.Duration
 	}()
 }
 
-func scheduleOp(q Queue, op QueueOperation, conf QueueOperationConfig) error {
-	if err := errors.Wrap(op(q), "problem encountered during periodic job scheduling"); err != nil {
+func scheduleOp(ctx context.Context, q Queue, op QueueOperation, conf QueueOperationConfig) error {
+	if err := errors.Wrap(op(ctx, q), "problem encountered during periodic job scheduling"); err != nil {
 		if conf.ContinueOnError {
 			grip.WarningWhen(conf.LogErrors, err)
 		} else {

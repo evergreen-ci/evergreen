@@ -52,7 +52,7 @@ func NewMgoDriver(name string, opts MongoDBOptions) Driver {
 func OpenNewMgoDriver(ctx context.Context, name string, opts MongoDBOptions, session *mgo.Session) (Driver, error) {
 	d := NewMgoDriver(name, opts).(*mgoDriver)
 
-	if err := d.start(ctx, session.Copy()); err != nil {
+	if err := d.start(ctx, session.Clone()); err != nil {
 		return nil, errors.Wrap(err, "problem starting driver")
 	}
 

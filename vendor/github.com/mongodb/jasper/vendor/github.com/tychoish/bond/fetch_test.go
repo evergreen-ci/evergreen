@@ -35,7 +35,7 @@ func (s *DownloaderSuite) SetupSuite() {
 }
 
 func (s *DownloaderSuite) TearDownSuite() {
-	grip.CatchCritical(os.RemoveAll(s.dir))
+	grip.Critical(os.RemoveAll(s.dir))
 }
 
 func (s *DownloaderSuite) TestCreateDirectory() {

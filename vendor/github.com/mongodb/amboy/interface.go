@@ -112,12 +112,12 @@ func (j JobTimeInfo) Duration() time.Duration { return j.End.Sub(j.Start) }
 type Queue interface {
 	// Used to add a job to the queue. Should only error if the
 	// Queue cannot accept jobs.
-	Put(Job) error
+	Put(context.Context, Job) error
 
 	// Given a job id, get that job. The second return value is a
 	// Boolean, which indicates if the named job had been
 	// registered by a Queue.
-	Get(string) (Job, bool)
+	Get(context.Context, string) (Job, bool)
 
 	// Returns the next job in the queue. These calls are
 	// blocking, but may be interrupted with a canceled context.
@@ -140,7 +140,7 @@ type Queue interface {
 
 	// Returns an object that contains statistics about the
 	// current state of the Queue.
-	Stats() QueueStats
+	Stats(context.Context) QueueStats
 
 	// Getter for the Runner implementation embedded in the Queue
 	// instance.

@@ -163,10 +163,12 @@ func (uis *UIServer) ProjectNotFound(projCtx projectContext, w http.ResponseWrit
 }
 
 func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
-
 	dbUser := MustHaveUser(r)
 	_ = MustHaveProjectContext(r)
 	id := gimlet.GetVars(r)["project_id"]
+
+	ctx, cancel := context.WithCancel(r.Context())
+	defer cancel()
 
 	projectRef, err := model.FindOneProjectRef(id)
 
@@ -391,7 +393,7 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 	if responseRef.ForceRepotrackerRun {
 		ts := util.RoundPartOfHour(1).Format(tsFormat)
 		j := units.NewRepotrackerJob(fmt.Sprintf("catchup-%s", ts), projectRef.Identifier)
-		if err = uis.queue.Put(j); err != nil {
+		if err = uis.queue.Put(ctx, j); err != nil {
 			grip.Error(errors.Wrap(err, "problem creating catchup job from UI"))
 		}
 	}
@@ -620,7 +622,7 @@ func (uis *UIServer) setRevision(w http.ResponseWriter, r *http.Request) {
 	// run the repotracker for the project
 	ts := util.RoundPartOfHour(1).Format(tsFormat)
 	j := units.NewRepotrackerJob(fmt.Sprintf("catchup-%s", ts), projectRef.Identifier)
-	if err := uis.queue.Put(j); err != nil {
+	if err := uis.queue.Put(r.Context(), j); err != nil {
 		grip.Error(errors.Wrap(err, "problem creating catchup job from UI"))
 	}
 	gimlet.WriteJSON(w, nil)

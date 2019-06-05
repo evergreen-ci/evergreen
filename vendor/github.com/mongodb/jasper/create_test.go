@@ -114,26 +114,26 @@ func TestCreateOptions(t *testing.T) {
 			assert.Error(t, opts.Validate())
 		},
 		"WorkingDirectoryUnresolveableShouldNotError": func(t *testing.T, opts *CreateOptions) {
-			cmd, err := opts.Resolve(ctx)
-			assert.NoError(t, err)
+			cmd, _, err := opts.Resolve(ctx)
+			require.NoError(t, err)
 			assert.NotNil(t, cmd)
 			assert.NotZero(t, cmd.Dir)
 			assert.Equal(t, opts.WorkingDirectory, cmd.Dir)
 		},
 		"ResolveFailsIfOptionsAreFatal": func(t *testing.T, opts *CreateOptions) {
 			opts.Args = []string{}
-			cmd, err := opts.Resolve(ctx)
+			cmd, _, err := opts.Resolve(ctx)
 			assert.Error(t, err)
 			assert.Nil(t, cmd)
 		},
 		"WithoutOverrideEnvironmentEnvIsPopulated": func(t *testing.T, opts *CreateOptions) {
-			cmd, err := opts.Resolve(ctx)
+			cmd, _, err := opts.Resolve(ctx)
 			assert.NoError(t, err)
 			assert.NotZero(t, cmd.Env)
 		},
 		"WithOverrideEnvironmentEnvIsEmpty": func(t *testing.T, opts *CreateOptions) {
 			opts.OverrideEnviron = true
-			cmd, err := opts.Resolve(ctx)
+			cmd, _, err := opts.Resolve(ctx)
 			assert.NoError(t, err)
 			assert.Zero(t, cmd.Env)
 		},
@@ -142,20 +142,20 @@ func TestCreateOptions(t *testing.T) {
 				"foo": "bar",
 			}
 
-			cmd, err := opts.Resolve(ctx)
+			cmd, _, err := opts.Resolve(ctx)
 			assert.NoError(t, err)
 			assert.Contains(t, cmd.Env, "foo=bar")
 			assert.NotContains(t, cmd.Env, "bar=foo")
 		},
 		"MultipleArgsArePropagated": func(t *testing.T, opts *CreateOptions) {
 			opts.Args = append(opts.Args, "-lha")
-			cmd, err := opts.Resolve(ctx)
+			cmd, _, err := opts.Resolve(ctx)
 			assert.NoError(t, err)
 			assert.Contains(t, cmd.Path, "ls")
 			assert.Len(t, cmd.Args, 2)
 		},
 		"WithOnlyCommandsArgsHasOneVal": func(t *testing.T, opts *CreateOptions) {
-			cmd, err := opts.Resolve(ctx)
+			cmd, _, err := opts.Resolve(ctx)
 			assert.NoError(t, err)
 			assert.Contains(t, cmd.Path, "ls")
 			assert.Len(t, cmd.Args, 1)
@@ -165,9 +165,38 @@ func TestCreateOptions(t *testing.T) {
 			opts.Timeout = time.Second
 			opts.Args = []string{"sleep", "2"}
 
-			cmd, err := opts.Resolve(ctx)
-			assert.NoError(t, err)
+			cmd, deadline, err := opts.Resolve(ctx)
+			require.NoError(t, err)
+			assert.True(t, time.Now().Before(deadline))
 			assert.Error(t, cmd.Run())
+			assert.True(t, time.Now().After(deadline))
+		},
+		"ReturnedContextWrapsResolveContext": func(t *testing.T, opts *CreateOptions) {
+			opts = sleepCreateOpts(10)
+			opts.Timeout = 2 * time.Second
+			tctx, tcancel := context.WithTimeout(ctx, time.Millisecond)
+			defer tcancel()
+
+			cmd, deadline, err := opts.Resolve(ctx)
+			require.NoError(t, err)
+			assert.Error(t, cmd.Run())
+			assert.Equal(t, context.DeadlineExceeded, tctx.Err())
+			assert.True(t, time.Now().After(deadline))
+		},
+		"ReturnedContextErrorsOnTimeout": func(t *testing.T, opts *CreateOptions) {
+			opts = sleepCreateOpts(10)
+			opts.Timeout = time.Second
+			tctx, tcancel := context.WithTimeout(ctx, 5*time.Second)
+			defer tcancel()
+
+			start := time.Now()
+			cmd, deadline, err := opts.Resolve(ctx)
+			require.NoError(t, err)
+			assert.Error(t, cmd.Run())
+			elapsed := time.Since(start)
+			assert.True(t, elapsed > opts.Timeout)
+			assert.NoError(t, tctx.Err())
+			assert.True(t, time.Now().After(deadline))
 		},
 		"ClosersAreAlwaysCalled": func(t *testing.T, opts *CreateOptions) {
 			var counter int
@@ -201,14 +230,14 @@ func TestCreateOptions(t *testing.T) {
 		},
 		"ResolveFailsWithInvalidLoggingConfiguration": func(t *testing.T, opts *CreateOptions) {
 			opts.Output.Loggers = []Logger{Logger{Type: LogSumologic, Options: LogOptions{Format: LogFormatPlain}}}
-			cmd, err := opts.Resolve(ctx)
+			cmd, _, err := opts.Resolve(ctx)
 			assert.Error(t, err)
 			assert.Nil(t, cmd)
 		},
 		"ResolveFailsWithInvalidErrorLoggingConfiguration": func(t *testing.T, opts *CreateOptions) {
 			opts.Output.Loggers = []Logger{Logger{Type: LogSumologic, Options: LogOptions{Format: LogFormatPlain}}}
 			opts.Output.SuppressOutput = true
-			cmd, err := opts.Resolve(ctx)
+			cmd, _, err := opts.Resolve(ctx)
 			assert.Error(t, err)
 			assert.Nil(t, cmd)
 		},
@@ -241,6 +270,7 @@ func TestFileLogging(t *testing.T) {
 
 	goodFileName := goodFile.Name()
 	numBytes, err := goodFile.Write([]byte(catOutputMessage))
+	require.NoError(t, err)
 	require.NotZero(t, numBytes)
 
 	type Command struct {
@@ -345,6 +375,7 @@ func TestFileLogging(t *testing.T) {
 				require.NoError(t, err)
 				defer os.Remove(file.Name())
 				info, err := file.Stat()
+				require.NoError(t, err)
 				assert.Zero(t, info.Size())
 				files = append(files, file)
 			}
@@ -362,7 +393,7 @@ func TestFileLogging(t *testing.T) {
 			}
 			opts.Args = testParams.command.args
 
-			cmd, err := opts.Resolve(ctx)
+			cmd, _, err := opts.Resolve(ctx)
 			require.NoError(t, err)
 			require.NoError(t, cmd.Start())
 

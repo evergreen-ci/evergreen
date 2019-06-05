@@ -45,7 +45,7 @@ func NewLocalLimitedSize(workers, capacity int) amboy.Queue {
 // opened, a task of that name exists has been completed (and is
 // stored in the results storage,) or is pending, and finally if the
 // queue is at capacity.
-func (q *limitedSizeLocal) Put(j amboy.Job) error {
+func (q *limitedSizeLocal) Put(ctx context.Context, j amboy.Job) error {
 	if !q.Started() {
 		return errors.Errorf("queue not open. could not add %s", j.ID())
 	}
@@ -64,20 +64,20 @@ func (q *limitedSizeLocal) Put(j amboy.Job) error {
 	})
 
 	select {
+	case <-ctx.Done():
+		return errors.Wrapf(ctx.Err(), "queue full, cannot add %s", name)
 	case q.channel <- j:
 		q.mu.Lock()
 		defer q.mu.Unlock()
 		q.storage[name] = j
 
 		return nil
-	default:
-		return errors.Errorf("queue full, cannot add '%s'", name)
 	}
 }
 
 // Get returns a job, by name. This will include all tasks currently
 // stored in the queue.
-func (q *limitedSizeLocal) Get(name string) (amboy.Job, bool) {
+func (q *limitedSizeLocal) Get(ctx context.Context, name string) (amboy.Job, bool) {
 	q.mu.RLock()
 	defer q.mu.RUnlock()
 
@@ -169,7 +169,7 @@ func (q *limitedSizeLocal) SetRunner(r amboy.Runner) error {
 
 // Stats returns information about the current state of jobs in the
 // queue, and the amount of work completed.
-func (q *limitedSizeLocal) Stats() amboy.QueueStats {
+func (q *limitedSizeLocal) Stats(ctx context.Context) amboy.QueueStats {
 	q.mu.RLock()
 	defer q.mu.RUnlock()
 
@@ -184,6 +184,9 @@ func (q *limitedSizeLocal) Stats() amboy.QueueStats {
 
 // Complete marks a job complete in the queue.
 func (q *limitedSizeLocal) Complete(ctx context.Context, j amboy.Job) {
+	if ctx.Err() != nil {
+		return
+	}
 	q.mu.Lock()
 	defer q.mu.Unlock()
 
@@ -193,6 +196,7 @@ func (q *limitedSizeLocal) Complete(ctx context.Context, j amboy.Job) {
 	if len(q.toDelete) == q.capacity-1 {
 		delete(q.storage, <-q.toDelete)
 	}
+
 	q.toDelete <- j.ID()
 }
 
