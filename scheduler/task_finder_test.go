@@ -134,23 +134,31 @@ func (s *TaskFinderSuite) TestTasksWithUnsatisfiedDependenciesNeverReturned() {
 	// successfully and one to have finished unsuccessfully
 	s.depTasks[0].Status = evergreen.TaskFailed
 	s.depTasks[1].Status = evergreen.TaskUndispatched
+	s.depTasks[1].DependsOn = []task.Dependency{
+		{
+			Unattainable: true,
+		},
+	}
 
 	// Matching dependency - runnable
 	s.tasks[0].DependsOn = []task.Dependency{{TaskId: s.depTasks[0].Id, Status: evergreen.TaskFailed}}
 	// Not matching - not runnable
 	s.tasks[1].DependsOn = []task.Dependency{{TaskId: s.depTasks[0].Id, Status: evergreen.TaskSucceeded}}
-	// Dependent task is blocked and status is any - runnable
-	s.tasks[2].DependsOn = []task.Dependency{{TaskId: s.depTasks[1].Id, Status: "any", Unattainable: true}}
+	// Dependent task 1 is blocked and status is "*" - runnable.
+	// Also demonstrates two satisfied dependencies
+	s.tasks[2].DependsOn = []task.Dependency{{TaskId: s.depTasks[1].Id, Status: "*"}, {TaskId: s.depTasks[0].Id, Status: "*"}}
 	// * status matches any finished status - runnable
 	s.tasks[3].DependsOn = []task.Dependency{{TaskId: s.depTasks[0].Id, Status: "*"}}
 
 	s.insertTasks()
 
-	// finding the runnable tasks should return two tasks (the one with
-	// no dependencies and the one with successfully met dependencies
 	runnableTasks, err := s.FindRunnableTasks(s.distro)
 	s.NoError(err)
-	s.Len(runnableTasks, 3)
+	s.Len(runnableTasks, 4)
+	expectedRunnableTasks := []string{"t0", "t2", "t3", "t4"}
+	for _, t := range runnableTasks {
+		s.Contains(expectedRunnableTasks, t.Id)
+	}
 }
 
 type TaskFinderComparisonSuite struct {
@@ -528,7 +536,7 @@ func makeRandomSubTasks(statuses []string, parentTasks *[]task.Task) []task.Task
 }
 
 func getRandomDependsOnStatus() string {
-	dependsOnStatuses := []string{evergreen.TaskSucceeded, evergreen.TaskFailed, task.AnyStatus, task.AllStatuses}
+	dependsOnStatuses := []string{evergreen.TaskSucceeded, evergreen.TaskFailed, task.AllStatuses}
 	return dependsOnStatuses[rand.Intn(len(dependsOnStatuses))]
 }
 

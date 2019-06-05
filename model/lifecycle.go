@@ -29,7 +29,6 @@ const (
 	AllDependencies = "*"
 	AllVariants     = "*"
 	AllStatuses     = "*"
-	AnyStatus       = "any"
 )
 
 // cacheFromTask is helper for creating a build.TaskCache from a real Task model.

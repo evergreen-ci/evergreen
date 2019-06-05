@@ -245,7 +245,6 @@ type TestResult struct {
 
 var (
 	AllStatuses = "*"
-	AnyStatus   = "any"
 )
 
 // Abortable returns true if the task can be aborted.
@@ -276,9 +275,7 @@ func (t *Task) satisfiesDependency(depTask *Task) bool {
 			case evergreen.TaskFailed:
 				return depTask.Status == evergreen.TaskFailed
 			case AllStatuses:
-				return depTask.Status == evergreen.TaskFailed || depTask.Status == evergreen.TaskSucceeded
-			case AnyStatus:
-				return depTask.Status == evergreen.TaskFailed || depTask.Status == evergreen.TaskSucceeded || dep.Unattainable
+				return depTask.Status == evergreen.TaskFailed || depTask.Status == evergreen.TaskSucceeded || depTask.Blocked()
 			}
 		}
 	}
@@ -1323,45 +1320,50 @@ func FindRunnable(distroID string, removeDeps bool) ([]Task, error) {
 		},
 	}
 
-	redactUnsatisfiedDependencies := bson.M{
-		"$redact": bson.M{
-			"$cond": bson.A{
-				bson.M{
-					"$and": []bson.M{
-						{
-							"$eq": bson.A{"$" + bsonutil.GetDottedKeyName(DependsOnKey, DependencyTaskIdKey), "$" + bsonutil.GetDottedKeyName(dependencyKey, IdKey)},
-						},
-						{
-							"$or": []bson.M{
-								{"$eq": bson.A{"$" + bsonutil.GetDottedKeyName(DependsOnKey, DependencyStatusKey), "$" + bsonutil.GetDottedKeyName(dependencyKey, StatusKey)}},
-								{"$and": []bson.M{
+	matchIds := bson.M{
+		"$match": bson.M{
+			"$expr": bson.M{"$eq": bson.A{"$" + bsonutil.GetDottedKeyName(DependsOnKey, DependencyTaskIdKey), "$" + bsonutil.GetDottedKeyName(dependencyKey, IdKey)}},
+		},
+	}
+
+	projectSatisfied := bson.M{
+		"$addFields": bson.M{
+			"satisfied_dependencies": bson.M{
+				"$cond": bson.A{
+					bson.M{
+						"$or": []bson.M{
+							{"$eq": bson.A{"$" + bsonutil.GetDottedKeyName(DependsOnKey, DependencyStatusKey), "$" + bsonutil.GetDottedKeyName(dependencyKey, StatusKey)}},
+							{"$and": []bson.M{
+								{"$eq": bson.A{"$" + bsonutil.GetDottedKeyName(DependsOnKey, DependencyStatusKey), "*"}},
+								{"$or": []bson.M{
 									{"$in": bson.A{"$" + bsonutil.GetDottedKeyName(dependencyKey, StatusKey), CompletedStatuses}},
-									{"$or": []bson.M{
-										{"$eq": bson.A{"$" + bsonutil.GetDottedKeyName(DependsOnKey, DependencyStatusKey), "*"}},
-										{"$eq": bson.A{"$" + bsonutil.GetDottedKeyName(DependsOnKey, DependencyStatusKey), "any"}},
-									}},
-								},
-								},
-								{
-									"$and": []bson.M{
-										{"$eq": bson.A{"$" + bsonutil.GetDottedKeyName(DependsOnKey, DependencyUnattainableKey), true}},
-										{"$eq": bson.A{"$" + bsonutil.GetDottedKeyName(DependsOnKey, DependencyStatusKey), "any"}},
-									},
-								},
-							},
+									{"$anyElementTrue": "$" + bsonutil.GetDottedKeyName(dependencyKey, DependsOnKey, DependencyUnattainableKey)},
+								}},
+							}},
 						},
 					},
+					true,
+					false,
 				},
-				"$$KEEP",
-				"$$PRUNE",
 			},
 		},
 	}
 
 	regroupTasks := bson.M{
 		"$group": bson.M{
-			"_id":  "$_id",
-			"root": bson.M{"$first": "$$ROOT"},
+			"_id":           "$_id",
+			"satisfied_set": bson.M{"$addToSet": "$satisfied_dependencies"},
+			"root":          bson.M{"$first": "$$ROOT"},
+		},
+	}
+
+	redactUnsatisfiedDependencies := bson.M{
+		"$redact": bson.M{
+			"$cond": bson.A{
+				bson.M{"$allElementsTrue": "$satisfied_set"},
+				"$$KEEP",
+				"$$PRUNE",
+			},
 		},
 	}
 
@@ -1409,8 +1411,10 @@ func FindRunnable(distroID string, removeDeps bool) ([]Task, error) {
 		pipeline = append(pipeline,
 			unwindDependencies,
 			unwindDependsOn,
-			redactUnsatisfiedDependencies,
+			matchIds,
+			projectSatisfied,
 			regroupTasks,
+			redactUnsatisfiedDependencies,
 			replaceRoot,
 		)
 	}
@@ -1673,9 +1677,9 @@ func (t *Task) CircularDependencies() error {
 }
 
 func (t *Task) FindAllUnmarkedBlockedDependencies(blocked bool) ([]Task, error) {
-	okStatusSet := []string{AnyStatus}
+	okStatusSet := []string{AllStatuses}
 	if !blocked {
-		okStatusSet = append(okStatusSet, t.Status, AllStatuses)
+		okStatusSet = append(okStatusSet, t.Status)
 	}
 	query := db.Query(bson.M{
 		DependsOnKey: bson.M{"$elemMatch": bson.M{
