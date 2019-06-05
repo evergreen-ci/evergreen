@@ -496,8 +496,8 @@ func (s *ProjectConnectorGetSuite) TestUpdateProjectVars() {
 	_, ok = newVars.PrivateVars["a"]
 	s.False(ok)
 
-	//unsuccessful update
-	s.Error(s.ctx.UpdateProjectVars("not-an-id", &newVars))
+	// successful upsert
+	s.NoError(s.ctx.UpdateProjectVars("not-an-id", &newVars))
 }
 
 func (s *ProjectConnectorGetSuite) TestCopyProjectVars() {

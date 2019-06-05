@@ -92,7 +92,7 @@ func TestProjectVarsFindAndModify(t *testing.T) {
 
 	newVars.Id = "234"
 	info, err = newVars.FindAndModify(varsToDelete)
-	assert.Error(err)
+	assert.NoError(err) // should upsert
 }
 
 func TestRedactPrivateVars(t *testing.T) {
