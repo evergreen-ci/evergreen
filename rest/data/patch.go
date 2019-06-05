@@ -14,6 +14,17 @@ import (
 	mgobson "gopkg.in/mgo.v2/bson"
 )
 
+func validatePatchID(patchId string) error {
+	if !mgobson.IsObjectIdHex(patchId) {
+		return gimlet.ErrorResponse{
+			StatusCode: http.StatusBadRequest,
+			Message:    fmt.Sprintf("id '%s' is not a valid patch id", patchId),
+		}
+	}
+
+	return nil
+}
+
 // DBPatchConnector is a struct that implements the Patch related methods
 // from the Connector through interactions with the backing database.
 type DBPatchConnector struct{}
@@ -31,6 +42,10 @@ func (pc *DBPatchConnector) FindPatchesByProject(projectId string, ts time.Time,
 
 // FindPatchById queries the backing database for the patch matching patchId.
 func (pc *DBPatchConnector) FindPatchById(patchId string) (*patch.Patch, error) {
+	if err := validatePatchID(patchId); err != nil {
+		return nil, errors.WithStack(err)
+	}
+
 	p, err := patch.FindOne(patch.ById(mgobson.ObjectIdHex(patchId)))
 	if err != nil {
 		return nil, err
@@ -47,6 +62,10 @@ func (pc *DBPatchConnector) FindPatchById(patchId string) (*patch.Patch, error) 
 // AbortPatch uses the service level CancelPatch method to abort a single patch
 // with matching Id.
 func (pc *DBPatchConnector) AbortPatch(patchId string, user string) error {
+	if err := validatePatchID(patchId); err != nil {
+		return errors.WithStack(err)
+	}
+
 	p, err := patch.FindOne(patch.ById(mgobson.ObjectIdHex(patchId)))
 	if err != nil {
 		return err
