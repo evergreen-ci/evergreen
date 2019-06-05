@@ -145,14 +145,16 @@ func (s *eventMetaJobSuite) TestSenderDegradedModeDoesntDispatchJobs() {
 		GithubStatusAPIDisabled:      true,
 		BackgroundStatsDisabled:      true,
 	}
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 
 	s.NoError(notification.InsertMany(s.n...))
 
-	startingStats := evergreen.GetEnvironment().RemoteQueue().Stats()
+	startingStats := evergreen.GetEnvironment().RemoteQueue().Stats(ctx)
 
 	job := NewEventMetaJob(evergreen.GetEnvironment().RemoteQueue(), "1").(*eventMetaJob)
 	job.flags = &flags
-	s.NoError(job.dispatch(s.n))
+	s.NoError(job.dispatch(ctx, s.n))
 	s.NoError(job.Error())
 
 	out := []notification.Notification{}
@@ -162,7 +164,7 @@ func (s *eventMetaJobSuite) TestSenderDegradedModeDoesntDispatchJobs() {
 		s.Equal("sender disabled", out[i].Error)
 	}
 
-	stats := evergreen.GetEnvironment().RemoteQueue().Stats()
+	stats := evergreen.GetEnvironment().RemoteQueue().Stats(ctx)
 	s.Equal(startingStats.Running, stats.Running)
 	s.Equal(startingStats.Blocked, stats.Blocked)
 	s.Equal(startingStats.Completed, stats.Completed)
@@ -275,9 +277,9 @@ func (s *eventMetaJobSuite) TestEndToEnd() {
 	s.NoError(job.Error())
 
 	grip.Info("waiting for dispatches")
-	amboy.WaitInterval(job.q, 10*time.Millisecond)
+	amboy.WaitInterval(s.ctx, job.q, 10*time.Millisecond)
 	grip.Info("waiting for senders")
-	amboy.Wait(job.q)
+	amboy.Wait(s.ctx, job.q)
 	grip.Info("senders are done")
 
 	out := []notification.Notification{}

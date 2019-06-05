@@ -820,15 +820,15 @@ func TestTaskLifecycleEndpoints(t *testing.T) {
 		So(testVersion.Insert(), ShouldBeNil)
 
 		Convey("test task should start a background job", func() {
-			stat := q.Stats()
+			stat := q.Stats(ctx)
 			So(stat.Total, ShouldEqual, 0)
 			resp := getStartTaskEndpoint(t, as, hostId, task1.Id)
-			stat = q.Stats()
+			stat = q.Stats(ctx)
 
 			So(resp.Code, ShouldEqual, http.StatusOK)
 			So(resp, ShouldNotBeNil)
 			So(stat.Total, ShouldEqual, 1)
-			amboy.WaitCtxInterval(ctx, q, time.Millisecond)
+			amboy.WaitInterval(ctx, q, time.Millisecond)
 
 			counter := 0
 			for job := range as.queue.Results(ctx) {
