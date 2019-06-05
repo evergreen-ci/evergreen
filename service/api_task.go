@@ -354,12 +354,18 @@ func assignNextAvailableTask(taskQueue *model.TaskQueue, taskQueueService model.
 			return nil, nil
 		}
 
-		nextTask, err := task.FindOne(task.ById(queueItem.Id))
+		nextTask, err := task.FindOneNoMerge(task.ById(queueItem.Id))
 		if err != nil {
 			return nil, err
 		}
 		if nextTask == nil {
-			return nil, errors.New("nil task on the queue")
+			grip.Error(message.Fields{
+				"distro":  currentHost.Distro.Id,
+				"host":    currentHost.Id,
+				"message": "queue item with invalid id",
+				"id":      queueItem.Id,
+			})
+			return nil, nil
 		}
 
 		// validate that the task can be run, if not fetch the next one in
