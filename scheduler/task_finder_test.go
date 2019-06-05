@@ -136,6 +136,8 @@ func (s *TaskFinderSuite) TestTasksWithUnsatisfiedDependenciesNeverReturned() {
 	s.depTasks[1].Status = evergreen.TaskUndispatched
 	s.depTasks[1].DependsOn = []task.Dependency{
 		{
+			TaskId:       "none",
+			Status:       "*",
 			Unattainable: true,
 		},
 	}
