@@ -186,7 +186,7 @@ func (ac *legacyClient) GetRestPatch(patchId string) (*service.RestPatch, error)
 	return result, nil
 }
 
-// GetPatch gets a patch from the server given a patch id and returns it as a RestPatch.
+// GetPatch gets a patch from the server given a patch id and returns it as a Patch.
 func (ac *legacyClient) GetPatch(patchId string) (*patch.Patch, error) {
 	resp, err := ac.get2(fmt.Sprintf("patches/%v", patchId), nil)
 	if err != nil {
