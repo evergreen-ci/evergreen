@@ -215,11 +215,12 @@ func TestAssignNextAvailableTaskWithPlannerSettingVersionLegacy(t *testing.T) {
 				So(err, ShouldBeNil)
 				So(t, ShouldBeNil)
 			})
-			Convey("a tasks queue with a task that does not exist should error", func() {
+			Convey("a tasks queue with a task that does not exist should continue", func() {
 				taskQueue.Queue = []model.TaskQueueItem{{Id: "notatask"}}
 				So(taskQueue.Save(), ShouldBeNil)
-				_, err := assignNextAvailableTask(taskQueue, model.NewTaskDispatchService(taskQueueServiceTTL), &theHostWhoCanBoastTheMostRoast)
-				So(err, ShouldNotBeNil)
+				t, err := assignNextAvailableTask(taskQueue, model.NewTaskDispatchService(taskQueueServiceTTL), &theHostWhoCanBoastTheMostRoast)
+				So(err, ShouldBeNil)
+				So(t, ShouldBeNil)
 			})
 			Convey("with a host with a running task", func() {
 				anotherHost := host.Host{
@@ -383,8 +384,9 @@ func TestAssignNextAvailableTaskWithPlannerSettingVersionTunable(t *testing.T) {
 			Convey("a tasks queue with a task that does not exist should error", func() {
 				taskQueue.Queue = []model.TaskQueueItem{{Id: "notatask"}}
 				So(taskQueue.Save(), ShouldBeNil)
-				_, err := assignNextAvailableTask(taskQueue, model.NewTaskDispatchService(taskQueueServiceTTL), &theHostWhoCanBoastTheMostRoast)
-				So(err, ShouldNotBeNil)
+				t, err := assignNextAvailableTask(taskQueue, model.NewTaskDispatchService(taskQueueServiceTTL), &theHostWhoCanBoastTheMostRoast)
+				So(err, ShouldBeNil)
+				So(t, ShouldBeNil)
 			})
 			Convey("with a host with a running task", func() {
 				anotherHost := host.Host{
