@@ -57,9 +57,7 @@ func parseJson(r *http.Request) ([]json.RawMessage, error) {
 }
 
 func (h *generateHandler) Run(ctx context.Context) gimlet.Responder {
-	// TODO Use the environment's context. Do NOT use the context passed by this function, as the context
-	// passed to h.sc.GenerateTasks needs to persist longer than the lifetime of the request.
-	if err := h.sc.GenerateTasks(context.Background(), h.taskID, h.files, h.queue); err != nil {
+	if err := h.sc.GenerateTasks(ctx, h.taskID, h.files, h.queue); err != nil {
 		grip.Error(message.WrapError(err, message.Fields{
 			"message": "error generating tasks",
 			"task_id": h.taskID,
