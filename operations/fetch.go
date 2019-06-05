@@ -166,7 +166,7 @@ func fetchSource(ctx context.Context, ac, rc *legacyClient, comm client.Communic
 	}
 
 	cloneDir := util.CleanForPath(fmt.Sprintf("source-%v", task.Project))
-	patch := &service.RestPatch{}
+	var patch *service.RestPatch
 	if task.Requester == evergreen.PatchVersionRequester {
 		cloneDir = util.CleanForPath(fmt.Sprintf("source-patch-%v_%v", task.PatchNumber, task.Project))
 		patch, err = rc.GetRestPatch(task.PatchId)
