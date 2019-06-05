@@ -1036,11 +1036,11 @@ func (t *Task) MarkUnscheduled() error {
 
 }
 
-func (t *Task) MarkUnattainableDependency(dependecy *Task, unattainable bool) error {
+func (t *Task) MarkUnattainableDependency(dependency *Task, unattainable bool) error {
 	return UpdateOne(
 		bson.M{
 			IdKey: t.Id,
-			bsonutil.GetDottedKeyName(DependsOnKey, DependencyTaskIdKey): dependecy.Id,
+			bsonutil.GetDottedKeyName(DependsOnKey, DependencyTaskIdKey): dependency.Id,
 		},
 		bson.M{
 			"$set": bson.M{bsonutil.GetDottedKeyName(DependsOnKey, "$", DependencyUnattainableKey): unattainable},
