@@ -278,10 +278,9 @@ func (h *projectIDPatchHandler) Run(ctx context.Context) gimlet.Responder {
 		if err != nil {
 			return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "Error enabling webhooks for project '%s'", h.projectID))
 		}
-
 		// verify enabling PR testing valid
 		if dbProjectRef.PRTestingEnabled {
-			if hasHook {
+			if !hasHook {
 				return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
 					StatusCode: http.StatusBadRequest,
 					Message:    "Cannot enable PR Testing in this repo, must enable GitHub webhooks first",
@@ -305,7 +304,7 @@ func (h *projectIDPatchHandler) Run(ctx context.Context) gimlet.Responder {
 			})
 		}
 		if commitQueueParams.Enabled {
-			if hasHook {
+			if !hasHook {
 				gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
 					StatusCode: http.StatusBadRequest,
 					Message:    "Cannot enable commit queue in this repo, must enable GitHub webhooks first",
