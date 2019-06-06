@@ -14,15 +14,12 @@ type SchedulerConfig struct {
 	HostAllocator        string  `bson:"host_allocator" json:"host_allocator" yaml:"host_allocator"`
 	FreeHostFraction     float64 `bson:"free_host_fraction" json:"free_host_fraction" yaml:"free_host_fraction"`
 	CacheDurationSeconds int     `bson:"cache_duration_seconds" json:"cache_duration_seconds" yaml:"cache_duration_seconds"`
+	PlannerVersion       string  `bson:"planner_version" json:"planner_version" mapstructure:"planner_version"`
 	TaskOrdering         string  `bson:"task_ordering" json:"task_ordering" yaml:"task_ordering"`
-	// PlannerVersion                string  `bson:"planner_version" json:"planner_version" mapstructure:"planner_version"`
 	// TargetTimeSeconds             int     `bson:"target_time_seconds" json:"target_time_seconds" mapstructure:"target_time_seconds"`
 	// AcceptableHostIdleTimeSeconds int     `bson:"acceptable_host_idle_time_seconds" json:"acceptable_host_idle_time_seconds" mapstructure:"acceptable_host_idle_time_seconds"`
 	// GroupVersions                 bool    `bson:"group_versions" json:"group_versions" mapstructure:"group_versions"`
 	// PatchZipperFactor             int     `bson:"patch_zipper_factor" json:"patch_zipper_factor" mapstructure:"patch_zipper_factor"`
-	// Interleave                    bool    `bson:"interleave" json:"interleave" mapstructure:"interleave"`
-	// MainlineFirst                 bool    `bson:"mainline_first" json:"mainline_first" mapstructure:"mainline_first"`
-	// PatchFirst                    bool    `bson:"patch_first" json:"patch_first" mapstructure:"patch_first"`
 }
 
 func (c *SchedulerConfig) SectionId() string { return "scheduler" }
@@ -100,6 +97,11 @@ func (c *SchedulerConfig) ValidateAndDefault() error {
 
 	if c.FreeHostFraction < 0 || c.FreeHostFraction > 1 {
 		return errors.New("free host fraction must be between 0 and 1")
+	}
+
+	if c.PlannerVersion == "" {
+		// default to legacy
+		c.PlannerVersion = PlannerVersionLegacy
 	}
 
 	if c.TaskOrdering == "" {

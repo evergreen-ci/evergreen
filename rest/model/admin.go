@@ -1043,14 +1043,13 @@ type APISchedulerConfig struct {
 	HostAllocator        APIString `json:"host_allocator"`
 	FreeHostFraction     float64   `json:"free_host_fraction"`
 	CacheDurationSeconds int       `json:"cache_duration_seconds"`
-	// PlannerVersion                APIString `json:"planner_version"`
+	PlannerVersion       APIString `json:"planner_version"`
+	TaskOrdering         APIString `json:"task_ordering"`
 	// TargetTimeSeconds             int       `json:"target_time_seconds"`
 	// AcceptableHostIdleTimeSeconds int       `json:"acceptable_host_idle_time_seconds"`
 	// GroupVersions                 bool      `json:"group_versions"`
 	// PatchZipperFactor             int       `json:"patch_zipper_factor"`
-	// Interleave                    bool      `json:"interleave"`
-	// MainlineFirst                 bool      `json:"mainline_first"`
-	// PatchFirst                    bool      `json:"patch_first"`
+
 }
 
 func (a *APISchedulerConfig) BuildFromService(h interface{}) error {
@@ -1060,14 +1059,12 @@ func (a *APISchedulerConfig) BuildFromService(h interface{}) error {
 		a.HostAllocator = ToAPIString(v.HostAllocator)
 		a.FreeHostFraction = v.FreeHostFraction
 		a.CacheDurationSeconds = v.CacheDurationSeconds
-		// a.PlannerVersion = ToAPIString(v.PlannerVersion)
+		a.PlannerVersion = ToAPIString(v.PlannerVersion)
+		a.TaskOrdering = ToAPIString(v.TaskOrdering)
 		// a.TargetTimeSeconds = v.TargetTimeSeconds
 		// a.AcceptableHostIdleTimeSeconds = v.AcceptableHostIdleTimeSeconds
 		// a.GroupVersions = v.GroupVersions
 		// a.PatchZipperFactor = v.PatchZipperFactor
-		// a.Interleave = v.Interleave
-		// a.MainlineFirst = v.MainlineFirst
-		// a.PatchFirst = v.PatchFirst
 	default:
 		return errors.Errorf("%T is not a supported type", h)
 	}
@@ -1080,14 +1077,12 @@ func (a *APISchedulerConfig) ToService() (interface{}, error) {
 		HostAllocator:        FromAPIString(a.HostAllocator),
 		FreeHostFraction:     a.FreeHostFraction,
 		CacheDurationSeconds: a.CacheDurationSeconds,
-		// PlannerVersion:                FromAPIString(a.PlannerVersion),
+		PlannerVersion:       FromAPIString(a.PlannerVersion),
+		TaskOrdering:         FromAPIString(a.TaskOrdering),
 		// TargetTimeSeconds:             a.TargetTimeSeconds,
 		// AcceptableHostIdleTimeSeconds: a.AcceptableHostIdleTimeSeconds,
 		// GroupVersions:                 a.GroupVersions,
 		// PatchZipperFactor:             a.PatchZipperFactor,
-		// Interleave:                    a.Interleave,
-		// MainlineFirst:                 a.MainlineFirst,
-		// PatchFirst:                    a.PatchFirst,
 	}, nil
 }
 
