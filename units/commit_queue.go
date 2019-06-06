@@ -175,7 +175,13 @@ func (j *commitQueueJob) processGitHubPRItem(ctx context.Context, cq *commitqueu
 
 	errs := validator.CheckProjectSyntax(projectConfig)
 	if len(errs) != 0 {
-		update := NewGithubStatusUpdateJobForBadConfig(projectRef, pr.Head.GetRef(), j.ID())
+		update := NewGithubStatusUpdateJobForProcessingError(
+			commitqueue.Context,
+			pr.Base.User.GetLogin(),
+			pr.Base.Repo.GetName(),
+			pr.Head.GetRef(),
+			InvalidConfig,
+		)
 		update.Run(ctx)
 		j.AddError(update.Error())
 		j.logError(errors.New(errs.String()), "invalid config file", nextItem)
