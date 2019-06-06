@@ -38,12 +38,13 @@ func (s *ProjectPatchByIDSuite) SetupTest() {
 
 func (s *ProjectPatchByIDSuite) TestParse() {
 	ctx := context.Background()
-	json := []byte(`{"private" : false}`)
-	req, _ := http.NewRequest("PATCH", "http://example.com/api/rest/v2/projects/dimoxinil", bytes.NewBuffer(json))
 
+	json := []byte(`{"private" : false}`)
+	req, _ := http.NewRequest("PATCH", "http://example.com/api/rest/v2/projects/dimoxinil?revision=my-revision", bytes.NewBuffer(json))
 	err := s.rm.Parse(ctx, req)
 	s.NoError(err)
 	s.Equal(json, s.rm.(*projectIDPatchHandler).body)
+	s.Equal("my-revision", s.rm.(*projectIDPatchHandler).revision)
 }
 
 func (s *ProjectPatchByIDSuite) TestRunInValidIdentifierChange() {

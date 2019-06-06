@@ -130,6 +130,14 @@ func (pc *DBProjectConnector) EnableCommitQueue(projectRef *model.ProjectRef, co
 	return nil
 }
 
+func (pc *DBProjectConnector) UpdateProjectRevision(projectID, revision string) error {
+	if err := model.UpdateLastRevision(projectID, revision); err != nil {
+		return errors.Wrapf(err, "error updating revision for project '%s'", projectID)
+	}
+
+	return nil
+}
+
 // FindProjects queries the backing database for the specified projects
 func (pc *DBProjectConnector) FindProjects(key string, limit int, sortDir int, isAuthenticated bool) ([]model.ProjectRef, error) {
 	projects, err := model.FindProjectRefs(key, limit, sortDir, isAuthenticated)
@@ -380,5 +388,9 @@ func (pc *MockProjectConnector) EnableCommitQueue(projectRef *model.ProjectRef, 
 }
 
 func (pc *MockProjectConnector) EnablePRTesting(projectRef *model.ProjectRef) error {
+	return nil
+}
+
+func (pc *MockProjectConnector) UpdateProjectRevision(projectID, revision string) error {
 	return nil
 }
