@@ -334,7 +334,7 @@ func (h *projectIDPatchHandler) Run(ctx context.Context) gimlet.Responder {
 	}
 
 	if h.revision != "" {
-		if err := h.sc.UpdateProjectRevision(h.projectID, h.revision); err != nil {
+		if err = h.sc.UpdateProjectRevision(h.projectID, h.revision); err != nil {
 			return gimlet.MakeJSONErrorResponder(err)
 		}
 		dbProjectRef.RepotrackerError.Exists = false
