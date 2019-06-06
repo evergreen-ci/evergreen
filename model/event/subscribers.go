@@ -19,6 +19,7 @@ const (
 	SlackSubscriberType              = "slack"
 	GithubMergeSubscriberType        = "github-merge"
 	CommitQueueDequeueSubscriberType = "commit-queue-dequeue"
+	SubscriberTypeNone               = "none"
 )
 
 var SubscriberTypes = []string{
