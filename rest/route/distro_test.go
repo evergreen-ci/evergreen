@@ -263,9 +263,7 @@ func (s *DistroByIDSuite) SetupSuite() {
 					AcceptableHostIdleTime: 10000000000,
 					GroupVersions:          &pTrue,
 					PatchZipperFactor:      7,
-					Interleave:             false,
-					MainlineFirst:          false,
-					PatchFirst:             true,
+					TaskOrdering:           evergreen.TaskOrderingInterleave,
 				},
 				BootstrapMethod:     distro.BootstrapMethodLegacySSH,
 				CommunicationMethod: distro.CommunicationMethodLegacySSH,
@@ -305,9 +303,7 @@ func (s *DistroByIDSuite) TestFindByIdFound() {
 	s.Equal(model.NewAPIDuration(10000000000), d.PlannerSettings.AcceptableHostIdleTime)
 	s.Equal(true, *d.PlannerSettings.GroupVersions)
 	s.Equal(7, d.PlannerSettings.PatchZipperFactor)
-	s.Equal(false, d.PlannerSettings.Interleave)
-	s.Equal(false, d.PlannerSettings.MainlineFirst)
-	s.Equal(true, d.PlannerSettings.PatchFirst)
+	s.Equal(evergreen.TaskOrderingInterleave, d.PlannerSettings.TaskOrdering)
 	s.Equal(model.ToAPIString(distro.BootstrapMethodLegacySSH), d.BootstrapMethod)
 	s.Equal(model.ToAPIString(distro.CommunicationMethodLegacySSH), d.CommunicationMethod)
 	s.Equal(model.ToAPIString(distro.CloneMethodLegacySSH), d.CloneMethod)
@@ -377,7 +373,7 @@ func (s *DistroPutSuite) TestParse() {
     		"acceptable_host_idle_time": 5000000000,
     		"group_versions": false,
     		"patch_zipper_factor": 2,
-    		"mainline_first": true,
+    		"task_ordering": "interleave" ,
     		"patch_first": false
   		},
 		"bootstrap_method": "legacy-ssh",
