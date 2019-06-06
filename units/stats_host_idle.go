@@ -212,11 +212,15 @@ func (j *collectHostIdleDataJob) getTaskStartStatsMessage() message.Composer {
 		"variant":                j.task.BuildVariant,
 		"distro":                 j.host.Distro.Id,
 		"provider":               j.host.Distro.Provider,
-		"host":                   j.host.Id,
+		"host_id":                j.host.Id,
 		"activated_latency_secs": j.task.StartTime.Sub(j.task.ActivatedTime).Seconds(),
 		"scheduled_latency_secs": j.task.StartTime.Sub(j.task.ScheduledTime).Seconds(),
 		"group":                  j.task.TaskGroup,
 		"group_max_hosts":        j.task.TaskGroupMaxHosts,
+		"group":                  j.task.TaskGroup,
+		"group_max_hosts":        j.task.TaskGroupMaxHosts,
+		"display_task":           j.task.DisplayOnly,
+		"generator":              j.task.GenerateTask,
 	}
 
 	if strings.HasPrefix(j.host.Distro.Provider, "ec2") {

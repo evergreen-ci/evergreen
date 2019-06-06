@@ -151,11 +151,13 @@ func (j *collectTaskEndDataJob) Run(ctx context.Context) {
 		"build":           j.task.BuildId,
 		"distro":          j.host.Distro.Id,
 		"provider":        j.host.Distro.Provider,
-		"host":            j.host.Id,
+		"host_id":         j.host.Id,
 		"status":          j.task.ResultStatus(),
 		"priority":        j.task.Priority,
 		"group":           j.task.TaskGroup,
 		"group_max_hosts": j.task.TaskGroupMaxHosts,
+		"display_task":    j.task.DisplayOnly,
+		"generator":       j.task.GenerateTask,
 	}
 	totalWaitSecs := j.task.FinishTime.Sub(j.task.ActivatedTime)
 	msg["total_wait_secs"] = totalWaitSecs.Seconds()
