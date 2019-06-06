@@ -170,6 +170,39 @@ func (ac *legacyClient) GetPatches(n int) ([]patch.Patch, error) {
 	return patches, nil
 }
 
+// GetRestPatch gets a patch from the server given a patch id and returns it as a RestPatch.
+func (ac *legacyClient) GetRestPatch(patchId string) (*service.RestPatch, error) {
+	resp, err := ac.get(fmt.Sprintf("patches/%v", patchId), nil)
+	if err != nil {
+		return nil, err
+	}
+	if resp.StatusCode != http.StatusOK {
+		return nil, NewAPIError(resp)
+	}
+	result := &service.RestPatch{}
+	if err := util.ReadJSONInto(resp.Body, result); err != nil {
+		return nil, err
+	}
+	return result, nil
+}
+
+// GetPatch gets a patch from the server given a patch id and returns it as a Patch.
+func (ac *legacyClient) GetPatch(patchId string) (*patch.Patch, error) {
+	resp, err := ac.get2(fmt.Sprintf("patches/%v", patchId), nil)
+	if err != nil {
+		return nil, err
+	}
+	if resp.StatusCode != http.StatusOK {
+		return nil, NewAPIError(resp)
+	}
+	result := &patch.Patch{}
+	if err := util.ReadJSONInto(resp.Body, result); err != nil {
+		return nil, err
+	}
+
+	return result, nil
+}
+
 // GetProjectRef requests project details from the API server for a given project ID.
 func (ac *legacyClient) GetProjectRef(projectId string) (*model.ProjectRef, error) {
 	resp, err := ac.get(fmt.Sprintf("/ref/%s", projectId), nil)
@@ -180,22 +213,6 @@ func (ac *legacyClient) GetProjectRef(projectId string) (*model.ProjectRef, erro
 		return nil, NewAPIError(resp)
 	}
 	ref := &model.ProjectRef{}
-	if err := util.ReadJSONInto(resp.Body, ref); err != nil {
-		return nil, err
-	}
-	return ref, nil
-}
-
-// GetPatch gets a patch from the server given a patch id.
-func (ac *legacyClient) GetPatch(patchId string) (*service.RestPatch, error) {
-	resp, err := ac.get(fmt.Sprintf("patches/%v", patchId), nil)
-	if err != nil {
-		return nil, err
-	}
-	if resp.StatusCode != http.StatusOK {
-		return nil, NewAPIError(resp)
-	}
-	ref := &service.RestPatch{}
 	if err := util.ReadJSONInto(resp.Body, ref); err != nil {
 		return nil, err
 	}
