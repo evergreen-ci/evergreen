@@ -150,6 +150,10 @@ const (
 	HostAllocatorDeficit     = "deficit"
 	HostAllocatorUtilization = "utilization"
 
+	TaskOrderingInterleave    = "interleave"
+	TaskOrderingMainlineFirst = "mainlinefirst"
+	TaskOrderingPatchFirst    = "patchfirst"
+
 	CommitQueueAlias = "__commit_queue"
 
 	MaxTeardownGroupTimeoutSecs = 30 * 60
@@ -383,6 +387,13 @@ var (
 		HostAllocatorDuration,
 		HostAllocatorDeficit,
 		HostAllocatorUtilization,
+	}
+
+	// Set of valid Task Ordering options
+	ValidTaskOrdering = []string{
+		TaskOrderingInterleave,
+		TaskOrderingMainlineFirst,
+		TaskOrderingPatchFirst,
 	}
 
 	// constant arrays for db update logic

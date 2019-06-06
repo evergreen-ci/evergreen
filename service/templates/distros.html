@@ -468,7 +468,7 @@ Evergreen - Distros
                 <strong class="distro-menu-item">[[ activeDistro.planner_settings.version | versionDisplay:this]]<span class="fa fa-caret-down"></span></strong>
               </button>
               <ul class="dropdown-menu" style="margin-left: 125px" role="menu">
-                <li required name="plannerSettingsVersion" ng-click="form.$setDirty();activeDistro.planner_settings.version = version.id" ng-repeat="version in planner_versions"
+                <li required name="plannerSettingsVersion" ng-click="form.$setDirty();activeDistro.planner_settings.version = version.id" ng-repeat="version in plannerVersions"
                   role="presentation"><a role="menuitem" tabindex="-1">[[version.display]]</a></li>
               </ul>
           </div>
@@ -526,24 +526,16 @@ Evergreen - Distros
               form.plannerSettingsPatchZipperFactor.$modelValue % 1 != 0"> Patch Zipper Factor must be an integer between 0 and 100
             </div>
             <br/>
-            <div>
-              <span class="distro-menu-title">Task ordering:</span>
-                <label>
-                <input name="plannerSettingsInterleave" style="margin-left:10px;margin-right:10px;" type="radio"
-                  ng-change="form.$setDirty();activeDistro.planner_settings.mainline_first=false;activeDistro.planner_settings.patch_first=false" ng-model="activeDistro.planner_settings.interleave" ng-value=true />Interleave
-                </label>
-                <label>
-                  <input name="plannerSettingsMainlineFirst" style="margin-left:10px;margin-right:10px;" type="radio"
-                    ng-change="form.$setDirty();activeDistro.planner_settings.interleave=false;activeDistro.planner_settings.patch_first=false" ng-model="activeDistro.planner_settings.mainline_first" ng-value=true />Mainline First
-                </label>
-                <label>
-                  <input name="plannerSettingsPatchFirst" style="margin-left:10px;margin-right:10px;" type="radio"
-                    ng-change="form.$setDirty();activeDistro.planner_settings.interleave=false;activeDistro.planner_settings.mainline_first=false;" ng-model="activeDistro.planner_settings.patch_first" ng-value=true />Patch First
-                </label>
+            <div class="dropdown">
+              <span>Task Ordering:</span>
+                <button class="btn btn-default dropdown-toggle" type="button" data-toggle="dropdown" aria-expanded="true" ng-disabled="readOnly">
+                  <strong class="distro-menu-item">[[activeDistro.planner_settings.task_ordering | taskOrderingDisplay:this]]<span class="fa fa-caret-down"></span></strong>
+                </button>
+                <ul class="dropdown-menu" style="margin-left: 125px" role="menu">
+                  <li required name="plannerSettingsTaskOrdering" ng-click="form.$setDirty();activeDistro.planner_settings.task_ordering = taskOrdering.id" ng-repeat="taskOrdering in taskOrderings"
+                    role="presentation"><a role="menuitem" tabindex="-1">[[taskOrdering.display]]</a></li>
+                </ul>
             </div>
-            <!--div class="icon fa fa-warning distro-error" ng-show="form.plannerSettingsInterleave.$modelValue==false &&
-              form.plannerSettingsMainlineFirst.$modelValue==false && form.plannerSettingsPatchFirst.$modelValue==false"> A Task Ordering option is required
-            </div-->
             <br/>
             <div>
               <span class="distro-menu-title">Group Versions:</span>

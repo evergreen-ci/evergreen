@@ -14,6 +14,7 @@ type SchedulerConfig struct {
 	HostAllocator        string  `bson:"host_allocator" json:"host_allocator" yaml:"host_allocator"`
 	FreeHostFraction     float64 `bson:"free_host_fraction" json:"free_host_fraction" yaml:"free_host_fraction"`
 	CacheDurationSeconds int     `bson:"cache_duration_seconds" json:"cache_duration_seconds" yaml:"cache_duration_seconds"`
+	TaskOrdering         string  `bson:"task_ordering" json:"task_ordering" yaml:"task_ordering"`
 	// PlannerVersion                string  `bson:"planner_version" json:"planner_version" mapstructure:"planner_version"`
 	// TargetTimeSeconds             int     `bson:"target_time_seconds" json:"target_time_seconds" mapstructure:"target_time_seconds"`
 	// AcceptableHostIdleTimeSeconds int     `bson:"acceptable_host_idle_time_seconds" json:"acceptable_host_idle_time_seconds" mapstructure:"acceptable_host_idle_time_seconds"`
@@ -57,6 +58,7 @@ func (c *SchedulerConfig) Set() error {
 			"task_finder":        c.TaskFinder,
 			"host_allocator":     c.HostAllocator,
 			"free_host_fraction": c.FreeHostFraction,
+			"task_ordering":      c.TaskOrdering,
 			// "planner_version":                   c.PlannerVersion,
 			// "target_time_seconds":               c.TargetTimeSeconds,
 			// "acceptable_host_idle_time_seconds": c.AcceptableHostIdleTimeSeconds,
@@ -75,7 +77,6 @@ func (c *SchedulerConfig) ValidateAndDefault() error {
 	if c.TaskFinder == "" {
 		// default to legacy
 		c.TaskFinder = FinderVersionLegacy
-		return nil
 	}
 
 	if c.CacheDurationSeconds == 0 || c.CacheDurationSeconds > 600 {
@@ -88,8 +89,8 @@ func (c *SchedulerConfig) ValidateAndDefault() error {
 	}
 
 	if c.HostAllocator == "" {
+		// default to duration
 		c.HostAllocator = HostAllocatorDuration
-		return nil
 	}
 
 	if !util.StringSliceContains(ValidHostAllocators, c.HostAllocator) {
@@ -101,36 +102,10 @@ func (c *SchedulerConfig) ValidateAndDefault() error {
 		return errors.New("free host fraction must be between 0 and 1")
 	}
 
-	// if !util.StringSliceContains(ValidPlannerVersions, c.PlannerVersion) {
-	// 	return errors.Errorf("supported planner versions are %s; %s is not supported",
-	// 		ValidPlannerVersions, c.PlannerVersion)
-	// }
-	//
-	// taskOrders := []bool{c.Interleave, c.MainlineFirst, c.PatchFirst}
-	// nTrue := 0
-	// for i := 0; i < len(taskOrders); i++ {
-	// 	if taskOrders[i] {
-	// 		nTrue++
-	// 	}
-	// }
-	// if nTrue == 0 {
-	// 	return errors.Errorf("invalid task ordering - one of the following fields must be true: SchedulerConfig.Interleave [%t], SchedulerConfig.MainlineFirst [%t] or SchedulerConfig.PatchFirst [%t]",
-	// 		c.Interleave,
-	// 		c.MainlineFirst,
-	// 		c.PatchFirst,
-	// 	)
-	// }
-	// if nTrue > 1 {
-	// 	return errors.Errorf("invalid task ordering - only one of the following fields can be true: SchedulerConfig.Interleave [%t], SchedulerConfig.MainlineFirst [%t] or SchedulerConfig.SchedulerConfig [%t]",
-	// 		c.Interleave,
-	// 		c.MainlineFirst,
-	// 		c.PatchFirst,
-	// 	)
-	// }
-	//
-	// if c.PatchZipperFactor < 0 || c.PatchZipperFactor > 100 {
-	// 	return errors.Errorf("patch zipper factor must be an integer between 0 and 100, inclusive - a value of %d is invalid", c.PatchZipperFactor)
-	// }
+	if c.TaskOrdering == "" {
+		// default to interleave
+		c.TaskOrdering = TaskOrderingInterleave
+	}
 
 	return nil
 }

@@ -24,9 +24,7 @@ mciModule.controller('DistrosCtrl', function($scope, $window, $location, $anchor
       $scope.distros[i].planner_settings.acceptable_host_idle_time /= 1e9;
     }
     $scope.distros[i].planner_settings.group_versions = $scope.distros[i].planner_settings.group_versions;
-    $scope.distros[i].planner_settings.interleave = $scope.distros[i].planner_settings.interleave || false;
-    $scope.distros[i].planner_settings.mainline_first = $scope.distros[i].planner_settings.mainline_first || false;
-    $scope.distros[i].planner_settings.patch_first = $scope.distros[i].planner_settings.patch_first || false;
+    $scope.distros[i].planner_settings.task_ordering = $scope.distros[i].planner_settings.task_ordering || "";
     $scope.distros[i].finder_settings = $scope.distros[i].finder_settings || {};
     $scope.distros[i].finder_settings.version = $scope.distros[i].finder_settings.version || "legacy";
     $scope.distros[i].bootstrap_method = $scope.distros[i].bootstrap_method || 'legacy-ssh';
@@ -34,12 +32,26 @@ mciModule.controller('DistrosCtrl', function($scope, $window, $location, $anchor
     $scope.distros[i].clone_method = $scope.distros[i].clone_method || 'legacy-ssh';
   }
 
-  $scope.planner_versions = [{
+  $scope.plannerVersions = [{
    'id': "legacy",
     'display': 'Legacy '
   }, {
     'id': "tunable",
     'display': 'Tunable '
+  }];
+
+  $scope.taskOrderings = [{
+    'id': "",
+    'display': ' '
+  }, {
+   'id': "interleave",
+    'display': 'Interleave '
+  }, {
+    'id': "mainlinefirst",
+    'display': 'Mainline First '
+  }, {
+    'id': "patchfirst",
+    'display': 'Patch First '
   }];
 
   $scope.providers = [{
@@ -193,7 +205,7 @@ mciModule.controller('DistrosCtrl', function($scope, $window, $location, $anchor
   $scope.getKeyDisplay = function(key, display) {
     for (var i = 0; i < $scope[key].length; i++) {
       if ($scope[key][i].id === display) {
-    return $scope[key][i].display;
+        return $scope[key][i].display;
       }
     }
     return display;
@@ -527,7 +539,13 @@ mciModule.filter("archDisplay", function() {
 
 mciModule.filter("versionDisplay", function() {
   return function(version, scope) {
-    return scope.getKeyDisplay('planner_versions', version);
+    return scope.getKeyDisplay('plannerVersions', version);
+  }
+});
+
+mciModule.filter('taskOrderingDisplay', function() {
+  return function(taskOrdering, scope) {
+    return scope.getKeyDisplay('taskOrderings', taskOrdering);
   }
 });
 
