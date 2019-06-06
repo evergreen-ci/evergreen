@@ -169,7 +169,7 @@ func fetchSource(ctx context.Context, ac, rc *legacyClient, comm client.Communic
 	var patch *service.RestPatch
 	if task.Requester == evergreen.PatchVersionRequester {
 		cloneDir = util.CleanForPath(fmt.Sprintf("source-patch-%v_%v", task.PatchNumber, task.Project))
-		patch, err = rc.GetPatch(task.PatchId)
+		patch, err = rc.GetRestPatch(task.PatchId)
 		if err != nil {
 			return err
 		}
