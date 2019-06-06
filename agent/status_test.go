@@ -143,12 +143,32 @@ func (s *StatusSuite) TestCheckOOMSucceeds() {
 	mockCommunicator.NextTaskIsNil = true
 	ctx, cancel := context.WithCancel(context.Background())
 	s.cancel = cancel
+
 	go func() {
 		_ = agt.Start(ctx)
 	}()
-	time.Sleep(100 * time.Millisecond)
 
 	resp, err := http.Get("http://127.0.0.1:2286/jasper/v1/list/oom")
+	if err != nil {
+		// the service hasn't started.
+
+		timer := time.NewTimer(0)
+		defer timer.Stop()
+	retryLoop:
+		for {
+			select {
+			case <-ctx.Done():
+				break retryLoop
+			case <-timer.C:
+				resp, err = http.Get("http://127.0.0.1:2286/jasper/v1/list/oom")
+				if err == nil {
+					break retryLoop
+				}
+				timer.Reset(10 * time.Millisecond)
+			}
+		}
+	}
+
 	s.Require().NoError(err)
 	s.Equal(200, resp.StatusCode)
 
