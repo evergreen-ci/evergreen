@@ -11,6 +11,43 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+func TestValidatePlannerSettingsTaskOrdering(t *testing.T) {
+	d1 := Distro{
+		Id: "distro1",
+		PlannerSettings: PlannerSettings{
+			Interleave:    true,
+			MainlineFirst: false,
+			PatchFirst:    false,
+		},
+	}
+	err := ValidatePlannerSettingsTaskOrdering(d1.PlannerSettings)
+	assert.Nil(t, err)
+
+	d2 := Distro{
+		Id: "distro2",
+		PlannerSettings: PlannerSettings{
+			Interleave:    false,
+			MainlineFirst: false,
+			PatchFirst:    false,
+		},
+	}
+	err = ValidatePlannerSettingsTaskOrdering(d2.PlannerSettings)
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "invalid task ordering - one of the following fields must be true: PlannerSettings.Interleave [false], PlannerSettings.MainlineFirst [false] or PlannerSettings.PatchFirst [false]")
+
+	d3 := Distro{
+		Id: "distro3",
+		PlannerSettings: PlannerSettings{
+			Interleave:    true,
+			MainlineFirst: true,
+			PatchFirst:    false,
+		},
+	}
+	err = ValidatePlannerSettingsTaskOrdering(d3.PlannerSettings)
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "invalid task ordering - only one of the following fields can be true: PlannerSetting.Interleave [true], PlannerSetting.MainlineFirst [true] or PlannerSetting.PatchFirst [false]")
+}
+
 func TestGenerateName(t *testing.T) {
 	assert := assert.New(t)
 

@@ -459,32 +459,107 @@ Evergreen - Distros
             </div>
           </div>
           <br>
-          <div class="panel-body panel panel-default">
-            <div class="dropdown">
-              <span class="distro-menu-title">Planner Version:</span>
-                <button class="btn btn-default dropdown-toggle" type="button" data-toggle="dropdown" aria-expanded="true"
+
+        <div class="panel-body panel panel-default">
+          <div class="dropdown">
+            <span class="distro-menu-title">Planner Version:</span>
+              <button style="margin-left:5px;" class="btn btn-default dropdown-toggle" type="button" data-toggle="dropdown" aria-expanded="true"
                 ng-disabled="readOnly">
-                  <strong class="distro-menu-item">[[ activeDistro.planner_settings.version | versionDisplay:this]]<span class="fa fa-caret-down"></span></strong>
-                </button>
-                <ul class="dropdown-menu" style="margin-left: 125px" role="menu">
-                  <li required name="plannerVersion" ng-click="form.$setDirty();activeDistro.planner_settings.version = version.id" ng-repeat="version in planner_versions"
-                    role="presentation"><a role="menuitem" tabindex="-1">[[version.display]]</a></li>
-                </ul>
+                <strong class="distro-menu-item">[[ activeDistro.planner_settings.version | versionDisplay:this]]<span class="fa fa-caret-down"></span></strong>
+              </button>
+              <ul class="dropdown-menu" style="margin-left: 125px" role="menu">
+                <li required name="plannerSettingsVersion" ng-click="form.$setDirty();activeDistro.planner_settings.version = version.id" ng-repeat="version in planner_versions"
+                  role="presentation"><a role="menuitem" tabindex="-1">[[version.display]]</a></li>
+              </ul>
+          </div>
+          <div class="icon fa fa-warning distro-error" ng-show="form.plannerSettingsVersion.$dirty && form.plannerSettingsVersion.$error.required ||
+            form.plannerSettingsVersion.$invalid">Planner Version is required
+          </div>
+          <div ng-show="activeDistro.provider != 'static' && activeDistro.provider != 'docker'">
+              <label class="distro-label">Maximum number of hosts allowed:</label>
+              <input ng-readonly="readOnly" type="number" ng-required="activeDistro.provider != 'static' && activeDistro.provider != 'docker'"
+                name="poolSize" class="form-control" ng-model="activeDistro.pool_size" ng-change="activeDistro.planner_settings.maximum_hosts=activeDistro.pool_size" placeholder="Max pool size e.g. 10">
+              <div class="icon fa fa-warning distro-error" ng-show="form.poolSize.$dirty && form.poolSize.$error.required || form.poolSize.$invalid">Numeric
+                pool size is required
+              </div>
+          </div>
+          <div ng-show="activeDistro.provider != 'static' && activeDistro.provider != 'docker' && activeDistro.planner_settings.version == 'tunable'">
+            <div>
+              <label class="distro-label">Minimum Hosts of host allowed:</label>
+              <input ng-readonly="readOnly" type="number" ng-required="activeDistro.planner_settings.version == 'tunable'"
+                name="plannerSettingsMinimumHosts" class="form-control" ng-model="activeDistro.planner_settings.minimum_hosts" placeholder="Min pool size e.g. 0">
             </div>
-            <div class="icon fa fa-warning distro-error" ng-show="form.plannerVersion.$dirty && form.plannerVersion.$error.required || form.plannerVersion.$invalid">Planner Version is required</div>
-          </div>
-          <div ng-show="activeDistro.provider != 'static' && activeDistro.provider != 'docker'">
-            <label class="distro-label">Maximum number of hosts allowed:</label>
-            <input ng-readonly="readOnly" type="number" ng-required="activeDistro.provider != 'static' && activeDistro.provider != 'docker'"
-              name="poolSize" class="form-control" ng-model="activeDistro.pool_size" placeholder="Max pool size e.g. 10">
-            <div class="icon fa fa-warning distro-error" ng-show="form.poolSize.$dirty && form.poolSize.$error.required || form.poolSize.$invalid">Numeric
-              pool size is required</div>
-          </div>
-          <div ng-show="activeDistro.provider != 'static' && activeDistro.provider != 'docker'">
-            <label class="distro-label">Minimum number of hosts allowed:</label>
-            <input ng-readonly="readOnly" type="number" ng-required="activeDistro.provider != 'static' && activeDistro.provider != 'docker'"
-              name="minimumHosts" class="form-control" ng-model="activeDistro.planner_settings.minimum_hosts" placeholder="Min pool size e.g. 1">
-            <div class="icon fa fa-warning distro-error" ng-show="form.minimumHosts.$dirty && form.minimumHosts.$error.required || form.minimumHosts.$invalid">Numeric pool size is required</div>
+            <div class="icon fa fa-warning distro-error" ng-show="form.plannerSettingsMinimumHosts.$dirty && form.plannerSettingsMinimumHosts.$error.required ||
+              form.plannerSettingsMinimumHosts.$invalid ||
+              form.plannerSettingsMinimumHosts.$modelValue < 0 ||
+              form.plannerSettingsMinimumHosts.$modelValue % 1 != 0"> A non-negative integer value for Minimum Hosts is required
+            </div>
+            <div>
+              <label class="distro-label">Target Time (sec):</label>
+              <input ng-readonly="readOnly" type="number" ng-required="activeDistro.planner_settings.version == 'tunable'"
+                name="plannerSettingsTargetTime" class="form-control" ng-model="activeDistro.planner_settings.target_time" placeholder="Set to 0 to use its global default">
+            </div>
+            <div class="icon fa fa-warning distro-error" ng-show="form.plannerSettingsTargetTime.$dirty && form.plannerSettingsTargetTime.$error.required ||
+              form.plannerSettingsTargetTime.$invalid ||
+              form.plannerSettingsTargetTime.$modelValue < 0 ||
+              form.plannerSettingsTargetTime.$modelValue % 1 != 0"> Target Time must be a non-negative integer
+            </div>
+            <div>
+              <label class="distro-label">Acceptable Host Idle Time (sec):</label>
+              <input ng-readonly="readOnly" type="number" ng-required="activeDistro.planner_settings.version == 'tunable'"
+                name="plannerSettingsAcceptableHostIdleTime" class="form-control" ng-model="activeDistro.planner_settings.acceptable_host_idle_time" placeholder="Set to 0 to use its global default">
+            </div>
+            <div class="icon fa fa-warning distro-error" ng-show="form.plannerSettingsAcceptableHostIdleTime.$dirty && form.plannerSettingsAcceptableHostIdleTime.$error.required ||
+              form.plannerSettingsAcceptableHostIdleTime.$invalid ||
+              form.plannerSettingsAcceptableHostIdleTime.$modelValue < 0 ||
+              form.plannerSettingsAcceptableHostIdleTime.$modelValue % 1 != 0"> Acceptable Host Idle Time must a non-negative integer
+            </div>
+            <div>
+              <label class="distro-label">Patch Zipper Factor (0 to 100 inclusive):</label>
+              <input ng-readonly="readOnly" type="number" ng-required="activeDistro.planner_settings.version == 'tunable'"
+                name="plannerSettingsPatchZipperFactor" class="form-control" ng-model="activeDistro.planner_settings.patch_zipper_factor" placeholder="Set to 0 to use the its global default">
+            </div>
+            <div class="icon fa fa-warning distro-error" ng-show="form.plannerSettingsPatchZipperFactor.$dirty && form.plannerSettingsPatchZipperFactor.$error.required ||
+              form.plannerSettingsPatchZipperFactor.$invalid ||
+              form.plannerSettingsPatchZipperFactor.$modelValue > 100 ||
+              form.plannerSettingsPatchZipperFactor.$modelValue < 0 ||
+              form.plannerSettingsPatchZipperFactor.$modelValue % 1 != 0"> Patch Zipper Factor must be an integer between 0 and 100
+            </div>
+            <br/>
+            <div>
+              <span class="distro-menu-title">Task ordering:</span>
+                <label>
+                <input name="plannerSettingsInterleave" style="margin-left:10px;margin-right:10px;" type="radio"
+                  ng-change="form.$setDirty();activeDistro.planner_settings.mainline_first=false;activeDistro.planner_settings.patch_first=false" ng-model="activeDistro.planner_settings.interleave" ng-value=true />Interleave
+                </label>
+                <label>
+                  <input name="plannerSettingsMainlineFirst" style="margin-left:10px;margin-right:10px;" type="radio"
+                    ng-change="form.$setDirty();activeDistro.planner_settings.interleave=false;activeDistro.planner_settings.patch_first=false" ng-model="activeDistro.planner_settings.mainline_first" ng-value=true />Mainline First
+                </label>
+                <label>
+                  <input name="plannerSettingsPatchFirst" style="margin-left:10px;margin-right:10px;" type="radio"
+                    ng-change="form.$setDirty();activeDistro.planner_settings.interleave=false;activeDistro.planner_settings.mainline_first=false;" ng-model="activeDistro.planner_settings.patch_first" ng-value=true />Patch First
+                </label>
+            </div>
+            <!--div class="icon fa fa-warning distro-error" ng-show="form.plannerSettingsInterleave.$modelValue==false &&
+              form.plannerSettingsMainlineFirst.$modelValue==false && form.plannerSettingsPatchFirst.$modelValue==false"> A Task Ordering option is required
+            </div-->
+            <br/>
+            <div>
+              <span class="distro-menu-title">Group Versions:</span>
+              <label>
+                <input name="plannerSettingsGroupVersionsYes" style="margin-left:10px;margin-right:10px;" type="radio"
+                  ng-change="form.$setDirty();" ng-model="activeDistro.planner_settings.group_versions" ng-value=true />Yes
+              </label>
+              <label>
+                <input name="plannerSettingsGroupVersionsNo" style="margin-left:10px;margin-right:10px;" type="radio"
+                  ng-change="form.$setDirty();" ng-model="activeDistro.planner_settings.group_versions" ng-value=false />No
+              </label>
+              </div>
+              <!--div>
+                <span class="distro-menu-title">Group Versions:</span>
+                  <input style="margin-left:10px;" ng-disabled="readOnly" type="checkbox" ng-model="activeDistro.planner_settings.group_versions">
+              </div-->
           </div>
           <div ng-form name="hostProviderForm" ng-show="activeDistro.provider == 'static'">
             <label class="distro-label">Hosts<span ng-show="activeDistro.settings.hosts && activeDistro.settings.hosts.length != 0">([[activeDistro.settings.hosts.length]])</span>:</label>

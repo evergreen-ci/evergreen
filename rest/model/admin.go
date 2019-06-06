@@ -1039,10 +1039,18 @@ func (a *APIRepoTrackerConfig) ToService() (interface{}, error) {
 }
 
 type APISchedulerConfig struct {
-	TaskFinder           APIString `json:"task_finder"`
-	HostAllocator        APIString `json:"host_allocator"`
-	FreeHostFraction     float64   `json:"free_host_fraction"`
-	CacheDurationSeconds int       `json:"cache_duration_seconds"`
+	TaskFinder                    APIString `json:"task_finder"`
+	HostAllocator                 APIString `json:"host_allocator"`
+	FreeHostFraction              float64   `json:"free_host_fraction"`
+	CacheDurationSeconds          int       `json:"cache_duration_seconds"`
+	PlannerVersion                APIString `json:"planner_version"`
+	TargetTimeSeconds             int       `json:"target_time_seconds"`
+	AcceptableHostIdleTimeSeconds int       `json:"acceptable_host_idle_time_seconds"`
+	GroupVersions                 bool      `json:"group_versions"`
+	PatchZipperFactor             int       `json:"patch_zipper_factor"`
+	Interleave                    bool      `json:"interleave"`
+	MainlineFirst                 bool      `json:"mainline_first"`
+	PatchFirst                    bool      `json:"patch_first"`
 }
 
 func (a *APISchedulerConfig) BuildFromService(h interface{}) error {
@@ -1052,6 +1060,14 @@ func (a *APISchedulerConfig) BuildFromService(h interface{}) error {
 		a.HostAllocator = ToAPIString(v.HostAllocator)
 		a.FreeHostFraction = v.FreeHostFraction
 		a.CacheDurationSeconds = v.CacheDurationSeconds
+		a.PlannerVersion = ToAPIString(v.PlannerVersion)
+		a.TargetTimeSeconds = v.TargetTimeSeconds
+		a.AcceptableHostIdleTimeSeconds = v.AcceptableHostIdleTimeSeconds
+		a.GroupVersions = v.GroupVersions
+		a.PatchZipperFactor = v.PatchZipperFactor
+		a.Interleave = v.Interleave
+		a.MainlineFirst = v.MainlineFirst
+		a.PatchFirst = v.PatchFirst
 	default:
 		return errors.Errorf("%T is not a supported type", h)
 	}
@@ -1060,10 +1076,18 @@ func (a *APISchedulerConfig) BuildFromService(h interface{}) error {
 
 func (a *APISchedulerConfig) ToService() (interface{}, error) {
 	return evergreen.SchedulerConfig{
-		TaskFinder:           FromAPIString(a.TaskFinder),
-		HostAllocator:        FromAPIString(a.HostAllocator),
-		FreeHostFraction:     a.FreeHostFraction,
-		CacheDurationSeconds: a.CacheDurationSeconds,
+		TaskFinder:                    FromAPIString(a.TaskFinder),
+		HostAllocator:                 FromAPIString(a.HostAllocator),
+		FreeHostFraction:              a.FreeHostFraction,
+		CacheDurationSeconds:          a.CacheDurationSeconds,
+		PlannerVersion:                FromAPIString(a.PlannerVersion),
+		TargetTimeSeconds:             a.TargetTimeSeconds,
+		AcceptableHostIdleTimeSeconds: a.AcceptableHostIdleTimeSeconds,
+		GroupVersions:                 a.GroupVersions,
+		PatchZipperFactor:             a.PatchZipperFactor,
+		Interleave:                    a.Interleave,
+		MainlineFirst:                 a.MainlineFirst,
+		PatchFirst:                    a.PatchFirst,
 	}, nil
 }
 

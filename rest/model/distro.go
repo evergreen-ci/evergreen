@@ -18,8 +18,9 @@ type APIPlannerSettings struct {
 	MaximumHosts           int         `json:"maximum_hosts"`
 	TargetTime             APIDuration `json:"target_time"`
 	AcceptableHostIdleTime APIDuration `json:"acceptable_host_idle_time"`
-	GroupVersions          bool        `json:"group_versions"`
+	GroupVersions          *bool       `json:"group_versions"`
 	PatchZipperFactor      int         `json:"patch_zipper_factor"`
+	Interleave             bool        `json:"interleave"`
 	MainlineFirst          bool        `json:"mainline_first"`
 	PatchFirst             bool        `json:"patch_first"`
 }

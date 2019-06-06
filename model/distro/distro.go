@@ -44,12 +44,13 @@ type PlannerSettings struct {
 	Version                string        `bson:"version" json:"version" mapstructure:"version"`
 	MinimumHosts           int           `bson:"minimum_hosts" json:"minimum_hosts,omitempty" mapstructure:"minimum_hosts,omitempty"`
 	MaximumHosts           int           `bson:"maximum_hosts" json:"maximum_hosts,omitempty" mapstructure:"maximum_hosts,omitempty"`
-	TargetTime             time.Duration `bson:"target_time" json:"target_time,omitempty" mapstructure:"target_time,omitempty"`
-	AcceptableHostIdleTime time.Duration `bson:"acceptable_host_idle_time" json:"acceptable_host_idle_time,omitempty" mapstructure:"acceptable_host_idle_time,omitempty"`
-	GroupVersions          bool          `bson:"group_versions" json:"group_versions,omitempty" mapstructure:"group_versions,omitempty"`
-	PatchZipperFactor      int           `bson:"patch_zipper_factor" json:"patch_zipper_factor,omitempty" mapstructure:"patch_zipper_factor,omitempty"`
-	MainlineFirst          bool          `bson:"mainline_first" json:"mainline_first,omitempty" mapstructure:"mainline_first,omitempty"`
-	PatchFirst             bool          `bson:"patch_first" json:"patch_first,omitempty" mapstructure:"patch_first,omitempty"`
+	TargetTime             time.Duration `bson:"target_time" json:"target_time" mapstructure:"target_time,omitempty"`
+	AcceptableHostIdleTime time.Duration `bson:"acceptable_host_idle_time" json:"acceptable_host_idle_time" mapstructure:"acceptable_host_idle_time,omitempty"`
+	GroupVersions          *bool         `bson:"group_versions" json:"group_versions" mapstructure:"group_versions,omitempty"`
+	PatchZipperFactor      int           `bson:"patch_zipper_factor" json:"patch_zipper_factor" mapstructure:"patch_zipper_factor,omitempty"`
+	Interleave             bool          `bson:"interleave" json:"interleave" mapstructure:"interleave,omitempty"`
+	MainlineFirst          bool          `bson:"mainline_first" json:"mainline_first" mapstructure:"mainline_first,omitempty"`
+	PatchFirst             bool          `bson:"patch_first" json:"patch_first" mapstructure:"patch_first,omitempty"`
 }
 
 type FinderSettings struct {
@@ -322,4 +323,29 @@ func (distros DistroGroup) GetDistroIds() []string {
 		ids = append(ids, d.Id)
 	}
 	return ids
+}
+
+func ValidatePlannerSettingsTaskOrdering(ps PlannerSettings) error {
+	options := []bool{ps.Interleave, ps.MainlineFirst, ps.PatchFirst}
+	nTrue := 0
+	for i := 0; i < len(options); i++ {
+		if options[i] {
+			nTrue++
+		}
+	}
+	if nTrue == 0 {
+		return errors.Errorf("invalid task ordering - one of the following fields must be true: PlannerSettings.Interleave [%t], PlannerSettings.MainlineFirst [%t] or PlannerSettings.PatchFirst [%t]",
+			ps.Interleave,
+			ps.MainlineFirst,
+			ps.PatchFirst,
+		)
+	}
+	if nTrue > 1 {
+		return errors.Errorf("invalid task ordering - only one of the following fields can be true: PlannerSetting.Interleave [%t], PlannerSetting.MainlineFirst [%t] or PlannerSetting.PatchFirst [%t]",
+			ps.Interleave,
+			ps.MainlineFirst,
+			ps.PatchFirst,
+		)
+	}
+	return nil
 }

@@ -146,6 +146,10 @@ const (
 	FinderVersionPipeline  = "pipeline"
 	FinderVersionAlternate = "alternate"
 
+	HostAllocatorDuration    = "duration"
+	HostAllocatorDeficit     = "deficit"
+	HostAllocatorUtilization = "utilization"
+
 	CommitQueueAlias = "__commit_queue"
 
 	MaxTeardownGroupTimeoutSecs = 30 * 60
@@ -369,9 +373,16 @@ var (
 	// Set of valid FinderSettings.Version strings that can be user set via the API
 	ValidFinderVersions = []string{
 		FinderVersionLegacy,
+		FinderVersionAlternate,
 		FinderVersionParallel,
 		FinderVersionPipeline,
-		FinderVersionAlternate,
+	}
+
+	// Set of valid Host Allocators types
+	ValidHostAllocators = []string{
+		HostAllocatorDuration,
+		HostAllocatorDeficit,
+		HostAllocatorUtilization,
 	}
 
 	// constant arrays for db update logic
