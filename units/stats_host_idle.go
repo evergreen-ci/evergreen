@@ -209,8 +209,6 @@ func (j *collectHostIdleDataJob) getTaskStartStatsMessage() message.Composer {
 		"execution":              j.task.Execution,
 		"generator":              j.task.GenerateTask,
 		"group":                  j.task.TaskGroup,
-		"group":                  j.task.TaskGroup,
-		"group_max_hosts":        j.task.TaskGroupMaxHosts,
 		"group_max_hosts":        j.task.TaskGroupMaxHosts,
 		"host_id":                j.host.Id,
 		"project":                j.task.Project,
