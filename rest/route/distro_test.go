@@ -250,6 +250,7 @@ func TestDistroByIDSuite(t *testing.T) {
 }
 
 func (s *DistroByIDSuite) SetupSuite() {
+	pTrue := true
 	s.data = data.MockDistroConnector{
 		CachedDistros: []*distro.Distro{
 			{
@@ -260,8 +261,9 @@ func (s *DistroByIDSuite) SetupSuite() {
 					MaximumHosts:           10,
 					TargetTime:             60000000000,
 					AcceptableHostIdleTime: 10000000000,
-					GroupVersions:          true,
+					GroupVersions:          &pTrue,
 					PatchZipperFactor:      7,
+					Interleave:             false,
 					MainlineFirst:          false,
 					PatchFirst:             true,
 				},
@@ -301,8 +303,9 @@ func (s *DistroByIDSuite) TestFindByIdFound() {
 	s.Equal(10, d.PlannerSettings.MaximumHosts)
 	s.Equal(model.NewAPIDuration(60000000000), d.PlannerSettings.TargetTime)
 	s.Equal(model.NewAPIDuration(10000000000), d.PlannerSettings.AcceptableHostIdleTime)
-	s.Equal(true, d.PlannerSettings.GroupVersions)
+	s.Equal(true, *d.PlannerSettings.GroupVersions)
 	s.Equal(7, d.PlannerSettings.PatchZipperFactor)
+	s.Equal(false, d.PlannerSettings.Interleave)
 	s.Equal(false, d.PlannerSettings.MainlineFirst)
 	s.Equal(true, d.PlannerSettings.PatchFirst)
 	s.Equal(model.ToAPIString(distro.BootstrapMethodLegacySSH), d.BootstrapMethod)
