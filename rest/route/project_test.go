@@ -20,7 +20,6 @@ import (
 
 type ProjectPatchByIDSuite struct {
 	sc *data.MockConnector
-	// data data.MockProjectConnector
 	rm gimlet.RouteHandler
 
 	suite.Suite
@@ -38,12 +37,13 @@ func (s *ProjectPatchByIDSuite) SetupTest() {
 
 func (s *ProjectPatchByIDSuite) TestParse() {
 	ctx := context.Background()
-	json := []byte(`{"private" : false}`)
-	req, _ := http.NewRequest("PATCH", "http://example.com/api/rest/v2/projects/dimoxinil", bytes.NewBuffer(json))
 
+	json := []byte(`{"private" : false}`)
+	req, _ := http.NewRequest("PATCH", "http://example.com/api/rest/v2/projects/dimoxinil?revision=my-revision", bytes.NewBuffer(json))
 	err := s.rm.Parse(ctx, req)
 	s.NoError(err)
 	s.Equal(json, s.rm.(*projectIDPatchHandler).body)
+	s.Equal("my-revision", s.rm.(*projectIDPatchHandler).revision)
 }
 
 func (s *ProjectPatchByIDSuite) TestRunInValidIdentifierChange() {
@@ -54,7 +54,6 @@ func (s *ProjectPatchByIDSuite) TestRunInValidIdentifierChange() {
 	h.body = json
 
 	resp := s.rm.Run(ctx)
-	s.rm.Run(ctx)
 	s.NotNil(resp.Data())
 	s.Equal(resp.Status(), http.StatusForbidden)
 
@@ -70,9 +69,21 @@ func (s *ProjectPatchByIDSuite) TestRunInvalidNonExistingId() {
 	h.body = json
 
 	resp := s.rm.Run(ctx)
-	s.rm.Run(ctx)
 	s.NotNil(resp.Data())
 	s.Equal(resp.Status(), http.StatusNotFound)
+}
+
+func (s *ProjectPatchByIDSuite) TestRunValid() {
+	ctx := context.Background()
+	json := []byte(`{"enabled": true}`)
+	h := s.rm.(*projectIDPatchHandler)
+	h.projectID = "dimoxinil"
+	h.revision = "my-revision"
+	h.body = json
+	resp := s.rm.Run(ctx)
+	s.NotNil(resp)
+	s.NotNil(resp.Data())
+	s.Equal(resp.Status(), http.StatusOK)
 }
 
 ////////////////////////////////////////////////////////////////////////

@@ -97,6 +97,8 @@ type Connector interface {
 	// EnablePRTesting determines if PR testing can be enabled for the given project.
 	EnablePRTesting(*model.ProjectRef) error
 
+	// UpdateProjectRevision updates the given project's revision
+	UpdateProjectRevision(string, string) error
 	// FindProjects is a method to find projects as ordered by name
 	FindProjects(string, int, int, bool) ([]model.ProjectRef, error)
 	// FindProjectByBranch is a method to find the projectref given a branch name.
