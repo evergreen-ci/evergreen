@@ -121,6 +121,7 @@ func (s *AgentSuite) TestErrorGettingNextTask() {
 
 func (s *AgentSuite) TestCanceledContext() {
 	s.a.opts.AgentSleepInterval = time.Millisecond
+	s.a.opts.MaxAgentSleepInterval = time.Millisecond
 	s.mockCommunicator.NextTaskIsNil = true
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Millisecond)
 	defer cancel()
