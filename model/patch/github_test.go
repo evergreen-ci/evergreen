@@ -64,9 +64,10 @@ func (s *GithubSuite) TestNewGithubIntent() {
 	s.Nil(intent)
 	s.Error(err)
 
+	// PRs can't have an empty title
 	intent, err = NewGithubIntent("2", testutil.NewGithubPR(s.pr, s.baseRepo, s.headRepo, s.hash, s.user, ""))
-	s.NotNil(intent)
-	s.NoError(err)
+	s.Nil(intent)
+	s.Error(err)
 
 	intent, err = NewGithubIntent("4", testutil.NewGithubPR(s.pr, s.baseRepo, s.headRepo, s.hash, s.user, s.title))
 	s.NoError(err)
