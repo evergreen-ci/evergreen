@@ -229,6 +229,10 @@ func (j *collectHostIdleDataJob) getTaskStartStatsMessage() message.Composer {
 
 	if j.host.Provider != evergreen.ProviderNameStatic {
 		msg["host_task_count"] = j.host.TaskCount
+
+		if j.host.TaskCount == 1 {
+			msg["host_provision_time"] = j.host.TotalIdleTime.Seconds()
+		}
 	}
 
 	return message.ConvertToComposer(level.Info, msg)
