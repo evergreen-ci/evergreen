@@ -106,6 +106,9 @@ func TestProjectConnectorGetSuite(t *testing.T) {
 			if err := p.Insert(); err != nil {
 				return err
 			}
+			if _, err := model.GetNewRevisionOrderNumber(p.Identifier); err != nil {
+				return err
+			}
 		}
 
 		vars := &model.ProjectVars{

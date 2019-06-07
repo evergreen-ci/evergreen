@@ -337,9 +337,11 @@ func (h *projectIDPatchHandler) Run(ctx context.Context) gimlet.Responder {
 		if err = h.sc.UpdateProjectRevision(h.projectID, h.revision); err != nil {
 			return gimlet.MakeJSONErrorResponder(err)
 		}
-		dbProjectRef.RepotrackerError.Exists = false
-		dbProjectRef.RepotrackerError.InvalidRevision = ""
-		dbProjectRef.RepotrackerError.MergeBaseRevision = ""
+		dbProjectRef.RepotrackerError = &dbModel.RepositoryErrorDetails{
+			Exists:            false,
+			InvalidRevision:   "",
+			MergeBaseRevision: "",
+		}
 	}
 
 	if err = h.sc.UpdateProject(dbProjectRef); err != nil {
@@ -356,7 +358,6 @@ func (h *projectIDPatchHandler) Run(ctx context.Context) gimlet.Responder {
 			return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "problem creating catchup job"))
 		}
 	}
-
 	return gimlet.NewJSONResponse(apiProjectRef)
 }
 
