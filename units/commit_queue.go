@@ -245,25 +245,16 @@ func (j *commitQueueJob) processCLIPatchItem(ctx context.Context, cq *commitqueu
 		return
 	}
 
-	branch, err := thirdparty.GetBranchEvent(ctx, githubToken, projectRef.Owner, projectRef.Repo, projectRef.Branch)
-	if err != nil {
-		j.logError(err, "can't get branch", nextItem)
-		j.dequeue(cq, nextItem)
-		return
-	}
-
-	if err = validateBranch(branch); err != nil {
-		j.logError(err, "GitHub returned invalid branch", nextItem)
-		j.dequeue(cq, nextItem)
-		return
-	}
-
-	sha := *branch.Commit.SHA
-	patchDoc.Githash = sha
-
 	project, err := model.GetPatchedProject(ctx, patchDoc, githubToken)
 	if err != nil {
 		j.logError(err, "can't get updated project config", nextItem)
+		j.dequeue(cq, nextItem)
+		return
+	}
+
+	err = updateGithashes(ctx, githubToken, projectRef, project, patchDoc)
+	if err != nil {
+		j.logError(err, "can't update githashes", nextItem)
 		j.dequeue(cq, nextItem)
 		return
 	}
@@ -604,6 +595,48 @@ func setDefaultNotification(username string) error {
 		u.Settings.Notifications.CommitQueueID = commitQueueSubscription.ID
 
 		return model.SaveUserSettings(u.Id, u.Settings)
+	}
+
+	return nil
+}
+
+func updateGithashes(ctx context.Context, githubToken string, projectRef *model.ProjectRef, project *model.Project, patchDoc *patch.Patch) error {
+	branch, err := thirdparty.GetBranchEvent(ctx, githubToken, projectRef.Owner, projectRef.Repo, projectRef.Branch)
+	if err != nil {
+		return errors.Wrap(err, "can't get branch")
+	}
+	if err = validateBranch(branch); err != nil {
+		return errors.Wrap(err, "GitHub returned invalid branch")
+	}
+
+	sha := *branch.Commit.SHA
+	patchDoc.Githash = sha
+
+	// Update module githashes
+	for i, mod := range patchDoc.Patches {
+		if mod.ModuleName == "" {
+			patchDoc.Patches[i].Githash = sha
+			continue
+		}
+
+		module, err := project.GetModuleByName(mod.ModuleName)
+		if err != nil {
+			return errors.Wrapf(err, "can't get module for module name '%s'", mod.ModuleName)
+		}
+		owner, repo, err := thirdparty.ParseGitUrl(module.Repo)
+		if err != nil {
+			return errors.Wrapf(err, "module '%s' misconfigured (malformed URL)", mod.ModuleName)
+		}
+
+		branch, err = thirdparty.GetBranchEvent(ctx, githubToken, owner, repo, module.Branch)
+		if err != nil {
+			return errors.Wrap(err, "can't get branch")
+		}
+		if err = validateBranch(branch); err != nil {
+			return errors.Wrap(err, "GitHub returned invalid branch")
+		}
+
+		patchDoc.Patches[i].Githash = *branch.Commit.SHA
 	}
 
 	return nil
