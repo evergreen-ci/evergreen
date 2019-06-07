@@ -332,7 +332,7 @@ func (gh *githubHookApi) commitQueueEnqueue(ctx context.Context, event *github.I
 }
 
 func triggersRetry(action, comment string) bool {
-	if action == "delete" {
+	if action == "deleted" {
 		return false
 	}
 
