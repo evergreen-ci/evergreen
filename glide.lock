@@ -124,6 +124,11 @@ imports:
   - name: go.mongodb.org/mongo-driver
     version: 305bc4a5e4131420fe8ba5628e6faa9e6ade4e86
 
+  - name: github.com/evergreen-ci/certdepot
+    version: 06399e7b5098b8e28479a6b289d1343cbb6ea75f
+  - name: github.com/square/certstrap
+    version: a0ea37d7c3834c63c247ab2083acf9d4657b19cd
+
   # git library and its dependencies
   - name: gopkg.in/src-d/go-git.v4
     version: bf3b1f1fb9e0a04d0f87511a7ded2562b48a19d8

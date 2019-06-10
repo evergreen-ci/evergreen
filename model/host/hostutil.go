@@ -248,6 +248,7 @@ func (h *Host) BootstrapScript(config evergreen.JasperConfig) string {
 		}
 		return strings.Join(commands, "\r\n")
 	}
+
 	return strings.Join([]string{"#!/bin/bash", h.FetchJasperCommand(config), h.ForceReinstallJasperCommand(config)}, "\n")
 }
 
