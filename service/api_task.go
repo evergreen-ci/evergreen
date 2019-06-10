@@ -440,7 +440,17 @@ func assignNextAvailableTask(taskQueue *model.TaskQueue, taskQueueService model.
 // NextTask retrieves the next task's id given the host name and host secret by retrieving the task queue
 // and popping the next task off the task queue.
 func (as *APIServer) NextTask(w http.ResponseWriter, r *http.Request) {
+	begin := time.Now()
 	h := MustHaveHost(r)
+	defer func() {
+		grip.DebugWhen(time.Since(begin) > time.Second, message.Fields{
+			"message": "slow next_task operation",
+			"host_id": h.Id,
+			"distro":  h.Distro.Id,
+			"latency": time.Since(begin),
+		})
+	}()
+
 	var response apimodels.NextTaskResponse
 	var err error
 	if checkHostHealth(h) {
