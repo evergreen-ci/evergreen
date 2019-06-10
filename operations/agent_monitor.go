@@ -63,7 +63,6 @@ type monitor struct {
 
 const (
 	defaultMonitorPort        = defaultAgentStatusPort - 1
-	defaultJasperPort         = defaultMonitorPort - 1
 	defaultMaxRequestDelay    = 30 * time.Second
 	defaultMaxRequestAttempts = 10
 
@@ -116,7 +115,7 @@ func agentMonitor() cli.Command {
 			},
 			cli.IntFlag{
 				Name:  jasperPortFlagName,
-				Value: defaultJasperPort,
+				Value: evergreen.DefaultJasperPort,
 				Usage: "the port that is running the Jasper RPC service",
 			},
 			cli.IntFlag{

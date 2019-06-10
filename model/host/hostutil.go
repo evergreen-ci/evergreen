@@ -156,7 +156,38 @@ func initSystemCommand() string {
 	`
 }
 
-// FetchJasperCommands builds the command to download and extract the Jasper
+// FetchAndReinstallJasperCommand returns the command to fetch Jasper and
+// restart the service with the latest version.
+func (h *Host) FetchAndReinstallJasperCommand(config evergreen.JasperConfig) string {
+	return strings.Join([]string{
+		h.FetchJasperCommand(config),
+		h.ForceReinstallJasperCommand(config),
+	}, " && ")
+}
+
+// ForceReinstallJasperCommand returns the command to stop the Jasper service,
+// delete the current Jasper service configuration (if it exists), install the
+// new configuration, and restart the service.
+func (h *Host) ForceReinstallJasperCommand(config evergreen.JasperConfig) string {
+	port := config.Port
+	if port == 0 {
+		port = evergreen.DefaultJasperPort
+	}
+	return h.jasperServiceCommand(config, "force-reinstall", fmt.Sprintf("--port=%d", port))
+}
+
+func (h *Host) jasperServiceCommand(config evergreen.JasperConfig, subCmd string, args ...string) string {
+	binaryPath := filepath.Join(h.Distro.CuratorDir, h.jasperExtractedFileName(config))
+	cmd := fmt.Sprintf("%s jasper service %s rpc %s", binaryPath, subCmd, strings.Join(args, " "))
+	// Jasper service commands need elevated privileges to execute. On Windows,
+	// this is assuming that the command is already being run by Administrator.
+	if !h.Distro.IsWindows() {
+		cmd = "sudo " + cmd
+	}
+	return cmd
+}
+
+// FetchJasperCommand builds the command to download and extract the Jasper
 // binary into the distro-specific binary directory.
 func (h *Host) FetchJasperCommand(config evergreen.JasperConfig) string {
 	return strings.Join(h.fetchJasperCommands(config), " && ")
