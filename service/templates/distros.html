@@ -467,7 +467,7 @@ Evergreen - Distros
                   <strong class="distro-menu-item">[[ activeDistro.planner_settings.version | versionDisplay:this]]<span class="fa fa-caret-down"></span></strong>
                 </button>
                 <ul class="dropdown-menu" style="margin-left: 125px" role="menu">
-                  <li required name="plannerVersion" ng-click="form.$setDirty();activeDistro.planner_settings.version = version.id" ng-repeat="version in planner_versions"
+                  <li required name="plannerVersion" ng-click="form.$setDirty();activeDistro.planner_settings.version = version.id" ng-repeat="version in plannerVersions"
                     role="presentation"><a role="menuitem" tabindex="-1">[[version.display]]</a></li>
                 </ul>
             </div>
