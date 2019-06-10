@@ -18,9 +18,12 @@ mciModule.controller('DistrosCtrl', function($scope, $window, $location, $anchor
     $scope.distros[i].clone_method = $scope.distros[i].clone_method || 'legacy-ssh';
   }
 
-  $scope.planner_versions = [{
-   'id': "legacy",
+  $scope.plannerVersions = [{
+    'id': "legacy",
     'display': 'Legacy '
+  }, {
+    'id': "revised",
+    'display': 'Revised '
   }, {
     'id': "tunable",
     'display': 'Tunable '
@@ -496,7 +499,7 @@ mciModule.filter("archDisplay", function() {
 
 mciModule.filter("versionDisplay", function() {
   return function(version, scope) {
-    return scope.getKeyDisplay('planner_versions', version);
+    return scope.getKeyDisplay('plannerVersions', version);
   }
 });
 
