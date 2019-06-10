@@ -150,6 +150,7 @@ const (
 	HostAllocatorDeficit     = "deficit"
 	HostAllocatorUtilization = "utilization"
 
+	TaskOrderingNotDeclared   = ""
 	TaskOrderingInterleave    = "interleave"
 	TaskOrderingMainlineFirst = "mainlinefirst"
 	TaskOrderingPatchFirst    = "patchfirst"
@@ -389,8 +390,9 @@ var (
 		HostAllocatorUtilization,
 	}
 
-	// Set of valid Task Ordering options
-	ValidTaskOrdering = []string{
+	// Set of valid Task Ordering options that can be user set via the API
+	ValidTaskOrderings = []string{
+		TaskOrderingNotDeclared,
 		TaskOrderingInterleave,
 		TaskOrderingMainlineFirst,
 		TaskOrderingPatchFirst,
