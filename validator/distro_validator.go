@@ -265,8 +265,9 @@ func ensureHasValidPlannerSettings(ctx context.Context, d *distro.Distro, s *eve
 		})
 	}
 	if ps.TargetTime < 0 {
+		ms := ps.TargetTime / time.Millisecond
 		errs = append(errs, ValidationError{
-			Message: fmt.Sprintf("invalid planner_settings.target_time value of %dms for distro '%s' - its value must be a non-negative integer", ps.TargetTime, d.Id),
+			Message: fmt.Sprintf("invalid planner_settings.target_time value of %dms for distro '%s' - its value must be a non-negative integer", ms, d.Id),
 			Level:   Error,
 		})
 	} else if ps.TargetTime != 0 && (ps.TargetTime < time.Second) {
@@ -278,13 +279,14 @@ func ensureHasValidPlannerSettings(ctx context.Context, d *distro.Distro, s *eve
 	} else if ps.TargetTime%time.Second != 0 {
 		ms := ps.TargetTime / time.Millisecond
 		errs = append(errs, ValidationError{
-			Message: fmt.Sprintf("invalid planner_settings.target_time value of %dms for distro '%s' - its value must convert directly to units of seconds)", ms, d.Id),
+			Message: fmt.Sprintf("invalid planner_settings.target_time value of %dms for distro '%s' - its value must convert directly to units of seconds", ms, d.Id),
 			Level:   Error,
 		})
 	}
 	if ps.AcceptableHostIdleTime < 0 {
+		ms := ps.AcceptableHostIdleTime / time.Millisecond
 		errs = append(errs, ValidationError{
-			Message: fmt.Sprintf("invalid planner_settings.acceptable_host_idle_time value of %dms for distro '%s' - its value must be a non-negative integer", ps.AcceptableHostIdleTime, d.Id),
+			Message: fmt.Sprintf("invalid planner_settings.acceptable_host_idle_time value of %dms for distro '%s' - its value must be a non-negative integer", ms, d.Id),
 			Level:   Error,
 		})
 	} else if ps.AcceptableHostIdleTime != 0 && (ps.AcceptableHostIdleTime < time.Second) {
@@ -296,7 +298,7 @@ func ensureHasValidPlannerSettings(ctx context.Context, d *distro.Distro, s *eve
 	} else if ps.AcceptableHostIdleTime%time.Second != 0 {
 		ms := ps.AcceptableHostIdleTime / time.Millisecond
 		errs = append(errs, ValidationError{
-			Message: fmt.Sprintf("invalid planner_settings.acceptable_host_idle_time value of %dms for distro '%s' - its millisecond value must convert directly to units of seconds)", ms, d.Id),
+			Message: fmt.Sprintf("invalid planner_settings.acceptable_host_idle_time value of %dms for distro '%s' - its millisecond value must convert directly to units of seconds", ms, d.Id),
 			Level:   Error,
 		})
 	}
