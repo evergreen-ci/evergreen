@@ -538,17 +538,16 @@ func (j *agentDeployJob) jasperRunSetupScript(ctx context.Context, sshOptions []
 		return "", errors.Wrap(err, "problem parsing setup command")
 	}
 
-	input := jaspercli.CommandInput{
-		Commands: [][]string{cmd},
-	}
-	output, err := j.host.RunSSHJasperRequest(ctx, j.env, "create-command", input, sshOptions)
+	input := jasper.CreateOptions{Args: cmd}
+	output, err := j.host.RunSSHJasperRequest(ctx, j.env, "create-process", input, sshOptions)
 	if err != nil {
 		return output, errors.Wrap(err, "failed to create command")
 	}
-	// TODO: outcome, err := ExtractOutcomeResponse(output)
-	// if err != nil {
-	// return output, errors.Wrap(err, "error getting command outcome")
-	// }
+
+	if _, err := jaspercli.ExtractOutcomeResponse(output); err != nil {
+		return output, errors.Wrap(err, "error getting command outcome")
+	}
+
 	return output, nil
 }
 

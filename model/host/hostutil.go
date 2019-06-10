@@ -110,34 +110,6 @@ func (h *Host) RunSSHCommand(ctx context.Context, cmd string, sshOptions []strin
 	return output.String(), errors.Wrap(err, "error running shell cmd")
 }
 
-// RunSSHCommandWithOpts is the same as RunSSHCommand, but applies additional
-// CreateOptions opts to the given command. The SSH-specific options come from
-// the Host rather than from opts.
-// func (h *Host) RunSSHCommandWithOpts(ctx context.Context, opts *jasper.CreateOptions, cmd string, sshOptions []string) (string, error) {
-//     env := evergreen.GetEnvironment()
-//     hostInfo, err := h.GetSSHInfo()
-//     if err != nil {
-//         return "", errors.WithStack(err)
-//     }
-//
-//     output := &util.CappedWriter{
-//         Buffer:   &bytes.Buffer{},
-//         MaxBytes: 1024 * 1024, // 1MB
-//     }
-//
-//     var cancel context.CancelFunc
-//     ctx, cancel = context.WithTimeout(ctx, sshTimeout)
-//     defer cancel()
-//
-//     err = env.JasperManager().CreateCommand(ctx).ApplyFromOpts(opts).
-//         Host(hostInfo.Hostname).User(hostInfo.User).
-//         ExtendSSHArgs("-p", hostInfo.Port, "-t", "-t").ExtendSSHArgs(sshOptions...).
-//         SetOutputWriter(output).RedirectErrorToOutput(true).
-//         Append(cmd).Run(ctx)
-//
-//     return output.String(), errors.Wrap(err, "error running shell cmd")
-// }
-
 // InitSystem determines the current Linux init system used by this host.
 func (h *Host) InitSystem(ctx context.Context, sshOptions []string) (string, error) {
 	logs, err := h.RunSSHCommand(ctx, initSystemCommand(), sshOptions)
@@ -291,10 +263,9 @@ func (h *Host) RunSSHJasperRequest(ctx context.Context, env evergreen.Environmen
 	config := env.Settings().JasperConfig
 	binaryPath := h.jasperBinaryFileName(config)
 	port := config.Port
-	// TODO: uncomment once EVG-6167 is merged.
-	// if port == 0 {
-	//     port = evergreen.DefaultJasperPort
-	// }
+	if port == 0 {
+		port = evergreen.DefaultJasperPort
+	}
 
 	cmd := fmt.Sprintf("%s jasper client %s --service=rpc --port=%d <<EOF\n%s\nEOF",
 		binaryPath, subCmd, port, inputBytes)
