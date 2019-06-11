@@ -3,6 +3,7 @@ package model
 import (
 	"fmt"
 	"sort"
+	"strings"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
@@ -220,10 +221,21 @@ func TryResetTask(taskId, user, origin string, detail *apimodels.TaskEndDetail) 
 			return errors.Wrap(err, "Error marking task as ended")
 		}
 	}
+	if t.IsPartOfSingleHostTaskGroup() {
+		if err = t.SetResetWhenFinished(); err != nil {
+			return errors.Wrapf(err, "error setting resetWhenFinished for task")
 
-	if err = resetTask(t.Id, user); err != nil {
-		return err
+		}
+		// want to restart all tasks in the task group, if it's finished
+		if err = checkResetTaskGroup(t); err != nil {
+			return errors.Wrapf(err, "error resetting task group for task '%v'", t.Id)
+		}
+	} else {
+		if err = resetTask(t.Id, user); err != nil {
+			return errors.WithStack(err)
+		}
 	}
+
 	if origin == evergreen.UIPackage || origin == evergreen.RESTV2Package {
 		event.LogTaskRestarted(t.Id, t.Execution, user)
 	} else {
@@ -395,7 +407,6 @@ func doStepback(t *task.Task) error {
 // MarkEnd updates the task as being finished, performs a stepback if necessary, and updates the build status
 func MarkEnd(t *task.Task, caller string, finishTime time.Time, detail *apimodels.TaskEndDetail,
 	deactivatePrevious bool, updates *StatusChanges) error {
-
 	if t.HasFailedTests() {
 		detail.Status = evergreen.TaskFailed
 	}
@@ -454,6 +465,9 @@ func MarkEnd(t *task.Task, caller string, finishTime time.Time, detail *apimodel
 			}))
 			return errors.Wrap(err, "error updating build")
 		}
+		if err = checkResetTaskGroup(t); err != nil && !strings.Contains(err.Error(), "not finished") {
+			return errors.Wrap(err, "can't check if task group should be reset")
+		}
 	}
 
 	// activate/deactivate other task if this is not a patch request's task
@@ -472,14 +486,12 @@ func MarkEnd(t *task.Task, caller string, finishTime time.Time, detail *apimodel
 	if err := UpdateBuildAndVersionStatusForTask(t.Id, updates); err != nil {
 		return errors.Wrap(err, "Error updating build status")
 	}
-
 	isBuildCompleteStatus := updates.BuildNewStatus == evergreen.BuildFailed || updates.BuildNewStatus == evergreen.BuildSucceeded
 	if len(updates.BuildNewStatus) != 0 {
 		if updates.BuildComplete || !isBuildCompleteStatus {
 			event.LogBuildStateChangeEvent(t.BuildId, updates.BuildNewStatus)
 		}
 	}
-
 	return nil
 }
 
@@ -1031,6 +1043,8 @@ func ClearAndResetStrandedTask(h *host.Host) error {
 
 	if t.IsPartOfDisplay() {
 		return t.DisplayTask.SetResetWhenFinished()
+	} else if t.IsPartOfSingleHostTaskGroup() {
+		return t.SetResetWhenFinished()
 	}
 
 	return errors.Wrap(TryResetTask(t.Id, "mci", evergreen.MonitorPackage, detail), "problem resetting task")
@@ -1139,5 +1153,47 @@ func checkResetDisplayTask(t *task.Task) error {
 		return errors.Wrap(TryResetTask(t.Id, evergreen.User, evergreen.User, details), "error resetting display task")
 	}
 
+	return nil
+}
+
+// if part of single-host task group, reset all tasks if finished and should be reset
+func checkResetTaskGroup(t *task.Task) error {
+	if !t.IsPartOfSingleHostTaskGroup() {
+		return nil
+	}
+	proj, err := FindProjectFromTask(t)
+	if err != nil {
+		return errors.Wrapf(err, "problem finding project for task '%s'", t.Id)
+	}
+	tg := proj.FindTaskGroup(t.TaskGroup)
+	if tg == nil {
+		return errors.Errorf("problem finding task group '%s'", t.TaskGroup)
+	}
+
+	finishedNow := true
+	resetWhenFinished := false
+	tasks, err := task.Find(task.ByIds(tg.Tasks))
+	if err != nil {
+		return errors.Wrapf(err, "can't get tasks for task group '%s'", t.TaskGroup)
+	}
+
+	for _, taskInGroup := range tasks {
+		if taskInGroup.ResetWhenFinished {
+			resetWhenFinished = true
+		}
+		if !taskInGroup.IsFinished() {
+			finishedNow = false
+		}
+	}
+	if finishedNow == false {
+		return errors.New("Task group is not finished, and cannot be restarted")
+	}
+	if resetWhenFinished {
+		taskIDs := []string{}
+		for _, taskInGroup := range tasks {
+			taskIDs = append(taskIDs, taskInGroup.Id)
+		}
+		return errors.Wrapf(task.ResetTasks(taskIDs), "error resetting tasks in task group '%s'", t.TaskGroup)
+	}
 	return nil
 }
