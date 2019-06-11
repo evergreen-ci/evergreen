@@ -13,21 +13,22 @@ import (
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/util"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
 func TestTaskDispatchService(t *testing.T) {
 	constructors := map[string]TaskDistroQueueServiceConstructor{
-		"taskDistroDAGDispatchService": newDistroTaskDispatchService,
-		"taskDistroDispatchService":    newDistroTaskDAGDispatchService,
+		"taskDistroDispatchService":    newDistroTaskDispatchService,
+		"taskDistroDAGDispatchService": newDistroTaskDAGDispatchService,
 	}
 	for name, constructor := range constructors {
 		t.Run(name, func(t *testing.T) {
-			for name, testCase := range map[string]func(*testing.T, []TaskQueueItem, TaskDistroQueueServiceConstructor){
+			for testName, testCase := range map[string]func(*testing.T, []TaskQueueItem, TaskDistroQueueServiceConstructor){
 				"TestConstructor": func(t *testing.T, items []TaskQueueItem, constructor TaskDistroQueueServiceConstructor) {
-
 					require.NotNil(t, constructor("distro_1", items, time.Minute))
 				},
+
 				"TestFindOneTask": func(t *testing.T, items []TaskQueueItem, constructor TaskDistroQueueServiceConstructor) {
 					service := constructor("distro_1", []TaskQueueItem{
 						{
@@ -42,6 +43,7 @@ func TestTaskDispatchService(t *testing.T) {
 					require.Nil(t, next)
 
 				},
+
 				"TestSingleHostTaskGroupsBlock": func(t *testing.T, items []TaskQueueItem, constructor TaskDistroQueueServiceConstructor) {
 					require.NoError(t, db.ClearCollections(task.Collection))
 					items = []TaskQueueItem{}
@@ -90,6 +92,7 @@ func TestTaskDispatchService(t *testing.T) {
 					next := service.FindNextTask(spec)
 					require.Nil(t, next)
 				},
+
 				"TestFindAllTasks": func(t *testing.T, items []TaskQueueItem, constructor TaskDistroQueueServiceConstructor) {
 					service := constructor("distro_1", items, time.Minute)
 					var spec TaskSpec
@@ -214,7 +217,7 @@ func TestTaskDispatchService(t *testing.T) {
 						next = service.FindNextTask(spec)
 						nextInt, err = strconv.Atoi(next.Id)
 						require.NoError(t, err)
-						require.True(t, nextInt > currentID)
+						assert.True(t, nextInt > currentID)
 						currentID = nextInt
 						require.Equal(t, "", next.Group)
 						require.Equal(t, "variant_1", next.BuildVariant)
@@ -266,14 +269,20 @@ func TestTaskDispatchService(t *testing.T) {
 						version = "version_2"
 						maxHosts = 2
 					}
-					items = append(items, TaskQueueItem{
+
+					taskQItem := TaskQueueItem{
 						Id:            fmt.Sprintf("%d", i),
 						Group:         group,
 						BuildVariant:  variant,
 						Version:       version,
 						GroupMaxHosts: maxHosts,
 						Dependencies:  []string{depends},
-					})
+					}
+					if depends == "" {
+						taskQItem.Dependencies = []string{}
+					}
+					items = append(items, taskQItem)
+
 					nextTask := task.Task{
 						Id:                fmt.Sprintf("%d", i),
 						TaskGroup:         group,
@@ -285,7 +294,7 @@ func TestTaskDispatchService(t *testing.T) {
 					}
 					require.NoError(t, nextTask.Insert())
 				}
-				t.Run(name, func(t *testing.T) {
+				t.Run(testName, func(t *testing.T) {
 					testCase(t, items, constructor)
 				})
 			}

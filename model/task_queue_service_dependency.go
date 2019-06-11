@@ -46,6 +46,7 @@ func newDistroTaskDAGDispatchService(distroID string, items []TaskQueueItem, ttl
 	t.itemNodeMap = map[string]graph.Node{}
 	t.nodeItemMap = map[int64]*TaskQueueItem{}
 	t.taskGroups = map[string]taskGroupTasks{}
+
 	if len(items) != 0 {
 		t.rebuild(items)
 	}
@@ -100,9 +101,17 @@ func (t *taskDistroDAGDispatchService) getNodeByItemID(id string) graph.Node {
 }
 
 func (t *taskDistroDAGDispatchService) addEdge(from string, to string) {
+	fromNodeID := t.itemNodeMap[from].ID()
+	toNodeID := t.itemNodeMap[to].ID()
+
+	// Cannot add a self edge!
+	if fromNodeID == toNodeID {
+		return
+	}
+
 	edge := simple.Edge{
-		F: simple.Node(t.itemNodeMap[from].ID()),
-		T: simple.Node(t.itemNodeMap[to].ID()),
+		F: simple.Node(fromNodeID),
+		T: simple.Node(toNodeID),
 	}
 	t.graph.SetEdge(edge)
 }
@@ -117,7 +126,7 @@ func (t *taskDistroDAGDispatchService) rebuild(items []TaskQueueItem) {
 	}()
 	t.lastUpdated = time.Now()
 
-	// Add items to the graph
+	// Add each individual node (TaskQueueItem) to the graph
 	for _, item := range items {
 		t.addItem(item)
 	}
