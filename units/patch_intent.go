@@ -153,8 +153,10 @@ func (j *patchIntentProcessor) finishPatch(ctx context.Context, patchDoc *patch.
 
 	case patch.GithubIntentType:
 		canFinalize, err = j.buildGithubPatchDoc(ctx, patchDoc, githubOauthToken)
-		if strings.HasSuffix(err.Error(), thirdparty.Github502Error) {
-			j.gitHubError = GitHubInternalError
+		if err != nil {
+			if strings.Contains(err.Error(), thirdparty.Github502Error) {
+				j.gitHubError = GitHubInternalError
+			}
 		}
 		catcher.Add(err)
 
@@ -206,7 +208,7 @@ func (j *patchIntentProcessor) finishPatch(ctx context.Context, patchDoc *patch.
 	// Get and validate patched config
 	project, err := model.GetPatchedProject(ctx, patchDoc, githubOauthToken)
 	if err != nil {
-		if strings.HasSuffix(err.Error(), thirdparty.Github502Error) {
+		if strings.Contains(err.Error(), thirdparty.Github502Error) {
 			j.gitHubError = GitHubInternalError
 		}
 		return errors.Wrap(err, "can't get patched config")
@@ -300,7 +302,7 @@ func (j *patchIntentProcessor) finishPatch(ctx context.Context, patchDoc *patch.
 
 	if canFinalize && j.intent.ShouldFinalizePatch() {
 		if _, err = model.FinalizePatch(ctx, patchDoc, j.intent.RequesterIdentity(), githubOauthToken); err != nil {
-			if strings.HasSuffix(err.Error(), thirdparty.Github502Error) {
+			if strings.Contains(err.Error(), thirdparty.Github502Error) {
 				j.gitHubError = GitHubInternalError
 			}
 			grip.Error(message.WrapError(err, message.Fields{

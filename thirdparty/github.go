@@ -32,7 +32,7 @@ const (
 	GithubAPIStatusMajor = "major"
 	GithubAPIStatusGood  = "good"
 
-	Github502Error = "502 Server Error []"
+	Github502Error = "502 Server Error"
 
 	githubAcceptDiff = "application/vnd.github.v3.diff"
 )

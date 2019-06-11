@@ -133,7 +133,7 @@ func NewGithubIntent(msgDeliveryID string, pr *github.PullRequest) (Intent, erro
 		return nil, errors.New("PR title must not be empty")
 	}
 	if util.IsZeroTime(pr.Head.Repo.PushedAt.Time) {
-		return nil, errors.New("psuehd at time not set")
+		return nil, errors.New("pushed at time not set")
 	}
 
 	return &githubIntent{

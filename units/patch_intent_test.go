@@ -265,7 +265,7 @@ func (s *PatchIntentUnitsSuite) TestProcessGithubPatchIntent() {
 	}
 	s.NoError(dbUser.Insert())
 	s.user = dbUser.Id
-	patchEvent := testutil.NewGithubPR(s.prNumber, s.repo, s.headRepo, s.hash, "tychoish", "")
+	patchEvent := testutil.NewGithubPR(s.prNumber, s.repo, s.headRepo, s.hash, "tychoish", "title1")
 	intent, err := patch.NewGithubIntent("1", patchEvent)
 	tempPatch := intent.NewPatch()
 	s.NoError(err)
@@ -409,7 +409,7 @@ func (s *PatchIntentUnitsSuite) TestRunInDegradedModeWithGithubIntent() {
 	}
 	s.NoError(evergreen.SetServiceFlags(flags))
 
-	intent, err := patch.NewGithubIntent("1", testutil.NewGithubPR(s.prNumber, s.repo, s.headRepo, s.hash, "tychoish", ""))
+	intent, err := patch.NewGithubIntent("1", testutil.NewGithubPR(s.prNumber, s.repo, s.headRepo, s.hash, "tychoish", "title1"))
 	s.NoError(err)
 	s.NotNil(intent)
 	s.NoError(intent.Insert())
