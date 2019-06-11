@@ -51,6 +51,7 @@ type Patch struct {
 	PatchedConfig   string           `bson:"patched_config"`
 	Alias           string           `bson:"alias"`
 	GithubPatchData GithubPatch      `bson:"github_patch_data,omitempty"`
+	CommitQueue     bool             `bson:"commit_queue,omitempty"`
 }
 
 func (p *Patch) MarshalBSON() ([]byte, error)  { return mgobson.Marshal(p) }

@@ -382,6 +382,7 @@ func (ac *legacyClient) PutPatch(incomingPatch patchSubmission) (*patch.Patch, e
 		Tasks       []string `json:"tasks"`
 		Finalize    bool     `json:"finalize"`
 		Alias       string   `json:"alias"`
+		CommitQueue bool     `json:"commit_queue"`
 	}{
 		incomingPatch.description,
 		incomingPatch.projectId,
@@ -391,6 +392,7 @@ func (ac *legacyClient) PutPatch(incomingPatch patchSubmission) (*patch.Patch, e
 		incomingPatch.tasks,
 		incomingPatch.finalize,
 		incomingPatch.alias,
+		incomingPatch.commitQueue,
 	}
 
 	rPipe, wPipe := io.Pipe()

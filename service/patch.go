@@ -8,6 +8,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/evergreen/model/commitqueue"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/units"
 	"github.com/evergreen-ci/evergreen/util"
@@ -79,15 +80,27 @@ func (uis *UIServer) patchPage(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	commitQueuePosition := 0
+	if projCtx.Patch.CommitQueue {
+		cq, err := commitqueue.FindOneId(project.Identifier)
+		if err != nil {
+			uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrap(err, "error finding commit queue"))
+		}
+		if cq != nil {
+			commitQueuePosition = cq.FindItem(projCtx.Patch.Id.String())
+		}
+	}
+
 	uis.render.WriteResponse(w, http.StatusOK, struct {
-		Version  *uiVersion
-		Variants map[string]model.BuildVariant
-		Tasks    []interface{}
-		CanEdit  bool
+		Version             *uiVersion
+		Variants            map[string]model.BuildVariant
+		Tasks               []interface{}
+		CanEdit             bool
+		CommitQueuePosition int
 		ViewData
 	}{versionAsUI, variantMappings, tasksList, currentUser != nil,
-		uis.GetCommonViewData(w, r, true, true)}, "base",
-		"patch_version.html", "base_angular.html", "menu.html")
+		commitQueuePosition, uis.GetCommonViewData(w, r, true, true)},
+		"base", "patch_version.html", "base_angular.html", "menu.html")
 }
 
 func (uis *UIServer) schedulePatch(w http.ResponseWriter, r *http.Request) {

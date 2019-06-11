@@ -52,14 +52,14 @@ func (s *CommitQueueSuite) TestEnqueue() {
 	s.Equal(1, pos)
 	s.Require().Len(s.q.Queue, 1)
 	s.Equal("c123", s.q.Next().Issue)
-	s.NotEqual(-1, s.q.findItem("c123"))
+	s.NotEqual(-1, s.q.FindItem("c123"))
 
 	// Persisted to db
 	dbq, err := FindOneId("mci")
 	s.NoError(err)
 	s.Len(dbq.Queue, 1)
 	s.Equal(sampleCommitQueueItem, *dbq.Next())
-	s.NotEqual(-1, dbq.findItem("c123"))
+	s.NotEqual(-1, dbq.FindItem("c123"))
 }
 
 func (s *CommitQueueSuite) TestNext() {

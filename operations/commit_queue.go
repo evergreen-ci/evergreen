@@ -136,7 +136,7 @@ func mergeCommand() cli.Command {
 			client := conf.GetRestCommunicator(ctx)
 			defer client.Close()
 
-			return params.mergeBranch(ctx, conf, client, ac)
+			return params.mergeBranch(ctx, conf, client, ac) // this is what puts the patch on the queue
 		},
 	}
 }
@@ -248,6 +248,7 @@ func (p *mergeParams) uploadMergePatch(conf *ClientSettings, ac *legacyClient) e
 		Description: p.message,
 		Large:       p.large,
 		Alias:       evergreen.CommitQueueAlias,
+		CommitQueue: true,
 	}
 
 	if err := patchParams.loadProject(conf); err != nil {
