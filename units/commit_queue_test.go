@@ -24,8 +24,9 @@ import (
 
 type commitQueueSuite struct {
 	suite.Suite
-	env *mock.Environment
-	ctx context.Context
+	env      *mock.Environment
+	ctx      context.Context
+	settings *evergreen.Settings
 
 	prBody     []byte
 	pr         *github.PullRequest
@@ -33,7 +34,13 @@ type commitQueueSuite struct {
 }
 
 func TestCommitQueueJob(t *testing.T) {
-	suite.Run(t, &commitQueueSuite{})
+	s := &commitQueueSuite{}
+	env := testutil.NewEnvironment(context.Background(), t)
+	settings := env.Settings()
+	testutil.ConfigureIntegrationTest(t, settings, "TestGitGetProjectSuite")
+	s.settings = settings
+
+	suite.Run(t, s)
 }
 
 func (s *commitQueueSuite) SetupSuite() {
@@ -229,4 +236,35 @@ func (s *commitQueueSuite) TestSetDefaultNotification() {
 
 	s.EqualValues("none", u2.Settings.Notifications.CommitQueue)
 	s.Equal("", u2.Settings.Notifications.CommitQueueID)
+}
+
+func (s *commitQueueSuite) TestUpdateGithashes() {
+	githubToken, err := s.settings.GetGithubOauthToken()
+	s.NoError(err)
+
+	projectRef := &model.ProjectRef{
+		Owner:  "evergreen-ci",
+		Repo:   "evergreen",
+		Branch: "master",
+	}
+
+	project := &model.Project{
+		Modules: model.ModuleList{
+			{Name: "evergreen-module", Repo: "git@github.com:evergreen-ci/evergreen.git", Branch: "master"},
+		},
+	}
+
+	patchDoc := &patch.Patch{
+		Patches: []patch.ModulePatch{
+			{ModuleName: "", Githash: "abcdef"},
+			{ModuleName: "evergreen-module", Githash: "abcdef"},
+		},
+	}
+
+	err = updateGithashes(context.Background(), githubToken, projectRef, project, patchDoc)
+	s.NoError(err)
+
+	for _, mod := range patchDoc.Patches {
+		s.NotEqual("abcdef", mod.Githash)
+	}
 }

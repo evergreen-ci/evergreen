@@ -218,6 +218,11 @@ func (as *APIServer) updatePatchModule(w http.ResponseWriter, r *http.Request) {
 		},
 	}
 
+	if p.Version != "" && p.Alias == evergreen.CommitQueueAlias {
+		as.LoggedError(w, r, http.StatusBadRequest, errors.New("can't update modules for in-flight commit queue tests"))
+		return
+	}
+
 	if err = p.UpdateModulePatch(modulePatch); err != nil {
 		as.LoggedError(w, r, http.StatusInternalServerError, err)
 		return
