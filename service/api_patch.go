@@ -75,7 +75,7 @@ func (as *APIServer) submitPatch(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	intent, err := patch.NewCliIntent(dbUser.Id, data.Project, data.Githash, r.FormValue("module"), data.Patch, data.Description, data.Finalize, variants, data.Tasks, data.Alias)
+	intent, err := patch.NewCliIntent(dbUser.Id, data.Project, data.Githash, r.FormValue("module"), data.Patch, data.Description, data.Finalize, variants, data.Tasks, data.Alias, data.CommitQueue)
 	if err != nil {
 		as.LoggedError(w, r, http.StatusBadRequest, err)
 		return

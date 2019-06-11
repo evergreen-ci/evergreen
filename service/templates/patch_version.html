@@ -13,7 +13,7 @@
 
 {{define "title"}}
     {{ if eq .ProjectData.Patch.Alias "__commit_queue" }}
-Evergreen - Patch Is On Queue
+Evergreen - Patch On Queue
   {{ else }}
 Evergreen - Configure Patch
   {{end}}
@@ -22,7 +22,6 @@ Evergreen - Configure Patch
 
 {{define "content"}}
 <div ng-controller="PatchController">
-
   <div ng-show="patch.Alias == __commit_queue">
     <div ng-show="patch.Version.length > 0">
       Tasks for this patch have already been scheduled. <br/>
