@@ -79,9 +79,10 @@ type Host struct {
 	Status    string `bson:"status" json:"status"`
 	StartedBy string `bson:"started_by" json:"started_by"`
 	// True if this host was created manually by a user (i.e. with spawnhost)
-	UserHost      bool   `bson:"user_host" json:"user_host"`
-	AgentRevision string `bson:"agent_revision" json:"agent_revision"`
-	NeedsNewAgent bool   `bson:"needs_agent" json:"needs_agent"`
+	UserHost             bool   `bson:"user_host" json:"user_host"`
+	AgentRevision        string `bson:"agent_revision" json:"agent_revision"`
+	NeedsNewAgent        bool   `bson:"needs_agent" json:"needs_agent"`
+	NeedsNewAgentMonitor bool   `bson:"needs_agent_monitor" json:"needs_agent_monitor"`
 
 	// for ec2 dynamic hosts, the instance type requested
 	InstanceType string `bson:"instance_type" json:"instance_type,omitempty"`
@@ -612,6 +613,17 @@ func (h *Host) SetNeedsNewAgentAtomically(needsAgent bool) error {
 		return err
 	}
 	h.NeedsNewAgent = needsAgent
+	return nil
+}
+
+// SetNeedsNewAgentMonitorAtomically sets the "needs new agent monitor" flag on
+// the host atomically in memory and in the database.
+func (h *Host) SetNeedsNewAgentMonitorAtomically(needsAgentMonitor bool) error {
+	if err := UpdateOne(bson.M{IdKey: h.Id, NeedsNewAgentMonitorKey: !needsAgentMonitor},
+		bson.M{"$set": bson.M{NeedsNewAgentMonitorKey: needsAgentMonitor}}); err != nil {
+		return err
+	}
+	h.NeedsNewAgentMonitor = needsAgentMonitor
 	return nil
 }
 

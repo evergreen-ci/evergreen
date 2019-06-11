@@ -836,6 +836,21 @@ func TestFindNeedsNewAgent(t *testing.T) {
 			So(len(hosts), ShouldEqual, 1)
 			So(hosts[0].Id, ShouldEqual, "h")
 		})
+		Convey("with a non-legacy provisioned host marked as needing a new agent", func() {
+			h := Host{
+				Id:            "h",
+				Status:        evergreen.HostRunning,
+				StartedBy:     evergreen.User,
+				NeedsNewAgent: true,
+				Distro: distro.Distro{
+					BootstrapMethod: distro.BootstrapMethodUserData,
+				},
+			}
+			So(h.Insert(), ShouldBeNil)
+			hosts, err := Find(NeedsNewAgentFlagSet())
+			So(err, ShouldBeNil)
+			So(len(hosts), ShouldEqual, 0)
+		})
 	})
 }
 

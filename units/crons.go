@@ -592,7 +592,10 @@ func PopulateAgentDeployJobs(env evergreen.Environment) amboy.QueueOperation {
 			return nil
 		}
 
-		err = host.UpdateAll(host.LastCommunicationTimeElapsed(time.Now()), bson.M{"$set": bson.M{host.NeedsNewAgentKey: true}})
+		err = host.UpdateAll(host.LastCommunicationTimeElapsed(time.Now()), bson.M{"$set": bson.M{
+			host.NeedsNewAgentKey:        true,
+			host.NeedsNewAgentMonitorKey: true,
+		}})
 		if err != nil && !adb.ResultsNotFound(err) {
 			grip.Error(message.WrapError(err, message.Fields{
 				"operation": "background task creation",

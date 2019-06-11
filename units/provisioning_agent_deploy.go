@@ -389,17 +389,6 @@ func (j *agentDeployJob) startAgentMonitorOnHost(ctx context.Context) error {
 		"host":    j.host.Id,
 	})
 
-	/* if err = j.prepRemoteHost(ctx, j.host, sshOptions, settings); err != nil {
-	 *     event.LogHostAgentDeployFailed(j.host.Id, err)
-	 *     grip.Info(message.Fields{
-	 *         "message": "error prepping remote host",
-	 *         "host":    j.HostID,
-	 *         "job":     j.ID(),
-	 *         "error":   err.Error(),
-	 *     })
-	 *     return nil
-	 * } */
-
 	if logs, err := j.jasperRunSetupScript(ctx, sshOptions); err != nil {
 		event.LogProvisionFailed(j.host.Id, logs)
 		errMsg := "error running setup script on host"
