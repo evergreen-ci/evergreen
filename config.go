@@ -571,3 +571,4 @@ func IsValidBannerTheme(input string) (bool, BannerTheme) {
 		return false, ""
 	}
 }
+hi
