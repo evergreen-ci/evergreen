@@ -139,3 +139,38 @@ func (s *ArtifactsSuite) TestCommandParsesFile() {
 	s.Len(s.mock.AttachedFiles, 1)
 	s.Len(s.mock.AttachedFiles[s.conf.Task.Id], 1)
 }
+
+func (s *ArtifactsSuite) TestWorkingDirectoryEmptySubDir() {
+	dir, err := ioutil.TempDir("", "artifact_test")
+	defer os.RemoveAll(dir)
+	s.Require().NoError(err)
+	_, err = os.Create(filepath.Join(dir, "foo"))
+	err = ioutil.WriteFile(filepath.Join(dir, "foo"), []byte("[{}]"), 0644)
+	s.Require().NoError(err)
+	s.Require().NoError(os.Mkdir(filepath.Join(dir, "subDir"), 0755))
+	_, err = os.Create(filepath.Join(dir, "subDir", "bar"))
+	err = ioutil.WriteFile(filepath.Join(dir, "subDir", "bar"), []byte("[{}]"), 0644)
+	s.Require().NoError(err)
+	s.conf.WorkDir = dir
+	s.cmd.Files = []string{"*"}
+	s.NoError(s.cmd.Execute(s.ctx, s.comm, s.logger, s.conf))
+	s.Len(s.cmd.Files, 2)
+}
+
+func (s *ArtifactsSuite) TestWorkingDirectoryWithSubDir() {
+	dir, err := ioutil.TempDir("", "artifact_test")
+	defer os.RemoveAll(dir)
+	s.Require().NoError(err)
+	_, err = os.Create(filepath.Join(dir, "foo"))
+	err = ioutil.WriteFile(filepath.Join(dir, "foo"), []byte("[{}]"), 0644)
+	s.Require().NoError(err)
+	s.Require().NoError(os.Mkdir(filepath.Join(dir, "subDir"), 0755))
+	_, err = os.Create(filepath.Join(dir, "subDir", "bar"))
+	err = ioutil.WriteFile(filepath.Join(dir, "subDir", "bar"), []byte("[{}]"), 0644)
+	s.Require().NoError(err)
+	s.conf.WorkDir = dir
+	s.cmd.Files = []string{"*"}
+	s.cmd.WorkingDir = "subDir"
+	s.NoError(s.cmd.Execute(s.ctx, s.comm, s.logger, s.conf))
+	s.Len(s.cmd.Files, 1)
+}
