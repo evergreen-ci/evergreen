@@ -206,7 +206,7 @@ func (h *Host) fetchJasperCommands(config evergreen.JasperConfig) []string {
 	}
 }
 
-// FetchJasperCommandsWithPath is the same as FetchJasperCommand but sets the
+// FetchJasperCommandWithPath is the same as FetchJasperCommand but sets the
 // PATH variable to path for each command.
 func (h *Host) FetchJasperCommandWithPath(config evergreen.JasperConfig, path string) string {
 	cmds := h.fetchJasperCommands(config)

@@ -620,11 +620,11 @@ func (h *Host) SetNeedsNewAgentAtomically(needsAgent bool) error {
 // indicate that the host needs to have the agent monitor deployed.
 func (h *Host) SetNeedsNewAgentMonitor(needsAgentMonitor bool) error {
 	err := UpdateOne(bson.M{IdKey: h.Id},
-		bson.M{"$set": bson.M{NeedsNewAgentKey: needsAgentMonitor}})
+		bson.M{"$set": bson.M{NeedsNewAgentMonitorKey: needsAgentMonitor}})
 	if err != nil {
 		return err
 	}
-	h.NeedsNewAgent = needsAgentMonitor
+	h.NeedsNewAgentMonitor = needsAgentMonitor
 	return nil
 }
 

@@ -270,7 +270,7 @@ func ValidateArch(arch string) error {
 }
 
 // LegacyBootstrap returns whether the app server is bootstrapping hosts of this
-// distrois using the legacy method.
+// distro using the legacy method.
 func (d *Distro) LegacyBootstrap() bool {
 	return d.BootstrapMethod == "" || d.BootstrapMethod == BootstrapMethodLegacySSH
 }

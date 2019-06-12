@@ -823,35 +823,103 @@ func TestFindNeedsNewAgent(t *testing.T) {
 			So(err, ShouldBeNil)
 			So(len(hosts), ShouldEqual, 0)
 		})
-		Convey("with a host marked as needing a new agent", func() {
+		Convey("with a legacy SSH host marked as needing a new agent", func() {
 			h := Host{
 				Id:            "h",
 				Status:        evergreen.HostRunning,
 				StartedBy:     evergreen.User,
 				NeedsNewAgent: true,
+				Distro:        distro.Distro{BootstrapMethod: distro.BootstrapMethodLegacySSH},
 			}
 			So(h.Insert(), ShouldBeNil)
+
 			hosts, err := Find(NeedsNewAgentFlagSet())
 			So(err, ShouldBeNil)
 			So(len(hosts), ShouldEqual, 1)
-			So(hosts[0].Id, ShouldEqual, "h")
+			So(hosts[0].Id, ShouldEqual, h.Id)
 		})
-		Convey("with a non-legacy provisioned host marked as needing a new agent", func() {
+		Convey("with a host having no specified bootstrap method marked as needing a new agent", func() {
 			h := Host{
 				Id:            "h",
 				Status:        evergreen.HostRunning,
 				StartedBy:     evergreen.User,
 				NeedsNewAgent: true,
-				Distro: distro.Distro{
-					BootstrapMethod: distro.BootstrapMethodUserData,
-				},
 			}
 			So(h.Insert(), ShouldBeNil)
+
 			hosts, err := Find(NeedsNewAgentFlagSet())
 			So(err, ShouldBeNil)
-			So(len(hosts), ShouldEqual, 0)
+			So(len(hosts), ShouldEqual, 1)
+			So(hosts[0].Id, ShouldEqual, h.Id)
 		})
 	})
+}
+
+func TestFindNeedsNewAgentMonitor(t *testing.T) {
+	for testName, testCase := range map[string]func(t *testing.T, h *Host){
+		"NotRunningHost": func(t *testing.T, h *Host) {
+			h.Status = evergreen.HostDecommissioned
+			require.NoError(t, h.Insert())
+
+			hosts, err := Find(NeedsNewAgentMonitorFlagSet())
+			require.NoError(t, err)
+			require.Len(t, hosts, 0)
+		},
+		"DoesNotNeedNewAgentMonitor": func(t *testing.T, h *Host) {
+			h.NeedsNewAgentMonitor = false
+			require.NoError(t, h.Insert())
+
+			hosts, err := Find(NeedsNewAgentMonitorFlagSet())
+			require.NoError(t, err)
+			require.Len(t, hosts, 0)
+		},
+		"BootstrapLegacySSH": func(t *testing.T, h *Host) {
+			h.Distro.BootstrapMethod = distro.BootstrapMethodLegacySSH
+			require.NoError(t, h.Insert())
+
+			hosts, err := Find(NeedsNewAgentMonitorFlagSet())
+			require.NoError(t, err)
+			require.Len(t, hosts, 0)
+		},
+		"BootstrapSSH": func(t *testing.T, h *Host) {
+			h.Distro.BootstrapMethod = distro.BootstrapMethodSSH
+			require.NoError(t, h.Insert())
+
+			hosts, err := Find(NeedsNewAgentMonitorFlagSet())
+			require.NoError(t, err)
+			require.Len(t, hosts, 1)
+			assert.Equal(t, h.Id, hosts[0].Id)
+		},
+		"BootstrapUserData": func(t *testing.T, h *Host) {
+			h.Distro.BootstrapMethod = distro.BootstrapMethodUserData
+			require.NoError(t, h.Insert())
+
+			hosts, err := Find(NeedsNewAgentMonitorFlagSet())
+			require.NoError(t, err)
+			require.Len(t, hosts, 1)
+			assert.Equal(t, h.Id, hosts[0].Id)
+		},
+		"PreconfiguredImage": func(t *testing.T, h *Host) {
+			h.Distro.BootstrapMethod = distro.BootstrapMethodPreconfiguredImage
+			require.NoError(t, h.Insert())
+
+			hosts, err := Find(NeedsNewAgentMonitorFlagSet())
+			require.NoError(t, err)
+			require.Len(t, hosts, 1)
+			assert.Equal(t, h.Id, hosts[0].Id)
+		},
+	} {
+		t.Run(testName, func(t *testing.T) {
+			require.NoError(t, db.Clear(Collection), "error clearing %s collection", Collection)
+			h := Host{
+				Id:                   "h",
+				Status:               evergreen.HostRunning,
+				StartedBy:            evergreen.User,
+				NeedsNewAgentMonitor: true,
+			}
+			testCase(t, &h)
+		})
+	}
 }
 
 func TestHostElapsedCommTime(t *testing.T) {

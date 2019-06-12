@@ -589,12 +589,12 @@ func NeedsNewAgentMonitorFlagSet() db.Q {
 			"$exists": true,
 			"$ne":     distro.BootstrapMethodLegacySSH,
 		},
-		StatusKey:        evergreen.HostRunning,
-		StartedByKey:     evergreen.User,
-		HasContainersKey: bson.M{"$ne": true},
-		ParentIDKey:      bson.M{"$exists": false},
-		RunningTaskKey:   bson.M{"$exists": false},
-		NeedsNewAgentKey: true,
+		StatusKey:               evergreen.HostRunning,
+		StartedByKey:            evergreen.User,
+		HasContainersKey:        bson.M{"$ne": true},
+		ParentIDKey:             bson.M{"$exists": false},
+		RunningTaskKey:          bson.M{"$exists": false},
+		NeedsNewAgentMonitorKey: true,
 	})
 }
 

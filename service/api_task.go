@@ -565,7 +565,6 @@ func (as *APIServer) NextTask(w http.ResponseWriter, r *http.Request) {
 }
 
 func handleOldAgentRevision(response apimodels.NextTaskResponse, h *host.Host, w http.ResponseWriter, r *http.Request) (apimodels.NextTaskResponse, bool) {
-	// kim: TODO: figure out how it updates the agent revision in the host coll.
 	if agentRevisionIsOld(h) {
 		details := &apimodels.GetNextTaskDetails{}
 		if err := util.ReadJSONInto(util.NewRequestReader(r), details); err != nil {
