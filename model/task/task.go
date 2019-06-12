@@ -9,6 +9,8 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/testresult"
 	"github.com/evergreen-ci/evergreen/util"
@@ -39,8 +41,9 @@ const (
 	// length of time to cache the expected duration in the task document
 	predictionTTL = 8 * time.Hour
 
-	taskBlocked = "blocked"
-	taskPending = "pending"
+	taskBlocked  = "blocked"
+	taskPending  = "pending"
+	taskRunnable = "runnable"
 )
 
 var (
@@ -817,6 +820,23 @@ func (t *Task) Reset() error {
 	t.ScheduledTime = util.ZeroTime
 	t.FinishTime = util.ZeroTime
 	t.ResetWhenFinished = false
+	t.DependsOn = []Dependency{}
+
+	unset := bson.M{
+		DependsOnKey:         "",
+		DetailsKey:           "",
+		ResetWhenFinishedKey: "",
+	}
+	if t.IsPartOfSingleHostTaskGroup() {
+		d, err := distro.FindOne(distro.ById(t.DistroId))
+		if err != nil {
+			return errors.Wrap(err, "error retrieving distro")
+		}
+		if d.PlannerSettings.Version == evergreen.PlannerVersionLegacy {
+			unset[DependsOnKey] = ""
+		}
+	}
+
 	reset := bson.M{
 		"$set": bson.M{
 			ActivatedKey:     true,
@@ -827,10 +847,7 @@ func (t *Task) Reset() error {
 			ScheduledTimeKey: util.ZeroTime,
 			FinishTimeKey:    util.ZeroTime,
 		},
-		"$unset": bson.M{
-			DetailsKey:           "",
-			ResetWhenFinishedKey: "",
-		},
+		"$unset": unset,
 	}
 
 	return UpdateOne(
@@ -1600,13 +1617,15 @@ func (t *Task) BlockedState(tasksWithDeps []Task) (string, error) {
 	if t.DisplayOnly {
 		return t.blockedStateForDisplayTask(tasksWithDeps)
 	}
-
+	if t.IsPartOfSingleHostTaskGroup() {
+		return t.blockedStateForTaskGroups(tasksWithDeps)
+	}
 	return t.blockedStatePrivate()
 }
 
 func (t *Task) blockedStatePrivate() (string, error) {
 	if len(t.DependsOn) == 0 {
-		return "", nil
+		return taskRunnable, nil
 	}
 	dependencyIDs := []string{}
 	for _, d := range t.DependsOn {
@@ -1623,28 +1642,86 @@ func (t *Task) blockedStatePrivate() (string, error) {
 	}
 	for _, dependency := range t.DependsOn {
 		depTask := taskMap[dependency.TaskId]
-		if depTask == nil {
-			grip.Error(message.Fields{
-				"message": "task does not exist",
-				"task_id": dependency.TaskId,
-			})
-			continue
-		}
-		state, err := depTask.blockedStatePrivate()
+		state, err := depTask.getStateByDependency(dependency)
 		if err != nil {
-			return "", err
+			return "", errors.Wrap(err, "")
 		}
-		if state == taskBlocked {
-			return taskBlocked, nil
-		} else if depTask.Status == evergreen.TaskSucceeded || depTask.Status == evergreen.TaskFailed {
-			if depTask.Status != dependency.Status && dependency.Status != AllStatuses {
-				return taskBlocked, nil
-			}
-		} else {
-			return taskPending, nil
+		if state != taskRunnable {
+			return state, nil
 		}
 	}
-	return "", nil
+	return taskRunnable, nil
+}
+
+// getStateByDependency determines if the task is still running, is blocked, or has violated the given dependency
+func (t *Task) getStateByDependency(dependency Dependency) (string, error) {
+	if t == nil {
+		grip.Error(message.Fields{
+			"message": "task does not exist",
+			"task_id": dependency.TaskId,
+		})
+		return taskRunnable, nil
+	}
+	state, err := t.blockedStatePrivate()
+	if err != nil {
+		return "", err
+	}
+	if state == taskBlocked {
+		return taskBlocked, nil
+	} else if t.Status == evergreen.TaskSucceeded || t.Status == evergreen.TaskFailed {
+		if t.Status != dependency.Status && dependency.Status != AllStatuses {
+			return taskBlocked, nil
+		}
+	} else {
+		return taskPending, nil
+	}
+	return taskRunnable, nil
+}
+
+func (t *Task) blockedStateForTaskGroups(tasksWithDeps []Task) (string, error) {
+	tasks, err := model.GetTasksInTaskGroup(t)
+	if err != nil {
+		return "", errors.Wrap(err, "problem getting tasks in task group")
+	}
+
+	// get dependencies from all tasks in group
+	dependsOn := []Dependency{}
+	dependencyIDs := []string{}
+	for _, curTask := range tasks {
+		dependsOn = append(dependsOn, curTask.DependsOn...)
+		for _, dependency := range curTask.DependsOn {
+			dependencyIDs = append(dependencyIDs, dependency.TaskId)
+		}
+	}
+	// get dependentTasks and make map as before
+	dependentTasks, err := Find(ByIds(dependencyIDs).WithFields(DisplayNameKey, StatusKey,
+		ActivatedKey, BuildVariantKey, DetailsKey, DependsOnKey))
+	taskMap := map[string]*Task{} // maps ID of dependency to the relevant task
+	for i := range dependentTasks {
+		taskMap[dependentTasks[i].Id] = &dependentTasks[i]
+	}
+	//cache status for task in case of duplicates
+	cachedStatus := map[string]string{}
+	// determine if each dependency is satisfiable
+	for _, dependency := range dependsOn {
+		var state string
+		depTask := taskMap[dependency.TaskId]
+		if cachedStatus[depTask.Id] != "" {
+			state = cachedStatus[depTask.Id]
+		} else {
+			var err error
+			state, err = depTask.getStateByDependency(dependency)
+			if err != nil {
+				return "", errors.Wrap(err, "")
+			}
+			cachedStatus[depTask.Id] = state
+		}
+
+		if state != taskRunnable {
+			return state, nil // task is blocked or pending
+		}
+	}
+	return taskRunnable, nil
 }
 
 func (t *Task) blockedStateForDisplayTask(tasksWithDeps []Task) (string, error) {
@@ -1652,10 +1729,7 @@ func (t *Task) blockedStateForDisplayTask(tasksWithDeps []Task) (string, error) 
 	if err != nil {
 		return "", errors.Wrap(err, "error finding execution tasks")
 	}
-	if len(execTasks) == 0 {
-		return "", nil
-	}
-	state := ""
+	state := taskRunnable
 	for _, execTask := range execTasks {
 		etState, err := execTask.BlockedState(tasksWithDeps)
 		if err != nil {

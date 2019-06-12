@@ -1161,7 +1161,7 @@ func checkResetTaskGroup(t *task.Task) error {
 	if !t.IsPartOfSingleHostTaskGroup() {
 		return nil
 	}
-	tasks, err := getTasksInTaskGroup(t)
+	tasks, err := GetTasksInTaskGroup(t)
 	if err != nil {
 		return errors.Wrapf(err, "can't get tasks for task group '%s'", t.TaskGroup)
 	}

@@ -956,16 +956,16 @@ func TestBlockedState(t *testing.T) {
 
 	state, err := t4.BlockedState(nil)
 	assert.NoError(err)
-	assert.Equal("", state)
+	assert.Equal(taskRunnable, state)
 	state, err = t3.BlockedState(nil)
 	assert.NoError(err)
-	assert.Equal("", state)
+	assert.Equal(taskRunnable, state)
 	state, err = t2.BlockedState(nil)
 	assert.NoError(err)
-	assert.Equal("pending", state)
+	assert.Equal(taskPending, state)
 	state, err = t1.BlockedState(nil)
 	assert.NoError(err)
-	assert.Equal("blocked", state)
+	assert.Equal(taskBlocked, state)
 }
 
 func TestCircularDependency(t *testing.T) {

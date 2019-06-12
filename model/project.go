@@ -882,7 +882,7 @@ func GetTaskGroup(taskGroup string, tc *TaskConfig) (*TaskGroup, error) {
 }
 
 // getTasksInTaskGroup finds the TaskGroup for the given task, and returns all tasks in the group
-func getTasksInTaskGroup(t *task.Task) ([]task.Task, error) {
+func GetTasksInTaskGroup(t *task.Task) ([]task.Task, error) {
 	proj, err := FindProjectFromTask(t)
 	if err != nil {
 		return nil, errors.Wrapf(err, "problem finding project for task '%s'", t.Id)
