@@ -140,7 +140,7 @@ func (s *ArtifactsSuite) TestCommandParsesFile() {
 	s.Len(s.mock.AttachedFiles[s.conf.Task.Id], 1)
 }
 
-func (s *ArtifactsSuite) TestWorkingDirectoryEmptySubDir() {
+func (s *ArtifactsSuite) TestPrefixectoryEmptySubDir() {
 	dir, err := ioutil.TempDir("", "artifact_test")
 	defer os.RemoveAll(dir)
 	s.Require().NoError(err)
@@ -157,7 +157,7 @@ func (s *ArtifactsSuite) TestWorkingDirectoryEmptySubDir() {
 	s.Len(s.cmd.Files, 2)
 }
 
-func (s *ArtifactsSuite) TestWorkingDirectoryWithSubDir() {
+func (s *ArtifactsSuite) TestPrefixectoryWithSubDir() {
 	dir, err := ioutil.TempDir("", "artifact_test")
 	defer os.RemoveAll(dir)
 	s.Require().NoError(err)
@@ -170,7 +170,7 @@ func (s *ArtifactsSuite) TestWorkingDirectoryWithSubDir() {
 	s.Require().NoError(err)
 	s.conf.WorkDir = dir
 	s.cmd.Files = []string{"*"}
-	s.cmd.WorkingDir = "subDir"
+	s.cmd.Prefix = "subDir"
 	s.NoError(s.cmd.Execute(s.ctx, s.comm, s.logger, s.conf))
 	s.Len(s.cmd.Files, 1)
 }

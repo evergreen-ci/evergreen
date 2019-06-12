@@ -18,8 +18,8 @@ type attachArtifacts struct {
 	// Files is a list of files, using gitignore syntax.
 	Files []string `mapstructure:"files" plugin:"expand"`
 
-	// WorkingDir is an optional directory to start file globbing in, relative to Evergreen's working directory.
-	WorkingDir string `mapstructure:"working_dir" plugin:"expand"`
+	// Prefix is an optional directory prefix to start file globbing in, relative to Evergreen's working directory.
+	Prefix string `mapstructure:"working_dir" plugin:"expand"`
 
 	// Optional, when set to true, causes this command to be skipped over without an error when
 	// the path specified in files does not exist. Defaults to false, which triggers errors
@@ -55,7 +55,7 @@ func (c *attachArtifacts) Execute(ctx context.Context,
 		return err
 	}
 
-	c.Files, err = util.BuildFileList(filepath.Join(conf.WorkDir, c.WorkingDir), c.Files...)
+	c.Files, err = util.BuildFileList(filepath.Join(conf.WorkDir, c.Prefix), c.Files...)
 	if err != nil {
 		err = errors.Wrap(err, "problem building wildcard paths")
 		logger.Task().Error(err)
@@ -76,7 +76,7 @@ func (c *attachArtifacts) Execute(ctx context.Context,
 	files := []*artifact.File{}
 	var segment []*artifact.File
 	for idx := range c.Files {
-		segment, err = readArtifactsFile(filepath.Join(conf.WorkDir, c.WorkingDir), c.Files[idx])
+		segment, err = readArtifactsFile(filepath.Join(conf.WorkDir, c.Prefix), c.Files[idx])
 		if err != nil {
 			if c.Optional && os.IsNotExist(errors.Cause(err)) {
 				// pass;
