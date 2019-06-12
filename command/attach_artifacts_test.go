@@ -144,11 +144,9 @@ func (s *ArtifactsSuite) TestPrefixectoryEmptySubDir() {
 	dir, err := ioutil.TempDir("", "artifact_test")
 	defer os.RemoveAll(dir)
 	s.Require().NoError(err)
-	_, err = os.Create(filepath.Join(dir, "foo"))
 	err = ioutil.WriteFile(filepath.Join(dir, "foo"), []byte("[{}]"), 0644)
 	s.Require().NoError(err)
 	s.Require().NoError(os.Mkdir(filepath.Join(dir, "subDir"), 0755))
-	_, err = os.Create(filepath.Join(dir, "subDir", "bar"))
 	err = ioutil.WriteFile(filepath.Join(dir, "subDir", "bar"), []byte("[{}]"), 0644)
 	s.Require().NoError(err)
 	s.conf.WorkDir = dir
@@ -161,11 +159,9 @@ func (s *ArtifactsSuite) TestPrefixectoryWithSubDir() {
 	dir, err := ioutil.TempDir("", "artifact_test")
 	defer os.RemoveAll(dir)
 	s.Require().NoError(err)
-	_, err = os.Create(filepath.Join(dir, "foo"))
 	err = ioutil.WriteFile(filepath.Join(dir, "foo"), []byte("[{}]"), 0644)
 	s.Require().NoError(err)
 	s.Require().NoError(os.Mkdir(filepath.Join(dir, "subDir"), 0755))
-	_, err = os.Create(filepath.Join(dir, "subDir", "bar"))
 	err = ioutil.WriteFile(filepath.Join(dir, "subDir", "bar"), []byte("[{}]"), 0644)
 	s.Require().NoError(err)
 	s.conf.WorkDir = dir
