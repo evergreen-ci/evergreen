@@ -211,6 +211,9 @@ func (j *patchIntentProcessor) finishPatch(ctx context.Context, patchDoc *patch.
 		if strings.Contains(err.Error(), thirdparty.Github502Error) {
 			j.gitHubError = GitHubInternalError
 		}
+		if strings.Contains(err.Error(), model.LoadProjectError) {
+			j.gitHubError = InvalidConfig
+		}
 		return errors.Wrap(err, "can't get patched config")
 	}
 	errs := validator.CheckProjectSyntax(project)
