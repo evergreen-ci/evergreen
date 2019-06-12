@@ -1110,7 +1110,7 @@ func (s *DistroPatchByIDSuite) TestValidFindAndReplaceFullDocument() {
 				"clone_method": "legacy-ssh",
 				"shell_path": "/usr/bin/bash",
 				"curator_dir": "/usr/local/bin",
-				"client_dir": "/usr/bin"
+				"client_dir": "/usr/bin",
 				"ssh_key" : "~SSH string",
 				"ssh_options" : [
 					"~StrictHostKeyChecking=no",
