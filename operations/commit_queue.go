@@ -14,9 +14,9 @@ import (
 )
 
 const (
-	itemFlagName       = "item"
-	pauseFlagName      = "pause"
-	identifierFlagName = "identifier"
+	itemFlagName   = "item"
+	pauseFlagName  = "pause"
+	resumeFlagName = "resume"
 )
 
 func CommitQueue() cli.Command {
@@ -97,8 +97,8 @@ func mergeCommand() cli.Command {
 		Usage: "test and merge a feature branch",
 		Flags: mergeFlagSlices(addProjectFlag(), addLargeFlag(), addRefFlag(), addYesFlag(
 			cli.StringFlag{
-				Name:  identifierFlagName,
-				Usage: "finalize a preexisting item with `ID`",
+				Name:  resumeFlagName,
+				Usage: "resume testing a preexisting item with `ID`",
 			},
 			cli.BoolFlag{
 				Name:  pauseFlagName,
@@ -116,7 +116,7 @@ func mergeCommand() cli.Command {
 			params := mergeParams{
 				projectID:   c.String(projectFlagName),
 				ref:         c.String(refFlagName),
-				id:          c.String(identifierFlagName),
+				id:          c.String(resumeFlagName),
 				pause:       c.Bool(pauseFlagName),
 				message:     c.String(messageFlagName),
 				skipConfirm: c.Bool(yesFlagName),
