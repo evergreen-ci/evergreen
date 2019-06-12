@@ -62,7 +62,7 @@ func TestJasperCommands(t *testing.T) {
 			}
 		},
 		"BootstrapScript": func(t *testing.T, h *Host, config evergreen.JasperConfig) {
-			expectedCmds := h.fetchJasperCommands(config)
+			expectedCmds := []string{h.FetchJasperCommand(config), h.ForceReinstallJasperCommand(config)}
 			script := h.BootstrapScript(config)
 			assert.True(t, strings.HasPrefix(script, "#!/bin/bash"))
 			for _, expectedCmd := range expectedCmds {
@@ -134,6 +134,7 @@ func TestJasperCommandsWindows(t *testing.T) {
 			for i := range expectedCmds {
 				expectedCmds[i] = strings.Replace(fmt.Sprintf("PATH=%s ", path)+expectedCmds[i], "'", "''", -1)
 			}
+			expectedCmds = append(expectedCmds, h.ForceReinstallJasperCommand(config))
 			script := h.BootstrapScript(config)
 			assert.True(t, strings.HasPrefix(script, "<powershell>"))
 			assert.True(t, strings.HasSuffix(script, "</powershell>"))
