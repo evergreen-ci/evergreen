@@ -1161,39 +1161,23 @@ func checkResetTaskGroup(t *task.Task) error {
 	if !t.IsPartOfSingleHostTaskGroup() {
 		return nil
 	}
-	proj, err := FindProjectFromTask(t)
-	if err != nil {
-		return errors.Wrapf(err, "problem finding project for task '%s'", t.Id)
-	}
-	tg := proj.FindTaskGroup(t.TaskGroup)
-	if tg == nil {
-		return errors.Errorf("problem finding task group '%s'", t.TaskGroup)
-	}
-
-	finishedNow := true
-	resetWhenFinished := false
-	tasks, err := task.Find(task.ByIds(tg.Tasks))
+	tasks, err := getTasksInTaskGroup(t)
 	if err != nil {
 		return errors.Wrapf(err, "can't get tasks for task group '%s'", t.TaskGroup)
 	}
 
+	resetWhenFinished := false
 	for _, taskInGroup := range tasks {
 		if taskInGroup.ResetWhenFinished {
 			resetWhenFinished = true
 		}
 		if !taskInGroup.IsFinished() {
-			finishedNow = false
+			return errors.New("Task group is not finished, and cannot be restarted")
 		}
 	}
-	if finishedNow == false {
-		return errors.New("Task group is not finished, and cannot be restarted")
-	}
+
 	if resetWhenFinished {
-		taskIDs := []string{}
-		for _, taskInGroup := range tasks {
-			taskIDs = append(taskIDs, taskInGroup.Id)
-		}
-		return errors.Wrapf(task.ResetTasks(taskIDs), "error resetting tasks in task group '%s'", t.TaskGroup)
+		return errors.Wrapf(task.ResetTasks(tasks), "error resetting tasks in task group '%s'", t.TaskGroup)
 	}
 	return nil
 }
