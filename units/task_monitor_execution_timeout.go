@@ -198,12 +198,6 @@ func cleanUpTimedOutTask(t *task.Task) error {
 		}
 		return errors.Wrap(model.MarkEnd(t, "monitor", time.Now(), detail, false, &model.StatusChanges{}), "error marking task ended")
 	}
-	if t.IsPartOfSingleHostTaskGroup() {
-		if err = t.SetResetWhenFinished(); err != nil {
-			return errors.Wrap(err, "can't mark task group for reset")
-		}
-		return errors.Wrap(model.MarkEnd(t, "monitor", time.Now(), detail, false, &model.StatusChanges{}), "error marking task ended")
-	}
 
 	return errors.Wrapf(model.TryResetTask(t.Id, "", "monitor", detail), "error trying to reset task %s", t.Id)
 }

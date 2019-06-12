@@ -841,9 +841,15 @@ func (t *Task) Reset() error {
 	)
 }
 
-// Reset sets the task state to be activated, with a new secret,
-// undispatched status and zero time on Start, Scheduled, Dispatch and FinishTime
-func ResetTasks(taskIds []string) error {
+func ResetTasks(tasks []Task) error {
+	taskIds := []string{}
+	for _, t := range tasks {
+		taskIds = append(taskIds, t.Id)
+	}
+	return errors.Wrap(resetTasksByIds(taskIds), "error resetting tasks")
+}
+
+func ResetDisplayTasks(taskIds []string) error {
 	tasks, err := FindWithDisplayTasks(ByIds(taskIds))
 	if err != nil {
 		return err
@@ -853,7 +859,12 @@ func ResetTasks(taskIds []string) error {
 			taskIds = append(taskIds, t.Id)
 		}
 	}
+	return errors.Wrap(resetTasksByIds(taskIds), "error resetting display tasks")
+}
 
+// Reset sets the task state to be activated, with a new secret,
+// undispatched status and zero time on Start, Scheduled, Dispatch and FinishTime
+func resetTasksByIds(taskIds []string) error {
 	reset := bson.M{
 		"$set": bson.M{
 			ActivatedKey:     true,
@@ -870,7 +881,7 @@ func ResetTasks(taskIds []string) error {
 		},
 	}
 
-	_, err = UpdateAll(
+	_, err := UpdateAll(
 		bson.M{
 			IdKey: bson.M{"$in": taskIds},
 		},
@@ -1433,10 +1444,7 @@ func (t *Task) IsPartOfDisplay() bool {
 }
 
 func (t *Task) IsPartOfSingleHostTaskGroup() bool {
-	if t.TaskGroup != "" && t.TaskGroupMaxHosts == 1 {
-		return true
-	}
-	return false
+	return t.TaskGroup != "" && t.TaskGroupMaxHosts == 1
 }
 
 func (t *Task) GetDisplayTask() (*Task, error) {
