@@ -24,6 +24,7 @@ var (
 	CloneMethod         = bsonutil.MustHaveTag(Distro{}, "CloneMethod")
 	ShellPath           = bsonutil.MustHaveTag(Distro{}, "ShellPath")
 	CuratorDir          = bsonutil.MustHaveTag(Distro{}, "CuratorDir")
+	ClientDir           = bsonutil.MustHaveTag(Distro{}, "ClientDir")
 	WorkDirKey          = bsonutil.MustHaveTag(Distro{}, "WorkDir")
 	SpawnAllowedKey     = bsonutil.MustHaveTag(Distro{}, "SpawnAllowed")
 	ExpansionsKey       = bsonutil.MustHaveTag(Distro{}, "Expansions")
