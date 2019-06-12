@@ -19,7 +19,7 @@ type attachArtifacts struct {
 	Files []string `mapstructure:"files" plugin:"expand"`
 
 	// Prefix is an optional directory prefix to start file globbing in, relative to Evergreen's working directory.
-	Prefix string `mapstructure:"working_dir" plugin:"expand"`
+	Prefix string `mapstructure:"prefix" plugin:"expand"`
 
 	// Optional, when set to true, causes this command to be skipped over without an error when
 	// the path specified in files does not exist. Defaults to false, which triggers errors
