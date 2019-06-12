@@ -580,6 +580,24 @@ func NeedsNewAgentFlagSet() db.Q {
 	})
 }
 
+// NeedsNewAgentMonitorFlagSet returns running hosts that need a new agent
+// monitor.
+func NeedsNewAgentMonitorFlagSet() db.Q {
+	bootstrapKey := bsonutil.GetDottedKeyName(DistroKey, distro.BootstrapMethodKey)
+	return db.Query(bson.M{
+		bootstrapKey: bson.M{
+			"$exists": true,
+			"$ne":     distro.BootstrapMethodLegacySSH,
+		},
+		StatusKey:        evergreen.HostRunning,
+		StartedByKey:     evergreen.User,
+		HasContainersKey: bson.M{"$ne": true},
+		ParentIDKey:      bson.M{"$exists": false},
+		RunningTaskKey:   bson.M{"$exists": false},
+		NeedsNewAgentKey: true,
+	})
+}
+
 // Removes host intents that have been been uninitialized for more than 3
 // minutes or spawning (but not started) for more than 15 minutes for the
 // specified distro.

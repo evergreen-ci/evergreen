@@ -236,10 +236,18 @@ func (as *APIServer) EndTask(w http.ResponseWriter, r *http.Request) {
 
 	if checkHostHealth(currentHost) {
 		// set the needs new agent flag on the host
-		if err := currentHost.SetNeedsNewAgent(true); err != nil {
-			grip.Error(message.WrapErrorf(err, "error indicating host %s needs new agent", currentHost.Id))
-			gimlet.WriteResponse(w, gimlet.MakeJSONInternalErrorResponder(err))
-			return
+		if currentHost.Distro.LegacyBootstrap() {
+			if err := currentHost.SetNeedsNewAgent(true); err != nil {
+				grip.Error(message.WrapErrorf(err, "error indicating host %s needs new agent", currentHost.Id))
+				gimlet.WriteResponse(w, gimlet.MakeJSONInternalErrorResponder(err))
+				return
+			}
+		} else {
+			if err := currentHost.SetNeedsNewAgentMonitor(true); err != nil {
+				grip.Error(message.WrapErrorf(err, "error indicating host %s needs new agent monitor", currentHost.Id))
+				gimlet.WriteResponse(w, gimlet.MakeJSONInternalErrorResponder(err))
+				return
+			}
 		}
 		endTaskResp.ShouldExit = true
 	}
@@ -454,16 +462,30 @@ func (as *APIServer) NextTask(w http.ResponseWriter, r *http.Request) {
 	var response apimodels.NextTaskResponse
 	var err error
 	if checkHostHealth(h) {
-		if err = h.SetNeedsNewAgent(true); err != nil {
-			grip.Error(message.WrapError(err, message.Fields{
-				"host":      h.Id,
-				"operation": "next_task",
-				"message":   "problem indicating that host needs new agent",
-				"source":    "database error",
-				"revision":  evergreen.BuildRevision,
-			}))
-			gimlet.WriteResponse(w, gimlet.MakeJSONInternalErrorResponder(err))
-			return
+		if h.Distro.LegacyBootstrap() {
+			if err = h.SetNeedsNewAgent(true); err != nil {
+				grip.Error(message.WrapError(err, message.Fields{
+					"host":      h.Id,
+					"operation": "next_task",
+					"message":   "problem indicating that host needs new agent",
+					"source":    "database error",
+					"revision":  evergreen.BuildRevision,
+				}))
+				gimlet.WriteResponse(w, gimlet.MakeJSONInternalErrorResponder(err))
+				return
+			}
+		} else {
+			if err = h.SetNeedsNewAgentMonitor(true); err != nil {
+				grip.Error(message.WrapError(err, message.Fields{
+					"host":      h.Id,
+					"operation": "next_task",
+					"message":   "problem indicating that host needs new agent monitor",
+					"source":    "database error",
+					"revision":  evergreen.BuildRevision,
+				}))
+				gimlet.WriteResponse(w, gimlet.MakeJSONInternalErrorResponder(err))
+				return
+			}
 		}
 		response.ShouldExit = true
 		gimlet.WriteJSON(w, response)
@@ -543,6 +565,7 @@ func (as *APIServer) NextTask(w http.ResponseWriter, r *http.Request) {
 }
 
 func handleOldAgentRevision(response apimodels.NextTaskResponse, h *host.Host, w http.ResponseWriter, r *http.Request) (apimodels.NextTaskResponse, bool) {
+	// kim: TODO: figure out how it updates the agent revision in the host coll.
 	if agentRevisionIsOld(h) {
 		details := &apimodels.GetNextTaskDetails{}
 		if err := util.ReadJSONInto(util.NewRequestReader(r), details); err != nil {

@@ -13,15 +13,12 @@ import (
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/util"
-	"github.com/google/shlex"
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/amboy/dependency"
 	"github.com/mongodb/amboy/job"
 	"github.com/mongodb/amboy/registry"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
-	"github.com/mongodb/jasper"
-	jaspercli "github.com/mongodb/jasper/cli"
 	"github.com/pkg/errors"
 )
 
@@ -144,11 +141,7 @@ func (j *agentDeployJob) Run(ctx context.Context) {
 		}
 	}()
 
-	if j.host.Distro.BootstrapMethod == distro.BootstrapMethodSSH {
-		j.AddError(j.startAgentMonitorOnHost(ctx))
-	} else {
-		j.AddError(j.startAgentOnHost(ctx, settings, *j.host))
-	}
+	j.AddError(j.startAgentOnHost(ctx, settings, *j.host))
 
 	stat, err := event.GetRecentAgentDeployStatuses(j.HostID, agentPutRetries)
 	j.AddError(err)
@@ -347,7 +340,23 @@ func (j *agentDeployJob) startAgentOnRemote(ctx context.Context, settings *everg
 	}
 
 	// run the command to kick off the agent remotely
-	env := j.agentEnv(settings)
+	env := map[string]string{}
+	if sumoEndpoint, ok := settings.Credentials["sumologic"]; ok {
+		env["GRIP_SUMO_ENDPOINT"] = sumoEndpoint
+	}
+
+	if settings.Splunk.Populated() {
+		env["GRIP_SPLUNK_SERVER_URL"] = settings.Splunk.ServerURL
+		env["GRIP_SPLUNK_CLIENT_TOKEN"] = settings.Splunk.Token
+
+		if settings.Splunk.Channel != "" {
+			env["GRIP_SPLUNK_CHANNEL"] = settings.Splunk.Channel
+		}
+	}
+
+	env["S3_KEY"] = settings.Providers.AWS.S3Key
+	env["S3_SECRET"] = settings.Providers.AWS.S3Secret
+	env["S3_BUCKET"] = settings.Providers.AWS.Bucket
 
 	ctx, cancel := context.WithTimeout(ctx, sshTimeout)
 	defer cancel()
@@ -364,230 +373,4 @@ func (j *agentDeployJob) startAgentOnRemote(ctx context.Context, settings *everg
 	event.LogHostAgentDeployed(hostObj.Id)
 
 	return nil
-}
-
-func (j *agentDeployJob) startAgentMonitorOnHost(ctx context.Context) error {
-	cloudHost, err := cloud.GetCloudHost(ctx, j.host, j.env.Settings())
-	if err != nil {
-		return errors.Wrapf(err, "Failed to get cloud host for %s", j.host.Id)
-	}
-
-	sshOptions, err := cloudHost.GetSSHOptions()
-	if err != nil {
-		return errors.Wrapf(err, "Error getting ssh options for host %s", j.host.Id)
-	}
-
-	d, err := distro.FindOne(distro.ById(j.host.Distro.Id))
-	if err != nil {
-		return errors.Wrapf(err, "error finding distro %s", j.host.Distro.Id)
-	}
-	j.host.Distro = d
-
-	// prep the remote host
-	grip.Info(message.Fields{
-		"message": "prepping host for agent monitor",
-		"host":    j.host.Id,
-	})
-
-	if logs, err := j.jasperRunSetupScript(ctx, sshOptions); err != nil {
-		event.LogProvisionFailed(j.host.Id, logs)
-		errMsg := "error running setup script on host"
-		msg := message.Fields{
-			"message": errMsg,
-			"host":    j.host.Id,
-			"distro":  j.host.Distro.Id,
-			"logs":    logs,
-		}
-		grip.Error(message.WrapError(err, msg))
-
-		// there is no guarantee setup scripts are idempotent, so we terminate the host if the setup script fails
-		if err := j.host.DisablePoisonedHost(err.Error()); err != nil {
-			return errors.Wrapf(err, "error terminating host %s", j.host.Id)
-		}
-
-		job := NewDecoHostNotifyJob(j.env, j.host, nil, errMsg)
-		grip.Error(message.WrapError(j.env.RemoteQueue().Put(job), message.Fields{
-			"message": fmt.Sprintf("tried %d times to start agent monitor on host", agentPutRetries),
-			"host":    j.host.Id,
-			"distro":  j.host.Distro,
-		}))
-
-		event.LogHostAgentMonitorDeployFailed(j.host.Id, err)
-		return err
-	}
-
-	grip.Info(message.Fields{
-		"message": "prepping host finished successfully",
-		"host":    j.host.Id,
-		"distro":  j.host.Distro.Id,
-	})
-
-	// generate the host secret if none exists
-	if j.host.Secret == "" {
-		if err = j.host.CreateSecret(); err != nil {
-			return errors.Wrapf(err, "creating secret for %s", j.host.Id)
-		}
-	}
-
-	// Start agent to listen for tasks
-	/*     grip.Info(j.getHostMessage(j.host))
-	 *     if err = j.startAgentOnRemote(ctx, settings, &j.host, sshOptions); err != nil {
-	 *         event.LogHostAgentDeployFailed(j.host.Id, err)
-	 *         grip.Info(message.WrapError(err, message.Fields{
-	 *             "message": "error starting agent on remote",
-	 *             "host":    j.HostID,
-	 *             "job":     j.ID(),
-	 *         }))
-	 *         return nil
-	 *     }
-	 *     grip.Info(message.Fields{
-	 *         "runner": "taskrunner",
-	 *         "message": "agent successfully started for host",
-	 *         "host": j.host.Id,
-	 *     })
-	 *
-	 *     if err = j.host.SetAgentRevision(evergreen.BuildRevision); err != nil {
-	 *         return errors.Wrapf(err, "error setting agent revision on host %s", j.host.Id)
-	 *     }
-	 *     return nil */
-
-	// kim: in startAgentOnRemote():
-	/*     // build the command to run on the remote machine
-	 *     remoteCmd := strings.Join(agentCmdParts, " ")
-	 *     grip.Info(message.Fields{
-	 *         "message": "starting agent on host",
-	 *         "host":    hostObj.Id,
-	 *         "command": remoteCmd,
-	 *         "runner":  "taskrunner",
-	 *     })
-	 *
-	 *     // compute any info necessary to ssh into the host
-	 *     hostInfo, err := hostObj.GetSSHInfo()
-	 *     if err != nil {
-	 *         return errors.Wrapf(err, "error parsing ssh info %v", hostObj.Host)
-	 *     }
-	 *
-	 *     // run the command to kick off the agent remotely
-	 *     env := map[string]string{}
-	 *     if sumoEndpoint, ok := settings.Credentials["sumologic"]; ok {
-	 *         env["GRIP_SUMO_ENDPOINT"] = sumoEndpoint
-	 *     }
-	 *
-	 *     if settings.Splunk.Populated() {
-	 *         env["GRIP_SPLUNK_SERVER_URL"] = settings.Splunk.ServerURL
-	 *         env["GRIP_SPLUNK_CLIENT_TOKEN"] = settings.Splunk.Token
-	 *
-	 *         if settings.Splunk.Channel != "" {
-	 *             env["GRIP_SPLUNK_CHANNEL"] = settings.Splunk.Channel
-	 *         }
-	 *     }
-	 *
-	 *     env["S3_KEY"] = settings.Providers.AWS.S3Key
-	 *     env["S3_SECRET"] = settings.Providers.AWS.S3Secret
-	 *     env["S3_BUCKET"] = settings.Providers.AWS.Bucket
-	 *
-	 *     ctx, cancel := context.WithTimeout(ctx, sshTimeout)
-	 *     defer cancel()
-	 *
-	 *     remoteCmd = fmt.Sprintf("nohup %s > /tmp/start 2>1 &", remoteCmd)
-	 *
-	 *     startAgentCmd := j.env.JasperManager().CreateCommand(ctx).Environment(env).Append(remoteCmd).
-	 *         User(hostObj.User).Host(hostInfo.Hostname).ExtendSSHArgs("-p", hostInfo.Port).ExtendSSHArgs(sshOptions...)
-	 *
-	 *     if err = startAgentCmd.Run(ctx); err != nil {
-	 *         return errors.Wrapf(err, "error starting agent (%v)", hostObj.Id)
-	 *     }
-	 *
-	 *     event.LogHostAgentDeployed(hostObj.Id)
-	 *
-	 *     return nil */
-
-	// TODO: figure out how API server ensures there actually is an agent
-	// running on the host. It seems like it doesn't.
-	grip.Info(j.getHostMessage(*j.host))
-	output, err := j.host.RunSSHJasperRequest(ctx, j.env, "create-command", j.agentMonitorRequestInput(), sshOptions)
-	if err != nil {
-		grip.Error(message.WrapError(err, message.Fields{
-			"message": "failed to start agent monitor on host",
-			"host":    j.host.Id,
-			"distro":  j.host.Distro.Id,
-			"job":     j.ID(),
-			"logs":    output,
-		}))
-		return errors.Wrap(err, "failed to create command")
-	}
-	event.LogHostAgentMonitorDeployed(j.host.Id)
-
-	return nil
-}
-
-func (j *agentDeployJob) jasperRunSetupScript(ctx context.Context, sshOptions []string) (string, error) {
-	cmd, err := shlex.Split(j.host.SetupCommand())
-	if err != nil {
-		return "", errors.Wrap(err, "problem parsing setup command")
-	}
-
-	input := jasper.CreateOptions{Args: cmd}
-	output, err := j.host.RunSSHJasperRequest(ctx, j.env, "create-process", input, sshOptions)
-	if err != nil {
-		return output, errors.Wrap(err, "failed to create command")
-	}
-
-	if _, err := jaspercli.ExtractOutcomeResponse(output); err != nil {
-		return output, errors.Wrap(err, "error getting command outcome")
-	}
-
-	return output, nil
-}
-
-func (j *agentDeployJob) agentEnv(settings *evergreen.Settings) map[string]string {
-	env := map[string]string{
-		"S3_KEY":    settings.Providers.AWS.S3Key,
-		"S3_SECRET": settings.Providers.AWS.S3Secret,
-		"S3_BUCKET": settings.Providers.AWS.Bucket,
-	}
-
-	if sumoEndpoint, ok := settings.Credentials["sumologic"]; ok {
-		env["GRIP_SUMO_ENDPOINT"] = sumoEndpoint
-	}
-
-	if settings.Splunk.Populated() {
-		env["GRIP_SPLUNK_SERVER_URL"] = settings.Splunk.ServerURL
-		env["GRIP_SPLUNK_CLIENT_TOKEN"] = settings.Splunk.Token
-		if settings.Splunk.Channel != "" {
-			env["GRIP_SPLUNK_CHANNEL"] = settings.Splunk.Channel
-		}
-	}
-
-	return env
-}
-
-// agentMonitorRequestInput assembles the input to a Jasper request to create
-// the agent monitor.
-func (j *agentDeployJob) agentMonitorRequestInput() jaspercli.CommandInput {
-	settings := j.env.Settings()
-	binary := filepath.Join("~", j.host.Distro.BinaryName())
-	clientURL := fmt.Sprintf("%s/clients/%s", strings.TrimRight(settings.Ui.Url, "/"), j.host.Distro.ExecutableSubPath())
-
-	agentMonitorParams := []string{
-		binary,
-		"agent",
-		fmt.Sprintf("--api_server='%s'", settings.ApiUrl),
-		fmt.Sprintf("--host_id='%s'", j.host.Id),
-		fmt.Sprintf("--host_secret='%s'", j.host.Secret),
-		fmt.Sprintf("--log_prefix='%s'", filepath.Join(j.host.Distro.WorkDir, "agent")),
-		fmt.Sprintf("--working_directory='%s'", j.host.Distro.WorkDir),
-		fmt.Sprintf("--logkeeper_url='%s'", settings.LoggerConfig.LogkeeperURL),
-		"--cleanup",
-		"monitor",
-		fmt.Sprintf("--client_url='%s'", clientURL),
-		fmt.Sprintf("--client_path='%s'", "/usr/local/bin/evergreen"),
-	}
-
-	input := jaspercli.CommandInput{
-		Commands:      [][]string{agentMonitorParams},
-		CreateOptions: jasper.CreateOptions{Environment: j.agentEnv(settings)},
-		Background:    true,
-	}
-	return input
 }

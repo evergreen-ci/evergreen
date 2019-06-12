@@ -178,7 +178,7 @@ func (h *Host) ForceReinstallJasperCommand(config evergreen.JasperConfig) string
 }
 
 func (h *Host) jasperServiceCommand(config evergreen.JasperConfig, subCmd string, args ...string) string {
-	binaryPath := filepath.Join(h.Distro.CuratorDir, h.jasperExtractedFileName(config))
+	binaryPath := filepath.Join(h.Distro.CuratorDir, h.jasperBinaryFileName(config))
 	cmd := fmt.Sprintf("%s jasper service %s rpc %s", binaryPath, subCmd, strings.Join(args, " "))
 	// Jasper service commands need elevated privileges to execute. On Windows,
 	// this is assuming that the command is already being run by Administrator.

@@ -9,7 +9,8 @@ import (
 	"go.mongodb.org/mongo-driver/bson"
 )
 
-// RecentHostAgentDeploys is a type used to capture the results of an
+// RecentHostAgentDeploys is a type used to capture the results of an agent
+// deploy.
 type RecentHostAgentDeploys struct {
 	HostID            string `bson:"host_id" json:"host_id" yaml:"host_id"`
 	Count             int    `bson:"count" json:"count" yaml:"count"`
@@ -21,10 +22,22 @@ type RecentHostAgentDeploys struct {
 	message.Base      `bson:"metadata" json:"metadata" yaml:"metadata"`
 }
 
-func GetRecentAgentDeployStatuses(hostId string, n int) (*RecentHostAgentDeploys, error) {
+// GetRecentAgentDeployStatuses gets status of the the n most recent agent
+// deploy attempts for the given hostID.
+func GetRecentAgentDeployStatuses(hostID string, n int) (*RecentHostAgentDeploys, error) {
+	return getRecentDeployStatuses(hostID, n, EventHostAgentDeployed, EventHostAgentDeployFailed)
+}
+
+// GetRecentAgentMonitorDeployStatuses gets status of the the n most recent
+// agent monitor deploy attempts for the given hostID.
+func GetRecentAgentMonitorDeployStatuses(hostID string, n int) (*RecentHostAgentDeploys, error) {
+	return getRecentDeployStatuses(hostID, n, EventHostAgentMonitorDeployed, EventHostAgentMonitorDeployFailed)
+}
+
+func getRecentDeployStatuses(hostID string, n int, successStatus, failedStatus string) (*RecentHostAgentDeploys, error) {
 	query := ResourceTypeKeyIs(ResourceTypeHost)
-	query[TypeKey] = bson.M{"$in": []string{EventHostAgentDeployed, EventHostAgentDeployFailed, EventHostStatusChanged}}
-	query[ResourceIdKey] = hostId
+	query[TypeKey] = bson.M{"$in": []string{successStatus, failedStatus, EventHostStatusChanged}}
+	query[ResourceIdKey] = hostID
 
 	pipeline := []bson.M{
 		{"$match": query},
@@ -40,13 +53,13 @@ func GetRecentAgentDeployStatuses(hostId string, n int) (*RecentHostAgentDeploys
 			"failed": bson.M{"$size": bson.M{
 				"$filter": bson.M{
 					"input": "$states",
-					"cond":  bson.M{"$eq": []string{"$$this", EventHostAgentDeployFailed}},
+					"cond":  bson.M{"$eq": []string{"$$this", failedStatus}},
 				},
 			}},
 			"success": bson.M{"$size": bson.M{
 				"$filter": bson.M{
 					"input": "$states",
-					"cond":  bson.M{"$eq": []string{"$$this", EventHostAgentDeployed}},
+					"cond":  bson.M{"$eq": []string{"$$this", successStatus}},
 				},
 			}},
 			"host_status_changed": bson.M{"$size": bson.M{
@@ -77,7 +90,7 @@ func GetRecentAgentDeployStatuses(hostId string, n int) (*RecentHostAgentDeploys
 	}
 
 	out[0].Total = n
-	out[0].HostID = hostId
+	out[0].HostID = hostID
 
 	return &out[0], nil
 }
