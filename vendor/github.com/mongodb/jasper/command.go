@@ -29,6 +29,8 @@ type Command struct {
 	prerequisite    func() bool
 	priority        level.Priority
 	runBackground   bool
+	sudo            bool
+	sudoUser        string
 	tags            []string
 
 	cmds   [][]string
@@ -53,6 +55,17 @@ func (rco *remoteCommandOptions) hostString() string {
 	return fmt.Sprintf("%s@%s", rco.user, rco.host)
 }
 
+func (c *Command) sudoCmd() []string {
+	sudoCmd := []string{}
+	if c.sudo {
+		sudoCmd = append(sudoCmd, "sudo")
+		if c.sudoUser != "" {
+			sudoCmd = append(sudoCmd, "-u", c.sudoUser)
+		}
+	}
+	return sudoCmd
+}
+
 func (c *Command) getRemoteCreateOpt(ctx context.Context, args []string) (*CreateOptions, error) {
 	opts := c.opts.Copy()
 	opts.WorkingDirectory = ""
@@ -66,6 +79,10 @@ func (c *Command) getRemoteCreateOpt(ctx context.Context, args []string) (*Creat
 
 	if env := c.opts.getEnvSlice(); len(env) != 0 {
 		remoteCmd += strings.Join(env, " ") + " "
+	}
+
+	if c.sudo {
+		args = append(c.sudoCmd(), args...)
 	}
 
 	switch len(args) {
@@ -229,8 +246,29 @@ func (c *Command) Prerequisite(chk func() bool) *Command { c.prerequisite = chk;
 // Add adds on a sub-command.
 func (c *Command) Add(args []string) *Command { c.cmds = append(c.cmds, args); return c }
 
+// Sudo runs each command with superuser privileges with the default target
+// user. This will cause the commands to fail if the commands are executed in
+// Windows. If this is a remote command, the command being run remotely uses
+// superuser privileges.
+func (c *Command) Sudo(sudo bool) *Command { c.sudo = sudo; return c }
+
+// SudoAs runs each command with sudo but allows each command to be run as a
+// user other than the default target user (usually root). This will cause the
+// commands to fail if the commands are executed in Windows. If this is a remote
+// command, the command being run remotely uses superuse privileges.
+func (c *Command) SudoAs(user string) *Command { c.sudo = true; c.sudoUser = user; return c }
+
 // Extend adds on multiple sub-commands.
 func (c *Command) Extend(cmds [][]string) *Command { c.cmds = append(c.cmds, cmds...); return c }
+
+// Append takes a series of strings and splits them into sub-commands and adds
+// them to the Command.
+func (c *Command) Append(cmds ...string) *Command {
+	for _, cmd := range cmds {
+		c.cmds = append(c.cmds, splitCmdToArgs(cmd))
+	}
+	return c
+}
 
 // ShellScript adds an operation to the command that runs a shell script, using
 // the shell's "-c" option).
@@ -246,15 +284,6 @@ func (c *Command) Bash(script string) *Command { return c.ShellScript("bash", sc
 // Sh adds a script using "sh -c", as syntactic sugar for the ShellScript
 // method.
 func (c *Command) Sh(script string) *Command { return c.ShellScript("sh", script) }
-
-// Append takes a series of strings and splits them into sub-commands and adds
-// them to the Command.
-func (c *Command) Append(cmds ...string) *Command {
-	for _, cmd := range cmds {
-		c.cmds = append(c.cmds, splitCmdToArgs(cmd))
-	}
-	return c
-}
 
 // AppendArgs is the variadic equivalent of Add, which adds a command
 // in the form of arguments.
@@ -465,7 +494,7 @@ func (c *Command) Enqueue(ctx context.Context, q amboy.Queue) error {
 	return catcher.Resolve()
 }
 
-// JobseForeground returns a slice of jobs for every operation
+// JobsForeground returns a slice of jobs for every operation
 // captured in the command. The output of the commands are logged,
 // using the default grip sender in the foreground.
 func (c *Command) JobsForeground(ctx context.Context) ([]amboy.Job, error) {
@@ -511,9 +540,17 @@ func (c *Command) getCmd() string {
 	env := strings.Join(c.opts.getEnvSlice(), " ")
 	out := []string{}
 	for _, cmd := range c.cmds {
-		out = append(out, fmt.Sprintf("%s '%s';\n", env, strings.Join(cmd, " ")))
+		if c.sudo {
+			cmd = append(c.sudoCmd(), cmd...)
+		}
+		var formattedCmd string
+		if len(env) != 0 {
+			formattedCmd += fmt.Sprintf("%s ", env)
+		}
+		formattedCmd += strings.Join(cmd, " ")
+		out = append(out, formattedCmd)
 	}
-	return strings.Join(out, "")
+	return strings.Join(out, "\n")
 }
 
 func (c *Command) getCreateOpt(ctx context.Context, args []string) (*CreateOptions, error) {
@@ -532,6 +569,10 @@ func (c *Command) getCreateOpt(ctx context.Context, args []string) (*CreateOptio
 		opts.Args = args
 	default:
 		opts.Args = args
+	}
+
+	if c.sudo {
+		opts.Args = append(c.sudoCmd(), opts.Args...)
 	}
 
 	return opts, nil

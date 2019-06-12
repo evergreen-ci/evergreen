@@ -18,7 +18,7 @@ func TestDaemon(t *testing.T) {
 			manager, err := jasper.NewLocalManager(false)
 			require.NoError(t, err)
 
-			daemon := newRPCDaemon("localhost", port, "", "", manager)
+			daemon := newRPCDaemon("localhost", port, manager, "")
 			svc, err := service.New(daemon, &service.Config{Name: "foo"})
 			require.NoError(t, err)
 			require.NoError(t, daemon.Start(svc))
@@ -48,7 +48,7 @@ func TestDaemon(t *testing.T) {
 			restPort := getNextPort()
 			daemon := newCombinedDaemon(
 				newRESTDaemon("localhost", restPort, manager),
-				newRPCDaemon("localhost", getNextPort(), "", "", manager),
+				newRPCDaemon("localhost", getNextPort(), manager, ""),
 			)
 			svc, err := service.New(daemon, &service.Config{Name: "foo"})
 			require.NoError(t, err)
@@ -64,7 +64,7 @@ func TestDaemon(t *testing.T) {
 			rpcPort := getNextPort()
 			daemon := newCombinedDaemon(
 				newRESTDaemon("localhost", getNextPort(), manager),
-				newRPCDaemon("localhost", rpcPort, "", "", manager),
+				newRPCDaemon("localhost", rpcPort, manager, ""),
 			)
 			svc, err := service.New(daemon, &service.Config{Name: "foo"})
 			require.NoError(t, err)
