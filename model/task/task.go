@@ -9,7 +9,6 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/db"
-	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/testresult"
@@ -17,7 +16,6 @@ import (
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
-	"github.com/tychoish/tarjan"
 	"go.mongodb.org/mongo-driver/bson"
 	mgobson "gopkg.in/mgo.v2/bson"
 )
@@ -40,10 +38,6 @@ const (
 
 	// length of time to cache the expected duration in the task document
 	predictionTTL = 8 * time.Hour
-
-	taskBlocked  = "blocked"
-	taskPending  = "pending"
-	taskRunnable = "runnable"
 )
 
 var (
@@ -1608,181 +1602,4 @@ func (t *Task) GetJQL(searchProjects []string) string {
 	}
 
 	return fmt.Sprintf(jqlBFQuery, strings.Join(searchProjects, ", "), jqlClause)
-}
-
-// BlockedState returns "blocked," "pending" (unsatisfied dependencies,
-// but unblocked), or "" (runnable) to represent the state of the task
-// with respect to its dependencies
-func (t *Task) BlockedState(tasksWithDeps []Task) (string, error) {
-	if t.DisplayOnly {
-		return t.blockedStateForDisplayTask(tasksWithDeps)
-	}
-	if t.IsPartOfSingleHostTaskGroup() {
-		return t.blockedStateForTaskGroups(tasksWithDeps)
-	}
-	return t.blockedStatePrivate()
-}
-
-func (t *Task) blockedStatePrivate() (string, error) {
-	if len(t.DependsOn) == 0 {
-		return taskRunnable, nil
-	}
-	dependencyIDs := []string{}
-	for _, d := range t.DependsOn {
-		dependencyIDs = append(dependencyIDs, d.TaskId)
-	}
-	dependentTasks, err := Find(ByIds(dependencyIDs).WithFields(DisplayNameKey, StatusKey,
-		ActivatedKey, BuildVariantKey, DetailsKey, DependsOnKey))
-	if err != nil {
-		return "", errors.Wrap(err, "error finding dependencies")
-	}
-	taskMap := map[string]*Task{}
-	for i := range dependentTasks {
-		taskMap[dependentTasks[i].Id] = &dependentTasks[i]
-	}
-	for _, dependency := range t.DependsOn {
-		depTask := taskMap[dependency.TaskId]
-		state, err := depTask.getStateByDependency(dependency)
-		if err != nil {
-			return "", errors.Wrap(err, "")
-		}
-		if state != taskRunnable {
-			return state, nil
-		}
-	}
-	return taskRunnable, nil
-}
-
-// getStateByDependency determines if the task is still running, is blocked, or has violated the given dependency
-func (t *Task) getStateByDependency(dependency Dependency) (string, error) {
-	if t == nil {
-		grip.Error(message.Fields{
-			"message": "task does not exist",
-			"task_id": dependency.TaskId,
-		})
-		return taskRunnable, nil
-	}
-	state, err := t.blockedStatePrivate()
-	if err != nil {
-		return "", err
-	}
-	if state == taskBlocked {
-		return taskBlocked, nil
-	} else if t.Status == evergreen.TaskSucceeded || t.Status == evergreen.TaskFailed {
-		if t.Status != dependency.Status && dependency.Status != AllStatuses {
-			return taskBlocked, nil
-		}
-	} else {
-		return taskPending, nil
-	}
-	return taskRunnable, nil
-}
-
-func (t *Task) blockedStateForTaskGroups(tasksWithDeps []Task) (string, error) {
-	tasks, err := model.GetTasksInTaskGroup(t)
-	if err != nil {
-		return "", errors.Wrap(err, "problem getting tasks in task group")
-	}
-
-	// get dependencies from all tasks in group
-	dependsOn := []Dependency{}
-	dependencyIDs := []string{}
-	for _, curTask := range tasks {
-		dependsOn = append(dependsOn, curTask.DependsOn...)
-		for _, dependency := range curTask.DependsOn {
-			dependencyIDs = append(dependencyIDs, dependency.TaskId)
-		}
-	}
-	// get dependentTasks and make map as before
-	dependentTasks, err := Find(ByIds(dependencyIDs).WithFields(DisplayNameKey, StatusKey,
-		ActivatedKey, BuildVariantKey, DetailsKey, DependsOnKey))
-	taskMap := map[string]*Task{} // maps ID of dependency to the relevant task
-	for i := range dependentTasks {
-		taskMap[dependentTasks[i].Id] = &dependentTasks[i]
-	}
-	//cache status for task in case of duplicates
-	cachedStatus := map[string]string{}
-	// determine if each dependency is satisfiable
-	for _, dependency := range dependsOn {
-		var state string
-		depTask := taskMap[dependency.TaskId]
-		if cachedStatus[depTask.Id] != "" {
-			state = cachedStatus[depTask.Id]
-		} else {
-			var err error
-			state, err = depTask.getStateByDependency(dependency)
-			if err != nil {
-				return "", errors.Wrap(err, "")
-			}
-			cachedStatus[depTask.Id] = state
-		}
-
-		if state != taskRunnable {
-			return state, nil // task is blocked or pending
-		}
-	}
-	return taskRunnable, nil
-}
-
-func (t *Task) blockedStateForDisplayTask(tasksWithDeps []Task) (string, error) {
-	execTasks, err := Find(ByIds(t.ExecutionTasks))
-	if err != nil {
-		return "", errors.Wrap(err, "error finding execution tasks")
-	}
-	state := taskRunnable
-	for _, execTask := range execTasks {
-		etState, err := execTask.BlockedState(tasksWithDeps)
-		if err != nil {
-			return "", errors.Wrap(err, "error finding blocked state")
-		}
-		if etState == taskBlocked {
-			return taskBlocked, nil
-		} else if etState == taskPending {
-			state = taskPending
-		}
-	}
-	return state, nil
-}
-
-func (t *Task) CircularDependencies() error {
-	var err error
-	tasksWithDeps, err := FindAllTasksFromVersionWithDependencies(t.Version)
-	if err != nil {
-		return errors.Wrap(err, "error finding tasks with dependencies")
-	}
-	if len(tasksWithDeps) == 0 {
-		return nil
-	}
-	dependencyMap := map[string][]string{}
-	for _, versionTask := range tasksWithDeps {
-		for _, dependency := range versionTask.DependsOn {
-			dependencyMap[versionTask.Id] = append(dependencyMap[versionTask.Id], dependency.TaskId)
-		}
-	}
-	catcher := grip.NewBasicCatcher()
-	cycles := tarjan.Connections(dependencyMap)
-	for _, cycle := range cycles {
-		if len(cycle) > 1 {
-			catcher.Add(errors.Errorf("Dependency cycle detected: %s", strings.Join(cycle, ",")))
-		}
-	}
-	return catcher.Resolve()
-}
-
-func (t *Task) IsBlockedDisplayTask() bool {
-	if !t.DisplayOnly {
-		return false
-	}
-
-	tasksWithDeps, err := FindAllTasksFromVersionWithDependencies(t.Version)
-	if err != nil {
-		grip.Error(message.WrapError(err, "error finding tasks with dependencies"))
-		return false
-	}
-	blockedState, err := t.BlockedState(tasksWithDeps)
-	if err != nil {
-		grip.Error(message.WrapError(err, "error determining blocked state"))
-		return false
-	}
-	return blockedState == taskBlocked
 }
