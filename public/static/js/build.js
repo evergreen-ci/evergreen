@@ -1,5 +1,4 @@
 mciModule.controller('BuildVariantHistoryController', function($scope, $http, $filter, $timeout, $window) {
-  var nsPerMs = 1000000
   $scope.userTz = $window.userTz;
   $scope.builds = [];
   $scope.buildId = "";
@@ -66,6 +65,7 @@ mciModule.controller('BuildVariantHistoryController', function($scope, $http, $f
 
 
 mciModule.controller('BuildViewController', function($scope, $http, $timeout, $rootScope, mciTime, $window, $mdDialog, mciSubscriptionsService, notificationService, $mdToast) {
+  var nsPerMs = 1000000
   $scope.build = {};
   $scope.computed = {};
   $scope.loading = false;
@@ -249,9 +249,13 @@ mciModule.controller('BuildViewController', function($scope, $http, $timeout, $r
       }
     )
 
-    $scope.totalTimeMS = _.reduce(_.pluck(finishedOnly, "Task"), function(x, y){return x.time_taken+y.time_taken}, 0) / nsPerMs;
+
+    $scope.totalTimeMS = _.reduce(
+      _.map(finishedOnly,
+        function(x) {return x.Task.time_taken}), 
+      function(x, y){return x+y}, 0) / nsPerMs;
     };
-    
+
     $rootScope.$on("build_updated", function(e, newBuild){
       newBuild.PatchInfo = $scope.build.PatchInfo
       $scope.setBuild(newBuild);
