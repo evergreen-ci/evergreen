@@ -269,18 +269,6 @@ func ValidateArch(arch string) error {
 	return nil
 }
 
-// LegacyBootstrap returns whether the app server is bootstrapping hosts of this
-// distro using the legacy method.
-func (d *Distro) LegacyBootstrap() bool {
-	return d.BootstrapMethod == "" || d.BootstrapMethod == BootstrapMethodLegacySSH
-}
-
-// LegacyCommunication returns whether the app server is communicating with
-// hosts of this distro using the legacy method.
-func (d *Distro) LegacyCommunication() bool {
-	return d.CommunicationMethod == "" || d.CommunicationMethod == CommunicationMethodLegacySSH
-}
-
 // ValidateBootstrapMethod checks that the bootstrap mechanism is one of the
 // supported methods.
 func ValidateBootstrapMethod(method string) error {

@@ -639,6 +639,26 @@ func (h *Host) SetNeedsNewAgentMonitorAtomically(needsAgentMonitor bool) error {
 	return nil
 }
 
+// LegacyBootstrap returns whether the host was bootstrapped using the legacy
+// method.
+func (h *Host) LegacyBootstrap() bool {
+	return h.Distro.BootstrapMethod == "" || h.Distro.BootstrapMethod == distro.BootstrapMethodLegacySSH
+}
+
+// LegacyCommunication returns whether the app server is communicating with this
+// host using the legacy method.
+func (h *Host) LegacyCommunication() bool {
+	return h.Distro.CommunicationMethod == "" || h.Distro.CommunicationMethod == distro.CommunicationMethodLegacySSH
+}
+
+// SetNeedsAgentDeploy indicates that the host's agent needs to be deployed.
+func (h *Host) SetNeedsAgentDeploy(needsDeploy bool) error {
+	if h.LegacyBootstrap() {
+		return errors.Wrap(h.SetNeedsNewAgent(needsDeploy), "error setting host needs new agent")
+	}
+	return errors.Wrap(h.SetNeedsNewAgentMonitor(needsDeploy), "error setting host needs new agent monitor")
+}
+
 // SetExpirationTime updates the expiration time of a spawn host
 func (h *Host) SetExpirationTime(expirationTime time.Time) error {
 	// update the in-memory host, then the database
