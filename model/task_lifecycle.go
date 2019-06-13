@@ -127,19 +127,15 @@ func resetTask(taskId, caller string) error {
 	if err = t.Archive(); err != nil {
 		return errors.Wrap(err, "can't restart task because it can't be archived")
 	}
-
 	if err = t.Reset(); err != nil {
 		return errors.WithStack(err)
 	}
-
 	if err = t.ActivateTask(caller); err != nil {
 		return errors.WithStack(err)
 	}
-
 	if err = build.SetCachedTaskActivated(t.BuildId, t.Id, true); err != nil {
 		return errors.WithStack(err)
 	}
-
 	// update the cached version of the task, in its build document
 	if err = build.ResetCachedTask(t.BuildId, t.Id); err != nil {
 		return errors.WithStack(err)
@@ -147,6 +143,14 @@ func resetTask(taskId, caller string) error {
 
 	updates := StatusChanges{}
 	return errors.WithStack(UpdateBuildAndVersionStatusForTask(t.Id, &updates))
+}
+
+func ResetManyTasks(tasks []task.Task, caller string) error {
+	catcher := grip.NewBasicCatcher()
+	for _, t := range tasks {
+		catcher.Add(resetTask(t.Id, caller))
+	}
+	return catcher.Resolve()
 }
 
 // TryResetTask resets a task
@@ -190,7 +194,7 @@ func TryResetTask(taskId, user, origin string, detail *apimodels.TaskEndDetail) 
 	}
 
 	// only allow re-execution for failed or successful tasks
-	if !t.IsFinished() && !IsBlockedDisplayTask(t) {
+	if !t.IsFinished() && !IsBlockedDisplayTask(t) && !IsBlockedSingleHostTaskGroup(t) {
 		// this is to disallow terminating running tasks via the UI
 		if origin == evergreen.UIPackage || origin == evergreen.RESTV2Package {
 			grip.Debugf("Unsatisfiable '%s' reset request on '%s' (status: '%s')",
@@ -227,7 +231,7 @@ func TryResetTask(taskId, user, origin string, detail *apimodels.TaskEndDetail) 
 
 		}
 		// want to restart all tasks in the task group, if it's finished
-		if err = checkResetTaskGroup(t); err != nil {
+		if err = tryResetTaskGroup(t); err != nil {
 			return errors.Wrapf(err, "error resetting task group for task '%v'", t.Id)
 		}
 	} else {
@@ -465,8 +469,8 @@ func MarkEnd(t *task.Task, caller string, finishTime time.Time, detail *apimodel
 			}))
 			return errors.Wrap(err, "error updating build")
 		}
-		if err = checkResetTaskGroup(t); err != nil && !strings.Contains(err.Error(), "not finished") {
-			return errors.Wrap(err, "can't check if task group should be reset")
+		if err = tryResetTaskGroup(t); err != nil && !strings.Contains(err.Error(), "not finished") {
+			return errors.Wrap(err, "problem resetting task group")
 		}
 	}
 
@@ -1157,7 +1161,7 @@ func checkResetDisplayTask(t *task.Task) error {
 }
 
 // if part of single-host task group, reset all tasks if finished and should be reset
-func checkResetTaskGroup(t *task.Task) error {
+func tryResetTaskGroup(t *task.Task) error {
 	if !t.IsPartOfSingleHostTaskGroup() {
 		return nil
 	}
@@ -1167,17 +1171,17 @@ func checkResetTaskGroup(t *task.Task) error {
 	}
 
 	resetWhenFinished := false
+	isBlocked := IsBlockedSingleHostTaskGroup(t)
 	for _, taskInGroup := range tasks {
 		if taskInGroup.ResetWhenFinished {
 			resetWhenFinished = true
 		}
-		if !taskInGroup.IsFinished() {
+		if !isBlocked && !taskInGroup.IsFinished() {
 			return errors.New("Task group is not finished, and cannot be restarted")
 		}
 	}
-
 	if resetWhenFinished {
-		return errors.Wrapf(task.ResetTasks(tasks), "error resetting tasks in task group '%s'", t.TaskGroup)
+		return errors.Wrapf(ResetManyTasks(tasks, evergreen.User), "error resetting tasks in task group '%s'", t.TaskGroup)
 	}
 	return nil
 }

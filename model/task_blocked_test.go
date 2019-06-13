@@ -7,6 +7,7 @@ import (
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/build"
+	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -56,6 +57,117 @@ func TestBlockedState(t *testing.T) {
 	state, err = BlockedState(t1, nil)
 	assert.NoError(err)
 	assert.Equal(taskBlocked, state)
+}
+
+func TestBlockedStateForTaskGroups(t *testing.T) {
+	assert := assert.New(t)
+	assert.NoError(db.ClearCollections(ProjectRefCollection, host.Collection))
+
+	taskGroupYml := `
+tasks:
+  - name: t1
+    commands:
+      - command: shell.exec
+  - name: t2
+    commands:
+      - command: shell.exec
+  - name: t3
+  - name: t4
+
+task_groups:
+- name: my_task_group
+  max_hosts: 1
+  tasks:
+  - t1
+  - t2
+  - t3
+  - t4
+
+buildvariants:
+  - name: a_variant
+    display_name: Variant Number One
+    tasks:
+    - name: my_task_group
+
+functions:
+  a_function:
+    command: shell.exec
+`
+	pRef := &ProjectRef{
+		Identifier:  "my_project",
+		LocalConfig: taskGroupYml,
+	}
+	assert.NoError(pRef.Insert())
+	h := &host.Host{
+		Id:          "h1",
+		RunningTask: "say-hi",
+	}
+	assert.NoError(h.Insert())
+
+	t1 := &task.Task{
+		Id:                "t1",
+		Status:            evergreen.TaskSucceeded,
+		TaskGroup:         "my_task_group",
+		TaskGroupMaxHosts: 1,
+		Project:           "my_project",
+	}
+	t2 := &task.Task{
+		Id:                "t2",
+		Status:            evergreen.TaskStarted,
+		TaskGroup:         "my_task_group",
+		TaskGroupMaxHosts: 1,
+		Project:           "my_project",
+	}
+	t3 := &task.Task{
+		Id:                "t3",
+		Status:            evergreen.TaskUnstarted,
+		TaskGroup:         "my_task_group",
+		TaskGroupMaxHosts: 1,
+		Project:           "my_project",
+
+		DependsOn: []task.Dependency{
+			{TaskId: "t2", Status: evergreen.TaskSucceeded},
+		},
+	}
+	t4 := &task.Task{
+		Id:                "t4",
+		Status:            evergreen.TaskUnstarted,
+		TaskGroup:         "my_task_group",
+		TaskGroupMaxHosts: 1,
+		Project:           "my_project",
+		DependsOn: []task.Dependency{
+			{TaskId: "t2", Status: evergreen.TaskSucceeded},
+		},
+	}
+
+	for name, test := range map[string]func(*testing.T){
+		"TaskGroupBlocked": func(t *testing.T) {
+			assert.NoError(t2.MarkFailed())
+			for _, t := range []*task.Task{t1, t2, t3, t4} {
+				state, err := BlockedState(t, nil)
+				assert.NoError(err)
+				assert.Equal(taskBlocked, state)
+			}
+		},
+		"TaskGroupNotBlocked": func(t *testing.T) {
+			assert.NoError(t2.MarkAsUndispatched())
+			for _, t := range []*task.Task{t1, t2, t3, t4} {
+				state, err := BlockedState(t, nil)
+				assert.NoError(err)
+				assert.Equal(taskPending, state)
+			}
+		},
+	} {
+		t.Run(name, func(t *testing.T) {
+			assert.NoError(db.ClearCollections(task.Collection))
+			assert.NoError(t1.Insert())
+			assert.NoError(t2.Insert())
+			assert.NoError(t3.Insert())
+			assert.NoError(t4.Insert())
+			test(t)
+		})
+	}
+
 }
 
 func TestCircularDependency(t *testing.T) {

@@ -26,7 +26,7 @@ func BlockedState(t *task.Task, tasksWithDeps []task.Task) (string, error) {
 		return blockedStateForDisplayTask(t, tasksWithDeps)
 	}
 	if t.IsPartOfSingleHostTaskGroup() {
-		return blockedStateForTaskGroups(t, tasksWithDeps)
+		return blockedStateForTaskGroups(t)
 	}
 	return blockedStatePrivate(t)
 }
@@ -86,7 +86,7 @@ func getStateByDependency(t *task.Task, dependency task.Dependency) (string, err
 	return taskRunnable, nil
 }
 
-func blockedStateForTaskGroups(t *task.Task, tasksWithDeps []task.Task) (string, error) {
+func blockedStateForTaskGroups(t *task.Task) (string, error) {
 	tasks, err := GetTasksInTaskGroup(t)
 	if err != nil {
 		return "", errors.Wrap(err, "problem getting tasks in task group")
@@ -101,14 +101,15 @@ func blockedStateForTaskGroups(t *task.Task, tasksWithDeps []task.Task) (string,
 			dependencyIDs = append(dependencyIDs, dependency.TaskId)
 		}
 	}
-	// get dependentTasks and make map as before
-	dependentTasks, err := task.Find(task.ByIds(dependencyIDs).WithFields(task.DisplayNameKey, task.StatusKey,
+	// map ID of each dependency to the actual task
+	dependentTasks := []task.Task{}
+	dependentTasks, err = task.Find(task.ByIds(dependencyIDs).WithFields(task.DisplayNameKey, task.StatusKey,
 		task.ActivatedKey, task.BuildVariantKey, task.DetailsKey, task.DependsOnKey))
-	taskMap := map[string]*task.Task{} // maps ID of dependency to the relevant task
+	taskMap := map[string]*task.Task{}
 	for i := range dependentTasks {
 		taskMap[dependentTasks[i].Id] = &dependentTasks[i]
 	}
-	//cache status for task in case of duplicates
+
 	cachedStatus := map[string]string{}
 	// determine if each dependency is satisfiable
 	for _, dependency := range dependsOn {
@@ -190,6 +191,18 @@ func IsBlockedDisplayTask(t *task.Task) bool {
 	blockedState, err := BlockedState(t, tasksWithDeps)
 	if err != nil {
 		grip.Error(message.WrapError(err, "error determining blocked state"))
+		return false
+	}
+	return blockedState == taskBlocked
+}
+
+func IsBlockedSingleHostTaskGroup(t *task.Task) bool {
+	if !t.IsPartOfSingleHostTaskGroup() {
+		return false
+	}
+	blockedState, err := BlockedState(t, nil)
+	if err != nil {
+		grip.Error(message.WrapError(err, "error determining blocked state of task group"))
 		return false
 	}
 	return blockedState == taskBlocked
