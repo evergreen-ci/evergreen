@@ -30,6 +30,7 @@ type Distro struct {
 	CloneMethod         string                  `bson:"clone_method" json:"clone_method,omitempty" mapstructure:"clone_method,omitempty"`
 	ShellPath           string                  `bson:"shell_path" json:"shell_path" mapstructure:"shell_path,omitempty"`
 	CuratorDir          string                  `bson:"curator_dir" json:"curator_dir" mapstructure:"curator_dir,omitempty"`
+	ClientDir           string                  `bson:"client_dir" json:"client_dir" mapstructure:"client_dir,omitempty"`
 	SSHKey              string                  `bson:"ssh_key,omitempty" json:"ssh_key,omitempty" mapstructure:"ssh_key,omitempty"`
 	SSHOptions          []string                `bson:"ssh_options,omitempty" json:"ssh_options,omitempty" mapstructure:"ssh_options,omitempty"`
 	SpawnAllowed        bool                    `bson:"spawn_allowed" json:"spawn_allowed,omitempty" mapstructure:"spawn_allowed,omitempty"`
