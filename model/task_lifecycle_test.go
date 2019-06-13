@@ -960,7 +960,7 @@ func TestMarkEndWithTaskGroup(t *testing.T) {
 			Version: evergreen.PlannerVersionTunable,
 		},
 	}
-	d.Insert()
+	assert.NoError(d.Insert())
 
 	for name, test := range map[string]func(*testing.T){
 		"NotResetWhenFinished": func(t *testing.T) {
