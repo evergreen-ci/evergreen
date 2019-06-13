@@ -825,7 +825,7 @@ func (t *Task) Reset() error {
 		if err != nil {
 			return errors.Wrap(err, "error retrieving distro")
 		}
-		if d.PlannerSettings.Version == evergreen.PlannerVersionLegacy {
+		if d.PlannerSettings.Version != evergreen.PlannerVersionTunable {
 			unset[DependsOnKey] = ""
 		}
 	}
@@ -849,14 +849,6 @@ func (t *Task) Reset() error {
 		},
 		reset,
 	)
-}
-
-func ResetTasks(tasks []Task) error {
-	taskIds := []string{}
-	for _, t := range tasks {
-		taskIds = append(taskIds, t.Id)
-	}
-	return errors.Wrap(resetTasksByIds(taskIds), "error resetting tasks")
 }
 
 func ResetDisplayTasks(taskIds []string) error {
