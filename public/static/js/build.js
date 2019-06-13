@@ -1,4 +1,5 @@
 mciModule.controller('BuildVariantHistoryController', function($scope, $http, $filter, $timeout, $window) {
+  var nsPerMs = 1000000
   $scope.userTz = $window.userTz;
   $scope.builds = [];
   $scope.buildId = "";
@@ -247,12 +248,8 @@ mciModule.controller('BuildViewController', function($scope, $http, $timeout, $r
         return new Date(x.Task.start_time) > new Date(0) && new Date(x.Task.finish_time) > new Date(0)
       }
     )
-    $scope.totalTimeMS = _.reduce(
-      _.map(finishedOnly,
-        function(x){return new Date(x.Task.finish_time) - new Date(x.Task.start_time)}),
-        function(sum, el){return sum+el},
-        0)
-    };
+
+    $scope.totalTimeMS = _.reduce(_.pluck(finishedOnly, "Task"), function(x, y){return x.time_taken+y.time_taken}, 0) / nsPerMs;
 
     $rootScope.$on("build_updated", function(e, newBuild){
       newBuild.PatchInfo = $scope.build.PatchInfo
