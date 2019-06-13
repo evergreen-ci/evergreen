@@ -64,9 +64,6 @@ type cliIntent struct {
 
 	// alias defines the variants and tasks to run this patch on.
 	Alias string `bson:"alias"`
-
-	// CommitQueue indicates whether this patch is on the commit queue.
-	CommitQueue bool `bson:"commit_queue"`
 }
 
 // BSON fields for the patches
@@ -87,7 +84,6 @@ var (
 	cliProcessedAtKey   = bsonutil.MustHaveTag(cliIntent{}, "ProcessedAt")
 	cliIntentTypeKey    = bsonutil.MustHaveTag(cliIntent{}, "IntentType")
 	cliAliasKey         = bsonutil.MustHaveTag(cliIntent{}, "Alias")
-	cliCommitQueueKey   = bsonutil.MustHaveTag(cliIntent{}, "CommitQueue")
 )
 
 func (c *cliIntent) Insert() error {
@@ -151,7 +147,6 @@ func (c *cliIntent) NewPatch() *Patch {
 		BuildVariants: c.BuildVariants,
 		Alias:         c.Alias,
 		Tasks:         c.Tasks,
-		CommitQueue:   c.CommitQueue,
 		Patches: []ModulePatch{
 			{
 				ModuleName: c.Module,
@@ -164,7 +159,7 @@ func (c *cliIntent) NewPatch() *Patch {
 	}
 }
 
-func NewCliIntent(user, project, baseHash, module, patchContent, description string, finalize bool, variants, tasks []string, alias string, commitQueue bool) (Intent, error) {
+func NewCliIntent(user, project, baseHash, module, patchContent, description string, finalize bool, variants, tasks []string, alias string) (Intent, error) {
 	if user == "" {
 		return nil, errors.New("no user provided")
 	}
@@ -198,7 +193,6 @@ func NewCliIntent(user, project, baseHash, module, patchContent, description str
 		Finalize:      finalize,
 		Module:        module,
 		Alias:         alias,
-		CommitQueue:   commitQueue,
 	}, nil
 }
 
