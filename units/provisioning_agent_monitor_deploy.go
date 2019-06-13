@@ -126,19 +126,10 @@ func (j *agentMonitorDeployJob) Run(ctx context.Context) {
 			if err != nil {
 				j.AddError(err)
 			} else if noRetries {
-				if disableErr := j.host.DisablePoisonedHost(fmt.Sprintf("failed %d times to put agent monitor on host", agentMonitorPutRetries)); disableErr != nil {
-					j.AddError(errors.Wrapf(disableErr, "error terminating host %s", j.host.Id))
+				if err := j.disableHost(ctx, fmt.Sprintf("failed %d times to put agent monitor on host", agentMonitorPutRetries)); err != nil {
+					j.AddError(errors.Wrapf(err, "error marking host %s for termination", j.host.Id))
 					return
 				}
-
-				job := NewDecoHostNotifyJob(j.env, j.host, nil, "error starting agent monitor on host")
-				grip.Error(message.WrapError(j.env.RemoteQueue().Put(ctx, job),
-					message.Fields{
-						"message": fmt.Sprintf("tried %d times to put agent monitor on host", agentMonitorPutRetries),
-						"host_id": j.host.Id,
-						"distro":  j.host.Distro,
-					}))
-				return
 			}
 			if err := j.host.SetNeedsNewAgentMonitor(true); err != nil {
 				grip.Info(message.WrapError(err, message.Fields{
@@ -182,7 +173,18 @@ func (j *agentMonitorDeployJob) hostDown() bool {
 
 // disableHost changes the host so that it is down and enqueues a job to
 // terminate it.
-func (j *agentMonitorDeployJob) disableHost() error {
+func (j *agentMonitorDeployJob) disableHost(ctx context.Context, reason string) error {
+	if err := j.host.DisablePoisonedHost(reason); err != nil {
+		return errors.Wrapf(err, "error terminating host %s", j.host.Id)
+	}
+
+	job := NewDecoHostNotifyJob(j.env, j.host, nil, errMsg)
+	grip.Error(message.WrapError(j.env.RemoteQueue().Put(ctx, job), message.Fields{
+		"message": fmt.Sprintf("tried %d times to start agent monitor on host", agentMonitorPutRetries),
+		"host":    j.host.Id,
+		"distro":  j.host.Distro,
+	}))
+
 	return nil
 }
 
@@ -264,16 +266,9 @@ func (j *agentMonitorDeployJob) sshRunSetup(ctx context.Context, sshOpts []strin
 
 		// There is no guarantee setup scripts are idempotent, so we terminate
 		// the host if the setup script fails.
-		if err := j.host.DisablePoisonedHost(err.Error()); err != nil {
-			return errors.Wrapf(err, "error terminating host %s", j.host.Id)
+		if err = j.disableHost(ctx, err.Error()); err != nil {
+			return errors.Wrapf(err, "error marking host %s for termination", j.host.Id)
 		}
-
-		job := NewDecoHostNotifyJob(j.env, j.host, nil, errMsg)
-		grip.Error(message.WrapError(j.env.RemoteQueue().Put(ctx, job), message.Fields{
-			"message": fmt.Sprintf("tried %d times to start agent monitor on host", agentMonitorPutRetries),
-			"host":    j.host.Id,
-			"distro":  j.host.Distro,
-		}))
 
 		return err
 	}
