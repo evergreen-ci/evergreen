@@ -105,6 +105,9 @@ func blockedStateForTaskGroups(t *task.Task) (string, error) {
 	dependentTasks := []task.Task{}
 	dependentTasks, err = task.Find(task.ByIds(dependencyIDs).WithFields(task.DisplayNameKey, task.StatusKey,
 		task.ActivatedKey, task.BuildVariantKey, task.DetailsKey, task.DependsOnKey))
+	if err != nil {
+		return "", errors.Wrap(err, "error finding dependencies")
+	}
 	taskMap := map[string]*task.Task{}
 	for i := range dependentTasks {
 		taskMap[dependentTasks[i].Id] = &dependentTasks[i]

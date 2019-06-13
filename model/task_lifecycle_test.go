@@ -883,7 +883,8 @@ func TestMarkEnd(t *testing.T) {
 }
 
 func TestMarkEndWithTaskGroup(t *testing.T) {
-	require.NoError(t, db.ClearCollections(host.Collection, task.Collection, task.OldCollection, build.Collection, ProjectRefCollection, VersionCollection), t, "error clearing collection")
+	require.NoError(t, db.ClearCollections(distro.Collection, host.Collection, task.Collection, task.OldCollection,
+		build.Collection, ProjectRefCollection, VersionCollection), t, "error clearing collection")
 	assert := assert.New(t)
 	var err error
 
@@ -896,6 +897,7 @@ func TestMarkEndWithTaskGroup(t *testing.T) {
 		TaskGroup:         "my_task_group",
 		TaskGroupMaxHosts: 1,
 		Project:           "my_project",
+		DistroId:          "my_distro",
 	}
 	otherTask := &task.Task{
 		Id:                "say-bye",
@@ -905,6 +907,7 @@ func TestMarkEndWithTaskGroup(t *testing.T) {
 		TaskGroup:         "my_task_group",
 		TaskGroupMaxHosts: 1,
 		Project:           "my_project",
+		DistroId:          "my_distro",
 	}
 	assert.NoError(runningTask.Insert())
 	assert.NoError(otherTask.Insert())
@@ -945,6 +948,13 @@ func TestMarkEndWithTaskGroup(t *testing.T) {
 		Status: evergreen.TaskFailed,
 	}
 	updates := StatusChanges{}
+	d := distro.Distro{
+		Id: "my_distro",
+		PlannerSettings: distro.PlannerSettings{
+			Version: evergreen.PlannerVersionTunable,
+		},
+	}
+	d.Insert()
 
 	for name, test := range map[string]func(*testing.T){
 		"NotResetWhenFinished": func(t *testing.T) {
