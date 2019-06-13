@@ -855,13 +855,13 @@ func TestFindNeedsNewAgent(t *testing.T) {
 	})
 }
 
-func TestFindNeedsNewAgentMonitor(t *testing.T) {
+func TestFindByNeedsNewAgentMonitor(t *testing.T) {
 	for testName, testCase := range map[string]func(t *testing.T, h *Host){
 		"NotRunningHost": func(t *testing.T, h *Host) {
 			h.Status = evergreen.HostDecommissioned
 			require.NoError(t, h.Insert())
 
-			hosts, err := Find(NeedsNewAgentMonitorFlagSet())
+			hosts, err := FindByNeedsNewAgentMonitor()
 			require.NoError(t, err)
 			require.Len(t, hosts, 0)
 		},
@@ -869,7 +869,7 @@ func TestFindNeedsNewAgentMonitor(t *testing.T) {
 			h.NeedsNewAgentMonitor = false
 			require.NoError(t, h.Insert())
 
-			hosts, err := Find(NeedsNewAgentMonitorFlagSet())
+			hosts, err := FindByNeedsNewAgentMonitor()
 			require.NoError(t, err)
 			require.Len(t, hosts, 0)
 		},
@@ -877,7 +877,7 @@ func TestFindNeedsNewAgentMonitor(t *testing.T) {
 			h.Distro.BootstrapMethod = distro.BootstrapMethodLegacySSH
 			require.NoError(t, h.Insert())
 
-			hosts, err := Find(NeedsNewAgentMonitorFlagSet())
+			hosts, err := FindByNeedsNewAgentMonitor()
 			require.NoError(t, err)
 			require.Len(t, hosts, 0)
 		},
@@ -885,7 +885,7 @@ func TestFindNeedsNewAgentMonitor(t *testing.T) {
 			h.Distro.BootstrapMethod = distro.BootstrapMethodSSH
 			require.NoError(t, h.Insert())
 
-			hosts, err := Find(NeedsNewAgentMonitorFlagSet())
+			hosts, err := FindByNeedsNewAgentMonitor()
 			require.NoError(t, err)
 			require.Len(t, hosts, 1)
 			assert.Equal(t, h.Id, hosts[0].Id)
@@ -894,7 +894,7 @@ func TestFindNeedsNewAgentMonitor(t *testing.T) {
 			h.Distro.BootstrapMethod = distro.BootstrapMethodUserData
 			require.NoError(t, h.Insert())
 
-			hosts, err := Find(NeedsNewAgentMonitorFlagSet())
+			hosts, err := FindByNeedsNewAgentMonitor()
 			require.NoError(t, err)
 			require.Len(t, hosts, 1)
 			assert.Equal(t, h.Id, hosts[0].Id)
@@ -903,7 +903,7 @@ func TestFindNeedsNewAgentMonitor(t *testing.T) {
 			h.Distro.BootstrapMethod = distro.BootstrapMethodPreconfiguredImage
 			require.NoError(t, h.Insert())
 
-			hosts, err := Find(NeedsNewAgentMonitorFlagSet())
+			hosts, err := FindByNeedsNewAgentMonitor()
 			require.NoError(t, err)
 			require.Len(t, hosts, 1)
 			assert.Equal(t, h.Id, hosts[0].Id)

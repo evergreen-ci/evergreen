@@ -580,11 +580,12 @@ func NeedsNewAgentFlagSet() db.Q {
 	})
 }
 
-// NeedsNewAgentMonitorFlagSet returns running hosts that need a new agent
+// FindByNeedsNewAgentMonitor returns running hosts that need a new agent
 // monitor.
-func NeedsNewAgentMonitorFlagSet() db.Q {
+func FindByNeedsNewAgentMonitor() ([]Host, error) {
 	bootstrapKey := bsonutil.GetDottedKeyName(DistroKey, distro.BootstrapMethodKey)
-	return db.Query(bson.M{
+	hosts := []Host{}
+	query := bson.M{
 		bootstrapKey: bson.M{
 			"$exists": true,
 			"$ne":     distro.BootstrapMethodLegacySSH,
@@ -595,7 +596,14 @@ func NeedsNewAgentMonitorFlagSet() db.Q {
 		ParentIDKey:             bson.M{"$exists": false},
 		RunningTaskKey:          bson.M{"$exists": false},
 		NeedsNewAgentMonitorKey: true,
-	})
+	}
+
+	err := db.FindAll(Collection, query, db.NoProjection, db.NoSort, db.NoSkip, db.NoLimit, &hosts)
+	if adb.ResultsNotFound(err) {
+		return nil, nil
+	}
+
+	return hosts, err
 }
 
 // Removes host intents that have been been uninitialized for more than 3

@@ -668,14 +668,14 @@ func PopulateAgentMonitorDeployJobs(env evergreen.Environment) amboy.QueueOperat
 			return errors.WithStack(err)
 		}
 
-		hosts, err := host.Find(host.NeedsNewAgentMonitorFlagSet())
-		grip.Error(message.WrapError(err, message.Fields{
-			"operation": "background task creation",
-			"cron":      agentMonitorDeployJobName,
-			"impact":    "agent monitors cannot start",
-			"message":   "problem finding hosts that need a new agent",
-		}))
+		hosts, err := host.Find(host.FindByNeedsNewAgentMonitor())
 		if err != nil {
+			grip.Error(message.WrapError(err, message.Fields{
+				"operation": "background task creation",
+				"cron":      agentMonitorDeployJobName,
+				"impact":    "agent monitors cannot start",
+				"message":   "problem finding hosts that need a new agent",
+			}))
 			return errors.WithStack(err)
 		}
 
