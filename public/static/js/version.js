@@ -192,21 +192,13 @@ mciModule.controller('VersionController', function($scope, $rootScope, $location
       return task.status == "success" || task.status == "failed"
     });
     var taskStartTimes = _.filter(_.pluck(tasks, "start_time").map(function(x){return new Date(x)}), nonZeroTimeFilter).sort(dateSorter);
-    var taskEndTimes = _.filter(tasks.map(function(x){
-        if(x.time_taken == 0 || +new Date(x.start_time) == +new Date(0)){
-            return new Date(0);
-        }else{
-            return new Date((+new Date(x.start_time)) + (x.time_taken/nsPerMs));
-        }
-    }), nonZeroTimeFilter).sort(dateSorter);
+    var taskEndTimes = _.filter(_.pluck(tasks, "finish_time").map(function(x){return new Date(x)}), nonZeroTimeFilter).sort(dateSorter);
 
     if(taskStartTimes.length == 0 || taskEndTimes.length == 0) {
         $scope.makeSpanMS = 0;
     }else {
         $scope.makeSpanMS = taskEndTimes[taskEndTimes.length-1] - taskStartTimes[0];
     }
-
-    $scope.makeSpanMS = taskEndTimes[taskEndTimes.length-1] - taskStartTimes[0];
 
     var availableTasks = _.filter(tasks, function(t){
       return +new Date(t.start_time) != +new Date(0);
