@@ -235,7 +235,7 @@ func (as *APIServer) EndTask(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if checkHostHealth(currentHost) {
-		if err := currentHost.SetNeedsAgentDeploy(ture); err != nil {
+		if err = currentHost.SetNeedsAgentDeploy(true); err != nil {
 			grip.Error(message.WrapErrorf(err, "error indicating host %s needs deploy", currentHost.Id))
 			gimlet.WriteResponse(w, gimlet.MakeJSONInternalErrorResponder(err))
 			return

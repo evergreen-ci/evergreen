@@ -668,7 +668,7 @@ func PopulateAgentMonitorDeployJobs(env evergreen.Environment) amboy.QueueOperat
 			return errors.WithStack(err)
 		}
 
-		hosts, err := host.Find(host.FindByNeedsNewAgentMonitor())
+		hosts, err := host.FindByNeedsNewAgentMonitor()
 		if err != nil {
 			grip.Error(message.WrapError(err, message.Fields{
 				"operation": "background task creation",
