@@ -1568,12 +1568,8 @@ func (t *Task) GetJQL(searchProjects []string) string {
 			jqlParts = append(jqlParts, fmt.Sprintf("text~\"%v\"", util.EscapeJQLReservedChars(fileParts[len(fileParts)-1])))
 		}
 	}
-	if jqlParts != nil {
-		jqlClause = strings.Join(jqlParts, " or ")
-	} else {
-		jqlClause = fmt.Sprintf("text~\"%v\"", util.EscapeJQLReservedChars(t.DisplayName))
-	}
-
+	jqlParts = append(jqlParts, fmt.Sprintf("text~\"%v\"", util.EscapeJQLReservedChars(t.DisplayName)))
+	jqlClause = strings.Join(jqlParts, " or ")
 	return fmt.Sprintf(jqlBFQuery, strings.Join(searchProjects, ", "), jqlClause)
 }
 

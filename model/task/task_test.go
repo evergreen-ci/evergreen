@@ -1167,3 +1167,26 @@ func TestFindVariantsWithTask(t *testing.T) {
 	assert.Equal(bvs[0], "bv2")
 	assert.Equal(bvs[1], "bv1")
 }
+
+func TestGetJQL(t *testing.T) {
+	testResults := []TestResult{
+		{
+			Status:   evergreen.TestFailedStatus,
+			TestFile: "firstTestFile",
+		},
+		{
+			Status:   evergreen.TestFailedStatus,
+			TestFile: "secondTestFile",
+		},
+		{
+			Status:   evergreen.TestSucceededStatus,
+			TestFile: "thirdTestFIle",
+		},
+	}
+	task := &Task{
+		LocalTestResults: testResults,
+		DisplayName:      "taskName",
+	}
+	jql := task.GetJQL([]string{"ONE", "TWO"})
+	assert.Equal(t, "(project in (ONE, TWO)) and ( text~\"firstTestFile\" or text~\"secondTestFile\" or text~\"taskName\" ) order by updatedDate desc", jql)
+}

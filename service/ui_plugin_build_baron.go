@@ -392,7 +392,7 @@ type jiraSuggest struct {
 func (js *jiraSuggest) Suggest(ctx context.Context, t *task.Task) ([]thirdparty.JiraTicket, error) {
 	jql := t.GetJQL(js.bbProj.TicketSearchProjects)
 
-	results, err := js.jiraHandler.JQLSearch(jql, 0, -1)
+	results, err := js.jiraHandler.JQLSearch(jql, 0, 100)
 	if err != nil {
 		return nil, err
 	}
