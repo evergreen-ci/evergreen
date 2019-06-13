@@ -136,6 +136,12 @@ func newDistroTaskDispatchService(distroID string, items []TaskQueueItem, ttl ti
 		t.rebuild(items)
 	}
 
+	grip.Debug(message.Fields{
+		"ticket":       "EVG-6289",
+		"function":     "newDistroTaskDispatchService",
+		"order_length": len(t.order),
+		"units_length": len(t.units),
+	})
 	return t
 }
 
@@ -154,6 +160,12 @@ func (t *basicCachedDispatcherImpl) Refresh() error {
 
 	taskQueueItems := taskQueue.Queue
 	t.rebuild(taskQueueItems)
+	grip.Debug(message.Fields{
+		"ticket":       "EVG-6289",
+		"function":     "Refresh",
+		"order_length": len(t.order),
+		"units_length": len(t.units),
+	})
 
 	return nil
 }
@@ -207,6 +219,12 @@ func (t *basicCachedDispatcherImpl) rebuild(items []TaskQueueItem) {
 
 // FindNextTask returns the next dispatchable task in the queue.
 func (t *basicCachedDispatcherImpl) FindNextTask(spec TaskSpec) *TaskQueueItem {
+	grip.Debug(message.Fields{
+		"ticket":       "EVG-6289",
+		"function":     "FindNextTask",
+		"order_length": len(t.order),
+		"units_length": len(t.units),
+	})
 	t.mu.Lock()
 	defer t.mu.Unlock()
 
@@ -230,6 +248,11 @@ func (t *basicCachedDispatcherImpl) FindNextTask(spec TaskSpec) *TaskQueueItem {
 		}
 		// If the task group is not present in the task group map, it has been dispatched.
 		// Fall through to getting a task not in that group.
+		grip.Debug(message.Fields{
+			"ticket":  "EVG-6289",
+			"message": "no tasks found for spec",
+			"spec":    spec,
+		})
 	}
 
 	var numHosts int
@@ -274,6 +297,12 @@ func (t *basicCachedDispatcherImpl) FindNextTask(spec TaskSpec) *TaskQueueItem {
 			}
 		}
 	}
+	grip.Debug(message.Fields{
+		"ticket":       "EVG-6289",
+		"message":      "no task found",
+		"order_length": len(t.order),
+		"units_length": len(t.units),
+	})
 
 	return nil
 }
