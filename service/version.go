@@ -153,7 +153,8 @@ func (uis *UIServer) versionPage(w http.ResponseWriter, r *http.Request) {
 					DisplayName: t.DisplayName,
 				}}
 
-			taskFromDb, err := task.FindOne(task.ById(t.Id).WithFields(task.FinishTimeKey, task.ExpectedDurationKey))
+			var taskFromDb *task.Task
+			taskFromDb, err = task.FindOne(task.ById(t.Id).WithFields(task.FinishTimeKey, task.ExpectedDurationKey))
 			if err != nil {
 				uis.LoggedError(w, r, http.StatusInternalServerError, err)
 				return

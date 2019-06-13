@@ -250,7 +250,8 @@ mciModule.controller('BuildViewController', function($scope, $http, $timeout, $r
     )
 
     $scope.totalTimeMS = _.reduce(_.pluck(finishedOnly, "Task"), function(x, y){return x.time_taken+y.time_taken}, 0) / nsPerMs;
-
+    };
+    
     $rootScope.$on("build_updated", function(e, newBuild){
       newBuild.PatchInfo = $scope.build.PatchInfo
       $scope.setBuild(newBuild);
