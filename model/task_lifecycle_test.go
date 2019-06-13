@@ -1172,30 +1172,10 @@ func TestTryResetTask(t *testing.T) {
 }
 
 func TestTryResetTaskWithTaskGroup(t *testing.T) {
-	require.NoError(t, db.ClearCollections(host.Collection, task.Collection, task.OldCollection, build.Collection, ProjectRefCollection, VersionCollection), t, "error clearing collection")
+	require.NoError(t, db.ClearCollections(host.Collection,
+		build.Collection, ProjectRefCollection, VersionCollection, distro.Collection), t, "error clearing collection")
 	assert := assert.New(t)
 
-	runningTask := &task.Task{
-		Id:                "say-hi",
-		Status:            evergreen.TaskStarted,
-		Activated:         true,
-		ActivatedTime:     time.Now(),
-		BuildId:           "b",
-		TaskGroup:         "my_task_group",
-		TaskGroupMaxHosts: 1,
-		Project:           "my_project",
-	}
-	otherTask := &task.Task{
-		Id:                "say-bye",
-		Status:            evergreen.TaskSucceeded,
-		Activated:         true,
-		BuildId:           "b",
-		TaskGroup:         "my_task_group",
-		TaskGroupMaxHosts: 1,
-		Project:           "my_project",
-	}
-	assert.NoError(runningTask.Insert())
-	assert.NoError(otherTask.Insert())
 	pRef := &ProjectRef{
 		Identifier:  "my_project",
 		LocalConfig: sampleProjYmlTaskGroups,
@@ -1207,27 +1187,81 @@ func TestTryResetTaskWithTaskGroup(t *testing.T) {
 		RunningTask: "say-hi",
 	}
 	assert.NoError(h.Insert())
+	b := build.Build{
+		Id:      "b",
+		Version: "abc",
+		Tasks: []build.TaskCache{
+			{
+				Id:        "say-hi",
+				Status:    evergreen.TaskStarted,
+				Activated: true,
+			},
+			{
+				Id:        "say-bye",
+				Status:    evergreen.TaskFailed,
+				Activated: true,
+			},
+		},
+	}
+	v := &Version{
+		Id:     b.Version,
+		Status: evergreen.VersionStarted,
+	}
+	assert.NoError(b.Insert())
+	assert.NoError(v.Insert())
+	d := &distro.Distro{
+		Id: "my_distro",
+		PlannerSettings: distro.PlannerSettings{
+			Version: evergreen.PlannerVersionLegacy,
+		},
+	}
+	assert.NoError(d.Insert())
 
-	for name, test := range map[string]func(*testing.T){
-		"NotFinished": func(t *testing.T) {
-			err := TryResetTask(runningTask.Id, "user", "test", nil)
+	for name, test := range map[string]func(*testing.T, *task.Task){
+		"NotFinished": func(t *testing.T, t1 *task.Task) {
+			err := TryResetTask(t1.Id, "user", "test", nil)
 			assert.Error(err)
 			assert.Contains(err.Error(), "not finished")
 		},
-		"CanResetTaskGroup": func(t *testing.T) {
-			assert.NoError(runningTask.MarkFailed())
-			assert.NoError(TryResetTask(runningTask.Id, "user", "test", nil))
+		"CanResetTaskGroup": func(t *testing.T, t1 *task.Task) {
+			assert.NoError(t1.MarkFailed())
+			assert.NoError(TryResetTask(t1.Id, "user", "test", nil))
 
 			var err error
-			runningTask, err = task.FindOneId(runningTask.Id)
+			t1, err = task.FindOneId(t1.Id)
 			assert.NoError(err)
-			assert.NotNil(runningTask)
-			assert.NotEqual(evergreen.TaskFailed, runningTask.Status)
+			assert.NotNil(t1)
+			assert.NotEqual(evergreen.TaskFailed, t1.Status)
 		},
 	} {
 		t.Run(name, func(t *testing.T) {
+			assert.NoError(db.ClearCollections(task.Collection, task.OldCollection))
+			runningTask := &task.Task{
+				Id:                "say-hi",
+				Status:            evergreen.TaskStarted,
+				Activated:         true,
+				ActivatedTime:     time.Now(),
+				BuildId:           "b",
+				TaskGroup:         "my_task_group",
+				TaskGroupMaxHosts: 1,
+				Project:           "my_project",
+				DistroId:          "my_distro",
+			}
+			otherTask := &task.Task{
+				Id:                "say-bye",
+				Status:            evergreen.TaskSucceeded,
+				Activated:         true,
+				BuildId:           "b",
+				TaskGroup:         "my_task_group",
+				TaskGroupMaxHosts: 1,
+				Project:           "my_project",
+				DistroId:          "my_distro",
+			}
+			assert.NoError(runningTask.Insert())
+			assert.NoError(otherTask.Insert())
 			assert.NoError(runningTask.MarkStart(time.Now()))
-			test(t)
+			t1 := *runningTask
+			test(t, &t1)
 		})
 	}
 }
@@ -2579,83 +2613,120 @@ func TestDisplayTaskFailedAndSucceededExecTasks(t *testing.T) {
 	assert.True(dbTask.Activated)
 }
 
-func TestCheckResetTaskGroup(t *testing.T) {
-	require.NoError(t, db.ClearCollections(host.Collection, task.Collection, task.OldCollection, build.Collection, ProjectRefCollection), t, "error clearing collection")
+func TestTryResetTaskGroup(t *testing.T) {
+	require.NoError(t, db.ClearCollections(host.Collection, build.Collection, ProjectRefCollection, VersionCollection), t, "error clearing collection")
 	assert := assert.New(t)
+	require := require.New(t)
 	var err error
 
-	runningTask := &task.Task{
-		Id:                "say-hi",
-		Status:            evergreen.TaskStarted,
-		Activated:         true,
-		ActivatedTime:     time.Now(),
-		BuildId:           "b",
-		TaskGroup:         "my_task_group",
-		TaskGroupMaxHosts: 1,
-		Project:           "my_project",
-	}
-	otherTask := &task.Task{
-		Id:                "say-bye",
-		Status:            evergreen.TaskSucceeded,
-		Activated:         true,
-		BuildId:           "b",
-		TaskGroup:         "my_task_group",
-		TaskGroupMaxHosts: 1,
-		Project:           "my_project",
-	}
-	assert.NoError(runningTask.Insert())
-	assert.NoError(otherTask.Insert())
 	pRef := &ProjectRef{
 		Identifier:  "my_project",
 		LocalConfig: sampleProjYmlTaskGroups,
 	}
 	assert.NoError(pRef.Insert())
 
+	d := &distro.Distro{
+		Id: "my_distro",
+		PlannerSettings: distro.PlannerSettings{
+			Version: evergreen.PlannerVersionLegacy,
+		},
+	}
+	v := Version{Id: "empty_version"}
+	assert.NoError(v.Insert())
 	h := &host.Host{
 		Id:          "h1",
 		RunningTask: "t",
 	}
 	assert.NoError(h.Insert())
 	b := build.Build{
-		Id: "b",
+		Id:      "b",
+		Version: "empty_version",
 		Tasks: []build.TaskCache{
-			build.TaskCache{
-				Id: "t",
-			},
+			{Id: "say-hi"},
+			{Id: "say-bye"},
 		},
 	}
 	assert.NoError(b.Insert())
 
-	for name, test := range map[string]func(*testing.T){
-		"NotFinishedTaskGroup": func(t *testing.T) {
-			err = checkResetTaskGroup(runningTask)
-			assert.Error(err)
+	for name, test := range map[string]func(*testing.T, *task.Task){
+		"NotFinishedTaskGroup": func(t *testing.T, t1 *task.Task) {
+			assert.NoError(d.Insert())
+			err = tryResetTaskGroup(t1)
+			require.Error(err)
 			assert.Contains(err.Error(), "not finished")
 		},
-		"NotResetWhenFinished": func(t *testing.T) {
-			assert.NoError(runningTask.MarkFailed())
-			runningTask.Status = evergreen.TaskFailed
-			assert.NoError(checkResetTaskGroup(runningTask))
+		"NotResetWhenFinished": func(t *testing.T, t1 *task.Task) {
+			assert.NoError(d.Insert())
+			assert.NoError(t1.MarkFailed())
+			t1.Status = evergreen.TaskFailed
+			assert.NoError(tryResetTaskGroup(t1))
 
-			runningTask, err = task.FindOneId(runningTask.Id)
+			temp, err := task.FindOneId(t1.Id)
 			assert.NoError(err)
-			assert.NotNil(runningTask)
-			assert.Equal(evergreen.TaskFailed, runningTask.Status) // not restarted
+			require.NotNil(temp)
+			assert.Equal(evergreen.TaskFailed, temp.Status) // not restarted
 		},
-		"ResetWhenFinished": func(t *testing.T) {
-			assert.NoError(runningTask.MarkFailed())
-			assert.NoError(runningTask.SetResetWhenFinished())
-			assert.NoError(checkResetTaskGroup(runningTask))
+		"ResetWhenFinishedWithLegacy": func(t *testing.T, t1 *task.Task) {
+			d.PlannerSettings.Version = evergreen.PlannerVersionLegacy
+			assert.NoError(d.Insert())
+			assert.NoError(t1.MarkFailed())
+			assert.NoError(t1.SetResetWhenFinished())
+			assert.NoError(tryResetTaskGroup(t1))
 
-			runningTask, err = task.FindOneId(runningTask.Id)
+			temp, err := task.FindOneId(t1.Id)
 			assert.NoError(err)
-			assert.NotNil(runningTask)
-			assert.NotEqual(evergreen.TaskFailed, runningTask.Status)
+			require.NotNil(temp)
+			assert.NotEqual(evergreen.TaskFailed, temp.Status)
+			assert.Empty(temp.DependsOn)
+		},
+
+		"ResetWhenFinishedWithTunable": func(t *testing.T, t1 *task.Task) {
+			d.PlannerSettings.Version = evergreen.PlannerVersionTunable
+			assert.NoError(d.Insert())
+			assert.NoError(t1.MarkFailed())
+			assert.NoError(t1.SetResetWhenFinished())
+			assert.NoError(tryResetTaskGroup(t1))
+
+			temp, err := task.FindOneId(t1.Id)
+			assert.NoError(err)
+			require.NotNil(temp)
+			assert.NotEqual(evergreen.TaskFailed, temp.Status)
+			assert.Len(temp.DependsOn, 1)
 		},
 	} {
 		t.Run(name, func(t *testing.T) {
-			assert.NoError(runningTask.MarkStart(time.Now()))
-			test(t)
+			assert.NoError(db.ClearCollections(task.Collection, task.OldCollection, distro.Collection))
+			runningTask := &task.Task{
+				Id:                "say-hi",
+				Status:            evergreen.TaskStarted,
+				Activated:         true,
+				ActivatedTime:     time.Now(),
+				BuildId:           "b",
+				TaskGroup:         "my_task_group",
+				TaskGroupMaxHosts: 1,
+				Project:           "my_project",
+				DistroId:          "my_distro",
+				DependsOn: []task.Dependency{
+					{
+						TaskId: "say-bye",
+						Status: AllStatuses,
+					},
+				},
+			}
+			otherTask := &task.Task{
+				Id:                "say-bye",
+				Status:            evergreen.TaskSucceeded,
+				Activated:         true,
+				BuildId:           "b",
+				TaskGroup:         "my_task_group",
+				TaskGroupMaxHosts: 1,
+				Project:           "my_project",
+				DistroId:          "my_distro",
+			}
+			assert.NoError(runningTask.Insert())
+			assert.NoError(otherTask.Insert())
+			t1 := *runningTask
+			test(t, &t1)
 		})
 	}
 }

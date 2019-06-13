@@ -817,7 +817,6 @@ func (t *Task) Reset() error {
 	t.DependsOn = []Dependency{}
 
 	unset := bson.M{
-		DependsOnKey:         "",
 		DetailsKey:           "",
 		ResetWhenFinishedKey: "",
 	}
