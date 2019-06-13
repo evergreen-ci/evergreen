@@ -10,6 +10,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/notification"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
+	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
@@ -82,7 +83,11 @@ func taskStatusSubformat(n int, verb string) string {
 }
 
 func appendTime(b *build.Build, txt string) string {
-	return fmt.Sprintf("%s in %s", txt, b.FinishTime.Sub(b.StartTime).String())
+	finish := b.FinishTime
+	if util.IsZeroTime(b.FinishTime) { // in case the build is actually blocked, but we are triggering the finish event
+		finish = time.Now()
+	}
+	return fmt.Sprintf("%s in %s", txt, finish.Sub(b.StartTime).String())
 }
 
 type buildTriggers struct {
