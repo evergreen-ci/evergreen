@@ -178,7 +178,7 @@ func (j *agentMonitorDeployJob) disableHost(ctx context.Context, reason string) 
 		return errors.Wrapf(err, "error terminating host %s", j.host.Id)
 	}
 
-	job := NewDecoHostNotifyJob(j.env, j.host, nil, errMsg)
+	job := NewDecoHostNotifyJob(j.env, j.host, nil, reason)
 	grip.Error(message.WrapError(j.env.RemoteQueue().Put(ctx, job), message.Fields{
 		"message": fmt.Sprintf("tried %d times to start agent monitor on host", agentMonitorPutRetries),
 		"host":    j.host.Id,
