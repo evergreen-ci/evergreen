@@ -235,9 +235,8 @@ func (as *APIServer) EndTask(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if checkHostHealth(currentHost) {
-		// set the needs new agent flag on the host
-		if err := currentHost.SetNeedsNewAgent(true); err != nil {
-			grip.Error(message.WrapErrorf(err, "error indicating host %s needs new agent", currentHost.Id))
+		if err = currentHost.SetNeedsAgentDeploy(true); err != nil {
+			grip.Error(message.WrapErrorf(err, "error indicating host %s needs deploy", currentHost.Id))
 			gimlet.WriteResponse(w, gimlet.MakeJSONInternalErrorResponder(err))
 			return
 		}
@@ -454,7 +453,7 @@ func (as *APIServer) NextTask(w http.ResponseWriter, r *http.Request) {
 	var response apimodels.NextTaskResponse
 	var err error
 	if checkHostHealth(h) {
-		if err = h.SetNeedsNewAgent(true); err != nil {
+		if err = h.SetNeedsAgentDeploy(true); err != nil {
 			grip.Error(message.WrapError(err, message.Fields{
 				"host":      h.Id,
 				"operation": "next_task",

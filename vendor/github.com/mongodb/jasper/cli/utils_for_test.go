@@ -76,7 +76,7 @@ func mockCLIContext(service string, port int) *cli.Context {
 	_ = flags.String(serviceFlagName, service, "")
 	_ = flags.Int(portFlagName, port, "")
 	_ = flags.String(hostFlagName, "localhost", "")
-	_ = flags.String(certFilePathFlagName, "", "")
+	_ = flags.String(credsFilePathFlagName, "", "")
 	return cli.NewContext(nil, flags, nil)
 }
 
@@ -219,7 +219,7 @@ func makeTestRESTServiceAndClient(ctx context.Context, t *testing.T, port int, m
 // makeTestRPCService creates an RPC service for testing purposes only on
 // localhost with no credentials.
 func makeTestRPCService(ctx context.Context, t *testing.T, port int, manager jasper.Manager) jasper.CloseFunc {
-	closeService, err := newRPCService(ctx, "localhost", port, manager, "", "")
+	closeService, err := newRPCService(ctx, "localhost", port, manager, "")
 	require.NoError(t, err)
 	return closeService
 }

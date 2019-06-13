@@ -592,7 +592,9 @@ func PopulateAgentDeployJobs(env evergreen.Environment) amboy.QueueOperation {
 			return nil
 		}
 
-		err = host.UpdateAll(host.LastCommunicationTimeElapsed(time.Now()), bson.M{"$set": bson.M{host.NeedsNewAgentKey: true}})
+		err = host.UpdateAll(host.LastCommunicationTimeElapsed(time.Now()), bson.M{"$set": bson.M{
+			host.NeedsNewAgentKey: true,
+		}})
 		if err != nil && !adb.ResultsNotFound(err) {
 			grip.Error(message.WrapError(err, message.Fields{
 				"operation": "background task creation",
@@ -624,6 +626,65 @@ func PopulateAgentDeployJobs(env evergreen.Environment) amboy.QueueOperation {
 		// concurrently. If we didn't set one or the other of those fields, then
 		for _, h := range hosts {
 			catcher.Add(queue.Put(ctx, NewAgentDeployJob(env, h, ts)))
+		}
+
+		return catcher.Resolve()
+	}
+
+}
+
+// PopulateAgentMonitorDeployJobs enqueues the jobs to deploy the agent monitor
+// to any host in which: (1) the agent monitor has not been deployed yet, (2)
+// the agent's last communication time has exceeded the threshold or (3) has
+// already been marked as needing to redeploy a new agent monitor.
+func PopulateAgentMonitorDeployJobs(env evergreen.Environment) amboy.QueueOperation {
+	return func(ctx context.Context, queue amboy.Queue) error {
+		flags, err := evergreen.GetServiceFlags()
+		if err != nil {
+			return errors.WithStack(err)
+		}
+
+		if flags.AgentStartDisabled {
+			grip.InfoWhen(sometimes.Percent(evergreen.DegradedLoggingPercent), message.Fields{
+				"message": "agent start disabled",
+				"impact":  "agents are not deployed",
+				"mode":    "degraded",
+			})
+			return nil
+		}
+
+		// The agent monitor deploy job will atomically clear the
+		// NeedsNewAgentMonitor field to prevent other jobs from running
+		// concurrently.
+		if err = host.UpdateAll(host.LastCommunicationTimeElapsed(time.Now()), bson.M{"$set": bson.M{
+			host.NeedsNewAgentMonitorKey: true,
+		}}); err != nil && !adb.ResultsNotFound(err) {
+			grip.Error(message.WrapError(err, message.Fields{
+				"operation": "background task creation",
+				"cron":      agentMonitorDeployJobName,
+				"impact":    "agent monitors cannot start",
+				"message":   "problem updating hosts with elapsed last communication time",
+			}))
+			return errors.WithStack(err)
+		}
+
+		hosts, err := host.FindByNeedsNewAgentMonitor()
+		if err != nil {
+			grip.Error(message.WrapError(err, message.Fields{
+				"operation": "background task creation",
+				"cron":      agentMonitorDeployJobName,
+				"impact":    "agent monitors cannot start",
+				"message":   "problem finding hosts that need a new agent",
+			}))
+			return errors.WithStack(err)
+		}
+
+		// 3x / minute
+		ts := util.RoundPartOfMinute(20).Format(tsFormat)
+		catcher := grip.NewBasicCatcher()
+
+		for _, h := range hosts {
+			catcher.Add(queue.Put(ctx, NewAgentMonitorDeployJob(env, h, ts)))
 		}
 
 		return catcher.Resolve()

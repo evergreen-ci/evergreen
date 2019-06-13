@@ -3,6 +3,7 @@ package host
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
 	"os/exec"
 	"path/filepath"
@@ -177,7 +178,7 @@ func (h *Host) ForceReinstallJasperCommand(config evergreen.JasperConfig) string
 }
 
 func (h *Host) jasperServiceCommand(config evergreen.JasperConfig, subCmd string, args ...string) string {
-	binaryPath := filepath.Join(h.Distro.CuratorDir, h.jasperExtractedFileName(config))
+	binaryPath := filepath.Join(h.Distro.CuratorDir, h.jasperBinaryFileName(config))
 	cmd := fmt.Sprintf("%s jasper service %s rpc %s", binaryPath, subCmd, strings.Join(args, " "))
 	// Jasper service commands need elevated privileges to execute. On Windows,
 	// this is assuming that the command is already being run by Administrator.
@@ -195,7 +196,7 @@ func (h *Host) FetchJasperCommand(config evergreen.JasperConfig) string {
 
 func (h *Host) fetchJasperCommands(config evergreen.JasperConfig) []string {
 	downloadedFile := h.jasperDownloadedFileName(config)
-	extractedFile := h.jasperExtractedFileName(config)
+	extractedFile := h.jasperBinaryFileName(config)
 	return []string{
 		fmt.Sprintf("cd \"%s\"", h.Distro.CuratorDir),
 		fmt.Sprintf("curl -LO '%s/%s'", config.URL, downloadedFile),
@@ -205,7 +206,7 @@ func (h *Host) fetchJasperCommands(config evergreen.JasperConfig) []string {
 	}
 }
 
-// FetchJasperCommandsWithPath is the same as FetchJasperCommand but sets the
+// FetchJasperCommandWithPath is the same as FetchJasperCommand but sets the
 // PATH variable to path for each command.
 func (h *Host) FetchJasperCommandWithPath(config evergreen.JasperConfig, path string) string {
 	cmds := h.fetchJasperCommands(config)
@@ -220,7 +221,7 @@ func (h *Host) jasperDownloadedFileName(config evergreen.JasperConfig) string {
 	return fmt.Sprintf("%s-%s-%s-%s.tar.gz", config.DownloadFileName, os, arch, config.Version)
 }
 
-func (h *Host) jasperExtractedFileName(config evergreen.JasperConfig) string {
+func (h *Host) jasperBinaryFileName(config evergreen.JasperConfig) string {
 	if h.Distro.IsWindows() {
 		return config.BinaryName + ".exe"
 	}
@@ -248,4 +249,38 @@ func (h *Host) BootstrapScript(config evergreen.JasperConfig) string {
 		return strings.Join(commands, "\r\n")
 	}
 	return strings.Join([]string{"#!/bin/bash", h.FetchJasperCommand(config), h.ForceReinstallJasperCommand(config)}, "\n")
+}
+
+// RunSSHJasperRequest runs the command to make a request to the host's
+// Jasper service over SSH. It invoking the subcommand subCmd with the given
+// request input.
+func (h *Host) RunSSHJasperRequest(ctx context.Context, env evergreen.Environment, subCmd string, input interface{}, sshOptions []string) (string, error) {
+	inputBytes, err := json.Marshal(input)
+	if err != nil {
+		return "", err
+	}
+
+	config := env.Settings().JasperConfig
+	binaryPath := h.jasperBinaryFileName(config)
+	port := config.Port
+	if port == 0 {
+		port = evergreen.DefaultJasperPort
+	}
+
+	output := &util.CappedWriter{
+		Buffer:   &bytes.Buffer{},
+		MaxBytes: 1024 * 1024, // 1MB
+	}
+
+	hostInfo, err := h.GetSSHInfo()
+	if err != nil {
+		return "", errors.WithStack(err)
+	}
+
+	err = env.JasperManager().CreateCommand(ctx).Host(hostInfo.Hostname).User(hostInfo.User).
+		ExtendSSHArgs("-p", hostInfo.Port, "-t", "-t").ExtendSSHArgs(sshOptions...).
+		SetOutputWriter(output).RedirectErrorToOutput(true).
+		Append(fmt.Sprintf("%s jasper client %s --service=rpc --port=%d <<EOF\n%s\nEOF", binaryPath, subCmd, port, inputBytes)).
+		Run(ctx)
+	return output.String(), errors.Wrap(err, "error making Jasper request over SSH")
 }

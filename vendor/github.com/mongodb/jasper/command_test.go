@@ -11,7 +11,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/level"
 	"github.com/mongodb/grip/send"
 	"github.com/stretchr/testify/assert"
@@ -100,6 +99,94 @@ func TestCommandImplementation(t *testing.T) {
 							err := runFunc(&cmd, ctx)
 							assert.Error(t, err)
 							assert.True(t, strings.Contains(err.Error(), "exit status"))
+						},
+						"SudoFunctions": func(ctx context.Context, t *testing.T, cmd Command) {
+							user := "user"
+							sudoUser := "root"
+
+							sudoCmd := "sudo"
+							sudoAsCmd := fmt.Sprintf("sudo -u %s", sudoUser)
+
+							cmd1 := strings.Join([]string{echo, arg1}, " ")
+							cmd2 := strings.Join([]string{echo, arg2}, " ")
+
+							for commandType, isRemote := range map[string]bool{
+								"Remote": true,
+								"Local":  false,
+							} {
+								t.Run(commandType, func(t *testing.T) {
+									for subTestName, subTestCase := range map[string]func(ctx context.Context, t *testing.T, cmd Command){
+										"VerifySudoCmd": func(ctx context.Context, t *testing.T, cmd Command) {
+											cmd.Sudo(true)
+											assert.Equal(t, strings.Join(cmd.sudoCmd(), " "), sudoCmd)
+										},
+										"VerifySudoCmdWithUser": func(ctx context.Context, t *testing.T, cmd Command) {
+											cmd.SudoAs(sudoUser)
+											assert.Equal(t, strings.Join(cmd.sudoCmd(), " "), sudoAsCmd)
+										},
+										"NoSudo": func(ctx context.Context, t *testing.T, cmd Command) {
+											cmd.Append(cmd1)
+
+											allOpts, err := cmd.getCreateOpts(ctx)
+											require.NoError(t, err)
+											require.Len(t, allOpts, 1)
+											args := strings.Join(allOpts[0].Args, " ")
+
+											assert.NotContains(t, args, sudoCmd)
+										},
+										"Sudo": func(ctx context.Context, t *testing.T, cmd Command) {
+											checkArgs := func(args []string, expected string) {
+												argsStr := strings.Join(args, " ")
+												assert.Contains(t, argsStr, sudoCmd)
+												assert.NotContains(t, argsStr, sudoAsCmd)
+												assert.Contains(t, argsStr, expected)
+											}
+											cmd.Sudo(true).Append(cmd1)
+
+											allOpts, err := cmd.getCreateOpts(ctx)
+											require.NoError(t, err)
+											require.Len(t, allOpts, 1)
+											checkArgs(allOpts[0].Args, cmd1)
+
+											cmd.Append(cmd2)
+											allOpts, err = cmd.getCreateOpts(ctx)
+											require.NoError(t, err)
+											require.Len(t, allOpts, 2)
+
+											checkArgs(allOpts[0].Args, cmd1)
+											checkArgs(allOpts[1].Args, cmd2)
+										},
+										"SudoAs": func(ctx context.Context, t *testing.T, cmd Command) {
+											cmd.SudoAs(sudoUser).Add([]string{echo, arg1})
+											checkArgs := func(args []string, expected string) {
+												argsStr := strings.Join(args, " ")
+												assert.Contains(t, argsStr, sudoAsCmd)
+												assert.Contains(t, argsStr, expected)
+											}
+
+											allOpts, err := cmd.getCreateOpts(ctx)
+											require.NoError(t, err)
+											require.Len(t, allOpts, 1)
+											checkArgs(allOpts[0].Args, cmd1)
+
+											cmd.Add([]string{echo, arg2})
+											allOpts, err = cmd.getCreateOpts(ctx)
+											require.NoError(t, err)
+											require.Len(t, allOpts, 2)
+											checkArgs(allOpts[0].Args, cmd1)
+											checkArgs(allOpts[1].Args, cmd2)
+										},
+									} {
+										t.Run(subTestName, func(t *testing.T) {
+											cmd = *NewCommand().ProcConstructor(cmd.makep)
+											if isRemote {
+												cmd.User(user).Host("localhost")
+											}
+											subTestCase(ctx, t, cmd)
+										})
+									}
+								})
+							}
 						},
 						"InvalidArgsCommandErrors": func(ctx context.Context, t *testing.T, cmd Command) {
 							cmd.Add([]string{})
@@ -248,7 +335,6 @@ func TestCommandImplementation(t *testing.T) {
 									require.NoError(t, runFunc(&cmd, ctx))
 									out, err := sender.GetString()
 									require.NoError(t, err)
-									grip.Debugf("out: %v", out)
 									checkOutput(t, true, strings.Join(out, "\n"), "[p=info]:", arg1, arg2, lsErrorMsg)
 								},
 							} {
