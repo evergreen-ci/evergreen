@@ -460,7 +460,9 @@ func getTaskDependencies(t *task.Task) ([]uiDep, string, error) {
 	if err != nil {
 		return nil, "", err
 	}
-
+	if status == "runnable" {
+		status = ""
+	}
 	return uiDependencies, status, nil
 }
 

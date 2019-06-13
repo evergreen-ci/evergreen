@@ -105,38 +105,49 @@ functions:
 	assert.NoError(h.Insert())
 
 	t1 := &task.Task{
-		Id:                "t1",
+		Id:                "t1-etc",
+		DisplayName:       "t1",
 		Status:            evergreen.TaskSucceeded,
 		TaskGroup:         "my_task_group",
 		TaskGroupMaxHosts: 1,
 		Project:           "my_project",
+		Version:           "my_version",
+		BuildVariant:      "a_variant",
 	}
 	t2 := &task.Task{
-		Id:                "t2",
+		Id:                "t2-etc",
+		DisplayName:       "t2",
 		Status:            evergreen.TaskStarted,
 		TaskGroup:         "my_task_group",
 		TaskGroupMaxHosts: 1,
 		Project:           "my_project",
+		Version:           "my_version",
+		BuildVariant:      "a_variant",
 	}
 	t3 := &task.Task{
-		Id:                "t3",
+		Id:                "t3-etc",
+		DisplayName:       "t3",
 		Status:            evergreen.TaskUnstarted,
 		TaskGroup:         "my_task_group",
 		TaskGroupMaxHosts: 1,
 		Project:           "my_project",
-
+		Version:           "my_version",
+		BuildVariant:      "a_variant",
 		DependsOn: []task.Dependency{
-			{TaskId: "t2", Status: evergreen.TaskSucceeded},
+			{TaskId: "t2-etc", Status: evergreen.TaskSucceeded},
 		},
 	}
 	t4 := &task.Task{
-		Id:                "t4",
+		Id:                "t4-etc",
+		DisplayName:       "t4",
 		Status:            evergreen.TaskUnstarted,
 		TaskGroup:         "my_task_group",
 		TaskGroupMaxHosts: 1,
 		Project:           "my_project",
+		Version:           "my_version",
+		BuildVariant:      "a_variant",
 		DependsOn: []task.Dependency{
-			{TaskId: "t2", Status: evergreen.TaskSucceeded},
+			{TaskId: "t2-etc", Status: evergreen.TaskSucceeded},
 		},
 	}
 

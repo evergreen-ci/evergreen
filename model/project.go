@@ -18,7 +18,7 @@ import (
 	"github.com/mongodb/anser/bsonutil"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
-	ignore "github.com/sabhiram/go-git-ignore"
+	"github.com/sabhiram/go-git-ignore"
 )
 
 const (
@@ -839,6 +839,9 @@ func (m *Module) GetRepoOwnerAndName() (string, string) {
 
 // FindTaskGroup returns a specific task group from a project
 func (p *Project) FindTaskGroup(name string) *TaskGroup {
+	if p == nil {
+		return nil
+	}
 	for _, tg := range p.TaskGroups {
 		if tg.Name == name {
 			return &tg
@@ -892,9 +895,12 @@ func GetTasksInTaskGroup(t *task.Task) ([]task.Task, error) {
 		return nil, errors.Errorf("problem finding task group '%s'", t.TaskGroup)
 	}
 
-	tasks, err := task.Find(task.ByIds(tg.Tasks))
+	tasks, err := task.Find(task.ByVersionsForNameAndVariant([]string{t.Version}, tg.Tasks, t.BuildVariant))
 	if err != nil {
 		return nil, errors.Wrapf(err, "can't get tasks for task group '%s'", t.TaskGroup)
+	}
+	if len(tasks) == 0 {
+		return nil, errors.New("no tasks to restart")
 	}
 	return tasks, nil
 }
@@ -912,7 +918,6 @@ func FindProjectFromTask(t *task.Task) (*Project, error) {
 	if err != nil {
 		return nil, errors.Wrapf(err, "problem finding project config for %s", t.Project)
 	}
-
 	return p, nil
 }
 
