@@ -33,6 +33,20 @@ type ProjectChangeEvent struct {
 	After  ProjectSettingsEvent `bson:"after" json:"after"`
 }
 
+type ProjectChangeEvents []ProjectChangeEventEntry
+
+func (p *ProjectChangeEvents) RedactPrivateVars() {
+	for _, event := range *p {
+		changeEvent, isChangeEvent := event.Data.(*ProjectChangeEvent)
+		if !isChangeEvent {
+			continue
+		}
+		changeEvent.After.Vars.RedactPrivateVars()
+		changeEvent.Before.Vars.RedactPrivateVars()
+		event.EventLogEntry.Data = changeEvent
+	}
+}
+
 type ProjectChangeEventEntry struct {
 	event.EventLogEntry
 }
@@ -78,18 +92,18 @@ func (e *ProjectChangeEventEntry) SetBSON(raw mgobson.Raw) error {
 }
 
 // Project Events queries
-func MostRecentProjectEvents(id string, n int) ([]ProjectChangeEventEntry, error) {
+func MostRecentProjectEvents(id string, n int) (ProjectChangeEvents, error) {
 	filter := event.ResourceTypeKeyIs(EventResourceTypeProject)
 	filter[event.ResourceIdKey] = id
 
 	query := db.Query(filter).Sort([]string{"-" + event.TimestampKey}).Limit(n)
-	events := []ProjectChangeEventEntry{}
+	events := ProjectChangeEvents{}
 	err := db.FindAllQ(event.AllLogCollection, query, &events)
 
 	return events, err
 }
 
-func ProjectEventsBefore(id string, before time.Time, n int) ([]ProjectChangeEventEntry, error) {
+func ProjectEventsBefore(id string, before time.Time, n int) (ProjectChangeEvents, error) {
 	filter := event.ResourceTypeKeyIs(EventResourceTypeProject)
 	filter[event.ResourceIdKey] = id
 	filter[event.TimestampKey] = bson.M{
@@ -97,7 +111,7 @@ func ProjectEventsBefore(id string, before time.Time, n int) ([]ProjectChangeEve
 	}
 
 	query := db.Query(filter).Sort([]string{"-" + event.TimestampKey}).Limit(n)
-	events := []ProjectChangeEventEntry{}
+	events := ProjectChangeEvents{}
 	err := db.FindAllQ(event.AllLogCollection, query, &events)
 
 	return events, err
