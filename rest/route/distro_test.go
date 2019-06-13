@@ -1173,7 +1173,7 @@ func (s *DistroPatchByIDSuite) TestValidFindAndReplaceFullDocument() {
 	s.Equal(model.ToAPIString(distro.CloneMethodLegacySSH), apiDistro.CloneMethod)
 	s.Equal(model.ToAPIString("/usr/bin/bash"), apiDistro.ShellPath)
 	s.Equal(model.ToAPIString("/usr/local/bin"), apiDistro.CuratorDir)
-	s.Equal(model.ToAPIString("/etc/credentials", apiDistro.JasperCredentialsPath))
+	s.Equal(model.ToAPIString("/etc/credentials"), apiDistro.JasperCredentialsPath)
 	s.Equal(model.ToAPIString("/usr/bin"), apiDistro.ClientDir)
 	s.Equal(apiDistro.User, model.ToAPIString("~root"))
 	s.Equal(apiDistro.SSHKey, model.ToAPIString("~SSH string"))
