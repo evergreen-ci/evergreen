@@ -87,7 +87,7 @@ func (j *agentMonitorDeployJob) Run(ctx context.Context) {
 		return
 	}
 
-	if err := j.populateIfUnset(); err != nil {
+	if err = j.populateIfUnset(); err != nil {
 		j.AddError(err)
 		return
 	}
