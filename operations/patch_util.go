@@ -61,7 +61,6 @@ type patchParams struct {
 	ShowSummary bool
 	Uncommitted bool
 	Ref         string
-	CommitQueue bool
 }
 
 type patchSubmission struct {
@@ -73,7 +72,6 @@ type patchSubmission struct {
 	variants    string
 	tasks       []string
 	finalize    bool
-	commitQueue bool
 }
 
 func (p *patchParams) createPatch(ac *legacyClient, conf *ClientSettings, diffData *localDiff) (*patch.Patch, error) {
@@ -105,7 +103,6 @@ func (p *patchParams) createPatch(ac *legacyClient, conf *ClientSettings, diffDa
 		tasks:       p.Tasks,
 		finalize:    p.Finalize,
 		alias:       p.Alias,
-		commitQueue: p.CommitQueue,
 	}
 
 	newPatch, err := ac.PutPatch(patchSub)
