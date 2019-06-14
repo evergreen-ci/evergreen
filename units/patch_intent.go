@@ -110,6 +110,15 @@ func (j *patchIntentProcessor) Run(ctx context.Context) {
 				j.gitHubError = OtherErrors
 			}
 			j.sendGitHubErrorStatus(patchDoc)
+			grip.Error(message.WrapError(err, message.Fields{
+				"message":      "sent github status error",
+				"github_error": j.gitHubError,
+				"owner":        patchDoc.GithubPatchData.BaseOwner,
+				"repo":         patchDoc.GithubPatchData.BaseRepo,
+				"pr_number":    patchDoc.GithubPatchData.PRNumber,
+				"commit":       patchDoc.GithubPatchData.HeadHash,
+				"patch_id":     patchDoc.Id.Hex(),
+			}))
 		}
 		j.AddError(err)
 		return
