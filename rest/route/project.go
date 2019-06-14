@@ -101,7 +101,7 @@ func (p *projectGetHandler) Run(ctx context.Context) gimlet.Responder {
 	projects = projects[:lastIndex]
 
 	for _, proj := range projects {
-		projectModel := &model.APIProject{}
+		projectModel := &model.APIProjectRef{}
 		if err = projectModel.BuildFromService(proj); err != nil {
 			return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
 				Message:    "problem converting project document",
@@ -482,7 +482,7 @@ func (h *projectIDGetHandler) Run(ctx context.Context) gimlet.Responder {
 		return gimlet.MakeJSONErrorResponder(err)
 	}
 
-	projectModel := &model.APIProject{}
+	projectModel := &model.APIProjectRef{}
 
 	if err = projectModel.BuildFromService(project); err != nil {
 		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
