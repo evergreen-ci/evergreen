@@ -33,6 +33,7 @@ mciModule.controller('PerformanceDiscoveryCtrl', function(
     options: [],
     selected: null,
   }
+  vm.excludeCanaries = true;
 
   var projectId = $window.project
 
@@ -81,6 +82,10 @@ mciModule.controller('PerformanceDiscoveryCtrl', function(
 
   $scope.$watch('$ctrl.toSelect.selected', function(item) {
     item && vm.updateData()
+  })
+
+  $scope.$watch('$ctrl.excludeCanaries', function(item) {
+    vm.gridApi.grid.refresh();
   })
 
   let oldFromVersion, oldToVersion;
@@ -305,6 +310,15 @@ mciModule.controller('PerformanceDiscoveryCtrl', function(
         field: 'test',
         _link: row => '/task/' + row.entity.taskId + '##' + row.entity.test,
         cellTemplate: 'ui-grid-link',
+        filter: {
+          noTerm: true,
+          condition: function(searchTerm, cellValue) {
+            if(vm.excludeCanaries && cellValue.match(/^(canary_.*|fio_.*|iperf.*|NetworkBandwidth)$/)) {
+              return false;
+            } 
+            return cellValue.match(new RegExp(searchTerm));
+          }
+        }
       },
       gridUtil.multiselectColDefMixin({
         name: 'Threads',
