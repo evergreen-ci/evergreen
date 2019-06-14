@@ -12,7 +12,7 @@
 {{end}}
 
 {{define "title"}}
-    {{ if eq patch.Alias "__commit_queue" }}
+    {{ if eq .ProjectData.Patch.Alias "__commit_queue" }}
 Evergreen - Patch Is On Queue
   {{ else }}
 Evergreen - Configure Patch
@@ -32,7 +32,7 @@ Evergreen - Configure Patch
       <h3>This patch is at position [[commitQueuePosition]] in the commit queue.</h3>
     </div>
   </div>
-  <div ng-show="patch.Alias == __commit_queue">
+  <div ng-show="patch.Alias != __commit_queue">
     <div class="variants-drawer" id="drawer">
       <div class="col-xs-3 variants-list-panel">
         <div class="list-group small noselect variants-list-container">
