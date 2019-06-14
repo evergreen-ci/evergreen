@@ -227,43 +227,18 @@ mciModule.controller('BuildViewController', function($scope, $http, $timeout, $r
 
     $scope.lastUpdate = mciTime.now();
 
-    //calculate makespan and total processing time for the build
+    $scope.makeSpanMS = build.makespan / nsPerMs;
+    $scope.totalTimeMS = build.time_taken / nsPerMs;
+  };
 
-    // filter function to remove zero times from a list of times
-    var nonZeroTimeFilter = function(y){return (+y) != (+new Date(0))}
-
-    // extract the start an end times for the tasks in the build, discarding the zero times
-    var taskStartTimes = _.filter(build.Tasks.map(function(x){return new Date(x.Task.start_time)}).sort(dateSorter), nonZeroTimeFilter)
-    var taskEndTimes = _.filter(build.Tasks.map(function(x){return  new Date(x.Task.finish_time)}).sort(dateSorter), nonZeroTimeFilter)
-
-    //  calculate the makespan by taking the difference of the first start time and last end time
-    if(taskStartTimes.length == 0 || taskEndTimes.length == 0) {
-      $scope.makeSpanMS = 0
-    }else {
-      $scope.makeSpanMS = taskEndTimes[taskEndTimes.length-1] - taskStartTimes[0]
-    }
-
-    var finishedOnly = _.filter(build.Tasks,
-      function(x){
-        return new Date(x.Task.start_time) > new Date(0) && new Date(x.Task.finish_time) > new Date(0)
-      }
-    )
-
-
-    $scope.totalTimeMS = _.reduce(
-      _.map(finishedOnly,
-        function(x) {return x.Task.time_taken}), 
-      function(x, y){return x+y}, 0) / nsPerMs;
-    };
-
-    $rootScope.$on("build_updated", function(e, newBuild){
-      newBuild.PatchInfo = $scope.build.PatchInfo
-      $scope.setBuild(newBuild);
-    });
-
-
-    $scope.setBuild($window.build);
-
-    $scope.plugins = $window.plugins
-
+  $rootScope.$on("build_updated", function(e, newBuild){
+    newBuild.PatchInfo = $scope.build.PatchInfo
+    $scope.setBuild(newBuild);
   });
+
+
+  $scope.setBuild($window.build);
+
+  $scope.plugins = $window.plugins
+
+});

@@ -153,30 +153,24 @@ func (uis *UIServer) versionPage(w http.ResponseWriter, r *http.Request) {
 					DisplayName: t.DisplayName,
 				}}
 
-			var taskFromDb *task.Task
-			taskFromDb, err = task.FindOne(task.ById(t.Id).WithFields(task.FinishTimeKey, task.ExpectedDurationKey))
-			if err != nil {
-				uis.LoggedError(w, r, http.StatusInternalServerError, err)
-				return
-			}
-			if taskFromDb == nil {
-				grip.Error(message.Fields{
+			// TODO: this loop would probably work better
+			// as an aggregation.
+			if t.Status == evergreen.TaskStarted {
+				var taskFromDb *task.Task
+				taskFromDb, err = task.FindOne(task.ById(t.Id))
+				if err != nil {
+					uis.LoggedError(w, r, http.StatusInternalServerError, err)
+				} else if taskFromDb != nil {
+					uiT.ExpectedDuration = taskFromDb.ExpectedDuration
+				}
+
+				grip.ErrorWhen(taskFromDb == nil, message.Fields{
 					"task_id": t.Id,
 					"version": projCtx.Version.Id,
 					"request": gimlet.GetRequestID(ctx),
 					"message": "version references task that does not exist",
 				})
-				uis.LoggedError(w, r, http.StatusInternalServerError, err)
-				return
 			}
-
-			if t.Status == evergreen.TaskStarted {
-				uiT.ExpectedDuration = taskFromDb.ExpectedDuration
-			}
-			if evergreen.IsFinishedTaskStatus(t.Status) {
-				uiT.Task.FinishTime = taskFromDb.FinishTime
-			}
-
 			uiTasks = append(uiTasks, uiT)
 			buildAsUI.TaskStatusCount.IncrementStatus(t.Status, t.StatusDetails)
 			if t.Status == evergreen.TaskFailed {
@@ -195,6 +189,12 @@ func (uis *UIServer) versionPage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	versionAsUI.Builds = uiBuilds
+
+	versionAsUI.TimeTaken, versionAsUI.Makespan, err = projCtx.Version.GetTimeSpent()
+	if err != nil {
+		uis.LoggedError(w, r, http.StatusInternalServerError, err)
+		return
+	}
 
 	pluginContext := projCtx.ToPluginContext(uis.Settings, currentUser)
 	pluginContent := getPluginDataAndHTML(uis, plugin.VersionPage, pluginContext)
