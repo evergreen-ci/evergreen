@@ -2673,6 +2673,10 @@ func TestTryResetTaskGroup(t *testing.T) {
 		"NotFinishedTaskGroup": func(t *testing.T, t1 *task.Task) {
 			assert.NoError(d.Insert())
 			err = tryResetTaskGroup(t1)
+			require.NoError(err)
+
+			assert.NoError(t1.SetResetWhenFinished())
+			err = tryResetTaskGroup(t1)
 			require.Error(err)
 			assert.Contains(err.Error(), "not finished")
 		},
@@ -2739,7 +2743,7 @@ func TestTryResetTaskGroup(t *testing.T) {
 			}
 			otherTask := &task.Task{
 				Id:                "say-bye-123",
-				DisplayName:       "s ay-bye",
+				DisplayName:       "say-bye",
 				Status:            evergreen.TaskSucceeded,
 				Activated:         true,
 				BuildId:           "b",
