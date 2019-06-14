@@ -278,7 +278,7 @@ func (s *ProjectGetByIDSuite) TestRunExistingId() {
 	s.NotNil(resp.Data())
 	s.Equal(resp.Status(), http.StatusOK)
 
-	s.Equal(model.ToAPIString("dimoxinil"), resp.Data().(*model.APIProject).Identifier)
+	s.Equal(model.ToAPIString("dimoxinil"), resp.Data().(*model.APIProjectRef).Identifier)
 }
 
 ////////////////////////////////////////////////////////////////////////
@@ -337,7 +337,7 @@ func (s *ProjectGetSuite) TestPaginatorShouldReturnResultsIfDataExists() {
 	payload := resp.Data().([]interface{})
 
 	s.Len(payload, 1)
-	s.Equal(model.ToAPIString("projectC"), (payload[0]).(*model.APIProject).Identifier)
+	s.Equal(model.ToAPIString("projectC"), (payload[0]).(*model.APIProjectRef).Identifier)
 
 	pageData := resp.Pages()
 	s.Nil(pageData.Prev)
@@ -355,8 +355,8 @@ func (s *ProjectGetSuite) TestPaginatorShouldReturnEmptyResultsIfDataIsEmpty() {
 	payload := resp.Data().([]interface{})
 
 	s.Len(payload, 6)
-	s.Equal(model.ToAPIString("projectA"), (payload[0]).(*model.APIProject).Identifier, payload[0])
-	s.Equal(model.ToAPIString("projectB"), (payload[1]).(*model.APIProject).Identifier, payload[1])
+	s.Equal(model.ToAPIString("projectA"), (payload[0]).(*model.APIProjectRef).Identifier, payload[0])
+	s.Equal(model.ToAPIString("projectB"), (payload[1]).(*model.APIProjectRef).Identifier, payload[1])
 
 	s.Nil(resp.Pages())
 }
