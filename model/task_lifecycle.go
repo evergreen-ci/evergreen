@@ -232,7 +232,7 @@ func TryResetTask(taskId, user, origin string, detail *apimodels.TaskEndDetail) 
 		}
 		// want to restart all tasks in the task group, if it's finished
 		if err = tryResetTaskGroup(t); err != nil {
-			return errors.Wrapf(err, "error resetting task group for task '%v'", t.Id)
+			return errors.Wrapf(err, "error resetting task group for task '%s'", t.Id)
 		}
 	} else {
 		if err = resetTask(t.Id, user); err != nil {
@@ -556,10 +556,6 @@ func UpdateBuildAndVersionStatusForTask(taskId string, updates *StatusChanges) e
 	if err != nil {
 		return errors.WithStack(err)
 	}
-	tasksWithDeps, err := task.FindAllTasksFromVersionWithDependencies(t.Version)
-	if err != nil {
-		return errors.Wrap(err, "error finding tasks with dependencies")
-	}
 
 	failedTask := false
 	buildComplete := false
@@ -570,7 +566,7 @@ func UpdateBuildAndVersionStatusForTask(taskId string, updates *StatusChanges) e
 	// update the build's status based on tasks for this build
 	for _, t := range buildTasks {
 		if !t.IsFinished() {
-			state, _ := BlockedState(&t, tasksWithDeps)
+			state, _ := BlockedState(&t)
 			if state == "blocked" {
 				tasksToNotify += 1
 				if evergreen.IsFailedTaskStatus(t.Status) {
@@ -1171,17 +1167,22 @@ func tryResetTaskGroup(t *task.Task) error {
 	}
 
 	resetWhenFinished := false
-	isBlocked := IsBlockedSingleHostTaskGroup(t)
+	isFinished := true
 	for _, taskInGroup := range tasks {
 		if taskInGroup.ResetWhenFinished {
 			resetWhenFinished = true
 		}
-		if !isBlocked && !taskInGroup.IsFinished() {
-			return errors.New("Task group is not finished, and cannot be restarted")
+		if !taskInGroup.IsFinished() {
+			isFinished = false
 		}
 	}
-	if resetWhenFinished {
-		return errors.Wrapf(ResetManyTasks(tasks, evergreen.User), "error resetting tasks in task group '%s'", t.TaskGroup)
+	if !resetWhenFinished {
+		return nil
 	}
-	return nil
+	// only restart unfinished task groups if blocked
+	if !isFinished && !IsBlockedSingleHostTaskGroup(t) {
+		return errors.New("Task group is not finished, and cannot be restarted")
+	}
+
+	return errors.Wrapf(ResetManyTasks(tasks, evergreen.User), "error resetting tasks in task group '%s'", t.TaskGroup)
 }
