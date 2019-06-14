@@ -148,6 +148,7 @@ func (d *mgoGroupDriver) setupDB() error {
 
 	catcher.Add(jobs.EnsureIndexKey(indexKey...))
 	catcher.Add(jobs.EnsureIndexKey("group", "status.mod_ts"))
+	catcher.Add(jobs.EnsureIndexKey("status.completed", "status.mod_ts"))
 
 	return errors.Wrap(catcher.Resolve(), "problem building indexes")
 }

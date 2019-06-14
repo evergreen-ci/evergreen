@@ -171,6 +171,18 @@ func (d *mongoGroupDriver) setupDB(ctx context.Context) error {
 				},
 			},
 		},
+		mongo.IndexModel{
+			Keys: bsonx.Doc{
+				{
+					Key:   "status.completed",
+					Value: bsonx.Int32(1),
+				},
+				{
+					Key:   "status.mod_ts",
+					Value: bsonx.Int32(1),
+				},
+			},
+		},
 	})
 
 	return errors.Wrap(err, "problem building indexes")
