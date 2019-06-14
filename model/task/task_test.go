@@ -1167,3 +1167,38 @@ func TestFindVariantsWithTask(t *testing.T) {
 	assert.Equal(bvs[0], "bv2")
 	assert.Equal(bvs[1], "bv1")
 }
+
+func TestGetTimeSpent(t *testing.T) {
+	assert := assert.New(t)
+	referenceTime := time.Unix(1136239445, 0)
+	tasks := []Task{
+		{
+			StartTime:  referenceTime,
+			FinishTime: referenceTime.Add(time.Hour),
+			TimeTaken:  time.Hour,
+		},
+		{
+			StartTime:  referenceTime,
+			FinishTime: referenceTime.Add(2 * time.Hour),
+			TimeTaken:  2 * time.Hour,
+		},
+		{
+			StartTime:  referenceTime,
+			FinishTime: util.ZeroTime,
+			TimeTaken:  0,
+		},
+		{
+			StartTime:  util.ZeroTime,
+			FinishTime: util.ZeroTime,
+			TimeTaken:  0,
+		},
+	}
+
+	timeTaken, makespan := GetTimeSpent(tasks)
+	assert.Equal(3*time.Hour, timeTaken)
+	assert.Equal(2*time.Hour, makespan)
+
+	timeTaken, makespan = GetTimeSpent(tasks[2:])
+	assert.EqualValues(0, timeTaken)
+	assert.EqualValues(0, makespan)
+}

@@ -1696,3 +1696,26 @@ func (t *Task) IsBlockedDisplayTask() bool {
 	}
 	return blockedState == taskBlocked
 }
+
+// GetTimeSpent returns the total time_taken and makespan of tasks
+// tasks should not include display tasks so they aren't double counted
+func GetTimeSpent(tasks []Task) (time.Duration, time.Duration) {
+	var timeTaken time.Duration
+	earliestStartTime := util.MaxTime
+	latestFinishTime := util.ZeroTime
+	for _, t := range tasks {
+		timeTaken += t.TimeTaken
+		if !util.IsZeroTime(t.StartTime) && t.StartTime.Before(earliestStartTime) {
+			earliestStartTime = t.StartTime
+		}
+		if t.FinishTime.After(latestFinishTime) {
+			latestFinishTime = t.FinishTime
+		}
+	}
+
+	if earliestStartTime == util.MaxTime || latestFinishTime == util.ZeroTime {
+		return 0, 0
+	}
+
+	return timeTaken, latestFinishTime.Sub(earliestStartTime)
+}

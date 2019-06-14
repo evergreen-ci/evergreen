@@ -185,34 +185,8 @@ mciModule.controller('VersionController', function($scope, $rootScope, $location
     $scope.taskNames = Object.keys(taskNames).sort()
     $scope.lastUpdate = $now.now();
 
-    //calculate makespan and total processing time for the version
-    var nonZeroTimeFilter = function(y){return (+y) != (+new Date(0))};
-
-    var tasks = _.filter(version.Builds.map(function(x){ return _.pluck(x['Tasks'] || [], "Task") }).reduce(function(x,y){return x.concat(y)}, []), function(task){
-      return task.status == "success" || task.status == "failed"
-    });
-    var taskStartTimes = _.filter(_.pluck(tasks, "start_time").map(function(x){return new Date(x)}), nonZeroTimeFilter).sort(dateSorter);
-    var taskEndTimes = _.filter(tasks.map(function(x){
-        if(x.time_taken == 0 || +new Date(x.start_time) == +new Date(0)){
-            return new Date(0);
-        }else{
-            return new Date((+new Date(x.start_time)) + (x.time_taken/nsPerMs));
-        }
-    }), nonZeroTimeFilter).sort(dateSorter);
-
-    if(taskStartTimes.length == 0 || taskEndTimes.length == 0) {
-        $scope.makeSpanMS = 0;
-    }else {
-        $scope.makeSpanMS = taskEndTimes[taskEndTimes.length-1] - taskStartTimes[0];
-    }
-
-    $scope.makeSpanMS = taskEndTimes[taskEndTimes.length-1] - taskStartTimes[0];
-
-    var availableTasks = _.filter(tasks, function(t){
-      return +new Date(t.start_time) != +new Date(0);
-    })
-
-    $scope.totalTimeMS = _.reduce(_.pluck(availableTasks, "time_taken"), function(x, y){return x+y}, 0) / nsPerMs;
+    $scope.makeSpanMS = version.makespan / nsPerMs
+    $scope.totalTimeMS = version.time_taken / nsPerMs;
   };
 
   $scope.getGridLink = function(bv, test) {

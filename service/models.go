@@ -40,6 +40,8 @@ type uiVersion struct {
 	RepoOwner    string          `json:"repo_owner"`
 	Repo         string          `json:"repo_name"`
 	UpstreamData *uiUpstreamData `json:"upstream,omitempty"`
+	TimeTaken    time.Duration   `json:"time_taken"`
+	Makespan     time.Duration   `json:"makespan"`
 }
 
 type uiUpstreamData struct {
@@ -76,6 +78,8 @@ type uiBuild struct {
 	PatchInfo       *uiPatch `json:",omitempty"`
 	Tasks           []uiTask
 	Elapsed         time.Duration
+	TimeTaken       time.Duration `json:"time_taken"`
+	Makespan        time.Duration `json:"makespan"`
 	CurrentTime     int64
 	RepoOwner       string               `json:"repo_owner"`
 	Repo            string               `json:"repo_name"`
