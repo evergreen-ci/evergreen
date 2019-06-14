@@ -21,9 +21,9 @@ const (
 // BlockedState returns "blocked," "pending" (unsatisfied dependencies,
 // but unblocked), or "" (runnable) to represent the state of the task
 // with respect to its dependencies
-func BlockedState(t *task.Task, tasksWithDeps []task.Task) (string, error) {
+func BlockedState(t *task.Task) (string, error) {
 	if t.DisplayOnly {
-		return blockedStateForDisplayTask(t, tasksWithDeps)
+		return blockedStateForDisplayTask(t)
 	}
 	if t.IsPartOfSingleHostTaskGroup() {
 		return blockedStateForTaskGroups(t)
@@ -75,9 +75,27 @@ func getStateByDependency(t *task.Task, dependency task.Dependency) (string, err
 		return "", err
 	}
 	if state == taskBlocked {
+		grip.Debug(message.Fields{
+			"message":      "reset_tg",
+			"task":         t.Id,
+			"display_name": t.DisplayName,
+			"state":        state,
+			"status":       t.Status,
+			"depends_on":   t.DependsOn,
+			"returning":    taskBlocked,
+		})
 		return taskBlocked, nil
 	} else if t.Status == evergreen.TaskSucceeded || t.Status == evergreen.TaskFailed {
 		if t.Status != dependency.Status && dependency.Status != AllStatuses {
+			grip.Debug(message.Fields{
+				"message":      "reset_tg",
+				"task":         t.Id,
+				"display_name": t.DisplayName,
+				"state":        state,
+				"status":       t.Status,
+				"depends_on":   t.DependsOn,
+				"returning":    taskBlocked,
+			})
 			return taskBlocked, nil
 		}
 	} else {
@@ -89,61 +107,31 @@ func getStateByDependency(t *task.Task, dependency task.Dependency) (string, err
 func blockedStateForTaskGroups(t *task.Task) (string, error) {
 	tasks, err := GetTasksInTaskGroup(t)
 	if err != nil {
-		return "", errors.Wrap(err, "problem getting tasks in task group")
+		return "", errors.Wrap(err, "error finding execution tasks")
 	}
-
-	// get dependencies from all tasks in group
-	dependsOn := []task.Dependency{}
-	dependencyIDs := []string{}
-	for _, curTask := range tasks {
-		dependsOn = append(dependsOn, curTask.DependsOn...)
-		for _, dependency := range curTask.DependsOn {
-			dependencyIDs = append(dependencyIDs, dependency.TaskId)
+	state := taskRunnable
+	for _, taskInGroup := range tasks {
+		etState, err := blockedStatePrivate(&taskInGroup)
+		if err != nil {
+			return "", errors.Wrap(err, "error finding blocked state")
+		}
+		if etState == taskBlocked {
+			return taskBlocked, nil
+		} else if etState == taskPending {
+			state = taskPending
 		}
 	}
-	// map ID of each dependency to the actual task
-	dependentTasks := []task.Task{}
-	dependentTasks, err = task.Find(task.ByIds(dependencyIDs).WithFields(task.DisplayNameKey, task.StatusKey,
-		task.ActivatedKey, task.BuildVariantKey, task.DetailsKey, task.DependsOnKey))
-	if err != nil {
-		return "", errors.Wrap(err, "error finding dependencies")
-	}
-	taskMap := map[string]*task.Task{}
-	for i := range dependentTasks {
-		taskMap[dependentTasks[i].Id] = &dependentTasks[i]
-	}
-
-	cachedStatus := map[string]string{}
-	// determine if each dependency is satisfiable
-	for _, dependency := range dependsOn {
-		var state string
-		depTask := taskMap[dependency.TaskId]
-		if cachedStatus[depTask.Id] != "" {
-			state = cachedStatus[depTask.Id]
-		} else {
-			var err error
-			state, err = getStateByDependency(depTask, dependency)
-			if err != nil {
-				return "", errors.Wrap(err, "")
-			}
-			cachedStatus[depTask.Id] = state
-		}
-
-		if state != taskRunnable {
-			return state, nil // task is blocked or pending
-		}
-	}
-	return taskRunnable, nil
+	return state, nil
 }
 
-func blockedStateForDisplayTask(t *task.Task, tasksWithDeps []task.Task) (string, error) {
+func blockedStateForDisplayTask(t *task.Task) (string, error) {
 	execTasks, err := task.Find(task.ByIds(t.ExecutionTasks))
 	if err != nil {
 		return "", errors.Wrap(err, "error finding execution tasks")
 	}
 	state := taskRunnable
 	for _, execTask := range execTasks {
-		etState, err := BlockedState(&execTask, tasksWithDeps)
+		etState, err := BlockedState(&execTask)
 		if err != nil {
 			return "", errors.Wrap(err, "error finding blocked state")
 		}
@@ -186,12 +174,7 @@ func IsBlockedDisplayTask(t *task.Task) bool {
 		return false
 	}
 
-	tasksWithDeps, err := task.FindAllTasksFromVersionWithDependencies(t.Version)
-	if err != nil {
-		grip.Error(message.WrapError(err, "error finding tasks with dependencies"))
-		return false
-	}
-	blockedState, err := BlockedState(t, tasksWithDeps)
+	blockedState, err := BlockedState(t)
 	if err != nil {
 		grip.Error(message.WrapError(err, "error determining blocked state"))
 		return false
@@ -203,7 +186,7 @@ func IsBlockedSingleHostTaskGroup(t *task.Task) bool {
 	if !t.IsPartOfSingleHostTaskGroup() {
 		return false
 	}
-	blockedState, err := BlockedState(t, nil)
+	blockedState, err := BlockedState(t)
 	if err != nil {
 		grip.Error(message.WrapError(err, "error determining blocked state of task group"))
 		return false
@@ -235,7 +218,7 @@ func AllUnblockedTasksFinished(b build.Build, tasksWithDeps []task.Task) (bool, 
 				continue
 			}
 			var blockedStatus string
-			blockedStatus, err = BlockedState(&t, tasksWithDeps)
+			blockedStatus, err = BlockedState(&t)
 			if err != nil {
 				return false, status, err
 			}

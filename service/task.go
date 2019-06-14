@@ -456,7 +456,7 @@ func getTaskDependencies(t *task.Task) ([]uiDep, string, error) {
 	if err = model.CircularDependencies(t); err != nil {
 		return nil, "", err
 	}
-	status, err := model.BlockedState(t, nil)
+	status, err := model.BlockedState(t)
 	if err != nil {
 		return nil, "", err
 	}

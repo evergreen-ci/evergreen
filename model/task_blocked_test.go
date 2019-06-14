@@ -45,16 +45,16 @@ func TestBlockedState(t *testing.T) {
 	}
 	assert.NoError(t4.Insert())
 
-	state, err := BlockedState(t4, nil)
+	state, err := BlockedState(t4)
 	assert.NoError(err)
 	assert.Equal(taskRunnable, state)
-	state, err = BlockedState(t3, nil)
+	state, err = BlockedState(t3)
 	assert.NoError(err)
 	assert.Equal(taskRunnable, state)
-	state, err = BlockedState(t2, nil)
+	state, err = BlockedState(t2)
 	assert.NoError(err)
 	assert.Equal(taskPending, state)
-	state, err = BlockedState(t1, nil)
+	state, err = BlockedState(t1)
 	assert.NoError(err)
 	assert.Equal(taskBlocked, state)
 }
@@ -155,7 +155,7 @@ functions:
 		"TaskGroupBlocked": func(t *testing.T) {
 			assert.NoError(t2.MarkFailed())
 			for _, t := range []*task.Task{t1, t2, t3, t4} {
-				state, err := BlockedState(t, nil)
+				state, err := BlockedState(t)
 				assert.NoError(err)
 				assert.Equal(taskBlocked, state)
 			}
@@ -163,7 +163,7 @@ functions:
 		"TaskGroupNotBlocked": func(t *testing.T) {
 			assert.NoError(t2.MarkAsUndispatched())
 			for _, t := range []*task.Task{t1, t2, t3, t4} {
-				state, err := BlockedState(t, nil)
+				state, err := BlockedState(t)
 				assert.NoError(err)
 				assert.Equal(taskPending, state)
 			}
@@ -251,7 +251,7 @@ func TestSiblingDependency(t *testing.T) {
 		Status:      evergreen.TaskSucceeded,
 	}
 	assert.NoError(t4.Insert())
-	state, err := BlockedState(t1, nil)
+	state, err := BlockedState(t1)
 	assert.NoError(err)
 	assert.Equal(taskPending, state)
 }
