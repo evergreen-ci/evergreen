@@ -168,7 +168,7 @@ func (uis *UIServer) versionPage(w http.ResponseWriter, r *http.Request) {
 					"task_id": t.Id,
 					"version": projCtx.Version.Id,
 					"request": gimlet.GetRequestID(ctx),
-					"message": "version references task that does not exist",
+					"message": "build references task that does not exist",
 				})
 			}
 			uiTasks = append(uiTasks, uiT)
