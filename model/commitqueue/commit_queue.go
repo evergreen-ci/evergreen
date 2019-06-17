@@ -46,7 +46,7 @@ func InsertQueue(q *CommitQueue) error {
 }
 
 func (q *CommitQueue) Enqueue(item CommitQueueItem) (int, error) {
-	position := q.findItem(item.Issue)
+	position := q.FindItem(item.Issue)
 	if !(position < 0) {
 		return position + 1, errors.New("item already in queue")
 	}
@@ -68,7 +68,7 @@ func (q *CommitQueue) Next() *CommitQueueItem {
 }
 
 func (q *CommitQueue) Remove(issue string) (bool, error) {
-	itemIndex := q.findItem(issue)
+	itemIndex := q.FindItem(issue)
 	if itemIndex < 0 {
 		return false, nil
 	}
@@ -88,7 +88,7 @@ func (q *CommitQueue) Remove(issue string) (bool, error) {
 	return true, nil
 }
 
-func (q *CommitQueue) findItem(issue string) int {
+func (q *CommitQueue) FindItem(issue string) int {
 	for i, queued := range q.Queue {
 		if queued.Issue == issue {
 			return i
