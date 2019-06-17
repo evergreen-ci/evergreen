@@ -307,7 +307,7 @@ mciModule.controller('PerformanceDiscoveryCtrl', function(
         _link: row => '/task/' + row.entity.taskId + '##' + row.entity.test,
         cellTemplate: 'ui-grid-link',
         filter: {
-          term: '^((?!canary_.*|fio_.*|iperf.*|NetworkBandwidth).)*$'
+          term: CANARY_EXCLUSION_REGEX.toString().substring(1, CANARY_EXCLUSION_REGEX.toString().length - 1)
         }
       },
       gridUtil.multiselectColDefMixin({
