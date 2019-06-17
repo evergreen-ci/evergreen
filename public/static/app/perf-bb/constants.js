@@ -23,4 +23,4 @@ mciModule
   .constant('OUTLIERS_TYPE', {
     DETECTED: 'detected',
     SUSPICIOUS: 'suspicious',
-  });
+  }).constant('CANARY_EXCLUSION_REGEX', /^((?!canary_|fio_|iperf|NetworkBandwidth).*)$/);

@@ -1,7 +1,8 @@
 mciModule.controller('PerformanceDiscoveryCtrl', function(
   $q, $scope, $timeout, $window, ApiTaskdata, ApiV1, ApiV2,
   EVG, EvgUiGridUtil, PERF_DISCOVERY, PerfDiscoveryDataService,
-  PerfDiscoveryStateService, uiGridConstants, OutliersDataService
+  PerfDiscoveryStateService, uiGridConstants, OutliersDataService,
+  CANARY_EXCLUSION_REGEX
 ) {
   var vm = this;
   var gridUtil = EvgUiGridUtil
