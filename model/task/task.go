@@ -769,6 +769,9 @@ func (t *Task) MarkEnd(finishTime time.Time, detail *apimodels.TaskEndDetail) er
 
 }
 
+// displayTaskPriority answers the question "if there is a display task whose executions are
+// in these statuses, which overall status would a user expect to see?"
+// for example, if there are both successful and failed tasks, one would expect to see "failed"
 func (t *Task) displayTaskPriority() int {
 	switch t.ResultStatus() {
 	case evergreen.TaskFailed:
@@ -783,13 +786,13 @@ func (t *Task) displayTaskPriority() int {
 		return 50
 	case evergreen.TaskSetupFailed:
 		return 60
-	case evergreen.TaskSucceeded:
-		return 70
-	case evergreen.TaskInactive:
-		return 80
 	case evergreen.TaskStarted:
-		return 90
+		return 70
 	case evergreen.TaskUndispatched:
+		return 80
+	case evergreen.TaskInactive:
+		return 90
+	case evergreen.TaskSucceeded:
 		return 100
 	}
 	return 1000
