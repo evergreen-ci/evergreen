@@ -55,6 +55,7 @@ func makeIdleHostJob() *idleHostJob {
 		},
 	}
 	j.SetDependency(dependency.NewAlways())
+	j.SetPriority(2)
 
 	return j
 }
