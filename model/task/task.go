@@ -655,7 +655,7 @@ func (t *Task) MarkSystemFailed() error {
 		Type:   evergreen.CommandTypeSystem,
 	}
 
-	event.LogTaskFinished(t.Id, t.Execution, t.HostId, evergreen.TaskSystemFailed)
+	event.LogTaskFinished(t.Id, t.Execution, t.HostId, evergreen.TaskSystemFailed, false)
 
 	return UpdateOne(
 		bson.M{
@@ -741,6 +741,7 @@ func (t *Task) MarkEnd(finishTime time.Time, detail *apimodels.TaskEndDetail) er
 
 	t.TimeTaken = finishTime.Sub(t.StartTime)
 	t.Details = *detail
+	t.Aborted = false
 
 	grip.Debug(message.Fields{
 		"message":   "marking task finished",

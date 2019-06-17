@@ -415,13 +415,15 @@ func MarkEnd(t *task.Task, caller string, finishTime time.Time, detail *apimodel
 			"activated_by": t.ActivatedBy,
 		})
 	}
+
+	status := t.ResultStatus()
+	event.LogTaskFinished(t.Id, t.Execution, t.HostId, status, t.Aborted)
+
 	err := t.MarkEnd(finishTime, detail)
 
 	if err != nil {
 		return errors.Wrap(err, "could not mark task finished")
 	}
-	status := t.ResultStatus()
-	event.LogTaskFinished(t.Id, t.Execution, t.HostId, status)
 
 	if t.IsPartOfDisplay() {
 		if err = UpdateDisplayTask(t.DisplayTask); err != nil {
