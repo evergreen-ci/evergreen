@@ -14,7 +14,7 @@ var findIndex = function(list, predicate) {
 mciModule.controller('PerfController', function PerfController(
   $scope, $window, $http, $location, $log, $q, $filter, ChangePointsService,
   DrawPerfTrendChart, PROCESSED_TYPE, Settings, Stitch, STITCH_CONFIG,
-  TestSample, TrendSamples, PointsDataService, WhitelistDataService
+  TestSample, TrendSamples, PointsDataService, WhitelistDataService, CANARY_EXCLUSION_REGEX
 ) {
     /* for debugging
     $sce, $compile){
@@ -561,7 +561,7 @@ mciModule.controller('PerfController', function PerfController(
   }
 
   $scope.isCanary = function(test) {
-    return !!test.match(/^(canary|fio|iperf|NetworkBandwidth).*$/);
+    return !test.match(CANARY_EXCLUSION_REGEX);
   }
 
   $scope.hideCanaries = function() {
