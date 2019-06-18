@@ -22,6 +22,7 @@ import (
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/amboy/pool"
 	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/recovery"
 	"github.com/pkg/errors"
 )
 
@@ -65,6 +66,8 @@ func (q *shuffledLocal) Start(ctx context.Context) error {
 
 // reactor is the background dispatching process.
 func (q *shuffledLocal) reactor(ctx context.Context) {
+	defer recovery.LogStackTraceAndExit("shuffled amboy queue reactor")
+
 	pending := make(map[string]amboy.Job)
 	completed := make(map[string]amboy.Job)
 	dispatched := make(map[string]amboy.Job)
@@ -83,7 +86,7 @@ func (q *shuffledLocal) reactor(ctx context.Context) {
 
 // Put adds a job to the queue, and returns errors if the queue hasn't
 // started or if a job with the same ID value already exists.
-func (q *shuffledLocal) Put(j amboy.Job) error {
+func (q *shuffledLocal) Put(ctx context.Context, j amboy.Job) error {
 	id := j.ID()
 
 	if !q.Started() {
@@ -91,16 +94,16 @@ func (q *shuffledLocal) Put(j amboy.Job) error {
 	}
 
 	ret := make(chan error)
-	q.operations <- func(
+	op := func(
 		pending map[string]amboy.Job,
 		completed map[string]amboy.Job,
 		dispatched map[string]amboy.Job,
 		toDelete *fixedStorage,
 	) {
-
 		_, isPending := pending[id]
 		_, isCompleted := completed[id]
 		_, isDispatched := dispatched[id]
+
 		if isPending || isCompleted || isDispatched {
 			ret <- errors.Errorf("job '%s' already exists", id)
 		}
@@ -114,24 +117,28 @@ func (q *shuffledLocal) Put(j amboy.Job) error {
 		close(ret)
 	}
 
-	return <-ret
+	select {
+	case <-ctx.Done():
+		return errors.WithStack(ctx.Err())
+	case q.operations <- op:
+		return <-ret
+	}
 }
 
 // Get returns a job based on the specified ID. Considers all pending,
 // completed, and in progress jobs.
-func (q *shuffledLocal) Get(name string) (amboy.Job, bool) {
+func (q *shuffledLocal) Get(ctx context.Context, name string) (amboy.Job, bool) {
 	if !q.Started() {
 		return nil, false
 	}
 
 	ret := make(chan amboy.Job)
-	q.operations <- func(
+	op := func(
 		pending map[string]amboy.Job,
 		completed map[string]amboy.Job,
 		dispatched map[string]amboy.Job,
 		toDelete *fixedStorage,
 	) {
-
 		defer close(ret)
 
 		if job, ok := pending[name]; ok {
@@ -150,9 +157,14 @@ func (q *shuffledLocal) Get(name string) (amboy.Job, bool) {
 		}
 	}
 
-	job, ok := <-ret
+	select {
+	case <-ctx.Done():
+		return nil, false
+	case q.operations <- op:
+		job, ok := <-ret
 
-	return job, ok
+		return job, ok
+	}
 }
 
 // Results returns all completed jobs processed by the queue.
@@ -174,11 +186,12 @@ func (q *shuffledLocal) Results(ctx context.Context) <-chan amboy.Job {
 		defer close(output)
 
 		for _, job := range completed {
-			if ctx.Err() != nil {
+			select {
+			case <-ctx.Done():
 				return
+			case output <- job:
+				continue
 			}
-
-			output <- job
 		}
 	}
 
@@ -231,7 +244,7 @@ func (q *shuffledLocal) JobStats(ctx context.Context) <-chan amboy.JobStatusInfo
 
 // Stats returns a standard report on the number of pending, running,
 // and completed jobs processed by the queue.
-func (q *shuffledLocal) Stats() amboy.QueueStats {
+func (q *shuffledLocal) Stats(ctx context.Context) amboy.QueueStats {
 	if !q.Started() {
 		return amboy.QueueStats{}
 	}
@@ -254,7 +267,13 @@ func (q *shuffledLocal) Stats() amboy.QueueStats {
 		ret <- stat
 		close(ret)
 	}
-	return <-ret
+
+	select {
+	case <-ctx.Done():
+		return amboy.QueueStats{}
+	case out := <-ret:
+		return out
+	}
 }
 
 // Started returns true after the queue has started processing work,
@@ -269,40 +288,44 @@ func (q *shuffledLocal) Started() bool {
 // no pending jobs.
 func (q *shuffledLocal) Next(ctx context.Context) amboy.Job {
 	ret := make(chan amboy.Job)
-	q.operations <- func(
+
+	op := func(
 		pending map[string]amboy.Job,
 		completed map[string]amboy.Job,
 		dispatched map[string]amboy.Job,
 		toDelete *fixedStorage,
 	) {
-
-		if ctx.Err() != nil {
-			close(ret)
-			return
-		}
-
-		if len(pending) == 0 {
-			close(ret)
-			return
-		}
+		defer close(ret)
 
 		for id, j := range pending {
-			ret <- j
-			dispatched[id] = j
-			delete(pending, id)
-			close(ret)
-			return
+			select {
+			case <-ctx.Done():
+				return
+			case ret <- j:
+				dispatched[id] = j
+				delete(pending, id)
+				return
+			}
 		}
 	}
 
-	return <-ret
+	select {
+	case <-ctx.Done():
+		return nil
+	case q.operations <- op:
+		return <-ret
+	}
 }
 
 // Complete marks a job as complete in the internal representation. If
 // the context is canceled after calling Complete but before it
 // executes, no change occurs.
 func (q *shuffledLocal) Complete(ctx context.Context, j amboy.Job) {
-	q.operations <- func(
+	if ctx.Err() != nil {
+		return
+	}
+
+	op := func(
 		pending map[string]amboy.Job,
 		completed map[string]amboy.Job,
 		dispatched map[string]amboy.Job,
@@ -326,6 +349,11 @@ func (q *shuffledLocal) Complete(ctx context.Context, j amboy.Job) {
 				delete(completed, toDelete.Pop())
 			}
 		}
+	}
+
+	select {
+	case <-ctx.Done():
+	case q.operations <- op:
 	}
 }
 

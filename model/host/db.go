@@ -53,6 +53,7 @@ var (
 	StatusKey                    = bsonutil.MustHaveTag(Host{}, "Status")
 	AgentRevisionKey             = bsonutil.MustHaveTag(Host{}, "AgentRevision")
 	NeedsNewAgentKey             = bsonutil.MustHaveTag(Host{}, "NeedsNewAgent")
+	NeedsNewAgentMonitorKey      = bsonutil.MustHaveTag(Host{}, "NeedsNewAgentMonitor")
 	StartedByKey                 = bsonutil.MustHaveTag(Host{}, "StartedBy")
 	InstanceTypeKey              = bsonutil.MustHaveTag(Host{}, "InstanceType")
 	VolumeSizeKey                = bsonutil.MustHaveTag(Host{}, "VolumeTotalSize")
@@ -562,9 +563,14 @@ func LastCommunicationTimeElapsed(currentTime time.Time) bson.M {
 	}
 }
 
-// NeedsNewAgentFlagSet returns hosts with NeedsNewAgent set to true.
+// NeedsNewAgentFlagSet returns legacy hosts with NeedsNewAgent set to true.
 func NeedsNewAgentFlagSet() db.Q {
+	bootstrapKey := bsonutil.GetDottedKeyName(DistroKey, distro.BootstrapMethodKey)
 	return db.Query(bson.M{
+		"$or": []bson.M{
+			{bootstrapKey: bson.M{"$exists": false}},
+			{bootstrapKey: distro.BootstrapMethodLegacySSH},
+		},
 		StatusKey:        evergreen.HostRunning,
 		StartedByKey:     evergreen.User,
 		HasContainersKey: bson.M{"$ne": true},
@@ -572,6 +578,32 @@ func NeedsNewAgentFlagSet() db.Q {
 		RunningTaskKey:   bson.M{"$exists": false},
 		NeedsNewAgentKey: true,
 	})
+}
+
+// FindByNeedsNewAgentMonitor returns running hosts that need a new agent
+// monitor.
+func FindByNeedsNewAgentMonitor() ([]Host, error) {
+	bootstrapKey := bsonutil.GetDottedKeyName(DistroKey, distro.BootstrapMethodKey)
+	hosts := []Host{}
+	query := bson.M{
+		bootstrapKey: bson.M{
+			"$exists": true,
+			"$ne":     distro.BootstrapMethodLegacySSH,
+		},
+		StatusKey:               evergreen.HostRunning,
+		StartedByKey:            evergreen.User,
+		HasContainersKey:        bson.M{"$ne": true},
+		ParentIDKey:             bson.M{"$exists": false},
+		RunningTaskKey:          bson.M{"$exists": false},
+		NeedsNewAgentMonitorKey: true,
+	}
+
+	err := db.FindAll(Collection, query, db.NoProjection, db.NoSort, db.NoSkip, db.NoLimit, &hosts)
+	if adb.ResultsNotFound(err) {
+		return nil, nil
+	}
+
+	return hosts, err
 }
 
 // Removes host intents that have been been uninitialized for more than 3

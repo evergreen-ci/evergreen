@@ -24,11 +24,11 @@ func flagIdleHosts(ctx context.Context, env evergreen.Environment) ([]string, er
 	}
 	defer queue.Runner().Close(ctx)
 
-	if err := PopulateIdleHostJobs(env)(queue); err != nil {
+	if err := PopulateIdleHostJobs(env)(ctx, queue); err != nil {
 		return nil, err
 	}
 
-	amboy.WaitCtxInterval(ctx, queue, 50*time.Millisecond)
+	amboy.WaitInterval(ctx, queue, 50*time.Millisecond)
 
 	terminated := []string{}
 

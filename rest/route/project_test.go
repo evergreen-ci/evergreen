@@ -20,7 +20,6 @@ import (
 
 type ProjectPatchByIDSuite struct {
 	sc *data.MockConnector
-	// data data.MockProjectConnector
 	rm gimlet.RouteHandler
 
 	suite.Suite
@@ -38,12 +37,13 @@ func (s *ProjectPatchByIDSuite) SetupTest() {
 
 func (s *ProjectPatchByIDSuite) TestParse() {
 	ctx := context.Background()
-	json := []byte(`{"private" : false}`)
-	req, _ := http.NewRequest("PATCH", "http://example.com/api/rest/v2/projects/dimoxinil", bytes.NewBuffer(json))
 
+	json := []byte(`{"private" : false}`)
+	req, _ := http.NewRequest("PATCH", "http://example.com/api/rest/v2/projects/dimoxinil?revision=my-revision", bytes.NewBuffer(json))
 	err := s.rm.Parse(ctx, req)
 	s.NoError(err)
 	s.Equal(json, s.rm.(*projectIDPatchHandler).body)
+	s.Equal("my-revision", s.rm.(*projectIDPatchHandler).revision)
 }
 
 func (s *ProjectPatchByIDSuite) TestRunInValidIdentifierChange() {
@@ -54,7 +54,6 @@ func (s *ProjectPatchByIDSuite) TestRunInValidIdentifierChange() {
 	h.body = json
 
 	resp := s.rm.Run(ctx)
-	s.rm.Run(ctx)
 	s.NotNil(resp.Data())
 	s.Equal(resp.Status(), http.StatusForbidden)
 
@@ -70,9 +69,21 @@ func (s *ProjectPatchByIDSuite) TestRunInvalidNonExistingId() {
 	h.body = json
 
 	resp := s.rm.Run(ctx)
-	s.rm.Run(ctx)
 	s.NotNil(resp.Data())
 	s.Equal(resp.Status(), http.StatusNotFound)
+}
+
+func (s *ProjectPatchByIDSuite) TestRunValid() {
+	ctx := context.Background()
+	json := []byte(`{"enabled": true}`)
+	h := s.rm.(*projectIDPatchHandler)
+	h.projectID = "dimoxinil"
+	h.revision = "my-revision"
+	h.body = json
+	resp := s.rm.Run(ctx)
+	s.NotNil(resp)
+	s.NotNil(resp.Data())
+	s.Equal(resp.Status(), http.StatusOK)
 }
 
 ////////////////////////////////////////////////////////////////////////
@@ -267,7 +278,7 @@ func (s *ProjectGetByIDSuite) TestRunExistingId() {
 	s.NotNil(resp.Data())
 	s.Equal(resp.Status(), http.StatusOK)
 
-	s.Equal(model.ToAPIString("dimoxinil"), resp.Data().(*model.APIProject).Identifier)
+	s.Equal(model.ToAPIString("dimoxinil"), resp.Data().(*model.APIProjectRef).Identifier)
 }
 
 ////////////////////////////////////////////////////////////////////////
@@ -326,7 +337,7 @@ func (s *ProjectGetSuite) TestPaginatorShouldReturnResultsIfDataExists() {
 	payload := resp.Data().([]interface{})
 
 	s.Len(payload, 1)
-	s.Equal(model.ToAPIString("projectC"), (payload[0]).(*model.APIProject).Identifier)
+	s.Equal(model.ToAPIString("projectC"), (payload[0]).(*model.APIProjectRef).Identifier)
 
 	pageData := resp.Pages()
 	s.Nil(pageData.Prev)
@@ -344,8 +355,8 @@ func (s *ProjectGetSuite) TestPaginatorShouldReturnEmptyResultsIfDataIsEmpty() {
 	payload := resp.Data().([]interface{})
 
 	s.Len(payload, 6)
-	s.Equal(model.ToAPIString("projectA"), (payload[0]).(*model.APIProject).Identifier, payload[0])
-	s.Equal(model.ToAPIString("projectB"), (payload[1]).(*model.APIProject).Identifier, payload[1])
+	s.Equal(model.ToAPIString("projectA"), (payload[0]).(*model.APIProjectRef).Identifier, payload[0])
+	s.Equal(model.ToAPIString("projectB"), (payload[1]).(*model.APIProjectRef).Identifier, payload[1])
 
 	s.Nil(resp.Pages())
 }

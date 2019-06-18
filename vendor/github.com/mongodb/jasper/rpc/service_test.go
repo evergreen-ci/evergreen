@@ -166,7 +166,7 @@ func TestRPCService(t *testing.T) {
 					require.NoError(t, err)
 					addr, err := net.ResolveTCPAddr("tcp", fmt.Sprintf("localhost:%d", getPortNumber()))
 					require.NoError(t, err)
-					require.NoError(t, startTestService(ctx, manager, addr))
+					require.NoError(t, startTestService(ctx, manager, addr, nil))
 
 					conn, err := grpc.DialContext(ctx, addr.String(), grpc.WithInsecure(), grpc.WithBlock())
 					require.NoError(t, err)

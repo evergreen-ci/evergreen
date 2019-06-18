@@ -335,9 +335,9 @@ func (e *envState) createGenerateTasksQueue(ctx context.Context) error {
 		Prefix:                    e.settings.Amboy.Name,
 		DefaultWorkers:            1,
 		Ordered:                   false,
-		BackgroundCreateFrequency: 30 * time.Minute,
+		BackgroundCreateFrequency: 10 * time.Minute,
 		PruneFrequency:            10 * time.Minute,
-		TTL:                       5 * time.Minute,
+		TTL:                       time.Minute,
 	}
 	remoteQueueGroup, err := queue.NewMongoRemoteSingleQueueGroup(ctx, remoteQueuGroupOpts, e.client, opts)
 	if err != nil {
@@ -376,11 +376,11 @@ func (e *envState) createNotificationQueue(ctx context.Context) error {
 		catcher := grip.NewBasicCatcher()
 		ctx, cancel = context.WithTimeout(ctx, queueShutdownWaitTimeout)
 		defer cancel()
-		if !amboy.WaitCtxInterval(ctx, e.notificationsQueue, queueShutdownWaitInterval) {
+		if !amboy.WaitInterval(ctx, e.notificationsQueue, queueShutdownWaitInterval) {
 			grip.Critical(message.Fields{
 				"message": "pending jobs failed to finish",
 				"queue":   "notifications",
-				"status":  e.notificationsQueue.Stats(),
+				"status":  e.notificationsQueue.Stats(ctx),
 			})
 			catcher.Add(errors.New("failed to stop with running jobs"))
 		}
@@ -406,7 +406,7 @@ func (e *envState) createNotificationQueue(ctx context.Context) error {
 	}
 
 	for k := range e.senders {
-		e.senders[k] = logger.MakeQueueSender(e.notificationsQueue, e.senders[k])
+		e.senders[k] = logger.MakeQueueSender(ctx, e.notificationsQueue, e.senders[k])
 	}
 
 	return nil

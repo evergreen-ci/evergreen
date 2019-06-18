@@ -8,14 +8,19 @@ import (
 	"net/http"
 	"strconv"
 
+	"github.com/evergreen-ci/evergreen"
 	dbModel "github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/rest/model"
+	"github.com/evergreen-ci/evergreen/units"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/gimlet"
+	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 )
+
+const tsFormat = "2006-01-02.15-04-05"
 
 type projectGetHandler struct {
 	key   string
@@ -96,7 +101,7 @@ func (p *projectGetHandler) Run(ctx context.Context) gimlet.Responder {
 	projects = projects[:lastIndex]
 
 	for _, proj := range projects {
-		projectModel := &model.APIProject{}
+		projectModel := &model.APIProjectRef{}
 		if err = projectModel.BuildFromService(proj); err != nil {
 			return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
 				Message:    "problem converting project document",
@@ -196,6 +201,7 @@ func (h *versionsGetHandler) Run(ctx context.Context) gimlet.Responder {
 
 type projectIDPatchHandler struct {
 	projectID string
+	revision  string
 	body      []byte
 	sc        data.Connector
 }
@@ -215,7 +221,7 @@ func (h *projectIDPatchHandler) Factory() gimlet.RouteHandler {
 // Parse fetches the project's identifier from the http request.
 func (h *projectIDPatchHandler) Parse(ctx context.Context, r *http.Request) error {
 	h.projectID = gimlet.GetVars(r)["project_id"]
-
+	h.revision = r.URL.Query().Get("revision")
 	body := util.NewRequestReader(r)
 	defer body.Close()
 	b, err := ioutil.ReadAll(body)
@@ -263,10 +269,95 @@ func (h *projectIDPatchHandler) Run(ctx context.Context) gimlet.Responder {
 		})
 	}
 
+	// verify input and webhooks
+	if dbProjectRef.Owner == "" || dbProjectRef.Repo == "" {
+		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+			StatusCode: http.StatusBadRequest,
+			Message:    "no owner/repo specified",
+		})
+	}
+
+	if dbProjectRef.Enabled {
+		var hasHook bool
+		hasHook, err = h.sc.EnableWebhooks(ctx, dbProjectRef)
+		if err != nil {
+			return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "Error enabling webhooks for project '%s'", h.projectID))
+		}
+		// verify enabling PR testing valid
+		if dbProjectRef.PRTestingEnabled {
+			if !hasHook {
+				return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+					StatusCode: http.StatusBadRequest,
+					Message:    "Cannot enable PR Testing in this repo, must enable GitHub webhooks first",
+				})
+			}
+			if err = h.sc.EnablePRTesting(dbProjectRef); err != nil {
+				return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "Error enabling PR testing for project '%s'", h.projectID))
+			}
+		}
+		// verify enabling commit queue valid
+		var temp interface{}
+		temp, err = apiProjectRef.CommitQueue.ToService()
+		if err != nil {
+			return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "API error converting from APICommitQueueParams to CommitQueueParams"))
+		}
+		commitQueueParams, ok := temp.(dbModel.CommitQueueParams)
+		if !ok {
+			return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+				StatusCode: http.StatusInternalServerError,
+				Message:    fmt.Sprintf("Unexpected type %T for APICommitQueueParams", i),
+			})
+		}
+		if commitQueueParams.Enabled {
+			if !hasHook {
+				gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+					StatusCode: http.StatusBadRequest,
+					Message:    "Cannot enable commit queue in this repo, must enable GitHub webhooks first",
+				})
+			}
+			if err = h.sc.EnableCommitQueue(dbProjectRef, commitQueueParams); err != nil {
+				return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "Error enabling commit queue for project '%s'", h.projectID))
+			}
+		}
+	}
+
+	// validate triggers before updating project
+	catcher := grip.NewSimpleCatcher()
+	for i, trigger := range dbProjectRef.Triggers {
+		catcher.Add(trigger.Validate(dbProjectRef.Identifier))
+		if trigger.DefinitionID == "" {
+			dbProjectRef.Triggers[i].DefinitionID = util.RandomString()
+		}
+	}
+	if catcher.HasErrors() {
+		return gimlet.MakeJSONErrorResponder(errors.Wrap(catcher.Resolve(), "error validating triggers"))
+	}
+
+	if h.revision != "" {
+		if err = h.sc.UpdateProjectRevision(h.projectID, h.revision); err != nil {
+			return gimlet.MakeJSONErrorResponder(err)
+		}
+		dbProjectRef.RepotrackerError = &dbModel.RepositoryErrorDetails{
+			Exists:            false,
+			InvalidRevision:   "",
+			MergeBaseRevision: "",
+		}
+	}
+
 	if err = h.sc.UpdateProject(dbProjectRef); err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "Database error for update() by project id '%s'", h.projectID))
 	}
 
+	// run the repotracker for the project
+	if h.revision != "" {
+		ts := util.RoundPartOfHour(1).Format(tsFormat)
+		j := units.NewRepotrackerJob(fmt.Sprintf("catchup-%s", ts), h.projectID)
+
+		queue := evergreen.GetEnvironment().RemoteQueue()
+		if err := queue.Put(ctx, j); err != nil {
+			return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "problem creating catchup job"))
+		}
+	}
 	return gimlet.NewJSONResponse(apiProjectRef)
 }
 
@@ -391,7 +482,7 @@ func (h *projectIDGetHandler) Run(ctx context.Context) gimlet.Responder {
 		return gimlet.MakeJSONErrorResponder(err)
 	}
 
-	projectModel := &model.APIProject{}
+	projectModel := &model.APIProjectRef{}
 
 	if err = projectModel.BuildFromService(project); err != nil {
 		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{

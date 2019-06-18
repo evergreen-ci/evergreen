@@ -8,8 +8,10 @@ import (
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
-	"gopkg.in/yaml.v2"
+	yaml "gopkg.in/yaml.v2"
 )
+
+const LoadProjectError = "load project error(s)"
 
 // This file contains the infrastructure for turning a YAML project configuration
 // into a usable Project struct. A basic overview of the project parsing process is:
@@ -408,10 +410,7 @@ func LoadProjectInto(data []byte, identifier string, project *Project) error {
 			}
 			buf.WriteString(e.Error())
 		}
-		if len(errs) > 1 {
-			return errors.Errorf("project errors: %v", buf.String())
-		}
-		return errors.Errorf("project error: %v", buf.String())
+		return errors.Errorf("%s: %s", LoadProjectError, buf.String())
 	}
 	*project = *p
 	project.Identifier = identifier

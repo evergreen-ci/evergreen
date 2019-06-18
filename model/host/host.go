@@ -79,9 +79,10 @@ type Host struct {
 	Status    string `bson:"status" json:"status"`
 	StartedBy string `bson:"started_by" json:"started_by"`
 	// True if this host was created manually by a user (i.e. with spawnhost)
-	UserHost      bool   `bson:"user_host" json:"user_host"`
-	AgentRevision string `bson:"agent_revision" json:"agent_revision"`
-	NeedsNewAgent bool   `bson:"needs_agent" json:"needs_agent"`
+	UserHost             bool   `bson:"user_host" json:"user_host"`
+	AgentRevision        string `bson:"agent_revision" json:"agent_revision"`
+	NeedsNewAgent        bool   `bson:"needs_agent" json:"needs_agent"`
+	NeedsNewAgentMonitor bool   `bson:"needs_agent_monitor" json:"needs_agent_monitor"`
 
 	// for ec2 dynamic hosts, the instance type requested
 	InstanceType string `bson:"instance_type" json:"instance_type,omitempty"`
@@ -613,6 +614,49 @@ func (h *Host) SetNeedsNewAgentAtomically(needsAgent bool) error {
 	}
 	h.NeedsNewAgent = needsAgent
 	return nil
+}
+
+// SetNeedsNewAgentMonitor sets the "needs new agent monitor" on the host to
+// indicate that the host needs to have the agent monitor deployed.
+func (h *Host) SetNeedsNewAgentMonitor(needsAgentMonitor bool) error {
+	err := UpdateOne(bson.M{IdKey: h.Id},
+		bson.M{"$set": bson.M{NeedsNewAgentMonitorKey: needsAgentMonitor}})
+	if err != nil {
+		return err
+	}
+	h.NeedsNewAgentMonitor = needsAgentMonitor
+	return nil
+}
+
+// SetNeedsNewAgentMonitorAtomically is the same as SetNeedsNewAgentMonitor but
+// performs an atomic update on the host in the database.
+func (h *Host) SetNeedsNewAgentMonitorAtomically(needsAgentMonitor bool) error {
+	if err := UpdateOne(bson.M{IdKey: h.Id, NeedsNewAgentMonitorKey: !needsAgentMonitor},
+		bson.M{"$set": bson.M{NeedsNewAgentMonitorKey: needsAgentMonitor}}); err != nil {
+		return err
+	}
+	h.NeedsNewAgentMonitor = needsAgentMonitor
+	return nil
+}
+
+// LegacyBootstrap returns whether the host was bootstrapped using the legacy
+// method.
+func (h *Host) LegacyBootstrap() bool {
+	return h.Distro.BootstrapMethod == "" || h.Distro.BootstrapMethod == distro.BootstrapMethodLegacySSH
+}
+
+// LegacyCommunication returns whether the app server is communicating with this
+// host using the legacy method.
+func (h *Host) LegacyCommunication() bool {
+	return h.Distro.CommunicationMethod == "" || h.Distro.CommunicationMethod == distro.CommunicationMethodLegacySSH
+}
+
+// SetNeedsAgentDeploy indicates that the host's agent needs to be deployed.
+func (h *Host) SetNeedsAgentDeploy(needsDeploy bool) error {
+	if h.LegacyBootstrap() {
+		return errors.Wrap(h.SetNeedsNewAgent(needsDeploy), "error setting host needs new agent")
+	}
+	return errors.Wrap(h.SetNeedsNewAgentMonitor(needsDeploy), "error setting host needs new agent monitor")
 }
 
 // SetExpirationTime updates the expiration time of a spawn host

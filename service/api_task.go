@@ -87,7 +87,7 @@ func (as *APIServer) StartTask(w http.ResponseWriter, r *http.Request) {
 
 	if h.Distro.IsEphemeral() {
 		job := units.NewCollectHostIdleDataJob(h, t, idleTimeStartAt, t.StartTime)
-		if err = as.queue.Put(job); err != nil {
+		if err = as.queue.Put(r.Context(), job); err != nil {
 			as.LoggedError(w, r, http.StatusInternalServerError, errors.Wrapf(err, "error queuing host idle stats for %s", msg))
 			return
 		}
@@ -222,7 +222,7 @@ func (as *APIServer) EndTask(w http.ResponseWriter, r *http.Request) {
 	}
 
 	job := units.NewCollectTaskEndDataJob(t, currentHost)
-	if err = as.queue.Put(job); err != nil {
+	if err = as.queue.Put(r.Context(), job); err != nil {
 		as.LoggedError(w, r, http.StatusInternalServerError,
 			errors.Wrap(err, "couldn't queue job to update task cost accounting"))
 		return
@@ -235,9 +235,8 @@ func (as *APIServer) EndTask(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if checkHostHealth(currentHost) {
-		// set the needs new agent flag on the host
-		if err := currentHost.SetNeedsNewAgent(true); err != nil {
-			grip.Error(message.WrapErrorf(err, "error indicating host %s needs new agent", currentHost.Id))
+		if err = currentHost.SetNeedsAgentDeploy(true); err != nil {
+			grip.Error(message.WrapErrorf(err, "error indicating host %s needs deploy", currentHost.Id))
 			gimlet.WriteResponse(w, gimlet.MakeJSONInternalErrorResponder(err))
 			return
 		}
@@ -254,7 +253,7 @@ func (as *APIServer) EndTask(w http.ResponseWriter, r *http.Request) {
 			env := evergreen.GetEnvironment()
 
 			job := units.NewDecoHostNotifyJob(env, currentHost, err, msg)
-			grip.Critical(message.WrapError(as.queue.Put(job),
+			grip.Critical(message.WrapError(as.queue.Put(r.Context(), job),
 				message.Fields{
 					"host_id": currentHost.Id,
 					"task_id": t.Id,
@@ -354,12 +353,18 @@ func assignNextAvailableTask(taskQueue *model.TaskQueue, taskQueueService model.
 			return nil, nil
 		}
 
-		nextTask, err := task.FindOne(task.ById(queueItem.Id))
+		nextTask, err := task.FindOneNoMerge(task.ById(queueItem.Id))
 		if err != nil {
 			return nil, err
 		}
 		if nextTask == nil {
-			return nil, errors.New("nil task on the queue")
+			grip.Error(message.Fields{
+				"distro":  currentHost.Distro.Id,
+				"host":    currentHost.Id,
+				"message": "queue item with invalid id",
+				"id":      queueItem.Id,
+			})
+			return nil, nil
 		}
 
 		// validate that the task can be run, if not fetch the next one in
@@ -434,11 +439,21 @@ func assignNextAvailableTask(taskQueue *model.TaskQueue, taskQueueService model.
 // NextTask retrieves the next task's id given the host name and host secret by retrieving the task queue
 // and popping the next task off the task queue.
 func (as *APIServer) NextTask(w http.ResponseWriter, r *http.Request) {
+	begin := time.Now()
 	h := MustHaveHost(r)
+	defer func() {
+		grip.DebugWhen(time.Since(begin) > time.Second, message.Fields{
+			"message": "slow next_task operation",
+			"host_id": h.Id,
+			"distro":  h.Distro.Id,
+			"latency": time.Since(begin),
+		})
+	}()
+
 	var response apimodels.NextTaskResponse
 	var err error
 	if checkHostHealth(h) {
-		if err = h.SetNeedsNewAgent(true); err != nil {
+		if err = h.SetNeedsAgentDeploy(true); err != nil {
 			grip.Error(message.WrapError(err, message.Fields{
 				"host":      h.Id,
 				"operation": "next_task",

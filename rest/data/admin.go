@@ -1,6 +1,7 @@
 package data
 
 import (
+	"context"
 	"fmt"
 	"reflect"
 	"sync"
@@ -160,7 +161,7 @@ func (ac *DBAdminConnector) RestartFailedTasks(queue amboy.Queue, opts model.Res
 			return nil, err
 		}
 	} else {
-		if err = queue.Put(units.NewTasksRestartJob(opts)); err != nil {
+		if err = queue.Put(context.TODO(), units.NewTasksRestartJob(opts)); err != nil {
 			return nil, errors.Wrap(err, "error starting background job for task restart")
 		}
 	}

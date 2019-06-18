@@ -34,7 +34,7 @@ func newRemoteBase() *remoteBase {
 // Put adds a Job to the queue. It is generally an error to add the
 // same job to a queue more than once, but this depends on the
 // implementation of the underlying driver.
-func (q *remoteBase) Put(j amboy.Job) error {
+func (q *remoteBase) Put(ctx context.Context, j amboy.Job) error {
 	if j.Type().Version < 0 {
 		return errors.New("cannot add jobs with versions less than 0")
 	}
@@ -43,18 +43,18 @@ func (q *remoteBase) Put(j amboy.Job) error {
 		Created: time.Now(),
 	})
 
-	return q.driver.Put(context.TODO(), j)
+	return q.driver.Put(ctx, j)
 }
 
 // Get retrieves a job from the queue's storage. The second value
 // reflects the existence of a job of that name in the queue's
 // storage.
-func (q *remoteBase) Get(name string) (amboy.Job, bool) {
+func (q *remoteBase) Get(ctx context.Context, name string) (amboy.Job, bool) {
 	if q.driver == nil {
 		return nil, false
 	}
 
-	job, err := q.driver.Get(context.TODO(), name)
+	job, err := q.driver.Get(ctx, name)
 	if err != nil {
 		grip.Debug(message.WrapError(err, message.Fields{
 			"driver": q.driver.ID(),
@@ -102,6 +102,9 @@ func (q *remoteBase) Started() bool {
 // Complete takes a context and, asynchronously, marks the job
 // complete, in the queue.
 func (q *remoteBase) Complete(ctx context.Context, j amboy.Job) {
+	if ctx.Err() != nil {
+		return
+	}
 	const retryInterval = time.Second
 	timer := time.NewTimer(0)
 	defer timer.Stop()
@@ -187,7 +190,11 @@ func (q *remoteBase) Results(ctx context.Context) <-chan amboy.Job {
 				return
 			}
 			if j.Status().Completed {
-				output <- j
+				select {
+				case <-ctx.Done():
+					return
+				case output <- j:
+				}
 			}
 		}
 	}()
@@ -200,8 +207,8 @@ func (q *remoteBase) JobStats(ctx context.Context) <-chan amboy.JobStatusInfo {
 
 // Stats returns a amboy. QueueStats object that reflects the progress
 // jobs in the queue.
-func (q *remoteBase) Stats() amboy.QueueStats {
-	output := q.driver.Stats(context.TODO())
+func (q *remoteBase) Stats(ctx context.Context) amboy.QueueStats {
+	output := q.driver.Stats(ctx)
 
 	q.mutex.RLock()
 	defer q.mutex.RUnlock()

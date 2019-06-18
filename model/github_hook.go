@@ -1,9 +1,16 @@
 package model
 
 import (
+	"context"
 	"errors"
+	"fmt"
+	"net/http"
+	"time"
 
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/util"
+	"github.com/google/go-github/github"
 	"github.com/mongodb/anser/bsonutil"
 	adb "github.com/mongodb/anser/db"
 	"go.mongodb.org/mongo-driver/bson"
@@ -55,5 +62,52 @@ func FindGithubHook(owner, repo string) (*GithubHook, error) {
 		return nil, err
 	}
 
+	return hook, nil
+}
+
+func SetupNewGithubHook(ctx context.Context, settings evergreen.Settings, owner string, repo string) (*GithubHook, error) {
+	token, err := settings.GetGithubOauthToken()
+	if err != nil {
+		return nil, err
+	}
+	if settings.Api.GithubWebhookSecret == "" {
+		return nil, errors.New("Evergreen is not configured for Github Webhooks")
+	}
+
+	httpClient, err := util.GetOAuth2HTTPClient(token)
+	if err != nil {
+		return nil, err
+	}
+	defer util.PutHTTPClient(httpClient)
+	client := github.NewClient(httpClient)
+	hookObj := github.Hook{
+		Name:   github.String("web"),
+		Active: github.Bool(true),
+		Events: []string{"*"},
+		Config: map[string]interface{}{
+			"url":          github.String(fmt.Sprintf("%s/rest/v2/hooks/github", settings.ApiUrl)),
+			"content_type": github.String("json"),
+			"secret":       github.String(settings.Api.GithubWebhookSecret),
+			"insecure_ssl": github.String("0"),
+		},
+	}
+	newCtx, cancel := context.WithTimeout(ctx, 10*time.Second)
+	defer cancel()
+
+	resp := &github.Response{}
+	respHook := &github.Hook{}
+	respHook, resp, err = client.Repositories.CreateHook(newCtx, owner, repo, &hookObj)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusCreated || respHook == nil || respHook.ID == nil {
+		return nil, errors.New("unexpected data from github")
+	}
+	hook := &GithubHook{
+		HookID: *respHook.ID,
+		Owner:  owner,
+		Repo:   repo,
+	}
 	return hook, nil
 }

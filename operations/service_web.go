@@ -43,7 +43,7 @@ func startWebService() cli.Command {
 			grip.EmergencyFatal(errors.Wrap(env.RemoteQueue().Start(ctx), "problem starting remote queue"))
 
 			settings := env.Settings()
-			sender, err := settings.GetSender(env)
+			sender, err := settings.GetSender(ctx, env)
 			grip.EmergencyFatal(err)
 			grip.EmergencyFatal(grip.SetSender(sender))
 			queue := env.RemoteQueue()
@@ -211,7 +211,10 @@ func getAdminService(ctx context.Context, env evergreen.Environment, settings *e
 
 	apps = append(apps, localAbort, remoteAbort, localReporting)
 	if evergreen.EnableAmboyRemoteReporting {
-		remoteReporter, err := reporting.MakeDBQueueState(ctx, settings.Amboy.Name, opts, env.Client())
+		remoteReporter, err := reporting.MakeDBQueueState(ctx, reporting.DBQueueReporterOptions{
+			Name:    settings.Amboy.Name,
+			Options: opts,
+		}, env.Client())
 		if err != nil {
 			return nil, errors.Wrap(err, "problem building queue reporter")
 		}

@@ -91,6 +91,14 @@ type Connector interface {
 	CreateProject(projectRef *model.ProjectRef) error
 	UpdateProject(projectRef *model.ProjectRef) error
 
+	// EnableWebhooks creates a webhook for the project's owner/repo if one does not exist.
+	// If unable to setup the new webhook, returns false but no error.
+	EnableWebhooks(context.Context, *model.ProjectRef) (bool, error)
+	// EnablePRTesting determines if PR testing can be enabled for the given project.
+	EnablePRTesting(*model.ProjectRef) error
+
+	// UpdateProjectRevision updates the given project's revision
+	UpdateProjectRevision(string, string) error
 	// FindProjects is a method to find projects as ordered by name
 	FindProjects(string, int, int, bool) ([]model.ProjectRef, error)
 	// FindProjectByBranch is a method to find the projectref given a branch name.
@@ -257,6 +265,7 @@ type Connector interface {
 	GetGitHubPR(context.Context, string, string, int) (*github.PullRequest, error)
 	EnqueueItem(string, restModel.APICommitQueueItem) (int, error)
 	FindCommitQueueByID(string) (*restModel.APICommitQueue, error)
+	EnableCommitQueue(*model.ProjectRef, model.CommitQueueParams) error
 	CommitQueueRemoveItem(string, string) (bool, error)
 	CommitQueueClearAll() (int, error)
 	IsAuthorizedToPatchAndMerge(context.Context, *evergreen.Settings, UserRepoInfo) (bool, error)

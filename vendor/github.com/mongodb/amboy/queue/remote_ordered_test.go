@@ -81,11 +81,11 @@ func (s *SimpleRemoteOrderedSuite) TestQueueSkipsCompletedJobs() {
 	s.True(j.Status().Completed)
 
 	s.NoError(s.queue.Start(ctx))
-	s.NoError(s.queue.Put(j))
+	s.NoError(s.queue.Put(ctx, j))
 
-	amboy.WaitCtx(ctx, s.queue)
+	amboy.Wait(ctx, s.queue)
 
-	stat := s.queue.Stats()
+	stat := s.queue.Stats(ctx)
 
 	s.Equal(1, stat.Total)
 	s.Equal(1, stat.Completed)
@@ -102,11 +102,11 @@ func (s *SimpleRemoteOrderedSuite) TestQueueSkipsUnresolvedJobs() {
 	j.SetDependency(mockDep)
 
 	s.NoError(s.queue.Start(ctx))
-	s.NoError(s.queue.Put(j))
+	s.NoError(s.queue.Put(ctx, j))
 
-	amboy.WaitCtx(ctx, s.queue)
+	amboy.Wait(ctx, s.queue)
 
-	stat := s.queue.Stats()
+	stat := s.queue.Stats(ctx)
 
 	s.Equal(1, stat.Total, fmt.Sprintf("%+v", stat))
 	s.Equal(0, stat.Completed, fmt.Sprintf("%+v", stat))
@@ -124,11 +124,11 @@ func (s *SimpleRemoteOrderedSuite) TestQueueSkipsBlockedJobsWithNoEdges() {
 	j.SetDependency(mockDep)
 
 	s.NoError(s.queue.Start(ctx))
-	s.NoError(s.queue.Put(j))
+	s.NoError(s.queue.Put(ctx, j))
 
-	amboy.WaitCtx(ctx, s.queue)
+	amboy.Wait(ctx, s.queue)
 
-	stat := s.queue.Stats()
+	stat := s.queue.Stats(ctx)
 
 	s.Equal(stat.Total, 1, fmt.Sprintf("%+v", stat))
 	s.Equal(stat.Completed, 0, fmt.Sprintf("%+v", stat))
@@ -149,11 +149,11 @@ func (s *SimpleRemoteOrderedSuite) TestQueueSkipsBlockedJobsWithManyEdges() {
 	j.SetDependency(mockDep)
 
 	s.NoError(s.queue.Start(ctx))
-	s.NoError(s.queue.Put(j))
+	s.NoError(s.queue.Put(ctx, j))
 
-	amboy.WaitCtx(ctx, s.queue)
+	amboy.Wait(ctx, s.queue)
 
-	stat := s.queue.Stats()
+	stat := s.queue.Stats(ctx)
 
 	s.Equal(stat.Total, 1)
 	s.Equal(stat.Completed, 0)
@@ -172,11 +172,11 @@ func (s *SimpleRemoteOrderedSuite) TestQueueSkipsBlockedJobsWithOneEdge() {
 	j.SetDependency(mockDep)
 
 	s.NoError(s.queue.Start(ctx))
-	s.NoError(s.queue.Put(j))
+	s.NoError(s.queue.Put(ctx, j))
 
-	amboy.WaitCtx(ctx, s.queue)
+	amboy.Wait(ctx, s.queue)
 
-	stat := s.queue.Stats()
+	stat := s.queue.Stats(ctx)
 
 	s.Equal(stat.Total, 1)
 	s.Equal(stat.Completed, 0)

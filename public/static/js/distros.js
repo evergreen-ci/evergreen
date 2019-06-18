@@ -33,8 +33,11 @@ mciModule.controller('DistrosCtrl', function($scope, $window, $location, $anchor
   }
 
   $scope.plannerVersions = [{
-   'id': "legacy",
+    'id': "legacy"
     'display': 'Legacy '
+  }, {
+    'id': "revised",
+    'display': 'Revised '
   }, {
     'id': "tunable",
     'display': 'Tunable '

@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/pkg/errors"
 	"github.com/urfave/cli"
 )
@@ -17,7 +18,7 @@ func PatchList() cli.Command {
 	return cli.Command{
 		Name:  "list-patches",
 		Usage: "show existing patches",
-		Flags: mergeFlagSlices(addPatchIDFlag(), addVariantsFlag(
+		Flags: mergeFlagSlices(addPatchIDFlag(
 			cli.IntFlag{
 				Name:  joinFlagNames(numberFlagName, "n"),
 				Usage: "number of patches to show (0 for all patches)",
@@ -31,6 +32,7 @@ func PatchList() cli.Command {
 			confPath := c.Parent().String(confFlagName)
 			number := c.Int(numberFlagName)
 			showSummary := c.Bool(showSummaryFlagName)
+			patchID := c.String(patchIDFlagName)
 
 			ctx, cancel := context.WithCancel(context.Background())
 			defer cancel()
@@ -43,15 +45,25 @@ func PatchList() cli.Command {
 			client := conf.GetRestCommunicator(ctx)
 			defer client.Close()
 
-			ac, _, err := conf.getLegacyClients()
+			ac, rc, err := conf.getLegacyClients()
 			if err != nil {
 				return errors.Wrap(err, "problem accessing evergreen service")
 			}
 
-			patches, err := ac.GetPatches(number)
-			if err != nil {
-				return err
+			patches := []patch.Patch{}
+			if patchID != "" {
+				var res *patch.Patch
+				if res, err = rc.GetPatch(patchID); err != nil {
+					return err
+				}
+				patches = append(patches, *res)
+			} else {
+				patches, err = ac.GetPatches(number)
+				if err != nil {
+					return err
+				}
 			}
+
 			for _, p := range patches {
 				disp, err := getPatchDisplay(&p, showSummary, conf.UIServerHost)
 				if err != nil {

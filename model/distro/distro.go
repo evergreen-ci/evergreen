@@ -15,29 +15,31 @@ import (
 )
 
 type Distro struct {
-	Id                  string                  `bson:"_id" json:"_id,omitempty" mapstructure:"_id,omitempty"`
-	Arch                string                  `bson:"arch" json:"arch,omitempty" mapstructure:"arch,omitempty"`
-	WorkDir             string                  `bson:"work_dir" json:"work_dir,omitempty" mapstructure:"work_dir,omitempty"`
-	PoolSize            int                     `bson:"pool_size,omitempty" json:"pool_size,omitempty" mapstructure:"pool_size,omitempty" yaml:"poolsize"`
-	Provider            string                  `bson:"provider" json:"provider,omitempty" mapstructure:"provider,omitempty"`
-	ProviderSettings    *map[string]interface{} `bson:"settings" json:"settings,omitempty" mapstructure:"settings,omitempty"`
-	SetupAsSudo         bool                    `bson:"setup_as_sudo,omitempty" json:"setup_as_sudo,omitempty" mapstructure:"setup_as_sudo,omitempty"`
-	Setup               string                  `bson:"setup,omitempty" json:"setup,omitempty" mapstructure:"setup,omitempty"`
-	Teardown            string                  `bson:"teardown,omitempty" json:"teardown,omitempty" mapstructure:"teardown,omitempty"`
-	User                string                  `bson:"user,omitempty" json:"user,omitempty" mapstructure:"user,omitempty"`
-	BootstrapMethod     string                  `bson:"bootstrap_method,omitempty" json:"bootstrap_method,omitempty" mapstructure:"bootstrap_method,omitempty"`
-	CommunicationMethod string                  `bson:"communication_method,omitempty" json:"communication_method,omitempty" mapstructure:"communication_method,omitempty"`
-	CloneMethod         string                  `bson:"clone_method" json:"clone_method,omitempty" mapstructure:"clone_method,omitempty"`
-	ShellPath           string                  `bson:"shell_path" json:"shell_path" mapstructure:"shell_path,omitempty"`
-	CuratorDir          string                  `bson:"curator_dir" json:"curator_dir" mapstructure:"curator_dir,omitempty"`
-	SSHKey              string                  `bson:"ssh_key,omitempty" json:"ssh_key,omitempty" mapstructure:"ssh_key,omitempty"`
-	SSHOptions          []string                `bson:"ssh_options,omitempty" json:"ssh_options,omitempty" mapstructure:"ssh_options,omitempty"`
-	SpawnAllowed        bool                    `bson:"spawn_allowed" json:"spawn_allowed,omitempty" mapstructure:"spawn_allowed,omitempty"`
-	Expansions          []Expansion             `bson:"expansions,omitempty" json:"expansions,omitempty" mapstructure:"expansions,omitempty"`
-	Disabled            bool                    `bson:"disabled,omitempty" json:"disabled,omitempty" mapstructure:"disabled,omitempty"`
-	ContainerPool       string                  `bson:"container_pool,omitempty" json:"container_pool,omitempty" mapstructure:"container_pool,omitempty"`
-	PlannerSettings     PlannerSettings         `bson:"planner_settings" json:"planner_settings,omitempty" mapstructure:"planner_settings,omitempty"`
-	FinderSettings      FinderSettings          `bson:"finder_settings" json:"finder_settings,omitempty" mapstructure:"finder_settings,omitempty"`
+	Id                    string                  `bson:"_id" json:"_id,omitempty" mapstructure:"_id,omitempty"`
+	Arch                  string                  `bson:"arch" json:"arch,omitempty" mapstructure:"arch,omitempty"`
+	WorkDir               string                  `bson:"work_dir" json:"work_dir,omitempty" mapstructure:"work_dir,omitempty"`
+	PoolSize              int                     `bson:"pool_size,omitempty" json:"pool_size,omitempty" mapstructure:"pool_size,omitempty" yaml:"poolsize"`
+	Provider              string                  `bson:"provider" json:"provider,omitempty" mapstructure:"provider,omitempty"`
+	ProviderSettings      *map[string]interface{} `bson:"settings" json:"settings,omitempty" mapstructure:"settings,omitempty"`
+	SetupAsSudo           bool                    `bson:"setup_as_sudo,omitempty" json:"setup_as_sudo,omitempty" mapstructure:"setup_as_sudo,omitempty"`
+	Setup                 string                  `bson:"setup,omitempty" json:"setup,omitempty" mapstructure:"setup,omitempty"`
+	Teardown              string                  `bson:"teardown,omitempty" json:"teardown,omitempty" mapstructure:"teardown,omitempty"`
+	User                  string                  `bson:"user,omitempty" json:"user,omitempty" mapstructure:"user,omitempty"`
+	BootstrapMethod       string                  `bson:"bootstrap_method,omitempty" json:"bootstrap_method,omitempty" mapstructure:"bootstrap_method,omitempty"`
+	CommunicationMethod   string                  `bson:"communication_method,omitempty" json:"communication_method,omitempty" mapstructure:"communication_method,omitempty"`
+	CloneMethod           string                  `bson:"clone_method" json:"clone_method,omitempty" mapstructure:"clone_method,omitempty"`
+	ShellPath             string                  `bson:"shell_path" json:"shell_path" mapstructure:"shell_path,omitempty"`
+	CuratorDir            string                  `bson:"curator_dir" json:"curator_dir" mapstructure:"curator_dir,omitempty"`
+	ClientDir             string                  `bson:"client_dir" json:"client_dir" mapstructure:"client_dir,omitempty"`
+	JasperCredentialsPath string                  `json:"jasper_credentials_path" bson:"jasper_credentials_path" mapstructure:"jasper_credentials_path,omitempty"`
+	SSHKey                string                  `bson:"ssh_key,omitempty" json:"ssh_key,omitempty" mapstructure:"ssh_key,omitempty"`
+	SSHOptions            []string                `bson:"ssh_options,omitempty" json:"ssh_options,omitempty" mapstructure:"ssh_options,omitempty"`
+	SpawnAllowed          bool                    `bson:"spawn_allowed" json:"spawn_allowed,omitempty" mapstructure:"spawn_allowed,omitempty"`
+	Expansions            []Expansion             `bson:"expansions,omitempty" json:"expansions,omitempty" mapstructure:"expansions,omitempty"`
+	Disabled              bool                    `bson:"disabled,omitempty" json:"disabled,omitempty" mapstructure:"disabled,omitempty"`
+	ContainerPool         string                  `bson:"container_pool,omitempty" json:"container_pool,omitempty" mapstructure:"container_pool,omitempty"`
+	PlannerSettings       PlannerSettings         `bson:"planner_settings" json:"planner_settings,omitempty" mapstructure:"planner_settings,omitempty"`
+	FinderSettings        FinderSettings          `bson:"finder_settings" json:"finder_settings,omitempty" mapstructure:"finder_settings,omitempty"`
 }
 
 type PlannerSettings struct {

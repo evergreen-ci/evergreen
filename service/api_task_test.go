@@ -215,11 +215,12 @@ func TestAssignNextAvailableTaskWithPlannerSettingVersionLegacy(t *testing.T) {
 				So(err, ShouldBeNil)
 				So(t, ShouldBeNil)
 			})
-			Convey("a tasks queue with a task that does not exist should error", func() {
+			Convey("a tasks queue with a task that does not exist should continue", func() {
 				taskQueue.Queue = []model.TaskQueueItem{{Id: "notatask"}}
 				So(taskQueue.Save(), ShouldBeNil)
-				_, err := assignNextAvailableTask(taskQueue, model.NewTaskDispatchService(taskQueueServiceTTL), &theHostWhoCanBoastTheMostRoast)
-				So(err, ShouldNotBeNil)
+				t, err := assignNextAvailableTask(taskQueue, model.NewTaskDispatchService(taskQueueServiceTTL), &theHostWhoCanBoastTheMostRoast)
+				So(err, ShouldBeNil)
+				So(t, ShouldBeNil)
 			})
 			Convey("with a host with a running task", func() {
 				anotherHost := host.Host{
@@ -383,8 +384,9 @@ func TestAssignNextAvailableTaskWithPlannerSettingVersionTunable(t *testing.T) {
 			Convey("a tasks queue with a task that does not exist should error", func() {
 				taskQueue.Queue = []model.TaskQueueItem{{Id: "notatask"}}
 				So(taskQueue.Save(), ShouldBeNil)
-				_, err := assignNextAvailableTask(taskQueue, model.NewTaskDispatchService(taskQueueServiceTTL), &theHostWhoCanBoastTheMostRoast)
-				So(err, ShouldNotBeNil)
+				t, err := assignNextAvailableTask(taskQueue, model.NewTaskDispatchService(taskQueueServiceTTL), &theHostWhoCanBoastTheMostRoast)
+				So(err, ShouldBeNil)
+				So(t, ShouldBeNil)
 			})
 			Convey("with a host with a running task", func() {
 				anotherHost := host.Host{
@@ -818,15 +820,15 @@ func TestTaskLifecycleEndpoints(t *testing.T) {
 		So(testVersion.Insert(), ShouldBeNil)
 
 		Convey("test task should start a background job", func() {
-			stat := q.Stats()
+			stat := q.Stats(ctx)
 			So(stat.Total, ShouldEqual, 0)
 			resp := getStartTaskEndpoint(t, as, hostId, task1.Id)
-			stat = q.Stats()
+			stat = q.Stats(ctx)
 
 			So(resp.Code, ShouldEqual, http.StatusOK)
 			So(resp, ShouldNotBeNil)
 			So(stat.Total, ShouldEqual, 1)
-			amboy.WaitCtxInterval(ctx, q, time.Millisecond)
+			amboy.WaitInterval(ctx, q, time.Millisecond)
 
 			counter := 0
 			for job := range as.queue.Results(ctx) {

@@ -35,7 +35,6 @@ func NewRemoteUnordered(size int) Remote {
 	}
 
 	grip.Error(q.SetRunner(pool.NewLocalWorkers(size, q)))
-
 	grip.Infof("creating new remote job queue with %d workers", size)
 
 	return q
