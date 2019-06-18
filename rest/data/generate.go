@@ -29,7 +29,7 @@ func (gc *GenerateConnector) GenerateTasks(ctx context.Context, taskID string, j
 	if err != nil {
 		return errors.Wrapf(err, "problem getting queue for version %s", t.Version)
 	}
-	err := q.Put(ctx, units.NewGenerateTasksJob(taskID, jsonBytes))
+	err = q.Put(ctx, units.NewGenerateTasksJob(taskID, jsonBytes))
 	grip.DebugWhen(err != nil, errors.Wrapf(err, "problem saving new generate tasks job for task '%s'", taskID))
 	return nil
 }
