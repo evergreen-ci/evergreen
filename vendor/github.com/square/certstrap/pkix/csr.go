@@ -100,7 +100,7 @@ func CreateCertificateSigningRequest(key *Key, organizationalUnit string, ipList
 		Subject:     csrPkixName,
 		IPAddresses: ipList,
 		DNSNames:    domainList,
-		URIs:        uriList,
+		// URIs:        uriList,
 	}
 
 	csrBytes, err := x509.CreateCertificateRequest(rand.Reader, csrTemplate, key.Private)
