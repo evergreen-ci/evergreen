@@ -8,6 +8,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/units"
 	"github.com/mongodb/amboy"
+	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 )
 
@@ -28,7 +29,9 @@ func (gc *GenerateConnector) GenerateTasks(ctx context.Context, taskID string, j
 	if err != nil {
 		return errors.Wrapf(err, "problem getting queue for version %s", t.Version)
 	}
-	return q.Put(ctx, units.NewGenerateTasksJob(taskID, jsonBytes))
+	err := q.Put(ctx, units.NewGenerateTasksJob(taskID, jsonBytes))
+	grip.DebugWhen(err != nil, errors.Wrapf(err, "problem saving new generate tasks job for task '%s'", taskID))
+	return nil
 }
 
 func (gc *GenerateConnector) GeneratePoll(ctx context.Context, taskID string, group amboy.QueueGroup) (bool, []string, error) {
