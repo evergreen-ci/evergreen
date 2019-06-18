@@ -4,6 +4,7 @@ import (
 	"regexp"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
@@ -262,4 +263,135 @@ func TestGetImageID(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestGetResolvedPlannerSettings(t *testing.T) {
+	d0 := Distro{
+		Id: "distro0",
+		PlannerSettings: PlannerSettings{
+			Version:                "",
+			MinimumHosts:           4,
+			MaximumHosts:           10,
+			TargetTime:             0,
+			AcceptableHostIdleTime: 0,
+			GroupVersions:          nil,
+			PatchZipperFactor:      0,
+			TaskOrdering:           "",
+		},
+	}
+	config0 := evergreen.SchedulerConfig{
+		TaskFinder:                    "legacy",
+		HostAllocator:                 "legacy",
+		FreeHostFraction:              0.1,
+		CacheDurationSeconds:          60,
+		Planner:                       evergreen.PlannerVersionLegacy,
+		TargetTimeSeconds:             112358,
+		AcceptableHostIdleTimeSeconds: 132134,
+		GroupVersions:                 false,
+		PatchZipperFactor:             50,
+		TaskOrdering:                  evergreen.TaskOrderingInterleave,
+	}
+
+	resolved0, err := d0.GetResolvedPlannerSettings(config0)
+	assert.NoError(t, err)
+	assert.Equal(t, evergreen.PlannerVersionLegacy, resolved0.Version)
+	assert.Equal(t, 4, resolved0.MinimumHosts)
+	assert.Equal(t, 10, resolved0.MaximumHosts)
+	assert.Equal(t, time.Duration(112358)*time.Second, resolved0.TargetTime)
+	assert.Equal(t, time.Duration(132134)*time.Second, resolved0.AcceptableHostIdleTime)
+	// Fallback to the SchedulerConfig.GroupVersions as PlannerSettings.GroupVersions is nil
+	assert.Equal(t, false, *resolved0.GroupVersions)
+	assert.Equal(t, 50, resolved0.PatchZipperFactor)
+	// Fallback to the SchedulerConfig task ordering as PlannerSettings.TaskOrdering is an empty string
+	assert.Equal(t, evergreen.TaskOrderingInterleave, resolved0.TaskOrdering)
+
+	pTrue := true
+	d1 := Distro{
+		Id: "distro1",
+		PlannerSettings: PlannerSettings{
+			Version:                evergreen.PlannerVersionTunable,
+			MinimumHosts:           1,
+			MaximumHosts:           5,
+			TargetTime:             98765000000000,
+			AcceptableHostIdleTime: 56789000000000,
+			GroupVersions:          &pTrue,
+			PatchZipperFactor:      25,
+			TaskOrdering:           evergreen.TaskOrderingPatchFirst,
+		},
+	}
+	config1 := evergreen.SchedulerConfig{
+		TaskFinder:                    "legacy",
+		HostAllocator:                 "legacy",
+		FreeHostFraction:              0.1,
+		CacheDurationSeconds:          60,
+		Planner:                       evergreen.PlannerVersionLegacy, // STU: change this from PlannerVersion to Planner
+		TargetTimeSeconds:             10,
+		AcceptableHostIdleTimeSeconds: 60,
+		GroupVersions:                 false,
+		PatchZipperFactor:             50,
+		TaskOrdering:                  evergreen.TaskOrderingInterleave,
+	}
+
+	// d1.PlannerSettings' field values are all set and valid, so there is no need to fallback on any SchedulerConfig field values
+	resolved1, err := d1.GetResolvedPlannerSettings(config1)
+	assert.NoError(t, err)
+	assert.Equal(t, evergreen.PlannerVersionTunable, resolved1.Version)
+	assert.Equal(t, 1, resolved1.MinimumHosts)
+	assert.Equal(t, 5, resolved1.MaximumHosts)
+	assert.Equal(t, time.Duration(98765)*time.Second, resolved1.TargetTime)
+	assert.Equal(t, time.Duration(56789)*time.Second, resolved1.AcceptableHostIdleTime)
+	assert.Equal(t, true, *resolved1.GroupVersions)
+	assert.Equal(t, 25, resolved1.PatchZipperFactor)
+	assert.Equal(t, evergreen.TaskOrderingPatchFirst, resolved1.TaskOrdering)
+
+	d2 := Distro{
+		Id: "distro2",
+		PlannerSettings: PlannerSettings{
+			Version:                "",
+			MinimumHosts:           7,
+			MaximumHosts:           25,
+			TargetTime:             0,
+			AcceptableHostIdleTime: 0,
+			GroupVersions:          nil,
+			PatchZipperFactor:      25,
+			TaskOrdering:           "",
+		},
+	}
+	config2 := evergreen.SchedulerConfig{
+		TaskFinder:                    "",
+		HostAllocator:                 "",
+		FreeHostFraction:              0.1,
+		CacheDurationSeconds:          60,
+		Planner:                       evergreen.PlannerVersionLegacy,
+		TargetTimeSeconds:             12345,
+		AcceptableHostIdleTimeSeconds: 67890,
+		GroupVersions:                 false,
+		PatchZipperFactor:             0,
+		TaskOrdering:                  evergreen.TaskOrderingMainlineFirst,
+	}
+	resolved2, err := d2.GetResolvedPlannerSettings(config2)
+	assert.NoError(t, err)
+	// d2.PlannerSetting.Version is an empty string -- fallback on the SchedulerConfig.PlannerVersion value
+	assert.Equal(t, evergreen.PlannerVersionLegacy, resolved2.Version)
+	assert.Equal(t, 7, resolved2.MinimumHosts)
+	assert.Equal(t, 25, resolved2.MaximumHosts)
+	// d2.PlannerSetting.TargetTime and d2.PlannerSetting.AcceptableHostIdleTime are 0 -- fallback on the equivalent SchedulerConfig field vlaues
+	assert.Equal(t, time.Duration(12345)*time.Second, resolved2.TargetTime)
+	assert.Equal(t, time.Duration(67890)*time.Second, resolved2.AcceptableHostIdleTime)
+	// d2.PlannerSetting.GroupVersions is nil -- fallback on the SchedulerConfig.PlannerVersion.GroupVersions value
+	assert.Equal(t, false, *resolved2.GroupVersions)
+	// d2.PlannerSetting.TaskOrdering is an empty string -- fallback on the SchedulerConfig.TaskOrdering value
+	assert.Equal(t, evergreen.TaskOrderingMainlineFirst, resolved2.TaskOrdering)
+
+	d2.PlannerSettings.Version = ""
+	config2.Planner = ""
+	_, err = d2.GetResolvedPlannerSettings(config2)
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "cannot resolve PlannerSettings for distro 'distro2' - '' is not a valid PlannerSettings.Version")
+
+	d2.PlannerSettings.Version = evergreen.PlannerVersionLegacy
+	config2.TaskOrdering = ""
+	_, err = d2.GetResolvedPlannerSettings(config2)
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "cannot resolve PlannerSettings for distro 'distro2' - '' is not a valid PlannerSettings.TaskOrdering")
 }
