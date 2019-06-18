@@ -52,7 +52,7 @@ func blockedStatePrivate(t *task.Task) (string, error) {
 		depTask := taskMap[dependency.TaskId]
 		state, err := getStateByDependency(depTask, dependency)
 		if err != nil {
-			return "", errors.Wrap(err, "")
+			return "", errors.WithStack(err)
 		}
 		if state != taskRunnable {
 			return state, nil
@@ -64,38 +64,17 @@ func blockedStatePrivate(t *task.Task) (string, error) {
 // getStateByDependency determines if the task is still running, is blocked, or has violated the given dependency
 func getStateByDependency(t *task.Task, dependency task.Dependency) (string, error) {
 	if t == nil {
-		grip.Error(message.Fields{
-			"message": "task does not exist",
-			"task_id": dependency.TaskId,
-		})
 		return taskRunnable, nil
 	}
 	state, err := blockedStatePrivate(t)
 	if err != nil {
-		return "", err
+		return "", errors.Wrap(err, "error getting state")
 	}
 	if state == taskBlocked {
-		grip.Debug(message.Fields{
-			"message":      "reset_tg",
-			"task":         t.Id,
-			"display_name": t.DisplayName,
-			"state":        state,
-			"status":       t.Status,
-			"depends_on":   t.DependsOn,
-			"returning":    taskBlocked,
-		})
 		return taskBlocked, nil
-	} else if t.Status == evergreen.TaskSucceeded || t.Status == evergreen.TaskFailed {
-		if t.Status != dependency.Status && dependency.Status != AllStatuses {
-			grip.Debug(message.Fields{
-				"message":      "reset_tg",
-				"task":         t.Id,
-				"display_name": t.DisplayName,
-				"state":        state,
-				"status":       t.Status,
-				"depends_on":   t.DependsOn,
-				"returning":    taskBlocked,
-			})
+	} else if t.IsFinished() {
+		if evergreen.IsFailedTaskStatus(t.Status) != evergreen.IsFailedTaskStatus(dependency.Status) &&
+			dependency.Status != AllStatuses {
 			return taskBlocked, nil
 		}
 	} else {
