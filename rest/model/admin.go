@@ -1043,7 +1043,7 @@ type APISchedulerConfig struct {
 	HostAllocator                 APIString `json:"host_allocator"`
 	FreeHostFraction              float64   `json:"free_host_fraction"`
 	CacheDurationSeconds          int       `json:"cache_duration_seconds"`
-	PlannerVersion                APIString `json:"planner_version"`
+	Planner                       APIString `json:"planner"`
 	TaskOrdering                  APIString `json:"task_ordering"`
 	TargetTimeSeconds             int       `json:"target_time_seconds"`
 	AcceptableHostIdleTimeSeconds int       `json:"acceptable_host_idle_time_seconds"`
@@ -1058,7 +1058,7 @@ func (a *APISchedulerConfig) BuildFromService(h interface{}) error {
 		a.HostAllocator = ToAPIString(v.HostAllocator)
 		a.FreeHostFraction = v.FreeHostFraction
 		a.CacheDurationSeconds = v.CacheDurationSeconds
-		a.PlannerVersion = ToAPIString(v.PlannerVersion)
+		a.Planner = ToAPIString(v.Planner)
 		a.TaskOrdering = ToAPIString(v.TaskOrdering)
 		a.TargetTimeSeconds = v.TargetTimeSeconds
 		a.AcceptableHostIdleTimeSeconds = v.AcceptableHostIdleTimeSeconds
@@ -1076,7 +1076,7 @@ func (a *APISchedulerConfig) ToService() (interface{}, error) {
 		HostAllocator:                 FromAPIString(a.HostAllocator),
 		FreeHostFraction:              a.FreeHostFraction,
 		CacheDurationSeconds:          a.CacheDurationSeconds,
-		PlannerVersion:                FromAPIString(a.PlannerVersion),
+		Planner:                       FromAPIString(a.Planner),
 		TaskOrdering:                  FromAPIString(a.TaskOrdering),
 		TargetTimeSeconds:             a.TargetTimeSeconds,
 		AcceptableHostIdleTimeSeconds: a.AcceptableHostIdleTimeSeconds,
