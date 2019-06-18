@@ -11,6 +11,7 @@ import (
 
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/amboy/queue"
+	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/level"
 	"github.com/mongodb/grip/message"
 	"github.com/mongodb/grip/send"
@@ -59,15 +60,15 @@ func (s *SenderSuite) SetupTest() {
 	s.queue = queue.NewLocalLimitedSize(2, 8)
 	s.NoError(s.queue.Start(ctx))
 
-	s.senders["single-shared"] = MakeQueueSender(s.queue, s.mock)
-	s.senders["multi-shared"] = MakeQueueMultiSender(s.queue, s.mock)
+	s.senders["single-shared"] = MakeQueueSender(ctx, s.queue, s.mock)
+	s.senders["multi-shared"] = MakeQueueMultiSender(ctx, s.queue, s.mock)
 
 }
 
 func (s *SenderSuite) TearDownTest() {
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
-	amboy.WaitCtxInterval(ctx, s.queue, 100*time.Millisecond)
+	amboy.WaitInterval(ctx, s.queue, 100*time.Millisecond)
 
 	s.Require().NoError(os.RemoveAll(s.tempDir))
 	for _, sender := range s.senders {
@@ -143,7 +144,8 @@ func (s *SenderSuite) TestCloserShouldUsusallyNoop() {
 }
 
 func (s *SenderSuite) TestBasicNoopSendTest() {
-	for _, sender := range s.senders {
+	for name, sender := range s.senders {
+		grip.Info(name)
 		for i := -10; i <= 110; i += 5 {
 			m := message.NewDefaultMessage(level.Priority(i), "hello world! "+randomString(10, s.rand))
 			sender.Send(m)

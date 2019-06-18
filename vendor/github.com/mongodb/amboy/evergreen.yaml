@@ -252,14 +252,14 @@ buildvariants:
       mongodb_url: https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-3.6.4.tgz
       build_env: "RUN_COUNT=5"
     run_on:
-      - archlinux-test
+      - archlinux-build
     tasks:
       - ".race"
 
   - name: report
     display_name: Reporting
     run_on:
-      - archlinux-test
+      - archlinux-build
     expansions:
       mongodb_url: http://fastdl.mongodb.org/linux/mongodb-linux-x86_64-3.6.4.tgz
       test_timeout: 15m
@@ -270,21 +270,21 @@ buildvariants:
   - name: ubuntu1604
     display_name: Ubuntu 16.04
     run_on:
-      - ubuntu1604-test
+      - ubuntu1604-build
     expansions:
-      build_env: "DISABLE_COVERAGE=yes GOROOT=/opt/go1.8/go PATH=/opt/go1.8/go/bin:$PATH"
+      build_env: "DISABLE_COVERAGE=yes GOROOT=/opt/golang/go1.9 PATH=/opt/golang/go1.9/bin:$PATH"
       mongodb_url: https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-ubuntu1604-3.6.4.tgz
     tasks:
       - name: ".dist"
       - name: ".test"
 
   - name: macos
-    display_name: macOS 10.12
+    display_name: macOS 10.14
     expansions:
       mongodb_url: https://fastdl.mongodb.org/osx/mongodb-osx-ssl-x86_64-3.6.4.tgz
-      build_env: " DISABLE_COVERAGE=yes GOROOT=/usr/local/go1.8/go PATH=/usr/local/go1.8/go/bin:$PATH"
+      build_env: " DISABLE_COVERAGE=yes GOROOT=/opt/golang/go1.12 PATH=/opt/golang/go1.12/bin:$PATH"
     run_on:
-      - macos-1012
+      - macos-1014
     tasks:
       - ".dist"
       - ".test"
@@ -292,9 +292,9 @@ buildvariants:
   - name: windows
     display_name: Windows
     run_on:
-      - windows-64-vs2015-small
+      - windows-64-vs2017-compile
     expansions:
-      build_env: "GOROOT=c:/go1.8/go DISABLE_COVERAGE=yes PATH=/cygdrive/c/go1.8/go/bin:$PATH"
+      build_env: "GOROOT=c:/golang/go1.12 DISABLE_COVERAGE=yes PATH=/cygdrive/c/golang/go1.12/bin:$PATH"
       mongodb_url: https://fastdl.mongodb.org/win32/mongodb-win32-x86_64-2008plus-ssl-3.6.4.zip
       extension: ".exe"
       archiveExt: ".zip"

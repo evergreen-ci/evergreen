@@ -329,6 +329,9 @@ func FindOneProjectRefByRepoAndBranchWithPRTesting(owner, repo, branch string) (
 	return &projectRefs[target], nil
 }
 
+// FindOneProjectRef finds the project ref for this owner/repo/branch that has the commit queue enabled.
+// There should only ever be one project for the query because we only enable commit queue if
+// no other project ref with the same specification has it enabled.
 func FindOneProjectRefWithCommitQueueByOwnerRepoAndBranch(owner, repo, branch string) (*ProjectRef, error) {
 	projRef := &ProjectRef{}
 	err := db.FindOne(
@@ -400,19 +403,15 @@ func FindProjectRefs(key string, limit int, sortDir int, isAuthenticated bool) (
 	return projectRefs, err
 }
 
-// UntrackStaleProjectRefs sets all project_refs in the db not in the array
-// of project identifiers to "untracked."
-func UntrackStaleProjectRefs(activeProjects []string) error {
-	_, err := db.UpdateAll(
-		ProjectRefCollection,
-		bson.M{ProjectRefIdentifierKey: bson.M{
-			"$nin": activeProjects,
-		}},
-		bson.M{"$set": bson.M{
-			ProjectRefTrackedKey: false,
-		}},
-	)
-	return err
+func (projectRef *ProjectRef) CanEnableCommitQueue() (bool, error) {
+	resultRef, err := FindOneProjectRefWithCommitQueueByOwnerRepoAndBranch(projectRef.Owner, projectRef.Repo, projectRef.Branch)
+	if err != nil && !adb.ResultsNotFound(err) {
+		return false, errors.Wrapf(err, "database error finding project by repo and branch")
+	}
+	if resultRef != nil && resultRef.Identifier != projectRef.Identifier {
+		return false, nil
+	}
+	return true, nil
 }
 
 // Upsert updates the project ref in the db if an entry already exists,

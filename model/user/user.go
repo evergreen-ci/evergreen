@@ -213,7 +213,7 @@ func GetPatchUser(gitHubUID int) (*DBUser, error) {
 
 func IsValidSubscriptionPreference(in string) bool {
 	switch in {
-	case event.EmailSubscriberType, event.SlackSubscriberType, "":
+	case event.EmailSubscriberType, event.SlackSubscriberType, "", event.SubscriberTypeNone:
 		return true
 	default:
 		return false

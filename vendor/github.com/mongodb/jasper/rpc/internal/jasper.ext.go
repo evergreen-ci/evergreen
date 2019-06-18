@@ -610,3 +610,22 @@ func ConvertSignalTriggerID(id jasper.SignalTriggerID) SignalTriggerID {
 		return SignalTriggerID_NONE
 	}
 }
+
+// Export takes a protobuf RPC LogStream and returns the analogous
+// Jasper LogStream.
+func (l *LogStream) Export() jasper.LogStream {
+	return jasper.LogStream{
+		Logs: l.Logs,
+		Done: l.Done,
+	}
+}
+
+// ConvertLogStream takes a Jasper LogStream and returns an
+// equivalent protobuf RPC LogStream. ConvertLogStream is the
+// inverse of (*LogStream) Export().
+func ConvertLogStream(l jasper.LogStream) *LogStream {
+	return &LogStream{
+		Logs: l.Logs,
+		Done: l.Done,
+	}
+}

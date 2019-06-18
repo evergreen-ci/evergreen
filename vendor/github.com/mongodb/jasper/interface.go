@@ -38,7 +38,6 @@ type Manager interface {
 // reflected. Process implementations either wrap Go's own process
 // management calls (e.g. os/exec.Cmd) or may wrap remote process
 // management tools (e.g. jasper services on remote systems.)
-//
 type Process interface {
 	// Returns a UUID for the process. Use this ID to retrieve
 	// processes from managers using the Get method.

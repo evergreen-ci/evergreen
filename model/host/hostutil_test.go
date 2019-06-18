@@ -62,13 +62,23 @@ func TestJasperCommands(t *testing.T) {
 			}
 		},
 		"BootstrapScript": func(t *testing.T, h *Host, config evergreen.JasperConfig) {
-			expectedCmds := h.fetchJasperCommands(config)
+			expectedCmds := []string{h.FetchJasperCommand(config), h.ForceReinstallJasperCommand(config)}
 			script := h.BootstrapScript(config)
 			assert.True(t, strings.HasPrefix(script, "#!/bin/bash"))
 			for _, expectedCmd := range expectedCmds {
 				assert.Contains(t, script, expectedCmd)
 			}
 		},
+		"ForceReinstallJasperCommand": func(t *testing.T, h *Host, config evergreen.JasperConfig) {
+			cmd := h.ForceReinstallJasperCommand(config)
+			assert.Equal(t, "sudo /foo/jasper_cli jasper service force-reinstall rpc --port=12345", cmd)
+		},
+		"ForceReinstallJasperCommandNoPort": func(t *testing.T, h *Host, config evergreen.JasperConfig) {
+			config.Port = 0
+			cmd := h.ForceReinstallJasperCommand(config)
+			assert.Equal(t, fmt.Sprintf("sudo /foo/jasper_cli jasper service force-reinstall rpc --port=%d", evergreen.DefaultJasperPort), cmd)
+		},
+		// "": func(t *testing.T, h *Host, config evergreen.JasperConfig) {},
 	} {
 		t.Run(testName, func(t *testing.T) {
 			h := &Host{Distro: distro.Distro{Arch: distro.ArchLinuxAmd64, CuratorDir: "/foo"}}
@@ -77,6 +87,7 @@ func TestJasperCommands(t *testing.T) {
 				DownloadFileName: "download_file",
 				URL:              "www.example.com",
 				Version:          "abc123",
+				Port:             12345,
 			}
 			testCase(t, h, config)
 		})
@@ -123,12 +134,22 @@ func TestJasperCommandsWindows(t *testing.T) {
 			for i := range expectedCmds {
 				expectedCmds[i] = strings.Replace(fmt.Sprintf("PATH=%s ", path)+expectedCmds[i], "'", "''", -1)
 			}
+			expectedCmds = append(expectedCmds, h.ForceReinstallJasperCommand(config))
 			script := h.BootstrapScript(config)
 			assert.True(t, strings.HasPrefix(script, "<powershell>"))
 			assert.True(t, strings.HasSuffix(script, "</powershell>"))
 			for _, expectedCmd := range expectedCmds {
 				assert.Contains(t, script, expectedCmd)
 			}
+		},
+		"ForceReinstallJasperCommand": func(t *testing.T, h *Host, config evergreen.JasperConfig) {
+			cmd := h.ForceReinstallJasperCommand(config)
+			assert.Equal(t, "/foo/jasper_cli.exe jasper service force-reinstall rpc --port=12345", cmd)
+		},
+		"ForceReinstallJasperCommandNoPort": func(t *testing.T, h *Host, config evergreen.JasperConfig) {
+			config.Port = 0
+			cmd := h.ForceReinstallJasperCommand(config)
+			assert.Equal(t, fmt.Sprintf("/foo/jasper_cli.exe jasper service force-reinstall rpc --port=%d", evergreen.DefaultJasperPort), cmd)
 		},
 	} {
 		t.Run(testName, func(t *testing.T) {
@@ -138,6 +159,7 @@ func TestJasperCommandsWindows(t *testing.T) {
 				DownloadFileName: "download_file",
 				URL:              "www.example.com",
 				Version:          "abc123",
+				Port:             12345,
 			}
 			testCase(t, h, config)
 		})

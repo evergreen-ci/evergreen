@@ -61,7 +61,7 @@ type depGraphOrderedLocal struct {
 // argument is passed to a default pool.SimplePool object.
 func NewLocalOrdered(workers int) amboy.Queue {
 	q := &depGraphOrderedLocal{
-		channel: make(chan amboy.Job, 100),
+		channel: make(chan amboy.Job, workers*10),
 	}
 	q.tasks.m = make(map[string]amboy.Job)
 	q.tasks.ids = make(map[string]int64)
@@ -78,7 +78,7 @@ func NewLocalOrdered(workers int) amboy.Queue {
 // Put adds a job to the queue. If the queue has started dispatching
 // jobs you cannot add new jobs to the queue. Additionally all jobs
 // must have unique names. (i.e. job.ID() values.)
-func (q *depGraphOrderedLocal) Put(j amboy.Job) error {
+func (q *depGraphOrderedLocal) Put(ctx context.Context, j amboy.Job) error {
 	name := j.ID()
 
 	q.mutex.Lock()
@@ -182,14 +182,19 @@ func (q *depGraphOrderedLocal) JobStats(ctx context.Context) <-chan amboy.JobSta
 			}
 			s := job.Status()
 			s.ID = job.ID()
-			output <- s
+			select {
+			case <-ctx.Done():
+				return
+			case output <- s:
+			}
+
 		}
 	}()
 	return output
 }
 
 // Get takes a name and returns a completed job.
-func (q *depGraphOrderedLocal) Get(name string) (amboy.Job, bool) {
+func (q *depGraphOrderedLocal) Get(ctx context.Context, name string) (amboy.Job, bool) {
 	q.mutex.RLock()
 	defer q.mutex.RUnlock()
 
@@ -200,7 +205,7 @@ func (q *depGraphOrderedLocal) Get(name string) (amboy.Job, bool) {
 
 // Stats returns a statistics object with data about the total number
 // of jobs tracked by the queue.
-func (q *depGraphOrderedLocal) Stats() amboy.QueueStats {
+func (q *depGraphOrderedLocal) Stats(ctx context.Context) amboy.QueueStats {
 	s := amboy.QueueStats{}
 
 	q.mutex.RLock()
@@ -365,6 +370,9 @@ func (q *depGraphOrderedLocal) jobDispatch(ctx context.Context, orderedJobs []gr
 
 // Complete marks a job as complete in the context of this queue instance.
 func (q *depGraphOrderedLocal) Complete(ctx context.Context, j amboy.Job) {
+	if ctx.Err() != nil {
+		return
+	}
 	grip.Debugf("marking job (%s) as complete", j.ID())
 	q.mutex.Lock()
 	defer q.mutex.Unlock()

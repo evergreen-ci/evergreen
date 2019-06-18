@@ -36,6 +36,9 @@ mciModule.controller('DistrosCtrl', function($scope, $window, $location, $anchor
     'id': "legacy",
     'display': 'Legacy '
   }, {
+    'id': "revised",
+    'display': 'Revised '
+  }, {
     'id': "tunable",
     'display': 'Tunable '
   }];

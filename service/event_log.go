@@ -68,8 +68,9 @@ func (uis *UIServer) fullEventLogs(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "Unauthorized", http.StatusUnauthorized)
 			return
 		}
-		var loggedProjectEvents []model.ProjectChangeEventEntry
+		var loggedProjectEvents model.ProjectChangeEvents
 		loggedProjectEvents, err = model.MostRecentProjectEvents(resourceID, 200)
+		loggedProjectEvents.RedactPrivateVars()
 		for _, event := range loggedProjectEvents {
 			loggedEvents = append(loggedEvents, event.EventLogEntry)
 		}

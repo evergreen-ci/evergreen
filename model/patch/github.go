@@ -7,6 +7,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/util"
 	"github.com/google/go-github/github"
 	"github.com/mongodb/anser/bsonutil"
 	"github.com/pkg/errors"
@@ -100,52 +101,54 @@ var (
 
 // NewGithubIntent creates an Intent from a google/go-github PullRequestEvent,
 // or returns an error if the some part of the struct is invalid
-func NewGithubIntent(msgDeliveryID string, event *github.PullRequestEvent) (Intent, error) {
-	if event.Action == nil || event.Number == nil ||
-		event.Repo == nil || event.Repo.FullName == nil || event.Repo.PushedAt == nil ||
-		event.Sender == nil || event.Sender.Login == nil ||
-		event.PullRequest == nil ||
-		event.PullRequest.Head == nil || event.PullRequest.Head.SHA == nil ||
-		event.PullRequest.Head.Repo == nil || event.PullRequest.Head.Repo.FullName == nil ||
-		event.PullRequest.Title == nil || event.PullRequest.Base == nil ||
-		event.PullRequest.Base.Ref == nil {
-		return nil, errors.New("pull request document is malformed/missing data")
+func NewGithubIntent(msgDeliveryID string, pr *github.PullRequest) (Intent, error) {
+	if pr == nil ||
+		pr.Base == nil || pr.Base.Repo == nil ||
+		pr.Head == nil || pr.Head.Repo == nil || pr.Head.Repo.PushedAt == nil ||
+		pr.User == nil {
+		return nil, errors.New("incomplete PR")
 	}
 	if msgDeliveryID == "" {
 		return nil, errors.New("Unique msg id cannot be empty")
 	}
-	if len(strings.Split(*event.Repo.FullName, "/")) != 2 {
+	if len(strings.Split(pr.Base.Repo.GetFullName(), "/")) != 2 {
 		return nil, errors.New("Base repo name is invalid (expected [owner]/[repo])")
 	}
-	if len(strings.Split(*event.PullRequest.Head.Repo.FullName, "/")) != 2 {
-		return nil, errors.New("Head repo name is invalid (expected [owner]/[repo])")
-	}
-	if *event.PullRequest.Base.Ref == "" {
+	if pr.Base.GetRef() == "" {
 		return nil, errors.New("Base ref is empty")
 	}
-	if *event.Number == 0 {
+	if len(strings.Split(pr.Head.Repo.GetFullName(), "/")) != 2 {
+		return nil, errors.New("Head repo name is invalid (expected [owner]/[repo])")
+	}
+	if pr.GetNumber() == 0 {
 		return nil, errors.New("PR number must not be 0")
 	}
-	if *event.Sender.Login == "" || event.Sender.ID == nil {
+	if pr.User.GetLogin() == "" || pr.User.GetID() == 0 {
 		return nil, errors.New("Github sender missing login name or uid")
 	}
-	if len(*event.PullRequest.Head.SHA) == 0 {
+	if pr.Head.GetSHA() == "" {
 		return nil, errors.New("Head hash must not be empty")
+	}
+	if pr.GetTitle() == "" {
+		return nil, errors.New("PR title must not be empty")
+	}
+	if util.IsZeroTime(pr.Head.Repo.PushedAt.Time) {
+		return nil, errors.New("pushed at time not set")
 	}
 
 	return &githubIntent{
 		DocumentID:   msgDeliveryID,
 		MsgID:        msgDeliveryID,
-		BaseRepoName: *event.Repo.FullName,
-		BaseBranch:   *event.PullRequest.Base.Ref,
-		HeadRepoName: *event.PullRequest.Head.Repo.FullName,
-		PRNumber:     *event.Number,
-		User:         *event.Sender.Login,
-		UID:          *event.Sender.ID,
-		HeadHash:     *event.PullRequest.Head.SHA,
-		Title:        *event.PullRequest.Title,
+		BaseRepoName: pr.Base.Repo.GetFullName(),
+		BaseBranch:   pr.Base.GetRef(),
+		HeadRepoName: pr.Head.Repo.GetFullName(),
+		PRNumber:     pr.GetNumber(),
+		User:         pr.User.GetLogin(),
+		UID:          pr.User.GetID(),
+		HeadHash:     pr.Head.GetSHA(),
+		Title:        pr.GetTitle(),
 		IntentType:   GithubIntentType,
-		PushedAt:     event.Repo.PushedAt.Time.UTC(),
+		PushedAt:     pr.Head.Repo.PushedAt.Time.UTC(),
 	}, nil
 }
 

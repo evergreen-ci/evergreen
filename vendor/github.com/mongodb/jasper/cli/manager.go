@@ -9,14 +9,25 @@ import (
 	"github.com/urfave/cli"
 )
 
+// Constants representing the Jasper Manager interface as CLI commands.
+const (
+	ManagerCommand       = "manager"
+	CreateProcessCommand = "create-process"
+	CreateCommand        = "create-command"
+	GetCommand           = "get"
+	GroupCommand         = "group"
+	ListCommand          = "list"
+	ClearCommand         = "clear"
+	CloseCommand         = "close"
+)
+
 // Manager creates a cli.Command that interfaces with a Jasper manager. Each
 // subcommand optionally reads the arguments as JSON from stdin if any are
 // required, calls the jasper.Manager function corresponding to that subcommand,
 // and writes the response as JSON to stdout.
 func Manager() cli.Command {
 	return cli.Command{
-		Name:  "manager",
-		Flags: []cli.Flag{},
+		Name: ManagerCommand,
 		Subcommands: []cli.Command{
 			managerCreateProcess(),
 			managerCreateCommand(),
@@ -31,7 +42,9 @@ func Manager() cli.Command {
 
 func managerCreateProcess() cli.Command {
 	return cli.Command{
-		Name: "create-process",
+		Name:   CreateProcessCommand,
+		Flags:  clientFlags(),
+		Before: clientBefore(),
 		Action: func(c *cli.Context) error {
 			opts := &jasper.CreateOptions{}
 			return doPassthroughInputOutput(c, opts, func(ctx context.Context, client jasper.RemoteClient) interface{} {
@@ -47,19 +60,20 @@ func managerCreateProcess() cli.Command {
 
 func managerCreateCommand() cli.Command {
 	return cli.Command{
-		Name: "create-command",
+		Name:   CreateCommand,
+		Flags:  clientFlags(),
+		Before: clientBefore(),
 		Action: func(c *cli.Context) error {
 			opts := &CommandInput{}
 			return doPassthroughInputOutput(c, opts, func(ctx context.Context, client jasper.RemoteClient) interface{} {
-				cmd := client.CreateCommand(ctx).Background(opts.Background)
-				if level.IsValidPriority(opts.Priority) {
-					cmd = cmd.Priority(opts.Priority)
-				}
-				cmd = cmd.Extend(opts.Commands)
-				cmd = cmd.Background(opts.Background).
+				cmd := client.CreateCommand(ctx).Extend(opts.Commands).
+					Background(opts.Background).
 					ContinueOnError(opts.ContinueOnError).
 					IgnoreError(opts.IgnoreError).
 					ApplyFromOpts(&opts.CreateOptions)
+				if level.IsValidPriority(opts.Priority) {
+					cmd = cmd.Priority(opts.Priority)
+				}
 				return makeOutcomeResponse(cmd.Run(ctx))
 			})
 		},
@@ -68,13 +82,15 @@ func managerCreateCommand() cli.Command {
 
 func managerGet() cli.Command {
 	return cli.Command{
-		Name: "get",
+		Name:   GetCommand,
+		Flags:  clientFlags(),
+		Before: clientBefore(),
 		Action: func(c *cli.Context) error {
 			input := &IDInput{}
 			return doPassthroughInputOutput(c, input, func(ctx context.Context, client jasper.RemoteClient) interface{} {
 				proc, err := client.Get(ctx, input.ID)
 				if err != nil {
-					return &InfoResponse{OutcomeResponse: *makeOutcomeResponse(errors.Errorf("error getting process with ID '%s'", input.ID))}
+					return &InfoResponse{OutcomeResponse: *makeOutcomeResponse(errors.Wrapf(err, "error getting process with ID '%s'", input.ID))}
 				}
 				return &InfoResponse{Info: proc.Info(ctx), OutcomeResponse: *makeOutcomeResponse(nil)}
 			})
@@ -84,13 +100,15 @@ func managerGet() cli.Command {
 
 func managerList() cli.Command {
 	return cli.Command{
-		Name: "list",
+		Name:   ListCommand,
+		Flags:  clientFlags(),
+		Before: clientBefore(),
 		Action: func(c *cli.Context) error {
 			input := &FilterInput{}
 			return doPassthroughInputOutput(c, input, func(ctx context.Context, client jasper.RemoteClient) interface{} {
 				procs, err := client.List(ctx, input.Filter)
 				if err != nil {
-					return &InfosResponse{OutcomeResponse: *makeOutcomeResponse(errors.Errorf("error listing processes with filter '%s'", input.Filter))}
+					return &InfosResponse{OutcomeResponse: *makeOutcomeResponse(errors.Wrapf(err, "error listing processes with filter '%s'", input.Filter))}
 				}
 				infos := make([]jasper.ProcessInfo, 0, len(procs))
 				for _, proc := range procs {
@@ -104,13 +122,15 @@ func managerList() cli.Command {
 
 func managerGroup() cli.Command {
 	return cli.Command{
-		Name: "group",
+		Name:   GroupCommand,
+		Flags:  clientFlags(),
+		Before: clientBefore(),
 		Action: func(c *cli.Context) error {
 			input := &TagInput{}
 			return doPassthroughInputOutput(c, input, func(ctx context.Context, client jasper.RemoteClient) interface{} {
 				procs, err := client.Group(ctx, input.Tag)
 				if err != nil {
-					return &InfosResponse{OutcomeResponse: *makeOutcomeResponse(errors.Errorf("error grouping processes with tag '%s'", input.Tag))}
+					return &InfosResponse{OutcomeResponse: *makeOutcomeResponse(errors.Wrapf(err, "error grouping processes with tag '%s'", input.Tag))}
 				}
 				infos := make([]jasper.ProcessInfo, 0, len(procs))
 				for _, proc := range procs {
@@ -124,7 +144,9 @@ func managerGroup() cli.Command {
 
 func managerClear() cli.Command {
 	return cli.Command{
-		Name: "clear",
+		Name:   ClearCommand,
+		Flags:  clientFlags(),
+		Before: clientBefore(),
 		Action: func(c *cli.Context) error {
 			return doPassthroughOutput(c, func(ctx context.Context, client jasper.RemoteClient) interface{} {
 				client.Clear(ctx)
@@ -136,7 +158,9 @@ func managerClear() cli.Command {
 
 func managerClose() cli.Command {
 	return cli.Command{
-		Name: "close",
+		Name:   CloseCommand,
+		Flags:  clientFlags(),
+		Before: clientBefore(),
 		Action: func(c *cli.Context) error {
 			return doPassthroughOutput(c, func(ctx context.Context, client jasper.RemoteClient) interface{} {
 				return makeOutcomeResponse(client.Close(ctx))

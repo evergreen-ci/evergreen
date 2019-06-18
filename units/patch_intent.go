@@ -30,8 +30,7 @@ import (
 )
 
 const (
-	patchIntentJobName      = "patch-intent-processor"
-	errInvalidPatchedConfig = "invalid patched config"
+	patchIntentJobName = "patch-intent-processor"
 )
 
 func init() {
@@ -49,6 +48,8 @@ type patchIntentProcessor struct {
 
 	user   *user.DBUser
 	intent patch.Intent
+
+	gitHubError string
 }
 
 // NewPatchIntentProcessor creates an amboy job to create a patch from the
@@ -104,19 +105,22 @@ func (j *patchIntentProcessor) Run(ctx context.Context) {
 	patchDoc := j.intent.NewPatch()
 
 	if err = j.finishPatch(ctx, patchDoc, githubOauthToken); err != nil {
-		j.AddError(err)
-		if j.IntentType == patch.GithubIntentType && err.Error() == errInvalidPatchedConfig {
-			var projectRef *model.ProjectRef
-			projectRef, err = model.FindOneProjectRefByRepoAndBranchWithPRTesting(patchDoc.GithubPatchData.BaseOwner,
-				patchDoc.GithubPatchData.BaseRepo, patchDoc.GithubPatchData.BaseBranch)
-			if err != nil {
-				j.AddError(errors.Wrap(err, "can't fetch project ref"))
-				return
+		if j.IntentType == patch.GithubIntentType {
+			if j.gitHubError == "" {
+				j.gitHubError = OtherErrors
 			}
-			update := NewGithubStatusUpdateJobForBadConfig(projectRef, patchDoc.GithubPatchData.HeadHash, j.ID())
-			update.Run(ctx)
-			j.AddError(update.Error())
+			j.sendGitHubErrorStatus(patchDoc)
+			grip.Error(message.WrapError(err, message.Fields{
+				"message":      "sent github status error",
+				"github_error": j.gitHubError,
+				"owner":        patchDoc.GithubPatchData.BaseOwner,
+				"repo":         patchDoc.GithubPatchData.BaseRepo,
+				"pr_number":    patchDoc.GithubPatchData.PRNumber,
+				"commit":       patchDoc.GithubPatchData.HeadHash,
+				"patch_id":     patchDoc.Id.Hex(),
+			}))
 		}
+		j.AddError(err)
 		return
 	}
 
@@ -158,6 +162,11 @@ func (j *patchIntentProcessor) finishPatch(ctx context.Context, patchDoc *patch.
 
 	case patch.GithubIntentType:
 		canFinalize, err = j.buildGithubPatchDoc(ctx, patchDoc, githubOauthToken)
+		if err != nil {
+			if strings.Contains(err.Error(), thirdparty.Github502Error) {
+				j.gitHubError = GitHubInternalError
+			}
+		}
 		catcher.Add(err)
 
 	default:
@@ -196,23 +205,32 @@ func (j *patchIntentProcessor) finishPatch(ctx context.Context, patchDoc *patch.
 	}
 
 	if !pref.Enabled {
+		j.gitHubError = ProjectDisabled
 		return errors.New("project is disabled")
 	}
 
 	if pref.PatchingDisabled {
-		return errors.New("patching is diabled for project")
+		j.gitHubError = PatchingDisabled
+		return errors.New("patching is disabled for project")
 	}
 
 	// Get and validate patched config
 	project, err := model.GetPatchedProject(ctx, patchDoc, githubOauthToken)
 	if err != nil {
+		if strings.Contains(err.Error(), thirdparty.Github502Error) {
+			j.gitHubError = GitHubInternalError
+		}
+		if strings.Contains(err.Error(), model.LoadProjectError) {
+			j.gitHubError = InvalidConfig
+		}
 		return errors.Wrap(err, "can't get patched config")
 	}
 	errs := validator.CheckProjectSyntax(project)
 	if len(errs) != 0 {
 		for _, validatorErr := range errs {
 			if validatorErr.Level == validator.Error {
-				return errors.New(errInvalidPatchedConfig)
+				j.gitHubError = InvalidConfig
+				return errors.New("invalid patched config")
 			}
 		}
 	}
@@ -296,6 +314,9 @@ func (j *patchIntentProcessor) finishPatch(ctx context.Context, patchDoc *patch.
 
 	if canFinalize && j.intent.ShouldFinalizePatch() {
 		if _, err = model.FinalizePatch(ctx, patchDoc, j.intent.RequesterIdentity(), githubOauthToken); err != nil {
+			if strings.Contains(err.Error(), thirdparty.Github502Error) {
+				j.gitHubError = GitHubInternalError
+			}
 			grip.Error(message.WrapError(err, message.Fields{
 				"message":     "Failed to finalize patch document",
 				"job":         j.ID(),
@@ -499,4 +520,17 @@ func authAndFetchPRMergeBase(ctx context.Context, patchDoc *patch.Patch, require
 	patchDoc.Githash = hash
 
 	return isMember, nil
+}
+
+func (j *patchIntentProcessor) sendGitHubErrorStatus(patchDoc *patch.Patch) {
+	update := NewGithubStatusUpdateJobForProcessingError(
+		evergreenContext,
+		patchDoc.GithubPatchData.BaseOwner,
+		patchDoc.GithubPatchData.BaseRepo,
+		patchDoc.GithubPatchData.HeadHash,
+		j.gitHubError,
+	)
+	update.Run(nil)
+
+	j.AddError(update.Error())
 }

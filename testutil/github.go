@@ -6,29 +6,26 @@ import (
 	"github.com/google/go-github/github"
 )
 
-func NewGithubPREvent(prNumber int, baseRepoName, headRepoName, headHash, user, title string) *github.PullRequestEvent {
-	return &github.PullRequestEvent{
-		Action: github.String("opened"),
+func NewGithubPR(prNumber int, baseRepoName, headRepoName, headHash, user, title string) *github.PullRequest {
+	return &github.PullRequest{
+		Title:  github.String(title),
 		Number: github.Int(prNumber),
-		Repo: &github.Repository{
-			FullName: github.String(baseRepoName),
-			PushedAt: &github.Timestamp{Time: time.Now().Truncate(time.Millisecond)},
+		Head: &github.PullRequestBranch{
+			SHA: github.String(headHash),
+			Repo: &github.Repository{
+				FullName: github.String(headRepoName),
+				PushedAt: &github.Timestamp{Time: time.Now().Truncate(time.Millisecond)},
+			},
 		},
-		Sender: &github.User{
+		Base: &github.PullRequestBranch{
+			Ref: github.String("master"),
+			Repo: &github.Repository{
+				FullName: github.String(baseRepoName),
+			},
+		},
+		User: &github.User{
 			Login: github.String(user),
 			ID:    github.Int(1234),
-		},
-		PullRequest: &github.PullRequest{
-			Title: github.String(title),
-			Head: &github.PullRequestBranch{
-				SHA: github.String(headHash),
-				Repo: &github.Repository{
-					FullName: github.String(headRepoName),
-				},
-			},
-			Base: &github.PullRequestBranch{
-				Ref: github.String("master"),
-			},
 		},
 	}
 }

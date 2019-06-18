@@ -97,9 +97,9 @@ func (s *PatchVarsSuite) TestRunNonExistingId() {
 	ctx := context.Background()
 	s.route.projectID = "non-existent"
 
+	// upsert
 	resp := s.route.Run(ctx)
-	s.NotNil(resp.Data())
-	s.NotEqual(resp.Status(), http.StatusOK)
+	s.Equal(resp.Status(), http.StatusOK)
 }
 
 func (s *PatchVarsSuite) TestRunExistingId() {

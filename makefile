@@ -1,7 +1,7 @@
 # start project configuration
 name := evergreen
 buildDir := bin
-tmpDir := $(buildDir)/tmp
+tmpDir := $(abspath $(buildDir)/tmp)
 nodeDir := public
 packages := $(name) agent operations cloud command db util plugin units
 packages += thirdparty auth scheduler model validator service monitor repotracker
@@ -395,7 +395,7 @@ mongodb/.get-mongodb:
 get-mongodb: mongodb/.get-mongodb
 	@touch $<
 start-mongod: mongodb/.get-mongodb
-	./mongodb/mongod --dbpath ./mongodb/db_files --port 27017 --replSet evg --bind_ip localhost --smallfiles --oplogSize 10
+	./mongodb/mongod --dbpath ./mongodb/db_files --port 27017 --replSet evg --smallfiles --oplogSize 10
 	@echo "waiting for mongod to start up"
 init-rs: mongodb/.get-mongodb
 	./mongodb/mongo --eval 'rs.initiate()'

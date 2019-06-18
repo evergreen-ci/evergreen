@@ -19,29 +19,49 @@ type rpcClient struct {
 	clientCloser jasper.CloseFunc
 }
 
-// NewClient creates a connection to the RPC service specified
-// in the address. If certFile is non-empty, the credentials will be read from
-// the file to establish a secure TLS connection; otherwise, it will establish
-// an insecure connection. The caller is responsible for closing the connection
-// using the returned jasper.CloseFunc.
-func NewClient(ctx context.Context, addr net.Addr, certFile string) (jasper.RemoteClient, error) {
-	var credsDialOpt grpc.DialOption
-	if certFile != "" {
-		creds, err := credentials.NewClientTLSFromFile(certFile, "")
+// NewClient creates a connection to the RPC service with the specified address
+// addr. If creds is non-nil, the credentials will be used to establish a secure
+// TLS connection with the service; otherwise, it will establish an insecure
+// connection. The caller is responsible for closing the connection using the
+// returned jasper.CloseFunc.
+func NewClient(ctx context.Context, addr net.Addr, creds *Credentials) (jasper.RemoteClient, error) {
+	opts := []grpc.DialOption{
+		grpc.WithBlock(),
+		grpc.WithDefaultCallOptions(grpc.WaitForReady(true)),
+	}
+	if creds != nil {
+		tlsConf, err := creds.Resolve()
 		if err != nil {
-			return nil, errors.Wrapf(err, "could not get client credentials from cert file '%s'", certFile)
+			return nil, errors.Wrap(err, "could not resolve credentials into TLS config")
 		}
-		credsDialOpt = grpc.WithTransportCredentials(creds)
+		opts = append(opts, grpc.WithTransportCredentials(credentials.NewTLS(tlsConf)))
 	} else {
-		credsDialOpt = grpc.WithInsecure()
+		opts = append(opts, grpc.WithInsecure())
 	}
 
-	conn, err := grpc.DialContext(ctx, addr.String(), credsDialOpt, grpc.WithBlock())
+	conn, err := grpc.DialContext(ctx, addr.String(), opts...)
 	if err != nil {
 		return nil, errors.Wrapf(err, "could not establish connection to service at address '%s'", addr.String())
 	}
 
 	return newRPCClient(conn), nil
+}
+
+// NewClientWithFile is the same as NewClient but the credentials will
+// be read from the file given by filePath if the filePath is non-empty. The
+// credentials file should contain the JSON-encoded bytes from
+// (*Credentials).Export().
+func NewClientWithFile(ctx context.Context, addr net.Addr, filePath string) (jasper.RemoteClient, error) {
+	var creds *Credentials
+	if filePath != "" {
+		var err error
+		creds, err = NewCredentialsFromFile(filePath)
+		if err != nil {
+			return nil, errors.Wrap(err, "error getting credentials from file")
+		}
+	}
+
+	return NewClient(ctx, addr, creds)
 }
 
 // newRPCClient is a constructor for an RPC client.
@@ -190,8 +210,19 @@ func (m *rpcClient) DownloadMongoDB(ctx context.Context, opts jasper.MongoDBDown
 	return errors.New(resp.Text)
 }
 
-func (m *rpcClient) GetBuildloggerURLs(ctx context.Context, name string) ([]string, error) {
-	resp, err := m.client.GetBuildloggerURLs(ctx, &internal.JasperProcessID{Value: name})
+func (m *rpcClient) GetLogStream(ctx context.Context, id string, count int) (jasper.LogStream, error) {
+	stream, err := m.client.GetLogStream(ctx, &internal.LogRequest{
+		Id:    &internal.JasperProcessID{Value: id},
+		Count: int64(count),
+	})
+	if err != nil {
+		return jasper.LogStream{}, errors.WithStack(err)
+	}
+	return stream.Export(), nil
+}
+
+func (m *rpcClient) GetBuildloggerURLs(ctx context.Context, id string) ([]string, error) {
+	resp, err := m.client.GetBuildloggerURLs(ctx, &internal.JasperProcessID{Value: id})
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}

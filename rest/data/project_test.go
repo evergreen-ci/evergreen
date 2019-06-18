@@ -106,6 +106,9 @@ func TestProjectConnectorGetSuite(t *testing.T) {
 			if err := p.Insert(); err != nil {
 				return err
 			}
+			if _, err := model.GetNewRevisionOrderNumber(p.Identifier); err != nil {
+				return err
+			}
 		}
 
 		vars := &model.ProjectVars{
@@ -496,8 +499,8 @@ func (s *ProjectConnectorGetSuite) TestUpdateProjectVars() {
 	_, ok = newVars.PrivateVars["a"]
 	s.False(ok)
 
-	//unsuccessful update
-	s.Error(s.ctx.UpdateProjectVars("not-an-id", &newVars))
+	// successful upsert
+	s.NoError(s.ctx.UpdateProjectVars("not-an-id", &newVars))
 }
 
 func (s *ProjectConnectorGetSuite) TestCopyProjectVars() {

@@ -32,17 +32,18 @@ type Agent struct {
 
 // Options contains startup options for the Agent.
 type Options struct {
-	HostID             string
-	HostSecret         string
-	StatusPort         int
-	LogPrefix          string
-	LogkeeperURL       string
-	S3BaseURL          string
-	WorkingDirectory   string
-	HeartbeatInterval  time.Duration
-	AgentSleepInterval time.Duration
-	Cleanup            bool
-	S3Opts             pail.S3Options
+	HostID                string
+	HostSecret            string
+	StatusPort            int
+	LogPrefix             string
+	LogkeeperURL          string
+	S3BaseURL             string
+	WorkingDirectory      string
+	HeartbeatInterval     time.Duration
+	AgentSleepInterval    time.Duration
+	MaxAgentSleepInterval time.Duration
+	Cleanup               bool
+	S3Opts                pail.S3Options
 }
 
 type taskContext struct {
@@ -104,10 +105,15 @@ func (a *Agent) Start(ctx context.Context) error {
 }
 
 func (a *Agent) loop(ctx context.Context) error {
-	agentSleepInterval := defaultAgentSleepInterval
+	minAgentSleepInterval := defaultAgentSleepInterval
+	maxAgentSleepInterval := defaultMaxAgentSleepInterval
 	if a.opts.AgentSleepInterval != 0 {
-		agentSleepInterval = a.opts.AgentSleepInterval
+		minAgentSleepInterval = a.opts.AgentSleepInterval
 	}
+	if a.opts.MaxAgentSleepInterval != 0 {
+		maxAgentSleepInterval = a.opts.MaxAgentSleepInterval
+	}
+	agentSleepInterval := minAgentSleepInterval
 
 	// we want to have separate context trees for tasks and
 	// loggers, so that when a task is canceled by a context, it
@@ -138,6 +144,7 @@ LOOP:
 				// task secret doesn't match, get another task
 				if errors.Cause(err) == client.HTTPConflictError {
 					timer.Reset(0)
+					agentSleepInterval = minAgentSleepInterval
 					continue LOOP
 				}
 				return errors.Wrap(err, "error getting next task")
@@ -153,6 +160,7 @@ LOOP:
 						"task":    tc.task.ID,
 					}))
 					timer.Reset(0)
+					agentSleepInterval = minAgentSleepInterval
 					continue LOOP
 				}
 				tc = a.prepareNextTask(ctx, nextTask, tc)
@@ -191,6 +199,7 @@ LOOP:
 						"task":    tc.task.ID,
 					}))
 					timer.Reset(0)
+					agentSleepInterval = minAgentSleepInterval
 					continue LOOP
 				}
 				if shouldExit {
@@ -198,6 +207,7 @@ LOOP:
 				}
 				needPostGroup = true
 				timer.Reset(0)
+				agentSleepInterval = minAgentSleepInterval
 				continue LOOP
 			} else if needPostGroup {
 				a.runPostGroupCommands(ctx, tc)
@@ -209,6 +219,10 @@ LOOP:
 			jitteredSleep = util.JitterInterval(agentSleepInterval)
 			grip.Debugf("Agent sleeping %s", jitteredSleep)
 			timer.Reset(jitteredSleep)
+			agentSleepInterval = agentSleepInterval * 2
+			if agentSleepInterval > maxAgentSleepInterval {
+				agentSleepInterval = maxAgentSleepInterval
+			}
 		}
 	}
 }

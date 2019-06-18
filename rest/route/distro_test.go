@@ -1109,6 +1109,8 @@ func (s *DistroPatchByIDSuite) TestValidFindAndReplaceFullDocument() {
 				"clone_method": "legacy-ssh",
 				"shell_path": "/usr/bin/bash",
 				"curator_dir": "/usr/local/bin",
+				"client_dir": "/usr/bin",
+				"jasper_credentials_path": "/etc/credentials",
 				"ssh_key" : "~SSH string",
 				"ssh_options" : [
 					"~StrictHostKeyChecking=no",
@@ -1170,6 +1172,8 @@ func (s *DistroPatchByIDSuite) TestValidFindAndReplaceFullDocument() {
 	s.Equal(model.ToAPIString(distro.CloneMethodLegacySSH), apiDistro.CloneMethod)
 	s.Equal(model.ToAPIString("/usr/bin/bash"), apiDistro.ShellPath)
 	s.Equal(model.ToAPIString("/usr/local/bin"), apiDistro.CuratorDir)
+	s.Equal(model.ToAPIString("/etc/credentials"), apiDistro.JasperCredentialsPath)
+	s.Equal(model.ToAPIString("/usr/bin"), apiDistro.ClientDir)
 	s.Equal(apiDistro.User, model.ToAPIString("~root"))
 	s.Equal(apiDistro.SSHKey, model.ToAPIString("~SSH string"))
 	s.Equal(apiDistro.SSHOptions, []string{"~StrictHostKeyChecking=no", "~BatchMode=no", "~ConnectTimeout=10"})

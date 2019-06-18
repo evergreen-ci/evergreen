@@ -103,7 +103,7 @@ type Job struct {
 	handle syscall.Handle
 }
 
-func NewJob(name string) (*Job, error) {
+func NewWindowsJobObject(name string) (*Job, error) {
 	utf16Name, err := syscall.UTF16PtrFromString(name)
 	if err != nil {
 		return nil, NewWindowsError("UTF16PtrFromString", err)

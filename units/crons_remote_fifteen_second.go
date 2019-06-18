@@ -52,6 +52,7 @@ func (j *cronsRemoteFifteenSecondJob) Run(ctx context.Context) {
 		PopulateSchedulerJobs(j.env),
 		PopulateHostAllocatorJobs(j.env),
 		PopulateAgentDeployJobs(j.env),
+		PopulateAgentMonitorDeployJobs(j.env),
 	}
 
 	queue := j.env.RemoteQueue()
@@ -62,7 +63,7 @@ func (j *cronsRemoteFifteenSecondJob) Run(ctx context.Context) {
 			j.AddError(errors.New("operation aborted"))
 		}
 
-		catcher.Add(op(queue))
+		catcher.Add(op(ctx, queue))
 	}
 	j.ErrorCount = catcher.Len()
 
