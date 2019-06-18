@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/model/credentials"
 	"github.com/evergreen-ci/evergreen/service"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/mongodb/amboy"
@@ -37,6 +38,7 @@ func startWebService() cli.Command {
 			env, err := evergreen.NewEnvironment(ctx, confPath, db)
 			grip.EmergencyFatal(errors.Wrap(err, "problem configuring application environment"))
 			evergreen.SetEnvironment(env)
+			grip.EmergencyFatal(errors.Wrap(credentials.Bootstrap(), "problem bootstrapping host credentials"))
 			if c.Bool(overwriteConfFlagName) {
 				grip.EmergencyFatal(errors.Wrap(env.SaveConfig(), "problem saving config"))
 			}

@@ -17,13 +17,13 @@ const (
 	CAName      = "evergreen"
 	ServiceName = "evergreen.mongodb.com"
 
-	defaultConnectionTimeout   = 10 * time.Second
-	defaultCertificateDuration = 7 * 24 * time.Hour // 1 week
+	defaultConnectionTimeout = 10 * time.Second
+	defaultExpiration        = 30 * 24 * time.Hour // 1 month
 )
 
-// init performs one-time initialization of the cert collection with the
-// certificate authority and evergreen service certificate.
-func init() {
+// Bootstrap performs one-time initialization of the credentials collection with
+// the certificate authority and evergreen service certificate.
+func Bootstrap() error {
 	env := evergreen.GetEnvironment()
 	settings := env.Settings()
 	maxExpiration := time.Duration(1<<63 - 1)
@@ -53,8 +53,10 @@ func init() {
 	defer cancel()
 
 	if _, err := certdepot.BootstrapDepotWithMongoClient(ctx, env.Client(), bootstrapConfig); err != nil {
-		grip.EmergencyFatal(errors.Wrap(err, "could not bootstrap cert collection"))
+		return errors.Wrap(err, "could not bootstrap credentials collection")
 	}
+
+	return nil
 }
 
 func mongoConfig(settings *evergreen.Settings) *certdepot.MongoDBOptions {
@@ -112,7 +114,7 @@ func GenerateInMemory(name string) (*rpc.Credentials, error) {
 		CA:         CAName,
 		CommonName: name,
 		Host:       name,
-		Expires:    defaultCertificateDuration,
+		Expires:    defaultExpiration,
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), defaultConnectionTimeout)
