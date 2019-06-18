@@ -15,22 +15,36 @@ import (
 	"github.com/urfave/cli"
 )
 
-// Service encapsulates the functionality to set up Jasper services. Except for
-// run, the subcommands will generally require elevated privileges to execute.
+// Constants representing the Jasper service interface as a CLI command.
+const (
+	ServiceCommand        = "service"
+	InstallCommand        = "install"
+	UninstallCommand      = "uninstall"
+	StartCommand          = "start"
+	StopCommand           = "stop"
+	RestartCommand        = "restart"
+	RunCommand            = "run"
+	StatusCommand         = "status"
+	ForceReinstallCommand = "force-reinstall"
+)
+
+// Service encapsulates the functionality to set up Jasper services.
+// Except for run, the subcommands will generally require elevated privileges to
+// execute.
 func Service() cli.Command {
 	return cli.Command{
-		Name:  "service",
+		Name:  ServiceCommand,
 		Usage: "tools for running Jasper services",
 		Flags: []cli.Flag{},
 		Subcommands: []cli.Command{
-			serviceCommand("force-reinstall", forceReinstall),
-			serviceCommand("install", install),
-			serviceCommand("uninstall", uninstall),
-			serviceCommand("start", start),
-			serviceCommand("stop", stop),
-			serviceCommand("restart", restart),
-			serviceCommand("run", run),
-			serviceCommand("status", status),
+			serviceCommand(ForceReinstallCommand, forceReinstall),
+			serviceCommand(InstallCommand, install),
+			serviceCommand(UninstallCommand, uninstall),
+			serviceCommand(StartCommand, start),
+			serviceCommand(StopCommand, stop),
+			serviceCommand(RestartCommand, restart),
+			serviceCommand(RunCommand, run),
+			serviceCommand(StatusCommand, status),
 		},
 	}
 }
@@ -58,7 +72,7 @@ func handleDaemonSignals(ctx context.Context, cancel context.CancelFunc, exit ch
 // the flags set in the cli.Context.
 func buildRunCommand(c *cli.Context, serviceType string) []string {
 	args := unparseFlagSet(c)
-	subCmd := []string{"jasper", "service", "run", serviceType}
+	subCmd := []string{JasperCommand, ServiceCommand, RunCommand, serviceType}
 	return append(subCmd, args...)
 }
 

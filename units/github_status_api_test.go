@@ -144,27 +144,17 @@ func (s *githubStatusUpdateSuite) TestForPushToCommitQueue() {
 	s.Equal(message.GithubStatePending, status.State)
 }
 
-func (s *githubStatusUpdateSuite) TestForBadConfig() {
-	intent, err := patch.NewGithubIntent("1", testutil.NewGithubPREvent(448,
+func (s *githubStatusUpdateSuite) TestForProcessingError() {
+	intent, err := patch.NewGithubIntent("1", testutil.NewGithubPR(448,
 		"evergreen-ci/evergreen", "tychoish/evergreen", "776f608b5b12cd27b8d931c8ee4ca0c13f857299", "tychoish", "Title"))
 	s.NoError(err)
 	s.NotNil(intent)
 	s.NoError(intent.Insert())
 
-	ref := model.ProjectRef{
-		Identifier:       "mci",
-		PRTestingEnabled: true,
-		Owner:            "evergreen-ci",
-		Repo:             "evergreen",
-		Branch:           "master",
-		Enabled:          true,
-	}
-	s.NoError(ref.Insert())
-
-	job, ok := NewGithubStatusUpdateJobForBadConfig(&ref, "776f608b5b12cd27b8d931c8ee4ca0c13f857299", "sender-id").(*githubStatusUpdateJob)
+	job, ok := NewGithubStatusUpdateJobForProcessingError("evergreen/commit-queue", "evergreen-ci", "evergreen", "776f608b5b12cd27b8d931c8ee4ca0c13f857299", OtherErrors).(*githubStatusUpdateJob)
 	s.Require().NotNil(job)
 	s.Require().True(ok)
-	s.Require().Equal(githubUpdateTypeBadConfig, job.UpdateType)
+	s.Require().Equal(githubUpdateTypeProcessingError, job.UpdateType)
 	job.env = s.env
 	job.Run(context.Background())
 	s.False(job.HasErrors())
@@ -174,10 +164,8 @@ func (s *githubStatusUpdateSuite) TestForBadConfig() {
 	s.Equal("evergreen-ci", status.Owner)
 	s.Equal("evergreen", status.Repo)
 	s.Equal("776f608b5b12cd27b8d931c8ee4ca0c13f857299", status.Ref)
-
-	s.Equal("https://example.com/waterfall/mci", status.URL)
-	s.Equal("project config was invalid", status.Description)
-	s.Equal("evergreen", status.Context)
+	s.Equal(OtherErrors, status.Description)
+	s.Equal("evergreen/commit-queue", status.Context)
 	s.Equal(message.GithubStateFailure, status.State)
 }
 

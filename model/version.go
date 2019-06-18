@@ -6,6 +6,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/mongodb/anser/bsonutil"
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson"
@@ -93,6 +94,22 @@ func (v *Version) AddSatisfiedTrigger(definitionID string) error {
 	}
 	v.SatisfiedTriggers = append(v.SatisfiedTriggers, definitionID)
 	return errors.Wrap(AddSatisfiedTrigger(v.Id, definitionID), "error adding satisfied trigger")
+}
+
+// GetTimeSpent returns the total time_taken and makespan of a version for
+// each task that has finished running
+func (v *Version) GetTimeSpent() (time.Duration, time.Duration, error) {
+	// Find excludes display tasks from consideration
+	tasks, err := task.Find(task.ByVersion(v.Id).WithFields(task.TimeTakenKey, task.StartTimeKey, task.FinishTimeKey))
+	if err != nil {
+		return 0, 0, errors.Wrapf(err, "can't get tasks for version '%s'", v.Id)
+	}
+	if tasks == nil {
+		return 0, 0, errors.Errorf("no tasks found for version '%s'", v.Id)
+	}
+
+	timeTaken, makespan := task.GetTimeSpent(tasks)
+	return timeTaken, makespan, nil
 }
 
 // VersionBuildStatus stores metadata relating to each build

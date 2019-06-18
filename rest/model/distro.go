@@ -117,30 +117,32 @@ func (s *APIFinderSettings) ToService() (interface{}, error) {
 // APIDistro is the model to be returned by the API whenever distros are fetched
 
 type APIDistro struct {
-	Name                APIString              `json:"name"`
-	UserSpawnAllowed    bool                   `json:"user_spawn_allowed"`
-	Provider            APIString              `json:"provider"`
-	ProviderSettings    map[string]interface{} `json:"settings"`
-	ImageID             APIString              `json:"image_id"`
-	Arch                APIString              `json:"arch"`
-	WorkDir             APIString              `json:"work_dir"`
-	PoolSize            int                    `json:"pool_size"`
-	SetupAsSudo         bool                   `json:"setup_as_sudo"`
-	Setup               APIString              `json:"setup"`
-	Teardown            APIString              `json:"teardown"`
-	User                APIString              `json:"user"`
-	BootstrapMethod     APIString              `json:"bootstrap_method"`
-	CommunicationMethod APIString              `json:"communication_method"`
-	CloneMethod         APIString              `json:"clone_method"`
-	ShellPath           APIString              `json:"shell_path"`
-	CuratorDir          APIString              `json:"curator_dir"`
-	SSHKey              APIString              `json:"ssh_key"`
-	SSHOptions          []string               `json:"ssh_options"`
-	Expansions          []APIExpansion         `json:"expansions"`
-	Disabled            bool                   `json:"disabled"`
-	ContainerPool       APIString              `json:"container_pool"`
-	PlannerSettings     APIPlannerSettings     `json:"planner_settings"`
-	FinderSettings      APIFinderSettings      `json:"finder_settings"`
+	Name                  APIString              `json:"name"`
+	UserSpawnAllowed      bool                   `json:"user_spawn_allowed"`
+	Provider              APIString              `json:"provider"`
+	ProviderSettings      map[string]interface{} `json:"settings"`
+	ImageID               APIString              `json:"image_id"`
+	Arch                  APIString              `json:"arch"`
+	WorkDir               APIString              `json:"work_dir"`
+	PoolSize              int                    `json:"pool_size"`
+	SetupAsSudo           bool                   `json:"setup_as_sudo"`
+	Setup                 APIString              `json:"setup"`
+	Teardown              APIString              `json:"teardown"`
+	User                  APIString              `json:"user"`
+	BootstrapMethod       APIString              `json:"bootstrap_method"`
+	CommunicationMethod   APIString              `json:"communication_method"`
+	CloneMethod           APIString              `json:"clone_method"`
+	ShellPath             APIString              `json:"shell_path"`
+	CuratorDir            APIString              `json:"curator_dir"`
+	ClientDir             APIString              `json:"client_dir"`
+	JasperCredentialsPath APIString              `json:"jasper_credentials_path"`
+	SSHKey                APIString              `json:"ssh_key"`
+	SSHOptions            []string               `json:"ssh_options"`
+	Expansions            []APIExpansion         `json:"expansions"`
+	Disabled              bool                   `json:"disabled"`
+	ContainerPool         APIString              `json:"container_pool"`
+	PlannerSettings       APIPlannerSettings     `json:"planner_settings"`
+	FinderSettings        APIFinderSettings      `json:"finder_settings"`
 }
 
 // BuildFromService converts from service level distro.Distro to an APIDistro
@@ -190,6 +192,7 @@ func (apiDistro *APIDistro) BuildFromService(h interface{}) error {
 	apiDistro.CloneMethod = ToAPIString(d.CloneMethod)
 	apiDistro.ShellPath = ToAPIString(d.ShellPath)
 	apiDistro.CuratorDir = ToAPIString(d.CuratorDir)
+	apiDistro.ClientDir = ToAPIString(d.ClientDir)
 	apiDistro.SSHKey = ToAPIString(d.SSHKey)
 	apiDistro.Disabled = d.Disabled
 	apiDistro.ContainerPool = ToAPIString(d.ContainerPool)
@@ -247,6 +250,7 @@ func (apiDistro *APIDistro) ToService() (interface{}, error) {
 	}
 	d.ShellPath = FromAPIString(apiDistro.ShellPath)
 	d.CuratorDir = FromAPIString(apiDistro.CuratorDir)
+	d.ClientDir = FromAPIString(apiDistro.ClientDir)
 	d.SSHKey = FromAPIString(apiDistro.SSHKey)
 	d.SSHOptions = apiDistro.SSHOptions
 	d.SpawnAllowed = apiDistro.UserSpawnAllowed

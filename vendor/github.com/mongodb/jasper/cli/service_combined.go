@@ -14,10 +14,9 @@ const (
 	restHostFlagName = "rest_host"
 	restPortFlagName = "rest_port"
 
-	rpcHostFlagName         = "rpc_host"
-	rpcPortFlagName         = "rpc_port"
-	rpcCertFilePathFlagName = "rpc_cert_file_path"
-	rpcKeyFilePathFlagName  = "rpc_key_file_path"
+	rpcHostFlagName          = "rpc_host"
+	rpcPortFlagName          = "rpc_port"
+	rpcCredsFilePathFlagName = "rpc_creds_path"
 )
 
 func serviceCommandCombined(cmd string, operation serviceOperation) cli.Command {
@@ -50,12 +49,8 @@ func serviceCommandCombined(cmd string, operation serviceOperation) cli.Command 
 				Value:  defaultRPCPort,
 			},
 			cli.StringFlag{
-				Name:  rpcCertFilePathFlagName,
-				Usage: "the path to the RPC certificate file",
-			},
-			cli.StringFlag{
-				Name:  rpcKeyFilePathFlagName,
-				Usage: "the path to the RPC key file",
+				Name:  rpcCredsFilePathFlagName,
+				Usage: "the path to the RPC service credentials file",
 			},
 		},
 		Before: mergeBeforeFuncs(
@@ -70,7 +65,7 @@ func serviceCommandCombined(cmd string, operation serviceOperation) cli.Command 
 
 			daemon := newCombinedDaemon(
 				newRESTDaemon(c.String(restHostFlagName), c.Int(restPortFlagName), manager),
-				newRPCDaemon(c.String(rpcHostFlagName), c.Int(rpcPortFlagName), c.String(rpcCertFilePathFlagName), c.String(rpcKeyFilePathFlagName), manager),
+				newRPCDaemon(c.String(rpcHostFlagName), c.Int(rpcPortFlagName), manager, c.String(rpcCredsFilePathFlagName)),
 			)
 
 			config := serviceConfig(combinedService, buildRunCommand(c, combinedService))

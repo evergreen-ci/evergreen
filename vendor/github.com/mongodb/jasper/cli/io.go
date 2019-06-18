@@ -1,10 +1,17 @@
 package cli
 
 import (
+	"encoding/json"
+
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/level"
 	"github.com/mongodb/jasper"
 	"github.com/pkg/errors"
+)
+
+const (
+	unmarshalFailed           = "failed to unmarshal response"
+	unspecifiedRequestFailure = "request failed for unspecified reason"
 )
 
 // Validator represents an input that can be validated.
@@ -22,14 +29,35 @@ type OutcomeResponse struct {
 }
 
 // Successful returns whether the request was successfully processed.
-func (o OutcomeResponse) Successful() bool {
-	return o.Success
+func (r OutcomeResponse) Successful() bool {
+	return r.Success
 }
 
 // ErrorMessage returns the error message if the request was not successfully
 // processed.
-func (o OutcomeResponse) ErrorMessage() string {
-	return o.Message
+func (r OutcomeResponse) ErrorMessage() string {
+	reason := r.Message
+	if !r.Successful() && reason == "" {
+		reason = unspecifiedRequestFailure
+	}
+	return reason
+}
+
+// ExtractOutcomeResponse unmarshals the input bytes into an OutcomeResponse and
+// checks if the request was successful.
+func ExtractOutcomeResponse(input []byte) (OutcomeResponse, error) {
+	resp := OutcomeResponse{}
+	if err := json.Unmarshal(input, &resp); err != nil {
+		return resp, errors.Wrap(err, unmarshalFailed)
+	}
+	return resp, resp.successOrError()
+}
+
+func (r OutcomeResponse) successOrError() error {
+	if !r.Successful() {
+		return errors.New(r.ErrorMessage())
+	}
+	return nil
 }
 
 func makeOutcomeResponse(err error) *OutcomeResponse {
@@ -46,11 +74,31 @@ type InfoResponse struct {
 	Info            jasper.ProcessInfo `json:"info,omitempty"`
 }
 
+// ExtractInfoResponse unmarshals the input bytes into an InfoResponse and
+// checks if the request was successful.
+func ExtractInfoResponse(input []byte) (InfoResponse, error) {
+	resp := InfoResponse{}
+	if err := json.Unmarshal(input, &resp); err != nil {
+		return resp, errors.Wrap(err, unmarshalFailed)
+	}
+	return resp, resp.successOrError()
+}
+
 // InfosResponse represents CLI-specific output containing the request outcome
 // and information for multiple processes.
 type InfosResponse struct {
 	OutcomeResponse `json:"outcome"`
 	Infos           []jasper.ProcessInfo `json:"infos,omitempty"`
+}
+
+// ExtractInfosResponse unmarshals the input bytes into a TagsResponse and
+// checks if the request was successful.
+func ExtractInfosResponse(input []byte) (InfosResponse, error) {
+	resp := InfosResponse{}
+	if err := json.Unmarshal(input, &resp); err != nil {
+		return resp, errors.Wrap(err, unmarshalFailed)
+	}
+	return resp, resp.successOrError()
 }
 
 // TagsResponse represents CLI-specific output containing the request outcome
@@ -60,11 +108,31 @@ type TagsResponse struct {
 	Tags            []string `json:"tags,omitempty"`
 }
 
+// ExtractTagsResponse unmarshals the input bytes into a TagsResponse and checks
+// if the request was successful.
+func ExtractTagsResponse(input []byte) (TagsResponse, error) {
+	resp := TagsResponse{}
+	if err := json.Unmarshal(input, &resp); err != nil {
+		return resp, errors.Wrap(err, unmarshalFailed)
+	}
+	return resp, resp.successOrError()
+}
+
 // RunningResponse represents CLI-specific output containing the request outcome
 // and whether the process is running or not.
 type RunningResponse struct {
 	OutcomeResponse `json:"outcome"`
 	Running         bool `json:"running,omitempty"`
+}
+
+// ExtractRunningResponse unmarshals the input bytes into a RunningResponse and
+// checks if the request was successful.
+func ExtractRunningResponse(input []byte) (RunningResponse, error) {
+	resp := RunningResponse{}
+	if err := json.Unmarshal(input, &resp); err != nil {
+		return resp, errors.Wrap(err, unmarshalFailed)
+	}
+	return resp, resp.successOrError()
 }
 
 // CompleteResponse represents CLI-specific output containing the request
@@ -74,12 +142,32 @@ type CompleteResponse struct {
 	Complete        bool `json:"complete,omitempty"`
 }
 
+// ExtractCompleteResponse unmarshals the input bytes into a CompleteResponse and
+// checks if the request was successful.
+func ExtractCompleteResponse(input []byte) (CompleteResponse, error) {
+	resp := CompleteResponse{}
+	if err := json.Unmarshal(input, &resp); err != nil {
+		return resp, errors.Wrap(err, unmarshalFailed)
+	}
+	return resp, resp.successOrError()
+}
+
 // WaitResponse represents CLI-specific output containing the request outcome,
 // the wait exit code, and the error from wait.
 type WaitResponse struct {
 	OutcomeResponse `json:"outcome"`
 	ExitCode        int    `json:"exit_code,omitempty"`
 	Error           string `json:"error,omitempty"`
+}
+
+// ExtractWaitResponse unmarshals the input bytes into a WaitResponse and checks if the
+// request was successful.
+func ExtractWaitResponse(input []byte) (WaitResponse, error) {
+	resp := WaitResponse{}
+	if err := json.Unmarshal(input, &resp); err != nil {
+		return resp, errors.Wrap(err, unmarshalFailed)
+	}
+	return resp, resp.successOrError()
 }
 
 // IDInput represents CLI-specific input representing a Jasper process ID.

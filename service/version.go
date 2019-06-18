@@ -168,7 +168,7 @@ func (uis *UIServer) versionPage(w http.ResponseWriter, r *http.Request) {
 					"task_id": t.Id,
 					"version": projCtx.Version.Id,
 					"request": gimlet.GetRequestID(ctx),
-					"message": "version references task that does not exist",
+					"message": "build references task that does not exist",
 				})
 			}
 			uiTasks = append(uiTasks, uiT)
@@ -189,6 +189,12 @@ func (uis *UIServer) versionPage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	versionAsUI.Builds = uiBuilds
+
+	versionAsUI.TimeTaken, versionAsUI.Makespan, err = projCtx.Version.GetTimeSpent()
+	if err != nil {
+		uis.LoggedError(w, r, http.StatusInternalServerError, err)
+		return
+	}
 
 	pluginContext := projCtx.ToPluginContext(uis.Settings, currentUser)
 	pluginContent := getPluginDataAndHTML(uis, plugin.VersionPage, pluginContext)

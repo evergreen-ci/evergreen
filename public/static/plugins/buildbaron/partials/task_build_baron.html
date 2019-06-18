@@ -8,7 +8,7 @@
     </h3>
     <div class="mci-pod">
       <div ng-show="created_tickets && created_tickets.length > 0" class="buildbaron-pod">
-        <h5> Tickets Automatically Created By This Task </h5>
+        <h5> Tickets Created From This Task </h5>
         <div class="buildbaron-results">
           <div class="buildbaron-issue" ng-repeat="issue in created_tickets">
             <div class="buildbaron-row" ng-class="{'buildbaron-row-highlight': issue.fields.status.id==1}">
@@ -89,7 +89,7 @@
               </div>
               <div ng-show="createdTicket">
                 <div class="row">
-                  <h4>Ticket successfully queued for creation</h4>
+                  <h4>Ticket successfully queued for creation. It will show up in the top section of this panel shortly.</h4>
                 </div>
                 <div class="row">
                   <button class="btn btn-default" ng-click="clearTicket()">File Another</button>

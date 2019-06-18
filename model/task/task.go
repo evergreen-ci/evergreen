@@ -1594,3 +1594,146 @@ func (t *Task) GetJQL(searchProjects []string) string {
 
 	return fmt.Sprintf(jqlBFQuery, strings.Join(searchProjects, ", "), jqlClause)
 }
+
+// BlockedState returns "blocked," "pending" (unsatisfied dependencies,
+// but unblocked), or "" (runnable) to represent the state of the task
+// with respect to its dependencies
+func (t *Task) BlockedState(tasksWithDeps []Task) (string, error) {
+	if t.DisplayOnly {
+		return t.blockedStateForDisplayTask(tasksWithDeps)
+	}
+
+	return t.blockedStatePrivate()
+}
+
+func (t *Task) blockedStatePrivate() (string, error) {
+	if len(t.DependsOn) == 0 {
+		return "", nil
+	}
+	dependencyIDs := []string{}
+	for _, d := range t.DependsOn {
+		dependencyIDs = append(dependencyIDs, d.TaskId)
+	}
+	dependentTasks, err := Find(ByIds(dependencyIDs).WithFields(DisplayNameKey, StatusKey,
+		ActivatedKey, BuildVariantKey, DetailsKey, DependsOnKey))
+	if err != nil {
+		return "", errors.Wrap(err, "error finding dependencies")
+	}
+	taskMap := map[string]*Task{}
+	for i := range dependentTasks {
+		taskMap[dependentTasks[i].Id] = &dependentTasks[i]
+	}
+	for _, dependency := range t.DependsOn {
+		depTask := taskMap[dependency.TaskId]
+		if depTask == nil {
+			grip.Error(message.Fields{
+				"message": "task does not exist",
+				"task_id": dependency.TaskId,
+			})
+			continue
+		}
+		state, err := depTask.blockedStatePrivate()
+		if err != nil {
+			return "", err
+		}
+		if state == taskBlocked {
+			return taskBlocked, nil
+		} else if depTask.Status == evergreen.TaskSucceeded || depTask.Status == evergreen.TaskFailed {
+			if depTask.Status != dependency.Status && dependency.Status != AllStatuses {
+				return taskBlocked, nil
+			}
+		} else {
+			return taskPending, nil
+		}
+	}
+	return "", nil
+}
+
+func (t *Task) blockedStateForDisplayTask(tasksWithDeps []Task) (string, error) {
+	execTasks, err := Find(ByIds(t.ExecutionTasks))
+	if err != nil {
+		return "", errors.Wrap(err, "error finding execution tasks")
+	}
+	if len(execTasks) == 0 {
+		return "", nil
+	}
+	state := ""
+	for _, execTask := range execTasks {
+		etState, err := execTask.BlockedState(tasksWithDeps)
+		if err != nil {
+			return "", errors.Wrap(err, "error finding blocked state")
+		}
+		if etState == taskBlocked {
+			return taskBlocked, nil
+		} else if etState == taskPending {
+			state = taskPending
+		}
+	}
+	return state, nil
+}
+
+func (t *Task) CircularDependencies() error {
+	var err error
+	tasksWithDeps, err := FindAllTasksFromVersionWithDependencies(t.Version)
+	if err != nil {
+		return errors.Wrap(err, "error finding tasks with dependencies")
+	}
+	if len(tasksWithDeps) == 0 {
+		return nil
+	}
+	dependencyMap := map[string][]string{}
+	for _, versionTask := range tasksWithDeps {
+		for _, dependency := range versionTask.DependsOn {
+			dependencyMap[versionTask.Id] = append(dependencyMap[versionTask.Id], dependency.TaskId)
+		}
+	}
+	catcher := grip.NewBasicCatcher()
+	cycles := tarjan.Connections(dependencyMap)
+	for _, cycle := range cycles {
+		if len(cycle) > 1 {
+			catcher.Add(errors.Errorf("Dependency cycle detected: %s", strings.Join(cycle, ",")))
+		}
+	}
+	return catcher.Resolve()
+}
+
+func (t *Task) IsBlockedDisplayTask() bool {
+	if !t.DisplayOnly {
+		return false
+	}
+
+	tasksWithDeps, err := FindAllTasksFromVersionWithDependencies(t.Version)
+	if err != nil {
+		grip.Error(message.WrapError(err, "error finding tasks with dependencies"))
+		return false
+	}
+	blockedState, err := t.BlockedState(tasksWithDeps)
+	if err != nil {
+		grip.Error(message.WrapError(err, "error determining blocked state"))
+		return false
+	}
+	return blockedState == taskBlocked
+}
+
+// GetTimeSpent returns the total time_taken and makespan of tasks
+// tasks should not include display tasks so they aren't double counted
+func GetTimeSpent(tasks []Task) (time.Duration, time.Duration) {
+	var timeTaken time.Duration
+	earliestStartTime := util.MaxTime
+	latestFinishTime := util.ZeroTime
+	for _, t := range tasks {
+		timeTaken += t.TimeTaken
+		if !util.IsZeroTime(t.StartTime) && t.StartTime.Before(earliestStartTime) {
+			earliestStartTime = t.StartTime
+		}
+		if t.FinishTime.After(latestFinishTime) {
+			latestFinishTime = t.FinishTime
+		}
+	}
+
+	if earliestStartTime == util.MaxTime || latestFinishTime == util.ZeroTime {
+		return 0, 0
+	}
+
+	return timeTaken, latestFinishTime.Sub(earliestStartTime)
+}

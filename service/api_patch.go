@@ -44,6 +44,7 @@ func (as *APIServer) submitPatch(w http.ResponseWriter, r *http.Request) {
 		Tasks       []string `json:"tasks"`
 		Finalize    bool     `json:"finalize"`
 		Alias       string   `json:"alias"`
+		CommitQueue bool     `json:"commit_queue"`
 	}{}
 	if err := util.ReadJSONInto(util.NewRequestReaderWithSize(r, patch.SizeLimit), &data); err != nil {
 		as.LoggedError(w, r, http.StatusBadRequest, err)
@@ -216,6 +217,11 @@ func (as *APIServer) updatePatchModule(w http.ResponseWriter, r *http.Request) {
 			PatchFileId: patchFileId,
 			Summary:     summaries,
 		},
+	}
+
+	if p.Version != "" && p.Alias == evergreen.CommitQueueAlias {
+		as.LoggedError(w, r, http.StatusBadRequest, errors.New("can't update modules for in-flight commit queue tests"))
+		return
 	}
 
 	if err = p.UpdateModulePatch(modulePatch); err != nil {

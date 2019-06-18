@@ -77,6 +77,10 @@ func clientFlags() []cli.Flag {
 			Name:  serviceFlagName,
 			Usage: fmt.Sprintf("the type of Jasper service ('%s' or '%s')", restService, rpcService),
 		},
+		cli.StringFlag{
+			Name:  credsFilePathFlagName,
+			Usage: "the path to the file containing the credentials",
+		},
 	}
 }
 
@@ -143,9 +147,9 @@ func writeOutput(output io.Writer, input interface{}) error {
 }
 
 // newRemoteClient returns a remote client that connects to the service at the
-// given host and port, with the optional SSL/TLS credentials file specified at
-// the given location.
-func newRemoteClient(ctx context.Context, service, host string, port int, certFilePath string) (jasper.RemoteClient, error) {
+// given host and port, with the optional TLS credentials file for RPC
+// communication.
+func newRemoteClient(ctx context.Context, service, host string, port int, credsFilePath string) (jasper.RemoteClient, error) {
 	addr, err := net.ResolveTCPAddr("tcp", fmt.Sprintf("%s:%d", host, port))
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to resolve address")
@@ -154,7 +158,7 @@ func newRemoteClient(ctx context.Context, service, host string, port int, certFi
 	if service == restService {
 		return jasper.NewRESTClient(addr), nil
 	} else if service == rpcService {
-		return rpc.NewClient(ctx, addr, certFilePath)
+		return rpc.NewClientWithFile(ctx, addr, credsFilePath)
 	}
 	return nil, errors.Errorf("unrecognized service type '%s'", service)
 }
@@ -195,9 +199,9 @@ func withConnection(ctx context.Context, c *cli.Context, operation func(jasper.R
 	host := c.String(hostFlagName)
 	port := c.Int(portFlagName)
 	service := c.String(serviceFlagName)
-	certFilePath := c.String(certFilePathFlagName)
+	credsFilePath := c.String(credsFilePathFlagName)
 
-	client, err := newRemoteClient(ctx, service, host, port, certFilePath)
+	client, err := newRemoteClient(ctx, service, host, port, credsFilePath)
 	if err != nil {
 		return errors.Wrap(err, "error setting up remote client")
 	}

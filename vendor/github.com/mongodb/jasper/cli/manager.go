@@ -9,13 +9,25 @@ import (
 	"github.com/urfave/cli"
 )
 
+// Constants representing the Jasper Manager interface as CLI commands.
+const (
+	ManagerCommand       = "manager"
+	CreateProcessCommand = "create-process"
+	CreateCommand        = "create-command"
+	GetCommand           = "get"
+	GroupCommand         = "group"
+	ListCommand          = "list"
+	ClearCommand         = "clear"
+	CloseCommand         = "close"
+)
+
 // Manager creates a cli.Command that interfaces with a Jasper manager. Each
 // subcommand optionally reads the arguments as JSON from stdin if any are
 // required, calls the jasper.Manager function corresponding to that subcommand,
 // and writes the response as JSON to stdout.
 func Manager() cli.Command {
 	return cli.Command{
-		Name: "manager",
+		Name: ManagerCommand,
 		Subcommands: []cli.Command{
 			managerCreateProcess(),
 			managerCreateCommand(),
@@ -30,7 +42,7 @@ func Manager() cli.Command {
 
 func managerCreateProcess() cli.Command {
 	return cli.Command{
-		Name:   "create-process",
+		Name:   CreateProcessCommand,
 		Flags:  clientFlags(),
 		Before: clientBefore(),
 		Action: func(c *cli.Context) error {
@@ -48,21 +60,20 @@ func managerCreateProcess() cli.Command {
 
 func managerCreateCommand() cli.Command {
 	return cli.Command{
-		Name:   "create-command",
+		Name:   CreateCommand,
 		Flags:  clientFlags(),
 		Before: clientBefore(),
 		Action: func(c *cli.Context) error {
 			opts := &CommandInput{}
 			return doPassthroughInputOutput(c, opts, func(ctx context.Context, client jasper.RemoteClient) interface{} {
-				cmd := client.CreateCommand(ctx).Background(opts.Background)
-				if level.IsValidPriority(opts.Priority) {
-					cmd = cmd.Priority(opts.Priority)
-				}
-				cmd = cmd.Extend(opts.Commands)
-				cmd = cmd.Background(opts.Background).
+				cmd := client.CreateCommand(ctx).Extend(opts.Commands).
+					Background(opts.Background).
 					ContinueOnError(opts.ContinueOnError).
 					IgnoreError(opts.IgnoreError).
 					ApplyFromOpts(&opts.CreateOptions)
+				if level.IsValidPriority(opts.Priority) {
+					cmd = cmd.Priority(opts.Priority)
+				}
 				return makeOutcomeResponse(cmd.Run(ctx))
 			})
 		},
@@ -71,7 +82,7 @@ func managerCreateCommand() cli.Command {
 
 func managerGet() cli.Command {
 	return cli.Command{
-		Name:   "get",
+		Name:   GetCommand,
 		Flags:  clientFlags(),
 		Before: clientBefore(),
 		Action: func(c *cli.Context) error {
@@ -89,7 +100,7 @@ func managerGet() cli.Command {
 
 func managerList() cli.Command {
 	return cli.Command{
-		Name:   "list",
+		Name:   ListCommand,
 		Flags:  clientFlags(),
 		Before: clientBefore(),
 		Action: func(c *cli.Context) error {
@@ -111,7 +122,7 @@ func managerList() cli.Command {
 
 func managerGroup() cli.Command {
 	return cli.Command{
-		Name:   "group",
+		Name:   GroupCommand,
 		Flags:  clientFlags(),
 		Before: clientBefore(),
 		Action: func(c *cli.Context) error {
@@ -133,7 +144,7 @@ func managerGroup() cli.Command {
 
 func managerClear() cli.Command {
 	return cli.Command{
-		Name:   "clear",
+		Name:   ClearCommand,
 		Flags:  clientFlags(),
 		Before: clientBefore(),
 		Action: func(c *cli.Context) error {
@@ -147,7 +158,7 @@ func managerClear() cli.Command {
 
 func managerClose() cli.Command {
 	return cli.Command{
-		Name:   "close",
+		Name:   CloseCommand,
 		Flags:  clientFlags(),
 		Before: clientBefore(),
 		Action: func(c *cli.Context) error {

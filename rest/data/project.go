@@ -203,6 +203,7 @@ func (ac *DBProjectConnector) GetProjectEventLog(id string, before time.Time, n 
 	if err != nil {
 		return nil, err
 	}
+	events.RedactPrivateVars()
 
 	out := []restModel.APIProjectEvent{}
 	catcher := grip.NewBasicCatcher()
