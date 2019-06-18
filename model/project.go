@@ -900,7 +900,7 @@ func GetTasksInTaskGroup(t *task.Task) ([]task.Task, error) {
 		return nil, errors.Wrapf(err, "can't get tasks for task group '%s'", t.TaskGroup)
 	}
 	if len(tasks) == 0 {
-		return nil, errors.New("no tasks to restart")
+		return nil, errors.New("no tasks in task group")
 	}
 	return tasks, nil
 }
