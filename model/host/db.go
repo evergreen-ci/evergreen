@@ -338,7 +338,9 @@ func Provisioning() db.Q {
 }
 
 func FindByFirstProvisioningAttempt() ([]Host, error) {
+	bootstrapKey := bsonutil.GetDottedKeyName(DistroKey, distro.BootstrapMethodKey)
 	return Find(db.Query(bson.M{
+		bootstrapKey:         bson.M{"$ne": distro.BootstrapMethodUserData},
 		ProvisionAttemptsKey: 0,
 		StatusKey:            evergreen.HostProvisioning,
 	}))

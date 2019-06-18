@@ -161,6 +161,19 @@ func (j *hostTerminationJob) Run(ctx context.Context) {
 		j.AddError(fmt.Errorf("could not find host %s for job %s", j.HostID, j.TaskID))
 		return
 	}
+
+	// kim: TODO: wait for EVG-6231 merge.
+	if err := j.host.DeleteJasperCredentials(ctx, j.env); err != nil {
+		j.AddError(err)
+		grip.Error(message.WrapError(err, message.Fields{
+			"message":  "problem deleting Jasper credentials",
+			"host":     j.host.Id,
+			"provider": j.host.Distro.Provider,
+			"job":      j.ID(),
+		}))
+		return
+	}
+
 	// check if running task has been assigned since status changed
 	if j.host.RunningTask != "" {
 		if j.TerminateIfBusy {
