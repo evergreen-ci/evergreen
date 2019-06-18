@@ -370,8 +370,10 @@ func (s *taskSuite) TestAbortedTaskDoesNotNotify() {
 	s.NoError(err)
 	s.NotEmpty(n)
 
-	s.task.Aborted = true
-	s.NoError(db.Update(task.Collection, bson.M{"_id": s.task.Id}, &s.task))
+	taskData := s.event.Data.(*event.TaskEventData)
+	taskData.Aborted = true
+	s.event.Data = taskData
+
 	n, err = NotificationsFromEvent(&s.event)
 	s.NoError(err)
 	s.Empty(n)
