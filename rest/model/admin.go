@@ -1039,10 +1039,16 @@ func (a *APIRepoTrackerConfig) ToService() (interface{}, error) {
 }
 
 type APISchedulerConfig struct {
-	TaskFinder           APIString `json:"task_finder"`
-	HostAllocator        APIString `json:"host_allocator"`
-	FreeHostFraction     float64   `json:"free_host_fraction"`
-	CacheDurationSeconds int       `json:"cache_duration_seconds"`
+	TaskFinder                    APIString `json:"task_finder"`
+	HostAllocator                 APIString `json:"host_allocator"`
+	FreeHostFraction              float64   `json:"free_host_fraction"`
+	CacheDurationSeconds          int       `json:"cache_duration_seconds"`
+	Planner                       APIString `json:"planner"`
+	TaskOrdering                  APIString `json:"task_ordering"`
+	TargetTimeSeconds             int       `json:"target_time_seconds"`
+	AcceptableHostIdleTimeSeconds int       `json:"acceptable_host_idle_time_seconds"`
+	GroupVersions                 bool      `json:"group_versions"`
+	PatchZipperFactor             int       `json:"patch_zipper_factor"`
 }
 
 func (a *APISchedulerConfig) BuildFromService(h interface{}) error {
@@ -1052,6 +1058,12 @@ func (a *APISchedulerConfig) BuildFromService(h interface{}) error {
 		a.HostAllocator = ToAPIString(v.HostAllocator)
 		a.FreeHostFraction = v.FreeHostFraction
 		a.CacheDurationSeconds = v.CacheDurationSeconds
+		a.Planner = ToAPIString(v.Planner)
+		a.TaskOrdering = ToAPIString(v.TaskOrdering)
+		a.TargetTimeSeconds = v.TargetTimeSeconds
+		a.AcceptableHostIdleTimeSeconds = v.AcceptableHostIdleTimeSeconds
+		a.GroupVersions = v.GroupVersions
+		a.PatchZipperFactor = v.PatchZipperFactor
 	default:
 		return errors.Errorf("%T is not a supported type", h)
 	}
@@ -1060,10 +1072,16 @@ func (a *APISchedulerConfig) BuildFromService(h interface{}) error {
 
 func (a *APISchedulerConfig) ToService() (interface{}, error) {
 	return evergreen.SchedulerConfig{
-		TaskFinder:           FromAPIString(a.TaskFinder),
-		HostAllocator:        FromAPIString(a.HostAllocator),
-		FreeHostFraction:     a.FreeHostFraction,
-		CacheDurationSeconds: a.CacheDurationSeconds,
+		TaskFinder:                    FromAPIString(a.TaskFinder),
+		HostAllocator:                 FromAPIString(a.HostAllocator),
+		FreeHostFraction:              a.FreeHostFraction,
+		CacheDurationSeconds:          a.CacheDurationSeconds,
+		Planner:                       FromAPIString(a.Planner),
+		TaskOrdering:                  FromAPIString(a.TaskOrdering),
+		TargetTimeSeconds:             a.TargetTimeSeconds,
+		AcceptableHostIdleTimeSeconds: a.AcceptableHostIdleTimeSeconds,
+		GroupVersions:                 a.GroupVersions,
+		PatchZipperFactor:             a.PatchZipperFactor,
 	}, nil
 }
 

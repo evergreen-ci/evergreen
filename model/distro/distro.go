@@ -46,12 +46,11 @@ type PlannerSettings struct {
 	Version                string        `bson:"version" json:"version" mapstructure:"version"`
 	MinimumHosts           int           `bson:"minimum_hosts" json:"minimum_hosts,omitempty" mapstructure:"minimum_hosts,omitempty"`
 	MaximumHosts           int           `bson:"maximum_hosts" json:"maximum_hosts,omitempty" mapstructure:"maximum_hosts,omitempty"`
-	TargetTime             time.Duration `bson:"target_time" json:"target_time,omitempty" mapstructure:"target_time,omitempty"`
-	AcceptableHostIdleTime time.Duration `bson:"acceptable_host_idle_time" json:"acceptable_host_idle_time,omitempty" mapstructure:"acceptable_host_idle_time,omitempty"`
-	GroupVersions          bool          `bson:"group_versions" json:"group_versions,omitempty" mapstructure:"group_versions,omitempty"`
-	PatchZipperFactor      int           `bson:"patch_zipper_factor" json:"patch_zipper_factor,omitempty" mapstructure:"patch_zipper_factor,omitempty"`
-	MainlineFirst          bool          `bson:"mainline_first" json:"mainline_first,omitempty" mapstructure:"mainline_first,omitempty"`
-	PatchFirst             bool          `bson:"patch_first" json:"patch_first,omitempty" mapstructure:"patch_first,omitempty"`
+	TargetTime             time.Duration `bson:"target_time" json:"target_time" mapstructure:"target_time,omitempty"`
+	AcceptableHostIdleTime time.Duration `bson:"acceptable_host_idle_time" json:"acceptable_host_idle_time" mapstructure:"acceptable_host_idle_time,omitempty"`
+	GroupVersions          *bool         `bson:"group_versions" json:"group_versions" mapstructure:"group_versions,omitempty"`
+	PatchZipperFactor      int           `bson:"patch_zipper_factor" json:"patch_zipper_factor" mapstructure:"patch_zipper_factor,omitempty"`
+	TaskOrdering           string        `bson:"task_ordering" json:"task_ordering" mapstructure:"task_ordering,omitempty"`
 }
 
 type FinderSettings struct {

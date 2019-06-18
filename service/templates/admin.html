@@ -487,6 +487,27 @@ Admin Settings
 										<label>Cache Schedules in API (seconds)</label>
 										<input type="number" step="1" min="0" max="600" ng-model="Settings.scheduler.cache_duration_seconds">
 									</md-input-container>
+									<md-input-container class="control" style="width:45%;">
+                		<label>Planner Version</label>
+              			<input type="text" ng-model="Settings.scheduler.planner_version">
+          				</md-input-container>
+        					<md-input-container class="control" style="width:45%;">
+          					<label>Finder Version</label>
+            				<input type="text" ng-model="Settings.scheduler.task_finder">
+          				</md-input-container>
+									<md-input-container class="control" style="width:45%;">
+      							<label>Target Time (seconds)</label>
+    								<input type="number" step="1" min="0" max="1800" ng-model="Settings.scheduler.target_time_seconds">
+      						</md-input-container>
+    							<md-input-container class="control" style="width:45%;">
+      							<label>Acceptable Host Idle Time (seconds)</label>
+      							<input type="number" step="1" min="0" max="300" ng-model="Settings.scheduler.acceptable_host_idle_time_seconds">
+  								</md-input-container>
+									<md-input-container class="control" style="width:170px;">
+										<md-checkbox ng-model="Settings.scheduler.group_versions">
+											Group Versions
+										</md-checkbox>
+									</md-input-container>
 								</md-card-content>
 							</md-card>
 
