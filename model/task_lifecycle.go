@@ -232,9 +232,10 @@ func TryResetTask(taskId, user, origin string, detail *apimodels.TaskEndDetail) 
 		}
 		// want to restart all tasks in the task group, if it's finished
 		if err = tryResetTaskGroup(t); err != nil {
-			if origin == evergreen.UIPackage {
+			if origin == evergreen.UIPackage || origin == evergreen.RESTV2Package {
 				return errors.Wrapf(err, "error resetting task group for task '%s'", t.Id)
 			}
+			return nil
 		}
 	} else {
 		if err = resetTask(t.Id, user); err != nil {
