@@ -1190,6 +1190,7 @@ func TestTryResetTaskWithTaskGroup(t *testing.T) {
 	require.NoError(t, db.ClearCollections(host.Collection,
 		build.Collection, ProjectRefCollection, VersionCollection, distro.Collection), t, "error clearing collection")
 	assert := assert.New(t)
+	require := require.New(t)
 
 	pRef := &ProjectRef{
 		Identifier:  "my_project",
@@ -1234,8 +1235,9 @@ func TestTryResetTaskWithTaskGroup(t *testing.T) {
 
 	for name, test := range map[string]func(*testing.T, *task.Task){
 		"NotFinished": func(t *testing.T, t1 *task.Task) {
-			err := TryResetTask(t1.Id, "user", "test", nil)
-			assert.Error(err)
+			assert.NoError(TryResetTask("say-bye-123", "user", "test", nil))
+			err := TryResetTask("say-bye-123", "user", evergreen.UIPackage, nil)
+			require.Error(err)
 			assert.Contains(err.Error(), "not finished")
 		},
 		"CanResetTaskGroup": func(t *testing.T, t1 *task.Task) {
