@@ -147,7 +147,7 @@ func (opts cloneOpts) buildHTTPCloneCommand() ([]string, error) {
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to parse URL from location")
 	}
-	clone := fmt.Sprintf("git clone https://%s@%s/%s/%s.git '%s'", opts.token, urlLocation.Host, opts.owner, opts.repo, opts.dir)
+	clone := fmt.Sprintf("git clone https://%s:x-oauth-basic@%s/%s/%s.git '%s'", opts.token, urlLocation.Host, opts.owner, opts.repo, opts.dir)
 	if opts.branch != "" {
 		clone = fmt.Sprintf("%s --branch '%s'", clone, opts.branch)
 	}

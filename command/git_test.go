@@ -193,6 +193,9 @@ func (s *GitGetProjectSuite) TestBuildCloneCommandDefaultCloneMethodUsesSSH() {
 
 func (s *GitGetProjectSuite) TestGitPlugin() {
 	conf := s.modelData1.TaskConfig
+	token, err := s.settings.GetGithubOauthToken()
+	s.Require().NoError(err)
+	conf.Expansions.Put("github", token)
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	comm := client.NewMock("http://localhost.com")
@@ -281,6 +284,7 @@ func (s *GitGetProjectSuite) TestStdErrLogged() {
 	s.NoError(logger.Close())
 	foundCloneCommand := false
 	foundCloneErr := false
+	foundSSHErr := false
 	for _, msgs := range comm.GetMockMessages() {
 		for _, msg := range msgs {
 			if strings.Contains(msg.Message, "git clone 'git@github.com:evergreen-ci/doesntexist.git' 'src' --branch 'master'") {
@@ -289,10 +293,13 @@ func (s *GitGetProjectSuite) TestStdErrLogged() {
 			if strings.Contains(msg.Message, "ERROR: Repository not found.") {
 				foundCloneErr = true
 			}
+			if strings.Contains(msg.Message, "Permission denied (publickey)") {
+				foundSSHErr = true
+			}
 		}
 	}
 	s.True(foundCloneCommand)
-	s.True(foundCloneErr)
+	s.True(foundCloneErr || foundSSHErr)
 }
 
 func (s *GitGetProjectSuite) TestValidateGitCommands() {

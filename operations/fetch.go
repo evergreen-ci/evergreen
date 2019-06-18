@@ -14,6 +14,8 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/evergreen-ci/evergreen/thirdparty"
+
 	"github.com/dustin/go-humanize"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
@@ -37,6 +39,7 @@ func Fetch() cli.Command {
 		artifactsFlagName = "artifacts"
 		shallowFlagName   = "shallow"
 		noPatchFlagName   = "patch"
+		tokenFlagName     = "token"
 	)
 
 	return cli.Command{
@@ -50,6 +53,10 @@ func Fetch() cli.Command {
 			cli.StringFlag{
 				Name:  joinFlagNames(taskFlagName, "t"),
 				Usage: "task associated with the data to fetch",
+			},
+			cli.StringFlag{
+				Name:  joinFlagNames(tokenFlagName, "k"),
+				Usage: "github API token",
 			},
 			cli.BoolFlag{
 				Name:  sourceFlagName,
@@ -70,6 +77,7 @@ func Fetch() cli.Command {
 		},
 		Before: mergeBeforeFuncs(
 			requireClientConfig,
+			setPlainLogger,
 			requireStringFlag(taskFlagName),
 			func(c *cli.Context) error {
 				wd := c.String(dirFlagName)
@@ -115,7 +123,7 @@ func Fetch() cli.Command {
 			}
 
 			if doFetchSource {
-				if err = fetchSource(ctx, ac, rc, client, wd, taskID, noPatch); err != nil {
+				if err = fetchSource(ctx, ac, rc, client, wd, taskID, c.String(tokenFlagName), noPatch); err != nil {
 					return err
 				}
 			}
@@ -136,7 +144,7 @@ func Fetch() cli.Command {
 // Implementation details (legacy)
 
 func fetchSource(ctx context.Context, ac, rc *legacyClient, comm client.Communicator,
-	rootPath, taskId string, noPatch bool) error {
+	rootPath, taskId, token string, noPatch bool) error {
 	task, err := rc.GetTask(taskId)
 	if err != nil {
 		return err
@@ -179,7 +187,7 @@ func fetchSource(ctx context.Context, ac, rc *legacyClient, comm client.Communic
 		}
 	}
 	cloneDir = filepath.Join(rootPath, cloneDir)
-	err = cloneSource(task, project, config, cloneDir, mfest)
+	err = cloneSource(task, project, config, cloneDir, token, mfest)
 	if err != nil {
 		return err
 	}
@@ -194,16 +202,24 @@ func fetchSource(ctx context.Context, ac, rc *legacyClient, comm client.Communic
 }
 
 type cloneOptions struct {
-	repo     string
-	revision string
-	rootDir  string
-	branch   string
-	depth    uint
+	owner      string
+	repository string
+	revision   string
+	rootDir    string
+	branch     string
+	token      string
+	depth      uint
 }
 
 func clone(opts cloneOptions) error {
 	// clone the repo first
-	cloneArgs := []string{"clone", opts.repo}
+	var url string
+	if opts.token != "" {
+		url = fmt.Sprintf("https://%s:x-oauth-basic@github.com/%s/%s.git", opts.token, opts.owner, opts.repository)
+	} else {
+		url = fmt.Sprintf("git@github.com:%v/%v.git", opts.owner, opts.repository)
+	}
+	cloneArgs := []string{"clone", url}
 	if opts.depth > 0 {
 		cloneArgs = append(cloneArgs, "--depth", fmt.Sprintf("%d", opts.depth))
 	}
@@ -258,14 +274,16 @@ func clone(opts cloneOptions) error {
 }
 
 func cloneSource(task *service.RestTask, project *model.ProjectRef, config *model.Project,
-	cloneDir string, mfest *manifest.Manifest) error {
+	cloneDir, token string, mfest *manifest.Manifest) error {
 	// Fetch the outermost repo for the task
 	err := clone(cloneOptions{
-		repo:     fmt.Sprintf("git@github.com:%v/%v.git", project.Owner, project.Repo),
-		revision: task.Revision,
-		rootDir:  cloneDir,
-		branch:   project.Branch,
-		depth:    defaultCloneDepth,
+		owner:      project.Owner,
+		repository: project.Repo,
+		revision:   task.Revision,
+		rootDir:    cloneDir,
+		branch:     project.Branch,
+		depth:      defaultCloneDepth,
+		token:      token,
 	})
 
 	if err != nil {
@@ -293,10 +311,16 @@ func cloneSource(task *service.RestTask, project *model.ProjectRef, config *mode
 
 		moduleBase := filepath.Join(cloneDir, module.Prefix, module.Name)
 		fmt.Printf("Fetching module %v at %v\n", moduleName, module.Branch)
+		owner, repo, err := thirdparty.ParseGitUrl(module.Repo)
+		if err != nil {
+			return errors.Wrapf(err, "error parsing git URL '%s'", module.Repo)
+		}
 		err = clone(cloneOptions{
-			repo:     module.Repo,
-			revision: revision,
-			rootDir:  filepath.ToSlash(moduleBase),
+			owner:      owner,
+			repository: repo,
+			revision:   revision,
+			rootDir:    filepath.ToSlash(moduleBase),
+			token:      token,
 		})
 		if err != nil {
 			return err
