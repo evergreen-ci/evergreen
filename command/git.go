@@ -156,10 +156,8 @@ func (opts cloneOpts) buildHTTPCloneCommand() ([]string, error) {
 
 	redactedCloneCmd := strings.Replace(cloneCmd, opts.token, "[redacted oauth token]", -1)
 	return []string{
-		"set +o xtrace",
 		fmt.Sprintf(`echo %s`, strconv.Quote(redactedCloneCmd)),
 		cloneCmd,
-		"set -o xtrace",
 		fmt.Sprintf("cd %s", opts.dir),
 	}, nil
 }
@@ -207,7 +205,6 @@ func (c *gitFetchProject) gitResetWithUnshallow(revision string) []string {
 
 func (c *gitFetchProject) buildCloneCommand(conf *model.TaskConfig, opts cloneOpts) ([]string, error) {
 	gitCommands := []string{
-		"set -o xtrace",
 		"set -o errexit",
 		fmt.Sprintf("rm -rf %s", c.Directory),
 	}
@@ -255,7 +252,6 @@ func (c *gitFetchProject) buildCloneCommand(conf *model.TaskConfig, opts cloneOp
 
 func (c *gitFetchProject) buildModuleCloneCommand(conf *model.TaskConfig, opts cloneOpts, ref string, modulePatch *patch.ModulePatch) ([]string, error) {
 	gitCommands := []string{
-		"set -o xtrace",
 		"set -o errexit",
 	}
 	if opts.location == "" {
@@ -563,7 +559,6 @@ func getApplyCommand(patchFile string) (string, error) {
 // need to be executed, except for apply. If the patch is empty it will not apply the patch.
 func getPatchCommands(modulePatch patch.ModulePatch, dir, patchPath string) []string {
 	patchCommands := []string{
-		fmt.Sprintf("set -o xtrace"),
 		fmt.Sprintf("set -o errexit"),
 		fmt.Sprintf("ls"),
 		fmt.Sprintf("cd '%s'", dir),
