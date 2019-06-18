@@ -39,7 +39,7 @@ type TaskEventData struct {
 	UserId    string `bson:"u_id,omitempty" json:"user_id,omitempty"`
 	Status    string `bson:"s,omitempty" json:"status,omitempty"`
 	JiraIssue string `bson:"jira,omitempty" json:"jira,omitempty"`
-	Aborted   bool   `bson:"aborted", json:"aborted"`
+	Aborted   bool   `bson:"aborted" json:"aborted"`
 
 	Timestamp time.Time `bson:"ts,omitempty" json:"timestamp,omitempty"`
 	Priority  int64     `bson:"pri,omitempty" json:"priority,omitempty"`
