@@ -13,7 +13,6 @@ import (
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/util"
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -94,6 +93,7 @@ func TestTaskDispatchService(t *testing.T) {
 				},
 
 				"TestFindAllTasks": func(t *testing.T, items []TaskQueueItem, constructor TaskDistroQueueServiceConstructor) {
+
 					service := constructor("distro_1", items, time.Minute)
 					var spec TaskSpec
 					var next *TaskQueueItem
@@ -213,11 +213,42 @@ func TestTaskDispatchService(t *testing.T) {
 
 					// Dispatch the rest of the non-task group tasks
 					currentID = 0
+					expectedDAGDispatchOrder := []int{
+						5,
+						10,
+						15,
+						20,
+						25,
+						30,
+						50,
+						45,
+						40,
+						35,
+						55,
+						60,
+						80,
+						75,
+						70,
+						65,
+						85,
+						90,
+						95,
+					}
+
 					for i := 0; i < 19; i++ {
+						// next is a TaskQueueItem
 						next = service.FindNextTask(spec)
 						nextInt, err = strconv.Atoi(next.Id)
 						require.NoError(t, err)
-						assert.True(t, nextInt > currentID)
+
+						if name == "taskDistroDAGDispatchService" {
+							// validate new order w.r.t. dependencies
+							require.Equal(t, nextInt, expectedDAGDispatchOrder[i])
+						}
+						if name == "taskDistroDispatchService" {
+							// validate original order
+							require.True(t, nextInt > currentID)
+						}
 						currentID = nextInt
 						require.Equal(t, "", next.Group)
 						require.Equal(t, "variant_1", next.BuildVariant)
@@ -232,9 +263,10 @@ func TestTaskDispatchService(t *testing.T) {
 				var variant string
 				var version string
 				var maxHosts int
-				var depends string
+				var dependencies []string
 
 				for i := 0; i < 100; i++ {
+					dependencies = []string{}
 					if i%5 == 0 { // no group
 						group = ""
 						variant = "variant_1"
@@ -242,10 +274,10 @@ func TestTaskDispatchService(t *testing.T) {
 						maxHosts = 0
 
 						if i > 30 && i < 50 {
-							depends = strconv.Itoa(i + 5)
+							dependencies = append(dependencies, strconv.Itoa(i+5))
 						}
 						if i > 60 && i < 80 {
-							depends = strconv.Itoa(i - 5)
+							dependencies = append(dependencies, strconv.Itoa(i+5))
 						}
 
 					} else if i%5 == 1 { // group 1
@@ -270,21 +302,17 @@ func TestTaskDispatchService(t *testing.T) {
 						maxHosts = 2
 					}
 
-					taskQItem := TaskQueueItem{
-						Id:            fmt.Sprintf("%d", i),
+					ID := fmt.Sprintf("%d", i)
+					items = append(items, TaskQueueItem{
+						Id:            ID,
 						Group:         group,
 						BuildVariant:  variant,
 						Version:       version,
 						GroupMaxHosts: maxHosts,
-						Dependencies:  []string{depends},
-					}
-					if depends == "" {
-						taskQItem.Dependencies = []string{}
-					}
-					items = append(items, taskQItem)
-
+						Dependencies:  dependencies,
+					})
 					nextTask := task.Task{
-						Id:                fmt.Sprintf("%d", i),
+						Id:                ID,
 						TaskGroup:         group,
 						BuildVariant:      variant,
 						Version:           version,

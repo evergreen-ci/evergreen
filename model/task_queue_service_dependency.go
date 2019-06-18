@@ -73,10 +73,10 @@ func (t *taskDistroDAGDispatchService) Refresh() error {
 	return nil
 }
 
-func (t *taskDistroDAGDispatchService) addItem(item TaskQueueItem) {
+func (t *taskDistroDAGDispatchService) addItem(item *TaskQueueItem) {
 	node := t.graph.NewNode()
 	t.graph.AddNode(node)
-	t.nodeItemMap[node.ID()] = &item
+	t.nodeItemMap[node.ID()] = item
 	t.itemNodeMap[item.Id] = node
 }
 
@@ -84,9 +84,7 @@ func (t *taskDistroDAGDispatchService) getItemByNodeID(id int64) *TaskQueueItem 
 	if item, ok := t.nodeItemMap[id]; ok {
 		return item
 	}
-	grip.Error(message.Fields{
-		"message": "programmer error, couldn't find node in map",
-	})
+
 	return nil
 }
 
@@ -94,9 +92,7 @@ func (t *taskDistroDAGDispatchService) getNodeByItemID(id string) graph.Node {
 	if node, ok := t.itemNodeMap[id]; ok {
 		return node
 	}
-	grip.Error(message.Fields{
-		"message": "programmer error, couldn't find node in map",
-	})
+
 	return nil
 }
 
@@ -106,6 +102,7 @@ func (t *taskDistroDAGDispatchService) addEdge(from string, to string) {
 
 	// Cannot add a self edge!
 	if fromNodeID == toNodeID {
+		grip.Warningf("Trying to add a self edge from Node.ID() %d to itself", toNodeID)
 		return
 	}
 
@@ -127,8 +124,8 @@ func (t *taskDistroDAGDispatchService) rebuild(items []TaskQueueItem) {
 	t.lastUpdated = time.Now()
 
 	// Add each individual node (TaskQueueItem) to the graph
-	for _, item := range items {
-		t.addItem(item)
+	for i := range items {
+		t.addItem(&items[i])
 	}
 
 	// Save task groups
@@ -306,9 +303,7 @@ func (t *taskDistroDAGDispatchService) nextTaskGroupTask(taskGroup taskGroupTask
 		}
 		return &nextTask
 	}
-	grip.Alert(message.Fields{
-		"message": "programmer error, no dispatchable tasks in group",
-	})
+
 	return nil
 }
 
