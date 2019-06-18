@@ -22,7 +22,7 @@ Evergreen - Configure Patch
 
 {{define "content"}}
 <div ng-controller="PatchController">
-  <div ng-show="patch.Alias == __commit_queue">
+  <div ng-show="patch.Alias == '__commit_queue'">
     <div ng-show="patch.Version.length > 0">
       Tasks for this patch have already been scheduled. <br/>
       <a href="/version/[[patch.Version]]">View Existing Tasks&hellip;</a>
@@ -31,7 +31,7 @@ Evergreen - Configure Patch
       <h3>This patch is at position [[commitQueuePosition]] in the commit queue.</h3>
     </div>
   </div>
-  <div ng-show="patch.Alias != __commit_queue">
+  <div ng-show="patch.Alias != '__commit_queue'">
     <div class="variants-drawer" id="drawer">
       <div class="col-xs-3 variants-list-panel">
         <div class="list-group small noselect variants-list-container">
