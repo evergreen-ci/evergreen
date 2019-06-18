@@ -49,6 +49,21 @@ func (dc *DBSubscriptionConnector) DeleteSubscription(id string) error {
 	return event.RemoveSubscription(id)
 }
 
+func (dc *DBSubscriptionConnector) CopyProjectSubscriptions(oldProject, newProject string) error {
+	catcher := grip.NewBasicCatcher()
+	subs, err := event.FindSubscriptionsByOwner(oldProject, event.OwnerTypeProject)
+	if err != nil {
+		return errors.Wrapf(err, "error finding subscription for project '%s'", oldProject)
+	}
+
+	for _, sub := range subs {
+		sub.Owner = newProject
+		sub.ID = ""
+		catcher.Add(sub.Upsert())
+	}
+	return catcher.Resolve()
+}
+
 type MockSubscriptionConnector struct {
 	MockSubscriptions []event.Subscription
 }
@@ -63,4 +78,8 @@ func (mc *MockSubscriptionConnector) SaveSubscriptions(subscriptions []event.Sub
 
 func (dc *MockSubscriptionConnector) DeleteSubscription(id string) error {
 	return errors.New("MockSubscriptionConnector unimplemented")
+}
+
+func (dc *MockSubscriptionConnector) CopyProjectSubscriptions(oldProject, newProject string) error {
+	return nil
 }
