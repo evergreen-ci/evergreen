@@ -548,10 +548,6 @@ Evergreen - Distros
                   ng-change="form.$setDirty();" ng-model="activeDistro.planner_settings.group_versions" ng-value=false />No
               </label>
               </div>
-              <!--div>
-                <span class="distro-menu-title">Group Versions:</span>
-                  <input style="margin-left:10px;" ng-disabled="readOnly" type="checkbox" ng-model="activeDistro.planner_settings.group_versions">
-              </div-->
           </div>
           <div ng-form name="hostProviderForm" ng-show="activeDistro.provider == 'static'">
             <label class="distro-label">Hosts<span ng-show="activeDistro.settings.hosts && activeDistro.settings.hosts.length != 0">([[activeDistro.settings.hosts.length]])</span>:</label>
