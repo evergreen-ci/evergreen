@@ -7,10 +7,13 @@ import (
 
 	"github.com/evergreen-ci/certdepot"
 	"github.com/evergreen-ci/evergreen"
+	"github.com/mongodb/anser/bsonutil"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/jasper/rpc"
 	"github.com/pkg/errors"
 	"github.com/square/certstrap/depot"
+	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
 const (
@@ -21,6 +24,11 @@ const (
 )
 
 var serviceName string
+
+var (
+	IDKey  = bsonutil.MustHaveTag(certdepot.User{}, "ID")
+	TTLKey = bsonutil.MustHaveTag(certdepot.User{}, "TTL")
+)
 
 // Bootstrap performs one-time initialization of the credentials collection with
 // the certificate authority and service certificate. In order to perform
@@ -177,6 +185,21 @@ func FindByID(ctx context.Context, env evergreen.Environment, name string) (*rpc
 	}
 
 	return rpc.NewCredentials(caCrt, crt, key)
+}
+
+// FindExpirationByID returns the time at which the credentials for the given
+// name will expire.
+// kim: TODO: test
+func FindExpirationByID(ctx context.Context, env evergreen.Environment, name string) (time.Time, error) {
+	query := bson.M{IDKey: name}
+	projection := &options.FindOneOptions{Projection: bson.M{IDKey: 0, TTLKey: 1}}
+
+	var expiration time.Time
+	if err := env.DB().Collection(Collection).FindOne(ctx, query, projection).Decode(&expiration); err != nil {
+		return time.Time{}, errors.Wrap(err, "problem finding credentials")
+	}
+
+	return expiration, nil
 }
 
 // DeleteCredentials removes the credentials from the database.

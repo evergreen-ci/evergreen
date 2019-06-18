@@ -91,6 +91,10 @@ type Host struct {
 	// for non-legacy hosts.
 	JasperCredentialsID string `bson:"jasper_credentials_id" json:"jasper_credentials_id"`
 
+	// JasperDeployAttempts is the current number of times the app server has
+	// attempted to deploy a new Jasper service to the host.
+	JasperDeployAttempts int `bson:"jasper_deploy_attempts" json:"jasper_deploy_attempts"`
+
 	// for ec2 dynamic hosts, the instance type requested
 	InstanceType string `bson:"instance_type" json:"instance_type,omitempty"`
 	// for ec2 dynamic hosts, the total size of the volumes requested, in GiB
@@ -341,6 +345,12 @@ func (h *Host) CreateSecret() error {
 // the Jasper service - use JasperClientCredentials for this purpose.
 func (h *Host) JasperCredentials(ctx context.Context, env evergreen.Environment) (*rpc.Credentials, error) {
 	return credentials.FindByID(ctx, env, h.JasperCredentialsID)
+}
+
+// JasperCredentialsExpiration returns the time at which the host's Jasper
+// credentials will expire.
+func (h *Host) JasperCredentialsExpiration(ctx context.Context, env evergreen.Environment) (time.Time, error) {
+	return credentials.FindExpirationByID(ctx, env, h.JasperCredentialsID)
 }
 
 // JasperClientCredentials gets the Jasper credentials for a client to
@@ -1241,6 +1251,8 @@ func FindHostsSpawnedByBuild(buildID string) ([]Host, error) {
 	return hosts, nil
 }
 
+// FindTerminatedHostsRunningTasks finds all hosts that were running tasks when
+// they were either terminated or needed to be re-provisioned.
 func FindTerminatedHostsRunningTasks() ([]Host, error) {
 	hosts, err := Find(db.Query(bson.M{
 		StatusKey: evergreen.HostTerminated,

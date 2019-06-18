@@ -175,6 +175,10 @@ func TestDBOperations(t *testing.T) {
 			}
 		},
 		"DeleteCredentials": func(ctx context.Context, t *testing.T, env evergreen.Environment) {
+			// kim: TODO
+		},
+		"FindExpirationByID": func(ctx context.Context, t *testing.T, env evergreen.Environment) {
+			// kim: TODO
 		},
 	} {
 		t.Run(opName, func(t *testing.T) {

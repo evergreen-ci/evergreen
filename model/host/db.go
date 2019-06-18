@@ -7,6 +7,7 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/build"
+	"github.com/evergreen-ci/evergreen/model/credentials"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/util"
@@ -365,6 +366,49 @@ func FindByFirstProvisioningAttempt() ([]Host, error) {
 		ProvisionAttemptsKey: 0,
 		StatusKey:            evergreen.HostProvisioning,
 	}))
+}
+
+// FindByExpiringJasperCredentials finds all hosts whose Jasper service
+// credentials will expire within the given cutoff.
+// kim: TODO: test
+func FindByExpiringJasperCredentials(cutoff time.Duration) ([]Host, error) {
+	deadline := time.Now().Add(cutoff)
+	bootstrapKey := bsonutil.GetDottedKeyName(DistroKey, distro.BootstrapMethodKey)
+	hosts := []Host{}
+	credentialsKey := credentials.Collection
+	ttlKey := bsonutil.GetDottedKeyName(credentialsKey, credentials.TTLKey)
+	// Note: since we don't necessarily want to wait until the host has no
+	// running tasks to redeploy credentials, this can terminate the agent in
+	// the middle of a task.
+	pipeline := []bson.M{
+		bson.M{"$lookup": bson.M{
+			"from":         credentials.Collection,
+			"localField":   JasperCredentialsIDKey,
+			"foreignField": credentials.IDKey,
+			"as":           credentialsKey,
+		}},
+		bson.M{"$match": bson.M{
+			ttlKey: bson.M{"$lte": deadline},
+			bootstrapKey: bson.M{
+				"$exists": true,
+				"$ne":     distro.BootstrapMethodLegacySSH,
+			},
+			StatusKey:        evergreen.HostRunning,
+			StartedByKey:     evergreen.User,
+			HasContainersKey: bson.M{"$ne": true},
+			ParentIDKey:      bson.M{"$exists": false},
+		}},
+		bson.M{"$project": bson.M{
+			credentialsKey: 0,
+		}},
+	}
+
+	err := db.Aggregate(Collection, pipeline, &hosts)
+	if adb.ResultsNotFound(err) {
+		return nil, nil
+	}
+
+	return hosts, err
 }
 
 // IsRunningAndSpawned is a query that returns all running hosts
