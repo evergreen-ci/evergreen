@@ -202,16 +202,8 @@ func (m *ec2Manager) spawnOnDemandHost(ctx context.Context, h *host.Host, ec2Set
 		ec2Settings.UserData = expanded
 	}
 
-	if h.Distro.BootstrapMethod == distro.BootstrapMethodUserData {
-		commands := h.BootstrapScript(m.settings.HostJasper)
-		userData, err := makeMultipartUserData(map[string]string{
-			"bootstrap.txt": commands,
-			"user-data.txt": ec2Settings.UserData,
-		})
-		if err != nil {
-			return nil, errors.Wrap(err, "error creating user data with multiple parts")
-		}
-		ec2Settings.UserData = userData
+	if err := m.bootstrapUserData(ctx, env, h, ec2Settings); err != nil {
+		return nil, errors.Wrap("could not add bootstrap script to user data")
 	}
 
 	if ec2Settings.UserData != "" {
@@ -339,6 +331,10 @@ func (m *ec2Manager) spawnSpotHost(ctx context.Context, h *host.Host, ec2Setting
 		}
 		userData := base64.StdEncoding.EncodeToString([]byte(expanded))
 		spotRequest.LaunchSpecification.UserData = &userData
+	}
+
+	if err := m.bootstrapUserData(ctx, env, h, ec2Settings); err != nil {
+		return errors.Wrap(err, "could not add bootstrap script to user data")
 	}
 
 	grip.Debug(message.Fields{
@@ -1067,4 +1063,37 @@ func (m *ec2Manager) expandUserData(userData string) (string, error) {
 		return "", errors.Wrap(err, "error expanding userdata script")
 	}
 	return expanded, nil
+}
+
+// bootstrapUserData augments the user data script with bootstrapping logic for
+// the host's Jasper service.
+func (m *ec2Manager) bootstrapUserData(ctx context.Context, env evergreen.Environment, h *host.Host, ec2Settings *EC2ProviderSettings) error {
+	if h.Distro.BootstrapMethod != distro.BootstrapMethodUserData {
+		return nil
+	}
+
+	// kim: TODO: modify credentials generation to be based on
+	// JasperCredentialsID since the host id will change to the spawn host's ID
+	// instead of the intent host ID.
+	creds, err := h.GenerateJasperCredentials(ctx, env)
+	if err != nil {
+		return errors.Wrap(err, "problem generating Jasper credentials for host")
+	}
+
+	commands, err := h.BootstrapScript(m.settings.JasperConfig, creds)
+	if err != nil {
+		return errors.Wrap(err, "could not generate user data bootstrap script")
+	}
+
+	userData, err := makeMultipartUserData(map[string]string{
+		"bootstrap.txt": commands,
+		"user-data.txt": ec2Settings.UserData,
+	})
+	if err != nil {
+		return errors.Wrap(err, "error creating user data with multiple parts")
+	}
+
+	ec2Settings.UserData = userData
+
+	return h.SaveJasperCredentials(ctx, env, creds)
 }
