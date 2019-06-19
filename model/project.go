@@ -1373,3 +1373,12 @@ func FetchVersionsAndAssociatedBuilds(project *Project, skip int, numVersions in
 
 	return versionsFromDB, buildsByVersion, nil
 }
+
+func (p *Project) ContainsMergeTask() bool {
+	for _, t := range p.Tasks {
+		if t.Name == evergreen.MergeTaskName {
+			return true
+		}
+	}
+	return false
+}

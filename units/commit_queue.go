@@ -507,11 +507,11 @@ func addMergeTaskAndVariant(patchDoc *patch.Patch, project *model.Project) error
 	}
 
 	mergeBuildVariant := model.BuildVariant{
-		Name:        "commit-queue-merge",
+		Name:        commitqueue.MergeTaskVariant,
 		DisplayName: "Commit Queue Merge",
 		RunOn:       []string{settings.CommitQueue.MergeTaskDistro},
 		Tasks: []model.BuildVariantTaskUnit{
-			{Name: "merge-patch"},
+			{Name: commitqueue.MergeTaskName},
 		},
 	}
 
@@ -530,7 +530,7 @@ func addMergeTaskAndVariant(patchDoc *patch.Patch, project *model.Project) error
 	}
 
 	mergeTask := model.ProjectTask{
-		Name: "merge-patch",
+		Name: commitqueue.MergeTaskName,
 		Commands: []model.PluginCommandConf{
 			{
 				Command: "git.get_project",

@@ -4,11 +4,16 @@ import (
 	"context"
 	"fmt"
 	"testing"
+	"time"
 
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/task"
+	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/grip"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 	"go.mongodb.org/mongo-driver/bson"
 )
@@ -685,4 +690,64 @@ func (s *GenerateSuite) TestMergeGeneratedProjectsWithNoTasks() {
 	s.Require().NotNil(merged)
 	s.Require().Len(merged.BuildVariants, 1)
 	s.Len(merged.BuildVariants[0].DisplayTasks, 1)
+}
+
+func TestUpdateMergeTaskDependencies(t *testing.T) {
+	require.NoError(t, db.ClearCollections(task.Collection, ProjectAliasCollection))
+
+	project := &Project{
+		Identifier: "evergreen",
+		BuildVariants: []BuildVariant{
+			{
+				Name: evergreen.MergeTaskVariant,
+				Tasks: []BuildVariantTaskUnit{
+					{Name: evergreen.MergeTaskName},
+				},
+			},
+			{
+				Name: "v1",
+				Tasks: []BuildVariantTaskUnit{
+					{Name: "t1"},
+				},
+			},
+		},
+		Tasks: []ProjectTask{
+			{Name: evergreen.MergeTaskName},
+			{Name: "t1"},
+		},
+	}
+
+	version := &Version{
+		Id:         "v1",
+		Revision:   "abcdef",
+		Requester:  evergreen.MergeTestRequester,
+		CreateTime: time.Date(2009, time.November, 10, 23, 0, 0, 0, time.UTC),
+	}
+
+	taskID := fmt.Sprintf("%s_%s_%s_%s_%s",
+		project.Identifier,
+		project.BuildVariants[0].Name,
+		evergreen.MergeTaskName,
+		fmt.Sprintf("patch_%s_%s", version.Revision, version.Id),
+		version.CreateTime.Format(build.IdTimeLayout))
+	taskID = util.CleanName(taskID)
+
+	mergeTask := task.Task{
+		Id: taskID,
+	}
+	assert.NoError(t, mergeTask.Insert())
+
+	alias := ProjectAlias{
+		ProjectID: "evergreen",
+		Alias:     evergreen.CommitQueueAlias,
+		Variant:   "v1",
+		Task:      "t1",
+	}
+	assert.NoError(t, alias.Upsert())
+
+	assert.NoError(t, updateMergeTaskDependencies(project, version))
+
+	tDb, err := task.FindOneId(taskID)
+	assert.NoError(t, err)
+	require.Len(t, tDb.DependsOn, 1)
 }

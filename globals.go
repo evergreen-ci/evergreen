@@ -156,6 +156,8 @@ const (
 	TaskOrderingPatchFirst    = "patchfirst"
 
 	CommitQueueAlias = "__commit_queue"
+	MergeTaskVariant = "commit-queue-merge"
+	MergeTaskName    = "merge-patch"
 
 	MaxTeardownGroupTimeoutSecs = 30 * 60
 

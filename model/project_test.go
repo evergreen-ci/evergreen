@@ -1194,3 +1194,32 @@ func TestLoggerConfigValidate(t *testing.T) {
 	}
 	assert.EqualError(config.IsValid(), "invalid system logger config: Splunk logger requires a server URL\nSplunk logger requires a token")
 }
+
+func TestContainsMergeTask(t *testing.T) {
+	p := &Project{
+		BuildVariants: []BuildVariant{
+			{
+				Name: "v1",
+				Tasks: []BuildVariantTaskUnit{
+					{Name: "t1"},
+				},
+			},
+		},
+		Tasks: []ProjectTask{
+			{Name: "t1"},
+		},
+	}
+
+	assert.False(t, p.ContainsMergeTask())
+
+	p.BuildVariants = append(p.BuildVariants,
+		BuildVariant{
+			Name: evergreen.MergeTaskVariant,
+			Tasks: []BuildVariantTaskUnit{
+				{Name: evergreen.MergeTaskName},
+			},
+		},
+	)
+	p.Tasks = append(p.Tasks, ProjectTask{Name: evergreen.MergeTaskName})
+	assert.True(t, p.ContainsMergeTask())
+}
