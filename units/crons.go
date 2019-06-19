@@ -329,9 +329,8 @@ func PopulateIdleHostJobs(env evergreen.Environment) amboy.QueueOperation {
 		}
 
 		for _, info := range distroHosts {
-			distroID := info.DistroID
 			totalRunningHosts := info.RunningHostsCount
-			minimumHosts := distrosMap[distroID].PlannerSettings.MinimumHosts
+			minimumHosts := distrosMap[info.DistroID].PlannerSettings.MinimumHosts
 			nIdleHosts := len(info.IdleHosts)
 
 			maxHostsToTerminate := totalRunningHosts - minimumHosts

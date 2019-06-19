@@ -162,9 +162,6 @@ func IdleEphemeralGroupedByDistroID() ([]IdleHostsByDistroID, error) {
 				HostsByDistroIdleHostsKey:         mgobson.M{"$push": bson.M{"$cond": []interface{}{mgobson.M{"$eq": []interface{}{"$running_task", mgobson.Undefined}}, "$$ROOT", mgobson.Undefined}}},
 			},
 		},
-		// {
-		// 	"$sort": mgobson.M{"_id": 1},
-		// },
 		{
 			"$project": mgobson.M{"_id": 0, HostsByDistroDistroIDKey: "$_id", HostsByDistroIdleHostsKey: 1, HostsByDistroRunningHostsCountKey: 1},
 		},
