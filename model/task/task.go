@@ -9,13 +9,13 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/testresult"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
-	"github.com/tychoish/tarjan"
 	"go.mongodb.org/mongo-driver/bson"
 	mgobson "gopkg.in/mgo.v2/bson"
 )
@@ -38,9 +38,6 @@ const (
 
 	// length of time to cache the expected duration in the task document
 	predictionTTL = 8 * time.Hour
-
-	taskBlocked = "blocked"
-	taskPending = "pending"
 )
 
 var (
@@ -817,10 +814,63 @@ func (t *Task) Reset() error {
 	t.ScheduledTime = util.ZeroTime
 	t.FinishTime = util.ZeroTime
 	t.ResetWhenFinished = false
+	t.DependsOn = []Dependency{}
+
+	unset := bson.M{
+		DetailsKey:           "",
+		ResetWhenFinishedKey: "",
+	}
+	if t.IsPartOfSingleHostTaskGroup() {
+		d, err := distro.FindOne(distro.ById(t.DistroId))
+		if err != nil {
+			return errors.Wrap(err, "error retrieving distro")
+		}
+		if d.PlannerSettings.Version != evergreen.PlannerVersionTunable {
+			unset[DependsOnKey] = ""
+		}
+	}
+
 	reset := bson.M{
 		"$set": bson.M{
 			ActivatedKey:     true,
 			SecretKey:        t.Secret,
+			StatusKey:        evergreen.TaskUndispatched,
+			DispatchTimeKey:  util.ZeroTime,
+			StartTimeKey:     util.ZeroTime,
+			ScheduledTimeKey: util.ZeroTime,
+			FinishTimeKey:    util.ZeroTime,
+		},
+		"$unset": unset,
+	}
+
+	return UpdateOne(
+		bson.M{
+			IdKey: t.Id,
+		},
+		reset,
+	)
+}
+
+func ResetDisplayTasks(taskIds []string) error {
+	tasks, err := FindWithDisplayTasks(ByIds(taskIds))
+	if err != nil {
+		return err
+	}
+	for _, t := range tasks {
+		if t.DisplayOnly {
+			taskIds = append(taskIds, t.Id)
+		}
+	}
+	return errors.Wrap(resetTasksByIds(taskIds), "error resetting display tasks")
+}
+
+// Reset sets the task state to be activated, with a new secret,
+// undispatched status and zero time on Start, Scheduled, Dispatch and FinishTime
+func resetTasksByIds(taskIds []string) error {
+	reset := bson.M{
+		"$set": bson.M{
+			ActivatedKey:     true,
+			SecretKey:        util.RandomString(),
 			StatusKey:        evergreen.TaskUndispatched,
 			DispatchTimeKey:  util.ZeroTime,
 			StartTimeKey:     util.ZeroTime,
@@ -833,43 +883,7 @@ func (t *Task) Reset() error {
 		},
 	}
 
-	return UpdateOne(
-		bson.M{
-			IdKey: t.Id,
-		},
-		reset,
-	)
-}
-
-// Reset sets the task state to be activated, with a new secret,
-// undispatched status and zero time on Start, Scheduled, Dispatch and FinishTime
-func ResetTasks(taskIds []string) error {
-	tasks, err := FindWithDisplayTasks(ByIds(taskIds))
-	if err != nil {
-		return err
-	}
-	for _, t := range tasks {
-		if t.DisplayOnly {
-			taskIds = append(taskIds, t.Id)
-		}
-	}
-
-	reset := bson.M{
-		"$set": bson.M{
-			ActivatedKey:     true,
-			SecretKey:        util.RandomString(),
-			StatusKey:        evergreen.TaskUndispatched,
-			DispatchTimeKey:  util.ZeroTime,
-			StartTimeKey:     util.ZeroTime,
-			ScheduledTimeKey: util.ZeroTime,
-			FinishTimeKey:    util.ZeroTime,
-		},
-		"$unset": bson.M{
-			DetailsKey: "",
-		},
-	}
-
-	_, err = UpdateAll(
+	_, err := UpdateAll(
 		bson.M{
 			IdKey: bson.M{"$in": taskIds},
 		},
@@ -1198,10 +1212,10 @@ func (t *Task) GetTestResultsForDisplayTask() ([]TestResult, error) {
 	return tasks[0].LocalTestResults, nil
 }
 
-// SetResetWhenFinished requests that a display task reset itself when finished. Will mark itself as system failed
+// SetResetWhenFinished requests that a display task/task group reset itself when finished. Will mark itself as system failed
 func (t *Task) SetResetWhenFinished() error {
-	if !t.DisplayOnly {
-		return errors.Errorf("%s is not a display task", t.Id)
+	if !t.DisplayOnly && !t.IsPartOfSingleHostTaskGroup() {
+		return errors.Errorf("%s is not a display task or in a task group", t.Id)
 	}
 	t.ResetWhenFinished = true
 	return UpdateOne(
@@ -1431,6 +1445,10 @@ func (t *Task) IsPartOfDisplay() bool {
 	return dt != nil
 }
 
+func (t *Task) IsPartOfSingleHostTaskGroup() bool {
+	return t.TaskGroup != "" && t.TaskGroupMaxHosts == 1
+}
+
 func (t *Task) GetDisplayTask() (*Task, error) {
 	if t.DisplayTask != nil {
 		return t, nil
@@ -1575,126 +1593,6 @@ func (t *Task) GetJQL(searchProjects []string) string {
 	}
 
 	return fmt.Sprintf(jqlBFQuery, strings.Join(searchProjects, ", "), jqlClause)
-}
-
-// BlockedState returns "blocked," "pending" (unsatisfied dependencies,
-// but unblocked), or "" (runnable) to represent the state of the task
-// with respect to its dependencies
-func (t *Task) BlockedState(tasksWithDeps []Task) (string, error) {
-	if t.DisplayOnly {
-		return t.blockedStateForDisplayTask(tasksWithDeps)
-	}
-
-	return t.blockedStatePrivate()
-}
-
-func (t *Task) blockedStatePrivate() (string, error) {
-	if len(t.DependsOn) == 0 {
-		return "", nil
-	}
-	dependencyIDs := []string{}
-	for _, d := range t.DependsOn {
-		dependencyIDs = append(dependencyIDs, d.TaskId)
-	}
-	dependentTasks, err := Find(ByIds(dependencyIDs).WithFields(DisplayNameKey, StatusKey,
-		ActivatedKey, BuildVariantKey, DetailsKey, DependsOnKey))
-	if err != nil {
-		return "", errors.Wrap(err, "error finding dependencies")
-	}
-	taskMap := map[string]*Task{}
-	for i := range dependentTasks {
-		taskMap[dependentTasks[i].Id] = &dependentTasks[i]
-	}
-	for _, dependency := range t.DependsOn {
-		depTask := taskMap[dependency.TaskId]
-		if depTask == nil {
-			grip.Error(message.Fields{
-				"message": "task does not exist",
-				"task_id": dependency.TaskId,
-			})
-			continue
-		}
-		state, err := depTask.blockedStatePrivate()
-		if err != nil {
-			return "", err
-		}
-		if state == taskBlocked {
-			return taskBlocked, nil
-		} else if depTask.Status == evergreen.TaskSucceeded || depTask.Status == evergreen.TaskFailed {
-			if depTask.Status != dependency.Status && dependency.Status != AllStatuses {
-				return taskBlocked, nil
-			}
-		} else {
-			return taskPending, nil
-		}
-	}
-	return "", nil
-}
-
-func (t *Task) blockedStateForDisplayTask(tasksWithDeps []Task) (string, error) {
-	execTasks, err := Find(ByIds(t.ExecutionTasks))
-	if err != nil {
-		return "", errors.Wrap(err, "error finding execution tasks")
-	}
-	if len(execTasks) == 0 {
-		return "", nil
-	}
-	state := ""
-	for _, execTask := range execTasks {
-		etState, err := execTask.BlockedState(tasksWithDeps)
-		if err != nil {
-			return "", errors.Wrap(err, "error finding blocked state")
-		}
-		if etState == taskBlocked {
-			return taskBlocked, nil
-		} else if etState == taskPending {
-			state = taskPending
-		}
-	}
-	return state, nil
-}
-
-func (t *Task) CircularDependencies() error {
-	var err error
-	tasksWithDeps, err := FindAllTasksFromVersionWithDependencies(t.Version)
-	if err != nil {
-		return errors.Wrap(err, "error finding tasks with dependencies")
-	}
-	if len(tasksWithDeps) == 0 {
-		return nil
-	}
-	dependencyMap := map[string][]string{}
-	for _, versionTask := range tasksWithDeps {
-		for _, dependency := range versionTask.DependsOn {
-			dependencyMap[versionTask.Id] = append(dependencyMap[versionTask.Id], dependency.TaskId)
-		}
-	}
-	catcher := grip.NewBasicCatcher()
-	cycles := tarjan.Connections(dependencyMap)
-	for _, cycle := range cycles {
-		if len(cycle) > 1 {
-			catcher.Add(errors.Errorf("Dependency cycle detected: %s", strings.Join(cycle, ",")))
-		}
-	}
-	return catcher.Resolve()
-}
-
-func (t *Task) IsBlockedDisplayTask() bool {
-	if !t.DisplayOnly {
-		return false
-	}
-
-	tasksWithDeps, err := FindAllTasksFromVersionWithDependencies(t.Version)
-	if err != nil {
-		grip.Error(message.WrapError(err, "error finding tasks with dependencies"))
-		return false
-	}
-	blockedState, err := t.BlockedState(tasksWithDeps)
-	if err != nil {
-		grip.Error(message.WrapError(err, "error determining blocked state"))
-		return false
-	}
-	return blockedState == taskBlocked
 }
 
 // GetTimeSpent returns the total time_taken and makespan of tasks

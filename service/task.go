@@ -453,14 +453,16 @@ func getTaskDependencies(t *task.Task) ([]uiDep, string, error) {
 		})
 	}
 
-	if err = t.CircularDependencies(); err != nil {
+	if err = model.CircularDependencies(t); err != nil {
 		return nil, "", err
 	}
-	status, err := t.BlockedState(nil)
+	status, err := model.BlockedState(t)
 	if err != nil {
 		return nil, "", err
 	}
-
+	if status == "runnable" {
+		status = ""
+	}
 	return uiDependencies, status, nil
 }
 
