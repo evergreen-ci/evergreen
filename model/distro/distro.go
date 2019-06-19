@@ -326,8 +326,9 @@ func (distros DistroGroup) GetDistroIds() []string {
 }
 
 // GetResolvedPlannerSettings combines the distro's PlannerSettings fields with the
-// SchedulerConfig defaults to resolve and validate a canonical set of PlannerSettings field values.
+// SchedulerConfig defaults to resolve and validate a canonical set of PlannerSettings' field values.
 func (d *Distro) GetResolvedPlannerSettings(config evergreen.SchedulerConfig) (PlannerSettings, error) {
+	catcher := grip.NewBasicCatcher()
 	ps := d.PlannerSettings
 	resolved := PlannerSettings{
 		Version:                ps.Version,
@@ -344,14 +345,14 @@ func (d *Distro) GetResolvedPlannerSettings(config evergreen.SchedulerConfig) (P
 		resolved.Version = config.Planner
 	}
 	if !util.StringSliceContains(evergreen.ValidPlannerVersions, resolved.Version) {
-		return PlannerSettings{}, errors.Errorf("cannot resolve PlannerSettings for distro '%s' - '%s' is not a valid PlannerSettings.Version", d.Id, resolved.Version)
+		catcher.Add(errors.Errorf("'%s' is not a valid PlannerSettings.Version", resolved.Version))
 	}
 	// Validate the PlannerSettings.MinimumHosts and PlannerSettings.MaximumHosts
 	if resolved.MinimumHosts < 0 {
-		return PlannerSettings{}, errors.Errorf("cannot resolve PlannerSettings for distro '%s' -  %d is not a valid PlannerSettings.MinimumHosts", d.Id, resolved.MinimumHosts)
+		catcher.Add(errors.Errorf("%d is not a valid PlannerSettings.MinimumHosts", resolved.MinimumHosts))
 	}
 	if resolved.MaximumHosts < 0 {
-		return PlannerSettings{}, errors.Errorf("cannot resolve PlannerSettings for distro '%s' -  %d is not a valid PlannerSettings.MaximumHosts", d.Id, resolved.MaximumHosts)
+		catcher.Add(errors.Errorf("%d is not a valid PlannerSettings.MaximumHosts", resolved.MaximumHosts))
 	}
 	// Resolve PlannerSettings.TargetTime and PlannerSettings.AcceptableHostIdleTime
 	if resolved.TargetTime == 0 {
@@ -372,7 +373,12 @@ func (d *Distro) GetResolvedPlannerSettings(config evergreen.SchedulerConfig) (P
 		resolved.TaskOrdering = config.TaskOrdering
 	}
 	if !util.StringSliceContains(evergreen.ValidTaskOrderings, resolved.TaskOrdering) || resolved.TaskOrdering == "" {
-		return PlannerSettings{}, errors.Errorf("cannot resolve PlannerSettings for distro '%s' - '%s' is not a valid PlannerSettings.TaskOrdering", d.Id, resolved.TaskOrdering)
+		catcher.Add(errors.Errorf("'%s' is not a valid PlannerSettings.TaskOrdering", resolved.TaskOrdering))
+	}
+
+	// Any vaildation errors?
+	if catcher.HasErrors() {
+		return PlannerSettings{}, errors.Wrapf(catcher.Resolve(), "cannot resolve PlannerSettings for distro '%s'", d.Id)
 	}
 
 	return resolved, nil

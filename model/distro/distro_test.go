@@ -384,14 +384,18 @@ func TestGetResolvedPlannerSettings(t *testing.T) {
 	assert.Equal(t, evergreen.TaskOrderingMainlineFirst, resolved2.TaskOrdering)
 
 	d2.PlannerSettings.Version = ""
+	d2.PlannerSettings.MaximumHosts = -1
 	config2.Planner = ""
 	_, err = d2.GetResolvedPlannerSettings(config2)
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "cannot resolve PlannerSettings for distro 'distro2' - '' is not a valid PlannerSettings.Version")
+	assert.Contains(t, err.Error(), "cannot resolve PlannerSettings for distro 'distro2'")
+	assert.Contains(t, err.Error(), "'' is not a valid PlannerSettings.Version")
+	assert.Contains(t, err.Error(), "-1 is not a valid PlannerSettings.MaximumHosts")
 
 	d2.PlannerSettings.Version = evergreen.PlannerVersionLegacy
 	config2.TaskOrdering = ""
 	_, err = d2.GetResolvedPlannerSettings(config2)
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "cannot resolve PlannerSettings for distro 'distro2' - '' is not a valid PlannerSettings.TaskOrdering")
+	assert.Contains(t, err.Error(), "cannot resolve PlannerSettings for distro 'distro2'")
+	assert.Contains(t, err.Error(), "'' is not a valid PlannerSettings.TaskOrdering")
 }
