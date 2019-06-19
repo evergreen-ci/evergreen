@@ -507,11 +507,11 @@ func addMergeTaskAndVariant(patchDoc *patch.Patch, project *model.Project) error
 	}
 
 	mergeBuildVariant := model.BuildVariant{
-		Name:        commitqueue.MergeTaskVariant,
+		Name:        evergreen.MergeTaskVariant,
 		DisplayName: "Commit Queue Merge",
 		RunOn:       []string{settings.CommitQueue.MergeTaskDistro},
 		Tasks: []model.BuildVariantTaskUnit{
-			{Name: commitqueue.MergeTaskName},
+			{Name: evergreen.MergeTaskName},
 		},
 	}
 
@@ -530,7 +530,7 @@ func addMergeTaskAndVariant(patchDoc *patch.Patch, project *model.Project) error
 	}
 
 	mergeTask := model.ProjectTask{
-		Name: commitqueue.MergeTaskName,
+		Name: evergreen.MergeTaskName,
 		Commands: []model.PluginCommandConf{
 			{
 				Command: "git.get_project",
