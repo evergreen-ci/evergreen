@@ -39,10 +39,6 @@ func (c *generateTask) ParseParams(params map[string]interface{}) error {
 
 func (c *generateTask) Execute(ctx context.Context, comm client.Communicator, logger client.LoggerProducer, conf *model.TaskConfig) error {
 	var err error
-	if conf.Task.Execution > 0 {
-		logger.Task().Warning("Refusing to generate tasks on an execution other than the first one")
-		return nil
-	}
 	if err = util.ExpandValues(c, conf.Expansions); err != nil {
 		return errors.Wrap(err, "error expanding params")
 	}
