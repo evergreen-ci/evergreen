@@ -105,35 +105,34 @@ func ParseProjectFromJSON(data []byte) (GeneratedProject, error) {
 }
 
 // NewVersion adds the buildvariants, tasks, and functions
-// from a generated project config to a project, and returns the previous config string.
-func (g *GeneratedProject) NewVersion() (*Project, *Version, *task.Task, *projectMaps, string, error) {
+// from a generated project config to a project, and returns the previous config number.
+func (g *GeneratedProject) NewVersion() (*Project, *Version, *task.Task, *projectMaps, error) {
 	// Get task, version, and project.
 	t, err := task.FindOneId(g.TaskID)
 	if err != nil {
-		return nil, nil, nil, nil, "",
+		return nil, nil, nil, nil,
 			gimlet.ErrorResponse{StatusCode: http.StatusInternalServerError, Message: errors.Wrapf(err, "error finding task %s", g.TaskID).Error()}
 	}
 	if t == nil {
-		return nil, nil, nil, nil, "",
+		return nil, nil, nil, nil,
 			gimlet.ErrorResponse{StatusCode: http.StatusBadRequest, Message: fmt.Sprintf("unable to find task %s", g.TaskID)}
 	}
 	v, err := VersionFindOneId(t.Version)
 	if err != nil {
-		return nil, nil, nil, nil, "",
+		return nil, nil, nil, nil,
 			gimlet.ErrorResponse{StatusCode: http.StatusInternalServerError, Message: errors.Wrapf(err, "error finding version %s", t.Version).Error()}
 	}
 	if v == nil {
-		return nil, nil, nil, nil, "",
+		return nil, nil, nil, nil,
 			gimlet.ErrorResponse{StatusCode: http.StatusBadRequest, Message: fmt.Sprintf("unable to find version %s", t.Version)}
 	}
 	if v.Config == "" {
-		return nil, nil, nil, nil, "",
+		return nil, nil, nil, nil,
 			gimlet.ErrorResponse{StatusCode: http.StatusBadRequest, Message: fmt.Sprintf("unable to find config string for version %s", t.Version)}
 	}
-	prevConfig := v.Config
 	p := &Project{}
 	if err = LoadProjectInto([]byte(v.Config), t.Project, p); err != nil {
-		return nil, nil, nil, nil, "",
+		return nil, nil, nil, nil,
 			gimlet.ErrorResponse{StatusCode: http.StatusBadRequest, Message: errors.Wrapf(err, "error reading project yaml for version %s", t.Version).Error()}
 	}
 
@@ -142,35 +141,38 @@ func (g *GeneratedProject) NewVersion() (*Project, *Version, *task.Task, *projec
 
 	// Validate generated project against original project.
 	if err = g.validateGeneratedProject(p, cachedProject); err != nil {
-		return nil, nil, nil, nil, "",
+		return nil, nil, nil, nil,
 			gimlet.ErrorResponse{StatusCode: http.StatusBadRequest, Message: errors.Wrap(err, "generated project is invalid").Error()}
 	}
 
-	config, err := g.addGeneratedProjectToConfig(v.Config, cachedProject)
+	newConfig, err := g.addGeneratedProjectToConfig(v.Config, cachedProject)
 	if err != nil {
-		return nil, nil, nil, nil, "",
+		return nil, nil, nil, nil,
 			gimlet.ErrorResponse{StatusCode: http.StatusBadRequest, Message: errors.Wrap(err, "error creating config from generated config").Error()}
 	}
-	v.Config = config
+	v.Config = newConfig
 	if err := LoadProjectInto([]byte(v.Config), t.Project, p); err != nil {
-		return nil, nil, nil, nil, "",
+		return nil, nil, nil, nil,
 			gimlet.ErrorResponse{StatusCode: http.StatusBadRequest, Message: errors.Wrap(err, "error reading project yaml").Error()}
 	}
-	return p, v, t, &cachedProject, prevConfig, nil
+	return p, v, t, &cachedProject, nil
 }
 
-func (g *GeneratedProject) Save(ctx context.Context, p *Project, v *Version, t *task.Task, pm *projectMaps, prevConfig string) error {
+func (g *GeneratedProject) Save(ctx context.Context, p *Project, v *Version, t *task.Task, pm *projectMaps) error {
 	query := bson.M{
-		VersionIdKey:     v.Id,
-		VersionConfigKey: prevConfig,
+		VersionIdKey:           v.Id,
+		VersionConfigNumberKey: v.ConfigUpdateNumber,
 	}
-	update := bson.M{"$set": bson.M{VersionConfigKey: v.Config}}
+	update := bson.M{
+		"$set": bson.M{VersionConfigKey: v.Config},
+		"$inc": bson.M{VersionConfigNumberKey: 1},
+	}
 
 	err := VersionUpdateOne(query, update)
 	if err != nil {
 		return errors.Wrapf(err, "error updating version %s", v.Id)
 	}
-
+	v.ConfigUpdateNumber += 1
 	if err := g.saveNewBuildsAndTasks(ctx, pm, v, p, t.Priority); err != nil {
 		return errors.Wrap(err, "error savings new builds and tasks")
 	}
