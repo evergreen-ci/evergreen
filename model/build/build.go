@@ -6,7 +6,9 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/model/task"
 	adb "github.com/mongodb/anser/db"
+	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson"
 	mgobson "gopkg.in/mgo.v2/bson"
 )
@@ -73,6 +75,48 @@ func (b *Build) IsFinished() bool {
 	return b.Status == evergreen.BuildFailed ||
 		b.Status == evergreen.BuildSucceeded
 }
+
+// AllUnblockedTasksOrCompileFinished returns true when all activated tasks in the build have
+// one of the statuses in IsFinishedTaskStatus or the task is considered blocked
+//
+// returns boolean to indicate if tasks are complete, string with either BuildFailed or
+// BuildSucceded. The string is only valid when the boolean is true
+func (b *Build) AllUnblockedTasksFinished(tasksWithDeps []task.Task) (bool, string, error) {
+	if !b.Activated {
+		return false, b.Status, nil
+	}
+	allFinished := true
+	status := evergreen.BuildSucceeded
+	tasks, err := task.Find(task.ByBuildId(b.Id))
+	if err != nil {
+		return false, "", errors.Wrapf(err, "can't get tasks for build '%s'", b.Id)
+	}
+	for _, t := range tasks {
+		if evergreen.IsFailedTaskStatus(t.Status) {
+			status = evergreen.BuildFailed
+		}
+		if !evergreen.IsFinishedTaskStatus(t.Status) {
+			if !t.Activated {
+				continue
+			}
+			var blockedStatus string
+			blockedStatus, err = t.BlockedState(tasksWithDeps)
+			if err != nil {
+				return false, status, err
+			}
+			if blockedStatus != "blocked" {
+				allFinished = false
+			}
+		}
+	}
+	if allFinished && err != nil {
+		return false, status, err
+	}
+
+	return allFinished, status, nil
+}
+
+// Find
 
 // FindBuildOnBaseCommit returns the build that a patch build is based on.
 func (b *Build) FindBuildOnBaseCommit() (*Build, error) {
