@@ -2,6 +2,7 @@ package credentials
 
 import (
 	"context"
+	"math"
 	"time"
 
 	"github.com/evergreen-ci/certdepot"
@@ -13,20 +14,34 @@ import (
 )
 
 const (
-	Collection  = "credentials"
-	CAName      = "evergreen"
-	ServiceName = "evergreen.mongodb.com"
+	Collection = "credentials"
+	CAName     = "evergreen"
 
 	defaultConnectionTimeout = 10 * time.Second
 	defaultExpiration        = 30 * 24 * time.Hour // 1 month
 )
 
+var (
+	serviceName        string
+	errNotBootstrapped = errors.Errorf("%s collection has not been bootstrapped", Collection)
+)
+
 // Bootstrap performs one-time initialization of the credentials collection with
-// the certificate authority and evergreen service certificate.
-func Bootstrap() error {
-	env := evergreen.GetEnvironment()
+// the certificate authority and service certificate. In order to perform
+// operations on this collection, collection, this must succeed.
+func Bootstrap(env evergreen.Environment) error {
 	settings := env.Settings()
-	maxExpiration := time.Duration(1<<63 - 1)
+	if settings.DomainName == "" {
+		return errors.Errorf("bootstrapping %s collection requires domain name to be set in admin settings", settings.DomainName)
+	}
+
+	maxExpiration := time.Duration(math.MaxInt64)
+	serviceConfig := certdepot.CertificateOptions{
+		CA:         CAName,
+		CommonName: settings.DomainName,
+		Host:       settings.DomainName,
+		Expires:    maxExpiration,
+	}
 
 	caConfig := certdepot.CertificateOptions{
 		CA:         CAName,
@@ -34,28 +49,30 @@ func Bootstrap() error {
 		Expires:    maxExpiration,
 	}
 
-	serviceConfig := certdepot.CertificateOptions{
-		CA:         CAName,
-		CommonName: ServiceName,
-		Host:       ServiceName,
-		Expires:    maxExpiration,
-	}
-
 	bootstrapConfig := certdepot.BootstrapDepotConfig{
 		MongoDepot:  mongoConfig(settings),
 		CAName:      CAName,
 		CAOpts:      &caConfig,
-		ServiceName: ServiceName,
+		ServiceName: settings.DomainName,
 		ServiceOpts: &serviceConfig,
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), defaultConnectionTimeout)
+	ctx, cancel := env.Context()
 	defer cancel()
 
 	if _, err := certdepot.BootstrapDepotWithMongoClient(ctx, env.Client(), bootstrapConfig); err != nil {
-		return errors.Wrap(err, "could not bootstrap credentials collection")
+		return errors.Wrapf(err, "could not bootstrap %s collection", Collection)
 	}
 
+	serviceName = settings.DomainName
+
+	return nil
+}
+
+func validateBootstrapped() error {
+	if serviceName == "" {
+		return errNotBootstrapped
+	}
 	return nil
 }
 
@@ -72,30 +89,31 @@ func getDepot(ctx context.Context, env evergreen.Environment) (depot.Depot, erro
 	return certdepot.NewMongoDBCertDepotWithClient(ctx, env.Client(), mongoConfig(env.Settings()))
 }
 
-func deleteIfExists(dpt depot.Depot, tag *depot.Tag) error {
-	if dpt.Check(tag) {
-		return errors.Wrap(dpt.Delete(tag), "problem deleting existing tag")
+func deleteIfExists(dpt depot.Depot, tags ...*depot.Tag) error {
+	catcher := grip.NewBasicCatcher()
+	for _, tag := range tags {
+		if dpt.Check(tag) {
+			catcher.Add(dpt.Delete(tag))
+		}
 	}
-	return nil
+	return catcher.Resolve()
 }
 
 // SaveCredentials saves the credentials from the options for the given user
 // name. If the credentials already exist, this will overwrite the existing
 // credentials.
-func SaveCredentials(name string, creds *rpc.Credentials) error {
-	ctx, cancel := context.WithTimeout(context.Background(), defaultConnectionTimeout)
-	defer cancel()
+func SaveCredentials(ctx context.Context, env evergreen.Environment, name string, creds *rpc.Credentials) error {
+	if err := validateBootstrapped(); err != nil {
+		return err
+	}
 
-	dpt, err := getDepot(ctx, evergreen.GetEnvironment())
+	dpt, err := getDepot(ctx, env)
 	if err != nil {
 		return errors.Wrap(err, "could not get depot")
 	}
 
-	if err := deleteIfExists(dpt, depot.PrivKeyTag(name)); err != nil {
+	if err := deleteIfExists(dpt, depot.PrivKeyTag(name), depot.CrtTag(name)); err != nil {
 		return errors.Wrap(err, "problem deleting existing key")
-	}
-	if err := deleteIfExists(dpt, depot.CrtTag(name)); err != nil {
-		return errors.Wrap(err, "problem deleting existing certificate")
 	}
 
 	if err := dpt.Put(depot.PrivKeyTag(name), creds.Key); err != nil {
@@ -109,7 +127,11 @@ func SaveCredentials(name string, creds *rpc.Credentials) error {
 
 // GenerateInMemory generates the credentials without storing them in the
 // database.
-func GenerateInMemory(name string) (*rpc.Credentials, error) {
+func GenerateInMemory(ctx context.Context, env evergreen.Environment, name string) (*rpc.Credentials, error) {
+	if err := validateBootstrapped(); err != nil {
+		return nil, err
+	}
+
 	opts := certdepot.CertificateOptions{
 		CA:         CAName,
 		CommonName: name,
@@ -117,10 +139,7 @@ func GenerateInMemory(name string) (*rpc.Credentials, error) {
 		Expires:    defaultExpiration,
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), defaultConnectionTimeout)
-	defer cancel()
-
-	dpt, err := getDepot(ctx, evergreen.GetEnvironment())
+	dpt, err := getDepot(ctx, env)
 	if err != nil {
 		return nil, errors.Wrap(err, "could not get depot")
 	}
@@ -153,12 +172,13 @@ func GenerateInMemory(name string) (*rpc.Credentials, error) {
 	return rpc.NewCredentials(pemCACrt, pemCrt, pemKey)
 }
 
-// FindById gets the credentials for the given name.
-func FindById(name string) (*rpc.Credentials, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), defaultConnectionTimeout)
-	defer cancel()
+// FindByID gets the credentials for the given name.
+func FindByID(ctx context.Context, env evergreen.Environment, name string) (*rpc.Credentials, error) {
+	if err := validateBootstrapped(); err != nil {
+		return nil, err
+	}
 
-	dpt, err := getDepot(ctx, evergreen.GetEnvironment())
+	dpt, err := getDepot(ctx, env)
 	if err != nil {
 		return nil, errors.Wrap(err, "could not get depot")
 	}
@@ -182,19 +202,15 @@ func FindById(name string) (*rpc.Credentials, error) {
 }
 
 // DeleteCredentials removes the credentials from the database.
-func DeleteCredentials(name string) error {
-	ctx, cancel := context.WithTimeout(context.Background(), defaultConnectionTimeout)
-	defer cancel()
+func DeleteCredentials(ctx context.Context, env evergreen.Environment, name string) error {
+	if err := validateBootstrapped(); err != nil {
+		return err
+	}
 
-	dpt, err := getDepot(ctx, evergreen.GetEnvironment())
+	dpt, err := getDepot(ctx, env)
 	if err != nil {
 		return errors.Wrap(err, "could not get depot")
 	}
 
-	catcher := grip.NewBasicCatcher()
-
-	catcher.Wrap(deleteIfExists(dpt, depot.PrivKeyTag(name)), "problem deleting key")
-	catcher.Wrap(deleteIfExists(dpt, depot.CrtTag(name)), "problem deleting certificate")
-
-	return catcher.Resolve()
+	return deleteIfExists(dpt, depot.PrivKeyTag(name), depot.CrtTag(name))
 }

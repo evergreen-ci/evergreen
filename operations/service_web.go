@@ -38,7 +38,7 @@ func startWebService() cli.Command {
 			env, err := evergreen.NewEnvironment(ctx, confPath, db)
 			grip.EmergencyFatal(errors.Wrap(err, "problem configuring application environment"))
 			evergreen.SetEnvironment(env)
-			grip.EmergencyFatal(errors.Wrap(credentials.Bootstrap(), "problem bootstrapping host credentials"))
+			grip.Warning(errors.Wrap(credentials.Bootstrap(env), "problem bootstrapping host credentials"))
 			if c.Bool(overwriteConfFlagName) {
 				grip.EmergencyFatal(errors.Wrap(env.SaveConfig(), "problem saving config"))
 			}

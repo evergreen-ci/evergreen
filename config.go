@@ -44,44 +44,45 @@ type ConfigSection interface {
 
 // Settings contains all configuration settings for running Evergreen.
 type Settings struct {
-	Id                 string                    `bson:"_id" json:"id"`
+	Id                 string                    `bson:"_id" json:"id" yaml:"id" id:"id"`
 	Alerts             AlertsConfig              `yaml:"alerts" bson:"alerts" json:"alerts" id:"alerts"`
 	Amboy              AmboyConfig               `yaml:"amboy" bson:"amboy" json:"amboy" id:"amboy"`
 	Api                APIConfig                 `yaml:"api" bson:"api" json:"api" id:"api"`
-	ApiUrl             string                    `yaml:"api_url" bson:"api_url" json:"api_url"`
+	ApiUrl             string                    `yaml:"api_url" bson:"api_url" json:"api_url" id:"api_url"`
 	AuthConfig         AuthConfig                `yaml:"auth" bson:"auth" json:"auth" id:"auth"`
-	Banner             string                    `bson:"banner" json:"banner"`
-	BannerTheme        BannerTheme               `bson:"banner_theme" json:"banner_theme"`
-	Bugsnag            string                    `yaml:"bugsnag" bson:"bugsnag" json:"bugsnag"`
-	ClientBinariesDir  string                    `yaml:"client_binaries_dir" bson:"client_binaries_dir" json:"client_binaries_dir"`
+	Banner             string                    `bson:"banner" json:"banner" yaml:"banner" id:"banner"`
+	BannerTheme        BannerTheme               `bson:"banner_theme" json:"banner_theme" yaml:"banner_theme" id:"banner_theme"`
+	Bugsnag            string                    `yaml:"bugsnag" bson:"bugsnag" json:"bugsnag" id:"bugsnag"`
+	ClientBinariesDir  string                    `yaml:"client_binaries_dir" bson:"client_binaries_dir" json:"client_binaries_dir" id:"client_binaries_dir"`
 	CommitQueue        CommitQueueConfig         `yaml:"commit_queue" bson:"commit_queue" json:"commit_queue" id:"commit_queue"`
-	ConfigDir          string                    `yaml:"configdir" bson:"configdir" json:"configdir"`
+	ConfigDir          string                    `yaml:"configdir" bson:"configdir" json:"configdir" id:"config_dir"`
 	ContainerPools     ContainerPoolsConfig      `yaml:"container_pools" bson:"container_pools" json:"container_pools" id:"container_pools"`
-	Credentials        map[string]string         `yaml:"credentials" bson:"credentials" json:"credentials"`
-	CredentialsNew     util.KeyValuePairSlice    `yaml:"credentials_new" bson:"credentials_new" json:"credentials_new"`
-	JasperConfig       JasperConfig              `yaml:"jasper" bson:"jasper" json:"jasper"`
-	Database           DBSettings                `yaml:"database"`
-	Expansions         map[string]string         `yaml:"expansions" bson:"expansions" json:"expansions"`
-	ExpansionsNew      util.KeyValuePairSlice    `yaml:"expansions_new" bson:"expansions_new" json:"expansions_new"`
-	GithubPRCreatorOrg string                    `yaml:"github_pr_creator_org" bson:"github_pr_creator_org" json:"github_pr_creator_org"`
+	Credentials        map[string]string         `yaml:"credentials" bson:"credentials" json:"credentials" id:"credentials"`
+	CredentialsNew     util.KeyValuePairSlice    `yaml:"credentials_new" bson:"credentials_new" json:"credentials_new" id:"credentials_new"`
+	Database           DBSettings                `yaml:"database" json:"database" id:"database" bson:"database"`
+	DomainName         string                    `yaml:"domain_name" bson:"domain_name" json:"domain_name" id:"domain_name"`
+	Expansions         map[string]string         `yaml:"expansions" bson:"expansions" json:"expansions" id:"expansions"`
+	ExpansionsNew      util.KeyValuePairSlice    `yaml:"expansions_new" bson:"expansions_new" json:"expansions_new" id:"expansions_new"`
+	GithubPRCreatorOrg string                    `yaml:"github_pr_creator_org" bson:"github_pr_creator_org" json:"github_pr_creator_org" id:"github_pr_creator_org"`
 	HostInit           HostInitConfig            `yaml:"hostinit" bson:"hostinit" json:"hostinit" id:"hostinit"`
+	JasperConfig       JasperConfig              `yaml:"jasper" bson:"jasper" json:"jasper" id:"jasper_config"`
 	Jira               JiraConfig                `yaml:"jira" bson:"jira" json:"jira" id:"jira"`
 	JIRANotifications  JIRANotificationsConfig   `yaml:"jira_notifications" json:"jira_notifications" bson:"jira_notifications" id:"jira_notifications"`
-	Keys               map[string]string         `yaml:"keys" bson:"keys" json:"keys"`
-	KeysNew            util.KeyValuePairSlice    `yaml:"keys_new" bson:"keys_new" json:"keys_new"`
+	Keys               map[string]string         `yaml:"keys" bson:"keys" json:"keys" id:"keys"`
+	KeysNew            util.KeyValuePairSlice    `yaml:"keys_new" bson:"keys_new" json:"keys_new" id:"keys_new"`
 	LoggerConfig       LoggerConfig              `yaml:"logger_config" bson:"logger_config" json:"logger_config" id:"logger_config"`
-	LogPath            string                    `yaml:"log_path" bson:"log_path" json:"log_path"`
+	LogPath            string                    `yaml:"log_path" bson:"log_path" json:"log_path" id:"log_path"`
 	Notify             NotifyConfig              `yaml:"notify" bson:"notify" json:"notify" id:"notify"`
-	Plugins            PluginConfig              `yaml:"plugins" bson:"plugins" json:"plugins"`
-	PluginsNew         util.KeyValuePairSlice    `yaml:"plugins_new" bson:"plugins_new" json:"plugins_new"`
-	PprofPort          string                    `yaml:"pprof_port" bson:"pprof_port" json:"pprof_port"`
+	Plugins            PluginConfig              `yaml:"plugins" bson:"plugins" json:"plugins" id:"plugins"`
+	PluginsNew         util.KeyValuePairSlice    `yaml:"plugins_new" bson:"plugins_new" json:"plugins_new" id:"plugins_new"`
+	PprofPort          string                    `yaml:"pprof_port" bson:"pprof_port" json:"pprof_port" id:"pprof_port"`
 	Providers          CloudProviders            `yaml:"providers" bson:"providers" json:"providers" id:"providers"`
 	RepoTracker        RepoTrackerConfig         `yaml:"repotracker" bson:"repotracker" json:"repotracker" id:"repotracker"`
 	Scheduler          SchedulerConfig           `yaml:"scheduler" bson:"scheduler" json:"scheduler" id:"scheduler"`
-	ServiceFlags       ServiceFlags              `bson:"service_flags" json:"service_flags" id:"service_flags"`
+	ServiceFlags       ServiceFlags              `bson:"service_flags" json:"service_flags" id:"service_flags" yaml:"service_flags"`
 	Slack              SlackConfig               `yaml:"slack" bson:"slack" json:"slack" id:"slack"`
-	Splunk             send.SplunkConnectionInfo `yaml:"splunk" bson:"splunk" json:"splunk"`
-	SuperUsers         []string                  `yaml:"superusers" bson:"superusers" json:"superusers"`
+	Splunk             send.SplunkConnectionInfo `yaml:"splunk" bson:"splunk" json:"splunk" id:"splunk"`
+	SuperUsers         []string                  `yaml:"superusers" bson:"superusers" json:"superusers" id:"super_users"`
 	Triggers           TriggerConfig             `yaml:"triggers" bson:"triggers" json:"triggers" id:"triggers"`
 	Ui                 UIConfig                  `yaml:"ui" bson:"ui" json:"ui" id:"ui"`
 }
@@ -128,10 +129,11 @@ func (c *Settings) Set() error {
 			containerPoolsKey:     c.ContainerPools,
 			credentialsKey:        c.Credentials,
 			credentialsNewKey:     c.CredentialsNew,
-			jasperKey:             c.JasperConfig,
+			domainNameKey:         c.DomainName,
 			expansionsKey:         c.Expansions,
 			expansionsNewKey:      c.ExpansionsNew,
 			githubPRCreatorOrgKey: c.GithubPRCreatorOrg,
+			jasperKey:             c.JasperConfig,
 			keysKey:               c.Keys,
 			keysNewKey:            c.KeysNew,
 			logPathKey:            c.LogPath,

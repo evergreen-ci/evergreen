@@ -137,6 +137,7 @@ func (s *AdminSuite) TestBaseConfig() {
 		ClientBinariesDir:  "bin_dir",
 		ConfigDir:          "cfg_dir",
 		Credentials:        map[string]string{"k1": "v1"},
+		DomainName:         "example.com",
 		Expansions:         map[string]string{"k2": "v2"},
 		GithubPRCreatorOrg: "org",
 		JasperConfig: JasperConfig{
@@ -170,6 +171,7 @@ func (s *AdminSuite) TestBaseConfig() {
 	s.Equal(config.ClientBinariesDir, settings.ClientBinariesDir)
 	s.Equal(config.ConfigDir, settings.ConfigDir)
 	s.Equal(config.Credentials, settings.Credentials)
+	s.Equal(config.DomainName, settings.DomainName)
 	s.Equal(config.JasperConfig.BinaryName, settings.JasperConfig.BinaryName)
 	s.Equal(config.JasperConfig.DownloadFileName, settings.JasperConfig.DownloadFileName)
 	s.Equal(config.JasperConfig.Port, settings.JasperConfig.Port)
@@ -664,4 +666,21 @@ func (s *AdminSuite) TestCommitQueueConfig() {
 	s.Require().NotNil(settings)
 
 	s.Equal(config, settings.CommitQueue)
+}
+
+func (s *AdminSuite) TestJasperConfig() {
+	config := JasperConfig{
+		BinaryName:       "foo",
+		DownloadFileName: "bar",
+		Port:             12345,
+		URL:              "bat",
+		Version:          "baz",
+	}
+
+	s.NoError(config.Set())
+
+	settings, err := GetConfig()
+	s.Require().NoError(err)
+
+	s.Equal(config, settings.JasperConfig)
 }
