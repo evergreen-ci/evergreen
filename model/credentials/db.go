@@ -17,8 +17,7 @@ const (
 	Collection = "credentials"
 	CAName     = "evergreen"
 
-	defaultConnectionTimeout = 10 * time.Second
-	defaultExpiration        = 30 * 24 * time.Hour // 1 month
+	defaultExpiration = 30 * 24 * time.Hour // 1 month
 )
 
 var (
