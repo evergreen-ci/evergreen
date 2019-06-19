@@ -75,7 +75,7 @@ func (c *gitPush) Execute(ctx context.Context, comm client.Communicator, logger 
 		return errors.Errorf("tip of branch '%s' has moved. Expecting '%s', but found '%s'", conf.ProjectRef.Branch, p.Githash, headSHA)
 	}
 
-	// get author information
+	// get commit information
 	taskData := client.TaskData{
 		ID:     conf.Task.Id,
 		Secret: conf.Task.Secret,
@@ -84,17 +84,10 @@ func (c *gitPush) Execute(ctx context.Context, comm client.Communicator, logger 
 	if err != nil {
 		return errors.Wrapf(err, "can't get author information for user '%s'", p.Author)
 	}
-
-	logger.Execution().Info("Pushing patch")
 	params := pushParams{
-		directory:   c.Directory,
 		authorName:  restModel.FromAPIString(u.DisplayName),
 		authorEmail: restModel.FromAPIString(u.Email),
 		description: p.Description,
-		branch:      conf.ProjectRef.Branch,
-	}
-	if err = c.pushPatch(ctx, logger, params); err != nil {
-		return errors.Wrap(err, "can't push patch")
 	}
 
 	// push module patches
@@ -124,6 +117,14 @@ func (c *gitPush) Execute(ctx context.Context, comm client.Communicator, logger 
 		if err = c.pushPatch(ctx, logger, params); err != nil {
 			return errors.Wrap(err, "can't push module patch")
 		}
+	}
+
+	// Push main patch
+	logger.Execution().Info("Pushing patch")
+	params.directory = c.Directory
+	params.branch = conf.ProjectRef.Branch
+	if err = c.pushPatch(ctx, logger, params); err != nil {
+		return errors.Wrap(err, "can't push patch")
 	}
 
 	return nil
