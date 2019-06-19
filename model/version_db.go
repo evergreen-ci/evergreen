@@ -30,6 +30,7 @@ var (
 	VersionRevisionOrderNumberKey = bsonutil.MustHaveTag(Version{}, "RevisionOrderNumber")
 	VersionRequesterKey           = bsonutil.MustHaveTag(Version{}, "Requester")
 	VersionConfigKey              = bsonutil.MustHaveTag(Version{}, "Config")
+	VersionConfigNumberKey        = bsonutil.MustHaveTag(Version{}, "ConfigUpdateNumber")
 	VersionIgnoredKey             = bsonutil.MustHaveTag(Version{}, "Ignored")
 	VersionOwnerNameKey           = bsonutil.MustHaveTag(Version{}, "Owner")
 	VersionRepoKey                = bsonutil.MustHaveTag(Version{}, "Repo")
