@@ -5,6 +5,53 @@ describe("PerfPluginTests", function () {
         $filter = _$filter_;
     }));
 
+    let scope;
+    let makeController;
+    let ts;
+
+    beforeEach(inject(function ($rootScope, $controller, $window, TestSample) {
+      scope = $rootScope;
+      $window.plugins = {perf:{}};
+      makeController = () => $controller('PerfController', {
+        $scope: scope,
+        $window: $window
+      });
+      ts = TestSample;
+    }));
+  
+    describe('controller', () => {
+      it('should use canary exclusion regex to filter perfSample data', () => {
+        scope.perfSample = new ts({
+          data: {
+            results: [{
+              name:'insert_vector_primary_retry'
+            },{
+              name:'mixed_total_retry'
+            },{
+              name:'canary_server-cpuloop-10x'
+            },{
+              name:'canary_client-cpuloop-10x'
+            },{
+              name:'fio_iops_test_write_iops'
+            },{
+              name:'NetworkBandwidth'
+            }]
+          }
+        });
+        makeController();
+        expect(scope.hideCanaries).toEqual(jasmine.any(Function));
+        spyOn(scope, 'isCanary').and.callThrough();
+        scope.hideCanaries();
+        expect(scope.isCanary.calls.count()).toEqual(6);
+        expect(scope.hiddenGraphs).toEqual({
+          'canary_server-cpuloop-10x': true,          
+          'canary_client-cpuloop-10x': true,          
+          'fio_iops_test_write_iops': true,          
+          'NetworkBandwidth': true       
+        });
+      });
+  
+    });
     it("expanded metrics data should be converted correctly to legacy data", function () {
         var converter = $filter("expandedMetricConverter");
 

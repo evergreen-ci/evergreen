@@ -14,7 +14,7 @@ var findIndex = function(list, predicate) {
 mciModule.controller('PerfController', function PerfController(
   $scope, $window, $http, $location, $log, $q, $filter, ChangePointsService,
   DrawPerfTrendChart, PROCESSED_TYPE, Settings, Stitch, STITCH_CONFIG,
-  TestSample, TrendSamples, PointsDataService, WhitelistDataService
+  TestSample, TrendSamples, PointsDataService, WhitelistDataService, CANARY_EXCLUSION_REGEX
 ) {
     /* for debugging
     $sce, $compile){
@@ -560,6 +560,18 @@ mciModule.controller('PerfController', function PerfController(
     }
   }
 
+  $scope.isCanary = function(test) {
+    return !test.match(CANARY_EXCLUSION_REGEX);
+  }
+
+  $scope.hideCanaries = function() {
+    $scope.perfSample.testNames().forEach(function(name) {
+      if($scope.isCanary(name)) {
+        $scope.hiddenGraphs[name] = true;
+      }
+    });
+  }
+
   $scope.processAndDrawGraphs = function() {
     setTimeout(function(){drawDetailGraph($scope.perfSample, $scope.comparePerfSamples, $scope.task.id, $scope.metricSelect.value.key)},0);
 
@@ -727,6 +739,7 @@ mciModule.controller('PerfController', function PerfController(
     // Once trend chart data and change points get loaded
     var onHistoryRetrieved = function() {
       $scope.hideEmptyGraphs();
+      $scope.hideCanaries();
       setTimeout(drawTrendGraph, 0, $scope);
     };
   }
