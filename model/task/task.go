@@ -672,15 +672,15 @@ func (t *Task) MarkSystemFailed() error {
 }
 
 // SetAborted sets the abort field of task to aborted
-func (t *Task) SetAborted() error {
-	t.Aborted = true
+func (t *Task) SetAborted(aborted bool) error {
+	t.Aborted = aborted
 	return UpdateOne(
 		bson.M{
 			IdKey: t.Id,
 		},
 		bson.M{
 			"$set": bson.M{
-				AbortedKey: true,
+				AbortedKey: aborted,
 			},
 		},
 	)
@@ -741,7 +741,6 @@ func (t *Task) MarkEnd(finishTime time.Time, detail *apimodels.TaskEndDetail) er
 
 	t.TimeTaken = finishTime.Sub(t.StartTime)
 	t.Details = *detail
-	t.Aborted = false
 
 	grip.Debug(message.Fields{
 		"message":   "marking task finished",
@@ -762,9 +761,6 @@ func (t *Task) MarkEnd(finishTime time.Time, detail *apimodels.TaskEndDetail) er
 				DetailsKey:    t.Details,
 				StartTimeKey:  t.StartTime,
 				LogsKey:       detail.Logs,
-			},
-			"$unset": bson.M{
-				AbortedKey: "",
 			},
 		})
 

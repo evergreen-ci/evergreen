@@ -1202,3 +1202,16 @@ func TestGetTimeSpent(t *testing.T) {
 	assert.EqualValues(0, timeTaken)
 	assert.EqualValues(0, makespan)
 }
+
+func TestSetAborted(t *testing.T) {
+	assert := assert.New(t)
+	t1 := Task{Id: "t1"}
+	assert.NoError(t1.Insert())
+
+	assert.NoError(t1.SetAborted(true))
+	assert.True(t1.Aborted)
+
+	dbT1, err := FindOneId("t1")
+	assert.NoError(err)
+	assert.True(dbT1.Aborted)
+}

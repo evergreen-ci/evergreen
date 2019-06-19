@@ -254,7 +254,7 @@ func AbortTask(taskId, caller string) error {
 		return err
 	}
 	event.LogTaskAbortRequest(t.Id, t.Execution, caller)
-	return t.SetAborted()
+	return t.SetAborted(true)
 }
 
 // Deactivate any previously activated but undispatched
@@ -420,9 +420,15 @@ func MarkEnd(t *task.Task, caller string, finishTime time.Time, detail *apimodel
 	event.LogTaskFinished(t.Id, t.Execution, t.HostId, status, t.Aborted)
 
 	err := t.MarkEnd(finishTime, detail)
-
 	if err != nil {
 		return errors.Wrap(err, "could not mark task finished")
+	}
+
+	if t.Aborted {
+		err = t.SetAborted(false)
+		if err != nil {
+			return errors.Wrap(err, "could not mark task not aborted")
+		}
 	}
 
 	if t.IsPartOfDisplay() {
