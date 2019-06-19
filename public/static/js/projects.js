@@ -220,6 +220,9 @@ mciModule.controller('ProjectCtrl', function($scope, $window, $http, $location, 
           item.pr_testing_enabled = false;
           item.commit_queue.enabled = false;
           item.enabled = false;
+          item.subscriptions = _.filter($scope.subscriptions, function(d) {
+                return !d.changed;
+            });
           $http.post('/project/' + $scope.newProject.identifier, item).then(
             function(resp) {
               $scope.refreshTrackedProjects(data_put.AllProjects);

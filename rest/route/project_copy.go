@@ -78,12 +78,15 @@ func (p *projectCopyHandler) Run(ctx context.Context) gimlet.Responder {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "error building API project from service"))
 	}
 
-	// copy variables and aliases
+	// copy variables, aliases, and subscriptions
 	if err = p.sc.CopyProjectVars(p.oldProjectId, p.newProjectId); err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "error copying project vars from project '%s'", p.oldProjectId))
 	}
 	if err = p.sc.CopyProjectAliases(p.oldProjectId, p.newProjectId); err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "error copying aliases from project '%s'", p.oldProjectId))
+	}
+	if err = p.sc.CopyProjectSubscriptions(p.oldProjectId, p.newProjectId); err != nil {
+		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "error copying subscriptions from project '%s'", p.oldProjectId))
 	}
 
 	return gimlet.NewJSONResponse(apiProjectRef)
