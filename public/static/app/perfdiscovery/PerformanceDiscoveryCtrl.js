@@ -1,7 +1,8 @@
 mciModule.controller('PerformanceDiscoveryCtrl', function(
   $q, $scope, $timeout, $window, ApiTaskdata, ApiV1, ApiV2,
   EVG, EvgUiGridUtil, PERF_DISCOVERY, PerfDiscoveryDataService,
-  PerfDiscoveryStateService, uiGridConstants, OutliersDataService
+  PerfDiscoveryStateService, uiGridConstants, OutliersDataService,
+  CANARY_EXCLUSION_REGEX
 ) {
   var vm = this;
   var gridUtil = EvgUiGridUtil
@@ -305,6 +306,9 @@ mciModule.controller('PerformanceDiscoveryCtrl', function(
         field: 'test',
         _link: row => '/task/' + row.entity.taskId + '##' + row.entity.test,
         cellTemplate: 'ui-grid-link',
+        filter: {
+          term: CANARY_EXCLUSION_REGEX.toString().substring(1, CANARY_EXCLUSION_REGEX.toString().length - 1)
+        }
       },
       gridUtil.multiselectColDefMixin({
         name: 'Threads',

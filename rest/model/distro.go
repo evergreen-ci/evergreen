@@ -18,10 +18,9 @@ type APIPlannerSettings struct {
 	MaximumHosts           int         `json:"maximum_hosts"`
 	TargetTime             APIDuration `json:"target_time"`
 	AcceptableHostIdleTime APIDuration `json:"acceptable_host_idle_time"`
-	GroupVersions          bool        `json:"group_versions"`
+	GroupVersions          *bool       `json:"group_versions"`
 	PatchZipperFactor      int         `json:"patch_zipper_factor"`
-	MainlineFirst          bool        `json:"mainline_first"`
-	PatchFirst             bool        `json:"patch_first"`
+	TaskOrdering           APIString   `json:"task_ordering"`
 }
 
 // BuildFromService converts from service level distro.PlannerSetting to an APIPlannerSettings
@@ -47,8 +46,7 @@ func (s *APIPlannerSettings) BuildFromService(h interface{}) error {
 	s.AcceptableHostIdleTime = NewAPIDuration(settings.AcceptableHostIdleTime)
 	s.GroupVersions = settings.GroupVersions
 	s.PatchZipperFactor = settings.PatchZipperFactor
-	s.MainlineFirst = settings.MainlineFirst
-	s.PatchFirst = settings.PatchFirst
+	s.TaskOrdering = ToAPIString(settings.TaskOrdering)
 
 	return nil
 }
@@ -66,8 +64,7 @@ func (s *APIPlannerSettings) ToService() (interface{}, error) {
 	settings.AcceptableHostIdleTime = s.AcceptableHostIdleTime.ToDuration()
 	settings.GroupVersions = s.GroupVersions
 	settings.PatchZipperFactor = s.PatchZipperFactor
-	settings.MainlineFirst = s.MainlineFirst
-	settings.PatchFirst = s.PatchFirst
+	settings.TaskOrdering = FromAPIString(s.TaskOrdering)
 
 	return interface{}(settings), nil
 }

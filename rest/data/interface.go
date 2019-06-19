@@ -248,6 +248,8 @@ type Connector interface {
 	// GetSubscriptions returns the subscriptions that belong to a user
 	GetSubscriptions(string, event.OwnerType) ([]restModel.APISubscription, error)
 	DeleteSubscription(id string) error
+	// CopyProjectSubscriptions copies subscriptions from the first project for the second project.
+	CopyProjectSubscriptions(string, string) error
 
 	// Notifications
 	GetNotificationsStats() (*restModel.APIEventStats, error)

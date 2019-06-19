@@ -163,7 +163,7 @@ func cleanUpTimedOutTask(t *task.Task) error {
 	}
 
 	// For a single-host task group, if a task fails, block and dequeue later tasks in that group.
-	if t.TaskGroup != "" && t.TaskGroupMaxHosts == 1 && t.Status != evergreen.TaskSucceeded {
+	if t.IsPartOfSingleHostTaskGroup() && t.Status != evergreen.TaskSucceeded {
 		if err = model.BlockTaskGroupTasks(t.Id); err != nil {
 			grip.Error(message.WrapError(err, message.Fields{
 				"message": "problem blocking task group tasks",
@@ -198,6 +198,7 @@ func cleanUpTimedOutTask(t *task.Task) error {
 		}
 		return errors.Wrap(model.MarkEnd(t, "monitor", time.Now(), detail, false, &model.StatusChanges{}), "error marking task ended")
 	}
+
 	return errors.Wrapf(model.TryResetTask(t.Id, "", "monitor", detail), "error trying to reset task %s", t.Id)
 }
 
