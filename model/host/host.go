@@ -86,6 +86,9 @@ type Host struct {
 	AgentRevision        string `bson:"agent_revision" json:"agent_revision"`
 	NeedsNewAgent        bool   `bson:"needs_agent" json:"needs_agent"`
 	NeedsNewAgentMonitor bool   `bson:"needs_agent_monitor" json:"needs_agent_monitor"`
+	// JasperCredentialsID is used to match hosts to their Jasper credentials
+	// for non-legacy hosts.
+	JasperCredentialsID string `bson:"jasper_credentials_id" json:"jasper_credentials_id"`
 
 	// for ec2 dynamic hosts, the instance type requested
 	InstanceType string `bson:"instance_type" json:"instance_type,omitempty"`
