@@ -50,12 +50,12 @@ func (dc *DBSubscriptionConnector) DeleteSubscription(id string) error {
 }
 
 func (dc *DBSubscriptionConnector) CopyProjectSubscriptions(oldProject, newProject string) error {
-	catcher := grip.NewBasicCatcher()
 	subs, err := event.FindSubscriptionsByOwner(oldProject, event.OwnerTypeProject)
 	if err != nil {
 		return errors.Wrapf(err, "error finding subscription for project '%s'", oldProject)
 	}
 
+	catcher := grip.NewBasicCatcher()
 	for _, sub := range subs {
 		sub.Owner = newProject
 		sub.ID = ""

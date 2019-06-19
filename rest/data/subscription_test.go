@@ -75,9 +75,7 @@ func TestGetSubscriptions(t *testing.T) {
 }
 
 func TestCopyProjectSubscriptions(t *testing.T) {
-	assert := assert.New(t)
-	require := require.New(t)
-	assert.NoError(db.ClearCollections(event.SubscriptionsCollection))
+	assert.NoError(t, db.ClearCollections(event.SubscriptionsCollection))
 
 	subs := []event.Subscription{
 		{
@@ -116,28 +114,28 @@ func TestCopyProjectSubscriptions(t *testing.T) {
 		},
 	}
 	for _, sub := range subs {
-		assert.NoError(sub.Upsert())
+		assert.NoError(t, sub.Upsert())
 	}
 	c := &DBSubscriptionConnector{}
 
 	for name, test := range map[string]func(t *testing.T){
 		"FromNonExistentProject": func(t *testing.T) {
-			assert.NoError(c.CopyProjectSubscriptions("not-a-project", "my-new-project"))
+			assert.NoError(t, c.CopyProjectSubscriptions("not-a-project", "my-new-project"))
 			apiSubs, err := event.FindSubscriptionsByOwner("my-new-project", event.OwnerTypeProject)
-			assert.NoError(err)
-			require.Len(apiSubs, 0)
+			assert.NoError(t, err)
+			require.Len(t, apiSubs, 0)
 		},
 		"FromExistentProject": func(t *testing.T) {
-			assert.NoError(c.CopyProjectSubscriptions("my-project", "my-newest-project"))
+			assert.NoError(t, c.CopyProjectSubscriptions("my-project", "my-newest-project"))
 			apiSubs, err := event.FindSubscriptionsByOwner("my-project", event.OwnerTypeProject)
-			assert.NoError(err)
-			require.Len(apiSubs, 1)
-			assert.Equal(subs[0].ID, apiSubs[0].ID)
+			assert.NoError(t, err)
+			require.Len(t, apiSubs, 1)
+			assert.Equal(t, subs[0].ID, apiSubs[0].ID)
 
 			apiSubs, err = event.FindSubscriptionsByOwner("my-newest-project", event.OwnerTypeProject)
-			assert.NoError(err)
-			require.Len(apiSubs, 1)
-			assert.NotEqual(subs[0].ID, apiSubs[0].ID)
+			assert.NoError(t, err)
+			require.Len(t, apiSubs, 1)
+			assert.NotEqual(t, subs[0].ID, apiSubs[0].ID)
 		},
 	} {
 		t.Run(name, func(t *testing.T) {
