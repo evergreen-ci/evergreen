@@ -376,7 +376,7 @@ func (d *Distro) GetResolvedPlannerSettings(config evergreen.SchedulerConfig) (P
 		catcher.Add(errors.Errorf("'%s' is not a valid PlannerSettings.TaskOrdering", resolved.TaskOrdering))
 	}
 
-	// Any vaildation errors?
+	// Any validation errors?
 	if catcher.HasErrors() {
 		return PlannerSettings{}, errors.Wrapf(catcher.Resolve(), "cannot resolve PlannerSettings for distro '%s'", d.Id)
 	}
