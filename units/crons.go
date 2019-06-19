@@ -322,9 +322,16 @@ func PopulateIdleHostJobs(env evergreen.Environment) amboy.QueueOperation {
 			return fmt.Errorf("distro ids %s not found", strings.Join(invalidDistroIDs, ","))
 		}
 
-		for i, info := range distroHosts {
+		distrosMap := make(map[string]distro.Distro, len(distrosFound))
+		for i := range distrosFound {
+			d := distrosFound[i]
+			distrosMap[d.Id] = d
+		}
+
+		for _, info := range distroHosts {
+			distroID := info.DistroID
 			totalRunningHosts := info.RunningHostsCount
-			minimumHosts := distrosFound[i].PlannerSettings.MinimumHosts
+			minimumHosts := distrosMap[distroID].PlannerSettings.MinimumHosts
 			nIdleHosts := len(info.IdleHosts)
 
 			maxHostsToTerminate := totalRunningHosts - minimumHosts
