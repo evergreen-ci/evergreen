@@ -1,6 +1,7 @@
 package host
 
 import (
+	"context"
 	"fmt"
 	"math"
 	"time"
@@ -332,26 +333,26 @@ func (h *Host) CreateSecret() error {
 }
 
 // JasperCredentials gets the Jasper credentials from the database.
-func (h *Host) JasperCredentials() (*rpc.Credentials, error) {
-	return credentials.FindById(h.Id)
+func (h *Host) JasperCredentials(ctx context.Context, env evergreen.Environment) (*rpc.Credentials, error) {
+	return credentials.FindByID(ctx, env, h.Id)
 }
 
 // GenerateJasperCredentials creates the Jasper credentials for the given host
 // without saving them to the database.
-func (h *Host) GenerateJasperCredentials() (*rpc.Credentials, error) {
-	return credentials.GenerateInMemory(h.Id)
+func (h *Host) GenerateJasperCredentials(ctx context.Context, env evergreen.Environment) (*rpc.Credentials, error) {
+	return credentials.GenerateInMemory(ctx, env, h.Id)
 }
 
 // SaveJasperCredentials saves the given Jasper credentials in the database for
 // the host.
-func (h *Host) SaveJasperCredentials(creds *rpc.Credentials) error {
-	return credentials.SaveCredentials(h.Id, creds)
+func (h *Host) SaveJasperCredentials(ctx context.Context, env evergreen.Environment, creds *rpc.Credentials) error {
+	return credentials.SaveCredentials(ctx, env, h.Id, creds)
 }
 
 // DeleteJasperCredentials deletes the Jasper credentials for the host and
 // updates the host both in memory and in the database.
-func (h *Host) DeleteJasperCredentials() error {
-	return credentials.DeleteCredentials(h.Id)
+func (h *Host) DeleteJasperCredentials(ctx context.Context, env evergreen.Environment) error {
+	return credentials.DeleteCredentials(ctx, env, h.Id)
 }
 
 // UpdateLastCommunicated sets the host's last communication time to the current time.

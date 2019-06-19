@@ -126,7 +126,8 @@ func SaveCredentials(ctx context.Context, env evergreen.Environment, name string
 }
 
 // GenerateInMemory generates the credentials without storing them in the
-// database.
+// database. This is not idempotent, so separate calls with the same inputs will
+// return different credentials.
 func GenerateInMemory(ctx context.Context, env evergreen.Environment, name string) (*rpc.Credentials, error) {
 	if err := validateBootstrapped(); err != nil {
 		return nil, err
