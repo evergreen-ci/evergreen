@@ -1204,14 +1204,13 @@ func TestGetTimeSpent(t *testing.T) {
 }
 
 func TestSetAborted(t *testing.T) {
-	assert := assert.New(t)
 	t1 := Task{Id: "t1"}
-	assert.NoError(t1.Insert())
+	assert.NoError(t, t1.Insert())
 
-	assert.NoError(t1.SetAborted(true))
-	assert.True(t1.Aborted)
+	assert.NoError(t, t1.SetAborted(true))
+	assert.True(t, t1.Aborted)
 
 	dbT1, err := FindOneId("t1")
-	assert.NoError(err)
-	assert.True(dbT1.Aborted)
+	require.NoError(t, err)
+	assert.True(t, dbT1.Aborted)
 }
