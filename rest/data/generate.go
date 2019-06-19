@@ -9,6 +9,7 @@ import (
 	"github.com/evergreen-ci/evergreen/units"
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 )
 
@@ -30,7 +31,9 @@ func (gc *GenerateConnector) GenerateTasks(ctx context.Context, taskID string, j
 		return errors.Wrapf(err, "problem getting queue for version %s", t.Version)
 	}
 	err = q.Put(ctx, units.NewGenerateTasksJob(taskID, jsonBytes))
-	grip.DebugWhen(err != nil, errors.Wrapf(err, "problem saving new generate tasks job for task '%s'", taskID))
+	grip.Debug(message.WrapError(err, message.Fields{
+		"message": "problem saving new generate tasks job for task",
+		"task_id": taskID}))
 	return nil
 }
 
