@@ -14,14 +14,13 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/evergreen-ci/evergreen/thirdparty"
-
 	"github.com/dustin/go-humanize"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/manifest"
 	"github.com/evergreen-ci/evergreen/rest/client"
 	"github.com/evergreen-ci/evergreen/service"
+	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
@@ -105,6 +104,7 @@ func Fetch() cli.Command {
 			taskID := c.String(taskFlagName)
 			noPatch := c.Bool(noPatchFlagName)
 			shallow := c.Bool(shallowFlagName)
+			token := c.String(tokenFlagName)
 
 			ctx, cancel := context.WithCancel(context.Background())
 			defer cancel()
@@ -123,7 +123,7 @@ func Fetch() cli.Command {
 			}
 
 			if doFetchSource {
-				if err = fetchSource(ctx, ac, rc, client, wd, taskID, c.String(tokenFlagName), noPatch); err != nil {
+				if err = fetchSource(ctx, ac, rc, client, wd, taskID, token, noPatch); err != nil {
 					return err
 				}
 			}
@@ -213,13 +213,7 @@ type cloneOptions struct {
 
 func clone(opts cloneOptions) error {
 	// clone the repo first
-	var url string
-	if opts.token != "" {
-		url = fmt.Sprintf("https://%s:x-oauth-basic@github.com/%s/%s.git", opts.token, opts.owner, opts.repository)
-	} else {
-		url = fmt.Sprintf("git@github.com:%v/%v.git", opts.owner, opts.repository)
-	}
-	cloneArgs := []string{"clone", url}
+	cloneArgs := []string{"clone", thirdparty.FormGitUrl("github.com", opts.owner, opts.repository, opts.token)}
 	if opts.depth > 0 {
 		cloneArgs = append(cloneArgs, "--depth", fmt.Sprintf("%d", opts.depth))
 	}

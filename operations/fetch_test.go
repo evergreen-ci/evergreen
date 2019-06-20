@@ -15,47 +15,45 @@ func TestClone(t *testing.T) {
 	token, err := settings.GetGithubOauthToken()
 	assert.NoError(t, err)
 
-	passingCases := map[string]cloneOptions{
-		"SimpleHTTPS": cloneOptions{
+	type testCase struct {
+		opts      cloneOptions
+		isPassing bool
+	}
+
+	testCases := map[string]testCase{
+		"SimpleHTTPS": {isPassing: true, opts: cloneOptions{
 			owner:      "evergreen-ci",
 			repository: "sample",
 			revision:   "cf46076567e4949f9fc68e0634139d4ac495c89b",
 			branch:     "master",
 			token:      token,
-		},
-	}
-	failingCases := map[string]cloneOptions{
-		"InvalidRepo": cloneOptions{
+		}},
+		"InvalidRepo": {isPassing: false, opts: cloneOptions{
 			owner:      "evergreen-ci",
 			repository: "foo",
 			revision:   "cf46076567e4949f9fc68e0634139d4ac495c89b",
 			branch:     "master",
 			token:      token,
-		},
-		"InvalidRevision": cloneOptions{
+		}},
+		"InvalidRevision": {isPassing: true, opts: cloneOptions{
 			owner:      "evergreen-ci",
 			repository: "sample",
 			revision:   "9999999999999999999999999999999999999999",
 			branch:     "master",
 			token:      token,
-		},
-		"InvalidToken": cloneOptions{
+		}},
+		"InvalidToken": {isPassing: true, opts: cloneOptions{
 			owner:      "10gen",
 			repository: "kernel-tools",
 			revision:   "cabca3defc4b251c8a0be268969606717e01f906",
 			branch:     "master",
 			token:      "foo",
-		},
+		}},
 	}
 
-	for name, opts := range passingCases {
+	for name, test := range testCases {
 		t.Run(name, func(t *testing.T) {
-			runCloneTest(t, opts, true)
-		})
-	}
-	for name, opts := range failingCases {
-		t.Run(name, func(t *testing.T) {
-			runCloneTest(t, opts, false)
+			runCloneTest(t, test.opts, test.isPassing)
 		})
 	}
 }
