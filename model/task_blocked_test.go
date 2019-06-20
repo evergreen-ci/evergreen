@@ -61,7 +61,7 @@ func TestBlockedState(t *testing.T) {
 
 func TestBlockedStateForTaskGroups(t *testing.T) {
 	assert := assert.New(t)
-	assert.NoError(db.ClearCollections(ProjectRefCollection, host.Collection))
+	assert.NoError(db.ClearCollections(VersionCollection, host.Collection))
 
 	taskGroupYml := `
 tasks:
@@ -93,11 +93,11 @@ functions:
   a_function:
     command: shell.exec
 `
-	pRef := &ProjectRef{
-		Identifier:  "my_project",
-		LocalConfig: taskGroupYml,
+	v := &Version{
+		Id:     "my_version",
+		Config: taskGroupYml,
 	}
-	assert.NoError(pRef.Insert())
+	assert.NoError(v.Insert())
 	h := &host.Host{
 		Id:          "h1",
 		RunningTask: "say-hi",

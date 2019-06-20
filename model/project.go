@@ -17,7 +17,6 @@ import (
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/anser/bsonutil"
 	"github.com/mongodb/grip"
-	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 	"github.com/sabhiram/go-git-ignore"
 )
@@ -884,17 +883,10 @@ func GetTaskGroup(taskGroup string, tc *TaskConfig) (*TaskGroup, error) {
 
 // getTasksInTaskGroup finds the TaskGroup for the given task, and returns all tasks in the group
 func GetTasksInTaskGroup(t *task.Task) ([]task.Task, error) {
-	proj, err := FindProjectFromTask(t)
+	proj, err := FindProjectFromVersionID(t.Version)
 	if err != nil {
 		return nil, errors.Wrapf(err, "problem finding project for task '%s'", t.Id)
 	}
-	grip.Debug(message.Fields{
-		"purpose":    "restart_tasks",
-		"message":    "found project in getTasksInTaskGroup",
-		"project":    proj.Identifier,
-		"all_groups": proj.TaskGroups,
-		"task_group": t.TaskGroup,
-	})
 	tg := proj.FindTaskGroup(t.TaskGroup)
 	if tg == nil {
 		return nil, errors.Errorf("problem finding task group '%s'", t.TaskGroup)
@@ -918,12 +910,6 @@ func FindProjectFromTask(t *task.Task) (*Project, error) {
 	if ref == nil {
 		return nil, errors.Errorf("problem finding project: %s", t.Project)
 	}
-	grip.Debug(message.Fields{
-		"purpose":    "restart_tasks",
-		"message":    "in findProjectFromTask",
-		"revision":   t.Revision,
-		"project_id": ref.Identifier,
-	})
 	p, err := FindProject(t.Revision, ref)
 	if err != nil {
 		return nil, errors.Wrapf(err, "problem finding project config for %s", t.Project)
@@ -972,6 +958,7 @@ func (p *Project) FindDistroNameForTask(t *task.Task) (string, error) {
 	return distro, nil
 }
 
+// FindProject gets project from a non-patch version
 func FindProject(revision string, projectRef *ProjectRef) (*Project, error) {
 	if projectRef == nil {
 		return nil, errors.New("projectRef given is nil")
@@ -1009,7 +996,6 @@ func FindProject(revision string, projectRef *ProjectRef) (*Project, error) {
 			}
 		}
 	}
-	versionId := "didn't use this"
 	if revision != "" {
 		// we immediately return an error if the repotracker version isn't found
 		// for the given project at the given revision
@@ -1019,47 +1005,13 @@ func FindProject(revision string, projectRef *ProjectRef) (*Project, error) {
 		}
 		if v == nil {
 			// fall back to the skeletal project
-			grip.Debug(message.Fields{
-				"purpose":       "restart_tasks",
-				"message":       "no versions found",
-				"task_revision": revision,
-			})
 			return project, nil
 		}
-		versionId = v.Id
-		grip.Debug(message.Fields{
-			"purpose":            "restart_tasks",
-			"message":            "got version",
-			"version":            v.Id,
-			"version_identifier": v.Identifier,
-		})
+
 		project = &Project{}
 		if err = LoadProjectInto([]byte(v.Config), projectRef.Identifier, project); err != nil {
-			grip.Debug(message.Fields{
-				"purpose":        "restart_tasks",
-				"message":        "LOAD PROJECT ERROR",
-				"config_len":     len(v.Config),
-				"project_ref_id": projectRef.Identifier,
-			})
 			return nil, errors.Wrap(err, "Error loading project from version")
 		}
-		grip.Debug(message.Fields{
-			"purpose":    "restart_tasks",
-			"message":    "in revision not empty",
-			"config_len": len(v.Config),
-		})
-	}
-	if revision != "" {
-		grip.Debug(message.Fields{
-			"purpose":             "restart_tasks",
-			"message":             "technically found project",
-			"project":             project.Identifier,
-			"project_display":     project.DisplayName,
-			"project_owner":       project.Owner,
-			"project_task_groups": project.TaskGroups,
-			"revision":            revision,
-			"version_id":          versionId,
-		})
 	}
 
 	return project, nil

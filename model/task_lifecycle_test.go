@@ -884,7 +884,7 @@ func TestMarkEnd(t *testing.T) {
 
 func TestMarkEndWithTaskGroup(t *testing.T) {
 	require.NoError(t, db.ClearCollections(distro.Collection, host.Collection, task.Collection, task.OldCollection,
-		build.Collection, ProjectRefCollection, VersionCollection), t, "error clearing collection")
+		build.Collection, VersionCollection), t, "error clearing collection")
 	assert := assert.New(t)
 	var err error
 
@@ -947,6 +947,7 @@ func TestMarkEndWithTaskGroup(t *testing.T) {
 	v := &Version{
 		Id:     b.Version,
 		Status: evergreen.VersionStarted,
+		Config: sampleProjYmlTaskGroups,
 	}
 	assert.NoError(b.Insert())
 	assert.NoError(v.Insert())
@@ -1188,15 +1189,9 @@ func TestTryResetTask(t *testing.T) {
 
 func TestTryResetTaskWithTaskGroup(t *testing.T) {
 	require.NoError(t, db.ClearCollections(host.Collection,
-		build.Collection, ProjectRefCollection, VersionCollection, distro.Collection), t, "error clearing collection")
+		build.Collection, VersionCollection, distro.Collection), t, "error clearing collection")
 	assert := assert.New(t)
 	require := require.New(t)
-
-	pRef := &ProjectRef{
-		Identifier:  "my_project",
-		LocalConfig: sampleProjYmlTaskGroups,
-	}
-	assert.NoError(pRef.Insert())
 
 	h := &host.Host{
 		Id:          "h1",
@@ -1222,6 +1217,7 @@ func TestTryResetTaskWithTaskGroup(t *testing.T) {
 	v := &Version{
 		Id:     b.Version,
 		Status: evergreen.VersionStarted,
+		Config: sampleProjYmlTaskGroups,
 	}
 	assert.NoError(b.Insert())
 	assert.NoError(v.Insert())
@@ -2637,16 +2633,10 @@ func TestDisplayTaskFailedAndSucceededExecTasks(t *testing.T) {
 }
 
 func TestTryResetTaskGroup(t *testing.T) {
-	require.NoError(t, db.ClearCollections(host.Collection, build.Collection, ProjectRefCollection, VersionCollection), t, "error clearing collection")
+	require.NoError(t, db.ClearCollections(host.Collection, build.Collection, VersionCollection), t, "error clearing collection")
 	assert := assert.New(t)
 	require := require.New(t)
 	var err error
-
-	pRef := &ProjectRef{
-		Identifier:  "my_project",
-		LocalConfig: sampleProjYmlTaskGroups,
-	}
-	assert.NoError(pRef.Insert())
 
 	d := &distro.Distro{
 		Id: "my_distro",
@@ -2654,7 +2644,10 @@ func TestTryResetTaskGroup(t *testing.T) {
 			Version: evergreen.PlannerVersionLegacy,
 		},
 	}
-	v := Version{Id: "abc"}
+	v := Version{
+		Id:     "abc",
+		Config: sampleProjYmlTaskGroups,
+	}
 	assert.NoError(v.Insert())
 	h := &host.Host{
 		Id:          "h1",
