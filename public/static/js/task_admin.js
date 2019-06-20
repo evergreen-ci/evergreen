@@ -71,7 +71,7 @@ mciModule.controller('AdminOptionsCtrl', ['$scope', '$window', '$rootScope', 'mc
                 },
                 error: function(resp) {
                     notifier.pushNotification('Error restarting: ' + resp.data,'errorModal');
-                    doModalFailure("Error restarting: " + resp.data, resp.data, $scope.task.display_only);
+                    doModalFailure("Error restarting: " + resp.data);
                 }
             }
         );
