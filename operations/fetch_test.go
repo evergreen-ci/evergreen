@@ -35,14 +35,14 @@ func TestClone(t *testing.T) {
 			branch:     "master",
 			token:      token,
 		}},
-		"InvalidRevision": {isPassing: true, opts: cloneOptions{
+		"InvalidRevision": {isPassing: false, opts: cloneOptions{
 			owner:      "evergreen-ci",
 			repository: "sample",
 			revision:   "9999999999999999999999999999999999999999",
 			branch:     "master",
 			token:      token,
 		}},
-		"InvalidToken": {isPassing: true, opts: cloneOptions{
+		"InvalidToken": {isPassing: false, opts: cloneOptions{
 			owner:      "10gen",
 			repository: "kernel-tools",
 			revision:   "cabca3defc4b251c8a0be268969606717e01f906",
