@@ -26,18 +26,18 @@ type TaskGroupData struct {
 
 func UtilizationBasedHostAllocator(ctx context.Context, hostAllocatorData HostAllocatorData) (int, error) {
 	distro := hostAllocatorData.Distro
-	if len(hostAllocatorData.ExistingHosts) >= distro.PoolSize {
+	nExistingHosts := len(hostAllocatorData.ExistingHosts)
+	if nExistingHosts >= distro.PoolSize {
 		return 0, nil
 	}
 
 	// split tasks/hosts by task group (including those with no group) and find # of hosts needed for each
-	nNewHosts := 0
 	taskGroupingBeginsAt := time.Now()
-
 	taskGroupDatas := groupByTaskGroup(hostAllocatorData.ExistingHosts, hostAllocatorData.DistroQueueInfo)
-	taskGroupingRuntime := time.Since(taskGroupingBeginsAt)
+	taskGroupingDuration := time.Since(taskGroupingBeginsAt)
 
-	calcNumHostsBeginsAt := time.Now()
+	nNewHostsRequired := 0
+	allocationCalcBeginsAt := time.Now()
 	for name, taskGroupData := range taskGroupDatas {
 		var maxHosts int
 		if name == "" {
@@ -64,22 +64,91 @@ func UtilizationBasedHostAllocator(ctx context.Context, hostAllocatorData HostAl
 		}
 
 		// add up total number of hosts needed for all groups
-		nNewHosts += n
+		nNewHostsRequired += n
 	}
-	calcNumHostsRuntime := time.Since(calcNumHostsBeginsAt)
+	allocationCalcDuration := time.Since(allocationCalcBeginsAt)
+
+	// Will at least distro.PlannerSettings.MinimumHosts be running once nNewHostsRequired are up and running?
+	minimumHostsThreshold := distro.PlannerSettings.MinimumHosts
+	nExistingAndRequiredHosts := nExistingHosts + nNewHostsRequired
+	nAdditionalHostsToMeetMinimum := 0
+	if nExistingAndRequiredHosts < minimumHostsThreshold {
+		nAdditionalHostsToMeetMinimum = minimumHostsThreshold - nExistingAndRequiredHosts
+	}
 
 	grip.Info(message.Fields{
-		"runner":         RunnerName,
-		"distro":         distro.Id,
-		"num_new_hosts":  nNewHosts,
-		"message":        "requesting new hosts",
-		"group_dur_secs": taskGroupingRuntime.Seconds(),
-		"group_num":      len(taskGroupDatas),
-		"calc_dur_secs":  calcNumHostsRuntime.Seconds(),
+		"runner":                               RunnerName,
+		"message":                              "requesting new hosts",
+		"distro":                               distro.Id,
+		"group_dur_secs":                       taskGroupingDuration.Seconds(),
+		"group_num":                            len(taskGroupDatas),
+		"minimum_hosts_for_distro":             minimumHostsThreshold,
+		"num_existing_hosts":                   nExistingHosts,
+		"num_new_hosts_required:":              nNewHostsRequired,
+		"num_additional_hosts_to_meet_minimum": nAdditionalHostsToMeetMinimum,
+		"total_new_hosts_to_request":           nNewHostsRequired + nAdditionalHostsToMeetMinimum,
+		"calc_dur_secs":                        allocationCalcDuration.Seconds(),
 	})
 
-	return nNewHosts, nil
+	return (nNewHostsRequired + nAdditionalHostsToMeetMinimum), nil
 }
+
+// func UtilizationBasedHostAllocator(ctx context.Context, hostAllocatorData HostAllocatorData) (int, error) {
+// 	distro := hostAllocatorData.Distro
+// 	if len(hostAllocatorData.ExistingHosts) >= distro.PoolSize {
+// 		return 0, nil
+// 	}
+//
+// 	// split tasks/hosts by task group (including those with no group) and find # of hosts needed for each
+// 	nNewHosts := 0
+// 	taskGroupingBeginsAt := time.Now()
+//
+// 	taskGroupDatas := groupByTaskGroup(hostAllocatorData.ExistingHosts, hostAllocatorData.DistroQueueInfo)
+// 	taskGroupingRuntime := time.Since(taskGroupingBeginsAt)
+//
+// 	calcNumHostsBeginsAt := time.Now()
+// 	for name, taskGroupData := range taskGroupDatas {
+// 		var maxHosts int
+// 		if name == "" {
+// 			maxHosts = distro.PoolSize
+// 		} else {
+// 			if taskGroupData.Info.Count == 0 {
+// 				continue // skip this group if there are no tasks in the queue for it
+// 			}
+// 			maxHosts = taskGroupData.Info.MaxHosts
+// 		}
+//
+// 		// calculate number of hosts needed for this group
+// 		n, err := evalHostUtilization(
+// 			ctx,
+// 			distro,
+// 			taskGroupData,
+// 			hostAllocatorData.FreeHostFraction,
+// 			hostAllocatorData.ContainerPool,
+// 			hostAllocatorData.DistroQueueInfo.MaxDurationThreshold,
+// 			maxHosts)
+//
+// 		if err != nil {
+// 			return 0, errors.Wrapf(err, "error calculating hosts for distro %s", distro.Id)
+// 		}
+//
+// 		// add up total number of hosts needed for all groups
+// 		nNewHosts += n
+// 	}
+// 	calcNumHostsRuntime := time.Since(calcNumHostsBeginsAt)
+//
+// 	grip.Info(message.Fields{
+// 		"runner":         RunnerName,
+// 		"distro":         distro.Id,
+// 		"num_new_hosts":  nNewHosts,
+// 		"message":        "requesting new hosts",
+// 		"group_dur_secs": taskGroupingRuntime.Seconds(),
+// 		"group_num":      len(taskGroupDatas),
+// 		"calc_dur_secs":  calcNumHostsRuntime.Seconds(),
+// 	})
+//
+// 	return nNewHosts, nil
+// }
 
 // Calculate the number of hosts needed by taking the total task scheduled task time
 // and dividing it by the target duration. Request however many hosts are needed to
