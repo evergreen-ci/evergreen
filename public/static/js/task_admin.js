@@ -38,6 +38,15 @@ mciModule.controller('AdminOptionsCtrl', ['$scope', '$window', '$rootScope', 'mc
         }
     }
 
+    function doModalFailure(message, data, reload){
+        $scope.closeAdminModal();
+        if (reload) {
+          $window.location.reload();
+        } else {
+          notifier.pushNotification(message, 'notifyHeader', 'error');
+        }
+    }
+
 	$scope.abort = function() {
         taskRestService.takeActionOnTask(
             $scope.taskId,
@@ -66,6 +75,7 @@ mciModule.controller('AdminOptionsCtrl', ['$scope', '$window', '$rootScope', 'mc
                 },
                 error: function(resp) {
                     notifier.pushNotification('Error restarting: ' + resp.data,'errorModal');
+                    doModalFailure("Error restarting: " + resp.data, resp.data, $scope.task.display_only);
                 }
             }
         );
