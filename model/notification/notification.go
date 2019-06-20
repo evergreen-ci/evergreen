@@ -193,13 +193,9 @@ func (n *Notification) Composer() (message.Composer, error) {
 		if !ok || payload == nil {
 			return nil, errors.New("github-merge payload is invalid")
 		}
-		payload.Owner = sub.Owner
-		payload.Repo = sub.Repo
-		payload.CommitMessage = sub.CommitMessage
-		payload.CommitTitle = sub.CommitTitle
-		payload.Ref = sub.Ref
-		payload.PRNum = sub.PRNumber
+		payload.PRs = sub.PRs
 		payload.MergeMethod = sub.MergeMethod
+		payload.Item = sub.Item
 
 		return commitqueue.NewGithubMergePRMessage(level.Notice, *payload), nil
 
