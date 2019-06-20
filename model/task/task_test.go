@@ -1202,3 +1202,23 @@ func TestGetTimeSpent(t *testing.T) {
 	assert.EqualValues(0, timeTaken)
 	assert.EqualValues(0, makespan)
 }
+
+func TestUpdateDependencies(t *testing.T) {
+	assert.NoError(t, db.ClearCollections(Collection))
+	t1 := &Task{
+		Id: "t1",
+	}
+	assert.NoError(t, t1.Insert())
+
+	dependsOn := []Dependency{
+		{
+			TaskId: "t2",
+		},
+	}
+
+	t1.UpdateDependencies(dependsOn)
+	assert.Len(t, t1.DependsOn, 1)
+	dbT1, err := FindOneId("t1")
+	assert.NoError(t, err)
+	assert.Len(t, dbT1.DependsOn, 1)
+}

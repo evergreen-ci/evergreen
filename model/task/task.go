@@ -1719,3 +1719,17 @@ func GetTimeSpent(tasks []Task) (time.Duration, time.Duration) {
 
 	return timeTaken, latestFinishTime.Sub(earliestStartTime)
 }
+
+// UpdateDependencies replaces the dependencies of a task with
+// the dependencies provided
+func (t *Task) UpdateDependencies(dependsOn []Dependency) error {
+	t.DependsOn = dependsOn
+	return UpdateOne(
+		bson.M{
+			IdKey: t.Id,
+		},
+		bson.M{
+			"$set": bson.M{DependsOnKey: dependsOn},
+		},
+	)
+}

@@ -172,7 +172,7 @@ func (g *GeneratedProject) Save(ctx context.Context, p *Project, v *Version, t *
 	}
 
 	if v.Requester == evergreen.MergeTestRequester && p.ContainsMergeTask() {
-		if err = updateMergeTaskDependencies(p, v); err != nil {
+		if err = v.UpdateMergeTaskDependencies(p); err != nil {
 			return errors.Wrap(err, "error updating merge task")
 		}
 	}
@@ -397,22 +397,4 @@ func (g *GeneratedProject) validateGeneratedProject(p *Project, cachedProject pr
 	g.validateNoRecursiveGenerateTasks(cachedProject, catcher)
 
 	return errors.WithStack(catcher.Resolve())
-}
-
-func updateMergeTaskDependencies(p *Project, v *Version) error {
-	execPairs, _, err := p.BuildProjectTVPairsWithAlias(evergreen.CommitQueueAlias)
-	if err != nil {
-		return errors.Wrap(err, "can't get alias pairs")
-	}
-
-	execTaskIDTable := NewTaskIdTable(p, v, "", "").ExecutionTasks
-	mergeTaskDependencies := make([]task.Dependency, 0, len(execPairs))
-	for _, pair := range execPairs {
-		depID := execTaskIDTable.GetId(pair.Variant, pair.TaskName)
-		mergeTaskDependencies = append(mergeTaskDependencies, task.Dependency{TaskId: depID, Status: evergreen.TaskSucceeded})
-	}
-
-	// update task in the database
-	mergeTaskID := execTaskIDTable.GetId(evergreen.MergeTaskVariant, evergreen.MergeTaskName)
-	return task.UpdateOne(bson.M{task.IdKey: mergeTaskID}, bson.M{"$set": bson.M{task.DependsOnKey: mergeTaskDependencies}})
 }
