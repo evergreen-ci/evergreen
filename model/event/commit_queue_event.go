@@ -18,6 +18,14 @@ const (
 	CommitQueueConcludeTest = "CONCLUDE_TEST"
 )
 
+type PRInfo struct {
+	Owner       string `bson:"owner"`
+	Repo        string `bson:"repo"`
+	Ref         string `bson:"ref"`
+	PRNum       int    `bson:"pr_number"`
+	CommitTitle string `bson:"commit_title"`
+}
+
 func logCommitQueueEvent(patchID, eventType string, data *CommitQueueEventData) {
 	event := EventLogEntry{
 		Timestamp:    time.Now().Truncate(0).Round(time.Millisecond),
