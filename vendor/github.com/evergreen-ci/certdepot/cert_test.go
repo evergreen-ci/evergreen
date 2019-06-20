@@ -398,7 +398,7 @@ func TestInMemory(t *testing.T) {
 
 			for subTestName, subTestCase := range map[string]func(t *testing.T, name string){
 				"Succeeds": func(t *testing.T, name string) {
-					csr, _, err := opts.CertRequestInMemory(d)
+					csr, _, err := opts.CertRequestInMemory()
 					require.NoError(t, err)
 
 					rawCSR, err := csr.GetRawCertificateSigningRequest()
@@ -411,7 +411,7 @@ func TestInMemory(t *testing.T) {
 				},
 				"SucceedsAfterCertRequestInDepot": func(t *testing.T, name string) {
 					require.NoError(t, opts.CertRequest(d))
-					csr, key, err := opts.CertRequestInMemory(d)
+					csr, key, err := opts.CertRequestInMemory()
 					require.NoError(t, err)
 
 					pemCSR, pemKey := exportCSRAndKey(t, csr, key)
@@ -426,7 +426,7 @@ func TestInMemory(t *testing.T) {
 					assert.Equal(t, dbKey, pemKey)
 				},
 				"ReturnsIdenticalAsSubsequentCertRequest": func(t *testing.T, name string) {
-					csr, key, err := opts.CertRequestInMemory(d)
+					csr, key, err := opts.CertRequestInMemory()
 					require.NoError(t, err)
 					pemCSR, pemKey := exportCSRAndKey(t, csr, key)
 
@@ -440,11 +440,11 @@ func TestInMemory(t *testing.T) {
 					assert.Equal(t, dbKey, pemKey)
 				},
 				"ReturnsIdenticalOnSubsequentCalls": func(t *testing.T, name string) {
-					csr, key, err := opts.CertRequestInMemory(d)
+					csr, key, err := opts.CertRequestInMemory()
 					require.NoError(t, err)
 					pemCSR, pemKey := exportCSRAndKey(t, csr, key)
 
-					sameCSR, sameKey, err := opts.CertRequestInMemory(d)
+					sameCSR, sameKey, err := opts.CertRequestInMemory()
 					require.NoError(t, err)
 					pemSameCSR, pemSameKey := exportCSRAndKey(t, sameCSR, sameKey)
 
@@ -476,7 +476,7 @@ func TestInMemory(t *testing.T) {
 					assert.Error(t, opts.PutCertRequestFromMemory(d))
 				},
 				"SucceedsAfterCertRequestInMemory": func(t *testing.T, name string) {
-					csr, key, err := opts.CertRequestInMemory(d)
+					csr, key, err := opts.CertRequestInMemory()
 					require.NoError(t, err)
 					require.NoError(t, opts.PutCertRequestFromMemory(d))
 
@@ -524,7 +524,7 @@ func TestInMemory(t *testing.T) {
 					assert.Error(t, opts.PutCertRequestFromMemory(d))
 				},
 				"SucceedsAfterCertRequestInMemory": func(t *testing.T, name string) {
-					_, _, err := opts.CertRequestInMemory(d)
+					_, _, err := opts.CertRequestInMemory()
 					require.NoError(t, err)
 					crt, err := opts.SignInMemory(d)
 					require.NoError(t, err)
@@ -544,7 +544,7 @@ func TestInMemory(t *testing.T) {
 					checkMatchingCert(t, opts, rawCrt)
 				},
 				"ReturnsIdenticalAsSubsequentSign": func(t *testing.T, name string) {
-					_, _, err := opts.CertRequestInMemory(d)
+					_, _, err := opts.CertRequestInMemory()
 					require.NoError(t, err)
 
 					crt, err := opts.SignInMemory(d)
@@ -561,7 +561,7 @@ func TestInMemory(t *testing.T) {
 					assert.Equal(t, dbCrt, pemCrt)
 				},
 				"ReturnsIdenticalOnSubsequentCalls": func(t *testing.T, name string) {
-					_, _, err := opts.CertRequestInMemory(d)
+					_, _, err := opts.CertRequestInMemory()
 					require.NoError(t, err)
 
 					crt, err := opts.SignInMemory(d)
@@ -599,7 +599,7 @@ func TestInMemory(t *testing.T) {
 					assert.Error(t, opts.PutCertFromMemory(d))
 				},
 				"SucceedsWithSignInMemory": func(t *testing.T, name string) {
-					_, _, err := opts.CertRequestInMemory(d)
+					_, _, err := opts.CertRequestInMemory()
 					require.NoError(t, err)
 					cert, err := opts.SignInMemory(d)
 					require.NoError(t, err)

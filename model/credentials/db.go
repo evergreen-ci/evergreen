@@ -84,11 +84,11 @@ func mongoConfig(settings *evergreen.Settings) *certdepot.MongoDBOptions {
 }
 
 // getDepot returns the certificate depot connected to the database.
-func getDepot(ctx context.Context, env evergreen.Environment) (depot.Depot, error) {
+func getDepot(ctx context.Context, env evergreen.Environment) (certdepot.Depot, error) {
 	return certdepot.NewMongoDBCertDepotWithClient(ctx, env.Client(), mongoConfig(env.Settings()))
 }
 
-func deleteIfExists(dpt depot.Depot, tags ...*depot.Tag) error {
+func deleteIfExists(dpt certdepot.Depot, tags ...*depot.Tag) error {
 	catcher := grip.NewBasicCatcher()
 	for _, tag := range tags {
 		if dpt.Check(tag) {
@@ -111,14 +111,14 @@ func SaveCredentials(ctx context.Context, env evergreen.Environment, name string
 		return errors.Wrap(err, "could not get depot")
 	}
 
-	if err := deleteIfExists(dpt, depot.PrivKeyTag(name), depot.CrtTag(name)); err != nil {
+	if err := deleteIfExists(dpt, certdepot.PrivKeyTag(name), certdepot.CrtTag(name)); err != nil {
 		return errors.Wrap(err, "problem deleting existing key")
 	}
 
-	if err := dpt.Put(depot.PrivKeyTag(name), creds.Key); err != nil {
+	if err := dpt.Put(certdepot.PrivKeyTag(name), creds.Key); err != nil {
 		return errors.Wrap(err, "problem saving key")
 	}
-	if err := dpt.Put(depot.CrtTag(name), creds.Cert); err != nil {
+	if err := dpt.Put(certdepot.CrtTag(name), creds.Cert); err != nil {
 		return errors.Wrap(err, "problem saving certificate")
 	}
 	return nil
@@ -144,12 +144,12 @@ func GenerateInMemory(ctx context.Context, env evergreen.Environment, name strin
 		return nil, errors.Wrap(err, "could not get depot")
 	}
 
-	pemCACrt, err := dpt.Get(depot.CrtTag(CAName))
+	pemCACrt, err := dpt.Get(certdepot.CrtTag(CAName))
 	if err != nil {
 		return nil, errors.Wrap(err, "problem getting CA certificate")
 	}
 
-	_, key, err := opts.CertRequestInMemory(dpt)
+	_, key, err := opts.CertRequestInMemory()
 	if err != nil {
 		return nil, errors.Wrap(err, "problem making certificate request and key")
 	}
@@ -183,17 +183,17 @@ func FindByID(ctx context.Context, env evergreen.Environment, name string) (*rpc
 		return nil, errors.Wrap(err, "could not get depot")
 	}
 
-	caCrt, err := dpt.Get(depot.CrtTag(CAName))
+	caCrt, err := dpt.Get(certdepot.CrtTag(CAName))
 	if err != nil {
 		return nil, errors.Wrap(err, "problem getting CA certificate")
 	}
 
-	crt, err := dpt.Get(depot.CrtTag(name))
+	crt, err := dpt.Get(certdepot.CrtTag(name))
 	if err != nil {
 		return nil, errors.Wrap(err, "problem getting certificate")
 	}
 
-	key, err := dpt.Get(depot.PrivKeyTag(name))
+	key, err := dpt.Get(certdepot.PrivKeyTag(name))
 	if err != nil {
 		return nil, errors.Wrap(err, "problem getting key")
 	}
@@ -212,5 +212,5 @@ func DeleteCredentials(ctx context.Context, env evergreen.Environment, name stri
 		return errors.Wrap(err, "could not get depot")
 	}
 
-	return deleteIfExists(dpt, depot.PrivKeyTag(name), depot.CrtTag(name))
+	return deleteIfExists(dpt, certdepot.PrivKeyTag(name), certdepot.CrtTag(name))
 }

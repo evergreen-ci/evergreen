@@ -21,7 +21,7 @@ type mongoDepot struct {
 
 // NewMongoDBCertDepot returns a new cert depot backed by MongoDB using the
 // mongo driver.
-func NewMongoDBCertDepot(ctx context.Context, opts *MongoDBOptions) (depot.Depot, error) {
+func NewMongoDBCertDepot(ctx context.Context, opts *MongoDBOptions) (Depot, error) {
 	if err := opts.validate(); err != nil {
 		return nil, errors.Wrap(err, "invalid options")
 	}
@@ -41,7 +41,7 @@ func NewMongoDBCertDepot(ctx context.Context, opts *MongoDBOptions) (depot.Depot
 
 // NewMongoDBCertDepotWithClient returns a new cert depot backed by MongoDB
 // using the provided mongo driver client.
-func NewMongoDBCertDepotWithClient(ctx context.Context, client *mongo.Client, opts *MongoDBOptions) (depot.Depot, error) {
+func NewMongoDBCertDepotWithClient(ctx context.Context, client *mongo.Client, opts *MongoDBOptions) (Depot, error) {
 	if client == nil {
 		return nil, errors.New("must specify a non-nil client")
 	}

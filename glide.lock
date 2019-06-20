@@ -125,7 +125,7 @@ imports:
     version: 305bc4a5e4131420fe8ba5628e6faa9e6ade4e86
 
   - name: github.com/evergreen-ci/certdepot
-    version: 06399e7b5098b8e28479a6b289d1343cbb6ea75f
+    version: 3063bc24913930d8f13a827a0ce1bb8b0c649ae0
   - name: github.com/square/certstrap
     version: a0ea37d7c3834c63c247ab2083acf9d4657b19cd
 

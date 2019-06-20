@@ -66,7 +66,9 @@ type CertificateOptions struct {
 }
 
 // Init initializes a new CA.
-func (opts *CertificateOptions) Init(d depot.Depot) error {
+func (opts *CertificateOptions) Init(wd Depot) error {
+	d := depot.Depot(wd)
+
 	if opts.CommonName == "" {
 		return errors.New("must provide common name of CA")
 	}
@@ -139,12 +141,12 @@ func (opts *CertificateOptions) Reset() {
 
 // CertRequest creates a new certificate signing request (CSR) and key and puts
 // them in the depot.
-func (opts *CertificateOptions) CertRequest(d depot.Depot) error {
-	if _, _, err := opts.CertRequestInMemory(d); err != nil {
+func (opts *CertificateOptions) CertRequest(wd Depot) error {
+	if _, _, err := opts.CertRequestInMemory(); err != nil {
 		return errors.Wrap(err, "problem creating cert request and key")
 	}
 
-	return opts.PutCertRequestFromMemory(d)
+	return opts.PutCertRequestFromMemory(wd)
 }
 
 func (opts *CertificateOptions) certRequestedInMemory() bool {
@@ -154,7 +156,7 @@ func (opts *CertificateOptions) certRequestedInMemory() bool {
 // CertRequestInMemory is the same as CertRequest but returns the resulting
 // certificate signing request and private key without putting them in the
 // depot. Use PutCertRequestFromMemory to put the certificate in the depot.
-func (opts *CertificateOptions) CertRequestInMemory(d depot.Depot) (*pkix.CertificateSigningRequest, *pkix.Key, error) {
+func (opts *CertificateOptions) CertRequestInMemory() (*pkix.CertificateSigningRequest, *pkix.Key, error) {
 	if opts.certRequestedInMemory() {
 		return opts.csr, opts.key, nil
 	}
@@ -203,7 +205,7 @@ func (opts *CertificateOptions) CertRequestInMemory(d depot.Depot) (*pkix.Certif
 
 // PutCertRequestFromMemory stores the certificate request and key generated
 // from the options in the depot.
-func (opts *CertificateOptions) PutCertRequestFromMemory(d depot.Depot) error {
+func (opts *CertificateOptions) PutCertRequestFromMemory(wd depot.Depot) error {
 	if !opts.certRequestedInMemory() {
 		return errors.New("must make cert request first before putting into depot")
 	}
@@ -213,20 +215,20 @@ func (opts *CertificateOptions) PutCertRequestFromMemory(d depot.Depot) error {
 		return errors.Wrap(err, "problem getting formatted name")
 	}
 
-	if depot.CheckCertificateSigningRequest(d, formattedName) || depot.CheckPrivateKey(d, formattedName) {
+	if depot.CheckCertificateSigningRequest(wd, formattedName) || depot.CheckPrivateKey(wd, formattedName) {
 		return errors.New("certificate request has existed")
 	}
 
-	if err = depot.PutCertificateSigningRequest(d, formattedName, opts.csr); err != nil {
+	if err = depot.PutCertificateSigningRequest(wd, formattedName, opts.csr); err != nil {
 		return errors.Wrap(err, "problem saving certificate request")
 	}
 
 	if opts.Passphrase != "" {
-		if err = depot.PutEncryptedPrivateKey(d, formattedName, opts.key, []byte(opts.Passphrase)); err != nil {
+		if err = depot.PutEncryptedPrivateKey(wd, formattedName, opts.key, []byte(opts.Passphrase)); err != nil {
 			return errors.Wrap(err, "problem saving encrypted private key")
 		}
 	} else {
-		if err = depot.PutPrivateKey(d, formattedName, opts.key); err != nil {
+		if err = depot.PutPrivateKey(wd, formattedName, opts.key); err != nil {
 			return errors.Wrap(err, "problem saving private key error")
 		}
 	}
@@ -235,13 +237,13 @@ func (opts *CertificateOptions) PutCertRequestFromMemory(d depot.Depot) error {
 }
 
 // Sign signs a CSR with a given CA for a new certificate.
-func (opts *CertificateOptions) Sign(d depot.Depot) error {
-	_, err := opts.SignInMemory(d)
+func (opts *CertificateOptions) Sign(wd Depot) error {
+	_, err := opts.SignInMemory(wd)
 	if err != nil {
 		return errors.Wrap(err, "problem signing certificate request")
 	}
 
-	return opts.PutCertFromMemory(d)
+	return opts.PutCertFromMemory(wd)
 }
 
 func (opts *CertificateOptions) signedInMemory() bool {
@@ -251,7 +253,9 @@ func (opts *CertificateOptions) signedInMemory() bool {
 // SignInMemory is the same as Sign but returns the resulting certificate
 // without putting it in the depot. Use PutCertFromMemory to put the certificate
 // in the depot.
-func (opts *CertificateOptions) SignInMemory(d depot.Depot) (*pkix.Certificate, error) {
+func (opts *CertificateOptions) SignInMemory(wd Depot) (*pkix.Certificate, error) {
+	d := depot.Depot(wd)
+
 	if opts.signedInMemory() {
 		return opts.crt, nil
 	}
@@ -322,7 +326,9 @@ func (opts *CertificateOptions) SignInMemory(d depot.Depot) (*pkix.Certificate, 
 
 // PutCertFromMemory stores the certificate generated from the options in the
 // depot, along with the expiration TTL on the certificate.
-func (opts *CertificateOptions) PutCertFromMemory(d depot.Depot) error {
+func (opts *CertificateOptions) PutCertFromMemory(wd Depot) error {
+	d := depot.Depot(wd)
+
 	if !opts.signedInMemory() {
 		return errors.New("must sign cert first before putting into depot")
 	}
@@ -414,11 +420,11 @@ func getNameAndKey(tag *depot.Tag) (string, string) {
 
 // CreateCertificate is a convenience function for creating a certificate
 // request and signing it.
-func (opts *CertificateOptions) CreateCertificate(d depot.Depot) error {
-	if err := opts.CertRequest(d); err != nil {
+func (opts *CertificateOptions) CreateCertificate(wd Depot) error {
+	if err := opts.CertRequest(wd); err != nil {
 		return errors.Wrap(err, "problem creating the certificate request")
 	}
-	if err := opts.Sign(d); err != nil {
+	if err := opts.Sign(wd); err != nil {
 		return errors.Wrap(err, "problem signing the certificate request")
 	}
 
@@ -429,20 +435,21 @@ func (opts *CertificateOptions) CreateCertificate(d depot.Depot) error {
 // it expires within the duration `after` and creates a new certificate if
 // either condition is met. True is returned if a certificate is created,
 // false otherwise. If the certificate is a CA, the behavior is undefined.
-func (opts *CertificateOptions) CreateCertificateOnExpiration(d depot.Depot, after time.Duration) (bool, error) {
+func (opts *CertificateOptions) CreateCertificateOnExpiration(wd Depot, after time.Duration) (bool, error) {
+	d := depot.Depot(wd)
 	dne := true
 	var created bool
 	var err error
 
 	if depot.CheckCertificate(d, opts.CommonName) {
-		dne, err = DeleteOnExpiration(d, opts.CommonName, after)
+		dne, err = DeleteOnExpiration(wd, opts.CommonName, after)
 		if err != nil {
 			return created, errors.Wrap(err, "problem deleting expiring certificate")
 		}
 	}
 
 	if dne {
-		err = opts.CreateCertificate(d)
+		err = opts.CreateCertificate(wd)
 		created = true
 	}
 
@@ -450,8 +457,8 @@ func (opts *CertificateOptions) CreateCertificateOnExpiration(d depot.Depot, aft
 }
 
 // ValidityBounds returns the date range for which the certificate is valid.
-func ValidityBounds(d depot.Depot, name string) (time.Time, time.Time, error) {
-	rawCert, err := getRawCertificate(d, name)
+func ValidityBounds(wd Depot, name string) (time.Time, time.Time, error) {
+	rawCert, err := getRawCertificate(depot.Depot(wd), name)
 	if err != nil {
 		return time.Time{}, time.Time{}, errors.Wrap(err, "problem getting raw certificate")
 	}
@@ -462,7 +469,8 @@ func ValidityBounds(d depot.Depot, name string) (time.Time, time.Time, error) {
 // DeleteOnExpiration deletes the given certificate from the depot if it has an
 // expiration date within the duration `after`. True is returned if the
 // certificate is deleted, false otherwise.
-func DeleteOnExpiration(d depot.Depot, name string, after time.Duration) (bool, error) {
+func DeleteOnExpiration(wd Depot, name string, after time.Duration) (bool, error) {
+	d := depot.Depot(wd)
 	var deleted bool
 
 	if !depot.CheckCertificate(d, name) {
