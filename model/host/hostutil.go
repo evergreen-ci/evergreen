@@ -159,7 +159,7 @@ func initSystemCommand() string {
 
 // FetchAndReinstallJasperCommand returns the command to fetch Jasper and
 // restart the service with the latest version.
-func (h *Host) FetchAndReinstallJasperCommand(config evergreen.JasperConfig) string {
+func (h *Host) FetchAndReinstallJasperCommand(config evergreen.HostJasperConfig) string {
 	return strings.Join([]string{
 		h.FetchJasperCommand(config),
 		h.ForceReinstallJasperCommand(config),
@@ -169,7 +169,7 @@ func (h *Host) FetchAndReinstallJasperCommand(config evergreen.JasperConfig) str
 // ForceReinstallJasperCommand returns the command to stop the Jasper service,
 // delete the current Jasper service configuration (if it exists), install the
 // new configuration, and restart the service.
-func (h *Host) ForceReinstallJasperCommand(config evergreen.JasperConfig) string {
+func (h *Host) ForceReinstallJasperCommand(config evergreen.HostJasperConfig) string {
 	port := config.Port
 	if port == 0 {
 		port = evergreen.DefaultJasperPort
@@ -177,7 +177,7 @@ func (h *Host) ForceReinstallJasperCommand(config evergreen.JasperConfig) string
 	return h.jasperServiceCommand(config, "force-reinstall", fmt.Sprintf("--port=%d", port))
 }
 
-func (h *Host) jasperServiceCommand(config evergreen.JasperConfig, subCmd string, args ...string) string {
+func (h *Host) jasperServiceCommand(config evergreen.HostJasperConfig, subCmd string, args ...string) string {
 	binaryPath := filepath.Join(h.Distro.CuratorDir, h.jasperBinaryFileName(config))
 	cmd := fmt.Sprintf("%s jasper service %s rpc %s", binaryPath, subCmd, strings.Join(args, " "))
 	// Jasper service commands need elevated privileges to execute. On Windows,
@@ -190,11 +190,11 @@ func (h *Host) jasperServiceCommand(config evergreen.JasperConfig, subCmd string
 
 // FetchJasperCommand builds the command to download and extract the Jasper
 // binary into the distro-specific binary directory.
-func (h *Host) FetchJasperCommand(config evergreen.JasperConfig) string {
+func (h *Host) FetchJasperCommand(config evergreen.HostJasperConfig) string {
 	return strings.Join(h.fetchJasperCommands(config), " && ")
 }
 
-func (h *Host) fetchJasperCommands(config evergreen.JasperConfig) []string {
+func (h *Host) fetchJasperCommands(config evergreen.HostJasperConfig) []string {
 	downloadedFile := h.jasperDownloadedFileName(config)
 	extractedFile := h.jasperBinaryFileName(config)
 	return []string{
@@ -208,7 +208,7 @@ func (h *Host) fetchJasperCommands(config evergreen.JasperConfig) []string {
 
 // FetchJasperCommandWithPath is the same as FetchJasperCommand but sets the
 // PATH variable to path for each command.
-func (h *Host) FetchJasperCommandWithPath(config evergreen.JasperConfig, path string) string {
+func (h *Host) FetchJasperCommandWithPath(config evergreen.HostJasperConfig, path string) string {
 	cmds := h.fetchJasperCommands(config)
 	for i := range cmds {
 		cmds[i] = fmt.Sprintf("PATH=%s %s", path, cmds[i])
@@ -216,12 +216,12 @@ func (h *Host) FetchJasperCommandWithPath(config evergreen.JasperConfig, path st
 	return strings.Join(cmds, " && ")
 }
 
-func (h *Host) jasperDownloadedFileName(config evergreen.JasperConfig) string {
+func (h *Host) jasperDownloadedFileName(config evergreen.HostJasperConfig) string {
 	os, arch := h.Distro.Platform()
 	return fmt.Sprintf("%s-%s-%s-%s.tar.gz", config.DownloadFileName, os, arch, config.Version)
 }
 
-func (h *Host) jasperBinaryFileName(config evergreen.JasperConfig) string {
+func (h *Host) jasperBinaryFileName(config evergreen.HostJasperConfig) string {
 	if h.Distro.IsWindows() {
 		return config.BinaryName + ".exe"
 	}
@@ -229,7 +229,7 @@ func (h *Host) jasperBinaryFileName(config evergreen.JasperConfig) string {
 }
 
 // BootstrapScript creates the user data script to bootstrap the host.
-func (h *Host) BootstrapScript(config evergreen.JasperConfig) string {
+func (h *Host) BootstrapScript(config evergreen.HostJasperConfig) string {
 	if h.Distro.IsWindows() {
 		cmds := []string{
 			h.FetchJasperCommandWithPath(config, "/bin"),
@@ -261,12 +261,8 @@ func (h *Host) RunSSHJasperRequest(ctx context.Context, env evergreen.Environmen
 		return "", err
 	}
 
-	config := env.Settings().JasperConfig
+	config := env.Settings().HostJasper
 	binaryPath := h.jasperBinaryFileName(config)
-	port := config.Port
-	if port == 0 {
-		port = evergreen.DefaultJasperPort
-	}
 
 	output := &util.CappedWriter{
 		Buffer:   &bytes.Buffer{},

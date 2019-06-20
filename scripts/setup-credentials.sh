@@ -55,7 +55,4 @@ plugins:
   manifest:
     github_token: "$GITHUB_TOKEN"
 github_pr_creator_org: "10gen"
-
-jasper:
-  port: 12345
 EOF

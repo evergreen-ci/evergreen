@@ -138,7 +138,7 @@ func MockConfig() *evergreen.Settings {
 		HostInit: evergreen.HostInitConfig{
 			SSHTimeoutSeconds: 10,
 		},
-		JasperConfig: evergreen.JasperConfig{
+		HostJasper: evergreen.HostJasperConfig{
 			BinaryName:       "binary",
 			DownloadFileName: "download",
 			Port:             12345,

@@ -39,7 +39,7 @@ func resetRegistry() error {
 		&CommitQueueConfig{},
 		&ContainerPoolsConfig{},
 		&HostInitConfig{},
-		&JasperConfig{},
+		&HostJasperConfig{},
 		&JiraConfig{},
 		&LoggerConfig{},
 		&NotifyConfig{},

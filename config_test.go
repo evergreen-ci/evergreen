@@ -656,8 +656,12 @@ func (s *AdminSuite) TestCommitQueueConfig() {
 	s.Equal(config, settings.CommitQueue)
 }
 
-func (s *AdminSuite) TestJasperConfig() {
-	config := JasperConfig{
+func (s *AdminSuite) TestHostJasperConfig() {
+	emptyConfig := HostJasperConfig{}
+	s.NoError(emptyConfig.ValidateAndDefault())
+	s.Equal(DefaultJasperPort, emptyConfig.Port)
+
+	config := HostJasperConfig{
 		BinaryName:       "foo",
 		DownloadFileName: "bar",
 		Port:             12345,
@@ -665,10 +669,11 @@ func (s *AdminSuite) TestJasperConfig() {
 		Version:          "baz",
 	}
 
+	s.NoError(config.ValidateAndDefault())
 	s.NoError(config.Set())
 
 	settings, err := GetConfig()
 	s.Require().NoError(err)
 
-	s.Equal(config, settings.JasperConfig)
+	s.Equal(config, settings.HostJasper)
 }
