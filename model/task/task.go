@@ -762,9 +762,6 @@ func (t *Task) MarkEnd(finishTime time.Time, detail *apimodels.TaskEndDetail) er
 				StartTimeKey:  t.StartTime,
 				LogsKey:       detail.Logs,
 			},
-			"$unset": bson.M{
-				AbortedKey: "",
-			},
 		})
 
 }
@@ -1126,13 +1123,17 @@ func (t *Task) Archive() error {
 	// this way restarts will never be set for new tasks but will be
 	// maintained for old ones
 	if t.Restarts > 0 {
-		update = bson.M{"$inc": bson.M{
-			ExecutionKey: 1,
-			RestartsKey:  1,
-		}}
+		update = bson.M{
+			"$inc": bson.M{
+				ExecutionKey: 1,
+				RestartsKey:  1,
+			},
+			"$unset": bson.M{AbortedKey: ""},
+		}
 	} else {
 		update = bson.M{
-			"$inc": bson.M{ExecutionKey: 1},
+			"$inc":   bson.M{ExecutionKey: 1},
+			"$unset": bson.M{AbortedKey: ""},
 		}
 	}
 	err := UpdateOne(
@@ -1150,6 +1151,8 @@ func (t *Task) Archive() error {
 	if err != nil {
 		return errors.Wrap(err, "task.Archive() failed")
 	}
+
+	t.Aborted = false
 
 	err = event.UpdateExecutions(t.HostId, t.Id, t.Execution)
 	if err != nil {
