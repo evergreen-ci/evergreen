@@ -93,63 +93,6 @@ func UtilizationBasedHostAllocator(ctx context.Context, hostAllocatorData HostAl
 	return (nNewHostsRequired + nAdditionalHostsToMeetMinimum), nil
 }
 
-// func UtilizationBasedHostAllocator(ctx context.Context, hostAllocatorData HostAllocatorData) (int, error) {
-// 	distro := hostAllocatorData.Distro
-// 	if len(hostAllocatorData.ExistingHosts) >= distro.PoolSize {
-// 		return 0, nil
-// 	}
-//
-// 	// split tasks/hosts by task group (including those with no group) and find # of hosts needed for each
-// 	nNewHosts := 0
-// 	taskGroupingBeginsAt := time.Now()
-//
-// 	taskGroupDatas := groupByTaskGroup(hostAllocatorData.ExistingHosts, hostAllocatorData.DistroQueueInfo)
-// 	taskGroupingRuntime := time.Since(taskGroupingBeginsAt)
-//
-// 	calcNumHostsBeginsAt := time.Now()
-// 	for name, taskGroupData := range taskGroupDatas {
-// 		var maxHosts int
-// 		if name == "" {
-// 			maxHosts = distro.PoolSize
-// 		} else {
-// 			if taskGroupData.Info.Count == 0 {
-// 				continue // skip this group if there are no tasks in the queue for it
-// 			}
-// 			maxHosts = taskGroupData.Info.MaxHosts
-// 		}
-//
-// 		// calculate number of hosts needed for this group
-// 		n, err := evalHostUtilization(
-// 			ctx,
-// 			distro,
-// 			taskGroupData,
-// 			hostAllocatorData.FreeHostFraction,
-// 			hostAllocatorData.ContainerPool,
-// 			hostAllocatorData.DistroQueueInfo.MaxDurationThreshold,
-// 			maxHosts)
-//
-// 		if err != nil {
-// 			return 0, errors.Wrapf(err, "error calculating hosts for distro %s", distro.Id)
-// 		}
-//
-// 		// add up total number of hosts needed for all groups
-// 		nNewHosts += n
-// 	}
-// 	calcNumHostsRuntime := time.Since(calcNumHostsBeginsAt)
-//
-// 	grip.Info(message.Fields{
-// 		"runner":         RunnerName,
-// 		"distro":         distro.Id,
-// 		"num_new_hosts":  nNewHosts,
-// 		"message":        "requesting new hosts",
-// 		"group_dur_secs": taskGroupingRuntime.Seconds(),
-// 		"group_num":      len(taskGroupDatas),
-// 		"calc_dur_secs":  calcNumHostsRuntime.Seconds(),
-// 	})
-//
-// 	return nNewHosts, nil
-// }
-
 // Calculate the number of hosts needed by taking the total task scheduled task time
 // and dividing it by the target duration. Request however many hosts are needed to
 // achieve that minus the number of free hosts
