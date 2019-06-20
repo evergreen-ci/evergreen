@@ -715,7 +715,6 @@ mciModule.controller('PerfController', function PerfController(
     let getLegactHistory = function() {
       $http.get("/plugin/json/history/" + $scope.task.id + "/perf").then(function(resp){
         trendDataSuccess(resp.data);
-        $q.all([historyPromise, changePointsQ.catch(), buildFailuresQ.catch()]).then(onHistoryRetrieved, onHistoryRetrieved);
       }, function() {
         if (!$scope.allTrendSamples) {
           $scope.allTrendSamples = new TrendSamples([]);
@@ -742,6 +741,8 @@ mciModule.controller('PerfController', function PerfController(
       $scope.hideCanaries();
       setTimeout(drawTrendGraph, 0, $scope);
     };
+    $q.all([historyPromise, changePointsQ.catch(), buildFailuresQ.catch()])
+      .then(onHistoryRetrieved, onHistoryRetrieved);
   }
 
   if ($scope.conf.enabled){
