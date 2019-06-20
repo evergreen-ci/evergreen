@@ -5,8 +5,6 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
-	"regexp"
-	"strings"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
@@ -232,9 +230,9 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 	}
 
 	errs := []string{}
-	errs = append(errs, validateProjectAliases(responseRef.GitHubAliases, "GitHub Aliases")...)
-	errs = append(errs, validateProjectAliases(responseRef.CommitQueueAliases, "Commit Queue Aliases")...)
-	errs = append(errs, validateProjectAliases(responseRef.PatchAliases, "Patch Aliases")...)
+	errs = append(errs, model.ValidateProjectAliases(responseRef.GitHubAliases, "GitHub Aliases")...)
+	errs = append(errs, model.ValidateProjectAliases(responseRef.CommitQueueAliases, "Commit Queue Aliases")...)
+	errs = append(errs, model.ValidateProjectAliases(responseRef.PatchAliases, "Patch Aliases")...)
 	if len(errs) > 0 {
 		errMsg := ""
 		for _, err := range errs {
@@ -645,29 +643,4 @@ func (uis *UIServer) projectEvents(w http.ResponseWriter, r *http.Request) {
 		ViewData
 	}{id, uis.GetCommonViewData(w, r, true, true)}
 	uis.render.WriteResponse(w, http.StatusOK, data, "base", template, "base_angular.html", "menu.html")
-}
-
-func validateProjectAliases(aliases []model.ProjectAlias, aliasType string) []string {
-	errs := []string{}
-
-	for i, pd := range aliases {
-		if strings.TrimSpace(pd.Alias) == "" {
-			errs = append(errs, fmt.Sprintf("%s: alias name #%d can't be empty string", aliasType, i+1))
-		}
-		if strings.TrimSpace(pd.Variant) == "" {
-			errs = append(errs, fmt.Sprintf("%s: variant regex #%d can't be empty string", aliasType, i+1))
-		}
-		if (strings.TrimSpace(pd.Task) == "") == (len(pd.Tags) == 0) {
-			errs = append(errs, fmt.Sprintf("%s: must specify exactly one of task regex or tags on line #%d", aliasType, i+1))
-		}
-
-		if _, err := regexp.Compile(pd.Variant); err != nil {
-			errs = append(errs, fmt.Sprintf("%s: variant regex #%d is invalid", aliasType, i+1))
-		}
-		if _, err := regexp.Compile(pd.Task); err != nil {
-			errs = append(errs, fmt.Sprintf("%s: task regex #%d is invalid", aliasType, i+1))
-		}
-	}
-
-	return errs
 }

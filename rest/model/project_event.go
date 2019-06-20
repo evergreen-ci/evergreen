@@ -8,6 +8,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
+	"gopkg.in/mgo.v2/bson"
 )
 
 type APIProjectEvent struct {
@@ -36,6 +37,8 @@ type APIProjectAlias struct {
 	Variant APIString   `json:"variant"`
 	Task    APIString   `json:"task"`
 	Tags    []APIString `json:"tags,omitempty"`
+	Delete  bool        `json:"delete,omitempty"`
+	ID      APIString   `json:"_id,omitempty"`
 }
 
 func (e *APIProjectEvent) BuildFromService(h interface{}) error {
@@ -117,6 +120,52 @@ func (p *APIProjectVars) BuildFromService(h interface{}) error {
 		p.Vars = v.Vars
 	default:
 		return errors.New("Invalid type of the argument")
+	}
+	return nil
+}
+
+func (a *APIProjectAlias) ToService() (interface{}, error) {
+	tags := []string{}
+	for _, tag := range a.Tags {
+		tags = append(tags, FromAPIString(tag))
+	}
+
+	res := model.ProjectAlias{
+		Alias:   FromAPIString(a.Alias),
+		Task:    FromAPIString(a.Task),
+		Variant: FromAPIString(a.Variant),
+		Tags:    tags,
+	}
+	if bson.IsObjectIdHex(FromAPIString(a.ID)) {
+		res.ID = bson.ObjectIdHex(FromAPIString(a.ID))
+	}
+	return res, nil
+}
+
+func (a *APIProjectAlias) BuildFromService(h interface{}) error {
+	switch v := h.(type) {
+	case *model.ProjectAlias:
+		APITags := []APIString{}
+		for _, tag := range v.Tags {
+			APITags = append(APITags, ToAPIString(tag))
+		}
+		a.Alias = ToAPIString(v.Alias)
+		a.Variant = ToAPIString(v.Variant)
+		a.Task = ToAPIString(v.Task)
+		a.Tags = APITags
+		a.ID = ToAPIString(v.ID.Hex())
+	case model.ProjectAlias:
+		APITags := []APIString{}
+		for _, tag := range v.Tags {
+			APITags = append(APITags, ToAPIString(tag))
+		}
+		a.Alias = ToAPIString(v.Alias)
+		a.Variant = ToAPIString(v.Variant)
+		a.Task = ToAPIString(v.Task)
+		a.Tags = APITags
+		a.ID = ToAPIString(v.ID.Hex())
+	default:
+		return errors.New("Invalid type of argument")
 	}
 	return nil
 }

@@ -1,7 +1,9 @@
 package model
 
 import (
+	"fmt"
 	"regexp"
+	"strings"
 
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/util"
@@ -167,4 +169,28 @@ func (a ProjectAliases) HasMatchingTask(variant string, t *ProjectTask) (bool, e
 		}
 	}
 	return false, nil
+}
+
+func ValidateProjectAliases(aliases []ProjectAlias, aliasType string) []string {
+	errs := []string{}
+	for i, pd := range aliases {
+		if strings.TrimSpace(pd.Alias) == "" {
+			errs = append(errs, fmt.Sprintf("%s: alias name #%d can't be empty string", aliasType, i+1))
+		}
+		if strings.TrimSpace(pd.Variant) == "" {
+			errs = append(errs, fmt.Sprintf("%s: variant regex #%d can't be empty string", aliasType, i+1))
+		}
+		if (strings.TrimSpace(pd.Task) == "") == (len(pd.Tags) == 0) {
+			errs = append(errs, fmt.Sprintf("%s: must specify exactly one of task regex or tags on line #%d", aliasType, i+1))
+		}
+
+		if _, err := regexp.Compile(pd.Variant); err != nil {
+			errs = append(errs, fmt.Sprintf("%s: variant regex #%d is invalid", aliasType, i+1))
+		}
+		if _, err := regexp.Compile(pd.Task); err != nil {
+			errs = append(errs, fmt.Sprintf("%s: task regex #%d is invalid", aliasType, i+1))
+		}
+	}
+
+	return errs
 }
