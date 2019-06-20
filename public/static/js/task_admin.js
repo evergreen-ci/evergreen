@@ -38,13 +38,9 @@ mciModule.controller('AdminOptionsCtrl', ['$scope', '$window', '$rootScope', 'mc
         }
     }
 
-    function doModalFailure(message, data, reload){
+    function doModalFailure(message){
         $scope.closeAdminModal();
-        if (reload) {
-          $window.location.reload();
-        } else {
-          notifier.pushNotification(message, 'notifyHeader', 'error');
-        }
+        notifier.pushNotification(message, 'notifyHeader', 'error');
     }
 
 	$scope.abort = function() {
