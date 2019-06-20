@@ -374,7 +374,7 @@ func (s *taskSuite) TestAbortedTaskDoesNotNotify() {
 	s.NoError(db.Update(task.Collection, bson.M{"_id": s.task.Id}, &s.task))
 
 	// works even if the task is archived
-	s.task.Archive()
+	s.NoError(s.task.Archive())
 
 	n, err = NotificationsFromEvent(&s.event)
 	s.NoError(err)
