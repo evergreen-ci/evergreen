@@ -96,7 +96,8 @@ func (c *gitPush) Execute(ctx context.Context, comm client.Communicator, logger 
 			continue
 		}
 
-		module, err := conf.Project.GetModuleByName(modulePatch.ModuleName)
+		var module *model.Module
+		module, err = conf.Project.GetModuleByName(modulePatch.ModuleName)
 		if err != nil {
 			logger.Execution().Errorf("No module found for %s", modulePatch.ModuleName)
 			continue
