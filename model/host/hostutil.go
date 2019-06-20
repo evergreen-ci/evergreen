@@ -277,7 +277,7 @@ func (h *Host) RunSSHJasperRequest(ctx context.Context, env evergreen.Environmen
 	err = env.JasperManager().CreateCommand(ctx).Host(hostInfo.Hostname).User(hostInfo.User).
 		ExtendSSHArgs("-p", hostInfo.Port, "-t", "-t").ExtendSSHArgs(sshOptions...).
 		SetOutputWriter(output).RedirectErrorToOutput(true).
-		Append(fmt.Sprintf("%s jasper client %s --service=rpc --port=%d <<EOF\n%s\nEOF", binaryPath, subCmd, port, inputBytes)).
+		Append(fmt.Sprintf("%s jasper client %s --service=rpc --port=%d <<EOF\n%s\nEOF", binaryPath, subCmd, config.Port, inputBytes)).
 		Run(ctx)
 	return output.String(), errors.Wrap(err, "error making Jasper request over SSH")
 }

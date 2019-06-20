@@ -21,7 +21,7 @@ func NewConfigModel() *APIAdminSettings {
 		Credentials:       map[string]string{},
 		Expansions:        map[string]string{},
 		HostInit:          &APIHostInitConfig{},
-		HostJasperConfig:  &APIHostJasperConfig{},
+		HostJasper:        &APIHostJasperConfig{},
 		Jira:              &APIJiraConfig{},
 		JIRANotifications: &APIJIRANotificationsConfig{},
 		Keys:              map[string]string{},
