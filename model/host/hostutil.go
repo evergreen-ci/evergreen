@@ -171,12 +171,7 @@ func (h *Host) FetchAndReinstallJasperCommand(config evergreen.HostJasperConfig)
 // delete the current Jasper service configuration (if it exists), install the
 // new configuration, and restart the service.
 func (h *Host) ForceReinstallJasperCommand(config evergreen.HostJasperConfig) string {
-	port := config.Port
-	if port == 0 {
-		port = evergreen.DefaultJasperPort
-	}
-
-	params := []string{fmt.Sprintf("--port=%d", port)}
+	params := []string{fmt.Sprintf("--port=%d", config.Port)}
 	if h.Distro.JasperCredentialsPath != "" {
 		params = append(params, fmt.Sprintf("--creds_path=%s", h.Distro.JasperCredentialsPath))
 	}
@@ -236,7 +231,7 @@ func (h *Host) jasperBinaryFileName(config evergreen.HostJasperConfig) string {
 }
 
 // BootstrapScript creates the user data script to bootstrap the host.
-func (h *Host) BootstrapScript(config evergreen.JasperConfig, creds *rpc.Credentials) (string, error) {
+func (h *Host) BootstrapScript(config evergreen.HostJasperConfig, creds *rpc.Credentials) (string, error) {
 	writeCredentialsCmd, err := h.writeJasperCredentialsFileCommand(config, creds)
 	if err != nil {
 		return "", errors.Wrap(err, "could not build command to write Jasper credentials file ")
@@ -270,7 +265,7 @@ func (h *Host) BootstrapScript(config evergreen.JasperConfig, creds *rpc.Credent
 
 // writeJasperCredentialsCommand builds the command to write the Jasper
 // credentials to a file.
-func (h *Host) writeJasperCredentialsFileCommand(config evergreen.JasperConfig, creds *rpc.Credentials) (string, error) {
+func (h *Host) writeJasperCredentialsFileCommand(config evergreen.HostJasperConfig, creds *rpc.Credentials) (string, error) {
 	if h.Distro.JasperCredentialsPath == "" {
 		return "", errors.New("cannot write Jasper credentials without a credentials file path")
 	}
@@ -278,7 +273,7 @@ func (h *Host) writeJasperCredentialsFileCommand(config evergreen.JasperConfig, 
 	if err != nil {
 		return "", errors.Wrap(err, "problem exporting credentials to file format")
 	}
-	return fmt.Sprintf("cat > %s <<EOF\n%s\n", h.Distro.JasperCredentialsPath, exportedCreds), nil
+	return fmt.Sprintf("cat > %s <<EOF\n%s\nEOF", h.Distro.JasperCredentialsPath, exportedCreds), nil
 }
 
 // RunSSHJasperRequest runs the command to make a request to the host's

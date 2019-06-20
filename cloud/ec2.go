@@ -202,7 +202,7 @@ func (m *ec2Manager) spawnOnDemandHost(ctx context.Context, h *host.Host, ec2Set
 		ec2Settings.UserData = expanded
 	}
 
-	if err := m.bootstrapUserData(ctx, env, h, ec2Settings); err != nil {
+	if err := m.bootstrapUserData(ctx, evergreen.GetEnvironment(), h, ec2Settings); err != nil {
 		return nil, errors.Wrap("could not add bootstrap script to user data")
 	}
 
@@ -333,8 +333,8 @@ func (m *ec2Manager) spawnSpotHost(ctx context.Context, h *host.Host, ec2Setting
 		spotRequest.LaunchSpecification.UserData = &userData
 	}
 
-	if err := m.bootstrapUserData(ctx, env, h, ec2Settings); err != nil {
-		return errors.Wrap(err, "could not add bootstrap script to user data")
+	if err := m.bootstrapUserData(ctx, evergreen.GetEnvironment(), h, ec2Settings); err != nil {
+		return nil, errors.Wrap(err, "could not add bootstrap script to user data")
 	}
 
 	grip.Debug(message.Fields{
