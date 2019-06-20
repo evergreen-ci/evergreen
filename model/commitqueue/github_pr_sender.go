@@ -89,6 +89,8 @@ func (s *githubPRLogger) Send(m message.Composer) {
 		return
 	}
 
+	ctx, cancel := context.WithTimeout(s.ctx, time.Duration(len(msg.PRs)*10)*time.Second)
+	defer cancel()
 	for i, pr := range msg.PRs {
 		mergeOpts := &github.PullRequestOptions{
 			MergeMethod: msg.MergeMethod,
@@ -97,8 +99,6 @@ func (s *githubPRLogger) Send(m message.Composer) {
 		}
 
 		// do the merge
-		ctx, cancel := context.WithTimeout(s.ctx, 10*time.Second)
-		defer cancel()
 		res, _, err := s.prService.Merge(ctx, pr.Owner, pr.Repo, pr.PRNum, "", mergeOpts)
 
 		if err != nil {
