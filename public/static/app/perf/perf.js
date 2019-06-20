@@ -222,6 +222,9 @@ mciModule.controller('PerfController', function PerfController(
       tests = scope.perfSample.testNames(),
       taskId = scope.task.id,
       compareSamples = scope.comparePerfSamples;
+    if (!trendSamples) {
+      return;
+    }
 
     // Creates new, non-isolated scope for charts
     var chartsScope = scope.$new()
