@@ -37,7 +37,6 @@ func UtilizationBasedHostAllocator(ctx context.Context, hostAllocatorData HostAl
 	taskGroupingDuration := time.Since(taskGroupingBeginsAt)
 
 	nNewHostsRequired := 0
-	allocationCalcBeginsAt := time.Now()
 	for name, taskGroupData := range taskGroupDatas {
 		var maxHosts int
 		if name == "" {
@@ -66,7 +65,6 @@ func UtilizationBasedHostAllocator(ctx context.Context, hostAllocatorData HostAl
 		// add up total number of hosts needed for all groups
 		nNewHostsRequired += n
 	}
-	allocationCalcDuration := time.Since(allocationCalcBeginsAt)
 
 	// Will at least distro.PlannerSettings.MinimumHosts be running once nNewHostsRequired are up and running?
 	minimumHostsThreshold := distro.PlannerSettings.MinimumHosts
@@ -87,7 +85,6 @@ func UtilizationBasedHostAllocator(ctx context.Context, hostAllocatorData HostAl
 		"num_new_hosts_required:":              nNewHostsRequired,
 		"num_additional_hosts_to_meet_minimum": nAdditionalHostsToMeetMinimum,
 		"total_new_hosts_to_request":           nNewHostsRequired + nAdditionalHostsToMeetMinimum,
-		"calc_dur_secs":                        allocationCalcDuration.Seconds(),
 	})
 
 	return (nNewHostsRequired + nAdditionalHostsToMeetMinimum), nil
