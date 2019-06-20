@@ -1216,7 +1216,7 @@ func TestUpdateDependencies(t *testing.T) {
 		},
 	}
 
-	t1.UpdateDependencies(dependsOn)
+	assert.NoError(t, t1.UpdateDependencies(dependsOn))
 	assert.Len(t, t1.DependsOn, 1)
 	dbT1, err := FindOneId("t1")
 	assert.NoError(t, err)
