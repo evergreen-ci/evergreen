@@ -243,8 +243,8 @@ func BlockTaskGroupTasks(taskID string) error {
 		return errors.Wrap(err, "problem validating proposed dependencies")
 	}
 	for _, taskToBlock := range tasksToBlock {
-		catcher.Add(taskToBlock.AddDependency(task.Dependency{TaskId: taskID, Status: evergreen.TaskSucceeded}))
-		catcher.Add(dequeue(taskToBlock.Id, taskToBlock.DistroId))
+		catcher.Add(errors.Wrapf(taskToBlock.AddDependency(task.Dependency{TaskId: taskID, Status: evergreen.TaskSucceeded}), "error adding dependency to task '%s'", taskToBlock.Id))
+		catcher.Add(errors.Wrapf(dequeue(taskToBlock.Id, taskToBlock.DistroId), "error dequeueing task '%s'", taskToBlock.Id))
 	}
 	return catcher.Resolve()
 }
