@@ -226,6 +226,10 @@ func (j *commitQueueJob) processGitHubPRItem(ctx context.Context, cq *commitqueu
 		j.AddError(sendCommitQueueGithubStatus(j.env, pr, message.GithubStateFailure, "can't finalize patch", ""))
 	}
 
+	if err = setCommitQueuePatchPriority(v); err != nil {
+		j.logError(err, "failed to set patch priority", nextItem)
+	}
+
 	dequeue, err = subscribeGitHubPRs(pr, modulePRs, projectRef, v.Id)
 	if err != nil {
 		j.logError(err, "can't subscribe for PR merge", nextItem)
@@ -284,6 +288,10 @@ func (j *commitQueueJob) processCLIPatchItem(ctx context.Context, cq *commitqueu
 		j.logError(err, "can't finalize patch", nextItem)
 		j.dequeue(cq, nextItem)
 		return
+	}
+
+	if err = setCommitQueuePatchPriority(v); err != nil {
+		j.logError(err, "failed to set patch priority", nextItem)
 	}
 
 	subscriber := event.NewCommitQueueDequeueSubscriber()
@@ -646,4 +654,18 @@ func updateGithashes(ctx context.Context, githubToken string, projectRef *model.
 	}
 
 	return nil
+}
+
+func setCommitQueuePatchPriority(v *model.Version) error {
+	settings, err := evergreen.GetConfig()
+	if err != nil {
+		return errors.Wrap(err, "error retrieving Evergreen config")
+	}
+
+	priority := settings.CommitQueue.TaskPriority
+	if priority <= 0 {
+		return errors.New("won't set <=0 priority")
+	}
+
+	return model.SetVersionPriority(v.Id, int64(priority))
 }

@@ -12,12 +12,14 @@ type CommitQueueConfig struct {
 	MergeTaskDistro string `yaml:"merge_task_distro" bson:"merge_task_distro" json:"merge_task_distro"`
 	CommitterName   string `yaml:"committer_name" bson:"committer_name" json:"committer_name"`
 	CommitterEmail  string `yaml:"committer_email" bson:"committer_email" json:"committer_email"`
+	TaskPriority    int    `yaml:"task_priority" bson:"task_priority" json:"task_priority"`
 }
 
 var (
 	mergeTaskDistroKey = bsonutil.MustHaveTag(CommitQueueConfig{}, "MergeTaskDistro")
 	committerNameKey   = bsonutil.MustHaveTag(CommitQueueConfig{}, "CommitterName")
 	committerEmailKey  = bsonutil.MustHaveTag(CommitQueueConfig{}, "CommitterEmail")
+	taskPriorityKey    = bsonutil.MustHaveTag(CommitQueueConfig{}, "TaskPriority")
 )
 
 func (c *CommitQueueConfig) SectionId() string { return "commit_queue" }
@@ -56,6 +58,7 @@ func (c *CommitQueueConfig) Set() error {
 			mergeTaskDistroKey: c.MergeTaskDistro,
 			committerNameKey:   c.CommitterName,
 			committerEmailKey:  c.CommitterEmail,
+			taskPriorityKey:    c.TaskPriority,
 		},
 	}, options.Update().SetUpsert(true))
 	return errors.Wrapf(err, "error updating section %s", c.SectionId())
