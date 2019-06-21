@@ -55,6 +55,9 @@ import:
   - package: github.com/evergreen-ci/shrub
   - package: github.com/evergreen-ci/pail
 
+  - package: github.com/evergreen-ci/certdepot
+  - package: github.com/square/certstrap
+
   # git library and its dependencies
   - package: gopkg.in/src-d/go-git.v4
   - package: github.com/xanzy/ssh-agent

@@ -1,12 +1,14 @@
 package host
 
 import (
+	"context"
 	"fmt"
 	"math"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/model/credentials"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/task"
@@ -15,6 +17,7 @@ import (
 	adb "github.com/mongodb/anser/db"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
+	"github.com/mongodb/jasper/rpc"
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson"
 	mgobson "gopkg.in/mgo.v2/bson"
@@ -329,6 +332,29 @@ func (h *Host) CreateSecret() error {
 	return nil
 }
 
+// JasperCredentials gets the Jasper credentials from the database.
+func (h *Host) JasperCredentials(ctx context.Context, env evergreen.Environment) (*rpc.Credentials, error) {
+	return credentials.FindByID(ctx, env, h.Id)
+}
+
+// GenerateJasperCredentials creates the Jasper credentials for the given host
+// without saving them to the database.
+func (h *Host) GenerateJasperCredentials(ctx context.Context, env evergreen.Environment) (*rpc.Credentials, error) {
+	return credentials.GenerateInMemory(ctx, env, h.Id)
+}
+
+// SaveJasperCredentials saves the given Jasper credentials in the database for
+// the host.
+func (h *Host) SaveJasperCredentials(ctx context.Context, env evergreen.Environment, creds *rpc.Credentials) error {
+	return credentials.SaveCredentials(ctx, env, h.Id, creds)
+}
+
+// DeleteJasperCredentials deletes the Jasper credentials for the host and
+// updates the host both in memory and in the database.
+func (h *Host) DeleteJasperCredentials(ctx context.Context, env evergreen.Environment) error {
+	return credentials.DeleteCredentials(ctx, env, h.Id)
+}
+
 // UpdateLastCommunicated sets the host's last communication time to the current time.
 func (h *Host) UpdateLastCommunicated() error {
 	now := time.Now()
@@ -616,8 +642,8 @@ func (h *Host) SetNeedsNewAgentAtomically(needsAgent bool) error {
 	return nil
 }
 
-// SetNeedsNewAgentMonitor sets the "needs new agent monitor" on the host to
-// indicate that the host needs to have the agent monitor deployed.
+// SetNeedsNewAgentMonitor sets the "needs new agent monitor" flag on the host
+// to indicate that the host needs to have the agent monitor deployed.
 func (h *Host) SetNeedsNewAgentMonitor(needsAgentMonitor bool) error {
 	err := UpdateOne(bson.M{IdKey: h.Id},
 		bson.M{"$set": bson.M{NeedsNewAgentMonitorKey: needsAgentMonitor}})

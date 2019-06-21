@@ -7,7 +7,9 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
-type JasperConfig struct {
+// HostJasperConfig represents the configuration of the Jasper service running
+// on non-legacy hosts.
+type HostJasperConfig struct {
 	BinaryName       string `yaml:"binary_name" bson:"binary_name" json:"binary_name"`
 	DownloadFileName string `yaml:"download_file_name" bson:"download_file_name" json:"download_file_name"`
 	Port             int    `yaml:"port" bson:"port" json:"port"`
@@ -15,9 +17,9 @@ type JasperConfig struct {
 	Version          string `yaml:"version" bson:"version" json:"version"`
 }
 
-func (c *JasperConfig) SectionId() string { return "jasper" }
+func (c *HostJasperConfig) SectionId() string { return "host_jasper" }
 
-func (c *JasperConfig) Get(env Environment) error {
+func (c *HostJasperConfig) Get(env Environment) error {
 	ctx, cancel := env.Context()
 	defer cancel()
 
@@ -29,7 +31,7 @@ func (c *JasperConfig) Get(env Environment) error {
 
 	if err := res.Decode(c); err != nil {
 		if err == mongo.ErrNoDocuments {
-			*c = JasperConfig{}
+			*c = HostJasperConfig{}
 			return nil
 		}
 
@@ -39,7 +41,7 @@ func (c *JasperConfig) Get(env Environment) error {
 	return nil
 }
 
-func (c *JasperConfig) Set() error {
+func (c *HostJasperConfig) Set() error {
 	env := GetEnvironment()
 	ctx, cancel := env.Context()
 	defer cancel()
@@ -48,18 +50,20 @@ func (c *JasperConfig) Set() error {
 
 	_, err := coll.UpdateOne(ctx, byId(c.SectionId()), bson.M{
 		"$set": bson.M{
-			jasperBinaryNameKey:       c.BinaryName,
-			jasperDownloadFileNameKey: c.DownloadFileName,
-			jasperPortKey:             c.Port,
-			jasperURLKey:              c.URL,
-			jasperVersionKey:          c.Version,
+			hostJasperBinaryNameKey:       c.BinaryName,
+			hostJasperDownloadFileNameKey: c.DownloadFileName,
+			hostJasperPortKey:             c.Port,
+			hostJasperURLKey:              c.URL,
+			hostJasperVersionKey:          c.Version,
 		},
 	}, options.Update().SetUpsert(true))
 	return errors.Wrapf(err, "error updating section %s", c.SectionId())
 }
 
-func (c *JasperConfig) ValidateAndDefault() error {
-	if c.Port <= 0 {
+func (c *HostJasperConfig) ValidateAndDefault() error {
+	if c.Port == 0 {
+		c.Port = DefaultJasperPort
+	} else if c.Port < 0 {
 		return errors.Errorf("Jasper port must be a positive integer")
 	}
 	return nil

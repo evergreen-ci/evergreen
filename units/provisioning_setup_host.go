@@ -312,7 +312,7 @@ func (j *setupHostJob) setupJasper(ctx context.Context) error {
 // doFetchAndReinstallJasper runs the SSH command over that downloads the latest
 // Jasper binary and restarts the service.
 func (j *setupHostJob) doFetchAndReinstallJasper(ctx context.Context, sshOptions []string) error {
-	cmd := j.host.FetchAndReinstallJasperCommand(j.env.Settings().JasperConfig)
+	cmd := j.host.FetchAndReinstallJasperCommand(j.env.Settings().HostJasper)
 	if logs, err := j.host.RunSSHCommand(ctx, cmd, sshOptions); err != nil {
 		return errors.Wrapf(err, "error while fetching Jasper binary and installing service on remote host: command returned %s", logs)
 	}
