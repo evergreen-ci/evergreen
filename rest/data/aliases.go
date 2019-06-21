@@ -66,12 +66,8 @@ func (d *DBAliasConnector) UpdateProjectAliases(projectId string, aliases []rest
 		}
 	}
 	errStrs := model.ValidateProjectAliases(aliasesToUpsert, "All Aliases")
-	if len(errStrs) > 0 {
-		errMsg := ""
-		for _, err := range errStrs {
-			errMsg += err + ", "
-		}
-		catcher.Add(errors.Errorf("errors validating project aliases: %s", errMsg))
+	for _, err := range errStrs {
+		catcher.Add(errors.Errorf("error validating project alias: %s", err))
 	}
 	if catcher.HasErrors() {
 		return catcher.Resolve()
