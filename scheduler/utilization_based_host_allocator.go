@@ -26,8 +26,8 @@ type TaskGroupData struct {
 
 func UtilizationBasedHostAllocator(ctx context.Context, hostAllocatorData HostAllocatorData) (int, error) {
 	distro := hostAllocatorData.Distro
-	nExistingHosts := len(hostAllocatorData.ExistingHosts)
-	if nExistingHosts >= distro.PoolSize {
+	numExistingHosts := len(hostAllocatorData.ExistingHosts)
+	if numExistingHosts >= distro.PoolSize {
 		return 0, nil
 	}
 
@@ -36,7 +36,7 @@ func UtilizationBasedHostAllocator(ctx context.Context, hostAllocatorData HostAl
 	taskGroupDatas := groupByTaskGroup(hostAllocatorData.ExistingHosts, hostAllocatorData.DistroQueueInfo)
 	taskGroupingDuration := time.Since(taskGroupingBeginsAt)
 
-	nNewHostsRequired := 0
+	numNewHostsRequired := 0
 	for name, taskGroupData := range taskGroupDatas {
 		var maxHosts int
 		if name == "" {
@@ -63,16 +63,17 @@ func UtilizationBasedHostAllocator(ctx context.Context, hostAllocatorData HostAl
 		}
 
 		// add up total number of hosts needed for all groups
-		nNewHostsRequired += n
+		numNewHostsRequired += n
 	}
 
-	// Will at least distro.PlannerSettings.MinimumHosts be running once nNewHostsRequired are up and running?
+	// Will at least distro.PlannerSettings.MinimumHosts be running once numNewHostsRequired are up and running?
 	minimumHostsThreshold := distro.PlannerSettings.MinimumHosts
-	nExistingAndRequiredHosts := nExistingHosts + nNewHostsRequired
-	nAdditionalHostsToMeetMinimum := 0
-	if nExistingAndRequiredHosts < minimumHostsThreshold {
-		nAdditionalHostsToMeetMinimum = minimumHostsThreshold - nExistingAndRequiredHosts
+	numExistingAndRequiredHosts := numExistingHosts + numNewHostsRequired
+	numAdditionalHostsToMeetMinimum := 0
+	if numExistingAndRequiredHosts < minimumHostsThreshold {
+		numAdditionalHostsToMeetMinimum = minimumHostsThreshold - numExistingAndRequiredHosts
 	}
+	numNewHostsToRequest := numNewHostsRequired + numAdditionalHostsToMeetMinimum
 
 	grip.Info(message.Fields{
 		"runner":                               RunnerName,
@@ -81,13 +82,13 @@ func UtilizationBasedHostAllocator(ctx context.Context, hostAllocatorData HostAl
 		"group_dur_secs":                       taskGroupingDuration.Seconds(),
 		"group_num":                            len(taskGroupDatas),
 		"minimum_hosts_for_distro":             minimumHostsThreshold,
-		"num_existing_hosts":                   nExistingHosts,
-		"num_new_hosts_required:":              nNewHostsRequired,
-		"num_additional_hosts_to_meet_minimum": nAdditionalHostsToMeetMinimum,
-		"total_new_hosts_to_request":           nNewHostsRequired + nAdditionalHostsToMeetMinimum,
+		"num_existing_hosts":                   numExistingHosts,
+		"num_new_hosts_required:":              numNewHostsRequired,
+		"num_additional_hosts_to_meet_minimum": numAdditionalHostsToMeetMinimum,
+		"total_new_hosts_to_request":           numNewHostsToRequest,
 	})
 
-	return (nNewHostsRequired + nAdditionalHostsToMeetMinimum), nil
+	return numNewHostsToRequest, nil
 }
 
 // Calculate the number of hosts needed by taking the total task scheduled task time
