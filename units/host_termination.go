@@ -95,7 +95,6 @@ func (j *hostTerminationJob) Run(ctx context.Context) {
 		return
 	}
 
-	// kim: TODO: wait for EVG-6231 merge.
 	if err := j.host.DeleteJasperCredentials(ctx, j.env); err != nil {
 		j.AddError(err)
 		grip.Error(message.WrapError(err, message.Fields{

@@ -357,18 +357,6 @@ func (h *Host) GenerateJasperCredentials(ctx context.Context, env evergreen.Envi
 	return credentials.GenerateInMemory(ctx, env, h.JasperCredentialsID)
 }
 
-// UpdateJasperCredentialsID set's the ID for the host's Jasper credentials.
-func (h *Host) UpdateJasperCredentialsID(id string) error {
-	if err := UpdateOne(
-		bson.M{IdKey: h.Id},
-		bson.M{"$set": bson.M{JasperCredentialsIDKey: id}},
-	); err != nil {
-		return err
-	}
-	h.JasperCredentialsID = id
-	return nil
-}
-
 // SaveJasperCredentials saves the given Jasper credentials in the database for
 // the host.
 func (h *Host) SaveJasperCredentials(ctx context.Context, env evergreen.Environment, creds *rpc.Credentials) error {
@@ -381,10 +369,19 @@ func (h *Host) SaveJasperCredentials(ctx context.Context, env evergreen.Environm
 // DeleteJasperCredentials deletes the Jasper credentials for the host and
 // updates the host both in memory and in the database.
 func (h *Host) DeleteJasperCredentials(ctx context.Context, env evergreen.Environment) error {
-	if h.JasperCredentialsID == "" {
-		return errCredsNotGenerated
-	}
 	return credentials.DeleteCredentials(ctx, env, h.JasperCredentialsID)
+}
+
+// UpdateJasperCredentialsID sets the ID of the host's Jasper credentials.
+func (h *Host) UpdateJasperCredentialsID(id string) error {
+	if err := UpdateOne(
+		bson.M{IdKey: h.Id},
+		bson.M{"$set": bson.M{JasperCredentialsIDKey: id}},
+	); err != nil {
+		return err
+	}
+	h.JasperCredentialsID = id
+	return nil
 }
 
 // UpdateLastCommunicated sets the host's last communication time to the current time.
