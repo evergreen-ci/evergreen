@@ -130,7 +130,11 @@ mciModule.factory('DrawPerfTrendChart', function (
         var testResult = compSample.resultForTest(key)
         if (testResult) {
           return _.map(activeLevelNames, function(lvl) {
-            return testResult.results[lvl][cfg.valueAttr]
+            let results = testResult.results[lvl];
+            if (!results) {
+              return null;
+            }
+            return results[cfg.valueAttr]
           })
         }
       }
