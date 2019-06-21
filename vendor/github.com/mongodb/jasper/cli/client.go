@@ -27,6 +27,7 @@ func Client() cli.Command {
 		Subcommands: []cli.Command{
 			Manager(),
 			Process(),
+			Remote(),
 		},
 	}
 }

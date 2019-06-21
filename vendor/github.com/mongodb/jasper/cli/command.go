@@ -99,7 +99,7 @@ func RunCMD() cli.Command {
 			ctx, cancel := context.WithCancel(context.Background())
 			defer cancel()
 
-			logger := jasper.NewInMemoryLogger()
+			logger := jasper.NewInMemoryLogger(1000)
 
 			return withConnection(ctx, c, func(client jasper.RemoteClient) error {
 				cmd := client.CreateCommand(ctx).Sudo(useSudo).ID(cmdID).SetTags(tags)
@@ -151,7 +151,7 @@ func RunCMD() cli.Command {
 						t := tabby.New()
 						t.AddHeader("ID", "Logs")
 						for _, id := range ids {
-						LOG_SINGLE_PROCESS:
+						logSingleProcess:
 							for {
 								select {
 								case <-ctx.Done():
@@ -161,7 +161,7 @@ func RunCMD() cli.Command {
 									logLines, err := client.GetLogStream(ctx, id, logger.Options.InMemoryCap)
 									if err != nil {
 										grip.Error(message.WrapError(err, "problem polling for log lines, aborting log streaming"))
-										break LOG_SINGLE_PROCESS
+										break logSingleProcess
 									}
 
 									for _, ln := range logLines.Logs {
@@ -171,7 +171,7 @@ func RunCMD() cli.Command {
 
 									if logLines.Done {
 										timer.Reset(0)
-										break LOG_SINGLE_PROCESS
+										break logSingleProcess
 									}
 
 									timer.Reset(randDur(logPollInterval))

@@ -236,6 +236,93 @@ func TestExtractResponse(t *testing.T) {
 						assert.True(t, resp.Complete)
 					},
 				},
+				"ServiceStatusResponse": {
+					input: fmt.Sprintf(`{
+					"outcome": {
+						"success": %t,
+						"message": "%s"
+					},
+					"status": "%s"
+					}`, outcome.Success, outcome.Message, ServiceRunning),
+					extractAndCheck: func(t *testing.T, input []byte) {
+						resp, err := ExtractServiceStatusResponse(input)
+						if outcome.Success {
+							require.NoError(t, err)
+							assert.True(t, resp.Successful())
+						} else {
+							require.Error(t, err)
+							assert.False(t, resp.Successful())
+
+							if outcome.Message != "" {
+								assert.Contains(t, resp.ErrorMessage(), outcome.Message)
+							} else {
+								assert.Contains(t, resp.ErrorMessage(), unspecifiedRequestFailure)
+							}
+						}
+
+						assert.Equal(t, ServiceRunning, resp.Status)
+					},
+				},
+				"LogStreamResponse": {
+					input: fmt.Sprintf(`{
+					"outcome": {
+						"success": %t,
+						"message": "%s"
+					},
+					"log_stream": {
+						"logs": ["%s"],
+						"done": %t
+					}
+					}`, outcome.Success, outcome.Message, "foo", true),
+					extractAndCheck: func(t *testing.T, input []byte) {
+						resp, err := ExtractLogStreamResponse(input)
+						if outcome.Success {
+							require.NoError(t, err)
+							assert.True(t, resp.Successful())
+						} else {
+							require.Error(t, err)
+							assert.False(t, resp.Successful())
+
+							if outcome.Message != "" {
+								assert.Contains(t, resp.ErrorMessage(), outcome.Message)
+							} else {
+								assert.Contains(t, resp.ErrorMessage(), unspecifiedRequestFailure)
+							}
+						}
+
+						require.Len(t, resp.LogStream.Logs, 1)
+						assert.Equal(t, "foo", resp.LogStream.Logs[0])
+						assert.True(t, resp.LogStream.Done)
+					},
+				},
+				"BuildloggerURLsResponse": {
+					input: fmt.Sprintf(`{
+					"outcome": {
+						"success": %t,
+						"message": "%s"
+					},
+					"urls": ["%s"]
+					}`, outcome.Success, outcome.Message, "foo"),
+					extractAndCheck: func(t *testing.T, input []byte) {
+						resp, err := ExtractBuildloggerURLsResponse(input)
+						if outcome.Success {
+							require.NoError(t, err)
+							assert.True(t, resp.Successful())
+						} else {
+							require.Error(t, err)
+							assert.False(t, resp.Successful())
+
+							if outcome.Message != "" {
+								assert.Contains(t, resp.ErrorMessage(), outcome.Message)
+							} else {
+								assert.Contains(t, resp.ErrorMessage(), unspecifiedRequestFailure)
+							}
+						}
+
+						require.Len(t, resp.URLs, 1)
+						assert.Equal(t, "foo", resp.URLs[0])
+					},
+				},
 			} {
 				t.Run(testName, func(t *testing.T) {
 					testCase.extractAndCheck(t, []byte(testCase.input))
