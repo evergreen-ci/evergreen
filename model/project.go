@@ -18,7 +18,7 @@ import (
 	"github.com/mongodb/anser/bsonutil"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
-	ignore "github.com/sabhiram/go-git-ignore"
+	"github.com/sabhiram/go-git-ignore"
 )
 
 const (
@@ -881,6 +881,27 @@ func GetTaskGroup(taskGroup string, tc *TaskConfig) (*TaskGroup, error) {
 	return tg, nil
 }
 
+// getTasksInTaskGroup finds the TaskGroup for the given task, and returns all tasks in the group
+func GetTasksInTaskGroup(t *task.Task) ([]task.Task, error) {
+	proj, err := FindProjectFromVersionID(t.Version)
+	if err != nil {
+		return nil, errors.Wrapf(err, "problem finding project for task '%s'", t.Id)
+	}
+	tg := proj.FindTaskGroup(t.TaskGroup)
+	if tg == nil {
+		return nil, errors.Errorf("problem finding task group '%s'", t.TaskGroup)
+	}
+
+	tasks, err := task.Find(task.ByVersionsForNameAndVariant([]string{t.Version}, tg.Tasks, t.BuildVariant))
+	if err != nil {
+		return nil, errors.Wrapf(err, "can't get tasks for task group '%s'", t.TaskGroup)
+	}
+	if len(tasks) == 0 {
+		return nil, errors.New("no tasks in task group")
+	}
+	return tasks, nil
+}
+
 func FindProjectFromTask(t *task.Task) (*Project, error) {
 	ref, err := FindOneProjectRef(t.Project)
 	if err != nil {
@@ -889,12 +910,10 @@ func FindProjectFromTask(t *task.Task) (*Project, error) {
 	if ref == nil {
 		return nil, errors.Errorf("problem finding project: %s", t.Project)
 	}
-
 	p, err := FindProject(t.Revision, ref)
 	if err != nil {
 		return nil, errors.Wrapf(err, "problem finding project config for %s", t.Project)
 	}
-
 	return p, nil
 }
 
@@ -939,6 +958,7 @@ func (p *Project) FindDistroNameForTask(t *task.Task) (string, error) {
 	return distro, nil
 }
 
+// FindProject gets project from a non-patch version
 func FindProject(revision string, projectRef *ProjectRef) (*Project, error) {
 	if projectRef == nil {
 		return nil, errors.New("projectRef given is nil")
@@ -976,7 +996,6 @@ func FindProject(revision string, projectRef *ProjectRef) (*Project, error) {
 			}
 		}
 	}
-
 	if revision != "" {
 		// we immediately return an error if the repotracker version isn't found
 		// for the given project at the given revision
