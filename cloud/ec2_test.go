@@ -81,7 +81,6 @@ func (s *EC2Suite) SetupTest() {
 
 	s.Require().NoError(db.ClearCollections(credentials.Collection))
 	s.Require().NoError(credentials.Bootstrap(s.env))
-
 }
 
 func (s *EC2Suite) TearDownTest() {

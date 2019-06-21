@@ -257,58 +257,21 @@ func (j *setupHostJob) runHostSetup(ctx context.Context, targetHost *host.Host, 
 // on the host, downloading the latest version of Jasper, and restarting the
 // Jasper service.
 func (j *setupHostJob) setupJasper(ctx context.Context) error {
-	d, err := distro.FindOne(distro.ById(j.host.Distro.Id))
-	if err != nil {
-		grip.Error(message.WrapError(j.host.SetUnprovisioned(), message.Fields{
-			"operation": "setting host unprovisioned",
-			"distro":    j.host.Distro.Id,
-			"job":       j.ID(),
-			"host":      j.host.Id,
-		}))
-		return errors.Wrapf(err, "Error finding distro for host %s", j.host.Id)
-	}
-	j.host.Distro = d
-
 	cloudHost, err := cloud.GetCloudHost(ctx, j.host, j.env.Settings())
 	if err != nil {
-		grip.Error(message.WrapError(j.host.SetUnprovisioned(), message.Fields{
-			"operation": "setting host unprovisioned",
-			"distro":    j.host.Distro.Id,
-			"job":       j.ID(),
-			"host":      j.host.Id,
-		}))
 		return errors.Wrapf(err, "failed to get cloud host for %s", j.host.Id)
 	}
 
 	sshOptions, err := cloudHost.GetSSHOptions()
 	if err != nil {
-		grip.Error(message.WrapError(j.host.SetUnprovisioned(), message.Fields{
-			"operation": "setting host unprovisioned",
-			"distro":    j.host.Distro.Id,
-			"job":       j.ID(),
-			"host":      j.host.Id,
-		}))
 		return errors.Wrapf(err, "error getting ssh options for host %s", j.host.Id)
 	}
 
-	creds, err := j.putJasperCredentials(ctx, j.host.Distro.JasperCredentialsPath, sshOptions)
-	if err != nil {
-		grip.Error(message.WrapError(j.host.SetUnprovisioned(), message.Fields{
-			"operation": "setting host unprovisioned",
-			"distro":    j.host.Distro.Id,
-			"job":       j.ID(),
-			"host":      j.host.Id,
-		}))
+	if err := j.putJasperCredentials(ctx, j.host.Distro.JasperCredentialsPath, sshOptions); err != nil {
 		return errors.Wrap(err, "error putting Jasper credentials on remote host")
 	}
 
 	if err := j.doFetchAndReinstallJasper(ctx, sshOptions); err != nil {
-		grip.Error(message.WrapError(j.host.SetUnprovisioned(), message.Fields{
-			"operation": "setting host unprovisioned",
-			"distro":    j.host.Distro.Id,
-			"job":       j.ID(),
-			"host":      j.host.Id,
-		}))
 		return errors.Wrap(err, "error fetching Jasper binary on remote host")
 	}
 
@@ -358,7 +321,7 @@ func (j *setupHostJob) putJasperCredentials(ctx context.Context, fileName string
 		grip.Error(message.WrapError(os.Remove(file.Name()), errMsg))
 	}()
 
-	if _, err = io.WriteString(file, exportedCreds); err != nil {
+	if _, err = io.WriteString(file, string(exportedCreds)); err != nil {
 		return errors.Wrap(err, "error writing local credentials")
 	}
 
@@ -386,7 +349,7 @@ func (j *setupHostJob) putJasperCredentials(ctx context.Context, fileName string
 		return errors.Wrap(err, "error copying credentials to remote machine")
 	}
 
-	if err := j.host.SaveCredentials(creds); err != nil {
+	if err := j.host.SaveJasperCredentials(ctx, j.env, creds); err != nil {
 		grip.Error(message.WrapError(err, message.Fields{
 			"message": "problem saving host credentials",
 			"job":     j.ID(),
