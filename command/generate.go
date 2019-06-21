@@ -21,6 +21,10 @@ import (
 type generateTask struct {
 	// Files are a list of JSON documents.
 	Files []string `mapstructure:"files" plugin:"expand"`
+
+	// Optional causes generate.tasks to noop if no files match
+	Optional bool `mapstructure:"optional"`
+
 	base
 }
 
@@ -48,7 +52,11 @@ func (c *generateTask) Execute(ctx context.Context, comm client.Communicator, lo
 	}
 
 	if len(c.Files) == 0 {
-		return errors.New("expanded file specification had no items")
+		if c.Optional {
+			logger.Task().Info("No files found and optional is true, skipping generate.tasks")
+			return nil
+		}
+		return errors.New("No files found for generate.tasks")
 	}
 
 	catcher := grip.NewBasicCatcher()

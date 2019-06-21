@@ -107,6 +107,14 @@ func (s *generateSuite) TestExecuteSuccess() {
 	s.NoError(c.Execute(s.ctx, s.comm, s.logger, s.conf))
 }
 
+func (s *generateSuite) TestOptional() {
+	c := &generateTask{Files: []string{}}
+	s.Error(c.Execute(s.ctx, s.comm, s.logger, s.conf))
+
+	c.Optional = true
+	s.NoError(c.Execute(s.ctx, s.comm, s.logger, s.conf))
+}
+
 func (s *generateSuite) TestExecuteSuccessWithValidGlobbing() {
 	f, err := ioutil.TempFile(s.tmpDirName, "")
 	s.Require().NoError(err)
