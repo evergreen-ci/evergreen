@@ -34,6 +34,9 @@ func SetActiveState(taskId string, caller string, active bool) error {
 	if err != nil {
 		return err
 	}
+	if t == nil {
+		return errors.Errorf("task '%s' not found", taskId)
+	}
 	if active {
 		// if the task is being activated, make sure to activate all of the task's
 		// dependencies as well
