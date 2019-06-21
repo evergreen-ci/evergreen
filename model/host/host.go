@@ -336,13 +336,8 @@ func (h *Host) CreateSecret() error {
 	return nil
 }
 
-var errCredsNotGenerated = errors.New("cannot get Jasper credentials since they have not been generated yet for this host")
-
 // JasperCredentials gets the Jasper credentials from the database.
 func (h *Host) JasperCredentials(ctx context.Context, env evergreen.Environment) (*rpc.Credentials, error) {
-	if h.JasperCredentialsID == "" {
-		return nil, errCredsNotGenerated
-	}
 	return credentials.FindByID(ctx, env, h.JasperCredentialsID)
 }
 
@@ -361,7 +356,7 @@ func (h *Host) GenerateJasperCredentials(ctx context.Context, env evergreen.Envi
 // the host.
 func (h *Host) SaveJasperCredentials(ctx context.Context, env evergreen.Environment, creds *rpc.Credentials) error {
 	if h.JasperCredentialsID == "" {
-		return errCredsNotGenerated
+		return errors.New("Jasper credentials ID is empty")
 	}
 	return credentials.SaveCredentials(ctx, env, h.JasperCredentialsID, creds)
 }
