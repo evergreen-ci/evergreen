@@ -86,6 +86,7 @@ type Host struct {
 	AgentRevision        string `bson:"agent_revision" json:"agent_revision"`
 	NeedsNewAgent        bool   `bson:"needs_agent" json:"needs_agent"`
 	NeedsNewAgentMonitor bool   `bson:"needs_agent_monitor" json:"needs_agent_monitor"`
+
 	// JasperCredentialsID is used to match hosts to their Jasper credentials
 	// for non-legacy hosts.
 	JasperCredentialsID string `bson:"jasper_credentials_id" json:"jasper_credentials_id"`
@@ -335,27 +336,55 @@ func (h *Host) CreateSecret() error {
 	return nil
 }
 
+var errCredsNotGenerated = errors.New("cannot get Jasper credentials since they have not been generated yet for this host")
+
 // JasperCredentials gets the Jasper credentials from the database.
 func (h *Host) JasperCredentials(ctx context.Context, env evergreen.Environment) (*rpc.Credentials, error) {
-	return credentials.FindByID(ctx, env, h.Id)
+	if h.JasperCredentialsID == "" {
+		return nil, errCredsNotGenerated
+	}
+	return credentials.FindByID(ctx, env, h.JasperCredentialsID)
 }
 
 // GenerateJasperCredentials creates the Jasper credentials for the given host
 // without saving them to the database.
 func (h *Host) GenerateJasperCredentials(ctx context.Context, env evergreen.Environment) (*rpc.Credentials, error) {
-	return credentials.GenerateInMemory(ctx, env, h.Id)
+	if h.JasperCredentialsID == "" {
+		if err := h.UpdateJasperCredentialsID(h.Id); err != nil {
+			return nil, errors.Wrap(err, "problem setting Jasper credentials ID")
+		}
+	}
+	return credentials.GenerateInMemory(ctx, env, h.JasperCredentialsID)
+}
+
+// UpdateJasperCredentialsID set's the ID for the host's Jasper credentials.
+func (h *Host) UpdateJasperCredentialsID(id string) error {
+	if err := UpdateOne(
+		bson.M{IdKey: h.Id},
+		bson.M{"$set": bson.M{JasperCredentialsIDKey: id}},
+	); err != nil {
+		return err
+	}
+	h.JasperCredentialsID = id
+	return nil
 }
 
 // SaveJasperCredentials saves the given Jasper credentials in the database for
 // the host.
 func (h *Host) SaveJasperCredentials(ctx context.Context, env evergreen.Environment, creds *rpc.Credentials) error {
-	return credentials.SaveCredentials(ctx, env, h.Id, creds)
+	if h.JasperCredentialsID == "" {
+		return errCredsNotGenerated
+	}
+	return credentials.SaveCredentials(ctx, env, h.JasperCredentialsID, creds)
 }
 
 // DeleteJasperCredentials deletes the Jasper credentials for the host and
 // updates the host both in memory and in the database.
 func (h *Host) DeleteJasperCredentials(ctx context.Context, env evergreen.Environment) error {
-	return credentials.DeleteCredentials(ctx, env, h.Id)
+	if h.JasperCredentialsID == "" {
+		return errCredsNotGenerated
+	}
+	return credentials.DeleteCredentials(ctx, env, h.JasperCredentialsID)
 }
 
 // UpdateLastCommunicated sets the host's last communication time to the current time.

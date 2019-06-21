@@ -203,7 +203,7 @@ func (m *ec2Manager) spawnOnDemandHost(ctx context.Context, h *host.Host, ec2Set
 	}
 
 	if err := m.bootstrapUserData(ctx, evergreen.GetEnvironment(), h, ec2Settings); err != nil {
-		return nil, errors.Wrap("could not add bootstrap script to user data")
+		return nil, errors.Wrap(err, "could not add bootstrap script to user data")
 	}
 
 	if ec2Settings.UserData != "" {
@@ -1072,15 +1072,12 @@ func (m *ec2Manager) bootstrapUserData(ctx context.Context, env evergreen.Enviro
 		return nil
 	}
 
-	// kim: TODO: modify credentials generation to be based on
-	// JasperCredentialsID since the host id will change to the spawn host's ID
-	// instead of the intent host ID.
 	creds, err := h.GenerateJasperCredentials(ctx, env)
 	if err != nil {
 		return errors.Wrap(err, "problem generating Jasper credentials for host")
 	}
 
-	commands, err := h.BootstrapScript(m.settings.JasperConfig, creds)
+	commands, err := h.BootstrapScript(m.settings.HostJasper, creds)
 	if err != nil {
 		return errors.Wrap(err, "could not generate user data bootstrap script")
 	}

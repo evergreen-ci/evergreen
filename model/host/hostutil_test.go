@@ -81,12 +81,16 @@ func TestJasperCommands(t *testing.T) {
 		},
 		"ForceReinstallJasperCommand": func(t *testing.T, h *Host, config evergreen.HostJasperConfig) {
 			cmd := h.ForceReinstallJasperCommand(config)
-			assert.Equal(t, "sudo /foo/jasper_cli jasper service force-reinstall rpc --port=12345", cmd)
+			assert.Equal(t, "sudo /foo/jasper_cli jasper service force-reinstall rpc --port=12345 --creds_path=/bar", cmd)
 		},
 		// "": func(t *testing.T, h *Host, config evergreen.JasperConfig) {},
 	} {
 		t.Run(opName, func(t *testing.T) {
-			h := &Host{Distro: distro.Distro{Arch: distro.ArchLinuxAmd64, CuratorDir: "/foo"}}
+			h := &Host{Distro: distro.Distro{
+				Arch:                  distro.ArchLinuxAmd64,
+				CuratorDir:            "/foo",
+				JasperCredentialsPath: "/bar",
+			}}
 			config := evergreen.HostJasperConfig{
 				BinaryName:       "jasper_cli",
 				DownloadFileName: "download_file",
@@ -100,7 +104,7 @@ func TestJasperCommands(t *testing.T) {
 }
 
 func TestJasperCommandsWindows(t *testing.T) {
-	for testName, testCase := range map[string]func(t *testing.T, h *Host, config evergreen.HostJasperConfig){
+	for opName, opCase := range map[string]func(t *testing.T, h *Host, config evergreen.HostJasperConfig){
 		"VerifyBaseFetchCommands": func(t *testing.T, h *Host, config evergreen.HostJasperConfig) {
 			expectedCmds := []string{
 				"cd \"/foo\"",
@@ -152,11 +156,12 @@ func TestJasperCommandsWindows(t *testing.T) {
 		},
 		"ForceReinstallJasperCommand": func(t *testing.T, h *Host, config evergreen.HostJasperConfig) {
 			cmd := h.ForceReinstallJasperCommand(config)
-			assert.Equal(t, "/foo/jasper_cli.exe jasper service force-reinstall rpc --port=12345", cmd)
+			assert.Equal(t, "/foo/jasper_cli.exe jasper service force-reinstall rpc --port=12345 --creds_path=/bar", cmd)
 		},
 		"WriteJasperCredentialsFileCommand": func(t *testing.T, h *Host, config evergreen.HostJasperConfig) {
 			creds, err := newMockCredentials()
 			require.NoError(t, err)
+			path := h.Distro.JasperCredentialsPath
 
 			for testName, testCase := range map[string]func(t *testing.T){
 				"WithoutJasperCredentialsPath": func(t *testing.T) {
@@ -170,10 +175,11 @@ func TestJasperCommandsWindows(t *testing.T) {
 
 					expectedCreds, err := creds.Export()
 					require.NoError(t, err)
-					assert.Equal(t, fmt.Sprintf("cat > /bar <<EOF\n\nEOF", expectedCreds), cmd)
+					assert.Equal(t, fmt.Sprintf("cat > /bar <<EOF\n%s\nEOF", expectedCreds), cmd)
 				},
 			} {
 				t.Run(testName, func(t *testing.T) {
+					h.Distro.JasperCredentialsPath = path
 					require.NoError(t, db.ClearCollections(credentials.Collection))
 					defer func() {
 						assert.NoError(t, db.ClearCollections(credentials.Collection))
@@ -187,7 +193,7 @@ func TestJasperCommandsWindows(t *testing.T) {
 			require.NoError(t, err)
 
 			h.Distro.JasperCredentialsPath = ""
-			_, err := h.writeJasperCredentialsFileCommand(config, creds)
+			_, err = h.writeJasperCredentialsFileCommand(config, creds)
 			assert.Error(t, err)
 		},
 	} {
