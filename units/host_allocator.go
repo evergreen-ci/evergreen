@@ -171,7 +171,7 @@ func (j *hostAllocatorJob) Run(ctx context.Context) {
 
 	eventInfo := event.TaskQueueInfo{
 		TaskQueueLength:  distroQueueInfo.Length,
-		NumHostsRunning:  0,
+		NumHostsRunning:  len(existingHosts),
 		ExpectedDuration: distroQueueInfo.ExpectedDuration,
 	}
 
