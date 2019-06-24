@@ -1245,6 +1245,36 @@ func (hosts HostGroup) GetHostIds() []string {
 	return ids
 }
 
+type HostGroupStats struct {
+	Quarantined    int `bson:"quarantined" json:"quarantined" yaml:"quarantined"`
+	Decommissioned int `bson:"decommissioned" json:"decommissioned" yaml:"decommissioned"`
+	Idle           int `bson:"idle" json:"idle" yaml:"idle"`
+	Provisioning   int `bson:"provisioning" json:"provisioning" yaml:"provisioning"`
+	Total          int `bson:"total" json:"total" yaml:"total"`
+}
+
+func (hosts HostGroup) Stats() HostGroupStats {
+	out := HostGroupStats{}
+
+	for _, h := range hosts {
+		out.Total++
+
+		if h.Status == evergreen.HostQuarantined {
+			out.Quarantined++
+		} else if h.Status == evergreen.HostDecommissioned {
+			out.Decommissioned++
+		} else if h.Status != evergreen.HostRunning {
+			out.Provisioning++
+		}
+
+		if h.RunningTask == "" {
+			out.Idle++
+		}
+	}
+
+	return out
+}
+
 // getNumContainersOnParents returns a slice of uphost parents and their respective
 // number of current containers currently running in order of longest expected
 // finish time
