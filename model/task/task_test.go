@@ -922,6 +922,127 @@ func TestGetTestResultsForDisplayTask(t *testing.T) {
 	assert.Equal("myTest", results[0].TestFile)
 }
 
+func TestBlockedState(t *testing.T) {
+	assert := assert.New(t)
+	assert.NoError(db.ClearCollections(Collection))
+	t1 := Task{
+		Id: "t1",
+		DependsOn: []Dependency{
+			{TaskId: "t2", Status: evergreen.TaskSucceeded},
+		},
+	}
+	assert.NoError(t1.Insert())
+	t2 := Task{
+		Id:     "t2",
+		Status: evergreen.TaskFailed,
+		DependsOn: []Dependency{
+			{TaskId: "t3", Status: evergreen.TaskFailed},
+		},
+	}
+	assert.NoError(t2.Insert())
+	t3 := Task{
+		Id:     "t3",
+		Status: evergreen.TaskUnstarted,
+		DependsOn: []Dependency{
+			{TaskId: "t4", Status: AllStatuses},
+		},
+	}
+	assert.NoError(t3.Insert())
+	t4 := Task{
+		Id:     "t4",
+		Status: evergreen.TaskSucceeded,
+	}
+	assert.NoError(t4.Insert())
+
+	state, err := t4.BlockedState(nil)
+	assert.NoError(err)
+	assert.Equal("", state)
+	state, err = t3.BlockedState(nil)
+	assert.NoError(err)
+	assert.Equal("", state)
+	state, err = t2.BlockedState(nil)
+	assert.NoError(err)
+	assert.Equal("pending", state)
+	state, err = t1.BlockedState(nil)
+	assert.NoError(err)
+	assert.Equal("blocked", state)
+}
+
+func TestCircularDependency(t *testing.T) {
+	assert := assert.New(t)
+	assert.NoError(db.ClearCollections(Collection))
+	t1 := Task{
+		Id:          "t1",
+		DisplayName: "t1",
+		Activated:   true,
+		Status:      evergreen.TaskSucceeded,
+		DependsOn: []Dependency{
+			{TaskId: "t2", Status: evergreen.TaskSucceeded},
+		},
+	}
+	assert.NoError(t1.Insert())
+	t2 := Task{
+		Id:          "t2",
+		DisplayName: "t2",
+		Activated:   true,
+		Status:      evergreen.TaskSucceeded,
+		DependsOn: []Dependency{
+			{TaskId: "t1", Status: evergreen.TaskSucceeded},
+		},
+	}
+	assert.NoError(t2.Insert())
+	assert.NotPanics(func() {
+		err := t1.CircularDependencies()
+		assert.Contains(err.Error(), "Dependency cycle detected")
+	})
+}
+
+func TestSiblingDependency(t *testing.T) {
+	assert := assert.New(t)
+	assert.NoError(db.ClearCollections(Collection))
+	t1 := Task{
+		Id:          "t1",
+		DisplayName: "t1",
+		Activated:   true,
+		Status:      evergreen.TaskSucceeded,
+		DependsOn: []Dependency{
+			{TaskId: "t2", Status: evergreen.TaskSucceeded},
+			{TaskId: "t3", Status: evergreen.TaskSucceeded},
+		},
+	}
+	assert.NoError(t1.Insert())
+	t2 := Task{
+		Id:          "t2",
+		DisplayName: "t2",
+		Activated:   true,
+		Status:      evergreen.TaskSucceeded,
+		DependsOn: []Dependency{
+			{TaskId: "t4", Status: evergreen.TaskSucceeded},
+		},
+	}
+	assert.NoError(t2.Insert())
+	t3 := Task{
+		Id:          "t3",
+		DisplayName: "t3",
+		Activated:   true,
+		Status:      evergreen.TaskStarted,
+		DependsOn: []Dependency{
+			{TaskId: "t4", Status: evergreen.TaskSucceeded},
+		},
+	}
+	assert.NoError(t3.Insert())
+	t4 := Task{
+		Id:          "t4",
+		DisplayName: "t4",
+		Activated:   true,
+		Status:      evergreen.TaskSucceeded,
+	}
+	assert.NoError(t4.Insert())
+	state, err := t1.BlockedState(nil)
+	assert.NoError(err)
+	assert.Equal("pending", state)
+}
+
 func TestBulkInsert(t *testing.T) {
 	assert := assert.New(t)
 	assert.NoError(db.ClearCollections(Collection))

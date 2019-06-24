@@ -58,18 +58,18 @@ func TestGetNewRevisionOrderNumber(t *testing.T) {
 }
 
 func TestUpdateLastRevision(t *testing.T) {
-	for name, test := range map[string]func(*testing.T, string){
-		"InvalidProject": func(t *testing.T, revision string) {
-			assert.Error(t, UpdateLastRevision("not-a-project", revision))
+	for name, test := range map[string]func(*testing.T, string, string){
+		"InvalidProject": func(t *testing.T, project string, revision string) {
+			assert.Error(t, UpdateLastRevision(project, revision))
 		},
-		"ValidProject": func(t *testing.T, revision string) {
-			_, err := GetNewRevisionOrderNumber("my-project")
+		"ValidProject": func(t *testing.T, project string, revision string) {
+			_, err := GetNewRevisionOrderNumber(project)
 			assert.NoError(t, err)
-			assert.NoError(t, UpdateLastRevision("my-project", revision))
+			assert.NoError(t, UpdateLastRevision(project, revision))
 		},
 	} {
 		t.Run(name, func(t *testing.T) {
-			test(t, "my-revision")
+			test(t, "my-project", "my-revision")
 		})
 	}
 }

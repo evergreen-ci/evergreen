@@ -196,7 +196,7 @@ func MarkVersionCompleted(versionId string, finishTime time.Time, updates *Statu
 		if b.Activated {
 			activeBuilds += 1
 		}
-		complete, buildStatus, err := AllUnblockedTasksFinished(b, tasksWithDeps)
+		complete, buildStatus, err := b.AllUnblockedTasksFinished(tasksWithDeps)
 		if err != nil {
 			return errors.WithStack(err)
 		}
@@ -310,7 +310,7 @@ func RestartVersion(versionId string, taskIds []string, abortInProgress bool, ca
 	}
 
 	// Set all the task fields to indicate restarted
-	if err = task.ResetDisplayTasks(restartIds); err != nil {
+	if err = task.ResetTasks(restartIds); err != nil {
 		return errors.WithStack(err)
 	}
 
