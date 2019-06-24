@@ -503,11 +503,11 @@ func addMergeTaskAndVariant(patchDoc *patch.Patch, project *model.Project) error
 	}
 
 	mergeBuildVariant := model.BuildVariant{
-		Name:        "commit-queue-merge",
+		Name:        evergreen.MergeTaskVariant,
 		DisplayName: "Commit Queue Merge",
 		RunOn:       []string{settings.CommitQueue.MergeTaskDistro},
 		Tasks: []model.BuildVariantTaskUnit{
-			{Name: "merge-patch"},
+			{Name: evergreen.MergeTaskName},
 		},
 	}
 
@@ -526,7 +526,7 @@ func addMergeTaskAndVariant(patchDoc *patch.Patch, project *model.Project) error
 	}
 
 	mergeTask := model.ProjectTask{
-		Name: "merge-patch",
+		Name: evergreen.MergeTaskName,
 		Commands: []model.PluginCommandConf{
 			{
 				Command: "git.get_project",
@@ -547,8 +547,16 @@ func addMergeTaskAndVariant(patchDoc *patch.Patch, project *model.Project) error
 		DependsOn: dependencies,
 	}
 
+	// Define as part of a task group with no pre to skip
+	// running a project's pre before the merge task
+	mergeTaskGroup := model.TaskGroup{
+		Name:  evergreen.MergeTaskGroup,
+		Tasks: []string{evergreen.MergeTaskName},
+	}
+
 	project.BuildVariants = append(project.BuildVariants, mergeBuildVariant)
 	project.Tasks = append(project.Tasks, mergeTask)
+	project.TaskGroups = append(project.TaskGroups, mergeTaskGroup)
 
 	validationErrors := validator.CheckProjectSyntax(project)
 	if len(validationErrors) != 0 {
