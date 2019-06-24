@@ -3,7 +3,6 @@ package cloud
 import (
 	"context"
 	"encoding/base64"
-	"path/filepath"
 	"strings"
 	"testing"
 	"time"
@@ -12,13 +11,10 @@ import (
 	"github.com/aws/aws-sdk-go/service/ec2"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
-	"github.com/evergreen-ci/evergreen/mock"
 	"github.com/evergreen-ci/evergreen/model"
-	"github.com/evergreen-ci/evergreen/model/credentials"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/task"
-	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -36,8 +32,6 @@ type EC2Suite struct {
 	autoOpts        *EC2ManagerOptions
 	autoManager     Manager
 	impl            *ec2Manager
-	env             *mock.Environment
-	envCtxCancel    context.CancelFunc
 }
 
 func TestEC2Suite(t *testing.T) {
@@ -73,19 +67,6 @@ func (s *EC2Suite) SetupTest() {
 	var ok bool
 	s.impl, ok = s.onDemandManager.(*ec2Manager)
 	s.Require().True(ok)
-
-	s.env = &mock.Environment{}
-	s.env.EnvContext, s.envCtxCancel = context.WithTimeout(context.Background(), 5*time.Second)
-	s.Require().NoError(s.env.Configure(s.env.EnvContext, filepath.Join(evergreen.FindEvergreenHome(), testutil.TestDir, testutil.TestSettings), nil))
-	s.env.Settings().DomainName = "test"
-
-	s.Require().NoError(db.ClearCollections(credentials.Collection))
-	s.Require().NoError(credentials.Bootstrap(s.env))
-}
-
-func (s *EC2Suite) TearDownTest() {
-	s.NoError(db.ClearCollections(credentials.Collection))
-	s.envCtxCancel()
 }
 
 func (s *EC2Suite) TestConstructor() {
@@ -934,55 +915,4 @@ func (s *EC2Suite) TestGetSecurityGroup() {
 		SecurityGroupIDs: []string{"sg-1", "sg-2"},
 	}
 	s.Equal([]*string{aws.String("sg-1"), aws.String("sg-2")}, settings.getSecurityGroups())
-}
-
-func (s *EC2Suite) TestBootstrapUserData() {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
-	h := &host.Host{Id: "host", Distro: distro.Distro{
-		Arch:                  distro.ArchLinuxAmd64,
-		BootstrapMethod:       distro.BootstrapMethodUserData,
-		JasperCredentialsPath: "/bar",
-	}}
-	s.Require().NoError(h.Insert())
-	settings := &EC2ProviderSettings{}
-
-	s.Require().NoError(s.impl.bootstrapUserData(ctx, s.env, h, settings))
-
-	s.Equal(h.Id, h.JasperCredentialsID)
-	dbHost, err := host.FindOneId(h.Id)
-	s.Require().NoError(err)
-	s.Equal(h.Id, dbHost.JasperCredentialsID)
-
-	creds, err := h.JasperCredentials(ctx, s.env)
-	s.Require().NoError(err)
-	s.NotNil(creds)
-	s.NotEmpty(settings.UserData)
-}
-
-func (s *EC2Suite) TestBootstrapNonemptyUserData() {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
-	h := &host.Host{Id: "host", Distro: distro.Distro{
-		Arch:                  distro.ArchLinuxAmd64,
-		BootstrapMethod:       distro.BootstrapMethodUserData,
-		JasperCredentialsPath: "/bar",
-	}}
-	s.Require().NoError(h.Insert())
-	settings := &EC2ProviderSettings{UserData: "#!/bin/bash\necho 'foobar'"}
-	userDataLen := len(settings.UserData)
-
-	s.Require().NoError(s.impl.bootstrapUserData(ctx, s.env, h, settings))
-
-	s.Equal(h.Id, h.JasperCredentialsID)
-	dbHost, err := host.FindOneId(h.Id)
-	s.Require().NoError(err)
-	s.Equal(h.Id, dbHost.JasperCredentialsID)
-
-	creds, err := h.JasperCredentials(ctx, s.env)
-	s.Require().NoError(err)
-	s.NotNil(creds)
-	s.True(len(settings.UserData) > userDataLen)
 }
