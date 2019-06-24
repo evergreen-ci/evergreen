@@ -12,6 +12,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/testresult"
 	"github.com/evergreen-ci/evergreen/util"
+	adb "github.com/mongodb/anser/db"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
@@ -1723,13 +1724,23 @@ func GetTimeSpent(tasks []Task) (time.Duration, time.Duration) {
 // UpdateDependencies replaces the dependencies of a task with
 // the dependencies provided
 func (t *Task) UpdateDependencies(dependsOn []Dependency) error {
-	t.DependsOn = dependsOn
-	return UpdateOne(
+	err := UpdateOne(
 		bson.M{
-			IdKey: t.Id,
+			IdKey:        t.Id,
+			DependsOnKey: t.DependsOn,
 		},
 		bson.M{
 			"$set": bson.M{DependsOnKey: dependsOn},
 		},
 	)
+	if err != nil {
+		if adb.ResultsNotFound(err) {
+			grip.Alert(errors.Wrapf(err, "atomic update failed for %s", t.Id))
+		}
+		return errors.Wrap(err, "can't update dependencies")
+	}
+
+	t.DependsOn = dependsOn
+
+	return nil
 }

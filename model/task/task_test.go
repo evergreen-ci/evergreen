@@ -1206,7 +1206,8 @@ func TestGetTimeSpent(t *testing.T) {
 func TestUpdateDependencies(t *testing.T) {
 	assert.NoError(t, db.ClearCollections(Collection))
 	t1 := &Task{
-		Id: "t1",
+		Id:        "t1",
+		DependsOn: []Dependency{},
 	}
 	assert.NoError(t, t1.Insert())
 
@@ -1215,10 +1216,16 @@ func TestUpdateDependencies(t *testing.T) {
 			TaskId: "t2",
 		},
 	}
-
 	assert.NoError(t, t1.UpdateDependencies(dependsOn))
 	assert.Len(t, t1.DependsOn, 1)
 	dbT1, err := FindOneId("t1")
 	assert.NoError(t, err)
 	assert.Len(t, dbT1.DependsOn, 1)
+
+	// If the task is out of sync with the db the update fails
+	t1.DependsOn = []Dependency{
+		{TaskId: "t3"},
+	}
+	assert.Error(t, t1.UpdateDependencies(dependsOn))
+
 }
