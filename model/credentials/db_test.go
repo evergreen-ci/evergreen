@@ -2,14 +2,12 @@ package credentials
 
 import (
 	"context"
-	"path/filepath"
 	"testing"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/mock"
-	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/mongodb/jasper/rpc"
 	"github.com/pkg/errors"
 	"github.com/square/certstrap/depot"
@@ -20,7 +18,7 @@ import (
 func setupEnv(ctx context.Context) (*mock.Environment, error) {
 	env := &mock.Environment{}
 
-	if err := env.Configure(ctx, filepath.Join(evergreen.FindEvergreenHome(), testutil.TestDir, testutil.TestSettings), nil); err != nil {
+	if err := env.Configure(ctx, "", nil); err != nil {
 		return nil, errors.WithStack(err)
 	}
 	return env, nil

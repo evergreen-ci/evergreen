@@ -5,7 +5,6 @@ import (
 	"context"
 	"fmt"
 	"mime/multipart"
-	"path/filepath"
 	"strings"
 	"testing"
 	"time"
@@ -16,7 +15,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/credentials"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
-	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -124,7 +122,7 @@ func withBootstrapEnv(t *testing.T, fn func(env evergreen.Environment)) {
 	env.EnvContext, cancel = context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	require.NoError(t, env.Configure(env.EnvContext, filepath.Join(evergreen.FindEvergreenHome(), testutil.TestDir, testutil.TestSettings), nil))
+	require.NoError(t, env.Configure(env.EnvContext, "", nil))
 	env.Settings().DomainName = "test"
 
 	require.NoError(t, db.ClearCollections(credentials.Collection, host.Collection))
