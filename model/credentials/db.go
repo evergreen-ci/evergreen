@@ -67,7 +67,7 @@ func Bootstrap(env evergreen.Environment) error {
 
 func validateBootstrapped() error {
 	if serviceName == "" {
-		return errors.New("%s collection has not been bootstrapped", Collection)
+		return errors.Errorf("%s collection has not been bootstrapped", Collection)
 	}
 	return nil
 }

@@ -30,48 +30,6 @@ func newMockCredentials(caCrt []byte) (*rpc.Credentials, error) {
 	return rpc.NewCredentials(caCrt, []byte("bar"), []byte("bat"))
 }
 
-func TestBootstrapRequired(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
-	name := "name"
-
-	for testName, testCase := range map[string]func(ctx context.Context, t *testing.T, env evergreen.Environment){
-		"SaveCredentials": func(ctx context.Context, t *testing.T, env evergreen.Environment) {
-			creds, err := newMockCredentials([]byte("foo"))
-			require.NoError(t, err)
-			err = SaveCredentials(ctx, env, name, creds)
-			require.Error(t, err)
-			assert.Contains(t, errNotBootstrapped.Error(), err.Error())
-		},
-		"GenerateInMemory": func(ctx context.Context, t *testing.T, env evergreen.Environment) {
-			_, err := GenerateInMemory(ctx, env, name)
-			require.Error(t, err)
-			assert.Contains(t, errNotBootstrapped.Error(), err.Error())
-		},
-		"FindByID": func(ctx context.Context, t *testing.T, env evergreen.Environment) {
-			_, err := FindByID(ctx, env, name)
-			require.Error(t, err)
-			assert.Contains(t, errNotBootstrapped.Error(), err.Error())
-		},
-		"DeleteCredentials": func(ctx context.Context, t *testing.T, env evergreen.Environment) {
-			err := DeleteCredentials(ctx, env, name)
-			require.Error(t, err)
-			assert.Contains(t, errNotBootstrapped.Error(), err.Error())
-		},
-	} {
-		t.Run(testName, func(t *testing.T) {
-			env, err := setupEnv(ctx)
-
-			tctx, cancel := context.WithTimeout(ctx, time.Second)
-			defer cancel()
-
-			require.NoError(t, err)
-			testCase(tctx, t, env)
-		})
-	}
-}
-
 func TestDBOperations(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
