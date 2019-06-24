@@ -21,8 +21,7 @@ const (
 )
 
 var (
-	serviceName        string
-	errNotBootstrapped = errors.Errorf("%s collection has not been bootstrapped", Collection)
+	serviceName string
 )
 
 // Bootstrap performs one-time initialization of the credentials collection with
