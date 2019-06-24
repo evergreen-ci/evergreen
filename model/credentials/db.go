@@ -85,8 +85,10 @@ func deleteIfExists(dpt certdepot.Depot, tags ...*depot.Tag) error {
 	catcher := grip.NewBasicCatcher()
 	for _, tag := range tags {
 		if dpt.Check(tag) {
+			grip.Infof("kim: found tag")
 			catcher.Add(dpt.Delete(tag))
 		}
+		grip.Infof("kim: did not find tag")
 	}
 	return catcher.Resolve()
 }
