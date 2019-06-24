@@ -171,7 +171,7 @@ func (g *GeneratedProject) Save(ctx context.Context, p *Project, v *Version, t *
 		return errors.Wrapf(err, "error updating version %s", v.Id)
 	}
 
-	if v.Requester == evergreen.MergeTestRequester && p.ContainsMergeTask() {
+	if t.CommitQueueMerge {
 		if err = v.UpdateMergeTaskDependencies(p); err != nil {
 			return errors.Wrap(err, "error updating merge task")
 		}

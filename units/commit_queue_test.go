@@ -191,14 +191,16 @@ func (s *commitQueueSuite) TestAddMergeTaskAndVariant() {
 	s.NoError(addMergeTaskAndVariant(patchDoc, project))
 
 	s.Require().Len(patchDoc.BuildVariants, 1)
-	s.Equal("commit-queue-merge", patchDoc.BuildVariants[0])
+	s.Equal(evergreen.MergeTaskVariant, patchDoc.BuildVariants[0])
 	s.Require().Len(patchDoc.Tasks, 1)
-	s.Equal("merge-patch", patchDoc.Tasks[0])
+	s.Equal(evergreen.MergeTaskName, patchDoc.Tasks[0])
 
 	s.Require().Len(project.BuildVariants, 1)
-	s.Equal("commit-queue-merge", project.BuildVariants[0].Name)
+	s.Equal(evergreen.MergeTaskVariant, project.BuildVariants[0].Name)
+	s.Require().Len(project.BuildVariants[0].Tasks, 1)
+	s.True(project.BuildVariants[0].Tasks[0].CommitQueueMerge)
 	s.Require().Len(project.Tasks, 1)
-	s.Equal("merge-patch", project.Tasks[0].Name)
+	s.Equal(evergreen.MergeTaskName, project.Tasks[0].Name)
 }
 
 func (s *commitQueueSuite) TestSetDefaultNotification() {

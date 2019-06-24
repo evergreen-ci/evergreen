@@ -80,6 +80,8 @@ type BuildVariantTaskUnit struct {
 	Stepback        *bool `yaml:"stepback,omitempty" bson:"stepback,omitempty"`
 
 	Variant string `yaml:"-" bson:"-"`
+
+	CommitQueueMerge bool `yaml:"commit_queue_merge,omitempty" bson:"commit_queue_merge"`
 }
 
 func (b BuildVariant) Get(name string) (BuildVariantTaskUnit, error) {
@@ -1372,13 +1374,4 @@ func FetchVersionsAndAssociatedBuilds(project *Project, skip int, numVersions in
 	}
 
 	return versionsFromDB, buildsByVersion, nil
-}
-
-func (p *Project) ContainsMergeTask() bool {
-	for _, t := range p.Tasks {
-		if t.Name == evergreen.MergeTaskName {
-			return true
-		}
-	}
-	return false
 }
