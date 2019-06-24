@@ -200,7 +200,7 @@ func (s *commitQueueSuite) TestAddMergeTaskAndVariant() {
 	s.Require().Len(project.Tasks, 1)
 	s.Equal(evergreen.MergeTaskName, project.Tasks[0].Name)
 	s.Require().Len(project.TaskGroups, 1)
-	s.Equal(evergreen.MergeTaskGroup, project.TaskGroups[0])
+	s.Equal(evergreen.MergeTaskGroup, project.TaskGroups[0].Name)
 }
 
 func (s *commitQueueSuite) TestSetDefaultNotification() {
