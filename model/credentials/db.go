@@ -65,13 +65,6 @@ func Bootstrap(env evergreen.Environment) error {
 	return nil
 }
 
-func validateBootstrapped() error {
-	if serviceName == "" {
-		return errors.Errorf("%s collection has not been bootstrapped", Collection)
-	}
-	return nil
-}
-
 func mongoConfig(settings *evergreen.Settings) *certdepot.MongoDBOptions {
 	return &certdepot.MongoDBOptions{
 		MongoDBURI:     settings.Database.Url,
