@@ -491,12 +491,12 @@ func (j *agentMonitorDeployJob) agentMonitorRequestInput() jaspercli.CommandInpu
 
 // rpcClient returns an RPC Jasper client with credentials.
 func (j *agentMonitorDeployJob) rpcClient(ctx context.Context) (jasper.RemoteClient, error) {
-	creds, err := credentials.JasperClient(ctx, j.env)
+	creds, err := credentials.ForJasperClient(ctx, j.env)
 	if err != nil {
 		return nil, errors.Wrap(err, "could not get Jasper client credentials")
 	}
 
-	addr, err := net.ResolveTCPAddr("tcp", fmt.Sprintf("%s:%d", j.host.IP, j.settings.JasperConfig.Port))
+	addr, err := net.ResolveTCPAddr("tcp", fmt.Sprintf("%s:%d", j.host.IP, j.settings.HostJasper.Port))
 	if err != nil {
 		return nil, errors.Wrap(err, "could not resolve Jasper service address")
 	}
