@@ -87,7 +87,7 @@ func (uis *UIServer) patchPage(w http.ResponseWriter, r *http.Request) {
 			uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrap(err, "error finding commit queue"))
 		}
 		if cq != nil {
-			commitQueuePosition = cq.FindItem(projCtx.Patch.Id.String())
+			commitQueuePosition = cq.FindItem(projCtx.Patch.Id.Hex())
 		}
 	}
 
