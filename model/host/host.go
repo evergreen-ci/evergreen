@@ -1249,6 +1249,7 @@ type HostGroupStats struct {
 	Quarantined    int `bson:"quarantined" json:"quarantined" yaml:"quarantined"`
 	Decommissioned int `bson:"decommissioned" json:"decommissioned" yaml:"decommissioned"`
 	Idle           int `bson:"idle" json:"idle" yaml:"idle"`
+	Active         int `bson:"active" json:"active" yaml:"active"`
 	Provisioning   int `bson:"provisioning" json:"provisioning" yaml:"provisioning"`
 	Total          int `bson:"total" json:"total" yaml:"total"`
 }
@@ -1265,10 +1266,12 @@ func (hosts HostGroup) Stats() HostGroupStats {
 			out.Decommissioned++
 		} else if h.Status != evergreen.HostRunning {
 			out.Provisioning++
-		}
-
-		if h.RunningTask == "" {
-			out.Idle++
+		} else if h.Status == evergreen.HostRunning {
+			if h.RunningTask == "" {
+				out.Idle++
+			} else {
+				out.Active++
+			}
 		}
 	}
 
