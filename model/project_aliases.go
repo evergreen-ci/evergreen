@@ -87,6 +87,14 @@ func FindAliasInProject(projectID, alias string) ([]ProjectAlias, error) {
 	return out, nil
 }
 
+// IsValidId returns whether the supplied Id is a valid patch doc id (BSON ObjectId).
+func IsValidId(id string) bool {
+	return mgobson.IsObjectIdHex(id)
+}
+
+// NewId constructs a valid patch Id from the given hex string.
+func NewId(id string) mgobson.ObjectId { return mgobson.ObjectIdHex(id) }
+
 func (p *ProjectAlias) Upsert() error {
 	if len(p.ProjectID) == 0 {
 		return errors.New("empty project ID")

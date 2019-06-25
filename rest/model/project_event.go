@@ -8,7 +8,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
-	"gopkg.in/mgo.v2/bson"
 )
 
 type APIProjectEvent struct {
@@ -136,8 +135,8 @@ func (a *APIProjectAlias) ToService() (interface{}, error) {
 		Variant: FromAPIString(a.Variant),
 		Tags:    tags,
 	}
-	if bson.IsObjectIdHex(FromAPIString(a.ID)) {
-		res.ID = bson.ObjectIdHex(FromAPIString(a.ID))
+	if model.IsValidId(FromAPIString(a.ID)) {
+		res.ID = model.NewId(FromAPIString(a.ID))
 	}
 	return res, nil
 }
