@@ -347,6 +347,13 @@ func (h *projectIDPatchHandler) Run(ctx context.Context) gimlet.Responder {
 	if err = h.sc.UpdateProject(dbProjectRef); err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "Database error for update() by project id '%s'", h.projectID))
 	}
+	if err = h.sc.UpdateProjectVars(h.projectID, &apiProjectRef.Variables); err != nil {
+		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "Database error updating variables for project '%s'", h.projectID))
+	}
+	if err = h.sc.UpdateProjectAliases(h.projectID, apiProjectRef.Aliases); err != nil {
+		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "Database error updating aliases for project '%s'", h.projectID))
+	}
+	apiProjectRef.Aliases, _ = h.sc.FindProjectAliases(h.projectID)
 
 	// run the repotracker for the project
 	if h.revision != "" {
@@ -491,5 +498,13 @@ func (h *projectIDGetHandler) Run(ctx context.Context) gimlet.Responder {
 		})
 	}
 
+	variables, err := h.sc.FindProjectVarsById(h.projectID)
+	if err != nil {
+		return gimlet.MakeJSONErrorResponder(err)
+	}
+	projectModel.Variables = *variables
+	if projectModel.Aliases, err = h.sc.FindProjectAliases(h.projectID); err != nil {
+		return gimlet.MakeJSONErrorResponder(err)
+	}
 	return gimlet.NewJSONResponse(projectModel)
 }

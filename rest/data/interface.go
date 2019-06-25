@@ -226,9 +226,11 @@ type Connector interface {
 	CheckHostSecret(*http.Request) (int, error)
 
 	// FindProjectAliases queries the database to find all aliases.
-	FindProjectAliases(string) ([]model.ProjectAlias, error)
+	FindProjectAliases(string) ([]restModel.APIProjectAlias, error)
 	// CopyProjectAliases copies aliases from the first project for the second project.
 	CopyProjectAliases(string, string) error
+	// UpdateProjectAliases upserts/deletes aliases for the given project
+	UpdateProjectAliases(string, []restModel.APIProjectAlias) error
 
 	// TriggerRepotracker creates an amboy job to get the commits from a
 	// Github Push Event
