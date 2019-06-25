@@ -2,12 +2,16 @@ package cloud
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"io"
 	"mime/multipart"
 	"net/textproto"
 	"strings"
 
+	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/model/distro"
+	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 )
@@ -123,4 +127,32 @@ func parseUserDataContentType(userData string) (string, error) {
 		}
 	}
 	return "", errors.Errorf("user data format is not recognized from first line: '%s'", firstLine)
+}
+
+// bootstrapUserData returns the multipart user data with logic to bootstrap and
+// set up the host and the custom user data.
+func bootstrapUserData(ctx context.Context, env evergreen.Environment, h *host.Host, customUserData string) (string, error) {
+	if h.Distro.BootstrapMethod != distro.BootstrapMethodUserData {
+		return customUserData, nil
+	}
+
+	creds, err := h.GenerateJasperCredentials(ctx, env)
+	if err != nil {
+		return customUserData, errors.Wrap(err, "problem generating Jasper credentials for host")
+	}
+
+	commands, err := h.BootstrapScript(env.Settings().HostJasper, creds)
+	if err != nil {
+		return customUserData, errors.Wrap(err, "could not generate user data bootstrap script")
+	}
+
+	multipartUserData, err := makeMultipartUserData(map[string]string{
+		"bootstrap.txt": commands,
+		"user-data.txt": customUserData,
+	})
+	if err != nil {
+		return customUserData, errors.Wrap(err, "error creating user data with multiple parts")
+	}
+
+	return multipartUserData, errors.Wrap(h.SaveJasperCredentials(ctx, env, creds), "problem saving Jasper credentials to host")
 }
