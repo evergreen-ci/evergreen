@@ -81,6 +81,9 @@ func (j *hostTerminationJob) Run(ctx context.Context) {
 			return
 		}
 	}
+	if j.env == nil {
+		j.env = evergreen.GetEnvironment()
+	}
 
 	if !j.host.IsEphemeral() {
 		grip.Notice(message.Fields{
@@ -233,10 +236,6 @@ func (j *hostTerminationJob) Run(ctx context.Context) {
 			}))
 		}
 		return
-	}
-
-	if j.env == nil {
-		j.env = evergreen.GetEnvironment()
 	}
 
 	settings := j.env.Settings()
