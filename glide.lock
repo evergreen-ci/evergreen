@@ -74,7 +74,7 @@ imports:
   - name: github.com/go-ini/ini
     version: 6e4869b434bd001f6983749881c7ead3545887d8
   - name: github.com/aws/aws-sdk-go
-    version: 1cb9ce3dbddddab4a70e25ec1a5a60f1647b7e0b
+    version: b0b59fd2ceb03908e5d3bcd1449b46ce75508f4b
 
   - name: github.com/mholt/archiver
     version: e4ef56d48eb029648b0e895bb0b6a393ef0829c3

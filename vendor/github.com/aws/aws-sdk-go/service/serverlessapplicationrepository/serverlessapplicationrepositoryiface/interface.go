@@ -72,6 +72,14 @@ type ServerlessApplicationRepositoryAPI interface {
 	CreateCloudFormationChangeSetWithContext(aws.Context, *serverlessapplicationrepository.CreateCloudFormationChangeSetRequest, ...request.Option) (*serverlessapplicationrepository.CreateCloudFormationChangeSetOutput, error)
 	CreateCloudFormationChangeSetRequest(*serverlessapplicationrepository.CreateCloudFormationChangeSetRequest) (*request.Request, *serverlessapplicationrepository.CreateCloudFormationChangeSetOutput)
 
+	CreateCloudFormationTemplate(*serverlessapplicationrepository.CreateCloudFormationTemplateInput) (*serverlessapplicationrepository.CreateCloudFormationTemplateOutput, error)
+	CreateCloudFormationTemplateWithContext(aws.Context, *serverlessapplicationrepository.CreateCloudFormationTemplateInput, ...request.Option) (*serverlessapplicationrepository.CreateCloudFormationTemplateOutput, error)
+	CreateCloudFormationTemplateRequest(*serverlessapplicationrepository.CreateCloudFormationTemplateInput) (*request.Request, *serverlessapplicationrepository.CreateCloudFormationTemplateOutput)
+
+	DeleteApplication(*serverlessapplicationrepository.DeleteApplicationInput) (*serverlessapplicationrepository.DeleteApplicationOutput, error)
+	DeleteApplicationWithContext(aws.Context, *serverlessapplicationrepository.DeleteApplicationInput, ...request.Option) (*serverlessapplicationrepository.DeleteApplicationOutput, error)
+	DeleteApplicationRequest(*serverlessapplicationrepository.DeleteApplicationInput) (*request.Request, *serverlessapplicationrepository.DeleteApplicationOutput)
+
 	GetApplication(*serverlessapplicationrepository.GetApplicationInput) (*serverlessapplicationrepository.GetApplicationOutput, error)
 	GetApplicationWithContext(aws.Context, *serverlessapplicationrepository.GetApplicationInput, ...request.Option) (*serverlessapplicationrepository.GetApplicationOutput, error)
 	GetApplicationRequest(*serverlessapplicationrepository.GetApplicationInput) (*request.Request, *serverlessapplicationrepository.GetApplicationOutput)
@@ -80,13 +88,30 @@ type ServerlessApplicationRepositoryAPI interface {
 	GetApplicationPolicyWithContext(aws.Context, *serverlessapplicationrepository.GetApplicationPolicyInput, ...request.Option) (*serverlessapplicationrepository.GetApplicationPolicyOutput, error)
 	GetApplicationPolicyRequest(*serverlessapplicationrepository.GetApplicationPolicyInput) (*request.Request, *serverlessapplicationrepository.GetApplicationPolicyOutput)
 
+	GetCloudFormationTemplate(*serverlessapplicationrepository.GetCloudFormationTemplateInput) (*serverlessapplicationrepository.GetCloudFormationTemplateOutput, error)
+	GetCloudFormationTemplateWithContext(aws.Context, *serverlessapplicationrepository.GetCloudFormationTemplateInput, ...request.Option) (*serverlessapplicationrepository.GetCloudFormationTemplateOutput, error)
+	GetCloudFormationTemplateRequest(*serverlessapplicationrepository.GetCloudFormationTemplateInput) (*request.Request, *serverlessapplicationrepository.GetCloudFormationTemplateOutput)
+
+	ListApplicationDependencies(*serverlessapplicationrepository.ListApplicationDependenciesInput) (*serverlessapplicationrepository.ListApplicationDependenciesOutput, error)
+	ListApplicationDependenciesWithContext(aws.Context, *serverlessapplicationrepository.ListApplicationDependenciesInput, ...request.Option) (*serverlessapplicationrepository.ListApplicationDependenciesOutput, error)
+	ListApplicationDependenciesRequest(*serverlessapplicationrepository.ListApplicationDependenciesInput) (*request.Request, *serverlessapplicationrepository.ListApplicationDependenciesOutput)
+
+	ListApplicationDependenciesPages(*serverlessapplicationrepository.ListApplicationDependenciesInput, func(*serverlessapplicationrepository.ListApplicationDependenciesOutput, bool) bool) error
+	ListApplicationDependenciesPagesWithContext(aws.Context, *serverlessapplicationrepository.ListApplicationDependenciesInput, func(*serverlessapplicationrepository.ListApplicationDependenciesOutput, bool) bool, ...request.Option) error
+
 	ListApplicationVersions(*serverlessapplicationrepository.ListApplicationVersionsInput) (*serverlessapplicationrepository.ListApplicationVersionsOutput, error)
 	ListApplicationVersionsWithContext(aws.Context, *serverlessapplicationrepository.ListApplicationVersionsInput, ...request.Option) (*serverlessapplicationrepository.ListApplicationVersionsOutput, error)
 	ListApplicationVersionsRequest(*serverlessapplicationrepository.ListApplicationVersionsInput) (*request.Request, *serverlessapplicationrepository.ListApplicationVersionsOutput)
 
+	ListApplicationVersionsPages(*serverlessapplicationrepository.ListApplicationVersionsInput, func(*serverlessapplicationrepository.ListApplicationVersionsOutput, bool) bool) error
+	ListApplicationVersionsPagesWithContext(aws.Context, *serverlessapplicationrepository.ListApplicationVersionsInput, func(*serverlessapplicationrepository.ListApplicationVersionsOutput, bool) bool, ...request.Option) error
+
 	ListApplications(*serverlessapplicationrepository.ListApplicationsInput) (*serverlessapplicationrepository.ListApplicationsOutput, error)
 	ListApplicationsWithContext(aws.Context, *serverlessapplicationrepository.ListApplicationsInput, ...request.Option) (*serverlessapplicationrepository.ListApplicationsOutput, error)
 	ListApplicationsRequest(*serverlessapplicationrepository.ListApplicationsInput) (*request.Request, *serverlessapplicationrepository.ListApplicationsOutput)
+
+	ListApplicationsPages(*serverlessapplicationrepository.ListApplicationsInput, func(*serverlessapplicationrepository.ListApplicationsOutput, bool) bool) error
+	ListApplicationsPagesWithContext(aws.Context, *serverlessapplicationrepository.ListApplicationsInput, func(*serverlessapplicationrepository.ListApplicationsOutput, bool) bool, ...request.Option) error
 
 	PutApplicationPolicy(*serverlessapplicationrepository.PutApplicationPolicyInput) (*serverlessapplicationrepository.PutApplicationPolicyOutput, error)
 	PutApplicationPolicyWithContext(aws.Context, *serverlessapplicationrepository.PutApplicationPolicyInput, ...request.Option) (*serverlessapplicationrepository.PutApplicationPolicyOutput, error)

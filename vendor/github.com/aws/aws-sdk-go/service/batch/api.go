@@ -8,14 +8,16 @@ import (
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/awsutil"
 	"github.com/aws/aws-sdk-go/aws/request"
+	"github.com/aws/aws-sdk-go/private/protocol"
+	"github.com/aws/aws-sdk-go/private/protocol/restjson"
 )
 
 const opCancelJob = "CancelJob"
 
 // CancelJobRequest generates a "aws/request.Request" representing the
 // client's request for the CancelJob operation. The "output" return
-// value will be populated with the request's response once the request complets
-// successfuly.
+// value will be populated with the request's response once the request completes
+// successfully.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
 // the "output" return value is not valid until after Send returns without error.
@@ -49,6 +51,7 @@ func (c *Batch) CancelJobRequest(input *CancelJobInput) (req *request.Request, o
 
 	output = &CancelJobOutput{}
 	req = c.newRequest(op, input, output)
+	req.Handlers.Unmarshal.Swap(restjson.UnmarshalHandler.Name, protocol.UnmarshalDiscardBodyHandler)
 	return
 }
 
@@ -102,8 +105,8 @@ const opCreateComputeEnvironment = "CreateComputeEnvironment"
 
 // CreateComputeEnvironmentRequest generates a "aws/request.Request" representing the
 // client's request for the CreateComputeEnvironment operation. The "output" return
-// value will be populated with the request's response once the request complets
-// successfuly.
+// value will be populated with the request's response once the request completes
+// successfully.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
 // the "output" return value is not valid until after Send returns without error.
@@ -145,25 +148,43 @@ func (c *Batch) CreateComputeEnvironmentRequest(input *CreateComputeEnvironmentI
 // Creates an AWS Batch compute environment. You can create MANAGED or UNMANAGED
 // compute environments.
 //
-// In a managed compute environment, AWS Batch manages the compute resources
-// within the environment, based on the compute resources that you specify.
-// Instances launched into a managed compute environment use a recent, approved
-// version of the Amazon ECS-optimized AMI. You can choose to use Amazon EC2
-// On-Demand Instances in your managed compute environment, or you can use Amazon
-// EC2 Spot Instances that only launch when the Spot bid price is below a specified
-// percentage of the On-Demand price.
+// In a managed compute environment, AWS Batch manages the capacity and instance
+// types of the compute resources within the environment. This is based on the
+// compute resource specification that you define or the launch template (https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/ec2-launch-templates.html)
+// that you specify when you create the compute environment. You can choose
+// to use Amazon EC2 On-Demand Instances or Spot Instances in your managed compute
+// environment. You can optionally set a maximum price so that Spot Instances
+// only launch when the Spot Instance price is below a specified percentage
+// of the On-Demand price.
+//
+// Multi-node parallel jobs are not supported on Spot Instances.
 //
 // In an unmanaged compute environment, you can manage your own compute resources.
 // This provides more compute resource configuration options, such as using
 // a custom AMI, but you must ensure that your AMI meets the Amazon ECS container
 // instance AMI specification. For more information, see Container Instance
-// AMIs (http://docs.aws.amazon.com/AmazonECS/latest/developerguide/container_instance_AMIs.html)
+// AMIs (https://docs.aws.amazon.com/AmazonECS/latest/developerguide/container_instance_AMIs.html)
 // in the Amazon Elastic Container Service Developer Guide. After you have created
 // your unmanaged compute environment, you can use the DescribeComputeEnvironments
-// operation to find the Amazon ECS cluster that is associated with it and then
+// operation to find the Amazon ECS cluster that is associated with it. Then,
 // manually launch your container instances into that Amazon ECS cluster. For
-// more information, see Launching an Amazon ECS Container Instance (http://docs.aws.amazon.com/AmazonECS/latest/developerguide/launch_container_instance.html)
+// more information, see Launching an Amazon ECS Container Instance (https://docs.aws.amazon.com/AmazonECS/latest/developerguide/launch_container_instance.html)
 // in the Amazon Elastic Container Service Developer Guide.
+//
+// AWS Batch does not upgrade the AMIs in a compute environment after it is
+// created (for example, when a newer version of the Amazon ECS-optimized AMI
+// is available). You are responsible for the management of the guest operating
+// system (including updates and security patches) and any additional application
+// software or utilities that you install on the compute resources. To use a
+// new AMI for your AWS Batch jobs:
+//
+// Create a new compute environment with the new AMI.
+//
+// Add the compute environment to an existing job queue.
+//
+// Remove the old compute environment from your job queue.
+//
+// Delete the old compute environment.
 //
 // Returns awserr.Error for service API and SDK errors. Use runtime type assertions
 // with awserr.Error's Code and Message methods to get detailed information about
@@ -207,8 +228,8 @@ const opCreateJobQueue = "CreateJobQueue"
 
 // CreateJobQueueRequest generates a "aws/request.Request" representing the
 // client's request for the CreateJobQueue operation. The "output" return
-// value will be populated with the request's response once the request complets
-// successfuly.
+// value will be populated with the request's response once the request completes
+// successfully.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
 // the "output" return value is not valid until after Send returns without error.
@@ -299,8 +320,8 @@ const opDeleteComputeEnvironment = "DeleteComputeEnvironment"
 
 // DeleteComputeEnvironmentRequest generates a "aws/request.Request" representing the
 // client's request for the DeleteComputeEnvironment operation. The "output" return
-// value will be populated with the request's response once the request complets
-// successfuly.
+// value will be populated with the request's response once the request completes
+// successfully.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
 // the "output" return value is not valid until after Send returns without error.
@@ -334,6 +355,7 @@ func (c *Batch) DeleteComputeEnvironmentRequest(input *DeleteComputeEnvironmentI
 
 	output = &DeleteComputeEnvironmentOutput{}
 	req = c.newRequest(op, input, output)
+	req.Handlers.Unmarshal.Swap(restjson.UnmarshalHandler.Name, protocol.UnmarshalDiscardBodyHandler)
 	return
 }
 
@@ -387,8 +409,8 @@ const opDeleteJobQueue = "DeleteJobQueue"
 
 // DeleteJobQueueRequest generates a "aws/request.Request" representing the
 // client's request for the DeleteJobQueue operation. The "output" return
-// value will be populated with the request's response once the request complets
-// successfuly.
+// value will be populated with the request's response once the request completes
+// successfully.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
 // the "output" return value is not valid until after Send returns without error.
@@ -422,6 +444,7 @@ func (c *Batch) DeleteJobQueueRequest(input *DeleteJobQueueInput) (req *request.
 
 	output = &DeleteJobQueueOutput{}
 	req = c.newRequest(op, input, output)
+	req.Handlers.Unmarshal.Swap(restjson.UnmarshalHandler.Name, protocol.UnmarshalDiscardBodyHandler)
 	return
 }
 
@@ -476,8 +499,8 @@ const opDeregisterJobDefinition = "DeregisterJobDefinition"
 
 // DeregisterJobDefinitionRequest generates a "aws/request.Request" representing the
 // client's request for the DeregisterJobDefinition operation. The "output" return
-// value will be populated with the request's response once the request complets
-// successfuly.
+// value will be populated with the request's response once the request completes
+// successfully.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
 // the "output" return value is not valid until after Send returns without error.
@@ -511,6 +534,7 @@ func (c *Batch) DeregisterJobDefinitionRequest(input *DeregisterJobDefinitionInp
 
 	output = &DeregisterJobDefinitionOutput{}
 	req = c.newRequest(op, input, output)
+	req.Handlers.Unmarshal.Swap(restjson.UnmarshalHandler.Name, protocol.UnmarshalDiscardBodyHandler)
 	return
 }
 
@@ -560,8 +584,8 @@ const opDescribeComputeEnvironments = "DescribeComputeEnvironments"
 
 // DescribeComputeEnvironmentsRequest generates a "aws/request.Request" representing the
 // client's request for the DescribeComputeEnvironments operation. The "output" return
-// value will be populated with the request's response once the request complets
-// successfuly.
+// value will be populated with the request's response once the request completes
+// successfully.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
 // the "output" return value is not valid until after Send returns without error.
@@ -648,8 +672,8 @@ const opDescribeJobDefinitions = "DescribeJobDefinitions"
 
 // DescribeJobDefinitionsRequest generates a "aws/request.Request" representing the
 // client's request for the DescribeJobDefinitions operation. The "output" return
-// value will be populated with the request's response once the request complets
-// successfuly.
+// value will be populated with the request's response once the request completes
+// successfully.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
 // the "output" return value is not valid until after Send returns without error.
@@ -733,8 +757,8 @@ const opDescribeJobQueues = "DescribeJobQueues"
 
 // DescribeJobQueuesRequest generates a "aws/request.Request" representing the
 // client's request for the DescribeJobQueues operation. The "output" return
-// value will be populated with the request's response once the request complets
-// successfuly.
+// value will be populated with the request's response once the request completes
+// successfully.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
 // the "output" return value is not valid until after Send returns without error.
@@ -817,8 +841,8 @@ const opDescribeJobs = "DescribeJobs"
 
 // DescribeJobsRequest generates a "aws/request.Request" representing the
 // client's request for the DescribeJobs operation. The "output" return
-// value will be populated with the request's response once the request complets
-// successfuly.
+// value will be populated with the request's response once the request completes
+// successfully.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
 // the "output" return value is not valid until after Send returns without error.
@@ -901,8 +925,8 @@ const opListJobs = "ListJobs"
 
 // ListJobsRequest generates a "aws/request.Request" representing the
 // client's request for the ListJobs operation. The "output" return
-// value will be populated with the request's response once the request complets
-// successfuly.
+// value will be populated with the request's response once the request completes
+// successfully.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
 // the "output" return value is not valid until after Send returns without error.
@@ -941,9 +965,18 @@ func (c *Batch) ListJobsRequest(input *ListJobsInput) (req *request.Request, out
 
 // ListJobs API operation for AWS Batch.
 //
-// Returns a list of task jobs for a specified job queue. You can filter the
-// results by job status with the jobStatus parameter. If you do not specify
-// a status, only RUNNING jobs are returned.
+// Returns a list of AWS Batch jobs.
+//
+// You must specify only one of the following:
+//
+//    * a job queue ID to return a list of jobs in that job queue
+//
+//    * a multi-node parallel job ID to return a list of that job's nodes
+//
+//    * an array job ID to return a list of that job's children
+//
+// You can filter the results by job status with the jobStatus parameter. If
+// you do not specify a status, only RUNNING jobs are returned.
 //
 // Returns awserr.Error for service API and SDK errors. Use runtime type assertions
 // with awserr.Error's Code and Message methods to get detailed information about
@@ -987,8 +1020,8 @@ const opRegisterJobDefinition = "RegisterJobDefinition"
 
 // RegisterJobDefinitionRequest generates a "aws/request.Request" representing the
 // client's request for the RegisterJobDefinition operation. The "output" return
-// value will be populated with the request's response once the request complets
-// successfuly.
+// value will be populated with the request's response once the request completes
+// successfully.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
 // the "output" return value is not valid until after Send returns without error.
@@ -1071,8 +1104,8 @@ const opSubmitJob = "SubmitJob"
 
 // SubmitJobRequest generates a "aws/request.Request" representing the
 // client's request for the SubmitJob operation. The "output" return
-// value will be populated with the request's response once the request complets
-// successfuly.
+// value will be populated with the request's response once the request completes
+// successfully.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
 // the "output" return value is not valid until after Send returns without error.
@@ -1156,8 +1189,8 @@ const opTerminateJob = "TerminateJob"
 
 // TerminateJobRequest generates a "aws/request.Request" representing the
 // client's request for the TerminateJob operation. The "output" return
-// value will be populated with the request's response once the request complets
-// successfuly.
+// value will be populated with the request's response once the request completes
+// successfully.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
 // the "output" return value is not valid until after Send returns without error.
@@ -1191,6 +1224,7 @@ func (c *Batch) TerminateJobRequest(input *TerminateJobInput) (req *request.Requ
 
 	output = &TerminateJobOutput{}
 	req = c.newRequest(op, input, output)
+	req.Handlers.Unmarshal.Swap(restjson.UnmarshalHandler.Name, protocol.UnmarshalDiscardBodyHandler)
 	return
 }
 
@@ -1242,8 +1276,8 @@ const opUpdateComputeEnvironment = "UpdateComputeEnvironment"
 
 // UpdateComputeEnvironmentRequest generates a "aws/request.Request" representing the
 // client's request for the UpdateComputeEnvironment operation. The "output" return
-// value will be populated with the request's response once the request complets
-// successfuly.
+// value will be populated with the request's response once the request completes
+// successfully.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
 // the "output" return value is not valid until after Send returns without error.
@@ -1326,8 +1360,8 @@ const opUpdateJobQueue = "UpdateJobQueue"
 
 // UpdateJobQueueRequest generates a "aws/request.Request" representing the
 // client's request for the UpdateJobQueue operation. The "output" return
-// value will be populated with the request's response once the request complets
-// successfuly.
+// value will be populated with the request's response once the request completes
+// successfully.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
 // the "output" return value is not valid until after Send returns without error.
@@ -1407,7 +1441,6 @@ func (c *Batch) UpdateJobQueueWithContext(ctx aws.Context, input *UpdateJobQueue
 }
 
 // An object representing an AWS Batch array job.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/batch-2016-08-10/ArrayProperties
 type ArrayProperties struct {
 	_ struct{} `type:"structure"`
 
@@ -1432,7 +1465,6 @@ func (s *ArrayProperties) SetSize(v int64) *ArrayProperties {
 }
 
 // An object representing the array properties of a job.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/batch-2016-08-10/ArrayPropertiesDetail
 type ArrayPropertiesDetail struct {
 	_ struct{} `type:"structure"`
 
@@ -1477,7 +1509,6 @@ func (s *ArrayPropertiesDetail) SetStatusSummary(v map[string]*int64) *ArrayProp
 }
 
 // An object representing the array properties of a job.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/batch-2016-08-10/ArrayPropertiesSummary
 type ArrayPropertiesSummary struct {
 	_ struct{} `type:"structure"`
 
@@ -1512,7 +1543,6 @@ func (s *ArrayPropertiesSummary) SetSize(v int64) *ArrayPropertiesSummary {
 }
 
 // An object representing the details of a container that is part of a job attempt.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/batch-2016-08-10/AttemptContainerDetail
 type AttemptContainerDetail struct {
 	_ struct{} `type:"structure"`
 
@@ -1527,6 +1557,9 @@ type AttemptContainerDetail struct {
 	// The log group for AWS Batch jobs is /aws/batch/job. Each container attempt
 	// receives a log stream name when they reach the RUNNING status.
 	LogStreamName *string `locationName:"logStreamName" type:"string"`
+
+	// The network interfaces associated with the job attempt.
+	NetworkInterfaces []*NetworkInterface `locationName:"networkInterfaces" type:"list"`
 
 	// A short (255 max characters) human-readable string to provide additional
 	// details about a running or stopped container.
@@ -1566,6 +1599,12 @@ func (s *AttemptContainerDetail) SetLogStreamName(v string) *AttemptContainerDet
 	return s
 }
 
+// SetNetworkInterfaces sets the NetworkInterfaces field's value.
+func (s *AttemptContainerDetail) SetNetworkInterfaces(v []*NetworkInterface) *AttemptContainerDetail {
+	s.NetworkInterfaces = v
+	return s
+}
+
 // SetReason sets the Reason field's value.
 func (s *AttemptContainerDetail) SetReason(v string) *AttemptContainerDetail {
 	s.Reason = &v
@@ -1579,23 +1618,24 @@ func (s *AttemptContainerDetail) SetTaskArn(v string) *AttemptContainerDetail {
 }
 
 // An object representing a job attempt.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/batch-2016-08-10/AttemptDetail
 type AttemptDetail struct {
 	_ struct{} `type:"structure"`
 
 	// Details about the container in this job attempt.
 	Container *AttemptContainerDetail `locationName:"container" type:"structure"`
 
-	// The Unix time stamp for when the attempt was started (when the attempt transitioned
-	// from the STARTING state to the RUNNING state).
+	// The Unix timestamp (in seconds and milliseconds) for when the attempt was
+	// started (when the attempt transitioned from the STARTING state to the RUNNING
+	// state).
 	StartedAt *int64 `locationName:"startedAt" type:"long"`
 
 	// A short, human-readable string to provide additional details about the current
 	// status of the job attempt.
 	StatusReason *string `locationName:"statusReason" type:"string"`
 
-	// The Unix time stamp for when the attempt was stopped (when the attempt transitioned
-	// from the RUNNING state to a terminal state, such as SUCCEEDED or FAILED).
+	// The Unix timestamp (in seconds and milliseconds) for when the attempt was
+	// stopped (when the attempt transitioned from the RUNNING state to a terminal
+	// state, such as SUCCEEDED or FAILED).
 	StoppedAt *int64 `locationName:"stoppedAt" type:"long"`
 }
 
@@ -1633,7 +1673,6 @@ func (s *AttemptDetail) SetStoppedAt(v int64) *AttemptDetail {
 	return s
 }
 
-// See also, https://docs.aws.amazon.com/goto/WebAPI/batch-2016-08-10/CancelJobRequest
 type CancelJobInput struct {
 	_ struct{} `type:"structure"`
 
@@ -1688,7 +1727,6 @@ func (s *CancelJobInput) SetReason(v string) *CancelJobInput {
 	return s
 }
 
-// See also, https://docs.aws.amazon.com/goto/WebAPI/batch-2016-08-10/CancelJobResponse
 type CancelJobOutput struct {
 	_ struct{} `type:"structure"`
 }
@@ -1704,7 +1742,6 @@ func (s CancelJobOutput) GoString() string {
 }
 
 // An object representing an AWS Batch compute environment.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/batch-2016-08-10/ComputeEnvironmentDetail
 type ComputeEnvironmentDetail struct {
 	_ struct{} `type:"structure"`
 
@@ -1732,8 +1769,17 @@ type ComputeEnvironmentDetail struct {
 	ServiceRole *string `locationName:"serviceRole" type:"string"`
 
 	// The state of the compute environment. The valid values are ENABLED or DISABLED.
-	// An ENABLED state indicates that you can register instances with the compute
-	// environment and that the associated instances can accept jobs.
+	//
+	// If the state is ENABLED, then the AWS Batch scheduler can attempt to place
+	// jobs from an associated job queue on the compute resources within the environment.
+	// If the compute environment is managed, then it can scale its instances out
+	// or in automatically, based on the job queue demand.
+	//
+	// If the state is DISABLED, then the AWS Batch scheduler does not attempt to
+	// place jobs within the environment. Jobs in a STARTING or RUNNING state continue
+	// to progress normally. Managed compute environments in the DISABLED state
+	// do not scale out. However, they scale in to minvCpus value after instances
+	// become idle.
 	State *string `locationName:"state" type:"string" enum:"CEState"`
 
 	// The current status of the compute environment (for example, CREATING or VALID).
@@ -1815,7 +1861,6 @@ func (s *ComputeEnvironmentDetail) SetType(v string) *ComputeEnvironmentDetail {
 // a queue. Compute environments are tried in ascending order. For example,
 // if two compute environments are associated with a job queue, the compute
 // environment with a lower order integer value is tried for job placement first.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/batch-2016-08-10/ComputeEnvironmentOrder
 type ComputeEnvironmentOrder struct {
 	_ struct{} `type:"structure"`
 
@@ -1869,14 +1914,16 @@ func (s *ComputeEnvironmentOrder) SetOrder(v int64) *ComputeEnvironmentOrder {
 }
 
 // An object representing an AWS Batch compute resource.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/batch-2016-08-10/ComputeResource
 type ComputeResource struct {
 	_ struct{} `type:"structure"`
 
-	// The minimum percentage that a Spot Instance price must be when compared with
+	// The maximum percentage that a Spot Instance price can be when compared with
 	// the On-Demand price for that instance type before instances are launched.
-	// For example, if your bid percentage is 20%, then the Spot price must be below
-	// 20% of the current On-Demand price for that EC2 instance.
+	// For example, if your maximum percentage is 20%, then the Spot price must
+	// be below 20% of the current On-Demand price for that EC2 instance. You always
+	// pay the lowest (market) price and never more than your maximum percentage.
+	// If you leave this field empty, the default value is 100% of the On-Demand
+	// price.
 	BidPercentage *int64 `locationName:"bidPercentage" type:"integer"`
 
 	// The desired number of EC2 vCPUS in the compute environment.
@@ -1891,8 +1938,8 @@ type ComputeResource struct {
 
 	// The Amazon ECS instance profile applied to Amazon EC2 instances in a compute
 	// environment. You can specify the short name or full Amazon Resource Name
-	// (ARN) of an instance profile. For example, ecsInstanceRole or arn:aws:iam::<aws_account_id>:instance-profile/ecsInstanceRole.
-	// For more information, see Amazon ECS Instance Role (http://docs.aws.amazon.com/batch/latest/userguide/instance_IAM_role.html)
+	// (ARN) of an instance profile. For example, ecsInstanceRole or arn:aws:iam::<aws_account_id>:instance-profile/ecsInstanceRole
+	// . For more information, see Amazon ECS Instance Role (https://docs.aws.amazon.com/batch/latest/userguide/instance_IAM_role.html)
 	// in the AWS Batch User Guide.
 	//
 	// InstanceRole is a required field
@@ -1901,30 +1948,48 @@ type ComputeResource struct {
 	// The instances types that may be launched. You can specify instance families
 	// to launch any instance type within those families (for example, c4 or p3),
 	// or you can specify specific sizes within a family (such as c4.8xlarge). You
-	// can also choose optimal to pick instance types (from the latest C, M, and
-	// R instance families) on the fly that match the demand of your job queues.
+	// can also choose optimal to pick instance types (from the C, M, and R instance
+	// families) on the fly that match the demand of your job queues.
 	//
 	// InstanceTypes is a required field
 	InstanceTypes []*string `locationName:"instanceTypes" type:"list" required:"true"`
+
+	// The launch template to use for your compute resources. Any other compute
+	// resource parameters that you specify in a CreateComputeEnvironment API operation
+	// override the same parameters in the launch template. You must specify either
+	// the launch template ID or launch template name in the request, but not both.
+	// For more information, see Launch Template Support (https://docs.aws.amazon.com/batch/latest/userguide/launch-templates.html)
+	// in the AWS Batch User Guide.
+	LaunchTemplate *LaunchTemplateSpecification `locationName:"launchTemplate" type:"structure"`
 
 	// The maximum number of EC2 vCPUs that an environment can reach.
 	//
 	// MaxvCpus is a required field
 	MaxvCpus *int64 `locationName:"maxvCpus" type:"integer" required:"true"`
 
-	// The minimum number of EC2 vCPUs that an environment should maintain.
+	// The minimum number of EC2 vCPUs that an environment should maintain (even
+	// if the compute environment is DISABLED).
 	//
 	// MinvCpus is a required field
 	MinvCpus *int64 `locationName:"minvCpus" type:"integer" required:"true"`
 
+	// The Amazon EC2 placement group to associate with your compute resources.
+	// If you intend to submit multi-node parallel jobs to your compute environment,
+	// you should consider creating a cluster placement group and associate it with
+	// your compute resources. This keeps your multi-node parallel job on a logical
+	// grouping of instances within a single Availability Zone with high network
+	// flow potential. For more information, see Placement Groups (https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/placement-groups.html)
+	// in the Amazon EC2 User Guide for Linux Instances.
+	PlacementGroup *string `locationName:"placementGroup" type:"string"`
+
 	// The EC2 security group that is associated with instances launched in the
 	// compute environment.
-	//
-	// SecurityGroupIds is a required field
-	SecurityGroupIds []*string `locationName:"securityGroupIds" type:"list" required:"true"`
+	SecurityGroupIds []*string `locationName:"securityGroupIds" type:"list"`
 
 	// The Amazon Resource Name (ARN) of the Amazon EC2 Spot Fleet IAM role applied
-	// to a SPOT compute environment.
+	// to a SPOT compute environment. For more information, see Amazon EC2 Spot
+	// Fleet Role (https://docs.aws.amazon.com/batch/latest/userguide/spot_fleet_IAM_role.html)
+	// in the AWS Batch User Guide.
 	SpotIamFleetRole *string `locationName:"spotIamFleetRole" type:"string"`
 
 	// The VPC subnets into which the compute resources are launched.
@@ -1933,10 +1998,12 @@ type ComputeResource struct {
 	Subnets []*string `locationName:"subnets" type:"list" required:"true"`
 
 	// Key-value pair tags to be applied to resources that are launched in the compute
-	// environment.
+	// environment. For AWS Batch, these take the form of "String1": "String2",
+	// where String1 is the tag key and String2 is the tag value—for example,
+	// { "Name": "AWS Batch Instance - C4OnDemand" }.
 	Tags map[string]*string `locationName:"tags" type:"map"`
 
-	// The type of compute environment.
+	// The type of compute environment: EC2 or SPOT.
 	//
 	// Type is a required field
 	Type *string `locationName:"type" type:"string" required:"true" enum:"CRType"`
@@ -1966,9 +2033,6 @@ func (s *ComputeResource) Validate() error {
 	}
 	if s.MinvCpus == nil {
 		invalidParams.Add(request.NewErrParamRequired("MinvCpus"))
-	}
-	if s.SecurityGroupIds == nil {
-		invalidParams.Add(request.NewErrParamRequired("SecurityGroupIds"))
 	}
 	if s.Subnets == nil {
 		invalidParams.Add(request.NewErrParamRequired("Subnets"))
@@ -2019,6 +2083,12 @@ func (s *ComputeResource) SetInstanceTypes(v []*string) *ComputeResource {
 	return s
 }
 
+// SetLaunchTemplate sets the LaunchTemplate field's value.
+func (s *ComputeResource) SetLaunchTemplate(v *LaunchTemplateSpecification) *ComputeResource {
+	s.LaunchTemplate = v
+	return s
+}
+
 // SetMaxvCpus sets the MaxvCpus field's value.
 func (s *ComputeResource) SetMaxvCpus(v int64) *ComputeResource {
 	s.MaxvCpus = &v
@@ -2028,6 +2098,12 @@ func (s *ComputeResource) SetMaxvCpus(v int64) *ComputeResource {
 // SetMinvCpus sets the MinvCpus field's value.
 func (s *ComputeResource) SetMinvCpus(v int64) *ComputeResource {
 	s.MinvCpus = &v
+	return s
+}
+
+// SetPlacementGroup sets the PlacementGroup field's value.
+func (s *ComputeResource) SetPlacementGroup(v string) *ComputeResource {
+	s.PlacementGroup = &v
 	return s
 }
 
@@ -2063,7 +2139,6 @@ func (s *ComputeResource) SetType(v string) *ComputeResource {
 
 // An object representing the attributes of a compute environment that can be
 // updated.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/batch-2016-08-10/ComputeResourceUpdate
 type ComputeResourceUpdate struct {
 	_ struct{} `type:"structure"`
 
@@ -2106,7 +2181,6 @@ func (s *ComputeResourceUpdate) SetMinvCpus(v int64) *ComputeResourceUpdate {
 }
 
 // An object representing the details of a container that is part of a job.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/batch-2016-08-10/ContainerDetail
 type ContainerDetail struct {
 	_ struct{} `type:"structure"`
 
@@ -2129,6 +2203,10 @@ type ContainerDetail struct {
 	// The image used to start the container.
 	Image *string `locationName:"image" type:"string"`
 
+	// The instance type of the underlying host infrastructure of a multi-node parallel
+	// job.
+	InstanceType *string `locationName:"instanceType" type:"string"`
+
 	// The Amazon Resource Name (ARN) associated with the job upon execution.
 	JobRoleArn *string `locationName:"jobRoleArn" type:"string"`
 
@@ -2143,6 +2221,9 @@ type ContainerDetail struct {
 	// The mount points for data volumes in your container.
 	MountPoints []*MountPoint `locationName:"mountPoints" type:"list"`
 
+	// The network interfaces associated with the job.
+	NetworkInterfaces []*NetworkInterface `locationName:"networkInterfaces" type:"list"`
+
 	// When this parameter is true, the container is given elevated privileges on
 	// the host container instance (similar to the root user).
 	Privileged *bool `locationName:"privileged" type:"boolean"`
@@ -2154,6 +2235,10 @@ type ContainerDetail struct {
 	// A short (255 max characters) human-readable string to provide additional
 	// details about a running or stopped container.
 	Reason *string `locationName:"reason" type:"string"`
+
+	// The type and amount of a resource to assign to a container. Currently, the
+	// only supported resource is GPU.
+	ResourceRequirements []*ResourceRequirement `locationName:"resourceRequirements" type:"list"`
 
 	// The Amazon Resource Name (ARN) of the Amazon ECS task that is associated
 	// with the container job. Each container attempt receives a task ARN when they
@@ -2213,6 +2298,12 @@ func (s *ContainerDetail) SetImage(v string) *ContainerDetail {
 	return s
 }
 
+// SetInstanceType sets the InstanceType field's value.
+func (s *ContainerDetail) SetInstanceType(v string) *ContainerDetail {
+	s.InstanceType = &v
+	return s
+}
+
 // SetJobRoleArn sets the JobRoleArn field's value.
 func (s *ContainerDetail) SetJobRoleArn(v string) *ContainerDetail {
 	s.JobRoleArn = &v
@@ -2237,6 +2328,12 @@ func (s *ContainerDetail) SetMountPoints(v []*MountPoint) *ContainerDetail {
 	return s
 }
 
+// SetNetworkInterfaces sets the NetworkInterfaces field's value.
+func (s *ContainerDetail) SetNetworkInterfaces(v []*NetworkInterface) *ContainerDetail {
+	s.NetworkInterfaces = v
+	return s
+}
+
 // SetPrivileged sets the Privileged field's value.
 func (s *ContainerDetail) SetPrivileged(v bool) *ContainerDetail {
 	s.Privileged = &v
@@ -2252,6 +2349,12 @@ func (s *ContainerDetail) SetReadonlyRootFilesystem(v bool) *ContainerDetail {
 // SetReason sets the Reason field's value.
 func (s *ContainerDetail) SetReason(v string) *ContainerDetail {
 	s.Reason = &v
+	return s
+}
+
+// SetResourceRequirements sets the ResourceRequirements field's value.
+func (s *ContainerDetail) SetResourceRequirements(v []*ResourceRequirement) *ContainerDetail {
+	s.ResourceRequirements = v
 	return s
 }
 
@@ -2286,7 +2389,6 @@ func (s *ContainerDetail) SetVolumes(v []*Volume) *ContainerDetail {
 }
 
 // The overrides that should be sent to a container.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/batch-2016-08-10/ContainerOverrides
 type ContainerOverrides struct {
 	_ struct{} `type:"structure"`
 
@@ -2302,9 +2404,18 @@ type ContainerOverrides struct {
 	// is reserved for variables that are set by the AWS Batch service.
 	Environment []*KeyValuePair `locationName:"environment" type:"list"`
 
+	// The instance type to use for a multi-node parallel job. This parameter is
+	// not valid for single-node container jobs.
+	InstanceType *string `locationName:"instanceType" type:"string"`
+
 	// The number of MiB of memory reserved for the job. This value overrides the
 	// value set in the job definition.
 	Memory *int64 `locationName:"memory" type:"integer"`
+
+	// The type and amount of a resource to assign to a container. This value overrides
+	// the value set in the job definition. Currently, the only supported resource
+	// is GPU.
+	ResourceRequirements []*ResourceRequirement `locationName:"resourceRequirements" type:"list"`
 
 	// The number of vCPUs to reserve for the container. This value overrides the
 	// value set in the job definition.
@@ -2321,6 +2432,26 @@ func (s ContainerOverrides) GoString() string {
 	return s.String()
 }
 
+// Validate inspects the fields of the type to determine if they are valid.
+func (s *ContainerOverrides) Validate() error {
+	invalidParams := request.ErrInvalidParams{Context: "ContainerOverrides"}
+	if s.ResourceRequirements != nil {
+		for i, v := range s.ResourceRequirements {
+			if v == nil {
+				continue
+			}
+			if err := v.Validate(); err != nil {
+				invalidParams.AddNested(fmt.Sprintf("%s[%v]", "ResourceRequirements", i), err.(request.ErrInvalidParams))
+			}
+		}
+	}
+
+	if invalidParams.Len() > 0 {
+		return invalidParams
+	}
+	return nil
+}
+
 // SetCommand sets the Command field's value.
 func (s *ContainerOverrides) SetCommand(v []*string) *ContainerOverrides {
 	s.Command = v
@@ -2333,9 +2464,21 @@ func (s *ContainerOverrides) SetEnvironment(v []*KeyValuePair) *ContainerOverrid
 	return s
 }
 
+// SetInstanceType sets the InstanceType field's value.
+func (s *ContainerOverrides) SetInstanceType(v string) *ContainerOverrides {
+	s.InstanceType = &v
+	return s
+}
+
 // SetMemory sets the Memory field's value.
 func (s *ContainerOverrides) SetMemory(v int64) *ContainerOverrides {
 	s.Memory = &v
+	return s
+}
+
+// SetResourceRequirements sets the ResourceRequirements field's value.
+func (s *ContainerOverrides) SetResourceRequirements(v []*ResourceRequirement) *ContainerOverrides {
+	s.ResourceRequirements = v
 	return s
 }
 
@@ -2347,21 +2490,20 @@ func (s *ContainerOverrides) SetVcpus(v int64) *ContainerOverrides {
 
 // Container properties are used in job definitions to describe the container
 // that is launched as part of a job.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/batch-2016-08-10/ContainerProperties
 type ContainerProperties struct {
 	_ struct{} `type:"structure"`
 
 	// The command that is passed to the container. This parameter maps to Cmd in
-	// the Create a container (https://docs.docker.com/engine/reference/api/docker_remote_api_v1.23/#create-a-container)
-	// section of the Docker Remote API (https://docs.docker.com/engine/reference/api/docker_remote_api_v1.23/)
+	// the Create a container (https://docs.docker.com/engine/api/v1.23/#create-a-container)
+	// section of the Docker Remote API (https://docs.docker.com/engine/api/v1.23/)
 	// and the COMMAND parameter to docker run (https://docs.docker.com/engine/reference/run/).
 	// For more information, see https://docs.docker.com/engine/reference/builder/#cmd
 	// (https://docs.docker.com/engine/reference/builder/#cmd).
 	Command []*string `locationName:"command" type:"list"`
 
 	// The environment variables to pass to a container. This parameter maps to
-	// Env in the Create a container (https://docs.docker.com/engine/reference/api/docker_remote_api_v1.23/#create-a-container)
-	// section of the Docker Remote API (https://docs.docker.com/engine/reference/api/docker_remote_api_v1.23/)
+	// Env in the Create a container (https://docs.docker.com/engine/api/v1.23/#create-a-container)
+	// section of the Docker Remote API (https://docs.docker.com/engine/api/v1.23/)
 	// and the --env option to docker run (https://docs.docker.com/engine/reference/run/).
 	//
 	// We do not recommend using plaintext environment variables for sensitive information,
@@ -2373,16 +2515,15 @@ type ContainerProperties struct {
 
 	// The image used to start a container. This string is passed directly to the
 	// Docker daemon. Images in the Docker Hub registry are available by default.
-	// Other repositories are specified with repository-url/image:tag. Up to 255
+	// Other repositories are specified with repository-url/image:tag . Up to 255
 	// letters (uppercase and lowercase), numbers, hyphens, underscores, colons,
 	// periods, forward slashes, and number signs are allowed. This parameter maps
-	// to Image in the Create a container (https://docs.docker.com/engine/reference/api/docker_remote_api_v1.23/#create-a-container)
-	// section of the Docker Remote API (https://docs.docker.com/engine/reference/api/docker_remote_api_v1.23/)
+	// to Image in the Create a container (https://docs.docker.com/engine/api/v1.23/#create-a-container)
+	// section of the Docker Remote API (https://docs.docker.com/engine/api/v1.23/)
 	// and the IMAGE parameter of docker run (https://docs.docker.com/engine/reference/run/).
 	//
 	//    * Images in Amazon ECR repositories use the full registry and repository
 	//    URI (for example, 012345678910.dkr.ecr.<region-name>.amazonaws.com/<repository-name>).
-	//
 	//
 	//    * Images in official repositories on Docker Hub use a single name (for
 	//    example, ubuntu or mongo).
@@ -2392,9 +2533,12 @@ type ContainerProperties struct {
 	//
 	//    * Images in other online repositories are qualified further by a domain
 	//    name (for example, quay.io/assemblyline/ubuntu).
-	//
-	// Image is a required field
-	Image *string `locationName:"image" type:"string" required:"true"`
+	Image *string `locationName:"image" type:"string"`
+
+	// The instance type to use for a multi-node parallel job. Currently all node
+	// groups in a multi-node parallel job must use the same instance type. This
+	// parameter is not valid for single-node container jobs.
+	InstanceType *string `locationName:"instanceType" type:"string"`
 
 	// The Amazon Resource Name (ARN) of the IAM role that the container can assume
 	// for AWS permissions.
@@ -2402,55 +2546,60 @@ type ContainerProperties struct {
 
 	// The hard limit (in MiB) of memory to present to the container. If your container
 	// attempts to exceed the memory specified here, the container is killed. This
-	// parameter maps to Memory in the Create a container (https://docs.docker.com/engine/reference/api/docker_remote_api_v1.23/#create-a-container)
-	// section of the Docker Remote API (https://docs.docker.com/engine/reference/api/docker_remote_api_v1.23/)
+	// parameter maps to Memory in the Create a container (https://docs.docker.com/engine/api/v1.23/#create-a-container)
+	// section of the Docker Remote API (https://docs.docker.com/engine/api/v1.23/)
 	// and the --memory option to docker run (https://docs.docker.com/engine/reference/run/).
 	// You must specify at least 4 MiB of memory for a job.
 	//
-	// Memory is a required field
-	Memory *int64 `locationName:"memory" type:"integer" required:"true"`
+	// If you are trying to maximize your resource utilization by providing your
+	// jobs as much memory as possible for a particular instance type, see Memory
+	// Management (https://docs.aws.amazon.com/batch/latest/userguide/memory-management.html)
+	// in the AWS Batch User Guide.
+	Memory *int64 `locationName:"memory" type:"integer"`
 
 	// The mount points for data volumes in your container. This parameter maps
-	// to Volumes in the Create a container (https://docs.docker.com/engine/reference/api/docker_remote_api_v1.23/#create-a-container)
-	// section of the Docker Remote API (https://docs.docker.com/engine/reference/api/docker_remote_api_v1.23/)
+	// to Volumes in the Create a container (https://docs.docker.com/engine/api/v1.23/#create-a-container)
+	// section of the Docker Remote API (https://docs.docker.com/engine/api/v1.23/)
 	// and the --volume option to docker run (https://docs.docker.com/engine/reference/run/).
 	MountPoints []*MountPoint `locationName:"mountPoints" type:"list"`
 
 	// When this parameter is true, the container is given elevated privileges on
 	// the host container instance (similar to the root user). This parameter maps
-	// to Privileged in the Create a container (https://docs.docker.com/engine/reference/api/docker_remote_api_v1.23/#create-a-container)
-	// section of the Docker Remote API (https://docs.docker.com/engine/reference/api/docker_remote_api_v1.23/)
+	// to Privileged in the Create a container (https://docs.docker.com/engine/api/v1.23/#create-a-container)
+	// section of the Docker Remote API (https://docs.docker.com/engine/api/v1.23/)
 	// and the --privileged option to docker run (https://docs.docker.com/engine/reference/run/).
 	Privileged *bool `locationName:"privileged" type:"boolean"`
 
 	// When this parameter is true, the container is given read-only access to its
 	// root file system. This parameter maps to ReadonlyRootfs in the Create a container
-	// (https://docs.docker.com/engine/reference/api/docker_remote_api_v1.23/#create-a-container)
-	// section of the Docker Remote API (https://docs.docker.com/engine/reference/api/docker_remote_api_v1.23/)
-	// and the --read-only option to docker run.
+	// (https://docs.docker.com/engine/api/v1.23/#create-a-container) section of
+	// the Docker Remote API (https://docs.docker.com/engine/api/v1.23/) and the
+	// --read-only option to docker run.
 	ReadonlyRootFilesystem *bool `locationName:"readonlyRootFilesystem" type:"boolean"`
 
+	// The type and amount of a resource to assign to a container. Currently, the
+	// only supported resource is GPU.
+	ResourceRequirements []*ResourceRequirement `locationName:"resourceRequirements" type:"list"`
+
 	// A list of ulimits to set in the container. This parameter maps to Ulimits
-	// in the Create a container (https://docs.docker.com/engine/reference/api/docker_remote_api_v1.23/#create-a-container)
-	// section of the Docker Remote API (https://docs.docker.com/engine/reference/api/docker_remote_api_v1.23/)
+	// in the Create a container (https://docs.docker.com/engine/api/v1.23/#create-a-container)
+	// section of the Docker Remote API (https://docs.docker.com/engine/api/v1.23/)
 	// and the --ulimit option to docker run (https://docs.docker.com/engine/reference/run/).
 	Ulimits []*Ulimit `locationName:"ulimits" type:"list"`
 
 	// The user name to use inside the container. This parameter maps to User in
-	// the Create a container (https://docs.docker.com/engine/reference/api/docker_remote_api_v1.23/#create-a-container)
-	// section of the Docker Remote API (https://docs.docker.com/engine/reference/api/docker_remote_api_v1.23/)
+	// the Create a container (https://docs.docker.com/engine/api/v1.23/#create-a-container)
+	// section of the Docker Remote API (https://docs.docker.com/engine/api/v1.23/)
 	// and the --user option to docker run (https://docs.docker.com/engine/reference/run/).
 	User *string `locationName:"user" type:"string"`
 
 	// The number of vCPUs reserved for the container. This parameter maps to CpuShares
-	// in the Create a container (https://docs.docker.com/engine/reference/api/docker_remote_api_v1.23/#create-a-container)
-	// section of the Docker Remote API (https://docs.docker.com/engine/reference/api/docker_remote_api_v1.23/)
+	// in the Create a container (https://docs.docker.com/engine/api/v1.23/#create-a-container)
+	// section of the Docker Remote API (https://docs.docker.com/engine/api/v1.23/)
 	// and the --cpu-shares option to docker run (https://docs.docker.com/engine/reference/run/).
 	// Each vCPU is equivalent to 1,024 CPU shares. You must specify at least one
 	// vCPU.
-	//
-	// Vcpus is a required field
-	Vcpus *int64 `locationName:"vcpus" type:"integer" required:"true"`
+	Vcpus *int64 `locationName:"vcpus" type:"integer"`
 
 	// A list of data volumes used in a job.
 	Volumes []*Volume `locationName:"volumes" type:"list"`
@@ -2469,14 +2618,15 @@ func (s ContainerProperties) GoString() string {
 // Validate inspects the fields of the type to determine if they are valid.
 func (s *ContainerProperties) Validate() error {
 	invalidParams := request.ErrInvalidParams{Context: "ContainerProperties"}
-	if s.Image == nil {
-		invalidParams.Add(request.NewErrParamRequired("Image"))
-	}
-	if s.Memory == nil {
-		invalidParams.Add(request.NewErrParamRequired("Memory"))
-	}
-	if s.Vcpus == nil {
-		invalidParams.Add(request.NewErrParamRequired("Vcpus"))
+	if s.ResourceRequirements != nil {
+		for i, v := range s.ResourceRequirements {
+			if v == nil {
+				continue
+			}
+			if err := v.Validate(); err != nil {
+				invalidParams.AddNested(fmt.Sprintf("%s[%v]", "ResourceRequirements", i), err.(request.ErrInvalidParams))
+			}
+		}
 	}
 	if s.Ulimits != nil {
 		for i, v := range s.Ulimits {
@@ -2513,6 +2663,12 @@ func (s *ContainerProperties) SetImage(v string) *ContainerProperties {
 	return s
 }
 
+// SetInstanceType sets the InstanceType field's value.
+func (s *ContainerProperties) SetInstanceType(v string) *ContainerProperties {
+	s.InstanceType = &v
+	return s
+}
+
 // SetJobRoleArn sets the JobRoleArn field's value.
 func (s *ContainerProperties) SetJobRoleArn(v string) *ContainerProperties {
 	s.JobRoleArn = &v
@@ -2543,6 +2699,12 @@ func (s *ContainerProperties) SetReadonlyRootFilesystem(v bool) *ContainerProper
 	return s
 }
 
+// SetResourceRequirements sets the ResourceRequirements field's value.
+func (s *ContainerProperties) SetResourceRequirements(v []*ResourceRequirement) *ContainerProperties {
+	s.ResourceRequirements = v
+	return s
+}
+
 // SetUlimits sets the Ulimits field's value.
 func (s *ContainerProperties) SetUlimits(v []*Ulimit) *ContainerProperties {
 	s.Ulimits = v
@@ -2568,7 +2730,6 @@ func (s *ContainerProperties) SetVolumes(v []*Volume) *ContainerProperties {
 }
 
 // An object representing summary details of a container within a job.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/batch-2016-08-10/ContainerSummary
 type ContainerSummary struct {
 	_ struct{} `type:"structure"`
 
@@ -2602,7 +2763,6 @@ func (s *ContainerSummary) SetReason(v string) *ContainerSummary {
 	return s
 }
 
-// See also, https://docs.aws.amazon.com/goto/WebAPI/batch-2016-08-10/CreateComputeEnvironmentRequest
 type CreateComputeEnvironmentInput struct {
 	_ struct{} `type:"structure"`
 
@@ -2613,7 +2773,9 @@ type CreateComputeEnvironmentInput struct {
 	ComputeEnvironmentName *string `locationName:"computeEnvironmentName" type:"string" required:"true"`
 
 	// Details of the compute resources managed by the compute environment. This
-	// parameter is required for managed compute environments.
+	// parameter is required for managed compute environments. For more information,
+	// see Compute Environments (https://docs.aws.amazon.com/batch/latest/userguide/compute_environments.html)
+	// in the AWS Batch User Guide.
 	ComputeResources *ComputeResource `locationName:"computeResources" type:"structure"`
 
 	// The full Amazon Resource Name (ARN) of the IAM role that allows AWS Batch
@@ -2637,7 +2799,9 @@ type CreateComputeEnvironmentInput struct {
 	// on queues.
 	State *string `locationName:"state" type:"string" enum:"CEState"`
 
-	// The type of the compute environment.
+	// The type of the compute environment. For more information, see Compute Environments
+	// (https://docs.aws.amazon.com/batch/latest/userguide/compute_environments.html)
+	// in the AWS Batch User Guide.
 	//
 	// Type is a required field
 	Type *string `locationName:"type" type:"string" required:"true" enum:"CEType"`
@@ -2707,7 +2871,6 @@ func (s *CreateComputeEnvironmentInput) SetType(v string) *CreateComputeEnvironm
 	return s
 }
 
-// See also, https://docs.aws.amazon.com/goto/WebAPI/batch-2016-08-10/CreateComputeEnvironmentResponse
 type CreateComputeEnvironmentOutput struct {
 	_ struct{} `type:"structure"`
 
@@ -2740,7 +2903,6 @@ func (s *CreateComputeEnvironmentOutput) SetComputeEnvironmentName(v string) *Cr
 	return s
 }
 
-// See also, https://docs.aws.amazon.com/goto/WebAPI/batch-2016-08-10/CreateJobQueueRequest
 type CreateJobQueueInput struct {
 	_ struct{} `type:"structure"`
 
@@ -2760,7 +2922,7 @@ type CreateJobQueueInput struct {
 
 	// The priority of the job queue. Job queues with a higher priority (or a higher
 	// integer value for the priority parameter) are evaluated first when associated
-	// with same compute environment. Priority is determined in descending order,
+	// with the same compute environment. Priority is determined in descending order,
 	// for example, a job queue with a priority value of 10 is given scheduling
 	// preference over a job queue with a priority value of 1.
 	//
@@ -2835,7 +2997,6 @@ func (s *CreateJobQueueInput) SetState(v string) *CreateJobQueueInput {
 	return s
 }
 
-// See also, https://docs.aws.amazon.com/goto/WebAPI/batch-2016-08-10/CreateJobQueueResponse
 type CreateJobQueueOutput struct {
 	_ struct{} `type:"structure"`
 
@@ -2872,7 +3033,6 @@ func (s *CreateJobQueueOutput) SetJobQueueName(v string) *CreateJobQueueOutput {
 	return s
 }
 
-// See also, https://docs.aws.amazon.com/goto/WebAPI/batch-2016-08-10/DeleteComputeEnvironmentRequest
 type DeleteComputeEnvironmentInput struct {
 	_ struct{} `type:"structure"`
 
@@ -2911,7 +3071,6 @@ func (s *DeleteComputeEnvironmentInput) SetComputeEnvironment(v string) *DeleteC
 	return s
 }
 
-// See also, https://docs.aws.amazon.com/goto/WebAPI/batch-2016-08-10/DeleteComputeEnvironmentResponse
 type DeleteComputeEnvironmentOutput struct {
 	_ struct{} `type:"structure"`
 }
@@ -2926,7 +3085,6 @@ func (s DeleteComputeEnvironmentOutput) GoString() string {
 	return s.String()
 }
 
-// See also, https://docs.aws.amazon.com/goto/WebAPI/batch-2016-08-10/DeleteJobQueueRequest
 type DeleteJobQueueInput struct {
 	_ struct{} `type:"structure"`
 
@@ -2965,7 +3123,6 @@ func (s *DeleteJobQueueInput) SetJobQueue(v string) *DeleteJobQueueInput {
 	return s
 }
 
-// See also, https://docs.aws.amazon.com/goto/WebAPI/batch-2016-08-10/DeleteJobQueueResponse
 type DeleteJobQueueOutput struct {
 	_ struct{} `type:"structure"`
 }
@@ -2980,7 +3137,6 @@ func (s DeleteJobQueueOutput) GoString() string {
 	return s.String()
 }
 
-// See also, https://docs.aws.amazon.com/goto/WebAPI/batch-2016-08-10/DeregisterJobDefinitionRequest
 type DeregisterJobDefinitionInput struct {
 	_ struct{} `type:"structure"`
 
@@ -3020,7 +3176,6 @@ func (s *DeregisterJobDefinitionInput) SetJobDefinition(v string) *DeregisterJob
 	return s
 }
 
-// See also, https://docs.aws.amazon.com/goto/WebAPI/batch-2016-08-10/DeregisterJobDefinitionResponse
 type DeregisterJobDefinitionOutput struct {
 	_ struct{} `type:"structure"`
 }
@@ -3035,7 +3190,6 @@ func (s DeregisterJobDefinitionOutput) GoString() string {
 	return s.String()
 }
 
-// See also, https://docs.aws.amazon.com/goto/WebAPI/batch-2016-08-10/DescribeComputeEnvironmentsRequest
 type DescribeComputeEnvironmentsInput struct {
 	_ struct{} `type:"structure"`
 
@@ -3092,7 +3246,6 @@ func (s *DescribeComputeEnvironmentsInput) SetNextToken(v string) *DescribeCompu
 	return s
 }
 
-// See also, https://docs.aws.amazon.com/goto/WebAPI/batch-2016-08-10/DescribeComputeEnvironmentsResponse
 type DescribeComputeEnvironmentsOutput struct {
 	_ struct{} `type:"structure"`
 
@@ -3128,15 +3281,14 @@ func (s *DescribeComputeEnvironmentsOutput) SetNextToken(v string) *DescribeComp
 	return s
 }
 
-// See also, https://docs.aws.amazon.com/goto/WebAPI/batch-2016-08-10/DescribeJobDefinitionsRequest
 type DescribeJobDefinitionsInput struct {
 	_ struct{} `type:"structure"`
 
 	// The name of the job definition to describe.
 	JobDefinitionName *string `locationName:"jobDefinitionName" type:"string"`
 
-	// A space-separated list of up to 100 job definition names or full Amazon Resource
-	// Name (ARN) entries.
+	// A list of up to 100 job definition names or full Amazon Resource Name (ARN)
+	// entries.
 	JobDefinitions []*string `locationName:"jobDefinitions" type:"list"`
 
 	// The maximum number of results returned by DescribeJobDefinitions in paginated
@@ -3202,7 +3354,6 @@ func (s *DescribeJobDefinitionsInput) SetStatus(v string) *DescribeJobDefinition
 	return s
 }
 
-// See also, https://docs.aws.amazon.com/goto/WebAPI/batch-2016-08-10/DescribeJobDefinitionsResponse
 type DescribeJobDefinitionsOutput struct {
 	_ struct{} `type:"structure"`
 
@@ -3238,7 +3389,6 @@ func (s *DescribeJobDefinitionsOutput) SetNextToken(v string) *DescribeJobDefini
 	return s
 }
 
-// See also, https://docs.aws.amazon.com/goto/WebAPI/batch-2016-08-10/DescribeJobQueuesRequest
 type DescribeJobQueuesInput struct {
 	_ struct{} `type:"structure"`
 
@@ -3294,7 +3444,6 @@ func (s *DescribeJobQueuesInput) SetNextToken(v string) *DescribeJobQueuesInput 
 	return s
 }
 
-// See also, https://docs.aws.amazon.com/goto/WebAPI/batch-2016-08-10/DescribeJobQueuesResponse
 type DescribeJobQueuesOutput struct {
 	_ struct{} `type:"structure"`
 
@@ -3330,11 +3479,10 @@ func (s *DescribeJobQueuesOutput) SetNextToken(v string) *DescribeJobQueuesOutpu
 	return s
 }
 
-// See also, https://docs.aws.amazon.com/goto/WebAPI/batch-2016-08-10/DescribeJobsRequest
 type DescribeJobsInput struct {
 	_ struct{} `type:"structure"`
 
-	// A space-separated list of up to 100 job IDs.
+	// A list of up to 100 job IDs.
 	//
 	// Jobs is a required field
 	Jobs []*string `locationName:"jobs" type:"list" required:"true"`
@@ -3369,7 +3517,6 @@ func (s *DescribeJobsInput) SetJobs(v []*string) *DescribeJobsInput {
 	return s
 }
 
-// See also, https://docs.aws.amazon.com/goto/WebAPI/batch-2016-08-10/DescribeJobsResponse
 type DescribeJobsOutput struct {
 	_ struct{} `type:"structure"`
 
@@ -3393,22 +3540,20 @@ func (s *DescribeJobsOutput) SetJobs(v []*JobDetail) *DescribeJobsOutput {
 	return s
 }
 
-// The contents of the host parameter determine whether your data volume persists
-// on the host container instance and where it is stored. If the host parameter
-// is empty, then the Docker daemon assigns a host path for your data volume,
-// but the data is not guaranteed to persist after the containers associated
-// with it stop running.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/batch-2016-08-10/Host
+// Determine whether your data volume persists on the host container instance
+// and where it is stored. If this parameter is empty, then the Docker daemon
+// assigns a host path for your data volume, but the data is not guaranteed
+// to persist after the containers associated with it stop running.
 type Host struct {
 	_ struct{} `type:"structure"`
 
 	// The path on the host container instance that is presented to the container.
 	// If this parameter is empty, then the Docker daemon has assigned a host path
-	// for you. If the host parameter contains a sourcePath file location, then
-	// the data volume persists at the specified location on the host container
-	// instance until you delete it manually. If the sourcePath value does not exist
-	// on the host container instance, the Docker daemon creates it. If the location
-	// does exist, the contents of the source path folder are exported.
+	// for you. If this parameter contains a file location, then the data volume
+	// persists at the specified location on the host container instance until you
+	// delete it manually. If the source path location does not exist on the host
+	// container instance, the Docker daemon creates it. If the location does exist,
+	// the contents of the source path folder are exported.
 	SourcePath *string `locationName:"sourcePath" type:"string"`
 }
 
@@ -3429,7 +3574,6 @@ func (s *Host) SetSourcePath(v string) *Host {
 }
 
 // An object representing an AWS Batch job definition.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/batch-2016-08-10/JobDefinition
 type JobDefinition struct {
 	_ struct{} `type:"structure"`
 
@@ -3446,10 +3590,15 @@ type JobDefinition struct {
 	// JobDefinitionName is a required field
 	JobDefinitionName *string `locationName:"jobDefinitionName" type:"string" required:"true"`
 
+	// An object with various properties specific to multi-node parallel jobs.
+	NodeProperties *NodeProperties `locationName:"nodeProperties" type:"structure"`
+
 	// Default parameters or parameter substitution placeholders that are set in
 	// the job definition. Parameters are specified as a key-value pair mapping.
 	// Parameters in a SubmitJob request override any corresponding parameter defaults
-	// from the job definition.
+	// from the job definition. For more information about specifying parameters,
+	// see Job Definition Parameters (https://docs.aws.amazon.com/batch/latest/userguide/job_definition_parameters.html)
+	// in the AWS Batch User Guide.
 	Parameters map[string]*string `locationName:"parameters" type:"map"`
 
 	// The retry strategy to use for failed jobs that are submitted with this job
@@ -3463,6 +3612,11 @@ type JobDefinition struct {
 
 	// The status of the job definition.
 	Status *string `locationName:"status" type:"string"`
+
+	// The timeout configuration for jobs that are submitted with this job definition.
+	// You can specify a timeout duration after which AWS Batch terminates your
+	// jobs if they have not finished.
+	Timeout *JobTimeout `locationName:"timeout" type:"structure"`
 
 	// The type of job definition.
 	//
@@ -3498,6 +3652,12 @@ func (s *JobDefinition) SetJobDefinitionName(v string) *JobDefinition {
 	return s
 }
 
+// SetNodeProperties sets the NodeProperties field's value.
+func (s *JobDefinition) SetNodeProperties(v *NodeProperties) *JobDefinition {
+	s.NodeProperties = v
+	return s
+}
+
 // SetParameters sets the Parameters field's value.
 func (s *JobDefinition) SetParameters(v map[string]*string) *JobDefinition {
 	s.Parameters = v
@@ -3522,6 +3682,12 @@ func (s *JobDefinition) SetStatus(v string) *JobDefinition {
 	return s
 }
 
+// SetTimeout sets the Timeout field's value.
+func (s *JobDefinition) SetTimeout(v *JobTimeout) *JobDefinition {
+	s.Timeout = v
+	return s
+}
+
 // SetType sets the Type field's value.
 func (s *JobDefinition) SetType(v string) *JobDefinition {
 	s.Type = &v
@@ -3529,7 +3695,6 @@ func (s *JobDefinition) SetType(v string) *JobDefinition {
 }
 
 // An object representing an AWS Batch job dependency.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/batch-2016-08-10/JobDependency
 type JobDependency struct {
 	_ struct{} `type:"structure"`
 
@@ -3563,7 +3728,6 @@ func (s *JobDependency) SetType(v string) *JobDependency {
 }
 
 // An object representing an AWS Batch job.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/batch-2016-08-10/JobDetail
 type JobDetail struct {
 	_ struct{} `type:"structure"`
 
@@ -3577,10 +3741,11 @@ type JobDetail struct {
 	// the job.
 	Container *ContainerDetail `locationName:"container" type:"structure"`
 
-	// The Unix time stamp for when the job was created. For non-array jobs and
-	// parent array jobs, this is when the job entered the SUBMITTED state (at the
-	// time SubmitJob was called). For array child jobs, this is when the child
-	// job was spawned by its parent and entered the PENDING state.
+	// The Unix timestamp (in seconds and milliseconds) for when the job was created.
+	// For non-array jobs and parent array jobs, this is when the job entered the
+	// SUBMITTED state (at the time SubmitJob was called). For array child jobs,
+	// this is when the child job was spawned by its parent and entered the PENDING
+	// state.
 	CreatedAt *int64 `locationName:"createdAt" type:"long"`
 
 	// A list of job names or IDs on which this job depends.
@@ -3606,6 +3771,13 @@ type JobDetail struct {
 	// JobQueue is a required field
 	JobQueue *string `locationName:"jobQueue" type:"string" required:"true"`
 
+	// An object representing the details of a node that is associated with a multi-node
+	// parallel job.
+	NodeDetails *NodeDetails `locationName:"nodeDetails" type:"structure"`
+
+	// An object representing the node properties of a multi-node parallel job.
+	NodeProperties *NodeProperties `locationName:"nodeProperties" type:"structure"`
+
 	// Additional parameters passed to the job that replace parameter substitution
 	// placeholders or override any corresponding parameter defaults from the job
 	// definition.
@@ -3614,13 +3786,17 @@ type JobDetail struct {
 	// The retry strategy to use for this job if an attempt fails.
 	RetryStrategy *RetryStrategy `locationName:"retryStrategy" type:"structure"`
 
-	// The Unix time stamp for when the job was started (when the job transitioned
-	// from the STARTING state to the RUNNING state).
+	// The Unix timestamp (in seconds and milliseconds) for when the job was started
+	// (when the job transitioned from the STARTING state to the RUNNING state).
 	//
 	// StartedAt is a required field
 	StartedAt *int64 `locationName:"startedAt" type:"long" required:"true"`
 
 	// The current status for the job.
+	//
+	// If your jobs do not progress to STARTING, see Jobs Stuck in RUNNABLE Status
+	// (https://docs.aws.amazon.com/batch/latest/userguide/troubleshooting.html#job_stuck_in_runnable)
+	// in the troubleshooting section of the AWS Batch User Guide.
 	//
 	// Status is a required field
 	Status *string `locationName:"status" type:"string" required:"true" enum:"JobStatus"`
@@ -3629,9 +3805,13 @@ type JobDetail struct {
 	// status of the job.
 	StatusReason *string `locationName:"statusReason" type:"string"`
 
-	// The Unix time stamp for when the job was stopped (when the job transitioned
-	// from the RUNNING state to a terminal state, such as SUCCEEDED or FAILED).
+	// The Unix timestamp (in seconds and milliseconds) for when the job was stopped
+	// (when the job transitioned from the RUNNING state to a terminal state, such
+	// as SUCCEEDED or FAILED).
 	StoppedAt *int64 `locationName:"stoppedAt" type:"long"`
+
+	// The timeout configuration for the job.
+	Timeout *JobTimeout `locationName:"timeout" type:"structure"`
 }
 
 // String returns the string representation
@@ -3698,6 +3878,18 @@ func (s *JobDetail) SetJobQueue(v string) *JobDetail {
 	return s
 }
 
+// SetNodeDetails sets the NodeDetails field's value.
+func (s *JobDetail) SetNodeDetails(v *NodeDetails) *JobDetail {
+	s.NodeDetails = v
+	return s
+}
+
+// SetNodeProperties sets the NodeProperties field's value.
+func (s *JobDetail) SetNodeProperties(v *NodeProperties) *JobDetail {
+	s.NodeProperties = v
+	return s
+}
+
 // SetParameters sets the Parameters field's value.
 func (s *JobDetail) SetParameters(v map[string]*string) *JobDetail {
 	s.Parameters = v
@@ -3734,8 +3926,13 @@ func (s *JobDetail) SetStoppedAt(v int64) *JobDetail {
 	return s
 }
 
+// SetTimeout sets the Timeout field's value.
+func (s *JobDetail) SetTimeout(v *JobTimeout) *JobDetail {
+	s.Timeout = v
+	return s
+}
+
 // An object representing the details of an AWS Batch job queue.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/batch-2016-08-10/JobQueueDetail
 type JobQueueDetail struct {
 	_ struct{} `type:"structure"`
 
@@ -3827,7 +4024,6 @@ func (s *JobQueueDetail) SetStatusReason(v string) *JobQueueDetail {
 }
 
 // An object representing summary details of a job.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/batch-2016-08-10/JobSummary
 type JobSummary struct {
 	_ struct{} `type:"structure"`
 
@@ -3838,10 +4034,10 @@ type JobSummary struct {
 	// the job.
 	Container *ContainerSummary `locationName:"container" type:"structure"`
 
-	// The Unix time stamp for when the job was created. For non-array jobs and
-	// parent array jobs, this is when the job entered the SUBMITTED state (at the
-	// time SubmitJob was called). For array child jobs, this is when the child
-	// job was spawned by its parent and entered the PENDING state.
+	// The Unix timestamp for when the job was created. For non-array jobs and parent
+	// array jobs, this is when the job entered the SUBMITTED state (at the time
+	// SubmitJob was called). For array child jobs, this is when the child job was
+	// spawned by its parent and entered the PENDING state.
 	CreatedAt *int64 `locationName:"createdAt" type:"long"`
 
 	// The ID of the job.
@@ -3854,7 +4050,10 @@ type JobSummary struct {
 	// JobName is a required field
 	JobName *string `locationName:"jobName" type:"string" required:"true"`
 
-	// The Unix time stamp for when the job was started (when the job transitioned
+	// The node properties for a single node in a job summary list.
+	NodeProperties *NodePropertiesSummary `locationName:"nodeProperties" type:"structure"`
+
+	// The Unix timestamp for when the job was started (when the job transitioned
 	// from the STARTING state to the RUNNING state).
 	StartedAt *int64 `locationName:"startedAt" type:"long"`
 
@@ -3865,7 +4064,7 @@ type JobSummary struct {
 	// status of the job.
 	StatusReason *string `locationName:"statusReason" type:"string"`
 
-	// The Unix time stamp for when the job was stopped (when the job transitioned
+	// The Unix timestamp for when the job was stopped (when the job transitioned
 	// from the RUNNING state to a terminal state, such as SUCCEEDED or FAILED).
 	StoppedAt *int64 `locationName:"stoppedAt" type:"long"`
 }
@@ -3910,6 +4109,12 @@ func (s *JobSummary) SetJobName(v string) *JobSummary {
 	return s
 }
 
+// SetNodeProperties sets the NodeProperties field's value.
+func (s *JobSummary) SetNodeProperties(v *NodePropertiesSummary) *JobSummary {
+	s.NodeProperties = v
+	return s
+}
+
 // SetStartedAt sets the StartedAt field's value.
 func (s *JobSummary) SetStartedAt(v int64) *JobSummary {
 	s.StartedAt = &v
@@ -3934,8 +4139,32 @@ func (s *JobSummary) SetStoppedAt(v int64) *JobSummary {
 	return s
 }
 
+// An object representing a job timeout configuration.
+type JobTimeout struct {
+	_ struct{} `type:"structure"`
+
+	// The time duration in seconds (measured from the job attempt's startedAt timestamp)
+	// after which AWS Batch terminates your jobs if they have not finished.
+	AttemptDurationSeconds *int64 `locationName:"attemptDurationSeconds" type:"integer"`
+}
+
+// String returns the string representation
+func (s JobTimeout) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s JobTimeout) GoString() string {
+	return s.String()
+}
+
+// SetAttemptDurationSeconds sets the AttemptDurationSeconds field's value.
+func (s *JobTimeout) SetAttemptDurationSeconds(v int64) *JobTimeout {
+	s.AttemptDurationSeconds = &v
+	return s
+}
+
 // A key-value pair object.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/batch-2016-08-10/KeyValuePair
 type KeyValuePair struct {
 	_ struct{} `type:"structure"`
 
@@ -3970,7 +4199,52 @@ func (s *KeyValuePair) SetValue(v string) *KeyValuePair {
 	return s
 }
 
-// See also, https://docs.aws.amazon.com/goto/WebAPI/batch-2016-08-10/ListJobsRequest
+// An object representing a launch template associated with a compute resource.
+// You must specify either the launch template ID or launch template name in
+// the request, but not both.
+type LaunchTemplateSpecification struct {
+	_ struct{} `type:"structure"`
+
+	// The ID of the launch template.
+	LaunchTemplateId *string `locationName:"launchTemplateId" type:"string"`
+
+	// The name of the launch template.
+	LaunchTemplateName *string `locationName:"launchTemplateName" type:"string"`
+
+	// The version number of the launch template.
+	//
+	// Default: The default version of the launch template.
+	Version *string `locationName:"version" type:"string"`
+}
+
+// String returns the string representation
+func (s LaunchTemplateSpecification) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s LaunchTemplateSpecification) GoString() string {
+	return s.String()
+}
+
+// SetLaunchTemplateId sets the LaunchTemplateId field's value.
+func (s *LaunchTemplateSpecification) SetLaunchTemplateId(v string) *LaunchTemplateSpecification {
+	s.LaunchTemplateId = &v
+	return s
+}
+
+// SetLaunchTemplateName sets the LaunchTemplateName field's value.
+func (s *LaunchTemplateSpecification) SetLaunchTemplateName(v string) *LaunchTemplateSpecification {
+	s.LaunchTemplateName = &v
+	return s
+}
+
+// SetVersion sets the Version field's value.
+func (s *LaunchTemplateSpecification) SetVersion(v string) *LaunchTemplateSpecification {
+	s.Version = &v
+	return s
+}
+
 type ListJobsInput struct {
 	_ struct{} `type:"structure"`
 
@@ -3994,6 +4268,11 @@ type ListJobsInput struct {
 	// is not used, then ListJobs returns up to 100 results and a nextToken value
 	// if applicable.
 	MaxResults *int64 `locationName:"maxResults" type:"integer"`
+
+	// The job ID for a multi-node parallel job. Specifying a multi-node parallel
+	// job ID with this parameter lists all nodes that are associated with the specified
+	// job.
+	MultiNodeJobId *string `locationName:"multiNodeJobId" type:"string"`
 
 	// The nextToken value returned from a previous paginated ListJobs request where
 	// maxResults was used and the results exceeded the value of that parameter.
@@ -4039,13 +4318,18 @@ func (s *ListJobsInput) SetMaxResults(v int64) *ListJobsInput {
 	return s
 }
 
+// SetMultiNodeJobId sets the MultiNodeJobId field's value.
+func (s *ListJobsInput) SetMultiNodeJobId(v string) *ListJobsInput {
+	s.MultiNodeJobId = &v
+	return s
+}
+
 // SetNextToken sets the NextToken field's value.
 func (s *ListJobsInput) SetNextToken(v string) *ListJobsInput {
 	s.NextToken = &v
 	return s
 }
 
-// See also, https://docs.aws.amazon.com/goto/WebAPI/batch-2016-08-10/ListJobsResponse
 type ListJobsOutput struct {
 	_ struct{} `type:"structure"`
 
@@ -4084,8 +4368,8 @@ func (s *ListJobsOutput) SetNextToken(v string) *ListJobsOutput {
 }
 
 // Details on a Docker volume mount point that is used in a job's container
-// properties.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/batch-2016-08-10/MountPoint
+// properties. This parameter maps to Volumes in the Create a container (https://docs.docker.com/engine/reference/api/docker_remote_api_v1.19/#create-a-container)
+// section of the Docker Remote API and the --volume option to docker run.
 type MountPoint struct {
 	_ struct{} `type:"structure"`
 
@@ -4128,12 +4412,399 @@ func (s *MountPoint) SetSourceVolume(v string) *MountPoint {
 	return s
 }
 
-// See also, https://docs.aws.amazon.com/goto/WebAPI/batch-2016-08-10/RegisterJobDefinitionRequest
+// An object representing the elastic network interface for a multi-node parallel
+// job node.
+type NetworkInterface struct {
+	_ struct{} `type:"structure"`
+
+	// The attachment ID for the network interface.
+	AttachmentId *string `locationName:"attachmentId" type:"string"`
+
+	// The private IPv6 address for the network interface.
+	Ipv6Address *string `locationName:"ipv6Address" type:"string"`
+
+	// The private IPv4 address for the network interface.
+	PrivateIpv4Address *string `locationName:"privateIpv4Address" type:"string"`
+}
+
+// String returns the string representation
+func (s NetworkInterface) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s NetworkInterface) GoString() string {
+	return s.String()
+}
+
+// SetAttachmentId sets the AttachmentId field's value.
+func (s *NetworkInterface) SetAttachmentId(v string) *NetworkInterface {
+	s.AttachmentId = &v
+	return s
+}
+
+// SetIpv6Address sets the Ipv6Address field's value.
+func (s *NetworkInterface) SetIpv6Address(v string) *NetworkInterface {
+	s.Ipv6Address = &v
+	return s
+}
+
+// SetPrivateIpv4Address sets the PrivateIpv4Address field's value.
+func (s *NetworkInterface) SetPrivateIpv4Address(v string) *NetworkInterface {
+	s.PrivateIpv4Address = &v
+	return s
+}
+
+// An object representing the details of a multi-node parallel job node.
+type NodeDetails struct {
+	_ struct{} `type:"structure"`
+
+	// Specifies whether the current node is the main node for a multi-node parallel
+	// job.
+	IsMainNode *bool `locationName:"isMainNode" type:"boolean"`
+
+	// The node index for the node. Node index numbering begins at zero. This index
+	// is also available on the node with the AWS_BATCH_JOB_NODE_INDEX environment
+	// variable.
+	NodeIndex *int64 `locationName:"nodeIndex" type:"integer"`
+}
+
+// String returns the string representation
+func (s NodeDetails) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s NodeDetails) GoString() string {
+	return s.String()
+}
+
+// SetIsMainNode sets the IsMainNode field's value.
+func (s *NodeDetails) SetIsMainNode(v bool) *NodeDetails {
+	s.IsMainNode = &v
+	return s
+}
+
+// SetNodeIndex sets the NodeIndex field's value.
+func (s *NodeDetails) SetNodeIndex(v int64) *NodeDetails {
+	s.NodeIndex = &v
+	return s
+}
+
+// Object representing any node overrides to a job definition that is used in
+// a SubmitJob API operation.
+type NodeOverrides struct {
+	_ struct{} `type:"structure"`
+
+	// The node property overrides for the job.
+	NodePropertyOverrides []*NodePropertyOverride `locationName:"nodePropertyOverrides" type:"list"`
+
+	// The number of nodes to use with a multi-node parallel job. This value overrides
+	// the number of nodes that are specified in the job definition. To use this
+	// override:
+	//
+	//    * There must be at least one node range in your job definition that has
+	//    an open upper boundary (such as : or n:).
+	//
+	//    * The lower boundary of the node range specified in the job definition
+	//    must be fewer than the number of nodes specified in the override.
+	//
+	//    * The main node index specified in the job definition must be fewer than
+	//    the number of nodes specified in the override.
+	NumNodes *int64 `locationName:"numNodes" type:"integer"`
+}
+
+// String returns the string representation
+func (s NodeOverrides) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s NodeOverrides) GoString() string {
+	return s.String()
+}
+
+// Validate inspects the fields of the type to determine if they are valid.
+func (s *NodeOverrides) Validate() error {
+	invalidParams := request.ErrInvalidParams{Context: "NodeOverrides"}
+	if s.NodePropertyOverrides != nil {
+		for i, v := range s.NodePropertyOverrides {
+			if v == nil {
+				continue
+			}
+			if err := v.Validate(); err != nil {
+				invalidParams.AddNested(fmt.Sprintf("%s[%v]", "NodePropertyOverrides", i), err.(request.ErrInvalidParams))
+			}
+		}
+	}
+
+	if invalidParams.Len() > 0 {
+		return invalidParams
+	}
+	return nil
+}
+
+// SetNodePropertyOverrides sets the NodePropertyOverrides field's value.
+func (s *NodeOverrides) SetNodePropertyOverrides(v []*NodePropertyOverride) *NodeOverrides {
+	s.NodePropertyOverrides = v
+	return s
+}
+
+// SetNumNodes sets the NumNodes field's value.
+func (s *NodeOverrides) SetNumNodes(v int64) *NodeOverrides {
+	s.NumNodes = &v
+	return s
+}
+
+// An object representing the node properties of a multi-node parallel job.
+type NodeProperties struct {
+	_ struct{} `type:"structure"`
+
+	// Specifies the node index for the main node of a multi-node parallel job.
+	// This node index value must be fewer than the number of nodes.
+	//
+	// MainNode is a required field
+	MainNode *int64 `locationName:"mainNode" type:"integer" required:"true"`
+
+	// A list of node ranges and their properties associated with a multi-node parallel
+	// job.
+	//
+	// NodeRangeProperties is a required field
+	NodeRangeProperties []*NodeRangeProperty `locationName:"nodeRangeProperties" type:"list" required:"true"`
+
+	// The number of nodes associated with a multi-node parallel job.
+	//
+	// NumNodes is a required field
+	NumNodes *int64 `locationName:"numNodes" type:"integer" required:"true"`
+}
+
+// String returns the string representation
+func (s NodeProperties) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s NodeProperties) GoString() string {
+	return s.String()
+}
+
+// Validate inspects the fields of the type to determine if they are valid.
+func (s *NodeProperties) Validate() error {
+	invalidParams := request.ErrInvalidParams{Context: "NodeProperties"}
+	if s.MainNode == nil {
+		invalidParams.Add(request.NewErrParamRequired("MainNode"))
+	}
+	if s.NodeRangeProperties == nil {
+		invalidParams.Add(request.NewErrParamRequired("NodeRangeProperties"))
+	}
+	if s.NumNodes == nil {
+		invalidParams.Add(request.NewErrParamRequired("NumNodes"))
+	}
+	if s.NodeRangeProperties != nil {
+		for i, v := range s.NodeRangeProperties {
+			if v == nil {
+				continue
+			}
+			if err := v.Validate(); err != nil {
+				invalidParams.AddNested(fmt.Sprintf("%s[%v]", "NodeRangeProperties", i), err.(request.ErrInvalidParams))
+			}
+		}
+	}
+
+	if invalidParams.Len() > 0 {
+		return invalidParams
+	}
+	return nil
+}
+
+// SetMainNode sets the MainNode field's value.
+func (s *NodeProperties) SetMainNode(v int64) *NodeProperties {
+	s.MainNode = &v
+	return s
+}
+
+// SetNodeRangeProperties sets the NodeRangeProperties field's value.
+func (s *NodeProperties) SetNodeRangeProperties(v []*NodeRangeProperty) *NodeProperties {
+	s.NodeRangeProperties = v
+	return s
+}
+
+// SetNumNodes sets the NumNodes field's value.
+func (s *NodeProperties) SetNumNodes(v int64) *NodeProperties {
+	s.NumNodes = &v
+	return s
+}
+
+// An object representing the properties of a node that is associated with a
+// multi-node parallel job.
+type NodePropertiesSummary struct {
+	_ struct{} `type:"structure"`
+
+	// Specifies whether the current node is the main node for a multi-node parallel
+	// job.
+	IsMainNode *bool `locationName:"isMainNode" type:"boolean"`
+
+	// The node index for the node. Node index numbering begins at zero. This index
+	// is also available on the node with the AWS_BATCH_JOB_NODE_INDEX environment
+	// variable.
+	NodeIndex *int64 `locationName:"nodeIndex" type:"integer"`
+
+	// The number of nodes associated with a multi-node parallel job.
+	NumNodes *int64 `locationName:"numNodes" type:"integer"`
+}
+
+// String returns the string representation
+func (s NodePropertiesSummary) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s NodePropertiesSummary) GoString() string {
+	return s.String()
+}
+
+// SetIsMainNode sets the IsMainNode field's value.
+func (s *NodePropertiesSummary) SetIsMainNode(v bool) *NodePropertiesSummary {
+	s.IsMainNode = &v
+	return s
+}
+
+// SetNodeIndex sets the NodeIndex field's value.
+func (s *NodePropertiesSummary) SetNodeIndex(v int64) *NodePropertiesSummary {
+	s.NodeIndex = &v
+	return s
+}
+
+// SetNumNodes sets the NumNodes field's value.
+func (s *NodePropertiesSummary) SetNumNodes(v int64) *NodePropertiesSummary {
+	s.NumNodes = &v
+	return s
+}
+
+// Object representing any node overrides to a job definition that is used in
+// a SubmitJob API operation.
+type NodePropertyOverride struct {
+	_ struct{} `type:"structure"`
+
+	// The overrides that should be sent to a node range.
+	ContainerOverrides *ContainerOverrides `locationName:"containerOverrides" type:"structure"`
+
+	// The range of nodes, using node index values, with which to override. A range
+	// of 0:3 indicates nodes with index values of 0 through 3. If the starting
+	// range value is omitted (:n), then 0 is used to start the range. If the ending
+	// range value is omitted (n:), then the highest possible node index is used
+	// to end the range.
+	//
+	// TargetNodes is a required field
+	TargetNodes *string `locationName:"targetNodes" type:"string" required:"true"`
+}
+
+// String returns the string representation
+func (s NodePropertyOverride) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s NodePropertyOverride) GoString() string {
+	return s.String()
+}
+
+// Validate inspects the fields of the type to determine if they are valid.
+func (s *NodePropertyOverride) Validate() error {
+	invalidParams := request.ErrInvalidParams{Context: "NodePropertyOverride"}
+	if s.TargetNodes == nil {
+		invalidParams.Add(request.NewErrParamRequired("TargetNodes"))
+	}
+	if s.ContainerOverrides != nil {
+		if err := s.ContainerOverrides.Validate(); err != nil {
+			invalidParams.AddNested("ContainerOverrides", err.(request.ErrInvalidParams))
+		}
+	}
+
+	if invalidParams.Len() > 0 {
+		return invalidParams
+	}
+	return nil
+}
+
+// SetContainerOverrides sets the ContainerOverrides field's value.
+func (s *NodePropertyOverride) SetContainerOverrides(v *ContainerOverrides) *NodePropertyOverride {
+	s.ContainerOverrides = v
+	return s
+}
+
+// SetTargetNodes sets the TargetNodes field's value.
+func (s *NodePropertyOverride) SetTargetNodes(v string) *NodePropertyOverride {
+	s.TargetNodes = &v
+	return s
+}
+
+// An object representing the properties of the node range for a multi-node
+// parallel job.
+type NodeRangeProperty struct {
+	_ struct{} `type:"structure"`
+
+	// The container details for the node range.
+	Container *ContainerProperties `locationName:"container" type:"structure"`
+
+	// The range of nodes, using node index values. A range of 0:3 indicates nodes
+	// with index values of 0 through 3. If the starting range value is omitted
+	// (:n), then 0 is used to start the range. If the ending range value is omitted
+	// (n:), then the highest possible node index is used to end the range. Your
+	// accumulative node ranges must account for all nodes (0:n). You may nest node
+	// ranges, for example 0:10 and 4:5, in which case the 4:5 range properties
+	// override the 0:10 properties.
+	//
+	// TargetNodes is a required field
+	TargetNodes *string `locationName:"targetNodes" type:"string" required:"true"`
+}
+
+// String returns the string representation
+func (s NodeRangeProperty) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s NodeRangeProperty) GoString() string {
+	return s.String()
+}
+
+// Validate inspects the fields of the type to determine if they are valid.
+func (s *NodeRangeProperty) Validate() error {
+	invalidParams := request.ErrInvalidParams{Context: "NodeRangeProperty"}
+	if s.TargetNodes == nil {
+		invalidParams.Add(request.NewErrParamRequired("TargetNodes"))
+	}
+	if s.Container != nil {
+		if err := s.Container.Validate(); err != nil {
+			invalidParams.AddNested("Container", err.(request.ErrInvalidParams))
+		}
+	}
+
+	if invalidParams.Len() > 0 {
+		return invalidParams
+	}
+	return nil
+}
+
+// SetContainer sets the Container field's value.
+func (s *NodeRangeProperty) SetContainer(v *ContainerProperties) *NodeRangeProperty {
+	s.Container = v
+	return s
+}
+
+// SetTargetNodes sets the TargetNodes field's value.
+func (s *NodeRangeProperty) SetTargetNodes(v string) *NodeRangeProperty {
+	s.TargetNodes = &v
+	return s
+}
+
 type RegisterJobDefinitionInput struct {
 	_ struct{} `type:"structure"`
 
-	// An object with various properties specific for container-based jobs. This
-	// parameter is required if the type parameter is container.
+	// An object with various properties specific to single-node container-based
+	// jobs. If the job definition's type parameter is container, then you must
+	// specify either containerProperties or nodeProperties.
 	ContainerProperties *ContainerProperties `locationName:"containerProperties" type:"structure"`
 
 	// The name of the job definition to register. Up to 128 letters (uppercase
@@ -4142,6 +4813,13 @@ type RegisterJobDefinitionInput struct {
 	// JobDefinitionName is a required field
 	JobDefinitionName *string `locationName:"jobDefinitionName" type:"string" required:"true"`
 
+	// An object with various properties specific to multi-node parallel jobs. If
+	// you specify node properties for a job, it becomes a multi-node parallel job.
+	// For more information, see Multi-node Parallel Jobs (https://docs.aws.amazon.com/batch/latest/userguide/multi-node-parallel-jobs.html)
+	// in the AWS Batch User Guide. If the job definition's type parameter is container,
+	// then you must specify either containerProperties or nodeProperties.
+	NodeProperties *NodeProperties `locationName:"nodeProperties" type:"structure"`
+
 	// Default parameter substitution placeholders to set in the job definition.
 	// Parameters are specified as a key-value pair mapping. Parameters in a SubmitJob
 	// request override any corresponding parameter defaults from the job definition.
@@ -4149,8 +4827,18 @@ type RegisterJobDefinitionInput struct {
 
 	// The retry strategy to use for failed jobs that are submitted with this job
 	// definition. Any retry strategy that is specified during a SubmitJob operation
-	// overrides the retry strategy defined here.
+	// overrides the retry strategy defined here. If a job is terminated due to
+	// a timeout, it is not retried.
 	RetryStrategy *RetryStrategy `locationName:"retryStrategy" type:"structure"`
+
+	// The timeout configuration for jobs that are submitted with this job definition,
+	// after which AWS Batch terminates your jobs if they have not finished. If
+	// a job is terminated due to a timeout, it is not retried. The minimum value
+	// for the timeout is 60 seconds. Any timeout configuration that is specified
+	// during a SubmitJob operation overrides the timeout configuration defined
+	// here. For more information, see Job Timeouts (https://docs.aws.amazon.com/AmazonECS/latest/developerguide/job_timeouts.html)
+	// in the Amazon Elastic Container Service Developer Guide.
+	Timeout *JobTimeout `locationName:"timeout" type:"structure"`
 
 	// The type of job definition.
 	//
@@ -4182,6 +4870,11 @@ func (s *RegisterJobDefinitionInput) Validate() error {
 			invalidParams.AddNested("ContainerProperties", err.(request.ErrInvalidParams))
 		}
 	}
+	if s.NodeProperties != nil {
+		if err := s.NodeProperties.Validate(); err != nil {
+			invalidParams.AddNested("NodeProperties", err.(request.ErrInvalidParams))
+		}
+	}
 
 	if invalidParams.Len() > 0 {
 		return invalidParams
@@ -4201,6 +4894,12 @@ func (s *RegisterJobDefinitionInput) SetJobDefinitionName(v string) *RegisterJob
 	return s
 }
 
+// SetNodeProperties sets the NodeProperties field's value.
+func (s *RegisterJobDefinitionInput) SetNodeProperties(v *NodeProperties) *RegisterJobDefinitionInput {
+	s.NodeProperties = v
+	return s
+}
+
 // SetParameters sets the Parameters field's value.
 func (s *RegisterJobDefinitionInput) SetParameters(v map[string]*string) *RegisterJobDefinitionInput {
 	s.Parameters = v
@@ -4213,13 +4912,18 @@ func (s *RegisterJobDefinitionInput) SetRetryStrategy(v *RetryStrategy) *Registe
 	return s
 }
 
+// SetTimeout sets the Timeout field's value.
+func (s *RegisterJobDefinitionInput) SetTimeout(v *JobTimeout) *RegisterJobDefinitionInput {
+	s.Timeout = v
+	return s
+}
+
 // SetType sets the Type field's value.
 func (s *RegisterJobDefinitionInput) SetType(v string) *RegisterJobDefinitionInput {
 	s.Type = &v
 	return s
 }
 
-// See also, https://docs.aws.amazon.com/goto/WebAPI/batch-2016-08-10/RegisterJobDefinitionResponse
 type RegisterJobDefinitionOutput struct {
 	_ struct{} `type:"structure"`
 
@@ -4267,14 +4971,70 @@ func (s *RegisterJobDefinitionOutput) SetRevision(v int64) *RegisterJobDefinitio
 	return s
 }
 
+// The type and amount of a resource to assign to a container. Currently, the
+// only supported resource type is GPU.
+type ResourceRequirement struct {
+	_ struct{} `type:"structure"`
+
+	// The type of resource to assign to a container. Currently, the only supported
+	// resource type is GPU.
+	//
+	// Type is a required field
+	Type *string `locationName:"type" type:"string" required:"true" enum:"ResourceType"`
+
+	// The number of physical GPUs to reserve for the container. The number of GPUs
+	// reserved for all containers in a job should not exceed the number of available
+	// GPUs on the compute resource that the job is launched on.
+	//
+	// Value is a required field
+	Value *string `locationName:"value" type:"string" required:"true"`
+}
+
+// String returns the string representation
+func (s ResourceRequirement) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s ResourceRequirement) GoString() string {
+	return s.String()
+}
+
+// Validate inspects the fields of the type to determine if they are valid.
+func (s *ResourceRequirement) Validate() error {
+	invalidParams := request.ErrInvalidParams{Context: "ResourceRequirement"}
+	if s.Type == nil {
+		invalidParams.Add(request.NewErrParamRequired("Type"))
+	}
+	if s.Value == nil {
+		invalidParams.Add(request.NewErrParamRequired("Value"))
+	}
+
+	if invalidParams.Len() > 0 {
+		return invalidParams
+	}
+	return nil
+}
+
+// SetType sets the Type field's value.
+func (s *ResourceRequirement) SetType(v string) *ResourceRequirement {
+	s.Type = &v
+	return s
+}
+
+// SetValue sets the Value field's value.
+func (s *ResourceRequirement) SetValue(v string) *ResourceRequirement {
+	s.Value = &v
+	return s
+}
+
 // The retry strategy associated with a job.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/batch-2016-08-10/RetryStrategy
 type RetryStrategy struct {
 	_ struct{} `type:"structure"`
 
 	// The number of times to move a job to the RUNNABLE status. You may specify
 	// between 1 and 10 attempts. If the value of attempts is greater than one,
-	// the job is retried if it fails until it has moved to RUNNABLE that many times.
+	// the job is retried on failure the same number of attempts as the value.
 	Attempts *int64 `locationName:"attempts" type:"integer"`
 }
 
@@ -4294,14 +5054,13 @@ func (s *RetryStrategy) SetAttempts(v int64) *RetryStrategy {
 	return s
 }
 
-// See also, https://docs.aws.amazon.com/goto/WebAPI/batch-2016-08-10/SubmitJobRequest
 type SubmitJobInput struct {
 	_ struct{} `type:"structure"`
 
 	// The array properties for the submitted job, such as the size of the array.
 	// The array size can be between 2 and 10,000. If you specify array properties
 	// for a job, it becomes an array job. For more information, see Array Jobs
-	// (http://docs.aws.amazon.com/batch/latest/userguide/array_jobs.html) in the
+	// (https://docs.aws.amazon.com/batch/latest/userguide/array_jobs.html) in the
 	// AWS Batch User Guide.
 	ArrayProperties *ArrayProperties `locationName:"arrayProperties" type:"structure"`
 
@@ -4318,8 +5077,9 @@ type SubmitJobInput struct {
 	// jobs. You can specify a SEQUENTIAL type dependency without specifying a job
 	// ID for array jobs so that each child array job completes sequentially, starting
 	// at index 0. You can also specify an N_TO_N type dependency with a job ID
-	// for array jobs so that each index child of this job must wait for the corresponding
-	// index child of each dependency to complete before it can begin.
+	// for array jobs. In that case, each index child of this job must wait for
+	// the corresponding index child of each dependency to complete before it can
+	// begin.
 	DependsOn []*JobDependency `locationName:"dependsOn" type:"list"`
 
 	// The job definition used by this job. This value can be either a name:revision
@@ -4341,6 +5101,10 @@ type SubmitJobInput struct {
 	// JobQueue is a required field
 	JobQueue *string `locationName:"jobQueue" type:"string" required:"true"`
 
+	// A list of node overrides in JSON format that specify the node range to target
+	// and the container overrides for that node range.
+	NodeOverrides *NodeOverrides `locationName:"nodeOverrides" type:"structure"`
+
 	// Additional parameters passed to the job that replace parameter substitution
 	// placeholders that are set in the job definition. Parameters are specified
 	// as a key and value pair mapping. Parameters in a SubmitJob request override
@@ -4351,6 +5115,16 @@ type SubmitJobInput struct {
 	// When a retry strategy is specified here, it overrides the retry strategy
 	// defined in the job definition.
 	RetryStrategy *RetryStrategy `locationName:"retryStrategy" type:"structure"`
+
+	// The timeout configuration for this SubmitJob operation. You can specify a
+	// timeout duration after which AWS Batch terminates your jobs if they have
+	// not finished. If a job is terminated due to a timeout, it is not retried.
+	// The minimum value for the timeout is 60 seconds. This configuration overrides
+	// any timeout configuration specified in the job definition. For array jobs,
+	// child jobs have the same timeout configuration as the parent job. For more
+	// information, see Job Timeouts (https://docs.aws.amazon.com/AmazonECS/latest/developerguide/job_timeouts.html)
+	// in the Amazon Elastic Container Service Developer Guide.
+	Timeout *JobTimeout `locationName:"timeout" type:"structure"`
 }
 
 // String returns the string representation
@@ -4374,6 +5148,16 @@ func (s *SubmitJobInput) Validate() error {
 	}
 	if s.JobQueue == nil {
 		invalidParams.Add(request.NewErrParamRequired("JobQueue"))
+	}
+	if s.ContainerOverrides != nil {
+		if err := s.ContainerOverrides.Validate(); err != nil {
+			invalidParams.AddNested("ContainerOverrides", err.(request.ErrInvalidParams))
+		}
+	}
+	if s.NodeOverrides != nil {
+		if err := s.NodeOverrides.Validate(); err != nil {
+			invalidParams.AddNested("NodeOverrides", err.(request.ErrInvalidParams))
+		}
 	}
 
 	if invalidParams.Len() > 0 {
@@ -4418,6 +5202,12 @@ func (s *SubmitJobInput) SetJobQueue(v string) *SubmitJobInput {
 	return s
 }
 
+// SetNodeOverrides sets the NodeOverrides field's value.
+func (s *SubmitJobInput) SetNodeOverrides(v *NodeOverrides) *SubmitJobInput {
+	s.NodeOverrides = v
+	return s
+}
+
 // SetParameters sets the Parameters field's value.
 func (s *SubmitJobInput) SetParameters(v map[string]*string) *SubmitJobInput {
 	s.Parameters = v
@@ -4430,7 +5220,12 @@ func (s *SubmitJobInput) SetRetryStrategy(v *RetryStrategy) *SubmitJobInput {
 	return s
 }
 
-// See also, https://docs.aws.amazon.com/goto/WebAPI/batch-2016-08-10/SubmitJobResponse
+// SetTimeout sets the Timeout field's value.
+func (s *SubmitJobInput) SetTimeout(v *JobTimeout) *SubmitJobInput {
+	s.Timeout = v
+	return s
+}
+
 type SubmitJobOutput struct {
 	_ struct{} `type:"structure"`
 
@@ -4467,7 +5262,6 @@ func (s *SubmitJobOutput) SetJobName(v string) *SubmitJobOutput {
 	return s
 }
 
-// See also, https://docs.aws.amazon.com/goto/WebAPI/batch-2016-08-10/TerminateJobRequest
 type TerminateJobInput struct {
 	_ struct{} `type:"structure"`
 
@@ -4522,7 +5316,6 @@ func (s *TerminateJobInput) SetReason(v string) *TerminateJobInput {
 	return s
 }
 
-// See also, https://docs.aws.amazon.com/goto/WebAPI/batch-2016-08-10/TerminateJobResponse
 type TerminateJobOutput struct {
 	_ struct{} `type:"structure"`
 }
@@ -4538,7 +5331,6 @@ func (s TerminateJobOutput) GoString() string {
 }
 
 // The ulimit settings to pass to the container.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/batch-2016-08-10/Ulimit
 type Ulimit struct {
 	_ struct{} `type:"structure"`
 
@@ -4605,7 +5397,6 @@ func (s *Ulimit) SetSoftLimit(v int64) *Ulimit {
 	return s
 }
 
-// See also, https://docs.aws.amazon.com/goto/WebAPI/batch-2016-08-10/UpdateComputeEnvironmentRequest
 type UpdateComputeEnvironmentInput struct {
 	_ struct{} `type:"structure"`
 
@@ -4686,14 +5477,13 @@ func (s *UpdateComputeEnvironmentInput) SetState(v string) *UpdateComputeEnviron
 	return s
 }
 
-// See also, https://docs.aws.amazon.com/goto/WebAPI/batch-2016-08-10/UpdateComputeEnvironmentResponse
 type UpdateComputeEnvironmentOutput struct {
 	_ struct{} `type:"structure"`
 
 	// The Amazon Resource Name (ARN) of the compute environment.
 	ComputeEnvironmentArn *string `locationName:"computeEnvironmentArn" type:"string"`
 
-	// The name of compute environment.
+	// The name of the compute environment.
 	ComputeEnvironmentName *string `locationName:"computeEnvironmentName" type:"string"`
 }
 
@@ -4719,7 +5509,6 @@ func (s *UpdateComputeEnvironmentOutput) SetComputeEnvironmentName(v string) *Up
 	return s
 }
 
-// See also, https://docs.aws.amazon.com/goto/WebAPI/batch-2016-08-10/UpdateJobQueueRequest
 type UpdateJobQueueInput struct {
 	_ struct{} `type:"structure"`
 
@@ -4735,7 +5524,7 @@ type UpdateJobQueueInput struct {
 
 	// The priority of the job queue. Job queues with a higher priority (or a higher
 	// integer value for the priority parameter) are evaluated first when associated
-	// with same compute environment. Priority is determined in descending order,
+	// with the same compute environment. Priority is determined in descending order,
 	// for example, a job queue with a priority value of 10 is given scheduling
 	// preference over a job queue with a priority value of 1.
 	Priority *int64 `locationName:"priority" type:"integer"`
@@ -4801,7 +5590,6 @@ func (s *UpdateJobQueueInput) SetState(v string) *UpdateJobQueueInput {
 	return s
 }
 
-// See also, https://docs.aws.amazon.com/goto/WebAPI/batch-2016-08-10/UpdateJobQueueResponse
 type UpdateJobQueueOutput struct {
 	_ struct{} `type:"structure"`
 
@@ -4835,7 +5623,6 @@ func (s *UpdateJobQueueOutput) SetJobQueueName(v string) *UpdateJobQueueOutput {
 }
 
 // A data volume used in a job's container properties.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/batch-2016-08-10/Volume
 type Volume struct {
 	_ struct{} `type:"structure"`
 
@@ -4957,6 +5744,9 @@ const (
 const (
 	// JobDefinitionTypeContainer is a JobDefinitionType enum value
 	JobDefinitionTypeContainer = "container"
+
+	// JobDefinitionTypeMultinode is a JobDefinitionType enum value
+	JobDefinitionTypeMultinode = "multinode"
 )
 
 const (
@@ -4980,4 +5770,9 @@ const (
 
 	// JobStatusFailed is a JobStatus enum value
 	JobStatusFailed = "FAILED"
+)
+
+const (
+	// ResourceTypeGpu is a ResourceType enum value
+	ResourceTypeGpu = "GPU"
 )
