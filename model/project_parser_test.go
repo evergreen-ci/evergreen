@@ -1,14 +1,20 @@
 package model
 
 import (
+	"bytes"
+	"errors"
 	"fmt"
 	"reflect"
 	"strconv"
 	"strings"
 	"testing"
 
+	"github.com/kr/pretty"
+
+	"github.com/evergreen-ci/evergreen/db"
 	. "github.com/smartystreets/goconvey/convey"
 	"github.com/stretchr/testify/assert"
+	"gopkg.in/yaml.v2"
 )
 
 // ShouldContainResembling tests whether a slice contains an element that DeepEquals
@@ -302,7 +308,7 @@ buildvariants:
 
 func TestTranslateDependsOn(t *testing.T) {
 	Convey("With an intermediate parseProject", t, func() {
-		pp := &parserProject{}
+		pp := &ParserProject{}
 		Convey("a tag-free dependency config should be unchanged", func() {
 			pp.BuildVariants = []parserBV{
 				{Name: "v1"},
@@ -377,7 +383,7 @@ func TestTranslateDependsOn(t *testing.T) {
 
 func TestTranslateRequires(t *testing.T) {
 	Convey("With an intermediate parseProject", t, func() {
-		pp := &parserProject{}
+		pp := &ParserProject{}
 		Convey("a task with valid requirements should succeed", func() {
 			pp.BuildVariants = []parserBV{
 				{Name: "v1"},
@@ -421,7 +427,7 @@ func TestTranslateRequires(t *testing.T) {
 
 func TestTranslateBuildVariants(t *testing.T) {
 	Convey("With an intermediate parseProject", t, func() {
-		pp := &parserProject{}
+		pp := &ParserProject{}
 		Convey("a project with valid variant tasks should succeed", func() {
 			pp.Tasks = []parserTask{
 				{Name: "t1"},
@@ -1187,4 +1193,81 @@ tasks:
 	assert.Equal("idk", proj.Loggers.Agent[0].SplunkToken)
 	assert.Equal("somethingElse", proj.Loggers.Agent[1].Type)
 	assert.Equal("commandLogger", proj.Tasks[0].Commands[0].Loggers.System[0].Type)
+}
+
+func TestParserProjectPersists(t *testing.T) {
+	simpleYml := `
+loggers:
+  agent:
+    - type: something
+      splunk_token: idk
+    - type: somethingElse
+tasks:
+- name: task_1
+  commands:
+  - command: myCommand
+    params: 
+      env:
+        ${MY_KEY}: my-value
+        ${MY_NUMS}: [1,2,3]
+    loggers:
+      system:
+       - type: commandLogger
+functions:
+  run-make:
+    command: subprocess.exec
+    params:
+      working_dir: gopath/src/github.com/evergreen-ci/evergreen
+      binary: make
+      env:
+        CLIENT_URL: https://s3.amazonaws.com/mciuploads/evergreen/${task_id}/evergreen-ci/evergreen/clients/${goos}_${goarch}/evergreen
+`
+
+	for name, test := range map[string]func(t *testing.T){
+		"simpleYaml": func(t *testing.T) {
+			assert.NoError(t, checkProjectPersists([]byte(simpleYml)))
+		},
+		/*		"self-tests.yml": func(t *testing.T) {
+				filepath := filepath.Join(testutil.GetDirectoryOfFile(), "..", "self-tests.yml")
+				yml, err := ioutil.ReadFile(filepath)
+				assert.NoError(t, err)
+				assert.NoError(t, checkProjectPersists([]byte(yml)))
+			},*/
+	} {
+		t.Run(name, func(t *testing.T) {
+			assert.NoError(t, db.ClearCollections(VersionCollection))
+			test(t)
+		})
+	}
+}
+
+func checkProjectPersists(yml []byte) error {
+	pp, errs := createIntermediateProject(yml)
+	if len(errs) > 0 {
+		return errs[0]
+	}
+
+	yamlToCompare, err := yaml.Marshal(pp)
+	if err != nil {
+		return err
+	}
+
+	v := Version{
+		Id:            "my-version",
+		ParserProject: pp,
+	}
+	if err := v.Insert(); err != nil {
+		return err
+	}
+
+	newV, err := VersionFindOneId(v.Id)
+	if err != nil {
+		return err
+	}
+	pretty.Print(newV.ParserProject)
+	newYaml, err := yaml.Marshal(newV.ParserProject)
+	if !bytes.Equal(newYaml, yamlToCompare) {
+		return errors.New("yamls not equal")
+	}
+	return nil
 }

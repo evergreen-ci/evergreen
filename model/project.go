@@ -1,6 +1,7 @@
 package model
 
 import (
+	"encoding/json"
 	"fmt"
 	"reflect"
 	"regexp"
@@ -18,7 +19,8 @@ import (
 	"github.com/mongodb/anser/bsonutil"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
-	ignore "github.com/sabhiram/go-git-ignore"
+	"github.com/sabhiram/go-git-ignore"
+	"gopkg.in/yaml.v2"
 )
 
 const (
@@ -261,13 +263,60 @@ type PluginCommandConf struct {
 	// TimeoutSecs indicates the maximum duration the command is allowed to run for.
 	TimeoutSecs int `yaml:"timeout_secs,omitempty" bson:"timeout_secs"`
 
-	// Params are used to supply configuratiion specific information.
-	Params map[string]interface{} `yaml:"params,omitempty" bson:"params"`
+	// Params are used to supply configuration specific information.
+	// map[string]interface{} is stored as a JSON string.
+	Params string `yaml:"params,omitempty" bson:"params"`
 
 	// Vars defines variables that can be used within commands.
 	Vars map[string]string `yaml:"vars,omitempty" bson:"vars"`
 
 	Loggers *LoggerConfig `yaml:"loggers,omitempty" bson:"loggers,omitempty"`
+}
+
+func (p *PluginCommandConf) ResolveParams() (map[string]interface{}, error) {
+	out := map[string]interface{}{}
+	if p == nil {
+		return out, nil
+	}
+	if err := json.Unmarshal([]byte(p.Params), &out); err != nil {
+		return nil, errors.Wrapf(err, "error unmarshalling params")
+	}
+	return out, nil
+}
+
+func (c *PluginCommandConf) UnmarshalYAML(unmarshal func(interface{}) error) error {
+	type tempCommandConf struct {
+		Function    string                 `yaml:"func,omitempty" bson:"func"`
+		Type        string                 `yaml:"type,omitempty" bson:"type"`
+		DisplayName string                 `yaml:"display_name,omitempty" bson:"display_name"`
+		Command     string                 `yaml:"command,omitempty" bson:"command"`
+		Variants    []string               `yaml:"variants,omitempty" bson:"variants"`
+		TimeoutSecs int                    `yaml:"timeout_secs,omitempty" bson:"timeout_secs"`
+		Params      map[string]interface{} `yaml:"params,omitempty" bson:"params"`
+		Vars        map[string]string      `yaml:"vars,omitempty" bson:"vars"`
+		Loggers     *LoggerConfig          `yaml:"loggers,omitempty" bson:"loggers,omitempty"`
+	}
+
+	temp := tempCommandConf{}
+	if err := unmarshal(&temp); err != nil {
+		return errors.Wrapf(err, "error unmarshalling into temp structure")
+	}
+	bytes, err := yaml.Marshal(temp.Params)
+	if err != nil {
+		return errors.Wrapf(err, "error marshalling params into yaml")
+	}
+
+	c.Function = temp.Function
+	c.Type = temp.Type
+	c.DisplayName = temp.DisplayName
+	c.Command = temp.Command
+	c.Variants = temp.Variants
+	c.TimeoutSecs = temp.TimeoutSecs
+	c.Vars = temp.Vars
+	c.Loggers = temp.Loggers
+
+	c.Params = string(bytes)
+	return nil
 }
 
 type ArtifactInstructions struct {
