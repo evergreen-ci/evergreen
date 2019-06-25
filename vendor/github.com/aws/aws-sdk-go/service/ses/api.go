@@ -17,8 +17,8 @@ const opCloneReceiptRuleSet = "CloneReceiptRuleSet"
 
 // CloneReceiptRuleSetRequest generates a "aws/request.Request" representing the
 // client's request for the CloneReceiptRuleSet operation. The "output" return
-// value will be populated with the request's response once the request complets
-// successfuly.
+// value will be populated with the request's response once the request completes
+// successfully.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
 // the "output" return value is not valid until after Send returns without error.
@@ -52,6 +52,7 @@ func (c *SES) CloneReceiptRuleSetRequest(input *CloneReceiptRuleSetInput) (req *
 
 	output = &CloneReceiptRuleSetOutput{}
 	req = c.newRequest(op, input, output)
+	req.Handlers.Unmarshal.Swap(query.UnmarshalHandler.Name, protocol.UnmarshalDiscardBodyHandler)
 	return
 }
 
@@ -62,7 +63,7 @@ func (c *SES) CloneReceiptRuleSetRequest(input *CloneReceiptRuleSetInput) (req *
 // independent of the source rule set.
 //
 // For information about setting up rule sets, see the Amazon SES Developer
-// Guide (http://docs.aws.amazon.com/ses/latest/DeveloperGuide/receiving-email-receipt-rule-set.html).
+// Guide (https://docs.aws.amazon.com/ses/latest/DeveloperGuide/receiving-email-receipt-rule-set.html).
 //
 // You can execute this operation no more than once per second.
 //
@@ -82,7 +83,7 @@ func (c *SES) CloneReceiptRuleSetRequest(input *CloneReceiptRuleSetInput) (req *
 //
 //   * ErrCodeLimitExceededException "LimitExceeded"
 //   Indicates that a resource could not be created because of service limits.
-//   For a list of Amazon SES limits, see the Amazon SES Developer Guide (http://docs.aws.amazon.com/ses/latest/DeveloperGuide/limits.html).
+//   For a list of Amazon SES limits, see the Amazon SES Developer Guide (https://docs.aws.amazon.com/ses/latest/DeveloperGuide/limits.html).
 //
 // See also, https://docs.aws.amazon.com/goto/WebAPI/email-2010-12-01/CloneReceiptRuleSet
 func (c *SES) CloneReceiptRuleSet(input *CloneReceiptRuleSetInput) (*CloneReceiptRuleSetOutput, error) {
@@ -110,8 +111,8 @@ const opCreateConfigurationSet = "CreateConfigurationSet"
 
 // CreateConfigurationSetRequest generates a "aws/request.Request" representing the
 // client's request for the CreateConfigurationSet operation. The "output" return
-// value will be populated with the request's response once the request complets
-// successfuly.
+// value will be populated with the request's response once the request completes
+// successfully.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
 // the "output" return value is not valid until after Send returns without error.
@@ -145,6 +146,7 @@ func (c *SES) CreateConfigurationSetRequest(input *CreateConfigurationSetInput) 
 
 	output = &CreateConfigurationSetOutput{}
 	req = c.newRequest(op, input, output)
+	req.Handlers.Unmarshal.Swap(query.UnmarshalHandler.Name, protocol.UnmarshalDiscardBodyHandler)
 	return
 }
 
@@ -153,7 +155,7 @@ func (c *SES) CreateConfigurationSetRequest(input *CreateConfigurationSetInput) 
 // Creates a configuration set.
 //
 // Configuration sets enable you to publish email sending events. For information
-// about using configuration sets, see the Amazon SES Developer Guide (http://docs.aws.amazon.com/ses/latest/DeveloperGuide/monitor-sending-activity.html).
+// about using configuration sets, see the Amazon SES Developer Guide (https://docs.aws.amazon.com/ses/latest/DeveloperGuide/monitor-sending-activity.html).
 //
 // You can execute this operation no more than once per second.
 //
@@ -175,7 +177,7 @@ func (c *SES) CreateConfigurationSetRequest(input *CreateConfigurationSetInput) 
 //
 //   * ErrCodeLimitExceededException "LimitExceeded"
 //   Indicates that a resource could not be created because of service limits.
-//   For a list of Amazon SES limits, see the Amazon SES Developer Guide (http://docs.aws.amazon.com/ses/latest/DeveloperGuide/limits.html).
+//   For a list of Amazon SES limits, see the Amazon SES Developer Guide (https://docs.aws.amazon.com/ses/latest/DeveloperGuide/limits.html).
 //
 // See also, https://docs.aws.amazon.com/goto/WebAPI/email-2010-12-01/CreateConfigurationSet
 func (c *SES) CreateConfigurationSet(input *CreateConfigurationSetInput) (*CreateConfigurationSetOutput, error) {
@@ -203,8 +205,8 @@ const opCreateConfigurationSetEventDestination = "CreateConfigurationSetEventDes
 
 // CreateConfigurationSetEventDestinationRequest generates a "aws/request.Request" representing the
 // client's request for the CreateConfigurationSetEventDestination operation. The "output" return
-// value will be populated with the request's response once the request complets
-// successfuly.
+// value will be populated with the request's response once the request completes
+// successfully.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
 // the "output" return value is not valid until after Send returns without error.
@@ -238,6 +240,7 @@ func (c *SES) CreateConfigurationSetEventDestinationRequest(input *CreateConfigu
 
 	output = &CreateConfigurationSetEventDestinationOutput{}
 	req = c.newRequest(op, input, output)
+	req.Handlers.Unmarshal.Swap(query.UnmarshalHandler.Name, protocol.UnmarshalDiscardBodyHandler)
 	return
 }
 
@@ -246,12 +249,12 @@ func (c *SES) CreateConfigurationSetEventDestinationRequest(input *CreateConfigu
 // Creates a configuration set event destination.
 //
 // When you create or update an event destination, you must provide one, and
-// only one, destination. The destination can be Amazon CloudWatch, Amazon Kinesis
+// only one, destination. The destination can be CloudWatch, Amazon Kinesis
 // Firehose, or Amazon Simple Notification Service (Amazon SNS).
 //
 // An event destination is the AWS service to which Amazon SES publishes the
 // email sending events associated with a configuration set. For information
-// about using configuration sets, see the Amazon SES Developer Guide (http://docs.aws.amazon.com/ses/latest/DeveloperGuide/monitor-sending-activity.html).
+// about using configuration sets, see the Amazon SES Developer Guide (https://docs.aws.amazon.com/ses/latest/DeveloperGuide/monitor-sending-activity.html).
 //
 // You can execute this operation no more than once per second.
 //
@@ -284,7 +287,7 @@ func (c *SES) CreateConfigurationSetEventDestinationRequest(input *CreateConfigu
 //
 //   * ErrCodeLimitExceededException "LimitExceeded"
 //   Indicates that a resource could not be created because of service limits.
-//   For a list of Amazon SES limits, see the Amazon SES Developer Guide (http://docs.aws.amazon.com/ses/latest/DeveloperGuide/limits.html).
+//   For a list of Amazon SES limits, see the Amazon SES Developer Guide (https://docs.aws.amazon.com/ses/latest/DeveloperGuide/limits.html).
 //
 // See also, https://docs.aws.amazon.com/goto/WebAPI/email-2010-12-01/CreateConfigurationSetEventDestination
 func (c *SES) CreateConfigurationSetEventDestination(input *CreateConfigurationSetEventDestinationInput) (*CreateConfigurationSetEventDestinationOutput, error) {
@@ -312,8 +315,8 @@ const opCreateConfigurationSetTrackingOptions = "CreateConfigurationSetTrackingO
 
 // CreateConfigurationSetTrackingOptionsRequest generates a "aws/request.Request" representing the
 // client's request for the CreateConfigurationSetTrackingOptions operation. The "output" return
-// value will be populated with the request's response once the request complets
-// successfuly.
+// value will be populated with the request's response once the request completes
+// successfully.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
 // the "output" return value is not valid until after Send returns without error.
@@ -347,6 +350,7 @@ func (c *SES) CreateConfigurationSetTrackingOptionsRequest(input *CreateConfigur
 
 	output = &CreateConfigurationSetTrackingOptionsOutput{}
 	req = c.newRequest(op, input, output)
+	req.Handlers.Unmarshal.Swap(query.UnmarshalHandler.Name, protocol.UnmarshalDiscardBodyHandler)
 	return
 }
 
@@ -357,9 +361,8 @@ func (c *SES) CreateConfigurationSetTrackingOptionsRequest(input *CreateConfigur
 //
 // By default, images and links used for tracking open and click events are
 // hosted on domains operated by Amazon SES. You can configure a subdomain of
-// your own to handle these events. For information about using configuration
-// sets, see Configuring Custom Domains to Handle Open and Click Tracking (http://docs.aws.amazon.com/ses/latest/DeveloperGuide/configure-custom-open-click-domains.html)
-// in the Amazon SES Developer Guide (http://docs.aws.amazon.com/ses/latest/DeveloperGuide/Welcome.html).
+// your own to handle these events. For information about using custom domains,
+// see the Amazon SES Developer Guide (https://docs.aws.amazon.com/ses/latest/DeveloperGuide/configure-custom-open-click-domains.html).
 //
 // Returns awserr.Error for service API and SDK errors. Use runtime type assertions
 // with awserr.Error's Code and Message methods to get detailed information about
@@ -410,8 +413,8 @@ const opCreateCustomVerificationEmailTemplate = "CreateCustomVerificationEmailTe
 
 // CreateCustomVerificationEmailTemplateRequest generates a "aws/request.Request" representing the
 // client's request for the CreateCustomVerificationEmailTemplate operation. The "output" return
-// value will be populated with the request's response once the request complets
-// successfuly.
+// value will be populated with the request's response once the request completes
+// successfully.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
 // the "output" return value is not valid until after Send returns without error.
@@ -445,8 +448,7 @@ func (c *SES) CreateCustomVerificationEmailTemplateRequest(input *CreateCustomVe
 
 	output = &CreateCustomVerificationEmailTemplateOutput{}
 	req = c.newRequest(op, input, output)
-	req.Handlers.Unmarshal.Remove(query.UnmarshalHandler)
-	req.Handlers.Unmarshal.PushBackNamed(protocol.UnmarshalDiscardBodyHandler)
+	req.Handlers.Unmarshal.Swap(query.UnmarshalHandler.Name, protocol.UnmarshalDiscardBodyHandler)
 	return
 }
 
@@ -482,7 +484,7 @@ func (c *SES) CreateCustomVerificationEmailTemplateRequest(input *CreateCustomVe
 //
 //   * ErrCodeLimitExceededException "LimitExceeded"
 //   Indicates that a resource could not be created because of service limits.
-//   For a list of Amazon SES limits, see the Amazon SES Developer Guide (http://docs.aws.amazon.com/ses/latest/DeveloperGuide/limits.html).
+//   For a list of Amazon SES limits, see the Amazon SES Developer Guide (https://docs.aws.amazon.com/ses/latest/DeveloperGuide/limits.html).
 //
 // See also, https://docs.aws.amazon.com/goto/WebAPI/email-2010-12-01/CreateCustomVerificationEmailTemplate
 func (c *SES) CreateCustomVerificationEmailTemplate(input *CreateCustomVerificationEmailTemplateInput) (*CreateCustomVerificationEmailTemplateOutput, error) {
@@ -510,8 +512,8 @@ const opCreateReceiptFilter = "CreateReceiptFilter"
 
 // CreateReceiptFilterRequest generates a "aws/request.Request" representing the
 // client's request for the CreateReceiptFilter operation. The "output" return
-// value will be populated with the request's response once the request complets
-// successfuly.
+// value will be populated with the request's response once the request completes
+// successfully.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
 // the "output" return value is not valid until after Send returns without error.
@@ -545,6 +547,7 @@ func (c *SES) CreateReceiptFilterRequest(input *CreateReceiptFilterInput) (req *
 
 	output = &CreateReceiptFilterOutput{}
 	req = c.newRequest(op, input, output)
+	req.Handlers.Unmarshal.Swap(query.UnmarshalHandler.Name, protocol.UnmarshalDiscardBodyHandler)
 	return
 }
 
@@ -553,7 +556,7 @@ func (c *SES) CreateReceiptFilterRequest(input *CreateReceiptFilterInput) (req *
 // Creates a new IP address filter.
 //
 // For information about setting up IP address filters, see the Amazon SES Developer
-// Guide (http://docs.aws.amazon.com/ses/latest/DeveloperGuide/receiving-email-ip-filters.html).
+// Guide (https://docs.aws.amazon.com/ses/latest/DeveloperGuide/receiving-email-ip-filters.html).
 //
 // You can execute this operation no more than once per second.
 //
@@ -567,7 +570,7 @@ func (c *SES) CreateReceiptFilterRequest(input *CreateReceiptFilterInput) (req *
 // Returned Error Codes:
 //   * ErrCodeLimitExceededException "LimitExceeded"
 //   Indicates that a resource could not be created because of service limits.
-//   For a list of Amazon SES limits, see the Amazon SES Developer Guide (http://docs.aws.amazon.com/ses/latest/DeveloperGuide/limits.html).
+//   For a list of Amazon SES limits, see the Amazon SES Developer Guide (https://docs.aws.amazon.com/ses/latest/DeveloperGuide/limits.html).
 //
 //   * ErrCodeAlreadyExistsException "AlreadyExists"
 //   Indicates that a resource could not be created because of a naming conflict.
@@ -598,8 +601,8 @@ const opCreateReceiptRule = "CreateReceiptRule"
 
 // CreateReceiptRuleRequest generates a "aws/request.Request" representing the
 // client's request for the CreateReceiptRule operation. The "output" return
-// value will be populated with the request's response once the request complets
-// successfuly.
+// value will be populated with the request's response once the request completes
+// successfully.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
 // the "output" return value is not valid until after Send returns without error.
@@ -633,6 +636,7 @@ func (c *SES) CreateReceiptRuleRequest(input *CreateReceiptRuleInput) (req *requ
 
 	output = &CreateReceiptRuleOutput{}
 	req = c.newRequest(op, input, output)
+	req.Handlers.Unmarshal.Swap(query.UnmarshalHandler.Name, protocol.UnmarshalDiscardBodyHandler)
 	return
 }
 
@@ -641,7 +645,7 @@ func (c *SES) CreateReceiptRuleRequest(input *CreateReceiptRuleInput) (req *requ
 // Creates a receipt rule.
 //
 // For information about setting up receipt rules, see the Amazon SES Developer
-// Guide (http://docs.aws.amazon.com/ses/latest/DeveloperGuide/receiving-email-receipt-rules.html).
+// Guide (https://docs.aws.amazon.com/ses/latest/DeveloperGuide/receiving-email-receipt-rules.html).
 //
 // You can execute this operation no more than once per second.
 //
@@ -656,19 +660,19 @@ func (c *SES) CreateReceiptRuleRequest(input *CreateReceiptRuleInput) (req *requ
 //   * ErrCodeInvalidSnsTopicException "InvalidSnsTopic"
 //   Indicates that the provided Amazon SNS topic is invalid, or that Amazon SES
 //   could not publish to the topic, possibly due to permissions issues. For information
-//   about giving permissions, see the Amazon SES Developer Guide (http://docs.aws.amazon.com/ses/latest/DeveloperGuide/receiving-email-permissions.html).
+//   about giving permissions, see the Amazon SES Developer Guide (https://docs.aws.amazon.com/ses/latest/DeveloperGuide/receiving-email-permissions.html).
 //
 //   * ErrCodeInvalidS3ConfigurationException "InvalidS3Configuration"
 //   Indicates that the provided Amazon S3 bucket or AWS KMS encryption key is
 //   invalid, or that Amazon SES could not publish to the bucket, possibly due
 //   to permissions issues. For information about giving permissions, see the
-//   Amazon SES Developer Guide (http://docs.aws.amazon.com/ses/latest/DeveloperGuide/receiving-email-permissions.html).
+//   Amazon SES Developer Guide (https://docs.aws.amazon.com/ses/latest/DeveloperGuide/receiving-email-permissions.html).
 //
 //   * ErrCodeInvalidLambdaFunctionException "InvalidLambdaFunction"
 //   Indicates that the provided AWS Lambda function is invalid, or that Amazon
 //   SES could not execute the provided function, possibly due to permissions
 //   issues. For information about giving permissions, see the Amazon SES Developer
-//   Guide (http://docs.aws.amazon.com/ses/latest/DeveloperGuide/receiving-email-permissions.html).
+//   Guide (https://docs.aws.amazon.com/ses/latest/DeveloperGuide/receiving-email-permissions.html).
 //
 //   * ErrCodeAlreadyExistsException "AlreadyExists"
 //   Indicates that a resource could not be created because of a naming conflict.
@@ -681,7 +685,7 @@ func (c *SES) CreateReceiptRuleRequest(input *CreateReceiptRuleInput) (req *requ
 //
 //   * ErrCodeLimitExceededException "LimitExceeded"
 //   Indicates that a resource could not be created because of service limits.
-//   For a list of Amazon SES limits, see the Amazon SES Developer Guide (http://docs.aws.amazon.com/ses/latest/DeveloperGuide/limits.html).
+//   For a list of Amazon SES limits, see the Amazon SES Developer Guide (https://docs.aws.amazon.com/ses/latest/DeveloperGuide/limits.html).
 //
 // See also, https://docs.aws.amazon.com/goto/WebAPI/email-2010-12-01/CreateReceiptRule
 func (c *SES) CreateReceiptRule(input *CreateReceiptRuleInput) (*CreateReceiptRuleOutput, error) {
@@ -709,8 +713,8 @@ const opCreateReceiptRuleSet = "CreateReceiptRuleSet"
 
 // CreateReceiptRuleSetRequest generates a "aws/request.Request" representing the
 // client's request for the CreateReceiptRuleSet operation. The "output" return
-// value will be populated with the request's response once the request complets
-// successfuly.
+// value will be populated with the request's response once the request completes
+// successfully.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
 // the "output" return value is not valid until after Send returns without error.
@@ -744,6 +748,7 @@ func (c *SES) CreateReceiptRuleSetRequest(input *CreateReceiptRuleSetInput) (req
 
 	output = &CreateReceiptRuleSetOutput{}
 	req = c.newRequest(op, input, output)
+	req.Handlers.Unmarshal.Swap(query.UnmarshalHandler.Name, protocol.UnmarshalDiscardBodyHandler)
 	return
 }
 
@@ -752,7 +757,7 @@ func (c *SES) CreateReceiptRuleSetRequest(input *CreateReceiptRuleSetInput) (req
 // Creates an empty receipt rule set.
 //
 // For information about setting up receipt rule sets, see the Amazon SES Developer
-// Guide (http://docs.aws.amazon.com/ses/latest/DeveloperGuide/receiving-email-receipt-rule-set.html).
+// Guide (https://docs.aws.amazon.com/ses/latest/DeveloperGuide/receiving-email-receipt-rule-set.html).
 //
 // You can execute this operation no more than once per second.
 //
@@ -769,7 +774,7 @@ func (c *SES) CreateReceiptRuleSetRequest(input *CreateReceiptRuleSetInput) (req
 //
 //   * ErrCodeLimitExceededException "LimitExceeded"
 //   Indicates that a resource could not be created because of service limits.
-//   For a list of Amazon SES limits, see the Amazon SES Developer Guide (http://docs.aws.amazon.com/ses/latest/DeveloperGuide/limits.html).
+//   For a list of Amazon SES limits, see the Amazon SES Developer Guide (https://docs.aws.amazon.com/ses/latest/DeveloperGuide/limits.html).
 //
 // See also, https://docs.aws.amazon.com/goto/WebAPI/email-2010-12-01/CreateReceiptRuleSet
 func (c *SES) CreateReceiptRuleSet(input *CreateReceiptRuleSetInput) (*CreateReceiptRuleSetOutput, error) {
@@ -797,8 +802,8 @@ const opCreateTemplate = "CreateTemplate"
 
 // CreateTemplateRequest generates a "aws/request.Request" representing the
 // client's request for the CreateTemplate operation. The "output" return
-// value will be populated with the request's response once the request complets
-// successfuly.
+// value will be populated with the request's response once the request completes
+// successfully.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
 // the "output" return value is not valid until after Send returns without error.
@@ -832,6 +837,7 @@ func (c *SES) CreateTemplateRequest(input *CreateTemplateInput) (req *request.Re
 
 	output = &CreateTemplateOutput{}
 	req = c.newRequest(op, input, output)
+	req.Handlers.Unmarshal.Swap(query.UnmarshalHandler.Name, protocol.UnmarshalDiscardBodyHandler)
 	return
 }
 
@@ -839,7 +845,7 @@ func (c *SES) CreateTemplateRequest(input *CreateTemplateInput) (req *request.Re
 //
 // Creates an email template. Email templates enable you to send personalized
 // email to one or more destinations in a single API operation. For more information,
-// see the Amazon SES Developer Guide (http://docs.aws.amazon.com/ses/latest/DeveloperGuide/send-personalized-email-api.html).
+// see the Amazon SES Developer Guide (https://docs.aws.amazon.com/ses/latest/DeveloperGuide/send-personalized-email-api.html).
 //
 // You can execute this operation no more than once per second.
 //
@@ -855,12 +861,12 @@ func (c *SES) CreateTemplateRequest(input *CreateTemplateInput) (req *request.Re
 //   Indicates that a resource could not be created because of a naming conflict.
 //
 //   * ErrCodeInvalidTemplateException "InvalidTemplate"
-//   Indicates that a template could not be created because it contained invalid
-//   JSON.
+//   Indicates that the template that you specified could not be rendered. This
+//   issue may occur when a template refers to a partial that does not exist.
 //
 //   * ErrCodeLimitExceededException "LimitExceeded"
 //   Indicates that a resource could not be created because of service limits.
-//   For a list of Amazon SES limits, see the Amazon SES Developer Guide (http://docs.aws.amazon.com/ses/latest/DeveloperGuide/limits.html).
+//   For a list of Amazon SES limits, see the Amazon SES Developer Guide (https://docs.aws.amazon.com/ses/latest/DeveloperGuide/limits.html).
 //
 // See also, https://docs.aws.amazon.com/goto/WebAPI/email-2010-12-01/CreateTemplate
 func (c *SES) CreateTemplate(input *CreateTemplateInput) (*CreateTemplateOutput, error) {
@@ -888,8 +894,8 @@ const opDeleteConfigurationSet = "DeleteConfigurationSet"
 
 // DeleteConfigurationSetRequest generates a "aws/request.Request" representing the
 // client's request for the DeleteConfigurationSet operation. The "output" return
-// value will be populated with the request's response once the request complets
-// successfuly.
+// value will be populated with the request's response once the request completes
+// successfully.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
 // the "output" return value is not valid until after Send returns without error.
@@ -923,6 +929,7 @@ func (c *SES) DeleteConfigurationSetRequest(input *DeleteConfigurationSetInput) 
 
 	output = &DeleteConfigurationSetOutput{}
 	req = c.newRequest(op, input, output)
+	req.Handlers.Unmarshal.Swap(query.UnmarshalHandler.Name, protocol.UnmarshalDiscardBodyHandler)
 	return
 }
 
@@ -930,7 +937,7 @@ func (c *SES) DeleteConfigurationSetRequest(input *DeleteConfigurationSetInput) 
 //
 // Deletes a configuration set. Configuration sets enable you to publish email
 // sending events. For information about using configuration sets, see the Amazon
-// SES Developer Guide (http://docs.aws.amazon.com/ses/latest/DeveloperGuide/monitor-sending-activity.html).
+// SES Developer Guide (https://docs.aws.amazon.com/ses/latest/DeveloperGuide/monitor-sending-activity.html).
 //
 // You can execute this operation no more than once per second.
 //
@@ -971,8 +978,8 @@ const opDeleteConfigurationSetEventDestination = "DeleteConfigurationSetEventDes
 
 // DeleteConfigurationSetEventDestinationRequest generates a "aws/request.Request" representing the
 // client's request for the DeleteConfigurationSetEventDestination operation. The "output" return
-// value will be populated with the request's response once the request complets
-// successfuly.
+// value will be populated with the request's response once the request completes
+// successfully.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
 // the "output" return value is not valid until after Send returns without error.
@@ -1006,6 +1013,7 @@ func (c *SES) DeleteConfigurationSetEventDestinationRequest(input *DeleteConfigu
 
 	output = &DeleteConfigurationSetEventDestinationOutput{}
 	req = c.newRequest(op, input, output)
+	req.Handlers.Unmarshal.Swap(query.UnmarshalHandler.Name, protocol.UnmarshalDiscardBodyHandler)
 	return
 }
 
@@ -1014,7 +1022,7 @@ func (c *SES) DeleteConfigurationSetEventDestinationRequest(input *DeleteConfigu
 // Deletes a configuration set event destination. Configuration set event destinations
 // are associated with configuration sets, which enable you to publish email
 // sending events. For information about using configuration sets, see the Amazon
-// SES Developer Guide (http://docs.aws.amazon.com/ses/latest/DeveloperGuide/monitor-sending-activity.html).
+// SES Developer Guide (https://docs.aws.amazon.com/ses/latest/DeveloperGuide/monitor-sending-activity.html).
 //
 // You can execute this operation no more than once per second.
 //
@@ -1058,8 +1066,8 @@ const opDeleteConfigurationSetTrackingOptions = "DeleteConfigurationSetTrackingO
 
 // DeleteConfigurationSetTrackingOptionsRequest generates a "aws/request.Request" representing the
 // client's request for the DeleteConfigurationSetTrackingOptions operation. The "output" return
-// value will be populated with the request's response once the request complets
-// successfuly.
+// value will be populated with the request's response once the request completes
+// successfully.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
 // the "output" return value is not valid until after Send returns without error.
@@ -1093,6 +1101,7 @@ func (c *SES) DeleteConfigurationSetTrackingOptionsRequest(input *DeleteConfigur
 
 	output = &DeleteConfigurationSetTrackingOptionsOutput{}
 	req = c.newRequest(op, input, output)
+	req.Handlers.Unmarshal.Swap(query.UnmarshalHandler.Name, protocol.UnmarshalDiscardBodyHandler)
 	return
 }
 
@@ -1103,9 +1112,8 @@ func (c *SES) DeleteConfigurationSetTrackingOptionsRequest(input *DeleteConfigur
 //
 // By default, images and links used for tracking open and click events are
 // hosted on domains operated by Amazon SES. You can configure a subdomain of
-// your own to handle these events. For information about using configuration
-// sets, see Configuring Custom Domains to Handle Open and Click Tracking (http://docs.aws.amazon.com/ses/latest/DeveloperGuide/configure-custom-open-click-domains.html)
-// in the Amazon SES Developer Guide (http://docs.aws.amazon.com/ses/latest/DeveloperGuide/Welcome.html).
+// your own to handle these events. For information about using custom domains,
+// see the Amazon SES Developer Guide (https://docs.aws.amazon.com/ses/latest/DeveloperGuide/configure-custom-open-click-domains.html).
 //
 // Deleting this kind of association will result in emails sent using the specified
 // configuration set to capture open and click events using the standard, Amazon
@@ -1151,8 +1159,8 @@ const opDeleteCustomVerificationEmailTemplate = "DeleteCustomVerificationEmailTe
 
 // DeleteCustomVerificationEmailTemplateRequest generates a "aws/request.Request" representing the
 // client's request for the DeleteCustomVerificationEmailTemplate operation. The "output" return
-// value will be populated with the request's response once the request complets
-// successfuly.
+// value will be populated with the request's response once the request completes
+// successfully.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
 // the "output" return value is not valid until after Send returns without error.
@@ -1186,8 +1194,7 @@ func (c *SES) DeleteCustomVerificationEmailTemplateRequest(input *DeleteCustomVe
 
 	output = &DeleteCustomVerificationEmailTemplateOutput{}
 	req = c.newRequest(op, input, output)
-	req.Handlers.Unmarshal.Remove(query.UnmarshalHandler)
-	req.Handlers.Unmarshal.PushBackNamed(protocol.UnmarshalDiscardBodyHandler)
+	req.Handlers.Unmarshal.Swap(query.UnmarshalHandler.Name, protocol.UnmarshalDiscardBodyHandler)
 	return
 }
 
@@ -1233,8 +1240,8 @@ const opDeleteIdentity = "DeleteIdentity"
 
 // DeleteIdentityRequest generates a "aws/request.Request" representing the
 // client's request for the DeleteIdentity operation. The "output" return
-// value will be populated with the request's response once the request complets
-// successfuly.
+// value will be populated with the request's response once the request completes
+// successfully.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
 // the "output" return value is not valid until after Send returns without error.
@@ -1268,6 +1275,7 @@ func (c *SES) DeleteIdentityRequest(input *DeleteIdentityInput) (req *request.Re
 
 	output = &DeleteIdentityOutput{}
 	req = c.newRequest(op, input, output)
+	req.Handlers.Unmarshal.Swap(query.UnmarshalHandler.Name, protocol.UnmarshalDiscardBodyHandler)
 	return
 }
 
@@ -1310,8 +1318,8 @@ const opDeleteIdentityPolicy = "DeleteIdentityPolicy"
 
 // DeleteIdentityPolicyRequest generates a "aws/request.Request" representing the
 // client's request for the DeleteIdentityPolicy operation. The "output" return
-// value will be populated with the request's response once the request complets
-// successfuly.
+// value will be populated with the request's response once the request completes
+// successfully.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
 // the "output" return value is not valid until after Send returns without error.
@@ -1345,6 +1353,7 @@ func (c *SES) DeleteIdentityPolicyRequest(input *DeleteIdentityPolicyInput) (req
 
 	output = &DeleteIdentityPolicyOutput{}
 	req = c.newRequest(op, input, output)
+	req.Handlers.Unmarshal.Swap(query.UnmarshalHandler.Name, protocol.UnmarshalDiscardBodyHandler)
 	return
 }
 
@@ -1359,7 +1368,7 @@ func (c *SES) DeleteIdentityPolicyRequest(input *DeleteIdentityPolicyInput) (req
 //
 // Sending authorization is a feature that enables an identity owner to authorize
 // other senders to use its identities. For information about using sending
-// authorization, see the Amazon SES Developer Guide (http://docs.aws.amazon.com/ses/latest/DeveloperGuide/sending-authorization.html).
+// authorization, see the Amazon SES Developer Guide (https://docs.aws.amazon.com/ses/latest/DeveloperGuide/sending-authorization.html).
 //
 // You can execute this operation no more than once per second.
 //
@@ -1395,8 +1404,8 @@ const opDeleteReceiptFilter = "DeleteReceiptFilter"
 
 // DeleteReceiptFilterRequest generates a "aws/request.Request" representing the
 // client's request for the DeleteReceiptFilter operation. The "output" return
-// value will be populated with the request's response once the request complets
-// successfuly.
+// value will be populated with the request's response once the request completes
+// successfully.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
 // the "output" return value is not valid until after Send returns without error.
@@ -1430,6 +1439,7 @@ func (c *SES) DeleteReceiptFilterRequest(input *DeleteReceiptFilterInput) (req *
 
 	output = &DeleteReceiptFilterOutput{}
 	req = c.newRequest(op, input, output)
+	req.Handlers.Unmarshal.Swap(query.UnmarshalHandler.Name, protocol.UnmarshalDiscardBodyHandler)
 	return
 }
 
@@ -1438,7 +1448,7 @@ func (c *SES) DeleteReceiptFilterRequest(input *DeleteReceiptFilterInput) (req *
 // Deletes the specified IP address filter.
 //
 // For information about managing IP address filters, see the Amazon SES Developer
-// Guide (http://docs.aws.amazon.com/ses/latest/DeveloperGuide/receiving-email-managing-ip-filters.html).
+// Guide (https://docs.aws.amazon.com/ses/latest/DeveloperGuide/receiving-email-managing-ip-filters.html).
 //
 // You can execute this operation no more than once per second.
 //
@@ -1474,8 +1484,8 @@ const opDeleteReceiptRule = "DeleteReceiptRule"
 
 // DeleteReceiptRuleRequest generates a "aws/request.Request" representing the
 // client's request for the DeleteReceiptRule operation. The "output" return
-// value will be populated with the request's response once the request complets
-// successfuly.
+// value will be populated with the request's response once the request completes
+// successfully.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
 // the "output" return value is not valid until after Send returns without error.
@@ -1509,6 +1519,7 @@ func (c *SES) DeleteReceiptRuleRequest(input *DeleteReceiptRuleInput) (req *requ
 
 	output = &DeleteReceiptRuleOutput{}
 	req = c.newRequest(op, input, output)
+	req.Handlers.Unmarshal.Swap(query.UnmarshalHandler.Name, protocol.UnmarshalDiscardBodyHandler)
 	return
 }
 
@@ -1517,7 +1528,7 @@ func (c *SES) DeleteReceiptRuleRequest(input *DeleteReceiptRuleInput) (req *requ
 // Deletes the specified receipt rule.
 //
 // For information about managing receipt rules, see the Amazon SES Developer
-// Guide (http://docs.aws.amazon.com/ses/latest/DeveloperGuide/receiving-email-managing-receipt-rules.html).
+// Guide (https://docs.aws.amazon.com/ses/latest/DeveloperGuide/receiving-email-managing-receipt-rules.html).
 //
 // You can execute this operation no more than once per second.
 //
@@ -1558,8 +1569,8 @@ const opDeleteReceiptRuleSet = "DeleteReceiptRuleSet"
 
 // DeleteReceiptRuleSetRequest generates a "aws/request.Request" representing the
 // client's request for the DeleteReceiptRuleSet operation. The "output" return
-// value will be populated with the request's response once the request complets
-// successfuly.
+// value will be populated with the request's response once the request completes
+// successfully.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
 // the "output" return value is not valid until after Send returns without error.
@@ -1593,6 +1604,7 @@ func (c *SES) DeleteReceiptRuleSetRequest(input *DeleteReceiptRuleSetInput) (req
 
 	output = &DeleteReceiptRuleSetOutput{}
 	req = c.newRequest(op, input, output)
+	req.Handlers.Unmarshal.Swap(query.UnmarshalHandler.Name, protocol.UnmarshalDiscardBodyHandler)
 	return
 }
 
@@ -1603,7 +1615,7 @@ func (c *SES) DeleteReceiptRuleSetRequest(input *DeleteReceiptRuleSetInput) (req
 // The currently active rule set cannot be deleted.
 //
 // For information about managing receipt rule sets, see the Amazon SES Developer
-// Guide (http://docs.aws.amazon.com/ses/latest/DeveloperGuide/receiving-email-managing-receipt-rule-sets.html).
+// Guide (https://docs.aws.amazon.com/ses/latest/DeveloperGuide/receiving-email-managing-receipt-rule-sets.html).
 //
 // You can execute this operation no more than once per second.
 //
@@ -1644,8 +1656,8 @@ const opDeleteTemplate = "DeleteTemplate"
 
 // DeleteTemplateRequest generates a "aws/request.Request" representing the
 // client's request for the DeleteTemplate operation. The "output" return
-// value will be populated with the request's response once the request complets
-// successfuly.
+// value will be populated with the request's response once the request completes
+// successfully.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
 // the "output" return value is not valid until after Send returns without error.
@@ -1679,6 +1691,7 @@ func (c *SES) DeleteTemplateRequest(input *DeleteTemplateInput) (req *request.Re
 
 	output = &DeleteTemplateOutput{}
 	req = c.newRequest(op, input, output)
+	req.Handlers.Unmarshal.Swap(query.UnmarshalHandler.Name, protocol.UnmarshalDiscardBodyHandler)
 	return
 }
 
@@ -1720,8 +1733,8 @@ const opDeleteVerifiedEmailAddress = "DeleteVerifiedEmailAddress"
 
 // DeleteVerifiedEmailAddressRequest generates a "aws/request.Request" representing the
 // client's request for the DeleteVerifiedEmailAddress operation. The "output" return
-// value will be populated with the request's response once the request complets
-// successfuly.
+// value will be populated with the request's response once the request completes
+// successfully.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
 // the "output" return value is not valid until after Send returns without error.
@@ -1755,8 +1768,7 @@ func (c *SES) DeleteVerifiedEmailAddressRequest(input *DeleteVerifiedEmailAddres
 
 	output = &DeleteVerifiedEmailAddressOutput{}
 	req = c.newRequest(op, input, output)
-	req.Handlers.Unmarshal.Remove(query.UnmarshalHandler)
-	req.Handlers.Unmarshal.PushBackNamed(protocol.UnmarshalDiscardBodyHandler)
+	req.Handlers.Unmarshal.Swap(query.UnmarshalHandler.Name, protocol.UnmarshalDiscardBodyHandler)
 	return
 }
 
@@ -1797,8 +1809,8 @@ const opDescribeActiveReceiptRuleSet = "DescribeActiveReceiptRuleSet"
 
 // DescribeActiveReceiptRuleSetRequest generates a "aws/request.Request" representing the
 // client's request for the DescribeActiveReceiptRuleSet operation. The "output" return
-// value will be populated with the request's response once the request complets
-// successfuly.
+// value will be populated with the request's response once the request completes
+// successfully.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
 // the "output" return value is not valid until after Send returns without error.
@@ -1841,7 +1853,7 @@ func (c *SES) DescribeActiveReceiptRuleSetRequest(input *DescribeActiveReceiptRu
 // active.
 //
 // For information about setting up receipt rule sets, see the Amazon SES Developer
-// Guide (http://docs.aws.amazon.com/ses/latest/DeveloperGuide/receiving-email-receipt-rule-set.html).
+// Guide (https://docs.aws.amazon.com/ses/latest/DeveloperGuide/receiving-email-receipt-rule-set.html).
 //
 // You can execute this operation no more than once per second.
 //
@@ -1877,8 +1889,8 @@ const opDescribeConfigurationSet = "DescribeConfigurationSet"
 
 // DescribeConfigurationSetRequest generates a "aws/request.Request" representing the
 // client's request for the DescribeConfigurationSet operation. The "output" return
-// value will be populated with the request's response once the request complets
-// successfuly.
+// value will be populated with the request's response once the request completes
+// successfully.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
 // the "output" return value is not valid until after Send returns without error.
@@ -1918,7 +1930,7 @@ func (c *SES) DescribeConfigurationSetRequest(input *DescribeConfigurationSetInp
 // DescribeConfigurationSet API operation for Amazon Simple Email Service.
 //
 // Returns the details of the specified configuration set. For information about
-// using configuration sets, see the Amazon SES Developer Guide (http://docs.aws.amazon.com/ses/latest/DeveloperGuide/monitor-sending-activity.html).
+// using configuration sets, see the Amazon SES Developer Guide (https://docs.aws.amazon.com/ses/latest/DeveloperGuide/monitor-sending-activity.html).
 //
 // You can execute this operation no more than once per second.
 //
@@ -1959,8 +1971,8 @@ const opDescribeReceiptRule = "DescribeReceiptRule"
 
 // DescribeReceiptRuleRequest generates a "aws/request.Request" representing the
 // client's request for the DescribeReceiptRule operation. The "output" return
-// value will be populated with the request's response once the request complets
-// successfuly.
+// value will be populated with the request's response once the request completes
+// successfully.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
 // the "output" return value is not valid until after Send returns without error.
@@ -2002,7 +2014,7 @@ func (c *SES) DescribeReceiptRuleRequest(input *DescribeReceiptRuleInput) (req *
 // Returns the details of the specified receipt rule.
 //
 // For information about setting up receipt rules, see the Amazon SES Developer
-// Guide (http://docs.aws.amazon.com/ses/latest/DeveloperGuide/receiving-email-receipt-rules.html).
+// Guide (https://docs.aws.amazon.com/ses/latest/DeveloperGuide/receiving-email-receipt-rules.html).
 //
 // You can execute this operation no more than once per second.
 //
@@ -2046,8 +2058,8 @@ const opDescribeReceiptRuleSet = "DescribeReceiptRuleSet"
 
 // DescribeReceiptRuleSetRequest generates a "aws/request.Request" representing the
 // client's request for the DescribeReceiptRuleSet operation. The "output" return
-// value will be populated with the request's response once the request complets
-// successfuly.
+// value will be populated with the request's response once the request completes
+// successfully.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
 // the "output" return value is not valid until after Send returns without error.
@@ -2089,7 +2101,7 @@ func (c *SES) DescribeReceiptRuleSetRequest(input *DescribeReceiptRuleSetInput) 
 // Returns the details of the specified receipt rule set.
 //
 // For information about managing receipt rule sets, see the Amazon SES Developer
-// Guide (http://docs.aws.amazon.com/ses/latest/DeveloperGuide/receiving-email-managing-receipt-rule-sets.html).
+// Guide (https://docs.aws.amazon.com/ses/latest/DeveloperGuide/receiving-email-managing-receipt-rule-sets.html).
 //
 // You can execute this operation no more than once per second.
 //
@@ -2130,8 +2142,8 @@ const opGetAccountSendingEnabled = "GetAccountSendingEnabled"
 
 // GetAccountSendingEnabledRequest generates a "aws/request.Request" representing the
 // client's request for the GetAccountSendingEnabled operation. The "output" return
-// value will be populated with the request's response once the request complets
-// successfuly.
+// value will be populated with the request's response once the request completes
+// successfully.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
 // the "output" return value is not valid until after Send returns without error.
@@ -2170,7 +2182,8 @@ func (c *SES) GetAccountSendingEnabledRequest(input *GetAccountSendingEnabledInp
 
 // GetAccountSendingEnabled API operation for Amazon Simple Email Service.
 //
-// Returns the email sending status of the Amazon SES account.
+// Returns the email sending status of the Amazon SES account for the current
+// region.
 //
 // You can execute this operation no more than once per second.
 //
@@ -2206,8 +2219,8 @@ const opGetCustomVerificationEmailTemplate = "GetCustomVerificationEmailTemplate
 
 // GetCustomVerificationEmailTemplateRequest generates a "aws/request.Request" representing the
 // client's request for the GetCustomVerificationEmailTemplate operation. The "output" return
-// value will be populated with the request's response once the request complets
-// successfuly.
+// value will be populated with the request's response once the request completes
+// successfully.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
 // the "output" return value is not valid until after Send returns without error.
@@ -2293,8 +2306,8 @@ const opGetIdentityDkimAttributes = "GetIdentityDkimAttributes"
 
 // GetIdentityDkimAttributesRequest generates a "aws/request.Request" representing the
 // client's request for the GetIdentityDkimAttributes operation. The "output" return
-// value will be populated with the request's response once the request complets
-// successfuly.
+// value will be populated with the request's response once the request completes
+// successfully.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
 // the "output" return value is not valid until after Send returns without error.
@@ -2354,7 +2367,7 @@ func (c *SES) GetIdentityDkimAttributesRequest(input *GetIdentityDkimAttributesI
 // attributes for up to 100 identities at a time.
 //
 // For more information about creating DNS records using DKIM tokens, go to
-// the Amazon SES Developer Guide (http://docs.aws.amazon.com/ses/latest/DeveloperGuide/easy-dkim-dns-records.html).
+// the Amazon SES Developer Guide (https://docs.aws.amazon.com/ses/latest/DeveloperGuide/easy-dkim-dns-records.html).
 //
 // Returns awserr.Error for service API and SDK errors. Use runtime type assertions
 // with awserr.Error's Code and Message methods to get detailed information about
@@ -2388,8 +2401,8 @@ const opGetIdentityMailFromDomainAttributes = "GetIdentityMailFromDomainAttribut
 
 // GetIdentityMailFromDomainAttributesRequest generates a "aws/request.Request" representing the
 // client's request for the GetIdentityMailFromDomainAttributes operation. The "output" return
-// value will be populated with the request's response once the request complets
-// successfuly.
+// value will be populated with the request's response once the request completes
+// successfully.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
 // the "output" return value is not valid until after Send returns without error.
@@ -2466,8 +2479,8 @@ const opGetIdentityNotificationAttributes = "GetIdentityNotificationAttributes"
 
 // GetIdentityNotificationAttributesRequest generates a "aws/request.Request" representing the
 // client's request for the GetIdentityNotificationAttributes operation. The "output" return
-// value will be populated with the request's response once the request complets
-// successfuly.
+// value will be populated with the request's response once the request completes
+// successfully.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
 // the "output" return value is not valid until after Send returns without error.
@@ -2513,7 +2526,7 @@ func (c *SES) GetIdentityNotificationAttributesRequest(input *GetIdentityNotific
 // attributes for up to 100 identities at a time.
 //
 // For more information about using notifications with Amazon SES, see the Amazon
-// SES Developer Guide (http://docs.aws.amazon.com/ses/latest/DeveloperGuide/notifications.html).
+// SES Developer Guide (https://docs.aws.amazon.com/ses/latest/DeveloperGuide/notifications.html).
 //
 // Returns awserr.Error for service API and SDK errors. Use runtime type assertions
 // with awserr.Error's Code and Message methods to get detailed information about
@@ -2547,8 +2560,8 @@ const opGetIdentityPolicies = "GetIdentityPolicies"
 
 // GetIdentityPoliciesRequest generates a "aws/request.Request" representing the
 // client's request for the GetIdentityPolicies operation. The "output" return
-// value will be populated with the request's response once the request complets
-// successfuly.
+// value will be populated with the request's response once the request completes
+// successfully.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
 // the "output" return value is not valid until after Send returns without error.
@@ -2597,7 +2610,7 @@ func (c *SES) GetIdentityPoliciesRequest(input *GetIdentityPoliciesInput) (req *
 //
 // Sending authorization is a feature that enables an identity owner to authorize
 // other senders to use its identities. For information about using sending
-// authorization, see the Amazon SES Developer Guide (http://docs.aws.amazon.com/ses/latest/DeveloperGuide/sending-authorization.html).
+// authorization, see the Amazon SES Developer Guide (https://docs.aws.amazon.com/ses/latest/DeveloperGuide/sending-authorization.html).
 //
 // You can execute this operation no more than once per second.
 //
@@ -2633,8 +2646,8 @@ const opGetIdentityVerificationAttributes = "GetIdentityVerificationAttributes"
 
 // GetIdentityVerificationAttributesRequest generates a "aws/request.Request" representing the
 // client's request for the GetIdentityVerificationAttributes operation. The "output" return
-// value will be populated with the request's response once the request complets
-// successfuly.
+// value will be populated with the request's response once the request completes
+// successfully.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
 // the "output" return value is not valid until after Send returns without error.
@@ -2728,8 +2741,8 @@ const opGetSendQuota = "GetSendQuota"
 
 // GetSendQuotaRequest generates a "aws/request.Request" representing the
 // client's request for the GetSendQuota operation. The "output" return
-// value will be populated with the request's response once the request complets
-// successfuly.
+// value will be populated with the request's response once the request completes
+// successfully.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
 // the "output" return value is not valid until after Send returns without error.
@@ -2804,8 +2817,8 @@ const opGetSendStatistics = "GetSendStatistics"
 
 // GetSendStatisticsRequest generates a "aws/request.Request" representing the
 // client's request for the GetSendStatistics operation. The "output" return
-// value will be populated with the request's response once the request complets
-// successfuly.
+// value will be populated with the request's response once the request completes
+// successfully.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
 // the "output" return value is not valid until after Send returns without error.
@@ -2844,7 +2857,7 @@ func (c *SES) GetSendStatisticsRequest(input *GetSendStatisticsInput) (req *requ
 
 // GetSendStatistics API operation for Amazon Simple Email Service.
 //
-// Provides sending statistics for the Amazon SES account. The result is a list
+// Provides sending statistics for the current AWS Region. The result is a list
 // of data points, representing the last two weeks of sending activity. Each
 // data point in the list contains statistics for a 15-minute period of time.
 //
@@ -2882,8 +2895,8 @@ const opGetTemplate = "GetTemplate"
 
 // GetTemplateRequest generates a "aws/request.Request" representing the
 // client's request for the GetTemplate operation. The "output" return
-// value will be populated with the request's response once the request complets
-// successfuly.
+// value will be populated with the request's response once the request completes
+// successfully.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
 // the "output" return value is not valid until after Send returns without error.
@@ -2965,8 +2978,8 @@ const opListConfigurationSets = "ListConfigurationSets"
 
 // ListConfigurationSetsRequest generates a "aws/request.Request" representing the
 // client's request for the ListConfigurationSets operation. The "output" return
-// value will be populated with the request's response once the request complets
-// successfuly.
+// value will be populated with the request's response once the request completes
+// successfully.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
 // the "output" return value is not valid until after Send returns without error.
@@ -3006,8 +3019,8 @@ func (c *SES) ListConfigurationSetsRequest(input *ListConfigurationSetsInput) (r
 // ListConfigurationSets API operation for Amazon Simple Email Service.
 //
 // Provides a list of the configuration sets associated with your Amazon SES
-// account. For information about using configuration sets, see Monitoring Your
-// Amazon SES Sending Activity (http://docs.aws.amazon.com/ses/latest/DeveloperGuide/monitor-sending-activity.html)
+// account in the current AWS Region. For information about using configuration
+// sets, see Monitoring Your Amazon SES Sending Activity (https://docs.aws.amazon.com/ses/latest/DeveloperGuide/monitor-sending-activity.html)
 // in the Amazon SES Developer Guide.
 //
 // You can execute this operation no more than once per second. This operation
@@ -3049,8 +3062,8 @@ const opListCustomVerificationEmailTemplates = "ListCustomVerificationEmailTempl
 
 // ListCustomVerificationEmailTemplatesRequest generates a "aws/request.Request" representing the
 // client's request for the ListCustomVerificationEmailTemplates operation. The "output" return
-// value will be populated with the request's response once the request complets
-// successfuly.
+// value will be populated with the request's response once the request completes
+// successfully.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
 // the "output" return value is not valid until after Send returns without error.
@@ -3095,7 +3108,8 @@ func (c *SES) ListCustomVerificationEmailTemplatesRequest(input *ListCustomVerif
 
 // ListCustomVerificationEmailTemplates API operation for Amazon Simple Email Service.
 //
-// Lists the existing custom verification email templates for your account.
+// Lists the existing custom verification email templates for your account in
+// the current AWS Region.
 //
 // For more information about custom verification email templates, see Using
 // Custom Verification Email Templates (https://docs.aws.amazon.com/ses/latest/DeveloperGuide/custom-verification-emails.html)
@@ -3142,7 +3156,7 @@ func (c *SES) ListCustomVerificationEmailTemplatesWithContext(ctx aws.Context, i
 //    // Example iterating over at most 3 pages of a ListCustomVerificationEmailTemplates operation.
 //    pageNum := 0
 //    err := client.ListCustomVerificationEmailTemplatesPages(params,
-//        func(page *ListCustomVerificationEmailTemplatesOutput, lastPage bool) bool {
+//        func(page *ses.ListCustomVerificationEmailTemplatesOutput, lastPage bool) bool {
 //            pageNum++
 //            fmt.Println(page)
 //            return pageNum <= 3
@@ -3185,8 +3199,8 @@ const opListIdentities = "ListIdentities"
 
 // ListIdentitiesRequest generates a "aws/request.Request" representing the
 // client's request for the ListIdentities operation. The "output" return
-// value will be populated with the request's response once the request complets
-// successfuly.
+// value will be populated with the request's response once the request completes
+// successfully.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
 // the "output" return value is not valid until after Send returns without error.
@@ -3232,7 +3246,8 @@ func (c *SES) ListIdentitiesRequest(input *ListIdentitiesInput) (req *request.Re
 // ListIdentities API operation for Amazon Simple Email Service.
 //
 // Returns a list containing all of the identities (email addresses and domains)
-// for your AWS account, regardless of verification status.
+// for your AWS account in the current AWS Region, regardless of verification
+// status.
 //
 // You can execute this operation no more than once per second.
 //
@@ -3275,7 +3290,7 @@ func (c *SES) ListIdentitiesWithContext(ctx aws.Context, input *ListIdentitiesIn
 //    // Example iterating over at most 3 pages of a ListIdentities operation.
 //    pageNum := 0
 //    err := client.ListIdentitiesPages(params,
-//        func(page *ListIdentitiesOutput, lastPage bool) bool {
+//        func(page *ses.ListIdentitiesOutput, lastPage bool) bool {
 //            pageNum++
 //            fmt.Println(page)
 //            return pageNum <= 3
@@ -3318,8 +3333,8 @@ const opListIdentityPolicies = "ListIdentityPolicies"
 
 // ListIdentityPoliciesRequest generates a "aws/request.Request" representing the
 // client's request for the ListIdentityPolicies operation. The "output" return
-// value will be populated with the request's response once the request complets
-// successfuly.
+// value will be populated with the request's response once the request completes
+// successfully.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
 // the "output" return value is not valid until after Send returns without error.
@@ -3367,7 +3382,7 @@ func (c *SES) ListIdentityPoliciesRequest(input *ListIdentityPoliciesInput) (req
 //
 // Sending authorization is a feature that enables an identity owner to authorize
 // other senders to use its identities. For information about using sending
-// authorization, see the Amazon SES Developer Guide (http://docs.aws.amazon.com/ses/latest/DeveloperGuide/sending-authorization.html).
+// authorization, see the Amazon SES Developer Guide (https://docs.aws.amazon.com/ses/latest/DeveloperGuide/sending-authorization.html).
 //
 // You can execute this operation no more than once per second.
 //
@@ -3403,8 +3418,8 @@ const opListReceiptFilters = "ListReceiptFilters"
 
 // ListReceiptFiltersRequest generates a "aws/request.Request" representing the
 // client's request for the ListReceiptFilters operation. The "output" return
-// value will be populated with the request's response once the request complets
-// successfuly.
+// value will be populated with the request's response once the request completes
+// successfully.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
 // the "output" return value is not valid until after Send returns without error.
@@ -3443,10 +3458,11 @@ func (c *SES) ListReceiptFiltersRequest(input *ListReceiptFiltersInput) (req *re
 
 // ListReceiptFilters API operation for Amazon Simple Email Service.
 //
-// Lists the IP address filters associated with your AWS account.
+// Lists the IP address filters associated with your AWS account in the current
+// AWS Region.
 //
 // For information about managing IP address filters, see the Amazon SES Developer
-// Guide (http://docs.aws.amazon.com/ses/latest/DeveloperGuide/receiving-email-managing-ip-filters.html).
+// Guide (https://docs.aws.amazon.com/ses/latest/DeveloperGuide/receiving-email-managing-ip-filters.html).
 //
 // You can execute this operation no more than once per second.
 //
@@ -3482,8 +3498,8 @@ const opListReceiptRuleSets = "ListReceiptRuleSets"
 
 // ListReceiptRuleSetsRequest generates a "aws/request.Request" representing the
 // client's request for the ListReceiptRuleSets operation. The "output" return
-// value will be populated with the request's response once the request complets
-// successfuly.
+// value will be populated with the request's response once the request completes
+// successfully.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
 // the "output" return value is not valid until after Send returns without error.
@@ -3522,13 +3538,13 @@ func (c *SES) ListReceiptRuleSetsRequest(input *ListReceiptRuleSetsInput) (req *
 
 // ListReceiptRuleSets API operation for Amazon Simple Email Service.
 //
-// Lists the receipt rule sets that exist under your AWS account. If there are
-// additional receipt rule sets to be retrieved, you will receive a NextToken
-// that you can provide to the next call to ListReceiptRuleSets to retrieve
-// the additional entries.
+// Lists the receipt rule sets that exist under your AWS account in the current
+// AWS Region. If there are additional receipt rule sets to be retrieved, you
+// will receive a NextToken that you can provide to the next call to ListReceiptRuleSets
+// to retrieve the additional entries.
 //
 // For information about managing receipt rule sets, see the Amazon SES Developer
-// Guide (http://docs.aws.amazon.com/ses/latest/DeveloperGuide/receiving-email-managing-receipt-rule-sets.html).
+// Guide (https://docs.aws.amazon.com/ses/latest/DeveloperGuide/receiving-email-managing-receipt-rule-sets.html).
 //
 // You can execute this operation no more than once per second.
 //
@@ -3564,8 +3580,8 @@ const opListTemplates = "ListTemplates"
 
 // ListTemplatesRequest generates a "aws/request.Request" representing the
 // client's request for the ListTemplates operation. The "output" return
-// value will be populated with the request's response once the request complets
-// successfuly.
+// value will be populated with the request's response once the request completes
+// successfully.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
 // the "output" return value is not valid until after Send returns without error.
@@ -3604,7 +3620,8 @@ func (c *SES) ListTemplatesRequest(input *ListTemplatesInput) (req *request.Requ
 
 // ListTemplates API operation for Amazon Simple Email Service.
 //
-// Lists the email templates present in your Amazon SES account.
+// Lists the email templates present in your Amazon SES account in the current
+// AWS Region.
 //
 // You can execute this operation no more than once per second.
 //
@@ -3640,8 +3657,8 @@ const opListVerifiedEmailAddresses = "ListVerifiedEmailAddresses"
 
 // ListVerifiedEmailAddressesRequest generates a "aws/request.Request" representing the
 // client's request for the ListVerifiedEmailAddresses operation. The "output" return
-// value will be populated with the request's response once the request complets
-// successfuly.
+// value will be populated with the request's response once the request completes
+// successfully.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
 // the "output" return value is not valid until after Send returns without error.
@@ -3711,12 +3728,95 @@ func (c *SES) ListVerifiedEmailAddressesWithContext(ctx aws.Context, input *List
 	return out, req.Send()
 }
 
+const opPutConfigurationSetDeliveryOptions = "PutConfigurationSetDeliveryOptions"
+
+// PutConfigurationSetDeliveryOptionsRequest generates a "aws/request.Request" representing the
+// client's request for the PutConfigurationSetDeliveryOptions operation. The "output" return
+// value will be populated with the request's response once the request completes
+// successfully.
+//
+// Use "Send" method on the returned Request to send the API call to the service.
+// the "output" return value is not valid until after Send returns without error.
+//
+// See PutConfigurationSetDeliveryOptions for more information on using the PutConfigurationSetDeliveryOptions
+// API call, and error handling.
+//
+// This method is useful when you want to inject custom logic or configuration
+// into the SDK's request lifecycle. Such as custom headers, or retry logic.
+//
+//
+//    // Example sending a request using the PutConfigurationSetDeliveryOptionsRequest method.
+//    req, resp := client.PutConfigurationSetDeliveryOptionsRequest(params)
+//
+//    err := req.Send()
+//    if err == nil { // resp is now filled
+//        fmt.Println(resp)
+//    }
+//
+// See also, https://docs.aws.amazon.com/goto/WebAPI/email-2010-12-01/PutConfigurationSetDeliveryOptions
+func (c *SES) PutConfigurationSetDeliveryOptionsRequest(input *PutConfigurationSetDeliveryOptionsInput) (req *request.Request, output *PutConfigurationSetDeliveryOptionsOutput) {
+	op := &request.Operation{
+		Name:       opPutConfigurationSetDeliveryOptions,
+		HTTPMethod: "POST",
+		HTTPPath:   "/",
+	}
+
+	if input == nil {
+		input = &PutConfigurationSetDeliveryOptionsInput{}
+	}
+
+	output = &PutConfigurationSetDeliveryOptionsOutput{}
+	req = c.newRequest(op, input, output)
+	req.Handlers.Unmarshal.Swap(query.UnmarshalHandler.Name, protocol.UnmarshalDiscardBodyHandler)
+	return
+}
+
+// PutConfigurationSetDeliveryOptions API operation for Amazon Simple Email Service.
+//
+// Adds or updates the delivery options for a configuration set.
+//
+// Returns awserr.Error for service API and SDK errors. Use runtime type assertions
+// with awserr.Error's Code and Message methods to get detailed information about
+// the error.
+//
+// See the AWS API reference guide for Amazon Simple Email Service's
+// API operation PutConfigurationSetDeliveryOptions for usage and error information.
+//
+// Returned Error Codes:
+//   * ErrCodeConfigurationSetDoesNotExistException "ConfigurationSetDoesNotExist"
+//   Indicates that the configuration set does not exist.
+//
+//   * ErrCodeInvalidDeliveryOptionsException "InvalidDeliveryOptions"
+//   Indicates that provided delivery option is invalid.
+//
+// See also, https://docs.aws.amazon.com/goto/WebAPI/email-2010-12-01/PutConfigurationSetDeliveryOptions
+func (c *SES) PutConfigurationSetDeliveryOptions(input *PutConfigurationSetDeliveryOptionsInput) (*PutConfigurationSetDeliveryOptionsOutput, error) {
+	req, out := c.PutConfigurationSetDeliveryOptionsRequest(input)
+	return out, req.Send()
+}
+
+// PutConfigurationSetDeliveryOptionsWithContext is the same as PutConfigurationSetDeliveryOptions with the addition of
+// the ability to pass a context and additional request options.
+//
+// See PutConfigurationSetDeliveryOptions for details on how to use this API operation.
+//
+// The context must be non-nil and will be used for request cancellation. If
+// the context is nil a panic will occur. In the future the SDK may create
+// sub-contexts for http.Requests. See https://golang.org/pkg/context/
+// for more information on using Contexts.
+func (c *SES) PutConfigurationSetDeliveryOptionsWithContext(ctx aws.Context, input *PutConfigurationSetDeliveryOptionsInput, opts ...request.Option) (*PutConfigurationSetDeliveryOptionsOutput, error) {
+	req, out := c.PutConfigurationSetDeliveryOptionsRequest(input)
+	req.SetContext(ctx)
+	req.ApplyOptions(opts...)
+	return out, req.Send()
+}
+
 const opPutIdentityPolicy = "PutIdentityPolicy"
 
 // PutIdentityPolicyRequest generates a "aws/request.Request" representing the
 // client's request for the PutIdentityPolicy operation. The "output" return
-// value will be populated with the request's response once the request complets
-// successfuly.
+// value will be populated with the request's response once the request completes
+// successfully.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
 // the "output" return value is not valid until after Send returns without error.
@@ -3750,6 +3850,7 @@ func (c *SES) PutIdentityPolicyRequest(input *PutIdentityPolicyInput) (req *requ
 
 	output = &PutIdentityPolicyOutput{}
 	req = c.newRequest(op, input, output)
+	req.Handlers.Unmarshal.Swap(query.UnmarshalHandler.Name, protocol.UnmarshalDiscardBodyHandler)
 	return
 }
 
@@ -3763,7 +3864,7 @@ func (c *SES) PutIdentityPolicyRequest(input *PutIdentityPolicyInput) (req *requ
 //
 // Sending authorization is a feature that enables an identity owner to authorize
 // other senders to use its identities. For information about using sending
-// authorization, see the Amazon SES Developer Guide (http://docs.aws.amazon.com/ses/latest/DeveloperGuide/sending-authorization.html).
+// authorization, see the Amazon SES Developer Guide (https://docs.aws.amazon.com/ses/latest/DeveloperGuide/sending-authorization.html).
 //
 // You can execute this operation no more than once per second.
 //
@@ -3805,8 +3906,8 @@ const opReorderReceiptRuleSet = "ReorderReceiptRuleSet"
 
 // ReorderReceiptRuleSetRequest generates a "aws/request.Request" representing the
 // client's request for the ReorderReceiptRuleSet operation. The "output" return
-// value will be populated with the request's response once the request complets
-// successfuly.
+// value will be populated with the request's response once the request completes
+// successfully.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
 // the "output" return value is not valid until after Send returns without error.
@@ -3840,6 +3941,7 @@ func (c *SES) ReorderReceiptRuleSetRequest(input *ReorderReceiptRuleSetInput) (r
 
 	output = &ReorderReceiptRuleSetOutput{}
 	req = c.newRequest(op, input, output)
+	req.Handlers.Unmarshal.Swap(query.UnmarshalHandler.Name, protocol.UnmarshalDiscardBodyHandler)
 	return
 }
 
@@ -3852,7 +3954,7 @@ func (c *SES) ReorderReceiptRuleSetRequest(input *ReorderReceiptRuleSetInput) (r
 // position all of the rules.
 //
 // For information about managing receipt rule sets, see the Amazon SES Developer
-// Guide (http://docs.aws.amazon.com/ses/latest/DeveloperGuide/receiving-email-managing-receipt-rule-sets.html).
+// Guide (https://docs.aws.amazon.com/ses/latest/DeveloperGuide/receiving-email-managing-receipt-rule-sets.html).
 //
 // You can execute this operation no more than once per second.
 //
@@ -3896,8 +3998,8 @@ const opSendBounce = "SendBounce"
 
 // SendBounceRequest generates a "aws/request.Request" representing the
 // client's request for the SendBounce operation. The "output" return
-// value will be populated with the request's response once the request complets
-// successfuly.
+// value will be populated with the request's response once the request completes
+// successfully.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
 // the "output" return value is not valid until after Send returns without error.
@@ -3944,7 +4046,7 @@ func (c *SES) SendBounceRequest(input *SendBounceInput) (req *request.Request, o
 // by Amazon SES.
 //
 // For information about receiving email through Amazon SES, see the Amazon
-// SES Developer Guide (http://docs.aws.amazon.com/ses/latest/DeveloperGuide/receiving-email.html).
+// SES Developer Guide (https://docs.aws.amazon.com/ses/latest/DeveloperGuide/receiving-email.html).
 //
 // You can execute this operation no more than once per second.
 //
@@ -3986,8 +4088,8 @@ const opSendBulkTemplatedEmail = "SendBulkTemplatedEmail"
 
 // SendBulkTemplatedEmailRequest generates a "aws/request.Request" representing the
 // client's request for the SendBulkTemplatedEmail operation. The "output" return
-// value will be populated with the request's response once the request complets
-// successfuly.
+// value will be populated with the request's response once the request completes
+// successfully.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
 // the "output" return value is not valid until after Send returns without error.
@@ -4040,11 +4142,10 @@ func (c *SES) SendBulkTemplatedEmailRequest(input *SendBulkTemplatedEmailInput) 
 //    * If your account is still in the Amazon SES sandbox, you may only send
 //    to verified addresses or domains, or to email addresses associated with
 //    the Amazon SES Mailbox Simulator. For more information, see Verifying
-//    Email Addresses and Domains (http://docs.aws.amazon.com/ses/latest/DeveloperGuide/verify-addresses-and-domains.html)
+//    Email Addresses and Domains (https://docs.aws.amazon.com/ses/latest/DeveloperGuide/verify-addresses-and-domains.html)
 //    in the Amazon SES Developer Guide.
 //
-//    * The total size of the message, including attachments, must be less than
-//    10 MB.
+//    * The maximum message size is 10 MB.
 //
 //    * Each Destination parameter must include at least one recipient email
 //    address. The recipient address can be a To: address, a CC: address, or
@@ -4052,6 +4153,15 @@ func (c *SES) SendBulkTemplatedEmailRequest(input *SendBulkTemplatedEmailInput) 
 //    not in the format UserName@[SubDomain.]Domain.TopLevelDomain), the entire
 //    message will be rejected, even if the message contains other recipients
 //    that are valid.
+//
+//    * The message may not include more than 50 recipients, across the To:,
+//    CC: and BCC: fields. If you need to send an email message to a larger
+//    audience, you can divide your recipient list into groups of 50 or fewer,
+//    and then call the SendBulkTemplatedEmail operation several times to send
+//    the message to each group.
+//
+//    * The number of destinations you can contact in a single call to the API
+//    may be limited by your account's maximum sending rate.
 //
 // Returns awserr.Error for service API and SDK errors. Use runtime type assertions
 // with awserr.Error's Code and Message methods to get detailed information about
@@ -4069,7 +4179,7 @@ func (c *SES) SendBulkTemplatedEmailRequest(input *SendBulkTemplatedEmailInput) 
 //   Indicates that the message could not be sent because Amazon SES could not
 //   read the MX record required to use the specified MAIL FROM domain. For information
 //   about editing the custom MAIL FROM domain settings for an identity, see the
-//   Amazon SES Developer Guide (http://docs.aws.amazon.com/ses/latest/DeveloperGuide/mail-from-edit.html).
+//   Amazon SES Developer Guide (https://docs.aws.amazon.com/ses/latest/DeveloperGuide/mail-from-edit.html).
 //
 //   * ErrCodeConfigurationSetDoesNotExistException "ConfigurationSetDoesNotExist"
 //   Indicates that the configuration set does not exist.
@@ -4115,8 +4225,8 @@ const opSendCustomVerificationEmail = "SendCustomVerificationEmail"
 
 // SendCustomVerificationEmailRequest generates a "aws/request.Request" representing the
 // client's request for the SendCustomVerificationEmail operation. The "output" return
-// value will be populated with the request's response once the request complets
-// successfuly.
+// value will be populated with the request's response once the request completes
+// successfully.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
 // the "output" return value is not valid until after Send returns without error.
@@ -4156,8 +4266,9 @@ func (c *SES) SendCustomVerificationEmailRequest(input *SendCustomVerificationEm
 // SendCustomVerificationEmail API operation for Amazon Simple Email Service.
 //
 // Adds an email address to the list of identities for your Amazon SES account
-// and attempts to verify it. As a result of executing this operation, a customized
-// verification email is sent to the specified address.
+// in the current AWS Region and attempts to verify it. As a result of executing
+// this operation, a customized verification email is sent to the specified
+// address.
 //
 // To use this operation, you must first create a custom verification email
 // template. For more information about creating and using custom verification
@@ -4219,8 +4330,8 @@ const opSendEmail = "SendEmail"
 
 // SendEmailRequest generates a "aws/request.Request" representing the
 // client's request for the SendEmail operation. The "output" return
-// value will be populated with the request's response once the request complets
-// successfuly.
+// value will be populated with the request's response once the request completes
+// successfully.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
 // the "output" return value is not valid until after Send returns without error.
@@ -4270,11 +4381,10 @@ func (c *SES) SendEmailRequest(input *SendEmailInput) (req *request.Request, out
 //    * If your account is still in the Amazon SES sandbox, you may only send
 //    to verified addresses or domains, or to email addresses associated with
 //    the Amazon SES Mailbox Simulator. For more information, see Verifying
-//    Email Addresses and Domains (http://docs.aws.amazon.com/ses/latest/DeveloperGuide/verify-addresses-and-domains.html)
+//    Email Addresses and Domains (https://docs.aws.amazon.com/ses/latest/DeveloperGuide/verify-addresses-and-domains.html)
 //    in the Amazon SES Developer Guide.
 //
-//    * The total size of the message, including attachments, must be smaller
-//    than 10 MB.
+//    * The maximum message size is 10 MB.
 //
 //    * The message must include at least one recipient email address. The recipient
 //    address can be a To: address, a CC: address, or a BCC: address. If a recipient
@@ -4292,7 +4402,7 @@ func (c *SES) SendEmailRequest(input *SendEmailInput) (req *request.Request, out
 // each recipient in the To:, CC: and BCC: fields) is counted against the maximum
 // number of emails you can send in a 24-hour period (your sending quota). For
 // more information about sending quotas in Amazon SES, see Managing Your Amazon
-// SES Sending Limits (http://docs.aws.amazon.com/ses/latest/DeveloperGuide/manage-sending-limits.html)
+// SES Sending Limits (https://docs.aws.amazon.com/ses/latest/DeveloperGuide/manage-sending-limits.html)
 // in the Amazon SES Developer Guide.
 //
 // Returns awserr.Error for service API and SDK errors. Use runtime type assertions
@@ -4311,7 +4421,7 @@ func (c *SES) SendEmailRequest(input *SendEmailInput) (req *request.Request, out
 //   Indicates that the message could not be sent because Amazon SES could not
 //   read the MX record required to use the specified MAIL FROM domain. For information
 //   about editing the custom MAIL FROM domain settings for an identity, see the
-//   Amazon SES Developer Guide (http://docs.aws.amazon.com/ses/latest/DeveloperGuide/mail-from-edit.html).
+//   Amazon SES Developer Guide (https://docs.aws.amazon.com/ses/latest/DeveloperGuide/mail-from-edit.html).
 //
 //   * ErrCodeConfigurationSetDoesNotExistException "ConfigurationSetDoesNotExist"
 //   Indicates that the configuration set does not exist.
@@ -4353,8 +4463,8 @@ const opSendRawEmail = "SendRawEmail"
 
 // SendRawEmailRequest generates a "aws/request.Request" representing the
 // client's request for the SendRawEmail operation. The "output" return
-// value will be populated with the request's response once the request complets
-// successfuly.
+// value will be populated with the request's response once the request completes
+// successfully.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
 // the "output" return value is not valid until after Send returns without error.
@@ -4393,45 +4503,49 @@ func (c *SES) SendRawEmailRequest(input *SendRawEmailInput) (req *request.Reques
 
 // SendRawEmail API operation for Amazon Simple Email Service.
 //
-// Composes an email message and immediately queues it for sending. When calling
-// this operation, you may specify the message headers as well as the content.
-// The SendRawEmail operation is particularly useful for sending multipart MIME
-// emails (such as those that contain both a plain-text and an HTML version).
+// Composes an email message and immediately queues it for sending.
 //
-// In order to send email using the SendRawEmail operation, your message must
-// meet the following requirements:
+// This operation is more flexible than the SendEmail API operation. When you
+// use the SendRawEmail operation, you can specify the headers of the message
+// as well as its content. This flexibility is useful, for example, when you
+// want to send a multipart MIME email (such a message that contains both a
+// text and an HTML version). You can also use this operation to send messages
+// that include attachments.
 //
-//    * The message must be sent from a verified email address or domain. If
-//    you attempt to send email using a non-verified address or domain, the
-//    operation will result in an "Email address not verified" error.
+// The SendRawEmail operation has the following requirements:
 //
-//    * If your account is still in the Amazon SES sandbox, you may only send
-//    to verified addresses or domains, or to email addresses associated with
-//    the Amazon SES Mailbox Simulator. For more information, see Verifying
-//    Email Addresses and Domains (http://docs.aws.amazon.com/ses/latest/DeveloperGuide/verify-addresses-and-domains.html)
+//    * You can only send email from verified email addresses or domains (https://docs.aws.amazon.com/ses/latest/DeveloperGuide/verify-addresses-and-domains.html).
+//    If you try to send email from an address that isn't verified, the operation
+//    results in an "Email address not verified" error.
+//
+//    * If your account is still in the Amazon SES sandbox (https://docs.aws.amazon.com/ses/latest/DeveloperGuide/request-production-access.html),
+//    you can only send email to other verified addresses in your account, or
+//    to addresses that are associated with the Amazon SES mailbox simulator
+//    (https://docs.aws.amazon.com/ses/latest/DeveloperGuide/mailbox-simulator.html).
+//
+//    * The maximum message size, including attachments, is 10 MB.
+//
+//    * Each message has to include at least one recipient address. A recipient
+//    address includes any address on the To:, CC:, or BCC: lines.
+//
+//    * If you send a single message to more than one recipient address, and
+//    one of the recipient addresses isn't in a valid format (that is, it's
+//    not in the format UserName@[SubDomain.]Domain.TopLevelDomain), Amazon
+//    SES rejects the entire message, even if the other addresses are valid.
+//
+//    * Each message can include up to 50 recipient addresses across the To:,
+//    CC:, or BCC: lines. If you need to send a single message to more than
+//    50 recipients, you have to split the list of recipient addresses into
+//    groups of less than 50 recipients, and send separate messages to each
+//    group.
+//
+//    * Amazon SES allows you to specify 8-bit Content-Transfer-Encoding for
+//    MIME message parts. However, if Amazon SES has to modify the contents
+//    of your message (for example, if you use open and click tracking), 8-bit
+//    content isn't preserved. For this reason, we highly recommend that you
+//    encode all content that isn't 7-bit ASCII. For more information, see MIME
+//    Encoding (https://docs.aws.amazon.com/ses/latest/DeveloperGuide/send-email-raw.html#send-email-mime-encoding)
 //    in the Amazon SES Developer Guide.
-//
-//    * The total size of the message, including attachments, must be smaller
-//    than 10 MB.
-//
-//    * The message must include at least one recipient email address. The recipient
-//    address can be a To: address, a CC: address, or a BCC: address. If a recipient
-//    email address is invalid (that is, it is not in the format UserName@[SubDomain.]Domain.TopLevelDomain),
-//    the entire message will be rejected, even if the message contains other
-//    recipients that are valid.
-//
-//    * The message may not include more than 50 recipients, across the To:,
-//    CC: and BCC: fields. If you need to send an email message to a larger
-//    audience, you can divide your recipient list into groups of 50 or fewer,
-//    and then call the SendRawEmail operation several times to send the message
-//    to each group.
-//
-// For every message that you send, the total number of recipients (including
-// each recipient in the To:, CC: and BCC: fields) is counted against the maximum
-// number of emails you can send in a 24-hour period (your sending quota). For
-// more information about sending quotas in Amazon SES, see Managing Your Amazon
-// SES Sending Limits (http://docs.aws.amazon.com/ses/latest/DeveloperGuide/manage-sending-limits.html)
-// in the Amazon SES Developer Guide.
 //
 // Additionally, keep the following considerations in mind when using the SendRawEmail
 // operation:
@@ -4446,23 +4560,22 @@ func (c *SES) SendRawEmailRequest(input *SendRawEmailInput) (req *request.Reques
 //    the email's Source, From, and Return-Path parameters in one of two ways:
 //    you can pass optional parameters SourceArn, FromArn, and/or ReturnPathArn
 //    to the API, or you can include the following X-headers in the header of
-//    your raw email:
+//    your raw email: X-SES-SOURCE-ARN X-SES-FROM-ARN X-SES-RETURN-PATH-ARN
+//    Do not include these X-headers in the DKIM signature; Amazon SES will
+//    remove them before sending the email. For most common sending authorization
+//    scenarios, we recommend that you specify the SourceIdentityArn parameter
+//    and not the FromIdentityArn or ReturnPathIdentityArn parameters. If you
+//    only specify the SourceIdentityArn parameter, Amazon SES will set the
+//    From and Return Path addresses to the identity specified in SourceIdentityArn.
+//    For more information about sending authorization, see the Using Sending
+//    Authorization with Amazon SES (https://docs.aws.amazon.com/ses/latest/DeveloperGuide/sending-authorization.html)
+//    in the Amazon SES Developer Guide.
 //
-// X-SES-SOURCE-ARN
-//
-// X-SES-FROM-ARN
-//
-// X-SES-RETURN-PATH-ARN
-//
-// Do not include these X-headers in the DKIM signature; Amazon SES will remove
-//    them before sending the email.
-//
-// For most common sending authorization scenarios, we recommend that you specify
-//    the SourceIdentityArn parameter and not the FromIdentityArn or ReturnPathIdentityArn
-//    parameters. If you only specify the SourceIdentityArn parameter, Amazon
-//    SES will set the From and Return Path addresses to the identity specified
-//    in SourceIdentityArn. For more information about sending authorization,
-//    see the Using Sending Authorization with Amazon SES (http://docs.aws.amazon.com/ses/latest/DeveloperGuide/sending-authorization.html)
+//    * For every message that you send, the total number of recipients (including
+//    each recipient in the To:, CC: and BCC: fields) is counted against the
+//    maximum number of emails you can send in a 24-hour period (your sending
+//    quota). For more information about sending quotas in Amazon SES, see Managing
+//    Your Amazon SES Sending Limits (https://docs.aws.amazon.com/ses/latest/DeveloperGuide/manage-sending-limits.html)
 //    in the Amazon SES Developer Guide.
 //
 // Returns awserr.Error for service API and SDK errors. Use runtime type assertions
@@ -4481,7 +4594,7 @@ func (c *SES) SendRawEmailRequest(input *SendRawEmailInput) (req *request.Reques
 //   Indicates that the message could not be sent because Amazon SES could not
 //   read the MX record required to use the specified MAIL FROM domain. For information
 //   about editing the custom MAIL FROM domain settings for an identity, see the
-//   Amazon SES Developer Guide (http://docs.aws.amazon.com/ses/latest/DeveloperGuide/mail-from-edit.html).
+//   Amazon SES Developer Guide (https://docs.aws.amazon.com/ses/latest/DeveloperGuide/mail-from-edit.html).
 //
 //   * ErrCodeConfigurationSetDoesNotExistException "ConfigurationSetDoesNotExist"
 //   Indicates that the configuration set does not exist.
@@ -4523,8 +4636,8 @@ const opSendTemplatedEmail = "SendTemplatedEmail"
 
 // SendTemplatedEmailRequest generates a "aws/request.Request" representing the
 // client's request for the SendTemplatedEmail operation. The "output" return
-// value will be populated with the request's response once the request complets
-// successfuly.
+// value will be populated with the request's response once the request completes
+// successfully.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
 // the "output" return value is not valid until after Send returns without error.
@@ -4577,11 +4690,10 @@ func (c *SES) SendTemplatedEmailRequest(input *SendTemplatedEmailInput) (req *re
 //    * If your account is still in the Amazon SES sandbox, you may only send
 //    to verified addresses or domains, or to email addresses associated with
 //    the Amazon SES Mailbox Simulator. For more information, see Verifying
-//    Email Addresses and Domains (http://docs.aws.amazon.com/ses/latest/DeveloperGuide/verify-addresses-and-domains.html)
+//    Email Addresses and Domains (https://docs.aws.amazon.com/ses/latest/DeveloperGuide/verify-addresses-and-domains.html)
 //    in the Amazon SES Developer Guide.
 //
-//    * The total size of the message, including attachments, must be less than
-//    10 MB.
+//    * The maximum message size is 10 MB.
 //
 //    * Calls to the SendTemplatedEmail operation may only include one Destination
 //    parameter. A destination is a set of recipients who will receive the same
@@ -4594,6 +4706,17 @@ func (c *SES) SendTemplatedEmailRequest(input *SendTemplatedEmailInput) (req *re
 //    not in the format UserName@[SubDomain.]Domain.TopLevelDomain), the entire
 //    message will be rejected, even if the message contains other recipients
 //    that are valid.
+//
+// If your call to the SendTemplatedEmail operation includes all of the required
+// parameters, Amazon SES accepts it and returns a Message ID. However, if Amazon
+// SES can't render the email because the template contains errors, it doesn't
+// send the email. Additionally, because it already accepted the message, Amazon
+// SES doesn't return a message stating that it was unable to send the email.
+//
+// For these reasons, we highly recommend that you set up Amazon SES to send
+// you notifications when Rendering Failure events occur. For more information,
+// see Sending Personalized Email Using the Amazon SES API (https://docs.aws.amazon.com/ses/latest/DeveloperGuide/send-personalized-email-api.html)
+// in the Amazon Simple Email Service Developer Guide.
 //
 // Returns awserr.Error for service API and SDK errors. Use runtime type assertions
 // with awserr.Error's Code and Message methods to get detailed information about
@@ -4611,7 +4734,7 @@ func (c *SES) SendTemplatedEmailRequest(input *SendTemplatedEmailInput) (req *re
 //   Indicates that the message could not be sent because Amazon SES could not
 //   read the MX record required to use the specified MAIL FROM domain. For information
 //   about editing the custom MAIL FROM domain settings for an identity, see the
-//   Amazon SES Developer Guide (http://docs.aws.amazon.com/ses/latest/DeveloperGuide/mail-from-edit.html).
+//   Amazon SES Developer Guide (https://docs.aws.amazon.com/ses/latest/DeveloperGuide/mail-from-edit.html).
 //
 //   * ErrCodeConfigurationSetDoesNotExistException "ConfigurationSetDoesNotExist"
 //   Indicates that the configuration set does not exist.
@@ -4657,8 +4780,8 @@ const opSetActiveReceiptRuleSet = "SetActiveReceiptRuleSet"
 
 // SetActiveReceiptRuleSetRequest generates a "aws/request.Request" representing the
 // client's request for the SetActiveReceiptRuleSet operation. The "output" return
-// value will be populated with the request's response once the request complets
-// successfuly.
+// value will be populated with the request's response once the request completes
+// successfully.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
 // the "output" return value is not valid until after Send returns without error.
@@ -4692,6 +4815,7 @@ func (c *SES) SetActiveReceiptRuleSetRequest(input *SetActiveReceiptRuleSetInput
 
 	output = &SetActiveReceiptRuleSetOutput{}
 	req = c.newRequest(op, input, output)
+	req.Handlers.Unmarshal.Swap(query.UnmarshalHandler.Name, protocol.UnmarshalDiscardBodyHandler)
 	return
 }
 
@@ -4703,7 +4827,7 @@ func (c *SES) SetActiveReceiptRuleSetRequest(input *SetActiveReceiptRuleSetInput
 // this API with RuleSetName set to null.
 //
 // For information about managing receipt rule sets, see the Amazon SES Developer
-// Guide (http://docs.aws.amazon.com/ses/latest/DeveloperGuide/receiving-email-managing-receipt-rule-sets.html).
+// Guide (https://docs.aws.amazon.com/ses/latest/DeveloperGuide/receiving-email-managing-receipt-rule-sets.html).
 //
 // You can execute this operation no more than once per second.
 //
@@ -4744,8 +4868,8 @@ const opSetIdentityDkimEnabled = "SetIdentityDkimEnabled"
 
 // SetIdentityDkimEnabledRequest generates a "aws/request.Request" representing the
 // client's request for the SetIdentityDkimEnabled operation. The "output" return
-// value will be populated with the request's response once the request complets
-// successfuly.
+// value will be populated with the request's response once the request completes
+// successfully.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
 // the "output" return value is not valid until after Send returns without error.
@@ -4779,6 +4903,7 @@ func (c *SES) SetIdentityDkimEnabledRequest(input *SetIdentityDkimEnabledInput) 
 
 	output = &SetIdentityDkimEnabledOutput{}
 	req = c.newRequest(op, input, output)
+	req.Handlers.Unmarshal.Swap(query.UnmarshalHandler.Name, protocol.UnmarshalDiscardBodyHandler)
 	return
 }
 
@@ -4801,7 +4926,7 @@ func (c *SES) SetIdentityDkimEnabledRequest(input *SetIdentityDkimEnabledInput) 
 // You can execute this operation no more than once per second.
 //
 // For more information about Easy DKIM signing, go to the Amazon SES Developer
-// Guide (http://docs.aws.amazon.com/ses/latest/DeveloperGuide/easy-dkim.html).
+// Guide (https://docs.aws.amazon.com/ses/latest/DeveloperGuide/easy-dkim.html).
 //
 // Returns awserr.Error for service API and SDK errors. Use runtime type assertions
 // with awserr.Error's Code and Message methods to get detailed information about
@@ -4835,8 +4960,8 @@ const opSetIdentityFeedbackForwardingEnabled = "SetIdentityFeedbackForwardingEna
 
 // SetIdentityFeedbackForwardingEnabledRequest generates a "aws/request.Request" representing the
 // client's request for the SetIdentityFeedbackForwardingEnabled operation. The "output" return
-// value will be populated with the request's response once the request complets
-// successfuly.
+// value will be populated with the request's response once the request completes
+// successfully.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
 // the "output" return value is not valid until after Send returns without error.
@@ -4870,6 +4995,7 @@ func (c *SES) SetIdentityFeedbackForwardingEnabledRequest(input *SetIdentityFeed
 
 	output = &SetIdentityFeedbackForwardingEnabledOutput{}
 	req = c.newRequest(op, input, output)
+	req.Handlers.Unmarshal.Swap(query.UnmarshalHandler.Name, protocol.UnmarshalDiscardBodyHandler)
 	return
 }
 
@@ -4886,7 +5012,7 @@ func (c *SES) SetIdentityFeedbackForwardingEnabledRequest(input *SetIdentityFeed
 // You can execute this operation no more than once per second.
 //
 // For more information about using notifications with Amazon SES, see the Amazon
-// SES Developer Guide (http://docs.aws.amazon.com/ses/latest/DeveloperGuide/notifications.html).
+// SES Developer Guide (https://docs.aws.amazon.com/ses/latest/DeveloperGuide/notifications.html).
 //
 // Returns awserr.Error for service API and SDK errors. Use runtime type assertions
 // with awserr.Error's Code and Message methods to get detailed information about
@@ -4920,8 +5046,8 @@ const opSetIdentityHeadersInNotificationsEnabled = "SetIdentityHeadersInNotifica
 
 // SetIdentityHeadersInNotificationsEnabledRequest generates a "aws/request.Request" representing the
 // client's request for the SetIdentityHeadersInNotificationsEnabled operation. The "output" return
-// value will be populated with the request's response once the request complets
-// successfuly.
+// value will be populated with the request's response once the request completes
+// successfully.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
 // the "output" return value is not valid until after Send returns without error.
@@ -4955,6 +5081,7 @@ func (c *SES) SetIdentityHeadersInNotificationsEnabledRequest(input *SetIdentity
 
 	output = &SetIdentityHeadersInNotificationsEnabledOutput{}
 	req = c.newRequest(op, input, output)
+	req.Handlers.Unmarshal.Swap(query.UnmarshalHandler.Name, protocol.UnmarshalDiscardBodyHandler)
 	return
 }
 
@@ -4967,7 +5094,7 @@ func (c *SES) SetIdentityHeadersInNotificationsEnabledRequest(input *SetIdentity
 // You can execute this operation no more than once per second.
 //
 // For more information about using notifications with Amazon SES, see the Amazon
-// SES Developer Guide (http://docs.aws.amazon.com/ses/latest/DeveloperGuide/notifications.html).
+// SES Developer Guide (https://docs.aws.amazon.com/ses/latest/DeveloperGuide/notifications.html).
 //
 // Returns awserr.Error for service API and SDK errors. Use runtime type assertions
 // with awserr.Error's Code and Message methods to get detailed information about
@@ -5001,8 +5128,8 @@ const opSetIdentityMailFromDomain = "SetIdentityMailFromDomain"
 
 // SetIdentityMailFromDomainRequest generates a "aws/request.Request" representing the
 // client's request for the SetIdentityMailFromDomain operation. The "output" return
-// value will be populated with the request's response once the request complets
-// successfuly.
+// value will be populated with the request's response once the request completes
+// successfully.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
 // the "output" return value is not valid until after Send returns without error.
@@ -5036,6 +5163,7 @@ func (c *SES) SetIdentityMailFromDomainRequest(input *SetIdentityMailFromDomainI
 
 	output = &SetIdentityMailFromDomainOutput{}
 	req = c.newRequest(op, input, output)
+	req.Handlers.Unmarshal.Swap(query.UnmarshalHandler.Name, protocol.UnmarshalDiscardBodyHandler)
 	return
 }
 
@@ -5047,7 +5175,7 @@ func (c *SES) SetIdentityMailFromDomainRequest(input *SetIdentityMailFromDomainI
 // To send emails using the specified MAIL FROM domain, you must add an MX record
 // to your MAIL FROM domain's DNS settings. If you want your emails to pass
 // Sender Policy Framework (SPF) checks, you must also add or update an SPF
-// record. For more information, see the Amazon SES Developer Guide (http://docs.aws.amazon.com/ses/latest/DeveloperGuide/mail-from-set.html).
+// record. For more information, see the Amazon SES Developer Guide (https://docs.aws.amazon.com/ses/latest/DeveloperGuide/mail-from-set.html).
 //
 // You can execute this operation no more than once per second.
 //
@@ -5083,8 +5211,8 @@ const opSetIdentityNotificationTopic = "SetIdentityNotificationTopic"
 
 // SetIdentityNotificationTopicRequest generates a "aws/request.Request" representing the
 // client's request for the SetIdentityNotificationTopic operation. The "output" return
-// value will be populated with the request's response once the request complets
-// successfuly.
+// value will be populated with the request's response once the request completes
+// successfully.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
 // the "output" return value is not valid until after Send returns without error.
@@ -5118,23 +5246,23 @@ func (c *SES) SetIdentityNotificationTopicRequest(input *SetIdentityNotification
 
 	output = &SetIdentityNotificationTopicOutput{}
 	req = c.newRequest(op, input, output)
+	req.Handlers.Unmarshal.Swap(query.UnmarshalHandler.Name, protocol.UnmarshalDiscardBodyHandler)
 	return
 }
 
 // SetIdentityNotificationTopic API operation for Amazon Simple Email Service.
 //
-// Given an identity (an email address or a domain), sets the Amazon Simple
-// Notification Service (Amazon SNS) topic to which Amazon SES will publish
-// bounce, complaint, and/or delivery notifications for emails sent with that
-// identity as the Source.
-//
-// Unless feedback forwarding is enabled, you must specify Amazon SNS topics
-// for bounce and complaint notifications. For more information, see SetIdentityFeedbackForwardingEnabled.
+// Sets an Amazon Simple Notification Service (Amazon SNS) topic to use when
+// delivering notifications. When you use this operation, you specify a verified
+// identity, such as an email address or domain. When you send an email that
+// uses the chosen identity in the Source field, Amazon SES sends notifications
+// to the topic you specified. You can send bounce, complaint, or delivery notifications
+// (or any combination of the three) to the Amazon SNS topic that you specify.
 //
 // You can execute this operation no more than once per second.
 //
 // For more information about feedback notification, see the Amazon SES Developer
-// Guide (http://docs.aws.amazon.com/ses/latest/DeveloperGuide/notifications.html).
+// Guide (https://docs.aws.amazon.com/ses/latest/DeveloperGuide/notifications.html).
 //
 // Returns awserr.Error for service API and SDK errors. Use runtime type assertions
 // with awserr.Error's Code and Message methods to get detailed information about
@@ -5168,8 +5296,8 @@ const opSetReceiptRulePosition = "SetReceiptRulePosition"
 
 // SetReceiptRulePositionRequest generates a "aws/request.Request" representing the
 // client's request for the SetReceiptRulePosition operation. The "output" return
-// value will be populated with the request's response once the request complets
-// successfuly.
+// value will be populated with the request's response once the request completes
+// successfully.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
 // the "output" return value is not valid until after Send returns without error.
@@ -5203,6 +5331,7 @@ func (c *SES) SetReceiptRulePositionRequest(input *SetReceiptRulePositionInput) 
 
 	output = &SetReceiptRulePositionOutput{}
 	req = c.newRequest(op, input, output)
+	req.Handlers.Unmarshal.Swap(query.UnmarshalHandler.Name, protocol.UnmarshalDiscardBodyHandler)
 	return
 }
 
@@ -5211,7 +5340,7 @@ func (c *SES) SetReceiptRulePositionRequest(input *SetReceiptRulePositionInput) 
 // Sets the position of the specified receipt rule in the receipt rule set.
 //
 // For information about managing receipt rules, see the Amazon SES Developer
-// Guide (http://docs.aws.amazon.com/ses/latest/DeveloperGuide/receiving-email-managing-receipt-rules.html).
+// Guide (https://docs.aws.amazon.com/ses/latest/DeveloperGuide/receiving-email-managing-receipt-rules.html).
 //
 // You can execute this operation no more than once per second.
 //
@@ -5255,8 +5384,8 @@ const opTestRenderTemplate = "TestRenderTemplate"
 
 // TestRenderTemplateRequest generates a "aws/request.Request" representing the
 // client's request for the TestRenderTemplate operation. The "output" return
-// value will be populated with the request's response once the request complets
-// successfuly.
+// value will be populated with the request's response once the request completes
+// successfully.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
 // the "output" return value is not valid until after Send returns without error.
@@ -5347,8 +5476,8 @@ const opUpdateAccountSendingEnabled = "UpdateAccountSendingEnabled"
 
 // UpdateAccountSendingEnabledRequest generates a "aws/request.Request" representing the
 // client's request for the UpdateAccountSendingEnabled operation. The "output" return
-// value will be populated with the request's response once the request complets
-// successfuly.
+// value will be populated with the request's response once the request completes
+// successfully.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
 // the "output" return value is not valid until after Send returns without error.
@@ -5382,17 +5511,17 @@ func (c *SES) UpdateAccountSendingEnabledRequest(input *UpdateAccountSendingEnab
 
 	output = &UpdateAccountSendingEnabledOutput{}
 	req = c.newRequest(op, input, output)
-	req.Handlers.Unmarshal.Remove(query.UnmarshalHandler)
-	req.Handlers.Unmarshal.PushBackNamed(protocol.UnmarshalDiscardBodyHandler)
+	req.Handlers.Unmarshal.Swap(query.UnmarshalHandler.Name, protocol.UnmarshalDiscardBodyHandler)
 	return
 }
 
 // UpdateAccountSendingEnabled API operation for Amazon Simple Email Service.
 //
-// Enables or disables email sending across your entire Amazon SES account.
-// You can use this operation in conjunction with Amazon CloudWatch alarms to
-// temporarily pause email sending across your Amazon SES account when reputation
-// metrics (such as your bounce on complaint rate) reach certain thresholds.
+// Enables or disables email sending across your entire Amazon SES account in
+// the current AWS Region. You can use this operation in conjunction with Amazon
+// CloudWatch alarms to temporarily pause email sending across your Amazon SES
+// account in a given AWS Region when reputation metrics (such as your bounce
+// or complaint rates) reach certain thresholds.
 //
 // You can execute this operation no more than once per second.
 //
@@ -5428,8 +5557,8 @@ const opUpdateConfigurationSetEventDestination = "UpdateConfigurationSetEventDes
 
 // UpdateConfigurationSetEventDestinationRequest generates a "aws/request.Request" representing the
 // client's request for the UpdateConfigurationSetEventDestination operation. The "output" return
-// value will be populated with the request's response once the request complets
-// successfuly.
+// value will be populated with the request's response once the request completes
+// successfully.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
 // the "output" return value is not valid until after Send returns without error.
@@ -5463,6 +5592,7 @@ func (c *SES) UpdateConfigurationSetEventDestinationRequest(input *UpdateConfigu
 
 	output = &UpdateConfigurationSetEventDestinationOutput{}
 	req = c.newRequest(op, input, output)
+	req.Handlers.Unmarshal.Swap(query.UnmarshalHandler.Name, protocol.UnmarshalDiscardBodyHandler)
 	return
 }
 
@@ -5472,7 +5602,7 @@ func (c *SES) UpdateConfigurationSetEventDestinationRequest(input *UpdateConfigu
 // are associated with configuration sets, which enable you to publish email
 // sending events to Amazon CloudWatch, Amazon Kinesis Firehose, or Amazon Simple
 // Notification Service (Amazon SNS). For information about using configuration
-// sets, see Monitoring Your Amazon SES Sending Activity (http://docs.aws.amazon.com/ses/latest/DeveloperGuide/monitor-sending-activity.html)
+// sets, see Monitoring Your Amazon SES Sending Activity (https://docs.aws.amazon.com/ses/latest/DeveloperGuide/monitor-sending-activity.html)
 // in the Amazon SES Developer Guide.
 //
 // When you create or update an event destination, you must provide one, and
@@ -5533,8 +5663,8 @@ const opUpdateConfigurationSetReputationMetricsEnabled = "UpdateConfigurationSet
 
 // UpdateConfigurationSetReputationMetricsEnabledRequest generates a "aws/request.Request" representing the
 // client's request for the UpdateConfigurationSetReputationMetricsEnabled operation. The "output" return
-// value will be populated with the request's response once the request complets
-// successfuly.
+// value will be populated with the request's response once the request completes
+// successfully.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
 // the "output" return value is not valid until after Send returns without error.
@@ -5568,18 +5698,17 @@ func (c *SES) UpdateConfigurationSetReputationMetricsEnabledRequest(input *Updat
 
 	output = &UpdateConfigurationSetReputationMetricsEnabledOutput{}
 	req = c.newRequest(op, input, output)
-	req.Handlers.Unmarshal.Remove(query.UnmarshalHandler)
-	req.Handlers.Unmarshal.PushBackNamed(protocol.UnmarshalDiscardBodyHandler)
+	req.Handlers.Unmarshal.Swap(query.UnmarshalHandler.Name, protocol.UnmarshalDiscardBodyHandler)
 	return
 }
 
 // UpdateConfigurationSetReputationMetricsEnabled API operation for Amazon Simple Email Service.
 //
 // Enables or disables the publishing of reputation metrics for emails sent
-// using a specific configuration set. Reputation metrics include bounce and
-// complaint rates. These metrics are published to Amazon CloudWatch. By using
-// Amazon CloudWatch, you can create alarms when bounce or complaint rates exceed
-// a certain threshold.
+// using a specific configuration set in a given AWS Region. Reputation metrics
+// include bounce and complaint rates. These metrics are published to Amazon
+// CloudWatch. By using CloudWatch, you can create alarms when bounce or complaint
+// rates exceed certain thresholds.
 //
 // You can execute this operation no more than once per second.
 //
@@ -5620,8 +5749,8 @@ const opUpdateConfigurationSetSendingEnabled = "UpdateConfigurationSetSendingEna
 
 // UpdateConfigurationSetSendingEnabledRequest generates a "aws/request.Request" representing the
 // client's request for the UpdateConfigurationSetSendingEnabled operation. The "output" return
-// value will be populated with the request's response once the request complets
-// successfuly.
+// value will be populated with the request's response once the request completes
+// successfully.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
 // the "output" return value is not valid until after Send returns without error.
@@ -5655,18 +5784,17 @@ func (c *SES) UpdateConfigurationSetSendingEnabledRequest(input *UpdateConfigura
 
 	output = &UpdateConfigurationSetSendingEnabledOutput{}
 	req = c.newRequest(op, input, output)
-	req.Handlers.Unmarshal.Remove(query.UnmarshalHandler)
-	req.Handlers.Unmarshal.PushBackNamed(protocol.UnmarshalDiscardBodyHandler)
+	req.Handlers.Unmarshal.Swap(query.UnmarshalHandler.Name, protocol.UnmarshalDiscardBodyHandler)
 	return
 }
 
 // UpdateConfigurationSetSendingEnabled API operation for Amazon Simple Email Service.
 //
 // Enables or disables email sending for messages sent using a specific configuration
-// set. You can use this operation in conjunction with Amazon CloudWatch alarms
-// to temporarily pause email sending for a configuration set when the reputation
-// metrics for that configuration set (such as your bounce on complaint rate)
-// reach certain thresholds.
+// set in a given AWS Region. You can use this operation in conjunction with
+// Amazon CloudWatch alarms to temporarily pause email sending for a configuration
+// set when the reputation metrics for that configuration set (such as your
+// bounce on complaint rate) exceed certain thresholds.
 //
 // You can execute this operation no more than once per second.
 //
@@ -5707,8 +5835,8 @@ const opUpdateConfigurationSetTrackingOptions = "UpdateConfigurationSetTrackingO
 
 // UpdateConfigurationSetTrackingOptionsRequest generates a "aws/request.Request" representing the
 // client's request for the UpdateConfigurationSetTrackingOptions operation. The "output" return
-// value will be populated with the request's response once the request complets
-// successfuly.
+// value will be populated with the request's response once the request completes
+// successfully.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
 // the "output" return value is not valid until after Send returns without error.
@@ -5742,6 +5870,7 @@ func (c *SES) UpdateConfigurationSetTrackingOptionsRequest(input *UpdateConfigur
 
 	output = &UpdateConfigurationSetTrackingOptionsOutput{}
 	req = c.newRequest(op, input, output)
+	req.Handlers.Unmarshal.Swap(query.UnmarshalHandler.Name, protocol.UnmarshalDiscardBodyHandler)
 	return
 }
 
@@ -5752,9 +5881,8 @@ func (c *SES) UpdateConfigurationSetTrackingOptionsRequest(input *UpdateConfigur
 //
 // By default, images and links used for tracking open and click events are
 // hosted on domains operated by Amazon SES. You can configure a subdomain of
-// your own to handle these events. For information about using configuration
-// sets, see Configuring Custom Domains to Handle Open and Click Tracking (http://docs.aws.amazon.com/ses/latest/DeveloperGuide/configure-custom-open-click-domains.html)
-// in the Amazon SES Developer Guide (http://docs.aws.amazon.com/ses/latest/DeveloperGuide/Welcome.html).
+// your own to handle these events. For information about using custom domains,
+// see the Amazon SES Developer Guide (https://docs.aws.amazon.com/ses/latest/DeveloperGuide/configure-custom-open-click-domains.html).
 //
 // Returns awserr.Error for service API and SDK errors. Use runtime type assertions
 // with awserr.Error's Code and Message methods to get detailed information about
@@ -5804,8 +5932,8 @@ const opUpdateCustomVerificationEmailTemplate = "UpdateCustomVerificationEmailTe
 
 // UpdateCustomVerificationEmailTemplateRequest generates a "aws/request.Request" representing the
 // client's request for the UpdateCustomVerificationEmailTemplate operation. The "output" return
-// value will be populated with the request's response once the request complets
-// successfuly.
+// value will be populated with the request's response once the request completes
+// successfully.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
 // the "output" return value is not valid until after Send returns without error.
@@ -5839,8 +5967,7 @@ func (c *SES) UpdateCustomVerificationEmailTemplateRequest(input *UpdateCustomVe
 
 	output = &UpdateCustomVerificationEmailTemplateOutput{}
 	req = c.newRequest(op, input, output)
-	req.Handlers.Unmarshal.Remove(query.UnmarshalHandler)
-	req.Handlers.Unmarshal.PushBackNamed(protocol.UnmarshalDiscardBodyHandler)
+	req.Handlers.Unmarshal.Swap(query.UnmarshalHandler.Name, protocol.UnmarshalDiscardBodyHandler)
 	return
 }
 
@@ -5900,8 +6027,8 @@ const opUpdateReceiptRule = "UpdateReceiptRule"
 
 // UpdateReceiptRuleRequest generates a "aws/request.Request" representing the
 // client's request for the UpdateReceiptRule operation. The "output" return
-// value will be populated with the request's response once the request complets
-// successfuly.
+// value will be populated with the request's response once the request completes
+// successfully.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
 // the "output" return value is not valid until after Send returns without error.
@@ -5935,6 +6062,7 @@ func (c *SES) UpdateReceiptRuleRequest(input *UpdateReceiptRuleInput) (req *requ
 
 	output = &UpdateReceiptRuleOutput{}
 	req = c.newRequest(op, input, output)
+	req.Handlers.Unmarshal.Swap(query.UnmarshalHandler.Name, protocol.UnmarshalDiscardBodyHandler)
 	return
 }
 
@@ -5943,7 +6071,7 @@ func (c *SES) UpdateReceiptRuleRequest(input *UpdateReceiptRuleInput) (req *requ
 // Updates a receipt rule.
 //
 // For information about managing receipt rules, see the Amazon SES Developer
-// Guide (http://docs.aws.amazon.com/ses/latest/DeveloperGuide/receiving-email-managing-receipt-rules.html).
+// Guide (https://docs.aws.amazon.com/ses/latest/DeveloperGuide/receiving-email-managing-receipt-rules.html).
 //
 // You can execute this operation no more than once per second.
 //
@@ -5958,19 +6086,19 @@ func (c *SES) UpdateReceiptRuleRequest(input *UpdateReceiptRuleInput) (req *requ
 //   * ErrCodeInvalidSnsTopicException "InvalidSnsTopic"
 //   Indicates that the provided Amazon SNS topic is invalid, or that Amazon SES
 //   could not publish to the topic, possibly due to permissions issues. For information
-//   about giving permissions, see the Amazon SES Developer Guide (http://docs.aws.amazon.com/ses/latest/DeveloperGuide/receiving-email-permissions.html).
+//   about giving permissions, see the Amazon SES Developer Guide (https://docs.aws.amazon.com/ses/latest/DeveloperGuide/receiving-email-permissions.html).
 //
 //   * ErrCodeInvalidS3ConfigurationException "InvalidS3Configuration"
 //   Indicates that the provided Amazon S3 bucket or AWS KMS encryption key is
 //   invalid, or that Amazon SES could not publish to the bucket, possibly due
 //   to permissions issues. For information about giving permissions, see the
-//   Amazon SES Developer Guide (http://docs.aws.amazon.com/ses/latest/DeveloperGuide/receiving-email-permissions.html).
+//   Amazon SES Developer Guide (https://docs.aws.amazon.com/ses/latest/DeveloperGuide/receiving-email-permissions.html).
 //
 //   * ErrCodeInvalidLambdaFunctionException "InvalidLambdaFunction"
 //   Indicates that the provided AWS Lambda function is invalid, or that Amazon
 //   SES could not execute the provided function, possibly due to permissions
 //   issues. For information about giving permissions, see the Amazon SES Developer
-//   Guide (http://docs.aws.amazon.com/ses/latest/DeveloperGuide/receiving-email-permissions.html).
+//   Guide (https://docs.aws.amazon.com/ses/latest/DeveloperGuide/receiving-email-permissions.html).
 //
 //   * ErrCodeRuleSetDoesNotExistException "RuleSetDoesNotExist"
 //   Indicates that the provided receipt rule set does not exist.
@@ -5980,7 +6108,7 @@ func (c *SES) UpdateReceiptRuleRequest(input *UpdateReceiptRuleInput) (req *requ
 //
 //   * ErrCodeLimitExceededException "LimitExceeded"
 //   Indicates that a resource could not be created because of service limits.
-//   For a list of Amazon SES limits, see the Amazon SES Developer Guide (http://docs.aws.amazon.com/ses/latest/DeveloperGuide/limits.html).
+//   For a list of Amazon SES limits, see the Amazon SES Developer Guide (https://docs.aws.amazon.com/ses/latest/DeveloperGuide/limits.html).
 //
 // See also, https://docs.aws.amazon.com/goto/WebAPI/email-2010-12-01/UpdateReceiptRule
 func (c *SES) UpdateReceiptRule(input *UpdateReceiptRuleInput) (*UpdateReceiptRuleOutput, error) {
@@ -6008,8 +6136,8 @@ const opUpdateTemplate = "UpdateTemplate"
 
 // UpdateTemplateRequest generates a "aws/request.Request" representing the
 // client's request for the UpdateTemplate operation. The "output" return
-// value will be populated with the request's response once the request complets
-// successfuly.
+// value will be populated with the request's response once the request completes
+// successfully.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
 // the "output" return value is not valid until after Send returns without error.
@@ -6043,6 +6171,7 @@ func (c *SES) UpdateTemplateRequest(input *UpdateTemplateInput) (req *request.Re
 
 	output = &UpdateTemplateOutput{}
 	req = c.newRequest(op, input, output)
+	req.Handlers.Unmarshal.Swap(query.UnmarshalHandler.Name, protocol.UnmarshalDiscardBodyHandler)
 	return
 }
 
@@ -6050,7 +6179,7 @@ func (c *SES) UpdateTemplateRequest(input *UpdateTemplateInput) (req *request.Re
 //
 // Updates an email template. Email templates enable you to send personalized
 // email to one or more destinations in a single API operation. For more information,
-// see the Amazon SES Developer Guide (http://docs.aws.amazon.com/ses/latest/DeveloperGuide/send-personalized-email-api.html).
+// see the Amazon SES Developer Guide (https://docs.aws.amazon.com/ses/latest/DeveloperGuide/send-personalized-email-api.html).
 //
 // You can execute this operation no more than once per second.
 //
@@ -6067,8 +6196,8 @@ func (c *SES) UpdateTemplateRequest(input *UpdateTemplateInput) (req *request.Re
 //   SES account.
 //
 //   * ErrCodeInvalidTemplateException "InvalidTemplate"
-//   Indicates that a template could not be created because it contained invalid
-//   JSON.
+//   Indicates that the template that you specified could not be rendered. This
+//   issue may occur when a template refers to a partial that does not exist.
 //
 // See also, https://docs.aws.amazon.com/goto/WebAPI/email-2010-12-01/UpdateTemplate
 func (c *SES) UpdateTemplate(input *UpdateTemplateInput) (*UpdateTemplateOutput, error) {
@@ -6096,8 +6225,8 @@ const opVerifyDomainDkim = "VerifyDomainDkim"
 
 // VerifyDomainDkimRequest generates a "aws/request.Request" representing the
 // client's request for the VerifyDomainDkim operation. The "output" return
-// value will be populated with the request's response once the request complets
-// successfuly.
+// value will be populated with the request's response once the request completes
+// successfully.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
 // the "output" return value is not valid until after Send returns without error.
@@ -6136,21 +6265,35 @@ func (c *SES) VerifyDomainDkimRequest(input *VerifyDomainDkimInput) (req *reques
 
 // VerifyDomainDkim API operation for Amazon Simple Email Service.
 //
-// Returns a set of DKIM tokens for a domain. DKIM tokens are character strings
-// that represent your domain's identity. Using these tokens, you will need
-// to create DNS CNAME records that point to DKIM public keys hosted by Amazon
-// SES. Amazon Web Services will eventually detect that you have updated your
-// DNS records; this detection process may take up to 72 hours. Upon successful
-// detection, Amazon SES will be able to DKIM-sign email originating from that
-// domain.
+// Returns a set of DKIM tokens for a domain identity.
+//
+// When you execute the VerifyDomainDkim operation, the domain that you specify
+// is added to the list of identities that are associated with your account.
+// This is true even if you haven't already associated the domain with your
+// account by using the VerifyDomainIdentity operation. However, you can't send
+// email from the domain until you either successfully verify it (https://docs.aws.amazon.com/ses/latest/DeveloperGuide/verify-domains.html)
+// or you successfully set up DKIM for it (https://docs.aws.amazon.com/ses/latest/DeveloperGuide/easy-dkim.html).
+//
+// You use the tokens that are generated by this operation to create CNAME records.
+// When Amazon SES detects that you've added these records to the DNS configuration
+// for a domain, you can start sending email from that domain. You can start
+// sending email even if you haven't added the TXT record provided by the VerifyDomainIdentity
+// operation to the DNS configuration for your domain. All email that you send
+// from the domain is authenticated using DKIM.
+//
+// To create the CNAME records for DKIM authentication, use the following values:
+//
+//    * Name: token._domainkey.example.com
+//
+//    * Type: CNAME
+//
+//    * Value: token.dkim.amazonses.com
+//
+// In the preceding example, replace token with one of the tokens that are generated
+// when you execute this operation. Replace example.com with your domain. Repeat
+// this process for each token that's generated by this operation.
 //
 // You can execute this operation no more than once per second.
-//
-// To enable or disable Easy DKIM signing for a domain, use the SetIdentityDkimEnabled
-// operation.
-//
-// For more information about creating DNS records using DKIM tokens, go to
-// the Amazon SES Developer Guide (http://docs.aws.amazon.com/ses/latest/DeveloperGuide/easy-dkim-dns-records.html).
 //
 // Returns awserr.Error for service API and SDK errors. Use runtime type assertions
 // with awserr.Error's Code and Message methods to get detailed information about
@@ -6184,8 +6327,8 @@ const opVerifyDomainIdentity = "VerifyDomainIdentity"
 
 // VerifyDomainIdentityRequest generates a "aws/request.Request" representing the
 // client's request for the VerifyDomainIdentity operation. The "output" return
-// value will be populated with the request's response once the request complets
-// successfuly.
+// value will be populated with the request's response once the request completes
+// successfully.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
 // the "output" return value is not valid until after Send returns without error.
@@ -6224,9 +6367,9 @@ func (c *SES) VerifyDomainIdentityRequest(input *VerifyDomainIdentityInput) (req
 
 // VerifyDomainIdentity API operation for Amazon Simple Email Service.
 //
-// Adds a domain to the list of identities for your Amazon SES account and attempts
-// to verify it. For more information about verifying domains, see Verifying
-// Email Addresses and Domains (http://docs.aws.amazon.com/ses/latest/DeveloperGuide/verify-addresses-and-domains.html)
+// Adds a domain to the list of identities for your Amazon SES account in the
+// current AWS Region and attempts to verify it. For more information about
+// verifying domains, see Verifying Email Addresses and Domains (https://docs.aws.amazon.com/ses/latest/DeveloperGuide/verify-addresses-and-domains.html)
 // in the Amazon SES Developer Guide.
 //
 // You can execute this operation no more than once per second.
@@ -6263,8 +6406,8 @@ const opVerifyEmailAddress = "VerifyEmailAddress"
 
 // VerifyEmailAddressRequest generates a "aws/request.Request" representing the
 // client's request for the VerifyEmailAddress operation. The "output" return
-// value will be populated with the request's response once the request complets
-// successfuly.
+// value will be populated with the request's response once the request completes
+// successfully.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
 // the "output" return value is not valid until after Send returns without error.
@@ -6298,8 +6441,7 @@ func (c *SES) VerifyEmailAddressRequest(input *VerifyEmailAddressInput) (req *re
 
 	output = &VerifyEmailAddressOutput{}
 	req = c.newRequest(op, input, output)
-	req.Handlers.Unmarshal.Remove(query.UnmarshalHandler)
-	req.Handlers.Unmarshal.PushBackNamed(protocol.UnmarshalDiscardBodyHandler)
+	req.Handlers.Unmarshal.Swap(query.UnmarshalHandler.Name, protocol.UnmarshalDiscardBodyHandler)
 	return
 }
 
@@ -6339,8 +6481,8 @@ const opVerifyEmailIdentity = "VerifyEmailIdentity"
 
 // VerifyEmailIdentityRequest generates a "aws/request.Request" representing the
 // client's request for the VerifyEmailIdentity operation. The "output" return
-// value will be populated with the request's response once the request complets
-// successfuly.
+// value will be populated with the request's response once the request completes
+// successfully.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
 // the "output" return value is not valid until after Send returns without error.
@@ -6374,14 +6516,15 @@ func (c *SES) VerifyEmailIdentityRequest(input *VerifyEmailIdentityInput) (req *
 
 	output = &VerifyEmailIdentityOutput{}
 	req = c.newRequest(op, input, output)
+	req.Handlers.Unmarshal.Swap(query.UnmarshalHandler.Name, protocol.UnmarshalDiscardBodyHandler)
 	return
 }
 
 // VerifyEmailIdentity API operation for Amazon Simple Email Service.
 //
 // Adds an email address to the list of identities for your Amazon SES account
-// and attempts to verify it. As a result of executing this operation, a verification
-// email is sent to the specified address.
+// in the current AWS region and attempts to verify it. As a result of executing
+// this operation, a verification email is sent to the specified address.
 //
 // You can execute this operation no more than once per second.
 //
@@ -6417,8 +6560,7 @@ func (c *SES) VerifyEmailIdentityWithContext(ctx aws.Context, input *VerifyEmail
 // email.
 //
 // For information about adding a header using a receipt rule, see the Amazon
-// SES Developer Guide (http://docs.aws.amazon.com/ses/latest/DeveloperGuide/receiving-email-action-add-header.html).
-// See also, https://docs.aws.amazon.com/goto/WebAPI/email-2010-12-01/AddHeaderAction
+// SES Developer Guide (https://docs.aws.amazon.com/ses/latest/DeveloperGuide/receiving-email-action-add-header.html).
 type AddHeaderAction struct {
 	_ struct{} `type:"structure"`
 
@@ -6476,7 +6618,6 @@ func (s *AddHeaderAction) SetHeaderValue(v string) *AddHeaderAction {
 // Represents the body of the message. You can specify text, HTML, or both.
 // If you use both, then the message should display correctly in the widest
 // variety of email clients.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/email-2010-12-01/Body
 type Body struct {
 	_ struct{} `type:"structure"`
 
@@ -6537,8 +6678,7 @@ func (s *Body) SetText(v *Content) *Body {
 // to Amazon Simple Notification Service (Amazon SNS).
 //
 // For information about sending a bounce message in response to a received
-// email, see the Amazon SES Developer Guide (http://docs.aws.amazon.com/ses/latest/DeveloperGuide/receiving-email-action-bounce.html).
-// See also, https://docs.aws.amazon.com/goto/WebAPI/email-2010-12-01/BounceAction
+// email, see the Amazon SES Developer Guide (https://docs.aws.amazon.com/ses/latest/DeveloperGuide/receiving-email-action-bounce.html).
 type BounceAction struct {
 	_ struct{} `type:"structure"`
 
@@ -6564,7 +6704,7 @@ type BounceAction struct {
 	// The Amazon Resource Name (ARN) of the Amazon SNS topic to notify when the
 	// bounce action is taken. An example of an Amazon SNS topic ARN is arn:aws:sns:us-west-2:123456789012:MyTopic.
 	// For more information about Amazon SNS topics, see the Amazon SNS Developer
-	// Guide (http://docs.aws.amazon.com/sns/latest/dg/CreateTopic.html).
+	// Guide (https://docs.aws.amazon.com/sns/latest/dg/CreateTopic.html).
 	TopicArn *string `type:"string"`
 }
 
@@ -6631,8 +6771,7 @@ func (s *BounceAction) SetTopicArn(v string) *BounceAction {
 // (DSN) when an email that Amazon SES receives on your behalf bounces.
 //
 // For information about receiving email through Amazon SES, see the Amazon
-// SES Developer Guide (http://docs.aws.amazon.com/ses/latest/DeveloperGuide/receiving-email.html).
-// See also, https://docs.aws.amazon.com/goto/WebAPI/email-2010-12-01/BouncedRecipientInfo
+// SES Developer Guide (https://docs.aws.amazon.com/ses/latest/DeveloperGuide/receiving-email.html).
 type BouncedRecipientInfo struct {
 	_ struct{} `type:"structure"`
 
@@ -6647,7 +6786,7 @@ type BouncedRecipientInfo struct {
 	// This parameter is used only for sending authorization. It is the ARN of the
 	// identity that is associated with the sending authorization policy that permits
 	// you to receive email for the recipient of the bounced email. For more information
-	// about sending authorization, see the Amazon SES Developer Guide (http://docs.aws.amazon.com/ses/latest/DeveloperGuide/sending-authorization.html).
+	// about sending authorization, see the Amazon SES Developer Guide (https://docs.aws.amazon.com/ses/latest/DeveloperGuide/sending-authorization.html).
 	RecipientArn *string `type:"string"`
 
 	// Recipient-related DSN fields, most of which would normally be filled in automatically
@@ -6710,7 +6849,6 @@ func (s *BouncedRecipientInfo) SetRecipientDsnFields(v *RecipientDsnFields) *Bou
 
 // An array that contains one or more Destinations, as well as the tags and
 // replacement data associated with each of those Destinations.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/email-2010-12-01/BulkEmailDestination
 type BulkEmailDestination struct {
 	_ struct{} `type:"structure"`
 
@@ -6791,7 +6929,6 @@ func (s *BulkEmailDestination) SetReplacementTemplateData(v string) *BulkEmailDe
 }
 
 // An object that contains the response from the SendBulkTemplatedEmail operation.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/email-2010-12-01/BulkEmailDestinationStatus
 type BulkEmailDestinationStatus struct {
 	_ struct{} `type:"structure"`
 
@@ -6879,8 +7016,7 @@ func (s *BulkEmailDestinationStatus) SetStatus(v string) *BulkEmailDestinationSt
 
 // Represents a request to create a receipt rule set by cloning an existing
 // one. You use receipt rule sets to receive email with Amazon SES. For more
-// information, see the Amazon SES Developer Guide (http://docs.aws.amazon.com/ses/latest/DeveloperGuide/receiving-email-concepts.html).
-// See also, https://docs.aws.amazon.com/goto/WebAPI/email-2010-12-01/CloneReceiptRuleSetRequest
+// information, see the Amazon SES Developer Guide (https://docs.aws.amazon.com/ses/latest/DeveloperGuide/receiving-email-concepts.html).
 type CloneReceiptRuleSetInput struct {
 	_ struct{} `type:"structure"`
 
@@ -6941,7 +7077,6 @@ func (s *CloneReceiptRuleSetInput) SetRuleSetName(v string) *CloneReceiptRuleSet
 }
 
 // An empty element returned on a successful request.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/email-2010-12-01/CloneReceiptRuleSetResponse
 type CloneReceiptRuleSetOutput struct {
 	_ struct{} `type:"structure"`
 }
@@ -6961,8 +7096,7 @@ func (s CloneReceiptRuleSetOutput) GoString() string {
 //
 // Event destinations, such as Amazon CloudWatch, are associated with configuration
 // sets, which enable you to publish email sending events. For information about
-// using configuration sets, see the Amazon SES Developer Guide (http://docs.aws.amazon.com/ses/latest/DeveloperGuide/monitor-sending-activity.html).
-// See also, https://docs.aws.amazon.com/goto/WebAPI/email-2010-12-01/CloudWatchDestination
+// using configuration sets, see the Amazon SES Developer Guide (https://docs.aws.amazon.com/ses/latest/DeveloperGuide/monitor-sending-activity.html).
 type CloudWatchDestination struct {
 	_ struct{} `type:"structure"`
 
@@ -7016,8 +7150,7 @@ func (s *CloudWatchDestination) SetDimensionConfigurations(v []*CloudWatchDimens
 // events to Amazon CloudWatch.
 //
 // For information about publishing email sending events to Amazon CloudWatch,
-// see the Amazon SES Developer Guide (http://docs.aws.amazon.com/ses/latest/DeveloperGuide/monitor-sending-activity.html).
-// See also, https://docs.aws.amazon.com/goto/WebAPI/email-2010-12-01/CloudWatchDimensionConfiguration
+// see the Amazon SES Developer Guide (https://docs.aws.amazon.com/ses/latest/DeveloperGuide/monitor-sending-activity.html).
 type CloudWatchDimensionConfiguration struct {
 	_ struct{} `type:"structure"`
 
@@ -7105,9 +7238,8 @@ func (s *CloudWatchDimensionConfiguration) SetDimensionValueSource(v string) *Cl
 //
 // Configuration sets let you create groups of rules that you can apply to the
 // emails you send using Amazon SES. For more information about using configuration
-// sets, see Using Amazon SES Configuration Sets (http://docs.aws.amazon.com/ses/latest/DeveloperGuide/using-configuration-sets.html)
-// in the Amazon SES Developer Guide (http://docs.aws.amazon.com/ses/latest/DeveloperGuide/).
-// See also, https://docs.aws.amazon.com/goto/WebAPI/email-2010-12-01/ConfigurationSet
+// sets, see Using Amazon SES Configuration Sets (https://docs.aws.amazon.com/ses/latest/DeveloperGuide/using-configuration-sets.html)
+// in the Amazon SES Developer Guide (https://docs.aws.amazon.com/ses/latest/DeveloperGuide/).
 type ConfigurationSet struct {
 	_ struct{} `type:"structure"`
 
@@ -7156,7 +7288,6 @@ func (s *ConfigurationSet) SetName(v string) *ConfigurationSet {
 // By default, the text must be 7-bit ASCII, due to the constraints of the SMTP
 // protocol. If the text must contain any other characters, then you must also
 // specify a character set. Examples include UTF-8, ISO-8859-1, and Shift_JIS.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/email-2010-12-01/Content
 type Content struct {
 	_ struct{} `type:"structure"`
 
@@ -7208,8 +7339,7 @@ func (s *Content) SetData(v string) *Content {
 // set event destination, which can be either Amazon CloudWatch or Amazon Kinesis
 // Firehose, describes an AWS service in which Amazon SES publishes the email
 // sending events associated with a configuration set. For information about
-// using configuration sets, see the Amazon SES Developer Guide (http://docs.aws.amazon.com/ses/latest/DeveloperGuide/monitor-sending-activity.html).
-// See also, https://docs.aws.amazon.com/goto/WebAPI/email-2010-12-01/CreateConfigurationSetEventDestinationRequest
+// using configuration sets, see the Amazon SES Developer Guide (https://docs.aws.amazon.com/ses/latest/DeveloperGuide/monitor-sending-activity.html).
 type CreateConfigurationSetEventDestinationInput struct {
 	_ struct{} `type:"structure"`
 
@@ -7270,7 +7400,6 @@ func (s *CreateConfigurationSetEventDestinationInput) SetEventDestination(v *Eve
 }
 
 // An empty element returned on a successful request.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/email-2010-12-01/CreateConfigurationSetEventDestinationResponse
 type CreateConfigurationSetEventDestinationOutput struct {
 	_ struct{} `type:"structure"`
 }
@@ -7287,8 +7416,7 @@ func (s CreateConfigurationSetEventDestinationOutput) GoString() string {
 
 // Represents a request to create a configuration set. Configuration sets enable
 // you to publish email sending events. For information about using configuration
-// sets, see the Amazon SES Developer Guide (http://docs.aws.amazon.com/ses/latest/DeveloperGuide/monitor-sending-activity.html).
-// See also, https://docs.aws.amazon.com/goto/WebAPI/email-2010-12-01/CreateConfigurationSetRequest
+// sets, see the Amazon SES Developer Guide (https://docs.aws.amazon.com/ses/latest/DeveloperGuide/monitor-sending-activity.html).
 type CreateConfigurationSetInput struct {
 	_ struct{} `type:"structure"`
 
@@ -7333,7 +7461,6 @@ func (s *CreateConfigurationSetInput) SetConfigurationSet(v *ConfigurationSet) *
 }
 
 // An empty element returned on a successful request.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/email-2010-12-01/CreateConfigurationSetResponse
 type CreateConfigurationSetOutput struct {
 	_ struct{} `type:"structure"`
 }
@@ -7350,7 +7477,6 @@ func (s CreateConfigurationSetOutput) GoString() string {
 
 // Represents a request to create an open and click tracking option object in
 // a configuration set.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/email-2010-12-01/CreateConfigurationSetTrackingOptionsRequest
 type CreateConfigurationSetTrackingOptionsInput struct {
 	_ struct{} `type:"structure"`
 
@@ -7365,8 +7491,8 @@ type CreateConfigurationSetTrackingOptionsInput struct {
 	// emails.
 	//
 	// For more information, see Configuring Custom Domains to Handle Open and Click
-	// Tracking (http://docs.aws.amazon.com/ses/latest/DeveloperGuide/configure-custom-open-click-domains.html)
-	// in the Amazon SES Developer Guide (http://docs.aws.amazon.com/ses/latest/DeveloperGuide/Welcome.html).
+	// Tracking (https://docs.aws.amazon.com/ses/latest/DeveloperGuide/configure-custom-open-click-domains.html)
+	// in the Amazon SES Developer Guide.
 	//
 	// TrackingOptions is a required field
 	TrackingOptions *TrackingOptions `type:"structure" required:"true"`
@@ -7411,7 +7537,6 @@ func (s *CreateConfigurationSetTrackingOptionsInput) SetTrackingOptions(v *Track
 }
 
 // An empty element returned on a successful request.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/email-2010-12-01/CreateConfigurationSetTrackingOptionsResponse
 type CreateConfigurationSetTrackingOptionsOutput struct {
 	_ struct{} `type:"structure"`
 }
@@ -7427,7 +7552,6 @@ func (s CreateConfigurationSetTrackingOptionsOutput) GoString() string {
 }
 
 // Represents a request to create a custom verification email template.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/email-2010-12-01/CreateCustomVerificationEmailTemplateRequest
 type CreateCustomVerificationEmailTemplateInput struct {
 	_ struct{} `type:"structure"`
 
@@ -7451,7 +7575,7 @@ type CreateCustomVerificationEmailTemplateInput struct {
 	// The content of the custom verification email. The total size of the email
 	// must be less than 10 MB. The message body may contain HTML, with some limitations.
 	// For more information, see Custom Verification Email Frequently Asked Questions
-	// (http://docs.aws.amazon.com/ses/latest/DeveloperGuide/custom-verification-emails.html#custom-verification-emails-faq)
+	// (https://docs.aws.amazon.com/ses/latest/DeveloperGuide/custom-verification-emails.html#custom-verification-emails-faq)
 	// in the Amazon SES Developer Guide.
 	//
 	// TemplateContent is a required field
@@ -7542,7 +7666,6 @@ func (s *CreateCustomVerificationEmailTemplateInput) SetTemplateSubject(v string
 	return s
 }
 
-// See also, https://docs.aws.amazon.com/goto/WebAPI/email-2010-12-01/CreateCustomVerificationEmailTemplateOutput
 type CreateCustomVerificationEmailTemplateOutput struct {
 	_ struct{} `type:"structure"`
 }
@@ -7559,8 +7682,7 @@ func (s CreateCustomVerificationEmailTemplateOutput) GoString() string {
 
 // Represents a request to create a new IP address filter. You use IP address
 // filters when you receive email with Amazon SES. For more information, see
-// the Amazon SES Developer Guide (http://docs.aws.amazon.com/ses/latest/DeveloperGuide/receiving-email-concepts.html).
-// See also, https://docs.aws.amazon.com/goto/WebAPI/email-2010-12-01/CreateReceiptFilterRequest
+// the Amazon SES Developer Guide (https://docs.aws.amazon.com/ses/latest/DeveloperGuide/receiving-email-concepts.html).
 type CreateReceiptFilterInput struct {
 	_ struct{} `type:"structure"`
 
@@ -7606,7 +7728,6 @@ func (s *CreateReceiptFilterInput) SetFilter(v *ReceiptFilter) *CreateReceiptFil
 }
 
 // An empty element returned on a successful request.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/email-2010-12-01/CreateReceiptFilterResponse
 type CreateReceiptFilterOutput struct {
 	_ struct{} `type:"structure"`
 }
@@ -7623,8 +7744,7 @@ func (s CreateReceiptFilterOutput) GoString() string {
 
 // Represents a request to create a receipt rule. You use receipt rules to receive
 // email with Amazon SES. For more information, see the Amazon SES Developer
-// Guide (http://docs.aws.amazon.com/ses/latest/DeveloperGuide/receiving-email-concepts.html).
-// See also, https://docs.aws.amazon.com/goto/WebAPI/email-2010-12-01/CreateReceiptRuleRequest
+// Guide (https://docs.aws.amazon.com/ses/latest/DeveloperGuide/receiving-email-concepts.html).
 type CreateReceiptRuleInput struct {
 	_ struct{} `type:"structure"`
 
@@ -7695,7 +7815,6 @@ func (s *CreateReceiptRuleInput) SetRuleSetName(v string) *CreateReceiptRuleInpu
 }
 
 // An empty element returned on a successful request.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/email-2010-12-01/CreateReceiptRuleResponse
 type CreateReceiptRuleOutput struct {
 	_ struct{} `type:"structure"`
 }
@@ -7712,8 +7831,7 @@ func (s CreateReceiptRuleOutput) GoString() string {
 
 // Represents a request to create an empty receipt rule set. You use receipt
 // rule sets to receive email with Amazon SES. For more information, see the
-// Amazon SES Developer Guide (http://docs.aws.amazon.com/ses/latest/DeveloperGuide/receiving-email-concepts.html).
-// See also, https://docs.aws.amazon.com/goto/WebAPI/email-2010-12-01/CreateReceiptRuleSetRequest
+// Amazon SES Developer Guide (https://docs.aws.amazon.com/ses/latest/DeveloperGuide/receiving-email-concepts.html).
 type CreateReceiptRuleSetInput struct {
 	_ struct{} `type:"structure"`
 
@@ -7760,7 +7878,6 @@ func (s *CreateReceiptRuleSetInput) SetRuleSetName(v string) *CreateReceiptRuleS
 }
 
 // An empty element returned on a successful request.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/email-2010-12-01/CreateReceiptRuleSetResponse
 type CreateReceiptRuleSetOutput struct {
 	_ struct{} `type:"structure"`
 }
@@ -7776,8 +7893,7 @@ func (s CreateReceiptRuleSetOutput) GoString() string {
 }
 
 // Represents a request to create an email template. For more information, see
-// the Amazon SES Developer Guide (http://docs.aws.amazon.com/ses/latest/DeveloperGuide/send-personalized-email-api.html).
-// See also, https://docs.aws.amazon.com/goto/WebAPI/email-2010-12-01/CreateTemplateRequest
+// the Amazon SES Developer Guide (https://docs.aws.amazon.com/ses/latest/DeveloperGuide/send-personalized-email-api.html).
 type CreateTemplateInput struct {
 	_ struct{} `type:"structure"`
 
@@ -7822,7 +7938,6 @@ func (s *CreateTemplateInput) SetTemplate(v *Template) *CreateTemplateInput {
 	return s
 }
 
-// See also, https://docs.aws.amazon.com/goto/WebAPI/email-2010-12-01/CreateTemplateResponse
 type CreateTemplateOutput struct {
 	_ struct{} `type:"structure"`
 }
@@ -7838,7 +7953,6 @@ func (s CreateTemplateOutput) GoString() string {
 }
 
 // Contains information about a custom verification email template.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/email-2010-12-01/CustomVerificationEmailTemplate
 type CustomVerificationEmailTemplate struct {
 	_ struct{} `type:"structure"`
 
@@ -7903,8 +8017,7 @@ func (s *CustomVerificationEmailTemplate) SetTemplateSubject(v string) *CustomVe
 // Represents a request to delete a configuration set event destination. Configuration
 // set event destinations are associated with configuration sets, which enable
 // you to publish email sending events. For information about using configuration
-// sets, see the Amazon SES Developer Guide (http://docs.aws.amazon.com/ses/latest/DeveloperGuide/monitor-sending-activity.html).
-// See also, https://docs.aws.amazon.com/goto/WebAPI/email-2010-12-01/DeleteConfigurationSetEventDestinationRequest
+// sets, see the Amazon SES Developer Guide (https://docs.aws.amazon.com/ses/latest/DeveloperGuide/monitor-sending-activity.html).
 type DeleteConfigurationSetEventDestinationInput struct {
 	_ struct{} `type:"structure"`
 
@@ -7958,7 +8071,6 @@ func (s *DeleteConfigurationSetEventDestinationInput) SetEventDestinationName(v 
 }
 
 // An empty element returned on a successful request.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/email-2010-12-01/DeleteConfigurationSetEventDestinationResponse
 type DeleteConfigurationSetEventDestinationOutput struct {
 	_ struct{} `type:"structure"`
 }
@@ -7975,8 +8087,7 @@ func (s DeleteConfigurationSetEventDestinationOutput) GoString() string {
 
 // Represents a request to delete a configuration set. Configuration sets enable
 // you to publish email sending events. For information about using configuration
-// sets, see the Amazon SES Developer Guide (http://docs.aws.amazon.com/ses/latest/DeveloperGuide/monitor-sending-activity.html).
-// See also, https://docs.aws.amazon.com/goto/WebAPI/email-2010-12-01/DeleteConfigurationSetRequest
+// sets, see the Amazon SES Developer Guide (https://docs.aws.amazon.com/ses/latest/DeveloperGuide/monitor-sending-activity.html).
 type DeleteConfigurationSetInput struct {
 	_ struct{} `type:"structure"`
 
@@ -8016,7 +8127,6 @@ func (s *DeleteConfigurationSetInput) SetConfigurationSetName(v string) *DeleteC
 }
 
 // An empty element returned on a successful request.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/email-2010-12-01/DeleteConfigurationSetResponse
 type DeleteConfigurationSetOutput struct {
 	_ struct{} `type:"structure"`
 }
@@ -8033,7 +8143,6 @@ func (s DeleteConfigurationSetOutput) GoString() string {
 
 // Represents a request to delete open and click tracking options in a configuration
 // set.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/email-2010-12-01/DeleteConfigurationSetTrackingOptionsRequest
 type DeleteConfigurationSetTrackingOptionsInput struct {
 	_ struct{} `type:"structure"`
 
@@ -8074,7 +8183,6 @@ func (s *DeleteConfigurationSetTrackingOptionsInput) SetConfigurationSetName(v s
 }
 
 // An empty element returned on a successful request.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/email-2010-12-01/DeleteConfigurationSetTrackingOptionsResponse
 type DeleteConfigurationSetTrackingOptionsOutput struct {
 	_ struct{} `type:"structure"`
 }
@@ -8090,7 +8198,6 @@ func (s DeleteConfigurationSetTrackingOptionsOutput) GoString() string {
 }
 
 // Represents a request to delete an existing custom verification email template.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/email-2010-12-01/DeleteCustomVerificationEmailTemplateRequest
 type DeleteCustomVerificationEmailTemplateInput struct {
 	_ struct{} `type:"structure"`
 
@@ -8129,7 +8236,6 @@ func (s *DeleteCustomVerificationEmailTemplateInput) SetTemplateName(v string) *
 	return s
 }
 
-// See also, https://docs.aws.amazon.com/goto/WebAPI/email-2010-12-01/DeleteCustomVerificationEmailTemplateOutput
 type DeleteCustomVerificationEmailTemplateOutput struct {
 	_ struct{} `type:"structure"`
 }
@@ -8146,7 +8252,6 @@ func (s DeleteCustomVerificationEmailTemplateOutput) GoString() string {
 
 // Represents a request to delete one of your Amazon SES identities (an email
 // address or domain).
-// See also, https://docs.aws.amazon.com/goto/WebAPI/email-2010-12-01/DeleteIdentityRequest
 type DeleteIdentityInput struct {
 	_ struct{} `type:"structure"`
 
@@ -8186,7 +8291,6 @@ func (s *DeleteIdentityInput) SetIdentity(v string) *DeleteIdentityInput {
 }
 
 // An empty element returned on a successful request.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/email-2010-12-01/DeleteIdentityResponse
 type DeleteIdentityOutput struct {
 	_ struct{} `type:"structure"`
 }
@@ -8204,8 +8308,7 @@ func (s DeleteIdentityOutput) GoString() string {
 // Represents a request to delete a sending authorization policy for an identity.
 // Sending authorization is an Amazon SES feature that enables you to authorize
 // other senders to use your identities. For information, see the Amazon SES
-// Developer Guide (http://docs.aws.amazon.com/ses/latest/DeveloperGuide/sending-authorization.html).
-// See also, https://docs.aws.amazon.com/goto/WebAPI/email-2010-12-01/DeleteIdentityPolicyRequest
+// Developer Guide (https://docs.aws.amazon.com/ses/latest/DeveloperGuide/sending-authorization.html).
 type DeleteIdentityPolicyInput struct {
 	_ struct{} `type:"structure"`
 
@@ -8266,7 +8369,6 @@ func (s *DeleteIdentityPolicyInput) SetPolicyName(v string) *DeleteIdentityPolic
 }
 
 // An empty element returned on a successful request.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/email-2010-12-01/DeleteIdentityPolicyResponse
 type DeleteIdentityPolicyOutput struct {
 	_ struct{} `type:"structure"`
 }
@@ -8283,8 +8385,7 @@ func (s DeleteIdentityPolicyOutput) GoString() string {
 
 // Represents a request to delete an IP address filter. You use IP address filters
 // when you receive email with Amazon SES. For more information, see the Amazon
-// SES Developer Guide (http://docs.aws.amazon.com/ses/latest/DeveloperGuide/receiving-email-concepts.html).
-// See also, https://docs.aws.amazon.com/goto/WebAPI/email-2010-12-01/DeleteReceiptFilterRequest
+// SES Developer Guide (https://docs.aws.amazon.com/ses/latest/DeveloperGuide/receiving-email-concepts.html).
 type DeleteReceiptFilterInput struct {
 	_ struct{} `type:"structure"`
 
@@ -8324,7 +8425,6 @@ func (s *DeleteReceiptFilterInput) SetFilterName(v string) *DeleteReceiptFilterI
 }
 
 // An empty element returned on a successful request.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/email-2010-12-01/DeleteReceiptFilterResponse
 type DeleteReceiptFilterOutput struct {
 	_ struct{} `type:"structure"`
 }
@@ -8341,8 +8441,7 @@ func (s DeleteReceiptFilterOutput) GoString() string {
 
 // Represents a request to delete a receipt rule. You use receipt rules to receive
 // email with Amazon SES. For more information, see the Amazon SES Developer
-// Guide (http://docs.aws.amazon.com/ses/latest/DeveloperGuide/receiving-email-concepts.html).
-// See also, https://docs.aws.amazon.com/goto/WebAPI/email-2010-12-01/DeleteReceiptRuleRequest
+// Guide (https://docs.aws.amazon.com/ses/latest/DeveloperGuide/receiving-email-concepts.html).
 type DeleteReceiptRuleInput struct {
 	_ struct{} `type:"structure"`
 
@@ -8396,7 +8495,6 @@ func (s *DeleteReceiptRuleInput) SetRuleSetName(v string) *DeleteReceiptRuleInpu
 }
 
 // An empty element returned on a successful request.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/email-2010-12-01/DeleteReceiptRuleResponse
 type DeleteReceiptRuleOutput struct {
 	_ struct{} `type:"structure"`
 }
@@ -8413,8 +8511,7 @@ func (s DeleteReceiptRuleOutput) GoString() string {
 
 // Represents a request to delete a receipt rule set and all of the receipt
 // rules it contains. You use receipt rule sets to receive email with Amazon
-// SES. For more information, see the Amazon SES Developer Guide (http://docs.aws.amazon.com/ses/latest/DeveloperGuide/receiving-email-concepts.html).
-// See also, https://docs.aws.amazon.com/goto/WebAPI/email-2010-12-01/DeleteReceiptRuleSetRequest
+// SES. For more information, see the Amazon SES Developer Guide (https://docs.aws.amazon.com/ses/latest/DeveloperGuide/receiving-email-concepts.html).
 type DeleteReceiptRuleSetInput struct {
 	_ struct{} `type:"structure"`
 
@@ -8454,7 +8551,6 @@ func (s *DeleteReceiptRuleSetInput) SetRuleSetName(v string) *DeleteReceiptRuleS
 }
 
 // An empty element returned on a successful request.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/email-2010-12-01/DeleteReceiptRuleSetResponse
 type DeleteReceiptRuleSetOutput struct {
 	_ struct{} `type:"structure"`
 }
@@ -8470,8 +8566,7 @@ func (s DeleteReceiptRuleSetOutput) GoString() string {
 }
 
 // Represents a request to delete an email template. For more information, see
-// the Amazon SES Developer Guide (http://docs.aws.amazon.com/ses/latest/DeveloperGuide/send-personalized-email-api.html).
-// See also, https://docs.aws.amazon.com/goto/WebAPI/email-2010-12-01/DeleteTemplateRequest
+// the Amazon SES Developer Guide (https://docs.aws.amazon.com/ses/latest/DeveloperGuide/send-personalized-email-api.html).
 type DeleteTemplateInput struct {
 	_ struct{} `type:"structure"`
 
@@ -8510,7 +8605,6 @@ func (s *DeleteTemplateInput) SetTemplateName(v string) *DeleteTemplateInput {
 	return s
 }
 
-// See also, https://docs.aws.amazon.com/goto/WebAPI/email-2010-12-01/DeleteTemplateResponse
 type DeleteTemplateOutput struct {
 	_ struct{} `type:"structure"`
 }
@@ -8527,7 +8621,6 @@ func (s DeleteTemplateOutput) GoString() string {
 
 // Represents a request to delete an email address from the list of email addresses
 // you have attempted to verify under your AWS account.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/email-2010-12-01/DeleteVerifiedEmailAddressRequest
 type DeleteVerifiedEmailAddressInput struct {
 	_ struct{} `type:"structure"`
 
@@ -8566,7 +8659,6 @@ func (s *DeleteVerifiedEmailAddressInput) SetEmailAddress(v string) *DeleteVerif
 	return s
 }
 
-// See also, https://docs.aws.amazon.com/goto/WebAPI/email-2010-12-01/DeleteVerifiedEmailAddressOutput
 type DeleteVerifiedEmailAddressOutput struct {
 	_ struct{} `type:"structure"`
 }
@@ -8581,11 +8673,38 @@ func (s DeleteVerifiedEmailAddressOutput) GoString() string {
 	return s.String()
 }
 
+// Specifies whether messages that use the configuration set are required to
+// use Transport Layer Security (TLS).
+type DeliveryOptions struct {
+	_ struct{} `type:"structure"`
+
+	// Specifies whether messages that use the configuration set are required to
+	// use Transport Layer Security (TLS). If the value is Require, messages are
+	// only delivered if a TLS connection can be established. If the value is Optional,
+	// messages can be delivered in plain text if a TLS connection can't be established.
+	TlsPolicy *string `type:"string" enum:"TlsPolicy"`
+}
+
+// String returns the string representation
+func (s DeliveryOptions) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s DeliveryOptions) GoString() string {
+	return s.String()
+}
+
+// SetTlsPolicy sets the TlsPolicy field's value.
+func (s *DeliveryOptions) SetTlsPolicy(v string) *DeliveryOptions {
+	s.TlsPolicy = &v
+	return s
+}
+
 // Represents a request to return the metadata and receipt rules for the receipt
 // rule set that is currently active. You use receipt rule sets to receive email
 // with Amazon SES. For more information, see the Amazon SES Developer Guide
-// (http://docs.aws.amazon.com/ses/latest/DeveloperGuide/receiving-email-concepts.html).
-// See also, https://docs.aws.amazon.com/goto/WebAPI/email-2010-12-01/DescribeActiveReceiptRuleSetRequest
+// (https://docs.aws.amazon.com/ses/latest/DeveloperGuide/receiving-email-concepts.html).
 type DescribeActiveReceiptRuleSetInput struct {
 	_ struct{} `type:"structure"`
 }
@@ -8602,7 +8721,6 @@ func (s DescribeActiveReceiptRuleSetInput) GoString() string {
 
 // Represents the metadata and receipt rules for the receipt rule set that is
 // currently active.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/email-2010-12-01/DescribeActiveReceiptRuleSetResponse
 type DescribeActiveReceiptRuleSetOutput struct {
 	_ struct{} `type:"structure"`
 
@@ -8638,8 +8756,7 @@ func (s *DescribeActiveReceiptRuleSetOutput) SetRules(v []*ReceiptRule) *Describ
 
 // Represents a request to return the details of a configuration set. Configuration
 // sets enable you to publish email sending events. For information about using
-// configuration sets, see the Amazon SES Developer Guide (http://docs.aws.amazon.com/ses/latest/DeveloperGuide/monitor-sending-activity.html).
-// See also, https://docs.aws.amazon.com/goto/WebAPI/email-2010-12-01/DescribeConfigurationSetRequest
+// configuration sets, see the Amazon SES Developer Guide (https://docs.aws.amazon.com/ses/latest/DeveloperGuide/monitor-sending-activity.html).
 type DescribeConfigurationSetInput struct {
 	_ struct{} `type:"structure"`
 
@@ -8689,14 +8806,17 @@ func (s *DescribeConfigurationSetInput) SetConfigurationSetName(v string) *Descr
 
 // Represents the details of a configuration set. Configuration sets enable
 // you to publish email sending events. For information about using configuration
-// sets, see the Amazon SES Developer Guide (http://docs.aws.amazon.com/ses/latest/DeveloperGuide/monitor-sending-activity.html).
-// See also, https://docs.aws.amazon.com/goto/WebAPI/email-2010-12-01/DescribeConfigurationSetResponse
+// sets, see the Amazon SES Developer Guide (https://docs.aws.amazon.com/ses/latest/DeveloperGuide/monitor-sending-activity.html).
 type DescribeConfigurationSetOutput struct {
 	_ struct{} `type:"structure"`
 
 	// The configuration set object associated with the specified configuration
 	// set.
 	ConfigurationSet *ConfigurationSet `type:"structure"`
+
+	// Specifies whether messages that use the configuration set are required to
+	// use Transport Layer Security (TLS).
+	DeliveryOptions *DeliveryOptions `type:"structure"`
 
 	// A list of event destinations associated with the configuration set.
 	EventDestinations []*EventDestination `type:"list"`
@@ -8725,6 +8845,12 @@ func (s *DescribeConfigurationSetOutput) SetConfigurationSet(v *ConfigurationSet
 	return s
 }
 
+// SetDeliveryOptions sets the DeliveryOptions field's value.
+func (s *DescribeConfigurationSetOutput) SetDeliveryOptions(v *DeliveryOptions) *DescribeConfigurationSetOutput {
+	s.DeliveryOptions = v
+	return s
+}
+
 // SetEventDestinations sets the EventDestinations field's value.
 func (s *DescribeConfigurationSetOutput) SetEventDestinations(v []*EventDestination) *DescribeConfigurationSetOutput {
 	s.EventDestinations = v
@@ -8745,8 +8871,7 @@ func (s *DescribeConfigurationSetOutput) SetTrackingOptions(v *TrackingOptions) 
 
 // Represents a request to return the details of a receipt rule. You use receipt
 // rules to receive email with Amazon SES. For more information, see the Amazon
-// SES Developer Guide (http://docs.aws.amazon.com/ses/latest/DeveloperGuide/receiving-email-concepts.html).
-// See also, https://docs.aws.amazon.com/goto/WebAPI/email-2010-12-01/DescribeReceiptRuleRequest
+// SES Developer Guide (https://docs.aws.amazon.com/ses/latest/DeveloperGuide/receiving-email-concepts.html).
 type DescribeReceiptRuleInput struct {
 	_ struct{} `type:"structure"`
 
@@ -8800,7 +8925,6 @@ func (s *DescribeReceiptRuleInput) SetRuleSetName(v string) *DescribeReceiptRule
 }
 
 // Represents the details of a receipt rule.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/email-2010-12-01/DescribeReceiptRuleResponse
 type DescribeReceiptRuleOutput struct {
 	_ struct{} `type:"structure"`
 
@@ -8828,8 +8952,7 @@ func (s *DescribeReceiptRuleOutput) SetRule(v *ReceiptRule) *DescribeReceiptRule
 
 // Represents a request to return the details of a receipt rule set. You use
 // receipt rule sets to receive email with Amazon SES. For more information,
-// see the Amazon SES Developer Guide (http://docs.aws.amazon.com/ses/latest/DeveloperGuide/receiving-email-concepts.html).
-// See also, https://docs.aws.amazon.com/goto/WebAPI/email-2010-12-01/DescribeReceiptRuleSetRequest
+// see the Amazon SES Developer Guide (https://docs.aws.amazon.com/ses/latest/DeveloperGuide/receiving-email-concepts.html).
 type DescribeReceiptRuleSetInput struct {
 	_ struct{} `type:"structure"`
 
@@ -8869,7 +8992,6 @@ func (s *DescribeReceiptRuleSetInput) SetRuleSetName(v string) *DescribeReceiptR
 }
 
 // Represents the details of the specified receipt rule set.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/email-2010-12-01/DescribeReceiptRuleSetResponse
 type DescribeReceiptRuleSetOutput struct {
 	_ struct{} `type:"structure"`
 
@@ -8913,7 +9035,6 @@ func (s *DescribeReceiptRuleSetOutput) SetRules(v []*ReceiptRule) *DescribeRecei
 // If the domain part of an address (the part after the @ sign) contains non-ASCII
 // characters, they must be encoded using Punycode, as described in RFC3492
 // (https://tools.ietf.org/html/rfc3492.html).
-// See also, https://docs.aws.amazon.com/goto/WebAPI/email-2010-12-01/Destination
 type Destination struct {
 	_ struct{} `type:"structure"`
 
@@ -8965,8 +9086,7 @@ func (s *Destination) SetToAddresses(v []*string) *Destination {
 // Event destinations are associated with configuration sets, which enable you
 // to publish email sending events to Amazon CloudWatch, Amazon Kinesis Firehose,
 // or Amazon Simple Notification Service (Amazon SNS). For information about
-// using configuration sets, see the Amazon SES Developer Guide (http://docs.aws.amazon.com/ses/latest/DeveloperGuide/monitor-sending-activity.html).
-// See also, https://docs.aws.amazon.com/goto/WebAPI/email-2010-12-01/EventDestination
+// using configuration sets, see the Amazon SES Developer Guide (https://docs.aws.amazon.com/ses/latest/DeveloperGuide/monitor-sending-activity.html).
 type EventDestination struct {
 	_ struct{} `type:"structure"`
 
@@ -9085,8 +9205,7 @@ func (s *EventDestination) SetSNSDestination(v *SNSDestination) *EventDestinatio
 // when an email that Amazon SES receives on your behalf bounces.
 //
 // For information about receiving email through Amazon SES, see the Amazon
-// SES Developer Guide (http://docs.aws.amazon.com/ses/latest/DeveloperGuide/receiving-email.html).
-// See also, https://docs.aws.amazon.com/goto/WebAPI/email-2010-12-01/ExtensionField
+// SES Developer Guide (https://docs.aws.amazon.com/ses/latest/DeveloperGuide/receiving-email.html).
 type ExtensionField struct {
 	_ struct{} `type:"structure"`
 
@@ -9141,7 +9260,6 @@ func (s *ExtensionField) SetValue(v string) *ExtensionField {
 	return s
 }
 
-// See also, https://docs.aws.amazon.com/goto/WebAPI/email-2010-12-01/GetAccountSendingEnabledInput
 type GetAccountSendingEnabledInput struct {
 	_ struct{} `type:"structure"`
 }
@@ -9157,13 +9275,12 @@ func (s GetAccountSendingEnabledInput) GoString() string {
 }
 
 // Represents a request to return the email sending status for your Amazon SES
-// account.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/email-2010-12-01/GetAccountSendingEnabledResponse
+// account in the current AWS Region.
 type GetAccountSendingEnabledOutput struct {
 	_ struct{} `type:"structure"`
 
 	// Describes whether email sending is enabled or disabled for your Amazon SES
-	// account.
+	// account in the current AWS Region.
 	Enabled *bool `type:"boolean"`
 }
 
@@ -9184,7 +9301,6 @@ func (s *GetAccountSendingEnabledOutput) SetEnabled(v bool) *GetAccountSendingEn
 }
 
 // Represents a request to retrieve an existing custom verification email template.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/email-2010-12-01/GetCustomVerificationEmailTemplateRequest
 type GetCustomVerificationEmailTemplateInput struct {
 	_ struct{} `type:"structure"`
 
@@ -9224,7 +9340,6 @@ func (s *GetCustomVerificationEmailTemplateInput) SetTemplateName(v string) *Get
 }
 
 // The content of the custom verification email template.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/email-2010-12-01/GetCustomVerificationEmailTemplateResponse
 type GetCustomVerificationEmailTemplateOutput struct {
 	_ struct{} `type:"structure"`
 
@@ -9299,8 +9414,7 @@ func (s *GetCustomVerificationEmailTemplateOutput) SetTemplateSubject(v string) 
 // identity. For domain identities, this request also returns the DKIM tokens
 // that are required for Easy DKIM signing, and whether Amazon SES successfully
 // verified that these tokens were published. For more information about Easy
-// DKIM, see the Amazon SES Developer Guide (http://docs.aws.amazon.com/ses/latest/DeveloperGuide/easy-dkim.html).
-// See also, https://docs.aws.amazon.com/goto/WebAPI/email-2010-12-01/GetIdentityDkimAttributesRequest
+// DKIM, see the Amazon SES Developer Guide (https://docs.aws.amazon.com/ses/latest/DeveloperGuide/easy-dkim.html).
 type GetIdentityDkimAttributesInput struct {
 	_ struct{} `type:"structure"`
 
@@ -9344,7 +9458,6 @@ func (s *GetIdentityDkimAttributesInput) SetIdentities(v []*string) *GetIdentity
 // domain identities, this response also contains the DKIM tokens that are required
 // for Easy DKIM signing, and whether Amazon SES successfully verified that
 // these tokens were published.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/email-2010-12-01/GetIdentityDkimAttributesResponse
 type GetIdentityDkimAttributesOutput struct {
 	_ struct{} `type:"structure"`
 
@@ -9372,8 +9485,7 @@ func (s *GetIdentityDkimAttributesOutput) SetDkimAttributes(v map[string]*Identi
 
 // Represents a request to return the Amazon SES custom MAIL FROM attributes
 // for a list of identities. For information about using a custom MAIL FROM
-// domain, see the Amazon SES Developer Guide (http://docs.aws.amazon.com/ses/latest/DeveloperGuide/mail-from.html).
-// See also, https://docs.aws.amazon.com/goto/WebAPI/email-2010-12-01/GetIdentityMailFromDomainAttributesRequest
+// domain, see the Amazon SES Developer Guide (https://docs.aws.amazon.com/ses/latest/DeveloperGuide/mail-from.html).
 type GetIdentityMailFromDomainAttributesInput struct {
 	_ struct{} `type:"structure"`
 
@@ -9413,7 +9525,6 @@ func (s *GetIdentityMailFromDomainAttributesInput) SetIdentities(v []*string) *G
 }
 
 // Represents the custom MAIL FROM attributes for a list of identities.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/email-2010-12-01/GetIdentityMailFromDomainAttributesResponse
 type GetIdentityMailFromDomainAttributesOutput struct {
 	_ struct{} `type:"structure"`
 
@@ -9441,8 +9552,7 @@ func (s *GetIdentityMailFromDomainAttributesOutput) SetMailFromDomainAttributes(
 
 // Represents a request to return the notification attributes for a list of
 // identities you verified with Amazon SES. For information about Amazon SES
-// notifications, see the Amazon SES Developer Guide (http://docs.aws.amazon.com/ses/latest/DeveloperGuide/notifications.html).
-// See also, https://docs.aws.amazon.com/goto/WebAPI/email-2010-12-01/GetIdentityNotificationAttributesRequest
+// notifications, see the Amazon SES Developer Guide (https://docs.aws.amazon.com/ses/latest/DeveloperGuide/notifications.html).
 type GetIdentityNotificationAttributesInput struct {
 	_ struct{} `type:"structure"`
 
@@ -9484,7 +9594,6 @@ func (s *GetIdentityNotificationAttributesInput) SetIdentities(v []*string) *Get
 }
 
 // Represents the notification attributes for a list of identities.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/email-2010-12-01/GetIdentityNotificationAttributesResponse
 type GetIdentityNotificationAttributesOutput struct {
 	_ struct{} `type:"structure"`
 
@@ -9513,8 +9622,7 @@ func (s *GetIdentityNotificationAttributesOutput) SetNotificationAttributes(v ma
 // Represents a request to return the requested sending authorization policies
 // for an identity. Sending authorization is an Amazon SES feature that enables
 // you to authorize other senders to use your identities. For information, see
-// the Amazon SES Developer Guide (http://docs.aws.amazon.com/ses/latest/DeveloperGuide/sending-authorization.html).
-// See also, https://docs.aws.amazon.com/goto/WebAPI/email-2010-12-01/GetIdentityPoliciesRequest
+// the Amazon SES Developer Guide (https://docs.aws.amazon.com/ses/latest/DeveloperGuide/sending-authorization.html).
 type GetIdentityPoliciesInput struct {
 	_ struct{} `type:"structure"`
 
@@ -9574,7 +9682,6 @@ func (s *GetIdentityPoliciesInput) SetPolicyNames(v []*string) *GetIdentityPolic
 }
 
 // Represents the requested sending authorization policies.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/email-2010-12-01/GetIdentityPoliciesResponse
 type GetIdentityPoliciesOutput struct {
 	_ struct{} `type:"structure"`
 
@@ -9603,8 +9710,7 @@ func (s *GetIdentityPoliciesOutput) SetPolicies(v map[string]*string) *GetIdenti
 // Represents a request to return the Amazon SES verification status of a list
 // of identities. For domain identities, this request also returns the verification
 // token. For information about verifying identities with Amazon SES, see the
-// Amazon SES Developer Guide (http://docs.aws.amazon.com/ses/latest/DeveloperGuide/verify-addresses-and-domains.html).
-// See also, https://docs.aws.amazon.com/goto/WebAPI/email-2010-12-01/GetIdentityVerificationAttributesRequest
+// Amazon SES Developer Guide (https://docs.aws.amazon.com/ses/latest/DeveloperGuide/verify-addresses-and-domains.html).
 type GetIdentityVerificationAttributesInput struct {
 	_ struct{} `type:"structure"`
 
@@ -9645,7 +9751,6 @@ func (s *GetIdentityVerificationAttributesInput) SetIdentities(v []*string) *Get
 
 // The Amazon SES verification status of a list of identities. For domain identities,
 // this response also contains the verification token.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/email-2010-12-01/GetIdentityVerificationAttributesResponse
 type GetIdentityVerificationAttributesOutput struct {
 	_ struct{} `type:"structure"`
 
@@ -9671,7 +9776,6 @@ func (s *GetIdentityVerificationAttributesOutput) SetVerificationAttributes(v ma
 	return s
 }
 
-// See also, https://docs.aws.amazon.com/goto/WebAPI/email-2010-12-01/GetSendQuotaInput
 type GetSendQuotaInput struct {
 	_ struct{} `type:"structure"`
 }
@@ -9688,7 +9792,6 @@ func (s GetSendQuotaInput) GoString() string {
 
 // Represents your Amazon SES daily sending quota, maximum send rate, and the
 // number of emails you have sent in the last 24 hours.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/email-2010-12-01/GetSendQuotaResponse
 type GetSendQuotaOutput struct {
 	_ struct{} `type:"structure"`
 
@@ -9735,7 +9838,6 @@ func (s *GetSendQuotaOutput) SetSentLast24Hours(v float64) *GetSendQuotaOutput {
 	return s
 }
 
-// See also, https://docs.aws.amazon.com/goto/WebAPI/email-2010-12-01/GetSendStatisticsInput
 type GetSendStatisticsInput struct {
 	_ struct{} `type:"structure"`
 }
@@ -9752,7 +9854,6 @@ func (s GetSendStatisticsInput) GoString() string {
 
 // Represents a list of data points. This list contains aggregated data from
 // the previous two weeks of your sending activity with Amazon SES.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/email-2010-12-01/GetSendStatisticsResponse
 type GetSendStatisticsOutput struct {
 	_ struct{} `type:"structure"`
 
@@ -9776,7 +9877,6 @@ func (s *GetSendStatisticsOutput) SetSendDataPoints(v []*SendDataPoint) *GetSend
 	return s
 }
 
-// See also, https://docs.aws.amazon.com/goto/WebAPI/email-2010-12-01/GetTemplateRequest
 type GetTemplateInput struct {
 	_ struct{} `type:"structure"`
 
@@ -9815,7 +9915,6 @@ func (s *GetTemplateInput) SetTemplateName(v string) *GetTemplateInput {
 	return s
 }
 
-// See also, https://docs.aws.amazon.com/goto/WebAPI/email-2010-12-01/GetTemplateResponse
 type GetTemplateOutput struct {
 	_ struct{} `type:"structure"`
 
@@ -9841,26 +9940,25 @@ func (s *GetTemplateOutput) SetTemplate(v *Template) *GetTemplateOutput {
 }
 
 // Represents the DKIM attributes of a verified email address or a domain.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/email-2010-12-01/IdentityDkimAttributes
 type IdentityDkimAttributes struct {
 	_ struct{} `type:"structure"`
 
-	// True if DKIM signing is enabled for email sent from the identity; false otherwise.
-	// The default value is true.
+	// Is true if DKIM signing is enabled for email sent from the identity. It's
+	// false otherwise. The default value is true.
 	//
 	// DkimEnabled is a required field
 	DkimEnabled *bool `type:"boolean" required:"true"`
 
 	// A set of character strings that represent the domain's identity. Using these
-	// tokens, you will need to create DNS CNAME records that point to DKIM public
-	// keys hosted by Amazon SES. Amazon Web Services will eventually detect that
-	// you have updated your DNS records; this detection process may take up to
-	// 72 hours. Upon successful detection, Amazon SES will be able to DKIM-sign
-	// email originating from that domain. (This only applies to domain identities,
-	// not email address identities.)
+	// tokens, you need to create DNS CNAME records that point to DKIM public keys
+	// that are hosted by Amazon SES. Amazon Web Services eventually detects that
+	// you've updated your DNS records. This detection process might take up to
+	// 72 hours. After successful detection, Amazon SES is able to DKIM-sign email
+	// originating from that domain. (This only applies to domain identities, not
+	// email address identities.)
 	//
-	// For more information about creating DNS records using DKIM tokens, go to
-	// the Amazon SES Developer Guide (http://docs.aws.amazon.com/ses/latest/DeveloperGuide/easy-dkim-dns-records.html).
+	// For more information about creating DNS records using DKIM tokens, see the
+	// Amazon SES Developer Guide (https://docs.aws.amazon.com/ses/latest/DeveloperGuide/easy-dkim.html).
 	DkimTokens []*string `type:"list"`
 
 	// Describes whether Amazon SES has successfully verified the DKIM DNS records
@@ -9901,7 +9999,6 @@ func (s *IdentityDkimAttributes) SetDkimVerificationStatus(v string) *IdentityDk
 
 // Represents the custom MAIL FROM domain attributes of a verified identity
 // (email address or domain).
-// See also, https://docs.aws.amazon.com/goto/WebAPI/email-2010-12-01/IdentityMailFromDomainAttributes
 type IdentityMailFromDomainAttributes struct {
 	_ struct{} `type:"structure"`
 
@@ -9965,7 +10062,6 @@ func (s *IdentityMailFromDomainAttributes) SetMailFromDomainStatus(v string) *Id
 // an identity has Amazon Simple Notification Service (Amazon SNS) topics set
 // for bounce, complaint, and/or delivery notifications, and whether feedback
 // forwarding is enabled for bounce and complaint notifications.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/email-2010-12-01/IdentityNotificationAttributes
 type IdentityNotificationAttributes struct {
 	_ struct{} `type:"structure"`
 
@@ -10067,7 +10163,6 @@ func (s *IdentityNotificationAttributes) SetHeadersInDeliveryNotificationsEnable
 }
 
 // Represents the verification attributes of a single identity.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/email-2010-12-01/IdentityVerificationAttributes
 type IdentityVerificationAttributes struct {
 	_ struct{} `type:"structure"`
 
@@ -10109,8 +10204,7 @@ func (s *IdentityVerificationAttributes) SetVerificationToken(v string) *Identit
 // Event destinations, such as Amazon Kinesis Firehose, are associated with
 // configuration sets, which enable you to publish email sending events. For
 // information about using configuration sets, see the Amazon SES Developer
-// Guide (http://docs.aws.amazon.com/ses/latest/DeveloperGuide/monitor-sending-activity.html).
-// See also, https://docs.aws.amazon.com/goto/WebAPI/email-2010-12-01/KinesisFirehoseDestination
+// Guide (https://docs.aws.amazon.com/ses/latest/DeveloperGuide/monitor-sending-activity.html).
 type KinesisFirehoseDestination struct {
 	_ struct{} `type:"structure"`
 
@@ -10172,18 +10266,17 @@ func (s *KinesisFirehoseDestination) SetIAMRoleARN(v string) *KinesisFirehoseDes
 // To enable Amazon SES to call your AWS Lambda function or to publish to an
 // Amazon SNS topic of another account, Amazon SES must have permission to access
 // those resources. For information about giving permissions, see the Amazon
-// SES Developer Guide (http://docs.aws.amazon.com/ses/latest/DeveloperGuide/receiving-email-permissions.html).
+// SES Developer Guide (https://docs.aws.amazon.com/ses/latest/DeveloperGuide/receiving-email-permissions.html).
 //
 // For information about using AWS Lambda actions in receipt rules, see the
-// Amazon SES Developer Guide (http://docs.aws.amazon.com/ses/latest/DeveloperGuide/receiving-email-action-lambda.html).
-// See also, https://docs.aws.amazon.com/goto/WebAPI/email-2010-12-01/LambdaAction
+// Amazon SES Developer Guide (https://docs.aws.amazon.com/ses/latest/DeveloperGuide/receiving-email-action-lambda.html).
 type LambdaAction struct {
 	_ struct{} `type:"structure"`
 
 	// The Amazon Resource Name (ARN) of the AWS Lambda function. An example of
 	// an AWS Lambda function ARN is arn:aws:lambda:us-west-2:account-id:function:MyFunction.
 	// For more information about AWS Lambda, see the AWS Lambda Developer Guide
-	// (http://docs.aws.amazon.com/lambda/latest/dg/welcome.html).
+	// (https://docs.aws.amazon.com/lambda/latest/dg/welcome.html).
 	//
 	// FunctionArn is a required field
 	FunctionArn *string `type:"string" required:"true"`
@@ -10192,7 +10285,7 @@ type LambdaAction struct {
 	// means that the execution of the function will immediately result in a response,
 	// and a value of Event means that the function will be invoked asynchronously.
 	// The default value is Event. For information about AWS Lambda invocation types,
-	// see the AWS Lambda Developer Guide (http://docs.aws.amazon.com/lambda/latest/dg/API_Invoke.html).
+	// see the AWS Lambda Developer Guide (https://docs.aws.amazon.com/lambda/latest/dg/API_Invoke.html).
 	//
 	// There is a 30-second timeout on RequestResponse invocations. You should use
 	// Event invocation in most cases. Use RequestResponse only when you want to
@@ -10203,7 +10296,7 @@ type LambdaAction struct {
 	// The Amazon Resource Name (ARN) of the Amazon SNS topic to notify when the
 	// Lambda action is taken. An example of an Amazon SNS topic ARN is arn:aws:sns:us-west-2:123456789012:MyTopic.
 	// For more information about Amazon SNS topics, see the Amazon SNS Developer
-	// Guide (http://docs.aws.amazon.com/sns/latest/dg/CreateTopic.html).
+	// Guide (https://docs.aws.amazon.com/sns/latest/dg/CreateTopic.html).
 	TopicArn *string `type:"string"`
 }
 
@@ -10251,8 +10344,7 @@ func (s *LambdaAction) SetTopicArn(v string) *LambdaAction {
 // Represents a request to list the configuration sets associated with your
 // AWS account. Configuration sets enable you to publish email sending events.
 // For information about using configuration sets, see the Amazon SES Developer
-// Guide (http://docs.aws.amazon.com/ses/latest/DeveloperGuide/monitor-sending-activity.html).
-// See also, https://docs.aws.amazon.com/goto/WebAPI/email-2010-12-01/ListConfigurationSetsRequest
+// Guide (https://docs.aws.amazon.com/ses/latest/DeveloperGuide/monitor-sending-activity.html).
 type ListConfigurationSetsInput struct {
 	_ struct{} `type:"structure"`
 
@@ -10288,8 +10380,7 @@ func (s *ListConfigurationSetsInput) SetNextToken(v string) *ListConfigurationSe
 
 // A list of configuration sets associated with your AWS account. Configuration
 // sets enable you to publish email sending events. For information about using
-// configuration sets, see the Amazon SES Developer Guide (http://docs.aws.amazon.com/ses/latest/DeveloperGuide/monitor-sending-activity.html).
-// See also, https://docs.aws.amazon.com/goto/WebAPI/email-2010-12-01/ListConfigurationSetsResponse
+// configuration sets, see the Amazon SES Developer Guide (https://docs.aws.amazon.com/ses/latest/DeveloperGuide/monitor-sending-activity.html).
 type ListConfigurationSetsOutput struct {
 	_ struct{} `type:"structure"`
 
@@ -10327,9 +10418,8 @@ func (s *ListConfigurationSetsOutput) SetNextToken(v string) *ListConfigurationS
 // for your account.
 //
 // For more information about custom verification email templates, see Using
-// Custom Verification Email Templates (https://docs.aws.amazon.com/ses/latest/DeveloperGuide/custom-verification-emails.html)
+// Custom Verification Email Templates (ses/latest/DeveloperGuide/custom-verification-emails.html)
 // in the Amazon SES Developer Guide.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/email-2010-12-01/ListCustomVerificationEmailTemplatesRequest
 type ListCustomVerificationEmailTemplatesInput struct {
 	_ struct{} `type:"structure"`
 
@@ -10380,7 +10470,6 @@ func (s *ListCustomVerificationEmailTemplatesInput) SetNextToken(v string) *List
 }
 
 // A paginated list of custom verification email templates.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/email-2010-12-01/ListCustomVerificationEmailTemplatesResponse
 type ListCustomVerificationEmailTemplatesOutput struct {
 	_ struct{} `type:"structure"`
 
@@ -10418,7 +10507,6 @@ func (s *ListCustomVerificationEmailTemplatesOutput) SetNextToken(v string) *Lis
 // Represents a request to return a list of all identities (email addresses
 // and domains) that you have attempted to verify under your AWS account, regardless
 // of verification status.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/email-2010-12-01/ListIdentitiesRequest
 type ListIdentitiesInput struct {
 	_ struct{} `type:"structure"`
 
@@ -10463,7 +10551,6 @@ func (s *ListIdentitiesInput) SetNextToken(v string) *ListIdentitiesInput {
 
 // A list of all identities that you have attempted to verify under your AWS
 // account, regardless of verification status.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/email-2010-12-01/ListIdentitiesResponse
 type ListIdentitiesOutput struct {
 	_ struct{} `type:"structure"`
 
@@ -10501,8 +10588,7 @@ func (s *ListIdentitiesOutput) SetNextToken(v string) *ListIdentitiesOutput {
 // Represents a request to return a list of sending authorization policies that
 // are attached to an identity. Sending authorization is an Amazon SES feature
 // that enables you to authorize other senders to use your identities. For information,
-// see the Amazon SES Developer Guide (http://docs.aws.amazon.com/ses/latest/DeveloperGuide/sending-authorization.html).
-// See also, https://docs.aws.amazon.com/goto/WebAPI/email-2010-12-01/ListIdentityPoliciesRequest
+// see the Amazon SES Developer Guide (https://docs.aws.amazon.com/ses/latest/DeveloperGuide/sending-authorization.html).
 type ListIdentityPoliciesInput struct {
 	_ struct{} `type:"structure"`
 
@@ -10546,7 +10632,6 @@ func (s *ListIdentityPoliciesInput) SetIdentity(v string) *ListIdentityPoliciesI
 }
 
 // A list of names of sending authorization policies that apply to an identity.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/email-2010-12-01/ListIdentityPoliciesResponse
 type ListIdentityPoliciesOutput struct {
 	_ struct{} `type:"structure"`
 
@@ -10574,8 +10659,7 @@ func (s *ListIdentityPoliciesOutput) SetPolicyNames(v []*string) *ListIdentityPo
 
 // Represents a request to list the IP address filters that exist under your
 // AWS account. You use IP address filters when you receive email with Amazon
-// SES. For more information, see the Amazon SES Developer Guide (http://docs.aws.amazon.com/ses/latest/DeveloperGuide/receiving-email-concepts.html).
-// See also, https://docs.aws.amazon.com/goto/WebAPI/email-2010-12-01/ListReceiptFiltersRequest
+// SES. For more information, see the Amazon SES Developer Guide (https://docs.aws.amazon.com/ses/latest/DeveloperGuide/receiving-email-concepts.html).
 type ListReceiptFiltersInput struct {
 	_ struct{} `type:"structure"`
 }
@@ -10591,7 +10675,6 @@ func (s ListReceiptFiltersInput) GoString() string {
 }
 
 // A list of IP address filters that exist under your AWS account.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/email-2010-12-01/ListReceiptFiltersResponse
 type ListReceiptFiltersOutput struct {
 	_ struct{} `type:"structure"`
 
@@ -10618,8 +10701,7 @@ func (s *ListReceiptFiltersOutput) SetFilters(v []*ReceiptFilter) *ListReceiptFi
 
 // Represents a request to list the receipt rule sets that exist under your
 // AWS account. You use receipt rule sets to receive email with Amazon SES.
-// For more information, see the Amazon SES Developer Guide (http://docs.aws.amazon.com/ses/latest/DeveloperGuide/receiving-email-concepts.html).
-// See also, https://docs.aws.amazon.com/goto/WebAPI/email-2010-12-01/ListReceiptRuleSetsRequest
+// For more information, see the Amazon SES Developer Guide (https://docs.aws.amazon.com/ses/latest/DeveloperGuide/receiving-email-concepts.html).
 type ListReceiptRuleSetsInput struct {
 	_ struct{} `type:"structure"`
 
@@ -10645,7 +10727,6 @@ func (s *ListReceiptRuleSetsInput) SetNextToken(v string) *ListReceiptRuleSetsIn
 }
 
 // A list of receipt rule sets that exist under your AWS account.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/email-2010-12-01/ListReceiptRuleSetsResponse
 type ListReceiptRuleSetsOutput struct {
 	_ struct{} `type:"structure"`
 
@@ -10681,7 +10762,6 @@ func (s *ListReceiptRuleSetsOutput) SetRuleSets(v []*ReceiptRuleSetMetadata) *Li
 	return s
 }
 
-// See also, https://docs.aws.amazon.com/goto/WebAPI/email-2010-12-01/ListTemplatesRequest
 type ListTemplatesInput struct {
 	_ struct{} `type:"structure"`
 
@@ -10718,7 +10798,6 @@ func (s *ListTemplatesInput) SetNextToken(v string) *ListTemplatesInput {
 	return s
 }
 
-// See also, https://docs.aws.amazon.com/goto/WebAPI/email-2010-12-01/ListTemplatesResponse
 type ListTemplatesOutput struct {
 	_ struct{} `type:"structure"`
 
@@ -10754,7 +10833,6 @@ func (s *ListTemplatesOutput) SetTemplatesMetadata(v []*TemplateMetadata) *ListT
 	return s
 }
 
-// See also, https://docs.aws.amazon.com/goto/WebAPI/email-2010-12-01/ListVerifiedEmailAddressesInput
 type ListVerifiedEmailAddressesInput struct {
 	_ struct{} `type:"structure"`
 }
@@ -10771,7 +10849,6 @@ func (s ListVerifiedEmailAddressesInput) GoString() string {
 
 // A list of email addresses that you have verified with Amazon SES under your
 // AWS account.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/email-2010-12-01/ListVerifiedEmailAddressesResponse
 type ListVerifiedEmailAddressesOutput struct {
 	_ struct{} `type:"structure"`
 
@@ -10796,7 +10873,6 @@ func (s *ListVerifiedEmailAddressesOutput) SetVerifiedEmailAddresses(v []*string
 }
 
 // Represents the message to be sent, composed of a subject and a body.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/email-2010-12-01/Message
 type Message struct {
 	_ struct{} `type:"structure"`
 
@@ -10864,14 +10940,13 @@ func (s *Message) SetSubject(v *Content) *Message {
 // (DSN) when an email that Amazon SES receives on your behalf bounces.
 //
 // For information about receiving email through Amazon SES, see the Amazon
-// SES Developer Guide (http://docs.aws.amazon.com/ses/latest/DeveloperGuide/receiving-email.html).
-// See also, https://docs.aws.amazon.com/goto/WebAPI/email-2010-12-01/MessageDsn
+// SES Developer Guide (https://docs.aws.amazon.com/ses/latest/DeveloperGuide/receiving-email.html).
 type MessageDsn struct {
 	_ struct{} `type:"structure"`
 
 	// When the message was received by the reporting mail transfer agent (MTA),
 	// in RFC 822 (https://www.ietf.org/rfc/rfc0822.txt) date-time format.
-	ArrivalDate *time.Time `type:"timestamp" timestampFormat:"iso8601"`
+	ArrivalDate *time.Time `type:"timestamp"`
 
 	// Additional X-headers to include in the DSN.
 	ExtensionFields []*ExtensionField `type:"list"`
@@ -10940,8 +11015,7 @@ func (s *MessageDsn) SetReportingMta(v string) *MessageDsn {
 //
 // Message tags, which you use with configuration sets, enable you to publish
 // email sending events. For information about using configuration sets, see
-// the Amazon SES Developer Guide (http://docs.aws.amazon.com/ses/latest/DeveloperGuide/monitor-sending-activity.html).
-// See also, https://docs.aws.amazon.com/goto/WebAPI/email-2010-12-01/MessageTag
+// the Amazon SES Developer Guide (https://docs.aws.amazon.com/ses/latest/DeveloperGuide/monitor-sending-activity.html).
 type MessageTag struct {
 	_ struct{} `type:"structure"`
 
@@ -11004,11 +11078,76 @@ func (s *MessageTag) SetValue(v string) *MessageTag {
 	return s
 }
 
+// A request to modify the delivery options for a configuration set.
+type PutConfigurationSetDeliveryOptionsInput struct {
+	_ struct{} `type:"structure"`
+
+	// The name of the configuration set that you want to specify the delivery options
+	// for.
+	//
+	// ConfigurationSetName is a required field
+	ConfigurationSetName *string `type:"string" required:"true"`
+
+	// Specifies whether messages that use the configuration set are required to
+	// use Transport Layer Security (TLS).
+	DeliveryOptions *DeliveryOptions `type:"structure"`
+}
+
+// String returns the string representation
+func (s PutConfigurationSetDeliveryOptionsInput) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s PutConfigurationSetDeliveryOptionsInput) GoString() string {
+	return s.String()
+}
+
+// Validate inspects the fields of the type to determine if they are valid.
+func (s *PutConfigurationSetDeliveryOptionsInput) Validate() error {
+	invalidParams := request.ErrInvalidParams{Context: "PutConfigurationSetDeliveryOptionsInput"}
+	if s.ConfigurationSetName == nil {
+		invalidParams.Add(request.NewErrParamRequired("ConfigurationSetName"))
+	}
+
+	if invalidParams.Len() > 0 {
+		return invalidParams
+	}
+	return nil
+}
+
+// SetConfigurationSetName sets the ConfigurationSetName field's value.
+func (s *PutConfigurationSetDeliveryOptionsInput) SetConfigurationSetName(v string) *PutConfigurationSetDeliveryOptionsInput {
+	s.ConfigurationSetName = &v
+	return s
+}
+
+// SetDeliveryOptions sets the DeliveryOptions field's value.
+func (s *PutConfigurationSetDeliveryOptionsInput) SetDeliveryOptions(v *DeliveryOptions) *PutConfigurationSetDeliveryOptionsInput {
+	s.DeliveryOptions = v
+	return s
+}
+
+// An HTTP 200 response if the request succeeds, or an error message if the
+// request fails.
+type PutConfigurationSetDeliveryOptionsOutput struct {
+	_ struct{} `type:"structure"`
+}
+
+// String returns the string representation
+func (s PutConfigurationSetDeliveryOptionsOutput) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s PutConfigurationSetDeliveryOptionsOutput) GoString() string {
+	return s.String()
+}
+
 // Represents a request to add or update a sending authorization policy for
 // an identity. Sending authorization is an Amazon SES feature that enables
 // you to authorize other senders to use your identities. For information, see
-// the Amazon SES Developer Guide (http://docs.aws.amazon.com/ses/latest/DeveloperGuide/sending-authorization.html).
-// See also, https://docs.aws.amazon.com/goto/WebAPI/email-2010-12-01/PutIdentityPolicyRequest
+// the Amazon SES Developer Guide (https://docs.aws.amazon.com/ses/latest/DeveloperGuide/sending-authorization.html).
 type PutIdentityPolicyInput struct {
 	_ struct{} `type:"structure"`
 
@@ -11024,7 +11163,7 @@ type PutIdentityPolicyInput struct {
 	// The text of the policy in JSON format. The policy cannot exceed 4 KB.
 	//
 	// For information about the syntax of sending authorization policies, see the
-	// Amazon SES Developer Guide (http://docs.aws.amazon.com/ses/latest/DeveloperGuide/sending-authorization-policies.html).
+	// Amazon SES Developer Guide (https://docs.aws.amazon.com/ses/latest/DeveloperGuide/sending-authorization-policies.html).
 	//
 	// Policy is a required field
 	Policy *string `min:"1" type:"string" required:"true"`
@@ -11092,7 +11231,6 @@ func (s *PutIdentityPolicyInput) SetPolicyName(v string) *PutIdentityPolicyInput
 }
 
 // An empty element returned on a successful request.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/email-2010-12-01/PutIdentityPolicyResponse
 type PutIdentityPolicyOutput struct {
 	_ struct{} `type:"structure"`
 }
@@ -11108,7 +11246,6 @@ func (s PutIdentityPolicyOutput) GoString() string {
 }
 
 // Represents the raw data of the message.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/email-2010-12-01/RawMessage
 type RawMessage struct {
 	_ struct{} `type:"structure"`
 
@@ -11128,7 +11265,7 @@ type RawMessage struct {
 	// Do not include these X-headers in the DKIM signature, because they are removed
 	// by Amazon SES before sending the email.
 	//
-	// For more information, go to the Amazon SES Developer Guide (http://docs.aws.amazon.com/ses/latest/DeveloperGuide/send-email-raw.html).
+	// For more information, go to the Amazon SES Developer Guide (https://docs.aws.amazon.com/ses/latest/DeveloperGuide/send-email-raw.html).
 	//
 	// Data is automatically base64 encoded/decoded by the SDK.
 	//
@@ -11170,8 +11307,7 @@ func (s *RawMessage) SetData(v []byte) *RawMessage {
 // data type can represent only one action.
 //
 // For information about setting up receipt rules, see the Amazon SES Developer
-// Guide (http://docs.aws.amazon.com/ses/latest/DeveloperGuide/receiving-email-receipt-rules.html).
-// See also, https://docs.aws.amazon.com/goto/WebAPI/email-2010-12-01/ReceiptAction
+// Guide (https://docs.aws.amazon.com/ses/latest/DeveloperGuide/receiving-email-receipt-rules.html).
 type ReceiptAction struct {
 	_ struct{} `type:"structure"`
 
@@ -11199,7 +11335,7 @@ type ReceiptAction struct {
 	StopAction *StopAction `type:"structure"`
 
 	// Calls Amazon WorkMail and, optionally, publishes a notification to Amazon
-	// SNS.
+	// Amazon SNS.
 	WorkmailAction *WorkmailAction `type:"structure"`
 }
 
@@ -11304,8 +11440,7 @@ func (s *ReceiptAction) SetWorkmailAction(v *WorkmailAction) *ReceiptAction {
 // mail originating from an IP address or range of IP addresses.
 //
 // For information about setting up IP address filters, see the Amazon SES Developer
-// Guide (http://docs.aws.amazon.com/ses/latest/DeveloperGuide/receiving-email-ip-filters.html).
-// See also, https://docs.aws.amazon.com/goto/WebAPI/email-2010-12-01/ReceiptFilter
+// Guide (https://docs.aws.amazon.com/ses/latest/DeveloperGuide/receiving-email-ip-filters.html).
 type ReceiptFilter struct {
 	_ struct{} `type:"structure"`
 
@@ -11375,8 +11510,7 @@ func (s *ReceiptFilter) SetName(v string) *ReceiptFilter {
 // mail originating from an IP address or range of IP addresses.
 //
 // For information about setting up IP address filters, see the Amazon SES Developer
-// Guide (http://docs.aws.amazon.com/ses/latest/DeveloperGuide/receiving-email-ip-filters.html).
-// See also, https://docs.aws.amazon.com/goto/WebAPI/email-2010-12-01/ReceiptIpFilter
+// Guide (https://docs.aws.amazon.com/ses/latest/DeveloperGuide/receiving-email-ip-filters.html).
 type ReceiptIpFilter struct {
 	_ struct{} `type:"structure"`
 
@@ -11442,8 +11576,7 @@ func (s *ReceiptIpFilter) SetPolicy(v string) *ReceiptIpFilter {
 // the message.
 //
 // For information about setting up receipt rules, see the Amazon SES Developer
-// Guide (http://docs.aws.amazon.com/ses/latest/DeveloperGuide/receiving-email-receipt-rules.html).
-// See also, https://docs.aws.amazon.com/goto/WebAPI/email-2010-12-01/ReceiptRule
+// Guide (https://docs.aws.amazon.com/ses/latest/DeveloperGuide/receiving-email-receipt-rules.html).
 type ReceiptRule struct {
 	_ struct{} `type:"structure"`
 
@@ -11557,13 +11690,12 @@ func (s *ReceiptRule) SetTlsPolicy(v string) *ReceiptRule {
 // should do with mail it receives on behalf of your account's verified domains.
 //
 // For information about setting up receipt rule sets, see the Amazon SES Developer
-// Guide (http://docs.aws.amazon.com/ses/latest/DeveloperGuide/receiving-email-receipt-rule-set.html).
-// See also, https://docs.aws.amazon.com/goto/WebAPI/email-2010-12-01/ReceiptRuleSetMetadata
+// Guide (https://docs.aws.amazon.com/ses/latest/DeveloperGuide/receiving-email-receipt-rule-set.html).
 type ReceiptRuleSetMetadata struct {
 	_ struct{} `type:"structure"`
 
 	// The date and time the receipt rule set was created.
-	CreatedTimestamp *time.Time `type:"timestamp" timestampFormat:"iso8601"`
+	CreatedTimestamp *time.Time `type:"timestamp"`
 
 	// The name of the receipt rule set. The name must:
 	//
@@ -11602,8 +11734,7 @@ func (s *ReceiptRuleSetMetadata) SetName(v string) *ReceiptRuleSetMetadata {
 // (DSN) when an email that Amazon SES receives on your behalf bounces.
 //
 // For information about receiving email through Amazon SES, see the Amazon
-// SES Developer Guide (http://docs.aws.amazon.com/ses/latest/DeveloperGuide/receiving-email.html).
-// See also, https://docs.aws.amazon.com/goto/WebAPI/email-2010-12-01/RecipientDsnFields
+// SES Developer Guide (https://docs.aws.amazon.com/ses/latest/DeveloperGuide/receiving-email.html).
 type RecipientDsnFields struct {
 	_ struct{} `type:"structure"`
 
@@ -11634,7 +11765,7 @@ type RecipientDsnFields struct {
 
 	// The time the final delivery attempt was made, in RFC 822 (https://www.ietf.org/rfc/rfc0822.txt)
 	// date-time format.
-	LastAttemptDate *time.Time `type:"timestamp" timestampFormat:"iso8601"`
+	LastAttemptDate *time.Time `type:"timestamp"`
 
 	// The MTA to which the remote MTA attempted to deliver the message, formatted
 	// as specified in RFC 3464 (https://tools.ietf.org/html/rfc3464) (mta-name-type;
@@ -11729,8 +11860,7 @@ func (s *RecipientDsnFields) SetStatus(v string) *RecipientDsnFields {
 
 // Represents a request to reorder the receipt rules within a receipt rule set.
 // You use receipt rule sets to receive email with Amazon SES. For more information,
-// see the Amazon SES Developer Guide (http://docs.aws.amazon.com/ses/latest/DeveloperGuide/receiving-email-concepts.html).
-// See also, https://docs.aws.amazon.com/goto/WebAPI/email-2010-12-01/ReorderReceiptRuleSetRequest
+// see the Amazon SES Developer Guide (https://docs.aws.amazon.com/ses/latest/DeveloperGuide/receiving-email-concepts.html).
 type ReorderReceiptRuleSetInput struct {
 	_ struct{} `type:"structure"`
 
@@ -11785,7 +11915,6 @@ func (s *ReorderReceiptRuleSetInput) SetRuleSetName(v string) *ReorderReceiptRul
 }
 
 // An empty element returned on a successful request.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/email-2010-12-01/ReorderReceiptRuleSetResponse
 type ReorderReceiptRuleSetOutput struct {
 	_ struct{} `type:"structure"`
 }
@@ -11801,7 +11930,6 @@ func (s ReorderReceiptRuleSetOutput) GoString() string {
 }
 
 // Contains information about the reputation settings for a configuration set.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/email-2010-12-01/ReputationOptions
 type ReputationOptions struct {
 	_ struct{} `type:"structure"`
 
@@ -11814,7 +11942,7 @@ type ReputationOptions struct {
 	//
 	// If email sending for the configuration set has never been disabled and later
 	// re-enabled, the value of this attribute is null.
-	LastFreshStart *time.Time `type:"timestamp" timestampFormat:"iso8601"`
+	LastFreshStart *time.Time `type:"timestamp"`
 
 	// Describes whether or not Amazon SES publishes reputation metrics for the
 	// configuration set, such as bounce and complaint rates, to Amazon CloudWatch.
@@ -11866,14 +11994,13 @@ func (s *ReputationOptions) SetSendingEnabled(v bool) *ReputationOptions {
 // To enable Amazon SES to write emails to your Amazon S3 bucket, use an AWS
 // KMS key to encrypt your emails, or publish to an Amazon SNS topic of another
 // account, Amazon SES must have permission to access those resources. For information
-// about giving permissions, see the Amazon SES Developer Guide (http://docs.aws.amazon.com/ses/latest/DeveloperGuide/receiving-email-permissions.html).
+// about giving permissions, see the Amazon SES Developer Guide (https://docs.aws.amazon.com/ses/latest/DeveloperGuide/receiving-email-permissions.html).
 //
 // When you save your emails to an Amazon S3 bucket, the maximum email size
 // (including headers) is 30 MB. Emails larger than that will bounce.
 //
 // For information about specifying Amazon S3 actions in receipt rules, see
-// the Amazon SES Developer Guide (http://docs.aws.amazon.com/ses/latest/DeveloperGuide/receiving-email-action-s3.html).
-// See also, https://docs.aws.amazon.com/goto/WebAPI/email-2010-12-01/S3Action
+// the Amazon SES Developer Guide (https://docs.aws.amazon.com/ses/latest/DeveloperGuide/receiving-email-action-s3.html).
 type S3Action struct {
 	_ struct{} `type:"structure"`
 
@@ -11896,10 +12023,10 @@ type S3Action struct {
 	//    * To use a custom master key you created in AWS KMS, provide the ARN of
 	//    the master key and ensure that you add a statement to your key's policy
 	//    to give Amazon SES permission to use it. For more information about giving
-	//    permissions, see the Amazon SES Developer Guide (http://docs.aws.amazon.com/ses/latest/DeveloperGuide/receiving-email-permissions.html).
+	//    permissions, see the Amazon SES Developer Guide (https://docs.aws.amazon.com/ses/latest/DeveloperGuide/receiving-email-permissions.html).
 	//
 	// For more information about key policies, see the AWS KMS Developer Guide
-	// (http://docs.aws.amazon.com/kms/latest/developerguide/concepts.html). If
+	// (https://docs.aws.amazon.com/kms/latest/developerguide/concepts.html). If
 	// you do not specify a master key, Amazon SES will not encrypt your emails.
 	//
 	// Your mail is encrypted by Amazon SES using the Amazon S3 encryption client
@@ -11907,10 +12034,10 @@ type S3Action struct {
 	// using Amazon S3 server-side encryption. This means that you must use the
 	// Amazon S3 encryption client to decrypt the email after retrieving it from
 	// Amazon S3, as the service has no access to use your AWS KMS keys for decryption.
-	// This encryption client is currently available with the AWS Java SDK (http://aws.amazon.com/sdk-for-java/)
-	// and AWS Ruby SDK (http://aws.amazon.com/sdk-for-ruby/) only. For more information
-	// about client-side encryption using AWS KMS master keys, see the Amazon S3
-	// Developer Guide (AmazonS3/latest/dev/UsingClientSideEncryption.html).
+	// This encryption client is currently available with the AWS SDK for Java (http://aws.amazon.com/sdk-for-java/)
+	// and AWS SDK for Ruby (http://aws.amazon.com/sdk-for-ruby/) only. For more
+	// information about client-side encryption using AWS KMS master keys, see the
+	// Amazon S3 Developer Guide (https://docs.aws.amazon.com/AmazonS3/latest/dev/UsingClientSideEncryption.html).
 	KmsKeyArn *string `type:"string"`
 
 	// The key prefix of the Amazon S3 bucket. The key prefix is similar to a directory
@@ -11921,7 +12048,7 @@ type S3Action struct {
 	// The ARN of the Amazon SNS topic to notify when the message is saved to the
 	// Amazon S3 bucket. An example of an Amazon SNS topic ARN is arn:aws:sns:us-west-2:123456789012:MyTopic.
 	// For more information about Amazon SNS topics, see the Amazon SNS Developer
-	// Guide (http://docs.aws.amazon.com/sns/latest/dg/CreateTopic.html).
+	// Guide (https://docs.aws.amazon.com/sns/latest/dg/CreateTopic.html).
 	TopicArn *string `type:"string"`
 }
 
@@ -11982,15 +12109,14 @@ func (s *S3Action) SetTopicArn(v string) *S3Action {
 // SES permission to publish emails to it. However, if you don't own the Amazon
 // SNS topic, you need to attach a policy to the topic to give Amazon SES permissions
 // to access it. For information about giving permissions, see the Amazon SES
-// Developer Guide (http://docs.aws.amazon.com/ses/latest/DeveloperGuide/receiving-email-permissions.html).
+// Developer Guide (https://docs.aws.amazon.com/ses/latest/DeveloperGuide/receiving-email-permissions.html).
 //
 // You can only publish emails that are 150 KB or less (including the header)
 // to Amazon SNS. Larger emails will bounce. If you anticipate emails larger
 // than 150 KB, use the S3 action instead.
 //
 // For information about using a receipt rule to publish an Amazon SNS notification,
-// see the Amazon SES Developer Guide (http://docs.aws.amazon.com/ses/latest/DeveloperGuide/receiving-email-action-sns.html).
-// See also, https://docs.aws.amazon.com/goto/WebAPI/email-2010-12-01/SNSAction
+// see the Amazon SES Developer Guide (https://docs.aws.amazon.com/ses/latest/DeveloperGuide/receiving-email-action-sns.html).
 type SNSAction struct {
 	_ struct{} `type:"structure"`
 
@@ -12003,7 +12129,7 @@ type SNSAction struct {
 	// The Amazon Resource Name (ARN) of the Amazon SNS topic to notify. An example
 	// of an Amazon SNS topic ARN is arn:aws:sns:us-west-2:123456789012:MyTopic.
 	// For more information about Amazon SNS topics, see the Amazon SNS Developer
-	// Guide (http://docs.aws.amazon.com/sns/latest/dg/CreateTopic.html).
+	// Guide (https://docs.aws.amazon.com/sns/latest/dg/CreateTopic.html).
 	//
 	// TopicArn is a required field
 	TopicArn *string `type:"string" required:"true"`
@@ -12049,15 +12175,14 @@ func (s *SNSAction) SetTopicArn(v string) *SNSAction {
 //
 // Event destinations, such as Amazon SNS, are associated with configuration
 // sets, which enable you to publish email sending events. For information about
-// using configuration sets, see the Amazon SES Developer Guide (http://docs.aws.amazon.com/ses/latest/DeveloperGuide/monitor-sending-activity.html).
-// See also, https://docs.aws.amazon.com/goto/WebAPI/email-2010-12-01/SNSDestination
+// using configuration sets, see the Amazon SES Developer Guide (https://docs.aws.amazon.com/ses/latest/DeveloperGuide/monitor-sending-activity.html).
 type SNSDestination struct {
 	_ struct{} `type:"structure"`
 
 	// The ARN of the Amazon SNS topic that email sending events will be published
 	// to. An example of an Amazon SNS topic ARN is arn:aws:sns:us-west-2:123456789012:MyTopic.
 	// For more information about Amazon SNS topics, see the Amazon SNS Developer
-	// Guide (http://docs.aws.amazon.com/sns/latest/dg/CreateTopic.html).
+	// Guide (https://docs.aws.amazon.com/sns/latest/dg/CreateTopic.html).
 	//
 	// TopicARN is a required field
 	TopicARN *string `type:"string" required:"true"`
@@ -12094,7 +12219,6 @@ func (s *SNSDestination) SetTopicARN(v string) *SNSDestination {
 
 // Represents a request to send a bounce message to the sender of an email you
 // received through Amazon SES.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/email-2010-12-01/SendBounceRequest
 type SendBounceInput struct {
 	_ struct{} `type:"structure"`
 
@@ -12107,7 +12231,7 @@ type SendBounceInput struct {
 	// This parameter is used only for sending authorization. It is the ARN of the
 	// identity that is associated with the sending authorization policy that permits
 	// you to use the address in the "From" header of the bounce. For more information
-	// about sending authorization, see the Amazon SES Developer Guide (http://docs.aws.amazon.com/ses/latest/DeveloperGuide/sending-authorization.html).
+	// about sending authorization, see the Amazon SES Developer Guide (https://docs.aws.amazon.com/ses/latest/DeveloperGuide/sending-authorization.html).
 	BounceSenderArn *string `type:"string"`
 
 	// A list of recipients of the bounced message, including the information required
@@ -12213,7 +12337,6 @@ func (s *SendBounceInput) SetOriginalMessageId(v string) *SendBounceInput {
 }
 
 // Represents a unique message ID.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/email-2010-12-01/SendBounceResponse
 type SendBounceOutput struct {
 	_ struct{} `type:"structure"`
 
@@ -12238,8 +12361,7 @@ func (s *SendBounceOutput) SetMessageId(v string) *SendBounceOutput {
 }
 
 // Represents a request to send a templated email to multiple destinations using
-// Amazon SES. For more information, see the Amazon SES Developer Guide (http://docs.aws.amazon.com/ses/latest/DeveloperGuide/send-personalized-email-api.html).
-// See also, https://docs.aws.amazon.com/goto/WebAPI/email-2010-12-01/SendBulkTemplatedEmailRequest
+// Amazon SES. For more information, see the Amazon SES Developer Guide (https://docs.aws.amazon.com/ses/latest/DeveloperGuide/send-personalized-email-api.html).
 type SendBulkTemplatedEmailInput struct {
 	_ struct{} `type:"structure"`
 
@@ -12288,18 +12410,18 @@ type SendBulkTemplatedEmailInput struct {
 	// and the ReturnPath to be feedback@example.com.
 	//
 	// For more information about sending authorization, see the Amazon SES Developer
-	// Guide (http://docs.aws.amazon.com/ses/latest/DeveloperGuide/sending-authorization.html).
+	// Guide (https://docs.aws.amazon.com/ses/latest/DeveloperGuide/sending-authorization.html).
 	ReturnPathArn *string `type:"string"`
 
 	// The email address that is sending the email. This email address must be either
 	// individually verified with Amazon SES, or from a domain that has been verified
 	// with Amazon SES. For information about verifying identities, see the Amazon
-	// SES Developer Guide (http://docs.aws.amazon.com/ses/latest/DeveloperGuide/verify-addresses-and-domains.html).
+	// SES Developer Guide (https://docs.aws.amazon.com/ses/latest/DeveloperGuide/verify-addresses-and-domains.html).
 	//
 	// If you are sending on behalf of another user and have been permitted to do
 	// so by a sending authorization policy, then you must also specify the SourceArn
 	// parameter. For more information about sending authorization, see the Amazon
-	// SES Developer Guide (http://docs.aws.amazon.com/ses/latest/DeveloperGuide/sending-authorization.html).
+	// SES Developer Guide (https://docs.aws.amazon.com/ses/latest/DeveloperGuide/sending-authorization.html).
 	//
 	// Amazon SES does not support the SMTPUTF8 extension, as described in RFC6531
 	// (https://tools.ietf.org/html/rfc6531). For this reason, the local part of
@@ -12325,7 +12447,7 @@ type SendBulkTemplatedEmailInput struct {
 	// and the Source to be user@example.com.
 	//
 	// For more information about sending authorization, see the Amazon SES Developer
-	// Guide (http://docs.aws.amazon.com/ses/latest/DeveloperGuide/sending-authorization.html).
+	// Guide (https://docs.aws.amazon.com/ses/latest/DeveloperGuide/sending-authorization.html).
 	SourceArn *string `type:"string"`
 
 	// The template to use when sending this email.
@@ -12452,7 +12574,6 @@ func (s *SendBulkTemplatedEmailInput) SetTemplateArn(v string) *SendBulkTemplate
 	return s
 }
 
-// See also, https://docs.aws.amazon.com/goto/WebAPI/email-2010-12-01/SendBulkTemplatedEmailResponse
 type SendBulkTemplatedEmailOutput struct {
 	_ struct{} `type:"structure"`
 
@@ -12479,7 +12600,6 @@ func (s *SendBulkTemplatedEmailOutput) SetStatus(v []*BulkEmailDestinationStatus
 }
 
 // Represents a request to send a custom verification email to a specified recipient.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/email-2010-12-01/SendCustomVerificationEmailRequest
 type SendCustomVerificationEmailInput struct {
 	_ struct{} `type:"structure"`
 
@@ -12543,7 +12663,6 @@ func (s *SendCustomVerificationEmailInput) SetTemplateName(v string) *SendCustom
 }
 
 // The response received when attempting to send the custom verification email.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/email-2010-12-01/SendCustomVerificationEmailResponse
 type SendCustomVerificationEmailOutput struct {
 	_ struct{} `type:"structure"`
 
@@ -12570,7 +12689,6 @@ func (s *SendCustomVerificationEmailOutput) SetMessageId(v string) *SendCustomVe
 
 // Represents sending statistics data. Each SendDataPoint contains statistics
 // for a 15-minute period of sending activity.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/email-2010-12-01/SendDataPoint
 type SendDataPoint struct {
 	_ struct{} `type:"structure"`
 
@@ -12587,7 +12705,7 @@ type SendDataPoint struct {
 	Rejects *int64 `type:"long"`
 
 	// Time of the data point.
-	Timestamp *time.Time `type:"timestamp" timestampFormat:"iso8601"`
+	Timestamp *time.Time `type:"timestamp"`
 }
 
 // String returns the string representation
@@ -12631,8 +12749,7 @@ func (s *SendDataPoint) SetTimestamp(v time.Time) *SendDataPoint {
 }
 
 // Represents a request to send a single formatted email using Amazon SES. For
-// more information, see the Amazon SES Developer Guide (http://docs.aws.amazon.com/ses/latest/DeveloperGuide/send-email-formatted.html).
-// See also, https://docs.aws.amazon.com/goto/WebAPI/email-2010-12-01/SendEmailRequest
+// more information, see the Amazon SES Developer Guide (https://docs.aws.amazon.com/ses/latest/DeveloperGuide/send-email-formatted.html).
 type SendEmailInput struct {
 	_ struct{} `type:"structure"`
 
@@ -12672,18 +12789,18 @@ type SendEmailInput struct {
 	// and the ReturnPath to be feedback@example.com.
 	//
 	// For more information about sending authorization, see the Amazon SES Developer
-	// Guide (http://docs.aws.amazon.com/ses/latest/DeveloperGuide/sending-authorization.html).
+	// Guide (https://docs.aws.amazon.com/ses/latest/DeveloperGuide/sending-authorization.html).
 	ReturnPathArn *string `type:"string"`
 
 	// The email address that is sending the email. This email address must be either
 	// individually verified with Amazon SES, or from a domain that has been verified
 	// with Amazon SES. For information about verifying identities, see the Amazon
-	// SES Developer Guide (http://docs.aws.amazon.com/ses/latest/DeveloperGuide/verify-addresses-and-domains.html).
+	// SES Developer Guide (https://docs.aws.amazon.com/ses/latest/DeveloperGuide/verify-addresses-and-domains.html).
 	//
 	// If you are sending on behalf of another user and have been permitted to do
 	// so by a sending authorization policy, then you must also specify the SourceArn
 	// parameter. For more information about sending authorization, see the Amazon
-	// SES Developer Guide (http://docs.aws.amazon.com/ses/latest/DeveloperGuide/sending-authorization.html).
+	// SES Developer Guide (https://docs.aws.amazon.com/ses/latest/DeveloperGuide/sending-authorization.html).
 	//
 	// Amazon SES does not support the SMTPUTF8 extension, as described in RFC6531
 	// (https://tools.ietf.org/html/rfc6531). For this reason, the local part of
@@ -12709,7 +12826,7 @@ type SendEmailInput struct {
 	// and the Source to be user@example.com.
 	//
 	// For more information about sending authorization, see the Amazon SES Developer
-	// Guide (http://docs.aws.amazon.com/ses/latest/DeveloperGuide/sending-authorization.html).
+	// Guide (https://docs.aws.amazon.com/ses/latest/DeveloperGuide/sending-authorization.html).
 	SourceArn *string `type:"string"`
 
 	// A list of tags, in the form of name/value pairs, to apply to an email that
@@ -12817,7 +12934,6 @@ func (s *SendEmailInput) SetTags(v []*MessageTag) *SendEmailInput {
 }
 
 // Represents a unique message ID.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/email-2010-12-01/SendEmailResponse
 type SendEmailOutput struct {
 	_ struct{} `type:"structure"`
 
@@ -12844,8 +12960,7 @@ func (s *SendEmailOutput) SetMessageId(v string) *SendEmailOutput {
 }
 
 // Represents a request to send a single raw email using Amazon SES. For more
-// information, see the Amazon SES Developer Guide (http://docs.aws.amazon.com/ses/latest/DeveloperGuide/send-email-raw.html).
-// See also, https://docs.aws.amazon.com/goto/WebAPI/email-2010-12-01/SendRawEmailRequest
+// information, see the Amazon SES Developer Guide (https://docs.aws.amazon.com/ses/latest/DeveloperGuide/send-email-raw.html).
 type SendRawEmailInput struct {
 	_ struct{} `type:"structure"`
 
@@ -12865,21 +12980,29 @@ type SendRawEmailInput struct {
 	// the corresponding X-header, Amazon SES uses the value of the FromArn parameter.
 	//
 	// For information about when to use this parameter, see the description of
-	// SendRawEmail in this guide, or see the Amazon SES Developer Guide (http://docs.aws.amazon.com/ses/latest/DeveloperGuide/sending-authorization-delegate-sender-tasks-email.html).
+	// SendRawEmail in this guide, or see the Amazon SES Developer Guide (https://docs.aws.amazon.com/ses/latest/DeveloperGuide/sending-authorization-delegate-sender-tasks-email.html).
 	FromArn *string `type:"string"`
 
-	// The raw text of the message. The client is responsible for ensuring the following:
+	// The raw email message itself. The message has to meet the following criteria:
 	//
-	//    * Message must contain a header and a body, separated by a blank line.
+	//    * The message has to contain a header and a body, separated by a blank
+	//    line.
 	//
-	//    * All required header fields must be present.
+	//    * All of the required header fields must be present in the message.
 	//
 	//    * Each part of a multipart MIME message must be formatted properly.
 	//
-	//    * MIME content types must be among those supported by Amazon SES. For
-	//    more information, go to the Amazon SES Developer Guide (http://docs.aws.amazon.com/ses/latest/DeveloperGuide/mime-types.html).
+	//    * Attachments must be of a content type that Amazon SES supports. For
+	//    a list on unsupported content types, see Unsupported Attachment Types
+	//    (https://docs.aws.amazon.com/ses/latest/DeveloperGuide/mime-types.html)
+	//    in the Amazon SES Developer Guide.
 	//
-	//    * Must be base64-encoded.
+	//    * The entire message must be base64-encoded.
+	//
+	//    * If any of the MIME parts in your message contain content that is outside
+	//    of the 7-bit ASCII character range, we highly recommend that you encode
+	//    that content. For more information, see Sending Raw Email (https://docs.aws.amazon.com/ses/latest/DeveloperGuide/send-email-raw.html)
+	//    in the Amazon SES Developer Guide.
 	//
 	//    * Per RFC 5321 (https://tools.ietf.org/html/rfc5321#section-4.5.3.1.6),
 	//    the maximum length of each line of text, including the <CRLF>, must not
@@ -12903,7 +13026,7 @@ type SendRawEmailInput struct {
 	// parameter.
 	//
 	// For information about when to use this parameter, see the description of
-	// SendRawEmail in this guide, or see the Amazon SES Developer Guide (http://docs.aws.amazon.com/ses/latest/DeveloperGuide/sending-authorization-delegate-sender-tasks-email.html).
+	// SendRawEmail in this guide, or see the Amazon SES Developer Guide (https://docs.aws.amazon.com/ses/latest/DeveloperGuide/sending-authorization-delegate-sender-tasks-email.html).
 	ReturnPathArn *string `type:"string"`
 
 	// The identity's email address. If you do not provide a value for this parameter,
@@ -12942,7 +13065,7 @@ type SendRawEmailInput struct {
 	// parameter.
 	//
 	// For information about when to use this parameter, see the description of
-	// SendRawEmail in this guide, or see the Amazon SES Developer Guide (http://docs.aws.amazon.com/ses/latest/DeveloperGuide/sending-authorization-delegate-sender-tasks-email.html).
+	// SendRawEmail in this guide, or see the Amazon SES Developer Guide (https://docs.aws.amazon.com/ses/latest/DeveloperGuide/sending-authorization-delegate-sender-tasks-email.html).
 	SourceArn *string `type:"string"`
 
 	// A list of tags, in the form of name/value pairs, to apply to an email that
@@ -13038,7 +13161,6 @@ func (s *SendRawEmailInput) SetTags(v []*MessageTag) *SendRawEmailInput {
 }
 
 // Represents a unique message ID.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/email-2010-12-01/SendRawEmailResponse
 type SendRawEmailOutput struct {
 	_ struct{} `type:"structure"`
 
@@ -13065,8 +13187,7 @@ func (s *SendRawEmailOutput) SetMessageId(v string) *SendRawEmailOutput {
 }
 
 // Represents a request to send a templated email using Amazon SES. For more
-// information, see the Amazon SES Developer Guide (http://docs.aws.amazon.com/ses/latest/DeveloperGuide/send-personalized-email-api.html).
-// See also, https://docs.aws.amazon.com/goto/WebAPI/email-2010-12-01/SendTemplatedEmailRequest
+// information, see the Amazon SES Developer Guide (https://docs.aws.amazon.com/ses/latest/DeveloperGuide/send-personalized-email-api.html).
 type SendTemplatedEmailInput struct {
 	_ struct{} `type:"structure"`
 
@@ -13102,18 +13223,18 @@ type SendTemplatedEmailInput struct {
 	// and the ReturnPath to be feedback@example.com.
 	//
 	// For more information about sending authorization, see the Amazon SES Developer
-	// Guide (http://docs.aws.amazon.com/ses/latest/DeveloperGuide/sending-authorization.html).
+	// Guide (https://docs.aws.amazon.com/ses/latest/DeveloperGuide/sending-authorization.html).
 	ReturnPathArn *string `type:"string"`
 
 	// The email address that is sending the email. This email address must be either
 	// individually verified with Amazon SES, or from a domain that has been verified
 	// with Amazon SES. For information about verifying identities, see the Amazon
-	// SES Developer Guide (http://docs.aws.amazon.com/ses/latest/DeveloperGuide/verify-addresses-and-domains.html).
+	// SES Developer Guide (https://docs.aws.amazon.com/ses/latest/DeveloperGuide/verify-addresses-and-domains.html).
 	//
 	// If you are sending on behalf of another user and have been permitted to do
 	// so by a sending authorization policy, then you must also specify the SourceArn
 	// parameter. For more information about sending authorization, see the Amazon
-	// SES Developer Guide (http://docs.aws.amazon.com/ses/latest/DeveloperGuide/sending-authorization.html).
+	// SES Developer Guide (https://docs.aws.amazon.com/ses/latest/DeveloperGuide/sending-authorization.html).
 	//
 	// Amazon SES does not support the SMTPUTF8 extension, as described in RFC6531
 	// (https://tools.ietf.org/html/rfc6531). For this reason, the local part of
@@ -13139,7 +13260,7 @@ type SendTemplatedEmailInput struct {
 	// and the Source to be user@example.com.
 	//
 	// For more information about sending authorization, see the Amazon SES Developer
-	// Guide (http://docs.aws.amazon.com/ses/latest/DeveloperGuide/sending-authorization.html).
+	// Guide (https://docs.aws.amazon.com/ses/latest/DeveloperGuide/sending-authorization.html).
 	SourceArn *string `type:"string"`
 
 	// A list of tags, in the form of name/value pairs, to apply to an email that
@@ -13271,7 +13392,6 @@ func (s *SendTemplatedEmailInput) SetTemplateData(v string) *SendTemplatedEmailI
 	return s
 }
 
-// See also, https://docs.aws.amazon.com/goto/WebAPI/email-2010-12-01/SendTemplatedEmailResponse
 type SendTemplatedEmailOutput struct {
 	_ struct{} `type:"structure"`
 
@@ -13299,8 +13419,7 @@ func (s *SendTemplatedEmailOutput) SetMessageId(v string) *SendTemplatedEmailOut
 
 // Represents a request to set a receipt rule set as the active receipt rule
 // set. You use receipt rule sets to receive email with Amazon SES. For more
-// information, see the Amazon SES Developer Guide (http://docs.aws.amazon.com/ses/latest/DeveloperGuide/receiving-email-concepts.html).
-// See also, https://docs.aws.amazon.com/goto/WebAPI/email-2010-12-01/SetActiveReceiptRuleSetRequest
+// information, see the Amazon SES Developer Guide (https://docs.aws.amazon.com/ses/latest/DeveloperGuide/receiving-email-concepts.html).
 type SetActiveReceiptRuleSetInput struct {
 	_ struct{} `type:"structure"`
 
@@ -13326,7 +13445,6 @@ func (s *SetActiveReceiptRuleSetInput) SetRuleSetName(v string) *SetActiveReceip
 }
 
 // An empty element returned on a successful request.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/email-2010-12-01/SetActiveReceiptRuleSetResponse
 type SetActiveReceiptRuleSetOutput struct {
 	_ struct{} `type:"structure"`
 }
@@ -13343,8 +13461,7 @@ func (s SetActiveReceiptRuleSetOutput) GoString() string {
 
 // Represents a request to enable or disable Amazon SES Easy DKIM signing for
 // an identity. For more information about setting up Easy DKIM, see the Amazon
-// SES Developer Guide (http://docs.aws.amazon.com/ses/latest/DeveloperGuide/easy-dkim.html).
-// See also, https://docs.aws.amazon.com/goto/WebAPI/email-2010-12-01/SetIdentityDkimEnabledRequest
+// SES Developer Guide (https://docs.aws.amazon.com/ses/latest/DeveloperGuide/easy-dkim.html).
 type SetIdentityDkimEnabledInput struct {
 	_ struct{} `type:"structure"`
 
@@ -13399,7 +13516,6 @@ func (s *SetIdentityDkimEnabledInput) SetIdentity(v string) *SetIdentityDkimEnab
 }
 
 // An empty element returned on a successful request.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/email-2010-12-01/SetIdentityDkimEnabledResponse
 type SetIdentityDkimEnabledOutput struct {
 	_ struct{} `type:"structure"`
 }
@@ -13416,8 +13532,7 @@ func (s SetIdentityDkimEnabledOutput) GoString() string {
 
 // Represents a request to enable or disable whether Amazon SES forwards you
 // bounce and complaint notifications through email. For information about email
-// feedback forwarding, see the Amazon SES Developer Guide (http://docs.aws.amazon.com/ses/latest/DeveloperGuide/notifications-via-email.html).
-// See also, https://docs.aws.amazon.com/goto/WebAPI/email-2010-12-01/SetIdentityFeedbackForwardingEnabledRequest
+// feedback forwarding, see the Amazon SES Developer Guide (https://docs.aws.amazon.com/ses/latest/DeveloperGuide/notifications-via-email.html).
 type SetIdentityFeedbackForwardingEnabledInput struct {
 	_ struct{} `type:"structure"`
 
@@ -13477,7 +13592,6 @@ func (s *SetIdentityFeedbackForwardingEnabledInput) SetIdentity(v string) *SetId
 }
 
 // An empty element returned on a successful request.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/email-2010-12-01/SetIdentityFeedbackForwardingEnabledResponse
 type SetIdentityFeedbackForwardingEnabledOutput struct {
 	_ struct{} `type:"structure"`
 }
@@ -13494,8 +13608,7 @@ func (s SetIdentityFeedbackForwardingEnabledOutput) GoString() string {
 
 // Represents a request to set whether Amazon SES includes the original email
 // headers in the Amazon SNS notifications of a specified type. For information
-// about notifications, see the Amazon SES Developer Guide (http://docs.aws.amazon.com/ses/latest/DeveloperGuide/notifications-via-sns.html).
-// See also, https://docs.aws.amazon.com/goto/WebAPI/email-2010-12-01/SetIdentityHeadersInNotificationsEnabledRequest
+// about notifications, see the Amazon SES Developer Guide (https://docs.aws.amazon.com/ses/latest/DeveloperGuide/notifications-via-sns.html).
 type SetIdentityHeadersInNotificationsEnabledInput struct {
 	_ struct{} `type:"structure"`
 
@@ -13570,7 +13683,6 @@ func (s *SetIdentityHeadersInNotificationsEnabledInput) SetNotificationType(v st
 }
 
 // An empty element returned on a successful request.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/email-2010-12-01/SetIdentityHeadersInNotificationsEnabledResponse
 type SetIdentityHeadersInNotificationsEnabledOutput struct {
 	_ struct{} `type:"structure"`
 }
@@ -13587,8 +13699,7 @@ func (s SetIdentityHeadersInNotificationsEnabledOutput) GoString() string {
 
 // Represents a request to enable or disable the Amazon SES custom MAIL FROM
 // domain setup for a verified identity. For information about using a custom
-// MAIL FROM domain, see the Amazon SES Developer Guide (http://docs.aws.amazon.com/ses/latest/DeveloperGuide/mail-from.html).
-// See also, https://docs.aws.amazon.com/goto/WebAPI/email-2010-12-01/SetIdentityMailFromDomainRequest
+// MAIL FROM domain, see the Amazon SES Developer Guide (https://docs.aws.amazon.com/ses/latest/DeveloperGuide/mail-from.html).
 type SetIdentityMailFromDomainInput struct {
 	_ struct{} `type:"structure"`
 
@@ -13612,7 +13723,7 @@ type SetIdentityMailFromDomainInput struct {
 	// MAIL FROM domain must 1) be a subdomain of the verified identity, 2) not
 	// be used in a "From" address if the MAIL FROM domain is the destination of
 	// email feedback forwarding (for more information, see the Amazon SES Developer
-	// Guide (http://docs.aws.amazon.com/ses/latest/DeveloperGuide/mail-from.html)),
+	// Guide (https://docs.aws.amazon.com/ses/latest/DeveloperGuide/mail-from.html)),
 	// and 3) not be used to receive emails. A value of null disables the custom
 	// MAIL FROM setting for the identity.
 	MailFromDomain *string `type:"string"`
@@ -13660,7 +13771,6 @@ func (s *SetIdentityMailFromDomainInput) SetMailFromDomain(v string) *SetIdentit
 }
 
 // An empty element returned on a successful request.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/email-2010-12-01/SetIdentityMailFromDomainResponse
 type SetIdentityMailFromDomainOutput struct {
 	_ struct{} `type:"structure"`
 }
@@ -13678,14 +13788,18 @@ func (s SetIdentityMailFromDomainOutput) GoString() string {
 // Represents a request to specify the Amazon SNS topic to which Amazon SES
 // will publish bounce, complaint, or delivery notifications for emails sent
 // with that identity as the Source. For information about Amazon SES notifications,
-// see the Amazon SES Developer Guide (http://docs.aws.amazon.com/ses/latest/DeveloperGuide/notifications-via-sns.html).
-// See also, https://docs.aws.amazon.com/goto/WebAPI/email-2010-12-01/SetIdentityNotificationTopicRequest
+// see the Amazon SES Developer Guide (https://docs.aws.amazon.com/ses/latest/DeveloperGuide/notifications-via-sns.html).
 type SetIdentityNotificationTopicInput struct {
 	_ struct{} `type:"structure"`
 
-	// The identity for which the Amazon SNS topic will be set. You can specify
-	// an identity by using its name or by using its Amazon Resource Name (ARN).
-	// Examples: user@example.com, example.com, arn:aws:ses:us-east-1:123456789012:identity/example.com.
+	// The identity (email address or domain) that you want to set the Amazon SNS
+	// topic for.
+	//
+	// You can only specify a verified identity for this parameter.
+	//
+	// You can specify an identity by using its name or by using its Amazon Resource
+	// Name (ARN). The following examples are all valid identities: sender@example.com,
+	// example.com, arn:aws:ses:us-east-1:123456789012:identity/example.com.
 	//
 	// Identity is a required field
 	Identity *string `type:"string" required:"true"`
@@ -13747,7 +13861,6 @@ func (s *SetIdentityNotificationTopicInput) SetSnsTopic(v string) *SetIdentityNo
 }
 
 // An empty element returned on a successful request.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/email-2010-12-01/SetIdentityNotificationTopicResponse
 type SetIdentityNotificationTopicOutput struct {
 	_ struct{} `type:"structure"`
 }
@@ -13764,8 +13877,7 @@ func (s SetIdentityNotificationTopicOutput) GoString() string {
 
 // Represents a request to set the position of a receipt rule in a receipt rule
 // set. You use receipt rule sets to receive email with Amazon SES. For more
-// information, see the Amazon SES Developer Guide (http://docs.aws.amazon.com/ses/latest/DeveloperGuide/receiving-email-concepts.html).
-// See also, https://docs.aws.amazon.com/goto/WebAPI/email-2010-12-01/SetReceiptRulePositionRequest
+// information, see the Amazon SES Developer Guide (https://docs.aws.amazon.com/ses/latest/DeveloperGuide/receiving-email-concepts.html).
 type SetReceiptRulePositionInput struct {
 	_ struct{} `type:"structure"`
 
@@ -13828,7 +13940,6 @@ func (s *SetReceiptRulePositionInput) SetRuleSetName(v string) *SetReceiptRulePo
 }
 
 // An empty element returned on a successful request.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/email-2010-12-01/SetReceiptRulePositionResponse
 type SetReceiptRulePositionOutput struct {
 	_ struct{} `type:"structure"`
 }
@@ -13848,8 +13959,7 @@ func (s SetReceiptRulePositionOutput) GoString() string {
 // Simple Notification Service (Amazon SNS).
 //
 // For information about setting a stop action in a receipt rule, see the Amazon
-// SES Developer Guide (http://docs.aws.amazon.com/ses/latest/DeveloperGuide/receiving-email-action-stop.html).
-// See also, https://docs.aws.amazon.com/goto/WebAPI/email-2010-12-01/StopAction
+// SES Developer Guide (https://docs.aws.amazon.com/ses/latest/DeveloperGuide/receiving-email-action-stop.html).
 type StopAction struct {
 	_ struct{} `type:"structure"`
 
@@ -13861,7 +13971,7 @@ type StopAction struct {
 	// The Amazon Resource Name (ARN) of the Amazon SNS topic to notify when the
 	// stop action is taken. An example of an Amazon SNS topic ARN is arn:aws:sns:us-west-2:123456789012:MyTopic.
 	// For more information about Amazon SNS topics, see the Amazon SNS Developer
-	// Guide (http://docs.aws.amazon.com/sns/latest/dg/CreateTopic.html).
+	// Guide (https://docs.aws.amazon.com/sns/latest/dg/CreateTopic.html).
 	TopicArn *string `type:"string"`
 }
 
@@ -13902,7 +14012,6 @@ func (s *StopAction) SetTopicArn(v string) *StopAction {
 
 // The content of the email, composed of a subject line, an HTML part, and a
 // text-only part.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/email-2010-12-01/Template
 type Template struct {
 	_ struct{} `type:"structure"`
 
@@ -13971,12 +14080,11 @@ func (s *Template) SetTextPart(v string) *Template {
 }
 
 // Contains information about an email template.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/email-2010-12-01/TemplateMetadata
 type TemplateMetadata struct {
 	_ struct{} `type:"structure"`
 
 	// The time and date the template was created.
-	CreatedTimestamp *time.Time `type:"timestamp" timestampFormat:"iso8601"`
+	CreatedTimestamp *time.Time `type:"timestamp"`
 
 	// The name of the template.
 	Name *string `type:"string"`
@@ -14004,7 +14112,6 @@ func (s *TemplateMetadata) SetName(v string) *TemplateMetadata {
 	return s
 }
 
-// See also, https://docs.aws.amazon.com/goto/WebAPI/email-2010-12-01/TestRenderTemplateRequest
 type TestRenderTemplateInput struct {
 	_ struct{} `type:"structure"`
 
@@ -14059,7 +14166,6 @@ func (s *TestRenderTemplateInput) SetTemplateName(v string) *TestRenderTemplateI
 	return s
 }
 
-// See also, https://docs.aws.amazon.com/goto/WebAPI/email-2010-12-01/TestRenderTemplateResponse
 type TestRenderTemplateOutput struct {
 	_ struct{} `type:"structure"`
 
@@ -14089,9 +14195,8 @@ func (s *TestRenderTemplateOutput) SetRenderedTemplate(v string) *TestRenderTemp
 // emails.
 //
 // For more information, see Configuring Custom Domains to Handle Open and Click
-// Tracking (http://docs.aws.amazon.com/ses/latest/DeveloperGuide/configure-custom-open-click-domains.html)
-// in the Amazon SES Developer Guide (http://docs.aws.amazon.com/ses/latest/DeveloperGuide/Welcome.html).
-// See also, https://docs.aws.amazon.com/goto/WebAPI/email-2010-12-01/TrackingOptions
+// Tracking (https://docs.aws.amazon.com/ses/latest/DeveloperGuide/configure-custom-open-click-domains.html)
+// in the Amazon SES Developer Guide.
 type TrackingOptions struct {
 	_ struct{} `type:"structure"`
 
@@ -14118,12 +14223,11 @@ func (s *TrackingOptions) SetCustomRedirectDomain(v string) *TrackingOptions {
 
 // Represents a request to enable or disable the email sending capabilities
 // for your entire Amazon SES account.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/email-2010-12-01/UpdateAccountSendingEnabledRequest
 type UpdateAccountSendingEnabledInput struct {
 	_ struct{} `type:"structure"`
 
 	// Describes whether email sending is enabled or disabled for your Amazon SES
-	// account.
+	// account in the current AWS Region.
 	Enabled *bool `type:"boolean"`
 }
 
@@ -14143,7 +14247,6 @@ func (s *UpdateAccountSendingEnabledInput) SetEnabled(v bool) *UpdateAccountSend
 	return s
 }
 
-// See also, https://docs.aws.amazon.com/goto/WebAPI/email-2010-12-01/UpdateAccountSendingEnabledOutput
 type UpdateAccountSendingEnabledOutput struct {
 	_ struct{} `type:"structure"`
 }
@@ -14160,8 +14263,7 @@ func (s UpdateAccountSendingEnabledOutput) GoString() string {
 
 // Represents a request to update the event destination of a configuration set.
 // Configuration sets enable you to publish email sending events. For information
-// about using configuration sets, see the Amazon SES Developer Guide (http://docs.aws.amazon.com/ses/latest/DeveloperGuide/monitor-sending-activity.html).
-// See also, https://docs.aws.amazon.com/goto/WebAPI/email-2010-12-01/UpdateConfigurationSetEventDestinationRequest
+// about using configuration sets, see the Amazon SES Developer Guide (https://docs.aws.amazon.com/ses/latest/DeveloperGuide/monitor-sending-activity.html).
 type UpdateConfigurationSetEventDestinationInput struct {
 	_ struct{} `type:"structure"`
 
@@ -14222,7 +14324,6 @@ func (s *UpdateConfigurationSetEventDestinationInput) SetEventDestination(v *Eve
 }
 
 // An empty element returned on a successful request.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/email-2010-12-01/UpdateConfigurationSetEventDestinationResponse
 type UpdateConfigurationSetEventDestinationOutput struct {
 	_ struct{} `type:"structure"`
 }
@@ -14239,7 +14340,6 @@ func (s UpdateConfigurationSetEventDestinationOutput) GoString() string {
 
 // Represents a request to modify the reputation metric publishing settings
 // for a configuration set.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/email-2010-12-01/UpdateConfigurationSetReputationMetricsEnabledRequest
 type UpdateConfigurationSetReputationMetricsEnabledInput struct {
 	_ struct{} `type:"structure"`
 
@@ -14293,7 +14393,6 @@ func (s *UpdateConfigurationSetReputationMetricsEnabledInput) SetEnabled(v bool)
 	return s
 }
 
-// See also, https://docs.aws.amazon.com/goto/WebAPI/email-2010-12-01/UpdateConfigurationSetReputationMetricsEnabledOutput
 type UpdateConfigurationSetReputationMetricsEnabledOutput struct {
 	_ struct{} `type:"structure"`
 }
@@ -14310,7 +14409,6 @@ func (s UpdateConfigurationSetReputationMetricsEnabledOutput) GoString() string 
 
 // Represents a request to enable or disable the email sending capabilities
 // for a specific configuration set.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/email-2010-12-01/UpdateConfigurationSetSendingEnabledRequest
 type UpdateConfigurationSetSendingEnabledInput struct {
 	_ struct{} `type:"structure"`
 
@@ -14364,7 +14462,6 @@ func (s *UpdateConfigurationSetSendingEnabledInput) SetEnabled(v bool) *UpdateCo
 	return s
 }
 
-// See also, https://docs.aws.amazon.com/goto/WebAPI/email-2010-12-01/UpdateConfigurationSetSendingEnabledOutput
 type UpdateConfigurationSetSendingEnabledOutput struct {
 	_ struct{} `type:"structure"`
 }
@@ -14380,7 +14477,6 @@ func (s UpdateConfigurationSetSendingEnabledOutput) GoString() string {
 }
 
 // Represents a request to update the tracking options for a configuration set.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/email-2010-12-01/UpdateConfigurationSetTrackingOptionsRequest
 type UpdateConfigurationSetTrackingOptionsInput struct {
 	_ struct{} `type:"structure"`
 
@@ -14395,8 +14491,8 @@ type UpdateConfigurationSetTrackingOptionsInput struct {
 	// emails.
 	//
 	// For more information, see Configuring Custom Domains to Handle Open and Click
-	// Tracking (http://docs.aws.amazon.com/ses/latest/DeveloperGuide/configure-custom-open-click-domains.html)
-	// in the Amazon SES Developer Guide (http://docs.aws.amazon.com/ses/latest/DeveloperGuide/Welcome.html).
+	// Tracking (https://docs.aws.amazon.com/ses/latest/DeveloperGuide/configure-custom-open-click-domains.html)
+	// in the Amazon SES Developer Guide.
 	//
 	// TrackingOptions is a required field
 	TrackingOptions *TrackingOptions `type:"structure" required:"true"`
@@ -14441,7 +14537,6 @@ func (s *UpdateConfigurationSetTrackingOptionsInput) SetTrackingOptions(v *Track
 }
 
 // An empty element returned on a successful request.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/email-2010-12-01/UpdateConfigurationSetTrackingOptionsResponse
 type UpdateConfigurationSetTrackingOptionsOutput struct {
 	_ struct{} `type:"structure"`
 }
@@ -14457,7 +14552,6 @@ func (s UpdateConfigurationSetTrackingOptionsOutput) GoString() string {
 }
 
 // Represents a request to update an existing custom verification email template.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/email-2010-12-01/UpdateCustomVerificationEmailTemplateRequest
 type UpdateCustomVerificationEmailTemplateInput struct {
 	_ struct{} `type:"structure"`
 
@@ -14475,7 +14569,7 @@ type UpdateCustomVerificationEmailTemplateInput struct {
 	// The content of the custom verification email. The total size of the email
 	// must be less than 10 MB. The message body may contain HTML, with some limitations.
 	// For more information, see Custom Verification Email Frequently Asked Questions
-	// (http://docs.aws.amazon.com/ses/latest/DeveloperGuide/custom-verification-emails.html#custom-verification-emails-faq)
+	// (https://docs.aws.amazon.com/ses/latest/DeveloperGuide/custom-verification-emails.html#custom-verification-emails-faq)
 	// in the Amazon SES Developer Guide.
 	TemplateContent *string `type:"string"`
 
@@ -14547,7 +14641,6 @@ func (s *UpdateCustomVerificationEmailTemplateInput) SetTemplateSubject(v string
 	return s
 }
 
-// See also, https://docs.aws.amazon.com/goto/WebAPI/email-2010-12-01/UpdateCustomVerificationEmailTemplateOutput
 type UpdateCustomVerificationEmailTemplateOutput struct {
 	_ struct{} `type:"structure"`
 }
@@ -14564,8 +14657,7 @@ func (s UpdateCustomVerificationEmailTemplateOutput) GoString() string {
 
 // Represents a request to update a receipt rule. You use receipt rules to receive
 // email with Amazon SES. For more information, see the Amazon SES Developer
-// Guide (http://docs.aws.amazon.com/ses/latest/DeveloperGuide/receiving-email-concepts.html).
-// See also, https://docs.aws.amazon.com/goto/WebAPI/email-2010-12-01/UpdateReceiptRuleRequest
+// Guide (https://docs.aws.amazon.com/ses/latest/DeveloperGuide/receiving-email-concepts.html).
 type UpdateReceiptRuleInput struct {
 	_ struct{} `type:"structure"`
 
@@ -14624,7 +14716,6 @@ func (s *UpdateReceiptRuleInput) SetRuleSetName(v string) *UpdateReceiptRuleInpu
 }
 
 // An empty element returned on a successful request.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/email-2010-12-01/UpdateReceiptRuleResponse
 type UpdateReceiptRuleOutput struct {
 	_ struct{} `type:"structure"`
 }
@@ -14639,7 +14730,6 @@ func (s UpdateReceiptRuleOutput) GoString() string {
 	return s.String()
 }
 
-// See also, https://docs.aws.amazon.com/goto/WebAPI/email-2010-12-01/UpdateTemplateRequest
 type UpdateTemplateInput struct {
 	_ struct{} `type:"structure"`
 
@@ -14684,7 +14774,6 @@ func (s *UpdateTemplateInput) SetTemplate(v *Template) *UpdateTemplateInput {
 	return s
 }
 
-// See also, https://docs.aws.amazon.com/goto/WebAPI/email-2010-12-01/UpdateTemplateResponse
 type UpdateTemplateOutput struct {
 	_ struct{} `type:"structure"`
 }
@@ -14701,8 +14790,7 @@ func (s UpdateTemplateOutput) GoString() string {
 
 // Represents a request to generate the CNAME records needed to set up Easy
 // DKIM with Amazon SES. For more information about setting up Easy DKIM, see
-// the Amazon SES Developer Guide (http://docs.aws.amazon.com/ses/latest/DeveloperGuide/easy-dkim.html).
-// See also, https://docs.aws.amazon.com/goto/WebAPI/email-2010-12-01/VerifyDomainDkimRequest
+// the Amazon SES Developer Guide (https://docs.aws.amazon.com/ses/latest/DeveloperGuide/easy-dkim.html).
 type VerifyDomainDkimInput struct {
 	_ struct{} `type:"structure"`
 
@@ -14743,21 +14831,21 @@ func (s *VerifyDomainDkimInput) SetDomain(v string) *VerifyDomainDkimInput {
 
 // Returns CNAME records that you must publish to the DNS server of your domain
 // to set up Easy DKIM with Amazon SES.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/email-2010-12-01/VerifyDomainDkimResponse
 type VerifyDomainDkimOutput struct {
 	_ struct{} `type:"structure"`
 
 	// A set of character strings that represent the domain's identity. If the identity
 	// is an email address, the tokens represent the domain of that address.
 	//
-	// Using these tokens, you will need to create DNS CNAME records that point
-	// to DKIM public keys hosted by Amazon SES. Amazon Web Services will eventually
-	// detect that you have updated your DNS records; this detection process may
-	// take up to 72 hours. Upon successful detection, Amazon SES will be able to
-	// DKIM-sign emails originating from that domain.
+	// Using these tokens, you need to create DNS CNAME records that point to DKIM
+	// public keys that are hosted by Amazon SES. Amazon Web Services eventually
+	// detects that you've updated your DNS records. This detection process might
+	// take up to 72 hours. After successful detection, Amazon SES is able to DKIM-sign
+	// email originating from that domain. (This only applies to domain identities,
+	// not email address identities.)
 	//
-	// For more information about creating DNS records using DKIM tokens, go to
-	// the Amazon SES Developer Guide (http://docs.aws.amazon.com/ses/latest/DeveloperGuide/easy-dkim-dns-records.html).
+	// For more information about creating DNS records using DKIM tokens, see the
+	// Amazon SES Developer Guide (https://docs.aws.amazon.com/ses/latest/DeveloperGuide/easy-dkim.html).
 	//
 	// DkimTokens is a required field
 	DkimTokens []*string `type:"list" required:"true"`
@@ -14782,8 +14870,7 @@ func (s *VerifyDomainDkimOutput) SetDkimTokens(v []*string) *VerifyDomainDkimOut
 // Represents a request to begin Amazon SES domain verification and to generate
 // the TXT records that you must publish to the DNS server of your domain to
 // complete the verification. For information about domain verification, see
-// the Amazon SES Developer Guide (http://docs.aws.amazon.com/ses/latest/DeveloperGuide/verify-domains.html).
-// See also, https://docs.aws.amazon.com/goto/WebAPI/email-2010-12-01/VerifyDomainIdentityRequest
+// the Amazon SES Developer Guide (https://docs.aws.amazon.com/ses/latest/DeveloperGuide/verify-domains.html).
 type VerifyDomainIdentityInput struct {
 	_ struct{} `type:"structure"`
 
@@ -14824,7 +14911,6 @@ func (s *VerifyDomainIdentityInput) SetDomain(v string) *VerifyDomainIdentityInp
 
 // Returns a TXT record that you must publish to the DNS server of your domain
 // to complete domain verification with Amazon SES.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/email-2010-12-01/VerifyDomainIdentityResponse
 type VerifyDomainIdentityOutput struct {
 	_ struct{} `type:"structure"`
 
@@ -14860,8 +14946,7 @@ func (s *VerifyDomainIdentityOutput) SetVerificationToken(v string) *VerifyDomai
 
 // Represents a request to begin email address verification with Amazon SES.
 // For information about email address verification, see the Amazon SES Developer
-// Guide (http://docs.aws.amazon.com/ses/latest/DeveloperGuide/verify-email-addresses.html).
-// See also, https://docs.aws.amazon.com/goto/WebAPI/email-2010-12-01/VerifyEmailAddressRequest
+// Guide (https://docs.aws.amazon.com/ses/latest/DeveloperGuide/verify-email-addresses.html).
 type VerifyEmailAddressInput struct {
 	_ struct{} `type:"structure"`
 
@@ -14900,7 +14985,6 @@ func (s *VerifyEmailAddressInput) SetEmailAddress(v string) *VerifyEmailAddressI
 	return s
 }
 
-// See also, https://docs.aws.amazon.com/goto/WebAPI/email-2010-12-01/VerifyEmailAddressOutput
 type VerifyEmailAddressOutput struct {
 	_ struct{} `type:"structure"`
 }
@@ -14917,8 +15001,7 @@ func (s VerifyEmailAddressOutput) GoString() string {
 
 // Represents a request to begin email address verification with Amazon SES.
 // For information about email address verification, see the Amazon SES Developer
-// Guide (http://docs.aws.amazon.com/ses/latest/DeveloperGuide/verify-email-addresses.html).
-// See also, https://docs.aws.amazon.com/goto/WebAPI/email-2010-12-01/VerifyEmailIdentityRequest
+// Guide (https://docs.aws.amazon.com/ses/latest/DeveloperGuide/verify-email-addresses.html).
 type VerifyEmailIdentityInput struct {
 	_ struct{} `type:"structure"`
 
@@ -14958,7 +15041,6 @@ func (s *VerifyEmailIdentityInput) SetEmailAddress(v string) *VerifyEmailIdentit
 }
 
 // An empty element returned on a successful request.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/email-2010-12-01/VerifyEmailIdentityResponse
 type VerifyEmailIdentityOutput struct {
 	_ struct{} `type:"structure"`
 }
@@ -14979,15 +15061,14 @@ func (s VerifyEmailIdentityOutput) GoString() string {
 // the rule automatically during its setup procedure.
 //
 // For information using a receipt rule to call Amazon WorkMail, see the Amazon
-// SES Developer Guide (http://docs.aws.amazon.com/ses/latest/DeveloperGuide/receiving-email-action-workmail.html).
-// See also, https://docs.aws.amazon.com/goto/WebAPI/email-2010-12-01/WorkmailAction
+// SES Developer Guide (https://docs.aws.amazon.com/ses/latest/DeveloperGuide/receiving-email-action-workmail.html).
 type WorkmailAction struct {
 	_ struct{} `type:"structure"`
 
 	// The ARN of the Amazon WorkMail organization. An example of an Amazon WorkMail
 	// organization ARN is arn:aws:workmail:us-west-2:123456789012:organization/m-68755160c4cb4e29a2b2f8fb58f359d7.
 	// For information about Amazon WorkMail organizations, see the Amazon WorkMail
-	// Administrator Guide (http://docs.aws.amazon.com/workmail/latest/adminguide/organizations_overview.html).
+	// Administrator Guide (https://docs.aws.amazon.com/workmail/latest/adminguide/organizations_overview.html).
 	//
 	// OrganizationArn is a required field
 	OrganizationArn *string `type:"string" required:"true"`
@@ -14995,7 +15076,7 @@ type WorkmailAction struct {
 	// The Amazon Resource Name (ARN) of the Amazon SNS topic to notify when the
 	// WorkMail action is called. An example of an Amazon SNS topic ARN is arn:aws:sns:us-west-2:123456789012:MyTopic.
 	// For more information about Amazon SNS topics, see the Amazon SNS Developer
-	// Guide (http://docs.aws.amazon.com/sns/latest/dg/CreateTopic.html).
+	// Guide (https://docs.aws.amazon.com/sns/latest/dg/CreateTopic.html).
 	TopicArn *string `type:"string"`
 }
 
@@ -15112,6 +15193,9 @@ const (
 
 	// ConfigurationSetAttributeTrackingOptions is a ConfigurationSetAttribute enum value
 	ConfigurationSetAttributeTrackingOptions = "trackingOptions"
+
+	// ConfigurationSetAttributeDeliveryOptions is a ConfigurationSetAttribute enum value
+	ConfigurationSetAttributeDeliveryOptions = "deliveryOptions"
 
 	// ConfigurationSetAttributeReputationOptions is a ConfigurationSetAttribute enum value
 	ConfigurationSetAttributeReputationOptions = "reputationOptions"

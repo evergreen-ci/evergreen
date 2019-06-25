@@ -47,6 +47,14 @@ const (
 	// The specified branch name already exists.
 	ErrCodeBranchNameExistsException = "BranchNameExistsException"
 
+	// ErrCodeBranchNameIsTagNameException for service response error code
+	// "BranchNameIsTagNameException".
+	//
+	// The specified branch name is not valid because it is a tag name. Type the
+	// name of a current branch in the repository. For a list of valid branch names,
+	// use ListBranches.
+	ErrCodeBranchNameIsTagNameException = "BranchNameIsTagNameException"
+
 	// ErrCodeBranchNameRequiredException for service response error code
 	// "BranchNameRequiredException".
 	//
@@ -122,6 +130,12 @@ const (
 	// A commit ID was not specified.
 	ErrCodeCommitIdRequiredException = "CommitIdRequiredException"
 
+	// ErrCodeCommitMessageLengthExceededException for service response error code
+	// "CommitMessageLengthExceededException".
+	//
+	// The commit message is too long. Provide a shorter string.
+	ErrCodeCommitMessageLengthExceededException = "CommitMessageLengthExceededException"
+
 	// ErrCodeCommitRequiredException for service response error code
 	// "CommitRequiredException".
 	//
@@ -135,6 +149,15 @@ const (
 	// be deleted. To delete this branch, you must first set another branch as the
 	// default branch.
 	ErrCodeDefaultBranchCannotBeDeletedException = "DefaultBranchCannotBeDeletedException"
+
+	// ErrCodeDirectoryNameConflictsWithFileNameException for service response error code
+	// "DirectoryNameConflictsWithFileNameException".
+	//
+	// A file cannot be added to the repository because the specified path name
+	// has the same name as a file that already exists in this repository. Either
+	// provide a different name for the file, or specify a different path for the
+	// file.
+	ErrCodeDirectoryNameConflictsWithFileNameException = "DirectoryNameConflictsWithFileNameException"
 
 	// ErrCodeEncryptionIntegrityChecksFailedException for service response error code
 	// "EncryptionIntegrityChecksFailedException".
@@ -166,13 +189,90 @@ const (
 	// The encryption key is not available.
 	ErrCodeEncryptionKeyUnavailableException = "EncryptionKeyUnavailableException"
 
+	// ErrCodeFileContentAndSourceFileSpecifiedException for service response error code
+	// "FileContentAndSourceFileSpecifiedException".
+	//
+	// The commit cannot be created because both a source file and file content
+	// have been specified for the same file. You cannot provide both. Either specify
+	// a source file, or provide the file content directly.
+	ErrCodeFileContentAndSourceFileSpecifiedException = "FileContentAndSourceFileSpecifiedException"
+
+	// ErrCodeFileContentRequiredException for service response error code
+	// "FileContentRequiredException".
+	//
+	// The file cannot be added because it is empty. Empty files cannot be added
+	// to the repository with this API.
+	ErrCodeFileContentRequiredException = "FileContentRequiredException"
+
+	// ErrCodeFileContentSizeLimitExceededException for service response error code
+	// "FileContentSizeLimitExceededException".
+	//
+	// The file cannot be added because it is too large. The maximum file size that
+	// can be added is 6 MB, and the combined file content change size is 7 MB.
+	// Consider making these changes using a Git client.
+	ErrCodeFileContentSizeLimitExceededException = "FileContentSizeLimitExceededException"
+
+	// ErrCodeFileDoesNotExistException for service response error code
+	// "FileDoesNotExistException".
+	//
+	// The specified file does not exist. Verify that you have provided the correct
+	// name of the file, including its full path and extension.
+	ErrCodeFileDoesNotExistException = "FileDoesNotExistException"
+
+	// ErrCodeFileEntryRequiredException for service response error code
+	// "FileEntryRequiredException".
+	//
+	// The commit cannot be created because no files have been specified as added,
+	// updated, or changed (PutFile or DeleteFile) for the commit.
+	ErrCodeFileEntryRequiredException = "FileEntryRequiredException"
+
+	// ErrCodeFileModeRequiredException for service response error code
+	// "FileModeRequiredException".
+	//
+	// The commit cannot be created because a file mode is required to update mode
+	// permissions for an existing file, but no file mode has been specified.
+	ErrCodeFileModeRequiredException = "FileModeRequiredException"
+
+	// ErrCodeFileNameConflictsWithDirectoryNameException for service response error code
+	// "FileNameConflictsWithDirectoryNameException".
+	//
+	// A file cannot be added to the repository because the specified file name
+	// has the same name as a directory in this repository. Either provide another
+	// name for the file, or add the file in a directory that does not match the
+	// file name.
+	ErrCodeFileNameConflictsWithDirectoryNameException = "FileNameConflictsWithDirectoryNameException"
+
+	// ErrCodeFilePathConflictsWithSubmodulePathException for service response error code
+	// "FilePathConflictsWithSubmodulePathException".
+	//
+	// The commit cannot be created because a specified file path points to a submodule.
+	// Verify that the destination files have valid file paths that do not point
+	// to a submodule.
+	ErrCodeFilePathConflictsWithSubmodulePathException = "FilePathConflictsWithSubmodulePathException"
+
 	// ErrCodeFileTooLargeException for service response error code
 	// "FileTooLargeException".
 	//
 	// The specified file exceeds the file size limit for AWS CodeCommit. For more
 	// information about limits in AWS CodeCommit, see AWS CodeCommit User Guide
-	// (http://docs.aws.amazon.com/codecommit/latest/userguide/limits.html).
+	// (https://docs.aws.amazon.com/codecommit/latest/userguide/limits.html).
 	ErrCodeFileTooLargeException = "FileTooLargeException"
+
+	// ErrCodeFolderContentSizeLimitExceededException for service response error code
+	// "FolderContentSizeLimitExceededException".
+	//
+	// The commit cannot be created because at least one of the overall changes
+	// in the commit results in a folder whose contents exceed the limit of 6 MB.
+	// Either reduce the number and size of your changes, or split the changes across
+	// multiple folders.
+	ErrCodeFolderContentSizeLimitExceededException = "FolderContentSizeLimitExceededException"
+
+	// ErrCodeFolderDoesNotExistException for service response error code
+	// "FolderDoesNotExistException".
+	//
+	// The specified folder does not exist. Either the folder name is not correct,
+	// or you did not provide the full path to the folder.
+	ErrCodeFolderDoesNotExistException = "FolderDoesNotExistException"
 
 	// ErrCodeIdempotencyParameterMismatchException for service response error code
 	// "IdempotencyParameterMismatchException".
@@ -233,11 +333,35 @@ const (
 	// The specified commit ID is not valid.
 	ErrCodeInvalidCommitIdException = "InvalidCommitIdException"
 
+	// ErrCodeInvalidConflictDetailLevelException for service response error code
+	// "InvalidConflictDetailLevelException".
+	//
+	// The specified conflict detail level is not valid.
+	ErrCodeInvalidConflictDetailLevelException = "InvalidConflictDetailLevelException"
+
+	// ErrCodeInvalidConflictResolutionException for service response error code
+	// "InvalidConflictResolutionException".
+	//
+	// The specified conflict resolution list is not valid.
+	ErrCodeInvalidConflictResolutionException = "InvalidConflictResolutionException"
+
+	// ErrCodeInvalidConflictResolutionStrategyException for service response error code
+	// "InvalidConflictResolutionStrategyException".
+	//
+	// The specified conflict resolution strategy is not valid.
+	ErrCodeInvalidConflictResolutionStrategyException = "InvalidConflictResolutionStrategyException"
+
 	// ErrCodeInvalidContinuationTokenException for service response error code
 	// "InvalidContinuationTokenException".
 	//
 	// The specified continuation token is not valid.
 	ErrCodeInvalidContinuationTokenException = "InvalidContinuationTokenException"
+
+	// ErrCodeInvalidDeletionParameterException for service response error code
+	// "InvalidDeletionParameterException".
+	//
+	// The specified deletion parameter is not valid.
+	ErrCodeInvalidDeletionParameterException = "InvalidDeletionParameterException"
 
 	// ErrCodeInvalidDescriptionException for service response error code
 	// "InvalidDescriptionException".
@@ -253,6 +377,14 @@ const (
 	// name, tag, or full commit ID.
 	ErrCodeInvalidDestinationCommitSpecifierException = "InvalidDestinationCommitSpecifierException"
 
+	// ErrCodeInvalidEmailException for service response error code
+	// "InvalidEmailException".
+	//
+	// The specified email address either contains one or more characters that are
+	// not allowed, or it exceeds the maximum number of characters allowed for an
+	// email address.
+	ErrCodeInvalidEmailException = "InvalidEmailException"
+
 	// ErrCodeInvalidFileLocationException for service response error code
 	// "InvalidFileLocationException".
 	//
@@ -260,12 +392,31 @@ const (
 	// of the file as well as the file name.
 	ErrCodeInvalidFileLocationException = "InvalidFileLocationException"
 
+	// ErrCodeInvalidFileModeException for service response error code
+	// "InvalidFileModeException".
+	//
+	// The specified file mode permission is not valid. For a list of valid file
+	// mode permissions, see PutFile.
+	ErrCodeInvalidFileModeException = "InvalidFileModeException"
+
 	// ErrCodeInvalidFilePositionException for service response error code
 	// "InvalidFilePositionException".
 	//
 	// The position is not valid. Make sure that the line number exists in the version
 	// of the file you want to comment on.
 	ErrCodeInvalidFilePositionException = "InvalidFilePositionException"
+
+	// ErrCodeInvalidMaxConflictFilesException for service response error code
+	// "InvalidMaxConflictFilesException".
+	//
+	// The specified value for the number of conflict files to return is not valid.
+	ErrCodeInvalidMaxConflictFilesException = "InvalidMaxConflictFilesException"
+
+	// ErrCodeInvalidMaxMergeHunksException for service response error code
+	// "InvalidMaxMergeHunksException".
+	//
+	// The specified value for the number of merge hunks to return is not valid.
+	ErrCodeInvalidMaxMergeHunksException = "InvalidMaxMergeHunksException"
 
 	// ErrCodeInvalidMaxResultsException for service response error code
 	// "InvalidMaxResultsException".
@@ -276,7 +427,8 @@ const (
 	// ErrCodeInvalidMergeOptionException for service response error code
 	// "InvalidMergeOptionException".
 	//
-	// The specified merge option is not valid. The only valid value is FAST_FORWARD_MERGE.
+	// The specified merge option is not valid for this operation. Not all merge
+	// strategies are supported for all operations.
 	ErrCodeInvalidMergeOptionException = "InvalidMergeOptionException"
 
 	// ErrCodeInvalidOrderException for service response error code
@@ -284,6 +436,14 @@ const (
 	//
 	// The specified sort order is not valid.
 	ErrCodeInvalidOrderException = "InvalidOrderException"
+
+	// ErrCodeInvalidParentCommitIdException for service response error code
+	// "InvalidParentCommitIdException".
+	//
+	// The parent commit ID is not valid. The commit ID cannot be empty, and must
+	// match the head commit ID for the branch of the repository where you want
+	// to add or update a file.
+	ErrCodeInvalidParentCommitIdException = "InvalidParentCommitIdException"
 
 	// ErrCodeInvalidPathException for service response error code
 	// "InvalidPathException".
@@ -334,6 +494,20 @@ const (
 	// Either the enum is not in a valid format, or the specified file version enum
 	// is not valid in respect to the current file version.
 	ErrCodeInvalidRelativeFileVersionEnumException = "InvalidRelativeFileVersionEnumException"
+
+	// ErrCodeInvalidReplacementContentException for service response error code
+	// "InvalidReplacementContentException".
+	//
+	// Automerge was specified for resolving the conflict, but the replacement type
+	// is not valid or content is missing.
+	ErrCodeInvalidReplacementContentException = "InvalidReplacementContentException"
+
+	// ErrCodeInvalidReplacementTypeException for service response error code
+	// "InvalidReplacementTypeException".
+	//
+	// Automerge was specified for resolving the conflict, but the specified replacement
+	// type is not valid.
+	ErrCodeInvalidReplacementTypeException = "InvalidReplacementTypeException"
 
 	// ErrCodeInvalidRepositoryDescriptionException for service response error code
 	// "InvalidRepositoryDescriptionException".
@@ -391,6 +565,14 @@ const (
 	// Triggers must be created in the same region as the target for the trigger.
 	ErrCodeInvalidRepositoryTriggerRegionException = "InvalidRepositoryTriggerRegionException"
 
+	// ErrCodeInvalidResourceArnException for service response error code
+	// "InvalidResourceArnException".
+	//
+	// The value for the resource ARN is not valid. For more information about resources
+	// in AWS CodeCommit, see CodeCommit Resources and Operations (https://docs.aws.amazon.com/codecommit/latest/userguide/auth-and-access-control-iam-access-control-identity-based.html#arn-formats)
+	// in the AWS CodeCommit User Guide.
+	ErrCodeInvalidResourceArnException = "InvalidResourceArnException"
+
 	// ErrCodeInvalidSortByException for service response error code
 	// "InvalidSortByException".
 	//
@@ -403,6 +585,30 @@ const (
 	// The source commit specifier is not valid. You must provide a valid branch
 	// name, tag, or full commit ID.
 	ErrCodeInvalidSourceCommitSpecifierException = "InvalidSourceCommitSpecifierException"
+
+	// ErrCodeInvalidSystemTagUsageException for service response error code
+	// "InvalidSystemTagUsageException".
+	//
+	// The specified tag is not valid. Key names cannot be prefixed with aws:.
+	ErrCodeInvalidSystemTagUsageException = "InvalidSystemTagUsageException"
+
+	// ErrCodeInvalidTagKeysListException for service response error code
+	// "InvalidTagKeysListException".
+	//
+	// The list of tags is not valid.
+	ErrCodeInvalidTagKeysListException = "InvalidTagKeysListException"
+
+	// ErrCodeInvalidTagsMapException for service response error code
+	// "InvalidTagsMapException".
+	//
+	// The map of tags is not valid.
+	ErrCodeInvalidTagsMapException = "InvalidTagsMapException"
+
+	// ErrCodeInvalidTargetBranchException for service response error code
+	// "InvalidTargetBranchException".
+	//
+	// The specified target branch is not valid.
+	ErrCodeInvalidTargetBranchException = "InvalidTargetBranchException"
 
 	// ErrCodeInvalidTargetException for service response error code
 	// "InvalidTargetException".
@@ -441,6 +647,26 @@ const (
 	// The number of branches for the trigger was exceeded.
 	ErrCodeMaximumBranchesExceededException = "MaximumBranchesExceededException"
 
+	// ErrCodeMaximumConflictResolutionEntriesExceededException for service response error code
+	// "MaximumConflictResolutionEntriesExceededException".
+	//
+	// The number of allowed conflict resolution entries was exceeded.
+	ErrCodeMaximumConflictResolutionEntriesExceededException = "MaximumConflictResolutionEntriesExceededException"
+
+	// ErrCodeMaximumFileContentToLoadExceededException for service response error code
+	// "MaximumFileContentToLoadExceededException".
+	//
+	// The number of files to load exceeds the allowed limit.
+	ErrCodeMaximumFileContentToLoadExceededException = "MaximumFileContentToLoadExceededException"
+
+	// ErrCodeMaximumFileEntriesExceededException for service response error code
+	// "MaximumFileEntriesExceededException".
+	//
+	// The number of specified files to change as part of this commit exceeds the
+	// maximum number of files that can be changed in a single commit. Consider
+	// using a Git client for these changes.
+	ErrCodeMaximumFileEntriesExceededException = "MaximumFileEntriesExceededException"
+
 	// ErrCodeMaximumOpenPullRequestsExceededException for service response error code
 	// "MaximumOpenPullRequestsExceededException".
 	//
@@ -468,6 +694,13 @@ const (
 	// A merge option or stategy is required, and none was provided.
 	ErrCodeMergeOptionRequiredException = "MergeOptionRequiredException"
 
+	// ErrCodeMultipleConflictResolutionEntriesException for service response error code
+	// "MultipleConflictResolutionEntriesException".
+	//
+	// More than one conflict resolution entries exists for the conflict. A conflict
+	// can have only one conflict resolution entry.
+	ErrCodeMultipleConflictResolutionEntriesException = "MultipleConflictResolutionEntriesException"
+
 	// ErrCodeMultipleRepositoriesInPullRequestException for service response error code
 	// "MultipleRepositoriesInPullRequestException".
 	//
@@ -475,6 +708,44 @@ const (
 	// you have specified only one repository name in your request, and then try
 	// again.
 	ErrCodeMultipleRepositoriesInPullRequestException = "MultipleRepositoriesInPullRequestException"
+
+	// ErrCodeNameLengthExceededException for service response error code
+	// "NameLengthExceededException".
+	//
+	// The user name is not valid because it has exceeded the character limit for
+	// file names. File names, including the path to the file, cannot exceed the
+	// character limit.
+	ErrCodeNameLengthExceededException = "NameLengthExceededException"
+
+	// ErrCodeNoChangeException for service response error code
+	// "NoChangeException".
+	//
+	// The commit cannot be created because no changes will be made to the repository
+	// as a result of this commit. A commit must contain at least one change.
+	ErrCodeNoChangeException = "NoChangeException"
+
+	// ErrCodeParentCommitDoesNotExistException for service response error code
+	// "ParentCommitDoesNotExistException".
+	//
+	// The parent commit ID is not valid because it does not exist. The specified
+	// parent commit ID does not exist in the specified branch of the repository.
+	ErrCodeParentCommitDoesNotExistException = "ParentCommitDoesNotExistException"
+
+	// ErrCodeParentCommitIdOutdatedException for service response error code
+	// "ParentCommitIdOutdatedException".
+	//
+	// The file could not be added because the provided parent commit ID is not
+	// the current tip of the specified branch. To view the full commit ID of the
+	// current head of the branch, use GetBranch.
+	ErrCodeParentCommitIdOutdatedException = "ParentCommitIdOutdatedException"
+
+	// ErrCodeParentCommitIdRequiredException for service response error code
+	// "ParentCommitIdRequiredException".
+	//
+	// A parent commit ID is required. To view the full commit ID of a branch in
+	// a repository, use GetBranch or a Git command (for example, git pull or git
+	// log).
+	ErrCodeParentCommitIdRequiredException = "ParentCommitIdRequiredException"
 
 	// ErrCodePathDoesNotExistException for service response error code
 	// "PathDoesNotExistException".
@@ -485,7 +756,7 @@ const (
 	// ErrCodePathRequiredException for service response error code
 	// "PathRequiredException".
 	//
-	// The filePath for a location cannot be empty or null.
+	// The folderPath for a location cannot be null.
 	ErrCodePathRequiredException = "PathRequiredException"
 
 	// ErrCodePullRequestAlreadyClosedException for service response error code
@@ -513,6 +784,13 @@ const (
 	// A pull request status is required, but none was provided.
 	ErrCodePullRequestStatusRequiredException = "PullRequestStatusRequiredException"
 
+	// ErrCodePutFileEntryConflictException for service response error code
+	// "PutFileEntryConflictException".
+	//
+	// The commit cannot be created because one or more files specified in the commit
+	// reference both a file and a folder.
+	ErrCodePutFileEntryConflictException = "PutFileEntryConflictException"
+
 	// ErrCodeReferenceDoesNotExistException for service response error code
 	// "ReferenceDoesNotExistException".
 	//
@@ -530,6 +808,18 @@ const (
 	//
 	// The specified reference is not a supported type.
 	ErrCodeReferenceTypeNotSupportedException = "ReferenceTypeNotSupportedException"
+
+	// ErrCodeReplacementContentRequiredException for service response error code
+	// "ReplacementContentRequiredException".
+	//
+	// USE_NEW_CONTENT was specified but no replacement content has been provided.
+	ErrCodeReplacementContentRequiredException = "ReplacementContentRequiredException"
+
+	// ErrCodeReplacementTypeRequiredException for service response error code
+	// "ReplacementTypeRequiredException".
+	//
+	// A replacement type is required.
+	ErrCodeReplacementTypeRequiredException = "ReplacementTypeRequiredException"
 
 	// ErrCodeRepositoryDoesNotExistException for service response error code
 	// "RepositoryDoesNotExistException".
@@ -565,8 +855,8 @@ const (
 	// "RepositoryNotAssociatedWithPullRequestException".
 	//
 	// The repository does not contain any pull requests with that pull request
-	// ID. Check to make sure you have provided the correct repository name for
-	// the pull request.
+	// ID. Use GetPullRequest to verify the correct repository name for the pull
+	// request ID.
 	ErrCodeRepositoryNotAssociatedWithPullRequestException = "RepositoryNotAssociatedWithPullRequestException"
 
 	// ErrCodeRepositoryTriggerBranchNameListRequiredException for service response error code
@@ -601,12 +891,70 @@ const (
 	// The list of triggers for the repository is required but was not specified.
 	ErrCodeRepositoryTriggersListRequiredException = "RepositoryTriggersListRequiredException"
 
+	// ErrCodeResourceArnRequiredException for service response error code
+	// "ResourceArnRequiredException".
+	//
+	// A valid Amazon Resource Name (ARN) for an AWS CodeCommit resource is required.
+	// For a list of valid resources in AWS CodeCommit, see CodeCommit Resources
+	// and Operations (https://docs.aws.amazon.com/codecommit/latest/userguide/auth-and-access-control-iam-access-control-identity-based.html#arn-formats)
+	// in the AWS CodeCommit User Guide.
+	ErrCodeResourceArnRequiredException = "ResourceArnRequiredException"
+
+	// ErrCodeRestrictedSourceFileException for service response error code
+	// "RestrictedSourceFileException".
+	//
+	// The commit cannot be created because one of the changes specifies copying
+	// or moving a .gitkeep file.
+	ErrCodeRestrictedSourceFileException = "RestrictedSourceFileException"
+
+	// ErrCodeSameFileContentException for service response error code
+	// "SameFileContentException".
+	//
+	// The file was not added or updated because the content of the file is exactly
+	// the same as the content of that file in the repository and branch that you
+	// specified.
+	ErrCodeSameFileContentException = "SameFileContentException"
+
+	// ErrCodeSamePathRequestException for service response error code
+	// "SamePathRequestException".
+	//
+	// The commit cannot be created because one or more changes in this commit duplicate
+	// actions in the same file path. For example, you cannot make the same delete
+	// request to the same file in the same file path twice, or make a delete request
+	// and a move request to the same file as part of the same commit.
+	ErrCodeSamePathRequestException = "SamePathRequestException"
+
 	// ErrCodeSourceAndDestinationAreSameException for service response error code
 	// "SourceAndDestinationAreSameException".
 	//
 	// The source branch and the destination branch for the pull request are the
 	// same. You must specify different branches for the source and destination.
 	ErrCodeSourceAndDestinationAreSameException = "SourceAndDestinationAreSameException"
+
+	// ErrCodeSourceFileOrContentRequiredException for service response error code
+	// "SourceFileOrContentRequiredException".
+	//
+	// The commit cannot be created because no source files or file content have
+	// been specified for the commit.
+	ErrCodeSourceFileOrContentRequiredException = "SourceFileOrContentRequiredException"
+
+	// ErrCodeTagKeysListRequiredException for service response error code
+	// "TagKeysListRequiredException".
+	//
+	// A list of tag keys is required. The list cannot be empty or null.
+	ErrCodeTagKeysListRequiredException = "TagKeysListRequiredException"
+
+	// ErrCodeTagPolicyException for service response error code
+	// "TagPolicyException".
+	//
+	// The tag policy is not valid.
+	ErrCodeTagPolicyException = "TagPolicyException"
+
+	// ErrCodeTagsMapRequiredException for service response error code
+	// "TagsMapRequiredException".
+	//
+	// A map of tags is required.
+	ErrCodeTagsMapRequiredException = "TagsMapRequiredException"
 
 	// ErrCodeTargetRequiredException for service response error code
 	// "TargetRequiredException".
@@ -643,4 +991,10 @@ const (
 	//
 	// A pull request title is required. It cannot be empty or null.
 	ErrCodeTitleRequiredException = "TitleRequiredException"
+
+	// ErrCodeTooManyTagsException for service response error code
+	// "TooManyTagsException".
+	//
+	// The maximum number of tags for an AWS CodeCommit resource has been exceeded.
+	ErrCodeTooManyTagsException = "TooManyTagsException"
 )
