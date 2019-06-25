@@ -20,10 +20,7 @@ const (
 	defaultExpiration = 30 * 24 * time.Hour // 1 month
 )
 
-var (
-	serviceName        string
-	errNotBootstrapped = errors.Errorf("%s collection has not been bootstrapped", Collection)
-)
+var serviceName string
 
 // Bootstrap performs one-time initialization of the credentials collection with
 // the certificate authority and service certificate. In order to perform
@@ -68,13 +65,6 @@ func Bootstrap(env evergreen.Environment) error {
 	return nil
 }
 
-func validateBootstrapped() error {
-	if serviceName == "" {
-		return errNotBootstrapped
-	}
-	return nil
-}
-
 func mongoConfig(settings *evergreen.Settings) *certdepot.MongoDBOptions {
 	return &certdepot.MongoDBOptions{
 		MongoDBURI:     settings.Database.Url,
@@ -102,10 +92,6 @@ func deleteIfExists(dpt certdepot.Depot, tags ...*depot.Tag) error {
 // name. If the credentials already exist, this will overwrite the existing
 // credentials.
 func SaveCredentials(ctx context.Context, env evergreen.Environment, name string, creds *rpc.Credentials) error {
-	if err := validateBootstrapped(); err != nil {
-		return err
-	}
-
 	dpt, err := getDepot(ctx, env)
 	if err != nil {
 		return errors.Wrap(err, "could not get depot")
@@ -128,10 +114,6 @@ func SaveCredentials(ctx context.Context, env evergreen.Environment, name string
 // database. This is not idempotent, so separate calls with the same inputs will
 // return different credentials.
 func GenerateInMemory(ctx context.Context, env evergreen.Environment, name string) (*rpc.Credentials, error) {
-	if err := validateBootstrapped(); err != nil {
-		return nil, err
-	}
-
 	opts := certdepot.CertificateOptions{
 		CA:         CAName,
 		CommonName: name,
@@ -174,10 +156,6 @@ func GenerateInMemory(ctx context.Context, env evergreen.Environment, name strin
 
 // FindByID gets the credentials for the given name.
 func FindByID(ctx context.Context, env evergreen.Environment, name string) (*rpc.Credentials, error) {
-	if err := validateBootstrapped(); err != nil {
-		return nil, err
-	}
-
 	dpt, err := getDepot(ctx, env)
 	if err != nil {
 		return nil, errors.Wrap(err, "could not get depot")
@@ -203,10 +181,6 @@ func FindByID(ctx context.Context, env evergreen.Environment, name string) (*rpc
 
 // DeleteCredentials removes the credentials from the database.
 func DeleteCredentials(ctx context.Context, env evergreen.Environment, name string) error {
-	if err := validateBootstrapped(); err != nil {
-		return err
-	}
-
 	dpt, err := getDepot(ctx, env)
 	if err != nil {
 		return errors.Wrap(err, "could not get depot")
