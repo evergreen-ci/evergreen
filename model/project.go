@@ -276,8 +276,8 @@ type ArtifactInstructions struct {
 }
 
 type YAMLCommandSet struct {
-	SingleCommand *PluginCommandConf
-	MultiCommand  []PluginCommandConf
+	SingleCommand *PluginCommandConf  `bson:"single_command"`
+	MultiCommand  []PluginCommandConf `bson:"multi_command"`
 }
 
 func (c *YAMLCommandSet) List() []PluginCommandConf {

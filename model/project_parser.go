@@ -8,7 +8,7 @@ import (
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
-	yaml "gopkg.in/yaml.v2"
+	"gopkg.in/yaml.v2"
 )
 
 const LoadProjectError = "load project error(s)"
@@ -16,8 +16,8 @@ const LoadProjectError = "load project error(s)"
 // This file contains the infrastructure for turning a YAML project configuration
 // into a usable Project struct. A basic overview of the project parsing process is:
 //
-// First, the YAML bytes are unmarshalled into an intermediary parserProject.
-// The parserProject's internal types define custom YAML unmarshal hooks, allowing
+// First, the YAML bytes are unmarshalled into an intermediary ParserProject.
+// The ParserProject's internal types define custom YAML unmarshal hooks, allowing
 // users to do things like offer a single definition where we expect a list, e.g.
 //   `tags: "single_tag"` instead of the more verbose `tags: ["single_tag"]`
 // or refer to task by a single selector. Custom YAML handling allows us to
@@ -35,37 +35,37 @@ const LoadProjectError = "load project error(s)"
 // Code outside of this file should never have to consider selectors or parser* types
 // when handling project code.
 
-// parserProject serves as an intermediary struct for parsing project
+// ParserProject serves as an intermediary struct for parsing project
 // configuration YAML. It implements the Unmarshaler interface
 // to allow for flexible handling.
-type parserProject struct {
-	Enabled         bool                       `yaml:"enabled,omitempty"`
-	Stepback        bool                       `yaml:"stepback,omitempty"`
-	IgnorePreError  bool                       `yaml:"ignore_pre_err,omitempty"`
-	BatchTime       int                        `yaml:"batchtime,omitempty"`
-	Owner           string                     `yaml:"owner,omitempty"`
-	Repo            string                     `yaml:"repo,omitempty"`
-	RemotePath      string                     `yaml:"remote_path,omitempty"`
-	RepoKind        string                     `yaml:"repokind,omitempty"`
-	Branch          string                     `yaml:"branch,omitempty"`
-	Identifier      string                     `yaml:"identifier,omitempty"`
-	DisplayName     string                     `yaml:"display_name,omitempty"`
-	CommandType     string                     `yaml:"command_type,omitempty"`
-	Ignore          parserStringSlice          `yaml:"ignore,omitempty"`
-	Pre             *YAMLCommandSet            `yaml:"pre,omitempty"`
-	Post            *YAMLCommandSet            `yaml:"post,omitempty"`
-	Timeout         *YAMLCommandSet            `yaml:"timeout,omitempty"`
-	CallbackTimeout int                        `yaml:"callback_timeout_secs,omitempty"`
-	Modules         []Module                   `yaml:"modules,omitempty"`
-	BuildVariants   []parserBV                 `yaml:"buildvariants,omitempty"`
-	Functions       map[string]*YAMLCommandSet `yaml:"functions,omitempty"`
-	TaskGroups      []parserTaskGroup          `yaml:"task_groups,omitempty"`
-	Tasks           []parserTask               `yaml:"tasks,omitempty"`
-	ExecTimeoutSecs int                        `yaml:"exec_timeout_secs,omitempty"`
-	Loggers         *LoggerConfig              `yaml:"loggers,omitempty"`
+type ParserProject struct {
+	Enabled         bool                       `yaml:"enabled,omitempty" bson:"enabled,omitempty"`
+	Stepback        bool                       `yaml:"stepback,omitempty" bson:"stepback,omitempty"`
+	IgnorePreError  bool                       `yaml:"ignore_pre_err,omitempty" bson:"ignore_pre_err,omitempty"`
+	BatchTime       int                        `yaml:"batchtime,omitempty" bson:"batchtime,omitempty"`
+	Owner           string                     `yaml:"owner,omitempty" bson:"owner,omitempty"`
+	Repo            string                     `yaml:"repo,omitempty" bson:"repo,omitempty"`
+	RemotePath      string                     `yaml:"remote_path,omitempty" bson:"remote_path,omitempty"`
+	RepoKind        string                     `yaml:"repokind,omitempty" bson:"repokind,omitempty"`
+	Branch          string                     `yaml:"branch,omitempty" bson:"branch,omitempty"`
+	Identifier      string                     `yaml:"identifier,omitempty" bson:"identifier,omitempty"`
+	DisplayName     string                     `yaml:"display_name,omitempty" bson:"display_name,omitempty"`
+	CommandType     string                     `yaml:"command_type,omitempty" bson:"command_type,omitempty"`
+	Ignore          parserStringSlice          `yaml:"ignore,omitempty" bson:"ignore,omitempty"`
+	Pre             *YAMLCommandSet            `yaml:"pre,omitempty" bson:"pre,omitempty"`
+	Post            *YAMLCommandSet            `yaml:"post,omitempty" bson:"post,omitempty"`
+	Timeout         *YAMLCommandSet            `yaml:"timeout,omitempty" bson:"timeout,omitempty"`
+	CallbackTimeout int                        `yaml:"callback_timeout_secs,omitempty" bson:"callback_timeout_secs,omitempty"`
+	Modules         []Module                   `yaml:"modules,omitempty" bson:"modules,omitempty"`
+	BuildVariants   []parserBV                 `yaml:"buildvariants,omitempty" bson:"buildvariants,omitempty"`
+	Functions       map[string]*YAMLCommandSet `yaml:"functions,omitempty" bson:"functions,omitempty"`
+	TaskGroups      []parserTaskGroup          `yaml:"task_groups,omitempty" bson:"task_groups,omitempty"`
+	Tasks           []parserTask               `yaml:"tasks,omitempty" bson:"tasks,omitempty"`
+	ExecTimeoutSecs int                        `yaml:"exec_timeout_secs,omitempty" bson:"exec_timeout_secs,omitempty"`
+	Loggers         *LoggerConfig              `yaml:"loggers,omitempty" bson:"loggers:omitempty"`
 
 	// Matrix code
-	Axes []matrixAxis `yaml:"axes,omitempty"`
+	Axes []matrixAxis `yaml:"axes,omitempty" bson:"axes,omitempty"`
 }
 
 type parserTaskGroup struct {
@@ -431,8 +431,8 @@ func projectFromYAML(yml []byte) (*Project, []error) {
 // createIntermediateProject marshals the supplied YAML into our
 // intermediate project representation (i.e. before selectors or
 // matrix logic has been evaluated).
-func createIntermediateProject(yml []byte) (*parserProject, []error) {
-	p := &parserProject{}
+func createIntermediateProject(yml []byte) (*ParserProject, []error) {
+	p := &ParserProject{}
 	err := yaml.Unmarshal(yml, p)
 	if err != nil {
 		return nil, []error{err}
@@ -447,7 +447,7 @@ func createIntermediateProject(yml []byte) (*parserProject, []error) {
 // translateProject converts our intermediate project representation into
 // the Project type that Evergreen actually uses. Errors are added to
 // pp.errors and pp.warnings and must be checked separately.
-func translateProject(pp *parserProject) (*Project, []error) {
+func translateProject(pp *ParserProject) (*Project, []error) {
 	// Transfer top level fields
 	proj := &Project{
 		Enabled:         pp.Enabled,
