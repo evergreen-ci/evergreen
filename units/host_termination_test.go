@@ -96,9 +96,7 @@ func TestHostCosts(t *testing.T) {
 	}
 	assert.NoError(t1.Insert())
 
-	env := &mock.Environment{}
-	require.NoError(t, env.Configure(ctx, "", nil))
-	j := NewHostTerminationJob(env, *h, true)
+	j := NewHostTerminationJob(&mock.Environment{}, *h, true)
 	j.Run(ctx)
 	assert.NoError(j.Error())
 	dbHost, err := host.FindOne(host.ById(h.Id))

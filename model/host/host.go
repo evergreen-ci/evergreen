@@ -87,10 +87,6 @@ type Host struct {
 	NeedsNewAgent        bool   `bson:"needs_agent" json:"needs_agent"`
 	NeedsNewAgentMonitor bool   `bson:"needs_agent_monitor" json:"needs_agent_monitor"`
 
-	// JasperCredentialsID is used to match hosts to their Jasper credentials
-	// for non-legacy hosts.
-	JasperCredentialsID string `bson:"jasper_credentials_id" json:"jasper_credentials_id"`
-
 	// for ec2 dynamic hosts, the instance type requested
 	InstanceType string `bson:"instance_type" json:"instance_type,omitempty"`
 	// for ec2 dynamic hosts, the total size of the volumes requested, in GiB
@@ -338,45 +334,25 @@ func (h *Host) CreateSecret() error {
 
 // JasperCredentials gets the Jasper credentials from the database.
 func (h *Host) JasperCredentials(ctx context.Context, env evergreen.Environment) (*rpc.Credentials, error) {
-	return credentials.FindByID(ctx, env, h.JasperCredentialsID)
+	return credentials.FindByID(ctx, env, h.Id)
 }
 
 // GenerateJasperCredentials creates the Jasper credentials for the given host
 // without saving them to the database.
 func (h *Host) GenerateJasperCredentials(ctx context.Context, env evergreen.Environment) (*rpc.Credentials, error) {
-	if h.JasperCredentialsID == "" {
-		if err := h.UpdateJasperCredentialsID(h.Id); err != nil {
-			return nil, errors.Wrap(err, "problem setting Jasper credentials ID")
-		}
-	}
-	return credentials.GenerateInMemory(ctx, env, h.JasperCredentialsID)
+	return credentials.GenerateInMemory(ctx, env, h.Id)
 }
 
 // SaveJasperCredentials saves the given Jasper credentials in the database for
 // the host.
 func (h *Host) SaveJasperCredentials(ctx context.Context, env evergreen.Environment, creds *rpc.Credentials) error {
-	if h.JasperCredentialsID == "" {
-		return errors.New("Jasper credentials ID is empty")
-	}
-	return credentials.SaveCredentials(ctx, env, h.JasperCredentialsID, creds)
+	return credentials.SaveCredentials(ctx, env, h.Id, creds)
 }
 
 // DeleteJasperCredentials deletes the Jasper credentials for the host and
 // updates the host both in memory and in the database.
 func (h *Host) DeleteJasperCredentials(ctx context.Context, env evergreen.Environment) error {
-	return credentials.DeleteCredentials(ctx, env, h.JasperCredentialsID)
-}
-
-// UpdateJasperCredentialsID sets the ID of the host's Jasper credentials.
-func (h *Host) UpdateJasperCredentialsID(id string) error {
-	if err := UpdateOne(
-		bson.M{IdKey: h.Id},
-		bson.M{"$set": bson.M{JasperCredentialsIDKey: id}},
-	); err != nil {
-		return err
-	}
-	h.JasperCredentialsID = id
-	return nil
+	return credentials.DeleteCredentials(ctx, env, h.Id)
 }
 
 // UpdateLastCommunicated sets the host's last communication time to the current time.

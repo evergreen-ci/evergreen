@@ -12,7 +12,6 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/util"
-	"github.com/mongodb/jasper/rpc"
 	"github.com/pkg/errors"
 )
 
@@ -171,12 +170,11 @@ func (h *Host) FetchAndReinstallJasperCommand(config evergreen.HostJasperConfig)
 // delete the current Jasper service configuration (if it exists), install the
 // new configuration, and restart the service.
 func (h *Host) ForceReinstallJasperCommand(config evergreen.HostJasperConfig) string {
-	params := []string{fmt.Sprintf("--port=%d", config.Port)}
-	if h.Distro.JasperCredentialsPath != "" {
-		params = append(params, fmt.Sprintf("--creds_path=%s", h.Distro.JasperCredentialsPath))
+	port := config.Port
+	if port == 0 {
+		port = evergreen.DefaultJasperPort
 	}
-
-	return h.jasperServiceCommand(config, "force-reinstall", params...)
+	return h.jasperServiceCommand(config, "force-reinstall", fmt.Sprintf("--port=%d", port))
 }
 
 func (h *Host) jasperServiceCommand(config evergreen.HostJasperConfig, subCmd string, args ...string) string {
@@ -231,16 +229,10 @@ func (h *Host) jasperBinaryFileName(config evergreen.HostJasperConfig) string {
 }
 
 // BootstrapScript creates the user data script to bootstrap the host.
-func (h *Host) BootstrapScript(config evergreen.HostJasperConfig, creds *rpc.Credentials) (string, error) {
-	writeCredentialsCmd, err := h.writeJasperCredentialsFileCommand(config, creds)
-	if err != nil {
-		return "", errors.Wrap(err, "could not build command to write Jasper credentials file ")
-	}
-
+func (h *Host) BootstrapScript(config evergreen.HostJasperConfig) string {
 	if h.Distro.IsWindows() {
 		cmds := []string{
 			h.FetchJasperCommandWithPath(config, "/bin"),
-			writeCredentialsCmd,
 			h.ForceReinstallJasperCommand(config),
 		}
 		// PowerShell nested quotation marks are handled by using two quotation
@@ -254,26 +246,10 @@ func (h *Host) BootstrapScript(config evergreen.HostJasperConfig, creds *rpc.Cre
 			fmt.Sprintf("%s -c '%s'", h.Distro.ShellPath, quotedCmds),
 			"</powershell>",
 		}
-		return strings.Join(commands, "\r\n"), nil
+		return strings.Join(commands, "\r\n")
 	}
-	return strings.Join([]string{"#!/bin/bash",
-		h.FetchJasperCommand(config),
-		writeCredentialsCmd,
-		h.ForceReinstallJasperCommand(config),
-	}, "\n"), nil
-}
 
-// writeJasperCredentialsCommand builds the command to write the Jasper
-// credentials to a file.
-func (h *Host) writeJasperCredentialsFileCommand(config evergreen.HostJasperConfig, creds *rpc.Credentials) (string, error) {
-	if h.Distro.JasperCredentialsPath == "" {
-		return "", errors.New("cannot write Jasper credentials without a credentials file path")
-	}
-	exportedCreds, err := creds.Export()
-	if err != nil {
-		return "", errors.Wrap(err, "problem exporting credentials to file format")
-	}
-	return fmt.Sprintf("cat > %s <<EOF\n%s\nEOF", h.Distro.JasperCredentialsPath, exportedCreds), nil
+	return strings.Join([]string{"#!/bin/bash", h.FetchJasperCommand(config), h.ForceReinstallJasperCommand(config)}, "\n")
 }
 
 // RunSSHJasperRequest runs the command to make a request to the host's
