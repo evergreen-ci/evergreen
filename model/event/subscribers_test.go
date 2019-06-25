@@ -29,13 +29,17 @@ func TestSubscribers(t *testing.T) {
 		{
 			Type: GithubMergeSubscriberType,
 			Target: &GithubMergeSubscriber{
-				Owner:         "evergreen-ci",
-				Repo:          "evergreen",
-				PRNumber:      9001,
-				Ref:           "deadbeef",
-				CommitMessage: "abcd",
-				MergeMethod:   "squash",
-				CommitTitle:   "efgh",
+				PRs: []PRInfo{
+					{
+						Owner:       "evergreen-ci",
+						Repo:        "evergreen",
+						PRNum:       9001,
+						Ref:         "deadbeef",
+						CommitTitle: "abcd",
+					},
+				},
+				MergeMethod: "squash",
+				Item:        "9001",
 			},
 		},
 		{
@@ -62,7 +66,7 @@ func TestSubscribers(t *testing.T) {
 		},
 	}
 	expected := []string{"github_pull_request-evergreen-ci-evergreen-9001-sadasdkjsad",
-		"github-merge-evergreen-ci-evergreen-9001-deadbeef-abcd-squash-efgh",
+		"github-merge-evergreen-ci-evergreen-9001-deadbeef-abcd-squash-9001",
 		"evergreen-webhook-https://example.com", "email-hi@example.com",
 		"jira-issue-BF-Fail", "jira-comment-BF-1234"}
 	for i := range subs {

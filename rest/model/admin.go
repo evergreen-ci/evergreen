@@ -21,7 +21,7 @@ func NewConfigModel() *APIAdminSettings {
 		Credentials:       map[string]string{},
 		Expansions:        map[string]string{},
 		HostInit:          &APIHostInitConfig{},
-		JasperConfig:      &APIJasperConfig{},
+		HostJasper:        &APIHostJasperConfig{},
 		Jira:              &APIJiraConfig{},
 		JIRANotifications: &APIJIRANotificationsConfig{},
 		Keys:              map[string]string{},
@@ -53,11 +53,12 @@ type APIAdminSettings struct {
 	ConfigDir          APIString                         `json:"configdir,omitempty"`
 	ContainerPools     *APIContainerPoolsConfig          `json:"container_pools,omitempty"`
 	Credentials        map[string]string                 `json:"credentials,omitempty"`
-	JasperConfig       *APIJasperConfig                  `json:"jasper,omitempty"`
+	DomainName         APIString                         `json:"domain_name,omitempty"`
 	Expansions         map[string]string                 `json:"expansions,omitempty"`
 	Bugsnag            APIString                         `json:"bugsnag,omitempty"`
 	GithubPRCreatorOrg APIString                         `json:"github_pr_creator_org,omitempty"`
 	HostInit           *APIHostInitConfig                `json:"hostinit,omitempty"`
+	HostJasper         *APIHostJasperConfig              `json:"host_jasper,omitempty"`
 	Jira               *APIJiraConfig                    `json:"jira,omitempty"`
 	JIRANotifications  *APIJIRANotificationsConfig       `json:"jira_notifications,omitempty"`
 	Keys               map[string]string                 `json:"keys,omitempty"`
@@ -110,6 +111,7 @@ func (as *APIAdminSettings) BuildFromService(h interface{}) error {
 		as.BannerTheme = &tmp
 		as.ClientBinariesDir = &v.ClientBinariesDir
 		as.ConfigDir = &v.ConfigDir
+		as.DomainName = ToAPIString(v.DomainName)
 		as.Bugsnag = ToAPIString(v.Bugsnag)
 		as.GithubPRCreatorOrg = &v.GithubPRCreatorOrg
 		as.LogPath = &v.LogPath
@@ -149,6 +151,7 @@ func (as *APIAdminSettings) ToService() (interface{}, error) {
 	if as.ConfigDir != nil {
 		settings.ConfigDir = *as.ConfigDir
 	}
+	settings.DomainName = FromAPIString(as.DomainName)
 	settings.Bugsnag = FromAPIString(as.Bugsnag)
 	if as.GithubPRCreatorOrg != nil {
 		settings.GithubPRCreatorOrg = *as.GithubPRCreatorOrg
@@ -1462,7 +1465,7 @@ func (c *APITriggerConfig) ToService() (interface{}, error) {
 	}, nil
 }
 
-type APIJasperConfig struct {
+type APIHostJasperConfig struct {
 	BinaryName       APIString `json:"binary_name,omitempty"`
 	DownloadFileName APIString `json:"download_file_name,omitempty"`
 	Port             int       `json:"port,omitempty"`
@@ -1470,22 +1473,22 @@ type APIJasperConfig struct {
 	Version          APIString `json:"version,omitempty"`
 }
 
-func (c *APIJasperConfig) BuildFromService(h interface{}) error {
+func (c *APIHostJasperConfig) BuildFromService(h interface{}) error {
 	switch v := h.(type) {
-	case evergreen.JasperConfig:
+	case evergreen.HostJasperConfig:
 		c.BinaryName = ToAPIString(v.BinaryName)
 		c.DownloadFileName = ToAPIString(v.DownloadFileName)
 		c.Port = v.Port
 		c.URL = ToAPIString(v.URL)
 		c.Version = ToAPIString(v.Version)
 	default:
-		return errors.Errorf("expected evergreen.JasperConfig but got %T instead", h)
+		return errors.Errorf("expected evergreen.HostJasperConfig but got %T instead", h)
 	}
 	return nil
 }
 
-func (c *APIJasperConfig) ToService() (interface{}, error) {
-	return evergreen.JasperConfig{
+func (c *APIHostJasperConfig) ToService() (interface{}, error) {
+	return evergreen.HostJasperConfig{
 		BinaryName:       FromAPIString(c.BinaryName),
 		DownloadFileName: FromAPIString(c.DownloadFileName),
 		Port:             c.Port,

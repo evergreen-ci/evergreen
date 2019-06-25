@@ -71,7 +71,7 @@ func (j *generateTasksJob) Run(ctx context.Context) {
 	err = util.Retry(
 		ctx,
 		func() (bool, error) {
-			p, v, t, pm, prevConfig, err := g.NewVersion() // nolint
+			p, v, t, pm, err := g.NewVersion() // nolint
 			if err != nil {
 				return false, err
 			}
@@ -81,7 +81,7 @@ func (j *generateTasksJob) Run(ctx context.Context) {
 			if err = validator.CheckProjectConfigurationIsValid(p); err != nil {
 				return false, err
 			}
-			err = g.Save(ctx, p, v, t, pm, prevConfig)
+			err = g.Save(ctx, p, v, t, pm)
 			if err != nil && adb.ResultsNotFound(err) {
 				return true, gimlet.ErrorResponse{
 					StatusCode: http.StatusInternalServerError,

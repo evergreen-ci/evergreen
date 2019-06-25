@@ -23,13 +23,17 @@ type APIGithubPRSubscriber struct {
 }
 
 type APIGithubMergeSubscriber struct {
-	Owner         APIString `json:"owner" mapstructure:"owner"`
-	Repo          APIString `json:"repo" mapstructure:"repo"`
-	PRNumber      int       `json:"pr_number" mapstructure:"pr_number"`
-	Ref           APIString `json:"ref" mapstructure:"ref"`
-	CommitMessage APIString `json:"commit_message" mapstructure:"commit_message"`
-	MergeMethod   APIString `json:"merge_method" mapstructure:"merge_method"`
-	CommitTitle   APIString `json:"commit_title" mapstructure:"commit_title"`
+	PRs         []APIPRInfo `json:"prs" mapstructure:"prs"`
+	Item        APIString   `json:"item" mapstructure:"item"`
+	MergeMethod APIString   `json:"merge_method" mapstructure:"merge_method"`
+}
+
+type APIPRInfo struct {
+	Owner       APIString `json:"owner" mapstructure:"owner"`
+	Repo        APIString `json:"repo" mapstructure:"repo"`
+	PRNumber    int       `json:"pr_number" mapstructure:"pr_number"`
+	Ref         APIString `json:"ref" mapstructure:"ref"`
+	CommitTitle APIString `json:"commit_title" mapstructure:"commit_title"`
 }
 
 type APIWebhookSubscriber struct {
@@ -225,14 +229,16 @@ func (s *APIGithubPRSubscriber) ToService() (interface{}, error) {
 func (s *APIGithubMergeSubscriber) BuildFromService(h interface{}) error {
 	switch v := h.(type) {
 	case *event.GithubMergeSubscriber:
-		s.Owner = ToAPIString(v.Owner)
-		s.Repo = ToAPIString(v.Repo)
-		s.PRNumber = v.PRNumber
-		s.Ref = ToAPIString(v.Ref)
-		s.CommitMessage = ToAPIString(v.CommitMessage)
 		s.MergeMethod = ToAPIString(v.MergeMethod)
-		s.CommitTitle = ToAPIString(v.CommitTitle)
-
+		s.Item = ToAPIString(v.Item)
+		s.PRs = make([]APIPRInfo, 0, len(v.PRs))
+		for _, pr := range v.PRs {
+			apiPR := APIPRInfo{}
+			if err := apiPR.BuildFromService(pr); err != nil {
+				return errors.Wrap(err, "can't build PR from service")
+			}
+			s.PRs = append(s.PRs, apiPR)
+		}
 	default:
 		return errors.Errorf("type '%T' does not match subscriber type APIGithubMergeSubscriber", v)
 	}
@@ -241,14 +247,42 @@ func (s *APIGithubMergeSubscriber) BuildFromService(h interface{}) error {
 }
 
 func (s *APIGithubMergeSubscriber) ToService() (interface{}, error) {
+	prs := make([]event.PRInfo, 0, len(s.PRs))
+	for _, apiPR := range s.PRs {
+		pr, err := apiPR.ToService()
+		if err != nil {
+			return nil, errors.Wrap(err, "can't convert PR to service")
+		}
+		prs = append(prs, pr.(event.PRInfo))
+	}
+
 	return event.GithubMergeSubscriber{
-		Owner:         FromAPIString(s.Owner),
-		Repo:          FromAPIString(s.Repo),
-		PRNumber:      s.PRNumber,
-		Ref:           FromAPIString(s.Ref),
-		CommitMessage: FromAPIString(s.CommitMessage),
-		MergeMethod:   FromAPIString(s.MergeMethod),
-		CommitTitle:   FromAPIString(s.CommitTitle),
+		PRs:         prs,
+		MergeMethod: FromAPIString(s.MergeMethod),
+		Item:        FromAPIString(s.Item),
+	}, nil
+}
+
+func (s *APIPRInfo) BuildFromService(h interface{}) error {
+	switch v := h.(type) {
+	case event.PRInfo:
+		s.Owner = ToAPIString(v.Owner)
+		s.Repo = ToAPIString(v.Repo)
+		s.PRNumber = v.PRNum
+		s.Ref = ToAPIString(v.Ref)
+		s.CommitTitle = ToAPIString(v.CommitTitle)
+	}
+
+	return nil
+}
+
+func (s *APIPRInfo) ToService() (interface{}, error) {
+	return event.PRInfo{
+		Owner:       FromAPIString(s.Owner),
+		Repo:        FromAPIString(s.Repo),
+		PRNum:       s.PRNumber,
+		Ref:         FromAPIString(s.Ref),
+		CommitTitle: FromAPIString(s.CommitTitle),
 	}, nil
 }
 

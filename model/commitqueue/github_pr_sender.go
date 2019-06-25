@@ -3,7 +3,6 @@ package commitqueue
 import (
 	"context"
 	"fmt"
-	"strconv"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
@@ -78,59 +77,58 @@ func (s *githubPRLogger) Send(m message.Composer) {
 		return
 	}
 
-	s.sendPatchResult(msg)
+	for _, pr := range msg.PRs {
+		s.sendPatchResult(msg, pr)
+	}
+
 	if !(msg.Status == evergreen.PatchSucceeded) {
 		s.ErrorHandler(errors.New("not proceeding with merge for failed patch"), m)
-		if msg.ProjectID != "" {
-			event.LogCommitQueueConcludeTest(msg.PatchID, evergreen.MergeTestFailed)
-			s.ErrorHandler(dequeueFromCommitQueue(msg.ProjectID, msg.PRNum), m)
-		}
+		event.LogCommitQueueConcludeTest(msg.PatchID, evergreen.MergeTestFailed)
+		s.ErrorHandler(dequeueFromCommitQueue(msg.ProjectID, msg.Item), m)
+
 		return
 	}
 
-	mergeOpts := &github.PullRequestOptions{
-		MergeMethod: msg.MergeMethod,
-		CommitTitle: msg.CommitTitle,
-		SHA:         msg.Ref,
-	}
-
-	// do the merge
-	ctx, cancel := context.WithTimeout(s.ctx, 10*time.Second)
+	ctx, cancel := context.WithTimeout(s.ctx, time.Duration(len(msg.PRs)*10)*time.Second)
 	defer cancel()
-	res, _, err := s.prService.Merge(ctx, msg.Owner, msg.Repo, msg.PRNum, msg.CommitMessage, mergeOpts)
-
-	if err != nil {
-		s.ErrorHandler(errors.Wrap(err, "can't access GitHub merge API"), m)
-		// don't send status to GitHub since we can't access their API anyway...
-	}
-
-	// send the result to github
-	// only send if the merge was not successful since
-	// GitHub won't display statuses received after the PR has been merged
-	if !res.GetMerged() {
-		s.ErrorHandler(s.sendMergeFailedStatus(res.GetMessage(), msg), m)
-	}
-
-	// Module merges are sent with the empty string as the projectID
-	// Wait for the main PR to be merged to dequeue
-	if msg.ProjectID != "" {
-		if res.GetMerged() {
-			event.LogCommitQueueConcludeTest(msg.PatchID, evergreen.MergeTestSucceeded)
-		} else {
-			event.LogCommitQueueConcludeTest(msg.PatchID, evergreen.MergeTestFailed)
+	for i, pr := range msg.PRs {
+		mergeOpts := &github.PullRequestOptions{
+			MergeMethod: msg.MergeMethod,
+			CommitTitle: pr.CommitTitle,
+			SHA:         pr.Ref,
 		}
-		s.ErrorHandler(dequeueFromCommitQueue(msg.ProjectID, msg.PRNum), m)
+
+		// do the merge
+		res, _, err := s.prService.Merge(ctx, pr.Owner, pr.Repo, pr.PRNum, "", mergeOpts)
+
+		if err != nil {
+			s.ErrorHandler(errors.Wrap(err, "can't access GitHub merge API"), m)
+			// don't send status to GitHub since we can't access their API anyway...
+		}
+
+		if !res.GetMerged() {
+			s.ErrorHandler(s.sendMergeFailedStatus(res.GetMessage(), pr), m)
+			for j := i + 1; j < len(msg.PRs); j++ {
+				s.ErrorHandler(s.sendMergeFailedStatus("aborted", msg.PRs[j]), m)
+			}
+			event.LogCommitQueueConcludeTest(msg.PatchID, evergreen.MergeTestFailed)
+			s.ErrorHandler(dequeueFromCommitQueue(msg.ProjectID, msg.Item), m)
+			return
+		}
 	}
+
+	event.LogCommitQueueConcludeTest(msg.PatchID, evergreen.MergeTestSucceeded)
+	s.ErrorHandler(dequeueFromCommitQueue(msg.ProjectID, msg.Item), m)
 }
 
-func (s *githubPRLogger) sendMergeFailedStatus(githubMessage string, msg *GithubMergePR) error {
+func (s *githubPRLogger) sendMergeFailedStatus(githubMessage string, pr event.PRInfo) error {
 	state := message.GithubStateFailure
 	description := fmt.Sprintf("merge failed: %s", githubMessage)
 
 	status := message.GithubStatus{
-		Owner:       msg.Owner,
-		Repo:        msg.Repo,
-		Ref:         msg.Ref,
+		Owner:       pr.Owner,
+		Repo:        pr.Repo,
+		Ref:         pr.Ref,
 		Context:     Context,
 		State:       state,
 		Description: description,
@@ -141,7 +139,7 @@ func (s *githubPRLogger) sendMergeFailedStatus(githubMessage string, msg *Github
 	return nil
 }
 
-func (s *githubPRLogger) sendPatchResult(msg *GithubMergePR) {
+func (s *githubPRLogger) sendPatchResult(msg *GithubMergePR, pr event.PRInfo) {
 	var state message.GithubState
 	var description string
 	if msg.Status == evergreen.PatchSucceeded {
@@ -153,9 +151,9 @@ func (s *githubPRLogger) sendPatchResult(msg *GithubMergePR) {
 	}
 
 	status := message.GithubStatus{
-		Owner:       msg.Owner,
-		Repo:        msg.Repo,
-		Ref:         msg.Ref,
+		Owner:       pr.Owner,
+		Repo:        pr.Repo,
+		Ref:         pr.Ref,
 		Context:     Context,
 		State:       state,
 		Description: description,
@@ -166,16 +164,16 @@ func (s *githubPRLogger) sendPatchResult(msg *GithubMergePR) {
 	s.statusSender.Send(c)
 }
 
-func dequeueFromCommitQueue(projectID string, PRNum int) error {
+func dequeueFromCommitQueue(projectID string, item string) error {
 	cq, err := FindOneId(projectID)
 	if err != nil {
-		return errors.Wrapf(err, "can't find commit queue for %s", projectID)
+		return errors.Wrapf(err, "can't find commit queue for '%s'", projectID)
 	}
-	found, err := cq.Remove(strconv.Itoa(PRNum))
+	found, err := cq.Remove(item)
 	if err != nil {
-		return errors.Wrapf(err, "can't dequeue %d from commit queue", PRNum)
+		return errors.Wrapf(err, "can't dequeue '%s' from commit queue", item)
 	} else if !found {
-		return errors.Errorf("item %d did not exist on the queue", PRNum)
+		return errors.Errorf("item '%s' did not exist on the queue", item)
 	}
 
 	return nil

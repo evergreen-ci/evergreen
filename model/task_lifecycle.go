@@ -33,6 +33,9 @@ func SetActiveState(taskId string, caller string, active bool) error {
 	if err != nil {
 		return err
 	}
+	if t == nil {
+		return errors.Errorf("task '%s' not found", taskId)
+	}
 	if active {
 		// if the task is being activated, make sure to activate all of the task's
 		// dependencies as well
@@ -1049,7 +1052,7 @@ func UpdateDisplayTask(t *task.Task) error {
 		return errors.Wrap(err, "error retrieving execution tasks")
 	}
 	hasFinishedTasks := false
-	hasUnfinishedTasks := false
+	hasUnstartedTasks := false
 	startTime := time.Unix(1<<62, 0)
 	endTime := util.ZeroTime
 	for _, execTask := range execTasks {
@@ -1062,7 +1065,7 @@ func UpdateDisplayTask(t *task.Task) error {
 			hasFinishedTasks = true
 		}
 		if execTask.IsDispatchable() {
-			hasUnfinishedTasks = true
+			hasUnstartedTasks = true
 		}
 
 		// add up the duration of the execution tasks as the cumulative time taken
@@ -1079,7 +1082,7 @@ func UpdateDisplayTask(t *task.Task) error {
 
 	sort.Sort(task.ByPriority(execTasks))
 	statusTask = execTasks[0]
-	if statusTask.Status != evergreen.TaskFailed && (hasFinishedTasks && hasUnfinishedTasks) {
+	if statusTask.Status != evergreen.TaskFailed && (hasFinishedTasks && hasUnstartedTasks) {
 		// if the display task has a mix of finished and unfinished tasks, the status
 		// will be "started"
 		statusTask.Status = evergreen.TaskStarted
@@ -1095,7 +1098,7 @@ func UpdateDisplayTask(t *task.Task) error {
 	if startTime != time.Unix(1<<62, 0) {
 		update[task.StartTimeKey] = startTime
 	}
-	if endTime != util.ZeroTime && !hasUnfinishedTasks {
+	if endTime != util.ZeroTime && !hasUnstartedTasks {
 		update[task.FinishTimeKey] = endTime
 	}
 

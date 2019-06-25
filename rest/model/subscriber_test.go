@@ -51,13 +51,17 @@ func TestSubscriberModelsGithubStatusAPI(t *testing.T) {
 func TestSubscriberModelsGithubMerge(t *testing.T) {
 	assert := assert.New(t)
 	target := event.GithubMergeSubscriber{
-		Owner:         "me",
-		Repo:          "mine",
-		PRNumber:      5,
-		Ref:           "deadbeef",
-		CommitMessage: "abcd",
-		MergeMethod:   "squash",
-		CommitTitle:   "merged by evergreen",
+		PRs: []event.PRInfo{
+			{
+				Owner:       "me",
+				Repo:        "mine",
+				PRNum:       5,
+				Ref:         "deadbeef",
+				CommitTitle: "PR (#5)",
+			},
+		},
+		MergeMethod: "squash",
+		Item:        "5",
 	}
 	subscriber := event.Subscriber{
 		Type:   event.GithubMergeSubscriberType,
@@ -79,13 +83,17 @@ func TestSubscriberModelsGithubMerge(t *testing.T) {
 	incoming := APISubscriber{
 		Type: ToAPIString(event.GithubMergeSubscriberType),
 		Target: map[string]interface{}{
-			"owner":          "me",
-			"repo":           "mine",
-			"pr_number":      5,
-			"ref":            "deadbeef",
-			"commit_message": "abcd",
-			"merge_method":   "squash",
-			"commit_title":   "merged by evergreen",
+			"prs": []map[string]interface{}{
+				{
+					"owner":        "me",
+					"repo":         "mine",
+					"pr_number":    5,
+					"ref":          "deadbeef",
+					"commit_title": "PR (#5)",
+				},
+			},
+			"merge_method": "squash",
+			"item":         "5",
 		},
 	}
 

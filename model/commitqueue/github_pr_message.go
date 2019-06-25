@@ -3,6 +3,7 @@ package commitqueue
 import (
 	"fmt"
 
+	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/level"
 	"github.com/mongodb/grip/message"
@@ -18,17 +19,13 @@ const (
 )
 
 type GithubMergePR struct {
-	Status        string `bson:"status"`
-	PatchID       string `bson:"patch_id"`
-	URL           string `bson:"url"`
-	ProjectID     string `bson:"project_id"`
-	Owner         string `bson:"owner"`
-	Repo          string `bson:"repo"`
-	Ref           string `bson:"ref"`
-	PRNum         int    `bson:"pr_number"`
-	CommitMessage string `bson:"commit_message"`
-	CommitTitle   string `bson:"commit_title"`
-	MergeMethod   string `bson:"merge_method"`
+	Status      string         `bson:"status"`
+	PatchID     string         `bson:"patch_id"`
+	URL         string         `bson:"url"`
+	ProjectID   string         `bson:"project_id"`
+	MergeMethod string         `bson:"merge_method"`
+	Item        string         `bson:"item"`
+	PRs         []event.PRInfo `bson:"prs"`
 }
 
 func (m *GithubMergePR) MarshalBSON() ([]byte, error)  { return mgobson.Marshal(m) }
@@ -40,20 +37,25 @@ func (p *GithubMergePR) Valid() error {
 	if len(p.ProjectID) == 0 {
 		catcher.Add(errors.New("Project ID can't be empty"))
 	}
-	if len(p.Owner) == 0 {
-		catcher.Add(errors.New("Owner can't be empty"))
-	}
-	if len(p.Repo) == 0 {
-		catcher.Add(errors.New("Repo can't be empty"))
-	}
-	if len(p.Ref) == 0 {
-		catcher.Add(errors.New("Ref can't be empty"))
-	}
 	if len(p.Status) == 0 {
 		catcher.Add(errors.New("Status can't be empty"))
 	}
-	if p.PRNum <= 0 {
-		catcher.Add(errors.New("Invalid pull request number"))
+	if len(p.Item) == 0 {
+		catcher.Add(errors.New("item can't be empty"))
+	}
+	for _, pr := range p.PRs {
+		if len(pr.Owner) == 0 {
+			catcher.Add(errors.New("Owner can't be empty"))
+		}
+		if len(pr.Repo) == 0 {
+			catcher.Add(errors.New("Repo can't be empty"))
+		}
+		if len(pr.Ref) == 0 {
+			catcher.Add(errors.New("Ref can't be empty"))
+		}
+		if pr.PRNum <= 0 {
+			catcher.Add(errors.New("Invalid pull request number"))
+		}
 	}
 
 	if len(p.MergeMethod) > 0 {
@@ -89,15 +91,7 @@ func (c *githubMergePRMessage) Loggable() bool {
 }
 
 func (c *githubMergePRMessage) String() string {
-	str := fmt.Sprintf("Merge Pull Request #%d (Ref: %s) on %s/%s: %s", c.raw.PRNum, c.raw.Ref, c.raw.Owner, c.raw.Repo, c.raw.CommitMessage)
-	if len(c.raw.CommitTitle) > 0 {
-		str = fmt.Sprintf("%s. Commit Title: %s", str, c.raw.CommitTitle)
-	}
-	if len(c.raw.MergeMethod) > 0 {
-		str = fmt.Sprintf("%s. Merge Method: %s", str, c.raw.MergeMethod)
-	}
-
-	return str
+	return fmt.Sprintf("GitHub commit queue merge '%s'", c.raw.Item)
 }
 
 func (c *githubMergePRMessage) Raw() interface{} {

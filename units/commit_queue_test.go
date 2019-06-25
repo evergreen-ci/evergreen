@@ -102,7 +102,7 @@ func (s *commitQueueSuite) TestNewCommitQueueJob() {
 
 func (s *commitQueueSuite) TestSubscribeMerge() {
 	s.NoError(db.ClearCollections(event.SubscriptionsCollection))
-	s.NoError(subscribeMerge(s.projectRef.Identifier, s.projectRef.Owner, s.projectRef.Repo, "squash", "abcdef", s.pr))
+	s.NoError(subscribeGitHubPRs(s.pr, nil, s.projectRef, "abcdef"))
 
 	selectors := []event.Selector{
 		event.Selector{
@@ -120,9 +120,10 @@ func (s *commitQueueSuite) TestSubscribeMerge() {
 	s.Equal(event.ResourceTypePatch, subscription.ResourceType)
 	target, ok := subscription.Subscriber.Target.(*event.GithubMergeSubscriber)
 	s.True(ok)
-	s.Equal(s.projectRef.Owner, target.Owner)
-	s.Equal(s.projectRef.Repo, target.Repo)
-	s.Equal(s.pr.GetTitle()+fmt.Sprintf(" (#%d)", *s.pr.Number), target.CommitTitle)
+	s.Require().Len(target.PRs, 1)
+	s.Equal(s.projectRef.Owner, target.PRs[0].Owner)
+	s.Equal(s.projectRef.Repo, target.PRs[0].Repo)
+	s.Equal(fmt.Sprintf("%s (#%d)", s.pr.GetTitle(), *s.pr.Number), target.PRs[0].CommitTitle)
 }
 
 func (s *commitQueueSuite) TestWritePatchInfo() {
@@ -201,6 +202,8 @@ func (s *commitQueueSuite) TestAddMergeTaskAndVariant() {
 	s.True(project.BuildVariants[0].Tasks[0].CommitQueueMerge)
 	s.Require().Len(project.Tasks, 1)
 	s.Equal(evergreen.MergeTaskName, project.Tasks[0].Name)
+	s.Require().Len(project.TaskGroups, 1)
+	s.Equal(evergreen.MergeTaskGroup, project.TaskGroups[0].Name)
 }
 
 func (s *commitQueueSuite) TestSetDefaultNotification() {

@@ -452,3 +452,32 @@ func TestByGenerateTasks(t *testing.T) {
 	assert.NoError(err)
 	assert.Equal(-1, c)
 }
+
+func TestByCommitQueue(t *testing.T) {
+	tasks := []task.Task{
+		{Id: "t0", Version: "v0"},
+		{Id: "t1", Version: "v0"},
+		{Id: "t2", Version: "v1"},
+		{Id: "t3", Version: "v1"},
+	}
+	comparator := &CmpBasedTaskComparator{versions: map[string]model.Version{
+		"v0": model.Version{Requester: evergreen.MergeTestRequester},
+		"v1": model.Version{Requester: evergreen.PatchVersionRequester},
+	}}
+
+	c, err := byCommitQueue(tasks[0], tasks[1], comparator)
+	assert.NoError(t, err)
+	assert.Equal(t, 0, c)
+
+	c, err = byCommitQueue(tasks[2], tasks[3], comparator)
+	assert.NoError(t, err)
+	assert.Equal(t, 0, c)
+
+	c, err = byCommitQueue(tasks[1], tasks[2], comparator)
+	assert.NoError(t, err)
+	assert.Equal(t, 1, c)
+
+	c, err = byCommitQueue(tasks[2], tasks[1], comparator)
+	assert.NoError(t, err)
+	assert.Equal(t, -1, c)
+}

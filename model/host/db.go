@@ -189,7 +189,7 @@ func CountRunningHosts(distroID string) (int, error) {
 	return num, errors.Wrap(err, "problem finding running hosts")
 }
 
-func AllRunningHosts(distroID string) ([]Host, error) {
+func AllRunningHosts(distroID string) (HostGroup, error) {
 	allHosts, err := Find(db.Query(runningHostsQuery(distroID)))
 	if err != nil {
 		return nil, errors.Wrap(err, "Error finding live hosts")

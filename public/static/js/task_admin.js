@@ -38,6 +38,11 @@ mciModule.controller('AdminOptionsCtrl', ['$scope', '$window', '$rootScope', 'mc
         }
     }
 
+    function doModalFailure(message){
+        $scope.closeAdminModal();
+        notifier.pushNotification(message, 'notifyHeader', 'error');
+    }
+
 	$scope.abort = function() {
         taskRestService.takeActionOnTask(
             $scope.taskId,
@@ -66,6 +71,7 @@ mciModule.controller('AdminOptionsCtrl', ['$scope', '$window', '$rootScope', 'mc
                 },
                 error: function(resp) {
                     notifier.pushNotification('Error restarting: ' + resp.data,'errorModal');
+                    doModalFailure("Error restarting: " + resp.data);
                 }
             }
         );

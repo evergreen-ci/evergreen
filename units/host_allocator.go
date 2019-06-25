@@ -171,7 +171,7 @@ func (j *hostAllocatorJob) Run(ctx context.Context) {
 
 	eventInfo := event.TaskQueueInfo{
 		TaskQueueLength:  distroQueueInfo.Length,
-		NumHostsRunning:  0,
+		NumHostsRunning:  len(existingHosts),
 		ExpectedDuration: distroQueueInfo.ExpectedDuration,
 	}
 
@@ -202,8 +202,8 @@ func (j *hostAllocatorJob) Run(ctx context.Context) {
 		"distro":                  distro.Id,
 		"provider":                distro.Provider,
 		"max_hosts":               distro.PoolSize,
-		"new_hosts":               hostsSpawned,
-		"num_hosts":               len(hostsSpawned),
+		"num_new_hosts":           len(hostsSpawned),
+		"pool_info":               existingHosts.Stats(),
 		"queue":                   eventInfo,
 		"total_runtime":           distroQueueInfo.ExpectedDuration.String(),
 		"runtime_secs":            distroQueueInfo.ExpectedDuration.Seconds(),

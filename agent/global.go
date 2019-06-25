@@ -11,7 +11,7 @@ const (
 
 	// defaultMaxAgentSleepInterval is the max amount of time an agent sleeps in between
 	// polling for a new task if no new task is found
-	defaultMaxAgentSleepInterval = 30 * time.Second
+	defaultMaxAgentSleepInterval = time.Minute
 
 	// defaultCmdTimeout specifies the duration after which the agent sends
 	// an IdleTimeout signal if a task's command does not produce logs on stdout.

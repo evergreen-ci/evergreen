@@ -143,6 +143,9 @@ func (s *UtilizationAllocatorSuite) SetupSuite() {
 		Id:       s.distroName,
 		PoolSize: 50,
 		Provider: evergreen.ProviderNameEc2Auto,
+		PlannerSettings: distro.PlannerSettings{
+			MinimumHosts: 0,
+		},
 	}
 	s.projectName = "testProject"
 	s.freeHostFraction = 0.5
@@ -151,6 +154,7 @@ func (s *UtilizationAllocatorSuite) SetupSuite() {
 func (s *UtilizationAllocatorSuite) SetupTest() {
 	s.ctx = context.Background()
 	s.NoError(db.ClearCollections(task.Collection, host.Collection, distro.Collection))
+	s.distro.PlannerSettings.MinimumHosts = 0
 }
 
 func (s *UtilizationAllocatorSuite) TestCalcNewHostsNeeded() {
@@ -368,6 +372,63 @@ func (s *UtilizationAllocatorSuite) TestLongTasksInQueue1() {
 	hosts, err := UtilizationBasedHostAllocator(s.ctx, hostAllocatorData)
 	s.NoError(err)
 	s.Equal(5, hosts)
+}
+
+func (s *UtilizationAllocatorSuite) TestMinimumHostsThreshold() {
+	h1 := host.Host{
+		Id:          "h1",
+		RunningTask: "t1",
+	}
+	h2 := host.Host{
+		Id:          "h2",
+		RunningTask: "t2",
+	}
+	t1 := task.Task{
+		Id:               "t1",
+		Project:          s.projectName,
+		ExpectedDuration: 30 * time.Minute,
+		BuildVariant:     "bv1",
+		StartTime:        time.Now(),
+	}
+	s.NoError(t1.Insert())
+	t2 := task.Task{
+		Id:               "t2",
+		Project:          s.projectName,
+		ExpectedDuration: 1 * time.Minute,
+		BuildVariant:     "bv1",
+		StartTime:        time.Now(),
+	}
+	s.NoError(t2.Insert())
+
+	taskGroupInfo := model.TaskGroupInfo{
+		Name:                  "",
+		Count:                 5,
+		ExpectedDuration:      5 * (30 * time.Minute),
+		CountOverThreshold:    5,
+		DurationOverThreshold: 5 * (30 * time.Minute),
+	}
+
+	distroQueueInfo := model.DistroQueueInfo{
+		Length:               5,
+		ExpectedDuration:     5 * (30 * time.Minute),
+		MaxDurationThreshold: MaxDurationPerDistroHost,
+		CountOverThreshold:   5,
+		TaskGroupInfos:       []model.TaskGroupInfo{taskGroupInfo},
+	}
+
+	minimumHostsThreshold := 10
+	s.distro.PlannerSettings.MinimumHosts = minimumHostsThreshold
+	hostAllocatorData := HostAllocatorData{
+		Distro:           s.distro,
+		ExistingHosts:    []host.Host{h1, h2},
+		FreeHostFraction: s.freeHostFraction,
+		DistroQueueInfo:  distroQueueInfo,
+	}
+
+	hosts, err := UtilizationBasedHostAllocator(s.ctx, hostAllocatorData)
+	s.NoError(err)
+	s.Equal(8, hosts)
+	s.Equal(minimumHostsThreshold, len(hostAllocatorData.ExistingHosts)+hosts)
 }
 
 func (s *UtilizationAllocatorSuite) TestLongTasksInQueue2() {

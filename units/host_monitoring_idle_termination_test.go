@@ -413,3 +413,183 @@ func TestFlaggingIdleHostsWhenNonZeroMinimumHosts(t *testing.T) {
 		assert.Equal(t, "h1", idle[0])
 	})
 }
+
+func TestPopulateIdleHostJobsCalculations(t *testing.T) {
+	assert := assert.New(t)
+	assert.NoError(db.ClearCollections(host.Collection))
+	assert.NoError(db.ClearCollections(distro.Collection))
+
+	distro1 := distro.Distro{
+		Id: "distro1",
+		PlannerSettings: distro.PlannerSettings{
+			MinimumHosts: 3,
+		},
+	}
+
+	distro2 := distro.Distro{
+		Id: "distro2",
+		PlannerSettings: distro.PlannerSettings{
+			MinimumHosts: 0,
+		},
+	}
+	assert.NoError(distro1.Insert())
+	assert.NoError(distro2.Insert())
+
+	host1 := &host.Host{
+		Id:            "host1",
+		Distro:        distro1,
+		Status:        evergreen.HostRunning,
+		StartedBy:     evergreen.User,
+		Provider:      evergreen.ProviderNameMock,
+		HasContainers: false,
+		CreationTime:  time.Now().Add(-20 * time.Minute),
+	}
+	host2 := &host.Host{
+		Id:            "host2",
+		Distro:        distro1,
+		Status:        evergreen.HostRunning,
+		StartedBy:     evergreen.User,
+		Provider:      evergreen.ProviderNameMock,
+		HasContainers: false,
+		CreationTime:  time.Now().Add(-10 * time.Minute),
+	}
+	host3 := &host.Host{
+		Id:            "host3",
+		Distro:        distro2,
+		Status:        evergreen.HostRunning,
+		StartedBy:     evergreen.User,
+		Provider:      evergreen.ProviderNameMock,
+		HasContainers: false,
+		CreationTime:  time.Now().Add(-30 * time.Minute),
+	}
+	host4 := &host.Host{
+		Id: "host4",
+
+		Distro:        distro1,
+		Status:        evergreen.HostRunning,
+		StartedBy:     evergreen.User,
+		Provider:      evergreen.ProviderNameMock,
+		HasContainers: false,
+		CreationTime:  time.Now().Add(-40 * time.Minute),
+	}
+	host5 := &host.Host{
+		Id:            "host5",
+		Distro:        distro2,
+		Status:        evergreen.HostRunning,
+		StartedBy:     evergreen.User,
+		Provider:      evergreen.ProviderNameMock,
+		HasContainers: false,
+		CreationTime:  time.Now().Add(-50 * time.Minute),
+	}
+	host6 := &host.Host{
+		Id:            "host6",
+		Distro:        distro1,
+		RunningTask:   "I'm running a task so I'm certainly not idle!",
+		Status:        evergreen.HostRunning,
+		StartedBy:     evergreen.User,
+		Provider:      evergreen.ProviderNameMock,
+		HasContainers: false,
+		CreationTime:  time.Now().Add(-60 * time.Minute),
+	}
+	assert.NoError(host1.Insert())
+	assert.NoError(host2.Insert())
+	assert.NoError(host3.Insert())
+	assert.NoError(host4.Insert())
+	assert.NoError(host5.Insert())
+	assert.NoError(host6.Insert())
+
+	distroHosts, err := host.IdleEphemeralGroupedByDistroID()
+	assert.NoError(err)
+	assert.Equal(2, len(distroHosts))
+
+	distroIDsToFind := make([]string, 0, len(distroHosts))
+	for _, info := range distroHosts {
+		distroIDsToFind = append(distroIDsToFind, info.DistroID)
+	}
+	distrosFound, err := distro.Find(distro.ByIds(distroIDsToFind))
+	assert.NoError(err)
+	distrosMap := make(map[string]distro.Distro, len(distrosFound))
+	for i := range distrosFound {
+		d := distrosFound[i]
+		distrosMap[d.Id] = d
+	}
+	assert.Equal(2, len(distrosMap))
+
+	// The order of distroHosts is not guaranteed
+	info1 := distroHosts[0] // "distro1"
+	info2 := distroHosts[1] // "distro2"
+
+	if info1.DistroID == "distro2" {
+		info1 = distroHosts[1]
+		info2 = distroHosts[0]
+	}
+
+	//////////////////////////////////////////////////////////////////////////////
+	// distroID: "distro1"
+	//
+	// totalRunningHosts: 4
+	// minimumHosts: 3
+	// nIdleHosts: 3
+	// maxHostsToTerminate: 1
+	// nHostsToEvaluateForTermination: 1
+
+	distroID := info1.DistroID
+	assert.Equal("distro1", distroID)
+	nIdleHosts := len(info1.IdleHosts)
+	// Confirm the RunningHostsCount and the number of idle hosts for the given distro
+	assert.Equal(4, info1.RunningHostsCount)
+	assert.Equal(3, nIdleHosts)
+	// Confirm the hosts are sorted from oldest to newest CreationTime
+	assert.Equal("host4", info1.IdleHosts[0].Id)
+	assert.Equal("host1", info1.IdleHosts[1].Id)
+	assert.Equal("host2", info1.IdleHosts[2].Id)
+	assert.True(info1.IdleHosts[0].CreationTime.Before(info1.IdleHosts[1].CreationTime))
+	assert.True(info1.IdleHosts[1].CreationTime.Before(info1.IdleHosts[2].CreationTime))
+
+	// Confirm the associated distro's PlannerSettings.MinimumHosts value
+	ps := distrosMap[info1.DistroID].PlannerSettings
+	minimumHosts := ps.MinimumHosts
+	assert.Equal(3, minimumHosts)
+	// Confirm the maxHostsToTerminate
+	maxHostsToTerminate := info1.RunningHostsCount - minimumHosts
+	assert.Equal(1, maxHostsToTerminate)
+	// Confirm the nHostsToEvaluateForTermination
+	nHostsToEvaluateForTermination := nIdleHosts
+	if nIdleHosts > maxHostsToTerminate {
+		nHostsToEvaluateForTermination = maxHostsToTerminate
+	}
+	assert.Equal(1, nHostsToEvaluateForTermination)
+
+	////////////////////////////////////////////////////////////////////////////////
+	// distroID: "distro2"
+	//
+	// totalRunningHosts: 2
+	// minimumHosts: 0
+	// nIdleHosts: 2
+	// maxHostsToTerminate: 2
+	// nHostsToEvaluateForTermination: 2
+
+	distroID = info2.DistroID
+	assert.Equal("distro2", distroID)
+	nIdleHosts = len(info2.IdleHosts)
+	// Confirm the RunningHostsCount and the number of idle hosts for the given distro
+	assert.Equal(2, info2.RunningHostsCount)
+	assert.Equal(2, nIdleHosts)
+	// Confirm the hosts are sorted from oldest to newest CreationTime
+	assert.Equal("host5", info2.IdleHosts[0].Id)
+	assert.Equal("host3", info2.IdleHosts[1].Id)
+	assert.True(info2.IdleHosts[0].CreationTime.Before(info2.IdleHosts[1].CreationTime))
+	// Confirm the associated distro's PlannerSettings.MinimumHosts value
+	ps = distrosMap[info2.DistroID].PlannerSettings
+	minimumHosts = ps.MinimumHosts
+	assert.Equal(0, minimumHosts)
+	// Confirm the maxHostsToTerminate
+	maxHostsToTerminate = info2.RunningHostsCount - minimumHosts
+	assert.Equal(2, maxHostsToTerminate)
+	// Confirm the nHostsToEvaluateForTermination
+	nHostsToEvaluateForTermination = nIdleHosts
+	if nIdleHosts > maxHostsToTerminate {
+		nHostsToEvaluateForTermination = maxHostsToTerminate
+	}
+	assert.Equal(2, nHostsToEvaluateForTermination)
+}
