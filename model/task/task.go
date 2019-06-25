@@ -12,6 +12,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/testresult"
 	"github.com/evergreen-ci/evergreen/util"
+	adb "github.com/mongodb/anser/db"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
@@ -156,6 +157,8 @@ type Task struct {
 	TriggerID    string `bson:"trigger_id,omitempty" json:"trigger_id,omitempty"`
 	TriggerType  string `bson:"trigger_type,omitempty" json:"trigger_type,omitempty"`
 	TriggerEvent string `bson:"trigger_event,omitempty" json:"trigger_event,omitempty"`
+
+	CommitQueueMerge bool `bson:"commit_queue_merge,omitempty" json:"commit_queue_merge,omitempty"`
 }
 
 func (t *Task) MarshalBSON() ([]byte, error)  { return mgobson.Marshal(t) }
@@ -1724,4 +1727,28 @@ func GetTimeSpent(tasks []Task) (time.Duration, time.Duration) {
 	}
 
 	return timeTaken, latestFinishTime.Sub(earliestStartTime)
+}
+
+// UpdateDependencies replaces the dependencies of a task with
+// the dependencies provided
+func (t *Task) UpdateDependencies(dependsOn []Dependency) error {
+	err := UpdateOne(
+		bson.M{
+			IdKey:        t.Id,
+			DependsOnKey: t.DependsOn,
+		},
+		bson.M{
+			"$set": bson.M{DependsOnKey: dependsOn},
+		},
+	)
+	if err != nil {
+		if adb.ResultsNotFound(err) {
+			grip.Alert(errors.Wrapf(err, "atomic update failed for %s", t.Id))
+		}
+		return errors.Wrap(err, "can't update dependencies")
+	}
+
+	t.DependsOn = dependsOn
+
+	return nil
 }

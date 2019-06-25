@@ -507,7 +507,10 @@ func addMergeTaskAndVariant(patchDoc *patch.Patch, project *model.Project) error
 		DisplayName: "Commit Queue Merge",
 		RunOn:       []string{settings.CommitQueue.MergeTaskDistro},
 		Tasks: []model.BuildVariantTaskUnit{
-			{Name: evergreen.MergeTaskName},
+			{
+				Name:             evergreen.MergeTaskName,
+				CommitQueueMerge: true,
+			},
 		},
 	}
 

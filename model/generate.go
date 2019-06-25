@@ -172,6 +172,13 @@ func (g *GeneratedProject) Save(ctx context.Context, p *Project, v *Version, t *
 	if err != nil {
 		return errors.Wrapf(err, "error updating version %s", v.Id)
 	}
+
+	if t.CommitQueueMerge {
+		if err = v.UpdateMergeTaskDependencies(p); err != nil {
+			return errors.Wrap(err, "error updating merge task")
+		}
+	}
+
 	v.ConfigUpdateNumber += 1
 	if err := g.saveNewBuildsAndTasks(ctx, pm, v, p, t.Priority); err != nil {
 		return errors.Wrap(err, "error savings new builds and tasks")
