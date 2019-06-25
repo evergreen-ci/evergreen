@@ -95,6 +95,17 @@ func (j *hostTerminationJob) Run(ctx context.Context) {
 		return
 	}
 
+	if err = j.host.DeleteJasperCredentials(ctx, j.env); err != nil {
+		j.AddError(err)
+		grip.Error(message.WrapError(err, message.Fields{
+			"message":  "problem deleting Jasper credentials",
+			"host":     j.host.Id,
+			"provider": j.host.Distro.Provider,
+			"job":      j.ID(),
+		}))
+		return
+	}
+
 	// we may be running these jobs on hosts that are already
 	// terminated.
 	grip.InfoWhen(j.host.Status == evergreen.HostTerminated,
@@ -161,6 +172,7 @@ func (j *hostTerminationJob) Run(ctx context.Context) {
 		j.AddError(fmt.Errorf("could not find host %s for job %s", j.HostID, j.TaskID))
 		return
 	}
+
 	// check if running task has been assigned since status changed
 	if j.host.RunningTask != "" {
 		if j.TerminateIfBusy {
