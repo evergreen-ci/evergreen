@@ -508,7 +508,7 @@ func addMergeTaskAndVariant(patchDoc *patch.Patch, project *model.Project) error
 		RunOn:       []string{settings.CommitQueue.MergeTaskDistro},
 		Tasks: []model.BuildVariantTaskUnit{
 			{
-				Name:             evergreen.MergeTaskName,
+				Name:             evergreen.MergeTaskGroup,
 				CommitQueueMerge: true,
 			},
 		},
