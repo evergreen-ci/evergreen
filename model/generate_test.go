@@ -315,15 +315,15 @@ func (s *GenerateSuite) TestParseProjectFromJSON() {
 	s.Equal("shell.exec", g.Functions["echo-hi"].List()[0].Command)
 
 	params, err := g.Functions["echo-hi"].List()[0].ResolveParams()
-	s.NoError(err)
+	s.Require().NoError(err)
 	s.Equal("echo hi", params["script"])
 
 	params, err = g.Functions["echo-bye"].List()[0].ResolveParams()
-	s.NoError(err)
+	s.Require().NoError(err)
 	s.Equal("echo bye", params["script"])
 
 	params, err = g.Functions["echo-bye"].List()[1].ResolveParams()
-	s.NoError(err)
+	s.Require().NoError(err)
 	s.Equal("echo bye again", params["script"])
 
 	s.Len(g.Tasks, 1)
