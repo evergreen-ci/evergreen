@@ -502,6 +502,11 @@ func addMergeTaskAndVariant(patchDoc *patch.Patch, project *model.Project) error
 		return errors.Wrap(err, "error retrieving Evergreen config")
 	}
 
+	modules := make([]string, 0, len(patchDoc.Patches))
+	for _, module := range patchDoc.Patches {
+		modules = append(modules, module.ModuleName)
+	}
+
 	mergeBuildVariant := model.BuildVariant{
 		Name:        evergreen.MergeTaskVariant,
 		DisplayName: "Commit Queue Merge",
@@ -512,6 +517,7 @@ func addMergeTaskAndVariant(patchDoc *patch.Patch, project *model.Project) error
 				CommitQueueMerge: true,
 			},
 		},
+		Modules: modules,
 	}
 
 	// Merge task depends on all commit queue tasks matching the alias

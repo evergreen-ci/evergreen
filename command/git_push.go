@@ -59,7 +59,7 @@ func (c *gitPush) Execute(ctx context.Context, comm client.Communicator, logger 
 	checkoutCommand := fmt.Sprintf("git checkout %s", conf.ProjectRef.Branch)
 	logger.Execution().Debugf("git checkout command %s", checkoutCommand)
 	jpm := c.JasperManager()
-	cmd := jpm.CreateCommand(ctx).Directory(c.Directory).Append(checkoutCommand).
+	cmd := jpm.CreateCommand(ctx).Directory(filepath.ToSlash(filepath.Join(conf.WorkDir, c.Directory))).Append(checkoutCommand).
 		SetOutputSender(level.Info, logger.Task().GetSender()).SetErrorSender(level.Error, logger.Task().GetSender())
 	if err = cmd.Run(ctx); err != nil {
 		return errors.Wrapf(err, "can't checkout '%s' branch", conf.ProjectRef.Branch)
@@ -106,7 +106,7 @@ func (c *gitPush) Execute(ctx context.Context, comm client.Communicator, logger 
 
 		checkoutCommand = fmt.Sprintf("git checkout %s", module.Branch)
 		logger.Execution().Debugf("git checkout command: %s", checkoutCommand)
-		cmd := jpm.CreateCommand(ctx).Directory(moduleBase).Append(checkoutCommand).
+		cmd := jpm.CreateCommand(ctx).Directory(filepath.ToSlash(filepath.Join(conf.WorkDir, c.Directory, moduleBase))).Append(checkoutCommand).
 			SetOutputSender(level.Info, logger.Task().GetSender()).SetErrorSender(level.Error, logger.Task().GetSender())
 		if err = cmd.Run(ctx); err != nil {
 			return errors.Wrapf(err, "can't checkout '%s' branch", module.Branch)
@@ -122,7 +122,7 @@ func (c *gitPush) Execute(ctx context.Context, comm client.Communicator, logger 
 
 	// Push main patch
 	logger.Execution().Info("Pushing patch")
-	params.directory = c.Directory
+	params.directory = filepath.ToSlash(filepath.Join(conf.WorkDir, c.Directory))
 	params.branch = conf.ProjectRef.Branch
 	if err = c.pushPatch(ctx, logger, params); err != nil {
 		return errors.Wrap(err, "can't push patch")
