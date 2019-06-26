@@ -265,7 +265,10 @@ type PluginCommandConf struct {
 
 	// Params are used to supply configuration specific information.
 	// map[string]interface{} is stored as a JSON string.
-	Params string `yaml:"params,omitempty" bson:"params"`
+	Params map[string]interface{} `yaml:"-" bson:"-"`
+
+	// YAML string of Params to store in database
+	ParamsYAML string `yaml:"params,omitempty" bson:"params"`
 
 	// Vars defines variables that can be used within commands.
 	Vars map[string]string `yaml:"vars,omitempty" bson:"vars"`
@@ -278,34 +281,32 @@ func (p *PluginCommandConf) ResolveParams() (map[string]interface{}, error) {
 	if p == nil {
 		return out, nil
 	}
-	if err := json.Unmarshal([]byte(p.Params), &out); err != nil {
+	if len(p.Params) > 0 {
+		return p.Params, nil
+	}
+	if err := json.Unmarshal([]byte(p.ParamsYAML), &out); err != nil {
 		return nil, errors.Wrapf(err, "error unmarshalling params")
 	}
+	p.Params = out
 	return out, nil
 }
 
 func (c *PluginCommandConf) UnmarshalYAML(unmarshal func(interface{}) error) error {
-	type tempCommandConf struct {
-		Function    string                 `yaml:"func,omitempty" bson:"func"`
-		Type        string                 `yaml:"type,omitempty" bson:"type"`
-		DisplayName string                 `yaml:"display_name,omitempty" bson:"display_name"`
-		Command     string                 `yaml:"command,omitempty" bson:"command"`
-		Variants    []string               `yaml:"variants,omitempty" bson:"variants"`
-		TimeoutSecs int                    `yaml:"timeout_secs,omitempty" bson:"timeout_secs"`
-		Params      map[string]interface{} `yaml:"params,omitempty" bson:"params"`
-		Vars        map[string]string      `yaml:"vars,omitempty" bson:"vars"`
-		Loggers     *LoggerConfig          `yaml:"loggers,omitempty" bson:"loggers,omitempty"`
-	}
+	temp := struct {
+		Function    string            `yaml:"func,omitempty" bson:"func"`
+		Type        string            `yaml:"type,omitempty" bson:"type"`
+		DisplayName string            `yaml:"display_name,omitempty" bson:"display_name"`
+		Command     string            `yaml:"command,omitempty" bson:"command"`
+		Variants    []string          `yaml:"variants,omitempty" bson:"variants"`
+		TimeoutSecs int               `yaml:"timeout_secs,omitempty" bson:"timeout_secs"`
+		Params      interface{}       `yaml:"params,omitempty" bson:"params"`
+		Vars        map[string]string `yaml:"vars,omitempty" bson:"vars"`
+		Loggers     *LoggerConfig     `yaml:"loggers,omitempty" bson:"loggers,omitempty"`
+	}{}
 
-	temp := tempCommandConf{}
 	if err := unmarshal(&temp); err != nil {
-		return errors.Wrapf(err, "error unmarshalling into temp structure")
+		return errors.Wrap(err, "error unmarshalling into temp structure")
 	}
-	bytes, err := yaml.Marshal(temp.Params)
-	if err != nil {
-		return errors.Wrapf(err, "error marshalling params into yaml")
-	}
-
 	c.Function = temp.Function
 	c.Type = temp.Type
 	c.DisplayName = temp.DisplayName
@@ -315,7 +316,24 @@ func (c *PluginCommandConf) UnmarshalYAML(unmarshal func(interface{}) error) err
 	c.Vars = temp.Vars
 	c.Loggers = temp.Loggers
 
-	c.Params = string(bytes)
+	return c.unmarshalParams(temp.Params)
+}
+
+func (c *PluginCommandConf) unmarshalParams(params interface{}) error {
+	switch v := params.(type) {
+	case string:
+		c.ParamsYAML = v
+	case map[interface{}]interface{}:
+		bytes, err := yaml.Marshal(v)
+		if err != nil {
+			return errors.Wrap(err, "error marshalling params into yaml")
+		}
+		c.ParamsYAML = string(bytes)
+		c.Params = map[string]interface{}{}
+		for key, val := range v {
+			c.Params[fmt.Sprintf("%v", key)] = fmt.Sprintf("%v", val)
+		}
+	}
 	return nil
 }
 
