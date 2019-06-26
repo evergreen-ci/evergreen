@@ -1238,12 +1238,6 @@ functions:
 			assert.NoError(t, err)
 			assert.NoError(t, checkProjectPersists(yml))
 		},
-		"hostcreate.yml": func(t *testing.T) {
-			filepath := filepath.Join(testutil.GetDirectoryOfFile(), "..", "rest", "data", "temp.yml")
-			yml, err := ioutil.ReadFile(filepath)
-			assert.NoError(t, err)
-			assert.NoError(t, checkProjectPersists(yml))
-		},
 	} {
 		t.Run(name, func(t *testing.T) {
 			assert.NoError(t, db.ClearCollections(VersionCollection))
