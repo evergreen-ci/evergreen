@@ -257,3 +257,37 @@ func TestFindProjectRefsWithCommitQueueEnabled(t *testing.T) {
 	assert.Equal("mci", projectRefs[0].Identifier)
 	assert.Equal("mci", projectRefs[1].Identifier)
 }
+
+func TestValidatePeriodicBuildDefinition(t *testing.T) {
+	assert := assert.New(t)
+	testCases := map[PeriodicBuildDefinition]bool{
+		PeriodicBuildDefinition{
+			IntervalHours: 24,
+			ConfigFile:    "foo.yml",
+			Alias:         "myAlias",
+		}: true,
+		PeriodicBuildDefinition{
+			IntervalHours: 0,
+			ConfigFile:    "foo.yml",
+			Alias:         "myAlias",
+		}: false,
+		PeriodicBuildDefinition{
+			IntervalHours: 24,
+			ConfigFile:    "",
+			Alias:         "myAlias",
+		}: false,
+		PeriodicBuildDefinition{
+			IntervalHours: 24,
+			ConfigFile:    "foo.yml",
+			Alias:         "",
+		}: false,
+	}
+
+	for testCase, shouldPass := range testCases {
+		if shouldPass {
+			assert.NoError(testCase.Validate())
+		} else {
+			assert.Error(testCase.Validate())
+		}
+	}
+}

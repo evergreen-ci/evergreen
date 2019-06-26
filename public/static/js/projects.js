@@ -311,6 +311,7 @@ mciModule.controller('ProjectCtrl', function($scope, $window, $http, $location, 
           delete_subscriptions: [],
           files_ignored_from_cache: data.ProjectRef.files_ignored_from_cache,
           disabled_stats_cache: data.ProjectRef.disabled_stats_cache,
+          periodic_builds: data.ProjectRef.periodic_builds,
         };
 
         // Divide aliases into three categories (patch, github, and commit queue aliases)
@@ -515,6 +516,41 @@ mciModule.controller('ProjectCtrl', function($scope, $window, $http, $location, 
       $scope.isDirty = true;
     }
   };
+
+  $scope.removePeriodicBuild = function(i) {
+    if ($scope.settingsFormData.periodic_builds[i]) {
+      $scope.settingsFormData.periodic_builds.splice(i, 1);
+      $scope.isDirty = true;
+    }
+  }
+
+  $scope.addPeriodicBuild = function() {
+    $scope.invalidPeriodicBuildMsg = $scope.periodicBuildErrors($scope.periodic_build);
+    if ($scope.invalidPeriodicBuildMsg !== "") {
+      return;
+    }
+    if (!$scope.settingsFormData.periodic_builds) {
+      $scope.settingsFormData.periodic_builds = [];
+    }
+    $scope.settingsFormData.periodic_builds = $scope.settingsFormData.periodic_builds.concat($scope.periodic_build);
+    $scope.periodic_build = {};
+  }
+
+  $scope.periodicBuildErrors = function() {
+    if (!$scope.periodic_build) {
+      return "";
+    }
+    if ($scope.periodic_build.interval_hours <= 0) {
+      return "Interval must be a positive integer";
+    }
+    if ($scope.periodic_build.config_file === "") {
+      return "Config file must be defined";
+    }
+    if ($scope.periodic_build.alias === "") {
+      return "Alias file must be defined";
+    }
+    return "";
+  }
 
   $scope.triggerLabel = function(trigger) {
     if (!trigger || !trigger.project) {

@@ -12,6 +12,7 @@ import (
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/anser/bsonutil"
 	adb "github.com/mongodb/anser/db"
+	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson"
 )
@@ -56,7 +57,8 @@ type ProjectRef struct {
 	FilesIgnoredFromCache []string `bson:"files_ignored_from_cache,omitempty" json:"files_ignored_from_cache,omitempty"`
 	DisabledStatsCache    bool     `bson:"disabled_stats_cache,omitempty" json:"disabled_stats_cache,omitempty"`
 
-	Triggers []TriggerDefinition `bson:"triggers,omitempty" json:"triggers,omitempty"`
+	Triggers       []TriggerDefinition       `bson:"triggers,omitempty" json:"triggers,omitempty"`
+	PeriodicBuilds []PeriodicBuildDefinition `bson:"periodic_builds,omitempty" json:"periodic_builds,omitempty"`
 }
 
 type CommitQueueParams struct {
@@ -101,6 +103,13 @@ type TriggerDefinition struct {
 	Alias        string `bson:"alias,omitempty" json:"alias,omitempty"`
 }
 
+type PeriodicBuildDefinition struct {
+	ConfigFile    string `bson:"config_file" json:"config_file"`
+	IntervalHours int    `bson:"interval_hours" json:"interval_hours"`
+	Alias         string `bson:"alias,omitempty" json:"alias,omitempty"`
+	Message       string `bson:"message,omitempty" json:"message,omitempty"`
+}
+
 func (a AlertConfig) GetSettingsMap() map[string]string {
 	ret := make(map[string]string)
 	for k, v := range a.Settings {
@@ -138,6 +147,7 @@ var (
 	projectRefPatchingDisabledKey   = bsonutil.MustHaveTag(ProjectRef{}, "PatchingDisabled")
 	projectRefNotifyOnFailureKey    = bsonutil.MustHaveTag(ProjectRef{}, "NotifyOnBuildFailure")
 	projectRefTriggersKey           = bsonutil.MustHaveTag(ProjectRef{}, "Triggers")
+	projectRefPeriodicBuildsKey     = bsonutil.MustHaveTag(ProjectRef{}, "PeriodicBuilds")
 
 	projectRefCommitQueueEnabledKey = bsonutil.MustHaveTag(CommitQueueParams{}, "Enabled")
 	projectRefTriggerProjectKey     = bsonutil.MustHaveTag(TriggerDefinition{}, "Project")
@@ -447,6 +457,7 @@ func (projectRef *ProjectRef) Upsert() error {
 				projectRefPatchingDisabledKey:   projectRef.PatchingDisabled,
 				projectRefNotifyOnFailureKey:    projectRef.NotifyOnBuildFailure,
 				projectRefTriggersKey:           projectRef.Triggers,
+				projectRefPeriodicBuildsKey:     projectRef.PeriodicBuilds,
 			},
 		},
 	)
@@ -508,6 +519,21 @@ func (t TriggerDefinition) Validate(parentProject string) error {
 		return errors.New("must provide a config file or generated tasks file")
 	}
 	return nil
+}
+
+func (d *PeriodicBuildDefinition) Validate() error {
+	catcher := grip.NewBasicCatcher()
+	if d.IntervalHours <= 0 {
+		catcher.New("Interval must be a positive integer")
+	}
+	if d.ConfigFile == "" {
+		catcher.New("A config file must be specified")
+	}
+	if d.Alias == "" {
+		catcher.New("Alias must be specified")
+	}
+
+	return catcher.Resolve()
 }
 
 func GetUpstreamProjectName(triggerID, triggerType string) (string, error) {
