@@ -531,21 +531,21 @@ func expandTaskSelector(ts taskSelector, exp util.Expansions) (taskSelector, err
 	}
 	newTS.Name = newName
 	if v := ts.Variant; v != nil {
-		if len(v.matrixSelector) > 0 {
-			newMS, err := expandMatrixDefinition(v.matrixSelector, exp)
+		if len(v.MatrixSelector) > 0 {
+			newMS, err := expandMatrixDefinition(v.MatrixSelector, exp)
 			if err != nil {
 				return newTS, errors.Wrap(err, "expanding variant")
 			}
 			newTS.Variant = &variantSelector{
-				matrixSelector: newMS,
+				MatrixSelector: newMS,
 			}
 		} else {
-			selector, err := exp.ExpandString(v.stringSelector)
+			selector, err := exp.ExpandString(v.StringSelector)
 			if err != nil {
 				return newTS, errors.Wrap(err, "expanding variant")
 			}
 			newTS.Variant = &variantSelector{
-				stringSelector: selector,
+				StringSelector: selector,
 			}
 		}
 	}

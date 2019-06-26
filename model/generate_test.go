@@ -34,7 +34,7 @@ var (
 				DependsOn: []parserDependency{
 					{TaskSelector: taskSelector{
 						Name:    "a-depended-on-task",
-						Variant: &variantSelector{stringSelector: "*"},
+						Variant: &variantSelector{StringSelector: "*"},
 					}},
 				},
 			},

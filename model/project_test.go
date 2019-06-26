@@ -1065,7 +1065,7 @@ tasks:
 	s.Len(errs, 0)
 	marshaled, err := yaml.Marshal(intermediate)
 	s.NoError(err)
-	unmarshaled := ParserProject{}
+	unmarshaled := parserProject{}
 	s.NoError(yaml.Unmarshal(marshaled, &unmarshaled))
 }
 

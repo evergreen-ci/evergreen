@@ -16,8 +16,8 @@ const LoadProjectError = "load project error(s)"
 // This file contains the infrastructure for turning a YAML project configuration
 // into a usable Project struct. A basic overview of the project parsing process is:
 //
-// First, the YAML bytes are unmarshalled into an intermediary ParserProject.
-// The ParserProject's internal types define custom YAML unmarshal hooks, allowing
+// First, the YAML bytes are unmarshalled into an intermediary parserProject.
+// The parserProject's internal types define custom YAML unmarshal hooks, allowing
 // users to do things like offer a single definition where we expect a list, e.g.
 //   `tags: "single_tag"` instead of the more verbose `tags: ["single_tag"]`
 // or refer to task by a single selector. Custom YAML handling allows us to
@@ -35,10 +35,10 @@ const LoadProjectError = "load project error(s)"
 // Code outside of this file should never have to consider selectors or parser* types
 // when handling project code.
 
-// ParserProject serves as an intermediary struct for parsing project
+// parserProject serves as an intermediary struct for parsing project
 // configuration YAML. It implements the Unmarshaler interface
 // to allow for flexible handling.
-type ParserProject struct {
+type parserProject struct {
 	Enabled         bool                       `yaml:"enabled,omitempty" bson:"enabled,omitempty"`
 	Stepback        bool                       `yaml:"stepback,omitempty" bson:"stepback,omitempty"`
 	IgnorePreError  bool                       `yaml:"ignore_pre_err,omitempty" bson:"ignore_pre_err,omitempty"`
@@ -165,7 +165,7 @@ func (pd *parserDependency) UnmarshalYAML(unmarshal func(interface{}) error) err
 // in the context of dependencies and requirements fields. //TODO no export?
 type taskSelector struct {
 	Name    string           `yaml:"name,omitempty"`
-	Variant *variantSelector `yaml:"variant,omitempty"`
+	Variant *variantSelector `yaml:"variant,omitempty" bson:"variant"`
 }
 
 // TaskSelectors is a helper type for parsing arrays of TaskSelector.
@@ -174,8 +174,8 @@ type taskSelectors []taskSelector
 // VariantSelector handles the selection of a variant, either by a id/tag selector
 // or by matching against matrix axis values.
 type variantSelector struct {
-	stringSelector string
-	matrixSelector matrixDefinition
+	StringSelector string           `yaml:"string_selector" bson:"string_selector"`
+	MatrixSelector matrixDefinition `yaml:"matrix_selector" bson:"matrix_selector"`
 }
 
 // UnmarshalYAML allows variants to be referenced as single selector strings or
@@ -186,7 +186,7 @@ func (vs *variantSelector) UnmarshalYAML(unmarshal func(interface{}) error) erro
 	var onlySelector string
 	if err := unmarshal(&onlySelector); err == nil {
 		if onlySelector != "" {
-			vs.stringSelector = onlySelector
+			vs.StringSelector = onlySelector
 			return nil
 		}
 	}
@@ -198,17 +198,17 @@ func (vs *variantSelector) UnmarshalYAML(unmarshal func(interface{}) error) erro
 	if len(md) == 0 {
 		return errors.New("variant selector must not be empty")
 	}
-	vs.matrixSelector = md
+	vs.MatrixSelector = md
 	return nil
 }
 
 func (vs *variantSelector) MarshalYAML() (interface{}, error) {
-	if vs == nil || vs.stringSelector == "" {
+	if vs == nil || vs.StringSelector == "" {
 		return nil, nil
 	}
 	// Note: Generate tasks will not work with matrix variant selectors,
 	// since this will only marshal the string part of a variant selector.
-	return vs.stringSelector, nil
+	return vs.StringSelector, nil
 }
 
 // UnmarshalYAML reads YAML into an array of TaskSelector. It will
@@ -431,8 +431,8 @@ func projectFromYAML(yml []byte) (*Project, []error) {
 // createIntermediateProject marshals the supplied YAML into our
 // intermediate project representation (i.e. before selectors or
 // matrix logic has been evaluated).
-func createIntermediateProject(yml []byte) (*ParserProject, []error) {
-	p := &ParserProject{}
+func createIntermediateProject(yml []byte) (*parserProject, []error) {
+	p := &parserProject{}
 	err := yaml.Unmarshal(yml, p)
 	if err != nil {
 		return nil, []error{err}
@@ -447,7 +447,7 @@ func createIntermediateProject(yml []byte) (*ParserProject, []error) {
 // translateProject converts our intermediate project representation into
 // the Project type that Evergreen actually uses. Errors are added to
 // pp.errors and pp.warnings and must be checked separately.
-func translateProject(pp *ParserProject) (*Project, []error) {
+func translateProject(pp *parserProject) (*Project, []error) {
 	// Transfer top level fields
 	proj := &Project{
 		Enabled:         pp.Enabled,
