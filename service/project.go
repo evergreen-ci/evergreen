@@ -435,7 +435,7 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 	}
 
 	for i, buildDef := range responseRef.PeriodicBuilds {
-		catcher.Add(errors.Wrapf(buildDef.Validate(), "invalid periodic build definition on line %d", i+1))
+		catcher.Wrapf(buildDef.Validate(), "invalid periodic build definition on line %d", i+1)
 	}
 
 	if catcher.HasErrors() {

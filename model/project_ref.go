@@ -5,8 +5,6 @@ import (
 	"math"
 	"regexp"
 
-	"github.com/mongodb/grip"
-
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/build"
@@ -14,6 +12,7 @@ import (
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/anser/bsonutil"
 	adb "github.com/mongodb/anser/db"
+	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson"
 )
@@ -522,16 +521,16 @@ func (t TriggerDefinition) Validate(parentProject string) error {
 	return nil
 }
 
-func (d PeriodicBuildDefinition) Validate() error {
+func (d *PeriodicBuildDefinition) Validate() error {
 	catcher := grip.NewBasicCatcher()
 	if d.IntervalHours <= 0 {
-		catcher.Add(errors.New("Interval must be a positive integer"))
+		catcher.New("Interval must be a positive integer")
 	}
 	if d.ConfigFile == "" {
-		catcher.Add(errors.New("A config file must be specified"))
+		catcher.New("A config file must be specified")
 	}
 	if d.Alias == "" {
-		catcher.Add(errors.New("Alias must be specified"))
+		catcher.New("Alias must be specified")
 	}
 
 	return catcher.Resolve()
