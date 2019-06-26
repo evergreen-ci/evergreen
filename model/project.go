@@ -1,7 +1,6 @@
 package model
 
 import (
-	"encoding/json"
 	"fmt"
 	"reflect"
 	"regexp"
@@ -284,7 +283,7 @@ func (p *PluginCommandConf) ResolveParams() (map[string]interface{}, error) {
 	if len(p.Params) > 0 {
 		return p.Params, nil
 	}
-	if err := json.Unmarshal([]byte(p.ParamsYAML), &out); err != nil {
+	if err := yaml.Unmarshal([]byte(p.ParamsYAML), &out); err != nil {
 		return nil, errors.Wrapf(err, "error unmarshalling params")
 	}
 	p.Params = out
@@ -331,7 +330,7 @@ func (c *PluginCommandConf) unmarshalParams(params interface{}) error {
 		c.ParamsYAML = string(bytes)
 		c.Params = map[string]interface{}{}
 		for key, val := range v {
-			c.Params[fmt.Sprintf("%v", key)] = fmt.Sprintf("%v", val)
+			c.Params[fmt.Sprintf("%v", key)] = val
 		}
 	}
 	return nil
