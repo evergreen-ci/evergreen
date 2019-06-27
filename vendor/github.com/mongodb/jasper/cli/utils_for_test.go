@@ -211,7 +211,7 @@ func makeTestRESTService(ctx context.Context, t *testing.T, port int, manager ja
 // purposes on localhost.
 func makeTestRESTServiceAndClient(ctx context.Context, t *testing.T, port int, manager jasper.Manager) (jasper.CloseFunc, jasper.RemoteClient) {
 	closeService := makeTestRESTService(ctx, t, port, manager)
-	client, err := newRemoteClient(ctx, restService, "localhost", port, "")
+	client, err := newRemoteClient(ctx, RESTService, "localhost", port, "")
 	require.NoError(t, err)
 	return closeService, client
 }
@@ -228,7 +228,7 @@ func makeTestRPCService(ctx context.Context, t *testing.T, port int, manager jas
 // purposes on localhost with no credentials.
 func makeTestRPCServiceAndClient(ctx context.Context, t *testing.T, port int, manager jasper.Manager) (jasper.CloseFunc, jasper.RemoteClient) {
 	closeService := makeTestRPCService(ctx, t, port, manager)
-	client, err := newRemoteClient(ctx, rpcService, "localhost", port, "")
+	client, err := newRemoteClient(ctx, RPCService, "localhost", port, "")
 	require.NoError(t, err)
 	return closeService, client
 }

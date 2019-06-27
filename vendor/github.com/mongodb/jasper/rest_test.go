@@ -259,9 +259,7 @@ func TestRestService(t *testing.T) {
 			assert.Equal(t, http.StatusBadRequest, rw.Code)
 		},
 		"CreateFailPropagatesErrors": func(ctx context.Context, t *testing.T, srv *Service, client *restClient) {
-			srv.manager = &MockManager{
-				FailCreate: true,
-			}
+			srv.manager = &MockManager{FailCreate: true}
 			proc, err := client.CreateProcess(ctx, trueCreateOpts())
 			assert.Error(t, err)
 			assert.Nil(t, proc)
@@ -269,13 +267,10 @@ func TestRestService(t *testing.T) {
 		},
 		"CreateFailsForTriggerReasons": func(ctx context.Context, t *testing.T, srv *Service, client *restClient) {
 			srv.manager = &MockManager{
-				FailCreate: false,
-				Process: &MockProcess{
-					FailRegisterTrigger: true,
-				},
+				CreateConfig: MockProcess{FailRegisterTrigger: true},
 			}
 			proc, err := client.CreateProcess(ctx, trueCreateOpts())
-			assert.Error(t, err)
+			require.Error(t, err)
 			assert.Nil(t, proc)
 			assert.Contains(t, err.Error(), "problem managing resources")
 		},
@@ -308,10 +303,7 @@ func TestRestService(t *testing.T) {
 			assert.Error(t, proc.Signal(ctx, syscall.Signal(-1)))
 		},
 		"GetProcessWhenInvalid": func(ctx context.Context, t *testing.T, srv *Service, client *restClient) {
-			srv.manager = &MockManager{
-				FailGet: true,
-				Process: &MockProcess{},
-			}
+			srv.manager = &MockManager{FailGet: true}
 
 			_, err := client.Get(ctx, "foo")
 			assert.Error(t, err)
@@ -326,16 +318,14 @@ func TestRestService(t *testing.T) {
 			assert.Equal(t, http.StatusNotFound, res.StatusCode)
 		},
 		"MetricsPopulatedForValidProcess": func(ctx context.Context, t *testing.T, srv *Service, client *restClient) {
+			id := "foo"
 			srv.manager = &MockManager{
-				Process: &MockProcess{
-					ProcID: "foo",
-					ProcInfo: ProcessInfo{
-						PID: os.Getpid(),
-					},
+				Procs: []Process{
+					&MockProcess{ProcInfo: ProcessInfo{ID: id, PID: os.Getpid()}},
 				},
 			}
 
-			req, err := http.NewRequest(http.MethodGet, client.getURL("/process/%s/metrics", "foo"), nil)
+			req, err := http.NewRequest(http.MethodGet, client.getURL("/process/%s/metrics", id), nil)
 			require.NoError(t, err)
 			req = req.WithContext(ctx)
 			res, err := httpClient.Do(req)
@@ -344,9 +334,14 @@ func TestRestService(t *testing.T) {
 			assert.Equal(t, http.StatusOK, res.StatusCode)
 		},
 		"AddTagsWithNoTagsSpecifiedShouldError": func(ctx context.Context, t *testing.T, srv *Service, client *restClient) {
-			srv.manager = &MockManager{}
+			id := "foo"
+			srv.manager = &MockManager{
+				Procs: []Process{
+					&MockProcess{ProcInfo: ProcessInfo{ID: id}},
+				},
+			}
 
-			req, err := http.NewRequest(http.MethodPost, client.getURL("/process/%s/tags", "foo"), nil)
+			req, err := http.NewRequest(http.MethodPost, client.getURL("/process/%s/tags", id), nil)
 			require.NoError(t, err)
 			req = req.WithContext(ctx)
 			res, err := httpClient.Do(req)
@@ -356,12 +351,15 @@ func TestRestService(t *testing.T) {
 
 		},
 		"SignalInPassingCase": func(ctx context.Context, t *testing.T, srv *Service, client *restClient) {
+			id := "foo"
 			srv.manager = &MockManager{
-				Process: &MockProcess{},
+				Procs: []Process{
+					&MockProcess{ProcInfo: ProcessInfo{ID: id}},
+				},
 			}
 			proc := &restProcess{
 				client: client,
-				id:     "foo",
+				id:     id,
 			}
 
 			err := proc.Signal(ctx, syscall.SIGTERM)

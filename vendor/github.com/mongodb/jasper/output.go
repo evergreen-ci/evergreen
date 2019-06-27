@@ -102,6 +102,20 @@ type Logger struct {
 	sender send.Sender
 }
 
+// NewInMemoryLogger is a basic constructor that constructs a logger
+// configuration for plain formatted in-memory buffered logger. The
+// logger will capture up to 1000 lines.
+func NewInMemoryLogger() Logger {
+	return Logger{
+		Type: LogInMemory,
+		Options: LogOptions{
+			Format:      LogFormatPlain,
+			InMemoryCap: 1000,
+		},
+	}
+
+}
+
 // Validate ensures that LogOptions is valid.
 func (l Logger) Validate() error {
 	catcher := grip.NewBasicCatcher()

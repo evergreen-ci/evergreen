@@ -23,6 +23,9 @@ type Credentials struct {
 	Cert []byte `bson:"cert" json:"cert"`
 	// Key is the PEM-encoded private key.
 	Key []byte `bson:"key" json:"key"`
+
+	// ServerName is the name of the service being contacted.
+	ServerName string
 }
 
 // NewCredentials initializes a new Credential struct.
@@ -104,7 +107,8 @@ func (c *Credentials) Resolve() (*tls.Config, error) {
 		ClientCAs:  caCerts,
 
 		// Client-specific options
-		RootCAs: caCerts,
+		RootCAs:    caCerts,
+		ServerName: c.ServerName,
 	}, nil
 }
 

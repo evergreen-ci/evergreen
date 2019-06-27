@@ -11,13 +11,13 @@ const (
 	// still running.
 	Running Filter = "running"
 	// Terminated is the opposite of the Running filter.
-	Terminated = "terminated"
+	Terminated Filter = "terminated"
 	// All is a filter that is satisfied by any process.
-	All = "all"
+	All Filter = "all"
 	// Failed refers to processes that have terminated unsuccessfully.
-	Failed = "failed"
+	Failed Filter = "failed"
 	// Successful refers to processes that have terminated successfully.
-	Successful = "successful"
+	Successful Filter = "successful"
 )
 
 // Validate ensures that Filter is valid.
