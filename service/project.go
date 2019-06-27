@@ -206,14 +206,14 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 			Provider string                 `json:"provider"`
 			Settings map[string]interface{} `json:"settings"`
 		} `json:"alert_config"`
-		NotifyOnBuildFailure  bool                            `json:"notify_on_failure"`
-		ForceRepotrackerRun   bool                            `json:"force_repotracker_run"`
-		Subscriptions         []restModel.APISubscription     `json:"subscriptions"`
-		DeleteSubscriptions   []string                        `json:"delete_subscriptions"`
-		Triggers              []model.TriggerDefinition       `json:"triggers"`
-		FilesIgnoredFromCache []string                        `json:"files_ignored_from_cache"`
-		DisabledStatsCache    bool                            `json:"disabled_stats_cache"`
-		PeriodicBuilds        []model.PeriodicBuildDefinition `json:"periodic_builds"`
+		NotifyOnBuildFailure  bool                             `json:"notify_on_failure"`
+		ForceRepotrackerRun   bool                             `json:"force_repotracker_run"`
+		Subscriptions         []restModel.APISubscription      `json:"subscriptions"`
+		DeleteSubscriptions   []string                         `json:"delete_subscriptions"`
+		Triggers              []model.TriggerDefinition        `json:"triggers"`
+		FilesIgnoredFromCache []string                         `json:"files_ignored_from_cache"`
+		DisabledStatsCache    bool                             `json:"disabled_stats_cache"`
+		PeriodicBuilds        []*model.PeriodicBuildDefinition `json:"periodic_builds"`
 	}{}
 
 	if err = util.ReadJSONInto(util.NewRequestReader(r), &responseRef); err != nil {
@@ -350,6 +350,9 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 			responseRef.Triggers[i].DefinitionID = util.RandomString()
 		}
 	}
+	for i, buildDef := range responseRef.PeriodicBuilds {
+		catcher.Wrapf(buildDef.Validate(), "invalid periodic build definition on line %d", i+1)
+	}
 	if catcher.HasErrors() {
 		uis.LoggedError(w, r, http.StatusBadRequest, catcher.Resolve())
 		return
@@ -374,7 +377,10 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 	projectRef.Triggers = responseRef.Triggers
 	projectRef.FilesIgnoredFromCache = responseRef.FilesIgnoredFromCache
 	projectRef.DisabledStatsCache = responseRef.DisabledStatsCache
-	projectRef.PeriodicBuilds = responseRef.PeriodicBuilds
+	projectRef.PeriodicBuilds = []model.PeriodicBuildDefinition{}
+	for _, periodicBuild := range responseRef.PeriodicBuilds {
+		projectRef.PeriodicBuilds = append(projectRef.PeriodicBuilds, *periodicBuild)
+	}
 
 	projectVars, err := model.FindOneProjectVars(id)
 	if err != nil {
@@ -430,10 +436,6 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 
 	for _, id := range responseRef.DeleteSubscriptions {
 		catcher.Add(event.RemoveSubscription(id))
-	}
-
-	for i, buildDef := range responseRef.PeriodicBuilds {
-		catcher.Wrapf(buildDef.Validate(), "invalid periodic build definition on line %d", i+1)
 	}
 
 	if catcher.HasErrors() {

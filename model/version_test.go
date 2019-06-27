@@ -146,3 +146,41 @@ func TestUpdateMergeTaskDependencies(t *testing.T) {
 	assert.NoError(t, err)
 	require.Len(t, tDb.DependsOn, 1)
 }
+
+func TestFindLastPeriodicBuild(t *testing.T) {
+	assert := assert.New(t)
+	assert.NoError(db.Clear(VersionCollection))
+	now := time.Now()
+	v1 := Version{
+		Id:              "v1",
+		PeriodicBuildID: "a",
+		Identifier:      "myProj",
+		CreateTime:      now.Add(-10 * time.Minute),
+	}
+	assert.NoError(v1.Insert())
+	v2 := Version{
+		Id:              "v2",
+		PeriodicBuildID: "a",
+		Identifier:      "myProj",
+		CreateTime:      now.Add(-5 * time.Minute),
+	}
+	assert.NoError(v2.Insert())
+	v3 := Version{
+		Id:              "v3",
+		PeriodicBuildID: "b",
+		Identifier:      "myProj",
+		CreateTime:      now,
+	}
+	assert.NoError(v3.Insert())
+	v4 := Version{
+		Id:              "v4",
+		PeriodicBuildID: "a",
+		Identifier:      "someProj",
+		CreateTime:      now,
+	}
+	assert.NoError(v4.Insert())
+
+	mostRecent, err := FindLastPeriodicBuild("myProj", "a")
+	assert.NoError(err)
+	assert.Equal(v2.Id, mostRecent.Id)
+}

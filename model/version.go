@@ -32,6 +32,7 @@ type Version struct {
 	Branch              string               `bson:"branch_name" json:"branch_name,omitempty"`
 	RepoKind            string               `bson:"repo_kind" json:"repo_kind,omitempty"`
 	BuildVariants       []VersionBuildStatus `bson:"build_variants_status,omitempty" json:"build_variants_status,omitempty"`
+	PeriodicBuildID     string               `bson:"periodic_build_id,omitempty" json:"periodic_build_id,omitempty"`
 
 	// This is technically redundant, but a lot of code relies on it, so I'm going to leave it
 	BuildIds []string `bson:"builds" json:"builds,omitempty"`

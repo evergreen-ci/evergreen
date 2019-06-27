@@ -44,6 +44,7 @@ var (
 	VersionTriggerIDKey           = bsonutil.MustHaveTag(Version{}, "TriggerID")
 	VersionTriggerTypeKey         = bsonutil.MustHaveTag(Version{}, "TriggerType")
 	VersionSatisfiedTriggersKey   = bsonutil.MustHaveTag(Version{}, "SatisfiedTriggers")
+	VersionPeriodicBuildIDKey     = bsonutil.MustHaveTag(Version{}, "PeriodicBuildID")
 )
 
 // ById returns a db.Q object which will filter on {_id : <the id param>}
@@ -262,4 +263,19 @@ func AddSatisfiedTrigger(versionID, definitionID string) error {
 				VersionSatisfiedTriggersKey: definitionID,
 			},
 		})
+}
+
+func FindLastPeriodicBuild(projectID, definitionID string) (*Version, error) {
+	versions, err := VersionFind(db.Query(bson.M{
+		VersionPeriodicBuildIDKey: definitionID,
+		VersionIdentifierKey:      projectID,
+	}).Sort([]string{"-" + VersionCreateTimeKey}).Limit(1))
+	if err != nil {
+		return nil, err
+	}
+	if versions == nil || len(versions) == 0 {
+		return nil, nil
+	}
+
+	return &versions[0], nil
 }
