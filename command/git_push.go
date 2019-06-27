@@ -67,7 +67,7 @@ func (c *gitPush) Execute(ctx context.Context, comm client.Communicator, logger 
 
 	// fail the merge if HEAD has moved
 	logger.Execution().Info("Checking HEAD")
-	headSHA, err := c.revParse(ctx, logger, "HEAD")
+	headSHA, err := c.revParse(ctx, conf, logger, "HEAD")
 	if err != nil {
 		return errors.Wrap(err, "can't get SHA for HEAD")
 	}
@@ -113,7 +113,7 @@ func (c *gitPush) Execute(ctx context.Context, comm client.Communicator, logger 
 		}
 
 		logger.Execution().Infof("Pushing patch for module %s", module.Name)
-		params.directory = moduleBase
+		params.directory = filepath.ToSlash(filepath.Join(conf.WorkDir, c.Directory, moduleBase))
 		params.branch = module.Branch
 		if err = c.pushPatch(ctx, logger, params); err != nil {
 			return errors.Wrap(err, "can't push module patch")
@@ -167,7 +167,7 @@ func (c *gitPush) pushPatch(ctx context.Context, logger client.LoggerProducer, p
 	return errors.Wrap(cmd.Run(ctx), "can't run push commands")
 }
 
-func (c *gitPush) revParse(ctx context.Context, logger client.LoggerProducer, ref string) (string, error) {
+func (c *gitPush) revParse(ctx context.Context, conf *model.TaskConfig, logger client.LoggerProducer, ref string) (string, error) {
 	stdout := noopWriteCloser{
 		&bytes.Buffer{},
 	}
@@ -175,7 +175,7 @@ func (c *gitPush) revParse(ctx context.Context, logger client.LoggerProducer, re
 
 	revParseCommand := fmt.Sprintf("git rev-parse %s", ref)
 	logger.Execution().Debugf("git rev-parse command: %s", revParseCommand)
-	cmd := jpm.CreateCommand(ctx).Directory(c.Directory).Append(revParseCommand).SetOutputWriter(stdout).
+	cmd := jpm.CreateCommand(ctx).Directory(filepath.ToSlash(filepath.Join(conf.WorkDir, c.Directory))).Append(revParseCommand).SetOutputWriter(stdout).
 		SetErrorSender(level.Error, logger.Task().GetSender())
 
 	if err := cmd.Run(ctx); err != nil {

@@ -504,7 +504,9 @@ func addMergeTaskAndVariant(patchDoc *patch.Patch, project *model.Project) error
 
 	modules := make([]string, 0, len(patchDoc.Patches))
 	for _, module := range patchDoc.Patches {
-		modules = append(modules, module.ModuleName)
+		if module.ModuleName != "" {
+			modules = append(modules, module.ModuleName)
+		}
 	}
 
 	mergeBuildVariant := model.BuildVariant{
@@ -541,13 +543,13 @@ func addMergeTaskAndVariant(patchDoc *patch.Patch, project *model.Project) error
 				Command: "git.get_project",
 				Type:    evergreen.CommandTypeSetup,
 				Params: map[string]interface{}{
-					"directory": "${workdir}/src",
+					"directory": "src",
 				},
 			},
 			{
 				Command: "git.push",
 				Params: map[string]interface{}{
-					"directory":       "${workdir}/src",
+					"directory":       "src",
 					"committer_name":  settings.CommitQueue.CommitterName,
 					"committer_email": settings.CommitQueue.CommitterEmail,
 				},
