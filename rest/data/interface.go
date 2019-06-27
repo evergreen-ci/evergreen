@@ -246,10 +246,10 @@ type Connector interface {
 	GeneratePoll(context.Context, string, amboy.QueueGroup) (bool, []string, error)
 
 	// SaveSubscriptions saves a set of notification subscriptions
-	SaveSubscriptions([]event.Subscription) error
+	SaveSubscriptions(string, []restModel.APISubscription) error
 	// GetSubscriptions returns the subscriptions that belong to a user
 	GetSubscriptions(string, event.OwnerType) ([]restModel.APISubscription, error)
-	DeleteSubscription(id string) error
+	DeleteSubscriptions(string, []string) error
 	// CopyProjectSubscriptions copies subscriptions from the first project for the second project.
 	CopyProjectSubscriptions(string, string) error
 

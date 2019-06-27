@@ -246,6 +246,30 @@ func RemoveSubscription(id string) error {
 	})
 }
 
+func IsSubscriptionAllowed(sub Subscription) (bool, string) {
+	for _, selector := range sub.Selectors {
+		if selector.Type == "object" {
+			if selector.Data == "build" || selector.Data == "version" || selector.Data == "task" {
+				if sub.Subscriber.Type == "jira-issue" || sub.Subscriber.Type == "evergreen-webhook" {
+					return false, fmt.Sprintf("Cannot notify by %s for %s", sub.Subscriber.Type, selector.Data)
+				}
+			}
+		}
+	}
+
+	return true, ""
+}
+
+func ValidateSelectors(subscriber Subscriber, selectors []Selector) (bool, string) {
+	for i := range selectors {
+		if len(selectors[i].Type) == 0 || len(selectors[i].Data) == 0 {
+			return false, "Selector had empty type or data"
+		}
+	}
+
+	return true, ""
+}
+
 func (s *Subscription) Validate() error {
 	catcher := grip.NewBasicCatcher()
 	if len(s.Selectors)+len(s.RegexSelectors) == 0 {

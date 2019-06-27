@@ -111,7 +111,7 @@ func (s *Subscriber) Validate() error {
 		catcher.Add(errors.Errorf("%s is not a valid subscriber type", s.Type))
 	}
 	if s.Target == nil {
-		catcher.Add(errors.New("type is required for subscriber"))
+		catcher.Add(errors.New("target is required for subscriber"))
 	}
 	return catcher.Resolve()
 }

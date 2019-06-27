@@ -10,6 +10,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	dbModel "github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/rest/model"
@@ -201,7 +202,6 @@ func (h *versionsGetHandler) Run(ctx context.Context) gimlet.Responder {
 
 type projectIDPatchHandler struct {
 	projectID string
-	revision  string
 	body      []byte
 	sc        data.Connector
 }
@@ -221,7 +221,6 @@ func (h *projectIDPatchHandler) Factory() gimlet.RouteHandler {
 // Parse fetches the project's identifier from the http request.
 func (h *projectIDPatchHandler) Parse(ctx context.Context, r *http.Request) error {
 	h.projectID = gimlet.GetVars(r)["project_id"]
-	h.revision = r.URL.Query().Get("revision")
 	body := util.NewRequestReader(r)
 	defer body.Close()
 	b, err := ioutil.ReadAll(body)
@@ -333,8 +332,9 @@ func (h *projectIDPatchHandler) Run(ctx context.Context) gimlet.Responder {
 		return gimlet.MakeJSONErrorResponder(errors.Wrap(catcher.Resolve(), "error validating triggers"))
 	}
 
-	if h.revision != "" {
-		if err = h.sc.UpdateProjectRevision(h.projectID, h.revision); err != nil {
+	newRevision := model.FromAPIString(apiProjectRef.Revision)
+	if newRevision != "" {
+		if err = h.sc.UpdateProjectRevision(h.projectID, newRevision); err != nil {
 			return gimlet.MakeJSONErrorResponder(err)
 		}
 		dbProjectRef.RepotrackerError = &dbModel.RepositoryErrorDetails{
@@ -344,19 +344,39 @@ func (h *projectIDPatchHandler) Run(ctx context.Context) gimlet.Responder {
 		}
 	}
 
+	// complete all updates
 	if err = h.sc.UpdateProject(dbProjectRef); err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "Database error for update() by project id '%s'", h.projectID))
 	}
-	if err = h.sc.UpdateProjectVars(h.projectID, &apiProjectRef.Variables); err != nil {
+	if err = h.sc.UpdateProjectVars(h.projectID, &apiProjectRef.Variables); err != nil { // destructively modifies apiProjectRef.Variables
 		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "Database error updating variables for project '%s'", h.projectID))
 	}
 	if err = h.sc.UpdateProjectAliases(h.projectID, apiProjectRef.Aliases); err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "Database error updating aliases for project '%s'", h.projectID))
 	}
+
+	for _, subscription := range apiProjectRef.Subscriptions {
+		subscription.OwnerType = model.ToAPIString(string(event.OwnerTypeProject))
+		subscription.Owner = model.ToAPIString(h.projectID)
+	}
+	if err = h.sc.SaveSubscriptions(h.projectID, apiProjectRef.Subscriptions); err != nil {
+		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "Database error saving subscriptions for project '%s'", h.projectID))
+	}
+
+	toDelete := []string{}
+	for _, deleteSub := range apiProjectRef.DeleteSubscriptions {
+		toDelete = append(toDelete, model.FromAPIString(deleteSub))
+	}
+	if err = h.sc.DeleteSubscriptions(h.projectID, toDelete); err != nil {
+		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "Database error deleting subscriptions for project '%s'", h.projectID))
+	}
+
+	// return new aliases and subscriptions
 	apiProjectRef.Aliases, _ = h.sc.FindProjectAliases(h.projectID)
+	apiProjectRef.Subscriptions, _ = h.sc.GetSubscriptions(h.projectID, event.OwnerTypeProject)
 
 	// run the repotracker for the project
-	if h.revision != "" {
+	if newRevision != "" {
 		ts := util.RoundPartOfHour(1).Format(tsFormat)
 		j := units.NewRepotrackerJob(fmt.Sprintf("catchup-%s", ts), h.projectID)
 
