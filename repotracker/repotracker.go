@@ -769,30 +769,29 @@ func createVersionItems(ctx context.Context, v *model.Version, ref *model.Projec
 			}
 
 			var lastActivated *model.Version
-			lastActivated, err = model.VersionFindOne(model.VersionByLastVariantActivation(ref.Identifier, buildvariant.Name))
-			if err != nil {
-				grip.Error(message.WrapError(err, message.Fields{
-					"message": "error finding last activated",
-					"version": v.Id,
-				}))
-			}
+			activateAt := time.Now()
+			if metadata.TriggerID == "" {
+				lastActivated, err = model.VersionFindOne(model.VersionByLastVariantActivation(ref.Identifier, buildvariant.Name))
+				if err != nil {
+					grip.Error(message.WrapError(err, message.Fields{
+						"message": "error finding last activated",
+						"version": v.Id,
+					}))
+				}
 
-			var lastActivation *time.Time
-			if lastActivated != nil {
-				for _, buildStatus := range lastActivated.BuildVariants {
-					if buildStatus.BuildVariant == buildvariant.Name && buildStatus.Activated {
-						lastActivation = &buildStatus.ActivateAt
-						break
+				var lastActivation *time.Time
+				if lastActivated != nil {
+					for _, buildStatus := range lastActivated.BuildVariants {
+						if buildStatus.BuildVariant == buildvariant.Name && buildStatus.Activated {
+							lastActivation = &buildStatus.ActivateAt
+							break
+						}
 					}
 				}
-			}
 
-			var activateAt time.Time
-			if lastActivation == nil {
-				// if we don't have a last activation time then prepare to activate it immediately.
-				activateAt = time.Now()
-			} else {
-				activateAt = lastActivation.Add(time.Minute * time.Duration(ref.GetBatchTime(&buildvariant)))
+				if lastActivation != nil {
+					activateAt = lastActivation.Add(time.Minute * time.Duration(ref.GetBatchTime(&buildvariant)))
+				}
 			}
 
 			grip.Debug(message.Fields{
