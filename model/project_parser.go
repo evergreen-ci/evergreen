@@ -412,19 +412,11 @@ func (pss *parserStringSlice) UnmarshalYAML(unmarshal func(interface{}) error) e
 }
 
 // LoadProjectInto loads the raw data from the config file into project
-// and sets the project's identifier field to identifier. Tags are evaluateed.
+// and sets the project's identifier field to identifier. Tags are evaluated.
 func LoadProjectInto(data []byte, identifier string, project *Project) error {
-	p, errs := projectFromYAML(data)
-	if len(errs) > 0 {
-		// create a human-readable error list
-		buf := bytes.Buffer{}
-		for _, e := range errs {
-			if len(errs) > 1 {
-				buf.WriteString("\n\t") //only newline if we have multiple errs
-			}
-			buf.WriteString(e.Error())
-		}
-		return errors.Errorf("%s: %s", LoadProjectError, buf.String())
+	p, err := projectFromYAML(data)
+	if err != nil {
+		return err
 	}
 	*project = *p
 	project.Identifier = identifier
@@ -433,13 +425,17 @@ func LoadProjectInto(data []byte, identifier string, project *Project) error {
 
 // projectFromYAML reads and evaluates project YAML, returning a project and warnings and
 // errors encountered during parsing or evaluation.
-func projectFromYAML(yml []byte) (*Project, []error) {
+func projectFromYAML(yml []byte) (*Project, error) {
 	intermediateProject, errs := createIntermediateProject(yml)
 	if len(errs) > 0 {
-		return nil, errs
+		return nil, formatErrors(errs)
 	}
-	p, errs := translateProject(intermediateProject)
-	return p, errs
+	p, err := translateProject(intermediateProject)
+	if err != nil {
+		return nil, errors.Wrap(err, "error translating project")
+	}
+
+	return p, err
 }
 
 // createIntermediateProject marshals the supplied YAML into our
@@ -458,10 +454,25 @@ func createIntermediateProject(yml []byte) (*parserProject, []error) {
 	return p, nil
 }
 
+func formatErrors(errs []error) error {
+	if len(errs) > 0 {
+		// create a human-readable error list
+		buf := bytes.Buffer{}
+		for _, e := range errs {
+			if len(errs) > 1 {
+				buf.WriteString("\n\t") //only newline if we have multiple errs
+			}
+			buf.WriteString(e.Error())
+		}
+		return errors.Errorf("%s: %s", LoadProjectError, buf.String())
+	}
+	return nil
+}
+
 // translateProject converts our intermediate project representation into
 // the Project type that Evergreen actually uses. Errors are added to
 // pp.errors and pp.warnings and must be checked separately.
-func translateProject(pp *parserProject) (*Project, []error) {
+func translateProject(pp *parserProject) (*Project, error) {
 	// Transfer top level fields
 	proj := &Project{
 		Enabled:         pp.Enabled,
@@ -499,7 +510,7 @@ func translateProject(pp *parserProject) (*Project, []error) {
 	evalErrs = append(evalErrs, errs...)
 	proj.BuildVariants, errs = evaluateBuildVariants(tse, tgse, vse, pp.BuildVariants, pp.Tasks, proj.TaskGroups)
 	evalErrs = append(evalErrs, errs...)
-	return proj, evalErrs
+	return proj, formatErrors(evalErrs)
 }
 
 // sieveMatrixVariants takes a set of parserBVs and groups them into regular
