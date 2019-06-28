@@ -909,3 +909,17 @@ func PopulateLocalQueueJobs(env evergreen.Environment) amboy.QueueOperation {
 
 	}
 }
+
+func PopulatePeriodicBuilds(part int) amboy.QueueOperation {
+	return func(ctx context.Context, queue amboy.Queue) error {
+		projects, err := model.FindPeriodicProjects()
+		if err != nil {
+			return errors.Wrap(err, "error finding periodic projects")
+		}
+		catcher := grip.NewBasicCatcher()
+		for _, project := range projects {
+			catcher.Add(queue.Put(ctx, NewPeriodicBuildJob(project.Identifier, util.RoundPartOfMinute(30).Format(tsFormat))))
+		}
+		return nil
+	}
+}

@@ -289,5 +289,6 @@ func TestValidatePeriodicBuildDefinition(t *testing.T) {
 		} else {
 			assert.Error(testCase.Validate())
 		}
+		assert.NotEmpty(testCase.ID)
 	}
 }

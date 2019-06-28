@@ -104,6 +104,7 @@ type TriggerDefinition struct {
 }
 
 type PeriodicBuildDefinition struct {
+	ID            string `bson:"id" json:"id"`
 	ConfigFile    string `bson:"config_file" json:"config_file"`
 	IntervalHours int    `bson:"interval_hours" json:"interval_hours"`
 	Alias         string `bson:"alias,omitempty" json:"alias,omitempty"`
@@ -384,6 +385,30 @@ func FindProjectRefsWithCommitQueueEnabled() ([]ProjectRef, error) {
 	return projectRefs, nil
 }
 
+func FindPeriodicProjects() ([]ProjectRef, error) {
+	projectRefs := []ProjectRef{}
+
+	err := db.FindAll(
+		ProjectRefCollection,
+		bson.M{
+			projectRefPeriodicBuildsKey: bson.M{
+				"$size": bson.M{
+					"$gt": 0,
+				},
+			},
+		},
+		db.NoProjection,
+		db.NoSort,
+		db.NoSkip,
+		db.NoLimit,
+		&projectRefs,
+	)
+	if err != nil {
+		return nil, err
+	}
+	return projectRefs, nil
+}
+
 // FindProjectRefs returns limit refs starting at project identifier key
 // in the sortDir direction
 func FindProjectRefs(key string, limit int, sortDir int, isAuthenticated bool) ([]ProjectRef, error) {
@@ -531,6 +556,10 @@ func (d *PeriodicBuildDefinition) Validate() error {
 	}
 	if d.Alias == "" {
 		catcher.New("Alias must be specified")
+	}
+
+	if d.ID == "" {
+		d.ID = util.RandomString()
 	}
 
 	return catcher.Resolve()
