@@ -199,13 +199,13 @@ func (s *taskSuite) SetupTest() {
 	}
 
 	s.subs = []event.Subscription{
-		event.NewSubscriptionByID(event.ResourceTypeTask, triggerOutcome, s.event.ResourceId, apiSub),
-		event.NewSubscriptionByID(event.ResourceTypeTask, triggerSuccess, s.event.ResourceId, apiSub),
-		event.NewSubscriptionByID(event.ResourceTypeTask, triggerFailure, s.event.ResourceId, apiSub),
+		event.NewSubscriptionByID(event.ResourceTypeTask, event.TriggerOutcome, s.event.ResourceId, apiSub),
+		event.NewSubscriptionByID(event.ResourceTypeTask, event.TriggerSuccess, s.event.ResourceId, apiSub),
+		event.NewSubscriptionByID(event.ResourceTypeTask, event.TriggerFailure, s.event.ResourceId, apiSub),
 		{
 			ID:           mgobson.NewObjectId().Hex(),
 			ResourceType: event.ResourceTypeTask,
-			Trigger:      triggerExceedsDuration,
+			Trigger:      event.TriggerExceedsDuration,
 			Selectors: []event.Selector{
 				{
 					Type: "id",
@@ -224,7 +224,7 @@ func (s *taskSuite) SetupTest() {
 		{
 			ID:           mgobson.NewObjectId().Hex(),
 			ResourceType: event.ResourceTypeTask,
-			Trigger:      triggerRuntimeChangeByPercent,
+			Trigger:      event.TriggerRuntimeChangeByPercent,
 			Selectors: []event.Selector{
 				{
 					Type: "id",
@@ -243,7 +243,7 @@ func (s *taskSuite) SetupTest() {
 		{
 			ID:           mgobson.NewObjectId().Hex(),
 			ResourceType: event.ResourceTypeTask,
-			Trigger:      triggerRuntimeChangeByPercent,
+			Trigger:      event.TriggerRuntimeChangeByPercent,
 			Selectors: []event.Selector{
 				{
 					Type: "project",
@@ -260,7 +260,7 @@ func (s *taskSuite) SetupTest() {
 			},
 			RegexSelectors: []event.Selector{
 				{
-					Type: selectorDisplayName,
+					Type: event.SelectorDisplayName,
 					Data: "test-display-name",
 				},
 			},
@@ -297,7 +297,7 @@ func (s *taskSuite) TestTriggerEvent() {
 	sub := &event.Subscription{
 		ID:           mgobson.NewObjectId().Hex(),
 		ResourceType: event.ResourceTypeTask,
-		Trigger:      triggerOutcome,
+		Trigger:      event.TriggerOutcome,
 		Selectors: []event.Selector{
 			{
 				Type: "id",
@@ -882,7 +882,7 @@ func (s *taskSuite) TestRegressionByTestWithRegex() {
 		Trigger:      triggerTaskRegressionByTest,
 		Selectors: []event.Selector{
 			{
-				Type: selectorProject,
+				Type: event.SelectorProject,
 				Data: "myproj",
 			},
 		},

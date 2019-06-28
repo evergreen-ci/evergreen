@@ -46,7 +46,7 @@ func (s *hostSuite) SetupTest() {
 	}
 
 	s.subs = []event.Subscription{
-		event.NewSubscriptionByID(event.ResourceTypeHost, triggerExpiration, s.t.host.Id, event.Subscriber{
+		event.NewSubscriptionByID(event.ResourceTypeHost, event.TriggerExpiration, s.t.host.Id, event.Subscriber{
 			Type:   event.EmailSubscriberType,
 			Target: "foo@bar.com",
 		}),

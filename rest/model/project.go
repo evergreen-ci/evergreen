@@ -133,9 +133,12 @@ type APIProjectRef struct {
 	Admins               []APIString          `json:"admins"`
 	NotifyOnBuildFailure bool                 `json:"notify_on_failure"`
 
-	Triggers  []APITriggerDefinition `json:"triggers"`
-	Aliases   []APIProjectAlias      `json:"aliases"`
-	Variables APIProjectVars         `json:"variables"`
+	Revision            APIString              `json:"revision"`
+	Triggers            []APITriggerDefinition `json:"triggers"`
+	Aliases             []APIProjectAlias      `json:"aliases"`
+	Variables           APIProjectVars         `json:"variables"`
+	Subscriptions       []APISubscription      `json:"subscriptions"`
+	DeleteSubscriptions []APIString            `json:"delete_subscriptions"`
 }
 
 // ToService returns a service layer ProjectRef using the data from APIProjectRef

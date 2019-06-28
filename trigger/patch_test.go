@@ -75,9 +75,9 @@ func (s *patchSuite) SetupTest() {
 	}
 
 	s.subs = []event.Subscription{
-		event.NewSubscriptionByID(event.ResourceTypePatch, triggerOutcome, s.event.ResourceId, apiSub),
-		event.NewSubscriptionByID(event.ResourceTypePatch, triggerSuccess, s.event.ResourceId, apiSub),
-		event.NewSubscriptionByID(event.ResourceTypePatch, triggerFailure, s.event.ResourceId, apiSub),
+		event.NewSubscriptionByID(event.ResourceTypePatch, event.TriggerOutcome, s.event.ResourceId, apiSub),
+		event.NewSubscriptionByID(event.ResourceTypePatch, event.TriggerSuccess, s.event.ResourceId, apiSub),
+		event.NewSubscriptionByID(event.ResourceTypePatch, event.TriggerFailure, s.event.ResourceId, apiSub),
 	}
 
 	for i := range s.subs {

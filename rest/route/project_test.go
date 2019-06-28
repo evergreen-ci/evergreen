@@ -43,7 +43,6 @@ func (s *ProjectPatchByIDSuite) TestParse() {
 	err := s.rm.Parse(ctx, req)
 	s.NoError(err)
 	s.Equal(json, s.rm.(*projectIDPatchHandler).body)
-	s.Equal("my-revision", s.rm.(*projectIDPatchHandler).revision)
 }
 
 func (s *ProjectPatchByIDSuite) TestRunInValidIdentifierChange() {
@@ -75,10 +74,9 @@ func (s *ProjectPatchByIDSuite) TestRunInvalidNonExistingId() {
 
 func (s *ProjectPatchByIDSuite) TestRunValid() {
 	ctx := context.Background()
-	json := []byte(`{"enabled": true, "variables": {"vars_to_delete": ["apple"]} }`)
+	json := []byte(`{"enabled": true, "revision": "my_revision", "variables": {"vars_to_delete": ["apple"]} }`)
 	h := s.rm.(*projectIDPatchHandler)
 	h.projectID = "dimoxinil"
-	h.revision = "my-revision"
 	h.body = json
 	resp := s.rm.Run(ctx)
 	s.NotNil(resp)

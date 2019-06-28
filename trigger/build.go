@@ -16,10 +16,6 @@ import (
 	"github.com/pkg/errors"
 )
 
-const (
-	objectBuild = "build"
-)
-
 func init() {
 	registry.registerEventHandler(event.ResourceTypeBuild, event.BuildStateChange, makeBuildTriggers)
 }
@@ -102,11 +98,11 @@ type buildTriggers struct {
 func makeBuildTriggers() eventHandler {
 	t := &buildTriggers{}
 	t.base.triggers = map[string]trigger{
-		triggerOutcome:                t.buildOutcome,
-		triggerFailure:                t.buildFailure,
-		triggerSuccess:                t.buildSuccess,
-		triggerExceedsDuration:        t.buildExceedsDuration,
-		triggerRuntimeChangeByPercent: t.buildRuntimeChange,
+		event.TriggerOutcome:                t.buildOutcome,
+		event.TriggerFailure:                t.buildFailure,
+		event.TriggerSuccess:                t.buildSuccess,
+		event.TriggerExceedsDuration:        t.buildExceedsDuration,
+		event.TriggerRuntimeChangeByPercent: t.buildRuntimeChange,
 	}
 	return t
 }
@@ -138,37 +134,37 @@ func (t *buildTriggers) Fetch(e *event.EventLogEntry) error {
 func (t *buildTriggers) Selectors() []event.Selector {
 	selectors := []event.Selector{
 		{
-			Type: selectorID,
+			Type: event.SelectorID,
 			Data: t.build.Id,
 		},
 		{
-			Type: selectorObject,
-			Data: objectBuild,
+			Type: event.SelectorObject,
+			Data: event.ObjectBuild,
 		},
 		{
-			Type: selectorProject,
+			Type: event.SelectorProject,
 			Data: t.build.Project,
 		},
 		{
-			Type: selectorRequester,
+			Type: event.SelectorRequester,
 			Data: t.build.Requester,
 		},
 		{
-			Type: selectorInVersion,
+			Type: event.SelectorInVersion,
 			Data: t.build.Version,
 		},
 		{
-			Type: selectorDisplayName,
+			Type: event.SelectorDisplayName,
 			Data: t.build.DisplayName,
 		},
 		{
-			Type: selectorBuildVariant,
+			Type: event.SelectorBuildVariant,
 			Data: t.build.BuildVariant,
 		},
 	}
 	if t.build.Requester == evergreen.TriggerRequester {
 		selectors = append(selectors, event.Selector{
-			Type: selectorRequester,
+			Type: event.SelectorRequester,
 			Data: evergreen.RepotrackerVersionRequester,
 		})
 	}
@@ -259,7 +255,7 @@ func (t *buildTriggers) makeData(sub *event.Subscription, pastTenseOverride stri
 		EventID:         t.event.ID,
 		SubscriptionID:  sub.ID,
 		DisplayName:     t.build.DisplayName,
-		Object:          objectBuild,
+		Object:          event.ObjectBuild,
 		Project:         t.build.Project,
 		URL:             buildLink(t.uiConfig.Url, t.build.Id),
 		PastTenseStatus: t.data.Status,

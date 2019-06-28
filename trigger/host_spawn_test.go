@@ -52,7 +52,7 @@ func (s *spawnHostTriggersSuite) TestSuccessfulSpawn() {
 	s.NoError(s.t.Fetch(&s.e))
 
 	sub := event.Subscription{
-		Trigger:    triggerOutcome,
+		Trigger:    event.TriggerOutcome,
 		Subscriber: event.NewSlackSubscriber("@test.user"),
 	}
 
@@ -92,7 +92,7 @@ func (s *spawnHostTriggersSuite) TestFailedSpawn() {
 	s.NoError(s.t.Fetch(&s.e))
 
 	sub := event.Subscription{
-		Trigger:    triggerOutcome,
+		Trigger:    event.TriggerOutcome,
 		Subscriber: event.NewSlackSubscriber("@test.user"),
 	}
 

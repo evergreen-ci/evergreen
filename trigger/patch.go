@@ -13,11 +13,6 @@ import (
 	mgobson "gopkg.in/mgo.v2/bson"
 )
 
-const (
-	objectPatch         = "patch"
-	triggerPatchStarted = "started"
-)
-
 type patchTriggers struct {
 	event    *event.EventLogEntry
 	data     *event.PatchEventData
@@ -30,10 +25,10 @@ type patchTriggers struct {
 func makePatchTriggers() eventHandler {
 	t := &patchTriggers{}
 	t.base.triggers = map[string]trigger{
-		triggerOutcome:      t.patchOutcome,
-		triggerFailure:      t.patchFailure,
-		triggerSuccess:      t.patchSuccess,
-		triggerPatchStarted: t.patchStarted,
+		event.TriggerOutcome:      t.patchOutcome,
+		event.TriggerFailure:      t.patchFailure,
+		event.TriggerSuccess:      t.patchSuccess,
+		event.TriggerPatchStarted: t.patchStarted,
 	}
 	return t
 }
@@ -66,23 +61,23 @@ func (t *patchTriggers) Fetch(e *event.EventLogEntry) error {
 func (t *patchTriggers) Selectors() []event.Selector {
 	return []event.Selector{
 		{
-			Type: selectorID,
+			Type: event.SelectorID,
 			Data: t.patch.Id.Hex(),
 		},
 		{
-			Type: selectorObject,
-			Data: objectPatch,
+			Type: event.SelectorObject,
+			Data: event.ObjectPatch,
 		},
 		{
-			Type: selectorProject,
+			Type: event.SelectorProject,
 			Data: t.patch.Project,
 		},
 		{
-			Type: selectorOwner,
+			Type: event.SelectorOwner,
 			Data: t.patch.Author,
 		},
 		{
-			Type: selectorStatus,
+			Type: event.SelectorStatus,
 			Data: t.patch.Status,
 		},
 	}
@@ -132,7 +127,7 @@ func (t *patchTriggers) makeData(sub *event.Subscription) (*commonTemplateData, 
 		SubscriptionID:    sub.ID,
 		DisplayName:       t.patch.Id.Hex(),
 		Description:       t.patch.Description,
-		Object:            objectPatch,
+		Object:            event.ObjectPatch,
 		Project:           t.patch.Project,
 		URL:               fmt.Sprintf("%s/version/%s", t.uiConfig.Url, t.patch.Version),
 		PastTenseStatus:   t.data.Status,

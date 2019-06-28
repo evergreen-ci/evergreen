@@ -111,7 +111,7 @@ func AttachHandler(app *gimlet.APIApp, opts HandlerOpts) {
 	app.AddRoute("/status/recent_tasks").Version(2).Get().RouteHandler(makeRecentTaskStatusHandler(sc))
 	app.AddRoute("/subscriptions").Version(2).Delete().Wrap(checkUser).RouteHandler(makeDeleteSubscription(sc))
 	app.AddRoute("/subscriptions").Version(2).Get().Wrap(checkUser).RouteHandler(makeFetchSubscription(sc))
-	app.AddRoute("/subscriptions").Version(2).Post().Wrap(checkUser).RouteHandler(makeSetSubscrition(sc))
+	app.AddRoute("/subscriptions").Version(2).Post().Wrap(checkUser).RouteHandler(makeSetSubscription(sc))
 	app.AddRoute("/tasks/{task_id}").Version(2).Get().Wrap(checkUser).RouteHandler(makeGetTaskRoute(sc))
 	app.AddRoute("/tasks/{task_id}").Version(2).Patch().Wrap(checkUser, addProject).RouteHandler(makeModifyTaskRoute(sc))
 	app.AddRoute("/tasks/{task_id}/abort").Version(2).Post().Wrap(checkUser).RouteHandler(makeTaskAbortHandler(sc))

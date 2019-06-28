@@ -66,14 +66,14 @@ func (s *VersionSuite) SetupTest() {
 	}
 
 	s.subs = []event.Subscription{
-		event.NewSubscriptionByID(event.ResourceTypeVersion, triggerOutcome, s.event.ResourceId, apiSub),
-		event.NewSubscriptionByID(event.ResourceTypeVersion, triggerSuccess, s.event.ResourceId, apiSub),
-		event.NewSubscriptionByID(event.ResourceTypeVersion, triggerFailure, s.event.ResourceId, apiSub),
-		event.NewSubscriptionByID(event.ResourceTypeVersion, triggerRegression, s.event.ResourceId, apiSub),
+		event.NewSubscriptionByID(event.ResourceTypeVersion, event.TriggerOutcome, s.event.ResourceId, apiSub),
+		event.NewSubscriptionByID(event.ResourceTypeVersion, event.TriggerSuccess, s.event.ResourceId, apiSub),
+		event.NewSubscriptionByID(event.ResourceTypeVersion, event.TriggerFailure, s.event.ResourceId, apiSub),
+		event.NewSubscriptionByID(event.ResourceTypeVersion, event.TriggerRegression, s.event.ResourceId, apiSub),
 		{
 			ID:           mgobson.NewObjectId().Hex(),
 			ResourceType: event.ResourceTypeVersion,
-			Trigger:      triggerExceedsDuration,
+			Trigger:      event.TriggerExceedsDuration,
 			Selectors: []event.Selector{
 				{
 					Type: "id",
@@ -92,7 +92,7 @@ func (s *VersionSuite) SetupTest() {
 		{
 			ID:           mgobson.NewObjectId().Hex(),
 			ResourceType: event.ResourceTypeVersion,
-			Trigger:      triggerRuntimeChangeByPercent,
+			Trigger:      event.TriggerRuntimeChangeByPercent,
 			Selectors: []event.Selector{
 				{
 					Type: "id",
