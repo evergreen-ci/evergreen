@@ -38,10 +38,17 @@ func TestPeriodicBuildsJob(t *testing.T) {
 	assert.NoError(sampleProject.Insert())
 	j.ProjectID = sampleProject.Identifier
 
+	// test that a version is created the first time
 	j.Run(ctx)
 	assert.NoError(j.Error())
-
 	createdVersion, err := model.FindLastPeriodicBuild(sampleProject.Identifier, sampleProject.PeriodicBuilds[0].ID)
 	assert.NoError(err)
 	assert.Equal(evergreen.AdHocRequester, createdVersion.Requester)
+
+	// rerunning the job too soon does not create another build
+	j.Run(ctx)
+	assert.NoError(j.Error())
+	lastVersion, err := model.FindLastPeriodicBuild(sampleProject.Identifier, sampleProject.PeriodicBuilds[0].ID)
+	assert.NoError(err)
+	assert.Equal(createdVersion.Id, lastVersion.Id)
 }
