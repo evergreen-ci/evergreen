@@ -44,12 +44,12 @@ mciModule.factory('DrawPerfTrendChart', function (
     }
 
     // Filter out change points which lays outside ot the chart
-    var visibleChangePoints = _.chain(changePoints)
+    let visibleChangePoints = (metric === "ops_per_sec") ? _.chain(changePoints)
       .filter(function(d) {
         return _.findWhere(series, {revision: d.suspect_revision})
       })
       .each(hydrateChangePoint) // Add some useful meta data
-      .value()
+      .value() : [];
 
     var visibleBFs = _.filter(buildFailures, function(d) {
       return _.findWhere(series, {revision: d.first_failing_revision})
