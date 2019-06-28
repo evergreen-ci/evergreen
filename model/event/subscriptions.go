@@ -50,7 +50,22 @@ const (
 	ImplicitSubscriptionBuildBreak                    = "build-break"
 	ImplicitSubscriptionSpawnhostExpiration           = "spawnhost-expiration"
 	ImplicitSubscriptionSpawnHostOutcome              = "spawnhost-outcome"
-	ImplicitSubscriptionCommitQueue                   = "commit-queue"
+
+	ImplicitSubscriptionCommitQueue = "commit-queue"
+	ObjectTask                      = "task"
+	ObjectVersion                   = "version"
+	ObjectBuild                     = "build"
+	ObjectHost                      = "host"
+	ObjectPatch                     = "patch"
+
+	TriggerOutcome                = "outcome"
+	TriggerFailure                = "failure"
+	TriggerSuccess                = "success"
+	TriggerRegression             = "regression"
+	TriggerExceedsDuration        = "exceeds-duration"
+	TriggerRuntimeChangeByPercent = "runtime-change"
+	TriggerExpiration             = "expiration"
+	TriggerPatchStarted           = "started"
 )
 
 type Subscription struct {
@@ -105,6 +120,19 @@ type Selector struct {
 	Type string `bson:"type"`
 	Data string `bson:"data"`
 }
+
+const (
+	SelectorObject       = "object"
+	SelectorID           = "id"
+	SelectorProject      = "project"
+	SelectorOwner        = "owner"
+	SelectorRequester    = "requester"
+	SelectorStatus       = "status"
+	SelectorDisplayName  = "display-name"
+	SelectorBuildVariant = "build-variant"
+	SelectorInVersion    = "in-version"
+	SelectorInBuild      = "in-build"
+)
 
 // FindSubscriptions finds all subscriptions of matching resourceType, and whose
 // selectors match the selectors slice
@@ -248,9 +276,9 @@ func RemoveSubscription(id string) error {
 
 func IsSubscriptionAllowed(sub Subscription) (bool, string) {
 	for _, selector := range sub.Selectors {
-		if selector.Type == "object" {
-			if selector.Data == "build" || selector.Data == "version" || selector.Data == "task" {
-				if sub.Subscriber.Type == "jira-issue" || sub.Subscriber.Type == "evergreen-webhook" {
+		if selector.Type == SelectorObject {
+			if selector.Data == ObjectBuild || selector.Data == ObjectVersion || selector.Data == ObjectTask {
+				if sub.Subscriber.Type == JIRAIssueSubscriberType || sub.Subscriber.Type == EvergreenWebhookSubscriberType {
 					return false, fmt.Sprintf("Cannot notify by %s for %s", sub.Subscriber.Type, selector.Data)
 				}
 			}
@@ -407,10 +435,6 @@ func IsValidOwnerType(in string) bool {
 	}
 }
 
-const (
-	triggerOutcome = "outcome"
-)
-
 func CreateOrUpdateImplicitSubscription(resourceType string, id string,
 	subscriber Subscriber, user string) (*Subscription, error) {
 	var err error
@@ -466,7 +490,7 @@ func NewSubscriptionByID(resourceType, trigger, id string, sub Subscriber) Subsc
 		Trigger:      trigger,
 		Selectors: []Selector{
 			{
-				Type: "id",
+				Type: SelectorID,
 				Data: id,
 			},
 		},
@@ -475,29 +499,29 @@ func NewSubscriptionByID(resourceType, trigger, id string, sub Subscriber) Subsc
 }
 
 func NewPatchOutcomeSubscription(id string, sub Subscriber) Subscription {
-	return NewSubscriptionByID(ResourceTypePatch, triggerOutcome, id, sub)
+	return NewSubscriptionByID(ResourceTypePatch, TriggerOutcome, id, sub)
 }
 
 func NewPatchOutcomeSubscriptionByOwner(owner string, sub Subscriber) Subscription {
-	return NewSubscriptionByOwner(owner, sub, ResourceTypePatch, triggerOutcome)
+	return NewSubscriptionByOwner(owner, sub, ResourceTypePatch, TriggerOutcome)
 }
 
 func NewBuildBreakSubscriptionByOwner(owner string, sub Subscriber) Subscription {
 	return Subscription{
 		ID:           mgobson.NewObjectId().Hex(),
 		ResourceType: ResourceTypeTask,
-		Trigger:      "build-break",
+		Trigger:      ImplicitSubscriptionBuildBreak,
 		Selectors: []Selector{
 			{
-				Type: "owner",
+				Type: SelectorOwner,
 				Data: owner,
 			},
 			{
-				Type: "object",
-				Data: "task",
+				Type: SelectorObject,
+				Data: ObjectTask,
 			},
 			{
-				Type: "requester",
+				Type: SelectorRequester,
 				Data: evergreen.RepotrackerVersionRequester,
 			},
 		},
@@ -506,7 +530,7 @@ func NewBuildBreakSubscriptionByOwner(owner string, sub Subscriber) Subscription
 }
 
 func NewSpawnhostExpirationSubscription(owner string, sub Subscriber) Subscription {
-	return NewSubscriptionByOwner(owner, sub, ResourceTypeHost, "expiration")
+	return NewSubscriptionByOwner(owner, sub, ResourceTypeHost, TriggerExpiration)
 }
 
 func NewSubscriptionByOwner(owner string, sub Subscriber, resourceType, trigger string) Subscription {
@@ -516,7 +540,7 @@ func NewSubscriptionByOwner(owner string, sub Subscriber, resourceType, trigger 
 		Trigger:      trigger,
 		Selectors: []Selector{
 			{
-				Type: "owner",
+				Type: SelectorOwner,
 				Data: owner,
 			},
 		},
@@ -527,10 +551,10 @@ func NewSubscriptionByOwner(owner string, sub Subscriber, resourceType, trigger 
 func NewBuildOutcomeSubscriptionByVersion(versionID string, sub Subscriber) Subscription {
 	return Subscription{
 		ResourceType: ResourceTypeBuild,
-		Trigger:      triggerOutcome,
+		Trigger:      TriggerOutcome,
 		Selectors: []Selector{
 			{
-				Type: "in-version",
+				Type: SelectorInVersion,
 				Data: versionID,
 			},
 		},
@@ -541,14 +565,14 @@ func NewBuildOutcomeSubscriptionByVersion(versionID string, sub Subscriber) Subs
 func NewSpawnHostOutcomeByOwner(owner string, sub Subscriber) Subscription {
 	return Subscription{
 		ResourceType: ResourceTypeHost,
-		Trigger:      triggerOutcome,
+		Trigger:      TriggerOutcome,
 		Selectors: []Selector{
 			{
-				Type: "object",
-				Data: "host",
+				Type: SelectorObject,
+				Data: ObjectHost,
 			},
 			{
-				Type: "owner",
+				Type: SelectorOwner,
 				Data: owner,
 			},
 		},
@@ -557,5 +581,5 @@ func NewSpawnHostOutcomeByOwner(owner string, sub Subscriber) Subscription {
 }
 
 func NewCommitQueueSubscriptionByOwner(owner string, sub Subscriber) Subscription {
-	return NewSubscriptionByOwner(owner, sub, ResourceTypeCommitQueue, triggerOutcome)
+	return NewSubscriptionByOwner(owner, sub, ResourceTypeCommitQueue, TriggerOutcome)
 }

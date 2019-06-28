@@ -29,7 +29,6 @@ func init() {
 }
 
 const (
-	objectTask                               = "task"
 	triggerTaskFirstFailureInBuild           = "first-failure-in-build"
 	triggerTaskFirstFailureInVersion         = "first-failure-in-version"
 	triggerTaskFirstFailureInVersionWithName = "first-failure-in-version-with-name"
@@ -43,15 +42,15 @@ func makeTaskTriggers() eventHandler {
 		oldTestResults: map[string]*task.TestResult{},
 	}
 	t.base.triggers = map[string]trigger{
-		triggerOutcome:                           t.taskOutcome,
-		triggerFailure:                           t.taskFailure,
-		triggerSuccess:                           t.taskSuccess,
+		event.TriggerOutcome:                     t.taskOutcome,
+		event.TriggerFailure:                     t.taskFailure,
+		event.TriggerSuccess:                     t.taskSuccess,
+		event.TriggerExceedsDuration:             t.taskExceedsDuration,
+		event.TriggerRuntimeChangeByPercent:      t.taskRuntimeChange,
+		event.TriggerRegression:                  t.taskRegression,
 		triggerTaskFirstFailureInBuild:           t.taskFirstFailureInBuild,
 		triggerTaskFirstFailureInVersion:         t.taskFirstFailureInVersion,
 		triggerTaskFirstFailureInVersionWithName: t.taskFirstFailureInVersionWithName,
-		triggerExceedsDuration:                   t.taskExceedsDuration,
-		triggerRuntimeChangeByPercent:            t.taskRuntimeChange,
-		triggerRegression:                        t.taskRegression,
 		triggerTaskRegressionByTest:              t.taskRegressionByTest,
 		triggerBuildBreak:                        t.buildBreak,
 	}
@@ -191,43 +190,43 @@ func (t *taskTriggers) Fetch(e *event.EventLogEntry) error {
 func (t *taskTriggers) Selectors() []event.Selector {
 	selectors := []event.Selector{
 		{
-			Type: selectorID,
+			Type: event.SelectorID,
 			Data: t.task.Id,
 		},
 		{
-			Type: selectorObject,
-			Data: objectTask,
+			Type: event.SelectorObject,
+			Data: event.ObjectTask,
 		},
 		{
-			Type: selectorProject,
+			Type: event.SelectorProject,
 			Data: t.task.Project,
 		},
 		{
-			Type: selectorInVersion,
+			Type: event.SelectorInVersion,
 			Data: t.task.Version,
 		},
 		{
-			Type: selectorInBuild,
+			Type: event.SelectorInBuild,
 			Data: t.task.BuildId,
 		},
 		{
-			Type: selectorDisplayName,
+			Type: event.SelectorDisplayName,
 			Data: t.task.DisplayName,
 		},
 		{
-			Type: selectorRequester,
+			Type: event.SelectorRequester,
 			Data: t.task.Requester,
 		},
 	}
 	if t.task.Requester == evergreen.TriggerRequester {
 		selectors = append(selectors, event.Selector{
-			Type: selectorRequester,
+			Type: event.SelectorRequester,
 			Data: evergreen.RepotrackerVersionRequester,
 		})
 	}
 	if t.version != nil && t.version.AuthorID != "" {
 		selectors = append(selectors, event.Selector{
-			Type: selectorOwner,
+			Type: event.SelectorOwner,
 			Data: t.version.AuthorID,
 		})
 	}

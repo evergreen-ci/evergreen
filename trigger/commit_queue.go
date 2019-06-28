@@ -29,7 +29,7 @@ type commitQueueTriggers struct {
 func makeCommitQueueTriggers() eventHandler {
 	t := &commitQueueTriggers{}
 	t.base.triggers = map[string]trigger{
-		triggerOutcome: t.commitQueueOutcome,
+		event.TriggerOutcome: t.commitQueueOutcome,
 	}
 	return t
 }
@@ -62,7 +62,7 @@ func (t *commitQueueTriggers) Fetch(e *event.EventLogEntry) error {
 func (t *commitQueueTriggers) Selectors() []event.Selector {
 	return []event.Selector{
 		{
-			Type: selectorOwner,
+			Type: event.SelectorOwner,
 			Data: t.patch.Author,
 		},
 	}
