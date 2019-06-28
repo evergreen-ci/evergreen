@@ -846,8 +846,7 @@ func PopulateExpansions(t *task.Task, h *host.Host, oauthToken string) (util.Exp
 	for _, e := range h.Distro.Expansions {
 		expansions.Put(e.Key, e.Value)
 	}
-	proj := &Project{}
-	err = LoadProjectInto([]byte(v.Config), t.Project, proj)
+	proj, err := LoadProjectFromVersion(v, t.Project)
 	if err != nil {
 		return nil, errors.Wrap(err, "error unmarshaling project")
 	}
@@ -939,8 +938,8 @@ func GetTaskGroup(taskGroup string, tc *TaskConfig) (*TaskGroup, error) {
 	if tc.Version == nil {
 		return nil, errors.New("version is nil")
 	}
-	var p Project
-	if err := LoadProjectInto([]byte(tc.Version.Config), tc.Task.Project, &p); err != nil {
+	p, err := LoadProjectFromVersion(tc.Version, tc.Task.Project)
+	if err != nil {
 		return nil, errors.Wrap(err, "error retrieving project for task group")
 	}
 	if taskGroup == "" {
@@ -985,8 +984,7 @@ func FindProjectFromVersionID(versionStr string) (*Project, error) {
 		return nil, errors.Errorf("nil version returned for version '%s'", versionStr)
 	}
 
-	project := &Project{}
-	err = LoadProjectInto([]byte(ver.Config), ver.Identifier, project)
+	project, err := LoadProjectFromVersion(ver, ver.Identifier)
 	if err != nil {
 		return nil, errors.Wrapf(err, "unable to load project config for version %s", versionStr)
 	}
@@ -1039,7 +1037,7 @@ func FindProject(revision string, projectRef *ProjectRef) (*Project, error) {
 			// for new repositories, we don't want to error out when we don't have
 			// any versions stored in the database so we default to the skeletal
 			// information we already have from the project file on disk
-			err = LoadProjectInto([]byte(lastGoodVersion.Config), projectRef.Identifier, project)
+			project, err = LoadProjectFromVersion(lastGoodVersion, projectRef.Identifier)
 			if err != nil {
 				return nil, errors.Wrapf(err, "Error loading project from "+
 					"last good version for project, %s", lastGoodVersion.Identifier)
@@ -1067,8 +1065,8 @@ func FindProject(revision string, projectRef *ProjectRef) (*Project, error) {
 			return project, nil
 		}
 
-		project = &Project{}
-		if err = LoadProjectInto([]byte(v.Config), projectRef.Identifier, project); err != nil {
+		project, err = LoadProjectFromVersion(v, projectRef.Identifier)
+		if err != nil {
 			return nil, errors.Wrap(err, "Error loading project from version")
 		}
 	}

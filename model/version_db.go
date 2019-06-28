@@ -257,6 +257,18 @@ func VersionUpdateOne(query interface{}, update interface{}) error {
 	)
 }
 
+func UpdateVersionProject(versionID string, pp *parserProject) error {
+	if versionID == "" {
+		return nil
+	}
+	return VersionUpdateOne(bson.M{VersionIdKey: versionID},
+		bson.M{
+			"$set": bson.M{
+				VersionProjectKey: pp,
+			},
+		})
+}
+
 func AddSatisfiedTrigger(versionID, definitionID string) error {
 	return VersionUpdateOne(bson.M{VersionIdKey: versionID},
 		bson.M{

@@ -411,6 +411,29 @@ func (pss *parserStringSlice) UnmarshalYAML(unmarshal func(interface{}) error) e
 	return nil
 }
 
+func LoadProjectFromVersion(v *Version, identifier string) (*Project, error) {
+	if v.ParserProject != nil {
+		return translateProject(v.ParserProject)
+	}
+	if v.Config == "" {
+		return nil, errors.New("version has no config")
+	}
+	intermediateProject, errs := createIntermediateProject([]byte(v.Config))
+	if len(errs) > 0 {
+		return nil, formatErrors(errs)
+	}
+	p, err := translateProject(intermediateProject)
+	if err != nil {
+		return nil, errors.Wrap(err, "error translating project")
+	}
+
+	if err := UpdateVersionProject(v.Id, intermediateProject); err != nil {
+		return nil, errors.Wrap(err, "error updating version with project")
+	}
+	v.ParserProject = intermediateProject
+	return p, nil
+}
+
 // LoadProjectInto loads the raw data from the config file into project
 // and sets the project's identifier field to identifier. Tags are evaluated.
 func LoadProjectInto(data []byte, identifier string, project *Project) error {

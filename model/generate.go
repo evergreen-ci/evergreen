@@ -126,14 +126,10 @@ func (g *GeneratedProject) NewVersion() (*Project, *Version, *task.Task, *projec
 		return nil, nil, nil, nil,
 			gimlet.ErrorResponse{StatusCode: http.StatusBadRequest, Message: fmt.Sprintf("unable to find version %s", t.Version)}
 	}
-	if v.Config == "" {
+	p, err := LoadProjectFromVersion(v, t.Project)
+	if err != nil {
 		return nil, nil, nil, nil,
-			gimlet.ErrorResponse{StatusCode: http.StatusBadRequest, Message: fmt.Sprintf("unable to find config string for version %s", t.Version)}
-	}
-	p := &Project{}
-	if err = LoadProjectInto([]byte(v.Config), t.Project, p); err != nil {
-		return nil, nil, nil, nil,
-			gimlet.ErrorResponse{StatusCode: http.StatusBadRequest, Message: errors.Wrapf(err, "error reading project yaml for version %s", t.Version).Error()}
+			gimlet.ErrorResponse{StatusCode: http.StatusBadRequest, Message: errors.Wrapf(err, "error getting project for version %s", t.Version).Error()}
 	}
 
 	// Cache project data in maps for quick lookup
@@ -151,7 +147,8 @@ func (g *GeneratedProject) NewVersion() (*Project, *Version, *task.Task, *projec
 			gimlet.ErrorResponse{StatusCode: http.StatusBadRequest, Message: errors.Wrap(err, "error creating config from generated config").Error()}
 	}
 	v.Config = newConfig
-	if err := LoadProjectInto([]byte(v.Config), t.Project, p); err != nil {
+	p, err = LoadProjectFromVersion(v, t.Project)
+	if err != nil {
 		return nil, nil, nil, nil,
 			gimlet.ErrorResponse{StatusCode: http.StatusBadRequest, Message: errors.Wrap(err, "error reading project yaml").Error()}
 	}
