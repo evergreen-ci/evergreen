@@ -45,9 +45,9 @@ type matrix struct {
 
 // matrixAxis represents one axis of a matrix definition.
 type matrixAxis struct {
-	Id          string      `yaml:"id"`
-	DisplayName string      `yaml:"display_name"`
-	Values      []axisValue `yaml:"values"`
+	Id          string      `yaml:"id" bson:"id"`
+	DisplayName string      `yaml:"display_name" bson:"display_name"`
+	Values      []axisValue `yaml:"values" bson:"values"`
 }
 
 // find returns the axisValue with the given name.
@@ -63,14 +63,14 @@ func (ma matrixAxis) find(id string) (axisValue, error) {
 // axisValues make up the "points" along a matrix axis. Values are
 // combined during matrix evaluation to produce new variants.
 type axisValue struct {
-	Id          string            `yaml:"id"`
-	DisplayName string            `yaml:"display_name"`
-	Variables   util.Expansions   `yaml:"variables"`
-	RunOn       parserStringSlice `yaml:"run_on"`
-	Tags        parserStringSlice `yaml:"tags"`
-	Modules     parserStringSlice `yaml:"modules"`
-	BatchTime   *int              `yaml:"batchtime"`
-	Stepback    *bool             `yaml:"stepback"`
+	Id          string            `yaml:"id" bson:"id"`
+	DisplayName string            `yaml:"display_name" bson:"display_name"`
+	Variables   util.Expansions   `yaml:"variables" bson:"variables"`
+	RunOn       parserStringSlice `yaml:"run_on" bson:"run_on"`
+	Tags        parserStringSlice `yaml:"tags" bson:"tags"`
+	Modules     parserStringSlice `yaml:"modules" bson:"modules"`
+	BatchTime   *int              `yaml:"batchtime" bson:"batchtime"`
+	Stepback    *bool             `yaml:"stepback" bson:"stepback"`
 }
 
 // helper methods for tag selectors
@@ -531,21 +531,21 @@ func expandTaskSelector(ts taskSelector, exp util.Expansions) (taskSelector, err
 	}
 	newTS.Name = newName
 	if v := ts.Variant; v != nil {
-		if len(v.matrixSelector) > 0 {
-			newMS, err := expandMatrixDefinition(v.matrixSelector, exp)
+		if len(v.MatrixSelector) > 0 {
+			newMS, err := expandMatrixDefinition(v.MatrixSelector, exp)
 			if err != nil {
 				return newTS, errors.Wrap(err, "expanding variant")
 			}
 			newTS.Variant = &variantSelector{
-				matrixSelector: newMS,
+				MatrixSelector: newMS,
 			}
 		} else {
-			selector, err := exp.ExpandString(v.stringSelector)
+			selector, err := exp.ExpandString(v.StringSelector)
 			if err != nil {
 				return newTS, errors.Wrap(err, "expanding variant")
 			}
 			newTS.Variant = &variantSelector{
-				stringSelector: selector,
+				StringSelector: selector,
 			}
 		}
 	}

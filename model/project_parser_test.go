@@ -1,14 +1,22 @@
 package model
 
 import (
+	"bytes"
 	"fmt"
+	"io/ioutil"
+	"path/filepath"
 	"reflect"
 	"strconv"
 	"strings"
 	"testing"
 
+	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/testutil"
+	"github.com/mongodb/grip"
+	"github.com/pkg/errors"
 	. "github.com/smartystreets/goconvey/convey"
 	"github.com/stretchr/testify/assert"
+	"gopkg.in/yaml.v2"
 )
 
 // ShouldContainResembling tests whether a slice contains an element that DeepEquals
@@ -121,7 +129,7 @@ tasks:
 			So(p, ShouldNotBeNil)
 			So(len(errs), ShouldEqual, 0)
 			So(p.Tasks[1].Requires[0].Name, ShouldEqual, "task0")
-			So(p.Tasks[1].Requires[0].Variant.stringSelector, ShouldEqual, "v1")
+			So(p.Tasks[1].Requires[0].Variant.StringSelector, ShouldEqual, "v1")
 			So(p.Tasks[1].Requires[1].Name, ShouldEqual, "task2")
 			So(p.Tasks[1].Requires[1].Variant, ShouldBeNil)
 		})
@@ -137,7 +145,7 @@ tasks:
 			So(p, ShouldNotBeNil)
 			So(len(errs), ShouldEqual, 0)
 			So(p.Tasks[0].Requires[0].Name, ShouldEqual, "task0")
-			So(p.Tasks[0].Requires[0].Variant.stringSelector, ShouldEqual, "v1")
+			So(p.Tasks[0].Requires[0].Variant.StringSelector, ShouldEqual, "v1")
 		})
 		Convey("a single requirement with a matrix selector should parse", func() {
 			simple := `
@@ -156,8 +164,8 @@ tasks:
 			So(errs, ShouldBeNil)
 			So(p, ShouldNotBeNil)
 			So(p.Tasks[0].Requires[0].Name, ShouldEqual, "task0")
-			So(p.Tasks[0].Requires[0].Variant.stringSelector, ShouldEqual, "")
-			So(p.Tasks[0].Requires[0].Variant.matrixSelector, ShouldResemble, matrixDefinition{
+			So(p.Tasks[0].Requires[0].Variant.StringSelector, ShouldEqual, "")
+			So(p.Tasks[0].Requires[0].Variant.MatrixSelector, ShouldResemble, matrixDefinition{
 				"cool": []string{"shoes"}, "colors": []string{"red", "green", "blue"},
 			})
 		})
@@ -199,7 +207,7 @@ buildvariants:
 			So(bv.Tasks[1].Name, ShouldEqual, "t2")
 			So(*bv.Tasks[1].PatchOnly, ShouldBeTrue)
 			So(bv.Tasks[1].DependsOn[0].TaskSelector, ShouldResemble,
-				taskSelector{Name: "t3", Variant: &variantSelector{stringSelector: "v0"}})
+				taskSelector{Name: "t3", Variant: &variantSelector{StringSelector: "v0"}})
 			So(bv.Tasks[1].Requires[0], ShouldResemble, taskSelector{Name: "t4"})
 			So(*bv.Tasks[1].Stepback, ShouldBeFalse)
 			So(bv.Tasks[1].Priority, ShouldEqual, 77)
@@ -313,7 +321,7 @@ func TestTranslateDependsOn(t *testing.T) {
 				{Name: "t3", DependsOn: parserDependencies{
 					{TaskSelector: taskSelector{Name: "t1"}},
 					{TaskSelector: taskSelector{
-						Name: "t2", Variant: &variantSelector{stringSelector: "v1"}}}},
+						Name: "t2", Variant: &variantSelector{StringSelector: "v1"}}}},
 				},
 			}
 			out, errs := translateProject(pp)
@@ -335,9 +343,9 @@ func TestTranslateDependsOn(t *testing.T) {
 					{TaskSelector: taskSelector{Name: "*"}}}},
 				{Name: "t3", DependsOn: parserDependencies{
 					{TaskSelector: taskSelector{
-						Name: ".b", Variant: &variantSelector{stringSelector: ".cool !v2"}}},
+						Name: ".b", Variant: &variantSelector{StringSelector: ".cool !v2"}}},
 					{TaskSelector: taskSelector{
-						Name: ".a !.b", Variant: &variantSelector{stringSelector: ".cool"}}}},
+						Name: ".a !.b", Variant: &variantSelector{StringSelector: ".cool"}}}},
 				},
 			}
 			out, errs := translateProject(pp)
@@ -362,8 +370,8 @@ func TestTranslateDependsOn(t *testing.T) {
 				{Name: "t3", DependsOn: parserDependencies{
 					{TaskSelector: taskSelector{Name: ".cool"}},
 					{TaskSelector: taskSelector{Name: "!!.cool"}},                                                  //[1] illegal selector
-					{TaskSelector: taskSelector{Name: "!.c !.b", Variant: &variantSelector{stringSelector: "v1"}}}, //[2] no matching tasks
-					{TaskSelector: taskSelector{Name: "t1", Variant: &variantSelector{stringSelector: ".nope"}}},   //[3] no matching variants
+					{TaskSelector: taskSelector{Name: "!.c !.b", Variant: &variantSelector{StringSelector: "v1"}}}, //[2] no matching tasks
+					{TaskSelector: taskSelector{Name: "t1", Variant: &variantSelector{StringSelector: ".nope"}}},   //[3] no matching variants
 					{TaskSelector: taskSelector{Name: "t1"}, Status: "*"},                                          // valid, but:
 					{TaskSelector: taskSelector{Name: ".b"}},                                                       //[4] conflicts with above
 				}},
@@ -387,7 +395,7 @@ func TestTranslateRequires(t *testing.T) {
 				{Name: "t2"},
 				{Name: "t3", Requires: taskSelectors{
 					{Name: "t1"},
-					{Name: "t2", Variant: &variantSelector{stringSelector: "v1"}},
+					{Name: "t2", Variant: &variantSelector{StringSelector: "v1"}},
 				}},
 			}
 			out, errs := translateProject(pp)
@@ -407,8 +415,8 @@ func TestTranslateRequires(t *testing.T) {
 				{Name: "t2", Tags: []string{"taggy"}},
 				{Name: "t3", Requires: taskSelectors{
 					{Name: "!!!!!"}, //illegal selector
-					{Name: ".taggy !t2", Variant: &variantSelector{stringSelector: "v1"}}, //nothing returned
-					{Name: "t1", Variant: &variantSelector{stringSelector: "!v1"}},        //no variants returned
+					{Name: ".taggy !t2", Variant: &variantSelector{StringSelector: "v1"}}, //nothing returned
+					{Name: "t1", Variant: &variantSelector{StringSelector: "!v1"}},        //no variants returned
 					{Name: "t1 t2"}, //nothing returned
 				}},
 			}
@@ -1187,4 +1195,89 @@ tasks:
 	assert.Equal("idk", proj.Loggers.Agent[0].SplunkToken)
 	assert.Equal("somethingElse", proj.Loggers.Agent[1].Type)
 	assert.Equal("commandLogger", proj.Tasks[0].Commands[0].Loggers.System[0].Type)
+}
+
+func TestParserProjectPersists(t *testing.T) {
+	simpleYml := `
+loggers:
+  agent:
+    - type: something
+      splunk_token: idk
+    - type: somethingElse
+tasks:
+- name: task_1
+  depends_on:
+  - name: embedded_sdk_s3_put
+    variant: embedded-sdk-android-arm32
+  commands:
+  - command: myCommand
+    params:
+      env:
+        ${MY_KEY}: my-value
+        ${MY_NUMS}: [1,2,3]
+    loggers:
+      system:
+       - type: commandLogger
+functions:
+  run-make:
+    command: subprocess.exec
+    params:
+      working_dir: gopath/src/github.com/evergreen-ci/evergreen
+      binary: make
+      env:
+        CLIENT_URL: https://s3.amazonaws.com/mciuploads/evergreen/${task_id}/evergreen-ci/evergreen/clients/${goos}_${goarch}/evergreen
+`
+
+	for name, test := range map[string]func(t *testing.T){
+		"simpleYaml": func(t *testing.T) {
+			assert.NoError(t, checkProjectPersists([]byte(simpleYml)))
+		},
+		"self-tests.yml": func(t *testing.T) {
+			filepath := filepath.Join(testutil.GetDirectoryOfFile(), "..", "self-tests.yml")
+			yml, err := ioutil.ReadFile(filepath)
+			assert.NoError(t, err)
+			assert.NoError(t, checkProjectPersists(yml))
+		},
+	} {
+		t.Run(name, func(t *testing.T) {
+			assert.NoError(t, db.ClearCollections(VersionCollection))
+			test(t)
+		})
+	}
+}
+
+func checkProjectPersists(yml []byte) error {
+	pp, errs := createIntermediateProject(yml)
+	catcher := grip.NewBasicCatcher()
+	for _, err := range errs {
+		catcher.Add(err)
+	}
+	if catcher.HasErrors() {
+		return catcher.Resolve()
+	}
+
+	yamlToCompare, err := yaml.Marshal(pp)
+	if err != nil {
+		return errors.Wrapf(err, "error marshalling original project")
+	}
+
+	v := Version{
+		Id:            "my-version",
+		ParserProject: pp,
+	}
+	if err = v.Insert(); err != nil {
+		return errors.Wrapf(err, "error inserting version")
+	}
+	newV, err := VersionFindOneId(v.Id)
+	if err != nil {
+		return errors.Wrapf(err, "error finding version")
+	}
+	newYaml, err := yaml.Marshal(newV.ParserProject)
+	if err != nil {
+		return errors.Wrapf(err, "error marshalling database project")
+	}
+	if !bytes.Equal(newYaml, yamlToCompare) {
+		return errors.New("yamls not equal")
+	}
+	return nil
 }
