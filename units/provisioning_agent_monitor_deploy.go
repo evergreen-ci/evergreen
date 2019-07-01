@@ -120,7 +120,8 @@ func (j *agentMonitorDeployJob) Run(ctx context.Context) {
 		if j.HasErrors() {
 			event.LogHostAgentMonitorDeployFailed(j.host.Id, j.Error())
 
-			noRetries, err := j.checkNoRetries()
+			var noRetries bool
+			noRetries, err = j.checkNoRetries()
 			if err != nil {
 				j.AddError(err)
 			} else if noRetries {
@@ -243,7 +244,7 @@ func (j *agentMonitorDeployJob) runSetupScript(ctx context.Context, sshOpts []st
 
 		// There is no guarantee setup scripts are idempotent, so we terminate
 		// the host if the setup script fails.
-		if err := j.disableHost(ctx, err.Error()); err != nil {
+		if err = j.disableHost(ctx, err.Error()); err != nil {
 			return errors.Wrapf(err, "error marking host %s for termination", j.host.Id)
 		}
 

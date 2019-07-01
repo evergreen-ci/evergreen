@@ -466,7 +466,14 @@ func TestJasperProcess(t *testing.T) {
 			env.EnvContext = tctx
 			env.Settings().HostJasper.BinaryName = "binary"
 
-			testCase(tctx, t, env, &Host{})
+			testCase(tctx, t, env, &Host{
+				Id: "test",
+				Distro: distro.Distro{
+					CommunicationMethod: distro.CommunicationMethodRPC,
+					BootstrapMethod:     distro.BootstrapMethodUserData,
+				},
+				Host: "localhost",
+			})
 		})
 	}
 }
