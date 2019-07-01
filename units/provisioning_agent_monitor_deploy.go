@@ -140,30 +140,28 @@ func (j *agentMonitorDeployJob) Run(ctx context.Context) {
 		}
 	}()
 
-	if j.host.JasperCommunication() {
-		cloudHost, err := cloud.GetCloudHost(ctx, j.host, j.env.Settings())
-		if err != nil {
-			j.AddError(err)
-			return
-		}
-		sshOpts, err := cloudHost.GetSSHOptions()
-		if err != nil {
-			j.AddError(err)
-			return
-		}
-
-		if err := j.fetchClient(ctx, sshOpts); err != nil {
-			j.AddError(err)
-			return
-		}
-
-		if err := j.runSetupScript(ctx, sshOpts); err != nil {
-			j.AddError(err)
-			return
-		}
-
-		j.AddError(j.startAgentMonitor(ctx, sshOpts))
+	cloudHost, err := cloud.GetCloudHost(ctx, j.host, j.env.Settings())
+	if err != nil {
+		j.AddError(err)
+		return
 	}
+	sshOpts, err := cloudHost.GetSSHOptions()
+	if err != nil {
+		j.AddError(err)
+		return
+	}
+
+	if err := j.fetchClient(ctx, sshOpts); err != nil {
+		j.AddError(err)
+		return
+	}
+
+	if err := j.runSetupScript(ctx, sshOpts); err != nil {
+		j.AddError(err)
+		return
+	}
+
+	j.AddError(j.startAgentMonitor(ctx, sshOpts))
 }
 
 // hostDown checks if the host is down.
