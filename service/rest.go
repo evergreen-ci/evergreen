@@ -39,15 +39,12 @@ func (ra *restV1middleware) ServeHTTP(rw http.ResponseWriter, r *http.Request, n
 
 	usr := gimlet.GetUser(ctx)
 
-	pref, err := pctx.GetProjectRef()
-	if err != nil {
-		ra.LoggedError(rw, r, http.StatusInternalServerError, errors.Wrap(err, "Error loading project metadata"))
-		return
-	}
-
-	if pref.Private && usr == nil {
-		gimlet.WriteTextResponse(rw, http.StatusUnauthorized, "unauthorized")
-		return
+	pref, _ := pctx.GetProjectRef()
+	if pref != nil {
+		if pref.Private && usr == nil {
+			gimlet.WriteTextResponse(rw, http.StatusUnauthorized, "unauthorized")
+			return
+		}
 	}
 
 	if pctx.Patch != nil && usr == nil {

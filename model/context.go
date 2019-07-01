@@ -17,8 +17,9 @@ type Context struct {
 	Version *Version
 	Patch   *patch.Patch
 
-	projectRef *ProjectRef
-	project    *Project
+	projectRef     *ProjectRef
+	project        *Project
+	invalidProject bool
 }
 
 // LoadContext builds a Context from the set of given resource ID's
@@ -51,6 +52,7 @@ func LoadContext(taskId, buildId, versionId, patchId, projectId string) (Context
 		if err != nil {
 			return ctx, err
 		}
+		ctx.invalidProject = true
 	}
 	return ctx, nil
 }
@@ -58,6 +60,10 @@ func LoadContext(taskId, buildId, versionId, patchId, projectId string) (Context
 func (ctx *Context) GetProjectRef() (*ProjectRef, error) {
 	if ctx.projectRef != nil {
 		return ctx.projectRef, nil
+	}
+
+	if ctx.invalidProject {
+		return nil, errors.New("invalid project")
 	}
 
 	var err error
@@ -71,6 +77,19 @@ func (ctx *Context) GetProjectRef() (*ProjectRef, error) {
 	}
 
 	return ctx.projectRef, nil
+}
+
+func (ctx *Context) SetProjectRef(ref *ProjectRef) error {
+	if ctx.projectRef != nil {
+		return errors.New("cannot override existing project ref")
+	}
+
+	if ref == nil {
+		return errors.New("cannot set a nil project ref")
+	}
+
+	ctx.projectRef = ref
+	return nil
 }
 
 // GetProject returns the project associated with the Context.

@@ -16,6 +16,7 @@ import (
 	"github.com/evergreen-ci/gimlet"
 	. "github.com/smartystreets/goconvey/convey"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 // PrefetchProjectContext gets the information related to the project that the request contains
@@ -47,9 +48,9 @@ func TestPrefetchProject(t *testing.T) {
 			ctx := context.Background()
 			Convey("should error if project is private and no user is set", func() {
 				opCtx := model.Context{}
-				opCtx.ProjectRef = &model.ProjectRef{
+				So(opCtx.SetProjectRef(&model.ProjectRef{
 					Private: true,
-				}
+				}), ShouldBeNil)
 				serviceContext.MockContextConnector.CachedContext = opCtx
 				ctx, err = PrefetchProjectContext(ctx, serviceContext, req)
 				So(ctx.Value(RequestContext), ShouldBeNil)
@@ -75,9 +76,9 @@ func TestPrefetchProject(t *testing.T) {
 			})
 			Convey("should succeed if project ref exists and user is set", func() {
 				opCtx := model.Context{}
-				opCtx.ProjectRef = &model.ProjectRef{
+				So(opCtx.SetProjectRef(&model.ProjectRef{
 					Private: true,
-				}
+				}), ShouldBeNil)
 				ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "test_user"})
 				serviceContext.MockContextConnector.CachedContext = opCtx
 				ctx, err = PrefetchProjectContext(ctx, serviceContext, req)
@@ -94,14 +95,14 @@ func TestNewProjectAdminMiddleware(t *testing.T) {
 
 	ctx := context.Background()
 	opCtx := model.Context{}
-	opCtx.ProjectRef = &model.ProjectRef{
+	require.NoError(t, opCtx.SetProjectRef(&model.ProjectRef{
 		Private:    true,
 		Identifier: "orchard",
 		Owner:      "evergreen-ci",
 		Repo:       "evergreen",
 		Branch:     "master",
 		Admins:     []string{"johnny.appleseed"},
-	}
+	}))
 
 	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "not.admin"})
 	r, err := http.NewRequest("GET", "/projects/orchard", nil)
@@ -130,13 +131,13 @@ func TestCommitQueueItemOwnerMiddlewarePROwner(t *testing.T) {
 
 	ctx := context.Background()
 	opCtx := model.Context{}
-	opCtx.ProjectRef = &model.ProjectRef{
+	require.NoError(t, opCtx.SetProjectRef(&model.ProjectRef{
 		Private:    true,
 		Identifier: "mci",
 		Owner:      "evergreen-ci",
 		Repo:       "evergreen",
 		Branch:     "master",
-	}
+	}))
 	ctx = gimlet.AttachUser(ctx, &user.DBUser{
 		Settings: user.UserSettings{
 			GithubUser: user.GithubUser{
@@ -168,14 +169,14 @@ func TestCommitQueueItemOwnerMiddlewareProjectAdmin(t *testing.T) {
 
 	ctx := context.Background()
 	opCtx := model.Context{}
-	opCtx.ProjectRef = &model.ProjectRef{
+	require.NoError(t, opCtx.SetProjectRef(&model.ProjectRef{
 		Private:    true,
 		Identifier: "mci",
 		Owner:      "evergreen-ci",
 		Repo:       "evergreen",
 		Branch:     "master",
 		Admins:     []string{"admin"},
-	}
+	}))
 	ctx = gimlet.AttachUser(ctx, &user.DBUser{
 		Settings: user.UserSettings{
 			GithubUser: user.GithubUser{
@@ -210,7 +211,7 @@ func TestCommitQueueItemOwnerMiddlewareUnauthorizedUserGitHub(t *testing.T) {
 
 	ctx := context.Background()
 	opCtx := model.Context{}
-	opCtx.ProjectRef = &model.ProjectRef{
+	require.NoError(t, opCtx.SetProjectRef(&model.ProjectRef{
 		Private:    true,
 		Identifier: "mci",
 		Owner:      "evergreen-ci",
@@ -219,7 +220,7 @@ func TestCommitQueueItemOwnerMiddlewareUnauthorizedUserGitHub(t *testing.T) {
 		CommitQueue: model.CommitQueueParams{
 			PatchType: commitqueue.PRPatchType,
 		},
-	}
+	}))
 
 	r, err := http.NewRequest(http.MethodDelete, "/", nil)
 	assert.NoError(err)
@@ -253,7 +254,7 @@ func TestCommitQueueItemOwnerMiddlewareUserPatch(t *testing.T) {
 
 	ctx := context.Background()
 	opCtx := model.Context{}
-	opCtx.ProjectRef = &model.ProjectRef{
+	require.NoError(t, opCtx.SetProjectRef(&model.ProjectRef{
 		Private:    true,
 		Identifier: "mci",
 		Owner:      "evergreen-ci",
@@ -262,7 +263,7 @@ func TestCommitQueueItemOwnerMiddlewareUserPatch(t *testing.T) {
 		CommitQueue: model.CommitQueueParams{
 			PatchType: commitqueue.CLIPatchType,
 		},
-	}
+	}))
 
 	r, err := http.NewRequest(http.MethodDelete, "/", nil)
 	assert.NoError(err)
