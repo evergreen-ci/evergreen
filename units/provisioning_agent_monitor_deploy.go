@@ -125,12 +125,12 @@ func (j *agentMonitorDeployJob) Run(ctx context.Context) {
 			if err != nil {
 				j.AddError(err)
 			} else if noRetries {
-				if err := j.disableHost(ctx, fmt.Sprintf("failed %d times to put agent monitor on host", agentMonitorPutRetries)); err != nil {
+				if err = j.disableHost(ctx, fmt.Sprintf("failed %d times to put agent monitor on host", agentMonitorPutRetries)); err != nil {
 					j.AddError(errors.Wrapf(err, "error marking host %s for termination", j.host.Id))
 					return
 				}
 			}
-			if err := j.host.SetNeedsNewAgentMonitor(true); err != nil {
+			if err = j.host.SetNeedsNewAgentMonitor(true); err != nil {
 				grip.Info(message.WrapError(err, message.Fields{
 					"message": "problem setting needs new agent monitor flag to true",
 					"distro":  j.host.Distro,
