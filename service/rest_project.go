@@ -10,10 +10,9 @@ import (
 
 // Returns a JSON response of an array with the ref information for the requested project_id.
 func (restapi restAPI) getProject(w http.ResponseWriter, r *http.Request) {
-	projCtx := MustHaveRESTContext(r)
-	ref := projCtx.ProjectRef
-	if ref == nil {
-		gimlet.WriteJSONResponse(w, http.StatusNotFound, responseError{Message: "error finding project"})
+	ref, err := MustHaveRESTContext(r).GetProjectRef()
+	if err != nil {
+		gimlet.WriteJSONResponse(w, http.StatusNotFound, responseError{Message: "error finding project", Extended: err.Error()})
 		return
 	}
 	gimlet.WriteJSON(w, ref)

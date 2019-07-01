@@ -48,13 +48,22 @@ func (m *projCtxMiddleware) ServeHTTP(rw http.ResponseWriter, r *http.Request, n
 
 	user := gimlet.GetUser(ctx)
 
-	if opCtx.ProjectRef != nil && opCtx.ProjectRef.Private && user == nil {
+	pref, err := opCtx.GetProjectRef()
+	if err != nil {
+		gimlet.WriteResponse(rw, gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+			StatusCode: http.StatusNotFound,
+			Message:    errors.Wrap(err, "Project not found").Error(),
+		}))
+
+	}
+
+	if pref.Private && user == nil {
 		// Project is private and user is not authorized so return not found
 		gimlet.WriteResponse(rw, gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
 			StatusCode: http.StatusNotFound,
 			Message:    "Project not found",
 		}))
-		return
+
 	}
 
 	if opCtx.Patch != nil && user == nil {
@@ -130,8 +139,14 @@ func (m *projectAdminMiddleware) ServeHTTP(rw http.ResponseWriter, r *http.Reque
 	opCtx := MustHaveProjectContext(ctx)
 	user := MustHaveUser(ctx)
 
+	var admins []string
+	pref, err := opCtx.GetProjectRef()
+	if err == nil {
+		admins = pref.Admins
+	}
+
 	isSuperuser := util.StringSliceContains(m.sc.GetSuperUsers(), user.Username())
-	isAdmin := util.StringSliceContains(opCtx.ProjectRef.Admins, user.Username())
+	isAdmin := util.StringSliceContains(admins, user.Username())
 	if !(isSuperuser || isAdmin) {
 		gimlet.WriteResponse(rw, gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
 			StatusCode: http.StatusUnauthorized,

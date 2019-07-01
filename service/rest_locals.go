@@ -11,5 +11,6 @@ const (
 
 // Format of the JSON response when an error occurs
 type responseError struct {
-	Message string `json:"message"`
+	Message  string `json:"message"`
+	Extended string `json:"extended,omitempty"`
 }

@@ -41,12 +41,15 @@ func (trh *taskRestartHandler) Parse(ctx context.Context, r *http.Request) error
 			StatusCode: http.StatusNotFound,
 		}
 	}
-	if projCtx.ProjectRef == nil {
+
+	_, err := projCtx.GetProjectRef()
+	if err != nil {
 		return gimlet.ErrorResponse{
 			Message:    "Project not found",
 			StatusCode: http.StatusNotFound,
 		}
 	}
+
 	trh.taskId = projCtx.Task.Id
 	u := MustHaveUser(ctx)
 	trh.username = u.DisplayName()
