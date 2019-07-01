@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
-	"github.com/evergreen-ci/evergreen/cloud"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/util"
@@ -141,28 +140,17 @@ func (j *agentMonitorDeployJob) Run(ctx context.Context) {
 		}
 	}()
 
-	cloudHost, err := cloud.GetCloudHost(ctx, j.host, j.env.Settings())
-	if err != nil {
-		j.AddError(err)
-		return
-	}
-	sshOpts, err := cloudHost.GetSSHOptions()
-	if err != nil {
+	if err = j.fetchClient(ctx); err != nil {
 		j.AddError(err)
 		return
 	}
 
-	if err := j.fetchClient(ctx, sshOpts); err != nil {
+	if err = j.runSetupScript(ctx); err != nil {
 		j.AddError(err)
 		return
 	}
 
-	if err := j.runSetupScript(ctx, sshOpts); err != nil {
-		j.AddError(err)
-		return
-	}
-
-	j.AddError(j.startAgentMonitor(ctx, sshOpts))
+	j.AddError(j.startAgentMonitor(ctx))
 }
 
 // hostDown checks if the host is down.
@@ -199,7 +187,7 @@ func (j *agentMonitorDeployJob) checkNoRetries() (bool, error) {
 }
 
 // fetchClient fetches the client on the host through the host's Jasper service.
-func (j *agentMonitorDeployJob) fetchClient(ctx context.Context, sshOpts []string) error {
+func (j *agentMonitorDeployJob) fetchClient(ctx context.Context) error {
 	grip.Info(message.Fields{
 		"message":       "fetching latest evergreen binary for agent monitor",
 		"host":          j.host.Id,
@@ -207,7 +195,7 @@ func (j *agentMonitorDeployJob) fetchClient(ctx context.Context, sshOpts []strin
 		"communication": j.host.Distro.CommunicationMethod,
 	})
 
-	output, err := j.host.RunJasperProcess(ctx, j.env, sshOpts, j.host.CurlCommand(j.env.Settings().Ui.Url))
+	output, err := j.host.RunJasperProcess(ctx, j.env, j.host.CurlCommand(j.env.Settings().Ui.Url))
 	if err != nil {
 		grip.Error(message.WrapError(err, message.Fields{
 			"message":       "error fetching agent monitor binary on host",
@@ -224,7 +212,7 @@ func (j *agentMonitorDeployJob) fetchClient(ctx context.Context, sshOpts []strin
 
 // runSetupScript runs the setup script on the host through the host's Jasper
 // service.
-func (j *agentMonitorDeployJob) runSetupScript(ctx context.Context, sshOpts []string) error {
+func (j *agentMonitorDeployJob) runSetupScript(ctx context.Context) error {
 	grip.Info(message.Fields{
 		"message":       "running setup script on host",
 		"host":          j.host.Id,
@@ -232,7 +220,7 @@ func (j *agentMonitorDeployJob) runSetupScript(ctx context.Context, sshOpts []st
 		"communication": j.host.Distro.CommunicationMethod,
 	})
 
-	output, err := j.host.RunJasperProcess(ctx, j.env, sshOpts, j.host.SetupCommand())
+	output, err := j.host.RunJasperProcess(ctx, j.env, j.host.SetupCommand())
 	if err != nil {
 		grip.Error(message.WrapError(err, message.Fields{
 			"message":       "error running setup script on host",
@@ -256,7 +244,7 @@ func (j *agentMonitorDeployJob) runSetupScript(ctx context.Context, sshOpts []st
 
 // startAgentMonitor starts the agent monitor on the host through the host's
 // Jasper service.
-func (j *agentMonitorDeployJob) startAgentMonitor(ctx context.Context, sshOpts []string) error {
+func (j *agentMonitorDeployJob) startAgentMonitor(ctx context.Context) error {
 	// Generate the host secret if none exists.
 	if j.host.Secret == "" {
 		if err := j.host.CreateSecret(); err != nil {
@@ -265,7 +253,7 @@ func (j *agentMonitorDeployJob) startAgentMonitor(ctx context.Context, sshOpts [
 	}
 
 	grip.Info(j.deployMessage())
-	if err := j.host.StartJasperProcess(ctx, j.env, sshOpts, j.agentMonitorOptions(j.env.Settings().HostJasper)); err != nil {
+	if err := j.host.StartJasperProcess(ctx, j.env, j.agentMonitorOptions(j.env.Settings().HostJasper)); err != nil {
 		grip.Error(message.WrapError(err, message.Fields{
 			"message": "failed to start agent monitor on host",
 			"host":    j.host.Id,

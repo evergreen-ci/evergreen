@@ -269,6 +269,8 @@ func TestJasperClient(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
+	sshKeyName := "foo"
+	sshKeyValue := "bar"
 	for testName, testCase := range map[string]struct {
 		withSetupAndTeardown func(ctx context.Context, env *mock.Environment, h *Host, fn func(ctx context.Context)) error
 		h                    *Host
@@ -280,6 +282,7 @@ func TestJasperClient(t *testing.T) {
 				Distro: distro.Distro{
 					CommunicationMethod: distro.CommunicationMethodLegacySSH,
 					BootstrapMethod:     distro.BootstrapMethodLegacySSH,
+					SSHKey:              sshKeyName,
 				},
 			},
 			expectError: true,
@@ -290,11 +293,24 @@ func TestJasperClient(t *testing.T) {
 				Distro: distro.Distro{
 					BootstrapMethod:     distro.BootstrapMethodSSH,
 					CommunicationMethod: distro.CommunicationMethodSSH,
+					SSHKey:              sshKeyName,
 				},
 				User: "foo",
 				Host: "bar",
 			},
 			expectError: false,
+		},
+		"FailsWithSSHCommunicationButNoSSHKey": {
+			h: &Host{
+				Id: "test-host",
+				Distro: distro.Distro{
+					BootstrapMethod:     distro.BootstrapMethodSSH,
+					CommunicationMethod: distro.CommunicationMethodSSH,
+				},
+				User: "foo",
+				Host: "bar",
+			},
+			expectError: true,
 		},
 		"FailsWithSSHCommunicationButNoSSHInfo": {
 			h: &Host{
@@ -302,6 +318,7 @@ func TestJasperClient(t *testing.T) {
 				Distro: distro.Distro{
 					BootstrapMethod:     distro.BootstrapMethodSSH,
 					CommunicationMethod: distro.CommunicationMethodSSH,
+					SSHKey:              sshKeyName,
 				},
 			},
 			expectError: true,
@@ -393,9 +410,10 @@ func TestJasperClient(t *testing.T) {
 			require.NoError(t, env.Configure(tctx, "", nil))
 			env.EnvContext = tctx
 			env.Settings().HostJasper.BinaryName = "binary"
+			env.Settings().Keys = map[string]string{sshKeyName: sshKeyValue}
 
 			doTest := func(ctx context.Context) {
-				client, err := testCase.h.JasperClient(ctx, env, []string{})
+				client, err := testCase.h.JasperClient(ctx, env)
 				if testCase.expectError {
 					assert.Error(t, err)
 					assert.Nil(t, client)
@@ -439,21 +457,21 @@ func TestJasperProcess(t *testing.T) {
 	}
 	for testName, testCase := range map[string]func(ctx context.Context, t *testing.T, env *mock.Environment, h *Host){
 		"RunJasperProcessErrorsWithoutJasperClient": func(ctx context.Context, t *testing.T, env *mock.Environment, h *Host) {
-			assert.Error(t, h.StartJasperProcess(ctx, env, []string{}, &jasper.CreateOptions{Args: []string{"echo", "hello", "world"}}))
+			assert.Error(t, h.StartJasperProcess(ctx, env, &jasper.CreateOptions{Args: []string{"echo", "hello", "world"}}))
 		},
 		"StartJasperProcessErrorsWithoutJasperClient": func(ctx context.Context, t *testing.T, env *mock.Environment, h *Host) {
-			_, err := h.RunJasperProcess(ctx, env, []string{}, "echo hello world")
+			_, err := h.RunJasperProcess(ctx, env, "echo hello world")
 			assert.Error(t, err)
 		},
 		"RunJasperProcessPassesWithJasperClient": func(ctx context.Context, t *testing.T, env *mock.Environment, h *Host) {
 			assert.NoError(t, withSetupAndTeardown(ctx, env, h, func(ctx context.Context) {
-				_, err := h.RunJasperProcess(ctx, env, []string{}, "echo hello world")
+				_, err := h.RunJasperProcess(ctx, env, "echo hello world")
 				assert.NoError(t, err)
 			}))
 		},
 		"StartJasperProcessPassesWithJasperClient": func(ctx context.Context, t *testing.T, env *mock.Environment, h *Host) {
 			assert.NoError(t, withSetupAndTeardown(ctx, env, h, func(ctx context.Context) {
-				assert.NoError(t, h.StartJasperProcess(ctx, env, []string{}, &jasper.CreateOptions{Args: []string{"echo", "hello", "world"}}))
+				assert.NoError(t, h.StartJasperProcess(ctx, env, &jasper.CreateOptions{Args: []string{"echo", "hello", "world"}}))
 			}))
 		},
 	} {

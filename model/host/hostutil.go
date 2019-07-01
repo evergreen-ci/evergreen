@@ -90,6 +90,34 @@ func (h *Host) GetSSHInfo() (*util.StaticHostInfo, error) {
 	return hostInfo, nil
 }
 
+// GetSSHOptions returns the options to SSH into this host.
+// EVG-6389: this currently relies on the fact that the EC2 provider has a
+// single distro-level SSH key name corresponding to an existing SSH key file on
+// the app servers. We should be able to handle multiple keys configured in
+// admin settings rather than from a file name in distro settings.
+func (h *Host) GetSSHOptions(settings *evergreen.Settings) ([]string, error) {
+	keyPath := settings.Keys[h.Distro.SSHKey]
+	if keyPath == "" {
+		return nil, errors.New("no SSH key specified for host")
+	}
+
+	opts := []string{"-i", keyPath}
+	hasKnownHostsFile := false
+
+	for _, opt := range h.Distro.SSHOptions {
+		opt = strings.Trim(opt, " \t")
+		opts = append(opts, "-o", opt)
+		if strings.HasPrefix(opt, "UserKnownHostsFile") {
+			hasKnownHostsFile = true
+		}
+	}
+
+	if !hasKnownHostsFile {
+		opts = append(opts, "-o", "UserKnownHostsFile=/dev/null")
+	}
+	return opts, nil
+}
+
 // RunSSHCommand runs an SSH command on a remote host.
 func (h *Host) RunSSHCommand(ctx context.Context, cmd string, sshOptions []string) (string, error) {
 	env := evergreen.GetEnvironment()
@@ -289,8 +317,8 @@ func (h *Host) writeJasperCredentialsFileCommand(config evergreen.HostJasperConf
 
 // RunJasperProcess makes a request to the host's Jasper service to run the
 // given command, wait for its completion, and return the output from it.
-func (h *Host) RunJasperProcess(ctx context.Context, env evergreen.Environment, sshOpts []string, command string) (string, error) {
-	client, err := h.JasperClient(ctx, env, sshOpts)
+func (h *Host) RunJasperProcess(ctx context.Context, env evergreen.Environment, command string) (string, error) {
+	client, err := h.JasperClient(ctx, env)
 	if err != nil {
 		return "", errors.Wrap(err, "could not get a Jasper client")
 	}
@@ -322,8 +350,8 @@ func (h *Host) RunJasperProcess(ctx context.Context, env evergreen.Environment, 
 
 // StartJasperProcess makes a request to the host's Jasper service to start a
 // process with the given options without waiting for its completion.
-func (h *Host) StartJasperProcess(ctx context.Context, env evergreen.Environment, sshOpts []string, opts *jasper.CreateOptions) error {
-	client, err := h.JasperClient(ctx, env, sshOpts)
+func (h *Host) StartJasperProcess(ctx context.Context, env evergreen.Environment, opts *jasper.CreateOptions) error {
+	client, err := h.JasperClient(ctx, env)
 	if err != nil {
 		return errors.Wrap(err, "could not get a Jasper client")
 	}
@@ -337,7 +365,7 @@ func (h *Host) StartJasperProcess(ctx context.Context, env evergreen.Environment
 
 // JasperClient returns a remote client that communicates with this host's
 // Jasper service.
-func (h *Host) JasperClient(ctx context.Context, env evergreen.Environment, sshOpts []string) (jasper.Manager, error) {
+func (h *Host) JasperClient(ctx context.Context, env evergreen.Environment) (jasper.Manager, error) {
 	if h.LegacyBootstrap() || h.LegacyCommunication() {
 		return nil, errors.New("legacy host does not support remote Jasper process management")
 	}
@@ -349,6 +377,11 @@ func (h *Host) JasperClient(ctx context.Context, env evergreen.Environment, sshO
 			if err != nil {
 				return nil, errors.Wrap(err, "could not get host's SSH info")
 			}
+			sshOpts, err := h.GetSSHOptions(env.Settings())
+			if err != nil {
+				return nil, errors.Wrap(err, "could not get host's SSH options")
+			}
+
 			remoteOpts := jasper.RemoteOptions{
 				Host: hostInfo.Hostname,
 				User: hostInfo.User,
