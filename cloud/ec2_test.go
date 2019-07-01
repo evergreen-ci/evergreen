@@ -3,6 +3,7 @@ package cloud
 import (
 	"context"
 	"encoding/base64"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -96,12 +97,6 @@ func (s *EC2Suite) TestValidateProviderSettings() {
 	s.Error(p.Validate())
 	p.SecurityGroupIDs = []string{"sg-123456"}
 
-	s.NoError(p.Validate())
-	p.BidPrice = -1
-	s.Error(p.Validate())
-	p.BidPrice = 1
-	s.NoError(p.Validate())
-
 	p.IsVpc = true
 	s.Error(p.Validate())
 	p.SubnetId = "subnet-123456"
@@ -152,6 +147,58 @@ func (s *EC2Suite) TestMakeDeviceMappings() {
 		SnapshotID: "snapshot-1",
 	}
 	b, err = makeBlockDeviceMappings([]MountPoint{ebsMount})
+	s.NoError(err)
+	s.Len(b, 1)
+	s.Equal("device", *b[0].DeviceName)
+	s.Equal(int64(10), *b[0].Ebs.VolumeSize)
+	s.Equal(int64(100), *b[0].Ebs.Iops)
+	s.Equal("snapshot-1", *b[0].Ebs.SnapshotId)
+}
+
+func (s *EC2Suite) TestMakeDeviceMappingTemplate() {
+	validMount := MountPoint{
+		DeviceName:  "device",
+		VirtualName: "virtual",
+	}
+
+	m := []MountPoint{}
+	b, err := makeBlockDeviceMappingsTemplate(m)
+	s.NoError(err)
+	s.Len(b, 0)
+
+	noDeviceName := validMount
+	noDeviceName.DeviceName = ""
+	m = []MountPoint{validMount, noDeviceName}
+	b, err = makeBlockDeviceMappingsTemplate(m)
+	s.Nil(b)
+	s.Error(err)
+
+	noVirtualName := validMount
+	noVirtualName.VirtualName = ""
+	m = []MountPoint{validMount, noVirtualName}
+	b, err = makeBlockDeviceMappingsTemplate(m)
+	s.Nil(b)
+	s.Error(err)
+
+	anotherMount := validMount
+	anotherMount.DeviceName = "anotherDeviceName"
+	anotherMount.VirtualName = "anotherVirtualName"
+	m = []MountPoint{validMount, anotherMount}
+	b, err = makeBlockDeviceMappingsTemplate(m)
+	s.Len(b, 2)
+	s.Equal("device", *b[0].DeviceName)
+	s.Equal("virtual", *b[0].VirtualName)
+	s.Equal("anotherDeviceName", *b[1].DeviceName)
+	s.Equal("anotherVirtualName", *b[1].VirtualName)
+	s.NoError(err)
+
+	ebsMount := MountPoint{
+		DeviceName: "device",
+		Size:       10,
+		Iops:       100,
+		SnapshotID: "snapshot-1",
+	}
+	b, err = makeBlockDeviceMappingsTemplate([]MountPoint{ebsMount})
 	s.NoError(err)
 	s.Len(b, 1)
 	s.Equal("device", *b[0].DeviceName)
@@ -348,32 +395,58 @@ func (s *EC2Suite) TestSpawnHostClassicSpot() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	_, err := s.spotManager.SpawnHost(ctx, h)
-	s.NoError(err)
-
 	manager, ok := s.spotManager.(*ec2Manager)
 	s.True(ok)
 	mock, ok := manager.client.(*awsClientMock)
 	s.True(ok)
+	mock.CreateLaunchTemplateOutput = &ec2.CreateLaunchTemplateOutput{
+		LaunchTemplate: &ec2.LaunchTemplate{
+			LaunchTemplateId:    aws.String("templateID"),
+			LatestVersionNumber: aws.Int64(1),
+		},
+	}
 
-	requestInput := *mock.RequestSpotInstancesInput
-	s.Equal("ami", *requestInput.LaunchSpecification.ImageId)
-	s.Equal("instanceType", *requestInput.LaunchSpecification.InstanceType)
-	s.Equal("keyName", *requestInput.LaunchSpecification.KeyName)
-	s.Equal("virtual", *requestInput.LaunchSpecification.BlockDeviceMappings[0].VirtualName)
-	s.Equal("device", *requestInput.LaunchSpecification.BlockDeviceMappings[0].DeviceName)
-	s.Equal("sg-123456", *requestInput.LaunchSpecification.SecurityGroups[0])
-	s.Nil(requestInput.LaunchSpecification.SecurityGroupIds)
-	s.Nil(requestInput.LaunchSpecification.SubnetId)
+	_, err := s.spotManager.SpawnHost(ctx, h)
+	s.NoError(err)
+
+	mock.CreateLaunchTemplateOutput = &ec2.CreateLaunchTemplateOutput{
+		LaunchTemplate: &ec2.LaunchTemplate{
+			LaunchTemplateId:    aws.String("templateID"),
+			LatestVersionNumber: aws.Int64(1),
+		},
+	}
+	templateRequestInput := *mock.CreateLaunchTemplateInput
+	s.Equal("ami", *templateRequestInput.LaunchTemplateData.ImageId)
+	s.Equal("instanceType", *templateRequestInput.LaunchTemplateData.InstanceType)
+	s.Equal("keyName", *templateRequestInput.LaunchTemplateData.KeyName)
+	s.Equal("virtual", *templateRequestInput.LaunchTemplateData.BlockDeviceMappings[0].VirtualName)
+	s.Equal("device", *templateRequestInput.LaunchTemplateData.BlockDeviceMappings[0].DeviceName)
+	s.Equal("sg-123456", *templateRequestInput.LaunchTemplateData.SecurityGroups[0])
+	s.Nil(templateRequestInput.LaunchTemplateData.SecurityGroupIds)
+	s.Nil(templateRequestInput.LaunchTemplateData.NetworkInterfaces)
+
+	fleetRequestInput := *mock.CreateFleetInput
+	s.Equal(
+		*mock.CreateLaunchTemplateOutput.LaunchTemplate.LaunchTemplateId,
+		*fleetRequestInput.LaunchTemplateConfigs[0].LaunchTemplateSpecification.LaunchTemplateId,
+	)
+	s.Equal(
+		strconv.Itoa(int(*mock.CreateLaunchTemplateOutput.LaunchTemplate.LatestVersionNumber)),
+		*fleetRequestInput.LaunchTemplateConfigs[0].LaunchTemplateSpecification.Version,
+	)
+	s.Equal(int64(1), *fleetRequestInput.TargetCapacitySpecification.TotalTargetCapacity)
+	s.Equal("spot", *fleetRequestInput.TargetCapacitySpecification.DefaultTargetCapacityType)
+	s.Equal("instant", *fleetRequestInput.Type)
+
 	tagsInput := *mock.CreateTagsInput
-	s.Equal("instance_id", *tagsInput.Resources[0])
+	s.Equal("i-12345", *tagsInput.Resources[0])
 	s.Len(tagsInput.Tags, 8)
 	var foundInstanceName bool
 	var foundDistroID bool
 	for _, tag := range tagsInput.Tags {
 		if *tag.Key == "name" {
 			foundInstanceName = true
-			s.Equal(*tag.Value, "instance_id")
+			s.Equal(*tag.Value, "i-12345")
 		}
 		if *tag.Key == "distro" {
 			foundDistroID = true
@@ -382,7 +455,7 @@ func (s *EC2Suite) TestSpawnHostClassicSpot() {
 	}
 	s.True(foundInstanceName)
 	s.True(foundDistroID)
-	s.Equal(base64OfSomeUserData, *requestInput.LaunchSpecification.UserData)
+	s.Equal(base64OfSomeUserData, *templateRequestInput.LaunchTemplateData.UserData)
 }
 
 func (s *EC2Suite) TestSpawnHostVPCSpot() {
@@ -402,34 +475,41 @@ func (s *EC2Suite) TestSpawnHostVPCSpot() {
 		"user_data":          someUserData,
 	}
 
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-	_, err := s.spotManager.SpawnHost(ctx, h)
-	s.NoError(err)
-
 	manager, ok := s.spotManager.(*ec2Manager)
 	s.True(ok)
 	mock, ok := manager.client.(*awsClientMock)
 	s.True(ok)
 
-	requestInput := *mock.RequestSpotInstancesInput
-	s.Equal("ami", *requestInput.LaunchSpecification.ImageId)
-	s.Equal("instanceType", *requestInput.LaunchSpecification.InstanceType)
-	s.Equal("keyName", *requestInput.LaunchSpecification.KeyName)
-	s.Equal("virtual", *requestInput.LaunchSpecification.BlockDeviceMappings[0].VirtualName)
-	s.Equal("device", *requestInput.LaunchSpecification.BlockDeviceMappings[0].DeviceName)
-	s.Nil(requestInput.LaunchSpecification.SecurityGroupIds)
-	s.Nil(requestInput.LaunchSpecification.SecurityGroups)
-	s.Nil(requestInput.LaunchSpecification.SubnetId)
+	mock.CreateLaunchTemplateOutput = &ec2.CreateLaunchTemplateOutput{
+		LaunchTemplate: &ec2.LaunchTemplate{
+			LaunchTemplateId:    aws.String("templateID"),
+			LatestVersionNumber: aws.Int64(1),
+		},
+	}
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	_, err := s.spotManager.SpawnHost(ctx, h)
+	s.NoError(err)
+
+	createTemplateInput := *mock.CreateLaunchTemplateInput
+	s.Equal("ami", *createTemplateInput.LaunchTemplateData.ImageId)
+	s.Equal("instanceType", *createTemplateInput.LaunchTemplateData.InstanceType)
+	s.Equal("keyName", *createTemplateInput.LaunchTemplateData.KeyName)
+	s.Equal("virtual", *createTemplateInput.LaunchTemplateData.BlockDeviceMappings[0].VirtualName)
+	s.Equal("device", *createTemplateInput.LaunchTemplateData.BlockDeviceMappings[0].DeviceName)
+	s.Nil(createTemplateInput.LaunchTemplateData.SecurityGroupIds)
+	s.Nil(createTemplateInput.LaunchTemplateData.SecurityGroups)
+	s.Equal("subnet-123456", *createTemplateInput.LaunchTemplateData.NetworkInterfaces[0].SubnetId)
 	tagsInput := *mock.CreateTagsInput
-	s.Equal("instance_id", *tagsInput.Resources[0])
+	s.Equal("i-12345", *tagsInput.Resources[0])
 	s.Len(tagsInput.Tags, 8)
 	var foundInstanceName bool
 	var foundDistroID bool
 	for _, tag := range tagsInput.Tags {
 		if *tag.Key == "name" {
 			foundInstanceName = true
-			s.Equal(*tag.Value, "instance_id")
+			s.Equal(*tag.Value, "i-12345")
 		}
 		if *tag.Key == "distro" {
 			foundDistroID = true
@@ -438,7 +518,7 @@ func (s *EC2Suite) TestSpawnHostVPCSpot() {
 	}
 	s.True(foundInstanceName)
 	s.True(foundDistroID)
-	s.Equal(base64OfSomeUserData, *requestInput.LaunchSpecification.UserData)
+	s.Equal(base64OfSomeUserData, *createTemplateInput.LaunchTemplateData.UserData)
 }
 
 func (s *EC2Suite) TestNoKeyAndNotSpawnHostForTaskShouldFail() {
@@ -695,8 +775,7 @@ func (s *EC2Suite) TestGetProvider() {
 	provider, err := manager.getProvider(ctx, h, ec2Settings)
 	s.NoError(err)
 	s.Equal(spotProvider, provider)
-	// subnet should be set based on vpc name
-	s.Equal("subnet-654321", ec2Settings.SubnetId)
+	s.Empty(ec2Settings.SubnetId)
 	s.Equal(h.Distro.Provider, evergreen.ProviderNameEc2Spot)
 
 	h.UserHost = true
@@ -705,18 +784,10 @@ func (s *EC2Suite) TestGetProvider() {
 	s.Equal(onDemandProvider, provider)
 }
 
-func (s *EC2Suite) TestPersistInstanceId() {
-	h := &host.Host{Id: "instance_id"}
-	s.Require().NoError(h.Insert())
-	_, err := s.onDemandManager.GetDNSName(context.Background(), h)
-	s.NoError(err)
-	s.Equal("instance_id", h.ExternalIdentifier)
-}
-
 func (s *EC2Suite) TestGetInstanceStatuses() {
 	hosts := []host.Host{
 		{
-			Id: "sir-1",
+			Id: "i-1",
 			Distro: distro.Distro{
 				Provider: evergreen.ProviderNameEc2Spot,
 			},
@@ -728,7 +799,7 @@ func (s *EC2Suite) TestGetInstanceStatuses() {
 			},
 		},
 		{
-			Id: "sir-3",
+			Id: "i-3",
 			Distro: distro.Distro{
 				Provider: evergreen.ProviderNameEc2Spot,
 			},
@@ -756,41 +827,24 @@ func (s *EC2Suite) TestGetInstanceStatuses() {
 	defer cancel()
 	manager, ok := s.onDemandManager.(*ec2Manager)
 	s.True(ok)
-	mock, ok := manager.client.(*awsClientMock)
-
-	// spot IDs returned doesn't match spot IDs submitted
-	mock.DescribeSpotInstanceRequestsOutput = &ec2.DescribeSpotInstanceRequestsOutput{
-		SpotInstanceRequests: []*ec2.SpotInstanceRequest{
-			&ec2.SpotInstanceRequest{
-				InstanceId:            aws.String("sir-1"),
-				State:                 aws.String(SpotStatusActive),
-				SpotInstanceRequestId: aws.String("1"),
-			},
-		},
-	}
-	s.True(ok)
 	batchManager, ok := s.onDemandManager.(BatchManager)
 	s.True(ok)
 	s.NotNil(batchManager)
-	_, err := batchManager.GetInstanceStatuses(ctx, hosts)
-	s.Error(err, "return an error if the number of spot IDs returned is different from submitted")
 
-	mock.DescribeSpotInstanceRequestsOutput = &ec2.DescribeSpotInstanceRequestsOutput{
-		SpotInstanceRequests: []*ec2.SpotInstanceRequest{
-			// This host returns with no id
-			&ec2.SpotInstanceRequest{
-				InstanceId:            aws.String("i-3"),
-				State:                 aws.String(SpotStatusActive),
-				SpotInstanceRequestId: aws.String("sir-3"),
-			},
-			&ec2.SpotInstanceRequest{
-				SpotInstanceRequestId: aws.String("sir-1"),
-				State:                 aws.String(ec2.SpotInstanceStateFailed),
-			},
-		},
-	}
+	mock, ok := manager.client.(*awsClientMock)
+	s.True(ok)
 	mock.DescribeInstancesOutput = &ec2.DescribeInstancesOutput{
 		Reservations: []*ec2.Reservation{
+			{
+				Instances: []*ec2.Instance{
+					{
+						InstanceId: aws.String("i-1"),
+						State: &ec2.InstanceState{
+							Name: aws.String(ec2.InstanceStateNameStopped),
+						},
+					},
+				},
+			},
 			{
 				Instances: []*ec2.Instance{
 					{
@@ -845,16 +899,16 @@ func (s *EC2Suite) TestGetInstanceStatuses() {
 	}
 	statuses, err := batchManager.GetInstanceStatuses(ctx, hosts)
 	s.NoError(err)
-	s.Len(mock.DescribeSpotInstanceRequestsInput.SpotInstanceRequestIds, 2)
-	s.Len(mock.DescribeInstancesInput.InstanceIds, 5)
-	s.Equal(*mock.DescribeInstancesInput.InstanceIds[0], "i-3")
-	s.Equal(*mock.DescribeInstancesInput.InstanceIds[1], "i-2")
-	s.Equal(*mock.DescribeInstancesInput.InstanceIds[2], "i-4")
-	s.Equal(*mock.DescribeInstancesInput.InstanceIds[3], "i-5")
-	s.Equal(*mock.DescribeInstancesInput.InstanceIds[4], "i-6")
+	s.Len(mock.DescribeInstancesInput.InstanceIds, 6)
+	s.Equal("i-1", *mock.DescribeInstancesInput.InstanceIds[0])
+	s.Equal("i-2", *mock.DescribeInstancesInput.InstanceIds[1])
+	s.Equal("i-3", *mock.DescribeInstancesInput.InstanceIds[2])
+	s.Equal("i-4", *mock.DescribeInstancesInput.InstanceIds[3])
+	s.Equal("i-5", *mock.DescribeInstancesInput.InstanceIds[4])
+	s.Equal("i-6", *mock.DescribeInstancesInput.InstanceIds[5])
 	s.Len(statuses, 6)
 	s.Equal(statuses, []CloudStatus{
-		StatusFailed,
+		StatusStopped,
 		StatusRunning,
 		StatusRunning,
 		StatusRunning,

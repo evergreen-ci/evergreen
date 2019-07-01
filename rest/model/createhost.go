@@ -30,7 +30,6 @@ func (createHost *CreateHost) BuildFromService(h interface{}) error {
 		createHost.DNSName = ToAPIString(v.Host)
 		createHost.InstanceID = ToAPIString(v.Id)
 		createHost.IP = ToAPIString(v.IP)
-		createHost.InstanceID = ToAPIString(v.ExternalIdentifier)
 	case *host.Host:
 		// container
 		if v.ParentID != "" {
@@ -43,7 +42,6 @@ func (createHost *CreateHost) BuildFromService(h interface{}) error {
 		createHost.DNSName = ToAPIString(v.Host)
 		createHost.InstanceID = ToAPIString(v.Id)
 		createHost.IP = ToAPIString(v.IP)
-		createHost.InstanceID = ToAPIString(v.ExternalIdentifier)
 	default:
 		return errors.Errorf("Invalid type passed to *CreateHost.BuildFromService (%T)", h)
 	}

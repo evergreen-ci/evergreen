@@ -13,7 +13,6 @@ import (
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/ec2"
 	"github.com/aws/aws-sdk-go/service/pricing"
-	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
@@ -43,32 +42,11 @@ type AWSClient interface {
 	// TerminateInstances is a wrapper for ec2.TerminateInstances.
 	TerminateInstances(context.Context, *ec2.TerminateInstancesInput) (*ec2.TerminateInstancesOutput, error)
 
-	// RequestSpotInstances is a wrapper for ec2.RequestSpotInstances.
-	RequestSpotInstances(context.Context, *ec2.RequestSpotInstancesInput) (*ec2.RequestSpotInstancesOutput, error)
-
-	// DescribeSpotInstanceRequests is a wrapper for ec2.DescribeSpotInstanceRequests.
-	DescribeSpotInstanceRequests(ctx context.Context, input *ec2.DescribeSpotInstanceRequestsInput) (*ec2.DescribeSpotInstanceRequestsOutput, error)
-
-	// DescribeSpotRequestsAndSave is a wrapper for DescribeSpotInstanceRequests that also saves instance IDs to the db.
-	DescribeSpotRequestsAndSave(context.Context, []*host.Host) (*ec2.DescribeSpotInstanceRequestsOutput, error)
-
-	// GetSpotInstanceId returns the instance ID if already saved, otherwise looks it up.
-	GetSpotInstanceId(context.Context, *host.Host) (string, error)
-
-	// CancelSpotInstanceRequests is a wrapper for ec2.CancelSpotInstanceRequests.
-	CancelSpotInstanceRequests(context.Context, *ec2.CancelSpotInstanceRequestsInput) (*ec2.CancelSpotInstanceRequestsOutput, error)
-
 	// DescribeVolumes is a wrapper for ec2.DescribeVolumes.
 	DescribeVolumes(context.Context, *ec2.DescribeVolumesInput) (*ec2.DescribeVolumesOutput, error)
 
 	// DescribeSpotPriceHistory is a wrapper for ec2.DescribeSpotPriceHistory.
 	DescribeSpotPriceHistory(context.Context, *ec2.DescribeSpotPriceHistoryInput) (*ec2.DescribeSpotPriceHistoryOutput, error)
-
-	// DescribeSubnets is a wrapper for ec2.DescribeSubnets.
-	DescribeSubnets(context.Context, *ec2.DescribeSubnetsInput) (*ec2.DescribeSubnetsOutput, error)
-
-	// DescribeVpcs is a wrapper for ec2.DescribeVpcs.
-	DescribeVpcs(context.Context, *ec2.DescribeVpcsInput) (*ec2.DescribeVpcsOutput, error)
 
 	// GetInstanceInfo returns info about an ec2 instance.
 	GetInstanceInfo(context.Context, string) (*ec2.Instance, error)
@@ -81,6 +59,15 @@ type AWSClient interface {
 
 	// GetProducts is a wrapper for pricing.GetProducts.
 	GetProducts(context.Context, *pricing.GetProductsInput) (*pricing.GetProductsOutput, error)
+
+	// CreateLaunchTemplate is a wrapper for ec2.CreateLaunchTemplateWithContext
+	CreateLaunchTemplate(context.Context, *ec2.CreateLaunchTemplateInput) (*ec2.CreateLaunchTemplateOutput, error)
+
+	// DeleteLaunchTemplate is a wrapper for ec2.DeleteLaunchTemplateWithContext
+	DeleteLaunchTemplate(context.Context, *ec2.DeleteLaunchTemplateInput) (*ec2.DeleteLaunchTemplateOutput, error)
+
+	// CreateFleet is a wrapper for ec2.CreateFleetWithContext
+	CreateFleet(context.Context, *ec2.CreateFleetInput) (*ec2.CreateFleetOutput, error)
 }
 
 // awsClientImpl wraps ec2.EC2.
@@ -235,134 +222,6 @@ func (c *awsClientImpl) TerminateInstances(ctx context.Context, input *ec2.Termi
 	return output, nil
 }
 
-// RequestSpotInstances is a wrapper for ec2.RequestSpotInstances.
-func (c *awsClientImpl) RequestSpotInstances(ctx context.Context, input *ec2.RequestSpotInstancesInput) (*ec2.RequestSpotInstancesOutput, error) {
-	var output *ec2.RequestSpotInstancesOutput
-	var err error
-	msg := makeAWSLogMessage("RequestSpotInstances", fmt.Sprintf("%T", c), input)
-	err = util.Retry(
-		ctx,
-		func() (bool, error) {
-			output, err = c.EC2.RequestSpotInstancesWithContext(ctx, input)
-			if err != nil {
-				if ec2err, ok := err.(awserr.Error); ok {
-					grip.Error(message.WrapError(ec2err, msg))
-				}
-				return true, err
-			}
-			grip.Info(msg)
-			return false, nil
-		}, awsClientImplRetries, awsClientImplStartPeriod, 0)
-	if err != nil {
-		return nil, err
-	}
-	return output, nil
-}
-
-// DescribeSpotInstanceRequests is a wrapper for ec2.DescribeSpotInstanceRequests.
-func (c *awsClientImpl) DescribeSpotInstanceRequests(ctx context.Context, input *ec2.DescribeSpotInstanceRequestsInput) (*ec2.DescribeSpotInstanceRequestsOutput, error) {
-	var output *ec2.DescribeSpotInstanceRequestsOutput
-	var err error
-	msg := makeAWSLogMessage("DescribeSpotInstanceRequests", fmt.Sprintf("%T", c), input)
-	err = util.Retry(
-		ctx,
-		func() (bool, error) {
-			output, err = c.EC2.DescribeSpotInstanceRequestsWithContext(ctx, input)
-			if err != nil {
-				if ec2err, ok := err.(awserr.Error); ok {
-					grip.Error(message.WrapError(ec2err, msg))
-				}
-				return true, err
-			}
-			grip.Info(msg)
-			return false, nil
-		}, awsClientImplRetries, awsClientImplStartPeriod, 0)
-	if err != nil {
-		return nil, err
-	}
-	return output, nil
-}
-
-func (c *awsClientImpl) DescribeSpotRequestsAndSave(ctx context.Context, hosts []*host.Host) (*ec2.DescribeSpotInstanceRequestsOutput, error) {
-	spotRequestIds := []*string{}
-	for idx := range hosts {
-		h := hosts[idx]
-		if h == nil {
-			return nil, errors.New("unable to describe spot request for nil host")
-		}
-		spotRequestIds = append(spotRequestIds, aws.String(h.Id))
-	}
-	apiInput := &ec2.DescribeSpotInstanceRequestsInput{
-		SpotInstanceRequestIds: spotRequestIds,
-	}
-
-	instances, err := c.DescribeSpotInstanceRequests(ctx, apiInput)
-	if err != nil {
-		return nil, errors.Wrap(err, "error describing spot requests")
-	}
-
-	catcher := grip.NewSimpleCatcher()
-	for idx := range hosts {
-		h := hosts[idx]
-		for idx := range instances.SpotInstanceRequests {
-			instance := instances.SpotInstanceRequests[idx]
-			if instance.SpotInstanceRequestId != nil && *instance.SpotInstanceRequestId == h.Id {
-				if instance.InstanceId != nil {
-					h.ExternalIdentifier = *instance.InstanceId
-				}
-			}
-		}
-		if h.ExternalIdentifier != "" {
-			catcher.Add(h.SetExtId())
-		}
-	}
-
-	return instances, catcher.Resolve()
-}
-
-func (c *awsClientImpl) GetSpotInstanceId(ctx context.Context, h *host.Host) (string, error) {
-	if h == nil {
-		return "", errors.New("unable to get spot instance for nil host")
-	}
-	if h.ExternalIdentifier != "" {
-		return h.ExternalIdentifier, nil
-	}
-
-	_, err := c.DescribeSpotRequestsAndSave(ctx, []*host.Host{h})
-	if err != nil {
-		return "", err
-	}
-
-	return h.ExternalIdentifier, nil
-}
-
-// CancelSpotInstanceRequests is a wrapper for ec2.CancelSpotInstanceRequests.
-func (c *awsClientImpl) CancelSpotInstanceRequests(ctx context.Context, input *ec2.CancelSpotInstanceRequestsInput) (*ec2.CancelSpotInstanceRequestsOutput, error) {
-	var output *ec2.CancelSpotInstanceRequestsOutput
-	var err error
-	msg := makeAWSLogMessage("CancelSpotInstanceRequests", fmt.Sprintf("%T", c), input)
-	err = util.Retry(
-		ctx,
-		func() (bool, error) {
-			output, err = c.EC2.CancelSpotInstanceRequestsWithContext(ctx, input)
-			if err != nil {
-				if ec2err, ok := err.(awserr.Error); ok {
-					grip.Error(message.WrapError(ec2err, msg))
-					if ec2err.Code() == EC2ErrorSpotRequestNotFound {
-						return false, err
-					}
-				}
-				return true, err
-			}
-			grip.Info(msg)
-			return false, nil
-		}, awsClientImplRetries, awsClientImplStartPeriod, 0)
-	if err != nil {
-		return nil, err
-	}
-	return output, nil
-}
-
 // DescribeVolumes is a wrapper for ec2.DescribeVolumes.
 func (c *awsClientImpl) DescribeVolumes(ctx context.Context, input *ec2.DescribeVolumesInput) (*ec2.DescribeVolumesOutput, error) {
 	var output *ec2.DescribeVolumesOutput
@@ -396,54 +255,6 @@ func (c *awsClientImpl) DescribeSpotPriceHistory(ctx context.Context, input *ec2
 		ctx,
 		func() (bool, error) {
 			output, err = c.EC2.DescribeSpotPriceHistoryWithContext(ctx, input)
-			if err != nil {
-				if ec2err, ok := err.(awserr.Error); ok {
-					grip.Error(message.WrapError(ec2err, msg))
-				}
-				return true, err
-			}
-			grip.Info(msg)
-			return false, nil
-		}, awsClientImplRetries, awsClientImplStartPeriod, 0)
-	if err != nil {
-		return nil, err
-	}
-	return output, nil
-}
-
-// DescribeSubnets is a wrapper for ec2.DescribeSubnets.
-func (c *awsClientImpl) DescribeSubnets(ctx context.Context, input *ec2.DescribeSubnetsInput) (*ec2.DescribeSubnetsOutput, error) {
-	var output *ec2.DescribeSubnetsOutput
-	var err error
-	msg := makeAWSLogMessage("DescribeSubnets", fmt.Sprintf("%T", c), input)
-	err = util.Retry(
-		ctx,
-		func() (bool, error) {
-			output, err = c.EC2.DescribeSubnetsWithContext(ctx, input)
-			if err != nil {
-				if ec2err, ok := err.(awserr.Error); ok {
-					grip.Error(message.WrapError(ec2err, msg))
-				}
-				return true, err
-			}
-			grip.Info(msg)
-			return false, nil
-		}, awsClientImplRetries, awsClientImplStartPeriod, 0)
-	if err != nil {
-		return nil, err
-	}
-	return output, nil
-}
-
-// DescribeVpcs is a wrapper for ec2.DescribeVpcs.
-func (c *awsClientImpl) DescribeVpcs(ctx context.Context, input *ec2.DescribeVpcsInput) (*ec2.DescribeVpcsOutput, error) {
-	var output *ec2.DescribeVpcsOutput
-	var err error
-	msg := makeAWSLogMessage("DescribeVpcs", fmt.Sprintf("%T", c), input)
-	err = util.Retry(
-		ctx,
-		func() (bool, error) {
-			output, err = c.EC2.DescribeVpcsWithContext(ctx, input)
 			if err != nil {
 				if ec2err, ok := err.(awserr.Error); ok {
 					grip.Error(message.WrapError(ec2err, msg))
@@ -557,6 +368,78 @@ func (c *awsClientImpl) GetProducts(ctx context.Context, input *pricing.GetProdu
 	return output, nil
 }
 
+// CreateLaunchTemplate is a wrapper for ec2.CreateLaunchTemplateWithContext
+func (c *awsClientImpl) CreateLaunchTemplate(ctx context.Context, input *ec2.CreateLaunchTemplateInput) (*ec2.CreateLaunchTemplateOutput, error) {
+	var output *ec2.CreateLaunchTemplateOutput
+	var err error
+	msg := makeAWSLogMessage("CreateLaunchTemplate", fmt.Sprintf("%T", c), input)
+	err = util.Retry(
+		ctx,
+		func() (bool, error) {
+			output, err = c.EC2.CreateLaunchTemplateWithContext(ctx, input)
+			if err != nil {
+				if ec2err, ok := err.(awserr.Error); ok {
+					grip.Error(message.WrapError(ec2err, msg))
+				}
+				return true, err
+			}
+			grip.Info(msg)
+			return false, nil
+		}, awsClientImplRetries, awsClientImplStartPeriod, 0)
+	if err != nil {
+		return nil, err
+	}
+	return output, nil
+}
+
+// DeleteLaunchTemplate is a wrapper for ec2.DeleteLaunchTemplateWithContext
+func (c *awsClientImpl) DeleteLaunchTemplate(ctx context.Context, input *ec2.DeleteLaunchTemplateInput) (*ec2.DeleteLaunchTemplateOutput, error) {
+	var output *ec2.DeleteLaunchTemplateOutput
+	var err error
+	msg := makeAWSLogMessage("DeleteLaunchTemplate", fmt.Sprintf("%T", c), input)
+	err = util.Retry(
+		ctx,
+		func() (bool, error) {
+			output, err = c.EC2.DeleteLaunchTemplateWithContext(ctx, input)
+			if err != nil {
+				if ec2err, ok := err.(awserr.Error); ok {
+					grip.Error(message.WrapError(ec2err, msg))
+				}
+				return true, err
+			}
+			grip.Info(msg)
+			return false, nil
+		}, awsClientImplRetries, awsClientImplStartPeriod, 0)
+	if err != nil {
+		return nil, err
+	}
+	return output, nil
+}
+
+// CreateFleet is a wrapper for ec2.CreateFleetWithContext
+func (c *awsClientImpl) CreateFleet(ctx context.Context, input *ec2.CreateFleetInput) (*ec2.CreateFleetOutput, error) {
+	var output *ec2.CreateFleetOutput
+	var err error
+	msg := makeAWSLogMessage("CreateFleet", fmt.Sprintf("%T", c), input)
+	err = util.Retry(
+		ctx,
+		func() (bool, error) {
+			output, err = c.EC2.CreateFleetWithContext(ctx, input)
+			if err != nil {
+				if ec2err, ok := err.(awserr.Error); ok {
+					grip.Error(message.WrapError(ec2err, msg))
+				}
+				return true, err
+			}
+			grip.Info(msg)
+			return false, nil
+		}, awsClientImplRetries, awsClientImplStartPeriod, 0)
+	if err != nil {
+		return nil, err
+	}
+	return output, nil
+}
+
 // awsClientMock mocks ec2.EC2.
 type awsClientMock struct { //nolint
 	*credentials.Credentials
@@ -564,19 +447,17 @@ type awsClientMock struct { //nolint
 	*ec2.DescribeInstancesInput
 	*ec2.CreateTagsInput
 	*ec2.TerminateInstancesInput
-	*ec2.RequestSpotInstancesInput
-	*ec2.DescribeSpotInstanceRequestsInput
-	*ec2.CancelSpotInstanceRequestsInput
 	*ec2.DescribeVolumesInput
 	*ec2.DescribeSpotPriceHistoryInput
-	*ec2.DescribeSubnetsInput
-	*ec2.DescribeVpcsInput
 	*ec2.CreateKeyPairInput
 	*ec2.DeleteKeyPairInput
 	*pricing.GetProductsInput
+	*ec2.CreateLaunchTemplateInput
+	*ec2.DeleteLaunchTemplateInput
+	*ec2.CreateFleetInput
 
-	*ec2.DescribeSpotInstanceRequestsOutput
 	*ec2.DescribeInstancesOutput
+	*ec2.CreateLaunchTemplateOutput
 }
 
 // Create a new mock client.
@@ -645,86 +526,6 @@ func (c *awsClientMock) TerminateInstances(ctx context.Context, input *ec2.Termi
 	return &ec2.TerminateInstancesOutput{}, nil
 }
 
-// RequestSpotInstances is a mock for ec2.RequestSpotInstances.
-func (c *awsClientMock) RequestSpotInstances(ctx context.Context, input *ec2.RequestSpotInstancesInput) (*ec2.RequestSpotInstancesOutput, error) {
-	c.RequestSpotInstancesInput = input
-	return &ec2.RequestSpotInstancesOutput{
-		SpotInstanceRequests: []*ec2.SpotInstanceRequest{
-			&ec2.SpotInstanceRequest{
-				InstanceId:            aws.String("instance_id"),
-				State:                 aws.String(SpotStatusOpen),
-				SpotInstanceRequestId: aws.String("instance_id"),
-			},
-		},
-	}, nil
-}
-
-// DescribeSpotInstanceRequests is a mock for ec2.DescribeSpotInstanceRequests.
-func (c *awsClientMock) DescribeSpotInstanceRequests(ctx context.Context, input *ec2.DescribeSpotInstanceRequestsInput) (*ec2.DescribeSpotInstanceRequestsOutput, error) {
-	c.DescribeSpotInstanceRequestsInput = input
-	if c.DescribeSpotInstanceRequestsOutput != nil {
-		return c.DescribeSpotInstanceRequestsOutput, nil
-	}
-	return &ec2.DescribeSpotInstanceRequestsOutput{
-		SpotInstanceRequests: []*ec2.SpotInstanceRequest{
-			&ec2.SpotInstanceRequest{
-				InstanceId:            aws.String("instance_id"),
-				State:                 aws.String(SpotStatusActive),
-				SpotInstanceRequestId: aws.String("instance_id"),
-			},
-		},
-	}, nil
-}
-
-func (c *awsClientMock) DescribeSpotRequestsAndSave(ctx context.Context, hosts []*host.Host) (*ec2.DescribeSpotInstanceRequestsOutput, error) {
-	spotRequestIds := []*string{}
-	for idx := range hosts {
-		h := hosts[idx]
-		spotRequestIds = append(spotRequestIds, aws.String(h.Id))
-	}
-	apiInput := &ec2.DescribeSpotInstanceRequestsInput{
-		SpotInstanceRequestIds: spotRequestIds,
-	}
-
-	instances, err := c.DescribeSpotInstanceRequests(ctx, apiInput)
-	if err != nil {
-		return nil, err
-	}
-
-	for idx := range hosts {
-		h := hosts[idx]
-		for idx := range instances.SpotInstanceRequests {
-			instance := instances.SpotInstanceRequests[idx]
-			if instance.SpotInstanceRequestId != nil && *instance.SpotInstanceRequestId == h.Id {
-				if instance.InstanceId != nil {
-					h.ExternalIdentifier = *instance.InstanceId
-				}
-			}
-		}
-	}
-
-	return instances, nil
-}
-
-func (c *awsClientMock) GetSpotInstanceId(ctx context.Context, h *host.Host) (string, error) {
-	if h.ExternalIdentifier != "" {
-		return h.ExternalIdentifier, nil
-	}
-
-	_, err := c.DescribeSpotRequestsAndSave(ctx, []*host.Host{h})
-	if err != nil {
-		return "", err
-	}
-
-	return h.ExternalIdentifier, nil
-}
-
-// CancelSpotInstanceRequests is a mock for ec2.CancelSpotInstanceRequests.
-func (c *awsClientMock) CancelSpotInstanceRequests(ctx context.Context, input *ec2.CancelSpotInstanceRequestsInput) (*ec2.CancelSpotInstanceRequestsOutput, error) {
-	c.CancelSpotInstanceRequestsInput = input
-	return nil, nil
-}
-
 // DescribeVolumes is a mock for ec2.DescribeVolumes.
 func (c *awsClientMock) DescribeVolumes(ctx context.Context, input *ec2.DescribeVolumesInput) (*ec2.DescribeVolumesOutput, error) {
 	c.DescribeVolumesInput = input
@@ -740,28 +541,6 @@ func (c *awsClientMock) DescribeSpotPriceHistory(ctx context.Context, input *ec2
 				SpotPrice:        aws.String("1.0"),
 				AvailabilityZone: aws.String("us-east-1a"),
 			},
-		},
-	}, nil
-}
-
-// DescribeSubnets is a mock for ec2.DescribeSubnets.
-func (c *awsClientMock) DescribeSubnets(ctx context.Context, input *ec2.DescribeSubnetsInput) (*ec2.DescribeSubnetsOutput, error) {
-	c.DescribeSubnetsInput = input
-	return &ec2.DescribeSubnetsOutput{
-		Subnets: []*ec2.Subnet{
-			&ec2.Subnet{
-				SubnetId: aws.String("subnet-654321"),
-			},
-		},
-	}, nil
-}
-
-// DescribeVpcs is a mock for ec2.DescribeVpcs.
-func (c *awsClientMock) DescribeVpcs(ctx context.Context, input *ec2.DescribeVpcsInput) (*ec2.DescribeVpcsOutput, error) {
-	c.DescribeVpcsInput = input
-	return &ec2.DescribeVpcsOutput{
-		Vpcs: []*ec2.Vpc{
-			&ec2.Vpc{VpcId: aws.String("vpc-123456")},
 		},
 	}, nil
 }
@@ -806,6 +585,41 @@ func (c *awsClientMock) DeleteKeyPair(ctx context.Context, input *ec2.DeleteKeyP
 func (c *awsClientMock) GetProducts(ctx context.Context, input *pricing.GetProductsInput) (*pricing.GetProductsOutput, error) {
 	c.GetProductsInput = input
 	return &pricing.GetProductsOutput{}, nil
+}
+
+// CreateLaunchTemplate is a mock for ec2.CreateLaunchTemplateWithContext
+func (c *awsClientMock) CreateLaunchTemplate(ctx context.Context, input *ec2.CreateLaunchTemplateInput) (*ec2.CreateLaunchTemplateOutput, error) {
+	c.CreateLaunchTemplateInput = input
+	if c.CreateLaunchTemplateOutput == nil {
+		c.CreateLaunchTemplateOutput = &ec2.CreateLaunchTemplateOutput{
+			LaunchTemplate: &ec2.LaunchTemplate{
+				LaunchTemplateId:    aws.String("templateID"),
+				LatestVersionNumber: aws.Int64(1),
+			},
+		}
+	}
+
+	return c.CreateLaunchTemplateOutput, nil
+}
+
+// DeleteLaunchTemplate is a mock for ec2.DeleteLaunchTemplateWithContext
+func (c *awsClientMock) DeleteLaunchTemplate(ctx context.Context, input *ec2.DeleteLaunchTemplateInput) (*ec2.DeleteLaunchTemplateOutput, error) {
+	c.DeleteLaunchTemplateInput = input
+	return &ec2.DeleteLaunchTemplateOutput{}, nil
+}
+
+// CreateFleet is a mock for ec2.CreateFleetWithContext
+func (c *awsClientMock) CreateFleet(ctx context.Context, input *ec2.CreateFleetInput) (*ec2.CreateFleetOutput, error) {
+	c.CreateFleetInput = input
+	return &ec2.CreateFleetOutput{
+		Instances: []*ec2.CreateFleetInstance{
+			{
+				InstanceIds: []*string{
+					aws.String("i-12345"),
+				},
+			},
+		},
+	}, nil
 }
 
 func makeAWSLogMessage(name, client string, args interface{}) message.Fields {

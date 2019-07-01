@@ -91,11 +91,8 @@ func getZone(ctx context.Context, client AWSClient, h *host.Host) (string, error
 	if h.Zone != "" {
 		return h.Zone, nil
 	}
-	instanceID := h.Id
-	if h.ExternalIdentifier != "" {
-		instanceID = h.ExternalIdentifier
-	}
-	instance, err := client.GetInstanceInfo(ctx, instanceID)
+
+	instance, err := client.GetInstanceInfo(ctx, h.Id)
 	if err != nil {
 		return "", errors.Wrap(err, "error getting instance info")
 	}
@@ -284,7 +281,7 @@ func (cpf *cachingPriceFetcher) parseAWSPricing(out *pricing.GetProductsOutput) 
 	return p, nil
 }
 
-func (cpf *cachingPriceFetcher) getLatestLowestSpotCostForInstance(ctx context.Context, client AWSClient, settings *EC2ProviderSettings, os osType) (float64, string, error) {
+func (cpf *cachingPriceFetcher) getLatestLowestSpotCostForInstance(ctx context.Context, client AWSClient, settings *EC2ProviderSettings, os osType) (float64, error) {
 	osName := string(os)
 	if settings.IsVpc {
 		osName += " (Amazon VPC)"
@@ -309,25 +306,23 @@ func (cpf *cachingPriceFetcher) getLatestLowestSpotCostForInstance(ctx context.C
 
 	prices, err := cpf.describeSpotPriceHistory(ctx, client, args)
 	if err != nil {
-		return 0, "", errors.WithStack(err)
+		return 0, errors.WithStack(err)
 	}
 	if len(prices) == 0 {
-		return 0, "", errors.New("no prices found")
+		return 0, errors.New("no prices found")
 	}
 
 	var min float64
-	var az string
 	for i := range prices {
 		p, err := strconv.ParseFloat(*prices[i].SpotPrice, 64)
 		if err != nil {
-			return 0, "", errors.Wrapf(err, "problem parsing %s", *prices[i].SpotPrice)
+			return 0, errors.Wrapf(err, "problem parsing %s", *prices[i].SpotPrice)
 		}
 		if min == 0 || p < min {
 			min = p
-			az = *prices[i].AvailabilityZone
 		}
 	}
-	return min, az, nil
+	return min, nil
 }
 
 func (m *ec2Manager) getProvider(ctx context.Context, h *host.Host, ec2settings *EC2ProviderSettings) (ec2ProviderType, error) {
@@ -335,7 +330,6 @@ func (m *ec2Manager) getProvider(ctx context.Context, h *host.Host, ec2settings 
 		err           error
 		onDemandPrice float64
 		spotPrice     float64
-		az            string
 		r             string
 	)
 	if h.UserHost || m.provider == onDemandProvider || m.provider == autoProvider {
@@ -349,7 +343,7 @@ func (m *ec2Manager) getProvider(ctx context.Context, h *host.Host, ec2settings 
 		}
 	}
 	if m.provider == spotProvider || m.provider == autoProvider {
-		spotPrice, az, err = pkgCachingPriceFetcher.getLatestLowestSpotCostForInstance(ctx, m.client, ec2settings, getOsName(h))
+		spotPrice, err = pkgCachingPriceFetcher.getLatestLowestSpotCostForInstance(ctx, m.client, ec2settings, getOsName(h))
 		if err != nil {
 			return 0, errors.Wrap(err, "error getting latest lowest spot price")
 		}
@@ -367,15 +361,9 @@ func (m *ec2Manager) getProvider(ctx context.Context, h *host.Host, ec2settings 
 	if m.provider == autoProvider {
 		if spotPrice < onDemandPrice {
 			h.ComputeCostPerHour = spotPrice
-			ec2settings.BidPrice = onDemandPrice
-			if ec2settings.VpcName != "" {
-				subnetID, err := m.getSubnetForAZ(ctx, az, ec2settings.VpcName)
-				if err != nil {
-					return 0, errors.Wrap(err, "error settings dynamic subnet for spot")
-				}
-				ec2settings.SubnetId = subnetID
-			}
 			h.Distro.Provider = evergreen.ProviderNameEc2Spot
+			// get the cheapest AZ by not specifying a subnet
+			ec2settings.SubnetId = ""
 			return spotProvider, nil
 		}
 		h.ComputeCostPerHour = onDemandPrice
@@ -383,44 +371,6 @@ func (m *ec2Manager) getProvider(ctx context.Context, h *host.Host, ec2settings 
 		return onDemandProvider, nil
 	}
 	return 0, errors.Errorf("provider is %d, expected %d, %d, or %d", m.provider, onDemandProvider, spotProvider, autoProvider)
-}
-
-func (m *ec2Manager) getSubnetForAZ(ctx context.Context, azName, vpcName string) (string, error) {
-	vpcs, err := m.client.DescribeVpcs(ctx, &ec2.DescribeVpcsInput{
-		Filters: []*ec2.Filter{
-			&ec2.Filter{
-				Name: aws.String("tag:Name"),
-				Values: []*string{
-					aws.String(vpcName),
-				},
-			},
-		},
-	})
-	if err != nil {
-		return "", errors.Wrap(err, "error finding vpc id")
-	}
-	vpcID := *vpcs.Vpcs[0].VpcId
-
-	subnets, err := m.client.DescribeSubnets(ctx, &ec2.DescribeSubnetsInput{
-		Filters: []*ec2.Filter{
-			&ec2.Filter{
-				Name:   aws.String("vpc-id"),
-				Values: []*string{aws.String(vpcID)},
-			},
-			&ec2.Filter{
-				Name:   aws.String("availability-zone"),
-				Values: []*string{aws.String(azName)},
-			},
-			&ec2.Filter{
-				Name:   aws.String("tag:Name"),
-				Values: []*string{aws.String(vpcName + ".subnet_" + strings.Split(azName, "-")[2])},
-			},
-		},
-	})
-	if err != nil {
-		return "", errors.Wrap(err, "error finding subnet id")
-	}
-	return *subnets.Subnets[0].SubnetId, nil
 }
 
 func (cpf *cachingPriceFetcher) getEBSCost(ctx context.Context, client AWSClient, h *host.Host, t timeRange) (float64, error) {
@@ -444,11 +394,8 @@ func getVolumeSize(ctx context.Context, client AWSClient, h *host.Host) (int64, 
 	if h.VolumeTotalSize != 0 {
 		return h.VolumeTotalSize, nil
 	}
-	instanceID := h.Id
-	if h.ExternalIdentifier != "" {
-		instanceID = h.ExternalIdentifier
-	}
-	instance, err := client.GetInstanceInfo(ctx, instanceID)
+
+	instance, err := client.GetInstanceInfo(ctx, h.Id)
 	if err != nil {
 		return 0, errors.Wrap(err, "error getting instance info")
 	}

@@ -33,9 +33,6 @@ type Host struct {
 	Provider string        `bson:"host_type" json:"host_type"`
 	IP       string        `bson:"ip_address" json:"ip_address"`
 
-	// secondary (external) identifier for the host
-	ExternalIdentifier string `bson:"ext_identifier" json:"ext_identifier"`
-
 	// physical location of host
 	Project string `bson:"project" json:"project"`
 	Zone    string `bson:"zone" json:"zone"`
@@ -910,13 +907,6 @@ func (h *Host) DisablePoisonedHost(logs string) error {
 	}
 
 	return errors.WithStack(h.SetDecommissioned(evergreen.User, logs))
-}
-
-func (h *Host) SetExtId() error {
-	return UpdateOne(
-		bson.M{IdKey: h.Id},
-		bson.M{"$set": bson.M{ExtIdKey: h.ExternalIdentifier}},
-	)
 }
 
 // SetRunningTeardownGroup marks the host as running teardown_group for a task group, no-oping if it's already set to the same task

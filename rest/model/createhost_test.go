@@ -10,15 +10,15 @@ import (
 func TestCreateHostBuildFromService(t *testing.T) {
 	assert := assert.New(t)
 	h := host.Host{
-		Host:               "foo.com",
-		ExternalIdentifier: "sir-123",
-		IP:                 "abcd:1234:459c:2d00:cfe4:843b:1d60:8e47",
+		Id:   "i-123456",
+		Host: "foo.com",
+		IP:   "abcd:1234:459c:2d00:cfe4:843b:1d60:8e47",
 	}
 	c := &CreateHost{}
 	err := c.BuildFromService(h)
 	assert.NoError(err)
 	assert.Equal(FromAPIString(c.DNSName), h.Host)
-	assert.Equal(FromAPIString(c.InstanceID), h.ExternalIdentifier)
+	assert.Equal(FromAPIString(c.InstanceID), h.Id)
 	assert.Equal(FromAPIString(c.IP), h.IP)
 }
 

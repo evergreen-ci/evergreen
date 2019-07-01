@@ -34,7 +34,6 @@ var (
 	IPKey                        = bsonutil.MustHaveTag(Host{}, "IP")
 	ProvisionedKey               = bsonutil.MustHaveTag(Host{}, "Provisioned")
 	ProvisionTimeKey             = bsonutil.MustHaveTag(Host{}, "ProvisionTime")
-	ExtIdKey                     = bsonutil.MustHaveTag(Host{}, "ExternalIdentifier")
 	RunningTaskKey               = bsonutil.MustHaveTag(Host{}, "RunningTask")
 	RunningTaskGroupKey          = bsonutil.MustHaveTag(Host{}, "RunningTaskGroup")
 	RunningTaskBuildVariantKey   = bsonutil.MustHaveTag(Host{}, "RunningTaskBuildVariant")

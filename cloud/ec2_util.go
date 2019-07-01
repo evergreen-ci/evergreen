@@ -13,6 +13,7 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/mongodb/anser/bsonutil"
+	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 )
 
@@ -49,11 +50,6 @@ var (
 	SecurityGroupsKey = bsonutil.MustHaveTag(EC2ProviderSettings{}, "SecurityGroupIDs")
 	KeyNameKey        = bsonutil.MustHaveTag(EC2ProviderSettings{}, "KeyName")
 	MountPointsKey    = bsonutil.MustHaveTag(EC2ProviderSettings{}, "MountPoints")
-)
-
-var (
-	// bson fields for the EC2SpotSettings struct
-	BidPriceKey = bsonutil.MustHaveTag(EC2ProviderSettings{}, "BidPrice")
 )
 
 var (
@@ -274,4 +270,73 @@ func makeBlockDeviceMappings(mounts []MountPoint) ([]*ec2aws.BlockDeviceMapping,
 		mappings = append(mappings, m)
 	}
 	return mappings, nil
+}
+
+func makeBlockDeviceMappingsTemplate(mounts []MountPoint) ([]*ec2aws.LaunchTemplateBlockDeviceMappingRequest, error) {
+	if len(mounts) == 0 {
+		return nil, nil
+	}
+	mappings := []*ec2aws.LaunchTemplateBlockDeviceMappingRequest{}
+	for _, mount := range mounts {
+		if mount.DeviceName == "" {
+			return nil, errors.New("missing device name")
+		}
+		if mount.VirtualName == "" && mount.Size == 0 {
+			return nil, errors.New("must provide either a virtual name or an EBS size")
+		}
+
+		m := &ec2aws.LaunchTemplateBlockDeviceMappingRequest{
+			DeviceName: aws.String(mount.DeviceName),
+		}
+		// Without a virtual name, this is EBS
+		if mount.VirtualName == "" {
+			m.Ebs = &ec2aws.LaunchTemplateEbsBlockDeviceRequest{
+				DeleteOnTermination: aws.Bool(true),
+				VolumeSize:          aws.Int64(mount.Size),
+				VolumeType:          aws.String(ec2aws.VolumeTypeGp2),
+			}
+			if mount.Iops != 0 {
+				m.Ebs.Iops = aws.Int64(mount.Iops)
+			}
+			if mount.SnapshotID != "" {
+				m.Ebs.SnapshotId = aws.String(mount.SnapshotID)
+			}
+			if mount.VolumeType != "" {
+				m.Ebs.VolumeType = aws.String(mount.VolumeType)
+			}
+		} else { // With a virtual name, this is an instance store
+			m.VirtualName = aws.String(mount.VirtualName)
+		}
+		mappings = append(mappings, m)
+	}
+	return mappings, nil
+}
+
+func validateCreateTemplateResponse(createTemplateResponse *ec2aws.CreateLaunchTemplateOutput) error {
+	if createTemplateResponse == nil || createTemplateResponse.LaunchTemplate == nil {
+		return errors.New("create template response launch template is nil")
+	}
+
+	catcher := grip.NewBasicCatcher()
+	if createTemplateResponse.LaunchTemplate.LaunchTemplateId == nil || len(*createTemplateResponse.LaunchTemplate.LaunchTemplateId) == 0 {
+		catcher.Add(errors.New("create template response has no template identifier"))
+	}
+
+	if createTemplateResponse.LaunchTemplate.LatestVersionNumber == nil {
+		catcher.Add(errors.New("create template response has no latest version"))
+	}
+
+	return catcher.Resolve()
+}
+
+func validateCreateFleetResponse(createFleetResponse *ec2aws.CreateFleetOutput) error {
+	if createFleetResponse == nil {
+		return errors.New("create fleet response is nil")
+	}
+
+	if len(createFleetResponse.Instances) == 0 || len(createFleetResponse.Instances[0].InstanceIds) == 0 {
+		return errors.New("no instance ID in create fleet response")
+	}
+
+	return nil
 }
