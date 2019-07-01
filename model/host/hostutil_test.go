@@ -446,15 +446,15 @@ func TestJasperProcess(t *testing.T) {
 			assert.Error(t, err)
 		},
 		"RunJasperProcessPassesWithJasperClient": func(ctx context.Context, t *testing.T, env *mock.Environment, h *Host) {
-			withSetupAndTeardown(ctx, env, h, func(ctx context.Context) {
+			assert.NoError(t, withSetupAndTeardown(ctx, env, h, func(ctx context.Context) {
 				_, err := h.RunJasperProcess(ctx, env, []string{}, "echo hello world")
 				assert.NoError(t, err)
-			})
+			}))
 		},
 		"StartJasperProcessPassesWithJasperClient": func(ctx context.Context, t *testing.T, env *mock.Environment, h *Host) {
-			withSetupAndTeardown(ctx, env, h, func(ctx context.Context) {
+			assert.NoError(t, withSetupAndTeardown(ctx, env, h, func(ctx context.Context) {
 				assert.NoError(t, h.StartJasperProcess(ctx, env, []string{}, &jasper.CreateOptions{Args: []string{"echo", "hello", "world"}}))
-			})
+			}))
 		},
 	} {
 		t.Run(testName, func(t *testing.T) {
