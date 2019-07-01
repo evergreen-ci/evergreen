@@ -336,9 +336,23 @@ func (h *Host) CreateSecret() error {
 	return nil
 }
 
-// JasperCredentials gets the Jasper credentials from the database.
+// JasperCredentials gets the Jasper credentials for this host's running Jasper
+// service from the database. These credentials should not be used to connect to
+// the Jasper service - use JasperClientCredentials for this purpose.
 func (h *Host) JasperCredentials(ctx context.Context, env evergreen.Environment) (*rpc.Credentials, error) {
 	return credentials.FindByID(ctx, env, h.JasperCredentialsID)
+}
+
+// JasperClientCredentials gets the Jasper credentials for a client to
+// communicate with the host's running Jasper service. These credentials should
+// be used only to connect to the host's Jasper service.
+func (h *Host) JasperClientCredentials(ctx context.Context, env evergreen.Environment) (*rpc.Credentials, error) {
+	creds, err := credentials.FindByID(ctx, env, h.JasperCredentialsID)
+	if err != nil {
+		return nil, errors.WithStack(err)
+	}
+	creds.ServerName = h.Id
+	return creds, nil
 }
 
 // GenerateJasperCredentials creates the Jasper credentials for the given host
@@ -699,6 +713,12 @@ func (h *Host) LegacyBootstrap() bool {
 // host using the legacy method.
 func (h *Host) LegacyCommunication() bool {
 	return h.Distro.CommunicationMethod == "" || h.Distro.CommunicationMethod == distro.CommunicationMethodLegacySSH
+}
+
+// JasperCommunication returns whether or not the app server is communicating
+// with this host's Jasper service.
+func (h *Host) JasperCommunication() bool {
+	return h.Distro.CommunicationMethod == distro.CommunicationMethodSSH || h.Distro.CommunicationMethod == distro.CommunicationMethodRPC
 }
 
 // SetNeedsAgentDeploy indicates that the host's agent needs to be deployed.

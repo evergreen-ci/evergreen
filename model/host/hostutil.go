@@ -3,15 +3,19 @@ package host
 import (
 	"bytes"
 	"context"
-	"encoding/json"
 	"fmt"
+	"net"
 	"os/exec"
 	"path/filepath"
 	"strings"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/util"
+	"github.com/google/shlex"
+	"github.com/mongodb/jasper"
+	jaspercli "github.com/mongodb/jasper/cli"
 	"github.com/mongodb/jasper/rpc"
 	"github.com/pkg/errors"
 )
@@ -104,7 +108,7 @@ func (h *Host) RunSSHCommand(ctx context.Context, cmd string, sshOptions []strin
 	defer cancel()
 
 	err = env.JasperManager().CreateCommand(ctx).Host(hostInfo.Hostname).User(hostInfo.User).
-		ExtendSSHArgs("-p", hostInfo.Port, "-t", "-t").ExtendSSHArgs(sshOptions...).
+		ExtendRemoteArgs("-p", hostInfo.Port, "-t", "-t").ExtendRemoteArgs(sshOptions...).
 		SetOutputWriter(output).RedirectErrorToOutput(true).
 		Append(cmd).Run(ctx)
 
@@ -180,8 +184,7 @@ func (h *Host) ForceReinstallJasperCommand(config evergreen.HostJasperConfig) st
 }
 
 func (h *Host) jasperServiceCommand(config evergreen.HostJasperConfig, subCmd string, args ...string) string {
-	binaryPath := filepath.Join(h.Distro.CuratorDir, h.jasperBinaryFileName(config))
-	cmd := fmt.Sprintf("%s jasper service %s rpc %s", binaryPath, subCmd, strings.Join(args, " "))
+	cmd := fmt.Sprintf("%s jasper service %s rpc %s", h.jasperBinaryFilePath(config), subCmd, strings.Join(args, " "))
 	// Jasper service commands need elevated privileges to execute. On Windows,
 	// this is assuming that the command is already being run by Administrator.
 	if !h.Distro.IsWindows() {
@@ -218,11 +221,14 @@ func (h *Host) FetchJasperCommandWithPath(config evergreen.HostJasperConfig, pat
 	return strings.Join(cmds, " && ")
 }
 
+// jasperDownloadedFileName returns the name of the downloaded archive file that
+// contains the Jasper binary.
 func (h *Host) jasperDownloadedFileName(config evergreen.HostJasperConfig) string {
 	os, arch := h.Distro.Platform()
 	return fmt.Sprintf("%s-%s-%s-%s.tar.gz", config.DownloadFileName, os, arch, config.Version)
 }
 
+// jasperBinaryFileName return the filename of the Jasper binary.
 func (h *Host) jasperBinaryFileName(config evergreen.HostJasperConfig) string {
 	if h.Distro.IsWindows() {
 		return config.BinaryName + ".exe"
@@ -230,11 +236,16 @@ func (h *Host) jasperBinaryFileName(config evergreen.HostJasperConfig) string {
 	return config.BinaryName
 }
 
+// jasperBinaryFilePath returns the full path to the Jasper b inary.
+func (h *Host) jasperBinaryFilePath(config evergreen.HostJasperConfig) string {
+	return filepath.Join(h.Distro.CuratorDir, h.jasperBinaryFileName(config))
+}
+
 // BootstrapScript creates the user data script to bootstrap the host.
 func (h *Host) BootstrapScript(config evergreen.HostJasperConfig, creds *rpc.Credentials) (string, error) {
 	writeCredentialsCmd, err := h.writeJasperCredentialsFileCommand(config, creds)
 	if err != nil {
-		return "", errors.Wrap(err, "could not build command to write Jasper credentials file ")
+		return "", errors.Wrap(err, "could not build command to write Jasper credentials file")
 	}
 
 	if h.Distro.IsWindows() {
@@ -276,32 +287,106 @@ func (h *Host) writeJasperCredentialsFileCommand(config evergreen.HostJasperConf
 	return fmt.Sprintf("cat > %s <<EOF\n%s\nEOF", h.Distro.JasperCredentialsPath, exportedCreds), nil
 }
 
-// RunSSHJasperRequest runs the command to make a request to the host's
-// Jasper service over SSH. It invoking the subcommand subCmd with the given
-// request input.
-func (h *Host) RunSSHJasperRequest(ctx context.Context, env evergreen.Environment, subCmd string, input interface{}, sshOptions []string) (string, error) {
-	inputBytes, err := json.Marshal(input)
+// RunJasperProcess makes a request to the host's Jasper service to run the
+// given command, wait for its completion, and return the output from it.
+func (h *Host) RunJasperProcess(ctx context.Context, env evergreen.Environment, sshOpts []string, command string) (string, error) {
+	client, err := h.JasperClient(ctx, env, sshOpts)
 	if err != nil {
-		return "", err
+		return "", errors.Wrap(err, "could not get a Jasper client")
 	}
-
-	config := env.Settings().HostJasper
-	binaryPath := h.jasperBinaryFileName(config)
-
 	output := &util.CappedWriter{
 		Buffer:   &bytes.Buffer{},
-		MaxBytes: 1024 * 1024, // 1MB
+		MaxBytes: 1024 * 1024, // 1 MB
 	}
 
-	hostInfo, err := h.GetSSHInfo()
+	splitCmd, err := shlex.Split(command)
 	if err != nil {
-		return "", errors.WithStack(err)
+		return "", errors.Wrap(err, "problem splitting command")
+	}
+	opts := jasper.CreateOptions{Args: splitCmd}
+	proc, err := client.CreateProcess(ctx, &opts)
+	if err != nil {
+		return "", errors.Wrap(err, "problem creating process")
 	}
 
-	err = env.JasperManager().CreateCommand(ctx).Host(hostInfo.Hostname).User(hostInfo.User).
-		ExtendSSHArgs("-p", hostInfo.Port, "-t", "-t").ExtendSSHArgs(sshOptions...).
-		SetOutputWriter(output).RedirectErrorToOutput(true).
-		Append(fmt.Sprintf("%s jasper client %s --service=rpc --port=%d <<EOF\n%s\nEOF", binaryPath, subCmd, config.Port, inputBytes)).
-		Run(ctx)
-	return output.String(), errors.Wrap(err, "error making Jasper request over SSH")
+	exitCode, err := proc.Wait(ctx)
+	if err != nil {
+		return "", errors.Wrap(err, "problem waiting for process completion")
+	}
+	if exitCode != 0 {
+		return "", errors.Errorf("process returned exit code %d", exitCode)
+	}
+
+	return output.String(), nil
+}
+
+// StartJasperProcess makes a request to the host's Jasper service to start a
+// process with the given options without waiting for its completion.
+func (h *Host) StartJasperProcess(ctx context.Context, env evergreen.Environment, sshOpts []string, opts *jasper.CreateOptions) error {
+	client, err := h.JasperClient(ctx, env, sshOpts)
+	if err != nil {
+		return errors.Wrap(err, "could not get a Jasper client")
+	}
+
+	if _, err := client.CreateProcess(ctx, opts); err != nil {
+		return errors.Wrap(err, "problem creating Jasper process")
+	}
+
+	return nil
+}
+
+// JasperClient returns a remote client that communicates with this host's
+// Jasper service.
+func (h *Host) JasperClient(ctx context.Context, env evergreen.Environment, sshOpts []string) (jasper.Manager, error) {
+	if h.LegacyBootstrap() || h.LegacyCommunication() {
+		return nil, errors.New("legacy host does not support remote Jasper process management")
+	}
+
+	if h.JasperCommunication() {
+		switch h.Distro.CommunicationMethod {
+		case distro.CommunicationMethodSSH:
+			hostInfo, err := h.GetSSHInfo()
+			if err != nil {
+				return nil, errors.Wrap(err, "could not get host's SSH info")
+			}
+			remoteOpts := jasper.RemoteOptions{
+				Host: hostInfo.Hostname,
+				User: hostInfo.User,
+				Args: sshOpts,
+			}
+			clientOpts := jaspercli.ClientOptions{
+				BinaryPath:          h.jasperBinaryFilePath(env.Settings().HostJasper),
+				Type:                jaspercli.RPCService,
+				Port:                env.Settings().HostJasper.Port,
+				CredentialsFilePath: h.Distro.JasperCredentialsPath,
+			}
+
+			return jaspercli.NewSSHManager(remoteOpts, clientOpts, true)
+		case distro.CommunicationMethodRPC:
+			creds, err := h.JasperClientCredentials(ctx, env)
+			if err != nil {
+				return nil, errors.Wrap(err, "could not get client credentials to communicate with the host's Jasper service")
+			}
+
+			var hostName string
+			if h.Host != "" {
+				hostName = h.Host
+			} else if h.IP != "" {
+				hostName = fmt.Sprintf("[%s]", h.IP)
+			} else {
+				return nil, errors.New("cannot resolve Jasper service address if neither host name nor IP is set")
+			}
+
+			addrStr := fmt.Sprintf("%s:%d", hostName, env.Settings().HostJasper.Port)
+
+			serviceAddr, err := net.ResolveTCPAddr("tcp", addrStr)
+			if err != nil {
+				return nil, errors.Wrapf(err, "could not resolve Jasper service address at '%s'", addrStr)
+			}
+
+			return rpc.NewClient(ctx, serviceAddr, creds)
+		}
+	}
+
+	return nil, errors.Errorf("host does not have recognized communication method '%s'", h.Distro.CommunicationMethod)
 }

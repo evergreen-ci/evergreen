@@ -689,7 +689,7 @@ func (j *setupHostJob) loadClient(ctx context.Context, target *host.Host, settin
 	defer cancel()
 
 	makeShellCmd := j.env.JasperManager().CreateCommand(mkdctx).Host(hostSSHInfo.Hostname).User(target.User).
-		ExtendSSHArgs("-p", hostSSHInfo.Port).ExtendSSHArgs(sshOptions...).
+		ExtendRemoteArgs("-p", hostSSHInfo.Port).ExtendRemoteArgs(sshOptions...).
 		RedirectErrorToOutput(true).SetOutputWriter(mkdirOutput).
 		Append(fmt.Sprintf("mkdir -m 777 -p ~/%s && (echo 'PATH=$PATH:~/%s' >> ~/.profile || true; echo 'PATH=$PATH:~/%s' >> ~/.bash_profile || true)", targetDir, targetDir, targetDir))
 
@@ -714,7 +714,7 @@ func (j *setupHostJob) loadClient(ctx context.Context, target *host.Host, settin
 	}
 
 	curlcmd := j.env.JasperManager().CreateCommand(mkdctx).Host(hostSSHInfo.Hostname).User(target.User).
-		ExtendSSHArgs("-p", hostSSHInfo.Port).ExtendSSHArgs(sshOptions...).
+		ExtendRemoteArgs("-p", hostSSHInfo.Port).ExtendRemoteArgs(sshOptions...).
 		RedirectErrorToOutput(true).SetOutputWriter(curlOut).
 		Append(target.CurlCommand(settings.Ui.Url))
 
@@ -790,7 +790,7 @@ func (j *setupHostJob) fetchRemoteTaskData(ctx context.Context, taskId, cliPath,
 	fetchCmd := fmt.Sprintf("%s -c %s fetch -t %s --source --artifacts --dir='%s'", cliPath, confPath, taskId, target.Distro.WorkDir)
 
 	makeShellCmd := j.env.JasperManager().CreateCommand(ctx).Host(hostSSHInfo.Hostname).User(target.User).
-		ExtendSSHArgs("-p", hostSSHInfo.Port).ExtendSSHArgs(sshOptions...).
+		ExtendRemoteArgs("-p", hostSSHInfo.Port).ExtendRemoteArgs(sshOptions...).
 		RedirectErrorToOutput(true).SetOutputWriter(cmdOutput).
 		Append(fetchCmd)
 

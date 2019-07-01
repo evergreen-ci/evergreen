@@ -3,16 +3,23 @@ package host
 import (
 	"context"
 	"fmt"
+	"net"
 	"os/exec"
 	"runtime"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/mock"
 	"github.com/evergreen-ci/evergreen/model/credentials"
 	"github.com/evergreen-ci/evergreen/model/distro"
+	"github.com/evergreen-ci/evergreen/service/testutil"
+	"github.com/mongodb/grip"
+	"github.com/mongodb/jasper"
 	"github.com/mongodb/jasper/rpc"
+	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -213,7 +220,255 @@ func TestJasperCommandsWindows(t *testing.T) {
 			opCase(t, h, config)
 		})
 	}
+}
 
+func setupCredentialsDB(ctx context.Context, env *mock.Environment) error {
+	env.Settings().DomainName = "test-service"
+
+	if err := db.ClearCollections(credentials.Collection, Collection); err != nil {
+		return errors.WithStack(err)
+	}
+
+	return errors.WithStack(credentials.Bootstrap(env))
+}
+
+func setupJasperService(ctx context.Context, env *mock.Environment, h *Host) (jasper.CloseFunc, error) {
+	if _, err := h.Upsert(); err != nil {
+		return nil, errors.WithStack(err)
+	}
+	manager := &jasper.MockManager{}
+	port := testutil.NextPort()
+	addr, err := net.ResolveTCPAddr("tcp", fmt.Sprintf("localhost:%d", port))
+	if err != nil {
+		return nil, errors.WithStack(err)
+	}
+	env.Settings().HostJasper.Port = port
+
+	creds, err := h.GenerateJasperCredentials(ctx, env)
+	if err != nil {
+		return nil, errors.WithStack(err)
+	}
+
+	closeService, err := rpc.StartService(ctx, manager, addr, creds)
+	if err != nil {
+		return nil, errors.WithStack(err)
+	}
+	return closeService, errors.WithStack(h.SaveJasperCredentials(ctx, env, creds))
+}
+
+func teardownJasperService(ctx context.Context, closeService jasper.CloseFunc) error {
+	catcher := grip.NewBasicCatcher()
+	catcher.Add(db.ClearCollections(credentials.Collection, Collection))
+	if closeService != nil {
+		catcher.Add(closeService())
+	}
+	return catcher.Resolve()
+}
+
+func TestJasperClient(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	for testName, testCase := range map[string]struct {
+		withSetupAndTeardown func(ctx context.Context, env *mock.Environment, h *Host, fn func(ctx context.Context)) error
+		h                    *Host
+		expectError          bool
+	}{
+		"LegacyHostErrors": {
+			h: &Host{
+				Id: "test-host",
+				Distro: distro.Distro{
+					CommunicationMethod: distro.CommunicationMethodLegacySSH,
+					BootstrapMethod:     distro.BootstrapMethodLegacySSH,
+				},
+			},
+			expectError: true,
+		},
+		"PassesWithSSHCommunicationAndSSHInfo": {
+			h: &Host{
+				Id: "test-host",
+				Distro: distro.Distro{
+					BootstrapMethod:     distro.BootstrapMethodSSH,
+					CommunicationMethod: distro.CommunicationMethodSSH,
+				},
+				User: "foo",
+				Host: "bar",
+			},
+			expectError: false,
+		},
+		"FailsWithSSHCommunicationButNoSSHInfo": {
+			h: &Host{
+				Id: "test-host",
+				Distro: distro.Distro{
+					BootstrapMethod:     distro.BootstrapMethodSSH,
+					CommunicationMethod: distro.CommunicationMethodSSH,
+				},
+			},
+			expectError: true,
+		},
+		"FailsWithRPCCommunicationButNoNetworkAddress": {
+			withSetupAndTeardown: func(ctx context.Context, env *mock.Environment, h *Host, fn func(ctx context.Context)) error {
+				catcher := grip.NewBasicCatcher()
+				if !catcher.HasErrors() {
+					catcher.Add(errors.WithStack(setupCredentialsDB(ctx, env)))
+				}
+				var closeService jasper.CloseFunc
+				var err error
+				if !catcher.HasErrors() {
+					closeService, err = setupJasperService(ctx, env, h)
+					catcher.Add(errors.WithStack(err))
+				}
+
+				if !catcher.HasErrors() {
+					fn(ctx)
+				}
+
+				catcher.Add(errors.WithStack(teardownJasperService(ctx, closeService)))
+				return catcher.Resolve()
+			},
+			h: &Host{
+				Id: "test-host",
+				Distro: distro.Distro{
+					BootstrapMethod:     distro.BootstrapMethodSSH,
+					CommunicationMethod: distro.CommunicationMethodRPC,
+				},
+			},
+			expectError: true,
+		},
+		"FailsWithRPCCommunicationButNoJasperService": {
+			withSetupAndTeardown: func(ctx context.Context, env *mock.Environment, h *Host, fn func(ctx context.Context)) error {
+				catcher := grip.NewBasicCatcher()
+				catcher.Add(errors.WithStack(setupCredentialsDB(ctx, env)))
+
+				if !catcher.HasErrors() {
+					fn(ctx)
+				}
+
+				return errors.WithStack(teardownJasperService(ctx, nil))
+			},
+			h: &Host{
+				Id: "test-host",
+				Distro: distro.Distro{
+					BootstrapMethod:     distro.BootstrapMethodSSH,
+					CommunicationMethod: distro.CommunicationMethodRPC,
+				},
+				Host: "localhost",
+			},
+			expectError: true,
+		},
+		"PassesWithRPCCommunicationAndHostRunningJasperService": {
+			withSetupAndTeardown: func(ctx context.Context, env *mock.Environment, h *Host, fn func(ctx context.Context)) error {
+				catcher := grip.NewBasicCatcher()
+				catcher.Add(errors.WithStack(setupCredentialsDB(ctx, env)))
+				var closeService jasper.CloseFunc
+				var err error
+				if !catcher.HasErrors() {
+					closeService, err = setupJasperService(ctx, env, h)
+					catcher.Add(errors.WithStack(err))
+				}
+
+				if !catcher.HasErrors() {
+					fn(ctx)
+				}
+
+				catcher.Add(errors.WithStack(teardownJasperService(ctx, closeService)))
+				return catcher.Resolve()
+			},
+			h: &Host{
+				Id: "test-host",
+				Distro: distro.Distro{
+					BootstrapMethod:     distro.BootstrapMethodSSH,
+					CommunicationMethod: distro.CommunicationMethodRPC,
+				},
+				Host: "localhost",
+			},
+			expectError: false,
+		},
+	} {
+		t.Run(testName, func(t *testing.T) {
+			tctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+			defer cancel()
+
+			env := &mock.Environment{}
+			require.NoError(t, env.Configure(tctx, "", nil))
+			env.EnvContext = tctx
+			env.Settings().HostJasper.BinaryName = "binary"
+
+			doTest := func(ctx context.Context) {
+				client, err := testCase.h.JasperClient(ctx, env, []string{})
+				if testCase.expectError {
+					assert.Error(t, err)
+					assert.Nil(t, client)
+				} else {
+					assert.NoError(t, err)
+					assert.NotNil(t, client)
+				}
+			}
+
+			if testCase.withSetupAndTeardown != nil {
+				assert.NoError(t, testCase.withSetupAndTeardown(tctx, env, testCase.h, doTest))
+			} else {
+				doTest(tctx)
+			}
+		})
+	}
+}
+
+func TestJasperProcess(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	withSetupAndTeardown := func(ctx context.Context, env *mock.Environment, h *Host, fn func(context.Context)) error {
+		catcher := grip.NewBasicCatcher()
+		if !catcher.HasErrors() {
+			catcher.Add(errors.WithStack(setupCredentialsDB(ctx, env)))
+		}
+		var closeService jasper.CloseFunc
+		var err error
+		if !catcher.HasErrors() {
+			closeService, err = setupJasperService(ctx, env, h)
+			catcher.Add(errors.WithStack(err))
+		}
+
+		if !catcher.HasErrors() {
+			fn(ctx)
+		}
+
+		catcher.Add(errors.WithStack(teardownJasperService(ctx, closeService)))
+		return catcher.Resolve()
+	}
+	for testName, testCase := range map[string]func(ctx context.Context, t *testing.T, env *mock.Environment, h *Host){
+		"RunJasperProcessErrorsWithoutJasperClient": func(ctx context.Context, t *testing.T, env *mock.Environment, h *Host) {
+			assert.Error(t, h.StartJasperProcess(ctx, env, []string{}, &jasper.CreateOptions{Args: []string{"echo", "hello", "world"}}))
+		},
+		"StartJasperProcessErrorsWithoutJasperClient": func(ctx context.Context, t *testing.T, env *mock.Environment, h *Host) {
+			_, err := h.RunJasperProcess(ctx, env, []string{}, "echo hello world")
+			assert.Error(t, err)
+		},
+		"RunJasperProcessPassesWithJasperClient": func(ctx context.Context, t *testing.T, env *mock.Environment, h *Host) {
+			withSetupAndTeardown(ctx, env, h, func(ctx context.Context) {
+				_, err := h.RunJasperProcess(ctx, env, []string{}, "echo hello world")
+				assert.NoError(t, err)
+			})
+		},
+		"StartJasperProcessPassesWithJasperClient": func(ctx context.Context, t *testing.T, env *mock.Environment, h *Host) {
+			withSetupAndTeardown(ctx, env, h, func(ctx context.Context) {
+				assert.NoError(t, h.StartJasperProcess(ctx, env, []string{}, &jasper.CreateOptions{Args: []string{"echo", "hello", "world"}}))
+			})
+		},
+	} {
+		t.Run(testName, func(t *testing.T) {
+			tctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+			defer cancel()
+
+			env := &mock.Environment{}
+			require.NoError(t, env.Configure(tctx, "", nil))
+			env.EnvContext = tctx
+			env.Settings().HostJasper.BinaryName = "binary"
+
+			testCase(tctx, t, env, &Host{})
+		})
+	}
 }
 
 func TestTeardownCommandOverSSH(t *testing.T) {
