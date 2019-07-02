@@ -535,12 +535,12 @@ outer:
 
 	// validate that the task is there
 	if !found {
-		return errors.Errorf("task id '%s' was not found in the in-memory queue for distro '%s'",
-			taskId, self.Distro)
+		return errors.Errorf("TaskQueueItem with id '%s' not found in the in-memory TaskQueue.Queue for distro '%s'", taskId, self.Distro)
 	}
 
 	var err error
 	err = dequeue(taskId, self.Distro)
+	// STU: in what cases would there be a TaskQueueItem in the in-memory TaskQueue.Queue but no corresponding reference (Queue._id) in the db.task_queue?
 	if adb.ResultsNotFound(err) {
 		return nil
 	}
