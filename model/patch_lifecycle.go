@@ -105,7 +105,6 @@ func IncludePatchDependencies(project *Project, tvpairs []TVPair) []TVPair {
 
 // GetPatchedProject creates and validates a project created by fetching latest commit information from GitHub
 // and applying the patch to the latest remote configuration. The error returned can be a validation error.
-// TODO: see if this should return a project or a ref
 func GetPatchedProject(ctx context.Context, p *patch.Patch, githubOauthToken string) (*Project, error) {
 	if p.Version != "" {
 		return nil, errors.Errorf("Patch %v already finalized", p.Version)
