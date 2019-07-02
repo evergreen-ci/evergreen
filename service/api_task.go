@@ -317,7 +317,7 @@ func assignNextAvailableTask(taskQueue *model.TaskQueue, taskQueueService model.
 				"last_project": currentHost.LastProject,
 			}))
 
-			return nil, errors.Wrap(err, "error finding the host's last task")
+			return nil, errors.Errorf("error finding the host's last task '%s'", currentHost.LastTask)
 		}
 
 		spec = model.TaskSpec{
