@@ -285,7 +285,11 @@ func (m *ec2Manager) spawnSpotHost(ctx context.Context, h *host.Host, ec2Setting
 		if templateID != nil {
 			// Delete launch template
 			_, err := m.client.DeleteLaunchTemplate(ctx, &ec2.DeleteLaunchTemplateInput{LaunchTemplateId: templateID})
-			grip.ErrorWhen(err != nil, errors.Wrap(err, "can't delete launch template"))
+			grip.Error(message.WrapError(err, message.Fields{
+				"message":  "can't delete launch template",
+				"host":     h.Id,
+				"template": *templateID,
+			}))
 		}
 	}()
 
@@ -355,9 +359,9 @@ func (m *ec2Manager) spawnSpotHost(ctx context.Context, h *host.Host, ec2Setting
 		},
 		TargetCapacitySpecification: &ec2.TargetCapacitySpecificationRequest{
 			TotalTargetCapacity:       aws.Int64(1),
-			DefaultTargetCapacityType: aws.String("spot"),
+			DefaultTargetCapacityType: aws.String(ec2.DefaultTargetCapacityTypeSpot),
 		},
-		Type: aws.String("instant"),
+		Type: aws.String(ec2.FleetTypeInstant),
 	}
 	createFleetResponse, err := m.client.CreateFleet(ctx, createFleetInput)
 	if err != nil {
