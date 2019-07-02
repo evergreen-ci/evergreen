@@ -328,7 +328,7 @@ func assignNextAvailableTask(taskQueue *model.TaskQueue, taskQueueService model.
 		}
 	}
 
-	// STU: Can we just get the distro from the datbase once, right here? Is there a need for us to go to the database to get the distro on every iteration for the loop below?
+	// STU: Can we just get the distro from the database once, right here? Is there a need for us to go to the database to get the distro on every iteration for the loop below?
 	// STU: should we bailout if there is a database error leaving us unsure if the distro document actual exists?
 	// d, err := distro.FindOne(distro.ById(currentHost.Distro.Id))
 	// if err != nil {

@@ -138,7 +138,7 @@ func newDistroTaskDispatchService(distroID string, items []TaskQueueItem, ttl ti
 
 	grip.Debug(message.Fields{
 		"ticket":       "EVG-6289",
-		"message": "initialising new basicCachedDispatcherImpl",
+		"message":      "initializing new basicCachedDispatcherImpl",
 		"function":     "newDistroTaskDispatchService",
 		"order_length": len(t.order),
 		"units_length": len(t.units),
