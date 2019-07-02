@@ -290,59 +290,28 @@ func assignNextAvailableTask(taskQueue *model.TaskQueue, taskQueueService model.
 
 	var spec model.TaskSpec
 	if currentHost.LastTask != "" {
-		// STU: can we use the relevant fields from currentHost to determine the TaskSpec -- do we need to go to the database (db.tasks) to get the (Last)Task?
-		t, err := task.FindOneId(currentHost.LastTask)
-		if err != nil {
-			grip.Critical(message.WrapError(err, message.Fields{
-				"message":      "database error while retrieving the db.tasks document for the last task to run on this host",
-				"distro":       currentHost.Distro.Id,
-				"host":         currentHost.Id,
-				"last_task_id": currentHost.LastTask,
-				"last_group":   currentHost.LastGroup,
-				"last_bv":      currentHost.LastBuildVariant,
-				"last_version": currentHost.LastVersion,
-				"last_project": currentHost.LastProject,
-			}))
-			return nil, errors.Wrap(err, "error finding last task")
-		}
-		if t == nil {
-			grip.Critical(message.WrapError(err, message.Fields{
-				"message":      "cannot find a corresponding db.tasks document for the last task to run on this host",
-				"distro":       currentHost.Distro.Id,
-				"host":         currentHost.Id,
-				"last_task_id": currentHost.LastTask,
-				"last_group":   currentHost.LastGroup,
-				"last_bv":      currentHost.LastBuildVariant,
-				"last_version": currentHost.LastVersion,
-				"last_project": currentHost.LastProject,
-			}))
-
-			return nil, errors.Errorf("error finding the host's last task '%s'", currentHost.LastTask)
-		}
-
 		spec = model.TaskSpec{
-			Group:        t.TaskGroup,
-			BuildVariant: t.BuildVariant,
-			ProjectID:    t.Project,
-			Version:      t.Version,
+			Group:        currentHost.LastGroup,
+			BuildVariant: currentHost.LastBuildVariant,
+			ProjectID:    currentHost.LastProject,
+			Version:      currentHost.LastVersion,
 		}
 	}
 
-	// STU: Can we just get the distro from the database once, right here? Is there a need for us to go to the database to get the distro on every iteration for the loop below?
-	// STU: should we bailout if there is a database error leaving us unsure if the distro document actual exists?
-	// d, err := distro.FindOne(distro.ById(currentHost.Distro.Id))
-	// if err != nil {
-	// 	m := "database error while retrieving  distro document"
-	// 	if adb.ResultsNotFound(err) {
-	// 		m = "cannot find the db.distro document for the given distro"
-	// 	}
-	// 	grip.Warning(message.Fields{
-	// 		"message": m,
-	// 		"distro":  currentHost.Distro.Id,
-	// 		"host":    currentHost.Id,
-	// 	})
-	// 	d = currentHost.Distro
-	// }
+	d, err := distro.FindOne(distro.ById(currentHost.Distro.Id))
+	if err != nil {
+		// Should we bailout if there is a database error leaving us unsure if the distro document actual exists?
+		m := "database error while retrieving distro document;"
+		if adb.ResultsNotFound(err) {
+			m = "cannot find the db.distro document for the given distro;"
+		}
+		grip.Warning(message.Fields{
+			"message": m + " falling back to host.Distro",
+			"distro":  currentHost.Distro.Id,
+			"host":    currentHost.Id,
+		})
+		d = currentHost.Distro
+	}
 
 	// This loop does the following:
 	// 1. Find the next task in the queue.
@@ -362,21 +331,6 @@ func assignNextAvailableTask(taskQueue *model.TaskQueue, taskQueueService model.
 	// queue to prevent an infinite loop.
 	for taskQueue.Length() != 0 {
 		var queueItem *model.TaskQueueItem
-		var err error
-		// STU: do we need to do this everytime?
-		d, err := distro.FindOne(distro.ById(currentHost.Distro.Id))
-		if err != nil {
-			if adb.ResultsNotFound(err) {
-				grip.Warning(message.Fields{
-					"message": "distro not found",
-					"distro":  currentHost.Distro.Id,
-					"host":    currentHost.Id,
-				})
-				d = currentHost.Distro
-			} else {
-				return nil, errors.Wrapf(err, "database error finding document distro '%s'", currentHost.Distro.Id)
-			}
-		}
 		switch d.PlannerSettings.Version {
 		case evergreen.PlannerVersionTunable, evergreen.PlannerVersionRevised:
 			queueItem, err = taskQueueService.RefreshFindNextTask(currentHost.Distro.Id, spec)
@@ -399,14 +353,6 @@ func assignNextAvailableTask(taskQueue *model.TaskQueue, taskQueueService model.
 		}
 		if queueItem == nil {
 			return nil, nil
-		}
-
-		type TaskSpec struct {
-			Group         string `json:"group"`
-			BuildVariant  string `json:"build_variant"`
-			ProjectID     string `json:"project_id"`
-			Version       string `json:"version"`
-			GroupMaxHosts int    `json:"group_max_hosts"`
 		}
 
 		nextTask, err := task.FindOneNoMerge(task.ById(queueItem.Id))
@@ -438,13 +384,7 @@ func assignNextAvailableTask(taskQueue *model.TaskQueue, taskQueueService model.
 				"spec_project_id":      spec.ProjectID,
 				"spec_group_max_hosts": spec.GroupMaxHosts,
 			}))
-			// ORIGINAL
-			// grip.Error(message.Fields{
-			// 	"distro":  currentHost.Distro.Id,
-			// 	"host":    currentHost.Id,
-			// 	"message": "queue item with invalid id",
-			// 	"id":      queueItem.Id,
-			// })
+
 			return nil, nil
 		}
 
@@ -459,7 +399,6 @@ func assignNextAvailableTask(taskQueue *model.TaskQueue, taskQueueService model.
 				"activated": nextTask.Activated,
 				"host":      currentHost.Id,
 				"spec":      spec,
-				// "distro":    nextTask.DistroId,
 			})
 
 			// Dequeue the task so we don't get it on another iteration of the loop.
@@ -469,17 +408,7 @@ func assignNextAvailableTask(taskQueue *model.TaskQueue, taskQueueService model.
 				"task_id": nextTask.Id,
 				"host":    currentHost.Id,
 				"spec":    spec,
-				// "distro":  nextTask.DistroId,
 			}))
-			// ORIGINAL
-			// // Dequeue the task so we don't get it on another iteration of the loop.
-			// grip.Warning(message.WrapError(taskQueue.DequeueTask(nextTask.Id), message.Fields{
-			// 	"message":   "could not find task in queue",
-			// 	"task_id": nextTask.Id,
-			// 	"distro":    nextTask.DistroId,
-			// 	"spec":      spec,
-			// 	"host":      currentHost.Id,
-			// }))
 
 			continue
 		}
@@ -503,13 +432,6 @@ func assignNextAvailableTask(taskQueue *model.TaskQueue, taskQueueService model.
 				"message": "skipping task because of disabled project",
 			})
 
-			// STU: We return nil (for *task.Task) if there is an error dequeueing the "task". So, why is it ok to continue if !nextTask.IsDispatchable() and there was an error dequeueing the "task"?
-			// ORIGINAL
-			// if err = taskQueue.DequeueTask(nextTask.Id); err != nil {
-			// 	return nil, errors.Wrapf(err,
-			// 		"error pulling task with id %s from queue for distro %s",
-			// 		nextTask.Id, nextTask.DistroId)
-			// }
 			grip.Warning(message.WrapError(taskQueue.DequeueTask(nextTask.Id), message.Fields{
 				"message":              "projectRef.Enabled is false, but there was an issue dequeuing the task",
 				"distro":               nextTask.DistroId,
@@ -531,12 +453,6 @@ func assignNextAvailableTask(taskQueue *model.TaskQueue, taskQueueService model.
 			return nil, errors.WithStack(err)
 		}
 		// Dequeue the task so we don't get it on another iteration of the loop.
-		// ORIGINAL
-		// if err = taskQueue.DequeueTask(nextTask.Id); err != nil {
-		// 	return nil, errors.Wrapf(err,
-		// 		"error pulling task with id %s from queue for distro %s",
-		// 		nextTask.Id, nextTask.DistroId)
-		// }
 		grip.Warning(message.WrapError(taskQueue.DequeueTask(nextTask.Id), message.Fields{
 			"message":              "Updated the relevant running task fields for the given host, but there was an issue dequeuing the task",
 			"distro":               nextTask.DistroId,

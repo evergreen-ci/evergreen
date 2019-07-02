@@ -410,7 +410,7 @@ func (t *basicCachedDispatcherImpl) nextTaskGroupTask(unit schedulableUnit) *Tas
 		t.units[unit.id].tasks[i].IsDispatched = true
 		unit.tasks[i].IsDispatched = true
 
-		// STU: So, it's running (or already ran) on another host?
+		// It's running (or already ran) on another host.
 		if nextTaskFromDB.StartTime != util.ZeroTime {
 			continue
 		}

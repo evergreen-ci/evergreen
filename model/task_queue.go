@@ -538,9 +538,13 @@ outer:
 		return errors.Errorf("TaskQueueItem with id '%s' not found in the in-memory TaskQueue.Queue for distro '%s'", taskId, self.Distro)
 	}
 
+	// When something is dequeued from the in-memory queue on one app server, it
+	// will still be present in every other app server's in-memory queue. It will
+	// only no longer be present after the TTL has passed, and each app server
+	// has re-created its in-memory queue.
+
 	var err error
 	err = dequeue(taskId, self.Distro)
-	// STU: in what cases would there be a TaskQueueItem in the in-memory TaskQueue.Queue but no corresponding reference (Queue._id) in the db.task_queue?
 	if adb.ResultsNotFound(err) {
 		return nil
 	}
