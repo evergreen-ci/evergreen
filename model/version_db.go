@@ -261,7 +261,7 @@ func UpdateVersionProject(versionID string, pp *ParserProject) error {
 	if versionID == "" {
 		return nil
 	}
-	return VersionUpdateOne(bson.M{VersionIdKey: versionID},
+	return VersionUpdateOne(VersionById(versionID),
 		bson.M{
 			"$set": bson.M{
 				VersionProjectKey: pp,
