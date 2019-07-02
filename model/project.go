@@ -264,10 +264,10 @@ type PluginCommandConf struct {
 
 	// Params are used to supply configuration specific information.
 	// map[string]interface{} is stored as a JSON string.
-	Params map[string]interface{} `yaml:"-" bson:"-"`
+	Params map[string]interface{} `yaml:"params" bson:"params"`
 
 	// YAML string of Params to store in database
-	ParamsYAML string `yaml:"params,omitempty" bson:"params"`
+	ParamsYAML string `yaml:"params_yaml,omitempty" bson:"params_yaml"`
 
 	// Vars defines variables that can be used within commands.
 	Vars map[string]string `yaml:"vars,omitempty" bson:"vars"`
@@ -275,32 +275,33 @@ type PluginCommandConf struct {
 	Loggers *LoggerConfig `yaml:"loggers,omitempty" bson:"loggers,omitempty"`
 }
 
-func (p *PluginCommandConf) ResolveParams() (map[string]interface{}, error) {
+func (c *PluginCommandConf) ResolveParams() (map[string]interface{}, error) {
 	out := map[string]interface{}{}
-	if p == nil {
+	if c == nil {
 		return out, nil
 	}
-	if len(p.Params) > 0 {
-		return p.Params, nil
+	if len(c.Params) > 0 {
+		return c.Params, nil
 	}
-	if err := yaml.Unmarshal([]byte(p.ParamsYAML), &out); err != nil {
+	if err := yaml.Unmarshal([]byte(c.ParamsYAML), &out); err != nil {
 		return nil, errors.Wrapf(err, "error unmarshalling params")
 	}
-	p.Params = out
+	c.Params = out
 	return out, nil
 }
 
 func (c *PluginCommandConf) UnmarshalYAML(unmarshal func(interface{}) error) error {
 	temp := struct {
-		Function    string            `yaml:"func,omitempty" bson:"func"`
-		Type        string            `yaml:"type,omitempty" bson:"type"`
-		DisplayName string            `yaml:"display_name,omitempty" bson:"display_name"`
-		Command     string            `yaml:"command,omitempty" bson:"command"`
-		Variants    []string          `yaml:"variants,omitempty" bson:"variants"`
-		TimeoutSecs int               `yaml:"timeout_secs,omitempty" bson:"timeout_secs"`
-		Params      interface{}       `yaml:"params,omitempty" bson:"params"`
-		Vars        map[string]string `yaml:"vars,omitempty" bson:"vars"`
-		Loggers     *LoggerConfig     `yaml:"loggers,omitempty" bson:"loggers,omitempty"`
+		Function    string                 `yaml:"func,omitempty" bson:"func"`
+		Type        string                 `yaml:"type,omitempty" bson:"type"`
+		DisplayName string                 `yaml:"display_name,omitempty" bson:"display_name"`
+		Command     string                 `yaml:"command,omitempty" bson:"command"`
+		Variants    []string               `yaml:"variants,omitempty" bson:"variants"`
+		TimeoutSecs int                    `yaml:"timeout_secs,omitempty" bson:"timeout_secs"`
+		Params      map[string]interface{} `yaml:"params,omitempty" bson:"params"`
+		ParamsYAML  string                 `yaml:"params_yaml,omitempty" bson:"params_yaml"`
+		Vars        map[string]string      `yaml:"vars,omitempty" bson:"vars"`
+		Loggers     *LoggerConfig          `yaml:"loggers,omitempty" bson:"loggers,omitempty"`
 	}{}
 
 	if err := unmarshal(&temp); err != nil {
@@ -314,25 +315,28 @@ func (c *PluginCommandConf) UnmarshalYAML(unmarshal func(interface{}) error) err
 	c.TimeoutSecs = temp.TimeoutSecs
 	c.Vars = temp.Vars
 	c.Loggers = temp.Loggers
+	c.ParamsYAML = temp.ParamsYAML
 
-	return c.unmarshalParams(temp.Params)
+	return c.unmarshalParams()
 }
 
-func (c *PluginCommandConf) unmarshalParams(params interface{}) error {
-	switch v := params.(type) {
-	case string:
-		c.ParamsYAML = v
-	case map[interface{}]interface{}:
-		bytes, err := yaml.Marshal(v)
-		if err != nil {
-			return errors.Wrap(err, "error marshalling params into yaml")
+// we maintain Params for backwards compatibility, but we read from YAML when available, as the
+// given params could be corrupted from the roundtrip
+func (c *PluginCommandConf) unmarshalParams() error {
+	if c.ParamsYAML != "" {
+		out := map[string]interface{}{}
+		if err := yaml.Unmarshal([]byte(c.ParamsYAML), &out); err != nil {
+			return errors.Wrapf(err, "error unmarshalling params from yaml")
 		}
-		c.ParamsYAML = string(bytes)
-		c.Params = map[string]interface{}{}
-		for key, val := range v {
-			c.Params[fmt.Sprintf("%v", key)] = val
-		}
+		c.Params = out
+		return nil
 	}
+
+	bytes, err := yaml.Marshal(c.Params)
+	if err != nil {
+		return errors.Wrap(err, "error marshalling params into yaml")
+	}
+	c.ParamsYAML = string(bytes)
 	return nil
 }
 
