@@ -1233,10 +1233,10 @@ func TestCreateTaskGroup(t *testing.T) {
     - name: example_task_group
     - name: example_task_3
   `
-	proj, errs := projectFromYAML([]byte(projYml))
-	proj.Identifier = "test"
+	proj := &Project{}
+	pp, err := LoadProjectInto([]byte(projYml), "test", proj)
 	assert.NotNil(proj)
-	assert.Empty(errs)
+	assert.Nil(err)
 	v := &Version{
 		Id:                  "versionId",
 		CreateTime:          time.Now(),
@@ -1249,7 +1249,7 @@ func TestCreateTaskGroup(t *testing.T) {
 				Activated:    false,
 			},
 		},
-		Config: projYml,
+		ParserProject: pp,
 	}
 	table := NewTaskIdTable(proj, v, "", "")
 

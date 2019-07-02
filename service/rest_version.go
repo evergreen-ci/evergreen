@@ -8,6 +8,8 @@ import (
 	"strings"
 	"time"
 
+	"gopkg.in/yaml.v2"
+
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/build"
@@ -234,7 +236,19 @@ func (restapi restAPI) getVersionConfig(w http.ResponseWriter, r *http.Request) 
 	}
 	w.Header().Set("Content-Type", "application/x-yaml; charset=utf-8")
 	w.WriteHeader(http.StatusOK)
-	_, err := w.Write([]byte(projCtx.Version.Config))
+
+	var config []byte
+	var err error
+	if projCtx.Version.ParserProject != nil {
+		config, err = yaml.Marshal(projCtx.Version.ParserProject)
+		if err != nil {
+			gimlet.WriteJSONResponse(w, http.StatusInternalServerError, responseError{Message: "problem marshalling project"})
+		}
+	} else {
+		config = []byte(projCtx.Version.Config)
+	}
+
+	_, err = w.Write(config)
 	grip.Warning(errors.Wrap(err, "problem writing response"))
 }
 

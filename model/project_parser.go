@@ -16,8 +16,8 @@ const LoadProjectError = "load project error(s)"
 // This file contains the infrastructure for turning a YAML project configuration
 // into a usable Project struct. A basic overview of the project parsing process is:
 //
-// First, the YAML bytes are unmarshalled into an intermediary parserProject.
-// The parserProject's internal types define custom YAML unmarshal hooks, allowing
+// First, the YAML bytes are unmarshalled into an intermediary ParserProject.
+// The ParserProject's internal types define custom YAML unmarshal hooks, allowing
 // users to do things like offer a single definition where we expect a list, e.g.
 //   `tags: "single_tag"` instead of the more verbose `tags: ["single_tag"]`
 // or refer to task by a single selector. Custom YAML handling allows us to
@@ -35,10 +35,10 @@ const LoadProjectError = "load project error(s)"
 // Code outside of this file should never have to consider selectors or parser* types
 // when handling project code.
 
-// parserProject serves as an intermediary struct for parsing project
+// ParserProject serves as an intermediary struct for parsing project
 // configuration YAML. It implements the Unmarshaler interface
 // to allow for flexible handling.
-type parserProject struct {
+type ParserProject struct {
 	Enabled         bool                       `yaml:"enabled,omitempty" bson:"enabled,omitempty"`
 	Stepback        bool                       `yaml:"stepback,omitempty" bson:"stepback,omitempty"`
 	IgnorePreError  bool                       `yaml:"ignore_pre_err,omitempty" bson:"ignore_pre_err,omitempty"`
@@ -413,62 +413,49 @@ func (pss *parserStringSlice) UnmarshalYAML(unmarshal func(interface{}) error) e
 
 func LoadProjectFromVersion(v *Version, identifier string) (*Project, error) {
 	if v.ParserProject != nil {
-		return translateProject(v.ParserProject)
+		pp, errs := translateProject(v.ParserProject)
+		return pp, formatErrors(errs)
 	}
 	if v.Config == "" {
 		return nil, errors.New("version has no config")
 	}
-	intermediateProject, errs := createIntermediateProject([]byte(v.Config))
-	if len(errs) > 0 {
-		return nil, formatErrors(errs)
-	}
-	p, err := translateProject(intermediateProject)
+	p := &Project{}
+	pp, err := LoadProjectInto([]byte(v.Config), identifier, p)
 	if err != nil {
-		return nil, errors.Wrap(err, "error translating project")
+		return nil, errors.Wrap(err, "error loading project")
 	}
 
-	if err := UpdateVersionProject(v.Id, intermediateProject); err != nil {
+	if err := UpdateVersionProject(v.Id, pp); err != nil {
 		return nil, errors.Wrap(err, "error updating version with project")
 	}
-	v.ParserProject = intermediateProject
+	v.ParserProject = pp
 	return p, nil
 }
 
 // LoadProjectInto loads the raw data from the config file into project
 // and sets the project's identifier field to identifier. Tags are evaluated.
-func LoadProjectInto(data []byte, identifier string, project *Project) error {
-	p, err := projectFromYAML(data)
+// Returns the intermediate step.
+func LoadProjectInto(data []byte, identifier string, project *Project) (*ParserProject, error) {
+	intermediateProject, err := createIntermediateProject(data)
 	if err != nil {
-		return err
+		return nil, errors.Wrapf(err, "error creating parser project")
 	}
+
+	// return project even with errors
+	p, errs := translateProject(intermediateProject)
 	*project = *p
 	project.Identifier = identifier
-	return nil
-}
-
-// projectFromYAML reads and evaluates project YAML, returning a project and warnings and
-// errors encountered during parsing or evaluation.
-func projectFromYAML(yml []byte) (*Project, error) {
-	intermediateProject, errs := createIntermediateProject(yml)
-	if len(errs) > 0 {
-		return nil, formatErrors(errs)
-	}
-	p, err := translateProject(intermediateProject)
-	if err != nil {
-		return nil, errors.Wrap(err, "error translating project")
-	}
-
-	return p, err
+	return intermediateProject, errors.Wrap(formatErrors(errs), "error translating project")
 }
 
 // createIntermediateProject marshals the supplied YAML into our
 // intermediate project representation (i.e. before selectors or
 // matrix logic has been evaluated).
-func createIntermediateProject(yml []byte) (*parserProject, []error) {
-	p := &parserProject{}
+func createIntermediateProject(yml []byte) (*ParserProject, error) {
+	p := &ParserProject{}
 	err := yaml.Unmarshal(yml, p)
 	if err != nil {
-		return nil, []error{err}
+		return nil, formatErrors([]error{err})
 	}
 	if p.Functions == nil {
 		p.Functions = map[string]*YAMLCommandSet{}
@@ -495,7 +482,7 @@ func formatErrors(errs []error) error {
 // translateProject converts our intermediate project representation into
 // the Project type that Evergreen actually uses. Errors are added to
 // pp.errors and pp.warnings and must be checked separately.
-func translateProject(pp *parserProject) (*Project, error) {
+func translateProject(pp *ParserProject) (*Project, []error) {
 	// Transfer top level fields
 	proj := &Project{
 		Enabled:         pp.Enabled,
@@ -533,7 +520,7 @@ func translateProject(pp *parserProject) (*Project, error) {
 	evalErrs = append(evalErrs, errs...)
 	proj.BuildVariants, errs = evaluateBuildVariants(tse, tgse, vse, pp.BuildVariants, pp.Tasks, proj.TaskGroups)
 	evalErrs = append(evalErrs, errs...)
-	return proj, formatErrors(evalErrs)
+	return proj, evalErrs
 }
 
 // sieveMatrixVariants takes a set of parserBVs and groups them into regular

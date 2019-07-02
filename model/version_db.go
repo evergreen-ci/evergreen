@@ -257,7 +257,7 @@ func VersionUpdateOne(query interface{}, update interface{}) error {
 	)
 }
 
-func UpdateVersionProject(versionID string, pp *parserProject) error {
+func UpdateVersionProject(versionID string, pp *ParserProject) error {
 	if versionID == "" {
 		return nil
 	}

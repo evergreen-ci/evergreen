@@ -12,7 +12,7 @@ import (
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson"
-	yaml "gopkg.in/yaml.v2"
+	"gopkg.in/yaml.v2"
 )
 
 const (
@@ -147,6 +147,7 @@ func (g *GeneratedProject) NewVersion() (*Project, *Version, *task.Task, *projec
 			gimlet.ErrorResponse{StatusCode: http.StatusBadRequest, Message: errors.Wrap(err, "error creating config from generated config").Error()}
 	}
 	v.Config = newConfig
+	v.ParserProject = nil // ensure we read from new config string
 	p, err = LoadProjectFromVersion(v, t.Project)
 	if err != nil {
 		return nil, nil, nil, nil,
@@ -169,6 +170,7 @@ func (g *GeneratedProject) Save(ctx context.Context, p *Project, v *Version, t *
 	if err != nil {
 		return errors.Wrapf(err, "error updating version %s", v.Id)
 	}
+	v.ConfigUpdateNumber += 1
 
 	if t.CommitQueueMerge {
 		if err = v.UpdateMergeTaskDependencies(p); err != nil {
@@ -176,7 +178,6 @@ func (g *GeneratedProject) Save(ctx context.Context, p *Project, v *Version, t *
 		}
 	}
 
-	v.ConfigUpdateNumber += 1
 	if err := g.saveNewBuildsAndTasks(ctx, pm, v, p, t.Priority); err != nil {
 		return errors.Wrap(err, "error savings new builds and tasks")
 	}
@@ -267,9 +268,9 @@ func appendTasks(pairs TaskVariantPairs, bv parserBV, p *Project) TaskVariantPai
 // addGeneratedProjectToConfig takes a YML config and returns a new one with the GeneratedProject included.
 func (g *GeneratedProject) addGeneratedProjectToConfig(config string, cachedProject projectMaps) (string, error) {
 	// Append buildvariants, tasks, and functions to the config.
-	intermediateProject, errs := createIntermediateProject([]byte(config))
-	if errs != nil {
-		return "", errors.Wrap(errs[0], "error creating intermediate project")
+	intermediateProject, err := createIntermediateProject([]byte(config))
+	if err != nil {
+		return "", errors.Wrap(err, "error creating intermediate project")
 	}
 	intermediateProject.TaskGroups = append(intermediateProject.TaskGroups, g.TaskGroups...)
 	intermediateProject.Tasks = append(intermediateProject.Tasks, g.Tasks...)

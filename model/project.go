@@ -1045,7 +1045,7 @@ func FindProject(revision string, projectRef *ProjectRef) (*Project, error) {
 		} else {
 			// Check to see if there is a local configuration in the project ref
 			if projectRef.LocalConfig != "" {
-				err = LoadProjectInto([]byte(projectRef.LocalConfig), projectRef.Identifier, project)
+				_, err = LoadProjectInto([]byte(projectRef.LocalConfig), projectRef.Identifier, project)
 				if err != nil {
 					return nil, errors.Wrapf(err, "Error loading local config for project ref, %s", projectRef.Identifier)
 				}

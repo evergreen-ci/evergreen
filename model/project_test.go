@@ -267,12 +267,13 @@ task_groups:
   - example_task_1
   - example_task_2
 `
-	proj, errs := projectFromYAML([]byte(projYml))
+	proj := &Project{}
+	pp, err := LoadProjectInto([]byte(projYml), "id", proj)
 	assert.NotNil(proj)
-	assert.Empty(errs)
+	assert.Nil(err)
 	v := Version{
-		Id:     "v1",
-		Config: projYml,
+		Id:            "v1",
+		ParserProject: pp,
 	}
 	t1 := task.Task{
 		Id:        "t1",
@@ -1061,11 +1062,11 @@ tasks:
   depends_on:
     - name: dist-test
 `
-	intermediate, errs := createIntermediateProject([]byte(projYml))
-	s.Len(errs, 0)
+	intermediate, err := createIntermediateProject([]byte(projYml))
+	s.NoError(err)
 	marshaled, err := yaml.Marshal(intermediate)
 	s.NoError(err)
-	unmarshaled := parserProject{}
+	unmarshaled := ParserProject{}
 	s.NoError(yaml.Unmarshal(marshaled, &unmarshaled))
 }
 

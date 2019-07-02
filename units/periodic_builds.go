@@ -99,8 +99,8 @@ func (j *periodicBuildJob) addVersion(ctx context.Context, definition model.Peri
 	if err != nil {
 		return errors.Wrap(err, "error decoding config file")
 	}
-	config := model.Project{}
-	err = model.LoadProjectInto(configBytes, j.project.Identifier, &config)
+	proj := &model.Project{}
+	intermediateProject, err := model.LoadProjectInto(configBytes, j.project.Identifier, proj)
 	if err != nil {
 		return errors.Wrap(err, "error parsing config file")
 	}
@@ -109,8 +109,12 @@ func (j *periodicBuildJob) addVersion(ctx context.Context, definition model.Peri
 		Message:         definition.Message,
 		PeriodicBuildID: definition.ID,
 	}
-
-	_, err = repotracker.CreateVersionFromConfig(ctx, j.project, &config, metadata, false, nil)
+	projectInfo := &repotracker.ProjectInfo{
+		Ref:                 j.project,
+		Project:             proj,
+		IntermediateProject: intermediateProject,
+	}
+	_, err = repotracker.CreateVersionFromConfig(ctx, projectInfo, metadata, false, nil)
 	return errors.Wrap(err, "error creating version from config")
 }
 

@@ -6,10 +6,11 @@ import (
 	"sort"
 	"sync"
 
+	"gopkg.in/yaml.v2"
+
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/pkg/errors"
-	yaml "gopkg.in/yaml.v2"
 )
 
 // Function run before sorting all the tasks.  Used to fetch and store
@@ -27,8 +28,29 @@ func cacheTaskGroups(comparator *CmpBasedTaskComparator) error {
 	comparator.projects = make(map[string]project)
 	for _, v := range comparator.versions {
 		p := project{}
-		if err := yaml.Unmarshal([]byte(v.Config), &p); err != nil {
-			return errors.Wrapf(err, "error unmarshalling task groups from version %s", v.Id)
+		if v.ParserProject != nil {
+			p.TaskGroups = make([]model.TaskGroup, len(v.ParserProject.TaskGroups))
+			for i, tg := range v.ParserProject.TaskGroups {
+				newTG := model.TaskGroup{
+					Name:                  tg.Name,
+					MaxHosts:              tg.MaxHosts,
+					SetupGroupFailTask:    tg.SetupGroupFailTask,
+					SetupGroupTimeoutSecs: tg.SetupGroupTimeoutSecs,
+					SetupGroup:            tg.SetupGroup,
+					TeardownGroup:         tg.TeardownGroup,
+					SetupTask:             tg.SetupTask,
+					TeardownTask:          tg.TeardownTask,
+					Timeout:               tg.Timeout,
+					Tasks:                 tg.Tasks,
+					Tags:                  tg.Tags,
+					ShareProcs:            tg.ShareProcs,
+				}
+				p.TaskGroups[i] = newTG
+			}
+		} else {
+			if err := yaml.Unmarshal([]byte(v.Config), &p); err != nil {
+				return errors.Wrapf(err, "error unmarshalling task groups from version %s", v.Id)
+			}
 		}
 		comparator.projects[v.Id] = p
 	}
