@@ -55,7 +55,6 @@ func (m *projCtxMiddleware) ServeHTTP(rw http.ResponseWriter, r *http.Request, n
 			Message:    errors.Wrap(err, "Project not found").Error(),
 		}))
 
-		return
 	}
 
 	if pref.Private && user == nil {
@@ -64,7 +63,7 @@ func (m *projCtxMiddleware) ServeHTTP(rw http.ResponseWriter, r *http.Request, n
 			StatusCode: http.StatusNotFound,
 			Message:    "Project not found",
 		}))
-		return
+
 	}
 
 	if opCtx.Patch != nil && user == nil {

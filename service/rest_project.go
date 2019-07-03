@@ -15,7 +15,6 @@ func (restapi restAPI) getProject(w http.ResponseWriter, r *http.Request) {
 		gimlet.WriteJSONResponse(w, http.StatusNotFound, responseError{Message: "error finding project", Extended: err.Error()})
 		return
 	}
-
 	gimlet.WriteJSON(w, ref)
 }
 
