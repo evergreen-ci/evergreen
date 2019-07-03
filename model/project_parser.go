@@ -411,7 +411,7 @@ func (pss *parserStringSlice) UnmarshalYAML(unmarshal func(interface{}) error) e
 	return nil
 }
 
-func LoadProjectFromVersion(v *Version, identifier string) (*Project, error) {
+func LoadProjectFromVersion(v *Version, identifier string, shouldSave bool) (*Project, error) {
 	if v.ParserProject != nil {
 		pp, errs := translateProject(v.ParserProject)
 		return pp, formatErrors(errs)
@@ -424,9 +424,10 @@ func LoadProjectFromVersion(v *Version, identifier string) (*Project, error) {
 	if err != nil {
 		return nil, errors.Wrap(err, "error loading project")
 	}
-
-	if err := UpdateVersionProject(v.Id, pp); err != nil {
-		return nil, errors.Wrap(err, "error updating version with project")
+	if shouldSave {
+		if err := UpdateVersionProject(v.Id, pp); err != nil {
+			return nil, errors.Wrap(err, "error updating version with project")
+		}
 	}
 	v.ParserProject = pp
 	return p, nil

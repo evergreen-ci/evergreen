@@ -124,7 +124,7 @@ func MakeConfigFromTask(t *task.Task) (*TaskConfig, error) {
 	if err != nil {
 		return nil, errors.Wrap(err, "error finding distro")
 	}
-	proj, err := LoadProjectFromVersion(v, v.Identifier)
+	proj, err := LoadProjectFromVersion(v, v.Identifier, true)
 	if err != nil {
 		return nil, errors.Wrap(err, "error loading project")
 	}

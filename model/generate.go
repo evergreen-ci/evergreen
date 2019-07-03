@@ -126,7 +126,7 @@ func (g *GeneratedProject) NewVersion() (*Project, *Version, *task.Task, *projec
 		return nil, nil, nil, nil,
 			gimlet.ErrorResponse{StatusCode: http.StatusBadRequest, Message: fmt.Sprintf("unable to find version %s", t.Version)}
 	}
-	p, err := LoadProjectFromVersion(v, t.Project)
+	p, err := LoadProjectFromVersion(v, t.Project, true)
 	if err != nil {
 		return nil, nil, nil, nil,
 			gimlet.ErrorResponse{StatusCode: http.StatusBadRequest, Message: errors.Wrapf(err, "error getting project for version %s", t.Version).Error()}
@@ -148,7 +148,7 @@ func (g *GeneratedProject) NewVersion() (*Project, *Version, *task.Task, *projec
 	}
 	v.Config = newConfig
 	v.ParserProject = nil // ensure we read from new config string
-	p, err = LoadProjectFromVersion(v, t.Project)
+	p, err = LoadProjectFromVersion(v, t.Project, true)
 	if err != nil {
 		return nil, nil, nil, nil,
 			gimlet.ErrorResponse{StatusCode: http.StatusBadRequest, Message: errors.Wrap(err, "error reading project yaml").Error()}
