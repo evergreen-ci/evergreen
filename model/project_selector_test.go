@@ -261,7 +261,7 @@ func TestVariantMatrixSelectorEvaluation(t *testing.T) {
 		Convey("and a set of variant selectors", func() {
 			Convey("a single-cell matrix selector should return one variant", func() {
 				vs := &variantSelector{
-					MatrixSelector: matrixDefinition{
+					matrixSelector: matrixDefinition{
 						"material": []string{"iron"},
 						"temp":     []string{"0"},
 					},
@@ -273,7 +273,7 @@ func TestVariantMatrixSelectorEvaluation(t *testing.T) {
 			})
 			Convey("a 2x2 matrix selector should return four variants", func() {
 				vs := &variantSelector{
-					MatrixSelector: matrixDefinition{
+					matrixSelector: matrixDefinition{
 						"material": []string{"iron", "wood"},
 						"temp":     []string{"0", "100"},
 					},
@@ -288,7 +288,7 @@ func TestVariantMatrixSelectorEvaluation(t *testing.T) {
 			})
 			Convey("a *x* matrix selector should return all variants", func() {
 				vs := &variantSelector{
-					MatrixSelector: matrixDefinition{
+					matrixSelector: matrixDefinition{
 						"material": []string{"*"},
 						"temp":     []string{"*"},
 					},
@@ -299,7 +299,7 @@ func TestVariantMatrixSelectorEvaluation(t *testing.T) {
 			})
 			Convey("a tagged matrix selector should return all axis-tagged variants", func() {
 				vs := &variantSelector{
-					MatrixSelector: matrixDefinition{
+					matrixSelector: matrixDefinition{
 						"material": []string{".metal"},
 						"temp":     []string{".hot"},
 					},
@@ -312,7 +312,7 @@ func TestVariantMatrixSelectorEvaluation(t *testing.T) {
 			})
 			Convey("an empty matrix selector should error", func() {
 				vs := &variantSelector{
-					MatrixSelector: matrixDefinition{},
+					matrixSelector: matrixDefinition{},
 				}
 				v, err := vse.evalSelector(vs)
 				So(err, ShouldNotBeNil)
@@ -320,7 +320,7 @@ func TestVariantMatrixSelectorEvaluation(t *testing.T) {
 			})
 			Convey("a matrix selector with nonexistent axes should fail", func() {
 				vs := &variantSelector{
-					MatrixSelector: matrixDefinition{
+					matrixSelector: matrixDefinition{
 						"wow": []string{"neat"},
 					},
 				}
@@ -330,7 +330,7 @@ func TestVariantMatrixSelectorEvaluation(t *testing.T) {
 			})
 			Convey("a matrix selector with nonexistent selectors should fail", func() {
 				vs := &variantSelector{
-					MatrixSelector: matrixDefinition{
+					matrixSelector: matrixDefinition{
 						"material": []string{".neat"},
 					},
 				}
@@ -340,7 +340,7 @@ func TestVariantMatrixSelectorEvaluation(t *testing.T) {
 			})
 			Convey("a matrix selector with invalid selectors should fail", func() {
 				vs := &variantSelector{
-					MatrixSelector: matrixDefinition{
+					matrixSelector: matrixDefinition{
 						"material": []string{""},
 					},
 				}
