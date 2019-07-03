@@ -357,7 +357,7 @@ func assignNextAvailableTask(taskQueue *model.TaskQueue, taskQueueService model.
 
 		nextTask, err := task.FindOneNoMerge(task.ById(queueItem.Id))
 		if err != nil {
-			grip.Critical(message.WrapError(err, message.Fields{
+			grip.Error(message.WrapError(err, message.Fields{
 				"message":              "database error while retrieving the db.tasks document for the next task to be assigned to this host",
 				"distro":               d.Id,
 				"host":                 currentHost.Id,
@@ -371,9 +371,10 @@ func assignNextAvailableTask(taskQueue *model.TaskQueue, taskQueueService model.
 			}))
 			return nil, err
 		}
+
 		if nextTask == nil {
-			grip.Error(message.WrapError(err, message.Fields{
-				"message":              "cannot find the db.tasks document for the next task to be assigned to this host",
+			grip.Critical(message.WrapError(err, message.Fields{
+				"message":              "cannot find a db.tasks document for the next task to be assigned to this host",
 				"distro":               d.Id,
 				"host":                 currentHost.Id,
 				"next_task_id":         queueItem.Id,
@@ -385,29 +386,36 @@ func assignNextAvailableTask(taskQueue *model.TaskQueue, taskQueueService model.
 				"spec_group_max_hosts": spec.GroupMaxHosts,
 			}))
 
-			return nil, nil
+			return nil, fmt.Errorf("cannot find a db.tasks document for the next task '%s' to be assigned to host '%s'", queueItem.Id, currentHost.Id)
 		}
 
-		// validate that the task can be run, if not fetch the next one in
-		// the queue.
+		// validate that the task can be run, if not fetch the next one in the queue.
 		if !nextTask.IsDispatchable() {
 			grip.Warning(message.Fields{
-				"message":   "skipping un-dispatchable task",
-				"distro":    d.Id,
-				"task_id":   nextTask.Id,
-				"status":    nextTask.Status,
-				"activated": nextTask.Activated,
-				"host":      currentHost.Id,
-				"spec":      spec,
+				"message":              "skipping un-dispatchable task",
+				"distro":               d.Id,
+				"task_id":              nextTask.Id,
+				"status":               nextTask.Status,
+				"activated":            nextTask.Activated,
+				"host":                 currentHost.Id,
+				"spec_group":           spec.Group,
+				"spec_build_variant":   spec.BuildVariant,
+				"spec_version":         spec.Version,
+				"spec_project_id":      spec.ProjectID,
+				"spec_group_max_hosts": spec.GroupMaxHosts,
 			})
 
 			// Dequeue the task so we don't get it on another iteration of the loop.
 			grip.Warning(message.WrapError(taskQueue.DequeueTask(nextTask.Id), message.Fields{
-				"message": "nextTask.IsDispatchable() is false, but there was an issue dequeuing the task",
-				"distro":  d.Id,
-				"task_id": nextTask.Id,
-				"host":    currentHost.Id,
-				"spec":    spec,
+				"message":              "nextTask.IsDispatchable() is false, but there was an issue dequeuing the task",
+				"distro":               d.Id,
+				"task_id":              nextTask.Id,
+				"host":                 currentHost.Id,
+				"spec_group":           spec.Group,
+				"spec_build_variant":   spec.BuildVariant,
+				"spec_version":         spec.Version,
+				"spec_project_id":      spec.ProjectID,
+				"spec_group_max_hosts": spec.GroupMaxHosts,
 			}))
 
 			continue
