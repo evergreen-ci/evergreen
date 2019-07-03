@@ -316,6 +316,7 @@ func (c *PluginCommandConf) UnmarshalYAML(unmarshal func(interface{}) error) err
 	c.Vars = temp.Vars
 	c.Loggers = temp.Loggers
 	c.ParamsYAML = temp.ParamsYAML
+	c.Params = temp.Params
 
 	return c.unmarshalParams()
 }
