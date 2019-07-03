@@ -46,15 +46,16 @@ function getDepTaskMap(task) {
 
 function migrate(startingDate, delta, sleepMilliseconds) {
     while(startingDate < new Date()) {
+        printjson(startingDate)
         loops = 0
         tasksSize = 0
         while (true) {
             tasks = db.tasks.find({"create_time": {"$gte": startingDate, "$lte": new Date(startingDate.getTime() + delta)}, "status":"undispatched", "depends_on.status": {"$in": ["success", "failed", "", "*"]}, "depends_on": {"$elemMatch":{"unattainable": {"$exists": false}}}}, {"depends_on":1}).toArray()
-            printjson(loops++)
             if (tasks.length == 0 || tasks.length == tasksSize) {
                 break
             }
             tasksSize = tasks.length
+            printjson(loops++)
 
             for (i=0; i < tasks.length; i++) {
                 taskUpdated = false
