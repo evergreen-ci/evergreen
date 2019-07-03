@@ -20,10 +20,25 @@ function unattainableResolved(task) {
     return true
 }
 
+function getDepTaskMap(task) {
+    var depIDs = []
+    for (dep of task.depends_on) {
+        depIDs.push(dep._id)
+    }
+    depTasks = db.tasks.find({"_id": {"$in": depIDs}}, {"status": 1, "depends_on": 1});
+
+    var depTaskMap = {}
+    for (task of depTasks) {
+        depTaskMap[task._id] = task
+    }
+
+    return depTaskMap
+}
+
 //
 // example invocation:
 //
-// startingDate = ISODate("2016-01-01T00:00:00Z")
+// startingDate = ISODate("2013-01-01T00:00:00Z")
 // millisecondsPerDay = 86400000
 // delta = millisecondsPerDay * 1
 // sleepMilliseconds = 100
@@ -49,12 +64,11 @@ function migrate(startingDate, delta, sleepMilliseconds) {
                         continue
                     }
                     
-                    depTask = db.tasks.findOne({"_id": dependsOn[j]._id}, {"status": 1, "depends_on": 1});
-                    if(depTask == null) {
-                        printjson(tasks[i])
+                    depTasksMap = getDepTaskMap(task)
+                    if (!(dependsOn[j]._id in depTasksMap)) {
                         break
                     }
-
+                    depTask = depTasksMap[dependsOn[j]._id]
                     if (finishedStatuses.includes(depTask.status)) {
                         taskUpdated = true
                         // 1st degree blocked
@@ -63,10 +77,10 @@ function migrate(startingDate, delta, sleepMilliseconds) {
                         } else {
                             dependsOn[j].unattainable = false
                         }
-                    } else if (dependsOn[j].status != "*" && taskIsBlocked(depTask)) {
+                    } else if (dependsOn[j].status != "*" && taskIsBlocked(depTask._id)) {
                         taskUpdated = true
                         dependsOn[j].unattainable = true
-                    } else if (unattainableResolved(depTask)) {
+                    } else if (unattainableResolved(depTask._id)) {
                         taskUpdated = true
                         dependsOn[j].unattainable = false
                     }
