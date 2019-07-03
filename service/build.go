@@ -60,7 +60,6 @@ func (uis *UIServer) buildPage(w http.ResponseWriter, r *http.Request) {
 		uis.LoggedError(w, r, http.StatusNotFound, errors.New("not found"))
 		return
 	}
-
 	buildAsUI := &uiBuild{
 		Build:       *projCtx.Build,
 		CurrentTime: time.Now().UnixNano(),
@@ -68,10 +67,9 @@ func (uis *UIServer) buildPage(w http.ResponseWriter, r *http.Request) {
 		Version:     *projCtx.Version,
 	}
 
-	pref, _ := projCtx.GetProjectRef()
-	if pref != nil {
-		buildAsUI.RepoOwner = pref.Owner
-		buildAsUI.Repo = pref.Repo
+	if projCtx.ProjectRef != nil {
+		buildAsUI.RepoOwner = projCtx.ProjectRef.Owner
+		buildAsUI.Repo = projCtx.ProjectRef.Repo
 	}
 
 	uiTasks, timeTaken, makespan, err := getUiTaskCache(projCtx.Build)
@@ -221,19 +219,12 @@ func (uis *UIServer) modifyBuild(w http.ResponseWriter, r *http.Request) {
 		uis.LoggedError(w, r, http.StatusInternalServerError, err)
 		return
 	}
-
-	pref, err := projCtx.GetProjectRef()
-	if err != nil {
-		uis.LoggedError(w, r, http.StatusBadRequest, errors.New("project ref not found"))
-		return
-	}
-
 	updatedBuild := uiBuild{
 		Build:       *projCtx.Build,
 		CurrentTime: time.Now().UnixNano(),
 		Elapsed:     time.Since(projCtx.Build.StartTime),
-		RepoOwner:   pref.Owner,
-		Repo:        pref.Repo,
+		RepoOwner:   projCtx.ProjectRef.Owner,
+		Repo:        projCtx.ProjectRef.Repo,
 		Version:     *projCtx.Version,
 	}
 

@@ -34,22 +34,17 @@ func (uis *UIServer) patchPage(w http.ResponseWriter, r *http.Request) {
 
 	currentUser := MustHaveUser(r)
 
-	pref, err := projCtx.GetProjectRef()
-	if err != nil {
-		http.Error(w, "project not found", http.StatusNotFound)
-		return
-	}
-
 	var versionAsUI *uiVersion
 	if projCtx.Version != nil { // Patch is already finalized
 		versionAsUI = &uiVersion{
 			Version:   *projCtx.Version,
-			RepoOwner: pref.Owner,
-			Repo:      pref.Repo,
+			RepoOwner: projCtx.ProjectRef.Owner,
+			Repo:      projCtx.ProjectRef.Repo,
 		}
 	}
 
 	// get the new patch document with the patched configuration
+	var err error
 	projCtx.Patch, err = patch.FindOne(patch.ById(projCtx.Patch.Id))
 	if err != nil {
 		http.Error(w, fmt.Sprintf("error loading patch: %v", err), http.StatusInternalServerError)

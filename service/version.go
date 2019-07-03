@@ -25,19 +25,13 @@ func (uis *UIServer) versionPage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	pref, err := projCtx.GetProjectRef()
-	if err != nil {
-		http.Error(w, "not found", http.StatusNotFound)
-		return
-	}
-
 	// Set the config to blank to avoid writing it to the UI unnecessarily.
 	projCtx.Version.Config = ""
 
 	versionAsUI := uiVersion{
 		Version:   *projCtx.Version,
-		RepoOwner: pref.Owner,
-		Repo:      pref.Repo,
+		RepoOwner: projCtx.ProjectRef.Owner,
+		Repo:      projCtx.ProjectRef.Repo,
 	}
 
 	if projCtx.Version.TriggerID != "" {
@@ -228,12 +222,6 @@ func (uis *UIServer) modifyVersion(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "not found", http.StatusNotFound)
 		return
 	}
-	pref, err := projCtx.GetProjectRef()
-	if err != nil {
-		http.Error(w, "not found", http.StatusNotFound)
-		return
-	}
-
 	user := MustHaveUser(r)
 
 	jsonMap := struct {
@@ -296,8 +284,8 @@ func (uis *UIServer) modifyVersion(w http.ResponseWriter, r *http.Request) {
 
 	versionAsUI := uiVersion{
 		Version:   *projCtx.Version,
-		RepoOwner: pref.Owner,
-		Repo:      pref.Repo,
+		RepoOwner: projCtx.ProjectRef.Owner,
+		Repo:      projCtx.ProjectRef.Repo,
 	}
 	dbBuilds, err := build.Find(build.ByIds(projCtx.Version.BuildIds))
 	if err != nil {
@@ -366,11 +354,6 @@ func (uis *UIServer) versionHistory(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	pref, err := projCtx.GetProjectRef()
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
 
 	ctx := r.Context()
 	user := gimlet.GetUser(ctx)
@@ -380,14 +363,14 @@ func (uis *UIServer) versionHistory(w http.ResponseWriter, r *http.Request) {
 		// Check whether the project associated with the particular version
 		// is accessible to this user. If not, we exclude it from the version
 		// history. This is done to hide the existence of the private project.
-		if pref.Private && user == nil {
+		if projCtx.ProjectRef.Private && user == nil {
 			continue
 		}
 
 		versionAsUI := uiVersion{
 			Version:   version,
-			RepoOwner: pref.Owner,
-			Repo:      pref.Repo,
+			RepoOwner: projCtx.ProjectRef.Owner,
+			Repo:      projCtx.ProjectRef.Repo,
 		}
 		versions = append(versions, &versionAsUI)
 

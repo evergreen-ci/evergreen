@@ -84,13 +84,6 @@ func (pc projectContext) ToPluginContext(settings evergreen.Settings, usr gimlet
 		"type":     fmt.Sprintf("%T", usr),
 	})
 
-	pref, err := pc.GetProjectRef()
-	grip.Warning(message.WrapError(err, message.Fields{
-		"location": "service/middleware.ToPluginContext",
-		"message":  "missing project reference",
-		"cause":    "user input issue",
-	}))
-
 	return plugin.UIContext{
 		Settings:   settings,
 		User:       dbUser,
@@ -98,7 +91,7 @@ func (pc projectContext) ToPluginContext(settings evergreen.Settings, usr gimlet
 		Build:      pc.Build,
 		Version:    pc.Version,
 		Patch:      pc.Patch,
-		ProjectRef: pref,
+		ProjectRef: pc.ProjectRef,
 	}
 
 }
@@ -116,13 +109,7 @@ func (uis *UIServer) requireAdmin(next http.HandlerFunc) http.HandlerFunc {
 		// get the project context
 		projCtx := MustHaveProjectContext(r)
 		if dbUser := gimlet.GetUser(ctx); dbUser != nil {
-			var isProjectRefAdmin bool
-
-			if pref, _ := projCtx.GetProjectRef(); pref != nil {
-				isProjectRefAdmin = isAdmin(dbUser, pref)
-			}
-
-			if uis.isSuperUser(dbUser) || isProjectRefAdmin {
+			if uis.isSuperUser(dbUser) || isAdmin(dbUser, projCtx.ProjectRef) {
 				next(w, r)
 				return
 			}
@@ -236,25 +223,15 @@ func (uis *UIServer) loadCtx(next http.HandlerFunc) http.HandlerFunc {
 			uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrap(err, "Error loading project context"))
 			return
 		}
-
 		usr := gimlet.GetUser(r.Context())
-		if usr == nil {
-			if projCtx.Patch != nil {
-				uis.RedirectToLogin(w, r)
-				return
-			}
+		if usr == nil && (projCtx.ProjectRef != nil && projCtx.ProjectRef.Private) {
+			uis.RedirectToLogin(w, r)
+			return
+		}
 
-			pref, err := projCtx.GetProjectRef()
-			if err != nil {
-				uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrap(err, "Error loading project info"))
-				return
-			}
-
-			if pref.Private {
-				uis.RedirectToLogin(w, r)
-				return
-			}
-
+		if usr == nil && projCtx.Patch != nil {
+			uis.RedirectToLogin(w, r)
+			return
 		}
 
 		r = setUIRequestContext(r, projCtx)
@@ -350,16 +327,11 @@ func (uis *UIServer) LoadProjectContext(rw http.ResponseWriter, r *http.Request)
 		return pc, err
 	}
 
-	pref, err := ctx.GetProjectRef()
-	if err != nil {
-		return pc, err
-	}
-
 	// set the cookie for the next request if a project was found
-	if pref != nil {
+	if ctx.ProjectRef != nil {
 		http.SetCookie(rw, &http.Cookie{
 			Name:    ProjectCookieName,
-			Value:   pref.Identifier,
+			Value:   ctx.ProjectRef.Identifier,
 			Path:    "/",
 			Expires: time.Now().Add(7 * 24 * time.Hour),
 		})

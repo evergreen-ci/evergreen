@@ -12,13 +12,6 @@ func (uis *UIServer) GetPluginHandler(uiPage *plugin.UIPage, pluginName string) 
 	return func(w http.ResponseWriter, r *http.Request) {
 		projCtx := MustHaveProjectContext(r)
 		u := gimlet.GetUser(r.Context())
-
-		pref, err := projCtx.GetProjectRef()
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
-
 		pluginCtx := plugin.UIContext{
 			Settings:   uis.Settings,
 			User:       u,
@@ -26,7 +19,7 @@ func (uis *UIServer) GetPluginHandler(uiPage *plugin.UIPage, pluginName string) 
 			Build:      projCtx.Build,
 			Version:    projCtx.Version,
 			Patch:      projCtx.Patch,
-			ProjectRef: pref,
+			ProjectRef: projCtx.ProjectRef,
 			Request:    r,
 		}
 		pluginData, err := uiPage.DataFunc(pluginCtx)

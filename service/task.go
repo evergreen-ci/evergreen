@@ -136,9 +136,9 @@ func (uis *UIServer) taskPage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	pref, err := projCtx.GetProjectRef()
-	if err != nil {
-		uis.LoggedError(w, r, http.StatusInternalServerError, errors.New("project  not found"))
+	if projCtx.ProjectRef == nil {
+		grip.Error("Project ref is nil")
+		uis.LoggedError(w, r, http.StatusInternalServerError, errors.New("version not found"))
 		return
 	}
 
@@ -148,6 +148,7 @@ func (uis *UIServer) taskPage(w http.ResponseWriter, r *http.Request) {
 	// if there is an execution number, the task might be in the old_tasks collection, so we
 	// query that collection and set projCtx.Task to the old task if it exists.
 	var execution int
+	var err error
 	if executionStr != "" {
 		execution, err = strconv.Atoi(executionStr)
 		if err != nil {
@@ -231,8 +232,8 @@ func (uis *UIServer) taskPage(w http.ResponseWriter, r *http.Request) {
 		Author:               projCtx.Version.Author,
 		AuthorEmail:          projCtx.Version.AuthorEmail,
 		VersionId:            projCtx.Version.Id,
-		RepoOwner:            pref.Owner,
-		Repo:                 pref.Repo,
+		RepoOwner:            projCtx.ProjectRef.Owner,
+		Repo:                 projCtx.ProjectRef.Repo,
 		Logs:                 projCtx.Task.Logs,
 		Archived:             archived,
 		TotalExecutions:      totalExecutions,
@@ -362,7 +363,7 @@ func (uis *UIServer) taskPage(w http.ResponseWriter, r *http.Request) {
 	pluginContent := getPluginDataAndHTML(uis, plugin.TaskPage, pluginContext)
 	isAdmin := false
 	if usr != nil {
-		isAdmin = pref.IsAdmin(usr.Username(), uis.Settings)
+		isAdmin = projCtx.ProjectRef.IsAdmin(usr.Username(), uis.Settings)
 	}
 
 	uis.render.WriteResponse(w, http.StatusOK, struct {
@@ -664,13 +665,7 @@ func (uis *UIServer) taskModify(w http.ResponseWriter, r *http.Request) {
 		gimlet.WriteJSON(w, projCtx.Task)
 		return
 	case "override_dependencies":
-		pref, err := projCtx.GetProjectRef()
-		if err != nil {
-			http.Error(w, "could not find project metadata", http.StatusBadRequest)
-
-		}
-
-		if !pref.IsAdmin(authUser.Username(), uis.Settings) {
+		if !projCtx.ProjectRef.IsAdmin(authUser.Username(), uis.Settings) {
 			http.Error(w, "not authorized to override dependencies", http.StatusUnauthorized)
 			return
 		}

@@ -12,13 +12,13 @@ import (
 // function, all the other applicable fields in the Context can
 // inferred and populated from the id of any one of the fields.
 type Context struct {
-	Task    *task.Task
-	Build   *build.Build
-	Version *Version
-	Patch   *patch.Patch
+	Task       *task.Task
+	Build      *build.Build
+	Version    *Version
+	Patch      *patch.Patch
+	ProjectRef *ProjectRef
 
-	projectRef *ProjectRef
-	project    *Project
+	project *Project
 }
 
 // LoadContext builds a Context from the set of given resource ID's
@@ -47,7 +47,7 @@ func LoadContext(taskId, buildId, versionId, patchId, projectId string) (Context
 	// Try to load project for the ID we found, and set cookie with it for subsequent requests
 	if len(projectId) > 0 {
 		// Also lookup the ProjectRef itself and add it to context.
-		ctx.projectRef, err = FindOneProjectRef(projectId)
+		ctx.ProjectRef, err = FindOneProjectRef(projectId)
 		if err != nil {
 			return ctx, err
 		}
@@ -56,21 +56,16 @@ func LoadContext(taskId, buildId, versionId, patchId, projectId string) (Context
 }
 
 func (ctx *Context) GetProjectRef() (*ProjectRef, error) {
-	if ctx.projectRef != nil {
-		return ctx.projectRef, nil
+	// if no project, use the first project as the default project
+	if ctx.ProjectRef == nil {
+		var err error
+		ctx.ProjectRef, err = FindFirstProjectRef()
+		if err != nil {
+			return nil, errors.Wrap(err, "error finding project ref")
+		}
 	}
 
-	var err error
-	ctx.projectRef, err = FindFirstProjectRef()
-	if err != nil {
-		return nil, errors.Wrap(err, "error finding project ref")
-	}
-
-	if ctx.projectRef == nil {
-		return nil, errors.New("no projects defined")
-	}
-
-	return ctx.projectRef, nil
+	return ctx.ProjectRef, nil
 }
 
 // GetProject returns the project associated with the Context.
