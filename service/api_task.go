@@ -386,7 +386,7 @@ func assignNextAvailableTask(taskQueue *model.TaskQueue, taskQueueService model.
 				"spec_group_max_hosts": spec.GroupMaxHosts,
 			}))
 
-			// We not pass back the error due to https://jira.mongodb.org/browse/EVG-6214
+			// An error is not returned in this situation due to https://jira.mongodb.org/browse/EVG-6214
 			return nil, nil
 		}
 
