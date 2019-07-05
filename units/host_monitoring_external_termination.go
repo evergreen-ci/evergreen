@@ -92,58 +92,66 @@ func (j *hostMonitorExternalStateCheckJob) Run(ctx context.Context) {
 		j.env = evergreen.GetEnvironment()
 	}
 
-	settings := j.env.Settings()
+	_, err = CheckExternallyTerminatedHost(ctx, j.ID(), j.env, j.host)
+	j.AddError(err)
+}
 
-	cloudHost, err := cloud.GetCloudHost(ctx, j.host, settings)
+func CheckExternallyTerminatedHost(ctx context.Context, id string, env evergreen.Environment, h *host.Host) (bool, error) {
+	settings := env.Settings()
+	cloudHost, err := cloud.GetCloudHost(ctx, h, settings)
 	if err != nil {
-		j.AddError(errors.Wrapf(err, "error getting cloud host for host %s", j.host.Id))
-		return
+		return false, errors.Wrapf(err, "error getting cloud host for host %s", h.Id)
 	}
-
 	cloudStatus, err := cloudHost.GetInstanceStatus(ctx)
 	if err != nil {
-		j.AddError(errors.Wrapf(err, "error getting cloud status for host %s", j.HostID))
-		return
+		return false, errors.Wrapf(err, "error getting cloud status for host %s", h.Id)
 	}
 
 	switch cloudStatus {
 	case cloud.StatusRunning:
-		if j.host.Status != evergreen.HostRunning {
+		if h.Status != evergreen.HostRunning {
 			grip.Info(message.Fields{
-				"op":      hostMonitorExternalStateCheckName,
-				"op_id":   j.ID(),
-				"message": "found running host, with incorrect status ",
-				"status":  j.host.Status,
-				"host":    j.HostID,
-				"distro":  j.host.Distro.Id,
+				"op_id":   id,
+				"message": "found running host with incorrect status",
+				"status":  h.Status,
+				"host":    h.Id,
+				"distro":  h.Distro.Id,
 			})
-
-			j.AddError(errors.Wrapf(j.host.MarkReachable(), "error updating reachability for host %s", j.HostID))
+			return false, errors.Wrapf(h.MarkReachable(), "error updating reachability for host %s", h.Id)
 		}
+		return false, nil
 	case cloud.StatusTerminated:
 		grip.Info(message.Fields{
-			"op":      hostMonitorExternalStateCheckName,
-			"op_id":   j.ID(),
+			"op_id":   id,
 			"message": "host terminated externally",
-			"host":    j.HostID,
-			"distro":  j.host.Distro.Id,
+			"host":    h.Id,
+			"distro":  h.Distro.Id,
 		})
 
-		j.AddError(model.ClearAndResetStrandedTask(j.host))
+		if err = model.ClearAndResetStrandedTask(h); err != nil {
+			return false, errors.Wrap(err, "can't clear stranded tasks")
+		}
 
-		event.LogHostTerminatedExternally(j.HostID)
+		event.LogHostTerminatedExternally(h.Id)
 
 		// the instance was terminated from outside our control
-		j.AddError(errors.Wrapf(j.host.SetTerminated(evergreen.HostExternalUserName), "error setting host %s terminated", j.HostID))
+		err = h.SetTerminated(evergreen.HostExternalUserName)
+		grip.Error(message.WrapError(err, message.Fields{
+			"op_id":   id,
+			"message": "error setting host status to terminated in db",
+			"host":    h.Id,
+			"distro":  h.Distro.Id,
+		}))
+		return true, errors.Wrapf(err, "error setting host %s terminated", h.Id)
 	default:
 		grip.Warning(message.Fields{
 			"message":      "host found with unexpected status",
-			"op":           hostMonitorExternalStateCheckName,
-			"op_id":        j.ID(),
-			"host":         j.HostID,
-			"distro":       j.host.Distro.Id,
-			"host_status":  j.host.Status,
+			"op_id":        id,
+			"host":         h.Id,
+			"distro":       h.Distro.Id,
+			"host_status":  h.Status,
 			"cloud_status": cloudStatus,
 		})
+		return false, errors.Errorf("unexpected host status '%s'", cloudStatus)
 	}
 }

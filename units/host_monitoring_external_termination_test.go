@@ -59,3 +59,38 @@ func TestHostMonitoringCheckJob(t *testing.T) {
 	assert.NoError(err)
 	assert.Equal(host1.Status, evergreen.HostTerminated)
 }
+
+func TestCheckExternallyTerminatedHost(t *testing.T) {
+	assert.NoError(t, db.ClearCollections(host.Collection))
+
+	mockCloud := cloud.GetMockProvider()
+	mockCloud.Reset()
+	m1 := cloud.MockInstance{
+		IsUp:           true,
+		IsSSHReachable: true,
+		Status:         cloud.StatusTerminated,
+	}
+	mockCloud.Set("h1", m1)
+
+	h := &host.Host{
+		Id:                    "h1",
+		LastCommunicationTime: time.Now().Add(-15 * time.Minute),
+		Status:                evergreen.HostRunning,
+		Provider:              evergreen.ProviderNameMock,
+		StartedBy:             evergreen.User,
+	}
+	require.NoError(t, h.Insert())
+
+	testConfig := testutil.TestConfig()
+	env := &mock.Environment{
+		EvergreenSettings: testConfig,
+	}
+
+	terminated, err := CheckExternallyTerminatedHost(context.Background(), "", env, h)
+	assert.True(t, terminated)
+	assert.NoError(t, err)
+
+	h, err = host.FindOneId(h.Id)
+	assert.NoError(t, err)
+	assert.Equal(t, evergreen.HostTerminated, h.Status)
+}

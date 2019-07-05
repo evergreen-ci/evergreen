@@ -9,7 +9,6 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/cloud"
-	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
@@ -176,13 +175,10 @@ func (j *agentMonitorDeployJob) hostDown() bool {
 // terminate it.
 func (j *agentMonitorDeployJob) disableHost(ctx context.Context, reason string) error {
 	if j.host.Provider != evergreen.ProviderNameStatic {
-		externallyTerminated, err := CheckExternallyTerminated(ctx, j.env, j.host)
+		externallyTerminated, err := CheckExternallyTerminatedHost(ctx, j.ID(), j.env, j.host)
 		if err != nil {
 			j.AddError(errors.Wrapf(err, "can't check if host '%s' was externally terminated", j.HostID))
 		} else if externallyTerminated {
-			j.AddError(errors.Wrapf(j.host.SetTerminated(evergreen.HostExternalUserName), "can't set host %s to terminated", j.HostID))
-			event.LogHostTerminatedExternally(j.HostID)
-			j.AddError(model.ClearAndResetStrandedTask(j.host))
 			return nil
 		}
 	}
