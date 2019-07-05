@@ -386,8 +386,7 @@ func assignNextAvailableTask(taskQueue *model.TaskQueue, taskQueueService model.
 				"spec_group_max_hosts": spec.GroupMaxHosts,
 			}))
 
-			// return nil, fmt.Errorf("cannot find a db.tasks document for the next task '%s' to be assigned to host '%s'", queueItem.Id, currentHost.Id)
-			// STU: Why do we not pass back the error in this scenario?
+			// We not pass back the error due to https://jira.mongodb.org/browse/EVG-6214
 			return nil, nil
 		}
 

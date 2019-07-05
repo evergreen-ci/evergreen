@@ -215,7 +215,6 @@ func TestAssignNextAvailableTaskWithPlannerSettingVersionLegacy(t *testing.T) {
 				So(err, ShouldBeNil)
 				So(t, ShouldBeNil)
 			})
-			// STU: Hmmm - in what sense does this demonstrate that we "continue"?
 			Convey("a tasks queue with a task that does not exist should continue", func() {
 				taskQueue.Queue = []model.TaskQueueItem{{Id: "notatask"}}
 				So(taskQueue.Save(), ShouldBeNil)
