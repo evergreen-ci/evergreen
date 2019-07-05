@@ -480,6 +480,17 @@ func FindDistroTaskQueue(distroID string) (TaskQueue, error) {
 		db.NoSort,
 		&queue)
 
+	grip.DebugWhen(err == nil, message.Fields{
+		"ticket":                               "EVG-6289",
+		"message":                              "fetched the distro's TaskQueueItems to create its TaskQueue",
+		"distro":                               distroID,
+		"task_queue_generated_at":              queue.GeneratedAt,
+		"num_task_queue_items":                 len(queue.Queue),
+		"distro_queue_info_length":             queue.DistroQueueInfo.Length,
+		"distro_queue_info_expected_duration":  queue.DistroQueueInfo.ExpectedDuration,
+		"num_distro_queue_info_taskgroupinfos": len(queue.DistroQueueInfo.TaskGroupInfos),
+	})
+
 	return queue, errors.WithStack(err)
 }
 

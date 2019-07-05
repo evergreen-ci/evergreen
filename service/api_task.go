@@ -386,7 +386,9 @@ func assignNextAvailableTask(taskQueue *model.TaskQueue, taskQueueService model.
 				"spec_group_max_hosts": spec.GroupMaxHosts,
 			}))
 
-			return nil, fmt.Errorf("cannot find a db.tasks document for the next task '%s' to be assigned to host '%s'", queueItem.Id, currentHost.Id)
+			// return nil, fmt.Errorf("cannot find a db.tasks document for the next task '%s' to be assigned to host '%s'", queueItem.Id, currentHost.Id)
+			// STU: Why do we not pass back the error in this scenario?
+			return nil, nil
 		}
 
 		// validate that the task can be run, if not fetch the next one in the queue.

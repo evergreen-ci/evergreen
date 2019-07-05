@@ -173,18 +173,16 @@ func (t *basicCachedDispatcherImpl) Refresh() error {
 }
 
 func shouldRefreshCached(ttl time.Duration, lastUpdated time.Time, distroID string) bool {
-	if time.Since(lastUpdated) > ttl {
-		grip.Debug(message.Fields{
-			"ticket":                "EVG-6289",
-			"function":              "shouldRefreshCached",
-			"message":               "it's time to rebuild the order and units representations from the distro's taskQueueItems",
-			"distro":                distroID,
-			"ttl":                   ttl.Seconds(),
-			"current_time":          time.Now(),
-			"last_updated":          lastUpdated,
-			"sec_since_last_update": time.Now().Sub(lastUpdated).Seconds(),
-		})
-	}
+	grip.DebugWhen(time.Since(lastUpdated) > ttl, message.Fields{
+		"ticket":                "EVG-6289",
+		"function":              "shouldRefreshCached",
+		"message":               "it's time to rebuild the order and units representations from the distro's taskQueueItems",
+		"distro":                distroID,
+		"ttl":                   ttl.Seconds(),
+		"current_time":          time.Now(),
+		"last_updated":          lastUpdated,
+		"sec_since_last_update": time.Now().Sub(lastUpdated).Seconds(),
+	})
 
 	return lastUpdated.IsZero() || time.Since(lastUpdated) > ttl
 }
@@ -414,7 +412,7 @@ func (t *basicCachedDispatcherImpl) nextTaskGroupTask(unit schedulableUnit) *Tas
 		if nextTaskFromDB.StartTime != util.ZeroTime {
 			continue
 		}
-		// Don't cache dispatched status when returning the nextTaskQueueItem - in case the task fails to start.
+
 		return &nextTaskQueueItem
 	}
 	// If all the tasks have been dispatched, remove the unit.
