@@ -134,7 +134,7 @@ func (j *hostMonitorExternalStateCheckJob) Run(ctx context.Context) {
 		event.LogHostTerminatedExternally(j.HostID)
 
 		// the instance was terminated from outside our control
-		j.AddError(errors.Wrapf(j.host.SetTerminated("external"), "error setting host %s terminated", j.HostID))
+		j.AddError(errors.Wrapf(j.host.SetTerminated(evergreen.HostExternalUserName), "error setting host %s terminated", j.HostID))
 	default:
 		grip.Warning(message.Fields{
 			"message":      "host found with unexpected status",

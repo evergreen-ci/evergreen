@@ -150,6 +150,17 @@ func (j *agentDeployJob) Run(ctx context.Context) {
 	}
 
 	if stat.LastAttemptFailed() && stat.AllAttemptsFailed() && stat.Count >= agentPutRetries {
+		if j.host.Provider != evergreen.ProviderNameStatic {
+			externallyTerminated, err := CheckExternallyTerminated(ctx, j.env, j.host)
+			if err != nil {
+				j.AddError(errors.Wrapf(err, "can't check if host '%s' was externally terminated", j.HostID))
+			} else if externallyTerminated {
+				j.AddError(errors.Wrapf(j.host.SetTerminated(evergreen.HostExternalUserName), "can't set host %s to terminated", j.HostID))
+				event.LogHostTerminatedExternally(j.HostID)
+				return
+			}
+		}
+
 		if disableErr := j.host.DisablePoisonedHost(fmt.Sprintf("failed %d times to put agent on host", agentPutRetries)); disableErr != nil {
 			j.AddError(errors.Wrapf(disableErr, "error terminating host %s", j.host.Id))
 			return
@@ -373,4 +384,23 @@ func (j *agentDeployJob) startAgentOnRemote(ctx context.Context, settings *everg
 	event.LogHostAgentDeployed(hostObj.Id)
 
 	return nil
+}
+
+func CheckExternallyTerminated(ctx context.Context, env evergreen.Environment, h *host.Host) (bool, error) {
+	settings := env.Settings()
+	cloudHost, err := cloud.GetCloudHost(ctx, h, settings)
+	if err != nil {
+		return false, errors.Wrapf(err, "error getting cloud host for host %s", h.Id)
+	}
+
+	cloudStatus, err := cloudHost.GetInstanceStatus(ctx)
+	if err != nil {
+		return false, errors.Wrapf(err, "error getting cloud status for host %s", h.Id)
+	}
+
+	if cloudStatus == cloud.StatusTerminated {
+		return true, nil
+	}
+
+	return false, nil
 }
