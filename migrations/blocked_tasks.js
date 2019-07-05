@@ -28,11 +28,21 @@ function getDepTaskMap(task) {
     depTasks = db.tasks.find({"_id": {"$in": depIDs}}, {"status": 1, "depends_on": 1});
 
     var depTaskMap = {}
-    for (task of depTasks) {
-        depTaskMap[task._id] = task
+    for (t of depTasks) {
+        depTaskMap[t._id] = t
     }
 
     return depTaskMap
+}
+
+function completeVersions(tasks) {
+    versionIds = new Set()
+    for (task of tasks) {
+        if (task.version != null){
+            versionIds.add(task.version)
+        }
+    }
+    return db.tasks.find({"version": {"$in": Array.from(versionIds)}, "status":"undispatched", "depends_on.status": {"$in": ["success", "failed", "", "*"]}, "depends_on": {"$elemMatch":{"unattainable": {"$exists": false}}}}, {"depends_on":1}).toArray()
 }
 
 //
@@ -42,15 +52,17 @@ function getDepTaskMap(task) {
 // millisecondsPerDay = 86400000
 // delta = millisecondsPerDay * 1
 // sleepMilliseconds = 100
-// migrate(startingDate, delta, sleepMilliseconds)
+// limit = 1000
+// migrate(startingDate, delta, sleepMilliseconds, limit)
 
-function migrate(startingDate, delta, sleepMilliseconds) {
+function migrate(startingDate, delta, sleepMilliseconds, limit) {
     while(startingDate < new Date()) {
         printjson(startingDate)
         loops = 0
         tasksSize = 0
         while (true) {
-            tasks = db.tasks.find({"create_time": {"$gte": startingDate, "$lte": new Date(startingDate.getTime() + delta)}, "status":"undispatched", "depends_on.status": {"$in": ["success", "failed", "", "*"]}, "depends_on": {"$elemMatch":{"unattainable": {"$exists": false}}}}, {"depends_on":1}).toArray()
+            tasks = db.tasks.find({"create_time": {"$gte": startingDate, "$lte": new Date(startingDate.getTime() + delta)}, "status":"undispatched", "depends_on.status": {"$in": ["success", "failed", "", "*"]}, "depends_on": {"$elemMatch":{"unattainable": {"$exists": false}}}}, {"depends_on":1}).limit(limit).toArray()
+            tasks = completeVersions(tasks)
             if (tasks.length == 0 || tasks.length == tasksSize) {
                 break
             }
