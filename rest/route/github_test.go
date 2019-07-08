@@ -252,3 +252,52 @@ func (s *GithubWebhookRouteSuite) TestRetryCommentTrigger() {
 	s.True(triggersRetry("created", commentString))
 	s.False(triggersRetry("deleted", commentString))
 }
+
+func (s *GithubWebhookRouteSuite) TestTryDequeueCommitQueueItemForPR() {
+	s.NoError(db.ClearCollections(model.ProjectRefCollection, commitqueue.Collection))
+
+	owner := "baxterthehacker"
+	repo := "public-repo"
+	branch := "master"
+	number := 1
+
+	fillerString := "a"
+	fillerBool := false
+	pr := &github.PullRequest{
+		MergeCommitSHA: &fillerString,
+		User:           &github.User{Login: &fillerString},
+		Base: &github.PullRequestBranch{
+			Repo: &github.Repository{
+				Owner: &github.User{
+					Login: &owner,
+				},
+				Name:     &repo,
+				FullName: &fillerString,
+			},
+			Ref: &branch,
+			SHA: &fillerString,
+		},
+		Head:    &github.PullRequestBranch{SHA: &fillerString},
+		Title:   &fillerString,
+		HTMLURL: &fillerString,
+		Merged:  &fillerBool,
+	}
+
+	// try dequeue errors if the PR is missing information (PR number)
+	s.Error(s.h.tryDequeueCommitQueueItemForPR(pr))
+
+	pr.Number = &number
+	// try dequeue returns no errors if there is no matching queue
+	s.NoError(s.h.tryDequeueCommitQueueItemForPR(pr))
+
+	// try dequeue works when an item matches
+	s.sc.EnqueueItem("bth", restModel.APICommitQueueItem{Issue: restModel.ToAPIString("1")})
+	s.NoError(s.h.tryDequeueCommitQueueItemForPR(pr))
+	queue, err := s.sc.FindCommitQueueByID("bth")
+	s.NoError(err)
+	s.Empty(queue.Queue)
+
+	// try dequeue errors if no projectRef matches the PR
+	owner = "octocat"
+	s.Error(s.h.tryDequeueCommitQueueItemForPR(pr))
+}
