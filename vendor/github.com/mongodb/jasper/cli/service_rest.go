@@ -19,7 +19,7 @@ const (
 
 func serviceCommandREST(cmd string, operation serviceOperation) cli.Command {
 	return cli.Command{
-		Name:  restService,
+		Name:  RESTService,
 		Usage: fmt.Sprintf("%s a REST service", cmd),
 		Flags: []cli.Flag{
 			cli.StringFlag{
@@ -44,7 +44,7 @@ func serviceCommandREST(cmd string, operation serviceOperation) cli.Command {
 
 			daemon := newRESTDaemon(c.String(hostFlagName), c.Int(portFlagName), manager)
 
-			config := serviceConfig(restService, buildRunCommand(c, restService))
+			config := serviceConfig(RESTService, buildRunCommand(c, RESTService))
 
 			return operation(daemon, config)
 		},

@@ -167,6 +167,27 @@ func ExtractWaitResponse(input []byte) (WaitResponse, error) {
 	if err := json.Unmarshal(input, &resp); err != nil {
 		return resp, errors.Wrap(err, unmarshalFailed)
 	}
+	if err := resp.successOrError(); err != nil {
+		resp.ExitCode = -1
+		return resp, err
+	}
+	return resp, nil
+}
+
+// ServiceStatusResponse represents CLI-specific output containing t he request
+// outcome and the service status.
+type ServiceStatusResponse struct {
+	OutcomeResponse `json:"outcome"`
+	Status          ServiceStatus `json:"status"`
+}
+
+// ExtractServiceStatusResponse unmarshals the input bytes into a
+// ServiceStatusResponse and checks if the request was successful.
+func ExtractServiceStatusResponse(input []byte) (ServiceStatusResponse, error) {
+	resp := ServiceStatusResponse{}
+	if err := json.Unmarshal(input, &resp); err != nil {
+		return resp, errors.Wrap(err, unmarshalFailed)
+	}
 	return resp, resp.successOrError()
 }
 

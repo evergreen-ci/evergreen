@@ -276,9 +276,10 @@ func (m *monitor) fetchClient(ctx context.Context, retry util.RetryArgs) error {
 // setupJasperConnection attempts to connect to the Jasper RPC service running
 // on this host and sets the RPC manager.
 func (m *monitor) setupJasperConnection(ctx context.Context, retry util.RetryArgs) error {
-	serverAddr, err := net.ResolveTCPAddr("tcp", fmt.Sprintf("localhost:%d", m.jasperPort))
+	addrStr := fmt.Sprintf("localhost:%d", m.jasperPort)
+	serverAddr, err := net.ResolveTCPAddr("tcp", addrStr)
 	if err != nil {
-		return errors.Wrapf(err, "failed to resolve Jasper server address at '%s'", serverAddr)
+		return errors.Wrapf(err, "failed to resolve Jasper server address at '%s'", addrStr)
 	}
 
 	if err = util.RetryWithArgs(ctx, func() (bool, error) {

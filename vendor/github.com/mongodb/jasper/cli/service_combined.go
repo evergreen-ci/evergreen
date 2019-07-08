@@ -21,7 +21,7 @@ const (
 
 func serviceCommandCombined(cmd string, operation serviceOperation) cli.Command {
 	return cli.Command{
-		Name:  combinedService,
+		Name:  CombinedService,
 		Usage: fmt.Sprintf("%s a combined service", cmd),
 		Flags: []cli.Flag{
 			cli.StringFlag{
@@ -68,7 +68,7 @@ func serviceCommandCombined(cmd string, operation serviceOperation) cli.Command 
 				newRPCDaemon(c.String(rpcHostFlagName), c.Int(rpcPortFlagName), manager, c.String(rpcCredsFilePathFlagName)),
 			)
 
-			config := serviceConfig(combinedService, buildRunCommand(c, combinedService))
+			config := serviceConfig(CombinedService, buildRunCommand(c, CombinedService))
 
 			return operation(daemon, config)
 		},
