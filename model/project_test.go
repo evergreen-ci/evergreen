@@ -270,7 +270,7 @@ task_groups:
 	proj := &Project{}
 	pp, err := LoadProjectInto([]byte(projYml), "id", proj)
 	assert.NotNil(proj)
-	assert.Nil(err)
+	assert.NoError(err)
 	v := Version{
 		Id:            "v1",
 		ParserProject: pp,

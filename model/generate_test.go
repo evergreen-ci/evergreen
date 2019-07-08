@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/kr/pretty"
+
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/task"
@@ -523,31 +525,60 @@ func (s *GenerateSuite) TestValidateNoRecursiveGenerateTasks() {
 
 func (s *GenerateSuite) TestAddGeneratedProjectToConfig() {
 	p := &Project{}
-	_, err := LoadProjectInto([]byte(sampleProjYml), "", p)
+	pp, err := LoadProjectInto([]byte(sampleProjYml), "", p)
 	s.NoError(err)
 	cachedProject := cacheProjectData(p)
 	g := sampleGeneratedProject
-	config, err := g.addGeneratedProjectToConfig(sampleProjYml, cachedProject)
-	s.NoError(err)
-	s.Contains(config, "say-hi")
-	s.Contains(config, "new_task")
-	s.Contains(config, "a_variant")
-	s.Contains(config, "new_buildvariant")
-	s.Contains(config, "a_function")
-	s.Contains(config, "new_function")
-	s.Contains(config, "say-bye")
-	s.Contains(config, "my_display_task_new_variant")
-	s.Contains(config, "my_display_task_old_variant")
+	newPP := g.addGeneratedProjectToConfig(pp, cachedProject)
+	pretty.Print(newPP)
+	s.NotNil(newPP)
+	s.Require().Len(newPP.Tasks, 6)
+	s.Require().Len(newPP.BuildVariants, 3)
+	s.Require().Len(newPP.Functions, 2)
+	s.Equal(newPP.Tasks[0].Name, "say-hi")
+	s.Equal(newPP.Tasks[1].Name, "say-bye")
+	s.Equal(newPP.Tasks[2].Name, "a-depended-on-task")
+	s.Equal(newPP.Tasks[3].Name, "task_that_has_dependencies")
+	s.Equal(newPP.Tasks[4].Name, "new_task")
+	s.Equal(newPP.Tasks[5].Name, "another_task")
 
-	config, err = g.addGeneratedProjectToConfig(sampleProjYmlNoFunctions, cachedProject)
+	s.Equal(newPP.BuildVariants[0].Name, "a_variant")
+	s.Require().Len(newPP.BuildVariants[0].DisplayTasks, 1)
+	s.Equal(newPP.BuildVariants[0].DisplayTasks[0].Name, "my_display_task_old_variant")
+
+	s.Equal(newPP.BuildVariants[1].Name, "new_buildvariant")
+	s.Len(newPP.BuildVariants[1].DisplayTasks, 0)
+
+	s.Equal(newPP.BuildVariants[2].Name, "another_variant")
+	s.Require().Len(newPP.BuildVariants[2].DisplayTasks, 1)
+	s.Equal(newPP.BuildVariants[2].DisplayTasks[0].Name, "my_display_task_new_variant")
+
+	_, ok := newPP.Functions["a_function"]
+	s.True(ok)
+	_, ok = newPP.Functions["new_function"]
+	s.True(ok)
+
+	pp, err = LoadProjectInto([]byte(sampleProjYmlNoFunctions), "", p)
 	s.NoError(err)
-	s.Contains(config, "say-hi")
-	s.Contains(config, "new_task")
-	s.Contains(config, "a_variant")
-	s.Contains(config, "new_buildvariant")
-	s.Contains(config, "say-bye")
-	s.Contains(config, "my_display_task_new_variant")
-	s.Contains(config, "my_display_task_old_variant")
+	newPP = g.addGeneratedProjectToConfig(pp, cachedProject)
+	s.Require().Len(newPP.Tasks, 5)
+	s.Require().Len(newPP.BuildVariants, 3)
+	s.Len(newPP.Functions, 1)
+	s.Equal(newPP.Tasks[0].Name, "say-hi")
+	s.Equal(newPP.Tasks[1].Name, "say-bye")
+	s.Equal(newPP.Tasks[3].Name, "new_task")
+
+	s.Equal(newPP.BuildVariants[0].Name, "a_variant")
+	s.Require().Len(newPP.BuildVariants[0].DisplayTasks, 1)
+	s.Equal(newPP.BuildVariants[0].DisplayTasks[0].Name, "my_display_task_old_variant")
+
+	s.Equal(newPP.BuildVariants[1].Name, "new_buildvariant")
+	s.Len(newPP.BuildVariants[1].DisplayTasks, 0)
+
+	s.Equal(newPP.BuildVariants[2].Name, "another_variant")
+	s.Require().Len(newPP.BuildVariants[2].DisplayTasks, 1)
+	s.Equal(newPP.BuildVariants[2].DisplayTasks[0].Name, "my_display_task_new_variant")
+
 }
 
 func (s *GenerateSuite) TestSaveNewBuildsAndTasks() {

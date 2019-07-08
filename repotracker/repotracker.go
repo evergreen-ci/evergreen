@@ -83,7 +83,7 @@ func (p *ProjectInfo) populateVersion(v *model.Version) error {
 	}
 	pp, err := model.LoadProjectInto(config, p.Ref.Identifier, p.Project)
 	if err != nil {
-		grip.Warning(message.WrapError(err, "error creating parser project"))
+		return errors.Wrap(err, "error creating parser project")
 	}
 	v.ParserProject = pp
 	return nil

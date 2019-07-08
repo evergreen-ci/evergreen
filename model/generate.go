@@ -141,17 +141,15 @@ func (g *GeneratedProject) NewVersion() (*Project, *Version, *task.Task, *projec
 			gimlet.ErrorResponse{StatusCode: http.StatusBadRequest, Message: errors.Wrap(err, "generated project is invalid").Error()}
 	}
 
-	newConfig, err := g.addGeneratedProjectToConfig(v.Config, cachedProject)
-	if err != nil {
+	v.ParserProject = g.addGeneratedProjectToConfig(v.ParserProject, cachedProject)
+	if UpdateVersionProject(v.Id, v.ParserProject); err != nil {
 		return nil, nil, nil, nil,
-			gimlet.ErrorResponse{StatusCode: http.StatusBadRequest, Message: errors.Wrap(err, "error creating config from generated config").Error()}
+			gimlet.ErrorResponse{StatusCode: http.StatusInternalServerError, Message: errors.Wrap(err, "error updating version project").Error()}
 	}
-	v.Config = newConfig
-	v.ParserProject = nil // ensure we read from new config string
 	p, err = LoadProjectFromVersion(v, t.Project, true)
 	if err != nil {
 		return nil, nil, nil, nil,
-			gimlet.ErrorResponse{StatusCode: http.StatusBadRequest, Message: errors.Wrap(err, "error reading project yaml").Error()}
+			gimlet.ErrorResponse{StatusCode: http.StatusBadRequest, Message: errors.Wrap(err, "error translating project").Error()}
 	}
 	return p, v, t, &cachedProject, nil
 }
@@ -162,7 +160,10 @@ func (g *GeneratedProject) Save(ctx context.Context, p *Project, v *Version, t *
 		VersionConfigNumberKey: v.ConfigUpdateNumber,
 	}
 	update := bson.M{
-		"$set": bson.M{VersionConfigKey: v.Config},
+		"$set": bson.M{
+			VersionConfigKey:  v.Config,
+			VersionProjectKey: v.ParserProject,
+		},
 		"$inc": bson.M{VersionConfigNumberKey: 1},
 	}
 
@@ -266,12 +267,8 @@ func appendTasks(pairs TaskVariantPairs, bv parserBV, p *Project) TaskVariantPai
 }
 
 // addGeneratedProjectToConfig takes a YML config and returns a new one with the GeneratedProject included.
-func (g *GeneratedProject) addGeneratedProjectToConfig(config string, cachedProject projectMaps) (string, error) {
+func (g *GeneratedProject) addGeneratedProjectToConfig(intermediateProject *ParserProject, cachedProject projectMaps) *ParserProject {
 	// Append buildvariants, tasks, and functions to the config.
-	intermediateProject, err := createIntermediateProject([]byte(config))
-	if err != nil {
-		return "", errors.Wrap(err, "error creating intermediate project")
-	}
 	intermediateProject.TaskGroups = append(intermediateProject.TaskGroups, g.TaskGroups...)
 	intermediateProject.Tasks = append(intermediateProject.Tasks, g.Tasks...)
 	for key, val := range g.Functions {
@@ -291,11 +288,7 @@ func (g *GeneratedProject) addGeneratedProjectToConfig(config string, cachedProj
 			intermediateProject.BuildVariants = append(intermediateProject.BuildVariants, bv)
 		}
 	}
-	byteConfig, err := yaml.Marshal(intermediateProject)
-	if err != nil {
-		return "", errors.Wrap(err, "error marshalling new project config")
-	}
-	return string(byteConfig), nil
+	return intermediateProject
 }
 
 // projectMaps is a struct of maps of project fields, which allows efficient comparisons of generated projects to projects.

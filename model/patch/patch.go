@@ -48,7 +48,7 @@ type Patch struct {
 	VariantsTasks   []VariantTasks   `bson:"variants_tasks"`
 	Patches         []ModulePatch    `bson:"patches"`
 	Activated       bool             `bson:"activated"`
-	PatchedConfig   string           `bson:"patched_config"` // TODO: should we be adding support for patches
+	PatchedConfig   string           `bson:"patched_config"`
 	Alias           string           `bson:"alias"`
 	GithubPatchData GithubPatch      `bson:"github_patch_data,omitempty"`
 }

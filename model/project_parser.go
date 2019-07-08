@@ -413,8 +413,15 @@ func (pss *parserStringSlice) UnmarshalYAML(unmarshal func(interface{}) error) e
 
 func LoadProjectFromVersion(v *Version, identifier string, shouldSave bool) (*Project, error) {
 	if v.ParserProject != nil {
-		pp, errs := translateProject(v.ParserProject)
-		return pp, formatErrors(errs)
+		if v.ParserProject.Identifier != identifier {
+			v.ParserProject.Identifier = identifier
+			if err := UpdateVersionProject(v.Id, v.ParserProject); err != nil {
+				return nil, errors.New("error updating project's identifier")
+			}
+		}
+
+		p, errs := translateProject(v.ParserProject)
+		return p, formatErrors(errs)
 	}
 	if v.Config == "" {
 		return nil, errors.New("version has no config")
@@ -456,7 +463,7 @@ func createIntermediateProject(yml []byte) (*ParserProject, error) {
 	p := &ParserProject{}
 	err := yaml.Unmarshal(yml, p)
 	if err != nil {
-		return nil, formatErrors([]error{err})
+		return nil, err
 	}
 	if p.Functions == nil {
 		p.Functions = map[string]*YAMLCommandSet{}

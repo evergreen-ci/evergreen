@@ -3,6 +3,8 @@ package model
 import (
 	"fmt"
 
+	"github.com/pkg/errors"
+
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/mongodb/anser/bsonutil"
@@ -259,14 +261,14 @@ func VersionUpdateOne(query interface{}, update interface{}) error {
 
 func UpdateVersionProject(versionID string, pp *ParserProject) error {
 	if versionID == "" {
-		return nil
+		return errors.New("no version ID given")
 	}
-	return VersionUpdateOne(VersionById(versionID),
+	return errors.Wrap(VersionUpdateOne(VersionById(versionID),
 		bson.M{
 			"$set": bson.M{
 				VersionProjectKey: pp,
 			},
-		})
+		}), "error updating version")
 }
 
 func AddSatisfiedTrigger(versionID, definitionID string) error {
