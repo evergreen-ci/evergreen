@@ -150,13 +150,10 @@ func (j *agentDeployJob) Run(ctx context.Context) {
 	}
 
 	if stat.LastAttemptFailed() && stat.AllAttemptsFailed() && stat.Count >= agentPutRetries {
-		if j.host.Provider != evergreen.ProviderNameStatic {
-			externallyTerminated, err := CheckExternallyTerminatedHost(ctx, j.ID(), j.env, j.host)
-			if err != nil {
-				j.AddError(errors.Wrapf(err, "can't check if host '%s' was externally terminated", j.HostID))
-			} else if externallyTerminated {
-				return
-			}
+		externallyTerminated, err := HandleExternallyTerminatedHost(ctx, j.ID(), j.env, j.host)
+		j.AddError(errors.Wrapf(err, "can't check if host '%s' was externally terminated", j.HostID))
+		if err != nil && externallyTerminated {
+			return
 		}
 
 		if disableErr := j.host.DisablePoisonedHost(fmt.Sprintf("failed %d times to put agent on host", agentPutRetries)); disableErr != nil {

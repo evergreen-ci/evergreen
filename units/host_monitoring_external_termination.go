@@ -92,11 +92,17 @@ func (j *hostMonitorExternalStateCheckJob) Run(ctx context.Context) {
 		j.env = evergreen.GetEnvironment()
 	}
 
-	_, err = CheckExternallyTerminatedHost(ctx, j.ID(), j.env, j.host)
+	_, err = HandleExternallyTerminatedHost(ctx, j.ID(), j.env, j.host)
 	j.AddError(err)
 }
 
-func CheckExternallyTerminatedHost(ctx context.Context, id string, env evergreen.Environment, h *host.Host) (bool, error) {
+// HandleExternallyTerminatedHost will check if a host from a dynamic provider has been termimated
+// and clean up the host if it has. Returns true if the host has been externally terminated
+func HandleExternallyTerminatedHost(ctx context.Context, id string, env evergreen.Environment, h *host.Host) (bool, error) {
+	if h.Provider != evergreen.ProviderNameStatic {
+		return false, nil
+	}
+
 	settings := env.Settings()
 	cloudHost, err := cloud.GetCloudHost(ctx, h, settings)
 	if err != nil {
