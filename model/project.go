@@ -938,7 +938,7 @@ func GetTaskGroup(taskGroup string, tc *TaskConfig) (*TaskGroup, error) {
 	if tc.Version == nil {
 		return nil, errors.New("version is nil")
 	}
-	p, err := LoadProjectFromVersion(tc.Version, tc.Task.Project, false)
+	p, err := LoadProjectFromVersion(tc.Version, tc.Task.Project, true)
 	if err != nil {
 		return nil, errors.Wrap(err, "error retrieving project for task group")
 	}

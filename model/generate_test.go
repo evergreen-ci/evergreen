@@ -5,8 +5,6 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/kr/pretty"
-
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/task"
@@ -530,7 +528,6 @@ func (s *GenerateSuite) TestAddGeneratedProjectToConfig() {
 	cachedProject := cacheProjectData(p)
 	g := sampleGeneratedProject
 	newPP := g.addGeneratedProjectToConfig(pp, cachedProject)
-	pretty.Print(newPP)
 	s.NotNil(newPP)
 	s.Require().Len(newPP.Tasks, 6)
 	s.Require().Len(newPP.BuildVariants, 3)
@@ -567,17 +564,6 @@ func (s *GenerateSuite) TestAddGeneratedProjectToConfig() {
 	s.Equal(newPP.Tasks[0].Name, "say-hi")
 	s.Equal(newPP.Tasks[1].Name, "say-bye")
 	s.Equal(newPP.Tasks[3].Name, "new_task")
-
-	s.Equal(newPP.BuildVariants[0].Name, "a_variant")
-	s.Require().Len(newPP.BuildVariants[0].DisplayTasks, 1)
-	s.Equal(newPP.BuildVariants[0].DisplayTasks[0].Name, "my_display_task_old_variant")
-
-	s.Equal(newPP.BuildVariants[1].Name, "new_buildvariant")
-	s.Len(newPP.BuildVariants[1].DisplayTasks, 0)
-
-	s.Equal(newPP.BuildVariants[2].Name, "another_variant")
-	s.Require().Len(newPP.BuildVariants[2].DisplayTasks, 1)
-	s.Equal(newPP.BuildVariants[2].DisplayTasks[0].Name, "my_display_task_new_variant")
 
 }
 

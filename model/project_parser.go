@@ -413,16 +413,11 @@ func (pss *parserStringSlice) UnmarshalYAML(unmarshal func(interface{}) error) e
 
 func LoadProjectFromVersion(v *Version, identifier string, shouldSave bool) (*Project, error) {
 	if v.ParserProject != nil {
-		if v.ParserProject.Identifier != identifier {
-			v.ParserProject.Identifier = identifier
-			if err := UpdateVersionProject(v.Id, v.ParserProject); err != nil {
-				return nil, errors.New("error updating project's identifier")
-			}
-		}
-
+		v.ParserProject.Identifier = identifier
 		p, errs := translateProject(v.ParserProject)
 		return p, formatErrors(errs)
 	}
+
 	if v.Config == "" {
 		return nil, errors.New("version has no config")
 	}

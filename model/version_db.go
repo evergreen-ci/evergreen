@@ -263,7 +263,8 @@ func UpdateVersionProject(versionID string, pp *ParserProject) error {
 	if versionID == "" {
 		return errors.New("no version ID given")
 	}
-	return errors.Wrap(VersionUpdateOne(VersionById(versionID),
+	return errors.Wrap(VersionUpdateOne(
+		bson.M{VersionIdKey: versionID},
 		bson.M{
 			"$set": bson.M{
 				VersionProjectKey: pp,

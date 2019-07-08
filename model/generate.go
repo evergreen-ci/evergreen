@@ -126,7 +126,7 @@ func (g *GeneratedProject) NewVersion() (*Project, *Version, *task.Task, *projec
 		return nil, nil, nil, nil,
 			gimlet.ErrorResponse{StatusCode: http.StatusBadRequest, Message: fmt.Sprintf("unable to find version %s", t.Version)}
 	}
-	p, err := LoadProjectFromVersion(v, t.Project, true)
+	p, err := LoadProjectFromVersion(v, t.Project, false)
 	if err != nil {
 		return nil, nil, nil, nil,
 			gimlet.ErrorResponse{StatusCode: http.StatusBadRequest, Message: errors.Wrapf(err, "error getting project for version %s", t.Version).Error()}
@@ -142,11 +142,7 @@ func (g *GeneratedProject) NewVersion() (*Project, *Version, *task.Task, *projec
 	}
 
 	v.ParserProject = g.addGeneratedProjectToConfig(v.ParserProject, cachedProject)
-	if UpdateVersionProject(v.Id, v.ParserProject); err != nil {
-		return nil, nil, nil, nil,
-			gimlet.ErrorResponse{StatusCode: http.StatusInternalServerError, Message: errors.Wrap(err, "error updating version project").Error()}
-	}
-	p, err = LoadProjectFromVersion(v, t.Project, true)
+	p, err = LoadProjectFromVersion(v, t.Project, false)
 	if err != nil {
 		return nil, nil, nil, nil,
 			gimlet.ErrorResponse{StatusCode: http.StatusBadRequest, Message: errors.Wrap(err, "error translating project").Error()}
