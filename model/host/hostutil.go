@@ -370,6 +370,8 @@ func (h *Host) JasperClient(ctx context.Context, env evergreen.Environment) (jas
 		return nil, errors.New("legacy host does not support remote Jasper process management")
 	}
 
+	settings := env.Settings()
+
 	if h.JasperCommunication() {
 		switch h.Distro.CommunicationMethod {
 		case distro.CommunicationMethodSSH:
@@ -377,7 +379,7 @@ func (h *Host) JasperClient(ctx context.Context, env evergreen.Environment) (jas
 			if err != nil {
 				return nil, errors.Wrap(err, "could not get host's SSH info")
 			}
-			sshOpts, err := h.GetSSHOptions(env.Settings())
+			sshOpts, err := h.GetSSHOptions(settings)
 			if err != nil {
 				return nil, errors.Wrap(err, "could not get host's SSH options")
 			}
@@ -388,9 +390,9 @@ func (h *Host) JasperClient(ctx context.Context, env evergreen.Environment) (jas
 				Args: sshOpts,
 			}
 			clientOpts := jaspercli.ClientOptions{
-				BinaryPath:          h.jasperBinaryFilePath(env.Settings().HostJasper),
+				BinaryPath:          h.jasperBinaryFilePath(settings.HostJasper),
 				Type:                jaspercli.RPCService,
-				Port:                env.Settings().HostJasper.Port,
+				Port:                settings.HostJasper.Port,
 				CredentialsFilePath: h.Distro.JasperCredentialsPath,
 			}
 
@@ -410,7 +412,7 @@ func (h *Host) JasperClient(ctx context.Context, env evergreen.Environment) (jas
 				return nil, errors.New("cannot resolve Jasper service address if neither host name nor IP is set")
 			}
 
-			addrStr := fmt.Sprintf("%s:%d", hostName, env.Settings().HostJasper.Port)
+			addrStr := fmt.Sprintf("%s:%d", hostName, settings.HostJasper.Port)
 
 			serviceAddr, err := net.ResolveTCPAddr("tcp", addrStr)
 			if err != nil {
