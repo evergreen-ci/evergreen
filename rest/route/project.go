@@ -425,26 +425,21 @@ func (h *projectIDPutHandler) Parse(ctx context.Context, r *http.Request) error 
 	return nil
 }
 
-// Run either:
-// (a) replaces an existing resource with the entity defined in the JSON payload and returns a http.StatusOk (200), or
-// (b) creates a new resource based on the Request-URI and JSON payload and returns a http.StatusCreated (201)
+// creates a new resource based on the Request-URI and JSON payload and returns a http.StatusCreated (201)
 func (h *projectIDPutHandler) Run(ctx context.Context) gimlet.Responder {
-	original, err := h.sc.FindProjectById(h.projectID)
+	p, err := h.sc.FindProjectById(h.projectID)
 	if err != nil && err.(gimlet.ErrorResponse).StatusCode != http.StatusNotFound {
-		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "Database error for find() by project id '%s'", h.projectID))
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "Database error for find() by project id '%s'", h.projectID))
 	}
-
+	if p != nil {
+		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+			StatusCode: http.StatusBadRequest,
+			Message:    fmt.Sprintf("cannot create project with id '%s'", h.projectID),
+		})
+	}
 	apiProjectRef := &model.APIProjectRef{Identifier: model.ToAPIString(h.projectID)}
 	if err = json.Unmarshal(h.body, apiProjectRef); err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "API error while unmarshalling JSON"))
-	}
-
-	identifier := model.FromAPIString(apiProjectRef.Identifier)
-	if h.projectID != identifier {
-		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
-			StatusCode: http.StatusForbidden,
-			Message:    fmt.Sprintf("A project's id is immutable; cannot rename project '%s'", h.projectID),
-		})
 	}
 
 	i, err := apiProjectRef.ToService()
@@ -458,20 +453,13 @@ func (h *projectIDPutHandler) Run(ctx context.Context) gimlet.Responder {
 			Message:    fmt.Sprintf("Unexpected type %T for model.ProjectRef", i),
 		})
 	}
-	// Existing resource
-	if original != nil {
-		if err = h.sc.UpdateProject(dbProjectRef); err != nil {
-			return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "Database error for update() with project id '%s'", h.projectID))
-		}
-		return gimlet.NewJSONResponse(struct{}{})
-	}
-	// New resource
+
 	responder := gimlet.NewJSONResponse(struct{}{})
 	if err = responder.SetStatus(http.StatusCreated); err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "Cannot set HTTP status code to %d", http.StatusCreated))
 	}
 	if err = h.sc.CreateProject(dbProjectRef); err != nil {
-		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "Database error for insert() distro with distro id '%s'", h.projectID))
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "Database error for insert() distro with distro id '%s'", h.projectID))
 	}
 
 	return responder
@@ -524,6 +512,9 @@ func (h *projectIDGetHandler) Run(ctx context.Context) gimlet.Responder {
 	}
 	projectModel.Variables = *variables
 	if projectModel.Aliases, err = h.sc.FindProjectAliases(h.projectID); err != nil {
+		return gimlet.MakeJSONErrorResponder(err)
+	}
+	if projectModel.Subscriptions, err = h.sc.GetSubscriptions(h.projectID, event.OwnerTypeProject); err != nil {
 		return gimlet.MakeJSONErrorResponder(err)
 	}
 	return gimlet.NewJSONResponse(projectModel)
