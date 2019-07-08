@@ -29,7 +29,6 @@ var (
 	VersionBuildVariantsKey       = bsonutil.MustHaveTag(Version{}, "BuildVariants")
 	VersionRevisionOrderNumberKey = bsonutil.MustHaveTag(Version{}, "RevisionOrderNumber")
 	VersionRequesterKey           = bsonutil.MustHaveTag(Version{}, "Requester")
-	VersionProjectKey             = bsonutil.MustHaveTag(Version{}, "ParserProject")
 	VersionConfigKey              = bsonutil.MustHaveTag(Version{}, "Config")
 	VersionConfigNumberKey        = bsonutil.MustHaveTag(Version{}, "ConfigUpdateNumber")
 	VersionIgnoredKey             = bsonutil.MustHaveTag(Version{}, "Ignored")

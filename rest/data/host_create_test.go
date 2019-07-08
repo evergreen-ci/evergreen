@@ -150,7 +150,8 @@ buildvariants:
 	assert.NoError(settings.Set())
 	dc := DBCreateHostConnector{}
 
-	assert.NoError(dc.CreateHostsFromTask(&t1, user.DBUser{Id: "me"}, ""))
+	err := dc.CreateHostsFromTask(&t1, user.DBUser{Id: "me"}, "")
+	assert.NoError(err)
 
 	createdHosts, err := host.Find(host.IsUninitialized)
 	assert.NoError(err)

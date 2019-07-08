@@ -294,6 +294,9 @@ func assignNextAvailableTask(taskQueue *model.TaskQueue, taskQueueService model.
 		if err != nil {
 			return nil, errors.Wrap(err, "error finding last task")
 		}
+		if t == nil {
+			return nil, errors.Errorf("task '%s' not found", currentHost.LastTask)
+		}
 		spec = model.TaskSpec{
 			Group:        t.TaskGroup,
 			BuildVariant: t.BuildVariant,
