@@ -291,7 +291,8 @@ func (s *GithubWebhookRouteSuite) TestTryDequeueCommitQueueItemForPR() {
 	s.NoError(s.h.tryDequeueCommitQueueItemForPR(pr))
 
 	// try dequeue works when an item matches
-	s.sc.EnqueueItem("bth", restModel.APICommitQueueItem{Issue: restModel.ToAPIString("1")})
+	_, err := s.sc.EnqueueItem("bth", restModel.APICommitQueueItem{Issue: restModel.ToAPIString("1")})
+	s.NoError(err)
 	s.NoError(s.h.tryDequeueCommitQueueItemForPR(pr))
 	queue, err := s.sc.FindCommitQueueByID("bth")
 	s.NoError(err)
