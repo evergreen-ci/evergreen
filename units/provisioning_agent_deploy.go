@@ -152,7 +152,7 @@ func (j *agentDeployJob) Run(ctx context.Context) {
 	if stat.LastAttemptFailed() && stat.AllAttemptsFailed() && stat.Count >= agentPutRetries {
 		externallyTerminated, err := HandleExternallyTerminatedHost(ctx, j.ID(), j.env, j.host)
 		j.AddError(errors.Wrapf(err, "can't check if host '%s' was externally terminated", j.HostID))
-		if err != nil && externallyTerminated {
+		if externallyTerminated {
 			return
 		}
 

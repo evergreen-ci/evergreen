@@ -99,7 +99,7 @@ func (j *hostMonitorExternalStateCheckJob) Run(ctx context.Context) {
 // HandleExternallyTerminatedHost will check if a host from a dynamic provider has been termimated
 // and clean up the host if it has. Returns true if the host has been externally terminated
 func HandleExternallyTerminatedHost(ctx context.Context, id string, env evergreen.Environment, h *host.Host) (bool, error) {
-	if h.Provider != evergreen.ProviderNameStatic {
+	if h.Provider == evergreen.ProviderNameStatic {
 		return false, nil
 	}
 
@@ -134,21 +134,29 @@ func HandleExternallyTerminatedHost(ctx context.Context, id string, env evergree
 			"distro":  h.Distro.Id,
 		})
 
-		if err = model.ClearAndResetStrandedTask(h); err != nil {
-			return false, errors.Wrap(err, "can't clear stranded tasks")
-		}
-
 		event.LogHostTerminatedExternally(h.Id)
 
 		// the instance was terminated from outside our control
+		catcher := grip.NewBasicCatcher()
 		err = h.SetTerminated(evergreen.HostExternalUserName)
+		catcher.Add(err)
 		grip.Error(message.WrapError(err, message.Fields{
 			"op_id":   id,
 			"message": "error setting host status to terminated in db",
 			"host":    h.Id,
 			"distro":  h.Distro.Id,
 		}))
-		return true, errors.Wrapf(err, "error setting host %s terminated", h.Id)
+
+		err = model.ClearAndResetStrandedTask(h)
+		catcher.Add(errors.Wrap(err, "can't clear stranded tasks"))
+		grip.Error(message.WrapError(err, message.Fields{
+			"op_id":   id,
+			"message": "can't clear stranded tasks",
+			"host":    h.Id,
+			"distro":  h.Distro.Id,
+		}))
+
+		return true, catcher.Resolve()
 	default:
 		grip.Warning(message.Fields{
 			"message":      "host found with unexpected status",
