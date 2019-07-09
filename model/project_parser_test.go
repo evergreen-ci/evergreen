@@ -12,10 +12,9 @@ import (
 
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/testutil"
-	"github.com/mongodb/grip"
-	"github.com/pkg/errors"
 	. "github.com/smartystreets/goconvey/convey"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"gopkg.in/yaml.v2"
 )
 
@@ -1227,16 +1226,93 @@ functions:
       env:
         CLIENT_URL: https://s3.amazonaws.com/mciuploads/evergreen/${task_id}/evergreen-ci/evergreen/clients/${goos}_${goarch}/evergreen
 `
+	paramsYAML := `
+  - command: myCommand
+    params:
+      env:
+        ${MY_KEY}: my-value
+        ${MY_NUMS}:
+        - 1
+        - 2
+        - 3`
 
 	for name, test := range map[string]func(t *testing.T){
 		"simpleYaml": func(t *testing.T) {
-			assert.NoError(t, checkProjectPersists([]byte(simpleYml)))
+			pp, errs := createIntermediateProject([]byte(simpleYml))
+			yamlToCompare, err := yaml.Marshal(pp)
+			assert.NoError(t, err)
+
+			assert.Len(t, errs, 0)
+			v := Version{
+				Id:            "my-version",
+				ParserProject: pp,
+				Config:        string(yamlToCompare),
+			}
+			assert.NoError(t, v.Insert())
+			newV, err := VersionFindOneId(v.Id)
+			assert.NoError(t, err)
+			require.NotNil(t, newV)
+			require.NotNil(t, newV.ParserProject)
+			require.Len(t, newV.ParserProject.Tasks, 1)
+			require.Len(t, newV.ParserProject.Tasks[0].Commands, 1)
+			assert.NotEmpty(t, newV.ParserProject.Tasks[0].Commands[0].Params)
+			assert.NotEmpty(t, newV.ParserProject.Tasks[0].Commands[0].ParamsYAML)
+
+			params := map[string]interface{}{}
+			assert.NoError(t, yaml.Unmarshal([]byte(newV.ParserProject.Tasks[0].Commands[0].ParamsYAML), &params))
+			val := params["env"]
+			env, ok := val.(map[interface{}]interface{})
+			assert.True(t, ok)
+			assert.Len(t, env, 2)
+			val1 := env["${MY_KEY}"]
+			val2 := env["${MY_NUMS}"]
+			assert.Equal(t, "my-value", fmt.Sprintf("%s", val1))
+			assert.Len(t, val2, 3)
+			assert.True(t, bytes.Contains([]byte(newV.Config), []byte(paramsYAML)))
 		},
 		"self-tests.yml": func(t *testing.T) {
 			filepath := filepath.Join(testutil.GetDirectoryOfFile(), "..", "self-tests.yml")
 			yml, err := ioutil.ReadFile(filepath)
 			assert.NoError(t, err)
-			assert.NoError(t, checkProjectPersists(yml))
+
+			pp, errs := createIntermediateProject([]byte(yml))
+			yamlToCompare, err := yaml.Marshal(pp)
+			assert.NoError(t, err)
+
+			assert.Len(t, errs, 0)
+			v := Version{
+				Id:            "my-version",
+				ParserProject: pp,
+				Config:        string(yamlToCompare),
+			}
+			assert.NoError(t, v.Insert())
+			newV, err := VersionFindOneId(v.Id)
+			assert.NoError(t, err)
+			require.NotNil(t, newV)
+			require.NotNil(t, newV.ParserProject)
+			require.NotNil(t, newV.ParserProject.Post)
+			cmds := newV.ParserProject.Post.List()
+			require.Len(t, cmds, 3)
+			assert.Equal(t, cmds[1].Command, "s3.put")
+			assert.NotEmpty(t, cmds[1].ParamsYAML)
+			assert.NotEmpty(t, cmds[1].Params)
+			params := map[string]interface{}{}
+			assert.NoError(t, yaml.Unmarshal([]byte(cmds[1].ParamsYAML), &params))
+			assert.Len(t, params, 8)
+			assert.Equal(t, params["aws_key"], "${aws_key}")
+
+			commandParams := `
+    aws_key: ${aws_key}
+    aws_secret: ${aws_secret}
+    bucket: mciuploads
+    content_type: text/html
+    display_name: '(html) coverage:'
+    local_files_include_filter:
+    - gopath/src/github.com/evergreen-ci/evergreen/bin/output.*.coverage.html
+    permissions: public-read
+    remote_file: evergreen/${task_id}/
+`
+			assert.True(t, bytes.Contains([]byte(newV.Config), []byte(commandParams)))
 		},
 	} {
 		t.Run(name, func(t *testing.T) {
@@ -1244,40 +1320,5 @@ functions:
 			test(t)
 		})
 	}
-}
 
-func checkProjectPersists(yml []byte) error {
-	pp, errs := createIntermediateProject(yml)
-	catcher := grip.NewBasicCatcher()
-	for _, err := range errs {
-		catcher.Add(err)
-	}
-	if catcher.HasErrors() {
-		return catcher.Resolve()
-	}
-
-	yamlToCompare, err := yaml.Marshal(pp)
-	if err != nil {
-		return errors.Wrapf(err, "error marshalling original project")
-	}
-
-	v := Version{
-		Id:            "my-version",
-		ParserProject: pp,
-	}
-	if err = v.Insert(); err != nil {
-		return errors.Wrapf(err, "error inserting version")
-	}
-	newV, err := VersionFindOneId(v.Id)
-	if err != nil {
-		return errors.Wrapf(err, "error finding version")
-	}
-	newYaml, err := yaml.Marshal(newV.ParserProject)
-	if err != nil {
-		return errors.Wrapf(err, "error marshalling database project")
-	}
-	if !bytes.Equal(newYaml, yamlToCompare) {
-		return errors.New("yamls not equal")
-	}
-	return nil
 }
