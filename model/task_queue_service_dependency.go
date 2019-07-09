@@ -1,6 +1,7 @@
 package model
 
 import (
+	"fmt"
 	"sort"
 	"sync"
 	"time"
@@ -37,21 +38,23 @@ type taskGroupTasks struct {
 }
 
 // taskDistroDAGDispatchService creates a taskDistroDAGDispatchService from a slice of TaskQueueItems.
-func newDistroTaskDAGDispatchService(distroID string, items []TaskQueueItem, ttl time.Duration) TaskDistroQueueService {
+func newDistroTaskDAGDispatchService(distroID string, items []TaskQueueItem, ttl time.Duration) (TaskDistroQueueService, error) {
 	t := &taskDistroDAGDispatchService{
 		distroID: distroID,
 		ttl:      ttl,
 	}
 	t.graph = simple.NewDirectedGraph()
-	t.itemNodeMap = map[string]graph.Node{}
-	t.nodeItemMap = map[int64]*TaskQueueItem{}
-	t.taskGroups = map[string]taskGroupTasks{}
+	t.itemNodeMap = map[string]graph.Node{}    // map[<TaskQueueItem.Id>]Node{}
+	t.nodeItemMap = map[int64]*TaskQueueItem{} // map[node.ID()]*TaskQueueItem{}
+	t.taskGroups = map[string]taskGroupTasks{} // map[compositeGroupId(TaskQueueItem.Group, TaskQueueItem.BuildVariant, TaskQueueItem.Version)]taskGroupTasks{}
 
 	if len(items) != 0 {
-		t.rebuild(items)
+		if err := t.rebuild(items); err != nil {
+			return nil, errors.Wrapf(err, "error creating newDistroTaskDAGDispatchService for distro '%s'", distroID)
+		}
 	}
 
-	return t
+	return t, nil
 }
 
 func (t *taskDistroDAGDispatchService) Refresh() error {
@@ -96,14 +99,15 @@ func (t *taskDistroDAGDispatchService) getNodeByItemID(id string) graph.Node {
 	return nil
 }
 
-func (t *taskDistroDAGDispatchService) addEdge(from string, to string) {
+func (t *taskDistroDAGDispatchService) addEdge(from string, to string) error {
 	fromNodeID := t.itemNodeMap[from].ID()
 	toNodeID := t.itemNodeMap[to].ID()
 
 	// Cannot add a self edge!
 	if fromNodeID == toNodeID {
-		grip.Warningf("Trying to add a self edge from Node.ID() %d to itself", toNodeID)
-		return
+		// STU: what to do here?
+		// grip.Errorf("cannot add a self edge from Node.ID() %d to itself", toNodeID)
+		return fmt.Errorf("cannot add a self edge from Node.ID() %d to itself", toNodeID)
 	}
 
 	edge := simple.Edge{
@@ -111,19 +115,23 @@ func (t *taskDistroDAGDispatchService) addEdge(from string, to string) {
 		T: simple.Node(toNodeID),
 	}
 	t.graph.SetEdge(edge)
+
+	return nil
 }
 
-func (t *taskDistroDAGDispatchService) rebuild(items []TaskQueueItem) {
-	now := time.Now()
-	defer func() {
-		grip.Info(message.Fields{
-			"message":       "finished rebuilding items",
-			"duration_secs": time.Since(now).Seconds(),
-		})
-	}()
+// STU: this should return an error
+func (t *taskDistroDAGDispatchService) rebuild(items []TaskQueueItem) error {
+	// now := time.Now()
+	// STU: deferred logging can be ambiguous
+	// defer func() {
+	// 	grip.Info(message.Fields{
+	// 		"message":       "finished rebuilding items",
+	// 		"duration_secs": time.Since(now).Seconds(),
+	// 	})
+	// }()
 	t.lastUpdated = time.Now()
 
-	// Add each individual node (TaskQueueItem) to the graph
+	// Add each individual <TaskQueueItem> node to the graph
 	for i := range items {
 		t.addItem(&items[i])
 	}
@@ -150,22 +158,32 @@ func (t *taskDistroDAGDispatchService) rebuild(items []TaskQueueItem) {
 	// Add edges for task dependencies
 	for _, item := range items {
 		for _, dep := range item.Dependencies {
-			t.addEdge(item.Id, dep)
+			if err := t.addEdge(item.Id, dep); err != nil {
+				return errors.Wrapf(err, "Failed to create in-memory task queue of TaskQueueItems for distro '%s'; error defining a DirectedGraph of task dependencies", t.distroID)
+			}
 		}
 	}
 
+	// BRIAN?
+
 	// Sort the graph. Use a lexical sort to resolve ambiguities, because node order is the
 	// order that we received these in.
+
+	// graph       *simple.DirectedGraph
+	// func lexicalReversed(nodes []graph.Node)  { sort.Sort(byIDReversed(nodes)) }
+
+	// func SortStabilized(g graph.Directed, order func([]graph.Node)) (sorted []graph.Node, err error) {
 	sorted, err := topo.SortStabilized(t.graph, lexicalReversed)
 	if err != nil {
 		grip.Alert(message.WrapError(err, message.Fields{
 			"message": "problem sorting tasks",
 		}))
-		return
+		// STU: what to do here?
+		return errors.New("What to do here")
 	}
 	t.sorted = sorted
 
-	return
+	return nil
 }
 
 type byIDReversed []graph.Node
@@ -173,7 +191,123 @@ type byIDReversed []graph.Node
 func (n byIDReversed) Len() int           { return len(n) }
 func (n byIDReversed) Less(i, j int) bool { return n[i].ID() > n[j].ID() }
 func (n byIDReversed) Swap(i, j int)      { n[i], n[j] = n[j], n[i] }
-func lexicalReversed(nodes []graph.Node)  { sort.Sort(byIDReversed(nodes)) }
+func lexicalReversed(nodes []graph.Node) {
+	// if len(nodes) > 0 {
+	// 	for _, n := range nodes {
+	// 		// fmt.Println("len(nodes) is: " + strconv.Itoa(len(nodes)))
+	// 		id := int(n.ID())
+	// 		// fmt.Println("My name is: " + strconv.Itoa(id))
+	// 	}
+	// }
+	sort.Sort(byIDReversed(nodes))
+}
+
+// My name is: 26
+// My name is: 11
+// My name is: 47
+// My name is: 71
+// My name is: 82
+// My name is: 96
+// My name is: 24
+// My name is: 17
+// My name is: 37
+// My name is: 43
+// My name is: 46
+// My name is: 64
+// My name is: 65
+// My name is: 72
+// My name is: 10
+// My name is: 6
+// My name is: 52
+// My name is: 75
+// My name is: 80
+// My name is: 2
+// My name is: 57
+// My name is: 60
+// My name is: 98
+// My name is: 99
+// My name is: 21
+// My name is: 23
+// My name is: 25
+// My name is: 27
+// My name is: 30
+// My name is: 45
+// My name is: 49
+// My name is: 59
+// My name is: 1
+// My name is: 7
+// My name is: 20
+// My name is: 36
+// My name is: 39
+// My name is: 66
+// My name is: 76
+// My name is: 83
+// My name is: 3
+// My name is: 92
+// My name is: 22
+// My name is: 29
+// My name is: 41
+// My name is: 63
+// My name is: 68
+// My name is: 74
+// My name is: 90
+// My name is: 12
+// My name is: 14
+// My name is: 31
+// My name is: 38
+// My name is: 42
+// My name is: 50
+// My name is: 56
+// My name is: 61
+// My name is: 13
+// My name is: 86
+// My name is: 89
+// My name is: 69
+// My name is: 5
+// My name is: 16
+// My name is: 73
+// My name is: 85
+// My name is: 97
+// My name is: 0
+// My name is: 44
+// My name is: 53
+// My name is: 62
+// My name is: 78
+// My name is: 81
+// My name is: 35
+// My name is: 28
+// My name is: 48
+// My name is: 55
+// My name is: 67
+// My name is: 79
+// My name is: 87
+// My name is: 88
+// My name is: 19
+// My name is: 94
+// My name is: 93
+// My name is: 9
+// My name is: 32
+// My name is: 40
+// My name is: 70
+// My name is: 77
+// My name is: 8
+// My name is: 51
+// My name is: 33
+// My name is: 34
+// My name is: 58
+// My name is: 91
+// My name is: 95
+// My name is: 18
+// My name is: 15
+// My name is: 54
+// My name is: 84
+// My name is: 4
+// My name is: 40
+// My name is: 45
+// My name is: 50
+// My name is: 70
+// My name is: 75
+// My name is: 80
 
 // FindNextTask returns the next dispatchable task in the queue.
 func (t *taskDistroDAGDispatchService) FindNextTask(spec TaskSpec) *TaskQueueItem {

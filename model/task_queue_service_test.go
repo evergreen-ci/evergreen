@@ -16,13 +16,94 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func TestTaskDistroDAGDispatchService(t *testing.T) {
+	for testName, testCase := range map[string]func(*testing.T, []TaskQueueItem, time.Duration){
+		"TestConstructor": func(t *testing.T, items []TaskQueueItem, ttl time.Duration) {
+			service, err := newDistroTaskDAGDispatchService("distro_1", items, ttl)
+			require.NoError(t, err)
+			require.NotNil(t, service)
+		},
+	} {
+		require.NoError(t, db.ClearCollections(task.Collection))
+		items := []TaskQueueItem{}
+		var group string
+		var variant string
+		var version string
+		var maxHosts int
+		var dependencies []string
+
+		for i := 0; i < 100; i++ {
+			dependencies = []string{}
+			if i%5 == 0 { // no group
+				group = ""
+				variant = "variant_1"
+				version = "version_1"
+				maxHosts = 0
+
+				if i > 30 && i < 50 {
+					dependencies = append(dependencies, strconv.Itoa(i+5))
+				}
+				if i > 60 && i < 80 {
+					dependencies = append(dependencies, strconv.Itoa(i+5))
+				}
+
+			} else if i%5 == 1 { // group 1
+				group = "group_1"
+				variant = "variant_1"
+				version = "version_1"
+				maxHosts = 1
+			} else if i%5 == 2 { // group 2
+				group = "group_2"
+				variant = "variant_1"
+				version = "version_1"
+				maxHosts = 2
+			} else if i%5 == 3 { // different variant
+				group = "group_1"
+				variant = "variant_2"
+				version = "version_1"
+				maxHosts = 2
+			} else if i%5 == 4 { // different version
+				group = "group_1"
+				variant = "variant_1"
+				version = "version_2"
+				maxHosts = 2
+			}
+
+			ID := fmt.Sprintf("%d", i)
+
+			items = append(items, TaskQueueItem{
+				Id:            ID,
+				Group:         group,
+				BuildVariant:  variant,
+				Version:       version,
+				GroupMaxHosts: maxHosts,
+				Dependencies:  dependencies,
+			})
+			nextTask := task.Task{
+				Id:                ID,
+				TaskGroup:         group,
+				BuildVariant:      variant,
+				Version:           version,
+				TaskGroupMaxHosts: maxHosts,
+				StartTime:         util.ZeroTime,
+				FinishTime:        util.ZeroTime,
+			}
+			require.NoError(t, nextTask.Insert())
+		}
+		t.Run(testName, func(t *testing.T) {
+			testCase(t, items, 60)
+		})
+	}
+}
+
 func TestTaskDispatchService(t *testing.T) {
 	constructors := map[string]TaskDistroQueueServiceConstructor{
-		"taskDistroDispatchService":    newDistroTaskDispatchService,
-		"taskDistroDAGDispatchService": newDistroTaskDAGDispatchService,
+		"taskDistroDispatchService": newDistroTaskDispatchService,
+		// "taskDistroDAGDispatchService": newDistroTaskDAGDispatchService,
 	}
 	for name, constructor := range constructors {
 		t.Run(name, func(t *testing.T) {
+			// map["TestName"]: func(*testing.T, []TaskQueueItem, TaskDistroQueueServiceConstructor)
 			for testName, testCase := range map[string]func(*testing.T, []TaskQueueItem, TaskDistroQueueServiceConstructor){
 				"TestConstructor": func(t *testing.T, items []TaskQueueItem, constructor TaskDistroQueueServiceConstructor) {
 					require.NotNil(t, constructor("distro_1", items, time.Minute))
@@ -243,7 +324,9 @@ func TestTaskDispatchService(t *testing.T) {
 
 						if name == "taskDistroDAGDispatchService" {
 							// validate new order w.r.t. dependencies
+							// fmt.Println("The nextInt is: " + strconv.Itoa(nextInt))
 							require.Equal(t, nextInt, expectedDAGDispatchOrder[i])
+
 						}
 						if name == "taskDistroDispatchService" {
 							// validate original order
@@ -265,7 +348,7 @@ func TestTaskDispatchService(t *testing.T) {
 				var maxHosts int
 				var dependencies []string
 
-				for i := 0; i < 100; i++ {
+				for i := 0; i < 10; i++ {
 					dependencies = []string{}
 					if i%5 == 0 { // no group
 						group = ""
@@ -303,6 +386,24 @@ func TestTaskDispatchService(t *testing.T) {
 					}
 
 					ID := fmt.Sprintf("%d", i)
+
+					// if len(dependencies) > 1 {
+					// 	fmt.Println("********************")
+					// 	fmt.Println("Adding an item!")
+					// 	fmt.Println("Id: " + ID)
+					// 	fmt.Println("Group: " + group)
+					// 	fmt.Println("Build Variant: " + variant)
+					// 	fmt.Println("GroupMaxHosts: " + strconv.Itoa(maxHosts))
+					// 	fmt.Println("Number of Dependencies: " + strconv.Itoa(len(dependencies)))
+					// 	// Id:            ID,
+					// 	// Group:         group,
+					// 	// BuildVariant:  variant,
+					// 	// Version:       version,
+					// 	// GroupMaxHosts: maxHosts,
+					// 	// Dependencies:  dependencies,
+					// 	fmt.Println("********************")
+					// }
+
 					items = append(items, TaskQueueItem{
 						Id:            ID,
 						Group:         group,
