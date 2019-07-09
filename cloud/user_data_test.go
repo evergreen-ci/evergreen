@@ -231,8 +231,10 @@ func TestBootstrapUserData(t *testing.T) {
 	} {
 		t.Run(testName, func(t *testing.T) {
 			withBootstrapEnv(t, func(env evergreen.Environment) {
-				db.ClearCollections(user.Collection)
-				defer db.ClearCollections(user.Collection)
+				require.NoError(t, db.ClearCollections(user.Collection))
+				defer func() {
+					assert.NoError(t, db.ClearCollections(user.Collection))
+				}()
 
 				userID := "user"
 				user := &user.DBUser{Id: userID}

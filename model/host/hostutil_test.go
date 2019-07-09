@@ -684,8 +684,10 @@ func TestSetupScriptCommands(t *testing.T) {
 }
 
 func TestStartAgentMonitorRequest(t *testing.T) {
-	db.ClearCollections(Collection)
-	defer db.ClearCollections(Collection)
+	require.NoError(t, db.ClearCollections(Collection))
+	defer func() {
+		assert.NoError(t, db.ClearCollections(Collection))
+	}()
 
 	h := &Host{Id: "id", Distro: distro.Distro{WorkDir: "/foo"}}
 	require.NoError(t, h.Insert())
@@ -730,8 +732,10 @@ func TestStartAgentMonitorRequest(t *testing.T) {
 }
 
 func TestSetupSpawnHostCommand(t *testing.T) {
-	db.ClearCollections(Collection, user.Collection)
-	defer db.ClearCollections(Collection, user.Collection)
+	require.NoError(t, db.ClearCollections(Collection, user.Collection))
+	defer func() {
+		assert.NoError(t, db.ClearCollections(Collection, user.Collection))
+	}()
 
 	user := user.DBUser{Id: "user", APIKey: "key"}
 	require.NoError(t, user.Insert())
