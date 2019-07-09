@@ -106,7 +106,7 @@ type parserTask struct {
 	Stepback        *bool               `yaml:"stepback,omitempty"`
 }
 
-func (pp *parserProject) MarshalYAML() (interface{}, error) {
+func (pp *ParserProject) MarshalYAML() (interface{}, error) {
 	for i, pt := range pp.Tasks {
 		for j, cmd := range pt.Commands {
 			params, err := cmd.resolveParams()

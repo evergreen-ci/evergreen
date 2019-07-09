@@ -20,6 +20,7 @@ import (
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
+	"gopkg.in/yaml.v2"
 )
 
 const (
@@ -183,7 +184,15 @@ func (as *APIServer) GetVersion(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "version not found", http.StatusNotFound)
 		return
 	}
-
+	if v.ParserProject != nil {
+		config, err := yaml.Marshal(v.ParserProject)
+		if err != nil {
+			as.LoggedError(w, r, http.StatusInternalServerError, err)
+			return
+		}
+		v.Config = string(config)
+		v.ParserProject = nil
+	}
 	gimlet.WriteJSON(w, v)
 }
 

@@ -10,15 +10,12 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/mongodb/grip"
-	"github.com/pkg/errors"
-
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/testutil"
-	yaml "gopkg.in/yaml.v2"
-
+	"github.com/pkg/errors"
 	. "github.com/smartystreets/goconvey/convey"
 	"github.com/stretchr/testify/assert"
+	"gopkg.in/yaml.v2"
 )
 
 // ShouldContainResembling tests whether a slice contains an element that DeepEquals
@@ -1268,13 +1265,9 @@ functions:
 }
 
 func checkProjectPersists(yml []byte) error {
-	pp, errs := createIntermediateProject(yml)
-	catcher := grip.NewBasicCatcher()
-	for _, err := range errs {
-		catcher.Add(err)
-	}
-	if catcher.HasErrors() {
-		return catcher.Resolve()
+	pp, err := createIntermediateProject(yml)
+	if err != nil {
+		return errors.Wrapf(err, "error creating project")
 	}
 	yamlToCompare, err := yaml.Marshal(pp)
 	if err != nil {
