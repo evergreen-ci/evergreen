@@ -174,7 +174,7 @@ func (j *agentMonitorDeployJob) hostDown() bool {
 // disableHost changes the host so that it is down and enqueues a job to
 // terminate it.
 func (j *agentMonitorDeployJob) disableHost(ctx context.Context, reason string) error {
-	externallyTerminated, err := HandleExternallyTerminatedHost(ctx, j.ID(), j.env, j.host)
+	externallyTerminated, err := handleExternallyTerminatedHost(ctx, j.ID(), j.env, j.host)
 	j.AddError(errors.Wrapf(err, "can't check if host '%s' was externally terminated", j.HostID))
 	if externallyTerminated {
 		return nil

@@ -82,7 +82,7 @@ func TestHandleExternallyTerminatedHost(t *testing.T) {
 		EvergreenSettings: testConfig,
 	}
 
-	terminated, err := HandleExternallyTerminatedHost(context.Background(), "", env, h)
+	terminated, err := handleExternallyTerminatedHost(context.Background(), "", env, h)
 	assert.True(t, terminated)
 	assert.NoError(t, err)
 
