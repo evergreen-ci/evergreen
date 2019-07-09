@@ -811,7 +811,6 @@ task_groups:
 	defer cancel()
 	s.a.runPostGroupCommands(ctx, s.tc)
 	msgs := s.mockCommunicator.GetMockMessages()["task_id"]
-	s.Require().Len(msgs, 9)
 	s.Equal("Running command 'shell.exec' (step 1 of 1)", msgs[1].Message)
 	s.Contains(msgs[len(msgs)-1].Message, "Finished 'shell.exec'")
 }
