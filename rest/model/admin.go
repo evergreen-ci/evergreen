@@ -1233,7 +1233,7 @@ type APIUIConfig struct {
 	DefaultProject APIString `json:"default_project"`
 	CacheTemplates bool      `json:"cache_templates"`
 	CsrfKey        APIString `json:"csrf_key"`
-	CORSOrigin     APIString `json:"cors_origin"`
+	CORSOrigins    []string  `json:"cors_origins"`
 }
 
 func (a *APIUIConfig) BuildFromService(h interface{}) error {
@@ -1246,7 +1246,7 @@ func (a *APIUIConfig) BuildFromService(h interface{}) error {
 		a.DefaultProject = ToAPIString(v.DefaultProject)
 		a.CacheTemplates = v.CacheTemplates
 		a.CsrfKey = ToAPIString(v.CsrfKey)
-		a.CORSOrigin = ToAPIString(v.CORSOrigin)
+		a.CORSOrigins = v.CORSOrigins
 	default:
 		return errors.Errorf("%T is not a supported type", h)
 	}
@@ -1262,7 +1262,7 @@ func (a *APIUIConfig) ToService() (interface{}, error) {
 		DefaultProject: FromAPIString(a.DefaultProject),
 		CacheTemplates: a.CacheTemplates,
 		CsrfKey:        FromAPIString(a.CsrfKey),
-		CORSOrigin:     FromAPIString(a.CORSOrigin),
+		CORSOrigins:    a.CORSOrigins,
 	}, nil
 }
 
