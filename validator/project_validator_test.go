@@ -1811,7 +1811,7 @@ buildvariants:
 	pp, err := model.LoadProjectInto([]byte(exampleYml), "example_project", &proj)
 	assert.NotNil(proj)
 	assert.NotNil(pp)
-	assert.Empty(err)
+	assert.NoError(err)
 	assert.Len(proj.TaskGroups, 1)
 	tg := proj.TaskGroups[0]
 	assert.Equal("example_task_group", tg.Name)
@@ -1854,7 +1854,7 @@ buildvariants:
 	pp, err := model.LoadProjectInto([]byte(exampleYml), "example_project", &proj)
 	assert.NotNil(proj)
 	assert.NotNil(pp)
-	assert.Empty(err)
+	assert.NoError(err)
 	assert.Len(proj.TaskGroups, 1)
 	tg := proj.TaskGroups[0]
 	assert.Equal("example_task_group", tg.Name)

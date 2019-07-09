@@ -42,6 +42,7 @@ func TestFindProject(t *testing.T) {
 		Convey("if the project file exists and is valid, the project spec within"+
 			"should be unmarshalled and returned", func() {
 			v := &Version{
+				Id:         "my_version",
 				Owner:      "fakeowner",
 				Repo:       "fakerepo",
 				Branch:     "fakebranch",

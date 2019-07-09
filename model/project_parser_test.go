@@ -326,9 +326,9 @@ func TestTranslateDependsOn(t *testing.T) {
 						Name: "t2", Variant: &variantSelector{StringSelector: "v1"}}}},
 				},
 			}
-			out, errs := translateProject(pp)
+			out, err := translateProject(pp)
 			So(out, ShouldNotBeNil)
-			So(len(errs), ShouldEqual, 0)
+			So(err, ShouldBeNil)
 			deps := out.Tasks[2].DependsOn
 			So(deps[0].Name, ShouldEqual, "t1")
 			So(deps[1].Name, ShouldEqual, "t2")
@@ -350,9 +350,9 @@ func TestTranslateDependsOn(t *testing.T) {
 						Name: ".a !.b", Variant: &variantSelector{StringSelector: ".cool"}}}},
 				},
 			}
-			out, errs := translateProject(pp)
+			out, err := translateProject(pp)
 			So(out, ShouldNotBeNil)
-			So(len(errs), ShouldEqual, 0)
+			So(err, ShouldBeNil)
 			So(out.Tasks[1].DependsOn[0].Name, ShouldEqual, "*")
 			deps := out.Tasks[2].DependsOn
 			So(deps[0].Name, ShouldEqual, "t1")
@@ -378,9 +378,10 @@ func TestTranslateDependsOn(t *testing.T) {
 					{TaskSelector: taskSelector{Name: ".b"}},                                                       //[4] conflicts with above
 				}},
 			}
-			out, errs := translateProject(pp)
+			out, err := translateProject(pp)
 			So(out, ShouldNotBeNil)
-			So(len(errs), ShouldEqual, 6)
+			So(err, ShouldNotBeNil)
+			So(len(strings.Split(err.Error(), "\n")), ShouldEqual, 6)
 		})
 	})
 }
@@ -400,9 +401,9 @@ func TestTranslateRequires(t *testing.T) {
 					{Name: "t2", Variant: &variantSelector{StringSelector: "v1"}},
 				}},
 			}
-			out, errs := translateProject(pp)
+			out, err := translateProject(pp)
 			So(out, ShouldNotBeNil)
-			So(len(errs), ShouldEqual, 0)
+			So(err, ShouldBeNil)
 			reqs := out.Tasks[2].Requires
 			So(reqs[0].Name, ShouldEqual, "t1")
 			So(reqs[1].Name, ShouldEqual, "t2")
@@ -422,9 +423,10 @@ func TestTranslateRequires(t *testing.T) {
 					{Name: "t1 t2"}, //nothing returned
 				}},
 			}
-			out, errs := translateProject(pp)
+			out, err := translateProject(pp)
 			So(out, ShouldNotBeNil)
-			So(len(errs), ShouldEqual, 7)
+			So(err, ShouldNotBeNil)
+			So(len(strings.Split(err.Error(), "\n")), ShouldEqual, 7)
 		})
 	})
 }
@@ -448,9 +450,9 @@ func TestTranslateBuildVariants(t *testing.T) {
 				},
 			}}
 
-			out, errs := translateProject(pp)
+			out, err := translateProject(pp)
 			So(out, ShouldNotBeNil)
-			So(len(errs), ShouldEqual, 0)
+			So(err, ShouldBeNil)
 			bvts := out.BuildVariants[0].Tasks
 			So(bvts[0].Name, ShouldEqual, "t1")
 			So(bvts[1].Name, ShouldEqual, "t2")
@@ -468,9 +470,10 @@ func TestTranslateBuildVariants(t *testing.T) {
 					{Name: "t1", Requires: taskSelectors{{Name: ".b"}}},
 				},
 			}}
-			out, errs := translateProject(pp)
+			out, err := translateProject(pp)
 			So(out, ShouldNotBeNil)
-			So(len(errs), ShouldEqual, 2)
+			So(err, ShouldNotBeNil)
+			So(len(strings.Split(err.Error(), "\n")), ShouldEqual, 2)
 		})
 	})
 }

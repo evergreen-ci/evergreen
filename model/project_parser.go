@@ -1,7 +1,6 @@
 package model
 
 import (
-	"bytes"
 	"fmt"
 	"reflect"
 
@@ -414,8 +413,7 @@ func (pss *parserStringSlice) UnmarshalYAML(unmarshal func(interface{}) error) e
 func LoadProjectFromVersion(v *Version, identifier string, shouldSave bool) (*Project, error) {
 	if v.ParserProject != nil {
 		v.ParserProject.Identifier = identifier
-		p, errs := translateProject(v.ParserProject)
-		return p, formatErrors(errs)
+		return translateProject(v.ParserProject)
 	}
 
 	if v.Config == "" {
@@ -445,10 +443,10 @@ func LoadProjectInto(data []byte, identifier string, project *Project) (*ParserP
 	}
 
 	// return project even with errors
-	p, errs := translateProject(intermediateProject)
+	p, err := translateProject(intermediateProject)
 	*project = *p
 	project.Identifier = identifier
-	return intermediateProject, errors.Wrap(formatErrors(errs), "error translating project")
+	return intermediateProject, errors.Wrap(err, "error translating project")
 }
 
 // createIntermediateProject marshals the supplied YAML into our
@@ -467,25 +465,10 @@ func createIntermediateProject(yml []byte) (*ParserProject, error) {
 	return p, nil
 }
 
-func formatErrors(errs []error) error {
-	if len(errs) > 0 {
-		// create a human-readable error list
-		buf := bytes.Buffer{}
-		for _, e := range errs {
-			if len(errs) > 1 {
-				buf.WriteString("\n\t") //only newline if we have multiple errs
-			}
-			buf.WriteString(e.Error())
-		}
-		return errors.Errorf("%s: %s", LoadProjectError, buf.String())
-	}
-	return nil
-}
-
 // translateProject converts our intermediate project representation into
 // the Project type that Evergreen actually uses. Errors are added to
 // pp.errors and pp.warnings and must be checked separately.
-func translateProject(pp *ParserProject) (*Project, []error) {
+func translateProject(pp *ParserProject) (*Project, error) {
 	// Transfer top level fields
 	proj := &Project{
 		Enabled:         pp.Enabled,
@@ -510,20 +493,27 @@ func translateProject(pp *ParserProject) (*Project, []error) {
 		ExecTimeoutSecs: pp.ExecTimeoutSecs,
 		Loggers:         pp.Loggers,
 	}
+	catcher := grip.NewBasicCatcher()
 	tse := NewParserTaskSelectorEvaluator(pp.Tasks)
 	tgse := newTaskGroupSelectorEvaluator(pp.TaskGroups)
 	ase := NewAxisSelectorEvaluator(pp.Axes)
 	regularBVs, matrices := sieveMatrixVariants(pp.BuildVariants)
-	var evalErrs, errs []error
+	var errs []error
 	matrixVariants, errs := buildMatrixVariants(pp.Axes, ase, matrices)
-	evalErrs = append(evalErrs, errs...)
+	addErrors(catcher, errs)
 	pp.BuildVariants = append(regularBVs, matrixVariants...)
 	vse := NewVariantSelectorEvaluator(pp.BuildVariants, ase)
 	proj.Tasks, proj.TaskGroups, errs = evaluateTaskUnits(tse, tgse, vse, pp.Tasks, pp.TaskGroups)
-	evalErrs = append(evalErrs, errs...)
+	addErrors(catcher, errs)
 	proj.BuildVariants, errs = evaluateBuildVariants(tse, tgse, vse, pp.BuildVariants, pp.Tasks, proj.TaskGroups)
-	evalErrs = append(evalErrs, errs...)
-	return proj, evalErrs
+	addErrors(catcher, errs)
+	return proj, errors.Wrap(catcher.Resolve(), LoadProjectError)
+}
+
+func addErrors(catcher grip.Catcher, errs []error) {
+	for _, err := range errs {
+		catcher.Add(err)
+	}
 }
 
 // sieveMatrixVariants takes a set of parserBVs and groups them into regular
