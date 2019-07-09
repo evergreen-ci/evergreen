@@ -925,6 +925,7 @@ func (p *Project) FindTaskGroup(name string) *TaskGroup {
 }
 
 // GetTaskGroup returns the task group for a given task from its project
+// Only called by agent so we don't save project to database
 func GetTaskGroup(taskGroup string, tc *TaskConfig) (*TaskGroup, error) {
 	if tc == nil {
 		return nil, errors.New("unable to get task group: TaskConfig is nil")
@@ -938,7 +939,7 @@ func GetTaskGroup(taskGroup string, tc *TaskConfig) (*TaskGroup, error) {
 	if tc.Version == nil {
 		return nil, errors.New("version is nil")
 	}
-	p, err := LoadProjectFromVersion(tc.Version, tc.Task.Project, true)
+	p, err := LoadProjectFromVersion(tc.Version, tc.Task.Project, false)
 	if err != nil {
 		return nil, errors.Wrap(err, "error retrieving project for task group")
 	}

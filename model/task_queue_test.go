@@ -5,6 +5,8 @@ import (
 	"testing"
 	"time"
 
+	"gopkg.in/mgo.v2/bson"
+
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/host"
@@ -204,6 +206,7 @@ tasks:
 - name: one
 `
 	v := Version{
+		Id:         bson.NewObjectId().Hex(),
 		Identifier: "a",
 		Revision:   "b",
 		Requester:  evergreen.RepotrackerVersionRequester,
@@ -251,9 +254,12 @@ tasks:
 	assert.NoError(BlockTaskGroupTasks("task_id_1"))
 	found, err := task.FindOneId("one_1")
 	assert.NoError(err)
+	require.NotNil(found)
+	require.NotEmpty(found.DependsOn)
 	assert.Equal("task_id_1", found.DependsOn[0].TaskId)
 	queue, err := LoadTaskQueue("distro_1")
 	assert.NoError(err)
+	require.NotNil(queue)
 	assert.Len(queue.Queue, 0)
 }
 
