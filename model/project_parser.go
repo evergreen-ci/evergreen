@@ -107,6 +107,20 @@ type parserTask struct {
 	Stepback        *bool               `yaml:"stepback,omitempty"`
 }
 
+func (pp *parserProject) MarshalYAML() (interface{}, error) {
+	for i, pt := range pp.Tasks {
+		for j, cmd := range pt.Commands {
+			params, err := cmd.resolveParams()
+			if err != nil {
+				return nil, errors.Wrapf(err, "error marshalling commands for task")
+			}
+			pp.Tasks[i].Commands[j].Params = params
+		}
+	}
+
+	return pp, nil
+}
+
 type displayTask struct {
 	Name           string   `yaml:"name,omitempty"`
 	ExecutionTasks []string `yaml:"execution_tasks,omitempty"`

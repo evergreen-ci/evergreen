@@ -275,19 +275,18 @@ type PluginCommandConf struct {
 	Loggers *LoggerConfig `yaml:"loggers,omitempty" bson:"loggers,omitempty"`
 }
 
-func (c *PluginCommandConf) ResolveParams() (map[string]interface{}, error) {
+func (c *PluginCommandConf) resolveParams() (map[string]interface{}, error) {
 	out := map[string]interface{}{}
 	if c == nil {
 		return out, nil
 	}
-	if len(c.Params) > 0 {
-		return c.Params, nil
+	if c.ParamsYAML != "" {
+		if err := yaml.Unmarshal([]byte(c.ParamsYAML), &out); err != nil {
+			return nil, errors.Wrapf(err, "error unmarshalling params")
+		}
+		c.Params = out
 	}
-	if err := yaml.Unmarshal([]byte(c.ParamsYAML), &out); err != nil {
-		return nil, errors.Wrapf(err, "error unmarshalling params")
-	}
-	c.Params = out
-	return out, nil
+	return c.Params, nil
 }
 
 func (c *PluginCommandConf) UnmarshalYAML(unmarshal func(interface{}) error) error {
@@ -317,7 +316,6 @@ func (c *PluginCommandConf) UnmarshalYAML(unmarshal func(interface{}) error) err
 	c.Loggers = temp.Loggers
 	c.ParamsYAML = temp.ParamsYAML
 	c.Params = temp.Params
-
 	return c.unmarshalParams()
 }
 
@@ -332,7 +330,6 @@ func (c *PluginCommandConf) unmarshalParams() error {
 		c.Params = out
 		return nil
 	}
-
 	bytes, err := yaml.Marshal(c.Params)
 	if err != nil {
 		return errors.Wrap(err, "error marshalling params into yaml")
@@ -365,7 +362,15 @@ func (c *YAMLCommandSet) MarshalYAML() (interface{}, error) {
 	if c == nil {
 		return nil, nil
 	}
-	return c.List(), nil
+	res := c.List()
+	for idx, cmd := range res {
+		params, err := cmd.resolveParams()
+		if err != nil {
+			return nil, errors.Wrap(err, "error resolving params for command set")
+		}
+		res[idx].Params = params
+	}
+	return res, nil
 }
 
 func (c *YAMLCommandSet) UnmarshalYAML(unmarshal func(interface{}) error) error {
