@@ -1,6 +1,8 @@
 package evergreen
 
 import (
+	"net/url"
+
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson"
@@ -77,6 +79,13 @@ func (c *UIConfig) ValidateAndDefault() error {
 	}
 	if c.CsrfKey != "" && len(c.CsrfKey) != 32 {
 		catcher.Add(errors.New("CSRF key must be 32 characters long"))
+	}
+	for _, origin := range c.CORSOrigins {
+		if _, err := url.Parse(origin); err != nil {
+			if origin != "*" {
+				catcher.Add(errors.Wrap(err, "CORS Origin must be a valid URL or '*'"))
+			}
+		}
 	}
 
 	return catcher.Resolve()
