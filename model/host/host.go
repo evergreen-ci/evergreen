@@ -1511,33 +1511,34 @@ func StaleRunningTaskIDs(staleness time.Duration) ([]task.Task, error) {
 			task.LastHeartbeatKey: bson.M{"$lte": time.Now().Add(-staleness)},
 		}},
 		{"$lookup": bson.M{
-			"from":         Collection,
-			"localField":   task.HostIdKey,
-			"foreignField": IdKey,
-			"as":           "hosts",
+			"from": Collection,
+			"as":   "host",
+			"let":  bson.M{"id": "$" + task.IdKey},
+			"pipeline": []bson.M{
+				{
+					"$match": bson.M{
+						"$expr": bson.M{
+							"$and": []bson.M{
+								{"$eq": []string{"$$id", "$" + RunningTaskKey}},
+								{"$or": []bson.M{ // this expression checks that the host is not currently running teardown_group of a different task
+									{"$not": []bson.M{{"$ifNull": []interface{}{"$" + RunningTeardownForTaskKey, nil}}}},
+									{"$eq": []string{"$" + RunningTeardownForTaskKey, ""}},
+									{"$and": []bson.M{
+										{"$ifNull": []interface{}{"$" + RunningTeardownForTaskKey, nil}},
+										{"$lt": []interface{}{"$" + RunningTeardownSinceKey, time.Now().Add(-1*evergreen.MaxTeardownGroupTimeoutSecs*time.Second - 5*time.Minute)}},
+									}},
+								}},
+							},
+						},
+					},
+				},
+			},
 		}},
+		{"$unwind": "$host"},
 		{"$project": bson.M{
 			task.IdKey:        1,
 			task.ExecutionKey: 1,
-			"host": bson.M{
-				"$arrayElemAt": []interface{}{"$hosts", 0},
-			},
-		}},
-		{"$match": bson.M{
-			"$expr": bson.M{
-				"$and": []bson.M{
-					{"$eq": []string{"$_id", bsonutil.GetDottedKeyName("$host", RunningTaskKey)}},
-					{"$or": []bson.M{ // this expression checks that the host is not currently running teardown_group of a different task
-						{"$not": []bson.M{{"$ifNull": []interface{}{bsonutil.GetDottedKeyName("$host", RunningTeardownForTaskKey), nil}}}},
-						{"$eq": []string{bsonutil.GetDottedKeyName("$host", RunningTeardownForTaskKey), ""}},
-						{"$and": []bson.M{
-							{"$ifNull": []interface{}{bsonutil.GetDottedKeyName("$host", RunningTeardownForTaskKey), nil}},
-							{"$lt": []interface{}{bsonutil.GetDottedKeyName("$host", RunningTeardownSinceKey),
-								time.Now().Add(-1*evergreen.MaxTeardownGroupTimeoutSecs*time.Second - 5*time.Minute)}},
-						}},
-					}},
-				},
-			},
+			"host":            1,
 		}},
 	}
 
