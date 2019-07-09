@@ -174,28 +174,12 @@ func (s *ProjectPutSuite) TestRunNewWithValidEntity() {
 	s.Equal(resp.Status(), http.StatusCreated)
 }
 
-func (s *ProjectPutSuite) TestRunExistingWithValidEntity() {
+func (s *ProjectPutSuite) TestRunExistingFails() {
 	ctx := context.Background()
 	json := []byte(
 		`{
 				"owner_name": "Rembrandt Q. Einstein",
 				"repo_name": "nutsandgum",
-				"branch_name": "master",
-				"repo_kind": "github",
-				"enabled": false,
-				"private": true,
-				"batch_time": 0,
-				"remote_path": "evergreen.yml",
-				"display_name": "Nuts and Gum: together at last!",
-				"local_config": "",
-				"deactivate_previous": true,
-				"tracks_push_events": true,
-				"pr_testing_enabled": true,
-				"commitq_enabled": true,
-				"tracked": false,
-				"patching_disabled": true,
-				"admins": ["Apu DeBeaumarchais"],
-				"notify_on_failure": true
 		}`)
 
 	h := s.rm.(*projectIDPutHandler)
@@ -204,41 +188,8 @@ func (s *ProjectPutSuite) TestRunExistingWithValidEntity() {
 
 	resp := s.rm.Run(ctx)
 	s.NotNil(resp.Data())
-	s.Equal(resp.Status(), http.StatusOK)
+	s.Equal(resp.Status(), http.StatusBadRequest)
 
-}
-
-func (s *ProjectPutSuite) TestRunNewConflictingName() {
-	ctx := context.Background()
-	json := []byte(
-		`{
-				"owner_name": "Rembrandt Q. Einstein",
-				"repo_name": "nutsandgum",
-				"branch_name": "master",
-				"repo_kind": "github",
-				"enabled": false,
-				"private": true,
-				"batch_time": 0,
-				"identifier" : "verboten",
-				"remote_path": "evergreen.yml",
-				"display_name": "Nuts and Gum: together at last!",
-				"local_config": "",
-				"deactivate_previous": true,
-				"tracks_push_events": true,
-				"pr_testing_enabled": true,
-				"commitq_enabled": true,
-				"tracked": false,
-				"patching_disabled": true,
-				"admins": ["Apu DeBeaumarchais"],
-				"notify_on_failure": true
-		}`)
-	h := s.rm.(*projectIDPutHandler)
-	h.projectID = "new-project"
-	h.body = json
-
-	resp := s.rm.Run(ctx)
-	s.NotNil(resp.Data())
-	s.Equal(resp.Status(), http.StatusForbidden)
 }
 
 ////////////////////////////////////////////////////////////////////////
