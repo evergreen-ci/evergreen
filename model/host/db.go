@@ -199,6 +199,26 @@ func AllRunningHosts(distroID string) (HostGroup, error) {
 	return allHosts, nil
 }
 
+// AllActiveHosts produces a HostGroup for all hosts with UpHost
+// status as well as quarantined hosts. These do not count spawn
+// hosts.
+func AllActiveHosts(distroID string) (HostGroup, error) {
+	q := bson.M{
+		StartedByKey: evergreen.User,
+		StatusKey:    bson.M{"$in": append(evergreen.UpHostStatus, evergreen.HostQuarantined)},
+	}
+
+	if distroID != "" {
+		q[bsonutil.GetDottedKeyName(DistroKey, distro.IdKey)] = distroID
+	}
+
+	activeHosts, err := Find(db.Query(q))
+	if err != nil {
+		return nil, errors.Wrap(err, "problem finding active hosts")
+	}
+	return activeHosts, nil
+}
+
 // AllHostsSpawnedByTasksToTerminate finds all hosts spawned by tasks that should be terminated.
 func AllHostsSpawnedByTasksToTerminate() ([]Host, error) {
 	catcher := grip.NewBasicCatcher()

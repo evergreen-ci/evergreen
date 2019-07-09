@@ -1302,6 +1302,17 @@ func (hosts HostGroup) Stats() HostGroupStats {
 	return out
 }
 
+func (hosts HostGroup) Uphosts() HostGroup {
+	out := HostGroup{}
+
+	for _, h := range hosts {
+		if util.StringSliceContains(evergreen.UpHostStatus, h.Status) {
+			out = append(out, h)
+		}
+	}
+	return out
+}
+
 // getNumContainersOnParents returns a slice of uphost parents and their respective
 // number of current containers currently running in order of longest expected
 // finish time
