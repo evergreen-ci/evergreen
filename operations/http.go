@@ -14,6 +14,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/patch"
+	restModel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/service"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/evergreen/validator"
@@ -195,12 +196,19 @@ func (ac *legacyClient) GetPatch(patchId string) (*patch.Patch, error) {
 	if resp.StatusCode != http.StatusOK {
 		return nil, NewAPIError(resp)
 	}
-	result := &patch.Patch{}
-	if err := util.ReadJSONInto(resp.Body, result); err != nil {
+	apiModel := &restModel.APIPatch{}
+	if err := util.ReadJSONInto(resp.Body, apiModel); err != nil {
 		return nil, err
 	}
-
-	return result, nil
+	i, err := apiModel.ToService()
+	if err != nil {
+		return nil, errors.Wrapf(err, "error building to patch")
+	}
+	res, ok := i.(patch.Patch)
+	if !ok {
+		return nil, errors.Wrapf(err, "error converting type %T to Patch", res)
+	}
+	return &res, nil
 }
 
 // GetProjectRef requests project details from the API server for a given project ID.

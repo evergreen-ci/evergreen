@@ -218,7 +218,10 @@ func (j *commitQueueJob) processGitHubPRItem(ctx context.Context, cq *commitqueu
 		j.dequeue(cq, nextItem)
 		j.AddError(sendCommitQueueGithubStatus(j.env, pr, message.GithubStateFailure, "can't make patch", ""))
 	}
-
+	nextItem.Version = patchDoc.Id.Hex()
+	if err := cq.UpdateVersion(*nextItem); err != nil {
+		j.logError(err, "problem saving version", nextItem)
+	}
 	v, err := model.FinalizePatch(ctx, patchDoc, evergreen.MergeTestRequester, githubToken)
 	if err != nil {
 		j.logError(err, "can't finalize patch", nextItem)

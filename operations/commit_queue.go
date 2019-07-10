@@ -2,13 +2,17 @@ package operations
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"strings"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/evergreen/model/commitqueue"
 	"github.com/evergreen-ci/evergreen/rest/client"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 	"github.com/urfave/cli"
 )
@@ -54,7 +58,12 @@ func listQueue() cli.Command {
 			client := conf.GetRestCommunicator(ctx)
 			defer client.Close()
 
-			return listCommitQueue(ctx, client, projectID)
+			_, rc, err := conf.getLegacyClients()
+			if err != nil {
+				return errors.Wrap(err, "problem accessing legacy evergreen client")
+			}
+
+			return listCommitQueue(ctx, client, rc, projectID, conf.UIServerHost)
 		},
 	}
 }
@@ -173,25 +182,77 @@ func setModuleCommand() cli.Command {
 	}
 }
 
-func listCommitQueue(ctx context.Context, client client.Communicator, projectID string) error {
+func listCommitQueue(ctx context.Context, client client.Communicator, rc *legacyClient, projectID string, uiServerHost string) error {
 	cq, err := client.GetCommitQueue(ctx, projectID)
 	if err != nil {
 		return err
 	}
+	projectRef, err := rc.GetProjectRef(projectID) // rc versus ac?
+	if err != nil {
+		return errors.Wrapf(err, "can't find project for queue id '%s'", projectID)
+	}
+	grip.Infof("Project: %s\n", projectID)
+	grip.Infof("Type of queue: %s\n", projectRef.CommitQueue.PatchType)
 
-	grip.Infof("Project: %s\n", restModel.FromAPIString(cq.ProjectID))
+	if projectRef.CommitQueue.PatchType == commitqueue.PRPatchType {
+		grip.Infof("Owner: %s\n", projectRef.Owner)
+		grip.Infof("Repo: %s\n", projectRef.Repo)
+	}
+
 	grip.Infof("Queue Length: %d\n", len(cq.Queue))
 	for i, item := range cq.Queue {
-		grip.Infof("\t%d: %s\n", i+1, restModel.FromAPIString(item.Issue))
-		if len(item.Modules) > 0 {
-			grip.Info("\tModules:\n")
-			for j, module := range item.Modules {
-				grip.Infof("\t\t%d: %s (%s)\n", j+1, restModel.FromAPIString(module.Module), restModel.FromAPIString(module.Issue))
-			}
+		grip.Infof("%d:", i+1)
+		if projectRef.CommitQueue.PatchType == commitqueue.PRPatchType {
+			listPRCommitQueueItem(ctx, item, projectRef, uiServerHost)
 		}
+		if projectRef.CommitQueue.PatchType == commitqueue.CLIPatchType {
+			listCLICommitQueueItem(ctx, item, rc, uiServerHost)
+		}
+		listModules(item)
 	}
 
 	return nil
+}
+
+func listPRCommitQueueItem(ctx context.Context, item restModel.APICommitQueueItem, projectRef *model.ProjectRef, uiServerHost string) {
+	prDisplay := `
+        PR # : %s
+         URL : %s
+`
+	prDisplayVersion := "       Build : %s/version/%s"
+
+	issue := restModel.FromAPIString(item.Issue)
+	url := fmt.Sprintf("https://github.com/%s/%s/pull/%s", projectRef.Owner, projectRef.Repo, issue)
+	grip.Infof(prDisplay, issue, url)
+
+	if restModel.FromAPIString(item.Version) != "" {
+		grip.Infof(prDisplayVersion, uiServerHost, restModel.FromAPIString(item.Version))
+	}
+	grip.Info("\n")
+}
+
+func listCLICommitQueueItem(ctx context.Context, item restModel.APICommitQueueItem, rc *legacyClient, uiServerHost string) {
+	issue := restModel.FromAPIString(item.Issue)
+	p, err := rc.GetPatch(issue)
+	if err != nil {
+		grip.Error(message.WrapError(err, "\terror getting patch"))
+		return
+	}
+	disp, err := getPatchDisplay(p, false, uiServerHost)
+	if err != nil {
+		grip.Error(message.WrapError(err, "\terror getting patch display"))
+		return
+	}
+	grip.Info(disp)
+}
+
+func listModules(item restModel.APICommitQueueItem) {
+	if len(item.Modules) > 0 {
+		grip.Info("\tModules:\n")
+		for j, module := range item.Modules {
+			grip.Infof("\t\t%d: %s (%s)\n", j+1, restModel.FromAPIString(module.Module), restModel.FromAPIString(module.Issue))
+		}
+	}
 }
 
 func deleteCommitQueueItem(ctx context.Context, client client.Communicator, projectID, item string) error {
@@ -221,7 +282,6 @@ func (p *mergeParams) mergeBranch(ctx context.Context, conf *ClientSettings, cli
 			return err
 		}
 	}
-
 	if !p.pause {
 		position, err := client.EnqueueItem(ctx, p.projectID, p.id)
 		if err != nil {
