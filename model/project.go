@@ -1375,3 +1375,15 @@ func FetchVersionsAndAssociatedBuilds(project *Project, skip int, numVersions in
 
 	return versionsFromDB, buildsByVersion, nil
 }
+
+func (tg *TaskGroup) InjectInfo(t *task.Task) {
+	t.TaskGroup = tg.Name
+	t.TaskGroupMaxHosts = tg.MaxHosts
+
+	for idx, n := range tg.Tasks {
+		if n == t.DisplayName {
+			t.TaskGroupOrder = idx
+			break
+		}
+	}
+}

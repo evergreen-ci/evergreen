@@ -76,6 +76,7 @@ type Task struct {
 	Priority          int64               `bson:"priority" json:"priority"`
 	TaskGroup         string              `bson:"task_group" json:"task_group"`
 	TaskGroupMaxHosts int                 `bson:"task_group_max_hosts,omitempty" json:"task_group_max_hosts,omitempty"`
+	TaskGroupOrder    int                 `bson:"task_group_order,omitempty" json:"task_group_order,omitempty"`
 	Logs              *apimodels.TaskLogs `bson:"logs,omitempty" json:"logs,omitempty"`
 
 	// only relevant if the task is runnin.  the time of the last heartbeat
