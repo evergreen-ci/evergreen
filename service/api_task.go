@@ -373,7 +373,7 @@ func assignNextAvailableTask(taskQueue *model.TaskQueue, taskQueueService model.
 		}
 
 		if nextTask == nil {
-			grip.Critical(message.WrapError(err, message.Fields{
+			grip.Error(message.Fields{
 				"message":              "cannot find a db.tasks document for the next task to be assigned to this host",
 				"distro":               d.Id,
 				"host":                 currentHost.Id,
@@ -384,7 +384,7 @@ func assignNextAvailableTask(taskQueue *model.TaskQueue, taskQueueService model.
 				"spec_version":         spec.Version,
 				"spec_project_id":      spec.ProjectID,
 				"spec_group_max_hosts": spec.GroupMaxHosts,
-			}))
+			})
 
 			// An error is not returned in this situation due to https://jira.mongodb.org/browse/EVG-6214
 			return nil, nil

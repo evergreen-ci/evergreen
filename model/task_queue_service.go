@@ -138,8 +138,8 @@ func newDistroTaskDispatchService(distroID string, items []TaskQueueItem, ttl ti
 
 	grip.Debug(message.Fields{
 		"ticket":       "EVG-6289",
-		"message":      "initializing new basicCachedDispatcherImpl",
 		"function":     "newDistroTaskDispatchService",
+		"message":      "initializing new basicCachedDispatcherImpl",
 		"order_length": len(t.order),
 		"units_length": len(t.units),
 	})
@@ -176,7 +176,7 @@ func shouldRefreshCached(ttl time.Duration, lastUpdated time.Time, distroID stri
 	grip.DebugWhen(time.Since(lastUpdated) > ttl, message.Fields{
 		"ticket":                "EVG-6289",
 		"function":              "shouldRefreshCached",
-		"message":               "it's time to rebuild the order and units representations from the distro's taskQueueItems",
+		"message":               "it's time to rebuild the order and units representations from the distro's TaskQueueItems",
 		"distro":                distroID,
 		"ttl":                   ttl.Seconds(),
 		"current_time":          time.Now(),
@@ -234,22 +234,21 @@ func (t *basicCachedDispatcherImpl) rebuild(items []TaskQueueItem) {
 func (t *basicCachedDispatcherImpl) FindNextTask(spec TaskSpec) *TaskQueueItem {
 	grip.Debug(message.Fields{
 		"ticket":       "EVG-6289",
-		"function":     "just entered FindNextTask",
+		"function":     "FindNextTask",
+		"message":      "entered function",
 		"order_length": len(t.order),
 		"units_length": len(t.units),
 	})
 	t.mu.Lock()
 	defer t.mu.Unlock()
 
-	// If units (map[string]schedulableUnit) is empty, the queue has been emptied. Reset order as an optimization so that the
-	// service no longer needs to iterate over it and check each item against the map.
-	if len(t.units) == 0 {
+	if len(t.units) == 0 && len(t.order) > 0 {
 		grip.Debug(message.Fields{
 			"ticket":       "EVG-6289",
-			"message":      "t.units (map[string]schedulableUnit) is empty, resetting t.order = []string{} ",
+			"function":     "FindNextTask",
+			"message":      "t.units (map[string]schedulableUnit) is empty, but t.order ([]string) is not; resetting t.order = []string{} - returning nil",
 			"order_length": len(t.order),
 			"units_length": len(t.units),
-			"is_mismatch":  !(len(t.order) == len(t.units)),
 		})
 
 		t.order = []string{}
@@ -272,7 +271,8 @@ func (t *basicCachedDispatcherImpl) FindNextTask(spec TaskSpec) *TaskQueueItem {
 		// Fall through to getting a task not in that group.
 		grip.Debug(message.Fields{
 			"ticket":               "EVG-6289",
-			"message":              "basicCachedDispatcherImpl.units[key] was not found - assuming it has been dispatched; falling through to getting a task not in the current group",
+			"function":             "FindNextTask",
+			"message":              "basicCachedDispatcherImpl.units[key] was not found - assuming it has been dispatched; falling through to try and get a task not in the current task group",
 			"key":                  compositeGroupId(spec.Group, spec.BuildVariant, spec.Version),
 			"spec_group":           spec.Group,
 			"spec_build_variant":   spec.BuildVariant,
@@ -288,8 +288,9 @@ func (t *basicCachedDispatcherImpl) FindNextTask(spec TaskSpec) *TaskQueueItem {
 	for _, schedulableUnitID := range t.order {
 		unit, ok = t.units[schedulableUnitID]
 		if !ok {
-			grip.Error(message.WrapError(err, message.Fields{
+			grip.Error(message.Fields{
 				"ticket":                                "EVG-6289",
+				"function":                              "FindNextTask",
 				"message":                               "basicCachedDispatcherImpl.units[schedulableUnitID] was not found",
 				"schedulable_unit_id":                   unit.id,
 				"schedulable_unit_running_hosts":        unit.runningHosts,
@@ -297,20 +298,21 @@ func (t *basicCachedDispatcherImpl) FindNextTask(spec TaskSpec) *TaskQueueItem {
 				"num_schedulable_unit_task_queue_items": len(unit.tasks),
 				"order_length":                          len(t.order),
 				"units_length":                          len(t.units),
-			}))
+			})
 			continue
 		}
 
 		// If maxHosts is not set, this is not a task group.
 		if unit.maxHosts == 0 {
-			grip.Error(message.WrapError(err, message.Fields{
+			grip.Error(message.Fields{
 				"ticket":                                "EVG-6289",
+				"function":                              "FindNextTask",
 				"message":                               "schedulableUnit.maxHosts == 0 - this is not a task group",
 				"schedulable_unit_id":                   unit.id,
 				"schedulable_unit_running_hosts":        unit.runningHosts,
 				"schedulable_unit_max_hosts":            unit.maxHosts,
 				"num_schedulable_unit_task_queue_items": len(unit.tasks),
-			}))
+			})
 			delete(t.units, schedulableUnitID)
 			return &unit.tasks[0]
 		}
@@ -326,11 +328,13 @@ func (t *basicCachedDispatcherImpl) FindNextTask(spec TaskSpec) *TaskQueueItem {
 			numHosts, err = host.NumHostsByTaskSpec(spec.Group, spec.BuildVariant, spec.ProjectID, spec.Version)
 			if err != nil {
 				grip.Error(message.WrapError(err, message.Fields{
-					"message": "problem running NumHostsByTaskSpec query",
-					"group":   spec.Group,
-					"variant": spec.BuildVariant,
-					"project": spec.ProjectID,
-					"version": spec.Version,
+					"ticket":   "EVG-6289",
+					"function": "FindNextTask",
+					"message":  "problem running NumHostsByTaskSpec query - returning nil",
+					"group":    spec.Group,
+					"variant":  spec.BuildVariant,
+					"project":  spec.ProjectID,
+					"version":  spec.Version,
 				}))
 				return nil
 			}
@@ -344,6 +348,7 @@ func (t *basicCachedDispatcherImpl) FindNextTask(spec TaskSpec) *TaskQueueItem {
 			} else {
 				grip.Debug(message.Fields{
 					"ticket":                                "EVG-6289",
+					"function":                              "FindNextTask",
 					"message":                               "schedulableUnit.runningHosts < schedulableUnit.maxHosts is false",
 					"schedulable_unit_id":                   unit.id,
 					"schedulable_unit_running_hosts":        unit.runningHosts,
@@ -357,7 +362,8 @@ func (t *basicCachedDispatcherImpl) FindNextTask(spec TaskSpec) *TaskQueueItem {
 	}
 	grip.Debug(message.Fields{
 		"ticket":       "EVG-6289",
-		"message":      "no task returned from FindNextTask",
+		"function":     "FindNextTask",
+		"message":      "no task - returning nil",
 		"order_length": len(t.order),
 		"units_length": len(t.units),
 	})
