@@ -180,8 +180,8 @@ func execCLICommandInputOutput(t *testing.T, c *cli.Context, cmd cli.Command, in
 	})
 }
 
-// execCLICommandInputOutput runs the CLI command writes the result from stdout
-// to output.
+// execCLICommandInputOutput runs the CLI command and writes the result from
+// stdout to output.
 func execCLICommandOutput(t *testing.T, c *cli.Context, cmd cli.Command, output interface{}) error {
 	return withMockStdout(t, func(stdout *os.File) error {
 		if err := cli.HandleAction(cmd.Action, c); err != nil {

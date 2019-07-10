@@ -18,7 +18,32 @@ func TestCLIManager(t *testing.T) {
 	} {
 		t.Run(remoteType, func(t *testing.T) {
 			for testName, testCase := range map[string]func(ctx context.Context, t *testing.T, c *cli.Context, jasperProcID string){
-				"CreateCommandSucceeds": func(ctx context.Context, t *testing.T, c *cli.Context, jasperProcID string) {
+				"CommandsWithInputFailWithInvalidInput": func(ctx context.Context, t *testing.T, c *cli.Context, jasperProcID string) {
+					input, err := json.Marshal(jasper.MockProcess{})
+					require.NoError(t, err)
+					assert.Error(t, execCLICommandInputOutput(t, c, managerCreateProcess(), input, &InfoResponse{}))
+					assert.Error(t, execCLICommandInputOutput(t, c, managerCreateCommand(), input, &OutcomeResponse{}))
+					assert.Error(t, execCLICommandInputOutput(t, c, managerGet(), input, &InfoResponse{}))
+					assert.Error(t, execCLICommandInputOutput(t, c, managerList(), input, &InfosResponse{}))
+					assert.Error(t, execCLICommandInputOutput(t, c, managerGroup(), input, &InfosResponse{}))
+				},
+				"CommandsWithoutInputPassWithInvalidInput": func(ctx context.Context, t *testing.T, c *cli.Context, jasperProcID string) {
+					input, err := json.Marshal(jasper.MockProcess{})
+					require.NoError(t, err)
+					resp := &OutcomeResponse{}
+					assert.NoError(t, execCLICommandInputOutput(t, c, managerClear(), input, resp))
+					assert.NoError(t, execCLICommandInputOutput(t, c, managerClose(), input, resp))
+				},
+				"CreateProcessPasses": func(ctx context.Context, t *testing.T, c *cli.Context, jasperProcID string) {
+					input, err := json.Marshal(jasper.CreateOptions{
+						Args: []string{"echo", "hello", "world"},
+					})
+					require.NoError(t, err)
+					resp := &InfoResponse{}
+					require.NoError(t, execCLICommandInputOutput(t, c, managerCreateProcess(), input, resp))
+					require.True(t, resp.Successful())
+				},
+				"CreateCommandPasses": func(ctx context.Context, t *testing.T, c *cli.Context, jasperProcID string) {
 					input, err := json.Marshal(CommandInput{
 						Commands: [][]string{[]string{"echo", "hello", "world"}},
 					})
@@ -27,7 +52,7 @@ func TestCLIManager(t *testing.T) {
 					require.NoError(t, execCLICommandInputOutput(t, c, managerCreateCommand(), input, resp))
 					require.True(t, resp.Successful())
 				},
-				"GetExistingIDSucceeds": func(ctx context.Context, t *testing.T, c *cli.Context, jasperProcID string) {
+				"GetExistingIDPasses": func(ctx context.Context, t *testing.T, c *cli.Context, jasperProcID string) {
 					input, err := json.Marshal(IDInput{jasperProcID})
 					require.NoError(t, err)
 					resp := &InfoResponse{}
@@ -48,7 +73,7 @@ func TestCLIManager(t *testing.T) {
 					require.NoError(t, err)
 					assert.Error(t, execCLICommandInputOutput(t, c, managerGet(), input, &InfoResponse{}))
 				},
-				"ListValidFilterSucceeds": func(ctx context.Context, t *testing.T, c *cli.Context, jasperProcID string) {
+				"ListValidFilterPasses": func(ctx context.Context, t *testing.T, c *cli.Context, jasperProcID string) {
 					input, err := json.Marshal(FilterInput{jasper.All})
 					require.NoError(t, err)
 					resp := &InfosResponse{}
@@ -87,12 +112,12 @@ func TestCLIManager(t *testing.T) {
 					require.True(t, resp.Successful())
 					assert.Len(t, resp.Infos, 0)
 				},
-				"ClearSucceeds": func(ctx context.Context, t *testing.T, c *cli.Context, jasperProcID string) {
+				"ClearPasses": func(ctx context.Context, t *testing.T, c *cli.Context, jasperProcID string) {
 					resp := &OutcomeResponse{}
 					require.NoError(t, execCLICommandOutput(t, c, managerClear(), resp))
 					assert.True(t, resp.Successful())
 				},
-				"CloseSucceeds": func(ctx context.Context, t *testing.T, c *cli.Context, jasperProcID string) {
+				"ClosePasses": func(ctx context.Context, t *testing.T, c *cli.Context, jasperProcID string) {
 					resp := &OutcomeResponse{}
 					require.NoError(t, execCLICommandOutput(t, c, managerClose(), resp))
 					assert.True(t, resp.Successful())

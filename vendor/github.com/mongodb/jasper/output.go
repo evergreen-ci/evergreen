@@ -91,7 +91,10 @@ func (opts BufferOptions) Validate() error {
 
 // Validate ensures that LogOptions is valid.
 func (opts LogOptions) Validate() error {
-	return opts.BufferOptions.Validate()
+	catcher := grip.NewBasicCatcher()
+	catcher.Wrap(opts.BufferOptions.Validate(), "invalid buffering options")
+	catcher.Wrap(opts.Format.Validate(), "invalid log format")
+	return catcher.Resolve()
 }
 
 // Logger is a wrapper struct around a grip/send.Sender.
@@ -104,13 +107,13 @@ type Logger struct {
 
 // NewInMemoryLogger is a basic constructor that constructs a logger
 // configuration for plain formatted in-memory buffered logger. The
-// logger will capture up to 1000 lines.
-func NewInMemoryLogger() Logger {
+// logger will capture up to maxSize messages.
+func NewInMemoryLogger(maxSize int) Logger {
 	return Logger{
 		Type: LogInMemory,
 		Options: LogOptions{
 			Format:      LogFormatPlain,
-			InMemoryCap: 1000,
+			InMemoryCap: maxSize,
 		},
 	}
 
@@ -373,12 +376,7 @@ func (o OutputOptions) Validate() error {
 	}
 
 	for _, logger := range o.Loggers {
-		if err := logger.Validate(); err != nil {
-			catcher.Add(err)
-		}
-		if err := logger.Options.Format.Validate(); err != nil {
-			catcher.Add(err)
-		}
+		catcher.Wrap(logger.Validate(), "invalid logger")
 	}
 
 	return catcher.Resolve()

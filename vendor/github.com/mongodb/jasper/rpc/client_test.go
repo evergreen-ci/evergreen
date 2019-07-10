@@ -240,10 +240,6 @@ func TestRPCClient(t *testing.T) {
 							assert.Contains(t, err.Error(), "canceled")
 						},
 						"CloseSucceedsWithTerminatedProcesses": func(ctx context.Context, t *testing.T, client jasper.RemoteClient) {
-							if runtime.GOOS == "windows" {
-								t.Skip("context times out on windows")
-							}
-
 							procs, err := createProcs(ctx, trueCreateOpts(), client, 10)
 							for _, p := range procs {
 								_, err := p.Wait(ctx)
