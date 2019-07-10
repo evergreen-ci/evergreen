@@ -150,7 +150,7 @@ func (opts cloneOpts) buildHTTPCloneCommand() ([]string, error) {
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to parse URL from location")
 	}
-	clone := fmt.Sprintf("git clone %s '%s'", thirdparty.FormGitUrl(urlLocation.Host, opts.owner, opts.repo, opts.token), opts.dir)
+	cloneCmd := fmt.Sprintf("git clone %s '%s'", thirdparty.FormGitUrl(urlLocation.Host, opts.owner, opts.repo, opts.token), opts.dir)
 	cloneCmd = fmt.Sprintf("%s --branch '%s'", cloneCmd, opts.branch)
 	cloneCmd = fmt.Sprintf("%s --depth %d", cloneCmd, defaultCloneDepth)
 
