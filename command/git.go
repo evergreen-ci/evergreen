@@ -197,8 +197,8 @@ func (c *gitFetchProject) ParseParams(params map[string]interface{}) error {
 
 func (c *gitFetchProject) gitResetWithUnshallow(revision string) []string {
 	return []string{
-		fmt.Sprintf("if $(git reset --hard %s); then exit 0; fi", revision),
-		fmt.Sprintf("if $(git fetch --help | grep -q unshallow); then git fetch --unshallow; else git fetch --depth %d", math.MaxInt32),
+		fmt.Sprintf("git reset --hard %s || exit 0", revision),
+		fmt.Sprintf("$(git fetch --help | grep -q unshallow) && git fetch --unshallow || git fetch --depth %d", math.MaxInt32),
 		fmt.Sprintf("git reset --hard %s", revision),
 	}
 }
