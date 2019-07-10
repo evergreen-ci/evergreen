@@ -43,7 +43,6 @@ func (s *ProjectPatchByIDSuite) TestParse() {
 	err := s.rm.Parse(ctx, req)
 	s.NoError(err)
 	s.Equal(json, s.rm.(*projectIDPatchHandler).body)
-	s.Equal("my-revision", s.rm.(*projectIDPatchHandler).revision)
 }
 
 func (s *ProjectPatchByIDSuite) TestRunInValidIdentifierChange() {
@@ -75,15 +74,20 @@ func (s *ProjectPatchByIDSuite) TestRunInvalidNonExistingId() {
 
 func (s *ProjectPatchByIDSuite) TestRunValid() {
 	ctx := context.Background()
-	json := []byte(`{"enabled": true}`)
+	json := []byte(`{"enabled": true, "revision": "my_revision", "variables": {"vars_to_delete": ["apple"]} }`)
 	h := s.rm.(*projectIDPatchHandler)
 	h.projectID = "dimoxinil"
-	h.revision = "my-revision"
 	h.body = json
 	resp := s.rm.Run(ctx)
 	s.NotNil(resp)
 	s.NotNil(resp.Data())
 	s.Equal(resp.Status(), http.StatusOK)
+	vars, err := s.sc.FindProjectVarsById("dimoxinil")
+	s.NoError(err)
+	_, ok := vars.Vars["apple"]
+	s.False(ok)
+	_, ok = vars.Vars["banana"]
+	s.True(ok)
 }
 
 ////////////////////////////////////////////////////////////////////////
@@ -170,28 +174,12 @@ func (s *ProjectPutSuite) TestRunNewWithValidEntity() {
 	s.Equal(resp.Status(), http.StatusCreated)
 }
 
-func (s *ProjectPutSuite) TestRunExistingWithValidEntity() {
+func (s *ProjectPutSuite) TestRunExistingFails() {
 	ctx := context.Background()
 	json := []byte(
 		`{
 				"owner_name": "Rembrandt Q. Einstein",
 				"repo_name": "nutsandgum",
-				"branch_name": "master",
-				"repo_kind": "github",
-				"enabled": false,
-				"private": true,
-				"batch_time": 0,
-				"remote_path": "evergreen.yml",
-				"display_name": "Nuts and Gum: together at last!",
-				"local_config": "",
-				"deactivate_previous": true,
-				"tracks_push_events": true,
-				"pr_testing_enabled": true,
-				"commitq_enabled": true,
-				"tracked": false,
-				"patching_disabled": true,
-				"admins": ["Apu DeBeaumarchais"],
-				"notify_on_failure": true
 		}`)
 
 	h := s.rm.(*projectIDPutHandler)
@@ -200,41 +188,8 @@ func (s *ProjectPutSuite) TestRunExistingWithValidEntity() {
 
 	resp := s.rm.Run(ctx)
 	s.NotNil(resp.Data())
-	s.Equal(resp.Status(), http.StatusOK)
+	s.Equal(resp.Status(), http.StatusBadRequest)
 
-}
-
-func (s *ProjectPutSuite) TestRunNewConflictingName() {
-	ctx := context.Background()
-	json := []byte(
-		`{
-				"owner_name": "Rembrandt Q. Einstein",
-				"repo_name": "nutsandgum",
-				"branch_name": "master",
-				"repo_kind": "github",
-				"enabled": false,
-				"private": true,
-				"batch_time": 0,
-				"identifier" : "verboten",
-				"remote_path": "evergreen.yml",
-				"display_name": "Nuts and Gum: together at last!",
-				"local_config": "",
-				"deactivate_previous": true,
-				"tracks_push_events": true,
-				"pr_testing_enabled": true,
-				"commitq_enabled": true,
-				"tracked": false,
-				"patching_disabled": true,
-				"admins": ["Apu DeBeaumarchais"],
-				"notify_on_failure": true
-		}`)
-	h := s.rm.(*projectIDPutHandler)
-	h.projectID = "new-project"
-	h.body = json
-
-	resp := s.rm.Run(ctx)
-	s.NotNil(resp.Data())
-	s.Equal(resp.Status(), http.StatusForbidden)
 }
 
 ////////////////////////////////////////////////////////////////////////

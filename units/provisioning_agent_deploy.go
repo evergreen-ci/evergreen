@@ -364,7 +364,7 @@ func (j *agentDeployJob) startAgentOnRemote(ctx context.Context, settings *everg
 	remoteCmd = fmt.Sprintf("nohup %s > /tmp/start 2>1 &", remoteCmd)
 
 	startAgentCmd := j.env.JasperManager().CreateCommand(ctx).Environment(env).Append(remoteCmd).
-		User(hostObj.User).Host(hostInfo.Hostname).ExtendSSHArgs("-p", hostInfo.Port).ExtendSSHArgs(sshOptions...)
+		User(hostObj.User).Host(hostInfo.Hostname).ExtendRemoteArgs("-p", hostInfo.Port).ExtendRemoteArgs(sshOptions...)
 
 	if err = startAgentCmd.Run(ctx); err != nil {
 		return errors.Wrapf(err, "error starting agent (%v)", hostObj.Id)

@@ -6,26 +6,6 @@ import (
 	"github.com/evergreen-ci/evergreen/util"
 )
 
-const (
-	selectorID           = "id"
-	selectorObject       = "object"
-	selectorProject      = "project"
-	selectorOwner        = "owner"
-	selectorRequester    = "requester"
-	selectorStatus       = "status"
-	selectorDisplayName  = "display-name"
-	selectorBuildVariant = "build-variant"
-	selectorInVersion    = "in-version"
-	selectorInBuild      = "in-build"
-
-	triggerOutcome                = "outcome"
-	triggerFailure                = "failure"
-	triggerSuccess                = "success"
-	triggerRegression             = "regression"
-	triggerExceedsDuration        = "exceeds-duration"
-	triggerRuntimeChangeByPercent = "runtime-change"
-)
-
 func runtimeExceedsThreshold(threshold, prevDuration, thisDuration float64) (bool, float64) {
 	ratio := thisDuration / prevDuration
 	if !util.IsFiniteNumericFloat(ratio) {

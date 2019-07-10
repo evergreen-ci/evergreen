@@ -90,7 +90,7 @@ func (m *rpcClient) CreateCommand(ctx context.Context) *jasper.Command {
 }
 
 func (m *rpcClient) Register(ctx context.Context, proc jasper.Process) error {
-	return errors.New("cannot register extant processes on remote systms")
+	return errors.New("cannot register extant processes on remote process managers")
 }
 
 func (m *rpcClient) List(ctx context.Context, f jasper.Filter) ([]jasper.Process, error) {
@@ -257,6 +257,7 @@ func (p *rpcProcess) Info(ctx context.Context) jasper.ProcessInfo {
 	if err != nil {
 		return jasper.ProcessInfo{}
 	}
+	p.info = info
 
 	return info.Export()
 }
@@ -311,14 +312,11 @@ func (p *rpcProcess) Wait(ctx context.Context) (int, error) {
 		return -1, errors.WithStack(err)
 	}
 
-	if resp.Success {
-		if resp.ExitCode != 0 {
-			return int(resp.ExitCode), errors.Wrap(errors.New(resp.Text), "operation failed")
-		}
-		return int(resp.ExitCode), nil
+	if !resp.Success {
+		return int(resp.ExitCode), errors.Wrapf(errors.New(resp.Text), "process exited with error")
 	}
 
-	return -1, errors.New(resp.Text)
+	return int(resp.ExitCode), nil
 }
 
 func (p *rpcProcess) Respawn(ctx context.Context) (jasper.Process, error) {
@@ -331,11 +329,11 @@ func (p *rpcProcess) Respawn(ctx context.Context) (jasper.Process, error) {
 }
 
 func (p *rpcProcess) RegisterTrigger(ctx context.Context, _ jasper.ProcessTrigger) error {
-	return errors.New("cannot register remote triggers")
+	return errors.New("cannot register triggers on remote processes")
 }
 
 func (p *rpcProcess) RegisterSignalTrigger(ctx context.Context, _ jasper.SignalTrigger) error {
-	return errors.New("cannot register remote signal triggers")
+	return errors.New("cannot register signal triggers on remote processes")
 }
 
 func (p *rpcProcess) RegisterSignalTriggerID(ctx context.Context, sigID jasper.SignalTriggerID) error {

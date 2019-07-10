@@ -80,6 +80,8 @@ type BuildVariantTaskUnit struct {
 	Stepback        *bool `yaml:"stepback,omitempty" bson:"stepback,omitempty"`
 
 	Variant string `yaml:"-" bson:"-"`
+
+	CommitQueueMerge bool `yaml:"commit_queue_merge,omitempty" bson:"commit_queue_merge"`
 }
 
 func (b BuildVariant) Get(name string) (BuildVariantTaskUnit, error) {

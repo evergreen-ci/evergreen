@@ -48,16 +48,17 @@ type VersionErrors struct {
 
 // VersionMetadata is used to pass information about upstream versions to downstream version creation
 type VersionMetadata struct {
-	Revision      model.Revision
-	TriggerID     string
-	TriggerType   string
-	EventID       string
-	DefinitionID  string
-	SourceVersion *model.Version
-	IsAdHoc       bool
-	User          *user.DBUser
-	Message       string
-	Alias         string
+	Revision            model.Revision
+	TriggerID           string
+	TriggerType         string
+	EventID             string
+	TriggerDefinitionID string
+	SourceVersion       *model.Version
+	IsAdHoc             bool
+	User                *user.DBUser
+	Message             string
+	Alias               string
+	PeriodicBuildID     string
 }
 
 // The RepoPoller interface specifies behavior required of all repository poller
@@ -656,9 +657,10 @@ func shellVersionFromRevision(ref *model.ProjectRef, metadata VersionMetadata) (
 		TriggerID:           metadata.TriggerID,
 		TriggerType:         metadata.TriggerType,
 		TriggerEvent:        metadata.EventID,
+		PeriodicBuildID:     metadata.PeriodicBuildID,
 	}
 	if metadata.TriggerType != "" {
-		v.Id = util.CleanName(fmt.Sprintf("%s_%s_%s", ref.String(), metadata.SourceVersion.Revision, metadata.DefinitionID))
+		v.Id = util.CleanName(fmt.Sprintf("%s_%s_%s", ref.String(), metadata.SourceVersion.Revision, metadata.TriggerDefinitionID))
 		v.Requester = evergreen.TriggerRequester
 		v.CreateTime = metadata.SourceVersion.CreateTime
 	} else if metadata.IsAdHoc {
@@ -715,7 +717,7 @@ func createVersionItems(ctx context.Context, v *model.Version, ref *model.Projec
 		if metadata.SourceVersion != nil {
 			sourceRev = metadata.SourceVersion.Revision
 		}
-		taskIds := model.NewTaskIdTable(project, v, sourceRev, metadata.DefinitionID)
+		taskIds := model.NewTaskIdTable(project, v, sourceRev, metadata.TriggerDefinitionID)
 
 		err := sessCtx.StartTransaction()
 		if err != nil {
@@ -744,7 +746,7 @@ func createVersionItems(ctx context.Context, v *model.Version, ref *model.Projec
 				BuildName:    buildvariant.Name,
 				Activated:    false,
 				SourceRev:    sourceRev,
-				DefinitionID: metadata.DefinitionID,
+				DefinitionID: metadata.TriggerDefinitionID,
 				Aliases:      aliases,
 				Session:      sessCtx,
 			}
@@ -767,30 +769,29 @@ func createVersionItems(ctx context.Context, v *model.Version, ref *model.Projec
 			}
 
 			var lastActivated *model.Version
-			lastActivated, err = model.VersionFindOne(model.VersionByLastVariantActivation(ref.Identifier, buildvariant.Name))
-			if err != nil {
-				grip.Error(message.WrapError(err, message.Fields{
-					"message": "error finding last activated",
-					"version": v.Id,
-				}))
-			}
+			activateAt := time.Now()
+			if metadata.TriggerID == "" {
+				lastActivated, err = model.VersionFindOne(model.VersionByLastVariantActivation(ref.Identifier, buildvariant.Name))
+				if err != nil {
+					grip.Error(message.WrapError(err, message.Fields{
+						"message": "error finding last activated",
+						"version": v.Id,
+					}))
+				}
 
-			var lastActivation *time.Time
-			if lastActivated != nil {
-				for _, buildStatus := range lastActivated.BuildVariants {
-					if buildStatus.BuildVariant == buildvariant.Name && buildStatus.Activated {
-						lastActivation = &buildStatus.ActivateAt
-						break
+				var lastActivation *time.Time
+				if lastActivated != nil {
+					for _, buildStatus := range lastActivated.BuildVariants {
+						if buildStatus.BuildVariant == buildvariant.Name && buildStatus.Activated {
+							lastActivation = &buildStatus.ActivateAt
+							break
+						}
 					}
 				}
-			}
 
-			var activateAt time.Time
-			if lastActivation == nil {
-				// if we don't have a last activation time then prepare to activate it immediately.
-				activateAt = time.Now()
-			} else {
-				activateAt = lastActivation.Add(time.Minute * time.Duration(ref.GetBatchTime(&buildvariant)))
+				if lastActivation != nil {
+					activateAt = lastActivation.Add(time.Minute * time.Duration(ref.GetBatchTime(&buildvariant)))
+				}
 			}
 
 			grip.Debug(message.Fields{

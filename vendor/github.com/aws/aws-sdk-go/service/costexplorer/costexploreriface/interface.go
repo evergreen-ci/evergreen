@@ -64,9 +64,21 @@ type CostExplorerAPI interface {
 	GetCostAndUsageWithContext(aws.Context, *costexplorer.GetCostAndUsageInput, ...request.Option) (*costexplorer.GetCostAndUsageOutput, error)
 	GetCostAndUsageRequest(*costexplorer.GetCostAndUsageInput) (*request.Request, *costexplorer.GetCostAndUsageOutput)
 
+	GetCostForecast(*costexplorer.GetCostForecastInput) (*costexplorer.GetCostForecastOutput, error)
+	GetCostForecastWithContext(aws.Context, *costexplorer.GetCostForecastInput, ...request.Option) (*costexplorer.GetCostForecastOutput, error)
+	GetCostForecastRequest(*costexplorer.GetCostForecastInput) (*request.Request, *costexplorer.GetCostForecastOutput)
+
 	GetDimensionValues(*costexplorer.GetDimensionValuesInput) (*costexplorer.GetDimensionValuesOutput, error)
 	GetDimensionValuesWithContext(aws.Context, *costexplorer.GetDimensionValuesInput, ...request.Option) (*costexplorer.GetDimensionValuesOutput, error)
 	GetDimensionValuesRequest(*costexplorer.GetDimensionValuesInput) (*request.Request, *costexplorer.GetDimensionValuesOutput)
+
+	GetReservationCoverage(*costexplorer.GetReservationCoverageInput) (*costexplorer.GetReservationCoverageOutput, error)
+	GetReservationCoverageWithContext(aws.Context, *costexplorer.GetReservationCoverageInput, ...request.Option) (*costexplorer.GetReservationCoverageOutput, error)
+	GetReservationCoverageRequest(*costexplorer.GetReservationCoverageInput) (*request.Request, *costexplorer.GetReservationCoverageOutput)
+
+	GetReservationPurchaseRecommendation(*costexplorer.GetReservationPurchaseRecommendationInput) (*costexplorer.GetReservationPurchaseRecommendationOutput, error)
+	GetReservationPurchaseRecommendationWithContext(aws.Context, *costexplorer.GetReservationPurchaseRecommendationInput, ...request.Option) (*costexplorer.GetReservationPurchaseRecommendationOutput, error)
+	GetReservationPurchaseRecommendationRequest(*costexplorer.GetReservationPurchaseRecommendationInput) (*request.Request, *costexplorer.GetReservationPurchaseRecommendationOutput)
 
 	GetReservationUtilization(*costexplorer.GetReservationUtilizationInput) (*costexplorer.GetReservationUtilizationOutput, error)
 	GetReservationUtilizationWithContext(aws.Context, *costexplorer.GetReservationUtilizationInput, ...request.Option) (*costexplorer.GetReservationUtilizationOutput, error)

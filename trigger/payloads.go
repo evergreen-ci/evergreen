@@ -372,7 +372,7 @@ func makeCommonPayload(sub *event.Subscription, selectors []event.Selector,
 		Type: "trigger",
 		Data: sub.Trigger,
 	}, event.Selector{
-		Type: selectorStatus,
+		Type: event.SelectorStatus,
 		Data: data.PastTenseStatus,
 	})
 

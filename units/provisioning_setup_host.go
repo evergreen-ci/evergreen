@@ -253,50 +253,25 @@ func (j *setupHostJob) runHostSetup(ctx context.Context, targetHost *host.Host, 
 	return nil
 }
 
-// setupJasper sets up the Jasper service on the host by downloading the latest
-// version of Jasper and restarting the Jasper service.
+// setupJasper sets up the Jasper service on the host by putting the credentials
+// on the host, downloading the latest version of Jasper, and restarting the
+// Jasper service.
 func (j *setupHostJob) setupJasper(ctx context.Context) error {
-	d, err := distro.FindOne(distro.ById(j.host.Distro.Id))
-	if err != nil {
-		grip.Error(message.WrapError(j.host.SetUnprovisioned(), message.Fields{
-			"operation": "setting host unprovisioned",
-			"distro":    j.host.Distro.Id,
-			"job":       j.ID(),
-			"host":      j.host.Id,
-		}))
-		return errors.Wrapf(err, "Error finding distro for host %s", j.host.Id)
-	}
-	j.host.Distro = d
-
 	cloudHost, err := cloud.GetCloudHost(ctx, j.host, j.env.Settings())
 	if err != nil {
-		grip.Error(message.WrapError(j.host.SetUnprovisioned(), message.Fields{
-			"operation": "setting host unprovisioned",
-			"distro":    j.host.Distro.Id,
-			"job":       j.ID(),
-			"host":      j.host.Id,
-		}))
 		return errors.Wrapf(err, "failed to get cloud host for %s", j.host.Id)
 	}
 
 	sshOptions, err := cloudHost.GetSSHOptions()
 	if err != nil {
-		grip.Error(message.WrapError(j.host.SetUnprovisioned(), message.Fields{
-			"operation": "setting host unprovisioned",
-			"distro":    j.host.Distro.Id,
-			"job":       j.ID(),
-			"host":      j.host.Id,
-		}))
 		return errors.Wrapf(err, "error getting ssh options for host %s", j.host.Id)
 	}
 
+	if err := j.putJasperCredentials(ctx, j.host.Distro.JasperCredentialsPath, sshOptions); err != nil {
+		return errors.Wrap(err, "error putting Jasper credentials on remote host")
+	}
+
 	if err := j.doFetchAndReinstallJasper(ctx, sshOptions); err != nil {
-		grip.Error(message.WrapError(j.host.SetUnprovisioned(), message.Fields{
-			"operation": "setting host unprovisioned",
-			"distro":    j.host.Distro.Id,
-			"job":       j.ID(),
-			"host":      j.host.Id,
-		}))
 		return errors.Wrap(err, "error fetching Jasper binary on remote host")
 	}
 
@@ -306,13 +281,91 @@ func (j *setupHostJob) setupJasper(ctx context.Context) error {
 		"job":     j.ID(),
 		"distro":  j.host.Distro.Id,
 	})
+
+	return nil
+}
+
+// putJasperCredentials creates Jasper credentials for the host and puts the
+// credentials file on the host.
+func (j *setupHostJob) putJasperCredentials(ctx context.Context, fileName string, sshOptions []string) error {
+	creds, err := j.host.GenerateJasperCredentials(ctx, j.env)
+	if err != nil {
+		return errors.Wrap(err, "could not generate Jasper credentials for host")
+	}
+
+	hostInfo, err := j.host.GetSSHInfo()
+	if err != nil {
+		return errors.Wrap(err, "could not get SSH info for host")
+	}
+	exportedCreds, err := creds.Export()
+	if err != nil {
+		return errors.Wrap(err, "could not export Jasper credentials")
+	}
+
+	file, err := ioutil.TempFile("", fileName)
+	if err != nil {
+		return errors.Wrap(err, "error creating temporary script file")
+	}
+	if err = os.Chmod(file.Name(), 0644); err != nil {
+		return errors.Wrap(err, "error setting file permissions")
+	}
+	defer func() {
+		errMsg := message.Fields{
+			"job":       j.ID(),
+			"operation": "cleaning up after copying credentials",
+			"file":      file.Name(),
+			"distro":    j.host.Distro.Id,
+			"host":      j.host.Id,
+		}
+		grip.Error(message.WrapError(file.Close(), errMsg))
+		grip.Error(message.WrapError(os.Remove(file.Name()), errMsg))
+	}()
+
+	if _, err = io.WriteString(file, string(exportedCreds)); err != nil {
+		return errors.Wrap(err, "error writing local credentials")
+	}
+
+	scpCmdOut := &util.CappedWriter{
+		Buffer:   &bytes.Buffer{},
+		MaxBytes: 1024 * 1024,
+	}
+	scpArgs := buildScpCommand(file.Name(), fileName, hostInfo, hostInfo.User, sshOptions)
+
+	scpCmd := j.env.JasperManager().CreateCommand(ctx).Add(scpArgs).
+		RedirectErrorToOutput(true).SetOutputWriter(scpCmdOut)
+
+	ctx, cancel := context.WithTimeout(ctx, scpTimeout)
+	defer cancel()
+
+	if err = scpCmd.Run(ctx); err != nil {
+		grip.Error(message.WrapError(err, message.Fields{
+			"message": "problem copying credentials to host",
+			"job":     j.ID(),
+			"command": strings.Join(scpArgs, " "),
+			"distro":  j.host.Distro.Id,
+			"host":    j.host.Id,
+			"output":  scpCmdOut.String(),
+		}))
+		return errors.Wrap(err, "error copying credentials to remote machine")
+	}
+
+	if err := j.host.SaveJasperCredentials(ctx, j.env, creds); err != nil {
+		grip.Error(message.WrapError(err, message.Fields{
+			"message": "problem saving host credentials",
+			"job":     j.ID(),
+			"distro":  j.host.Distro.Id,
+			"host":    j.host.Id,
+		}))
+		return errors.Wrap(err, "error saving credentials")
+	}
+
 	return nil
 }
 
 // doFetchAndReinstallJasper runs the SSH command over that downloads the latest
 // Jasper binary and restarts the service.
 func (j *setupHostJob) doFetchAndReinstallJasper(ctx context.Context, sshOptions []string) error {
-	cmd := j.host.FetchAndReinstallJasperCommand(j.env.Settings().JasperConfig)
+	cmd := j.host.FetchAndReinstallJasperCommand(j.env.Settings().HostJasper)
 	if logs, err := j.host.RunSSHCommand(ctx, cmd, sshOptions); err != nil {
 		return errors.Wrapf(err, "error while fetching Jasper binary and installing service on remote host: command returned %s", logs)
 	}
@@ -636,7 +689,7 @@ func (j *setupHostJob) loadClient(ctx context.Context, target *host.Host, settin
 	defer cancel()
 
 	makeShellCmd := j.env.JasperManager().CreateCommand(mkdctx).Host(hostSSHInfo.Hostname).User(target.User).
-		ExtendSSHArgs("-p", hostSSHInfo.Port).ExtendSSHArgs(sshOptions...).
+		ExtendRemoteArgs("-p", hostSSHInfo.Port).ExtendRemoteArgs(sshOptions...).
 		RedirectErrorToOutput(true).SetOutputWriter(mkdirOutput).
 		Append(fmt.Sprintf("mkdir -m 777 -p ~/%s && (echo 'PATH=$PATH:~/%s' >> ~/.profile || true; echo 'PATH=$PATH:~/%s' >> ~/.bash_profile || true)", targetDir, targetDir, targetDir))
 
@@ -661,7 +714,7 @@ func (j *setupHostJob) loadClient(ctx context.Context, target *host.Host, settin
 	}
 
 	curlcmd := j.env.JasperManager().CreateCommand(mkdctx).Host(hostSSHInfo.Hostname).User(target.User).
-		ExtendSSHArgs("-p", hostSSHInfo.Port).ExtendSSHArgs(sshOptions...).
+		ExtendRemoteArgs("-p", hostSSHInfo.Port).ExtendRemoteArgs(sshOptions...).
 		RedirectErrorToOutput(true).SetOutputWriter(curlOut).
 		Append(target.CurlCommand(settings.Ui.Url))
 
@@ -737,7 +790,7 @@ func (j *setupHostJob) fetchRemoteTaskData(ctx context.Context, taskId, cliPath,
 	fetchCmd := fmt.Sprintf("%s -c %s fetch -t %s --source --artifacts --dir='%s'", cliPath, confPath, taskId, target.Distro.WorkDir)
 
 	makeShellCmd := j.env.JasperManager().CreateCommand(ctx).Host(hostSSHInfo.Hostname).User(target.User).
-		ExtendSSHArgs("-p", hostSSHInfo.Port).ExtendSSHArgs(sshOptions...).
+		ExtendRemoteArgs("-p", hostSSHInfo.Port).ExtendRemoteArgs(sshOptions...).
 		RedirectErrorToOutput(true).SetOutputWriter(cmdOutput).
 		Append(fetchCmd)
 

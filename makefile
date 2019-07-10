@@ -240,6 +240,13 @@ vendor-clean:
 	rm -rf vendor/github.com/docker/docker/vendor/github.com/Microsoft/go-winio/
 	rm -rf vendor/github.com/docker/docker/vendor/github.com/docker/go-connections/
 	rm -rf vendor/github.com/docker/docker/vendor/golang.org/x/net/
+	rm -rf vendor/github.com/evergreen-ci/certdepot/vendor/github.com/mongodb/grip/
+	rm -rf vendor/github.com/evergreen-ci/certdepot/vendor/github.com/mongodb/anser/
+	rm -rf vendor/github.com/evergreen-ci/certdepot/vendor/github.com/pkg/errors/
+	rm -rf vendor/github.com/evergreen-ci/certdepot/vendor/github.com/stretchr/testify/
+	rm -rf vendor/github.com/evergreen-ci/certdepot/vendor/github.com/square/certstrap/
+	rm -rf vendor/github.com/evergreen-ci/certdepot/vendor/go.mongodb.org/mongo-driver/
+	rm -rf vendor/github.com/evergreen-ci/certdepot/vendor/gopkg.in/mgo.v2/
 	rm -rf vendor/github.com/evergreen-ci/gimlet/vendor/github.com/mongodb/grip/
 	rm -rf vendor/github.com/evergreen-ci/gimlet/vendor/github.com/pkg/errors/
 	rm -rf vendor/github.com/evergreen-ci/gimlet/vendor/github.com/stretchr/testify/
@@ -280,6 +287,9 @@ vendor-clean:
 	rm -rf vendor/github.com/mongodb/jasper/vendor/github.com/pkg/
 	rm -rf vendor/github.com/mongodb/jasper/vendor/github.com/stretchr/
 	rm -rf vendor/github.com/smartystreets/goconvey/web/
+	rm -rf vendor/github.com/square/certstrap/vendor/github.com/urfave/cli/
+	rm -rf vendor/github.com/square/certstrap/vendor/golang.org/x/sys/windows/
+	rm -rf vendor/github.com/square/certstrap/vendor/golang.org/x/sys/unix/
 	rm -rf vendor/go.mongodb.org/mongo-driver/data/
 	rm -rf vendor/go.mongodb.org/mongo-driver/vendor/github.com/davecgh
 	rm -rf vendor/go.mongodb.org/mongo-driver/vendor/github.com/montanaflynn

@@ -115,11 +115,12 @@ func (j *hostAllocatorJob) Run(ctx context.Context) {
 		return
 	}
 
-	existingHosts, err := host.AllRunningHosts(j.DistroID)
+	existingHosts, err := host.AllActiveHosts(j.DistroID)
 	if err != nil {
 		j.AddError(errors.Wrap(err, "Database error retrieving running hosts"))
 		return
 	}
+	upHosts := existingHosts.Uphosts()
 
 	distroQueueInfo, err := model.GetDistroQueueInfo(j.DistroID)
 	if err != nil {
@@ -135,7 +136,7 @@ func (j *hostAllocatorJob) Run(ctx context.Context) {
 	hostAllocator := scheduler.GetHostAllocator(config.Scheduler.HostAllocator)
 	hostAllocatorData := scheduler.HostAllocatorData{
 		Distro:           distro,
-		ExistingHosts:    existingHosts,
+		ExistingHosts:    upHosts,
 		FreeHostFraction: config.Scheduler.FreeHostFraction,
 		UsesContainers:   (containerPool != nil),
 		ContainerPool:    containerPool,
@@ -171,7 +172,7 @@ func (j *hostAllocatorJob) Run(ctx context.Context) {
 
 	eventInfo := event.TaskQueueInfo{
 		TaskQueueLength:  distroQueueInfo.Length,
-		NumHostsRunning:  0,
+		NumHostsRunning:  len(upHosts),
 		ExpectedDuration: distroQueueInfo.ExpectedDuration,
 	}
 
@@ -202,8 +203,8 @@ func (j *hostAllocatorJob) Run(ctx context.Context) {
 		"distro":                  distro.Id,
 		"provider":                distro.Provider,
 		"max_hosts":               distro.PoolSize,
-		"new_hosts":               hostsSpawned,
-		"num_hosts":               len(hostsSpawned),
+		"num_new_hosts":           len(hostsSpawned),
+		"pool_info":               existingHosts.Stats(),
 		"queue":                   eventInfo,
 		"total_runtime":           distroQueueInfo.ExpectedDuration.String(),
 		"runtime_secs":            distroQueueInfo.ExpectedDuration.Seconds(),

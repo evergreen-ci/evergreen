@@ -601,15 +601,16 @@ func CreateTasksFromGroup(in BuildVariantTaskUnit, proj *Project) []BuildVariant
 			Name: t,
 			// IsGroup is not persisted, and indicates here that the
 			// task is a member of a task group.
-			IsGroup:         true,
-			GroupName:       in.Name,
-			Patchable:       in.Patchable,
-			Priority:        in.Priority,
-			DependsOn:       in.DependsOn,
-			Requires:        in.Requires,
-			Distros:         in.Distros,
-			ExecTimeoutSecs: in.ExecTimeoutSecs,
-			Stepback:        in.Stepback,
+			IsGroup:          true,
+			GroupName:        in.Name,
+			Patchable:        in.Patchable,
+			Priority:         in.Priority,
+			DependsOn:        in.DependsOn,
+			Requires:         in.Requires,
+			Distros:          in.Distros,
+			ExecTimeoutSecs:  in.ExecTimeoutSecs,
+			Stepback:         in.Stepback,
+			CommitQueueMerge: in.CommitQueueMerge,
 		}
 		bvt.Populate(taskMap[t])
 		tasks = append(tasks, bvt)
@@ -972,6 +973,7 @@ func createOneTask(id string, buildVarTask BuildVariantTaskUnit, project *Projec
 		TriggerID:           v.TriggerID,
 		TriggerType:         v.TriggerType,
 		TriggerEvent:        v.TriggerEvent,
+		CommitQueueMerge:    buildVarTask.CommitQueueMerge,
 	}
 	if buildVarTask.IsGroup {
 		t.TaskGroup = buildVarTask.GroupName

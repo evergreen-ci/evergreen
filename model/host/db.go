@@ -54,6 +54,7 @@ var (
 	AgentRevisionKey             = bsonutil.MustHaveTag(Host{}, "AgentRevision")
 	NeedsNewAgentKey             = bsonutil.MustHaveTag(Host{}, "NeedsNewAgent")
 	NeedsNewAgentMonitorKey      = bsonutil.MustHaveTag(Host{}, "NeedsNewAgentMonitor")
+	JasperCredentialsIDKey       = bsonutil.MustHaveTag(Host{}, "JasperCredentialsID")
 	StartedByKey                 = bsonutil.MustHaveTag(Host{}, "StartedBy")
 	InstanceTypeKey              = bsonutil.MustHaveTag(Host{}, "InstanceType")
 	VolumeSizeKey                = bsonutil.MustHaveTag(Host{}, "VolumeTotalSize")
@@ -189,13 +190,33 @@ func CountRunningHosts(distroID string) (int, error) {
 	return num, errors.Wrap(err, "problem finding running hosts")
 }
 
-func AllRunningHosts(distroID string) ([]Host, error) {
+func AllRunningHosts(distroID string) (HostGroup, error) {
 	allHosts, err := Find(db.Query(runningHostsQuery(distroID)))
 	if err != nil {
 		return nil, errors.Wrap(err, "Error finding live hosts")
 	}
 
 	return allHosts, nil
+}
+
+// AllActiveHosts produces a HostGroup for all hosts with UpHost
+// status as well as quarantined hosts. These do not count spawn
+// hosts.
+func AllActiveHosts(distroID string) (HostGroup, error) {
+	q := bson.M{
+		StartedByKey: evergreen.User,
+		StatusKey:    bson.M{"$in": append(evergreen.UpHostStatus, evergreen.HostQuarantined)},
+	}
+
+	if distroID != "" {
+		q[bsonutil.GetDottedKeyName(DistroKey, distro.IdKey)] = distroID
+	}
+
+	activeHosts, err := Find(db.Query(q))
+	if err != nil {
+		return nil, errors.Wrap(err, "problem finding active hosts")
+	}
+	return activeHosts, nil
 }
 
 // AllHostsSpawnedByTasksToTerminate finds all hosts spawned by tasks that should be terminated.
@@ -338,7 +359,9 @@ func Provisioning() db.Q {
 }
 
 func FindByFirstProvisioningAttempt() ([]Host, error) {
+	bootstrapKey := bsonutil.GetDottedKeyName(DistroKey, distro.BootstrapMethodKey)
 	return Find(db.Query(bson.M{
+		bootstrapKey:         bson.M{"$ne": distro.BootstrapMethodUserData},
 		ProvisionAttemptsKey: 0,
 		StatusKey:            evergreen.HostProvisioning,
 	}))

@@ -31,7 +31,7 @@ func TriggerDownstreamVersion(args ProcessorArgs) (*model.Version, error) {
 	metadata.TriggerID = args.TriggerID
 	metadata.TriggerType = args.TriggerType
 	metadata.EventID = args.EventID
-	metadata.DefinitionID = args.DefinitionID
+	metadata.TriggerDefinitionID = args.DefinitionID
 	metadata.Alias = args.Alias
 
 	// get the downstream config

@@ -16,10 +16,6 @@ import (
 	"github.com/pkg/errors"
 )
 
-const (
-	objectVersion = "version"
-)
-
 func init() {
 	registry.registerEventHandler(event.ResourceTypeVersion, event.VersionStateChange, makeVersionTriggers)
 }
@@ -36,12 +32,12 @@ type versionTriggers struct {
 func makeVersionTriggers() eventHandler {
 	t := &versionTriggers{}
 	t.base.triggers = map[string]trigger{
-		triggerOutcome:                t.versionOutcome,
-		triggerFailure:                t.versionFailure,
-		triggerSuccess:                t.versionSuccess,
-		triggerRegression:             t.versionRegression,
-		triggerExceedsDuration:        t.versionExceedsDuration,
-		triggerRuntimeChangeByPercent: t.versionRuntimeChange,
+		event.TriggerOutcome:                t.versionOutcome,
+		event.TriggerFailure:                t.versionFailure,
+		event.TriggerSuccess:                t.versionSuccess,
+		event.TriggerRegression:             t.versionRegression,
+		event.TriggerExceedsDuration:        t.versionExceedsDuration,
+		event.TriggerRuntimeChangeByPercent: t.versionRuntimeChange,
 	}
 	return t
 }
@@ -73,30 +69,30 @@ func (t *versionTriggers) Fetch(e *event.EventLogEntry) error {
 func (t *versionTriggers) Selectors() []event.Selector {
 	selectors := []event.Selector{
 		{
-			Type: selectorID,
+			Type: event.SelectorID,
 			Data: t.version.Id,
 		},
 		{
-			Type: selectorProject,
+			Type: event.SelectorProject,
 			Data: t.version.Identifier,
 		},
 		{
-			Type: selectorObject,
-			Data: objectVersion,
+			Type: event.SelectorObject,
+			Data: event.ObjectVersion,
 		},
 		{
-			Type: selectorRequester,
+			Type: event.SelectorRequester,
 			Data: t.version.Requester,
 		},
 	}
 	if t.version.Requester == evergreen.TriggerRequester {
 		selectors = append(selectors, event.Selector{
-			Type: selectorRequester,
+			Type: event.SelectorRequester,
 			Data: evergreen.RepotrackerVersionRequester,
 		})
 	}
 	if t.version.AuthorID != "" {
-		selectors = append(selectors, event.Selector{Type: selectorOwner, Data: t.version.AuthorID})
+		selectors = append(selectors, event.Selector{Type: event.SelectorOwner, Data: t.version.AuthorID})
 	}
 	return selectors
 }
@@ -112,7 +108,7 @@ func (t *versionTriggers) makeData(sub *event.Subscription, pastTenseOverride st
 		EventID:         t.event.ID,
 		SubscriptionID:  sub.ID,
 		DisplayName:     t.version.Id,
-		Object:          objectVersion,
+		Object:          event.ObjectVersion,
 		Project:         t.version.Identifier,
 		URL:             versionLink(t.uiConfig.Url, t.version.Id),
 		PastTenseStatus: t.data.Status,

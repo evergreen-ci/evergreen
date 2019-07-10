@@ -21,7 +21,7 @@ const (
 
 func serviceCommandRPC(cmd string, operation serviceOperation) cli.Command {
 	return cli.Command{
-		Name:  rpcService,
+		Name:  RPCService,
 		Usage: fmt.Sprintf("%s an RPC service", cmd),
 		Flags: []cli.Flag{
 			cli.StringFlag{
@@ -50,7 +50,7 @@ func serviceCommandRPC(cmd string, operation serviceOperation) cli.Command {
 
 			daemon := newRPCDaemon(c.String(hostFlagName), c.Int(portFlagName), manager, c.String(credsFilePathFlagName))
 
-			config := serviceConfig(rpcService, buildRunCommand(c, rpcService))
+			config := serviceConfig(RPCService, buildRunCommand(c, RPCService))
 
 			return operation(daemon, config)
 		},

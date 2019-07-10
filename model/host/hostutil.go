@@ -3,15 +3,20 @@ package host
 import (
 	"bytes"
 	"context"
-	"encoding/json"
 	"fmt"
+	"net"
 	"os/exec"
 	"path/filepath"
 	"strings"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/util"
+	"github.com/google/shlex"
+	"github.com/mongodb/jasper"
+	jaspercli "github.com/mongodb/jasper/cli"
+	"github.com/mongodb/jasper/rpc"
 	"github.com/pkg/errors"
 )
 
@@ -85,6 +90,34 @@ func (h *Host) GetSSHInfo() (*util.StaticHostInfo, error) {
 	return hostInfo, nil
 }
 
+// GetSSHOptions returns the options to SSH into this host.
+// EVG-6389: this currently relies on the fact that the EC2 provider has a
+// single distro-level SSH key name corresponding to an existing SSH key file on
+// the app servers. We should be able to handle multiple keys configured in
+// admin settings rather than from a file name in distro settings.
+func (h *Host) GetSSHOptions(settings *evergreen.Settings) ([]string, error) {
+	keyPath := settings.Keys[h.Distro.SSHKey]
+	if keyPath == "" {
+		return nil, errors.New("no SSH key specified for host")
+	}
+
+	opts := []string{"-i", keyPath}
+	hasKnownHostsFile := false
+
+	for _, opt := range h.Distro.SSHOptions {
+		opt = strings.Trim(opt, " \t")
+		opts = append(opts, "-o", opt)
+		if strings.HasPrefix(opt, "UserKnownHostsFile") {
+			hasKnownHostsFile = true
+		}
+	}
+
+	if !hasKnownHostsFile {
+		opts = append(opts, "-o", "UserKnownHostsFile=/dev/null")
+	}
+	return opts, nil
+}
+
 // RunSSHCommand runs an SSH command on a remote host.
 func (h *Host) RunSSHCommand(ctx context.Context, cmd string, sshOptions []string) (string, error) {
 	env := evergreen.GetEnvironment()
@@ -103,7 +136,7 @@ func (h *Host) RunSSHCommand(ctx context.Context, cmd string, sshOptions []strin
 	defer cancel()
 
 	err = env.JasperManager().CreateCommand(ctx).Host(hostInfo.Hostname).User(hostInfo.User).
-		ExtendSSHArgs("-p", hostInfo.Port, "-t", "-t").ExtendSSHArgs(sshOptions...).
+		ExtendRemoteArgs("-p", hostInfo.Port, "-t", "-t").ExtendRemoteArgs(sshOptions...).
 		SetOutputWriter(output).RedirectErrorToOutput(true).
 		Append(cmd).Run(ctx)
 
@@ -159,7 +192,7 @@ func initSystemCommand() string {
 
 // FetchAndReinstallJasperCommand returns the command to fetch Jasper and
 // restart the service with the latest version.
-func (h *Host) FetchAndReinstallJasperCommand(config evergreen.JasperConfig) string {
+func (h *Host) FetchAndReinstallJasperCommand(config evergreen.HostJasperConfig) string {
 	return strings.Join([]string{
 		h.FetchJasperCommand(config),
 		h.ForceReinstallJasperCommand(config),
@@ -169,17 +202,17 @@ func (h *Host) FetchAndReinstallJasperCommand(config evergreen.JasperConfig) str
 // ForceReinstallJasperCommand returns the command to stop the Jasper service,
 // delete the current Jasper service configuration (if it exists), install the
 // new configuration, and restart the service.
-func (h *Host) ForceReinstallJasperCommand(config evergreen.JasperConfig) string {
-	port := config.Port
-	if port == 0 {
-		port = evergreen.DefaultJasperPort
+func (h *Host) ForceReinstallJasperCommand(config evergreen.HostJasperConfig) string {
+	params := []string{fmt.Sprintf("--port=%d", config.Port)}
+	if h.Distro.JasperCredentialsPath != "" {
+		params = append(params, fmt.Sprintf("--creds_path=%s", h.Distro.JasperCredentialsPath))
 	}
-	return h.jasperServiceCommand(config, "force-reinstall", fmt.Sprintf("--port=%d", port))
+
+	return h.jasperServiceCommand(config, "force-reinstall", params...)
 }
 
-func (h *Host) jasperServiceCommand(config evergreen.JasperConfig, subCmd string, args ...string) string {
-	binaryPath := filepath.Join(h.Distro.CuratorDir, h.jasperBinaryFileName(config))
-	cmd := fmt.Sprintf("%s jasper service %s rpc %s", binaryPath, subCmd, strings.Join(args, " "))
+func (h *Host) jasperServiceCommand(config evergreen.HostJasperConfig, subCmd string, args ...string) string {
+	cmd := fmt.Sprintf("%s jasper service %s rpc %s", h.jasperBinaryFilePath(config), subCmd, strings.Join(args, " "))
 	// Jasper service commands need elevated privileges to execute. On Windows,
 	// this is assuming that the command is already being run by Administrator.
 	if !h.Distro.IsWindows() {
@@ -190,11 +223,11 @@ func (h *Host) jasperServiceCommand(config evergreen.JasperConfig, subCmd string
 
 // FetchJasperCommand builds the command to download and extract the Jasper
 // binary into the distro-specific binary directory.
-func (h *Host) FetchJasperCommand(config evergreen.JasperConfig) string {
+func (h *Host) FetchJasperCommand(config evergreen.HostJasperConfig) string {
 	return strings.Join(h.fetchJasperCommands(config), " && ")
 }
 
-func (h *Host) fetchJasperCommands(config evergreen.JasperConfig) []string {
+func (h *Host) fetchJasperCommands(config evergreen.HostJasperConfig) []string {
 	downloadedFile := h.jasperDownloadedFileName(config)
 	extractedFile := h.jasperBinaryFileName(config)
 	return []string{
@@ -208,7 +241,7 @@ func (h *Host) fetchJasperCommands(config evergreen.JasperConfig) []string {
 
 // FetchJasperCommandWithPath is the same as FetchJasperCommand but sets the
 // PATH variable to path for each command.
-func (h *Host) FetchJasperCommandWithPath(config evergreen.JasperConfig, path string) string {
+func (h *Host) FetchJasperCommandWithPath(config evergreen.HostJasperConfig, path string) string {
 	cmds := h.fetchJasperCommands(config)
 	for i := range cmds {
 		cmds[i] = fmt.Sprintf("PATH=%s %s", path, cmds[i])
@@ -216,23 +249,37 @@ func (h *Host) FetchJasperCommandWithPath(config evergreen.JasperConfig, path st
 	return strings.Join(cmds, " && ")
 }
 
-func (h *Host) jasperDownloadedFileName(config evergreen.JasperConfig) string {
+// jasperDownloadedFileName returns the name of the downloaded archive file that
+// contains the Jasper binary.
+func (h *Host) jasperDownloadedFileName(config evergreen.HostJasperConfig) string {
 	os, arch := h.Distro.Platform()
 	return fmt.Sprintf("%s-%s-%s-%s.tar.gz", config.DownloadFileName, os, arch, config.Version)
 }
 
-func (h *Host) jasperBinaryFileName(config evergreen.JasperConfig) string {
+// jasperBinaryFileName return the filename of the Jasper binary.
+func (h *Host) jasperBinaryFileName(config evergreen.HostJasperConfig) string {
 	if h.Distro.IsWindows() {
 		return config.BinaryName + ".exe"
 	}
 	return config.BinaryName
 }
 
+// jasperBinaryFilePath returns the full path to the Jasper b inary.
+func (h *Host) jasperBinaryFilePath(config evergreen.HostJasperConfig) string {
+	return filepath.Join(h.Distro.CuratorDir, h.jasperBinaryFileName(config))
+}
+
 // BootstrapScript creates the user data script to bootstrap the host.
-func (h *Host) BootstrapScript(config evergreen.JasperConfig) string {
+func (h *Host) BootstrapScript(config evergreen.HostJasperConfig, creds *rpc.Credentials) (string, error) {
+	writeCredentialsCmd, err := h.writeJasperCredentialsFileCommand(config, creds)
+	if err != nil {
+		return "", errors.Wrap(err, "could not build command to write Jasper credentials file")
+	}
+
 	if h.Distro.IsWindows() {
 		cmds := []string{
 			h.FetchJasperCommandWithPath(config, "/bin"),
+			writeCredentialsCmd,
 			h.ForceReinstallJasperCommand(config),
 		}
 		// PowerShell nested quotation marks are handled by using two quotation
@@ -246,41 +293,135 @@ func (h *Host) BootstrapScript(config evergreen.JasperConfig) string {
 			fmt.Sprintf("%s -c '%s'", h.Distro.ShellPath, quotedCmds),
 			"</powershell>",
 		}
-		return strings.Join(commands, "\r\n")
+		return strings.Join(commands, "\r\n"), nil
 	}
-	return strings.Join([]string{"#!/bin/bash", h.FetchJasperCommand(config), h.ForceReinstallJasperCommand(config)}, "\n")
+	return strings.Join([]string{"#!/bin/bash",
+		h.FetchJasperCommand(config),
+		writeCredentialsCmd,
+		h.ForceReinstallJasperCommand(config),
+	}, "\n"), nil
 }
 
-// RunSSHJasperRequest runs the command to make a request to the host's
-// Jasper service over SSH. It invoking the subcommand subCmd with the given
-// request input.
-func (h *Host) RunSSHJasperRequest(ctx context.Context, env evergreen.Environment, subCmd string, input interface{}, sshOptions []string) (string, error) {
-	inputBytes, err := json.Marshal(input)
+// writeJasperCredentialsCommand builds the command to write the Jasper
+// credentials to a file.
+func (h *Host) writeJasperCredentialsFileCommand(config evergreen.HostJasperConfig, creds *rpc.Credentials) (string, error) {
+	if h.Distro.JasperCredentialsPath == "" {
+		return "", errors.New("cannot write Jasper credentials without a credentials file path")
+	}
+	exportedCreds, err := creds.Export()
 	if err != nil {
-		return "", err
+		return "", errors.Wrap(err, "problem exporting credentials to file format")
 	}
+	return fmt.Sprintf("cat > %s <<EOF\n%s\nEOF", h.Distro.JasperCredentialsPath, exportedCreds), nil
+}
 
-	config := env.Settings().JasperConfig
-	binaryPath := h.jasperBinaryFileName(config)
-	port := config.Port
-	if port == 0 {
-		port = evergreen.DefaultJasperPort
+// RunJasperProcess makes a request to the host's Jasper service to run the
+// given command, wait for its completion, and return the output from it.
+func (h *Host) RunJasperProcess(ctx context.Context, env evergreen.Environment, command string) (string, error) {
+	client, err := h.JasperClient(ctx, env)
+	if err != nil {
+		return "", errors.Wrap(err, "could not get a Jasper client")
 	}
-
 	output := &util.CappedWriter{
 		Buffer:   &bytes.Buffer{},
-		MaxBytes: 1024 * 1024, // 1MB
+		MaxBytes: 1024 * 1024, // 1 MB
 	}
 
-	hostInfo, err := h.GetSSHInfo()
+	splitCmd, err := shlex.Split(command)
 	if err != nil {
-		return "", errors.WithStack(err)
+		return "", errors.Wrap(err, "problem splitting command")
+	}
+	opts := jasper.CreateOptions{Args: splitCmd}
+	proc, err := client.CreateProcess(ctx, &opts)
+	if err != nil {
+		return "", errors.Wrap(err, "problem creating process")
 	}
 
-	err = env.JasperManager().CreateCommand(ctx).Host(hostInfo.Hostname).User(hostInfo.User).
-		ExtendSSHArgs("-p", hostInfo.Port, "-t", "-t").ExtendSSHArgs(sshOptions...).
-		SetOutputWriter(output).RedirectErrorToOutput(true).
-		Append(fmt.Sprintf("%s jasper client %s --service=rpc --port=%d <<EOF\n%s\nEOF", binaryPath, subCmd, port, inputBytes)).
-		Run(ctx)
-	return output.String(), errors.Wrap(err, "error making Jasper request over SSH")
+	exitCode, err := proc.Wait(ctx)
+	if err != nil {
+		return "", errors.Wrap(err, "problem waiting for process completion")
+	}
+	if exitCode != 0 {
+		return "", errors.Errorf("process returned exit code %d", exitCode)
+	}
+
+	return output.String(), nil
+}
+
+// StartJasperProcess makes a request to the host's Jasper service to start a
+// process with the given options without waiting for its completion.
+func (h *Host) StartJasperProcess(ctx context.Context, env evergreen.Environment, opts *jasper.CreateOptions) error {
+	client, err := h.JasperClient(ctx, env)
+	if err != nil {
+		return errors.Wrap(err, "could not get a Jasper client")
+	}
+
+	if _, err := client.CreateProcess(ctx, opts); err != nil {
+		return errors.Wrap(err, "problem creating Jasper process")
+	}
+
+	return nil
+}
+
+// JasperClient returns a remote client that communicates with this host's
+// Jasper service.
+func (h *Host) JasperClient(ctx context.Context, env evergreen.Environment) (jasper.Manager, error) {
+	if h.LegacyBootstrap() || h.LegacyCommunication() {
+		return nil, errors.New("legacy host does not support remote Jasper process management")
+	}
+
+	settings := env.Settings()
+
+	if h.JasperCommunication() {
+		switch h.Distro.CommunicationMethod {
+		case distro.CommunicationMethodSSH:
+			hostInfo, err := h.GetSSHInfo()
+			if err != nil {
+				return nil, errors.Wrap(err, "could not get host's SSH info")
+			}
+			sshOpts, err := h.GetSSHOptions(settings)
+			if err != nil {
+				return nil, errors.Wrap(err, "could not get host's SSH options")
+			}
+
+			remoteOpts := jasper.RemoteOptions{
+				Host: hostInfo.Hostname,
+				User: hostInfo.User,
+				Args: sshOpts,
+			}
+			clientOpts := jaspercli.ClientOptions{
+				BinaryPath:          h.jasperBinaryFilePath(settings.HostJasper),
+				Type:                jaspercli.RPCService,
+				Port:                settings.HostJasper.Port,
+				CredentialsFilePath: h.Distro.JasperCredentialsPath,
+			}
+
+			return jaspercli.NewSSHManager(remoteOpts, clientOpts, true)
+		case distro.CommunicationMethodRPC:
+			creds, err := h.JasperClientCredentials(ctx, env)
+			if err != nil {
+				return nil, errors.Wrap(err, "could not get client credentials to communicate with the host's Jasper service")
+			}
+
+			var hostName string
+			if h.Host != "" {
+				hostName = h.Host
+			} else if h.IP != "" {
+				hostName = fmt.Sprintf("[%s]", h.IP)
+			} else {
+				return nil, errors.New("cannot resolve Jasper service address if neither host name nor IP is set")
+			}
+
+			addrStr := fmt.Sprintf("%s:%d", hostName, settings.HostJasper.Port)
+
+			serviceAddr, err := net.ResolveTCPAddr("tcp", addrStr)
+			if err != nil {
+				return nil, errors.Wrapf(err, "could not resolve Jasper service address at '%s'", addrStr)
+			}
+
+			return rpc.NewClient(ctx, serviceAddr, creds)
+		}
+	}
+
+	return nil, errors.Errorf("host does not have recognized communication method '%s'", h.Distro.CommunicationMethod)
 }

@@ -9,14 +9,16 @@ import (
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/awsutil"
 	"github.com/aws/aws-sdk-go/aws/request"
+	"github.com/aws/aws-sdk-go/private/protocol"
+	"github.com/aws/aws-sdk-go/private/protocol/jsonrpc"
 )
 
 const opBatchDeleteBuilds = "BatchDeleteBuilds"
 
 // BatchDeleteBuildsRequest generates a "aws/request.Request" representing the
 // client's request for the BatchDeleteBuilds operation. The "output" return
-// value will be populated with the request's response once the request complets
-// successfuly.
+// value will be populated with the request's response once the request completes
+// successfully.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
 // the "output" return value is not valid until after Send returns without error.
@@ -94,8 +96,8 @@ const opBatchGetBuilds = "BatchGetBuilds"
 
 // BatchGetBuildsRequest generates a "aws/request.Request" representing the
 // client's request for the BatchGetBuilds operation. The "output" return
-// value will be populated with the request's response once the request complets
-// successfuly.
+// value will be populated with the request's response once the request completes
+// successfully.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
 // the "output" return value is not valid until after Send returns without error.
@@ -173,8 +175,8 @@ const opBatchGetProjects = "BatchGetProjects"
 
 // BatchGetProjectsRequest generates a "aws/request.Request" representing the
 // client's request for the BatchGetProjects operation. The "output" return
-// value will be populated with the request's response once the request complets
-// successfuly.
+// value will be populated with the request's response once the request completes
+// successfully.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
 // the "output" return value is not valid until after Send returns without error.
@@ -252,8 +254,8 @@ const opCreateProject = "CreateProject"
 
 // CreateProjectRequest generates a "aws/request.Request" representing the
 // client's request for the CreateProject operation. The "output" return
-// value will be populated with the request's response once the request complets
-// successfuly.
+// value will be populated with the request's response once the request completes
+// successfully.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
 // the "output" return value is not valid until after Send returns without error.
@@ -338,8 +340,8 @@ const opCreateWebhook = "CreateWebhook"
 
 // CreateWebhookRequest generates a "aws/request.Request" representing the
 // client's request for the CreateWebhook operation. The "output" return
-// value will be populated with the request's response once the request complets
-// successfuly.
+// value will be populated with the request's response once the request completes
+// successfully.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
 // the "output" return value is not valid until after Send returns without error.
@@ -379,17 +381,17 @@ func (c *CodeBuild) CreateWebhookRequest(input *CreateWebhookInput) (req *reques
 // CreateWebhook API operation for AWS CodeBuild.
 //
 // For an existing AWS CodeBuild build project that has its source code stored
-// in a GitHub repository, enables AWS CodeBuild to begin automatically rebuilding
+// in a GitHub or Bitbucket repository, enables AWS CodeBuild to start rebuilding
 // the source code every time a code change is pushed to the repository.
 //
 // If you enable webhooks for an AWS CodeBuild project, and the project is used
-// as a build step in AWS CodePipeline, then two identical builds will be created
+// as a build step in AWS CodePipeline, then two identical builds are created
 // for each commit. One build is triggered through webhooks, and one through
-// AWS CodePipeline. Because billing is on a per-build basis, you will be billed
+// AWS CodePipeline. Because billing is on a per-build basis, you are billed
 // for both builds. Therefore, if you are using AWS CodePipeline, we recommend
-// that you disable webhooks in CodeBuild. In the AWS CodeBuild console, clear
-// the Webhook box. For more information, see step 9 in Change a Build Project’s
-// Settings (http://docs.aws.amazon.com/codebuild/latest/userguide/change-project.html#change-project-console).
+// that you disable webhooks in AWS CodeBuild. In the AWS CodeBuild console,
+// clear the Webhook box. For more information, see step 5 in Change a Build
+// Project's Settings (https://docs.aws.amazon.com/codebuild/latest/userguide/change-project.html#change-project-console).
 //
 // Returns awserr.Error for service API and SDK errors. Use runtime type assertions
 // with awserr.Error's Code and Message methods to get detailed information about
@@ -438,8 +440,8 @@ const opDeleteProject = "DeleteProject"
 
 // DeleteProjectRequest generates a "aws/request.Request" representing the
 // client's request for the DeleteProject operation. The "output" return
-// value will be populated with the request's response once the request complets
-// successfuly.
+// value will be populated with the request's response once the request completes
+// successfully.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
 // the "output" return value is not valid until after Send returns without error.
@@ -473,6 +475,7 @@ func (c *CodeBuild) DeleteProjectRequest(input *DeleteProjectInput) (req *reques
 
 	output = &DeleteProjectOutput{}
 	req = c.newRequest(op, input, output)
+	req.Handlers.Unmarshal.Swap(jsonrpc.UnmarshalHandler.Name, protocol.UnmarshalDiscardBodyHandler)
 	return
 }
 
@@ -513,12 +516,94 @@ func (c *CodeBuild) DeleteProjectWithContext(ctx aws.Context, input *DeleteProje
 	return out, req.Send()
 }
 
+const opDeleteSourceCredentials = "DeleteSourceCredentials"
+
+// DeleteSourceCredentialsRequest generates a "aws/request.Request" representing the
+// client's request for the DeleteSourceCredentials operation. The "output" return
+// value will be populated with the request's response once the request completes
+// successfully.
+//
+// Use "Send" method on the returned Request to send the API call to the service.
+// the "output" return value is not valid until after Send returns without error.
+//
+// See DeleteSourceCredentials for more information on using the DeleteSourceCredentials
+// API call, and error handling.
+//
+// This method is useful when you want to inject custom logic or configuration
+// into the SDK's request lifecycle. Such as custom headers, or retry logic.
+//
+//
+//    // Example sending a request using the DeleteSourceCredentialsRequest method.
+//    req, resp := client.DeleteSourceCredentialsRequest(params)
+//
+//    err := req.Send()
+//    if err == nil { // resp is now filled
+//        fmt.Println(resp)
+//    }
+//
+// See also, https://docs.aws.amazon.com/goto/WebAPI/codebuild-2016-10-06/DeleteSourceCredentials
+func (c *CodeBuild) DeleteSourceCredentialsRequest(input *DeleteSourceCredentialsInput) (req *request.Request, output *DeleteSourceCredentialsOutput) {
+	op := &request.Operation{
+		Name:       opDeleteSourceCredentials,
+		HTTPMethod: "POST",
+		HTTPPath:   "/",
+	}
+
+	if input == nil {
+		input = &DeleteSourceCredentialsInput{}
+	}
+
+	output = &DeleteSourceCredentialsOutput{}
+	req = c.newRequest(op, input, output)
+	return
+}
+
+// DeleteSourceCredentials API operation for AWS CodeBuild.
+//
+// Deletes a set of GitHub, GitHub Enterprise, or Bitbucket source credentials.
+//
+// Returns awserr.Error for service API and SDK errors. Use runtime type assertions
+// with awserr.Error's Code and Message methods to get detailed information about
+// the error.
+//
+// See the AWS API reference guide for AWS CodeBuild's
+// API operation DeleteSourceCredentials for usage and error information.
+//
+// Returned Error Codes:
+//   * ErrCodeInvalidInputException "InvalidInputException"
+//   The input value that was provided is not valid.
+//
+//   * ErrCodeResourceNotFoundException "ResourceNotFoundException"
+//   The specified AWS resource cannot be found.
+//
+// See also, https://docs.aws.amazon.com/goto/WebAPI/codebuild-2016-10-06/DeleteSourceCredentials
+func (c *CodeBuild) DeleteSourceCredentials(input *DeleteSourceCredentialsInput) (*DeleteSourceCredentialsOutput, error) {
+	req, out := c.DeleteSourceCredentialsRequest(input)
+	return out, req.Send()
+}
+
+// DeleteSourceCredentialsWithContext is the same as DeleteSourceCredentials with the addition of
+// the ability to pass a context and additional request options.
+//
+// See DeleteSourceCredentials for details on how to use this API operation.
+//
+// The context must be non-nil and will be used for request cancellation. If
+// the context is nil a panic will occur. In the future the SDK may create
+// sub-contexts for http.Requests. See https://golang.org/pkg/context/
+// for more information on using Contexts.
+func (c *CodeBuild) DeleteSourceCredentialsWithContext(ctx aws.Context, input *DeleteSourceCredentialsInput, opts ...request.Option) (*DeleteSourceCredentialsOutput, error) {
+	req, out := c.DeleteSourceCredentialsRequest(input)
+	req.SetContext(ctx)
+	req.ApplyOptions(opts...)
+	return out, req.Send()
+}
+
 const opDeleteWebhook = "DeleteWebhook"
 
 // DeleteWebhookRequest generates a "aws/request.Request" representing the
 // client's request for the DeleteWebhook operation. The "output" return
-// value will be populated with the request's response once the request complets
-// successfuly.
+// value will be populated with the request's response once the request completes
+// successfully.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
 // the "output" return value is not valid until after Send returns without error.
@@ -552,13 +637,14 @@ func (c *CodeBuild) DeleteWebhookRequest(input *DeleteWebhookInput) (req *reques
 
 	output = &DeleteWebhookOutput{}
 	req = c.newRequest(op, input, output)
+	req.Handlers.Unmarshal.Swap(jsonrpc.UnmarshalHandler.Name, protocol.UnmarshalDiscardBodyHandler)
 	return
 }
 
 // DeleteWebhook API operation for AWS CodeBuild.
 //
 // For an existing AWS CodeBuild build project that has its source code stored
-// in a GitHub repository, stops AWS CodeBuild from automatically rebuilding
+// in a GitHub or Bitbucket repository, stops AWS CodeBuild from rebuilding
 // the source code every time a code change is pushed to the repository.
 //
 // Returns awserr.Error for service API and SDK errors. Use runtime type assertions
@@ -600,12 +686,95 @@ func (c *CodeBuild) DeleteWebhookWithContext(ctx aws.Context, input *DeleteWebho
 	return out, req.Send()
 }
 
+const opImportSourceCredentials = "ImportSourceCredentials"
+
+// ImportSourceCredentialsRequest generates a "aws/request.Request" representing the
+// client's request for the ImportSourceCredentials operation. The "output" return
+// value will be populated with the request's response once the request completes
+// successfully.
+//
+// Use "Send" method on the returned Request to send the API call to the service.
+// the "output" return value is not valid until after Send returns without error.
+//
+// See ImportSourceCredentials for more information on using the ImportSourceCredentials
+// API call, and error handling.
+//
+// This method is useful when you want to inject custom logic or configuration
+// into the SDK's request lifecycle. Such as custom headers, or retry logic.
+//
+//
+//    // Example sending a request using the ImportSourceCredentialsRequest method.
+//    req, resp := client.ImportSourceCredentialsRequest(params)
+//
+//    err := req.Send()
+//    if err == nil { // resp is now filled
+//        fmt.Println(resp)
+//    }
+//
+// See also, https://docs.aws.amazon.com/goto/WebAPI/codebuild-2016-10-06/ImportSourceCredentials
+func (c *CodeBuild) ImportSourceCredentialsRequest(input *ImportSourceCredentialsInput) (req *request.Request, output *ImportSourceCredentialsOutput) {
+	op := &request.Operation{
+		Name:       opImportSourceCredentials,
+		HTTPMethod: "POST",
+		HTTPPath:   "/",
+	}
+
+	if input == nil {
+		input = &ImportSourceCredentialsInput{}
+	}
+
+	output = &ImportSourceCredentialsOutput{}
+	req = c.newRequest(op, input, output)
+	return
+}
+
+// ImportSourceCredentials API operation for AWS CodeBuild.
+//
+// Imports the source repository credentials for an AWS CodeBuild project that
+// has its source code stored in a GitHub, GitHub Enterprise, or Bitbucket repository.
+//
+// Returns awserr.Error for service API and SDK errors. Use runtime type assertions
+// with awserr.Error's Code and Message methods to get detailed information about
+// the error.
+//
+// See the AWS API reference guide for AWS CodeBuild's
+// API operation ImportSourceCredentials for usage and error information.
+//
+// Returned Error Codes:
+//   * ErrCodeInvalidInputException "InvalidInputException"
+//   The input value that was provided is not valid.
+//
+//   * ErrCodeAccountLimitExceededException "AccountLimitExceededException"
+//   An AWS service limit was exceeded for the calling AWS account.
+//
+// See also, https://docs.aws.amazon.com/goto/WebAPI/codebuild-2016-10-06/ImportSourceCredentials
+func (c *CodeBuild) ImportSourceCredentials(input *ImportSourceCredentialsInput) (*ImportSourceCredentialsOutput, error) {
+	req, out := c.ImportSourceCredentialsRequest(input)
+	return out, req.Send()
+}
+
+// ImportSourceCredentialsWithContext is the same as ImportSourceCredentials with the addition of
+// the ability to pass a context and additional request options.
+//
+// See ImportSourceCredentials for details on how to use this API operation.
+//
+// The context must be non-nil and will be used for request cancellation. If
+// the context is nil a panic will occur. In the future the SDK may create
+// sub-contexts for http.Requests. See https://golang.org/pkg/context/
+// for more information on using Contexts.
+func (c *CodeBuild) ImportSourceCredentialsWithContext(ctx aws.Context, input *ImportSourceCredentialsInput, opts ...request.Option) (*ImportSourceCredentialsOutput, error) {
+	req, out := c.ImportSourceCredentialsRequest(input)
+	req.SetContext(ctx)
+	req.ApplyOptions(opts...)
+	return out, req.Send()
+}
+
 const opInvalidateProjectCache = "InvalidateProjectCache"
 
 // InvalidateProjectCacheRequest generates a "aws/request.Request" representing the
 // client's request for the InvalidateProjectCache operation. The "output" return
-// value will be populated with the request's response once the request complets
-// successfuly.
+// value will be populated with the request's response once the request completes
+// successfully.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
 // the "output" return value is not valid until after Send returns without error.
@@ -639,6 +808,7 @@ func (c *CodeBuild) InvalidateProjectCacheRequest(input *InvalidateProjectCacheI
 
 	output = &InvalidateProjectCacheOutput{}
 	req = c.newRequest(op, input, output)
+	req.Handlers.Unmarshal.Swap(jsonrpc.UnmarshalHandler.Name, protocol.UnmarshalDiscardBodyHandler)
 	return
 }
 
@@ -686,8 +856,8 @@ const opListBuilds = "ListBuilds"
 
 // ListBuildsRequest generates a "aws/request.Request" representing the
 // client's request for the ListBuilds operation. The "output" return
-// value will be populated with the request's response once the request complets
-// successfuly.
+// value will be populated with the request's response once the request completes
+// successfully.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
 // the "output" return value is not valid until after Send returns without error.
@@ -765,8 +935,8 @@ const opListBuildsForProject = "ListBuildsForProject"
 
 // ListBuildsForProjectRequest generates a "aws/request.Request" representing the
 // client's request for the ListBuildsForProject operation. The "output" return
-// value will be populated with the request's response once the request complets
-// successfuly.
+// value will be populated with the request's response once the request completes
+// successfully.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
 // the "output" return value is not valid until after Send returns without error.
@@ -848,8 +1018,8 @@ const opListCuratedEnvironmentImages = "ListCuratedEnvironmentImages"
 
 // ListCuratedEnvironmentImagesRequest generates a "aws/request.Request" representing the
 // client's request for the ListCuratedEnvironmentImages operation. The "output" return
-// value will be populated with the request's response once the request complets
-// successfuly.
+// value will be populated with the request's response once the request completes
+// successfully.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
 // the "output" return value is not valid until after Send returns without error.
@@ -922,8 +1092,8 @@ const opListProjects = "ListProjects"
 
 // ListProjectsRequest generates a "aws/request.Request" representing the
 // client's request for the ListProjects operation. The "output" return
-// value will be populated with the request's response once the request complets
-// successfuly.
+// value will be populated with the request's response once the request completes
+// successfully.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
 // the "output" return value is not valid until after Send returns without error.
@@ -998,12 +1168,86 @@ func (c *CodeBuild) ListProjectsWithContext(ctx aws.Context, input *ListProjects
 	return out, req.Send()
 }
 
+const opListSourceCredentials = "ListSourceCredentials"
+
+// ListSourceCredentialsRequest generates a "aws/request.Request" representing the
+// client's request for the ListSourceCredentials operation. The "output" return
+// value will be populated with the request's response once the request completes
+// successfully.
+//
+// Use "Send" method on the returned Request to send the API call to the service.
+// the "output" return value is not valid until after Send returns without error.
+//
+// See ListSourceCredentials for more information on using the ListSourceCredentials
+// API call, and error handling.
+//
+// This method is useful when you want to inject custom logic or configuration
+// into the SDK's request lifecycle. Such as custom headers, or retry logic.
+//
+//
+//    // Example sending a request using the ListSourceCredentialsRequest method.
+//    req, resp := client.ListSourceCredentialsRequest(params)
+//
+//    err := req.Send()
+//    if err == nil { // resp is now filled
+//        fmt.Println(resp)
+//    }
+//
+// See also, https://docs.aws.amazon.com/goto/WebAPI/codebuild-2016-10-06/ListSourceCredentials
+func (c *CodeBuild) ListSourceCredentialsRequest(input *ListSourceCredentialsInput) (req *request.Request, output *ListSourceCredentialsOutput) {
+	op := &request.Operation{
+		Name:       opListSourceCredentials,
+		HTTPMethod: "POST",
+		HTTPPath:   "/",
+	}
+
+	if input == nil {
+		input = &ListSourceCredentialsInput{}
+	}
+
+	output = &ListSourceCredentialsOutput{}
+	req = c.newRequest(op, input, output)
+	return
+}
+
+// ListSourceCredentials API operation for AWS CodeBuild.
+//
+// Returns a list of SourceCredentialsInfo objects.
+//
+// Returns awserr.Error for service API and SDK errors. Use runtime type assertions
+// with awserr.Error's Code and Message methods to get detailed information about
+// the error.
+//
+// See the AWS API reference guide for AWS CodeBuild's
+// API operation ListSourceCredentials for usage and error information.
+// See also, https://docs.aws.amazon.com/goto/WebAPI/codebuild-2016-10-06/ListSourceCredentials
+func (c *CodeBuild) ListSourceCredentials(input *ListSourceCredentialsInput) (*ListSourceCredentialsOutput, error) {
+	req, out := c.ListSourceCredentialsRequest(input)
+	return out, req.Send()
+}
+
+// ListSourceCredentialsWithContext is the same as ListSourceCredentials with the addition of
+// the ability to pass a context and additional request options.
+//
+// See ListSourceCredentials for details on how to use this API operation.
+//
+// The context must be non-nil and will be used for request cancellation. If
+// the context is nil a panic will occur. In the future the SDK may create
+// sub-contexts for http.Requests. See https://golang.org/pkg/context/
+// for more information on using Contexts.
+func (c *CodeBuild) ListSourceCredentialsWithContext(ctx aws.Context, input *ListSourceCredentialsInput, opts ...request.Option) (*ListSourceCredentialsOutput, error) {
+	req, out := c.ListSourceCredentialsRequest(input)
+	req.SetContext(ctx)
+	req.ApplyOptions(opts...)
+	return out, req.Send()
+}
+
 const opStartBuild = "StartBuild"
 
 // StartBuildRequest generates a "aws/request.Request" representing the
 // client's request for the StartBuild operation. The "output" return
-// value will be populated with the request's response once the request complets
-// successfuly.
+// value will be populated with the request's response once the request completes
+// successfully.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
 // the "output" return value is not valid until after Send returns without error.
@@ -1087,8 +1331,8 @@ const opStopBuild = "StopBuild"
 
 // StopBuildRequest generates a "aws/request.Request" representing the
 // client's request for the StopBuild operation. The "output" return
-// value will be populated with the request's response once the request complets
-// successfuly.
+// value will be populated with the request's response once the request completes
+// successfully.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
 // the "output" return value is not valid until after Send returns without error.
@@ -1169,8 +1413,8 @@ const opUpdateProject = "UpdateProject"
 
 // UpdateProjectRequest generates a "aws/request.Request" representing the
 // client's request for the UpdateProject operation. The "output" return
-// value will be populated with the request's response once the request complets
-// successfuly.
+// value will be populated with the request's response once the request completes
+// successfully.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
 // the "output" return value is not valid until after Send returns without error.
@@ -1247,7 +1491,93 @@ func (c *CodeBuild) UpdateProjectWithContext(ctx aws.Context, input *UpdateProje
 	return out, req.Send()
 }
 
-// See also, https://docs.aws.amazon.com/goto/WebAPI/codebuild-2016-10-06/BatchDeleteBuildsInput
+const opUpdateWebhook = "UpdateWebhook"
+
+// UpdateWebhookRequest generates a "aws/request.Request" representing the
+// client's request for the UpdateWebhook operation. The "output" return
+// value will be populated with the request's response once the request completes
+// successfully.
+//
+// Use "Send" method on the returned Request to send the API call to the service.
+// the "output" return value is not valid until after Send returns without error.
+//
+// See UpdateWebhook for more information on using the UpdateWebhook
+// API call, and error handling.
+//
+// This method is useful when you want to inject custom logic or configuration
+// into the SDK's request lifecycle. Such as custom headers, or retry logic.
+//
+//
+//    // Example sending a request using the UpdateWebhookRequest method.
+//    req, resp := client.UpdateWebhookRequest(params)
+//
+//    err := req.Send()
+//    if err == nil { // resp is now filled
+//        fmt.Println(resp)
+//    }
+//
+// See also, https://docs.aws.amazon.com/goto/WebAPI/codebuild-2016-10-06/UpdateWebhook
+func (c *CodeBuild) UpdateWebhookRequest(input *UpdateWebhookInput) (req *request.Request, output *UpdateWebhookOutput) {
+	op := &request.Operation{
+		Name:       opUpdateWebhook,
+		HTTPMethod: "POST",
+		HTTPPath:   "/",
+	}
+
+	if input == nil {
+		input = &UpdateWebhookInput{}
+	}
+
+	output = &UpdateWebhookOutput{}
+	req = c.newRequest(op, input, output)
+	return
+}
+
+// UpdateWebhook API operation for AWS CodeBuild.
+//
+// Updates the webhook associated with an AWS CodeBuild build project.
+//
+// If you use Bitbucket for your repository, rotateSecret is ignored.
+//
+// Returns awserr.Error for service API and SDK errors. Use runtime type assertions
+// with awserr.Error's Code and Message methods to get detailed information about
+// the error.
+//
+// See the AWS API reference guide for AWS CodeBuild's
+// API operation UpdateWebhook for usage and error information.
+//
+// Returned Error Codes:
+//   * ErrCodeInvalidInputException "InvalidInputException"
+//   The input value that was provided is not valid.
+//
+//   * ErrCodeResourceNotFoundException "ResourceNotFoundException"
+//   The specified AWS resource cannot be found.
+//
+//   * ErrCodeOAuthProviderException "OAuthProviderException"
+//   There was a problem with the underlying OAuth provider.
+//
+// See also, https://docs.aws.amazon.com/goto/WebAPI/codebuild-2016-10-06/UpdateWebhook
+func (c *CodeBuild) UpdateWebhook(input *UpdateWebhookInput) (*UpdateWebhookOutput, error) {
+	req, out := c.UpdateWebhookRequest(input)
+	return out, req.Send()
+}
+
+// UpdateWebhookWithContext is the same as UpdateWebhook with the addition of
+// the ability to pass a context and additional request options.
+//
+// See UpdateWebhook for details on how to use this API operation.
+//
+// The context must be non-nil and will be used for request cancellation. If
+// the context is nil a panic will occur. In the future the SDK may create
+// sub-contexts for http.Requests. See https://golang.org/pkg/context/
+// for more information on using Contexts.
+func (c *CodeBuild) UpdateWebhookWithContext(ctx aws.Context, input *UpdateWebhookInput, opts ...request.Option) (*UpdateWebhookOutput, error) {
+	req, out := c.UpdateWebhookRequest(input)
+	req.SetContext(ctx)
+	req.ApplyOptions(opts...)
+	return out, req.Send()
+}
+
 type BatchDeleteBuildsInput struct {
 	_ struct{} `type:"structure"`
 
@@ -1289,7 +1619,6 @@ func (s *BatchDeleteBuildsInput) SetIds(v []*string) *BatchDeleteBuildsInput {
 	return s
 }
 
-// See also, https://docs.aws.amazon.com/goto/WebAPI/codebuild-2016-10-06/BatchDeleteBuildsOutput
 type BatchDeleteBuildsOutput struct {
 	_ struct{} `type:"structure"`
 
@@ -1322,7 +1651,6 @@ func (s *BatchDeleteBuildsOutput) SetBuildsNotDeleted(v []*BuildNotDeleted) *Bat
 	return s
 }
 
-// See also, https://docs.aws.amazon.com/goto/WebAPI/codebuild-2016-10-06/BatchGetBuildsInput
 type BatchGetBuildsInput struct {
 	_ struct{} `type:"structure"`
 
@@ -1364,7 +1692,6 @@ func (s *BatchGetBuildsInput) SetIds(v []*string) *BatchGetBuildsInput {
 	return s
 }
 
-// See also, https://docs.aws.amazon.com/goto/WebAPI/codebuild-2016-10-06/BatchGetBuildsOutput
 type BatchGetBuildsOutput struct {
 	_ struct{} `type:"structure"`
 
@@ -1397,7 +1724,6 @@ func (s *BatchGetBuildsOutput) SetBuildsNotFound(v []*string) *BatchGetBuildsOut
 	return s
 }
 
-// See also, https://docs.aws.amazon.com/goto/WebAPI/codebuild-2016-10-06/BatchGetProjectsInput
 type BatchGetProjectsInput struct {
 	_ struct{} `type:"structure"`
 
@@ -1439,7 +1765,6 @@ func (s *BatchGetProjectsInput) SetNames(v []*string) *BatchGetProjectsInput {
 	return s
 }
 
-// See also, https://docs.aws.amazon.com/goto/WebAPI/codebuild-2016-10-06/BatchGetProjectsOutput
 type BatchGetProjectsOutput struct {
 	_ struct{} `type:"structure"`
 
@@ -1473,7 +1798,6 @@ func (s *BatchGetProjectsOutput) SetProjectsNotFound(v []*string) *BatchGetProje
 }
 
 // Information about a build.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/codebuild-2016-10-06/Build
 type Build struct {
 	_ struct{} `type:"structure"`
 
@@ -1483,7 +1807,7 @@ type Build struct {
 	// Information about the output artifacts for the build.
 	Artifacts *BuildArtifacts `locationName:"artifacts" type:"structure"`
 
-	// Whether the build has finished. True if completed; otherwise, false.
+	// Whether the build is complete. True if complete; otherwise, false.
 	BuildComplete *bool `locationName:"buildComplete" type:"boolean"`
 
 	// The current status of the build. Valid values include:
@@ -1507,8 +1831,18 @@ type Build struct {
 	// The current build phase.
 	CurrentPhase *string `locationName:"currentPhase" type:"string"`
 
+	// The AWS Key Management Service (AWS KMS) customer master key (CMK) to be
+	// used for encrypting the build output artifacts.
+	//
+	// You can use a cross-account KMS key to encrypt the build output artifacts
+	// if your service role has permission to that key.
+	//
+	// You can specify either the Amazon Resource Name (ARN) of the CMK or, if available,
+	// the CMK's alias (using the format alias/alias-name ).
+	EncryptionKey *string `locationName:"encryptionKey" min:"1" type:"string"`
+
 	// When the build process ended, expressed in Unix time format.
-	EndTime *time.Time `locationName:"endTime" type:"timestamp" timestampFormat:"unix"`
+	EndTime *time.Time `locationName:"endTime" type:"timestamp"`
 
 	// Information about the build environment for this build.
 	Environment *ProjectEnvironment `locationName:"environment" type:"structure"`
@@ -1522,7 +1856,7 @@ type Build struct {
 	//    codepipeline/my-demo-pipeline).
 	//
 	//    * If an AWS Identity and Access Management (IAM) user started the build,
-	//    the user's name (for example MyUserName).
+	//    the user's name (for example, MyUserName).
 	//
 	//    * If the Jenkins plugin for AWS CodeBuild started the build, the string
 	//    CodeBuild-Jenkins-Plugin.
@@ -1534,21 +1868,69 @@ type Build struct {
 	// Describes a network interface.
 	NetworkInterface *NetworkInterface `locationName:"networkInterface" type:"structure"`
 
-	// Information about all previous build phases that are completed and information
+	// Information about all previous build phases that are complete and information
 	// about any current build phase that is not yet complete.
 	Phases []*BuildPhase `locationName:"phases" type:"list"`
 
-	// The name of the build project.
+	// The name of the AWS CodeBuild project.
 	ProjectName *string `locationName:"projectName" min:"1" type:"string"`
+
+	// The number of minutes a build is allowed to be queued before it times out.
+	QueuedTimeoutInMinutes *int64 `locationName:"queuedTimeoutInMinutes" type:"integer"`
+
+	// An identifier for the version of this build's source code.
+	//
+	//    * For AWS CodeCommit, GitHub, GitHub Enterprise, and BitBucket, the commit
+	//    ID.
+	//
+	//    * For AWS CodePipeline, the source revision provided by AWS CodePipeline.
+	//
+	//    * For Amazon Simple Storage Service (Amazon S3), this does not apply.
+	ResolvedSourceVersion *string `locationName:"resolvedSourceVersion" min:"1" type:"string"`
+
+	// An array of ProjectArtifacts objects.
+	SecondaryArtifacts []*BuildArtifacts `locationName:"secondaryArtifacts" type:"list"`
+
+	// An array of ProjectSourceVersion objects. Each ProjectSourceVersion must
+	// be one of:
+	//
+	//    * For AWS CodeCommit: the commit ID to use.
+	//
+	//    * For GitHub: the commit ID, pull request ID, branch name, or tag name
+	//    that corresponds to the version of the source code you want to build.
+	//    If a pull request ID is specified, it must use the format pr/pull-request-ID
+	//    (for example, pr/25). If a branch name is specified, the branch's HEAD
+	//    commit ID is used. If not specified, the default branch's HEAD commit
+	//    ID is used.
+	//
+	//    * For Bitbucket: the commit ID, branch name, or tag name that corresponds
+	//    to the version of the source code you want to build. If a branch name
+	//    is specified, the branch's HEAD commit ID is used. If not specified, the
+	//    default branch's HEAD commit ID is used.
+	//
+	//    * For Amazon Simple Storage Service (Amazon S3): the version ID of the
+	//    object that represents the build input ZIP file to use.
+	SecondarySourceVersions []*ProjectSourceVersion `locationName:"secondarySourceVersions" type:"list"`
+
+	// An array of ProjectSource objects.
+	SecondarySources []*ProjectSource `locationName:"secondarySources" type:"list"`
+
+	// The name of a service role used for this build.
+	ServiceRole *string `locationName:"serviceRole" min:"1" type:"string"`
 
 	// Information about the source code to be built.
 	Source *ProjectSource `locationName:"source" type:"structure"`
 
-	// Any version identifier for the version of the source code to be built.
+	// Any version identifier for the version of the source code to be built. If
+	// sourceVersion is specified at the project level, then this sourceVersion
+	// (at the build level) takes precedence.
+	//
+	// For more information, see Source Version Sample with CodeBuild (https://docs.aws.amazon.com/codebuild/latest/userguide/sample-source-version.html)
+	// in the AWS CodeBuild User Guide.
 	SourceVersion *string `locationName:"sourceVersion" min:"1" type:"string"`
 
 	// When the build process started, expressed in Unix time format.
-	StartTime *time.Time `locationName:"startTime" type:"timestamp" timestampFormat:"unix"`
+	StartTime *time.Time `locationName:"startTime" type:"timestamp"`
 
 	// How long, in minutes, for AWS CodeBuild to wait before timing out this build
 	// if it does not get marked as completed.
@@ -1607,6 +1989,12 @@ func (s *Build) SetCurrentPhase(v string) *Build {
 	return s
 }
 
+// SetEncryptionKey sets the EncryptionKey field's value.
+func (s *Build) SetEncryptionKey(v string) *Build {
+	s.EncryptionKey = &v
+	return s
+}
+
 // SetEndTime sets the EndTime field's value.
 func (s *Build) SetEndTime(v time.Time) *Build {
 	s.EndTime = &v
@@ -1655,6 +2043,42 @@ func (s *Build) SetProjectName(v string) *Build {
 	return s
 }
 
+// SetQueuedTimeoutInMinutes sets the QueuedTimeoutInMinutes field's value.
+func (s *Build) SetQueuedTimeoutInMinutes(v int64) *Build {
+	s.QueuedTimeoutInMinutes = &v
+	return s
+}
+
+// SetResolvedSourceVersion sets the ResolvedSourceVersion field's value.
+func (s *Build) SetResolvedSourceVersion(v string) *Build {
+	s.ResolvedSourceVersion = &v
+	return s
+}
+
+// SetSecondaryArtifacts sets the SecondaryArtifacts field's value.
+func (s *Build) SetSecondaryArtifacts(v []*BuildArtifacts) *Build {
+	s.SecondaryArtifacts = v
+	return s
+}
+
+// SetSecondarySourceVersions sets the SecondarySourceVersions field's value.
+func (s *Build) SetSecondarySourceVersions(v []*ProjectSourceVersion) *Build {
+	s.SecondarySourceVersions = v
+	return s
+}
+
+// SetSecondarySources sets the SecondarySources field's value.
+func (s *Build) SetSecondarySources(v []*ProjectSource) *Build {
+	s.SecondarySources = v
+	return s
+}
+
+// SetServiceRole sets the ServiceRole field's value.
+func (s *Build) SetServiceRole(v string) *Build {
+	s.ServiceRole = &v
+	return s
+}
+
 // SetSource sets the Source field's value.
 func (s *Build) SetSource(v *ProjectSource) *Build {
 	s.Source = v
@@ -1686,25 +2110,36 @@ func (s *Build) SetVpcConfig(v *VpcConfig) *Build {
 }
 
 // Information about build output artifacts.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/codebuild-2016-10-06/BuildArtifacts
 type BuildArtifacts struct {
 	_ struct{} `type:"structure"`
+
+	// An identifier for this artifact definition.
+	ArtifactIdentifier *string `locationName:"artifactIdentifier" type:"string"`
+
+	// Information that tells you if encryption for build artifacts is disabled.
+	EncryptionDisabled *bool `locationName:"encryptionDisabled" type:"boolean"`
 
 	// Information about the location of the build artifacts.
 	Location *string `locationName:"location" type:"string"`
 
 	// The MD5 hash of the build artifact.
 	//
-	// You can use this hash along with a checksum tool to confirm both file integrity
+	// You can use this hash along with a checksum tool to confirm file integrity
 	// and authenticity.
 	//
 	// This value is available only if the build project's packaging value is set
 	// to ZIP.
 	Md5sum *string `locationName:"md5sum" type:"string"`
 
+	// If this flag is set, a name specified in the build spec file overrides the
+	// artifact name. The name specified in a build spec file is calculated at build
+	// time and uses the Shell Command Language. For example, you can append a date
+	// and time to your artifact name so that it is always unique.
+	OverrideArtifactName *bool `locationName:"overrideArtifactName" type:"boolean"`
+
 	// The SHA-256 hash of the build artifact.
 	//
-	// You can use this hash along with a checksum tool to confirm both file integrity
+	// You can use this hash along with a checksum tool to confirm file integrity
 	// and authenticity.
 	//
 	// This value is available only if the build project's packaging value is set
@@ -1722,6 +2157,18 @@ func (s BuildArtifacts) GoString() string {
 	return s.String()
 }
 
+// SetArtifactIdentifier sets the ArtifactIdentifier field's value.
+func (s *BuildArtifacts) SetArtifactIdentifier(v string) *BuildArtifacts {
+	s.ArtifactIdentifier = &v
+	return s
+}
+
+// SetEncryptionDisabled sets the EncryptionDisabled field's value.
+func (s *BuildArtifacts) SetEncryptionDisabled(v bool) *BuildArtifacts {
+	s.EncryptionDisabled = &v
+	return s
+}
+
 // SetLocation sets the Location field's value.
 func (s *BuildArtifacts) SetLocation(v string) *BuildArtifacts {
 	s.Location = &v
@@ -1734,6 +2181,12 @@ func (s *BuildArtifacts) SetMd5sum(v string) *BuildArtifacts {
 	return s
 }
 
+// SetOverrideArtifactName sets the OverrideArtifactName field's value.
+func (s *BuildArtifacts) SetOverrideArtifactName(v bool) *BuildArtifacts {
+	s.OverrideArtifactName = &v
+	return s
+}
+
 // SetSha256sum sets the Sha256sum field's value.
 func (s *BuildArtifacts) SetSha256sum(v string) *BuildArtifacts {
 	s.Sha256sum = &v
@@ -1741,7 +2194,6 @@ func (s *BuildArtifacts) SetSha256sum(v string) *BuildArtifacts {
 }
 
 // Information about a build that could not be successfully deleted.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/codebuild-2016-10-06/BuildNotDeleted
 type BuildNotDeleted struct {
 	_ struct{} `type:"structure"`
 
@@ -1775,7 +2227,6 @@ func (s *BuildNotDeleted) SetStatusCode(v string) *BuildNotDeleted {
 }
 
 // Information about a stage for a build.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/codebuild-2016-10-06/BuildPhase
 type BuildPhase struct {
 	_ struct{} `type:"structure"`
 
@@ -1788,7 +2239,7 @@ type BuildPhase struct {
 	DurationInSeconds *int64 `locationName:"durationInSeconds" type:"long"`
 
 	// When the build phase ended, expressed in Unix time format.
-	EndTime *time.Time `locationName:"endTime" type:"timestamp" timestampFormat:"unix"`
+	EndTime *time.Time `locationName:"endTime" type:"timestamp"`
 
 	// The current status of the build phase. Valid values include:
 	//
@@ -1797,6 +2248,9 @@ type BuildPhase struct {
 	//    * FAULT: The build phase faulted.
 	//
 	//    * IN_PROGRESS: The build phase is still in progress.
+	//
+	//    * QUEUED: The build has been submitted and is queued behind other submitted
+	//    builds.
 	//
 	//    * STOPPED: The build phase stopped.
 	//
@@ -1823,6 +2277,9 @@ type BuildPhase struct {
 	//
 	//    * PROVISIONING: The build environment is being set up.
 	//
+	//    * QUEUED: The build has been submitted and is queued behind other submitted
+	//    builds.
+	//
 	//    * SUBMITTED: The build has been submitted.
 	//
 	//    * UPLOAD_ARTIFACTS: Build output artifacts are being uploaded to the output
@@ -1830,7 +2287,7 @@ type BuildPhase struct {
 	PhaseType *string `locationName:"phaseType" type:"string" enum:"BuildPhaseType"`
 
 	// When the build phase started, expressed in Unix time format.
-	StartTime *time.Time `locationName:"startTime" type:"timestamp" timestampFormat:"unix"`
+	StartTime *time.Time `locationName:"startTime" type:"timestamp"`
 }
 
 // String returns the string representation
@@ -1879,7 +2336,70 @@ func (s *BuildPhase) SetStartTime(v time.Time) *BuildPhase {
 	return s
 }
 
-// See also, https://docs.aws.amazon.com/goto/WebAPI/codebuild-2016-10-06/CreateProjectInput
+// Information about Amazon CloudWatch Logs for a build project.
+type CloudWatchLogsConfig struct {
+	_ struct{} `type:"structure"`
+
+	// The group name of the logs in Amazon CloudWatch Logs. For more information,
+	// see Working with Log Groups and Log Streams (https://docs.aws.amazon.com/AmazonCloudWatch/latest/logs/Working-with-log-groups-and-streams.html).
+	GroupName *string `locationName:"groupName" type:"string"`
+
+	// The current status of the logs in Amazon CloudWatch Logs for a build project.
+	// Valid values are:
+	//
+	//    * ENABLED: Amazon CloudWatch Logs are enabled for this build project.
+	//
+	//    * DISABLED: Amazon CloudWatch Logs are not enabled for this build project.
+	//
+	// Status is a required field
+	Status *string `locationName:"status" type:"string" required:"true" enum:"LogsConfigStatusType"`
+
+	// The prefix of the stream name of the Amazon CloudWatch Logs. For more information,
+	// see Working with Log Groups and Log Streams (https://docs.aws.amazon.com/AmazonCloudWatch/latest/logs/Working-with-log-groups-and-streams.html).
+	StreamName *string `locationName:"streamName" type:"string"`
+}
+
+// String returns the string representation
+func (s CloudWatchLogsConfig) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s CloudWatchLogsConfig) GoString() string {
+	return s.String()
+}
+
+// Validate inspects the fields of the type to determine if they are valid.
+func (s *CloudWatchLogsConfig) Validate() error {
+	invalidParams := request.ErrInvalidParams{Context: "CloudWatchLogsConfig"}
+	if s.Status == nil {
+		invalidParams.Add(request.NewErrParamRequired("Status"))
+	}
+
+	if invalidParams.Len() > 0 {
+		return invalidParams
+	}
+	return nil
+}
+
+// SetGroupName sets the GroupName field's value.
+func (s *CloudWatchLogsConfig) SetGroupName(v string) *CloudWatchLogsConfig {
+	s.GroupName = &v
+	return s
+}
+
+// SetStatus sets the Status field's value.
+func (s *CloudWatchLogsConfig) SetStatus(v string) *CloudWatchLogsConfig {
+	s.Status = &v
+	return s
+}
+
+// SetStreamName sets the StreamName field's value.
+func (s *CloudWatchLogsConfig) SetStreamName(v string) *CloudWatchLogsConfig {
+	s.StreamName = &v
+	return s
+}
+
 type CreateProjectInput struct {
 	_ struct{} `type:"structure"`
 
@@ -1888,7 +2408,7 @@ type CreateProjectInput struct {
 	// Artifacts is a required field
 	Artifacts *ProjectArtifacts `locationName:"artifacts" type:"structure" required:"true"`
 
-	// Set this to true to generate a publicly-accessible URL for your project's
+	// Set this to true to generate a publicly accessible URL for your project's
 	// build badge.
 	BadgeEnabled *bool `locationName:"badgeEnabled" type:"boolean"`
 
@@ -1902,8 +2422,11 @@ type CreateProjectInput struct {
 	// The AWS Key Management Service (AWS KMS) customer master key (CMK) to be
 	// used for encrypting the build output artifacts.
 	//
-	// You can specify either the CMK's Amazon Resource Name (ARN) or, if available,
-	// the CMK's alias (using the format alias/alias-name).
+	// You can use a cross-account KMS key to encrypt the build output artifacts
+	// if your service role has permission to that key.
+	//
+	// You can specify either the Amazon Resource Name (ARN) of the CMK or, if available,
+	// the CMK's alias (using the format alias/alias-name ).
 	EncryptionKey *string `locationName:"encryptionKey" min:"1" type:"string"`
 
 	// Information about the build environment for the build project.
@@ -1911,20 +2434,67 @@ type CreateProjectInput struct {
 	// Environment is a required field
 	Environment *ProjectEnvironment `locationName:"environment" type:"structure" required:"true"`
 
+	// Information about logs for the build project. These can be logs in Amazon
+	// CloudWatch Logs, logs uploaded to a specified S3 bucket, or both.
+	LogsConfig *LogsConfig `locationName:"logsConfig" type:"structure"`
+
 	// The name of the build project.
 	//
 	// Name is a required field
 	Name *string `locationName:"name" min:"2" type:"string" required:"true"`
 
+	// The number of minutes a build is allowed to be queued before it times out.
+	QueuedTimeoutInMinutes *int64 `locationName:"queuedTimeoutInMinutes" min:"5" type:"integer"`
+
+	// An array of ProjectArtifacts objects.
+	SecondaryArtifacts []*ProjectArtifacts `locationName:"secondaryArtifacts" type:"list"`
+
+	// An array of ProjectSourceVersion objects. If secondarySourceVersions is specified
+	// at the build level, then they take precedence over these secondarySourceVersions
+	// (at the project level).
+	SecondarySourceVersions []*ProjectSourceVersion `locationName:"secondarySourceVersions" type:"list"`
+
+	// An array of ProjectSource objects.
+	SecondarySources []*ProjectSource `locationName:"secondarySources" type:"list"`
+
 	// The ARN of the AWS Identity and Access Management (IAM) role that enables
 	// AWS CodeBuild to interact with dependent AWS services on behalf of the AWS
 	// account.
-	ServiceRole *string `locationName:"serviceRole" min:"1" type:"string"`
+	//
+	// ServiceRole is a required field
+	ServiceRole *string `locationName:"serviceRole" min:"1" type:"string" required:"true"`
 
 	// Information about the build input source code for the build project.
 	//
 	// Source is a required field
 	Source *ProjectSource `locationName:"source" type:"structure" required:"true"`
+
+	// A version of the build input to be built for this project. If not specified,
+	// the latest version is used. If specified, it must be one of:
+	//
+	//    * For AWS CodeCommit: the commit ID to use.
+	//
+	//    * For GitHub: the commit ID, pull request ID, branch name, or tag name
+	//    that corresponds to the version of the source code you want to build.
+	//    If a pull request ID is specified, it must use the format pr/pull-request-ID
+	//    (for example pr/25). If a branch name is specified, the branch's HEAD
+	//    commit ID is used. If not specified, the default branch's HEAD commit
+	//    ID is used.
+	//
+	//    * For Bitbucket: the commit ID, branch name, or tag name that corresponds
+	//    to the version of the source code you want to build. If a branch name
+	//    is specified, the branch's HEAD commit ID is used. If not specified, the
+	//    default branch's HEAD commit ID is used.
+	//
+	//    * For Amazon Simple Storage Service (Amazon S3): the version ID of the
+	//    object that represents the build input ZIP file to use.
+	//
+	// If sourceVersion is specified at the build level, then that version takes
+	// precedence over this sourceVersion (at the project level).
+	//
+	// For more information, see Source Version Sample with CodeBuild (https://docs.aws.amazon.com/codebuild/latest/userguide/sample-source-version.html)
+	// in the AWS CodeBuild User Guide.
+	SourceVersion *string `locationName:"sourceVersion" type:"string"`
 
 	// A set of tags for this build project.
 	//
@@ -1933,8 +2503,8 @@ type CreateProjectInput struct {
 	Tags []*Tag `locationName:"tags" type:"list"`
 
 	// How long, in minutes, from 5 to 480 (8 hours), for AWS CodeBuild to wait
-	// until timing out any build that has not been marked as completed. The default
-	// is 60 minutes.
+	// before it times out any build that has not been marked as completed. The
+	// default is 60 minutes.
 	TimeoutInMinutes *int64 `locationName:"timeoutInMinutes" min:"5" type:"integer"`
 
 	// VpcConfig enables AWS CodeBuild to access resources in an Amazon VPC.
@@ -1969,6 +2539,12 @@ func (s *CreateProjectInput) Validate() error {
 	if s.Name != nil && len(*s.Name) < 2 {
 		invalidParams.Add(request.NewErrParamMinLen("Name", 2))
 	}
+	if s.QueuedTimeoutInMinutes != nil && *s.QueuedTimeoutInMinutes < 5 {
+		invalidParams.Add(request.NewErrParamMinValue("QueuedTimeoutInMinutes", 5))
+	}
+	if s.ServiceRole == nil {
+		invalidParams.Add(request.NewErrParamRequired("ServiceRole"))
+	}
 	if s.ServiceRole != nil && len(*s.ServiceRole) < 1 {
 		invalidParams.Add(request.NewErrParamMinLen("ServiceRole", 1))
 	}
@@ -1991,6 +2567,41 @@ func (s *CreateProjectInput) Validate() error {
 	if s.Environment != nil {
 		if err := s.Environment.Validate(); err != nil {
 			invalidParams.AddNested("Environment", err.(request.ErrInvalidParams))
+		}
+	}
+	if s.LogsConfig != nil {
+		if err := s.LogsConfig.Validate(); err != nil {
+			invalidParams.AddNested("LogsConfig", err.(request.ErrInvalidParams))
+		}
+	}
+	if s.SecondaryArtifacts != nil {
+		for i, v := range s.SecondaryArtifacts {
+			if v == nil {
+				continue
+			}
+			if err := v.Validate(); err != nil {
+				invalidParams.AddNested(fmt.Sprintf("%s[%v]", "SecondaryArtifacts", i), err.(request.ErrInvalidParams))
+			}
+		}
+	}
+	if s.SecondarySourceVersions != nil {
+		for i, v := range s.SecondarySourceVersions {
+			if v == nil {
+				continue
+			}
+			if err := v.Validate(); err != nil {
+				invalidParams.AddNested(fmt.Sprintf("%s[%v]", "SecondarySourceVersions", i), err.(request.ErrInvalidParams))
+			}
+		}
+	}
+	if s.SecondarySources != nil {
+		for i, v := range s.SecondarySources {
+			if v == nil {
+				continue
+			}
+			if err := v.Validate(); err != nil {
+				invalidParams.AddNested(fmt.Sprintf("%s[%v]", "SecondarySources", i), err.(request.ErrInvalidParams))
+			}
 		}
 	}
 	if s.Source != nil {
@@ -2056,9 +2667,39 @@ func (s *CreateProjectInput) SetEnvironment(v *ProjectEnvironment) *CreateProjec
 	return s
 }
 
+// SetLogsConfig sets the LogsConfig field's value.
+func (s *CreateProjectInput) SetLogsConfig(v *LogsConfig) *CreateProjectInput {
+	s.LogsConfig = v
+	return s
+}
+
 // SetName sets the Name field's value.
 func (s *CreateProjectInput) SetName(v string) *CreateProjectInput {
 	s.Name = &v
+	return s
+}
+
+// SetQueuedTimeoutInMinutes sets the QueuedTimeoutInMinutes field's value.
+func (s *CreateProjectInput) SetQueuedTimeoutInMinutes(v int64) *CreateProjectInput {
+	s.QueuedTimeoutInMinutes = &v
+	return s
+}
+
+// SetSecondaryArtifacts sets the SecondaryArtifacts field's value.
+func (s *CreateProjectInput) SetSecondaryArtifacts(v []*ProjectArtifacts) *CreateProjectInput {
+	s.SecondaryArtifacts = v
+	return s
+}
+
+// SetSecondarySourceVersions sets the SecondarySourceVersions field's value.
+func (s *CreateProjectInput) SetSecondarySourceVersions(v []*ProjectSourceVersion) *CreateProjectInput {
+	s.SecondarySourceVersions = v
+	return s
+}
+
+// SetSecondarySources sets the SecondarySources field's value.
+func (s *CreateProjectInput) SetSecondarySources(v []*ProjectSource) *CreateProjectInput {
+	s.SecondarySources = v
 	return s
 }
 
@@ -2071,6 +2712,12 @@ func (s *CreateProjectInput) SetServiceRole(v string) *CreateProjectInput {
 // SetSource sets the Source field's value.
 func (s *CreateProjectInput) SetSource(v *ProjectSource) *CreateProjectInput {
 	s.Source = v
+	return s
+}
+
+// SetSourceVersion sets the SourceVersion field's value.
+func (s *CreateProjectInput) SetSourceVersion(v string) *CreateProjectInput {
+	s.SourceVersion = &v
 	return s
 }
 
@@ -2092,7 +2739,6 @@ func (s *CreateProjectInput) SetVpcConfig(v *VpcConfig) *CreateProjectInput {
 	return s
 }
 
-// See also, https://docs.aws.amazon.com/goto/WebAPI/codebuild-2016-10-06/CreateProjectOutput
 type CreateProjectOutput struct {
 	_ struct{} `type:"structure"`
 
@@ -2116,11 +2762,26 @@ func (s *CreateProjectOutput) SetProject(v *Project) *CreateProjectOutput {
 	return s
 }
 
-// See also, https://docs.aws.amazon.com/goto/WebAPI/codebuild-2016-10-06/CreateWebhookInput
 type CreateWebhookInput struct {
 	_ struct{} `type:"structure"`
 
-	// The name of the build project.
+	// A regular expression used to determine which repository branches are built
+	// when a webhook is triggered. If the name of a branch matches the regular
+	// expression, then it is built. If branchFilter is empty, then all branches
+	// are built.
+	//
+	// It is recommended that you use filterGroups instead of branchFilter.
+	BranchFilter *string `locationName:"branchFilter" type:"string"`
+
+	// An array of arrays of WebhookFilter objects used to determine which webhooks
+	// are triggered. At least one WebhookFilter in the array must specify EVENT
+	// as its type.
+	//
+	// For a build to be triggered, at least one filter group in the filterGroups
+	// array must pass. For a filter group to pass, each of its filters must pass.
+	FilterGroups [][]*WebhookFilter `locationName:"filterGroups" type:"list"`
+
+	// The name of the AWS CodeBuild project.
 	//
 	// ProjectName is a required field
 	ProjectName *string `locationName:"projectName" min:"2" type:"string" required:"true"`
@@ -2152,18 +2813,29 @@ func (s *CreateWebhookInput) Validate() error {
 	return nil
 }
 
+// SetBranchFilter sets the BranchFilter field's value.
+func (s *CreateWebhookInput) SetBranchFilter(v string) *CreateWebhookInput {
+	s.BranchFilter = &v
+	return s
+}
+
+// SetFilterGroups sets the FilterGroups field's value.
+func (s *CreateWebhookInput) SetFilterGroups(v [][]*WebhookFilter) *CreateWebhookInput {
+	s.FilterGroups = v
+	return s
+}
+
 // SetProjectName sets the ProjectName field's value.
 func (s *CreateWebhookInput) SetProjectName(v string) *CreateWebhookInput {
 	s.ProjectName = &v
 	return s
 }
 
-// See also, https://docs.aws.amazon.com/goto/WebAPI/codebuild-2016-10-06/CreateWebhookOutput
 type CreateWebhookOutput struct {
 	_ struct{} `type:"structure"`
 
-	// Information about a webhook in GitHub that connects repository events to
-	// a build project in AWS CodeBuild.
+	// Information about a webhook that connects repository events to a build project
+	// in AWS CodeBuild.
 	Webhook *Webhook `locationName:"webhook" type:"structure"`
 }
 
@@ -2183,7 +2855,6 @@ func (s *CreateWebhookOutput) SetWebhook(v *Webhook) *CreateWebhookOutput {
 	return s
 }
 
-// See also, https://docs.aws.amazon.com/goto/WebAPI/codebuild-2016-10-06/DeleteProjectInput
 type DeleteProjectInput struct {
 	_ struct{} `type:"structure"`
 
@@ -2225,7 +2896,6 @@ func (s *DeleteProjectInput) SetName(v string) *DeleteProjectInput {
 	return s
 }
 
-// See also, https://docs.aws.amazon.com/goto/WebAPI/codebuild-2016-10-06/DeleteProjectOutput
 type DeleteProjectOutput struct {
 	_ struct{} `type:"structure"`
 }
@@ -2240,11 +2910,74 @@ func (s DeleteProjectOutput) GoString() string {
 	return s.String()
 }
 
-// See also, https://docs.aws.amazon.com/goto/WebAPI/codebuild-2016-10-06/DeleteWebhookInput
+type DeleteSourceCredentialsInput struct {
+	_ struct{} `type:"structure"`
+
+	// The Amazon Resource Name (ARN) of the token.
+	//
+	// Arn is a required field
+	Arn *string `locationName:"arn" min:"1" type:"string" required:"true"`
+}
+
+// String returns the string representation
+func (s DeleteSourceCredentialsInput) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s DeleteSourceCredentialsInput) GoString() string {
+	return s.String()
+}
+
+// Validate inspects the fields of the type to determine if they are valid.
+func (s *DeleteSourceCredentialsInput) Validate() error {
+	invalidParams := request.ErrInvalidParams{Context: "DeleteSourceCredentialsInput"}
+	if s.Arn == nil {
+		invalidParams.Add(request.NewErrParamRequired("Arn"))
+	}
+	if s.Arn != nil && len(*s.Arn) < 1 {
+		invalidParams.Add(request.NewErrParamMinLen("Arn", 1))
+	}
+
+	if invalidParams.Len() > 0 {
+		return invalidParams
+	}
+	return nil
+}
+
+// SetArn sets the Arn field's value.
+func (s *DeleteSourceCredentialsInput) SetArn(v string) *DeleteSourceCredentialsInput {
+	s.Arn = &v
+	return s
+}
+
+type DeleteSourceCredentialsOutput struct {
+	_ struct{} `type:"structure"`
+
+	// The Amazon Resource Name (ARN) of the token.
+	Arn *string `locationName:"arn" min:"1" type:"string"`
+}
+
+// String returns the string representation
+func (s DeleteSourceCredentialsOutput) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s DeleteSourceCredentialsOutput) GoString() string {
+	return s.String()
+}
+
+// SetArn sets the Arn field's value.
+func (s *DeleteSourceCredentialsOutput) SetArn(v string) *DeleteSourceCredentialsOutput {
+	s.Arn = &v
+	return s
+}
+
 type DeleteWebhookInput struct {
 	_ struct{} `type:"structure"`
 
-	// The name of the build project.
+	// The name of the AWS CodeBuild project.
 	//
 	// ProjectName is a required field
 	ProjectName *string `locationName:"projectName" min:"2" type:"string" required:"true"`
@@ -2282,7 +3015,6 @@ func (s *DeleteWebhookInput) SetProjectName(v string) *DeleteWebhookInput {
 	return s
 }
 
-// See also, https://docs.aws.amazon.com/goto/WebAPI/codebuild-2016-10-06/DeleteWebhookOutput
 type DeleteWebhookOutput struct {
 	_ struct{} `type:"structure"`
 }
@@ -2298,7 +3030,6 @@ func (s DeleteWebhookOutput) GoString() string {
 }
 
 // Information about a Docker image that is managed by AWS CodeBuild.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/codebuild-2016-10-06/EnvironmentImage
 type EnvironmentImage struct {
 	_ struct{} `type:"structure"`
 
@@ -2307,6 +3038,9 @@ type EnvironmentImage struct {
 
 	// The name of the Docker image.
 	Name *string `locationName:"name" type:"string"`
+
+	// A list of environment image versions.
+	Versions []*string `locationName:"versions" type:"list"`
 }
 
 // String returns the string representation
@@ -2331,9 +3065,14 @@ func (s *EnvironmentImage) SetName(v string) *EnvironmentImage {
 	return s
 }
 
+// SetVersions sets the Versions field's value.
+func (s *EnvironmentImage) SetVersions(v []*string) *EnvironmentImage {
+	s.Versions = v
+	return s
+}
+
 // A set of Docker images that are related by programming language and are managed
 // by AWS CodeBuild.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/codebuild-2016-10-06/EnvironmentLanguage
 type EnvironmentLanguage struct {
 	_ struct{} `type:"structure"`
 
@@ -2368,7 +3107,6 @@ func (s *EnvironmentLanguage) SetLanguage(v string) *EnvironmentLanguage {
 
 // A set of Docker images that are related by platform and are managed by AWS
 // CodeBuild.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/codebuild-2016-10-06/EnvironmentPlatform
 type EnvironmentPlatform struct {
 	_ struct{} `type:"structure"`
 
@@ -2402,7 +3140,6 @@ func (s *EnvironmentPlatform) SetPlatform(v string) *EnvironmentPlatform {
 }
 
 // Information about an environment variable for a build project or a build.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/codebuild-2016-10-06/EnvironmentVariable
 type EnvironmentVariable struct {
 	_ struct{} `type:"structure"`
 
@@ -2421,9 +3158,9 @@ type EnvironmentVariable struct {
 
 	// The value of the environment variable.
 	//
-	// We strongly discourage using environment variables to store sensitive values,
-	// especially AWS secret key IDs and secret access keys. Environment variables
-	// can be displayed in plain text using tools such as the AWS CodeBuild console
+	// We strongly discourage the use of environment variables to store sensitive
+	// values, especially AWS secret key IDs and secret access keys. Environment
+	// variables can be displayed in plain text using the AWS CodeBuild console
 	// and the AWS Command Line Interface (AWS CLI).
 	//
 	// Value is a required field
@@ -2477,11 +3214,158 @@ func (s *EnvironmentVariable) SetValue(v string) *EnvironmentVariable {
 	return s
 }
 
-// See also, https://docs.aws.amazon.com/goto/WebAPI/codebuild-2016-10-06/InvalidateProjectCacheInput
+// Information about the Git submodules configuration for an AWS CodeBuild build
+// project.
+type GitSubmodulesConfig struct {
+	_ struct{} `type:"structure"`
+
+	// Set to true to fetch Git submodules for your AWS CodeBuild build project.
+	//
+	// FetchSubmodules is a required field
+	FetchSubmodules *bool `locationName:"fetchSubmodules" type:"boolean" required:"true"`
+}
+
+// String returns the string representation
+func (s GitSubmodulesConfig) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s GitSubmodulesConfig) GoString() string {
+	return s.String()
+}
+
+// Validate inspects the fields of the type to determine if they are valid.
+func (s *GitSubmodulesConfig) Validate() error {
+	invalidParams := request.ErrInvalidParams{Context: "GitSubmodulesConfig"}
+	if s.FetchSubmodules == nil {
+		invalidParams.Add(request.NewErrParamRequired("FetchSubmodules"))
+	}
+
+	if invalidParams.Len() > 0 {
+		return invalidParams
+	}
+	return nil
+}
+
+// SetFetchSubmodules sets the FetchSubmodules field's value.
+func (s *GitSubmodulesConfig) SetFetchSubmodules(v bool) *GitSubmodulesConfig {
+	s.FetchSubmodules = &v
+	return s
+}
+
+type ImportSourceCredentialsInput struct {
+	_ struct{} `type:"structure"`
+
+	// The type of authentication used to connect to a GitHub, GitHub Enterprise,
+	// or Bitbucket repository. An OAUTH connection is not supported by the API
+	// and must be created using the AWS CodeBuild console.
+	//
+	// AuthType is a required field
+	AuthType *string `locationName:"authType" type:"string" required:"true" enum:"AuthType"`
+
+	// The source provider used for this project.
+	//
+	// ServerType is a required field
+	ServerType *string `locationName:"serverType" type:"string" required:"true" enum:"ServerType"`
+
+	// For GitHub or GitHub Enterprise, this is the personal access token. For Bitbucket,
+	// this is the app password.
+	//
+	// Token is a required field
+	Token *string `locationName:"token" min:"1" type:"string" required:"true" sensitive:"true"`
+
+	// The Bitbucket username when the authType is BASIC_AUTH. This parameter is
+	// not valid for other types of source providers or connections.
+	Username *string `locationName:"username" min:"1" type:"string"`
+}
+
+// String returns the string representation
+func (s ImportSourceCredentialsInput) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s ImportSourceCredentialsInput) GoString() string {
+	return s.String()
+}
+
+// Validate inspects the fields of the type to determine if they are valid.
+func (s *ImportSourceCredentialsInput) Validate() error {
+	invalidParams := request.ErrInvalidParams{Context: "ImportSourceCredentialsInput"}
+	if s.AuthType == nil {
+		invalidParams.Add(request.NewErrParamRequired("AuthType"))
+	}
+	if s.ServerType == nil {
+		invalidParams.Add(request.NewErrParamRequired("ServerType"))
+	}
+	if s.Token == nil {
+		invalidParams.Add(request.NewErrParamRequired("Token"))
+	}
+	if s.Token != nil && len(*s.Token) < 1 {
+		invalidParams.Add(request.NewErrParamMinLen("Token", 1))
+	}
+	if s.Username != nil && len(*s.Username) < 1 {
+		invalidParams.Add(request.NewErrParamMinLen("Username", 1))
+	}
+
+	if invalidParams.Len() > 0 {
+		return invalidParams
+	}
+	return nil
+}
+
+// SetAuthType sets the AuthType field's value.
+func (s *ImportSourceCredentialsInput) SetAuthType(v string) *ImportSourceCredentialsInput {
+	s.AuthType = &v
+	return s
+}
+
+// SetServerType sets the ServerType field's value.
+func (s *ImportSourceCredentialsInput) SetServerType(v string) *ImportSourceCredentialsInput {
+	s.ServerType = &v
+	return s
+}
+
+// SetToken sets the Token field's value.
+func (s *ImportSourceCredentialsInput) SetToken(v string) *ImportSourceCredentialsInput {
+	s.Token = &v
+	return s
+}
+
+// SetUsername sets the Username field's value.
+func (s *ImportSourceCredentialsInput) SetUsername(v string) *ImportSourceCredentialsInput {
+	s.Username = &v
+	return s
+}
+
+type ImportSourceCredentialsOutput struct {
+	_ struct{} `type:"structure"`
+
+	// The Amazon Resource Name (ARN) of the token.
+	Arn *string `locationName:"arn" min:"1" type:"string"`
+}
+
+// String returns the string representation
+func (s ImportSourceCredentialsOutput) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s ImportSourceCredentialsOutput) GoString() string {
+	return s.String()
+}
+
+// SetArn sets the Arn field's value.
+func (s *ImportSourceCredentialsOutput) SetArn(v string) *ImportSourceCredentialsOutput {
+	s.Arn = &v
+	return s
+}
+
 type InvalidateProjectCacheInput struct {
 	_ struct{} `type:"structure"`
 
-	// The name of the build project that the cache will be reset for.
+	// The name of the AWS CodeBuild build project that the cache is reset for.
 	//
 	// ProjectName is a required field
 	ProjectName *string `locationName:"projectName" min:"1" type:"string" required:"true"`
@@ -2519,7 +3403,6 @@ func (s *InvalidateProjectCacheInput) SetProjectName(v string) *InvalidateProjec
 	return s
 }
 
-// See also, https://docs.aws.amazon.com/goto/WebAPI/codebuild-2016-10-06/InvalidateProjectCacheOutput
 type InvalidateProjectCacheOutput struct {
 	_ struct{} `type:"structure"`
 }
@@ -2534,7 +3417,6 @@ func (s InvalidateProjectCacheOutput) GoString() string {
 	return s.String()
 }
 
-// See also, https://docs.aws.amazon.com/goto/WebAPI/codebuild-2016-10-06/ListBuildsForProjectInput
 type ListBuildsForProjectInput struct {
 	_ struct{} `type:"structure"`
 
@@ -2546,7 +3428,7 @@ type ListBuildsForProjectInput struct {
 	// until no more next tokens are returned.
 	NextToken *string `locationName:"nextToken" type:"string"`
 
-	// The name of the build project.
+	// The name of the AWS CodeBuild project.
 	//
 	// ProjectName is a required field
 	ProjectName *string `locationName:"projectName" min:"1" type:"string" required:"true"`
@@ -2603,7 +3485,6 @@ func (s *ListBuildsForProjectInput) SetSortOrder(v string) *ListBuildsForProject
 	return s
 }
 
-// See also, https://docs.aws.amazon.com/goto/WebAPI/codebuild-2016-10-06/ListBuildsForProjectOutput
 type ListBuildsForProjectOutput struct {
 	_ struct{} `type:"structure"`
 
@@ -2640,7 +3521,6 @@ func (s *ListBuildsForProjectOutput) SetNextToken(v string) *ListBuildsForProjec
 	return s
 }
 
-// See also, https://docs.aws.amazon.com/goto/WebAPI/codebuild-2016-10-06/ListBuildsInput
 type ListBuildsInput struct {
 	_ struct{} `type:"structure"`
 
@@ -2682,7 +3562,6 @@ func (s *ListBuildsInput) SetSortOrder(v string) *ListBuildsInput {
 	return s
 }
 
-// See also, https://docs.aws.amazon.com/goto/WebAPI/codebuild-2016-10-06/ListBuildsOutput
 type ListBuildsOutput struct {
 	_ struct{} `type:"structure"`
 
@@ -2718,7 +3597,6 @@ func (s *ListBuildsOutput) SetNextToken(v string) *ListBuildsOutput {
 	return s
 }
 
-// See also, https://docs.aws.amazon.com/goto/WebAPI/codebuild-2016-10-06/ListCuratedEnvironmentImagesInput
 type ListCuratedEnvironmentImagesInput struct {
 	_ struct{} `type:"structure"`
 }
@@ -2733,7 +3611,6 @@ func (s ListCuratedEnvironmentImagesInput) GoString() string {
 	return s.String()
 }
 
-// See also, https://docs.aws.amazon.com/goto/WebAPI/codebuild-2016-10-06/ListCuratedEnvironmentImagesOutput
 type ListCuratedEnvironmentImagesOutput struct {
 	_ struct{} `type:"structure"`
 
@@ -2758,7 +3635,6 @@ func (s *ListCuratedEnvironmentImagesOutput) SetPlatforms(v []*EnvironmentPlatfo
 	return s
 }
 
-// See also, https://docs.aws.amazon.com/goto/WebAPI/codebuild-2016-10-06/ListProjectsInput
 type ListProjectsInput struct {
 	_ struct{} `type:"structure"`
 
@@ -2772,13 +3648,12 @@ type ListProjectsInput struct {
 
 	// The criterion to be used to list build project names. Valid values include:
 	//
-	//    * CREATED_TIME: List the build project names based on when each build
-	//    project was created.
+	//    * CREATED_TIME: List based on when each build project was created.
 	//
-	//    * LAST_MODIFIED_TIME: List the build project names based on when information
-	//    about each build project was last changed.
+	//    * LAST_MODIFIED_TIME: List based on when information about each build
+	//    project was last changed.
 	//
-	//    * NAME: List the build project names based on each build project's name.
+	//    * NAME: List based on each build project's name.
 	//
 	// Use sortOrder to specify in what order to list the build project names based
 	// on the preceding criteria.
@@ -2786,9 +3661,9 @@ type ListProjectsInput struct {
 
 	// The order in which to list build projects. Valid values include:
 	//
-	//    * ASCENDING: List the build project names in ascending order.
+	//    * ASCENDING: List in ascending order.
 	//
-	//    * DESCENDING: List the build project names in descending order.
+	//    * DESCENDING: List in descending order.
 	//
 	// Use sortBy to specify the criterion to be used to list build project names.
 	SortOrder *string `locationName:"sortOrder" type:"string" enum:"SortOrderType"`
@@ -2835,7 +3710,6 @@ func (s *ListProjectsInput) SetSortOrder(v string) *ListProjectsInput {
 	return s
 }
 
-// See also, https://docs.aws.amazon.com/goto/WebAPI/codebuild-2016-10-06/ListProjectsOutput
 type ListProjectsOutput struct {
 	_ struct{} `type:"structure"`
 
@@ -2872,16 +3746,119 @@ func (s *ListProjectsOutput) SetProjects(v []*string) *ListProjectsOutput {
 	return s
 }
 
+type ListSourceCredentialsInput struct {
+	_ struct{} `type:"structure"`
+}
+
+// String returns the string representation
+func (s ListSourceCredentialsInput) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s ListSourceCredentialsInput) GoString() string {
+	return s.String()
+}
+
+type ListSourceCredentialsOutput struct {
+	_ struct{} `type:"structure"`
+
+	// A list of SourceCredentialsInfo objects. Each SourceCredentialsInfo object
+	// includes the authentication type, token ARN, and type of source provider
+	// for one set of credentials.
+	SourceCredentialsInfos []*SourceCredentialsInfo `locationName:"sourceCredentialsInfos" type:"list"`
+}
+
+// String returns the string representation
+func (s ListSourceCredentialsOutput) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s ListSourceCredentialsOutput) GoString() string {
+	return s.String()
+}
+
+// SetSourceCredentialsInfos sets the SourceCredentialsInfos field's value.
+func (s *ListSourceCredentialsOutput) SetSourceCredentialsInfos(v []*SourceCredentialsInfo) *ListSourceCredentialsOutput {
+	s.SourceCredentialsInfos = v
+	return s
+}
+
+// Information about logs for a build project. These can be logs in Amazon CloudWatch
+// Logs, built in a specified S3 bucket, or both.
+type LogsConfig struct {
+	_ struct{} `type:"structure"`
+
+	// Information about Amazon CloudWatch Logs for a build project. Amazon CloudWatch
+	// Logs are enabled by default.
+	CloudWatchLogs *CloudWatchLogsConfig `locationName:"cloudWatchLogs" type:"structure"`
+
+	// Information about logs built to an S3 bucket for a build project. S3 logs
+	// are not enabled by default.
+	S3Logs *S3LogsConfig `locationName:"s3Logs" type:"structure"`
+}
+
+// String returns the string representation
+func (s LogsConfig) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s LogsConfig) GoString() string {
+	return s.String()
+}
+
+// Validate inspects the fields of the type to determine if they are valid.
+func (s *LogsConfig) Validate() error {
+	invalidParams := request.ErrInvalidParams{Context: "LogsConfig"}
+	if s.CloudWatchLogs != nil {
+		if err := s.CloudWatchLogs.Validate(); err != nil {
+			invalidParams.AddNested("CloudWatchLogs", err.(request.ErrInvalidParams))
+		}
+	}
+	if s.S3Logs != nil {
+		if err := s.S3Logs.Validate(); err != nil {
+			invalidParams.AddNested("S3Logs", err.(request.ErrInvalidParams))
+		}
+	}
+
+	if invalidParams.Len() > 0 {
+		return invalidParams
+	}
+	return nil
+}
+
+// SetCloudWatchLogs sets the CloudWatchLogs field's value.
+func (s *LogsConfig) SetCloudWatchLogs(v *CloudWatchLogsConfig) *LogsConfig {
+	s.CloudWatchLogs = v
+	return s
+}
+
+// SetS3Logs sets the S3Logs field's value.
+func (s *LogsConfig) SetS3Logs(v *S3LogsConfig) *LogsConfig {
+	s.S3Logs = v
+	return s
+}
+
 // Information about build logs in Amazon CloudWatch Logs.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/codebuild-2016-10-06/LogsLocation
 type LogsLocation struct {
 	_ struct{} `type:"structure"`
+
+	// Information about Amazon CloudWatch Logs for a build project.
+	CloudWatchLogs *CloudWatchLogsConfig `locationName:"cloudWatchLogs" type:"structure"`
 
 	// The URL to an individual build log in Amazon CloudWatch Logs.
 	DeepLink *string `locationName:"deepLink" type:"string"`
 
 	// The name of the Amazon CloudWatch Logs group for the build logs.
 	GroupName *string `locationName:"groupName" type:"string"`
+
+	// The URL to a build log in an S3 bucket.
+	S3DeepLink *string `locationName:"s3DeepLink" type:"string"`
+
+	// Information about S3 logs for a build project.
+	S3Logs *S3LogsConfig `locationName:"s3Logs" type:"structure"`
 
 	// The name of the Amazon CloudWatch Logs stream for the build logs.
 	StreamName *string `locationName:"streamName" type:"string"`
@@ -2897,6 +3874,12 @@ func (s LogsLocation) GoString() string {
 	return s.String()
 }
 
+// SetCloudWatchLogs sets the CloudWatchLogs field's value.
+func (s *LogsLocation) SetCloudWatchLogs(v *CloudWatchLogsConfig) *LogsLocation {
+	s.CloudWatchLogs = v
+	return s
+}
+
 // SetDeepLink sets the DeepLink field's value.
 func (s *LogsLocation) SetDeepLink(v string) *LogsLocation {
 	s.DeepLink = &v
@@ -2909,6 +3892,18 @@ func (s *LogsLocation) SetGroupName(v string) *LogsLocation {
 	return s
 }
 
+// SetS3DeepLink sets the S3DeepLink field's value.
+func (s *LogsLocation) SetS3DeepLink(v string) *LogsLocation {
+	s.S3DeepLink = &v
+	return s
+}
+
+// SetS3Logs sets the S3Logs field's value.
+func (s *LogsLocation) SetS3Logs(v *S3LogsConfig) *LogsLocation {
+	s.S3Logs = v
+	return s
+}
+
 // SetStreamName sets the StreamName field's value.
 func (s *LogsLocation) SetStreamName(v string) *LogsLocation {
 	s.StreamName = &v
@@ -2916,7 +3911,6 @@ func (s *LogsLocation) SetStreamName(v string) *LogsLocation {
 }
 
 // Describes a network interface.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/codebuild-2016-10-06/NetworkInterface
 type NetworkInterface struct {
 	_ struct{} `type:"structure"`
 
@@ -2950,13 +3944,12 @@ func (s *NetworkInterface) SetSubnetId(v string) *NetworkInterface {
 }
 
 // Additional information about a build phase that has an error. You can use
-// this information to help troubleshoot a failed build.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/codebuild-2016-10-06/PhaseContext
+// this information for troubleshooting.
 type PhaseContext struct {
 	_ struct{} `type:"structure"`
 
-	// An explanation of the build phase's context. This explanation might include
-	// a command ID and an exit code.
+	// An explanation of the build phase's context. This might include a command
+	// ID and an exit code.
 	Message *string `locationName:"message" type:"string"`
 
 	// The status code for the context of the build phase.
@@ -2986,7 +3979,6 @@ func (s *PhaseContext) SetStatusCode(v string) *PhaseContext {
 }
 
 // Information about a build project.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/codebuild-2016-10-06/Project
 type Project struct {
 	_ struct{} `type:"structure"`
 
@@ -3003,7 +3995,7 @@ type Project struct {
 	Cache *ProjectCache `locationName:"cache" type:"structure"`
 
 	// When the build project was created, expressed in Unix time format.
-	Created *time.Time `locationName:"created" type:"timestamp" timestampFormat:"unix"`
+	Created *time.Time `locationName:"created" type:"timestamp"`
 
 	// A description that makes the build project easy to identify.
 	Description *string `locationName:"description" type:"string"`
@@ -3011,8 +4003,11 @@ type Project struct {
 	// The AWS Key Management Service (AWS KMS) customer master key (CMK) to be
 	// used for encrypting the build output artifacts.
 	//
-	// This is expressed either as the CMK's Amazon Resource Name (ARN) or, if specified,
-	// the CMK's alias (using the format alias/alias-name).
+	// You can use a cross-account KMS key to encrypt the build output artifacts
+	// if your service role has permission to that key.
+	//
+	// You can specify either the Amazon Resource Name (ARN) of the CMK or, if available,
+	// the CMK's alias (using the format alias/alias-name ).
 	EncryptionKey *string `locationName:"encryptionKey" min:"1" type:"string"`
 
 	// Information about the build environment for this build project.
@@ -3020,10 +4015,28 @@ type Project struct {
 
 	// When the build project's settings were last modified, expressed in Unix time
 	// format.
-	LastModified *time.Time `locationName:"lastModified" type:"timestamp" timestampFormat:"unix"`
+	LastModified *time.Time `locationName:"lastModified" type:"timestamp"`
+
+	// Information about logs for the build project. A project can create logs in
+	// Amazon CloudWatch Logs, an S3 bucket, or both.
+	LogsConfig *LogsConfig `locationName:"logsConfig" type:"structure"`
 
 	// The name of the build project.
 	Name *string `locationName:"name" min:"2" type:"string"`
+
+	// The number of minutes a build is allowed to be queued before it times out.
+	QueuedTimeoutInMinutes *int64 `locationName:"queuedTimeoutInMinutes" min:"5" type:"integer"`
+
+	// An array of ProjectArtifacts objects.
+	SecondaryArtifacts []*ProjectArtifacts `locationName:"secondaryArtifacts" type:"list"`
+
+	// An array of ProjectSourceVersion objects. If secondarySourceVersions is specified
+	// at the build level, then they take over these secondarySourceVersions (at
+	// the project level).
+	SecondarySourceVersions []*ProjectSourceVersion `locationName:"secondarySourceVersions" type:"list"`
+
+	// An array of ProjectSource objects.
+	SecondarySources []*ProjectSource `locationName:"secondarySources" type:"list"`
 
 	// The ARN of the AWS Identity and Access Management (IAM) role that enables
 	// AWS CodeBuild to interact with dependent AWS services on behalf of the AWS
@@ -3032,6 +4045,33 @@ type Project struct {
 
 	// Information about the build input source code for this build project.
 	Source *ProjectSource `locationName:"source" type:"structure"`
+
+	// A version of the build input to be built for this project. If not specified,
+	// the latest version is used. If specified, it must be one of:
+	//
+	//    * For AWS CodeCommit: the commit ID to use.
+	//
+	//    * For GitHub: the commit ID, pull request ID, branch name, or tag name
+	//    that corresponds to the version of the source code you want to build.
+	//    If a pull request ID is specified, it must use the format pr/pull-request-ID
+	//    (for example pr/25). If a branch name is specified, the branch's HEAD
+	//    commit ID is used. If not specified, the default branch's HEAD commit
+	//    ID is used.
+	//
+	//    * For Bitbucket: the commit ID, branch name, or tag name that corresponds
+	//    to the version of the source code you want to build. If a branch name
+	//    is specified, the branch's HEAD commit ID is used. If not specified, the
+	//    default branch's HEAD commit ID is used.
+	//
+	//    * For Amazon Simple Storage Service (Amazon S3): the version ID of the
+	//    object that represents the build input ZIP file to use.
+	//
+	// If sourceVersion is specified at the build level, then that version takes
+	// precedence over this sourceVersion (at the project level).
+	//
+	// For more information, see Source Version Sample with CodeBuild (https://docs.aws.amazon.com/codebuild/latest/userguide/sample-source-version.html)
+	// in the AWS CodeBuild User Guide.
+	SourceVersion *string `locationName:"sourceVersion" type:"string"`
 
 	// The tags for this build project.
 	//
@@ -3044,14 +4084,11 @@ type Project struct {
 	// The default is 60 minutes.
 	TimeoutInMinutes *int64 `locationName:"timeoutInMinutes" min:"5" type:"integer"`
 
-	// If your AWS CodeBuild project accesses resources in an Amazon VPC, you provide
-	// this parameter that identifies the VPC ID and the list of security group
-	// IDs and subnet IDs. The security groups and subnets must belong to the same
-	// VPC. You must provide at least one security group and one subnet ID.
+	// Information about the VPC configuration that AWS CodeBuild accesses.
 	VpcConfig *VpcConfig `locationName:"vpcConfig" type:"structure"`
 
-	// Information about a webhook in GitHub that connects repository events to
-	// a build project in AWS CodeBuild.
+	// Information about a webhook that connects repository events to a build project
+	// in AWS CodeBuild.
 	Webhook *Webhook `locationName:"webhook" type:"structure"`
 }
 
@@ -3119,9 +4156,39 @@ func (s *Project) SetLastModified(v time.Time) *Project {
 	return s
 }
 
+// SetLogsConfig sets the LogsConfig field's value.
+func (s *Project) SetLogsConfig(v *LogsConfig) *Project {
+	s.LogsConfig = v
+	return s
+}
+
 // SetName sets the Name field's value.
 func (s *Project) SetName(v string) *Project {
 	s.Name = &v
+	return s
+}
+
+// SetQueuedTimeoutInMinutes sets the QueuedTimeoutInMinutes field's value.
+func (s *Project) SetQueuedTimeoutInMinutes(v int64) *Project {
+	s.QueuedTimeoutInMinutes = &v
+	return s
+}
+
+// SetSecondaryArtifacts sets the SecondaryArtifacts field's value.
+func (s *Project) SetSecondaryArtifacts(v []*ProjectArtifacts) *Project {
+	s.SecondaryArtifacts = v
+	return s
+}
+
+// SetSecondarySourceVersions sets the SecondarySourceVersions field's value.
+func (s *Project) SetSecondarySourceVersions(v []*ProjectSourceVersion) *Project {
+	s.SecondarySourceVersions = v
+	return s
+}
+
+// SetSecondarySources sets the SecondarySources field's value.
+func (s *Project) SetSecondarySources(v []*ProjectSource) *Project {
+	s.SecondarySources = v
 	return s
 }
 
@@ -3134,6 +4201,12 @@ func (s *Project) SetServiceRole(v string) *Project {
 // SetSource sets the Source field's value.
 func (s *Project) SetSource(v *ProjectSource) *Project {
 	s.Source = v
+	return s
+}
+
+// SetSourceVersion sets the SourceVersion field's value.
+func (s *Project) SetSourceVersion(v string) *Project {
+	s.SourceVersion = &v
 	return s
 }
 
@@ -3162,106 +4235,122 @@ func (s *Project) SetWebhook(v *Webhook) *Project {
 }
 
 // Information about the build output artifacts for the build project.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/codebuild-2016-10-06/ProjectArtifacts
 type ProjectArtifacts struct {
 	_ struct{} `type:"structure"`
 
-	// Information about the build output artifact location, as follows:
+	// An identifier for this artifact definition.
+	ArtifactIdentifier *string `locationName:"artifactIdentifier" type:"string"`
+
+	// Set to true if you do not want your output artifacts encrypted. This option
+	// is valid only if your artifacts type is Amazon Simple Storage Service (Amazon
+	// S3). If this is set with another artifacts type, an invalidInputException
+	// is thrown.
+	EncryptionDisabled *bool `locationName:"encryptionDisabled" type:"boolean"`
+
+	// Information about the build output artifact location:
 	//
-	//    * If type is set to CODEPIPELINE, then AWS CodePipeline will ignore this
-	//    value if specified. This is because AWS CodePipeline manages its build
-	//    output locations instead of AWS CodeBuild.
+	//    * If type is set to CODEPIPELINE, AWS CodePipeline ignores this value
+	//    if specified. This is because AWS CodePipeline manages its build output
+	//    locations instead of AWS CodeBuild.
 	//
-	//    * If type is set to NO_ARTIFACTS, then this value will be ignored if specified,
-	//    because no build output will be produced.
+	//    * If type is set to NO_ARTIFACTS, this value is ignored if specified,
+	//    because no build output is produced.
 	//
 	//    * If type is set to S3, this is the name of the output bucket.
 	Location *string `locationName:"location" type:"string"`
 
-	// Along with path and namespaceType, the pattern that AWS CodeBuild will use
-	// to name and store the output artifact, as follows:
+	// Along with path and namespaceType, the pattern that AWS CodeBuild uses to
+	// name and store the output artifact:
 	//
-	//    * If type is set to CODEPIPELINE, then AWS CodePipeline will ignore this
-	//    value if specified. This is because AWS CodePipeline manages its build
-	//    output names instead of AWS CodeBuild.
+	//    * If type is set to CODEPIPELINE, AWS CodePipeline ignores this value
+	//    if specified. This is because AWS CodePipeline manages its build output
+	//    names instead of AWS CodeBuild.
 	//
-	//    * If type is set to NO_ARTIFACTS, then this value will be ignored if specified,
-	//    because no build output will be produced.
+	//    * If type is set to NO_ARTIFACTS, this value is ignored if specified,
+	//    because no build output is produced.
 	//
 	//    * If type is set to S3, this is the name of the output artifact object.
+	//    If you set the name to be a forward slash ("/"), the artifact is stored
+	//    in the root of the output bucket.
 	//
-	// For example, if path is set to MyArtifacts, namespaceType is set to BUILD_ID,
-	// and name is set to MyArtifact.zip, then the output artifact would be stored
-	// in MyArtifacts/build-ID/MyArtifact.zip.
+	// For example:
+	//
+	//    * If path is set to MyArtifacts, namespaceType is set to BUILD_ID, and
+	//    name is set to MyArtifact.zip, then the output artifact is stored in MyArtifacts/build-ID/MyArtifact.zip.
+	//
+	//    * If path is empty, namespaceType is set to NONE, and name is set to "/",
+	//    the output artifact is stored in the root of the output bucket.
+	//
+	//    * If path is set to MyArtifacts, namespaceType is set to BUILD_ID, and
+	//    name is set to "/", the output artifact is stored in MyArtifacts/build-ID .
 	Name *string `locationName:"name" type:"string"`
 
-	// Along with path and name, the pattern that AWS CodeBuild will use to determine
-	// the name and location to store the output artifact, as follows:
+	// Along with path and name, the pattern that AWS CodeBuild uses to determine
+	// the name and location to store the output artifact:
 	//
-	//    * If type is set to CODEPIPELINE, then AWS CodePipeline will ignore this
-	//    value if specified. This is because AWS CodePipeline manages its build
-	//    output names instead of AWS CodeBuild.
+	//    * If type is set to CODEPIPELINE, AWS CodePipeline ignores this value
+	//    if specified. This is because AWS CodePipeline manages its build output
+	//    names instead of AWS CodeBuild.
 	//
-	//    * If type is set to NO_ARTIFACTS, then this value will be ignored if specified,
-	//    because no build output will be produced.
+	//    * If type is set to NO_ARTIFACTS, this value is ignored if specified,
+	//    because no build output is produced.
 	//
-	//    * If type is set to S3, then valid values include:
-	//
-	// BUILD_ID: Include the build ID in the location of the build output artifact.
-	//
-	// NONE: Do not include the build ID. This is the default if namespaceType is
-	//    not specified.
+	//    * If type is set to S3, valid values include: BUILD_ID: Include the build
+	//    ID in the location of the build output artifact. NONE: Do not include
+	//    the build ID. This is the default if namespaceType is not specified.
 	//
 	// For example, if path is set to MyArtifacts, namespaceType is set to BUILD_ID,
-	// and name is set to MyArtifact.zip, then the output artifact would be stored
-	// in MyArtifacts/build-ID/MyArtifact.zip.
+	// and name is set to MyArtifact.zip, the output artifact is stored in MyArtifacts/build-ID/MyArtifact.zip.
 	NamespaceType *string `locationName:"namespaceType" type:"string" enum:"ArtifactNamespace"`
 
-	// The type of build output artifact to create, as follows:
+	// If this flag is set, a name specified in the build spec file overrides the
+	// artifact name. The name specified in a build spec file is calculated at build
+	// time and uses the Shell Command Language. For example, you can append a date
+	// and time to your artifact name so that it is always unique.
+	OverrideArtifactName *bool `locationName:"overrideArtifactName" type:"boolean"`
+
+	// The type of build output artifact to create:
 	//
-	//    * If type is set to CODEPIPELINE, then AWS CodePipeline will ignore this
-	//    value if specified. This is because AWS CodePipeline manages its build
-	//    output artifacts instead of AWS CodeBuild.
+	//    * If type is set to CODEPIPELINE, AWS CodePipeline ignores this value
+	//    if specified. This is because AWS CodePipeline manages its build output
+	//    artifacts instead of AWS CodeBuild.
 	//
-	//    * If type is set to NO_ARTIFACTS, then this value will be ignored if specified,
-	//    because no build output will be produced.
+	//    * If type is set to NO_ARTIFACTS, this value is ignored if specified,
+	//    because no build output is produced.
 	//
-	//    * If type is set to S3, valid values include:
-	//
-	// NONE: AWS CodeBuild will create in the output bucket a folder containing
-	//    the build output. This is the default if packaging is not specified.
-	//
-	// ZIP: AWS CodeBuild will create in the output bucket a ZIP file containing
-	//    the build output.
+	//    * If type is set to S3, valid values include: NONE: AWS CodeBuild creates
+	//    in the output bucket a folder that contains the build output. This is
+	//    the default if packaging is not specified. ZIP: AWS CodeBuild creates
+	//    in the output bucket a ZIP file that contains the build output.
 	Packaging *string `locationName:"packaging" type:"string" enum:"ArtifactPackaging"`
 
-	// Along with namespaceType and name, the pattern that AWS CodeBuild will use
-	// to name and store the output artifact, as follows:
+	// Along with namespaceType and name, the pattern that AWS CodeBuild uses to
+	// name and store the output artifact:
 	//
-	//    * If type is set to CODEPIPELINE, then AWS CodePipeline will ignore this
-	//    value if specified. This is because AWS CodePipeline manages its build
-	//    output names instead of AWS CodeBuild.
+	//    * If type is set to CODEPIPELINE, AWS CodePipeline ignores this value
+	//    if specified. This is because AWS CodePipeline manages its build output
+	//    names instead of AWS CodeBuild.
 	//
-	//    * If type is set to NO_ARTIFACTS, then this value will be ignored if specified,
-	//    because no build output will be produced.
+	//    * If type is set to NO_ARTIFACTS, this value is ignored if specified,
+	//    because no build output is produced.
 	//
 	//    * If type is set to S3, this is the path to the output artifact. If path
-	//    is not specified, then path will not be used.
+	//    is not specified, path is not used.
 	//
 	// For example, if path is set to MyArtifacts, namespaceType is set to NONE,
-	// and name is set to MyArtifact.zip, then the output artifact would be stored
-	// in the output bucket at MyArtifacts/MyArtifact.zip.
+	// and name is set to MyArtifact.zip, the output artifact is stored in the output
+	// bucket at MyArtifacts/MyArtifact.zip.
 	Path *string `locationName:"path" type:"string"`
 
 	// The type of build output artifact. Valid values include:
 	//
-	//    * CODEPIPELINE: The build project will have build output generated through
-	//    AWS CodePipeline.
+	//    * CODEPIPELINE: The build project has build output generated through AWS
+	//    CodePipeline.
 	//
-	//    * NO_ARTIFACTS: The build project will not produce any build output.
+	//    * NO_ARTIFACTS: The build project does not produce any build output.
 	//
-	//    * S3: The build project will store build output in Amazon Simple Storage
-	//    Service (Amazon S3).
+	//    * S3: The build project stores build output in Amazon Simple Storage Service
+	//    (Amazon S3).
 	//
 	// Type is a required field
 	Type *string `locationName:"type" type:"string" required:"true" enum:"ArtifactsType"`
@@ -3290,6 +4379,18 @@ func (s *ProjectArtifacts) Validate() error {
 	return nil
 }
 
+// SetArtifactIdentifier sets the ArtifactIdentifier field's value.
+func (s *ProjectArtifacts) SetArtifactIdentifier(v string) *ProjectArtifacts {
+	s.ArtifactIdentifier = &v
+	return s
+}
+
+// SetEncryptionDisabled sets the EncryptionDisabled field's value.
+func (s *ProjectArtifacts) SetEncryptionDisabled(v bool) *ProjectArtifacts {
+	s.EncryptionDisabled = &v
+	return s
+}
+
 // SetLocation sets the Location field's value.
 func (s *ProjectArtifacts) SetLocation(v string) *ProjectArtifacts {
 	s.Location = &v
@@ -3305,6 +4406,12 @@ func (s *ProjectArtifacts) SetName(v string) *ProjectArtifacts {
 // SetNamespaceType sets the NamespaceType field's value.
 func (s *ProjectArtifacts) SetNamespaceType(v string) *ProjectArtifacts {
 	s.NamespaceType = &v
+	return s
+}
+
+// SetOverrideArtifactName sets the OverrideArtifactName field's value.
+func (s *ProjectArtifacts) SetOverrideArtifactName(v bool) *ProjectArtifacts {
+	s.OverrideArtifactName = &v
 	return s
 }
 
@@ -3327,15 +4434,17 @@ func (s *ProjectArtifacts) SetType(v string) *ProjectArtifacts {
 }
 
 // Information about the build badge for the build project.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/codebuild-2016-10-06/ProjectBadge
 type ProjectBadge struct {
 	_ struct{} `type:"structure"`
 
-	// Set this to true to generate a publicly-accessible URL for your project's
+	// Set this to true to generate a publicly accessible URL for your project's
 	// build badge.
 	BadgeEnabled *bool `locationName:"badgeEnabled" type:"boolean"`
 
 	// The publicly-accessible URL through which you can access the build badge
+	// for your project.
+	//
+	// The publicly accessible URL through which you can access the build badge
 	// for your project.
 	BadgeRequestUrl *string `locationName:"badgeRequestUrl" type:"string"`
 }
@@ -3363,22 +4472,52 @@ func (s *ProjectBadge) SetBadgeRequestUrl(v string) *ProjectBadge {
 }
 
 // Information about the cache for the build project.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/codebuild-2016-10-06/ProjectCache
 type ProjectCache struct {
 	_ struct{} `type:"structure"`
 
-	// Information about the cache location, as follows:
+	// Information about the cache location:
 	//
-	//    * NO_CACHE: This value will be ignored.
+	//    * NO_CACHE or LOCAL: This value is ignored.
 	//
 	//    * S3: This is the S3 bucket name/prefix.
 	Location *string `locationName:"location" type:"string"`
 
+	// If you use a LOCAL cache, the local cache mode. You can use one or more local
+	// cache modes at the same time.
+	//
+	//    * LOCAL_SOURCE_CACHE mode caches Git metadata for primary and secondary
+	//    sources. After the cache is created, subsequent builds pull only the change
+	//    between commits. This mode is a good choice for projects with a clean
+	//    working directory and a source that is a large Git repository. If you
+	//    choose this option and your project does not use a Git repository (GitHub,
+	//    GitHub Enterprise, or Bitbucket), the option is ignored.
+	//
+	//    * LOCAL_DOCKER_LAYER_CACHE mode caches existing Docker layers. This mode
+	//    is a good choice for projects that build or pull large Docker images.
+	//    It can prevent the performance issues caused by pulling large Docker images
+	//    down from the network. You can use a Docker layer cache in the Linux environment
+	//    only. The privileged flag must be set so that your project has the required
+	//    Docker permissions. You should consider the security implications before
+	//    you use a Docker layer cache.
+	//
+	//    * LOCAL_CUSTOM_CACHE mode caches directories you specify in the buildspec
+	//    file. This mode is a good choice if your build scenario is not suited
+	//    to one of the other three local cache modes. If you use a custom cache:
+	//    Only directories can be specified for caching. You cannot specify individual
+	//    files. Symlinks are used to reference cached directories. Cached directories
+	//    are linked to your build before it downloads its project sources. Cached
+	//    items are overriden if a source item has the same name. Directories are
+	//    specified using cache paths in the buildspec file.
+	Modes []*string `locationName:"modes" type:"list"`
+
 	// The type of cache used by the build project. Valid values include:
 	//
-	//    * NO_CACHE: The build project will not use any cache.
+	//    * NO_CACHE: The build project does not use any cache.
 	//
-	//    * S3: The build project will read and write from/to S3.
+	//    * S3: The build project reads and writes from and to S3.
+	//
+	//    * LOCAL: The build project stores a cache locally on a build host that
+	//    is only available to that build host.
 	//
 	// Type is a required field
 	Type *string `locationName:"type" type:"string" required:"true" enum:"CacheType"`
@@ -3413,6 +4552,12 @@ func (s *ProjectCache) SetLocation(v string) *ProjectCache {
 	return s
 }
 
+// SetModes sets the Modes field's value.
+func (s *ProjectCache) SetModes(v []*string) *ProjectCache {
+	s.Modes = v
+	return s
+}
+
 // SetType sets the Type field's value.
 func (s *ProjectCache) SetType(v string) *ProjectCache {
 	s.Type = &v
@@ -3420,11 +4565,13 @@ func (s *ProjectCache) SetType(v string) *ProjectCache {
 }
 
 // Information about the build environment of the build project.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/codebuild-2016-10-06/ProjectEnvironment
 type ProjectEnvironment struct {
 	_ struct{} `type:"structure"`
 
-	// Information about the compute resources the build project will use. Available
+	// The certificate to use with this build project.
+	Certificate *string `locationName:"certificate" type:"string"`
+
+	// Information about the compute resources the build project uses. Available
 	// values include:
 	//
 	//    * BUILD_GENERAL1_SMALL: Use up to 3 GB memory and 2 vCPUs for builds.
@@ -3440,27 +4587,62 @@ type ProjectEnvironment struct {
 	// project.
 	EnvironmentVariables []*EnvironmentVariable `locationName:"environmentVariables" type:"list"`
 
-	// The ID of the Docker image to use for this build project.
+	// The image tag or image digest that identifies the Docker image to use for
+	// this build project. Use the following formats:
+	//
+	//    * For an image tag: registry/repository:tag. For example, to specify an
+	//    image with the tag "latest," use registry/repository:latest.
+	//
+	//    * For an image digest: registry/repository@digest. For example, to specify
+	//    an image with the digest "sha256:cbbf2f9a99b47fc460d422812b6a5adff7dfee951d8fa2e4a98caa0382cfbdbf,"
+	//    use registry/repository@sha256:cbbf2f9a99b47fc460d422812b6a5adff7dfee951d8fa2e4a98caa0382cfbdbf.
 	//
 	// Image is a required field
 	Image *string `locationName:"image" min:"1" type:"string" required:"true"`
 
-	// If set to true, enables running the Docker daemon inside a Docker container;
-	// otherwise, false or not specified (the default). This value must be set to
-	// true only if this build project will be used to build Docker images, and
-	// the specified build environment image is not one provided by AWS CodeBuild
-	// with Docker support. Otherwise, all associated builds that attempt to interact
-	// with the Docker daemon will fail. Note that you must also start the Docker
-	// daemon so that your builds can interact with it as needed. One way to do
-	// this is to initialize the Docker daemon in the install phase of your build
-	// spec by running the following build commands. (Do not run the following build
-	// commands if the specified build environment image is provided by AWS CodeBuild
-	// with Docker support.)
+	// The type of credentials AWS CodeBuild uses to pull images in your build.
+	// There are two valid values:
+	//
+	//    * CODEBUILD specifies that AWS CodeBuild uses its own credentials. This
+	//    requires that you modify your ECR repository policy to trust AWS CodeBuild's
+	//    service principal.
+	//
+	//    * SERVICE_ROLE specifies that AWS CodeBuild uses your build project's
+	//    service role.
+	//
+	// When you use a cross-account or private registry image, you must use SERVICE_ROLE
+	// credentials. When you use an AWS CodeBuild curated image, you must use CODEBUILD
+	// credentials.
+	ImagePullCredentialsType *string `locationName:"imagePullCredentialsType" type:"string" enum:"ImagePullCredentialsType"`
+
+	// Enables running the Docker daemon inside a Docker container. Set to true
+	// only if the build project is be used to build Docker images, and the specified
+	// build environment image is not provided by AWS CodeBuild with Docker support.
+	// Otherwise, all associated builds that attempt to interact with the Docker
+	// daemon fail. You must also start the Docker daemon so that builds can interact
+	// with it. One way to do this is to initialize the Docker daemon during the
+	// install phase of your build spec by running the following build commands.
+	// (Do not run these commands if the specified build environment image is provided
+	// by AWS CodeBuild with Docker support.)
+	//
+	// If the operating system's base image is Ubuntu Linux:
 	//
 	// - nohup /usr/local/bin/dockerd --host=unix:///var/run/docker.sock --host=tcp://0.0.0.0:2375
-	// --storage-driver=overlay& - timeout -t 15 sh -c "until docker info; do echo
-	// .; sleep 1; done"
+	// --storage-driver=overlay&
+	//
+	// - timeout 15 sh -c "until docker info; do echo .; sleep 1; done"
+	//
+	// If the operating system's base image is Alpine Linux and the previous command
+	// does not work, add the -t argument to timeout:
+	//
+	// - nohup /usr/local/bin/dockerd --host=unix:///var/run/docker.sock --host=tcp://0.0.0.0:2375
+	// --storage-driver=overlay&
+	//
+	// - timeout -t 15 sh -c "until docker info; do echo .; sleep 1; done"
 	PrivilegedMode *bool `locationName:"privilegedMode" type:"boolean"`
+
+	// The credentials for access to a private registry.
+	RegistryCredential *RegistryCredential `locationName:"registryCredential" type:"structure"`
 
 	// The type of build environment to use for related builds.
 	//
@@ -3503,11 +4685,22 @@ func (s *ProjectEnvironment) Validate() error {
 			}
 		}
 	}
+	if s.RegistryCredential != nil {
+		if err := s.RegistryCredential.Validate(); err != nil {
+			invalidParams.AddNested("RegistryCredential", err.(request.ErrInvalidParams))
+		}
+	}
 
 	if invalidParams.Len() > 0 {
 		return invalidParams
 	}
 	return nil
+}
+
+// SetCertificate sets the Certificate field's value.
+func (s *ProjectEnvironment) SetCertificate(v string) *ProjectEnvironment {
+	s.Certificate = &v
+	return s
 }
 
 // SetComputeType sets the ComputeType field's value.
@@ -3528,9 +4721,21 @@ func (s *ProjectEnvironment) SetImage(v string) *ProjectEnvironment {
 	return s
 }
 
+// SetImagePullCredentialsType sets the ImagePullCredentialsType field's value.
+func (s *ProjectEnvironment) SetImagePullCredentialsType(v string) *ProjectEnvironment {
+	s.ImagePullCredentialsType = &v
+	return s
+}
+
 // SetPrivilegedMode sets the PrivilegedMode field's value.
 func (s *ProjectEnvironment) SetPrivilegedMode(v bool) *ProjectEnvironment {
 	s.PrivilegedMode = &v
+	return s
+}
+
+// SetRegistryCredential sets the RegistryCredential field's value.
+func (s *ProjectEnvironment) SetRegistryCredential(v *RegistryCredential) *ProjectEnvironment {
+	s.RegistryCredential = v
 	return s
 }
 
@@ -3541,7 +4746,6 @@ func (s *ProjectEnvironment) SetType(v string) *ProjectEnvironment {
 }
 
 // Information about the build input source code for the build project.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/codebuild-2016-10-06/ProjectSource
 type ProjectSource struct {
 	_ struct{} `type:"structure"`
 
@@ -3549,8 +4753,7 @@ type ProjectSource struct {
 	// the source code to be built.
 	//
 	// This information is for the AWS CodeBuild console's use only. Your code should
-	// not get or set this information directly (unless the build project's source
-	// type value is BITBUCKET or GITHUB).
+	// not get or set this information directly.
 	Auth *SourceAuth `locationName:"auth" type:"structure"`
 
 	// The build spec declaration to use for the builds in this build project.
@@ -3559,46 +4762,66 @@ type ProjectSource struct {
 	// the source code to be built.
 	Buildspec *string `locationName:"buildspec" type:"string"`
 
+	// Information about the Git clone depth for the build project.
+	GitCloneDepth *int64 `locationName:"gitCloneDepth" type:"integer"`
+
+	// Information about the Git submodules configuration for the build project.
+	GitSubmodulesConfig *GitSubmodulesConfig `locationName:"gitSubmodulesConfig" type:"structure"`
+
+	// Enable this flag to ignore SSL warnings while connecting to the project source
+	// code.
+	InsecureSsl *bool `locationName:"insecureSsl" type:"boolean"`
+
 	// Information about the location of the source code to be built. Valid values
 	// include:
 	//
 	//    * For source code settings that are specified in the source action of
 	//    a pipeline in AWS CodePipeline, location should not be specified. If it
-	//    is specified, AWS CodePipeline will ignore it. This is because AWS CodePipeline
+	//    is specified, AWS CodePipeline ignores it. This is because AWS CodePipeline
 	//    uses the settings in a pipeline's source action instead of this value.
 	//
 	//    * For source code in an AWS CodeCommit repository, the HTTPS clone URL
 	//    to the repository that contains the source code and the build spec (for
-	//    example, https://git-codecommit.region-ID.amazonaws.com/v1/repos/repo-name).
+	//    example, https://git-codecommit.region-ID.amazonaws.com/v1/repos/repo-name
+	//    ).
 	//
 	//    * For source code in an Amazon Simple Storage Service (Amazon S3) input
-	//    bucket, the path to the ZIP file that contains the source code (for example,
-	//    bucket-name/path/to/object-name.zip)
+	//    bucket, one of the following. The path to the ZIP file that contains the
+	//    source code (for example, bucket-name/path/to/object-name.zip). The path
+	//    to the folder that contains the source code (for example, bucket-name/path/to/source-code/folder/).
 	//
 	//    * For source code in a GitHub repository, the HTTPS clone URL to the repository
-	//    that contains the source and the build spec. Also, you must connect your
-	//    AWS account to your GitHub account. To do this, use the AWS CodeBuild
-	//    console to begin creating a build project. When you use the console to
-	//    connect (or reconnect) with GitHub, on the GitHub Authorize application
-	//    page that displays, for Organization access, choose Request access next
-	//    to each repository you want to allow AWS CodeBuild to have access to.
-	//    Then choose Authorize application. (After you have connected to your GitHub
-	//    account, you do not need to finish creating the build project, and you
-	//    may then leave the AWS CodeBuild console.) To instruct AWS CodeBuild to
-	//    then use this connection, in the source object, set the auth object's
-	//    type value to OAUTH.
+	//    that contains the source and the build spec. You must connect your AWS
+	//    account to your GitHub account. Use the AWS CodeBuild console to start
+	//    creating a build project. When you use the console to connect (or reconnect)
+	//    with GitHub, on the GitHub Authorize application page, for Organization
+	//    access, choose Request access next to each repository you want to allow
+	//    AWS CodeBuild to have access to, and then choose Authorize application.
+	//    (After you have connected to your GitHub account, you do not need to finish
+	//    creating the build project. You can leave the AWS CodeBuild console.)
+	//    To instruct AWS CodeBuild to use this connection, in the source object,
+	//    set the auth object's type value to OAUTH.
 	//
 	//    * For source code in a Bitbucket repository, the HTTPS clone URL to the
-	//    repository that contains the source and the build spec. Also, you must
-	//    connect your AWS account to your Bitbucket account. To do this, use the
-	//    AWS CodeBuild console to begin creating a build project. When you use
-	//    the console to connect (or reconnect) with Bitbucket, on the Bitbucket
-	//    Confirm access to your account page that displays, choose Grant access.
-	//    (After you have connected to your Bitbucket account, you do not need to
-	//    finish creating the build project, and you may then leave the AWS CodeBuild
-	//    console.) To instruct AWS CodeBuild to then use this connection, in the
-	//    source object, set the auth object's type value to OAUTH.
+	//    repository that contains the source and the build spec. You must connect
+	//    your AWS account to your Bitbucket account. Use the AWS CodeBuild console
+	//    to start creating a build project. When you use the console to connect
+	//    (or reconnect) with Bitbucket, on the Bitbucket Confirm access to your
+	//    account page, choose Grant access. (After you have connected to your Bitbucket
+	//    account, you do not need to finish creating the build project. You can
+	//    leave the AWS CodeBuild console.) To instruct AWS CodeBuild to use this
+	//    connection, in the source object, set the auth object's type value to
+	//    OAUTH.
 	Location *string `locationName:"location" type:"string"`
+
+	// Set to true to report the status of a build's start and finish to your source
+	// provider. This option is valid only when your source provider is GitHub,
+	// GitHub Enterprise, or Bitbucket. If this is set and you use a different source
+	// provider, an invalidInputException is thrown.
+	ReportBuildStatus *bool `locationName:"reportBuildStatus" type:"boolean"`
+
+	// An identifier for this project source.
+	SourceIdentifier *string `locationName:"sourceIdentifier" type:"string"`
 
 	// The type of repository that contains the source code to be built. Valid values
 	// include:
@@ -3611,6 +4834,8 @@ type ProjectSource struct {
 	//    of a pipeline in AWS CodePipeline.
 	//
 	//    * GITHUB: The source code is in a GitHub repository.
+	//
+	//    * NO_SOURCE: The project does not have input source code.
 	//
 	//    * S3: The source code is in an Amazon Simple Storage Service (Amazon S3)
 	//    input bucket.
@@ -3640,6 +4865,11 @@ func (s *ProjectSource) Validate() error {
 			invalidParams.AddNested("Auth", err.(request.ErrInvalidParams))
 		}
 	}
+	if s.GitSubmodulesConfig != nil {
+		if err := s.GitSubmodulesConfig.Validate(); err != nil {
+			invalidParams.AddNested("GitSubmodulesConfig", err.(request.ErrInvalidParams))
+		}
+	}
 
 	if invalidParams.Len() > 0 {
 		return invalidParams
@@ -3659,9 +4889,39 @@ func (s *ProjectSource) SetBuildspec(v string) *ProjectSource {
 	return s
 }
 
+// SetGitCloneDepth sets the GitCloneDepth field's value.
+func (s *ProjectSource) SetGitCloneDepth(v int64) *ProjectSource {
+	s.GitCloneDepth = &v
+	return s
+}
+
+// SetGitSubmodulesConfig sets the GitSubmodulesConfig field's value.
+func (s *ProjectSource) SetGitSubmodulesConfig(v *GitSubmodulesConfig) *ProjectSource {
+	s.GitSubmodulesConfig = v
+	return s
+}
+
+// SetInsecureSsl sets the InsecureSsl field's value.
+func (s *ProjectSource) SetInsecureSsl(v bool) *ProjectSource {
+	s.InsecureSsl = &v
+	return s
+}
+
 // SetLocation sets the Location field's value.
 func (s *ProjectSource) SetLocation(v string) *ProjectSource {
 	s.Location = &v
+	return s
+}
+
+// SetReportBuildStatus sets the ReportBuildStatus field's value.
+func (s *ProjectSource) SetReportBuildStatus(v bool) *ProjectSource {
+	s.ReportBuildStatus = &v
+	return s
+}
+
+// SetSourceIdentifier sets the SourceIdentifier field's value.
+func (s *ProjectSource) SetSourceIdentifier(v string) *ProjectSource {
+	s.SourceIdentifier = &v
 	return s
 }
 
@@ -3671,19 +4931,227 @@ func (s *ProjectSource) SetType(v string) *ProjectSource {
 	return s
 }
 
+// A source identifier and its corresponding version.
+type ProjectSourceVersion struct {
+	_ struct{} `type:"structure"`
+
+	// An identifier for a source in the build project.
+	//
+	// SourceIdentifier is a required field
+	SourceIdentifier *string `locationName:"sourceIdentifier" type:"string" required:"true"`
+
+	// The source version for the corresponding source identifier. If specified,
+	// must be one of:
+	//
+	//    * For AWS CodeCommit: the commit ID to use.
+	//
+	//    * For GitHub: the commit ID, pull request ID, branch name, or tag name
+	//    that corresponds to the version of the source code you want to build.
+	//    If a pull request ID is specified, it must use the format pr/pull-request-ID
+	//    (for example, pr/25). If a branch name is specified, the branch's HEAD
+	//    commit ID is used. If not specified, the default branch's HEAD commit
+	//    ID is used.
+	//
+	//    * For Bitbucket: the commit ID, branch name, or tag name that corresponds
+	//    to the version of the source code you want to build. If a branch name
+	//    is specified, the branch's HEAD commit ID is used. If not specified, the
+	//    default branch's HEAD commit ID is used.
+	//
+	//    * For Amazon Simple Storage Service (Amazon S3): the version ID of the
+	//    object that represents the build input ZIP file to use.
+	//
+	// For more information, see Source Version Sample with CodeBuild (https://docs.aws.amazon.com/codebuild/latest/userguide/sample-source-version.html)
+	// in the AWS CodeBuild User Guide.
+	//
+	// SourceVersion is a required field
+	SourceVersion *string `locationName:"sourceVersion" type:"string" required:"true"`
+}
+
+// String returns the string representation
+func (s ProjectSourceVersion) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s ProjectSourceVersion) GoString() string {
+	return s.String()
+}
+
+// Validate inspects the fields of the type to determine if they are valid.
+func (s *ProjectSourceVersion) Validate() error {
+	invalidParams := request.ErrInvalidParams{Context: "ProjectSourceVersion"}
+	if s.SourceIdentifier == nil {
+		invalidParams.Add(request.NewErrParamRequired("SourceIdentifier"))
+	}
+	if s.SourceVersion == nil {
+		invalidParams.Add(request.NewErrParamRequired("SourceVersion"))
+	}
+
+	if invalidParams.Len() > 0 {
+		return invalidParams
+	}
+	return nil
+}
+
+// SetSourceIdentifier sets the SourceIdentifier field's value.
+func (s *ProjectSourceVersion) SetSourceIdentifier(v string) *ProjectSourceVersion {
+	s.SourceIdentifier = &v
+	return s
+}
+
+// SetSourceVersion sets the SourceVersion field's value.
+func (s *ProjectSourceVersion) SetSourceVersion(v string) *ProjectSourceVersion {
+	s.SourceVersion = &v
+	return s
+}
+
+// Information about credentials that provide access to a private Docker registry.
+// When this is set:
+//
+//    * imagePullCredentialsType must be set to SERVICE_ROLE.
+//
+//    * images cannot be curated or an Amazon ECR image.
+//
+// For more information, see Private Registry with AWS Secrets Manager Sample
+// for AWS CodeBuild (https://docs.aws.amazon.com/codebuild/latest/userguide/sample-private-registry.html).
+type RegistryCredential struct {
+	_ struct{} `type:"structure"`
+
+	// The Amazon Resource Name (ARN) or name of credentials created using AWS Secrets
+	// Manager.
+	//
+	// The credential can use the name of the credentials only if they exist in
+	// your current region.
+	//
+	// Credential is a required field
+	Credential *string `locationName:"credential" min:"1" type:"string" required:"true"`
+
+	// The service that created the credentials to access a private Docker registry.
+	// The valid value, SECRETS_MANAGER, is for AWS Secrets Manager.
+	//
+	// CredentialProvider is a required field
+	CredentialProvider *string `locationName:"credentialProvider" type:"string" required:"true" enum:"CredentialProviderType"`
+}
+
+// String returns the string representation
+func (s RegistryCredential) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s RegistryCredential) GoString() string {
+	return s.String()
+}
+
+// Validate inspects the fields of the type to determine if they are valid.
+func (s *RegistryCredential) Validate() error {
+	invalidParams := request.ErrInvalidParams{Context: "RegistryCredential"}
+	if s.Credential == nil {
+		invalidParams.Add(request.NewErrParamRequired("Credential"))
+	}
+	if s.Credential != nil && len(*s.Credential) < 1 {
+		invalidParams.Add(request.NewErrParamMinLen("Credential", 1))
+	}
+	if s.CredentialProvider == nil {
+		invalidParams.Add(request.NewErrParamRequired("CredentialProvider"))
+	}
+
+	if invalidParams.Len() > 0 {
+		return invalidParams
+	}
+	return nil
+}
+
+// SetCredential sets the Credential field's value.
+func (s *RegistryCredential) SetCredential(v string) *RegistryCredential {
+	s.Credential = &v
+	return s
+}
+
+// SetCredentialProvider sets the CredentialProvider field's value.
+func (s *RegistryCredential) SetCredentialProvider(v string) *RegistryCredential {
+	s.CredentialProvider = &v
+	return s
+}
+
+// Information about S3 logs for a build project.
+type S3LogsConfig struct {
+	_ struct{} `type:"structure"`
+
+	// Set to true if you do not want your S3 build log output encrypted. By default
+	// S3 build logs are encrypted.
+	EncryptionDisabled *bool `locationName:"encryptionDisabled" type:"boolean"`
+
+	// The ARN of an S3 bucket and the path prefix for S3 logs. If your Amazon S3
+	// bucket name is my-bucket, and your path prefix is build-log, then acceptable
+	// formats are my-bucket/build-log or arn:aws:s3:::my-bucket/build-log.
+	Location *string `locationName:"location" type:"string"`
+
+	// The current status of the S3 build logs. Valid values are:
+	//
+	//    * ENABLED: S3 build logs are enabled for this build project.
+	//
+	//    * DISABLED: S3 build logs are not enabled for this build project.
+	//
+	// Status is a required field
+	Status *string `locationName:"status" type:"string" required:"true" enum:"LogsConfigStatusType"`
+}
+
+// String returns the string representation
+func (s S3LogsConfig) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s S3LogsConfig) GoString() string {
+	return s.String()
+}
+
+// Validate inspects the fields of the type to determine if they are valid.
+func (s *S3LogsConfig) Validate() error {
+	invalidParams := request.ErrInvalidParams{Context: "S3LogsConfig"}
+	if s.Status == nil {
+		invalidParams.Add(request.NewErrParamRequired("Status"))
+	}
+
+	if invalidParams.Len() > 0 {
+		return invalidParams
+	}
+	return nil
+}
+
+// SetEncryptionDisabled sets the EncryptionDisabled field's value.
+func (s *S3LogsConfig) SetEncryptionDisabled(v bool) *S3LogsConfig {
+	s.EncryptionDisabled = &v
+	return s
+}
+
+// SetLocation sets the Location field's value.
+func (s *S3LogsConfig) SetLocation(v string) *S3LogsConfig {
+	s.Location = &v
+	return s
+}
+
+// SetStatus sets the Status field's value.
+func (s *S3LogsConfig) SetStatus(v string) *S3LogsConfig {
+	s.Status = &v
+	return s
+}
+
 // Information about the authorization settings for AWS CodeBuild to access
 // the source code to be built.
 //
 // This information is for the AWS CodeBuild console's use only. Your code should
-// not get or set this information directly (unless the build project's source
-// type value is BITBUCKET or GITHUB).
-// See also, https://docs.aws.amazon.com/goto/WebAPI/codebuild-2016-10-06/SourceAuth
+// not get or set this information directly.
 type SourceAuth struct {
 	_ struct{} `type:"structure"`
 
 	// The resource value that applies to the specified authorization type.
 	Resource *string `locationName:"resource" type:"string"`
 
+	//
+	// This data type is deprecated and is no longer accurate or used.
+	//
 	// The authorization type to use. The only valid value is OAUTH, which represents
 	// the OAuth authorization type.
 	//
@@ -3726,7 +5194,51 @@ func (s *SourceAuth) SetType(v string) *SourceAuth {
 	return s
 }
 
-// See also, https://docs.aws.amazon.com/goto/WebAPI/codebuild-2016-10-06/StartBuildInput
+// Information about the credentials for a GitHub, GitHub Enterprise, or Bitbucket
+// repository.
+type SourceCredentialsInfo struct {
+	_ struct{} `type:"structure"`
+
+	// The Amazon Resource Name (ARN) of the token.
+	Arn *string `locationName:"arn" min:"1" type:"string"`
+
+	// The type of authentication used by the credentials. Valid options are OAUTH,
+	// BASIC_AUTH, or PERSONAL_ACCESS_TOKEN.
+	AuthType *string `locationName:"authType" type:"string" enum:"AuthType"`
+
+	// The type of source provider. The valid options are GITHUB, GITHUB_ENTERPRISE,
+	// or BITBUCKET.
+	ServerType *string `locationName:"serverType" type:"string" enum:"ServerType"`
+}
+
+// String returns the string representation
+func (s SourceCredentialsInfo) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s SourceCredentialsInfo) GoString() string {
+	return s.String()
+}
+
+// SetArn sets the Arn field's value.
+func (s *SourceCredentialsInfo) SetArn(v string) *SourceCredentialsInfo {
+	s.Arn = &v
+	return s
+}
+
+// SetAuthType sets the AuthType field's value.
+func (s *SourceCredentialsInfo) SetAuthType(v string) *SourceCredentialsInfo {
+	s.AuthType = &v
+	return s
+}
+
+// SetServerType sets the ServerType field's value.
+func (s *SourceCredentialsInfo) SetServerType(v string) *SourceCredentialsInfo {
+	s.ServerType = &v
+	return s
+}
+
 type StartBuildInput struct {
 	_ struct{} `type:"structure"`
 
@@ -3738,17 +5250,118 @@ type StartBuildInput struct {
 	// one already defined in the build project.
 	BuildspecOverride *string `locationName:"buildspecOverride" type:"string"`
 
+	// A ProjectCache object specified for this build that overrides the one defined
+	// in the build project.
+	CacheOverride *ProjectCache `locationName:"cacheOverride" type:"structure"`
+
+	// The name of a certificate for this build that overrides the one specified
+	// in the build project.
+	CertificateOverride *string `locationName:"certificateOverride" type:"string"`
+
+	// The name of a compute type for this build that overrides the one specified
+	// in the build project.
+	ComputeTypeOverride *string `locationName:"computeTypeOverride" type:"string" enum:"ComputeType"`
+
+	// A container type for this build that overrides the one specified in the build
+	// project.
+	EnvironmentTypeOverride *string `locationName:"environmentTypeOverride" type:"string" enum:"EnvironmentType"`
+
 	// A set of environment variables that overrides, for this build only, the latest
 	// ones already defined in the build project.
 	EnvironmentVariablesOverride []*EnvironmentVariable `locationName:"environmentVariablesOverride" type:"list"`
 
-	// The name of the build project to start running a build.
+	// The user-defined depth of history, with a minimum value of 0, that overrides,
+	// for this build only, any previous depth of history defined in the build project.
+	GitCloneDepthOverride *int64 `locationName:"gitCloneDepthOverride" type:"integer"`
+
+	// Information about the Git submodules configuration for this build of an AWS
+	// CodeBuild build project.
+	GitSubmodulesConfigOverride *GitSubmodulesConfig `locationName:"gitSubmodulesConfigOverride" type:"structure"`
+
+	// A unique, case sensitive identifier you provide to ensure the idempotency
+	// of the StartBuild request. The token is included in the StartBuild request
+	// and is valid for 12 hours. If you repeat the StartBuild request with the
+	// same token, but change a parameter, AWS CodeBuild returns a parameter mismatch
+	// error.
+	IdempotencyToken *string `locationName:"idempotencyToken" type:"string"`
+
+	// The name of an image for this build that overrides the one specified in the
+	// build project.
+	ImageOverride *string `locationName:"imageOverride" min:"1" type:"string"`
+
+	// The type of credentials AWS CodeBuild uses to pull images in your build.
+	// There are two valid values:
+	//
+	//    * CODEBUILD specifies that AWS CodeBuild uses its own credentials. This
+	//    requires that you modify your ECR repository policy to trust AWS CodeBuild's
+	//    service principal.
+	//
+	//    * SERVICE_ROLE specifies that AWS CodeBuild uses your build project's
+	//    service role.
+	//
+	// When using a cross-account or private registry image, you must use SERVICE_ROLE
+	// credentials. When using an AWS CodeBuild curated image, you must use CODEBUILD
+	// credentials.
+	ImagePullCredentialsTypeOverride *string `locationName:"imagePullCredentialsTypeOverride" type:"string" enum:"ImagePullCredentialsType"`
+
+	// Enable this flag to override the insecure SSL setting that is specified in
+	// the build project. The insecure SSL setting determines whether to ignore
+	// SSL warnings while connecting to the project source code. This override applies
+	// only if the build's source is GitHub Enterprise.
+	InsecureSslOverride *bool `locationName:"insecureSslOverride" type:"boolean"`
+
+	// Log settings for this build that override the log settings defined in the
+	// build project.
+	LogsConfigOverride *LogsConfig `locationName:"logsConfigOverride" type:"structure"`
+
+	// Enable this flag to override privileged mode in the build project.
+	PrivilegedModeOverride *bool `locationName:"privilegedModeOverride" type:"boolean"`
+
+	// The name of the AWS CodeBuild build project to start running a build.
 	//
 	// ProjectName is a required field
 	ProjectName *string `locationName:"projectName" min:"1" type:"string" required:"true"`
 
+	// The number of minutes a build is allowed to be queued before it times out.
+	QueuedTimeoutInMinutesOverride *int64 `locationName:"queuedTimeoutInMinutesOverride" min:"5" type:"integer"`
+
+	// The credentials for access to a private registry.
+	RegistryCredentialOverride *RegistryCredential `locationName:"registryCredentialOverride" type:"structure"`
+
+	// Set to true to report to your source provider the status of a build's start
+	// and completion. If you use this option with a source provider other than
+	// GitHub, GitHub Enterprise, or Bitbucket, an invalidInputException is thrown.
+	ReportBuildStatusOverride *bool `locationName:"reportBuildStatusOverride" type:"boolean"`
+
+	// An array of ProjectArtifacts objects.
+	SecondaryArtifactsOverride []*ProjectArtifacts `locationName:"secondaryArtifactsOverride" type:"list"`
+
+	// An array of ProjectSource objects.
+	SecondarySourcesOverride []*ProjectSource `locationName:"secondarySourcesOverride" type:"list"`
+
+	// An array of ProjectSourceVersion objects that specify one or more versions
+	// of the project's secondary sources to be used for this build only.
+	SecondarySourcesVersionOverride []*ProjectSourceVersion `locationName:"secondarySourcesVersionOverride" type:"list"`
+
+	// The name of a service role for this build that overrides the one specified
+	// in the build project.
+	ServiceRoleOverride *string `locationName:"serviceRoleOverride" min:"1" type:"string"`
+
+	// An authorization type for this build that overrides the one defined in the
+	// build project. This override applies only if the build project's source is
+	// BitBucket or GitHub.
+	SourceAuthOverride *SourceAuth `locationName:"sourceAuthOverride" type:"structure"`
+
+	// A location that overrides, for this build, the source location for the one
+	// defined in the build project.
+	SourceLocationOverride *string `locationName:"sourceLocationOverride" type:"string"`
+
+	// A source input type, for this build, that overrides the source input defined
+	// in the build project.
+	SourceTypeOverride *string `locationName:"sourceTypeOverride" type:"string" enum:"SourceType"`
+
 	// A version of the build input to be built, for this build only. If not specified,
-	// the latest version will be used. If specified, must be one of:
+	// the latest version is used. If specified, must be one of:
 	//
 	//    * For AWS CodeCommit: the commit ID to use.
 	//
@@ -3756,16 +5369,22 @@ type StartBuildInput struct {
 	//    that corresponds to the version of the source code you want to build.
 	//    If a pull request ID is specified, it must use the format pr/pull-request-ID
 	//    (for example pr/25). If a branch name is specified, the branch's HEAD
-	//    commit ID will be used. If not specified, the default branch's HEAD commit
-	//    ID will be used.
+	//    commit ID is used. If not specified, the default branch's HEAD commit
+	//    ID is used.
 	//
 	//    * For Bitbucket: the commit ID, branch name, or tag name that corresponds
 	//    to the version of the source code you want to build. If a branch name
-	//    is specified, the branch's HEAD commit ID will be used. If not specified,
-	//    the default branch's HEAD commit ID will be used.
+	//    is specified, the branch's HEAD commit ID is used. If not specified, the
+	//    default branch's HEAD commit ID is used.
 	//
 	//    * For Amazon Simple Storage Service (Amazon S3): the version ID of the
-	//    object representing the build input ZIP file to use.
+	//    object that represents the build input ZIP file to use.
+	//
+	// If sourceVersion is specified at the project level, then this sourceVersion
+	// (at the build level) takes precedence.
+	//
+	// For more information, see Source Version Sample with CodeBuild (https://docs.aws.amazon.com/codebuild/latest/userguide/sample-source-version.html)
+	// in the AWS CodeBuild User Guide.
 	SourceVersion *string `locationName:"sourceVersion" type:"string"`
 
 	// The number of build timeout minutes, from 5 to 480 (8 hours), that overrides,
@@ -3786,11 +5405,20 @@ func (s StartBuildInput) GoString() string {
 // Validate inspects the fields of the type to determine if they are valid.
 func (s *StartBuildInput) Validate() error {
 	invalidParams := request.ErrInvalidParams{Context: "StartBuildInput"}
+	if s.ImageOverride != nil && len(*s.ImageOverride) < 1 {
+		invalidParams.Add(request.NewErrParamMinLen("ImageOverride", 1))
+	}
 	if s.ProjectName == nil {
 		invalidParams.Add(request.NewErrParamRequired("ProjectName"))
 	}
 	if s.ProjectName != nil && len(*s.ProjectName) < 1 {
 		invalidParams.Add(request.NewErrParamMinLen("ProjectName", 1))
+	}
+	if s.QueuedTimeoutInMinutesOverride != nil && *s.QueuedTimeoutInMinutesOverride < 5 {
+		invalidParams.Add(request.NewErrParamMinValue("QueuedTimeoutInMinutesOverride", 5))
+	}
+	if s.ServiceRoleOverride != nil && len(*s.ServiceRoleOverride) < 1 {
+		invalidParams.Add(request.NewErrParamMinLen("ServiceRoleOverride", 1))
 	}
 	if s.TimeoutInMinutesOverride != nil && *s.TimeoutInMinutesOverride < 5 {
 		invalidParams.Add(request.NewErrParamMinValue("TimeoutInMinutesOverride", 5))
@@ -3798,6 +5426,11 @@ func (s *StartBuildInput) Validate() error {
 	if s.ArtifactsOverride != nil {
 		if err := s.ArtifactsOverride.Validate(); err != nil {
 			invalidParams.AddNested("ArtifactsOverride", err.(request.ErrInvalidParams))
+		}
+	}
+	if s.CacheOverride != nil {
+		if err := s.CacheOverride.Validate(); err != nil {
+			invalidParams.AddNested("CacheOverride", err.(request.ErrInvalidParams))
 		}
 	}
 	if s.EnvironmentVariablesOverride != nil {
@@ -3808,6 +5441,56 @@ func (s *StartBuildInput) Validate() error {
 			if err := v.Validate(); err != nil {
 				invalidParams.AddNested(fmt.Sprintf("%s[%v]", "EnvironmentVariablesOverride", i), err.(request.ErrInvalidParams))
 			}
+		}
+	}
+	if s.GitSubmodulesConfigOverride != nil {
+		if err := s.GitSubmodulesConfigOverride.Validate(); err != nil {
+			invalidParams.AddNested("GitSubmodulesConfigOverride", err.(request.ErrInvalidParams))
+		}
+	}
+	if s.LogsConfigOverride != nil {
+		if err := s.LogsConfigOverride.Validate(); err != nil {
+			invalidParams.AddNested("LogsConfigOverride", err.(request.ErrInvalidParams))
+		}
+	}
+	if s.RegistryCredentialOverride != nil {
+		if err := s.RegistryCredentialOverride.Validate(); err != nil {
+			invalidParams.AddNested("RegistryCredentialOverride", err.(request.ErrInvalidParams))
+		}
+	}
+	if s.SecondaryArtifactsOverride != nil {
+		for i, v := range s.SecondaryArtifactsOverride {
+			if v == nil {
+				continue
+			}
+			if err := v.Validate(); err != nil {
+				invalidParams.AddNested(fmt.Sprintf("%s[%v]", "SecondaryArtifactsOverride", i), err.(request.ErrInvalidParams))
+			}
+		}
+	}
+	if s.SecondarySourcesOverride != nil {
+		for i, v := range s.SecondarySourcesOverride {
+			if v == nil {
+				continue
+			}
+			if err := v.Validate(); err != nil {
+				invalidParams.AddNested(fmt.Sprintf("%s[%v]", "SecondarySourcesOverride", i), err.(request.ErrInvalidParams))
+			}
+		}
+	}
+	if s.SecondarySourcesVersionOverride != nil {
+		for i, v := range s.SecondarySourcesVersionOverride {
+			if v == nil {
+				continue
+			}
+			if err := v.Validate(); err != nil {
+				invalidParams.AddNested(fmt.Sprintf("%s[%v]", "SecondarySourcesVersionOverride", i), err.(request.ErrInvalidParams))
+			}
+		}
+	}
+	if s.SourceAuthOverride != nil {
+		if err := s.SourceAuthOverride.Validate(); err != nil {
+			invalidParams.AddNested("SourceAuthOverride", err.(request.ErrInvalidParams))
 		}
 	}
 
@@ -3829,15 +5512,147 @@ func (s *StartBuildInput) SetBuildspecOverride(v string) *StartBuildInput {
 	return s
 }
 
+// SetCacheOverride sets the CacheOverride field's value.
+func (s *StartBuildInput) SetCacheOverride(v *ProjectCache) *StartBuildInput {
+	s.CacheOverride = v
+	return s
+}
+
+// SetCertificateOverride sets the CertificateOverride field's value.
+func (s *StartBuildInput) SetCertificateOverride(v string) *StartBuildInput {
+	s.CertificateOverride = &v
+	return s
+}
+
+// SetComputeTypeOverride sets the ComputeTypeOverride field's value.
+func (s *StartBuildInput) SetComputeTypeOverride(v string) *StartBuildInput {
+	s.ComputeTypeOverride = &v
+	return s
+}
+
+// SetEnvironmentTypeOverride sets the EnvironmentTypeOverride field's value.
+func (s *StartBuildInput) SetEnvironmentTypeOverride(v string) *StartBuildInput {
+	s.EnvironmentTypeOverride = &v
+	return s
+}
+
 // SetEnvironmentVariablesOverride sets the EnvironmentVariablesOverride field's value.
 func (s *StartBuildInput) SetEnvironmentVariablesOverride(v []*EnvironmentVariable) *StartBuildInput {
 	s.EnvironmentVariablesOverride = v
 	return s
 }
 
+// SetGitCloneDepthOverride sets the GitCloneDepthOverride field's value.
+func (s *StartBuildInput) SetGitCloneDepthOverride(v int64) *StartBuildInput {
+	s.GitCloneDepthOverride = &v
+	return s
+}
+
+// SetGitSubmodulesConfigOverride sets the GitSubmodulesConfigOverride field's value.
+func (s *StartBuildInput) SetGitSubmodulesConfigOverride(v *GitSubmodulesConfig) *StartBuildInput {
+	s.GitSubmodulesConfigOverride = v
+	return s
+}
+
+// SetIdempotencyToken sets the IdempotencyToken field's value.
+func (s *StartBuildInput) SetIdempotencyToken(v string) *StartBuildInput {
+	s.IdempotencyToken = &v
+	return s
+}
+
+// SetImageOverride sets the ImageOverride field's value.
+func (s *StartBuildInput) SetImageOverride(v string) *StartBuildInput {
+	s.ImageOverride = &v
+	return s
+}
+
+// SetImagePullCredentialsTypeOverride sets the ImagePullCredentialsTypeOverride field's value.
+func (s *StartBuildInput) SetImagePullCredentialsTypeOverride(v string) *StartBuildInput {
+	s.ImagePullCredentialsTypeOverride = &v
+	return s
+}
+
+// SetInsecureSslOverride sets the InsecureSslOverride field's value.
+func (s *StartBuildInput) SetInsecureSslOverride(v bool) *StartBuildInput {
+	s.InsecureSslOverride = &v
+	return s
+}
+
+// SetLogsConfigOverride sets the LogsConfigOverride field's value.
+func (s *StartBuildInput) SetLogsConfigOverride(v *LogsConfig) *StartBuildInput {
+	s.LogsConfigOverride = v
+	return s
+}
+
+// SetPrivilegedModeOverride sets the PrivilegedModeOverride field's value.
+func (s *StartBuildInput) SetPrivilegedModeOverride(v bool) *StartBuildInput {
+	s.PrivilegedModeOverride = &v
+	return s
+}
+
 // SetProjectName sets the ProjectName field's value.
 func (s *StartBuildInput) SetProjectName(v string) *StartBuildInput {
 	s.ProjectName = &v
+	return s
+}
+
+// SetQueuedTimeoutInMinutesOverride sets the QueuedTimeoutInMinutesOverride field's value.
+func (s *StartBuildInput) SetQueuedTimeoutInMinutesOverride(v int64) *StartBuildInput {
+	s.QueuedTimeoutInMinutesOverride = &v
+	return s
+}
+
+// SetRegistryCredentialOverride sets the RegistryCredentialOverride field's value.
+func (s *StartBuildInput) SetRegistryCredentialOverride(v *RegistryCredential) *StartBuildInput {
+	s.RegistryCredentialOverride = v
+	return s
+}
+
+// SetReportBuildStatusOverride sets the ReportBuildStatusOverride field's value.
+func (s *StartBuildInput) SetReportBuildStatusOverride(v bool) *StartBuildInput {
+	s.ReportBuildStatusOverride = &v
+	return s
+}
+
+// SetSecondaryArtifactsOverride sets the SecondaryArtifactsOverride field's value.
+func (s *StartBuildInput) SetSecondaryArtifactsOverride(v []*ProjectArtifacts) *StartBuildInput {
+	s.SecondaryArtifactsOverride = v
+	return s
+}
+
+// SetSecondarySourcesOverride sets the SecondarySourcesOverride field's value.
+func (s *StartBuildInput) SetSecondarySourcesOverride(v []*ProjectSource) *StartBuildInput {
+	s.SecondarySourcesOverride = v
+	return s
+}
+
+// SetSecondarySourcesVersionOverride sets the SecondarySourcesVersionOverride field's value.
+func (s *StartBuildInput) SetSecondarySourcesVersionOverride(v []*ProjectSourceVersion) *StartBuildInput {
+	s.SecondarySourcesVersionOverride = v
+	return s
+}
+
+// SetServiceRoleOverride sets the ServiceRoleOverride field's value.
+func (s *StartBuildInput) SetServiceRoleOverride(v string) *StartBuildInput {
+	s.ServiceRoleOverride = &v
+	return s
+}
+
+// SetSourceAuthOverride sets the SourceAuthOverride field's value.
+func (s *StartBuildInput) SetSourceAuthOverride(v *SourceAuth) *StartBuildInput {
+	s.SourceAuthOverride = v
+	return s
+}
+
+// SetSourceLocationOverride sets the SourceLocationOverride field's value.
+func (s *StartBuildInput) SetSourceLocationOverride(v string) *StartBuildInput {
+	s.SourceLocationOverride = &v
+	return s
+}
+
+// SetSourceTypeOverride sets the SourceTypeOverride field's value.
+func (s *StartBuildInput) SetSourceTypeOverride(v string) *StartBuildInput {
+	s.SourceTypeOverride = &v
 	return s
 }
 
@@ -3853,7 +5668,6 @@ func (s *StartBuildInput) SetTimeoutInMinutesOverride(v int64) *StartBuildInput 
 	return s
 }
 
-// See also, https://docs.aws.amazon.com/goto/WebAPI/codebuild-2016-10-06/StartBuildOutput
 type StartBuildOutput struct {
 	_ struct{} `type:"structure"`
 
@@ -3877,7 +5691,6 @@ func (s *StartBuildOutput) SetBuild(v *Build) *StartBuildOutput {
 	return s
 }
 
-// See also, https://docs.aws.amazon.com/goto/WebAPI/codebuild-2016-10-06/StopBuildInput
 type StopBuildInput struct {
 	_ struct{} `type:"structure"`
 
@@ -3919,7 +5732,6 @@ func (s *StopBuildInput) SetId(v string) *StopBuildInput {
 	return s
 }
 
-// See also, https://docs.aws.amazon.com/goto/WebAPI/codebuild-2016-10-06/StopBuildOutput
 type StopBuildOutput struct {
 	_ struct{} `type:"structure"`
 
@@ -3946,7 +5758,6 @@ func (s *StopBuildOutput) SetBuild(v *Build) *StopBuildOutput {
 // A tag, consisting of a key and a value.
 //
 // This tag is available for use by AWS services that support tags in AWS CodeBuild.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/codebuild-2016-10-06/Tag
 type Tag struct {
 	_ struct{} `type:"structure"`
 
@@ -3995,7 +5806,6 @@ func (s *Tag) SetValue(v string) *Tag {
 	return s
 }
 
-// See also, https://docs.aws.amazon.com/goto/WebAPI/codebuild-2016-10-06/UpdateProjectInput
 type UpdateProjectInput struct {
 	_ struct{} `type:"structure"`
 
@@ -4003,7 +5813,7 @@ type UpdateProjectInput struct {
 	// project.
 	Artifacts *ProjectArtifacts `locationName:"artifacts" type:"structure"`
 
-	// Set this to true to generate a publicly-accessible URL for your project's
+	// Set this to true to generate a publicly accessible URL for your project's
 	// build badge.
 	BadgeEnabled *bool `locationName:"badgeEnabled" type:"boolean"`
 
@@ -4014,15 +5824,22 @@ type UpdateProjectInput struct {
 	// A new or replacement description of the build project.
 	Description *string `locationName:"description" type:"string"`
 
-	// The replacement AWS Key Management Service (AWS KMS) customer master key
-	// (CMK) to be used for encrypting the build output artifacts.
+	// The AWS Key Management Service (AWS KMS) customer master key (CMK) to be
+	// used for encrypting the build output artifacts.
 	//
-	// You can specify either the CMK's Amazon Resource Name (ARN) or, if available,
-	// the CMK's alias (using the format alias/alias-name).
+	// You can use a cross-account KMS key to encrypt the build output artifacts
+	// if your service role has permission to that key.
+	//
+	// You can specify either the Amazon Resource Name (ARN) of the CMK or, if available,
+	// the CMK's alias (using the format alias/alias-name ).
 	EncryptionKey *string `locationName:"encryptionKey" min:"1" type:"string"`
 
 	// Information to be changed about the build environment for the build project.
 	Environment *ProjectEnvironment `locationName:"environment" type:"structure"`
+
+	// Information about logs for the build project. A project can create logs in
+	// Amazon CloudWatch Logs, logs in an S3 bucket, or both.
+	LogsConfig *LogsConfig `locationName:"logsConfig" type:"structure"`
 
 	// The name of the build project.
 	//
@@ -4030,6 +5847,20 @@ type UpdateProjectInput struct {
 	//
 	// Name is a required field
 	Name *string `locationName:"name" min:"1" type:"string" required:"true"`
+
+	// The number of minutes a build is allowed to be queued before it times out.
+	QueuedTimeoutInMinutes *int64 `locationName:"queuedTimeoutInMinutes" min:"5" type:"integer"`
+
+	// An array of ProjectSource objects.
+	SecondaryArtifacts []*ProjectArtifacts `locationName:"secondaryArtifacts" type:"list"`
+
+	// An array of ProjectSourceVersion objects. If secondarySourceVersions is specified
+	// at the build level, then they take over these secondarySourceVersions (at
+	// the project level).
+	SecondarySourceVersions []*ProjectSourceVersion `locationName:"secondarySourceVersions" type:"list"`
+
+	// An array of ProjectSource objects.
+	SecondarySources []*ProjectSource `locationName:"secondarySources" type:"list"`
 
 	// The replacement ARN of the AWS Identity and Access Management (IAM) role
 	// that enables AWS CodeBuild to interact with dependent AWS services on behalf
@@ -4039,6 +5870,33 @@ type UpdateProjectInput struct {
 	// Information to be changed about the build input source code for the build
 	// project.
 	Source *ProjectSource `locationName:"source" type:"structure"`
+
+	// A version of the build input to be built for this project. If not specified,
+	// the latest version is used. If specified, it must be one of:
+	//
+	//    * For AWS CodeCommit: the commit ID to use.
+	//
+	//    * For GitHub: the commit ID, pull request ID, branch name, or tag name
+	//    that corresponds to the version of the source code you want to build.
+	//    If a pull request ID is specified, it must use the format pr/pull-request-ID
+	//    (for example pr/25). If a branch name is specified, the branch's HEAD
+	//    commit ID is used. If not specified, the default branch's HEAD commit
+	//    ID is used.
+	//
+	//    * For Bitbucket: the commit ID, branch name, or tag name that corresponds
+	//    to the version of the source code you want to build. If a branch name
+	//    is specified, the branch's HEAD commit ID is used. If not specified, the
+	//    default branch's HEAD commit ID is used.
+	//
+	//    * For Amazon Simple Storage Service (Amazon S3): the version ID of the
+	//    object that represents the build input ZIP file to use.
+	//
+	// If sourceVersion is specified at the build level, then that version takes
+	// precedence over this sourceVersion (at the project level).
+	//
+	// For more information, see Source Version Sample with CodeBuild (https://docs.aws.amazon.com/codebuild/latest/userguide/sample-source-version.html)
+	// in the AWS CodeBuild User Guide.
+	SourceVersion *string `locationName:"sourceVersion" type:"string"`
 
 	// The replacement set of tags for this build project.
 	//
@@ -4076,6 +5934,9 @@ func (s *UpdateProjectInput) Validate() error {
 	if s.Name != nil && len(*s.Name) < 1 {
 		invalidParams.Add(request.NewErrParamMinLen("Name", 1))
 	}
+	if s.QueuedTimeoutInMinutes != nil && *s.QueuedTimeoutInMinutes < 5 {
+		invalidParams.Add(request.NewErrParamMinValue("QueuedTimeoutInMinutes", 5))
+	}
 	if s.ServiceRole != nil && len(*s.ServiceRole) < 1 {
 		invalidParams.Add(request.NewErrParamMinLen("ServiceRole", 1))
 	}
@@ -4095,6 +5956,41 @@ func (s *UpdateProjectInput) Validate() error {
 	if s.Environment != nil {
 		if err := s.Environment.Validate(); err != nil {
 			invalidParams.AddNested("Environment", err.(request.ErrInvalidParams))
+		}
+	}
+	if s.LogsConfig != nil {
+		if err := s.LogsConfig.Validate(); err != nil {
+			invalidParams.AddNested("LogsConfig", err.(request.ErrInvalidParams))
+		}
+	}
+	if s.SecondaryArtifacts != nil {
+		for i, v := range s.SecondaryArtifacts {
+			if v == nil {
+				continue
+			}
+			if err := v.Validate(); err != nil {
+				invalidParams.AddNested(fmt.Sprintf("%s[%v]", "SecondaryArtifacts", i), err.(request.ErrInvalidParams))
+			}
+		}
+	}
+	if s.SecondarySourceVersions != nil {
+		for i, v := range s.SecondarySourceVersions {
+			if v == nil {
+				continue
+			}
+			if err := v.Validate(); err != nil {
+				invalidParams.AddNested(fmt.Sprintf("%s[%v]", "SecondarySourceVersions", i), err.(request.ErrInvalidParams))
+			}
+		}
+	}
+	if s.SecondarySources != nil {
+		for i, v := range s.SecondarySources {
+			if v == nil {
+				continue
+			}
+			if err := v.Validate(); err != nil {
+				invalidParams.AddNested(fmt.Sprintf("%s[%v]", "SecondarySources", i), err.(request.ErrInvalidParams))
+			}
 		}
 	}
 	if s.Source != nil {
@@ -4160,9 +6056,39 @@ func (s *UpdateProjectInput) SetEnvironment(v *ProjectEnvironment) *UpdateProjec
 	return s
 }
 
+// SetLogsConfig sets the LogsConfig field's value.
+func (s *UpdateProjectInput) SetLogsConfig(v *LogsConfig) *UpdateProjectInput {
+	s.LogsConfig = v
+	return s
+}
+
 // SetName sets the Name field's value.
 func (s *UpdateProjectInput) SetName(v string) *UpdateProjectInput {
 	s.Name = &v
+	return s
+}
+
+// SetQueuedTimeoutInMinutes sets the QueuedTimeoutInMinutes field's value.
+func (s *UpdateProjectInput) SetQueuedTimeoutInMinutes(v int64) *UpdateProjectInput {
+	s.QueuedTimeoutInMinutes = &v
+	return s
+}
+
+// SetSecondaryArtifacts sets the SecondaryArtifacts field's value.
+func (s *UpdateProjectInput) SetSecondaryArtifacts(v []*ProjectArtifacts) *UpdateProjectInput {
+	s.SecondaryArtifacts = v
+	return s
+}
+
+// SetSecondarySourceVersions sets the SecondarySourceVersions field's value.
+func (s *UpdateProjectInput) SetSecondarySourceVersions(v []*ProjectSourceVersion) *UpdateProjectInput {
+	s.SecondarySourceVersions = v
+	return s
+}
+
+// SetSecondarySources sets the SecondarySources field's value.
+func (s *UpdateProjectInput) SetSecondarySources(v []*ProjectSource) *UpdateProjectInput {
+	s.SecondarySources = v
 	return s
 }
 
@@ -4175,6 +6101,12 @@ func (s *UpdateProjectInput) SetServiceRole(v string) *UpdateProjectInput {
 // SetSource sets the Source field's value.
 func (s *UpdateProjectInput) SetSource(v *ProjectSource) *UpdateProjectInput {
 	s.Source = v
+	return s
+}
+
+// SetSourceVersion sets the SourceVersion field's value.
+func (s *UpdateProjectInput) SetSourceVersion(v string) *UpdateProjectInput {
+	s.SourceVersion = &v
 	return s
 }
 
@@ -4196,7 +6128,6 @@ func (s *UpdateProjectInput) SetVpcConfig(v *VpcConfig) *UpdateProjectInput {
 	return s
 }
 
-// See also, https://docs.aws.amazon.com/goto/WebAPI/codebuild-2016-10-06/UpdateProjectOutput
 type UpdateProjectOutput struct {
 	_ struct{} `type:"structure"`
 
@@ -4220,11 +6151,108 @@ func (s *UpdateProjectOutput) SetProject(v *Project) *UpdateProjectOutput {
 	return s
 }
 
-// If your AWS CodeBuild project accesses resources in an Amazon VPC, you provide
-// this parameter that identifies the VPC ID and the list of security group
-// IDs and subnet IDs. The security groups and subnets must belong to the same
-// VPC. You must provide at least one security group and one subnet ID.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/codebuild-2016-10-06/VpcConfig
+type UpdateWebhookInput struct {
+	_ struct{} `type:"structure"`
+
+	// A regular expression used to determine which repository branches are built
+	// when a webhook is triggered. If the name of a branch matches the regular
+	// expression, then it is built. If branchFilter is empty, then all branches
+	// are built.
+	//
+	// It is recommended that you use filterGroups instead of branchFilter.
+	BranchFilter *string `locationName:"branchFilter" type:"string"`
+
+	// An array of arrays of WebhookFilter objects used to determine if a webhook
+	// event can trigger a build. A filter group must pcontain at least one EVENT
+	// WebhookFilter.
+	FilterGroups [][]*WebhookFilter `locationName:"filterGroups" type:"list"`
+
+	// The name of the AWS CodeBuild project.
+	//
+	// ProjectName is a required field
+	ProjectName *string `locationName:"projectName" min:"2" type:"string" required:"true"`
+
+	// A boolean value that specifies whether the associated GitHub repository's
+	// secret token should be updated. If you use Bitbucket for your repository,
+	// rotateSecret is ignored.
+	RotateSecret *bool `locationName:"rotateSecret" type:"boolean"`
+}
+
+// String returns the string representation
+func (s UpdateWebhookInput) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s UpdateWebhookInput) GoString() string {
+	return s.String()
+}
+
+// Validate inspects the fields of the type to determine if they are valid.
+func (s *UpdateWebhookInput) Validate() error {
+	invalidParams := request.ErrInvalidParams{Context: "UpdateWebhookInput"}
+	if s.ProjectName == nil {
+		invalidParams.Add(request.NewErrParamRequired("ProjectName"))
+	}
+	if s.ProjectName != nil && len(*s.ProjectName) < 2 {
+		invalidParams.Add(request.NewErrParamMinLen("ProjectName", 2))
+	}
+
+	if invalidParams.Len() > 0 {
+		return invalidParams
+	}
+	return nil
+}
+
+// SetBranchFilter sets the BranchFilter field's value.
+func (s *UpdateWebhookInput) SetBranchFilter(v string) *UpdateWebhookInput {
+	s.BranchFilter = &v
+	return s
+}
+
+// SetFilterGroups sets the FilterGroups field's value.
+func (s *UpdateWebhookInput) SetFilterGroups(v [][]*WebhookFilter) *UpdateWebhookInput {
+	s.FilterGroups = v
+	return s
+}
+
+// SetProjectName sets the ProjectName field's value.
+func (s *UpdateWebhookInput) SetProjectName(v string) *UpdateWebhookInput {
+	s.ProjectName = &v
+	return s
+}
+
+// SetRotateSecret sets the RotateSecret field's value.
+func (s *UpdateWebhookInput) SetRotateSecret(v bool) *UpdateWebhookInput {
+	s.RotateSecret = &v
+	return s
+}
+
+type UpdateWebhookOutput struct {
+	_ struct{} `type:"structure"`
+
+	// Information about a repository's webhook that is associated with a project
+	// in AWS CodeBuild.
+	Webhook *Webhook `locationName:"webhook" type:"structure"`
+}
+
+// String returns the string representation
+func (s UpdateWebhookOutput) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s UpdateWebhookOutput) GoString() string {
+	return s.String()
+}
+
+// SetWebhook sets the Webhook field's value.
+func (s *UpdateWebhookOutput) SetWebhook(v *Webhook) *UpdateWebhookOutput {
+	s.Webhook = v
+	return s
+}
+
+// Information about the VPC configuration that AWS CodeBuild accesses.
 type VpcConfig struct {
 	_ struct{} `type:"structure"`
 
@@ -4279,11 +6307,38 @@ func (s *VpcConfig) SetVpcId(v string) *VpcConfig {
 	return s
 }
 
-// Information about a webhook in GitHub that connects repository events to
-// a build project in AWS CodeBuild.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/codebuild-2016-10-06/Webhook
+// Information about a webhook that connects repository events to a build project
+// in AWS CodeBuild.
 type Webhook struct {
 	_ struct{} `type:"structure"`
+
+	// A regular expression used to determine which repository branches are built
+	// when a webhook is triggered. If the name of a branch matches the regular
+	// expression, then it is built. If branchFilter is empty, then all branches
+	// are built.
+	//
+	// It is recommended that you use filterGroups instead of branchFilter.
+	BranchFilter *string `locationName:"branchFilter" type:"string"`
+
+	// An array of arrays of WebhookFilter objects used to determine which webhooks
+	// are triggered. At least one WebhookFilter in the array must specify EVENT
+	// as its type.
+	//
+	// For a build to be triggered, at least one filter group in the filterGroups
+	// array must pass. For a filter group to pass, each of its filters must pass.
+	FilterGroups [][]*WebhookFilter `locationName:"filterGroups" type:"list"`
+
+	// A timestamp that indicates the last time a repository's secret token was
+	// modified.
+	LastModifiedSecret *time.Time `locationName:"lastModifiedSecret" type:"timestamp"`
+
+	// The AWS CodeBuild endpoint where webhook events are sent.
+	PayloadUrl *string `locationName:"payloadUrl" min:"1" type:"string"`
+
+	// The secret token of the associated repository.
+	//
+	// A Bitbucket webhook does not support secret.
+	Secret *string `locationName:"secret" min:"1" type:"string"`
 
 	// The URL to the webhook.
 	Url *string `locationName:"url" min:"1" type:"string"`
@@ -4299,9 +6354,134 @@ func (s Webhook) GoString() string {
 	return s.String()
 }
 
+// SetBranchFilter sets the BranchFilter field's value.
+func (s *Webhook) SetBranchFilter(v string) *Webhook {
+	s.BranchFilter = &v
+	return s
+}
+
+// SetFilterGroups sets the FilterGroups field's value.
+func (s *Webhook) SetFilterGroups(v [][]*WebhookFilter) *Webhook {
+	s.FilterGroups = v
+	return s
+}
+
+// SetLastModifiedSecret sets the LastModifiedSecret field's value.
+func (s *Webhook) SetLastModifiedSecret(v time.Time) *Webhook {
+	s.LastModifiedSecret = &v
+	return s
+}
+
+// SetPayloadUrl sets the PayloadUrl field's value.
+func (s *Webhook) SetPayloadUrl(v string) *Webhook {
+	s.PayloadUrl = &v
+	return s
+}
+
+// SetSecret sets the Secret field's value.
+func (s *Webhook) SetSecret(v string) *Webhook {
+	s.Secret = &v
+	return s
+}
+
 // SetUrl sets the Url field's value.
 func (s *Webhook) SetUrl(v string) *Webhook {
 	s.Url = &v
+	return s
+}
+
+// A filter used to determine which webhooks trigger a build.
+type WebhookFilter struct {
+	_ struct{} `type:"structure"`
+
+	// Used to indicate that the pattern determines which webhook events do not
+	// trigger a build. If true, then a webhook event that does not match the pattern
+	// triggers a build. If false, then a webhook event that matches the pattern
+	// triggers a build.
+	ExcludeMatchedPattern *bool `locationName:"excludeMatchedPattern" type:"boolean"`
+
+	// For a WebHookFilter that uses EVENT type, a comma-separated string that specifies
+	// one or more events. For example, the webhook filter PUSH, PULL_REQUEST_CREATED,
+	// PULL_REQUEST_UPDATED allows all push, pull request created, and pull request
+	// updated events to trigger a build.
+	//
+	// For a WebHookFilter that uses any of the other filter types, a regular expression
+	// pattern. For example, a WebHookFilter that uses HEAD_REF for its type and
+	// the pattern ^refs/heads/ triggers a build when the head reference is a branch
+	// with a reference name refs/heads/branch-name.
+	//
+	// Pattern is a required field
+	Pattern *string `locationName:"pattern" type:"string" required:"true"`
+
+	// The type of webhook filter. There are five webhook filter types: EVENT, ACTOR_ACCOUNT_ID,
+	// HEAD_REF, BASE_REF, and FILE_PATH.
+	//
+	// EVENT
+	//
+	// A webhook event triggers a build when the provided pattern matches one of
+	// four event types: PUSH, PULL_REQUEST_CREATED, PULL_REQUEST_UPDATED, and PULL_REQUEST_REOPENED.
+	// The EVENT patterns are specified as a comma-separated string. For example,
+	// PUSH, PULL_REQUEST_CREATED, PULL_REQUEST_UPDATED filters all push, pull request
+	// created, and pull request updated events.
+	//
+	// The PULL_REQUEST_REOPENED works with GitHub and GitHub Enterprise only.
+	//
+	// ACTOR_ACCOUNT_ID
+	//
+	// A webhook event triggers a build when a GitHub, GitHub Enterprise, or Bitbucket
+	// account ID matches the regular expression pattern.
+	//
+	// HEAD_REF
+	//
+	// A webhook event triggers a build when the head reference matches the regular
+	// expression pattern. For example, refs/heads/branch-name and refs/tags/tag-name.
+	//
+	// Works with GitHub and GitHub Enterprise push, GitHub and GitHub Enterprise
+	// pull request, Bitbucket push, and Bitbucket pull request events.
+	//
+	// BASE_REF
+	//
+	// A webhook event triggers a build when the base reference matches the regular
+	// expression pattern. For example, refs/heads/branch-name.
+	//
+	// Works with pull request events only.
+	//
+	// FILE_PATH
+	//
+	// A webhook triggers a build when the path of a changed file matches the regular
+	// expression pattern.
+	//
+	// Works with GitHub and GitHub Enterprise push events only.
+	//
+	// Type is a required field
+	Type *string `locationName:"type" type:"string" required:"true" enum:"WebhookFilterType"`
+}
+
+// String returns the string representation
+func (s WebhookFilter) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s WebhookFilter) GoString() string {
+	return s.String()
+}
+
+// SetExcludeMatchedPattern sets the ExcludeMatchedPattern field's value.
+func (s *WebhookFilter) SetExcludeMatchedPattern(v bool) *WebhookFilter {
+	s.ExcludeMatchedPattern = &v
+	return s
+}
+
+// SetPattern sets the Pattern field's value.
+func (s *WebhookFilter) SetPattern(v string) *WebhookFilter {
+	s.Pattern = &v
+	return s
+}
+
+// SetType sets the Type field's value.
+func (s *WebhookFilter) SetType(v string) *WebhookFilter {
+	s.Type = &v
 	return s
 }
 
@@ -4333,8 +6513,22 @@ const (
 )
 
 const (
+	// AuthTypeOauth is a AuthType enum value
+	AuthTypeOauth = "OAUTH"
+
+	// AuthTypeBasicAuth is a AuthType enum value
+	AuthTypeBasicAuth = "BASIC_AUTH"
+
+	// AuthTypePersonalAccessToken is a AuthType enum value
+	AuthTypePersonalAccessToken = "PERSONAL_ACCESS_TOKEN"
+)
+
+const (
 	// BuildPhaseTypeSubmitted is a BuildPhaseType enum value
 	BuildPhaseTypeSubmitted = "SUBMITTED"
+
+	// BuildPhaseTypeQueued is a BuildPhaseType enum value
+	BuildPhaseTypeQueued = "QUEUED"
 
 	// BuildPhaseTypeProvisioning is a BuildPhaseType enum value
 	BuildPhaseTypeProvisioning = "PROVISIONING"
@@ -4365,11 +6559,25 @@ const (
 )
 
 const (
+	// CacheModeLocalDockerLayerCache is a CacheMode enum value
+	CacheModeLocalDockerLayerCache = "LOCAL_DOCKER_LAYER_CACHE"
+
+	// CacheModeLocalSourceCache is a CacheMode enum value
+	CacheModeLocalSourceCache = "LOCAL_SOURCE_CACHE"
+
+	// CacheModeLocalCustomCache is a CacheMode enum value
+	CacheModeLocalCustomCache = "LOCAL_CUSTOM_CACHE"
+)
+
+const (
 	// CacheTypeNoCache is a CacheType enum value
 	CacheTypeNoCache = "NO_CACHE"
 
 	// CacheTypeS3 is a CacheType enum value
 	CacheTypeS3 = "S3"
+
+	// CacheTypeLocal is a CacheType enum value
+	CacheTypeLocal = "LOCAL"
 )
 
 const (
@@ -4384,6 +6592,14 @@ const (
 )
 
 const (
+	// CredentialProviderTypeSecretsManager is a CredentialProviderType enum value
+	CredentialProviderTypeSecretsManager = "SECRETS_MANAGER"
+)
+
+const (
+	// EnvironmentTypeWindowsContainer is a EnvironmentType enum value
+	EnvironmentTypeWindowsContainer = "WINDOWS_CONTAINER"
+
 	// EnvironmentTypeLinuxContainer is a EnvironmentType enum value
 	EnvironmentTypeLinuxContainer = "LINUX_CONTAINER"
 )
@@ -4394,6 +6610,14 @@ const (
 
 	// EnvironmentVariableTypeParameterStore is a EnvironmentVariableType enum value
 	EnvironmentVariableTypeParameterStore = "PARAMETER_STORE"
+)
+
+const (
+	// ImagePullCredentialsTypeCodebuild is a ImagePullCredentialsType enum value
+	ImagePullCredentialsTypeCodebuild = "CODEBUILD"
+
+	// ImagePullCredentialsTypeServiceRole is a ImagePullCredentialsType enum value
+	ImagePullCredentialsTypeServiceRole = "SERVICE_ROLE"
 )
 
 const (
@@ -4423,6 +6647,17 @@ const (
 
 	// LanguageTypeBase is a LanguageType enum value
 	LanguageTypeBase = "BASE"
+
+	// LanguageTypePhp is a LanguageType enum value
+	LanguageTypePhp = "PHP"
+)
+
+const (
+	// LogsConfigStatusTypeEnabled is a LogsConfigStatusType enum value
+	LogsConfigStatusTypeEnabled = "ENABLED"
+
+	// LogsConfigStatusTypeDisabled is a LogsConfigStatusType enum value
+	LogsConfigStatusTypeDisabled = "DISABLED"
 )
 
 const (
@@ -4434,6 +6669,9 @@ const (
 
 	// PlatformTypeUbuntu is a PlatformType enum value
 	PlatformTypeUbuntu = "UBUNTU"
+
+	// PlatformTypeWindowsServer is a PlatformType enum value
+	PlatformTypeWindowsServer = "WINDOWS_SERVER"
 )
 
 const (
@@ -4445,6 +6683,17 @@ const (
 
 	// ProjectSortByTypeLastModifiedTime is a ProjectSortByType enum value
 	ProjectSortByTypeLastModifiedTime = "LAST_MODIFIED_TIME"
+)
+
+const (
+	// ServerTypeGithub is a ServerType enum value
+	ServerTypeGithub = "GITHUB"
+
+	// ServerTypeBitbucket is a ServerType enum value
+	ServerTypeBitbucket = "BITBUCKET"
+
+	// ServerTypeGithubEnterprise is a ServerType enum value
+	ServerTypeGithubEnterprise = "GITHUB_ENTERPRISE"
 )
 
 const (
@@ -4475,6 +6724,12 @@ const (
 
 	// SourceTypeBitbucket is a SourceType enum value
 	SourceTypeBitbucket = "BITBUCKET"
+
+	// SourceTypeGithubEnterprise is a SourceType enum value
+	SourceTypeGithubEnterprise = "GITHUB_ENTERPRISE"
+
+	// SourceTypeNoSource is a SourceType enum value
+	SourceTypeNoSource = "NO_SOURCE"
 )
 
 const (
@@ -4495,4 +6750,21 @@ const (
 
 	// StatusTypeStopped is a StatusType enum value
 	StatusTypeStopped = "STOPPED"
+)
+
+const (
+	// WebhookFilterTypeEvent is a WebhookFilterType enum value
+	WebhookFilterTypeEvent = "EVENT"
+
+	// WebhookFilterTypeBaseRef is a WebhookFilterType enum value
+	WebhookFilterTypeBaseRef = "BASE_REF"
+
+	// WebhookFilterTypeHeadRef is a WebhookFilterType enum value
+	WebhookFilterTypeHeadRef = "HEAD_REF"
+
+	// WebhookFilterTypeActorAccountId is a WebhookFilterType enum value
+	WebhookFilterTypeActorAccountId = "ACTOR_ACCOUNT_ID"
+
+	// WebhookFilterTypeFilePath is a WebhookFilterType enum value
+	WebhookFilterTypeFilePath = "FILE_PATH"
 )

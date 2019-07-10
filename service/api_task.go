@@ -290,16 +290,27 @@ func assignNextAvailableTask(taskQueue *model.TaskQueue, taskQueueService model.
 
 	var spec model.TaskSpec
 	if currentHost.LastTask != "" {
-		t, err := task.FindOneId(currentHost.LastTask)
-		if err != nil {
-			return nil, errors.Wrap(err, "error finding last task")
-		}
 		spec = model.TaskSpec{
-			Group:        t.TaskGroup,
-			BuildVariant: t.BuildVariant,
-			ProjectID:    t.Project,
-			Version:      t.Version,
+			Group:        currentHost.LastGroup,
+			BuildVariant: currentHost.LastBuildVariant,
+			ProjectID:    currentHost.LastProject,
+			Version:      currentHost.LastVersion,
 		}
+	}
+
+	d, err := distro.FindOne(distro.ById(currentHost.Distro.Id))
+	if err != nil {
+		// Should we bailout if there is a database error leaving us unsure if the distro document actual exists?
+		m := "database error while retrieving distro document;"
+		if adb.ResultsNotFound(err) {
+			m = "cannot find the db.distro document for the given distro;"
+		}
+		grip.Warning(message.Fields{
+			"message": m + " falling back to host.Distro",
+			"distro":  currentHost.Distro.Id,
+			"host":    currentHost.Id,
+		})
+		d = currentHost.Distro
 	}
 
 	// This loop does the following:
@@ -320,29 +331,20 @@ func assignNextAvailableTask(taskQueue *model.TaskQueue, taskQueueService model.
 	// queue to prevent an infinite loop.
 	for taskQueue.Length() != 0 {
 		var queueItem *model.TaskQueueItem
-		var err error
-		d, err := distro.FindOne(distro.ById(currentHost.Distro.Id))
-		if err != nil {
-			if adb.ResultsNotFound(err) {
-				grip.Warning(message.Fields{
-					"message": "distro not found",
-					"distro":  currentHost.Distro.Id,
-					"host":    currentHost.Id,
-				})
-				d = currentHost.Distro
-			} else {
-				return nil, errors.Wrapf(err, "problem finding distro %s", currentHost.Distro.Id)
-			}
-		}
 		switch d.PlannerSettings.Version {
 		case evergreen.PlannerVersionTunable, evergreen.PlannerVersionRevised:
 			queueItem, err = taskQueueService.RefreshFindNextTask(currentHost.Distro.Id, spec)
 			if err != nil {
 				grip.Critical(message.WrapError(err, message.Fields{
-					"distro":  currentHost.Distro.Id,
-					"host":    currentHost.Id,
-					"message": "problem getting next task",
-					"spec":    spec,
+					"message":              "problem getting next task for the given host",
+					"distro":               d.Id,
+					"host":                 currentHost.Id,
+					"host_last_task_id":    currentHost.LastTask,
+					"spec_group":           spec.Group,
+					"spec_build_variant":   spec.BuildVariant,
+					"spec_version":         spec.Version,
+					"spec_project_id":      spec.ProjectID,
+					"spec_group_max_hosts": spec.GroupMaxHosts,
 				}))
 				return nil, errors.Wrap(err, "problem getting next task")
 			}
@@ -355,36 +357,66 @@ func assignNextAvailableTask(taskQueue *model.TaskQueue, taskQueueService model.
 
 		nextTask, err := task.FindOneNoMerge(task.ById(queueItem.Id))
 		if err != nil {
+			grip.Error(message.WrapError(err, message.Fields{
+				"message":              "database error while retrieving the db.tasks document for the next task to be assigned to this host",
+				"distro":               d.Id,
+				"host":                 currentHost.Id,
+				"next_task_id":         queueItem.Id,
+				"last_task_id":         currentHost.LastTask,
+				"spec_group":           spec.Group,
+				"spec_build_variant":   spec.BuildVariant,
+				"spec_version":         spec.Version,
+				"spec_project_id":      spec.ProjectID,
+				"spec_group_max_hosts": spec.GroupMaxHosts,
+			}))
 			return nil, err
 		}
+
 		if nextTask == nil {
-			grip.Error(message.Fields{
-				"distro":  currentHost.Distro.Id,
-				"host":    currentHost.Id,
-				"message": "queue item with invalid id",
-				"id":      queueItem.Id,
-			})
+			grip.Critical(message.WrapError(err, message.Fields{
+				"message":              "cannot find a db.tasks document for the next task to be assigned to this host",
+				"distro":               d.Id,
+				"host":                 currentHost.Id,
+				"next_task_id":         queueItem.Id,
+				"last_task_id":         currentHost.LastTask,
+				"spec_group":           spec.Group,
+				"spec_build_variant":   spec.BuildVariant,
+				"spec_version":         spec.Version,
+				"spec_project_id":      spec.ProjectID,
+				"spec_group_max_hosts": spec.GroupMaxHosts,
+			}))
+
+			// An error is not returned in this situation due to https://jira.mongodb.org/browse/EVG-6214
 			return nil, nil
 		}
 
-		// validate that the task can be run, if not fetch the next one in
-		// the queue.
+		// validate that the task can be run, if not fetch the next one in the queue.
 		if !nextTask.IsDispatchable() {
 			grip.Warning(message.Fields{
-				"message":   "skipping un-dispatchable task",
-				"task_id":   nextTask.Id,
-				"status":    nextTask.Status,
-				"activated": nextTask.Activated,
-				"host":      currentHost.Id,
+				"message":              "skipping un-dispatchable task",
+				"distro":               d.Id,
+				"task_id":              nextTask.Id,
+				"status":               nextTask.Status,
+				"activated":            nextTask.Activated,
+				"host":                 currentHost.Id,
+				"spec_group":           spec.Group,
+				"spec_build_variant":   spec.BuildVariant,
+				"spec_version":         spec.Version,
+				"spec_project_id":      spec.ProjectID,
+				"spec_group_max_hosts": spec.GroupMaxHosts,
 			})
 
 			// Dequeue the task so we don't get it on another iteration of the loop.
 			grip.Warning(message.WrapError(taskQueue.DequeueTask(nextTask.Id), message.Fields{
-				"message":   "could not find task in queue",
-				"next_task": nextTask.Id,
-				"distro":    nextTask.DistroId,
-				"spec":      spec,
-				"host":      currentHost.Id,
+				"message":              "nextTask.IsDispatchable() is false, but there was an issue dequeuing the task",
+				"distro":               d.Id,
+				"task_id":              nextTask.Id,
+				"host":                 currentHost.Id,
+				"spec_group":           spec.Group,
+				"spec_build_variant":   spec.BuildVariant,
+				"spec_version":         spec.Version,
+				"spec_project_id":      spec.ProjectID,
+				"spec_group_max_hosts": spec.GroupMaxHosts,
 			}))
 
 			continue
@@ -408,25 +440,40 @@ func assignNextAvailableTask(taskQueue *model.TaskQueue, taskQueueService model.
 				"host":    currentHost.Id,
 				"message": "skipping task because of disabled project",
 			})
-			// Dequeue the task so we don't get it on another iteration of the loop.
-			if err = taskQueue.DequeueTask(nextTask.Id); err != nil {
-				return nil, errors.Wrapf(err,
-					"error pulling task with id %s from queue for distro %s",
-					nextTask.Id, nextTask.DistroId)
-			}
+
+			grip.Warning(message.WrapError(taskQueue.DequeueTask(nextTask.Id), message.Fields{
+				"message":              "projectRef.Enabled is false, but there was an issue dequeuing the task",
+				"distro":               nextTask.DistroId,
+				"task_id":              nextTask.Id,
+				"host":                 currentHost.Id,
+				"spec_group":           spec.Group,
+				"spec_build_variant":   spec.BuildVariant,
+				"spec_version":         spec.Version,
+				"spec_project_id":      spec.ProjectID,
+				"spec_group_max_hosts": spec.GroupMaxHosts,
+			}))
+
 			continue
 		}
 
+		// UpdateRunningTask updates the running task in the host document
 		ok, err := currentHost.UpdateRunningTask(nextTask)
 		if err != nil {
 			return nil, errors.WithStack(err)
 		}
 		// Dequeue the task so we don't get it on another iteration of the loop.
-		if err = taskQueue.DequeueTask(nextTask.Id); err != nil {
-			return nil, errors.Wrapf(err,
-				"error pulling task with id %s from queue for distro %s",
-				nextTask.Id, nextTask.DistroId)
-		}
+		grip.Warning(message.WrapError(taskQueue.DequeueTask(nextTask.Id), message.Fields{
+			"message":              "Updated the relevant running task fields for the given host, but there was an issue dequeuing the task",
+			"distro":               nextTask.DistroId,
+			"task_id":              nextTask.Id,
+			"host":                 currentHost.Id,
+			"spec_group":           spec.Group,
+			"spec_build_variant":   spec.BuildVariant,
+			"spec_version":         spec.Version,
+			"spec_project_id":      spec.ProjectID,
+			"spec_group_max_hosts": spec.GroupMaxHosts,
+		}))
+
 		if !ok {
 			continue
 		}

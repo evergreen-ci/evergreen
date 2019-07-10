@@ -3,17 +3,21 @@
 package serverlessapplicationrepository
 
 import (
+	"fmt"
+
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/awsutil"
 	"github.com/aws/aws-sdk-go/aws/request"
+	"github.com/aws/aws-sdk-go/private/protocol"
+	"github.com/aws/aws-sdk-go/private/protocol/restjson"
 )
 
 const opCreateApplication = "CreateApplication"
 
 // CreateApplicationRequest generates a "aws/request.Request" representing the
 // client's request for the CreateApplication operation. The "output" return
-// value will be populated with the request's response once the request complets
-// successfuly.
+// value will be populated with the request's response once the request completes
+// successfully.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
 // the "output" return value is not valid until after Send returns without error.
@@ -64,7 +68,8 @@ func (c *ServerlessApplicationRepository) CreateApplicationRequest(input *Create
 //
 // Returned Error Codes:
 //   * ErrCodeTooManyRequestsException "TooManyRequestsException"
-//   The client is sending more than the allowed number of requests per unit time.
+//   The client is sending more than the allowed number of requests per unit of
+//   time.
 //
 //   * ErrCodeBadRequestException "BadRequestException"
 //   One of the parameters in the request is invalid.
@@ -105,8 +110,8 @@ const opCreateApplicationVersion = "CreateApplicationVersion"
 
 // CreateApplicationVersionRequest generates a "aws/request.Request" representing the
 // client's request for the CreateApplicationVersion operation. The "output" return
-// value will be populated with the request's response once the request complets
-// successfuly.
+// value will be populated with the request's response once the request completes
+// successfully.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
 // the "output" return value is not valid until after Send returns without error.
@@ -156,7 +161,8 @@ func (c *ServerlessApplicationRepository) CreateApplicationVersionRequest(input 
 //
 // Returned Error Codes:
 //   * ErrCodeTooManyRequestsException "TooManyRequestsException"
-//   The client is sending more than the allowed number of requests per unit time.
+//   The client is sending more than the allowed number of requests per unit of
+//   time.
 //
 //   * ErrCodeBadRequestException "BadRequestException"
 //   One of the parameters in the request is invalid.
@@ -197,8 +203,8 @@ const opCreateCloudFormationChangeSet = "CreateCloudFormationChangeSet"
 
 // CreateCloudFormationChangeSetRequest generates a "aws/request.Request" representing the
 // client's request for the CreateCloudFormationChangeSet operation. The "output" return
-// value will be populated with the request's response once the request complets
-// successfuly.
+// value will be populated with the request's response once the request completes
+// successfully.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
 // the "output" return value is not valid until after Send returns without error.
@@ -237,7 +243,7 @@ func (c *ServerlessApplicationRepository) CreateCloudFormationChangeSetRequest(i
 
 // CreateCloudFormationChangeSet API operation for AWSServerlessApplicationRepository.
 //
-// Creates an AWS CloudFormation ChangeSet for the given application.
+// Creates an AWS CloudFormation change set for the given application.
 //
 // Returns awserr.Error for service API and SDK errors. Use runtime type assertions
 // with awserr.Error's Code and Message methods to get detailed information about
@@ -248,7 +254,8 @@ func (c *ServerlessApplicationRepository) CreateCloudFormationChangeSetRequest(i
 //
 // Returned Error Codes:
 //   * ErrCodeTooManyRequestsException "TooManyRequestsException"
-//   The client is sending more than the allowed number of requests per unit time.
+//   The client is sending more than the allowed number of requests per unit of
+//   time.
 //
 //   * ErrCodeBadRequestException "BadRequestException"
 //   One of the parameters in the request is invalid.
@@ -282,12 +289,204 @@ func (c *ServerlessApplicationRepository) CreateCloudFormationChangeSetWithConte
 	return out, req.Send()
 }
 
+const opCreateCloudFormationTemplate = "CreateCloudFormationTemplate"
+
+// CreateCloudFormationTemplateRequest generates a "aws/request.Request" representing the
+// client's request for the CreateCloudFormationTemplate operation. The "output" return
+// value will be populated with the request's response once the request completes
+// successfully.
+//
+// Use "Send" method on the returned Request to send the API call to the service.
+// the "output" return value is not valid until after Send returns without error.
+//
+// See CreateCloudFormationTemplate for more information on using the CreateCloudFormationTemplate
+// API call, and error handling.
+//
+// This method is useful when you want to inject custom logic or configuration
+// into the SDK's request lifecycle. Such as custom headers, or retry logic.
+//
+//
+//    // Example sending a request using the CreateCloudFormationTemplateRequest method.
+//    req, resp := client.CreateCloudFormationTemplateRequest(params)
+//
+//    err := req.Send()
+//    if err == nil { // resp is now filled
+//        fmt.Println(resp)
+//    }
+//
+// See also, https://docs.aws.amazon.com/goto/WebAPI/serverlessrepo-2017-09-08/CreateCloudFormationTemplate
+func (c *ServerlessApplicationRepository) CreateCloudFormationTemplateRequest(input *CreateCloudFormationTemplateInput) (req *request.Request, output *CreateCloudFormationTemplateOutput) {
+	op := &request.Operation{
+		Name:       opCreateCloudFormationTemplate,
+		HTTPMethod: "POST",
+		HTTPPath:   "/applications/{applicationId}/templates",
+	}
+
+	if input == nil {
+		input = &CreateCloudFormationTemplateInput{}
+	}
+
+	output = &CreateCloudFormationTemplateOutput{}
+	req = c.newRequest(op, input, output)
+	return
+}
+
+// CreateCloudFormationTemplate API operation for AWSServerlessApplicationRepository.
+//
+// Creates an AWS CloudFormation template.
+//
+// Returns awserr.Error for service API and SDK errors. Use runtime type assertions
+// with awserr.Error's Code and Message methods to get detailed information about
+// the error.
+//
+// See the AWS API reference guide for AWSServerlessApplicationRepository's
+// API operation CreateCloudFormationTemplate for usage and error information.
+//
+// Returned Error Codes:
+//   * ErrCodeNotFoundException "NotFoundException"
+//   The resource (for example, an access policy statement) specified in the request
+//   doesn't exist.
+//
+//   * ErrCodeTooManyRequestsException "TooManyRequestsException"
+//   The client is sending more than the allowed number of requests per unit of
+//   time.
+//
+//   * ErrCodeBadRequestException "BadRequestException"
+//   One of the parameters in the request is invalid.
+//
+//   * ErrCodeInternalServerErrorException "InternalServerErrorException"
+//   The AWS Serverless Application Repository service encountered an internal
+//   error.
+//
+//   * ErrCodeForbiddenException "ForbiddenException"
+//   The client is not authenticated.
+//
+// See also, https://docs.aws.amazon.com/goto/WebAPI/serverlessrepo-2017-09-08/CreateCloudFormationTemplate
+func (c *ServerlessApplicationRepository) CreateCloudFormationTemplate(input *CreateCloudFormationTemplateInput) (*CreateCloudFormationTemplateOutput, error) {
+	req, out := c.CreateCloudFormationTemplateRequest(input)
+	return out, req.Send()
+}
+
+// CreateCloudFormationTemplateWithContext is the same as CreateCloudFormationTemplate with the addition of
+// the ability to pass a context and additional request options.
+//
+// See CreateCloudFormationTemplate for details on how to use this API operation.
+//
+// The context must be non-nil and will be used for request cancellation. If
+// the context is nil a panic will occur. In the future the SDK may create
+// sub-contexts for http.Requests. See https://golang.org/pkg/context/
+// for more information on using Contexts.
+func (c *ServerlessApplicationRepository) CreateCloudFormationTemplateWithContext(ctx aws.Context, input *CreateCloudFormationTemplateInput, opts ...request.Option) (*CreateCloudFormationTemplateOutput, error) {
+	req, out := c.CreateCloudFormationTemplateRequest(input)
+	req.SetContext(ctx)
+	req.ApplyOptions(opts...)
+	return out, req.Send()
+}
+
+const opDeleteApplication = "DeleteApplication"
+
+// DeleteApplicationRequest generates a "aws/request.Request" representing the
+// client's request for the DeleteApplication operation. The "output" return
+// value will be populated with the request's response once the request completes
+// successfully.
+//
+// Use "Send" method on the returned Request to send the API call to the service.
+// the "output" return value is not valid until after Send returns without error.
+//
+// See DeleteApplication for more information on using the DeleteApplication
+// API call, and error handling.
+//
+// This method is useful when you want to inject custom logic or configuration
+// into the SDK's request lifecycle. Such as custom headers, or retry logic.
+//
+//
+//    // Example sending a request using the DeleteApplicationRequest method.
+//    req, resp := client.DeleteApplicationRequest(params)
+//
+//    err := req.Send()
+//    if err == nil { // resp is now filled
+//        fmt.Println(resp)
+//    }
+//
+// See also, https://docs.aws.amazon.com/goto/WebAPI/serverlessrepo-2017-09-08/DeleteApplication
+func (c *ServerlessApplicationRepository) DeleteApplicationRequest(input *DeleteApplicationInput) (req *request.Request, output *DeleteApplicationOutput) {
+	op := &request.Operation{
+		Name:       opDeleteApplication,
+		HTTPMethod: "DELETE",
+		HTTPPath:   "/applications/{applicationId}",
+	}
+
+	if input == nil {
+		input = &DeleteApplicationInput{}
+	}
+
+	output = &DeleteApplicationOutput{}
+	req = c.newRequest(op, input, output)
+	req.Handlers.Unmarshal.Swap(restjson.UnmarshalHandler.Name, protocol.UnmarshalDiscardBodyHandler)
+	return
+}
+
+// DeleteApplication API operation for AWSServerlessApplicationRepository.
+//
+// Deletes the specified application.
+//
+// Returns awserr.Error for service API and SDK errors. Use runtime type assertions
+// with awserr.Error's Code and Message methods to get detailed information about
+// the error.
+//
+// See the AWS API reference guide for AWSServerlessApplicationRepository's
+// API operation DeleteApplication for usage and error information.
+//
+// Returned Error Codes:
+//   * ErrCodeBadRequestException "BadRequestException"
+//   One of the parameters in the request is invalid.
+//
+//   * ErrCodeInternalServerErrorException "InternalServerErrorException"
+//   The AWS Serverless Application Repository service encountered an internal
+//   error.
+//
+//   * ErrCodeForbiddenException "ForbiddenException"
+//   The client is not authenticated.
+//
+//   * ErrCodeNotFoundException "NotFoundException"
+//   The resource (for example, an access policy statement) specified in the request
+//   doesn't exist.
+//
+//   * ErrCodeTooManyRequestsException "TooManyRequestsException"
+//   The client is sending more than the allowed number of requests per unit of
+//   time.
+//
+//   * ErrCodeConflictException "ConflictException"
+//   The resource already exists.
+//
+// See also, https://docs.aws.amazon.com/goto/WebAPI/serverlessrepo-2017-09-08/DeleteApplication
+func (c *ServerlessApplicationRepository) DeleteApplication(input *DeleteApplicationInput) (*DeleteApplicationOutput, error) {
+	req, out := c.DeleteApplicationRequest(input)
+	return out, req.Send()
+}
+
+// DeleteApplicationWithContext is the same as DeleteApplication with the addition of
+// the ability to pass a context and additional request options.
+//
+// See DeleteApplication for details on how to use this API operation.
+//
+// The context must be non-nil and will be used for request cancellation. If
+// the context is nil a panic will occur. In the future the SDK may create
+// sub-contexts for http.Requests. See https://golang.org/pkg/context/
+// for more information on using Contexts.
+func (c *ServerlessApplicationRepository) DeleteApplicationWithContext(ctx aws.Context, input *DeleteApplicationInput, opts ...request.Option) (*DeleteApplicationOutput, error) {
+	req, out := c.DeleteApplicationRequest(input)
+	req.SetContext(ctx)
+	req.ApplyOptions(opts...)
+	return out, req.Send()
+}
+
 const opGetApplication = "GetApplication"
 
 // GetApplicationRequest generates a "aws/request.Request" representing the
 // client's request for the GetApplication operation. The "output" return
-// value will be populated with the request's response once the request complets
-// successfuly.
+// value will be populated with the request's response once the request completes
+// successfully.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
 // the "output" return value is not valid until after Send returns without error.
@@ -338,10 +537,11 @@ func (c *ServerlessApplicationRepository) GetApplicationRequest(input *GetApplic
 // Returned Error Codes:
 //   * ErrCodeNotFoundException "NotFoundException"
 //   The resource (for example, an access policy statement) specified in the request
-//   does not exist.
+//   doesn't exist.
 //
 //   * ErrCodeTooManyRequestsException "TooManyRequestsException"
-//   The client is sending more than the allowed number of requests per unit time.
+//   The client is sending more than the allowed number of requests per unit of
+//   time.
 //
 //   * ErrCodeBadRequestException "BadRequestException"
 //   One of the parameters in the request is invalid.
@@ -379,8 +579,8 @@ const opGetApplicationPolicy = "GetApplicationPolicy"
 
 // GetApplicationPolicyRequest generates a "aws/request.Request" representing the
 // client's request for the GetApplicationPolicy operation. The "output" return
-// value will be populated with the request's response once the request complets
-// successfuly.
+// value will be populated with the request's response once the request completes
+// successfully.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
 // the "output" return value is not valid until after Send returns without error.
@@ -419,7 +619,7 @@ func (c *ServerlessApplicationRepository) GetApplicationPolicyRequest(input *Get
 
 // GetApplicationPolicy API operation for AWSServerlessApplicationRepository.
 //
-// Gets the policy for the specified application.
+// Retrieves the policy for the application.
 //
 // Returns awserr.Error for service API and SDK errors. Use runtime type assertions
 // with awserr.Error's Code and Message methods to get detailed information about
@@ -431,10 +631,11 @@ func (c *ServerlessApplicationRepository) GetApplicationPolicyRequest(input *Get
 // Returned Error Codes:
 //   * ErrCodeNotFoundException "NotFoundException"
 //   The resource (for example, an access policy statement) specified in the request
-//   does not exist.
+//   doesn't exist.
 //
 //   * ErrCodeTooManyRequestsException "TooManyRequestsException"
-//   The client is sending more than the allowed number of requests per unit time.
+//   The client is sending more than the allowed number of requests per unit of
+//   time.
 //
 //   * ErrCodeBadRequestException "BadRequestException"
 //   One of the parameters in the request is invalid.
@@ -468,12 +669,256 @@ func (c *ServerlessApplicationRepository) GetApplicationPolicyWithContext(ctx aw
 	return out, req.Send()
 }
 
+const opGetCloudFormationTemplate = "GetCloudFormationTemplate"
+
+// GetCloudFormationTemplateRequest generates a "aws/request.Request" representing the
+// client's request for the GetCloudFormationTemplate operation. The "output" return
+// value will be populated with the request's response once the request completes
+// successfully.
+//
+// Use "Send" method on the returned Request to send the API call to the service.
+// the "output" return value is not valid until after Send returns without error.
+//
+// See GetCloudFormationTemplate for more information on using the GetCloudFormationTemplate
+// API call, and error handling.
+//
+// This method is useful when you want to inject custom logic or configuration
+// into the SDK's request lifecycle. Such as custom headers, or retry logic.
+//
+//
+//    // Example sending a request using the GetCloudFormationTemplateRequest method.
+//    req, resp := client.GetCloudFormationTemplateRequest(params)
+//
+//    err := req.Send()
+//    if err == nil { // resp is now filled
+//        fmt.Println(resp)
+//    }
+//
+// See also, https://docs.aws.amazon.com/goto/WebAPI/serverlessrepo-2017-09-08/GetCloudFormationTemplate
+func (c *ServerlessApplicationRepository) GetCloudFormationTemplateRequest(input *GetCloudFormationTemplateInput) (req *request.Request, output *GetCloudFormationTemplateOutput) {
+	op := &request.Operation{
+		Name:       opGetCloudFormationTemplate,
+		HTTPMethod: "GET",
+		HTTPPath:   "/applications/{applicationId}/templates/{templateId}",
+	}
+
+	if input == nil {
+		input = &GetCloudFormationTemplateInput{}
+	}
+
+	output = &GetCloudFormationTemplateOutput{}
+	req = c.newRequest(op, input, output)
+	return
+}
+
+// GetCloudFormationTemplate API operation for AWSServerlessApplicationRepository.
+//
+// Gets the specified AWS CloudFormation template.
+//
+// Returns awserr.Error for service API and SDK errors. Use runtime type assertions
+// with awserr.Error's Code and Message methods to get detailed information about
+// the error.
+//
+// See the AWS API reference guide for AWSServerlessApplicationRepository's
+// API operation GetCloudFormationTemplate for usage and error information.
+//
+// Returned Error Codes:
+//   * ErrCodeNotFoundException "NotFoundException"
+//   The resource (for example, an access policy statement) specified in the request
+//   doesn't exist.
+//
+//   * ErrCodeTooManyRequestsException "TooManyRequestsException"
+//   The client is sending more than the allowed number of requests per unit of
+//   time.
+//
+//   * ErrCodeBadRequestException "BadRequestException"
+//   One of the parameters in the request is invalid.
+//
+//   * ErrCodeInternalServerErrorException "InternalServerErrorException"
+//   The AWS Serverless Application Repository service encountered an internal
+//   error.
+//
+//   * ErrCodeForbiddenException "ForbiddenException"
+//   The client is not authenticated.
+//
+// See also, https://docs.aws.amazon.com/goto/WebAPI/serverlessrepo-2017-09-08/GetCloudFormationTemplate
+func (c *ServerlessApplicationRepository) GetCloudFormationTemplate(input *GetCloudFormationTemplateInput) (*GetCloudFormationTemplateOutput, error) {
+	req, out := c.GetCloudFormationTemplateRequest(input)
+	return out, req.Send()
+}
+
+// GetCloudFormationTemplateWithContext is the same as GetCloudFormationTemplate with the addition of
+// the ability to pass a context and additional request options.
+//
+// See GetCloudFormationTemplate for details on how to use this API operation.
+//
+// The context must be non-nil and will be used for request cancellation. If
+// the context is nil a panic will occur. In the future the SDK may create
+// sub-contexts for http.Requests. See https://golang.org/pkg/context/
+// for more information on using Contexts.
+func (c *ServerlessApplicationRepository) GetCloudFormationTemplateWithContext(ctx aws.Context, input *GetCloudFormationTemplateInput, opts ...request.Option) (*GetCloudFormationTemplateOutput, error) {
+	req, out := c.GetCloudFormationTemplateRequest(input)
+	req.SetContext(ctx)
+	req.ApplyOptions(opts...)
+	return out, req.Send()
+}
+
+const opListApplicationDependencies = "ListApplicationDependencies"
+
+// ListApplicationDependenciesRequest generates a "aws/request.Request" representing the
+// client's request for the ListApplicationDependencies operation. The "output" return
+// value will be populated with the request's response once the request completes
+// successfully.
+//
+// Use "Send" method on the returned Request to send the API call to the service.
+// the "output" return value is not valid until after Send returns without error.
+//
+// See ListApplicationDependencies for more information on using the ListApplicationDependencies
+// API call, and error handling.
+//
+// This method is useful when you want to inject custom logic or configuration
+// into the SDK's request lifecycle. Such as custom headers, or retry logic.
+//
+//
+//    // Example sending a request using the ListApplicationDependenciesRequest method.
+//    req, resp := client.ListApplicationDependenciesRequest(params)
+//
+//    err := req.Send()
+//    if err == nil { // resp is now filled
+//        fmt.Println(resp)
+//    }
+//
+// See also, https://docs.aws.amazon.com/goto/WebAPI/serverlessrepo-2017-09-08/ListApplicationDependencies
+func (c *ServerlessApplicationRepository) ListApplicationDependenciesRequest(input *ListApplicationDependenciesInput) (req *request.Request, output *ListApplicationDependenciesOutput) {
+	op := &request.Operation{
+		Name:       opListApplicationDependencies,
+		HTTPMethod: "GET",
+		HTTPPath:   "/applications/{applicationId}/dependencies",
+		Paginator: &request.Paginator{
+			InputTokens:     []string{"NextToken"},
+			OutputTokens:    []string{"NextToken"},
+			LimitToken:      "MaxItems",
+			TruncationToken: "",
+		},
+	}
+
+	if input == nil {
+		input = &ListApplicationDependenciesInput{}
+	}
+
+	output = &ListApplicationDependenciesOutput{}
+	req = c.newRequest(op, input, output)
+	return
+}
+
+// ListApplicationDependencies API operation for AWSServerlessApplicationRepository.
+//
+// Retrieves the list of applications nested in the containing application.
+//
+// Returns awserr.Error for service API and SDK errors. Use runtime type assertions
+// with awserr.Error's Code and Message methods to get detailed information about
+// the error.
+//
+// See the AWS API reference guide for AWSServerlessApplicationRepository's
+// API operation ListApplicationDependencies for usage and error information.
+//
+// Returned Error Codes:
+//   * ErrCodeNotFoundException "NotFoundException"
+//   The resource (for example, an access policy statement) specified in the request
+//   doesn't exist.
+//
+//   * ErrCodeTooManyRequestsException "TooManyRequestsException"
+//   The client is sending more than the allowed number of requests per unit of
+//   time.
+//
+//   * ErrCodeBadRequestException "BadRequestException"
+//   One of the parameters in the request is invalid.
+//
+//   * ErrCodeInternalServerErrorException "InternalServerErrorException"
+//   The AWS Serverless Application Repository service encountered an internal
+//   error.
+//
+//   * ErrCodeForbiddenException "ForbiddenException"
+//   The client is not authenticated.
+//
+// See also, https://docs.aws.amazon.com/goto/WebAPI/serverlessrepo-2017-09-08/ListApplicationDependencies
+func (c *ServerlessApplicationRepository) ListApplicationDependencies(input *ListApplicationDependenciesInput) (*ListApplicationDependenciesOutput, error) {
+	req, out := c.ListApplicationDependenciesRequest(input)
+	return out, req.Send()
+}
+
+// ListApplicationDependenciesWithContext is the same as ListApplicationDependencies with the addition of
+// the ability to pass a context and additional request options.
+//
+// See ListApplicationDependencies for details on how to use this API operation.
+//
+// The context must be non-nil and will be used for request cancellation. If
+// the context is nil a panic will occur. In the future the SDK may create
+// sub-contexts for http.Requests. See https://golang.org/pkg/context/
+// for more information on using Contexts.
+func (c *ServerlessApplicationRepository) ListApplicationDependenciesWithContext(ctx aws.Context, input *ListApplicationDependenciesInput, opts ...request.Option) (*ListApplicationDependenciesOutput, error) {
+	req, out := c.ListApplicationDependenciesRequest(input)
+	req.SetContext(ctx)
+	req.ApplyOptions(opts...)
+	return out, req.Send()
+}
+
+// ListApplicationDependenciesPages iterates over the pages of a ListApplicationDependencies operation,
+// calling the "fn" function with the response data for each page. To stop
+// iterating, return false from the fn function.
+//
+// See ListApplicationDependencies method for more information on how to use this operation.
+//
+// Note: This operation can generate multiple requests to a service.
+//
+//    // Example iterating over at most 3 pages of a ListApplicationDependencies operation.
+//    pageNum := 0
+//    err := client.ListApplicationDependenciesPages(params,
+//        func(page *serverlessapplicationrepository.ListApplicationDependenciesOutput, lastPage bool) bool {
+//            pageNum++
+//            fmt.Println(page)
+//            return pageNum <= 3
+//        })
+//
+func (c *ServerlessApplicationRepository) ListApplicationDependenciesPages(input *ListApplicationDependenciesInput, fn func(*ListApplicationDependenciesOutput, bool) bool) error {
+	return c.ListApplicationDependenciesPagesWithContext(aws.BackgroundContext(), input, fn)
+}
+
+// ListApplicationDependenciesPagesWithContext same as ListApplicationDependenciesPages except
+// it takes a Context and allows setting request options on the pages.
+//
+// The context must be non-nil and will be used for request cancellation. If
+// the context is nil a panic will occur. In the future the SDK may create
+// sub-contexts for http.Requests. See https://golang.org/pkg/context/
+// for more information on using Contexts.
+func (c *ServerlessApplicationRepository) ListApplicationDependenciesPagesWithContext(ctx aws.Context, input *ListApplicationDependenciesInput, fn func(*ListApplicationDependenciesOutput, bool) bool, opts ...request.Option) error {
+	p := request.Pagination{
+		NewRequest: func() (*request.Request, error) {
+			var inCpy *ListApplicationDependenciesInput
+			if input != nil {
+				tmp := *input
+				inCpy = &tmp
+			}
+			req, _ := c.ListApplicationDependenciesRequest(inCpy)
+			req.SetContext(ctx)
+			req.ApplyOptions(opts...)
+			return req, nil
+		},
+	}
+
+	cont := true
+	for p.Next() && cont {
+		cont = fn(p.Page().(*ListApplicationDependenciesOutput), !p.HasNextPage())
+	}
+	return p.Err()
+}
+
 const opListApplicationVersions = "ListApplicationVersions"
 
 // ListApplicationVersionsRequest generates a "aws/request.Request" representing the
 // client's request for the ListApplicationVersions operation. The "output" return
-// value will be populated with the request's response once the request complets
-// successfuly.
+// value will be populated with the request's response once the request completes
+// successfully.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
 // the "output" return value is not valid until after Send returns without error.
@@ -499,6 +944,12 @@ func (c *ServerlessApplicationRepository) ListApplicationVersionsRequest(input *
 		Name:       opListApplicationVersions,
 		HTTPMethod: "GET",
 		HTTPPath:   "/applications/{applicationId}/versions",
+		Paginator: &request.Paginator{
+			InputTokens:     []string{"NextToken"},
+			OutputTokens:    []string{"NextToken"},
+			LimitToken:      "MaxItems",
+			TruncationToken: "",
+		},
 	}
 
 	if input == nil {
@@ -524,10 +975,11 @@ func (c *ServerlessApplicationRepository) ListApplicationVersionsRequest(input *
 // Returned Error Codes:
 //   * ErrCodeNotFoundException "NotFoundException"
 //   The resource (for example, an access policy statement) specified in the request
-//   does not exist.
+//   doesn't exist.
 //
 //   * ErrCodeTooManyRequestsException "TooManyRequestsException"
-//   The client is sending more than the allowed number of requests per unit time.
+//   The client is sending more than the allowed number of requests per unit of
+//   time.
 //
 //   * ErrCodeBadRequestException "BadRequestException"
 //   One of the parameters in the request is invalid.
@@ -561,12 +1013,62 @@ func (c *ServerlessApplicationRepository) ListApplicationVersionsWithContext(ctx
 	return out, req.Send()
 }
 
+// ListApplicationVersionsPages iterates over the pages of a ListApplicationVersions operation,
+// calling the "fn" function with the response data for each page. To stop
+// iterating, return false from the fn function.
+//
+// See ListApplicationVersions method for more information on how to use this operation.
+//
+// Note: This operation can generate multiple requests to a service.
+//
+//    // Example iterating over at most 3 pages of a ListApplicationVersions operation.
+//    pageNum := 0
+//    err := client.ListApplicationVersionsPages(params,
+//        func(page *serverlessapplicationrepository.ListApplicationVersionsOutput, lastPage bool) bool {
+//            pageNum++
+//            fmt.Println(page)
+//            return pageNum <= 3
+//        })
+//
+func (c *ServerlessApplicationRepository) ListApplicationVersionsPages(input *ListApplicationVersionsInput, fn func(*ListApplicationVersionsOutput, bool) bool) error {
+	return c.ListApplicationVersionsPagesWithContext(aws.BackgroundContext(), input, fn)
+}
+
+// ListApplicationVersionsPagesWithContext same as ListApplicationVersionsPages except
+// it takes a Context and allows setting request options on the pages.
+//
+// The context must be non-nil and will be used for request cancellation. If
+// the context is nil a panic will occur. In the future the SDK may create
+// sub-contexts for http.Requests. See https://golang.org/pkg/context/
+// for more information on using Contexts.
+func (c *ServerlessApplicationRepository) ListApplicationVersionsPagesWithContext(ctx aws.Context, input *ListApplicationVersionsInput, fn func(*ListApplicationVersionsOutput, bool) bool, opts ...request.Option) error {
+	p := request.Pagination{
+		NewRequest: func() (*request.Request, error) {
+			var inCpy *ListApplicationVersionsInput
+			if input != nil {
+				tmp := *input
+				inCpy = &tmp
+			}
+			req, _ := c.ListApplicationVersionsRequest(inCpy)
+			req.SetContext(ctx)
+			req.ApplyOptions(opts...)
+			return req, nil
+		},
+	}
+
+	cont := true
+	for p.Next() && cont {
+		cont = fn(p.Page().(*ListApplicationVersionsOutput), !p.HasNextPage())
+	}
+	return p.Err()
+}
+
 const opListApplications = "ListApplications"
 
 // ListApplicationsRequest generates a "aws/request.Request" representing the
 // client's request for the ListApplications operation. The "output" return
-// value will be populated with the request's response once the request complets
-// successfuly.
+// value will be populated with the request's response once the request completes
+// successfully.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
 // the "output" return value is not valid until after Send returns without error.
@@ -592,6 +1094,12 @@ func (c *ServerlessApplicationRepository) ListApplicationsRequest(input *ListApp
 		Name:       opListApplications,
 		HTTPMethod: "GET",
 		HTTPPath:   "/applications",
+		Paginator: &request.Paginator{
+			InputTokens:     []string{"NextToken"},
+			OutputTokens:    []string{"NextToken"},
+			LimitToken:      "MaxItems",
+			TruncationToken: "",
+		},
 	}
 
 	if input == nil {
@@ -617,7 +1125,7 @@ func (c *ServerlessApplicationRepository) ListApplicationsRequest(input *ListApp
 // Returned Error Codes:
 //   * ErrCodeNotFoundException "NotFoundException"
 //   The resource (for example, an access policy statement) specified in the request
-//   does not exist.
+//   doesn't exist.
 //
 //   * ErrCodeBadRequestException "BadRequestException"
 //   One of the parameters in the request is invalid.
@@ -651,12 +1159,62 @@ func (c *ServerlessApplicationRepository) ListApplicationsWithContext(ctx aws.Co
 	return out, req.Send()
 }
 
+// ListApplicationsPages iterates over the pages of a ListApplications operation,
+// calling the "fn" function with the response data for each page. To stop
+// iterating, return false from the fn function.
+//
+// See ListApplications method for more information on how to use this operation.
+//
+// Note: This operation can generate multiple requests to a service.
+//
+//    // Example iterating over at most 3 pages of a ListApplications operation.
+//    pageNum := 0
+//    err := client.ListApplicationsPages(params,
+//        func(page *serverlessapplicationrepository.ListApplicationsOutput, lastPage bool) bool {
+//            pageNum++
+//            fmt.Println(page)
+//            return pageNum <= 3
+//        })
+//
+func (c *ServerlessApplicationRepository) ListApplicationsPages(input *ListApplicationsInput, fn func(*ListApplicationsOutput, bool) bool) error {
+	return c.ListApplicationsPagesWithContext(aws.BackgroundContext(), input, fn)
+}
+
+// ListApplicationsPagesWithContext same as ListApplicationsPages except
+// it takes a Context and allows setting request options on the pages.
+//
+// The context must be non-nil and will be used for request cancellation. If
+// the context is nil a panic will occur. In the future the SDK may create
+// sub-contexts for http.Requests. See https://golang.org/pkg/context/
+// for more information on using Contexts.
+func (c *ServerlessApplicationRepository) ListApplicationsPagesWithContext(ctx aws.Context, input *ListApplicationsInput, fn func(*ListApplicationsOutput, bool) bool, opts ...request.Option) error {
+	p := request.Pagination{
+		NewRequest: func() (*request.Request, error) {
+			var inCpy *ListApplicationsInput
+			if input != nil {
+				tmp := *input
+				inCpy = &tmp
+			}
+			req, _ := c.ListApplicationsRequest(inCpy)
+			req.SetContext(ctx)
+			req.ApplyOptions(opts...)
+			return req, nil
+		},
+	}
+
+	cont := true
+	for p.Next() && cont {
+		cont = fn(p.Page().(*ListApplicationsOutput), !p.HasNextPage())
+	}
+	return p.Err()
+}
+
 const opPutApplicationPolicy = "PutApplicationPolicy"
 
 // PutApplicationPolicyRequest generates a "aws/request.Request" representing the
 // client's request for the PutApplicationPolicy operation. The "output" return
-// value will be populated with the request's response once the request complets
-// successfuly.
+// value will be populated with the request's response once the request completes
+// successfully.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
 // the "output" return value is not valid until after Send returns without error.
@@ -695,7 +1253,8 @@ func (c *ServerlessApplicationRepository) PutApplicationPolicyRequest(input *Put
 
 // PutApplicationPolicy API operation for AWSServerlessApplicationRepository.
 //
-// Puts the policy for the specified application.
+// Sets the permission policy for an application. For the list of actions supported
+// for this operation, see Application Permissions (https://docs.aws.amazon.com/serverlessrepo/latest/devguide/access-control-resource-based.html#application-permissions) .
 //
 // Returns awserr.Error for service API and SDK errors. Use runtime type assertions
 // with awserr.Error's Code and Message methods to get detailed information about
@@ -707,10 +1266,11 @@ func (c *ServerlessApplicationRepository) PutApplicationPolicyRequest(input *Put
 // Returned Error Codes:
 //   * ErrCodeNotFoundException "NotFoundException"
 //   The resource (for example, an access policy statement) specified in the request
-//   does not exist.
+//   doesn't exist.
 //
 //   * ErrCodeTooManyRequestsException "TooManyRequestsException"
-//   The client is sending more than the allowed number of requests per unit time.
+//   The client is sending more than the allowed number of requests per unit of
+//   time.
 //
 //   * ErrCodeBadRequestException "BadRequestException"
 //   One of the parameters in the request is invalid.
@@ -748,8 +1308,8 @@ const opUpdateApplication = "UpdateApplication"
 
 // UpdateApplicationRequest generates a "aws/request.Request" representing the
 // client's request for the UpdateApplication operation. The "output" return
-// value will be populated with the request's response once the request complets
-// successfuly.
+// value will be populated with the request's response once the request completes
+// successfully.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
 // the "output" return value is not valid until after Send returns without error.
@@ -810,10 +1370,11 @@ func (c *ServerlessApplicationRepository) UpdateApplicationRequest(input *Update
 //
 //   * ErrCodeNotFoundException "NotFoundException"
 //   The resource (for example, an access policy statement) specified in the request
-//   does not exist.
+//   doesn't exist.
 //
 //   * ErrCodeTooManyRequestsException "TooManyRequestsException"
-//   The client is sending more than the allowed number of requests per unit time.
+//   The client is sending more than the allowed number of requests per unit of
+//   time.
 //
 //   * ErrCodeConflictException "ConflictException"
 //   The resource already exists.
@@ -840,18 +1401,57 @@ func (c *ServerlessApplicationRepository) UpdateApplicationWithContext(ctx aws.C
 	return out, req.Send()
 }
 
+// A nested application summary.
+type ApplicationDependencySummary struct {
+	_ struct{} `type:"structure"`
+
+	// The Amazon Resource Name (ARN) of the nested application.
+	//
+	// ApplicationId is a required field
+	ApplicationId *string `locationName:"applicationId" type:"string" required:"true"`
+
+	// The semantic version of the nested application.
+	//
+	// SemanticVersion is a required field
+	SemanticVersion *string `locationName:"semanticVersion" type:"string" required:"true"`
+}
+
+// String returns the string representation
+func (s ApplicationDependencySummary) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s ApplicationDependencySummary) GoString() string {
+	return s.String()
+}
+
+// SetApplicationId sets the ApplicationId field's value.
+func (s *ApplicationDependencySummary) SetApplicationId(v string) *ApplicationDependencySummary {
+	s.ApplicationId = &v
+	return s
+}
+
+// SetSemanticVersion sets the SemanticVersion field's value.
+func (s *ApplicationDependencySummary) SetSemanticVersion(v string) *ApplicationDependencySummary {
+	s.SemanticVersion = &v
+	return s
+}
+
 // Policy statement applied to the application.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/serverlessrepo-2017-09-08/ApplicationPolicyStatement
 type ApplicationPolicyStatement struct {
 	_ struct{} `type:"structure"`
 
-	// A list of supported actions:\n\n GetApplication \n \n\n CreateCloudFormationChangeSet
-	// \n \n\n ListApplicationVersions \n \n\n SearchApplications \n \n\n Deploy
-	// (Note: This action enables all other actions above.)
-	Actions []*string `locationName:"actions" type:"list"`
+	// For the list of actions supported for this operation, see Application Permissions
+	// (https://docs.aws.amazon.com/serverlessrepo/latest/devguide/access-control-resource-based.html#application-permissions).
+	//
+	// Actions is a required field
+	Actions []*string `locationName:"actions" type:"list" required:"true"`
 
-	// An AWS account ID, or * to make the application public.
-	Principals []*string `locationName:"principals" type:"list"`
+	// An array of AWS account IDs, or * to make the application public.
+	//
+	// Principals is a required field
+	Principals []*string `locationName:"principals" type:"list" required:"true"`
 
 	// A unique ID for the statement.
 	StatementId *string `locationName:"statementId" type:"string"`
@@ -865,6 +1465,22 @@ func (s ApplicationPolicyStatement) String() string {
 // GoString returns the string representation
 func (s ApplicationPolicyStatement) GoString() string {
 	return s.String()
+}
+
+// Validate inspects the fields of the type to determine if they are valid.
+func (s *ApplicationPolicyStatement) Validate() error {
+	invalidParams := request.ErrInvalidParams{Context: "ApplicationPolicyStatement"}
+	if s.Actions == nil {
+		invalidParams.Add(request.NewErrParamRequired("Actions"))
+	}
+	if s.Principals == nil {
+		invalidParams.Add(request.NewErrParamRequired("Principals"))
+	}
+
+	if invalidParams.Len() > 0 {
+		return invalidParams
+	}
+	return nil
 }
 
 // SetActions sets the Actions field's value.
@@ -886,31 +1502,54 @@ func (s *ApplicationPolicyStatement) SetStatementId(v string) *ApplicationPolicy
 }
 
 // Summary of details about the application.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/serverlessrepo-2017-09-08/ApplicationSummary
 type ApplicationSummary struct {
 	_ struct{} `type:"structure"`
 
-	// The application ARN.
-	ApplicationId *string `locationName:"applicationId" type:"string"`
+	// The application Amazon Resource Name (ARN).
+	//
+	// ApplicationId is a required field
+	ApplicationId *string `locationName:"applicationId" type:"string" required:"true"`
 
-	// The name of the author publishing the app\nMin Length=1. Max Length=127.\nPattern
-	// "^[a-z0-9](([a-z0-9]|-(?!-))*[a-z0-9])?$";
-	Author *string `locationName:"author" type:"string"`
+	// The name of the author publishing the app.
+	//
+	// Minimum length=1. Maximum length=127.
+	//
+	// Pattern "^[a-z0-9](([a-z0-9]|-(?!-))*[a-z0-9])?$";
+	//
+	// Author is a required field
+	Author *string `locationName:"author" type:"string" required:"true"`
 
-	// The date/time this resource was created.
+	// The date and time this resource was created.
 	CreationTime *string `locationName:"creationTime" type:"string"`
 
-	// The description of the application.\nMin Length=1. Max Length=256
-	Description *string `locationName:"description" type:"string"`
+	// The description of the application.
+	//
+	// Minimum length=1. Maximum length=256
+	//
+	// Description is a required field
+	Description *string `locationName:"description" type:"string" required:"true"`
 
-	// Labels to improve discovery of apps in search results.\nMin Length=1. Max
-	// Length=127. Maximum number of labels: 10\nPattern: "^[a-zA-Z0-9+\\-_:\\/@]+$";
+	// A URL with more information about the application, for example the location
+	// of your GitHub repository for the application.
+	HomePageUrl *string `locationName:"homePageUrl" type:"string"`
+
+	// Labels to improve discovery of apps in search results.
+	//
+	// Minimum length=1. Maximum length=127. Maximum number of labels: 10
+	//
+	// Pattern: "^[a-zA-Z0-9+\\-_:\\/@]+$";
 	Labels []*string `locationName:"labels" type:"list"`
 
-	// The name of the application.\nMin Length=1. Max Length=140\nPattern: "[a-zA-Z0-9\\-]+";
-	Name *string `locationName:"name" type:"string"`
+	// The name of the application.
+	//
+	// Minimum length=1. Maximum length=140
+	//
+	// Pattern: "[a-zA-Z0-9\\-]+";
+	//
+	// Name is a required field
+	Name *string `locationName:"name" type:"string" required:"true"`
 
-	// A valid identifier from https://spdx.org/licenses/ .
+	// A valid identifier from https://spdx.org/licenses/ (https://spdx.org/licenses/).
 	SpdxLicenseId *string `locationName:"spdxLicenseId" type:"string"`
 }
 
@@ -948,6 +1587,12 @@ func (s *ApplicationSummary) SetDescription(v string) *ApplicationSummary {
 	return s
 }
 
+// SetHomePageUrl sets the HomePageUrl field's value.
+func (s *ApplicationSummary) SetHomePageUrl(v string) *ApplicationSummary {
+	s.HomePageUrl = &v
+	return s
+}
+
 // SetLabels sets the Labels field's value.
 func (s *ApplicationSummary) SetLabels(v []*string) *ApplicationSummary {
 	s.Labels = v
@@ -966,7 +1611,6 @@ func (s *ApplicationSummary) SetSpdxLicenseId(v string) *ApplicationSummary {
 	return s
 }
 
-// See also, https://docs.aws.amazon.com/goto/WebAPI/serverlessrepo-2017-09-08/CreateApplicationResponse
 type CreateApplicationOutput struct {
 	_ struct{} `type:"structure"`
 
@@ -977,6 +1621,8 @@ type CreateApplicationOutput struct {
 	CreationTime *string `locationName:"creationTime" type:"string"`
 
 	Description *string `locationName:"description" type:"string"`
+
+	HomePageUrl *string `locationName:"homePageUrl" type:"string"`
 
 	Labels []*string `locationName:"labels" type:"list"`
 
@@ -1026,6 +1672,12 @@ func (s *CreateApplicationOutput) SetDescription(v string) *CreateApplicationOut
 	return s
 }
 
+// SetHomePageUrl sets the HomePageUrl field's value.
+func (s *CreateApplicationOutput) SetHomePageUrl(v string) *CreateApplicationOutput {
+	s.HomePageUrl = &v
+	return s
+}
+
 // SetLabels sets the Labels field's value.
 func (s *CreateApplicationOutput) SetLabels(v []*string) *CreateApplicationOutput {
 	s.Labels = v
@@ -1062,13 +1714,16 @@ func (s *CreateApplicationOutput) SetVersion(v *Version) *CreateApplicationOutpu
 	return s
 }
 
-// See also, https://docs.aws.amazon.com/goto/WebAPI/serverlessrepo-2017-09-08/CreateApplicationRequest
 type CreateApplicationRequest struct {
 	_ struct{} `type:"structure"`
 
-	Author *string `locationName:"author" type:"string"`
+	// Author is a required field
+	Author *string `locationName:"author" type:"string" required:"true"`
 
-	Description *string `locationName:"description" type:"string"`
+	// Description is a required field
+	Description *string `locationName:"description" type:"string" required:"true"`
+
+	HomePageUrl *string `locationName:"homePageUrl" type:"string"`
 
 	Labels []*string `locationName:"labels" type:"list"`
 
@@ -1076,13 +1731,16 @@ type CreateApplicationRequest struct {
 
 	LicenseUrl *string `locationName:"licenseUrl" type:"string"`
 
-	Name *string `locationName:"name" type:"string"`
+	// Name is a required field
+	Name *string `locationName:"name" type:"string" required:"true"`
 
 	ReadmeBody *string `locationName:"readmeBody" type:"string"`
 
 	ReadmeUrl *string `locationName:"readmeUrl" type:"string"`
 
 	SemanticVersion *string `locationName:"semanticVersion" type:"string"`
+
+	SourceCodeArchiveUrl *string `locationName:"sourceCodeArchiveUrl" type:"string"`
 
 	SourceCodeUrl *string `locationName:"sourceCodeUrl" type:"string"`
 
@@ -1103,6 +1761,25 @@ func (s CreateApplicationRequest) GoString() string {
 	return s.String()
 }
 
+// Validate inspects the fields of the type to determine if they are valid.
+func (s *CreateApplicationRequest) Validate() error {
+	invalidParams := request.ErrInvalidParams{Context: "CreateApplicationRequest"}
+	if s.Author == nil {
+		invalidParams.Add(request.NewErrParamRequired("Author"))
+	}
+	if s.Description == nil {
+		invalidParams.Add(request.NewErrParamRequired("Description"))
+	}
+	if s.Name == nil {
+		invalidParams.Add(request.NewErrParamRequired("Name"))
+	}
+
+	if invalidParams.Len() > 0 {
+		return invalidParams
+	}
+	return nil
+}
+
 // SetAuthor sets the Author field's value.
 func (s *CreateApplicationRequest) SetAuthor(v string) *CreateApplicationRequest {
 	s.Author = &v
@@ -1112,6 +1789,12 @@ func (s *CreateApplicationRequest) SetAuthor(v string) *CreateApplicationRequest
 // SetDescription sets the Description field's value.
 func (s *CreateApplicationRequest) SetDescription(v string) *CreateApplicationRequest {
 	s.Description = &v
+	return s
+}
+
+// SetHomePageUrl sets the HomePageUrl field's value.
+func (s *CreateApplicationRequest) SetHomePageUrl(v string) *CreateApplicationRequest {
+	s.HomePageUrl = &v
 	return s
 }
 
@@ -1157,6 +1840,12 @@ func (s *CreateApplicationRequest) SetSemanticVersion(v string) *CreateApplicati
 	return s
 }
 
+// SetSourceCodeArchiveUrl sets the SourceCodeArchiveUrl field's value.
+func (s *CreateApplicationRequest) SetSourceCodeArchiveUrl(v string) *CreateApplicationRequest {
+	s.SourceCodeArchiveUrl = &v
+	return s
+}
+
 // SetSourceCodeUrl sets the SourceCodeUrl field's value.
 func (s *CreateApplicationRequest) SetSourceCodeUrl(v string) *CreateApplicationRequest {
 	s.SourceCodeUrl = &v
@@ -1181,7 +1870,6 @@ func (s *CreateApplicationRequest) SetTemplateUrl(v string) *CreateApplicationRe
 	return s
 }
 
-// See also, https://docs.aws.amazon.com/goto/WebAPI/serverlessrepo-2017-09-08/CreateApplicationVersionResponse
 type CreateApplicationVersionOutput struct {
 	_ struct{} `type:"structure"`
 
@@ -1191,7 +1879,13 @@ type CreateApplicationVersionOutput struct {
 
 	ParameterDefinitions []*ParameterDefinition `locationName:"parameterDefinitions" type:"list"`
 
+	RequiredCapabilities []*string `locationName:"requiredCapabilities" type:"list"`
+
+	ResourcesSupported *bool `locationName:"resourcesSupported" type:"boolean"`
+
 	SemanticVersion *string `locationName:"semanticVersion" type:"string"`
+
+	SourceCodeArchiveUrl *string `locationName:"sourceCodeArchiveUrl" type:"string"`
 
 	SourceCodeUrl *string `locationName:"sourceCodeUrl" type:"string"`
 
@@ -1226,9 +1920,27 @@ func (s *CreateApplicationVersionOutput) SetParameterDefinitions(v []*ParameterD
 	return s
 }
 
+// SetRequiredCapabilities sets the RequiredCapabilities field's value.
+func (s *CreateApplicationVersionOutput) SetRequiredCapabilities(v []*string) *CreateApplicationVersionOutput {
+	s.RequiredCapabilities = v
+	return s
+}
+
+// SetResourcesSupported sets the ResourcesSupported field's value.
+func (s *CreateApplicationVersionOutput) SetResourcesSupported(v bool) *CreateApplicationVersionOutput {
+	s.ResourcesSupported = &v
+	return s
+}
+
 // SetSemanticVersion sets the SemanticVersion field's value.
 func (s *CreateApplicationVersionOutput) SetSemanticVersion(v string) *CreateApplicationVersionOutput {
 	s.SemanticVersion = &v
+	return s
+}
+
+// SetSourceCodeArchiveUrl sets the SourceCodeArchiveUrl field's value.
+func (s *CreateApplicationVersionOutput) SetSourceCodeArchiveUrl(v string) *CreateApplicationVersionOutput {
+	s.SourceCodeArchiveUrl = &v
 	return s
 }
 
@@ -1244,7 +1956,6 @@ func (s *CreateApplicationVersionOutput) SetTemplateUrl(v string) *CreateApplica
 	return s
 }
 
-// See also, https://docs.aws.amazon.com/goto/WebAPI/serverlessrepo-2017-09-08/CreateApplicationVersionRequest
 type CreateApplicationVersionRequest struct {
 	_ struct{} `type:"structure"`
 
@@ -1253,6 +1964,8 @@ type CreateApplicationVersionRequest struct {
 
 	// SemanticVersion is a required field
 	SemanticVersion *string `location:"uri" locationName:"semanticVersion" type:"string" required:"true"`
+
+	SourceCodeArchiveUrl *string `locationName:"sourceCodeArchiveUrl" type:"string"`
 
 	SourceCodeUrl *string `locationName:"sourceCodeUrl" type:"string"`
 
@@ -1277,8 +1990,14 @@ func (s *CreateApplicationVersionRequest) Validate() error {
 	if s.ApplicationId == nil {
 		invalidParams.Add(request.NewErrParamRequired("ApplicationId"))
 	}
+	if s.ApplicationId != nil && len(*s.ApplicationId) < 1 {
+		invalidParams.Add(request.NewErrParamMinLen("ApplicationId", 1))
+	}
 	if s.SemanticVersion == nil {
 		invalidParams.Add(request.NewErrParamRequired("SemanticVersion"))
+	}
+	if s.SemanticVersion != nil && len(*s.SemanticVersion) < 1 {
+		invalidParams.Add(request.NewErrParamMinLen("SemanticVersion", 1))
 	}
 
 	if invalidParams.Len() > 0 {
@@ -1296,6 +2015,12 @@ func (s *CreateApplicationVersionRequest) SetApplicationId(v string) *CreateAppl
 // SetSemanticVersion sets the SemanticVersion field's value.
 func (s *CreateApplicationVersionRequest) SetSemanticVersion(v string) *CreateApplicationVersionRequest {
 	s.SemanticVersion = &v
+	return s
+}
+
+// SetSourceCodeArchiveUrl sets the SourceCodeArchiveUrl field's value.
+func (s *CreateApplicationVersionRequest) SetSourceCodeArchiveUrl(v string) *CreateApplicationVersionRequest {
+	s.SourceCodeArchiveUrl = &v
 	return s
 }
 
@@ -1317,7 +2042,6 @@ func (s *CreateApplicationVersionRequest) SetTemplateUrl(v string) *CreateApplic
 	return s
 }
 
-// See also, https://docs.aws.amazon.com/goto/WebAPI/serverlessrepo-2017-09-08/CreateCloudFormationChangeSetResponse
 type CreateCloudFormationChangeSetOutput struct {
 	_ struct{} `type:"structure"`
 
@@ -1364,18 +2088,39 @@ func (s *CreateCloudFormationChangeSetOutput) SetStackId(v string) *CreateCloudF
 	return s
 }
 
-// See also, https://docs.aws.amazon.com/goto/WebAPI/serverlessrepo-2017-09-08/CreateCloudFormationChangeSetRequest
 type CreateCloudFormationChangeSetRequest struct {
 	_ struct{} `type:"structure"`
 
 	// ApplicationId is a required field
 	ApplicationId *string `location:"uri" locationName:"applicationId" type:"string" required:"true"`
 
+	Capabilities []*string `locationName:"capabilities" type:"list"`
+
+	ChangeSetName *string `locationName:"changeSetName" type:"string"`
+
+	ClientToken *string `locationName:"clientToken" type:"string"`
+
+	Description *string `locationName:"description" type:"string"`
+
+	NotificationArns []*string `locationName:"notificationArns" type:"list"`
+
 	ParameterOverrides []*ParameterValue `locationName:"parameterOverrides" type:"list"`
+
+	ResourceTypes []*string `locationName:"resourceTypes" type:"list"`
+
+	// This property corresponds to the AWS CloudFormation RollbackConfiguration
+	// (https://docs.aws.amazon.com/goto/WebAPI/cloudformation-2010-05-15/RollbackConfiguration)
+	// Data Type.
+	RollbackConfiguration *RollbackConfiguration `locationName:"rollbackConfiguration" type:"structure"`
 
 	SemanticVersion *string `locationName:"semanticVersion" type:"string"`
 
-	StackName *string `locationName:"stackName" type:"string"`
+	// StackName is a required field
+	StackName *string `locationName:"stackName" type:"string" required:"true"`
+
+	Tags []*Tag `locationName:"tags" type:"list"`
+
+	TemplateId *string `locationName:"templateId" type:"string"`
 }
 
 // String returns the string representation
@@ -1394,6 +2139,37 @@ func (s *CreateCloudFormationChangeSetRequest) Validate() error {
 	if s.ApplicationId == nil {
 		invalidParams.Add(request.NewErrParamRequired("ApplicationId"))
 	}
+	if s.ApplicationId != nil && len(*s.ApplicationId) < 1 {
+		invalidParams.Add(request.NewErrParamMinLen("ApplicationId", 1))
+	}
+	if s.StackName == nil {
+		invalidParams.Add(request.NewErrParamRequired("StackName"))
+	}
+	if s.ParameterOverrides != nil {
+		for i, v := range s.ParameterOverrides {
+			if v == nil {
+				continue
+			}
+			if err := v.Validate(); err != nil {
+				invalidParams.AddNested(fmt.Sprintf("%s[%v]", "ParameterOverrides", i), err.(request.ErrInvalidParams))
+			}
+		}
+	}
+	if s.RollbackConfiguration != nil {
+		if err := s.RollbackConfiguration.Validate(); err != nil {
+			invalidParams.AddNested("RollbackConfiguration", err.(request.ErrInvalidParams))
+		}
+	}
+	if s.Tags != nil {
+		for i, v := range s.Tags {
+			if v == nil {
+				continue
+			}
+			if err := v.Validate(); err != nil {
+				invalidParams.AddNested(fmt.Sprintf("%s[%v]", "Tags", i), err.(request.ErrInvalidParams))
+			}
+		}
+	}
 
 	if invalidParams.Len() > 0 {
 		return invalidParams
@@ -1407,9 +2183,51 @@ func (s *CreateCloudFormationChangeSetRequest) SetApplicationId(v string) *Creat
 	return s
 }
 
+// SetCapabilities sets the Capabilities field's value.
+func (s *CreateCloudFormationChangeSetRequest) SetCapabilities(v []*string) *CreateCloudFormationChangeSetRequest {
+	s.Capabilities = v
+	return s
+}
+
+// SetChangeSetName sets the ChangeSetName field's value.
+func (s *CreateCloudFormationChangeSetRequest) SetChangeSetName(v string) *CreateCloudFormationChangeSetRequest {
+	s.ChangeSetName = &v
+	return s
+}
+
+// SetClientToken sets the ClientToken field's value.
+func (s *CreateCloudFormationChangeSetRequest) SetClientToken(v string) *CreateCloudFormationChangeSetRequest {
+	s.ClientToken = &v
+	return s
+}
+
+// SetDescription sets the Description field's value.
+func (s *CreateCloudFormationChangeSetRequest) SetDescription(v string) *CreateCloudFormationChangeSetRequest {
+	s.Description = &v
+	return s
+}
+
+// SetNotificationArns sets the NotificationArns field's value.
+func (s *CreateCloudFormationChangeSetRequest) SetNotificationArns(v []*string) *CreateCloudFormationChangeSetRequest {
+	s.NotificationArns = v
+	return s
+}
+
 // SetParameterOverrides sets the ParameterOverrides field's value.
 func (s *CreateCloudFormationChangeSetRequest) SetParameterOverrides(v []*ParameterValue) *CreateCloudFormationChangeSetRequest {
 	s.ParameterOverrides = v
+	return s
+}
+
+// SetResourceTypes sets the ResourceTypes field's value.
+func (s *CreateCloudFormationChangeSetRequest) SetResourceTypes(v []*string) *CreateCloudFormationChangeSetRequest {
+	s.ResourceTypes = v
+	return s
+}
+
+// SetRollbackConfiguration sets the RollbackConfiguration field's value.
+func (s *CreateCloudFormationChangeSetRequest) SetRollbackConfiguration(v *RollbackConfiguration) *CreateCloudFormationChangeSetRequest {
+	s.RollbackConfiguration = v
 	return s
 }
 
@@ -1425,7 +2243,188 @@ func (s *CreateCloudFormationChangeSetRequest) SetStackName(v string) *CreateClo
 	return s
 }
 
-// See also, https://docs.aws.amazon.com/goto/WebAPI/serverlessrepo-2017-09-08/GetApplicationRequest
+// SetTags sets the Tags field's value.
+func (s *CreateCloudFormationChangeSetRequest) SetTags(v []*Tag) *CreateCloudFormationChangeSetRequest {
+	s.Tags = v
+	return s
+}
+
+// SetTemplateId sets the TemplateId field's value.
+func (s *CreateCloudFormationChangeSetRequest) SetTemplateId(v string) *CreateCloudFormationChangeSetRequest {
+	s.TemplateId = &v
+	return s
+}
+
+type CreateCloudFormationTemplateInput struct {
+	_ struct{} `type:"structure"`
+
+	// ApplicationId is a required field
+	ApplicationId *string `location:"uri" locationName:"applicationId" type:"string" required:"true"`
+
+	SemanticVersion *string `locationName:"semanticVersion" type:"string"`
+}
+
+// String returns the string representation
+func (s CreateCloudFormationTemplateInput) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s CreateCloudFormationTemplateInput) GoString() string {
+	return s.String()
+}
+
+// Validate inspects the fields of the type to determine if they are valid.
+func (s *CreateCloudFormationTemplateInput) Validate() error {
+	invalidParams := request.ErrInvalidParams{Context: "CreateCloudFormationTemplateInput"}
+	if s.ApplicationId == nil {
+		invalidParams.Add(request.NewErrParamRequired("ApplicationId"))
+	}
+	if s.ApplicationId != nil && len(*s.ApplicationId) < 1 {
+		invalidParams.Add(request.NewErrParamMinLen("ApplicationId", 1))
+	}
+
+	if invalidParams.Len() > 0 {
+		return invalidParams
+	}
+	return nil
+}
+
+// SetApplicationId sets the ApplicationId field's value.
+func (s *CreateCloudFormationTemplateInput) SetApplicationId(v string) *CreateCloudFormationTemplateInput {
+	s.ApplicationId = &v
+	return s
+}
+
+// SetSemanticVersion sets the SemanticVersion field's value.
+func (s *CreateCloudFormationTemplateInput) SetSemanticVersion(v string) *CreateCloudFormationTemplateInput {
+	s.SemanticVersion = &v
+	return s
+}
+
+type CreateCloudFormationTemplateOutput struct {
+	_ struct{} `type:"structure"`
+
+	ApplicationId *string `locationName:"applicationId" type:"string"`
+
+	CreationTime *string `locationName:"creationTime" type:"string"`
+
+	ExpirationTime *string `locationName:"expirationTime" type:"string"`
+
+	SemanticVersion *string `locationName:"semanticVersion" type:"string"`
+
+	Status *string `locationName:"status" type:"string" enum:"Status"`
+
+	TemplateId *string `locationName:"templateId" type:"string"`
+
+	TemplateUrl *string `locationName:"templateUrl" type:"string"`
+}
+
+// String returns the string representation
+func (s CreateCloudFormationTemplateOutput) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s CreateCloudFormationTemplateOutput) GoString() string {
+	return s.String()
+}
+
+// SetApplicationId sets the ApplicationId field's value.
+func (s *CreateCloudFormationTemplateOutput) SetApplicationId(v string) *CreateCloudFormationTemplateOutput {
+	s.ApplicationId = &v
+	return s
+}
+
+// SetCreationTime sets the CreationTime field's value.
+func (s *CreateCloudFormationTemplateOutput) SetCreationTime(v string) *CreateCloudFormationTemplateOutput {
+	s.CreationTime = &v
+	return s
+}
+
+// SetExpirationTime sets the ExpirationTime field's value.
+func (s *CreateCloudFormationTemplateOutput) SetExpirationTime(v string) *CreateCloudFormationTemplateOutput {
+	s.ExpirationTime = &v
+	return s
+}
+
+// SetSemanticVersion sets the SemanticVersion field's value.
+func (s *CreateCloudFormationTemplateOutput) SetSemanticVersion(v string) *CreateCloudFormationTemplateOutput {
+	s.SemanticVersion = &v
+	return s
+}
+
+// SetStatus sets the Status field's value.
+func (s *CreateCloudFormationTemplateOutput) SetStatus(v string) *CreateCloudFormationTemplateOutput {
+	s.Status = &v
+	return s
+}
+
+// SetTemplateId sets the TemplateId field's value.
+func (s *CreateCloudFormationTemplateOutput) SetTemplateId(v string) *CreateCloudFormationTemplateOutput {
+	s.TemplateId = &v
+	return s
+}
+
+// SetTemplateUrl sets the TemplateUrl field's value.
+func (s *CreateCloudFormationTemplateOutput) SetTemplateUrl(v string) *CreateCloudFormationTemplateOutput {
+	s.TemplateUrl = &v
+	return s
+}
+
+type DeleteApplicationInput struct {
+	_ struct{} `type:"structure"`
+
+	// ApplicationId is a required field
+	ApplicationId *string `location:"uri" locationName:"applicationId" type:"string" required:"true"`
+}
+
+// String returns the string representation
+func (s DeleteApplicationInput) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s DeleteApplicationInput) GoString() string {
+	return s.String()
+}
+
+// Validate inspects the fields of the type to determine if they are valid.
+func (s *DeleteApplicationInput) Validate() error {
+	invalidParams := request.ErrInvalidParams{Context: "DeleteApplicationInput"}
+	if s.ApplicationId == nil {
+		invalidParams.Add(request.NewErrParamRequired("ApplicationId"))
+	}
+	if s.ApplicationId != nil && len(*s.ApplicationId) < 1 {
+		invalidParams.Add(request.NewErrParamMinLen("ApplicationId", 1))
+	}
+
+	if invalidParams.Len() > 0 {
+		return invalidParams
+	}
+	return nil
+}
+
+// SetApplicationId sets the ApplicationId field's value.
+func (s *DeleteApplicationInput) SetApplicationId(v string) *DeleteApplicationInput {
+	s.ApplicationId = &v
+	return s
+}
+
+type DeleteApplicationOutput struct {
+	_ struct{} `type:"structure"`
+}
+
+// String returns the string representation
+func (s DeleteApplicationOutput) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s DeleteApplicationOutput) GoString() string {
+	return s.String()
+}
+
 type GetApplicationInput struct {
 	_ struct{} `type:"structure"`
 
@@ -1451,6 +2450,9 @@ func (s *GetApplicationInput) Validate() error {
 	if s.ApplicationId == nil {
 		invalidParams.Add(request.NewErrParamRequired("ApplicationId"))
 	}
+	if s.ApplicationId != nil && len(*s.ApplicationId) < 1 {
+		invalidParams.Add(request.NewErrParamMinLen("ApplicationId", 1))
+	}
 
 	if invalidParams.Len() > 0 {
 		return invalidParams
@@ -1470,7 +2472,6 @@ func (s *GetApplicationInput) SetSemanticVersion(v string) *GetApplicationInput 
 	return s
 }
 
-// See also, https://docs.aws.amazon.com/goto/WebAPI/serverlessrepo-2017-09-08/GetApplicationResponse
 type GetApplicationOutput struct {
 	_ struct{} `type:"structure"`
 
@@ -1481,6 +2482,8 @@ type GetApplicationOutput struct {
 	CreationTime *string `locationName:"creationTime" type:"string"`
 
 	Description *string `locationName:"description" type:"string"`
+
+	HomePageUrl *string `locationName:"homePageUrl" type:"string"`
 
 	Labels []*string `locationName:"labels" type:"list"`
 
@@ -1530,6 +2533,12 @@ func (s *GetApplicationOutput) SetDescription(v string) *GetApplicationOutput {
 	return s
 }
 
+// SetHomePageUrl sets the HomePageUrl field's value.
+func (s *GetApplicationOutput) SetHomePageUrl(v string) *GetApplicationOutput {
+	s.HomePageUrl = &v
+	return s
+}
+
 // SetLabels sets the Labels field's value.
 func (s *GetApplicationOutput) SetLabels(v []*string) *GetApplicationOutput {
 	s.Labels = v
@@ -1566,7 +2575,6 @@ func (s *GetApplicationOutput) SetVersion(v *Version) *GetApplicationOutput {
 	return s
 }
 
-// See also, https://docs.aws.amazon.com/goto/WebAPI/serverlessrepo-2017-09-08/GetApplicationPolicyRequest
 type GetApplicationPolicyInput struct {
 	_ struct{} `type:"structure"`
 
@@ -1590,6 +2598,9 @@ func (s *GetApplicationPolicyInput) Validate() error {
 	if s.ApplicationId == nil {
 		invalidParams.Add(request.NewErrParamRequired("ApplicationId"))
 	}
+	if s.ApplicationId != nil && len(*s.ApplicationId) < 1 {
+		invalidParams.Add(request.NewErrParamMinLen("ApplicationId", 1))
+	}
 
 	if invalidParams.Len() > 0 {
 		return invalidParams
@@ -1603,7 +2614,6 @@ func (s *GetApplicationPolicyInput) SetApplicationId(v string) *GetApplicationPo
 	return s
 }
 
-// See also, https://docs.aws.amazon.com/goto/WebAPI/serverlessrepo-2017-09-08/GetApplicationPolicyResponse
 type GetApplicationPolicyOutput struct {
 	_ struct{} `type:"structure"`
 
@@ -1626,7 +2636,226 @@ func (s *GetApplicationPolicyOutput) SetStatements(v []*ApplicationPolicyStateme
 	return s
 }
 
-// See also, https://docs.aws.amazon.com/goto/WebAPI/serverlessrepo-2017-09-08/ListApplicationVersionsRequest
+type GetCloudFormationTemplateInput struct {
+	_ struct{} `type:"structure"`
+
+	// ApplicationId is a required field
+	ApplicationId *string `location:"uri" locationName:"applicationId" type:"string" required:"true"`
+
+	// TemplateId is a required field
+	TemplateId *string `location:"uri" locationName:"templateId" type:"string" required:"true"`
+}
+
+// String returns the string representation
+func (s GetCloudFormationTemplateInput) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s GetCloudFormationTemplateInput) GoString() string {
+	return s.String()
+}
+
+// Validate inspects the fields of the type to determine if they are valid.
+func (s *GetCloudFormationTemplateInput) Validate() error {
+	invalidParams := request.ErrInvalidParams{Context: "GetCloudFormationTemplateInput"}
+	if s.ApplicationId == nil {
+		invalidParams.Add(request.NewErrParamRequired("ApplicationId"))
+	}
+	if s.ApplicationId != nil && len(*s.ApplicationId) < 1 {
+		invalidParams.Add(request.NewErrParamMinLen("ApplicationId", 1))
+	}
+	if s.TemplateId == nil {
+		invalidParams.Add(request.NewErrParamRequired("TemplateId"))
+	}
+	if s.TemplateId != nil && len(*s.TemplateId) < 1 {
+		invalidParams.Add(request.NewErrParamMinLen("TemplateId", 1))
+	}
+
+	if invalidParams.Len() > 0 {
+		return invalidParams
+	}
+	return nil
+}
+
+// SetApplicationId sets the ApplicationId field's value.
+func (s *GetCloudFormationTemplateInput) SetApplicationId(v string) *GetCloudFormationTemplateInput {
+	s.ApplicationId = &v
+	return s
+}
+
+// SetTemplateId sets the TemplateId field's value.
+func (s *GetCloudFormationTemplateInput) SetTemplateId(v string) *GetCloudFormationTemplateInput {
+	s.TemplateId = &v
+	return s
+}
+
+type GetCloudFormationTemplateOutput struct {
+	_ struct{} `type:"structure"`
+
+	ApplicationId *string `locationName:"applicationId" type:"string"`
+
+	CreationTime *string `locationName:"creationTime" type:"string"`
+
+	ExpirationTime *string `locationName:"expirationTime" type:"string"`
+
+	SemanticVersion *string `locationName:"semanticVersion" type:"string"`
+
+	Status *string `locationName:"status" type:"string" enum:"Status"`
+
+	TemplateId *string `locationName:"templateId" type:"string"`
+
+	TemplateUrl *string `locationName:"templateUrl" type:"string"`
+}
+
+// String returns the string representation
+func (s GetCloudFormationTemplateOutput) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s GetCloudFormationTemplateOutput) GoString() string {
+	return s.String()
+}
+
+// SetApplicationId sets the ApplicationId field's value.
+func (s *GetCloudFormationTemplateOutput) SetApplicationId(v string) *GetCloudFormationTemplateOutput {
+	s.ApplicationId = &v
+	return s
+}
+
+// SetCreationTime sets the CreationTime field's value.
+func (s *GetCloudFormationTemplateOutput) SetCreationTime(v string) *GetCloudFormationTemplateOutput {
+	s.CreationTime = &v
+	return s
+}
+
+// SetExpirationTime sets the ExpirationTime field's value.
+func (s *GetCloudFormationTemplateOutput) SetExpirationTime(v string) *GetCloudFormationTemplateOutput {
+	s.ExpirationTime = &v
+	return s
+}
+
+// SetSemanticVersion sets the SemanticVersion field's value.
+func (s *GetCloudFormationTemplateOutput) SetSemanticVersion(v string) *GetCloudFormationTemplateOutput {
+	s.SemanticVersion = &v
+	return s
+}
+
+// SetStatus sets the Status field's value.
+func (s *GetCloudFormationTemplateOutput) SetStatus(v string) *GetCloudFormationTemplateOutput {
+	s.Status = &v
+	return s
+}
+
+// SetTemplateId sets the TemplateId field's value.
+func (s *GetCloudFormationTemplateOutput) SetTemplateId(v string) *GetCloudFormationTemplateOutput {
+	s.TemplateId = &v
+	return s
+}
+
+// SetTemplateUrl sets the TemplateUrl field's value.
+func (s *GetCloudFormationTemplateOutput) SetTemplateUrl(v string) *GetCloudFormationTemplateOutput {
+	s.TemplateUrl = &v
+	return s
+}
+
+type ListApplicationDependenciesInput struct {
+	_ struct{} `type:"structure"`
+
+	// ApplicationId is a required field
+	ApplicationId *string `location:"uri" locationName:"applicationId" type:"string" required:"true"`
+
+	MaxItems *int64 `location:"querystring" locationName:"maxItems" min:"1" type:"integer"`
+
+	NextToken *string `location:"querystring" locationName:"nextToken" type:"string"`
+
+	SemanticVersion *string `location:"querystring" locationName:"semanticVersion" type:"string"`
+}
+
+// String returns the string representation
+func (s ListApplicationDependenciesInput) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s ListApplicationDependenciesInput) GoString() string {
+	return s.String()
+}
+
+// Validate inspects the fields of the type to determine if they are valid.
+func (s *ListApplicationDependenciesInput) Validate() error {
+	invalidParams := request.ErrInvalidParams{Context: "ListApplicationDependenciesInput"}
+	if s.ApplicationId == nil {
+		invalidParams.Add(request.NewErrParamRequired("ApplicationId"))
+	}
+	if s.ApplicationId != nil && len(*s.ApplicationId) < 1 {
+		invalidParams.Add(request.NewErrParamMinLen("ApplicationId", 1))
+	}
+	if s.MaxItems != nil && *s.MaxItems < 1 {
+		invalidParams.Add(request.NewErrParamMinValue("MaxItems", 1))
+	}
+
+	if invalidParams.Len() > 0 {
+		return invalidParams
+	}
+	return nil
+}
+
+// SetApplicationId sets the ApplicationId field's value.
+func (s *ListApplicationDependenciesInput) SetApplicationId(v string) *ListApplicationDependenciesInput {
+	s.ApplicationId = &v
+	return s
+}
+
+// SetMaxItems sets the MaxItems field's value.
+func (s *ListApplicationDependenciesInput) SetMaxItems(v int64) *ListApplicationDependenciesInput {
+	s.MaxItems = &v
+	return s
+}
+
+// SetNextToken sets the NextToken field's value.
+func (s *ListApplicationDependenciesInput) SetNextToken(v string) *ListApplicationDependenciesInput {
+	s.NextToken = &v
+	return s
+}
+
+// SetSemanticVersion sets the SemanticVersion field's value.
+func (s *ListApplicationDependenciesInput) SetSemanticVersion(v string) *ListApplicationDependenciesInput {
+	s.SemanticVersion = &v
+	return s
+}
+
+type ListApplicationDependenciesOutput struct {
+	_ struct{} `type:"structure"`
+
+	Dependencies []*ApplicationDependencySummary `locationName:"dependencies" type:"list"`
+
+	NextToken *string `locationName:"nextToken" type:"string"`
+}
+
+// String returns the string representation
+func (s ListApplicationDependenciesOutput) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s ListApplicationDependenciesOutput) GoString() string {
+	return s.String()
+}
+
+// SetDependencies sets the Dependencies field's value.
+func (s *ListApplicationDependenciesOutput) SetDependencies(v []*ApplicationDependencySummary) *ListApplicationDependenciesOutput {
+	s.Dependencies = v
+	return s
+}
+
+// SetNextToken sets the NextToken field's value.
+func (s *ListApplicationDependenciesOutput) SetNextToken(v string) *ListApplicationDependenciesOutput {
+	s.NextToken = &v
+	return s
+}
+
 type ListApplicationVersionsInput struct {
 	_ struct{} `type:"structure"`
 
@@ -1653,6 +2882,9 @@ func (s *ListApplicationVersionsInput) Validate() error {
 	invalidParams := request.ErrInvalidParams{Context: "ListApplicationVersionsInput"}
 	if s.ApplicationId == nil {
 		invalidParams.Add(request.NewErrParamRequired("ApplicationId"))
+	}
+	if s.ApplicationId != nil && len(*s.ApplicationId) < 1 {
+		invalidParams.Add(request.NewErrParamMinLen("ApplicationId", 1))
 	}
 	if s.MaxItems != nil && *s.MaxItems < 1 {
 		invalidParams.Add(request.NewErrParamMinValue("MaxItems", 1))
@@ -1682,7 +2914,6 @@ func (s *ListApplicationVersionsInput) SetNextToken(v string) *ListApplicationVe
 	return s
 }
 
-// See also, https://docs.aws.amazon.com/goto/WebAPI/serverlessrepo-2017-09-08/ListApplicationVersionsResponse
 type ListApplicationVersionsOutput struct {
 	_ struct{} `type:"structure"`
 
@@ -1713,7 +2944,6 @@ func (s *ListApplicationVersionsOutput) SetVersions(v []*VersionSummary) *ListAp
 	return s
 }
 
-// See also, https://docs.aws.amazon.com/goto/WebAPI/serverlessrepo-2017-09-08/ListApplicationsRequest
 type ListApplicationsInput struct {
 	_ struct{} `type:"structure"`
 
@@ -1757,7 +2987,6 @@ func (s *ListApplicationsInput) SetNextToken(v string) *ListApplicationsInput {
 	return s
 }
 
-// See also, https://docs.aws.amazon.com/goto/WebAPI/serverlessrepo-2017-09-08/ListApplicationsResponse
 type ListApplicationsOutput struct {
 	_ struct{} `type:"structure"`
 
@@ -1789,76 +3018,97 @@ func (s *ListApplicationsOutput) SetNextToken(v string) *ListApplicationsOutput 
 }
 
 // Parameters supported by the application.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/serverlessrepo-2017-09-08/ParameterDefinition
 type ParameterDefinition struct {
 	_ struct{} `type:"structure"`
 
 	// A regular expression that represents the patterns to allow for String types.
 	AllowedPattern *string `locationName:"allowedPattern" type:"string"`
 
-	// Array containing the list of values allowed for the parameter.
+	// An array containing the list of values allowed for the parameter.
 	AllowedValues []*string `locationName:"allowedValues" type:"list"`
 
 	// A string that explains a constraint when the constraint is violated. For
-	// example, without a constraint description,\n a parameter that has an allowed
-	// pattern of [A-Za-z0-9]+ displays the following error message when the user\n
-	// specifies an invalid value:\n\n Malformed input-Parameter MyParameter must
-	// match pattern [A-Za-z0-9]+ \n \nBy adding a constraint description, such
-	// as "must contain only uppercase and lowercase letters, and numbers," you
-	// can display\n the following customized error message:\n\n Malformed input-Parameter
-	// MyParameter must contain only uppercase and lowercase letters and numbers.
+	// example, without a constraint description, a parameter that has an allowed
+	// pattern of [A-Za-z0-9]+ displays the following error message when the user
+	// specifies an invalid value:
+	//
+	// Malformed input-Parameter MyParameter must match pattern [A-Za-z0-9]+
+	//
+	// By adding a constraint description, such as "must contain only uppercase
+	// and lowercase letters and numbers," you can display the following customized
+	// error message:
+	//
+	// Malformed input-Parameter MyParameter must contain only uppercase and lowercase
+	// letters and numbers.
 	ConstraintDescription *string `locationName:"constraintDescription" type:"string"`
 
 	// A value of the appropriate type for the template to use if no value is specified
-	// when a stack is created.\n If you define constraints for the parameter, you
+	// when a stack is created. If you define constraints for the parameter, you
 	// must specify a value that adheres to those constraints.
 	DefaultValue *string `locationName:"defaultValue" type:"string"`
 
 	// A string of up to 4,000 characters that describes the parameter.
 	Description *string `locationName:"description" type:"string"`
 
-	// An integer value that determines the largest number of characters you want
-	// to allow for String types.
+	// An integer value that determines the largest number of characters that you
+	// want to allow for String types.
 	MaxLength *int64 `locationName:"maxLength" type:"integer"`
 
-	// A numeric value that determines the largest numeric value you want to allow
-	// for Number types.
+	// A numeric value that determines the largest numeric value that you want to
+	// allow for Number types.
 	MaxValue *int64 `locationName:"maxValue" type:"integer"`
 
-	// An integer value that determines the smallest number of characters you want
-	// to allow for String types.
+	// An integer value that determines the smallest number of characters that you
+	// want to allow for String types.
 	MinLength *int64 `locationName:"minLength" type:"integer"`
 
-	// A numeric value that determines the smallest numeric value you want to allow
-	// for Number types.
+	// A numeric value that determines the smallest numeric value that you want
+	// to allow for Number types.
 	MinValue *int64 `locationName:"minValue" type:"integer"`
 
 	// The name of the parameter.
-	Name *string `locationName:"name" type:"string"`
+	//
+	// Name is a required field
+	Name *string `locationName:"name" type:"string" required:"true"`
 
 	// Whether to mask the parameter value whenever anyone makes a call that describes
-	// the stack. If you set the\n value to true, the parameter value is masked
-	// with asterisks (*****).
+	// the stack. If you set the value to true, the parameter value is masked with
+	// asterisks (*****).
 	NoEcho *bool `locationName:"noEcho" type:"boolean"`
 
-	// A list of SAM resources that use this parameter.
-	ReferencedByResources []*string `locationName:"referencedByResources" type:"list"`
+	// A list of AWS SAM resources that use this parameter.
+	//
+	// ReferencedByResources is a required field
+	ReferencedByResources []*string `locationName:"referencedByResources" type:"list" required:"true"`
 
-	// The type of the parameter.\nValid values: String | Number | List | CommaDelimitedList
-	// \n \n\n String : A literal string.\nFor example, users could specify "MyUserName"
-	// .\n\n Number : An integer or float. AWS CloudFormation validates the parameter
-	// value as a number; however, when you use the\n parameter elsewhere in your
-	// template (for example, by using the Ref intrinsic function), the parameter
-	// value becomes a string.\nFor example, users could specify "8888" .\n\n List
-	// : An array of integers or floats that are separated by commas. AWS CloudFormation
-	// validates the parameter value as numbers; however, when\n you use the parameter
-	// elsewhere in your template (for example, by using the Ref intrinsic function),
-	// the parameter value becomes a list of strings.\nFor example, users could
-	// specify "80,20", and a Ref results in ["80","20"] .\n\n CommaDelimitedList
-	// : An array of literal strings that are separated by commas. The total number
-	// of strings should be one more than the total number of commas.\n Also, each
-	// member string is space-trimmed.\nFor example, users could specify "test,dev,prod",
-	// and a Ref results in ["test","dev","prod"] .
+	// The type of the parameter.
+	//
+	// Valid values: String | Number | List<Number> | CommaDelimitedList
+	//
+	// String: A literal string.
+	//
+	// For example, users can specify "MyUserName".
+	//
+	// Number: An integer or float. AWS CloudFormation validates the parameter value
+	// as a number. However, when you use the parameter elsewhere in your template
+	// (for example, by using the Ref intrinsic function), the parameter value becomes
+	// a string.
+	//
+	// For example, users might specify "8888".
+	//
+	// List<Number>: An array of integers or floats that are separated by commas.
+	// AWS CloudFormation validates the parameter value as numbers. However, when
+	// you use the parameter elsewhere in your template (for example, by using the
+	// Ref intrinsic function), the parameter value becomes a list of strings.
+	//
+	// For example, users might specify "80,20", and then Ref results in ["80","20"].
+	//
+	// CommaDelimitedList: An array of literal strings that are separated by commas.
+	// The total number of strings should be one more than the total number of commas.
+	// Also, each member string is space-trimmed.
+	//
+	// For example, users might specify "test,dev,prod", and then Ref results in
+	// ["test","dev","prod"].
 	Type *string `locationName:"type" type:"string"`
 }
 
@@ -1951,17 +3201,20 @@ func (s *ParameterDefinition) SetType(v string) *ParameterDefinition {
 }
 
 // Parameter value of the application.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/serverlessrepo-2017-09-08/ParameterValue
 type ParameterValue struct {
 	_ struct{} `type:"structure"`
 
 	// The key associated with the parameter. If you don't specify a key and value
-	// for a particular parameter, AWS CloudFormation\n uses the default value that
+	// for a particular parameter, AWS CloudFormation uses the default value that
 	// is specified in your template.
-	Name *string `locationName:"name" type:"string"`
+	//
+	// Name is a required field
+	Name *string `locationName:"name" type:"string" required:"true"`
 
 	// The input value associated with the parameter.
-	Value *string `locationName:"value" type:"string"`
+	//
+	// Value is a required field
+	Value *string `locationName:"value" type:"string" required:"true"`
 }
 
 // String returns the string representation
@@ -1972,6 +3225,22 @@ func (s ParameterValue) String() string {
 // GoString returns the string representation
 func (s ParameterValue) GoString() string {
 	return s.String()
+}
+
+// Validate inspects the fields of the type to determine if they are valid.
+func (s *ParameterValue) Validate() error {
+	invalidParams := request.ErrInvalidParams{Context: "ParameterValue"}
+	if s.Name == nil {
+		invalidParams.Add(request.NewErrParamRequired("Name"))
+	}
+	if s.Value == nil {
+		invalidParams.Add(request.NewErrParamRequired("Value"))
+	}
+
+	if invalidParams.Len() > 0 {
+		return invalidParams
+	}
+	return nil
 }
 
 // SetName sets the Name field's value.
@@ -1986,14 +3255,14 @@ func (s *ParameterValue) SetValue(v string) *ParameterValue {
 	return s
 }
 
-// See also, https://docs.aws.amazon.com/goto/WebAPI/serverlessrepo-2017-09-08/PutApplicationPolicyRequest
 type PutApplicationPolicyInput struct {
 	_ struct{} `type:"structure"`
 
 	// ApplicationId is a required field
 	ApplicationId *string `location:"uri" locationName:"applicationId" type:"string" required:"true"`
 
-	Statements []*ApplicationPolicyStatement `locationName:"statements" type:"list"`
+	// Statements is a required field
+	Statements []*ApplicationPolicyStatement `locationName:"statements" type:"list" required:"true"`
 }
 
 // String returns the string representation
@@ -2011,6 +3280,22 @@ func (s *PutApplicationPolicyInput) Validate() error {
 	invalidParams := request.ErrInvalidParams{Context: "PutApplicationPolicyInput"}
 	if s.ApplicationId == nil {
 		invalidParams.Add(request.NewErrParamRequired("ApplicationId"))
+	}
+	if s.ApplicationId != nil && len(*s.ApplicationId) < 1 {
+		invalidParams.Add(request.NewErrParamMinLen("ApplicationId", 1))
+	}
+	if s.Statements == nil {
+		invalidParams.Add(request.NewErrParamRequired("Statements"))
+	}
+	if s.Statements != nil {
+		for i, v := range s.Statements {
+			if v == nil {
+				continue
+			}
+			if err := v.Validate(); err != nil {
+				invalidParams.AddNested(fmt.Sprintf("%s[%v]", "Statements", i), err.(request.ErrInvalidParams))
+			}
+		}
 	}
 
 	if invalidParams.Len() > 0 {
@@ -2031,7 +3316,6 @@ func (s *PutApplicationPolicyInput) SetStatements(v []*ApplicationPolicyStatemen
 	return s
 }
 
-// See also, https://docs.aws.amazon.com/goto/WebAPI/serverlessrepo-2017-09-08/PutApplicationPolicyResponse
 type PutApplicationPolicyOutput struct {
 	_ struct{} `type:"structure"`
 
@@ -2054,7 +3338,181 @@ func (s *PutApplicationPolicyOutput) SetStatements(v []*ApplicationPolicyStateme
 	return s
 }
 
-// See also, https://docs.aws.amazon.com/goto/WebAPI/serverlessrepo-2017-09-08/UpdateApplicationResponse
+// This property corresponds to the AWS CloudFormation RollbackConfiguration
+// (https://docs.aws.amazon.com/goto/WebAPI/cloudformation-2010-05-15/RollbackConfiguration)
+// Data Type.
+type RollbackConfiguration struct {
+	_ struct{} `type:"structure"`
+
+	// This property corresponds to the content of the same name for the AWS CloudFormation
+	// RollbackConfiguration (https://docs.aws.amazon.com/goto/WebAPI/cloudformation-2010-05-15/RollbackConfiguration)
+	// Data Type.
+	MonitoringTimeInMinutes *int64 `locationName:"monitoringTimeInMinutes" type:"integer"`
+
+	// This property corresponds to the content of the same name for the AWS CloudFormation
+	// RollbackConfiguration (https://docs.aws.amazon.com/goto/WebAPI/cloudformation-2010-05-15/RollbackConfiguration)
+	// Data Type.
+	RollbackTriggers []*RollbackTrigger `locationName:"rollbackTriggers" type:"list"`
+}
+
+// String returns the string representation
+func (s RollbackConfiguration) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s RollbackConfiguration) GoString() string {
+	return s.String()
+}
+
+// Validate inspects the fields of the type to determine if they are valid.
+func (s *RollbackConfiguration) Validate() error {
+	invalidParams := request.ErrInvalidParams{Context: "RollbackConfiguration"}
+	if s.RollbackTriggers != nil {
+		for i, v := range s.RollbackTriggers {
+			if v == nil {
+				continue
+			}
+			if err := v.Validate(); err != nil {
+				invalidParams.AddNested(fmt.Sprintf("%s[%v]", "RollbackTriggers", i), err.(request.ErrInvalidParams))
+			}
+		}
+	}
+
+	if invalidParams.Len() > 0 {
+		return invalidParams
+	}
+	return nil
+}
+
+// SetMonitoringTimeInMinutes sets the MonitoringTimeInMinutes field's value.
+func (s *RollbackConfiguration) SetMonitoringTimeInMinutes(v int64) *RollbackConfiguration {
+	s.MonitoringTimeInMinutes = &v
+	return s
+}
+
+// SetRollbackTriggers sets the RollbackTriggers field's value.
+func (s *RollbackConfiguration) SetRollbackTriggers(v []*RollbackTrigger) *RollbackConfiguration {
+	s.RollbackTriggers = v
+	return s
+}
+
+// This property corresponds to the AWS CloudFormation RollbackTrigger (https://docs.aws.amazon.com/goto/WebAPI/cloudformation-2010-05-15/RollbackTrigger)
+// Data Type.
+type RollbackTrigger struct {
+	_ struct{} `type:"structure"`
+
+	// This property corresponds to the content of the same name for the AWS CloudFormation
+	// RollbackTrigger (https://docs.aws.amazon.com/goto/WebAPI/cloudformation-2010-05-15/RollbackTrigger)
+	// Data Type.
+	//
+	// Arn is a required field
+	Arn *string `locationName:"arn" type:"string" required:"true"`
+
+	// This property corresponds to the content of the same name for the AWS CloudFormation
+	// RollbackTrigger (https://docs.aws.amazon.com/goto/WebAPI/cloudformation-2010-05-15/RollbackTrigger)
+	// Data Type.
+	//
+	// Type is a required field
+	Type *string `locationName:"type" type:"string" required:"true"`
+}
+
+// String returns the string representation
+func (s RollbackTrigger) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s RollbackTrigger) GoString() string {
+	return s.String()
+}
+
+// Validate inspects the fields of the type to determine if they are valid.
+func (s *RollbackTrigger) Validate() error {
+	invalidParams := request.ErrInvalidParams{Context: "RollbackTrigger"}
+	if s.Arn == nil {
+		invalidParams.Add(request.NewErrParamRequired("Arn"))
+	}
+	if s.Type == nil {
+		invalidParams.Add(request.NewErrParamRequired("Type"))
+	}
+
+	if invalidParams.Len() > 0 {
+		return invalidParams
+	}
+	return nil
+}
+
+// SetArn sets the Arn field's value.
+func (s *RollbackTrigger) SetArn(v string) *RollbackTrigger {
+	s.Arn = &v
+	return s
+}
+
+// SetType sets the Type field's value.
+func (s *RollbackTrigger) SetType(v string) *RollbackTrigger {
+	s.Type = &v
+	return s
+}
+
+// This property corresponds to the AWS CloudFormation Tag (https://docs.aws.amazon.com/goto/WebAPI/cloudformation-2010-05-15/Tag)
+// Data Type.
+type Tag struct {
+	_ struct{} `type:"structure"`
+
+	// This property corresponds to the content of the same name for the AWS CloudFormation
+	// Tag (https://docs.aws.amazon.com/goto/WebAPI/cloudformation-2010-05-15/Tag)
+	// Data Type.
+	//
+	// Key is a required field
+	Key *string `locationName:"key" type:"string" required:"true"`
+
+	// This property corresponds to the content of the same name for the AWS CloudFormation
+	// Tag (https://docs.aws.amazon.com/goto/WebAPI/cloudformation-2010-05-15/Tag)
+	// Data Type.
+	//
+	// Value is a required field
+	Value *string `locationName:"value" type:"string" required:"true"`
+}
+
+// String returns the string representation
+func (s Tag) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s Tag) GoString() string {
+	return s.String()
+}
+
+// Validate inspects the fields of the type to determine if they are valid.
+func (s *Tag) Validate() error {
+	invalidParams := request.ErrInvalidParams{Context: "Tag"}
+	if s.Key == nil {
+		invalidParams.Add(request.NewErrParamRequired("Key"))
+	}
+	if s.Value == nil {
+		invalidParams.Add(request.NewErrParamRequired("Value"))
+	}
+
+	if invalidParams.Len() > 0 {
+		return invalidParams
+	}
+	return nil
+}
+
+// SetKey sets the Key field's value.
+func (s *Tag) SetKey(v string) *Tag {
+	s.Key = &v
+	return s
+}
+
+// SetValue sets the Value field's value.
+func (s *Tag) SetValue(v string) *Tag {
+	s.Value = &v
+	return s
+}
+
 type UpdateApplicationOutput struct {
 	_ struct{} `type:"structure"`
 
@@ -2065,6 +3523,8 @@ type UpdateApplicationOutput struct {
 	CreationTime *string `locationName:"creationTime" type:"string"`
 
 	Description *string `locationName:"description" type:"string"`
+
+	HomePageUrl *string `locationName:"homePageUrl" type:"string"`
 
 	Labels []*string `locationName:"labels" type:"list"`
 
@@ -2114,6 +3574,12 @@ func (s *UpdateApplicationOutput) SetDescription(v string) *UpdateApplicationOut
 	return s
 }
 
+// SetHomePageUrl sets the HomePageUrl field's value.
+func (s *UpdateApplicationOutput) SetHomePageUrl(v string) *UpdateApplicationOutput {
+	s.HomePageUrl = &v
+	return s
+}
+
 // SetLabels sets the Labels field's value.
 func (s *UpdateApplicationOutput) SetLabels(v []*string) *UpdateApplicationOutput {
 	s.Labels = v
@@ -2150,7 +3616,6 @@ func (s *UpdateApplicationOutput) SetVersion(v *Version) *UpdateApplicationOutpu
 	return s
 }
 
-// See also, https://docs.aws.amazon.com/goto/WebAPI/serverlessrepo-2017-09-08/UpdateApplicationRequest
 type UpdateApplicationRequest struct {
 	_ struct{} `type:"structure"`
 
@@ -2160,6 +3625,8 @@ type UpdateApplicationRequest struct {
 	Author *string `locationName:"author" type:"string"`
 
 	Description *string `locationName:"description" type:"string"`
+
+	HomePageUrl *string `locationName:"homePageUrl" type:"string"`
 
 	Labels []*string `locationName:"labels" type:"list"`
 
@@ -2183,6 +3650,9 @@ func (s *UpdateApplicationRequest) Validate() error {
 	invalidParams := request.ErrInvalidParams{Context: "UpdateApplicationRequest"}
 	if s.ApplicationId == nil {
 		invalidParams.Add(request.NewErrParamRequired("ApplicationId"))
+	}
+	if s.ApplicationId != nil && len(*s.ApplicationId) < 1 {
+		invalidParams.Add(request.NewErrParamMinLen("ApplicationId", 1))
 	}
 
 	if invalidParams.Len() > 0 {
@@ -2209,6 +3679,12 @@ func (s *UpdateApplicationRequest) SetDescription(v string) *UpdateApplicationRe
 	return s
 }
 
+// SetHomePageUrl sets the HomePageUrl field's value.
+func (s *UpdateApplicationRequest) SetHomePageUrl(v string) *UpdateApplicationRequest {
+	s.HomePageUrl = &v
+	return s
+}
+
 // SetLabels sets the Labels field's value.
 func (s *UpdateApplicationRequest) SetLabels(v []*string) *UpdateApplicationRequest {
 	s.Labels = v
@@ -2228,27 +3704,88 @@ func (s *UpdateApplicationRequest) SetReadmeUrl(v string) *UpdateApplicationRequ
 }
 
 // Application version details.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/serverlessrepo-2017-09-08/Version
 type Version struct {
 	_ struct{} `type:"structure"`
 
 	// The application Amazon Resource Name (ARN).
-	ApplicationId *string `locationName:"applicationId" type:"string"`
+	//
+	// ApplicationId is a required field
+	ApplicationId *string `locationName:"applicationId" type:"string" required:"true"`
 
-	// The date/time this resource was created.
-	CreationTime *string `locationName:"creationTime" type:"string"`
+	// The date and time this resource was created.
+	//
+	// CreationTime is a required field
+	CreationTime *string `locationName:"creationTime" type:"string" required:"true"`
 
-	// Array of parameter types supported by the application.
-	ParameterDefinitions []*ParameterDefinition `locationName:"parameterDefinitions" type:"list"`
+	// An array of parameter types supported by the application.
+	//
+	// ParameterDefinitions is a required field
+	ParameterDefinitions []*ParameterDefinition `locationName:"parameterDefinitions" type:"list" required:"true"`
 
-	// The semantic version of the application:\n\n https://semver.org/
-	SemanticVersion *string `locationName:"semanticVersion" type:"string"`
+	// A list of values that you must specify before you can deploy certain applications.
+	// Some applications might include resources that can affect permissions in
+	// your AWS account, for example, by creating new AWS Identity and Access Management
+	// (IAM) users. For those applications, you must explicitly acknowledge their
+	// capabilities by specifying this parameter.
+	//
+	// The only valid values are CAPABILITY_IAM, CAPABILITY_NAMED_IAM, CAPABILITY_RESOURCE_POLICY,
+	// and CAPABILITY_AUTO_EXPAND.
+	//
+	// The following resources require you to specify CAPABILITY_IAM or CAPABILITY_NAMED_IAM:
+	// AWS::IAM::Group (https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-properties-iam-group.html),
+	// AWS::IAM::InstanceProfile (https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-iam-instanceprofile.html),
+	// AWS::IAM::Policy (https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-iam-policy.html),
+	// and AWS::IAM::Role (https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-iam-role.html).
+	// If the application contains IAM resources, you can specify either CAPABILITY_IAM
+	// or CAPABILITY_NAMED_IAM. If the application contains IAM resources with custom
+	// names, you must specify CAPABILITY_NAMED_IAM.
+	//
+	// The following resources require you to specify CAPABILITY_RESOURCE_POLICY:
+	// AWS::Lambda::Permission (https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-lambda-permission.html),
+	// AWS::IAM:Policy (https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-iam-policy.html),
+	// AWS::ApplicationAutoScaling::ScalingPolicy (https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-applicationautoscaling-scalingpolicy.html),
+	// AWS::S3::BucketPolicy (https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-properties-s3-policy.html),
+	// AWS::SQS::QueuePolicy (https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-properties-sqs-policy.html),
+	// and AWS::SNS::TopicPolicy (https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-properties-sns-policy.html).
+	//
+	// Applications that contain one or more nested applications require you to
+	// specify CAPABILITY_AUTO_EXPAND.
+	//
+	// If your application template contains any of the above resources, we recommend
+	// that you review all permissions associated with the application before deploying.
+	// If you don't specify this parameter for an application that requires capabilities,
+	// the call will fail.
+	//
+	// RequiredCapabilities is a required field
+	RequiredCapabilities []*string `locationName:"requiredCapabilities" type:"list" required:"true"`
 
-	// A link to a public repository for the source code of your application.
+	// Whether all of the AWS resources contained in this application are supported
+	// in the region in which it is being retrieved.
+	//
+	// ResourcesSupported is a required field
+	ResourcesSupported *bool `locationName:"resourcesSupported" type:"boolean" required:"true"`
+
+	// The semantic version of the application:
+	//
+	// https://semver.org/ (https://semver.org/)
+	//
+	// SemanticVersion is a required field
+	SemanticVersion *string `locationName:"semanticVersion" type:"string" required:"true"`
+
+	// A link to the S3 object that contains the ZIP archive of the source code
+	// for this version of your application.
+	//
+	// Maximum size 50 MB
+	SourceCodeArchiveUrl *string `locationName:"sourceCodeArchiveUrl" type:"string"`
+
+	// A link to a public repository for the source code of your application, for
+	// example the URL of a specific GitHub commit.
 	SourceCodeUrl *string `locationName:"sourceCodeUrl" type:"string"`
 
-	// A link to the packaged SAM template of your application.
-	TemplateUrl *string `locationName:"templateUrl" type:"string"`
+	// A link to the packaged AWS SAM template of your application.
+	//
+	// TemplateUrl is a required field
+	TemplateUrl *string `locationName:"templateUrl" type:"string" required:"true"`
 }
 
 // String returns the string representation
@@ -2279,9 +3816,27 @@ func (s *Version) SetParameterDefinitions(v []*ParameterDefinition) *Version {
 	return s
 }
 
+// SetRequiredCapabilities sets the RequiredCapabilities field's value.
+func (s *Version) SetRequiredCapabilities(v []*string) *Version {
+	s.RequiredCapabilities = v
+	return s
+}
+
+// SetResourcesSupported sets the ResourcesSupported field's value.
+func (s *Version) SetResourcesSupported(v bool) *Version {
+	s.ResourcesSupported = &v
+	return s
+}
+
 // SetSemanticVersion sets the SemanticVersion field's value.
 func (s *Version) SetSemanticVersion(v string) *Version {
 	s.SemanticVersion = &v
+	return s
+}
+
+// SetSourceCodeArchiveUrl sets the SourceCodeArchiveUrl field's value.
+func (s *Version) SetSourceCodeArchiveUrl(v string) *Version {
+	s.SourceCodeArchiveUrl = &v
 	return s
 }
 
@@ -2297,21 +3852,29 @@ func (s *Version) SetTemplateUrl(v string) *Version {
 	return s
 }
 
-// Application version summary.
-// See also, https://docs.aws.amazon.com/goto/WebAPI/serverlessrepo-2017-09-08/VersionSummary
+// An application version summary.
 type VersionSummary struct {
 	_ struct{} `type:"structure"`
 
 	// The application Amazon Resource Name (ARN).
-	ApplicationId *string `locationName:"applicationId" type:"string"`
+	//
+	// ApplicationId is a required field
+	ApplicationId *string `locationName:"applicationId" type:"string" required:"true"`
 
-	// The date/time this resource was created.
-	CreationTime *string `locationName:"creationTime" type:"string"`
+	// The date and time this resource was created.
+	//
+	// CreationTime is a required field
+	CreationTime *string `locationName:"creationTime" type:"string" required:"true"`
 
-	// The semantic version of the application:\n\n https://semver.org/
-	SemanticVersion *string `locationName:"semanticVersion" type:"string"`
+	// The semantic version of the application:
+	//
+	// https://semver.org/ (https://semver.org/)
+	//
+	// SemanticVersion is a required field
+	SemanticVersion *string `locationName:"semanticVersion" type:"string" required:"true"`
 
-	// A link to a public repository for the source code of your application.
+	// A link to a public repository for the source code of your application, for
+	// example the URL of a specific GitHub commit.
 	SourceCodeUrl *string `locationName:"sourceCodeUrl" type:"string"`
 }
 
@@ -2348,3 +3911,29 @@ func (s *VersionSummary) SetSourceCodeUrl(v string) *VersionSummary {
 	s.SourceCodeUrl = &v
 	return s
 }
+
+// Values that must be specified in order to deploy some applications.
+const (
+	// CapabilityCapabilityIam is a Capability enum value
+	CapabilityCapabilityIam = "CAPABILITY_IAM"
+
+	// CapabilityCapabilityNamedIam is a Capability enum value
+	CapabilityCapabilityNamedIam = "CAPABILITY_NAMED_IAM"
+
+	// CapabilityCapabilityAutoExpand is a Capability enum value
+	CapabilityCapabilityAutoExpand = "CAPABILITY_AUTO_EXPAND"
+
+	// CapabilityCapabilityResourcePolicy is a Capability enum value
+	CapabilityCapabilityResourcePolicy = "CAPABILITY_RESOURCE_POLICY"
+)
+
+const (
+	// StatusPreparing is a Status enum value
+	StatusPreparing = "PREPARING"
+
+	// StatusActive is a Status enum value
+	StatusActive = "ACTIVE"
+
+	// StatusExpired is a Status enum value
+	StatusExpired = "EXPIRED"
+)

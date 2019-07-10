@@ -59,7 +59,7 @@ func (c *gitPush) Execute(ctx context.Context, comm client.Communicator, logger 
 	checkoutCommand := fmt.Sprintf("git checkout %s", conf.ProjectRef.Branch)
 	logger.Execution().Debugf("git checkout command %s", checkoutCommand)
 	jpm := c.JasperManager()
-	cmd := jpm.CreateCommand(ctx).Directory(c.Directory).Append(checkoutCommand).
+	cmd := jpm.CreateCommand(ctx).Directory(filepath.ToSlash(filepath.Join(conf.WorkDir, c.Directory))).Append(checkoutCommand).
 		SetOutputSender(level.Info, logger.Task().GetSender()).SetErrorSender(level.Error, logger.Task().GetSender())
 	if err = cmd.Run(ctx); err != nil {
 		return errors.Wrapf(err, "can't checkout '%s' branch", conf.ProjectRef.Branch)
@@ -67,7 +67,7 @@ func (c *gitPush) Execute(ctx context.Context, comm client.Communicator, logger 
 
 	// fail the merge if HEAD has moved
 	logger.Execution().Info("Checking HEAD")
-	headSHA, err := c.revParse(ctx, logger, "HEAD")
+	headSHA, err := c.revParse(ctx, conf, logger, "HEAD")
 	if err != nil {
 		return errors.Wrap(err, "can't get SHA for HEAD")
 	}
@@ -75,7 +75,7 @@ func (c *gitPush) Execute(ctx context.Context, comm client.Communicator, logger 
 		return errors.Errorf("tip of branch '%s' has moved. Expecting '%s', but found '%s'", conf.ProjectRef.Branch, p.Githash, headSHA)
 	}
 
-	// get author information
+	// get commit information
 	taskData := client.TaskData{
 		ID:     conf.Task.Id,
 		Secret: conf.Task.Secret,
@@ -84,17 +84,10 @@ func (c *gitPush) Execute(ctx context.Context, comm client.Communicator, logger 
 	if err != nil {
 		return errors.Wrapf(err, "can't get author information for user '%s'", p.Author)
 	}
-
-	logger.Execution().Info("Pushing patch")
 	params := pushParams{
-		directory:   c.Directory,
 		authorName:  restModel.FromAPIString(u.DisplayName),
 		authorEmail: restModel.FromAPIString(u.Email),
 		description: p.Description,
-		branch:      conf.ProjectRef.Branch,
-	}
-	if err = c.pushPatch(ctx, logger, params); err != nil {
-		return errors.Wrap(err, "can't push patch")
 	}
 
 	// push module patches
@@ -103,7 +96,8 @@ func (c *gitPush) Execute(ctx context.Context, comm client.Communicator, logger 
 			continue
 		}
 
-		module, err := conf.Project.GetModuleByName(modulePatch.ModuleName)
+		var module *model.Module
+		module, err = conf.Project.GetModuleByName(modulePatch.ModuleName)
 		if err != nil {
 			logger.Execution().Errorf("No module found for %s", modulePatch.ModuleName)
 			continue
@@ -112,18 +106,26 @@ func (c *gitPush) Execute(ctx context.Context, comm client.Communicator, logger 
 
 		checkoutCommand = fmt.Sprintf("git checkout %s", module.Branch)
 		logger.Execution().Debugf("git checkout command: %s", checkoutCommand)
-		cmd := jpm.CreateCommand(ctx).Directory(moduleBase).Append(checkoutCommand).
+		cmd := jpm.CreateCommand(ctx).Directory(filepath.ToSlash(filepath.Join(conf.WorkDir, c.Directory, moduleBase))).Append(checkoutCommand).
 			SetOutputSender(level.Info, logger.Task().GetSender()).SetErrorSender(level.Error, logger.Task().GetSender())
 		if err = cmd.Run(ctx); err != nil {
 			return errors.Wrapf(err, "can't checkout '%s' branch", module.Branch)
 		}
 
 		logger.Execution().Infof("Pushing patch for module %s", module.Name)
-		params.directory = moduleBase
+		params.directory = filepath.ToSlash(filepath.Join(conf.WorkDir, c.Directory, moduleBase))
 		params.branch = module.Branch
 		if err = c.pushPatch(ctx, logger, params); err != nil {
 			return errors.Wrap(err, "can't push module patch")
 		}
+	}
+
+	// Push main patch
+	logger.Execution().Info("Pushing patch")
+	params.directory = filepath.ToSlash(filepath.Join(conf.WorkDir, c.Directory))
+	params.branch = conf.ProjectRef.Branch
+	if err = c.pushPatch(ctx, logger, params); err != nil {
+		return errors.Wrap(err, "can't push patch")
 	}
 
 	return nil
@@ -165,7 +167,7 @@ func (c *gitPush) pushPatch(ctx context.Context, logger client.LoggerProducer, p
 	return errors.Wrap(cmd.Run(ctx), "can't run push commands")
 }
 
-func (c *gitPush) revParse(ctx context.Context, logger client.LoggerProducer, ref string) (string, error) {
+func (c *gitPush) revParse(ctx context.Context, conf *model.TaskConfig, logger client.LoggerProducer, ref string) (string, error) {
 	stdout := noopWriteCloser{
 		&bytes.Buffer{},
 	}
@@ -173,7 +175,7 @@ func (c *gitPush) revParse(ctx context.Context, logger client.LoggerProducer, re
 
 	revParseCommand := fmt.Sprintf("git rev-parse %s", ref)
 	logger.Execution().Debugf("git rev-parse command: %s", revParseCommand)
-	cmd := jpm.CreateCommand(ctx).Directory(c.Directory).Append(revParseCommand).SetOutputWriter(stdout).
+	cmd := jpm.CreateCommand(ctx).Directory(filepath.ToSlash(filepath.Join(conf.WorkDir, c.Directory))).Append(revParseCommand).SetOutputWriter(stdout).
 		SetErrorSender(level.Error, logger.Task().GetSender())
 
 	if err := cmd.Run(ctx); err != nil {

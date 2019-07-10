@@ -42,16 +42,17 @@ type ConfigSection interface {
 	ValidateAndDefault() error
 }
 
-// Settings contains all configuration settings for running Evergreen.
+// Settings contains all configuration settings for running Evergreen. Settings
+// with the "id" struct tag should implement the ConfigSection interface.
 type Settings struct {
-	Id                 string                    `bson:"_id" json:"id"`
+	Id                 string                    `bson:"_id" json:"id" yaml:"id"`
 	Alerts             AlertsConfig              `yaml:"alerts" bson:"alerts" json:"alerts" id:"alerts"`
 	Amboy              AmboyConfig               `yaml:"amboy" bson:"amboy" json:"amboy" id:"amboy"`
 	Api                APIConfig                 `yaml:"api" bson:"api" json:"api" id:"api"`
 	ApiUrl             string                    `yaml:"api_url" bson:"api_url" json:"api_url"`
 	AuthConfig         AuthConfig                `yaml:"auth" bson:"auth" json:"auth" id:"auth"`
-	Banner             string                    `bson:"banner" json:"banner"`
-	BannerTheme        BannerTheme               `bson:"banner_theme" json:"banner_theme"`
+	Banner             string                    `bson:"banner" json:"banner" yaml:"banner"`
+	BannerTheme        BannerTheme               `bson:"banner_theme" json:"banner_theme" yaml:"banner_theme"`
 	Bugsnag            string                    `yaml:"bugsnag" bson:"bugsnag" json:"bugsnag"`
 	ClientBinariesDir  string                    `yaml:"client_binaries_dir" bson:"client_binaries_dir" json:"client_binaries_dir"`
 	CommitQueue        CommitQueueConfig         `yaml:"commit_queue" bson:"commit_queue" json:"commit_queue" id:"commit_queue"`
@@ -59,12 +60,13 @@ type Settings struct {
 	ContainerPools     ContainerPoolsConfig      `yaml:"container_pools" bson:"container_pools" json:"container_pools" id:"container_pools"`
 	Credentials        map[string]string         `yaml:"credentials" bson:"credentials" json:"credentials"`
 	CredentialsNew     util.KeyValuePairSlice    `yaml:"credentials_new" bson:"credentials_new" json:"credentials_new"`
-	JasperConfig       JasperConfig              `yaml:"jasper" bson:"jasper" json:"jasper"`
-	Database           DBSettings                `yaml:"database"`
+	Database           DBSettings                `yaml:"database" json:"database" bson:"database"`
+	DomainName         string                    `yaml:"domain_name" bson:"domain_name" json:"domain_name"`
 	Expansions         map[string]string         `yaml:"expansions" bson:"expansions" json:"expansions"`
 	ExpansionsNew      util.KeyValuePairSlice    `yaml:"expansions_new" bson:"expansions_new" json:"expansions_new"`
 	GithubPRCreatorOrg string                    `yaml:"github_pr_creator_org" bson:"github_pr_creator_org" json:"github_pr_creator_org"`
 	HostInit           HostInitConfig            `yaml:"hostinit" bson:"hostinit" json:"hostinit" id:"hostinit"`
+	HostJasper         HostJasperConfig          `yaml:"host_jasper" bson:"host_jasper" json:"host_jasper" id:"host_jasper"`
 	Jira               JiraConfig                `yaml:"jira" bson:"jira" json:"jira" id:"jira"`
 	JIRANotifications  JIRANotificationsConfig   `yaml:"jira_notifications" json:"jira_notifications" bson:"jira_notifications" id:"jira_notifications"`
 	Keys               map[string]string         `yaml:"keys" bson:"keys" json:"keys"`
@@ -78,7 +80,7 @@ type Settings struct {
 	Providers          CloudProviders            `yaml:"providers" bson:"providers" json:"providers" id:"providers"`
 	RepoTracker        RepoTrackerConfig         `yaml:"repotracker" bson:"repotracker" json:"repotracker" id:"repotracker"`
 	Scheduler          SchedulerConfig           `yaml:"scheduler" bson:"scheduler" json:"scheduler" id:"scheduler"`
-	ServiceFlags       ServiceFlags              `bson:"service_flags" json:"service_flags" id:"service_flags"`
+	ServiceFlags       ServiceFlags              `bson:"service_flags" json:"service_flags" id:"service_flags" yaml:"service_flags"`
 	Slack              SlackConfig               `yaml:"slack" bson:"slack" json:"slack" id:"slack"`
 	Splunk             send.SplunkConnectionInfo `yaml:"splunk" bson:"splunk" json:"splunk"`
 	SuperUsers         []string                  `yaml:"superusers" bson:"superusers" json:"superusers"`
@@ -128,10 +130,11 @@ func (c *Settings) Set() error {
 			containerPoolsKey:     c.ContainerPools,
 			credentialsKey:        c.Credentials,
 			credentialsNewKey:     c.CredentialsNew,
-			jasperKey:             c.JasperConfig,
+			domainNameKey:         c.DomainName,
 			expansionsKey:         c.Expansions,
 			expansionsNewKey:      c.ExpansionsNew,
 			githubPRCreatorOrgKey: c.GithubPRCreatorOrg,
+			hostJasperKey:         c.HostJasper,
 			keysKey:               c.Keys,
 			keysNewKey:            c.KeysNew,
 			logPathKey:            c.LogPath,

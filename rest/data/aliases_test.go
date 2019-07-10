@@ -5,6 +5,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model"
+	restModel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -47,6 +48,12 @@ func (a *AliasSuite) SetupTest() {
 			Variant:   "variant",
 			Task:      "task",
 		},
+		{
+			ProjectID: "other_project_id",
+			Alias:     "delete_me",
+			Variant:   "variant",
+			Task:      "task",
+		},
 	}
 	for _, v := range aliases {
 		a.NoError(v.Upsert())
@@ -55,11 +62,11 @@ func (a *AliasSuite) SetupTest() {
 
 func (a *AliasSuite) TestFindProjectAliases() {
 	found, err := a.sc.FindProjectAliases("project_id")
-	a.Nil(err)
+	a.NoError(err)
 	a.Len(found, 3)
 
 	found, err = a.sc.FindProjectAliases("non-existent")
-	a.Nil(err)
+	a.NoError(err)
 	a.Len(found, 0)
 }
 
@@ -78,4 +85,37 @@ func (a *AliasSuite) TestCopyProjectAliases() {
 	a.NoError(err)
 	a.Len(res, 3)
 
+}
+
+func (a *AliasSuite) TestUpdateProjectAliases() {
+	found, err := a.sc.FindProjectAliases("other_project_id")
+	a.NoError(err)
+	a.Require().Len(found, 2)
+	toUpdate := found[0]
+	toDelete := found[1]
+	toUpdate.Alias = restModel.ToAPIString("different_alias")
+	toDelete.Delete = true
+	aliasUpdates := []restModel.APIProjectAlias{
+		toUpdate,
+		toDelete,
+		{
+			Alias:   restModel.ToAPIString("new_alias"),
+			Task:    restModel.ToAPIString("new_task"),
+			Variant: restModel.ToAPIString("new_variant"),
+		},
+	}
+	a.NoError(a.sc.UpdateProjectAliases("other_project_id", aliasUpdates))
+	found, err = a.sc.FindProjectAliases("other_project_id")
+	a.NoError(err)
+	a.Require().Len(found, 2) // added one alias, deleted another
+
+	a.NotEqual(restModel.FromAPIString(toDelete.ID), found[0].ID)
+	a.NotEqual(restModel.FromAPIString(toDelete.ID), found[1].ID)
+	a.Equal(restModel.FromAPIString(toUpdate.ID), restModel.FromAPIString(found[0].ID))
+	a.Equal("different_alias", restModel.FromAPIString(found[0].Alias))
+
+	a.NotEmpty(found[1].ID)
+	a.Equal("new_alias", restModel.FromAPIString(found[1].Alias))
+	a.Equal("new_task", restModel.FromAPIString(found[1].Task))
+	a.Equal("new_variant", restModel.FromAPIString(found[1].Variant))
 }

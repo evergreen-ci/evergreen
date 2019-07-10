@@ -46,12 +46,11 @@ type PlannerSettings struct {
 	Version                string        `bson:"version" json:"version" mapstructure:"version"`
 	MinimumHosts           int           `bson:"minimum_hosts" json:"minimum_hosts,omitempty" mapstructure:"minimum_hosts,omitempty"`
 	MaximumHosts           int           `bson:"maximum_hosts" json:"maximum_hosts,omitempty" mapstructure:"maximum_hosts,omitempty"`
-	TargetTime             time.Duration `bson:"target_time" json:"target_time,omitempty" mapstructure:"target_time,omitempty"`
-	AcceptableHostIdleTime time.Duration `bson:"acceptable_host_idle_time" json:"acceptable_host_idle_time,omitempty" mapstructure:"acceptable_host_idle_time,omitempty"`
-	GroupVersions          bool          `bson:"group_versions" json:"group_versions,omitempty" mapstructure:"group_versions,omitempty"`
-	PatchZipperFactor      int           `bson:"patch_zipper_factor" json:"patch_zipper_factor,omitempty" mapstructure:"patch_zipper_factor,omitempty"`
-	MainlineFirst          bool          `bson:"mainline_first" json:"mainline_first,omitempty" mapstructure:"mainline_first,omitempty"`
-	PatchFirst             bool          `bson:"patch_first" json:"patch_first,omitempty" mapstructure:"patch_first,omitempty"`
+	TargetTime             time.Duration `bson:"target_time" json:"target_time" mapstructure:"target_time,omitempty"`
+	AcceptableHostIdleTime time.Duration `bson:"acceptable_host_idle_time" json:"acceptable_host_idle_time" mapstructure:"acceptable_host_idle_time,omitempty"`
+	GroupVersions          *bool         `bson:"group_versions" json:"group_versions" mapstructure:"group_versions,omitempty"`
+	PatchZipperFactor      int           `bson:"patch_zipper_factor" json:"patch_zipper_factor" mapstructure:"patch_zipper_factor,omitempty"`
+	TaskOrdering           string        `bson:"task_ordering" json:"task_ordering" mapstructure:"task_ordering,omitempty"`
 }
 
 type FinderSettings struct {
@@ -324,4 +323,63 @@ func (distros DistroGroup) GetDistroIds() []string {
 		ids = append(ids, d.Id)
 	}
 	return ids
+}
+
+// GetResolvedPlannerSettings combines the distro's PlannerSettings fields with the
+// SchedulerConfig defaults to resolve and validate a canonical set of PlannerSettings' field values.
+func (d *Distro) GetResolvedPlannerSettings(config evergreen.SchedulerConfig) (PlannerSettings, error) {
+	catcher := grip.NewBasicCatcher()
+	ps := d.PlannerSettings
+	resolved := PlannerSettings{
+		Version:                ps.Version,
+		MinimumHosts:           ps.MinimumHosts,
+		MaximumHosts:           ps.MaximumHosts,
+		TargetTime:             ps.TargetTime,
+		AcceptableHostIdleTime: ps.AcceptableHostIdleTime,
+		GroupVersions:          ps.GroupVersions,
+		PatchZipperFactor:      ps.PatchZipperFactor,
+		TaskOrdering:           ps.TaskOrdering,
+	}
+	// Validate the resolved PlannerSettings.Version
+	if resolved.Version == "" {
+		resolved.Version = config.Planner
+	}
+	if !util.StringSliceContains(evergreen.ValidPlannerVersions, resolved.Version) {
+		catcher.Add(errors.Errorf("'%s' is not a valid PlannerSettings.Version", resolved.Version))
+	}
+	// Validate the PlannerSettings.MinimumHosts and PlannerSettings.MaximumHosts
+	if resolved.MinimumHosts < 0 {
+		catcher.Add(errors.Errorf("%d is not a valid PlannerSettings.MinimumHosts", resolved.MinimumHosts))
+	}
+	if resolved.MaximumHosts < 0 {
+		catcher.Add(errors.Errorf("%d is not a valid PlannerSettings.MaximumHosts", resolved.MaximumHosts))
+	}
+	// Resolve PlannerSettings.TargetTime and PlannerSettings.AcceptableHostIdleTime
+	if resolved.TargetTime == 0 {
+		resolved.TargetTime = time.Duration(config.TargetTimeSeconds) * time.Second
+	}
+	if resolved.AcceptableHostIdleTime == 0 {
+		resolved.AcceptableHostIdleTime = time.Duration(config.AcceptableHostIdleTimeSeconds) * time.Second
+	}
+	// Resolve whether to PlannerSettings.GroupVersions, or otherwise
+	if resolved.GroupVersions == nil {
+		resolved.GroupVersions = &config.GroupVersions
+	}
+	if resolved.PatchZipperFactor == 0 {
+		resolved.PatchZipperFactor = config.PatchZipperFactor
+	}
+	// Resolve and validate the PlannerSettings.TaskOrdering
+	if resolved.TaskOrdering == "" {
+		resolved.TaskOrdering = config.TaskOrdering
+	}
+	if !util.StringSliceContains(evergreen.ValidTaskOrderings, resolved.TaskOrdering) || resolved.TaskOrdering == "" {
+		catcher.Add(errors.Errorf("'%s' is not a valid PlannerSettings.TaskOrdering", resolved.TaskOrdering))
+	}
+
+	// Any validation errors?
+	if catcher.HasErrors() {
+		return PlannerSettings{}, errors.Wrapf(catcher.Resolve(), "cannot resolve PlannerSettings for distro '%s'", d.Id)
+	}
+
+	return resolved, nil
 }

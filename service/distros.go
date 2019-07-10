@@ -91,6 +91,9 @@ func (uis *UIServer) modifyDistro(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if newDistro.PlannerSettings.Version == "" {
+		newDistro.PlannerSettings.Version = evergreen.PlannerVersionLegacy
+	}
 	if newDistro.BootstrapMethod == "" {
 		newDistro.BootstrapMethod = distro.BootstrapMethodLegacySSH
 	}
@@ -99,6 +102,9 @@ func (uis *UIServer) modifyDistro(w http.ResponseWriter, r *http.Request) {
 	}
 	if newDistro.CloneMethod == "" {
 		newDistro.CloneMethod = distro.CloneMethodLegacySSH
+	}
+	if newDistro.FinderSettings.Version == "" {
+		newDistro.PlannerSettings.Version = evergreen.FinderVersionLegacy
 	}
 
 	// check that the resulting distro is valid

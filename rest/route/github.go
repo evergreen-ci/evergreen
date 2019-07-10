@@ -15,6 +15,7 @@ import (
 	"github.com/evergreen-ci/gimlet"
 	"github.com/google/go-github/github"
 	"github.com/mongodb/amboy"
+	adb "github.com/mongodb/anser/db"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
@@ -177,6 +178,18 @@ func (gh *githubHookApi) Run(ctx context.Context) gimlet.Responder {
 				return gimlet.MakeJSONErrorResponder(err)
 			}
 
+			// if the item is on a commit queue, remove it
+			if err = gh.tryDequeueCommitQueueItemForPR(event.PullRequest); err != nil {
+				grip.Error(message.WrapError(err, message.Fields{
+					"source":  "github hook",
+					"msg_id":  gh.msgID,
+					"event":   gh.eventType,
+					"action":  *event.Action,
+					"message": err.Error(),
+				}))
+				return gimlet.MakeJSONErrorResponder(err)
+			}
+
 			return gimlet.NewJSONResponse(struct{}{})
 		}
 
@@ -327,6 +340,26 @@ func (gh *githubHookApi) commitQueueEnqueue(ctx context.Context, event *github.I
 		"item":    PRNum,
 		"message": "failed to queue notification for commit queue push",
 	}))
+
+	return nil
+}
+
+func (gh *githubHookApi) tryDequeueCommitQueueItemForPR(pr *github.PullRequest) error {
+	err := thirdparty.ValidatePR(pr)
+	if err != nil {
+		return errors.Wrap(err, "GitHub sent an incomplete PR")
+	}
+
+	projRef, err := gh.sc.GetProjectWithCommitQueueByOwnerRepoAndBranch(*pr.Base.Repo.Owner.Login, *pr.Base.Repo.Name, *pr.Base.Ref)
+	if err != nil {
+		return errors.Wrapf(err, "can't find projectRef for %s/%s, branch %s", *pr.Base.Repo.Owner.Login, *pr.Base.Repo.Name, *pr.Base.Ref)
+	}
+
+	_, err = gh.sc.CommitQueueRemoveItem(projRef.Identifier, strconv.Itoa(*pr.Number))
+	// it's okay if there's no matching commit queue or it's not on the queue: there's nothing for us to do
+	if err != nil && !adb.ResultsNotFound(err) {
+		return errors.Wrapf(err, "can't remove item %d from commit queue %s", *pr.Number, projRef.Identifier)
+	}
 
 	return nil
 }

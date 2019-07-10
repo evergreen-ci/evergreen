@@ -31,28 +31,13 @@ type Command struct {
 	runBackground   bool
 	sudo            bool
 	sudoUser        string
-	tags            []string
 
 	cmds   [][]string
 	id     string
-	remote remoteCommandOptions
+	remote RemoteOptions
 	makep  ProcessConstructor
 
 	procs []Process
-}
-
-type remoteCommandOptions struct {
-	host string
-	user string
-	args []string
-}
-
-func (rco *remoteCommandOptions) hostString() string {
-	if rco.user == "" {
-		return rco.host
-	}
-
-	return fmt.Sprintf("%s@%s", rco.user, rco.host)
 }
 
 func (c *Command) sudoCmd() []string {
@@ -94,7 +79,7 @@ func (c *Command) getRemoteCreateOpt(ctx context.Context, args []string) (*Creat
 		remoteCmd += strings.Join(args, " ")
 	}
 
-	opts.Args = append(append([]string{"ssh"}, c.remote.args...), c.remote.hostString(), remoteCmd)
+	opts.Args = append(append([]string{"ssh"}, c.remote.Args...), c.remote.hostString(), remoteCmd)
 	return opts, nil
 }
 
@@ -152,47 +137,58 @@ func (c *Command) String() string {
 	return fmt.Sprintf("id='%s', remote='%s', cmd='%s'", c.id, c.remote.hostString(), c.getCmd())
 }
 
+// Export returns all of the CreateOptions that will be used to spawn the
+// processes that run all subcommands.
+func (c *Command) Export(ctx context.Context) ([]*CreateOptions, error) {
+	opts, err := c.getCreateOpts(ctx)
+	if err != nil {
+		return nil, errors.Wrap(err, "problem getting create options")
+	}
+	return opts, nil
+}
+
 // Directory sets the working directory. If this is a remote command, it sets
 // the working directory of the command being run remotely.
 func (c *Command) Directory(d string) *Command { c.opts.WorkingDirectory = d; return c }
 
 // Host sets the hostname. A blank hostname implies local execution of the
 // command, a non-blank hostname is treated as a remotely executed command.
-func (c *Command) Host(h string) *Command { c.remote.host = h; return c }
+func (c *Command) Host(h string) *Command { c.remote.Host = h; return c }
 
 // User sets the username for remote operations. Host name must be set
 // to execute as a remote command.
-func (c *Command) User(u string) *Command { c.remote.user = u; return c }
+func (c *Command) User(u string) *Command { c.remote.User = u; return c }
 
-// SetSSHArgs sets the arguments, if any, that are passed to the
+// SetRemoteArgs sets the arguments, if any, that are passed to the
 // underlying ssh command, for remote commands.
-func (c *Command) SetSSHArgs(args []string) *Command { c.remote.args = args; return c }
+func (c *Command) SetRemoteArgs(args []string) *Command { c.remote.Args = args; return c }
 
-// ExtendSSHArgs allows you to add arguments, when needed, to the
+// ExtendRemoteArgs allows you to add arguments, when needed, to the
 // underlying ssh command, for remote commands.
-func (c *Command) ExtendSSHArgs(a ...string) *Command {
-	c.remote.args = append(c.remote.args, a...)
+func (c *Command) ExtendRemoteArgs(args ...string) *Command {
+	c.remote.Args = append(c.remote.Args, args...)
 	return c
 }
 
 // Priority sets the logging priority.
 func (c *Command) Priority(l level.Priority) *Command { c.priority = l; return c }
 
-// ID sets the ID.
+// ID sets the ID of the Command, which is independent of the IDs of the
+// subcommands that are executed.
 func (c *Command) ID(id string) *Command { c.id = id; return c }
 
 // SetTags overrides any existing tags for a process with the
 // specified list. Tags are used to filter process with the manager.
-func (c *Command) SetTags(tags []string) *Command { c.tags = tags; return c }
+func (c *Command) SetTags(tags []string) *Command { c.opts.Tags = tags; return c }
 
 // AppendTags adds the specified tags to the existing tag slice. Tags
 // are used to filter process with the manager.
-func (c *Command) AppendTags(t ...string) *Command { c.tags = append(c.tags, t...); return c }
+func (c *Command) AppendTags(t ...string) *Command { c.opts.Tags = append(c.opts.Tags, t...); return c }
 
 // ExtendTags adds all tags in the specified slice to the tags will be
 // added to the process after creation. Tags are used to filter
 // process with the manager.
-func (c *Command) ExtendTags(t []string) *Command { c.tags = append(c.tags, t...); return c }
+func (c *Command) ExtendTags(t []string) *Command { c.opts.Tags = append(c.opts.Tags, t...); return c }
 
 // Background allows you to set the command to run in the background
 // when you call Run(), the command will begin executing but will not
@@ -210,6 +206,24 @@ func (c *Command) IgnoreError(ignore bool) *Command { c.ignoreError = ignore; re
 // SuppressStandardError sets a flag for determining if the Command should
 // discard all standard error content.
 func (c *Command) SuppressStandardError(v bool) *Command { c.opts.Output.SuppressError = v; return c }
+
+// SetLoggers sets the logging output on this command to the specified
+// slice. This removes any loggers previously configured.
+func (c *Command) SetLoggers(l []Logger) *Command { c.opts.Output.Loggers = l; return c }
+
+// AppendLoggers adds one or more loggers to the existing configured
+// loggers in the command.
+func (c *Command) AppendLoggers(l ...Logger) *Command {
+	c.opts.Output.Loggers = append(c.opts.Output.Loggers, l...)
+	return c
+}
+
+// ExtendLoggers takes the existing slice of loggers and adds that to any
+// existing configuration.
+func (c *Command) ExtendLoggers(l []Logger) *Command {
+	c.opts.Output.Loggers = append(c.opts.Output.Loggers, l...)
+	return c
+}
 
 // SuppressStandardOutput sets a flag for determining if the Command should
 // discard all standard output content.
@@ -277,7 +291,7 @@ func (c *Command) ShellScript(shell, script string) *Command {
 	return c
 }
 
-// Bash adds a script using "bash -c", as syntactic sugar for the ShellScript
+// Bash adds a script using "bash -c", as syntactic sugar for the ShellScript2
 // method.
 func (c *Command) Bash(script string) *Command { return c.ShellScript("bash", script) }
 
@@ -403,6 +417,10 @@ func (c *Command) RunParallel(ctx context.Context) error {
 // Close closes this command and its resources.
 func (c *Command) Close() error {
 	return c.opts.Close()
+}
+
+func (c *Command) SetInput(r io.Reader) {
+	c.opts.StandardInput = r
 }
 
 // SetErrorSender sets a Sender to be used by this Command for its output to
@@ -581,7 +599,7 @@ func (c *Command) getCreateOpt(ctx context.Context, args []string) (*CreateOptio
 func (c *Command) getCreateOpts(ctx context.Context) ([]*CreateOptions, error) {
 	out := []*CreateOptions{}
 	catcher := grip.NewBasicCatcher()
-	if c.remote.host != "" {
+	if c.remote.Host != "" {
 		for _, args := range c.cmds {
 			cmd, err := c.getRemoteCreateOpt(ctx, args)
 			if err != nil {
@@ -611,12 +629,12 @@ func (c *Command) getCreateOpts(ctx context.Context) ([]*CreateOptions, error) {
 
 func (c *Command) exec(ctx context.Context, opts *CreateOptions, idx int) error {
 	msg := message.Fields{
-		"id":  c.id,
-		"cmd": strings.Join(opts.Args, " "),
-		"idx": idx,
-		"len": len(c.cmds),
-		"bkg": c.runBackground,
-		"tag": c.tags,
+		"id":   c.id,
+		"cmd":  strings.Join(opts.Args, " "),
+		"idx":  idx,
+		"len":  len(c.cmds),
+		"bkg":  c.runBackground,
+		"tags": c.opts.Tags,
 	}
 
 	var err error

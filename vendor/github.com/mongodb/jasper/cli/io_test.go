@@ -168,6 +168,8 @@ func TestExtractResponse(t *testing.T) {
 						if outcome.Success {
 							require.NoError(t, err)
 							assert.True(t, resp.Successful())
+							assert.Equal(t, n1, resp.ExitCode)
+							assert.Contains(t, resp.Error, errMsg)
 						} else {
 							require.Error(t, err)
 							assert.False(t, resp.Successful())
@@ -178,9 +180,6 @@ func TestExtractResponse(t *testing.T) {
 								assert.Contains(t, resp.ErrorMessage(), unspecifiedRequestFailure)
 							}
 						}
-
-						assert.Equal(t, n1, resp.ExitCode)
-						assert.Equal(t, errMsg, resp.Error)
 					},
 				},
 				"RunningResponse": {

@@ -322,9 +322,15 @@ func PopulateIdleHostJobs(env evergreen.Environment) amboy.QueueOperation {
 			return fmt.Errorf("distro ids %s not found", strings.Join(invalidDistroIDs, ","))
 		}
 
-		for i, info := range distroHosts {
+		distrosMap := make(map[string]distro.Distro, len(distrosFound))
+		for i := range distrosFound {
+			d := distrosFound[i]
+			distrosMap[d.Id] = d
+		}
+
+		for _, info := range distroHosts {
 			totalRunningHosts := info.RunningHostsCount
-			minimumHosts := distrosFound[i].PlannerSettings.MinimumHosts
+			minimumHosts := distrosMap[info.DistroID].PlannerSettings.MinimumHosts
 			nIdleHosts := len(info.IdleHosts)
 
 			maxHostsToTerminate := totalRunningHosts - minimumHosts
@@ -901,5 +907,19 @@ func PopulateLocalQueueJobs(env evergreen.Environment) amboy.QueueOperation {
 		catcher.Add(queue.Put(ctx, NewLocalAmboyStatsCollector(env, fmt.Sprintf("amboy-local-stats-%s", util.RoundPartOfMinute(0).Format(tsFormat)))))
 		return catcher.Resolve()
 
+	}
+}
+
+func PopulatePeriodicBuilds(part int) amboy.QueueOperation {
+	return func(ctx context.Context, queue amboy.Queue) error {
+		projects, err := model.FindPeriodicProjects()
+		if err != nil {
+			return errors.Wrap(err, "error finding periodic projects")
+		}
+		catcher := grip.NewBasicCatcher()
+		for _, project := range projects {
+			catcher.Add(queue.Put(ctx, NewPeriodicBuildJob(project.Identifier, util.RoundPartOfMinute(30).Format(tsFormat))))
+		}
+		return nil
 	}
 }

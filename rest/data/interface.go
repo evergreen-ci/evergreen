@@ -226,9 +226,11 @@ type Connector interface {
 	CheckHostSecret(*http.Request) (int, error)
 
 	// FindProjectAliases queries the database to find all aliases.
-	FindProjectAliases(string) ([]model.ProjectAlias, error)
+	FindProjectAliases(string) ([]restModel.APIProjectAlias, error)
 	// CopyProjectAliases copies aliases from the first project for the second project.
 	CopyProjectAliases(string, string) error
+	// UpdateProjectAliases upserts/deletes aliases for the given project
+	UpdateProjectAliases(string, []restModel.APIProjectAlias) error
 
 	// TriggerRepotracker creates an amboy job to get the commits from a
 	// Github Push Event
@@ -244,10 +246,12 @@ type Connector interface {
 	GeneratePoll(context.Context, string, amboy.QueueGroup) (bool, []string, error)
 
 	// SaveSubscriptions saves a set of notification subscriptions
-	SaveSubscriptions([]event.Subscription) error
+	SaveSubscriptions(string, []restModel.APISubscription) error
 	// GetSubscriptions returns the subscriptions that belong to a user
 	GetSubscriptions(string, event.OwnerType) ([]restModel.APISubscription, error)
-	DeleteSubscription(id string) error
+	DeleteSubscriptions(string, []string) error
+	// CopyProjectSubscriptions copies subscriptions from the first project for the second project.
+	CopyProjectSubscriptions(string, string) error
 
 	// Notifications
 	GetNotificationsStats() (*restModel.APIEventStats, error)

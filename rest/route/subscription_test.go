@@ -32,7 +32,7 @@ func TestSubscriptionRouteSuiteWithDB(t *testing.T) {
 }
 
 func (s *SubscriptionRouteSuite) SetupSuite() {
-	s.postHandler = makeSetSubscrition(s.sc)
+	s.postHandler = makeSetSubscription(s.sc)
 }
 
 func (s *SubscriptionRouteSuite) SetupTest() {
@@ -185,6 +185,7 @@ func (s *SubscriptionRouteSuite) TestProjectSubscription() {
 
 	// delete the subscription
 	d := &subscriptionDeleteHandler{sc: s.sc, id: id}
+	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: h.owner})
 	resp = d.Run(ctx)
 	s.Equal(http.StatusOK, resp.Status())
 	subscription, err := event.FindSubscriptionByID(id)
@@ -214,7 +215,12 @@ func (s *SubscriptionRouteSuite) TestPostUnauthorizedUser() {
 	buffer := bytes.NewBuffer(jsonBody)
 	request, err := http.NewRequest(http.MethodPost, "/subscriptions", buffer)
 	s.NoError(err)
-	s.EqualError(s.postHandler.Parse(ctx, request), "401 (Unauthorized): Cannot change subscriptions for anyone other than yourself")
+	s.NoError(s.postHandler.Parse(ctx, request))
+	resp := s.postHandler.Run(ctx)
+	s.Require().Equal(401, resp.Status())
+	respErr, ok := resp.Data().(gimlet.ErrorResponse)
+	s.True(ok)
+	s.Equal("Cannot change subscriptions for anyone other than yourself", respErr.Message)
 }
 
 func (s *SubscriptionRouteSuite) TestGet() {
@@ -240,15 +246,16 @@ func (s *SubscriptionRouteSuite) TestDeleteValidation() {
 	s.NoError(db.Clear(event.SubscriptionsCollection))
 	ctx := context.Background()
 	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "thanos"})
-	d := &subscriptionDeleteHandler{}
-
+	d := &subscriptionDeleteHandler{sc: s.sc}
 	r, err := http.NewRequest(http.MethodDelete, "/subscriptions", nil)
 	s.NoError(err)
 	s.EqualError(d.Parse(ctx, r), "400 (Bad Request): Must specify an ID to delete")
 
 	r, err = http.NewRequest(http.MethodDelete, "/subscriptions?id=5949645c9acd9704fdd202da", nil)
 	s.NoError(err)
-	s.EqualError(d.Parse(ctx, r), "404 (Not Found): Subscription not found")
+	s.NoError(d.Parse(ctx, r))
+	resp := d.Run(ctx)
+	s.Equal(404, resp.Status())
 
 	subscription := event.Subscription{
 		ID:    "5949645c9acd9604fdd202da",
@@ -260,7 +267,9 @@ func (s *SubscriptionRouteSuite) TestDeleteValidation() {
 	s.NoError(subscription.Upsert())
 	r, err = http.NewRequest(http.MethodDelete, "/subscriptions?id=5949645c9acd9604fdd202da", nil)
 	s.NoError(err)
-	s.EqualError(d.Parse(ctx, r), "401 (Unauthorized): Cannot delete subscriptions for someone other than yourself")
+	s.NoError(d.Parse(ctx, r))
+	resp = d.Run(ctx)
+	s.Equal(401, resp.Status())
 }
 
 func (s *SubscriptionRouteSuite) TestGetWithoutUser() {
@@ -296,7 +305,12 @@ func (s *SubscriptionRouteSuite) TestDisallowedSubscription() {
 	buffer := bytes.NewBuffer(jsonBody)
 	request, err := http.NewRequest(http.MethodPost, "/subscriptions", buffer)
 	s.NoError(err)
-	s.EqualError(s.postHandler.Parse(ctx, request), "400 (Bad Request): Cannot notify by jira-issue for version")
+	s.NoError(s.postHandler.Parse(ctx, request))
+	resp := s.postHandler.Run(ctx)
+	s.Require().Equal(400, resp.Status())
+	respErr, ok := resp.Data().(gimlet.ErrorResponse)
+	s.True(ok)
+	s.Equal("Cannot notify by jira-issue for version", respErr.Message)
 
 	//test that project-level subscriptions are allowed
 	body = []map[string]interface{}{{
@@ -349,7 +363,12 @@ func (s *SubscriptionRouteSuite) TestInvalidTriggerData() {
 	buffer := bytes.NewBuffer(jsonBody)
 	request, err := http.NewRequest(http.MethodPost, "/subscriptions", buffer)
 	s.NoError(err)
-	s.EqualError(s.postHandler.Parse(ctx, request), "400 (Bad Request): Error validating subscription: foo must be a number")
+	s.NoError(s.postHandler.Parse(ctx, request))
+	resp := s.postHandler.Run(ctx)
+	s.Require().Equal(400, resp.Status())
+	respErr, ok := resp.Data().(gimlet.ErrorResponse)
+	s.True(ok)
+	s.Equal("Error validating subscription: foo must be a number", respErr.Message)
 
 	body = []map[string]interface{}{{
 		"resource_type": event.ResourceTypeTask,
@@ -373,7 +392,12 @@ func (s *SubscriptionRouteSuite) TestInvalidTriggerData() {
 	buffer = bytes.NewBuffer(jsonBody)
 	request, err = http.NewRequest(http.MethodPost, "/subscriptions", buffer)
 	s.NoError(err)
-	s.EqualError(s.postHandler.Parse(ctx, request), "400 (Bad Request): Error validating subscription: -2 cannot be negative")
+	s.NoError(s.postHandler.Parse(ctx, request))
+	resp = s.postHandler.Run(ctx)
+	s.Require().Equal(400, resp.Status())
+	respErr, ok = resp.Data().(gimlet.ErrorResponse)
+	s.True(ok)
+	s.Equal("Error validating subscription: -2 cannot be negative", respErr.Message)
 
 	body = []map[string]interface{}{{
 		"resource_type": event.ResourceTypeTask,
@@ -397,7 +421,12 @@ func (s *SubscriptionRouteSuite) TestInvalidTriggerData() {
 	buffer = bytes.NewBuffer(jsonBody)
 	request, err = http.NewRequest(http.MethodPost, "/subscriptions", buffer)
 	s.NoError(err)
-	s.EqualError(s.postHandler.Parse(ctx, request), "400 (Bad Request): Error validating subscription: unable to parse a as float: strconv.ParseFloat: parsing \"a\": invalid syntax")
+	s.NoError(s.postHandler.Parse(ctx, request))
+	resp = s.postHandler.Run(ctx)
+	s.Require().Equal(400, resp.Status())
+	respErr, ok = resp.Data().(gimlet.ErrorResponse)
+	s.True(ok)
+	s.Equal("Error validating subscription: unable to parse a as float: strconv.ParseFloat: parsing \"a\": invalid syntax", respErr.Message)
 
 	body = []map[string]interface{}{{
 		"resource_type": event.ResourceTypeTask,
@@ -418,7 +447,12 @@ func (s *SubscriptionRouteSuite) TestInvalidTriggerData() {
 
 	request, err = http.NewRequest(http.MethodPost, "/subscriptions", bytes.NewBuffer(jsonBody))
 	s.NoError(err)
-	s.EqualError(s.postHandler.Parse(ctx, request), "400 (Bad Request): Invalid selectors: Selector had empty type or data")
+	s.NoError(s.postHandler.Parse(ctx, request))
+	resp = s.postHandler.Run(ctx)
+	s.Require().Equal(400, resp.Status())
+	respErr, ok = resp.Data().(gimlet.ErrorResponse)
+	s.True(ok)
+	s.Equal("Invalid selectors: Selector had empty type or data", respErr.Message)
 }
 
 func (s *SubscriptionRouteSuite) TestInvalidRegexSelectors() {
@@ -445,7 +479,12 @@ func (s *SubscriptionRouteSuite) TestInvalidRegexSelectors() {
 	s.NoError(err)
 	request, err := http.NewRequest(http.MethodPost, "/subscriptions", bytes.NewBuffer(jsonBody))
 	s.NoError(err)
-	s.EqualError(s.postHandler.Parse(ctx, request), "400 (Bad Request): Invalid regex selectors: Selector had empty type or data")
+	s.NoError(s.postHandler.Parse(ctx, request))
+	resp := s.postHandler.Run(ctx)
+	s.Equal(400, resp.Status())
+	respErr, ok := resp.Data().(gimlet.ErrorResponse)
+	s.True(ok)
+	s.Equal("Invalid regex selectors: Selector had empty type or data", respErr.Message)
 
 	body[0]["regex_selectors"] = []map[string]string{{
 		"type": "",
@@ -455,7 +494,12 @@ func (s *SubscriptionRouteSuite) TestInvalidRegexSelectors() {
 	s.NoError(err)
 	request, err = http.NewRequest(http.MethodPost, "/subscriptions", bytes.NewBuffer(jsonBody))
 	s.NoError(err)
-	s.EqualError(s.postHandler.Parse(ctx, request), "400 (Bad Request): Invalid regex selectors: Selector had empty type or data")
+	s.NoError(s.postHandler.Parse(ctx, request))
+	resp = s.postHandler.Run(ctx)
+	s.Equal(400, resp.Status())
+	respErr, ok = resp.Data().(gimlet.ErrorResponse)
+	s.True(ok)
+	s.Equal("Invalid regex selectors: Selector had empty type or data", respErr.Message)
 }
 
 func (s *SubscriptionRouteSuite) TestRejectSubscriptionWithoutSelectors() {
@@ -478,7 +522,12 @@ func (s *SubscriptionRouteSuite) TestRejectSubscriptionWithoutSelectors() {
 	s.NoError(err)
 	request, err := http.NewRequest(http.MethodPost, "/subscriptions", bytes.NewBuffer(jsonBody))
 	s.NoError(err)
-	s.EqualError(s.postHandler.Parse(ctx, request), "400 (Bad Request): Error validating subscription: must specify at least 1 selector")
+	s.NoError(s.postHandler.Parse(ctx, request))
+	resp := s.postHandler.Run(ctx)
+	s.Equal(400, resp.Status())
+	respErr, ok := resp.Data().(gimlet.ErrorResponse)
+	s.True(ok)
+	s.Equal("Error validating subscription: must specify at least 1 selector", respErr.Message)
 }
 
 func (s *SubscriptionRouteSuite) TestAcceptSubscriptionWithOnlyRegexSelectors() {

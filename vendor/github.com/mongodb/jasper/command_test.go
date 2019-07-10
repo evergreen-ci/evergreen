@@ -463,6 +463,53 @@ func TestCommandImplementation(t *testing.T) {
 							assert.NoError(t, err)
 							assert.Len(t, jobs, 3)
 						},
+						"TagFunctions": func(ctx context.Context, t *testing.T, cmd Command) {
+							tags := []string{"tag0", "tag1"}
+							subCmds := []string{"echo hi", "echo bye"}
+							for subTestName, subTestCase := range map[string]func(ctx context.Context, t *testing.T, cmd Command){
+								"SetTags": func(ctx context.Context, t *testing.T, cmd Command) {
+									for _, subCmd := range subCmds {
+										cmd.Append(subCmd)
+									}
+									cmd.SetTags(tags)
+									require.NoError(t, cmd.Run(ctx))
+									assert.Len(t, cmd.procs, len(subCmds))
+									for _, proc := range cmd.procs {
+										assert.Subset(t, tags, proc.GetTags())
+										assert.Subset(t, proc.GetTags(), tags)
+									}
+								},
+								"AppendTags": func(ctx context.Context, t *testing.T, cmd Command) {
+									for _, subCmd := range subCmds {
+										cmd.Append(subCmd)
+									}
+									cmd.AppendTags(tags...)
+									require.NoError(t, cmd.Run(ctx))
+									assert.Len(t, cmd.procs, len(subCmds))
+									for _, proc := range cmd.procs {
+										assert.Subset(t, tags, proc.GetTags())
+										assert.Subset(t, proc.GetTags(), tags)
+									}
+								},
+								"ExtendTags": func(ctx context.Context, t *testing.T, cmd Command) {
+									for _, subCmd := range subCmds {
+										cmd.Append(subCmd)
+									}
+									cmd.ExtendTags(tags)
+									require.NoError(t, cmd.Run(ctx))
+									assert.Len(t, cmd.procs, len(subCmds))
+									for _, proc := range cmd.procs {
+										assert.Subset(t, tags, proc.GetTags())
+										assert.Subset(t, proc.GetTags(), tags)
+									}
+								},
+							} {
+								t.Run(subTestName, func(t *testing.T) {
+									cmd = *NewCommand().ProcConstructor(cmd.makep)
+									subTestCase(ctx, t, cmd)
+								})
+							}
+						},
 						// "": func(ctx context.Context, t *testing.T, cmd Command) {},
 					} {
 						t.Run(name, func(t *testing.T) {

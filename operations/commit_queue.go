@@ -123,7 +123,7 @@ func mergeCommand() cli.Command {
 				large:       c.Bool(largeFlagName),
 			}
 
-			conf, err := NewClientSettings(c.Parent().String(confFlagName))
+			conf, err := NewClientSettings(c.Parent().Parent().String(confFlagName))
 			if err != nil {
 				return errors.Wrap(err, "problem loading configuration")
 			}
@@ -159,7 +159,7 @@ func setModuleCommand() cli.Command {
 				skipConfirm: c.Bool(yesFlagName),
 			}
 
-			conf, err := NewClientSettings(c.Parent().String(confFlagName))
+			conf, err := NewClientSettings(c.Parent().Parent().String(confFlagName))
 			if err != nil {
 				return errors.Wrap(err, "problem loading configuration")
 			}

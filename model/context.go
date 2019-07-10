@@ -25,19 +25,20 @@ type Context struct {
 // by inferring all the relationships between them - for example, e.g. loading a project based on
 // the the task, or the version based on the patch, etc.
 func LoadContext(taskId, buildId, versionId, patchId, projectId string) (Context, error) {
-	ctx := &Context{}
+	ctx := Context{}
 
-	pId, err := ctx.populateTaskBuildVersion(taskId, buildId, versionId)
+	pID, err := ctx.populateTaskBuildVersion(taskId, buildId, versionId)
 	if err != nil {
-		return *ctx, err
+		return ctx, err
 	}
-	if len(projectId) == 0 || (len(pId) > 0 && pId != projectId) {
-		projectId = pId
+
+	if len(projectId) == 0 || (len(pID) > 0 && pID != projectId) {
+		projectId = pID
 	}
 
 	err = ctx.populatePatch(patchId)
 	if err != nil {
-		return *ctx, err
+		return ctx, err
 	}
 	if ctx.Patch != nil && len(projectId) == 0 {
 		projectId = ctx.Patch.Project
@@ -48,28 +49,37 @@ func LoadContext(taskId, buildId, versionId, patchId, projectId string) (Context
 		// Also lookup the ProjectRef itself and add it to context.
 		ctx.ProjectRef, err = FindOneProjectRef(projectId)
 		if err != nil {
-			return *ctx, err
+			return ctx, err
 		}
 	}
-	return *ctx, nil
+	return ctx, nil
 }
 
-// GetProject returns the project associated with the Context.
-func (ctx *Context) GetProject() (*Project, error) {
-	var err error
-
+func (ctx *Context) GetProjectRef() (*ProjectRef, error) {
 	// if no project, use the first project as the default project
 	if ctx.ProjectRef == nil {
+		var err error
 		ctx.ProjectRef, err = FindFirstProjectRef()
 		if err != nil {
 			return nil, errors.Wrap(err, "error finding project ref")
 		}
 	}
 
+	return ctx.ProjectRef, nil
+}
+
+// GetProject returns the project associated with the Context.
+func (ctx *Context) GetProject() (*Project, error) {
 	if ctx.project != nil {
 		return ctx.project, nil
 	}
-	ctx.project, err = FindProject("", ctx.ProjectRef)
+
+	pref, err := ctx.GetProjectRef()
+	if err != nil {
+		return nil, errors.Wrap(err, "problem finding project")
+	}
+
+	ctx.project, err = FindProject("", pref)
 	if err != nil {
 		return nil, errors.Wrap(err, "error finding project")
 	}

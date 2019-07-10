@@ -5,8 +5,6 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
-	"regexp"
-	"strings"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
@@ -208,13 +206,14 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 			Provider string                 `json:"provider"`
 			Settings map[string]interface{} `json:"settings"`
 		} `json:"alert_config"`
-		NotifyOnBuildFailure  bool                        `json:"notify_on_failure"`
-		ForceRepotrackerRun   bool                        `json:"force_repotracker_run"`
-		Subscriptions         []restModel.APISubscription `json:"subscriptions"`
-		DeleteSubscriptions   []string                    `json:"delete_subscriptions"`
-		Triggers              []model.TriggerDefinition   `json:"triggers"`
-		FilesIgnoredFromCache []string                    `json:"files_ignored_from_cache"`
-		DisabledStatsCache    bool                        `json:"disabled_stats_cache"`
+		NotifyOnBuildFailure  bool                             `json:"notify_on_failure"`
+		ForceRepotrackerRun   bool                             `json:"force_repotracker_run"`
+		Subscriptions         []restModel.APISubscription      `json:"subscriptions"`
+		DeleteSubscriptions   []string                         `json:"delete_subscriptions"`
+		Triggers              []model.TriggerDefinition        `json:"triggers"`
+		FilesIgnoredFromCache []string                         `json:"files_ignored_from_cache"`
+		DisabledStatsCache    bool                             `json:"disabled_stats_cache"`
+		PeriodicBuilds        []*model.PeriodicBuildDefinition `json:"periodic_builds"`
 	}{}
 
 	if err = util.ReadJSONInto(util.NewRequestReader(r), &responseRef); err != nil {
@@ -232,9 +231,9 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 	}
 
 	errs := []string{}
-	errs = append(errs, validateProjectAliases(responseRef.GitHubAliases, "GitHub Aliases")...)
-	errs = append(errs, validateProjectAliases(responseRef.CommitQueueAliases, "Commit Queue Aliases")...)
-	errs = append(errs, validateProjectAliases(responseRef.PatchAliases, "Patch Aliases")...)
+	errs = append(errs, model.ValidateProjectAliases(responseRef.GitHubAliases, "GitHub Aliases")...)
+	errs = append(errs, model.ValidateProjectAliases(responseRef.CommitQueueAliases, "Commit Queue Aliases")...)
+	errs = append(errs, model.ValidateProjectAliases(responseRef.PatchAliases, "Patch Aliases")...)
 	if len(errs) > 0 {
 		errMsg := ""
 		for _, err := range errs {
@@ -351,6 +350,9 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 			responseRef.Triggers[i].DefinitionID = util.RandomString()
 		}
 	}
+	for i, buildDef := range responseRef.PeriodicBuilds {
+		catcher.Wrapf(buildDef.Validate(), "invalid periodic build definition on line %d", i+1)
+	}
 	if catcher.HasErrors() {
 		uis.LoggedError(w, r, http.StatusBadRequest, catcher.Resolve())
 		return
@@ -375,6 +377,10 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 	projectRef.Triggers = responseRef.Triggers
 	projectRef.FilesIgnoredFromCache = responseRef.FilesIgnoredFromCache
 	projectRef.DisabledStatsCache = responseRef.DisabledStatsCache
+	projectRef.PeriodicBuilds = []model.PeriodicBuildDefinition{}
+	for _, periodicBuild := range responseRef.PeriodicBuilds {
+		projectRef.PeriodicBuilds = append(projectRef.PeriodicBuilds, *periodicBuild)
+	}
 
 	projectVars, err := model.FindOneProjectVars(id)
 	if err != nil {
@@ -415,7 +421,10 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 			},
 		}
 		subscription.OwnerType = event.OwnerTypeProject
-		subscription.Owner = projectRef.Identifier
+		if subscription.Owner != projectRef.Identifier {
+			subscription.Owner = projectRef.Identifier
+			subscription.ID = ""
+		}
 		if !trigger.ValidateTrigger(subscription.ResourceType, subscription.Trigger) {
 			catcher.Add(errors.Errorf("subscription type/trigger is invalid: %s/%s", subscription.ResourceType, subscription.Trigger))
 			continue
@@ -645,29 +654,4 @@ func (uis *UIServer) projectEvents(w http.ResponseWriter, r *http.Request) {
 		ViewData
 	}{id, uis.GetCommonViewData(w, r, true, true)}
 	uis.render.WriteResponse(w, http.StatusOK, data, "base", template, "base_angular.html", "menu.html")
-}
-
-func validateProjectAliases(aliases []model.ProjectAlias, aliasType string) []string {
-	errs := []string{}
-
-	for i, pd := range aliases {
-		if strings.TrimSpace(pd.Alias) == "" {
-			errs = append(errs, fmt.Sprintf("%s: alias name #%d can't be empty string", aliasType, i+1))
-		}
-		if strings.TrimSpace(pd.Variant) == "" {
-			errs = append(errs, fmt.Sprintf("%s: variant regex #%d can't be empty string", aliasType, i+1))
-		}
-		if (strings.TrimSpace(pd.Task) == "") == (len(pd.Tags) == 0) {
-			errs = append(errs, fmt.Sprintf("%s: must specify exactly one of task regex or tags on line #%d", aliasType, i+1))
-		}
-
-		if _, err := regexp.Compile(pd.Variant); err != nil {
-			errs = append(errs, fmt.Sprintf("%s: variant regex #%d is invalid", aliasType, i+1))
-		}
-		if _, err := regexp.Compile(pd.Task); err != nil {
-			errs = append(errs, fmt.Sprintf("%s: task regex #%d is invalid", aliasType, i+1))
-		}
-	}
-
-	return errs
 }

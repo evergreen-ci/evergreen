@@ -171,6 +171,9 @@ func (pc *DBProjectConnector) FindProjectVarsById(id string) (*restModel.APIProj
 
 // UpdateProjectVars adds new variables, overwrites variables, and deletes variables for the given project.
 func (pc *DBProjectConnector) UpdateProjectVars(projectId string, varsModel *restModel.APIProjectVars) error {
+	if varsModel == nil {
+		return nil
+	}
 	v, err := varsModel.ToService()
 	if err != nil {
 		return errors.Wrap(err, "problem converting to project variable model")

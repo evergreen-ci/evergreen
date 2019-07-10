@@ -124,7 +124,7 @@ func (s *jasperService) List(f *Filter, stream JasperProcessManager_ListServer) 
 
 	for _, p := range procs {
 		if ctx.Err() != nil {
-			return errors.New("operation canceled")
+			return errors.New("list canceled")
 		}
 
 		if err := stream.Send(getProcInfoNoHang(ctx, p)); err != nil {
@@ -144,7 +144,7 @@ func (s *jasperService) Group(t *TagName, stream JasperProcessManager_GroupServe
 
 	for _, p := range procs {
 		if ctx.Err() != nil {
-			return errors.New("operation canceled")
+			return errors.New("list canceled")
 		}
 
 		if err := stream.Send(getProcInfoNoHang(ctx, p)); err != nil {
@@ -203,7 +203,7 @@ func (s *jasperService) Wait(ctx context.Context, id *JasperProcessID) (*Operati
 	}
 
 	exitCode, err := proc.Wait(ctx)
-	if err != nil && exitCode == -1 {
+	if err != nil {
 		err = errors.Wrap(err, "problem encountered while waiting")
 		return &OperationOutcome{
 			Success:  false,
@@ -214,7 +214,7 @@ func (s *jasperService) Wait(ctx context.Context, id *JasperProcessID) (*Operati
 
 	return &OperationOutcome{
 		Success:  true,
-		Text:     fmt.Sprintf("'%s' operation complete", id.Value),
+		Text:     fmt.Sprintf("wait completed on process with id '%s'", id.Value),
 		ExitCode: int32(exitCode),
 	}, nil
 }
