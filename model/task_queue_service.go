@@ -298,7 +298,7 @@ func (t *basicCachedDispatcherImpl) FindNextTask(spec TaskSpec) *TaskQueueItem {
 	for _, schedulableUnitID := range t.order {
 		unit, ok = t.units[schedulableUnitID]
 		if !ok {
-			grip.Error(message.Fields{
+			grip.Debug(message.Fields{
 				"ticket":                                "EVG-6289",
 				"function":                              "FindNextTask",
 				"message":                               "basicCachedDispatcherImpl.units[schedulableUnitID] was not found",
@@ -315,7 +315,7 @@ func (t *basicCachedDispatcherImpl) FindNextTask(spec TaskSpec) *TaskQueueItem {
 
 		// If maxHosts is not set, this is not a task group.
 		if unit.maxHosts == 0 {
-			grip.Error(message.Fields{
+			grip.Debug(message.Fields{
 				"ticket":                                "EVG-6289",
 				"function":                              "FindNextTask",
 				"message":                               "schedulableUnit.maxHosts == 0 - this is not a task group",
