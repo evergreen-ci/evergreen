@@ -47,7 +47,7 @@ OUTERLOOP:
 				if g.Name == t.TaskGroup {
 					for idx, tn := range g.Tasks {
 						if t.DisplayName == tn {
-							t.SetTaskGroupIndex(idx + 1)
+							catcher.Add(t.SetTaskGroupIndex(idx + 1))
 							continue OUTERLOOP
 						}
 					}
