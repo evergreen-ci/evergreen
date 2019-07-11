@@ -410,6 +410,8 @@ func (pss *parserStringSlice) UnmarshalYAML(unmarshal func(interface{}) error) e
 	return nil
 }
 
+// LoadProjectFromVersion returns the project for a version, either from the parser project or the config string.
+// If read from the config string and shouldSave is set, the resulting parser project will be saved.
 func LoadProjectFromVersion(v *Version, identifier string, shouldSave bool) (*Project, error) {
 	if v.ParserProject != nil {
 		v.ParserProject.Identifier = identifier
@@ -434,8 +436,8 @@ func LoadProjectFromVersion(v *Version, identifier string, shouldSave bool) (*Pr
 }
 
 // LoadProjectInto loads the raw data from the config file into project
-// and sets the project's identifier field to identifier. Tags are evaluated.
-// Returns the intermediate step.
+// and sets the project's identifier field to identifier. Tags are evaluated. Returns the intermediate step.
+// If reading from a version config, LoadProjectFromVersion should be used to persist the resulting parser project.
 func LoadProjectInto(data []byte, identifier string, project *Project) (*ParserProject, error) {
 	intermediateProject, err := createIntermediateProject(data)
 	if err != nil {
