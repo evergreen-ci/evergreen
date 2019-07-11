@@ -139,7 +139,8 @@ func newDistroTaskDispatchService(distroID string, items []TaskQueueItem, ttl ti
 	grip.Debug(message.Fields{
 		"ticket":       "EVG-6289",
 		"function":     "newDistroTaskDispatchService",
-		"message":      "initializing new basicCachedDispatcherImpl",
+		"message":      "initializing new basicCachedDispatcherImpl for a distro",
+		"distro":       t.distroID,
 		"order_length": len(t.order),
 		"units_length": len(t.units),
 	})
@@ -165,6 +166,7 @@ func (t *basicCachedDispatcherImpl) Refresh() error {
 		"ticket":       "EVG-6289",
 		"function":     "Refresh",
 		"message":      "refresh was successful",
+		"distro":       t.distroID,
 		"order_length": len(t.order),
 		"units_length": len(t.units),
 	})
@@ -233,11 +235,17 @@ func (t *basicCachedDispatcherImpl) rebuild(items []TaskQueueItem) {
 // FindNextTask returns the next dispatchable task in the queue.
 func (t *basicCachedDispatcherImpl) FindNextTask(spec TaskSpec) *TaskQueueItem {
 	grip.Debug(message.Fields{
-		"ticket":       "EVG-6289",
-		"function":     "FindNextTask",
-		"message":      "entered function",
-		"order_length": len(t.order),
-		"units_length": len(t.units),
+		"ticket":               "EVG-6289",
+		"function":             "FindNextTask",
+		"message":              "entered function",
+		"order_length":         len(t.order),
+		"units_length":         len(t.units),
+		"spec_group":           spec.Group,
+		"spec_build_variant":   spec.BuildVariant,
+		"spec_version":         spec.Version,
+		"spec_project_id":      spec.ProjectID,
+		"spec_group_max_hosts": spec.GroupMaxHosts,
+		"distro":               t.distroID,
 	})
 	t.mu.Lock()
 	defer t.mu.Unlock()
@@ -247,6 +255,7 @@ func (t *basicCachedDispatcherImpl) FindNextTask(spec TaskSpec) *TaskQueueItem {
 			"ticket":       "EVG-6289",
 			"function":     "FindNextTask",
 			"message":      "t.units (map[string]schedulableUnit) is empty, but t.order ([]string) is not; resetting t.order = []string{} - returning nil",
+			"distro":       t.distroID,
 			"order_length": len(t.order),
 			"units_length": len(t.units),
 		})
@@ -279,6 +288,7 @@ func (t *basicCachedDispatcherImpl) FindNextTask(spec TaskSpec) *TaskQueueItem {
 			"spec_version":         spec.Version,
 			"spec_project_id":      spec.ProjectID,
 			"spec_group_max_hosts": spec.GroupMaxHosts,
+			"distro":               t.distroID,
 		})
 	}
 
@@ -292,6 +302,7 @@ func (t *basicCachedDispatcherImpl) FindNextTask(spec TaskSpec) *TaskQueueItem {
 				"ticket":                                "EVG-6289",
 				"function":                              "FindNextTask",
 				"message":                               "basicCachedDispatcherImpl.units[schedulableUnitID] was not found",
+				"distro":                                t.distroID,
 				"schedulable_unit_id":                   unit.id,
 				"schedulable_unit_running_hosts":        unit.runningHosts,
 				"schedulable_unit_max_hosts":            unit.maxHosts,
@@ -308,6 +319,7 @@ func (t *basicCachedDispatcherImpl) FindNextTask(spec TaskSpec) *TaskQueueItem {
 				"ticket":                                "EVG-6289",
 				"function":                              "FindNextTask",
 				"message":                               "schedulableUnit.maxHosts == 0 - this is not a task group",
+				"distro":                                t.distroID,
 				"schedulable_unit_id":                   unit.id,
 				"schedulable_unit_running_hosts":        unit.runningHosts,
 				"schedulable_unit_max_hosts":            unit.maxHosts,
@@ -331,6 +343,7 @@ func (t *basicCachedDispatcherImpl) FindNextTask(spec TaskSpec) *TaskQueueItem {
 					"ticket":   "EVG-6289",
 					"function": "FindNextTask",
 					"message":  "problem running NumHostsByTaskSpec query - returning nil",
+					"distro":   t.distroID,
 					"group":    spec.Group,
 					"variant":  spec.BuildVariant,
 					"project":  spec.ProjectID,
@@ -350,6 +363,7 @@ func (t *basicCachedDispatcherImpl) FindNextTask(spec TaskSpec) *TaskQueueItem {
 					"ticket":                                "EVG-6289",
 					"function":                              "FindNextTask",
 					"message":                               "schedulableUnit.runningHosts < schedulableUnit.maxHosts is false",
+					"distro":                                t.distroID,
 					"schedulable_unit_id":                   unit.id,
 					"schedulable_unit_running_hosts":        unit.runningHosts,
 					"schedulable_unit_max_hosts":            unit.maxHosts,
@@ -364,6 +378,7 @@ func (t *basicCachedDispatcherImpl) FindNextTask(spec TaskSpec) *TaskQueueItem {
 		"ticket":       "EVG-6289",
 		"function":     "FindNextTask",
 		"message":      "no task - returning nil",
+		"distro":       t.distroID,
 		"order_length": len(t.order),
 		"units_length": len(t.units),
 	})
@@ -401,6 +416,7 @@ func (t *basicCachedDispatcherImpl) nextTaskGroupTask(unit schedulableUnit) *Tas
 			grip.Debug(message.Fields{
 				"ticket":                              "EVG-6289",
 				"message":                             "a taskrunning in a 1-host task group, has finished, but did not succeed; deleting from t.units[unit_id]",
+				"distro":                              t.distroID,
 				"schedulable_unit_id":                 unit.id,
 				"schedulable_unit_running_hosts":      unit.runningHosts,
 				"schedulable_unit_max_hosts":          unit.maxHosts,
