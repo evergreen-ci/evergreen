@@ -366,12 +366,16 @@ func (h *Host) JasperClientCredentials(ctx context.Context, env evergreen.Enviro
 }
 
 // GenerateJasperCredentials creates the Jasper credentials for the given host
-// without saving them to the database.
+// without saving them to the database. If credentials already exist in the
+// database, they are deleted.
 func (h *Host) GenerateJasperCredentials(ctx context.Context, env evergreen.Environment) (*rpc.Credentials, error) {
 	if h.JasperCredentialsID == "" {
 		if err := h.UpdateJasperCredentialsID(h.Id); err != nil {
-			return nil, errors.Wrap(err, "problem setting Jasper credentials ID")
+			return nil, nil, errors.Wrap(err, "problem setting Jasper credentials ID")
 		}
+	}
+	if err := credentials.DeleteCredentials(ctx, env, h.JasperCredentialsID); err != nil {
+		return nil, nil, errors.Wrap(err, "problem deleting existing Jasper credentials")
 	}
 	return credentials.GenerateInMemory(ctx, env, h.JasperCredentialsID)
 }
@@ -382,7 +386,7 @@ func (h *Host) SaveJasperCredentials(ctx context.Context, env evergreen.Environm
 	if h.JasperCredentialsID == "" {
 		return errors.New("Jasper credentials ID is empty")
 	}
-	return credentials.SaveCredentials(ctx, env, h.JasperCredentialsID, creds)
+	return credentials.SaveByID(ctx, env, h.JasperCredentialsID, creds)
 }
 
 // DeleteJasperCredentials deletes the Jasper credentials for the host and
@@ -1055,6 +1059,7 @@ func FindAllRunningContainers() ([]Host, error) {
 // FindAllRunningParents finds all running hosts that have child containers
 func FindAllRunningParents() ([]Host, error) {
 	query := db.Query(bson.M{
+		StatusKey:        evergreen.HostRunning,
 		StatusKey:        evergreen.HostRunning,
 		HasContainersKey: true,
 	})

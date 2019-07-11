@@ -136,7 +136,7 @@ func bootstrapUserData(ctx context.Context, env evergreen.Environment, h *host.H
 		return customUserData, nil
 	}
 
-	creds, err := h.GenerateJasperCredentials(ctx, env)
+	opts, creds, err := h.GenerateJasperCredentials(ctx, env)
 	if err != nil {
 		return customUserData, errors.Wrap(err, "problem generating Jasper credentials for host")
 	}
@@ -154,5 +154,5 @@ func bootstrapUserData(ctx context.Context, env evergreen.Environment, h *host.H
 		return customUserData, errors.Wrap(err, "error creating user data with multiple parts")
 	}
 
-	return multipartUserData, errors.Wrap(h.SaveJasperCredentials(ctx, env, creds), "problem saving Jasper credentials to host")
+	return multipartUserData, errors.Wrap(h.SaveJasperCredentials(ctx, env, opts), "problem saving Jasper credentials to host")
 }

@@ -13,7 +13,6 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/util"
-	"github.com/google/shlex"
 	"github.com/mongodb/jasper"
 	jaspercli "github.com/mongodb/jasper/cli"
 	"github.com/mongodb/jasper/rpc"
@@ -271,7 +270,7 @@ func (h *Host) jasperBinaryFilePath(config evergreen.HostJasperConfig) string {
 
 // BootstrapScript creates the user data script to bootstrap the host.
 func (h *Host) BootstrapScript(config evergreen.HostJasperConfig, creds *rpc.Credentials) (string, error) {
-	writeCredentialsCmd, err := h.writeJasperCredentialsFileCommand(config, creds)
+	writeCredentialsCmd, err := h.WriteJasperCredentialsFileCommand(config, creds)
 	if err != nil {
 		return "", errors.Wrap(err, "could not build command to write Jasper credentials file")
 	}
@@ -302,9 +301,9 @@ func (h *Host) BootstrapScript(config evergreen.HostJasperConfig, creds *rpc.Cre
 	}, "\n"), nil
 }
 
-// writeJasperCredentialsCommand builds the command to write the Jasper
+// WriteJasperCredentialsCommand builds the command to write the Jasper
 // credentials to a file.
-func (h *Host) writeJasperCredentialsFileCommand(config evergreen.HostJasperConfig, creds *rpc.Credentials) (string, error) {
+func (h *Host) WriteJasperCredentialsFileCommand(config evergreen.HostJasperConfig, creds *rpc.Credentials) (string, error) {
 	if h.Distro.JasperCredentialsPath == "" {
 		return "", errors.New("cannot write Jasper credentials without a credentials file path")
 	}
@@ -315,9 +314,10 @@ func (h *Host) writeJasperCredentialsFileCommand(config evergreen.HostJasperConf
 	return fmt.Sprintf("cat > %s <<EOF\n%s\nEOF", h.Distro.JasperCredentialsPath, exportedCreds), nil
 }
 
-// RunJasperProcess makes a request to the host's Jasper service to run the
-// given command, wait for its completion, and return the output from it.
-func (h *Host) RunJasperProcess(ctx context.Context, env evergreen.Environment, command string) (string, error) {
+// RunJasperProcess makes a request to the host's Jasper service to create the
+// process with the given options, wait for its completion, and return the
+// output from it.
+func (h *Host) RunJasperProcess(ctx context.Context, env evergreen.Environment, opts *jasper.CreateOptions) (string, error) {
 	client, err := h.JasperClient(ctx, env)
 	if err != nil {
 		return "", errors.Wrap(err, "could not get a Jasper client")
@@ -327,12 +327,7 @@ func (h *Host) RunJasperProcess(ctx context.Context, env evergreen.Environment, 
 		MaxBytes: 1024 * 1024, // 1 MB
 	}
 
-	splitCmd, err := shlex.Split(command)
-	if err != nil {
-		return "", errors.Wrap(err, "problem splitting command")
-	}
-	opts := jasper.CreateOptions{Args: splitCmd}
-	proc, err := client.CreateProcess(ctx, &opts)
+	proc, err := client.CreateProcess(ctx, opts)
 	if err != nil {
 		return "", errors.Wrap(err, "problem creating process")
 	}
@@ -365,7 +360,7 @@ func (h *Host) StartJasperProcess(ctx context.Context, env evergreen.Environment
 
 // JasperClient returns a remote client that communicates with this host's
 // Jasper service.
-func (h *Host) JasperClient(ctx context.Context, env evergreen.Environment) (jasper.Manager, error) {
+func (h *Host) JasperClient(ctx context.Context, env evergreen.Environment) (jasper.RemoteClient, error) {
 	if h.LegacyBootstrap() || h.LegacyCommunication() {
 		return nil, errors.New("legacy host does not support remote Jasper process management")
 	}
@@ -396,7 +391,7 @@ func (h *Host) JasperClient(ctx context.Context, env evergreen.Environment) (jas
 				CredentialsFilePath: h.Distro.JasperCredentialsPath,
 			}
 
-			return jaspercli.NewSSHManager(remoteOpts, clientOpts, true)
+			return jaspercli.NewSSHClient(remoteOpts, clientOpts, true)
 		case distro.CommunicationMethodRPC:
 			creds, err := h.JasperClientCredentials(ctx, env)
 			if err != nil {

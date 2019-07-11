@@ -168,7 +168,6 @@ func TestJasperCommandsWindows(t *testing.T) {
 		"WriteJasperCredentialsFileCommand": func(t *testing.T, h *Host, config evergreen.HostJasperConfig) {
 			creds, err := newMockCredentials()
 			require.NoError(t, err)
-			path := h.Distro.JasperCredentialsPath
 
 			for testName, testCase := range map[string]func(t *testing.T){
 				"WithoutJasperCredentialsPath": func(t *testing.T) {
@@ -186,7 +185,6 @@ func TestJasperCommandsWindows(t *testing.T) {
 				},
 			} {
 				t.Run(testName, func(t *testing.T) {
-					h.Distro.JasperCredentialsPath = path
 					require.NoError(t, db.ClearCollections(credentials.Collection))
 					defer func() {
 						assert.NoError(t, db.ClearCollections(credentials.Collection))
@@ -196,7 +194,7 @@ func TestJasperCommandsWindows(t *testing.T) {
 			}
 		},
 		"WriteJasperCredentialsFileCommandNoDistroPath": func(t *testing.T, h *Host, config evergreen.HostJasperConfig) {
-			creds, err := rpc.NewCredentials([]byte("foo"), []byte("bar"), []byte("bat"))
+			creds, err := newMockCredentials()
 			require.NoError(t, err)
 
 			h.Distro.JasperCredentialsPath = ""
@@ -222,7 +220,8 @@ func TestJasperCommandsWindows(t *testing.T) {
 	}
 }
 
-func setupCredentialsDB(ctx context.Context, env *mock.Environment) error {
+// setupCredentials is used to bootstrap the credentials collection for testing.
+func setupCredentials(ctx context.Context, env *mock.Environment) error {
 	env.Settings().DomainName = "test-service"
 
 	if err := db.ClearCollections(credentials.Collection, Collection); err != nil {
@@ -232,6 +231,7 @@ func setupCredentialsDB(ctx context.Context, env *mock.Environment) error {
 	return errors.WithStack(credentials.Bootstrap(env))
 }
 
+// setupJasperService creates a Jasper service with credentials for testing.
 func setupJasperService(ctx context.Context, env *mock.Environment, h *Host) (jasper.CloseFunc, error) {
 	if _, err := h.Upsert(); err != nil {
 		return nil, errors.WithStack(err)
@@ -244,7 +244,7 @@ func setupJasperService(ctx context.Context, env *mock.Environment, h *Host) (ja
 	}
 	env.Settings().HostJasper.Port = port
 
-	creds, err := h.GenerateJasperCredentials(ctx, env)
+	opts, creds, err := h.GenerateJasperCredentials(ctx, env)
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}
@@ -253,9 +253,11 @@ func setupJasperService(ctx context.Context, env *mock.Environment, h *Host) (ja
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}
-	return closeService, errors.WithStack(h.SaveJasperCredentials(ctx, env, creds))
+	return closeService, errors.WithStack(h.SaveJasperCredentials(ctx, env, opts))
 }
 
+// teardownJasperService is used to clean up a test Jasper service and clean up
+// the host and credentials collection.
 func teardownJasperService(ctx context.Context, closeService jasper.CloseFunc) error {
 	catcher := grip.NewBasicCatcher()
 	catcher.Add(db.ClearCollections(credentials.Collection, Collection))
@@ -327,7 +329,7 @@ func TestJasperClient(t *testing.T) {
 			withSetupAndTeardown: func(ctx context.Context, env *mock.Environment, h *Host, fn func(ctx context.Context)) error {
 				catcher := grip.NewBasicCatcher()
 				if !catcher.HasErrors() {
-					catcher.Add(errors.WithStack(setupCredentialsDB(ctx, env)))
+					catcher.Add(errors.WithStack(setupCredentials(ctx, env)))
 				}
 				var closeService jasper.CloseFunc
 				var err error
@@ -355,7 +357,7 @@ func TestJasperClient(t *testing.T) {
 		"FailsWithRPCCommunicationButNoJasperService": {
 			withSetupAndTeardown: func(ctx context.Context, env *mock.Environment, h *Host, fn func(ctx context.Context)) error {
 				catcher := grip.NewBasicCatcher()
-				catcher.Add(errors.WithStack(setupCredentialsDB(ctx, env)))
+				catcher.Add(errors.WithStack(setupCredentials(ctx, env)))
 
 				if !catcher.HasErrors() {
 					fn(ctx)
@@ -376,7 +378,7 @@ func TestJasperClient(t *testing.T) {
 		"PassesWithRPCCommunicationAndHostRunningJasperService": {
 			withSetupAndTeardown: func(ctx context.Context, env *mock.Environment, h *Host, fn func(ctx context.Context)) error {
 				catcher := grip.NewBasicCatcher()
-				catcher.Add(errors.WithStack(setupCredentialsDB(ctx, env)))
+				catcher.Add(errors.WithStack(setupCredentials(ctx, env)))
 				var closeService jasper.CloseFunc
 				var err error
 				if !catcher.HasErrors() {
@@ -439,7 +441,7 @@ func TestJasperProcess(t *testing.T) {
 	withSetupAndTeardown := func(ctx context.Context, env *mock.Environment, h *Host, fn func(context.Context)) error {
 		catcher := grip.NewBasicCatcher()
 		if !catcher.HasErrors() {
-			catcher.Add(errors.WithStack(setupCredentialsDB(ctx, env)))
+			catcher.Add(errors.WithStack(setupCredentials(ctx, env)))
 		}
 		var closeService jasper.CloseFunc
 		var err error
@@ -455,23 +457,22 @@ func TestJasperProcess(t *testing.T) {
 		catcher.Add(errors.WithStack(teardownJasperService(ctx, closeService)))
 		return catcher.Resolve()
 	}
-	for testName, testCase := range map[string]func(ctx context.Context, t *testing.T, env *mock.Environment, h *Host){
-		"RunJasperProcessErrorsWithoutJasperClient": func(ctx context.Context, t *testing.T, env *mock.Environment, h *Host) {
-			assert.Error(t, h.StartJasperProcess(ctx, env, &jasper.CreateOptions{Args: []string{"echo", "hello", "world"}}))
+	for testName, testCase := range map[string]func(ctx context.Context, t *testing.T, env *mock.Environment, h *Host, opts *jasper.CreateOptions){
+		"RunJasperProcessErrorsWithoutJasperClient": func(ctx context.Context, t *testing.T, env *mock.Environment, h *Host, opts *jasper.CreateOptions) {
+			assert.Error(t, h.StartJasperProcess(ctx, env, opts))
 		},
-		"StartJasperProcessErrorsWithoutJasperClient": func(ctx context.Context, t *testing.T, env *mock.Environment, h *Host) {
-			_, err := h.RunJasperProcess(ctx, env, "echo hello world")
-			assert.Error(t, err)
+		"StartJasperProcessErrorsWithoutJasperClient": func(ctx context.Context, t *testing.T, env *mock.Environment, h *Host, opts *jasper.CreateOptions) {
+			assert.Error(t, h.StartJasperProcess(ctx, env, opts))
 		},
-		"RunJasperProcessPassesWithJasperClient": func(ctx context.Context, t *testing.T, env *mock.Environment, h *Host) {
+		"RunJasperProcessPassesWithJasperClient": func(ctx context.Context, t *testing.T, env *mock.Environment, h *Host, opts *jasper.CreateOptions) {
 			assert.NoError(t, withSetupAndTeardown(ctx, env, h, func(ctx context.Context) {
-				_, err := h.RunJasperProcess(ctx, env, "echo hello world")
+				_, err := h.RunJasperProcess(ctx, env, opts)
 				assert.NoError(t, err)
 			}))
 		},
-		"StartJasperProcessPassesWithJasperClient": func(ctx context.Context, t *testing.T, env *mock.Environment, h *Host) {
+		"StartJasperProcessPassesWithJasperClient": func(ctx context.Context, t *testing.T, env *mock.Environment, h *Host, opts *jasper.CreateOptions) {
 			assert.NoError(t, withSetupAndTeardown(ctx, env, h, func(ctx context.Context) {
-				assert.NoError(t, h.StartJasperProcess(ctx, env, &jasper.CreateOptions{Args: []string{"echo", "hello", "world"}}))
+				assert.NoError(t, h.StartJasperProcess(ctx, env, opts))
 			}))
 		},
 	} {
@@ -484,6 +485,8 @@ func TestJasperProcess(t *testing.T) {
 			env.EnvContext = tctx
 			env.Settings().HostJasper.BinaryName = "binary"
 
+			opts := &jasper.CreateOptions{Args: []string{"echo", "hello", "world"}}
+
 			testCase(tctx, t, env, &Host{
 				Id: "test",
 				Distro: distro.Distro{
@@ -491,7 +494,7 @@ func TestJasperProcess(t *testing.T) {
 					BootstrapMethod:     distro.BootstrapMethodUserData,
 				},
 				Host: "localhost",
-			})
+			}, opts)
 		})
 	}
 }

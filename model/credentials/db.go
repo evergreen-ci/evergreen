@@ -12,6 +12,7 @@ import (
 	"github.com/mongodb/jasper/rpc"
 	"github.com/pkg/errors"
 	"github.com/square/certstrap/depot"
+	"github.com/square/certstrap/pkix"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
@@ -20,14 +21,19 @@ const (
 	Collection = "credentials"
 	CAName     = "evergreen"
 
-	defaultExpiration = 30 * 24 * time.Hour // 1 month
+	defaultExpiration = 365 * 24 * time.Hour // 1 year (approx.)
 )
 
 var serviceName string
 
+// Constants for bson struct tags.
 var (
-	IDKey  = bsonutil.MustHaveTag(certdepot.User{}, "ID")
-	TTLKey = bsonutil.MustHaveTag(certdepot.User{}, "TTL")
+	IDKey            = bsonutil.MustHaveTag(certdepot.User{}, "ID")
+	CertKey          = bsonutil.MustHaveTag(certdepot.User{}, "Cert")
+	PrivateKeyKey    = bsonutil.MustHaveTag(certdepot.User{}, "PrivateKey")
+	CertReqKey       = bsonutil.MustHaveTag(certdepot.User{}, "CertReq")
+	CertRevocListKey = bsonutil.MustHaveTag(certdepot.User{}, "CertRevocList")
+	TTLKey           = bsonutil.MustHaveTag(certdepot.User{}, "TTL")
 )
 
 // Bootstrap performs one-time initialization of the credentials collection with
@@ -96,31 +102,47 @@ func deleteIfExists(dpt certdepot.Depot, tags ...*depot.Tag) error {
 	return catcher.Resolve()
 }
 
-// SaveCredentials saves the credentials from the options for the given user
+// SaveByID saves the credentials from the options for the given user
 // name. If the credentials already exist, this will overwrite the existing
 // credentials.
-func SaveCredentials(ctx context.Context, env evergreen.Environment, name string, creds *rpc.Credentials) error {
+func SaveByID(ctx context.Context, env evergreen.Environment, name string, creds *rpc.Credentials) error {
 	dpt, err := getDepot(ctx, env)
 	if err != nil {
 		return errors.Wrap(err, "could not get depot")
 	}
 
-	if err := deleteIfExists(dpt, certdepot.PrivKeyTag(name), certdepot.CrtTag(name)); err != nil {
-		return errors.Wrap(err, "problem deleting existing key")
+	if err := deleteIfExists(dpt, certdepot.CsrTag(name), certdepot.PrivKeyTag(name), certdepot.CrtTag(name)); err != nil {
+		return errors.Wrap(err, "problem deleting existing key and certificate")
 	}
 
 	if err := dpt.Put(certdepot.PrivKeyTag(name), creds.Key); err != nil {
 		return errors.Wrap(err, "problem saving key")
 	}
+
 	if err := dpt.Put(certdepot.CrtTag(name), creds.Cert); err != nil {
 		return errors.Wrap(err, "problem saving certificate")
 	}
+
+	crt, err := pkix.NewCertificateFromPEM(creds.Cert)
+	if err != nil {
+		return errors.Wrap(err, "could not get certificate from PEM bytes")
+	}
+	rawCrt, err := crt.GetRawCertificate()
+	if err != nil {
+		return errors.Wrap(err, "could not get x509 certificate")
+	}
+	// kim: TODO: wait for MAKE-853
+	if err := certdepot.PutTTL(dpt, name, rawCrt.NotAfter); err != nil {
+		return errors.Wrap(err, "could not put expiration on credentials")
+	}
+
 	return nil
 }
 
 // GenerateInMemory generates the credentials without storing them in the
 // database. This is not idempotent, so separate calls with the same inputs will
-// return different credentials.
+// return different credentials. This will fail if credentials for the given
+// name already exist in the database.
 func GenerateInMemory(ctx context.Context, env evergreen.Environment, name string) (*rpc.Credentials, error) {
 	opts := certdepot.CertificateOptions{
 		CA:         CAName,
@@ -159,7 +181,12 @@ func GenerateInMemory(ctx context.Context, env evergreen.Environment, name strin
 		return nil, errors.Wrap(err, "problem exporting certificate")
 	}
 
-	return rpc.NewCredentials(pemCACrt, pemCrt, pemKey)
+	creds, err := rpc.NewCredentials(pemCACrt, pemCrt, pemKey)
+	if err != nil {
+		return nil, errors.Wrap(err, "could not create RPC credentials")
+	}
+
+	return creds, nil
 }
 
 // FindByID gets the credentials for the given name.
@@ -202,12 +229,12 @@ func FindExpirationByID(ctx context.Context, env evergreen.Environment, name str
 	return expiration, nil
 }
 
-// DeleteCredentials removes the credentials from the database.
+// DeleteCredentials removes the credentials from the database if they exist.
 func DeleteCredentials(ctx context.Context, env evergreen.Environment, name string) error {
 	dpt, err := getDepot(ctx, env)
 	if err != nil {
 		return errors.Wrap(err, "could not get depot")
 	}
 
-	return deleteIfExists(dpt, certdepot.PrivKeyTag(name), certdepot.CrtTag(name))
+	return deleteIfExists(dpt, certdepot.CsrTag(name), certdepot.PrivKeyTag(name), certdepot.CrtTag(name))
 }

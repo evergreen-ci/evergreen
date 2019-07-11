@@ -825,7 +825,13 @@ func PopulateJasperDeployJobs(env evergreen.Environment) amboy.QueueOperation {
 		ts := util.RoundPartOfDay(0).Format(tsFormat)
 		catcher := grip.NewBasicCatcher()
 		for _, h := range hosts {
-			catcher.Add(queue.Put(ctx, NewJasperDeployJob(env, h, ts)))
+			expiration, err := h.JasperCredentialsExpiration(ctx, env)
+			if err != nil {
+				catcher.Add(errors.Wrap(err, "problem getting expiration time for host credentials"))
+				continue
+			}
+
+			catcher.Add(queue.Put(ctx, NewJasperDeployJob(env, h, expiration, ts)))
 		}
 
 		return catcher.Resolve()

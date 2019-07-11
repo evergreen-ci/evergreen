@@ -195,7 +195,10 @@ func (j *agentMonitorDeployJob) fetchClient(ctx context.Context) error {
 		"communication": j.host.Distro.CommunicationMethod,
 	})
 
-	output, err := j.host.RunJasperProcess(ctx, j.env, j.host.CurlCommand(j.env.Settings().Ui.Url))
+	opts := &jasper.CreateOptions{
+		Args: []string{"bash", "-c", j.host.CurlCommand(j.env.Settings().Ui.Url)},
+	}
+	output, err := j.host.RunJasperProcess(ctx, j.env, opts)
 	if err != nil {
 		grip.Error(message.WrapError(err, message.Fields{
 			"message":       "error fetching agent monitor binary on host",
@@ -220,7 +223,10 @@ func (j *agentMonitorDeployJob) runSetupScript(ctx context.Context) error {
 		"communication": j.host.Distro.CommunicationMethod,
 	})
 
-	output, err := j.host.RunJasperProcess(ctx, j.env, j.host.SetupCommand())
+	opts := &jasper.CreateOptions{
+		Args: []string{"bash", "-c", j.host.SetupCommand()},
+	}
+	output, err := j.host.RunJasperProcess(ctx, j.env, opts)
 	if err != nil {
 		grip.Error(message.WrapError(err, message.Fields{
 			"message":       "error running setup script on host",

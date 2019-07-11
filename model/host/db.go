@@ -56,6 +56,7 @@ var (
 	NeedsNewAgentKey             = bsonutil.MustHaveTag(Host{}, "NeedsNewAgent")
 	NeedsNewAgentMonitorKey      = bsonutil.MustHaveTag(Host{}, "NeedsNewAgentMonitor")
 	JasperCredentialsIDKey       = bsonutil.MustHaveTag(Host{}, "JasperCredentialsID")
+	JasperDeployAttemptsKey      = bsonutil.MustHaveTag(Host{}, "JasperDeployAttempts")
 	StartedByKey                 = bsonutil.MustHaveTag(Host{}, "StartedBy")
 	InstanceTypeKey              = bsonutil.MustHaveTag(Host{}, "InstanceType")
 	VolumeSizeKey                = bsonutil.MustHaveTag(Host{}, "VolumeTotalSize")
@@ -370,16 +371,14 @@ func FindByFirstProvisioningAttempt() ([]Host, error) {
 
 // FindByExpiringJasperCredentials finds all hosts whose Jasper service
 // credentials will expire within the given cutoff.
-// kim: TODO: test
 func FindByExpiringJasperCredentials(cutoff time.Duration) ([]Host, error) {
 	deadline := time.Now().Add(cutoff)
 	bootstrapKey := bsonutil.GetDottedKeyName(DistroKey, distro.BootstrapMethodKey)
-	hosts := []Host{}
 	credentialsKey := credentials.Collection
-	ttlKey := bsonutil.GetDottedKeyName(credentialsKey, credentials.TTLKey)
-	// Note: since we don't necessarily want to wait until the host has no
-	// running tasks to redeploy credentials, this can terminate the agent in
-	// the middle of a task.
+	expirationKey := bsonutil.GetDottedKeyName(credentialsKey, credentials.TTLKey)
+
+	var hosts []Host
+
 	pipeline := []bson.M{
 		bson.M{"$lookup": bson.M{
 			"from":         credentials.Collection,
@@ -388,13 +387,12 @@ func FindByExpiringJasperCredentials(cutoff time.Duration) ([]Host, error) {
 			"as":           credentialsKey,
 		}},
 		bson.M{"$match": bson.M{
-			ttlKey: bson.M{"$lte": deadline},
+			expirationKey: bson.M{"$lte": deadline},
 			bootstrapKey: bson.M{
 				"$exists": true,
 				"$ne":     distro.BootstrapMethodLegacySSH,
 			},
 			StatusKey:        evergreen.HostRunning,
-			StartedByKey:     evergreen.User,
 			HasContainersKey: bson.M{"$ne": true},
 			ParentIDKey:      bson.M{"$exists": false},
 		}},
