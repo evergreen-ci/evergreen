@@ -187,7 +187,7 @@ func listCommitQueue(ctx context.Context, client client.Communicator, rc *legacy
 	if err != nil {
 		return err
 	}
-	projectRef, err := rc.GetProjectRef(projectID) // rc versus ac?
+	projectRef, err := rc.GetProjectRef(projectID)
 	if err != nil {
 		return errors.Wrapf(err, "can't find project for queue id '%s'", projectID)
 	}
@@ -216,10 +216,10 @@ func listCommitQueue(ctx context.Context, client client.Communicator, rc *legacy
 
 func listPRCommitQueueItem(ctx context.Context, item restModel.APICommitQueueItem, projectRef *model.ProjectRef, uiServerHost string) {
 	prDisplay := `
-        PR # : %s
-         URL : %s
+           PR # : %s
+            URL : %s
 `
-	prDisplayVersion := "       Build : %s/version/%s"
+	prDisplayVersion := "          Build : %s/version/%s"
 
 	issue := restModel.FromAPIString(item.Issue)
 	url := fmt.Sprintf("https://github.com/%s/%s/pull/%s", projectRef.Owner, projectRef.Repo, issue)
@@ -248,10 +248,12 @@ func listCLICommitQueueItem(ctx context.Context, item restModel.APICommitQueueIt
 
 func listModules(item restModel.APICommitQueueItem) {
 	if len(item.Modules) > 0 {
-		grip.Info("\tModules:\n")
+		grip.Infof("\tModules :")
+
 		for j, module := range item.Modules {
 			grip.Infof("\t\t%d: %s (%s)\n", j+1, restModel.FromAPIString(module.Module), restModel.FromAPIString(module.Issue))
 		}
+		grip.Info("\n")
 	}
 }
 

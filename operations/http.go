@@ -197,7 +197,7 @@ func (ac *legacyClient) GetPatch(patchId string) (*patch.Patch, error) {
 		return nil, NewAPIError(resp)
 	}
 	apiModel := &restModel.APIPatch{}
-	if err := util.ReadJSONInto(resp.Body, apiModel); err != nil {
+	if err = util.ReadJSONInto(resp.Body, apiModel); err != nil {
 		return nil, err
 	}
 	i, err := apiModel.ToService()

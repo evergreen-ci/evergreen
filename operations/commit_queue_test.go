@@ -98,7 +98,14 @@ func (s *CommitQueueSuite) TestListContentsForCLI() {
 	cq := &commitqueue.CommitQueue{ProjectID: "mci"}
 	s.Require().NoError(commitqueue.InsertQueue(cq))
 
-	pos, err := cq.Enqueue(commitqueue.CommitQueueItem{Issue: p1.Id.Hex()})
+	pos, err := cq.Enqueue(commitqueue.CommitQueueItem{
+		Issue: p1.Id.Hex(),
+		Modules: []commitqueue.Module{
+			commitqueue.Module{
+				Module: "test_module",
+				Issue:  "1234",
+			},
+		}})
 	s.NoError(err)
 	s.Equal(1, pos)
 	pos, err = cq.Enqueue(commitqueue.CommitQueueItem{Issue: p2.Id.Hex()})
@@ -233,7 +240,7 @@ func (s *CommitQueueSuite) TestListContentsWithModule() {
 
 	s.Contains(stringOut, "Project: mci")
 	s.Contains(stringOut, "PR # : 123")
-	s.Contains(stringOut, "Modules:")
+	s.Contains(stringOut, "Modules :")
 	s.Contains(stringOut, "1: test_module (1234)")
 	s.Contains(stringOut, "PR # : 456")
 	s.Contains(stringOut, "PR # : 789")
