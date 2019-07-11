@@ -392,8 +392,8 @@ func FindPeriodicProjects() ([]ProjectRef, error) {
 		ProjectRefCollection,
 		bson.M{
 			projectRefPeriodicBuildsKey: bson.M{
-				"$size": bson.M{
-					"$gt": 0,
+				"$gt": bson.M{
+					"$size": 0,
 				},
 			},
 		},
