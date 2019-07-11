@@ -1753,3 +1753,8 @@ func (t *Task) UpdateDependencies(dependsOn []Dependency) error {
 
 	return nil
 }
+
+func (t *Task) SetTaskGroupIndex(idx int) error {
+	t.TaskGroupOrder = idx
+	return errors.WithStack(UpdateOne(bson.M{IdKey: t.Id}, bson.M{"$set": bson.M{TaskGroupOrderKey: idx}}))
+}

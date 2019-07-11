@@ -1382,7 +1382,7 @@ func (tg *TaskGroup) InjectInfo(t *task.Task) {
 
 	for idx, n := range tg.Tasks {
 		if n == t.DisplayName {
-			t.TaskGroupOrder = idx
+			t.TaskGroupOrder = idx + 1
 			break
 		}
 	}
