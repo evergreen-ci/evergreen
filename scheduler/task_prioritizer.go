@@ -249,6 +249,8 @@ func (self *CmpBasedTaskComparator) splitTasksByRequester(
 			repoTrackerTasks = append(repoTrackerTasks, task)
 		case evergreen.IsPatchRequester(task.Requester):
 			patchTasks = append(patchTasks, task)
+		case task.Requester == evergreen.AdHocRequester:
+			patchTasks = append(patchTasks, task)
 		default:
 			grip.Error(message.Fields{
 				"task":      task.Id,
