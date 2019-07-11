@@ -2,7 +2,9 @@ package model
 
 import (
 	"github.com/evergreen-ci/evergreen/model/patch"
+	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
+	"gopkg.in/mgo.v2/bson"
 )
 
 // APIPatch is the model to be returned by the API whenever patches are fetched.
@@ -47,8 +49,8 @@ func (apiPatch *APIPatch) BuildFromService(h interface{}) error {
 	apiPatch.Version = ToAPIString(v.Version)
 	apiPatch.Status = ToAPIString(v.Status)
 	apiPatch.CreateTime = NewTime(v.CreateTime)
-	apiPatch.StartTime = NewTime(v.CreateTime)
-	apiPatch.FinishTime = NewTime(v.CreateTime)
+	apiPatch.StartTime = NewTime(v.StartTime)
+	apiPatch.FinishTime = NewTime(v.FinishTime)
 	builds := make([]APIString, 0)
 	for _, b := range v.BuildVariants {
 		builds = append(builds, ToAPIString(b))
@@ -79,7 +81,45 @@ func (apiPatch *APIPatch) BuildFromService(h interface{}) error {
 
 // ToService converts a service layer patch using the data from APIPatch
 func (apiPatch *APIPatch) ToService() (interface{}, error) {
-	return nil, errors.New("not implemented for read-only route")
+	var err error
+	res := patch.Patch{}
+	catcher := grip.NewBasicCatcher()
+	res.Id = bson.ObjectIdHex(FromAPIString(apiPatch.Id))
+	res.Description = FromAPIString(apiPatch.Description)
+	res.Project = FromAPIString(apiPatch.Description)
+	res.Githash = FromAPIString(apiPatch.Githash)
+	res.PatchNumber = apiPatch.PatchNumber
+	res.Author = FromAPIString(apiPatch.Author)
+	res.Version = FromAPIString(apiPatch.Version)
+	res.Status = FromAPIString(apiPatch.Status)
+	res.Alias = FromAPIString(apiPatch.Alias)
+	res.Activated = apiPatch.Activated
+	res.CreateTime, err = ParseTime(apiPatch.CreateTime.String())
+	catcher.Add(err)
+	res.StartTime, err = ParseTime(apiPatch.StartTime.String())
+	catcher.Add(err)
+	res.FinishTime, err = ParseTime(apiPatch.FinishTime.String())
+	catcher.Add(err)
+
+	builds := make([]string, len(apiPatch.Variants))
+	for _, b := range apiPatch.Variants {
+		builds = append(builds, FromAPIString(b))
+	}
+
+	res.BuildVariants = builds
+	tasks := make([]string, len(apiPatch.Tasks))
+	for i, t := range apiPatch.Tasks {
+		tasks[i] = FromAPIString(t)
+	}
+	res.Tasks = tasks
+	i, err := apiPatch.GithubPatchData.ToService()
+	catcher.Add(err)
+	data, ok := i.(patch.GithubPatch)
+	if !ok {
+		catcher.Add(errors.New("cannot resolve patch data"))
+	}
+	res.GithubPatchData = data
+	return res, catcher.Resolve()
 }
 
 type githubPatch struct {
@@ -110,5 +150,13 @@ func (g *githubPatch) BuildFromService(h interface{}) error {
 
 // ToService converts a service layer patch using the data from APIPatch
 func (g *githubPatch) ToService() (interface{}, error) {
-	return nil, errors.New("(*githubPatch) ToService not implemented for read-only route")
+	res := patch.GithubPatch{}
+	res.PRNumber = g.PRNumber
+	res.BaseOwner = FromAPIString(g.BaseOwner)
+	res.BaseRepo = FromAPIString(g.BaseRepo)
+	res.HeadOwner = FromAPIString(g.HeadOwner)
+	res.HeadRepo = FromAPIString(g.HeadRepo)
+	res.HeadHash = FromAPIString(g.HeadHash)
+	res.Author = FromAPIString(g.Author)
+	return res, nil
 }
