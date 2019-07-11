@@ -98,14 +98,7 @@ func (s *CommitQueueSuite) TestListContentsForCLI() {
 	cq := &commitqueue.CommitQueue{ProjectID: "mci"}
 	s.Require().NoError(commitqueue.InsertQueue(cq))
 
-	pos, err := cq.Enqueue(commitqueue.CommitQueueItem{
-		Issue: p1.Id.Hex(),
-		Modules: []commitqueue.Module{
-			commitqueue.Module{
-				Module: "test_module",
-				Issue:  "1234",
-			},
-		}})
+	pos, err := cq.Enqueue(commitqueue.CommitQueueItem{Issue: p1.Id.Hex()})
 	s.NoError(err)
 	s.Equal(1, pos)
 	pos, err = cq.Enqueue(commitqueue.CommitQueueItem{Issue: p2.Id.Hex()})
