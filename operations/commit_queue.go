@@ -105,7 +105,7 @@ func mergeCommand() cli.Command {
 				Usage: "wait to enqueue an item until finalized",
 			},
 			cli.StringFlag{
-				Name:  joinFlagNames(messageFlagName, "m"),
+				Name:  joinFlagNames(messageFlagName, "m", "description", "d"),
 				Usage: "commit message",
 			},
 		)),
