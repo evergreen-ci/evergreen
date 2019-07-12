@@ -2,7 +2,7 @@ buildDir := build
 srcFiles := $(shell find . -name "*.go" -not -path "./$(buildDir)/*" -not -name "*_test.go" -not -path "*\#*")
 testFiles := $(shell find . -name "*.go" -not -path "./$(buildDir)/*" -not -path "*\#*")
 
-_testPackages := ./ ./cli ./rpc ./rpc/internal
+_testPackages := ./ ./cli ./rpc
 
 testArgs := -v
 ifneq (,$(RUN_TEST))
@@ -27,7 +27,7 @@ race:
 	@! grep -s -q -e "^FAIL" $(buildDir)/race.sink.out && ! grep -s -q "^WARNING: DATA RACE" $(buildDir)/race.sink.out
 test:
 	@mkdir -p $(buildDir)
-	go test $(testArgs) $(if $(DISABLE_COVERAGE),, -cover) $(_testPackages) | tee $(buildDir)/test.sink.out
+	go test -timeout 20m $(testArgs) $(if $(DISABLE_COVERAGE),, -cover) $(_testPackages) | tee $(buildDir)/test.sink.out
 	@! grep -s -q -e "^FAIL" $(buildDir)/test.sink.out
 .PHONY: benchmark
 benchmark:

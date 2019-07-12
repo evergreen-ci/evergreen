@@ -271,7 +271,7 @@ func (j *agentDeployJob) startAgentOnHost(ctx context.Context, settings *evergre
 // Prepare the remote machine to run a task.
 func (j *agentDeployJob) prepRemoteHost(ctx context.Context, hostObj host.Host, sshOptions []string, settings *evergreen.Settings) error {
 	// copy over the correct agent binary to the remote host
-	if logs, err := hostObj.RunSSHCommand(ctx, hostObj.CurlCommand(settings.Ui.Url), sshOptions); err != nil {
+	if logs, err := hostObj.RunSSHCommand(ctx, hostObj.CurlCommand(settings), sshOptions); err != nil {
 		return errors.Wrapf(err, "error downloading agent binary on remote host: %s", logs)
 	}
 

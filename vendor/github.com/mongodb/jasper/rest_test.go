@@ -748,9 +748,11 @@ func TestRestService(t *testing.T) {
 			ctx, cancel := context.WithTimeout(context.Background(), longTaskTimeout)
 			defer cancel()
 
-			srv, port := makeAndStartService(ctx, httpClient)
+			srv, port, err := startRESTService(ctx, httpClient)
+			require.NoError(t, err)
 			require.NotNil(t, srv)
 
+			require.NoError(t, err)
 			client := &restClient{
 				prefix: fmt.Sprintf("http://localhost:%d/jasper/v1", port),
 				client: httpClient,

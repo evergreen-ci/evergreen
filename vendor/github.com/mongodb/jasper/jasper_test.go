@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/mongodb/grip"
+	"github.com/pkg/errors"
 )
 
 var intSource <-chan int
@@ -84,25 +85,31 @@ func createProcs(ctx context.Context, opts *CreateOptions, manager Manager, num 
 	return out, catcher.Resolve()
 }
 
-func makeAndStartService(ctx context.Context, client *http.Client) (*Service, int) {
+func startRESTService(ctx context.Context, client *http.Client) (*Service, int, error) {
 outerRetry:
 	for {
 		select {
 		case <-ctx.Done():
 			grip.Warning("timed out starting test service")
-			return nil, -1
+			return nil, -1, errors.WithStack(ctx.Err())
 		default:
-			port := getPortNumber()
 			localManager, err := NewLocalManager(false)
 			if err != nil {
-				return nil, -1
+				return nil, -1, errors.WithStack(err)
 			}
 			srv := NewManagerService(localManager)
 			app := srv.App(ctx)
 			app.SetPrefix("jasper")
+
+			if err := app.SetHost("localhost"); err != nil {
+				continue outerRetry
+			}
+
+			port := getPortNumber()
 			if err := app.SetPort(port); err != nil {
 				continue outerRetry
 			}
+
 			go func() {
 				app.Run(ctx)
 			}()
@@ -114,13 +121,13 @@ outerRetry:
 			trials := 0
 		checkLoop:
 			for {
-				if trials > 40 {
+				if trials > 10 {
 					continue outerRetry
 				}
 
 				select {
 				case <-ctx.Done():
-					return nil, -1
+					return nil, -1, errors.WithStack(ctx.Err())
 				case <-timer.C:
 					req, err := http.NewRequest(http.MethodGet, url, nil)
 					if err != nil {
@@ -128,7 +135,9 @@ outerRetry:
 						trials++
 						continue checkLoop
 					}
-					req = req.WithContext(ctx)
+					rctx, cancel := context.WithTimeout(ctx, time.Second)
+					defer cancel()
+					req = req.WithContext(rctx)
 					resp, err := client.Do(req)
 					if err != nil {
 						timer.Reset(5 * time.Millisecond)
@@ -141,7 +150,7 @@ outerRetry:
 						continue checkLoop
 					}
 
-					return srv, port
+					return srv, port, nil
 				}
 			}
 		}

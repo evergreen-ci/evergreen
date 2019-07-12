@@ -76,7 +76,7 @@ func (m *basicProcessManager) CreateCommand(ctx context.Context) *Command {
 
 func (m *basicProcessManager) Register(ctx context.Context, proc Process) error {
 	if ctx.Err() != nil {
-		return errors.New("context canceled")
+		return errors.WithStack(ctx.Err())
 	}
 
 	if proc == nil {
@@ -109,7 +109,7 @@ func (m *basicProcessManager) List(ctx context.Context, f Filter) ([]Process, er
 
 	for _, proc := range m.procs {
 		if ctx.Err() != nil {
-			return nil, errors.New("operation canceled")
+			return nil, errors.WithStack(ctx.Err())
 		}
 
 		cctx, cancel := context.WithTimeout(ctx, 100*time.Millisecond)
@@ -190,7 +190,7 @@ func (m *basicProcessManager) Group(ctx context.Context, name string) ([]Process
 	out := []Process{}
 	for _, proc := range m.procs {
 		if ctx.Err() != nil {
-			return nil, errors.New("request canceled")
+			return nil, errors.WithStack(ctx.Err())
 		}
 
 		if sliceContains(proc.GetTags(), name) {
