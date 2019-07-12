@@ -225,10 +225,10 @@ func (j *setupHostJob) runHostSetup(ctx context.Context, targetHost *host.Host, 
 
 	switch targetHost.Distro.BootstrapMethod {
 	case distro.BootstrapMethodUserData:
-		// The setup is done at this point for user data, because it only needs
-		// to perform operations that must be done after the host is already
-		// running (e.g. setting DNS name).
-		if err := targetHost.MarkAsProvisioned(); err != nil {
+		// The setup is done at this point for a host bootstrapped with user
+		// data, because this host only needs to perform operations that must be
+		// done after the host is already running (e.g. setting DNS name).
+		if err = targetHost.MarkAsProvisioned(); err != nil {
 			return errors.Wrapf(err, "error marking host %s as provisioned", targetHost.Id)
 		}
 
