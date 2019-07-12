@@ -52,6 +52,10 @@ func serviceCommandCombined(cmd string, operation serviceOperation) cli.Command 
 				Name:  rpcCredsFilePathFlagName,
 				Usage: "the path to the RPC service credentials file",
 			},
+			cli.StringFlag{
+				Name:  userFlagName,
+				Usage: "the user who will run the services",
+			},
 		},
 		Before: mergeBeforeFuncs(
 			validatePort(restPortFlagName),
@@ -69,6 +73,7 @@ func serviceCommandCombined(cmd string, operation serviceOperation) cli.Command 
 			)
 
 			config := serviceConfig(CombinedService, buildRunCommand(c, CombinedService))
+			config.UserName = c.String(userFlagName)
 
 			return operation(daemon, config)
 		},

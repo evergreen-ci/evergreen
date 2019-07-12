@@ -125,6 +125,17 @@ func TestRPCClient(t *testing.T) {
 							assert.NotNil(t, ctx)
 							assert.NotNil(t, client)
 						},
+						"IDReturnsNonempty": func(ctx context.Context, t *testing.T, client jasper.RemoteClient) {
+							assert.NotEmpty(t, client.ID())
+						},
+						"ProcEnvVarMatchesManagerID": func(ctx context.Context, t *testing.T, client jasper.RemoteClient) {
+							opts := trueCreateOpts()
+							proc, err := client.CreateProcess(ctx, opts)
+							require.NoError(t, err)
+							info := proc.Info(ctx)
+							require.NotEmpty(t, info.Options.Environment)
+							assert.Equal(t, client.ID(), info.Options.Environment[jasper.ManagerEnvironID])
+						},
 						"ListDoesNotErrorWhenEmpty": func(ctx context.Context, t *testing.T, client jasper.RemoteClient) {
 							all, err := client.List(ctx, jasper.All)
 							require.NoError(t, err)

@@ -172,11 +172,11 @@ func TestJasperCommandsWindows(t *testing.T) {
 			for testName, testCase := range map[string]func(t *testing.T){
 				"WithoutJasperCredentialsPath": func(t *testing.T) {
 					h.Distro.JasperCredentialsPath = ""
-					_, err := h.writeJasperCredentialsFileCommand(config, creds)
+					_, err := h.WriteJasperCredentialsFileCommand(config, creds)
 					assert.Error(t, err)
 				},
 				"WithJasperCredentialsPath": func(t *testing.T) {
-					cmd, err := h.writeJasperCredentialsFileCommand(config, creds)
+					cmd, err := h.WriteJasperCredentialsFileCommand(config, creds)
 					require.NoError(t, err)
 
 					expectedCreds, err := creds.Export()
@@ -198,7 +198,7 @@ func TestJasperCommandsWindows(t *testing.T) {
 			require.NoError(t, err)
 
 			h.Distro.JasperCredentialsPath = ""
-			_, err = h.writeJasperCredentialsFileCommand(config, creds)
+			_, err = h.WriteJasperCredentialsFileCommand(config, creds)
 			assert.Error(t, err)
 		},
 	} {
@@ -244,7 +244,7 @@ func setupJasperService(ctx context.Context, env *mock.Environment, h *Host) (ja
 	}
 	env.Settings().HostJasper.Port = port
 
-	opts, creds, err := h.GenerateJasperCredentials(ctx, env)
+	creds, err := h.GenerateJasperCredentials(ctx, env)
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}
@@ -253,7 +253,7 @@ func setupJasperService(ctx context.Context, env *mock.Environment, h *Host) (ja
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}
-	return closeService, errors.WithStack(h.SaveJasperCredentials(ctx, env, opts))
+	return closeService, errors.WithStack(h.SaveJasperCredentials(ctx, env, creds))
 }
 
 // teardownJasperService is used to clean up a test Jasper service and clean up

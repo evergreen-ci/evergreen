@@ -288,7 +288,7 @@ func (j *setupHostJob) setupJasper(ctx context.Context) error {
 // putJasperCredentials creates Jasper credentials for the host and puts the
 // credentials file on the host.
 func (j *setupHostJob) putJasperCredentials(ctx context.Context, fileName string, sshOptions []string) error {
-	opts, creds, err := j.host.GenerateJasperCredentials(ctx, j.env)
+	creds, err := j.host.GenerateJasperCredentials(ctx, j.env)
 	if err != nil {
 		return errors.Wrap(err, "could not generate Jasper credentials for host")
 	}
@@ -349,7 +349,7 @@ func (j *setupHostJob) putJasperCredentials(ctx context.Context, fileName string
 		return errors.Wrap(err, "error copying credentials to remote machine")
 	}
 
-	if err := j.host.SaveJasperCredentials(ctx, j.env, opts); err != nil {
+	if err := j.host.SaveJasperCredentials(ctx, j.env, creds); err != nil {
 		grip.Error(message.WrapError(err, message.Fields{
 			"message": "problem saving host credentials",
 			"job":     j.ID(),

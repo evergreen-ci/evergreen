@@ -22,7 +22,7 @@ const defaultTestTimeout = 5 * time.Second
 //             assert.Equal(t, expectedCreds.CACert, creds.CACert)
 //         },
 //         "FailsForNonexistentServiceName": func(ctx context.Context, t *testing.T, env evergreen.Environment) {
-//             require.NoError(t, DeleteCredentials(ctx, env, serviceName))
+//             require.NoError(t, DeleteByID(ctx, env, serviceName))
 //             _, err := ForJasperClient(ctx, env)
 //             assert.Error(t, err)
 //         },

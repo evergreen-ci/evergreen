@@ -88,6 +88,22 @@ func (c *restClient) doRequest(ctx context.Context, method string, url string, b
 	return resp, nil
 }
 
+func (c *restClient) ID() string {
+	resp, err := c.doRequest(context.Background(), http.MethodGet, c.getURL("/id"), nil)
+	if err != nil {
+		grip.Debug(errors.Wrap(err, "request returned error"))
+		return ""
+	}
+	defer resp.Body.Close()
+
+	var id string
+	if err = gimlet.GetJSON(resp.Body, &id); err != nil {
+		return ""
+	}
+
+	return id
+}
+
 func (c *restClient) CreateProcess(ctx context.Context, opts *CreateOptions) (Process, error) {
 	body, err := makeBody(opts)
 	if err != nil {

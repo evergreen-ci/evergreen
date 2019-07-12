@@ -371,11 +371,13 @@ func (h *Host) JasperClientCredentials(ctx context.Context, env evergreen.Enviro
 func (h *Host) GenerateJasperCredentials(ctx context.Context, env evergreen.Environment) (*rpc.Credentials, error) {
 	if h.JasperCredentialsID == "" {
 		if err := h.UpdateJasperCredentialsID(h.Id); err != nil {
-			return nil, nil, errors.Wrap(err, "problem setting Jasper credentials ID")
+			return nil, errors.Wrap(err, "problem setting Jasper credentials ID")
 		}
 	}
-	if err := credentials.DeleteCredentials(ctx, env, h.JasperCredentialsID); err != nil {
-		return nil, nil, errors.Wrap(err, "problem deleting existing Jasper credentials")
+	// We have to delete this host's credentials because GenerateInMemory will
+	// fail if credentials already exist in the database.
+	if err := credentials.DeleteByID(ctx, env, h.JasperCredentialsID); err != nil {
+		return nil, errors.Wrap(err, "problem deleting existing Jasper credentials")
 	}
 	return credentials.GenerateInMemory(ctx, env, h.JasperCredentialsID)
 }
@@ -392,7 +394,7 @@ func (h *Host) SaveJasperCredentials(ctx context.Context, env evergreen.Environm
 // DeleteJasperCredentials deletes the Jasper credentials for the host and
 // updates the host both in memory and in the database.
 func (h *Host) DeleteJasperCredentials(ctx context.Context, env evergreen.Environment) error {
-	return credentials.DeleteCredentials(ctx, env, h.JasperCredentialsID)
+	return credentials.DeleteByID(ctx, env, h.JasperCredentialsID)
 }
 
 // UpdateJasperCredentialsID sets the ID of the host's Jasper credentials.

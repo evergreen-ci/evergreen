@@ -10,6 +10,7 @@ import (
 	"github.com/evergreen-ci/evergreen/mock"
 	"github.com/mongodb/jasper/rpc"
 	"github.com/pkg/errors"
+	"github.com/square/certstrap/pkix"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -72,15 +73,16 @@ func TestDBOperations(t *testing.T) {
 					assert.Equal(t, creds.Key, dbCreds.Key)
 					assert.Equal(t, creds.CACert, dbCreds.CACert)
 
+					time.Sleep(time.Second)
 					newCreds, err := GenerateInMemory(ctx, env, "new"+name)
 					require.NoError(t, err)
 					require.NoError(t, SaveByID(ctx, env, name, newCreds))
 
 					dbCreds, err = FindByID(ctx, env, name)
 					require.NoError(t, err)
-					assert.Equal(t, creds.Cert, dbCreds.Cert)
-					assert.Equal(t, creds.Key, dbCreds.Key)
-					assert.Equal(t, creds.CACert, dbCreds.CACert)
+					assert.Equal(t, newCreds.Cert, dbCreds.Cert)
+					assert.Equal(t, newCreds.Key, dbCreds.Key)
+					assert.Equal(t, newCreds.CACert, dbCreds.CACert)
 				},
 			} {
 				t.Run(testName, func(t *testing.T) {
@@ -158,10 +160,59 @@ func TestDBOperations(t *testing.T) {
 			}
 		},
 		"DeleteByID": func(ctx context.Context, t *testing.T, env evergreen.Environment) {
-			// kim: TODO
+			for testName, testCase := range map[string]func(ctx context.Context, t *testing.T){
+				"NoopsWithNonexistent": func(ctx context.Context, t *testing.T) {
+					assert.NoError(t, DeleteByID(ctx, env, name))
+				},
+				"DeletesWithExistingID": func(ctx context.Context, t *testing.T) {
+					creds, err := GenerateInMemory(ctx, env, name)
+					require.NoError(t, err)
+					require.NoError(t, SaveByID(ctx, env, name, creds))
+					require.NoError(t, DeleteByID(ctx, env, name))
+
+					_, err = FindByID(ctx, env, name)
+					assert.Error(t, err)
+				},
+			} {
+				t.Run(testName, func(t *testing.T) {
+					withSetupAndTeardown(t, env, func() {
+						testCase(ctx, t)
+					})
+				})
+			}
 		},
 		"FindExpirationByID": func(ctx context.Context, t *testing.T, env evergreen.Environment) {
-			// kim: TODO
+			for testName, testCase := range map[string]func(ctx context.Context, t *testing.T){
+				"FailsForCancelledContext": func(ctx context.Context, t *testing.T) {
+					withCancelledContext(ctx, func(ctx context.Context) {
+						_, err := FindExpirationByID(ctx, env, name)
+						require.Error(t, err)
+						assert.Contains(t, err.Error(), context.Canceled.Error())
+					})
+				},
+				"FailsForNonexistent": func(ctx context.Context, t *testing.T) {
+					_, err := FindExpirationByID(ctx, env, name)
+					assert.Error(t, err)
+				},
+				"Succeeds": func(ctx context.Context, t *testing.T) {
+					creds, err := GenerateInMemory(ctx, env, name)
+					require.NoError(t, err)
+					require.NoError(t, SaveByID(ctx, env, name, creds))
+					expiration, err := FindExpirationByID(ctx, env, name)
+					require.NoError(t, err)
+					crt, err := pkix.NewCertificateFromPEM(creds.Cert)
+					require.NoError(t, err)
+					rawCrt, err := crt.GetRawCertificate()
+					require.NoError(t, err)
+					assert.WithinDuration(t, rawCrt.NotAfter, expiration, time.Second)
+				},
+			} {
+				t.Run(testName, func(t *testing.T) {
+					withSetupAndTeardown(t, env, func() {
+						testCase(ctx, t)
+					})
+				})
+			}
 		},
 	} {
 		t.Run(opName, func(t *testing.T) {

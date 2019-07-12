@@ -120,14 +120,12 @@ imports:
   - name: github.com/evergreen-ci/pail
     version: 7b2f8e0b2d972ca621cad3777d68276a54da13d0
   - name: github.com/mongodb/jasper
-    version: c29dd8f6e19fb5aa1c73a1ec4dba1f45abc39ef0
+    version: 72c874b6f932f44150e549805ccc96b86059ad13
   - name: go.mongodb.org/mongo-driver
     version: 305bc4a5e4131420fe8ba5628e6faa9e6ade4e86
 
   - name: github.com/evergreen-ci/certdepot
-    version: 3063bc24913930d8f13a827a0ce1bb8b0c649ae0
-  - name: github.com/square/certstrap
-    version: a0ea37d7c3834c63c247ab2083acf9d4657b19cd
+    version: 6f75adcd0e46b0a2eb99560d517b5879ccf3ad07
 
   # git library and its dependencies
   - name: gopkg.in/src-d/go-git.v4

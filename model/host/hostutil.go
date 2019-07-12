@@ -207,7 +207,13 @@ func (h *Host) ForceReinstallJasperCommand(config evergreen.HostJasperConfig) st
 		params = append(params, fmt.Sprintf("--creds_path=%s", h.Distro.JasperCredentialsPath))
 	}
 
-	return h.jasperServiceCommand(config, "force-reinstall", params...)
+	return h.jasperServiceCommand(config, jaspercli.ForceReinstallCommand, params...)
+}
+
+// RestartJasperCommand returns the command to restart the Jasper service with
+// the existing configuration.
+func (h *Host) RestartJasperCommand(config evergreen.HostJasperConfig) string {
+	return h.jasperServiceCommand(config, jaspercli.RestartCommand)
 }
 
 func (h *Host) jasperServiceCommand(config evergreen.HostJasperConfig, subCmd string, args ...string) string {

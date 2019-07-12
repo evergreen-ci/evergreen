@@ -13,8 +13,6 @@ import (
 	"github.com/pkg/errors"
 	"github.com/square/certstrap/depot"
 	"github.com/square/certstrap/pkix"
-	"go.mongodb.org/mongo-driver/bson"
-	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
 const (
@@ -131,7 +129,6 @@ func SaveByID(ctx context.Context, env evergreen.Environment, name string, creds
 	if err != nil {
 		return errors.Wrap(err, "could not get x509 certificate")
 	}
-	// kim: TODO: wait for MAKE-853
 	if err := certdepot.PutTTL(dpt, name, rawCrt.NotAfter); err != nil {
 		return errors.Wrap(err, "could not put expiration on credentials")
 	}
@@ -216,21 +213,17 @@ func FindByID(ctx context.Context, env evergreen.Environment, name string) (*rpc
 
 // FindExpirationByID returns the time at which the credentials for the given
 // name will expire.
-// kim: TODO: test
 func FindExpirationByID(ctx context.Context, env evergreen.Environment, name string) (time.Time, error) {
-	query := bson.M{IDKey: name}
-	projection := &options.FindOneOptions{Projection: bson.M{IDKey: 0, TTLKey: 1}}
-
-	var expiration time.Time
-	if err := env.DB().Collection(Collection).FindOne(ctx, query, projection).Decode(&expiration); err != nil {
-		return time.Time{}, errors.Wrap(err, "problem finding credentials")
+	dpt, err := getDepot(ctx, env)
+	if err != nil {
+		return time.Time{}, errors.Wrap(err, "could not get depot")
 	}
 
-	return expiration, nil
+	return certdepot.GetTTL(dpt, name)
 }
 
-// DeleteCredentials removes the credentials from the database if they exist.
-func DeleteCredentials(ctx context.Context, env evergreen.Environment, name string) error {
+// DeleteByID removes the credentials from the database if they exist.
+func DeleteByID(ctx context.Context, env evergreen.Environment, name string) error {
 	dpt, err := getDepot(ctx, env)
 	if err != nil {
 		return errors.Wrap(err, "could not get depot")
