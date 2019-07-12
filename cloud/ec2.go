@@ -12,10 +12,8 @@ import (
 	"github.com/aws/aws-sdk-go/aws/credentials"
 	"github.com/aws/aws-sdk-go/service/ec2"
 	"github.com/evergreen-ci/evergreen"
-	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
-	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mitchellh/mapstructure"
 	"github.com/mongodb/grip"
@@ -194,7 +192,7 @@ func (m *ec2Manager) spawnOnDemandHost(ctx context.Context, h *host.Host, ec2Set
 	}
 
 	if ec2Settings.UserData != "" {
-		expanded, err := m.expandUserData(ec2Settings.UserData)
+		expanded, err := expandUserData(ec2Settings.UserData, m.settings.Expansions)
 		if err != nil {
 			return nil, errors.Wrap(err, "problem expanding user data")
 		}
@@ -326,7 +324,7 @@ func (m *ec2Manager) spawnSpotHost(ctx context.Context, h *host.Host, ec2Setting
 	}
 
 	if ec2Settings.UserData != "" {
-		expanded, err := m.expandUserData(ec2Settings.UserData)
+		expanded, err := expandUserData(ec2Settings.UserData, m.settings.Expansions)
 		if err != nil {
 			return nil, errors.Wrap(err, "problem expanding user data")
 		}
@@ -406,7 +404,7 @@ func (m *ec2Manager) SpawnHost(ctx context.Context, h *host.Host) (*host.Host, e
 		if !h.SpawnOptions.SpawnedByTask {
 			return nil, errors.New("key name must not be empty")
 		}
-		k, err := m.getKey(ctx, h)
+		k, err := getKey(ctx, m.client, m.credentials, h)
 		if err != nil {
 			return nil, errors.Wrap(err, "not spawning host, problem creating key")
 		}
@@ -478,69 +476,24 @@ func (m *ec2Manager) SpawnHost(ctx context.Context, h *host.Host) (*host.Host, e
 		})
 	}
 
-	grip.Debug(message.Fields{
-		"message":       "attaching tags for host",
-		"host":          h.Id,
-		"host_provider": h.Distro.Provider,
-		"distro":        h.Distro.Id,
-	})
-	tags := makeTags(h)
-	tagSlice := []*ec2.Tag{}
-	for tag := range tags {
-		key := tag
-		val := tags[tag]
-		tagSlice = append(tagSlice, &ec2.Tag{Key: &key, Value: &val})
-	}
-	if _, err = m.client.CreateTags(ctx, &ec2.CreateTagsInput{
-		Resources: resources,
-		Tags:      tagSlice,
-	}); err != nil {
+	if err = setTags(ctx, resources, h, m.client, m.credentials); err != nil {
 		grip.Error(message.WrapError(err, message.Fields{
 			"message":       "error attaching tags",
 			"host":          h.Id,
 			"host_provider": h.Distro.Provider,
 			"distro":        h.Distro.Id,
 		}))
-		err = errors.Wrapf(err, "failed to attach tags for %s", h.Id)
-		return nil, err
+		return nil, errors.Wrapf(err, "failed to attach tags for %s", h.Id)
 	}
-
 	grip.Debug(message.Fields{
 		"message":       "attached tags for host",
 		"host":          h.Id,
 		"host_provider": h.Distro.Provider,
 		"distro":        h.Distro.Id,
 	})
+
 	event.LogHostStarted(h.Id)
-
 	return h, nil
-}
-
-func (m *ec2Manager) getKey(ctx context.Context, h *host.Host) (string, error) {
-	const keyPrefix = "evg_auto_"
-	t, err := task.FindOneId(h.StartedBy)
-	if err != nil {
-		return "", errors.Wrapf(err, "problem finding task %s", h.StartedBy)
-	}
-	if t == nil {
-		return "", errors.Errorf("no task found %s", h.StartedBy)
-	}
-	k, err := model.GetAWSKeyForProject(t.Project)
-	if err != nil {
-		return "", errors.Wrap(err, "problem getting key for project")
-	}
-	if k.Name != "" {
-		return k.Name, nil
-	}
-	name := keyPrefix + t.Project
-	newKey, err := m.makeNewKey(ctx, name, h)
-	if err != nil {
-		return "", errors.Wrap(err, "problem creating new key")
-	}
-	if err := model.SetAWSKeyForProject(t.Project, &model.AWSSSHKey{Name: name, Value: newKey}); err != nil {
-		return "", errors.Wrap(err, "problem setting key")
-	}
-	return name, nil
 }
 
 // GetInstanceStatuses returns the current status of a slice of EC2 instances.
@@ -965,24 +918,7 @@ func (m *ec2Manager) GetDNSName(ctx context.Context, h *host.Host) (string, erro
 
 // GetSSHOptions returns the command-line args to pass to SSH.
 func (m *ec2Manager) GetSSHOptions(h *host.Host, keyName string) ([]string, error) {
-	if keyName == "" {
-		return nil, errors.New("No key specified for EC2 host")
-	}
-	opts := []string{"-i", keyName}
-	hasKnownHostsFile := false
-
-	for _, opt := range h.Distro.SSHOptions {
-		opt = strings.Trim(opt, " \t")
-		opts = append(opts, "-o", opt)
-		if strings.HasPrefix(opt, "UserKnownHostsFile") {
-			hasKnownHostsFile = true
-		}
-	}
-
-	if !hasKnownHostsFile {
-		opts = append(opts, "-o", "UserKnownHostsFile=/dev/null")
-	}
-	return opts, nil
+	return getEc2SSHOptions(h, keyName)
 }
 
 // TimeTilNextPayment returns how long until the next payment is due for a host.
@@ -1061,13 +997,4 @@ func (m *ec2Manager) CostForDuration(ctx context.Context, h *host.Host, start, e
 	}
 
 	return total, nil
-}
-
-func (m *ec2Manager) expandUserData(userData string) (string, error) {
-	exp := util.NewExpansions(m.settings.Expansions)
-	expanded, err := exp.ExpandString(userData)
-	if err != nil {
-		return "", errors.Wrap(err, "error expanding userdata script")
-	}
-	return expanded, nil
 }

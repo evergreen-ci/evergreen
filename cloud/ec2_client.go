@@ -81,6 +81,15 @@ type AWSClient interface {
 
 	// GetProducts is a wrapper for pricing.GetProducts.
 	GetProducts(context.Context, *pricing.GetProductsInput) (*pricing.GetProductsOutput, error)
+
+	// CreateLaunchTemplate is a wrapper for ec2.CreateLaunchTemplateWithContext
+	CreateLaunchTemplate(context.Context, *ec2.CreateLaunchTemplateInput) (*ec2.CreateLaunchTemplateOutput, error)
+
+	// DeleteLaunchTemplate is a wrapper for ec2.DeleteLaunchTemplateWithContext
+	DeleteLaunchTemplate(context.Context, *ec2.DeleteLaunchTemplateInput) (*ec2.DeleteLaunchTemplateOutput, error)
+
+	// CreateFleet is a wrapper for ec2.CreateFleetWithContext
+	CreateFleet(context.Context, *ec2.CreateFleetInput) (*ec2.CreateFleetOutput, error)
 }
 
 // awsClientImpl wraps ec2.EC2.
@@ -557,6 +566,78 @@ func (c *awsClientImpl) GetProducts(ctx context.Context, input *pricing.GetProdu
 	return output, nil
 }
 
+// CreateLaunchTemplate is a wrapper for ec2.CreateLaunchTemplateWithContext
+func (c *awsClientImpl) CreateLaunchTemplate(ctx context.Context, input *ec2.CreateLaunchTemplateInput) (*ec2.CreateLaunchTemplateOutput, error) {
+	var output *ec2.CreateLaunchTemplateOutput
+	var err error
+	msg := makeAWSLogMessage("CreateLaunchTemplate", fmt.Sprintf("%T", c), input)
+	err = util.Retry(
+		ctx,
+		func() (bool, error) {
+			output, err = c.EC2.CreateLaunchTemplateWithContext(ctx, input)
+			if err != nil {
+				if ec2err, ok := err.(awserr.Error); ok {
+					grip.Error(message.WrapError(ec2err, msg))
+				}
+				return true, err
+			}
+			grip.Info(msg)
+			return false, nil
+		}, awsClientImplRetries, awsClientImplStartPeriod, 0)
+	if err != nil {
+		return nil, err
+	}
+	return output, nil
+}
+
+// DeleteLaunchTemplate is a wrapper for ec2.DeleteLaunchTemplateWithContext
+func (c *awsClientImpl) DeleteLaunchTemplate(ctx context.Context, input *ec2.DeleteLaunchTemplateInput) (*ec2.DeleteLaunchTemplateOutput, error) {
+	var output *ec2.DeleteLaunchTemplateOutput
+	var err error
+	msg := makeAWSLogMessage("DeleteLaunchTemplate", fmt.Sprintf("%T", c), input)
+	err = util.Retry(
+		ctx,
+		func() (bool, error) {
+			output, err = c.EC2.DeleteLaunchTemplateWithContext(ctx, input)
+			if err != nil {
+				if ec2err, ok := err.(awserr.Error); ok {
+					grip.Error(message.WrapError(ec2err, msg))
+				}
+				return true, err
+			}
+			grip.Info(msg)
+			return false, nil
+		}, awsClientImplRetries, awsClientImplStartPeriod, 0)
+	if err != nil {
+		return nil, err
+	}
+	return output, nil
+}
+
+// CreateFleet is a wrapper for ec2.CreateFleetWithContext
+func (c *awsClientImpl) CreateFleet(ctx context.Context, input *ec2.CreateFleetInput) (*ec2.CreateFleetOutput, error) {
+	var output *ec2.CreateFleetOutput
+	var err error
+	msg := makeAWSLogMessage("CreateFleet", fmt.Sprintf("%T", c), input)
+	err = util.Retry(
+		ctx,
+		func() (bool, error) {
+			output, err = c.EC2.CreateFleetWithContext(ctx, input)
+			if err != nil {
+				if ec2err, ok := err.(awserr.Error); ok {
+					grip.Error(message.WrapError(ec2err, msg))
+				}
+				return true, err
+			}
+			grip.Info(msg)
+			return false, nil
+		}, awsClientImplRetries, awsClientImplStartPeriod, 0)
+	if err != nil {
+		return nil, err
+	}
+	return output, nil
+}
+
 // awsClientMock mocks ec2.EC2.
 type awsClientMock struct { //nolint
 	*credentials.Credentials
@@ -574,9 +655,13 @@ type awsClientMock struct { //nolint
 	*ec2.CreateKeyPairInput
 	*ec2.DeleteKeyPairInput
 	*pricing.GetProductsInput
+	*ec2.CreateLaunchTemplateInput
+	*ec2.DeleteLaunchTemplateInput
+	*ec2.CreateFleetInput
 
 	*ec2.DescribeSpotInstanceRequestsOutput
 	*ec2.DescribeInstancesOutput
+	*ec2.CreateLaunchTemplateOutput
 }
 
 // Create a new mock client.
@@ -806,6 +891,41 @@ func (c *awsClientMock) DeleteKeyPair(ctx context.Context, input *ec2.DeleteKeyP
 func (c *awsClientMock) GetProducts(ctx context.Context, input *pricing.GetProductsInput) (*pricing.GetProductsOutput, error) {
 	c.GetProductsInput = input
 	return &pricing.GetProductsOutput{}, nil
+}
+
+// CreateLaunchTemplate is a mock for ec2.CreateLaunchTemplateWithContext
+func (c *awsClientMock) CreateLaunchTemplate(ctx context.Context, input *ec2.CreateLaunchTemplateInput) (*ec2.CreateLaunchTemplateOutput, error) {
+	c.CreateLaunchTemplateInput = input
+	if c.CreateLaunchTemplateOutput == nil {
+		c.CreateLaunchTemplateOutput = &ec2.CreateLaunchTemplateOutput{
+			LaunchTemplate: &ec2.LaunchTemplate{
+				LaunchTemplateId:    aws.String("templateID"),
+				LatestVersionNumber: aws.Int64(1),
+			},
+		}
+	}
+
+	return c.CreateLaunchTemplateOutput, nil
+}
+
+// DeleteLaunchTemplate is a mock for ec2.DeleteLaunchTemplateWithContext
+func (c *awsClientMock) DeleteLaunchTemplate(ctx context.Context, input *ec2.DeleteLaunchTemplateInput) (*ec2.DeleteLaunchTemplateOutput, error) {
+	c.DeleteLaunchTemplateInput = input
+	return &ec2.DeleteLaunchTemplateOutput{}, nil
+}
+
+// CreateFleet is a mock for ec2.CreateFleetWithContext
+func (c *awsClientMock) CreateFleet(ctx context.Context, input *ec2.CreateFleetInput) (*ec2.CreateFleetOutput, error) {
+	c.CreateFleetInput = input
+	return &ec2.CreateFleetOutput{
+		Instances: []*ec2.CreateFleetInstance{
+			{
+				InstanceIds: []*string{
+					aws.String("i-12345"),
+				},
+			},
+		},
+	}, nil
 }
 
 func makeAWSLogMessage(name, client string, args interface{}) message.Fields {

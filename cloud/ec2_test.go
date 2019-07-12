@@ -897,7 +897,7 @@ func (s *EC2Suite) TestGetRegion() {
 }
 
 func (s *EC2Suite) TestUserDataExpand() {
-	expanded, err := s.autoManager.(*ec2Manager).expandUserData("${test} a thing")
+	expanded, err := expandUserData("${test} a thing", s.autoManager.(*ec2Manager).settings.Expansions)
 	s.NoError(err)
 	s.Equal("expand a thing", expanded)
 }

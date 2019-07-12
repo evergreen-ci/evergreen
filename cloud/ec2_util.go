@@ -1,6 +1,7 @@
 package cloud
 
 import (
+	"context"
 	"math"
 	"os"
 	"os/user"
@@ -9,10 +10,17 @@ import (
 	"time"
 
 	"github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go/aws/credentials"
+	"github.com/aws/aws-sdk-go/service/ec2"
 	ec2aws "github.com/aws/aws-sdk-go/service/ec2"
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/host"
+	"github.com/evergreen-ci/evergreen/model/task"
+	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/anser/bsonutil"
+	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 )
 
@@ -215,6 +223,129 @@ func timeTilNextHourlyPayment(host *host.Host) time.Duration {
 	return nextPaymentTime.Sub(now)
 }
 
+func getEc2SSHOptions(h *host.Host, keyName string) ([]string, error) {
+	if keyName == "" {
+		return nil, errors.New("No key specified for EC2 host")
+	}
+	opts := []string{"-i", keyName}
+	hasKnownHostsFile := false
+
+	for _, opt := range h.Distro.SSHOptions {
+		opt = strings.Trim(opt, " \t")
+		opts = append(opts, "-o", opt)
+		if strings.HasPrefix(opt, "UserKnownHostsFile") {
+			hasKnownHostsFile = true
+		}
+	}
+
+	if !hasKnownHostsFile {
+		opts = append(opts, "-o", "UserKnownHostsFile=/dev/null")
+	}
+	return opts, nil
+}
+
+func getKey(ctx context.Context, client AWSClient, credentials *credentials.Credentials, h *host.Host) (string, error) {
+	t, err := task.FindOneId(h.StartedBy)
+	if err != nil {
+		return "", errors.Wrapf(err, "problem finding task %s", h.StartedBy)
+	}
+	if t == nil {
+		return "", errors.Errorf("no task found %s", h.StartedBy)
+	}
+	k, err := model.GetAWSKeyForProject(t.Project)
+	if err != nil {
+		return "", errors.Wrap(err, "problem getting key for project")
+	}
+	if k.Name != "" {
+		return k.Name, nil
+	}
+
+	newKey, err := makeNewKey(ctx, client, credentials, t.Project, h)
+	if err != nil {
+		return "", errors.Wrap(err, "problem creating new key")
+	}
+	return newKey, nil
+}
+
+func makeNewKey(ctx context.Context, client AWSClient, credentials *credentials.Credentials, project string, h *host.Host) (string, error) {
+	r, err := getRegion(h)
+	if err != nil {
+		return "", errors.Wrap(err, "problem getting region from host")
+	}
+	if err = client.Create(credentials, r); err != nil {
+		return "", errors.Wrap(err, "error creating client")
+	}
+	defer client.Close()
+
+	name := "evg_auto_" + project
+	_, err = client.DeleteKeyPair(ctx, &ec2.DeleteKeyPairInput{KeyName: aws.String(name)})
+	if err != nil { // error does not indicate a problem, but log anyway for debugging
+		grip.Debug(message.WrapError(err, message.Fields{
+			"message":  "problem deleting key",
+			"key_name": name,
+		}))
+	}
+	resp, err := client.CreateKeyPair(ctx, &ec2.CreateKeyPairInput{KeyName: aws.String(name)})
+	if err != nil {
+		return "", errors.Wrap(err, "problem creating key pair")
+	}
+
+	if err := model.SetAWSKeyForProject(project, &model.AWSSSHKey{Name: name, Value: *resp.KeyMaterial}); err != nil {
+		return "", errors.Wrap(err, "problem setting key")
+	}
+
+	return *resp.KeyMaterial, nil
+}
+
+func setTags(ctx context.Context, resources []*string, h *host.Host, client AWSClient, credentials *credentials.Credentials) error {
+	r, err := getRegion(h)
+	if err != nil {
+		return errors.Wrap(err, "problem getting region from host")
+	}
+	if err = client.Create(credentials, r); err != nil {
+		return errors.Wrap(err, "error creating client")
+	}
+	defer client.Close()
+
+	tags := makeTags(h)
+	tagSlice := []*ec2.Tag{}
+	for tag := range tags {
+		key := tag
+		val := tags[tag]
+		tagSlice = append(tagSlice, &ec2.Tag{Key: &key, Value: &val})
+	}
+	if _, err = client.CreateTags(ctx, &ec2.CreateTagsInput{
+		Resources: resources,
+		Tags:      tagSlice,
+	}); err != nil {
+		grip.Error(message.WrapError(err, message.Fields{
+			"message":       "error attaching tags",
+			"host":          h.Id,
+			"host_provider": h.Distro.Provider,
+			"distro":        h.Distro.Id,
+		}))
+		return errors.Wrapf(err, "failed to attach tags for %s", h.Id)
+	}
+
+	grip.Debug(message.Fields{
+		"message":       "attached tags for host",
+		"host":          h.Id,
+		"host_provider": h.Distro.Provider,
+		"distro":        h.Distro.Id,
+	})
+
+	return nil
+}
+
+func expandUserData(userData string, expansions map[string]string) (string, error) {
+	exp := util.NewExpansions(expansions)
+	expanded, err := exp.ExpandString(userData)
+	if err != nil {
+		return "", errors.Wrap(err, "error expanding userdata script")
+	}
+	return expanded, nil
+}
+
 // ebsRegex extracts EBS Price JSON data from Amazon's UI.
 var ebsRegex = regexp.MustCompile(`(?s)callback\((.*)\)`)
 
@@ -274,4 +405,114 @@ func makeBlockDeviceMappings(mounts []MountPoint) ([]*ec2aws.BlockDeviceMapping,
 		mappings = append(mappings, m)
 	}
 	return mappings, nil
+}
+
+func makeBlockDeviceMappingsTemplate(mounts []MountPoint) ([]*ec2aws.LaunchTemplateBlockDeviceMappingRequest, error) {
+	if len(mounts) == 0 {
+		return nil, nil
+	}
+	mappings := []*ec2aws.LaunchTemplateBlockDeviceMappingRequest{}
+	for _, mount := range mounts {
+		if mount.DeviceName == "" {
+			return nil, errors.New("missing device name")
+		}
+		if mount.VirtualName == "" && mount.Size == 0 {
+			return nil, errors.New("must provide either a virtual name or an EBS size")
+		}
+
+		m := &ec2aws.LaunchTemplateBlockDeviceMappingRequest{
+			DeviceName: aws.String(mount.DeviceName),
+		}
+		// Without a virtual name, this is EBS
+		if mount.VirtualName == "" {
+			m.Ebs = &ec2aws.LaunchTemplateEbsBlockDeviceRequest{
+				DeleteOnTermination: aws.Bool(true),
+				VolumeSize:          aws.Int64(mount.Size),
+				VolumeType:          aws.String(ec2aws.VolumeTypeGp2),
+			}
+			if mount.Iops != 0 {
+				m.Ebs.Iops = aws.Int64(mount.Iops)
+			}
+			if mount.SnapshotID != "" {
+				m.Ebs.SnapshotId = aws.String(mount.SnapshotID)
+			}
+			if mount.VolumeType != "" {
+				m.Ebs.VolumeType = aws.String(mount.VolumeType)
+			}
+		} else { // With a virtual name, this is an instance store
+			m.VirtualName = aws.String(mount.VirtualName)
+		}
+		mappings = append(mappings, m)
+	}
+	return mappings, nil
+}
+
+func validateEc2CreateTemplateResponse(createTemplateResponse *ec2aws.CreateLaunchTemplateOutput) error {
+	if createTemplateResponse == nil || createTemplateResponse.LaunchTemplate == nil {
+		return errors.New("create template response launch template is nil")
+	}
+
+	catcher := grip.NewBasicCatcher()
+	if createTemplateResponse.LaunchTemplate.LaunchTemplateId == nil || len(*createTemplateResponse.LaunchTemplate.LaunchTemplateId) == 0 {
+		catcher.Add(errors.New("create template response has no template identifier"))
+	}
+
+	if createTemplateResponse.LaunchTemplate.LatestVersionNumber == nil {
+		catcher.Add(errors.New("create template response has no latest version"))
+	}
+
+	return catcher.Resolve()
+}
+
+func validateEc2CreateFleetResponse(createFleetResponse *ec2aws.CreateFleetOutput) error {
+	if createFleetResponse == nil {
+		return errors.New("create fleet response is nil")
+	}
+
+	if len(createFleetResponse.Instances) == 0 || len(createFleetResponse.Instances[0].InstanceIds) == 0 {
+		return errors.New("no instance ID in create fleet response")
+	}
+
+	return nil
+}
+
+func validateEc2DescribeInstancesOutput(describeInstancesResponse *ec2aws.DescribeInstancesOutput) error {
+	catcher := grip.NewBasicCatcher()
+	for _, reservation := range describeInstancesResponse.Reservations {
+		if len(reservation.Instances) == 0 {
+			catcher.Add(errors.New("reservation missing instance"))
+		} else {
+			if reservation.Instances[0].InstanceId == nil {
+				catcher.Add(errors.New("instance missing instance id"))
+			}
+			if reservation.Instances[0].State == nil || reservation.Instances[0].State.Name == nil || len(*reservation.Instances[0].State.Name) == 0 {
+				catcher.Add(errors.New("instance missing state name"))
+			}
+		}
+
+	}
+
+	return catcher.Resolve()
+}
+
+func validateEc2InstanceInfoResponse(instance *ec2aws.Instance) error {
+	if instance == nil {
+		return errors.New("instance is nil")
+	}
+
+	catcher := grip.NewBasicCatcher()
+	if instance.Placement == nil || instance.Placement.AvailabilityZone == nil || len(*instance.Placement.AvailabilityZone) == 0 {
+		catcher.Add(errors.New("AZ is missing"))
+	}
+	if instance.LaunchTime == nil {
+		catcher.Add(errors.New("launch time is nil"))
+	}
+	if instance.PublicDnsName == nil || len(*instance.PublicDnsName) == 0 {
+		catcher.Add(errors.New("dns name is missing"))
+	}
+	if instance.State == nil || instance.State.Name == nil || len(*instance.State.Name) == 0 {
+		catcher.Add(errors.New("state name is missing"))
+	}
+
+	return catcher.Resolve()
 }

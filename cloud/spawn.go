@@ -120,7 +120,7 @@ func CreateSpawnHost(so SpawnOptions) (*host.Host, error) {
 	d.Setup += fmt.Sprintf("\necho \"\n%v\" >> ~%v/.ssh/authorized_keys\n", so.PublicKey, d.User)
 
 	// fake out replacing spot instances with on-demand equivalents
-	if d.Provider == evergreen.ProviderNameEc2Spot {
+	if d.Provider == evergreen.ProviderNameEc2Spot || d.Provider == evergreen.ProviderNameEc2Fleet {
 		d.Provider = evergreen.ProviderNameEc2OnDemand
 	}
 
