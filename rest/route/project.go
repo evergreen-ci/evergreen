@@ -243,7 +243,9 @@ func (h *projectIDPatchHandler) Run(ctx context.Context) gimlet.Responder {
 	if err = apiProjectRef.BuildFromService(*p); err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "API error converting from model.ProjectRef to model.APIProjectRef"))
 	}
-
+	// erase contents so apiProjectRef will only be populated with new elements
+	apiProjectRef.Admins = nil
+	apiProjectRef.Triggers = nil
 	if err = json.Unmarshal(h.body, apiProjectRef); err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "API error while unmarshalling JSON"))
 	}
@@ -320,6 +322,18 @@ func (h *projectIDPatchHandler) Run(ctx context.Context) gimlet.Responder {
 		}
 	}
 
+	adminsToDelete := []string{}
+	for _, admin := range apiProjectRef.DeleteAdmins {
+		adminsToDelete = append(adminsToDelete, model.FromAPIString(admin))
+	}
+	allAdmins := util.UniqueStrings(append(p.Admins, dbProjectRef.Admins...)) // get original and new admin
+	dbProjectRef.Admins = []string{}
+	for _, admin := range allAdmins {
+		if !util.StringSliceContains(adminsToDelete, admin) {
+			dbProjectRef.Admins = append(dbProjectRef.Admins, admin)
+		}
+	}
+
 	// validate triggers before updating project
 	catcher := grip.NewSimpleCatcher()
 	for i, trigger := range dbProjectRef.Triggers {
@@ -328,6 +342,7 @@ func (h *projectIDPatchHandler) Run(ctx context.Context) gimlet.Responder {
 			dbProjectRef.Triggers[i].DefinitionID = util.RandomString()
 		}
 	}
+	dbProjectRef.Triggers = append(p.Triggers, dbProjectRef.Triggers...)
 	if catcher.HasErrors() {
 		return gimlet.MakeJSONErrorResponder(errors.Wrap(catcher.Resolve(), "error validating triggers"))
 	}
@@ -355,9 +370,9 @@ func (h *projectIDPatchHandler) Run(ctx context.Context) gimlet.Responder {
 		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "Database error updating aliases for project '%s'", h.projectID))
 	}
 
-	for _, subscription := range apiProjectRef.Subscriptions {
-		subscription.OwnerType = model.ToAPIString(string(event.OwnerTypeProject))
-		subscription.Owner = model.ToAPIString(h.projectID)
+	for i := range apiProjectRef.Subscriptions {
+		apiProjectRef.Subscriptions[i].OwnerType = model.ToAPIString(string(event.OwnerTypeProject))
+		apiProjectRef.Subscriptions[i].Owner = model.ToAPIString(h.projectID)
 	}
 	if err = h.sc.SaveSubscriptions(h.projectID, apiProjectRef.Subscriptions); err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "Database error saving subscriptions for project '%s'", h.projectID))
@@ -371,10 +386,6 @@ func (h *projectIDPatchHandler) Run(ctx context.Context) gimlet.Responder {
 		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "Database error deleting subscriptions for project '%s'", h.projectID))
 	}
 
-	// return new aliases and subscriptions
-	apiProjectRef.Aliases, _ = h.sc.FindProjectAliases(h.projectID)
-	apiProjectRef.Subscriptions, _ = h.sc.GetSubscriptions(h.projectID, event.OwnerTypeProject)
-
 	// run the repotracker for the project
 	if newRevision != "" {
 		ts := util.RoundPartOfHour(1).Format(tsFormat)
@@ -385,7 +396,12 @@ func (h *projectIDPatchHandler) Run(ctx context.Context) gimlet.Responder {
 			return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "problem creating catchup job"))
 		}
 	}
-	return gimlet.NewJSONResponse(apiProjectRef)
+
+	responder := gimlet.NewJSONResponse(struct{}{})
+	if err = responder.SetStatus(http.StatusOK); err != nil {
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "Cannot set HTTP status code to %d", http.StatusOK))
+	}
+	return responder
 }
 
 ////////////////////////////////////////////////////////////////////////
