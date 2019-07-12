@@ -18,6 +18,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/service/testutil"
+	"github.com/k0kubun/pp"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/send"
 	"github.com/mongodb/jasper"
@@ -205,16 +206,8 @@ func TestJasperCommandsWindows(t *testing.T) {
 			expectedPostCmds := []string{"bat", "baz"}
 			path := "/bin"
 
-			for i := range expectedPreCmds {
-				expectedPreCmds[i] = powershellQuotedString(expectedPreCmds[i])
-			}
-
 			for i := range expectedCmds {
-				expectedCmds[i] = powershellQuotedString(fmt.Sprintf("PATH=%s %s", path, expectedCmds[i]))
-			}
-
-			for i := range expectedPostCmds {
-				expectedPostCmds[i] = powershellQuotedString(expectedPostCmds[i])
+				expectedCmds[i] = fmt.Sprintf("PATH=%s %s", path, expectedCmds[i])
 			}
 
 			creds, err := newMockCredentials()
@@ -222,7 +215,7 @@ func TestJasperCommandsWindows(t *testing.T) {
 			writeCredentialsCmd, err := h.writeJasperCredentialsFileCommand(config, creds)
 			require.NoError(t, err)
 
-			expectedCmds = append(expectedCmds, powershellQuotedString(writeCredentialsCmd), powershellQuotedString(h.ForceReinstallJasperCommand(config)))
+			expectedCmds = append(expectedCmds, writeCredentialsCmd, h.ForceReinstallJasperCommand(config))
 
 			script, err := h.BootstrapScript(config, creds, expectedPreCmds, expectedPostCmds)
 			require.NoError(t, err)

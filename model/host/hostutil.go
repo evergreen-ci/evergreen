@@ -100,8 +100,8 @@ func curlRetryArgs(numRetries, maxSecs int) string {
 // ClientURL returns the URL used to get the latest Evergreen client version.
 func (h *Host) ClientURL(settings *evergreen.Settings) string {
 	return fmt.Sprintf("%s/%s/%s",
-		strings.TrimRight(settings.Ui.Url, "/"),
-		strings.TrimRight(settings.ClientBinariesDir, "/"),
+		strings.TrimSuffix(settings.Ui.Url, "/"),
+		strings.TrimSuffix(settings.ClientBinariesDir, "/"),
 		h.Distro.ExecutableSubPath())
 }
 
@@ -321,18 +321,11 @@ func (h *Host) BootstrapScript(config evergreen.HostJasperConfig, creds *rpc.Cre
 		)
 		bashCmds = append(bashCmds, postJasperSetup...)
 
-		// PowerShell nested single quotation marks are handled by using two
-		// single quotation marks and double quotation marks are handled by
-		// using an escaped double quotation mark.
-		quotedCmds := make([]string, 0, len(bashCmds))
-		for _, cmd := range bashCmds {
-			quotedCmd := powershellQuotedString(cmd)
-			quotedCmds = append(quotedCmds, quotedCmd)
-		}
+		bashCmdsLiteral := util.PowershellQuotedString(strings.Join(bashCmds, "\r\n"))
 
 		powershellCmds := []string{
 			"<powershell>",
-			fmt.Sprintf("%s -c '%s'", h.Distro.ShellPath, quotedCmds),
+			fmt.Sprintf("%s -c %s", h.Distro.ShellPath, bashCmdsLiteral),
 			"</powershell>",
 		}
 
@@ -343,10 +336,6 @@ func (h *Host) BootstrapScript(config evergreen.HostJasperConfig, creds *rpc.Cre
 	bashCmds = append(bashCmds, postJasperSetup...)
 
 	return strings.Join(append([]string{"#!/bin/bash"}, bashCmds...), "\n"), nil
-}
-
-func powershellQuotedString(s string) string {
-	return strings.Replace(strings.Replace(s, "'", "''", -1), `"`, `\"`, -1)
 }
 
 // buildLocalJasperClientRequest builds the command string to a Jasper CLI to make a
@@ -364,12 +353,12 @@ func (h *Host) buildLocalJasperClientRequest(config evergreen.HostJasperConfig, 
 
 	clientInput := fmt.Sprintf("<<EOF\n%s\nEOF", inputBytes)
 
-	return fmt.Sprintf("%s %s %s %s",
+	return strings.Join([]string{
 		strings.Join(jaspercli.BuildClientCommand(h.jasperBinaryFilePath(config)), " "),
 		subCmd,
 		flags,
 		clientInput,
-	), nil
+	}, " "), nil
 }
 
 // writeJasperCredentialsCommand builds the command to write the Jasper
