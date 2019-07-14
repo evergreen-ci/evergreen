@@ -47,7 +47,9 @@ OUTERLOOP:
 				if g.Name == t.TaskGroup {
 					for idx, tn := range g.Tasks {
 						if t.DisplayName == tn {
-							catcher.Add(t.SetTaskGroupIndex(idx + 1))
+							t.TaskGroupOrder = idx + 1
+							t.TaskGroupMaxHosts = g.MaxHosts
+							catcher.Add(t.SetTaskGroupInfo())
 							continue OUTERLOOP
 						}
 					}
