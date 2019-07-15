@@ -333,7 +333,9 @@ func (pc *MockProjectConnector) UpdateProjectVars(projectId string, varsModel *r
 				cachedVars.Vars[key] = val
 			}
 			for key, val := range varsModel.PrivateVars {
-				cachedVars.PrivateVars[key] = val
+				if val {
+					cachedVars.PrivateVars[key] = val // don't unredact existing variables
+				}
 			}
 			for _, varToDelete := range varsModel.VarsToDelete {
 				delete(cachedVars.Vars, varToDelete)

@@ -392,7 +392,7 @@ func (h *projectIDPatchHandler) Run(ctx context.Context) gimlet.Responder {
 		j := units.NewRepotrackerJob(fmt.Sprintf("catchup-%s", ts), h.projectID)
 
 		queue := evergreen.GetEnvironment().RemoteQueue()
-		if err := queue.Put(ctx, j); err != nil {
+		if err = queue.Put(ctx, j); err != nil {
 			return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "problem creating catchup job"))
 		}
 	}
