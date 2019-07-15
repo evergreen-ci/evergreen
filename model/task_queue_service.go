@@ -324,6 +324,7 @@ func (t *basicCachedDispatcherImpl) FindNextTask(spec TaskSpec) *TaskQueueItem {
 				"schedulable_unit_running_hosts":        unit.runningHosts,
 				"schedulable_unit_max_hosts":            unit.maxHosts,
 				"num_schedulable_unit_task_queue_items": len(unit.tasks),
+				"task_id_returned":                      &unit.tasks[0].Id,
 			})
 			delete(t.units, schedulableUnitID)
 			return &unit.tasks[0]
@@ -415,7 +416,7 @@ func (t *basicCachedDispatcherImpl) nextTaskGroupTask(unit schedulableUnit) *Tas
 		if isBlockedSingleHostTaskGroup(unit, nextTaskFromDB) {
 			grip.Debug(message.Fields{
 				"ticket":                              "EVG-6289",
-				"message":                             "a taskrunning in a 1-host task group, has finished, but did not succeed; deleting from t.units[unit_id]",
+				"message":                             "a task running in a 1-host task group, has finished, but did not succeed; deleting from t.units[unit_id]",
 				"distro":                              t.distroID,
 				"schedulable_unit_id":                 unit.id,
 				"schedulable_unit_running_hosts":      unit.runningHosts,
