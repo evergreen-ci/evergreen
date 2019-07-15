@@ -352,7 +352,7 @@ func assignNextAvailableTask(taskQueue *model.TaskQueue, taskQueueService model.
 			queueItem = taskQueue.FindNextTask(spec)
 		}
 		if queueItem == nil {
-			if d.PlannerSettings.Version == evergreen.PlannerVersionTunable {
+			if d.PlannerSettings.Version == evergreen.PlannerVersionRevised {
 				grip.Debug(message.Fields{
 					"ticket":                        "EVG-6289",
 					"function":                      "assignNextAvailableTask",
