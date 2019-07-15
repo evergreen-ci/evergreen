@@ -333,7 +333,7 @@ func assignNextAvailableTask(taskQueue *model.TaskQueue, taskQueueService model.
 		var queueItem *model.TaskQueueItem
 		switch d.PlannerSettings.Version {
 		case evergreen.PlannerVersionTunable, evergreen.PlannerVersionRevised:
-			queueItem, err = taskQueueService.RefreshFindNextTask(currentHost.Distro.Id, spec)
+			queueItem, err = taskQueueService.RefreshFindNextTask(d.Id, spec)
 			if err != nil {
 				grip.Critical(message.WrapError(err, message.Fields{
 					"message":              "problem getting next task for the given host",
@@ -352,6 +352,27 @@ func assignNextAvailableTask(taskQueue *model.TaskQueue, taskQueueService model.
 			queueItem = taskQueue.FindNextTask(spec)
 		}
 		if queueItem == nil {
+			grip.DebugWhen(d.PlannerSettings.Version == evergreen.PlannerVersionRevised, message.Fields{
+				"ticket":                        "EVG-6289",
+				"function":                      "assignNextAvailableTask",
+				"message":                       "taskQueueService.RefreshFindNextTask returned no task - returning nil",
+				"distro":                        d.Id,
+				"host":                          currentHost.Id,
+				"host_last_task_id":             currentHost.LastTask,
+				"host_last_group":               currentHost.LastGroup,
+				"host_last_build_variant":       currentHost.LastBuildVariant,
+				"host_last_version":             currentHost.LastVersion,
+				"host_last_project":             currentHost.LastProject,
+				"host_task_count":               currentHost.TaskCount,
+				"host_last_task_completed_time": currentHost.LastTaskCompletedTime,
+				"spec_group":                    spec.Group,
+				"spec_build_variant":            spec.BuildVariant,
+				"spec_version":                  spec.Version,
+				"spec_project_id":               spec.ProjectID,
+				"spec_group_max_hosts":          spec.GroupMaxHosts,
+				"task_queue_length":             taskQueue.Length(),
+			})
+
 			return nil, nil
 		}
 
