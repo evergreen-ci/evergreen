@@ -58,3 +58,45 @@ task_groups:
 		}
 	}
 }
+
+func TestBackfillTaskGroup(t *testing.T) {
+	defer func() { require.NoError(t, db.ClearCollections(task.Collection)) }()
+	tk := task.Task{
+		Id:          "---",
+		Version:     "ver",
+		TaskGroup:   "grp",
+		DisplayName: "one",
+	}
+	require.NoError(t, tk.Insert())
+	tkm := task.Task{
+		Id:          "foo",
+		DisplayName: "zero",
+	}
+	require.NoError(t, tkm.Insert())
+	cmp := &CmpBasedTaskComparator{
+		tasks: []task.Task{tk, tkm},
+		projects: map[string]project{
+			tk.Version: project{
+				TaskGroups: []model.TaskGroup{
+					{
+						MaxHosts: 42,
+						Name:     "grp",
+						Tasks:    []string{"", "for", "one"},
+					},
+				},
+			},
+		},
+	}
+
+	require.NoError(t, backfillTaskGroups(cmp))
+
+	yes, err := task.FindOneId("---")
+	require.NoError(t, err)
+	no, err := task.FindOneId("foo")
+	require.NoError(t, err)
+
+	assert.Zero(t, no.TaskGroupMaxHosts)
+	assert.Zero(t, no.TaskGroupOrder)
+	assert.Equal(t, 42, yes.TaskGroupMaxHosts)
+	assert.Equal(t, 3, yes.TaskGroupOrder)
+}

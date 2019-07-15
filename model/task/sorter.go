@@ -22,6 +22,14 @@ func (t Tasks) getPayload() []interface{} {
 	return payload
 }
 
+func (t Tasks) Export() []Task {
+	out := make([]Task, len(t))
+	for idx := range t {
+		out[idx] = *t[idx]
+	}
+	return out
+}
+
 func (t Tasks) Insert() error {
 	return db.InsertMany(Collection, t.getPayload()...)
 }
