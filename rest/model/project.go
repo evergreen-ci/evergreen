@@ -75,8 +75,11 @@ type APITriggerDefinition struct {
 	BuildVariantRegex APIString `json:"variant_regex"`
 	TaskRegex         APIString `json:"task_regex"`
 	Status            APIString `json:"status"`
+	DateCutoff        *int      `json:"date_cutoff"`
 	ConfigFile        APIString `json:"config_file"`
+	GenerateFile      APIString `json:"generate_file"`
 	Command           APIString `json:"command"`
+	Alias             APIString `json:"alias"`
 }
 
 type APICommitQueueParams struct {
@@ -131,6 +134,7 @@ type APIProjectRef struct {
 	Tracked              bool                 `json:"tracked"`
 	PatchingDisabled     bool                 `json:"patching_disabled"`
 	Admins               []APIString          `json:"admins"`
+	DeleteAdmins         []APIString          `json:"delete_admins,omitempty"`
 	NotifyOnBuildFailure bool                 `json:"notify_on_failure"`
 
 	Revision            APIString              `json:"revision"`
@@ -138,7 +142,7 @@ type APIProjectRef struct {
 	Aliases             []APIProjectAlias      `json:"aliases"`
 	Variables           APIProjectVars         `json:"variables"`
 	Subscriptions       []APISubscription      `json:"subscriptions"`
-	DeleteSubscriptions []APIString            `json:"delete_subscriptions"`
+	DeleteSubscriptions []APIString            `json:"delete_subscriptions,omitempty"`
 }
 
 // ToService returns a service layer ProjectRef using the data from APIProjectRef
@@ -188,7 +192,10 @@ func (p *APIProjectRef) ToService() (interface{}, error) {
 			TaskRegex:         FromAPIString(t.TaskRegex),
 			Status:            FromAPIString(t.Status),
 			ConfigFile:        FromAPIString(t.ConfigFile),
+			GenerateFile:      FromAPIString(t.GenerateFile),
 			Command:           FromAPIString(t.Command),
+			Alias:             FromAPIString(t.Alias),
+			DateCutoff:        t.DateCutoff,
 		})
 	}
 	projectRef.Triggers = triggers
@@ -250,7 +257,10 @@ func (p *APIProjectRef) BuildFromService(v interface{}) error {
 			TaskRegex:         ToAPIString(t.TaskRegex),
 			Status:            ToAPIString(t.Status),
 			ConfigFile:        ToAPIString(t.ConfigFile),
+			GenerateFile:      ToAPIString(t.GenerateFile),
 			Command:           ToAPIString(t.Command),
+			Alias:             ToAPIString(t.Alias),
+			DateCutoff:        t.DateCutoff,
 		})
 	}
 	p.Triggers = triggers

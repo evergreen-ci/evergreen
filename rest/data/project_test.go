@@ -489,12 +489,12 @@ func (s *ProjectConnectorGetSuite) TestUpdateProjectVars() {
 		VarsToDelete: varsToDelete,
 	}
 	s.NoError(s.ctx.UpdateProjectVars(projectId, &newVars))
-	s.Equal(newVars.Vars["b"], "2")
+	s.Equal(newVars.Vars["b"], "") // can't unredact previously redacted  variables
 	s.Equal(newVars.Vars["c"], "")
 	_, ok := newVars.Vars["a"]
 	s.False(ok)
 
-	s.Equal(newVars.PrivateVars["b"], false)
+	s.Equal(newVars.PrivateVars["b"], true)
 	s.Equal(newVars.PrivateVars["c"], true)
 	_, ok = newVars.PrivateVars["a"]
 	s.False(ok)

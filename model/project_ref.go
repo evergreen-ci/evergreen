@@ -521,7 +521,7 @@ func (t TriggerDefinition) Validate(parentProject string) error {
 		return errors.Wrapf(err, "error finding upstream project %s", t.Project)
 	}
 	if upstreamProject == nil {
-		return errors.Errorf("project %s not found", t.Project)
+		return errors.Errorf("project '%s' not found", t.Project)
 	}
 	if upstreamProject.Identifier == parentProject {
 		return errors.New("a project cannot trigger itself")

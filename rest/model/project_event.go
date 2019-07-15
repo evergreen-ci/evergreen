@@ -108,7 +108,7 @@ func (p *APIProjectVars) ToService() (interface{}, error) {
 	}
 	return &model.ProjectVars{
 		Vars:        p.Vars,
-		PrivateVars: p.PrivateVars,
+		PrivateVars: privateVars,
 	}, nil
 }
 
