@@ -58,12 +58,12 @@ func listQueue() cli.Command {
 			client := conf.GetRestCommunicator(ctx)
 			defer client.Close()
 
-			_, rc, err := conf.getLegacyClients()
+			ac, _, err := conf.getLegacyClients()
 			if err != nil {
 				return errors.Wrap(err, "problem accessing legacy evergreen client")
 			}
 
-			return listCommitQueue(ctx, client, rc, projectID, conf.UIServerHost)
+			return listCommitQueue(ctx, client, ac, projectID, conf.UIServerHost)
 		},
 	}
 }
@@ -182,12 +182,12 @@ func setModuleCommand() cli.Command {
 	}
 }
 
-func listCommitQueue(ctx context.Context, client client.Communicator, rc *legacyClient, projectID string, uiServerHost string) error {
+func listCommitQueue(ctx context.Context, client client.Communicator, ac *legacyClient, projectID string, uiServerHost string) error {
 	cq, err := client.GetCommitQueue(ctx, projectID)
 	if err != nil {
 		return err
 	}
-	projectRef, err := rc.GetProjectRef(projectID)
+	projectRef, err := ac.GetProjectRef(projectID)
 	if err != nil {
 		return errors.Wrapf(err, "can't find project for queue id '%s'", projectID)
 	}
@@ -206,7 +206,7 @@ func listCommitQueue(ctx context.Context, client client.Communicator, rc *legacy
 			listPRCommitQueueItem(ctx, item, projectRef, uiServerHost)
 		}
 		if projectRef.CommitQueue.PatchType == commitqueue.CLIPatchType {
-			listCLICommitQueueItem(ctx, item, rc, uiServerHost)
+			listCLICommitQueueItem(ctx, item, ac, uiServerHost)
 		}
 		listModules(item)
 	}
@@ -231,9 +231,9 @@ func listPRCommitQueueItem(ctx context.Context, item restModel.APICommitQueueIte
 	grip.Info("\n")
 }
 
-func listCLICommitQueueItem(ctx context.Context, item restModel.APICommitQueueItem, rc *legacyClient, uiServerHost string) {
+func listCLICommitQueueItem(ctx context.Context, item restModel.APICommitQueueItem, ac *legacyClient, uiServerHost string) {
 	issue := restModel.FromAPIString(item.Issue)
-	p, err := rc.GetPatch(issue)
+	p, err := ac.GetPatch(issue)
 	if err != nil {
 		grip.Error(message.WrapError(err, "\terror getting patch"))
 		return
