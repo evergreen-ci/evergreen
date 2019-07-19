@@ -329,16 +329,6 @@ func (repoTracker *RepoTracker) StoreRevisions(ctx context.Context, revisions []
 			}))
 			continue
 		}
-		if v.Requester == evergreen.AdHocRequester {
-			err = model.ActivateElapsedBuilds(v)
-			if err != nil {
-				grip.Error(message.WrapError(err, message.Fields{
-					"messsage": "error activating ad hoc build",
-					"runner":   RunnerName,
-					"version":  v.Id,
-				}))
-			}
-		}
 
 		newestVersion = v
 	}
