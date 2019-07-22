@@ -68,8 +68,8 @@ func TestAPIPatch(t *testing.T) {
 	assert.Equal(p.Version, FromAPIString(a.Version))
 	assert.Equal(p.Status, FromAPIString(a.Status))
 	assert.Zero(time.Time(a.CreateTime).Sub(p.CreateTime))
-	assert.Equal(-time.Hour, time.Time(a.StartTime).Sub(p.StartTime))
-	assert.Equal(-2*time.Hour, time.Time(a.FinishTime).Sub(p.FinishTime))
+	assert.Equal(-time.Hour, time.Time(a.CreateTime).Sub(p.StartTime))
+	assert.Equal(-2*time.Hour, time.Time(a.CreateTime).Sub(p.FinishTime))
 	for i, variant := range a.Variants {
 		assert.Equal(p.BuildVariants[i], FromAPIString(variant))
 	}

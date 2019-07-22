@@ -91,7 +91,9 @@ func TestSetupDownloadMongoDBReleasesWithInvalidPath(t *testing.T) {
 	defer cancel()
 
 	opts := validMongoDBDownloadOptions()
-	absPath, err := filepath.Abs("download_test.go")
+	_, path, _, ok := runtime.Caller(0)
+	require.True(t, ok)
+	absPath, err := filepath.Abs(path)
 	require.NoError(t, err)
 	opts.Path = absPath
 
@@ -143,7 +145,8 @@ func TestCreateValidDownloadJobs(t *testing.T) {
 }
 
 func TestCreateDownloadJobsWithInvalidPath(t *testing.T) {
-	dir := "download_test.go"
+	_, dir, _, ok := runtime.Caller(0)
+	require.True(t, ok)
 	urls := make(chan string)
 	testURL := "https://example.com"
 

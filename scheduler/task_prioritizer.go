@@ -54,6 +54,7 @@ func NewCmpBasedTaskComparator(id string) *CmpBasedTaskComparator {
 		setupFuncs: []sortSetupFunc{
 			cacheExpectedDurations,
 			cacheTaskGroups,
+			backfillTaskGroups,
 			groupTaskGroups,
 		},
 		comparators: []taskPriorityCmp{
@@ -248,6 +249,8 @@ func (self *CmpBasedTaskComparator) splitTasksByRequester(
 		case util.StringSliceContains(evergreen.SystemVersionRequesterTypes, task.Requester):
 			repoTrackerTasks = append(repoTrackerTasks, task)
 		case evergreen.IsPatchRequester(task.Requester):
+			patchTasks = append(patchTasks, task)
+		case task.Requester == evergreen.AdHocRequester:
 			patchTasks = append(patchTasks, task)
 		default:
 			grip.Error(message.Fields{

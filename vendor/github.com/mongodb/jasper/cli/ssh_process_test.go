@@ -15,11 +15,11 @@ func TestSSHProcess(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	for testName, testCase := range map[string]func(ctx context.Context, t *testing.T, proc *sshProcess, manager *sshManager, baseManager *jasper.MockManager){
-		"VerifyFixture": func(ctx context.Context, t *testing.T, proc *sshProcess, manager *sshManager, baseManager *jasper.MockManager) {
+	for testName, testCase := range map[string]func(ctx context.Context, t *testing.T, proc *sshProcess, manager *sshClient, baseManager *jasper.MockManager){
+		"VerifyFixture": func(ctx context.Context, t *testing.T, proc *sshProcess, manager *sshClient, baseManager *jasper.MockManager) {
 			assert.Equal(t, jasper.ProcessInfo{ID: "foo"}, proc.info)
 		},
-		"InfoPassesWithValidResponse": func(ctx context.Context, t *testing.T, proc *sshProcess, manager *sshManager, baseManager *jasper.MockManager) {
+		"InfoPassesWithValidResponse": func(ctx context.Context, t *testing.T, proc *sshProcess, manager *sshClient, baseManager *jasper.MockManager) {
 			info := jasper.ProcessInfo{
 				ID:        proc.ID(),
 				IsRunning: true,
@@ -39,7 +39,7 @@ func TestSSHProcess(t *testing.T) {
 			assert.Equal(t, info, proc.Info(ctx))
 			assert.Equal(t, proc.ID(), inputChecker.ID)
 		},
-		"InfoWithCompletedProcessChecksInMemory": func(ctx context.Context, t *testing.T, proc *sshProcess, manager *sshManager, baseManager *jasper.MockManager) {
+		"InfoWithCompletedProcessChecksInMemory": func(ctx context.Context, t *testing.T, proc *sshProcess, manager *sshClient, baseManager *jasper.MockManager) {
 			info := jasper.ProcessInfo{
 				ID:       proc.ID(),
 				Complete: true,
@@ -60,7 +60,7 @@ func TestSSHProcess(t *testing.T) {
 			assert.Equal(t, info, proc.Info(ctx))
 			assert.Empty(t, inputChecker.ID)
 		},
-		"RunningPassesWithValidResponse": func(ctx context.Context, t *testing.T, proc *sshProcess, manager *sshManager, baseManager *jasper.MockManager) {
+		"RunningPassesWithValidResponse": func(ctx context.Context, t *testing.T, proc *sshProcess, manager *sshClient, baseManager *jasper.MockManager) {
 			info := jasper.ProcessInfo{
 				ID:        proc.ID(),
 				IsRunning: true,
@@ -80,7 +80,7 @@ func TestSSHProcess(t *testing.T) {
 			assert.Equal(t, info.IsRunning, proc.Running(ctx))
 			assert.Equal(t, proc.ID(), inputChecker.ID)
 		},
-		"RunningWithCompletedProcessChecksInMemory": func(ctx context.Context, t *testing.T, proc *sshProcess, manager *sshManager, baseManager *jasper.MockManager) {
+		"RunningWithCompletedProcessChecksInMemory": func(ctx context.Context, t *testing.T, proc *sshProcess, manager *sshClient, baseManager *jasper.MockManager) {
 			info := jasper.ProcessInfo{
 				ID:       proc.ID(),
 				Complete: true,
@@ -101,7 +101,7 @@ func TestSSHProcess(t *testing.T) {
 			assert.False(t, proc.Running(ctx))
 			assert.Empty(t, inputChecker.ID)
 		},
-		"CompletePassesWithValidResponse": func(ctx context.Context, t *testing.T, proc *sshProcess, manager *sshManager, baseManager *jasper.MockManager) {
+		"CompletePassesWithValidResponse": func(ctx context.Context, t *testing.T, proc *sshProcess, manager *sshClient, baseManager *jasper.MockManager) {
 			info := jasper.ProcessInfo{
 				ID:       proc.ID(),
 				Complete: true,
@@ -120,7 +120,7 @@ func TestSSHProcess(t *testing.T) {
 			assert.Equal(t, info.Complete, proc.Complete(ctx))
 			assert.Equal(t, proc.ID(), inputChecker.ID)
 		},
-		"CompleteWithCompletedProcessChecksInMemory": func(ctx context.Context, t *testing.T, proc *sshProcess, manager *sshManager, baseManager *jasper.MockManager) {
+		"CompleteWithCompletedProcessChecksInMemory": func(ctx context.Context, t *testing.T, proc *sshProcess, manager *sshClient, baseManager *jasper.MockManager) {
 			info := jasper.ProcessInfo{
 				ID:       proc.ID(),
 				Complete: true,
@@ -141,7 +141,7 @@ func TestSSHProcess(t *testing.T) {
 			assert.True(t, proc.Complete(ctx))
 			assert.Empty(t, inputChecker.ID)
 		},
-		"RespawnPassesWithValidResponse": func(ctx context.Context, t *testing.T, proc *sshProcess, manager *sshManager, baseManager *jasper.MockManager) {
+		"RespawnPassesWithValidResponse": func(ctx context.Context, t *testing.T, proc *sshProcess, manager *sshClient, baseManager *jasper.MockManager) {
 			info := jasper.ProcessInfo{
 				ID:        proc.ID(),
 				IsRunning: true,
@@ -168,7 +168,7 @@ func TestSSHProcess(t *testing.T) {
 			require.NoError(t, err)
 			assert.Equal(t, info, newSSHProc.info)
 		},
-		"RespawnFailsWithInvalidResponse": func(ctx context.Context, t *testing.T, proc *sshProcess, manager *sshManager, baseManager *jasper.MockManager) {
+		"RespawnFailsWithInvalidResponse": func(ctx context.Context, t *testing.T, proc *sshProcess, manager *sshClient, baseManager *jasper.MockManager) {
 			inputChecker := IDInput{}
 			baseManager.Create = makeCreateFunc(
 				t, manager,
@@ -181,7 +181,7 @@ func TestSSHProcess(t *testing.T) {
 			assert.Error(t, err)
 			assert.Equal(t, proc.ID(), inputChecker.ID)
 		},
-		"SignalPassesWithValidResponse": func(ctx context.Context, t *testing.T, proc *sshProcess, manager *sshManager, baseManager *jasper.MockManager) {
+		"SignalPassesWithValidResponse": func(ctx context.Context, t *testing.T, proc *sshProcess, manager *sshClient, baseManager *jasper.MockManager) {
 			inputChecker := SignalInput{}
 			baseManager.Create = makeCreateFunc(
 				t, manager,
@@ -195,7 +195,7 @@ func TestSSHProcess(t *testing.T) {
 			assert.Equal(t, proc.ID(), inputChecker.ID)
 			assert.EqualValues(t, sig, inputChecker.Signal)
 		},
-		"SignalFailsWithInvalidResponse": func(ctx context.Context, t *testing.T, proc *sshProcess, manager *sshManager, baseManager *jasper.MockManager) {
+		"SignalFailsWithInvalidResponse": func(ctx context.Context, t *testing.T, proc *sshProcess, manager *sshClient, baseManager *jasper.MockManager) {
 			inputChecker := SignalInput{}
 			baseManager.Create = makeCreateFunc(
 				t, manager,
@@ -209,7 +209,7 @@ func TestSSHProcess(t *testing.T) {
 			assert.Equal(t, proc.ID(), inputChecker.ID)
 			assert.EqualValues(t, sig, inputChecker.Signal)
 		},
-		"WaitPassesWithValidResponse": func(ctx context.Context, t *testing.T, proc *sshProcess, manager *sshManager, baseManager *jasper.MockManager) {
+		"WaitPassesWithValidResponse": func(ctx context.Context, t *testing.T, proc *sshProcess, manager *sshClient, baseManager *jasper.MockManager) {
 			inputChecker := IDInput{}
 			expectedExitCode := 1
 			expectedWaitErr := "foo"
@@ -230,7 +230,7 @@ func TestSSHProcess(t *testing.T) {
 			assert.Contains(t, err.Error(), expectedWaitErr)
 			assert.Equal(t, expectedExitCode, exitCode)
 		},
-		"WaitFailsWithInvalidResponse": func(ctx context.Context, t *testing.T, proc *sshProcess, manager *sshManager, baseManager *jasper.MockManager) {
+		"WaitFailsWithInvalidResponse": func(ctx context.Context, t *testing.T, proc *sshProcess, manager *sshClient, baseManager *jasper.MockManager) {
 			inputChecker := IDInput{}
 			baseManager.Create = makeCreateFunc(
 				t, manager,
@@ -244,13 +244,13 @@ func TestSSHProcess(t *testing.T) {
 			assert.Error(t, err)
 			assert.NotZero(t, exitCode)
 		},
-		"RegisterTriggerFails": func(ctx context.Context, t *testing.T, proc *sshProcess, manager *sshManager, baseManager *jasper.MockManager) {
+		"RegisterTriggerFails": func(ctx context.Context, t *testing.T, proc *sshProcess, manager *sshClient, baseManager *jasper.MockManager) {
 			assert.Error(t, proc.RegisterTrigger(ctx, func(jasper.ProcessInfo) {}))
 		},
-		"RegisterSignalTriggerFails": func(ctx context.Context, t *testing.T, proc *sshProcess, manager *sshManager, baseManager *jasper.MockManager) {
+		"RegisterSignalTriggerFails": func(ctx context.Context, t *testing.T, proc *sshProcess, manager *sshClient, baseManager *jasper.MockManager) {
 			assert.Error(t, proc.RegisterSignalTrigger(ctx, func(jasper.ProcessInfo, syscall.Signal) bool { return false }))
 		},
-		"RegisterSignalTriggerIDPassesWithValidResponse": func(ctx context.Context, t *testing.T, proc *sshProcess, manager *sshManager, baseManager *jasper.MockManager) {
+		"RegisterSignalTriggerIDPassesWithValidResponse": func(ctx context.Context, t *testing.T, proc *sshProcess, manager *sshClient, baseManager *jasper.MockManager) {
 			inputChecker := SignalTriggerIDInput{}
 			baseManager.Create = makeCreateFunc(
 				t, manager,
@@ -264,7 +264,7 @@ func TestSSHProcess(t *testing.T) {
 			assert.Equal(t, proc.ID(), inputChecker.ID)
 			assert.Equal(t, sigID, inputChecker.SignalTriggerID)
 		},
-		"TagPasses": func(ctx context.Context, t *testing.T, proc *sshProcess, manager *sshManager, baseManager *jasper.MockManager) {
+		"TagPasses": func(ctx context.Context, t *testing.T, proc *sshProcess, manager *sshClient, baseManager *jasper.MockManager) {
 			inputChecker := TagIDInput{}
 			baseManager.Create = makeCreateFunc(
 				t, manager,
@@ -278,7 +278,7 @@ func TestSSHProcess(t *testing.T) {
 			assert.Equal(t, proc.ID(), inputChecker.ID)
 			assert.Equal(t, tag, inputChecker.Tag)
 		},
-		"GetTagsPassesWithValidResponse": func(ctx context.Context, t *testing.T, proc *sshProcess, manager *sshManager, baseManager *jasper.MockManager) {
+		"GetTagsPassesWithValidResponse": func(ctx context.Context, t *testing.T, proc *sshProcess, manager *sshClient, baseManager *jasper.MockManager) {
 			inputChecker := IDInput{}
 			tag := "bar"
 			baseManager.Create = makeCreateFunc(
@@ -296,7 +296,7 @@ func TestSSHProcess(t *testing.T) {
 			require.Len(t, tags, 1)
 			assert.Equal(t, tag, tags[0])
 		},
-		"GetTagsEmptyWithInvalidResponse": func(ctx context.Context, t *testing.T, proc *sshProcess, manager *sshManager, baseManager *jasper.MockManager) {
+		"GetTagsEmptyWithInvalidResponse": func(ctx context.Context, t *testing.T, proc *sshProcess, manager *sshClient, baseManager *jasper.MockManager) {
 			inputChecker := IDInput{}
 			baseManager.Create = makeCreateFunc(
 				t, manager,
@@ -311,7 +311,7 @@ func TestSSHProcess(t *testing.T) {
 			assert.Equal(t, proc.ID(), inputChecker.ID)
 			assert.Empty(t, tags)
 		},
-		"ResetTagsPasses": func(ctx context.Context, t *testing.T, proc *sshProcess, manager *sshManager, baseManager *jasper.MockManager) {
+		"ResetTagsPasses": func(ctx context.Context, t *testing.T, proc *sshProcess, manager *sshClient, baseManager *jasper.MockManager) {
 			inputChecker := IDInput{}
 			baseManager.Create = makeCreateFunc(
 				t, manager,
@@ -322,26 +322,26 @@ func TestSSHProcess(t *testing.T) {
 			proc.ResetTags()
 			assert.Equal(t, proc.ID(), inputChecker.ID)
 		},
-		// "": func(ctx context.Context, t *testing.T, proc *sshProcess, manager *sshManager, baseManager *jasper.MockManager) {},
+		// "": func(ctx context.Context, t *testing.T, proc *sshProcess, manager *sshClient, baseManager *jasper.MockManager) {},
 	} {
 		t.Run(testName, func(t *testing.T) {
-			mngr, err := NewSSHManager(mockRemoteOptions(), mockClientOptions(), false)
+			client, err := NewSSHClient(mockRemoteOptions(), mockClientOptions(), false)
 			require.NoError(t, err)
-			sshMngr, ok := mngr.(*sshManager)
+			sshClient, ok := client.(*sshClient)
 			require.True(t, ok)
 
-			mockMngr := &jasper.MockManager{}
-			sshMngr.manager = jasper.Manager(mockMngr)
+			mockManager := &jasper.MockManager{}
+			sshClient.manager = jasper.Manager(mockManager)
 
 			tctx, cancel := context.WithTimeout(ctx, testTimeout)
 			defer cancel()
 
-			proc, err := newSSHProcess(sshMngr.runClientCommand, jasper.ProcessInfo{ID: "foo"})
+			proc, err := newSSHProcess(sshClient.runClientCommand, jasper.ProcessInfo{ID: "foo"})
 			require.NoError(t, err)
 			sshProc, ok := proc.(*sshProcess)
 			require.True(t, ok)
 
-			testCase(tctx, t, sshProc, sshMngr, mockMngr)
+			testCase(tctx, t, sshProc, sshClient, mockManager)
 		})
 	}
 }

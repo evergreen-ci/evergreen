@@ -54,7 +54,8 @@ func TestManagerInterface(t *testing.T) {
 			return selfClearingBlockingManager
 		},
 		"REST": func(ctx context.Context, t *testing.T) Manager {
-			srv, port := makeAndStartService(ctx, httpClient)
+			srv, port, err := startRESTService(ctx, httpClient)
+			require.NoError(t, err)
 			require.NotNil(t, srv)
 
 			return &restClient{
@@ -176,7 +177,7 @@ func TestManagerInterface(t *testing.T) {
 					procs, err := manager.Group(cctx, "foo")
 					require.Error(t, err)
 					assert.Len(t, procs, 0)
-					assert.Contains(t, err.Error(), "canceled")
+					assert.Contains(t, err.Error(), context.Canceled.Error())
 				},
 				"GroupPropagatesMatching": func(ctx context.Context, t *testing.T, manager Manager) {
 					proc, err := manager.CreateProcess(ctx, trueCreateOpts())
@@ -201,7 +202,7 @@ func TestManagerInterface(t *testing.T) {
 
 					err = manager.Close(cctx)
 					require.Error(t, err)
-					assert.Contains(t, err.Error(), "canceled")
+					assert.Contains(t, err.Error(), context.Canceled.Error())
 				},
 				"CloseSucceedsWithTerminatedProcesses": func(ctx context.Context, t *testing.T, manager Manager) {
 					procs, err := createProcs(ctx, trueCreateOpts(), manager, 10)
@@ -215,7 +216,7 @@ func TestManagerInterface(t *testing.T) {
 				},
 				"ClosersWithoutTriggersTerminatesProcesses": func(ctx context.Context, t *testing.T, manager Manager) {
 					if runtime.GOOS == "windows" {
-						t.Skip("the sleep tests don't block correctly on windows")
+						t.Skip("manager close tests will error due to process termination on Windows")
 					}
 
 					_, err := createProcs(ctx, sleepCreateOpts(100), manager, 10)
@@ -228,7 +229,7 @@ func TestManagerInterface(t *testing.T) {
 					}
 
 					if runtime.GOOS == "windows" {
-						t.Skip("the sleep tests don't block correctly on windows")
+						t.Skip("manager close tests will error due to process termination on Windows")
 					}
 
 					opts := sleepCreateOpts(5)
@@ -273,7 +274,7 @@ func TestManagerInterface(t *testing.T) {
 					require.NoError(t, err)
 					err = manager.Register(cctx, proc)
 					require.Error(t, err)
-					assert.Contains(t, err.Error(), "canceled")
+					assert.Contains(t, err.Error(), context.Canceled.Error())
 				},
 				"RegisterProcessErrorsWhenMissingID": func(ctx context.Context, t *testing.T, manager Manager) {
 					if mname == "REST" {

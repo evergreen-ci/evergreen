@@ -8,6 +8,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/task"
+	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 	yaml "gopkg.in/yaml.v2"
 )
@@ -33,6 +34,33 @@ func cacheTaskGroups(comparator *CmpBasedTaskComparator) error {
 		comparator.projects[v.Id] = p
 	}
 	return nil
+}
+
+func backfillTaskGroups(comparator *CmpBasedTaskComparator) error {
+	catcher := grip.NewBasicCatcher()
+
+OUTERLOOP:
+	for _, t := range comparator.tasks {
+		if t.TaskGroup != "" && t.TaskGroupOrder == 0 {
+			proj := comparator.projects[t.Version]
+			for _, g := range proj.TaskGroups {
+				if g.Name == t.TaskGroup {
+					for idx, tn := range g.Tasks {
+						if t.DisplayName == tn {
+							t.TaskGroupOrder = idx + 1
+							t.TaskGroupMaxHosts = g.MaxHosts
+							catcher.Add(t.SetTaskGroupInfo())
+							continue OUTERLOOP
+						}
+					}
+					catcher.Errorf("task '%s' is missing from task group '%s' in version '%s'",
+						t.DisplayName, t.TaskGroup, t.Version)
+				}
+			}
+		}
+	}
+
+	return catcher.Resolve()
 }
 
 // groupTaskGroups puts tasks that have the same build and task group next to

@@ -110,8 +110,12 @@ func (j *periodicBuildJob) addVersion(ctx context.Context, definition model.Peri
 		PeriodicBuildID: definition.ID,
 	}
 
-	_, err = repotracker.CreateVersionFromConfig(ctx, j.project, &config, metadata, false, nil)
-	return errors.Wrap(err, "error creating version from config")
+	v, err := repotracker.CreateVersionFromConfig(ctx, j.project, &config, metadata, false, nil)
+	if err != nil {
+		return errors.Wrap(err, "error creating version from config")
+	}
+
+	return errors.Wrap(model.ActivateElapsedBuilds(v), "error activating ad hoc build")
 }
 
 func (j *periodicBuildJob) shouldRerun(definition model.PeriodicBuildDefinition) (bool, error) {

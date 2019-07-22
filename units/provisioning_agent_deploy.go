@@ -150,6 +150,12 @@ func (j *agentDeployJob) Run(ctx context.Context) {
 	}
 
 	if stat.LastAttemptFailed() && stat.AllAttemptsFailed() && stat.Count >= agentPutRetries {
+		externallyTerminated, err := handleExternallyTerminatedHost(ctx, j.ID(), j.env, j.host)
+		j.AddError(errors.Wrapf(err, "can't check if host '%s' was externally terminated", j.HostID))
+		if externallyTerminated {
+			return
+		}
+
 		if disableErr := j.host.DisablePoisonedHost(fmt.Sprintf("failed %d times to put agent on host", agentPutRetries)); disableErr != nil {
 			j.AddError(errors.Wrapf(disableErr, "error terminating host %s", j.host.Id))
 			return
@@ -265,7 +271,7 @@ func (j *agentDeployJob) startAgentOnHost(ctx context.Context, settings *evergre
 // Prepare the remote machine to run a task.
 func (j *agentDeployJob) prepRemoteHost(ctx context.Context, hostObj host.Host, sshOptions []string, settings *evergreen.Settings) error {
 	// copy over the correct agent binary to the remote host
-	if logs, err := hostObj.RunSSHCommand(ctx, hostObj.CurlCommand(settings.Ui.Url), sshOptions); err != nil {
+	if logs, err := hostObj.RunSSHCommand(ctx, hostObj.CurlCommand(settings), sshOptions); err != nil {
 		return errors.Wrapf(err, "error downloading agent binary on remote host: %s", logs)
 	}
 

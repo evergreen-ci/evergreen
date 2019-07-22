@@ -21,6 +21,8 @@ const (
 	HostQuarantined     = "quarantined"
 	HostDecommissioned  = "decommissioned"
 
+	HostExternalUserName = "external"
+
 	HostStatusSuccess = "success"
 	HostStatusFailed  = "failed"
 

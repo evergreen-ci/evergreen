@@ -330,8 +330,7 @@ func (m *ec2Manager) spawnSpotHost(ctx context.Context, h *host.Host, ec2Setting
 		if err != nil {
 			return nil, errors.Wrap(err, "problem expanding user data")
 		}
-		userData := base64.StdEncoding.EncodeToString([]byte(expanded))
-		spotRequest.LaunchSpecification.UserData = &userData
+		ec2Settings.UserData = expanded
 	}
 
 	userData, err := bootstrapUserData(ctx, evergreen.GetEnvironment(), h, ec2Settings.UserData)
@@ -339,6 +338,11 @@ func (m *ec2Manager) spawnSpotHost(ctx context.Context, h *host.Host, ec2Setting
 		return nil, errors.Wrap(err, "could not add bootstrap script to user data")
 	}
 	ec2Settings.UserData = userData
+
+	if ec2Settings.UserData != "" {
+		userData := base64.StdEncoding.EncodeToString([]byte(ec2Settings.UserData))
+		spotRequest.LaunchSpecification.UserData = &userData
+	}
 
 	grip.Debug(message.Fields{
 		"message":       "starting spot instance",

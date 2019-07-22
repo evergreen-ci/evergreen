@@ -121,6 +121,9 @@ func (projectVars *ProjectVars) FindAndModify(varsToDelete []string) (*adb.Chang
 	setUpdate := bson.M{}
 	unsetUpdate := bson.M{}
 	update := bson.M{}
+	if len(projectVars.Vars) == 0 && len(projectVars.PrivateVars) == 0 && len(varsToDelete) == 0 {
+		return nil, nil
+	}
 	for key, val := range projectVars.Vars {
 		setUpdate[bsonutil.GetDottedKeyName(projectVarsMapKey, key)] = val
 	}

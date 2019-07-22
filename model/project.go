@@ -18,7 +18,8 @@ import (
 	"github.com/mongodb/anser/bsonutil"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
-	ignore "github.com/sabhiram/go-git-ignore"
+	"github.com/sabhiram/go-git-ignore"
+	"gopkg.in/yaml.v2"
 )
 
 const (
@@ -261,13 +262,80 @@ type PluginCommandConf struct {
 	// TimeoutSecs indicates the maximum duration the command is allowed to run for.
 	TimeoutSecs int `yaml:"timeout_secs,omitempty" bson:"timeout_secs"`
 
-	// Params are used to supply configuratiion specific information.
-	Params map[string]interface{} `yaml:"params,omitempty" bson:"params"`
+	// Params are used to supply configuration specific information.
+	// map[string]interface{} is stored as a JSON string.
+	Params map[string]interface{} `yaml:"params" bson:"params"`
+
+	// YAML string of Params to store in database
+	ParamsYAML string `yaml:"params_yaml,omitempty" bson:"params_yaml"`
 
 	// Vars defines variables that can be used within commands.
 	Vars map[string]string `yaml:"vars,omitempty" bson:"vars"`
 
 	Loggers *LoggerConfig `yaml:"loggers,omitempty" bson:"loggers,omitempty"`
+}
+
+func (c *PluginCommandConf) resolveParams() (map[string]interface{}, error) {
+	out := map[string]interface{}{}
+	if c == nil {
+		return out, nil
+	}
+	if c.ParamsYAML != "" {
+		if err := yaml.Unmarshal([]byte(c.ParamsYAML), &out); err != nil {
+			return nil, errors.Wrapf(err, "error unmarshalling params")
+		}
+		c.Params = out
+	}
+	return c.Params, nil
+}
+
+func (c *PluginCommandConf) UnmarshalYAML(unmarshal func(interface{}) error) error {
+	temp := struct {
+		Function    string                 `yaml:"func,omitempty" bson:"func"`
+		Type        string                 `yaml:"type,omitempty" bson:"type"`
+		DisplayName string                 `yaml:"display_name,omitempty" bson:"display_name"`
+		Command     string                 `yaml:"command,omitempty" bson:"command"`
+		Variants    []string               `yaml:"variants,omitempty" bson:"variants"`
+		TimeoutSecs int                    `yaml:"timeout_secs,omitempty" bson:"timeout_secs"`
+		Params      map[string]interface{} `yaml:"params,omitempty" bson:"params"`
+		ParamsYAML  string                 `yaml:"params_yaml,omitempty" bson:"params_yaml"`
+		Vars        map[string]string      `yaml:"vars,omitempty" bson:"vars"`
+		Loggers     *LoggerConfig          `yaml:"loggers,omitempty" bson:"loggers,omitempty"`
+	}{}
+
+	if err := unmarshal(&temp); err != nil {
+		return errors.Wrap(err, "error unmarshalling into temp structure")
+	}
+	c.Function = temp.Function
+	c.Type = temp.Type
+	c.DisplayName = temp.DisplayName
+	c.Command = temp.Command
+	c.Variants = temp.Variants
+	c.TimeoutSecs = temp.TimeoutSecs
+	c.Vars = temp.Vars
+	c.Loggers = temp.Loggers
+	c.ParamsYAML = temp.ParamsYAML
+	c.Params = temp.Params
+	return c.unmarshalParams()
+}
+
+// we maintain Params for backwards compatibility, but we read from YAML when available, as the
+// given params could be corrupted from the roundtrip
+func (c *PluginCommandConf) unmarshalParams() error {
+	if c.ParamsYAML != "" {
+		out := map[string]interface{}{}
+		if err := yaml.Unmarshal([]byte(c.ParamsYAML), &out); err != nil {
+			return errors.Wrapf(err, "error unmarshalling params from yaml")
+		}
+		c.Params = out
+		return nil
+	}
+	bytes, err := yaml.Marshal(c.Params)
+	if err != nil {
+		return errors.Wrap(err, "error marshalling params into yaml")
+	}
+	c.ParamsYAML = string(bytes)
+	return nil
 }
 
 type ArtifactInstructions struct {
@@ -276,8 +344,8 @@ type ArtifactInstructions struct {
 }
 
 type YAMLCommandSet struct {
-	SingleCommand *PluginCommandConf
-	MultiCommand  []PluginCommandConf
+	SingleCommand *PluginCommandConf  `bson:"single_command"`
+	MultiCommand  []PluginCommandConf `bson:"multi_command"`
 }
 
 func (c *YAMLCommandSet) List() []PluginCommandConf {
@@ -294,7 +362,15 @@ func (c *YAMLCommandSet) MarshalYAML() (interface{}, error) {
 	if c == nil {
 		return nil, nil
 	}
-	return c.List(), nil
+	res := c.List()
+	for idx, cmd := range res {
+		params, err := cmd.resolveParams()
+		if err != nil {
+			return nil, errors.Wrap(err, "error resolving params for command set")
+		}
+		res[idx].Params = params
+	}
+	return res, nil
 }
 
 func (c *YAMLCommandSet) UnmarshalYAML(unmarshal func(interface{}) error) error {
@@ -1374,4 +1450,16 @@ func FetchVersionsAndAssociatedBuilds(project *Project, skip int, numVersions in
 	}
 
 	return versionsFromDB, buildsByVersion, nil
+}
+
+func (tg *TaskGroup) InjectInfo(t *task.Task) {
+	t.TaskGroup = tg.Name
+	t.TaskGroupMaxHosts = tg.MaxHosts
+
+	for idx, n := range tg.Tasks {
+		if n == t.DisplayName {
+			t.TaskGroupOrder = idx + 1
+			break
+		}
+	}
 }

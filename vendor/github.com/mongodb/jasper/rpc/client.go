@@ -353,13 +353,13 @@ func (p *rpcProcess) RegisterSignalTriggerID(ctx context.Context, sigID jasper.S
 }
 
 func (p *rpcProcess) Tag(tag string) {
-	_, _ = p.client.TagProcess(context.TODO(), &internal.ProcessTags{
+	_, _ = p.client.TagProcess(context.Background(), &internal.ProcessTags{
 		ProcessID: p.info.Id,
 		Tags:      []string{tag},
 	})
 }
 func (p *rpcProcess) GetTags() []string {
-	tags, err := p.client.GetTags(context.TODO(), &internal.JasperProcessID{Value: p.info.Id})
+	tags, err := p.client.GetTags(context.Background(), &internal.JasperProcessID{Value: p.info.Id})
 	if err != nil {
 		return nil
 	}
@@ -367,5 +367,5 @@ func (p *rpcProcess) GetTags() []string {
 	return tags.Tags
 }
 func (p *rpcProcess) ResetTags() {
-	_, _ = p.client.ResetTags(context.TODO(), &internal.JasperProcessID{Value: p.info.Id})
+	_, _ = p.client.ResetTags(context.Background(), &internal.JasperProcessID{Value: p.info.Id})
 }
