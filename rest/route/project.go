@@ -535,3 +535,95 @@ func (h *projectIDGetHandler) Run(ctx context.Context) gimlet.Responder {
 	}
 	return gimlet.NewJSONResponse(projectModel)
 }
+
+type getProjectVersionsHandler struct {
+	projectID  string
+	sc         data.Connector
+	startOrder int
+	limit      int
+	requester  string
+}
+
+func makeGetProjectVersionsHandler(sc data.Connector) gimlet.RouteHandler {
+	return &getProjectVersionsHandler{
+		sc: sc,
+	}
+}
+
+func (h *getProjectVersionsHandler) Factory() gimlet.RouteHandler {
+	return &getProjectVersionsHandler{
+		sc: h.sc,
+	}
+}
+
+func (h *getProjectVersionsHandler) Parse(ctx context.Context, r *http.Request) error {
+	h.projectID = gimlet.GetVars(r)["project_id"]
+	params := r.URL.Query()
+
+	limitStr := params.Get("limit")
+	if limitStr == "" {
+		h.limit = 20
+	} else {
+		limit, err := strconv.Atoi(limitStr)
+		if err != nil {
+			return errors.Wrap(err, "'limit' query parameter must be a valid integer")
+		}
+		if limit < 1 {
+			return errors.New("'limit' must be a positive integer")
+		}
+		h.limit = limit
+	}
+
+	startStr := params.Get("start")
+	if startStr == "" {
+		h.startOrder = 0
+	} else {
+		startOrder, err := strconv.Atoi(params.Get("start"))
+		if err != nil {
+			return errors.Wrap(err, "'start' query parameter must be a valid integer")
+		}
+		if startOrder < 0 {
+			return errors.New("'start' must be a non-negative integer")
+		}
+		h.startOrder = startOrder
+	}
+
+	h.requester = params.Get("requester")
+	if h.requester == "" {
+		return errors.New("'requester' must be one of patch_request, gitter_request, github_pull_request, merge_test, ad_hoc")
+	}
+	return nil
+}
+
+func (h *getProjectVersionsHandler) Run(ctx context.Context) gimlet.Responder {
+	versions, err := h.sc.GetVersionsInProject(h.projectID, h.requester, h.limit, h.startOrder)
+	if err != nil {
+		return gimlet.MakeJSONErrorResponder(err)
+	}
+
+	resp, err := gimlet.NewBasicResponder(http.StatusOK, gimlet.JSON, versions)
+	if err != nil {
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "error constructing response"))
+	}
+
+	if len(versions) >= h.limit {
+		err = resp.SetPages(&gimlet.ResponsePages{
+			Next: &gimlet.Page{
+				Relation:        "next",
+				LimitQueryParam: "limit",
+				KeyQueryParam:   "start",
+				BaseURL:         h.sc.GetURL(),
+				Key:             strconv.Itoa(versions[len(versions)-1].Order),
+				Limit:           h.limit,
+			},
+		})
+
+		if err != nil {
+			return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "error paginating response"))
+		}
+	}
+
+	resp.AddData(versions)
+
+	return resp
+}

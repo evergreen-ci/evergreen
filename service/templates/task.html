@@ -45,7 +45,7 @@ Evergreen - {{Trunc .Task.Revision 10}} / {{.Task.BuildVariantDisplay}} / {{.Tas
 
 {{define "content"}}
 
-{{ if not .ProjectData.Patch }}
+{{ if (and (not .ProjectData.Patch) (not (eq .ProjectData.Task.Requester "ad_hoc"))) }}
 <div id="page">
   <div ng-controller="TaskHistoryDrawerCtrl" id="drawer">
     <div id="drawer-contents">
@@ -86,7 +86,7 @@ Evergreen - {{Trunc .Task.Revision 10}} / {{.Task.BuildVariantDisplay}} / {{.Tas
           <li>
             <span class="gitspec" ng-show="!task.patch_info">
               <a ng-href="/version/[[task.version_id]]">
-                [[task.gitspec.substr(0, 10)]]
+                [[ task.gitspec ? task.gitspec.substr(0, 10) : task.version_id.substr(0, 10)]]
               </a>
             </span>
             <span ng-show="task.patch_info">
