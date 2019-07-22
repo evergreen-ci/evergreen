@@ -531,8 +531,8 @@ func (s *GitGetProjectSuite) TestBuildCommandForCLIMergeTests() {
 	s.modelData2.TaskConfig.Task.Requester = evergreen.MergeTestRequester
 	cmds, err := c.buildCloneCommand(conf, opts)
 	s.NoError(err)
-	s.Len(cmds, 9)
-	s.True(strings.HasPrefix(cmds[8], fmt.Sprintf("git checkout '%s'", s.modelData2.TaskConfig.ProjectRef.Branch)))
+	s.Len(cmds, 6)
+	s.True(strings.HasPrefix(cmds[5], fmt.Sprintf("git checkout '%s'", s.modelData2.TaskConfig.ProjectRef.Branch)))
 }
 
 func (s *GitGetProjectSuite) TestBuildModuleCommand() {
