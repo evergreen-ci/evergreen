@@ -349,7 +349,38 @@ func (m *ec2FleetManager) spawnFleetSpotHost(ctx context.Context, h *host.Host, 
 		}
 	}()
 
-	// Upload a launch template for this host
+	var err error
+	var templateVersion *int64
+	templateID, templateVersion, err = m.uploadLaunchTemplate(ctx, h, ec2Settings, blockDevices)
+	if err != nil {
+		return nil, errors.Wrapf(err, "unable to upload launch template for '%s'", h.Id)
+	}
+
+	instanceID, err := m.requestFleet(ctx, ec2Settings, templateID, templateVersion)
+	if err != nil {
+		return nil, errors.Wrapf(err, "can't request fleet")
+	}
+	h.Id = *instanceID
+
+	instanceInfo, err := m.client.GetInstanceInfo(ctx, h.Id)
+	if err != nil {
+		return nil, errors.Wrap(err, "can't get instance descriptions")
+	}
+
+	// return a slice of resources to be tagged
+	resources := []*string{instanceID}
+	for _, vol := range instanceInfo.BlockDeviceMappings {
+		if *vol.DeviceName == "" {
+			continue
+		}
+
+		resources = append(resources, vol.Ebs.VolumeId)
+	}
+
+	return resources, nil
+}
+
+func (m *ec2FleetManager) uploadLaunchTemplate(ctx context.Context, h *host.Host, ec2Settings *EC2ProviderSettings, blockDevices []*ec2.LaunchTemplateBlockDeviceMappingRequest) (*string, *int64, error) {
 	launchTemplate := &ec2.RequestLaunchTemplateData{
 		ImageId:             aws.String(ec2Settings.AMI),
 		KeyName:             aws.String(ec2Settings.KeyName),
@@ -375,7 +406,7 @@ func (m *ec2FleetManager) spawnFleetSpotHost(ctx context.Context, h *host.Host, 
 
 	userData, err := bootstrapUserData(ctx, evergreen.GetEnvironment(), h, ec2Settings.UserData)
 	if err != nil {
-		return nil, errors.Wrap(err, "could not add bootstrap script to user data")
+		return nil, nil, errors.Wrap(err, "could not add bootstrap script to user data")
 	}
 	ec2Settings.UserData = userData
 
@@ -383,7 +414,7 @@ func (m *ec2FleetManager) spawnFleetSpotHost(ctx context.Context, h *host.Host, 
 		var expanded string
 		expanded, err = expandUserData(ec2Settings.UserData, m.settings.Expansions)
 		if err != nil {
-			return nil, errors.Wrap(err, "problem expanding user data")
+			return nil, nil, errors.Wrap(err, "problem expanding user data")
 		}
 		userData := base64.StdEncoding.EncodeToString([]byte(expanded))
 		launchTemplate.UserData = &userData
@@ -395,13 +426,25 @@ func (m *ec2FleetManager) spawnFleetSpotHost(ctx context.Context, h *host.Host, 
 		LaunchTemplateName: aws.String(fmt.Sprintf("%s", util.RandomString())),
 	})
 	if err != nil {
-		return nil, errors.Wrap(err, "can't upload config template to AWS")
+		return nil, nil, errors.Wrap(err, "can't upload config template to AWS")
 	}
 	err = validateEc2CreateTemplateResponse(createTemplateResponse)
 	if err != nil {
-		return nil, errors.Wrap(err, "invalid create template response")
+		return nil, nil, errors.Wrap(err, "invalid create template response")
 	}
-	templateID = createTemplateResponse.LaunchTemplate.LaunchTemplateId
+
+	return createTemplateResponse.LaunchTemplate.LaunchTemplateId, createTemplateResponse.LaunchTemplate.LatestVersionNumber, nil
+}
+
+func (m *ec2FleetManager) requestFleet(ctx context.Context, ec2Settings *EC2ProviderSettings, templateID *string, templateVersion *int64) (*string, error) {
+	var overrides []*ec2.FleetLaunchTemplateOverridesRequest
+	var err error
+	if ec2Settings.VpcName != "" {
+		overrides, err = m.makeOverrides(ctx, ec2Settings.VpcName)
+		if err != nil {
+			return nil, errors.Wrapf(err, "can't make overrides for VPC '%s'", ec2Settings.VpcName)
+		}
+	}
 
 	// Create a fleet with a single spot instance from the launch template
 	createFleetInput := &ec2.CreateFleetInput{
@@ -409,8 +452,9 @@ func (m *ec2FleetManager) spawnFleetSpotHost(ctx context.Context, h *host.Host, 
 			{
 				LaunchTemplateSpecification: &ec2.FleetLaunchTemplateSpecificationRequest{
 					LaunchTemplateId: templateID,
-					Version:          aws.String(strconv.Itoa(int(*createTemplateResponse.LaunchTemplate.LatestVersionNumber))),
+					Version:          aws.String(strconv.Itoa(int(*templateVersion))),
 				},
+				Overrides: overrides,
 			},
 		},
 		TargetCapacitySpecification: &ec2.TargetCapacitySpecificationRequest{
@@ -425,29 +469,51 @@ func (m *ec2FleetManager) spawnFleetSpotHost(ctx context.Context, h *host.Host, 
 	}
 	err = validateEc2CreateFleetResponse(createFleetResponse)
 	if err != nil {
-		grip.Error(message.WrapError(err, message.Fields{
-			"message":  "invalid CreateFleet reponse",
-			"host":     h.Id,
-			"response": createFleetResponse,
-		}))
 		return nil, errors.Wrap(err, "invalid create fleet response")
 	}
 
-	h.Id = *createFleetResponse.Instances[0].InstanceIds[0]
-	instanceInfo, err := m.client.GetInstanceInfo(ctx, h.Id)
+	return createFleetResponse.Instances[0].InstanceIds[0], nil
+}
+
+func (m *ec2FleetManager) makeOverrides(ctx context.Context, vpcName string) ([]*ec2.FleetLaunchTemplateOverridesRequest, error) {
+	describeVpcsOutput, err := m.client.DescribeVpcs(ctx, &ec2.DescribeVpcsInput{
+		Filters: []*ec2.Filter{
+			&ec2.Filter{
+				Name: aws.String("tag:Name"),
+				Values: []*string{
+					aws.String(vpcName),
+				},
+			},
+		},
+	})
 	if err != nil {
-		return nil, errors.Wrap(err, "can't get instance descriptions")
+		return nil, errors.Wrap(err, "error finding vpc id")
+	}
+	err = validateEc2DescribeVpcsOutput(describeVpcsOutput)
+	if err != nil {
+		return nil, errors.Wrap(err, "invalid describe VPCs response")
 	}
 
-	// return a slice of resources to be tagged
-	resources := []*string{createFleetResponse.Instances[0].InstanceIds[0]}
-	for _, vol := range instanceInfo.BlockDeviceMappings {
-		if *vol.DeviceName == "" {
-			continue
-		}
-
-		resources = append(resources, vol.Ebs.VolumeId)
+	describeSubnetsOutput, err := m.client.DescribeSubnets(ctx, &ec2.DescribeSubnetsInput{
+		Filters: []*ec2.Filter{
+			&ec2.Filter{
+				Name:   aws.String("vpc-id"),
+				Values: []*string{describeVpcsOutput.Vpcs[0].VpcId},
+			},
+		},
+	})
+	if err != nil {
+		return nil, errors.Wrapf(err, "can't get subnets for vpc '%s'", vpcName)
+	}
+	err = validateEc2DescribeSubnetsOutput(describeSubnetsOutput)
+	if err != nil {
+		return nil, errors.Wrap(err, "invalid describe subnets response")
 	}
 
-	return resources, nil
+	overrides := make([]*ec2.FleetLaunchTemplateOverridesRequest, 0, len(describeSubnetsOutput.Subnets))
+	for _, subnet := range describeSubnetsOutput.Subnets {
+		overrides = append(overrides, &ec2.FleetLaunchTemplateOverridesRequest{SubnetId: subnet.SubnetId})
+	}
+
+	return overrides, nil
 }

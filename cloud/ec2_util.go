@@ -516,3 +516,35 @@ func validateEc2InstanceInfoResponse(instance *ec2aws.Instance) error {
 
 	return catcher.Resolve()
 }
+
+func validateEc2DescribeSubnetsOutput(describeSubnetsOutput *ec2aws.DescribeSubnetsOutput) error {
+	if describeSubnetsOutput == nil {
+		return errors.New("describe subnets response is nil")
+	}
+
+	if len(describeSubnetsOutput.Subnets) == 0 {
+		return errors.New("describe subnets response contains no subnets")
+	}
+
+	for _, subnet := range describeSubnetsOutput.Subnets {
+		if subnet.SubnetId == nil || *subnet.SubnetId == "" {
+			return errors.New("describe subnets response contains a subnet without an ID")
+		}
+	}
+
+	return nil
+}
+
+func validateEc2DescribeVpcsOutput(describeVpcsOutput *ec2aws.DescribeVpcsOutput) error {
+	if describeVpcsOutput == nil {
+		return errors.New("describe VPCs response is nil")
+	}
+	if len(describeVpcsOutput.Vpcs) == 0 {
+		return errors.New("describe VPCs response contains no VPCs")
+	}
+	if describeVpcsOutput.Vpcs[0].VpcId == nil || *describeVpcsOutput.Vpcs[0].VpcId == "" {
+		return errors.New("describe VPCs response contains a VPC with no VPC ID")
+	}
+
+	return nil
+}
