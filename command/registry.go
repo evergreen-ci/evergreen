@@ -135,7 +135,6 @@ func (r *commandRegistry) renderCommands(commandInfo model.PluginCommandConf,
 		parsed []model.PluginCommandConf
 		out    []Command
 		errs   []string
-		err    error
 	)
 
 	if name := commandInfo.Function; name != "" {
@@ -178,7 +177,7 @@ func (r *commandRegistry) renderCommands(commandInfo model.PluginCommandConf,
 		}
 
 		cmd := factory()
-		if err = cmd.ParseParams(c.Params); err != nil {
+		if err := cmd.ParseParams(c.Params); err != nil {
 			errs = append(errs, errors.Wrapf(err, "problem parsing input of %s (%s)", c.Command, c.DisplayName).Error())
 			continue
 		}
