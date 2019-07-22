@@ -24,6 +24,17 @@ func setupEnv(ctx context.Context) (*mock.Environment, error) {
 	return env, nil
 }
 
+func withSetupAndTeardown(t *testing.T, env evergreen.Environment, fn func()) {
+	require.NoError(t, db.ClearCollections(Collection))
+	defer func() {
+		assert.NoError(t, db.ClearCollections(Collection))
+	}()
+
+	require.NoError(t, Bootstrap(env))
+
+	fn()
+}
+
 func TestDBOperations(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -34,17 +45,6 @@ func TestDBOperations(t *testing.T) {
 		ctx, cancel := context.WithCancel(ctx)
 		cancel()
 		fn(ctx)
-	}
-
-	withSetupAndTeardown := func(t *testing.T, env evergreen.Environment, fn func()) {
-		require.NoError(t, db.ClearCollections(Collection))
-		defer func() {
-			assert.NoError(t, db.ClearCollections(Collection))
-		}()
-
-		require.NoError(t, Bootstrap(env))
-
-		fn()
 	}
 
 	for opName, opTests := range map[string]func(ctx context.Context, t *testing.T, env evergreen.Environment){

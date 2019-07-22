@@ -211,7 +211,7 @@ func TestJasperCommandsWindows(t *testing.T) {
 
 			creds, err := newMockCredentials()
 			require.NoError(t, err)
-			writeCredentialsCmd, err := h.writeJasperCredentialsFileCommand(config, creds)
+			writeCredentialsCmd, err := h.WriteJasperCredentialsFileCommand(creds)
 			require.NoError(t, err)
 
 			expectedCmds = append(expectedCmds, writeCredentialsCmd, h.ForceReinstallJasperCommand(config))
@@ -256,6 +256,7 @@ func TestJasperCommandsWindows(t *testing.T) {
 					assert.Error(t, err)
 				},
 				"WithJasperCredentialsPath": func(t *testing.T) {
+					h.Distro.JasperCredentialsPath = "/bar"
 					cmd, err := h.WriteJasperCredentialsFileCommand(creds)
 					require.NoError(t, err)
 
@@ -533,7 +534,7 @@ func TestJasperProcess(t *testing.T) {
 			fn(ctx)
 		}
 
-		catcher.Add(errors.WithStack(teardownJasperService(ctx, closeService)))
+		catcher.Add(errors.WithStack(teardownJasperService(closeService)))
 		return catcher.Resolve()
 	}
 	for testName, testCase := range map[string]func(ctx context.Context, t *testing.T, env *mock.Environment, h *Host, opts *jasper.CreateOptions){

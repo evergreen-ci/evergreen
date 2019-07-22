@@ -109,15 +109,15 @@ func SaveByID(ctx context.Context, env evergreen.Environment, name string, creds
 		return errors.Wrap(err, "could not get depot")
 	}
 
-	if err := deleteIfExists(dpt, certdepot.CsrTag(name), certdepot.PrivKeyTag(name), certdepot.CrtTag(name)); err != nil {
+	if err = deleteIfExists(dpt, certdepot.CsrTag(name), certdepot.PrivKeyTag(name), certdepot.CrtTag(name)); err != nil {
 		return errors.Wrap(err, "problem deleting existing credentials")
 	}
 
-	if err := dpt.Put(certdepot.PrivKeyTag(name), creds.Key); err != nil {
+	if err = dpt.Put(certdepot.PrivKeyTag(name), creds.Key); err != nil {
 		return errors.Wrap(err, "problem saving key")
 	}
 
-	if err := dpt.Put(certdepot.CrtTag(name), creds.Cert); err != nil {
+	if err = dpt.Put(certdepot.CrtTag(name), creds.Cert); err != nil {
 		return errors.Wrap(err, "problem saving certificate")
 	}
 

@@ -166,7 +166,8 @@ func (j *jasperDeployJob) Run(ctx context.Context) {
 				"bash", "-c", writeCredentialsCmd,
 			},
 		}
-		if output, err := j.host.RunJasperProcess(ctx, j.env, writeCredentialsOpts); err != nil {
+		var output string
+		if output, err = j.host.RunJasperProcess(ctx, j.env, writeCredentialsOpts); err != nil {
 			grip.Error(message.Fields{
 				"message": "could not replace existing Jasper credentials on host",
 				"logs":    output,
@@ -188,7 +189,7 @@ func (j *jasperDeployJob) Run(ctx context.Context) {
 			},
 		}
 
-		if err := j.host.StartJasperProcess(ctx, j.env, restartJasperOpts); err != nil {
+		if err = j.host.StartJasperProcess(ctx, j.env, restartJasperOpts); err != nil {
 			grip.Error(message.Fields{
 				"message": "could not restart Jasper service",
 				"host":    j.host.Id,

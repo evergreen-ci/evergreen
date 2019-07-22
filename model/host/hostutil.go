@@ -316,7 +316,7 @@ func (h *Host) jasperBinaryFilePath(config evergreen.HostJasperConfig) string {
 func (h *Host) BootstrapScript(config evergreen.HostJasperConfig, creds *rpc.Credentials, preJasperSetup, postJasperSetup []string) (string, error) {
 	bashCmds := append([]string{"set -o errexit"}, preJasperSetup...)
 
-	writeCredentialsCmd, err := h.writeJasperCredentialsFileCommand(config, creds)
+	writeCredentialsCmd, err := h.WriteJasperCredentialsFileCommand(creds)
 	if err != nil {
 		return "", errors.Wrap(err, "could not build command to write Jasper credentials file")
 	}
