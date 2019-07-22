@@ -931,11 +931,12 @@ func TestFindByExpiringJasperCredentials(t *testing.T) {
 	defer cancel()
 
 	for testName, testCase := range map[string]func(t *testing.T, env evergreen.Environment){
-		"LegacyHost": func(t *testing.T, env evergreen.Environment) {
+		"IgnoresLegacyHost": func(t *testing.T, env evergreen.Environment) {
 			h := &Host{
 				Id: "id",
 				Distro: distro.Distro{
-					BootstrapMethod: distro.BootstrapMethodLegacySSH,
+					BootstrapMethod:     distro.BootstrapMethodLegacySSH,
+					CommunicationMethod: distro.CommunicationMethodLegacySSH,
 				},
 				JasperCredentialsID: "cid",
 				Status:              evergreen.HostRunning,
@@ -950,11 +951,12 @@ func TestFindByExpiringJasperCredentials(t *testing.T) {
 			require.NoError(t, err)
 			assert.Empty(t, dbHosts)
 		},
-		"WithoutCredentials": func(t *testing.T, env evergreen.Environment) {
+		"IgnoresWithoutCredentials": func(t *testing.T, env evergreen.Environment) {
 			h := &Host{
 				Id: "id",
 				Distro: distro.Distro{
-					BootstrapMethod: distro.BootstrapMethodSSH,
+					BootstrapMethod:     distro.BootstrapMethodSSH,
+					CommunicationMethod: distro.CommunicationMethodSSH,
 				},
 				JasperCredentialsID: "cid",
 				Status:              evergreen.HostRunning,
@@ -965,11 +967,12 @@ func TestFindByExpiringJasperCredentials(t *testing.T) {
 			require.NoError(t, err)
 			assert.Empty(t, dbHosts)
 		},
-		"WithoutExpiringCredentials": func(t *testing.T, env evergreen.Environment) {
+		"IgnoresNonexpiringCredentials": func(t *testing.T, env evergreen.Environment) {
 			h := &Host{
 				Id: "id",
 				Distro: distro.Distro{
-					BootstrapMethod: distro.BootstrapMethodSSH,
+					BootstrapMethod:     distro.BootstrapMethodSSH,
+					CommunicationMethod: distro.CommunicationMethodSSH,
 				},
 				JasperCredentialsID: "cid",
 				Status:              evergreen.HostRunning,
@@ -984,11 +987,12 @@ func TestFindByExpiringJasperCredentials(t *testing.T) {
 			require.NoError(t, err)
 			assert.Empty(t, dbHosts)
 		},
-		"WithExpiringCredentials": func(t *testing.T, env evergreen.Environment) {
+		"ReturnsWithExpiringCredentials": func(t *testing.T, env evergreen.Environment) {
 			h := &Host{
 				Id: "id",
 				Distro: distro.Distro{
-					BootstrapMethod: distro.BootstrapMethodSSH,
+					BootstrapMethod:     distro.BootstrapMethodSSH,
+					CommunicationMethod: distro.CommunicationMethodSSH,
 				},
 				JasperCredentialsID: "cid",
 				Status:              evergreen.HostRunning,
@@ -1004,13 +1008,15 @@ func TestFindByExpiringJasperCredentials(t *testing.T) {
 			require.Len(t, dbHosts, 1)
 			assert.Equal(t, h.Id, dbHosts[0].Id)
 		},
-		"IgnoresHostsNotRunning": func(t *testing.T, env evergreen.Environment) {
+		"IgnoresNotRunning": func(t *testing.T, env evergreen.Environment) {
 			h := &Host{
 				Id: "id",
 				Distro: distro.Distro{
-					BootstrapMethod: distro.BootstrapMethodSSH,
+					BootstrapMethod:     distro.BootstrapMethodSSH,
+					CommunicationMethod: distro.CommunicationMethodSSH,
 				},
 				JasperCredentialsID: "cid",
+				Status:              evergreen.HostTerminated,
 			}
 			require.NoError(t, h.Insert())
 
@@ -1026,7 +1032,8 @@ func TestFindByExpiringJasperCredentials(t *testing.T) {
 			h := &Host{
 				Id: "id",
 				Distro: distro.Distro{
-					BootstrapMethod: distro.BootstrapMethodSSH,
+					BootstrapMethod:     distro.BootstrapMethodSSH,
+					CommunicationMethod: distro.CommunicationMethodSSH,
 				},
 				JasperCredentialsID: "cid",
 				Status:              evergreen.HostRunning,
@@ -2750,6 +2757,7 @@ func TestEstimateNumContainersForDuration(t *testing.T) {
 	assert.NoError(err)
 	assert.Equal(2.0, estimate2)
 }
+
 func TestFindTerminatedHostsRunningTasksQuery(t *testing.T) {
 	t.Run("QueryExecutesProperly", func(t *testing.T) {
 		hosts, err := FindTerminatedHostsRunningTasks()

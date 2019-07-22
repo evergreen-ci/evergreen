@@ -321,7 +321,7 @@ func (h *Host) WriteJasperCredentialsFileCommand(creds *rpc.Credentials) (string
 }
 
 // RunJasperProcess makes a request to the host's Jasper service to create the
-// process with the given options, wait for its completion, and return the
+// process with the given options, wait for its completion, and returns the
 // output from it.
 func (h *Host) RunJasperProcess(ctx context.Context, env evergreen.Environment, opts *jasper.CreateOptions) (string, error) {
 	client, err := h.JasperClient(ctx, env)

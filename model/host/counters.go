@@ -33,7 +33,8 @@ func (h *Host) IncProvisionAttempts() error {
 	return nil
 }
 
-// IncJasperDeployAttempts increments the number of Jasper deploy attempts.
+// IncJasperDeployAttempts increments the number of times we have attempted to
+// deploy Jasper to this host.
 func (h *Host) IncJasperDeployAttempts() error {
 	query := bson.M{
 		IdKey: h.Id,
@@ -58,7 +59,8 @@ func (h *Host) IncJasperDeployAttempts() error {
 	return nil
 }
 
-// ResetJasperDeployAttempts sets the number of Jasper deploy attempts to zero.
+// ResetJasperDeployAttempts resets the number of Jasper deploy attempts to
+// zero.
 func (h *Host) ResetJasperDeployAttempts() error {
 	query := bson.M{
 		IdKey: h.Id,

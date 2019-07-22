@@ -392,11 +392,7 @@ func FindByExpiringJasperCredentials(cutoff time.Duration) ([]Host, error) {
 				"$exists": true,
 				"$ne":     distro.BootstrapMethodLegacySSH,
 			},
-			StatusKey: bson.M{"$in": []string{
-				evergreen.HostRunning,
-				evergreen.HostQuarantined,
-				evergreen.HostDecommissioned},
-			},
+			StatusKey:        evergreen.HostRunning,
 			HasContainersKey: bson.M{"$ne": true},
 			ParentIDKey:      bson.M{"$exists": false},
 		}},

@@ -13,7 +13,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/util"
-	"github.com/k0kubun/pp"
 	"github.com/mongodb/anser/bsonutil"
 	adb "github.com/mongodb/anser/db"
 	"github.com/mongodb/grip"
@@ -345,7 +344,6 @@ func (h *Host) CreateSecret() error {
 // service from the database. These credentials should not be used to connect to
 // the Jasper service - use JasperClientCredentials for this purpose.
 func (h *Host) JasperCredentials(ctx context.Context, env evergreen.Environment) (*rpc.Credentials, error) {
-	pp.Println("jasper credentials id:", h.JasperCredentialsID)
 	return credentials.FindByID(ctx, env, h.JasperCredentialsID)
 }
 
@@ -1066,7 +1064,6 @@ func FindAllRunningContainers() ([]Host, error) {
 // FindAllRunningParents finds all running hosts that have child containers
 func FindAllRunningParents() ([]Host, error) {
 	query := db.Query(bson.M{
-		StatusKey:        evergreen.HostRunning,
 		StatusKey:        evergreen.HostRunning,
 		HasContainersKey: true,
 	})
