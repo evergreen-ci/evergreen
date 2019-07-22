@@ -276,7 +276,7 @@ func (h *Host) jasperBinaryFilePath(config evergreen.HostJasperConfig) string {
 
 // BootstrapScript creates the user data script to bootstrap the host.
 func (h *Host) BootstrapScript(config evergreen.HostJasperConfig, creds *rpc.Credentials) (string, error) {
-	writeCredentialsCmd, err := h.WriteJasperCredentialsFileCommand(config, creds)
+	writeCredentialsCmd, err := h.WriteJasperCredentialsFileCommand(creds)
 	if err != nil {
 		return "", errors.Wrap(err, "could not build command to write Jasper credentials file")
 	}
@@ -309,7 +309,7 @@ func (h *Host) BootstrapScript(config evergreen.HostJasperConfig, creds *rpc.Cre
 
 // WriteJasperCredentialsCommand builds the command to write the Jasper
 // credentials to a file.
-func (h *Host) WriteJasperCredentialsFileCommand(config evergreen.HostJasperConfig, creds *rpc.Credentials) (string, error) {
+func (h *Host) WriteJasperCredentialsFileCommand(creds *rpc.Credentials) (string, error) {
 	if h.Distro.JasperCredentialsPath == "" {
 		return "", errors.New("cannot write Jasper credentials without a credentials file path")
 	}

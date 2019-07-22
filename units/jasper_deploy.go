@@ -35,8 +35,9 @@ type jasperDeployJob struct {
 	job.Base              `bson:"job_base" json:"job_base" yaml:"job_base"`
 	HostID                string    `bson:"host_id" json:"host_id" yaml:"host_id"`
 	CredentialsExpiration time.Time `bson:"credentials_expiration" json:"credentials_expiration" yaml:"credentials_expiration"`
-	// If set, the commands will be run as regular SSH commands without
-	// communicating with Jasper at all.
+	// If set, the deploy will be done by sending requests to the Jasper
+	// service. Otherwise, the commands will be run as regular SSH commands
+	// without communicating with Jasper at all.
 	DeployThroughJasper bool `bson:"deploy_through_jasper" json:"deploy_through_jasper" yaml:"deploy_through_jasper"`
 
 	env  evergreen.Environment
@@ -61,8 +62,15 @@ func makeJasperDeployJob() *jasperDeployJob {
 func NewJasperDeployJob(env evergreen.Environment, h host.Host, expiration time.Time, deployThroughJasper bool, id string) amboy.Job {
 	j := makeJasperDeployJob()
 	j.env = env
+	j.HostID = h.Id
 	j.host = &h
-	j.SetID(fmt.Sprintf("%s.%s.%s", jasperDeployJobName, j.HostID, id))
+	j.CredentialsExpiration = expiration
+	j.DeployThroughJasper = deployThroughJasper
+	jobID := fmt.Sprintf("%s.%s.%s", jasperDeployJobName, j.HostID, id)
+	if deployThroughJasper {
+		jobID += ".deploy-through-jasper"
+	}
+	j.SetID(jobID)
 	return j
 }
 
@@ -82,56 +90,17 @@ func (j *jasperDeployJob) Run(ctx context.Context) {
 
 	defer func() {
 		if j.HasErrors() {
-			if j.DeployThroughJasper && j.shouldRetryDeploy() && !j.credentialsExpireBefore(time.Hour) {
-				if err := j.requeueDeployThroughJasper(ctx); err != nil {
-					grip.Error(message.WrapError(err, message.Fields{
-						"message":  "could not requeue job with deploy through Jasper",
-						"host":     j.host.Id,
-						"distro":   j.host.Distro.Id,
-						"expires":  j.CredentialsExpiration,
-						"attempts": j.host.JasperDeployAttempts,
-						"job":      j.ID(),
-					}))
-				}
+			if err := j.tryRequeueDeploy(ctx); err != nil {
+				grip.Error(message.WrapError(err, message.Fields{
+					"message":  "could not requeue Jasper deploy job",
+					"host":     j.host.Distro.Id,
+					"distro:":  j.host.Distro.Id,
+					"expires":  j.CredentialsExpiration,
+					"attempts": j.host.JasperDeployAttempts,
+					"job":      j.ID(),
+				}))
 				return
 			}
-
-			if j.DeployThroughJasper {
-				if err := j.host.ResetJasperDeployAttempts(); err != nil {
-					grip.Error(message.WrapError(err, message.Fields{
-						"message":  "could not reset Jasper deploy attempts",
-						"host":     j.host.Distro.Id,
-						"distro:":  j.host.Distro.Id,
-						"expires":  j.CredentialsExpiration,
-						"attempts": j.host.JasperDeployAttempts,
-						"job":      j.ID(),
-					}))
-					return
-				}
-			}
-
-			if j.shouldRetryDeploy() {
-				if err := j.requeueDeployThroughSSH(ctx); err != nil {
-					grip.Error(message.WrapError(err, message.Fields{
-						"message":  "could not requeue job without deploy through Jasper",
-						"host":     j.host.Distro.Id,
-						"distro:":  j.host.Distro.Id,
-						"expires":  j.CredentialsExpiration,
-						"attempts": j.host.JasperDeployAttempts,
-						"job":      j.ID(),
-					}))
-				}
-				return
-			}
-
-			grip.Error(message.Fields{
-				"message":  "no more Jasper deploy attempts remaining",
-				"host":     j.host.Id,
-				"distro":   j.host.Distro.Id,
-				"expires":  j.CredentialsExpiration,
-				"attempts": j.host.JasperDeployAttempts,
-				"job":      j.ID(),
-			})
 		}
 	}()
 
@@ -162,7 +131,7 @@ func (j *jasperDeployJob) Run(ctx context.Context) {
 		return
 	}
 
-	writeCredentialsCmd, err := j.host.WriteJasperCredentialsFileCommand(settings.HostJasper, creds)
+	writeCredentialsCmd, err := j.host.WriteJasperCredentialsFileCommand(creds)
 	if err != nil {
 		grip.Error(message.Fields{
 			"message": "could not build command to write Jasper credentials file",
@@ -170,9 +139,11 @@ func (j *jasperDeployJob) Run(ctx context.Context) {
 			"distro":  j.host.Distro.Id,
 			"job":     j.ID(),
 		})
+		grip.Error(err)
 		j.AddError(err)
 		return
 	}
+
 	if j.DeployThroughJasper {
 		client, err := j.host.JasperClient(ctx, j.env)
 		if err != nil {
@@ -185,9 +156,9 @@ func (j *jasperDeployJob) Run(ctx context.Context) {
 			j.AddError(err)
 			return
 		}
-		// We use this ID to verify the current running Jasper service. When
-		// Jasper is redeployed, its ID should be different to indicate it is
-		// a new Jasper service.
+		// We use this ID to later verify the current running Jasper service.
+		// When Jasper is redeployed, its ID should be different to indicate it
+		// is a new Jasper service.
 		serviceID := client.ID()
 
 		writeCredentialsOpts := &jasper.CreateOptions{
@@ -213,7 +184,7 @@ func (j *jasperDeployJob) Run(ctx context.Context) {
 		restartJasperOpts := &jasper.CreateOptions{
 			Args: []string{
 				"bash", "-c",
-				fmt.Sprintf("pgrep -f '%s' | kill", strings.Join(jaspercli.BuildServiceCommand(settings.HostJasper.BinaryName), " ")),
+				fmt.Sprintf("pgrep -f '%s' | xargs kill", strings.Join(jaspercli.BuildServiceCommand(settings.HostJasper.BinaryName), " ")),
 			},
 		}
 
@@ -228,16 +199,8 @@ func (j *jasperDeployJob) Run(ctx context.Context) {
 			return
 		}
 
-		// We have no means of directly checking that the Jasper service
-		// actually restarted with the new credentials file, so the only sanity
-		// check that we can perform to verify this is to check that either
-		// 1. there are no processes or
-		// 2. there are processes, but they have a different manager ID from the
-		//    original Jasper service.
-		// There is also no guarantee that we will be able to connect to Jasper
-		// immediately after terminating it.
-		// kim: TODO: wait for MAKE-854 merge
-
+		// Verify that the ID of the service has changed to indicate that the
+		// service restarted.
 		if client, err = j.host.JasperClient(ctx, j.env); err != nil {
 			grip.Error(message.WrapError(err, message.Fields{
 				"message": "could not get Jasper client",
@@ -273,45 +236,6 @@ func (j *jasperDeployJob) Run(ctx context.Context) {
 			j.AddError(err)
 			return
 		}
-		/*         client, err := j.host.JasperClient(ctx, j.env)
-		 *         if err != nil {
-		 *         }
-		 *
-		 *         procs, err := client.List(ctx, jasper.All)
-		 *         if err != nil {
-		 *             grip.Error(message.WrapError(err, message.Fields{
-		 *                 "message": "could not list running Jasper processes on host",
-		 *                 "host":    j.host.Id,
-		 *                 "distro":  j.host.Distro.Id,
-		 *                 "id":      j.ID(),
-		 *             }))
-		 *             j.AddError(err)
-		 *             return
-		 *         }
-		 *
-		 *         // kim: TODO: wait for MAKE-854 merge.
-		 *         if len(procs) != 0 {
-		 *             managerIsNew := false
-		 *             for _, proc := range procs {
-		 *                 info := proc.Info(ctx)
-		 *                 if len(info.Options.Environment) != 0 && info.Options.Environment[jasper.ManagerEnvironID] != "TODO" {
-		 *                     managerIsNew = true
-		 *                     break
-		 *                 }
-		 *             }
-		 *             if !managerIsNew {
-		 *                 err := errors.New("new Jasper process still shows old service is running")
-		 *                 grip.Error(message.WrapError(err, message.Fields{
-		 *                     "message": "Jasper service should have been started, but old one is still running",
-		 *                     "host":    j.host.Id,
-		 *                     "distro":  j.host.Distro.Id,
-		 *                     "job":     j.ID(),
-		 *                 }))
-		 *                 j.AddError(err)
-		 *                 return
-		 *             }
-		 *             return
-		 *         } */
 	} else {
 		sshOpts, err := j.host.GetSSHOptions(settings)
 		if err != nil {
@@ -364,6 +288,12 @@ func (j *jasperDeployJob) Run(ctx context.Context) {
 		return
 	}
 
+	grip.Info(message.Fields{
+		"message": "deployed Jasper service with new credentials",
+		"host":    j.host.Id,
+		"distro":  j.host.Distro.Id,
+		"version": settings.HostJasper.Version,
+	})
 	event.LogHostJasperDeployed(j.host.Id, settings.HostJasper.Version)
 
 	// If job succeeded, reset jasper deploy count.
@@ -397,44 +327,6 @@ func (j *jasperDeployJob) Run(ctx context.Context) {
 		}))
 	}
 
-	// Note: can't use pkill/pgrep because it doesn't return itself as a
-	// process.
-	// Call bash -c 'echo $PPID | xargs kill -9', or something equivalent.
-
-	// Kill Jasper command:
-	// Windows: "bash -c 'curator jasper service force-reinstall rpc'"
-	// MacOS: bash -c "pgrep -f 'curator jasper service | xargs kill'
-	// Linux: bash -c "echo $PPID | xargs kill" (maybe can just use same as
-	// MacOS)
-}
-
-// func (j *jasperDeployJob) putNewCredentials(ctx context.Context) error {
-//     return nil
-// }
-
-func (j *jasperDeployJob) requeueDeployThroughJasper(ctx context.Context) error {
-	return j.requeue(ctx, true)
-}
-
-func (j *jasperDeployJob) requeueDeployThroughSSH(ctx context.Context) error {
-	return j.requeue(ctx, false)
-}
-
-func (j *jasperDeployJob) requeue(ctx context.Context, deployThroughJasper bool) error {
-	job := NewJasperDeployJob(j.env, *j.host, j.CredentialsExpiration, deployThroughJasper, fmt.Sprintf("attempt-%d", j.host.JasperDeployAttempts))
-	job.UpdateTimeInfo(amboy.JobTimeInfo{
-		WaitUntil: time.Now().Add(time.Minute),
-	})
-
-	if err := j.env.RemoteQueue().Put(ctx, job); err != nil {
-		return err
-	}
-
-	return nil
-}
-
-func (j *jasperDeployJob) shouldRetryDeploy() bool {
-	return j.HasErrors() && j.host.JasperDeployAttempts < jasperDeployRetryLimit
 }
 
 // credentialsExpireBefore returns whether or not the host's Jasper credentials
@@ -466,4 +358,47 @@ func (j *jasperDeployJob) populateIfUnset(ctx context.Context) error {
 	}
 
 	return nil
+}
+
+// tryRequeueDeploy attempts to requeue the deploy. If DeployThroughJasper is
+// set, it tries to requeue the deploy with Jasper again. However, if it cannot
+// do so on the next try, it instead requeues the deploy without using Jasper
+// (i.e. SSH).
+func (j *jasperDeployJob) tryRequeueDeploy(ctx context.Context) error {
+	if err := j.host.IncJasperDeployAttempts(); err != nil {
+		return errors.Wrap(err, "could not increment Jasper deploy attempt")
+	}
+
+	if j.DeployThroughJasper && j.canRetryDeploy() && !j.credentialsExpireBefore(time.Hour) {
+		return errors.Wrap(j.requeueDeployThroughJasper(ctx, true), "could not requeue job with deploy through Jasper")
+	}
+
+	if j.DeployThroughJasper {
+		if err := j.host.ResetJasperDeployAttempts(); err != nil {
+			return errors.Wrap(err, "could not reset Jasper deploy attempts")
+		}
+	}
+
+	if j.canRetryDeploy() {
+		return errors.Wrap(j.requeueDeployThroughJasper(ctx, false), "could not requeue job without deploy through Jasper")
+	}
+
+	return errors.New("no more Jasper deploy attempts remaining")
+}
+
+func (j *jasperDeployJob) requeueDeployThroughJasper(ctx context.Context, deployThroughJasper bool) error {
+	job := NewJasperDeployJob(j.env, *j.host, j.CredentialsExpiration, deployThroughJasper, fmt.Sprintf("attempt-%d", j.host.JasperDeployAttempts))
+	job.UpdateTimeInfo(amboy.JobTimeInfo{
+		WaitUntil: time.Now().Add(time.Minute),
+	})
+
+	if err := j.env.RemoteQueue().Put(ctx, job); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (j *jasperDeployJob) canRetryDeploy() bool {
+	return j.host.JasperDeployAttempts < jasperDeployRetryLimit
 }

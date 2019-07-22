@@ -13,6 +13,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/util"
+	"github.com/k0kubun/pp"
 	"github.com/mongodb/anser/bsonutil"
 	adb "github.com/mongodb/anser/db"
 	"github.com/mongodb/grip"
@@ -344,6 +345,7 @@ func (h *Host) CreateSecret() error {
 // service from the database. These credentials should not be used to connect to
 // the Jasper service - use JasperClientCredentials for this purpose.
 func (h *Host) JasperCredentials(ctx context.Context, env evergreen.Environment) (*rpc.Credentials, error) {
+	pp.Println("jasper credentials id:", h.JasperCredentialsID)
 	return credentials.FindByID(ctx, env, h.JasperCredentialsID)
 }
 
@@ -357,7 +359,7 @@ func (h *Host) JasperCredentialsExpiration(ctx context.Context, env evergreen.En
 // communicate with the host's running Jasper service. These credentials should
 // be used only to connect to the host's Jasper service.
 func (h *Host) JasperClientCredentials(ctx context.Context, env evergreen.Environment) (*rpc.Credentials, error) {
-	creds, err := credentials.FindByID(ctx, env, h.JasperCredentialsID)
+	creds, err := credentials.ForJasperClient(ctx, env)
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}
@@ -808,22 +810,25 @@ func (h *Host) Upsert() (*adb.ChangeInfo, error) {
 				// If adding or removing fields here, make sure that all callers will work
 				// correctly after the change. Any fields defined here but not set by the
 				// caller will insert the zero value into the document
-				DNSKey:               h.Host,
-				UserKey:              h.User,
-				DistroKey:            h.Distro,
-				ProvisionedKey:       h.Provisioned,
-				StartedByKey:         h.StartedBy,
-				ExpirationTimeKey:    h.ExpirationTime,
-				ProviderKey:          h.Provider,
-				TagKey:               h.Tag,
-				InstanceTypeKey:      h.InstanceType,
-				ZoneKey:              h.Zone,
-				ProjectKey:           h.Project,
-				ProvisionAttemptsKey: h.ProvisionAttempts,
-				ProvisionOptionsKey:  h.ProvisionOptions,
-				StartTimeKey:         h.StartTime,
-				HasContainersKey:     h.HasContainers,
-				ContainerImagesKey:   h.ContainerImages,
+				DNSKey:                  h.Host,
+				UserKey:                 h.User,
+				DistroKey:               h.Distro,
+				ProvisionedKey:          h.Provisioned,
+				StartedByKey:            h.StartedBy,
+				ExpirationTimeKey:       h.ExpirationTime,
+				ProviderKey:             h.Provider,
+				TagKey:                  h.Tag,
+				InstanceTypeKey:         h.InstanceType,
+				ZoneKey:                 h.Zone,
+				ProjectKey:              h.Project,
+				ProvisionAttemptsKey:    h.ProvisionAttempts,
+				ProvisionOptionsKey:     h.ProvisionOptions,
+				StartTimeKey:            h.StartTime,
+				HasContainersKey:        h.HasContainers,
+				ContainerImagesKey:      h.ContainerImages,
+				NeedsNewAgentMonitorKey: h.NeedsNewAgentMonitor,
+				JasperCredentialsIDKey:  h.JasperCredentialsID,
+				JasperDeployAttemptsKey: h.JasperDeployAttempts,
 			},
 			"$setOnInsert": bson.M{
 				StatusKey:     h.Status,

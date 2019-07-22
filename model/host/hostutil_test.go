@@ -172,11 +172,11 @@ func TestJasperCommandsWindows(t *testing.T) {
 			for testName, testCase := range map[string]func(t *testing.T){
 				"WithoutJasperCredentialsPath": func(t *testing.T) {
 					h.Distro.JasperCredentialsPath = ""
-					_, err := h.WriteJasperCredentialsFileCommand(config, creds)
+					_, err := h.WriteJasperCredentialsFileCommand(creds)
 					assert.Error(t, err)
 				},
 				"WithJasperCredentialsPath": func(t *testing.T) {
-					cmd, err := h.WriteJasperCredentialsFileCommand(config, creds)
+					cmd, err := h.WriteJasperCredentialsFileCommand(creds)
 					require.NoError(t, err)
 
 					expectedCreds, err := creds.Export()
@@ -198,7 +198,7 @@ func TestJasperCommandsWindows(t *testing.T) {
 			require.NoError(t, err)
 
 			h.Distro.JasperCredentialsPath = ""
-			_, err = h.WriteJasperCredentialsFileCommand(config, creds)
+			_, err = h.WriteJasperCredentialsFileCommand(creds)
 			assert.Error(t, err)
 		},
 	} {
@@ -258,7 +258,7 @@ func setupJasperService(ctx context.Context, env *mock.Environment, h *Host) (ja
 
 // teardownJasperService is used to clean up a test Jasper service and clean up
 // the host and credentials collection.
-func teardownJasperService(ctx context.Context, closeService jasper.CloseFunc) error {
+func teardownJasperService(closeService jasper.CloseFunc) error {
 	catcher := grip.NewBasicCatcher()
 	catcher.Add(db.ClearCollections(credentials.Collection, Collection))
 	if closeService != nil {
@@ -342,7 +342,7 @@ func TestJasperClient(t *testing.T) {
 					fn(ctx)
 				}
 
-				catcher.Add(errors.WithStack(teardownJasperService(ctx, closeService)))
+				catcher.Add(errors.WithStack(teardownJasperService(closeService)))
 				return catcher.Resolve()
 			},
 			h: &Host{
@@ -363,7 +363,7 @@ func TestJasperClient(t *testing.T) {
 					fn(ctx)
 				}
 
-				return errors.WithStack(teardownJasperService(ctx, nil))
+				return errors.WithStack(teardownJasperService(nil))
 			},
 			h: &Host{
 				Id: "test-host",
@@ -390,7 +390,7 @@ func TestJasperClient(t *testing.T) {
 					fn(ctx)
 				}
 
-				catcher.Add(errors.WithStack(teardownJasperService(ctx, closeService)))
+				catcher.Add(errors.WithStack(teardownJasperService(closeService)))
 				return catcher.Resolve()
 			},
 			h: &Host{
@@ -410,7 +410,6 @@ func TestJasperClient(t *testing.T) {
 
 			env := &mock.Environment{}
 			require.NoError(t, env.Configure(tctx, "", nil))
-			env.EnvContext = tctx
 			env.Settings().HostJasper.BinaryName = "binary"
 			env.Settings().Keys = map[string]string{sshKeyName: sshKeyValue}
 

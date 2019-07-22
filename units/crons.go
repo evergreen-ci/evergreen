@@ -835,7 +835,7 @@ func PopulateJasperDeployJobs(env evergreen.Environment) amboy.QueueOperation {
 				continue
 			}
 
-			catcher.Add(queue.Put(ctx, NewJasperDeployJob(env, h, expiration, true, ts)))
+			catcher.Add(queue.Put(ctx, NewJasperDeployJob(env, h, expiration, h.Distro.CommunicationMethod == distro.CommunicationMethodRPC, ts)))
 		}
 
 		return catcher.Resolve()
