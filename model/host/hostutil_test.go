@@ -2,6 +2,7 @@ package host
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"net"
 	"os/exec"
@@ -15,8 +16,10 @@ import (
 	"github.com/evergreen-ci/evergreen/mock"
 	"github.com/evergreen-ci/evergreen/model/credentials"
 	"github.com/evergreen-ci/evergreen/model/distro"
+	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/service/testutil"
 	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/send"
 	"github.com/mongodb/jasper"
 	"github.com/mongodb/jasper/rpc"
 	"github.com/pkg/errors"
@@ -27,14 +30,45 @@ import (
 func TestCurlCommand(t *testing.T) {
 	assert := assert.New(t)
 	h := &Host{Distro: distro.Distro{Arch: distro.ArchWindowsAmd64}}
-	url := "www.example.com"
+	settings := &evergreen.Settings{
+		Ui:                evergreen.UIConfig{Url: "www.example.com"},
+		ClientBinariesDir: "clients",
+	}
 	expected := "cd ~ && curl -LO 'www.example.com/clients/windows_amd64/evergreen.exe' && chmod +x evergreen.exe"
-	assert.Equal(expected, h.CurlCommand(url))
+	assert.Equal(expected, h.CurlCommand(settings))
 
 	h = &Host{Distro: distro.Distro{Arch: distro.ArchLinuxAmd64}}
-	// expected = "cd ~ && if [ -f evergreen ]; then ./evergreen get-update --install --force; else curl -LO 'www.example.com/clients/linux_amd64/evergreen' && chmod +x evergreen; fi"
 	expected = "cd ~ && curl -LO 'www.example.com/clients/linux_amd64/evergreen' && chmod +x evergreen"
-	assert.Equal(expected, h.CurlCommand(url))
+	assert.Equal(expected, h.CurlCommand(settings))
+}
+
+func TestCurlCommandWithRetry(t *testing.T) {
+	h := &Host{Distro: distro.Distro{Arch: distro.ArchWindowsAmd64}}
+	settings := &evergreen.Settings{
+		Ui:                evergreen.UIConfig{Url: "www.example.com"},
+		ClientBinariesDir: "clients",
+	}
+	expected := "cd ~ && curl -LO 'www.example.com/clients/windows_amd64/evergreen.exe' --retry=5 --retry-max-time=10 && chmod +x evergreen.exe"
+	assert.Equal(t, expected, h.CurlCommandWithRetry(settings, 5, 10))
+
+	h = &Host{Distro: distro.Distro{Arch: distro.ArchLinuxAmd64}}
+	expected = "cd ~ && curl -LO 'www.example.com/clients/linux_amd64/evergreen' --retry=5 --retry-max-time=10 && chmod +x evergreen"
+	assert.Equal(t, expected, h.CurlCommandWithRetry(settings, 5, 10))
+}
+
+func TestClientURL(t *testing.T) {
+	h := &Host{Distro: distro.Distro{Arch: distro.ArchWindowsAmd64}}
+	settings := &evergreen.Settings{
+		Ui:                evergreen.UIConfig{Url: "www.example.com"},
+		ClientBinariesDir: "clients",
+	}
+
+	expected := "www.example.com/clients/windows_amd64/evergreen.exe"
+	assert.Equal(t, expected, h.ClientURL(settings))
+
+	h.Distro.Arch = distro.ArchLinuxAmd64
+	expected = "www.example.com/clients/linux_amd64/evergreen"
+	assert.Equal(t, expected, h.ClientURL(settings))
 }
 
 func newMockCredentials() (*rpc.Credentials, error) {
@@ -46,7 +80,7 @@ func TestJasperCommands(t *testing.T) {
 		"VerifyBaseFetchCommands": func(t *testing.T, h *Host, config evergreen.HostJasperConfig) {
 			expectedCmds := []string{
 				"cd \"/foo\"",
-				"curl -LO 'www.example.com/download_file-linux-amd64-abc123.tar.gz'",
+				fmt.Sprintf("curl -LO 'www.example.com/download_file-linux-amd64-abc123.tar.gz' --retry=%d --retry-max-time=%d", CurlDefaultNumRetries, CurlDefaultMaxSecs),
 				"tar xzf 'download_file-linux-amd64-abc123.tar.gz'",
 				"chmod +x 'jasper_cli'",
 				"rm -f 'download_file-linux-amd64-abc123.tar.gz'",
@@ -77,13 +111,34 @@ func TestJasperCommands(t *testing.T) {
 		},
 		"BootstrapScript": func(t *testing.T, h *Host, config evergreen.HostJasperConfig) {
 			expectedCmds := []string{h.FetchJasperCommand(config), h.ForceReinstallJasperCommand(config)}
+			expectedPreCmds := []string{"foo", "bar"}
+			expectedPostCmds := []string{"bat", "baz"}
+
 			creds, err := newMockCredentials()
 			require.NoError(t, err)
-			script, err := h.BootstrapScript(config, creds)
+
+			script, err := h.BootstrapScript(config, creds, expectedPreCmds, expectedPostCmds)
 			require.NoError(t, err)
+
 			assert.True(t, strings.HasPrefix(script, "#!/bin/bash"))
+
+			currPos := 0
+			for _, expectedCmd := range expectedPreCmds {
+				offset := strings.Index(script[currPos:], expectedCmd)
+				require.NotEqual(t, offset, -1)
+				currPos += offset + len(expectedCmd)
+			}
+
 			for _, expectedCmd := range expectedCmds {
-				assert.Contains(t, script, expectedCmd)
+				offset := strings.Index(script[currPos:], expectedCmd)
+				require.NotEqual(t, -1, offset)
+				currPos += offset + len(expectedCmd)
+			}
+
+			for _, expectedCmd := range expectedPostCmds {
+				offset := strings.Index(script[currPos:], expectedCmd)
+				require.NotEqual(t, -1, offset)
+				currPos += offset + len(expectedCmd)
 			}
 		},
 		"ForceReinstallJasperCommand": func(t *testing.T, h *Host, config evergreen.HostJasperConfig) {
@@ -115,7 +170,7 @@ func TestJasperCommandsWindows(t *testing.T) {
 		"VerifyBaseFetchCommands": func(t *testing.T, h *Host, config evergreen.HostJasperConfig) {
 			expectedCmds := []string{
 				"cd \"/foo\"",
-				"curl -LO 'www.example.com/download_file-windows-amd64-abc123.tar.gz'",
+				fmt.Sprintf("curl -LO 'www.example.com/download_file-windows-amd64-abc123.tar.gz' --retry=%d --retry-max-time=%d", CurlDefaultNumRetries, CurlDefaultMaxSecs),
 				"tar xzf 'download_file-windows-amd64-abc123.tar.gz'",
 				"chmod +x 'jasper_cli.exe'",
 				"rm -f 'download_file-windows-amd64-abc123.tar.gz'",
@@ -146,19 +201,44 @@ func TestJasperCommandsWindows(t *testing.T) {
 		},
 		"BootstrapScript": func(t *testing.T, h *Host, config evergreen.HostJasperConfig) {
 			expectedCmds := h.fetchJasperCommands(config)
+			expectedPreCmds := []string{"foo", "bar"}
+			expectedPostCmds := []string{"bat", "baz"}
 			path := "/bin"
+
 			for i := range expectedCmds {
-				expectedCmds[i] = strings.Replace(fmt.Sprintf("PATH=%s ", path)+expectedCmds[i], "'", "''", -1)
+				expectedCmds[i] = fmt.Sprintf("PATH=%s %s", path, expectedCmds[i])
 			}
-			expectedCmds = append(expectedCmds, h.ForceReinstallJasperCommand(config))
+
 			creds, err := newMockCredentials()
 			require.NoError(t, err)
-			script, err := h.BootstrapScript(config, creds)
+			writeCredentialsCmd, err := h.writeJasperCredentialsFileCommand(config, creds)
 			require.NoError(t, err)
+
+			expectedCmds = append(expectedCmds, writeCredentialsCmd, h.ForceReinstallJasperCommand(config))
+
+			script, err := h.BootstrapScript(config, creds, expectedPreCmds, expectedPostCmds)
+			require.NoError(t, err)
+
 			assert.True(t, strings.HasPrefix(script, "<powershell>"))
 			assert.True(t, strings.HasSuffix(script, "</powershell>"))
+
+			currPos := 0
+			for _, expectedCmd := range expectedPreCmds {
+				offset := strings.Index(script[currPos:], expectedCmd)
+				require.NotEqual(t, -1, offset)
+				currPos += offset + len(expectedCmd)
+			}
+
 			for _, expectedCmd := range expectedCmds {
-				assert.Contains(t, script, expectedCmd)
+				offset := strings.Index(script[currPos:], expectedCmd)
+				require.NotEqual(t, -1, offset)
+				currPos += offset + len(expectedCmd)
+			}
+
+			for _, expectedCmd := range expectedPostCmds {
+				offset := strings.Index(script[currPos:], expectedCmd)
+				require.NotEqual(t, -1, offset)
+				currPos += offset + len(expectedCmd)
 			}
 		},
 		"ForceReinstallJasperCommand": func(t *testing.T, h *Host, config evergreen.HostJasperConfig) {
@@ -516,4 +596,171 @@ func TestInitSystemCommand(t *testing.T) {
 	require.NoError(t, err)
 	initSystem := strings.TrimSpace(string(res))
 	assert.Contains(t, []string{InitSystemSystemd, InitSystemSysV, InitSystemUpstart}, initSystem)
+}
+
+func TestBuildLocalJasperClientRequest(t *testing.T) {
+	h := &Host{
+		Distro: distro.Distro{
+			CuratorDir:            "/curator",
+			JasperCredentialsPath: "/jasper/credentials",
+		},
+	}
+
+	config := evergreen.HostJasperConfig{Port: 12345, BinaryName: "binary"}
+	input := struct {
+		Field string `json:"field"`
+	}{Field: "foo"}
+	subCmd := "sub"
+
+	config.BinaryName = "binary"
+	binaryName := h.jasperBinaryFilePath(config)
+
+	cmd, err := h.buildLocalJasperClientRequest(config, subCmd, input)
+	require.NoError(t, err)
+
+	index := strings.Index(cmd, binaryName)
+	require.NotEqual(t, -1, index)
+	index += len(binaryName)
+
+	expectedSubCmd := "jasper client sub"
+	offset := strings.Index(cmd[index:], expectedSubCmd)
+	require.NotEqual(t, -1, offset)
+	index += offset + len(expectedSubCmd)
+
+	assert.Contains(t, cmd[index:], "--service=rpc")
+	assert.Contains(t, cmd[index:], "--port=12345")
+	assert.Contains(t, cmd[index:], "--creds_path=/jasper/credentials")
+}
+
+func TestSetupScriptCommands(t *testing.T) {
+	for testName, testCase := range map[string]func(t *testing.T, h *Host, settings *evergreen.Settings){
+		"ReturnsEmptyWithoutSetup": func(t *testing.T, h *Host, settings *evergreen.Settings) {
+			cmds, err := h.SetupScriptCommands(settings)
+			require.NoError(t, err)
+			assert.Empty(t, cmds)
+		},
+		"ReturnsEmptyIfSpawnedByTask": func(t *testing.T, h *Host, settings *evergreen.Settings) {
+			h.SpawnOptions.SpawnedByTask = true
+			cmds, err := h.SetupScriptCommands(settings)
+			require.NoError(t, err)
+			assert.Empty(t, cmds)
+		},
+		"ReturnsUnmodifiedWithoutExpansions": func(t *testing.T, h *Host, settings *evergreen.Settings) {
+			h.Distro.Setup = "foo"
+			cmds, err := h.SetupScriptCommands(settings)
+			require.NoError(t, err)
+			assert.Equal(t, h.Distro.Setup, cmds)
+		},
+		"ReturnsExpandedWithValidExpansions": func(t *testing.T, h *Host, settings *evergreen.Settings) {
+			key := "foo"
+			h.Distro.Setup = fmt.Sprintf("${%s}", key)
+			settings.Expansions = map[string]string{
+				key: "bar",
+			}
+			cmds, err := h.SetupScriptCommands(settings)
+			require.NoError(t, err)
+			assert.Equal(t, settings.Expansions[key], cmds)
+		},
+		"FailsWithInvalidSetup": func(t *testing.T, h *Host, settings *evergreen.Settings) {
+			key := "foo"
+			h.Distro.Setup = "${" + key
+			settings.Expansions = map[string]string{
+				key: "bar",
+			}
+			_, err := h.SetupScriptCommands(settings)
+			assert.Error(t, err)
+		},
+	} {
+		t.Run(testName, func(t *testing.T) {
+			testCase(t, &Host{Id: "test"}, &evergreen.Settings{})
+		})
+	}
+}
+
+func TestStartAgentMonitorRequest(t *testing.T) {
+	require.NoError(t, db.ClearCollections(Collection))
+	defer func() {
+		assert.NoError(t, db.ClearCollections(Collection))
+	}()
+
+	h := &Host{Id: "id", Distro: distro.Distro{WorkDir: "/foo"}}
+	require.NoError(t, h.Insert())
+
+	settings := &evergreen.Settings{
+		ApiUrl:            "www.example0.com",
+		ClientBinariesDir: "dir",
+		LoggerConfig: evergreen.LoggerConfig{
+			LogkeeperURL: "www.example1.com",
+		},
+		Ui: evergreen.UIConfig{
+			Url: "www.example2.com",
+		},
+		Providers: evergreen.CloudProviders{
+			AWS: evergreen.AWSConfig{
+				S3Key:    "key",
+				S3Secret: "secret",
+				Bucket:   "bucket",
+			},
+		},
+		Splunk: send.SplunkConnectionInfo{
+			ServerURL: "www.example3.com",
+			Token:     "token",
+		},
+	}
+
+	cmd, err := h.StartAgentMonitorRequest(settings)
+	require.NoError(t, err)
+
+	assert.NotEmpty(t, h.Secret)
+	dbHost, err := FindOneId(h.Id)
+	require.NoError(t, err)
+	assert.Equal(t, h.Secret, dbHost.Secret)
+
+	expectedCmd, err := json.Marshal(h.agentMonitorCommand(settings))
+	require.NoError(t, err)
+	assert.Contains(t, cmd, string(expectedCmd))
+
+	expectedEnv, err := json.Marshal(buildAgentEnv(settings))
+	require.NoError(t, err)
+	assert.Contains(t, cmd, string(expectedEnv))
+}
+
+func TestSetupSpawnHostCommand(t *testing.T) {
+	require.NoError(t, db.ClearCollections(Collection, user.Collection))
+	defer func() {
+		assert.NoError(t, db.ClearCollections(Collection, user.Collection))
+	}()
+
+	user := user.DBUser{Id: "user", APIKey: "key"}
+	require.NoError(t, user.Insert())
+
+	h := &Host{Id: "host",
+		Distro: distro.Distro{
+			Arch:    distro.ArchLinuxAmd64,
+			WorkDir: "/dir",
+		},
+		ProvisionOptions: &ProvisionOptions{
+			OwnerId: user.Id,
+		},
+	}
+	require.NoError(t, h.Insert())
+
+	settings := &evergreen.Settings{
+		ApiUrl: "www.example0.com",
+		Ui: evergreen.UIConfig{
+			Url: "www.example1.com",
+		},
+	}
+
+	cmd, err := h.SetupSpawnHostCommand(settings)
+	require.NoError(t, err)
+
+	expected := `mkdir -m 777 -p ~/cli_bin && echo '{"api_key":"key","api_server_host":"www.example0.com/api","ui_server_host":"www.example1.com","user":"user"}' > ~/cli_bin/.evergreen.yml && cp ~/evergreen ~/cli_bin && (echo 'PATH=${PATH}:~/cli_bin' >> ~/.profile || true; echo 'PATH=${PATH}:~/cli_bin' >> ~/.bash_profile || true)`
+	assert.Equal(t, expected, cmd)
+
+	h.ProvisionOptions.TaskId = "task_id"
+	cmd, err = h.SetupSpawnHostCommand(settings)
+	require.NoError(t, err)
+	expected += " && ~/evergreen -c ~/cli_bin/.evergreen.yml fetch -t task_id --source --artifacts --dir='/dir'"
+	assert.Equal(t, expected, cmd)
 }

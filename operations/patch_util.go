@@ -325,7 +325,6 @@ func validatePatchSize(diff *localDiff, allowLarge bool) error {
 func getPatchDisplay(p *patch.Patch, summarize bool, uiHost string) (string, error) {
 	var out bytes.Buffer
 	var url string
-
 	if p.Activated {
 		url = uiHost + "/version/" + p.Id.Hex()
 	} else {

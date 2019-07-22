@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"path/filepath"
-	"strings"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
@@ -140,7 +139,9 @@ func (j *agentMonitorDeployJob) Run(ctx context.Context) {
 		}
 	}()
 
-	if err = j.fetchClient(ctx); err != nil {
+	settings := j.env.Settings()
+
+	if err = j.fetchClient(ctx, settings); err != nil {
 		j.AddError(err)
 		return
 	}
@@ -150,7 +151,7 @@ func (j *agentMonitorDeployJob) Run(ctx context.Context) {
 		return
 	}
 
-	j.AddError(j.startAgentMonitor(ctx))
+	j.AddError(j.startAgentMonitor(ctx, settings))
 }
 
 // hostDown checks if the host is down.
@@ -161,6 +162,12 @@ func (j *agentMonitorDeployJob) hostDown() bool {
 // disableHost changes the host so that it is down and enqueues a job to
 // terminate it.
 func (j *agentMonitorDeployJob) disableHost(ctx context.Context, reason string) error {
+	externallyTerminated, err := handleExternallyTerminatedHost(ctx, j.ID(), j.env, j.host)
+	j.AddError(errors.Wrapf(err, "can't check if host '%s' was externally terminated", j.HostID))
+	if externallyTerminated {
+		return nil
+	}
+
 	if err := j.host.DisablePoisonedHost(reason); err != nil {
 		return errors.Wrapf(err, "error terminating host %s", j.host.Id)
 	}
@@ -187,7 +194,7 @@ func (j *agentMonitorDeployJob) checkNoRetries() (bool, error) {
 }
 
 // fetchClient fetches the client on the host through the host's Jasper service.
-func (j *agentMonitorDeployJob) fetchClient(ctx context.Context) error {
+func (j *agentMonitorDeployJob) fetchClient(ctx context.Context, settings *evergreen.Settings) error {
 	grip.Info(message.Fields{
 		"message":       "fetching latest evergreen binary for agent monitor",
 		"host":          j.host.Id,
@@ -196,7 +203,7 @@ func (j *agentMonitorDeployJob) fetchClient(ctx context.Context) error {
 	})
 
 	opts := &jasper.CreateOptions{
-		Args: []string{"bash", "-c", j.host.CurlCommand(j.env.Settings().Ui.Url)},
+		Args: []string{"bash", "-c", j.host.CurlCommand(settings)},
 	}
 	output, err := j.host.RunJasperProcess(ctx, j.env, opts)
 	if err != nil {
@@ -250,7 +257,7 @@ func (j *agentMonitorDeployJob) runSetupScript(ctx context.Context) error {
 
 // startAgentMonitor starts the agent monitor on the host through the host's
 // Jasper service.
-func (j *agentMonitorDeployJob) startAgentMonitor(ctx context.Context) error {
+func (j *agentMonitorDeployJob) startAgentMonitor(ctx context.Context, settings *evergreen.Settings) error {
 	// Generate the host secret if none exists.
 	if j.host.Secret == "" {
 		if err := j.host.CreateSecret(); err != nil {
@@ -259,7 +266,7 @@ func (j *agentMonitorDeployJob) startAgentMonitor(ctx context.Context) error {
 	}
 
 	grip.Info(j.deployMessage())
-	if err := j.host.StartJasperProcess(ctx, j.env, j.agentMonitorOptions(j.env.Settings().HostJasper)); err != nil {
+	if err := j.host.StartJasperProcess(ctx, j.env, j.agentMonitorOptions(settings)); err != nil {
 		grip.Error(message.WrapError(err, message.Fields{
 			"message": "failed to start agent monitor on host",
 			"host":    j.host.Id,
@@ -276,10 +283,8 @@ func (j *agentMonitorDeployJob) startAgentMonitor(ctx context.Context) error {
 
 // agentMonitorOptions assembles the input to a Jasper request to create the
 // agent monitor.
-func (j *agentMonitorDeployJob) agentMonitorOptions(config evergreen.HostJasperConfig) *jasper.CreateOptions {
-	settings := j.env.Settings()
+func (j *agentMonitorDeployJob) agentMonitorOptions(settings *evergreen.Settings) *jasper.CreateOptions {
 	binary := filepath.Join("~", j.host.Distro.BinaryName())
-	clientURL := fmt.Sprintf("%s/clients/%s", strings.TrimRight(settings.Ui.Url, "/"), j.host.Distro.ExecutableSubPath())
 
 	agentMonitorParams := []string{
 		binary,
@@ -292,9 +297,9 @@ func (j *agentMonitorDeployJob) agentMonitorOptions(config evergreen.HostJasperC
 		fmt.Sprintf("--logkeeper_url='%s'", settings.LoggerConfig.LogkeeperURL),
 		"--cleanup",
 		"monitor",
-		fmt.Sprintf("--client_url='%s'", clientURL),
+		fmt.Sprintf("--client_url='%s'", j.host.ClientURL(settings)),
 		fmt.Sprintf("--client_path='%s'", filepath.Join(j.host.Distro.ClientDir, j.host.Distro.BinaryName())),
-		fmt.Sprintf("--jasper_port=%d", config.Port),
+		fmt.Sprintf("--jasper_port=%d", settings.HostJasper.Port),
 		fmt.Sprintf("--credentials='%s'", j.host.Distro.JasperCredentialsPath),
 	}
 

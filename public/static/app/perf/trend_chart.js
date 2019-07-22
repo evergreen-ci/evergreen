@@ -7,10 +7,8 @@ function d3Translate(x, y) {
 
 // TODO Create AngularJS directive
 mciModule.factory('DrawPerfTrendChart', function (
-  PerfChartService, PROCESSED_TYPE, Rounder
-) {
+  PerfChartService, PROCESSED_TYPE) {
   const MAXONLY = 'maxonly';
-  let round = Rounder.get({rre: 0.01, trailingZeros: true})
 
   return function(params) {
 
@@ -306,7 +304,7 @@ mciModule.factory('DrawPerfTrendChart', function (
         .scale(yScale)
         .orient('left')
         .ticks(cfg.yAxis.ticks, function(value) {
-          return round(value)
+          return formatNumber(value)
         })
 
     // ## CHART STRUCTURE ##
@@ -1015,7 +1013,7 @@ mciModule.factory('DrawPerfTrendChart', function (
     }
 
     function formatNumber(value) {
-      return round(value)
+      return numeral(value).format("0.000a");
     }
 
     // Overlay to handle hover action

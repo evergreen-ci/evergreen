@@ -660,7 +660,6 @@ func createTasksForBuild(project *Project, buildVariant *BuildVariant, b *build.
 		}
 		// get the task spec out of the project
 		taskSpec := project.GetSpecForTask(task.Name)
-
 		// sanity check that the config isn't malformed
 		if taskSpec.Name != "" {
 			task.Populate(taskSpec)
@@ -976,12 +975,12 @@ func createOneTask(id string, buildVarTask BuildVariantTaskUnit, project *Projec
 		CommitQueueMerge:    buildVarTask.CommitQueueMerge,
 	}
 	if buildVarTask.IsGroup {
-		t.TaskGroup = buildVarTask.GroupName
 		tg := project.FindTaskGroup(buildVarTask.GroupName)
 		if tg == nil {
 			return nil, errors.Errorf("unable to find task group %s in project %s", buildVarTask.GroupName, project.Identifier)
 		}
-		t.TaskGroupMaxHosts = tg.MaxHosts
+
+		tg.InjectInfo(t)
 	}
 	return t, nil
 }

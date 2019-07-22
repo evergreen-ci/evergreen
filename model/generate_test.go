@@ -34,7 +34,7 @@ var (
 				DependsOn: []parserDependency{
 					{TaskSelector: taskSelector{
 						Name:    "a-depended-on-task",
-						Variant: &variantSelector{stringSelector: "*"},
+						Variant: &variantSelector{StringSelector: "*"},
 					}},
 				},
 			},
@@ -313,13 +313,25 @@ func (s *GenerateSuite) TestParseProjectFromJSON() {
 	s.Len(g.Functions, 2)
 	s.Contains(g.Functions, "echo-hi")
 	s.Equal("shell.exec", g.Functions["echo-hi"].List()[0].Command)
-	s.Equal("echo hi", g.Functions["echo-hi"].List()[0].Params["script"])
-	s.Equal("echo bye", g.Functions["echo-bye"].List()[0].Params["script"])
-	s.Equal("echo bye again", g.Functions["echo-bye"].List()[1].Params["script"])
+
+	params, err := g.Functions["echo-hi"].List()[0].resolveParams()
+	s.Require().NoError(err)
+	s.Equal("echo hi", params["script"])
+
+	params, err = g.Functions["echo-bye"].List()[0].resolveParams()
+	s.Require().NoError(err)
+	s.Equal("echo bye", params["script"])
+
+	params, err = g.Functions["echo-bye"].List()[1].resolveParams()
+	s.Require().NoError(err)
+	s.Equal("echo bye again", params["script"])
 
 	s.Len(g.Tasks, 1)
 	s.Equal("git.get_project", g.Tasks[0].Commands[0].Command)
-	s.Equal("src", g.Tasks[0].Commands[0].Params["directory"])
+
+	params, err = g.Tasks[0].Commands[0].resolveParams()
+	s.NoError(err)
+	s.Equal("src", params["directory"])
 	s.Equal("echo-hi", g.Tasks[0].Commands[1].Function)
 	s.Equal("test", g.Tasks[0].Name)
 
