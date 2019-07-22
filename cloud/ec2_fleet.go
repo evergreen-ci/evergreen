@@ -5,6 +5,7 @@ import (
 	"encoding/base64"
 	"fmt"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/aws/aws-sdk-go/aws"
@@ -440,7 +441,7 @@ func (m *ec2FleetManager) requestFleet(ctx context.Context, ec2Settings *EC2Prov
 	var overrides []*ec2.FleetLaunchTemplateOverridesRequest
 	var err error
 	if ec2Settings.VpcName != "" {
-		overrides, err = m.makeOverrides(ctx, ec2Settings.VpcName)
+		overrides, err = m.makeOverrides(ctx, ec2Settings)
 		if err != nil {
 			return nil, errors.Wrapf(err, "can't make overrides for VPC '%s'", ec2Settings.VpcName)
 		}
@@ -475,13 +476,13 @@ func (m *ec2FleetManager) requestFleet(ctx context.Context, ec2Settings *EC2Prov
 	return createFleetResponse.Instances[0].InstanceIds[0], nil
 }
 
-func (m *ec2FleetManager) makeOverrides(ctx context.Context, vpcName string) ([]*ec2.FleetLaunchTemplateOverridesRequest, error) {
+func (m *ec2FleetManager) makeOverrides(ctx context.Context, ec2Settings *EC2ProviderSettings) ([]*ec2.FleetLaunchTemplateOverridesRequest, error) {
 	describeVpcsOutput, err := m.client.DescribeVpcs(ctx, &ec2.DescribeVpcsInput{
 		Filters: []*ec2.Filter{
-			&ec2.Filter{
+			{
 				Name: aws.String("tag:Name"),
 				Values: []*string{
-					aws.String(vpcName),
+					aws.String(ec2Settings.VpcName),
 				},
 			},
 		},
@@ -496,24 +497,42 @@ func (m *ec2FleetManager) makeOverrides(ctx context.Context, vpcName string) ([]
 
 	describeSubnetsOutput, err := m.client.DescribeSubnets(ctx, &ec2.DescribeSubnetsInput{
 		Filters: []*ec2.Filter{
-			&ec2.Filter{
+			{
 				Name:   aws.String("vpc-id"),
 				Values: []*string{describeVpcsOutput.Vpcs[0].VpcId},
 			},
 		},
 	})
 	if err != nil {
-		return nil, errors.Wrapf(err, "can't get subnets for vpc '%s'", vpcName)
+		return nil, errors.Wrapf(err, "can't get subnets for vpc '%s'", ec2Settings.VpcName)
 	}
 	err = validateEc2DescribeSubnetsOutput(describeSubnetsOutput)
 	if err != nil {
 		return nil, errors.Wrap(err, "invalid describe subnets response")
 	}
 
+	AZSet := make(map[string]bool)
 	overrides := make([]*ec2.FleetLaunchTemplateOverridesRequest, 0, len(describeSubnetsOutput.Subnets))
 	for _, subnet := range describeSubnetsOutput.Subnets {
-		overrides = append(overrides, &ec2.FleetLaunchTemplateOverridesRequest{SubnetId: subnet.SubnetId})
+		// AWS only allows one override per AZ
+		if !AZSet[*subnet.AvailabilityZone] && subnetMatchesAz(subnet) {
+			overrides = append(overrides, &ec2.FleetLaunchTemplateOverridesRequest{SubnetId: subnet.SubnetId})
+			AZSet[*subnet.AvailabilityZone] = true
+		}
 	}
 
 	return overrides, nil
+}
+
+func subnetMatchesAz(subnet *ec2.Subnet) bool {
+	for _, tag := range subnet.Tags {
+		if tag == nil || tag.Key == nil || tag.Value == nil {
+			continue
+		}
+		if *tag.Key == "Name" && strings.HasSuffix(*tag.Value, strings.Split(*subnet.AvailabilityZone, "-")[2]) {
+			return true
+		}
+	}
+
+	return false
 }
