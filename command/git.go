@@ -151,7 +151,9 @@ func (opts cloneOpts) buildHTTPCloneCommand() ([]string, error) {
 		return nil, errors.Wrap(err, "failed to parse URL from location")
 	}
 	cloneCmd := fmt.Sprintf("git clone %s '%s'", thirdparty.FormGitUrl(urlLocation.Host, opts.owner, opts.repo, opts.token), opts.dir)
-	cloneCmd = fmt.Sprintf("%s --branch '%s'", cloneCmd, opts.branch)
+	if opts.branch != "" {
+		cloneCmd = fmt.Sprintf("%s --branch '%s'", cloneCmd, opts.branch)
+	}
 	cloneCmd = fmt.Sprintf("%s --depth %d", cloneCmd, defaultCloneDepth)
 
 	redactedCloneCmd := strings.Replace(cloneCmd, opts.token, "[redacted oauth token]", -1)
@@ -167,7 +169,6 @@ func (opts cloneOpts) buildSSHCloneCommand() ([]string, error) {
 	if opts.branch != "" {
 		cloneCmd = fmt.Sprintf("%s --branch '%s'", cloneCmd, opts.branch)
 	}
-	cloneCmd = fmt.Sprintf("%s --branch '%s'", cloneCmd, opts.branch)
 	cloneCmd = fmt.Sprintf("%s --depth %d", cloneCmd, defaultCloneDepth)
 
 	return []string{
