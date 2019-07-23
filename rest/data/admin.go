@@ -172,6 +172,22 @@ func (ac *DBAdminConnector) RestartFailedTasks(queue amboy.Queue, opts model.Res
 	}, nil
 }
 
+func (ac *DBAdminConnector) RestartFailedCommitQueueVersions(opts model.RestartTaskOptions) (int, error) {
+	pRefs, err := model.FindProjectRefsWithCommitQueueEnabled()
+	if err != nil {
+		return 0, err
+	}
+	totalRestarted := 0
+	for _, pRef := range pRefs {
+		numRestarted, err := model.RetryCommitQueueItems(pRef.Identifier, pRef.CommitQueue.PatchType, opts)
+		if err != nil {
+			return numRestarted, err
+		}
+		totalRestarted += numRestarted
+	}
+	return totalRestarted, nil
+}
+
 func (ac *DBAdminConnector) RevertConfigTo(guid string, user string) error {
 	return event.RevertConfig(guid, user)
 }
@@ -270,4 +286,8 @@ func (ac *MockAdminConnector) RevertConfigTo(guid string, user string) error {
 
 func (ac *MockAdminConnector) GetAdminEventLog(before time.Time, n int) ([]restModel.APIAdminEvent, error) {
 	return nil, nil
+}
+
+func (ac *MockAdminConnector) RestartFailedCommitQueueVersions(opts model.RestartTaskOptions) (int, error) {
+	return 0, errors.New("not implemented")
 }

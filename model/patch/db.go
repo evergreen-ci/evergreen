@@ -3,6 +3,7 @@ package patch
 import (
 	"time"
 
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/mongodb/anser/bsonutil"
 	adb "github.com/mongodb/anser/db"
@@ -173,6 +174,24 @@ func PatchesByProject(projectId string, ts time.Time, limit int) db.Q {
 		CreateTimeKey: bson.M{"$lte": ts},
 		ProjectKey:    projectId,
 	}).Sort([]string{"-" + CreateTimeKey}).Limit(limit)
+}
+
+func FindFailedCommitQueuePatchesinTimeRange(projectID string, startTime, endTime time.Time) db.Q {
+	query := bson.M{
+		ProjectKey:   projectID,
+		StatusKey:    evergreen.PatchFailed,
+		cliAliasKey:  evergreen.CommitQueueAlias,
+		StartTimeKey: bson.M{"$gte": startTime},
+		StartTimeKey: bson.M{"$lte": endTime},
+	}
+	/* i'm pretty sure we don't need this actually, because each project only is one type or the other
+	if patchType == commitqueue.PRPatchType {
+		query[bsonutil.GetDottedKeyName(githubPatchDataKey, prNumberKey)] = bson.M{"$exists": true}
+	}
+	if patchType == commitqueue.CLIPatchType {
+		query[bsonutil.GetDottedKeyName(githubPatchDataKey, prNumberKey)] = bson.M{"$exists": false}
+	}*/
+	return db.Query(query).Sort([]string{CreateTimeKey})
 }
 
 func ByGithubPRAndCreatedBefore(t time.Time, owner, repo string, prNumber int) db.Q {

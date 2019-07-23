@@ -8,18 +8,22 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/model/commitqueue"
 	"github.com/evergreen-ci/evergreen/model/patch"
+	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/level"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
+	mgobson "gopkg.in/mgo.v2/bson"
 )
 
 type TaskVariantPairs struct {
@@ -429,4 +433,105 @@ func AbortPatchesWithGithubPatchData(createdBefore time.Time, owner, repo string
 	}
 
 	return errors.Wrap(catcher.Resolve(), "error aborting patches")
+}
+
+func RetryCommitQueueItems(projectID string, patchType string, opts RestartTaskOptions) (int, error) {
+	patches, err := patch.Find(patch.FindFailedCommitQueuePatchesinTimeRange(projectID, opts.StartTime, opts.EndTime))
+	if err != nil {
+		return 0, errors.Wrap(err, "error finding failed commit queue patches for project in time range")
+	}
+	cq, err := commitqueue.FindOneId(projectID)
+	if err != nil {
+		return 0, errors.Wrapf(err, "error finding commit queue '%s'", projectID)
+	}
+	if cq == nil {
+		return 0, errors.New("commit queue '%s' not found")
+	}
+
+	if patchType == commitqueue.PRPatchType {
+		res, err := restartPRItems(patches, cq)
+		return res, errors.Wrapf(err, "error re-adding %s patch items to queue", commitqueue.PRPatchType)
+	}
+	if patchType == commitqueue.CLIPatchType {
+		res, err := restartCLIItems(patches, cq)
+		return res, errors.Wrapf(err, "error re-adding %s patch items to queue", commitqueue.CLIPatchType)
+	}
+	return 0, errors.Errorf("patch type '%s' is invalid", patchType)
+}
+
+func restartPRItems(patches []patch.Patch, cq *commitqueue.CommitQueue) (int, error) {
+	numRestarted := 0
+	for _, p := range patches {
+		// reconstruct commit queue item from patch
+		modules := []commitqueue.Module{}
+		for _, modulePatch := range p.Patches {
+			module := commitqueue.Module{
+				Module: modulePatch.ModuleName,
+				Issue:  modulePatch.PatchSet.Patch,
+			}
+			modules = append(modules, module)
+		}
+		item := commitqueue.CommitQueueItem{
+			Issue:   strconv.Itoa(p.GithubPatchData.PRNumber),
+			Modules: modules,
+		}
+		if _, err := cq.Enqueue(item); err != nil {
+			return numRestarted, errors.Wrapf(err, "error enqueueing patch item")
+		}
+		numRestarted++
+		// TODO: might want to do some logging things also
+	}
+	return numRestarted, nil
+}
+
+func restartCLIItems(patches []patch.Patch, cq *commitqueue.CommitQueue) (int, error) {
+	// create new patch
+	numRestarted := 0
+	for _, p := range patches {
+		u, err := user.FindOne(user.ById(p.Author))
+		if err != nil {
+			return numRestarted, errors.Wrap(err, "error finding user for patch")
+		}
+		if u == nil {
+			return numRestarted, errors.Wrap(err, "user for patch not found")
+		}
+		patchNumber, err := u.IncPatchNumber()
+		if err != nil {
+			return numRestarted, errors.Wrap(err, "error computing patch num")
+		}
+		newPatch := patch.Patch{
+			Id:              mgobson.NewObjectId(),
+			Project:         p.Project,
+			Author:          p.Author,
+			Githash:         p.Githash,
+			CreateTime:      time.Now(),
+			Status:          evergreen.PatchCreated,
+			Description:     p.Description,
+			GithubPatchData: p.GithubPatchData,
+			Tasks:           p.Tasks,
+			VariantsTasks:   p.VariantsTasks,
+			BuildVariants:   p.BuildVariants,
+			Alias:           p.Alias,
+			Patches:         p.Patches,
+			PatchNumber:     patchNumber,
+		}
+
+		if err = newPatch.Insert(); err != nil {
+			return numRestarted, errors.Wrap(err, "error creating new patch")
+		}
+		modules := []commitqueue.Module{}
+		for _, modulePatch := range newPatch.Patches {
+			modules = append(modules, commitqueue.Module{Module: modulePatch.ModuleName})
+			// TODO: should this module also have Issue?
+		}
+		item := commitqueue.CommitQueueItem{
+			Issue:   newPatch.Id.Hex(),
+			Modules: modules,
+		}
+		if _, err = cq.Enqueue(item); err != nil {
+			return numRestarted, errors.Wrapf(err, "error enqueueing patch item") // OR should we log and continue
+		}
+		numRestarted++
+	}
+	return numRestarted, nil
 }
