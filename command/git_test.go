@@ -434,7 +434,7 @@ func (s *GitGetProjectSuite) TestBuildCommand() {
 	s.Equal("rm -rf dir", cmds[1])
 	s.Equal("git clone 'git@github.com:deafgoat/mci_test.git' 'dir' --branch 'master' --depth 1000", cmds[2])
 	s.Equal("cd dir", cmds[3])
-	s.Equal("git reset --hard  || exit 0", cmds[4])
+	s.Equal("git reset --hard  && exit 0", cmds[4])
 	s.Equal("$(git fetch --help | grep -q unshallow) && git fetch --unshallow || git fetch --depth 2147483647", cmds[5])
 	s.Equal("git reset --hard ", cmds[6])
 
@@ -451,7 +451,7 @@ func (s *GitGetProjectSuite) TestBuildCommand() {
 	s.Equal("echo \"git clone https://[redacted oauth token]:x-oauth-basic@github.com/deafgoat/mci_test.git 'dir' --branch 'master' --depth 1000\"", cmds[2])
 	s.Equal("git clone https://PROJECTTOKEN:x-oauth-basic@github.com/deafgoat/mci_test.git 'dir' --branch 'master' --depth 1000", cmds[3])
 	s.Equal("cd dir", cmds[4])
-	s.Equal("git reset --hard  || exit 0", cmds[5])
+	s.Equal("git reset --hard  && exit 0", cmds[5])
 }
 
 func (s *GitGetProjectSuite) TestBuildCommandForPullRequests() {
@@ -473,7 +473,7 @@ func (s *GitGetProjectSuite) TestBuildCommandForPullRequests() {
 	s.NoError(err)
 	s.True(strings.HasPrefix(cmds[4], "git fetch origin \"pull/9001/head:evg-pr-test-"))
 	s.True(strings.HasPrefix(cmds[5], "git checkout \"evg-pr-test-"))
-	s.Equal("git reset --hard 55ca6286e3e4f4fba5d0448333fa99fc5a404a73 || exit 0", cmds[6])
+	s.Equal("git reset --hard 55ca6286e3e4f4fba5d0448333fa99fc5a404a73 && exit 0", cmds[6])
 }
 
 func (s *GitGetProjectSuite) TestBuildCommandForPRMergeTests() {
@@ -494,7 +494,7 @@ func (s *GitGetProjectSuite) TestBuildCommandForPRMergeTests() {
 	s.NoError(err)
 	s.True(strings.HasPrefix(cmds[4], "git fetch origin \"pull/9001/merge:evg-merge-test-"))
 	s.True(strings.HasPrefix(cmds[5], "git checkout \"evg-merge-test-"))
-	s.Equal("git reset --hard abcdef || exit 0", cmds[6])
+	s.Equal("git reset --hard abcdef && exit 0", cmds[6])
 }
 
 func (s *GitGetProjectSuite) TestBuildCommandForCLIMergeTests() {
@@ -581,7 +581,7 @@ func (s *GitGetProjectSuite) TestBuildModuleCommand() {
 	s.Equal("cd module", cmds[2])
 	s.Regexp("^git fetch origin \"pull/1234/merge:evg-merge-test-", cmds[3])
 	s.Regexp("^git checkout 'evg-merge-test-", cmds[4])
-	s.Equal("git reset --hard 1234abcd || exit 0", cmds[5])
+	s.Equal("git reset --hard 1234abcd && exit 0", cmds[5])
 }
 
 func (s *GitGetProjectSuite) TestCorrectModuleRevision() {
