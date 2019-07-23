@@ -294,7 +294,7 @@ func makeNewKey(ctx context.Context, client AWSClient, credentials *credentials.
 		return "", errors.Wrap(err, "problem setting key")
 	}
 
-	return *resp.KeyMaterial, nil
+	return name, nil
 }
 
 func setTags(ctx context.Context, resources []*string, h *host.Host, client AWSClient, credentials *credentials.Credentials) error {

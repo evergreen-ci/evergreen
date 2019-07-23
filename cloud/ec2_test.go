@@ -160,6 +160,58 @@ func (s *EC2Suite) TestMakeDeviceMappings() {
 	s.Equal("snapshot-1", *b[0].Ebs.SnapshotId)
 }
 
+func (s *EC2Suite) TestMakeDeviceMappingsTemplate() {
+	validMount := MountPoint{
+		DeviceName:  "device",
+		VirtualName: "virtual",
+	}
+
+	m := []MountPoint{}
+	b, err := makeBlockDeviceMappingsTemplate(m)
+	s.NoError(err)
+	s.Len(b, 0)
+
+	noDeviceName := validMount
+	noDeviceName.DeviceName = ""
+	m = []MountPoint{validMount, noDeviceName}
+	b, err = makeBlockDeviceMappingsTemplate(m)
+	s.Nil(b)
+	s.Error(err)
+
+	noVirtualName := validMount
+	noVirtualName.VirtualName = ""
+	m = []MountPoint{validMount, noVirtualName}
+	b, err = makeBlockDeviceMappingsTemplate(m)
+	s.Nil(b)
+	s.Error(err)
+
+	anotherMount := validMount
+	anotherMount.DeviceName = "anotherDeviceName"
+	anotherMount.VirtualName = "anotherVirtualName"
+	m = []MountPoint{validMount, anotherMount}
+	b, err = makeBlockDeviceMappingsTemplate(m)
+	s.Len(b, 2)
+	s.Equal("device", *b[0].DeviceName)
+	s.Equal("virtual", *b[0].VirtualName)
+	s.Equal("anotherDeviceName", *b[1].DeviceName)
+	s.Equal("anotherVirtualName", *b[1].VirtualName)
+	s.NoError(err)
+
+	ebsMount := MountPoint{
+		DeviceName: "device",
+		Size:       10,
+		Iops:       100,
+		SnapshotID: "snapshot-1",
+	}
+	b, err = makeBlockDeviceMappingsTemplate([]MountPoint{ebsMount})
+	s.NoError(err)
+	s.Len(b, 1)
+	s.Equal("device", *b[0].DeviceName)
+	s.Equal(int64(10), *b[0].Ebs.VolumeSize)
+	s.Equal(int64(100), *b[0].Ebs.Iops)
+	s.Equal("snapshot-1", *b[0].Ebs.SnapshotId)
+}
+
 func (s *EC2Suite) TestGetSettings() {
 	s.Equal(&EC2ProviderSettings{}, s.onDemandManager.GetSettings())
 }
@@ -620,7 +672,7 @@ func (s *EC2Suite) TestGetDNSName() {
 }
 
 func (s *EC2Suite) TestGetSSHOptionsEmptyKey() {
-	opts, err := s.onDemandManager.GetSSHOptions(&host.Host{}, "")
+	opts, err := getEc2SSHOptions(&host.Host{}, "")
 	s.Nil(opts)
 	s.Error(err)
 }
@@ -634,7 +686,7 @@ func (s *EC2Suite) TestGetSSHOptions() {
 			},
 		},
 	}
-	opts, err := s.onDemandManager.GetSSHOptions(h, "key")
+	opts, err := getEc2SSHOptions(h, "key")
 	s.Equal([]string{"-i", "key", "-o", "foo", "-o", "bar", "-o", "UserKnownHostsFile=/dev/null"}, opts)
 	s.NoError(err)
 }
@@ -915,4 +967,65 @@ func (s *EC2Suite) TestGetSecurityGroup() {
 		SecurityGroupIDs: []string{"sg-1", "sg-2"},
 	}
 	s.Equal([]*string{aws.String("sg-1"), aws.String("sg-2")}, settings.getSecurityGroups())
+}
+
+func (s *EC2Suite) TestGetExistingKey() {
+	db.ClearCollections(task.Collection, model.ProjectVarsCollection)
+	t := task.Task{Id: "t1", Project: "evergreen"}
+	s.NoError(t.Insert())
+
+	vars := model.ProjectVars{
+		Id: "evergreen",
+		Vars: map[string]string{
+			model.ProjectAWSSSHKeyName:  "keyName",
+			model.ProjectAWSSSHKeyValue: "keyValue",
+		},
+	}
+	s.NoError(vars.Insert())
+
+	h := &host.Host{StartedBy: "t1"}
+	ec2m := s.onDemandManager.(*ec2Manager)
+	key, err := getKey(context.Background(), ec2m.client, ec2m.credentials, h)
+	s.NoError(err)
+	s.Equal("keyName", key)
+}
+
+func (s *EC2Suite) TestGetNewKey() {
+	db.ClearCollections(task.Collection, model.ProjectVarsCollection)
+	t := task.Task{Id: "t1", Project: "evergreen"}
+	s.NoError(t.Insert())
+
+	vars := model.ProjectVars{
+		Id:   "evergreen",
+		Vars: map[string]string{},
+	}
+	s.NoError(vars.Insert())
+
+	h := &host.Host{StartedBy: "t1"}
+	ec2m := s.onDemandManager.(*ec2Manager)
+	key, err := getKey(context.Background(), ec2m.client, ec2m.credentials, h)
+	s.NoError(err)
+	s.Equal("evg_auto_evergreen", key)
+
+	mockClient := ec2m.client.(*awsClientMock)
+	s.Equal("evg_auto_evergreen", *mockClient.DeleteKeyPairInput.KeyName)
+	s.Equal("evg_auto_evergreen", *mockClient.CreateKeyPairInput.KeyName)
+}
+
+func (s *EC2Suite) TestSetTags() {
+	ec2m := s.onDemandManager.(*ec2Manager)
+
+	h := &host.Host{Id: "h1"}
+	instanceID := "i-123"
+	resources := []*string{&instanceID}
+
+	s.NoError(setTags(context.Background(), resources, h, ec2m.client, ec2m.credentials))
+	mockClient := ec2m.client.(*awsClientMock)
+	s.Equal(resources, mockClient.CreateTagsInput.Resources)
+	s.NotEmpty(mockClient.CreateTagsInput.Tags)
+	for _, tag := range mockClient.CreateTagsInput.Tags {
+		if *tag.Key == "name" {
+			s.Equal("h1", *tag.Value)
+		}
+	}
 }

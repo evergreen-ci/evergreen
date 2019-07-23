@@ -711,6 +711,9 @@ func (c *awsClientMock) DescribeInstances(ctx context.Context, input *ec2.Descri
 								},
 							},
 						},
+						Placement: &ec2.Placement{
+							AvailabilityZone: aws.String("us-east-1a"),
+						},
 					},
 				},
 			},
@@ -836,6 +839,10 @@ func (c *awsClientMock) DescribeSubnets(ctx context.Context, input *ec2.Describe
 		Subnets: []*ec2.Subnet{
 			&ec2.Subnet{
 				SubnetId: aws.String("subnet-654321"),
+				Tags: []*ec2.Tag{
+					&ec2.Tag{Key: aws.String("Name"), Value: aws.String("mysubnet_us-east-1a")},
+				},
+				AvailabilityZone: aws.String("us-east-1a"),
 			},
 		},
 	}, nil

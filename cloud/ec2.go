@@ -820,28 +820,6 @@ func (m *ec2Manager) OnUp(ctx context.Context, h *host.Host) error {
 	return nil
 }
 
-func (m *ec2Manager) makeNewKey(ctx context.Context, name string, h *host.Host) (string, error) {
-	r, err := getRegion(h)
-	if err != nil {
-		return "", errors.Wrap(err, "problem getting region from host")
-	}
-	if err = m.client.Create(m.credentials, r); err != nil {
-		return "", errors.Wrap(err, "error creating client")
-	}
-	_, err = m.client.DeleteKeyPair(ctx, &ec2.DeleteKeyPairInput{KeyName: aws.String(name)})
-	if err != nil { // error does not indicate a problem, but log anyway for debugging
-		grip.Debug(message.WrapError(err, message.Fields{
-			"message":  "problem deleting key",
-			"key_name": name,
-		}))
-	}
-	resp, err := m.client.CreateKeyPair(ctx, &ec2.CreateKeyPairInput{KeyName: aws.String(name)})
-	if err != nil {
-		return "", errors.Wrap(err, "problem creating key pair")
-	}
-	return *resp.KeyMaterial, nil
-}
-
 func (m *ec2Manager) retrieveInstance(ctx context.Context, h *host.Host) (*ec2.Instance, error) {
 	var instance *ec2.Instance
 	var err error
