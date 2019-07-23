@@ -10,22 +10,20 @@ import (
 	"testing"
 	"time"
 
-	"github.com/evergreen-ci/evergreen/model/user"
-	"go.mongodb.org/mongo-driver/bson"
-
-	"github.com/evergreen-ci/evergreen/model/commitqueue"
-
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/build"
+	"github.com/evergreen-ci/evergreen/model/commitqueue"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
+	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/mongodb/grip"
 	. "github.com/smartystreets/goconvey/convey"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	mgobson "gopkg.in/mgo.v2/bson"
 	"gopkg.in/yaml.v2"
@@ -757,7 +755,6 @@ func TestRetryCommitQueueItems(t *testing.T) {
 		Repo:       patchRepo,
 		Branch:     patchBranch,
 	}
-	cq := &commitqueue.CommitQueue{ProjectID: projectRef.Identifier}
 
 	startTime := time.Date(2019, 7, 15, 12, 0, 0, 0, time.Local)
 	endTime := startTime.Add(2 * time.Hour)
@@ -776,7 +773,7 @@ func TestRetryCommitQueueItems(t *testing.T) {
 			assert.NoError(t, err)
 			assert.Equal(t, 1, numRestarted)
 
-			cq, err = commitqueue.FindOneId(projectRef.Identifier)
+			cq, err := commitqueue.FindOneId(projectRef.Identifier)
 			assert.NoError(t, err)
 			assert.NotNil(t, cq)
 
@@ -801,7 +798,7 @@ func TestRetryCommitQueueItems(t *testing.T) {
 			assert.NoError(t, err)
 			assert.Equal(t, 5, all)
 
-			cq, err = commitqueue.FindOneId(projectRef.Identifier)
+			cq, err := commitqueue.FindOneId(projectRef.Identifier)
 			assert.NoError(t, err)
 			require.NotNil(t, cq)
 			require.Len(t, cq.Queue, 1)
@@ -816,7 +813,8 @@ func TestRetryCommitQueueItems(t *testing.T) {
 		},
 	} {
 		t.Run(name, func(t *testing.T) {
-			db.ClearCollections(ProjectRefCollection, commitqueue.Collection, patch.Collection, user.Collection)
+			assert.NoError(t, db.ClearCollections(ProjectRefCollection, commitqueue.Collection, patch.Collection, user.Collection))
+			cq := &commitqueue.CommitQueue{ProjectID: projectRef.Identifier}
 			assert.NoError(t, commitqueue.InsertQueue(cq))
 
 			patches := []patch.Patch{
