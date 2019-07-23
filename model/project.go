@@ -26,6 +26,7 @@ const (
 	// DefaultCommandType is a system configuration option that is used to
 	// differentiate between setup related commands and actual testing commands.
 	DefaultCommandType = evergreen.CommandTypeTest
+	Letters            = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"
 )
 
 type Project struct {
@@ -264,7 +265,7 @@ type PluginCommandConf struct {
 
 	// Params are used to supply configuration specific information.
 	// map[string]interface{} is stored as a JSON string.
-	Params map[string]interface{} `yaml:"params" bson:"params"`
+	Params map[string]interface{} `yaml:"params,omitempty" bson:"params"`
 
 	// YAML string of Params to store in database
 	ParamsYAML string `yaml:"params_yaml,omitempty" bson:"params_yaml"`
@@ -275,18 +276,18 @@ type PluginCommandConf struct {
 	Loggers *LoggerConfig `yaml:"loggers,omitempty" bson:"loggers,omitempty"`
 }
 
-func (c *PluginCommandConf) resolveParams() (map[string]interface{}, error) {
+func (c *PluginCommandConf) resolveParams() error {
 	out := map[string]interface{}{}
 	if c == nil {
-		return out, nil
+		return nil
 	}
 	if c.ParamsYAML != "" {
 		if err := yaml.Unmarshal([]byte(c.ParamsYAML), &out); err != nil {
-			return nil, errors.Wrapf(err, "error unmarshalling params")
+			return errors.Wrapf(err, "error unmarshalling params")
 		}
 		c.Params = out
 	}
-	return c.Params, nil
+	return nil
 }
 
 func (c *PluginCommandConf) UnmarshalYAML(unmarshal func(interface{}) error) error {
@@ -322,7 +323,7 @@ func (c *PluginCommandConf) UnmarshalYAML(unmarshal func(interface{}) error) err
 // we maintain Params for backwards compatibility, but we read from YAML when available, as the
 // given params could be corrupted from the roundtrip
 func (c *PluginCommandConf) unmarshalParams() error {
-	if c.ParamsYAML != "" {
+	if c.ParamsYAML != "" && !isEmptyYAML(c.ParamsYAML) {
 		out := map[string]interface{}{}
 		if err := yaml.Unmarshal([]byte(c.ParamsYAML), &out); err != nil {
 			return errors.Wrapf(err, "error unmarshalling params from yaml")
@@ -330,12 +331,18 @@ func (c *PluginCommandConf) unmarshalParams() error {
 		c.Params = out
 		return nil
 	}
-	bytes, err := yaml.Marshal(c.Params)
-	if err != nil {
-		return errors.Wrap(err, "error marshalling params into yaml")
+	if len(c.Params) != 0 {
+		bytes, err := yaml.Marshal(c.Params)
+		if err != nil {
+			return errors.Wrap(err, "error marshalling params into yaml")
+		}
+		c.ParamsYAML = string(bytes)
 	}
-	c.ParamsYAML = string(bytes)
 	return nil
+}
+
+func isEmptyYAML(paramsYAML string) bool {
+	return !strings.ContainsAny(paramsYAML, Letters)
 }
 
 type ArtifactInstructions struct {
@@ -363,12 +370,10 @@ func (c *YAMLCommandSet) MarshalYAML() (interface{}, error) {
 		return nil, nil
 	}
 	res := c.List()
-	for idx, cmd := range res {
-		params, err := cmd.resolveParams()
-		if err != nil {
+	for idx := range res {
+		if err := res[idx].resolveParams(); err != nil {
 			return nil, errors.Wrap(err, "error resolving params for command set")
 		}
-		res[idx].Params = params
 	}
 	return res, nil
 }
