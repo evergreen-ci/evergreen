@@ -45,7 +45,7 @@ Evergreen - Build {{Trunc .Build.Build.Revision 10}} on {{.Build.Build.DisplayNa
         </span>
         <span class="gitspec" ng-hide="build.PatchInfo">
           <a ng-href="/version/[[build.Version.id]]">
-            [[build.Build.gitspec ? build.Build.gitspec.substr(0, 10) : build.Build._id.substr(0, 10)]]
+            [[build.Build.gitspec ? build.Build.gitspec.substr(0, 10) : build.Version.id.substr(0, 10)]]
           </a>
         </span>
       </span>
