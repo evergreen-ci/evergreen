@@ -38,7 +38,7 @@ Evergreen - Version {{Trunc .Version.Version.Revision 10}}
 
 {{define "content"}}
 <span ng-controller="VersionController">
-{{ if not .ProjectData.Patch }}
+{{ if (and (not .ProjectData.Patch) (not (eq .ProjectData.Version.Requester "ad_hoc"))) }}
 <div ng-controller="VersionHistoryDrawerCtrl" id="drawer">
   <div id="drawer-contents">
     <div id="drawer-filled">
@@ -74,7 +74,7 @@ Evergreen - Version {{Trunc .Version.Version.Revision 10}}
           by [[version.PatchInfo.Patch.Author]]
         </span>
         <span class="gitspec" ng-hide="version.PatchInfo">
-          [[version.Version.revision.substr(0, 10)]]
+          [[ version.Version.revision ? version.Version.revision.substr(0, 10) : version.Version.id.substr(0, 10)]]
         </span>
       </span>
     </li>
