@@ -623,7 +623,9 @@ func (h *getProjectVersionsHandler) Run(ctx context.Context) gimlet.Responder {
 		}
 	}
 
-	resp.AddData(versions)
+	if err = resp.AddData(versions); err != nil {
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "error forming response"))
+	}
 
 	return resp
 }
