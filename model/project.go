@@ -26,7 +26,6 @@ const (
 	// DefaultCommandType is a system configuration option that is used to
 	// differentiate between setup related commands and actual testing commands.
 	DefaultCommandType = evergreen.CommandTypeTest
-	Letters            = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"
 )
 
 type Project struct {
@@ -323,7 +322,7 @@ func (c *PluginCommandConf) UnmarshalYAML(unmarshal func(interface{}) error) err
 // we maintain Params for backwards compatibility, but we read from YAML when available, as the
 // given params could be corrupted from the roundtrip
 func (c *PluginCommandConf) unmarshalParams() error {
-	if c.ParamsYAML != "" && !isEmptyYAML(c.ParamsYAML) {
+	if c.ParamsYAML != "" {
 		out := map[string]interface{}{}
 		if err := yaml.Unmarshal([]byte(c.ParamsYAML), &out); err != nil {
 			return errors.Wrapf(err, "error unmarshalling params from yaml")
@@ -339,10 +338,6 @@ func (c *PluginCommandConf) unmarshalParams() error {
 		c.ParamsYAML = string(bytes)
 	}
 	return nil
-}
-
-func isEmptyYAML(paramsYAML string) bool {
-	return !strings.ContainsAny(paramsYAML, Letters)
 }
 
 type ArtifactInstructions struct {
