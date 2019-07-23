@@ -102,7 +102,7 @@ func TestJasperDeployJob(t *testing.T) {
 		"NewJasperDeployJobPopulatesFields": func(ctx context.Context, t *testing.T, env evergreen.Environment, h *host.Host, mngr *jasper.MockManager) {
 			expiration := time.Now()
 
-			j := NewJasperDeployJob(env, *h, expiration, true, "attempt-0")
+			j := NewJasperDeployJob(env, h, expiration, true, "attempt-0")
 			deployJob, ok := j.(*jasperDeployJob)
 			require.True(t, ok)
 
@@ -114,7 +114,7 @@ func TestJasperDeployJob(t *testing.T) {
 		"RequeueJobRedeploysThroughJasperIfAttemptsRemainingAndCredentialsNotExpiring": func(ctx context.Context, t *testing.T, env evergreen.Environment, h *host.Host, mngr *jasper.MockManager) {
 			expiration := time.Now().Add(24 * time.Hour)
 
-			j := NewJasperDeployJob(env, *h, expiration, true, "attempt-0")
+			j := NewJasperDeployJob(env, h, expiration, true, "attempt-0")
 			deployJob, ok := j.(*jasperDeployJob)
 			require.True(t, ok)
 
@@ -132,7 +132,7 @@ func TestJasperDeployJob(t *testing.T) {
 		"RequeueJobDoesNotDeployThroughJasperIfCredentialsExpiring": func(ctx context.Context, t *testing.T, env evergreen.Environment, h *host.Host, mngr *jasper.MockManager) {
 			expiration := time.Now()
 
-			j := NewJasperDeployJob(env, *h, expiration, true, "attempt-0")
+			j := NewJasperDeployJob(env, h, expiration, true, "attempt-0")
 			deployJob, ok := j.(*jasperDeployJob)
 			require.True(t, ok)
 
@@ -154,7 +154,7 @@ func TestJasperDeployJob(t *testing.T) {
 			_, err := h.Upsert()
 			require.NoError(t, err)
 
-			j := NewJasperDeployJob(env, *h, expiration, true, fmt.Sprintf("attempt-%d", jasperDeployRetryLimit))
+			j := NewJasperDeployJob(env, h, expiration, true, fmt.Sprintf("attempt-%d", jasperDeployRetryLimit))
 			deployJob, ok := j.(*jasperDeployJob)
 			require.True(t, ok)
 
@@ -178,7 +178,7 @@ func TestJasperDeployJob(t *testing.T) {
 			_, err := h.Upsert()
 			require.NoError(t, err)
 
-			j := NewJasperDeployJob(env, *h, expiration, false, fmt.Sprintf("attempt-%d", jasperDeployRetryLimit))
+			j := NewJasperDeployJob(env, h, expiration, false, fmt.Sprintf("attempt-%d", jasperDeployRetryLimit))
 			deployJob, ok := j.(*jasperDeployJob)
 			require.True(t, ok)
 
@@ -190,7 +190,7 @@ func TestJasperDeployJob(t *testing.T) {
 
 			expiration := time.Now().Add(24 * time.Hour)
 
-			j := NewJasperDeployJob(env, *h, expiration, true, "attempt-0")
+			j := NewJasperDeployJob(env, h, expiration, true, "attempt-0")
 			j.Run(ctx)
 
 			deployJob, ok := j.(*jasperDeployJob)
@@ -209,7 +209,7 @@ func TestJasperDeployJob(t *testing.T) {
 
 			require.Len(t, mngr.Procs, 2)
 
-			writeCredsCmd := fmt.Sprintf("cat > %s", h.Distro.JasperCredentialsPath)
+			writeCredsCmd := fmt.Sprintf("cat > '%s'", h.Distro.JasperCredentialsPath)
 			writeCredentialsProc := mngr.Procs[0]
 
 			var writeCredsCmdFound bool

@@ -40,8 +40,9 @@ type jasperDeployJob struct {
 	// without communicating with Jasper at all.
 	DeployThroughJasper bool `bson:"deploy_through_jasper" json:"deploy_through_jasper" yaml:"deploy_through_jasper"`
 
-	env  evergreen.Environment
-	host *host.Host
+	env      evergreen.Environment
+	settings *evergreen.Settings
+	host     *host.Host
 }
 
 func makeJasperDeployJob() *jasperDeployJob {
@@ -59,11 +60,11 @@ func makeJasperDeployJob() *jasperDeployJob {
 
 // NewJasperDeployJob creates a job that deploys a new Jasper service with new
 // credentials to a host currently running a Jasper service.
-func NewJasperDeployJob(env evergreen.Environment, h host.Host, expiration time.Time, deployThroughJasper bool, id string) amboy.Job {
+func NewJasperDeployJob(env evergreen.Environment, h *host.Host, expiration time.Time, deployThroughJasper bool, id string) amboy.Job {
 	j := makeJasperDeployJob()
 	j.env = env
 	j.HostID = h.Id
-	j.host = &h
+	j.host = h
 	j.CredentialsExpiration = expiration
 	j.DeployThroughJasper = deployThroughJasper
 	jobID := fmt.Sprintf("%s.%s.%s", jasperDeployJobName, j.HostID, id)
@@ -104,8 +105,6 @@ func (j *jasperDeployJob) Run(ctx context.Context) {
 		}
 	}()
 
-	settings := j.env.Settings()
-
 	// Update LCT to prevent other jobs from trying to terminate this host,
 	// which is about to kill the agent.
 	if err := j.host.UpdateLastCommunicated(); err != nil {
@@ -133,13 +132,12 @@ func (j *jasperDeployJob) Run(ctx context.Context) {
 
 	writeCredentialsCmd, err := j.host.WriteJasperCredentialsFileCommand(creds)
 	if err != nil {
-		grip.Error(message.Fields{
+		grip.Error(message.WrapError(err, message.Fields{
 			"message": "could not build command to write Jasper credentials file",
 			"host":    j.host.Id,
 			"distro":  j.host.Distro.Id,
 			"job":     j.ID(),
-		})
-		grip.Error(err)
+		}))
 		j.AddError(err)
 		return
 	}
@@ -168,13 +166,13 @@ func (j *jasperDeployJob) Run(ctx context.Context) {
 		}
 		var output string
 		if output, err = j.host.RunJasperProcess(ctx, j.env, writeCredentialsOpts); err != nil {
-			grip.Error(message.Fields{
+			grip.Error(message.WrapError(err, message.Fields{
 				"message": "could not replace existing Jasper credentials on host",
 				"logs":    output,
 				"host":    j.host.Id,
 				"distro":  j.host.Distro.Id,
 				"job":     j.ID(),
-			})
+			}))
 			j.AddError(err)
 			return
 		}
@@ -185,17 +183,17 @@ func (j *jasperDeployJob) Run(ctx context.Context) {
 		restartJasperOpts := &jasper.CreateOptions{
 			Args: []string{
 				"bash", "-c",
-				fmt.Sprintf("pgrep -f '%s' | xargs kill", strings.Join(jaspercli.BuildServiceCommand(settings.HostJasper.BinaryName), " ")),
+				fmt.Sprintf("pgrep -f '%s' | xargs kill", strings.Join(jaspercli.BuildServiceCommand(j.settings.HostJasper.BinaryName), " ")),
 			},
 		}
 
 		if err = j.host.StartJasperProcess(ctx, j.env, restartJasperOpts); err != nil {
-			grip.Error(message.Fields{
+			grip.Error(message.WrapError(err, message.Fields{
 				"message": "could not restart Jasper service",
 				"host":    j.host.Id,
 				"distro":  j.host.Distro.Id,
 				"job":     j.ID(),
-			})
+			}))
 			j.AddError(err)
 			return
 		}
@@ -225,7 +223,8 @@ func (j *jasperDeployJob) Run(ctx context.Context) {
 			}))
 			j.AddError(err)
 			return
-		} else if newServiceID == serviceID {
+		}
+		if newServiceID == serviceID {
 			err := errors.New("new service ID should not match current ID")
 			grip.Error(message.WrapError(err, message.Fields{
 				"message":   "Jasper service should have been restarted, but service is still showing same ID",
@@ -238,7 +237,7 @@ func (j *jasperDeployJob) Run(ctx context.Context) {
 			return
 		}
 	} else {
-		sshOpts, err := j.host.GetSSHOptions(settings)
+		sshOpts, err := j.host.GetSSHOptions(j.settings)
 		if err != nil {
 			grip.Error(message.WrapError(err, message.Fields{
 				"message": "could not get SSH options",
@@ -262,7 +261,7 @@ func (j *jasperDeployJob) Run(ctx context.Context) {
 			return
 		}
 
-		if output, err := j.host.RunSSHCommand(ctx, j.host.RestartJasperCommand(settings.HostJasper), sshOpts); err != nil {
+		if output, err := j.host.RunSSHCommand(ctx, j.host.RestartJasperCommand(j.settings.HostJasper), sshOpts); err != nil {
 			grip.Error(message.WrapError(err, message.Fields{
 				"message": "could not run SSH command to restart Jasper",
 				"output":  output,
@@ -293,18 +292,18 @@ func (j *jasperDeployJob) Run(ctx context.Context) {
 		"message": "deployed Jasper service with new credentials",
 		"host":    j.host.Id,
 		"distro":  j.host.Distro.Id,
-		"version": settings.HostJasper.Version,
+		"version": j.settings.HostJasper.Version,
 	})
-	event.LogHostJasperDeployed(j.host.Id, settings.HostJasper.Version)
+	event.LogHostJasperDeployed(j.host.Id, j.settings.HostJasper.Version)
 
 	// If job succeeded, reset jasper deploy count.
 	if err := j.host.ResetJasperDeployAttempts(); err != nil {
-		grip.Error(message.Fields{
+		grip.Error(message.WrapError(err, message.Fields{
 			"message": "could not reset Jasper deploy attempts",
 			"host":    j.host.Id,
 			"distro":  j.host.Distro.Id,
 			"job":     j.ID(),
-		})
+		}))
 	}
 
 	// Set NeedsNewAgentMonitor to true to make the agent monitor deploy job
@@ -349,6 +348,9 @@ func (j *jasperDeployJob) populateIfUnset(ctx context.Context) error {
 	if j.env == nil {
 		j.env = evergreen.GetEnvironment()
 	}
+	if j.settings == nil {
+		j.settings = j.env.Settings()
+	}
 
 	if j.CredentialsExpiration.IsZero() {
 		expiration, err := j.host.JasperCredentialsExpiration(ctx, j.env)
@@ -388,7 +390,7 @@ func (j *jasperDeployJob) tryRequeueDeploy(ctx context.Context) error {
 }
 
 func (j *jasperDeployJob) requeueDeployThroughJasper(ctx context.Context, deployThroughJasper bool) error {
-	job := NewJasperDeployJob(j.env, *j.host, j.CredentialsExpiration, deployThroughJasper, fmt.Sprintf("attempt-%d", j.host.JasperDeployAttempts))
+	job := NewJasperDeployJob(j.env, j.host, j.CredentialsExpiration, deployThroughJasper, fmt.Sprintf("attempt-%d", j.host.JasperDeployAttempts))
 	job.UpdateTimeInfo(amboy.JobTimeInfo{
 		WaitUntil: time.Now().Add(time.Minute),
 	})

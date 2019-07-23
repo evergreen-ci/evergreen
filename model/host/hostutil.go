@@ -379,7 +379,7 @@ func (h *Host) WriteJasperCredentialsFileCommand(creds *rpc.Credentials) (string
 	if err != nil {
 		return "", errors.Wrap(err, "problem exporting credentials to file format")
 	}
-	return fmt.Sprintf("cat > %s <<EOF\n%s\nEOF", h.Distro.JasperCredentialsPath, exportedCreds), nil
+	return fmt.Sprintf("cat > '%s' <<EOF\n%s\nEOF", h.Distro.JasperCredentialsPath, exportedCreds), nil
 }
 
 // RunJasperProcess makes a request to the host's Jasper service to create the

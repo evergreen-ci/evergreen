@@ -378,6 +378,15 @@ func FindByExpiringJasperCredentials(cutoff time.Duration) ([]Host, error) {
 	var hosts []Host
 
 	pipeline := []bson.M{
+		bson.M{"$match": bson.M{
+			bootstrapKey: bson.M{
+				"$exists": true,
+				"$ne":     distro.BootstrapMethodLegacySSH,
+			},
+			StatusKey:        evergreen.HostRunning,
+			HasContainersKey: bson.M{"$ne": true},
+			ParentIDKey:      bson.M{"$exists": false},
+		}},
 		bson.M{"$lookup": bson.M{
 			"from":         credentials.Collection,
 			"localField":   JasperCredentialsIDKey,
@@ -386,13 +395,6 @@ func FindByExpiringJasperCredentials(cutoff time.Duration) ([]Host, error) {
 		}},
 		bson.M{"$match": bson.M{
 			expirationKey: bson.M{"$lte": deadline},
-			bootstrapKey: bson.M{
-				"$exists": true,
-				"$ne":     distro.BootstrapMethodLegacySSH,
-			},
-			StatusKey:        evergreen.HostRunning,
-			HasContainersKey: bson.M{"$ne": true},
-			ParentIDKey:      bson.M{"$exists": false},
 		}},
 		bson.M{"$project": bson.M{
 			credentialsKey: 0,
