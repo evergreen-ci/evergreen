@@ -639,19 +639,19 @@ func handleOldAgentRevision(response apimodels.NextTaskResponse, h *host.Host, w
 		// running an agent on the current revision, but the database host has
 		// yet to be updated.
 		if !h.LegacyBootstrap() && details.AgentRevision != h.AgentRevision {
-			if err := h.SetAgentRevision(details.AgentRevision); err != nil {
-				grip.Error(message.WrapError(err, message.Fields{
-					"message":       "problem updating host agent revision",
-					"operation":     "next_task",
-					"host":          h.Id,
-					"source":        "database error",
-					"host_revision": details.AgentRevision,
-					"revsision":     evergreen.BuildRevision,
-				}))
-			} else {
+			err := h.SetAgentRevision(details.AgentRevision)
+			if err == nil {
 				event.LogHostAgentDeployed(h.Id)
 				return response, false
 			}
+			grip.Error(message.WrapError(err, message.Fields{
+				"message":       "problem updating host agent revision",
+				"operation":     "next_task",
+				"host":          h.Id,
+				"source":        "database error",
+				"host_revision": details.AgentRevision,
+				"revsision":     evergreen.BuildRevision,
+			}))
 		}
 
 		if details.TaskGroup == "" {
