@@ -291,10 +291,11 @@ func assignNextAvailableTask(taskQueue *model.TaskQueue, taskQueueService model.
 	var spec model.TaskSpec
 	if currentHost.LastTask != "" {
 		spec = model.TaskSpec{
-			Group:        currentHost.LastGroup,
-			BuildVariant: currentHost.LastBuildVariant,
-			ProjectID:    currentHost.LastProject,
-			Version:      currentHost.LastVersion,
+			Group:         currentHost.LastGroup,
+			BuildVariant:  currentHost.LastBuildVariant,
+			ProjectID:     currentHost.LastProject,
+			Version:       currentHost.LastVersion,
+			GroupMaxHosts: 0,
 		}
 	}
 
@@ -353,7 +354,7 @@ func assignNextAvailableTask(taskQueue *model.TaskQueue, taskQueueService model.
 		}
 		if queueItem == nil {
 			grip.DebugWhen(d.PlannerSettings.Version == evergreen.PlannerVersionRevised, message.Fields{
-				"ticket":                        "EVG-6289",
+				// "ticket":                        "EVG-6289",
 				"function":                      "assignNextAvailableTask",
 				"message":                       "taskQueueService.RefreshFindNextTask returned no task - returning nil",
 				"distro_id":                     d.Id,
@@ -484,7 +485,7 @@ func assignNextAvailableTask(taskQueue *model.TaskQueue, taskQueueService model.
 		}
 		// Dequeue the task so we don't get it on another iteration of the loop.
 		grip.Warning(message.WrapError(taskQueue.DequeueTask(nextTask.Id), message.Fields{
-			"message":                  "Updated the relevant running task fields for the given host, but there was an issue dequeuing the task",
+			"message":                  "updated the relevant running task fields for the given host, but there was an issue dequeuing the task",
 			"distro_id":                nextTask.DistroId,
 			"task_id":                  nextTask.Id,
 			"host_id":                  currentHost.Id,
