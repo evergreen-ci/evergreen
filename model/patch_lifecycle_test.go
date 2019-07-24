@@ -759,7 +759,7 @@ func TestRetryCommitQueueItems(t *testing.T) {
 	startTime := time.Date(2019, 7, 15, 12, 0, 0, 0, time.Local)
 	endTime := startTime.Add(2 * time.Hour)
 
-	opts := RestartTaskOptions{
+	opts := RestartVersionsOptions{
 		StartTime: startTime,
 		EndTime:   endTime,
 	}
@@ -769,9 +769,10 @@ func TestRetryCommitQueueItems(t *testing.T) {
 			projectRef.CommitQueue.PatchType = commitqueue.PRPatchType
 			assert.NoError(t, projectRef.Insert())
 
-			numRestarted, err := RetryCommitQueueItems(projectRef.Identifier, projectRef.CommitQueue.PatchType, opts)
+			restarted, notRestarted, err := RetryCommitQueueItems(projectRef.Identifier, projectRef.CommitQueue.PatchType, opts)
 			assert.NoError(t, err)
-			assert.Equal(t, 1, numRestarted)
+			assert.Len(t, restarted, 1)
+			assert.Len(t, notRestarted, 0)
 
 			cq, err := commitqueue.FindOneId(projectRef.Identifier)
 			assert.NoError(t, err)
@@ -790,9 +791,10 @@ func TestRetryCommitQueueItems(t *testing.T) {
 			u := user.DBUser{Id: "me", PatchNumber: 12}
 			assert.NoError(t, u.Insert())
 
-			numRestarted, err := RetryCommitQueueItems(projectRef.Identifier, projectRef.CommitQueue.PatchType, opts)
+			restarted, notRestarted, err := RetryCommitQueueItems(projectRef.Identifier, projectRef.CommitQueue.PatchType, opts)
 			assert.NoError(t, err)
-			assert.Equal(t, 1, numRestarted)
+			assert.Len(t, restarted, 1)
+			assert.Len(t, notRestarted, 0)
 
 			all, err := patch.Count(db.Query(bson.M{}))
 			assert.NoError(t, err)
@@ -802,9 +804,6 @@ func TestRetryCommitQueueItems(t *testing.T) {
 			assert.NoError(t, err)
 			require.NotNil(t, cq)
 			require.Len(t, cq.Queue, 1)
-
-			assert.Len(t, cq.Queue[0].Modules, 1)
-			assert.Equal(t, "name", cq.Queue[0].Modules[0].Module)
 
 			newPatch, err := patch.FindOne(db.Query(bson.M{patch.NumberKey: u.PatchNumber + 1}))
 			assert.NoError(t, err)

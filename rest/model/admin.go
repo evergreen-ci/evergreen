@@ -1272,6 +1272,11 @@ type RestartTasksResponse struct {
 	TasksErrored   []string `json:"tasks_errored"`
 }
 
+type RestartVersionsResponse struct {
+	VersionsRequeued []string `json:"versions_requeued"`
+	VersionsErrored  []string `json:"versions_errored"`
+}
+
 // BuildFromService builds a model from the service layer
 func (ab *APIBanner) BuildFromService(h interface{}) error {
 	switch v := h.(type) {

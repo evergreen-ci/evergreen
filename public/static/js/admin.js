@@ -206,6 +206,44 @@ mciModule.controller('AdminSettingsController', ['$scope', '$window', '$http', '
     mciAdminRestService.restartTasks(from, to, dryRun, $scope.restartRed, $scope.restartPurple, $scope.restartLavender, { success: successHandler, error: errorHandler });
   }
 
+
+  $scope.restartCommitQueueVersions = function(dryRun) {
+      if (!$scope.fromDateCommitQueue || !$scope.toDateCommitQueue || !$scope.toTimeCommitQueue || !$scope.fromTimeCommitQueue) {
+          alert("The from/to date and time must be populated to restart versions");
+          return;
+      }
+
+      if (dryRun == false) {
+        $scope.disableRestart = true;
+        var successHandler = function(resp) {
+              $("#divMsg").text("The below versions have been queued to restart. Feel free to close this popup or inspect the tasks listed.");
+              $scope.disableSubmit = false;
+          }
+      } else {
+          $scope.disableSubmit = true;
+          $scope.disableRestart = false;
+          $("#divMsg").text("");
+          dryRun = true;
+          var successHandler = function(resp) {
+              $scope.versions = resp.data.versions_requeued;
+              $scope.modalTitle = "Restart Commit Queue Versions";
+              $("#versions-modal").modal("show");
+          }
+      }
+      var errorHandler = function(resp) {
+          notificationService.pushNotification("Error restarting commit queue versions: " + resp.data.error, "errorHeader");
+      }
+      var from = combineDateTime($scope.fromDateCommitQueue, $scope.fromTimeCommitQueue);
+      var to = combineDateTime($scope.toDateCommitQueue, $scope.toTimeCommitQueue);
+      if (to < from) {
+          alert("From time cannot be after to time");
+          $scope.disableSubmit = false;
+          return;
+      }
+
+      mciAdminRestService.restartCommitQueueVersions(from, to, dryRun, {success: successHandler, error: errorHandler });
+  }
+
   combineDateTime = function(date, time) {
     date.setHours(time.getHours());
     date.setMinutes(time.getMinutes());
@@ -221,6 +259,10 @@ mciModule.controller('AdminSettingsController', ['$scope', '$window', '$http', '
   $scope.jumpToTask = function(taskId) {
     window.open("/task/" + taskId);
   }
+
+  $scope.jumpToVersion = function(versionId) {
+        window.open("/version/" + versionId);
+    }
 
   $scope.scrollTo = function(section) {
     var offset = $('#'+section).offset();

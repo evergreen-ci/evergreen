@@ -15,6 +15,7 @@ import (
 	"github.com/evergreen-ci/evergreen/units"
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 )
 
@@ -172,20 +173,31 @@ func (ac *DBAdminConnector) RestartFailedTasks(queue amboy.Queue, opts model.Res
 	}, nil
 }
 
-func (ac *DBAdminConnector) RestartFailedCommitQueueVersions(opts model.RestartTaskOptions) (int, error) {
+func (ac *DBAdminConnector) RestartFailedCommitQueueVersions(opts model.RestartVersionsOptions) (*restModel.RestartVersionsResponse, error) {
+	totalRestarted := []string{}
+	totalNotRestarted := []string{}
 	pRefs, err := model.FindProjectRefsWithCommitQueueEnabled()
 	if err != nil {
-		return 0, err
+		return nil, errors.Wrapf(err, "error finding projects with commit queue enabled")
 	}
-	totalRestarted := 0
 	for _, pRef := range pRefs {
-		numRestarted, err := model.RetryCommitQueueItems(pRef.Identifier, pRef.CommitQueue.PatchType, opts)
+		restarted, notRestarted, err := model.RetryCommitQueueItems(pRef.Identifier, pRef.CommitQueue.PatchType, opts)
 		if err != nil {
-			return numRestarted, err
+			grip.Error(message.WrapError(err, message.Fields{
+				"project":    pRef.Identifier,
+				"start_time": opts.StartTime,
+				"end_time":   opts.EndTime,
+				"message":    "unable to restart failed commit queue versions for project",
+			}))
+			continue
 		}
-		totalRestarted += numRestarted
+		totalRestarted = append(totalRestarted, restarted...)
+		totalNotRestarted = append(totalNotRestarted, notRestarted...)
 	}
-	return totalRestarted, nil
+	return &restModel.RestartVersionsResponse{
+		VersionsRequeued: totalRestarted,
+		VersionsErrored:  totalNotRestarted,
+	}, nil
 }
 
 func (ac *DBAdminConnector) RevertConfigTo(guid string, user string) error {
@@ -288,6 +300,6 @@ func (ac *MockAdminConnector) GetAdminEventLog(before time.Time, n int) ([]restM
 	return nil, nil
 }
 
-func (ac *MockAdminConnector) RestartFailedCommitQueueVersions(opts model.RestartTaskOptions) (int, error) {
-	return 0, errors.New("not implemented")
+func (ac *MockAdminConnector) RestartFailedCommitQueueVersions(opts model.RestartVersionsOptions) (*restModel.RestartVersionsResponse, error) {
+	return nil, errors.New("not implemented")
 }

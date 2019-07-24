@@ -42,6 +42,30 @@ Admin Settings
 		</div>
 	</div>
 
+	<div id="versions-modal" class="modal fade" tabindex="-1" role="dialog" aria-hidden="true">
+		<div class="modal-dialog" style="width: 1000px">
+			<div class="modal-content">
+				<div class="modal-header">
+					<button type="button" class="close" data-dismiss="modal" aria-hidden="true" style="font-size: 35px">&times;</button>
+					<h2 class="modal-title">[[modalTitle]]</h2>
+				</div>
+				<div class="modal-body">
+					<div id="divMsg"></div>
+					<div>The following [[versions.length]] versions will be requeued:</div>
+					<div id="tasksDisplay">
+						<li ng-repeat="version in versions" class="link" ng-click="jumpToVersion(version)">[[version]]</li>
+					</div>
+					<div>
+						<div class="justifyRight">
+							<md-button class="md-raised" ng-click="restartCommitQueueVersions(false)" ng-disabled="disableRestart">Restart</md-button>
+							<md-button class="md-raised" data-dismiss="modal">Cancel</md-button>
+						</div>
+					</div>
+				</div>
+			</div>
+		</div>
+	</div>
+
 	<section layout="row" flex>
 
 		<md-content flex="15">
@@ -1378,6 +1402,37 @@ Admin Settings
 					<md-checkbox ng-model="restartPurple" style="top: 10px">Purple Tasks</md-checkbox>
 					<md-checkbox ng-model="restartLavender" style="top: 10px">Lavender Tasks</md-checkbox>
 					<md-button class="md-raised" ng-disabled="disableSubmit" ng-click="restartTasks(true)">Submit</md-button>
+				</md-card-footer>
+			</md-card>
+
+			<md-card id="restart_commit_queue" style="width:99%">
+				<md-card-title>
+					<i class="fa fa-refresh"></i>
+					<md-card-title-text>
+						<span>Restart Commit Queues</span>
+						<span class="md-subhead">Restart failed commit queue items that ran between two times</span>
+					</md-card-title-text>
+				</md-card-title>
+				<md-card-content>
+					<table>
+						<tr>
+							<td>From:</td>
+							<td>
+								<md-datepicker ng-model="fromDateCommitQueue" md-placeholder="Date"></md-datepicker>
+								<md-time-picker class="inline" ng-model="fromTimeCommitQueue" message="message"></md-time-picker>
+							</td>
+						</tr>
+						<tr>
+							<td>To:</td>
+							<td>
+								<md-datepicker ng-model="toDateCommitQueue" md-placeholder="Date"></md-datepicker>
+								<md-time-picker class="inline" ng-model="toTimeCommitQueue" message="message"></md-time-picker>
+							</td>
+						</tr>
+					</table>
+				</md-card-content>
+				<md-card-footer class="squeezeTop">
+					<md-button class="md-raised" ng-disabled="disableSubmit" ng-click="restartCommitQueueVersions(true)">Submit</md-button>
 				</md-card-footer>
 			</md-card>
 

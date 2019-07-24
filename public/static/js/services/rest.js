@@ -371,6 +371,16 @@ mciServices.rest.factory('mciAdminRestService', ['mciBaseRestService', function(
       baseSvc.postResource(resource + "/restart", [], config, callbacks);
     }
 
+    service.restartCommitQueueVersions = function(from, to, dryRun, callbacks) {
+      var config = {}
+      config.data = {
+          start_time: from,
+          end_time: to,
+          dry_run: dryRun,
+      };
+      baseSvc.postResource(resource + "/commit_queues/restart", [], config, callbacks);
+    }
+
     service.getEvents = function(timestamp, limit, callbacks) {
       if (!limit || limit === 0) {
         limit = 15;
