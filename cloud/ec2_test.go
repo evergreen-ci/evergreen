@@ -970,7 +970,7 @@ func (s *EC2Suite) TestGetSecurityGroup() {
 }
 
 func (s *EC2Suite) TestGetExistingKey() {
-	db.ClearCollections(task.Collection, model.ProjectVarsCollection)
+	s.NoError(db.ClearCollections(task.Collection, model.ProjectVarsCollection))
 	t := task.Task{Id: "t1", Project: "evergreen"}
 	s.NoError(t.Insert())
 
@@ -991,7 +991,7 @@ func (s *EC2Suite) TestGetExistingKey() {
 }
 
 func (s *EC2Suite) TestGetNewKey() {
-	db.ClearCollections(task.Collection, model.ProjectVarsCollection)
+	s.NoError(db.ClearCollections(task.Collection, model.ProjectVarsCollection))
 	t := task.Task{Id: "t1", Project: "evergreen"}
 	s.NoError(t.Insert())
 

@@ -291,7 +291,7 @@ func (m *ec2FleetManager) GetDNSName(ctx context.Context, h *host.Host) (string,
 	if err != nil {
 		return "", errors.Wrapf(err, "error getting volume size for host %s", h.Id)
 	}
-	if err := h.CacheHostData(); err != nil {
+	if err = h.CacheHostData(); err != nil {
 		return "", errors.Wrap(err, "error updating host document in db")
 	}
 
