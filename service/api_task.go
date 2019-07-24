@@ -1,6 +1,7 @@
 package service
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	"time"
@@ -234,7 +235,20 @@ func (as *APIServer) EndTask(w http.ResponseWriter, r *http.Request) {
 		grip.Warning(message.WrapError(err, "problem updating expected duration"))
 	}
 
+	env := evergreen.GetEnvironment()
 	if checkHostHealth(currentHost) {
+		ctx, cancel := context.WithTimeout(r.Context(), 30*time.Second)
+		defer cancel()
+		if err := currentHost.StopAgentMonitor(ctx, env); err != nil {
+			grip.Error(message.WrapError(err, message.Fields{
+				"message":   "problem stopping agent monitor",
+				"host":      currentHost.Id,
+				"operation": "next_task",
+				"revision":  evergreen.BuildRevision,
+			}))
+			gimlet.WriteResponse(w, gimlet.MakeJSONInternalErrorResponder(err))
+			return
+		}
 		if err = currentHost.SetNeedsAgentDeploy(true); err != nil {
 			grip.Error(message.WrapErrorf(err, "error indicating host %s needs deploy", currentHost.Id))
 			gimlet.WriteResponse(w, gimlet.MakeJSONInternalErrorResponder(err))
@@ -250,7 +264,6 @@ func (as *APIServer) EndTask(w http.ResponseWriter, r *http.Request) {
 		msg := "host encountered consecutive system failures"
 		if currentHost.Provider != evergreen.ProviderNameStatic {
 			err := currentHost.DisablePoisonedHost(msg)
-			env := evergreen.GetEnvironment()
 
 			job := units.NewDecoHostNotifyJob(env, currentHost, err, msg)
 			grip.Critical(message.WrapError(as.queue.Put(r.Context(), job),
@@ -263,6 +276,19 @@ func (as *APIServer) EndTask(w http.ResponseWriter, r *http.Request) {
 				gimlet.WriteResponse(w, gimlet.MakeJSONInternalErrorResponder(err))
 				return
 			}
+		}
+
+		ctx, cancel := context.WithTimeout(r.Context(), 30*time.Second)
+		defer cancel()
+		if err := currentHost.StopAgentMonitor(ctx, env); err != nil {
+			grip.Error(message.WrapError(err, message.Fields{
+				"message":   "problem stopping agent monitor",
+				"host":      currentHost.Id,
+				"operation": "next_task",
+				"revision":  evergreen.BuildRevision,
+			}))
+			gimlet.WriteResponse(w, gimlet.MakeJSONInternalErrorResponder(err))
+			return
 		}
 		endTaskResp.ShouldExit = true
 	}
@@ -509,23 +535,42 @@ func assignNextAvailableTask(taskQueue *model.TaskQueue, taskQueueService model.
 func (as *APIServer) NextTask(w http.ResponseWriter, r *http.Request) {
 	begin := time.Now()
 	h := MustHaveHost(r)
+
+	// stopAgentMonitor is only used for debug log purposes.
+	var stopAgentMonitor bool
 	defer func() {
 		grip.DebugWhen(time.Since(begin) > time.Second, message.Fields{
-			"message": "slow next_task operation",
-			"host_id": h.Id,
-			"distro":  h.Distro.Id,
-			"latency": time.Since(begin),
+			"message":            "slow next_task operation",
+			"host_id":            h.Id,
+			"distro":             h.Distro.Id,
+			"latency":            time.Since(begin),
+			"stop_agent_monitor": stopAgentMonitor,
 		})
 	}()
 
 	var response apimodels.NextTaskResponse
 	var err error
 	if checkHostHealth(h) {
+		ctx, cancel := context.WithTimeout(r.Context(), 30*time.Second)
+		defer cancel()
+		env := evergreen.GetEnvironment()
+		stopAgentMonitor = true
+		if err := h.StopAgentMonitor(ctx, env); err != nil {
+			grip.Error(message.WrapError(err, message.Fields{
+				"message":   "problem stopping agent monitor",
+				"host":      h.Id,
+				"operation": "next_task",
+				"revision":  evergreen.BuildRevision,
+			}))
+			gimlet.WriteResponse(w, gimlet.MakeJSONInternalErrorResponder(err))
+			return
+		}
+
 		if err = h.SetNeedsAgentDeploy(true); err != nil {
 			grip.Error(message.WrapError(err, message.Fields{
 				"host":      h.Id,
 				"operation": "next_task",
-				"message":   "problem indicating that host needs new agent",
+				"message":   "problem indicating that host needs new agent or agent monitor deploy",
 				"source":    "database error",
 				"revision":  evergreen.BuildRevision,
 			}))
@@ -536,6 +581,7 @@ func (as *APIServer) NextTask(w http.ResponseWriter, r *http.Request) {
 		gimlet.WriteJSON(w, response)
 		return
 	}
+
 	var agentExit bool
 	response, agentExit = handleOldAgentRevision(response, h, w, r)
 	if agentExit {

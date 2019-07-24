@@ -131,6 +131,8 @@ const (
 	AgentAPIVersion  = 2
 	APIRoutePrefixV2 = "/rest/v2"
 
+	AgentMonitorTag = "agent-monitor"
+
 	DegradedLoggingPercent = 10
 
 	SetupScriptName     = "setup.sh"

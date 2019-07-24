@@ -8,6 +8,7 @@ import (
 	"os/exec"
 	"runtime"
 	"strings"
+	"syscall"
 	"testing"
 	"time"
 
@@ -312,11 +313,10 @@ func setupCredentialsDB(ctx context.Context, env *mock.Environment) error {
 	return errors.WithStack(credentials.Bootstrap(env))
 }
 
-func setupJasperService(ctx context.Context, env *mock.Environment, h *Host) (jasper.CloseFunc, error) {
-	if _, err := h.Upsert(); err != nil {
+func setupJasperService(ctx context.Context, env *mock.Environment, manager *jasper.MockManager, h *Host) (jasper.CloseFunc, error) {
+	if err := h.Insert(); err != nil {
 		return nil, errors.WithStack(err)
 	}
-	manager := &jasper.MockManager{}
 	port := testutil.NextPort()
 	addr, err := net.ResolveTCPAddr("tcp", fmt.Sprintf("localhost:%d", port))
 	if err != nil {
@@ -412,7 +412,7 @@ func TestJasperClient(t *testing.T) {
 				var closeService jasper.CloseFunc
 				var err error
 				if !catcher.HasErrors() {
-					closeService, err = setupJasperService(ctx, env, h)
+					closeService, err = setupJasperService(ctx, env, &jasper.MockManager{}, h)
 					catcher.Add(errors.WithStack(err))
 				}
 
@@ -460,7 +460,7 @@ func TestJasperClient(t *testing.T) {
 				var closeService jasper.CloseFunc
 				var err error
 				if !catcher.HasErrors() {
-					closeService, err = setupJasperService(ctx, env, h)
+					closeService, err = setupJasperService(ctx, env, &jasper.MockManager{}, h)
 					catcher.Add(errors.WithStack(err))
 				}
 
@@ -512,29 +512,32 @@ func TestJasperClient(t *testing.T) {
 	}
 }
 
+// withJasperServiceSetupAndTeardown performs necessary setup to start a
+// Jasper RPC service, executes the given test function, and cleans up.
+func withJasperServiceSetupAndTeardown(ctx context.Context, env *mock.Environment, manager *jasper.MockManager, h *Host, fn func()) error {
+	catcher := grip.NewBasicCatcher()
+	if !catcher.HasErrors() {
+		catcher.Add(errors.WithStack(setupCredentialsDB(ctx, env)))
+	}
+	var closeService jasper.CloseFunc
+	var err error
+	if !catcher.HasErrors() {
+		closeService, err = setupJasperService(ctx, env, manager, h)
+		catcher.Add(errors.WithStack(err))
+	}
+
+	if !catcher.HasErrors() {
+		fn()
+	}
+
+	catcher.Add(errors.WithStack(teardownJasperService(ctx, closeService)))
+	return catcher.Resolve()
+}
+
 func TestJasperProcess(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	withSetupAndTeardown := func(ctx context.Context, env *mock.Environment, h *Host, fn func(context.Context)) error {
-		catcher := grip.NewBasicCatcher()
-		if !catcher.HasErrors() {
-			catcher.Add(errors.WithStack(setupCredentialsDB(ctx, env)))
-		}
-		var closeService jasper.CloseFunc
-		var err error
-		if !catcher.HasErrors() {
-			closeService, err = setupJasperService(ctx, env, h)
-			catcher.Add(errors.WithStack(err))
-		}
-
-		if !catcher.HasErrors() {
-			fn(ctx)
-		}
-
-		catcher.Add(errors.WithStack(teardownJasperService(ctx, closeService)))
-		return catcher.Resolve()
-	}
 	for testName, testCase := range map[string]func(ctx context.Context, t *testing.T, env *mock.Environment, h *Host){
 		"RunJasperProcessErrorsWithoutJasperClient": func(ctx context.Context, t *testing.T, env *mock.Environment, h *Host) {
 			assert.Error(t, h.StartJasperProcess(ctx, env, &jasper.CreateOptions{Args: []string{"echo", "hello", "world"}}))
@@ -544,13 +547,13 @@ func TestJasperProcess(t *testing.T) {
 			assert.Error(t, err)
 		},
 		"RunJasperProcessPassesWithJasperClient": func(ctx context.Context, t *testing.T, env *mock.Environment, h *Host) {
-			assert.NoError(t, withSetupAndTeardown(ctx, env, h, func(ctx context.Context) {
+			assert.NoError(t, withJasperServiceSetupAndTeardown(ctx, env, &jasper.MockManager{}, h, func() {
 				_, err := h.RunJasperProcess(ctx, env, "echo hello world")
 				assert.NoError(t, err)
 			}))
 		},
 		"StartJasperProcessPassesWithJasperClient": func(ctx context.Context, t *testing.T, env *mock.Environment, h *Host) {
-			assert.NoError(t, withSetupAndTeardown(ctx, env, h, func(ctx context.Context) {
+			assert.NoError(t, withJasperServiceSetupAndTeardown(ctx, env, &jasper.MockManager{}, h, func() {
 				assert.NoError(t, h.StartJasperProcess(ctx, env, &jasper.CreateOptions{Args: []string{"echo", "hello", "world"}}))
 			}))
 		},
@@ -721,6 +724,102 @@ func TestStartAgentMonitorRequest(t *testing.T) {
 	expectedEnv, err := json.Marshal(buildAgentEnv(settings))
 	require.NoError(t, err)
 	assert.Contains(t, cmd, string(expectedEnv))
+	assert.Contains(t, cmd, evergreen.AgentMonitorTag)
+}
+
+func TestStopAgentMonitor(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	for testName, testCase := range map[string]func(ctx context.Context, t *testing.T, env evergreen.Environment, manager *jasper.MockManager, h *Host){
+		"SendsKillToTaggedRunningProcesses": func(ctx context.Context, t *testing.T, env evergreen.Environment, manager *jasper.MockManager, h *Host) {
+			proc, err := manager.CreateProcess(ctx, &jasper.CreateOptions{
+				Args: []string{"agent", "monitor", "command"},
+			})
+			require.NoError(t, err)
+			proc.Tag(evergreen.AgentMonitorTag)
+
+			mockProc, ok := proc.(*jasper.MockProcess)
+			require.True(t, ok)
+			mockProc.ProcInfo.IsRunning = true
+
+			require.NoError(t, h.StopAgentMonitor(ctx, env))
+
+			require.Len(t, mockProc.Signals, 1)
+			assert.Equal(t, syscall.SIGTERM, mockProc.Signals[0])
+
+		},
+		"DoesNotKillProcessesWithoutCorrectTag": func(ctx context.Context, t *testing.T, env evergreen.Environment, manager *jasper.MockManager, h *Host) {
+			proc, err := manager.CreateProcess(ctx, &jasper.CreateOptions{
+				Args: []string{"some", "other", "command"}},
+			)
+			require.NoError(t, err)
+
+			mockProc, ok := proc.(*jasper.MockProcess)
+			require.True(t, ok)
+			mockProc.ProcInfo.IsRunning = true
+
+			require.NoError(t, h.StopAgentMonitor(ctx, env))
+
+			assert.Empty(t, mockProc.Signals)
+		},
+		"DoesNotKillFinishedAgentMonitors": func(ctx context.Context, t *testing.T, env evergreen.Environment, manager *jasper.MockManager, h *Host) {
+			proc, err := manager.CreateProcess(ctx, &jasper.CreateOptions{
+				Args: []string{"agent", "monitor", "command"},
+			})
+			require.NoError(t, err)
+			proc.Tag(evergreen.AgentMonitorTag)
+
+			require.NoError(t, h.StopAgentMonitor(ctx, env))
+
+			mockProc, ok := proc.(*jasper.MockProcess)
+			require.True(t, ok)
+			assert.Empty(t, mockProc.Signals)
+		},
+		"NoopsOnLegacyHost": func(ctx context.Context, t *testing.T, env evergreen.Environment, manager *jasper.MockManager, h *Host) {
+			h.Distro = distro.Distro{
+				BootstrapMethod:     distro.BootstrapMethodLegacySSH,
+				CommunicationMethod: distro.CommunicationMethodLegacySSH,
+			}
+
+			proc, err := manager.CreateProcess(ctx, &jasper.CreateOptions{
+				Args: []string{"agent", "monitor", "command"},
+			})
+			require.NoError(t, err)
+			proc.Tag(evergreen.AgentMonitorTag)
+
+			mockProc, ok := proc.(*jasper.MockProcess)
+			require.True(t, ok)
+			mockProc.ProcInfo.IsRunning = true
+
+			require.NoError(t, h.StopAgentMonitor(ctx, env))
+
+			assert.Empty(t, mockProc.Signals)
+		},
+	} {
+		t.Run(testName, func(t *testing.T) {
+			tctx, tcancel := context.WithTimeout(ctx, 5*time.Second)
+			defer tcancel()
+
+			env := &mock.Environment{}
+			require.NoError(t, env.Configure(tctx, "", nil))
+
+			manager := &jasper.MockManager{}
+
+			h := &Host{
+				Id:   "id",
+				Host: "localhost",
+				Distro: distro.Distro{
+					BootstrapMethod:     distro.BootstrapMethodUserData,
+					CommunicationMethod: distro.CommunicationMethodRPC,
+				},
+			}
+
+			assert.NoError(t, withJasperServiceSetupAndTeardown(tctx, env, manager, h, func() {
+				testCase(tctx, t, env, manager, h)
+			}))
+		})
+	}
 }
 
 func TestSetupSpawnHostCommand(t *testing.T) {
