@@ -173,7 +173,7 @@ type pushParams struct {
 func (c *gitPush) pushPatch(ctx context.Context, logger client.LoggerProducer, p pushParams) error {
 	commands := []string{}
 	for _, file := range p.files {
-		commands = append(commands, `git add "%s"`, file)
+		commands = append(commands, fmt.Sprintf(`git add "%s"`, file))
 		logger.Execution().Debugf(`git add "%s"`, file)
 	}
 
