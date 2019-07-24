@@ -277,12 +277,16 @@ func (a *APISMTPConfig) ToService() (interface{}, error) {
 }
 
 type APIAmboyConfig struct {
-	Name           APIString `json:"name"`
-	SingleName     APIString `json:"single_name"`
-	DB             APIString `json:"database"`
-	PoolSizeLocal  int       `json:"pool_size_local"`
-	PoolSizeRemote int       `json:"pool_size_remote"`
-	LocalStorage   int       `json:"local_storage_size"`
+	Name                           APIString `json:"name"`
+	SingleName                     APIString `json:"single_name"`
+	DB                             APIString `json:"database"`
+	PoolSizeLocal                  int       `json:"pool_size_local"`
+	PoolSizeRemote                 int       `json:"pool_size_remote"`
+	LocalStorage                   int       `json:"local_storage_size"`
+	GroupDefaultWorkers            int       `json:"group_default_workers"`
+	GroupBackgroundCreateFrequency int       `json:"group_background_create_frequency"`
+	GroupPruneFrequency            int       `json:"group_prune_frequency"`
+	GroupTTL                       int       `json:"group_ttl"`
 }
 
 func (a *APIAmboyConfig) BuildFromService(h interface{}) error {
@@ -294,6 +298,10 @@ func (a *APIAmboyConfig) BuildFromService(h interface{}) error {
 		a.PoolSizeLocal = v.PoolSizeLocal
 		a.PoolSizeRemote = v.PoolSizeRemote
 		a.LocalStorage = v.LocalStorage
+		a.GroupDefaultWorkers = v.GroupDefaultWorkers
+		a.GroupBackgroundCreateFrequency = v.GroupBackgroundCreateFrequency
+		a.GroupPruneFrequency = v.GroupPruneFrequency
+		a.GroupTTL = v.GroupTTL
 	default:
 		return errors.Errorf("%T is not a supported type", h)
 	}
@@ -302,12 +310,16 @@ func (a *APIAmboyConfig) BuildFromService(h interface{}) error {
 
 func (a *APIAmboyConfig) ToService() (interface{}, error) {
 	return evergreen.AmboyConfig{
-		Name:           FromAPIString(a.Name),
-		SingleName:     FromAPIString(a.SingleName),
-		DB:             FromAPIString(a.DB),
-		PoolSizeLocal:  a.PoolSizeLocal,
-		PoolSizeRemote: a.PoolSizeRemote,
-		LocalStorage:   a.LocalStorage,
+		Name:                           FromAPIString(a.Name),
+		SingleName:                     FromAPIString(a.SingleName),
+		DB:                             FromAPIString(a.DB),
+		PoolSizeLocal:                  a.PoolSizeLocal,
+		PoolSizeRemote:                 a.PoolSizeRemote,
+		LocalStorage:                   a.LocalStorage,
+		GroupDefaultWorkers:            a.GroupDefaultWorkers,
+		GroupBackgroundCreateFrequency: a.GroupBackgroundCreateFrequency,
+		GroupPruneFrequency:            a.GroupPruneFrequency,
+		GroupTTL:                       a.GroupTTL,
 	}, nil
 }
 
