@@ -291,11 +291,10 @@ func assignNextAvailableTask(taskQueue *model.TaskQueue, taskQueueService model.
 	var spec model.TaskSpec
 	if currentHost.LastTask != "" {
 		spec = model.TaskSpec{
-			Group:         currentHost.LastGroup,
-			BuildVariant:  currentHost.LastBuildVariant,
-			ProjectID:     currentHost.LastProject,
-			Version:       currentHost.LastVersion,
-			GroupMaxHosts: 0,
+			Group:        currentHost.LastGroup,
+			BuildVariant: currentHost.LastBuildVariant,
+			ProjectID:    currentHost.LastProject,
+			Version:      currentHost.LastVersion,
 		}
 	}
 

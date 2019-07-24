@@ -152,6 +152,7 @@ func (s *taskDispatchServiceSuite) TestConstructor() {
 	s.Len(service.units, 24, "20 bare tasks + 4 task groups")
 	s.Equal(len(service.order), len(service.units), "order and units should have same length")
 	s.Equal(service.distroID, "distro_1")
+	s.Equal(service.ttl, 60*time.Second)
 
 	s.Contains(service.order, compositeGroupId("group_1", "variant_1", "version_1"))
 	s.Contains(service.units, compositeGroupId("group_1", "variant_1", "version_1"))
