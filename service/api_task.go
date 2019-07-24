@@ -239,7 +239,7 @@ func (as *APIServer) EndTask(w http.ResponseWriter, r *http.Request) {
 	if checkHostHealth(currentHost) {
 		ctx, cancel := context.WithTimeout(r.Context(), 30*time.Second)
 		defer cancel()
-		if err := currentHost.StopAgentMonitor(ctx, env); err != nil {
+		if err = currentHost.StopAgentMonitor(ctx, env); err != nil {
 			grip.Error(message.WrapError(err, message.Fields{
 				"message":   "problem stopping agent monitor",
 				"host":      currentHost.Id,
@@ -280,7 +280,7 @@ func (as *APIServer) EndTask(w http.ResponseWriter, r *http.Request) {
 
 		ctx, cancel := context.WithTimeout(r.Context(), 30*time.Second)
 		defer cancel()
-		if err := currentHost.StopAgentMonitor(ctx, env); err != nil {
+		if err = currentHost.StopAgentMonitor(ctx, env); err != nil {
 			grip.Error(message.WrapError(err, message.Fields{
 				"message":   "problem stopping agent monitor",
 				"host":      currentHost.Id,
@@ -555,7 +555,7 @@ func (as *APIServer) NextTask(w http.ResponseWriter, r *http.Request) {
 		defer cancel()
 		env := evergreen.GetEnvironment()
 		stopAgentMonitor = true
-		if err := h.StopAgentMonitor(ctx, env); err != nil {
+		if err = h.StopAgentMonitor(ctx, env); err != nil {
 			grip.Error(message.WrapError(err, message.Fields{
 				"message":   "problem stopping agent monitor",
 				"host":      h.Id,
