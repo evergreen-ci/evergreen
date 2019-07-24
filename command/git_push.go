@@ -96,10 +96,12 @@ func (c *gitPush) Execute(ctx context.Context, comm client.Communicator, logger 
 		if modulePatch.ModuleName == "" {
 			continue
 		}
-		if len(modulePatch.PatchSet.Patch) == 0 {
+
+		if len(modulePatch.PatchSet.Summary) == 0 {
 			logger.Execution().Info("Skipping empty patch file...")
 			continue
 		}
+
 		var module *model.Module
 		module, err = conf.Project.GetModuleByName(modulePatch.ModuleName)
 		if err != nil {
@@ -136,7 +138,8 @@ func (c *gitPush) Execute(ctx context.Context, comm client.Communicator, logger 
 		if modulePatch.ModuleName != "" {
 			continue
 		}
-		if len(modulePatch.PatchSet.Patch) == 0 {
+
+		if len(modulePatch.PatchSet.Summary) == 0 {
 			logger.Execution().Info("Skipping empty patch file...")
 			continue
 		}
