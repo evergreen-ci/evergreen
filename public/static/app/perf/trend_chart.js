@@ -60,7 +60,7 @@ mciModule.factory('DrawPerfTrendChart', function (
 
     document.getElementById(containerId).innerHTML = '';
 
-    var svg = d3.select('#' + containerId)
+    var svg = d3.select('[id="' + containerId + '"]')
       .append('svg')
       .attr({
         class: 'series',
