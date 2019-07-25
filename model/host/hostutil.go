@@ -525,8 +525,8 @@ func (h *Host) StartAgentMonitorRequest(settings *evergreen.Settings) (string, e
 	return h.buildLocalJasperClientRequest(settings.HostJasper, jaspercli.CreateCommand, input)
 }
 
-// StopAgentMonitor stops the agent monitor on the host via its Jasper service.
-// On legacy hosts, this is a no-op.
+// StopAgentMonitor stops the agent monitor (if it is running) on the host via
+// its Jasper service . On legacy hosts, this is a no-op.
 func (h *Host) StopAgentMonitor(ctx context.Context, env evergreen.Environment) error {
 	if h.LegacyBootstrap() {
 		return nil
@@ -542,7 +542,7 @@ func (h *Host) StopAgentMonitor(ctx context.Context, env evergreen.Environment) 
 		return errors.Wrapf(err, "could not get processes with tag %s", evergreen.AgentMonitorTag)
 	}
 
-	grip.WarningWhen(len(procs) != 1, message.Fields{
+	grip.ErrorWhen(len(procs) != 1, message.Fields{
 		"message": fmt.Sprintf("host should be running exactly one agent monitor, but found %d", len(procs)),
 		"host":    h.Id,
 		"distro":  h.Distro.Id,
