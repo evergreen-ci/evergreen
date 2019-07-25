@@ -118,7 +118,7 @@ func checkHostHealth(h *host.Host) bool {
 // agentRevisionIsOld checks that the agent revision is current.
 func agentRevisionIsOld(h *host.Host) bool {
 	if h.AgentRevision != evergreen.BuildRevision {
-		grip.Info(message.Fields{
+		grip.InfoWhen(h.LegacyBootstrap(), message.Fields{
 			"message":        "agent has wrong revision, so it should exit",
 			"host_revision":  h.AgentRevision,
 			"agent_revision": evergreen.BuildRevision,
@@ -132,7 +132,6 @@ func agentRevisionIsOld(h *host.Host) bool {
 // It then acquires the lock, and with it, marks tasks as finished or inactive if aborted.
 // If the task is a patch, it will alert the users based on failures
 // It also updates the expected task duration of the task for scheduling.
-// NOTE this should eventually become the default code path.
 func (as *APIServer) EndTask(w http.ResponseWriter, r *http.Request) {
 	finishTime := time.Now()
 
@@ -635,6 +634,26 @@ func handleOldAgentRevision(response apimodels.NextTaskResponse, h *host.Host, w
 			gimlet.WriteJSON(w, response)
 			return apimodels.NextTaskResponse{}, true
 		}
+
+		// Non-legacy hosts deploying agents via the agent monitor may be
+		// running an agent on the current revision, but the database host has
+		// yet to be updated.
+		if !h.LegacyBootstrap() && details.AgentRevision != h.AgentRevision {
+			err := h.SetAgentRevision(details.AgentRevision)
+			if err == nil {
+				event.LogHostAgentDeployed(h.Id)
+				return response, false
+			}
+			grip.Error(message.WrapError(err, message.Fields{
+				"message":       "problem updating host agent revision",
+				"operation":     "next_task",
+				"host":          h.Id,
+				"source":        "database error",
+				"host_revision": details.AgentRevision,
+				"revsision":     evergreen.BuildRevision,
+			}))
+		}
+
 		if details.TaskGroup == "" {
 			if err := h.SetNeedsNewAgent(true); err != nil {
 				grip.Error(message.WrapError(err, message.Fields{
