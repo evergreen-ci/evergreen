@@ -75,7 +75,7 @@ mciModule.factory('PointsDataService', function ($log, Stitch, STITCH_CONFIG) {
       docs => docs,
       err => {
         // Try to gracefully handle an error.
-        $log.error('Cannot load outliers and rejected points!', err);
+        $log.error('Cannot load points!', err);
         return [];
       });
   };
