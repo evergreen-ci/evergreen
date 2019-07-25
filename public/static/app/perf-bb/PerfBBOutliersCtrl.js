@@ -367,7 +367,7 @@ mciModule.controller('PerfBBOutliersCtrl', function (
   }
 
   return MarkHandler;
-}).factory('OutlierState', function(FORMAT, MDBQueryAdaptor, EvgUtil, EvgUiGridUtil, uiGridConstants, OutliersDataService, MuteDataService, $q) {
+}).factory('OutlierState', function(FORMAT, OUTLIERS ,MDBQueryAdaptor, EvgUtil, EvgUiGridUtil, uiGridConstants, OutliersDataService, MuteDataService, $q) {
   class OutlierState {
     // Create a new state instance to encapsulate filtering, sorting and generating queries.
     //
@@ -531,7 +531,7 @@ mciModule.controller('PerfBBOutliersCtrl', function (
         defaultFilters = [{
           field: 'type',
           type: 'string',
-          term: '=detected'
+          term: '=' + OUTLIERS.HIGH_CONFIDENCE
         }];
       }
 
@@ -669,11 +669,11 @@ mciModule.controller('PerfBBOutliersCtrl', function (
   }
 
   return Operation;
-}).filter('outlierTypeToConfidence', function() {
+}).filter('outlierTypeToConfidence', function(OUTLIERS) {
   return function(type) {
-    if (type === 'detected') {
+    if (type === OUTLIERS.HIGH_CONFIDENCE) {
       return  "high" ;
-    } else if (type === 'suspicious') {
+    } else if (type === OUTLIERS.LOW_CONFIDENCE) {
       return "low";
     }
   }
