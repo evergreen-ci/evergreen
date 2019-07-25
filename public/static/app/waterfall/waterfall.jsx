@@ -386,24 +386,37 @@ class GearMenu extends React.PureComponent {
   constructor(props) {
     super(props);
     this.addNotification = this.addNotification.bind(this);
+    const requesterSubscriberSettings = {text: "Build initiator", key:"requester", type:"select", options:{
+        "gitter_request":"Commit",
+        "patch_request":"Patch",
+        "github_pull_request":"Pull Request",
+        "merge_test":"Commit Queue",
+        "ad_hoc":"Periodic Build"
+      }, default: "gitter_request"}
     this.triggers = [
       {
         trigger: "outcome",
         resource_type: "TASK",
         label: "any task finishes",
-        regex_selectors: taskRegexSelectors()
+        regex_selectors: taskRegexSelectors(),
+        extraFields: [requesterSubscriberSettings]
       },
       {
         trigger: "failure",
         resource_type: "TASK",
         label: "any task fails",
-        regex_selectors: taskRegexSelectors()
+        regex_selectors: taskRegexSelectors(),
+        extraFields: [
+          {text: "Failure type", key:"failure-type", type:"select", options:{"any":"Any","test":"Test","system":"System","setup":"Setup"}, default: "any"},
+          requesterSubscriberSettings
+        ]
       },
       {
         trigger: "success",
         resource_type: "TASK",
         label: "any task succeeds",
-        regex_selectors: taskRegexSelectors()
+        regex_selectors: taskRegexSelectors(),
+        extraFields: [requesterSubscriberSettings]
       },
       {
         trigger: "exceeds-duration",
@@ -428,33 +441,39 @@ class GearMenu extends React.PureComponent {
         resource_type: "BUILD",
         label: "a build-variant in any version finishes",
         regex_selectors: buildRegexSelectors(),
+        extraFields: [requesterSubscriberSettings]
       },
       {
         trigger: "failure",
         resource_type: "BUILD",
         label: "a build-variant in any version fails",
         regex_selectors: buildRegexSelectors(),
+        extraFields: [requesterSubscriberSettings]
       },
       {
         trigger: "success",
         resource_type: "BUILD",
         label: "a build-variant in any version succeeds",
         regex_selectors: buildRegexSelectors(),
+        extraFields: [requesterSubscriberSettings]
       },
       {
         trigger: "outcome",
         resource_type: "VERSION",
         label: "any version finishes",
+        extraFields: [requesterSubscriberSettings]
       },
       {
         trigger: "failure",
         resource_type: "VERSION",
         label: "any version fails",
+        extraFields: [requesterSubscriberSettings]
       },
       {
         trigger: "success",
         resource_type: "VERSION",
         label: "any version succeeds",
+        extraFields: [requesterSubscriberSettings]
       }
     ];
   }
