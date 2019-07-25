@@ -48,10 +48,10 @@ func GetRouter(as *APIServer, uis *UIServer) (http.Handler, error) {
 	app.AddMiddleware(gimlet.NewStatic("/clients", http.Dir(filepath.Join(uis.Home, evergreen.ClientDirectory))))
 
 	app.AddRoute("/robots.txt").Version(0).Handler(func(r *http.Request, rw http.ResponseWriter) {
-		_, err := rw.Write(strings.Join([]string{
+		_, err := rw.Write([]byte(strings.Join([]string{
 			"User-agent: *",
 			"Disallow: /",
-		}, "\n"))
+		}, "\n")))
 		if err != nil {
 			gimlet.WriteResponse(rw, gimlet.MakeTextErrorResponder(err))
 		}
