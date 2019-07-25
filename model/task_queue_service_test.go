@@ -149,7 +149,7 @@ func (s *taskDispatchServiceSuite) TestConstructor() {
 	//////////////////////////////////////////////////////////////////////////////
 
 	s.Len(service.order, 24, "20 bare tasks + 4 task groups")
-	s.Len(service.order, 24, "20 bare tasks + 4 task groups")
+	s.Len(service.units, 24, "20 bare tasks + 4 task groups")
 	s.Equal(len(service.order), len(service.units), "order and units should have same length")
 	s.Equal("distro_1", service.distroID)
 	s.Equal(60*time.Second, service.ttl)
