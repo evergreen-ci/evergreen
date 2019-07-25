@@ -542,7 +542,7 @@ func (h *Host) StopAgentMonitor(ctx context.Context, env evergreen.Environment) 
 		return errors.Wrapf(err, "could not get processes with tag %s", evergreen.AgentMonitorTag)
 	}
 
-	grip.ErrorWhen(len(procs) != 1, message.Fields{
+	grip.WarningWhen(len(procs) != 1, message.Fields{
 		"message": fmt.Sprintf("host should be running exactly one agent monitor, but found %d", len(procs)),
 		"host":    h.Id,
 		"distro":  h.Distro.Id,
@@ -551,7 +551,7 @@ func (h *Host) StopAgentMonitor(ctx context.Context, env evergreen.Environment) 
 	catcher := grip.NewBasicCatcher()
 	for _, proc := range procs {
 		if proc.Running(ctx) {
-			catcher.Add(errors.Wrapf(proc.Signal(ctx, syscall.SIGTERM), "problem signalling process with ID %s", proc.ID()))
+			catcher.Wrapf(proc.Signal(ctx, syscall.SIGTERM), "problem signalling process with ID %s", proc.ID())
 		}
 	}
 
