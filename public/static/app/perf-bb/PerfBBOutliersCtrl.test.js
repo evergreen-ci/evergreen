@@ -1274,6 +1274,7 @@ describe('PerfBBOutliersFactoriesTest', () => {
       inject($injector => {
         OutlierState = $injector.get('OutlierState');
         format = $injector.get('FORMAT');
+        OUTLIERS = $injector.get('OUTLIERS');
       });
       state = new OutlierState(PROJECT, model, mandatory, transient, sorting, settings, limit);
     });
@@ -1617,7 +1618,7 @@ describe('PerfBBOutliersFactoriesTest', () => {
         expect(state.getFilteringContext()).toEqual( [{
           field: 'type',
           type: 'string',
-          term: '=detected'
+          term: '=' + OUTLIERS.HIGH_CONFIDENCE
         }]);
       });
 
@@ -1628,7 +1629,7 @@ describe('PerfBBOutliersFactoriesTest', () => {
         expect(state.getFilteringContext()).toEqual( [{
           field: 'type',
           type: 'string',
-          term: '=detected'
+          term: '=' + OUTLIERS.HIGH_CONFIDENCE
         }]);
       });
 
@@ -1649,7 +1650,7 @@ describe('PerfBBOutliersFactoriesTest', () => {
         expect(state.getFilteringContext()).toEqual( [{
           field: 'type',
           type: 'string',
-          term: '=detected'
+          term: '=' + OUTLIERS.HIGH_CONFIDENCE
         },{
           field: 'test',
           type: 'string',
@@ -2186,9 +2187,9 @@ describe('PerfBBOutliersFactoriesTest', () => {
 
     beforeEach(() => inject($filter => outlierTypeToConfidence = $filter('outlierTypeToConfidence')));
 
-    it('should return high for detected', () => expect(outlierTypeToConfidence('detected')).toEqual('high'));
+    it('should return high for detected', () => expect(outlierTypeToConfidence(OUTLIERS.HIGH_CONFIDENCE)).toEqual('high'));
 
-    it('should return low for detected', () => expect(outlierTypeToConfidence('suspicious')).toEqual('low'));
+    it('should return low for detected', () => expect(outlierTypeToConfidence(OUTLIERS.LOW_CONFIDENCE)).toEqual('low'));
 
     it('should return null otherwise', () => expect(outlierTypeToConfidence('some other value')).toEqual(undefined));
 
