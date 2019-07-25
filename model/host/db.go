@@ -313,7 +313,12 @@ func ByUnprovisionedSince(threshold time.Time) db.Q {
 
 // ByTaskSpec returns a query that finds all running hosts that are running a
 // task with the given group, buildvariant, project, and version.
-func NumHostsByTaskSpec(group, bv, project, version string) (int, error) {
+func NumHostsByTaskSpec(group, buildVariant, project, version string) (int, error) {
+	if group == "" || buildVariant == "" || project == "" || version == "" {
+		s := "all arguments passed to host.NumHostsByTaskSpec must be non-empty strings: "
+		s += fmt.Sprintf("group is '%s', buildVariant is '%s', project is '%s' and version is '%s'", group, buildVariant, project, version)
+		return 0, errors.New(s)
+	}
 	q := db.Query(
 		bson.M{
 			StatusKey: evergreen.HostRunning,
@@ -321,14 +326,14 @@ func NumHostsByTaskSpec(group, bv, project, version string) (int, error) {
 				{
 					RunningTaskKey:             bson.M{"$exists": "true"},
 					RunningTaskGroupKey:        group,
-					RunningTaskBuildVariantKey: bv,
+					RunningTaskBuildVariantKey: buildVariant,
 					RunningTaskProjectKey:      project,
 					RunningTaskVersionKey:      version,
 				},
 				{
 					LTCTaskKey:    bson.M{"$exists": "true"},
 					LTCGroupKey:   group,
-					LTCBVKey:      bv,
+					LTCBVKey:      buildVariant,
 					LTCProjectKey: project,
 					LTCVersionKey: version,
 				},

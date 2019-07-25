@@ -268,7 +268,7 @@ func (as *APIServer) EndTask(w http.ResponseWriter, r *http.Request) {
 
 	grip.Info(message.Fields{
 		"message":   "Successfully marked task as finished",
-		"task":      t.Id,
+		"task_id":   t.Id,
 		"execution": t.Execution,
 		"operation": "mark end",
 		"duration":  time.Since(finishTime),
@@ -305,9 +305,9 @@ func assignNextAvailableTask(taskQueue *model.TaskQueue, taskQueueService model.
 			m = "cannot find the db.distro document for the given distro;"
 		}
 		grip.Warning(message.Fields{
-			"message": m + " falling back to host.Distro",
-			"distro":  currentHost.Distro.Id,
-			"host":    currentHost.Id,
+			"message":   m + " falling back to host.Distro",
+			"distro_id": currentHost.Distro.Id,
+			"host_id":   currentHost.Id,
 		})
 		d = currentHost.Distro
 	}
@@ -335,15 +335,15 @@ func assignNextAvailableTask(taskQueue *model.TaskQueue, taskQueueService model.
 			queueItem, err = taskQueueService.RefreshFindNextTask(d.Id, spec)
 			if err != nil {
 				grip.Critical(message.WrapError(err, message.Fields{
-					"message":              "problem getting next task for the given host",
-					"distro":               d.Id,
-					"host":                 currentHost.Id,
-					"host_last_task_id":    currentHost.LastTask,
-					"spec_group":           spec.Group,
-					"spec_build_variant":   spec.BuildVariant,
-					"spec_version":         spec.Version,
-					"spec_project_id":      spec.ProjectID,
-					"spec_group_max_hosts": spec.GroupMaxHosts,
+					"message":                  "problem getting next task for the given host",
+					"distro_id":                d.Id,
+					"host_id":                  currentHost.Id,
+					"host_last_task_id":        currentHost.LastTask,
+					"taskspec_group":           spec.Group,
+					"taskspec_build_variant":   spec.BuildVariant,
+					"taskspec_version":         spec.Version,
+					"taskspec_project_id":      spec.ProjectID,
+					"taskspec_group_max_hosts": spec.GroupMaxHosts,
 				}))
 				return nil, errors.Wrap(err, "problem getting next task")
 			}
@@ -352,11 +352,11 @@ func assignNextAvailableTask(taskQueue *model.TaskQueue, taskQueueService model.
 		}
 		if queueItem == nil {
 			grip.DebugWhen(d.PlannerSettings.Version == evergreen.PlannerVersionRevised, message.Fields{
-				"ticket":                        "EVG-6289",
+				// "ticket":                        "EVG-6289",
 				"function":                      "assignNextAvailableTask",
 				"message":                       "taskQueueService.RefreshFindNextTask returned no task - returning nil",
-				"distro":                        d.Id,
-				"host":                          currentHost.Id,
+				"distro_id":                     d.Id,
+				"host_id":                       currentHost.Id,
 				"host_last_task_id":             currentHost.LastTask,
 				"host_last_group":               currentHost.LastGroup,
 				"host_last_build_variant":       currentHost.LastBuildVariant,
@@ -364,11 +364,11 @@ func assignNextAvailableTask(taskQueue *model.TaskQueue, taskQueueService model.
 				"host_last_project":             currentHost.LastProject,
 				"host_task_count":               currentHost.TaskCount,
 				"host_last_task_completed_time": currentHost.LastTaskCompletedTime,
-				"spec_group":                    spec.Group,
-				"spec_build_variant":            spec.BuildVariant,
-				"spec_version":                  spec.Version,
-				"spec_project_id":               spec.ProjectID,
-				"spec_group_max_hosts":          spec.GroupMaxHosts,
+				"taskspec_group":                spec.Group,
+				"taskspec_build_variant":        spec.BuildVariant,
+				"taskspec_version":              spec.Version,
+				"taskspec_project_id":           spec.ProjectID,
+				"taskspec_group_max_hosts":      spec.GroupMaxHosts,
 				"task_queue_length":             taskQueue.Length(),
 			})
 
@@ -378,32 +378,32 @@ func assignNextAvailableTask(taskQueue *model.TaskQueue, taskQueueService model.
 		nextTask, err := task.FindOneNoMerge(task.ById(queueItem.Id))
 		if err != nil {
 			grip.Error(message.WrapError(err, message.Fields{
-				"message":              "database error while retrieving the db.tasks document for the next task to be assigned to this host",
-				"distro":               d.Id,
-				"host":                 currentHost.Id,
-				"next_task_id":         queueItem.Id,
-				"last_task_id":         currentHost.LastTask,
-				"spec_group":           spec.Group,
-				"spec_build_variant":   spec.BuildVariant,
-				"spec_version":         spec.Version,
-				"spec_project_id":      spec.ProjectID,
-				"spec_group_max_hosts": spec.GroupMaxHosts,
+				"message":                  "database error while retrieving the db.tasks document for the next task to be assigned to this host",
+				"distro_id":                d.Id,
+				"host_id":                  currentHost.Id,
+				"next_task_id":             queueItem.Id,
+				"last_task_id":             currentHost.LastTask,
+				"taskspec_group":           spec.Group,
+				"taskspec_build_variant":   spec.BuildVariant,
+				"taskspec_version":         spec.Version,
+				"taskspec_project_id":      spec.ProjectID,
+				"taskspec_group_max_hosts": spec.GroupMaxHosts,
 			}))
 			return nil, err
 		}
 
 		if nextTask == nil {
 			grip.Error(message.Fields{
-				"message":              "cannot find a db.tasks document for the next task to be assigned to this host",
-				"distro":               d.Id,
-				"host":                 currentHost.Id,
-				"next_task_id":         queueItem.Id,
-				"last_task_id":         currentHost.LastTask,
-				"spec_group":           spec.Group,
-				"spec_build_variant":   spec.BuildVariant,
-				"spec_version":         spec.Version,
-				"spec_project_id":      spec.ProjectID,
-				"spec_group_max_hosts": spec.GroupMaxHosts,
+				"message":                  "cannot find a db.tasks document for the next task to be assigned to this host",
+				"distro_id":                d.Id,
+				"host_id":                  currentHost.Id,
+				"next_task_id":             queueItem.Id,
+				"last_task_id":             currentHost.LastTask,
+				"taskspec_group":           spec.Group,
+				"taskspec_build_variant":   spec.BuildVariant,
+				"taskspec_version":         spec.Version,
+				"taskspec_project_id":      spec.ProjectID,
+				"taskspec_group_max_hosts": spec.GroupMaxHosts,
 			})
 
 			// An error is not returned in this situation due to https://jira.mongodb.org/browse/EVG-6214
@@ -413,30 +413,30 @@ func assignNextAvailableTask(taskQueue *model.TaskQueue, taskQueueService model.
 		// validate that the task can be run, if not fetch the next one in the queue.
 		if !nextTask.IsDispatchable() {
 			grip.Warning(message.Fields{
-				"message":              "skipping un-dispatchable task",
-				"distro":               d.Id,
-				"task_id":              nextTask.Id,
-				"status":               nextTask.Status,
-				"activated":            nextTask.Activated,
-				"host":                 currentHost.Id,
-				"spec_group":           spec.Group,
-				"spec_build_variant":   spec.BuildVariant,
-				"spec_version":         spec.Version,
-				"spec_project_id":      spec.ProjectID,
-				"spec_group_max_hosts": spec.GroupMaxHosts,
+				"message":                  "skipping un-dispatchable task",
+				"distro_id":                d.Id,
+				"task_id":                  nextTask.Id,
+				"status":                   nextTask.Status,
+				"activated":                nextTask.Activated,
+				"host_id":                  currentHost.Id,
+				"taskspec_group":           spec.Group,
+				"taskspec_build_variant":   spec.BuildVariant,
+				"taskspec_version":         spec.Version,
+				"taskspec_project_id":      spec.ProjectID,
+				"taskspec_group_max_hosts": spec.GroupMaxHosts,
 			})
 
 			// Dequeue the task so we don't get it on another iteration of the loop.
 			grip.Warning(message.WrapError(taskQueue.DequeueTask(nextTask.Id), message.Fields{
-				"message":              "nextTask.IsDispatchable() is false, but there was an issue dequeuing the task",
-				"distro":               d.Id,
-				"task_id":              nextTask.Id,
-				"host":                 currentHost.Id,
-				"spec_group":           spec.Group,
-				"spec_build_variant":   spec.BuildVariant,
-				"spec_version":         spec.Version,
-				"spec_project_id":      spec.ProjectID,
-				"spec_group_max_hosts": spec.GroupMaxHosts,
+				"message":                  "nextTask.IsDispatchable() is false, but there was an issue dequeuing the task",
+				"distro_id":                d.Id,
+				"task_id":                  nextTask.Id,
+				"host_id":                  currentHost.Id,
+				"taskspec_group":           spec.Group,
+				"taskspec_build_variant":   spec.BuildVariant,
+				"taskspec_version":         spec.Version,
+				"taskspec_project_id":      spec.ProjectID,
+				"taskspec_group_max_hosts": spec.GroupMaxHosts,
 			}))
 
 			continue
@@ -448,7 +448,7 @@ func assignNextAvailableTask(taskQueue *model.TaskQueue, taskQueueService model.
 				"task_id": nextTask.Id,
 				"message": "could not find project ref for next task, skipping",
 				"project": nextTask.Project,
-				"host":    currentHost.Id,
+				"host_id": currentHost.Id,
 			})
 			return nil, errors.Wrapf(err, "could not find project ref for next task %s", nextTask.Id)
 		}
@@ -457,20 +457,20 @@ func assignNextAvailableTask(taskQueue *model.TaskQueue, taskQueueService model.
 			grip.Warning(message.Fields{
 				"task_id": nextTask.Id,
 				"project": nextTask.Project,
-				"host":    currentHost.Id,
+				"host_id": currentHost.Id,
 				"message": "skipping task because of disabled project",
 			})
 
 			grip.Warning(message.WrapError(taskQueue.DequeueTask(nextTask.Id), message.Fields{
-				"message":              "projectRef.Enabled is false, but there was an issue dequeuing the task",
-				"distro":               nextTask.DistroId,
-				"task_id":              nextTask.Id,
-				"host":                 currentHost.Id,
-				"spec_group":           spec.Group,
-				"spec_build_variant":   spec.BuildVariant,
-				"spec_version":         spec.Version,
-				"spec_project_id":      spec.ProjectID,
-				"spec_group_max_hosts": spec.GroupMaxHosts,
+				"message":                  "projectRef.Enabled is false, but there was an issue dequeuing the task",
+				"distro_id":                nextTask.DistroId,
+				"task_id":                  nextTask.Id,
+				"host_id":                  currentHost.Id,
+				"taskspec_group":           spec.Group,
+				"taskspec_build_variant":   spec.BuildVariant,
+				"taskspec_version":         spec.Version,
+				"taskspec_project_id":      spec.ProjectID,
+				"taskspec_group_max_hosts": spec.GroupMaxHosts,
 			}))
 
 			continue
@@ -483,15 +483,15 @@ func assignNextAvailableTask(taskQueue *model.TaskQueue, taskQueueService model.
 		}
 		// Dequeue the task so we don't get it on another iteration of the loop.
 		grip.Warning(message.WrapError(taskQueue.DequeueTask(nextTask.Id), message.Fields{
-			"message":              "Updated the relevant running task fields for the given host, but there was an issue dequeuing the task",
-			"distro":               nextTask.DistroId,
-			"task_id":              nextTask.Id,
-			"host":                 currentHost.Id,
-			"spec_group":           spec.Group,
-			"spec_build_variant":   spec.BuildVariant,
-			"spec_version":         spec.Version,
-			"spec_project_id":      spec.ProjectID,
-			"spec_group_max_hosts": spec.GroupMaxHosts,
+			"message":                  "updated the relevant running task fields for the given host, but there was an issue dequeuing the task",
+			"distro_id":                nextTask.DistroId,
+			"task_id":                  nextTask.Id,
+			"host_id":                  currentHost.Id,
+			"taskspec_group":           spec.Group,
+			"taskspec_build_variant":   spec.BuildVariant,
+			"taskspec_version":         spec.Version,
+			"taskspec_project_id":      spec.ProjectID,
+			"taskspec_group_max_hosts": spec.GroupMaxHosts,
 		}))
 
 		if !ok {
