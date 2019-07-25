@@ -167,6 +167,7 @@ func (t *basicCachedDispatcherImpl) Refresh() error {
 
 	taskQueueItems := taskQueue.Queue
 	t.rebuild(taskQueueItems)
+
 	grip.Debug(message.Fields{
 		"function":     "Refresh",
 		"message":      "refresh was successful",
@@ -216,7 +217,7 @@ func (t *basicCachedDispatcherImpl) rebuild(items []TaskQueueItem) {
 			// If it's the first time encountering the task group, save it to the order
 			// and create an entry for it in the map. Otherwise, append to the
 			// TaskQueueItem array in the map.
-			id = compositeGroupId(item.Group, item.BuildVariant, item.Version)
+			id = compositeGroupId(item.Group, item.BuildVariant, item.Project, item.Version)
 			if _, ok = units[id]; !ok {
 				order = append(order, id)
 				units[id] = schedulableUnit{
@@ -276,7 +277,7 @@ func (t *basicCachedDispatcherImpl) FindNextTask(spec TaskSpec) *TaskQueueItem {
 	var next *TaskQueueItem
 
 	if spec.Group != "" {
-		unit, ok = t.units[compositeGroupId(spec.Group, spec.BuildVariant, spec.Version)]
+		unit, ok = t.units[compositeGroupId(spec.Group, spec.BuildVariant, spec.ProjectID, spec.Version)]
 		if ok {
 			if next = t.nextTaskGroupTask(unit); next != nil {
 				return next
@@ -287,7 +288,7 @@ func (t *basicCachedDispatcherImpl) FindNextTask(spec TaskSpec) *TaskQueueItem {
 		grip.Debug(message.Fields{
 			"function":                 "FindNextTask",
 			"message":                  "basicCachedDispatcherImpl.units[key] was not found - assuming it has been dispatched; falling through to try and get a task not in the current task group",
-			"key":                      compositeGroupId(spec.Group, spec.BuildVariant, spec.Version),
+			"key":                      compositeGroupId(spec.Group, spec.BuildVariant, spec.ProjectID, spec.Version),
 			"taskspec_group":           spec.Group,
 			"taskspec_build_variant":   spec.BuildVariant,
 			"taskspec_version":         spec.Version,
@@ -321,24 +322,25 @@ func (t *basicCachedDispatcherImpl) FindNextTask(spec TaskSpec) *TaskQueueItem {
 		// If maxHosts is not set, this is not a task group.
 		if unit.maxHosts == 0 {
 			delete(t.units, schedulableUnitID)
-			// if len(unit.tasks) == 0 {
-			// 	grip.Debug(message.Fields{
-			// 		"function":                      "FindNextTask",
-			// 		"message":                       "schedulableUnit.maxHosts == 0 - this is not a task group; schedulableUnit.tasks is empty - returning nil",
-			// 		"distro_id":                     t.distroID,
-			// 		"schedulableunit_id":            unit.id,
-			// 		"schedulableunit_group":         unit.group,
-			// 		"schedulableunit_project":       unit.project,
-			// 		"schedulableunit_version":       unit.version,
-			// 		"schedulableunit_variant":       unit.variant,
-			// 		"schedulableunit_running_hosts": unit.runningHosts,
-			// 		"schedulableunit_max_hosts":     unit.maxHosts,
-			// 		"schedulableunit_num_tasks":     len(unit.tasks),
-			// 		"task_id_returned":              "",
-			// 	})
-			//
-			// 	return nil
-			// }
+			if len(unit.tasks) == 0 {
+				grip.Critical(message.Fields{
+					"function":                      "FindNextTask",
+					"message":                       "schedulableUnit.maxHosts == 0 - this is not a task group; but schedulableUnit.tasks is empty - returning nil",
+					"distro_id":                     t.distroID,
+					"schedulableunit_id":            unit.id,
+					"schedulableunit_group":         unit.group,
+					"schedulableunit_project":       unit.project,
+					"schedulableunit_version":       unit.version,
+					"schedulableunit_variant":       unit.variant,
+					"schedulableunit_running_hosts": unit.runningHosts,
+					"schedulableunit_max_hosts":     unit.maxHosts,
+					"schedulableunit_num_tasks":     len(unit.tasks),
+					"task_id_returned":              "",
+				})
+
+				return nil
+			}
+
 			grip.Debug(message.Fields{
 				"function":                      "FindNextTask",
 				"message":                       "schedulableUnit.maxHosts == 0 - this is not a task group",
@@ -436,8 +438,8 @@ func (t *basicCachedDispatcherImpl) FindNextTask(spec TaskSpec) *TaskQueueItem {
 	return nil
 }
 
-func compositeGroupId(group, variant, version string) string {
-	return fmt.Sprintf("%s-%s-%s", group, variant, version)
+func compositeGroupId(group, variant, project, version string) string {
+	return fmt.Sprintf("%s_%s_%s_%s", group, variant, project, version)
 }
 
 func (t *basicCachedDispatcherImpl) nextTaskGroupTask(unit schedulableUnit) *TaskQueueItem {
