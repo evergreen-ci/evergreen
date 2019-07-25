@@ -64,7 +64,24 @@ mciModule.factory('PointsDataService', function ($log, Stitch, STITCH_CONFIG) {
       });
   };
 
+  const getPointsQ = (query) => {
+    return Stitch.use(STITCH_CONFIG.PERF).query(function (db) {
+      return db
+        .db(STITCH_CONFIG.PERF.DB_PERF)
+        .collection(STITCH_CONFIG.PERF.COLL_POINTS)
+        .find(query)
+        .execute();
+    }).then(
+      docs => docs,
+      err => {
+        // Try to gracefully handle an error.
+        $log.error('Cannot load outliers and rejected points!', err);
+        return [];
+      });
+  };
+
   return {
     getOutlierPointsQ: getOutlierPointsQ,
+    getPointsQ: getPointsQ,
   }
 });
