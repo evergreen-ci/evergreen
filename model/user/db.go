@@ -24,6 +24,7 @@ var (
 	APIKeyKey           = bsonutil.MustHaveTag(DBUser{}, "APIKey")
 	PubKeysKey          = bsonutil.MustHaveTag(DBUser{}, "PubKeys")
 	LoginCacheKey       = bsonutil.MustHaveTag(DBUser{}, "LoginCache")
+	RolesKey            = bsonutil.MustHaveTag(DBUser{}, "SystemRoles")
 	LoginCacheTokenKey  = bsonutil.MustHaveTag(LoginCache{}, "Token")
 	LoginCacheTTLKey    = bsonutil.MustHaveTag(LoginCache{}, "TTL")
 	PubKeyNameKey       = bsonutil.MustHaveTag(PubKey{}, "Name")
