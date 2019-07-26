@@ -152,8 +152,8 @@ func (ac *DBAdminConnector) SetServiceFlags(flags evergreen.ServiceFlags, u *use
 }
 
 // RestartFailedTasks attempts to restart failed tasks that started between 2 times
-func (ac *DBAdminConnector) RestartFailedTasks(queue amboy.Queue, opts model.RestartTaskOptions) (*restModel.RestartTasksResponse, error) {
-	var results model.RestartTaskResults
+func (ac *DBAdminConnector) RestartFailedTasks(queue amboy.Queue, opts model.RestartOptions) (*restModel.RestartResponse, error) {
+	var results model.RestartResults
 	var err error
 
 	if opts.DryRun {
@@ -167,13 +167,13 @@ func (ac *DBAdminConnector) RestartFailedTasks(queue amboy.Queue, opts model.Res
 		}
 	}
 
-	return &restModel.RestartTasksResponse{
-		TasksRestarted: results.TasksRestarted,
-		TasksErrored:   results.TasksErrored,
+	return &restModel.RestartResponse{
+		ItemsRestarted: results.ItemsRestarted,
+		ItemsErrored:   results.ItemsErrored,
 	}, nil
 }
 
-func (ac *DBAdminConnector) RestartFailedCommitQueueVersions(opts model.RestartVersionsOptions) (*restModel.RestartVersionsResponse, error) {
+func (ac *DBAdminConnector) RestartFailedCommitQueueVersions(opts model.RestartOptions) (*restModel.RestartResponse, error) {
 	totalRestarted := []string{}
 	totalNotRestarted := []string{}
 	pRefs, err := model.FindProjectRefsWithCommitQueueEnabled()
@@ -194,9 +194,9 @@ func (ac *DBAdminConnector) RestartFailedCommitQueueVersions(opts model.RestartV
 		totalRestarted = append(totalRestarted, restarted...)
 		totalNotRestarted = append(totalNotRestarted, notRestarted...)
 	}
-	return &restModel.RestartVersionsResponse{
-		VersionsRequeued: totalRestarted,
-		VersionsErrored:  totalNotRestarted,
+	return &restModel.RestartResponse{
+		ItemsRestarted: totalRestarted,
+		ItemsErrored:   totalNotRestarted,
 	}, nil
 }
 
@@ -285,10 +285,10 @@ func (ac *MockAdminConnector) SetServiceFlags(flags evergreen.ServiceFlags, u *u
 }
 
 // RestartFailedTasks mocks a response to restarting failed tasks
-func (ac *MockAdminConnector) RestartFailedTasks(queue amboy.Queue, opts model.RestartTaskOptions) (*restModel.RestartTasksResponse, error) {
-	return &restModel.RestartTasksResponse{
-		TasksRestarted: []string{"task1", "task2", "task3"},
-		TasksErrored:   nil,
+func (ac *MockAdminConnector) RestartFailedTasks(queue amboy.Queue, opts model.RestartOptions) (*restModel.RestartResponse, error) {
+	return &restModel.RestartResponse{
+		ItemsRestarted: []string{"task1", "task2", "task3"},
+		ItemsErrored:   nil,
 	}, nil
 }
 
@@ -300,6 +300,6 @@ func (ac *MockAdminConnector) GetAdminEventLog(before time.Time, n int) ([]restM
 	return nil, nil
 }
 
-func (ac *MockAdminConnector) RestartFailedCommitQueueVersions(opts model.RestartVersionsOptions) (*restModel.RestartVersionsResponse, error) {
+func (ac *MockAdminConnector) RestartFailedCommitQueueVersions(opts model.RestartOptions) (*restModel.RestartResponse, error) {
 	return nil, errors.New("not implemented")
 }

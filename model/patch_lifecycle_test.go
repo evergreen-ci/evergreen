@@ -759,7 +759,7 @@ func TestRetryCommitQueueItems(t *testing.T) {
 	startTime := time.Date(2019, 7, 15, 12, 0, 0, 0, time.Local)
 	endTime := startTime.Add(2 * time.Hour)
 
-	opts := RestartVersionsOptions{
+	opts := RestartOptions{
 		StartTime: startTime,
 		EndTime:   endTime,
 	}
@@ -863,13 +863,14 @@ func TestRetryCommitQueueItems(t *testing.T) {
 					FinishTime:  endTime.Add(30 * time.Minute),
 					Status:      evergreen.PatchFailed,
 				},
+
 				{ // not within time frame
 					Id:          mgobson.NewObjectId(),
 					PatchNumber: 4,
 					Project:     projectRef.Identifier,
 					Githash:     patchedRevision,
-					StartTime:   endTime.Add(time.Second),
-					FinishTime:  endTime.Add(30 * time.Minute),
+					StartTime:   time.Date(2019, 6, 15, 12, 0, 0, 0, time.Local),
+					FinishTime:  time.Date(2019, 6, 15, 12, 20, 0, 0, time.Local),
 					Status:      evergreen.PatchFailed,
 					Alias:       evergreen.CommitQueueAlias,
 				},

@@ -18,7 +18,7 @@ Admin Settings
 
 {{define "content"}}
 <div ng-controller="AdminSettingsController" layout="column" ng-cloak>
-	<div id="tasks-modal" class="modal fade" tabindex="-1" role="dialog" aria-hidden="true">
+	<div id="restart-modal" class="modal fade" tabindex="-1" role="dialog" aria-hidden="true">
 		<div class="modal-dialog" style="width: 1000px">
 			<div class="modal-content">
 				<div class="modal-header">
@@ -27,37 +27,13 @@ Admin Settings
 				</div>
 				<div class="modal-body">
 					<div id="divMsg"></div>
-					<div>The following [[tasks.length]] tasks will be restarted:</div>
+					<div>The following [[items.length]] items will be restarted:</div>
 					<div id="tasksDisplay">
-						<li ng-repeat="task in tasks" class="link" ng-click="jumpToTask(task)">[[task]]</li>
+						<li ng-repeat="item in items" class="link" ng-click="jumpToItem(itemType, item)">[[item]]</li>
 					</div>
 					<div>
 						<div class="justifyRight">
-							<md-button class="md-raised" ng-click="restartTasks(false)" ng-disabled="disableRestart">Restart</md-button>
-							<md-button class="md-raised" data-dismiss="modal">Cancel</md-button>
-						</div>
-					</div>
-				</div>
-			</div>
-		</div>
-	</div>
-
-	<div id="versions-modal" class="modal fade" tabindex="-1" role="dialog" aria-hidden="true">
-		<div class="modal-dialog" style="width: 1000px">
-			<div class="modal-content">
-				<div class="modal-header">
-					<button type="button" class="close" data-dismiss="modal" aria-hidden="true" style="font-size: 35px">&times;</button>
-					<h2 class="modal-title">[[modalTitle]]</h2>
-				</div>
-				<div class="modal-body">
-					<div id="divMsg"></div>
-					<div>The following [[versions.length]] versions will be requeued:</div>
-					<div id="tasksDisplay">
-						<li ng-repeat="version in versions" class="link" ng-click="jumpToVersion(version)">[[version]]</li>
-					</div>
-					<div>
-						<div class="justifyRight">
-							<md-button class="md-raised" ng-click="restartCommitQueueVersions(false)" ng-disabled="disableRestart">Restart</md-button>
+							<md-button class="md-raised" ng-click="restartItems(itemType, false)" ng-disabled="disableRestart">Restart</md-button>
 							<md-button class="md-raised" data-dismiss="modal">Cancel</md-button>
 						</div>
 					</div>
@@ -114,7 +90,7 @@ Admin Settings
 						<li class="link" ng-click="scrollTo('plugins')">Plugins</li>
 						<li class="link" ng-click="scrollTo('jira_notifications')">JIRA Custom Field Mappings</li>
 						<div>Non-Configuration</div>
-						<li class="link" ng-click="scrollTo('restart')">Restart Tasks</li>
+						<li class="link" ng-click="scrollTo('restart')">Restart Tasks/Versions</li>
 						<a class="link" href="/admin/events" style="margin-left:10px;">Event Log</a>
 					</div>
 				</md-content>
@@ -1375,11 +1351,22 @@ Admin Settings
 				<md-card-title>
 					<i class="fa fa-refresh"></i>
 					<md-card-title-text>
-						<span>Restart Tasks</span>
-						<span class="md-subhead">Restart failed tasks that ran between two times</span>
+						<span>Restart Tasks/Commit Queue Versions</span>
+						<span class="md-subhead">Restart failed tasks or versions that ran between two times</span>
 					</md-card-title-text>
 				</md-card-title>
 				<md-card-content>
+					<table>
+						<tr>
+							<td>Restart...</td>
+							<td>
+								<md-radio-group data-ng-model="restartType" layout="row" style="margin-left:40px">
+									<md-radio-button data-ng-value="'tasks'" style="width:2%"></md-radio-button><span>Tasks</span>
+									<md-radio-button class="inline" data-ng-value="'versions'" style="margin-left:40px;width:12%"></md-radio-button><span>Versions</span>
+								</md-radio-group>
+							</td>
+						</tr>
+					</table>
 					<table>
 						<tr>
 							<td>From:</td>
@@ -1398,41 +1385,10 @@ Admin Settings
 					</table>
 				</md-card-content>
 				<md-card-footer class="squeezeTop">
-					<md-checkbox ng-model="restartRed" style="top: 10px">Red Tasks</md-checkbox>
-					<md-checkbox ng-model="restartPurple" style="top: 10px">Purple Tasks</md-checkbox>
-					<md-checkbox ng-model="restartLavender" style="top: 10px">Lavender Tasks</md-checkbox>
-					<md-button class="md-raised" ng-disabled="disableSubmit" ng-click="restartTasks(true)">Submit</md-button>
-				</md-card-footer>
-			</md-card>
-
-			<md-card id="restart_commit_queue" style="width:99%">
-				<md-card-title>
-					<i class="fa fa-refresh"></i>
-					<md-card-title-text>
-						<span>Restart Commit Queues</span>
-						<span class="md-subhead">Restart failed commit queue items that ran between two times</span>
-					</md-card-title-text>
-				</md-card-title>
-				<md-card-content>
-					<table>
-						<tr>
-							<td>From:</td>
-							<td>
-								<md-datepicker ng-model="fromDateCommitQueue" md-placeholder="Date"></md-datepicker>
-								<md-time-picker class="inline" ng-model="fromTimeCommitQueue" message="message"></md-time-picker>
-							</td>
-						</tr>
-						<tr>
-							<td>To:</td>
-							<td>
-								<md-datepicker ng-model="toDateCommitQueue" md-placeholder="Date"></md-datepicker>
-								<md-time-picker class="inline" ng-model="toTimeCommitQueue" message="message"></md-time-picker>
-							</td>
-						</tr>
-					</table>
-				</md-card-content>
-				<md-card-footer class="squeezeTop">
-					<md-button class="md-raised" ng-disabled="disableSubmit" ng-click="restartCommitQueueVersions(true)">Submit</md-button>
+					<md-checkbox ng-model="restartRed" ng-show="restartType == 'tasks'" style="top: 10px">Red Tasks</md-checkbox>
+					<md-checkbox ng-model="restartPurple" ng-show="restartType == 'tasks'" style="top: 10px">Purple Tasks</md-checkbox>
+					<md-checkbox ng-model="restartLavender" ng-show="restartType == 'tasks'" style="top: 10px">Lavender Tasks</md-checkbox>
+					<md-button class="md-raised" ng-disabled="disableSubmit" ng-click="restartItems(restartType, true)">Submit</md-button>
 				</md-card-footer>
 			</md-card>
 

@@ -4,9 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net/http"
-	"time"
 
-	restModel "github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/gimlet"
@@ -126,52 +124,6 @@ func (cq *commitQueueClearAllHandler) Run(ctx context.Context) gimlet.Responder 
 	return gimlet.NewJSONResponse(struct {
 		ClearedCount int `json:"cleared_count"`
 	}{clearedCount})
-}
-
-type restartCommitQueuesHandler struct {
-	sc        data.Connector
-	StartTime time.Time `json:"start_time"`
-	EndTime   time.Time `json:"end_time"`
-	DryRun    bool      `json:"dry_run"`
-}
-
-func makeRestartCommitQueuesHandler(sc data.Connector) gimlet.RouteHandler {
-	return &restartCommitQueuesHandler{
-		sc: sc,
-	}
-}
-
-func (cq *restartCommitQueuesHandler) Factory() gimlet.RouteHandler {
-	return &restartCommitQueuesHandler{
-		sc: cq.sc,
-	}
-}
-
-func (cq *restartCommitQueuesHandler) Parse(ctx context.Context, r *http.Request) error {
-	if err := gimlet.GetJSON(r.Body, cq); err != nil {
-		return errors.Wrap(err, "problem parsing request body")
-	}
-
-	if cq.EndTime.Before(cq.StartTime) {
-		return gimlet.ErrorResponse{
-			StatusCode: http.StatusBadRequest,
-			Message:    "End time cannot be before start time",
-		}
-	}
-	return nil
-}
-
-func (cq *restartCommitQueuesHandler) Run(ctx context.Context) gimlet.Responder {
-	opts := restModel.RestartVersionsOptions{
-		StartTime: cq.StartTime,
-		EndTime:   cq.EndTime,
-		DryRun:    cq.DryRun,
-	}
-	resp, err := cq.sc.RestartFailedCommitQueueVersions(opts)
-	if err != nil {
-		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "error restarting versions"))
-	}
-	return gimlet.NewJSONResponse(resp)
 }
 
 type commitQueueEnqueueItemHandler struct {

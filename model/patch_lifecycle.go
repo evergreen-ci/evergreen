@@ -31,16 +31,6 @@ type TaskVariantPairs struct {
 	DisplayTasks TVPairSet
 }
 
-type RestartVersionsOptions struct {
-	StartTime time.Time `bson:"start_time" json:"start_time"`
-	EndTime   time.Time `bson:"end_time" json:"end_time"`
-	DryRun    bool      `bson:"dry_run" json:"dry_run"`
-}
-type RestartVersionsResults struct {
-	VersionsRequeued []string
-	VersionsErrored  []string
-}
-
 // VariantTasksToTVPairs takes a set of variants and tasks (from both the old and new
 // request formats) and builds a universal set of pairs
 // that can be used to expand the dependency tree.
@@ -445,7 +435,7 @@ func AbortPatchesWithGithubPatchData(createdBefore time.Time, owner, repo string
 	return errors.Wrap(catcher.Resolve(), "error aborting patches")
 }
 
-func RetryCommitQueueItems(projectID string, patchType string, opts RestartVersionsOptions) ([]string, []string, error) {
+func RetryCommitQueueItems(projectID string, patchType string, opts RestartOptions) ([]string, []string, error) {
 	patches, err := patch.Find(patch.FindFailedCommitQueuePatchesinTimeRange(projectID, opts.StartTime, opts.EndTime))
 	if err != nil {
 		return nil, nil, errors.Wrap(err, "error finding failed commit queue patches for project in time range")

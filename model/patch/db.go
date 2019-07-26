@@ -36,6 +36,7 @@ var (
 	PatchesKey         = bsonutil.MustHaveTag(Patch{}, "Patches")
 	ActivatedKey       = bsonutil.MustHaveTag(Patch{}, "Activated")
 	PatchedConfigKey   = bsonutil.MustHaveTag(Patch{}, "PatchedConfig")
+	AliasKey           = bsonutil.MustHaveTag(Patch{}, "Alias")
 	githubPatchDataKey = bsonutil.MustHaveTag(Patch{}, "GithubPatchData")
 
 	// BSON fields for the module patch struct
@@ -178,19 +179,14 @@ func PatchesByProject(projectId string, ts time.Time, limit int) db.Q {
 
 func FindFailedCommitQueuePatchesinTimeRange(projectID string, startTime, endTime time.Time) db.Q {
 	query := bson.M{
-		ProjectKey:   projectID,
-		StatusKey:    evergreen.PatchFailed,
-		cliAliasKey:  evergreen.CommitQueueAlias,
-		StartTimeKey: bson.M{"$gte": startTime},
-		StartTimeKey: bson.M{"$lte": endTime},
+		ProjectKey: projectID,
+		StatusKey:  evergreen.PatchFailed,
+		AliasKey:   evergreen.CommitQueueAlias,
+		"$and": []bson.M{
+			{StartTimeKey: bson.M{"$gte": startTime}},
+			{StartTimeKey: bson.M{"$lte": endTime}},
+		},
 	}
-	/* i'm pretty sure we don't need this actually, because each project only is one type or the other
-	if patchType == commitqueue.PRPatchType {
-		query[bsonutil.GetDottedKeyName(githubPatchDataKey, prNumberKey)] = bson.M{"$exists": true}
-	}
-	if patchType == commitqueue.CLIPatchType {
-		query[bsonutil.GetDottedKeyName(githubPatchDataKey, prNumberKey)] = bson.M{"$exists": false}
-	}*/
 	return db.Query(query).Sort([]string{CreateTimeKey})
 }
 
