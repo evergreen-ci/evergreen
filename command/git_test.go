@@ -609,7 +609,7 @@ func (s *GitGetProjectSuite) TestBuildModuleCommand() {
 
 func (s *GitGetProjectSuite) TestCorrectModuleRevision() {
 	conf := s.modelData2.TaskConfig
-	ctx := context.WithValue(context.Background(), "githash", "b27779f856b211ffaf97cbc124b7082a20ea8bc0")
+	ctx := context.WithValue(context.Background(), "patch", &patch.Patch{Githash: "b27779f856b211ffaf97cbc124b7082a20ea8bc0"})
 	comm := client.NewMock("http://localhost.com")
 	logger, err := comm.GetLoggerProducer(ctx, client.TaskData{ID: conf.Task.Id, Secret: conf.Task.Secret}, nil)
 	s.NoError(err)

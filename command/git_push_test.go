@@ -16,7 +16,8 @@ import (
 func TestExecuteGitPush(t *testing.T) {
 	manager := &jasper.MockManager{
 		Create: func(opts *jasper.CreateOptions) jasper.MockProcess {
-			opts.Output.Output.Write([]byte("abcdef01345"))
+			_, err := opts.Output.Output.Write([]byte("abcdef01345"))
+			assert.NoError(t, err)
 			proc := jasper.MockProcess{}
 			proc.ProcInfo.Options = *opts
 			return proc
