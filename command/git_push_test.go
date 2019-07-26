@@ -5,13 +5,71 @@ import (
 	"testing"
 
 	"github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/rest/client"
-	"github.com/evergreen-ci/evergreen/util"
 	"github.com/google/shlex"
 	"github.com/mongodb/jasper"
 	"github.com/stretchr/testify/assert"
 )
+
+func TestExecuteGitPush(t *testing.T) {
+	manager := &jasper.MockManager{
+		Create: func(opts *jasper.CreateOptions) jasper.MockProcess {
+			opts.Output.Output.Write([]byte("abcdef01345"))
+			proc := jasper.MockProcess{}
+			proc.ProcInfo.Options = *opts
+			return proc
+		},
+	}
+	c := gitPush{
+		base:           base{jasper: manager},
+		Directory:      "src",
+		CommitterName:  "octocat",
+		CommitterEmail: "octocat@github.com",
+	}
+
+	comm := client.NewMock("http://localhost.com")
+	conf := &model.TaskConfig{Task: &task.Task{}, ProjectRef: &model.ProjectRef{Branch: "master"}}
+	logger, err := comm.GetLoggerProducer(context.Background(), client.TaskData{}, nil)
+	assert.NoError(t, err)
+
+	patch := &patch.Patch{
+		Patches: []patch.ModulePatch{
+			{
+				ModuleName: "",
+				PatchSet: patch.PatchSet{
+					Summary: []patch.Summary{
+						{
+							Name: "hello.txt",
+						},
+					},
+				},
+			},
+		},
+		Githash:     "abcdef01345",
+		Description: "testing 123",
+	}
+	ctx := context.Background()
+	ctx = context.WithValue(ctx, "patch", patch)
+	assert.NoError(t, c.Execute(ctx, comm, logger, conf))
+
+	commands := []string{
+		"git checkout master",
+		"git rev-parse HEAD",
+		`git add "hello.txt"`,
+		`git -c "user.name=octocat" -c "user.email=octocat@github.com" commit -m "testing 123" --author="evergreen <evergreen@mongodb.com>"`,
+		"git push origin master",
+	}
+
+	assert.Len(t, manager.Procs, len(commands))
+	for i, proc := range manager.Procs {
+		args := proc.(*jasper.MockProcess).ProcInfo.Options.Args
+		splitCommand, err := shlex.Split(commands[i])
+		assert.NoError(t, err)
+		assert.Equal(t, splitCommand, args)
+	}
+}
 
 func TestPushPatch(t *testing.T) {
 	manager := &jasper.MockManager{}
@@ -23,8 +81,7 @@ func TestPushPatch(t *testing.T) {
 	}
 
 	comm := client.NewMock("http://localhost.com")
-	conf := &model.TaskConfig{Expansions: &util.Expansions{}, Task: &task.Task{}, Project: &model.Project{}}
-	logger, err := comm.GetLoggerProducer(context.Background(), client.TaskData{ID: conf.Task.Id, Secret: conf.Task.Secret}, nil)
+	logger, err := comm.GetLoggerProducer(context.Background(), client.TaskData{}, nil)
 	assert.NoError(t, err)
 
 	params := pushParams{
@@ -61,8 +118,8 @@ func TestRevParse(t *testing.T) {
 	}
 
 	comm := client.NewMock("http://localhost.com")
-	conf := &model.TaskConfig{Expansions: &util.Expansions{}, Task: &task.Task{}, Project: &model.Project{}}
-	logger, err := comm.GetLoggerProducer(context.Background(), client.TaskData{ID: conf.Task.Id, Secret: conf.Task.Secret}, nil)
+	conf := &model.TaskConfig{Project: &model.Project{}}
+	logger, err := comm.GetLoggerProducer(context.Background(), client.TaskData{}, nil)
 	assert.NoError(t, err)
 
 	_, err = c.revParse(context.Background(), conf, logger, "HEAD")
