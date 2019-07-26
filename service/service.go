@@ -47,7 +47,7 @@ func GetRouter(as *APIServer, uis *UIServer) (http.Handler, error) {
 	app.AddMiddleware(gimlet.NewStatic("", http.Dir(filepath.Join(uis.Home, "public"))))
 	app.AddMiddleware(gimlet.NewStatic("/clients", http.Dir(filepath.Join(uis.Home, evergreen.ClientDirectory))))
 
-	app.AddRoute("/robots.txt").Version(0).Handler(func(rw http.ResponseWriter, r *http.Request) {
+	app.AddRoute("/robots.txt").Version(0).Get().Handler(func(rw http.ResponseWriter, r *http.Request) {
 		_, err := rw.Write([]byte(strings.Join([]string{
 			"User-agent: *",
 			"Disallow: /",
