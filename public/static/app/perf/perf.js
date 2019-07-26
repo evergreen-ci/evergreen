@@ -294,7 +294,8 @@ mciModule.controller('PerfController', function PerfController(
       var margin = { top: 20, right: 50, bottom: 30, left: 80 };
       var width = 450 - margin.left - margin.right;
       var height = 200 - margin.top - margin.bottom;
-      var svg = d3.select("#chart-" + cleanId(taskId) + "-" + i)
+      var id = "chart-" + cleanId(taskId) + "-" + i;
+      var svg = d3.select('[id="' + id + '"]')
         .append("svg")
         .attr("width", width + margin.left + margin.right)
         .attr("height", height + margin.top + margin.bottom)
