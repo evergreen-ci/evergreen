@@ -1,7 +1,7 @@
-package role
+package user
 
 const (
-	Collection = "roles"
+	RoleCollection = "roles"
 )
 
 type Role struct {

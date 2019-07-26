@@ -1,4 +1,4 @@
-package role
+package user
 
 import (
 	"testing"
@@ -10,7 +10,7 @@ import (
 
 func TestBasicDBFunctions(t *testing.T) {
 	assert := assert.New(t)
-	assert.NoError(db.Clear(Collection))
+	assert.NoError(db.Clear(RoleCollection))
 	r := Role{
 		Id:          "1",
 		Name:        "foo",
@@ -20,7 +20,7 @@ func TestBasicDBFunctions(t *testing.T) {
 	}
 	_, err := r.Upsert()
 	assert.NoError(err)
-	dbRole, err := FindOneId(r.Id)
+	dbRole, err := FindOneRoleId(r.Id)
 	assert.NoError(err)
 	assert.EqualValues(r, *dbRole)
 }

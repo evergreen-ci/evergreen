@@ -30,6 +30,11 @@ var (
 	PubKeyNameKey       = bsonutil.MustHaveTag(PubKey{}, "Name")
 	PubKeyKey           = bsonutil.MustHaveTag(PubKey{}, "Key")
 	PubKeyNCreatedAtKey = bsonutil.MustHaveTag(PubKey{}, "CreatedAt")
+	RoleIdKey           = bsonutil.MustHaveTag(Role{}, "Id")
+	NameKey             = bsonutil.MustHaveTag(Role{}, "Name")
+	ScopeTypeKey        = bsonutil.MustHaveTag(Role{}, "ScopeType")
+	ScopeKey            = bsonutil.MustHaveTag(Role{}, "Scope")
+	PermissionsKey      = bsonutil.MustHaveTag(Role{}, "Permissions")
 )
 
 //nolint: deadcode, megacheck, unused
@@ -146,4 +151,27 @@ func UpsertOne(query interface{}, update interface{}) (*adb.ChangeInfo, error) {
 		query,
 		update,
 	)
+}
+
+func (r *Role) Upsert() (*adb.ChangeInfo, error) {
+	update := bson.M{
+		NameKey:        r.Name,
+		ScopeTypeKey:   r.ScopeType,
+		ScopeKey:       r.Scope,
+		PermissionsKey: r.Permissions,
+	}
+	return db.Upsert(Collection, bson.M{RoleIdKey: r.Id}, update)
+}
+
+func FindOneRole(query bson.M) (*Role, error) {
+	r := &Role{}
+	err := db.FindOneQ(Collection, db.Query(query), r)
+	if adb.ResultsNotFound(err) {
+		return nil, nil
+	}
+	return r, err
+}
+
+func FindOneRoleId(id string) (*Role, error) {
+	return FindOneRole(bson.M{RoleIdKey: id})
 }
