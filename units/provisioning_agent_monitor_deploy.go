@@ -298,6 +298,7 @@ func (j *agentMonitorDeployJob) agentMonitorOptions(settings *evergreen.Settings
 	return &jasper.CreateOptions{
 		Args:        agentMonitorParams,
 		Environment: j.agentEnv(settings),
+		Tags:        []string{evergreen.AgentMonitorTag},
 	}
 }
 
