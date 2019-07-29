@@ -177,7 +177,7 @@ func PatchesByProject(projectId string, ts time.Time, limit int) db.Q {
 	}).Sort([]string{"-" + CreateTimeKey}).Limit(limit)
 }
 
-func FindFailedCommitQueuePatchesinTimeRange(projectID string, startTime, endTime time.Time) db.Q {
+func FindFailedCommitQueuePatchesinTimeRange(projectID string, startTime, endTime time.Time) ([]Patch, error) {
 	query := bson.M{
 		ProjectKey: projectID,
 		StatusKey:  evergreen.PatchFailed,
@@ -187,7 +187,7 @@ func FindFailedCommitQueuePatchesinTimeRange(projectID string, startTime, endTim
 			{StartTimeKey: bson.M{"$lte": endTime}},
 		},
 	}
-	return db.Query(query).Sort([]string{CreateTimeKey})
+	return Find(db.Query(query).Sort([]string{CreateTimeKey}))
 }
 
 func ByGithubPRAndCreatedBefore(t time.Time, owner, repo string, prNumber int) db.Q {

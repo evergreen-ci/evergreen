@@ -194,10 +194,19 @@ mciModule.controller('AdminSettingsController', ['$scope', '$window', '$http', '
     }
     if (dryRun === false) {
       $scope.disableRestart = true;
-      var successHandler = function(resp) {
-        $("#divMsg").text("The below " + restartType + " have been queued to restart. Feel free to close this popup or inspect the " + restartType + " listed.");
-        $scope.disableSubmit = false;
+      if (restartType === "tasks") {
+          var successHandler = function(resp) {
+              $("#divMsg").text("The below " + restartType + " have been queued to restart. Feel free to close this popup or inspect the tasks listed.");
+              $scope.disableSubmit = false;
+          }
       }
+      if (restartType === "versions") {
+          var successHandler = function(resp) {
+              $("#divMsg").text("The below " + restartType + " have been re-added to queue. For more information, please inspect the commit queues.");
+              $scope.disableSubmit = false;
+          }
+      }
+
     }
     else {
       $scope.disableSubmit = true;

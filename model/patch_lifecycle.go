@@ -436,7 +436,7 @@ func AbortPatchesWithGithubPatchData(createdBefore time.Time, owner, repo string
 }
 
 func RetryCommitQueueItems(projectID string, patchType string, opts RestartOptions) ([]string, []string, error) {
-	patches, err := patch.Find(patch.FindFailedCommitQueuePatchesinTimeRange(projectID, opts.StartTime, opts.EndTime))
+	patches, err := patch.FindFailedCommitQueuePatchesinTimeRange(projectID, opts.StartTime, opts.EndTime)
 	if err != nil {
 		return nil, nil, errors.Wrap(err, "error finding failed commit queue patches for project in time range")
 	}
