@@ -277,16 +277,16 @@ func (a *APISMTPConfig) ToService() (interface{}, error) {
 }
 
 type APIAmboyConfig struct {
-	Name                           APIString `json:"name"`
-	SingleName                     APIString `json:"single_name"`
-	DB                             APIString `json:"database"`
-	PoolSizeLocal                  int       `json:"pool_size_local"`
-	PoolSizeRemote                 int       `json:"pool_size_remote"`
-	LocalStorage                   int       `json:"local_storage_size"`
-	GroupDefaultWorkers            int       `json:"group_default_workers"`
-	GroupBackgroundCreateFrequency int       `json:"group_background_create_frequency"`
-	GroupPruneFrequency            int       `json:"group_prune_frequency"`
-	GroupTTL                       int       `json:"group_ttl"`
+	Name                                  APIString `json:"name"`
+	SingleName                            APIString `json:"single_name"`
+	DB                                    APIString `json:"database"`
+	PoolSizeLocal                         int       `json:"pool_size_local"`
+	PoolSizeRemote                        int       `json:"pool_size_remote"`
+	LocalStorage                          int       `json:"local_storage_size"`
+	GroupDefaultWorkers                   int       `json:"group_default_workers"`
+	GroupBackgroundCreateFrequencyMinutes int       `json:"group_background_create_frequency"`
+	GroupPruneFrequencyMinutes            int       `json:"group_prune_frequency"`
+	GroupTTLMinutes                       int       `json:"group_ttl"`
 }
 
 func (a *APIAmboyConfig) BuildFromService(h interface{}) error {
@@ -299,9 +299,9 @@ func (a *APIAmboyConfig) BuildFromService(h interface{}) error {
 		a.PoolSizeRemote = v.PoolSizeRemote
 		a.LocalStorage = v.LocalStorage
 		a.GroupDefaultWorkers = v.GroupDefaultWorkers
-		a.GroupBackgroundCreateFrequency = v.GroupBackgroundCreateFrequency
-		a.GroupPruneFrequency = v.GroupPruneFrequency
-		a.GroupTTL = v.GroupTTL
+		a.GroupBackgroundCreateFrequencyMinutes = v.GroupBackgroundCreateFrequencyMinutes
+		a.GroupPruneFrequencyMinutes = v.GroupPruneFrequencyMinutes
+		a.GroupTTLMinutes = v.GroupTTLMinutes
 	default:
 		return errors.Errorf("%T is not a supported type", h)
 	}
@@ -310,16 +310,16 @@ func (a *APIAmboyConfig) BuildFromService(h interface{}) error {
 
 func (a *APIAmboyConfig) ToService() (interface{}, error) {
 	return evergreen.AmboyConfig{
-		Name:                           FromAPIString(a.Name),
-		SingleName:                     FromAPIString(a.SingleName),
-		DB:                             FromAPIString(a.DB),
-		PoolSizeLocal:                  a.PoolSizeLocal,
-		PoolSizeRemote:                 a.PoolSizeRemote,
-		LocalStorage:                   a.LocalStorage,
-		GroupDefaultWorkers:            a.GroupDefaultWorkers,
-		GroupBackgroundCreateFrequency: a.GroupBackgroundCreateFrequency,
-		GroupPruneFrequency:            a.GroupPruneFrequency,
-		GroupTTL:                       a.GroupTTL,
+		Name:                                  FromAPIString(a.Name),
+		SingleName:                            FromAPIString(a.SingleName),
+		DB:                                    FromAPIString(a.DB),
+		PoolSizeLocal:                         a.PoolSizeLocal,
+		PoolSizeRemote:                        a.PoolSizeRemote,
+		LocalStorage:                          a.LocalStorage,
+		GroupDefaultWorkers:                   a.GroupDefaultWorkers,
+		GroupBackgroundCreateFrequencyMinutes: a.GroupBackgroundCreateFrequencyMinutes,
+		GroupPruneFrequencyMinutes:            a.GroupPruneFrequencyMinutes,
+		GroupTTLMinutes:                       a.GroupTTLMinutes,
 	}, nil
 }
 

@@ -335,9 +335,9 @@ func (e *envState) createGenerateTasksQueue(ctx context.Context) error {
 		Prefix:                    e.settings.Amboy.Name,
 		DefaultWorkers:            e.settings.Amboy.GroupDefaultWorkers,
 		Ordered:                   false,
-		BackgroundCreateFrequency: time.Duration(e.settings.Amboy.GroupBackgroundCreateFrequency) * time.Minute,
-		PruneFrequency:            time.Duration(e.settings.Amboy.GroupPruneFrequency) * time.Minute,
-		TTL:                       time.Duration(e.settings.Amboy.GroupTTL) * time.Minute,
+		BackgroundCreateFrequency: time.Duration(e.settings.Amboy.GroupBackgroundCreateFrequencyMinutes) * time.Minute,
+		PruneFrequency:            time.Duration(e.settings.Amboy.GroupPruneFrequencyMinutes) * time.Minute,
+		TTL:                       time.Duration(e.settings.Amboy.GroupTTLMinutes) * time.Minute,
 	}
 	remoteQueueGroup, err := queue.NewMongoRemoteSingleQueueGroup(ctx, remoteQueuGroupOpts, e.client, opts)
 	if err != nil {

@@ -312,17 +312,17 @@ func (k SenderKey) String() string {
 }
 
 const (
-	defaultLogBufferingDuration           = 20
-	defaultAmboyPoolSize                  = 2
-	defaultAmboyLocalStorageSize          = 1024
-	defaultAmboyQueueName                 = "evg.service"
-	defaultSingleAmboyQueueName           = "evg.single"
-	defaultAmboyDBName                    = "amboy"
-	defaultGroupWorkers                   = 1
-	defaultGroupBackgroundCreateFrequency = 10
-	defaultGroupPruneFrequency            = 10
-	defaultGroupTTL                       = 1
-	maxNotificationsPerSecond             = 100
+	defaultLogBufferingDuration                  = 20
+	defaultAmboyPoolSize                         = 2
+	defaultAmboyLocalStorageSize                 = 1024
+	defaultAmboyQueueName                        = "evg.service"
+	defaultSingleAmboyQueueName                  = "evg.single"
+	defaultAmboyDBName                           = "amboy"
+	defaultGroupWorkers                          = 1
+	defaultGroupBackgroundCreateFrequencyMinutes = 10
+	defaultGroupPruneFrequencyMinutes            = 10
+	defaultGroupTTLMinutes                       = 1
+	maxNotificationsPerSecond                    = 100
 
 	EnableAmboyRemoteReporting = false
 )
