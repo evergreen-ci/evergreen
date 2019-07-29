@@ -25,12 +25,13 @@ func TestGitPush(t *testing.T) {
 	logger, err := comm.GetLoggerProducer(context.Background(), client.TaskData{}, nil)
 	require.NoError(t, err)
 
+	var splitCommand []string
 	for name, test := range map[string]func(*testing.T){
 		"Execute": func(*testing.T) {
 			manager := &jasper.MockManager{}
 			c.base.jasper = manager
 			manager.Create = func(opts *jasper.CreateOptions) jasper.MockProcess {
-				_, err := opts.Output.Output.Write([]byte("abcdef01345"))
+				_, err = opts.Output.Output.Write([]byte("abcdef01345"))
 				assert.NoError(t, err)
 				proc := jasper.MockProcess{}
 				proc.ProcInfo.Options = *opts
@@ -67,7 +68,7 @@ func TestGitPush(t *testing.T) {
 			require.Len(t, manager.Procs, len(commands))
 			for i, proc := range manager.Procs {
 				args := proc.(*jasper.MockProcess).ProcInfo.Options.Args
-				splitCommand, err := shlex.Split(commands[i])
+				splitCommand, err = shlex.Split(commands[i])
 				assert.NoError(t, err)
 				assert.Equal(t, splitCommand, args)
 			}
@@ -93,7 +94,7 @@ func TestGitPush(t *testing.T) {
 			require.Len(t, manager.Procs, len(commands))
 			for i, proc := range manager.Procs {
 				args := proc.(*jasper.MockProcess).ProcInfo.Options.Args
-				splitCommand, err := shlex.Split(commands[i])
+				splitCommand, err = shlex.Split(commands[i])
 				assert.NoError(t, err)
 				assert.Equal(t, splitCommand, args)
 			}
@@ -108,7 +109,7 @@ func TestGitPush(t *testing.T) {
 			require.Len(t, manager.Procs, len(commands))
 			for i, proc := range manager.Procs {
 				args := proc.(*jasper.MockProcess).ProcInfo.Options.Args
-				splitCommand, err := shlex.Split(commands[i])
+				splitCommand, err = shlex.Split(commands[i])
 				assert.NoError(t, err)
 				assert.Equal(t, splitCommand, args)
 			}
