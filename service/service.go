@@ -3,7 +3,6 @@ package service
 import (
 	"net/http"
 	"path/filepath"
-	"strings"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
@@ -46,16 +45,6 @@ func GetRouter(as *APIServer, uis *UIServer) (http.Handler, error) {
 	app.AddMiddleware(gimlet.NewAuthenticationHandler(gimlet.NewBasicAuthenticator(nil, nil), uis.UserManager))
 	app.AddMiddleware(gimlet.NewStatic("", http.Dir(filepath.Join(uis.Home, "public"))))
 	app.AddMiddleware(gimlet.NewStatic("/clients", http.Dir(filepath.Join(uis.Home, evergreen.ClientDirectory))))
-
-	app.AddRoute("/robots.txt").Version(0).Get().Handler(func(rw http.ResponseWriter, r *http.Request) {
-		_, err := rw.Write([]byte(strings.Join([]string{
-			"User-agent: *",
-			"Disallow: /",
-		}, "\n")))
-		if err != nil {
-			gimlet.WriteResponse(rw, gimlet.MakeTextErrorResponder(err))
-		}
-	})
 
 	// in the future, we'll make the gimlet app here, but we
 	// need/want to access and construct it separately.
