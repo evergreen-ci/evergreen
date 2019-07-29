@@ -98,7 +98,7 @@ func (c *gitPush) Execute(ctx context.Context, comm client.Communicator, logger 
 		}
 
 		if len(modulePatch.PatchSet.Summary) == 0 {
-			logger.Execution().Info("Skipping empty patch file...")
+			logger.Execution().Infof("Skipping empty patch for module '%s'", modulePatch.ModuleName)
 			continue
 		}
 
@@ -140,7 +140,7 @@ func (c *gitPush) Execute(ctx context.Context, comm client.Communicator, logger 
 		}
 
 		if len(modulePatch.PatchSet.Summary) == 0 {
-			logger.Execution().Info("Skipping empty patch file...")
+			logger.Execution().Info("Skipping empty main patch")
 			continue
 		}
 
