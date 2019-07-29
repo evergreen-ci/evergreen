@@ -232,6 +232,22 @@ func (ac *DBProjectConnector) GetProjectWithCommitQueueByOwnerRepoAndBranch(owne
 	return proj, nil
 }
 
+func (ac *DBProjectConnector) GetVersionsInProject(project, requester string, limit, startOrder int) ([]restModel.APIVersion, error) {
+	versions, err := model.VersionFind(model.VersionsByRequesterOrdered(project, requester, limit, startOrder))
+	if err != nil {
+		return nil, errors.Wrap(err, "error finding versions")
+	}
+	catcher := grip.NewBasicCatcher()
+	out := []restModel.APIVersion{}
+	for _, dbVersion := range versions {
+		restVersion := restModel.APIVersion{}
+		catcher.Add(restVersion.BuildFromService(&dbVersion))
+		out = append(out, restVersion)
+	}
+
+	return out, catcher.Resolve()
+}
+
 // MockPatchConnector is a struct that implements the Patch related methods
 // from the Connector through interactions with he backing database.
 type MockProjectConnector struct {
@@ -399,4 +415,8 @@ func (pc *MockProjectConnector) EnablePRTesting(projectRef *model.ProjectRef) er
 
 func (pc *MockProjectConnector) UpdateProjectRevision(projectID, revision string) error {
 	return nil
+}
+
+func (ac *MockProjectConnector) GetVersionsInProject(project, requester string, limit, startOrder int) ([]restModel.APIVersion, error) {
+	return nil, nil
 }

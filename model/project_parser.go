@@ -109,12 +109,10 @@ type parserTask struct {
 
 func (pp *parserProject) MarshalYAML() (interface{}, error) {
 	for i, pt := range pp.Tasks {
-		for j, cmd := range pt.Commands {
-			params, err := cmd.resolveParams()
-			if err != nil {
+		for j := range pt.Commands {
+			if err := pp.Tasks[i].Commands[j].resolveParams(); err != nil {
 				return nil, errors.Wrapf(err, "error marshalling commands for task")
 			}
-			pp.Tasks[i].Commands[j].Params = params
 		}
 	}
 

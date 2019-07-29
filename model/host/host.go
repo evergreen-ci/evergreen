@@ -737,11 +737,13 @@ func (h *Host) JasperCommunication() bool {
 	return h.Distro.CommunicationMethod == distro.CommunicationMethodSSH || h.Distro.CommunicationMethod == distro.CommunicationMethodRPC
 }
 
-// SetNeedsAgentDeploy indicates that the host's agent needs to be deployed.
+// SetNeedsAgentDeploy indicates that the host's agent or agent monitor needs
+// to be deployed.
 func (h *Host) SetNeedsAgentDeploy(needsDeploy bool) error {
 	if h.LegacyBootstrap() {
 		return errors.Wrap(h.SetNeedsNewAgent(needsDeploy), "error setting host needs new agent")
 	}
+
 	return errors.Wrap(h.SetNeedsNewAgentMonitor(needsDeploy), "error setting host needs new agent monitor")
 }
 

@@ -1058,7 +1058,7 @@ func TestFindByExpiringJasperCredentials(t *testing.T) {
 			require.NoError(t, env.Configure(tctx, "", nil))
 			env.EnvContext = tctx
 
-			require.NoError(t, setupCredentials(ctx, env))
+			require.NoError(t, setupCredentialsCollection(ctx, env))
 			testCase(t, env)
 			assert.NoError(t, db.ClearCollections(credentials.Collection, Collection))
 		})

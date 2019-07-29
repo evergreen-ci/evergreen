@@ -12,7 +12,7 @@
                   <div ng-repeat="field in extraFields">
                     <span>[[field.text]]</span>
                     <input type="text" ng-show="field.type!='select'" ng-model="extraData[field.key]"/>
-                    <select ng-show="field.type=='select'" ng-model="extraData[field.key]" ng-options="option for option in field.options"></select>
+                    <select ng-show="field.type=='select'" ng-model="extraData[field.key]" ng-options="key as value for (key, value) in field.options"></select>
                   </div>
                 </p>
                 <div ng-show="regexSelectorOptions.length > 0">

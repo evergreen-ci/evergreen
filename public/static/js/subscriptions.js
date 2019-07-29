@@ -343,6 +343,17 @@ function addProjectSelectors(subscription, project) {
     type: "project",
     data: project
   });
+  if (subscription.trigger_data && subscription.trigger_data.requester) {
+    subscription.selectors.push({
+      type: "requester",
+      data: subscription.trigger_data.requester
+    });
+  } else {
+    subscription.selectors.push({
+      type: "requester",
+      data: "gitter_request"
+    });
+  }
   subscription.owner_type = "person";
 }
 

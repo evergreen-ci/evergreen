@@ -3,14 +3,19 @@ package route
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"testing"
 
+	"github.com/evergreen-ci/evergreen/db"
+
+	"github.com/evergreen-ci/evergreen"
 	serviceModel "github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/gimlet"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -373,4 +378,51 @@ func getMockProjectsConnector() *data.MockConnector {
 		},
 	}
 	return &connector
+}
+
+func TestGetProjectVersions(t *testing.T) {
+	assert := assert.New(t)
+	assert.NoError(db.Clear(serviceModel.VersionCollection))
+	const projectName = "proj"
+	v1 := serviceModel.Version{
+		Id:                  "v1",
+		Identifier:          projectName,
+		Requester:           evergreen.AdHocRequester,
+		RevisionOrderNumber: 1,
+	}
+	assert.NoError(v1.Insert())
+	v2 := serviceModel.Version{
+		Id:                  "v2",
+		Identifier:          projectName,
+		Requester:           evergreen.AdHocRequester,
+		RevisionOrderNumber: 2,
+	}
+	assert.NoError(v2.Insert())
+	v3 := serviceModel.Version{
+		Id:                  "v3",
+		Identifier:          projectName,
+		Requester:           evergreen.RepotrackerVersionRequester,
+		RevisionOrderNumber: 3,
+	}
+	assert.NoError(v3.Insert())
+	v4 := serviceModel.Version{
+		Id:                  "v4",
+		Identifier:          projectName,
+		Requester:           evergreen.AdHocRequester,
+		RevisionOrderNumber: 4,
+	}
+	assert.NoError(v4.Insert())
+
+	h := getProjectVersionsHandler{
+		projectID: projectName,
+		requester: evergreen.AdHocRequester,
+		sc:        &data.DBConnector{},
+		limit:     20,
+	}
+
+	resp := h.Run(context.Background())
+	respJson, err := json.Marshal(resp.Data())
+	assert.NoError(err)
+	assert.Contains(string(respJson), `"version_id":"v4"`)
+	assert.NotContains(string(respJson), `"version_id":"v3"`)
 }

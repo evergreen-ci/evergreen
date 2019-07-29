@@ -9,12 +9,15 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"syscall"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/util"
+	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
 	"github.com/mongodb/jasper"
 	jaspercli "github.com/mongodb/jasper/cli"
 	"github.com/mongodb/jasper/rpc"
@@ -515,12 +518,48 @@ func (h *Host) StartAgentMonitorRequest(settings *evergreen.Settings) (string, e
 	}
 
 	input := jaspercli.CommandInput{
-		Commands:      [][]string{h.agentMonitorCommand(settings)},
-		CreateOptions: jasper.CreateOptions{Environment: buildAgentEnv(settings)},
-		Background:    true,
+		Commands: [][]string{h.agentMonitorCommand(settings)},
+		CreateOptions: jasper.CreateOptions{
+			Environment: buildAgentEnv(settings),
+			Tags:        []string{evergreen.AgentMonitorTag},
+		},
+		Background: true,
 	}
 
 	return h.buildLocalJasperClientRequest(settings.HostJasper, jaspercli.CreateCommand, input)
+}
+
+// StopAgentMonitor stops the agent monitor (if it is running) on the host via
+// its Jasper service . On legacy hosts, this is a no-op.
+func (h *Host) StopAgentMonitor(ctx context.Context, env evergreen.Environment) error {
+	if h.LegacyBootstrap() {
+		return nil
+	}
+
+	client, err := h.JasperClient(ctx, env)
+	if err != nil {
+		return errors.Wrap(err, "could not get a Jasper client")
+	}
+
+	procs, err := client.Group(ctx, evergreen.AgentMonitorTag)
+	if err != nil {
+		return errors.Wrapf(err, "could not get processes with tag %s", evergreen.AgentMonitorTag)
+	}
+
+	grip.WarningWhen(len(procs) != 1, message.Fields{
+		"message": fmt.Sprintf("host should be running exactly one agent monitor, but found %d", len(procs)),
+		"host":    h.Id,
+		"distro":  h.Distro.Id,
+	})
+
+	catcher := grip.NewBasicCatcher()
+	for _, proc := range procs {
+		if proc.Running(ctx) {
+			catcher.Wrapf(proc.Signal(ctx, syscall.SIGTERM), "problem signalling process with ID %s", proc.ID())
+		}
+	}
+
+	return catcher.Resolve()
 }
 
 // agentMonitorCommand returns the slice of arguments used to start the

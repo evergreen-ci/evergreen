@@ -323,6 +323,8 @@ endif
 # specific package.
 test-%:$(buildDir)/output.%.test
 	@grep -s -q -e "^PASS" $< && ! grep -s -q "^WARNING: DATA RACE" $<
+dlv-%:$(buildDir)/output-dlv.%.test
+	@grep -s -q -e "^PASS" $< && ! grep -s -q "^WARNING: DATA RACE" $<
 coverage-%:$(buildDir)/output.%.coverage
 	@grep -s -q -e "^PASS" $(subst coverage,test,$<)
 html-coverage-%:$(buildDir)/output.%.coverage $(buildDir)/output.%.coverage.html
@@ -337,7 +339,8 @@ lint-%:$(buildDir)/output.%.lint
 #    run. (The "build" target is intentional and makes these targetsb
 #    rerun as expected.)
 testRunDeps := $(name)
-testArgs := -ldflags=$(ldFlags) -v
+testArgs := -v
+dlvArgs := -test.v
 testRunEnv := EVGHOME=$(shell pwd) GOCONVEY_REPORTER=silent GOPATH=$(gopath)
 ifeq ($(OS),Windows_NT)
 testRunEnv := EVGHOME=$(shell cygpath -m `pwd`) GOPATH=$(gopath)
@@ -352,20 +355,26 @@ testRunEnv += TMPDIR=$(tmpDir)
 endif
 ifneq (,$(RUN_TEST))
 testArgs += -run='$(RUN_TEST)'
+dlvArgs += -test.run='$(RUN_TEST)'
 endif
 ifneq (,$(SKIP_LONG))
 testArgs += -short
+dlvArgs += -test.short
 endif
 ifneq (,$(RUN_COUNT))
 testArgs += -count='$(RUN_COUNT)'
+dlvArgs += -test.count='$(RUN_COUNT)'
 endif
 ifneq (,$(RACE_DETECTOR))
 testArgs += -race
+dlvArgs += -test.race
 endif
 ifneq (,$(TEST_TIMEOUT))
 testArgs += -timeout=$(TEST_TIMEOUT)
+dlvArgs += -test.timeout=$(TEST_TIMEOUT)
 else
 testArgs += -timeout=10m
+dlvArgs += -test.timeout=10m
 endif
 #  targets to run any tests in the top-level package
 $(buildDir):
@@ -373,9 +382,11 @@ $(buildDir):
 $(tmpDir):$(buildDir)
 	mkdir -p $@
 $(buildDir)/output.%.test:$(tmpDir) .FORCE
-	$(testRunEnv) $(gobin) test $(testArgs) ./$(if $(subst $(name),,$*),$(subst -,/,$*),) 2>&1 | tee $@
+	$(testRunEnv) $(gobin) test -ldflags=$(ldFlags) $(testArgs) ./$(if $(subst $(name),,$*),$(subst -,/,$*),) 2>&1 | tee $@
+$(buildDir)/output-dlv.%.test:$(tmpDir) .FORCE
+	$(testRunEnv) dlv test -ldflags=$(ldFlags) ./$(if $(subst $(name),,$*),$(subst -,/,$*),) -- $(dlvArgs) 2>&1 | tee $@
 $(buildDir)/output.%.coverage:$(tmpDir) .FORCE
-	$(testRunEnv) $(gobin) test $(testArgs) ./$(if $(subst $(name),,$*),$(subst -,/,$*),) -covermode=count -coverprofile $@ | tee $(buildDir)/output.$*.test
+	$(testRunEnv) $(gobin) test -ldflags=$(ldFlags) $(testArgs) ./$(if $(subst $(name),,$*),$(subst -,/,$*),) -covermode=count -coverprofile $@ | tee $(buildDir)/output.$*.test
 	@-[ -f $@ ] && go tool cover -func=$@ | sed 's%$(projectPath)/%%' | column -t
 #  targets to generate gotest output from the linter.
 $(buildDir)/output.%.lint:$(buildDir)/run-linter $(testSrcFiles) .FORCE
