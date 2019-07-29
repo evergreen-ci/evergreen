@@ -649,10 +649,59 @@ func (m *ec2Manager) ModifyHost(ctx context.Context, h *host.Host, opts host.Hos
 	return catcher.Resolve()
 }
 
-// GetInstanceStatuses returns the current status of a slice of EC2 instances.
+type accountCredentials struct {
+	key    string
+	secret string
+}
+
 func (m *ec2Manager) GetInstanceStatuses(ctx context.Context, hosts []host.Host) ([]CloudStatus, error) {
-	if err := m.client.Create(m.credentials, defaultRegion); err != nil {
-		return nil, errors.Wrap(err, "error creating client")
+	allStatuses := make([]CloudStatus, len(hosts)) // status 0 is unknown, so the zero value works for this slice
+	accountHostMap := map[string][]host.Host{}
+	accounts := map[string]string{}
+	hostPosition := map[string]int{}
+
+	// Our goal is to return a []CloudStatus in the same order as the hosts input. We cache each
+	// host's position in the hosts input so that later we can return a correctly ordered
+	// []CloudStatus.
+	for i, h := range hosts {
+		hostPosition[h.Id] = i
+		accountHostMap[h.SpawnOptions.ExternalAccountID] = append(accountHostMap[h.SpawnOptions.ExternalAccountID], h)
+		if _, ok := accounts[h.SpawnOptions.ExternalAccountID]; !ok {
+			accounts[h.SpawnOptions.ExternalAccountID] = h.SpawnOptions.ExternalAccountSecret
+		}
+	}
+
+	catcher := grip.NewBasicCatcher()
+	for account, hostsForAccount := range accountHostMap {
+		creds := accountCredentials{
+			key:    account,
+			secret: accounts[account],
+		}
+		statuses, err := m.GetInstanceStatusesForAccount(ctx, hostsForAccount, creds)
+		catcher.Add(err)
+		if err == nil && len(statuses) == len(hostsForAccount) {
+			for i, h := range hostsForAccount {
+				allStatuses[hostPosition[h.Id]] = statuses[i]
+			}
+		}
+	}
+	return allStatuses, catcher.Resolve()
+}
+
+// GetInstanceStatuses returns the current status of a slice of EC2 instances.
+func (m *ec2Manager) GetInstanceStatusesForAccount(ctx context.Context, hosts []host.Host, creds accountCredentials) ([]CloudStatus, error) {
+	if creds.key != "" {
+		m.credentials = credentials.NewStaticCredentialsFromCreds(credentials.Value{
+			AccessKeyID:     creds.key,
+			SecretAccessKey: creds.secret,
+		})
+		if err := m.client.CreateForcefully(m.credentials, defaultRegion); err != nil {
+			return nil, errors.Wrap(err, "error creating client")
+		}
+	} else {
+		if err := m.client.Create(m.credentials, defaultRegion); err != nil {
+			return nil, errors.Wrap(err, "error creating client")
+		}
 	}
 
 	spotHosts := []*host.Host{}
@@ -747,6 +796,12 @@ func (m *ec2Manager) GetInstanceStatus(ctx context.Context, h *host.Host) (Cloud
 	if err != nil {
 		return status, errors.Wrap(err, "problem getting settings from host")
 	}
+	if h.SpawnOptions.ExternalAccountID != "" {
+		m.credentials = credentials.NewStaticCredentialsFromCreds(credentials.Value{
+			AccessKeyID:     h.SpawnOptions.ExternalAccountID,
+			SecretAccessKey: h.SpawnOptions.ExternalAccountSecret,
+		})
+	}
 	if err := m.client.Create(m.credentials, ec2Settings.getRegion()); err != nil {
 		return status, errors.Wrap(err, "error creating client")
 	}
@@ -818,6 +873,12 @@ func (m *ec2Manager) TerminateInstance(ctx context.Context, h *host.Host, user, 
 	err := ec2Settings.fromDistroSettings(h.Distro)
 	if err != nil {
 		return errors.Wrap(err, "problem getting settings from host")
+	}
+	if h.SpawnOptions.ExternalAccountID != "" {
+		m.credentials = credentials.NewStaticCredentialsFromCreds(credentials.Value{
+			AccessKeyID:     h.SpawnOptions.ExternalAccountID,
+			SecretAccessKey: h.SpawnOptions.ExternalAccountSecret,
+		})
 	}
 	if err = m.client.Create(m.credentials, ec2Settings.getRegion()); err != nil {
 		return errors.Wrap(err, "error creating client")
@@ -1075,6 +1136,12 @@ func (m *ec2Manager) OnUp(ctx context.Context, h *host.Host) error {
 }
 
 func (m *ec2Manager) AttachVolume(ctx context.Context, h *host.Host, attachment *host.VolumeAttachment) error {
+	if h.SpawnOptions.ExternalAccountID != "" {
+		m.credentials = credentials.NewStaticCredentialsFromCreds(credentials.Value{
+			AccessKeyID:     h.SpawnOptions.ExternalAccountID,
+			SecretAccessKey: h.SpawnOptions.ExternalAccountSecret,
+		})
+	}
 	if err := m.client.Create(m.credentials, evergreen.DefaultEC2Region); err != nil {
 		return errors.Wrap(err, "error creating client")
 	}
@@ -1213,6 +1280,12 @@ func (m *ec2Manager) CostForDuration(ctx context.Context, h *host.Host, start, e
 	err := ec2Settings.fromDistroSettings(h.Distro)
 	if err != nil {
 		return 0, errors.Wrap(err, "problem getting region from host")
+	}
+	if h.SpawnOptions.ExternalAccountID != "" {
+		m.credentials = credentials.NewStaticCredentialsFromCreds(credentials.Value{
+			AccessKeyID:     h.SpawnOptions.ExternalAccountID,
+			SecretAccessKey: h.SpawnOptions.ExternalAccountSecret,
+		})
 	}
 	if err = m.client.Create(m.credentials, ec2Settings.getRegion()); err != nil {
 		return 0, errors.Wrap(err, "error creating client")

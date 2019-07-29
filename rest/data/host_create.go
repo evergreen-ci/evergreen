@@ -335,6 +335,8 @@ func getAgentOptions(taskID, userID string, createHost apimodels.CreateHost) (*h
 		options.SpawnOptions.TimeoutSetup = time.Now().Add(time.Duration(createHost.SetupTimeoutSecs) * time.Second)
 		options.SpawnOptions.Retries = createHost.Retries
 		options.SpawnOptions.SpawnedByTask = true
+		options.SpawnOptions.ExternalAccountID = createHost.AWSKeyID
+		options.SpawnOptions.ExternalAccountSecret = createHost.AWSSecret
 	}
 	return &options, nil
 }

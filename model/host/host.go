@@ -225,6 +225,12 @@ type SpawnOptions struct {
 
 	// SpawnedByTask indicates that this host has been spawned by a task.
 	SpawnedByTask bool `bson:"spawned_by_task,omitempty" json:"spawned_by_task,omitempty"`
+
+	// ExternalAccountID caches the AWS key id of the external account.
+	ExternalAccountID string `bson:"external_account_id,omitempty" json:"-"`
+
+	// ExternalAccountSecret caches the AWS key id of the external account.
+	ExternalAccountSecret string `bson:"external_account_secret,omitempty" json:"-"`
 }
 
 type newParentsNeededParams struct {

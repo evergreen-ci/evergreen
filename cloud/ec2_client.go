@@ -30,6 +30,9 @@ type AWSClient interface {
 	// Create a new aws-sdk-client or mock if one does not exist, otherwise no-op.
 	Create(*credentials.Credentials, string) error
 
+	// CreateForcefully is like Create but deletes existing cached state.
+	CreateForcefully(*credentials.Credentials, string) error
+
 	// Close an aws-sdk-client or mock.
 	Close()
 
@@ -142,15 +145,17 @@ const (
 )
 
 // Create a new aws-sdk-client if one does not exist, otherwise no-op.
-func (c *awsClientImpl) Create(creds *credentials.Credentials, region string) error {
+func (c *awsClientImpl) create(creds *credentials.Credentials, region string, forceful bool) error {
 	if creds == nil {
 		return errors.New("creds must not be nil")
 	}
 	if region == "" {
 		return errors.New("region must not be empty")
 	}
-	if c.session == nil {
+	if c.httpClient == nil {
 		c.httpClient = util.GetHTTPClient()
+	}
+	if c.session == nil || forceful {
 		s, err := session.NewSession(&aws.Config{
 			HTTPClient:  c.httpClient,
 			Region:      aws.String(region),
@@ -164,6 +169,16 @@ func (c *awsClientImpl) Create(creds *credentials.Credentials, region string) er
 	c.EC2 = ec2.New(c.session)
 	c.pricing = pricing.New(c.session)
 	return nil
+}
+
+// Create a new aws-sdk-client if one does not exist, otherwise no-op.
+func (c *awsClientImpl) Create(creds *credentials.Credentials, region string) error {
+	return c.create(creds, region, false)
+}
+
+// CreateForcefully is like Create but deletes existing cached state.
+func (c *awsClientImpl) CreateForcefully(creds *credentials.Credentials, region string) error {
+	return c.create(creds, region, true)
 }
 
 func (c *awsClientImpl) Close() {
@@ -1057,6 +1072,12 @@ type awsClientMock struct { //nolint
 
 // Create a new mock client.
 func (c *awsClientMock) Create(creds *credentials.Credentials, region string) error {
+	c.Credentials = creds
+	return nil
+}
+
+// CreateForcefully creates a new mock client.
+func (c *awsClientMock) CreateForcefully(creds *credentials.Credentials, region string) error {
 	c.Credentials = creds
 	return nil
 }
