@@ -49,11 +49,11 @@ func TestCurlCommandWithRetry(t *testing.T) {
 		Ui:                evergreen.UIConfig{Url: "www.example.com"},
 		ClientBinariesDir: "clients",
 	}
-	expected := "cd ~ && curl -LO 'www.example.com/clients/windows_amd64/evergreen.exe' --retry=5 --retry-max-time=10 && chmod +x evergreen.exe"
+	expected := "cd ~ && curl -LO 'www.example.com/clients/windows_amd64/evergreen.exe' --retry 5 --retry-max-time 10 && chmod +x evergreen.exe"
 	assert.Equal(t, expected, h.CurlCommandWithRetry(settings, 5, 10))
 
 	h = &Host{Distro: distro.Distro{Arch: distro.ArchLinuxAmd64}}
-	expected = "cd ~ && curl -LO 'www.example.com/clients/linux_amd64/evergreen' --retry=5 --retry-max-time=10 && chmod +x evergreen"
+	expected = "cd ~ && curl -LO 'www.example.com/clients/linux_amd64/evergreen' --retry 5 --retry-max-time 10 && chmod +x evergreen"
 	assert.Equal(t, expected, h.CurlCommandWithRetry(settings, 5, 10))
 }
 
@@ -77,7 +77,7 @@ func TestJasperCommands(t *testing.T) {
 		"VerifyBaseFetchCommands": func(t *testing.T, h *Host, config evergreen.HostJasperConfig) {
 			expectedCmds := []string{
 				"cd \"/foo\"",
-				fmt.Sprintf("curl -LO 'www.example.com/download_file-linux-amd64-abc123.tar.gz' --retry=%d --retry-max-time=%d", CurlDefaultNumRetries, CurlDefaultMaxSecs),
+				fmt.Sprintf("curl -LO 'www.example.com/download_file-linux-amd64-abc123.tar.gz' --retry %d --retry-max-time %d", CurlDefaultNumRetries, CurlDefaultMaxSecs),
 				"tar xzf 'download_file-linux-amd64-abc123.tar.gz'",
 				"chmod +x 'jasper_cli'",
 				"rm -f 'download_file-linux-amd64-abc123.tar.gz'",
@@ -167,7 +167,7 @@ func TestJasperCommandsWindows(t *testing.T) {
 		"VerifyBaseFetchCommands": func(t *testing.T, h *Host, config evergreen.HostJasperConfig) {
 			expectedCmds := []string{
 				"cd \"/foo\"",
-				fmt.Sprintf("curl -LO 'www.example.com/download_file-windows-amd64-abc123.tar.gz' --retry=%d --retry-max-time=%d", CurlDefaultNumRetries, CurlDefaultMaxSecs),
+				fmt.Sprintf("curl -LO 'www.example.com/download_file-windows-amd64-abc123.tar.gz' --retry %d --retry-max-time %d", CurlDefaultNumRetries, CurlDefaultMaxSecs),
 				"tar xzf 'download_file-windows-amd64-abc123.tar.gz'",
 				"chmod +x 'jasper_cli.exe'",
 				"rm -f 'download_file-windows-amd64-abc123.tar.gz'",
