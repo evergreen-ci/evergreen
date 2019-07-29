@@ -64,6 +64,15 @@ func NewSQSFifoQueue(queueName string, workers int) (amboy.Queue, error) {
 
 func (q *sqsFIFOQueue) Put(ctx context.Context, j amboy.Job) error {
 	name := j.ID()
+
+	j.UpdateTimeInfo(amboy.JobTimeInfo{
+		Created: time.Now(),
+	})
+
+	if err := j.TimeInfo().Validate(); err != nil {
+		return errors.Wrap(err, "invalid job timeinfo")
+	}
+
 	q.mutex.Lock()
 	defer q.mutex.Unlock()
 
@@ -79,9 +88,6 @@ func (q *sqsFIFOQueue) Put(ctx context.Context, j amboy.Job) error {
 	curStatus := j.Status()
 	curStatus.ID = dedupID
 	j.SetStatus(curStatus)
-	j.UpdateTimeInfo(amboy.JobTimeInfo{
-		Created: time.Now(),
-	})
 	jobItem, err := registry.MakeJobInterchange(j, amboy.JSON)
 	if err != nil {
 		return errors.Wrap(err, "Error converting job in Put")
@@ -139,6 +145,11 @@ func (q *sqsFIFOQueue) Next(ctx context.Context) amboy.Job {
 	if err != nil {
 		return nil
 	}
+
+	if job.TimeInfo().IsStale() {
+		return nil
+	}
+
 	q.numRunning++
 	return job
 }

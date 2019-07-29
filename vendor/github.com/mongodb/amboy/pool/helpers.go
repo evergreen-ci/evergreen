@@ -25,6 +25,7 @@ func executeJob(ctx context.Context, id string, job amboy.Job, q amboy.Queue) {
 		"job_type":      job.Type().Name,
 		"duration_secs": job.TimeInfo().Duration().Seconds(),
 		"queue_type":    fmt.Sprintf("%T", q),
+		"stat":          job.Status(),
 		"pool":          id,
 	}
 	if err := job.Error(); err != nil {

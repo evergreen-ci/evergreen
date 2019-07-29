@@ -3,7 +3,6 @@ package queue
 import (
 	"context"
 	"math/rand"
-	"time"
 
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/amboy/dependency"
@@ -31,9 +30,14 @@ func (items *adaptiveOrderItems) add(j amboy.Job) error {
 		items.completed = append(items.completed, id)
 		return nil
 	}
-
-	if j.TimeInfo().WaitUntil.After(time.Now()) {
+	ti := j.TimeInfo()
+	if !ti.IsDispatchable() {
 		items.waiting = append(items.waiting, id)
+		return nil
+	}
+
+	if ti.IsStale() {
+		items.stalled = append(items.stalled, id)
 		return nil
 	}
 
@@ -67,7 +71,7 @@ func (items *adaptiveOrderItems) remove(id string) {
 
 func (items *adaptiveOrderItems) updateWaiting(ctx context.Context) {
 	new := []string{}
-	now := time.Now()
+
 	for _, id := range items.waiting {
 		if ctx.Err() != nil {
 			return
@@ -77,14 +81,21 @@ func (items *adaptiveOrderItems) updateWaiting(ctx context.Context) {
 		if !ok {
 			continue
 		}
-		status := job.Status()
 		ti := job.TimeInfo()
 
-		if ti.WaitUntil.After(now) {
+		// check DispatchBy
+		if ti.IsStale() {
+			items.stalled = append(items.stalled, id)
+			continue
+		}
+
+		// check WaitUntil
+		if !ti.IsDispatchable() {
 			new = append(new, id)
 			continue
 		}
 
+		status := job.Status()
 		if status.Completed || status.InProgress {
 			items.completed = append(items.completed, id)
 			continue
@@ -117,6 +128,11 @@ func (items *adaptiveOrderItems) updateStalled(ctx context.Context) {
 
 		job, ok := items.jobs[id]
 		if !ok {
+			continue
+		}
+
+		if job.TimeInfo().IsStale() {
+			new = append(new, id)
 			continue
 		}
 

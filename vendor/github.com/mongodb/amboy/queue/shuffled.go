@@ -93,6 +93,14 @@ func (q *shuffledLocal) Put(ctx context.Context, j amboy.Job) error {
 		return errors.Errorf("cannot put job %s; queue not started", id)
 	}
 
+	j.UpdateTimeInfo(amboy.JobTimeInfo{
+		Created: time.Now(),
+	})
+
+	if err := j.TimeInfo().Validate(); err != nil {
+		return errors.Wrap(err, "invalid job timeinfo")
+	}
+
 	ret := make(chan error)
 	op := func(
 		pending map[string]amboy.Job,
@@ -107,10 +115,6 @@ func (q *shuffledLocal) Put(ctx context.Context, j amboy.Job) error {
 		if isPending || isCompleted || isDispatched {
 			ret <- errors.Errorf("job '%s' already exists", id)
 		}
-
-		j.UpdateTimeInfo(amboy.JobTimeInfo{
-			Created: time.Now(),
-		})
 
 		pending[id] = j
 
@@ -298,6 +302,11 @@ func (q *shuffledLocal) Next(ctx context.Context) amboy.Job {
 		defer close(ret)
 
 		for id, j := range pending {
+			if j.TimeInfo().IsStale() {
+				delete(pending, j.ID())
+				continue
+			}
+
 			select {
 			case <-ctx.Done():
 				return
