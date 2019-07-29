@@ -159,6 +159,18 @@ func (d *Distro) GenerateName() string {
 	return name
 }
 
+func (d *Distro) ShouldGroupVersions() bool {
+	if d == nil {
+		return false
+	}
+
+	if d.PlannerSettings.GroupVersions == nil {
+		return false
+	}
+
+	return *d.PlannerSettings.GroupVersions
+}
+
 func (d *Distro) IsWindows() bool {
 	// XXX: if this is-windows check is updated, make sure to also update
 	// public/static/js/spawned_hosts.js as well
