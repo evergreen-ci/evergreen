@@ -93,19 +93,19 @@ func (c *AmboyConfig) ValidateAndDefault() error {
 		c.LocalStorage = defaultAmboyLocalStorageSize
 	}
 
-	if c.GroupDefaultWorkers == 0 {
+	if c.GroupDefaultWorkers <= 0 {
 		c.GroupDefaultWorkers = defaultGroupWorkers
 	}
 
-	if c.GroupBackgroundCreateFrequencyMinutes == 0 {
+	if c.GroupBackgroundCreateFrequencyMinutes <= 0 {
 		c.GroupBackgroundCreateFrequencyMinutes = defaultGroupBackgroundCreateFrequencyMinutes
 	}
 
-	if c.GroupPruneFrequencyMinutes == 0 {
+	if c.GroupPruneFrequencyMinutes <= 0 {
 		c.GroupPruneFrequencyMinutes = defaultGroupPruneFrequencyMinutes
 	}
 
-	if c.GroupTTLMinutes == 0 {
+	if c.GroupTTLMinutes <= 0 {
 		c.GroupTTLMinutes = defaultGroupTTLMinutes
 	}
 
