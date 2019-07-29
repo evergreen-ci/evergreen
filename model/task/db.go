@@ -300,11 +300,19 @@ func ByTimeRun(startTime, endTime time.Time) db.Q {
 }
 
 // ByTimeStartedAndFailed returns all failed tasks that started between 2 given times
+// If task not started (but is failed), returns if finished within the time range
 func ByTimeStartedAndFailed(startTime, endTime time.Time, commandTypes []string) db.Q {
 	query := bson.M{
-		"$and": []bson.M{
-			{StartTimeKey: bson.M{"$lte": endTime}},
-			{StartTimeKey: bson.M{"$gte": startTime}},
+		"$or": []bson.M{
+			{"$and": []bson.M{
+				{StartTimeKey: bson.M{"$lte": endTime}},
+				{StartTimeKey: bson.M{"$gte": startTime}},
+			}},
+			{"$and": []bson.M{
+				{StartTimeKey: util.ZeroTime},
+				{FinishTimeKey: bson.M{"$lte": endTime}},
+				{FinishTimeKey: bson.M{"$gte": startTime}},
+			}},
 		},
 		StatusKey: evergreen.TaskFailed,
 	}

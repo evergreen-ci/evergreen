@@ -474,11 +474,13 @@ func restartPRItems(patches []patch.Patch, cq *commitqueue.CommitQueue) ([]strin
 		// reconstruct commit queue item from patch
 		modules := []commitqueue.Module{}
 		for _, modulePatch := range p.Patches {
-			module := commitqueue.Module{
-				Module: modulePatch.ModuleName,
-				Issue:  modulePatch.PatchSet.Patch,
+			if modulePatch.ModuleName != "" {
+				module := commitqueue.Module{
+					Module: modulePatch.ModuleName,
+					Issue:  modulePatch.PatchSet.Patch,
+				}
+				modules = append(modules, module)
 			}
-			modules = append(modules, module)
 		}
 		item := commitqueue.CommitQueueItem{
 			Issue:   strconv.Itoa(p.GithubPatchData.PRNumber),

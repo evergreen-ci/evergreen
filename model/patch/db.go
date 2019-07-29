@@ -5,6 +5,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/anser/bsonutil"
 	adb "github.com/mongodb/anser/db"
 	"go.mongodb.org/mongo-driver/bson"
@@ -177,14 +178,23 @@ func PatchesByProject(projectId string, ts time.Time, limit int) db.Q {
 	}).Sort([]string{"-" + CreateTimeKey}).Limit(limit)
 }
 
+// FindFailedCommitQueuePatchesInTimeRange returns failed patches if they started within range,
+// or if they were never started but finished within time range. (i.e. timed out)
 func FindFailedCommitQueuePatchesinTimeRange(projectID string, startTime, endTime time.Time) ([]Patch, error) {
 	query := bson.M{
 		ProjectKey: projectID,
 		StatusKey:  evergreen.PatchFailed,
 		AliasKey:   evergreen.CommitQueueAlias,
-		"$and": []bson.M{
-			{StartTimeKey: bson.M{"$gte": startTime}},
-			{StartTimeKey: bson.M{"$lte": endTime}},
+		"$or": []bson.M{
+			{"$and": []bson.M{
+				{StartTimeKey: bson.M{"$lte": endTime}},
+				{StartTimeKey: bson.M{"$gte": startTime}},
+			}},
+			{"$and": []bson.M{
+				{StartTimeKey: util.ZeroTime},
+				{FinishTimeKey: bson.M{"$lte": endTime}},
+				{FinishTimeKey: bson.M{"$gte": startTime}},
+			}},
 		},
 	}
 	return Find(db.Query(query).Sort([]string{CreateTimeKey}))

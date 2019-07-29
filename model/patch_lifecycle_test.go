@@ -19,6 +19,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/testutil"
+	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/grip"
 	. "github.com/smartystreets/goconvey/convey"
 	"github.com/stretchr/testify/assert"
@@ -810,6 +811,29 @@ func TestRetryCommitQueueItems(t *testing.T) {
 			require.NotNil(t, newPatch)
 			assert.Equal(t, 0, cq.FindItem(newPatch.Id.Hex()))
 		},
+		"UnstartedPatch": func(*testing.T) {
+			projectRef.CommitQueue.PatchType = commitqueue.PRPatchType
+			assert.NoError(t, projectRef.Insert())
+
+			// not started but terminated within time range
+			p := patch.Patch{
+				Id:         mgobson.NewObjectId(),
+				Project:    projectRef.Identifier,
+				Githash:    patchedRevision,
+				StartTime:  util.ZeroTime,
+				FinishTime: startTime.Add(30 * time.Minute),
+				Status:     evergreen.PatchFailed,
+				Alias:      evergreen.CommitQueueAlias,
+				GithubPatchData: patch.GithubPatch{
+					PRNumber: 456,
+				},
+			}
+			assert.NoError(t, p.Insert())
+			restarted, notRestarted, err := RetryCommitQueueItems(projectRef.Identifier, projectRef.CommitQueue.PatchType, opts)
+			assert.NoError(t, err)
+			assert.Len(t, restarted, 2)
+			assert.Len(t, notRestarted, 0)
+		},
 	} {
 		t.Run(name, func(t *testing.T) {
 			assert.NoError(t, db.ClearCollections(ProjectRefCollection, commitqueue.Collection, patch.Collection, user.Collection))
@@ -863,7 +887,6 @@ func TestRetryCommitQueueItems(t *testing.T) {
 					FinishTime:  endTime.Add(30 * time.Minute),
 					Status:      evergreen.PatchFailed,
 				},
-
 				{ // not within time frame
 					Id:          mgobson.NewObjectId(),
 					PatchNumber: 4,
