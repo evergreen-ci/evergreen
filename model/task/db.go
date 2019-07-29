@@ -62,6 +62,8 @@ var (
 	ExecutionTasksKey       = bsonutil.MustHaveTag(Task{}, "ExecutionTasks")
 	DisplayOnlyKey          = bsonutil.MustHaveTag(Task{}, "DisplayOnly")
 	TaskGroupKey            = bsonutil.MustHaveTag(Task{}, "TaskGroup")
+	TaskGroupMaxHostsKey    = bsonutil.MustHaveTag(Task{}, "TaskGroupMaxHosts")
+	TaskGroupOrderKey       = bsonutil.MustHaveTag(Task{}, "TaskGroupOrder")
 	GenerateTaskKey         = bsonutil.MustHaveTag(Task{}, "GenerateTask")
 	GeneratedTasksKey       = bsonutil.MustHaveTag(Task{}, "GeneratedTasks")
 	GeneratedByKey          = bsonutil.MustHaveTag(Task{}, "GeneratedBy")

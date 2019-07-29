@@ -109,6 +109,7 @@ type Connector interface {
 	GetVersionsAndVariants(int, int, *model.Project) (*restModel.VersionVariantData, error)
 	GetProjectEventLog(string, time.Time, int) ([]restModel.APIProjectEvent, error)
 	CreateVersionFromConfig(context.Context, string, []byte, *user.DBUser, string, bool) (*model.Version, error)
+	GetVersionsInProject(string, string, int, int) ([]restModel.APIVersion, error)
 
 	// FindByProjectAndCommit is a method to find a set of tasks which ran as part of
 	// certain version in a project. It takes the projectId, commit hash, and a taskId

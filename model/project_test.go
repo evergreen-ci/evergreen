@@ -1196,3 +1196,40 @@ func TestLoggerConfigValidate(t *testing.T) {
 	}
 	assert.EqualError(config.IsValid(), "invalid system logger config: Splunk logger requires a server URL\nSplunk logger requires a token")
 }
+
+func TestInjectTaskGroupInfo(t *testing.T) {
+	tg := TaskGroup{
+		Name:     "group-one",
+		MaxHosts: 42,
+		Tasks:    []string{"one", "two"},
+	}
+
+	t.Run("PopulatedFirst", func(t *testing.T) {
+		tk := &task.Task{
+			DisplayName: "one",
+		}
+
+		tg.InjectInfo(tk)
+
+		assert.Equal(t, 42, tk.TaskGroupMaxHosts)
+		assert.Equal(t, 1, tk.TaskGroupOrder)
+	})
+	t.Run("PopulatedSecond", func(t *testing.T) {
+		tk := &task.Task{
+			DisplayName: "two",
+		}
+
+		tg.InjectInfo(tk)
+
+		assert.Equal(t, 42, tk.TaskGroupMaxHosts)
+		assert.Equal(t, 2, tk.TaskGroupOrder)
+	})
+	t.Run("Missed", func(t *testing.T) {
+		tk := &task.Task{}
+
+		tg.InjectInfo(tk)
+
+		assert.Equal(t, 42, tk.TaskGroupMaxHosts)
+		assert.Equal(t, 0, tk.TaskGroupOrder)
+	})
+}

@@ -94,8 +94,8 @@ func TestMakeRemoteClientInvalidService(t *testing.T) {
 
 func TestMakeRemoteClient(t *testing.T) {
 	for remoteType, makeServiceAndClient := range map[string]func(ctx context.Context, t *testing.T, port int, manager jasper.Manager) (jasper.CloseFunc, jasper.RemoteClient){
-		restService: makeTestRESTServiceAndClient,
-		rpcService:  makeTestRPCServiceAndClient,
+		RESTService: makeTestRESTServiceAndClient,
+		RPCService:  makeTestRPCServiceAndClient,
 	} {
 		t.Run(remoteType, func(t *testing.T) {
 			ctx, cancel := context.WithTimeout(context.Background(), testTimeout)
@@ -111,8 +111,8 @@ func TestMakeRemoteClient(t *testing.T) {
 
 func TestCLICommon(t *testing.T) {
 	for remoteType, makeServiceAndClient := range map[string]func(ctx context.Context, t *testing.T, port int, manager jasper.Manager) (jasper.CloseFunc, jasper.RemoteClient){
-		restService: makeTestRESTServiceAndClient,
-		rpcService:  makeTestRPCServiceAndClient,
+		RESTService: makeTestRESTServiceAndClient,
+		RPCService:  makeTestRPCServiceAndClient,
 	} {
 		t.Run(remoteType, func(t *testing.T) {
 			for testName, testCase := range map[string]func(ctx context.Context, t *testing.T, c *cli.Context, client jasper.RemoteClient){

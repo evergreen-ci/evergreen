@@ -3,6 +3,7 @@ package queue
 import (
 	"context"
 	"fmt"
+	"runtime"
 	"sync"
 	"testing"
 	"time"
@@ -22,6 +23,9 @@ type SQSFifoQueueSuite struct {
 }
 
 func TestSQSFifoQueueSuite(t *testing.T) {
+	if runtime.GOOS == "windows" || runtime.GOOS == "darwin" {
+		t.Skip("skipping SQS tests on non-core platforms")
+	}
 	suite.Run(t, new(SQSFifoQueueSuite))
 }
 
@@ -92,6 +96,10 @@ func (s *SQSFifoQueueSuite) TestCompleteMethodChangesStatsAndResults() {
 }
 
 func TestSQSFifoQueueRunsJobsOnlyOnce(t *testing.T) {
+	if runtime.GOOS == "windows" || runtime.GOOS == "darwin" {
+		t.Skip("skipping SQS tests on non-core platforms")
+	}
+
 	assert := assert.New(t)
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 	defer cancel()
@@ -127,6 +135,10 @@ func TestSQSFifoQueueRunsJobsOnlyOnce(t *testing.T) {
 }
 
 func TestMultipleSQSFifoQueueRunsJobsOnlyOnce(t *testing.T) {
+	if runtime.GOOS == "windows" || runtime.GOOS == "darwin" {
+		t.Skip("skipping SQS tests on non-core platforms")
+	}
+
 	// case two
 	mockJobCounters.Reset()
 

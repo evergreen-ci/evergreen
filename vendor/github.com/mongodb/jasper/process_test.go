@@ -28,9 +28,9 @@ func TestProcessImplementations(t *testing.T) {
 		"BasicNoLock":      newBasicProcess,
 		"BasicWithLock":    makeLockingProcess(newBasicProcess),
 		"REST": func(ctx context.Context, opts *CreateOptions) (Process, error) {
-			srv, port := makeAndStartService(ctx, httpClient)
-			if port < 100 || srv == nil {
-				return nil, errors.New("fixture creation failure")
+			_, port, err := startRESTService(ctx, httpClient)
+			if err != nil {
+				return nil, errors.WithStack(err)
 			}
 
 			client := &restClient{
@@ -56,6 +56,9 @@ func TestProcessImplementations(t *testing.T) {
 					assert.Nil(t, proc)
 				},
 				"WithCanceledContextProcessCreationFails": func(ctx context.Context, t *testing.T, opts *CreateOptions, makep ProcessConstructor) {
+					if cname == "REST" {
+						t.Skip("context cancellation in test also stops REST service")
+					}
 					pctx, pcancel := context.WithCancel(ctx)
 					pcancel()
 					proc, err := makep(pctx, opts)
@@ -63,17 +66,17 @@ func TestProcessImplementations(t *testing.T) {
 					assert.Nil(t, proc)
 				},
 				"CanceledContextTimesOutEarly": func(ctx context.Context, t *testing.T, opts *CreateOptions, makep ProcessConstructor) {
-					pctx, pcancel := context.WithTimeout(ctx, 200*time.Millisecond)
+					pctx, pcancel := context.WithTimeout(ctx, 5*time.Second)
 					defer pcancel()
 					startAt := time.Now()
-					opts.Args = []string{"sleep", "20"}
+					opts = sleepCreateOpts(20)
 					proc, err := makep(pctx, opts)
-					assert.NoError(t, err)
-
-					time.Sleep(100 * time.Millisecond) // let time pass...
+					require.NoError(t, err)
 					require.NotNil(t, proc)
+
+					time.Sleep(5 * time.Millisecond) // let time pass...
 					assert.False(t, proc.Info(ctx).Successful)
-					assert.True(t, time.Since(startAt) < 400*time.Millisecond)
+					assert.True(t, time.Since(startAt) < 20*time.Second)
 				},
 				"ProcessLacksTagsByDefault": func(ctx context.Context, t *testing.T, opts *CreateOptions, makep ProcessConstructor) {
 					proc, err := makep(ctx, opts)
@@ -107,7 +110,7 @@ func TestProcessImplementations(t *testing.T) {
 					proc, err := makep(ctx, opts)
 					require.NoError(t, err)
 
-					for i := 0; i < 100; i++ {
+					for i := 0; i < 10; i++ {
 						proc.Tag("foo")
 					}
 

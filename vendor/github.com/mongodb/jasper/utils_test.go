@@ -61,7 +61,8 @@ func TestMakeEnclosingDirectories(t *testing.T) {
 	assert.NoError(t, makeEnclosingDirectories(path))
 	defer os.RemoveAll(path)
 
-	path = "util_test.go"
+	_, path, _, ok := runtime.Caller(0)
+	require.True(t, ok)
 	info, err := os.Stat(path)
 	require.False(t, os.IsNotExist(err))
 	require.False(t, info.IsDir())

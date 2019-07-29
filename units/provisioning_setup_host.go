@@ -223,7 +223,26 @@ func (j *setupHostJob) runHostSetup(ctx context.Context, targetHost *host.Host, 
 		return err
 	}
 
-	if targetHost.Distro.BootstrapMethod == distro.BootstrapMethodSSH {
+	switch targetHost.Distro.BootstrapMethod {
+	case distro.BootstrapMethodUserData:
+		// The setup is done at this point for a host bootstrapped with user
+		// data, because this host only needs to perform operations that must be
+		// done after the host is already running (e.g. setting DNS name).
+		if err = targetHost.MarkAsProvisioned(); err != nil {
+			return errors.Wrapf(err, "error marking host %s as provisioned", targetHost.Id)
+		}
+
+		grip.Info(message.Fields{
+			"host":                    targetHost.Id,
+			"distro":                  targetHost.Distro.Id,
+			"provider":                targetHost.Provider,
+			"attempts":                targetHost.ProvisionAttempts,
+			"job":                     j.ID(),
+			"message":                 "host successfully provisioned",
+			"provision_duration_secs": targetHost.ProvisionTime.Sub(targetHost.CreationTime).Seconds(),
+		})
+		return nil
+	case distro.BootstrapMethodSSH:
 		if err = j.setupJasper(ctx); err != nil {
 			return errors.Wrapf(err, "error putting Jasper on host '%s'", targetHost.Id)
 		}
@@ -524,6 +543,9 @@ func (j *setupHostJob) provisionHost(ctx context.Context, h *host.Host, settings
 
 		return errors.Wrapf(err, "error initializing host %s", h.Id)
 	}
+	if h.Distro.BootstrapMethod == distro.BootstrapMethodUserData {
+		return nil
+	}
 
 	// If this is a spawn host
 	if h.ProvisionOptions != nil && h.ProvisionOptions.LoadCLI {
@@ -689,7 +711,7 @@ func (j *setupHostJob) loadClient(ctx context.Context, target *host.Host, settin
 	defer cancel()
 
 	makeShellCmd := j.env.JasperManager().CreateCommand(mkdctx).Host(hostSSHInfo.Hostname).User(target.User).
-		ExtendSSHArgs("-p", hostSSHInfo.Port).ExtendSSHArgs(sshOptions...).
+		ExtendRemoteArgs("-p", hostSSHInfo.Port).ExtendRemoteArgs(sshOptions...).
 		RedirectErrorToOutput(true).SetOutputWriter(mkdirOutput).
 		Append(fmt.Sprintf("mkdir -m 777 -p ~/%s && (echo 'PATH=$PATH:~/%s' >> ~/.profile || true; echo 'PATH=$PATH:~/%s' >> ~/.bash_profile || true)", targetDir, targetDir, targetDir))
 
@@ -714,9 +736,9 @@ func (j *setupHostJob) loadClient(ctx context.Context, target *host.Host, settin
 	}
 
 	curlcmd := j.env.JasperManager().CreateCommand(mkdctx).Host(hostSSHInfo.Hostname).User(target.User).
-		ExtendSSHArgs("-p", hostSSHInfo.Port).ExtendSSHArgs(sshOptions...).
+		ExtendRemoteArgs("-p", hostSSHInfo.Port).ExtendRemoteArgs(sshOptions...).
 		RedirectErrorToOutput(true).SetOutputWriter(curlOut).
-		Append(target.CurlCommand(settings.Ui.Url))
+		Append(target.CurlCommand(settings))
 
 	if err = curlcmd.Run(curlctx); err != nil {
 		return nil, errors.Wrapf(err, "error running curl command for cli, %s", curlOut.Buffer.String())
@@ -790,7 +812,7 @@ func (j *setupHostJob) fetchRemoteTaskData(ctx context.Context, taskId, cliPath,
 	fetchCmd := fmt.Sprintf("%s -c %s fetch -t %s --source --artifacts --dir='%s'", cliPath, confPath, taskId, target.Distro.WorkDir)
 
 	makeShellCmd := j.env.JasperManager().CreateCommand(ctx).Host(hostSSHInfo.Hostname).User(target.User).
-		ExtendSSHArgs("-p", hostSSHInfo.Port).ExtendSSHArgs(sshOptions...).
+		ExtendRemoteArgs("-p", hostSSHInfo.Port).ExtendRemoteArgs(sshOptions...).
 		RedirectErrorToOutput(true).SetOutputWriter(cmdOutput).
 		Append(fetchCmd)
 

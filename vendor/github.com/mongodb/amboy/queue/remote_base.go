@@ -43,6 +43,10 @@ func (q *remoteBase) Put(ctx context.Context, j amboy.Job) error {
 		Created: time.Now(),
 	})
 
+	if err := j.TimeInfo().Validate(); err != nil {
+		return errors.Wrap(err, "invalid job timeinfo")
+	}
+
 	return q.driver.Put(ctx, j)
 }
 

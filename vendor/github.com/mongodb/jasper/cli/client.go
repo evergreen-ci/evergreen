@@ -23,10 +23,11 @@ const (
 func Client() cli.Command {
 	return cli.Command{
 		Name:  ClientCommand,
-		Usage: "tools for making requests to Jasper services",
+		Usage: "tools for making requests to Jasper services, oriented for machine use",
 		Subcommands: []cli.Command{
 			Manager(),
 			Process(),
+			Remote(),
 		},
 	}
 }

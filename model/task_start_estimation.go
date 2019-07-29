@@ -140,9 +140,16 @@ func createSimulatorModel(taskQueue TaskQueue, hosts []host.Host) *estimatedTime
 				t, err := task.FindOneNoMerge(task.ById(h.RunningTask))
 				if err != nil {
 					grip.Error(message.WrapError(err, message.Fields{
-						"message": "retieving tasks for task simulator",
+						"message": "retrieving tasks for task start estimation simulator",
 					}))
 					return &estimator
+				}
+				if t == nil {
+					grip.Error(message.Fields{
+						"message": "task does not exist, can't estimate its duration",
+						"task_id": h.RunningTask,
+					})
+					continue
 				}
 				elapsed := time.Since(t.DispatchTime)
 				estimator.hosts = append(estimator.hosts, estimatedHost{timeToCompletion: t.ExpectedDuration - elapsed})

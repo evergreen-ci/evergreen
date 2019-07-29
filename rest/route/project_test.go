@@ -3,14 +3,19 @@ package route
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"testing"
 
+	"github.com/evergreen-ci/evergreen/db"
+
+	"github.com/evergreen-ci/evergreen"
 	serviceModel "github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/gimlet"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -174,28 +179,12 @@ func (s *ProjectPutSuite) TestRunNewWithValidEntity() {
 	s.Equal(resp.Status(), http.StatusCreated)
 }
 
-func (s *ProjectPutSuite) TestRunExistingWithValidEntity() {
+func (s *ProjectPutSuite) TestRunExistingFails() {
 	ctx := context.Background()
 	json := []byte(
 		`{
 				"owner_name": "Rembrandt Q. Einstein",
 				"repo_name": "nutsandgum",
-				"branch_name": "master",
-				"repo_kind": "github",
-				"enabled": false,
-				"private": true,
-				"batch_time": 0,
-				"remote_path": "evergreen.yml",
-				"display_name": "Nuts and Gum: together at last!",
-				"local_config": "",
-				"deactivate_previous": true,
-				"tracks_push_events": true,
-				"pr_testing_enabled": true,
-				"commitq_enabled": true,
-				"tracked": false,
-				"patching_disabled": true,
-				"admins": ["Apu DeBeaumarchais"],
-				"notify_on_failure": true
 		}`)
 
 	h := s.rm.(*projectIDPutHandler)
@@ -204,41 +193,8 @@ func (s *ProjectPutSuite) TestRunExistingWithValidEntity() {
 
 	resp := s.rm.Run(ctx)
 	s.NotNil(resp.Data())
-	s.Equal(resp.Status(), http.StatusOK)
+	s.Equal(resp.Status(), http.StatusBadRequest)
 
-}
-
-func (s *ProjectPutSuite) TestRunNewConflictingName() {
-	ctx := context.Background()
-	json := []byte(
-		`{
-				"owner_name": "Rembrandt Q. Einstein",
-				"repo_name": "nutsandgum",
-				"branch_name": "master",
-				"repo_kind": "github",
-				"enabled": false,
-				"private": true,
-				"batch_time": 0,
-				"identifier" : "verboten",
-				"remote_path": "evergreen.yml",
-				"display_name": "Nuts and Gum: together at last!",
-				"local_config": "",
-				"deactivate_previous": true,
-				"tracks_push_events": true,
-				"pr_testing_enabled": true,
-				"commitq_enabled": true,
-				"tracked": false,
-				"patching_disabled": true,
-				"admins": ["Apu DeBeaumarchais"],
-				"notify_on_failure": true
-		}`)
-	h := s.rm.(*projectIDPutHandler)
-	h.projectID = "new-project"
-	h.body = json
-
-	resp := s.rm.Run(ctx)
-	s.NotNil(resp.Data())
-	s.Equal(resp.Status(), http.StatusForbidden)
 }
 
 ////////////////////////////////////////////////////////////////////////
@@ -422,4 +378,51 @@ func getMockProjectsConnector() *data.MockConnector {
 		},
 	}
 	return &connector
+}
+
+func TestGetProjectVersions(t *testing.T) {
+	assert := assert.New(t)
+	assert.NoError(db.Clear(serviceModel.VersionCollection))
+	const projectName = "proj"
+	v1 := serviceModel.Version{
+		Id:                  "v1",
+		Identifier:          projectName,
+		Requester:           evergreen.AdHocRequester,
+		RevisionOrderNumber: 1,
+	}
+	assert.NoError(v1.Insert())
+	v2 := serviceModel.Version{
+		Id:                  "v2",
+		Identifier:          projectName,
+		Requester:           evergreen.AdHocRequester,
+		RevisionOrderNumber: 2,
+	}
+	assert.NoError(v2.Insert())
+	v3 := serviceModel.Version{
+		Id:                  "v3",
+		Identifier:          projectName,
+		Requester:           evergreen.RepotrackerVersionRequester,
+		RevisionOrderNumber: 3,
+	}
+	assert.NoError(v3.Insert())
+	v4 := serviceModel.Version{
+		Id:                  "v4",
+		Identifier:          projectName,
+		Requester:           evergreen.AdHocRequester,
+		RevisionOrderNumber: 4,
+	}
+	assert.NoError(v4.Insert())
+
+	h := getProjectVersionsHandler{
+		projectID: projectName,
+		requester: evergreen.AdHocRequester,
+		sc:        &data.DBConnector{},
+		limit:     20,
+	}
+
+	resp := h.Run(context.Background())
+	respJson, err := json.Marshal(resp.Data())
+	assert.NoError(err)
+	assert.Contains(string(respJson), `"version_id":"v4"`)
+	assert.NotContains(string(respJson), `"version_id":"v3"`)
 }

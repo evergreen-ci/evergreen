@@ -174,10 +174,13 @@ func (uis *UIServer) isSuperUser(u gimlet.User) bool {
 
 func (uis *UIServer) setCORSHeaders(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		if r.Method == http.MethodGet && len(uis.Settings.Ui.CORSOrigin) > 0 {
-			w.Header().Add("Access-Control-Allow-Origin", uis.Settings.Ui.CORSOrigin)
-			w.Header().Add("Access-Control-Allow-Credentials", "true")
-			w.Header().Add("Access-Control-Allow-Headers", fmt.Sprintf("%s, %s", evergreen.APIKeyHeader, evergreen.APIUserHeader))
+		if r.Method == http.MethodGet && len(uis.Settings.Ui.CORSOrigins) > 0 {
+			requester := r.Header.Get("Origin")
+			if util.StringSliceContains(uis.Settings.Ui.CORSOrigins, requester) {
+				w.Header().Add("Access-Control-Allow-Origin", requester)
+				w.Header().Add("Access-Control-Allow-Credentials", "true")
+				w.Header().Add("Access-Control-Allow-Headers", fmt.Sprintf("%s, %s", evergreen.APIKeyHeader, evergreen.APIUserHeader))
+			}
 		}
 		grip.ErrorWhen(r.Method != http.MethodGet, message.Fields{
 			"cause":   "programmer error",

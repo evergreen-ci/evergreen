@@ -240,10 +240,6 @@ func TestRPCClient(t *testing.T) {
 							assert.Contains(t, err.Error(), "canceled")
 						},
 						"CloseSucceedsWithTerminatedProcesses": func(ctx context.Context, t *testing.T, client jasper.RemoteClient) {
-							if runtime.GOOS == "windows" {
-								t.Skip("context times out on windows")
-							}
-
 							procs, err := createProcs(ctx, trueCreateOpts(), client, 10)
 							for _, p := range procs {
 								_, err := p.Wait(ctx)
@@ -490,21 +486,17 @@ func TestRPCProcess(t *testing.T) {
 							assert.Nil(t, proc)
 						},
 						"CanceledContextTimesOutEarly": func(ctx context.Context, t *testing.T, opts *jasper.CreateOptions, makep processConstructor) {
-							if runtime.GOOS == "windows" {
-								t.Skip("the sleep tests don't block correctly on windows")
-							}
-
-							pctx, pcancel := context.WithTimeout(ctx, 200*time.Millisecond)
+							pctx, pcancel := context.WithTimeout(ctx, 5*time.Second)
 							defer pcancel()
 							startAt := time.Now()
-							opts.Args = []string{"sleep", "10"}
+							opts = sleepCreateOpts(20)
 							proc, err := makep(pctx, opts)
-							assert.NoError(t, err)
-
-							time.Sleep(100 * time.Millisecond) // let time pass...
+							require.NoError(t, err)
 							require.NotNil(t, proc)
+
+							time.Sleep(5 * time.Millisecond) // let time pass...
 							assert.False(t, proc.Info(ctx).Successful)
-							assert.True(t, time.Since(startAt) < 400*time.Millisecond)
+							assert.True(t, time.Since(startAt) < 20*time.Second)
 						},
 						"ProcessLacksTagsByDefault": func(ctx context.Context, t *testing.T, opts *jasper.CreateOptions, makep processConstructor) {
 							proc, err := makep(ctx, opts)
@@ -784,5 +776,4 @@ func TestRPCProcess(t *testing.T) {
 
 		})
 	}
-
 }

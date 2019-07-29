@@ -624,8 +624,9 @@ Admin Settings
 										<input type="text" ng-model="Settings.ui.csrf_key">
 									</md-input-container>
 									<md-input-container class="control" style="width:45%;">
-										<label>CORS Origin</label>
-										<input type="text" ng-model="Settings.ui.cors_origin">
+										<label>CORS Origins</label>
+										<textarea ng-model="Settings.ui.cors_origins" ng-list="&#10;" ng-trim="false" rows="3"
+										md-select-on-focus></textarea>
 									</md-input-container>
 									<md-input-container class="control" style="width:45%; margin-left:50px;">
 										<md-checkbox ng-model="Settings.ui.cache_templates">

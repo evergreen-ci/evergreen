@@ -58,7 +58,8 @@ type TaskEndDetails struct {
 }
 
 type GetNextTaskDetails struct {
-	TaskGroup string `json:"task_group"`
+	TaskGroup     string `json:"task_group"`
+	AgentRevision string `json:"agent_revision"`
 }
 
 // ExpansionVars is a map of expansion variables for a project.

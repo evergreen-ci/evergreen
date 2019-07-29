@@ -802,7 +802,7 @@ func createVersionItems(ctx context.Context, v *model.Version, ref *model.Projec
 
 			var lastActivated *model.Version
 			activateAt := time.Now()
-			if metadata.TriggerID == "" {
+			if metadata.TriggerID == "" && v.Requester != evergreen.AdHocRequester {
 				lastActivated, err = model.VersionFindOne(model.VersionByLastVariantActivation(ref.Identifier, buildvariant.Name))
 				if err != nil {
 					grip.Error(message.WrapError(err, message.Fields{

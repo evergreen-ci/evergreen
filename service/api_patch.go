@@ -131,7 +131,6 @@ func getPatchFromRequest(r *http.Request) (*patch.Patch, error) {
 	if existingPatch == nil {
 		return nil, errors.Errorf("no existing request with id: %v", patchIdStr)
 	}
-
 	return existingPatch, nil
 }
 

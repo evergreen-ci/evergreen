@@ -29,8 +29,12 @@ type DownloadInfo struct {
 func (info DownloadInfo) Validate() error {
 	catcher := grip.NewBasicCatcher()
 
+	if info.URL == "" {
+		catcher.New("download url cannot be empty")
+	}
+
 	if !filepath.IsAbs(info.Path) {
-		catcher.Add(errors.New("download path must be an absolute path"))
+		catcher.New("download path must be an absolute path")
 	}
 
 	catcher.Add(info.ArchiveOpts.Validate())

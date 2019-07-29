@@ -26,6 +26,7 @@ func (m *Module) UnmarshalBSON(in []byte) error { return mgobson.Unmarshal(in, m
 
 type CommitQueueItem struct {
 	Issue   string   `bson:"issue"`
+	Version string   `bson:"version,omitempty"`
 	Modules []Module `bson:"modules"`
 }
 
@@ -86,6 +87,10 @@ func (q *CommitQueue) Remove(issue string) (bool, error) {
 		}
 	}
 	return true, nil
+}
+
+func (q *CommitQueue) UpdateVersion(item CommitQueueItem) error {
+	return errors.Wrapf(addVersionID(q.ProjectID, item), "error updating version")
 }
 
 func (q *CommitQueue) FindItem(issue string) int {

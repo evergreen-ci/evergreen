@@ -478,6 +478,17 @@ func FindDistroTaskQueue(distroID string) (TaskQueue, error) {
 		db.NoSort,
 		&queue)
 
+	grip.DebugWhen(err == nil, message.Fields{
+		"ticket":                               "EVG-6289",
+		"message":                              "fetched the distro's TaskQueueItems to create its TaskQueue",
+		"distro":                               distroID,
+		"task_queue_generated_at":              queue.GeneratedAt,
+		"num_task_queue_items":                 len(queue.Queue),
+		"distro_queue_info_length":             queue.DistroQueueInfo.Length,
+		"distro_queue_info_expected_duration":  queue.DistroQueueInfo.ExpectedDuration,
+		"num_distro_queue_info_taskgroupinfos": len(queue.DistroQueueInfo.TaskGroupInfos),
+	})
+
 	return queue, errors.WithStack(err)
 }
 
@@ -533,9 +544,13 @@ outer:
 
 	// validate that the task is there
 	if !found {
-		return errors.Errorf("task id '%s' was not found in the in-memory queue for distro '%s'",
-			taskId, self.Distro)
+		return errors.Errorf("TaskQueueItem with id '%s' not found in the in-memory TaskQueue.Queue for distro '%s'", taskId, self.Distro)
 	}
+
+	// When something is dequeued from the in-memory queue on one app server, it
+	// will still be present in every other app server's in-memory queue. It will
+	// only no longer be present after the TTL has passed, and each app server
+	// has re-created its in-memory queue.
 
 	var err error
 	err = dequeue(taskId, self.Distro)

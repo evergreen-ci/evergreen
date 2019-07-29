@@ -199,6 +199,26 @@ func AllRunningHosts(distroID string) (HostGroup, error) {
 	return allHosts, nil
 }
 
+// AllActiveHosts produces a HostGroup for all hosts with UpHost
+// status as well as quarantined hosts. These do not count spawn
+// hosts.
+func AllActiveHosts(distroID string) (HostGroup, error) {
+	q := bson.M{
+		StartedByKey: evergreen.User,
+		StatusKey:    bson.M{"$in": append(evergreen.UpHostStatus, evergreen.HostQuarantined)},
+	}
+
+	if distroID != "" {
+		q[bsonutil.GetDottedKeyName(DistroKey, distro.IdKey)] = distroID
+	}
+
+	activeHosts, err := Find(db.Query(q))
+	if err != nil {
+		return nil, errors.Wrap(err, "problem finding active hosts")
+	}
+	return activeHosts, nil
+}
+
 // AllHostsSpawnedByTasksToTerminate finds all hosts spawned by tasks that should be terminated.
 func AllHostsSpawnedByTasksToTerminate() ([]Host, error) {
 	catcher := grip.NewBasicCatcher()
@@ -293,7 +313,12 @@ func ByUnprovisionedSince(threshold time.Time) db.Q {
 
 // ByTaskSpec returns a query that finds all running hosts that are running a
 // task with the given group, buildvariant, project, and version.
-func NumHostsByTaskSpec(group, bv, project, version string) (int, error) {
+func NumHostsByTaskSpec(group, buildVariant, project, version string) (int, error) {
+	if group == "" || buildVariant == "" || project == "" || version == "" {
+		s := "all arguments passed to host.NumHostsByTaskSpec must be non-empty strings: "
+		s += fmt.Sprintf("group is '%s', buildVariant is '%s', project is '%s' and version is '%s'", group, buildVariant, project, version)
+		return 0, errors.New(s)
+	}
 	q := db.Query(
 		bson.M{
 			StatusKey: evergreen.HostRunning,
@@ -301,14 +326,14 @@ func NumHostsByTaskSpec(group, bv, project, version string) (int, error) {
 				{
 					RunningTaskKey:             bson.M{"$exists": "true"},
 					RunningTaskGroupKey:        group,
-					RunningTaskBuildVariantKey: bv,
+					RunningTaskBuildVariantKey: buildVariant,
 					RunningTaskProjectKey:      project,
 					RunningTaskVersionKey:      version,
 				},
 				{
 					LTCTaskKey:    bson.M{"$exists": "true"},
 					LTCGroupKey:   group,
-					LTCBVKey:      bv,
+					LTCBVKey:      buildVariant,
 					LTCProjectKey: project,
 					LTCVersionKey: version,
 				},
@@ -339,9 +364,7 @@ func Provisioning() db.Q {
 }
 
 func FindByFirstProvisioningAttempt() ([]Host, error) {
-	bootstrapKey := bsonutil.GetDottedKeyName(DistroKey, distro.BootstrapMethodKey)
 	return Find(db.Query(bson.M{
-		bootstrapKey:         bson.M{"$ne": distro.BootstrapMethodUserData},
 		ProvisionAttemptsKey: 0,
 		StatusKey:            evergreen.HostProvisioning,
 	}))

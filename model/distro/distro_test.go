@@ -324,7 +324,7 @@ func TestGetResolvedPlannerSettings(t *testing.T) {
 		HostAllocator:                 "legacy",
 		FreeHostFraction:              0.1,
 		CacheDurationSeconds:          60,
-		Planner:                       evergreen.PlannerVersionLegacy, // STU: change this from PlannerVersion to Planner
+		Planner:                       evergreen.PlannerVersionLegacy,
 		TargetTimeSeconds:             10,
 		AcceptableHostIdleTimeSeconds: 60,
 		GroupVersions:                 false,

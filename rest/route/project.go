@@ -243,7 +243,9 @@ func (h *projectIDPatchHandler) Run(ctx context.Context) gimlet.Responder {
 	if err = apiProjectRef.BuildFromService(*p); err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "API error converting from model.ProjectRef to model.APIProjectRef"))
 	}
-
+	// erase contents so apiProjectRef will only be populated with new elements
+	apiProjectRef.Admins = nil
+	apiProjectRef.Triggers = nil
 	if err = json.Unmarshal(h.body, apiProjectRef); err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "API error while unmarshalling JSON"))
 	}
@@ -320,6 +322,18 @@ func (h *projectIDPatchHandler) Run(ctx context.Context) gimlet.Responder {
 		}
 	}
 
+	adminsToDelete := []string{}
+	for _, admin := range apiProjectRef.DeleteAdmins {
+		adminsToDelete = append(adminsToDelete, model.FromAPIString(admin))
+	}
+	allAdmins := util.UniqueStrings(append(p.Admins, dbProjectRef.Admins...)) // get original and new admin
+	dbProjectRef.Admins = []string{}
+	for _, admin := range allAdmins {
+		if !util.StringSliceContains(adminsToDelete, admin) {
+			dbProjectRef.Admins = append(dbProjectRef.Admins, admin)
+		}
+	}
+
 	// validate triggers before updating project
 	catcher := grip.NewSimpleCatcher()
 	for i, trigger := range dbProjectRef.Triggers {
@@ -328,6 +342,7 @@ func (h *projectIDPatchHandler) Run(ctx context.Context) gimlet.Responder {
 			dbProjectRef.Triggers[i].DefinitionID = util.RandomString()
 		}
 	}
+	dbProjectRef.Triggers = append(p.Triggers, dbProjectRef.Triggers...)
 	if catcher.HasErrors() {
 		return gimlet.MakeJSONErrorResponder(errors.Wrap(catcher.Resolve(), "error validating triggers"))
 	}
@@ -355,9 +370,9 @@ func (h *projectIDPatchHandler) Run(ctx context.Context) gimlet.Responder {
 		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "Database error updating aliases for project '%s'", h.projectID))
 	}
 
-	for _, subscription := range apiProjectRef.Subscriptions {
-		subscription.OwnerType = model.ToAPIString(string(event.OwnerTypeProject))
-		subscription.Owner = model.ToAPIString(h.projectID)
+	for i := range apiProjectRef.Subscriptions {
+		apiProjectRef.Subscriptions[i].OwnerType = model.ToAPIString(string(event.OwnerTypeProject))
+		apiProjectRef.Subscriptions[i].Owner = model.ToAPIString(h.projectID)
 	}
 	if err = h.sc.SaveSubscriptions(h.projectID, apiProjectRef.Subscriptions); err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "Database error saving subscriptions for project '%s'", h.projectID))
@@ -371,21 +386,22 @@ func (h *projectIDPatchHandler) Run(ctx context.Context) gimlet.Responder {
 		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "Database error deleting subscriptions for project '%s'", h.projectID))
 	}
 
-	// return new aliases and subscriptions
-	apiProjectRef.Aliases, _ = h.sc.FindProjectAliases(h.projectID)
-	apiProjectRef.Subscriptions, _ = h.sc.GetSubscriptions(h.projectID, event.OwnerTypeProject)
-
 	// run the repotracker for the project
 	if newRevision != "" {
 		ts := util.RoundPartOfHour(1).Format(tsFormat)
 		j := units.NewRepotrackerJob(fmt.Sprintf("catchup-%s", ts), h.projectID)
 
 		queue := evergreen.GetEnvironment().RemoteQueue()
-		if err := queue.Put(ctx, j); err != nil {
+		if err = queue.Put(ctx, j); err != nil {
 			return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "problem creating catchup job"))
 		}
 	}
-	return gimlet.NewJSONResponse(apiProjectRef)
+
+	responder := gimlet.NewJSONResponse(struct{}{})
+	if err = responder.SetStatus(http.StatusOK); err != nil {
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "Cannot set HTTP status code to %d", http.StatusOK))
+	}
+	return responder
 }
 
 ////////////////////////////////////////////////////////////////////////
@@ -425,26 +441,21 @@ func (h *projectIDPutHandler) Parse(ctx context.Context, r *http.Request) error 
 	return nil
 }
 
-// Run either:
-// (a) replaces an existing resource with the entity defined in the JSON payload and returns a http.StatusOk (200), or
-// (b) creates a new resource based on the Request-URI and JSON payload and returns a http.StatusCreated (201)
+// creates a new resource based on the Request-URI and JSON payload and returns a http.StatusCreated (201)
 func (h *projectIDPutHandler) Run(ctx context.Context) gimlet.Responder {
-	original, err := h.sc.FindProjectById(h.projectID)
+	p, err := h.sc.FindProjectById(h.projectID)
 	if err != nil && err.(gimlet.ErrorResponse).StatusCode != http.StatusNotFound {
-		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "Database error for find() by project id '%s'", h.projectID))
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "Database error for find() by project id '%s'", h.projectID))
 	}
-
+	if p != nil {
+		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+			StatusCode: http.StatusBadRequest,
+			Message:    fmt.Sprintf("cannot create project with id '%s'", h.projectID),
+		})
+	}
 	apiProjectRef := &model.APIProjectRef{Identifier: model.ToAPIString(h.projectID)}
 	if err = json.Unmarshal(h.body, apiProjectRef); err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "API error while unmarshalling JSON"))
-	}
-
-	identifier := model.FromAPIString(apiProjectRef.Identifier)
-	if h.projectID != identifier {
-		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
-			StatusCode: http.StatusForbidden,
-			Message:    fmt.Sprintf("A project's id is immutable; cannot rename project '%s'", h.projectID),
-		})
 	}
 
 	i, err := apiProjectRef.ToService()
@@ -458,20 +469,13 @@ func (h *projectIDPutHandler) Run(ctx context.Context) gimlet.Responder {
 			Message:    fmt.Sprintf("Unexpected type %T for model.ProjectRef", i),
 		})
 	}
-	// Existing resource
-	if original != nil {
-		if err = h.sc.UpdateProject(dbProjectRef); err != nil {
-			return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "Database error for update() with project id '%s'", h.projectID))
-		}
-		return gimlet.NewJSONResponse(struct{}{})
-	}
-	// New resource
+
 	responder := gimlet.NewJSONResponse(struct{}{})
 	if err = responder.SetStatus(http.StatusCreated); err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "Cannot set HTTP status code to %d", http.StatusCreated))
 	}
 	if err = h.sc.CreateProject(dbProjectRef); err != nil {
-		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "Database error for insert() distro with distro id '%s'", h.projectID))
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "Database error for insert() distro with distro id '%s'", h.projectID))
 	}
 
 	return responder
@@ -526,5 +530,98 @@ func (h *projectIDGetHandler) Run(ctx context.Context) gimlet.Responder {
 	if projectModel.Aliases, err = h.sc.FindProjectAliases(h.projectID); err != nil {
 		return gimlet.MakeJSONErrorResponder(err)
 	}
+	if projectModel.Subscriptions, err = h.sc.GetSubscriptions(h.projectID, event.OwnerTypeProject); err != nil {
+		return gimlet.MakeJSONErrorResponder(err)
+	}
 	return gimlet.NewJSONResponse(projectModel)
+}
+
+type getProjectVersionsHandler struct {
+	projectID  string
+	sc         data.Connector
+	startOrder int
+	limit      int
+	requester  string
+}
+
+func makeGetProjectVersionsHandler(sc data.Connector) gimlet.RouteHandler {
+	return &getProjectVersionsHandler{
+		sc: sc,
+	}
+}
+
+func (h *getProjectVersionsHandler) Factory() gimlet.RouteHandler {
+	return &getProjectVersionsHandler{
+		sc: h.sc,
+	}
+}
+
+func (h *getProjectVersionsHandler) Parse(ctx context.Context, r *http.Request) error {
+	h.projectID = gimlet.GetVars(r)["project_id"]
+	params := r.URL.Query()
+
+	limitStr := params.Get("limit")
+	if limitStr == "" {
+		h.limit = 20
+	} else {
+		limit, err := strconv.Atoi(limitStr)
+		if err != nil {
+			return errors.Wrap(err, "'limit' query parameter must be a valid integer")
+		}
+		if limit < 1 {
+			return errors.New("'limit' must be a positive integer")
+		}
+		h.limit = limit
+	}
+
+	startStr := params.Get("start")
+	if startStr == "" {
+		h.startOrder = 0
+	} else {
+		startOrder, err := strconv.Atoi(params.Get("start"))
+		if err != nil {
+			return errors.Wrap(err, "'start' query parameter must be a valid integer")
+		}
+		if startOrder < 0 {
+			return errors.New("'start' must be a non-negative integer")
+		}
+		h.startOrder = startOrder
+	}
+
+	h.requester = params.Get("requester")
+	if h.requester == "" {
+		return errors.New("'requester' must be one of patch_request, gitter_request, github_pull_request, merge_test, ad_hoc")
+	}
+	return nil
+}
+
+func (h *getProjectVersionsHandler) Run(ctx context.Context) gimlet.Responder {
+	versions, err := h.sc.GetVersionsInProject(h.projectID, h.requester, h.limit, h.startOrder)
+	if err != nil {
+		return gimlet.MakeJSONErrorResponder(err)
+	}
+
+	resp, err := gimlet.NewBasicResponder(http.StatusOK, gimlet.JSON, versions)
+	if err != nil {
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "error constructing response"))
+	}
+
+	if len(versions) >= h.limit {
+		err = resp.SetPages(&gimlet.ResponsePages{
+			Next: &gimlet.Page{
+				Relation:        "next",
+				LimitQueryParam: "limit",
+				KeyQueryParam:   "start",
+				BaseURL:         h.sc.GetURL(),
+				Key:             strconv.Itoa(versions[len(versions)-1].Order),
+				Limit:           h.limit,
+			},
+		})
+
+		if err != nil {
+			return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "error paginating response"))
+		}
+	}
+
+	return resp
 }
