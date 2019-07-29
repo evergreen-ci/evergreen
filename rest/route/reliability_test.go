@@ -27,19 +27,22 @@ func configureTaskReliability(disabled bool) error {
         return err
 }
 
-func disableTaskReliability() {
-        configureTaskReliability(true)
+func disableTaskReliability() error {
+        return configureTaskReliability(true)
+
 }
 
-func enableTaskReliability() {
-        configureTaskReliability(false)
+func enableTaskReliability() error {
+        return configureTaskReliability(false)
 }
 
 func TestTaskReliabilitySuite(t *testing.T) {
         suite.Run(t, new(TaskReliabilitySuite))
 }
+
 func (s *TaskReliabilitySuite) SetupTest() {
-        enableTaskReliability()
+        err := enableTaskReliability()
+        s.Require().NoError(err)
 }
 
 func (s *TaskReliabilitySuite) TestParseTaskReliabilityFilter() {
@@ -73,7 +76,8 @@ func (s *TaskReliabilitySuite) TestDisabledRunTestHandler() {
                 URL:                "https://example.net/test",
         }
 
-        disableTaskReliability()
+        err = disableTaskReliability()
+        s.Require().NoError(err)
 
         handler := makeGetProjectTaskReliability(sc).(*taskReliabilityHandler)
         s.Require().NoError(err)
