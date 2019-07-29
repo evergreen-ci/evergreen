@@ -664,7 +664,7 @@ func (c *communicatorImpl) GetCommitQueue(ctx context.Context, projectID string)
 	info := requestInfo{
 		method:  get,
 		version: apiVersion2,
-		path:    fmt.Sprintf("/projects/%s/commit_queue", projectID),
+		path:    fmt.Sprintf("/commit_queue/%s", projectID),
 	}
 
 	resp, err := c.request(ctx, info, "")
@@ -694,7 +694,7 @@ func (c *communicatorImpl) DeleteCommitQueueItem(ctx context.Context, projectID,
 	info := requestInfo{
 		method:  delete,
 		version: apiVersion2,
-		path:    fmt.Sprintf("/projects/%s/commit_queue/%s", projectID, item),
+		path:    fmt.Sprintf("/commit_queue/%s/%s", projectID, item),
 	}
 
 	resp, err := c.request(ctx, info, "")
@@ -713,11 +713,11 @@ func (c *communicatorImpl) DeleteCommitQueueItem(ctx context.Context, projectID,
 	return nil
 }
 
-func (c *communicatorImpl) EnqueueItem(ctx context.Context, projectID, item string) (int, error) {
+func (c *communicatorImpl) EnqueueItem(ctx context.Context, patchID string) (int, error) {
 	info := requestInfo{
 		method:  put,
 		version: apiVersion2,
-		path:    fmt.Sprintf("/projects/%s/commit_queue/%s", projectID, item),
+		path:    fmt.Sprintf("/commit_queue/%s", patchID),
 	}
 
 	resp, err := c.request(ctx, info, nil)

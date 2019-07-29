@@ -597,7 +597,7 @@ func (c *Mock) DeleteCommitQueueItem(ctx context.Context, projectID, item string
 	return nil
 }
 
-func (c *Mock) EnqueueItem(ctx context.Context, projectID, item string) (int, error) {
+func (c *Mock) EnqueueItem(ctx context.Context, patchID string) (int, error) {
 	return 1, nil
 }
 
