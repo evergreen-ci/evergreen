@@ -911,15 +911,25 @@ Admin Settings
 				                    <md-input-container class="control" style="width:45%; margin-left:50px;">
 										<label>Local storage size</label>
 										<input type="number" ng-model="Settings.amboy.local_storage_size">
-										<label>Group default workers</label>
-										<input type="number" ng-model="Settings.amboy.group_default_workers">
-										<label>Group background create frequency</label>
-										<input type="number" ng-model="Settings.amboy.group_background_create_frequency">
-										<label>Group prune frequency</label>
-										<input type="number" ng-model="Settings.amboy.group_prune_frequency">
-										<label>Group TTL</label>
-										<input type="number" ng-model="Settings.amboy.group_ttl">
 									</md-input-container>
+
+				          <md-input-container class="control" style="width:45%;">
+									<label>Group default workers</label>
+									<input type="number" ng-model="Settings.amboy.group_default_workers">
+									</md-input-container>
+				          <md-input-container class="control" style="width:45%; margin-left:50px;">
+									<label>Group background create frequency</label>
+									<input type="number" ng-model="Settings.amboy.group_background_create_frequency">
+									</md-input-container>
+				          <md-input-container class="control" style="width:45%;">
+									<label>Group prune frequency</label>
+									<input type="number" ng-model="Settings.amboy.group_prune_frequency">
+									</md-input-container>
+				          <md-input-container class="control" style="width:45%; margin-left:50px;">
+									<label>Group TTL</label>
+									<input type="number" ng-model="Settings.amboy.group_ttl">
+									</md-input-container>
+
 								</md-card-content>
 							</md-card>
 
