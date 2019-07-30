@@ -88,11 +88,7 @@ type Unit struct {
 }
 
 // NewUnit constructs a new Unit container for a task.
-func NewUnit(t task.Task) *Unit {
-	return &Unit{
-		tasks: map[string]task.Task{t.Id: t},
-	}
-}
+func NewUnit(t task.Task) *Unit { return &Unit{tasks: map[string]task.Task{t.Id: t}} }
 
 // Export returns an unordered sequence of tasks from unit. All tasks
 // are unique.
@@ -155,7 +151,11 @@ func (unit *Unit) RankValue() int64 {
 		} else if evergreen.IsPatchRequester(t.Requester) {
 			inPatch = true
 		}
-		timeInQueue += time.Since(t.ScheduledTime)
+
+		if !t.ScheduledTime.IsZero() {
+			timeInQueue += time.Since(t.ScheduledTime)
+		}
+
 		totalPriority += t.Priority
 		expectedRuntime += t.FetchExpectedDuration()
 	}
@@ -175,7 +175,6 @@ func (unit *Unit) RankValue() int64 {
 	unit.cachedValue += priority
 	unit.cachedValue += priority * unit.distro.GetExpectedRuntimeFactor() * int64(math.Floor(expectedRuntime.Minutes()/float64(num)))
 	unit.cachedValue += priority * unit.distro.GetTimeInQueueFactor() * int64(math.Floor(timeInQueue.Minutes()/float64(num)))
-
 	return unit.cachedValue
 }
 
@@ -232,7 +231,7 @@ func (tl TaskList) Less(i, j int) bool {
 type TaskPlan []*Unit
 
 func (tpl TaskPlan) Len() int           { return len(tpl) }
-func (tpl TaskPlan) Less(i, j int) bool { return tpl[i].RankValue() < tpl[i].RankValue() }
+func (tpl TaskPlan) Less(i, j int) bool { return tpl[i].RankValue() < tpl[j].RankValue() }
 func (tpl TaskPlan) Swap(i, j int)      { tpl[i], tpl[j] = tpl[j], tpl[i] }
 
 // PrepareTasksForPlanning takes a list of tasks for a distro and
