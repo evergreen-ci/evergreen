@@ -134,6 +134,7 @@ func agentRevisionIsOld(h *host.Host) bool {
 // If the task is a patch, it will alert the users based on failures
 // It also updates the expected task duration of the task for scheduling.
 func (as *APIServer) EndTask(w http.ResponseWriter, r *http.Request) {
+	const slowThreshold = 1 * time.Second
 	finishTime := time.Now()
 
 	t := MustHaveTask(r)
@@ -141,10 +142,18 @@ func (as *APIServer) EndTask(w http.ResponseWriter, r *http.Request) {
 
 	details := &apimodels.TaskEndDetail{}
 	endTaskResp := &apimodels.EndTaskResponse{}
+	now := time.Now()
 	if err := util.ReadJSONInto(util.NewRequestReader(r), details); err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
+	grip.NoticeWhen(time.Since(now) > slowThreshold, message.Fields{
+		"message":       "slow operation",
+		"function":      "EndTask",
+		"step":          "parse request",
+		"task":          t.Id,
+		"duration_secs": time.Since(now).Seconds(),
+	})
 
 	// Check that finishing status is a valid constant
 	if !validateTaskEndDetails(details) {
@@ -167,6 +176,7 @@ func (as *APIServer) EndTask(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	now = time.Now()
 	// clear the running task on the host now that the task has finished
 	if err := currentHost.ClearRunningAndSetLastTask(t); err != nil {
 		err = errors.Wrapf(err, "error clearing running task %s for host %s", t.Id, currentHost.Id)
@@ -174,6 +184,13 @@ func (as *APIServer) EndTask(w http.ResponseWriter, r *http.Request) {
 		as.LoggedError(w, r, http.StatusInternalServerError, err)
 		return
 	}
+	grip.NoticeWhen(time.Since(now) > slowThreshold, message.Fields{
+		"message":       "slow operation",
+		"function":      "EndTask",
+		"step":          "ClearRunningAndSetLastTask",
+		"task":          t.Id,
+		"duration_secs": time.Since(now).Seconds(),
+	})
 
 	projectRef, err := model.FindOneProjectRef(t.Project)
 	if err != nil {
@@ -185,6 +202,7 @@ func (as *APIServer) EndTask(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// mark task as finished
+	now = time.Now()
 	updates := model.StatusChanges{}
 	err = model.MarkEnd(t, APIServerLockTitle, finishTime, details, projectRef.DeactivatePrevious, &updates)
 	if err != nil {
@@ -192,6 +210,13 @@ func (as *APIServer) EndTask(w http.ResponseWriter, r *http.Request) {
 		as.LoggedError(w, r, http.StatusInternalServerError, err)
 		return
 	}
+	grip.NoticeWhen(time.Since(now) > slowThreshold, message.Fields{
+		"message":       "slow operation",
+		"function":      "EndTask",
+		"step":          "MarkEnd",
+		"task":          t.Id,
+		"duration_secs": time.Since(now).Seconds(),
+	})
 
 	// the task was aborted if it is still in undispatched.
 	// the active state should be inactive.
@@ -208,6 +233,7 @@ func (as *APIServer) EndTask(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// For a single-host task group, if a task fails, block and dequeue later tasks in that group.
+	now = time.Now()
 	if t.TaskGroup != "" && t.TaskGroupMaxHosts == 1 && details.Status != evergreen.TaskSucceeded {
 		if err = model.BlockTaskGroupTasks(t.Id); err != nil {
 			grip.Error(message.WrapError(err, message.Fields{
@@ -220,21 +246,45 @@ func (as *APIServer) EndTask(w http.ResponseWriter, r *http.Request) {
 			"task_id": t.Id,
 		})
 	}
+	grip.NoticeWhen(time.Since(now) > slowThreshold, message.Fields{
+		"message":       "slow operation",
+		"function":      "EndTask",
+		"step":          "BlockTaskGroupTasks",
+		"task":          t.Id,
+		"duration_secs": time.Since(now).Seconds(),
+	})
 
+	now = time.Now()
 	job := units.NewCollectTaskEndDataJob(t, currentHost)
 	if err = as.queue.Put(r.Context(), job); err != nil {
 		as.LoggedError(w, r, http.StatusInternalServerError,
 			errors.Wrap(err, "couldn't queue job to update task cost accounting"))
 		return
 	}
+	grip.NoticeWhen(time.Since(now) > slowThreshold, message.Fields{
+		"message":       "slow operation",
+		"function":      "EndTask",
+		"step":          "collect task data job",
+		"task":          t.Id,
+		"duration_secs": time.Since(now).Seconds(),
+	})
 
 	// update the bookkeeping entry for the task
+	now = time.Now()
 	err = task.UpdateExpectedDuration(t, t.TimeTaken)
+	grip.NoticeWhen(time.Since(now) > slowThreshold, message.Fields{
+		"message":       "slow operation",
+		"function":      "EndTask",
+		"step":          "UpdateExpectedDuration",
+		"task":          t.Id,
+		"duration_secs": time.Since(now).Seconds(),
+	})
 	if err != nil {
 		grip.Warning(message.WrapError(err, "problem updating expected duration"))
 	}
 
 	env := evergreen.GetEnvironment()
+	now = time.Now()
 	if checkHostHealth(currentHost) {
 		ctx, cancel := context.WithTimeout(r.Context(), 30*time.Second)
 		defer cancel()
@@ -255,10 +305,18 @@ func (as *APIServer) EndTask(w http.ResponseWriter, r *http.Request) {
 		}
 		endTaskResp.ShouldExit = true
 	}
+	grip.NoticeWhen(time.Since(now) > slowThreshold, message.Fields{
+		"message":       "slow operation",
+		"function":      "EndTask",
+		"step":          "check host health",
+		"task":          t.Id,
+		"duration_secs": time.Since(now).Seconds(),
+	})
 
 	// we should disable hosts and prevent them from performing
 	// more work if they appear to be in a bad state
 	// (e.g. encountered 5 consecutive system failures)
+	now = time.Now()
 	if event.AllRecentHostEventsMatchStatus(currentHost.Id, consecutiveSystemFailureThreshold, evergreen.TaskSystemFailed) {
 		msg := "host encountered consecutive system failures"
 		if currentHost.Provider != evergreen.ProviderNameStatic {
@@ -291,6 +349,13 @@ func (as *APIServer) EndTask(w http.ResponseWriter, r *http.Request) {
 		}
 		endTaskResp.ShouldExit = true
 	}
+	grip.NoticeWhen(time.Since(now) > slowThreshold, message.Fields{
+		"message":       "slow operation",
+		"function":      "EndTask",
+		"step":          "clean up poisoned hosts",
+		"task":          t.Id,
+		"duration_secs": time.Since(now).Seconds(),
+	})
 
 	grip.Info(message.Fields{
 		"message":   "Successfully marked task as finished",
