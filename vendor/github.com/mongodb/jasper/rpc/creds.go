@@ -25,7 +25,7 @@ type Credentials struct {
 	Key []byte `bson:"key" json:"key"`
 
 	// ServerName is the name of the service being contacted.
-	ServerName string `bson:"-" json:"-"`
+	ServerName string `bson:"server_name" json:"server_name"`
 }
 
 // NewCredentials initializes a new Credential struct.
