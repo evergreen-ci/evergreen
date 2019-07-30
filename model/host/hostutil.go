@@ -97,7 +97,7 @@ const (
 )
 
 func curlRetryArgs(numRetries, maxSecs int) string {
-	return fmt.Sprintf("--retry=%d --retry-max-time=%d", numRetries, maxSecs)
+	return fmt.Sprintf("--retry %d --retry-max-time %d", numRetries, maxSecs)
 }
 
 // ClientURL returns the URL used to get the latest Evergreen client version.
