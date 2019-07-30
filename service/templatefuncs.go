@@ -54,6 +54,13 @@ func MakeTemplateFuncs(fo TemplateFunctionOptions, superUsers []string) map[stri
 			}
 			return "America/New_York"
 		},
+		"UseSpruce": func(u gimlet.User) bool {
+			usr, ok := u.(*user.DBUser)
+			if ok && usr != nil {
+				return usr.Settings.UseSpruce
+			}
+			return false
+		},
 
 		// Trunc cuts off a string to be n characters long.
 		"Trunc": func(s string, n int) string {

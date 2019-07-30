@@ -52,10 +52,10 @@ type PubKey struct {
 
 type UserSettings struct {
 	Timezone      string                  `json:"timezone" bson:"timezone"`
-	NewWaterfall  bool                    `json:"new_waterfall" bson:"new_waterfall"`
 	GithubUser    GithubUser              `json:"github_user" bson:"github_user,omitempty"`
 	SlackUsername string                  `bson:"slack_username,omitempty" json:"slack_username,omitempty"`
 	Notifications NotificationPreferences `bson:"notifications,omitempty" json:"notifications,omitempty"`
+	UseSpruce     bool                    `json:"use_spruce,omitempty" bson:"use_spruce,omitempty"`
 }
 
 type NotificationPreferences struct {

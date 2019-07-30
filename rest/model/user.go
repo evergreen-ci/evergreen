@@ -31,6 +31,7 @@ func (apiPubKey *APIPubKey) ToService() (interface{}, error) {
 
 type APIUserSettings struct {
 	Timezone      APIString                   `json:"timezone"`
+	UseSpruce     bool                        `json:"use_spruce"`
 	GithubUser    *APIGithubUser              `json:"github_user"`
 	SlackUsername APIString                   `json:"slack_username"`
 	Notifications *APINotificationPreferences `json:"notifications"`
@@ -41,6 +42,7 @@ func (s *APIUserSettings) BuildFromService(h interface{}) error {
 	case user.UserSettings:
 		s.Timezone = ToAPIString(v.Timezone)
 		s.SlackUsername = ToAPIString(v.SlackUsername)
+		s.UseSpruce = v.UseSpruce
 		s.GithubUser = &APIGithubUser{}
 		err := s.GithubUser.BuildFromService(v.GithubUser)
 		if err != nil {
@@ -77,6 +79,7 @@ func (s *APIUserSettings) ToService() (interface{}, error) {
 	return user.UserSettings{
 		Timezone:      FromAPIString(s.Timezone),
 		SlackUsername: FromAPIString(s.SlackUsername),
+		UseSpruce:     s.UseSpruce,
 		GithubUser:    githubUser,
 		Notifications: preferences,
 	}, nil
@@ -206,7 +209,7 @@ func ApplyUserChanges(current user.UserSettings, changes APIUserSettings) (APIUs
 	for i := 0; i < reflectNewSettings.NumField(); i++ {
 		propName := reflectNewSettings.Type().Field(i).Name
 		changedVal := reflectNewSettings.FieldByName(propName)
-		if changedVal.IsNil() {
+		if changedVal.Type().Kind() != reflect.Bool && changedVal.IsNil() {
 			continue
 		}
 		reflectOldSettings.Elem().FieldByName(propName).Set(changedVal)
