@@ -5,7 +5,6 @@ package route
 import (
         "context"
         "net/http"
-        "net/url"
 
         "github.com/evergreen-ci/evergreen"
         "github.com/evergreen-ci/evergreen/model/reliability"
@@ -23,11 +22,6 @@ type taskReliabilityHandler struct {
         sc     data.Connector
 }
 
-// parseStatsFilter parses the query parameter values and fills the struct's filter field.
-func (tsh *taskReliabilityHandler) parseTaskReliabilityFilter(vals url.Values) error {
-        return nil
-}
-
 func (tsh *taskReliabilityHandler) Factory() gimlet.RouteHandler {
         return &taskReliabilityHandler{sc: tsh.sc}
 }
@@ -35,11 +29,7 @@ func (tsh *taskReliabilityHandler) Factory() gimlet.RouteHandler {
 func (tsh *taskReliabilityHandler) Parse(ctx context.Context, r *http.Request) error {
         tsh.filter = reliability.TaskReliabilityFilter{Project: gimlet.GetVars(r)["project_id"]}
 
-        err := tsh.parseTaskReliabilityFilter(r.URL.Query())
-        if err != nil {
-                return errors.Wrap(err, "Invalid query parameters")
-        }
-        err = tsh.filter.ValidateForTaskReliability()
+        err := tsh.filter.ValidateForTaskReliability()
         if err != nil {
                 return gimlet.ErrorResponse{
                         Message:    err.Error(),

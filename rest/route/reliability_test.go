@@ -3,13 +3,11 @@ package route
 import (
         "context"
         "net/http"
-        "net/url"
         "testing"
 
         "github.com/evergreen-ci/evergreen"
         "github.com/evergreen-ci/evergreen/rest/data"
         "github.com/stretchr/testify/suite"
-        "gopkg.in/mgo.v2/bson"
 )
 
 type TaskReliabilitySuite struct {
@@ -17,19 +15,18 @@ type TaskReliabilitySuite struct {
 }
 
 func configureTaskReliability(disabled bool) error {
+        var err error
         flags := &evergreen.ServiceFlags{}
-        env := evergreen.GetEnvironment()
-        ctx, cancel := env.Context()
-        defer cancel()
-        _, err := env.DB().Collection(evergreen.ConfigCollection).UpdateOne(ctx,
-                bson.M{"_id": flags.SectionId()},
-                bson.M{"$set": bson.M{"task_reliability_disabled": disabled}})
+        err = flags.Get(evergreen.GetEnvironment())
+        if err == nil {
+                flags.TaskReliabilityDisabled = disabled
+                err = flags.Set()
+        }
         return err
 }
 
 func disableTaskReliability() error {
         return configureTaskReliability(true)
-
 }
 
 func enableTaskReliability() error {
@@ -42,14 +39,6 @@ func TestTaskReliabilitySuite(t *testing.T) {
 
 func (s *TaskReliabilitySuite) SetupTest() {
         err := enableTaskReliability()
-        s.Require().NoError(err)
-}
-
-func (s *TaskReliabilitySuite) TestParseTaskReliabilityFilter() {
-        values := url.Values{}
-        handler := taskReliabilityHandler{}
-
-        err := handler.parseTaskReliabilityFilter(values)
         s.Require().NoError(err)
 }
 

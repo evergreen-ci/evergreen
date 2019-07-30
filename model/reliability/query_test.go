@@ -14,21 +14,3 @@ type taskReliabilityQuerySuite struct {
 func TestStatsQuerySuite(t *testing.T) {
         suite.Run(t, new(taskReliabilityQuerySuite))
 }
-
-func (s *taskReliabilityQuerySuite) SetupTest() {
-}
-
-func (s *taskReliabilityQuerySuite) TestValidFilter() {
-        require := s.Require()
-
-        project := "mongodb-mongo-master"
-
-        filter := TaskReliabilityFilter{
-                Project: project,
-        }
-
-        // Check that validate does not find any errors
-        // For tests
-        err := filter.ValidateForTaskReliability()
-        require.NoError(err)
-}
