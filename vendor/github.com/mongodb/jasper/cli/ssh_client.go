@@ -42,6 +42,20 @@ func NewSSHClient(remoteOpts jasper.RemoteOptions, clientOpts ClientOptions, tra
 	}, nil
 }
 
+func (c *sshClient) ID() string {
+	output, err := c.runManagerCommand(context.Background(), IDCommand, nil)
+	if err != nil {
+		return ""
+	}
+
+	resp, err := ExtractIDResponse(output)
+	if err != nil {
+		return ""
+	}
+
+	return resp.ID
+}
+
 func (c *sshClient) CreateProcess(ctx context.Context, opts *jasper.CreateOptions) (jasper.Process, error) {
 	output, err := c.runManagerCommand(ctx, CreateProcessCommand, opts)
 	if err != nil {

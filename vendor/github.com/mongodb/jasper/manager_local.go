@@ -35,6 +35,10 @@ type localProcessManager struct {
 	manager *basicProcessManager
 }
 
+func (m *localProcessManager) ID() string {
+	return m.manager.ID()
+}
+
 func (m *localProcessManager) CreateProcess(ctx context.Context, opts *CreateOptions) (Process, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()

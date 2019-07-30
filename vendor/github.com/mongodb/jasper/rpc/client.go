@@ -76,6 +76,14 @@ func (m *rpcClient) CloseConnection() error {
 	return m.clientCloser()
 }
 
+func (m *rpcClient) ID() string {
+	resp, err := m.client.ID(context.Background(), &empty.Empty{})
+	if err != nil {
+		return ""
+	}
+	return resp.Value
+}
+
 func (m *rpcClient) CreateProcess(ctx context.Context, opts *jasper.CreateOptions) (jasper.Process, error) {
 	proc, err := m.client.Create(ctx, internal.ConvertCreateOptions(opts))
 	if err != nil {
@@ -358,6 +366,7 @@ func (p *rpcProcess) Tag(tag string) {
 		Tags:      []string{tag},
 	})
 }
+
 func (p *rpcProcess) GetTags() []string {
 	tags, err := p.client.GetTags(context.Background(), &internal.JasperProcessID{Value: p.info.Id})
 	if err != nil {
@@ -366,6 +375,7 @@ func (p *rpcProcess) GetTags() []string {
 
 	return tags.Tags
 }
+
 func (p *rpcProcess) ResetTags() {
 	_, _ = p.client.ResetTags(context.Background(), &internal.JasperProcessID{Value: p.info.Id})
 }

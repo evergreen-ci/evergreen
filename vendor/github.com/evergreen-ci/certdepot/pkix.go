@@ -1,6 +1,9 @@
 package certdepot
 
 import (
+	"time"
+
+	"github.com/pkg/errors"
 	"github.com/square/certstrap/depot"
 	"github.com/square/certstrap/pkix"
 )
@@ -141,4 +144,22 @@ func GetCertificateRevocationList(d Depot, name string) (*pkix.CertificateRevoca
 // depot.
 func DeleteCertificateRevocationList(d Depot, name string) error {
 	return d.Delete(depot.CrlTag(name))
+}
+
+// PutTTL puts a new TTL for a given name in the mongo depot.
+func PutTTL(d Depot, name string, expiration time.Time) error {
+	md, ok := d.(*mongoDepot)
+	if !ok {
+		return errors.New("cannot put TTL if depot is not a mongo depot")
+	}
+	return md.PutTTL(name, expiration)
+}
+
+// GetTTL gets a TTL for a given name in the mongo depot.
+func GetTTL(d Depot, name string) (time.Time, error) {
+	md, ok := d.(*mongoDepot)
+	if !ok {
+		return time.Time{}, errors.New("cannot get TTL if depot is not a mongo depot")
+	}
+	return md.GetTTL(name)
 }

@@ -208,7 +208,7 @@ func TestJasperCommandsWindows(t *testing.T) {
 
 			creds, err := newMockCredentials()
 			require.NoError(t, err)
-			writeCredentialsCmd, err := h.writeJasperCredentialsFileCommand(config, creds)
+			writeCredentialsCmd, err := h.WriteJasperCredentialsFileCommand(creds)
 			require.NoError(t, err)
 
 			expectedCmds = append(expectedCmds, writeCredentialsCmd, h.ForceReinstallJasperCommand(config))
@@ -245,25 +245,24 @@ func TestJasperCommandsWindows(t *testing.T) {
 		"WriteJasperCredentialsFileCommand": func(t *testing.T, h *Host, config evergreen.HostJasperConfig) {
 			creds, err := newMockCredentials()
 			require.NoError(t, err)
-			path := h.Distro.JasperCredentialsPath
 
 			for testName, testCase := range map[string]func(t *testing.T){
 				"WithoutJasperCredentialsPath": func(t *testing.T) {
 					h.Distro.JasperCredentialsPath = ""
-					_, err := h.writeJasperCredentialsFileCommand(config, creds)
+					_, err := h.WriteJasperCredentialsFileCommand(creds)
 					assert.Error(t, err)
 				},
 				"WithJasperCredentialsPath": func(t *testing.T) {
-					cmd, err := h.writeJasperCredentialsFileCommand(config, creds)
+					h.Distro.JasperCredentialsPath = "/bar"
+					cmd, err := h.WriteJasperCredentialsFileCommand(creds)
 					require.NoError(t, err)
 
 					expectedCreds, err := creds.Export()
 					require.NoError(t, err)
-					assert.Equal(t, fmt.Sprintf("cat > /bar <<EOF\n%s\nEOF", expectedCreds), cmd)
+					assert.Equal(t, fmt.Sprintf("cat > '/bar' <<EOF\n%s\nEOF", expectedCreds), cmd)
 				},
 			} {
 				t.Run(testName, func(t *testing.T) {
-					h.Distro.JasperCredentialsPath = path
 					require.NoError(t, db.ClearCollections(credentials.Collection))
 					defer func() {
 						assert.NoError(t, db.ClearCollections(credentials.Collection))
@@ -273,11 +272,11 @@ func TestJasperCommandsWindows(t *testing.T) {
 			}
 		},
 		"WriteJasperCredentialsFileCommandNoDistroPath": func(t *testing.T, h *Host, config evergreen.HostJasperConfig) {
-			creds, err := rpc.NewCredentials([]byte("foo"), []byte("bar"), []byte("bat"))
+			creds, err := newMockCredentials()
 			require.NoError(t, err)
 
 			h.Distro.JasperCredentialsPath = ""
-			_, err = h.writeJasperCredentialsFileCommand(config, creds)
+			_, err = h.WriteJasperCredentialsFileCommand(creds)
 			assert.Error(t, err)
 		},
 	} {
@@ -370,14 +369,12 @@ func TestJasperClient(t *testing.T) {
 		},
 		"FailsWithRPCCommunicationButNoJasperService": {
 			withSetupAndTeardown: func(ctx context.Context, env *mock.Environment, manager *jasper.MockManager, h *Host, fn func()) error {
-				catcher := grip.NewBasicCatcher()
-				catcher.Add(errors.WithStack(setupCredentialsCollection(ctx, env)))
-
-				if !catcher.HasErrors() {
-					fn()
+				if err := errors.WithStack(setupCredentialsCollection(ctx, env)); err != nil {
+					grip.Error(errors.WithStack(teardownJasperService(ctx, nil)))
+					return errors.WithStack(err)
 				}
-
-				return errors.WithStack(teardownJasperService(ctx, nil))
+				fn()
+				return nil
 			},
 			h: &Host{
 				Id: "test-host",
@@ -408,7 +405,6 @@ func TestJasperClient(t *testing.T) {
 
 			env := &mock.Environment{}
 			require.NoError(t, env.Configure(tctx, "", nil))
-			env.EnvContext = tctx
 			env.Settings().HostJasper.BinaryName = "binary"
 			env.Settings().Keys = map[string]string{sshKeyName: sshKeyValue}
 
@@ -436,23 +432,22 @@ func TestJasperProcess(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	for testName, testCase := range map[string]func(ctx context.Context, t *testing.T, env *mock.Environment, h *Host){
-		"RunJasperProcessErrorsWithoutJasperClient": func(ctx context.Context, t *testing.T, env *mock.Environment, h *Host) {
-			assert.Error(t, h.StartJasperProcess(ctx, env, &jasper.CreateOptions{Args: []string{"echo", "hello", "world"}}))
+	for testName, testCase := range map[string]func(ctx context.Context, t *testing.T, env *mock.Environment, manager *jasper.MockManager, h *Host, opts *jasper.CreateOptions){
+		"RunJasperProcessErrorsWithoutJasperClient": func(ctx context.Context, t *testing.T, env *mock.Environment, manager *jasper.MockManager, h *Host, opts *jasper.CreateOptions) {
+			assert.Error(t, h.StartJasperProcess(ctx, env, opts))
 		},
-		"StartJasperProcessErrorsWithoutJasperClient": func(ctx context.Context, t *testing.T, env *mock.Environment, h *Host) {
-			_, err := h.RunJasperProcess(ctx, env, "echo hello world")
-			assert.Error(t, err)
+		"StartJasperProcessErrorsWithoutJasperClient": func(ctx context.Context, t *testing.T, env *mock.Environment, manager *jasper.MockManager, h *Host, opts *jasper.CreateOptions) {
+			assert.Error(t, h.StartJasperProcess(ctx, env, opts))
 		},
-		"RunJasperProcessPassesWithJasperClient": func(ctx context.Context, t *testing.T, env *mock.Environment, h *Host) {
-			assert.NoError(t, withJasperServiceSetupAndTeardown(ctx, env, &jasper.MockManager{}, h, func() {
-				_, err := h.RunJasperProcess(ctx, env, "echo hello world")
+		"RunJasperProcessPassesWithJasperClient": func(ctx context.Context, t *testing.T, env *mock.Environment, manager *jasper.MockManager, h *Host, opts *jasper.CreateOptions) {
+			assert.NoError(t, withJasperServiceSetupAndTeardown(ctx, env, manager, h, func() {
+				_, err := h.RunJasperProcess(ctx, env, opts)
 				assert.NoError(t, err)
 			}))
 		},
-		"StartJasperProcessPassesWithJasperClient": func(ctx context.Context, t *testing.T, env *mock.Environment, h *Host) {
-			assert.NoError(t, withJasperServiceSetupAndTeardown(ctx, env, &jasper.MockManager{}, h, func() {
-				assert.NoError(t, h.StartJasperProcess(ctx, env, &jasper.CreateOptions{Args: []string{"echo", "hello", "world"}}))
+		"StartJasperProcessPassesWithJasperClient": func(ctx context.Context, t *testing.T, env *mock.Environment, manager *jasper.MockManager, h *Host, opts *jasper.CreateOptions) {
+			assert.NoError(t, withJasperServiceSetupAndTeardown(ctx, env, manager, h, func() {
+				assert.NoError(t, h.StartJasperProcess(ctx, env, opts))
 			}))
 		},
 	} {
@@ -465,14 +460,19 @@ func TestJasperProcess(t *testing.T) {
 			env.EnvContext = tctx
 			env.Settings().HostJasper.BinaryName = "binary"
 
-			testCase(tctx, t, env, &Host{
+			manager := &jasper.MockManager{}
+			env.JasperProcessManager = manager
+
+			opts := &jasper.CreateOptions{Args: []string{"echo", "hello", "world"}}
+
+			testCase(tctx, t, env, manager, &Host{
 				Id: "test",
 				Distro: distro.Distro{
 					CommunicationMethod: distro.CommunicationMethodRPC,
 					BootstrapMethod:     distro.BootstrapMethodUserData,
 				},
 				Host: "localhost",
-			})
+			}, opts)
 		})
 	}
 }

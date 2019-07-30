@@ -12,6 +12,7 @@ import (
 // Constants representing the Jasper Manager interface as CLI commands.
 const (
 	ManagerCommand       = "manager"
+	IDCommand            = "id"
 	CreateProcessCommand = "create-process"
 	CreateCommand        = "create-command"
 	GetCommand           = "get"
@@ -36,6 +37,20 @@ func Manager() cli.Command {
 			managerGroup(),
 			managerClear(),
 			managerClose(),
+		},
+	}
+}
+
+func managerID() cli.Command {
+	return cli.Command{
+		Name:   IDCommand,
+		Flags:  clientFlags(),
+		Before: clientBefore(),
+		Action: func(c *cli.Context) error {
+			return doPassthroughOutput(c, func(ctx context.Context, client jasper.RemoteClient) interface{} {
+				id := client.ID()
+				return &IDResponse{OutcomeResponse: *makeOutcomeResponse(nil), ID: id}
+			})
 		},
 	}
 }
