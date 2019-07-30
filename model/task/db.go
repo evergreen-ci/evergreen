@@ -309,7 +309,7 @@ func ByTimeStartedAndFailed(startTime, endTime time.Time, commandTypes []string)
 				{StartTimeKey: bson.M{"$gte": startTime}},
 			}},
 			{"$and": []bson.M{
-				{StartTimeKey: util.ZeroTime},
+				{StartTimeKey: util.GoZeroTime},
 				{FinishTimeKey: bson.M{"$lte": endTime}},
 				{FinishTimeKey: bson.M{"$gte": startTime}},
 			}},

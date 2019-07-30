@@ -820,7 +820,7 @@ func TestRetryCommitQueueItems(t *testing.T) {
 				Id:         mgobson.NewObjectId(),
 				Project:    projectRef.Identifier,
 				Githash:    patchedRevision,
-				StartTime:  util.ZeroTime,
+				StartTime:  util.GoZeroTime,
 				FinishTime: startTime.Add(30 * time.Minute),
 				Status:     evergreen.PatchFailed,
 				Alias:      evergreen.CommitQueueAlias,
