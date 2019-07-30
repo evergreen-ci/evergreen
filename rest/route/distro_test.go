@@ -302,7 +302,7 @@ func (s *DistroByIDSuite) TestFindByIdFound() {
 	s.Equal(model.NewAPIDuration(60000000000), d.PlannerSettings.TargetTime)
 	s.Equal(model.NewAPIDuration(10000000000), d.PlannerSettings.AcceptableHostIdleTime)
 	s.Equal(true, *d.PlannerSettings.GroupVersions)
-	s.Equal(7, d.PlannerSettings.PatchZipperFactor)
+	s.EqualValues(7, d.PlannerSettings.PatchZipperFactor)
 	s.Equal(model.ToAPIString(evergreen.TaskOrderingInterleave), d.PlannerSettings.TaskOrdering)
 	s.Equal(model.ToAPIString(distro.BootstrapMethodLegacySSH), d.BootstrapMethod)
 	s.Equal(model.ToAPIString(distro.CommunicationMethodLegacySSH), d.CommunicationMethod)
