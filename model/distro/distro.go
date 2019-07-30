@@ -49,8 +49,11 @@ type PlannerSettings struct {
 	TargetTime             time.Duration `bson:"target_time" json:"target_time" mapstructure:"target_time,omitempty"`
 	AcceptableHostIdleTime time.Duration `bson:"acceptable_host_idle_time" json:"acceptable_host_idle_time" mapstructure:"acceptable_host_idle_time,omitempty"`
 	GroupVersions          *bool         `bson:"group_versions" json:"group_versions" mapstructure:"group_versions,omitempty"`
-	PatchZipperFactor      int           `bson:"patch_zipper_factor" json:"patch_zipper_factor" mapstructure:"patch_zipper_factor,omitempty"`
 	TaskOrdering           string        `bson:"task_ordering" json:"task_ordering" mapstructure:"task_ordering,omitempty"`
+
+	PatchZipperFactor     int64 `bson:"patch_zipper_factor" json:"patch_zipper_factor" mapstructure:"patch_zipper_factor,omitempty"`
+	TimeInQueueFactor     int64 `bson:"time_in_queue_factor" json:"time_in_queue_factor" mapstructure:"time_in_queue_factor,omitempty"`
+	ExpectedRuntimeFactor int64 `bson:"expected_runtime_factor_factor" json:"expected_runtime_factor_factor" mapstructure:"expected_runtime_factor_factor,omitempty"`
 }
 
 type FinderSettings struct {
@@ -169,6 +172,28 @@ func (d *Distro) ShouldGroupVersions() bool {
 	}
 
 	return *d.PlannerSettings.GroupVersions
+}
+
+func (d *Distro) GetPatchZipperFactor() int64 {
+	if d.PlannerSettings.PatchZipperFactor <= 0 {
+		return 1
+	}
+	return d.PlannerSettings.PatchZipperFactor
+}
+
+func (d *Distro) GetTimeInQueueFactor() int64 {
+	if d.PlannerSettings.TimeInQueueFactor <= 0 {
+		return 1
+	}
+	return d.PlannerSettings.TimeInQueueFactor
+}
+
+func (d *Distro) GetExpectedRuntimeFactor() int64 {
+	if d.PlannerSettings.ExpectedRuntimeFactor <= 0 {
+		return 1
+	}
+
+	return d.PlannerSettings.ExpectedRuntimeFactor
 }
 
 func (d *Distro) IsWindows() bool {
@@ -349,8 +374,11 @@ func (d *Distro) GetResolvedPlannerSettings(config evergreen.SchedulerConfig) (P
 		TargetTime:             ps.TargetTime,
 		AcceptableHostIdleTime: ps.AcceptableHostIdleTime,
 		GroupVersions:          ps.GroupVersions,
-		PatchZipperFactor:      ps.PatchZipperFactor,
 		TaskOrdering:           ps.TaskOrdering,
+
+		PatchZipperFactor:     ps.PatchZipperFactor,
+		TimeInQueueFactor:     ps.TimeInQueueFactor,
+		ExpectedRuntimeFactor: ps.ExpectedRuntimeFactor,
 	}
 	// Validate the resolved PlannerSettings.Version
 	if resolved.Version == "" {
@@ -380,6 +408,13 @@ func (d *Distro) GetResolvedPlannerSettings(config evergreen.SchedulerConfig) (P
 	if resolved.PatchZipperFactor == 0 {
 		resolved.PatchZipperFactor = config.PatchZipperFactor
 	}
+	if resolved.TimeInQueueFactor == 0 {
+		resolved.TimeInQueueFactor = config.TimeInQueueFactor
+	}
+	if resolved.ExpectedRuntimeFactor == 0 {
+		resolved.ExpectedRuntimeFactor = config.ExpectedRuntimeFactor
+	}
+
 	// Resolve and validate the PlannerSettings.TaskOrdering
 	if resolved.TaskOrdering == "" {
 		resolved.TaskOrdering = config.TaskOrdering
@@ -393,5 +428,6 @@ func (d *Distro) GetResolvedPlannerSettings(config evergreen.SchedulerConfig) (P
 		return PlannerSettings{}, errors.Wrapf(catcher.Resolve(), "cannot resolve PlannerSettings for distro '%s'", d.Id)
 	}
 
+	d.PlannerSettings = resolved
 	return resolved, nil
 }

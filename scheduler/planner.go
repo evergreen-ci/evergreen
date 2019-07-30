@@ -13,22 +13,18 @@ import (
 	"github.com/evergreen-ci/evergreen/model/task"
 )
 
-type Unit struct {
-	tasks       taskUnitList
-	cachedValue int64
-	id          string
-}
-
-func NewUnit(t task.Task) *Unit {
-	return &Unit{
-		tasks: []task.Task{t},
-	}
-}
-
+// UnitCache stores an unordered collection of schedulable units. The
+// Unit type holds one or more tasks, but is handled by the scheduler
+// as a single object. While the constituent tasks in a unit have an
+// order, the unit themselves are an intermediate abstraction for the
+// planner which represent task groups, tasks with their dependencies,
+// or the tasks from a single version
 type UnitCache map[string]*Unit
 
+// NewUnitCache constructs an empty cache of units.
 func NewUnitCache() UnitCache { return map[string]*Unit{} }
 
+// AddWhen wraps AddNew, and is a noop if the conditional is false.
 func (cache UnitCache) AddWhen(cond bool, id string, unit *Unit) {
 	if !cond {
 		return
@@ -37,6 +33,9 @@ func (cache UnitCache) AddWhen(cond bool, id string, unit *Unit) {
 	cache.AddNew(id, unit)
 }
 
+// AddNew adds an entire unit to a cache with the specified ID. If the
+// cached item exists, AddNew extends the existing unit with the tasks
+// from the passed unit.
 func (cache UnitCache) AddNew(id string, unit *Unit) {
 	if existing, ok := cache[id]; ok {
 		for _, t := range unit.tasks {
@@ -49,6 +48,11 @@ func (cache UnitCache) AddNew(id string, unit *Unit) {
 	cache[id] = unit
 }
 
+// Create makes a new unit around the existing task, caching it with
+// the specified key, and returning the resulting unit. If there is an
+// existing cache item with the specified ID, then Create extends that
+// unit with this task. In both cases, the resulting unit is returned
+// to the caller.
 func (cache UnitCache) Create(id string, t task.Task) *Unit {
 	if unit, ok := cache[id]; ok {
 		unit.Add(t)
@@ -60,44 +64,64 @@ func (cache UnitCache) Create(id string, t task.Task) *Unit {
 	return unit
 }
 
+// Export returns an unordered sequence of unique Units.
 func (cache UnitCache) Export() TaskPlan {
-	seen := map[string]struct{}{}
+	seen := StringSet{}
 	tpl := TaskPlan{}
 	for id := range cache {
-		hash := cache[id].ID()
-		if _, ok := seen[hash]; ok {
+		if seen.Visit(cache[id].ID()) {
 			continue
 		}
 
-		seen[hash] = struct{}{}
 		tpl = append(tpl, cache[id])
 	}
 
 	return tpl
 }
 
-func (unit *Unit) Add(t task.Task) {
-	seen := false
-	for _, et := range unit.tasks {
-		if et.Id == t.Id {
-			seen = true
-		}
-	}
+// Unit is a holder of a group of related tasks which should be
+// scheculded together. Typically these represent task groups, tasks,
+// and their dependencies, or even all tasks of a version. All tasks
+// in a Unit must be unique with regards to their ID.
+type Unit struct {
+	tasks       map[string]task.Task
+	cachedValue int64
+	id          string
+	distro      *distro.Distro
+}
 
-	if !seen {
-		unit.tasks = append(unit.tasks, t)
+// NewUnit constructs a new Unit container for a task.
+func NewUnit(t task.Task) *Unit {
+	return &Unit{
+		tasks: map[string]task.Task{t.Id: t},
 	}
 }
 
+// Export returns an unordered sequence of tasks from unit. All tasks
+// are unique.
+func (unit *Unit) Export() TaskList {
+	out := make(TaskList, 0, len(unit.tasks))
+
+	for _, t := range unit.tasks {
+		out = append(out, t)
+	}
+
+	return out
+}
+
+// Add caches a task in the unit.
+func (unit *Unit) Add(t task.Task) { unit.tasks[t.Id] = t }
+
+// ID constructs a unique and hashed ID of all the tasks in the unit.
 func (unit *Unit) ID() string {
 	if unit.id != "" {
 		return unit.id
 	}
 
 	hash := sha1.New()
-	ids := make(sort.StringSlice, len(unit.tasks))
-	for idx, t := range unit.tasks {
-		ids[idx] = t.Id
+	ids := make(sort.StringSlice, 0, len(unit.tasks))
+	for id := range unit.tasks {
+		ids = append(ids, id)
 	}
 	sort.Sort(ids)
 
@@ -109,6 +133,12 @@ func (unit *Unit) ID() string {
 	return unit.id
 }
 
+// RankValue returns a point value for the tasks in the unit that can
+// be used to compare units with eachother.
+//
+// Generally, higher point values are given to larger units and for
+// units that have been in the queue for longer, with longer expected
+// runtimes. The tasks priority act as a multiplying factor.
 func (unit *Unit) RankValue() int64 {
 	if unit.cachedValue > 0 {
 		return unit.cachedValue
@@ -134,28 +164,52 @@ func (unit *Unit) RankValue() int64 {
 	}
 
 	num := int64(len(unit.tasks))
-	priority := totalPriority / num
+	priority := 1 + (totalPriority / num)
 
 	if inCommitQueue {
 		priority += 100
 	}
 
 	if inPatch {
-		priority += 10
+		unit.cachedValue += unit.distro.GetPatchZipperFactor()
 	}
 
-	unit.cachedValue = num * priority
-	unit.cachedValue += priority * (int64(math.Floor(expectedRuntime.Minutes())) / num)
-	unit.cachedValue += priority * (int64(math.Floor(timeInQueue.Minutes())) / num)
+	unit.cachedValue += num * priority
+	unit.cachedValue += priority * unit.distro.GetExpectedRuntimeFactor() * int64(math.Floor(expectedRuntime.Minutes()/float64(num)))
+	unit.cachedValue += priority * unit.distro.GetTimeInQueueFactor() * int64(math.Floor(timeInQueue.Minutes()/float64(num)))
 
 	return unit.cachedValue
 }
 
-type taskUnitList []task.Task
+// StringSet provides simple tools for managing sets of strings.
+type StringSet map[string]struct{}
 
-func (tl taskUnitList) Len() int      { return len(tl) }
-func (tl taskUnitList) Swap(i, j int) { tl[i], tl[j] = tl[j], tl[i] }
-func (tl taskUnitList) Less(i, j int) bool {
+// Add places the string in the set.
+func (s StringSet) Add(id string) { s[id] = struct{}{} }
+
+// Check returns true if the string is a member of the set.
+func (s StringSet) Check(id string) bool { _, ok := s[id]; return ok }
+
+// Visit returns true if the string is already a member of the
+// set. Otherwise it adds it to the set and returns false.
+func (s StringSet) Visit(id string) bool {
+	if s.Check(id) {
+		return true
+	}
+
+	s.Add(id)
+	return false
+}
+
+// TaskList implements sort.Interface on top of a slice of tasks. The
+// provided sorting, orders members of task groups, and then
+// prioritizes tasks by the number of dependencies, priority, and
+// expected duration.
+type TaskList []task.Task
+
+func (tl TaskList) Len() int      { return len(tl) }
+func (tl TaskList) Swap(i, j int) { tl[i], tl[j] = tl[j], tl[i] }
+func (tl TaskList) Less(i, j int) bool {
 	t1 := tl[i]
 	t2 := tl[j]
 
@@ -163,7 +217,7 @@ func (tl taskUnitList) Less(i, j int) bool {
 		return t1.TaskGroupOrder < t2.TaskGroupOrder
 	}
 
-	if len(t1.DependsOn) != t2.TaskGroupOrder {
+	if len(t1.DependsOn) != len(t2.DependsOn) {
 		return len(t1.DependsOn) < len(t2.DependsOn)
 	}
 
@@ -174,22 +228,23 @@ func (tl taskUnitList) Less(i, j int) bool {
 	return t1.FetchExpectedDuration() < t2.FetchExpectedDuration()
 }
 
+// TaskPlan provides a sortable interface on top of a slice of
+// schedulable units, with ordering of units provided by the
+// implementation of RankValue.
 type TaskPlan []*Unit
 
 func (tpl TaskPlan) Len() int           { return len(tpl) }
 func (tpl TaskPlan) Less(i, j int) bool { return tpl[i].RankValue() < tpl[i].RankValue() }
 func (tpl TaskPlan) Swap(i, j int)      { tpl[i], tpl[j] = tpl[j], tpl[i] }
 
-func PrepareTasksForPlanning(tasks []task.Task) TaskPlan {
+// PrepareTasksForPlanning takes a list of tasks for a distro and
+// returns a TaskPlan, grouping tasks into the appropriate units.
+func PrepareTasksForPlanning(distro *distro.Distro, tasks []task.Task) TaskPlan {
 	cache := NewUnitCache()
 	groups := NewUnitCache()
 	versions := NewUnitCache()
 
-	// TODO this should be passed in somehow:
-	distroCache := map[string]*distro.Distro{}
-
 	for _, t := range tasks {
-		// if its in a taskgroup:
 		var unit *Unit
 		if t.TaskGroup != "" {
 			unit = groups.Create(t.GetTaskGroupString(), t)
@@ -197,13 +252,13 @@ func PrepareTasksForPlanning(tasks []task.Task) TaskPlan {
 		} else {
 			unit = cache.Create(t.Id, t)
 		}
-
-		versions.AddWhen(distroCache[t.DistroId].ShouldGroupVersions(), t.Version, unit)
+		unit.distro = distro
+		versions.AddWhen(distro.ShouldGroupVersions(), t.Version, unit)
 
 		// if it has dependencies:
 		if len(t.DependsOn) > 0 {
 			for _, dep := range t.DependsOn {
-				cache.Create(dep.TaskId, t)
+				cache.Create(dep.TaskId, t).distro = distro
 			}
 		}
 	}
@@ -211,20 +266,20 @@ func PrepareTasksForPlanning(tasks []task.Task) TaskPlan {
 	return cache.Export()
 }
 
+// Export sorts the TaskPlan returning a unique list of tasks.
 func (tpl TaskPlan) Export() []task.Task {
 	sort.Sort(tpl)
 
-	tracked := map[string]struct{}{}
 	output := []task.Task{}
-
+	seen := StringSet{}
 	for _, unit := range tpl {
-		sort.Sort(unit.tasks)
-		for _, t := range unit.tasks {
-			if _, ok := tracked[t.Id]; ok {
+		tasks := unit.Export()
+		sort.Sort(tasks)
+		for _, t := range tasks {
+			if seen.Visit(t.Id) {
 				continue
 			}
 
-			tracked[t.Id] = struct{}{}
 			output = append(output, t)
 		}
 	}
