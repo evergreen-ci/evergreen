@@ -242,6 +242,9 @@ func (h *Host) ForceReinstallJasperCommand(config evergreen.HostJasperConfig) st
 	if h.Distro.JasperCredentialsPath != "" {
 		params = append(params, fmt.Sprintf("--creds_path=%s", h.Distro.JasperCredentialsPath))
 	}
+	if h.Distro.User != "" {
+		params = append(params, fmt.Sprintf("--user=%s", h.Distro.User))
+	}
 
 	return h.jasperServiceCommand(config, jaspercli.ForceReinstallCommand, params...)
 }
@@ -253,18 +256,20 @@ func (h *Host) RestartJasperCommand(config evergreen.HostJasperConfig) string {
 }
 
 func (h *Host) jasperServiceCommand(config evergreen.HostJasperConfig, subCmd string, args ...string) string {
-	cmd := fmt.Sprintf("%s %s %s %s",
-		strings.Join(jaspercli.BuildServiceCommand(h.jasperBinaryFilePath(config)), " "),
-		subCmd,
-		jaspercli.RPCService,
-		strings.Join(args, " "),
-	)
+	cmd := append(jaspercli.BuildServiceCommand(h.jasperBinaryFilePath(config)), subCmd, jaspercli.RPCService)
+	cmd = append(cmd, args...)
+	// cmd := fmt.Sprintf("%s %s %s %s",
+	//     strings.Join(jaspercli.BuildServiceCommand(h.jasperBinaryFilePath(config)), " "),
+	//     subCmd,
+	//     jaspercli.RPCService,
+	//     strings.Join(args, " "),
+	// )
 	// Jasper service commands need elevated privileges to execute. On Windows,
 	// this is assuming that the command is already being run by Administrator.
 	if !h.Distro.IsWindows() {
-		cmd = "sudo " + cmd
+		cmd = append([]string{"sudo"}, cmd...)
 	}
-	return cmd
+	return strings.Join(cmd, " ")
 }
 
 // FetchJasperCommand builds the command to download and extract the Jasper

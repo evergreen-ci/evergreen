@@ -140,16 +140,18 @@ func TestJasperCommands(t *testing.T) {
 		},
 		"ForceReinstallJasperCommand": func(t *testing.T, h *Host, config evergreen.HostJasperConfig) {
 			cmd := h.ForceReinstallJasperCommand(config)
-			assert.Equal(t, "sudo /foo/jasper_cli jasper service force-reinstall rpc --port=12345 --creds_path=/bar", cmd)
+			assert.Equal(t, "sudo /foo/jasper_cli jasper service force-reinstall rpc --port=12345 --creds_path=/bar --user=user", cmd)
 		},
 		// "": func(t *testing.T, h *Host, config evergreen.JasperConfig) {},
 	} {
 		t.Run(opName, func(t *testing.T) {
-			h := &Host{Distro: distro.Distro{
-				Arch:                  distro.ArchLinuxAmd64,
-				CuratorDir:            "/foo",
-				JasperCredentialsPath: "/bar",
-			}}
+			h := &Host{
+				Distro: distro.Distro{
+					Arch:                  distro.ArchLinuxAmd64,
+					CuratorDir:            "/foo",
+					JasperCredentialsPath: "/bar",
+					User:                  "user",
+				}}
 			config := evergreen.HostJasperConfig{
 				BinaryName:       "jasper_cli",
 				DownloadFileName: "download_file",
@@ -240,7 +242,7 @@ func TestJasperCommandsWindows(t *testing.T) {
 		},
 		"ForceReinstallJasperCommand": func(t *testing.T, h *Host, config evergreen.HostJasperConfig) {
 			cmd := h.ForceReinstallJasperCommand(config)
-			assert.Equal(t, "/foo/jasper_cli.exe jasper service force-reinstall rpc --port=12345 --creds_path=/bar", cmd)
+			assert.Equal(t, "/foo/jasper_cli.exe jasper service force-reinstall rpc --port=12345 --creds_path=/bar --user=user", cmd)
 		},
 		"WriteJasperCredentialsFileCommand": func(t *testing.T, h *Host, config evergreen.HostJasperConfig) {
 			creds, err := newMockCredentials()
@@ -285,6 +287,7 @@ func TestJasperCommandsWindows(t *testing.T) {
 				Arch:                  distro.ArchWindowsAmd64,
 				CuratorDir:            "/foo",
 				JasperCredentialsPath: "/bar",
+				User:                  "user",
 			}}
 			config := evergreen.HostJasperConfig{
 				BinaryName:       "jasper_cli",
