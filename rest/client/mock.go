@@ -601,6 +601,10 @@ func (c *Mock) EnqueueItem(ctx context.Context, projectID, item string) (int, er
 	return 1, nil
 }
 
+func (c *Mock) GetCommitQueueItemAuthor(ctx context.Context, projectID, item string) (string, error) {
+	return "github.user", nil
+}
+
 func (c *Mock) GetUserAuthorInfo(ctx context.Context, td TaskData, userID string) (*model.APIUserAuthorInformation, error) {
 	return &model.APIUserAuthorInformation{
 		DisplayName: model.ToAPIString("evergreen"),

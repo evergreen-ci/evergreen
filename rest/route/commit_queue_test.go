@@ -4,6 +4,8 @@ import (
 	"context"
 	"testing"
 
+	restModel "github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/evergreen/model/commitqueue"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/rest/model"
@@ -134,4 +136,40 @@ func (s *CommitQueueSuite) TestEnqueueItem() {
 	response := route.Run(context.Background())
 	s.Equal(200, response.Status())
 	s.Equal(model.APICommitQueuePosition{Position: 1}, response.Data())
+}
+
+func (s *CommitQueueSuite) TestGetItem() {
+	ctx := context.Background()
+	route := makeGetCommitQueueItemOwner(s.sc).(*getCommitQueueItemOwnerHandler)
+	p := patch.Patch{
+		Id:     mgobson.NewObjectId(),
+		Author: "evergreen.user",
+	}
+	s.sc.CachedPatches = append(s.sc.CachedPatches, p)
+	pRef := &restModel.ProjectRef{
+		Identifier: "mci",
+		CommitQueue: restModel.CommitQueueParams{
+			PatchType: commitqueue.CLIPatchType,
+		},
+	}
+	s.NoError(s.sc.CreateProject(pRef))
+
+	route.projectID = pRef.Identifier
+	route.item = p.Id.Hex()
+	resp := route.Run(ctx)
+	s.Equal(200, resp.Status())
+	s.Equal(model.APICommitQueueItemAuthor{Author: model.ToAPIString(p.Author)}, resp.Data())
+
+	pRef = &restModel.ProjectRef{
+		Identifier: "not-mci",
+		CommitQueue: restModel.CommitQueueParams{
+			PatchType: commitqueue.PRPatchType,
+		},
+	}
+	s.NoError(s.sc.CreateProject(pRef))
+	route.projectID = pRef.Identifier
+	route.item = "1234"
+	resp = route.Run(ctx)
+	s.Equal(200, resp.Status())
+	s.Equal(model.APICommitQueueItemAuthor{Author: model.ToAPIString("github.user")}, resp.Data())
 }
