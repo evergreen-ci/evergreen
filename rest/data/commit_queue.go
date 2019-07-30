@@ -5,7 +5,10 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/commitqueue"
+	"github.com/evergreen-ci/evergreen/model/event"
+	"github.com/evergreen-ci/evergreen/model/task"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/evergreen-ci/evergreen/util"
@@ -75,11 +78,82 @@ func (pc *DBCommitQueueConnector) CommitQueueRemoveItem(id, item string) (bool, 
 		return false, errors.Wrapf(err, "can't get commit queue for id '%s'", id)
 	}
 
-	return cq.Remove(item)
+	head := cq.Next()
+	removed, err := cq.Remove(item)
+	if err != nil {
+		return removed, errors.Wrapf(err, "can't remove item '%s' from queue '%s'", item, id)
+	}
+
+	if removed && head.Issue == item {
+		if err = preventMergeForItem(id, head); err != nil {
+			return removed, errors.Wrapf(err, "can't prevent merge for item '%s' on queue '%s'", item, id)
+		}
+	}
+
+	return removed, nil
 }
 
 func (pc *DBCommitQueueConnector) CommitQueueClearAll() (int, error) {
 	return commitqueue.ClearAllCommitQueues()
+}
+
+func preventMergeForItem(projectID string, item *commitqueue.CommitQueueItem) error {
+	projectRef, err := model.FindOneProjectRef(projectID)
+	if err != nil {
+		return errors.Wrapf(err, "can't find projectRef for '%s'", projectID)
+	}
+
+	if projectRef.CommitQueue.PatchType == commitqueue.PRPatchType {
+		if item.Version != "" {
+			// Clear the subscription
+			subscriptions, err := event.FindSubscriptions(event.ResourceTypePatch, []event.Selector{{Type: event.SelectorID, Data: item.Version}})
+			if err != nil {
+				return errors.Wrapf(err, "can't find subscription to patch '%s'", item.Version)
+			}
+			for _, subscription := range subscriptions {
+				if subscription.Subscriber.Type == event.GithubMergeSubscriberType {
+					err = event.RemoveSubscription(subscription.ID)
+					if err != nil {
+						return errors.Wrap(err, "can't remove subscription for GitHub merge")
+					}
+				}
+			}
+		}
+	}
+
+	if projectRef.CommitQueue.PatchType == commitqueue.CLIPatchType {
+		version, err := model.VersionFindOneId(item.Issue)
+		if err != nil {
+			return errors.Wrapf(err, "can't find patch '%s'", item.Issue)
+		}
+		if version != nil {
+			// Clear the subscription
+			subscriptions, err := event.FindSubscriptions(event.ResourceTypePatch, []event.Selector{{Type: event.SelectorID, Data: version.Id}})
+			if err != nil {
+				return errors.Wrapf(err, "can't find subscription to patch '%s'", version.Id)
+			}
+			for _, subscription := range subscriptions {
+				if subscription.Subscriber.Type == event.CommitQueueDequeueSubscriberType {
+					err = event.RemoveSubscription(subscription.ID)
+					if err != nil {
+						return errors.Wrap(err, "can't remove subscription for GitHub merge")
+					}
+				}
+			}
+
+			// Blacklist the merge task
+			mergeTask, err := task.FindMergeTaskForVersion(version.Id)
+			if err != nil {
+				return errors.Wrapf(err, "can't find merge task for '%s'", version.Id)
+			}
+			err = mergeTask.SetPriority(-1, "mci")
+			if err != nil {
+				return errors.Wrap(err, "can't blacklist merge task")
+			}
+		}
+	}
+
+	return nil
 }
 
 type UserRepoInfo struct {
