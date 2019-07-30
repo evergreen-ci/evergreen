@@ -21,9 +21,6 @@ import (
 // or the tasks from a single version
 type UnitCache map[string]*Unit
 
-// NewUnitCache constructs an empty cache of units.
-func NewUnitCache() UnitCache { return map[string]*Unit{} }
-
 // AddWhen wraps AddNew, and is a noop if the conditional is false.
 func (cache UnitCache) AddWhen(cond bool, id string, unit *Unit) {
 	if !cond {
@@ -174,7 +171,8 @@ func (unit *Unit) RankValue() int64 {
 		unit.cachedValue += unit.distro.GetPatchZipperFactor()
 	}
 
-	unit.cachedValue += num * priority
+	unit.cachedValue += num
+	unit.cachedValue += priority
 	unit.cachedValue += priority * unit.distro.GetExpectedRuntimeFactor() * int64(math.Floor(expectedRuntime.Minutes()/float64(num)))
 	unit.cachedValue += priority * unit.distro.GetTimeInQueueFactor() * int64(math.Floor(timeInQueue.Minutes()/float64(num)))
 
@@ -240,9 +238,9 @@ func (tpl TaskPlan) Swap(i, j int)      { tpl[i], tpl[j] = tpl[j], tpl[i] }
 // PrepareTasksForPlanning takes a list of tasks for a distro and
 // returns a TaskPlan, grouping tasks into the appropriate units.
 func PrepareTasksForPlanning(distro *distro.Distro, tasks []task.Task) TaskPlan {
-	cache := NewUnitCache()
-	groups := NewUnitCache()
-	versions := NewUnitCache()
+	cache := UnitCache{}
+	groups := UnitCache{}
+	versions := UnitCache{}
 
 	for _, t := range tasks {
 		var unit *Unit

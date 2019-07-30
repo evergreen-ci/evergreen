@@ -20,17 +20,25 @@ type TaskPlanner func(string, *distro.Distro, []task.Task) ([]task.Task, error)
 func PrioritizeTasks(id string, d *distro.Distro, tasks []task.Task) ([]task.Task, error) {
 	switch d.PlannerSettings.TaskOrdering {
 	case evergreen.PlannerVersionTunable:
-		return runTunablePlanner(d, tasks)
+		return runTunablePlanner(id, d, tasks)
 	default:
 		return runLegacyPlanner(id, d, tasks)
 	}
 }
 
-func runTunablePlanner(d *distro.Distro, tasks []task.Task) ([]task.Task, error) {
+func runTunablePlanner(id string, d *distro.Distro, tasks []task.Task) ([]task.Task, error) {
+	var err error
+
+	tasks, err = PopulateCaches(id, d.Id, tasks)
+	if err != nil {
+		return nil, errors.WithStack(err)
+	}
+
 	plan := PrepareTasksForPlanning(d, tasks).Export()
+
 	info := GetDistroQueueInfo(plan, d.MaxDurationPerHost())
 
-	if err := PersistTaskQueue(d.Id, plan, info); err != nil {
+	if err = PersistTaskQueue(d.Id, plan, info); err != nil {
 		return nil, errors.WithStack(err)
 	}
 
