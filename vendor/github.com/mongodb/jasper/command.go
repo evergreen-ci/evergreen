@@ -419,8 +419,9 @@ func (c *Command) Close() error {
 	return c.opts.Close()
 }
 
-func (c *Command) SetInput(r io.Reader) {
+func (c *Command) SetInput(r io.Reader) *Command {
 	c.opts.StandardInput = r
+	return c
 }
 
 // SetErrorSender sets a Sender to be used by this Command for its output to
@@ -577,7 +578,7 @@ func (c *Command) getCreateOpt(ctx context.Context, args []string) (*CreateOptio
 	case 0:
 		return nil, errors.New("cannot have empty args")
 	case 1:
-		if strings.Contains(args[0], " \"'") {
+		if strings.ContainsAny(args[0], " \"'") {
 			spl, err := shlex.Split(args[0])
 			if err != nil {
 				return nil, errors.Wrap(err, "problem splitting argstring")

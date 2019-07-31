@@ -1,13 +1,17 @@
 package host
 
 import (
+	"context"
 	"fmt"
+	"math"
 	"testing"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/mock"
 	"github.com/evergreen-ci/evergreen/model/build"
+	"github.com/evergreen-ci/evergreen/model/credentials"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/task"
 	_ "github.com/evergreen-ci/evergreen/testutil"
@@ -918,6 +922,145 @@ func TestFindByNeedsNewAgentMonitor(t *testing.T) {
 				NeedsNewAgentMonitor: true,
 			}
 			testCase(t, &h)
+		})
+	}
+}
+
+func TestFindByExpiringJasperCredentials(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	for testName, testCase := range map[string]func(t *testing.T, env evergreen.Environment){
+		"IgnoresLegacyHost": func(t *testing.T, env evergreen.Environment) {
+			h := &Host{
+				Id: "id",
+				Distro: distro.Distro{
+					BootstrapMethod:     distro.BootstrapMethodLegacySSH,
+					CommunicationMethod: distro.CommunicationMethodLegacySSH,
+				},
+				JasperCredentialsID: "cid",
+				Status:              evergreen.HostRunning,
+			}
+			require.NoError(t, h.Insert())
+
+			creds, err := h.GenerateJasperCredentials(ctx, env)
+			require.NoError(t, err)
+			require.NoError(t, h.SaveJasperCredentials(ctx, env, creds))
+
+			dbHosts, err := FindByExpiringJasperCredentials(time.Duration(math.MaxInt64))
+			require.NoError(t, err)
+			assert.Empty(t, dbHosts)
+		},
+		"IgnoresWithoutCredentials": func(t *testing.T, env evergreen.Environment) {
+			h := &Host{
+				Id: "id",
+				Distro: distro.Distro{
+					BootstrapMethod:     distro.BootstrapMethodSSH,
+					CommunicationMethod: distro.CommunicationMethodSSH,
+				},
+				JasperCredentialsID: "cid",
+				Status:              evergreen.HostRunning,
+			}
+			require.NoError(t, h.Insert())
+
+			dbHosts, err := FindByExpiringJasperCredentials(time.Duration(math.MaxInt64))
+			require.NoError(t, err)
+			assert.Empty(t, dbHosts)
+		},
+		"IgnoresNonexpiringCredentials": func(t *testing.T, env evergreen.Environment) {
+			h := &Host{
+				Id: "id",
+				Distro: distro.Distro{
+					BootstrapMethod:     distro.BootstrapMethodSSH,
+					CommunicationMethod: distro.CommunicationMethodSSH,
+				},
+				JasperCredentialsID: "cid",
+				Status:              evergreen.HostRunning,
+			}
+			require.NoError(t, h.Insert())
+
+			creds, err := h.GenerateJasperCredentials(ctx, env)
+			require.NoError(t, err)
+			require.NoError(t, h.SaveJasperCredentials(ctx, env, creds))
+
+			dbHosts, err := FindByExpiringJasperCredentials(time.Second)
+			require.NoError(t, err)
+			assert.Empty(t, dbHosts)
+		},
+		"ReturnsWithExpiringCredentials": func(t *testing.T, env evergreen.Environment) {
+			h := &Host{
+				Id: "id",
+				Distro: distro.Distro{
+					BootstrapMethod:     distro.BootstrapMethodSSH,
+					CommunicationMethod: distro.CommunicationMethodSSH,
+				},
+				JasperCredentialsID: "cid",
+				Status:              evergreen.HostRunning,
+			}
+			require.NoError(t, h.Insert())
+
+			creds, err := h.GenerateJasperCredentials(ctx, env)
+			require.NoError(t, err)
+			require.NoError(t, h.SaveJasperCredentials(ctx, env, creds))
+
+			dbHosts, err := FindByExpiringJasperCredentials(time.Duration(math.MaxInt64))
+			require.NoError(t, err)
+			require.Len(t, dbHosts, 1)
+			assert.Equal(t, h.Id, dbHosts[0].Id)
+		},
+		"IgnoresNotRunning": func(t *testing.T, env evergreen.Environment) {
+			h := &Host{
+				Id: "id",
+				Distro: distro.Distro{
+					BootstrapMethod:     distro.BootstrapMethodSSH,
+					CommunicationMethod: distro.CommunicationMethodSSH,
+				},
+				JasperCredentialsID: "cid",
+				Status:              evergreen.HostTerminated,
+			}
+			require.NoError(t, h.Insert())
+
+			creds, err := h.GenerateJasperCredentials(ctx, env)
+			require.NoError(t, err)
+			require.NoError(t, h.SaveJasperCredentials(ctx, env, creds))
+
+			dbHosts, err := FindByExpiringJasperCredentials(time.Duration(math.MaxInt64))
+			require.NoError(t, err)
+			assert.Empty(t, dbHosts)
+		},
+		"IgnoresContainers": func(t *testing.T, env evergreen.Environment) {
+			h := &Host{
+				Id: "id",
+				Distro: distro.Distro{
+					BootstrapMethod:     distro.BootstrapMethodSSH,
+					CommunicationMethod: distro.CommunicationMethodSSH,
+				},
+				JasperCredentialsID: "cid",
+				Status:              evergreen.HostRunning,
+				ParentID:            "parent",
+			}
+			require.NoError(t, h.Insert())
+
+			creds, err := h.GenerateJasperCredentials(ctx, env)
+			require.NoError(t, err)
+			require.NoError(t, h.SaveJasperCredentials(ctx, env, creds))
+
+			dbHosts, err := FindByExpiringJasperCredentials(time.Duration(math.MaxInt64))
+			require.NoError(t, err)
+			assert.Empty(t, dbHosts)
+		},
+	} {
+		t.Run(testName, func(t *testing.T) {
+			tctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+			defer cancel()
+
+			env := &mock.Environment{}
+			require.NoError(t, env.Configure(tctx, "", nil))
+			env.EnvContext = tctx
+
+			require.NoError(t, setupCredentialsCollection(ctx, env))
+			testCase(t, env)
+			assert.NoError(t, db.ClearCollections(credentials.Collection, Collection))
 		})
 	}
 }

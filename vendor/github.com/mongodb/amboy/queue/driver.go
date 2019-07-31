@@ -58,6 +58,5 @@ func DefaultMongoDBOptions() MongoDBOptions {
 		SkipIndexBuilds: false,
 		WaitInterval:    time.Second,
 		Format:          amboy.BSON,
-		TTL:             90 * 24 * time.Hour,
 	}
 }

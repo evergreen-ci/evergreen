@@ -199,7 +199,9 @@ type Connector interface {
 	SetBannerTheme(string, *user.DBUser) error
 	// SetAdminBanner sets set the service flags in the system-wide settings document
 	SetServiceFlags(evergreen.ServiceFlags, *user.DBUser) error
-	RestartFailedTasks(amboy.Queue, model.RestartTaskOptions) (*restModel.RestartTasksResponse, error)
+	RestartFailedTasks(amboy.Queue, model.RestartOptions) (*restModel.RestartResponse, error)
+	//RestartFailedCommitQueueVersions takes in a time range
+	RestartFailedCommitQueueVersions(opts model.RestartOptions) (*restModel.RestartResponse, error)
 	RevertConfigTo(string, string) error
 	GetAdminEventLog(time.Time, int) ([]restModel.APIAdminEvent, error)
 

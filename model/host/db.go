@@ -7,6 +7,7 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/build"
+	"github.com/evergreen-ci/evergreen/model/credentials"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/util"
@@ -55,6 +56,7 @@ var (
 	NeedsNewAgentKey             = bsonutil.MustHaveTag(Host{}, "NeedsNewAgent")
 	NeedsNewAgentMonitorKey      = bsonutil.MustHaveTag(Host{}, "NeedsNewAgentMonitor")
 	JasperCredentialsIDKey       = bsonutil.MustHaveTag(Host{}, "JasperCredentialsID")
+	JasperDeployAttemptsKey      = bsonutil.MustHaveTag(Host{}, "JasperDeployAttempts")
 	StartedByKey                 = bsonutil.MustHaveTag(Host{}, "StartedBy")
 	InstanceTypeKey              = bsonutil.MustHaveTag(Host{}, "InstanceType")
 	VolumeSizeKey                = bsonutil.MustHaveTag(Host{}, "VolumeTotalSize")
@@ -368,6 +370,48 @@ func FindByFirstProvisioningAttempt() ([]Host, error) {
 		ProvisionAttemptsKey: 0,
 		StatusKey:            evergreen.HostProvisioning,
 	}))
+}
+
+// FindByExpiringJasperCredentials finds all hosts whose Jasper service
+// credentials will expire within the given cutoff.
+func FindByExpiringJasperCredentials(cutoff time.Duration) ([]Host, error) {
+	deadline := time.Now().Add(cutoff)
+	bootstrapKey := bsonutil.GetDottedKeyName(DistroKey, distro.BootstrapMethodKey)
+	credentialsKey := credentials.Collection
+	expirationKey := bsonutil.GetDottedKeyName(credentialsKey, credentials.TTLKey)
+
+	var hosts []Host
+
+	pipeline := []bson.M{
+		bson.M{"$match": bson.M{
+			bootstrapKey: bson.M{
+				"$exists": true,
+				"$ne":     distro.BootstrapMethodLegacySSH,
+			},
+			StatusKey:        evergreen.HostRunning,
+			HasContainersKey: bson.M{"$ne": true},
+			ParentIDKey:      bson.M{"$exists": false},
+		}},
+		bson.M{"$lookup": bson.M{
+			"from":         credentials.Collection,
+			"localField":   JasperCredentialsIDKey,
+			"foreignField": credentials.IDKey,
+			"as":           credentialsKey,
+		}},
+		bson.M{"$match": bson.M{
+			expirationKey: bson.M{"$lte": deadline},
+		}},
+		bson.M{"$project": bson.M{
+			credentialsKey: 0,
+		}},
+	}
+
+	err := db.Aggregate(Collection, pipeline, &hosts)
+	if adb.ResultsNotFound(err) {
+		return nil, nil
+	}
+
+	return hosts, err
 }
 
 // IsRunningAndSpawned is a query that returns all running hosts

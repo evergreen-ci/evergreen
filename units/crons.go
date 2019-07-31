@@ -794,6 +794,54 @@ func PopulateHostSetupJobs(env evergreen.Environment) amboy.QueueOperation {
 	}
 }
 
+// PopulateJasperDeployJobs enqueues the jobs to deploy new Jasper service
+// credentials to any host whose credentials are set to expire soon.
+func PopulateJasperDeployJobs(env evergreen.Environment) amboy.QueueOperation {
+	return func(ctx context.Context, queue amboy.Queue) error {
+		flags, err := evergreen.GetServiceFlags()
+		if err != nil {
+			return errors.WithStack(err)
+		}
+
+		if flags.HostInitDisabled {
+			grip.InfoWhen(sometimes.Percent(evergreen.DegradedLoggingPercent), message.Fields{
+				"message": "host init disabled",
+				"impact":  "existing hosts are not provisioned with new Jasper credentials, which may expire soon",
+				"mode":    "degraded",
+			})
+			return nil
+		}
+
+		hosts, err := host.FindByExpiringJasperCredentials(expirationCutoff)
+		if err != nil {
+			grip.Error(message.WrapError(err, message.Fields{
+				"operation": "Jasper service redeployment",
+				"cron":      jasperDeployJobName,
+				"impact":    "existing hosts are not provisioned with new Jasper credentials, which may expire soon",
+			}))
+			return errors.Wrap(err, "problem finding hosts with expiring credentials")
+		}
+
+		ts := util.RoundPartOfDay(0).Format(tsFormat)
+		catcher := grip.NewBasicCatcher()
+		for _, h := range hosts {
+			if err := h.ResetJasperDeployAttempts(); err != nil {
+				catcher.Add(errors.Wrapf(err, "problem resetting Jasper deploy attempts for host %s", h.Id))
+				continue
+			}
+			expiration, err := h.JasperCredentialsExpiration(ctx, env)
+			if err != nil {
+				catcher.Add(errors.Wrapf(err, "problem getting expiration time on credentials for host %s", h.Id))
+				continue
+			}
+
+			catcher.Add(queue.Put(ctx, NewJasperDeployJob(env, &h, expiration, h.Distro.CommunicationMethod == distro.CommunicationMethodRPC, ts)))
+		}
+
+		return catcher.Resolve()
+	}
+}
+
 func PopulateBackgroundStatsJobs(env evergreen.Environment, part int) amboy.QueueOperation {
 	return func(ctx context.Context, queue amboy.Queue) error {
 		flags, err := evergreen.GetServiceFlags()

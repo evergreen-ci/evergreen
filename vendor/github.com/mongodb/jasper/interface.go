@@ -21,6 +21,7 @@ const (
 // interfaces and remote management tools can be implemented in terms
 // of this interface.
 type Manager interface {
+	ID() string
 	CreateProcess(context.Context, *CreateOptions) (Process, error)
 	CreateCommand(context.Context) *Command
 	Register(context.Context, Process) error

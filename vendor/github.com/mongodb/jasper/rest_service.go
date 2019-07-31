@@ -63,6 +63,7 @@ func (s *Service) App(ctx context.Context) *gimlet.APIApp {
 	app := gimlet.NewApp()
 
 	app.AddRoute("/").Version(1).Get().Handler(s.rootRoute)
+	app.AddRoute("/id").Version(1).Get().Handler(s.id)
 	app.AddRoute("/create").Version(1).Post().Handler(s.createProcess)
 	app.AddRoute("/download").Version(1).Post().Handler(s.downloadFile)
 	app.AddRoute("/download/cache").Version(1).Post().Handler(s.configureCache)
@@ -160,7 +161,10 @@ func (s *Service) rootRoute(rw http.ResponseWriter, r *http.Request) {
 		HostID: s.hostID,
 		Active: true,
 	})
+}
 
+func (s *Service) id(rw http.ResponseWriter, r *http.Request) {
+	gimlet.WriteJSON(rw, s.manager.ID())
 }
 
 func (s *Service) createProcess(rw http.ResponseWriter, r *http.Request) {

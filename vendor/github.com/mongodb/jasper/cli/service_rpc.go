@@ -40,6 +40,10 @@ func serviceCommandRPC(cmd string, operation serviceOperation) cli.Command {
 				Name:  credsFilePathFlagName,
 				Usage: "the path to the file containing the RPC service credentials",
 			},
+			cli.StringFlag{
+				Name:  userFlagName,
+				Usage: "the user who will run the RPC service",
+			},
 		},
 		Before: validatePort(portFlagName),
 		Action: func(c *cli.Context) error {
@@ -51,6 +55,7 @@ func serviceCommandRPC(cmd string, operation serviceOperation) cli.Command {
 			daemon := newRPCDaemon(c.String(hostFlagName), c.Int(portFlagName), manager, c.String(credsFilePathFlagName))
 
 			config := serviceConfig(RPCService, buildRunCommand(c, RPCService))
+			config.UserName = c.String(userFlagName)
 
 			return operation(daemon, config)
 		},

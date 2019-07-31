@@ -290,7 +290,7 @@ func (p *mergeParams) mergeBranch(ctx context.Context, conf *ClientSettings, cli
 		}
 	}
 	if !p.pause {
-		position, err := client.EnqueueItem(ctx, p.projectID, p.id)
+		position, err := client.EnqueueItem(ctx, p.id)
 		if err != nil {
 			return err
 		}

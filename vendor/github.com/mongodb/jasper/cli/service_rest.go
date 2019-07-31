@@ -34,6 +34,10 @@ func serviceCommandREST(cmd string, operation serviceOperation) cli.Command {
 				Usage:  "the port running the REST service",
 				Value:  defaultRESTPort,
 			},
+			cli.StringFlag{
+				Name:  userFlagName,
+				Usage: "the user who will run the REST service",
+			},
 		},
 		Before: validatePort(portFlagName),
 		Action: func(c *cli.Context) error {
@@ -45,6 +49,7 @@ func serviceCommandREST(cmd string, operation serviceOperation) cli.Command {
 			daemon := newRESTDaemon(c.String(hostFlagName), c.Int(portFlagName), manager)
 
 			config := serviceConfig(RESTService, buildRunCommand(c, RESTService))
+			config.UserName = c.String(userFlagName)
 
 			return operation(daemon, config)
 		},

@@ -184,6 +184,37 @@ func (u *DBUser) IncPatchNumber() (int, error) {
 	return dbUser.PatchNumber, nil
 }
 
+func (u *DBUser) AddRole(role string) error {
+	if util.StringSliceContains(u.SystemRoles, role) {
+		return errors.Errorf("cannot add duplicate role '%s'", role)
+	}
+	update := bson.M{
+		"$push": bson.M{RolesKey: role},
+	}
+	if err := UpdateOne(bson.M{IdKey: u.Id}, update); err != nil {
+		return err
+	}
+	u.SystemRoles = append(u.SystemRoles, role)
+
+	return nil
+}
+
+func (u *DBUser) RemoveRole(role string) error {
+	update := bson.M{
+		"$pull": bson.M{RolesKey: role},
+	}
+	if err := UpdateOne(bson.M{IdKey: u.Id}, update); err != nil {
+		return err
+	}
+	for i := len(u.SystemRoles) - 1; i >= 0; i-- {
+		if u.SystemRoles[i] == role {
+			u.SystemRoles = append(u.SystemRoles[:i], u.SystemRoles[i+1:]...)
+		}
+	}
+
+	return nil
+}
+
 func GetPatchUser(gitHubUID int) (*DBUser, error) {
 	u, err := FindByGithubUID(gitHubUID)
 	if err != nil {

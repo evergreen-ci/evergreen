@@ -170,9 +170,9 @@ type Communicator interface {
 
 	// Commit Queue
 	GetCommitQueue(ctx context.Context, projectID string) (*restmodel.APICommitQueue, error)
-	DeleteCommitQueueItem(ctx context.Context, projectID string, item string) error
-	EnqueueItem(ctx context.Context, projectID, item string) (int, error)
 	GetCommitQueueItemAuthor(ctx context.Context, projectID, item string) (string, error)
+	DeleteCommitQueueItem(ctx context.Context, projectID string, item string) error
+	EnqueueItem(ctx context.Context, patchID string) (int, error)
 
 	GetUserAuthorInfo(context.Context, TaskData, string) (*restmodel.APIUserAuthorInformation, error)
 

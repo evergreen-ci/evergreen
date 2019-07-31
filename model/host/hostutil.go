@@ -16,7 +16,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/util"
-	"github.com/google/shlex"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/mongodb/jasper"
@@ -97,7 +96,7 @@ const (
 )
 
 func curlRetryArgs(numRetries, maxSecs int) string {
-	return fmt.Sprintf("--retry=%d --retry-max-time=%d", numRetries, maxSecs)
+	return fmt.Sprintf("--retry %d --retry-max-time %d", numRetries, maxSecs)
 }
 
 // ClientURL returns the URL used to get the latest Evergreen client version.
@@ -239,24 +238,38 @@ func (h *Host) FetchAndReinstallJasperCommand(config evergreen.HostJasperConfig)
 // delete the current Jasper service configuration (if it exists), install the
 // new configuration, and restart the service.
 func (h *Host) ForceReinstallJasperCommand(config evergreen.HostJasperConfig) string {
-	return h.jasperServiceCommand(config, jaspercli.ForceReinstallCommand,
-		fmt.Sprintf("--port=%d", config.Port),
-		fmt.Sprintf("--creds_path=%s", h.Distro.JasperCredentialsPath))
+	params := []string{fmt.Sprintf("--port=%d", config.Port)}
+	if h.Distro.JasperCredentialsPath != "" {
+		params = append(params, fmt.Sprintf("--creds_path=%s", h.Distro.JasperCredentialsPath))
+	}
+	if h.Distro.User != "" {
+		params = append(params, fmt.Sprintf("--user=%s", h.Distro.User))
+	}
+
+	return h.jasperServiceCommand(config, jaspercli.ForceReinstallCommand, params...)
+}
+
+// RestartJasperCommand returns the command to restart the Jasper service with
+// the existing configuration.
+func (h *Host) RestartJasperCommand(config evergreen.HostJasperConfig) string {
+	return h.jasperServiceCommand(config, jaspercli.RestartCommand)
 }
 
 func (h *Host) jasperServiceCommand(config evergreen.HostJasperConfig, subCmd string, args ...string) string {
-	cmd := fmt.Sprintf("%s %s %s %s",
-		strings.Join(jaspercli.BuildServiceCommand(h.jasperBinaryFilePath(config)), " "),
-		subCmd,
-		jaspercli.RPCService,
-		strings.Join(args, " "),
-	)
+	cmd := append(jaspercli.BuildServiceCommand(h.jasperBinaryFilePath(config)), subCmd, jaspercli.RPCService)
+	cmd = append(cmd, args...)
+	// cmd := fmt.Sprintf("%s %s %s %s",
+	//     strings.Join(jaspercli.BuildServiceCommand(h.jasperBinaryFilePath(config)), " "),
+	//     subCmd,
+	//     jaspercli.RPCService,
+	//     strings.Join(args, " "),
+	// )
 	// Jasper service commands need elevated privileges to execute. On Windows,
 	// this is assuming that the command is already being run by Administrator.
 	if !h.Distro.IsWindows() {
-		cmd = "sudo " + cmd
+		cmd = append([]string{"sudo"}, cmd...)
 	}
-	return cmd
+	return strings.Join(cmd, " ")
 }
 
 // FetchJasperCommand builds the command to download and extract the Jasper
@@ -311,7 +324,7 @@ func (h *Host) jasperBinaryFilePath(config evergreen.HostJasperConfig) string {
 func (h *Host) BootstrapScript(config evergreen.HostJasperConfig, creds *rpc.Credentials, preJasperSetup, postJasperSetup []string) (string, error) {
 	bashCmds := append([]string{"set -o errexit"}, preJasperSetup...)
 
-	writeCredentialsCmd, err := h.writeJasperCredentialsFileCommand(config, creds)
+	writeCredentialsCmd, err := h.WriteJasperCredentialsFileCommand(creds)
 	if err != nil {
 		return "", errors.Wrap(err, "could not build command to write Jasper credentials file")
 	}
@@ -364,22 +377,24 @@ func (h *Host) buildLocalJasperClientRequest(config evergreen.HostJasperConfig, 
 	}, " "), nil
 }
 
-// writeJasperCredentialsCommand builds the command to write the Jasper
+// WriteJasperCredentialsCommand builds the command to write the Jasper
 // credentials to a file.
-func (h *Host) writeJasperCredentialsFileCommand(config evergreen.HostJasperConfig, creds *rpc.Credentials) (string, error) {
+func (h *Host) WriteJasperCredentialsFileCommand(creds *rpc.Credentials) (string, error) {
 	if h.Distro.JasperCredentialsPath == "" {
 		return "", errors.New("cannot write Jasper credentials without a credentials file path")
 	}
+	creds.ServerName = h.JasperCredentialsID
 	exportedCreds, err := creds.Export()
 	if err != nil {
 		return "", errors.Wrap(err, "problem exporting credentials to file format")
 	}
-	return fmt.Sprintf("cat > %s <<EOF\n%s\nEOF", h.Distro.JasperCredentialsPath, exportedCreds), nil
+	return fmt.Sprintf("cat > '%s' <<EOF\n%s\nEOF", h.Distro.JasperCredentialsPath, exportedCreds), nil
 }
 
-// RunJasperProcess makes a request to the host's Jasper service to run the
-// given command, wait for its completion, and return the output from it.
-func (h *Host) RunJasperProcess(ctx context.Context, env evergreen.Environment, command string) (string, error) {
+// RunJasperProcess makes a request to the host's Jasper service to create the
+// process with the given options, wait for its completion, and returns the
+// output from it.
+func (h *Host) RunJasperProcess(ctx context.Context, env evergreen.Environment, opts *jasper.CreateOptions) (string, error) {
 	client, err := h.JasperClient(ctx, env)
 	if err != nil {
 		return "", errors.Wrap(err, "could not get a Jasper client")
@@ -389,12 +404,7 @@ func (h *Host) RunJasperProcess(ctx context.Context, env evergreen.Environment, 
 		MaxBytes: 1024 * 1024, // 1 MB
 	}
 
-	splitCmd, err := shlex.Split(command)
-	if err != nil {
-		return "", errors.Wrap(err, "problem splitting command")
-	}
-	opts := jasper.CreateOptions{Args: splitCmd}
-	proc, err := client.CreateProcess(ctx, &opts)
+	proc, err := client.CreateProcess(ctx, opts)
 	if err != nil {
 		return "", errors.Wrap(err, "problem creating process")
 	}

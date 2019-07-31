@@ -225,6 +225,19 @@ func ExtractBuildloggerURLsResponse(input []byte) (BuildloggerURLsResponse, erro
 	return resp, resp.successOrError()
 }
 
+type IDResponse struct {
+	OutcomeResponse `json:"outcome"`
+	ID              string `json:"id,omitempty"`
+}
+
+func ExtractIDResponse(input []byte) (IDResponse, error) {
+	resp := IDResponse{}
+	if err := json.Unmarshal(input, &resp); err != nil {
+		return resp, errors.Wrap(err, unmarshalFailed)
+	}
+	return resp, resp.successOrError()
+}
+
 // IDInput represents CLI-specific input representing a Jasper process ID.
 type IDInput struct {
 	ID string `json:"id"`

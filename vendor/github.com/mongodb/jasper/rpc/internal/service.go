@@ -84,6 +84,10 @@ func (s *jasperService) Status(ctx context.Context, _ *empty.Empty) (*StatusResp
 	}, nil
 }
 
+func (s *jasperService) ID(ctx context.Context, _ *empty.Empty) (*IDResponse, error) {
+	return &IDResponse{Value: s.manager.ID()}, nil
+}
+
 func (s *jasperService) Create(ctx context.Context, opts *CreateOptions) (*ProcessInfo, error) {
 	jopts := opts.Export()
 
