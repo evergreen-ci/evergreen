@@ -22,12 +22,17 @@ import (
 type UnitCache map[string]*Unit
 
 // AddWhen wraps AddNew, and is a noop if the conditional is false.
-func (cache UnitCache) AddWhen(cond bool, id string, unit *Unit) {
+func (cache UnitCache) AddWhen(cond bool, id string, t task.Task) {
 	if !cond {
 		return
 	}
 
-	cache.AddNew(id, unit)
+	if existing, ok := cache[id]; ok {
+		existing.Add(t)
+		return
+	}
+
+	cache.Create(id, t)
 }
 
 // AddNew adds an entire unit to a cache with the specified ID. If the
@@ -44,6 +49,8 @@ func (cache UnitCache) AddNew(id string, unit *Unit) {
 
 	cache[id] = unit
 }
+
+func (cache UnitCache) Exists(key string) bool { _, ok := cache[key]; return ok }
 
 // Create makes a new unit around the existing task, caching it with
 // the specified key, and returning the resulting unit. If there is an
@@ -70,6 +77,10 @@ func (cache UnitCache) Export() TaskPlan {
 			continue
 		}
 
+		if cache[id].distro == nil {
+			continue
+		}
+
 		tpl = append(tpl, cache[id])
 	}
 
@@ -87,8 +98,21 @@ type Unit struct {
 	distro      *distro.Distro
 }
 
+// MakeuUnit constructs a new unit, caching a reference to the distro
+// in the unit. It's valid to pass a nil here.
+func MakeUnit(d *distro.Distro) *Unit {
+	return &Unit{
+		distro: d,
+		tasks:  map[string]task.Task{},
+	}
+}
+
 // NewUnit constructs a new Unit container for a task.
-func NewUnit(t task.Task) *Unit { return &Unit{tasks: map[string]task.Task{t.Id: t}} }
+func NewUnit(t task.Task) *Unit {
+	u := MakeUnit(nil)
+	u.Add(t)
+	return u
+}
 
 // Export returns an unordered sequence of tasks from unit. All tasks
 // are unique.
@@ -104,6 +128,25 @@ func (unit *Unit) Export() TaskList {
 
 // Add caches a task in the unit.
 func (unit *Unit) Add(t task.Task) { unit.tasks[t.Id] = t }
+
+// SetDistro makes it possible to change/set the cached distro
+// reference in the unit; however, it is not possible to set a nil
+// distro.
+func (unit *Unit) SetDistro(d *distro.Distro) {
+	if d == nil || unit == nil {
+		return
+	}
+
+	unit.distro = d
+}
+
+func (unit *Unit) Keys() []string {
+	out := []string{}
+	for k := range unit.tasks {
+		out = append(out, k)
+	}
+	return out
+}
 
 // ID constructs a unique and hashed ID of all the tasks in the unit.
 func (unit *Unit) ID() string {
@@ -141,6 +184,7 @@ func (unit *Unit) RankValue() int64 {
 		expectedRuntime time.Duration
 		timeInQueue     time.Duration
 		totalPriority   int64
+		numDeps         int64
 		inCommitQueue   bool
 		inPatch         bool
 	)
@@ -158,6 +202,7 @@ func (unit *Unit) RankValue() int64 {
 
 		totalPriority += t.Priority
 		expectedRuntime += t.FetchExpectedDuration()
+		numDeps += int64(t.NumDependents)
 	}
 
 	num := int64(len(unit.tasks))
@@ -173,6 +218,7 @@ func (unit *Unit) RankValue() int64 {
 
 	unit.cachedValue += num
 	unit.cachedValue += priority
+	unit.cachedValue += priority * (numDeps / num)
 	unit.cachedValue += priority * unit.distro.GetExpectedRuntimeFactor() * int64(math.Floor(expectedRuntime.Minutes()/float64(num)))
 	unit.cachedValue += priority * unit.distro.GetTimeInQueueFactor() * int64(math.Floor(timeInQueue.Minutes()/float64(num)))
 	return unit.cachedValue
@@ -214,15 +260,15 @@ func (tl TaskList) Less(i, j int) bool {
 		return t1.TaskGroupOrder < t2.TaskGroupOrder
 	}
 
-	if len(t1.DependsOn) != len(t2.DependsOn) {
-		return len(t1.DependsOn) < len(t2.DependsOn)
+	if t1.NumDependents != t2.NumDependents {
+		return t1.NumDependents > t2.NumDependents
 	}
 
 	if t1.Priority != t2.Priority {
-		return t1.Priority < t2.Priority
+		return t1.Priority > t2.Priority
 	}
 
-	return t1.FetchExpectedDuration() < t2.FetchExpectedDuration()
+	return t1.FetchExpectedDuration() > t2.FetchExpectedDuration()
 }
 
 // TaskPlan provides a sortable interface on top of a slice of
@@ -231,31 +277,48 @@ func (tl TaskList) Less(i, j int) bool {
 type TaskPlan []*Unit
 
 func (tpl TaskPlan) Len() int           { return len(tpl) }
-func (tpl TaskPlan) Less(i, j int) bool { return tpl[i].RankValue() < tpl[j].RankValue() }
+func (tpl TaskPlan) Less(i, j int) bool { return tpl[i].RankValue() > tpl[j].RankValue() }
 func (tpl TaskPlan) Swap(i, j int)      { tpl[i], tpl[j] = tpl[j], tpl[i] }
+
+func (tpl TaskPlan) Keys() []string {
+	out := []string{}
+	for _, unit := range tpl {
+		out = append(out, unit.Keys()...)
+	}
+	return out
+}
 
 // PrepareTasksForPlanning takes a list of tasks for a distro and
 // returns a TaskPlan, grouping tasks into the appropriate units.
 func PrepareTasksForPlanning(distro *distro.Distro, tasks []task.Task) TaskPlan {
 	cache := UnitCache{}
-	groups := UnitCache{}
-	versions := UnitCache{}
 
 	for _, t := range tasks {
 		var unit *Unit
 		if t.TaskGroup != "" {
-			unit = groups.Create(t.GetTaskGroupString(), t)
+			unit = cache.Create(t.GetTaskGroupString(), t)
+			cache.AddNew(t.Id, unit)
+		} else if distro.ShouldGroupVersions() {
+			unit = cache.Create(t.Version, t)
 			cache.AddNew(t.Id, unit)
 		} else {
 			unit = cache.Create(t.Id, t)
 		}
-		unit.distro = distro
-		versions.AddWhen(distro.ShouldGroupVersions(), t.Version, unit)
+		unit.SetDistro(distro)
 
 		// if it has dependencies:
 		if len(t.DependsOn) > 0 {
 			for _, dep := range t.DependsOn {
-				cache.Create(dep.TaskId, t).distro = distro
+				cache.Create(dep.TaskId, t)
+			}
+		}
+	}
+
+	for _, t := range tasks {
+		// if it has dependencies:
+		if len(t.DependsOn) > 0 {
+			for _, dep := range t.DependsOn {
+				cache.AddWhen(cache.Exists(dep.TaskId), dep.TaskId, t)
 			}
 		}
 	}
