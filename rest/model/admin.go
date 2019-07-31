@@ -1279,9 +1279,9 @@ func (a *APIUIConfig) ToService() (interface{}, error) {
 }
 
 // RestartTasksResponse is the response model returned from the /admin/restart route
-type RestartTasksResponse struct {
-	TasksRestarted []string `json:"tasks_restarted"`
-	TasksErrored   []string `json:"tasks_errored"`
+type RestartResponse struct {
+	ItemsRestarted []string `json:"items_restarted"`
+	ItemsErrored   []string `json:"items_errored"`
 }
 
 // BuildFromService builds a model from the service layer
@@ -1362,11 +1362,11 @@ func (as *APIServiceFlags) ToService() (interface{}, error) {
 }
 
 // BuildFromService builds a model from the service layer
-func (rtr *RestartTasksResponse) BuildFromService(h interface{}) error {
+func (rtr *RestartResponse) BuildFromService(h interface{}) error {
 	switch v := h.(type) {
-	case *RestartTasksResponse:
-		rtr.TasksRestarted = v.TasksRestarted
-		rtr.TasksErrored = v.TasksErrored
+	case *RestartResponse:
+		rtr.ItemsRestarted = v.ItemsRestarted
+		rtr.ItemsErrored = v.ItemsErrored
 	default:
 		return errors.Errorf("%T is the incorrect type for a restart task response", h)
 	}
@@ -1374,7 +1374,7 @@ func (rtr *RestartTasksResponse) BuildFromService(h interface{}) error {
 }
 
 // ToService is not implemented for /admin/restart
-func (rtr *RestartTasksResponse) ToService() (interface{}, error) {
+func (rtr *RestartResponse) ToService() (interface{}, error) {
 	return nil, errors.New("ToService not implemented for RestartTasksResponse")
 }
 

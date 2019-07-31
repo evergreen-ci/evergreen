@@ -21,7 +21,7 @@ func init() {
 }
 
 type restartTasksJob struct {
-	Opts     model.RestartTaskOptions `bson:"restart_options" json:"restart_options"`
+	Opts     model.RestartOptions `bson:"restart_options" json:"restart_options"`
 	job.Base `bson:"job_base" json:"job_base"`
 }
 
@@ -39,7 +39,7 @@ func makeTaskRestartJob() *restartTasksJob {
 }
 
 // NewTasksRestartJob creates a job to restart failed tasks in a time range
-func NewTasksRestartJob(opts model.RestartTaskOptions) amboy.Job {
+func NewTasksRestartJob(opts model.RestartOptions) amboy.Job {
 	job := makeTaskRestartJob()
 	job.Opts = opts
 	job.SetID(fmt.Sprintf("restart-tasks-%d-%d", opts.StartTime.Unix(), opts.EndTime.Unix()))
@@ -57,9 +57,9 @@ func (j *restartTasksJob) Run(_ context.Context) {
 
 	grip.Info(message.Fields{
 		"message":         "tasks successfully restarted",
-		"num":             len(results.TasksRestarted),
-		"tasks_restarted": results.TasksRestarted,
-		"tasks_errored":   results.TasksErrored,
+		"num":             len(results.ItemsRestarted),
+		"tasks_restarted": results.ItemsRestarted,
+		"tasks_errored":   results.ItemsErrored,
 		"user":            j.Opts.User,
 		"start_at":        j.Opts.StartTime,
 		"end_at":          j.Opts.EndTime,

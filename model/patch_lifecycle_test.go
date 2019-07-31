@@ -13,17 +13,20 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/build"
+	"github.com/evergreen-ci/evergreen/model/commitqueue"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
+	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/mongodb/grip"
 	. "github.com/smartystreets/goconvey/convey"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	mgobson "gopkg.in/mgo.v2/bson"
-	yaml "gopkg.in/yaml.v2"
+	"gopkg.in/yaml.v2"
 )
 
 var (
@@ -741,5 +744,163 @@ func TestAddNewPatchWithMissingBaseVersion(t *testing.T) {
 	for _, task := range dbTasks {
 		// Dates stored in the DB only have millisecond precision.
 		assert.WithinDuration(task.CreateTime, v.CreateTime, time.Millisecond)
+	}
+}
+
+func TestRetryCommitQueueItems(t *testing.T) {
+	projectRef := &ProjectRef{
+		Identifier: patchedProject,
+		RemotePath: configFilePath,
+		Owner:      patchOwner,
+		Repo:       patchRepo,
+		Branch:     patchBranch,
+	}
+
+	startTime := time.Date(2019, 7, 15, 12, 0, 0, 0, time.Local)
+	endTime := startTime.Add(2 * time.Hour)
+
+	opts := RestartOptions{
+		StartTime: startTime,
+		EndTime:   endTime,
+	}
+
+	for name, test := range map[string]func(*testing.T){
+		"PRCommitQueueItems": func(*testing.T) {
+			projectRef.CommitQueue.PatchType = commitqueue.PRPatchType
+			assert.NoError(t, projectRef.Insert())
+
+			restarted, notRestarted, err := RetryCommitQueueItems(projectRef.Identifier, projectRef.CommitQueue.PatchType, opts)
+			assert.NoError(t, err)
+			assert.Len(t, restarted, 1)
+			assert.Len(t, notRestarted, 0)
+
+			cq, err := commitqueue.FindOneId(projectRef.Identifier)
+			assert.NoError(t, err)
+			assert.NotNil(t, cq)
+
+			assert.Equal(t, 0, cq.FindItem("123"))
+			assert.Len(t, cq.Queue[0].Modules, 1)
+			assert.Equal(t, "name", cq.Queue[0].Modules[0].Module)
+			assert.Equal(t, "456", cq.Queue[0].Modules[0].Issue)
+
+		},
+		"CLICommitQueueItems": func(*testing.T) {
+			projectRef.CommitQueue.PatchType = commitqueue.CLIPatchType
+			assert.NoError(t, projectRef.Insert())
+
+			u := user.DBUser{Id: "me", PatchNumber: 12}
+			assert.NoError(t, u.Insert())
+
+			restarted, notRestarted, err := RetryCommitQueueItems(projectRef.Identifier, projectRef.CommitQueue.PatchType, opts)
+			assert.NoError(t, err)
+			assert.Len(t, restarted, 1)
+			assert.Len(t, notRestarted, 0)
+
+			all, err := patch.Count(db.Query(bson.M{}))
+			assert.NoError(t, err)
+			assert.Equal(t, 5, all)
+
+			cq, err := commitqueue.FindOneId(projectRef.Identifier)
+			assert.NoError(t, err)
+			require.NotNil(t, cq)
+			require.Len(t, cq.Queue, 1)
+
+			newPatch, err := patch.FindOne(db.Query(bson.M{patch.NumberKey: u.PatchNumber + 1}))
+			assert.NoError(t, err)
+			require.NotNil(t, newPatch)
+			assert.Equal(t, 0, cq.FindItem(newPatch.Id.Hex()))
+		},
+		"UnstartedPatch": func(*testing.T) {
+			projectRef.CommitQueue.PatchType = commitqueue.PRPatchType
+			assert.NoError(t, projectRef.Insert())
+
+			// not started but terminated within time range
+			p := patch.Patch{
+				Id:         mgobson.NewObjectId(),
+				Project:    projectRef.Identifier,
+				Githash:    patchedRevision,
+				StartTime:  time.Time{},
+				FinishTime: startTime.Add(30 * time.Minute),
+				Status:     evergreen.PatchFailed,
+				Alias:      evergreen.CommitQueueAlias,
+				GithubPatchData: patch.GithubPatch{
+					PRNumber: 456,
+				},
+			}
+			assert.NoError(t, p.Insert())
+			restarted, notRestarted, err := RetryCommitQueueItems(projectRef.Identifier, projectRef.CommitQueue.PatchType, opts)
+			assert.NoError(t, err)
+			assert.Len(t, restarted, 2)
+			assert.Len(t, notRestarted, 0)
+		},
+	} {
+		t.Run(name, func(t *testing.T) {
+			assert.NoError(t, db.ClearCollections(ProjectRefCollection, commitqueue.Collection, patch.Collection, user.Collection))
+			cq := &commitqueue.CommitQueue{ProjectID: projectRef.Identifier}
+			assert.NoError(t, commitqueue.InsertQueue(cq))
+
+			patches := []patch.Patch{
+				{ // patch: within time frame, failed
+					Id:          mgobson.NewObjectId(),
+					PatchNumber: 1,
+					Project:     projectRef.Identifier,
+					Githash:     patchedRevision,
+					StartTime:   startTime.Add(30 * time.Minute),
+					FinishTime:  endTime.Add(30 * time.Minute),
+					Status:      evergreen.PatchFailed,
+					Alias:       evergreen.CommitQueueAlias,
+					Author:      "me",
+					GithubPatchData: patch.GithubPatch{
+						PRNumber: 123,
+					},
+					Patches: []patch.ModulePatch{
+						{
+							Githash:    "revision",
+							ModuleName: "name",
+							PatchSet: patch.PatchSet{
+								Patch: "456",
+								Summary: []patch.Summary{
+									{Name: configFilePath, Additions: 4, Deletions: 80},
+									{Name: "random.txt", Additions: 6, Deletions: 0},
+								},
+							},
+						},
+					},
+				},
+				{ // within time frame, not failed
+					Id:          mgobson.NewObjectId(),
+					PatchNumber: 2,
+					Project:     projectRef.Identifier,
+					Githash:     patchedRevision,
+					StartTime:   startTime.Add(30 * time.Minute),
+					FinishTime:  endTime.Add(30 * time.Minute),
+					Status:      evergreen.PatchSucceeded,
+					Alias:       evergreen.CommitQueueAlias,
+				},
+				{ // within time frame, not commit queue
+					Id:          mgobson.NewObjectId(),
+					PatchNumber: 3,
+					Project:     projectRef.Identifier,
+					Githash:     patchedRevision,
+					StartTime:   startTime.Add(30 * time.Minute),
+					FinishTime:  endTime.Add(30 * time.Minute),
+					Status:      evergreen.PatchFailed,
+				},
+				{ // not within time frame
+					Id:          mgobson.NewObjectId(),
+					PatchNumber: 4,
+					Project:     projectRef.Identifier,
+					Githash:     patchedRevision,
+					StartTime:   time.Date(2019, 6, 15, 12, 0, 0, 0, time.Local),
+					FinishTime:  time.Date(2019, 6, 15, 12, 20, 0, 0, time.Local),
+					Status:      evergreen.PatchFailed,
+					Alias:       evergreen.CommitQueueAlias,
+				},
+			}
+			for _, p := range patches {
+				assert.NoError(t, p.Insert())
+			}
+			test(t)
+		})
 	}
 }

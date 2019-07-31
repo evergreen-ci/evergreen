@@ -31,6 +31,23 @@ const (
 	AllStatuses     = "*"
 )
 
+type RestartOptions struct {
+	DryRun    bool      `bson:"dry_run" json:"dry_run"`
+	StartTime time.Time `bson:"start_time" json:"start_time"`
+	EndTime   time.Time `bson:"end_time" json:"end_time"`
+	User      string    `bson:"user" json:"user"`
+
+	// note that the bson tags are not quite accurate, but are kept around for backwards compatibility
+	IncludeTestFailed  bool `bson:"only_red" json:"only_red"`
+	IncludeSysFailed   bool `bson:"only_purple" json:"only_purple"`
+	IncludeSetupFailed bool `bson:"include_setup_failed" json:"include_setup_failed"`
+}
+
+type RestartResults struct {
+	ItemsRestarted []string
+	ItemsErrored   []string
+}
+
 // cacheFromTask is helper for creating a build.TaskCache from a real Task model.
 func cacheFromTask(t task.Task) build.TaskCache {
 	return build.TaskCache{

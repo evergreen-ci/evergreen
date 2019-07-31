@@ -177,15 +177,15 @@ func TestModelConversion(t *testing.T) {
 
 func TestRestart(t *testing.T) {
 	assert := assert.New(t)
-	restartResp := &RestartTasksResponse{
-		TasksRestarted: []string{"task1", "task2", "task3"},
-		TasksErrored:   []string{"task4", "task5"},
+	restartResp := &RestartResponse{
+		ItemsRestarted: []string{"task1", "task2", "task3"},
+		ItemsErrored:   []string{"task4", "task5"},
 	}
 
-	apiResp := RestartTasksResponse{}
+	apiResp := RestartResponse{}
 	assert.NoError(apiResp.BuildFromService(restartResp))
-	assert.Equal(3, len(apiResp.TasksRestarted))
-	assert.Equal(2, len(apiResp.TasksErrored))
+	assert.Equal(3, len(apiResp.ItemsRestarted))
+	assert.Equal(2, len(apiResp.ItemsErrored))
 }
 
 func TestEventConversion(t *testing.T) {

@@ -957,31 +957,14 @@ func updateDisplayTaskAndCache(t *task.Task) error {
 	return build.UpdateCachedTask(t.DisplayTask, 0)
 }
 
-type RestartTaskOptions struct {
-	DryRun    bool      `bson:"dry_run" json:"dry_run"`
-	StartTime time.Time `bson:"start_time" json:"start_time"`
-	EndTime   time.Time `bson:"end_time" json:"end_time"`
-	User      string    `bson:"user" json:"user"`
-
-	// note that the bson tags are not quite accurate, but are kept around for backwards compatibility
-	IncludeTestFailed  bool `bson:"only_red" json:"only_red"`
-	IncludeSysFailed   bool `bson:"only_purple" json:"only_purple"`
-	IncludeSetupFailed bool `bson:"include_setup_failed" json:"include_setup_failed"`
-}
-
-type RestartTaskResults struct {
-	TasksRestarted []string
-	TasksErrored   []string
-}
-
 // RestartFailedTasks attempts to restart failed tasks that started between 2 times
 // It returns a slice of task IDs that were successfully restarted as well as a slice
 // of task IDs that failed to restart
 // opts.dryRun will return the tasks that will be restarted if sent true
 // opts.red and opts.purple will only restart tasks that were failed due to the test
 // or due to the system, respectively
-func RestartFailedTasks(opts RestartTaskOptions) (RestartTaskResults, error) {
-	results := RestartTaskResults{}
+func RestartFailedTasks(opts RestartOptions) (RestartResults, error) {
+	results := RestartResults{}
 	if !opts.IncludeTestFailed && !opts.IncludeSysFailed && !opts.IncludeSetupFailed {
 		opts.IncludeTestFailed = true
 		opts.IncludeSysFailed = true
@@ -1005,7 +988,7 @@ func RestartFailedTasks(opts RestartTaskOptions) (RestartTaskResults, error) {
 	// if this is a dry run, immediately return the tasks found
 	if opts.DryRun {
 		for _, t := range tasksToRestart {
-			results.TasksRestarted = append(results.TasksRestarted, t.Id)
+			results.ItemsRestarted = append(results.ItemsRestarted, t.Id)
 		}
 		return results, nil
 	}
@@ -1013,7 +996,7 @@ func RestartFailedTasks(opts RestartTaskOptions) (RestartTaskResults, error) {
 	return doRestartFailedTasks(tasksToRestart, opts.User, results), nil
 }
 
-func doRestartFailedTasks(tasks []task.Task, user string, results RestartTaskResults) RestartTaskResults {
+func doRestartFailedTasks(tasks []task.Task, user string, results RestartResults) RestartResults {
 	var tasksErrored []string
 
 	for _, t := range tasks {
@@ -1049,10 +1032,10 @@ func doRestartFailedTasks(tasks []task.Task, user string, results RestartTaskRes
 				"error":   err.Error(),
 			})
 		} else {
-			results.TasksRestarted = append(results.TasksRestarted, t.Id)
+			results.ItemsRestarted = append(results.ItemsRestarted, t.Id)
 		}
 	}
-	results.TasksErrored = tasksErrored
+	results.ItemsErrored = tasksErrored
 
 	return results
 }
