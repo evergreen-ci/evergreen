@@ -8,6 +8,8 @@ import (
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/commitqueue"
+	"github.com/evergreen-ci/evergreen/model/event"
+	"github.com/evergreen-ci/evergreen/model/task"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/stretchr/testify/suite"
@@ -17,6 +19,9 @@ type CommitQueueSuite struct {
 	ctx      Connector
 	settings *evergreen.Settings
 	suite.Suite
+
+	projectRef *model.ProjectRef
+	queue      *commitqueue.CommitQueue
 }
 
 func TestCommitQueueSuite(t *testing.T) {
@@ -28,7 +33,7 @@ func TestCommitQueueSuite(t *testing.T) {
 func (s *CommitQueueSuite) SetupTest() {
 	s.Require().NoError(db.Clear(commitqueue.Collection))
 	s.Require().NoError(db.Clear(model.ProjectRefCollection))
-	projRef := model.ProjectRef{
+	s.projectRef = &model.ProjectRef{
 		Identifier: "mci",
 		Owner:      "evergreen-ci",
 		Repo:       "evergreen",
@@ -37,9 +42,9 @@ func (s *CommitQueueSuite) SetupTest() {
 			Enabled: true,
 		},
 	}
-	s.Require().NoError(projRef.Insert())
-	q := &commitqueue.CommitQueue{ProjectID: "mci"}
-	s.Require().NoError(commitqueue.InsertQueue(q))
+	s.Require().NoError(s.projectRef.Insert())
+	s.queue = &commitqueue.CommitQueue{ProjectID: "mci"}
+	s.Require().NoError(commitqueue.InsertQueue(s.queue))
 }
 
 func (s *CommitQueueSuite) TestEnqueue() {
@@ -141,6 +146,72 @@ func (s *CommitQueueSuite) TestIsAuthorizedToPatchAndMerge() {
 	authorized, err = s.ctx.IsAuthorizedToPatchAndMerge(ctx, s.settings, args)
 	s.NoError(err)
 	s.False(authorized)
+}
+
+func (s *CommitQueueSuite) TestPreventMergeForItemPR() {
+	s.NoError(db.ClearCollections(event.SubscriptionsCollection))
+
+	s.projectRef.CommitQueue.PatchType = commitqueue.PRPatchType
+	s.NoError(s.projectRef.Upsert())
+
+	patchID := "abcdef012345"
+	patchSub := event.NewPatchOutcomeSubscription(patchID, event.NewGithubMergeSubscriber(event.GithubMergeSubscriber{}))
+	s.Require().NoError(patchSub.Upsert())
+
+	item := commitqueue.CommitQueueItem{
+		Issue:   "1234",
+		Version: patchID,
+	}
+	_, err := s.queue.Enqueue(item)
+	s.Require().NoError(err)
+
+	s.NoError(preventMergeForItem(s.projectRef.Identifier, &item))
+	subscriptions, err := event.FindSubscriptions(event.ResourceTypePatch, []event.Selector{{Type: event.SelectorID, Data: item.Version}})
+	s.NoError(err)
+	s.Empty(subscriptions)
+}
+
+func (s *CommitQueueSuite) TestPreventMergeForItemCLI() {
+	s.NoError(db.ClearCollections(event.SubscriptionsCollection, task.Collection, model.VersionCollection))
+
+	s.projectRef.CommitQueue.PatchType = commitqueue.CLIPatchType
+	s.NoError(s.projectRef.Upsert())
+
+	patchID := "abcdef012345"
+	patchSub := event.NewPatchOutcomeSubscription(patchID, event.NewCommitQueueDequeueSubscriber())
+	s.Require().NoError(patchSub.Upsert())
+
+	item := commitqueue.CommitQueueItem{
+		Issue: patchID,
+	}
+	_, err := s.queue.Enqueue(item)
+	s.Require().NoError(err)
+
+	mergeTask := &task.Task{Id: "t1", CommitQueueMerge: true, Version: patchID}
+	s.Require().NoError(mergeTask.Insert())
+
+	// Without a corresponding version
+	s.NoError(preventMergeForItem(s.projectRef.Identifier, &item))
+	subscriptions, err := event.FindSubscriptions(event.ResourceTypePatch, []event.Selector{{Type: event.SelectorID, Data: patchID}})
+	s.NoError(err)
+	s.NotEmpty(subscriptions)
+
+	mergeTask, err = task.FindOneId("t1")
+	s.NoError(err)
+	s.Equal(int64(0), mergeTask.Priority)
+
+	// With a corresponding version
+	version := model.Version{Id: patchID}
+	s.Require().NoError(version.Insert())
+
+	s.NoError(preventMergeForItem(s.projectRef.Identifier, &item))
+	subscriptions, err = event.FindSubscriptions(event.ResourceTypePatch, []event.Selector{{Type: event.SelectorID, Data: patchID}})
+	s.NoError(err)
+	s.Empty(subscriptions)
+
+	mergeTask, err = task.FindOneId("t1")
+	s.NoError(err)
+	s.Equal(int64(-1), mergeTask.Priority)
 }
 
 func (s *CommitQueueSuite) TestMockGetGitHubPR() {

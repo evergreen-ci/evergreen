@@ -2,11 +2,17 @@ package route
 
 import (
 	"context"
+	"path/filepath"
 	"testing"
 
+	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/mock"
+	dbModel "github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/evergreen/model/commitqueue"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/rest/model"
+	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/stretchr/testify/suite"
 	mgobson "gopkg.in/mgo.v2/bson"
 )
@@ -24,7 +30,9 @@ func TestCommitQueueSuite(t *testing.T) {
 func (s *CommitQueueSuite) SetupTest() {
 	s.sc = &data.MockConnector{
 		MockCommitQueueConnector: data.MockCommitQueueConnector{},
+		MockProjectConnector:     data.MockProjectConnector{CachedProjects: []dbModel.ProjectRef{{Identifier: "mci"}}},
 	}
+	s.sc.MockProjectConnector.CachedProjects[0].CommitQueue.PatchType = commitqueue.PRPatchType
 }
 
 func (s *CommitQueueSuite) TestGetCommitQueue() {
@@ -70,6 +78,12 @@ func (s *CommitQueueSuite) TestGetCommitQueue() {
 }
 
 func (s *CommitQueueSuite) TestDeleteItem() {
+	ctx := context.Background()
+	env := &mock.Environment{}
+	s.Require().NoError(env.Configure(ctx, filepath.Join(evergreen.FindEvergreenHome(), testutil.TestDir, testutil.TestSettings), nil))
+	s.Require().NoError(env.LocalQueue().Start(ctx))
+	evergreen.SetEnvironment(env)
+
 	route := makeDeleteCommitQueueItems(s.sc).(*commitQueueDeleteItemHandler)
 	pos, err := s.sc.EnqueueItem("mci", model.APICommitQueueItem{Issue: model.ToAPIString("1")})
 	s.Require().NoError(err)
@@ -82,17 +96,18 @@ func (s *CommitQueueSuite) TestDeleteItem() {
 
 	// Valid delete
 	route.item = "1"
-	response := route.Run(context.Background())
+	response := route.Run(ctx)
+	s.Equal(1, env.LocalQueue().Stats(ctx).Total)
 	s.Equal(204, response.Status())
 
 	// Already deleted
-	response = route.Run(context.Background())
+	response = route.Run(ctx)
 	s.Equal(404, response.Status())
 
 	// Invalid project
 	route.project = "not_here"
 	route.item = "2"
-	response = route.Run(context.Background())
+	response = route.Run(ctx)
 	s.Equal(404, response.Status())
 }
 
