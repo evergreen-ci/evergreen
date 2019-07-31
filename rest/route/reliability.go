@@ -22,6 +22,10 @@ type taskReliabilityHandler struct {
         sc     data.Connector
 }
 
+func makeGetProjectTaskReliability(sc data.Connector) gimlet.RouteHandler {
+        return &taskReliabilityHandler{sc: sc}
+}
+
 func (tsh *taskReliabilityHandler) Factory() gimlet.RouteHandler {
         return &taskReliabilityHandler{sc: tsh.sc}
 }
@@ -29,13 +33,6 @@ func (tsh *taskReliabilityHandler) Factory() gimlet.RouteHandler {
 func (tsh *taskReliabilityHandler) Parse(ctx context.Context, r *http.Request) error {
         tsh.filter = reliability.TaskReliabilityFilter{Project: gimlet.GetVars(r)["project_id"]}
 
-        err := tsh.filter.ValidateForTaskReliability()
-        if err != nil {
-                return gimlet.ErrorResponse{
-                        Message:    err.Error(),
-                        StatusCode: http.StatusBadRequest,
-                }
-        }
         return nil
 }
 
@@ -55,8 +52,4 @@ func (tsh *taskReliabilityHandler) Run(ctx context.Context) gimlet.Responder {
                 return gimlet.MakeJSONInternalErrorResponder(err)
         }
         return resp
-}
-
-func makeGetProjectTaskReliability(sc data.Connector) gimlet.RouteHandler {
-        return &taskReliabilityHandler{sc: sc}
 }

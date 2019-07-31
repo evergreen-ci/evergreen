@@ -7,12 +7,8 @@ import (
 
         "github.com/evergreen-ci/evergreen"
         "github.com/evergreen-ci/evergreen/rest/data"
-        "github.com/stretchr/testify/suite"
+        "github.com/stretchr/testify/assert"
 )
-
-type TaskReliabilitySuite struct {
-        suite.Suite
-}
 
 func configureTaskReliability(disabled bool) error {
         var err error
@@ -33,47 +29,46 @@ func enableTaskReliability() error {
         return configureTaskReliability(false)
 }
 
-func TestTaskReliabilitySuite(t *testing.T) {
-        suite.Run(t, new(TaskReliabilitySuite))
+func setupTest(t *testing.T) error {
+        return enableTaskReliability()
 }
 
-func (s *TaskReliabilitySuite) SetupTest() {
-        err := enableTaskReliability()
-        s.Require().NoError(err)
-}
+func TestRunTestHandler(t *testing.T) {
+        assert := assert.New(t)
+        err := setupTest(t)
+        assert.NoError(err)
 
-func (s *TaskReliabilitySuite) TestRunTestHandler() {
-        var err error
         sc := &data.MockConnector{
                 MockStatsConnector: data.MockStatsConnector{},
                 URL:                "https://example.net/test",
         }
         handler := makeGetProjectTaskReliability(sc).(*taskReliabilityHandler)
-        s.Require().NoError(err)
+        assert.NoError(err)
 
         resp := handler.Run(context.Background())
 
-        s.NotNil(resp)
-        s.Equal(http.StatusOK, resp.Status())
-        s.Nil(resp.Pages())
+        assert.NotNil(resp)
+        assert.Equal(http.StatusOK, resp.Status())
+        assert.Nil(resp.Pages())
 }
 
-func (s *TaskReliabilitySuite) TestDisabledRunTestHandler() {
-        var err error
+func TestDisabledRunTestHandler(t *testing.T) {
+        assert := assert.New(t)
+        err := setupTest(t)
+        assert.NoError(err)
         sc := &data.MockConnector{
                 MockStatsConnector: data.MockStatsConnector{},
                 URL:                "https://example.net/test",
         }
 
         err = disableTaskReliability()
-        s.Require().NoError(err)
+        assert.NoError(err)
 
         handler := makeGetProjectTaskReliability(sc).(*taskReliabilityHandler)
-        s.Require().NoError(err)
 
         resp := handler.Run(context.Background())
 
-        s.NotNil(resp)
-        s.Equal(http.StatusServiceUnavailable, resp.Status())
-        s.Nil(resp.Pages())
+        assert.NotNil(resp)
+        assert.Equal(http.StatusServiceUnavailable, resp.Status())
+        assert.Nil(resp.Pages())
 }
