@@ -729,7 +729,8 @@ mciModule.controller('PerfController', function PerfController(
       });
     }
 
-    let historyPromise = $http.get(cedarApp + "/rest/v1/perf/task_name/" + $scope.task.display_name + "?variant=" + $scope.task.build_variant).then(
+    let historyPromise = $http.get(cedarApp + "/rest/v1/perf/task_name/" + $scope.task.display_name + 
+    "?variant=" + $scope.task.build_variant + "&project=" + $scope.task.branch).then(
       function(resp) {
         let converted = $filter("expandedHistoryConverter")(resp.data, $scope.task.execution);
         trendDataSuccess(converted);

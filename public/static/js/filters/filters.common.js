@@ -33,6 +33,9 @@ var bannerText = function() {
 }
 
 var convertSingleTest = function(test, execution) {
+  if (execution && test.info.execution !== execution) {
+    return null;
+  }
   let output = {
     data: {
       "results": []
@@ -51,9 +54,6 @@ var convertSingleTest = function(test, execution) {
     if (versionParts.length > 1) {
       output.revision = versionParts[versionParts.length - 1];
     }
-  }
-  if (execution && test.info.execution !== execution) {
-    return output;
   }
   var result = {};
   var threads
@@ -477,7 +477,9 @@ filters.common.filter('conditional', function() {
 
     _.each(data, function(test) {
       let singleTest = convertSingleTest(test, execution);
-      output.data.results = output.data.results.concat(singleTest.data.results);
+      if (singleTest) {
+        output.data.results = output.data.results.concat(singleTest.data.results);
+      }
     })
 
     return output;
