@@ -49,7 +49,7 @@ func newBlockingProcess(ctx context.Context, opts *CreateOptions) (Process, erro
 	}
 
 	for _, t := range opts.Tags {
-		p.Tag(t)
+		p.tags[t] = struct{}{}
 	}
 
 	if err = p.RegisterTrigger(ctx, makeOptionsCloseTrigger()); err != nil {

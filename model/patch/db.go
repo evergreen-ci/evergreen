@@ -3,6 +3,7 @@ package patch
 import (
 	"time"
 
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/mongodb/anser/bsonutil"
 	adb "github.com/mongodb/anser/db"
@@ -35,6 +36,7 @@ var (
 	PatchesKey         = bsonutil.MustHaveTag(Patch{}, "Patches")
 	ActivatedKey       = bsonutil.MustHaveTag(Patch{}, "Activated")
 	PatchedConfigKey   = bsonutil.MustHaveTag(Patch{}, "PatchedConfig")
+	AliasKey           = bsonutil.MustHaveTag(Patch{}, "Alias")
 	githubPatchDataKey = bsonutil.MustHaveTag(Patch{}, "GithubPatchData")
 
 	// BSON fields for the module patch struct
@@ -173,6 +175,28 @@ func PatchesByProject(projectId string, ts time.Time, limit int) db.Q {
 		CreateTimeKey: bson.M{"$lte": ts},
 		ProjectKey:    projectId,
 	}).Sort([]string{"-" + CreateTimeKey}).Limit(limit)
+}
+
+// FindFailedCommitQueuePatchesInTimeRange returns failed patches if they started within range,
+// or if they were never started but finished within time range. (i.e. timed out)
+func FindFailedCommitQueuePatchesinTimeRange(projectID string, startTime, endTime time.Time) ([]Patch, error) {
+	query := bson.M{
+		ProjectKey: projectID,
+		StatusKey:  evergreen.PatchFailed,
+		AliasKey:   evergreen.CommitQueueAlias,
+		"$or": []bson.M{
+			{"$and": []bson.M{
+				{StartTimeKey: bson.M{"$lte": endTime}},
+				{StartTimeKey: bson.M{"$gte": startTime}},
+			}},
+			{"$and": []bson.M{
+				{StartTimeKey: time.Time{}},
+				{FinishTimeKey: bson.M{"$lte": endTime}},
+				{FinishTimeKey: bson.M{"$gte": startTime}},
+			}},
+		},
+	}
+	return Find(db.Query(query).Sort([]string{CreateTimeKey}))
 }
 
 func ByGithubPRAndCreatedBefore(t time.Time, owner, repo string, prNumber int) db.Q {

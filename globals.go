@@ -125,6 +125,10 @@ const (
 	StepbackTaskActivator  = "stepback"
 	APIServerTaskActivator = "apiserver"
 
+	// Restart Types
+	RestartVersions = "versions"
+	RestartTasks    = "tasks"
+
 	RestRoutePrefix = "rest"
 	APIRoutePrefix  = "api"
 

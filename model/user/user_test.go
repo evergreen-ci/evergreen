@@ -1,6 +1,7 @@
 package user
 
 import (
+	"strconv"
 	"testing"
 	"time"
 
@@ -309,4 +310,19 @@ func (s *UserTestSuite) TestGetPatchUser() {
 	s.NoError(err)
 	s.NotNil(u)
 	s.Equal(evergreen.GithubPatchUser, u.Id)
+}
+
+func (s *UserTestSuite) TestRoles() {
+	u := s.users[0]
+	for i := 1; i <= 3; i++ {
+		s.NoError(u.AddRole(strconv.Itoa(i)))
+	}
+	dbUser, err := FindOneById(u.Id)
+	s.NoError(err)
+	s.EqualValues(dbUser.SystemRoles, u.SystemRoles)
+
+	s.NoError(u.RemoveRole("2"))
+	dbUser, err = FindOneById(u.Id)
+	s.NoError(err)
+	s.EqualValues(dbUser.SystemRoles, u.SystemRoles)
 }

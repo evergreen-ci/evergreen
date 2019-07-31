@@ -8,6 +8,10 @@ import (
 	"testing"
 	"time"
 
+	"github.com/evergreen-ci/evergreen/model/commitqueue"
+	"github.com/evergreen-ci/evergreen/model/patch"
+	mgobson "gopkg.in/mgo.v2/bson"
+
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model"
@@ -220,13 +224,13 @@ func (s *AdminRouteSuite) TestRevertRoute() {
 	s.NotNil(ctx)
 }
 
-func TestRestartRoute(t *testing.T) {
+func TestRestartTasksRoute(t *testing.T) {
 	assert := assert.New(t)
 	ctx := gimlet.AttachUser(context.Background(), &user.DBUser{Id: "userName"})
 
 	queue := evergreen.GetEnvironment().LocalQueue()
 	sc := &data.MockConnector{}
-	handler := makeRestartRoute(sc, queue)
+	handler := makeRestartRoute(sc, evergreen.RestartTasks, queue)
 
 	assert.NotNil(handler)
 
@@ -242,7 +246,7 @@ func TestRestartRoute(t *testing.T) {
 	jsonBody, err := json.Marshal(&body)
 	assert.NoError(err)
 	buffer := bytes.NewBuffer(jsonBody)
-	request, err := http.NewRequest("POST", "/admin/restart", buffer)
+	request, err := http.NewRequest("POST", "/admin/restart/tasks", buffer)
 	assert.NoError(err)
 	assert.Error(handler.Parse(ctx, request))
 
@@ -255,15 +259,123 @@ func TestRestartRoute(t *testing.T) {
 	jsonBody, err = json.Marshal(&body)
 	assert.NoError(err)
 	buffer = bytes.NewBuffer(jsonBody)
-	request, err = http.NewRequest("POST", "/admin/restart", buffer)
+	request, err = http.NewRequest("POST", "/admin/restart/tasks", buffer)
 	assert.NoError(err)
 	assert.NoError(handler.Parse(ctx, request))
 	resp := handler.Run(ctx)
 	assert.NotNil(resp)
-	model, ok := resp.Data().(*restModel.RestartTasksResponse)
+	model, ok := resp.Data().(*restModel.RestartResponse)
 	assert.True(ok)
-	assert.True(len(model.TasksRestarted) > 0)
-	assert.Nil(model.TasksErrored)
+	assert.True(len(model.ItemsRestarted) > 0)
+	assert.Nil(model.ItemsErrored)
+}
+
+func TestRestartVersionsRoute(t *testing.T) {
+	assert := assert.New(t)
+	require := require.New(t)
+	assert.NoError(db.ClearCollections(model.ProjectRefCollection, commitqueue.Collection, patch.Collection))
+
+	handler := &restartHandler{
+		sc:          &data.DBConnector{},
+		restartType: evergreen.RestartVersions,
+	}
+	ctx := gimlet.AttachUser(context.Background(), &user.DBUser{Id: "user"})
+
+	startTime := time.Date(2017, time.June, 12, 11, 0, 0, 0, time.Local)
+	endTime := time.Date(2017, time.June, 12, 13, 0, 0, 0, time.Local)
+	projectRef := &model.ProjectRef{
+		Identifier: "my-project",
+		CommitQueue: model.CommitQueueParams{
+			PatchType: commitqueue.PRPatchType,
+			Enabled:   true,
+		},
+		Enabled: true,
+		Owner:   "me",
+		Repo:    "my-repo",
+		Branch:  "my-branch",
+	}
+	assert.NoError(projectRef.Insert())
+	cq := &commitqueue.CommitQueue{ProjectID: projectRef.Identifier}
+	assert.NoError(commitqueue.InsertQueue(cq))
+	patches := []patch.Patch{
+		{ // patch: within time frame, failed
+			Id:          mgobson.NewObjectId(),
+			PatchNumber: 1,
+			Project:     projectRef.Identifier,
+			StartTime:   startTime.Add(30 * time.Minute),
+			FinishTime:  endTime.Add(30 * time.Minute),
+			Status:      evergreen.PatchFailed,
+			Alias:       evergreen.CommitQueueAlias,
+			Author:      "me",
+			GithubPatchData: patch.GithubPatch{
+				PRNumber: 123,
+			},
+		},
+		{ // within time frame, not failed
+			Id:          mgobson.NewObjectId(),
+			PatchNumber: 2,
+			Project:     projectRef.Identifier,
+			StartTime:   startTime.Add(30 * time.Minute),
+			FinishTime:  endTime.Add(30 * time.Minute),
+			Status:      evergreen.PatchSucceeded,
+			Alias:       evergreen.CommitQueueAlias,
+		},
+	}
+	for _, p := range patches {
+		assert.NoError(p.Insert())
+	}
+	// test that invalid time range errors
+	body := struct {
+		StartTime time.Time `json:"start_time"`
+		EndTime   time.Time `json:"end_time"`
+		DryRun    bool      `json:"dry_run"`
+	}{endTime, startTime, false}
+	jsonBody, err := json.Marshal(&body)
+	assert.NoError(err)
+	buffer := bytes.NewBuffer(jsonBody)
+	request, err := http.NewRequest("POST", "/admin/restart/versions", buffer)
+	assert.NoError(err)
+	assert.Error(handler.Parse(ctx, request))
+
+	// dry run, valid request
+	body = struct {
+		StartTime time.Time `json:"start_time"`
+		EndTime   time.Time `json:"end_time"`
+		DryRun    bool      `json:"dry_run"`
+	}{startTime, endTime, true}
+	jsonBody, err = json.Marshal(&body)
+	assert.NoError(err)
+	buffer = bytes.NewBuffer(jsonBody)
+	request, err = http.NewRequest("POST", "/admin/restart/versions", buffer)
+	assert.NoError(err)
+	assert.NoError(handler.Parse(ctx, request))
+	resp := handler.Run(ctx)
+	assert.NotNil(resp)
+	model, ok := resp.Data().(*restModel.RestartResponse)
+	assert.True(ok)
+	require.Len(model.ItemsRestarted, 1)
+	assert.Equal(model.ItemsRestarted[0], patches[0].Id.Hex())
+	assert.Empty(model.ItemsErrored)
+
+	// test a valid request
+	body = struct {
+		StartTime time.Time `json:"start_time"`
+		EndTime   time.Time `json:"end_time"`
+		DryRun    bool      `json:"dry_run"`
+	}{startTime, endTime, false}
+	jsonBody, err = json.Marshal(&body)
+	assert.NoError(err)
+	buffer = bytes.NewBuffer(jsonBody)
+	request, err = http.NewRequest("POST", "/admin/restart/versions", buffer)
+	assert.NoError(err)
+	assert.NoError(handler.Parse(ctx, request))
+	resp = handler.Run(ctx)
+	assert.NotNil(resp)
+	model, ok = resp.Data().(*restModel.RestartResponse)
+	assert.True(ok)
+	require.Len(model.ItemsRestarted, 1)
+	assert.Equal(model.ItemsRestarted[0], patches[0].Id.Hex())
+	assert.Empty(model.ItemsErrored)
 }
 
 func TestAdminEventRoute(t *testing.T) {

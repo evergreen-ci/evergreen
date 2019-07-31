@@ -14,33 +14,33 @@ import (
 
 func TestDB(t *testing.T) {
 	const (
+		uri            = "mongodb://localhost:27017"
 		databaseName   = "certDepot"
 		collectionName = "certs"
 		dbTimeout      = 5 * time.Second
 	)
 	for name, testCase := range map[string]func(ctx context.Context, t *testing.T, md *mongoDepot, client *mongo.Client, coll *mongo.Collection){
 		"PutTTL": func(ctx context.Context, t *testing.T, md *mongoDepot, client *mongo.Client, coll *mongo.Collection) {
-			for subTestName, subTestCase := range map[string]func(ctx context.Context, t *testing.T){
-				"SetsValueOnExistingDocument": func(ctx context.Context, t *testing.T) {
-					name := "user"
-					user := &User{
-						ID:            name,
-						Cert:          "cert",
-						PrivateKey:    "key",
-						CertReq:       "certReq",
-						CertRevocList: "certRevocList",
-					}
-					_, err := coll.InsertOne(ctx, user)
-					require.NoError(t, err)
-					ttl := time.Now()
-					require.NoError(t, md.PutTTL(name, ttl))
+			caName := "ca"
+			serviceName := "localhost"
 
-					user.TTL = ttl
+			for subTestName, subTestCase := range map[string]func(ctx context.Context, t *testing.T, md *mongoDepot){
+				"SetsValueOnExistingDocument": func(ctx context.Context, t *testing.T, md *mongoDepot) {
+					name := "foo"
+					opts := &CertificateOptions{
+						CA:         caName,
+						CommonName: name,
+						Host:       name,
+						Expires:    24 * time.Hour,
+					}
+					require.NoError(t, opts.CreateCertificate(md))
+
 					dbUser := &User{}
 					require.NoError(t, coll.FindOne(ctx, bson.M{userIDKey: name}).Decode(dbUser))
-					assert.Equal(t, user.ID, dbUser.ID)
+
+					assert.WithinDuration(t, time.Now().Add(opts.Expires), dbUser.TTL, time.Minute)
 				},
-				"DoesNotInsert": func(ctx context.Context, t *testing.T) {
+				"DoesNotInsert": func(ctx context.Context, t *testing.T, md *mongoDepot) {
 					name := "user"
 					ttl := time.Now()
 					require.Error(t, md.PutTTL(name, ttl))
@@ -49,9 +49,70 @@ func TestDB(t *testing.T) {
 				},
 			} {
 				t.Run(subTestName, func(t *testing.T) {
+					tctx, cancel := context.WithTimeout(ctx, dbTimeout)
+					defer cancel()
+
+					conf := BootstrapDepotConfig{
+						CAName:      caName,
+						ServiceName: serviceName,
+						CAOpts: &CertificateOptions{
+							CommonName: caName,
+							Expires:    24 * time.Hour,
+						},
+						ServiceOpts: &CertificateOptions{
+							CA:         caName,
+							CommonName: serviceName,
+							Host:       serviceName,
+							Expires:    24 * time.Hour,
+						},
+						MongoDepot: &MongoDBOptions{
+							MongoDBURI:     uri,
+							DatabaseName:   databaseName,
+							CollectionName: collectionName,
+						},
+					}
+
+					d, err := BootstrapDepot(ctx, conf)
+					require.NoError(t, err)
+					defer client.Database(databaseName).Drop(ctx)
+
+					md, ok := d.(*mongoDepot)
+					require.True(t, ok)
+
+					subTestCase(tctx, t, md)
+				})
+			}
+		},
+		"GetTTL": func(ctx context.Context, t *testing.T, md *mongoDepot, client *mongo.Client, coll *mongo.Collection) {
+			for subTestName, subTestCase := range map[string]func(ctx context.Context, t *testing.T){
+				"FailsForNonexistentDocument": func(ctx context.Context, t *testing.T) {
+					_, err := md.GetTTL("nonexistent")
+					assert.Error(t, err)
+				},
+				"PassesForExistingDocument": func(ctx context.Context, t *testing.T) {
+					name := "user"
+					expiration := time.Now()
+					user := &User{
+						ID:            name,
+						Cert:          "cert",
+						PrivateKey:    "key",
+						CertReq:       "certReq",
+						CertRevocList: "certRevocList",
+						TTL:           expiration,
+					}
+					_, err := coll.InsertOne(ctx, user)
+					require.NoError(t, err)
+
+					dbExpiration, err := md.GetTTL(name)
+					require.NoError(t, err)
+
+					assert.WithinDuration(t, expiration, dbExpiration, time.Second)
+				},
+			} {
+				t.Run(subTestName, func(t *testing.T) {
 					require.NoError(t, coll.Drop(ctx))
 					defer func() {
-						require.NoError(t, coll.Drop(ctx))
+						assert.NoError(t, coll.Drop(ctx))
 					}()
 					tctx, cancel := context.WithTimeout(ctx, dbTimeout)
 					defer cancel()
@@ -103,7 +164,7 @@ func TestDB(t *testing.T) {
 				t.Run(subTestName, func(t *testing.T) {
 					require.NoError(t, coll.Drop(ctx))
 					defer func() {
-						require.NoError(t, coll.Drop(ctx))
+						assert.NoError(t, coll.Drop(ctx))
 					}()
 					tctx, cancel := context.WithTimeout(ctx, dbTimeout)
 					defer cancel()
@@ -159,7 +220,7 @@ func TestDB(t *testing.T) {
 				t.Run(subTestName, func(t *testing.T) {
 					require.NoError(t, coll.Drop(ctx))
 					defer func() {
-						require.NoError(t, coll.Drop(ctx))
+						assert.NoError(t, coll.Drop(ctx))
 					}()
 					tctx, cancel := context.WithTimeout(ctx, dbTimeout)
 					defer cancel()
@@ -173,7 +234,6 @@ func TestDB(t *testing.T) {
 			ctx, cancel := context.WithCancel(context.Background())
 			defer cancel()
 
-			uri := "mongodb://localhost:27017"
 			client, err := mongo.Connect(ctx, options.Client().ApplyURI(uri))
 			require.NoError(t, err)
 
@@ -182,6 +242,7 @@ func TestDB(t *testing.T) {
 				DatabaseName:   databaseName,
 				CollectionName: collectionName,
 			}
+
 			d, err := NewMongoDBCertDepotWithClient(ctx, client, opts)
 			require.NoError(t, err)
 			md, ok := d.(*mongoDepot)

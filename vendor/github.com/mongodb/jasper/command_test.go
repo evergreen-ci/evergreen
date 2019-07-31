@@ -510,6 +510,21 @@ func TestCommandImplementation(t *testing.T) {
 								})
 							}
 						},
+						"SingleArgCommandSplitsShellCommandCorrectly": func(ctx context.Context, t *testing.T, cmd Command) {
+							cmd.Extend([][]string{
+								[]string{"echo hello world"},
+								[]string{"echo 'hello world'"},
+								[]string{"echo 'hello\"world\"'"},
+							})
+
+							optslist, err := cmd.Export(ctx)
+							require.NoError(t, err)
+
+							require.Len(t, optslist, 3)
+							assert.Equal(t, []string{"echo", "hello", "world"}, optslist[0].Args)
+							assert.Equal(t, []string{"echo", "hello world"}, optslist[1].Args)
+							assert.Equal(t, []string{"echo", "hello\"world\""}, optslist[2].Args)
+						},
 						// "": func(ctx context.Context, t *testing.T, cmd Command) {},
 					} {
 						t.Run(name, func(t *testing.T) {

@@ -59,8 +59,8 @@ func NewCmpBasedTaskComparator(id string) *CmpBasedTaskComparator {
 		},
 		comparators: []taskPriorityCmp{
 			byTaskGroupOrder,
-			byPriority,
 			byCommitQueue,
+			byPriority,
 			byNumDeps,
 			byGenerateTasks,
 			byAge,
