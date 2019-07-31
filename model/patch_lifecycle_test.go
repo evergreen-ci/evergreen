@@ -19,7 +19,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/testutil"
-	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/grip"
 	. "github.com/smartystreets/goconvey/convey"
 	"github.com/stretchr/testify/assert"
@@ -820,7 +819,7 @@ func TestRetryCommitQueueItems(t *testing.T) {
 				Id:         mgobson.NewObjectId(),
 				Project:    projectRef.Identifier,
 				Githash:    patchedRevision,
-				StartTime:  util.GoZeroTime,
+				StartTime:  time.Time{},
 				FinishTime: startTime.Add(30 * time.Minute),
 				Status:     evergreen.PatchFailed,
 				Alias:      evergreen.CommitQueueAlias,
