@@ -104,7 +104,7 @@ func AttachHandler(app *gimlet.APIApp, opts HandlerOpts) {
 	app.AddRoute("/projects/{project_id}/test_stats").Version(2).Get().Wrap(checkUser).RouteHandler(makeGetProjectTestStats(sc))
 	app.AddRoute("/projects/{project_id}/task_stats").Version(2).Get().Wrap(checkUser).RouteHandler(makeGetProjectTaskStats(sc))
 	app.AddRoute("/projects/{project_id}/commit_queue").Version(2).Get().Wrap(checkUser).RouteHandler(makeGetCommitQueueItems(sc))
-	app.AddRoute("/projects/{project_id}/commit_queue/{item}").Version(2).Delete().Wrap(checkUser, addProject, checkCommitQueueItemOwner).RouteHandler(makeDeleteCommitQueueItems(sc))
+	app.AddRoute("/projects/{project_id}/commit_queue/{item}").Version(2).Delete().Wrap(checkUser, addProject, checkCommitQueueItemOwner).RouteHandler(makeDeleteCommitQueueItems(sc, settings))
 	app.AddRoute("/projects/{project_id}/commit_queue/{item}").Version(2).Put().Wrap(checkUser, addProject, checkCommitQueueItemOwner).RouteHandler(makeCommitQueueEnqueueItem(sc))
 	app.AddRoute("/status/cli_version").Version(2).Get().RouteHandler(makeFetchCLIVersionRoute(sc))
 	app.AddRoute("/status/hosts/distros").Version(2).Get().Wrap(checkUser).RouteHandler(makeHostStatusByDistroRoute(sc))

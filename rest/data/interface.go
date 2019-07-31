@@ -13,6 +13,7 @@ import (
 	"github.com/evergreen-ci/evergreen/cloud"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/build"
+	"github.com/evergreen-ci/evergreen/model/commitqueue"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
@@ -271,9 +272,10 @@ type Connector interface {
 	EnqueueItem(string, restModel.APICommitQueueItem) (int, error)
 	FindCommitQueueByID(string) (*restModel.APICommitQueue, error)
 	EnableCommitQueue(*model.ProjectRef, model.CommitQueueParams) error
-	CommitQueueRemoveItem(string, string) (bool, error)
+	CommitQueueRemoveItem(string, string) (*commitqueue.CommitQueueItem, error)
 	CommitQueueClearAll() (int, error)
 	IsAuthorizedToPatchAndMerge(context.Context, *evergreen.Settings, UserRepoInfo) (bool, error)
+	GetProjectConfigforPR(context.Context, *evergreen.Settings, *model.ProjectRef, *github.PullRequest) (*model.Project, error)
 
 	// GetDockerLogs returns logs for the given docker container
 	GetDockerLogs(context.Context, string, *host.Host, *evergreen.Settings, types.ContainerLogsOptions) (io.Reader, error)

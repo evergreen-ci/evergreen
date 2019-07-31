@@ -108,13 +108,13 @@ func (s *CommitQueueSuite) TestRemoveOne() {
 	s.Require().Equal(3, pos)
 	s.Require().Len(s.q.Queue, 3)
 
-	found, err := s.q.Remove("not_here")
+	itemRemoved, err := s.q.Remove("not_here")
 	s.NoError(err)
-	s.False(found)
+	s.Nil(itemRemoved)
 
-	found, err = s.q.Remove("d234")
+	itemRemoved, err = s.q.Remove("d234")
 	s.NoError(err)
-	s.True(found)
+	s.Equal("d234", itemRemoved.Issue)
 	items := s.q.Queue
 	s.Len(items, 2)
 	// Still in order
@@ -131,8 +131,8 @@ func (s *CommitQueueSuite) TestRemoveOne() {
 
 	s.NoError(s.q.SetProcessing(true))
 	s.Nil(s.q.Next())
-	found, err = s.q.Remove("c123")
-	s.True(found)
+	itemRemoved, err = s.q.Remove("c123")
+	s.Equal("c123", itemRemoved.Issue)
 	s.NoError(err)
 	s.NotNil(s.q.Next())
 	s.Equal(s.q.Next().Issue, "e345")

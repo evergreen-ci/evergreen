@@ -68,14 +68,16 @@ func (q *CommitQueue) Next() *CommitQueueItem {
 	return &q.Queue[0]
 }
 
-func (q *CommitQueue) Remove(issue string) (bool, error) {
+func (q *CommitQueue) Remove(issue string) (*CommitQueueItem, error) {
 	itemIndex := q.FindItem(issue)
 	if itemIndex < 0 {
-		return false, nil
+		return nil, nil
 	}
 
+	item := q.Queue[itemIndex]
+
 	if err := remove(q.ProjectID, issue); err != nil {
-		return false, errors.Wrap(err, "can't remove item")
+		return nil, errors.Wrap(err, "can't remove item")
 	}
 
 	q.Queue = append(q.Queue[:itemIndex], q.Queue[itemIndex+1:]...)
@@ -83,10 +85,10 @@ func (q *CommitQueue) Remove(issue string) (bool, error) {
 	// clearing the front of the queue
 	if itemIndex == 0 {
 		if err := q.SetProcessing(false); err != nil {
-			return false, err
+			return &item, err
 		}
 	}
-	return true, nil
+	return &item, nil
 }
 
 func (q *CommitQueue) UpdateVersion(item CommitQueueItem) error {
