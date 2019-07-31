@@ -750,7 +750,7 @@ func (c *communicatorImpl) GetCommitQueueItemAuthor(ctx context.Context, project
 	info := requestInfo{
 		method:  get,
 		version: apiVersion2,
-		path:    fmt.Sprintf("/projects/%s/commit_queue/%s/author", projectID, item),
+		path:    fmt.Sprintf("/commit_queue/%s/%s/author", projectID, item),
 	}
 	resp, err := c.request(ctx, info, nil)
 	if err != nil {

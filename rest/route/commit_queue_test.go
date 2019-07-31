@@ -138,9 +138,9 @@ func (s *CommitQueueSuite) TestEnqueueItem() {
 	s.Equal(model.APICommitQueuePosition{Position: 1}, response.Data())
 }
 
-func (s *CommitQueueSuite) TestGetItem() {
+func (s *CommitQueueSuite) TestGetItemAuthor() {
 	ctx := context.Background()
-	route := makeGetCommitQueueItemOwner(s.sc).(*getCommitQueueItemOwnerHandler)
+	route := makeGetCommitQueueItemAuthor(s.sc).(*getCommitQueueItemAuthorHandler)
 	p := patch.Patch{
 		Id:     mgobson.NewObjectId(),
 		Author: "evergreen.user",

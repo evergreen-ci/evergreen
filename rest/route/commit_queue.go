@@ -169,33 +169,33 @@ func (cq *commitQueueEnqueueItemHandler) Run(ctx context.Context) gimlet.Respond
 	return gimlet.NewJSONResponse(model.APICommitQueuePosition{Position: position})
 }
 
-type getCommitQueueItemOwnerHandler struct {
+type getCommitQueueItemAuthorHandler struct {
 	item      string
 	projectID string
 
 	sc data.Connector
 }
 
-func makeGetCommitQueueItemOwner(sc data.Connector) gimlet.RouteHandler {
-	return &getCommitQueueItemOwnerHandler{
+func makeGetCommitQueueItemAuthor(sc data.Connector) gimlet.RouteHandler {
+	return &getCommitQueueItemAuthorHandler{
 		sc: sc,
 	}
 }
 
-func (cq *getCommitQueueItemOwnerHandler) Factory() gimlet.RouteHandler {
-	return &getCommitQueueItemOwnerHandler{
+func (cq *getCommitQueueItemAuthorHandler) Factory() gimlet.RouteHandler {
+	return &getCommitQueueItemAuthorHandler{
 		sc: cq.sc,
 	}
 }
 
-func (cq *getCommitQueueItemOwnerHandler) Parse(ctx context.Context, r *http.Request) error {
+func (cq *getCommitQueueItemAuthorHandler) Parse(ctx context.Context, r *http.Request) error {
 	vars := gimlet.GetVars(r)
 	cq.item = vars["item"]
 	cq.projectID = gimlet.GetVars(r)["project_id"]
 	return nil
 }
 
-func (cq *getCommitQueueItemOwnerHandler) Run(ctx context.Context) gimlet.Responder {
+func (cq *getCommitQueueItemAuthorHandler) Run(ctx context.Context) gimlet.Responder {
 	pRef, err := cq.sc.FindProjectById(cq.projectID)
 	if err != nil {
 		return gimlet.NewJSONInternalErrorResponse(errors.Wrap(err, "problem finding project"))
