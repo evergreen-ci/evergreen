@@ -187,6 +187,14 @@ func (d *Distro) ExecutableSubPath() string {
 	return filepath.Join(d.Arch, d.BinaryName())
 }
 
+// HomeDir gets the absolute path to the home directory for this distro's user.
+func (d *Distro) HomeDir() string {
+	if d.User == "root" {
+		return filepath.Join("/", d.User)
+	}
+	return filepath.Join("/home", d.User)
+}
+
 // IsParent returns whether the distro is the parent distro for any container pool
 func (d *Distro) IsParent(s *evergreen.Settings) bool {
 	if s == nil {

@@ -284,7 +284,7 @@ func (j *agentMonitorDeployJob) startAgentMonitor(ctx context.Context, settings 
 // agentMonitorOptions assembles the input to a Jasper request to create the
 // agent monitor.
 func (j *agentMonitorDeployJob) agentMonitorOptions(settings *evergreen.Settings) *jasper.CreateOptions {
-	binary := filepath.Join("~", j.host.Distro.BinaryName())
+	binary := filepath.Join(j.host.Distro.HomeDir(), j.host.Distro.BinaryName())
 
 	agentMonitorParams := []string{
 		binary,
