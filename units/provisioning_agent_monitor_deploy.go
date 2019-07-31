@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
@@ -304,7 +305,7 @@ func (j *agentMonitorDeployJob) agentMonitorOptions(settings *evergreen.Settings
 	}
 
 	return &jasper.CreateOptions{
-		Args:        agentMonitorParams,
+		Args:        []string{"bash", "-c", strings.Join(agentMonitorParams, " ")},
 		Environment: j.agentEnv(settings),
 		Tags:        []string{evergreen.AgentMonitorTag},
 	}
