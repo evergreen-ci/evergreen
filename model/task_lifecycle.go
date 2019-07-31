@@ -583,6 +583,7 @@ func updateMakespans(b *build.Build) error {
 // status of the build based on the task's status.
 func UpdateBuildAndVersionStatusForTask(taskId string, updates *StatusChanges) error {
 	const slowMS = 100 * time.Millisecond
+	startPhaseAt := time.Now()
 	// retrieve the task by the task id
 	t, err := task.FindOneNoMerge(task.ById(taskId))
 	if err != nil {
@@ -610,7 +611,14 @@ func UpdateBuildAndVersionStatusForTask(taskId string, updates *StatusChanges) e
 	finishedTasks := 0
 	tasksToNotify := 0
 
-	startPhaseAt := time.Now()
+	grip.DebugWhen(time.Since(startPhaseAt) > slowMS, message.Fields{
+		"function":      "UpdateBuildAndVersionStatusForTask",
+		"operation":     "initial queries",
+		"message":       "slow operation",
+		"duration_secs": time.Since(startPhaseAt).Seconds(),
+		"task":          t.Id,
+	})
+	loopStart := time.Now()
 	// update the build's status based on tasks for this build
 	for _, t := range buildTasks {
 		if !t.IsFinished() {
@@ -716,6 +724,14 @@ func UpdateBuildAndVersionStatusForTask(taskId string, updates *StatusChanges) e
 		}
 		startPhaseAt = time.Now()
 	}
+	grip.DebugWhen(time.Since(loopStart) > 5*time.Second, message.Fields{
+		"function":      "UpdateBuildAndVersionStatusForTask",
+		"operation":     "build task loop",
+		"message":       "slow operation",
+		"duration_secs": time.Since(loopStart).Seconds(),
+		"task":          t.Id,
+		"num_tasks":     len(buildTasks),
+	})
 
 	if b.Status == evergreen.BuildCreated {
 		if err = b.UpdateStatus(evergreen.BuildStarted); err != nil {
