@@ -656,10 +656,14 @@ func (h *Host) SetAgentRevision(agentRevision string) error {
 	return nil
 }
 
-// IsWaitingForAgent provides a local predicate for the logic in the
-// "NeedsNewAgent" query.
+// IsWaitingForAgent provides a local predicate for the logic for
+// whether the host needs either a new agent or agent monitor.
 func (h *Host) IsWaitingForAgent() bool {
-	if h.NeedsNewAgent {
+	if h.LegacyBootstrap() && h.NeedsNewAgent {
+		return true
+	}
+
+	if !h.LegacyBootstrap() && h.NeedsNewAgentMonitor {
 		return true
 	}
 
