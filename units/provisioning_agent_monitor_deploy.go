@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"path/filepath"
-	"strings"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
@@ -285,7 +284,7 @@ func (j *agentMonitorDeployJob) startAgentMonitor(ctx context.Context, settings 
 // agentMonitorOptions assembles the input to a Jasper request to create the
 // agent monitor.
 func (j *agentMonitorDeployJob) agentMonitorOptions(settings *evergreen.Settings) *jasper.CreateOptions {
-	binary := filepath.Join("~", j.host.Distro.BinaryName())
+	binary := filepath.Join(j.host.Distro.HomeDir(), j.host.Distro.BinaryName())
 
 	agentMonitorParams := []string{
 		binary,
@@ -305,7 +304,7 @@ func (j *agentMonitorDeployJob) agentMonitorOptions(settings *evergreen.Settings
 	}
 
 	return &jasper.CreateOptions{
-		Args:        []string{"bash", "-c", strings.Join(agentMonitorParams, " ")},
+		Args:        agentMonitorParams,
 		Environment: j.agentEnv(settings),
 		Tags:        []string{evergreen.AgentMonitorTag},
 	}
