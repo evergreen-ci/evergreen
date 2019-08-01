@@ -1216,7 +1216,7 @@ tasks:
 }
 
 func TestParserProjectPersists(t *testing.T) {
-	simpleYml := `
+	simpleYaml := `
 loggers:
   agent:
     - type: something
@@ -1248,7 +1248,7 @@ functions:
 
 	for name, test := range map[string]func(t *testing.T){
 		"simpleYaml": func(t *testing.T) {
-			assert.NoError(t, checkProjectPersists([]byte(simpleYml)))
+			assert.NoError(t, checkProjectPersists([]byte(simpleYaml)))
 		},
 		"self-tests.yml": func(t *testing.T) {
 			filepath := filepath.Join(testutil.GetDirectoryOfFile(), "..", "self-tests.yml")
@@ -1292,5 +1292,12 @@ func checkProjectPersists(yml []byte) error {
 	if !bytes.Equal(newYaml, yamlToCompare) {
 		return errors.New("yamls not equal")
 	}
+
+	// ensure that updating with the re-parsed project doesn't error
+	pp, err = createIntermediateProject([]byte(newV.Config))
+	if err = UpdateVersionProject(v.Id, pp); err != nil {
+		return errors.Wrap(err, "error updating version's project")
+	}
+
 	return nil
 }

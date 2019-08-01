@@ -6,7 +6,9 @@ import (
 
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
+	mgobson "gopkg.in/mgo.v2/bson"
 	"gopkg.in/yaml.v2"
 )
 
@@ -104,6 +106,11 @@ type parserTask struct {
 	Patchable       *bool               `yaml:"patchable,omitempty"`
 	PatchOnly       *bool               `yaml:"patch_only,omitempty"`
 	Stepback        *bool               `yaml:"stepback,omitempty"`
+}
+
+func (pp *ParserProject) MarshalBSON() ([]byte, error) {
+	fmt.Println("MarshalBSON ParserProject")
+	return mgobson.Marshal(pp)
 }
 
 func (pp *ParserProject) MarshalYAML() (interface{}, error) {
@@ -426,6 +433,11 @@ func LoadProjectFromVersion(v *Version, identifier string, shouldSave bool) (*Pr
 	}
 	if shouldSave {
 		if err := UpdateVersionProject(v.Id, pp); err != nil {
+			grip.Error(message.WrapError(err, message.Fields{
+				"project": identifier,
+				"version": v.Id,
+				"message": "error updating version's project",
+			}))
 			return nil, errors.Wrap(err, "error updating version with project")
 		}
 	}
@@ -456,7 +468,7 @@ func createIntermediateProject(yml []byte) (*ParserProject, error) {
 	p := &ParserProject{}
 	err := yaml.Unmarshal(yml, p)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "error unmarshalling into parser project")
 	}
 	if p.Functions == nil {
 		p.Functions = map[string]*YAMLCommandSet{}
