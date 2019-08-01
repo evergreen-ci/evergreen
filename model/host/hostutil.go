@@ -383,7 +383,6 @@ func (h *Host) WriteJasperCredentialsFileCommand(creds *rpc.Credentials) (string
 	if h.Distro.JasperCredentialsPath == "" {
 		return "", errors.New("cannot write Jasper credentials without a credentials file path")
 	}
-	creds.ServerName = h.JasperCredentialsID
 	exportedCreds, err := creds.Export()
 	if err != nil {
 		return "", errors.Wrap(err, "problem exporting credentials to file format")

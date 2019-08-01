@@ -64,6 +64,7 @@ func TestDBOperations(t *testing.T) {
 					assert.Equal(t, creds.Cert, dbCreds.Cert)
 					assert.Equal(t, creds.Key, dbCreds.Key)
 					assert.Equal(t, creds.CACert, dbCreds.CACert)
+					assert.Equal(t, name, creds.ServerName)
 				},
 				"OverwritesExistingCredentials": func(ctx context.Context, t *testing.T, creds *rpc.Credentials) {
 					require.NoError(t, SaveByID(ctx, env, name, creds))
@@ -72,9 +73,11 @@ func TestDBOperations(t *testing.T) {
 					assert.Equal(t, creds.Cert, dbCreds.Cert)
 					assert.Equal(t, creds.Key, dbCreds.Key)
 					assert.Equal(t, creds.CACert, dbCreds.CACert)
+					assert.Equal(t, name, creds.ServerName)
 
 					time.Sleep(time.Second)
-					newCreds, err := GenerateInMemory(ctx, env, "new"+name)
+					newName := "new" + name
+					newCreds, err := GenerateInMemory(ctx, env, newName)
 					require.NoError(t, err)
 					require.NoError(t, SaveByID(ctx, env, name, newCreds))
 
@@ -83,6 +86,7 @@ func TestDBOperations(t *testing.T) {
 					assert.Equal(t, newCreds.Cert, dbCreds.Cert)
 					assert.Equal(t, newCreds.Key, dbCreds.Key)
 					assert.Equal(t, newCreds.CACert, dbCreds.CACert)
+					assert.Equal(t, newName, newCreds.ServerName)
 				},
 			} {
 				t.Run(testName, func(t *testing.T) {
@@ -105,8 +109,14 @@ func TestDBOperations(t *testing.T) {
 					})
 				},
 				"Succeeds": func(ctx context.Context, t *testing.T) {
-					_, err := GenerateInMemory(ctx, env, name)
+					creds, err := GenerateInMemory(ctx, env, name)
 					require.NoError(t, err)
+					assert.NotEmpty(t, creds.Cert)
+					assert.NotEmpty(t, creds.Key)
+					assert.NotEmpty(t, creds.CACert)
+					assert.NotEmpty(t, creds.ServerName)
+					assert.Equal(t, name, creds.ServerName)
+
 					_, err = FindByID(ctx, env, name)
 					assert.Error(t, err)
 				},
@@ -118,6 +128,7 @@ func TestDBOperations(t *testing.T) {
 					assert.Equal(t, creds.CACert, newCreds.CACert)
 					assert.NotEqual(t, creds.Cert, newCreds.Cert)
 					assert.NotEqual(t, creds.Key, newCreds.Key)
+					assert.Equal(t, creds.ServerName, newCreds.ServerName)
 				},
 			} {
 				t.Run(testName, func(t *testing.T) {
@@ -150,6 +161,8 @@ func TestDBOperations(t *testing.T) {
 					assert.Equal(t, creds.Key, dbCreds.Key)
 					assert.Equal(t, creds.Cert, dbCreds.Cert)
 					assert.Equal(t, creds.CACert, dbCreds.CACert)
+					assert.Equal(t, name, creds.ServerName)
+					assert.Equal(t, creds.ServerName, dbCreds.ServerName)
 				},
 			} {
 				t.Run(testName, func(t *testing.T) {
