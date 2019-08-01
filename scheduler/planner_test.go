@@ -362,6 +362,28 @@ func TestPlanner(t *testing.T) {
 			assert.Len(t, plan, 2)
 			assert.Len(t, plan.Export(), 3)
 		})
+		t.Run("VersionsAndTaskGroupsGrouped", func(t *testing.T) {
+			plan := PrepareTasksForPlanning(&distro.Distro{
+				PlannerSettings: distro.PlannerSettings{
+					GroupVersions: func() *bool { b := true; return &b }(),
+				},
+			}, []task.Task{
+				{Id: "three", Version: "second"},
+				{Id: "four", Version: "second"},
+				{Id: "five", Version: "second"},
+				{Id: "one", Version: "first", TaskGroup: "one"},
+				{Id: "two", Version: "first", TaskGroup: "one"},
+				{Id: "extra", Version: "first", Priority: 1},
+			})
+
+			assert.Len(t, plan, 3)
+			tasks := plan.Export()
+			assert.Len(t, tasks, 6)
+			assert.Equal(t, "one", tasks[0].TaskGroup)
+			assert.Equal(t, "one", tasks[1].TaskGroup)
+			assert.Equal(t, "extra", tasks[5].Id)
+		})
+
 		t.Run("DependenciesGrouped", func(t *testing.T) {
 			plan := PrepareTasksForPlanning(&distro.Distro{}, []task.Task{
 				{Id: "one", DependsOn: []task.Dependency{{TaskId: "two"}}},

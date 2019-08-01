@@ -20,8 +20,8 @@ type SchedulerConfig struct {
 	AcceptableHostIdleTimeSeconds int     `bson:"acceptable_host_idle_time_seconds" json:"acceptable_host_idle_time_seconds" mapstructure:"acceptable_host_idle_time_seconds"`
 	GroupVersions                 bool    `bson:"group_versions" json:"group_versions" mapstructure:"group_versions"`
 	PatchZipperFactor             int64   `bson:"patch_zipper_factor" json:"patch_zipper_factor" mapstructure:"patch_zipper_factor"`
-	TimeInQueueFactor             int64   `bson:"time_in_queue_factor" json:"time_in_queue_factor" mapstructure:"time_in_queue_factor,omitempty"`
-	ExpectedRuntimeFactor         int64   `bson:"expected_runtime_factor_factor" json:"expected_runtime_factor_factor" mapstructure:"expected_runtime_factor_factor,omitempty"`
+	TimeInQueueFactor             int64   `bson:"time_in_queue_factor" json:"time_in_queue_factor" mapstructure:"time_in_queue_factor"`
+	ExpectedRuntimeFactor         int64   `bson:"expected_runtime_factor" json:"expected_runtime_factor" mapstructure:"expected_runtime_factor"`
 }
 
 func (c *SchedulerConfig) SectionId() string { return "scheduler" }

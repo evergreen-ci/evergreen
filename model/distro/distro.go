@@ -50,9 +50,9 @@ type PlannerSettings struct {
 	AcceptableHostIdleTime time.Duration `bson:"acceptable_host_idle_time" json:"acceptable_host_idle_time" mapstructure:"acceptable_host_idle_time,omitempty"`
 	GroupVersions          *bool         `bson:"group_versions" json:"group_versions" mapstructure:"group_versions,omitempty"`
 	TaskOrdering           string        `bson:"task_ordering" json:"task_ordering" mapstructure:"task_ordering,omitempty"`
-	PatchZipperFactor      int64         `bson:"patch_zipper_factor" json:"patch_zipper_factor" mapstructure:"patch_zipper_factor,omitempty"`
-	TimeInQueueFactor      int64         `bson:"time_in_queue_factor" json:"time_in_queue_factor" mapstructure:"time_in_queue_factor,omitempty"`
-	ExpectedRuntimeFactor  int64         `bson:"expected_runtime_factor_factor" json:"expected_runtime_factor_factor" mapstructure:"expected_runtime_factor_factor,omitempty"`
+	PatchZipperFactor      int64         `bson:"patch_zipper_factor" json:"patch_zipper_factor" mapstructure:"patch_zipper_factor"`
+	TimeInQueueFactor      int64         `bson:"time_in_queue_factor" json:"time_in_queue_factor" mapstructure:"time_in_queue_factor"`
+	ExpectedRuntimeFactor  int64         `bson:"expected_runtime_factor" json:"expected_runtime_factor" mapstructure:"expected_runtime_factor"`
 
 	maxDurationPerHost time.Duration
 }
@@ -164,10 +164,6 @@ func (d *Distro) GenerateName() string {
 }
 
 func (d *Distro) ShouldGroupVersions() bool {
-	if d == nil {
-		return false
-	}
-
 	if d.PlannerSettings.GroupVersions == nil {
 		return false
 	}
@@ -397,8 +393,7 @@ func (d *Distro) GetResolvedPlannerSettings(s *evergreen.Settings) (PlannerSetti
 	catcher := grip.NewBasicCatcher()
 
 	if d.ContainerPool != "" {
-		pool := s.ContainerPools.GetContainerPool(d.ContainerPool)
-		if pool == nil {
+		if s.ContainerPools.GetContainerPool(d.ContainerPool) == nil {
 			catcher.Errorf("could not find pool '%s' for distro '%s'", d.ContainerPool, d.Id)
 		}
 		resolved.maxDurationPerHost = evergreen.MaxDurationPerDistroHostWithContainers

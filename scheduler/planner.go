@@ -140,6 +140,7 @@ func (unit *Unit) SetDistro(d *distro.Distro) {
 	unit.distro = d
 }
 
+// Keys returns all of the ids of tasks in the unit.
 func (unit *Unit) Keys() []string {
 	out := []string{}
 	for k := range unit.tasks {
@@ -181,12 +182,13 @@ func (unit *Unit) RankValue() int64 {
 	}
 
 	var (
-		expectedRuntime time.Duration
-		timeInQueue     time.Duration
-		totalPriority   int64
-		numDeps         int64
-		inCommitQueue   bool
-		inPatch         bool
+		expectedRuntime  time.Duration
+		timeInQueue      time.Duration
+		totalPriority    int64
+		numDeps          int64
+		inCommitQueue    bool
+		inPatch          bool
+		anyNonGroupTasks bool
 	)
 
 	for _, t := range unit.tasks {
@@ -194,6 +196,10 @@ func (unit *Unit) RankValue() int64 {
 			inCommitQueue = true
 		} else if evergreen.IsPatchRequester(t.Requester) {
 			inPatch = true
+		}
+
+		if t.TaskGroup == "" {
+			anyNonGroupTasks = true
 		}
 
 		if !t.ScheduledTime.IsZero() {
@@ -216,11 +222,39 @@ func (unit *Unit) RankValue() int64 {
 		unit.cachedValue += unit.distro.GetPatchZipperFactor()
 	}
 
+	if !anyNonGroupTasks {
+		// if all tasks in the unit are in a task  group then
+		// we should give it a little bump, so that task
+		// groups tasks are sorted together even when they
+		// would also be scheduled in a version.
+		priority += num
+	}
+
+	// Start with the number of tasks, and then add the priority
+	// setting as a base.
 	unit.cachedValue += num
 	unit.cachedValue += priority
+
+	// The remaining values are normalized per tasks, to avoid
+	// situations where larger units are always prioritized above
+	// smaller groups.
+	//
+	// Additionally, all these values are multiplied by the
+	// priority, to avoid situations where the impact of changing
+	// priority is obviated by other factors.
+
+	// Increase the value for the number of dependencies, so that
+	// tasks (and units) which block other tasks run before tasks
+	// that don't block other tasks.
 	unit.cachedValue += priority * (numDeps / num)
+
+	// The impact of these values is configurable in the distro
+	// settings, and makes it possible to control what the impact
+	// of expected runtime (defaults to 10m for tasks that haven't
+	// run before) and time-in-queue is.
 	unit.cachedValue += priority * unit.distro.GetExpectedRuntimeFactor() * int64(math.Floor(expectedRuntime.Minutes()/float64(num)))
 	unit.cachedValue += priority * unit.distro.GetTimeInQueueFactor() * int64(math.Floor(timeInQueue.Minutes()/float64(num)))
+
 	return unit.cachedValue
 }
 
@@ -247,7 +281,8 @@ func (s StringSet) Visit(id string) bool {
 // TaskList implements sort.Interface on top of a slice of tasks. The
 // provided sorting, orders members of task groups, and then
 // prioritizes tasks by the number of dependencies, priority, and
-// expected duration.
+// expected duration. This sorting is used for ordering tasks within a
+// unit.
 type TaskList []task.Task
 
 func (tl TaskList) Len() int      { return len(tl) }
@@ -256,6 +291,7 @@ func (tl TaskList) Less(i, j int) bool {
 	t1 := tl[i]
 	t2 := tl[j]
 
+	// TODO note about impact of this with versions.
 	if t1.TaskGroupOrder != t2.TaskGroupOrder {
 		return t1.TaskGroupOrder < t2.TaskGroupOrder
 	}
@@ -298,6 +334,7 @@ func PrepareTasksForPlanning(distro *distro.Distro, tasks []task.Task) TaskPlan 
 		if t.TaskGroup != "" {
 			unit = cache.Create(t.GetTaskGroupString(), t)
 			cache.AddNew(t.Id, unit)
+			cache.AddWhen(distro.ShouldGroupVersions(), t.Version, t)
 		} else if distro.ShouldGroupVersions() {
 			unit = cache.Create(t.Version, t)
 			cache.AddNew(t.Id, unit)
@@ -305,13 +342,6 @@ func PrepareTasksForPlanning(distro *distro.Distro, tasks []task.Task) TaskPlan 
 			unit = cache.Create(t.Id, t)
 		}
 		unit.SetDistro(distro)
-
-		// if it has dependencies:
-		if len(t.DependsOn) > 0 {
-			for _, dep := range t.DependsOn {
-				cache.Create(dep.TaskId, t)
-			}
-		}
 	}
 
 	for _, t := range tasks {
