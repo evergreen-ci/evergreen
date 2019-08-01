@@ -249,6 +249,35 @@ type TestResult struct {
 	LogRaw string `json:"log_raw" bson:"log_raw,omitempty"`
 }
 
+type DisplayTaskCache struct {
+	execToDisplay map[string]*Task
+	displayTasks  []*Task
+}
+
+func (c *DisplayTaskCache) Get(t *Task) (*Task, error) {
+	if parent, exists := c.execToDisplay[t.Id]; exists {
+		return parent, nil
+	}
+	displayTask, err := t.GetDisplayTask()
+	if err != nil {
+		return nil, err
+	}
+	if displayTask == nil {
+		return nil, nil
+	}
+	for _, execTask := range displayTask.ExecutionTasks {
+		c.execToDisplay[execTask] = displayTask
+	}
+	c.displayTasks = append(c.displayTasks, displayTask)
+	return displayTask, nil
+}
+func (c *DisplayTaskCache) Clear()        { c.execToDisplay = map[string]*Task{} }
+func (c *DisplayTaskCache) List() []*Task { return c.displayTasks }
+
+func NewDisplayTaskCache() DisplayTaskCache {
+	return DisplayTaskCache{execToDisplay: map[string]*Task{}, displayTasks: []*Task{}}
+}
+
 var (
 	AllStatuses = "*"
 )
