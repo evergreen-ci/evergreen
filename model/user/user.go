@@ -59,7 +59,7 @@ type UserSettings struct {
 }
 
 type UseSpruceOptions struct {
-	PatchPage bool `json:"patch_page, omitempty" bson:"patch_page,omitempty"`
+	PatchPage bool `json:"patch_page,omitempty" bson:"patch_page,omitempty"`
 }
 
 type NotificationPreferences struct {

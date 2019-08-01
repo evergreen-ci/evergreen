@@ -57,6 +57,7 @@ func runTests(t *testing.T, in user.UserSettings) {
 	assert.EqualValues(in, origSettings)
 
 	finalAPISettings, err := ApplyUserChanges(user.UserSettings{}, apiSettings)
+	assert.NoError(err)
 	assert.EqualValues(apiSettings, finalAPISettings)
 }
 

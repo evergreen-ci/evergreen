@@ -38,7 +38,7 @@ type APIUserSettings struct {
 }
 
 type APIUseSpruceOptions struct {
-	PatchPage bool `json:"patch_page, omitempty" bson:"patch_page,omitempty"`
+	PatchPage bool `json:"patch_page,omitempty" bson:"patch_page,omitempty"`
 }
 
 func (s *APIUserSettings) BuildFromService(h interface{}) error {
