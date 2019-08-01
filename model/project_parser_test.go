@@ -1295,6 +1295,9 @@ func checkProjectPersists(yml []byte) error {
 
 	// ensure that updating with the re-parsed project doesn't error
 	pp, err = createIntermediateProject([]byte(newV.Config))
+	if err != nil {
+		return errors.Wrap(err, "error creating intermediate project from stored config")
+	}
 	if err = UpdateVersionProject(v.Id, pp); err != nil {
 		return errors.Wrap(err, "error updating version's project")
 	}
