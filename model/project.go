@@ -474,16 +474,18 @@ func (c *LoggerConfig) IsValid() error {
 	}
 	catcher := grip.NewBasicCatcher()
 	for _, opts := range c.Agent {
-		catcher.Add(errors.Wrap(opts.IsValid(), "invalid agent logger config"))
+		catcher.Wrap(opts.IsValid(), "invalid agent logger config")
 	}
 	for _, opts := range c.System {
-		catcher.Add(errors.Wrap(opts.IsValid(), "invalid system logger config"))
+		catcher.Wrap(opts.IsValid(), "invalid system logger config")
 		if opts.Type == FileLogSender {
-			catcher.Add(errors.New("file logger is disallowed for system logs; will use Evergreen logger"))
+			catcher.New("file logger is disallowed for system logs; will use Evergreen logger")
+		} else if opts.Type == LogkeeperLogSender {
+			catcher.New("logkeepr is disallowed for system logs; will use Evergreen logger")
 		}
 	}
 	for _, opts := range c.Task {
-		catcher.Add(errors.Wrap(opts.IsValid(), "invalid task logger config"))
+		catcher.Wrap(opts.IsValid(), "invalid task logger config")
 	}
 
 	return catcher.Resolve()
@@ -492,13 +494,13 @@ func (c *LoggerConfig) IsValid() error {
 func (o *LogOpts) IsValid() error {
 	catcher := grip.NewBasicCatcher()
 	if !util.StringSliceContains(ValidLogSenders, o.Type) {
-		catcher.Add(errors.Errorf("%s is not a valid log sender", o.Type))
+		catcher.Errorf("%s is not a valid log sender", o.Type)
 	}
 	if o.Type == SplunkLogSender && o.SplunkServer == "" {
-		catcher.Add(errors.New("Splunk logger requires a server URL"))
+		catcher.New("Splunk logger requires a server URL")
 	}
 	if o.Type == SplunkLogSender && o.SplunkToken == "" {
-		catcher.Add(errors.New("Splunk logger requires a token"))
+		catcher.New("Splunk logger requires a token")
 	}
 
 	return catcher.Resolve()
@@ -512,10 +514,10 @@ const (
 )
 
 var ValidLogSenders = []string{
-	string(EvergreenLogSender),
-	string(FileLogSender),
-	string(LogkeeperLogSender),
-	string(SplunkLogSender),
+	EvergreenLogSender,
+	FileLogSender,
+	LogkeeperLogSender,
+	SplunkLogSender,
 }
 
 // TaskIdTable is a map of [variant, task display name]->[task id].

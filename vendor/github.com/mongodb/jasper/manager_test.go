@@ -3,7 +3,6 @@ package jasper
 import (
 	"context"
 	"fmt"
-	"net/http"
 	"runtime"
 	"testing"
 
@@ -16,19 +15,23 @@ var echoSubCmd = []string{"echo", "foo"}
 func TestManagerInterface(t *testing.T) {
 	t.Parallel()
 
-	httpClient := &http.Client{}
+	httpClient := GetHTTPClient()
+	defer PutHTTPClient(httpClient)
+
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
 	for mname, factory := range map[string]func(context.Context, *testing.T) Manager{
 		"Basic/NoLock/BasicProcs": func(_ context.Context, _ *testing.T) Manager {
 			return &basicProcessManager{
+				id:       "id",
 				procs:    map[string]Process{},
 				blocking: false,
 			}
 		},
 		"Basic/NoLock/BlockingProcs": func(_ context.Context, _ *testing.T) Manager {
 			return &basicProcessManager{
+				id:       "id",
 				procs:    map[string]Process{},
 				blocking: true,
 			}
@@ -70,16 +73,23 @@ func TestManagerInterface(t *testing.T) {
 					assert.NotNil(t, ctx)
 					assert.NotNil(t, manager)
 				},
+				"IDReturnsNonempty": func(ctx context.Context, t *testing.T, manager Manager) {
+					assert.NotEmpty(t, manager.ID())
+				},
+				"ProcEnvVarMatchesManagerID": func(ctx context.Context, t *testing.T, manager Manager) {
+					opts := trueCreateOpts()
+					proc, err := manager.CreateProcess(ctx, opts)
+					require.NoError(t, err)
+					info := proc.Info(ctx)
+					require.NotEmpty(t, info.Options.Environment)
+					assert.Equal(t, manager.ID(), info.Options.Environment[ManagerEnvironID])
+				},
 				"ListDoesNotErrorWhenEmpty": func(ctx context.Context, t *testing.T, manager Manager) {
 					all, err := manager.List(ctx, All)
 					require.NoError(t, err)
 					assert.Len(t, all, 0)
 				},
 				"CreateSimpleProcess": func(ctx context.Context, t *testing.T, manager Manager) {
-					if mname == "REST" {
-						t.Skip("test case not compatible with rest interfaces")
-					}
-
 					opts := trueCreateOpts()
 					proc, err := manager.CreateProcess(ctx, opts)
 					require.NoError(t, err)

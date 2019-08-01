@@ -28,6 +28,7 @@ func TestBuildSubcommands(t *testing.T) {
 		{subcommand: []string{binary, JasperCommand, ClientCommand}, buildSubcommand: BuildClientCommand},
 
 		{subcommand: []string{binary, JasperCommand, ClientCommand, ManagerCommand}, buildSubcommand: BuildManagerCommand},
+		{subcommand: []string{binary, JasperCommand, ClientCommand, ManagerCommand, IDCommand}, buildSubcommand: BuildManagerIDCommand},
 		{subcommand: []string{binary, JasperCommand, ClientCommand, ManagerCommand, CreateProcessCommand}, buildSubcommand: BuildManagerCreateProcessCommand},
 		{subcommand: []string{binary, JasperCommand, ClientCommand, ManagerCommand, CreateCommand}, buildSubcommand: BuildManagerCreateCommand},
 		{subcommand: []string{binary, JasperCommand, ClientCommand, ManagerCommand, GetCommand}, buildSubcommand: BuildManagerGetCommand},

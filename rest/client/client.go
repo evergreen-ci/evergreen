@@ -219,8 +219,8 @@ func (c *communicatorImpl) makeSender(ctx context.Context, taskData TaskData, op
 		if opt.BufferSize > 0 {
 			bufferSize = opt.BufferSize
 		}
-		// disallow sending system logs to S3 for security reasons
-		if prefix == apimodels.SystemLogPrefix && opt.Sender == model.FileLogSender {
+		// disallow sending system logs to S3 or logkeeper for security reasons
+		if prefix == apimodels.SystemLogPrefix && (opt.Sender == model.FileLogSender || opt.Sender == model.LogkeeperLogSender) {
 			opt.Sender = model.EvergreenLogSender
 		}
 		switch opt.Sender {

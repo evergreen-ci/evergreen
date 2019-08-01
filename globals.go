@@ -2,6 +2,7 @@ package evergreen
 
 import (
 	"os"
+	"time"
 
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
@@ -125,6 +126,10 @@ const (
 	StepbackTaskActivator  = "stepback"
 	APIServerTaskActivator = "apiserver"
 
+	// Restart Types
+	RestartVersions = "versions"
+	RestartTasks    = "tasks"
+
 	RestRoutePrefix = "rest"
 	APIRoutePrefix  = "api"
 
@@ -144,6 +149,10 @@ const (
 	PlannerVersionLegacy  = "legacy"
 	PlannerVersionRevised = "revised"
 	PlannerVersionTunable = "tunable"
+
+	// maximum turnaround we want to maintain for all hosts for a given distro
+	MaxDurationPerDistroHost               = 30 * time.Minute
+	MaxDurationPerDistroHostWithContainers = 2 * time.Minute
 
 	FinderVersionLegacy    = "legacy"
 	FinderVersionParallel  = "parallel"
@@ -314,13 +323,17 @@ func (k SenderKey) String() string {
 }
 
 const (
-	defaultLogBufferingDuration  = 20
-	defaultAmboyPoolSize         = 2
-	defaultAmboyLocalStorageSize = 1024
-	defaultAmboyQueueName        = "evg.service"
-	defaultSingleAmboyQueueName  = "evg.single"
-	defaultAmboyDBName           = "amboy"
-	maxNotificationsPerSecond    = 100
+	defaultLogBufferingDuration                  = 20
+	defaultAmboyPoolSize                         = 2
+	defaultAmboyLocalStorageSize                 = 1024
+	defaultAmboyQueueName                        = "evg.service"
+	defaultSingleAmboyQueueName                  = "evg.single"
+	defaultAmboyDBName                           = "amboy"
+	defaultGroupWorkers                          = 1
+	defaultGroupBackgroundCreateFrequencyMinutes = 10
+	defaultGroupPruneFrequencyMinutes            = 10
+	defaultGroupTTLMinutes                       = 1
+	maxNotificationsPerSecond                    = 100
 
 	EnableAmboyRemoteReporting = false
 )

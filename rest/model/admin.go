@@ -277,12 +277,16 @@ func (a *APISMTPConfig) ToService() (interface{}, error) {
 }
 
 type APIAmboyConfig struct {
-	Name           APIString `json:"name"`
-	SingleName     APIString `json:"single_name"`
-	DB             APIString `json:"database"`
-	PoolSizeLocal  int       `json:"pool_size_local"`
-	PoolSizeRemote int       `json:"pool_size_remote"`
-	LocalStorage   int       `json:"local_storage_size"`
+	Name                                  APIString `json:"name"`
+	SingleName                            APIString `json:"single_name"`
+	DB                                    APIString `json:"database"`
+	PoolSizeLocal                         int       `json:"pool_size_local"`
+	PoolSizeRemote                        int       `json:"pool_size_remote"`
+	LocalStorage                          int       `json:"local_storage_size"`
+	GroupDefaultWorkers                   int       `json:"group_default_workers"`
+	GroupBackgroundCreateFrequencyMinutes int       `json:"group_background_create_frequency"`
+	GroupPruneFrequencyMinutes            int       `json:"group_prune_frequency"`
+	GroupTTLMinutes                       int       `json:"group_ttl"`
 }
 
 func (a *APIAmboyConfig) BuildFromService(h interface{}) error {
@@ -294,6 +298,10 @@ func (a *APIAmboyConfig) BuildFromService(h interface{}) error {
 		a.PoolSizeLocal = v.PoolSizeLocal
 		a.PoolSizeRemote = v.PoolSizeRemote
 		a.LocalStorage = v.LocalStorage
+		a.GroupDefaultWorkers = v.GroupDefaultWorkers
+		a.GroupBackgroundCreateFrequencyMinutes = v.GroupBackgroundCreateFrequencyMinutes
+		a.GroupPruneFrequencyMinutes = v.GroupPruneFrequencyMinutes
+		a.GroupTTLMinutes = v.GroupTTLMinutes
 	default:
 		return errors.Errorf("%T is not a supported type", h)
 	}
@@ -302,12 +310,16 @@ func (a *APIAmboyConfig) BuildFromService(h interface{}) error {
 
 func (a *APIAmboyConfig) ToService() (interface{}, error) {
 	return evergreen.AmboyConfig{
-		Name:           FromAPIString(a.Name),
-		SingleName:     FromAPIString(a.SingleName),
-		DB:             FromAPIString(a.DB),
-		PoolSizeLocal:  a.PoolSizeLocal,
-		PoolSizeRemote: a.PoolSizeRemote,
-		LocalStorage:   a.LocalStorage,
+		Name:                                  FromAPIString(a.Name),
+		SingleName:                            FromAPIString(a.SingleName),
+		DB:                                    FromAPIString(a.DB),
+		PoolSizeLocal:                         a.PoolSizeLocal,
+		PoolSizeRemote:                        a.PoolSizeRemote,
+		LocalStorage:                          a.LocalStorage,
+		GroupDefaultWorkers:                   a.GroupDefaultWorkers,
+		GroupBackgroundCreateFrequencyMinutes: a.GroupBackgroundCreateFrequencyMinutes,
+		GroupPruneFrequencyMinutes:            a.GroupPruneFrequencyMinutes,
+		GroupTTLMinutes:                       a.GroupTTLMinutes,
 	}, nil
 }
 
@@ -1051,7 +1063,9 @@ type APISchedulerConfig struct {
 	TargetTimeSeconds             int       `json:"target_time_seconds"`
 	AcceptableHostIdleTimeSeconds int       `json:"acceptable_host_idle_time_seconds"`
 	GroupVersions                 bool      `json:"group_versions"`
-	PatchZipperFactor             int       `json:"patch_zipper_factor"`
+	PatchZipperFactor             int64     `json:"patch_zipper_factor"`
+	TimeInQueueFactor             int64     `json:"time_in_queue_factor"`
+	ExpectedRuntimeFactor         int64     `json:"expected_runtime_factor_factor"`
 }
 
 func (a *APISchedulerConfig) BuildFromService(h interface{}) error {
@@ -1067,6 +1081,8 @@ func (a *APISchedulerConfig) BuildFromService(h interface{}) error {
 		a.AcceptableHostIdleTimeSeconds = v.AcceptableHostIdleTimeSeconds
 		a.GroupVersions = v.GroupVersions
 		a.PatchZipperFactor = v.PatchZipperFactor
+		a.TimeInQueueFactor = v.TimeInQueueFactor
+		a.ExpectedRuntimeFactor = v.ExpectedRuntimeFactor
 	default:
 		return errors.Errorf("%T is not a supported type", h)
 	}
@@ -1085,6 +1101,8 @@ func (a *APISchedulerConfig) ToService() (interface{}, error) {
 		AcceptableHostIdleTimeSeconds: a.AcceptableHostIdleTimeSeconds,
 		GroupVersions:                 a.GroupVersions,
 		PatchZipperFactor:             a.PatchZipperFactor,
+		ExpectedRuntimeFactor:         a.ExpectedRuntimeFactor,
+		TimeInQueueFactor:             a.TimeInQueueFactor,
 	}, nil
 }
 
@@ -1228,6 +1246,7 @@ func (a *APISplunkConnectionInfo) ToService() (interface{}, error) {
 type APIUIConfig struct {
 	Url            APIString `json:"url"`
 	HelpUrl        APIString `json:"help_url"`
+	UIv2Url        APIString `json:"uiv2_url"`
 	HttpListenAddr APIString `json:"http_listen_addr"`
 	Secret         APIString `json:"secret"`
 	DefaultProject APIString `json:"default_project"`
@@ -1241,6 +1260,7 @@ func (a *APIUIConfig) BuildFromService(h interface{}) error {
 	case evergreen.UIConfig:
 		a.Url = ToAPIString(v.Url)
 		a.HelpUrl = ToAPIString(v.HelpUrl)
+		a.UIv2Url = ToAPIString(v.UIv2Url)
 		a.HttpListenAddr = ToAPIString(v.HttpListenAddr)
 		a.Secret = ToAPIString(v.Secret)
 		a.DefaultProject = ToAPIString(v.DefaultProject)
@@ -1257,6 +1277,7 @@ func (a *APIUIConfig) ToService() (interface{}, error) {
 	return evergreen.UIConfig{
 		Url:            FromAPIString(a.Url),
 		HelpUrl:        FromAPIString(a.HelpUrl),
+		UIv2Url:        FromAPIString(a.UIv2Url),
 		HttpListenAddr: FromAPIString(a.HttpListenAddr),
 		Secret:         FromAPIString(a.Secret),
 		DefaultProject: FromAPIString(a.DefaultProject),
@@ -1267,9 +1288,9 @@ func (a *APIUIConfig) ToService() (interface{}, error) {
 }
 
 // RestartTasksResponse is the response model returned from the /admin/restart route
-type RestartTasksResponse struct {
-	TasksRestarted []string `json:"tasks_restarted"`
-	TasksErrored   []string `json:"tasks_errored"`
+type RestartResponse struct {
+	ItemsRestarted []string `json:"items_restarted"`
+	ItemsErrored   []string `json:"items_errored"`
 }
 
 // BuildFromService builds a model from the service layer
@@ -1350,11 +1371,11 @@ func (as *APIServiceFlags) ToService() (interface{}, error) {
 }
 
 // BuildFromService builds a model from the service layer
-func (rtr *RestartTasksResponse) BuildFromService(h interface{}) error {
+func (rtr *RestartResponse) BuildFromService(h interface{}) error {
 	switch v := h.(type) {
-	case *RestartTasksResponse:
-		rtr.TasksRestarted = v.TasksRestarted
-		rtr.TasksErrored = v.TasksErrored
+	case *RestartResponse:
+		rtr.ItemsRestarted = v.ItemsRestarted
+		rtr.ItemsErrored = v.ItemsErrored
 	default:
 		return errors.Errorf("%T is the incorrect type for a restart task response", h)
 	}
@@ -1362,7 +1383,7 @@ func (rtr *RestartTasksResponse) BuildFromService(h interface{}) error {
 }
 
 // ToService is not implemented for /admin/restart
-func (rtr *RestartTasksResponse) ToService() (interface{}, error) {
+func (rtr *RestartResponse) ToService() (interface{}, error) {
 	return nil, errors.New("ToService not implemented for RestartTasksResponse")
 }
 

@@ -81,6 +81,11 @@ message CreateOptions {
   repeated CreateOptions on_failure = 8;
   repeated CreateOptions on_timeout = 9;
   OutputOptions output = 10;
+  bytes standard_input_bytes = 11;
+}
+
+message IDResponse {
+    string value = 1;
 }
 
 message ProcessInfo {
@@ -214,6 +219,7 @@ message EventName {
 
 service JasperProcessManager {
   // Manager functions
+  rpc ID(google.protobuf.Empty) returns (IDResponse);
   rpc Create(CreateOptions) returns (ProcessInfo);
   rpc List(Filter) returns (stream ProcessInfo);
   rpc Group(TagName) returns (stream ProcessInfo);

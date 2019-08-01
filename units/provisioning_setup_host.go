@@ -254,7 +254,7 @@ func (j *setupHostJob) runHostSetup(ctx context.Context, targetHost *host.Host, 
 	}
 
 	if targetHost.Distro.Setup != "" {
-		err = j.copyScript(ctx, settings, targetHost, evergreen.SetupScriptName, targetHost.Distro.Setup)
+		err = j.copyScript(ctx, settings, targetHost, filepath.Join("~", evergreen.SetupScriptName), targetHost.Distro.Setup)
 		if err != nil {
 			return errors.Wrapf(err, "error copying setup script %v to host %v",
 				evergreen.SetupScriptName, targetHost.Id)
@@ -262,7 +262,7 @@ func (j *setupHostJob) runHostSetup(ctx context.Context, targetHost *host.Host, 
 	}
 
 	if targetHost.Distro.Teardown != "" {
-		err = j.copyScript(ctx, settings, targetHost, evergreen.TeardownScriptName, targetHost.Distro.Teardown)
+		err = j.copyScript(ctx, settings, targetHost, filepath.Join("~", evergreen.TeardownScriptName), targetHost.Distro.Teardown)
 		if err != nil {
 			return errors.Wrapf(err, "error copying teardown script %v to host %v",
 				evergreen.TeardownScriptName, targetHost.Id)
@@ -321,7 +321,7 @@ func (j *setupHostJob) putJasperCredentials(ctx context.Context, fileName string
 		return errors.Wrap(err, "could not export Jasper credentials")
 	}
 
-	file, err := ioutil.TempFile("", fileName)
+	file, err := ioutil.TempFile("", filepath.Base(fileName))
 	if err != nil {
 		return errors.Wrap(err, "error creating temporary script file")
 	}
@@ -409,7 +409,7 @@ func (j *setupHostJob) copyScript(ctx context.Context, settings *evergreen.Setti
 	}
 
 	// create a temp file for the script
-	file, err := ioutil.TempFile("", name)
+	file, err := ioutil.TempFile("", filepath.Base(name))
 	if err != nil {
 		return errors.Wrap(err, "error creating temporary script file")
 	}
@@ -484,7 +484,7 @@ func (j *setupHostJob) copyScript(ctx context.Context, settings *evergreen.Setti
 }
 
 func buildScpCommand(src, dst string, info *util.StaticHostInfo, user string, opts []string) []string {
-	return append(append([]string{"scp", "-vvv", "-P", info.Port}, opts...), src, fmt.Sprintf("%s@%s:~/%s", user, info.Hostname, dst))
+	return append(append([]string{"scp", "-vvv", "-P", info.Port}, opts...), src, fmt.Sprintf("%s@%s:%s", user, info.Hostname, dst))
 }
 
 // Build the setup script that will need to be run on the specified host.
@@ -772,7 +772,7 @@ func (j *setupHostJob) loadClient(ctx context.Context, target *host.Host, settin
 		MaxBytes: 1024 * 1024,
 	}
 
-	scpArgs := buildScpCommand(tempFileName, fmt.Sprintf("%s/.evergreen.yml", targetDir), hostSSHInfo, target.User, sshOptions)
+	scpArgs := buildScpCommand(tempFileName, filepath.Join("~", targetDir, ".evergreen.yml"), hostSSHInfo, target.User, sshOptions)
 	scpYmlCommand := j.env.JasperManager().CreateCommand(ctx).Add(scpArgs).
 		RedirectErrorToOutput(true).SetOutputWriter(scpOut)
 

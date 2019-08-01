@@ -100,3 +100,32 @@ func (h *adminPostHandler) Run(ctx context.Context) gimlet.Responder {
 
 	return gimlet.NewJSONResponse(h.model)
 }
+
+func makeFetchBugsnag(sc data.Connector) gimlet.RouteHandler {
+	return &getBugsnagTokenHandler{
+		sc: sc,
+	}
+}
+
+type getBugsnagTokenHandler struct {
+	sc data.Connector
+}
+
+func (h *getBugsnagTokenHandler) Factory() gimlet.RouteHandler {
+	return &getBugsnagTokenHandler{
+		sc: h.sc,
+	}
+}
+
+func (h *getBugsnagTokenHandler) Parse(ctx context.Context, r *http.Request) error {
+	return nil
+}
+
+func (h *getBugsnagTokenHandler) Run(ctx context.Context) gimlet.Responder {
+	settings, err := h.sc.GetEvergreenSettings()
+	if err != nil {
+		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "Database error"))
+	}
+
+	return gimlet.NewTextResponse(settings.Bugsnag)
+}

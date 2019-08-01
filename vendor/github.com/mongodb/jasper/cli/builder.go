@@ -81,6 +81,12 @@ func BuildManagerCommand(basePrefix ...string) []string {
 	return append(BuildClientCommand(basePrefix...), ManagerCommand)
 }
 
+// BuildManagerIDCommand is a convenience function to generate the
+// slice of strings to invoke the Jasper.Client.Manager.ID subcommand.
+func BuildManagerIDCommand(basePrefix ...string) []string {
+	return append(BuildManagerCommand(basePrefix...), IDCommand)
+}
+
 // BuildManagerCreateProcessCommand is a convenience function to generate the
 // slice of strings to invoke the Jasper.Client.Manager.CreateProcess
 // subcommand.

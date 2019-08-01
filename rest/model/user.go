@@ -30,10 +30,15 @@ func (apiPubKey *APIPubKey) ToService() (interface{}, error) {
 }
 
 type APIUserSettings struct {
-	Timezone      APIString                   `json:"timezone"`
-	GithubUser    *APIGithubUser              `json:"github_user"`
-	SlackUsername APIString                   `json:"slack_username"`
-	Notifications *APINotificationPreferences `json:"notifications"`
+	Timezone         APIString                   `json:"timezone"`
+	UseSpruceOptions *APIUseSpruceOptions        `json:"use_spruce_options"`
+	GithubUser       *APIGithubUser              `json:"github_user"`
+	SlackUsername    APIString                   `json:"slack_username"`
+	Notifications    *APINotificationPreferences `json:"notifications"`
+}
+
+type APIUseSpruceOptions struct {
+	PatchPage bool `json:"patch_page,omitempty" bson:"patch_page,omitempty"`
 }
 
 func (s *APIUserSettings) BuildFromService(h interface{}) error {
@@ -41,6 +46,9 @@ func (s *APIUserSettings) BuildFromService(h interface{}) error {
 	case user.UserSettings:
 		s.Timezone = ToAPIString(v.Timezone)
 		s.SlackUsername = ToAPIString(v.SlackUsername)
+		s.UseSpruceOptions = &APIUseSpruceOptions{
+			PatchPage: v.UseSpruceOptions.PatchPage,
+		}
 		s.GithubUser = &APIGithubUser{}
 		err := s.GithubUser.BuildFromService(v.GithubUser)
 		if err != nil {
@@ -74,11 +82,16 @@ func (s *APIUserSettings) ToService() (interface{}, error) {
 	if !ok {
 		return nil, errors.New("unable to convert NotificationPreferences")
 	}
+	useSpruceOptions := user.UseSpruceOptions{}
+	if s.UseSpruceOptions != nil {
+		useSpruceOptions.PatchPage = s.UseSpruceOptions.PatchPage
+	}
 	return user.UserSettings{
-		Timezone:      FromAPIString(s.Timezone),
-		SlackUsername: FromAPIString(s.SlackUsername),
-		GithubUser:    githubUser,
-		Notifications: preferences,
+		Timezone:         FromAPIString(s.Timezone),
+		SlackUsername:    FromAPIString(s.SlackUsername),
+		GithubUser:       githubUser,
+		Notifications:    preferences,
+		UseSpruceOptions: useSpruceOptions,
 	}, nil
 }
 
