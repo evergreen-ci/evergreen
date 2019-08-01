@@ -42,6 +42,7 @@ func AttachHandler(app *gimlet.APIApp, opts HandlerOpts) {
 	app.AddRoute("/admin").Version(2).Get().RouteHandler(makeLegacyAdminConfig(sc))
 	app.AddRoute("/admin/banner").Version(2).Get().Wrap(checkUser).RouteHandler(makeFetchAdminBanner(sc))
 	app.AddRoute("/admin/banner").Version(2).Post().Wrap(superUser).RouteHandler(makeSetAdminBanner(sc))
+	app.AddRoute("/admin/bugsnag").Version(2).Get().RouteHandler(makeFetchBugsnag(sc))
 	app.AddRoute("/admin/events").Version(2).Get().Wrap(superUser).RouteHandler(makeFetchAdminEvents(sc))
 	app.AddRoute("/admin/restart/versions").Version(2).Post().Wrap(superUser).RouteHandler(makeRestartRoute(sc, evergreen.RestartVersions, nil))
 	app.AddRoute("/admin/restart/tasks").Version(2).Post().Wrap(superUser).RouteHandler(makeRestartRoute(sc, evergreen.RestartTasks, opts.APIQueue))
