@@ -22,6 +22,25 @@ type project struct {
 	TaskGroups []model.TaskGroup `yaml:"task_groups"`
 }
 
+// PopulateCaches runs setup functions and is used by the new/tunable
+// scheduler to reprocess tasks before running the new planner.
+func PopulateCaches(id string, distroID string, tasks []task.Task) ([]task.Task, error) {
+	cmp := &CmpBasedTaskComparator{
+		tasks:     tasks,
+		runtimeID: id,
+		setupFuncs: []sortSetupFunc{
+			cacheTaskGroups,
+			backfillTaskGroups,
+			cacheExpectedDurations,
+		},
+	}
+	if err := cmp.setupForSortingTasks(distroID); err != nil {
+		return nil, errors.WithStack(err)
+	}
+
+	return cmp.tasks, nil
+}
+
 // cacheTaskGroups caches task groups by version. It uses yaml.Unmarshal instead
 // of model.LoadProjectInto and only unmarshals task groups for efficiency.
 func cacheTaskGroups(comparator *CmpBasedTaskComparator) error {

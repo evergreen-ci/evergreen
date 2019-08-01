@@ -19,8 +19,10 @@ type APIPlannerSettings struct {
 	TargetTime             APIDuration `json:"target_time"`
 	AcceptableHostIdleTime APIDuration `json:"acceptable_host_idle_time"`
 	GroupVersions          *bool       `json:"group_versions"`
-	PatchZipperFactor      int         `json:"patch_zipper_factor"`
 	TaskOrdering           APIString   `json:"task_ordering"`
+	PatchZipperFactor      int64       `json:"patch_zipper_factor"`
+	TimeInQueueFactor      int64       `json:"time_in_queue_factor"`
+	ExpectedRuntimeFactor  int64       `json:"expected_runtime_factor_factor"`
 }
 
 // BuildFromService converts from service level distro.PlannerSetting to an APIPlannerSettings
@@ -45,8 +47,10 @@ func (s *APIPlannerSettings) BuildFromService(h interface{}) error {
 	s.TargetTime = NewAPIDuration(settings.TargetTime)
 	s.AcceptableHostIdleTime = NewAPIDuration(settings.AcceptableHostIdleTime)
 	s.GroupVersions = settings.GroupVersions
-	s.PatchZipperFactor = settings.PatchZipperFactor
 	s.TaskOrdering = ToAPIString(settings.TaskOrdering)
+	s.PatchZipperFactor = settings.PatchZipperFactor
+	s.ExpectedRuntimeFactor = settings.ExpectedRuntimeFactor
+	s.TimeInQueueFactor = settings.TimeInQueueFactor
 
 	return nil
 }
@@ -63,8 +67,10 @@ func (s *APIPlannerSettings) ToService() (interface{}, error) {
 	settings.TargetTime = s.TargetTime.ToDuration()
 	settings.AcceptableHostIdleTime = s.AcceptableHostIdleTime.ToDuration()
 	settings.GroupVersions = s.GroupVersions
-	settings.PatchZipperFactor = s.PatchZipperFactor
 	settings.TaskOrdering = FromAPIString(s.TaskOrdering)
+	settings.PatchZipperFactor = s.PatchZipperFactor
+	settings.TimeInQueueFactor = s.TimeInQueueFactor
+	settings.ExpectedRuntimeFactor = s.ExpectedRuntimeFactor
 
 	return interface{}(settings), nil
 }
