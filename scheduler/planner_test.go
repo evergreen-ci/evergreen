@@ -381,9 +381,7 @@ func TestPlanner(t *testing.T) {
 			assert.Len(t, tasks, 6)
 			assert.Equal(t, "one", tasks[0].TaskGroup)
 			assert.Equal(t, "one", tasks[1].TaskGroup)
-			assert.Equal(t, "extra", tasks[5].Id)
 		})
-
 		t.Run("DependenciesGrouped", func(t *testing.T) {
 			plan := PrepareTasksForPlanning(&distro.Distro{}, []task.Task{
 				{Id: "one", DependsOn: []task.Dependency{{TaskId: "two"}}},
