@@ -3,7 +3,6 @@ package jasper
 import (
 	"context"
 	"fmt"
-	"net/http"
 	"runtime"
 	"testing"
 
@@ -16,7 +15,9 @@ var echoSubCmd = []string{"echo", "foo"}
 func TestManagerInterface(t *testing.T) {
 	t.Parallel()
 
-	httpClient := &http.Client{}
+	httpClient := GetHTTPClient()
+	defer PutHTTPClient(httpClient)
+
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
