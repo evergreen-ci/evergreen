@@ -14,6 +14,7 @@ import (
 type UIConfig struct {
 	Url            string   `bson:"url" json:"url" yaml:"url"`
 	HelpUrl        string   `bson:"help_url" json:"help_url" yaml:"helpurl"`
+	UIv2Url        string   `bson:"uiv2_url" json:"uiv2_url" yaml:"uiv2_url"`
 	HttpListenAddr string   `bson:"http_listen_addr" json:"http_listen_addr" yaml:"httplistenaddr"`
 	Secret         string   `bson:"secret" json:"secret" yaml:"secret"`                           // Secret to encrypt session storage
 	DefaultProject string   `bson:"default_project" json:"default_project" yaml:"defaultproject"` // Default project to assume when none specified
@@ -54,6 +55,7 @@ func (c *UIConfig) Set() error {
 		"$set": bson.M{
 			"url":              c.Url,
 			"help_url":         c.HelpUrl,
+			"uiv2_url":         c.UIv2Url,
 			"http_listen_addr": c.HttpListenAddr,
 			"secret":           c.Secret,
 			"default_project":  c.DefaultProject,

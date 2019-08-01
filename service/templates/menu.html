@@ -76,7 +76,7 @@ window.JiraHost = {{.JiraHost}};
             <li><a ng-href="/projects##[[project]]">Projects</a></li>
             {{end}}
             <li><a href="/spawn">Hosts</a></li>
-            <li><a href="/patches/mine">Patches</a></li>
+            <li><a href="{{GetPatchPageUrl .User}}">Patches</a></li>
             <li class="divider"></li>
             <li><a href="/settings">User Settings</a></li>
             {{if IsSuperUser .User.Id}}

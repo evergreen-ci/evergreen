@@ -2,7 +2,7 @@
 <script type="text/javascript" src="{{Static "js" "settings.js"}}?hash={{ BuildRevision }}"></script>
 <script type="text/javascript">
   var user_tz = {{.Data.Timezone}};
-  var new_waterfall = {{.Data.NewWaterfall}}
+  var use_spruce_options = {{.Data.UseSpruceOptions}}
   var notifications = {{.Data.Notifications}}
   var slack_username = {{.Data.SlackUsername}}
   var github_user = {{ .GithubUser }};
@@ -90,9 +90,13 @@ ui_server_host: "[[userConf.ui_server_host]]"</pre>
               </div>
             </div>
             <div class="form-group">
+              <div class="col-sm-4" style="text-align: right; margin-right:14px">Use New Patch Page</div>
+              <md-checkbox ng-model="use_spruce_options.patch_page"/>
+            </div>
+            <div class="form-group">
               <a class="col-sm-4 control-label" href="/notifications"> Notification Settings </a>
             </div>
-            <div class="right text-right"><button ng-click="updateUserSettings(new_tz, new_waterfall)" class="btn btn-primary">Save</button></div>
+            <div class="right text-right"><button ng-click="updateUserSettings(new_tz, use_spruce_options)" class="btn btn-primary">Save</button></div>
           </form>
         </div>
       </md-card>
