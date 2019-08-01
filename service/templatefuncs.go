@@ -54,12 +54,15 @@ func MakeTemplateFuncs(fo TemplateFunctionOptions, superUsers []string) map[stri
 			}
 			return "America/New_York"
 		},
-		"GetUIBase": func(u gimlet.User) string {
+		"GetPatchPageUrl": func(u gimlet.User) string {
 			usr, ok := u.(*user.DBUser)
-			if ok && usr != nil && usr.Settings.UseSpruce {
-				return "http://evergreen.spruce.s3-website-us-east-1.amazonaws.com/#"
+			if ok && usr != nil && usr.Settings.UseSpruceOptions.PatchPage {
+				config, err := evergreen.GetConfig()
+				if err == nil {
+					return config.Ui.UIv2Url + "/patches?user=" + usr.Username()
+				}
 			}
-			return ""
+			return "/patches/mine"
 		},
 
 		// Trunc cuts off a string to be n characters long.

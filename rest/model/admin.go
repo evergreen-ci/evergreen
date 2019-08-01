@@ -1228,6 +1228,7 @@ func (a *APISplunkConnectionInfo) ToService() (interface{}, error) {
 type APIUIConfig struct {
 	Url            APIString `json:"url"`
 	HelpUrl        APIString `json:"help_url"`
+	UIv2Url        APIString `json:"uiv2_url"`
 	HttpListenAddr APIString `json:"http_listen_addr"`
 	Secret         APIString `json:"secret"`
 	DefaultProject APIString `json:"default_project"`
@@ -1241,6 +1242,7 @@ func (a *APIUIConfig) BuildFromService(h interface{}) error {
 	case evergreen.UIConfig:
 		a.Url = ToAPIString(v.Url)
 		a.HelpUrl = ToAPIString(v.HelpUrl)
+		a.UIv2Url = ToAPIString(v.UIv2Url)
 		a.HttpListenAddr = ToAPIString(v.HttpListenAddr)
 		a.Secret = ToAPIString(v.Secret)
 		a.DefaultProject = ToAPIString(v.DefaultProject)
@@ -1257,6 +1259,7 @@ func (a *APIUIConfig) ToService() (interface{}, error) {
 	return evergreen.UIConfig{
 		Url:            FromAPIString(a.Url),
 		HelpUrl:        FromAPIString(a.HelpUrl),
+		UIv2Url:        FromAPIString(a.UIv2Url),
 		HttpListenAddr: FromAPIString(a.HttpListenAddr),
 		Secret:         FromAPIString(a.Secret),
 		DefaultProject: FromAPIString(a.DefaultProject),

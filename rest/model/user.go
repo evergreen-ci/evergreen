@@ -30,11 +30,15 @@ func (apiPubKey *APIPubKey) ToService() (interface{}, error) {
 }
 
 type APIUserSettings struct {
-	Timezone      APIString                   `json:"timezone"`
-	UseSpruce     bool                        `json:"use_spruce"`
-	GithubUser    *APIGithubUser              `json:"github_user"`
-	SlackUsername APIString                   `json:"slack_username"`
-	Notifications *APINotificationPreferences `json:"notifications"`
+	Timezone         APIString                   `json:"timezone"`
+	UseSpruceOptions *APIUseSpruceOptions        `json:"use_spruce_options"`
+	GithubUser       *APIGithubUser              `json:"github_user"`
+	SlackUsername    APIString                   `json:"slack_username"`
+	Notifications    *APINotificationPreferences `json:"notifications"`
+}
+
+type APIUseSpruceOptions struct {
+	PatchPage bool `json:"patch_page, omitempty" bson:"patch_page,omitempty"`
 }
 
 func (s *APIUserSettings) BuildFromService(h interface{}) error {
@@ -42,7 +46,9 @@ func (s *APIUserSettings) BuildFromService(h interface{}) error {
 	case user.UserSettings:
 		s.Timezone = ToAPIString(v.Timezone)
 		s.SlackUsername = ToAPIString(v.SlackUsername)
-		s.UseSpruce = v.UseSpruce
+		s.UseSpruceOptions = &APIUseSpruceOptions{
+			PatchPage: v.UseSpruceOptions.PatchPage,
+		}
 		s.GithubUser = &APIGithubUser{}
 		err := s.GithubUser.BuildFromService(v.GithubUser)
 		if err != nil {
@@ -76,12 +82,16 @@ func (s *APIUserSettings) ToService() (interface{}, error) {
 	if !ok {
 		return nil, errors.New("unable to convert NotificationPreferences")
 	}
+	useSpruceOptions := user.UseSpruceOptions{}
+	if s.UseSpruceOptions != nil {
+		useSpruceOptions.PatchPage = s.UseSpruceOptions.PatchPage
+	}
 	return user.UserSettings{
-		Timezone:      FromAPIString(s.Timezone),
-		SlackUsername: FromAPIString(s.SlackUsername),
-		UseSpruce:     s.UseSpruce,
-		GithubUser:    githubUser,
-		Notifications: preferences,
+		Timezone:         FromAPIString(s.Timezone),
+		SlackUsername:    FromAPIString(s.SlackUsername),
+		GithubUser:       githubUser,
+		Notifications:    preferences,
+		UseSpruceOptions: useSpruceOptions,
 	}, nil
 }
 
@@ -209,7 +219,7 @@ func ApplyUserChanges(current user.UserSettings, changes APIUserSettings) (APIUs
 	for i := 0; i < reflectNewSettings.NumField(); i++ {
 		propName := reflectNewSettings.Type().Field(i).Name
 		changedVal := reflectNewSettings.FieldByName(propName)
-		if changedVal.Type().Kind() != reflect.Bool && changedVal.IsNil() {
+		if changedVal.IsNil() {
 			continue
 		}
 		reflectOldSettings.Elem().FieldByName(propName).Set(changedVal)

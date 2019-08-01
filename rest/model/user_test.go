@@ -11,7 +11,9 @@ func TestFullUserSettings(t *testing.T) {
 	settings := user.UserSettings{
 		Timezone:      "east",
 		SlackUsername: "me",
-		UseSpruce:     true,
+		UseSpruceOptions: user.UseSpruceOptions{
+			PatchPage: true,
+		},
 		GithubUser: user.GithubUser{
 			UID:         5,
 			LastKnownAs: "peter",
