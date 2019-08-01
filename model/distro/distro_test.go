@@ -407,5 +407,5 @@ func TestGetResolvedPlannerSettings(t *testing.T) {
 	_, err = d2.GetResolvedPlannerSettings(settings2)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "cannot resolve PlannerSettings for distro 'distro2'")
-	assert.Contains(t, err.Error(), "is not a valid PlannerSettings.TaskOrdering")
+	assert.Contains(t, err.Error(), "is not a valid PlannerSettings.Version")
 }

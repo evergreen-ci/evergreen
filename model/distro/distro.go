@@ -448,7 +448,7 @@ func (d *Distro) GetResolvedPlannerSettings(s *evergreen.Settings) (PlannerSetti
 		resolved.TaskOrdering = config.TaskOrdering
 	}
 
-	if resolved.TaskOrdering == "" || !util.StringSliceContains(evergreen.ValidTaskOrderings, resolved.TaskOrdering) {
+	if !util.StringSliceContains(evergreen.ValidTaskOrderings, resolved.TaskOrdering) {
 		catcher.Errorf("'%s' is not a valid PlannerSettings.TaskOrdering", resolved.TaskOrdering)
 	}
 
