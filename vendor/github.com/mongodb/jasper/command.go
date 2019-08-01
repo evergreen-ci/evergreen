@@ -662,10 +662,6 @@ func (c *Command) exec(ctx context.Context, opts *CreateOptions, idx int) error 
 		}
 	}
 
-	if err := opts.Validate(); err != nil {
-		return errors.Wrap(err, "invalid process creation options")
-	}
-
 	proc, err := c.makep(ctx, opts)
 	if err != nil {
 		return errors.Wrap(err, "problem starting command")
