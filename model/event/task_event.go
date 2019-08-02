@@ -45,6 +45,9 @@ type TaskEventData struct {
 }
 
 func logTaskEvent(taskId string, eventType string, eventData TaskEventData) {
+	if eventData.Timestamp.IsZero() {
+		eventData.Timestamp = time.Now()
+	}
 	event := EventLogEntry{
 		Timestamp:    time.Now(),
 		ResourceId:   taskId,
