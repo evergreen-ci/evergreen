@@ -282,7 +282,7 @@ func TestGetResolvedPlannerSettings(t *testing.T) {
 	}
 	config0 := evergreen.SchedulerConfig{
 		TaskFinder:                    "legacy",
-		HostAllocator:                 "legacy",
+		HostAllocator:                 evergreen.HostAllocatorUtilization,
 		FreeHostFraction:              0.1,
 		CacheDurationSeconds:          60,
 		Planner:                       evergreen.PlannerVersionLegacy,
@@ -324,7 +324,7 @@ func TestGetResolvedPlannerSettings(t *testing.T) {
 	}
 	config1 := evergreen.SchedulerConfig{
 		TaskFinder:                    "legacy",
-		HostAllocator:                 "legacy",
+		HostAllocator:                 evergreen.HostAllocatorUtilization,
 		FreeHostFraction:              0.1,
 		CacheDurationSeconds:          60,
 		Planner:                       evergreen.PlannerVersionLegacy,
@@ -399,13 +399,4 @@ func TestGetResolvedPlannerSettings(t *testing.T) {
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "cannot resolve PlannerSettings for distro 'distro2'")
 	assert.Contains(t, err.Error(), "-1 is not a valid PlannerSettings.MaximumHosts")
-	assert.Contains(t, err.Error(), "is not a valid PlannerSettings.Version")
-
-	settings2.Scheduler.TaskOrdering = ""
-	d2.PlannerSettings = *ps
-	d2.PlannerSettings.Version = ""
-	_, err = d2.GetResolvedPlannerSettings(settings2)
-	require.Error(t, err)
-	assert.Contains(t, err.Error(), "cannot resolve PlannerSettings for distro 'distro2'")
-	assert.Contains(t, err.Error(), "is not a valid PlannerSettings.Version")
 }
