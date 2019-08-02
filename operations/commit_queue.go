@@ -202,6 +202,10 @@ func listCommitQueue(ctx context.Context, client client.Communicator, ac *legacy
 	grip.Infof("Queue Length: %d\n", len(cq.Queue))
 	for i, item := range cq.Queue {
 		grip.Infof("%d:", i+1)
+		author, _ := client.GetCommitQueueItemAuthor(ctx, projectID, restModel.FromAPIString(item.Issue))
+		if author != "" {
+			grip.Infof("Author: %s", author)
+		}
 		if projectRef.CommitQueue.PatchType == commitqueue.PRPatchType {
 			listPRCommitQueueItem(ctx, item, projectRef, uiServerHost)
 		}
@@ -215,19 +219,19 @@ func listCommitQueue(ctx context.Context, client client.Communicator, ac *legacy
 }
 
 func listPRCommitQueueItem(ctx context.Context, item restModel.APICommitQueueItem, projectRef *model.ProjectRef, uiServerHost string) {
+	issue := restModel.FromAPIString(item.Issue)
 	prDisplay := `
            PR # : %s
             URL : %s
 `
-	prDisplayVersion := "          Build : %s/version/%s"
-
-	issue := restModel.FromAPIString(item.Issue)
 	url := fmt.Sprintf("https://github.com/%s/%s/pull/%s", projectRef.Owner, projectRef.Repo, issue)
 	grip.Infof(prDisplay, issue, url)
 
+	prDisplayVersion := "          Build : %s/version/%s"
 	if restModel.FromAPIString(item.Version) != "" {
 		grip.Infof(prDisplayVersion, uiServerHost, restModel.FromAPIString(item.Version))
 	}
+
 	grip.Info("\n")
 }
 
@@ -238,6 +242,7 @@ func listCLICommitQueueItem(ctx context.Context, item restModel.APICommitQueueIt
 		grip.Error(message.WrapError(err, "\terror getting patch"))
 		return
 	}
+
 	disp, err := getPatchDisplay(p, false, uiServerHost)
 	if err != nil {
 		grip.Error(message.WrapError(err, "\terror getting patch display"))
