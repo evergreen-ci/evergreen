@@ -82,9 +82,8 @@ func (s *CommitQueueSuite) TestDeleteItem() {
 	env := &mock.Environment{}
 	s.Require().NoError(env.Configure(ctx, filepath.Join(evergreen.FindEvergreenHome(), testutil.TestDir, testutil.TestSettings), nil))
 	s.Require().NoError(env.LocalQueue().Start(ctx))
-	evergreen.SetEnvironment(env)
 
-	route := makeDeleteCommitQueueItems(s.sc, &evergreen.Settings{}).(*commitQueueDeleteItemHandler)
+	route := makeDeleteCommitQueueItems(s.sc, &evergreen.Settings{}, env).(*commitQueueDeleteItemHandler)
 	pos, err := s.sc.EnqueueItem("mci", model.APICommitQueueItem{Issue: model.ToAPIString("1")})
 	s.Require().NoError(err)
 	s.Require().Equal(1, pos)
@@ -116,9 +115,8 @@ func (s *CommitQueueSuite) TestSendDeletedStatusToPR() {
 	env := &mock.Environment{}
 	s.Require().NoError(env.Configure(ctx, filepath.Join(evergreen.FindEvergreenHome(), testutil.TestDir, testutil.TestSettings), nil))
 	s.Require().NoError(env.LocalQueue().Start(ctx))
-	evergreen.SetEnvironment(env)
 
-	route := makeDeleteCommitQueueItems(s.sc, &evergreen.Settings{}).(*commitQueueDeleteItemHandler)
+	route := makeDeleteCommitQueueItems(s.sc, &evergreen.Settings{}, env).(*commitQueueDeleteItemHandler)
 
 	pr, err := route.sendDeletedStatusToPR(ctx, "evergreen-ci", "evergreen", "1")
 	s.NoError(err)
