@@ -109,7 +109,6 @@ type parserTask struct {
 }
 
 func (pp *ParserProject) MarshalBSON() ([]byte, error) {
-	fmt.Println("MarshalBSON ParserProject")
 	return mgobson.Marshal(pp)
 }
 
@@ -434,9 +433,10 @@ func LoadProjectFromVersion(v *Version, identifier string, shouldSave bool) (*Pr
 	if shouldSave {
 		if err := UpdateVersionProject(v.Id, pp); err != nil {
 			grip.Error(message.WrapError(err, message.Fields{
-				"project": identifier,
-				"version": v.Id,
-				"message": "error updating version's project",
+				"project":       identifier,
+				"version":       v.Id,
+				"config_number": v.ConfigUpdateNumber,
+				"message":       "error updating version's project",
 			}))
 			return nil, errors.Wrap(err, "error updating version with project")
 		}
@@ -512,20 +512,14 @@ func translateProject(pp *ParserProject) (*Project, error) {
 	regularBVs, matrices := sieveMatrixVariants(pp.BuildVariants)
 	var errs []error
 	matrixVariants, errs := buildMatrixVariants(pp.Axes, ase, matrices)
-	addErrors(catcher, errs)
+	catcher.Extend(errs)
 	pp.BuildVariants = append(regularBVs, matrixVariants...)
 	vse := NewVariantSelectorEvaluator(pp.BuildVariants, ase)
 	proj.Tasks, proj.TaskGroups, errs = evaluateTaskUnits(tse, tgse, vse, pp.Tasks, pp.TaskGroups)
-	addErrors(catcher, errs)
+	catcher.Extend(errs)
 	proj.BuildVariants, errs = evaluateBuildVariants(tse, tgse, vse, pp.BuildVariants, pp.Tasks, proj.TaskGroups)
-	addErrors(catcher, errs)
+	catcher.Extend(errs)
 	return proj, errors.Wrap(catcher.Resolve(), LoadProjectError)
-}
-
-func addErrors(catcher grip.Catcher, errs []error) {
-	for _, err := range errs {
-		catcher.Add(err)
-	}
 }
 
 // sieveMatrixVariants takes a set of parserBVs and groups them into regular

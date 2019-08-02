@@ -5,8 +5,6 @@ import (
 	"testing"
 	"time"
 
-	"gopkg.in/mgo.v2/bson"
-
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/host"
@@ -15,6 +13,7 @@ import (
 	. "github.com/smartystreets/goconvey/convey"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"gopkg.in/mgo.v2/bson"
 )
 
 var (
