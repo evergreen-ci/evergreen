@@ -246,6 +246,7 @@ func (s *AgentSuite) TestPreFailsTask() {
 		WorkDir: s.tc.taskDirectory,
 	}
 	projYml := `
+pre_error_fails_task: true
 pre:
   - command: subprocess.exec
     params:
@@ -258,8 +259,7 @@ pre:
 	s.tc.taskConfig.Version = v
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	// TODO EVG-6009 change the next line to s.Error when ready
-	s.NoError(s.a.runPreTaskCommands(ctx, s.tc))
+	s.Error(s.a.runPreTaskCommands(ctx, s.tc))
 	s.NoError(s.tc.logger.Close())
 }
 
