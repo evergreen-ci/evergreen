@@ -2,7 +2,6 @@ package data
 
 import (
 	"context"
-	"encoding/base64"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
@@ -73,25 +72,25 @@ func (pc *DBCommitQueueConnector) FindCommitQueueByID(id string) (*restModel.API
 	return apiCommitQueue, nil
 }
 
-func (pc *DBCommitQueueConnector) CommitQueueRemoveItem(id, item string) (*commitqueue.CommitQueueItem, error) {
+func (pc *DBCommitQueueConnector) CommitQueueRemoveItem(id, item string) (bool, error) {
 	cq, err := commitqueue.FindOneId(id)
 	if err != nil {
-		return nil, errors.Wrapf(err, "can't get commit queue for id '%s'", id)
+		return false, errors.Wrapf(err, "can't get commit queue for id '%s'", id)
 	}
 
 	head := cq.Next()
-	itemRemoved, err := cq.Remove(item)
+	removed, err := cq.Remove(item)
 	if err != nil {
-		return itemRemoved, errors.Wrapf(err, "can't remove item '%s' from queue '%s'", item, id)
+		return removed, errors.Wrapf(err, "can't remove item '%s' from queue '%s'", item, id)
 	}
 
-	if itemRemoved != nil && head.Issue == item {
+	if removed && head.Issue == item {
 		if err = preventMergeForItem(id, head); err != nil {
-			return itemRemoved, errors.Wrapf(err, "can't prevent merge for item '%s' on queue '%s'", item, id)
+			return removed, errors.Wrapf(err, "can't prevent merge for item '%s' on queue '%s'", item, id)
 		}
 	}
 
-	return itemRemoved, nil
+	return removed, nil
 }
 
 func (pc *DBCommitQueueConnector) CommitQueueClearAll() (int, error) {
@@ -196,28 +195,6 @@ func (pc *DBCommitQueueConnector) IsAuthorizedToPatchAndMerge(ctx context.Contex
 	return inOrg && hasPermission, nil
 }
 
-func (pc *DBCommitQueueConnector) GetProjectConfigforPR(ctx context.Context, settings *evergreen.Settings, projectRef *model.ProjectRef, pr *github.PullRequest) (*model.Project, error) {
-	githubToken, err := settings.GetGithubOauthToken()
-	if err != nil {
-		return nil, errors.Wrap(err, "can't get Github token from configuration")
-	}
-
-	configFile, err := thirdparty.GetGithubFile(ctx, githubToken, projectRef.Owner, projectRef.Repo, projectRef.RemotePath, pr.Head.GetSHA())
-	if err != nil {
-		return nil, errors.Wrapf(err, "Could not get github file at '%s/%s'@%s: %s", projectRef.Owner, projectRef.Repo, projectRef.RemotePath, pr.Head.GetSHA())
-	}
-	projectFileBytes, err := base64.StdEncoding.DecodeString(*configFile.Content)
-	if err != nil {
-		return nil, errors.Wrapf(err, "Could not decode github file at '%s/%s'@%s: %s", projectRef.Owner, projectRef.Repo, projectRef.RemotePath, pr.Head.GetSHA())
-	}
-	project := &model.Project{}
-	if err := model.LoadProjectInto(projectFileBytes, projectRef.Identifier, project); err != nil {
-		return nil, errors.Wrap(err, "couldn't load project")
-	}
-
-	return project, nil
-}
-
 type MockCommitQueueConnector struct {
 	Queue map[string][]restModel.APICommitQueueItem
 }
@@ -257,25 +234,19 @@ func (pc *MockCommitQueueConnector) FindCommitQueueByID(id string) (*restModel.A
 	return &restModel.APICommitQueue{ProjectID: restModel.ToAPIString(id), Queue: pc.Queue[id]}, nil
 }
 
-func (pc *MockCommitQueueConnector) CommitQueueRemoveItem(id, item string) (*commitqueue.CommitQueueItem, error) {
+func (pc *MockCommitQueueConnector) CommitQueueRemoveItem(id, item string) (bool, error) {
 	if _, ok := pc.Queue[id]; !ok {
-		return nil, nil
+		return false, nil
 	}
 
 	for i := range pc.Queue[id] {
 		if restModel.FromAPIString(pc.Queue[id][i].Issue) == item {
-			removedItemInterface, err := pc.Queue[id][i].ToService()
-			if err != nil {
-				return nil, nil
-			}
-			removedItem := removedItemInterface.(commitqueue.CommitQueueItem)
-
 			pc.Queue[id] = append(pc.Queue[id][:i], pc.Queue[id][i+1:]...)
-			return &removedItem, nil
+			return true, nil
 		}
 	}
 
-	return nil, nil
+	return false, nil
 }
 
 func (pc *MockCommitQueueConnector) CommitQueueClearAll() (int, error) {
@@ -292,13 +263,4 @@ func (pc *MockCommitQueueConnector) CommitQueueClearAll() (int, error) {
 
 func (pc *MockCommitQueueConnector) IsAuthorizedToPatchAndMerge(context.Context, *evergreen.Settings, UserRepoInfo) (bool, error) {
 	return true, nil
-}
-
-func (pc *MockCommitQueueConnector) GetProjectConfigforPR(ctx context.Context, settings *evergreen.Settings, projectRef *model.ProjectRef, pr *github.PullRequest) (*model.Project, error) {
-	project, ok := ctx.Value("project").(*model.Project)
-	if ok {
-		return project, nil
-	}
-
-	return &model.Project{}, nil
 }

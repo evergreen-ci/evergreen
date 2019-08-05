@@ -12,7 +12,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/task"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/testutil"
-	"github.com/google/go-github/github"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -39,7 +38,6 @@ func (s *CommitQueueSuite) SetupTest() {
 		Owner:      "evergreen-ci",
 		Repo:       "evergreen",
 		Branch:     "master",
-		RemotePath: "self-tests.yml",
 		CommitQueue: model.CommitQueueParams{
 			Enabled: true,
 		},
@@ -82,13 +80,13 @@ func (s *CommitQueueSuite) TestCommitQueueRemoveItem() {
 	s.Require().NoError(err)
 	s.Require().Equal(3, pos)
 
-	itemRemoved, err := s.ctx.CommitQueueRemoveItem("mci", "not_here")
+	found, err := s.ctx.CommitQueueRemoveItem("mci", "not_here")
 	s.NoError(err)
-	s.Nil(itemRemoved)
+	s.False(found)
 
-	itemRemoved, err = s.ctx.CommitQueueRemoveItem("mci", "1")
+	found, err = s.ctx.CommitQueueRemoveItem("mci", "1")
 	s.NoError(err)
-	s.Equal("1", itemRemoved.Issue)
+	s.True(found)
 	cq, err := s.ctx.FindCommitQueueByID("mci")
 	s.NoError(err)
 	s.Equal(restModel.ToAPIString("2"), cq.Queue[0].Issue)
@@ -148,20 +146,6 @@ func (s *CommitQueueSuite) TestIsAuthorizedToPatchAndMerge() {
 	authorized, err = s.ctx.IsAuthorizedToPatchAndMerge(ctx, s.settings, args)
 	s.NoError(err)
 	s.False(authorized)
-}
-
-func (s *CommitQueueSuite) TestGetProjectConfigforPR() {
-	s.ctx = &DBConnector{}
-	headSHA := "74d16e9561b756f2b2360e3188414f2485ede2e1"
-	pr := &github.PullRequest{
-		Head: &github.PullRequestBranch{
-			SHA: &headSHA,
-		},
-	}
-
-	config, err := s.ctx.GetProjectConfigforPR(context.Background(), s.settings, s.projectRef, pr)
-	s.NoError(err)
-	s.Len(config.Post.List(), 3)
 }
 
 func (s *CommitQueueSuite) TestPreventMergeForItemPR() {
@@ -279,13 +263,13 @@ func (s *CommitQueueSuite) TestMockCommitQueueRemoveItem() {
 	s.Require().NoError(err)
 	s.Require().Equal(3, pos)
 
-	itemRemoved, err := s.ctx.CommitQueueRemoveItem("mci", "not_here")
+	found, err := s.ctx.CommitQueueRemoveItem("mci", "not_here")
 	s.NoError(err)
-	s.Nil(itemRemoved)
+	s.False(found)
 
-	itemRemoved, err = s.ctx.CommitQueueRemoveItem("mci", "1")
+	found, err = s.ctx.CommitQueueRemoveItem("mci", "1")
 	s.NoError(err)
-	s.Equal("1", itemRemoved.Issue)
+	s.True(found)
 	cq, err := s.ctx.FindCommitQueueByID("mci")
 	s.NoError(err)
 	s.Equal(restModel.ToAPIString("2"), cq.Queue[0].Issue)
@@ -311,17 +295,4 @@ func (s *CommitQueueSuite) TestMockCommitQueueClearAll() {
 	clearedCount, err := s.ctx.CommitQueueClearAll()
 	s.NoError(err)
 	s.Equal(2, clearedCount)
-}
-
-func (s *CommitQueueSuite) TestMockGetProjectConfigforPR() {
-	s.ctx = &MockConnector{}
-	project := &model.Project{
-		Identifier: "evergreen",
-	}
-
-	ctx := context.Background()
-	ctx = context.WithValue(ctx, "project", project)
-	config, err := s.ctx.GetProjectConfigforPR(ctx, &evergreen.Settings{}, s.projectRef, &github.PullRequest{})
-	s.NoError(err)
-	s.Equal("evergreen", config.Identifier)
 }

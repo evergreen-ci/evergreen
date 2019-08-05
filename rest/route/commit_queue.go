@@ -10,10 +10,8 @@ import (
 	"github.com/evergreen-ci/evergreen/model/commitqueue"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/rest/model"
-	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/evergreen-ci/evergreen/units"
 	"github.com/evergreen-ci/gimlet"
-	"github.com/google/go-github/github"
 	"github.com/pkg/errors"
 )
 
@@ -59,24 +57,18 @@ type commitQueueDeleteItemHandler struct {
 	project string
 	item    string
 
-	sc       data.Connector
-	settings *evergreen.Settings
-	env      evergreen.Environment
+	sc data.Connector
 }
 
-func makeDeleteCommitQueueItems(sc data.Connector, settings *evergreen.Settings, env evergreen.Environment) gimlet.RouteHandler {
+func makeDeleteCommitQueueItems(sc data.Connector) gimlet.RouteHandler {
 	return &commitQueueDeleteItemHandler{
-		sc:       sc,
-		settings: settings,
-		env:      env,
+		sc: sc,
 	}
 }
 
 func (cq commitQueueDeleteItemHandler) Factory() gimlet.RouteHandler {
 	return &commitQueueDeleteItemHandler{
-		sc:       cq.sc,
-		settings: cq.settings,
-		env:      cq.env,
+		sc: cq.sc,
 	}
 }
 
@@ -89,11 +81,11 @@ func (cq *commitQueueDeleteItemHandler) Parse(ctx context.Context, r *http.Reque
 }
 
 func (cq *commitQueueDeleteItemHandler) Run(ctx context.Context) gimlet.Responder {
-	itemRemoved, err := cq.sc.CommitQueueRemoveItem(cq.project, cq.item)
+	found, err := cq.sc.CommitQueueRemoveItem(cq.project, cq.item)
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "can't delete item"))
 	}
-	if itemRemoved == nil {
+	if !found {
 		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
 			StatusCode: http.StatusNotFound,
 			Message:    fmt.Sprintf("no matching item for project ID '%s', item '%s'", cq.project, cq.item),
@@ -106,27 +98,22 @@ func (cq *commitQueueDeleteItemHandler) Run(ctx context.Context) gimlet.Responde
 		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "can't find project %s", cq.project))
 	}
 	if projectRef.CommitQueue.PatchType == commitqueue.PRPatchType {
-		pr, err := cq.sendDeletedStatusToPR(ctx, projectRef.Owner, projectRef.Repo, itemRemoved.Issue)
+		itemInt, err := strconv.Atoi(cq.item)
 		if err != nil {
-			return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "can't send status for PR on '%s/%s' #%s", projectRef.Owner, projectRef.Repo, itemRemoved.Issue))
+			return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "item '%s' is not an int", cq.item))
 		}
-		projectConfig, err := cq.sc.GetProjectConfigforPR(ctx, cq.settings, projectRef, pr)
+		pr, err := cq.sc.GetGitHubPR(ctx, projectRef.Owner, projectRef.Repo, itemInt)
 		if err != nil {
-			return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "can't get config for PR '%s/%s' #%s", projectRef.Owner, projectRef.Repo, itemRemoved.Issue))
+			return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "can't get PR for %s:%s, %d", projectRef.Owner, projectRef.Repo, itemInt))
 		}
-		for _, module := range itemRemoved.Modules {
-			projectModule, err := projectConfig.GetModuleByName(module.Module)
-			if err != nil {
-				return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "can't get module for module name '%s'", module.Module))
-			}
-			owner, repo, err := thirdparty.ParseGitUrl(projectModule.Repo)
-			if err != nil {
-				return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "can't parse module repo '%s' for owner/repo", projectModule.Repo))
-			}
-			_, err = cq.sendDeletedStatusToPR(ctx, owner, repo, module.Issue)
-			if err != nil {
-				return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "can't send status for PR on module '%s/%s' #%s", owner, repo, module.Issue))
-			}
+		if pr == nil || pr.Head == nil || pr.Head.GetSHA() == "" {
+			return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "GitHub returned a PR missing a HEAD SHA"))
+		}
+		pushJob := units.NewGithubStatusUpdateJobForDeleteFromCommitQueue(projectRef.Owner, projectRef.Repo, *pr.Head.SHA, itemInt)
+		q := evergreen.GetEnvironment().LocalQueue()
+		err = q.Put(ctx, pushJob)
+		if err != nil {
+			return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "Can't enqueue a GitHub status update"))
 		}
 	}
 
@@ -135,28 +122,6 @@ func (cq *commitQueueDeleteItemHandler) Run(ctx context.Context) gimlet.Responde
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "Cannot set HTTP status code to %d", http.StatusNoContent))
 	}
 	return response
-}
-
-func (cq *commitQueueDeleteItemHandler) sendDeletedStatusToPR(ctx context.Context, owner, repo, issue string) (*github.PullRequest, error) {
-	itemInt, err := strconv.Atoi(issue)
-	if err != nil {
-		return nil, errors.Wrapf(err, "item '%s' is not an int", cq.item)
-	}
-	pr, err := cq.sc.GetGitHubPR(ctx, owner, repo, itemInt)
-	if err != nil {
-		return nil, errors.Wrapf(err, "can't get PR for %s:%s, %d", owner, repo, itemInt)
-	}
-	if pr == nil || pr.Head == nil || pr.Head.GetSHA() == "" {
-		return nil, errors.Wrapf(err, "GitHub returned a PR missing a HEAD SHA")
-	}
-	pushJob := units.NewGithubStatusUpdateJobForDeleteFromCommitQueue(owner, repo, *pr.Head.SHA, itemInt)
-	queue := cq.env.LocalQueue()
-	err = queue.Put(ctx, pushJob)
-	if err != nil {
-		return pr, errors.Wrapf(err, "Can't enqueue a GitHub status update")
-	}
-
-	return pr, nil
 }
 
 type commitQueueClearAllHandler struct {

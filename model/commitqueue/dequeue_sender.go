@@ -60,11 +60,11 @@ func (cq *commitQueueDequeueLogger) doSend(m message.Composer) error {
 		return errors.Wrapf(err, "no matching commit queue for project %s", dequeue.ProjectID)
 	}
 
-	itemRemoved, err := queue.Remove(dequeue.Item)
+	found, err := queue.Remove(dequeue.Item)
 	if err != nil {
 		return errors.Wrap(err, "can't remove item")
 	}
-	if itemRemoved == nil {
+	if !found {
 		return errors.Errorf("item %s not found on queue %s", dequeue.Item, dequeue.ProjectID)
 	}
 
