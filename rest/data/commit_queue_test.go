@@ -214,6 +214,19 @@ func (s *CommitQueueSuite) TestPreventMergeForItemCLI() {
 	s.Equal(int64(-1), mergeTask.Priority)
 }
 
+func (s *CommitQueueSuite) TestClearVersionPatchSubscriber() {
+	s.Require().NoError(db.Clear(event.SubscriptionsCollection))
+
+	patchID := "abcdef012345"
+	patchSub := event.NewPatchOutcomeSubscription(patchID, event.NewCommitQueueDequeueSubscriber())
+	s.Require().NoError(patchSub.Upsert())
+
+	s.NoError(clearVersionPatchSubscriber(patchID, event.CommitQueueDequeueSubscriberType))
+	subs, err := event.FindSubscriptions(event.ResourceTypePatch, []event.Selector{{Type: event.SelectorID, Data: patchID}})
+	s.NoError(err)
+	s.Empty(subs)
+}
+
 func (s *CommitQueueSuite) TestMockGetGitHubPR() {
 	s.ctx = &MockConnector{}
 	pr, err := s.ctx.GetGitHubPR(context.Background(), "evergreen-ci", "evergreen", 1234)

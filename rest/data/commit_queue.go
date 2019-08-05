@@ -102,23 +102,12 @@ func preventMergeForItem(projectID string, item *commitqueue.CommitQueueItem) er
 	if err != nil {
 		return errors.Wrapf(err, "can't find projectRef for '%s'", projectID)
 	}
+	if projectRef == nil {
+		return errors.Errorf("can't find project ref for '%s'", projectID)
+	}
 
-	if projectRef.CommitQueue.PatchType == commitqueue.PRPatchType {
-		if item.Version != "" {
-			// Clear the subscription
-			subscriptions, err := event.FindSubscriptions(event.ResourceTypePatch, []event.Selector{{Type: event.SelectorID, Data: item.Version}})
-			if err != nil {
-				return errors.Wrapf(err, "can't find subscription to patch '%s'", item.Version)
-			}
-			for _, subscription := range subscriptions {
-				if subscription.Subscriber.Type == event.GithubMergeSubscriberType {
-					err = event.RemoveSubscription(subscription.ID)
-					if err != nil {
-						return errors.Wrap(err, "can't remove subscription for GitHub merge")
-					}
-				}
-			}
-		}
+	if projectRef.CommitQueue.PatchType == commitqueue.PRPatchType && item.Version != "" {
+		clearVersionPatchSubscriber(item.Version, event.GithubMergeSubscriberType)
 	}
 
 	if projectRef.CommitQueue.PatchType == commitqueue.CLIPatchType {
@@ -127,28 +116,33 @@ func preventMergeForItem(projectID string, item *commitqueue.CommitQueueItem) er
 			return errors.Wrapf(err, "can't find patch '%s'", item.Issue)
 		}
 		if version != nil {
-			// Clear the subscription
-			subscriptions, err := event.FindSubscriptions(event.ResourceTypePatch, []event.Selector{{Type: event.SelectorID, Data: version.Id}})
-			if err != nil {
-				return errors.Wrapf(err, "can't find subscription to patch '%s'", version.Id)
-			}
-			for _, subscription := range subscriptions {
-				if subscription.Subscriber.Type == event.CommitQueueDequeueSubscriberType {
-					err = event.RemoveSubscription(subscription.ID)
-					if err != nil {
-						return errors.Wrap(err, "can't remove subscription for GitHub merge")
-					}
-				}
-			}
+			clearVersionPatchSubscriber(version.Id, event.CommitQueueDequeueSubscriberType)
 
 			// Blacklist the merge task
 			mergeTask, err := task.FindMergeTaskForVersion(version.Id)
 			if err != nil {
 				return errors.Wrapf(err, "can't find merge task for '%s'", version.Id)
 			}
-			err = mergeTask.SetPriority(-1, "mci")
+			err = mergeTask.SetPriority(-1, evergreen.User)
 			if err != nil {
 				return errors.Wrap(err, "can't blacklist merge task")
+			}
+		}
+	}
+
+	return nil
+}
+
+func clearVersionPatchSubscriber(versionID, subscriberType string) error {
+	subscriptions, err := event.FindSubscriptions(event.ResourceTypePatch, []event.Selector{{Type: event.SelectorID, Data: versionID}})
+	if err != nil {
+		return errors.Wrapf(err, "can't find subscription to patch '%s'", versionID)
+	}
+	for _, subscription := range subscriptions {
+		if subscription.Subscriber.Type == subscriberType {
+			err = event.RemoveSubscription(subscription.ID)
+			if err != nil {
+				return errors.Wrapf(err, "can't remove subscription for '%s', type '%s'", versionID, subscriberType)
 			}
 		}
 	}

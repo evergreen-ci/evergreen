@@ -95,7 +95,7 @@ func (cq *commitQueueDeleteItemHandler) Run(ctx context.Context) gimlet.Responde
 	// Send GitHub status
 	projectRef, err := cq.sc.FindProjectById(cq.project)
 	if err != nil {
-		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "can't find project %s", cq.project))
+		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "can't find project '%s'", cq.project))
 	}
 	if projectRef.CommitQueue.PatchType == commitqueue.PRPatchType {
 		itemInt, err := strconv.Atoi(cq.item)
