@@ -8,6 +8,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/event"
+	"github.com/evergreen-ci/evergreen/model/feedback"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/pkg/errors"
@@ -141,6 +142,10 @@ func (u *DBUserConnector) UpdateSettings(dbUser *user.DBUser, settings user.User
 	return model.SaveUserSettings(dbUser.Id, settings)
 }
 
+func (u *DBUserConnector) SubmitFeedback(feedback feedback.FeedbackSubmission) error {
+	return errors.Wrap(feedback.Insert(), "error saving feedback")
+}
+
 // MockUserConnector stores a cached set of users that are queried against by the
 // implementations of the UserConnector interface's functions.
 type MockUserConnector struct {
@@ -199,4 +204,8 @@ func (muc *MockUserConnector) DeletePublicKey(u *user.DBUser, keyName string) er
 
 func (muc *MockUserConnector) UpdateSettings(user *user.DBUser, settings user.UserSettings) error {
 	return errors.New("UpdateSettings not implemented for mock connector")
+}
+
+func (u *MockUserConnector) SubmitFeedback(feedback feedback.FeedbackSubmission) error {
+	return nil
 }

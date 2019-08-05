@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/model/feedback"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/rest/model"
@@ -88,6 +89,15 @@ func (h *userSettingsPostHandler) Run(ctx context.Context) gimlet.Responder {
 
 	if err = h.sc.UpdateSettings(u, userSettings); err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "Error saving user settings"))
+	}
+
+	if h.settings.SpruceFeedback != nil {
+		h.settings.SpruceFeedback.SubmittedAt = time.Now()
+		h.settings.SpruceFeedback.User = model.ToAPIString(u.Username())
+		f, _ := h.settings.SpruceFeedback.ToService()
+		if err = h.sc.SubmitFeedback(f.(feedback.FeedbackSubmission)); err != nil {
+			return gimlet.MakeJSONErrorResponder(err)
+		}
 	}
 
 	return gimlet.NewJSONResponse(struct{}{})
