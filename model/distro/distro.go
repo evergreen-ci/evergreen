@@ -399,6 +399,7 @@ func (d *Distro) GetResolvedPlannerSettings(s *evergreen.Settings) (PlannerSetti
 	}
 
 	catcher := grip.NewBasicCatcher()
+	catcher.Add(config.ValidateAndDefault())
 
 	if d.ContainerPool != "" {
 		if s.ContainerPools.GetContainerPool(d.ContainerPool) == nil {

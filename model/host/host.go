@@ -361,7 +361,7 @@ func (h *Host) JasperClientCredentials(ctx context.Context, env evergreen.Enviro
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}
-	creds.ServerName = h.Id
+	creds.ServerName = h.JasperCredentialsID
 	return creds, nil
 }
 

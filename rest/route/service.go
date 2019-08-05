@@ -61,6 +61,7 @@ func AttachHandler(app *gimlet.APIApp, opts HandlerOpts) {
 	app.AddRoute("/commit_queue/{project_id}").Version(2).Get().Wrap(checkUser).RouteHandler(makeGetCommitQueueItems(sc))
 	app.AddRoute("/commit_queue/{project_id}/{item}").Version(2).Delete().Wrap(checkUser, addProject, checkCommitQueueItemOwner).RouteHandler(makeDeleteCommitQueueItems(sc))
 	app.AddRoute("/commit_queue/{patch_id}").Version(2).Put().Wrap(checkUser, addProject, checkCommitQueueItemOwner).RouteHandler(makeCommitQueueEnqueueItem(sc))
+	app.AddRoute("/commit_queue/{project_id}/{item}/author").Version(2).Get().Wrap(checkUser, addProject).RouteHandler(makeGetCommitQueueItemAuthor(sc))
 	app.AddRoute("/cost/distro/{distro_id}").Version(2).Get().Wrap(checkUser).RouteHandler(makeCostByDistroHandler(sc))
 	app.AddRoute("/cost/project/{project_id}/tasks").Version(2).Get().Wrap(checkUser).RouteHandler(makeTaskCostByProjectRoute(sc))
 	app.AddRoute("/cost/version/{version_id}").Version(2).Get().Wrap(checkUser).RouteHandler(makeCostByVersionHandler(sc))

@@ -89,7 +89,7 @@ ui_server_host: "[[userConf.ui_server_host]]"</pre>
                   <input type="text" placeholder="octocat" ng-model="github_user" /> <label ng-show="{{ .GithubUID }} !== 0">Github UID Number: {{ .GithubUID }}</label>
               </div>
             </div>
-            <div class="form-group">
+            <div class="form-group" ng-hide="true">
               <div class="col-sm-4" style="text-align: right; margin-right:14px">Use New Patch Page</div>
               <md-checkbox ng-model="use_spruce_options.patch_page"/>
             </div>

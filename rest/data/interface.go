@@ -269,6 +269,7 @@ type Connector interface {
 	GetTaskStats(stats.StatsFilter) ([]restModel.APITaskStats, error)
 
 	// Commit queue methods
+	// GetGithubPR takes the owner, repo, and PR number.
 	GetGitHubPR(context.Context, string, string, int) (*github.PullRequest, error)
 	EnqueueItem(string, restModel.APICommitQueueItem) (int, error)
 	FindCommitQueueByID(string) (*restModel.APICommitQueue, error)
