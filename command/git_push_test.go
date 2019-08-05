@@ -61,7 +61,7 @@ func TestGitPush(t *testing.T) {
 				"git checkout master",
 				"git rev-parse HEAD",
 				`git add "hello.txt"`,
-				`git -c "user.name=octocat" -c "user.email=octocat@github.com" commit -m "testing 123" --author="evergreen <evergreen@mongodb.com>"`,
+				`git -c "user.name=octocat" -c "user.email=octocat@github.com" commit --file - --author="evergreen <evergreen@mongodb.com>"`,
 				"git push origin master",
 			}
 
@@ -88,7 +88,7 @@ func TestGitPush(t *testing.T) {
 			assert.NoError(t, c.pushPatch(context.Background(), logger, params))
 			commands := []string{
 				`git add "hello.txt"`,
-				`git -c "user.name=octocat" -c "user.email=octocat@github.com" commit -m "testing 123" --author="baxterthehacker <baxter@thehacker.com>"`,
+				`git -c "user.name=octocat" -c "user.email=octocat@github.com" commit --file - --author="baxterthehacker <baxter@thehacker.com>"`,
 				"git push origin master",
 			}
 			require.Len(t, manager.Procs, len(commands))
