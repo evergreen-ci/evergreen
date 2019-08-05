@@ -176,6 +176,9 @@ const (
 	MaxTeardownGroupTimeoutSecs = 30 * 60
 
 	DefaultJasperPort = 2385
+
+	// TODO: remove this when degrading YAML
+	UseParserProject = false
 )
 
 func IsFinishedTaskStatus(status string) bool {

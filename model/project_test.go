@@ -275,6 +275,7 @@ task_groups:
 	v := Version{
 		Id:            "v1",
 		ParserProject: pp,
+		Config:        projYml,
 	}
 	t1 := task.Task{
 		Id:        "t1",

@@ -272,12 +272,17 @@ func VersionUpdateOne(query interface{}, update interface{}) error {
 	)
 }
 
-func UpdateVersionProject(versionID string, pp *ParserProject) error {
+// UpdateVersionProject updates the ParserProject field for the version.
+// Note this does not increment the config update number, as we are not changing the used config, simply updating a new field.
+func UpdateVersionProject(versionID string, versionNumber int, pp *ParserProject) error {
 	if versionID == "" {
 		return errors.New("no version ID given")
 	}
 	return errors.Wrap(VersionUpdateOne(
-		bson.M{VersionIdKey: versionID},
+		bson.M{
+			VersionIdKey:           versionID,
+			VersionConfigNumberKey: versionNumber,
+		},
 		bson.M{
 			"$set": bson.M{
 				VersionProjectKey: pp,

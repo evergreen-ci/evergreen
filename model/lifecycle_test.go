@@ -1250,6 +1250,7 @@ func TestCreateTaskGroup(t *testing.T) {
 			},
 		},
 		ParserProject: pp,
+		Config:        projYml,
 	}
 	table := NewTaskIdTable(proj, v, "", "")
 

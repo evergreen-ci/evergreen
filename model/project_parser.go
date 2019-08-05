@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"reflect"
 
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
@@ -417,7 +418,7 @@ func (pss *parserStringSlice) UnmarshalYAML(unmarshal func(interface{}) error) e
 // LoadProjectFromVersion returns the project for a version, either from the parser project or the config string.
 // If read from the config string and shouldSave is set, the resulting parser project will be saved.
 func LoadProjectFromVersion(v *Version, identifier string, shouldSave bool) (*Project, error) {
-	if v.ParserProject != nil {
+	if evergreen.UseParserProject && v.ParserProject != nil {
 		v.ParserProject.Identifier = identifier
 		return translateProject(v.ParserProject)
 	}
@@ -431,7 +432,7 @@ func LoadProjectFromVersion(v *Version, identifier string, shouldSave bool) (*Pr
 		return nil, errors.Wrap(err, "error loading project")
 	}
 	if shouldSave {
-		if err := UpdateVersionProject(v.Id, pp); err != nil {
+		if err := UpdateVersionProject(v.Id, v.ConfigUpdateNumber, pp); err != nil {
 			grip.Error(message.WrapError(err, message.Fields{
 				"project":       identifier,
 				"version":       v.Id,

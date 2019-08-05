@@ -167,6 +167,7 @@ func SetupAPITestData(testConfig *evergreen.Settings, taskDisplayName string, va
 		Id:            taskOne.Version,
 		BuildIds:      []string{taskOne.BuildId},
 		ParserProject: intermediateProject,
+		Config:        string(projectYamlBytes),
 	}
 	if err = v.Insert(); err != nil {
 		return nil, errors.Wrap(err, "failed to insert version: ")

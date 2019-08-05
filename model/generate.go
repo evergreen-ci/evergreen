@@ -140,8 +140,13 @@ func (g *GeneratedProject) NewVersion() (*Project, *Version, *task.Task, *projec
 		return nil, nil, nil, nil,
 			gimlet.ErrorResponse{StatusCode: http.StatusBadRequest, Message: errors.Wrap(err, "generated project is invalid").Error()}
 	}
-
-	v.ParserProject = g.addGeneratedProjectToConfig(v.ParserProject, cachedProject)
+	newPP, newConfig, err := g.addGeneratedProjectToConfig(v.ParserProject, cachedProject)
+	if err != nil {
+		return nil, nil, nil, nil,
+			gimlet.ErrorResponse{StatusCode: http.StatusBadRequest, Message: errors.Wrap(err, "error creating config from generated config").Error()}
+	}
+	v.Config = newConfig
+	v.ParserProject = newPP
 	p, err = LoadProjectFromVersion(v, t.Project, false)
 	if err != nil {
 		return nil, nil, nil, nil,
@@ -263,7 +268,7 @@ func appendTasks(pairs TaskVariantPairs, bv parserBV, p *Project) TaskVariantPai
 }
 
 // addGeneratedProjectToConfig takes a YML config and returns a new one with the GeneratedProject included.
-func (g *GeneratedProject) addGeneratedProjectToConfig(intermediateProject *ParserProject, cachedProject projectMaps) *ParserProject {
+func (g *GeneratedProject) addGeneratedProjectToConfig(intermediateProject *ParserProject, cachedProject projectMaps) (*ParserProject, string, error) {
 	// Append buildvariants, tasks, and functions to the config.
 	intermediateProject.TaskGroups = append(intermediateProject.TaskGroups, g.TaskGroups...)
 	intermediateProject.Tasks = append(intermediateProject.Tasks, g.Tasks...)
@@ -284,7 +289,12 @@ func (g *GeneratedProject) addGeneratedProjectToConfig(intermediateProject *Pars
 			intermediateProject.BuildVariants = append(intermediateProject.BuildVariants, bv)
 		}
 	}
-	return intermediateProject
+	// prepare new config file
+	byteConfig, err := yaml.Marshal(intermediateProject)
+	if err != nil {
+		return nil, "", errors.Wrap(err, "error marshalling new project config")
+	}
+	return intermediateProject, string(byteConfig), nil
 }
 
 // projectMaps is a struct of maps of project fields, which allows efficient comparisons of generated projects to projects.

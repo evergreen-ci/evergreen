@@ -311,6 +311,7 @@ func FinalizePatch(ctx context.Context, p *patch.Patch, requester string, github
 		BuildIds:            []string{},
 		BuildVariants:       []VersionBuildStatus{},
 		ParserProject:       intermediateProject,
+		Config:              p.PatchedConfig,
 		Status:              evergreen.PatchCreated,
 		Requester:           requester,
 		Branch:              projectRef.Branch,

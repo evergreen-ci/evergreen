@@ -11,6 +11,7 @@ import (
 	"github.com/mongodb/grip"
 	"github.com/stretchr/testify/suite"
 	"go.mongodb.org/mongo-driver/bson"
+	"gopkg.in/yaml.v2"
 )
 
 var (
@@ -316,7 +317,7 @@ func (s *GenerateSuite) TestParseProjectFromJSON() {
 	s.Equal("echo hi", g.Functions["echo-hi"].List()[0].Params["script"])
 	s.Equal("echo bye", g.Functions["echo-bye"].List()[0].Params["script"])
 	s.Equal("echo bye again", g.Functions["echo-bye"].List()[1].Params["script"])
-  
+
 	s.Len(g.Tasks, 1)
 	s.Equal("git.get_project", g.Tasks[0].Commands[0].Command)
 
@@ -516,8 +517,10 @@ func (s *GenerateSuite) TestAddGeneratedProjectToConfig() {
 	s.NoError(err)
 	cachedProject := cacheProjectData(p)
 	g := sampleGeneratedProject
-	newPP := g.addGeneratedProjectToConfig(pp, cachedProject)
-	s.NotNil(newPP)
+	newPP, newConfig, err := g.addGeneratedProjectToConfig(pp, cachedProject)
+	s.NoError(err)
+	s.NotEmpty(newPP)
+	s.NotNil(newConfig)
 	s.Require().Len(newPP.Tasks, 6)
 	s.Require().Len(newPP.BuildVariants, 3)
 	s.Require().Len(newPP.Functions, 2)
@@ -544,9 +547,17 @@ func (s *GenerateSuite) TestAddGeneratedProjectToConfig() {
 	_, ok = newPP.Functions["new_function"]
 	s.True(ok)
 
+	// verify addGeneratedProjectToConfig returned the updated config
+	ppConfig, err := yaml.Marshal(newPP)
+	s.NoError(err)
+	s.Equal(newConfig, string(ppConfig))
+
 	pp, err = LoadProjectInto([]byte(sampleProjYmlNoFunctions), "", p)
 	s.NoError(err)
-	newPP = g.addGeneratedProjectToConfig(pp, cachedProject)
+	newPP, newConfig, err = g.addGeneratedProjectToConfig(pp, cachedProject)
+	s.NoError(err)
+	s.NotEmpty(newConfig)
+	s.NotNil(newPP)
 	s.Require().Len(newPP.Tasks, 5)
 	s.Require().Len(newPP.BuildVariants, 3)
 	s.Len(newPP.Functions, 1)

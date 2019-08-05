@@ -184,15 +184,16 @@ func (as *APIServer) GetVersion(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "version not found", http.StatusNotFound)
 		return
 	}
-	if v.ParserProject != nil {
+	// safety check
+	if v.Config == "" && v.ParserProject != nil {
 		config, err := yaml.Marshal(v.ParserProject)
 		if err != nil {
 			as.LoggedError(w, r, http.StatusInternalServerError, err)
 			return
 		}
 		v.Config = string(config)
-		v.ParserProject = nil
 	}
+	v.ParserProject = nil
 	gimlet.WriteJSON(w, v)
 }
 
