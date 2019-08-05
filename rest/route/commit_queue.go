@@ -57,18 +57,21 @@ type commitQueueDeleteItemHandler struct {
 	project string
 	item    string
 
-	sc data.Connector
+	sc  data.Connector
+	env evergreen.Environment
 }
 
-func makeDeleteCommitQueueItems(sc data.Connector) gimlet.RouteHandler {
+func makeDeleteCommitQueueItems(sc data.Connector, env evergreen.Environment) gimlet.RouteHandler {
 	return &commitQueueDeleteItemHandler{
-		sc: sc,
+		sc:  sc,
+		env: env,
 	}
 }
 
 func (cq commitQueueDeleteItemHandler) Factory() gimlet.RouteHandler {
 	return &commitQueueDeleteItemHandler{
-		sc: cq.sc,
+		sc:  cq.sc,
+		env: cq.env,
 	}
 }
 
@@ -110,7 +113,7 @@ func (cq *commitQueueDeleteItemHandler) Run(ctx context.Context) gimlet.Responde
 			return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "GitHub returned a PR missing a HEAD SHA"))
 		}
 		pushJob := units.NewGithubStatusUpdateJobForDeleteFromCommitQueue(projectRef.Owner, projectRef.Repo, *pr.Head.SHA, itemInt)
-		q := evergreen.GetEnvironment().LocalQueue()
+		q := cq.env.LocalQueue()
 		err = q.Put(ctx, pushJob)
 		if err != nil {
 			return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "Can't enqueue a GitHub status update"))

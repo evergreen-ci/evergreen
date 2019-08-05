@@ -81,9 +81,9 @@ func (s *CommitQueueSuite) TestDeleteItem() {
 	ctx := context.Background()
 	env := &mock.Environment{}
 	s.Require().NoError(env.Configure(ctx, filepath.Join(evergreen.FindEvergreenHome(), testutil.TestDir, testutil.TestSettings), nil))
-	s.Require().NoError(env.LocalQueue().Start(ctx))
+	env.Local.Start(ctx)
 
-	route := makeDeleteCommitQueueItems(s.sc).(*commitQueueDeleteItemHandler)
+	route := makeDeleteCommitQueueItems(s.sc, env).(*commitQueueDeleteItemHandler)
 	pos, err := s.sc.EnqueueItem("mci", model.APICommitQueueItem{Issue: model.ToAPIString("1")})
 	s.Require().NoError(err)
 	s.Require().Equal(1, pos)

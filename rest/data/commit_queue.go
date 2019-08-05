@@ -107,7 +107,9 @@ func preventMergeForItem(projectID string, item *commitqueue.CommitQueueItem) er
 	}
 
 	if projectRef.CommitQueue.PatchType == commitqueue.PRPatchType && item.Version != "" {
-		clearVersionPatchSubscriber(item.Version, event.GithubMergeSubscriberType)
+		if err = clearVersionPatchSubscriber(item.Version, event.GithubMergeSubscriberType); err != nil {
+			return errors.Wrap(err, "can't clear subscriptions")
+		}
 	}
 
 	if projectRef.CommitQueue.PatchType == commitqueue.CLIPatchType {
@@ -116,7 +118,9 @@ func preventMergeForItem(projectID string, item *commitqueue.CommitQueueItem) er
 			return errors.Wrapf(err, "can't find patch '%s'", item.Issue)
 		}
 		if version != nil {
-			clearVersionPatchSubscriber(version.Id, event.CommitQueueDequeueSubscriberType)
+			if err = clearVersionPatchSubscriber(version.Id, event.CommitQueueDequeueSubscriberType); err != nil {
+				return errors.Wrap(err, "can't clear subscriptions")
+			}
 
 			// Blacklist the merge task
 			mergeTask, err := task.FindMergeTaskForVersion(version.Id)
