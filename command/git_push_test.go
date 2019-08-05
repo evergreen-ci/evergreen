@@ -2,12 +2,16 @@ package command
 
 import (
 	"context"
+	"fmt"
+	"strings"
 	"testing"
 
 	"github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/rest/client"
+	"github.com/evergreen-ci/evergreen/util"
 	"github.com/google/shlex"
 	"github.com/mongodb/jasper"
 	"github.com/stretchr/testify/assert"
@@ -15,13 +19,20 @@ import (
 )
 
 func TestGitPush(t *testing.T) {
+	token := "0123456789"
 	c := gitPush{
 		Directory:      "src",
 		CommitterName:  "octocat",
 		CommitterEmail: "octocat@github.com",
+		Token:          token,
 	}
 	comm := client.NewMock("http://localhost.com")
-	conf := &model.TaskConfig{Task: &task.Task{}, ProjectRef: &model.ProjectRef{Branch: "master"}}
+	conf := &model.TaskConfig{
+		Task:       &task.Task{},
+		ProjectRef: &model.ProjectRef{Branch: "master"},
+		Distro:     &distro.Distro{CloneMethod: distro.CloneMethodOAuth},
+		Expansions: &util.Expansions{},
+	}
 	logger, err := comm.GetLoggerProducer(context.Background(), client.TaskData{}, nil)
 	require.NoError(t, err)
 
@@ -53,6 +64,7 @@ func TestGitPush(t *testing.T) {
 				Githash:     "abcdef01345",
 				Description: "testing 123",
 			}
+
 			ctx := context.Background()
 			ctx = context.WithValue(ctx, "patch", patch)
 			assert.NoError(t, c.Execute(ctx, comm, logger, conf))
@@ -75,6 +87,13 @@ func TestGitPush(t *testing.T) {
 		},
 		"PushPatch": func(*testing.T) {
 			manager := &jasper.MockManager{}
+			manager.Create = func(opts *jasper.CreateOptions) jasper.MockProcess {
+				_, err = opts.Output.Error.Write([]byte(fmt.Sprintf("The key: %s", token)))
+				assert.NoError(t, err)
+				proc := jasper.MockProcess{}
+				proc.ProcInfo.Options = *opts
+				return proc
+			}
 			c.base.jasper = manager
 			params := pushParams{
 				directory:   c.Directory,
@@ -83,6 +102,7 @@ func TestGitPush(t *testing.T) {
 				files:       []string{"hello.txt"},
 				description: "testing 123",
 				branch:      "master",
+				token:       token,
 			}
 
 			assert.NoError(t, c.pushPatch(context.Background(), logger, params))
@@ -98,6 +118,16 @@ func TestGitPush(t *testing.T) {
 				assert.NoError(t, err)
 				assert.Equal(t, splitCommand, args)
 			}
+
+			assert.NoError(t, logger.Close())
+			for _, msgs := range comm.GetMockMessages() {
+				for _, msg := range msgs {
+					if strings.HasPrefix(msg.Message, "The key: ") {
+						assert.False(t, strings.Contains(msg.Message, token))
+					}
+				}
+			}
+
 		},
 		"RevParse": func(*testing.T) {
 			manager := &jasper.MockManager{}
