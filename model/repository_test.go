@@ -7,6 +7,7 @@ import (
 	"github.com/evergreen-ci/evergreen/db"
 	. "github.com/smartystreets/goconvey/convey"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 var (
@@ -58,6 +59,7 @@ func TestGetNewRevisionOrderNumber(t *testing.T) {
 }
 
 func TestUpdateLastRevision(t *testing.T) {
+	require.NoError(t, db.Clear(RepositoriesCollection))
 	for name, test := range map[string]func(*testing.T, string, string){
 		"InvalidProject": func(t *testing.T, project string, revision string) {
 			assert.Error(t, UpdateLastRevision(project, revision))
