@@ -675,7 +675,6 @@ func UpdateBuildAndVersionStatusForTask(taskId string, updates *StatusChanges) e
 				"task":          t.Id,
 			})
 		}
-		startPhaseAt = time.Now()
 	}
 	grip.DebugWhen(time.Since(loopStart) > 5*time.Second, message.Fields{
 		"function":      "UpdateBuildAndVersionStatusForTask",
