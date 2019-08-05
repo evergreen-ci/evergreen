@@ -80,6 +80,23 @@ mciModule.controller('SettingsCtrl', ['$scope', '$http', '$window', 'notificatio
       });
   }
 
+  $scope.showAdditionalFields = function(){
+    console.log("show fields");
+    var checkbox = document.getElementById("optOutCheck");
+    var additionalFieldCount = 1;
+    var additionalField = document.getElementById("feedback-" + additionalFieldCount);
+
+    while (additionalField) {
+      if (checkbox.checked == true){
+        additionalField.style.display = "block";
+      } else {
+        additionalField.style.display = "none";
+      }
+      additionalFieldCount++;
+      additionalField = document.getElementById("feedback-" + additionalFieldCount);
+    }
+  }
+
   $scope.updateUserSettings = function(new_tz, use_spruce_options) {
     data = {
         timezone: new_tz,

@@ -90,11 +90,42 @@ ui_server_host: "[[userConf.ui_server_host]]"</pre>
               </div>
             </div>
             <div class="form-group">
-              <div class="col-sm-4" style="text-align: right; margin-right:14px">Use New Patch Page</div>
-              <md-checkbox ng-model="use_spruce_options.patch_page"/>
+              <a class="col-sm-4 control-label" href="/notifications"> Notification Settings </a>
             </div>
             <div class="form-group">
-              <a class="col-sm-4 control-label" href="/notifications"> Notification Settings </a>
+              <div class="col-sm-4" style="text-align: right; margin-right:14px">Opt Out of New Patch Page</div>
+              <md-checkbox id="optOutCheck" ng-model="use_spruce_options.patch_page" ng-change="use_spruce_options.showAdditionalFields()" aria-label="Opt Out of New Patch Page"/>
+            </div>
+            <div class="form-group" style="display: none" id="feedback-1">
+              <label class="col-sm-4 control-label">Does the new patches page have all the information you need?</label>
+              <div class="col-sm-8">
+                <input type="radio" name="information" value="1" required> It’s missing a lot of things<br>
+                <input type="radio" name="information" value="2" required> It has some of the information I need<br>
+                <input type="radio" name="information" value="3" required> It has most of the information I need<br>
+                <input type="radio" name="information" value="4" required> It has everything I need<br>
+              </div>
+            </div>
+            <div class="form-group" style="display: none" id="feedback-2">
+              <label class="col-sm-4 control-label">How easy is it to use the new page compared to the old page?</label>
+              <div class="col-sm-8">
+                <input type="radio" name="usable" value="1" required> Much harder to use<br>
+                <input type="radio" name="usable" value="2" required> Somewhat harder to use<br>
+                <input type="radio" name="usable" value="3" required> About the same<br>
+                <input type="radio" name="usable" value="4" required> Somewhat easier to use<br>
+                <input type="radio" name="usable" value="5" required> Much easier to use<br>
+              </div>
+            </div>
+            <div class="form-group" style="display: none" id="feedback-3">
+              <label class="col-sm-4 control-label">Is there anything you miss about the old patches page?</label>
+              <div class="col-sm-8">
+                <textarea name="missing" rows="8" cols="80"></textarea>
+              </div>
+            </div>
+            <div class="form-group" style="display: none" id="feedback-4">
+              <label class="col-sm-4 control-label">Is there anything you want changed on the new patches page? <br> If you want to report a bug, you can do so here.</label>
+              <div class="col-sm-8">
+                <textarea name="changes" rows="8" cols="80"></textarea>
+              </div>
             </div>
             <div class="right text-right"><button ng-click="updateUserSettings(new_tz, use_spruce_options)" class="btn btn-primary">Save</button></div>
           </form>
