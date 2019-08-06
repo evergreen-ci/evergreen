@@ -935,12 +935,25 @@ func getTaskCreateTime(projectId string, v *Version) (time.Time, error) {
 // createOneTask is a helper to create a single task.
 func createOneTask(id string, buildVarTask BuildVariantTaskUnit, project *Project,
 	buildVariant *BuildVariant, b *build.Build, v *Version) (*task.Task, error) {
-	var distroID string
+
+	var (
+		distroID      string
+		distroAliases []string
+	)
 
 	if len(buildVarTask.Distros) > 0 {
 		distroID = buildVarTask.Distros[0]
+
+		if len(buildVarTask.Distros) > 1 {
+			distroAliases = append(distroAliases, buildVarTask.Distros[1:]...)
+		}
+
 	} else if len(buildVariant.RunOn) > 0 {
 		distroID = buildVariant.RunOn[0]
+
+		if len(buildVariant.RunOn) > 1 {
+			distroAliases = append(distroAliases, buildVariant.RunOn[1:]...)
+		}
 	} else {
 		grip.Warning(message.Fields{
 			"task_id":   id,
@@ -969,6 +982,7 @@ func createOneTask(id string, buildVarTask BuildVariantTaskUnit, project *Projec
 		BuildId:             b.Id,
 		BuildVariant:        buildVariant.Name,
 		DistroId:            distroID,
+		DistroAliases:       distroAliases,
 		CreateTime:          createTime,
 		IngestTime:          time.Now(),
 		ScheduledTime:       util.ZeroTime,
