@@ -30,9 +30,7 @@ func TestCommitQueueSuite(t *testing.T) {
 func (s *CommitQueueSuite) SetupTest() {
 	s.sc = &data.MockConnector{
 		MockCommitQueueConnector: data.MockCommitQueueConnector{},
-		MockProjectConnector:     data.MockProjectConnector{CachedProjects: []dbModel.ProjectRef{{Identifier: "mci"}}},
 	}
-	s.sc.MockProjectConnector.CachedProjects[0].CommitQueue.PatchType = commitqueue.PRPatchType
 }
 
 func (s *CommitQueueSuite) TestGetCommitQueue() {
@@ -78,6 +76,13 @@ func (s *CommitQueueSuite) TestGetCommitQueue() {
 }
 
 func (s *CommitQueueSuite) TestDeleteItem() {
+	s.sc.MockProjectConnector.CachedProjects = []dbModel.ProjectRef{
+		{
+			Identifier:  "mci",
+			CommitQueue: dbModel.CommitQueueParams{PatchType: commitqueue.PRPatchType},
+		},
+	}
+
 	ctx := context.Background()
 	env := &mock.Environment{}
 	s.Require().NoError(env.Configure(ctx, filepath.Join(evergreen.FindEvergreenHome(), testutil.TestDir, testutil.TestSettings), nil))
