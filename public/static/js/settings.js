@@ -104,7 +104,7 @@ mciModule.controller('SettingsCtrl', ['$scope', '$http', '$window', 'notificatio
     var questionAnswerArray = [];
     Object.keys($scope.patch_feedback_prompts).forEach( function(field) {
         var prompt = $scope.patch_feedback_prompts[field];
-        var answer = spruce_feedback[field] === undefined ? "" : spruce_feedback[field]
+        var answer = spruce_feedback[field] === undefined ? "" : spruce_feedback[field].toString();
         var questionAnswer = {
           id: field,
           prompt: prompt,
