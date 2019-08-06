@@ -122,7 +122,7 @@ func GetPatchedProject(ctx context.Context, p *patch.Patch, githubOauthToken str
 	project := &Project{}
 	// if the patched config exists, use that as the project file bytes.
 	if p.PatchedConfig != "" {
-		if err = LoadProjectInto([]byte(p.PatchedConfig), projectRef.Identifier, project); err != nil {
+		if _, err = LoadProjectInto([]byte(p.PatchedConfig), projectRef.Identifier, project); err != nil {
 			return nil, errors.WithStack(err)
 		}
 		return project, nil
@@ -170,7 +170,7 @@ func GetPatchedProject(ctx context.Context, p *patch.Patch, githubOauthToken str
 		}
 	}
 
-	if err := LoadProjectInto(projectFileBytes, projectRef.Identifier, project); err != nil {
+	if _, err := LoadProjectInto(projectFileBytes, projectRef.Identifier, project); err != nil {
 		return nil, errors.WithStack(err)
 	}
 
@@ -281,7 +281,7 @@ func MakePatchedConfig(ctx context.Context, env evergreen.Environment, p *patch.
 func FinalizePatch(ctx context.Context, p *patch.Patch, requester string, githubOauthToken string) (*Version, error) {
 	// unmarshal the project YAML for storage
 	project := &Project{}
-	err := LoadProjectInto([]byte(p.PatchedConfig), p.Project, project)
+	intermediateProject, err := LoadProjectInto([]byte(p.PatchedConfig), p.Project, project)
 	if err != nil {
 		return nil, errors.Wrapf(err,
 			"Error marshaling patched project config from repository revision “%v”",
@@ -310,6 +310,7 @@ func FinalizePatch(ctx context.Context, p *patch.Patch, requester string, github
 		Message:             p.Description,
 		BuildIds:            []string{},
 		BuildVariants:       []VersionBuildStatus{},
+		ParserProject:       intermediateProject,
 		Config:              p.PatchedConfig,
 		Status:              evergreen.PatchCreated,
 		Requester:           requester,
