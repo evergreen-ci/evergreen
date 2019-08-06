@@ -1473,7 +1473,7 @@ func (t *Task) IsPartOfDisplay() bool {
 
 func (t *Task) GetDisplayTask() (*Task, error) {
 	if t.DisplayTask != nil {
-		return t, nil
+		return t.DisplayTask, nil
 	}
 	dt, err := FindOne(ByExecutionTask(t.Id))
 	if err != nil {
