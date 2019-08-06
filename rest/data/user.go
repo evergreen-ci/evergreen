@@ -8,7 +8,6 @@ import (
 
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/event"
-	"github.com/evergreen-ci/evergreen/model/feedback"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/pkg/errors"
@@ -142,7 +141,7 @@ func (u *DBUserConnector) UpdateSettings(dbUser *user.DBUser, settings user.User
 	return model.SaveUserSettings(dbUser.Id, settings)
 }
 
-func (u *DBUserConnector) SubmitFeedback(feedback feedback.FeedbackSubmission) error {
+func (u *DBUserConnector) SubmitFeedback(feedback model.FeedbackSubmission) error {
 	return errors.Wrap(feedback.Insert(), "error saving feedback")
 }
 
@@ -206,6 +205,6 @@ func (muc *MockUserConnector) UpdateSettings(user *user.DBUser, settings user.Us
 	return errors.New("UpdateSettings not implemented for mock connector")
 }
 
-func (u *MockUserConnector) SubmitFeedback(feedback feedback.FeedbackSubmission) error {
+func (u *MockUserConnector) SubmitFeedback(feedback model.FeedbackSubmission) error {
 	return nil
 }

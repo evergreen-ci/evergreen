@@ -4,7 +4,7 @@ import (
 	"reflect"
 	"time"
 
-	"github.com/evergreen-ci/evergreen/model/feedback"
+	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/pkg/errors"
 )
@@ -267,14 +267,14 @@ func (a *APIFeedbackSubmission) BuildFromService(h interface{}) error {
 }
 
 func (a *APIFeedbackSubmission) ToService() (interface{}, error) {
-	result := feedback.FeedbackSubmission{
+	result := model.FeedbackSubmission{
 		Type:        FromAPIString(a.Type),
 		User:        FromAPIString(a.User),
 		SubmittedAt: a.SubmittedAt,
 	}
 	for _, question := range a.Questions {
 		answerInterface, _ := question.ToService()
-		answer := answerInterface.(feedback.QuestionAnswer)
+		answer := answerInterface.(model.QuestionAnswer)
 		result.Questions = append(result.Questions, answer)
 	}
 	return result, nil
@@ -291,7 +291,7 @@ func (a *APIQuestionAnswer) BuildFromService(h interface{}) error {
 }
 
 func (a *APIQuestionAnswer) ToService() (interface{}, error) {
-	return feedback.QuestionAnswer{
+	return model.QuestionAnswer{
 		ID:     FromAPIString(a.ID),
 		Prompt: FromAPIString(a.Prompt),
 		Answer: FromAPIString(a.Answer),
