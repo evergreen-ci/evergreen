@@ -53,7 +53,7 @@ func (q *CommitQueue) Enqueue(item CommitQueueItem) (int, error) {
 	}
 
 	if err := add(q.ProjectID, q.Queue, item); err != nil {
-		return 0, err
+		return 0, errors.Wrapf(err, "can't add '%s' to queue '%s'", item.Issue, q.ProjectID)
 	}
 
 	q.Queue = append(q.Queue, item)
@@ -83,7 +83,7 @@ func (q *CommitQueue) Remove(issue string) (bool, error) {
 	// clearing the front of the queue
 	if itemIndex == 0 {
 		if err := q.SetProcessing(false); err != nil {
-			return false, err
+			return false, errors.Wrap(err, "can't set processing to false")
 		}
 	}
 	return true, nil
