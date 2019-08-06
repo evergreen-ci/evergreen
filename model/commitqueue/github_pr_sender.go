@@ -172,7 +172,8 @@ func dequeueFromCommitQueue(projectID string, item string) error {
 	found, err := cq.Remove(item)
 	if err != nil {
 		return errors.Wrapf(err, "can't dequeue '%s' from commit queue", item)
-	} else if !found {
+	}
+	if !found {
 		return errors.Errorf("item '%s' did not exist on the queue", item)
 	}
 

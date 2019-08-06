@@ -116,16 +116,9 @@ func (s *distroScheduler) scheduleDistro(distroID string, runnableTasksForDistro
 	})
 
 	// persist the queue of tasks and its associated distroQueueInfo
-	persistTime := time.Now() // Get time before persisting tasks so that scheduled time is never after start time.
 	err = PersistTaskQueue(distroID, prioritizedTasks, distroQueueInfo)
 	if err != nil {
 		return nil, errors.Wrapf(err, "database error saving the task queue for distro '%s'", distroID)
-	}
-
-	// track scheduled time for prioritized tasks
-	err = task.SetTasksScheduledTime(prioritizedTasks, persistTime)
-	if err != nil {
-		return nil, errors.Wrapf(err, "error setting scheduled time for prioritized tasks for distro '%s'", distroID)
 	}
 
 	return prioritizedTasks, nil

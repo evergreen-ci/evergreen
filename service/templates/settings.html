@@ -89,14 +89,57 @@ ui_server_host: "[[userConf.ui_server_host]]"</pre>
                   <input type="text" placeholder="octocat" ng-model="github_user" /> <label ng-show="{{ .GithubUID }} !== 0">Github UID Number: {{ .GithubUID }}</label>
               </div>
             </div>
-            <div class="form-group" ng-hide="true">
-              <div class="col-sm-4" style="text-align: right; margin-right:14px">Use New Patch Page</div>
-              <md-checkbox ng-model="use_spruce_options.patch_page"/>
-            </div>
             <div class="form-group">
               <a class="col-sm-4 control-label" href="/notifications"> Notification Settings </a>
             </div>
-            <div class="right text-right"><button ng-click="updateUserSettings(new_tz, use_spruce_options)" class="btn btn-primary">Save</button></div>
+            <div class="form-group">
+              <div class="col-sm-4" style="text-align: right; margin-right:14px">Opt In to New Patch Page</div>
+              <md-checkbox id="optOutCheck" ng-model="use_spruce_options.patch_page" aria-label="Opt Out of New Patch Page"/>
+            </div>
+            <div id="patch-feedback" ng-hide="use_spruce_options.patch_page && initially_opted_out">
+              <div class="form-group">
+                <div class="col-sm-4">
+                  <label id="information_score_prompt" class="control-label" ng-bind="patch_feedback_prompts['information_score']"/>
+                </div>
+                <div class="col-sm-8">
+                  <input type="radio" ng-model="spruce_feedback.information_score" ng-value="1" required> It’s missing a lot of things<br>
+                  <input type="radio" ng-model="spruce_feedback.information_score" ng-value="2" required> It has some of the information I need<br>
+                  <input type="radio" ng-model="spruce_feedback.information_score" ng-value="3" required> It has most of the information I need<br>
+                  <input type="radio" ng-model="spruce_feedback.information_score" ng-value="4" required> It has everything I need<br>
+                  <div class="icon fa fa-warning distro-error" ng-show="spruce_feedback.information_score === undefined">This field is required</div>
+                </div>
+              </div>
+              <div class="form-group">
+                <div class="col-sm-4">
+                  <label id="usability_score_prompt" class="control-label" ng-bind="patch_feedback_prompts['usability_score']"/>
+                </div>
+                <div class="col-sm-8">
+                  <input type="radio" ng-model="spruce_feedback.usability_score" ng-value="1" required> Much harder to use<br>
+                  <input type="radio" ng-model="spruce_feedback.usability_score" ng-value="2" required> Somewhat harder to use<br>
+                  <input type="radio" ng-model="spruce_feedback.usability_score" ng-value="3" required> About the same<br>
+                  <input type="radio" ng-model="spruce_feedback.usability_score" ng-value="4" required> Somewhat easier to use<br>
+                  <input type="radio" ng-model="spruce_feedback.usability_score" ng-value="5" required> Much easier to use<br>
+                  <div class="icon fa fa-warning distro-error" ng-show="spruce_feedback.usability_score === undefined">This field is required</div>
+                </div>
+              </div>
+              <div class="form-group">
+                <div class="col-sm-4">
+                  <label id="missing_things_prompt" class="control-label" ng-bind="patch_feedback_prompts['missing_things']" />
+                </div>
+                <div class="col-sm-8">
+                  <textarea class="form-control" ng-model="spruce_feedback.missing_things" rows="8"></textarea>
+                </div>
+              </div>
+              <div class="form-group" >
+                <div class="col-sm-4">
+                  <label id="requested_changes_prompt" class="control-label" ng-bind="patch_feedback_prompts['requested_changes']" />
+                </div>
+                <div class="col-sm-8">
+                  <textarea class="form-control" ng-model="spruce_feedback.requested_changes" rows="8"></textarea>
+                </div>
+              </div>
+            </div>
+            <div class="right text-right"><button type="submit" ng-click="updateUserSettings(new_tz, use_spruce_options, spruce_feedback)" class="btn btn-primary">Save</button></div>
           </form>
         </div>
       </md-card>

@@ -24,10 +24,11 @@ import (
 const (
 	githubStatusUpdateJobName = "github-status-update"
 
-	githubUpdateTypeNewPatch          = "new-patch"
-	githubUpdateTypeRequestAuth       = "request-auth"
-	githubUpdateTypePushToCommitQueue = "commit-queue"
-	githubUpdateTypeProcessingError   = "processing-error"
+	githubUpdateTypeNewPatch              = "new-patch"
+	githubUpdateTypeRequestAuth           = "request-auth"
+	githubUpdateTypePushToCommitQueue     = "commit-queue-push"
+	githubUpdateTypeDeleteFromCommitQueue = "commit-queue-delete"
+	githubUpdateTypeProcessingError       = "processing-error"
 
 	evergreenContext = "evergreen"
 )
@@ -101,6 +102,17 @@ func NewGithubStatusUpdateJobForExternalPatch(patchID string) amboy.Job {
 func NewGithubStatusUpdateJobForPushToCommitQueue(owner, repo, ref string, prNumber int) amboy.Job {
 	job := makeGithubStatusUpdateJob()
 	job.UpdateType = githubUpdateTypePushToCommitQueue
+	job.Owner = owner
+	job.Repo = repo
+	job.Ref = ref
+
+	job.SetID(fmt.Sprintf("%s:%s-%s-%s-%d-%s", githubStatusUpdateJobName, job.UpdateType, owner, repo, prNumber, time.Now().String()))
+	return job
+}
+
+func NewGithubStatusUpdateJobForDeleteFromCommitQueue(owner, repo, ref string, prNumber int) amboy.Job {
+	job := makeGithubStatusUpdateJob()
+	job.UpdateType = githubUpdateTypeDeleteFromCommitQueue
 	job.Owner = owner
 	job.Repo = repo
 	job.Ref = ref
@@ -192,6 +204,17 @@ func (j *githubStatusUpdateJob) fetch() (*message.GithubStatus, error) {
 		status.Context = commitqueue.Context
 		status.Description = "added to queue"
 		status.State = message.GithubStatePending
+
+		status.Owner = j.Owner
+		status.Repo = j.Repo
+		status.Ref = j.Ref
+
+		// Since there is no patch document, we return early.
+		return &status, nil
+	} else if j.UpdateType == githubUpdateTypeDeleteFromCommitQueue {
+		status.Context = commitqueue.Context
+		status.Description = "removed from queue"
+		status.State = message.GithubStateSuccess
 
 		status.Owner = j.Owner
 		status.Repo = j.Repo
