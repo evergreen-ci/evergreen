@@ -21,7 +21,7 @@ type OutputOptions struct {
 	SuppressError     bool      `bson:"suppress_error" json:"suppress_error" yaml:"suppress_error"`
 	SendOutputToError bool      `bson:"redirect_output_to_error" json:"redirect_output_to_error" yaml:"redirect_output_to_error"`
 	SendErrorToOutput bool      `bson:"redirect_error_to_output" json:"redirect_error_to_output" yaml:"redirect_error_to_output"`
-	Loggers           []Logger  `bson:"loggers" json:"loggers" yaml:"loggers"`
+	Loggers           []Logger  `bson:"loggers" json:"loggers,omitempty" yaml:"loggers"`
 
 	outputSender *send.WriterSender
 	errorSender  *send.WriterSender
@@ -264,7 +264,8 @@ type LogStream struct {
 // for the given Process proc. If the process has not been called with
 // Process.Wait(), this is not guaranteed to produce all the logs. This function
 // assumes that there is exactly one in-memory logger attached to this process's
-// output. It returns io.EOF if the stream is done.
+// output. It returns io.EOF if the stream is done. For remote interfaces, this
+// function will not work; use (RemoteClient).GetLogStream() instead.
 func GetInMemoryLogStream(ctx context.Context, proc Process, count int) ([]string, error) {
 	if proc == nil {
 		return nil, errors.New("cannot get output logs from nil process")

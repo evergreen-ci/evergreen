@@ -135,7 +135,6 @@ func (p *blockingProcess) reactor(ctx context.Context, deadline time.Time, cmd *
 						info.ExitCode = int(procWaitStatus.Signal())
 						if !deadline.IsZero() {
 							info.Timeout = procWaitStatus.Signal() == syscall.SIGKILL && finishTime.After(deadline)
-
 						}
 					} else {
 						info.ExitCode = procWaitStatus.ExitStatus()
@@ -173,6 +172,7 @@ func (p *blockingProcess) reactor(ctx context.Context, deadline time.Time, cmd *
 			p.triggers.Run(info)
 			p.mu.RUnlock()
 			p.setInfo(info)
+
 			return
 		case op := <-p.ops:
 			if op != nil {

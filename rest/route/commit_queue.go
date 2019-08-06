@@ -4,9 +4,14 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"strconv"
 
+	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/model/commitqueue"
+	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/rest/model"
+	"github.com/evergreen-ci/evergreen/units"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/pkg/errors"
 )
@@ -53,18 +58,21 @@ type commitQueueDeleteItemHandler struct {
 	project string
 	item    string
 
-	sc data.Connector
+	sc  data.Connector
+	env evergreen.Environment
 }
 
-func makeDeleteCommitQueueItems(sc data.Connector) gimlet.RouteHandler {
+func makeDeleteCommitQueueItems(sc data.Connector, env evergreen.Environment) gimlet.RouteHandler {
 	return &commitQueueDeleteItemHandler{
-		sc: sc,
+		sc:  sc,
+		env: env,
 	}
 }
 
 func (cq commitQueueDeleteItemHandler) Factory() gimlet.RouteHandler {
 	return &commitQueueDeleteItemHandler{
-		sc: cq.sc,
+		sc:  cq.sc,
+		env: cq.env,
 	}
 }
 
@@ -86,6 +94,31 @@ func (cq *commitQueueDeleteItemHandler) Run(ctx context.Context) gimlet.Responde
 			StatusCode: http.StatusNotFound,
 			Message:    fmt.Sprintf("no matching item for project ID '%s', item '%s'", cq.project, cq.item),
 		})
+	}
+
+	// Send GitHub status
+	projectRef, err := cq.sc.FindProjectById(cq.project)
+	if err != nil {
+		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "can't find project '%s'", cq.project))
+	}
+	if projectRef.CommitQueue.PatchType == commitqueue.PRPatchType {
+		itemInt, err := strconv.Atoi(cq.item)
+		if err != nil {
+			return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "item '%s' is not an int", cq.item))
+		}
+		pr, err := cq.sc.GetGitHubPR(ctx, projectRef.Owner, projectRef.Repo, itemInt)
+		if err != nil {
+			return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "can't get PR for %s:%s, %d", projectRef.Owner, projectRef.Repo, itemInt))
+		}
+		if pr == nil || pr.Head == nil || pr.Head.GetSHA() == "" {
+			return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "GitHub returned a PR missing a HEAD SHA"))
+		}
+		pushJob := units.NewGithubStatusUpdateJobForDeleteFromCommitQueue(projectRef.Owner, projectRef.Repo, *pr.Head.SHA, itemInt)
+		q := cq.env.LocalQueue()
+		err = q.Put(ctx, pushJob)
+		if err != nil {
+			return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "Can't enqueue a GitHub status update"))
+		}
 	}
 
 	response := gimlet.NewJSONResponse(struct{}{})
@@ -164,4 +197,76 @@ func (cq *commitQueueEnqueueItemHandler) Run(ctx context.Context) gimlet.Respond
 	}
 
 	return gimlet.NewJSONResponse(model.APICommitQueuePosition{Position: position})
+}
+
+type getCommitQueueItemAuthorHandler struct {
+	item      string
+	projectID string
+
+	sc data.Connector
+}
+
+func makeGetCommitQueueItemAuthor(sc data.Connector) gimlet.RouteHandler {
+	return &getCommitQueueItemAuthorHandler{
+		sc: sc,
+	}
+}
+
+func (cq *getCommitQueueItemAuthorHandler) Factory() gimlet.RouteHandler {
+	return &getCommitQueueItemAuthorHandler{
+		sc: cq.sc,
+	}
+}
+
+func (cq *getCommitQueueItemAuthorHandler) Parse(ctx context.Context, r *http.Request) error {
+	vars := gimlet.GetVars(r)
+	cq.item = vars["item"]
+	cq.projectID = gimlet.GetVars(r)["project_id"]
+	return nil
+}
+
+func (cq *getCommitQueueItemAuthorHandler) Run(ctx context.Context) gimlet.Responder {
+	pRef, err := cq.sc.FindProjectById(cq.projectID)
+	if err != nil {
+		return gimlet.NewJSONInternalErrorResponse(errors.Wrap(err, "problem finding project"))
+	}
+
+	resp := model.APICommitQueueItemAuthor{}
+	if pRef.CommitQueue.PatchType == commitqueue.CLIPatchType {
+		p, err := cq.sc.FindPatchById(cq.item)
+		if err != nil {
+			return gimlet.NewJSONErrorResponse(errors.Wrap(err, "problem finding patch"))
+		}
+		resp.Author = model.ToAPIString(p.Author)
+		return gimlet.NewJSONResponse(resp)
+	}
+	if pRef.CommitQueue.PatchType == commitqueue.PRPatchType {
+		prNum, err := strconv.Atoi(cq.item)
+		if err != nil {
+			return gimlet.NewJSONErrorResponse(gimlet.ErrorResponse{
+				Message:    "must pass a valid PR number",
+				StatusCode: http.StatusBadRequest,
+			})
+		}
+		pr, err := cq.sc.GetGitHubPR(ctx, pRef.Owner, pRef.Repo, prNum)
+		if err != nil {
+			return gimlet.NewJSONErrorResponse(errors.Wrap(err, "problem finding pull request"))
+		}
+
+		var author string
+		if pr != nil && pr.User != nil && pr.User.ID != nil {
+			dbUser, _ := user.FindByGithubUID(*pr.User.ID)
+			if dbUser != nil {
+				author = dbUser.Username()
+			} else { // return github login if evergreen username unavailable
+				author = pr.User.GetLogin()
+			}
+		}
+		if author != "" {
+			resp.Author = model.ToAPIString(author)
+			return gimlet.NewJSONResponse(resp)
+		}
+		return gimlet.NewJSONInternalErrorResponse(errors.Wrap(err, "unable to find author"))
+	}
+	return gimlet.NewJSONInternalErrorResponse(errors.New("project has invalid commit queue patch type"))
 }

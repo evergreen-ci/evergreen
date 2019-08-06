@@ -93,6 +93,8 @@ type Task struct {
 	NumDependents        int          `bson:"num_dependents,omitempty" json:"num_dependents,omitempty"`
 	OverrideDependencies bool         `bson:"override_dependencies,omitempty" json:"override_dependencies,omitempty"`
 
+	DistroAliases []string `bson:"distro_aliases,omitempty" json:"distro_aliases,omitempty"`
+
 	// Human-readable name
 	DisplayName string `bson:"display_name" json:"display_name"`
 

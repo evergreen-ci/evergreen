@@ -185,8 +185,17 @@ func TestJasperDeployJob(t *testing.T) {
 			assert.Error(t, deployJob.tryRequeueDeploy(ctx))
 		},
 		"RunPerformsExpectedOperationsWhenDeployingThroughJasper": func(ctx context.Context, t *testing.T, env evergreen.Environment, h *host.Host, mngr *jasper.MockManager) {
-			_, err := h.JasperClientCredentials(ctx, env)
+			clientCreds, err := credentials.ForJasperClient(ctx, env)
 			require.NoError(t, err)
+
+			creds, err := h.JasperClientCredentials(ctx, env)
+			require.NoError(t, err)
+
+			assert.Equal(t, clientCreds.Cert, creds.Cert)
+			assert.Equal(t, clientCreds.Key, creds.Key)
+			assert.Equal(t, clientCreds.CACert, creds.CACert)
+			assert.Equal(t, h.Id, h.JasperCredentialsID)
+			assert.Equal(t, h.JasperCredentialsID, creds.ServerName)
 
 			expiration := time.Now().Add(24 * time.Hour)
 

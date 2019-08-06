@@ -1,6 +1,7 @@
 package internal
 
 import (
+	"bytes"
 	"syscall"
 	"time"
 
@@ -14,13 +15,17 @@ import (
 // exported RPC CreateOptions and the returned Jasper CreateOptions.
 func (opts *CreateOptions) Export() *jasper.CreateOptions {
 	out := &jasper.CreateOptions{
-		Args:             opts.Args,
-		Environment:      opts.Environment,
-		WorkingDirectory: opts.WorkingDirectory,
-		Timeout:          time.Duration(opts.TimeoutSeconds) * time.Second,
-		TimeoutSecs:      int(opts.TimeoutSeconds),
-		OverrideEnviron:  opts.OverrideEnviron,
-		Tags:             opts.Tags,
+		Args:               opts.Args,
+		Environment:        opts.Environment,
+		WorkingDirectory:   opts.WorkingDirectory,
+		Timeout:            time.Duration(opts.TimeoutSeconds) * time.Second,
+		TimeoutSecs:        int(opts.TimeoutSeconds),
+		OverrideEnviron:    opts.OverrideEnviron,
+		Tags:               opts.Tags,
+		StandardInputBytes: opts.StandardInputBytes,
+	}
+	if len(opts.StandardInputBytes) != 0 {
+		out.StandardInput = bytes.NewBuffer(opts.StandardInputBytes)
 	}
 
 	if opts.Output != nil {
@@ -49,16 +54,18 @@ func ConvertCreateOptions(opts *jasper.CreateOptions) *CreateOptions {
 	if opts.TimeoutSecs == 0 && opts.Timeout != 0 {
 		opts.TimeoutSecs = int(opts.Timeout.Seconds())
 	}
+
 	output := ConvertOutputOptions(opts.Output)
 
 	co := &CreateOptions{
-		Args:             opts.Args,
-		Environment:      opts.Environment,
-		WorkingDirectory: opts.WorkingDirectory,
-		TimeoutSeconds:   int64(opts.TimeoutSecs),
-		OverrideEnviron:  opts.OverrideEnviron,
-		Tags:             opts.Tags,
-		Output:           &output,
+		Args:               opts.Args,
+		Environment:        opts.Environment,
+		WorkingDirectory:   opts.WorkingDirectory,
+		TimeoutSeconds:     int64(opts.TimeoutSecs),
+		OverrideEnviron:    opts.OverrideEnviron,
+		Tags:               opts.Tags,
+		Output:             &output,
+		StandardInputBytes: opts.StandardInputBytes,
 	}
 
 	for _, opt := range opts.OnSuccess {
@@ -355,11 +362,7 @@ func ConvertBuildloggerOptions(opts send.BuildloggerConfig) *BuildloggerOptions 
 // Export takes a protobuf RPC BuildloggerURLs struct and returns the analogous
 // []string.
 func (u *BuildloggerURLs) Export() []string {
-	urls := []string{}
-	for _, url := range u.Urls {
-		urls = append(urls, url)
-	}
-	return urls
+	return append([]string{}, u.Urls...)
 }
 
 // ConvertBuildloggerURLs takes a []string and returns the analogous protobuf
@@ -367,9 +370,7 @@ func (u *BuildloggerURLs) Export() []string {
 // inverse of (*BuildloggerURLs) Export().
 func ConvertBuildloggerURLs(urls []string) *BuildloggerURLs {
 	u := &BuildloggerURLs{Urls: []string{}}
-	for _, url := range urls {
-		u.Urls = append(u.Urls, url)
-	}
+	u.Urls = append(u.Urls, urls...)
 	return u
 }
 
@@ -456,9 +457,7 @@ func (opts *MongoDBDownloadOptions) Export() jasper.MongoDBDownloadOptions {
 		Path:      opts.Path,
 		Releases:  make([]string, 0, len(opts.Releases)),
 	}
-	for _, release := range opts.Releases {
-		jopts.Releases = append(jopts.Releases, release)
-	}
+	jopts.Releases = append(jopts.Releases, opts.Releases...)
 	return jopts
 }
 
@@ -472,9 +471,7 @@ func ConvertMongoDBDownloadOptions(jopts jasper.MongoDBDownloadOptions) *MongoDB
 		Path:      jopts.Path,
 		Releases:  make([]string, 0, len(jopts.Releases)),
 	}
-	for _, release := range opts.Releases {
-		opts.Releases = append(opts.Releases, release)
-	}
+	opts.Releases = append(opts.Releases, jopts.Releases...)
 	return opts
 }
 

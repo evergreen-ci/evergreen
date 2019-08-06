@@ -6,11 +6,12 @@ import (
 	"sort"
 	"sync"
 
+	"gopkg.in/yaml.v2"
+
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
-	yaml "gopkg.in/yaml.v2"
 )
 
 // Function run before sorting all the tasks.  Used to fetch and store
@@ -22,14 +23,54 @@ type project struct {
 	TaskGroups []model.TaskGroup `yaml:"task_groups"`
 }
 
+// PopulateCaches runs setup functions and is used by the new/tunable
+// scheduler to reprocess tasks before running the new planner.
+func PopulateCaches(id string, distroID string, tasks []task.Task) ([]task.Task, error) {
+	cmp := &CmpBasedTaskComparator{
+		tasks:     tasks,
+		runtimeID: id,
+		setupFuncs: []sortSetupFunc{
+			cacheTaskGroups,
+			backfillTaskGroups,
+			cacheExpectedDurations,
+		},
+	}
+	if err := cmp.setupForSortingTasks(distroID); err != nil {
+		return nil, errors.WithStack(err)
+	}
+
+	return cmp.tasks, nil
+}
+
 // cacheTaskGroups caches task groups by version. It uses yaml.Unmarshal instead
 // of model.LoadProjectInto and only unmarshals task groups for efficiency.
 func cacheTaskGroups(comparator *CmpBasedTaskComparator) error {
 	comparator.projects = make(map[string]project)
 	for _, v := range comparator.versions {
 		p := project{}
-		if err := yaml.Unmarshal([]byte(v.Config), &p); err != nil {
-			return errors.Wrapf(err, "error unmarshalling task groups from version %s", v.Id)
+		if v.ParserProject != nil {
+			p.TaskGroups = make([]model.TaskGroup, len(v.ParserProject.TaskGroups))
+			for i, tg := range v.ParserProject.TaskGroups {
+				newTG := model.TaskGroup{
+					Name:                  tg.Name,
+					MaxHosts:              tg.MaxHosts,
+					SetupGroupFailTask:    tg.SetupGroupFailTask,
+					SetupGroupTimeoutSecs: tg.SetupGroupTimeoutSecs,
+					SetupGroup:            tg.SetupGroup,
+					TeardownGroup:         tg.TeardownGroup,
+					SetupTask:             tg.SetupTask,
+					TeardownTask:          tg.TeardownTask,
+					Timeout:               tg.Timeout,
+					Tasks:                 tg.Tasks,
+					Tags:                  tg.Tags,
+					ShareProcs:            tg.ShareProcs,
+				}
+				p.TaskGroups[i] = newTG
+			}
+		} else {
+			if err := yaml.Unmarshal([]byte(v.Config), &p); err != nil {
+				return errors.Wrapf(err, "error unmarshalling task groups from version %s", v.Id)
+			}
 		}
 		comparator.projects[v.Id] = p
 	}

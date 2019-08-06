@@ -42,15 +42,24 @@ mciModule.controller('SettingsCtrl', ['$scope', '$http', '$window', 'notificatio
     {str: "Kiribati Line Islands", value: "Pacific/Kiritimati"},
   ];
 
+  $scope.patch_feedback_prompts = {
+    "information_score":  "Does the new patches page have all the information you need?",
+    "usability_score": "How easy is it to use the new page compared to the old page?",
+    "missing_things": "Is there anything you miss about the old patches page?",
+    "requested_changes": "Is there anything you want changed on the new patches page?",
+  };
+
   $scope.user_tz = $window.user_tz;
   $scope.new_tz = $scope.user_tz || "America/New_York";
-  $scope.github_user = $window.github_user
-  $scope.new_waterfall = $window.new_waterfall;
+  $scope.github_user = $window.github_user;
+  $scope.use_spruce_options = $window.use_spruce_options;
+  $scope.initially_opted_out = $scope.use_spruce_options.patch_page === undefined ? true :  $scope.use_spruce_options.patch_page
   $scope.userConf = $window.userConf;
   $scope.binaries = $window.binaries;
   $scope.notifications = $window.notifications;
   $scope.slack_username = $window.slack_username;
   $scope.auth_is_ldap = $window.auth_is_ldap;
+  $scope.spruce_feedback = {};
 
   $scope.newKey = function(){
     if(!confirm("Generating a new API key will invalidate your current API key. Continue?"))
@@ -80,10 +89,34 @@ mciModule.controller('SettingsCtrl', ['$scope', '$http', '$window', 'notificatio
       });
   }
 
-  $scope.updateUserSettings = function(new_tz, new_waterfall) {
+  function formatFeedback(spruce_feedback) {
+    var formattedFeedback = { type: "new_patches_page_feedback" };
+    var allFields = [];
+    var questionAnswerArray = [];
+    Object.keys($scope.patch_feedback_prompts).forEach( function(field) {
+        var prompt = $scope.patch_feedback_prompts[field];
+        var answer = spruce_feedback[field] === undefined ? "" : spruce_feedback[field].toString();
+        var questionAnswer = {
+          id: field,
+          prompt: prompt,
+          answer: answer
+        };
+        questionAnswerArray.push(questionAnswer);
+    });
+    formattedFeedback["questions"] = questionAnswerArray;
+    return formattedFeedback;
+  }
+
+  $scope.updateUserSettings = function(new_tz, use_spruce_options, spruce_feedback) {
+    if ($scope.initially_opted_out && !use_spruce_options.patch_page &&
+      (spruce_feedback.usability_score === undefined || spruce_feedback.information_score === undefined)) {
+      notifier.pushNotification("Please fill out all required fields before submitting",'errorHeader');
+      return;
+    }
     data = {
         timezone: new_tz,
-        new_waterfall: new_waterfall,
+        use_spruce_options: use_spruce_options,
+        spruce_feedback: formatFeedback(spruce_feedback),
         github_user: {
             last_known_as: $scope.github_user,
         }

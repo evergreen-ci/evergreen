@@ -99,8 +99,8 @@ func (j *periodicBuildJob) addVersion(ctx context.Context, definition model.Peri
 	if err != nil {
 		return errors.Wrap(err, "error decoding config file")
 	}
-	config := model.Project{}
-	err = model.LoadProjectInto(configBytes, j.project.Identifier, &config)
+	proj := &model.Project{}
+	intermediateProject, err := model.LoadProjectInto(configBytes, j.project.Identifier, proj)
 	if err != nil {
 		return errors.Wrap(err, "error parsing config file")
 	}
@@ -109,13 +109,13 @@ func (j *periodicBuildJob) addVersion(ctx context.Context, definition model.Peri
 		Message:         definition.Message,
 		PeriodicBuildID: definition.ID,
 	}
-
-	v, err := repotracker.CreateVersionFromConfig(ctx, j.project, &config, metadata, false, nil)
-	if err != nil {
-		return errors.Wrap(err, "error creating version from config")
+	projectInfo := &repotracker.ProjectInfo{
+		Ref:                 j.project,
+		Project:             proj,
+		IntermediateProject: intermediateProject,
 	}
-
-	return errors.Wrap(model.ActivateElapsedBuilds(v), "error activating ad hoc build")
+	_, err = repotracker.CreateVersionFromConfig(ctx, projectInfo, metadata, false, nil)
+	return errors.Wrap(err, "error creating version from config")
 }
 
 func (j *periodicBuildJob) shouldRerun(definition model.PeriodicBuildDefinition) (bool, error) {

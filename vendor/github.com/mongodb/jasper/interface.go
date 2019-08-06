@@ -75,6 +75,11 @@ type Process interface {
 	// Respawn respawns a near-identical version of the process on
 	// which it is called. It will spawn a new process with the same
 	// options and return the new, "respawned" process.
+	//
+	// However, it is not guaranteed to read the same bytes from
+	// (CreateOptions).StandardInput as the original process; if
+	// standard input must be duplicated,
+	// (CreateOptions).StandardInputBytes should be set.
 	Respawn(context.Context) (Process, error)
 
 	// RegisterSignalTrigger associates triggers with a process,

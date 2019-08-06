@@ -2,6 +2,7 @@ package evergreen
 
 import (
 	"os"
+	"time"
 
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
@@ -149,6 +150,10 @@ const (
 	PlannerVersionRevised = "revised"
 	PlannerVersionTunable = "tunable"
 
+	// maximum turnaround we want to maintain for all hosts for a given distro
+	MaxDurationPerDistroHost               = 30 * time.Minute
+	MaxDurationPerDistroHostWithContainers = 2 * time.Minute
+
 	FinderVersionLegacy    = "legacy"
 	FinderVersionParallel  = "parallel"
 	FinderVersionPipeline  = "pipeline"
@@ -171,6 +176,9 @@ const (
 	MaxTeardownGroupTimeoutSecs = 30 * 60
 
 	DefaultJasperPort = 2385
+
+	// TODO: remove this when degrading YAML
+	UseParserProject = false
 )
 
 func IsFinishedTaskStatus(status string) bool {

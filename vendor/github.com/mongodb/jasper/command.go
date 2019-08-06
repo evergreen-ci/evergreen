@@ -419,8 +419,16 @@ func (c *Command) Close() error {
 	return c.opts.Close()
 }
 
+// SetInput sets the standard input.
 func (c *Command) SetInput(r io.Reader) *Command {
 	c.opts.StandardInput = r
+	return c
+}
+
+// SetInputBytes is the same as SetInput but sets b as the bytes to be read from
+// standard input.
+func (c *Command) SetInputBytes(b []byte) *Command {
+	c.opts.StandardInputBytes = b
 	return c
 }
 

@@ -1063,7 +1063,9 @@ type APISchedulerConfig struct {
 	TargetTimeSeconds             int       `json:"target_time_seconds"`
 	AcceptableHostIdleTimeSeconds int       `json:"acceptable_host_idle_time_seconds"`
 	GroupVersions                 bool      `json:"group_versions"`
-	PatchZipperFactor             int       `json:"patch_zipper_factor"`
+	PatchZipperFactor             int64     `json:"patch_zipper_factor"`
+	TimeInQueueFactor             int64     `json:"time_in_queue_factor"`
+	ExpectedRuntimeFactor         int64     `json:"expected_runtime_factor_factor"`
 }
 
 func (a *APISchedulerConfig) BuildFromService(h interface{}) error {
@@ -1079,6 +1081,8 @@ func (a *APISchedulerConfig) BuildFromService(h interface{}) error {
 		a.AcceptableHostIdleTimeSeconds = v.AcceptableHostIdleTimeSeconds
 		a.GroupVersions = v.GroupVersions
 		a.PatchZipperFactor = v.PatchZipperFactor
+		a.TimeInQueueFactor = v.TimeInQueueFactor
+		a.ExpectedRuntimeFactor = v.ExpectedRuntimeFactor
 	default:
 		return errors.Errorf("%T is not a supported type", h)
 	}
@@ -1097,6 +1101,8 @@ func (a *APISchedulerConfig) ToService() (interface{}, error) {
 		AcceptableHostIdleTimeSeconds: a.AcceptableHostIdleTimeSeconds,
 		GroupVersions:                 a.GroupVersions,
 		PatchZipperFactor:             a.PatchZipperFactor,
+		ExpectedRuntimeFactor:         a.ExpectedRuntimeFactor,
+		TimeInQueueFactor:             a.TimeInQueueFactor,
 	}, nil
 }
 
@@ -1115,6 +1121,7 @@ type APIServiceFlags struct {
 	TaskLoggingDisabled        bool `json:"task_logging_disabled"`
 	CacheStatsJobDisabled      bool `json:"cache_stats_job_disabled"`
 	CacheStatsEndpointDisabled bool `json:"cache_stats_endpoint_disabled"`
+	TaskReliabilityDisabled    bool `json:"task_reliability_disabled"`
 	CommitQueueDisabled        bool `json:"commit_queue_disabled"`
 	PlannerDisabled            bool `json:"planner_disabled"`
 	HostAllocatorDisabled      bool `json:"host_allocator_disabled"`
@@ -1240,6 +1247,7 @@ func (a *APISplunkConnectionInfo) ToService() (interface{}, error) {
 type APIUIConfig struct {
 	Url            APIString `json:"url"`
 	HelpUrl        APIString `json:"help_url"`
+	UIv2Url        APIString `json:"uiv2_url"`
 	HttpListenAddr APIString `json:"http_listen_addr"`
 	Secret         APIString `json:"secret"`
 	DefaultProject APIString `json:"default_project"`
@@ -1253,6 +1261,7 @@ func (a *APIUIConfig) BuildFromService(h interface{}) error {
 	case evergreen.UIConfig:
 		a.Url = ToAPIString(v.Url)
 		a.HelpUrl = ToAPIString(v.HelpUrl)
+		a.UIv2Url = ToAPIString(v.UIv2Url)
 		a.HttpListenAddr = ToAPIString(v.HttpListenAddr)
 		a.Secret = ToAPIString(v.Secret)
 		a.DefaultProject = ToAPIString(v.DefaultProject)
@@ -1269,6 +1278,7 @@ func (a *APIUIConfig) ToService() (interface{}, error) {
 	return evergreen.UIConfig{
 		Url:            FromAPIString(a.Url),
 		HelpUrl:        FromAPIString(a.HelpUrl),
+		UIv2Url:        FromAPIString(a.UIv2Url),
 		HttpListenAddr: FromAPIString(a.HttpListenAddr),
 		Secret:         FromAPIString(a.Secret),
 		DefaultProject: FromAPIString(a.DefaultProject),
@@ -1324,6 +1334,7 @@ func (as *APIServiceFlags) BuildFromService(h interface{}) error {
 		as.TaskLoggingDisabled = v.TaskLoggingDisabled
 		as.CacheStatsJobDisabled = v.CacheStatsJobDisabled
 		as.CacheStatsEndpointDisabled = v.CacheStatsEndpointDisabled
+		as.TaskReliabilityDisabled = v.TaskReliabilityDisabled
 		as.CommitQueueDisabled = v.CommitQueueDisabled
 		as.PlannerDisabled = v.PlannerDisabled
 		as.HostAllocatorDisabled = v.HostAllocatorDisabled
@@ -1355,6 +1366,7 @@ func (as *APIServiceFlags) ToService() (interface{}, error) {
 		TaskLoggingDisabled:          as.TaskLoggingDisabled,
 		CacheStatsJobDisabled:        as.CacheStatsJobDisabled,
 		CacheStatsEndpointDisabled:   as.CacheStatsEndpointDisabled,
+		TaskReliabilityDisabled:      as.TaskReliabilityDisabled,
 		CommitQueueDisabled:          as.CommitQueueDisabled,
 		PlannerDisabled:              as.PlannerDisabled,
 		HostAllocatorDisabled:        as.HostAllocatorDisabled,

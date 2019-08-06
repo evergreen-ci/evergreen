@@ -81,6 +81,7 @@ message CreateOptions {
   repeated CreateOptions on_failure = 8;
   repeated CreateOptions on_timeout = 9;
   OutputOptions output = 10;
+  bytes standard_input_bytes = 11;
 }
 
 message IDResponse {
