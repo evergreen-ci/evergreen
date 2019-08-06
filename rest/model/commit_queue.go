@@ -27,6 +27,10 @@ type APICommitQueuePosition struct {
 	Position int `json:"position"`
 }
 
+type APICommitQueueItemAuthor struct {
+	Author APIString `json:"author"`
+}
+
 func (cq *APICommitQueue) BuildFromService(h interface{}) error {
 	cqService, ok := h.(commitqueue.CommitQueue)
 	if !ok {

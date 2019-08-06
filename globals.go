@@ -2,6 +2,7 @@ package evergreen
 
 import (
 	"os"
+	"time"
 
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
@@ -148,6 +149,10 @@ const (
 	PlannerVersionLegacy  = "legacy"
 	PlannerVersionRevised = "revised"
 	PlannerVersionTunable = "tunable"
+
+	// maximum turnaround we want to maintain for all hosts for a given distro
+	MaxDurationPerDistroHost               = 30 * time.Minute
+	MaxDurationPerDistroHostWithContainers = 2 * time.Minute
 
 	FinderVersionLegacy    = "legacy"
 	FinderVersionParallel  = "parallel"

@@ -104,7 +104,7 @@ func (j *agentMonitorDeployJob) Run(ctx context.Context) {
 	if err = j.host.SetNeedsNewAgentMonitorAtomically(false); err != nil {
 		grip.Info(message.WrapError(err, message.Fields{
 			"message": "needs new agent monitor flag is already false, not deploying new agent monitor",
-			"distro":  j.host.Distro,
+			"distro":  j.host.Distro.Id,
 			"host":    j.host.Id,
 			"job":     j.ID(),
 		}))
@@ -131,7 +131,7 @@ func (j *agentMonitorDeployJob) Run(ctx context.Context) {
 			if err = j.host.SetNeedsNewAgentMonitor(true); err != nil {
 				grip.Info(message.WrapError(err, message.Fields{
 					"message": "problem setting needs new agent monitor flag to true",
-					"distro":  j.host.Distro,
+					"distro":  j.host.Distro.Id,
 					"host":    j.host.Id,
 					"job":     j.ID(),
 				}))
@@ -176,7 +176,7 @@ func (j *agentMonitorDeployJob) disableHost(ctx context.Context, reason string) 
 	grip.Error(message.WrapError(j.env.RemoteQueue().Put(ctx, job), message.Fields{
 		"message": fmt.Sprintf("tried %d times to start agent monitor on host", agentMonitorPutRetries),
 		"host":    j.host.Id,
-		"distro":  j.host.Distro,
+		"distro":  j.host.Distro.Id,
 	}))
 
 	return nil
@@ -198,21 +198,24 @@ func (j *agentMonitorDeployJob) fetchClient(ctx context.Context, settings *everg
 	grip.Info(message.Fields{
 		"message":       "fetching latest evergreen binary for agent monitor",
 		"host":          j.host.Id,
-		"distro":        j.host.Distro,
+		"distro":        j.host.Distro.Id,
 		"communication": j.host.Distro.CommunicationMethod,
+		"job":           j.ID(),
 	})
 
 	opts := &jasper.CreateOptions{
-		Args: []string{"bash", "-c", j.host.CurlCommand(settings)},
+		Args:             []string{"bash", "-c", j.host.CurlCommand(settings)},
+		WorkingDirectory: j.host.Distro.HomeDir(),
 	}
 	output, err := j.host.RunJasperProcess(ctx, j.env, opts)
 	if err != nil {
 		grip.Error(message.WrapError(err, message.Fields{
 			"message":       "error fetching agent monitor binary on host",
 			"host":          j.host.Id,
-			"distro":        j.host.Distro,
+			"distro":        j.host.Distro.Id,
 			"output":        output,
 			"communication": j.host.Distro.CommunicationMethod,
+			"job":           j.ID(),
 		}))
 		return errors.WithStack(err)
 	}
@@ -226,21 +229,24 @@ func (j *agentMonitorDeployJob) runSetupScript(ctx context.Context) error {
 	grip.Info(message.Fields{
 		"message":       "running setup script on host",
 		"host":          j.host.Id,
-		"distro":        j.host.Distro,
+		"distro":        j.host.Distro.Id,
 		"communication": j.host.Distro.CommunicationMethod,
+		"job":           j.ID(),
 	})
 
 	opts := &jasper.CreateOptions{
-		Args: []string{"bash", "-c", j.host.SetupCommand()},
+		Args:             []string{"bash", "-c", j.host.SetupCommand()},
+		WorkingDirectory: j.host.Distro.HomeDir(),
 	}
 	output, err := j.host.RunJasperProcess(ctx, j.env, opts)
 	if err != nil {
 		grip.Error(message.WrapError(err, message.Fields{
 			"message":       "error running setup script on host",
 			"host":          j.host.Id,
-			"distro":        j.host.Distro,
+			"distro":        j.host.Distro.Id,
 			"output":        output,
 			"communication": j.host.Distro.CommunicationMethod,
+			"job":           j.ID(),
 		}))
 
 		// There is no guarantee setup scripts are idempotent, so we terminate
@@ -284,7 +290,7 @@ func (j *agentMonitorDeployJob) startAgentMonitor(ctx context.Context, settings 
 // agentMonitorOptions assembles the input to a Jasper request to create the
 // agent monitor.
 func (j *agentMonitorDeployJob) agentMonitorOptions(settings *evergreen.Settings) *jasper.CreateOptions {
-	binary := filepath.Join("~", j.host.Distro.BinaryName())
+	binary := filepath.Join(j.host.Distro.HomeDir(), j.host.Distro.BinaryName())
 
 	agentMonitorParams := []string{
 		binary,
@@ -297,6 +303,7 @@ func (j *agentMonitorDeployJob) agentMonitorOptions(settings *evergreen.Settings
 		fmt.Sprintf("--logkeeper_url='%s'", settings.LoggerConfig.LogkeeperURL),
 		"--cleanup",
 		"monitor",
+		fmt.Sprintf("--log_prefix='%s'", filepath.Join(j.host.Distro.WorkDir, "agent.monitor")),
 		fmt.Sprintf("--client_url='%s'", j.host.ClientURL(settings)),
 		fmt.Sprintf("--client_path='%s'", filepath.Join(j.host.Distro.ClientDir, j.host.Distro.BinaryName())),
 		fmt.Sprintf("--jasper_port=%d", settings.HostJasper.Port),
@@ -338,10 +345,10 @@ func (j *agentMonitorDeployJob) agentEnv(settings *evergreen.Settings) map[strin
 func (j *agentMonitorDeployJob) deployMessage() message.Fields {
 	m := message.Fields{
 		"message":  "starting agent monitor on host",
-		"runner":   "taskrunner",
 		"host":     j.host.Host,
 		"distro":   j.host.Distro.Id,
 		"provider": j.host.Distro.Provider,
+		"job":      j.ID(),
 	}
 
 	if j.host.InstanceType != "" {

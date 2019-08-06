@@ -176,6 +176,7 @@ func (s *Service) createProcess(rw http.ResponseWriter, r *http.Request) {
 		})
 		return
 	}
+	ctx := r.Context()
 
 	if err := opts.Validate(); err != nil {
 		writeError(rw, gimlet.ErrorResponse{
@@ -185,9 +186,9 @@ func (s *Service) createProcess(rw http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	ctx, cancel := context.WithCancel(context.Background())
+	pctx, cancel := context.WithCancel(context.Background())
 
-	proc, err := s.manager.CreateProcess(ctx, opts)
+	proc, err := s.manager.CreateProcess(pctx, opts)
 	if err != nil {
 		cancel()
 		writeError(rw, gimlet.ErrorResponse{
@@ -416,6 +417,7 @@ func (s *Service) waitForProcess(rw http.ResponseWriter, r *http.Request) {
 
 func (s *Service) respawnProcess(rw http.ResponseWriter, r *http.Request) {
 	id := gimlet.GetVars(r)["id"]
+	ctx := r.Context()
 
 	proc, err := s.manager.Get(r.Context(), id)
 	if err != nil {
@@ -428,8 +430,8 @@ func (s *Service) respawnProcess(rw http.ResponseWriter, r *http.Request) {
 
 	// Spawn a new context so that the process' context is not potentially
 	// canceled by the request's. See how createProcess() does this same thing.
-	ctx, cancel := context.WithCancel(context.Background())
-	newProc, err := proc.Respawn(ctx)
+	pctx, cancel := context.WithCancel(context.Background())
+	newProc, err := proc.Respawn(pctx)
 	if err != nil {
 		writeError(rw, gimlet.ErrorResponse{
 			StatusCode: http.StatusBadRequest,

@@ -199,11 +199,13 @@ type MockCommitQueueConnector struct {
 
 func (pc *MockCommitQueueConnector) GetGitHubPR(ctx context.Context, owner, repo string, PRNum int) (*github.PullRequest, error) {
 	userID := 1234
+	userLogin := "github.user"
 	ref := "master"
 	sha := "abcdef1234"
 	return &github.PullRequest{
 		User: &github.User{
-			ID: &userID,
+			ID:    &userID,
+			Login: &userLogin,
 		},
 		Base: &github.PullRequestBranch{
 			Ref: &ref,

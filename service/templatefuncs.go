@@ -54,6 +54,16 @@ func MakeTemplateFuncs(fo TemplateFunctionOptions, superUsers []string) map[stri
 			}
 			return "America/New_York"
 		},
+		"GetPatchPageUrl": func(u gimlet.User) string {
+			usr, ok := u.(*user.DBUser)
+			if ok && usr != nil && usr.Settings.UseSpruceOptions.PatchPage {
+				config, err := evergreen.GetConfig()
+				if err == nil {
+					return config.Ui.UIv2Url + "/patches?user=" + usr.Username()
+				}
+			}
+			return "/patches/mine"
+		},
 
 		// Trunc cuts off a string to be n characters long.
 		"Trunc": func(s string, n int) string {

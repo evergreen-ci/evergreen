@@ -1,6 +1,7 @@
 package jasper
 
 import (
+	"bytes"
 	"context"
 	"io/ioutil"
 	"os"
@@ -87,6 +88,29 @@ func TestCreateOptions(t *testing.T) {
 		"LargeTimeoutShouldValidate": func(t *testing.T, opts *CreateOptions) {
 			opts.Timeout = time.Hour
 			assert.NoError(t, opts.Validate())
+		},
+		"StandardInputBytesSetsStandardInput": func(t *testing.T, opts *CreateOptions) {
+			stdinBytesStr := "foo"
+			opts.StandardInputBytes = []byte(stdinBytesStr)
+
+			require.NoError(t, opts.Validate())
+
+			out, err := ioutil.ReadAll(opts.StandardInput)
+			require.NoError(t, err)
+			assert.EqualValues(t, stdinBytesStr, out)
+		},
+		"StandardInputBytesTakePrecedenceOverStandardInput": func(t *testing.T, opts *CreateOptions) {
+			stdinStr := "foo"
+			opts.StandardInput = bytes.NewBufferString(stdinStr)
+
+			stdinBytesStr := "bar"
+			opts.StandardInputBytes = []byte(stdinBytesStr)
+
+			require.NoError(t, opts.Validate())
+
+			out, err := ioutil.ReadAll(opts.StandardInput)
+			require.NoError(t, err)
+			assert.EqualValues(t, stdinBytesStr, out)
 		},
 		"NonExistingWorkingDirectoryShouldNotValidate": func(t *testing.T, opts *CreateOptions) {
 			opts.WorkingDirectory = "foo"

@@ -62,7 +62,7 @@ func main() {
 	files, err := getFiles(path)
 	grip.EmergencyFatal(err)
 
-	doc := map[string]interface{}{}
+	var doc map[string]interface{}
 	catcher := grip.NewBasicCatcher()
 	for _, fn := range files {
 		file, err = os.Open(fn)
@@ -78,6 +78,7 @@ func main() {
 		scanner := bufio.NewScanner(file)
 		count := 0
 		for scanner.Scan() {
+			doc = map[string]interface{}{}
 			count++
 			err = json.Unmarshal(scanner.Bytes(), &doc)
 			if err != nil {

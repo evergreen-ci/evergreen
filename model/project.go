@@ -18,7 +18,7 @@ import (
 	"github.com/mongodb/anser/bsonutil"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
-	"github.com/sabhiram/go-git-ignore"
+	ignore "github.com/sabhiram/go-git-ignore"
 	"gopkg.in/yaml.v2"
 )
 
@@ -29,30 +29,30 @@ const (
 )
 
 type Project struct {
-	Enabled         bool                       `yaml:"enabled,omitempty" bson:"enabled"`
-	Stepback        bool                       `yaml:"stepback,omitempty" bson:"stepback"`
-	IgnorePreError  bool                       `yaml:"ignore_pre_err,omitempty" bson:"ignore_pre_err,omitempty"`
-	BatchTime       int                        `yaml:"batchtime,omitempty" bson:"batch_time"`
-	Owner           string                     `yaml:"owner,omitempty" bson:"owner_name"`
-	Repo            string                     `yaml:"repo,omitempty" bson:"repo_name"`
-	RemotePath      string                     `yaml:"remote_path,omitempty" bson:"remote_path"`
-	RepoKind        string                     `yaml:"repokind,omitempty" bson:"repo_kind"`
-	Branch          string                     `yaml:"branch,omitempty" bson:"branch_name"`
-	Identifier      string                     `yaml:"identifier,omitempty" bson:"identifier"`
-	DisplayName     string                     `yaml:"display_name,omitempty" bson:"display_name"`
-	CommandType     string                     `yaml:"command_type,omitempty" bson:"command_type"`
-	Ignore          []string                   `yaml:"ignore,omitempty" bson:"ignore"`
-	Pre             *YAMLCommandSet            `yaml:"pre,omitempty" bson:"pre"`
-	Post            *YAMLCommandSet            `yaml:"post,omitempty" bson:"post"`
-	Timeout         *YAMLCommandSet            `yaml:"timeout,omitempty" bson:"timeout"`
-	CallbackTimeout int                        `yaml:"callback_timeout_secs,omitempty" bson:"callback_timeout_secs"`
-	Modules         ModuleList                 `yaml:"modules,omitempty" bson:"modules"`
-	BuildVariants   BuildVariants              `yaml:"buildvariants,omitempty" bson:"build_variants"`
-	Functions       map[string]*YAMLCommandSet `yaml:"functions,omitempty" bson:"functions"`
-	TaskGroups      []TaskGroup                `yaml:"task_groups,omitempty" bson:"task_groups"`
-	Tasks           []ProjectTask              `yaml:"tasks,omitempty" bson:"tasks"`
-	ExecTimeoutSecs int                        `yaml:"exec_timeout_secs,omitempty" bson:"exec_timeout_secs"`
-	Loggers         *LoggerConfig              `yaml:"loggers,omitempty" bson:"loggers,omitempty"`
+	Enabled           bool                       `yaml:"enabled,omitempty" bson:"enabled"`
+	Stepback          bool                       `yaml:"stepback,omitempty" bson:"stepback"`
+	PreErrorFailsTask bool                       `yaml:"pre_error_fails_task,omitempty" bson:"pre_error_fails_task,omitempty"`
+	BatchTime         int                        `yaml:"batchtime,omitempty" bson:"batch_time"`
+	Owner             string                     `yaml:"owner,omitempty" bson:"owner_name"`
+	Repo              string                     `yaml:"repo,omitempty" bson:"repo_name"`
+	RemotePath        string                     `yaml:"remote_path,omitempty" bson:"remote_path"`
+	RepoKind          string                     `yaml:"repokind,omitempty" bson:"repo_kind"`
+	Branch            string                     `yaml:"branch,omitempty" bson:"branch_name"`
+	Identifier        string                     `yaml:"identifier,omitempty" bson:"identifier"`
+	DisplayName       string                     `yaml:"display_name,omitempty" bson:"display_name"`
+	CommandType       string                     `yaml:"command_type,omitempty" bson:"command_type"`
+	Ignore            []string                   `yaml:"ignore,omitempty" bson:"ignore"`
+	Pre               *YAMLCommandSet            `yaml:"pre,omitempty" bson:"pre"`
+	Post              *YAMLCommandSet            `yaml:"post,omitempty" bson:"post"`
+	Timeout           *YAMLCommandSet            `yaml:"timeout,omitempty" bson:"timeout"`
+	CallbackTimeout   int                        `yaml:"callback_timeout_secs,omitempty" bson:"callback_timeout_secs"`
+	Modules           ModuleList                 `yaml:"modules,omitempty" bson:"modules"`
+	BuildVariants     BuildVariants              `yaml:"buildvariants,omitempty" bson:"build_variants"`
+	Functions         map[string]*YAMLCommandSet `yaml:"functions,omitempty" bson:"functions"`
+	TaskGroups        []TaskGroup                `yaml:"task_groups,omitempty" bson:"task_groups"`
+	Tasks             []ProjectTask              `yaml:"tasks,omitempty" bson:"tasks"`
+	ExecTimeoutSecs   int                        `yaml:"exec_timeout_secs,omitempty" bson:"exec_timeout_secs"`
+	Loggers           *LoggerConfig              `yaml:"loggers,omitempty" bson:"loggers,omitempty"`
 
 	// Flag that indicates a project as requiring user authentication
 	Private bool `yaml:"private,omitempty" bson:"private"`
@@ -475,16 +475,18 @@ func (c *LoggerConfig) IsValid() error {
 	}
 	catcher := grip.NewBasicCatcher()
 	for _, opts := range c.Agent {
-		catcher.Add(errors.Wrap(opts.IsValid(), "invalid agent logger config"))
+		catcher.Wrap(opts.IsValid(), "invalid agent logger config")
 	}
 	for _, opts := range c.System {
-		catcher.Add(errors.Wrap(opts.IsValid(), "invalid system logger config"))
+		catcher.Wrap(opts.IsValid(), "invalid system logger config")
 		if opts.Type == FileLogSender {
-			catcher.Add(errors.New("file logger is disallowed for system logs; will use Evergreen logger"))
+			catcher.New("file logger is disallowed for system logs; will use Evergreen logger")
+		} else if opts.Type == LogkeeperLogSender {
+			catcher.New("logkeepr is disallowed for system logs; will use Evergreen logger")
 		}
 	}
 	for _, opts := range c.Task {
-		catcher.Add(errors.Wrap(opts.IsValid(), "invalid task logger config"))
+		catcher.Wrap(opts.IsValid(), "invalid task logger config")
 	}
 
 	return catcher.Resolve()
@@ -493,13 +495,13 @@ func (c *LoggerConfig) IsValid() error {
 func (o *LogOpts) IsValid() error {
 	catcher := grip.NewBasicCatcher()
 	if !util.StringSliceContains(ValidLogSenders, o.Type) {
-		catcher.Add(errors.Errorf("%s is not a valid log sender", o.Type))
+		catcher.Errorf("%s is not a valid log sender", o.Type)
 	}
 	if o.Type == SplunkLogSender && o.SplunkServer == "" {
-		catcher.Add(errors.New("Splunk logger requires a server URL"))
+		catcher.New("Splunk logger requires a server URL")
 	}
 	if o.Type == SplunkLogSender && o.SplunkToken == "" {
-		catcher.Add(errors.New("Splunk logger requires a token"))
+		catcher.New("Splunk logger requires a token")
 	}
 
 	return catcher.Resolve()
@@ -513,10 +515,10 @@ const (
 )
 
 var ValidLogSenders = []string{
-	string(EvergreenLogSender),
-	string(FileLogSender),
-	string(LogkeeperLogSender),
-	string(SplunkLogSender),
+	EvergreenLogSender,
+	FileLogSender,
+	LogkeeperLogSender,
+	SplunkLogSender,
 }
 
 // TaskIdTable is a map of [variant, task display name]->[task id].
@@ -949,7 +951,7 @@ func GetTaskGroup(taskGroup string, tc *TaskConfig) (*TaskGroup, error) {
 			SetupTask:          p.Pre,
 			TeardownTask:       p.Post,
 			Timeout:            p.Timeout,
-			SetupGroupFailTask: p.Pre == nil || !p.IgnorePreError,
+			SetupGroupFailTask: p.Pre == nil || p.PreErrorFailsTask,
 		}, nil
 	}
 	tg := p.FindTaskGroup(taskGroup)

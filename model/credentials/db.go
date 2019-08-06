@@ -182,6 +182,7 @@ func GenerateInMemory(ctx context.Context, env evergreen.Environment, name strin
 	if err != nil {
 		return nil, errors.Wrap(err, "could not create RPC credentials")
 	}
+	creds.ServerName = name
 
 	return creds, nil
 }
@@ -208,7 +209,13 @@ func FindByID(ctx context.Context, env evergreen.Environment, name string) (*rpc
 		return nil, errors.Wrap(err, "problem getting key")
 	}
 
-	return rpc.NewCredentials(caCrt, crt, key)
+	creds, err := rpc.NewCredentials(caCrt, crt, key)
+	if err != nil {
+		return nil, errors.Wrap(err, "could not create RPC credentials")
+	}
+	creds.ServerName = name
+
+	return creds, nil
 }
 
 // FindExpirationByID returns the time at which the credentials for the given

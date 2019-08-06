@@ -324,14 +324,12 @@ func (c *Mock) GetPatchFile(ctx context.Context, td TaskData, patchFileID string
 }
 
 func (c *Mock) GetTaskPatch(ctx context.Context, td TaskData) (*patchmodel.Patch, error) {
-	val, _ := ctx.Value("githash").(string)
-	p := &patchmodel.Patch{}
-	if val != "" {
-		p.Patches = []patchmodel.ModulePatch{
-			{ModuleName: "sample", Githash: val},
-		}
+	patch, ok := ctx.Value("patch").(*patchmodel.Patch)
+	if !ok {
+		return &patchmodel.Patch{}, nil
 	}
-	return p, nil
+
+	return patch, nil
 }
 
 // GetHostsByUser will return an array with a single mock host
@@ -599,6 +597,10 @@ func (c *Mock) DeleteCommitQueueItem(ctx context.Context, projectID, item string
 
 func (c *Mock) EnqueueItem(ctx context.Context, patchID string) (int, error) {
 	return 1, nil
+}
+
+func (c *Mock) GetCommitQueueItemAuthor(ctx context.Context, projectID, item string) (string, error) {
+	return "github.user", nil
 }
 
 func (c *Mock) GetUserAuthorInfo(ctx context.Context, td TaskData, userID string) (*model.APIUserAuthorInformation, error) {

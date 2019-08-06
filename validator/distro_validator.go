@@ -308,6 +308,19 @@ func ensureHasValidPlannerSettings(ctx context.Context, d *distro.Distro, s *eve
 			Level:   Error,
 		})
 	}
+	if ps.ExpectedRuntimeFactor < 0 {
+		errs = append(errs, ValidationError{
+			Message: fmt.Sprintf("invalid planner_settings.expected_runtime_factor value of %d for distro '%s' - its value must be a non-negative integer", ps.PatchZipperFactor, d.Id),
+			Level:   Error,
+		})
+	}
+	if ps.TimeInQueueFactor < 0 {
+		errs = append(errs, ValidationError{
+			Message: fmt.Sprintf("invalid planner_settings.time_in_queue value of %d for distro '%s' - its value must be a non-negative integer", ps.PatchZipperFactor, d.Id),
+			Level:   Error,
+		})
+	}
+
 	if !util.StringSliceContains(evergreen.ValidTaskOrderings, ps.TaskOrdering) {
 		errs = append(errs, ValidationError{
 			Message: fmt.Sprintf("invalid planner_settings.task_ordering '%s' for distro '%s'", ps.TaskOrdering, d.Id),

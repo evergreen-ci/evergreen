@@ -4,6 +4,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/task"
@@ -13,7 +14,6 @@ import (
 
 func TestDBTaskQueuePersister(t *testing.T) {
 
-	var taskQueuePersister *DBTaskQueuePersister
 	var distroIds []string
 	var displayNames []string
 	var buildVariants []string
@@ -26,8 +26,6 @@ func TestDBTaskQueuePersister(t *testing.T) {
 	var tasks []task.Task
 
 	Convey("With a DBTaskQueuePersister", t, func() {
-
-		taskQueuePersister = &DBTaskQueuePersister{}
 		distroIds = []string{"d1", "d2"}
 		taskIds = []string{"t1", "t2", "t3", "t4", "t5"}
 		displayNames = []string{"dn1", "dn2", "dn3", "dn4", "dn5"}
@@ -96,20 +94,16 @@ func TestDBTaskQueuePersister(t *testing.T) {
 			},
 		}
 
-		distroQueueInfo1 := GetDistroQueueInfo(tasks[0:3], MaxDurationPerDistroHost)
-		distroQueueInfo2 := GetDistroQueueInfo(tasks[3:], MaxDurationPerDistroHost)
+		distroQueueInfo1 := GetDistroQueueInfo(tasks[0:3], evergreen.MaxDurationPerDistroHost)
+		distroQueueInfo2 := GetDistroQueueInfo(tasks[3:], evergreen.MaxDurationPerDistroHost)
 
 		So(db.Clear(model.TaskQueuesCollection), ShouldBeNil)
 
 		Convey("saving task queues should place them in the database with the "+
 			"correct ordering of tasks along with the relevant average task "+
 			"completion times", func() {
-			_, err := taskQueuePersister.PersistTaskQueue(distroIds[0],
-				[]task.Task{tasks[0], tasks[1], tasks[2]}, distroQueueInfo1)
-			So(err, ShouldBeNil)
-			_, err = taskQueuePersister.PersistTaskQueue(distroIds[1],
-				[]task.Task{tasks[3], tasks[4]}, distroQueueInfo2)
-			So(err, ShouldBeNil)
+			So(PersistTaskQueue(distroIds[0], []task.Task{tasks[0], tasks[1], tasks[2]}, distroQueueInfo1), ShouldBeNil)
+			So(PersistTaskQueue(distroIds[1], []task.Task{tasks[3], tasks[4]}, distroQueueInfo2), ShouldBeNil)
 
 			taskQueue, err := model.LoadTaskQueue(distroIds[0])
 			So(err, ShouldBeNil)

@@ -44,8 +44,8 @@ mciModule.controller('SettingsCtrl', ['$scope', '$http', '$window', 'notificatio
 
   $scope.user_tz = $window.user_tz;
   $scope.new_tz = $scope.user_tz || "America/New_York";
-  $scope.github_user = $window.github_user
-  $scope.new_waterfall = $window.new_waterfall;
+  $scope.github_user = $window.github_user;
+  $scope.use_spruce_options = $window.use_spruce_options;
   $scope.userConf = $window.userConf;
   $scope.binaries = $window.binaries;
   $scope.notifications = $window.notifications;
@@ -80,10 +80,10 @@ mciModule.controller('SettingsCtrl', ['$scope', '$http', '$window', 'notificatio
       });
   }
 
-  $scope.updateUserSettings = function(new_tz, new_waterfall) {
+  $scope.updateUserSettings = function(new_tz, use_spruce_options) {
     data = {
         timezone: new_tz,
-        new_waterfall: new_waterfall,
+        use_spruce_options: use_spruce_options,
         github_user: {
             last_known_as: $scope.github_user,
         }

@@ -149,3 +149,39 @@ func (s *CommitQueueSuite) TestEnqueueItem() {
 	s.Equal(200, response.Status())
 	s.Equal(model.APICommitQueuePosition{Position: 1}, response.Data())
 }
+
+func (s *CommitQueueSuite) TestGetItemAuthor() {
+	ctx := context.Background()
+	route := makeGetCommitQueueItemAuthor(s.sc).(*getCommitQueueItemAuthorHandler)
+	p := patch.Patch{
+		Id:     mgobson.NewObjectId(),
+		Author: "evergreen.user",
+	}
+	s.sc.CachedPatches = append(s.sc.CachedPatches, p)
+	pRef := &dbModel.ProjectRef{
+		Identifier: "mci",
+		CommitQueue: dbModel.CommitQueueParams{
+			PatchType: commitqueue.CLIPatchType,
+		},
+	}
+	s.NoError(s.sc.CreateProject(pRef))
+
+	route.projectID = pRef.Identifier
+	route.item = p.Id.Hex()
+	resp := route.Run(ctx)
+	s.Equal(200, resp.Status())
+	s.Equal(model.APICommitQueueItemAuthor{Author: model.ToAPIString(p.Author)}, resp.Data())
+
+	pRef = &dbModel.ProjectRef{
+		Identifier: "not-mci",
+		CommitQueue: dbModel.CommitQueueParams{
+			PatchType: commitqueue.PRPatchType,
+		},
+	}
+	s.NoError(s.sc.CreateProject(pRef))
+	route.projectID = pRef.Identifier
+	route.item = "1234"
+	resp = route.Run(ctx)
+	s.Equal(200, resp.Status())
+	s.Equal(model.APICommitQueueItemAuthor{Author: model.ToAPIString("github.user")}, resp.Data())
+}

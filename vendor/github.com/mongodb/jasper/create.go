@@ -1,6 +1,7 @@
 package jasper
 
 import (
+	"bytes"
 	"context"
 	"crypto/sha1"
 	"fmt"
@@ -27,14 +28,18 @@ type CreateOptions struct {
 	WorkingDirectory string            `bson:"working_directory,omitempty" json:"working_directory,omitempty" yaml:"working_directory,omitempty"`
 	Output           OutputOptions     `bson:"output" json:"output" yaml:"output"`
 	OverrideEnviron  bool              `bson:"override_env,omitempty" json:"override_env,omitempty" yaml:"override_env,omitempty"`
-	TimeoutSecs      int               `bson:"timeout_secs,omitempty" json:"timeout_secs,omitempty" yaml:"timeout_secs,omitempty"`
-	// On remote interfaces, TimeoutSecs must be set instead of Timeout.
+	// TimeoutSecs takes precedence over Timeout. On remote interfaces,
+	// TimeoutSecs should be set instead of Timeout.
+	TimeoutSecs   int              `bson:"timeout_secs,omitempty" json:"timeout_secs,omitempty" yaml:"timeout_secs,omitempty"`
 	Timeout       time.Duration    `bson:"timeout" json:"-" yaml:"-"`
-	Tags          []string         `bson:"tags" json:"tags" yaml:"tags"`
-	OnSuccess     []*CreateOptions `bson:"on_success" json:"on_success" yaml:"on_success"`
-	OnFailure     []*CreateOptions `bson:"on_failure" json:"on_failure" yaml:"on_failure"`
-	OnTimeout     []*CreateOptions `bson:"on_timeout" json:"on_timeout" yaml:"on_timeout"`
+	Tags          []string         `bson:"tags" json:"tags,omitempty" yaml:"tags"`
+	OnSuccess     []*CreateOptions `bson:"on_success" json:"on_success,omitempty" yaml:"on_success"`
+	OnFailure     []*CreateOptions `bson:"on_failure" json:"on_failure,omitempty" yaml:"on_failure"`
+	OnTimeout     []*CreateOptions `bson:"on_timeout" json:"on_timeout,omitempty" yaml:"on_timeout"`
 	StandardInput io.Reader        `bson:"-" json:"-" yaml:"-"`
+	// StandardInputBytes takes precedence over StandardInput. On remote
+	// interfaces, StandardInputBytes should be set instead of StandardInput.
+	StandardInputBytes []byte `bson:"stdin_bytes" json:"stdin_bytes" yaml:"stdin_bytes"`
 
 	closers []func() error
 }
@@ -61,7 +66,7 @@ func MakeCreationOptions(cmdStr string) (*CreateOptions, error) {
 	}, nil
 }
 
-// Validate ensures that CreateOptions is valid.
+// Validate ensures that CreateOptions is valid for non-remote interfaces.
 func (opts *CreateOptions) Validate() error {
 	if len(opts.Args) == 0 {
 		return errors.New("invalid command, must specify at least one argument")
@@ -98,6 +103,10 @@ func (opts *CreateOptions) Validate() error {
 		if !info.IsDir() {
 			return errors.Errorf("could not use file as working directory")
 		}
+	}
+
+	if len(opts.StandardInputBytes) != 0 {
+		opts.StandardInput = bytes.NewBuffer(opts.StandardInputBytes)
 	}
 
 	return nil
@@ -272,6 +281,11 @@ func (opts *CreateOptions) Copy() *CreateOptions {
 	if opts.OnTimeout != nil {
 		optsCopy.OnTimeout = make([]*CreateOptions, len(opts.OnTimeout))
 		_ = copy(optsCopy.OnTimeout, opts.OnTimeout)
+	}
+
+	if opts.StandardInputBytes != nil {
+		optsCopy.StandardInputBytes = make([]byte, len(opts.StandardInputBytes))
+		_ = copy(optsCopy.StandardInputBytes, opts.StandardInputBytes)
 	}
 
 	optsCopy.Output = *opts.Output.Copy()

@@ -11,6 +11,9 @@ func TestFullUserSettings(t *testing.T) {
 	settings := user.UserSettings{
 		Timezone:      "east",
 		SlackUsername: "me",
+		UseSpruceOptions: user.UseSpruceOptions{
+			PatchPage: true,
+		},
 		GithubUser: user.GithubUser{
 			UID:         5,
 			LastKnownAs: "peter",
@@ -52,6 +55,10 @@ func runTests(t *testing.T, in user.UserSettings) {
 	origSettings, err := apiSettings.ToService()
 	assert.NoError(err)
 	assert.EqualValues(in, origSettings)
+
+	finalAPISettings, err := ApplyUserChanges(user.UserSettings{}, apiSettings)
+	assert.NoError(err)
+	assert.EqualValues(apiSettings, finalAPISettings)
 }
 
 func TestAPIUserAuthorInformation(t *testing.T) {
