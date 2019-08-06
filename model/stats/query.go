@@ -153,7 +153,7 @@ type StatsFilter struct {
 }
 
 // validateCommon performs common validations regardless of the filter's intended use.
-func (f *StatsFilter) validateCommon() error {
+func (f *StatsFilter) ValidateCommon() error {
 	catcher := grip.NewBasicCatcher()
 	if f == nil {
 		catcher.Add(errors.New("StatsFilter should not be nil"))
@@ -187,7 +187,7 @@ func (f *StatsFilter) validateCommon() error {
 func (f *StatsFilter) ValidateForTests() error {
 	catcher := grip.NewBasicCatcher()
 
-	catcher.Add(f.validateCommon())
+	catcher.Add(f.ValidateCommon())
 	if f.StartAt != nil {
 		catcher.Add(f.StartAt.validateForTests(f.GroupBy))
 	}
@@ -202,7 +202,7 @@ func (f *StatsFilter) ValidateForTests() error {
 func (f *StatsFilter) ValidateForTasks() error {
 	catcher := grip.NewBasicCatcher()
 
-	catcher.Add(f.validateCommon())
+	catcher.Add(f.ValidateCommon())
 	if f.StartAt != nil {
 		catcher.Add(f.StartAt.validateForTasks(f.GroupBy))
 	}
@@ -288,8 +288,9 @@ func GetTaskStats(filter StatsFilter) ([]TaskStats, error) {
 		return nil, errors.Wrap(err, "The provided StatsFilter is invalid")
 	}
 	var stats []TaskStats
-	pipeline := filter.taskStatsQueryPipeline()
-	err = db.Aggregate(dailyTaskStatsCollection, pipeline, &stats)
+	pipeline := filter.TaskStatsQueryPipeline()
+	grip.Infof("pipeline %s\n", pipeline)
+	err = db.Aggregate(DailyTaskStatsCollection, pipeline, &stats)
 	if err != nil {
 		return nil, errors.Wrap(err, "Failed to aggregate task statistics")
 	}

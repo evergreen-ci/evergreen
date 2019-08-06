@@ -38,7 +38,7 @@ func (s *statsSuite) SetupTest() {
 		hourlyTestStatsCollection,
 		dailyTestStatsCollection,
 		dailyStatsStatusCollection,
-		dailyTaskStatsCollection,
+		DailyTaskStatsCollection,
 		task.Collection,
 		task.OldCollection,
 		testresult.Collection,
@@ -748,5 +748,5 @@ func (s *statsSuite) countHourlyTestDocs() int {
 }
 
 func (s *statsSuite) countDailyTaskDocs() int {
-	return s.countDocs(dailyTaskStatsCollection)
+	return s.countDocs(DailyTaskStatsCollection)
 }

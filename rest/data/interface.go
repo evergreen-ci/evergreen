@@ -18,6 +18,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/manifest"
 	"github.com/evergreen-ci/evergreen/model/patch"
+	"github.com/evergreen-ci/evergreen/model/reliability"
 	"github.com/evergreen-ci/evergreen/model/stats"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/testresult"
@@ -267,6 +268,9 @@ type Connector interface {
 	// Get test execution statistics
 	GetTestStats(stats.StatsFilter) ([]restModel.APITestStats, error)
 	GetTaskStats(stats.StatsFilter) ([]restModel.APITaskStats, error)
+
+	// Get task reliability scores
+	GetTaskReliabilityScores(reliability.TaskReliabilityFilter) ([]restModel.APITaskReliability, error)
 
 	// Commit queue methods
 	// GetGithubPR takes the owner, repo, and PR number.

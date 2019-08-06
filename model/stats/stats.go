@@ -152,7 +152,7 @@ func GenerateDailyTaskStats(projectId string, requester string, day time.Time, t
 	start := util.GetUTCDay(day)
 	end := start.Add(24 * time.Hour)
 	pipeline := dailyTaskStatsPipeline(projectId, requester, start, end, tasks, jobRunTime)
-	err := aggregateIntoCollection(task.Collection, pipeline, dailyTaskStatsCollection)
+	err := aggregateIntoCollection(task.Collection, pipeline, DailyTaskStatsCollection)
 	if err != nil {
 		return errors.Wrap(err, "Failed to aggregate daily task stats")
 	}
@@ -167,7 +167,7 @@ func GenerateDailyTaskStats(projectId string, requester string, day time.Time, t
 	start = util.GetUTCDay(day)
 	end = start.Add(24 * time.Hour)
 	pipeline = dailyTaskStatsForOldTasksPipeline(projectId, requester, start, end, tasks, jobRunTime)
-	err = aggregateIntoCollection(task.OldCollection, pipeline, dailyTaskStatsCollection)
+	err = aggregateIntoCollection(task.OldCollection, pipeline, DailyTaskStatsCollection)
 	if err != nil {
 		return errors.Wrap(err, "Failed to aggregate daily task stats")
 	}
