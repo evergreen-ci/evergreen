@@ -271,7 +271,6 @@ func (c *DisplayTaskCache) Get(t *Task) (*Task, error) {
 	c.displayTasks = append(c.displayTasks, displayTask)
 	return displayTask, nil
 }
-func (c *DisplayTaskCache) Clear()        { c.execToDisplay = map[string]*Task{} }
 func (c *DisplayTaskCache) List() []*Task { return c.displayTasks }
 
 func NewDisplayTaskCache() DisplayTaskCache {

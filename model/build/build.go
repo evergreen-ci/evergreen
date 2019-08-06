@@ -261,7 +261,6 @@ func (b *Build) SetCachedTaskFinished(taskID, status string, detail *apimodels.T
 			continue
 		}
 
-		b.Tasks[i].Id = taskID
 		b.Tasks[i].Status = status
 		b.Tasks[i].TimeTaken = timeTaken
 		b.Tasks[i].StatusDetails = *detail

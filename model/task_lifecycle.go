@@ -686,13 +686,12 @@ func UpdateBuildAndVersionStatusForTask(taskId string, updates *StatusChanges) e
 	})
 
 	startPhaseAt = time.Now()
+	cachedTasks := buildTasks
 	for _, displayTask := range cache.List() {
 		if err = UpdateDisplayTask(displayTask); err != nil {
 			return errors.Wrap(errors.WithStack(err), "error updating display task")
 		}
-		if err = build.UpdateCachedTask(displayTask, 0); err != nil {
-			return errors.Wrap(errors.WithStack(err), "error updating cached display task")
-		}
+		cachedTasks = append(cachedTasks, *displayTask)
 	}
 	grip.DebugWhen(time.Since(startPhaseAt) > slowMS, message.Fields{
 		"function":      "UpdateBuildAndVersionStatusForTask",
@@ -702,7 +701,7 @@ func UpdateBuildAndVersionStatusForTask(taskId string, updates *StatusChanges) e
 	})
 
 	startPhaseAt = time.Now()
-	if err = b.UpdateCachedTasks(buildTasks); err != nil {
+	if err = b.UpdateCachedTasks(cachedTasks); err != nil {
 		return err
 	}
 	if time.Since(startPhaseAt) > slowMS {
