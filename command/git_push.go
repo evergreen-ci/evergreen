@@ -25,7 +25,7 @@ type gitPush struct {
 	DryRun         bool   `yaml:"dry_run" mapstructure:"dry_run"`
 	CommitterName  string `yaml:"committer_name" mapstructure:"committer_name"`
 	CommitterEmail string `yaml:"committer_email" mapstructure:"committer_email"`
-	Token          string `yaml: "token" plugin:"expand" mapstructure:"token"`
+	Token          string `yaml:"token" plugin:"expand" mapstructure:"token"`
 
 	base
 }
