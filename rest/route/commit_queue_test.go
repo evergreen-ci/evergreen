@@ -2,13 +2,17 @@ package route
 
 import (
 	"context"
+	"path/filepath"
 	"testing"
 
-	restModel "github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/mock"
+	dbModel "github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/commitqueue"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/rest/model"
+	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/stretchr/testify/suite"
 	mgobson "gopkg.in/mgo.v2/bson"
 )
@@ -72,7 +76,19 @@ func (s *CommitQueueSuite) TestGetCommitQueue() {
 }
 
 func (s *CommitQueueSuite) TestDeleteItem() {
-	route := makeDeleteCommitQueueItems(s.sc).(*commitQueueDeleteItemHandler)
+	s.sc.MockProjectConnector.CachedProjects = []dbModel.ProjectRef{
+		{
+			Identifier:  "mci",
+			CommitQueue: dbModel.CommitQueueParams{PatchType: commitqueue.PRPatchType},
+		},
+	}
+
+	ctx := context.Background()
+	env := &mock.Environment{}
+	s.Require().NoError(env.Configure(ctx, filepath.Join(evergreen.FindEvergreenHome(), testutil.TestDir, testutil.TestSettings), nil))
+	s.Require().NoError(env.Local.Start(ctx))
+
+	route := makeDeleteCommitQueueItems(s.sc, env).(*commitQueueDeleteItemHandler)
 	pos, err := s.sc.EnqueueItem("mci", model.APICommitQueueItem{Issue: model.ToAPIString("1")})
 	s.Require().NoError(err)
 	s.Require().Equal(1, pos)
@@ -84,17 +100,18 @@ func (s *CommitQueueSuite) TestDeleteItem() {
 
 	// Valid delete
 	route.item = "1"
-	response := route.Run(context.Background())
+	response := route.Run(ctx)
+	s.Equal(1, env.LocalQueue().Stats(ctx).Total)
 	s.Equal(204, response.Status())
 
 	// Already deleted
-	response = route.Run(context.Background())
+	response = route.Run(ctx)
 	s.Equal(404, response.Status())
 
 	// Invalid project
 	route.project = "not_here"
 	route.item = "2"
-	response = route.Run(context.Background())
+	response = route.Run(ctx)
 	s.Equal(404, response.Status())
 }
 
@@ -146,9 +163,9 @@ func (s *CommitQueueSuite) TestGetItemAuthor() {
 		Author: "evergreen.user",
 	}
 	s.sc.CachedPatches = append(s.sc.CachedPatches, p)
-	pRef := &restModel.ProjectRef{
+	pRef := &dbModel.ProjectRef{
 		Identifier: "mci",
-		CommitQueue: restModel.CommitQueueParams{
+		CommitQueue: dbModel.CommitQueueParams{
 			PatchType: commitqueue.CLIPatchType,
 		},
 	}
@@ -160,9 +177,9 @@ func (s *CommitQueueSuite) TestGetItemAuthor() {
 	s.Equal(200, resp.Status())
 	s.Equal(model.APICommitQueueItemAuthor{Author: model.ToAPIString(p.Author)}, resp.Data())
 
-	pRef = &restModel.ProjectRef{
+	pRef = &dbModel.ProjectRef{
 		Identifier: "not-mci",
-		CommitQueue: restModel.CommitQueueParams{
+		CommitQueue: dbModel.CommitQueueParams{
 			PatchType: commitqueue.PRPatchType,
 		},
 	}

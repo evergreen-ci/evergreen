@@ -69,6 +69,7 @@ var (
 	GeneratedByKey          = bsonutil.MustHaveTag(Task{}, "GeneratedBy")
 	ResetWhenFinishedKey    = bsonutil.MustHaveTag(Task{}, "ResetWhenFinished")
 	LogsKey                 = bsonutil.MustHaveTag(Task{}, "Logs")
+	CommitQueueMergeKey     = bsonutil.MustHaveTag(Task{}, "CommitQueueMerge")
 
 	// BSON fields for the test result struct
 	TestResultStatusKey    = bsonutil.MustHaveTag(TestResult{}, "Status")
@@ -830,6 +831,17 @@ func FindTasksFromBuildWithDependencies(buildId string) ([]Task, error) {
 		return nil, errors.Wrap(err, "error finding task ids for versions")
 	}
 	return tasks, nil
+}
+
+func FindMergeTaskForVersion(versionId string) (*Task, error) {
+	task := &Task{}
+	query := db.Query(bson.M{
+		VersionKey:          versionId,
+		CommitQueueMergeKey: true,
+	})
+	err := db.FindOneQ(Collection, query, task)
+
+	return task, err
 }
 
 // FindOneOld returns one task from the old tasks collection that satisfies the query.
