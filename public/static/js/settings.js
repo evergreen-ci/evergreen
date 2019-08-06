@@ -51,6 +51,7 @@ mciModule.controller('SettingsCtrl', ['$scope', '$http', '$window', 'notificatio
   $scope.notifications = $window.notifications;
   $scope.slack_username = $window.slack_username;
   $scope.auth_is_ldap = $window.auth_is_ldap;
+  $scope.spruce_feedback = {};
 
   $scope.newKey = function(){
     if(!confirm("Generating a new API key will invalidate your current API key. Continue?"))
@@ -81,13 +82,11 @@ mciModule.controller('SettingsCtrl', ['$scope', '$http', '$window', 'notificatio
   }
 
   $scope.showAdditionalFields = function(){
-    console.log("show fields");
-    var checkbox = document.getElementById("optOutCheck");
     var additionalFieldCount = 1;
     var additionalField = document.getElementById("feedback-" + additionalFieldCount);
 
     while (additionalField) {
-      if (checkbox.checked == true){
+      if (use_spruce_options.opt_out) {
         additionalField.style.display = "block";
       } else {
         additionalField.style.display = "none";
@@ -97,10 +96,33 @@ mciModule.controller('SettingsCtrl', ['$scope', '$http', '$window', 'notificatio
     }
   }
 
-  $scope.updateUserSettings = function(new_tz, use_spruce_options) {
+  function formatFeedback(spruce_feedback) {
+    var formattedFeedback = { type: "new_patches_page_feedback" };
+    var questionAnswerArray = [];
+    var allFields = ["information_score", "usability_score", "missing_things", "requested_changes"];
+    allFields.forEach( function(field) {
+        var prompt = document.getElementById(field + "_prompt").innerHTML;
+        var answer = spruce_feedback[field] === undefined ? "" : spruce_feedback[field]
+        var questionAnswer = {
+          id: field,
+          prompt: prompt,
+          answer: answer
+        };
+        questionAnswerArray.push(questionAnswer);
+    });
+    formattedFeedback["questions"] = questionAnswerArray;
+    return formattedFeedback;
+  }
+
+  $scope.updateUserSettings = function(new_tz, use_spruce_options, spruce_feedback) {
+    if (use_spruce_options.opt_out && (spruce_feedback.usability_score === undefined || spruce_feedback.information_score === undefined)) {
+      notifier.pushNotification("Please fill out all required fields before submitting",'errorHeader');
+      return;
+    }
     data = {
         timezone: new_tz,
         use_spruce_options: use_spruce_options,
+        spruce_feedback: formatFeedback(spruce_feedback),
         github_user: {
             last_known_as: $scope.github_user,
         }
