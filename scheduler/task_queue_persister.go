@@ -16,11 +16,14 @@ type TaskQueuePersister interface {
 // DBTaskQueuePersister saves a queue to the database.
 type DBTaskQueuePersister struct{}
 
-// PersistTaskQueue saves the task queue to the database.
-// Returns an error if the db call returns an error.
 func (self *DBTaskQueuePersister) PersistTaskQueue(distro string, tasks []task.Task, distroQueueInfo model.DistroQueueInfo) ([]model.TaskQueueItem, error) {
 	taskQueue := make([]model.TaskQueueItem, 0, len(tasks))
 	for _, t := range tasks {
+		// Does this task have any dependencies?
+		dependencies := make([]string, 0, len(t.DependsOn))
+		for _, d := range t.DependsOn {
+			dependencies = append(dependencies, d.TaskId)
+		}
 		taskQueue = append(taskQueue, model.TaskQueueItem{
 			Id:                  t.Id,
 			DisplayName:         t.DisplayName,
@@ -34,6 +37,7 @@ func (self *DBTaskQueuePersister) PersistTaskQueue(distro string, tasks []task.T
 			Group:               t.TaskGroup,
 			GroupMaxHosts:       t.TaskGroupMaxHosts,
 			Version:             t.Version,
+			Dependencies:        dependencies,
 		})
 	}
 

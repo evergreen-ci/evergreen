@@ -145,7 +145,7 @@ func (t *taskDistroDispatchService) Refresh() error {
 	t.mu.Lock()
 	defer t.mu.Unlock()
 
-	if !shouldRefreshCached(t.ttl, t.lastUpdated) {
+	if !shouldRefreshCached(t.ttl, t.lastUpdated, t.distroID) {
 		return nil
 	}
 
@@ -160,7 +160,17 @@ func (t *taskDistroDispatchService) Refresh() error {
 	return nil
 }
 
-func shouldRefreshCached(ttl time.Duration, lastUpdated time.Time) bool {
+func shouldRefreshCached(ttl time.Duration, lastUpdated time.Time, distroID string) bool {
+	grip.DebugWhen(time.Since(lastUpdated) > ttl, message.Fields{
+		"function":              "shouldRefreshCached",
+		"message":               "",
+		"distro_id":             distroID,
+		"ttl":                   ttl.Seconds(),
+		"current_time":          time.Now(),
+		"last_updated":          lastUpdated,
+		"sec_since_last_update": time.Now().Sub(lastUpdated).Seconds(),
+	})
+
 	return lastUpdated.IsZero() || time.Since(lastUpdated) > ttl
 }
 
@@ -184,7 +194,7 @@ func (t *taskDistroDispatchService) rebuild(items []TaskQueueItem) {
 			// If it's the first time encountering the task group, save it to the order
 			// and create an entry for it in the map. Otherwise, append to the
 			// TaskQueueItem array in the map.
-			id = compositeGroupId(item.Group, item.BuildVariant, item.Version)
+			id = compositeGroupId(item.Group, item.BuildVariant, item.Project, item.Version)
 			if _, ok = units[id]; !ok {
 				order = append(order, id)
 				units[id] = schedulableUnit{
@@ -224,7 +234,7 @@ func (t *taskDistroDispatchService) FindNextTask(spec TaskSpec) *TaskQueueItem {
 	var next *TaskQueueItem
 
 	if spec.Group != "" {
-		unit, ok = t.units[compositeGroupId(spec.Group, spec.BuildVariant, spec.Version)]
+		unit, ok = t.units[compositeGroupId(spec.Group, spec.BuildVariant, spec.ProjectID, spec.Version)]
 		if ok {
 			if next = t.nextTaskGroupTask(unit); next != nil {
 				return next
@@ -280,8 +290,8 @@ func (t *taskDistroDispatchService) FindNextTask(spec TaskSpec) *TaskQueueItem {
 	return nil
 }
 
-func compositeGroupId(group, variant, version string) string {
-	return fmt.Sprintf("%s-%s-%s", group, variant, version)
+func compositeGroupId(group, variant, project, version string) string {
+	return fmt.Sprintf("%s_%s_%s_%s", group, variant, project, version)
 }
 
 func (t *taskDistroDispatchService) nextTaskGroupTask(unit schedulableUnit) *TaskQueueItem {
