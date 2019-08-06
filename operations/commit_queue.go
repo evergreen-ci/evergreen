@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"net/http"
-	"strings"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
@@ -301,14 +300,6 @@ func (p *mergeParams) mergeBranch(ctx context.Context, conf *ClientSettings, cli
 }
 
 func (p *mergeParams) uploadMergePatch(conf *ClientSettings, ac *legacyClient) error {
-	if p.message == "" {
-		msg, err := gitCmd("rev-parse", "--abbrev-ref", p.ref)
-		if err != nil {
-			return errors.Wrapf(err, "can't get branch name for ref %s", p.ref)
-		}
-		p.message = strings.TrimSpace(msg)
-	}
-
 	patchParams := &patchParams{
 		Project:     p.projectID,
 		SkipConfirm: p.skipConfirm,
@@ -332,6 +323,23 @@ func (p *mergeParams) uploadMergePatch(conf *ClientSettings, ac *legacyClient) e
 	diffData, err := loadGitData(ref.Branch, p.ref)
 	if err != nil {
 		return errors.Wrap(err, "can't generate patches")
+	}
+
+	if p.message == "" {
+		commitCount, err := gitCommitCount(ref.Branch, p.ref)
+		if err != nil {
+			return errors.Wrap(err, "can't get commit count")
+		}
+		if !p.skipConfirm && commitCount != 1 {
+			if !confirm("Patch contains multiple commits and the messages will be concatenated. Continue? (y/n)", true) {
+				return errors.New("patch aborted")
+			}
+		}
+		message, err := gitCommitMessages(ref.Branch, p.ref)
+		if err != nil {
+			return errors.Wrap(err, "can't get commit messages")
+		}
+		patchParams.Description = message
 	}
 
 	patch, err := patchParams.createPatch(ac, conf, diffData)
