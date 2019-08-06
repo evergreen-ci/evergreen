@@ -3,7 +3,6 @@ package command
 import (
 	"context"
 	"fmt"
-	"strings"
 	"testing"
 
 	"github.com/evergreen-ci/evergreen/model"
@@ -120,14 +119,8 @@ func TestGitPush(t *testing.T) {
 			}
 
 			assert.NoError(t, logger.Close())
-			for _, msgs := range comm.GetMockMessages() {
-				for _, msg := range msgs {
-					if strings.HasPrefix(msg.Message, "The key: ") {
-						assert.False(t, strings.Contains(msg.Message, token))
-					}
-				}
-			}
-
+			msgs := comm.GetMockMessages()[""]
+			assert.Equal(t, "The key: [redacted oauth token]", msgs[len(msgs)-1].Message)
 		},
 		"RevParse": func(*testing.T) {
 			manager := &jasper.MockManager{}
