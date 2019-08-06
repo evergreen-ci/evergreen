@@ -225,7 +225,7 @@ func setupLogging(m *monitor) error {
 	} else {
 		sender, err := send.NewFileLogger(
 			senderName,
-			fmt.Sprintf("%s-%d-%d.log", monitorLoggerName, os.Getpid(), getLogID()),
+			fmt.Sprintf("%s-%d-%d.log", senderName, os.Getpid(), getLogID()),
 			send.LevelInfo{Default: level.Info, Threshold: level.Debug},
 		)
 		if err != nil {
