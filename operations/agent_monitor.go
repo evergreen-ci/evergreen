@@ -155,7 +155,7 @@ func agentMonitor() cli.Command {
 			}
 
 			// Reserve the given port to prevent other monitors from starting.
-			if _, err = net.Listen("tcp", fmt.Sprintf(":%d", m.port)); err != nil {
+			if _, err = net.Listen("tcp", fmt.Sprintf("127.0.0.1:%d", m.port)); err != nil {
 				return errors.Wrapf(err, "failed to listen on port %d", m.port)
 			}
 
@@ -276,7 +276,7 @@ func (m *monitor) fetchClient(ctx context.Context, retry util.RetryArgs) error {
 // setupJasperConnection attempts to connect to the Jasper RPC service running
 // on this host and sets the RPC manager.
 func (m *monitor) setupJasperConnection(ctx context.Context, retry util.RetryArgs) error {
-	addrStr := fmt.Sprintf("localhost:%d", m.jasperPort)
+	addrStr := fmt.Sprintf("127.0.0.1:%d", m.jasperPort)
 	serverAddr, err := net.ResolveTCPAddr("tcp", addrStr)
 	if err != nil {
 		return errors.Wrapf(err, "failed to resolve Jasper server address at '%s'", addrStr)
