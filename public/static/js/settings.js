@@ -42,10 +42,18 @@ mciModule.controller('SettingsCtrl', ['$scope', '$http', '$window', 'notificatio
     {str: "Kiribati Line Islands", value: "Pacific/Kiritimati"},
   ];
 
+  $scope.patch_feedback_prompts = {
+    "information_score":  "Does the new patches page have all the information you need?",
+    "usability_score": "How easy is it to use the new page compared to the old page?",
+    "missing_things": "Is there anything you miss about the old patches page?",
+    "requested_changes": "Is there anything you want changed on the new patches page?",
+  };
+
   $scope.user_tz = $window.user_tz;
   $scope.new_tz = $scope.user_tz || "America/New_York";
   $scope.github_user = $window.github_user;
   $scope.use_spruce_options = $window.use_spruce_options;
+  $scope.initially_opted_out = $scope.use_spruce_options.patch_page === undefined ? false :  $scope.use_spruce_options.patch_page
   $scope.userConf = $window.userConf;
   $scope.binaries = $window.binaries;
   $scope.notifications = $window.notifications;
@@ -81,27 +89,21 @@ mciModule.controller('SettingsCtrl', ['$scope', '$http', '$window', 'notificatio
       });
   }
 
-  $scope.showAdditionalFields = function(){
-    var additionalFieldCount = 1;
-    var additionalField = document.getElementById("feedback-" + additionalFieldCount);
-
-    while (additionalField) {
-      if (use_spruce_options.patch_page) {
-        additionalField.style.display = "block";
-      } else {
-        additionalField.style.display = "none";
-      }
-      additionalFieldCount++;
-      additionalField = document.getElementById("feedback-" + additionalFieldCount);
+  $scope.onOptOutChange = function(){
+    var patchFeedback = document.getElementById("patch-feedback");
+    if (use_spruce_options.patch_page) {
+      patchFeedback.style.display = "block";
+    } else {
+      patchFeedback.style.display = "none";
     }
   }
 
   function formatFeedback(spruce_feedback) {
     var formattedFeedback = { type: "new_patches_page_feedback" };
+    var allFields = [];
     var questionAnswerArray = [];
-    var allFields = ["information_score", "usability_score", "missing_things", "requested_changes"];
-    allFields.forEach( function(field) {
-        var prompt = document.getElementById(field + "_prompt").innerHTML;
+    Object.keys($scope.patch_feedback_prompts).forEach( function(field) {
+        var prompt = $scope.patch_feedback_prompts[field];
         var answer = spruce_feedback[field] === undefined ? "" : spruce_feedback[field]
         var questionAnswer = {
           id: field,
@@ -115,8 +117,7 @@ mciModule.controller('SettingsCtrl', ['$scope', '$http', '$window', 'notificatio
   }
 
   $scope.updateUserSettings = function(new_tz, use_spruce_options, spruce_feedback) {
-    if (use_spruce_options.patch_page && document.getElementById("feedback-1").style.display === "block" &&
-      (spruce_feedback.usability_score === undefined || spruce_feedback.information_score === undefined)) {
+    if (!$scope.initially_opted_out && (spruce_feedback.usability_score === undefined || spruce_feedback.information_score === undefined)) {
       notifier.pushNotification("Please fill out all required fields before submitting",'errorHeader');
       return;
     }
