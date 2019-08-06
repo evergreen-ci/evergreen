@@ -93,10 +93,10 @@ ui_server_host: "[[userConf.ui_server_host]]"</pre>
               <a class="col-sm-4 control-label" href="/notifications"> Notification Settings </a>
             </div>
             <div class="form-group">
-              <div class="col-sm-4" style="text-align: right; margin-right:14px">Opt Out of New Patch Page</div>
-              <md-checkbox id="optOutCheck" ng-model="use_spruce_options.patch_page" ng-change="onOptOutChange()" aria-label="Opt Out of New Patch Page"/>
+              <div class="col-sm-4" style="text-align: right; margin-right:14px">Opt In to New Patch Page</div>
+              <md-checkbox id="optOutCheck" ng-model="use_spruce_options.patch_page" aria-label="Opt Out of New Patch Page"/>
             </div>
-            <div id="patch-feedback" style="display: none">
+            <div id="patch-feedback" ng-hide="use_spruce_options.patch_page && initially_opted_out">
               <div class="form-group">
                 <div class="col-sm-4">
                   <label id="information_score_prompt" class="control-label" ng-bind="patch_feedback_prompts['information_score']"/>

@@ -53,7 +53,7 @@ mciModule.controller('SettingsCtrl', ['$scope', '$http', '$window', 'notificatio
   $scope.new_tz = $scope.user_tz || "America/New_York";
   $scope.github_user = $window.github_user;
   $scope.use_spruce_options = $window.use_spruce_options;
-  $scope.initially_opted_out = $scope.use_spruce_options.patch_page === undefined ? false :  $scope.use_spruce_options.patch_page
+  $scope.initially_opted_out = $scope.use_spruce_options.patch_page === undefined ? true :  $scope.use_spruce_options.patch_page
   $scope.userConf = $window.userConf;
   $scope.binaries = $window.binaries;
   $scope.notifications = $window.notifications;
@@ -89,15 +89,6 @@ mciModule.controller('SettingsCtrl', ['$scope', '$http', '$window', 'notificatio
       });
   }
 
-  $scope.onOptOutChange = function(){
-    var patchFeedback = document.getElementById("patch-feedback");
-    if (use_spruce_options.patch_page) {
-      patchFeedback.style.display = "block";
-    } else {
-      patchFeedback.style.display = "none";
-    }
-  }
-
   function formatFeedback(spruce_feedback) {
     var formattedFeedback = { type: "new_patches_page_feedback" };
     var allFields = [];
@@ -117,7 +108,8 @@ mciModule.controller('SettingsCtrl', ['$scope', '$http', '$window', 'notificatio
   }
 
   $scope.updateUserSettings = function(new_tz, use_spruce_options, spruce_feedback) {
-    if (!$scope.initially_opted_out && (spruce_feedback.usability_score === undefined || spruce_feedback.information_score === undefined)) {
+    if ($scope.initially_opted_out && !use_spruce_options.patch_page &&
+      (spruce_feedback.usability_score === undefined || spruce_feedback.information_score === undefined)) {
       notifier.pushNotification("Please fill out all required fields before submitting",'errorHeader');
       return;
     }
