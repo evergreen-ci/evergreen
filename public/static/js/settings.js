@@ -86,7 +86,7 @@ mciModule.controller('SettingsCtrl', ['$scope', '$http', '$window', 'notificatio
     var additionalField = document.getElementById("feedback-" + additionalFieldCount);
 
     while (additionalField) {
-      if (use_spruce_options.opt_out) {
+      if (use_spruce_options.patch_page) {
         additionalField.style.display = "block";
       } else {
         additionalField.style.display = "none";
@@ -115,7 +115,8 @@ mciModule.controller('SettingsCtrl', ['$scope', '$http', '$window', 'notificatio
   }
 
   $scope.updateUserSettings = function(new_tz, use_spruce_options, spruce_feedback) {
-    if (use_spruce_options.opt_out && (spruce_feedback.usability_score === undefined || spruce_feedback.information_score === undefined)) {
+    if (use_spruce_options.patch_page && document.getElementById("feedback-1").style.display === "block" &&
+      (spruce_feedback.usability_score === undefined || spruce_feedback.information_score === undefined)) {
       notifier.pushNotification("Please fill out all required fields before submitting",'errorHeader');
       return;
     }
