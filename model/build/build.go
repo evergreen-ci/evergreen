@@ -272,16 +272,16 @@ func (b *Build) SetCachedTaskFinished(taskID, status string, detail *apimodels.T
 
 func (b *Build) UpdateCachedTasks(tasks []task.Task) error {
 	cache := b.Tasks
+cacheLoop:
 	for i, cacheTask := range b.Tasks {
 		for _, realTask := range tasks {
-			if cacheTask.Id != realTask.Id {
-				continue
+			if cacheTask.Id == realTask.Id {
+				cache[i].Id = realTask.Id
+				cache[i].Status = realTask.Status
+				cache[i].TimeTaken = realTask.TimeTaken
+				cache[i].StatusDetails = realTask.Details
+				continue cacheLoop
 			}
-
-			cache[i].Id = realTask.Id
-			cache[i].Status = realTask.Status
-			cache[i].TimeTaken = realTask.TimeTaken
-			cache[i].StatusDetails = realTask.Details
 		}
 	}
 	err := SetTasksCache(b.Id, cache)
