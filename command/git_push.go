@@ -177,27 +177,38 @@ func (c *gitPush) pushPatch(ctx context.Context, logger client.LoggerProducer, p
 		logger.Execution().Debugf(`git add "%s"`, file)
 	}
 
+	jpm := c.JasperManager()
+	cmd := jpm.CreateCommand(ctx).Directory(p.directory).Append(commands...).
+		SetOutputSender(level.Info, logger.Task().GetSender()).SetErrorSender(level.Error, logger.Task().GetSender())
+	if err := cmd.Run(ctx); err != nil {
+		return errors.Wrap(err, "can't add files")
+	}
+
 	author := fmt.Sprintf("%s <%s>", p.authorName, p.authorEmail)
 	commitCommand := fmt.Sprintf("git "+
 		`-c "user.name=%s" `+
 		`-c "user.email=%s" `+
-		`commit -m "%s" `+
+		`commit --file - `+
 		`--author="%s"`,
-		c.CommitterName, c.CommitterEmail, p.description, author)
+		c.CommitterName, c.CommitterEmail, author)
 	logger.Execution().Debugf("git commit command: %s", commitCommand)
-	commands = append(commands, commitCommand)
+	cmd = jpm.CreateCommand(ctx).Directory(p.directory).Append(commitCommand).SetInput(bytes.NewBufferString(p.description)).
+		SetOutputSender(level.Info, logger.Task().GetSender()).SetErrorSender(level.Error, logger.Task().GetSender())
+	if err := cmd.Run(ctx); err != nil {
+		return errors.Wrap(err, "can't create commit from files")
+	}
 
 	if !c.DryRun {
 		pushCommand := fmt.Sprintf("git push origin %s", p.branch)
 		logger.Execution().Debugf("git push command: %s", pushCommand)
-		commands = append(commands, pushCommand)
+		cmd = jpm.CreateCommand(ctx).Directory(p.directory).Append(pushCommand).
+			SetOutputSender(level.Info, logger.Task().GetSender()).SetErrorSender(level.Error, logger.Task().GetSender())
+		if err := cmd.Run(ctx); err != nil {
+			return errors.Wrap(err, "can't add files")
+		}
 	}
 
-	jpm := c.JasperManager()
-	cmd := jpm.CreateCommand(ctx).Directory(p.directory).Append(commands...).
-		SetOutputSender(level.Info, logger.Task().GetSender()).SetErrorSender(level.Error, logger.Task().GetSender())
-
-	return errors.Wrap(cmd.Run(ctx), "can't run push commands")
+	return nil
 }
 
 func (c *gitPush) revParse(ctx context.Context, conf *model.TaskConfig, logger client.LoggerProducer, ref string) (string, error) {

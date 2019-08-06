@@ -350,6 +350,13 @@ func (j *setupHostJob) putJasperCredentials(ctx context.Context, fileName string
 	}
 	scpArgs := buildScpCommand(file.Name(), fileName, hostInfo, hostInfo.User, sshOptions)
 
+	grip.Info(message.Fields{
+		"message": "putting Jasper credentials on host",
+		"host":    j.host.Id,
+		"distro":  j.host.Distro.Id,
+		"job":     j.ID(),
+	})
+
 	scpCmd := j.env.JasperManager().CreateCommand(ctx).Add(scpArgs).
 		RedirectErrorToOutput(true).SetOutputWriter(scpCmdOut)
 

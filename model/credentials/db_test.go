@@ -64,7 +64,7 @@ func TestDBOperations(t *testing.T) {
 					assert.Equal(t, creds.Cert, dbCreds.Cert)
 					assert.Equal(t, creds.Key, dbCreds.Key)
 					assert.Equal(t, creds.CACert, dbCreds.CACert)
-					assert.Equal(t, name, creds.ServerName)
+					assert.Equal(t, name, dbCreds.ServerName)
 				},
 				"OverwritesExistingCredentials": func(ctx context.Context, t *testing.T, creds *rpc.Credentials) {
 					require.NoError(t, SaveByID(ctx, env, name, creds))
@@ -73,8 +73,13 @@ func TestDBOperations(t *testing.T) {
 					assert.Equal(t, creds.Cert, dbCreds.Cert)
 					assert.Equal(t, creds.Key, dbCreds.Key)
 					assert.Equal(t, creds.CACert, dbCreds.CACert)
-					assert.Equal(t, name, creds.ServerName)
+					assert.Equal(t, name, dbCreds.ServerName)
 
+					ttl, err := FindExpirationByID(ctx, env, name)
+					require.NoError(t, err)
+
+					// We have to sleep in order to verify that the TTL is
+					// updated properly.
 					time.Sleep(time.Second)
 					newName := "new" + name
 					newCreds, err := GenerateInMemory(ctx, env, newName)
@@ -86,7 +91,12 @@ func TestDBOperations(t *testing.T) {
 					assert.Equal(t, newCreds.Cert, dbCreds.Cert)
 					assert.Equal(t, newCreds.Key, dbCreds.Key)
 					assert.Equal(t, newCreds.CACert, dbCreds.CACert)
-					assert.Equal(t, newName, newCreds.ServerName)
+					assert.Equal(t, name, dbCreds.ServerName)
+
+					newTTL, err := FindExpirationByID(ctx, env, name)
+					require.NoError(t, err)
+					assert.NotEqual(t, ttl, newTTL)
+					assert.WithinDuration(t, ttl, newTTL, 10*time.Second)
 				},
 			} {
 				t.Run(testName, func(t *testing.T) {
