@@ -618,7 +618,7 @@ func TestStartAgentMonitorRequest(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, h.Secret, dbHost.Secret)
 
-	expectedCmd, err := json.Marshal(h.agentMonitorCommand(settings))
+	expectedCmd, err := json.Marshal(h.AgentMonitorOptions(settings))
 	require.NoError(t, err)
 	assert.Contains(t, cmd, string(expectedCmd))
 
