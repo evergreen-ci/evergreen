@@ -760,6 +760,7 @@ func (s *projectSuite) TestAliasResolution() {
 	s.Require().Len(pairs, 2)
 	s.Equal("bv_2/a_task_1", pairs[0].String())
 	s.Equal("bv_2/a_task_2", pairs[1].String())
+	s.Empty(displayTaskPairs)
 }
 
 func (s *projectSuite) TestBuildProjectTVPairs() {
