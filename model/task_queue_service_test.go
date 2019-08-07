@@ -18,17 +18,17 @@ import (
 	"github.com/stretchr/testify/suite"
 )
 
-type taskDistroDAGDispatchServiceSuite struct {
+type taskDAGDispatchServiceSuite struct {
 	suite.Suite
 
 	items []TaskQueueItem
 }
 
-func TestTaskDistroDAGDispatchServiceSuite(t *testing.T) {
-	suite.Run(t, new(taskDistroDAGDispatchServiceSuite))
+func TestTaskDAGDispatchServiceSuite(t *testing.T) {
+	suite.Run(t, new(taskDAGDispatchServiceSuite))
 }
 
-func (s *taskDistroDAGDispatchServiceSuite) SetupTest() {
+func (s *taskDAGDispatchServiceSuite) SetupTest() {
 	s.Require().NoError(db.ClearCollections(task.Collection))
 	s.Require().NoError(db.ClearCollections(host.Collection))
 	items := []TaskQueueItem{}
@@ -36,9 +36,9 @@ func (s *taskDistroDAGDispatchServiceSuite) SetupTest() {
 	var variant string
 	var version string
 	var maxHosts int
+	project := "project_1"
 
 	for i := 0; i < 100; i++ {
-		project := "project_1"
 		dependencies := []string{}
 		if i%5 == 0 { // no group
 			group = ""
@@ -107,7 +107,7 @@ func (s *taskDistroDAGDispatchServiceSuite) SetupTest() {
 	s.items = items
 }
 
-func (s *taskDistroDAGDispatchServiceSuite) TestConstructor() {
+func (s *taskDAGDispatchServiceSuite) TestConstructor() {
 	service, err := newDistroTaskDAGDispatchService("distro_1", s.items, time.Minute)
 	s.NoError(err)
 	s.Equal("distro_1", service.distroID)
@@ -236,7 +236,7 @@ func (s *taskDistroDAGDispatchServiceSuite) TestConstructor() {
 	}
 }
 
-func (s *taskDistroDAGDispatchServiceSuite) TestNextTaskForDefaultTaskSpec() {
+func (s *taskDAGDispatchServiceSuite) TestNextTaskForDefaultTaskSpec() {
 	service, err := newDistroTaskDAGDispatchService("distro_1", s.items, time.Minute)
 	spec := TaskSpec{}
 	s.NoError(err)
@@ -315,7 +315,7 @@ func (s *taskDistroDAGDispatchServiceSuite) TestNextTaskForDefaultTaskSpec() {
 	// .....
 }
 
-func (s *taskDistroDAGDispatchServiceSuite) TestSingleHostTaskGroupsBlock() {
+func (s *taskDAGDispatchServiceSuite) TestSingleHostTaskGroupsBlock() {
 	s.Require().NoError(db.ClearCollections(task.Collection))
 	items := []TaskQueueItem{}
 	var startTime time.Time
@@ -369,7 +369,7 @@ func (s *taskDistroDAGDispatchServiceSuite) TestSingleHostTaskGroupsBlock() {
 	s.Require().Nil(next)
 }
 
-func (s *taskDistroDAGDispatchServiceSuite) TestFindNextTask() {
+func (s *taskDAGDispatchServiceSuite) TestFindNextTask() {
 	service, e := newDistroTaskDAGDispatchService("distro_1", s.items, time.Minute)
 	s.NoError(e)
 	var spec TaskSpec
@@ -449,6 +449,7 @@ func (s *taskDistroDAGDispatchServiceSuite) TestFindNextTask() {
 	// (4) The rest of the tasks for taskGroupTasks "group_1_variant_2_project_1_version_1"
 	// (5) The rest of the tasks for taskGroupTasks "group_1_variant_1_project_1_version_2"
 	// (6) The remaining 19 standalone tasks
+	//////////////////////////////////////////////////////////////////////////////
 
 	// Make a request for another task, passing an "empty" TaskSpec{} - the returned task should should be TaskQueueItem.Id 0 and be a standalone task.
 	spec = TaskSpec{}
@@ -537,7 +538,7 @@ func (s *taskDistroDAGDispatchServiceSuite) TestFindNextTask() {
 	}
 }
 
-func (s *taskDistroDAGDispatchServiceSuite) TestTaskGroupTasksRunningHostsVersusMaxHosts() {
+func (s *taskDAGDispatchServiceSuite) TestTaskGroupTasksRunningHostsVersusMaxHosts() {
 	// Add a host which that would request a task with a TaskSpec resolving to "group_1_variant_1_project_1_version_1"
 	h1 := host.Host{
 		Id:   "sir-mixalot",
@@ -579,6 +580,10 @@ func (s *taskDistroDAGDispatchServiceSuite) TestTaskGroupTasksRunningHostsVersus
 	s.Equal("project_1", next.Project)
 }
 
+//////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////
+
 type taskDispatchServiceSuite struct {
 	suite.Suite
 
@@ -598,30 +603,30 @@ func (s *taskDispatchServiceSuite) SetupTest() {
 	var variant string
 	var version string
 	var maxHosts int
+	project := "project_1"
 
 	for i := 0; i < 100; i++ {
-		project := "project_1"
 		if i%5 == 0 { // no group
 			group = ""
 			variant = "variant_1"
 			version = "version_1"
 			maxHosts = 0
-		} else if i%5 == 1 { // group 1
+		} else if i%5 == 1 { // "group_1_variant_1_project_1_version_1"
 			group = "group_1"
 			variant = "variant_1"
 			version = "version_1"
 			maxHosts = 1
-		} else if i%5 == 2 { // group 2
+		} else if i%5 == 2 { // "group_2_variant_1_project_1_version_1"
 			group = "group_2"
 			variant = "variant_1"
 			version = "version_1"
 			maxHosts = 2
-		} else if i%5 == 3 { // different variant
+		} else if i%5 == 3 { // "group_1_variant_2_project_1_version_1"
 			group = "group_1"
 			variant = "variant_2"
 			version = "version_1"
 			maxHosts = 2
-		} else if i%5 == 4 { // different version
+		} else if i%5 == 4 { // "group_1_variant_1_project_1_version_2"
 			group = "group_1"
 			variant = "variant_1"
 			version = "version_2"
@@ -653,13 +658,12 @@ func (s *taskDispatchServiceSuite) SetupTest() {
 
 func (s *taskDispatchServiceSuite) TestConstructor() {
 	service := newDistroTaskDispatchService("distro_1", s.items, time.Minute)
-
 	//////////////////////////////////////////////////////////////////////////////
 	// basicCachedDispatcherImpl.order[0] = "0"
-	// basicCachedDispatcherImpl.order[1] = "group_1-variant_1-version_1"
-	// basicCachedDispatcherImpl.order[2] = "group_2-variant_1-version_1"
-	// basicCachedDispatcherImpl.order[3] = "group_1-variant_2-version_1"
-	// basicCachedDispatcherImpl.order[4] = "group_1-variant_1-version_2"
+	// basicCachedDispatcherImpl.order[1] = "group_1_variant_1_project_1_version_1"
+	// basicCachedDispatcherImpl.order[2] = "group_2_variant_1_project_1_version_1"
+	// basicCachedDispatcherImpl.order[3] = "group_1_variant_2_project_1_version_1"
+	// basicCachedDispatcherImpl.order[4] = "group_1_variant_1_project_1_version_2"
 	// basicCachedDispatcherImpl.order[5] = "5"
 	// basicCachedDispatcherImpl.order[6] = "10"
 	// basicCachedDispatcherImpl.order[7] = "15"
@@ -681,16 +685,16 @@ func (s *taskDispatchServiceSuite) TestConstructor() {
 	// basicCachedDispatcherImpl.order[23] = "95"
 	//////////////////////////////////////////////////////////////////////////////
 	// basicCachedDispatcherImpl.units["0"].len(tasks) = 1
-	// basicCachedDispatcherImpl.units["group_1-variant_1-version_1"].len(tasks) = 20
+	// basicCachedDispatcherImpl.units["group_1_variant_1_project_1_version_1"].len(tasks) = 20
 	//	[1, 6, 11, 16, 21, 26, 31, 36, 41, 46, 51, 56, 61, 66, 71, 76, 81, 86, 91, 96]
-	// basicCachedDispatcherImpl.units["group_1-variant_1-version_1"].maxHosts = 1
-	// basicCachedDispatcherImpl.units["group_2-variant_1-version_1"].len(tasks) = 20
+	// basicCachedDispatcherImpl.units["group_1_variant_1_project_1_version_1"].maxHosts = 1
+	// basicCachedDispatcherImpl.units["group_2_variant_1_project_1_version_1"].len(tasks) = 20
 	//	[2, 7, 12, 17, 22, 27, 32, 37, 42, 47, 52, 57, 62, 67, 72, 77, 82, 87, 92, 97]
-	// basicCachedDispatcherImpl.units["group_2-variant_1-version_1"].maxHosts = 2
-	// basicCachedDispatcherImpl.units["group_1-variant_1-version_2"].len(tasks) = 20
-	// basicCachedDispatcherImpl.units["group_1-variant_1-version_2"].maxHosts = 2
-	// basicCachedDispatcherImpl.units["group_1-variant_2-version_1"].len(tasks) = 20
-	// basicCachedDispatcherImpl.units[""group_1-variant_2-version_1"].maxHosts = 2
+	// basicCachedDispatcherImpl.units["group_2_variant_1_project_1_version_1"].maxHosts = 2
+	// basicCachedDispatcherImpl.units["group_1_variant_1_project_1_version_2"].len(tasks) = 20
+	// basicCachedDispatcherImpl.units["group_1_variant_1_project_1_version_2"].maxHosts = 2
+	// basicCachedDispatcherImpl.units["group_1_variant_2_project_1_version_1"].len(tasks) = 20
+	// basicCachedDispatcherImpl.units[""group_1_variant_2_project_1_version_1"].maxHosts = 2
 	// basicCachedDispatcherImpl.units["15"].len(tasks) = 1
 	// basicCachedDispatcherImpl.units["20"].len(tasks) = 1
 	// basicCachedDispatcherImpl.units["35"].len(tasks) = 1
@@ -823,10 +827,10 @@ func (s *taskDispatchServiceSuite) TestFindNextTask() {
 	var next *TaskQueueItem
 	//////////////////////////////////////////////////////////////////////////////
 	// basicCachedDispatcherImpl.order[0] = "0"
-	// basicCachedDispatcherImpl.order[1] = "group_1-variant_1-version_1"
-	// basicCachedDispatcherImpl.order[2] = "group_2-variant_1-version_1"
-	// basicCachedDispatcherImpl.order[3] = "group_1-variant_2-version_1"
-	// basicCachedDispatcherImpl.order[4] = "group_1-variant_1-version_2"
+	// basicCachedDispatcherImpl.order[1] = "group_1_variant_1_project_1_version_1"
+	// basicCachedDispatcherImpl.order[2] = "group_2_variant_2_project_1_version_1"
+	// basicCachedDispatcherImpl.order[3] = "group_1_variant_2_project_1_version_1"
+	// basicCachedDispatcherImpl.order[4] = "group_1_variant_1_project_1_version_2"
 	// basicCachedDispatcherImpl.order[5] = "5"
 	// basicCachedDispatcherImpl.order[6] = "10"
 	// basicCachedDispatcherImpl.order[7] = "15"
@@ -848,10 +852,10 @@ func (s *taskDispatchServiceSuite) TestFindNextTask() {
 	// basicCachedDispatcherImpl.order[23] = "95"
 	//////////////////////////////////////////////////////////////////////////////
 	// basicCachedDispatcherImpl.units["0"].len(tasks) = 1
-	// basicCachedDispatcherImpl.units["group_1-variant_1-version_1"].len(tasks) = 20
-	// basicCachedDispatcherImpl.units["group_2-variant_1-version_1"].len(tasks) = 20
-	// basicCachedDispatcherImpl.units["group_1-variant_1-version_2"].len(tasks) = 20
-	// basicCachedDispatcherImpl.units["group_1-variant_2-version_1"].len(tasks) = 20
+	// basicCachedDispatcherImpl.units["group_1_variant_1_project_1_version_1"].len(tasks) = 20
+	// basicCachedDispatcherImpl.units["group_2_variant_1_project_1_version_1"].len(tasks) = 20
+	// basicCachedDispatcherImpl.units["group_1_variant_1_project_1_version_2"].len(tasks) = 20
+	// basicCachedDispatcherImpl.units["group_1_variant_2_project_1_version_1"].len(tasks) = 20
 	// basicCachedDispatcherImpl.units["15"].len(tasks) = 1
 	// basicCachedDispatcherImpl.units["20"].len(tasks) = 1
 	// basicCachedDispatcherImpl.units["35"].len(tasks) = 1
@@ -873,7 +877,7 @@ func (s *taskDispatchServiceSuite) TestFindNextTask() {
 	// basicCachedDispatcherImpl.units["80"].len(tasks) = 1
 	//////////////////////////////////////////////////////////////////////////////
 
-	// Dispatch the first 5 tasks for the schedulableUnit "group_1-variant_1-version_1", which represents a task group that initially contains 20 tasks.
+	// Dispatch the first 5 tasks for the schedulableUnit "group_1_variant_1_project_1_version_1", which represents a task group that initially contains 20 tasks.
 	for i := 0; i < 5; i++ {
 		spec = TaskSpec{
 			Group:        "group_1",
@@ -886,7 +890,7 @@ func (s *taskDispatchServiceSuite) TestFindNextTask() {
 		s.Equal(fmt.Sprintf("%d", 5*i+1), next.Id)
 	}
 
-	// Dispatch the first 5 tasks for schedulableUnit "group_2-variant_1-version_1", which represents a task group that initially contains 20 tasks.
+	// Dispatch the first 5 tasks for schedulableUnit "group_2_variant_1_project_1_version_1", which represents a task group that initially contains 20 tasks.
 	for i := 0; i < 5; i++ {
 		spec = TaskSpec{
 			Group:        "group_2",
@@ -898,7 +902,7 @@ func (s *taskDispatchServiceSuite) TestFindNextTask() {
 		s.Equal(fmt.Sprintf("%d", 5*i+2), next.Id)
 	}
 
-	// Dispatch the first 5 tasks for schedulableUnit "group_1-variant_2-version_1", which represents a task group that initially contains 20 tasks.
+	// Dispatch the first 5 tasks for schedulableUnit "group_1_variant_2_project_1_version_1", which represents a task group that initially contains 20 tasks.
 	for i := 0; i < 5; i++ {
 		spec = TaskSpec{
 			Group:        "group_1",
@@ -910,7 +914,7 @@ func (s *taskDispatchServiceSuite) TestFindNextTask() {
 		s.Equal(fmt.Sprintf("%d", 5*i+3), next.Id)
 	}
 
-	// Dispatch the first 5 tasks for schedulableUnit "group_1-variant_1-version_2", which represents a task group that initially contains 20 tasks.
+	// Dispatch the first 5 tasks for schedulableUnit "group_1_variant_1_project_1_version_2", which represents a task group that initially contains 20 tasks.
 	for i := 0; i < 5; i++ {
 		spec = TaskSpec{
 			Group:        "group_1",
@@ -922,7 +926,7 @@ func (s *taskDispatchServiceSuite) TestFindNextTask() {
 		s.Equal(fmt.Sprintf("%d", 5*i+4), next.Id)
 	}
 
-	// The task group schedulableUnit "group_1-variant_1-version_1" now contains 15 tasks; dispatch another 5 of them.
+	// The task group schedulableUnit "group_1_variant_1_project_1_version_1" now contains 15 tasks; dispatch another 5 of them.
 	for i := 0; i < 5; i++ {
 		spec = TaskSpec{
 			Group:        "group_1",
@@ -937,11 +941,12 @@ func (s *taskDispatchServiceSuite) TestFindNextTask() {
 	//////////////////////////////////////////////////////////////////////////////
 	// Repeat requests for tasks by a TaskSpec containing an empty Group field dispatch, in order:
 	// (1) A single standalone (non-task group) task
-	// (2) The rest of the task group tasks for schedulableUnit "group_1-variant_1-version_1"
-	// (3) The rest of the task group tasks for schedulableUnit "group_2-variant_1-version_1"
-	// (4) The rest of the task group tasks for schedulableUnit "group_1-variant_1-version_2"
-	// (4) The rest of the task group tasks for schedulableUnit "group_1-variant_2-version_1"
-	// (5) All the remaining schedulableUnits representing individual, standalone tasks
+	// (2) The rest of the task group tasks for schedulableUnit "group_1_variant_1_project_1_version_1"
+	// (3) The rest of the task group tasks for schedulableUnit "group_2_variant_1_project_1_version_1"
+	// (4) The rest of the task group tasks for schedulableUnit "group_1_variant_2_project_1_version_1"
+	// (5) The rest of the task group tasks for schedulableUnit "group_1_variant_1_project_1_version_2"
+	// (6) The remaining 19 schedulableUnits, which are all individual, standalone tasks
+	//////////////////////////////////////////////////////////////////////////////
 
 	spec = TaskSpec{
 		Group:        "",
@@ -955,7 +960,7 @@ func (s *taskDispatchServiceSuite) TestFindNextTask() {
 	var nextInt int
 	var err error
 
-	// Dispatch the remaining 10 tasks from the task group schedulableUnit "group_1-variant_1-version_1".
+	// Dispatch the remaining 10 tasks from the task group schedulableUnit "group_1_variant_1_project_1_version_1".
 	for i := 0; i < 10; i++ {
 		next = service.FindNextTask(spec)
 		nextInt, err = strconv.Atoi(next.Id)
@@ -968,8 +973,8 @@ func (s *taskDispatchServiceSuite) TestFindNextTask() {
 		s.Equal("project_1", next.Project)
 	}
 
-	// All 20 tasks for schedulableUnit "group_1-variant_1-version_1" have been dispatched.
-	// basicCachedDispatcherImpl.order's ([]string) next value is "group_2-variant_1-version_1".
+	// All 20 tasks for schedulableUnit "group_1_variant_1_project_1_version_1" have been dispatched.
+	// basicCachedDispatcherImpl.order's ([]string) next value is "group_2_variant_1_project_1_version_1".
 	// The corresponding schedulableUnit represents another task group; dispatch its remaining 15 tasks.
 	currentID = 0
 	for i := 0; i < 15; i++ {
@@ -984,8 +989,8 @@ func (s *taskDispatchServiceSuite) TestFindNextTask() {
 		s.Equal("project_1", next.Project)
 	}
 
-	// All 20 tasks for schedulableUnit "group_2-variant_1-version_1" have been dispatched.
-	// basicCachedDispatcherImpl.order's ([]string) next value is "group_1-variant_2-version_1".
+	// All 20 tasks for schedulableUnit "group_2_variant_1_project_1_version_1" have been dispatched.
+	// basicCachedDispatcherImpl.order's ([]string) next value is "group_1_variant_2_project_1_version_1".
 	// The corresponding schedulableUnit represents another task group; dispatch its remaining 15 tasks.
 	currentID = 0
 	for i := 0; i < 15; i++ {
@@ -1000,8 +1005,8 @@ func (s *taskDispatchServiceSuite) TestFindNextTask() {
 		s.Equal("project_1", next.Project)
 	}
 
-	// All 20 tasks for schedulableUnit ""group_1-variant_2-version_1"" have been dispatched.
-	// basicCachedDispatcherImpl.order's ([]string) next value is "group_1-variant_1-version_2".
+	// All 20 tasks for schedulableUnit ""group_1_variant_2_project_1_version_1"" have been dispatched.
+	// basicCachedDispatcherImpl.order's ([]string) next value is "group_1_variant_1_project_1_version_2".
 	// The corresponding schedulableUnit represents another task group; dispatch its remaining 15 tasks.
 	currentID = 0
 	for i := 0; i < 15; i++ {
@@ -1016,7 +1021,7 @@ func (s *taskDispatchServiceSuite) TestFindNextTask() {
 		s.Equal("project_1", next.Project)
 	}
 
-	// The remaining schedulableUnits represent individual, standalone tasks. Dispatch the rest of these non-task group tasks.
+	// The remaining 19 schedulableUnits represent individual, standalone tasks. Dispatch the rest of these non-task group tasks.
 	currentID = 0
 	for i := 0; i < 19; i++ {
 		next = service.FindNextTask(spec)
@@ -1034,7 +1039,7 @@ func (s *taskDispatchServiceSuite) TestFindNextTask() {
 func (s *taskDispatchServiceSuite) TestSchedulableUnitsRunningHostsVersusMaxHosts() {
 	s.Require().NoError(db.ClearCollections(host.Collection))
 
-	// Add a host which that would request a task with a TaskSpec resolving to "group_1-variant_1-version_1"
+	// Add a host which that would request a task with a TaskSpec resolving to "group_1_variant_1_project_1_version_1"
 	h1 := host.Host{
 		Id:   "sir-mixalot",
 		Host: "ec2-18-234-180-219.compute-1.amazonaws.com",
@@ -1050,35 +1055,29 @@ func (s *taskDispatchServiceSuite) TestSchedulableUnitsRunningHostsVersusMaxHost
 	}
 	s.Require().NoError(h1.Insert())
 
-	spec := TaskSpec{
-		Group:         "",
-		BuildVariant:  "",
-		ProjectID:     "",
-		Version:       "",
-		GroupMaxHosts: 0,
-	}
-
 	service := newDistroTaskDispatchService("distro_1", s.items, time.Minute)
 	//////////////////////////////////////////////////////////////////////////////
 	// basicCachedDispatcherImpl.order[0] = "0"
-	// basicCachedDispatcherImpl.order[1] = "group_1-variant_1-version_1"
-	// basicCachedDispatcherImpl.order[2] = "group_2-variant_1-version_1"
+	// basicCachedDispatcherImpl.order[1] = "group_1_variant_1_project_1_version_1"
+	// basicCachedDispatcherImpl.order[2] = "group_2_variant_1_project_1_version_1"
 	//////////////////////////////////////////////////////////////////////////////
 	// basicCachedDispatcherImpl.units["0"].len(tasks) = 1
 	//	[0]
-	// basicCachedDispatcherImpl.units["group_1-variant_1-version_1"].len(tasks) = 20
+	// basicCachedDispatcherImpl.units["group_1_variant_1_project_1_version_1"].len(tasks) = 20
 	// 	[1, 6, 11, 16, 21, 26, 31, 36, 41, 46, 51, 56, 61, 66, 71, 76, 81, 86, 91, 96]
-	// basicCachedDispatcherImpl.units[group_1-variant_1-version_1].maxHosts = 1
-	// basicCachedDispatcherImpl.units["group_2-variant_1-version_1"].len(tasks) = 20
+	// basicCachedDispatcherImpl.units[group_1_variant_1_project_1_version_1].maxHosts = 1
+	// basicCachedDispatcherImpl.units["group_2_variant_1_project_1_version_1"].len(tasks) = 20
 	//	[2, 7, 12, 17, 22, 27, 32, 37, 42, 47, 52, 57, 62, 67, 72, 77, 82, 87, 92, 97]
-	// basicCachedDispatcherImpl.units["group_2-variant_1-version_1"].maxHosts = 2
+	// basicCachedDispatcherImpl.units["group_2_variant_1_project_1_version_1"].maxHosts = 2
 	//////////////////////////////////////////////////////////////////////////////
+	spec := TaskSpec{}
 	next := service.FindNextTask(spec)
 	s.Equal("0", next.Id)
+	s.Equal("", next.Group)
 
-	// basicCachedDispatcherImpl.order's ([]string) next value is "group_1-variant_1-version_1".
+	// basicCachedDispatcherImpl.order's ([]string) next value is "group_1_variant_1_project_1_version_1".
 	// However, runningHosts < maxHosts is false for its corresponding schedulableUnit, so we cannot dispatch one of its tasks
-	// On to basicCachedDispatcherImpl.order's next value: "group_2-variant_1-version_1" - we can dispatch a task from its corresponding schedulableUnit
+	// On to basicCachedDispatcherImpl.order's next value: "group_2_variant_1_project_1_version_1" - we can dispatch a task from its corresponding schedulableUnit
 	next = service.FindNextTask(spec)
 	s.Equal("2", next.Id)
 	s.Equal("group_2", next.Group)
@@ -1087,7 +1086,7 @@ func (s *taskDispatchServiceSuite) TestSchedulableUnitsRunningHostsVersusMaxHost
 	s.Equal("project_1", next.Project)
 	s.Equal(2, next.GroupMaxHosts)
 
-	// Same situation again - so we dispatch the next task for the schedulableUnit "group_2-variant_1-version_1"
+	// Same situation again - so we dispatch the next task for the schedulableUnit "group_2_variant_1_project_1_version_1"
 	next = service.FindNextTask(spec)
 	s.Equal("7", next.Id)
 	s.Equal("group_2", next.Group)

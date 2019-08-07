@@ -21,6 +21,7 @@ import (
 // TODO use the data from TaskQueue.DistroQueueInfo in both DispatchServices - we already know the task group names and their number of respective tasks etc.
 // TODO standardise on the schedulableUnit struct once merged and remove the taskGroupTasks struct - they are equivalent.
 // TODO for taskGroupTasks.tasks: check that each task's dependencies have been met.  Currently, we only check that standalone tasks' dependencies have been satisfied.
+// TODO In func (t *basicCachedDAGDispatcherImpl) FindNextTask - consider checking if the state of any task has changed, which could unblock it.
 
 type basicCachedDAGDispatcherImpl struct {
 	mu          sync.RWMutex
@@ -254,13 +255,10 @@ func (t *basicCachedDAGDispatcherImpl) FindNextTask(spec TaskSpec) *TaskQueueIte
 	for i := len(t.sorted) - 1; i >= 0; i-- {
 		node := t.sorted[i]
 		item := t.getItemByNodeID(node.ID())
-		// TODO Consider checking if the state of any task has changed, which could unblock
+		// TODO Consider checking if the state of any task has changed, which could unblock it.
 		// later tasks in the queue. Currently we just wait for the scheduler to rerun.
 
-		// For a standalone task (not in a task group) dispatch it if:
-		// (a) its dependencies have been met
-		// (b) it hasn't already been dispatched
-
+		// If maxHosts is not set, this is not a task group.
 		if item.GroupMaxHosts == 0 {
 			if item.IsDispatched {
 				continue
@@ -278,6 +276,8 @@ func (t *basicCachedDAGDispatcherImpl) FindNextTask(spec TaskSpec) *TaskQueueIte
 				})
 				continue
 			}
+
+			// For this standalone task: dispatch it if its dependencies have been met and it hasn't already been dispatched.
 			if !depsMet {
 				continue
 			}

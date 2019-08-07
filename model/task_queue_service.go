@@ -275,7 +275,7 @@ func (t *basicCachedDispatcherImpl) FindNextTask(spec TaskSpec) *TaskQueueItem {
 	var unit schedulableUnit
 	var ok bool
 	var next *TaskQueueItem
-
+	// If the host just ran a task group, give it one back.
 	if spec.Group != "" {
 		unit, ok = t.units[compositeGroupId(spec.Group, spec.BuildVariant, spec.ProjectID, spec.Version)]
 		if ok {
