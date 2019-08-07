@@ -121,7 +121,7 @@ func (s *TaskReliability) calculateSuccessRate() {
 
 	}
 	grip.Debugf("SuccessRate: %.4f(p=%.4f,hi=%.4f). Success=%d, Failed=%d, Total=%d, z=%4f\n", low, p, high, int(success), int(failed), int(total), s.Z)
-	s.SuccessRate = (math.Round(low*100) / 100)
+	s.SuccessRate = (math.Trunc(low*100) / 100)
 }
 
 // Create a TaskReliability struct from the task stats and calculate the success rate
