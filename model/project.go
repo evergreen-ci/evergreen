@@ -19,7 +19,7 @@ import (
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 	ignore "github.com/sabhiram/go-git-ignore"
-	"gopkg.in/yaml.v2"
+	yaml "gopkg.in/yaml.v2"
 )
 
 const (
@@ -770,7 +770,7 @@ func PopulateExpansions(t *task.Task, h *host.Host, oauthToken string) (util.Exp
 	expansions.Put("build_variant", t.BuildVariant)
 	expansions.Put("revision", t.Revision)
 	expansions.Put("project", t.Project)
-	expansions.Put("global_github_oauth_token", oauthToken)
+	expansions.Put(evergreen.GlobalGitHubTokenExpansion, oauthToken)
 	expansions.Put("distro_id", h.Distro.Id)
 
 	if t.TriggerID != "" {

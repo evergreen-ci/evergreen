@@ -175,7 +175,8 @@ const (
 
 	MaxTeardownGroupTimeoutSecs = 30 * 60
 
-	DefaultJasperPort = 2385
+	DefaultJasperPort          = 2385
+	GlobalGitHubTokenExpansion = "global_github_oauth_token"
 
 	// TODO: remove this when degrading YAML
 	UseParserProject = false

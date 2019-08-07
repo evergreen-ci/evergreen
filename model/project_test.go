@@ -359,7 +359,7 @@ buildvariants:
 	assert.Equal("master", expansions.Get("branch_name"))
 	assert.Equal("somebody", expansions.Get("author"))
 	assert.Equal("d1", expansions.Get("distro_id"))
-	assert.Equal("globalGitHubOauthToken", expansions.Get("global_github_oauth_token"))
+	assert.Equal("globalGitHubOauthToken", expansions.Get(evergreen.GlobalGitHubTokenExpansion))
 	assert.True(expansions.Exists("created_at"))
 	assert.Equal("42", expansions.Get("revision_order_id"))
 	assert.False(expansions.Exists("is_patch"))
