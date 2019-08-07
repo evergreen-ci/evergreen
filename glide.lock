@@ -1,6 +1,8 @@
 hash: ""
 updated: 2016-10-20T16:48:42.872025812-04:00
 imports:
+  - name: gonum.org/v1/gonum
+    version: aff0e10c44138b1247d90efb9117f68ba7c76f0c
   - name: golang.org/x/crypto
     version: 7effd64e1180aa386cd36da9ca55a1e9fc7cf7cb
     subpackages:
