@@ -349,11 +349,11 @@ func (h *Host) BootstrapScript(config evergreen.HostJasperConfig, creds *rpc.Cre
 	return strings.Join(append([]string{"#!/bin/bash"}, bashCmds...), "\n"), nil
 }
 
-// buildLocalJasperClientRequest builds the command string to a Jasper CLI to make a
-// request to the local Jasper service. This builds a valid command assuming the
-// CLI is on the same local machine as the Jasper service. To make requests to a
-// remote Jasper service using RPC, make the request through JasperClient
-// instead.
+// buildLocalJasperClientRequest builds the command string to a Jasper CLI to
+// make a request to the local Jasper service. This builds a valid command
+// assuming the CLI is on the same local machine as the Jasper service. To make
+// requests to a remote Jasper service using RPC, make the request through
+// JasperClient instead.
 func (h *Host) buildLocalJasperClientRequest(config evergreen.HostJasperConfig, subCmd string, input interface{}) (string, error) {
 	inputBytes, err := json.Marshal(input)
 	if err != nil {
@@ -517,16 +517,11 @@ func (h *Host) StartAgentMonitorRequest(settings *evergreen.Settings) (string, e
 		}
 	}
 
-	input := jaspercli.CommandInput{
-		Commands: [][]string{h.agentMonitorCommand(settings)},
-		CreateOptions: jasper.CreateOptions{
-			Environment: buildAgentEnv(settings),
-			Tags:        []string{evergreen.AgentMonitorTag},
-		},
-		Background: true,
-	}
-
-	return h.buildLocalJasperClientRequest(settings.HostJasper, jaspercli.CreateCommand, input)
+	return h.buildLocalJasperClientRequest(
+		settings.HostJasper,
+		strings.Join([]string{jaspercli.ManagerCommand, jaspercli.CreateProcessCommand}, " "),
+		h.AgentMonitorOptions(settings),
+	)
 }
 
 // StopAgentMonitor stops the agent monitor (if it is running) on the host via
@@ -562,25 +557,34 @@ func (h *Host) StopAgentMonitor(ctx context.Context, env evergreen.Environment) 
 	return catcher.Resolve()
 }
 
-// agentMonitorCommand returns the slice of arguments used to start the
+// AgentMonitorOptions  assembles the input to a Jasper request to start the
 // agent monitor.
-func (h *Host) agentMonitorCommand(settings *evergreen.Settings) []string {
+func (h *Host) AgentMonitorOptions(settings *evergreen.Settings) *jasper.CreateOptions {
 	binary := filepath.Join(h.Distro.HomeDir(), h.Distro.BinaryName())
 	clientPath := filepath.Join(h.Distro.ClientDir, h.Distro.BinaryName())
 
-	return []string{
+	args := []string{
 		binary,
 		"agent",
-		fmt.Sprintf("--api_server='%s'", settings.ApiUrl),
-		fmt.Sprintf("--host_id='%s'", h.Id),
-		fmt.Sprintf("--host_secret='%s'", h.Secret),
-		fmt.Sprintf("--log_prefix='%s'", filepath.Join(h.Distro.WorkDir, "agent")),
-		fmt.Sprintf("--working_directory='%s'", h.Distro.WorkDir),
-		fmt.Sprintf("--logkeeper_url='%s'", settings.LoggerConfig.LogkeeperURL),
+		fmt.Sprintf("--api_server=%s", settings.ApiUrl),
+		fmt.Sprintf("--host_id=%s", h.Id),
+		fmt.Sprintf("--host_secret=%s", h.Secret),
+		fmt.Sprintf("--log_prefix=%s", filepath.Join(h.Distro.WorkDir, "agent")),
+		fmt.Sprintf("--working_directory=%s", h.Distro.WorkDir),
+		fmt.Sprintf("--logkeeper_url=%s", settings.LoggerConfig.LogkeeperURL),
 		"--cleanup",
 		"monitor",
-		fmt.Sprintf("--client_url='%s'", h.ClientURL(settings)),
-		fmt.Sprintf("--client_path='%s'", clientPath),
+		fmt.Sprintf("--log_prefix=%s", filepath.Join(h.Distro.WorkDir, "agent.monitor")),
+		fmt.Sprintf("--client_url=%s", h.ClientURL(settings)),
+		fmt.Sprintf("--client_path=%s", clientPath),
+		fmt.Sprintf("--jasper_port=%d", settings.HostJasper.Port),
+		fmt.Sprintf("--credentials=%s", h.Distro.JasperCredentialsPath),
+	}
+
+	return &jasper.CreateOptions{
+		Args:        args,
+		Environment: buildAgentEnv(settings),
+		Tags:        []string{evergreen.AgentMonitorTag},
 	}
 }
 
