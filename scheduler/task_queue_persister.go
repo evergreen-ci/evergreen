@@ -18,7 +18,7 @@ func PersistTaskQueue(distro string, tasks []task.Task, distroQueueInfo model.Di
 		dependencies := make([]string, 0, len(t.DependsOn))
 		for _, d := range t.DependsOn {
 			dependencies = append(dependencies, d.TaskId)
-		}s
+		}
 		taskQueue = append(taskQueue, model.TaskQueueItem{
 			Id:                  t.Id,
 			DisplayName:         t.DisplayName,

@@ -18,7 +18,7 @@ import (
 )
 
 // TODO pass a TaskQueue struct as the sole argument to newDistroTaskDAGDispatchService and newDistroTaskDispatchService.
-// TODO use the data from TaskQueue.DistroQueueInfo in both DispatchServices - we already know the task group names and their number of respective tasks (amongst other things).
+// TODO use the data from TaskQueue.DistroQueueInfo in both DispatchServices - we already know the task group names and their number of respective tasks etc.
 // TODO standardise on the schedulableUnit struct once merged and remove the taskGroupTasks struct - they are equivalent.
 // TODO for taskGroupTasks.tasks: check that each task's dependencies have been met.  Currently, we only check that standalone tasks' dependencies have been satisfied.
 

@@ -1,6 +1,6 @@
 package model
 
-// TODO Tests for adding self-edges within the graph
+// TODO Tests when adding a self-edge within the graph
 // TODO Test for dependencies for task(s) within a task group
 
 import (
@@ -36,10 +36,10 @@ func (s *taskDistroDAGDispatchServiceSuite) SetupTest() {
 	var variant string
 	var version string
 	var maxHosts int
-	var dependencies []string
 
 	for i := 0; i < 100; i++ {
 		project := "project_1"
+		dependencies := []string{}
 		if i%5 == 0 { // no group
 			group = ""
 			variant = "variant_1"
@@ -86,9 +86,9 @@ func (s *taskDistroDAGDispatchServiceSuite) SetupTest() {
 			Id:            ID,
 			Group:         group,
 			BuildVariant:  variant,
-			Project:       project,
 			Version:       version,
 			GroupMaxHosts: maxHosts,
+			Project:       project,
 			Dependencies:  dependencies,
 		})
 		t := task.Task{
@@ -96,8 +96,8 @@ func (s *taskDistroDAGDispatchServiceSuite) SetupTest() {
 			TaskGroup:         group,
 			BuildVariant:      variant,
 			Version:           version,
-			Project:           project,
 			TaskGroupMaxHosts: maxHosts,
+			Project:           project,
 			StartTime:         util.ZeroTime,
 			FinishTime:        util.ZeroTime,
 		}
