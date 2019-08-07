@@ -20,7 +20,6 @@ import (
 
 const (
 	reliabilityAPIMaxNumTasks = 50
-	reliabilityAPIMaxLimit    = 1000
 	dayInHours                = 24 * time.Hour
 )
 
@@ -70,7 +69,7 @@ func (sh *taskReliabilityHandler) parseCommonFilter(vals url.Values) error {
 				StatusCode: http.StatusBadRequest,
 			}
 		}
-		if len(sh.filter.Tasks) > statsAPIMaxNumTasks {
+		if len(sh.filter.Tasks) > reliabilityAPIMaxNumTasks {
 			return gimlet.ErrorResponse{
 				Message:    "Too many tasks values",
 				StatusCode: http.StatusBadRequest,

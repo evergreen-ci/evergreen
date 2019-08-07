@@ -92,16 +92,19 @@ func TestFilterInvalidDate(t *testing.T) {
 	filter.AfterDate = day1
 	filter.BeforeDate = day1
 	err = filter.ValidateForTaskReliability()
+	require.Error(err)
 
 	// With AfterDate not a UTC day.
 	filter.AfterDate = day1
 	filter.BeforeDate = day1.Add(time.Hour)
 	err = filter.ValidateForTaskReliability()
+	require.Error(err)
 
 	// With BeforeDate not a UTC day.
 	filter.AfterDate = day1
 	filter.BeforeDate = day1.Add(time.Hour)
 	err = filter.ValidateForTaskReliability()
+	require.Error(err)
 }
 
 func TestFilterInvalidForTasks(t *testing.T) {
@@ -199,7 +202,7 @@ func TestGetTaskStatsTwoDocuments(t *testing.T) {
 
 	err = insertDailyTaskStats(project, "r1", "task1", "v1", "d1", day1, 10, 5, 1, 1, 1, 2, 10.5)
 	require.NoError(err)
-	insertDailyTaskStats(project, "r1", "task1", "v1", "d1", day2.Add(-1*time.Hour), 20, 7, 7, 0, 0, 0, 20.0)
+	err = insertDailyTaskStats(project, "r1", "task1", "v1", "d1", day2.Add(-1*time.Hour), 20, 7, 7, 0, 0, 0, 20.0)
 	require.NoError(err)
 
 	docs, err := GetTaskReliabilityScores(filter)

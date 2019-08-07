@@ -1,16 +1,14 @@
 package reliability
 
 import (
-	"encoding/json"
-	"io/ioutil"
 	"math"
 	"time"
 
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/stats"
-	"github.com/gonum/stat/distuv"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
+	"gonum.org/v1/gonum/stat/distuv"
 )
 
 const (
@@ -169,8 +167,6 @@ func GetTaskReliabilityScores(filter TaskReliabilityFilter) ([]TaskReliability, 
 	}
 	var taskStats []stats.TaskStats
 	pipeline := filter.TaskReliabilityQueryPipeline()
-	jsonString, _ := json.MarshalIndent(pipeline, "", "\t")
-	err = ioutil.WriteFile("/home/jim/tmp/pipeline.json", []byte(jsonString), 0644)
 	err = db.Aggregate(stats.DailyTaskStatsCollection, pipeline, &taskStats)
 	if err != nil {
 		return nil, errors.Wrap(err, "Failed to aggregate task statistics")
