@@ -95,8 +95,11 @@ func (h *userSettingsPostHandler) Run(ctx context.Context) gimlet.Responder {
 		h.settings.SpruceFeedback.SubmittedAt = time.Now()
 		h.settings.SpruceFeedback.User = model.ToAPIString(u.Username())
 		f, _ := h.settings.SpruceFeedback.ToService()
-		if err = h.sc.SubmitFeedback(f.(dbModel.FeedbackSubmission)); err != nil {
-			return gimlet.MakeJSONErrorResponder(err)
+		feedback, isValid := f.(dbModel.FeedbackSubmission)
+		if isValid {
+			if err = h.sc.SubmitFeedback(feedback); err != nil {
+				return gimlet.MakeJSONErrorResponder(err)
+			}
 		}
 	}
 
