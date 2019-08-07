@@ -73,13 +73,16 @@ func (j *hostTerminationJob) Run(ctx context.Context) {
 	if j.host == nil {
 		j.host, err = host.FindOneId(j.HostID)
 		if err != nil {
-			j.AddError(err)
+			j.AddError(errors.Wrapf(err, "error finding host '%s'", j.HostID))
 			return
 		}
 		if j.host == nil {
 			j.AddError(fmt.Errorf("could not find host %s for job %s", j.HostID, j.TaskID))
 			return
 		}
+	}
+	if j.env == nil {
+		j.env = evergreen.GetEnvironment()
 	}
 
 	if !j.host.IsEphemeral() {
@@ -92,6 +95,17 @@ func (j *hostTerminationJob) Run(ctx context.Context) {
 			"message":  "host termination for a non-spawnable distro",
 			"cause":    "programmer error",
 		})
+		return
+	}
+
+	if err = j.host.DeleteJasperCredentials(ctx, j.env); err != nil {
+		j.AddError(err)
+		grip.Error(message.WrapError(err, message.Fields{
+			"message":  "problem deleting Jasper credentials",
+			"host":     j.host.Id,
+			"provider": j.host.Distro.Provider,
+			"job":      j.ID(),
+		}))
 		return
 	}
 
@@ -123,18 +137,46 @@ func (j *hostTerminationJob) Run(ctx context.Context) {
 		return
 	}
 
-	if j.env == nil {
-		j.env = evergreen.GetEnvironment()
-	}
-
-	settings := j.env.Settings()
-
-	idleTimeStartsAt := j.host.LastTaskCompletedTime
-	if idleTimeStartsAt.IsZero() || idleTimeStartsAt == util.ZeroTime {
-		idleTimeStartsAt = j.host.StartTime
-	}
-
 	// clear the running task of the host in case one has been assigned.
+	if j.host.RunningTask != "" {
+		if j.TerminateIfBusy {
+			grip.Warning(message.Fields{
+				"message":  "Host has running task; clearing before terminating",
+				"job":      j.ID(),
+				"job_type": j.Type().Name,
+				"host":     j.host.Id,
+				"provider": j.host.Distro.Provider,
+				"task":     j.host.RunningTask,
+			})
+
+			j.AddError(model.ClearAndResetStrandedTask(j.host))
+		} else {
+			return
+		}
+	}
+	// set host as decommissioned in DB so no new task will be assigned
+	prevStatus := j.host.Status
+	if err = j.host.SetDecommissioned(evergreen.User, ""); err != nil {
+		grip.Error(message.WrapError(err, message.Fields{
+			"host":     j.host.Id,
+			"provider": j.host.Distro.Provider,
+			"job_type": j.Type().Name,
+			"job":      j.ID(),
+			"message":  "problem decommissioning host",
+		}))
+	}
+
+	j.host, err = host.FindOneId(j.HostID)
+	if err != nil {
+		j.AddError(errors.Wrapf(err, "error finding host '%s'", j.HostID))
+		return
+	}
+	if j.host == nil {
+		j.AddError(fmt.Errorf("could not find host %s for job %s", j.HostID, j.TaskID))
+		return
+	}
+
+	// check if running task has been assigned since status changed
 	if j.host.RunningTask != "" {
 		if j.TerminateIfBusy {
 			grip.Warning(message.Fields{
@@ -173,7 +215,7 @@ func (j *hostTerminationJob) Run(ctx context.Context) {
 			}
 			return
 		}
-	} else if j.host.Status == evergreen.HostBuilding {
+	} else if prevStatus == evergreen.HostBuilding {
 		// If the host is not a container and is building, this means the host is an intent
 		// host, and should be terminated in the database, and not in the cloud manager.
 		if err = j.host.Terminate(evergreen.User); err != nil {
@@ -194,6 +236,13 @@ func (j *hostTerminationJob) Run(ctx context.Context) {
 			}))
 		}
 		return
+	}
+
+	settings := j.env.Settings()
+
+	idleTimeStartsAt := j.host.LastTaskCompletedTime
+	if idleTimeStartsAt.IsZero() || idleTimeStartsAt == util.ZeroTime {
+		idleTimeStartsAt = j.host.StartTime
 	}
 
 	// convert the host to a cloud host
@@ -223,7 +272,7 @@ func (j *hostTerminationJob) Run(ctx context.Context) {
 			"message":  "problem getting cloud host instance status",
 		}))
 
-		if !util.StringSliceContains(evergreen.UpHostStatus, j.host.Status) {
+		if !util.StringSliceContains(evergreen.UpHostStatus, prevStatus) {
 			if err := j.host.Terminate(evergreen.User); err != nil {
 				j.AddError(err)
 			}

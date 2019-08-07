@@ -2,6 +2,7 @@ package task
 
 import (
 	"context"
+	"fmt"
 	"testing"
 	"time"
 
@@ -11,6 +12,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/testresult"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/evergreen/util"
+	adb "github.com/mongodb/anser/db"
 	. "github.com/smartystreets/goconvey/convey"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -1148,4 +1150,147 @@ func TestGetResultCountList(t *testing.T) {
 	assert.Equal(5, list["totals"][0].Count)
 	assert.Equal("d2", list["totals"][1].Name)
 	assert.Equal(3, list["totals"][1].Count)
+}
+
+func TestFindVariantsWithTask(t *testing.T) {
+	assert := assert.New(t)
+	assert.NoError(db.Clear(Collection))
+	tasks := Tasks{
+		&Task{Id: "1", DisplayName: "match", Project: "p", Requester: evergreen.RepotrackerVersionRequester, RevisionOrderNumber: 15, BuildVariant: "bv1"},
+		&Task{Id: "2", DisplayName: "match", Project: "p", Requester: evergreen.RepotrackerVersionRequester, RevisionOrderNumber: 12, BuildVariant: "bv2"},
+		&Task{Id: "3", DisplayName: "nomatch", Project: "p", Requester: evergreen.RepotrackerVersionRequester, RevisionOrderNumber: 14, BuildVariant: "bv1"},
+		&Task{Id: "4", DisplayName: "match", Project: "p", Requester: evergreen.RepotrackerVersionRequester, RevisionOrderNumber: 50, BuildVariant: "bv1"},
+	}
+	assert.NoError(tasks.Insert())
+
+	bvs, err := FindVariantsWithTask("match", "p", 10, 20)
+	assert.NoError(err)
+	require.Len(t, bvs, 2)
+	assert.Equal(bvs[0], "bv2")
+	assert.Equal(bvs[1], "bv1")
+}
+
+func TestGetTimeSpent(t *testing.T) {
+	assert := assert.New(t)
+	referenceTime := time.Unix(1136239445, 0)
+	tasks := []Task{
+		{
+			StartTime:  referenceTime,
+			FinishTime: referenceTime.Add(time.Hour),
+			TimeTaken:  time.Hour,
+		},
+		{
+			StartTime:  referenceTime,
+			FinishTime: referenceTime.Add(2 * time.Hour),
+			TimeTaken:  2 * time.Hour,
+		},
+		{
+			StartTime:  referenceTime,
+			FinishTime: util.ZeroTime,
+			TimeTaken:  0,
+		},
+		{
+			StartTime:  util.ZeroTime,
+			FinishTime: util.ZeroTime,
+			TimeTaken:  0,
+		},
+	}
+
+	timeTaken, makespan := GetTimeSpent(tasks)
+	assert.Equal(3*time.Hour, timeTaken)
+	assert.Equal(2*time.Hour, makespan)
+
+	timeTaken, makespan = GetTimeSpent(tasks[2:])
+	assert.EqualValues(0, timeTaken)
+	assert.EqualValues(0, makespan)
+}
+
+func TestUpdateDependencies(t *testing.T) {
+	assert.NoError(t, db.ClearCollections(Collection))
+	t1 := &Task{
+		Id:        "t1",
+		DependsOn: []Dependency{},
+	}
+	assert.NoError(t, t1.Insert())
+
+	dependsOn := []Dependency{
+		{
+			TaskId: "t2",
+		},
+	}
+	assert.NoError(t, t1.UpdateDependencies(dependsOn))
+	assert.Len(t, t1.DependsOn, 1)
+	dbT1, err := FindOneId("t1")
+	assert.NoError(t, err)
+	assert.Len(t, dbT1.DependsOn, 1)
+
+	// If the task is out of sync with the db the update fails
+	t1.DependsOn = []Dependency{
+		{TaskId: "t3"},
+	}
+	assert.Error(t, t1.UpdateDependencies(dependsOn))
+
+}
+
+func TestDisplayTaskCache(t *testing.T) {
+	assert := assert.New(t)
+	assert.NoError(db.Clear(Collection))
+	const displayTaskCount = 50
+	const execPerDisplay = 10
+
+	for i := 0; i < displayTaskCount; i++ {
+		dt := Task{
+			Id:          fmt.Sprintf("d%d", i),
+			DisplayOnly: true,
+		}
+		for j := 0; j < execPerDisplay; j++ {
+			et := Task{
+				Id: fmt.Sprintf("%d-%d", i, j),
+			}
+			assert.NoError(et.Insert())
+			dt.ExecutionTasks = append(dt.ExecutionTasks, et.Id)
+		}
+		assert.NoError(dt.Insert())
+	}
+
+	cache := NewDisplayTaskCache()
+	dt, err := cache.Get(&Task{Id: "1-1"})
+	assert.NoError(err)
+	assert.Equal("d1", dt.Id)
+	dt, err = cache.Get(&Task{Id: "1-5"})
+	assert.NoError(err)
+	assert.Equal("d1", dt.Id)
+	assert.Len(cache.displayTasks, 1)
+	assert.Len(cache.execToDisplay, execPerDisplay)
+
+	for i := 0; i < displayTaskCount; i++ {
+		_, err = cache.Get(&Task{Id: fmt.Sprintf("%d-1", i)})
+		assert.NoError(err)
+	}
+	assert.Len(cache.execToDisplay, displayTaskCount*execPerDisplay)
+	assert.Len(cache.List(), displayTaskCount)
+}
+
+func TestFindMergeTaskForVersion(t *testing.T) {
+	assert.NoError(t, db.ClearCollections(Collection))
+	t1 := &Task{
+		Id:               "t1",
+		Version:          "abcdef123456",
+		CommitQueueMerge: false,
+	}
+	assert.NoError(t, t1.Insert())
+
+	_, err := FindMergeTaskForVersion("abcdef123456")
+	assert.Error(t, err)
+	assert.True(t, adb.ResultsNotFound(err))
+
+	t2 := &Task{
+		Id:               "t2",
+		Version:          "abcdef123456",
+		CommitQueueMerge: true,
+	}
+	assert.NoError(t, t2.Insert())
+	t2Db, err := FindMergeTaskForVersion("abcdef123456")
+	assert.NoError(t, err)
+	assert.Equal(t, "t2", t2Db.Id)
 }

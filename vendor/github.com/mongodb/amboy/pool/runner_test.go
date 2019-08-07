@@ -38,6 +38,7 @@ func TestRunnerImplementations(t *testing.T) {
 	pools := map[string]func() amboy.Runner{
 		"Local":  func() amboy.Runner { return new(localWorkers) },
 		"Single": func() amboy.Runner { return new(single) },
+		"Noop":   func() amboy.Runner { return new(noopPool) },
 		"RateLimitedSimple": func() amboy.Runner {
 			return &simpleRateLimited{
 				size:     1,

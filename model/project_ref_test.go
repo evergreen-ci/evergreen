@@ -189,11 +189,51 @@ func TestFindOneProjectRefWithCommitQueueByOwnerRepoAndBranch(t *testing.T) {
 	assert.NotNil(projectRef)
 }
 
+func TestCanEnableCommitQueue(t *testing.T) {
+	assert := assert.New(t)
+	require := require.New(t)
+
+	require.NoError(db.Clear(ProjectRefCollection))
+	doc := &ProjectRef{
+		Owner:      "mongodb",
+		Repo:       "mci",
+		Branch:     "master",
+		RepoKind:   "github",
+		Identifier: "mci",
+		CommitQueue: CommitQueueParams{
+			Enabled: true,
+		},
+	}
+	require.NoError(doc.Insert())
+	ok, err := doc.CanEnableCommitQueue()
+	assert.NoError(err)
+	assert.True(ok)
+
+	doc2 := &ProjectRef{
+		Owner:      "mongodb",
+		Repo:       "mci",
+		Branch:     "master",
+		RepoKind:   "github",
+		Identifier: "not-mci",
+		CommitQueue: CommitQueueParams{
+			Enabled: false,
+		},
+	}
+	require.NoError(doc2.Insert())
+	ok, err = doc2.CanEnableCommitQueue()
+	assert.NoError(err)
+	assert.False(ok)
+}
+
 func TestFindProjectRefsWithCommitQueueEnabled(t *testing.T) {
 	assert := assert.New(t)
 	require := require.New(t)
 
 	require.NoError(db.Clear(ProjectRefCollection))
+	projectRefs, err := FindProjectRefsWithCommitQueueEnabled()
+	assert.NoError(err)
+	assert.Empty(projectRefs)
+
 	doc := &ProjectRef{
 		Enabled:    true,
 		Owner:      "mongodb",
@@ -215,9 +255,44 @@ func TestFindProjectRefsWithCommitQueueEnabled(t *testing.T) {
 	doc.CommitQueue.Enabled = false
 	require.NoError(doc.Insert())
 
-	projectRefs, err := FindProjectRefsWithCommitQueueEnabled()
+	projectRefs, err = FindProjectRefsWithCommitQueueEnabled()
 	assert.NoError(err)
 	require.Len(projectRefs, 2)
 	assert.Equal("mci", projectRefs[0].Identifier)
 	assert.Equal("mci", projectRefs[1].Identifier)
+}
+
+func TestValidatePeriodicBuildDefinition(t *testing.T) {
+	assert := assert.New(t)
+	testCases := map[PeriodicBuildDefinition]bool{
+		PeriodicBuildDefinition{
+			IntervalHours: 24,
+			ConfigFile:    "foo.yml",
+			Alias:         "myAlias",
+		}: true,
+		PeriodicBuildDefinition{
+			IntervalHours: 0,
+			ConfigFile:    "foo.yml",
+			Alias:         "myAlias",
+		}: false,
+		PeriodicBuildDefinition{
+			IntervalHours: 24,
+			ConfigFile:    "",
+			Alias:         "myAlias",
+		}: false,
+		PeriodicBuildDefinition{
+			IntervalHours: 24,
+			ConfigFile:    "foo.yml",
+			Alias:         "",
+		}: false,
+	}
+
+	for testCase, shouldPass := range testCases {
+		if shouldPass {
+			assert.NoError(testCase.Validate())
+		} else {
+			assert.Error(testCase.Validate())
+		}
+		assert.NotEmpty(testCase.ID)
+	}
 }

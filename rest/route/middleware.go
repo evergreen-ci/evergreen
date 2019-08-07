@@ -199,10 +199,18 @@ func (m *CommitQueueItemOwnerMiddleware) ServeHTTP(rw http.ResponseWriter, r *ht
 	ctx := r.Context()
 	user := MustHaveUser(ctx)
 	opCtx := MustHaveProjectContext(ctx)
+	projRef, err := opCtx.GetProjectRef()
+	if err != nil {
+		gimlet.WriteResponse(rw, gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+			StatusCode: http.StatusBadRequest,
+			Message:    err.Error(),
+		}))
+		return
+	}
 
 	// A superuser or project admin is authorized
 	isSuperuser := util.StringSliceContains(m.sc.GetSuperUsers(), user.Username())
-	isAdmin := util.StringSliceContains(opCtx.ProjectRef.Admins, user.Username())
+	isAdmin := util.StringSliceContains(projRef.Admins, user.Username())
 	if isSuperuser || isAdmin {
 		next(rw, r)
 		return
@@ -211,6 +219,9 @@ func (m *CommitQueueItemOwnerMiddleware) ServeHTTP(rw http.ResponseWriter, r *ht
 	// The owner of the patch can also pass
 	vars := gimlet.GetVars(r)
 	item, ok := vars["item"]
+	if !ok {
+		item, ok = vars["patch_id"]
+	}
 	if !ok || item == "" {
 		gimlet.WriteResponse(rw, gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
 			StatusCode: http.StatusBadRequest,
@@ -219,7 +230,7 @@ func (m *CommitQueueItemOwnerMiddleware) ServeHTTP(rw http.ResponseWriter, r *ht
 		return
 	}
 
-	if opCtx.ProjectRef.CommitQueue.PatchType == commitqueue.CLIPatchType {
+	if projRef.CommitQueue.PatchType == commitqueue.CLIPatchType {
 		patch, err := m.sc.FindPatchById(item)
 		if err != nil {
 			gimlet.WriteResponse(rw, gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "can't find item")))
@@ -234,7 +245,7 @@ func (m *CommitQueueItemOwnerMiddleware) ServeHTTP(rw http.ResponseWriter, r *ht
 		}
 	}
 
-	if opCtx.ProjectRef.CommitQueue.PatchType == commitqueue.PRPatchType {
+	if projRef.CommitQueue.PatchType == commitqueue.PRPatchType {
 		itemInt, err := strconv.Atoi(item)
 		if err != nil {
 			gimlet.WriteResponse(rw, gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
@@ -244,7 +255,7 @@ func (m *CommitQueueItemOwnerMiddleware) ServeHTTP(rw http.ResponseWriter, r *ht
 			return
 		}
 
-		pr, err := m.sc.GetGitHubPR(ctx, opCtx.ProjectRef.Owner, opCtx.ProjectRef.Repo, itemInt)
+		pr, err := m.sc.GetGitHubPR(ctx, projRef.Owner, projRef.Repo, itemInt)
 		if err != nil {
 			gimlet.WriteResponse(rw, gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
 				StatusCode: http.StatusInternalServerError,

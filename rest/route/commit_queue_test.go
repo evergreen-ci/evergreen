@@ -2,11 +2,17 @@ package route
 
 import (
 	"context"
+	"path/filepath"
 	"testing"
 
+	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/mock"
+	dbModel "github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/evergreen/model/commitqueue"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/rest/model"
+	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/stretchr/testify/suite"
 	mgobson "gopkg.in/mgo.v2/bson"
 )
@@ -70,7 +76,19 @@ func (s *CommitQueueSuite) TestGetCommitQueue() {
 }
 
 func (s *CommitQueueSuite) TestDeleteItem() {
-	route := makeDeleteCommitQueueItems(s.sc).(*commitQueueDeleteItemHandler)
+	s.sc.MockProjectConnector.CachedProjects = []dbModel.ProjectRef{
+		{
+			Identifier:  "mci",
+			CommitQueue: dbModel.CommitQueueParams{PatchType: commitqueue.PRPatchType},
+		},
+	}
+
+	ctx := context.Background()
+	env := &mock.Environment{}
+	s.Require().NoError(env.Configure(ctx, filepath.Join(evergreen.FindEvergreenHome(), testutil.TestDir, testutil.TestSettings), nil))
+	s.Require().NoError(env.Local.Start(ctx))
+
+	route := makeDeleteCommitQueueItems(s.sc, env).(*commitQueueDeleteItemHandler)
 	pos, err := s.sc.EnqueueItem("mci", model.APICommitQueueItem{Issue: model.ToAPIString("1")})
 	s.Require().NoError(err)
 	s.Require().Equal(1, pos)
@@ -82,17 +100,18 @@ func (s *CommitQueueSuite) TestDeleteItem() {
 
 	// Valid delete
 	route.item = "1"
-	response := route.Run(context.Background())
+	response := route.Run(ctx)
+	s.Equal(1, env.LocalQueue().Stats(ctx).Total)
 	s.Equal(204, response.Status())
 
 	// Already deleted
-	response = route.Run(context.Background())
+	response = route.Run(ctx)
 	s.Equal(404, response.Status())
 
 	// Invalid project
 	route.project = "not_here"
 	route.item = "2"
-	response = route.Run(context.Background())
+	response = route.Run(ctx)
 	s.Equal(404, response.Status())
 }
 
@@ -134,4 +153,40 @@ func (s *CommitQueueSuite) TestEnqueueItem() {
 	response := route.Run(context.Background())
 	s.Equal(200, response.Status())
 	s.Equal(model.APICommitQueuePosition{Position: 1}, response.Data())
+}
+
+func (s *CommitQueueSuite) TestGetItemAuthor() {
+	ctx := context.Background()
+	route := makeGetCommitQueueItemAuthor(s.sc).(*getCommitQueueItemAuthorHandler)
+	p := patch.Patch{
+		Id:     mgobson.NewObjectId(),
+		Author: "evergreen.user",
+	}
+	s.sc.CachedPatches = append(s.sc.CachedPatches, p)
+	pRef := &dbModel.ProjectRef{
+		Identifier: "mci",
+		CommitQueue: dbModel.CommitQueueParams{
+			PatchType: commitqueue.CLIPatchType,
+		},
+	}
+	s.NoError(s.sc.CreateProject(pRef))
+
+	route.projectID = pRef.Identifier
+	route.item = p.Id.Hex()
+	resp := route.Run(ctx)
+	s.Equal(200, resp.Status())
+	s.Equal(model.APICommitQueueItemAuthor{Author: model.ToAPIString(p.Author)}, resp.Data())
+
+	pRef = &dbModel.ProjectRef{
+		Identifier: "not-mci",
+		CommitQueue: dbModel.CommitQueueParams{
+			PatchType: commitqueue.PRPatchType,
+		},
+	}
+	s.NoError(s.sc.CreateProject(pRef))
+	route.projectID = pRef.Identifier
+	route.item = "1234"
+	resp = route.Run(ctx)
+	s.Equal(200, resp.Status())
+	s.Equal(model.APICommitQueueItemAuthor{Author: model.ToAPIString("github.user")}, resp.Data())
 }

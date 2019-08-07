@@ -93,14 +93,14 @@ func (a *Application) Run(ctx context.Context) error {
 	catcher := grip.NewCatcher()
 	// iterate through generators
 	for _, generator := range a.Generators {
-		catcher.Add(queue.Put(generator))
+		catcher.Add(queue.Put(ctx, generator))
 	}
 
 	if catcher.HasErrors() {
 		return errors.Wrap(catcher.Resolve(), "problem adding generation jobs")
 	}
 
-	amboy.WaitCtxInterval(ctx, queue, time.Second)
+	amboy.WaitInterval(ctx, queue, time.Second)
 	if ctx.Err() != nil {
 		return errors.New("migration operation canceled")
 	}
@@ -117,7 +117,7 @@ func (a *Application) Run(ctx context.Context) error {
 
 	grip.Infof("added %d migration jobs from %d migrations", numMigrations, len(a.Generators))
 	grip.Noticef("waiting for %d migration jobs of %d migrations", numMigrations, len(a.Generators))
-	amboy.WaitCtxInterval(ctx, queue, time.Second)
+	amboy.WaitInterval(ctx, queue, time.Second)
 	if ctx.Err() != nil {
 		return errors.New("migration operation canceled")
 	}

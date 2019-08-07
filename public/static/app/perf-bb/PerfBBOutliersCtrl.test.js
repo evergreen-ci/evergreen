@@ -1274,6 +1274,7 @@ describe('PerfBBOutliersFactoriesTest', () => {
       inject($injector => {
         OutlierState = $injector.get('OutlierState');
         format = $injector.get('FORMAT');
+        OUTLIERS = $injector.get('OUTLIERS');
       });
       state = new OutlierState(PROJECT, model, mandatory, transient, sorting, settings, limit);
     });
@@ -1617,7 +1618,7 @@ describe('PerfBBOutliersFactoriesTest', () => {
         expect(state.getFilteringContext()).toEqual( [{
           field: 'type',
           type: 'string',
-          term: '=detected'
+          term: '=' + OUTLIERS.HIGH_CONFIDENCE
         }]);
       });
 
@@ -1628,7 +1629,7 @@ describe('PerfBBOutliersFactoriesTest', () => {
         expect(state.getFilteringContext()).toEqual( [{
           field: 'type',
           type: 'string',
-          term: '=detected'
+          term: '=' + OUTLIERS.HIGH_CONFIDENCE
         }]);
       });
 
@@ -1649,7 +1650,7 @@ describe('PerfBBOutliersFactoriesTest', () => {
         expect(state.getFilteringContext()).toEqual( [{
           field: 'type',
           type: 'string',
-          term: '=detected'
+          term: '=' + OUTLIERS.HIGH_CONFIDENCE
         },{
           field: 'test',
           type: 'string',
@@ -1752,32 +1753,42 @@ describe('PerfBBOutliersFactoriesTest', () => {
     });
 
     describe('loadData', () => {
-      let $q, OutliersDataService, MuteDataService;
+      let $q, PointsDataService, OutliersDataService, MuteDataService;
       beforeEach(() => {
         inject($injector => {
           $q = $injector.get('$q');
           OutliersDataService = $injector.get('OutliersDataService');
+          PointsDataService = $injector.get('PointsDataService');
           MuteDataService = $injector.get('MuteDataService');
         });
       });
 
-      it('should handle no api', () => {
+      it('should handle no outliers', () => {
         const pipeline = {};
         const aggregateQ = {};
+        const getPointsQ = {};
         const queryQ = {};
         const getMarkedOutliersQ = {};
         const operation = 1;
+        const results = {outliers:[]};
         const promise = {};
+        promise.then = (success) => {
+          success(results);
+          return promise;
+        };
 
         spyOn(state, 'getAggChain').and.returnValue(pipeline);
         spyOn(OutliersDataService, 'aggregateQ').and.returnValue(aggregateQ);
         spyOn(OutliersDataService, 'getMarkedOutliersQ').and.returnValue(getMarkedOutliersQ);
         spyOn(MuteDataService, 'queryQ').and.returnValue(aggregateQ);
+        spyOn(PointsDataService, 'getPointsQ').and.returnValue(getPointsQ);
+
         spyOn($q, 'all').and.returnValue(promise);
 
         expect(state.loadData(operation)).toBe(promise);
 
         expect(state.getAggChain).toHaveBeenCalled();
+        expect(PointsDataService.getPointsQ).not.toHaveBeenCalled();
         expect(OutliersDataService.aggregateQ).toHaveBeenCalledWith(pipeline);
         expect(OutliersDataService.getMarkedOutliersQ).toHaveBeenCalledWith({project: PROJECT});
         expect(MuteDataService.queryQ).toHaveBeenCalledWith({project: PROJECT});
@@ -1787,6 +1798,58 @@ describe('PerfBBOutliersFactoriesTest', () => {
             marks: getMarkedOutliersQ,
             operation: operation
         });
+      });
+      it('should handle outliers', () => {
+        const pipeline = {};
+        const aggregateQ = {};
+        const queryQ = {};
+        const getPointsQ = {};
+        const getMarkedOutliersQ = {};
+        const operation = 1;
+        const outlier = {
+          'revision':'revision',
+          'project':'sys-perf',
+          'variant':'linux-1-node-replSet',
+          'task':'bestbuy_agg',
+          'test':'canary_ping'};
+        const pointsQuery = {'$or':[{
+            "revision": "revision",
+            "project": "sys-perf",
+            "variant": "linux-1-node-replSet",
+            "task": "bestbuy_agg",
+            "test": "canary_ping"
+          }]};
+        const results = {outliers:[outlier], mutes: 'mutes', marks:'marks'};
+        const promise = {};
+        promise.then = (success) => {
+          success(results);
+          return promise;
+        };
+
+        spyOn(state, 'getAggChain').and.returnValue(pipeline);
+        spyOn(OutliersDataService, 'aggregateQ').and.returnValue(aggregateQ);
+        spyOn(OutliersDataService, 'getMarkedOutliersQ').and.returnValue(getMarkedOutliersQ);
+        spyOn(MuteDataService, 'queryQ').and.returnValue(aggregateQ);
+        spyOn($q, 'all').and.returnValue(promise);
+        spyOn(PointsDataService, 'getPointsQ').and.returnValue(getPointsQ);
+
+        expect(state.loadData(operation)).toBe(promise);
+
+        expect(PointsDataService.getPointsQ).toHaveBeenCalledWith(pointsQuery);
+        expect(state.getAggChain).toHaveBeenCalled();
+        expect(OutliersDataService.aggregateQ).toHaveBeenCalledWith(pipeline);
+        expect(OutliersDataService.getMarkedOutliersQ).toHaveBeenCalledWith({project: PROJECT});
+        expect(MuteDataService.queryQ).toHaveBeenCalledWith({project: PROJECT});
+        expect($q.all.calls.count()).toBe(2);
+        expect($q.all.calls.all()[1].args).toEqual(
+          [{
+            outliers: [outlier],
+            mutes: 'mutes',
+            marks: 'marks',
+            operation: 1,
+            points: getPointsQ
+          }]  // Second call
+        );
       });
 
     });
@@ -1802,6 +1865,21 @@ describe('PerfBBOutliersFactoriesTest', () => {
           test: test || 'canary_ping',
           thread_level: thread_level || '1',
           enabled: _.isUndefined(enabled) ? false : !!enabled,
+        }
+      };
+
+      const create_point = params => {
+        const {i, revision, project, variant, task, test, thread_level, enabled} = params;
+        return {
+          revision: revision || `revision ${i}`,
+          project: project|| 'sys-perf',
+          variant: variant || 'linux-standalone',
+          task: task || 'bestbuy_agg',
+          test: test || 'canary_ping',
+          thread_level: thread_level || '1',
+          enabled: _.isUndefined(enabled) ? false : !!enabled,
+          start: 0,
+          end: 1,
         }
       };
 
@@ -1885,8 +1963,9 @@ describe('PerfBBOutliersFactoriesTest', () => {
         it('should set matching to unmuted', () => {
           const outliers = [create_outlier({i: 1})];
           const mutes = [create_mute({i: 1})];
+          const points = [create_point({i: 1})];
 
-          const results = state.hydrateData({outliers:outliers, mutes:mutes});
+          const results = state.hydrateData({outliers:outliers, mutes:mutes, points:points});
 
           expect(results.length).toEqual(1);
           expect(_.all(results, (result) => result.muted)).toEqual(false);
@@ -1895,8 +1974,9 @@ describe('PerfBBOutliersFactoriesTest', () => {
         it('should set matching to muted', () => {
           const outliers = [create_outlier({i: 1})];
           const mutes = [create_mute({i: 1, enabled: true})];
+          const points = [create_point({i: 1})];
 
-          const results = state.hydrateData({outliers: outliers, mutes: mutes});
+          const results = state.hydrateData({outliers: outliers, mutes: mutes, points: points});
 
           expect(results.length).toEqual(1);
 
@@ -1907,11 +1987,12 @@ describe('PerfBBOutliersFactoriesTest', () => {
         it('should toggle muted', () => {
           const outliers = [create_outlier({i: 1})];
           let mutes = [create_mute({i: 1, enabled: true})];
+          const points = [create_point({i: 1})];
 
-          state.hydrateData({outliers: outliers, mutes: mutes});
+          state.hydrateData({outliers: outliers, mutes: mutes, points: points});
 
           mutes = [create_mute({i: 1, enabled: false})];
-          const results = state.hydrateData({outliers: outliers, mutes: mutes});
+          const results = state.hydrateData({outliers: outliers, mutes: mutes, points: points});
 
           expect(results.length).toEqual(1);
           expect(_.all(results, (result) => result.muted)).toEqual(false);
@@ -1920,8 +2001,9 @@ describe('PerfBBOutliersFactoriesTest', () => {
         it('should handle multiple', () => {
           const outliers = [create_outlier({i: 1}), create_outlier({i: 2})];
           let mutes = [create_mute({i: 1, enabled: true}), create_mute({i: 2, enabled: true})];
+          const points = [create_point({i: 1}) , create_point({i: 2})];
 
-          const results = state.hydrateData({outliers: outliers, mutes: mutes});
+          const results = state.hydrateData({outliers: outliers, mutes: mutes, points: points});
 
           expect(results.length).toEqual(2);
           expect(_.all(results, (result) => result.muted)).toEqual(true);
@@ -1939,8 +2021,15 @@ describe('PerfBBOutliersFactoriesTest', () => {
             create_mute({i: 2, enabled: true}),
             create_mute({i: 4, enabled: true})
           ];
+          const points = [
+            create_point({i: 1}),
+            create_point({i: 2}),
+            create_point({i: 3}),
+            create_point({i: 4}),
+            create_point({i: 5}),
+          ];
 
-          const results = state.hydrateData({outliers: outliers, mutes: mutes});
+          const results = state.hydrateData({outliers: outliers, mutes: mutes, points: points});
 
           const even = _.chain(results).filter((element, index) => index % 2 !== 0).value();
           expect(even.length).toEqual(2);
@@ -1956,8 +2045,9 @@ describe('PerfBBOutliersFactoriesTest', () => {
       describe('marked', () => {
         it('should set matching to unmarked', () => {
           const outliers = [create_outlier({i: 1})];
+          const points = [create_point({i: 1})];
           const marks = [];
-          const results = state.hydrateData({outliers:outliers, marks:marks});
+          const results = state.hydrateData({outliers:outliers, marks:marks, points:points});
 
           expect(results.length).toEqual(1);
           expect(_.all(results, (result) => result.marked)).toEqual(false);
@@ -1966,8 +2056,9 @@ describe('PerfBBOutliersFactoriesTest', () => {
         it('should set matching to muted', () => {
           const outliers = [create_outlier({i: 1})];
           const marks = [create_mark({i: 1})];
+          const points = [create_point({i: 1})];
 
-          const results = state.hydrateData({outliers: outliers, marks: marks});
+          const results = state.hydrateData({outliers: outliers, marks: marks, points:points});
 
           expect(results.length).toEqual(1);
 
@@ -1977,12 +2068,13 @@ describe('PerfBBOutliersFactoriesTest', () => {
 
         it('should toggle muted', () => {
           const outliers = [create_outlier({i: 1})];
+          const points = [create_point({i: 1})];
           let marks = [create_mark({i: 1})];
 
-          state.hydrateData({outliers: outliers, marks: marks});
+          state.hydrateData({outliers: outliers, marks: marks, points:points});
 
           marks = [];
-          const results = state.hydrateData({outliers: outliers, marks: marks});
+          const results = state.hydrateData({outliers: outliers, marks: marks, points:points});
 
           expect(results.length).toEqual(1);
           expect(_.all(results, (result) => result.marked)).toEqual(false);
@@ -1990,9 +2082,10 @@ describe('PerfBBOutliersFactoriesTest', () => {
 
         it('should handle multiple', () => {
           const outliers = [create_outlier({i: 1}), create_outlier({i: 2})];
+          const points = [create_point({i: 1}), create_point({i: 2})];
           let marks = [create_mark({i: 1}), create_mark({i: 2})];
 
-          const results = state.hydrateData({outliers: outliers, marks: marks});
+          const results = state.hydrateData({outliers: outliers, marks: marks, points: points});
 
           expect(results.length).toEqual(2);
           expect(_.all(results, (result) => result.marked)).toEqual(true);
@@ -2006,12 +2099,19 @@ describe('PerfBBOutliersFactoriesTest', () => {
             create_outlier({i: 4}),
             create_outlier({i: 5}),
           ];
+          const points = [
+            create_point({i: 1}),
+            create_point({i: 2}),
+            create_point({i: 3}),
+            create_point({i: 4}),
+            create_point({i: 5}),
+          ];
           let marks = [
             create_mark({i: 2}),
             create_mark({i: 4})
           ];
 
-          const results = state.hydrateData({outliers: outliers, marks: marks});
+          const results = state.hydrateData({outliers: outliers, marks: marks, points: points});
 
           const even = _.chain(results).filter((element, index) => index % 2 !== 0).value();
           expect(even.length).toEqual(2);
@@ -2025,6 +2125,7 @@ describe('PerfBBOutliersFactoriesTest', () => {
       });
       describe('mutes and marks', () => {
         let outliers;
+        let points;
         let marks;
         let mutes;
         beforeEach(() => {
@@ -2034,6 +2135,13 @@ describe('PerfBBOutliersFactoriesTest', () => {
             create_outlier({i: 3}),
             create_outlier({i: 4}),
             create_outlier({i: 5}),
+          ];
+          points = [
+            create_point({i: 1}),
+            create_point({i: 2}),
+            create_point({i: 3}),
+            create_point({i: 4}),
+            create_point({i: 5}),
           ];
           marks = [
             create_mark({i: 1}),
@@ -2048,7 +2156,7 @@ describe('PerfBBOutliersFactoriesTest', () => {
 
         it('should handle both', () => {
 
-          const results = state.hydrateData({outliers: outliers, mutes: mutes, marks: marks});
+          const results = state.hydrateData({outliers: outliers, mutes: mutes, marks: marks, points: points});
 
           const even = _.chain(results).filter((element, index) => index % 2 !== 0).value();
           expect(even.length).toEqual(2);
@@ -2065,7 +2173,7 @@ describe('PerfBBOutliersFactoriesTest', () => {
         it('should handle muted mode', () => {
 
           state.vm.mode.value = 'muted';
-          const results = state.hydrateData({outliers: outliers, mutes: mutes, marks: marks});
+          const results = state.hydrateData({outliers: outliers, mutes: mutes, marks: marks, points: points});
 
           const even = _.chain(results).filter((element, index) => index % 2 !== 0).value();
           expect(even.length).toEqual(1);
@@ -2082,7 +2190,7 @@ describe('PerfBBOutliersFactoriesTest', () => {
         it('should handle markd mode', () => {
 
           state.vm.mode.value = 'marked';
-          const results = state.hydrateData({outliers: outliers, mutes: mutes, marks: marks});
+          const results = state.hydrateData({outliers: outliers, mutes: mutes, marks: marks, points: points});
 
           const even = _.chain(results).filter((element, index) => index % 2 !== 0).value();
           expect(even.length).toEqual(1);
@@ -2186,9 +2294,9 @@ describe('PerfBBOutliersFactoriesTest', () => {
 
     beforeEach(() => inject($filter => outlierTypeToConfidence = $filter('outlierTypeToConfidence')));
 
-    it('should return high for detected', () => expect(outlierTypeToConfidence('detected')).toEqual('high'));
+    it('should return high for detected', () => expect(outlierTypeToConfidence(OUTLIERS.HIGH_CONFIDENCE)).toEqual('high'));
 
-    it('should return low for detected', () => expect(outlierTypeToConfidence('suspicious')).toEqual('low'));
+    it('should return low for detected', () => expect(outlierTypeToConfidence(OUTLIERS.LOW_CONFIDENCE)).toEqual('low'));
 
     it('should return null otherwise', () => expect(outlierTypeToConfidence('some other value')).toEqual(undefined));
 

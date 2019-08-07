@@ -1,13 +1,17 @@
 package host
 
 import (
+	"context"
 	"fmt"
+	"math"
 	"testing"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/mock"
 	"github.com/evergreen-ci/evergreen/model/build"
+	"github.com/evergreen-ci/evergreen/model/credentials"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/task"
 	_ "github.com/evergreen-ci/evergreen/testutil"
@@ -823,7 +827,22 @@ func TestFindNeedsNewAgent(t *testing.T) {
 			So(err, ShouldBeNil)
 			So(len(hosts), ShouldEqual, 0)
 		})
-		Convey("with a host marked as needing a new agent", func() {
+		Convey("with a legacy SSH host marked as needing a new agent", func() {
+			h := Host{
+				Id:            "h",
+				Status:        evergreen.HostRunning,
+				StartedBy:     evergreen.User,
+				NeedsNewAgent: true,
+				Distro:        distro.Distro{BootstrapMethod: distro.BootstrapMethodLegacySSH},
+			}
+			So(h.Insert(), ShouldBeNil)
+
+			hosts, err := Find(NeedsNewAgentFlagSet())
+			So(err, ShouldBeNil)
+			So(len(hosts), ShouldEqual, 1)
+			So(hosts[0].Id, ShouldEqual, h.Id)
+		})
+		Convey("with a host having no specified bootstrap method marked as needing a new agent", func() {
 			h := Host{
 				Id:            "h",
 				Status:        evergreen.HostRunning,
@@ -831,12 +850,219 @@ func TestFindNeedsNewAgent(t *testing.T) {
 				NeedsNewAgent: true,
 			}
 			So(h.Insert(), ShouldBeNil)
+
 			hosts, err := Find(NeedsNewAgentFlagSet())
 			So(err, ShouldBeNil)
 			So(len(hosts), ShouldEqual, 1)
-			So(hosts[0].Id, ShouldEqual, "h")
+			So(hosts[0].Id, ShouldEqual, h.Id)
 		})
 	})
+}
+
+func TestFindByNeedsNewAgentMonitor(t *testing.T) {
+	for testName, testCase := range map[string]func(t *testing.T, h *Host){
+		"NotRunningHost": func(t *testing.T, h *Host) {
+			h.Status = evergreen.HostDecommissioned
+			require.NoError(t, h.Insert())
+
+			hosts, err := FindByNeedsNewAgentMonitor()
+			require.NoError(t, err)
+			require.Len(t, hosts, 0)
+		},
+		"DoesNotNeedNewAgentMonitor": func(t *testing.T, h *Host) {
+			h.NeedsNewAgentMonitor = false
+			require.NoError(t, h.Insert())
+
+			hosts, err := FindByNeedsNewAgentMonitor()
+			require.NoError(t, err)
+			require.Len(t, hosts, 0)
+		},
+		"BootstrapLegacySSH": func(t *testing.T, h *Host) {
+			h.Distro.BootstrapMethod = distro.BootstrapMethodLegacySSH
+			require.NoError(t, h.Insert())
+
+			hosts, err := FindByNeedsNewAgentMonitor()
+			require.NoError(t, err)
+			require.Len(t, hosts, 0)
+		},
+		"BootstrapSSH": func(t *testing.T, h *Host) {
+			h.Distro.BootstrapMethod = distro.BootstrapMethodSSH
+			require.NoError(t, h.Insert())
+
+			hosts, err := FindByNeedsNewAgentMonitor()
+			require.NoError(t, err)
+			require.Len(t, hosts, 1)
+			assert.Equal(t, h.Id, hosts[0].Id)
+		},
+		"BootstrapUserData": func(t *testing.T, h *Host) {
+			h.Distro.BootstrapMethod = distro.BootstrapMethodUserData
+			require.NoError(t, h.Insert())
+
+			hosts, err := FindByNeedsNewAgentMonitor()
+			require.NoError(t, err)
+			require.Len(t, hosts, 1)
+			assert.Equal(t, h.Id, hosts[0].Id)
+		},
+		"PreconfiguredImage": func(t *testing.T, h *Host) {
+			h.Distro.BootstrapMethod = distro.BootstrapMethodPreconfiguredImage
+			require.NoError(t, h.Insert())
+
+			hosts, err := FindByNeedsNewAgentMonitor()
+			require.NoError(t, err)
+			require.Len(t, hosts, 1)
+			assert.Equal(t, h.Id, hosts[0].Id)
+		},
+	} {
+		t.Run(testName, func(t *testing.T) {
+			require.NoError(t, db.Clear(Collection), "error clearing %s collection", Collection)
+			h := Host{
+				Id:                   "h",
+				Status:               evergreen.HostRunning,
+				StartedBy:            evergreen.User,
+				NeedsNewAgentMonitor: true,
+			}
+			testCase(t, &h)
+		})
+	}
+}
+
+func TestFindByExpiringJasperCredentials(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	for testName, testCase := range map[string]func(t *testing.T, env evergreen.Environment){
+		"IgnoresLegacyHost": func(t *testing.T, env evergreen.Environment) {
+			h := &Host{
+				Id: "id",
+				Distro: distro.Distro{
+					BootstrapMethod:     distro.BootstrapMethodLegacySSH,
+					CommunicationMethod: distro.CommunicationMethodLegacySSH,
+				},
+				JasperCredentialsID: "cid",
+				Status:              evergreen.HostRunning,
+			}
+			require.NoError(t, h.Insert())
+
+			creds, err := h.GenerateJasperCredentials(ctx, env)
+			require.NoError(t, err)
+			require.NoError(t, h.SaveJasperCredentials(ctx, env, creds))
+
+			dbHosts, err := FindByExpiringJasperCredentials(time.Duration(math.MaxInt64))
+			require.NoError(t, err)
+			assert.Empty(t, dbHosts)
+		},
+		"IgnoresWithoutCredentials": func(t *testing.T, env evergreen.Environment) {
+			h := &Host{
+				Id: "id",
+				Distro: distro.Distro{
+					BootstrapMethod:     distro.BootstrapMethodSSH,
+					CommunicationMethod: distro.CommunicationMethodSSH,
+				},
+				JasperCredentialsID: "cid",
+				Status:              evergreen.HostRunning,
+			}
+			require.NoError(t, h.Insert())
+
+			dbHosts, err := FindByExpiringJasperCredentials(time.Duration(math.MaxInt64))
+			require.NoError(t, err)
+			assert.Empty(t, dbHosts)
+		},
+		"IgnoresNonexpiringCredentials": func(t *testing.T, env evergreen.Environment) {
+			h := &Host{
+				Id: "id",
+				Distro: distro.Distro{
+					BootstrapMethod:     distro.BootstrapMethodSSH,
+					CommunicationMethod: distro.CommunicationMethodSSH,
+				},
+				JasperCredentialsID: "cid",
+				Status:              evergreen.HostRunning,
+			}
+			require.NoError(t, h.Insert())
+
+			creds, err := h.GenerateJasperCredentials(ctx, env)
+			require.NoError(t, err)
+			require.NoError(t, h.SaveJasperCredentials(ctx, env, creds))
+
+			dbHosts, err := FindByExpiringJasperCredentials(time.Second)
+			require.NoError(t, err)
+			assert.Empty(t, dbHosts)
+		},
+		"ReturnsWithExpiringCredentials": func(t *testing.T, env evergreen.Environment) {
+			h := &Host{
+				Id: "id",
+				Distro: distro.Distro{
+					BootstrapMethod:     distro.BootstrapMethodSSH,
+					CommunicationMethod: distro.CommunicationMethodSSH,
+				},
+				JasperCredentialsID: "cid",
+				Status:              evergreen.HostRunning,
+			}
+			require.NoError(t, h.Insert())
+
+			creds, err := h.GenerateJasperCredentials(ctx, env)
+			require.NoError(t, err)
+			require.NoError(t, h.SaveJasperCredentials(ctx, env, creds))
+
+			dbHosts, err := FindByExpiringJasperCredentials(time.Duration(math.MaxInt64))
+			require.NoError(t, err)
+			require.Len(t, dbHosts, 1)
+			assert.Equal(t, h.Id, dbHosts[0].Id)
+		},
+		"IgnoresNotRunning": func(t *testing.T, env evergreen.Environment) {
+			h := &Host{
+				Id: "id",
+				Distro: distro.Distro{
+					BootstrapMethod:     distro.BootstrapMethodSSH,
+					CommunicationMethod: distro.CommunicationMethodSSH,
+				},
+				JasperCredentialsID: "cid",
+				Status:              evergreen.HostTerminated,
+			}
+			require.NoError(t, h.Insert())
+
+			creds, err := h.GenerateJasperCredentials(ctx, env)
+			require.NoError(t, err)
+			require.NoError(t, h.SaveJasperCredentials(ctx, env, creds))
+
+			dbHosts, err := FindByExpiringJasperCredentials(time.Duration(math.MaxInt64))
+			require.NoError(t, err)
+			assert.Empty(t, dbHosts)
+		},
+		"IgnoresContainers": func(t *testing.T, env evergreen.Environment) {
+			h := &Host{
+				Id: "id",
+				Distro: distro.Distro{
+					BootstrapMethod:     distro.BootstrapMethodSSH,
+					CommunicationMethod: distro.CommunicationMethodSSH,
+				},
+				JasperCredentialsID: "cid",
+				Status:              evergreen.HostRunning,
+				ParentID:            "parent",
+			}
+			require.NoError(t, h.Insert())
+
+			creds, err := h.GenerateJasperCredentials(ctx, env)
+			require.NoError(t, err)
+			require.NoError(t, h.SaveJasperCredentials(ctx, env, creds))
+
+			dbHosts, err := FindByExpiringJasperCredentials(time.Duration(math.MaxInt64))
+			require.NoError(t, err)
+			assert.Empty(t, dbHosts)
+		},
+	} {
+		t.Run(testName, func(t *testing.T) {
+			tctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+			defer cancel()
+
+			env := &mock.Environment{}
+			require.NoError(t, env.Configure(tctx, "", nil))
+			env.EnvContext = tctx
+
+			require.NoError(t, setupCredentialsCollection(ctx, env))
+			testCase(t, env)
+			assert.NoError(t, db.ClearCollections(credentials.Collection, Collection))
+		})
+	}
 }
 
 func TestHostElapsedCommTime(t *testing.T) {

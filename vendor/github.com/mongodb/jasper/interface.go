@@ -21,6 +21,7 @@ const (
 // interfaces and remote management tools can be implemented in terms
 // of this interface.
 type Manager interface {
+	ID() string
 	CreateProcess(context.Context, *CreateOptions) (Process, error)
 	CreateCommand(context.Context) *Command
 	Register(context.Context, Process) error
@@ -38,7 +39,6 @@ type Manager interface {
 // reflected. Process implementations either wrap Go's own process
 // management calls (e.g. os/exec.Cmd) or may wrap remote process
 // management tools (e.g. jasper services on remote systems.)
-//
 type Process interface {
 	// Returns a UUID for the process. Use this ID to retrieve
 	// processes from managers using the Get method.
@@ -75,6 +75,11 @@ type Process interface {
 	// Respawn respawns a near-identical version of the process on
 	// which it is called. It will spawn a new process with the same
 	// options and return the new, "respawned" process.
+	//
+	// However, it is not guaranteed to read the same bytes from
+	// (CreateOptions).StandardInput as the original process; if
+	// standard input must be duplicated,
+	// (CreateOptions).StandardInputBytes should be set.
 	Respawn(context.Context) (Process, error)
 
 	// RegisterSignalTrigger associates triggers with a process,

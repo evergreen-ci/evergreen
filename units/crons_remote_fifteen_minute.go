@@ -50,6 +50,7 @@ func (j *cronsRemoteFifteenMinuteJob) Run(ctx context.Context) {
 	ops := []amboy.QueueOperation{
 		PopulateCatchupJobs(30),
 		PopulateHostAlertJobs(20),
+		PopulatePeriodicBuilds(30),
 	}
 
 	queue := j.env.RemoteQueue()
@@ -59,7 +60,7 @@ func (j *cronsRemoteFifteenMinuteJob) Run(ctx context.Context) {
 			j.AddError(errors.New("operation aborted"))
 		}
 
-		catcher.Add(op(queue))
+		catcher.Add(op(ctx, queue))
 	}
 	j.ErrorCount = catcher.Len()
 

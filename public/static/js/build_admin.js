@@ -38,7 +38,7 @@ mciModule.controller('AdminOptionsCtrl', [
                     notifier.pushNotification("Build aborted.", 'notifyHeader', 'success');
                 },
                 error: function(resp) {
-                    notifier.pushNotification('Error aborting build: ' + resp.data.error,'errorModal');
+                    notifier.pushNotification('Error aborting build: ' + resp.data,'errorModal');
                 }
             }
         );
@@ -59,7 +59,7 @@ mciModule.controller('AdminOptionsCtrl', [
                     notifier.pushNotification("Build scheduled to restart.", 'notifyHeader', 'success');
                 },
                 error: function(resp) {
-                    notifier.pushNotification('Error restarting build: ' + resp.data.error,'errorModal');
+                    notifier.pushNotification('Error restarting build: ' + resp.data,'errorModal');
                 }
             }
         );
@@ -79,7 +79,7 @@ mciModule.controller('AdminOptionsCtrl', [
                     $scope.adminOptionVals.priority + ".", 'notifyHeader', 'success');
                 },
                 error: function(resp) {
-                    notifier.pushNotification('Error setting build priority: ' + resp.data.error,'errorModal');
+                    notifier.pushNotification('Error setting build priority: ' + resp.data,'errorModal');
                 }
             }
         );
@@ -100,7 +100,7 @@ mciModule.controller('AdminOptionsCtrl', [
                     notifier.pushNotification(notifyString, 'notifyHeader', 'success');
                 },
                 error: function(resp) {
-                    notifier.pushNotification('Error scheduling build: ' + resp.data.error,'errorModal');
+                    notifier.pushNotification('Error scheduling build: ' + resp.data,'errorModal');
                 }
             }
         );

@@ -139,3 +139,34 @@ func (s *ArtifactsSuite) TestCommandParsesFile() {
 	s.Len(s.mock.AttachedFiles, 1)
 	s.Len(s.mock.AttachedFiles[s.conf.Task.Id], 1)
 }
+
+func (s *ArtifactsSuite) TestPrefixectoryEmptySubDir() {
+	dir, err := ioutil.TempDir("", "artifact_test")
+	defer os.RemoveAll(dir)
+	s.Require().NoError(err)
+	err = ioutil.WriteFile(filepath.Join(dir, "foo"), []byte("[{}]"), 0644)
+	s.Require().NoError(err)
+	s.Require().NoError(os.Mkdir(filepath.Join(dir, "subDir"), 0755))
+	err = ioutil.WriteFile(filepath.Join(dir, "subDir", "bar"), []byte("[{}]"), 0644)
+	s.Require().NoError(err)
+	s.conf.WorkDir = dir
+	s.cmd.Files = []string{"*"}
+	s.NoError(s.cmd.Execute(s.ctx, s.comm, s.logger, s.conf))
+	s.Len(s.cmd.Files, 2)
+}
+
+func (s *ArtifactsSuite) TestPrefixectoryWithSubDir() {
+	dir, err := ioutil.TempDir("", "artifact_test")
+	defer os.RemoveAll(dir)
+	s.Require().NoError(err)
+	err = ioutil.WriteFile(filepath.Join(dir, "foo"), []byte("[{}]"), 0644)
+	s.Require().NoError(err)
+	s.Require().NoError(os.Mkdir(filepath.Join(dir, "subDir"), 0755))
+	err = ioutil.WriteFile(filepath.Join(dir, "subDir", "bar"), []byte("[{}]"), 0644)
+	s.Require().NoError(err)
+	s.conf.WorkDir = dir
+	s.cmd.Files = []string{"*"}
+	s.cmd.Prefix = "subDir"
+	s.NoError(s.cmd.Execute(s.ctx, s.comm, s.logger, s.conf))
+	s.Len(s.cmd.Files, 1)
+}

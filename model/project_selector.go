@@ -372,11 +372,11 @@ func (v *variantSelectorEvaluator) evalSelector(vs *variantSelector) ([]string, 
 	if vs == nil {
 		return nil, errors.New("empty selector")
 	}
-	if vs.matrixSelector != nil {
-		evaluatedSelector, errs := vs.matrixSelector.evaluatedCopy(v.axisEval)
+	if vs.MatrixSelector != nil {
+		evaluatedSelector, errs := vs.MatrixSelector.evaluatedCopy(v.axisEval)
 		if len(errs) > 0 {
 			return nil, errors.Errorf(
-				"errors evaluating variant selector %v: %v", vs.matrixSelector, errs)
+				"errors evaluating variant selector %v: %v", vs.MatrixSelector, errs)
 		}
 		results := []string{}
 		// this could be sped up considerably with caching, but I doubt we'll need to
@@ -386,11 +386,11 @@ func (v *variantSelectorEvaluator) evalSelector(vs *variantSelector) ([]string, 
 			}
 		}
 		if len(results) == 0 {
-			return nil, errors.Errorf("variant selector %v returns no variants", vs.matrixSelector)
+			return nil, errors.Errorf("variant selector %v returns no variants", vs.MatrixSelector)
 		}
 		return results, nil
 	}
-	results, err := v.tagEval.evalSelector(ParseSelector(vs.stringSelector))
+	results, err := v.tagEval.evalSelector(ParseSelector(vs.StringSelector))
 	if err != nil {
 		return nil, errors.Wrap(err, "variant tag selector")
 	}

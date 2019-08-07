@@ -135,6 +135,23 @@ func (s *ProjectAliasSuite) TestFindAliasInProject() {
 	s.Len(found, 2)
 }
 
+func (s *ProjectAliasSuite) TestUpsertAliasesForProject() {
+	for _, a := range s.aliases {
+		a.ProjectID = "old-project"
+		s.NoError(a.Upsert())
+	}
+	s.NoError(UpsertAliasesForProject(s.aliases, "new-project"))
+
+	found, err := FindAliasesForProject("new-project")
+	s.NoError(err)
+	s.Len(found, 10)
+
+	// verify old aliases not overwritten
+	found, err = FindAliasesForProject("old-project")
+	s.NoError(err)
+	s.Len(found, 10)
+}
+
 func TestMatching(t *testing.T) {
 	assert := assert.New(t)
 	aliases := ProjectAliases{

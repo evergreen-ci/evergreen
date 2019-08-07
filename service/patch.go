@@ -8,6 +8,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/evergreen/model/commitqueue"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/units"
 	"github.com/evergreen-ci/evergreen/util"
@@ -52,7 +53,7 @@ func (uis *UIServer) patchPage(w http.ResponseWriter, r *http.Request) {
 
 	// Unmarshal the patch's project config so that it is always up to date with the configuration file in the project
 	project := &model.Project{}
-	if err := model.LoadProjectInto([]byte(projCtx.Patch.PatchedConfig), projCtx.Patch.Project, project); err != nil {
+	if _, err := model.LoadProjectInto([]byte(projCtx.Patch.PatchedConfig), projCtx.Patch.Project, project); err != nil {
 		uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrap(err, "Error unmarshaling project config"))
 	}
 
@@ -79,15 +80,27 @@ func (uis *UIServer) patchPage(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	commitQueuePosition := 0
+	if projCtx.Patch.Alias == evergreen.CommitQueueAlias {
+		cq, err := commitqueue.FindOneId(project.Identifier)
+		if err != nil {
+			uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrap(err, "error finding commit queue"))
+		}
+		if cq != nil {
+			commitQueuePosition = cq.FindItem(projCtx.Patch.Id.Hex())
+		}
+	}
+
 	uis.render.WriteResponse(w, http.StatusOK, struct {
-		Version  *uiVersion
-		Variants map[string]model.BuildVariant
-		Tasks    []interface{}
-		CanEdit  bool
+		Version             *uiVersion
+		Variants            map[string]model.BuildVariant
+		Tasks               []interface{}
+		CanEdit             bool
+		CommitQueuePosition int
 		ViewData
 	}{versionAsUI, variantMappings, tasksList, currentUser != nil,
-		uis.GetCommonViewData(w, r, true, true)}, "base",
-		"patch_version.html", "base_angular.html", "menu.html")
+		commitQueuePosition, uis.GetCommonViewData(w, r, true, true)},
+		"base", "patch_version.html", "base_angular.html", "menu.html")
 }
 
 func (uis *UIServer) schedulePatch(w http.ResponseWriter, r *http.Request) {
@@ -111,7 +124,7 @@ func (uis *UIServer) schedulePatch(w http.ResponseWriter, r *http.Request) {
 
 	// Unmarshal the project config and set it in the project context
 	project := &model.Project{}
-	if err = model.LoadProjectInto([]byte(projCtx.Patch.PatchedConfig), projCtx.Patch.Project, project); err != nil {
+	if _, err = model.LoadProjectInto([]byte(projCtx.Patch.PatchedConfig), projCtx.Patch.Project, project); err != nil {
 		uis.LoggedError(w, r, http.StatusInternalServerError, errors.Errorf("Error unmarshaling project config: %v", err))
 	}
 
@@ -225,7 +238,7 @@ func (uis *UIServer) schedulePatch(w http.ResponseWriter, r *http.Request) {
 
 		if projCtx.Patch.IsGithubPRPatch() {
 			job := units.NewGithubStatusUpdateJobForNewPatch(projCtx.Patch.Id.Hex())
-			if err := uis.queue.Put(job); err != nil {
+			if err := uis.queue.Put(ctx, job); err != nil {
 				uis.LoggedError(w, r, http.StatusInternalServerError,
 					errors.Wrap(err, "Error adding github status update job to queue"))
 				return

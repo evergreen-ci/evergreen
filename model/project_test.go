@@ -12,7 +12,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/manifest"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
-	"github.com/evergreen-ci/evergreen/util"
 	. "github.com/smartystreets/goconvey/convey"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -43,6 +42,7 @@ func TestFindProject(t *testing.T) {
 		Convey("if the project file exists and is valid, the project spec within"+
 			"should be unmarshalled and returned", func() {
 			v := &Version{
+				Id:         "my_version",
 				Owner:      "fakeowner",
 				Repo:       "fakerepo",
 				Branch:     "fakebranch",
@@ -100,52 +100,6 @@ func TestGetVariantMappings(t *testing.T) {
 
 	})
 
-}
-
-func TestGetVariantsWithTask(t *testing.T) {
-
-	Convey("With a project", t, func() {
-
-		project := &Project{
-			BuildVariants: []BuildVariant{
-				{
-					Name:  "bv1",
-					Tasks: []BuildVariantTaskUnit{{Name: "suite1"}},
-				},
-				{
-					Name: "bv2",
-					Tasks: []BuildVariantTaskUnit{
-						{Name: "suite1"},
-						{Name: "suite2"},
-					},
-				},
-				{
-					Name:  "bv3",
-					Tasks: []BuildVariantTaskUnit{{Name: "suite2"}},
-				},
-			},
-		}
-
-		Convey("when getting the build variants where a task applies", func() {
-
-			Convey("it should be run on any build variants where the test is"+
-				" specified to run", func() {
-
-				variants := project.GetVariantsWithTask("suite1")
-				So(len(variants), ShouldEqual, 2)
-				So(util.StringSliceContains(variants, "bv1"), ShouldBeTrue)
-				So(util.StringSliceContains(variants, "bv2"), ShouldBeTrue)
-
-				variants = project.GetVariantsWithTask("suite2")
-				So(len(variants), ShouldEqual, 2)
-				So(util.StringSliceContains(variants, "bv2"), ShouldBeTrue)
-				So(util.StringSliceContains(variants, "bv3"), ShouldBeTrue)
-
-			})
-
-		})
-
-	})
 }
 
 func TestGetModuleRepoName(t *testing.T) {
@@ -314,12 +268,14 @@ task_groups:
   - example_task_1
   - example_task_2
 `
-	proj, errs := projectFromYAML([]byte(projYml))
+	proj := &Project{}
+	pp, err := LoadProjectInto([]byte(projYml), "id", proj)
 	assert.NotNil(proj)
-	assert.Empty(errs)
+	assert.NoError(err)
 	v := Version{
-		Id:     "v1",
-		Config: projYml,
+		Id:            "v1",
+		ParserProject: pp,
+		Config:        projYml,
 	}
 	t1 := task.Task{
 		Id:        "t1",
@@ -1108,11 +1064,11 @@ tasks:
   depends_on:
     - name: dist-test
 `
-	intermediate, errs := createIntermediateProject([]byte(projYml))
-	s.Len(errs, 0)
+	intermediate, err := createIntermediateProject([]byte(projYml))
+	s.NoError(err)
 	marshaled, err := yaml.Marshal(intermediate)
 	s.NoError(err)
-	unmarshaled := parserProject{}
+	unmarshaled := ParserProject{}
 	s.NoError(yaml.Unmarshal(marshaled, &unmarshaled))
 }
 
@@ -1240,4 +1196,41 @@ func TestLoggerConfigValidate(t *testing.T) {
 		System: []LogOpts{{Type: SplunkLogSender}},
 	}
 	assert.EqualError(config.IsValid(), "invalid system logger config: Splunk logger requires a server URL\nSplunk logger requires a token")
+}
+
+func TestInjectTaskGroupInfo(t *testing.T) {
+	tg := TaskGroup{
+		Name:     "group-one",
+		MaxHosts: 42,
+		Tasks:    []string{"one", "two"},
+	}
+
+	t.Run("PopulatedFirst", func(t *testing.T) {
+		tk := &task.Task{
+			DisplayName: "one",
+		}
+
+		tg.InjectInfo(tk)
+
+		assert.Equal(t, 42, tk.TaskGroupMaxHosts)
+		assert.Equal(t, 1, tk.TaskGroupOrder)
+	})
+	t.Run("PopulatedSecond", func(t *testing.T) {
+		tk := &task.Task{
+			DisplayName: "two",
+		}
+
+		tg.InjectInfo(tk)
+
+		assert.Equal(t, 42, tk.TaskGroupMaxHosts)
+		assert.Equal(t, 2, tk.TaskGroupOrder)
+	})
+	t.Run("Missed", func(t *testing.T) {
+		tk := &task.Task{}
+
+		tg.InjectInfo(tk)
+
+		assert.Equal(t, 42, tk.TaskGroupMaxHosts)
+		assert.Equal(t, 0, tk.TaskGroupOrder)
+	})
 }

@@ -42,7 +42,7 @@ func TestGeneratePoll(t *testing.T) {
 	taskQueue, err := q.Get(ctx, "version-1")
 	require.NoError(t, err)
 	require.NotNil(t, taskQueue)
-	require.NoError(t, taskQueue.Put(j))
+	require.NoError(t, taskQueue.Put(ctx, j))
 	finished, errs, err = gc.GeneratePoll(context.Background(), "task-1", q)
 	assert.False(t, finished)
 	assert.Empty(t, errs)

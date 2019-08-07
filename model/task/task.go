@@ -12,6 +12,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/testresult"
 	"github.com/evergreen-ci/evergreen/util"
+	adb "github.com/mongodb/anser/db"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
@@ -75,6 +76,7 @@ type Task struct {
 	Priority          int64               `bson:"priority" json:"priority"`
 	TaskGroup         string              `bson:"task_group" json:"task_group"`
 	TaskGroupMaxHosts int                 `bson:"task_group_max_hosts,omitempty" json:"task_group_max_hosts,omitempty"`
+	TaskGroupOrder    int                 `bson:"task_group_order,omitempty" json:"task_group_order,omitempty"`
 	Logs              *apimodels.TaskLogs `bson:"logs,omitempty" json:"logs,omitempty"`
 
 	// only relevant if the task is runnin.  the time of the last heartbeat
@@ -90,6 +92,8 @@ type Task struct {
 	DependsOn            []Dependency `bson:"depends_on" json:"depends_on"`
 	NumDependents        int          `bson:"num_dependents,omitempty" json:"num_dependents,omitempty"`
 	OverrideDependencies bool         `bson:"override_dependencies,omitempty" json:"override_dependencies,omitempty"`
+
+	DistroAliases []string `bson:"distro_aliases,omitempty" json:"distro_aliases,omitempty"`
 
 	// Human-readable name
 	DisplayName string `bson:"display_name" json:"display_name"`
@@ -156,6 +160,8 @@ type Task struct {
 	TriggerID    string `bson:"trigger_id,omitempty" json:"trigger_id,omitempty"`
 	TriggerType  string `bson:"trigger_type,omitempty" json:"trigger_type,omitempty"`
 	TriggerEvent string `bson:"trigger_event,omitempty" json:"trigger_event,omitempty"`
+
+	CommitQueueMerge bool `bson:"commit_queue_merge,omitempty" json:"commit_queue_merge,omitempty"`
 }
 
 func (t *Task) MarshalBSON() ([]byte, error)  { return mgobson.Marshal(t) }
@@ -243,6 +249,34 @@ type TestResult struct {
 
 	// LogRaw is not saved in the task
 	LogRaw string `json:"log_raw" bson:"log_raw,omitempty"`
+}
+
+type DisplayTaskCache struct {
+	execToDisplay map[string]*Task
+	displayTasks  []*Task
+}
+
+func (c *DisplayTaskCache) Get(t *Task) (*Task, error) {
+	if parent, exists := c.execToDisplay[t.Id]; exists {
+		return parent, nil
+	}
+	displayTask, err := t.GetDisplayTask()
+	if err != nil {
+		return nil, err
+	}
+	if displayTask == nil {
+		return nil, nil
+	}
+	for _, execTask := range displayTask.ExecutionTasks {
+		c.execToDisplay[execTask] = displayTask
+	}
+	c.displayTasks = append(c.displayTasks, displayTask)
+	return displayTask, nil
+}
+func (c *DisplayTaskCache) List() []*Task { return c.displayTasks }
+
+func NewDisplayTaskCache() DisplayTaskCache {
+	return DisplayTaskCache{execToDisplay: map[string]*Task{}, displayTasks: []*Task{}}
 }
 
 var (
@@ -762,35 +796,35 @@ func (t *Task) MarkEnd(finishTime time.Time, detail *apimodels.TaskEndDetail) er
 				StartTimeKey:  t.StartTime,
 				LogsKey:       detail.Logs,
 			},
-			"$unset": bson.M{
-				AbortedKey: "",
-			},
 		})
 
 }
 
-func displayTaskPriority(status string) int {
-	switch status {
-	case evergreen.TaskStarted:
-		return 10
-	case evergreen.TaskUndispatched:
-		return 40
+// displayTaskPriority answers the question "if there is a display task whose executions are
+// in these statuses, which overall status would a user expect to see?"
+// for example, if there are both successful and failed tasks, one would expect to see "failed"
+func (t *Task) displayTaskPriority() int {
+	switch t.ResultStatus() {
 	case evergreen.TaskFailed:
-		return 50
+		return 10
 	case evergreen.TaskTestTimedOut:
-		return 60
+		return 20
 	case evergreen.TaskSystemFailed:
-		return 70
+		return 30
 	case evergreen.TaskSystemTimedOut:
-		return 80
+		return 40
 	case evergreen.TaskSystemUnresponse:
-		return 90
+		return 50
 	case evergreen.TaskSetupFailed:
-		return 95
+		return 60
+	case evergreen.TaskStarted:
+		return 70
+	case evergreen.TaskUndispatched:
+		return 80
+	case evergreen.TaskInactive:
+		return 90
 	case evergreen.TaskSucceeded:
 		return 100
-	case evergreen.TaskInactive:
-		return 110
 	}
 	return 1000
 }
@@ -1123,13 +1157,17 @@ func (t *Task) Archive() error {
 	// this way restarts will never be set for new tasks but will be
 	// maintained for old ones
 	if t.Restarts > 0 {
-		update = bson.M{"$inc": bson.M{
-			ExecutionKey: 1,
-			RestartsKey:  1,
-		}}
+		update = bson.M{
+			"$inc": bson.M{
+				ExecutionKey: 1,
+				RestartsKey:  1,
+			},
+			"$unset": bson.M{AbortedKey: ""},
+		}
 	} else {
 		update = bson.M{
-			"$inc": bson.M{ExecutionKey: 1},
+			"$inc":   bson.M{ExecutionKey: 1},
+			"$unset": bson.M{AbortedKey: ""},
 		}
 	}
 	err := UpdateOne(
@@ -1147,6 +1185,8 @@ func (t *Task) Archive() error {
 	if err != nil {
 		return errors.Wrap(err, "task.Archive() failed")
 	}
+
+	t.Aborted = false
 
 	err = event.UpdateExecutions(t.HostId, t.Id, t.Execution)
 	if err != nil {
@@ -1260,17 +1300,23 @@ func FindSchedulable(distroID string) ([]Task, error) {
 	return Find(db.Query(query))
 }
 
-func FindRunnable(distroID string) ([]Task, error) {
+func FindRunnable(distroID string, removeDeps bool) ([]Task, error) {
 	expectedStatuses := []string{evergreen.TaskSucceeded, evergreen.TaskFailed, ""}
 
 	match := scheduleableTasksQuery()
 	if distroID != "" {
 		match[DistroIdKey] = distroID
-
 	}
 
 	matchActivatedUndispatchedTasks := bson.M{
 		"$match": match,
+	}
+
+	removeFields := bson.M{
+		"$project": bson.M{
+			LogsKey:      0,
+			OldTaskIdKey: 0,
+		},
 	}
 
 	graphLookupTaskDeps := bson.M{
@@ -1356,16 +1402,25 @@ func FindRunnable(distroID string) ([]Task, error) {
 
 	pipeline := []bson.M{
 		matchActivatedUndispatchedTasks,
+		removeFields,
 		graphLookupTaskDeps,
-		reshapeTasksAndEdges,
-		removeEdgesFromTask,
-		redactUnrunnableTasks,
-		replaceRoot,
+	}
+
+	if removeDeps {
+		pipeline = append(pipeline,
+			reshapeTasksAndEdges,
+			removeEdgesFromTask,
+			redactUnrunnableTasks,
+			replaceRoot,
+		)
+	}
+
+	pipeline = append(pipeline,
 		joinProjectRef,
 		filterDisabledProejcts,
 		filterPatchingDisabledProjects,
 		removeProjectRef,
-	}
+	)
 
 	runnableTasks := []Task{}
 	if err := Aggregate(pipeline, &runnableTasks); err != nil {
@@ -1373,6 +1428,38 @@ func FindRunnable(distroID string) ([]Task, error) {
 	}
 
 	return runnableTasks, nil
+}
+
+// FindVariantsWithTask returns a list of build variants between specified commmits that contain a specific task name
+func FindVariantsWithTask(taskName, project string, orderMin, orderMax int) ([]string, error) {
+	pipeline := []bson.M{
+		{
+			"$match": bson.M{
+				ProjectKey:     project,
+				RequesterKey:   evergreen.RepotrackerVersionRequester,
+				DisplayNameKey: taskName,
+				"$and": []bson.M{
+					{RevisionOrderNumberKey: bson.M{"$gte": orderMin}},
+					{RevisionOrderNumberKey: bson.M{"$lte": orderMax}},
+				},
+			},
+		},
+		{
+			"$group": bson.M{
+				"_id": "$" + BuildVariantKey,
+			},
+		},
+	}
+	docs := []map[string]string{}
+	err := Aggregate(pipeline, &docs)
+	if err != nil {
+		return nil, errors.Wrapf(err, "error finding variants with task %s", taskName)
+	}
+	variants := []string{}
+	for _, doc := range docs {
+		variants = append(variants, doc["_id"])
+	}
+	return variants, nil
 }
 
 func (t *Task) IsPartOfDisplay() bool {
@@ -1386,7 +1473,7 @@ func (t *Task) IsPartOfDisplay() bool {
 
 func (t *Task) GetDisplayTask() (*Task, error) {
 	if t.DisplayTask != nil {
-		return t, nil
+		return t.DisplayTask, nil
 	}
 	dt, err := FindOne(ByExecutionTask(t.Id))
 	if err != nil {
@@ -1648,4 +1735,59 @@ func (t *Task) IsBlockedDisplayTask() bool {
 		return false
 	}
 	return blockedState == taskBlocked
+}
+
+// GetTimeSpent returns the total time_taken and makespan of tasks
+// tasks should not include display tasks so they aren't double counted
+func GetTimeSpent(tasks []Task) (time.Duration, time.Duration) {
+	var timeTaken time.Duration
+	earliestStartTime := util.MaxTime
+	latestFinishTime := util.ZeroTime
+	for _, t := range tasks {
+		timeTaken += t.TimeTaken
+		if !util.IsZeroTime(t.StartTime) && t.StartTime.Before(earliestStartTime) {
+			earliestStartTime = t.StartTime
+		}
+		if t.FinishTime.After(latestFinishTime) {
+			latestFinishTime = t.FinishTime
+		}
+	}
+
+	if earliestStartTime == util.MaxTime || latestFinishTime == util.ZeroTime {
+		return 0, 0
+	}
+
+	return timeTaken, latestFinishTime.Sub(earliestStartTime)
+}
+
+// UpdateDependencies replaces the dependencies of a task with
+// the dependencies provided
+func (t *Task) UpdateDependencies(dependsOn []Dependency) error {
+	err := UpdateOne(
+		bson.M{
+			IdKey:        t.Id,
+			DependsOnKey: t.DependsOn,
+		},
+		bson.M{
+			"$set": bson.M{DependsOnKey: dependsOn},
+		},
+	)
+	if err != nil {
+		if adb.ResultsNotFound(err) {
+			grip.Alert(errors.Wrapf(err, "atomic update failed for %s", t.Id))
+		}
+		return errors.Wrap(err, "can't update dependencies")
+	}
+
+	t.DependsOn = dependsOn
+
+	return nil
+}
+
+func (t *Task) SetTaskGroupInfo() error {
+	return errors.WithStack(UpdateOne(bson.M{IdKey: t.Id},
+		bson.M{"$set": bson.M{
+			TaskGroupOrderKey:    t.TaskGroupOrder,
+			TaskGroupMaxHostsKey: t.TaskGroupMaxHosts,
+		}}))
 }

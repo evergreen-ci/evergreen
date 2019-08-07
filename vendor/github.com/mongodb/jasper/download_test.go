@@ -2,20 +2,23 @@ package jasper
 
 import (
 	"context"
+	"fmt"
 	"io/ioutil"
+	"net"
+	"net/http"
 	"os"
 	"path/filepath"
 	"runtime"
 	"testing"
-	"time"
 
 	"github.com/mholt/archiver"
-	"github.com/mongodb/amboy"
 	"github.com/mongodb/amboy/queue"
 	"github.com/mongodb/grip"
+	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/tychoish/bond"
+	"github.com/tychoish/bond/recall"
 	"github.com/tychoish/lru"
 )
 
@@ -42,7 +45,38 @@ func validMongoDBDownloadOptions() MongoDBDownloadOptions {
 	}
 }
 
-func TestSetupDownloadMongoDBReleasesFailsWithInvalidOptions(t *testing.T) {
+func addFileToDirectory(dir string, fileName string, fileContents string) error {
+	if format := archiver.MatchingFormat(fileName); format != nil {
+		tmpFile, err := ioutil.TempFile(dir, "tmp.txt")
+		if err != nil {
+			return err
+		}
+		defer os.Remove(tmpFile.Name())
+		if _, err := tmpFile.Write([]byte(fileContents)); err != nil {
+			return err
+		}
+		if err := tmpFile.Close(); err != nil {
+			return err
+		}
+
+		if err := format.Make(filepath.Join(dir, fileName), []string{tmpFile.Name()}); err != nil {
+			return err
+		}
+		return nil
+	}
+
+	file, err := os.Create(filepath.Join(dir, fileName))
+	if err != nil {
+		return err
+	}
+	defer file.Close()
+	if _, err := file.Write([]byte(fileContents)); err != nil {
+		return err
+	}
+	return nil
+}
+
+func TestSetupDownloadMongoDBReleasesFailsWithZeroOptions(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), taskTimeout)
 	defer cancel()
 
@@ -57,12 +91,14 @@ func TestSetupDownloadMongoDBReleasesWithInvalidPath(t *testing.T) {
 	defer cancel()
 
 	opts := validMongoDBDownloadOptions()
-	absPath, err := filepath.Abs("download_test.go")
+	_, path, _, ok := runtime.Caller(0)
+	require.True(t, ok)
+	absPath, err := filepath.Abs(path)
 	require.NoError(t, err)
 	opts.Path = absPath
 
 	err = SetupDownloadMongoDBReleases(ctx, lru.NewCache(), opts)
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Contains(t, err.Error(), "problem creating enclosing directories")
 }
 
@@ -80,7 +116,7 @@ func TestSetupDownloadMongoDBReleasesWithInvalidArtifactsFeed(t *testing.T) {
 	opts.Path = filepath.Join(absDir, "full.json")
 
 	err = SetupDownloadMongoDBReleases(ctx, lru.NewCache(), opts)
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Contains(t, err.Error(), "problem making artifacts feed")
 }
 
@@ -109,7 +145,8 @@ func TestCreateValidDownloadJobs(t *testing.T) {
 }
 
 func TestCreateDownloadJobsWithInvalidPath(t *testing.T) {
-	dir := "download_test.go"
+	_, dir, _, ok := runtime.Caller(0)
+	require.True(t, ok)
 	urls := make(chan string)
 	testURL := "https://example.com"
 
@@ -124,67 +161,59 @@ func TestCreateDownloadJobsWithInvalidPath(t *testing.T) {
 		assert.Fail(t, "should not create job for bad url")
 	}
 	err := catcher.Resolve()
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Contains(t, err.Error(), "problem creating download job for "+testURL)
 }
 
 func TestProcessDownloadJobs(t *testing.T) {
-	if testing.Short() {
-		t.Skip("skip download job test in short mode")
-	}
-
 	ctx, cancel := context.WithTimeout(context.Background(), longTaskTimeout)
 	defer cancel()
 
-	dir, err := ioutil.TempDir("build", "mongodb")
+	downloadDir, err := ioutil.TempDir("build", "download_test")
 	require.NoError(t, err)
-	defer os.RemoveAll(dir)
-	absDir, err := filepath.Abs(dir)
+	defer os.RemoveAll(downloadDir)
+
+	fileServerDir, err := ioutil.TempDir("build", "download_test_server")
 	require.NoError(t, err)
+	defer os.RemoveAll(fileServerDir)
 
-	cache := lru.NewCache()
+	fileName := "foo.zip"
+	fileContents := "foo"
+	require.NoError(t, addFileToDirectory(fileServerDir, fileName, fileContents))
 
-	downloadOpts := validMongoDBDownloadOptions()
-	opts := downloadOpts.BuildOpts
-	releases := downloadOpts.Releases
-
-	feed, err := bond.GetArtifactsFeed(ctx, dir)
+	port := getPortNumber()
+	fileServerAddr := fmt.Sprintf("localhost:%d", port)
+	fileServer := &http.Server{Addr: fileServerAddr, Handler: http.FileServer(http.Dir(fileServerDir))}
+	defer func() {
+		assert.NoError(t, fileServer.Close())
+	}()
+	listener, err := net.Listen("tcp", fileServerAddr)
 	require.NoError(t, err)
+	go func() {
+		fileServer.Serve(listener)
+	}()
 
-	catcher := grip.NewBasicCatcher()
-	urls, errs := feed.GetArchives(releases, opts)
-	jobs := createDownloadJobs(dir, urls, catcher)
+	baseURL := fmt.Sprintf("http://%s", fileServerAddr)
+	require.NoError(t, waitForRESTService(ctx, baseURL))
+
+	job, err := recall.NewDownloadJob(fmt.Sprintf("%s/%s", baseURL, fileName), downloadDir, true)
+	require.NoError(t, err)
 
 	q := queue.NewLocalUnordered(2)
 	require.NoError(t, q.Start(ctx))
-	require.NoError(t, amboy.PopulateQueue(ctx, q, jobs))
-	for err := range errs {
-		catcher.Add(err)
-	}
-	assert.NoError(t, catcher.Resolve())
+	require.NoError(t, q.Put(ctx, job))
 
-	_ = amboy.WaitCtxInterval(ctx, q, 100*time.Millisecond)
-	require.NoError(t, amboy.ResolveErrors(ctx, q))
-
-	assert.NoError(t, processDownloadJobs(ctx, addMongoDBFilesToCache(cache, absDir))(q))
-
-	downloadedFiles := []string{}
-	filepath.Walk(absDir, func(path string, info os.FileInfo, err error) error {
-		require.NoError(t, err)
-		if !info.IsDir() && info.Name() != "full.json" {
-			downloadedFiles = append(downloadedFiles, path)
+	checkFileNonempty := func(fileName string) error {
+		info, err := os.Stat(fileName)
+		if err != nil {
+			return err
+		}
+		if info.Size() == 0 {
+			return errors.New("expected file to be non-empty")
 		}
 		return nil
-	})
-
-	assert.NotEqual(t, 0, cache.Size())
-	assert.Equal(t, len(downloadedFiles), cache.Count())
-
-	for _, fileName := range downloadedFiles {
-		fObj, err := cache.Get(fileName)
-		assert.NoError(t, err)
-		assert.NotNil(t, fObj)
 	}
+	assert.NoError(t, processDownloadJobs(ctx, checkFileNonempty)(q))
 }
 
 func TestAddMongoDBFilesToCacheWithInvalidPath(t *testing.T) {
@@ -196,7 +225,7 @@ func TestAddMongoDBFilesToCacheWithInvalidPath(t *testing.T) {
 	require.NoError(t, err)
 
 	err = addMongoDBFilesToCache(lru.NewCache(), absPath)(fileName)
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Contains(t, err.Error(), "problem adding file "+filepath.Join(absPath, fileName)+" to cache")
 }
 
@@ -291,6 +320,6 @@ func TestDoExtractUnarchivedFile(t *testing.T) {
 		},
 	}
 	err = doExtract(info)
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Contains(t, err.Error(), "could not detect archive format")
 }

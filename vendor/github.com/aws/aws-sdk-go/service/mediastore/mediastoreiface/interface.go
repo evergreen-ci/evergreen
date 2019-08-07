@@ -72,6 +72,14 @@ type MediaStoreAPI interface {
 	DeleteContainerPolicyWithContext(aws.Context, *mediastore.DeleteContainerPolicyInput, ...request.Option) (*mediastore.DeleteContainerPolicyOutput, error)
 	DeleteContainerPolicyRequest(*mediastore.DeleteContainerPolicyInput) (*request.Request, *mediastore.DeleteContainerPolicyOutput)
 
+	DeleteCorsPolicy(*mediastore.DeleteCorsPolicyInput) (*mediastore.DeleteCorsPolicyOutput, error)
+	DeleteCorsPolicyWithContext(aws.Context, *mediastore.DeleteCorsPolicyInput, ...request.Option) (*mediastore.DeleteCorsPolicyOutput, error)
+	DeleteCorsPolicyRequest(*mediastore.DeleteCorsPolicyInput) (*request.Request, *mediastore.DeleteCorsPolicyOutput)
+
+	DeleteLifecyclePolicy(*mediastore.DeleteLifecyclePolicyInput) (*mediastore.DeleteLifecyclePolicyOutput, error)
+	DeleteLifecyclePolicyWithContext(aws.Context, *mediastore.DeleteLifecyclePolicyInput, ...request.Option) (*mediastore.DeleteLifecyclePolicyOutput, error)
+	DeleteLifecyclePolicyRequest(*mediastore.DeleteLifecyclePolicyInput) (*request.Request, *mediastore.DeleteLifecyclePolicyOutput)
+
 	DescribeContainer(*mediastore.DescribeContainerInput) (*mediastore.DescribeContainerOutput, error)
 	DescribeContainerWithContext(aws.Context, *mediastore.DescribeContainerInput, ...request.Option) (*mediastore.DescribeContainerOutput, error)
 	DescribeContainerRequest(*mediastore.DescribeContainerInput) (*request.Request, *mediastore.DescribeContainerOutput)
@@ -80,6 +88,14 @@ type MediaStoreAPI interface {
 	GetContainerPolicyWithContext(aws.Context, *mediastore.GetContainerPolicyInput, ...request.Option) (*mediastore.GetContainerPolicyOutput, error)
 	GetContainerPolicyRequest(*mediastore.GetContainerPolicyInput) (*request.Request, *mediastore.GetContainerPolicyOutput)
 
+	GetCorsPolicy(*mediastore.GetCorsPolicyInput) (*mediastore.GetCorsPolicyOutput, error)
+	GetCorsPolicyWithContext(aws.Context, *mediastore.GetCorsPolicyInput, ...request.Option) (*mediastore.GetCorsPolicyOutput, error)
+	GetCorsPolicyRequest(*mediastore.GetCorsPolicyInput) (*request.Request, *mediastore.GetCorsPolicyOutput)
+
+	GetLifecyclePolicy(*mediastore.GetLifecyclePolicyInput) (*mediastore.GetLifecyclePolicyOutput, error)
+	GetLifecyclePolicyWithContext(aws.Context, *mediastore.GetLifecyclePolicyInput, ...request.Option) (*mediastore.GetLifecyclePolicyOutput, error)
+	GetLifecyclePolicyRequest(*mediastore.GetLifecyclePolicyInput) (*request.Request, *mediastore.GetLifecyclePolicyOutput)
+
 	ListContainers(*mediastore.ListContainersInput) (*mediastore.ListContainersOutput, error)
 	ListContainersWithContext(aws.Context, *mediastore.ListContainersInput, ...request.Option) (*mediastore.ListContainersOutput, error)
 	ListContainersRequest(*mediastore.ListContainersInput) (*request.Request, *mediastore.ListContainersOutput)
@@ -87,6 +103,22 @@ type MediaStoreAPI interface {
 	PutContainerPolicy(*mediastore.PutContainerPolicyInput) (*mediastore.PutContainerPolicyOutput, error)
 	PutContainerPolicyWithContext(aws.Context, *mediastore.PutContainerPolicyInput, ...request.Option) (*mediastore.PutContainerPolicyOutput, error)
 	PutContainerPolicyRequest(*mediastore.PutContainerPolicyInput) (*request.Request, *mediastore.PutContainerPolicyOutput)
+
+	PutCorsPolicy(*mediastore.PutCorsPolicyInput) (*mediastore.PutCorsPolicyOutput, error)
+	PutCorsPolicyWithContext(aws.Context, *mediastore.PutCorsPolicyInput, ...request.Option) (*mediastore.PutCorsPolicyOutput, error)
+	PutCorsPolicyRequest(*mediastore.PutCorsPolicyInput) (*request.Request, *mediastore.PutCorsPolicyOutput)
+
+	PutLifecyclePolicy(*mediastore.PutLifecyclePolicyInput) (*mediastore.PutLifecyclePolicyOutput, error)
+	PutLifecyclePolicyWithContext(aws.Context, *mediastore.PutLifecyclePolicyInput, ...request.Option) (*mediastore.PutLifecyclePolicyOutput, error)
+	PutLifecyclePolicyRequest(*mediastore.PutLifecyclePolicyInput) (*request.Request, *mediastore.PutLifecyclePolicyOutput)
+
+	StartAccessLogging(*mediastore.StartAccessLoggingInput) (*mediastore.StartAccessLoggingOutput, error)
+	StartAccessLoggingWithContext(aws.Context, *mediastore.StartAccessLoggingInput, ...request.Option) (*mediastore.StartAccessLoggingOutput, error)
+	StartAccessLoggingRequest(*mediastore.StartAccessLoggingInput) (*request.Request, *mediastore.StartAccessLoggingOutput)
+
+	StopAccessLogging(*mediastore.StopAccessLoggingInput) (*mediastore.StopAccessLoggingOutput, error)
+	StopAccessLoggingWithContext(aws.Context, *mediastore.StopAccessLoggingInput, ...request.Option) (*mediastore.StopAccessLoggingOutput, error)
+	StopAccessLoggingRequest(*mediastore.StopAccessLoggingInput) (*request.Request, *mediastore.StopAccessLoggingOutput)
 }
 
 var _ MediaStoreAPI = (*mediastore.MediaStore)(nil)

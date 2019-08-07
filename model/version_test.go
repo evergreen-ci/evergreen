@@ -1,14 +1,19 @@
 package model
 
 import (
+	"fmt"
 	"sort"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/model/build"
+	"github.com/evergreen-ci/evergreen/model/task"
+	"github.com/evergreen-ci/evergreen/util"
 	. "github.com/smartystreets/goconvey/convey"
 )
 
@@ -80,4 +85,102 @@ func TestVersionSortByOrder(t *testing.T) {
 	assert.Equal("4", versions[2].Id)
 	assert.Equal("5", versions[3].Id)
 	assert.Equal("100", versions[4].Id)
+}
+
+func TestUpdateMergeTaskDependencies(t *testing.T) {
+	require.NoError(t, db.ClearCollections(task.Collection, ProjectAliasCollection))
+
+	project := &Project{
+		Identifier: "evergreen",
+		BuildVariants: []BuildVariant{
+			{
+				Name: evergreen.MergeTaskVariant,
+				Tasks: []BuildVariantTaskUnit{
+					{Name: evergreen.MergeTaskName},
+				},
+			},
+			{
+				Name: "v1",
+				Tasks: []BuildVariantTaskUnit{
+					{Name: "t1"},
+				},
+			},
+		},
+		Tasks: []ProjectTask{
+			{Name: evergreen.MergeTaskName},
+			{Name: "t1"},
+		},
+	}
+
+	version := &Version{
+		Id:         "v1",
+		Revision:   "abcdef",
+		Requester:  evergreen.MergeTestRequester,
+		CreateTime: time.Date(2009, time.November, 10, 23, 0, 0, 0, time.UTC),
+	}
+
+	taskID := fmt.Sprintf("%s_%s_%s_%s_%s",
+		project.Identifier,
+		project.BuildVariants[0].Name,
+		evergreen.MergeTaskName,
+		fmt.Sprintf("patch_%s_%s", version.Revision, version.Id),
+		version.CreateTime.Format(build.IdTimeLayout))
+	taskID = util.CleanName(taskID)
+
+	mergeTask := task.Task{
+		Id: taskID,
+	}
+	assert.NoError(t, mergeTask.Insert())
+
+	alias := ProjectAlias{
+		ProjectID: "evergreen",
+		Alias:     evergreen.CommitQueueAlias,
+		Variant:   "v1",
+		Task:      "t1",
+	}
+	assert.NoError(t, alias.Upsert())
+
+	assert.NoError(t, version.UpdateMergeTaskDependencies(project))
+
+	tDb, err := task.FindOneId(taskID)
+	assert.NoError(t, err)
+	require.Len(t, tDb.DependsOn, 1)
+}
+
+func TestFindLastPeriodicBuild(t *testing.T) {
+	assert := assert.New(t)
+	assert.NoError(db.Clear(VersionCollection))
+	now := time.Now()
+	v1 := Version{
+		Id:              "v1",
+		PeriodicBuildID: "a",
+		Identifier:      "myProj",
+		CreateTime:      now.Add(-10 * time.Minute),
+	}
+	assert.NoError(v1.Insert())
+	v2 := Version{
+		Id:              "v2",
+		PeriodicBuildID: "a",
+		Identifier:      "myProj",
+		CreateTime:      now.Add(-5 * time.Minute),
+	}
+	assert.NoError(v2.Insert())
+	v3 := Version{
+		Id:              "v3",
+		PeriodicBuildID: "b",
+		Identifier:      "myProj",
+		CreateTime:      now,
+	}
+	assert.NoError(v3.Insert())
+	v4 := Version{
+		Id:              "v4",
+		PeriodicBuildID: "a",
+		Identifier:      "someProj",
+		CreateTime:      now,
+	}
+	assert.NoError(v4.Insert())
+
+	mostRecent, err := FindLastPeriodicBuild("myProj", "a")
+	assert.NoError(err)
+	assert.Equal(v2.Id, mostRecent.Id)
 }

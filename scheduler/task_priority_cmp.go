@@ -183,3 +183,16 @@ func byGenerateTasks(t1, t2 task.Task, comparator *CmpBasedTaskComparator) (int,
 	}
 	return -1, nil
 }
+
+func byCommitQueue(t1, t2 task.Task, comparator *CmpBasedTaskComparator) (int, error) {
+	if comparator.versions[t1.Version].Requester == evergreen.MergeTestRequester &&
+		comparator.versions[t2.Version].Requester != evergreen.MergeTestRequester {
+		return 1, nil
+	}
+	if comparator.versions[t1.Version].Requester != evergreen.MergeTestRequester &&
+		comparator.versions[t2.Version].Requester == evergreen.MergeTestRequester {
+		return -1, nil
+	}
+
+	return 0, nil
+}

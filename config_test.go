@@ -137,19 +137,13 @@ func (s *AdminSuite) TestBaseConfig() {
 		ClientBinariesDir:  "bin_dir",
 		ConfigDir:          "cfg_dir",
 		Credentials:        map[string]string{"k1": "v1"},
+		DomainName:         "example.com",
 		Expansions:         map[string]string{"k2": "v2"},
 		GithubPRCreatorOrg: "org",
-		JasperConfig: JasperConfig{
-			BinaryName:       "binary",
-			DownloadFileName: "download",
-			Port:             12345,
-			URL:              "url",
-			Version:          "version",
-		},
-		Keys:      map[string]string{"k3": "v3"},
-		LogPath:   "logpath",
-		Plugins:   map[string]map[string]interface{}{"k4": map[string]interface{}{"k5": "v5"}},
-		PprofPort: "port",
+		Keys:               map[string]string{"k3": "v3"},
+		LogPath:            "logpath",
+		Plugins:            map[string]map[string]interface{}{"k4": map[string]interface{}{"k5": "v5"}},
+		PprofPort:          "port",
 		Splunk: send.SplunkConnectionInfo{
 			ServerURL: "server",
 			Token:     "token",
@@ -170,11 +164,7 @@ func (s *AdminSuite) TestBaseConfig() {
 	s.Equal(config.ClientBinariesDir, settings.ClientBinariesDir)
 	s.Equal(config.ConfigDir, settings.ConfigDir)
 	s.Equal(config.Credentials, settings.Credentials)
-	s.Equal(config.JasperConfig.BinaryName, settings.JasperConfig.BinaryName)
-	s.Equal(config.JasperConfig.DownloadFileName, settings.JasperConfig.DownloadFileName)
-	s.Equal(config.JasperConfig.Port, settings.JasperConfig.Port)
-	s.Equal(config.JasperConfig.URL, settings.JasperConfig.URL)
-	s.Equal(config.JasperConfig.Version, settings.JasperConfig.Version)
+	s.Equal(config.DomainName, settings.DomainName)
 	s.Equal(config.Expansions, settings.Expansions)
 	s.Equal(config.GithubPRCreatorOrg, settings.GithubPRCreatorOrg)
 	s.Equal(config.Keys, settings.Keys)
@@ -234,12 +224,16 @@ func (s *AdminSuite) TestAlertsConfig() {
 
 func (s *AdminSuite) TestAmboyConfig() {
 	config := AmboyConfig{
-		Name:           "amboy",
-		SingleName:     "single",
-		DB:             "db",
-		PoolSizeLocal:  10,
-		PoolSizeRemote: 20,
-		LocalStorage:   30,
+		Name:                                  "amboy",
+		SingleName:                            "single",
+		DB:                                    "db",
+		PoolSizeLocal:                         10,
+		PoolSizeRemote:                        20,
+		LocalStorage:                          30,
+		GroupDefaultWorkers:                   40,
+		GroupBackgroundCreateFrequencyMinutes: 50,
+		GroupPruneFrequencyMinutes:            60,
+		GroupTTLMinutes:                       70,
 	}
 
 	err := config.Set()
@@ -664,4 +658,26 @@ func (s *AdminSuite) TestCommitQueueConfig() {
 	s.Require().NotNil(settings)
 
 	s.Equal(config, settings.CommitQueue)
+}
+
+func (s *AdminSuite) TestHostJasperConfig() {
+	emptyConfig := HostJasperConfig{}
+	s.NoError(emptyConfig.ValidateAndDefault())
+	s.Equal(DefaultJasperPort, emptyConfig.Port)
+
+	config := HostJasperConfig{
+		BinaryName:       "foo",
+		DownloadFileName: "bar",
+		Port:             12345,
+		URL:              "bat",
+		Version:          "baz",
+	}
+
+	s.NoError(config.ValidateAndDefault())
+	s.NoError(config.Set())
+
+	settings, err := GetConfig()
+	s.Require().NoError(err)
+
+	s.Equal(config, settings.HostJasper)
 }

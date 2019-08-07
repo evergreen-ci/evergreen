@@ -47,7 +47,7 @@ func getLogID() int {
 // operate.
 type monitor struct {
 	// Monitor args
-	certificatePath string
+	credentialsPath string
 	clientURL       string
 	clientPath      string
 	logPrefix       string
@@ -63,7 +63,6 @@ type monitor struct {
 
 const (
 	defaultMonitorPort        = defaultAgentStatusPort - 1
-	defaultJasperPort         = defaultMonitorPort - 1
 	defaultMaxRequestDelay    = 30 * time.Second
 	defaultMaxRequestAttempts = 10
 
@@ -80,7 +79,7 @@ func defaultRetryArgs() util.RetryArgs {
 // agentMonitor starts the monitor that deploys the agent.
 func agentMonitor() cli.Command {
 	const (
-		certificatePathFlagName = "certificate"
+		credentialsPathFlagName = "credentials"
 		clientURLFlagName       = "client_url"
 		clientPathFlagName      = "client_path"
 		logPrefixFlagName       = "log_prefix"
@@ -98,8 +97,8 @@ func agentMonitor() cli.Command {
 		Usage: "start the monitor on a host",
 		Flags: []cli.Flag{
 			cli.StringFlag{
-				Name:  certificatePathFlagName,
-				Usage: "the path to the certificate used to authenticate the monitor to Jasper",
+				Name:  credentialsPathFlagName,
+				Usage: "the path to the credentials used to authenticate the monitor to Jasper",
 			},
 			cli.StringFlag{
 				Name:  clientURLFlagName,
@@ -116,7 +115,7 @@ func agentMonitor() cli.Command {
 			},
 			cli.IntFlag{
 				Name:  jasperPortFlagName,
-				Value: defaultJasperPort,
+				Value: evergreen.DefaultJasperPort,
 				Usage: "the port that is running the Jasper RPC service",
 			},
 			cli.IntFlag{
@@ -129,7 +128,7 @@ func agentMonitor() cli.Command {
 			requireStringFlag(clientURLFlagName),
 			requireStringFlag(clientPathFlagName),
 			requireIntValueBetween(jasperPortFlagName, minPort, maxPort),
-			requireIntValueBetween(portFlagName, maxPort, maxPort),
+			requireIntValueBetween(portFlagName, minPort, maxPort),
 			func(*cli.Context) error {
 				grip.SetName(monitorLoggerName)
 				return nil
@@ -137,7 +136,7 @@ func agentMonitor() cli.Command {
 		),
 		Action: func(c *cli.Context) error {
 			m := &monitor{
-				certificatePath: c.String(certificatePathFlagName),
+				credentialsPath: c.String(credentialsPathFlagName),
 				clientURL:       c.String(clientURLFlagName),
 				clientPath:      c.String(clientPathFlagName),
 				jasperPort:      c.Int(jasperPortFlagName),
@@ -226,7 +225,7 @@ func setupLogging(m *monitor) error {
 	} else {
 		sender, err := send.NewFileLogger(
 			senderName,
-			fmt.Sprintf("%s-%d-%d.log", monitorLoggerName, os.Getpid(), getLogID()),
+			fmt.Sprintf("%s-%d-%d.log", senderName, os.Getpid(), getLogID()),
 			send.LevelInfo{Default: level.Info, Threshold: level.Debug},
 		)
 		if err != nil {
@@ -277,13 +276,14 @@ func (m *monitor) fetchClient(ctx context.Context, retry util.RetryArgs) error {
 // setupJasperConnection attempts to connect to the Jasper RPC service running
 // on this host and sets the RPC manager.
 func (m *monitor) setupJasperConnection(ctx context.Context, retry util.RetryArgs) error {
-	serverAddr, err := net.ResolveTCPAddr("tcp", fmt.Sprintf("localhost:%d", m.jasperPort))
+	addrStr := fmt.Sprintf("localhost:%d", m.jasperPort)
+	serverAddr, err := net.ResolveTCPAddr("tcp", addrStr)
 	if err != nil {
-		return errors.Wrapf(err, "failed to resolve Jasper server address at '%s'", serverAddr)
+		return errors.Wrapf(err, "failed to resolve Jasper server address at '%s'", addrStr)
 	}
 
 	if err = util.RetryWithArgs(ctx, func() (bool, error) {
-		m.jasperClient, err = rpc.NewClient(ctx, serverAddr, m.certificatePath)
+		m.jasperClient, err = rpc.NewClientWithFile(ctx, serverAddr, m.credentialsPath)
 		if err != nil {
 			return true, errors.Wrap(err, "could not connect to Jasper RPC service")
 		}

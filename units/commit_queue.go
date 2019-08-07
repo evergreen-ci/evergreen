@@ -175,7 +175,13 @@ func (j *commitQueueJob) processGitHubPRItem(ctx context.Context, cq *commitqueu
 
 	errs := validator.CheckProjectSyntax(projectConfig)
 	if len(errs) != 0 {
-		update := NewGithubStatusUpdateJobForBadConfig(projectRef, pr.Head.GetRef(), j.ID())
+		update := NewGithubStatusUpdateJobForProcessingError(
+			commitqueue.Context,
+			pr.Base.User.GetLogin(),
+			pr.Base.Repo.GetName(),
+			pr.Head.GetRef(),
+			InvalidConfig,
+		)
 		update.Run(ctx)
 		j.AddError(update.Error())
 		j.logError(errors.New(errs.String()), "invalid config file", nextItem)
@@ -212,7 +218,10 @@ func (j *commitQueueJob) processGitHubPRItem(ctx context.Context, cq *commitqueu
 		j.dequeue(cq, nextItem)
 		j.AddError(sendCommitQueueGithubStatus(j.env, pr, message.GithubStateFailure, "can't make patch", ""))
 	}
-
+	nextItem.Version = patchDoc.Id.Hex()
+	if err = cq.UpdateVersion(*nextItem); err != nil {
+		j.logError(err, "problem saving version", nextItem)
+	}
 	v, err := model.FinalizePatch(ctx, patchDoc, evergreen.MergeTestRequester, githubToken)
 	if err != nil {
 		j.logError(err, "can't finalize patch", nextItem)
@@ -220,13 +229,11 @@ func (j *commitQueueJob) processGitHubPRItem(ctx context.Context, cq *commitqueu
 		j.AddError(sendCommitQueueGithubStatus(j.env, pr, message.GithubStateFailure, "can't finalize patch", ""))
 	}
 
-	dequeue, err = subscribeGitHubPRs(pr, modulePRs, projectRef, v.Id)
+	err = subscribeGitHubPRs(pr, modulePRs, projectRef, v.Id)
 	if err != nil {
 		j.logError(err, "can't subscribe for PR merge", nextItem)
-		if dequeue {
-			j.dequeue(cq, nextItem)
-			j.AddError(sendCommitQueueGithubStatus(j.env, pr, message.GithubStateFailure, "can't sign up merge", v.Id))
-		}
+		j.dequeue(cq, nextItem)
+		j.AddError(sendCommitQueueGithubStatus(j.env, pr, message.GithubStateFailure, "can't sign up merge", v.Id))
 	}
 
 	j.AddError(sendCommitQueueGithubStatus(j.env, pr, message.GithubStatePending, "preparing to test merge", v.Id))
@@ -245,25 +252,16 @@ func (j *commitQueueJob) processCLIPatchItem(ctx context.Context, cq *commitqueu
 		return
 	}
 
-	branch, err := thirdparty.GetBranchEvent(ctx, githubToken, projectRef.Owner, projectRef.Repo, projectRef.Branch)
-	if err != nil {
-		j.logError(err, "can't get branch", nextItem)
-		j.dequeue(cq, nextItem)
-		return
-	}
-
-	if err = validateBranch(branch); err != nil {
-		j.logError(err, "GitHub returned invalid branch", nextItem)
-		j.dequeue(cq, nextItem)
-		return
-	}
-
-	sha := *branch.Commit.SHA
-	patchDoc.Githash = sha
-
 	project, err := model.GetPatchedProject(ctx, patchDoc, githubToken)
 	if err != nil {
 		j.logError(err, "can't get updated project config", nextItem)
+		j.dequeue(cq, nextItem)
+		return
+	}
+
+	err = updateGithashes(ctx, githubToken, projectRef, project, patchDoc)
+	if err != nil {
+		j.logError(err, "can't update githashes", nextItem)
 		j.dequeue(cq, nextItem)
 		return
 	}
@@ -456,15 +454,29 @@ func sendCommitQueueGithubStatus(env evergreen.Environment, pr *github.PullReque
 	return nil
 }
 
-func subscribeMerge(projectID, owner, repo, mergeMethod, patchID string, pr *github.PullRequest) error {
-	commitTitle := *pr.Title + fmt.Sprintf(" (#%d)", *pr.Number)
-	mergeSubscriber := event.NewGithubMergeSubscriber(event.GithubMergeSubscriber{
-		Owner:       owner,
-		Repo:        repo,
-		PRNumber:    *pr.Number,
+func subscribeGitHubPRs(pr *github.PullRequest, modulePRs []*github.PullRequest, projectRef *model.ProjectRef, patchID string) error {
+	prs := make([]event.PRInfo, 0, len(modulePRs)+1)
+	for _, modulePR := range modulePRs {
+		prs = append(prs, event.PRInfo{
+			Owner:       modulePR.Base.Repo.Owner.GetLogin(),
+			Repo:        *modulePR.Base.Repo.Name,
+			Ref:         *modulePR.Head.SHA,
+			PRNum:       *modulePR.Number,
+			CommitTitle: fmt.Sprintf("%s (#%d)", *modulePR.Title, *modulePR.Number),
+		})
+	}
+	prs = append(prs, event.PRInfo{
+		Owner:       projectRef.Owner,
+		Repo:        projectRef.Repo,
 		Ref:         *pr.Head.SHA,
-		MergeMethod: mergeMethod,
-		CommitTitle: commitTitle,
+		PRNum:       *pr.Number,
+		CommitTitle: fmt.Sprintf("%s (#%d)", *pr.Title, *pr.Number),
+	})
+
+	mergeSubscriber := event.NewGithubMergeSubscriber(event.GithubMergeSubscriber{
+		PRs:         prs,
+		Item:        strconv.Itoa(*pr.Number),
+		MergeMethod: projectRef.CommitQueue.MergeMethod,
 	})
 	patchSub := event.NewPatchOutcomeSubscription(patchID, mergeSubscriber)
 	if err := patchSub.Upsert(); err != nil {
@@ -472,22 +484,6 @@ func subscribeMerge(projectID, owner, repo, mergeMethod, patchID string, pr *git
 	}
 
 	return nil
-}
-
-func subscribeGitHubPRs(pr *github.PullRequest, modulePRs []*github.PullRequest, projectRef *model.ProjectRef, versionID string) (bool, error) {
-	err := subscribeMerge(projectRef.Identifier, projectRef.Owner, projectRef.Repo, projectRef.CommitQueue.MergeMethod, versionID, pr)
-	if err != nil {
-		return true, errors.Wrapf(err, "can't subscribe to merge main pr")
-	}
-
-	for _, modulePR := range modulePRs {
-		err = subscribeMerge("", modulePR.Base.Repo.Owner.GetLogin(), *modulePR.Base.Repo.Name, projectRef.CommitQueue.MergeMethod, versionID, modulePR)
-		if err != nil {
-			return false, errors.Wrapf(err, "can't subscribe to merge module %s pr", *modulePR.Base.Repo.Name)
-		}
-	}
-
-	return false, nil
 }
 
 func validateBranch(branch *github.Branch) error {
@@ -509,13 +505,24 @@ func addMergeTaskAndVariant(patchDoc *patch.Patch, project *model.Project) error
 		return errors.Wrap(err, "error retrieving Evergreen config")
 	}
 
+	modules := make([]string, 0, len(patchDoc.Patches))
+	for _, module := range patchDoc.Patches {
+		if module.ModuleName != "" {
+			modules = append(modules, module.ModuleName)
+		}
+	}
+
 	mergeBuildVariant := model.BuildVariant{
-		Name:        "commit-queue-merge",
+		Name:        evergreen.MergeTaskVariant,
 		DisplayName: "Commit Queue Merge",
 		RunOn:       []string{settings.CommitQueue.MergeTaskDistro},
 		Tasks: []model.BuildVariantTaskUnit{
-			{Name: "merge-patch"},
+			{
+				Name:             evergreen.MergeTaskGroup,
+				CommitQueueMerge: true,
+			},
 		},
+		Modules: modules,
 	}
 
 	// Merge task depends on all commit queue tasks matching the alias
@@ -533,19 +540,19 @@ func addMergeTaskAndVariant(patchDoc *patch.Patch, project *model.Project) error
 	}
 
 	mergeTask := model.ProjectTask{
-		Name: "merge-patch",
+		Name: evergreen.MergeTaskName,
 		Commands: []model.PluginCommandConf{
 			{
 				Command: "git.get_project",
 				Type:    evergreen.CommandTypeSetup,
 				Params: map[string]interface{}{
-					"directory": "${workdir}/src",
+					"directory": "src",
 				},
 			},
 			{
 				Command: "git.push",
 				Params: map[string]interface{}{
-					"directory":       "${workdir}/src",
+					"directory":       "src",
 					"committer_name":  settings.CommitQueue.CommitterName,
 					"committer_email": settings.CommitQueue.CommitterEmail,
 				},
@@ -554,8 +561,17 @@ func addMergeTaskAndVariant(patchDoc *patch.Patch, project *model.Project) error
 		DependsOn: dependencies,
 	}
 
+	// Define as part of a task group with no pre to skip
+	// running a project's pre before the merge task
+	mergeTaskGroup := model.TaskGroup{
+		Name:     evergreen.MergeTaskGroup,
+		Tasks:    []string{evergreen.MergeTaskName},
+		MaxHosts: 1,
+	}
+
 	project.BuildVariants = append(project.BuildVariants, mergeBuildVariant)
 	project.Tasks = append(project.Tasks, mergeTask)
+	project.TaskGroups = append(project.TaskGroups, mergeTaskGroup)
 
 	validationErrors := validator.CheckProjectSyntax(project)
 	if len(validationErrors) != 0 {
@@ -604,6 +620,48 @@ func setDefaultNotification(username string) error {
 		u.Settings.Notifications.CommitQueueID = commitQueueSubscription.ID
 
 		return model.SaveUserSettings(u.Id, u.Settings)
+	}
+
+	return nil
+}
+
+func updateGithashes(ctx context.Context, githubToken string, projectRef *model.ProjectRef, project *model.Project, patchDoc *patch.Patch) error {
+	branch, err := thirdparty.GetBranchEvent(ctx, githubToken, projectRef.Owner, projectRef.Repo, projectRef.Branch)
+	if err != nil {
+		return errors.Wrap(err, "can't get branch")
+	}
+	if err = validateBranch(branch); err != nil {
+		return errors.Wrap(err, "GitHub returned invalid branch")
+	}
+
+	sha := *branch.Commit.SHA
+	patchDoc.Githash = sha
+
+	// Update module githashes
+	for i, mod := range patchDoc.Patches {
+		if mod.ModuleName == "" {
+			patchDoc.Patches[i].Githash = sha
+			continue
+		}
+
+		module, err := project.GetModuleByName(mod.ModuleName)
+		if err != nil {
+			return errors.Wrapf(err, "can't get module for module name '%s'", mod.ModuleName)
+		}
+		owner, repo, err := thirdparty.ParseGitUrl(module.Repo)
+		if err != nil {
+			return errors.Wrapf(err, "module '%s' misconfigured (malformed URL)", mod.ModuleName)
+		}
+
+		branch, err = thirdparty.GetBranchEvent(ctx, githubToken, owner, repo, module.Branch)
+		if err != nil {
+			return errors.Wrap(err, "can't get branch")
+		}
+		if err = validateBranch(branch); err != nil {
+			return errors.Wrap(err, "GitHub returned invalid branch")
+		}
+
+		patchDoc.Patches[i].Githash = *branch.Commit.SHA
 	}
 
 	return nil

@@ -7,6 +7,7 @@ import (
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/mongodb/anser/bsonutil"
 	adb "github.com/mongodb/anser/db"
+	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson"
 )
 
@@ -29,7 +30,9 @@ var (
 	VersionBuildVariantsKey       = bsonutil.MustHaveTag(Version{}, "BuildVariants")
 	VersionRevisionOrderNumberKey = bsonutil.MustHaveTag(Version{}, "RevisionOrderNumber")
 	VersionRequesterKey           = bsonutil.MustHaveTag(Version{}, "Requester")
+	VersionProjectKey             = bsonutil.MustHaveTag(Version{}, "ParserProject")
 	VersionConfigKey              = bsonutil.MustHaveTag(Version{}, "Config")
+	VersionConfigNumberKey        = bsonutil.MustHaveTag(Version{}, "ConfigUpdateNumber")
 	VersionIgnoredKey             = bsonutil.MustHaveTag(Version{}, "Ignored")
 	VersionOwnerNameKey           = bsonutil.MustHaveTag(Version{}, "Owner")
 	VersionRepoKey                = bsonutil.MustHaveTag(Version{}, "Repo")
@@ -43,6 +46,7 @@ var (
 	VersionTriggerIDKey           = bsonutil.MustHaveTag(Version{}, "TriggerID")
 	VersionTriggerTypeKey         = bsonutil.MustHaveTag(Version{}, "TriggerType")
 	VersionSatisfiedTriggersKey   = bsonutil.MustHaveTag(Version{}, "SatisfiedTriggers")
+	VersionPeriodicBuildIDKey     = bsonutil.MustHaveTag(Version{}, "PeriodicBuildID")
 )
 
 // ById returns a db.Q object which will filter on {_id : <the id param>}
@@ -211,6 +215,20 @@ func VersionBaseVersionFromPatch(projectId, revision string) db.Q {
 		})
 }
 
+func VersionsByRequesterOrdered(project, requester string, limit, startOrder int) db.Q {
+	q := bson.M{
+		VersionIdentifierKey: project,
+		VersionRequesterKey:  requester,
+	}
+
+	if startOrder > 0 {
+		q[VersionRevisionOrderNumberKey] = bson.M{
+			"$lt": startOrder,
+		}
+	}
+	return db.Query(q).Limit(limit).Sort([]string{"-" + VersionRevisionOrderNumberKey})
+}
+
 func VersionFindOne(query db.Q) (*Version, error) {
 	version := &Version{}
 	err := db.FindOneQ(VersionCollection, query, version)
@@ -254,6 +272,24 @@ func VersionUpdateOne(query interface{}, update interface{}) error {
 	)
 }
 
+// UpdateVersionProject updates the ParserProject field for the version.
+// Note this does not increment the config update number, as we are not changing the used config, simply updating a new field.
+func UpdateVersionProject(versionID string, versionNumber int, pp *ParserProject) error {
+	if versionID == "" {
+		return errors.New("no version ID given")
+	}
+	return errors.Wrap(VersionUpdateOne(
+		bson.M{
+			VersionIdKey:           versionID,
+			VersionConfigNumberKey: versionNumber,
+		},
+		bson.M{
+			"$set": bson.M{
+				VersionProjectKey: pp,
+			},
+		}), "error updating version")
+}
+
 func AddSatisfiedTrigger(versionID, definitionID string) error {
 	return VersionUpdateOne(bson.M{VersionIdKey: versionID},
 		bson.M{
@@ -261,4 +297,19 @@ func AddSatisfiedTrigger(versionID, definitionID string) error {
 				VersionSatisfiedTriggersKey: definitionID,
 			},
 		})
+}
+
+func FindLastPeriodicBuild(projectID, definitionID string) (*Version, error) {
+	versions, err := VersionFind(db.Query(bson.M{
+		VersionPeriodicBuildIDKey: definitionID,
+		VersionIdentifierKey:      projectID,
+	}).Sort([]string{"-" + VersionCreateTimeKey}).Limit(1))
+	if err != nil {
+		return nil, err
+	}
+	if versions == nil || len(versions) == 0 {
+		return nil, nil
+	}
+
+	return &versions[0], nil
 }

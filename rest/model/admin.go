@@ -21,7 +21,7 @@ func NewConfigModel() *APIAdminSettings {
 		Credentials:       map[string]string{},
 		Expansions:        map[string]string{},
 		HostInit:          &APIHostInitConfig{},
-		JasperConfig:      &APIJasperConfig{},
+		HostJasper:        &APIHostJasperConfig{},
 		Jira:              &APIJiraConfig{},
 		JIRANotifications: &APIJIRANotificationsConfig{},
 		Keys:              map[string]string{},
@@ -53,11 +53,12 @@ type APIAdminSettings struct {
 	ConfigDir          APIString                         `json:"configdir,omitempty"`
 	ContainerPools     *APIContainerPoolsConfig          `json:"container_pools,omitempty"`
 	Credentials        map[string]string                 `json:"credentials,omitempty"`
-	JasperConfig       *APIJasperConfig                  `json:"jasper,omitempty"`
+	DomainName         APIString                         `json:"domain_name,omitempty"`
 	Expansions         map[string]string                 `json:"expansions,omitempty"`
 	Bugsnag            APIString                         `json:"bugsnag,omitempty"`
 	GithubPRCreatorOrg APIString                         `json:"github_pr_creator_org,omitempty"`
 	HostInit           *APIHostInitConfig                `json:"hostinit,omitempty"`
+	HostJasper         *APIHostJasperConfig              `json:"host_jasper,omitempty"`
 	Jira               *APIJiraConfig                    `json:"jira,omitempty"`
 	JIRANotifications  *APIJIRANotificationsConfig       `json:"jira_notifications,omitempty"`
 	Keys               map[string]string                 `json:"keys,omitempty"`
@@ -110,6 +111,7 @@ func (as *APIAdminSettings) BuildFromService(h interface{}) error {
 		as.BannerTheme = &tmp
 		as.ClientBinariesDir = &v.ClientBinariesDir
 		as.ConfigDir = &v.ConfigDir
+		as.DomainName = ToAPIString(v.DomainName)
 		as.Bugsnag = ToAPIString(v.Bugsnag)
 		as.GithubPRCreatorOrg = &v.GithubPRCreatorOrg
 		as.LogPath = &v.LogPath
@@ -149,6 +151,7 @@ func (as *APIAdminSettings) ToService() (interface{}, error) {
 	if as.ConfigDir != nil {
 		settings.ConfigDir = *as.ConfigDir
 	}
+	settings.DomainName = FromAPIString(as.DomainName)
 	settings.Bugsnag = FromAPIString(as.Bugsnag)
 	if as.GithubPRCreatorOrg != nil {
 		settings.GithubPRCreatorOrg = *as.GithubPRCreatorOrg
@@ -274,12 +277,16 @@ func (a *APISMTPConfig) ToService() (interface{}, error) {
 }
 
 type APIAmboyConfig struct {
-	Name           APIString `json:"name"`
-	SingleName     APIString `json:"single_name"`
-	DB             APIString `json:"database"`
-	PoolSizeLocal  int       `json:"pool_size_local"`
-	PoolSizeRemote int       `json:"pool_size_remote"`
-	LocalStorage   int       `json:"local_storage_size"`
+	Name                                  APIString `json:"name"`
+	SingleName                            APIString `json:"single_name"`
+	DB                                    APIString `json:"database"`
+	PoolSizeLocal                         int       `json:"pool_size_local"`
+	PoolSizeRemote                        int       `json:"pool_size_remote"`
+	LocalStorage                          int       `json:"local_storage_size"`
+	GroupDefaultWorkers                   int       `json:"group_default_workers"`
+	GroupBackgroundCreateFrequencyMinutes int       `json:"group_background_create_frequency"`
+	GroupPruneFrequencyMinutes            int       `json:"group_prune_frequency"`
+	GroupTTLMinutes                       int       `json:"group_ttl"`
 }
 
 func (a *APIAmboyConfig) BuildFromService(h interface{}) error {
@@ -291,6 +298,10 @@ func (a *APIAmboyConfig) BuildFromService(h interface{}) error {
 		a.PoolSizeLocal = v.PoolSizeLocal
 		a.PoolSizeRemote = v.PoolSizeRemote
 		a.LocalStorage = v.LocalStorage
+		a.GroupDefaultWorkers = v.GroupDefaultWorkers
+		a.GroupBackgroundCreateFrequencyMinutes = v.GroupBackgroundCreateFrequencyMinutes
+		a.GroupPruneFrequencyMinutes = v.GroupPruneFrequencyMinutes
+		a.GroupTTLMinutes = v.GroupTTLMinutes
 	default:
 		return errors.Errorf("%T is not a supported type", h)
 	}
@@ -299,12 +310,16 @@ func (a *APIAmboyConfig) BuildFromService(h interface{}) error {
 
 func (a *APIAmboyConfig) ToService() (interface{}, error) {
 	return evergreen.AmboyConfig{
-		Name:           FromAPIString(a.Name),
-		SingleName:     FromAPIString(a.SingleName),
-		DB:             FromAPIString(a.DB),
-		PoolSizeLocal:  a.PoolSizeLocal,
-		PoolSizeRemote: a.PoolSizeRemote,
-		LocalStorage:   a.LocalStorage,
+		Name:                                  FromAPIString(a.Name),
+		SingleName:                            FromAPIString(a.SingleName),
+		DB:                                    FromAPIString(a.DB),
+		PoolSizeLocal:                         a.PoolSizeLocal,
+		PoolSizeRemote:                        a.PoolSizeRemote,
+		LocalStorage:                          a.LocalStorage,
+		GroupDefaultWorkers:                   a.GroupDefaultWorkers,
+		GroupBackgroundCreateFrequencyMinutes: a.GroupBackgroundCreateFrequencyMinutes,
+		GroupPruneFrequencyMinutes:            a.GroupPruneFrequencyMinutes,
+		GroupTTLMinutes:                       a.GroupTTLMinutes,
 	}, nil
 }
 
@@ -1039,10 +1054,18 @@ func (a *APIRepoTrackerConfig) ToService() (interface{}, error) {
 }
 
 type APISchedulerConfig struct {
-	TaskFinder           APIString `json:"task_finder"`
-	HostAllocator        APIString `json:"host_allocator"`
-	FreeHostFraction     float64   `json:"free_host_fraction"`
-	CacheDurationSeconds int       `json:"cache_duration_seconds"`
+	TaskFinder                    APIString `json:"task_finder"`
+	HostAllocator                 APIString `json:"host_allocator"`
+	FreeHostFraction              float64   `json:"free_host_fraction"`
+	CacheDurationSeconds          int       `json:"cache_duration_seconds"`
+	Planner                       APIString `json:"planner"`
+	TaskOrdering                  APIString `json:"task_ordering"`
+	TargetTimeSeconds             int       `json:"target_time_seconds"`
+	AcceptableHostIdleTimeSeconds int       `json:"acceptable_host_idle_time_seconds"`
+	GroupVersions                 bool      `json:"group_versions"`
+	PatchZipperFactor             int64     `json:"patch_zipper_factor"`
+	TimeInQueueFactor             int64     `json:"time_in_queue_factor"`
+	ExpectedRuntimeFactor         int64     `json:"expected_runtime_factor_factor"`
 }
 
 func (a *APISchedulerConfig) BuildFromService(h interface{}) error {
@@ -1052,6 +1075,14 @@ func (a *APISchedulerConfig) BuildFromService(h interface{}) error {
 		a.HostAllocator = ToAPIString(v.HostAllocator)
 		a.FreeHostFraction = v.FreeHostFraction
 		a.CacheDurationSeconds = v.CacheDurationSeconds
+		a.Planner = ToAPIString(v.Planner)
+		a.TaskOrdering = ToAPIString(v.TaskOrdering)
+		a.TargetTimeSeconds = v.TargetTimeSeconds
+		a.AcceptableHostIdleTimeSeconds = v.AcceptableHostIdleTimeSeconds
+		a.GroupVersions = v.GroupVersions
+		a.PatchZipperFactor = v.PatchZipperFactor
+		a.TimeInQueueFactor = v.TimeInQueueFactor
+		a.ExpectedRuntimeFactor = v.ExpectedRuntimeFactor
 	default:
 		return errors.Errorf("%T is not a supported type", h)
 	}
@@ -1060,10 +1091,18 @@ func (a *APISchedulerConfig) BuildFromService(h interface{}) error {
 
 func (a *APISchedulerConfig) ToService() (interface{}, error) {
 	return evergreen.SchedulerConfig{
-		TaskFinder:           FromAPIString(a.TaskFinder),
-		HostAllocator:        FromAPIString(a.HostAllocator),
-		FreeHostFraction:     a.FreeHostFraction,
-		CacheDurationSeconds: a.CacheDurationSeconds,
+		TaskFinder:                    FromAPIString(a.TaskFinder),
+		HostAllocator:                 FromAPIString(a.HostAllocator),
+		FreeHostFraction:              a.FreeHostFraction,
+		CacheDurationSeconds:          a.CacheDurationSeconds,
+		Planner:                       FromAPIString(a.Planner),
+		TaskOrdering:                  FromAPIString(a.TaskOrdering),
+		TargetTimeSeconds:             a.TargetTimeSeconds,
+		AcceptableHostIdleTimeSeconds: a.AcceptableHostIdleTimeSeconds,
+		GroupVersions:                 a.GroupVersions,
+		PatchZipperFactor:             a.PatchZipperFactor,
+		ExpectedRuntimeFactor:         a.ExpectedRuntimeFactor,
+		TimeInQueueFactor:             a.TimeInQueueFactor,
 	}, nil
 }
 
@@ -1082,6 +1121,7 @@ type APIServiceFlags struct {
 	TaskLoggingDisabled        bool `json:"task_logging_disabled"`
 	CacheStatsJobDisabled      bool `json:"cache_stats_job_disabled"`
 	CacheStatsEndpointDisabled bool `json:"cache_stats_endpoint_disabled"`
+	TaskReliabilityDisabled    bool `json:"task_reliability_disabled"`
 	CommitQueueDisabled        bool `json:"commit_queue_disabled"`
 	PlannerDisabled            bool `json:"planner_disabled"`
 	HostAllocatorDisabled      bool `json:"host_allocator_disabled"`
@@ -1207,12 +1247,13 @@ func (a *APISplunkConnectionInfo) ToService() (interface{}, error) {
 type APIUIConfig struct {
 	Url            APIString `json:"url"`
 	HelpUrl        APIString `json:"help_url"`
+	UIv2Url        APIString `json:"uiv2_url"`
 	HttpListenAddr APIString `json:"http_listen_addr"`
 	Secret         APIString `json:"secret"`
 	DefaultProject APIString `json:"default_project"`
 	CacheTemplates bool      `json:"cache_templates"`
 	CsrfKey        APIString `json:"csrf_key"`
-	CORSOrigin     APIString `json:"cors_origin"`
+	CORSOrigins    []string  `json:"cors_origins"`
 }
 
 func (a *APIUIConfig) BuildFromService(h interface{}) error {
@@ -1220,12 +1261,13 @@ func (a *APIUIConfig) BuildFromService(h interface{}) error {
 	case evergreen.UIConfig:
 		a.Url = ToAPIString(v.Url)
 		a.HelpUrl = ToAPIString(v.HelpUrl)
+		a.UIv2Url = ToAPIString(v.UIv2Url)
 		a.HttpListenAddr = ToAPIString(v.HttpListenAddr)
 		a.Secret = ToAPIString(v.Secret)
 		a.DefaultProject = ToAPIString(v.DefaultProject)
 		a.CacheTemplates = v.CacheTemplates
 		a.CsrfKey = ToAPIString(v.CsrfKey)
-		a.CORSOrigin = ToAPIString(v.CORSOrigin)
+		a.CORSOrigins = v.CORSOrigins
 	default:
 		return errors.Errorf("%T is not a supported type", h)
 	}
@@ -1236,19 +1278,20 @@ func (a *APIUIConfig) ToService() (interface{}, error) {
 	return evergreen.UIConfig{
 		Url:            FromAPIString(a.Url),
 		HelpUrl:        FromAPIString(a.HelpUrl),
+		UIv2Url:        FromAPIString(a.UIv2Url),
 		HttpListenAddr: FromAPIString(a.HttpListenAddr),
 		Secret:         FromAPIString(a.Secret),
 		DefaultProject: FromAPIString(a.DefaultProject),
 		CacheTemplates: a.CacheTemplates,
 		CsrfKey:        FromAPIString(a.CsrfKey),
-		CORSOrigin:     FromAPIString(a.CORSOrigin),
+		CORSOrigins:    a.CORSOrigins,
 	}, nil
 }
 
 // RestartTasksResponse is the response model returned from the /admin/restart route
-type RestartTasksResponse struct {
-	TasksRestarted []string `json:"tasks_restarted"`
-	TasksErrored   []string `json:"tasks_errored"`
+type RestartResponse struct {
+	ItemsRestarted []string `json:"items_restarted"`
+	ItemsErrored   []string `json:"items_errored"`
 }
 
 // BuildFromService builds a model from the service layer
@@ -1291,6 +1334,7 @@ func (as *APIServiceFlags) BuildFromService(h interface{}) error {
 		as.TaskLoggingDisabled = v.TaskLoggingDisabled
 		as.CacheStatsJobDisabled = v.CacheStatsJobDisabled
 		as.CacheStatsEndpointDisabled = v.CacheStatsEndpointDisabled
+		as.TaskReliabilityDisabled = v.TaskReliabilityDisabled
 		as.CommitQueueDisabled = v.CommitQueueDisabled
 		as.PlannerDisabled = v.PlannerDisabled
 		as.HostAllocatorDisabled = v.HostAllocatorDisabled
@@ -1322,6 +1366,7 @@ func (as *APIServiceFlags) ToService() (interface{}, error) {
 		TaskLoggingDisabled:          as.TaskLoggingDisabled,
 		CacheStatsJobDisabled:        as.CacheStatsJobDisabled,
 		CacheStatsEndpointDisabled:   as.CacheStatsEndpointDisabled,
+		TaskReliabilityDisabled:      as.TaskReliabilityDisabled,
 		CommitQueueDisabled:          as.CommitQueueDisabled,
 		PlannerDisabled:              as.PlannerDisabled,
 		HostAllocatorDisabled:        as.HostAllocatorDisabled,
@@ -1329,11 +1374,11 @@ func (as *APIServiceFlags) ToService() (interface{}, error) {
 }
 
 // BuildFromService builds a model from the service layer
-func (rtr *RestartTasksResponse) BuildFromService(h interface{}) error {
+func (rtr *RestartResponse) BuildFromService(h interface{}) error {
 	switch v := h.(type) {
-	case *RestartTasksResponse:
-		rtr.TasksRestarted = v.TasksRestarted
-		rtr.TasksErrored = v.TasksErrored
+	case *RestartResponse:
+		rtr.ItemsRestarted = v.ItemsRestarted
+		rtr.ItemsErrored = v.ItemsErrored
 	default:
 		return errors.Errorf("%T is the incorrect type for a restart task response", h)
 	}
@@ -1341,7 +1386,7 @@ func (rtr *RestartTasksResponse) BuildFromService(h interface{}) error {
 }
 
 // ToService is not implemented for /admin/restart
-func (rtr *RestartTasksResponse) ToService() (interface{}, error) {
+func (rtr *RestartResponse) ToService() (interface{}, error) {
 	return nil, errors.New("ToService not implemented for RestartTasksResponse")
 }
 
@@ -1444,7 +1489,7 @@ func (c *APITriggerConfig) ToService() (interface{}, error) {
 	}, nil
 }
 
-type APIJasperConfig struct {
+type APIHostJasperConfig struct {
 	BinaryName       APIString `json:"binary_name,omitempty"`
 	DownloadFileName APIString `json:"download_file_name,omitempty"`
 	Port             int       `json:"port,omitempty"`
@@ -1452,22 +1497,22 @@ type APIJasperConfig struct {
 	Version          APIString `json:"version,omitempty"`
 }
 
-func (c *APIJasperConfig) BuildFromService(h interface{}) error {
+func (c *APIHostJasperConfig) BuildFromService(h interface{}) error {
 	switch v := h.(type) {
-	case evergreen.JasperConfig:
+	case evergreen.HostJasperConfig:
 		c.BinaryName = ToAPIString(v.BinaryName)
 		c.DownloadFileName = ToAPIString(v.DownloadFileName)
 		c.Port = v.Port
 		c.URL = ToAPIString(v.URL)
 		c.Version = ToAPIString(v.Version)
 	default:
-		return errors.Errorf("expected evergreen.JasperConfig but got %T instead", h)
+		return errors.Errorf("expected evergreen.HostJasperConfig but got %T instead", h)
 	}
 	return nil
 }
 
-func (c *APIJasperConfig) ToService() (interface{}, error) {
-	return evergreen.JasperConfig{
+func (c *APIHostJasperConfig) ToService() (interface{}, error) {
+	return evergreen.HostJasperConfig{
 		BinaryName:       FromAPIString(c.BinaryName),
 		DownloadFileName: FromAPIString(c.DownloadFileName),
 		Port:             c.Port,

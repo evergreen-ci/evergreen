@@ -308,7 +308,7 @@ func (p *ewmaRateLimiting) Abort(ctx context.Context, id string) error {
 	cancel()
 	delete(p.jobs, id)
 
-	job, ok := p.queue.Get(id)
+	job, ok := p.queue.Get(ctx, id)
 	if !ok {
 		return errors.Errorf("could not find '%s' in the queue", id)
 	}
@@ -328,7 +328,7 @@ func (p *ewmaRateLimiting) AbortAll(ctx context.Context) {
 		}
 		cancel()
 		delete(p.jobs, id)
-		job, ok := p.queue.Get(id)
+		job, ok := p.queue.Get(ctx, id)
 		if !ok {
 			continue
 		}

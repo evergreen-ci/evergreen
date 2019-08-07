@@ -18,7 +18,7 @@ Admin Settings
 
 {{define "content"}}
 <div ng-controller="AdminSettingsController" layout="column" ng-cloak>
-	<div id="tasks-modal" class="modal fade" tabindex="-1" role="dialog" aria-hidden="true">
+	<div id="restart-modal" class="modal fade" tabindex="-1" role="dialog" aria-hidden="true">
 		<div class="modal-dialog" style="width: 1000px">
 			<div class="modal-content">
 				<div class="modal-header">
@@ -27,13 +27,13 @@ Admin Settings
 				</div>
 				<div class="modal-body">
 					<div id="divMsg"></div>
-					<div>The following [[tasks.length]] tasks will be restarted:</div>
+					<div>The following [[items.length]] items will be restarted:</div>
 					<div id="tasksDisplay">
-						<li ng-repeat="task in tasks" class="link" ng-click="jumpToTask(task)">[[task]]</li>
+						<li ng-repeat="item in items" class="link" ng-click="jumpToItem(itemType, item)">[[item]]</li>
 					</div>
 					<div>
 						<div class="justifyRight">
-							<md-button class="md-raised" ng-click="restartTasks(false)" ng-disabled="disableRestart">Restart</md-button>
+							<md-button class="md-raised" ng-click="restartItems(itemType, false)" ng-disabled="disableRestart">Restart</md-button>
 							<md-button class="md-raised" data-dismiss="modal">Cancel</md-button>
 						</div>
 					</div>
@@ -86,11 +86,11 @@ Admin Settings
 						<li class="link" ng-click="scrollTo('misc')">Misc Settings</li>
 						<li class="link" ng-click="scrollTo('credentials')">Credentials</li>
 						<li class="link" ng-click="scrollTo('expansions')">Expansions</li>
-                        <li class="link" ng-click="scrollTo('jasper')">Jasper</li>
+                        <li class="link" ng-click="scrollTo('host_jasper')">Host Jasper</li>
 						<li class="link" ng-click="scrollTo('plugins')">Plugins</li>
 						<li class="link" ng-click="scrollTo('jira_notifications')">JIRA Custom Field Mappings</li>
 						<div>Non-Configuration</div>
-						<li class="link" ng-click="scrollTo('restart')">Restart Tasks</li>
+						<li class="link" ng-click="scrollTo('restart')">Restart Tasks/Versions</li>
 						<a class="link" href="/admin/events" style="margin-left:10px;">Event Log</a>
 					</div>
 				</md-content>
@@ -487,6 +487,27 @@ Admin Settings
 										<label>Cache Schedules in API (seconds)</label>
 										<input type="number" step="1" min="0" max="600" ng-model="Settings.scheduler.cache_duration_seconds">
 									</md-input-container>
+									<md-input-container class="control" style="width:45%;">
+                		<label>Planner Version</label>
+              			<input type="text" ng-model="Settings.scheduler.planner_version">
+          				</md-input-container>
+        					<md-input-container class="control" style="width:45%;">
+          					<label>Finder Version</label>
+            				<input type="text" ng-model="Settings.scheduler.task_finder">
+          				</md-input-container>
+									<md-input-container class="control" style="width:45%;">
+      							<label>Target Time (seconds)</label>
+    								<input type="number" step="1" min="0" max="1800" ng-model="Settings.scheduler.target_time_seconds">
+      						</md-input-container>
+    							<md-input-container class="control" style="width:45%;">
+      							<label>Acceptable Host Idle Time (seconds)</label>
+      							<input type="number" step="1" min="0" max="300" ng-model="Settings.scheduler.acceptable_host_idle_time_seconds">
+  								</md-input-container>
+									<md-input-container class="control" style="width:170px;">
+										<md-checkbox ng-model="Settings.scheduler.group_versions">
+											Group Versions
+										</md-checkbox>
+									</md-input-container>
 								</md-card-content>
 							</md-card>
 
@@ -587,26 +608,31 @@ Admin Settings
 										<input type="text" ng-model="Settings.ui.help_url">
 									</md-input-container>
 									<md-input-container class="control" style="width:45%;">
+										<label>UIv2 URL</label>
+										<input type="text" ng-model="Settings.ui.uiv2_url">
+									</md-input-container>
+									<md-input-container class="control" style="width:45%;  margin-left:50px;">
 										<label>HTTP listener address</label>
 										<input type="text" ng-model="Settings.ui.http_listen_addr">
 									</md-input-container>
-									<md-input-container class="control" style="width:45%; margin-left:50px;">
+									<md-input-container class="control" style="width:45%; ;">
 										<label>Secret</label>
 										<input type="text" ng-model="Settings.ui.secret">
 									</md-input-container>
-									<md-input-container class="control" style="width:45%;">
+									<md-input-container class="control" style="width:45%;  margin-left:50px;">
 										<label>Default project</label>
 										<input type="text" ng-model="Settings.ui.default_project">
 									</md-input-container>
-									<md-input-container class="control" style="width:45%; margin-left:50px;">
+									<md-input-container class="control" style="width:45%;">
 										<label>CSRF key</label>
 										<input type="text" ng-model="Settings.ui.csrf_key">
 									</md-input-container>
-									<md-input-container class="control" style="width:45%;">
-										<label>CORS Origin</label>
-										<input type="text" ng-model="Settings.ui.cors_origin">
+									<md-input-container class="control" style="width:45%;  margin-left:50px;">
+										<label>CORS Origins</label>
+										<textarea ng-model="Settings.ui.cors_origins" ng-list="&#10;" ng-trim="false" rows="3"
+										md-select-on-focus></textarea>
 									</md-input-container>
-									<md-input-container class="control" style="width:45%; margin-left:50px;">
+									<md-input-container class="control" style="width:45%;">
 										<md-checkbox ng-model="Settings.ui.cache_templates">
 											Cache templates
 										</md-checkbox>
@@ -890,6 +916,24 @@ Admin Settings
 										<label>Local storage size</label>
 										<input type="number" ng-model="Settings.amboy.local_storage_size">
 									</md-input-container>
+
+				          <md-input-container class="control" style="width:45%;">
+									<label>Group default workers</label>
+									<input type="number" ng-model="Settings.amboy.group_default_workers">
+									</md-input-container>
+				          <md-input-container class="control" style="width:45%; margin-left:50px;">
+									<label>Group background create frequency</label>
+									<input type="number" ng-model="Settings.amboy.group_background_create_frequency">
+									</md-input-container>
+				          <md-input-container class="control" style="width:45%;">
+									<label>Group prune frequency</label>
+									<input type="number" ng-model="Settings.amboy.group_prune_frequency">
+									</md-input-container>
+				          <md-input-container class="control" style="width:45%; margin-left:50px;">
+									<label>Group TTL</label>
+									<input type="number" ng-model="Settings.amboy.group_ttl">
+									</md-input-container>
+
 								</md-card-content>
 							</md-card>
 
@@ -1163,18 +1207,22 @@ Admin Settings
 										<input type="text" ng-model="Settings.configdir">
 									</md-input-container>
 									<md-input-container class="control" style="width:45%; margin-left:50px;">
+										<label>Domain name</label>
+										<input type="text" ng-model="Settings.domain_name">
+									</md-input-container>
+									<md-input-container class="control" style="width:45%;">
 										<label>Github PR creator organization</label>
 										<input type="text" ng-model="Settings.github_pr_creator_org">
 									</md-input-container>
-									<md-input-container class="control" style="width:45%;">
+									<md-input-container class="control" style="width:45%; margin-left:50px;">
 										<label>Log path</label>
 										<input type="text" ng-model="Settings.log_path">
 									</md-input-container>
-									<md-input-container class="control" style="width:45%; margin-left:50px;">
+									<md-input-container class="control" style="width:45%;">
 										<label>Pprof port</label>
 										<input type="text" ng-model="Settings.pprof_port">
 									</md-input-container>
-									<md-input-container class="control" style="width:45%;">
+									<md-input-container class="control" style="width:45%; margin-left:50px">
 										<label>Superusers</label>
 										<textarea ng-model="Settings.superusers" ng-list="&#10;" ng-trim="false" rows="3" md-select-on-focus></textarea>
 									</md-input-container>
@@ -1212,35 +1260,35 @@ Admin Settings
 						</section>
 
 						<section layout="row" flex>
-							<md-card flex=50 id="jasper" style="max-width:49%">
+							<md-card flex=50 id="host_jasper" style="max-width:49%">
 								<md-card-title>
 									<md-card-title-text>
-										<span>Jasper</span>
+										<span>Host Jasper</span>
 									</md-card-title-text>
-									<md-button ng-click="clearSection('jasper')">
+									<md-button ng-click="clearSection('host_jasper')">
 										<i class="fa fa-trash"></i>
 									</md-button>
 								</md-card-title>
 								<md-card-content>
 									<md-input-container class="control" style="width:45%;">
 										<label>Binary Name</label>
-										<input type="text" ng-model="Settings.jasper.binary_name">
+										<input type="text" ng-model="Settings.host_jasper.binary_name">
 									</md-input-container>
 									<md-input-container class="control" style="width:45%; margin-left:50px;">
 										<label>Download File Name</label>
-										<input type="text" ng-model="Settings.jasper.download_file_name">
+										<input type="text" ng-model="Settings.host_jasper.download_file_name">
 									</md-input-container>
 									<md-input-container class="control" style="width:45%;">
 										<label>Port</label>
-										<input type="number" ng-model="Settings.jasper.port">
+										<input type="number" ng-model="Settings.host_jasper.port">
 									</md-input-container>
 									<md-input-container class="control" style="width:45%; margin-left:50px;">
 										<label>URL</label>
-										<input type="text" ng-model="Settings.jasper.url">
+										<input type="text" ng-model="Settings.host_jasper.url">
 									</md-input-container>
 									<md-input-container class="control" style="width:45%;">
 										<label>Version</label>
-										<input type="text" ng-model="Settings.jasper.version">
+										<input type="text" ng-model="Settings.host_jasper.version">
 									</md-input-container>
 								</md-card-content>
 							</md-card>
@@ -1325,11 +1373,22 @@ Admin Settings
 				<md-card-title>
 					<i class="fa fa-refresh"></i>
 					<md-card-title-text>
-						<span>Restart Tasks</span>
-						<span class="md-subhead">Restart failed tasks that ran between two times</span>
+						<span>Restart Tasks/Commit Queue Versions</span>
+						<span class="md-subhead">Restart failed tasks or commit queue versions that ran between two times</span>
 					</md-card-title-text>
 				</md-card-title>
 				<md-card-content>
+					<table>
+						<tr>
+							<td>Restart...</td>
+							<td>
+								<md-radio-group data-ng-model="restartType" layout="row" style="margin-left:40px">
+									<md-radio-button data-ng-value="'tasks'" style="width:2%"></md-radio-button><span>Tasks</span>
+									<md-radio-button class="inline" data-ng-value="'versions'" style="margin-left:40px;width:12%"></md-radio-button><span>Versions</span>
+								</md-radio-group>
+							</td>
+						</tr>
+					</table>
 					<table>
 						<tr>
 							<td>From:</td>
@@ -1348,10 +1407,10 @@ Admin Settings
 					</table>
 				</md-card-content>
 				<md-card-footer class="squeezeTop">
-					<md-checkbox ng-model="restartRed" style="top: 10px">Red Tasks</md-checkbox>
-					<md-checkbox ng-model="restartPurple" style="top: 10px">Purple Tasks</md-checkbox>
-					<md-checkbox ng-model="restartLavender" style="top: 10px">Lavender Tasks</md-checkbox>
-					<md-button class="md-raised" ng-disabled="disableSubmit" ng-click="restartTasks(true)">Submit</md-button>
+					<md-checkbox ng-model="restartRed" ng-show="restartType == 'tasks'" style="top: 10px">Red Tasks</md-checkbox>
+					<md-checkbox ng-model="restartPurple" ng-show="restartType == 'tasks'" style="top: 10px">Purple Tasks</md-checkbox>
+					<md-checkbox ng-model="restartLavender" ng-show="restartType == 'tasks'" style="top: 10px">Lavender Tasks</md-checkbox>
+					<md-button class="md-raised" ng-disabled="disableSubmit" ng-click="restartItems(restartType, true)">Submit</md-button>
 				</md-card-footer>
 			</md-card>
 

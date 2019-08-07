@@ -8,6 +8,8 @@ import (
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/amboy/pool"
 	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
+	"github.com/mongodb/grip/recovery"
 	"github.com/pkg/errors"
 )
 
@@ -25,6 +27,9 @@ type limitedSizeLocal struct {
 	toDelete chan string
 	capacity int
 	storage  map[string]amboy.Job
+
+	deletedCount int
+	staleCount   int
 
 	runner amboy.Runner
 	mu     sync.RWMutex
@@ -45,39 +50,40 @@ func NewLocalLimitedSize(workers, capacity int) amboy.Queue {
 // opened, a task of that name exists has been completed (and is
 // stored in the results storage,) or is pending, and finally if the
 // queue is at capacity.
-func (q *limitedSizeLocal) Put(j amboy.Job) error {
+func (q *limitedSizeLocal) Put(ctx context.Context, j amboy.Job) error {
 	if !q.Started() {
 		return errors.Errorf("queue not open. could not add %s", j.ID())
 	}
-
-	name := j.ID()
-
-	q.mu.RLock()
-	if _, ok := q.storage[name]; ok {
-		q.mu.RUnlock()
-		return errors.Errorf("cannot dispatch '%s', already complete", name)
-	}
-	q.mu.RUnlock()
 
 	j.UpdateTimeInfo(amboy.JobTimeInfo{
 		Created: time.Now(),
 	})
 
-	select {
-	case q.channel <- j:
-		q.mu.Lock()
-		defer q.mu.Unlock()
-		q.storage[name] = j
+	if err := j.TimeInfo().Validate(); err != nil {
+		return errors.Wrap(err, "invalid job timeinfo")
+	}
 
+	name := j.ID()
+
+	q.mu.Lock()
+	defer q.mu.Unlock()
+
+	if _, ok := q.storage[name]; ok {
+		return errors.Errorf("cannot dispatch '%s', already complete", name)
+	}
+
+	select {
+	case <-ctx.Done():
+		return errors.Wrapf(ctx.Err(), "queue full, cannot add %s", name)
+	case q.channel <- j:
+		q.storage[name] = j
 		return nil
-	default:
-		return errors.Errorf("queue full, cannot add '%s'", name)
 	}
 }
 
 // Get returns a job, by name. This will include all tasks currently
 // stored in the queue.
-func (q *limitedSizeLocal) Get(name string) (amboy.Job, bool) {
+func (q *limitedSizeLocal) Get(ctx context.Context, name string) (amboy.Job, bool) {
 	q.mu.RLock()
 	defer q.mu.RUnlock()
 
@@ -90,11 +96,37 @@ func (q *limitedSizeLocal) Get(name string) (amboy.Job, bool) {
 // implementations to fetch work. This operation blocks until a job is
 // available or the context is canceled.
 func (q *limitedSizeLocal) Next(ctx context.Context) amboy.Job {
-	select {
-	case job := <-q.channel:
-		return job
-	case <-ctx.Done():
-		return nil
+	for {
+		select {
+		case job := <-q.channel:
+			ti := job.TimeInfo()
+			if ti.IsStale() {
+				q.mu.Lock()
+				delete(q.storage, job.ID())
+				q.staleCount++
+				q.mu.Unlock()
+
+				grip.Notice(message.Fields{
+					"state":    "stale",
+					"job":      job.ID(),
+					"job_type": job.Type().Name,
+				})
+				continue
+			}
+
+			if !ti.IsDispatchable() {
+				go func() {
+					defer recovery.LogStackTraceAndContinue("re-queue waiting job", job.ID())
+					q.channel <- job
+				}()
+				continue
+			}
+
+			return job
+		case <-ctx.Done():
+			return nil
+		}
+
 	}
 }
 
@@ -169,13 +201,13 @@ func (q *limitedSizeLocal) SetRunner(r amboy.Runner) error {
 
 // Stats returns information about the current state of jobs in the
 // queue, and the amount of work completed.
-func (q *limitedSizeLocal) Stats() amboy.QueueStats {
+func (q *limitedSizeLocal) Stats(ctx context.Context) amboy.QueueStats {
 	q.mu.RLock()
 	defer q.mu.RUnlock()
 
 	s := amboy.QueueStats{
-		Total:     len(q.storage),
-		Completed: len(q.toDelete),
+		Total:     len(q.storage) + q.staleCount,
+		Completed: len(q.toDelete) + q.deletedCount,
 		Pending:   len(q.channel),
 	}
 	s.Running = s.Total - s.Completed - s.Pending
@@ -184,6 +216,9 @@ func (q *limitedSizeLocal) Stats() amboy.QueueStats {
 
 // Complete marks a job complete in the queue.
 func (q *limitedSizeLocal) Complete(ctx context.Context, j amboy.Job) {
+	if ctx.Err() != nil {
+		return
+	}
 	q.mu.Lock()
 	defer q.mu.Unlock()
 
@@ -192,7 +227,9 @@ func (q *limitedSizeLocal) Complete(ctx context.Context, j amboy.Job) {
 
 	if len(q.toDelete) == q.capacity-1 {
 		delete(q.storage, <-q.toDelete)
+		q.deletedCount++
 	}
+
 	q.toDelete <- j.ID()
 }
 

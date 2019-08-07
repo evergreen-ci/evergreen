@@ -45,6 +45,7 @@ func (pp *PerfPlugin) GetPanelConfig() (*PanelConfig, error) {
 					`<script type="text/javascript" src="/static/app/perf/PerfChartService.js"></script>`,
 					`<script type="text/javascript" src="/static/app/perf/TrendSamples.js"></script>`,
 					`<script type="text/javascript" src="/static/app/perf/TestSample.js"></script>`,
+					`<script type="text/javascript" src="/static/thirdparty/numeral.js"></script>`,
 				},
 				Page:      TaskPage,
 				Position:  PageCenter,

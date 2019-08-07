@@ -134,7 +134,7 @@ func (p *priorityDriver) JobStats(ctx context.Context) <-chan amboy.JobStatusInf
 func (p *priorityDriver) Next(_ context.Context) amboy.Job {
 	j := p.storage.Pop()
 
-	if j == nil || j.Status().Completed {
+	if j == nil || j.Status().Completed || j.TimeInfo().IsStale() {
 		return nil
 	}
 

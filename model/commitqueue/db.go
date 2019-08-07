@@ -16,6 +16,7 @@ var (
 	QueueKey      = bsonutil.MustHaveTag(CommitQueue{}, "Queue")
 	ProcessingKey = bsonutil.MustHaveTag(CommitQueue{}, "Processing")
 	IssueKey      = bsonutil.MustHaveTag(CommitQueueItem{}, "Issue")
+	VersionKey    = bsonutil.MustHaveTag(CommitQueueItem{}, "Version")
 )
 
 func updateOne(query interface{}, update interface{}) error {
@@ -63,6 +64,17 @@ func add(id string, queue []CommitQueueItem, item CommitQueueItem) error {
 	}
 
 	return err
+}
+
+func addVersionID(id string, item CommitQueueItem) error {
+	return updateOne(
+		bson.M{
+			IdKey: id,
+			bsonutil.GetDottedKeyName(QueueKey, IssueKey): item.Issue,
+		},
+		bson.M{
+			"$set": bson.M{bsonutil.GetDottedKeyName(QueueKey, "$", VersionKey): item.Version},
+		})
 }
 
 func remove(id, issue string) error {

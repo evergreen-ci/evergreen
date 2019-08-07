@@ -5,6 +5,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/mongodb/grip/level"
 	"github.com/stretchr/testify/suite"
 )
@@ -41,13 +42,18 @@ func (s *GitHubPRSenderSuite) TestGithubPRLogger() {
 	s.NoError(err)
 
 	msg := GithubMergePR{
-		Status:        evergreen.PatchSucceeded,
-		ProjectID:     "mci",
-		Owner:         "evergreen-ci",
-		Repo:          "evergreen",
-		Ref:           "deadbeef",
-		CommitMessage: "merged by cq",
-		PRNum:         1,
+		Status:    evergreen.PatchSucceeded,
+		ProjectID: "mci",
+		Item:      "1",
+		PRs: []event.PRInfo{
+			{
+				Owner:       "evergreen-ci",
+				Repo:        "evergreen",
+				Ref:         "deadbeef",
+				CommitTitle: "PR (#1)",
+				PRNum:       1,
+			},
+		},
 	}
 	c := NewGithubMergePRMessage(level.Info, msg)
 	ghPRLogger.Send(c)
@@ -55,7 +61,7 @@ func (s *GitHubPRSenderSuite) TestGithubPRLogger() {
 }
 
 func (s *GitHubPRSenderSuite) TestDequeueFromCommitQueue() {
-	s.NoError(dequeueFromCommitQueue("mci", 1))
+	s.NoError(dequeueFromCommitQueue("mci", "1"))
 	cq, err := FindOneId("mci")
 	s.NoError(err)
 	s.Equal("2", cq.Next().Issue)

@@ -74,7 +74,7 @@ imports:
   - name: github.com/go-ini/ini
     version: 6e4869b434bd001f6983749881c7ead3545887d8
   - name: github.com/aws/aws-sdk-go
-    version: 1cb9ce3dbddddab4a70e25ec1a5a60f1647b7e0b
+    version: b0b59fd2ceb03908e5d3bcd1449b46ce75508f4b
 
   - name: github.com/mholt/archiver
     version: e4ef56d48eb029648b0e895bb0b6a393ef0829c3
@@ -108,11 +108,11 @@ imports:
     version: 23f6a9d8e774f597faabae8b58b8c6020b3f79ef
 
   - name: github.com/mongodb/grip
-    version: 8b8accd7a3ec9b31a2d3eea610d5bf906bddfd11
+    version: 0e6bc551430dcc6e74a79ba8937a4f8ff185e907
   - name: github.com/mongodb/anser
-    version: 1fb43a6d9968b19ddfd66e6a77373f9e4c54adeb
+    version: c7518f4c967d32231c92683c8c967307d5de5e5c
   - name: github.com/mongodb/amboy
-    version: 439f4cf6c6cbd9408752842e3ce3888f2bafbd11
+    version: 0066a99da1a1f05827751b9ed7995a32bdfd9ade
   - name: github.com/evergreen-ci/gimlet
     version: 2174a9b1266e1b45c99cc80e00ccc8444c84ad38
   - name: github.com/evergreen-ci/shrub
@@ -120,9 +120,12 @@ imports:
   - name: github.com/evergreen-ci/pail
     version: 7b2f8e0b2d972ca621cad3777d68276a54da13d0
   - name: github.com/mongodb/jasper
-    version: 99b68351f31c1751e05b3b831818f0fbbd74f489
+    version: fcc3d8b2414af740e10ae77caa3d333d39888595
   - name: go.mongodb.org/mongo-driver
     version: 305bc4a5e4131420fe8ba5628e6faa9e6ade4e86
+
+  - name: github.com/evergreen-ci/certdepot
+    version: 6f75adcd0e46b0a2eb99560d517b5879ccf3ad07
 
   # git library and its dependencies
   - name: gopkg.in/src-d/go-git.v4
@@ -131,7 +134,7 @@ imports:
     version: 640f0ab560aeb89d523bb6ac322b1244d5c3796c
   - name: github.com/jbenet/go-context
     version: d14ea06fba99483203c19d92cfcd13ebe73135f4
-  - name: github.com/kevinburke/ssh_configgit
+  - name: github.com/kevinburke/ssh_config
     version: 4fcc689beeab13c6dd7ab1d65cb9d7a1aeea9663
   - name: github.com/src-d/gcfg
     version: f187355171c936ac84a82793659ebb4936bc1c23

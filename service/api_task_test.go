@@ -215,11 +215,12 @@ func TestAssignNextAvailableTaskWithPlannerSettingVersionLegacy(t *testing.T) {
 				So(err, ShouldBeNil)
 				So(t, ShouldBeNil)
 			})
-			Convey("a tasks queue with a task that does not exist should error", func() {
+			Convey("a tasks queue with a task that does not exist should continue", func() {
 				taskQueue.Queue = []model.TaskQueueItem{{Id: "notatask"}}
 				So(taskQueue.Save(), ShouldBeNil)
-				_, err := assignNextAvailableTask(taskQueue, model.NewTaskDispatchService(taskQueueServiceTTL), &theHostWhoCanBoastTheMostRoast)
-				So(err, ShouldNotBeNil)
+				t, err := assignNextAvailableTask(taskQueue, model.NewTaskDispatchService(taskQueueServiceTTL), &theHostWhoCanBoastTheMostRoast)
+				So(err, ShouldBeNil)
+				So(t, ShouldBeNil)
 			})
 			Convey("with a host with a running task", func() {
 				anotherHost := host.Host{
@@ -383,8 +384,9 @@ func TestAssignNextAvailableTaskWithPlannerSettingVersionTunable(t *testing.T) {
 			Convey("a tasks queue with a task that does not exist should error", func() {
 				taskQueue.Queue = []model.TaskQueueItem{{Id: "notatask"}}
 				So(taskQueue.Save(), ShouldBeNil)
-				_, err := assignNextAvailableTask(taskQueue, model.NewTaskDispatchService(taskQueueServiceTTL), &theHostWhoCanBoastTheMostRoast)
-				So(err, ShouldNotBeNil)
+				t, err := assignNextAvailableTask(taskQueue, model.NewTaskDispatchService(taskQueueServiceTTL), &theHostWhoCanBoastTheMostRoast)
+				So(err, ShouldBeNil)
+				So(t, ShouldBeNil)
 			})
 			Convey("with a host with a running task", func() {
 				anotherHost := host.Host{
@@ -578,6 +580,37 @@ func TestNextTask(t *testing.T) {
 				So(json.NewDecoder(resp.Body).Decode(details), ShouldBeNil)
 				So(details.ShouldExit, ShouldEqual, false)
 				So(sampleHost.SetAgentRevision(evergreen.BuildRevision), ShouldBeNil) // reset
+			})
+			Convey("with a non-legacy host with an old agent revision in the database", func() {
+				nonLegacyHost := host.Host{
+					Id: "nonLegacyHost",
+					Distro: distro.Distro{
+						Id:                  distroID,
+						BootstrapMethod:     distro.BootstrapMethodUserData,
+						CommunicationMethod: distro.CommunicationMethodRPC,
+					},
+					Secret:        hostSecret,
+					Status:        evergreen.HostRunning,
+					AgentRevision: "out-of-date",
+				}
+				So(nonLegacyHost.Insert(), ShouldBeNil)
+
+				Convey("with the latest agent revision in the next task details", func() {
+					reqDetails := &apimodels.GetNextTaskDetails{AgentRevision: evergreen.BuildRevision}
+					resp := getNextTaskEndpoint(t, as, nonLegacyHost.Id, reqDetails)
+					So(resp.Code, ShouldEqual, http.StatusOK)
+					respDetails := &apimodels.NextTaskResponse{}
+					So(json.NewDecoder(resp.Body).Decode(respDetails), ShouldBeNil)
+					So(respDetails.ShouldExit, ShouldBeFalse)
+				})
+				Convey("with an outdated agent revision in the next task details", func() {
+					reqDetails := &apimodels.GetNextTaskDetails{AgentRevision: "out-of-date"}
+					resp := getNextTaskEndpoint(t, as, nonLegacyHost.Id, reqDetails)
+					So(resp.Code, ShouldEqual, http.StatusOK)
+					respDetails := &apimodels.NextTaskResponse{}
+					So(json.NewDecoder(resp.Body).Decode(respDetails), ShouldBeNil)
+					So(respDetails.ShouldExit, ShouldBeTrue)
+				})
 			})
 			Convey("with a host that already has a running task", func() {
 				h2 := host.Host{
@@ -818,15 +851,15 @@ func TestTaskLifecycleEndpoints(t *testing.T) {
 		So(testVersion.Insert(), ShouldBeNil)
 
 		Convey("test task should start a background job", func() {
-			stat := q.Stats()
+			stat := q.Stats(ctx)
 			So(stat.Total, ShouldEqual, 0)
 			resp := getStartTaskEndpoint(t, as, hostId, task1.Id)
-			stat = q.Stats()
+			stat = q.Stats(ctx)
 
 			So(resp.Code, ShouldEqual, http.StatusOK)
 			So(resp, ShouldNotBeNil)
 			So(stat.Total, ShouldEqual, 1)
-			amboy.WaitCtxInterval(ctx, q, time.Millisecond)
+			amboy.WaitInterval(ctx, q, time.Millisecond)
 
 			counter := 0
 			for job := range as.queue.Results(ctx) {

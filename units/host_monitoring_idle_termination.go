@@ -23,6 +23,7 @@ const (
 	// idleTimeCutoff is the amount of time we wait for an idle host to be marked as idle.
 	idleTimeCutoff            = 4 * time.Minute
 	idleWaitingForAgentCutoff = 10 * time.Minute
+	idleTaskGroupHostCutoff   = 10 * time.Minute
 
 	// MaxTimeNextPayment is the amount of time we wait to have left before marking a host as idle
 	maxTimeTilNextPayment = 5 * time.Minute
@@ -32,7 +33,6 @@ func init() {
 	registry.AddJobType(idleHostJobName, func() amboy.Job {
 		return makeIdleHostJob()
 	})
-
 }
 
 type idleHostJob struct {
@@ -55,6 +55,7 @@ func makeIdleHostJob() *idleHostJob {
 		},
 	}
 	j.SetDependency(dependency.NewAlways())
+	j.SetPriority(2)
 
 	return j
 }
@@ -140,11 +141,16 @@ func (j *idleHostJob) Run(ctx context.Context) {
 		return
 	}
 
+	idleThreshold := idleTimeCutoff
+	if j.host.RunningTaskGroup != "" {
+		idleThreshold = idleTaskGroupHostCutoff
+	}
+
 	// if we haven't heard from the host or it's been idle for longer than the cutoff, we should terminate
-	if communicationTime >= idleTimeCutoff || idleTime >= idleTimeCutoff {
+	if communicationTime >= idleThreshold || idleTime >= idleThreshold {
 		j.Terminated = true
 		tjob := NewHostTerminationJob(j.env, *j.host, false)
-		tjob.Run(ctx)
-		j.AddError(tjob.Error())
+		queue := j.env.RemoteQueue()
+		j.AddError(queue.Put(ctx, tjob))
 	}
 }

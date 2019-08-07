@@ -9,8 +9,22 @@ mciModule.controller('DistrosCtrl', function($scope, $window, $location, $anchor
   for (var i = 0; i < $scope.distros.length; i++) {
     $scope.distros[i].pool_size = $scope.distros[i].pool_size || 0;
     $scope.distros[i].planner_settings = $scope.distros[i].planner_settings || {};
-    $scope.distros[i].planner_settings.minimum_hosts = $scope.distros[i].planner_settings.minimum_hosts || 0;
     $scope.distros[i].planner_settings.version = $scope.distros[i].planner_settings.version || "legacy";
+    $scope.distros[i].planner_settings.minimum_hosts = $scope.distros[i].planner_settings.minimum_hosts || 0;
+    $scope.distros[i].planner_settings.maximum_hosts = $scope.distros[i].planner_settings.maximum_hosts || 0;
+    $scope.distros[i].planner_settings.target_time = $scope.distros[i].planner_settings.target_time || 0;
+    $scope.distros[i].planner_settings.acceptable_host_idle_time = $scope.distros[i].planner_settings.acceptable_host_idle_time || 0;
+    $scope.distros[i].planner_settings.patch_zipper_factor = $scope.distros[i].planner_settings.patch_zipper_factor || 0;
+    // Convert from nanoseconds (time.Duration) to seconds (UI display units)
+    if ($scope.distros[i].planner_settings.target_time > 0) {
+      $scope.distros[i].planner_settings.target_time /= 1e9;
+    }
+    // Convert from nanoseconds (time.Duration) to seconds (UI display units)
+    if ($scope.distros[i].planner_settings.acceptable_host_idle_time > 0) {
+      $scope.distros[i].planner_settings.acceptable_host_idle_time /= 1e9;
+    }
+    $scope.distros[i].planner_settings.group_versions = $scope.distros[i].planner_settings.group_versions;
+    $scope.distros[i].planner_settings.task_ordering = $scope.distros[i].planner_settings.task_ordering || "";
     $scope.distros[i].finder_settings = $scope.distros[i].finder_settings || {};
     $scope.distros[i].finder_settings.version = $scope.distros[i].finder_settings.version || "legacy";
     $scope.distros[i].bootstrap_method = $scope.distros[i].bootstrap_method || 'legacy-ssh';
@@ -18,12 +32,29 @@ mciModule.controller('DistrosCtrl', function($scope, $window, $location, $anchor
     $scope.distros[i].clone_method = $scope.distros[i].clone_method || 'legacy-ssh';
   }
 
-  $scope.planner_versions = [{
-   'id': "legacy",
+  $scope.plannerVersions = [{
+    'id': "legacy",
     'display': 'Legacy '
+  }, {
+    'id': "revised",
+    'display': 'Revised '
   }, {
     'id': "tunable",
     'display': 'Tunable '
+  }];
+
+  $scope.taskOrderings = [{
+    'id': "",
+    'display': ' '
+  }, {
+   'id': "interleave",
+    'display': 'Interleave '
+  }, {
+    'id': "mainlinefirst",
+    'display': 'Mainline First '
+  }, {
+    'id': "patchfirst",
+    'display': 'Patch First '
   }];
 
   $scope.providers = [{
@@ -177,7 +208,7 @@ mciModule.controller('DistrosCtrl', function($scope, $window, $location, $anchor
   $scope.getKeyDisplay = function(key, display) {
     for (var i = 0; i < $scope[key].length; i++) {
       if ($scope[key][i].id === display) {
-    return $scope[key][i].display;
+        return $scope[key][i].display;
       }
     }
     return display;
@@ -280,6 +311,14 @@ mciModule.controller('DistrosCtrl', function($scope, $window, $location, $anchor
   }
 
   $scope.saveConfiguration = function() {
+    // Convert from UI display units (sec) to nanoseconds
+    if($scope.activeDistro.planner_settings.target_time > 0) {
+      $scope.activeDistro.planner_settings.target_time *= 1e9
+    }
+    // Convert from UI display units (sec) to nanoseconds
+    if($scope.activeDistro.planner_settings.acceptable_host_idle_time > 0) {
+      $scope.activeDistro.planner_settings.acceptable_host_idle_time *= 1e9
+    }
     if ($scope.activeDistro.new) {
       mciDistroRestService.addDistro(
       $scope.activeDistro, {
@@ -338,11 +377,18 @@ mciModule.controller('DistrosCtrl', function($scope, $window, $location, $anchor
         'communication_method': 'legacy-ssh',
         'clone_method': 'legacy-ssh',
         'settings': {},
+        'planner_settings': {
+          'version': 'legacy',
+          'minimum_hosts': 0
+        },
+        'finder_settings': {
+          'version': 'legacy'
+        },
         'new': true,
       };
 
       if ($scope.keys.length != 0) {
-    defaultOptions.ssh_key = $scope.keys[0].name;
+        defaultOptions.ssh_key = $scope.keys[0].name;
       }
       $scope.distros.unshift(defaultOptions);
       $scope.hasNew = true;
@@ -496,7 +542,13 @@ mciModule.filter("archDisplay", function() {
 
 mciModule.filter("versionDisplay", function() {
   return function(version, scope) {
-    return scope.getKeyDisplay('planner_versions', version);
+    return scope.getKeyDisplay('plannerVersions', version);
+  }
+});
+
+mciModule.filter('taskOrderingDisplay', function() {
+  return function(taskOrdering, scope) {
+    return scope.getKeyDisplay('taskOrderings', taskOrdering);
   }
 });
 

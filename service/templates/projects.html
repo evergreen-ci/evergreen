@@ -552,6 +552,65 @@ Evergreen Projects
           </div>
         </div>
 
+        <!-- Periodic builds -->
+        <div class="variables">
+          <div class="form-group">
+            <div class="col-header col-lg-6 form-control-static">
+              <h3>Periodic Builds</h3>
+              <div class="muted small">Configure tasks to run periodically within this project</div>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <div class="col-lg-2"> <label class="control-label"> Interval (hours) </label> </div>
+            <div class="col-lg-2"> <label class="control-label"> Config File </label> </div>
+            <div class="col-lg-2"> <label class="control-label"> Patch Alias </label> </div>
+            <div class="col-lg-2"> <label class="control-label"> Message </label> </div>
+            <div class="col-lg-2"></div>
+          </div>
+
+          <div class="form-group" ng-repeat="definition in settingsFormData.periodic_builds track by $index">
+            <div class="col-lg-2">
+              <input class="form-control" ng-model="definition.interval_hours" type="number" placeholder="24">
+            </div>
+            <div class="col-lg-2">
+              <input class="form-control" ng-model="definition.config_file" type="text" placeholder=".evergreen.yml">
+            </div>
+            <div class="col-lg-2">
+              <input class="form-control" ng-model="definition.alias" type="text" placeholder="my_task_alias">
+            </div>
+            <div class="col-lg-2">
+              <input class="form-control" ng-model="definition.message" type="text" placeholder="A periodic build">
+            </div>
+            <div class="col-lg-2">
+              <button class="btn btn-default btn-danger" type="button" ng-click="removePeriodicBuild($index)">
+                <i class="fa fa-trash"></i>
+              </button>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <div class="col-lg-2">
+              <input ng-model="periodic_build.interval_hours" class="form-control" type="number" placeholder="24">
+            </div>
+            <div class="col-lg-2">
+              <input ng-model="periodic_build.config_file" class="form-control" type="text" placeholder=".evergreen.yml">
+            </div>
+            <div class="col-lg-2">
+              <input ng-model="periodic_build.alias" class="form-control" type="text" placeholder="my_task_alias">
+            </div>
+            <div class="col-lg-2">
+              <input class="form-control" ng-model="periodic_build.message" type="text" placeholder="A periodic build">
+            </div>
+            <div class="col-lg-4">
+              <button class="plus-button btn btn-primary " ng-disabled="periodicBuildErrors(periodic_build)" type="button" ng-click="addPeriodicBuild()">
+                <i class="fa fa-plus"></i>
+              </button>
+            </div>
+            <label class="distro-error">[[invalidPeriodicBuildMsg]]</label>
+          </div>
+        </div>
+
         <div id="caching-info">
             <div class="h3">Historical Data Caching Info </div>
             <div class="form-group">

@@ -1,6 +1,7 @@
 package jasper
 
 import (
+	"context"
 	"io"
 	"io/ioutil"
 	"time"
@@ -14,17 +15,18 @@ import (
 // OutputOptions provides a common way to define and represent the
 // output behavior of a evergreen/subprocess.Command operation.
 type OutputOptions struct {
-	Output            io.Writer `json:"-"`
-	Error             io.Writer `json:"-"`
-	SuppressOutput    bool      `json:"suppress_output"`
-	SuppressError     bool      `json:"suppress_error"`
-	SendOutputToError bool      `json:"redirect_output_to_error"`
-	SendErrorToOutput bool      `json:"redirect_error_to_output"`
-	Loggers           []Logger  `json:"loggers"`
-	outputSender      *send.WriterSender
-	errorSender       *send.WriterSender
-	outputMulti       io.Writer
-	errorMulti        io.Writer
+	Output            io.Writer `bson:"-" json:"-" yaml:"-"`
+	Error             io.Writer `bson:"-" json:"-" yaml:"-"`
+	SuppressOutput    bool      `bson:"suppress_output" json:"suppress_output" yaml:"suppress_output"`
+	SuppressError     bool      `bson:"suppress_error" json:"suppress_error" yaml:"suppress_error"`
+	SendOutputToError bool      `bson:"redirect_output_to_error" json:"redirect_output_to_error" yaml:"redirect_output_to_error"`
+	SendErrorToOutput bool      `bson:"redirect_error_to_output" json:"redirect_error_to_output" yaml:"redirect_error_to_output"`
+	Loggers           []Logger  `bson:"loggers" json:"loggers,omitempty" yaml:"loggers"`
+
+	outputSender *send.WriterSender
+	errorSender  *send.WriterSender
+	outputMulti  io.Writer
+	errorMulti   io.Writer
 }
 
 // LogType is a type for representing various logging options.
@@ -89,14 +91,32 @@ func (opts BufferOptions) Validate() error {
 
 // Validate ensures that LogOptions is valid.
 func (opts LogOptions) Validate() error {
-	return opts.BufferOptions.Validate()
+	catcher := grip.NewBasicCatcher()
+	catcher.Wrap(opts.BufferOptions.Validate(), "invalid buffering options")
+	catcher.Wrap(opts.Format.Validate(), "invalid log format")
+	return catcher.Resolve()
 }
 
 // Logger is a wrapper struct around a grip/send.Sender.
 type Logger struct {
-	Type    LogType    `json:"log_type"`
-	Options LogOptions `json:"log_options"`
-	sender  send.Sender
+	Type    LogType    `bson:"log_type" json:"log_type" yaml:"log_type"`
+	Options LogOptions `bson:"log_options" json:"log_options" yaml:"log_options"`
+
+	sender send.Sender
+}
+
+// NewInMemoryLogger is a basic constructor that constructs a logger
+// configuration for plain formatted in-memory buffered logger. The
+// logger will capture up to maxSize messages.
+func NewInMemoryLogger(maxSize int) Logger {
+	return Logger{
+		Type: LogInMemory,
+		Options: LogOptions{
+			Format:      LogFormatPlain,
+			InMemoryCap: maxSize,
+		},
+	}
+
 }
 
 // Validate ensures that LogOptions is valid.
@@ -232,13 +252,63 @@ func (l *Logger) Configure() (send.Sender, error) {
 	return l.sender, nil
 }
 
+// LogStream represents the output of reading the in-memory log buffer as a
+// stream, containing the logs (if any) and whether or not the stream is done
+// reading.
+type LogStream struct {
+	Logs []string `json:"logs,omitempty"`
+	Done bool     `json:"done"`
+}
+
+// GetInMemoryLogStream gets at most count logs from the in-memory output logs
+// for the given Process proc. If the process has not been called with
+// Process.Wait(), this is not guaranteed to produce all the logs. This function
+// assumes that there is exactly one in-memory logger attached to this process's
+// output. It returns io.EOF if the stream is done. For remote interfaces, this
+// function will not work; use (RemoteClient).GetLogStream() instead.
+func GetInMemoryLogStream(ctx context.Context, proc Process, count int) ([]string, error) {
+	if proc == nil {
+		return nil, errors.New("cannot get output logs from nil process")
+	}
+	for _, logger := range proc.Info(ctx).Options.Output.Loggers {
+		if logger.Type != LogInMemory {
+			continue
+		}
+
+		inMemorySender, ok := logger.sender.(*send.InMemorySender)
+		if !ok {
+			continue
+		}
+
+		msgs, _, err := inMemorySender.GetCount(count)
+		if err != nil {
+			if err != io.EOF {
+				err = errors.Wrap(err, "failed to get logs from in-memory stream")
+			}
+			return nil, err
+		}
+
+		strs := make([]string, 0, len(msgs))
+		for _, msg := range msgs {
+			str, err := inMemorySender.Formatter(msg)
+			if err != nil {
+				return nil, err
+			}
+			strs = append(strs, str)
+		}
+
+		return strs, nil
+	}
+	return nil, errors.New("could not find in-memory output logs")
+}
+
 // BufferOptions packages options for whether or not a Logger should be
 // buffered and the duration and size of the respective buffer in the case that
 // it should be.
 type BufferOptions struct {
-	Buffered bool          `json:"buffered"`
-	Duration time.Duration `json:"duration"`
-	MaxSize  int           `json:"max_size"`
+	Buffered bool          `bson:"buffered" json:"buffered" yaml:"buffered"`
+	Duration time.Duration `bson:"duration" json:"duration" yaml:"duration"`
+	MaxSize  int           `bson:"max_size" json:"max_size" yaml:"max_size"`
 }
 
 func (o OutputOptions) outputIsNull() bool {
@@ -307,12 +377,7 @@ func (o OutputOptions) Validate() error {
 	}
 
 	for _, logger := range o.Loggers {
-		if err := logger.Validate(); err != nil {
-			catcher.Add(err)
-		}
-		if err := logger.Options.Format.Validate(); err != nil {
-			catcher.Add(err)
-		}
+		catcher.Wrap(logger.Validate(), "invalid logger")
 	}
 
 	return catcher.Resolve()

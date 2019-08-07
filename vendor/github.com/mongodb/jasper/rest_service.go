@@ -2,6 +2,7 @@ package jasper
 
 import (
 	"context"
+	"io"
 	"net/http"
 	"os"
 	"strconv"
@@ -13,7 +14,6 @@ import (
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/mongodb/grip/recovery"
-	"github.com/mongodb/grip/send"
 	"github.com/pkg/errors"
 	"github.com/tychoish/lru"
 )
@@ -63,6 +63,7 @@ func (s *Service) App(ctx context.Context) *gimlet.APIApp {
 	app := gimlet.NewApp()
 
 	app.AddRoute("/").Version(1).Get().Handler(s.rootRoute)
+	app.AddRoute("/id").Version(1).Get().Handler(s.id)
 	app.AddRoute("/create").Version(1).Post().Handler(s.createProcess)
 	app.AddRoute("/download").Version(1).Post().Handler(s.downloadFile)
 	app.AddRoute("/download/cache").Version(1).Post().Handler(s.configureCache)
@@ -78,7 +79,7 @@ func (s *Service) App(ctx context.Context) *gimlet.APIApp {
 	app.AddRoute("/process/{id}/wait").Version(1).Get().Handler(s.waitForProcess)
 	app.AddRoute("/process/{id}/respawn").Version(1).Get().Handler(s.respawnProcess)
 	app.AddRoute("/process/{id}/metrics").Version(1).Get().Handler(s.processMetrics)
-	app.AddRoute("/process/{id}/logs").Version(1).Get().Handler(s.getLogs)
+	app.AddRoute("/process/{id}/logs/{count}").Version(1).Get().Handler(s.getLogStream)
 	app.AddRoute("/process/{id}/loginfo").Version(1).Get().Handler(s.getBuildloggerURLs)
 	app.AddRoute("/process/{id}/signal/{signal}").Version(1).Patch().Handler(s.signalProcess)
 	app.AddRoute("/process/{id}/trigger/signal/{trigger-id}").Version(1).Patch().Handler(s.registerSignalTriggerID)
@@ -160,7 +161,10 @@ func (s *Service) rootRoute(rw http.ResponseWriter, r *http.Request) {
 		HostID: s.hostID,
 		Active: true,
 	})
+}
 
+func (s *Service) id(rw http.ResponseWriter, r *http.Request) {
+	gimlet.WriteJSON(rw, s.manager.ID())
 }
 
 func (s *Service) createProcess(rw http.ResponseWriter, r *http.Request) {
@@ -172,6 +176,7 @@ func (s *Service) createProcess(rw http.ResponseWriter, r *http.Request) {
 		})
 		return
 	}
+	ctx := r.Context()
 
 	if err := opts.Validate(); err != nil {
 		writeError(rw, gimlet.ErrorResponse{
@@ -181,15 +186,9 @@ func (s *Service) createProcess(rw http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var ctx context.Context
-	var cancel context.CancelFunc
-	if opts.Timeout > 0 {
-		ctx, cancel = context.WithTimeout(context.Background(), opts.Timeout)
-	} else {
-		ctx, cancel = context.WithCancel(context.Background())
-	}
+	pctx, cancel := context.WithCancel(context.Background())
 
-	proc, err := s.manager.CreateProcess(ctx, opts)
+	proc, err := s.manager.CreateProcess(pctx, opts)
 	if err != nil {
 		cancel()
 		writeError(rw, gimlet.ErrorResponse{
@@ -418,6 +417,7 @@ func (s *Service) waitForProcess(rw http.ResponseWriter, r *http.Request) {
 
 func (s *Service) respawnProcess(rw http.ResponseWriter, r *http.Request) {
 	id := gimlet.GetVars(r)["id"]
+	ctx := r.Context()
 
 	proc, err := s.manager.Get(r.Context(), id)
 	if err != nil {
@@ -430,8 +430,8 @@ func (s *Service) respawnProcess(rw http.ResponseWriter, r *http.Request) {
 
 	// Spawn a new context so that the process' context is not potentially
 	// canceled by the request's. See how createProcess() does this same thing.
-	ctx, cancel := context.WithCancel(context.Background())
-	newProc, err := proc.Respawn(ctx)
+	pctx, cancel := context.WithCancel(context.Background())
+	newProc, err := proc.Respawn(pctx)
 	if err != nil {
 		writeError(rw, gimlet.ErrorResponse{
 			StatusCode: http.StatusBadRequest,
@@ -530,9 +530,18 @@ func (s *Service) downloadFile(rw http.ResponseWriter, r *http.Request) {
 	gimlet.WriteJSON(rw, struct{}{})
 }
 
-func (s *Service) getLogs(rw http.ResponseWriter, r *http.Request) {
+func (s *Service) getLogStream(rw http.ResponseWriter, r *http.Request) {
 	vars := gimlet.GetVars(r)
 	id := vars["id"]
+	count, err := strconv.Atoi(vars["count"])
+	if err != nil {
+		writeError(rw, gimlet.ErrorResponse{
+			StatusCode: http.StatusBadRequest,
+			Message:    errors.Wrapf(err, "problem converting count '%s'", vars["count"]).Error(),
+		})
+		return
+	}
+
 	ctx := r.Context()
 
 	proc, err := s.manager.Get(ctx, id)
@@ -544,35 +553,20 @@ func (s *Service) getLogs(rw http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	info := getProcInfoNoHang(ctx, proc)
-	// Implicitly assumes that there's at most 1 in-memory logger.
-	var inMemorySender *send.InMemorySender
-	for _, logger := range info.Options.Output.Loggers {
-		sender, ok := logger.sender.(*send.InMemorySender)
-		if ok {
-			inMemorySender = sender
-			break
-		}
-	}
+	stream := LogStream{}
+	stream.Logs, err = GetInMemoryLogStream(ctx, proc, count)
 
-	if inMemorySender == nil {
+	if err == io.EOF {
+		stream.Done = true
+	} else if err != nil {
 		writeError(rw, gimlet.ErrorResponse{
 			StatusCode: http.StatusInternalServerError,
-			Message:    errors.Errorf("no in-memory logger found for process '%s'", id).Error(),
+			Message:    errors.Wrapf(err, "could not get logs for process '%s'", id).Error(),
 		})
 		return
 	}
 
-	logs, err := inMemorySender.GetString()
-	if err != nil {
-		writeError(rw, gimlet.ErrorResponse{
-			StatusCode: http.StatusNotFound,
-			Message:    err.Error(),
-		})
-		return
-	}
-
-	gimlet.WriteJSON(rw, logs)
+	gimlet.WriteJSON(rw, stream)
 }
 
 func (s *Service) clearManager(rw http.ResponseWriter, r *http.Request) {

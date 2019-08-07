@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
-	"runtime"
 	"time"
 
 	"github.com/mongodb/grip/send"
@@ -45,11 +44,8 @@ func runIteration(ctx context.Context, makeProc func(context.Context, *CreateOpt
 		return err
 	}
 	exitCode, err := proc.Wait(ctx)
-	if err != nil {
-		if runtime.GOOS != "windows" && err.Error() != "signal: killed" ||
-			runtime.GOOS == "windows" && err.Error() != "exit status 1" {
-			return errors.Wrapf(err, "process with id '%s' exited with code %d", proc.ID(), exitCode)
-		}
+	if err != nil && !proc.Info(ctx).Timeout {
+		return errors.Wrapf(err, "process with id '%s' exited unexpectedly with code %d", proc.ID(), exitCode)
 	}
 	return nil
 }

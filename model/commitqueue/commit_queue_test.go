@@ -52,14 +52,31 @@ func (s *CommitQueueSuite) TestEnqueue() {
 	s.Equal(1, pos)
 	s.Require().Len(s.q.Queue, 1)
 	s.Equal("c123", s.q.Next().Issue)
-	s.NotEqual(-1, s.q.findItem("c123"))
+	s.NotEqual(-1, s.q.FindItem("c123"))
 
 	// Persisted to db
 	dbq, err := FindOneId("mci")
 	s.NoError(err)
 	s.Len(dbq.Queue, 1)
 	s.Equal(sampleCommitQueueItem, *dbq.Next())
-	s.NotEqual(-1, dbq.findItem("c123"))
+	s.NotEqual(-1, dbq.FindItem("c123"))
+}
+
+func (s *CommitQueueSuite) TestUpdateVersion() {
+	_, err := s.q.Enqueue(sampleCommitQueueItem)
+	s.NoError(err)
+
+	item := s.q.Next()
+	s.Equal("c123", item.Issue)
+	s.Equal("", s.q.Next().Version)
+	item.Version = "my_version"
+	s.NoError(s.q.UpdateVersion(*item))
+	s.Equal("my_version", s.q.Next().Version)
+
+	dbq, err := FindOneId("mci")
+	s.NoError(err)
+	s.Len(dbq.Queue, 1)
+	s.Equal(item, dbq.Next())
 }
 
 func (s *CommitQueueSuite) TestNext() {

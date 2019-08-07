@@ -48,29 +48,6 @@ func TestDriverSuiteWithPriorityInstance(t *testing.T) {
 	suite.Run(t, tests)
 }
 
-func TestDriverSuiteWithMgoInstance(t *testing.T) {
-	tests := new(DriverSuite)
-	tests.uuid = uuid.NewV4().String()
-	opts := DefaultMongoDBOptions()
-	opts.DB = "amboy_test"
-	mDriver := NewMgoDriver(
-		"test-"+tests.uuid,
-		opts).(*mgoDriver)
-
-	tests.driverConstructor = func() Driver {
-		return mDriver
-	}
-
-	tests.tearDown = func() {
-		session, jobs := mDriver.getJobsCollection()
-		defer session.Close()
-		err := jobs.DropCollection()
-		grip.Infof("removed %s collection (%+v)", jobs.Name, err)
-	}
-
-	suite.Run(t, tests)
-}
-
 func TestDriverSuiteWithMongoDBInstance(t *testing.T) {
 	tests := new(DriverSuite)
 	tests.uuid = uuid.NewV4().String()

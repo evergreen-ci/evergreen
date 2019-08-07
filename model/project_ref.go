@@ -12,6 +12,7 @@ import (
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/anser/bsonutil"
 	adb "github.com/mongodb/anser/db"
+	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson"
 )
@@ -56,7 +57,8 @@ type ProjectRef struct {
 	FilesIgnoredFromCache []string `bson:"files_ignored_from_cache,omitempty" json:"files_ignored_from_cache,omitempty"`
 	DisabledStatsCache    bool     `bson:"disabled_stats_cache,omitempty" json:"disabled_stats_cache,omitempty"`
 
-	Triggers []TriggerDefinition `bson:"triggers,omitempty" json:"triggers,omitempty"`
+	Triggers       []TriggerDefinition       `bson:"triggers,omitempty" json:"triggers,omitempty"`
+	PeriodicBuilds []PeriodicBuildDefinition `bson:"periodic_builds,omitempty" json:"periodic_builds,omitempty"`
 }
 
 type CommitQueueParams struct {
@@ -101,6 +103,14 @@ type TriggerDefinition struct {
 	Alias        string `bson:"alias,omitempty" json:"alias,omitempty"`
 }
 
+type PeriodicBuildDefinition struct {
+	ID            string `bson:"id" json:"id"`
+	ConfigFile    string `bson:"config_file" json:"config_file"`
+	IntervalHours int    `bson:"interval_hours" json:"interval_hours"`
+	Alias         string `bson:"alias,omitempty" json:"alias,omitempty"`
+	Message       string `bson:"message,omitempty" json:"message,omitempty"`
+}
+
 func (a AlertConfig) GetSettingsMap() map[string]string {
 	ret := make(map[string]string)
 	for k, v := range a.Settings {
@@ -138,6 +148,7 @@ var (
 	projectRefPatchingDisabledKey   = bsonutil.MustHaveTag(ProjectRef{}, "PatchingDisabled")
 	projectRefNotifyOnFailureKey    = bsonutil.MustHaveTag(ProjectRef{}, "NotifyOnBuildFailure")
 	projectRefTriggersKey           = bsonutil.MustHaveTag(ProjectRef{}, "Triggers")
+	projectRefPeriodicBuildsKey     = bsonutil.MustHaveTag(ProjectRef{}, "PeriodicBuilds")
 
 	projectRefCommitQueueEnabledKey = bsonutil.MustHaveTag(CommitQueueParams{}, "Enabled")
 	projectRefTriggerProjectKey     = bsonutil.MustHaveTag(TriggerDefinition{}, "Project")
@@ -329,6 +340,9 @@ func FindOneProjectRefByRepoAndBranchWithPRTesting(owner, repo, branch string) (
 	return &projectRefs[target], nil
 }
 
+// FindOneProjectRef finds the project ref for this owner/repo/branch that has the commit queue enabled.
+// There should only ever be one project for the query because we only enable commit queue if
+// no other project ref with the same specification has it enabled.
 func FindOneProjectRefWithCommitQueueByOwnerRepoAndBranch(owner, repo, branch string) (*ProjectRef, error) {
 	projRef := &ProjectRef{}
 	err := db.FindOne(
@@ -371,6 +385,30 @@ func FindProjectRefsWithCommitQueueEnabled() ([]ProjectRef, error) {
 	return projectRefs, nil
 }
 
+func FindPeriodicProjects() ([]ProjectRef, error) {
+	projectRefs := []ProjectRef{}
+
+	err := db.FindAll(
+		ProjectRefCollection,
+		bson.M{
+			projectRefPeriodicBuildsKey: bson.M{
+				"$gt": bson.M{
+					"$size": 0,
+				},
+			},
+		},
+		db.NoProjection,
+		db.NoSort,
+		db.NoSkip,
+		db.NoLimit,
+		&projectRefs,
+	)
+	if err != nil {
+		return nil, err
+	}
+	return projectRefs, nil
+}
+
 // FindProjectRefs returns limit refs starting at project identifier key
 // in the sortDir direction
 func FindProjectRefs(key string, limit int, sortDir int, isAuthenticated bool) ([]ProjectRef, error) {
@@ -400,19 +438,15 @@ func FindProjectRefs(key string, limit int, sortDir int, isAuthenticated bool) (
 	return projectRefs, err
 }
 
-// UntrackStaleProjectRefs sets all project_refs in the db not in the array
-// of project identifiers to "untracked."
-func UntrackStaleProjectRefs(activeProjects []string) error {
-	_, err := db.UpdateAll(
-		ProjectRefCollection,
-		bson.M{ProjectRefIdentifierKey: bson.M{
-			"$nin": activeProjects,
-		}},
-		bson.M{"$set": bson.M{
-			ProjectRefTrackedKey: false,
-		}},
-	)
-	return err
+func (projectRef *ProjectRef) CanEnableCommitQueue() (bool, error) {
+	resultRef, err := FindOneProjectRefWithCommitQueueByOwnerRepoAndBranch(projectRef.Owner, projectRef.Repo, projectRef.Branch)
+	if err != nil && !adb.ResultsNotFound(err) {
+		return false, errors.Wrapf(err, "database error finding project by repo and branch")
+	}
+	if resultRef != nil && resultRef.Identifier != projectRef.Identifier {
+		return false, nil
+	}
+	return true, nil
 }
 
 // Upsert updates the project ref in the db if an entry already exists,
@@ -448,6 +482,7 @@ func (projectRef *ProjectRef) Upsert() error {
 				projectRefPatchingDisabledKey:   projectRef.PatchingDisabled,
 				projectRefNotifyOnFailureKey:    projectRef.NotifyOnBuildFailure,
 				projectRefTriggersKey:           projectRef.Triggers,
+				projectRefPeriodicBuildsKey:     projectRef.PeriodicBuilds,
 			},
 		},
 	)
@@ -486,7 +521,7 @@ func (t TriggerDefinition) Validate(parentProject string) error {
 		return errors.Wrapf(err, "error finding upstream project %s", t.Project)
 	}
 	if upstreamProject == nil {
-		return errors.Errorf("project %s not found", t.Project)
+		return errors.Errorf("project '%s' not found", t.Project)
 	}
 	if upstreamProject.Identifier == parentProject {
 		return errors.New("a project cannot trigger itself")
@@ -509,6 +544,25 @@ func (t TriggerDefinition) Validate(parentProject string) error {
 		return errors.New("must provide a config file or generated tasks file")
 	}
 	return nil
+}
+
+func (d *PeriodicBuildDefinition) Validate() error {
+	catcher := grip.NewBasicCatcher()
+	if d.IntervalHours <= 0 {
+		catcher.New("Interval must be a positive integer")
+	}
+	if d.ConfigFile == "" {
+		catcher.New("A config file must be specified")
+	}
+	if d.Alias == "" {
+		catcher.New("Alias must be specified")
+	}
+
+	if d.ID == "" {
+		d.ID = util.RandomString()
+	}
+
+	return catcher.Resolve()
 }
 
 func GetUpstreamProjectName(triggerID, triggerType string) (string, error) {

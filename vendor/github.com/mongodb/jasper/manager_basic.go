@@ -35,6 +35,10 @@ func newBasicProcessManager(procs map[string]Process, skipDefaultTrigger bool, b
 	return &m, nil
 }
 
+func (m *basicProcessManager) ID() string {
+	return m.id
+}
+
 func (m *basicProcessManager) CreateProcess(ctx context.Context, opts *CreateOptions) (Process, error) {
 	opts.AddEnvVar(ManagerEnvironID, m.id)
 
@@ -76,7 +80,7 @@ func (m *basicProcessManager) CreateCommand(ctx context.Context) *Command {
 
 func (m *basicProcessManager) Register(ctx context.Context, proc Process) error {
 	if ctx.Err() != nil {
-		return errors.New("context canceled")
+		return errors.WithStack(ctx.Err())
 	}
 
 	if proc == nil {
@@ -109,7 +113,7 @@ func (m *basicProcessManager) List(ctx context.Context, f Filter) ([]Process, er
 
 	for _, proc := range m.procs {
 		if ctx.Err() != nil {
-			return nil, errors.New("operation canceled")
+			return nil, errors.WithStack(ctx.Err())
 		}
 
 		cctx, cancel := context.WithTimeout(ctx, 100*time.Millisecond)
@@ -118,6 +122,10 @@ func (m *basicProcessManager) List(ctx context.Context, f Filter) ([]Process, er
 		switch {
 		case f == Running:
 			if info.IsRunning {
+				out = append(out, proc)
+			}
+		case f == Terminated:
+			if !info.IsRunning {
 				out = append(out, proc)
 			}
 		case f == Successful:
@@ -186,7 +194,7 @@ func (m *basicProcessManager) Group(ctx context.Context, name string) ([]Process
 	out := []Process{}
 	for _, proc := range m.procs {
 		if ctx.Err() != nil {
-			return nil, errors.New("request canceled")
+			return nil, errors.WithStack(ctx.Err())
 		}
 
 		if sliceContains(proc.GetTags(), name) {

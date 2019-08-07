@@ -203,19 +203,22 @@ func (j *collectHostIdleDataJob) getHostStatsMessage(cost float64, idleTime time
 
 func (j *collectHostIdleDataJob) getTaskStartStatsMessage() message.Composer {
 	msg := message.Fields{
-		"stat":            "task-start-stats",
-		"task_id":         j.task.Id,
-		"task":            j.task.DisplayName,
-		"execution":       j.task.Execution,
-		"requester":       j.task.Requester,
-		"project":         j.task.Project,
-		"variant":         j.task.BuildVariant,
-		"distro":          j.host.Distro.Id,
-		"provider":        j.host.Distro.Provider,
-		"host":            j.host.Id,
-		"latency_secs":    j.task.StartTime.Sub(j.task.ActivatedTime).Seconds(),
-		"group":           j.task.TaskGroup,
-		"group_max_hosts": j.task.TaskGroupMaxHosts,
+		"activated_latency_secs": j.task.StartTime.Sub(j.task.ActivatedTime).Seconds(),
+		"display_task":           j.task.DisplayOnly,
+		"distro":                 j.host.Distro.Id,
+		"execution":              j.task.Execution,
+		"generator":              j.task.GenerateTask,
+		"group":                  j.task.TaskGroup,
+		"group_max_hosts":        j.task.TaskGroupMaxHosts,
+		"host_id":                j.host.Id,
+		"project":                j.task.Project,
+		"provider":               j.host.Distro.Provider,
+		"requester":              j.task.Requester,
+		"scheduled_latency_secs": j.task.StartTime.Sub(j.task.ScheduledTime).Seconds(),
+		"stat":                   "task-start-stats",
+		"task":                   j.task.DisplayName,
+		"task_id":                j.task.Id,
+		"variant":                j.task.BuildVariant,
 	}
 
 	if strings.HasPrefix(j.host.Distro.Provider, "ec2") {
@@ -228,6 +231,10 @@ func (j *collectHostIdleDataJob) getTaskStartStatsMessage() message.Composer {
 
 	if j.host.Provider != evergreen.ProviderNameStatic {
 		msg["host_task_count"] = j.host.TaskCount
+
+		if j.host.TaskCount == 1 {
+			msg["host_provision_time"] = j.host.TotalIdleTime.Seconds()
+		}
 	}
 
 	return message.ConvertToComposer(level.Info, msg)

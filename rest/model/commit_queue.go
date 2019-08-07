@@ -14,6 +14,7 @@ type APICommitQueue struct {
 
 type APICommitQueueItem struct {
 	Issue   APIString   `json:"issue"`
+	Version APIString   `json:"version"`
 	Modules []APIModule `json:"modules"`
 }
 
@@ -24,6 +25,10 @@ type APIModule struct {
 
 type APICommitQueuePosition struct {
 	Position int `json:"position"`
+}
+
+type APICommitQueueItemAuthor struct {
+	Author APIString `json:"author"`
 }
 
 func (cq *APICommitQueue) BuildFromService(h interface{}) error {
@@ -54,6 +59,7 @@ func (item *APICommitQueueItem) BuildFromService(h interface{}) error {
 		return errors.Errorf("incorrect type '%T' when converting commit queue item", h)
 	}
 	item.Issue = ToAPIString(cqItemService.Issue)
+	item.Version = ToAPIString(cqItemService.Version)
 	for _, module := range cqItemService.Modules {
 		item.Modules = append(item.Modules, APIModule{
 			Module: ToAPIString(module.Module),
@@ -66,7 +72,8 @@ func (item *APICommitQueueItem) BuildFromService(h interface{}) error {
 
 func (item *APICommitQueueItem) ToService() (interface{}, error) {
 	serviceItem := commitqueue.CommitQueueItem{
-		Issue: FromAPIString(item.Issue),
+		Issue:   FromAPIString(item.Issue),
+		Version: FromAPIString(item.Version),
 	}
 	for _, module := range item.Modules {
 		serviceModule := commitqueue.Module{

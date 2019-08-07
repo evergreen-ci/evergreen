@@ -22,17 +22,30 @@ func (t Tasks) getPayload() []interface{} {
 	return payload
 }
 
+func (t Tasks) Export() []Task {
+	out := make([]Task, len(t))
+	for idx := range t {
+		out[idx] = *t[idx]
+	}
+	return out
+}
+
 func (t Tasks) Insert() error {
 	return db.InsertMany(Collection, t.getPayload()...)
 }
 
 func (t Tasks) InsertUnordered(ctx context.Context) error {
+	if t.Len() == 0 {
+		return nil
+	}
 	_, err := evergreen.GetEnvironment().DB().Collection(Collection).InsertMany(ctx, t.getPayload())
 	return err
 }
 
-type ByPriority []string
+type ByPriority []Task
 
-func (p ByPriority) Len() int           { return len(p) }
-func (p ByPriority) Swap(i, j int)      { p[i], p[j] = p[j], p[i] }
-func (p ByPriority) Less(i, j int) bool { return displayTaskPriority(p[i]) < displayTaskPriority(p[j]) }
+func (p ByPriority) Len() int      { return len(p) }
+func (p ByPriority) Swap(i, j int) { p[i], p[j] = p[j], p[i] }
+func (p ByPriority) Less(i, j int) bool {
+	return p[i].displayTaskPriority() < p[j].displayTaskPriority()
+}

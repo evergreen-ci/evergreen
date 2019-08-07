@@ -3,14 +3,19 @@ package route
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"testing"
 
+	"github.com/evergreen-ci/evergreen/db"
+
+	"github.com/evergreen-ci/evergreen"
 	serviceModel "github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/gimlet"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -20,7 +25,6 @@ import (
 
 type ProjectPatchByIDSuite struct {
 	sc *data.MockConnector
-	// data data.MockProjectConnector
 	rm gimlet.RouteHandler
 
 	suite.Suite
@@ -38,9 +42,9 @@ func (s *ProjectPatchByIDSuite) SetupTest() {
 
 func (s *ProjectPatchByIDSuite) TestParse() {
 	ctx := context.Background()
-	json := []byte(`{"private" : false}`)
-	req, _ := http.NewRequest("PATCH", "http://example.com/api/rest/v2/projects/dimoxinil", bytes.NewBuffer(json))
 
+	json := []byte(`{"private" : false}`)
+	req, _ := http.NewRequest("PATCH", "http://example.com/api/rest/v2/projects/dimoxinil?revision=my-revision", bytes.NewBuffer(json))
 	err := s.rm.Parse(ctx, req)
 	s.NoError(err)
 	s.Equal(json, s.rm.(*projectIDPatchHandler).body)
@@ -54,7 +58,6 @@ func (s *ProjectPatchByIDSuite) TestRunInValidIdentifierChange() {
 	h.body = json
 
 	resp := s.rm.Run(ctx)
-	s.rm.Run(ctx)
 	s.NotNil(resp.Data())
 	s.Equal(resp.Status(), http.StatusForbidden)
 
@@ -70,9 +73,26 @@ func (s *ProjectPatchByIDSuite) TestRunInvalidNonExistingId() {
 	h.body = json
 
 	resp := s.rm.Run(ctx)
-	s.rm.Run(ctx)
 	s.NotNil(resp.Data())
 	s.Equal(resp.Status(), http.StatusNotFound)
+}
+
+func (s *ProjectPatchByIDSuite) TestRunValid() {
+	ctx := context.Background()
+	json := []byte(`{"enabled": true, "revision": "my_revision", "variables": {"vars_to_delete": ["apple"]} }`)
+	h := s.rm.(*projectIDPatchHandler)
+	h.projectID = "dimoxinil"
+	h.body = json
+	resp := s.rm.Run(ctx)
+	s.NotNil(resp)
+	s.NotNil(resp.Data())
+	s.Equal(resp.Status(), http.StatusOK)
+	vars, err := s.sc.FindProjectVarsById("dimoxinil")
+	s.NoError(err)
+	_, ok := vars.Vars["apple"]
+	s.False(ok)
+	_, ok = vars.Vars["banana"]
+	s.True(ok)
 }
 
 ////////////////////////////////////////////////////////////////////////
@@ -159,28 +179,12 @@ func (s *ProjectPutSuite) TestRunNewWithValidEntity() {
 	s.Equal(resp.Status(), http.StatusCreated)
 }
 
-func (s *ProjectPutSuite) TestRunExistingWithValidEntity() {
+func (s *ProjectPutSuite) TestRunExistingFails() {
 	ctx := context.Background()
 	json := []byte(
 		`{
 				"owner_name": "Rembrandt Q. Einstein",
 				"repo_name": "nutsandgum",
-				"branch_name": "master",
-				"repo_kind": "github",
-				"enabled": false,
-				"private": true,
-				"batch_time": 0,
-				"remote_path": "evergreen.yml",
-				"display_name": "Nuts and Gum: together at last!",
-				"local_config": "",
-				"deactivate_previous": true,
-				"tracks_push_events": true,
-				"pr_testing_enabled": true,
-				"commitq_enabled": true,
-				"tracked": false,
-				"patching_disabled": true,
-				"admins": ["Apu DeBeaumarchais"],
-				"notify_on_failure": true
 		}`)
 
 	h := s.rm.(*projectIDPutHandler)
@@ -189,41 +193,8 @@ func (s *ProjectPutSuite) TestRunExistingWithValidEntity() {
 
 	resp := s.rm.Run(ctx)
 	s.NotNil(resp.Data())
-	s.Equal(resp.Status(), http.StatusOK)
+	s.Equal(resp.Status(), http.StatusBadRequest)
 
-}
-
-func (s *ProjectPutSuite) TestRunNewConflictingName() {
-	ctx := context.Background()
-	json := []byte(
-		`{
-				"owner_name": "Rembrandt Q. Einstein",
-				"repo_name": "nutsandgum",
-				"branch_name": "master",
-				"repo_kind": "github",
-				"enabled": false,
-				"private": true,
-				"batch_time": 0,
-				"identifier" : "verboten",
-				"remote_path": "evergreen.yml",
-				"display_name": "Nuts and Gum: together at last!",
-				"local_config": "",
-				"deactivate_previous": true,
-				"tracks_push_events": true,
-				"pr_testing_enabled": true,
-				"commitq_enabled": true,
-				"tracked": false,
-				"patching_disabled": true,
-				"admins": ["Apu DeBeaumarchais"],
-				"notify_on_failure": true
-		}`)
-	h := s.rm.(*projectIDPutHandler)
-	h.projectID = "new-project"
-	h.body = json
-
-	resp := s.rm.Run(ctx)
-	s.NotNil(resp.Data())
-	s.Equal(resp.Status(), http.StatusForbidden)
 }
 
 ////////////////////////////////////////////////////////////////////////
@@ -267,7 +238,7 @@ func (s *ProjectGetByIDSuite) TestRunExistingId() {
 	s.NotNil(resp.Data())
 	s.Equal(resp.Status(), http.StatusOK)
 
-	s.Equal(model.ToAPIString("dimoxinil"), resp.Data().(*model.APIProject).Identifier)
+	s.Equal(model.ToAPIString("dimoxinil"), resp.Data().(*model.APIProjectRef).Identifier)
 }
 
 ////////////////////////////////////////////////////////////////////////
@@ -326,7 +297,7 @@ func (s *ProjectGetSuite) TestPaginatorShouldReturnResultsIfDataExists() {
 	payload := resp.Data().([]interface{})
 
 	s.Len(payload, 1)
-	s.Equal(model.ToAPIString("projectC"), (payload[0]).(*model.APIProject).Identifier)
+	s.Equal(model.ToAPIString("projectC"), (payload[0]).(*model.APIProjectRef).Identifier)
 
 	pageData := resp.Pages()
 	s.Nil(pageData.Prev)
@@ -344,8 +315,8 @@ func (s *ProjectGetSuite) TestPaginatorShouldReturnEmptyResultsIfDataIsEmpty() {
 	payload := resp.Data().([]interface{})
 
 	s.Len(payload, 6)
-	s.Equal(model.ToAPIString("projectA"), (payload[0]).(*model.APIProject).Identifier, payload[0])
-	s.Equal(model.ToAPIString("projectB"), (payload[1]).(*model.APIProject).Identifier, payload[1])
+	s.Equal(model.ToAPIString("projectA"), (payload[0]).(*model.APIProjectRef).Identifier, payload[0])
+	s.Equal(model.ToAPIString("projectB"), (payload[1]).(*model.APIProjectRef).Identifier, payload[1])
 
 	s.Nil(resp.Pages())
 }
@@ -398,7 +369,60 @@ func getMockProjectsConnector() *data.MockConnector {
 					NotifyOnBuildFailure: false,
 				},
 			},
+			CachedVars: []*serviceModel.ProjectVars{
+				&serviceModel.ProjectVars{
+					Id:   "dimoxinil",
+					Vars: map[string]string{"apple": "green", "banana": "yellow"},
+				},
+			},
 		},
 	}
 	return &connector
+}
+
+func TestGetProjectVersions(t *testing.T) {
+	assert := assert.New(t)
+	assert.NoError(db.Clear(serviceModel.VersionCollection))
+	const projectName = "proj"
+	v1 := serviceModel.Version{
+		Id:                  "v1",
+		Identifier:          projectName,
+		Requester:           evergreen.AdHocRequester,
+		RevisionOrderNumber: 1,
+	}
+	assert.NoError(v1.Insert())
+	v2 := serviceModel.Version{
+		Id:                  "v2",
+		Identifier:          projectName,
+		Requester:           evergreen.AdHocRequester,
+		RevisionOrderNumber: 2,
+	}
+	assert.NoError(v2.Insert())
+	v3 := serviceModel.Version{
+		Id:                  "v3",
+		Identifier:          projectName,
+		Requester:           evergreen.RepotrackerVersionRequester,
+		RevisionOrderNumber: 3,
+	}
+	assert.NoError(v3.Insert())
+	v4 := serviceModel.Version{
+		Id:                  "v4",
+		Identifier:          projectName,
+		Requester:           evergreen.AdHocRequester,
+		RevisionOrderNumber: 4,
+	}
+	assert.NoError(v4.Insert())
+
+	h := getProjectVersionsHandler{
+		projectID: projectName,
+		requester: evergreen.AdHocRequester,
+		sc:        &data.DBConnector{},
+		limit:     20,
+	}
+
+	resp := h.Run(context.Background())
+	respJson, err := json.Marshal(resp.Data())
+	assert.NoError(err)
+	assert.Contains(string(respJson), `"version_id":"v4"`)
+	assert.NotContains(string(respJson), `"version_id":"v3"`)
 }

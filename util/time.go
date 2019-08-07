@@ -8,6 +8,9 @@ import (
 // ZeroTime represents 0 in epoch time
 var ZeroTime time.Time = time.Unix(0, 0)
 
+// MaxTime represents the latest useful golang date (219248499-12-06 15:30:07.999999999 +0000 UTC)
+var MaxTime time.Time = time.Unix(1<<63-62135596801, 999999999)
+
 // IsZeroTime checks that a time is either equal to golang ZeroTime or
 // UTC ZeroTime.
 func IsZeroTime(t time.Time) bool {

@@ -8,7 +8,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/rest/model"
-	"github.com/evergreen-ci/evergreen/trigger"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/gimlet"
 )
@@ -18,12 +17,11 @@ import (
 // POST /rest/v2/subscriptions
 
 type subscriptionPostHandler struct {
-	Subscriptions   *[]model.APISubscription `json:"subscriptions"`
-	dbSubscriptions []event.Subscription
-	sc              data.Connector
+	Subscriptions *[]model.APISubscription `json:"subscriptions"`
+	sc            data.Connector
 }
 
-func makeSetSubscrition(sc data.Connector) gimlet.RouteHandler {
+func makeSetSubscription(sc data.Connector) gimlet.RouteHandler {
 	return &subscriptionPostHandler{
 		sc: sc,
 	}
@@ -36,108 +34,16 @@ func (s *subscriptionPostHandler) Factory() gimlet.RouteHandler {
 }
 
 func (s *subscriptionPostHandler) Parse(ctx context.Context, r *http.Request) error {
-	u := MustHaveUser(ctx)
 	s.Subscriptions = &[]model.APISubscription{}
-	s.dbSubscriptions = []event.Subscription{}
 	if err := util.ReadJSONInto(r.Body, s.Subscriptions); err != nil {
 		return err
-	}
-	for _, subscription := range *s.Subscriptions {
-		subscriptionInterface, err := subscription.ToService()
-		if err != nil {
-			return gimlet.ErrorResponse{
-				StatusCode: http.StatusBadRequest,
-				Message:    "Error parsing request body: " + err.Error(),
-			}
-		}
-
-		dbSubscription, ok := subscriptionInterface.(event.Subscription)
-		if !ok {
-			return gimlet.ErrorResponse{
-				StatusCode: http.StatusInternalServerError,
-				Message:    "Error parsing subscription interface",
-			}
-		}
-
-		if !trigger.ValidateTrigger(dbSubscription.ResourceType, dbSubscription.Trigger) {
-			return gimlet.ErrorResponse{
-				StatusCode: http.StatusBadRequest,
-				Message:    fmt.Sprintf("subscription type/trigger is invalid: %s/%s", dbSubscription.ResourceType, dbSubscription.Trigger),
-			}
-		}
-
-		if dbSubscription.OwnerType == event.OwnerTypePerson && dbSubscription.Owner == "" {
-			dbSubscription.Owner = u.Username() // default the current user
-		}
-
-		if dbSubscription.OwnerType == event.OwnerTypePerson && dbSubscription.Owner != u.Username() {
-			return gimlet.ErrorResponse{
-				StatusCode: http.StatusUnauthorized,
-				Message:    "Cannot change subscriptions for anyone other than yourself",
-			}
-		}
-
-		if ok, msg := isSubscriptionAllowed(dbSubscription); !ok {
-			return gimlet.ErrorResponse{
-				StatusCode: http.StatusBadRequest,
-				Message:    msg,
-			}
-		}
-
-		if ok, msg := validateSelectors(dbSubscription.Subscriber, dbSubscription.Selectors); !ok {
-			return gimlet.ErrorResponse{
-				StatusCode: http.StatusBadRequest,
-				Message:    fmt.Sprintf("Invalid selectors: %s", msg),
-			}
-		}
-		if ok, msg := validateSelectors(dbSubscription.Subscriber, dbSubscription.RegexSelectors); !ok {
-			return gimlet.ErrorResponse{
-				StatusCode: http.StatusBadRequest,
-				Message:    fmt.Sprintf("Invalid regex selectors: %s", msg),
-			}
-		}
-
-		err = dbSubscription.Validate()
-		if err != nil {
-			return gimlet.ErrorResponse{
-				StatusCode: http.StatusBadRequest,
-				Message:    "Error validating subscription: " + err.Error(),
-			}
-		}
-
-		s.dbSubscriptions = append(s.dbSubscriptions, dbSubscription)
 	}
 
 	return nil
 }
 
-func isSubscriptionAllowed(sub event.Subscription) (bool, string) {
-	for _, selector := range sub.Selectors {
-
-		if selector.Type == "object" {
-			if selector.Data == "build" || selector.Data == "version" || selector.Data == "task" {
-				if sub.Subscriber.Type == "jira-issue" || sub.Subscriber.Type == "evergreen-webhook" {
-					return false, fmt.Sprintf("Cannot notify by %s for %s", sub.Subscriber.Type, selector.Data)
-				}
-			}
-		}
-	}
-
-	return true, ""
-}
-
-func validateSelectors(subscriber event.Subscriber, selectors []event.Selector) (bool, string) {
-	for i := range selectors {
-		if len(selectors[i].Type) == 0 || len(selectors[i].Data) == 0 {
-			return false, "Selector had empty type or data"
-		}
-	}
-
-	return true, ""
-}
-
 func (s *subscriptionPostHandler) Run(ctx context.Context) gimlet.Responder {
-	err := s.sc.SaveSubscriptions(s.dbSubscriptions)
+	err := s.sc.SaveSubscriptions(MustHaveUser(ctx).Username(), *s.Subscriptions)
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(err)
 	}
@@ -223,7 +129,6 @@ func (s *subscriptionDeleteHandler) Factory() gimlet.RouteHandler {
 }
 
 func (s *subscriptionDeleteHandler) Parse(ctx context.Context, r *http.Request) error {
-	u := MustHaveUser(ctx)
 	idString := r.FormValue("id")
 	if idString == "" {
 		return gimlet.ErrorResponse{
@@ -232,32 +137,12 @@ func (s *subscriptionDeleteHandler) Parse(ctx context.Context, r *http.Request) 
 		}
 	}
 	s.id = idString
-	subscription, err := event.FindSubscriptionByID(s.id)
-	if err != nil {
-		return gimlet.ErrorResponse{
-			StatusCode: http.StatusInternalServerError,
-			Message:    err.Error(),
-		}
-	}
-	if subscription == nil {
-		return gimlet.ErrorResponse{
-			StatusCode: http.StatusNotFound,
-			Message:    "Subscription not found",
-		}
-	}
-	if subscription.Owner != u.Username() {
-		return gimlet.ErrorResponse{
-			StatusCode: http.StatusUnauthorized,
-			Message:    "Cannot delete subscriptions for someone other than yourself",
-		}
-	}
 
 	return nil
 }
 
-func (s *subscriptionDeleteHandler) Run(_ context.Context) gimlet.Responder {
-	err := s.sc.DeleteSubscription(s.id)
-	if err != nil {
+func (s *subscriptionDeleteHandler) Run(ctx context.Context) gimlet.Responder {
+	if err := s.sc.DeleteSubscriptions(MustHaveUser(ctx).Username(), []string{s.id}); err != nil {
 		return gimlet.MakeJSONErrorResponder(err)
 	}
 

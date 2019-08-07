@@ -6,6 +6,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/mongodb/anser/bsonutil"
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson"
@@ -23,13 +24,16 @@ type Version struct {
 	Message             string               `bson:"message" json:"message,omitempty"`
 	Status              string               `bson:"status" json:"status,omitempty"`
 	RevisionOrderNumber int                  `bson:"order,omitempty" json:"order,omitempty"`
+	ParserProject       *ParserProject       `bson:"project" json:"project,omitempty"`
 	Config              string               `bson:"config" json:"config,omitempty"`
+	ConfigUpdateNumber  int                  `bson:"config_number" json:"config_number,omitempty"`
 	Ignored             bool                 `bson:"ignored" json:"ignored"`
 	Owner               string               `bson:"owner_name" json:"owner_name,omitempty"`
 	Repo                string               `bson:"repo_name" json:"repo_name,omitempty"`
 	Branch              string               `bson:"branch_name" json:"branch_name,omitempty"`
 	RepoKind            string               `bson:"repo_kind" json:"repo_kind,omitempty"`
 	BuildVariants       []VersionBuildStatus `bson:"build_variants_status,omitempty" json:"build_variants_status,omitempty"`
+	PeriodicBuildID     string               `bson:"periodic_build_id,omitempty" json:"periodic_build_id,omitempty"`
 
 	// This is technically redundant, but a lot of code relies on it, so I'm going to leave it
 	BuildIds []string `bson:"builds" json:"builds,omitempty"`
@@ -93,6 +97,22 @@ func (v *Version) AddSatisfiedTrigger(definitionID string) error {
 	}
 	v.SatisfiedTriggers = append(v.SatisfiedTriggers, definitionID)
 	return errors.Wrap(AddSatisfiedTrigger(v.Id, definitionID), "error adding satisfied trigger")
+}
+
+// GetTimeSpent returns the total time_taken and makespan of a version for
+// each task that has finished running
+func (v *Version) GetTimeSpent() (time.Duration, time.Duration, error) {
+	// Find excludes display tasks from consideration
+	tasks, err := task.Find(task.ByVersion(v.Id).WithFields(task.TimeTakenKey, task.StartTimeKey, task.FinishTimeKey))
+	if err != nil {
+		return 0, 0, errors.Wrapf(err, "can't get tasks for version '%s'", v.Id)
+	}
+	if tasks == nil {
+		return 0, 0, errors.Errorf("no tasks found for version '%s'", v.Id)
+	}
+
+	timeTaken, makespan := task.GetTimeSpent(tasks)
+	return timeTaken, makespan, nil
 }
 
 // VersionBuildStatus stores metadata relating to each build
@@ -192,6 +212,33 @@ func VersionGetHistory(versionId string, N int) ([]Version, error) {
 	}
 
 	return versions, nil
+}
+
+func (v *Version) UpdateMergeTaskDependencies(p *Project) error {
+	execPairs, _, err := p.BuildProjectTVPairsWithAlias(evergreen.CommitQueueAlias)
+	if err != nil {
+		return errors.Wrap(err, "can't get alias pairs")
+	}
+
+	execTaskIDTable := NewTaskIdTable(p, v, "", "").ExecutionTasks
+	mergeTaskDependencies := make([]task.Dependency, 0, len(execPairs))
+	for _, pair := range execPairs {
+		mergeTaskDependencies = append(
+			mergeTaskDependencies,
+			task.Dependency{
+				TaskId: execTaskIDTable.GetId(pair.Variant, pair.TaskName),
+				Status: evergreen.TaskSucceeded,
+			},
+		)
+	}
+
+	// update task in the database
+	t, err := task.FindOneId(execTaskIDTable.GetId(evergreen.MergeTaskVariant, evergreen.MergeTaskName))
+	if err != nil {
+		return errors.Wrap(err, "can't get merge task")
+	}
+
+	return t.UpdateDependencies(mergeTaskDependencies)
 }
 
 type VersionsByOrder []Version

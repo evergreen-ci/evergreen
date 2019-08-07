@@ -1234,7 +1234,7 @@ func TestCompareQueryRunTimes(t *testing.T) {
 }
 
 func TestTaskHistoryPickaxe(t *testing.T) {
-	require.NoError(t, db.ClearCollections(task.Collection, testresult.Collection), "error clearing collections")
+	require.NoError(t, db.ClearCollections(task.Collection, testresult.Collection, RepositoriesCollection), "error clearing collections")
 	assert := assert.New(t)
 	proj := Project{
 		Identifier: "proj",
@@ -1271,6 +1271,10 @@ func TestTaskHistoryPickaxe(t *testing.T) {
 	assert.NoError(t2.Insert())
 	assert.NoError(t3.Insert())
 	assert.NoError(t4.Insert())
+	for i := 0; i < 5; i++ {
+		_, err := GetNewRevisionOrderNumber(proj.Identifier)
+		assert.NoError(err)
+	}
 	r1 := testresult.TestResult{
 		TaskID:   t1.Id,
 		TestFile: "test",

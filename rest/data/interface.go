@@ -77,12 +77,28 @@ type Connector interface {
 	// RestartBuild is a method to restart the build matching the same BuildId.
 	RestartBuild(string, string) error
 
+	// Find project variables matching given projectId.
+	FindProjectVarsById(string) (*restModel.APIProjectVars, error)
+	// UpdateProjectVars updates the project using the variables given in the model.
+	// If successful, updates the given projectVars with the updated projectVars.
+	UpdateProjectVars(string, *restModel.APIProjectVars) error
+	// CopyProjectVars copies the variables for the first project to the second
+	CopyProjectVars(string, string) error
+
 	// Find the project matching the given ProjectId.
 	FindProjectById(string) (*model.ProjectRef, error)
 	// Create/Update a project the given projectRef
 	CreateProject(projectRef *model.ProjectRef) error
 	UpdateProject(projectRef *model.ProjectRef) error
 
+	// EnableWebhooks creates a webhook for the project's owner/repo if one does not exist.
+	// If unable to setup the new webhook, returns false but no error.
+	EnableWebhooks(context.Context, *model.ProjectRef) (bool, error)
+	// EnablePRTesting determines if PR testing can be enabled for the given project.
+	EnablePRTesting(*model.ProjectRef) error
+
+	// UpdateProjectRevision updates the given project's revision
+	UpdateProjectRevision(string, string) error
 	// FindProjects is a method to find projects as ordered by name
 	FindProjects(string, int, int, bool) ([]model.ProjectRef, error)
 	// FindProjectByBranch is a method to find the projectref given a branch name.
@@ -93,6 +109,7 @@ type Connector interface {
 	GetVersionsAndVariants(int, int, *model.Project) (*restModel.VersionVariantData, error)
 	GetProjectEventLog(string, time.Time, int) ([]restModel.APIProjectEvent, error)
 	CreateVersionFromConfig(context.Context, string, []byte, *user.DBUser, string, bool) (*model.Version, error)
+	GetVersionsInProject(string, string, int, int) ([]restModel.APIVersion, error)
 
 	// FindByProjectAndCommit is a method to find a set of tasks which ran as part of
 	// certain version in a project. It takes the projectId, commit hash, and a taskId
@@ -182,7 +199,9 @@ type Connector interface {
 	SetBannerTheme(string, *user.DBUser) error
 	// SetAdminBanner sets set the service flags in the system-wide settings document
 	SetServiceFlags(evergreen.ServiceFlags, *user.DBUser) error
-	RestartFailedTasks(amboy.Queue, model.RestartTaskOptions) (*restModel.RestartTasksResponse, error)
+	RestartFailedTasks(amboy.Queue, model.RestartOptions) (*restModel.RestartResponse, error)
+	//RestartFailedCommitQueueVersions takes in a time range
+	RestartFailedCommitQueueVersions(opts model.RestartOptions) (*restModel.RestartResponse, error)
 	RevertConfigTo(string, string) error
 	GetAdminEventLog(time.Time, int) ([]restModel.APIAdminEvent, error)
 
@@ -210,7 +229,11 @@ type Connector interface {
 	CheckHostSecret(*http.Request) (int, error)
 
 	// FindProjectAliases queries the database to find all aliases.
-	FindProjectAliases(string) ([]model.ProjectAlias, error)
+	FindProjectAliases(string) ([]restModel.APIProjectAlias, error)
+	// CopyProjectAliases copies aliases from the first project for the second project.
+	CopyProjectAliases(string, string) error
+	// UpdateProjectAliases upserts/deletes aliases for the given project
+	UpdateProjectAliases(string, []restModel.APIProjectAlias) error
 
 	// TriggerRepotracker creates an amboy job to get the commits from a
 	// Github Push Event
@@ -226,10 +249,12 @@ type Connector interface {
 	GeneratePoll(context.Context, string, amboy.QueueGroup) (bool, []string, error)
 
 	// SaveSubscriptions saves a set of notification subscriptions
-	SaveSubscriptions([]event.Subscription) error
+	SaveSubscriptions(string, []restModel.APISubscription) error
 	// GetSubscriptions returns the subscriptions that belong to a user
 	GetSubscriptions(string, event.OwnerType) ([]restModel.APISubscription, error)
-	DeleteSubscription(id string) error
+	DeleteSubscriptions(string, []string) error
+	// CopyProjectSubscriptions copies subscriptions from the first project for the second project.
+	CopyProjectSubscriptions(string, string) error
 
 	// Notifications
 	GetNotificationsStats() (*restModel.APIEventStats, error)
@@ -244,9 +269,11 @@ type Connector interface {
 	GetTaskStats(stats.StatsFilter) ([]restModel.APITaskStats, error)
 
 	// Commit queue methods
+	// GetGithubPR takes the owner, repo, and PR number.
 	GetGitHubPR(context.Context, string, string, int) (*github.PullRequest, error)
 	EnqueueItem(string, restModel.APICommitQueueItem) (int, error)
 	FindCommitQueueByID(string) (*restModel.APICommitQueue, error)
+	EnableCommitQueue(*model.ProjectRef, model.CommitQueueParams) error
 	CommitQueueRemoveItem(string, string) (bool, error)
 	CommitQueueClearAll() (int, error)
 	IsAuthorizedToPatchAndMerge(context.Context, *evergreen.Settings, UserRepoInfo) (bool, error)

@@ -279,7 +279,7 @@ task_groups:
 func TestPrioritizeTasksWithSameTaskGroupsAndDifferentBuilds(t *testing.T) {
 	assert := assert.New(t)
 	require := require.New(t)
-	require.NoError(db.ClearCollections(model.VersionCollection))
+	require.NoError(db.ClearCollections(model.VersionCollection, task.Collection))
 	yml := `
 task_groups:
 - name: example_task_group
@@ -299,7 +299,7 @@ task_groups:
 	}
 	versions["version_2"] = v
 	require.NoError(v.Insert())
-	tasks := []task.Task{
+	tasks := task.Tasks{
 		{
 			Id:          "task_1",
 			BuildId:     "build_1",
@@ -333,9 +333,11 @@ task_groups:
 			TaskGroup:   "example_task_group",
 		},
 	}
+	require.NoError(tasks.Insert())
+
 	prioritizer := &CmpBasedTaskPrioritizer{}
-	sorted, err := prioritizer.PrioritizeTasks("distro", tasks, versions)
-	assert.NoError(err)
+	sorted, err := prioritizer.PrioritizeTasks("distro", tasks.Export(), versions)
+	require.NoError(err)
 	assert.Equal("task_2", sorted[0].Id)
 	assert.Equal("task_3", sorted[1].Id)
 	assert.Equal("task_4", sorted[2].Id)
@@ -451,4 +453,33 @@ func TestByGenerateTasks(t *testing.T) {
 	c, err = byGenerateTasks(tasks[3], tasks[2], comparator)
 	assert.NoError(err)
 	assert.Equal(-1, c)
+}
+
+func TestByCommitQueue(t *testing.T) {
+	tasks := []task.Task{
+		{Id: "t0", Version: "v0"},
+		{Id: "t1", Version: "v0"},
+		{Id: "t2", Version: "v1"},
+		{Id: "t3", Version: "v1"},
+	}
+	comparator := &CmpBasedTaskComparator{versions: map[string]model.Version{
+		"v0": model.Version{Requester: evergreen.MergeTestRequester},
+		"v1": model.Version{Requester: evergreen.PatchVersionRequester},
+	}}
+
+	c, err := byCommitQueue(tasks[0], tasks[1], comparator)
+	assert.NoError(t, err)
+	assert.Equal(t, 0, c)
+
+	c, err = byCommitQueue(tasks[2], tasks[3], comparator)
+	assert.NoError(t, err)
+	assert.Equal(t, 0, c)
+
+	c, err = byCommitQueue(tasks[1], tasks[2], comparator)
+	assert.NoError(t, err)
+	assert.Equal(t, 1, c)
+
+	c, err = byCommitQueue(tasks[2], tasks[1], comparator)
+	assert.NoError(t, err)
+	assert.Equal(t, -1, c)
 }

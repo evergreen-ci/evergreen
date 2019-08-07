@@ -73,7 +73,7 @@ func (opts cloneOpts) validate() error {
 }
 
 func (opts cloneOpts) sshLocation() string {
-	return fmt.Sprintf("git@github.com:%s/%s.git", opts.owner, opts.repo)
+	return thirdparty.FormGitUrl("github.com", opts.owner, opts.repo, "")
 }
 
 func (opts cloneOpts) httpLocation() string {
@@ -147,7 +147,7 @@ func (opts cloneOpts) buildHTTPCloneCommand() ([]string, error) {
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to parse URL from location")
 	}
-	clone := fmt.Sprintf("git clone https://%s@%s/%s/%s.git '%s'", opts.token, urlLocation.Host, opts.owner, opts.repo, opts.dir)
+	clone := fmt.Sprintf("git clone %s '%s'", thirdparty.FormGitUrl(urlLocation.Host, opts.owner, opts.repo, opts.token), opts.dir)
 	if opts.branch != "" {
 		clone = fmt.Sprintf("%s --branch '%s'", clone, opts.branch)
 	}
@@ -377,7 +377,15 @@ func (c *gitFetchProject) Execute(ctx context.Context,
 		if conf.Task.Requester == evergreen.MergeTestRequester {
 			revision = module.Branch
 		} else {
-			revision = c.Revisions[moduleName]
+			if p != nil {
+				module := p.FindModule(moduleName)
+				if module != nil {
+					revision = module.Githash
+				}
+			}
+			if revision == "" {
+				revision = c.Revisions[moduleName]
+			}
 			// if there is no revision, then use the revision from the module, then branch name
 			if revision == "" {
 				if module.Ref != "" {

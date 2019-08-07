@@ -9,6 +9,11 @@ imports:
   version: 9deed8c6c1c89e0b6d68d727f215de8e851d1064
   subpackages:
     - container/intsets
+    
+- name: github.com/cheynewallace/tabby
+  version: b7224f6123093cc04ce961170a360e1d22e214a5
+- name: github.com/urfave/cli
+  version: 693af58b4d51b8fcc7f9d89576da170765980581
 
 - name: github.com/aws/aws-sdk-go
   version: 34ab03ee1a2b90b3baf97ff666397c8fb9b8714b

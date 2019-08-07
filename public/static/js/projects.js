@@ -28,61 +28,75 @@ mciModule.controller('ProjectCtrl', function($scope, $window, $http, $location, 
   };
 
   $scope.isDirty = false;
+  const failureTypeSubscriberConfig = {text: "Failure type", key:"failure-type", type:"select", options:{"any":"Any","test":"Test","system":"System","setup":"Setup"}, default: "any"}
+  const requesterSubscriberConfig = {text: "Build initiator", key:"requester", type:"select", options:{
+    "gitter_request":"Commit",
+    "patch_request":"Patch",
+    "github_pull_request":"Pull Request",
+    "merge_test":"Commit Queue",
+    "ad_hoc":"Periodic Build"
+  }, default: "gitter_request"} 
   $scope.triggers = [
     {
       trigger: "outcome",
       resource_type: "VERSION",
       label: "any version finishes",
+      extraFields: [ requesterSubscriberConfig ]
     },
     {
       trigger: "failure",
       resource_type: "VERSION",
       label: "any version fails",
+      extraFields: [ requesterSubscriberConfig ]
     },
     {
       trigger: "outcome",
       resource_type: "BUILD",
       label: "any build finishes",
       regex_selectors: buildRegexSelectors(),
+      extraFields: [ requesterSubscriberConfig ]
     },
     {
       trigger: "failure",
       resource_type: "BUILD",
       label: "any build fails",
       regex_selectors: buildRegexSelectors(),
+      extraFields: [ requesterSubscriberConfig ]
     },
     {
       trigger: "outcome",
       resource_type: "TASK",
       label: "any task finishes",
       regex_selectors: taskRegexSelectors(),
+      extraFields: [ requesterSubscriberConfig ]
     },
     {
       trigger: "failure",
       resource_type: "TASK",
       label: "any task fails",
       regex_selectors: taskRegexSelectors(),
-      extraFields: [
-        {text: "Failure type", key:"failure-type", type:"select", options:["any","test","system","setup"], default: "any"}
-      ]
+      extraFields: [ failureTypeSubscriberConfig, requesterSubscriberConfig ]
     },
     {
       trigger: "first-failure-in-version",
       resource_type: "TASK",
       label: "the first failure in a version occurs",
       regex_selectors: taskRegexSelectors(),
+      extraFields: [ requesterSubscriberConfig ]
     },
     {
       trigger: "first-failure-in-build",
       resource_type: "TASK",
       label: "the first failure in each build occurs",
       regex_selectors: taskRegexSelectors(),
+      extraFields: [ requesterSubscriberConfig ]
     },
     {
       trigger: "first-failure-in-version-with-name",
       resource_type: "TASK",
       label: "the first failure in each version for each task name occurs",
       regex_selectors: taskRegexSelectors(),
+      extraFields: [ requesterSubscriberConfig ]
     },
     {
       trigger: "regression",
@@ -91,7 +105,7 @@ mciModule.controller('ProjectCtrl', function($scope, $window, $http, $location, 
       regex_selectors: taskRegexSelectors(),
       extraFields: [
         {text: "Re-notify after how many hours", key: "renotify-interval", validator: validateDuration, default: "48"},
-        {text: "Failure type", key:"failure-type", type:"select", options:["any","test","system","setup"], default: "any"}
+        failureTypeSubscriberConfig
       ]
     },
     {
@@ -102,7 +116,7 @@ mciModule.controller('ProjectCtrl', function($scope, $window, $http, $location, 
       extraFields: [
         {text: "Test names matching regex", key: "test-regex", validator: null},
         {text: "Re-notify after how many hours", key: "renotify-interval", validator: validateDuration, default: "48"},
-        {text: "Failure type", key:"failure-type", type:"select", options:["any","test","system","setup"], default: "any"}
+        failureTypeSubscriberConfig
       ]
     },
     {
@@ -220,6 +234,9 @@ mciModule.controller('ProjectCtrl', function($scope, $window, $http, $location, 
           item.pr_testing_enabled = false;
           item.commit_queue.enabled = false;
           item.enabled = false;
+          item.subscriptions = _.filter($scope.subscriptions, function(d) {
+                return !d.changed;
+            });
           $http.post('/project/' + $scope.newProject.identifier, item).then(
             function(resp) {
               $scope.refreshTrackedProjects(data_put.AllProjects);
@@ -308,6 +325,7 @@ mciModule.controller('ProjectCtrl', function($scope, $window, $http, $location, 
           delete_subscriptions: [],
           files_ignored_from_cache: data.ProjectRef.files_ignored_from_cache,
           disabled_stats_cache: data.ProjectRef.disabled_stats_cache,
+          periodic_builds: data.ProjectRef.periodic_builds,
         };
 
         // Divide aliases into three categories (patch, github, and commit queue aliases)
@@ -512,6 +530,41 @@ mciModule.controller('ProjectCtrl', function($scope, $window, $http, $location, 
       $scope.isDirty = true;
     }
   };
+
+  $scope.removePeriodicBuild = function(i) {
+    if ($scope.settingsFormData.periodic_builds[i]) {
+      $scope.settingsFormData.periodic_builds.splice(i, 1);
+      $scope.isDirty = true;
+    }
+  }
+
+  $scope.addPeriodicBuild = function() {
+    $scope.invalidPeriodicBuildMsg = $scope.periodicBuildErrors($scope.periodic_build);
+    if ($scope.invalidPeriodicBuildMsg !== "") {
+      return;
+    }
+    if (!$scope.settingsFormData.periodic_builds) {
+      $scope.settingsFormData.periodic_builds = [];
+    }
+    $scope.settingsFormData.periodic_builds = $scope.settingsFormData.periodic_builds.concat($scope.periodic_build);
+    $scope.periodic_build = {};
+  }
+
+  $scope.periodicBuildErrors = function() {
+    if (!$scope.periodic_build) {
+      return "";
+    }
+    if ($scope.periodic_build.interval_hours <= 0) {
+      return "Interval must be a positive integer";
+    }
+    if ($scope.periodic_build.config_file === "") {
+      return "Config file must be defined";
+    }
+    if ($scope.periodic_build.alias === "") {
+      return "Alias file must be defined";
+    }
+    return "";
+  }
 
   $scope.triggerLabel = function(trigger) {
     if (!trigger || !trigger.project) {

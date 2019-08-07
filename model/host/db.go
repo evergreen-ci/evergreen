@@ -7,6 +7,7 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/build"
+	"github.com/evergreen-ci/evergreen/model/credentials"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/util"
@@ -53,6 +54,9 @@ var (
 	StatusKey                    = bsonutil.MustHaveTag(Host{}, "Status")
 	AgentRevisionKey             = bsonutil.MustHaveTag(Host{}, "AgentRevision")
 	NeedsNewAgentKey             = bsonutil.MustHaveTag(Host{}, "NeedsNewAgent")
+	NeedsNewAgentMonitorKey      = bsonutil.MustHaveTag(Host{}, "NeedsNewAgentMonitor")
+	JasperCredentialsIDKey       = bsonutil.MustHaveTag(Host{}, "JasperCredentialsID")
+	JasperDeployAttemptsKey      = bsonutil.MustHaveTag(Host{}, "JasperDeployAttempts")
 	StartedByKey                 = bsonutil.MustHaveTag(Host{}, "StartedBy")
 	InstanceTypeKey              = bsonutil.MustHaveTag(Host{}, "InstanceType")
 	VolumeSizeKey                = bsonutil.MustHaveTag(Host{}, "VolumeTotalSize")
@@ -188,13 +192,33 @@ func CountRunningHosts(distroID string) (int, error) {
 	return num, errors.Wrap(err, "problem finding running hosts")
 }
 
-func AllRunningHosts(distroID string) ([]Host, error) {
+func AllRunningHosts(distroID string) (HostGroup, error) {
 	allHosts, err := Find(db.Query(runningHostsQuery(distroID)))
 	if err != nil {
 		return nil, errors.Wrap(err, "Error finding live hosts")
 	}
 
 	return allHosts, nil
+}
+
+// AllActiveHosts produces a HostGroup for all hosts with UpHost
+// status as well as quarantined hosts. These do not count spawn
+// hosts.
+func AllActiveHosts(distroID string) (HostGroup, error) {
+	q := bson.M{
+		StartedByKey: evergreen.User,
+		StatusKey:    bson.M{"$in": append(evergreen.UpHostStatus, evergreen.HostQuarantined)},
+	}
+
+	if distroID != "" {
+		q[bsonutil.GetDottedKeyName(DistroKey, distro.IdKey)] = distroID
+	}
+
+	activeHosts, err := Find(db.Query(q))
+	if err != nil {
+		return nil, errors.Wrap(err, "problem finding active hosts")
+	}
+	return activeHosts, nil
 }
 
 // AllHostsSpawnedByTasksToTerminate finds all hosts spawned by tasks that should be terminated.
@@ -291,7 +315,12 @@ func ByUnprovisionedSince(threshold time.Time) db.Q {
 
 // ByTaskSpec returns a query that finds all running hosts that are running a
 // task with the given group, buildvariant, project, and version.
-func NumHostsByTaskSpec(group, bv, project, version string) (int, error) {
+func NumHostsByTaskSpec(group, buildVariant, project, version string) (int, error) {
+	if group == "" || buildVariant == "" || project == "" || version == "" {
+		s := "all arguments passed to host.NumHostsByTaskSpec must be non-empty strings: "
+		s += fmt.Sprintf("group is '%s', buildVariant is '%s', project is '%s' and version is '%s'", group, buildVariant, project, version)
+		return 0, errors.New(s)
+	}
 	q := db.Query(
 		bson.M{
 			StatusKey: evergreen.HostRunning,
@@ -299,14 +328,14 @@ func NumHostsByTaskSpec(group, bv, project, version string) (int, error) {
 				{
 					RunningTaskKey:             bson.M{"$exists": "true"},
 					RunningTaskGroupKey:        group,
-					RunningTaskBuildVariantKey: bv,
+					RunningTaskBuildVariantKey: buildVariant,
 					RunningTaskProjectKey:      project,
 					RunningTaskVersionKey:      version,
 				},
 				{
 					LTCTaskKey:    bson.M{"$exists": "true"},
 					LTCGroupKey:   group,
-					LTCBVKey:      bv,
+					LTCBVKey:      buildVariant,
 					LTCProjectKey: project,
 					LTCVersionKey: version,
 				},
@@ -341,6 +370,48 @@ func FindByFirstProvisioningAttempt() ([]Host, error) {
 		ProvisionAttemptsKey: 0,
 		StatusKey:            evergreen.HostProvisioning,
 	}))
+}
+
+// FindByExpiringJasperCredentials finds all hosts whose Jasper service
+// credentials will expire within the given cutoff.
+func FindByExpiringJasperCredentials(cutoff time.Duration) ([]Host, error) {
+	deadline := time.Now().Add(cutoff)
+	bootstrapKey := bsonutil.GetDottedKeyName(DistroKey, distro.BootstrapMethodKey)
+	credentialsKey := credentials.Collection
+	expirationKey := bsonutil.GetDottedKeyName(credentialsKey, credentials.TTLKey)
+
+	var hosts []Host
+
+	pipeline := []bson.M{
+		bson.M{"$match": bson.M{
+			bootstrapKey: bson.M{
+				"$exists": true,
+				"$ne":     distro.BootstrapMethodLegacySSH,
+			},
+			StatusKey:        evergreen.HostRunning,
+			HasContainersKey: bson.M{"$ne": true},
+			ParentIDKey:      bson.M{"$exists": false},
+		}},
+		bson.M{"$lookup": bson.M{
+			"from":         credentials.Collection,
+			"localField":   JasperCredentialsIDKey,
+			"foreignField": credentials.IDKey,
+			"as":           credentialsKey,
+		}},
+		bson.M{"$match": bson.M{
+			expirationKey: bson.M{"$lte": deadline},
+		}},
+		bson.M{"$project": bson.M{
+			credentialsKey: 0,
+		}},
+	}
+
+	err := db.Aggregate(Collection, pipeline, &hosts)
+	if adb.ResultsNotFound(err) {
+		return nil, nil
+	}
+
+	return hosts, err
 }
 
 // IsRunningAndSpawned is a query that returns all running hosts
@@ -562,9 +633,14 @@ func LastCommunicationTimeElapsed(currentTime time.Time) bson.M {
 	}
 }
 
-// NeedsNewAgentFlagSet returns hosts with NeedsNewAgent set to true.
+// NeedsNewAgentFlagSet returns legacy hosts with NeedsNewAgent set to true.
 func NeedsNewAgentFlagSet() db.Q {
+	bootstrapKey := bsonutil.GetDottedKeyName(DistroKey, distro.BootstrapMethodKey)
 	return db.Query(bson.M{
+		"$or": []bson.M{
+			{bootstrapKey: bson.M{"$exists": false}},
+			{bootstrapKey: distro.BootstrapMethodLegacySSH},
+		},
 		StatusKey:        evergreen.HostRunning,
 		StartedByKey:     evergreen.User,
 		HasContainersKey: bson.M{"$ne": true},
@@ -572,6 +648,32 @@ func NeedsNewAgentFlagSet() db.Q {
 		RunningTaskKey:   bson.M{"$exists": false},
 		NeedsNewAgentKey: true,
 	})
+}
+
+// FindByNeedsNewAgentMonitor returns running hosts that need a new agent
+// monitor.
+func FindByNeedsNewAgentMonitor() ([]Host, error) {
+	bootstrapKey := bsonutil.GetDottedKeyName(DistroKey, distro.BootstrapMethodKey)
+	hosts := []Host{}
+	query := bson.M{
+		bootstrapKey: bson.M{
+			"$exists": true,
+			"$ne":     distro.BootstrapMethodLegacySSH,
+		},
+		StatusKey:               evergreen.HostRunning,
+		StartedByKey:            evergreen.User,
+		HasContainersKey:        bson.M{"$ne": true},
+		ParentIDKey:             bson.M{"$exists": false},
+		RunningTaskKey:          bson.M{"$exists": false},
+		NeedsNewAgentMonitorKey: true,
+	}
+
+	err := db.FindAll(Collection, query, db.NoProjection, db.NoSort, db.NoSkip, db.NoLimit, &hosts)
+	if adb.ResultsNotFound(err) {
+		return nil, nil
+	}
+
+	return hosts, err
 }
 
 // Removes host intents that have been been uninitialized for more than 3

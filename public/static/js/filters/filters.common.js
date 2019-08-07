@@ -38,13 +38,13 @@ var convertSingleTest = function(test, execution) {
       "results": []
     }
   };
+  output.create_time = test.created_at;
   if (test.info) {
     output.order = test.info.order;
     output.version_id = test.info.version;
     output.project_id = test.info.project;
     output.task_name = test.info.task_name;
     output.task_id = test.info.task_id;
-    output.create_time = test.info.created_at;
     output.order = test.info.order;
 
     let versionParts = output.version_id.split("_");
@@ -353,7 +353,7 @@ filters.common.filter('conditional', function() {
           }
         }
       }
-    } else if (task.status == 'undispatched' || (task.display_only && task.task_waiting)) {
+    } else if (task.status == 'undispatched' || task.status == 'inactive' || task.status == 'unstarted' || (task.display_only && task.task_waiting)) {
         if (!task.activated) {
             cls = 'inactive';
         } else {

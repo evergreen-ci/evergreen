@@ -265,7 +265,7 @@ func (s *PatchIntentUnitsSuite) TestProcessGithubPatchIntent() {
 	}
 	s.NoError(dbUser.Insert())
 	s.user = dbUser.Id
-	patchEvent := testutil.NewGithubPREvent(s.prNumber, s.repo, s.headRepo, s.hash, "tychoish", "")
+	patchEvent := testutil.NewGithubPR(s.prNumber, s.repo, s.headRepo, s.hash, "tychoish", "title1")
 	intent, err := patch.NewGithubIntent("1", patchEvent)
 	tempPatch := intent.NewPatch()
 	s.NoError(err)
@@ -360,7 +360,7 @@ func (s *PatchIntentUnitsSuite) verifyVersionDoc(patchDoc *patch.Patch, expected
 	s.Zero(versionDoc.FinishTime)
 	s.Equal(s.hash, versionDoc.Revision)
 	s.Equal(patchDoc.Description, versionDoc.Message)
-	s.NotZero(versionDoc.Config)
+	s.NotEmpty(versionDoc.ParserProject)
 	s.Equal(s.user, versionDoc.Author)
 	s.Len(versionDoc.BuildIds, 4)
 
@@ -409,7 +409,7 @@ func (s *PatchIntentUnitsSuite) TestRunInDegradedModeWithGithubIntent() {
 	}
 	s.NoError(evergreen.SetServiceFlags(flags))
 
-	intent, err := patch.NewGithubIntent("1", testutil.NewGithubPREvent(s.prNumber, s.repo, s.headRepo, s.hash, "tychoish", ""))
+	intent, err := patch.NewGithubIntent("1", testutil.NewGithubPR(s.prNumber, s.repo, s.headRepo, s.hash, "tychoish", "title1"))
 	s.NoError(err)
 	s.NotNil(intent)
 	s.NoError(intent.Insert())
@@ -440,7 +440,7 @@ func (s *PatchIntentUnitsSuite) TestGithubPRTestFromUnknownUserDoesntCreateVersi
 	}
 	s.Require().NoError(evergreen.SetServiceFlags(flags))
 
-	intent, err := patch.NewGithubIntent("1", testutil.NewGithubPREvent(s.prNumber, s.repo, s.headRepo, s.hash, "octocat", ""))
+	intent, err := patch.NewGithubIntent("1", testutil.NewGithubPR(s.prNumber, s.repo, s.headRepo, s.hash, "octocat", "title1"))
 	s.NoError(err)
 	s.NotNil(intent)
 	s.NoError(intent.Insert())

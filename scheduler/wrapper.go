@@ -17,10 +17,7 @@ import (
 )
 
 const (
-	// maximum turnaround we want to maintain for all hosts for a given distro
-	MaxDurationPerDistroHost               = 30 * time.Minute
-	MaxDurationPerDistroHostWithContainers = 2 * time.Minute
-	dynamicDistroRuntimeAlertThreshold     = 24 * time.Hour
+	dynamicDistroRuntimeAlertThreshold = 24 * time.Hour
 )
 
 type Configuration struct {
@@ -31,6 +28,7 @@ type Configuration struct {
 
 func PlanDistro(ctx context.Context, conf Configuration, s *evergreen.Settings) error {
 	schedulerInstanceID := util.RandomString()
+
 	distro, err := distro.FindOne(distro.ById(conf.DistroID))
 	if err != nil {
 		return errors.Wrap(err, "problem finding distro")
@@ -49,13 +47,17 @@ func PlanDistro(ctx context.Context, conf Configuration, s *evergreen.Settings) 
 		return nil
 	}
 
+	if _, err = distro.GetResolvedPlannerSettings(s); err != nil {
+		return errors.WithStack(err)
+	}
+
 	////////////////////
 	// task-finder phase
 	////////////////////
 
 	taskFindingBegins := time.Now()
 	finder := GetTaskFinder(conf.TaskFinder)
-	tasks, err := finder(distro.Id)
+	tasks, err := finder(distro)
 	if err != nil {
 		return errors.Wrapf(err, "problem while running task finder for distro '%s'", distro.Id)
 	}
@@ -68,38 +70,14 @@ func PlanDistro(ctx context.Context, conf Configuration, s *evergreen.Settings) 
 		"duration_secs": time.Since(taskFindingBegins).Seconds(),
 	})
 
-	runnableTasks, versions, err := filterTasksWithVersionCache(tasks)
-	if err != nil {
-		return errors.Wrap(err, "error while filtering tasks against the versions' cache")
-	}
-
-	ds := &distroScheduler{
-		TaskPrioritizer: &CmpBasedTaskPrioritizer{
-			runtimeID: schedulerInstanceID,
-		},
-		TaskQueuePersister: &DBTaskQueuePersister{},
-		runtimeID:          schedulerInstanceID,
-	}
-
-	// If the distro supports containers, get its container pool information.
-	maxDurationThreshold := MaxDurationPerDistroHost
-	var containerPool *evergreen.ContainerPool
-	if distro.ContainerPool != "" {
-		containerPool = s.ContainerPools.GetContainerPool(distro.ContainerPool)
-		if containerPool == nil {
-			return errors.Wrapf(err, "problem retrieving container pool for distro '%s'", distro.Id)
-		}
-		maxDurationThreshold = MaxDurationPerDistroHostWithContainers
-	}
-
 	/////////////////
 	// planning phase
 	/////////////////
 
 	planningPhaseBegins := time.Now()
-	prioritizedTasks, err := ds.scheduleDistro(distro.Id, runnableTasks, versions, maxDurationThreshold)
+	prioritizedTasks, err := PrioritizeTasks(schedulerInstanceID, &distro, tasks)
 	if err != nil {
-		return errors.Wrapf(err, "problem calculating distro plan for distro '%s'", distro.Id)
+		return errors.WithStack(err)
 	}
 
 	grip.Info(message.Fields{
@@ -111,6 +89,7 @@ func PlanDistro(ctx context.Context, conf Configuration, s *evergreen.Settings) 
 		"duration_secs": time.Since(planningPhaseBegins).Seconds(),
 		"stat":          "distro-queue-size",
 		"size":          len(prioritizedTasks),
+		"input_size":    len(tasks),
 	})
 
 	return nil

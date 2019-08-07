@@ -1,6 +1,7 @@
 mciModule.controller('PatchController', function($scope, $filter, $window, notificationService, $http) {
   $scope.userTz = $window.userTz;
   $scope.canEdit = $window.canEdit;
+  $scope.commitQueuePosition = $window.commitQueuePosition;
   $scope.enabledTasks = _.pluck($window.tasks, "Name");
   $scope.disableSubmit = false;
   if (window.hasBanner && !isDismissed(bannerText())) {

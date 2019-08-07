@@ -77,18 +77,19 @@ func startSystemCronJobs(ctx context.Context, env evergreen.Environment) error {
 		DebugLogging:    false,
 	}
 
-	amboy.IntervalQueueOperation(ctx, populateQueue, 15*time.Second, util.RoundPartOfMinute(0), opts, func(queue amboy.Queue) error {
-		return errors.WithStack(queue.Put(units.NewCronRemoteFifteenSecondJob()))
+	amboy.IntervalQueueOperation(ctx, populateQueue, 15*time.Second, util.RoundPartOfMinute(0), opts, func(ctx context.Context, queue amboy.Queue) error {
+		return errors.WithStack(queue.Put(ctx, units.NewCronRemoteFifteenSecondJob()))
 	})
-	amboy.IntervalQueueOperation(ctx, populateQueue, time.Minute, util.RoundPartOfMinute(0), opts, func(queue amboy.Queue) error {
-		return errors.WithStack(queue.Put(units.NewCronRemoteMinuteJob()))
+	amboy.IntervalQueueOperation(ctx, populateQueue, time.Minute, util.RoundPartOfMinute(0), opts, func(ctx context.Context, queue amboy.Queue) error {
+		return errors.WithStack(queue.Put(ctx, units.NewCronRemoteMinuteJob()))
 	})
-	amboy.IntervalQueueOperation(ctx, populateQueue, 5*time.Minute, util.RoundPartOfHour(5), opts, func(queue amboy.Queue) error {
-		return errors.WithStack(queue.Put(units.NewCronRemoteFiveMinuteJob()))
+	amboy.IntervalQueueOperation(ctx, populateQueue, 5*time.Minute, util.RoundPartOfHour(5), opts, func(ctx context.Context, queue amboy.Queue) error {
+		return errors.WithStack(queue.Put(ctx, units.NewCronRemoteFiveMinuteJob()))
 	})
-	amboy.IntervalQueueOperation(ctx, env.RemoteQueue(), 15*time.Minute, util.RoundPartOfHour(15), opts, func(queue amboy.Queue) error {
-		return errors.WithStack(queue.Put(units.NewCronRemoteFifteenMinuteJob()))
+	amboy.IntervalQueueOperation(ctx, env.RemoteQueue(), 15*time.Minute, util.RoundPartOfHour(15), opts, func(ctx context.Context, queue amboy.Queue) error {
+		return errors.WithStack(queue.Put(ctx, units.NewCronRemoteFifteenMinuteJob()))
 	})
+	amboy.IntervalQueueOperation(ctx, env.RemoteQueue(), 24*time.Hour, util.RoundPartOfDay(0), opts, units.PopulateJasperDeployJobs(env))
 
 	amboy.IntervalQueueOperation(ctx, env.RemoteQueue(), 3*time.Hour, util.RoundPartOfHour(0), opts, units.PopulateCacheHistoricalTestDataJob(6))
 

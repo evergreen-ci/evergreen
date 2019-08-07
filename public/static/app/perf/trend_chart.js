@@ -7,10 +7,8 @@ function d3Translate(x, y) {
 
 // TODO Create AngularJS directive
 mciModule.factory('DrawPerfTrendChart', function (
-  PerfChartService, PROCESSED_TYPE, Rounder
-) {
+  PerfChartService, PROCESSED_TYPE) {
   const MAXONLY = 'maxonly';
-  let round = Rounder.get({rre: 0.01, trailingZeros: true})
 
   return function(params) {
 
@@ -44,12 +42,12 @@ mciModule.factory('DrawPerfTrendChart', function (
     }
 
     // Filter out change points which lays outside ot the chart
-    var visibleChangePoints = _.chain(changePoints)
+    let visibleChangePoints = (metric === "ops_per_sec") ? _.chain(changePoints)
       .filter(function(d) {
         return _.findWhere(series, {revision: d.suspect_revision})
       })
       .each(hydrateChangePoint) // Add some useful meta data
-      .value()
+      .value() : [];
 
     var visibleBFs = _.filter(buildFailures, function(d) {
       return _.findWhere(series, {revision: d.first_failing_revision})
@@ -62,7 +60,7 @@ mciModule.factory('DrawPerfTrendChart', function (
 
     document.getElementById(containerId).innerHTML = '';
 
-    var svg = d3.select('#' + containerId)
+    var svg = d3.select('[id="' + containerId + '"]')
       .append('svg')
       .attr({
         class: 'series',
@@ -130,7 +128,11 @@ mciModule.factory('DrawPerfTrendChart', function (
         var testResult = compSample.resultForTest(key)
         if (testResult) {
           return _.map(activeLevelNames, function(lvl) {
-            return testResult.results[lvl][cfg.valueAttr]
+            let results = testResult.results[lvl];
+            if (!results) {
+              return null;
+            }
+            return results[cfg.valueAttr]
           })
         }
       }
@@ -302,7 +304,7 @@ mciModule.factory('DrawPerfTrendChart', function (
         .scale(yScale)
         .orient('left')
         .ticks(cfg.yAxis.ticks, function(value) {
-          return round(value)
+          return formatNumber(value)
         })
 
     // ## CHART STRUCTURE ##
@@ -1011,7 +1013,7 @@ mciModule.factory('DrawPerfTrendChart', function (
     }
 
     function formatNumber(value) {
-      return round(value)
+      return numeral(value).format("0.000a");
     }
 
     // Overlay to handle hover action

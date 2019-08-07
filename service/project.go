@@ -5,9 +5,6 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
-	"regexp"
-	"strings"
-	"time"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
@@ -18,7 +15,6 @@ import (
 	"github.com/evergreen-ci/evergreen/units"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/gimlet"
-	"github.com/google/go-github/github"
 	adb "github.com/mongodb/anser/db"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
@@ -163,10 +159,12 @@ func (uis *UIServer) ProjectNotFound(projCtx projectContext, w http.ResponseWrit
 }
 
 func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
-
 	dbUser := MustHaveUser(r)
 	_ = MustHaveProjectContext(r)
 	id := gimlet.GetVars(r)["project_id"]
+
+	ctx, cancel := context.WithCancel(r.Context())
+	defer cancel()
 
 	projectRef, err := model.FindOneProjectRef(id)
 
@@ -208,13 +206,14 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 			Provider string                 `json:"provider"`
 			Settings map[string]interface{} `json:"settings"`
 		} `json:"alert_config"`
-		NotifyOnBuildFailure  bool                        `json:"notify_on_failure"`
-		ForceRepotrackerRun   bool                        `json:"force_repotracker_run"`
-		Subscriptions         []restModel.APISubscription `json:"subscriptions"`
-		DeleteSubscriptions   []string                    `json:"delete_subscriptions"`
-		Triggers              []model.TriggerDefinition   `json:"triggers"`
-		FilesIgnoredFromCache []string                    `json:"files_ignored_from_cache"`
-		DisabledStatsCache    bool                        `json:"disabled_stats_cache"`
+		NotifyOnBuildFailure  bool                             `json:"notify_on_failure"`
+		ForceRepotrackerRun   bool                             `json:"force_repotracker_run"`
+		Subscriptions         []restModel.APISubscription      `json:"subscriptions"`
+		DeleteSubscriptions   []string                         `json:"delete_subscriptions"`
+		Triggers              []model.TriggerDefinition        `json:"triggers"`
+		FilesIgnoredFromCache []string                         `json:"files_ignored_from_cache"`
+		DisabledStatsCache    bool                             `json:"disabled_stats_cache"`
+		PeriodicBuilds        []*model.PeriodicBuildDefinition `json:"periodic_builds"`
 	}{}
 
 	if err = util.ReadJSONInto(util.NewRequestReader(r), &responseRef); err != nil {
@@ -232,9 +231,9 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 	}
 
 	errs := []string{}
-	errs = append(errs, validateProjectAliases(responseRef.GitHubAliases, "GitHub Aliases")...)
-	errs = append(errs, validateProjectAliases(responseRef.CommitQueueAliases, "Commit Queue Aliases")...)
-	errs = append(errs, validateProjectAliases(responseRef.PatchAliases, "Patch Aliases")...)
+	errs = append(errs, model.ValidateProjectAliases(responseRef.GitHubAliases, "GitHub Aliases")...)
+	errs = append(errs, model.ValidateProjectAliases(responseRef.CommitQueueAliases, "Commit Queue Aliases")...)
+	errs = append(errs, model.ValidateProjectAliases(responseRef.PatchAliases, "Patch Aliases")...)
 	if len(errs) > 0 {
 		errMsg := ""
 		for _, err := range errs {
@@ -253,8 +252,7 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 	}
 	origGithubWebhookEnabled := (hook != nil)
 	if hook == nil {
-		var hookID int
-		hookID, err = uis.setupGithubHook(responseRef.Owner, responseRef.Repo)
+		hook, err = model.SetupNewGithubHook(context.Background(), uis.Settings, responseRef.Owner, responseRef.Repo)
 		if err != nil {
 			grip.Error(message.WrapError(err, message.Fields{
 				"source":  "project edit",
@@ -268,11 +266,6 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 			// branch we don't have access to
 			projectRef.TracksPushEvents = false
 		} else {
-			hook := model.GithubHook{
-				HookID: hookID,
-				Owner:  responseRef.Owner,
-				Repo:   responseRef.Repo,
-			}
 			if err = hook.Insert(); err != nil {
 				// A github hook as been created, but we couldn't
 				// save the hook ID in our database. This needs
@@ -283,7 +276,7 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 					"project": id,
 					"owner":   responseRef.Owner,
 					"repo":    responseRef.Repo,
-					"hook_id": hookID,
+					"hook_id": hook.HookID,
 				}))
 				uis.LoggedError(w, r, http.StatusInternalServerError, err)
 				return
@@ -357,6 +350,9 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 			responseRef.Triggers[i].DefinitionID = util.RandomString()
 		}
 	}
+	for i, buildDef := range responseRef.PeriodicBuilds {
+		catcher.Wrapf(buildDef.Validate(), "invalid periodic build definition on line %d", i+1)
+	}
 	if catcher.HasErrors() {
 		uis.LoggedError(w, r, http.StatusBadRequest, catcher.Resolve())
 		return
@@ -381,6 +377,10 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 	projectRef.Triggers = responseRef.Triggers
 	projectRef.FilesIgnoredFromCache = responseRef.FilesIgnoredFromCache
 	projectRef.DisabledStatsCache = responseRef.DisabledStatsCache
+	projectRef.PeriodicBuilds = []model.PeriodicBuildDefinition{}
+	for _, periodicBuild := range responseRef.PeriodicBuilds {
+		projectRef.PeriodicBuilds = append(projectRef.PeriodicBuilds, *periodicBuild)
+	}
 
 	projectVars, err := model.FindOneProjectVars(id)
 	if err != nil {
@@ -391,7 +391,7 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 	if responseRef.ForceRepotrackerRun {
 		ts := util.RoundPartOfHour(1).Format(tsFormat)
 		j := units.NewRepotrackerJob(fmt.Sprintf("catchup-%s", ts), projectRef.Identifier)
-		if err = uis.queue.Put(j); err != nil {
+		if err = uis.queue.Put(ctx, j); err != nil {
 			grip.Error(errors.Wrap(err, "problem creating catchup job from UI"))
 		}
 	}
@@ -415,13 +415,23 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 				Type: "project",
 				Data: projectRef.Identifier,
 			},
-			{
+		}
+		if subscription.TriggerData != nil && subscription.TriggerData[event.SelectorRequester] != "" {
+			subscription.Selectors = append(subscription.Selectors, event.Selector{
+				Type: "requester",
+				Data: subscription.TriggerData[event.SelectorRequester],
+			})
+		} else {
+			subscription.Selectors = append(subscription.Selectors, event.Selector{
 				Type: "requester",
 				Data: evergreen.RepotrackerVersionRequester,
-			},
+			})
 		}
 		subscription.OwnerType = event.OwnerTypeProject
-		subscription.Owner = projectRef.Identifier
+		if subscription.Owner != projectRef.Identifier {
+			subscription.Owner = projectRef.Identifier
+			subscription.ID = ""
+		}
 		if !trigger.ValidateTrigger(subscription.ResourceType, subscription.Trigger) {
 			catcher.Add(errors.Errorf("subscription type/trigger is invalid: %s/%s", subscription.ResourceType, subscription.Trigger))
 			continue
@@ -466,10 +476,8 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 	projectAliases = append(projectAliases, responseRef.GitHubAliases...)
 	projectAliases = append(projectAliases, responseRef.CommitQueueAliases...)
 	projectAliases = append(projectAliases, responseRef.PatchAliases...)
-	for i := range projectAliases {
-		projectAliases[i].ProjectID = id
-		catcher.Add(projectAliases[i].Upsert())
-	}
+
+	catcher.Add(model.UpsertAliasesForProject(projectAliases, id))
 
 	for _, alias := range responseRef.DeleteAliases {
 		catcher.Add(model.RemoveProjectAlias(alias))
@@ -622,52 +630,10 @@ func (uis *UIServer) setRevision(w http.ResponseWriter, r *http.Request) {
 	// run the repotracker for the project
 	ts := util.RoundPartOfHour(1).Format(tsFormat)
 	j := units.NewRepotrackerJob(fmt.Sprintf("catchup-%s", ts), projectRef.Identifier)
-	if err := uis.queue.Put(j); err != nil {
+	if err := uis.queue.Put(r.Context(), j); err != nil {
 		grip.Error(errors.Wrap(err, "problem creating catchup job from UI"))
 	}
 	gimlet.WriteJSON(w, nil)
-}
-
-func (uis *UIServer) setupGithubHook(owner, repo string) (int, error) {
-	token, err := uis.Settings.GetGithubOauthToken()
-	if err != nil {
-		return 0, err
-	}
-
-	if uis.Settings.Api.GithubWebhookSecret == "" {
-		return 0, errors.New("Evergreen is not configured for Github Webhooks")
-	}
-
-	httpClient, err := util.GetOAuth2HTTPClient(token)
-	if err != nil {
-		return 0, err
-	}
-	defer util.PutHTTPClient(httpClient)
-	client := github.NewClient(httpClient)
-	newHook := github.Hook{
-		Name:   github.String("web"),
-		Active: github.Bool(true),
-		Events: []string{"*"},
-		Config: map[string]interface{}{
-			"url":          github.String(fmt.Sprintf("%s/rest/v2/hooks/github", uis.Settings.ApiUrl)),
-			"content_type": github.String("json"),
-			"secret":       github.String(uis.Settings.Api.GithubWebhookSecret),
-			"insecure_ssl": github.String("0"),
-		},
-	}
-
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancel()
-	hook, resp, err := client.Repositories.CreateHook(ctx, owner, repo, &newHook)
-	if err != nil {
-		return 0, err
-	}
-	defer resp.Body.Close()
-	if resp.StatusCode != http.StatusCreated || hook == nil || hook.ID == nil {
-		return 0, errors.New("unexpected data from github")
-	}
-
-	return *hook.ID, nil
 }
 
 func (uis *UIServer) projectEvents(w http.ResponseWriter, r *http.Request) {
@@ -695,29 +661,4 @@ func (uis *UIServer) projectEvents(w http.ResponseWriter, r *http.Request) {
 		ViewData
 	}{id, uis.GetCommonViewData(w, r, true, true)}
 	uis.render.WriteResponse(w, http.StatusOK, data, "base", template, "base_angular.html", "menu.html")
-}
-
-func validateProjectAliases(aliases []model.ProjectAlias, aliasType string) []string {
-	errs := []string{}
-
-	for i, pd := range aliases {
-		if strings.TrimSpace(pd.Alias) == "" {
-			errs = append(errs, fmt.Sprintf("%s: alias name #%d can't be empty string", aliasType, i+1))
-		}
-		if strings.TrimSpace(pd.Variant) == "" {
-			errs = append(errs, fmt.Sprintf("%s: variant regex #%d can't be empty string", aliasType, i+1))
-		}
-		if (strings.TrimSpace(pd.Task) == "") == (len(pd.Tags) == 0) {
-			errs = append(errs, fmt.Sprintf("%s: must specify exactly one of task regex or tags on line #%d", aliasType, i+1))
-		}
-
-		if _, err := regexp.Compile(pd.Variant); err != nil {
-			errs = append(errs, fmt.Sprintf("%s: variant regex #%d is invalid", aliasType, i+1))
-		}
-		if _, err := regexp.Compile(pd.Task); err != nil {
-			errs = append(errs, fmt.Sprintf("%s: task regex #%d is invalid", aliasType, i+1))
-		}
-	}
-
-	return errs
 }

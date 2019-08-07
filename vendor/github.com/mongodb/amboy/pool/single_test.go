@@ -62,13 +62,13 @@ func (s *SingleRunnerSuite) TestPoolStartsAndProcessesJobs() {
 	s.NoError(s.queue.Start(ctx))
 
 	for _, job := range jobs {
-		s.NoError(s.queue.Put(job))
+		s.NoError(s.queue.Put(ctx, job))
 	}
 
 	s.True(s.pool.Started())
 	s.True(s.queue.Started())
 
-	amboy.WaitInterval(s.queue, 100*time.Millisecond)
+	amboy.WaitInterval(ctx, s.queue, 100*time.Millisecond)
 
 	for _, job := range jobs {
 		s.True(job.Status().Completed)

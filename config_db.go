@@ -21,7 +21,8 @@ var (
 	configDirKey          = bsonutil.MustHaveTag(Settings{}, "ConfigDir")
 	apiUrlKey             = bsonutil.MustHaveTag(Settings{}, "ApiUrl")
 	clientBinariesDirKey  = bsonutil.MustHaveTag(Settings{}, "ClientBinariesDir")
-	jasperKey             = bsonutil.MustHaveTag(Settings{}, "JasperConfig")
+	hostJasperKey         = bsonutil.MustHaveTag(Settings{}, "HostJasper")
+	domainNameKey         = bsonutil.MustHaveTag(Settings{}, "DomainName")
 	superUsersKey         = bsonutil.MustHaveTag(Settings{}, "SuperUsers")
 	jiraKey               = bsonutil.MustHaveTag(Settings{}, "Jira")
 	splunkKey             = bsonutil.MustHaveTag(Settings{}, "Splunk")
@@ -72,6 +73,7 @@ var (
 	taskLoggingDisabledKey          = bsonutil.MustHaveTag(ServiceFlags{}, "TaskLoggingDisabled")
 	cacheStatsJobDisabledKey        = bsonutil.MustHaveTag(ServiceFlags{}, "CacheStatsJobDisabled")
 	cacheStatsEndpointDisabledKey   = bsonutil.MustHaveTag(ServiceFlags{}, "CacheStatsEndpointDisabled")
+	taskReliabilityDisabledKey      = bsonutil.MustHaveTag(ServiceFlags{}, "TaskReliabilityDisabled")
 	commitQueueDisabledKey          = bsonutil.MustHaveTag(ServiceFlags{}, "CommitQueueDisabled")
 	plannerDisabledKey              = bsonutil.MustHaveTag(ServiceFlags{}, "PlannerDisabled")
 	hostAllocatorDisabledKey        = bsonutil.MustHaveTag(ServiceFlags{}, "HostAllocatorDisabled")
@@ -82,12 +84,12 @@ var (
 	// ContainerPool keys
 	ContainerPoolIdKey = bsonutil.MustHaveTag(ContainerPool{}, "Id")
 
-	// JasperConfig keys
-	jasperBinaryNameKey       = bsonutil.MustHaveTag(JasperConfig{}, "BinaryName")
-	jasperDownloadFileNameKey = bsonutil.MustHaveTag(JasperConfig{}, "DownloadFileName")
-	jasperPortKey             = bsonutil.MustHaveTag(JasperConfig{}, "Port")
-	jasperURLKey              = bsonutil.MustHaveTag(JasperConfig{}, "URL")
-	jasperVersionKey          = bsonutil.MustHaveTag(JasperConfig{}, "Version")
+	// HostJasperConfig keys
+	hostJasperBinaryNameKey       = bsonutil.MustHaveTag(HostJasperConfig{}, "BinaryName")
+	hostJasperDownloadFileNameKey = bsonutil.MustHaveTag(HostJasperConfig{}, "DownloadFileName")
+	hostJasperPortKey             = bsonutil.MustHaveTag(HostJasperConfig{}, "Port")
+	hostJasperURLKey              = bsonutil.MustHaveTag(HostJasperConfig{}, "URL")
+	hostJasperVersionKey          = bsonutil.MustHaveTag(HostJasperConfig{}, "Version")
 )
 
 func byId(id string) bson.M {

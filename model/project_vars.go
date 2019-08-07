@@ -117,13 +117,50 @@ func (projectVars *ProjectVars) Insert() error {
 	)
 }
 
+func (projectVars *ProjectVars) FindAndModify(varsToDelete []string) (*adb.ChangeInfo, error) {
+	setUpdate := bson.M{}
+	unsetUpdate := bson.M{}
+	update := bson.M{}
+	if len(projectVars.Vars) == 0 && len(projectVars.PrivateVars) == 0 && len(varsToDelete) == 0 {
+		return nil, nil
+	}
+	for key, val := range projectVars.Vars {
+		setUpdate[bsonutil.GetDottedKeyName(projectVarsMapKey, key)] = val
+	}
+	for key, val := range projectVars.PrivateVars {
+		setUpdate[bsonutil.GetDottedKeyName(privateVarsMapKey, key)] = val
+	}
+	if len(projectVars.Vars) > 0 || len(projectVars.PrivateVars) > 0 {
+		update["$set"] = setUpdate
+	}
+
+	for _, val := range varsToDelete {
+		unsetUpdate[bsonutil.GetDottedKeyName(projectVarsMapKey, val)] = 1
+		unsetUpdate[bsonutil.GetDottedKeyName(privateVarsMapKey, val)] = 1
+	}
+	if len(varsToDelete) > 0 {
+		update["$unset"] = unsetUpdate
+	}
+	return db.FindAndModify(
+		ProjectVarsCollection,
+		bson.M{projectVarIdKey: projectVars.Id},
+		nil,
+		adb.Change{
+			Update:    update,
+			ReturnNew: true,
+			Upsert:    true,
+		},
+		projectVars,
+	)
+}
+
 func (projectVars *ProjectVars) RedactPrivateVars() {
 	if projectVars != nil &&
 		projectVars.Vars != nil &&
 		projectVars.PrivateVars != nil {
 		// Redact private variables
 		for k := range projectVars.Vars {
-			if _, ok := projectVars.PrivateVars[k]; ok {
+			if val, ok := projectVars.PrivateVars[k]; ok && val {
 				projectVars.Vars[k] = ""
 			}
 		}

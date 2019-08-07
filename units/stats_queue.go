@@ -3,9 +3,10 @@ package units
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/evergreen-ci/evergreen"
-	"github.com/evergreen-ci/evergreen/scheduler"
+	"github.com/evergreen-ci/evergreen/model"
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/amboy/dependency"
 	"github.com/mongodb/amboy/job"
@@ -53,15 +54,26 @@ func (j *queueStatsCollector) Run(_ context.Context) {
 		j.AddError(errors.New("env is nil"))
 		return
 	}
-	settings := env.Settings()
 
-	finder := scheduler.GetTaskFinder(settings.Scheduler.TaskFinder)
-	tasks, err := finder("")
+	queues, err := model.FindAllTaskQueues()
 	if err != nil {
-		j.AddError(errors.Wrap(err, "error finding runnable tasks"))
+		j.AddError(err)
 		return
 	}
+
+	var total int
+	var totalDur time.Duration
+
+	for _, q := range queues {
+		total += q.DistroQueueInfo.Length
+		totalDur += q.DistroQueueInfo.ExpectedDuration
+	}
+
 	grip.Info(message.Fields{
-		"total_queue_length": len(tasks),
+		"total_queue_length": total,
+		"total_dur_secs":     totalDur.Seconds(),
+		"total_dur_mins":     totalDur.Minutes(),
+		"total_dur_hours":    totalDur.Hours(),
+		"distros":            len(queues),
 	})
 }

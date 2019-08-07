@@ -12,3 +12,6 @@ import:
   - package: github.com/mongodb/amboy
   - package: github.com/containerd/cgroups
   - package: github.com/urfave/cli
+  - package: github.com/evergreen-ci/aviation
+  - package: github.com/tychoish/mongorpc
+  - package: github.com/mongodb/ftdc

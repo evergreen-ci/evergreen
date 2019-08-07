@@ -14,9 +14,11 @@ import (
 func TestStatusOuputGenerator(t *testing.T) {
 	assert := assert.New(t)
 	service := NewQueueService()
-	ctx := context.Background()
 
-	st := service.getStatus()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	st := service.getStatus(ctx)
 	assert.Equal("degraded", st.Status)
 	assert.False(st.QueueRunning)
 	assert.True(len(st.SupportedJobTypes) > 0)
@@ -25,7 +27,7 @@ func TestStatusOuputGenerator(t *testing.T) {
 	assert.NoError(service.Open(ctx))
 	defer service.Close()
 
-	st = service.getStatus()
+	st = service.getStatus(ctx)
 	assert.Equal("ok", st.Status)
 	assert.True(st.QueueRunning)
 	assert.True(len(st.SupportedJobTypes) > 0)

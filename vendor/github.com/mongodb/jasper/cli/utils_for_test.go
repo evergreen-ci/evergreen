@@ -6,7 +6,6 @@ import (
 	"flag"
 	"fmt"
 	"io/ioutil"
-	"net"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -17,7 +16,6 @@ import (
 	"unicode"
 
 	"github.com/mongodb/jasper"
-	"github.com/mongodb/jasper/rpc"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/urfave/cli"
@@ -78,7 +76,7 @@ func mockCLIContext(service string, port int) *cli.Context {
 	_ = flags.String(serviceFlagName, service, "")
 	_ = flags.Int(portFlagName, port, "")
 	_ = flags.String(hostFlagName, "localhost", "")
-	_ = flags.String(certFilePathFlagName, "", "")
+	_ = flags.String(credsFilePathFlagName, "", "")
 	return cli.NewContext(nil, flags, nil)
 }
 
@@ -145,6 +143,9 @@ func withMockStdout(t *testing.T, operation func(*os.File) error) error {
 // waitForRESTService waits until the REST service becomes available to serve
 // requests or the context times out.
 func waitForRESTService(ctx context.Context, t *testing.T, url string) {
+	client := jasper.GetHTTPClient()
+	defer jasper.PutHTTPClient(client)
+
 	// Block until the service comes up
 	timeoutInterval := 10 * time.Millisecond
 	timer := time.NewTimer(timeoutInterval)
@@ -160,7 +161,7 @@ func waitForRESTService(ctx context.Context, t *testing.T, url string) {
 				continue
 			}
 			req = req.WithContext(ctx)
-			resp, err := http.DefaultClient.Do(req)
+			resp, err := client.Do(req)
 			if err != nil {
 				timer.Reset(timeoutInterval)
 				continue
@@ -182,8 +183,8 @@ func execCLICommandInputOutput(t *testing.T, c *cli.Context, cmd cli.Command, in
 	})
 }
 
-// execCLICommandInputOutput runs the CLI command writes the result from stdout
-// to output.
+// execCLICommandInputOutput runs the CLI command and writes the result from
+// stdout to output.
 func execCLICommandOutput(t *testing.T, c *cli.Context, cmd cli.Command, output interface{}) error {
 	return withMockStdout(t, func(stdout *os.File) error {
 		if err := cli.HandleAction(cmd.Action, c); err != nil {
@@ -200,40 +201,37 @@ func execCLICommandOutput(t *testing.T, c *cli.Context, cmd cli.Command, output 
 	})
 }
 
-func makeRESTServiceAndClient(ctx context.Context, t *testing.T, port int, manager jasper.Manager) (jasper.CloseFunc, jasper.RemoteClient) {
-	closeService := makeRESTService(ctx, t, port, manager)
-	client, err := makeRemoteClient(ctx, serviceREST, "localhost", port, "")
+// makeTestRESTService creates a REST service for testing purposes only on
+// localhost.
+func makeTestRESTService(ctx context.Context, t *testing.T, port int, manager jasper.Manager) jasper.CloseFunc {
+	closeService, err := newRESTService(ctx, "localhost", port, manager)
 	require.NoError(t, err)
-	return closeService, client
-}
-
-func makeRESTService(ctx context.Context, t *testing.T, port int, manager jasper.Manager) jasper.CloseFunc {
-	srv := jasper.NewManagerService(manager)
-	app := srv.App(ctx)
-	app.SetPrefix("jasper")
-	require.NoError(t, app.SetPort(port))
-
-	go func() {
-		assert.NoError(t, app.Run(ctx))
-	}()
-
 	waitForRESTService(ctx, t, fmt.Sprintf("http://localhost:%d/jasper/v1", port))
-	return func() error { return nil }
+	return closeService
 }
 
-func makeRPCServiceAndClient(ctx context.Context, t *testing.T, port int, manager jasper.Manager) (jasper.CloseFunc, jasper.RemoteClient) {
-	closeService := makeRPCService(ctx, t, port, manager)
-	client, err := makeRemoteClient(ctx, serviceRPC, "localhost", port, "")
+// makeTestRESTServiceAndClient creates a REST service and client for testing
+// purposes on localhost.
+func makeTestRESTServiceAndClient(ctx context.Context, t *testing.T, port int, manager jasper.Manager) (jasper.CloseFunc, jasper.RemoteClient) {
+	closeService := makeTestRESTService(ctx, t, port, manager)
+	client, err := newRemoteClient(ctx, RESTService, "localhost", port, "")
 	require.NoError(t, err)
 	return closeService, client
 }
 
-func makeRPCService(ctx context.Context, t *testing.T, port int, manager jasper.Manager) jasper.CloseFunc {
-	addr, err := net.ResolveTCPAddr("tcp", fmt.Sprintf("%s:%d", "localhost", port))
+// makeTestRPCService creates an RPC service for testing purposes only on
+// localhost with no credentials.
+func makeTestRPCService(ctx context.Context, t *testing.T, port int, manager jasper.Manager) jasper.CloseFunc {
+	closeService, err := newRPCService(ctx, "localhost", port, manager, "")
 	require.NoError(t, err)
-
-	closeService, err := rpc.StartService(ctx, manager, addr, "", "")
-	require.NoError(t, err)
-
 	return closeService
+}
+
+// makeTestRESTServiceAndClient creates an RPC servicen and client for testing
+// purposes on localhost with no credentials.
+func makeTestRPCServiceAndClient(ctx context.Context, t *testing.T, port int, manager jasper.Manager) (jasper.CloseFunc, jasper.RemoteClient) {
+	closeService := makeTestRPCService(ctx, t, port, manager)
+	client, err := newRemoteClient(ctx, RPCService, "localhost", port, "")
+	require.NoError(t, err)
+	return closeService, client
 }

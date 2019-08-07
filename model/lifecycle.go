@@ -31,6 +31,23 @@ const (
 	AllStatuses     = "*"
 )
 
+type RestartOptions struct {
+	DryRun    bool      `bson:"dry_run" json:"dry_run"`
+	StartTime time.Time `bson:"start_time" json:"start_time"`
+	EndTime   time.Time `bson:"end_time" json:"end_time"`
+	User      string    `bson:"user" json:"user"`
+
+	// note that the bson tags are not quite accurate, but are kept around for backwards compatibility
+	IncludeTestFailed  bool `bson:"only_red" json:"only_red"`
+	IncludeSysFailed   bool `bson:"only_purple" json:"only_purple"`
+	IncludeSetupFailed bool `bson:"include_setup_failed" json:"include_setup_failed"`
+}
+
+type RestartResults struct {
+	ItemsRestarted []string
+	ItemsErrored   []string
+}
+
 // cacheFromTask is helper for creating a build.TaskCache from a real Task model.
 func cacheFromTask(t task.Task) build.TaskCache {
 	return build.TaskCache{
@@ -601,15 +618,16 @@ func CreateTasksFromGroup(in BuildVariantTaskUnit, proj *Project) []BuildVariant
 			Name: t,
 			// IsGroup is not persisted, and indicates here that the
 			// task is a member of a task group.
-			IsGroup:         true,
-			GroupName:       in.Name,
-			Patchable:       in.Patchable,
-			Priority:        in.Priority,
-			DependsOn:       in.DependsOn,
-			Requires:        in.Requires,
-			Distros:         in.Distros,
-			ExecTimeoutSecs: in.ExecTimeoutSecs,
-			Stepback:        in.Stepback,
+			IsGroup:          true,
+			GroupName:        in.Name,
+			Patchable:        in.Patchable,
+			Priority:         in.Priority,
+			DependsOn:        in.DependsOn,
+			Requires:         in.Requires,
+			Distros:          in.Distros,
+			ExecTimeoutSecs:  in.ExecTimeoutSecs,
+			Stepback:         in.Stepback,
+			CommitQueueMerge: in.CommitQueueMerge,
 		}
 		bvt.Populate(taskMap[t])
 		tasks = append(tasks, bvt)
@@ -659,7 +677,6 @@ func createTasksForBuild(project *Project, buildVariant *BuildVariant, b *build.
 		}
 		// get the task spec out of the project
 		taskSpec := project.GetSpecForTask(task.Name)
-
 		// sanity check that the config isn't malformed
 		if taskSpec.Name != "" {
 			task.Populate(taskSpec)
@@ -918,12 +935,25 @@ func getTaskCreateTime(projectId string, v *Version) (time.Time, error) {
 // createOneTask is a helper to create a single task.
 func createOneTask(id string, buildVarTask BuildVariantTaskUnit, project *Project,
 	buildVariant *BuildVariant, b *build.Build, v *Version) (*task.Task, error) {
-	var distroID string
+
+	var (
+		distroID      string
+		distroAliases []string
+	)
 
 	if len(buildVarTask.Distros) > 0 {
 		distroID = buildVarTask.Distros[0]
+
+		if len(buildVarTask.Distros) > 1 {
+			distroAliases = append(distroAliases, buildVarTask.Distros[1:]...)
+		}
+
 	} else if len(buildVariant.RunOn) > 0 {
 		distroID = buildVariant.RunOn[0]
+
+		if len(buildVariant.RunOn) > 1 {
+			distroAliases = append(distroAliases, buildVariant.RunOn[1:]...)
+		}
 	} else {
 		grip.Warning(message.Fields{
 			"task_id":   id,
@@ -952,6 +982,7 @@ func createOneTask(id string, buildVarTask BuildVariantTaskUnit, project *Projec
 		BuildId:             b.Id,
 		BuildVariant:        buildVariant.Name,
 		DistroId:            distroID,
+		DistroAliases:       distroAliases,
 		CreateTime:          createTime,
 		IngestTime:          time.Now(),
 		ScheduledTime:       util.ZeroTime,
@@ -972,25 +1003,15 @@ func createOneTask(id string, buildVarTask BuildVariantTaskUnit, project *Projec
 		TriggerID:           v.TriggerID,
 		TriggerType:         v.TriggerType,
 		TriggerEvent:        v.TriggerEvent,
+		CommitQueueMerge:    buildVarTask.CommitQueueMerge,
 	}
 	if buildVarTask.IsGroup {
-		t.TaskGroup = buildVarTask.GroupName
-		tg, err := GetTaskGroup(buildVarTask.GroupName, &TaskConfig{
-			Task: &task.Task{
-				Project: project.Identifier,
-				Version: v.Id,
-			},
-			Version: v,
-		})
-		if err != nil {
-			grip.Error(message.WrapError(err, message.Fields{
-				"message":    "error getting task group",
-				"task_id":    id,
-				"task_group": t.TaskGroup,
-			}))
-			return nil, err
+		tg := project.FindTaskGroup(buildVarTask.GroupName)
+		if tg == nil {
+			return nil, errors.Errorf("unable to find task group %s in project %s", buildVarTask.GroupName, project.Identifier)
 		}
-		t.TaskGroupMaxHosts = tg.MaxHosts
+
+		tg.InjectInfo(t)
 	}
 	return t, nil
 }

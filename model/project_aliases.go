@@ -1,11 +1,14 @@
 package model
 
 import (
+	"fmt"
 	"regexp"
+	"strings"
 
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/anser/bsonutil"
+	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson"
 	mgobson "gopkg.in/mgo.v2/bson"
@@ -47,11 +50,11 @@ const (
 // variants beginning with the string “ubuntu1604”.
 type ProjectAlias struct {
 	ID        mgobson.ObjectId `bson:"_id" json:"_id"`
-	ProjectID string              `bson:"project_id" json:"project_id"`
-	Alias     string              `bson:"alias" json:"alias"`
-	Variant   string              `bson:"variant" json:"variant"`
-	Task      string              `bson:"task,omitempty" json:"task"`
-	Tags      []string            `bson:"tags,omitempty" json:"tags"`
+	ProjectID string           `bson:"project_id" json:"project_id"`
+	Alias     string           `bson:"alias" json:"alias"`
+	Variant   string           `bson:"variant" json:"variant"`
+	Task      string           `bson:"task,omitempty" json:"task"`
+	Tags      []string         `bson:"tags,omitempty" json:"tags"`
 }
 
 type ProjectAliases []ProjectAlias
@@ -84,6 +87,14 @@ func FindAliasInProject(projectID, alias string) ([]ProjectAlias, error) {
 	return out, nil
 }
 
+// IsValidId returns whether the supplied Id is a valid patch doc id (BSON ObjectId).
+func IsValidId(id string) bool {
+	return mgobson.IsObjectIdHex(id)
+}
+
+// NewId constructs a valid patch Id from the given hex string.
+func NewId(id string) mgobson.ObjectId { return mgobson.ObjectIdHex(id) }
+
 func (p *ProjectAlias) Upsert() error {
 	if len(p.ProjectID) == 0 {
 		return errors.New("empty project ID")
@@ -106,6 +117,18 @@ func (p *ProjectAlias) Upsert() error {
 		return errors.Wrapf(err, "failed to insert project alias '%s'", p.ID)
 	}
 	return nil
+}
+
+func UpsertAliasesForProject(aliases []ProjectAlias, projectId string) error {
+	catcher := grip.NewBasicCatcher()
+	for i := range aliases {
+		if aliases[i].ProjectID != projectId { // new project, so we need a new document (new ID)
+			aliases[i].ProjectID = projectId
+			aliases[i].ID = ""
+		}
+		catcher.Add(aliases[i].Upsert())
+	}
+	return catcher.Resolve()
 }
 
 // RemoveProjectAlias removes a project alias with the given document ID from the
@@ -154,4 +177,28 @@ func (a ProjectAliases) HasMatchingTask(variant string, t *ProjectTask) (bool, e
 		}
 	}
 	return false, nil
+}
+
+func ValidateProjectAliases(aliases []ProjectAlias, aliasType string) []string {
+	errs := []string{}
+	for i, pd := range aliases {
+		if strings.TrimSpace(pd.Alias) == "" {
+			errs = append(errs, fmt.Sprintf("%s: alias name #%d can't be empty string", aliasType, i+1))
+		}
+		if strings.TrimSpace(pd.Variant) == "" {
+			errs = append(errs, fmt.Sprintf("%s: variant regex #%d can't be empty string", aliasType, i+1))
+		}
+		if (strings.TrimSpace(pd.Task) == "") == (len(pd.Tags) == 0) {
+			errs = append(errs, fmt.Sprintf("%s: must specify exactly one of task regex or tags on line #%d", aliasType, i+1))
+		}
+
+		if _, err := regexp.Compile(pd.Variant); err != nil {
+			errs = append(errs, fmt.Sprintf("%s: variant regex #%d is invalid", aliasType, i+1))
+		}
+		if _, err := regexp.Compile(pd.Task); err != nil {
+			errs = append(errs, fmt.Sprintf("%s: task regex #%d is invalid", aliasType, i+1))
+		}
+	}
+
+	return errs
 }

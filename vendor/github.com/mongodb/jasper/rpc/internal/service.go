@@ -2,7 +2,7 @@ package internal
 
 import (
 	"fmt"
-	"net/http"
+	"io"
 	"os"
 	"strings"
 	"sync"
@@ -70,7 +70,6 @@ func getProcInfoNoHang(ctx context.Context, p jasper.Process) *ProcessInfo {
 type jasperService struct {
 	hostID     string
 	manager    jasper.Manager
-	client     http.Client
 	cache      *lru.Cache
 	cacheOpts  jasper.CacheOptions
 	cacheMutex sync.RWMutex
@@ -83,35 +82,33 @@ func (s *jasperService) Status(ctx context.Context, _ *empty.Empty) (*StatusResp
 	}, nil
 }
 
+func (s *jasperService) ID(ctx context.Context, _ *empty.Empty) (*IDResponse, error) {
+	return &IDResponse{Value: s.manager.ID()}, nil
+}
+
 func (s *jasperService) Create(ctx context.Context, opts *CreateOptions) (*ProcessInfo, error) {
 	jopts := opts.Export()
 
 	// Spawn a new context so that the process' context is not potentially
 	// canceled by the request's. See how rest_service.go's createProcess() does
 	// this same thing.
-	var cctx context.Context
-	var cancel context.CancelFunc
-	if jopts.Timeout > 0 {
-		cctx, cancel = context.WithTimeout(context.Background(), jopts.Timeout)
-	} else {
-		cctx, cancel = context.WithCancel(context.Background())
-	}
+	pctx, cancel := context.WithCancel(context.Background())
 
-	proc, err := s.manager.CreateProcess(cctx, jopts)
+	proc, err := s.manager.CreateProcess(pctx, jopts)
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}
 
-	if err := proc.RegisterTrigger(cctx, func(_ jasper.ProcessInfo) {
+	if err := proc.RegisterTrigger(ctx, func(_ jasper.ProcessInfo) {
 		cancel()
 	}); err != nil {
-		if !proc.Info(cctx).Complete {
-			return ConvertProcessInfo(proc.Info(cctx)), nil
+		if !proc.Info(ctx).Complete {
+			return ConvertProcessInfo(proc.Info(ctx)), nil
 		}
 		cancel()
 	}
 
-	return getProcInfoNoHang(cctx, proc), nil
+	return getProcInfoNoHang(ctx, proc), nil
 }
 
 func (s *jasperService) List(f *Filter, stream JasperProcessManager_ListServer) error {
@@ -123,7 +120,7 @@ func (s *jasperService) List(f *Filter, stream JasperProcessManager_ListServer) 
 
 	for _, p := range procs {
 		if ctx.Err() != nil {
-			return errors.New("operation canceled")
+			return errors.New("list canceled")
 		}
 
 		if err := stream.Send(getProcInfoNoHang(ctx, p)); err != nil {
@@ -143,7 +140,7 @@ func (s *jasperService) Group(t *TagName, stream JasperProcessManager_GroupServe
 
 	for _, p := range procs {
 		if ctx.Err() != nil {
-			return errors.New("operation canceled")
+			return errors.New("list canceled")
 		}
 
 		if err := stream.Send(getProcInfoNoHang(ctx, p)); err != nil {
@@ -202,7 +199,7 @@ func (s *jasperService) Wait(ctx context.Context, id *JasperProcessID) (*Operati
 	}
 
 	exitCode, err := proc.Wait(ctx)
-	if err != nil && exitCode == -1 {
+	if err != nil {
 		err = errors.Wrap(err, "problem encountered while waiting")
 		return &OperationOutcome{
 			Success:  false,
@@ -213,7 +210,7 @@ func (s *jasperService) Wait(ctx context.Context, id *JasperProcessID) (*Operati
 
 	return &OperationOutcome{
 		Success:  true,
-		Text:     fmt.Sprintf("'%s' operation complete", id.Value),
+		Text:     fmt.Sprintf("wait completed on process with id '%s'", id.Value),
 		ExitCode: int32(exitCode),
 	}, nil
 }
@@ -374,6 +371,23 @@ func (s *jasperService) DownloadFile(ctx context.Context, info *DownloadInfo) (*
 		Text:     fmt.Sprintf("downloaded file %s to path %s", jinfo.URL, jinfo.Path),
 		ExitCode: 0,
 	}, nil
+}
+
+func (s *jasperService) GetLogStream(ctx context.Context, request *LogRequest) (*LogStream, error) {
+	id := request.Id
+	proc, err := s.manager.Get(ctx, id.Value)
+	if err != nil {
+		return nil, errors.Wrapf(err, "problem finding process '%s'", id.Value)
+	}
+
+	stream := &LogStream{}
+	stream.Logs, err = jasper.GetInMemoryLogStream(ctx, proc, int(request.Count))
+	if err == io.EOF {
+		stream.Done = true
+	} else if err != nil {
+		return nil, errors.Wrapf(err, "could not get logs for process '%s'", request.Id.Value)
+	}
+	return stream, nil
 }
 
 func (s *jasperService) GetBuildloggerURLs(ctx context.Context, id *JasperProcessID) (*BuildloggerURLs, error) {

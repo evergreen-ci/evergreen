@@ -23,7 +23,7 @@ type spawnHostTriggers struct {
 func makeSpawnHostTriggers() eventHandler {
 	t := &spawnHostTriggers{}
 	t.triggers = map[string]trigger{
-		triggerOutcome: t.hostSpawnOutcome,
+		event.TriggerOutcome: t.hostSpawnOutcome,
 	}
 	return t
 }

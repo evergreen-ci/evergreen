@@ -135,10 +135,16 @@ func (s *eventNotificationSuite) SetupTest() {
 			Subscriber: event.Subscriber{
 				Type: event.GithubMergeSubscriberType,
 				Target: event.GithubMergeSubscriber{
-					Owner:         "evergreen-ci",
-					Repo:          "evergreen",
-					PRNumber:      1234,
-					CommitMessage: "merged your PR",
+					PRs: []event.PRInfo{
+						{
+							Owner:       "evergreen-ci",
+							Repo:        "evergreen",
+							PRNum:       1234,
+							CommitTitle: "PR (#1234)",
+						},
+					},
+					Item:        "1234",
+					MergeMethod: "squash",
 				},
 			},
 			Payload: commitqueue.GithubMergePR{},
