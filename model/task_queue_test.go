@@ -13,7 +13,6 @@ import (
 	. "github.com/smartystreets/goconvey/convey"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"gopkg.in/mgo.v2/bson"
 )
 
 var (
@@ -205,7 +204,6 @@ tasks:
 - name: one
 `
 	v := Version{
-		Id:         bson.NewObjectId().Hex(),
 		Identifier: "a",
 		Revision:   "b",
 		Requester:  evergreen.RepotrackerVersionRequester,
@@ -253,12 +251,9 @@ tasks:
 	assert.NoError(BlockTaskGroupTasks("task_id_1"))
 	found, err := task.FindOneId("one_1")
 	assert.NoError(err)
-	require.NotNil(found)
-	require.NotEmpty(found.DependsOn)
 	assert.Equal("task_id_1", found.DependsOn[0].TaskId)
 	queue, err := LoadTaskQueue("distro_1")
 	assert.NoError(err)
-	require.NotNil(queue)
 	assert.Len(queue.Queue, 0)
 }
 

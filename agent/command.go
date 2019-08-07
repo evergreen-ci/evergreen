@@ -29,6 +29,7 @@ func (a *Agent) runCommands(ctx context.Context, tc *taskContext, commands []mod
 			grip.Error("runCommands canceled")
 			return errors.New("runCommands canceled")
 		}
+
 		cmds, err = command.Render(commandInfo, tc.taskConfig.Project.Functions)
 		if err != nil {
 			tc.logger.Task().Errorf("Couldn't parse plugin command '%v': %v", commandInfo.Command, err)
