@@ -439,7 +439,7 @@ func LoadProjectFromVersion(v *Version, identifier string, shouldSave bool) (*Pr
 				"config_number": v.ConfigUpdateNumber,
 				"message":       "error updating version's project",
 			}))
-			return nil, errors.Wrap(err, "error updating version with project")
+			return p, nil
 		}
 	}
 	v.ParserProject = pp

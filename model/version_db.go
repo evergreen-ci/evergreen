@@ -280,8 +280,11 @@ func UpdateVersionProject(versionID string, versionNumber int, pp *ParserProject
 	}
 	return errors.Wrap(VersionUpdateOne(
 		bson.M{
-			VersionIdKey:           versionID,
-			VersionConfigNumberKey: versionNumber,
+			VersionIdKey: versionID,
+			"$or": []bson.M{
+				bson.M{VersionConfigNumberKey: bson.M{"$exists": false}},
+				bson.M{VersionConfigNumberKey: versionNumber},
+			},
 		},
 		bson.M{
 			"$set": bson.M{
