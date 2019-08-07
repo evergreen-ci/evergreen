@@ -363,7 +363,7 @@ func (s *taskDAGDispatchServiceSuite) TestSingleHostTaskGroupsBlock() {
 		Group:        "group_1",
 		BuildVariant: "variant_1",
 		Version:      "version_1",
-		ProjectID:    "project_1",
+		Project:      "project_1",
 	}
 	next := service.FindNextTask(spec)
 	s.Require().Nil(next)
@@ -382,7 +382,7 @@ func (s *taskDAGDispatchServiceSuite) TestFindNextTask() {
 			Group:        "group_1",
 			BuildVariant: "variant_1",
 			Version:      "version_1",
-			ProjectID:    "project_1",
+			Project:      "project_1",
 		}
 		next = service.FindNextTask(spec)
 		s.Require().NotNil(next)
@@ -396,7 +396,7 @@ func (s *taskDAGDispatchServiceSuite) TestFindNextTask() {
 			Group:        "group_2",
 			BuildVariant: "variant_1",
 			Version:      "version_1",
-			ProjectID:    "project_1",
+			Project:      "project_1",
 		}
 		next = service.FindNextTask(spec)
 		s.Equal(fmt.Sprintf("%d", 5*i+2), next.Id)
@@ -409,7 +409,7 @@ func (s *taskDAGDispatchServiceSuite) TestFindNextTask() {
 			Group:        "group_1",
 			BuildVariant: "variant_2",
 			Version:      "version_1",
-			ProjectID:    "project_1",
+			Project:      "project_1",
 		}
 		next = service.FindNextTask(spec)
 		s.Equal(fmt.Sprintf("%d", 5*i+3), next.Id)
@@ -422,7 +422,7 @@ func (s *taskDAGDispatchServiceSuite) TestFindNextTask() {
 			Group:        "group_1",
 			BuildVariant: "variant_1",
 			Version:      "version_2",
-			ProjectID:    "project_1",
+			Project:      "project_1",
 		}
 		next = service.FindNextTask(spec)
 		s.Equal(fmt.Sprintf("%d", 5*i+4), next.Id)
@@ -435,7 +435,7 @@ func (s *taskDAGDispatchServiceSuite) TestFindNextTask() {
 			Group:        "group_1",
 			BuildVariant: "variant_1",
 			Version:      "version_1",
-			ProjectID:    "project_1",
+			Project:      "project_1",
 		}
 		next = service.FindNextTask(spec)
 		s.Equal(fmt.Sprintf("%d", 5*i+26), next.Id)
@@ -813,7 +813,7 @@ func (s *taskDispatchServiceSuite) TestSingleHostTaskGroupsBlock() {
 	spec := TaskSpec{
 		Group:        "group_1",
 		BuildVariant: "variant_1",
-		ProjectID:    "project_1",
+		Project:      "project_1",
 		Version:      "version_1",
 	}
 	next := service.FindNextTask(spec)
@@ -883,7 +883,7 @@ func (s *taskDispatchServiceSuite) TestFindNextTask() {
 			Group:        "group_1",
 			BuildVariant: "variant_1",
 			Version:      "version_1",
-			ProjectID:    "project_1",
+			Project:      "project_1",
 		}
 		next = service.FindNextTask(spec)
 		s.Require().NotNil(next)
@@ -896,7 +896,7 @@ func (s *taskDispatchServiceSuite) TestFindNextTask() {
 			Group:        "group_2",
 			BuildVariant: "variant_1",
 			Version:      "version_1",
-			ProjectID:    "project_1",
+			Project:      "project_1",
 		}
 		next = service.FindNextTask(spec)
 		s.Equal(fmt.Sprintf("%d", 5*i+2), next.Id)
@@ -908,7 +908,7 @@ func (s *taskDispatchServiceSuite) TestFindNextTask() {
 			Group:        "group_1",
 			BuildVariant: "variant_2",
 			Version:      "version_1",
-			ProjectID:    "project_1",
+			Project:      "project_1",
 		}
 		next = service.FindNextTask(spec)
 		s.Equal(fmt.Sprintf("%d", 5*i+3), next.Id)
@@ -920,7 +920,7 @@ func (s *taskDispatchServiceSuite) TestFindNextTask() {
 			Group:        "group_1",
 			BuildVariant: "variant_1",
 			Version:      "version_2",
-			ProjectID:    "project_1",
+			Project:      "project_1",
 		}
 		next = service.FindNextTask(spec)
 		s.Equal(fmt.Sprintf("%d", 5*i+4), next.Id)
@@ -932,7 +932,7 @@ func (s *taskDispatchServiceSuite) TestFindNextTask() {
 			Group:        "group_1",
 			BuildVariant: "variant_1",
 			Version:      "version_1",
-			ProjectID:    "project_1",
+			Project:      "project_1",
 		}
 		next = service.FindNextTask(spec)
 		s.Equal(fmt.Sprintf("%d", 5*i+26), next.Id)
@@ -952,7 +952,7 @@ func (s *taskDispatchServiceSuite) TestFindNextTask() {
 		Group:        "",
 		BuildVariant: "variant_1",
 		Version:      "version_1",
-		ProjectID:    "project_2",
+		Project:      "project_2",
 	}
 	next = service.FindNextTask(spec)
 	s.Equal("0", next.Id)

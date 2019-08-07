@@ -443,7 +443,6 @@ func assignNextAvailableTask(taskQueue *model.TaskQueue, taskQueueService model.
 		}
 		if queueItem == nil {
 			grip.DebugWhen(d.PlannerSettings.Version == evergreen.PlannerVersionRevised, message.Fields{
-				// "ticket":                        "EVG-6289",
 				"function":                      "assignNextAvailableTask",
 				"message":                       "taskQueueService.RefreshFindNextTask returned no task - returning nil",
 				"distro_id":                     d.Id,

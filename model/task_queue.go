@@ -122,7 +122,7 @@ var (
 type TaskSpec struct {
 	Group         string `json:"group"`
 	BuildVariant  string `json:"build_variant"`
-	ProjectID     string `json:"project_id"`
+	Project       string `json:"project"`
 	Version       string `json:"version"`
 	GroupMaxHosts int    `json:"group_max_hosts"`
 }
@@ -154,7 +154,7 @@ func (self *TaskQueue) NextTask() *TaskQueueItem {
 // shouldRunTaskGroup returns true if the number of hosts running a task is less than the maximum for that task group.
 func shouldRunTaskGroup(taskId string, spec TaskSpec) bool {
 	// Get number of hosts running this spec.
-	numHosts, err := host.NumHostsByTaskSpec(spec.Group, spec.BuildVariant, spec.ProjectID, spec.Version)
+	numHosts, err := host.NumHostsByTaskSpec(spec.Group, spec.BuildVariant, spec.Project, spec.Version)
 	if err != nil {
 		grip.Error(message.WrapError(err, message.Fields{
 			"message":    "error finding hosts for spec",
@@ -257,9 +257,9 @@ func (self *TaskQueue) FindNextTask(spec TaskSpec) *TaskQueueItem {
 		return nil
 	}
 	// With a spec, find a matching task.
-	if spec.Group != "" && spec.ProjectID != "" && spec.BuildVariant != "" && spec.Version != "" {
+	if spec.Group != "" && spec.Project != "" && spec.BuildVariant != "" && spec.Version != "" {
 		for _, it := range self.Queue {
-			if it.Project != spec.ProjectID {
+			if it.Project != spec.Project {
 				continue
 			}
 
@@ -289,7 +289,7 @@ func (self *TaskQueue) FindNextTask(spec TaskSpec) *TaskQueueItem {
 		// If we already determined that this task group is not runnable, continue.
 		if it.Group == spec.Group &&
 			it.BuildVariant == spec.BuildVariant &&
-			it.Project == spec.ProjectID &&
+			it.Project == spec.Project &&
 			it.Version == spec.Version &&
 			it.GroupMaxHosts == spec.GroupMaxHosts {
 			continue
@@ -299,7 +299,7 @@ func (self *TaskQueue) FindNextTask(spec TaskSpec) *TaskQueueItem {
 		spec = TaskSpec{
 			Group:         it.Group,
 			BuildVariant:  it.BuildVariant,
-			ProjectID:     it.Project,
+			Project:       it.Project,
 			Version:       it.Version,
 			GroupMaxHosts: it.GroupMaxHosts,
 		}
@@ -480,7 +480,6 @@ func FindDistroTaskQueue(distroID string) (TaskQueue, error) {
 		&queue)
 
 	grip.DebugWhen(err == nil, message.Fields{
-		"ticket":                               "EVG-6289",
 		"message":                              "fetched the distro's TaskQueueItems to create its TaskQueue",
 		"distro":                               distroID,
 		"task_queue_generated_at":              queue.GeneratedAt,

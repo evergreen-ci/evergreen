@@ -174,17 +174,17 @@ func TestFindTask(t *testing.T) {
 	// ensure that it's always the first task if the group name isn't specified
 	assert.Equal("one", q.FindNextTask(TaskSpec{}).Id)
 	assert.Equal("one", q.FindNextTask(TaskSpec{BuildVariant: "a"}).Id)
-	assert.Equal("one", q.FindNextTask(TaskSpec{ProjectID: "a"}).Id)
+	assert.Equal("one", q.FindNextTask(TaskSpec{Project: "a"}).Id)
 	assert.Equal("one", q.FindNextTask(TaskSpec{Version: "b"}).Id)
-	assert.Equal("one", q.FindNextTask(TaskSpec{BuildVariant: "a", ProjectID: "a"}).Id)
+	assert.Equal("one", q.FindNextTask(TaskSpec{BuildVariant: "a", Project: "a"}).Id)
 	assert.Equal("one", q.FindNextTask(TaskSpec{BuildVariant: "a", Version: "b"}).Id)
-	assert.Equal("one", q.FindNextTask(TaskSpec{ProjectID: "a", Version: "b"}).Id)
+	assert.Equal("one", q.FindNextTask(TaskSpec{Project: "a", Version: "b"}).Id)
 
 	// ensure that we can get the task groups that we expect
-	assert.Equal("five", q.FindNextTask(TaskSpec{Group: "foo", ProjectID: "aa", Version: "bb", BuildVariant: "a"}).Id)
-	assert.Equal("one", q.FindNextTask(TaskSpec{Group: "foo", ProjectID: "a", Version: "b", BuildVariant: "a"}).Id)
-	assert.Equal("six", q.FindNextTask(TaskSpec{Group: "bar", ProjectID: "aa", Version: "bb", BuildVariant: "a"}).Id)
-	assert.Equal("two", q.FindNextTask(TaskSpec{Group: "bar", ProjectID: "a", Version: "b", BuildVariant: "a"}).Id)
+	assert.Equal("five", q.FindNextTask(TaskSpec{Group: "foo", Project: "aa", Version: "bb", BuildVariant: "a"}).Id)
+	assert.Equal("one", q.FindNextTask(TaskSpec{Group: "foo", Project: "a", Version: "b", BuildVariant: "a"}).Id)
+	assert.Equal("six", q.FindNextTask(TaskSpec{Group: "bar", Project: "aa", Version: "bb", BuildVariant: "a"}).Id)
+	assert.Equal("two", q.FindNextTask(TaskSpec{Group: "bar", Project: "a", Version: "b", BuildVariant: "a"}).Id)
 }
 
 func TestBlockTaskGroupTasks(t *testing.T) {
