@@ -53,7 +53,8 @@ mciModule.controller('SettingsCtrl', ['$scope', '$http', '$window', 'notificatio
   $scope.new_tz = $scope.user_tz || "America/New_York";
   $scope.github_user = $window.github_user;
   $scope.use_spruce_options = $window.use_spruce_options;
-  $scope.initially_opted_out = $scope.use_spruce_options.patch_page === undefined ? true :  $scope.use_spruce_options.patch_page
+  $scope.should_show_feedback = false;
+  $scope.opt_in_initially_checked = $scope.use_spruce_options === undefined ? false : $scope.use_spruce_options;
   $scope.userConf = $window.userConf;
   $scope.binaries = $window.binaries;
   $scope.notifications = $window.notifications;
@@ -87,6 +88,14 @@ mciModule.controller('SettingsCtrl', ['$scope', '$http', '$window', 'notificatio
       function(resp) {
         notifier.pushNotification("Failed to clear user token: " + resp.data.error,'errorHeader');
       });
+  }
+
+  $scope.onOptOutChange = function(){
+    if($scope.opt_in_initially_checked && !$scope.use_spruce_options.patch_page) {
+      $scope.should_show_feedback = true;
+    } else {
+      $scope.should_show_feedback = false;
+    }
   }
 
   function formatFeedback(spruce_feedback) {
