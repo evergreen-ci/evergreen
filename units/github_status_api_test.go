@@ -144,6 +144,26 @@ func (s *githubStatusUpdateSuite) TestForPushToCommitQueue() {
 	s.Equal(message.GithubStatePending, status.State)
 }
 
+func (s *githubStatusUpdateSuite) TestForDeleteFromCommitQueue() {
+	owner, repo, ref := "evergreen-ci", "evergreen", "776f608b5b12cd27b8d931c8ee4ca0c13f857299"
+	prNum := 1
+	job := NewGithubStatusUpdateJobForDeleteFromCommitQueue(owner, repo, ref, prNum).(*githubStatusUpdateJob)
+	job.env = s.env
+	job.Run(context.Background())
+	s.False(job.HasErrors())
+
+	status := s.msgToStatus(s.env.InternalSender)
+
+	s.Equal(owner, status.Owner)
+	s.Equal(repo, status.Repo)
+	s.Equal(ref, status.Ref)
+
+	s.Zero(status.URL)
+	s.Equal(commitqueue.Context, status.Context)
+	s.Equal("removed from queue", status.Description)
+	s.Equal(message.GithubStateSuccess, status.State)
+}
+
 func (s *githubStatusUpdateSuite) TestForProcessingError() {
 	intent, err := patch.NewGithubIntent("1", testutil.NewGithubPR(448,
 		"evergreen-ci/evergreen", "tychoish/evergreen", "776f608b5b12cd27b8d931c8ee4ca0c13f857299", "tychoish", "Title"))

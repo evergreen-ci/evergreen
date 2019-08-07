@@ -29,30 +29,30 @@ const (
 )
 
 type Project struct {
-	Enabled         bool                       `yaml:"enabled,omitempty" bson:"enabled"`
-	Stepback        bool                       `yaml:"stepback,omitempty" bson:"stepback"`
-	IgnorePreError  bool                       `yaml:"ignore_pre_err,omitempty" bson:"ignore_pre_err,omitempty"`
-	BatchTime       int                        `yaml:"batchtime,omitempty" bson:"batch_time"`
-	Owner           string                     `yaml:"owner,omitempty" bson:"owner_name"`
-	Repo            string                     `yaml:"repo,omitempty" bson:"repo_name"`
-	RemotePath      string                     `yaml:"remote_path,omitempty" bson:"remote_path"`
-	RepoKind        string                     `yaml:"repokind,omitempty" bson:"repo_kind"`
-	Branch          string                     `yaml:"branch,omitempty" bson:"branch_name"`
-	Identifier      string                     `yaml:"identifier,omitempty" bson:"identifier"`
-	DisplayName     string                     `yaml:"display_name,omitempty" bson:"display_name"`
-	CommandType     string                     `yaml:"command_type,omitempty" bson:"command_type"`
-	Ignore          []string                   `yaml:"ignore,omitempty" bson:"ignore"`
-	Pre             *YAMLCommandSet            `yaml:"pre,omitempty" bson:"pre"`
-	Post            *YAMLCommandSet            `yaml:"post,omitempty" bson:"post"`
-	Timeout         *YAMLCommandSet            `yaml:"timeout,omitempty" bson:"timeout"`
-	CallbackTimeout int                        `yaml:"callback_timeout_secs,omitempty" bson:"callback_timeout_secs"`
-	Modules         ModuleList                 `yaml:"modules,omitempty" bson:"modules"`
-	BuildVariants   BuildVariants              `yaml:"buildvariants,omitempty" bson:"build_variants"`
-	Functions       map[string]*YAMLCommandSet `yaml:"functions,omitempty" bson:"functions"`
-	TaskGroups      []TaskGroup                `yaml:"task_groups,omitempty" bson:"task_groups"`
-	Tasks           []ProjectTask              `yaml:"tasks,omitempty" bson:"tasks"`
-	ExecTimeoutSecs int                        `yaml:"exec_timeout_secs,omitempty" bson:"exec_timeout_secs"`
-	Loggers         *LoggerConfig              `yaml:"loggers,omitempty" bson:"loggers,omitempty"`
+	Enabled           bool                       `yaml:"enabled,omitempty" bson:"enabled"`
+	Stepback          bool                       `yaml:"stepback,omitempty" bson:"stepback"`
+	PreErrorFailsTask bool                       `yaml:"pre_error_fails_task,omitempty" bson:"pre_error_fails_task,omitempty"`
+	BatchTime         int                        `yaml:"batchtime,omitempty" bson:"batch_time"`
+	Owner             string                     `yaml:"owner,omitempty" bson:"owner_name"`
+	Repo              string                     `yaml:"repo,omitempty" bson:"repo_name"`
+	RemotePath        string                     `yaml:"remote_path,omitempty" bson:"remote_path"`
+	RepoKind          string                     `yaml:"repokind,omitempty" bson:"repo_kind"`
+	Branch            string                     `yaml:"branch,omitempty" bson:"branch_name"`
+	Identifier        string                     `yaml:"identifier,omitempty" bson:"identifier"`
+	DisplayName       string                     `yaml:"display_name,omitempty" bson:"display_name"`
+	CommandType       string                     `yaml:"command_type,omitempty" bson:"command_type"`
+	Ignore            []string                   `yaml:"ignore,omitempty" bson:"ignore"`
+	Pre               *YAMLCommandSet            `yaml:"pre,omitempty" bson:"pre"`
+	Post              *YAMLCommandSet            `yaml:"post,omitempty" bson:"post"`
+	Timeout           *YAMLCommandSet            `yaml:"timeout,omitempty" bson:"timeout"`
+	CallbackTimeout   int                        `yaml:"callback_timeout_secs,omitempty" bson:"callback_timeout_secs"`
+	Modules           ModuleList                 `yaml:"modules,omitempty" bson:"modules"`
+	BuildVariants     BuildVariants              `yaml:"buildvariants,omitempty" bson:"build_variants"`
+	Functions         map[string]*YAMLCommandSet `yaml:"functions,omitempty" bson:"functions"`
+	TaskGroups        []TaskGroup                `yaml:"task_groups,omitempty" bson:"task_groups"`
+	Tasks             []ProjectTask              `yaml:"tasks,omitempty" bson:"tasks"`
+	ExecTimeoutSecs   int                        `yaml:"exec_timeout_secs,omitempty" bson:"exec_timeout_secs"`
+	Loggers           *LoggerConfig              `yaml:"loggers,omitempty" bson:"loggers,omitempty"`
 
 	// Flag that indicates a project as requiring user authentication
 	Private bool `yaml:"private,omitempty" bson:"private"`
@@ -263,7 +263,6 @@ type PluginCommandConf struct {
 	TimeoutSecs int `yaml:"timeout_secs,omitempty" bson:"timeout_secs"`
 
 	// Params are used to supply configuration specific information.
-	// map[string]interface{} is stored as a JSON string.
 	Params map[string]interface{} `yaml:"params,omitempty" bson:"params"`
 
 	// YAML string of Params to store in database
@@ -848,8 +847,7 @@ func PopulateExpansions(t *task.Task, h *host.Host, oauthToken string) (util.Exp
 	for _, e := range h.Distro.Expansions {
 		expansions.Put(e.Key, e.Value)
 	}
-	proj := &Project{}
-	err = LoadProjectInto([]byte(v.Config), t.Project, proj)
+	proj, err := LoadProjectFromVersion(v, t.Project, true)
 	if err != nil {
 		return nil, errors.Wrap(err, "error unmarshaling project")
 	}
@@ -928,6 +926,7 @@ func (p *Project) FindTaskGroup(name string) *TaskGroup {
 }
 
 // GetTaskGroup returns the task group for a given task from its project
+// Only called by agent so we don't save project to database
 func GetTaskGroup(taskGroup string, tc *TaskConfig) (*TaskGroup, error) {
 	if tc == nil {
 		return nil, errors.New("unable to get task group: TaskConfig is nil")
@@ -941,8 +940,8 @@ func GetTaskGroup(taskGroup string, tc *TaskConfig) (*TaskGroup, error) {
 	if tc.Version == nil {
 		return nil, errors.New("version is nil")
 	}
-	var p Project
-	if err := LoadProjectInto([]byte(tc.Version.Config), tc.Task.Project, &p); err != nil {
+	p, err := LoadProjectFromVersion(tc.Version, tc.Task.Project, false)
+	if err != nil {
 		return nil, errors.Wrap(err, "error retrieving project for task group")
 	}
 	if taskGroup == "" {
@@ -951,7 +950,7 @@ func GetTaskGroup(taskGroup string, tc *TaskConfig) (*TaskGroup, error) {
 			SetupTask:          p.Pre,
 			TeardownTask:       p.Post,
 			Timeout:            p.Timeout,
-			SetupGroupFailTask: p.Pre == nil || !p.IgnorePreError,
+			SetupGroupFailTask: p.Pre == nil || p.PreErrorFailsTask,
 		}, nil
 	}
 	tg := p.FindTaskGroup(taskGroup)
@@ -987,8 +986,7 @@ func FindProjectFromVersionID(versionStr string) (*Project, error) {
 		return nil, errors.Errorf("nil version returned for version '%s'", versionStr)
 	}
 
-	project := &Project{}
-	err = LoadProjectInto([]byte(ver.Config), ver.Identifier, project)
+	project, err := LoadProjectFromVersion(ver, ver.Identifier, true)
 	if err != nil {
 		return nil, errors.Wrapf(err, "unable to load project config for version %s", versionStr)
 	}
@@ -1041,15 +1039,15 @@ func FindProject(revision string, projectRef *ProjectRef) (*Project, error) {
 			// for new repositories, we don't want to error out when we don't have
 			// any versions stored in the database so we default to the skeletal
 			// information we already have from the project file on disk
-			err = LoadProjectInto([]byte(lastGoodVersion.Config), projectRef.Identifier, project)
+			project, err = LoadProjectFromVersion(lastGoodVersion, projectRef.Identifier, true)
 			if err != nil {
 				return nil, errors.Wrapf(err, "Error loading project from "+
-					"last good version for project, %s", lastGoodVersion.Identifier)
+					"last good version for project '%s'", lastGoodVersion.Identifier)
 			}
 		} else {
 			// Check to see if there is a local configuration in the project ref
 			if projectRef.LocalConfig != "" {
-				err = LoadProjectInto([]byte(projectRef.LocalConfig), projectRef.Identifier, project)
+				_, err = LoadProjectInto([]byte(projectRef.LocalConfig), projectRef.Identifier, project)
 				if err != nil {
 					return nil, errors.Wrapf(err, "Error loading local config for project ref, %s", projectRef.Identifier)
 				}
@@ -1069,8 +1067,8 @@ func FindProject(revision string, projectRef *ProjectRef) (*Project, error) {
 			return project, nil
 		}
 
-		project = &Project{}
-		if err = LoadProjectInto([]byte(v.Config), projectRef.Identifier, project); err != nil {
+		project, err = LoadProjectFromVersion(v, projectRef.Identifier, true)
+		if err != nil {
 			return nil, errors.Wrap(err, "Error loading project from version")
 		}
 	}
