@@ -12,6 +12,7 @@ import (
 	"github.com/aws/aws-sdk-go/aws/credentials"
 	"github.com/aws/aws-sdk-go/service/ec2"
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/util"
@@ -94,6 +95,24 @@ func (s *EC2ProviderSettings) Validate() error {
 	return nil
 }
 
+func (s *EC2ProviderSettings) fromDistroSettings(d distro.Distro) error {
+	if d.ProviderSettings != nil {
+		if err := mapstructure.Decode(d.ProviderSettings, s); err != nil {
+			return errors.Wrapf(err, "Error decoding params for distro %s: %+v", d.Id, s)
+		}
+		grip.Debug(message.Fields{
+			"message": "mapstructure comparison",
+			"input":   *d.ProviderSettings,
+			"output":  *s,
+		})
+	}
+	if err := s.Validate(); err != nil {
+		return errors.Wrapf(err, "Invalid EC2 settings in distro %s: %+v", d.Id, s)
+	}
+
+	return nil
+}
+
 func (s *EC2ProviderSettings) getSecurityGroups() []*string {
 	groups := []*string{}
 	if len(s.SecurityGroupIDs) > 0 {
@@ -103,6 +122,13 @@ func (s *EC2ProviderSettings) getSecurityGroups() []*string {
 		return groups
 	}
 	return groups
+}
+
+func (s *EC2ProviderSettings) getRegion() string {
+	if s.Region != "" {
+		return s.Region
+	}
+	return defaultRegion
 }
 
 type ec2ProviderType int
@@ -144,11 +170,6 @@ func NewEC2Manager(opts *EC2ManagerOptions) Manager {
 	return &ec2Manager{EC2ManagerOptions: opts}
 }
 
-// GetSettings returns a pointer to the manager's configuration settings struct.
-func (m *ec2Manager) GetSettings() ProviderSettings {
-	return &EC2ProviderSettings{}
-}
-
 // Configure loads credentials or other settings from the config file.
 func (m *ec2Manager) Configure(ctx context.Context, settings *evergreen.Settings) error {
 	m.settings = settings
@@ -165,7 +186,7 @@ func (m *ec2Manager) Configure(ctx context.Context, settings *evergreen.Settings
 	return nil
 }
 
-func (m *ec2Manager) spawnOnDemandHost(ctx context.Context, h *host.Host, ec2Settings *EC2ProviderSettings, blockDevices []*ec2.BlockDeviceMapping) ([]*string, error) {
+func (m *ec2Manager) spawnOnDemandHost(ctx context.Context, h *host.Host, ec2Settings *EC2ProviderSettings, blockDevices []*ec2.BlockDeviceMapping) ([]string, error) {
 	input := &ec2.RunInstancesInput{
 		MinCount:            aws.Int64(1),
 		MaxCount:            aws.Int64(1),
@@ -284,18 +305,18 @@ func (m *ec2Manager) spawnOnDemandHost(ctx context.Context, h *host.Host, ec2Set
 
 	instance = resp.Reservations[0].Instances[0]
 	h.Id = *instance.InstanceId
-	resources := []*string{instance.InstanceId}
+	resources := []string{h.Id}
 	for _, vol := range instance.BlockDeviceMappings {
 		if *vol.DeviceName == "" {
 			continue
 		}
 
-		resources = append(resources, vol.Ebs.VolumeId)
+		resources = append(resources, *vol.Ebs.VolumeId)
 	}
 	return resources, nil
 }
 
-func (m *ec2Manager) spawnSpotHost(ctx context.Context, h *host.Host, ec2Settings *EC2ProviderSettings, blockDevices []*ec2.BlockDeviceMapping) ([]*string, error) {
+func (m *ec2Manager) spawnSpotHost(ctx context.Context, h *host.Host, ec2Settings *EC2ProviderSettings, blockDevices []*ec2.BlockDeviceMapping) ([]string, error) {
 	spotRequest := &ec2.RequestSpotInstancesInput{
 		SpotPrice:     aws.String(fmt.Sprintf("%v", ec2Settings.BidPrice)),
 		InstanceCount: aws.Int64(1),
@@ -363,7 +384,7 @@ func (m *ec2Manager) spawnSpotHost(ctx context.Context, h *host.Host, ec2Setting
 	}
 
 	h.Id = *spotReqRes.SpotInstanceRequestId
-	resources := []*string{spotReqRes.SpotInstanceRequestId}
+	resources := []string{*spotReqRes.SpotInstanceRequestId}
 	return resources, nil
 }
 
@@ -377,20 +398,9 @@ func (m *ec2Manager) SpawnHost(ctx context.Context, h *host.Host) (*host.Host, e
 	}
 
 	ec2Settings := &EC2ProviderSettings{}
-	if h.Distro.ProviderSettings != nil {
-		if err := mapstructure.Decode(h.Distro.ProviderSettings, ec2Settings); err != nil {
-			return nil, errors.Wrapf(err, "Error decoding params for distro %s: %+v", h.Distro.Id, ec2Settings)
-		}
-	}
-	grip.Debug(message.Fields{
-		"message":   "mapstructure comparison",
-		"input":     *h.Distro.ProviderSettings,
-		"output":    *ec2Settings,
-		"inputraw":  fmt.Sprintf("%#v", *h.Distro.ProviderSettings),
-		"outputraw": fmt.Sprintf("%#v", *ec2Settings),
-	})
-	if err := ec2Settings.Validate(); err != nil {
-		return nil, errors.Wrapf(err, "Invalid EC2 settings in distro %s: and %+v", h.Distro.Id, ec2Settings)
+	err := ec2Settings.fromDistroSettings(h.Distro)
+	if err != nil {
+		return nil, errors.Wrap(err, "error getting EC2 settings")
 	}
 
 	if ec2Settings.AWSKeyID != "" {
@@ -400,11 +410,16 @@ func (m *ec2Manager) SpawnHost(ctx context.Context, h *host.Host) (*host.Host, e
 		})
 	}
 
+	if err = m.client.Create(m.credentials, ec2Settings.getRegion()); err != nil {
+		return nil, errors.Wrap(err, "error creating client")
+	}
+	defer m.client.Close()
+
 	if ec2Settings.KeyName == "" && !h.UserHost {
 		if !h.SpawnOptions.SpawnedByTask {
 			return nil, errors.New("key name must not be empty")
 		}
-		k, err := getKey(ctx, m.client, m.credentials, h)
+		k, err := m.client.GetKey(ctx, h)
 		if err != nil {
 			return nil, errors.Wrap(err, "not spawning host, problem creating key")
 		}
@@ -417,16 +432,7 @@ func (m *ec2Manager) SpawnHost(ctx context.Context, h *host.Host) (*host.Host, e
 	}
 	h.InstanceType = ec2Settings.InstanceType
 
-	r, err := getRegion(h)
-	if err != nil {
-		return nil, errors.Wrap(err, "problem getting region for host")
-	}
-	if err = m.client.Create(m.credentials, r); err != nil {
-		return nil, errors.Wrap(err, "error creating client")
-	}
-	defer m.client.Close()
-
-	var resources []*string
+	var resources []string
 	provider, err := m.getProvider(ctx, h, ec2Settings)
 	if err != nil {
 		msg := "error getting provider"
@@ -476,7 +482,7 @@ func (m *ec2Manager) SpawnHost(ctx context.Context, h *host.Host) (*host.Host, e
 		})
 	}
 
-	if err = setTags(ctx, resources, h, m.client, m.credentials); err != nil {
+	if err = m.client.SetTags(ctx, resources, h); err != nil {
 		grip.Error(message.WrapError(err, message.Fields{
 			"message":       "error attaching tags",
 			"host":          h.Id,
@@ -570,27 +576,14 @@ func (m *ec2Manager) GetInstanceStatuses(ctx context.Context, hosts []host.Host)
 	return statuses, nil
 }
 
-func getRegion(h *host.Host) (string, error) {
-	ec2Settings := &EC2ProviderSettings{}
-	if h.Distro.ProviderSettings != nil {
-		if err := mapstructure.Decode(h.Distro.ProviderSettings, ec2Settings); err != nil {
-			return "", errors.Wrapf(err, "Error decoding params for distro %s: %+v", h.Distro.Id, ec2Settings)
-		}
-	}
-	r := defaultRegion
-	if ec2Settings.Region != "" {
-		r = ec2Settings.Region
-	}
-	return r, nil
-}
-
 // GetInstanceStatus returns the current status of an EC2 instance.
 func (m *ec2Manager) GetInstanceStatus(ctx context.Context, h *host.Host) (CloudStatus, error) {
-	r, err := getRegion(h)
+	ec2Settings := &EC2ProviderSettings{}
+	err := ec2Settings.fromDistroSettings(h.Distro)
 	if err != nil {
-		return StatusUnknown, errors.Wrap(err, "problem getting region from host")
+		return StatusUnknown, errors.Wrap(err, "problem getting settings from host")
 	}
-	if err := m.client.Create(m.credentials, r); err != nil {
+	if err := m.client.Create(m.credentials, ec2Settings.getRegion()); err != nil {
 		return StatusUnknown, errors.Wrap(err, "error creating client")
 	}
 	defer m.client.Close()
@@ -620,11 +613,12 @@ func (m *ec2Manager) TerminateInstance(ctx context.Context, h *host.Host, user s
 			"terminated!", h.Id)
 		return err
 	}
-	r, err := getRegion(h)
+	ec2Settings := &EC2ProviderSettings{}
+	err := ec2Settings.fromDistroSettings(h.Distro)
 	if err != nil {
-		return errors.Wrap(err, "problem getting region from host")
+		return errors.Wrap(err, "problem getting settings from host")
 	}
-	if err = m.client.Create(m.credentials, r); err != nil {
+	if err = m.client.Create(m.credentials, ec2Settings.getRegion()); err != nil {
 		return errors.Wrap(err, "error creating client")
 	}
 	defer m.client.Close()
@@ -742,11 +736,12 @@ func (m *ec2Manager) OnUp(ctx context.Context, h *host.Host) error {
 			"host_provider": h.Distro.Provider,
 			"distro":        h.Distro.Id,
 		})
-		r, err := getRegion(h)
+		ec2Settings := &EC2ProviderSettings{}
+		err := ec2Settings.fromDistroSettings(h.Distro)
 		if err != nil {
 			return errors.Wrap(err, "problem getting region from host")
 		}
-		if err = m.client.Create(m.credentials, r); err != nil {
+		if err = m.client.Create(m.credentials, ec2Settings.getRegion()); err != nil {
 			return errors.Wrap(err, "error creating client")
 		}
 		defer m.client.Close()
@@ -822,13 +817,13 @@ func (m *ec2Manager) OnUp(ctx context.Context, h *host.Host) error {
 
 func (m *ec2Manager) retrieveInstance(ctx context.Context, h *host.Host) (*ec2.Instance, error) {
 	var instance *ec2.Instance
-	var err error
 
-	r, err := getRegion(h)
+	ec2Settings := &EC2ProviderSettings{}
+	err := ec2Settings.fromDistroSettings(h.Distro)
 	if err != nil {
 		return nil, errors.Wrap(err, "problem getting region from host")
 	}
-	if err = m.client.Create(m.credentials, r); err != nil {
+	if err = m.client.Create(m.credentials, ec2Settings.getRegion()); err != nil {
 		return nil, errors.Wrap(err, "error creating client")
 	}
 	defer m.client.Close()
@@ -862,14 +857,8 @@ func (m *ec2Manager) retrieveInstance(ctx context.Context, h *host.Host) (*ec2.I
 	// Cache launch time and availability zone in host document, since we
 	// have access to this information now. Cost jobs will use this
 	// information later.
-	h.Zone = *instance.Placement.AvailabilityZone
-	h.StartTime = *instance.LaunchTime
-	h.VolumeTotalSize, err = getVolumeSize(ctx, m.client, h)
-	if err != nil {
-		return nil, errors.Wrapf(err, "error getting volume size for host %s", h.Id)
-	}
-	if err := h.CacheHostData(); err != nil {
-		return nil, errors.Wrap(err, "error updating host document in db")
+	if err = cacheHostData(ctx, h, instance, m.client); err != nil {
+		return nil, errors.Wrapf(err, "can't update host '%s'", h.Id)
 	}
 
 	return instance, nil
@@ -896,7 +885,7 @@ func (m *ec2Manager) GetDNSName(ctx context.Context, h *host.Host) (string, erro
 
 // GetSSHOptions returns the command-line args to pass to SSH.
 func (m *ec2Manager) GetSSHOptions(h *host.Host, keyName string) ([]string, error) {
-	return getEc2SSHOptions(h, keyName)
+	return h.GetSSHOptions(keyName)
 }
 
 // TimeTilNextPayment returns how long until the next payment is due for a host.
@@ -950,11 +939,12 @@ func (m *ec2Manager) CostForDuration(ctx context.Context, h *host.Host, start, e
 	if end.Before(start) || util.IsZeroTime(start) || util.IsZeroTime(end) {
 		return 0, errors.New("task timing data is malformed")
 	}
-	r, err := getRegion(h)
+	ec2Settings := &EC2ProviderSettings{}
+	err := ec2Settings.fromDistroSettings(h.Distro)
 	if err != nil {
 		return 0, errors.Wrap(err, "problem getting region from host")
 	}
-	if err = m.client.Create(m.credentials, r); err != nil {
+	if err = m.client.Create(m.credentials, ec2Settings.getRegion()); err != nil {
 		return 0, errors.Wrap(err, "error creating client")
 	}
 	defer m.client.Close()

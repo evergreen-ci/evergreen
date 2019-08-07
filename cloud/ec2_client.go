@@ -13,7 +13,9 @@ import (
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/ec2"
 	"github.com/aws/aws-sdk-go/service/pricing"
+	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/host"
+	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
@@ -90,6 +92,10 @@ type AWSClient interface {
 
 	// CreateFleet is a wrapper for ec2.CreateFleetWithContext
 	CreateFleet(context.Context, *ec2.CreateFleetInput) (*ec2.CreateFleetOutput, error)
+
+	GetKey(context.Context, *host.Host) (string, error)
+
+	SetTags(context.Context, []string, *host.Host) error
 }
 
 // awsClientImpl wraps ec2.EC2.
@@ -638,6 +644,81 @@ func (c *awsClientImpl) CreateFleet(ctx context.Context, input *ec2.CreateFleetI
 	return output, nil
 }
 
+func (c *awsClientImpl) GetKey(ctx context.Context, h *host.Host) (string, error) {
+	t, err := task.FindOneId(h.StartedBy)
+	if err != nil {
+		return "", errors.Wrapf(err, "problem finding task %s", h.StartedBy)
+	}
+	if t == nil {
+		return "", errors.Errorf("no task found %s", h.StartedBy)
+	}
+	k, err := model.GetAWSKeyForProject(t.Project)
+	if err != nil {
+		return "", errors.Wrap(err, "problem getting key for project")
+	}
+	if k.Name != "" {
+		return k.Name, nil
+	}
+
+	newKey, err := c.makeNewKey(ctx, t.Project, h)
+	if err != nil {
+		return "", errors.Wrap(err, "problem creating new key")
+	}
+	return newKey, nil
+}
+
+func (c *awsClientImpl) makeNewKey(ctx context.Context, project string, h *host.Host) (string, error) {
+	name := "evg_auto_" + project
+	_, err := c.DeleteKeyPair(ctx, &ec2.DeleteKeyPairInput{KeyName: aws.String(name)})
+	if err != nil { // error does not indicate a problem, but log anyway for debugging
+		grip.Debug(message.WrapError(err, message.Fields{
+			"message":  "problem deleting key",
+			"key_name": name,
+		}))
+	}
+	resp, err := c.CreateKeyPair(ctx, &ec2.CreateKeyPairInput{KeyName: aws.String(name)})
+	if err != nil {
+		return "", errors.Wrap(err, "problem creating key pair")
+	}
+
+	if err := model.SetAWSKeyForProject(project, &model.AWSSSHKey{Name: name, Value: *resp.KeyMaterial}); err != nil {
+		return "", errors.Wrap(err, "problem setting key")
+	}
+
+	return name, nil
+}
+
+func (c *awsClientImpl) SetTags(ctx context.Context, resources []string, h *host.Host) error {
+	tags := makeTags(h)
+	tagSlice := []*ec2.Tag{}
+	for tag := range tags {
+		key := tag
+		val := tags[tag]
+		tagSlice = append(tagSlice, &ec2.Tag{Key: &key, Value: &val})
+	}
+	if _, err := c.CreateTags(ctx, &ec2.CreateTagsInput{
+		Resources: aws.StringSlice(resources),
+		Tags:      tagSlice,
+	}); err != nil {
+		grip.Error(message.WrapError(err, message.Fields{
+			"message":       "error attaching tags",
+			"host":          h.Id,
+			"host_provider": h.Distro.Provider,
+			"distro":        h.Distro.Id,
+		}))
+		return errors.Wrapf(err, "failed to attach tags for %s", h.Id)
+	}
+
+	grip.Debug(message.Fields{
+		"message":       "attached tags for host",
+		"host":          h.Id,
+		"host_provider": h.Distro.Provider,
+		"distro":        h.Distro.Id,
+	})
+
+	return nil
+}
+
 // awsClientMock mocks ec2.EC2.
 type awsClientMock struct { //nolint
 	*credentials.Credentials
@@ -933,6 +1014,14 @@ func (c *awsClientMock) CreateFleet(ctx context.Context, input *ec2.CreateFleetI
 			},
 		},
 	}, nil
+}
+
+func (c *awsClientMock) GetKey(ctx context.Context, h *host.Host) (string, error) {
+	return "evg_auto_evergreen", nil
+}
+
+func (c *awsClientMock) SetTags(ctx context.Context, resources []string, h *host.Host) error {
+	return nil
 }
 
 func makeAWSLogMessage(name, client string, args interface{}) message.Fields {

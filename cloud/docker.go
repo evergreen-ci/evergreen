@@ -41,11 +41,6 @@ func (settings *dockerSettings) Validate() error {
 	return nil
 }
 
-// GetSettings returns an empty ProviderSettings struct.
-func (*dockerManager) GetSettings() ProviderSettings {
-	return &dockerSettings{}
-}
-
 // SpawnHost creates and starts a new Docker container
 func (m *dockerManager) SpawnHost(ctx context.Context, h *host.Host) (*host.Host, error) {
 	if h.Distro.Provider != evergreen.ProviderNameDocker {

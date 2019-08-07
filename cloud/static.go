@@ -70,10 +70,6 @@ func (staticMgr *staticManager) TerminateInstance(ctx context.Context, host *hos
 	return nil
 }
 
-func (_ *staticManager) GetSettings() ProviderSettings {
-	return &StaticSettings{}
-}
-
 func (staticMgr *staticManager) Configure(ctx context.Context, settings *evergreen.Settings) error {
 	//no-op. maybe will need to load something from settings in the future.
 	return nil

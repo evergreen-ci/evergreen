@@ -10,17 +10,13 @@ import (
 	"time"
 
 	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/aws/credentials"
 	"github.com/aws/aws-sdk-go/service/ec2"
 	ec2aws "github.com/aws/aws-sdk-go/service/ec2"
 	"github.com/evergreen-ci/evergreen"
-	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/host"
-	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/anser/bsonutil"
 	"github.com/mongodb/grip"
-	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 )
 
@@ -223,120 +219,6 @@ func timeTilNextHourlyPayment(host *host.Host) time.Duration {
 	return nextPaymentTime.Sub(now)
 }
 
-func getEc2SSHOptions(h *host.Host, keyName string) ([]string, error) {
-	if keyName == "" {
-		return nil, errors.New("No key specified for EC2 host")
-	}
-	opts := []string{"-i", keyName}
-	hasKnownHostsFile := false
-
-	for _, opt := range h.Distro.SSHOptions {
-		opt = strings.Trim(opt, " \t")
-		opts = append(opts, "-o", opt)
-		if strings.HasPrefix(opt, "UserKnownHostsFile") {
-			hasKnownHostsFile = true
-		}
-	}
-
-	if !hasKnownHostsFile {
-		opts = append(opts, "-o", "UserKnownHostsFile=/dev/null")
-	}
-	return opts, nil
-}
-
-func getKey(ctx context.Context, client AWSClient, credentials *credentials.Credentials, h *host.Host) (string, error) {
-	t, err := task.FindOneId(h.StartedBy)
-	if err != nil {
-		return "", errors.Wrapf(err, "problem finding task %s", h.StartedBy)
-	}
-	if t == nil {
-		return "", errors.Errorf("no task found %s", h.StartedBy)
-	}
-	k, err := model.GetAWSKeyForProject(t.Project)
-	if err != nil {
-		return "", errors.Wrap(err, "problem getting key for project")
-	}
-	if k.Name != "" {
-		return k.Name, nil
-	}
-
-	newKey, err := makeNewKey(ctx, client, credentials, t.Project, h)
-	if err != nil {
-		return "", errors.Wrap(err, "problem creating new key")
-	}
-	return newKey, nil
-}
-
-func makeNewKey(ctx context.Context, client AWSClient, credentials *credentials.Credentials, project string, h *host.Host) (string, error) {
-	r, err := getRegion(h)
-	if err != nil {
-		return "", errors.Wrap(err, "problem getting region from host")
-	}
-	if err = client.Create(credentials, r); err != nil {
-		return "", errors.Wrap(err, "error creating client")
-	}
-	defer client.Close()
-
-	name := "evg_auto_" + project
-	_, err = client.DeleteKeyPair(ctx, &ec2.DeleteKeyPairInput{KeyName: aws.String(name)})
-	if err != nil { // error does not indicate a problem, but log anyway for debugging
-		grip.Debug(message.WrapError(err, message.Fields{
-			"message":  "problem deleting key",
-			"key_name": name,
-		}))
-	}
-	resp, err := client.CreateKeyPair(ctx, &ec2.CreateKeyPairInput{KeyName: aws.String(name)})
-	if err != nil {
-		return "", errors.Wrap(err, "problem creating key pair")
-	}
-
-	if err := model.SetAWSKeyForProject(project, &model.AWSSSHKey{Name: name, Value: *resp.KeyMaterial}); err != nil {
-		return "", errors.Wrap(err, "problem setting key")
-	}
-
-	return name, nil
-}
-
-func setTags(ctx context.Context, resources []*string, h *host.Host, client AWSClient, credentials *credentials.Credentials) error {
-	r, err := getRegion(h)
-	if err != nil {
-		return errors.Wrap(err, "problem getting region from host")
-	}
-	if err = client.Create(credentials, r); err != nil {
-		return errors.Wrap(err, "error creating client")
-	}
-	defer client.Close()
-
-	tags := makeTags(h)
-	tagSlice := []*ec2.Tag{}
-	for tag := range tags {
-		key := tag
-		val := tags[tag]
-		tagSlice = append(tagSlice, &ec2.Tag{Key: &key, Value: &val})
-	}
-	if _, err = client.CreateTags(ctx, &ec2.CreateTagsInput{
-		Resources: resources,
-		Tags:      tagSlice,
-	}); err != nil {
-		grip.Error(message.WrapError(err, message.Fields{
-			"message":       "error attaching tags",
-			"host":          h.Id,
-			"host_provider": h.Distro.Provider,
-			"distro":        h.Distro.Id,
-		}))
-		return errors.Wrapf(err, "failed to attach tags for %s", h.Id)
-	}
-
-	grip.Debug(message.Fields{
-		"message":       "attached tags for host",
-		"host":          h.Id,
-		"host_provider": h.Distro.Provider,
-		"distro":        h.Distro.Id,
-	})
-
-	return nil
-}
-
 func expandUserData(userData string, expansions map[string]string) (string, error) {
 	exp := util.NewExpansions(expansions)
 	expanded, err := exp.ExpandString(userData)
@@ -344,6 +226,34 @@ func expandUserData(userData string, expansions map[string]string) (string, erro
 		return "", errors.Wrap(err, "error expanding userdata script")
 	}
 	return expanded, nil
+}
+
+func cacheHostData(ctx context.Context, h *host.Host, instance *ec2.Instance, client AWSClient) error {
+	h.Zone = *instance.Placement.AvailabilityZone
+	h.StartTime = *instance.LaunchTime
+
+	var err error
+	h.VolumeTotalSize, err = getVolumeSize(ctx, client, h)
+	if err != nil {
+		return errors.Wrapf(err, "error getting volume size for host %s", h.Id)
+	}
+
+	if err = h.CacheHostData(); err != nil {
+		return errors.Wrap(err, "error updating host document in db")
+	}
+
+	// set IPv6 address, if applicable
+	for _, networkInterface := range instance.NetworkInterfaces {
+		if len(networkInterface.Ipv6Addresses) > 0 {
+			err = h.SetIPv6Address(*networkInterface.Ipv6Addresses[0].Ipv6Address)
+			if err != nil {
+				return errors.Wrap(err, "error setting ipv6 address")
+			}
+			break
+		}
+	}
+
+	return nil
 }
 
 // ebsRegex extracts EBS Price JSON data from Amazon's UI.

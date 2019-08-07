@@ -17,9 +17,6 @@ type ProviderSettings interface {
 //Manager is an interface which handles creating new hosts or modifying
 //them via some third-party API.
 type Manager interface {
-	// Returns a pointer to the manager's configuration settings struct
-	GetSettings() ProviderSettings
-
 	//Load credentials or other settings from the config file
 	Configure(context.Context, *evergreen.Settings) error
 
@@ -96,7 +93,7 @@ func GetManager(ctx context.Context, providerName string, settings *evergreen.Se
 	case evergreen.ProviderNameEc2Auto:
 		provider = NewEC2Manager(&EC2ManagerOptions{client: &awsClientImpl{}, provider: autoProvider})
 	case evergreen.ProviderNameEc2Fleet:
-		provider = &ec2FleetManager{}
+		provider = &ec2FleetManager{client: &awsClientImpl{}}
 	case evergreen.ProviderNameDocker:
 		provider = &dockerManager{}
 	case evergreen.ProviderNameDockerMock:

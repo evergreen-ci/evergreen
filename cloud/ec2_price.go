@@ -336,14 +336,14 @@ func (m *ec2Manager) getProvider(ctx context.Context, h *host.Host, ec2settings 
 		onDemandPrice float64
 		spotPrice     float64
 		az            string
-		r             string
 	)
 	if h.UserHost || m.provider == onDemandProvider || m.provider == autoProvider {
-		r, err = getRegion(h)
+		ec2Settings := &EC2ProviderSettings{}
+		err := ec2Settings.fromDistroSettings(h.Distro)
 		if err != nil {
-			return 0, errors.Wrap(err, "problem getting region for host")
+			return 0, errors.Wrap(err, "problem getting settings from host")
 		}
-		onDemandPrice, err = pkgCachingPriceFetcher.getEC2OnDemandCost(ctx, m.client, getOsName(h), ec2settings.InstanceType, r)
+		onDemandPrice, err = pkgCachingPriceFetcher.getEC2OnDemandCost(ctx, m.client, getOsName(h), ec2settings.InstanceType, ec2settings.getRegion())
 		if err != nil {
 			return 0, errors.Wrap(err, "error getting ec2 on-demand cost")
 		}

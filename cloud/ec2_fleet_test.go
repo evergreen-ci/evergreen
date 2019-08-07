@@ -139,7 +139,7 @@ func TestSpawnFleetSpotHost(t *testing.T) {
 	resources, err := m.spawnFleetSpotHost(context.Background(), &host.Host{}, &EC2ProviderSettings{}, []*ec2.LaunchTemplateBlockDeviceMappingRequest{})
 	assert.NoError(t, err)
 	assert.Len(t, resources, 1)
-	assert.Equal(t, "i-12345", *resources[0])
+	assert.Equal(t, "i-12345", resources[0])
 
 	mockClient := m.client.(*awsClientMock)
 	assert.Equal(t, "templateID", *mockClient.DeleteLaunchTemplateInput.LaunchTemplateId)
