@@ -471,12 +471,13 @@ func fileNameWithIndex(filename string, index int) string {
 func truncateFilename(fileName string) string {
 	if len(fileName) > fileNameMaxLength {
 		parts := strings.Split(fileName, ".")
-		if len(parts) > 0 {
-			toTruncate := len(fileName) - fileNameMaxLength
-			newEndIdx := len(parts[0]) - toTruncate
-			parts[0] = parts[0][0:newEndIdx]
-			fileName = strings.Join(parts, ".")
+		if len(parts) == 0 {
+			return fileName
 		}
+		toTruncate := len(fileName) - fileNameMaxLength
+		newEndIdx := len(parts[0]) - toTruncate
+		parts[0] = parts[0][0:newEndIdx]
+		fileName = strings.Join(parts, ".")
 	}
 	return fileName
 }
