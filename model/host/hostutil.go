@@ -238,7 +238,7 @@ func (h *Host) FetchAndReinstallJasperCommand(config evergreen.HostJasperConfig)
 // delete the current Jasper service configuration (if it exists), install the
 // new configuration, and restart the service.
 func (h *Host) ForceReinstallJasperCommand(config evergreen.HostJasperConfig) string {
-	params := []string{fmt.Sprintf("--port=%d", config.Port)}
+	params := []string{"--host=0.0.0.0", fmt.Sprintf("--port=%d", config.Port)}
 	if h.Distro.JasperCredentialsPath != "" {
 		params = append(params, fmt.Sprintf("--creds_path=%s", h.Distro.JasperCredentialsPath))
 	}

@@ -42,6 +42,7 @@ func TestFindProject(t *testing.T) {
 		Convey("if the project file exists and is valid, the project spec within"+
 			"should be unmarshalled and returned", func() {
 			v := &Version{
+				Id:         "my_version",
 				Owner:      "fakeowner",
 				Repo:       "fakerepo",
 				Branch:     "fakebranch",
@@ -267,12 +268,14 @@ task_groups:
   - example_task_1
   - example_task_2
 `
-	proj, errs := projectFromYAML([]byte(projYml))
+	proj := &Project{}
+	pp, err := LoadProjectInto([]byte(projYml), "id", proj)
 	assert.NotNil(proj)
-	assert.Empty(errs)
+	assert.NoError(err)
 	v := Version{
-		Id:     "v1",
-		Config: projYml,
+		Id:            "v1",
+		ParserProject: pp,
+		Config:        projYml,
 	}
 	t1 := task.Task{
 		Id:        "t1",
@@ -356,7 +359,7 @@ buildvariants:
 	assert.Equal("master", expansions.Get("branch_name"))
 	assert.Equal("somebody", expansions.Get("author"))
 	assert.Equal("d1", expansions.Get("distro_id"))
-	assert.Equal("globalGitHubOauthToken", expansions.Get("global_github_oauth_token"))
+	assert.Equal("globalGitHubOauthToken", expansions.Get(evergreen.GlobalGitHubTokenExpansion))
 	assert.True(expansions.Exists("created_at"))
 	assert.Equal("42", expansions.Get("revision_order_id"))
 	assert.False(expansions.Exists("is_patch"))
@@ -1061,11 +1064,11 @@ tasks:
   depends_on:
     - name: dist-test
 `
-	intermediate, errs := createIntermediateProject([]byte(projYml))
-	s.Len(errs, 0)
+	intermediate, err := createIntermediateProject([]byte(projYml))
+	s.NoError(err)
 	marshaled, err := yaml.Marshal(intermediate)
 	s.NoError(err)
-	unmarshaled := parserProject{}
+	unmarshaled := ParserProject{}
 	s.NoError(yaml.Unmarshal(marshaled, &unmarshaled))
 }
 
