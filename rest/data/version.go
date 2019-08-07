@@ -322,7 +322,7 @@ func (vc *DBVersionConnector) CreateVersionFromConfig(ctx context.Context, proje
 		}
 	}
 	project := &model.Project{}
-	intermediateProject, err := model.LoadProjectInto(config, projectID, project)
+	err = model.LoadProjectInto(config, projectID, project)
 	if err != nil {
 		return nil, gimlet.ErrorResponse{
 			StatusCode: http.StatusBadRequest,
@@ -334,12 +334,7 @@ func (vc *DBVersionConnector) CreateVersionFromConfig(ctx context.Context, proje
 		User:    user,
 		Message: message,
 	}
-	projectInfo := &repotracker.ProjectInfo{
-		Ref:                 ref,
-		Project:             project,
-		IntermediateProject: intermediateProject,
-	}
-	newVersion, err := repotracker.CreateVersionFromConfig(ctx, projectInfo, metadata, false, nil)
+	newVersion, err := repotracker.CreateVersionFromConfig(ctx, ref, project, metadata, false, nil)
 	if err != nil {
 		return nil, gimlet.ErrorResponse{
 			StatusCode: http.StatusInternalServerError,

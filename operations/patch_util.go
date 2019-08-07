@@ -8,6 +8,7 @@ import (
 	"os"
 	"os/exec"
 	"runtime"
+	"strconv"
 	"strings"
 	"text/template"
 
@@ -414,6 +415,26 @@ func gitDiff(base string, ref string, diffArgs ...string) (string, error) {
 func gitLog(base, ref string) (string, error) {
 	args := []string{fmt.Sprintf("%s...%s", base, ref), "--oneline"}
 	return gitCmd("log", args...)
+}
+
+func gitCommitMessages(base, ref string) (string, error) {
+	args := []string{"--pretty=format:%B", fmt.Sprintf("%s@{upstream}..%s", base, ref)}
+	return gitCmd("log", args...)
+}
+
+func gitCommitCount(base, ref string) (int, error) {
+	args := []string{fmt.Sprintf("%s@{upstream}..%s", base, ref), "--count"}
+	out, err := gitCmd("rev-list", args...)
+	if err != nil {
+		return 0, errors.Wrap(err, "can't get commit count")
+	}
+
+	count, err := strconv.Atoi(strings.TrimSpace(out))
+	if err != nil {
+		return 0, errors.Wrapf(err, "'%s' is not an integer", out)
+	}
+
+	return count, nil
 }
 
 func gitUncommittedChanges() (bool, error) {

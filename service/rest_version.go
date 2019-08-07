@@ -16,7 +16,6 @@ import (
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson"
-	"gopkg.in/yaml.v2"
 )
 
 const NumRecentVersions = 10
@@ -235,19 +234,7 @@ func (restapi restAPI) getVersionConfig(w http.ResponseWriter, r *http.Request) 
 	}
 	w.Header().Set("Content-Type", "application/x-yaml; charset=utf-8")
 	w.WriteHeader(http.StatusOK)
-
-	var config []byte
-	var err error
-	if projCtx.Version.ParserProject != nil {
-		config, err = yaml.Marshal(projCtx.Version.ParserProject)
-		if err != nil {
-			gimlet.WriteJSONResponse(w, http.StatusInternalServerError, responseError{Message: "problem marshalling project"})
-		}
-	} else {
-		config = []byte(projCtx.Version.Config)
-	}
-
-	_, err = w.Write(config)
+	_, err := w.Write([]byte(projCtx.Version.Config))
 	grip.Warning(errors.Wrap(err, "problem writing response"))
 }
 

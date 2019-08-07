@@ -25,7 +25,7 @@ import (
 )
 
 func (h *Host) SetupCommand() string {
-	cmd := fmt.Sprintf("%s host setup", filepath.Join("~", h.Distro.BinaryName()))
+	cmd := fmt.Sprintf("%s host setup", filepath.Join(h.Distro.HomeDir(), h.Distro.BinaryName()))
 
 	if h.Distro.SetupAsSudo {
 		cmd += " --setup_as_sudo"
@@ -38,7 +38,7 @@ func (h *Host) SetupCommand() string {
 
 // TearDownCommand returns a command for running a teardown script on a host.
 func (h *Host) TearDownCommand() string {
-	return fmt.Sprintf("%s host teardown", filepath.Join("~", h.Distro.BinaryName()))
+	return fmt.Sprintf("%s host teardown", filepath.Join(h.Distro.HomeDir(), h.Distro.BinaryName()))
 }
 
 // TearDownCommandOverSSH returns a command for running a teardown script on a host. This command
@@ -82,7 +82,8 @@ func (h *Host) CurlCommandWithRetry(settings *evergreen.Settings, numRetries, ma
 	if numRetries != 0 && maxRetrySecs != 0 {
 		retryArgs = " " + curlRetryArgs(numRetries, maxRetrySecs)
 	}
-	return fmt.Sprintf("cd ~ && curl -LO '%s'%s && chmod +x %s",
+	return fmt.Sprintf("cd %s && curl -LO '%s'%s && chmod +x %s",
+		h.Distro.HomeDir(),
 		h.ClientURL(settings),
 		retryArgs,
 		h.Distro.BinaryName(),
@@ -238,7 +239,7 @@ func (h *Host) FetchAndReinstallJasperCommand(config evergreen.HostJasperConfig)
 // delete the current Jasper service configuration (if it exists), install the
 // new configuration, and restart the service.
 func (h *Host) ForceReinstallJasperCommand(config evergreen.HostJasperConfig) string {
-	params := []string{fmt.Sprintf("--port=%d", config.Port)}
+	params := []string{"--host=0.0.0.0", fmt.Sprintf("--port=%d", config.Port)}
 	if h.Distro.JasperCredentialsPath != "" {
 		params = append(params, fmt.Sprintf("--creds_path=%s", h.Distro.JasperCredentialsPath))
 	}
@@ -258,12 +259,6 @@ func (h *Host) RestartJasperCommand(config evergreen.HostJasperConfig) string {
 func (h *Host) jasperServiceCommand(config evergreen.HostJasperConfig, subCmd string, args ...string) string {
 	cmd := append(jaspercli.BuildServiceCommand(h.jasperBinaryFilePath(config)), subCmd, jaspercli.RPCService)
 	cmd = append(cmd, args...)
-	// cmd := fmt.Sprintf("%s %s %s %s",
-	//     strings.Join(jaspercli.BuildServiceCommand(h.jasperBinaryFilePath(config)), " "),
-	//     subCmd,
-	//     jaspercli.RPCService,
-	//     strings.Join(args, " "),
-	// )
 	// Jasper service commands need elevated privileges to execute. On Windows,
 	// this is assuming that the command is already being run by Administrator.
 	if !h.Distro.IsWindows() {
@@ -625,8 +620,8 @@ func (h *Host) SetupSpawnHostCommand(settings *evergreen.Settings) (string, erro
 		return "", errors.New("missing spawn host owner")
 	}
 
-	binaryPath := filepath.Join("~", h.Distro.BinaryName())
-	binDir := filepath.Join("~", "cli_bin")
+	binaryPath := filepath.Join(h.Distro.HomeDir(), h.Distro.BinaryName())
+	binDir := filepath.Join(h.Distro.HomeDir(), "cli_bin")
 	confPath := filepath.Join(binDir, ".evergreen.yml")
 
 	owner, err := user.FindOne(user.ById(h.ProvisionOptions.OwnerId))
@@ -657,7 +652,7 @@ func (h *Host) SetupSpawnHostCommand(settings *evergreen.Settings) (string, erro
 		fmt.Sprintf("mkdir -m 777 -p %s", binDir),
 		fmt.Sprintf("echo '%s' > %s", confJSON, confPath),
 		fmt.Sprintf("cp %s %s", binaryPath, binDir),
-		fmt.Sprintf("(echo 'PATH=${PATH}:%s' >> ~/.profile || true; echo 'PATH=${PATH}:%s' >> ~/.bash_profile || true)", binDir, binDir),
+		fmt.Sprintf("(echo 'PATH=${PATH}:%s' >> %s/.profile || true; echo 'PATH=${PATH}:%s' >> %s/.bash_profile || true)", binDir, h.Distro.HomeDir(), binDir, h.Distro.HomeDir()),
 	}, " && ")
 
 	script := setupBinDirCmds

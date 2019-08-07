@@ -289,7 +289,7 @@ func (c *gitFetchProject) Execute(ctx context.Context,
 
 	var projectMethod string
 	var projectToken string
-	projectMethod, projectToken, err = getProjectMethodAndToken(c.Token, conf.Expansions.Get("global_github_oauth_token"), conf.Distro.CloneMethod)
+	projectMethod, projectToken, err = getProjectMethodAndToken(c.Token, conf.Expansions.Get(evergreen.GlobalGitHubTokenExpansion), conf.Distro.CloneMethod)
 	if err != nil {
 		return errors.Wrap(err, "failed to get method of cloning and token")
 	}

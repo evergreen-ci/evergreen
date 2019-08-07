@@ -57,10 +57,8 @@ func TestMakeDownstreamConfigFromFile(t *testing.T) {
 		Owner:      "evergreen-ci",
 		Repo:       "evergreen",
 	}
-	proj, pp, err := makeDownstreamConfigFromFile(ref, "trigger/testdata/downstream_config.yml")
+	proj, err := makeDownstreamConfigFromFile(ref, "trigger/testdata/downstream_config.yml")
 	assert.NoError(err)
-	assert.NotNil(proj)
-	assert.NotNil(pp)
 	assert.Equal(ref.Identifier, proj.Identifier)
 	assert.Len(proj.Tasks, 2)
 	assert.Equal("task1", proj.Tasks[0].Name)

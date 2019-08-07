@@ -30,30 +30,30 @@ import (
 
 func TestCurlCommand(t *testing.T) {
 	assert := assert.New(t)
-	h := &Host{Distro: distro.Distro{Arch: distro.ArchWindowsAmd64}}
+	h := &Host{Distro: distro.Distro{Arch: distro.ArchWindowsAmd64, User: "user"}}
 	settings := &evergreen.Settings{
 		Ui:                evergreen.UIConfig{Url: "www.example.com"},
 		ClientBinariesDir: "clients",
 	}
-	expected := "cd ~ && curl -LO 'www.example.com/clients/windows_amd64/evergreen.exe' && chmod +x evergreen.exe"
+	expected := "cd /home/user && curl -LO 'www.example.com/clients/windows_amd64/evergreen.exe' && chmod +x evergreen.exe"
 	assert.Equal(expected, h.CurlCommand(settings))
 
-	h = &Host{Distro: distro.Distro{Arch: distro.ArchLinuxAmd64}}
-	expected = "cd ~ && curl -LO 'www.example.com/clients/linux_amd64/evergreen' && chmod +x evergreen"
+	h = &Host{Distro: distro.Distro{Arch: distro.ArchLinuxAmd64, User: "user"}}
+	expected = "cd /home/user && curl -LO 'www.example.com/clients/linux_amd64/evergreen' && chmod +x evergreen"
 	assert.Equal(expected, h.CurlCommand(settings))
 }
 
 func TestCurlCommandWithRetry(t *testing.T) {
-	h := &Host{Distro: distro.Distro{Arch: distro.ArchWindowsAmd64}}
+	h := &Host{Distro: distro.Distro{Arch: distro.ArchWindowsAmd64, User: "user"}}
 	settings := &evergreen.Settings{
 		Ui:                evergreen.UIConfig{Url: "www.example.com"},
 		ClientBinariesDir: "clients",
 	}
-	expected := "cd ~ && curl -LO 'www.example.com/clients/windows_amd64/evergreen.exe' --retry 5 --retry-max-time 10 && chmod +x evergreen.exe"
+	expected := "cd /home/user && curl -LO 'www.example.com/clients/windows_amd64/evergreen.exe' --retry 5 --retry-max-time 10 && chmod +x evergreen.exe"
 	assert.Equal(t, expected, h.CurlCommandWithRetry(settings, 5, 10))
 
-	h = &Host{Distro: distro.Distro{Arch: distro.ArchLinuxAmd64}}
-	expected = "cd ~ && curl -LO 'www.example.com/clients/linux_amd64/evergreen' --retry 5 --retry-max-time 10 && chmod +x evergreen"
+	h = &Host{Distro: distro.Distro{Arch: distro.ArchLinuxAmd64, User: "user"}}
+	expected = "cd /home/user && curl -LO 'www.example.com/clients/linux_amd64/evergreen' --retry 5 --retry-max-time 10 && chmod +x evergreen"
 	assert.Equal(t, expected, h.CurlCommandWithRetry(settings, 5, 10))
 }
 
@@ -140,7 +140,7 @@ func TestJasperCommands(t *testing.T) {
 		},
 		"ForceReinstallJasperCommand": func(t *testing.T, h *Host, config evergreen.HostJasperConfig) {
 			cmd := h.ForceReinstallJasperCommand(config)
-			assert.Equal(t, "sudo /foo/jasper_cli jasper service force-reinstall rpc --port=12345 --creds_path=/bar --user=user", cmd)
+			assert.Equal(t, "sudo /foo/jasper_cli jasper service force-reinstall rpc --host=0.0.0.0 --port=12345 --creds_path=/bar --user=user", cmd)
 		},
 		// "": func(t *testing.T, h *Host, config evergreen.JasperConfig) {},
 	} {
@@ -242,7 +242,7 @@ func TestJasperCommandsWindows(t *testing.T) {
 		},
 		"ForceReinstallJasperCommand": func(t *testing.T, h *Host, config evergreen.HostJasperConfig) {
 			cmd := h.ForceReinstallJasperCommand(config)
-			assert.Equal(t, "/foo/jasper_cli.exe jasper service force-reinstall rpc --port=12345 --creds_path=/bar --user=user", cmd)
+			assert.Equal(t, "/foo/jasper_cli.exe jasper service force-reinstall rpc --host=0.0.0.0 --port=12345 --creds_path=/bar --user=user", cmd)
 		},
 		"WriteJasperCredentialsFileCommand": func(t *testing.T, h *Host, config evergreen.HostJasperConfig) {
 			creds, err := newMockCredentials()
@@ -736,6 +736,7 @@ func TestSetupSpawnHostCommand(t *testing.T) {
 		Distro: distro.Distro{
 			Arch:    distro.ArchLinuxAmd64,
 			WorkDir: "/dir",
+			User:    "user",
 		},
 		ProvisionOptions: &ProvisionOptions{
 			OwnerId: user.Id,
@@ -753,13 +754,13 @@ func TestSetupSpawnHostCommand(t *testing.T) {
 	cmd, err := h.SetupSpawnHostCommand(settings)
 	require.NoError(t, err)
 
-	expected := `mkdir -m 777 -p ~/cli_bin && echo '{"api_key":"key","api_server_host":"www.example0.com/api","ui_server_host":"www.example1.com","user":"user"}' > ~/cli_bin/.evergreen.yml && cp ~/evergreen ~/cli_bin && (echo 'PATH=${PATH}:~/cli_bin' >> ~/.profile || true; echo 'PATH=${PATH}:~/cli_bin' >> ~/.bash_profile || true)`
+	expected := `mkdir -m 777 -p /home/user/cli_bin && echo '{"api_key":"key","api_server_host":"www.example0.com/api","ui_server_host":"www.example1.com","user":"user"}' > /home/user/cli_bin/.evergreen.yml && cp /home/user/evergreen /home/user/cli_bin && (echo 'PATH=${PATH}:/home/user/cli_bin' >> /home/user/.profile || true; echo 'PATH=${PATH}:/home/user/cli_bin' >> /home/user/.bash_profile || true)`
 	assert.Equal(t, expected, cmd)
 
 	h.ProvisionOptions.TaskId = "task_id"
 	cmd, err = h.SetupSpawnHostCommand(settings)
 	require.NoError(t, err)
-	expected += " && ~/evergreen -c ~/cli_bin/.evergreen.yml fetch -t task_id --source --artifacts --dir='/dir'"
+	expected += " && /home/user/evergreen -c /home/user/cli_bin/.evergreen.yml fetch -t task_id --source --artifacts --dir='/dir'"
 	assert.Equal(t, expected, cmd)
 }
 
