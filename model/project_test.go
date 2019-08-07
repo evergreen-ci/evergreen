@@ -488,7 +488,7 @@ func (s *projectSuite) SetupTest() {
 			ProjectID: "project",
 			Alias:     "aTags",
 			Variant:   ".*",
-			Tags:      []string{"a"},
+			TaskTags:  []string{"a"},
 		},
 		{
 			ProjectID: "project",
@@ -512,7 +512,13 @@ func (s *projectSuite) SetupTest() {
 			ProjectID: "project",
 			Alias:     "part_of_memes",
 			Variant:   "bv_1",
-			Tags:      []string{"part_of_memes"},
+			TaskTags:  []string{"part_of_memes"},
+		},
+		{
+			ProjectID:   "project",
+			Alias:       "even_bvs",
+			VariantTags: []string{"even"},
+			TaskTags:    []string{"a"},
 		},
 	}
 	for _, alias := range s.aliases {
@@ -576,6 +582,7 @@ func (s *projectSuite) SetupTest() {
 			},
 			{
 				Name: "bv_2",
+				Tags: []string{"even"},
 				Tasks: []BuildVariantTaskUnit{
 					{
 						Name: "a_task_1",
@@ -747,6 +754,12 @@ func (s *projectSuite) TestAliasResolution() {
 	s.Require().Len(pairs, 1)
 	s.Equal("bv_3/disabled_task", pairs[0].String())
 	s.Empty(displayTaskPairs)
+
+	pairs, displayTaskPairs, err = s.project.BuildProjectTVPairsWithAlias(s.aliases[8].Alias)
+	s.NoError(err)
+	s.Require().Len(pairs, 2)
+	s.Equal("bv_2/a_task_1", pairs[0].String())
+	s.Equal("bv_2/a_task_2", pairs[1].String())
 }
 
 func (s *projectSuite) TestBuildProjectTVPairs() {
