@@ -7,6 +7,7 @@ import (
 	"net"
 	"os"
 	"os/signal"
+	"path/filepath"
 	"strings"
 	"syscall"
 	"time"
@@ -223,6 +224,10 @@ func setupLogging(m *monitor) error {
 		}
 		senders = append(senders, sender)
 	} else {
+		logDir := filepath.Dir(senderName)
+		if err := os.MkdirAll(logDir, 0777); err != nil {
+			return errors.Wrapf(err, "problem creating log directory %s", logDir)
+		}
 		sender, err := send.NewFileLogger(
 			senderName,
 			fmt.Sprintf("%s-%d-%d.log", senderName, os.Getpid(), getLogID()),
