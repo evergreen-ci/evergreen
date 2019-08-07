@@ -2,7 +2,9 @@ package model
 
 import (
 	"reflect"
+	"time"
 
+	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/pkg/errors"
 )
@@ -35,6 +37,7 @@ type APIUserSettings struct {
 	GithubUser       *APIGithubUser              `json:"github_user"`
 	SlackUsername    APIString                   `json:"slack_username"`
 	Notifications    *APINotificationPreferences `json:"notifications"`
+	SpruceFeedback   *APIFeedbackSubmission      `json:"spruce_feedback"`
 }
 
 type APIUseSpruceOptions struct {
@@ -250,4 +253,47 @@ func (u *APIUserAuthorInformation) BuildFromService(h interface{}) error {
 
 func (u *APIUserAuthorInformation) ToService() (interface{}, error) {
 	return nil, errors.New("not implemented for read-only route")
+}
+
+type APIFeedbackSubmission struct {
+	Type        APIString           `json:"type"`
+	User        APIString           `json:"user"`
+	SubmittedAt time.Time           `json:"submitted_at"`
+	Questions   []APIQuestionAnswer `json:"questions"`
+}
+
+func (a *APIFeedbackSubmission) BuildFromService(h interface{}) error {
+	return errors.New("BuildFromService not implemented for APIFeedbackSubmission")
+}
+
+func (a *APIFeedbackSubmission) ToService() (interface{}, error) {
+	result := model.FeedbackSubmission{
+		Type:        FromAPIString(a.Type),
+		User:        FromAPIString(a.User),
+		SubmittedAt: a.SubmittedAt,
+	}
+	for _, question := range a.Questions {
+		answerInterface, _ := question.ToService()
+		answer := answerInterface.(model.QuestionAnswer)
+		result.Questions = append(result.Questions, answer)
+	}
+	return result, nil
+}
+
+type APIQuestionAnswer struct {
+	ID     APIString `json:"id"`
+	Prompt APIString `json:"prompt"`
+	Answer APIString `json:"answer"`
+}
+
+func (a *APIQuestionAnswer) BuildFromService(h interface{}) error {
+	return errors.New("BuildFromService not implemented for APIQuestionAnswer")
+}
+
+func (a *APIQuestionAnswer) ToService() (interface{}, error) {
+	return model.QuestionAnswer{
+		ID:     FromAPIString(a.ID),
+		Prompt: FromAPIString(a.Prompt),
+		Answer: FromAPIString(a.Answer),
+	}, nil
 }

@@ -217,6 +217,7 @@ type Connector interface {
 	AddPublicKey(*user.DBUser, string, string) error
 	DeletePublicKey(*user.DBUser, string) error
 	UpdateSettings(*user.DBUser, user.UserSettings) error
+	SubmitFeedback(restModel.APIFeedbackSubmission) error
 
 	AddPatchIntent(patch.Intent, amboy.Queue) error
 
