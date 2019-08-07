@@ -9,6 +9,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/user"
+	restModel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/pkg/errors"
 )
@@ -141,7 +142,13 @@ func (u *DBUserConnector) UpdateSettings(dbUser *user.DBUser, settings user.User
 	return model.SaveUserSettings(dbUser.Id, settings)
 }
 
-func (u *DBUserConnector) SubmitFeedback(feedback model.FeedbackSubmission) error {
+func (u *DBUserConnector) SubmitFeedback(in restModel.APIFeedbackSubmission) error {
+	f, _ := in.ToService()
+	feedback, isValid := f.(model.FeedbackSubmission)
+	if !isValid {
+		return errors.Errorf("unknown type of feedback submission: %T", feedback)
+	}
+
 	return errors.Wrap(feedback.Insert(), "error saving feedback")
 }
 
@@ -205,6 +212,6 @@ func (muc *MockUserConnector) UpdateSettings(user *user.DBUser, settings user.Us
 	return errors.New("UpdateSettings not implemented for mock connector")
 }
 
-func (u *MockUserConnector) SubmitFeedback(feedback model.FeedbackSubmission) error {
+func (u *MockUserConnector) SubmitFeedback(feedback restModel.APIFeedbackSubmission) error {
 	return nil
 }

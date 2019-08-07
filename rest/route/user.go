@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
-	dbModel "github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/rest/model"
@@ -94,12 +93,8 @@ func (h *userSettingsPostHandler) Run(ctx context.Context) gimlet.Responder {
 	if h.settings.SpruceFeedback != nil {
 		h.settings.SpruceFeedback.SubmittedAt = time.Now()
 		h.settings.SpruceFeedback.User = model.ToAPIString(u.Username())
-		f, _ := h.settings.SpruceFeedback.ToService()
-		feedback, isValid := f.(dbModel.FeedbackSubmission)
-		if isValid {
-			if err = h.sc.SubmitFeedback(feedback); err != nil {
-				return gimlet.MakeJSONErrorResponder(err)
-			}
+		if err = h.sc.SubmitFeedback(*h.settings.SpruceFeedback); err != nil {
+			return gimlet.MakeJSONErrorResponder(err)
 		}
 	}
 
