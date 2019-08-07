@@ -208,7 +208,7 @@ func TestGetTaskStatsTwoDocuments(t *testing.T) {
 	docs, err := GetTaskReliabilityScores(filter)
 	require.NoError(err)
 	require.Len(docs, 2)
-	assert.Equal(docs[0].SuccessRate, float64(.55))
+	assert.Equal(docs[0].SuccessRate, float64(.56))
 	assert.Equal(docs[1].SuccessRate, float64(.42))
 }
 

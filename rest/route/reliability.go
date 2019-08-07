@@ -19,8 +19,8 @@ import (
 )
 
 const (
-	reliabilityAPIMaxNumTasks = 50
-	dayInHours                = 24 * time.Hour
+	reliabilityAPIMaxNumTasksLimit = 50
+	dayInHours                     = 24 * time.Hour
 )
 
 /////////////////////////////////////////////////////
@@ -60,30 +60,39 @@ func (sh *taskReliabilityHandler) parseCommonFilter(vals url.Values) error {
 	statsHandler := StatsHandler{stats.StatsFilter{Project: sh.filter.Project}}
 	err = statsHandler.ParseCommonFilter(vals)
 	if err == nil {
-
-		// tasks
-		sh.filter.Tasks = statsHandler.readStringList(vals["tasks"])
-		if len(sh.filter.Tasks) == 0 {
-			return gimlet.ErrorResponse{
-				Message:    "Missing tasks values",
-				StatusCode: http.StatusBadRequest,
-			}
-		}
-		if len(sh.filter.Tasks) > reliabilityAPIMaxNumTasks {
-			return gimlet.ErrorResponse{
-				Message:    "Too many tasks values",
-				StatusCode: http.StatusBadRequest,
-			}
-		}
-
 		sh.filter.Requesters = statsHandler.filter.Requesters
 		sh.filter.BuildVariants = statsHandler.filter.BuildVariants
 		sh.filter.Distros = statsHandler.filter.Distros
 		sh.filter.GroupNumDays = statsHandler.filter.GroupNumDays
 		sh.filter.GroupBy = statsHandler.filter.GroupBy
 		sh.filter.StartAt = statsHandler.filter.StartAt
-		sh.filter.Limit = statsHandler.filter.Limit
 		sh.filter.Sort = statsHandler.filter.Sort
+
+		// limit
+		sh.filter.Limit, err = statsHandler.readInt(vals.Get("limit"), 1, reliabilityAPIMaxNumTasksLimit, reliabilityAPIMaxNumTasksLimit)
+		if err != nil {
+			return gimlet.ErrorResponse{
+				Message:    "Invalid limit value",
+				StatusCode: http.StatusBadRequest,
+			}
+		}
+		// Add 1 for pagination
+		sh.filter.Limit++
+
+		// tasks
+		sh.filter.Tasks = statsHandler.readStringList(vals["tasks"])
+		if len(sh.filter.Tasks) == 0 {
+			return gimlet.ErrorResponse{
+				Message:    "Missing Tasks values",
+				StatusCode: http.StatusBadRequest,
+			}
+		}
+		if len(sh.filter.Tasks) > reliabilityAPIMaxNumTasksLimit {
+			return gimlet.ErrorResponse{
+				Message:    "Too many Tasks values",
+				StatusCode: http.StatusBadRequest,
+			}
+		}
 	}
 	return err
 }

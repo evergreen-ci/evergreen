@@ -86,17 +86,6 @@ func (sh *StatsHandler) ParseCommonFilter(vals url.Values) error {
 		}
 	}
 
-	// limit
-	sh.filter.Limit, err = sh.readInt(vals.Get("limit"), 1, statsAPIMaxLimit, statsAPIMaxLimit)
-	if err != nil {
-		return gimlet.ErrorResponse{
-			Message:    "Invalid limit value",
-			StatusCode: http.StatusBadRequest,
-		}
-	}
-	// Add 1 for pagination
-	sh.filter.Limit++
-
 	// group_by
 	sh.filter.GroupBy, err = sh.readGroupBy(vals.Get("group_by"))
 	if err != nil {
@@ -116,6 +105,17 @@ func (sh *StatsHandler) parseStatsFilter(vals url.Values) error {
 	if err != nil {
 		return err
 	}
+
+	// limit
+	sh.filter.Limit, err = sh.readInt(vals.Get("limit"), 1, statsAPIMaxLimit, statsAPIMaxLimit)
+	if err != nil {
+		return gimlet.ErrorResponse{
+			Message:    "Invalid limit value",
+			StatusCode: http.StatusBadRequest,
+		}
+	}
+	// Add 1 for pagination
+	sh.filter.Limit++
 
 	// tasks
 	sh.filter.Tasks = sh.readStringList(vals["tasks"])
