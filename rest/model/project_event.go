@@ -125,21 +125,12 @@ func (p *APIProjectVars) BuildFromService(h interface{}) error {
 }
 
 func (a *APIProjectAlias) ToService() (interface{}, error) {
-	taskTags := []string{}
-	variantTags := []string{}
-	for _, tag := range a.TaskTags {
-		taskTags = append(taskTags, FromAPIString(tag))
-	}
-	for _, tag := range a.VariantTags {
-		variantTags = append(variantTags, FromAPIString(tag))
-	}
-
 	res := model.ProjectAlias{
 		Alias:       FromAPIString(a.Alias),
 		Task:        FromAPIString(a.Task),
 		Variant:     FromAPIString(a.Variant),
-		TaskTags:    taskTags,
-		VariantTags: variantTags,
+		TaskTags:    FromAPIStringList(a.TaskTags),
+		VariantTags: FromAPIStringList(a.VariantTags),
 	}
 	if model.IsValidId(FromAPIString(a.ID)) {
 		res.ID = model.NewId(FromAPIString(a.ID))
@@ -150,14 +141,9 @@ func (a *APIProjectAlias) ToService() (interface{}, error) {
 func (a *APIProjectAlias) BuildFromService(h interface{}) error {
 	switch v := h.(type) {
 	case *model.ProjectAlias:
-		APITaskTags := []APIString{}
-		APIVariantTags := []APIString{}
-		for _, tag := range v.TaskTags {
-			APITaskTags = append(APITaskTags, ToAPIString(tag))
-		}
-		for _, tag := range v.VariantTags {
-			APIVariantTags = append(APIVariantTags, ToAPIString(tag))
-		}
+		APITaskTags := ToAPIStringList(v.TaskTags)
+		APIVariantTags := ToAPIStringList(v.VariantTags)
+
 		a.Alias = ToAPIString(v.Alias)
 		a.Variant = ToAPIString(v.Variant)
 		a.Task = ToAPIString(v.Task)
@@ -165,14 +151,9 @@ func (a *APIProjectAlias) BuildFromService(h interface{}) error {
 		a.TaskTags = APITaskTags
 		a.ID = ToAPIString(v.ID.Hex())
 	case model.ProjectAlias:
-		APITaskTags := []APIString{}
-		APIVariantTags := []APIString{}
-		for _, tag := range v.TaskTags {
-			APITaskTags = append(APITaskTags, ToAPIString(tag))
-		}
-		for _, tag := range v.VariantTags {
-			APIVariantTags = append(APIVariantTags, ToAPIString(tag))
-		}
+		APITaskTags := ToAPIStringList(v.TaskTags)
+		APIVariantTags := ToAPIStringList(v.VariantTags)
+
 		a.Alias = ToAPIString(v.Alias)
 		a.Variant = ToAPIString(v.Variant)
 		a.Task = ToAPIString(v.Task)
@@ -188,20 +169,12 @@ func (a *APIProjectAlias) BuildFromService(h interface{}) error {
 func DbProjectAliasesToRestModel(aliases []model.ProjectAlias) []APIProjectAlias {
 	result := []APIProjectAlias{}
 	for _, alias := range aliases {
-		APITaskTags := []APIString{}
-		APIVariantTags := []APIString{}
-		for _, tag := range alias.TaskTags {
-			APITaskTags = append(APITaskTags, ToAPIString(tag))
-		}
-		for _, tag := range alias.VariantTags {
-			APIVariantTags = append(APIVariantTags, ToAPIString(tag))
-		}
 		apiAlias := APIProjectAlias{
 			Alias:       ToAPIString(alias.Alias),
 			Variant:     ToAPIString(alias.Variant),
 			Task:        ToAPIString(alias.Task),
-			TaskTags:    APITaskTags,
-			VariantTags: APIVariantTags,
+			TaskTags:    ToAPIStringList(alias.TaskTags),
+			VariantTags: ToAPIStringList(alias.VariantTags),
 		}
 		result = append(result, apiAlias)
 	}

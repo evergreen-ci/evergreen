@@ -12,3 +12,19 @@ func FromAPIString(in APIString) string {
 	}
 	return *in
 }
+
+func ToAPIStringList(in []string) []APIString {
+	res := []APIString{}
+	for _, each := range in {
+		res = append(res, ToAPIString(each))
+	}
+	return res
+}
+
+func FromAPIStringList(in []APIString) []string {
+	res := []string{}
+	for _, each := range in {
+		res = append(res, FromAPIString(each))
+	}
+	return res
+}
