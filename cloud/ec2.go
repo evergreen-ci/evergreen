@@ -870,16 +870,7 @@ func (m *ec2Manager) GetDNSName(ctx context.Context, h *host.Host) (string, erro
 	if err != nil {
 		return "", errors.Wrapf(err, "error retrieving instance")
 	}
-	// set IPv6 address, if applicable
-	for _, networkInterface := range instance.NetworkInterfaces {
-		if len(networkInterface.Ipv6Addresses) > 0 {
-			err = h.SetIPv6Address(*networkInterface.Ipv6Addresses[0].Ipv6Address)
-			if err != nil {
-				return "", errors.Wrap(err, "error setting ipv6 address")
-			}
-			break
-		}
-	}
+
 	return *instance.PublicDnsName, nil
 }
 
