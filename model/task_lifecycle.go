@@ -676,7 +676,7 @@ func UpdateBuildAndVersionStatusForTask(taskId string, updates *StatusChanges) e
 			})
 		}
 	}
-	grip.DebugWhen(time.Since(loopStart) > 5*time.Second, message.Fields{
+	grip.DebugWhen(time.Since(loopStart) > slowMS, message.Fields{
 		"function":      "UpdateBuildAndVersionStatusForTask",
 		"operation":     "build task loop",
 		"message":       "slow operation",
