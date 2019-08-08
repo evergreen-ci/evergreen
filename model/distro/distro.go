@@ -238,6 +238,9 @@ func (d *Distro) HomeDir() string {
 	if d.User == "root" {
 		return filepath.Join("/", d.User)
 	}
+	if d.Arch == ArchDarwinAmd64 {
+		return filepath.Join("/Users", d.User)
+	}
 	return filepath.Join("/home", d.User)
 }
 
