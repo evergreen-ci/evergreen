@@ -7,6 +7,7 @@ import (
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/stats"
 	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 	"gonum.org/v1/gonum/stat/distuv"
 )
@@ -20,21 +21,19 @@ const (
 
 // TaskReliabilityFilter represents search and aggregation parameters when querying the test or task statistics.
 type TaskReliabilityFilter struct {
-	Project    string
-	Requesters []string
-	AfterDate  time.Time
-	BeforeDate time.Time
-
+	Project       string
+	Requesters    []string
+	AfterDate     time.Time
+	BeforeDate    time.Time
 	Tasks         []string
 	BuildVariants []string
 	Distros       []string
-
-	GroupNumDays int
-	GroupBy      stats.GroupBy
-	StartAt      *stats.StartAt
-	Limit        int
-	Sort         stats.Sort
-	Significance float64
+	GroupNumDays  int
+	GroupBy       stats.GroupBy
+	StartAt       *stats.StartAt
+	Limit         int
+	Sort          stats.Sort
+	Significance  float64
 }
 
 // ValidateForTaskReliability validates that the StartAt struct is valid for use with test stats.
@@ -66,7 +65,7 @@ func (f *TaskReliabilityFilter) ValidateForTaskReliability() error {
 	}
 
 	if len(f.Tasks) == 0 {
-		catcher.Add(errors.New("Missing Task values"))
+		catcher.Add(errors.New("Missing Tasks values"))
 	}
 	return catcher.Resolve()
 }
@@ -77,22 +76,21 @@ func (f *TaskReliabilityFilter) ValidateForTaskReliability() error {
 
 // TaskReliability represents task execution statistics.
 type TaskReliability struct {
-	TaskName     string    `bson:"task_name"`
-	BuildVariant string    `bson:"variant"`
-	Distro       string    `bson:"distro"`
-	Date         time.Time `bson:"date"`
-
-	NumTotal           int     `bson:"num_total"`
-	NumSuccess         int     `bson:"num_success"`
-	NumFailed          int     `bson:"num_failed"`
-	NumTimeout         int     `bson:"num_timeout"`
-	NumTestFailed      int     `bson:"num_test_failed"`
-	NumSystemFailed    int     `bson:"num_system_failed"`
-	NumSetupFailed     int     `bson:"num_setup_failed"`
-	AvgDurationSuccess float64 `bson:"avg_duration_success"`
+	TaskName           string
+	BuildVariant       string
+	Distro             string
+	Date               time.Time
+	NumTotal           int
+	NumSuccess         int
+	NumFailed          int
+	NumTimeout         int
+	NumTestFailed      int
+	NumSystemFailed    int
+	NumSetupFailed     int
+	AvgDurationSuccess float64
 	SuccessRate        float64
 	Z                  float64
-	LastUpdate         time.Time `bson:"last_update"`
+	LastUpdate         time.Time
 }
 
 // calculateSuccessRate using
@@ -101,27 +99,31 @@ type TaskReliability struct {
 func (s *TaskReliability) calculateSuccessRate() {
 	total := float64(s.NumTotal)
 	success := float64(s.NumSuccess)
-	failed := float64(s.NumFailed)
 	low := 0.0
 	high := 0.0
 	p := 0.0
 
 	if total != 0 {
-		product := success * failed
-		p = success / total
+		p := success / total
 
-		zSquared := s.Z * s.Z
-		zSquared2 := zSquared / 2.0
-		zSquared4 := zSquared / 4.0
-
-		value := (success + zSquared2) / total / (1 + zSquared/total)
-		margin := (s.Z * math.Sqrt(product/total+zSquared4) / total) / (1 + zSquared/total)
-		high = value + margin
-		low = value - margin
-
+		dist := s.Z * math.Sqrt((p*(1.-p)+s.Z*s.Z/(4.*total))/total)
+		denominator := 1. + s.Z*s.Z/total
+		c1 := p + s.Z*s.Z/(2.*total)
+		high = math.Min(1, (c1+dist)/denominator)
+		low = math.Max(0, (c1-dist)/denominator)
 	}
-	grip.Debugf("SuccessRate: %.4f(p=%.4f,hi=%.4f). Success=%d, Failed=%d, Total=%d, z=%4f\n", low, p, high, int(success), int(failed), int(total), s.Z)
 	s.SuccessRate = (math.Ceil(low*100) / 100)
+	grip.Info(message.Fields{
+		"message":     "calculated task success rate",
+		"NumSuccess":  s.NumSuccess,
+		"NumFailed":   s.NumFailed,
+		"NumTotal":    s.NumTotal,
+		"Z":           s.Z,
+		"SuccessRate": s.SuccessRate,
+		"low":         low,
+		"p":           p,
+		"high":        high,
+	})
 }
 
 // Create a TaskReliability struct from the task stats and calculate the success rate

@@ -36,8 +36,8 @@ func makeGetProjectTaskReliability(sc data.Connector) gimlet.RouteHandler {
 	return &taskReliabilityHandler{sc: sc}
 }
 
-func (sh *taskReliabilityHandler) Factory() gimlet.RouteHandler {
-	return &taskReliabilityHandler{sc: sh.sc}
+func (trh *taskReliabilityHandler) Factory() gimlet.RouteHandler {
+	return &taskReliabilityHandler{sc: trh.sc}
 }
 
 // Get the default before_date.
@@ -55,21 +55,21 @@ func getDefaultAfterDate() string {
 }
 
 // parseCommonFilter parses common query parameter values and fills the filter struct fields.
-func (sh *taskReliabilityHandler) parseCommonFilter(vals url.Values) error {
+func (trh *taskReliabilityHandler) parseCommonFilter(vals url.Values) error {
 	var err error
-	statsHandler := StatsHandler{stats.StatsFilter{Project: sh.filter.Project}}
+	statsHandler := StatsHandler{stats.StatsFilter{Project: trh.filter.Project}}
 	err = statsHandler.ParseCommonFilter(vals)
 	if err == nil {
-		sh.filter.Requesters = statsHandler.filter.Requesters
-		sh.filter.BuildVariants = statsHandler.filter.BuildVariants
-		sh.filter.Distros = statsHandler.filter.Distros
-		sh.filter.GroupNumDays = statsHandler.filter.GroupNumDays
-		sh.filter.GroupBy = statsHandler.filter.GroupBy
-		sh.filter.StartAt = statsHandler.filter.StartAt
-		sh.filter.Sort = statsHandler.filter.Sort
+		trh.filter.Requesters = statsHandler.filter.Requesters
+		trh.filter.BuildVariants = statsHandler.filter.BuildVariants
+		trh.filter.Distros = statsHandler.filter.Distros
+		trh.filter.GroupNumDays = statsHandler.filter.GroupNumDays
+		trh.filter.GroupBy = statsHandler.filter.GroupBy
+		trh.filter.StartAt = statsHandler.filter.StartAt
+		trh.filter.Sort = statsHandler.filter.Sort
 
 		// limit
-		sh.filter.Limit, err = statsHandler.readInt(vals.Get("limit"), 1, reliabilityAPIMaxNumTasksLimit, reliabilityAPIMaxNumTasksLimit)
+		trh.filter.Limit, err = statsHandler.readInt(vals.Get("limit"), 1, reliabilityAPIMaxNumTasksLimit, reliabilityAPIMaxNumTasksLimit)
 		if err != nil {
 			return gimlet.ErrorResponse{
 				Message:    "Invalid limit value",
@@ -77,17 +77,17 @@ func (sh *taskReliabilityHandler) parseCommonFilter(vals url.Values) error {
 			}
 		}
 		// Add 1 for pagination
-		sh.filter.Limit++
+		trh.filter.Limit++
 
 		// tasks
-		sh.filter.Tasks = statsHandler.readStringList(vals["tasks"])
-		if len(sh.filter.Tasks) == 0 {
+		trh.filter.Tasks = statsHandler.readStringList(vals["tasks"])
+		if len(trh.filter.Tasks) == 0 {
 			return gimlet.ErrorResponse{
 				Message:    "Missing Tasks values",
 				StatusCode: http.StatusBadRequest,
 			}
 		}
-		if len(sh.filter.Tasks) > reliabilityAPIMaxNumTasksLimit {
+		if len(trh.filter.Tasks) > reliabilityAPIMaxNumTasksLimit {
 			return gimlet.ErrorResponse{
 				Message:    "Too many Tasks values",
 				StatusCode: http.StatusBadRequest,
@@ -98,17 +98,17 @@ func (sh *taskReliabilityHandler) parseCommonFilter(vals url.Values) error {
 }
 
 // parseStatsFilter parses the query parameter values and fills the struct filter field.
-func (sh *taskReliabilityHandler) parseTaskReliabilityFilter(vals url.Values) error {
+func (trh *taskReliabilityHandler) parseTaskReliabilityFilter(vals url.Values) error {
 	var err error
 
-	err = sh.parseCommonFilter(vals)
+	err = trh.parseCommonFilter(vals)
 	if err != nil {
 		return err
 	}
 
 	// before_date, defaults to tomorrow
-	beforeDate := sh.readString(vals.Get("before_date"), getDefaultBeforeDate())
-	sh.filter.BeforeDate, err = time.ParseInLocation(statsAPIDateFormat, beforeDate, time.UTC)
+	beforeDate := trh.readString(vals.Get("before_date"), getDefaultBeforeDate())
+	trh.filter.BeforeDate, err = time.ParseInLocation(statsAPIDateFormat, beforeDate, time.UTC)
 	if err != nil {
 		return gimlet.ErrorResponse{
 			Message:    "Invalid before_date value",
@@ -117,8 +117,8 @@ func (sh *taskReliabilityHandler) parseTaskReliabilityFilter(vals url.Values) er
 	}
 
 	// after_date
-	afterDate := sh.readString(vals.Get("after_date"), getDefaultAfterDate())
-	sh.filter.AfterDate, err = time.ParseInLocation(statsAPIDateFormat, afterDate, time.UTC)
+	afterDate := trh.readString(vals.Get("after_date"), getDefaultAfterDate())
+	trh.filter.AfterDate, err = time.ParseInLocation(statsAPIDateFormat, afterDate, time.UTC)
 	if err != nil {
 		return gimlet.ErrorResponse{
 			Message:    "Invalid after_date value",
@@ -127,7 +127,7 @@ func (sh *taskReliabilityHandler) parseTaskReliabilityFilter(vals url.Values) er
 	}
 
 	// sort
-	sh.filter.Sort, err = sh.readSort(vals.Get("sort"))
+	trh.filter.Sort, err = trh.readSort(vals.Get("sort"))
 	if err != nil {
 		return gimlet.ErrorResponse{
 			Message:    "Invalid sort value",
@@ -136,7 +136,7 @@ func (sh *taskReliabilityHandler) parseTaskReliabilityFilter(vals url.Values) er
 	}
 
 	// significance
-	sh.filter.Significance, err = sh.readFloat(vals.Get("significance"), 0.0, 1.0, reliability.DefaultSignificance)
+	trh.filter.Significance, err = trh.readFloat(vals.Get("significance"), 0.0, 1.0, reliability.DefaultSignificance)
 	if err != nil {
 		return gimlet.ErrorResponse{
 			Message:    "Invalid Significance value",
@@ -148,7 +148,7 @@ func (sh *taskReliabilityHandler) parseTaskReliabilityFilter(vals url.Values) er
 }
 
 // readFloat parses an integer parameter value, given minimum, maximum, and default values.
-func (sh *taskReliabilityHandler) readFloat(floatString string, min, max, defaultValue float64) (float64, error) {
+func (trh *taskReliabilityHandler) readFloat(floatString string, min, max, defaultValue float64) (float64, error) {
 	if floatString == "" {
 		return defaultValue, nil
 	}
@@ -164,7 +164,7 @@ func (sh *taskReliabilityHandler) readFloat(floatString string, min, max, defaul
 }
 
 // readString reads a string parameter value, and default values.
-func (sh *taskReliabilityHandler) readString(value string, defaultValue string) string {
+func (trh *taskReliabilityHandler) readString(value string, defaultValue string) string {
 	if value == "" {
 		return defaultValue
 	}
@@ -173,7 +173,7 @@ func (sh *taskReliabilityHandler) readString(value string, defaultValue string) 
 
 // readSort parses a sort parameter value and returns the corresponding Sort struct.
 // defaults to latest first.
-func (sh *taskReliabilityHandler) readSort(sortValue string) (stats.Sort, error) {
+func (trh *taskReliabilityHandler) readSort(sortValue string) (stats.Sort, error) {
 	switch sortValue {
 	case statsAPISortEarliest:
 		return stats.SortEarliestFirst, nil
@@ -189,17 +189,17 @@ func (sh *taskReliabilityHandler) readSort(sortValue string) (stats.Sort, error)
 	}
 }
 
-func (sh *taskReliabilityHandler) Parse(ctx context.Context, r *http.Request) error {
-	sh.filter = reliability.TaskReliabilityFilter{
+func (trh *taskReliabilityHandler) Parse(ctx context.Context, r *http.Request) error {
+	trh.filter = reliability.TaskReliabilityFilter{
 		Project:      gimlet.GetVars(r)["project_id"],
 		Significance: reliability.DefaultSignificance,
 	}
 
-	err := sh.parseTaskReliabilityFilter(r.URL.Query())
+	err := trh.parseTaskReliabilityFilter(r.URL.Query())
 	if err != nil {
 		return errors.Wrap(err, "Invalid query parameters")
 	}
-	err = sh.filter.ValidateForTaskReliability()
+	err = trh.filter.ValidateForTaskReliability()
 	if err != nil {
 		return gimlet.ErrorResponse{
 			Message:    err.Error(),
@@ -209,7 +209,7 @@ func (sh *taskReliabilityHandler) Parse(ctx context.Context, r *http.Request) er
 	return nil
 }
 
-func (sh *taskReliabilityHandler) Run(ctx context.Context) gimlet.Responder {
+func (trh *taskReliabilityHandler) Run(ctx context.Context) gimlet.Responder {
 	flags, err := evergreen.GetServiceFlags()
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "Error retrieving service flags"))
@@ -223,7 +223,7 @@ func (sh *taskReliabilityHandler) Run(ctx context.Context) gimlet.Responder {
 
 	var taskReliabilityResult []model.APITaskReliability
 
-	taskReliabilityResult, err = sh.sc.GetTaskReliabilityScores(sh.filter)
+	taskReliabilityResult, err = trh.sc.GetTaskReliabilityScores(trh.filter)
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "Failed to retrieve the task stats"))
 	}
@@ -233,7 +233,7 @@ func (sh *taskReliabilityHandler) Run(ctx context.Context) gimlet.Responder {
 		return gimlet.MakeJSONInternalErrorResponder(err)
 	}
 
-	requestLimit := sh.filter.Limit - 1
+	requestLimit := trh.filter.Limit - 1
 	lastIndex := len(taskReliabilityResult)
 	if len(taskReliabilityResult) > requestLimit {
 		lastIndex = requestLimit
@@ -243,7 +243,7 @@ func (sh *taskReliabilityHandler) Run(ctx context.Context) gimlet.Responder {
 				Relation:        "next",
 				LimitQueryParam: "limit",
 				KeyQueryParam:   "start_at",
-				BaseURL:         sh.sc.GetURL(),
+				BaseURL:         trh.sc.GetURL(),
 				Key:             taskReliabilityResult[requestLimit].StartAtKey(),
 				Limit:           requestLimit,
 			},

@@ -174,9 +174,6 @@ func (f *StatsFilter) ValidateCommon() error {
 	if len(f.Requesters) == 0 {
 		catcher.Add(errors.New("Missing Requesters values"))
 	}
-	if f.Limit > MaxQueryLimit || f.Limit <= 0 {
-		catcher.Add(errors.New("Invalid Limit value"))
-	}
 	catcher.Add(f.Sort.validate())
 	catcher.Add(f.GroupBy.validate())
 
@@ -188,6 +185,9 @@ func (f *StatsFilter) ValidateForTests() error {
 	catcher := grip.NewBasicCatcher()
 
 	catcher.Add(f.ValidateCommon())
+	if f.Limit > MaxQueryLimit || f.Limit <= 0 {
+		catcher.Add(errors.New("Invalid Limit value"))
+	}
 	if f.StartAt != nil {
 		catcher.Add(f.StartAt.validateForTests(f.GroupBy))
 	}
@@ -203,6 +203,9 @@ func (f *StatsFilter) ValidateForTasks() error {
 	catcher := grip.NewBasicCatcher()
 
 	catcher.Add(f.ValidateCommon())
+	if f.Limit > MaxQueryLimit || f.Limit <= 0 {
+		catcher.Add(errors.New("Invalid Limit value"))
+	}
 	if f.StartAt != nil {
 		catcher.Add(f.StartAt.validateForTasks(f.GroupBy))
 	}
@@ -289,7 +292,6 @@ func GetTaskStats(filter StatsFilter) ([]TaskStats, error) {
 	}
 	var stats []TaskStats
 	pipeline := filter.TaskStatsQueryPipeline()
-	grip.Infof("pipeline %s\n", pipeline)
 	err = db.Aggregate(DailyTaskStatsCollection, pipeline, &stats)
 	if err != nil {
 		return nil, errors.Wrap(err, "Failed to aggregate task statistics")

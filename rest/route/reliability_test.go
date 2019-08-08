@@ -56,7 +56,6 @@ func getURL(projectID string, tasks []string) string {
 		url = fmt.Sprintf("%s%ctasks=%s", url, sep, strings.Join(tasks, ","))
 		sep = '&'
 	}
-	sep = '&'
 	url = fmt.Sprintf("%s%cafter_date=2019-01-02&group_by_days=10", url, sep)
 	return url
 }
@@ -76,10 +75,9 @@ func TestParseNoTasks(t *testing.T) {
 
 func TestParseTooManyTasks(t *testing.T) {
 	assert := assert.New(t)
-	values := url.Values{}
 	handler := taskReliabilityHandler{}
 
-	values = url.Values{
+	values := url.Values{
 		"tasks": make([]string, reliabilityAPIMaxNumTasksLimit+1, reliabilityAPIMaxNumTasksLimit+1),
 	}
 
@@ -93,10 +91,9 @@ func TestParseTooManyTasks(t *testing.T) {
 
 func TestParseInvalidAfterDate(t *testing.T) {
 	assert := assert.New(t)
-	values := url.Values{}
 	handler := taskReliabilityHandler{}
 
-	values = url.Values{
+	values := url.Values{
 		"tasks":      []string{"aggregation_expression_multiversion_fuzzer"},
 		"after_date": []string{"invalid date"},
 	}
@@ -112,10 +109,9 @@ func TestParseInvalidAfterDate(t *testing.T) {
 
 func TestParseInvalidBeforeDate(t *testing.T) {
 	assert := assert.New(t)
-	values := url.Values{}
 	handler := taskReliabilityHandler{}
 
-	values = url.Values{
+	values := url.Values{
 		"tasks":       []string{"aggregation_expression_multiversion_fuzzer"},
 		"before_date": []string{"invalid date"},
 	}
@@ -131,10 +127,9 @@ func TestParseInvalidBeforeDate(t *testing.T) {
 
 func TestParseInvalidSort(t *testing.T) {
 	assert := assert.New(t)
-	values := url.Values{}
 	handler := taskReliabilityHandler{}
 
-	values = url.Values{
+	values := url.Values{
 		"tasks": []string{"aggregation_expression_multiversion_fuzzer"},
 		"sort":  []string{"invalid sort"},
 	}
@@ -150,10 +145,9 @@ func TestParseInvalidSort(t *testing.T) {
 
 func TestParseInvalidSignificance(t *testing.T) {
 	assert := assert.New(t)
-	values := url.Values{}
 	handler := taskReliabilityHandler{}
 
-	values = url.Values{
+	values := url.Values{
 		"tasks":        []string{"aggregation_expression_multiversion_fuzzer"},
 		"significance": []string{"-1.0"},
 	}
@@ -181,11 +175,10 @@ func TestParseInvalidSignificance(t *testing.T) {
 
 func TestParseValid(t *testing.T) {
 	assert := assert.New(t)
-	values := url.Values{}
 	handler := taskReliabilityHandler{}
 
 	// Defaults
-	values = url.Values{
+	values := url.Values{
 		"tasks": []string{"aggregation_expression_multiversion_fuzzer"},
 	}
 

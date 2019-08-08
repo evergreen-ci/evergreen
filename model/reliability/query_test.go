@@ -66,7 +66,6 @@ func insertDailyTaskStats(project string, requester string, taskName string, var
 }
 
 func TestValidFilter(t *testing.T) {
-	// assert := assert.New(t)
 	require := require.New(t)
 	filter := createValidFilter()
 
@@ -76,9 +75,9 @@ func TestValidFilter(t *testing.T) {
 	require.NoError(err)
 }
 
-func TestFilterInvalidDate(t *testing.T) {
-	// assert := assert.New(t)
+func TestFilterInvalidAfterDateAfterBeforeDate(t *testing.T) {
 	var err error
+	assert := assert.New(t)
 	require := require.New(t)
 	filter := createValidFilter()
 
@@ -87,82 +86,121 @@ func TestFilterInvalidDate(t *testing.T) {
 	filter.BeforeDate = day1
 	err = filter.ValidateForTaskReliability()
 	require.Error(err)
+	assert.Equal("Invalid AfterDate/BeforeDate values", err.Error())
+
+}
+
+func TestFilterInvalidAfterDateEqualBeforeDate(t *testing.T) {
+	var err error
+	assert := assert.New(t)
+	require := require.New(t)
+	filter := createValidFilter()
 
 	// With AfterDate equal to BeforeDate.
 	filter.AfterDate = day1
 	filter.BeforeDate = day1
 	err = filter.ValidateForTaskReliability()
 	require.Error(err)
+	assert.Equal("Invalid AfterDate/BeforeDate values", err.Error())
+
+}
+
+func TestFilterInvalidAfterDateNotUTC(t *testing.T) {
+	var err error
+	assert := assert.New(t)
+	require := require.New(t)
+	filter := createValidFilter()
 
 	// With AfterDate not a UTC day.
 	filter.AfterDate = day1
 	filter.BeforeDate = day1.Add(time.Hour)
 	err = filter.ValidateForTaskReliability()
 	require.Error(err)
+	assert.Equal("Invalid BeforeDate value", err.Error())
+
+}
+
+func TestFilterInvalidBeforeDateNotUTC(t *testing.T) {
+	var err error
+	assert := assert.New(t)
+	require := require.New(t)
+	filter := createValidFilter()
 
 	// With BeforeDate not a UTC day.
 	filter.AfterDate = day1
 	filter.BeforeDate = day1.Add(time.Hour)
 	err = filter.ValidateForTaskReliability()
 	require.Error(err)
+	assert.Equal("Invalid BeforeDate value", err.Error())
 }
 
 func TestFilterInvalidForTasks(t *testing.T) {
+	assert := assert.New(t)
 	require := require.New(t)
 	filter := createValidFilter()
 
 	filter.Tasks = []string{}
 	err := filter.ValidateForTaskReliability()
 	require.Error(err)
+	assert.Equal("Missing Tasks values", err.Error())
 }
 
 func TestFilterInvalidGroupNumDays(t *testing.T) {
+	assert := assert.New(t)
 	require := require.New(t)
 	filter := createValidFilter()
 
 	filter.GroupNumDays = -1
 	err := filter.ValidateForTaskReliability()
 	require.Error(err)
+	assert.Equal("Invalid GroupNumDays value", err.Error())
 }
 
 func TestFilterMissingRequesters(t *testing.T) {
+	assert := assert.New(t)
 	require := require.New(t)
 	filter := createValidFilter()
 
 	filter.Requesters = []string{}
 	err := filter.ValidateForTaskReliability()
 	require.Error(err)
+	assert.Equal("Missing Requesters values", err.Error())
 }
 
 func TestFilterInvalidLimit(t *testing.T) {
+	assert := assert.New(t)
 	require := require.New(t)
 	filter := createValidFilter()
 
 	filter.Limit = -1
 	err := filter.ValidateForTaskReliability()
 	require.Error(err)
+	assert.Equal("Invalid Limit value", err.Error())
 }
 
 func TestFilterInvalidSort(t *testing.T) {
+	assert := assert.New(t)
 	require := require.New(t)
 	filter := createValidFilter()
 
 	filter.Sort = stats.Sort("invalid")
 	err := filter.ValidateForTaskReliability()
 	require.Error(err)
+	assert.Contains(err.Error(), "Invalid Sort value:")
 }
 
 func TestFilterInvalidGroupBy(t *testing.T) {
+	assert := assert.New(t)
 	require := require.New(t)
 	filter := createValidFilter()
 
 	filter.GroupBy = stats.GroupBy("invalid")
 	err := filter.ValidateForTaskReliability()
 	require.Error(err)
+	assert.Contains(err.Error(), "Invalid GroupBy value:")
 }
 
 func TestGetTaskStatsEmptyCollection(t *testing.T) {
-
 	require := require.New(t)
 
 	err := clearCollection()
