@@ -1,5 +1,6 @@
 package: github.com/evergreen-ci/evergreen
 import:
+  - package: gonum.org/v1/gonum
   - package: golang.org/x/crypto
   - package: golang.org/x/net
   - package: golang.org/x/oauth2

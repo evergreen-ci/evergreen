@@ -77,7 +77,7 @@ import (
 const (
 	hourlyTestStatsCollection  = "hourly_test_stats"
 	dailyTestStatsCollection   = "daily_test_stats"
-	dailyTaskStatsCollection   = "daily_task_stats"
+	DailyTaskStatsCollection   = "daily_task_stats"
 	dailyStatsStatusCollection = "daily_stats_status"
 	bulkSize                   = 1000
 	nsInASecond                = time.Second / time.Nanosecond
@@ -411,7 +411,7 @@ func dailyTaskStatsForOldTasksPipeline(projectId string, requester string, start
 	// And the merge the documents with the existing ones.
 	mergePipeline := []bson.M{
 		{"$lookup": bson.M{
-			"from":         dailyTaskStatsCollection,
+			"from":         DailyTaskStatsCollection,
 			"localField":   dbTaskStatsIdKey,
 			"foreignField": dbTaskStatsIdKey,
 			"as":           "existing",
@@ -788,8 +788,8 @@ func (filter StatsFilter) buildTestPaginationOrBranches() []bson.M {
 	return buildPaginationOrBranches(fields)
 }
 
-// taskStatsQueryPipeline creates an aggregation pipeline to query task statistics.
-func (filter StatsFilter) taskStatsQueryPipeline() []bson.M {
+// TaskStatsQueryPipeline creates an aggregation pipeline to query task statistics.
+func (filter StatsFilter) TaskStatsQueryPipeline() []bson.M {
 	matchExpr := filter.buildMatchStageForTask()
 
 	return []bson.M{
@@ -1081,7 +1081,7 @@ func GetHourlyTestDoc(id DbTestStatsId) (*dbTestStats, error) {
 
 func GetDailyTaskDoc(id DbTaskStatsId) (*dbTaskStats, error) {
 	doc := dbTaskStats{}
-	err := db.FindOne(dailyTaskStatsCollection, bson.M{"_id": id}, db.NoProjection, db.NoSort, &doc)
+	err := db.FindOne(DailyTaskStatsCollection, bson.M{"_id": id}, db.NoProjection, db.NoSort, &doc)
 	if adb.ResultsNotFound(err) {
 		return nil, nil
 	}
