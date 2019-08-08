@@ -429,6 +429,8 @@ func (h *Host) StartJasperProcess(ctx context.Context, env evergreen.Environment
 	return nil
 }
 
+const jasperDialTimeout = 15 * time.Second
+
 // JasperClient returns a remote client that communicates with this host's
 // Jasper service.
 func (h *Host) JasperClient(ctx context.Context, env evergreen.Environment) (jasper.RemoteClient, error) {
@@ -485,7 +487,10 @@ func (h *Host) JasperClient(ctx context.Context, env evergreen.Environment) (jas
 				return nil, errors.Wrapf(err, "could not resolve Jasper service address at '%s'", addrStr)
 			}
 
-			return rpc.NewClient(ctx, serviceAddr, creds)
+			dialCtx, cancel := context.WithTimeout(ctx, jasperDialTimeout)
+			defer cancel()
+
+			return rpc.NewClient(dialCtx, serviceAddr, creds)
 		}
 	}
 
