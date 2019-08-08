@@ -225,6 +225,15 @@ func (j *setupHostJob) runHostSetup(ctx context.Context, targetHost *host.Host, 
 
 	switch targetHost.Distro.BootstrapMethod {
 	case distro.BootstrapMethodUserData:
+		// Updating the host LCT prevents the agent monitor deploy job from
+		// running. The agent monitor should be started by the user data script.
+		grip.Error(message.WrapError(targetHost.UpdateLastCommunicated(), message.Fields{
+			"message": "failed to update host's last communication time",
+			"host":    targetHost.Id,
+			"distro":  targetHost.Distro.Id,
+			"job":     j.ID(),
+		}))
+
 		// The setup is done at this point for a host bootstrapped with user
 		// data, because this host only needs to perform operations that must be
 		// done after the host is already running (e.g. setting DNS name).
