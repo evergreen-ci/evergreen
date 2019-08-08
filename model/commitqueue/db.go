@@ -61,7 +61,7 @@ func add(id string, queue []CommitQueueItem, item CommitQueueItem) error {
 
 	if adb.ResultsNotFound(err) {
 		grip.Error(errors.Wrapf(err, "update failed for queue '%s', %+v", id, queue))
-		return errors.New("queue has changed in the database")
+		return errors.Errorf("update failed for queue '%s', %+v", id, queue)
 	}
 
 	return err
