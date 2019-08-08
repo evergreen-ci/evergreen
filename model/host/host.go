@@ -678,8 +678,13 @@ func (h *Host) IsWaitingForAgent() bool {
 	return false
 }
 
-// SetNeedsNewAgent sets the "needs new agent" flag on the host.
+// SetNeedsNewAgent sets the "needs new agent" flag on the host. This is a no-op
+// on non-legacy hosts.
 func (h *Host) SetNeedsNewAgent(needsAgent bool) error {
+	if !h.LegacyBootstrap() {
+		return nil
+	}
+
 	err := UpdateOne(bson.M{IdKey: h.Id},
 		bson.M{"$set": bson.M{NeedsNewAgentKey: needsAgent}})
 	if err != nil {
