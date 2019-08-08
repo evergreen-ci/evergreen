@@ -80,6 +80,8 @@ func (s *CommitQueueSuite) TestCommitQueueRemoveItem() {
 	s.Require().NoError(err)
 	s.Require().Equal(3, pos)
 
+	s.queue.SetProcessing(true)
+
 	found, err := s.ctx.CommitQueueRemoveItem("mci", "not_here")
 	s.NoError(err)
 	s.False(found)

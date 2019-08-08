@@ -113,7 +113,7 @@ func (j *commitQueueJob) Run(ctx context.Context) {
 		return
 	}
 	nextItem := cq.Next()
-	if nextItem == nil {
+	if nextItem == nil || cq.Processing {
 		return
 	}
 	j.AddError(errors.Wrap(cq.SetProcessing(true), "can't set processing to true"))
