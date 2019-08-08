@@ -247,11 +247,31 @@ func (t *basicCachedDAGDispatcherImpl) FindNextTask(spec TaskSpec) *TaskQueueIte
 
 		// If maxHosts is not set, this is not a task group.
 		if item.GroupMaxHosts == 0 {
-			// Dispatch this standalone task if (a) its dependencies have been met and (b) it hasn't already been dispatched.
+
+			// Dispatch this standalone task if all of the following are true:
+			// (a) it hasn't already been dispatched
+			// (b) a record for the task actually exists in the database
+			// (c) its dependencies have been met
+
 			if item.IsDispatched {
 				continue
 			}
 			nextTaskFromDB, err := task.FindOneId(item.Id)
+			if err != nil {
+				grip.Error(message.WrapError(err, message.Fields{
+					"message": "problem finding task in db",
+					"task_id": item.Id,
+				}))
+				return nil
+			}
+			if nextTaskFromDB == nil {
+				grip.Error(message.Fields{
+					"message": "task from db not found",
+					"task_id": item.Id,
+				})
+				return nil
+			}
+
 			depsMet, err := nextTaskFromDB.DependenciesMet(dependencyCaches)
 			if err != nil {
 				grip.Warning(message.Fields{
@@ -353,9 +373,3 @@ func (t *basicCachedDAGDispatcherImpl) nextTaskGroupTask(unit schedulableUnit) *
 
 	return nil
 }
-
-// // isBlockedSingleHostTaskGroup checks if the task is running in a 1-host task group, has finished,
-// // and did not succeed. But rely on EndTask to block later tasks.
-// func (t *basicCachedDAGDispatcherImpl) isBlockedSingleHostTaskGroup(unit schedulableUnit, dbTask *task.Task) bool {
-// 	return unit.maxHosts == 1 && !util.IsZeroTime(dbTask.FinishTime) && dbTask.Status != evergreen.TaskSucceeded
-// }

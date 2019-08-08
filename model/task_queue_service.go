@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/util"
@@ -14,6 +15,7 @@ import (
 	"github.com/pkg/errors"
 )
 
+// TODO rename this interface?
 type TaskQueueService interface {
 	FindNextTask(string, TaskSpec) (*TaskQueueItem, error)
 	Refresh(string) error
@@ -38,8 +40,8 @@ func NewTaskDispatchService(ttl time.Duration) TaskQueueService {
 	}
 }
 
-func (s *taskDispatchService) FindNextTask(distro string, spec TaskSpec) (*TaskQueueItem, error) {
-	distroDispatchService, err := s.ensureQueue(distro)
+func (s *taskDispatchService) FindNextTask(distroID string, spec TaskSpec) (*TaskQueueItem, error) {
+	distroDispatchService, err := s.ensureQueue(distroID)
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}
@@ -47,8 +49,9 @@ func (s *taskDispatchService) FindNextTask(distro string, spec TaskSpec) (*TaskQ
 	return distroDispatchService.FindNextTask(spec), nil
 }
 
-func (s *taskDispatchService) RefreshFindNextTask(distro string, spec TaskSpec) (*TaskQueueItem, error) {
-	distroDispatchService, err := s.ensureQueue(distro)
+func (s *taskDispatchService) RefreshFindNextTask(distroID string, spec TaskSpec) (*TaskQueueItem, error) {
+
+	distroDispatchService, err := s.ensureQueue(distroID)
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}
@@ -60,8 +63,8 @@ func (s *taskDispatchService) RefreshFindNextTask(distro string, spec TaskSpec) 
 	return distroDispatchService.FindNextTask(spec), nil
 }
 
-func (s *taskDispatchService) Refresh(distro string) error {
-	distroDispatchService, err := s.ensureQueue(distro)
+func (s *taskDispatchService) Refresh(distroID string) error {
+	distroDispatchService, err := s.ensureQueue(distroID)
 	if err != nil {
 		return errors.WithStack(err)
 	}
@@ -73,12 +76,12 @@ func (s *taskDispatchService) Refresh(distro string) error {
 	return nil
 }
 
-func (s *taskDispatchService) ensureQueue(distro string) (CachedDispatcher, error) {
+func (s *taskDispatchService) ensureQueue(distroID string) (CachedDispatcher, error) {
 	// If there is a "distro": *basicCachedDispatcherImpl in the cachedDispatchers map, return that.
 	// Otherwise, get the "distro"'s taskQueue from the database; seed its cachedDispatcher; put that in the map and return it.
 	s.mu.RLock()
 
-	distroDispatchService, ok := s.cachedDispatchers[distro]
+	distroDispatchService, ok := s.cachedDispatchers[distroID]
 	s.mu.RUnlock()
 	if ok {
 		return distroDispatchService, nil
@@ -86,21 +89,46 @@ func (s *taskDispatchService) ensureQueue(distro string) (CachedDispatcher, erro
 
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	distroDispatchService, ok = s.cachedDispatchers[distro]
+	distroDispatchService, ok = s.cachedDispatchers[distroID]
 	if ok {
 		return distroDispatchService, nil
 	}
 
-	taskQueue, err := FindDistroTaskQueue(distro)
+	taskQueue, err := FindDistroTaskQueue(distroID)
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}
 
 	taskQueueItems := taskQueue.Queue
-	distroDispatchService = newDistroTaskDispatchService(distro, taskQueueItems, s.ttl)
-	s.cachedDispatchers[distro] = distroDispatchService
 
-	return distroDispatchService, nil
+	// TODO : do we need to make a call to the database to get the distro's PlannerSettings (which we probably also need to resolve a la GetResolvedPlannerSettings())
+	// Should we be using the distro.PlannerSettings.Version field to signify which DispatchService to use, or has the distro.PlannerSettings.Version field become overloaded?
+	// Do we need to independently toggle the task planning (PlannerSettings) and task dispatcher (DispatcherSettings) options for a given distro?
+	// Just going with this stop-gap for now to get things working...
+
+	d, err := distro.FindOne(distro.ById(distroID))
+	if err != nil {
+		return nil, errors.Wrapf(err, "Database error for find() by distro id '%s'", distroID)
+	}
+
+	switch d.PlannerSettings.Version {
+	case evergreen.PlannerVersionTunable:
+		distroDispatchService, err := newDistroTaskDAGDispatchService(distroID, taskQueueItems, s.ttl)
+		if err != nil {
+			return nil, err
+		}
+		s.cachedDispatchers[distroID] = distroDispatchService
+		return distroDispatchService, nil
+	default:
+		distroDispatchService = newDistroTaskDispatchService(distroID, taskQueueItems, s.ttl)
+		s.cachedDispatchers[distroID] = distroDispatchService
+		return distroDispatchService, nil
+	}
+
+	// distroDispatchService = newDistroTaskDispatchService(distroID, taskQueueItems, s.ttl)
+	// s.cachedDispatchers[distroID] = distroDispatchService
+	//
+	// return distroDispatchService, nil
 }
 
 // cachedDispatcher is an in-memory representation of schedulable tasks for a distro.

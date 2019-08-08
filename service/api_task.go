@@ -383,7 +383,7 @@ func assignNextAvailableTask(taskQueue *model.TaskQueue, taskQueueService model.
 		spec = model.TaskSpec{
 			Group:        currentHost.LastGroup,
 			BuildVariant: currentHost.LastBuildVariant,
-			ProjectID:    currentHost.LastProject,
+			Project:      currentHost.LastProject,
 			Version:      currentHost.LastVersion,
 		}
 	}
@@ -433,7 +433,7 @@ func assignNextAvailableTask(taskQueue *model.TaskQueue, taskQueueService model.
 					"taskspec_group":           spec.Group,
 					"taskspec_build_variant":   spec.BuildVariant,
 					"taskspec_version":         spec.Version,
-					"taskspec_project_id":      spec.ProjectID,
+					"taskspec_project":         spec.Project,
 					"taskspec_group_max_hosts": spec.GroupMaxHosts,
 				}))
 				return nil, errors.Wrap(err, "problem getting next task")
@@ -457,7 +457,7 @@ func assignNextAvailableTask(taskQueue *model.TaskQueue, taskQueueService model.
 				"taskspec_group":                spec.Group,
 				"taskspec_build_variant":        spec.BuildVariant,
 				"taskspec_version":              spec.Version,
-				"taskspec_project_id":           spec.ProjectID,
+				"taskspec_project":              spec.Project,
 				"taskspec_group_max_hosts":      spec.GroupMaxHosts,
 				"task_queue_length":             taskQueue.Length(),
 			})
@@ -476,7 +476,7 @@ func assignNextAvailableTask(taskQueue *model.TaskQueue, taskQueueService model.
 				"taskspec_group":           spec.Group,
 				"taskspec_build_variant":   spec.BuildVariant,
 				"taskspec_version":         spec.Version,
-				"taskspec_project_id":      spec.ProjectID,
+				"taskspec_project":         spec.Project,
 				"taskspec_group_max_hosts": spec.GroupMaxHosts,
 			}))
 			return nil, err
@@ -492,7 +492,7 @@ func assignNextAvailableTask(taskQueue *model.TaskQueue, taskQueueService model.
 				"taskspec_group":           spec.Group,
 				"taskspec_build_variant":   spec.BuildVariant,
 				"taskspec_version":         spec.Version,
-				"taskspec_project_id":      spec.ProjectID,
+				"taskspec_project":         spec.Project,
 				"taskspec_group_max_hosts": spec.GroupMaxHosts,
 			})
 
@@ -512,7 +512,7 @@ func assignNextAvailableTask(taskQueue *model.TaskQueue, taskQueueService model.
 				"taskspec_group":           spec.Group,
 				"taskspec_build_variant":   spec.BuildVariant,
 				"taskspec_version":         spec.Version,
-				"taskspec_project_id":      spec.ProjectID,
+				"taskspec_project":         spec.Project,
 				"taskspec_group_max_hosts": spec.GroupMaxHosts,
 			})
 
@@ -525,7 +525,7 @@ func assignNextAvailableTask(taskQueue *model.TaskQueue, taskQueueService model.
 				"taskspec_group":           spec.Group,
 				"taskspec_build_variant":   spec.BuildVariant,
 				"taskspec_version":         spec.Version,
-				"taskspec_project_id":      spec.ProjectID,
+				"taskspec_project":         spec.Project,
 				"taskspec_group_max_hosts": spec.GroupMaxHosts,
 			}))
 
@@ -559,7 +559,7 @@ func assignNextAvailableTask(taskQueue *model.TaskQueue, taskQueueService model.
 				"taskspec_group":           spec.Group,
 				"taskspec_build_variant":   spec.BuildVariant,
 				"taskspec_version":         spec.Version,
-				"taskspec_project_id":      spec.ProjectID,
+				"taskspec_project":         spec.Project,
 				"taskspec_group_max_hosts": spec.GroupMaxHosts,
 			}))
 
@@ -580,7 +580,7 @@ func assignNextAvailableTask(taskQueue *model.TaskQueue, taskQueueService model.
 			"taskspec_group":           spec.Group,
 			"taskspec_build_variant":   spec.BuildVariant,
 			"taskspec_version":         spec.Version,
-			"taskspec_project_id":      spec.ProjectID,
+			"taskspec_project":         spec.Project,
 			"taskspec_group_max_hosts": spec.GroupMaxHosts,
 		}))
 
