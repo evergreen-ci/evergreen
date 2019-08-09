@@ -768,7 +768,7 @@ func createVersionItems(ctx context.Context, v *model.Version, ref *model.Projec
 			}
 			var match bool
 			if len(aliases) > 0 {
-				match, err = aliases.HasMatchingVariant(buildvariant.Name)
+				match, err = aliases.HasMatchingVariant(buildvariant.Name, buildvariant.Tags)
 				if err != nil {
 					grip.Error(err)
 					continue

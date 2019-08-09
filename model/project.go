@@ -1374,13 +1374,12 @@ func (p *Project) BuildProjectTVPairsWithAlias(alias string) ([]TVPair, []TVPair
 		}
 
 		for _, variant := range p.BuildVariants {
-			if variantRegex.MatchString(variant.Name) {
+			if isValidRegexOrTag(variant.Name, v.Variant, variant.Tags, v.VariantTags, variantRegex) {
 				for _, task := range p.Tasks {
 					if task.Patchable != nil && !(*task.Patchable) {
 						continue
 					}
-					if !((v.Task != "" && taskRegex.MatchString(task.Name)) ||
-						(len(v.Tags) > 0 && len(util.StringSliceIntersection(task.Tags, v.Tags)) > 0)) {
+					if !isValidRegexOrTag(task.Name, v.Task, task.Tags, v.TaskTags, taskRegex) {
 						continue
 					}
 
