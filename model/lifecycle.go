@@ -209,16 +209,17 @@ func MarkVersionCompleted(versionId string, finishTime time.Time, updates *Statu
 	if err != nil {
 		return errors.Wrap(err, "error finding tasks with dependencies")
 	}
+	startPhaseAt := time.Now()
 	for _, b := range builds {
 		if b.Activated {
-			activeBuilds += 1
+			activeBuilds++
 		}
 		complete, buildStatus, err := b.AllUnblockedTasksFinished(tasksWithDeps)
 		if err != nil {
 			return errors.WithStack(err)
 		}
 		if complete {
-			buildsWithAllActiveTasksComplete += 1
+			buildsWithAllActiveTasksComplete++
 			if buildStatus != evergreen.BuildSucceeded {
 				versionStatusFromTasks = evergreen.VersionFailed
 			}
@@ -231,6 +232,14 @@ func MarkVersionCompleted(versionId string, finishTime time.Time, updates *Statu
 			status = evergreen.VersionFailed
 		}
 	}
+	grip.DebugWhen(time.Since(startPhaseAt) > time.Second, message.Fields{
+		"function":      "MarkVersionCompleted",
+		"operation":     "build loop",
+		"message":       "slow operation",
+		"duration_secs": time.Since(startPhaseAt).Seconds(),
+		"version":       versionId,
+		"num_builds":    len(builds),
+	})
 	if activeBuilds > 0 && buildsWithAllActiveTasksComplete >= activeBuilds {
 		updates.VersionComplete = true
 		updates.VersionNewStatus = versionStatusFromTasks
