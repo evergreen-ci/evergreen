@@ -19,7 +19,8 @@ import (
 )
 
 const (
-	TaskQueuesCollection = "task_queues"
+	TaskQueuesCollection      = "task_queues"
+	TaskAliasQueuesCollection = "task_alias_queues"
 )
 
 var useModernDequeueOp = true
@@ -39,6 +40,7 @@ type DistroQueueInfo struct {
 	MaxDurationThreshold time.Duration   `bson:"max_duration_threshold" json:"max_duration_threshold"`
 	CountOverThreshold   int             `bson:"count_over_threshold" json:"count_over_threshold"`
 	TaskGroupInfos       []TaskGroupInfo `bson:"task_group_infos" json:"task_group_infos"`
+	AliasQueue           bool            `bson:"alias_queue" json:"alias_queue"`
 }
 
 func GetDistroQueueInfo(distroID string) (DistroQueueInfo, error) {
@@ -56,6 +58,14 @@ func GetDistroQueueInfo(distroID string) (DistroQueueInfo, error) {
 	}
 
 	return taskQueue.DistroQueueInfo, nil
+}
+
+func (q *DistroQueueInfo) GetQueueCollection() string {
+	if q.AliasQueue {
+		return TaskAliasQueuesCollection
+	}
+
+	return TaskQueuesCollection
 }
 
 // represents the next n tasks to be run on hosts of the distro
@@ -311,7 +321,7 @@ func (self *TaskQueue) FindNextTask(spec TaskSpec) *TaskQueueItem {
 
 func updateTaskQueue(distro string, taskQueue []TaskQueueItem, distroQueueInfo DistroQueueInfo) error {
 	_, err := db.Upsert(
-		TaskQueuesCollection,
+		distroQueueInfo.GetQueueCollection(),
 		bson.M{
 			taskQueueDistroKey: distro,
 		},

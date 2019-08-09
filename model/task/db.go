@@ -463,6 +463,13 @@ func scheduleableTasksQuery() bson.M {
 	}
 }
 
+func FindSchedulableForAlias(id string) ([]Task, error) {
+	q := scheduleableTasksQuery()
+	q[DistroAliasesKey] = id
+
+	return FindAll(db.Query(q))
+}
+
 // TasksByProjectAndCommitPipeline fetches the pipeline to get the retrieve all tasks
 // associated with a given project and commit hash.
 func TasksByProjectAndCommitPipeline(projectId, commitHash, taskId, taskStatus string, limit int) []bson.M {
