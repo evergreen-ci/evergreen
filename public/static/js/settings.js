@@ -123,7 +123,7 @@ mciModule.controller('SettingsCtrl', ['$scope', '$http', '$window', 'notificatio
       return;
     }
     var data = {};
-    if ($scope.opt_in_initially_checked && && !use_spruce_options.patch_page) {
+    if ($scope.opt_in_initially_checked && !use_spruce_options.patch_page) {
       data = {
           timezone: new_tz,
           use_spruce_options: use_spruce_options,
