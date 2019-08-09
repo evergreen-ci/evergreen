@@ -125,7 +125,6 @@ func (s *CommitQueueSuite) TestRemoveOne() {
 	s.Equal("e345", items[1].Issue)
 
 	s.NoError(s.q.SetProcessing(true))
-	s.Nil(s.q.Next())
 	found, err = s.q.Remove("c123")
 	s.True(found)
 	s.NoError(err)
