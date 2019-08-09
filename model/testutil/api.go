@@ -54,7 +54,7 @@ func SetupAPITestData(testConfig *evergreen.Settings, taskDisplayName string, va
 
 	// Unmarshall the project configuration into a struct
 	project := &model.Project{}
-	if err = model.LoadProjectInto(projectConfig, "test", project); err != nil {
+	if _, err = model.LoadProjectInto(projectConfig, "test", project); err != nil {
 		return nil, errors.Wrap(err, "failed to unmarshal project config")
 	}
 
@@ -72,6 +72,10 @@ func SetupAPITestData(testConfig *evergreen.Settings, taskDisplayName string, va
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to unmarshal project config")
 	}
+	intermediateProject, err := model.LoadProjectInto(projectYamlBytes, "test", project)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to get new project")
+	}
 
 	// Create the ref for the project
 	projectRef := &model.ProjectRef{
@@ -82,7 +86,7 @@ func SetupAPITestData(testConfig *evergreen.Settings, taskDisplayName string, va
 		Branch:      project.Branch,
 		Enabled:     project.Enabled,
 		BatchTime:   project.BatchTime,
-		LocalConfig: string(projectConfig),
+		LocalConfig: string(projectYamlBytes),
 	}
 	if err = projectRef.Insert(); err != nil {
 		return nil, errors.Wrap(err, "failed to insert projectRef")
@@ -160,9 +164,10 @@ func SetupAPITestData(testConfig *evergreen.Settings, taskDisplayName string, va
 
 	// Insert the version document
 	v := &model.Version{
-		Id:       taskOne.Version,
-		BuildIds: []string{taskOne.BuildId},
-		Config:   string(projectYamlBytes),
+		Id:            taskOne.Version,
+		BuildIds:      []string{taskOne.BuildId},
+		ParserProject: intermediateProject,
+		Config:        string(projectYamlBytes),
 	}
 	if err = v.Insert(); err != nil {
 		return nil, errors.Wrap(err, "failed to insert version: ")
