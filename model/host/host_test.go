@@ -3370,3 +3370,30 @@ func TestGetNumNewParentsWithInitializingParentAndHost(t *testing.T) {
 	assert.Equal(2, parents)
 	assert.Equal(4, hosts)
 }
+
+func TestFindOneByJasperCredentialsID(t *testing.T) {
+	id := "id"
+	for testName, testCase := range map[string]func(t *testing.T, h *Host){
+		"FailsWithoutJasperCredentialsID": func(t *testing.T, h *Host) {
+			h.Id = id
+			dbHost, err := FindOneByJasperCredentialsID(id)
+			assert.Error(t, err)
+			assert.Nil(t, dbHost)
+		},
+		"FindsHostWithJasperCredentialsID": func(t *testing.T, h *Host) {
+			h.JasperCredentialsID = id
+			require.NoError(t, h.Insert())
+			dbHost, err := FindOneByJasperCredentialsID(id)
+			require.NoError(t, err)
+			assert.Equal(t, dbHost, h)
+		},
+	} {
+		t.Run(testName, func(t *testing.T) {
+			require.NoError(t, db.Clear(Collection))
+			defer func() {
+				assert.NoError(t, db.Clear(Collection))
+			}()
+			testCase(t, &Host{})
+		})
+	}
+}

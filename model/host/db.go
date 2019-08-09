@@ -476,6 +476,16 @@ func ByIds(ids []string) db.Q {
 	})
 }
 
+// FindByJasperCredentialsID finds a host with the given Jasper credentials ID.
+func FindOneByJasperCredentialsID(id string) (*Host, error) {
+	h := &Host{}
+	query := bson.M{JasperCredentialsIDKey: id}
+	if err := db.FindOne(Collection, query, db.NoProjection, db.NoSort, h); err != nil {
+		return nil, errors.Wrapf(err, "could not find host with Jasper credentials ID '%s'", id)
+	}
+	return h, nil
+}
+
 // ByRunningTaskId returns a host running the task with the given id.
 func ByRunningTaskId(taskId string) db.Q {
 	return db.Query(bson.D{{Key: RunningTaskKey, Value: taskId}})
@@ -733,7 +743,7 @@ func FindOneByIdOrTag(id string) (*Host, error) {
 	})
 	host, err := FindOne(query) // try to find by tag
 	if err != nil {
-		return nil, errors.Wrap(err, "error finding '%s' by _id or tag field")
+		return nil, errors.Wrapf(err, "error finding '%s' by _id or tag field", id)
 	}
 	return host, nil
 }
