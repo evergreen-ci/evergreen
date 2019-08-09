@@ -330,10 +330,11 @@ func (p *mergeParams) uploadMergePatch(conf *ClientSettings, ac *legacyClient) e
 		if err != nil {
 			return errors.Wrap(err, "can't get commit count")
 		}
-		if !p.skipConfirm && commitCount != 1 {
-			if !confirm("Patch contains multiple commits and the messages will be concatenated. Continue? (y/n)", true) {
-				return errors.New("patch aborted")
-			}
+		if commitCount > 1 {
+			return errors.New("patch contains multiple commits, must contain 1")
+		}
+		if commitCount == 0 {
+			return errors.New("patch does not contain any commits")
 		}
 		message, err := gitCommitMessages(ref.Branch, p.ref)
 		if err != nil {
