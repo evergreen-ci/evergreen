@@ -122,14 +122,25 @@ mciModule.controller('SettingsCtrl', ['$scope', '$http', '$window', 'notificatio
       notifier.pushNotification("Please fill out all required fields before submitting",'errorHeader');
       return;
     }
-    data = {
-        timezone: new_tz,
-        use_spruce_options: use_spruce_options,
-        spruce_feedback: formatFeedback(spruce_feedback),
-        github_user: {
-            last_known_as: $scope.github_user,
-        }
-    };
+    var data = {};
+    if ($scope.opt_in_initially_checked && && !use_spruce_options.patch_page) {
+      data = {
+          timezone: new_tz,
+          use_spruce_options: use_spruce_options,
+          spruce_feedback: formatFeedback(spruce_feedback),
+          github_user: {
+              last_known_as: $scope.github_user,
+          }
+      };
+    } else {
+      data = {
+          timezone: new_tz,
+          use_spruce_options: use_spruce_options,
+          github_user: {
+              last_known_as: $scope.github_user,
+          }
+      };
+    }
     var success = function() {
       window.location.reload();
     };
