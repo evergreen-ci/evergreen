@@ -58,6 +58,24 @@ func TestGetManager(t *testing.T) {
 
 }
 
+func TestGetSettings(t *testing.T) {
+	mgrs := map[Manager]ProviderSettings{
+		&staticManager{}:    &StaticSettings{},
+		&mockManager{}:      &mockManager{},
+		&ec2Manager{}:       &EC2ProviderSettings{},
+		&ec2FleetManager{}:  &EC2ProviderSettings{},
+		&dockerManager{}:    &dockerSettings{},
+		&openStackManager{}: &openStackSettings{},
+		&gceManager{}:       &GCESettings{},
+		&vsphereManager{}:   &vsphereSettings{},
+		nil:                 nil,
+	}
+
+	for mgr, settings := range mgrs {
+		assert.Equal(t, settings, GetSettings(mgr))
+	}
+}
+
 func TestConvertContainerManager(t *testing.T) {
 	assert := assert.New(t)
 

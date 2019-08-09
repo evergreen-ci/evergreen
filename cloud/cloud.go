@@ -115,6 +115,27 @@ func GetManager(ctx context.Context, providerName string, settings *evergreen.Se
 	return provider, nil
 }
 
+func GetSettings(manager Manager) ProviderSettings {
+	switch manager.(type) {
+	case *staticManager:
+		return &StaticSettings{}
+	case *mockManager:
+		return &mockManager{}
+	case *ec2Manager, *ec2FleetManager:
+		return &EC2ProviderSettings{}
+	case *dockerManager:
+		return &dockerSettings{}
+	case *openStackManager:
+		return &openStackSettings{}
+	case *gceManager:
+		return &GCESettings{}
+	case *vsphereManager:
+		return &vsphereSettings{}
+	}
+
+	return nil
+}
+
 // ConvertContainerManager converts a regular manager into a container manager,
 // errors if type conversion not possible.
 func ConvertContainerManager(m Manager) (ContainerManager, error) {

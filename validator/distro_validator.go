@@ -127,7 +127,7 @@ func ensureHasRequiredFields(ctx context.Context, d *distro.Distro, s *evergreen
 		return errs
 	}
 
-	settings := mgr.GetSettings()
+	settings := cloud.GetSettings(mgr)
 
 	if d.ProviderSettings != nil {
 		if err = mapstructure.Decode(d.ProviderSettings, settings); err != nil {
