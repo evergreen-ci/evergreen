@@ -535,7 +535,6 @@ func updateMakespans(b *build.Build) error {
 // status of the build based on the task's status.
 func UpdateBuildAndVersionStatusForTask(taskId string, updates *StatusChanges) error {
 	const slowMS = 100 * time.Millisecond
-	startPhaseAt := time.Now()
 	// retrieve the task by the task id
 	t, err := task.FindOneNoMerge(task.ById(taskId))
 	if err != nil {
@@ -650,7 +649,7 @@ func UpdateBuildAndVersionStatusForTask(taskId string, updates *StatusChanges) e
 			}
 		}
 	}
-	startPhaseAt = time.Now()
+	startPhaseAt := time.Now()
 
 	// These are deliberately out of the buildComplete block to ensure versions
 	// are iterated so version and patch notifications can be sent out
