@@ -30,6 +30,9 @@ func TestDistroAliases(t *testing.T) {
 		},
 	}
 
+	require.NoError(t, db.Clear(model.TaskQueuesCollection))
+	require.NoError(t, db.Clear(model.TaskAliasQueuesCollection))
+
 	require.NoError(t, db.Clear(model.VersionCollection))
 	require.NoError(t, (&model.Version{Id: "foo"}).Insert())
 
@@ -53,6 +56,10 @@ func TestDistroAliases(t *testing.T) {
 			ct, err := db.Count(model.TaskQueuesCollection, bson.M{})
 			require.NoError(t, err)
 			require.Equal(t, 1, ct)
+
+			ct, err = db.Count(model.TaskAliasQueuesCollection, bson.M{})
+			require.NoError(t, err)
+			require.Equal(t, 0, ct)
 		})
 		t.Run("Legacy", func(t *testing.T) {
 			require.NoError(t, db.Clear(model.TaskQueuesCollection))
@@ -67,8 +74,16 @@ func TestDistroAliases(t *testing.T) {
 			ct, err := db.Count(model.TaskQueuesCollection, bson.M{})
 			require.NoError(t, err)
 			require.Equal(t, 1, ct)
+
+			ct, err = db.Count(model.TaskAliasQueuesCollection, bson.M{})
+			require.NoError(t, err)
+			require.Equal(t, 0, ct)
 		})
 	})
+
+	require.NoError(t, db.Clear(model.TaskQueuesCollection))
+	require.NoError(t, db.Clear(model.TaskAliasQueuesCollection))
+
 	t.Run("DistroAlias", func(t *testing.T) {
 		distroTwo := &distro.Distro{
 			Id: "two",
@@ -88,6 +103,11 @@ func TestDistroAliases(t *testing.T) {
 			ct, err := db.Count(model.TaskAliasQueuesCollection, bson.M{})
 			require.NoError(t, err)
 			require.Equal(t, 1, ct)
+
+			ct, err = db.Count(model.TaskQueuesCollection, bson.M{})
+			require.NoError(t, err)
+			require.Equal(t, 0, ct)
+
 		})
 		t.Run("Legacy", func(t *testing.T) {
 			require.NoError(t, db.Clear(model.TaskAliasQueuesCollection))
@@ -103,6 +123,10 @@ func TestDistroAliases(t *testing.T) {
 			ct, err := db.Count(model.TaskAliasQueuesCollection, bson.M{})
 			require.NoError(t, err)
 			require.Equal(t, 1, ct)
+
+			ct, err = db.Count(model.TaskQueuesCollection, bson.M{})
+			require.NoError(t, err)
+			require.Equal(t, 0, ct)
 		})
 	})
 }
