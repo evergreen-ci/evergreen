@@ -31,8 +31,8 @@ type distroAliasSchedulerJob struct {
 	job.Base `bson:"metadata" json:"metadata" yaml:"metadata"`
 }
 
-func makeDistroAliasSchedulerJob() *distroSchedulerJob {
-	j := &distroSchedulerJob{
+func makeDistroAliasSchedulerJob() *distroAliasSchedulerJob {
+	j := &distroAliasSchedulerJob{
 		Base: job.Base{
 			JobType: amboy.JobType{
 				Name:    schedulerAliasJobName,
