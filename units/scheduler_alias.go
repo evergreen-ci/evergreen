@@ -6,8 +6,8 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
-	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/distro"
+	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/scheduler"
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/amboy/dependency"
@@ -74,14 +74,14 @@ func (j *distroAliasSchedulerJob) Run(ctx context.Context) {
 	}
 
 	startAt := time.Now()
-	tasks, err := model.FindSchedulableForAlias(j.DistroID)
+	tasks, err := task.FindSchedulableForAlias(j.DistroID)
 	j.AddError(errors.Wrap(err, "problem finding tasks"))
 	if tasks == nil {
 		return
 	}
 
 	d, err := distro.FindByID(j.DistroID)
-	j.AddError(errors.Wrapf(err, "problem finding distro", j.DistroID))
+	j.AddError(errors.Wrapf(err, "problem finding distro '%s'", j.DistroID))
 	if d == nil {
 		return
 	}
@@ -92,10 +92,9 @@ func (j *distroAliasSchedulerJob) Run(ctx context.Context) {
 	}
 
 	grip.Info(message.Fields{
-		"runner": scheduler.RunnerName,
-		"distro": j.DistroID,
-		"alias":  true,
-
+		"runner":        scheduler.RunnerName,
+		"distro":        j.DistroID,
+		"alias":         true,
 		"job":           j.ID(),
 		"size":          len(plan),
 		"input_size":    len(tasks),
