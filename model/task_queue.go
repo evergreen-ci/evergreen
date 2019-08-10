@@ -146,7 +146,11 @@ func NewTaskQueue(distroID string, queue []TaskQueueItem, distroQueueInfo Distro
 }
 
 func LoadTaskQueue(distro string) (*TaskQueue, error) {
-	return findTaskQueueForDistro(distro)
+	return findTaskQueueForDistro(taskQueueQuery{DistroID: distro, Collection: TaskQueuesCollection})
+}
+
+func LoadDistroAliasTaskQueue(distro string) (*TaskQueue, error) {
+	return findTaskQueueForDistro(taskQueueQuery{DistroID: distro, Collection: TaskAliasQueuesCollection})
 }
 
 func (self *TaskQueue) Length() int {
@@ -356,12 +360,17 @@ func ClearTaskQueue(distro string) error {
 	return errors.Wrap(err, "error clearing task queue")
 }
 
-func findTaskQueueForDistro(distroId string) (*TaskQueue, error) {
+type taskQueueQuery struct {
+	Collection string
+	DistroID   string
+}
+
+func findTaskQueueForDistro(q taskQueueQuery) (*TaskQueue, error) {
 	isDispatchedKey := bsonutil.GetDottedKeyName(taskQueueQueueKey, taskQueueItemIsDispatchedKey)
 
 	pipeline := []bson.M{
 		{
-			"$match": bson.M{taskQueueDistroKey: distroId},
+			"$match": bson.M{taskQueueDistroKey: q.DistroID},
 		},
 		{
 			"$unwind": bson.M{
@@ -410,19 +419,19 @@ func findTaskQueueForDistro(distroId string) (*TaskQueue, error) {
 
 	out := []TaskQueue{}
 
-	err := db.Aggregate(TaskQueuesCollection, pipeline, &out)
+	err := db.Aggregate(q.Collection, pipeline, &out)
 	if err != nil {
 		if adb.ResultsNotFound(err) {
 			return nil, nil
 		}
-		return nil, errors.Wrapf(err, "problem building task queue for '%s'", distroId)
+		return nil, errors.Wrapf(err, "problem building task queue for '%s'", q.DistroID)
 	}
 	if len(out) == 0 {
 		return nil, nil
 	}
 	if len(out) > 1 {
 		return nil, errors.Errorf("task queue result malformed [num=%d, id=%s], programmer error",
-			len(out), distroId)
+			len(out), q.DistroID)
 	}
 
 	val := &out[0]
@@ -430,7 +439,7 @@ func findTaskQueueForDistro(distroId string) (*TaskQueue, error) {
 	if len(val.Queue) == 1 && val.Queue[0].Id == "" {
 		val.Queue = nil
 	}
-	val.Distro = distroId
+	val.Distro = q.DistroID
 
 	return val, nil
 }
@@ -498,6 +507,18 @@ func FindDistroTaskQueue(distroID string) (TaskQueue, error) {
 		"distro_queue_info_expected_duration":  queue.DistroQueueInfo.ExpectedDuration,
 		"num_distro_queue_info_taskgroupinfos": len(queue.DistroQueueInfo.TaskGroupInfos),
 	})
+
+	return queue, errors.WithStack(err)
+}
+
+func FindDistroAliasTaskQueue(distroID string) (TaskQueue, error) {
+	queue := TaskQueue{}
+	err := db.FindOne(
+		TaskAliasQueuesCollection,
+		bson.M{taskQueueDistroKey: distroID},
+		db.NoProjection,
+		db.NoSort,
+		&queue)
 
 	return queue, errors.WithStack(err)
 }
