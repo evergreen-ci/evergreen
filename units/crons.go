@@ -593,7 +593,6 @@ func PopulateAliasSchedulerJobs(env evergreen.Environment) amboy.QueueOperation 
 				continue
 			}
 
-			//
 			catcher.Add(queue.Put(ctx, NewDistroAliasSchedulerJob(d.Id, ts)))
 		}
 
