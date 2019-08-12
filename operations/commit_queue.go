@@ -200,7 +200,7 @@ func listCommitQueue(ctx context.Context, client client.Communicator, ac *legacy
 
 	grip.Infof("Queue Length: %d\n", len(cq.Queue))
 	for i, item := range cq.Queue {
-		grip.Infof("%d:", i+1)
+		grip.Infof("%d:", i)
 		author, _ := client.GetCommitQueueItemAuthor(ctx, projectID, restModel.FromAPIString(item.Issue))
 		if author != "" {
 			grip.Infof("Author: %s", author)
