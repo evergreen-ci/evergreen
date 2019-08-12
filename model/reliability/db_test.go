@@ -45,6 +45,69 @@ func TestPipeline(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
+	// Set up expected values for simple aggregations.
+	match := bson.M{
+		"$match": bson.M{
+			"_id.project":   project,
+			"_id.date":      bson.M{"$gte": after, "$lt": before.Add(24 * time.Hour)},
+			"_id.requester": bson.M{"$in": requesters},
+		},
+	}
+
+	simpleGroup := bson.M{
+		"$group": bson.M{
+			"_id":                    bson.M{"date": "$_id.date"},
+			"num_failed":             bson.M{"$sum": "$num_failed"},
+			"num_setup_failed":       bson.M{"$sum": "$num_setup_failed"},
+			"num_success":            bson.M{"$sum": "$num_success"},
+			"num_system_failed":      bson.M{"$sum": "$num_system_failed"},
+			"num_test_failed":        bson.M{"$sum": "$num_test_failed"},
+			"num_timeout":            bson.M{"$sum": "$num_timeout"},
+			"total_duration_success": bson.M{"$sum": bson.M{"$multiply": stats.Array{"$num_success", "$avg_duration_success"}}},
+		},
+	}
+	projection := bson.M{
+		"$project": bson.M{
+			"avg_duration_success": bson.M{
+				"$cond": bson.M{
+					"else": nil,
+					"if": bson.M{
+						"$ne": stats.Array{
+							"$num_success",
+							0,
+						},
+					},
+					"then": bson.M{
+						"$divide": stats.Array{
+							"$total_duration_success",
+							"$num_success",
+						},
+					},
+				},
+			},
+			"date":              "$_id.date",
+			"distro":            "$_id.distro",
+			"num_failed":        1,
+			"num_setup_failed":  1,
+			"num_success":       1,
+			"num_system_failed": 1,
+			"num_test_failed":   1,
+			"num_timeout":       1,
+			"num_total":         bson.M{"$add": stats.Array{"$num_success", "$num_failed"}},
+			"task_name":         "$_id.task_name",
+			"variant":           "$_id.variant",
+		},
+	}
+	sort := bson.M{
+		"$sort": bson.D{
+			{Key: "date", Value: 1},
+			{Key: "variant", Value: 1},
+			{Key: "task_name", Value: 1},
+			{Key: "distro", Value: 1},
+		},
+	}
+	limit := bson.M{"$limit": 1}
+
 	withCancelledContext := func(ctx context.Context, fn func(context.Context)) {
 		ctx, cancel := context.WithCancel(ctx)
 		cancel()
@@ -56,19 +119,11 @@ func TestPipeline(t *testing.T) {
 			for testName, testCase := range map[string]func(ctx context.Context, t *testing.T, filter *TaskReliabilityFilter){
 				"Simple": func(ctx context.Context, t *testing.T, filter *TaskReliabilityFilter) {
 
-					boundaries := []time.Time{before, after}
+					// Adding 1 day to to before for consistency with TaskReliabilityQueryPipeline.
+					boundaries := []time.Time{before.Add(24 * time.Hour), after}
 					withCancelledContext(ctx, func(ctx context.Context) {
 						stage := filter.BuildMatchStageForTask(boundaries)
-						assert.Contains(t, stage, "$match")
-						match := stage["$match"].(bson.M)
-						assert.Equal(t, match["_id.date"], bson.M{
-							"$gte": after,
-							"$lt":  before,
-						})
-						assert.Equal(t, match["_id.project"], project)
-						assert.Equal(t, match["_id.requester"], bson.M{
-							"$in": requesters,
-						})
+						assert.Equal(t, stage, match)
 					})
 				},
 			} {
@@ -90,39 +145,7 @@ func TestPipeline(t *testing.T) {
 
 					withCancelledContext(ctx, func(ctx context.Context) {
 						stage := filter.BuildTaskStatsQueryGroupStage()
-						assert.Equal(t, stage, bson.M{
-							"$group": bson.M{
-								"_id": bson.M{
-									"date": "$_id.date",
-								},
-								"num_failed": bson.M{
-									"$sum": "$num_failed",
-								},
-								"num_setup_failed": bson.M{
-									"$sum": "$num_setup_failed",
-								},
-								"num_success": bson.M{
-									"$sum": "$num_success",
-								},
-								"num_system_failed": bson.M{
-									"$sum": "$num_system_failed",
-								},
-								"num_test_failed": bson.M{
-									"$sum": "$num_test_failed",
-								},
-								"num_timeout": bson.M{
-									"$sum": "$num_timeout",
-								},
-								"total_duration_success": bson.M{
-									"$sum": bson.M{
-										"$multiply": stats.Array{
-											"$num_success",
-											"$avg_duration_success",
-										},
-									},
-								},
-							},
-						})
+						assert.Equal(t, stage, simpleGroup)
 					})
 				},
 				"WithAfterBefore": func(ctx context.Context, t *testing.T, filter *TaskReliabilityFilter) {
@@ -160,32 +183,13 @@ func TestPipeline(t *testing.T) {
 										},
 									},
 								},
-								"num_failed": bson.M{
-									"$sum": "$num_failed",
-								},
-								"num_setup_failed": bson.M{
-									"$sum": "$num_setup_failed",
-								},
-								"num_success": bson.M{
-									"$sum": "$num_success",
-								},
-								"num_system_failed": bson.M{
-									"$sum": "$num_system_failed",
-								},
-								"num_test_failed": bson.M{
-									"$sum": "$num_test_failed",
-								},
-								"num_timeout": bson.M{
-									"$sum": "$num_timeout",
-								},
-								"total_duration_success": bson.M{
-									"$sum": bson.M{
-										"$multiply": stats.Array{
-											"$num_success",
-											"$avg_duration_success",
-										},
-									},
-								},
+								"num_failed":             bson.M{"$sum": "$num_failed"},
+								"num_setup_failed":       bson.M{"$sum": "$num_setup_failed"},
+								"num_success":            bson.M{"$sum": "$num_success"},
+								"num_system_failed":      bson.M{"$sum": "$num_system_failed"},
+								"num_test_failed":        bson.M{"$sum": "$num_test_failed"},
+								"num_timeout":            bson.M{"$sum": "$num_timeout"},
+								"total_duration_success": bson.M{"$sum": bson.M{"$multiply": stats.Array{"$num_success", "$avg_duration_success"}}},
 							},
 						})
 					})
@@ -214,103 +218,11 @@ func TestPipeline(t *testing.T) {
 					withCancelledContext(ctx, func(ctx context.Context) {
 						pipeline := filter.TaskReliabilityQueryPipeline()
 						assert.Equal(t, pipeline, []bson.M{
-							bson.M{
-								"$match": bson.M{
-									"_id.date": bson.M{
-										"$gte": after,
-										"$lt":  before.Add(24 * time.Hour),
-									},
-									"_id.project": "mongodb-mongo-master",
-									"_id.requester": bson.M{
-										"$in": []string{
-											"patch_request",
-											"github_pull_request",
-											"merge_test",
-										},
-									},
-								},
-							},
-							bson.M{
-								"$group": bson.M{
-									"_id": bson.M{
-										"date": "$_id.date",
-									},
-									"num_failed": bson.M{
-										"$sum": "$num_failed",
-									},
-									"num_setup_failed": bson.M{
-										"$sum": "$num_setup_failed",
-									},
-									"num_success": bson.M{
-										"$sum": "$num_success",
-									},
-									"num_system_failed": bson.M{
-										"$sum": "$num_system_failed",
-									},
-									"num_test_failed": bson.M{
-										"$sum": "$num_test_failed",
-									},
-									"num_timeout": bson.M{
-										"$sum": "$num_timeout",
-									},
-									"total_duration_success": bson.M{
-										"$sum": bson.M{
-											"$multiply": stats.Array{
-												"$num_success",
-												"$avg_duration_success",
-											},
-										},
-									},
-								},
-							},
-							bson.M{
-								"$project": bson.M{
-									"avg_duration_success": bson.M{
-										"$cond": bson.M{
-											"else": nil,
-											"if": bson.M{
-												"$ne": stats.Array{
-													"$num_success",
-													0,
-												},
-											},
-											"then": bson.M{
-												"$divide": stats.Array{
-													"$total_duration_success",
-													"$num_success",
-												},
-											},
-										},
-									},
-									"date":              "$_id.date",
-									"distro":            "$_id.distro",
-									"num_failed":        1,
-									"num_setup_failed":  1,
-									"num_success":       1,
-									"num_system_failed": 1,
-									"num_test_failed":   1,
-									"num_timeout":       1,
-									"num_total": bson.M{
-										"$add": stats.Array{
-											"$num_success",
-											"$num_failed",
-										},
-									},
-									"task_name": "$_id.task_name",
-									"variant":   "$_id.variant",
-								},
-							},
-							bson.M{
-								"$sort": bson.D{
-									{Key: "date", Value: 1},
-									{Key: "variant", Value: 1},
-									{Key: "task_name", Value: 1},
-									{Key: "distro", Value: 1},
-								},
-							},
-							bson.M{
-								"$limit": 1,
-							},
+							match,
+							simpleGroup,
+							projection,
+							sort,
+							limit,
 						})
 					})
 				},
