@@ -4,6 +4,7 @@ import (
 	"context"
 	"net/http"
 	"strconv"
+	"strings"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/commitqueue"
@@ -185,7 +186,7 @@ func (gh *githubHookApi) Run(ctx context.Context) gimlet.Responder {
 					"msg_id":  gh.msgID,
 					"event":   gh.eventType,
 					"action":  *event.Action,
-					"message": err.Error(),
+					"message": "commit queue item not dequeued",
 				}))
 				return gimlet.MakeJSONErrorResponder(err)
 			}
@@ -344,6 +345,8 @@ func (gh *githubHookApi) commitQueueEnqueue(ctx context.Context, event *github.I
 	return nil
 }
 
+// Because the PR isn't necessarily on a commit queue, we only error if we run into a database error,
+// or if the item exists but we can't remove it correctly
 func (gh *githubHookApi) tryDequeueCommitQueueItemForPR(pr *github.PullRequest) error {
 	err := thirdparty.ValidatePR(pr)
 	if err != nil {
@@ -352,16 +355,21 @@ func (gh *githubHookApi) tryDequeueCommitQueueItemForPR(pr *github.PullRequest) 
 
 	projRef, err := gh.sc.GetProjectWithCommitQueueByOwnerRepoAndBranch(*pr.Base.Repo.Owner.Login, *pr.Base.Repo.Name, *pr.Base.Ref)
 	if err != nil {
-		return errors.Wrapf(err, "can't find projectRef for %s/%s, branch %s", *pr.Base.Repo.Owner.Login, *pr.Base.Repo.Name, *pr.Base.Ref)
+		if adb.ResultsNotFound(err) {
+			return nil
+		}
+		return errors.Wrapf(err, "can't find valid project for %s/%s, branch %s", *pr.Base.Repo.Owner.Login, *pr.Base.Repo.Name, *pr.Base.Ref)
 	}
 
 	_, err = gh.sc.CommitQueueRemoveItem(projRef.Identifier, strconv.Itoa(*pr.Number))
-	// it's okay if there's no matching commit queue or it's not on the queue: there's nothing for us to do
-	if err != nil && !adb.ResultsNotFound(err) {
+	if err != nil && isValidTryDequeueError(err.Error()) {
 		return errors.Wrapf(err, "can't remove item %d from commit queue %s", *pr.Number, projRef.Identifier)
 	}
-
 	return nil
+}
+
+func isValidTryDequeueError(errStr string) bool {
+	return strings.Contains(errStr, "can't prevent merge") || strings.Contains(errStr, "can't set processing")
 }
 
 func triggersRetry(action, comment string) bool {
