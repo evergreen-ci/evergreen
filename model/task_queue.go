@@ -585,8 +585,6 @@ func FindTaskAliasQueueGenerationTimes() (map[string]time.Time, error) {
 	default:
 		return map[string]time.Time{}, errors.Errorf("produced invalid alias queue results: [%d]", len(out))
 	}
-
-	return out[0], nil
 }
 
 // pull out the task with the specified id from both the in-memory and db
