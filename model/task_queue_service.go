@@ -29,11 +29,20 @@ type taskDispatchService struct {
 	cachedDispatchers map[string]CachedDispatcher
 	mu                sync.RWMutex
 	ttl               time.Duration
+	useAliases        bool
 }
 
 func NewTaskDispatchService(ttl time.Duration) TaskQueueService {
 	return &taskDispatchService{
 		ttl:               ttl,
+		cachedDispatchers: map[string]CachedDispatcher{},
+	}
+}
+
+func NewTaskDispatchAliasService(ttl time.Duration) TaskQueueService {
+	return &taskDispatchService{
+		ttl:               ttl,
+		useAliases:        true,
 		cachedDispatchers: map[string]CachedDispatcher{},
 	}
 }
@@ -91,7 +100,16 @@ func (s *taskDispatchService) ensureQueue(distro string) (CachedDispatcher, erro
 		return distroDispatchService, nil
 	}
 
-	taskQueue, err := FindDistroTaskQueue(distro)
+	var (
+		taskQueue TaskQueue
+		err       error
+	)
+	if s.useAliases {
+		taskQueue, err = FindDistroAliasTaskQueue(distro)
+	} else {
+		taskQueue, err = FindDistroTaskQueue(distro)
+	}
+
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}

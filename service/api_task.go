@@ -634,14 +634,29 @@ func (as *APIServer) NextTask(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if nextTask == nil {
-		// if the task is empty, still send it with an status ok and check it on the other side
-		grip.Info(message.Fields{
-			"op":      "next_task",
-			"message": "no task to assign to host",
-			"host_id": h.Id,
-		})
-		gimlet.WriteJSON(w, response)
-		return
+		// if we couldn't find a task in the task queue,
+		// check the alias queue...
+		aliasQueue, err := model.LoadDistroAliasTaskQueue(h.Distro.Id)
+		if err != nil {
+			gimlet.WriteResponse(w, gimlet.MakeJSONErrorResponder(err))
+			return
+		}
+		nextTask, err = assignNextAvailableTask(aliasQueue, as.taskAliasQueueService, h)
+		if err != nil {
+			gimlet.WriteResponse(w, gimlet.MakeJSONErrorResponder(err))
+			return
+		}
+
+		if nextTask == nil {
+			// if the task is empty, still send it with an status ok and check it on the other side
+			grip.Info(message.Fields{
+				"op":      "next_task",
+				"message": "no task to assign to host",
+				"host_id": h.Id,
+			})
+			gimlet.WriteJSON(w, response)
+			return
+		}
 	}
 
 	// mark the task as dispatched
