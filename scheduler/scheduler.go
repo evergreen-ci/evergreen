@@ -289,6 +289,14 @@ func generateIntentHost(d distro.Distro) (*host.Host, error) {
 	hostOptions := host.CreateOptions{
 		UserName: evergreen.User,
 	}
+	if d.ContainerPool != "" {
+		settings, err := evergreen.GetConfig()
+		if err != nil {
+			return nil, errors.Wrap(err, "error getting settings")
+		}
+		hostOptions.ContainerPoolSettings = settings.ContainerPools.GetContainerPool(d.ContainerPool)
+		hostOptions.HasContainers = true
+	}
 	return host.NewIntent(d, d.GenerateName(), d.Provider, hostOptions), nil
 }
 
