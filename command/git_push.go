@@ -95,7 +95,6 @@ func (c *gitPush) Execute(ctx context.Context, comm client.Communicator, logger 
 	params := pushParams{
 		authorName:  restModel.FromAPIString(u.DisplayName),
 		authorEmail: restModel.FromAPIString(u.Email),
-		description: p.Description,
 		token:       projectToken,
 	}
 
@@ -129,6 +128,7 @@ func (c *gitPush) Execute(ctx context.Context, comm client.Communicator, logger 
 		logger.Execution().Infof("Pushing patch for module %s", module.Name)
 		params.directory = filepath.ToSlash(filepath.Join(conf.WorkDir, c.Directory, moduleBase))
 		params.branch = module.Branch
+		params.commitMessage = modulePatch.Message
 
 		// File list
 		params.files = make([]string, 0, len(modulePatch.PatchSet.Summary))
@@ -161,6 +161,7 @@ func (c *gitPush) Execute(ctx context.Context, comm client.Communicator, logger 
 		logger.Execution().Info("Pushing patch")
 		params.directory = filepath.ToSlash(filepath.Join(conf.WorkDir, c.Directory))
 		params.branch = conf.ProjectRef.Branch
+		params.commitMessage = modulePatch.Message
 		if err = c.pushPatch(ctx, logger, params); err != nil {
 			return errors.Wrap(err, "can't push patch")
 		}
@@ -170,13 +171,13 @@ func (c *gitPush) Execute(ctx context.Context, comm client.Communicator, logger 
 }
 
 type pushParams struct {
-	token       string
-	directory   string
-	authorName  string
-	authorEmail string
-	description string
-	branch      string
-	files       []string
+	token         string
+	directory     string
+	authorName    string
+	authorEmail   string
+	commitMessage string
+	branch        string
+	files         []string
 }
 
 func (c *gitPush) pushPatch(ctx context.Context, logger client.LoggerProducer, p pushParams) error {
@@ -201,7 +202,7 @@ func (c *gitPush) pushPatch(ctx context.Context, logger client.LoggerProducer, p
 		`--author="%s"`,
 		c.CommitterName, c.CommitterEmail, author)
 	logger.Execution().Debugf("git commit command: %s", commitCommand)
-	cmd = jpm.CreateCommand(ctx).Directory(p.directory).Append(commitCommand).SetInput(bytes.NewBufferString(p.description)).
+	cmd = jpm.CreateCommand(ctx).Directory(p.directory).Append(commitCommand).SetInput(bytes.NewBufferString(p.commitMessage)).
 		SetOutputSender(level.Info, logger.Task().GetSender()).SetErrorSender(level.Error, logger.Task().GetSender())
 	if err := cmd.Run(ctx); err != nil {
 		return errors.Wrap(err, "can't create commit from files")

@@ -293,12 +293,13 @@ func (ac *legacyClient) DeletePatchModule(patchId, module string) error {
 }
 
 // UpdatePatchModule makes a request to the API server to set a module patch on the given patch ID.
-func (ac *legacyClient) UpdatePatchModule(patchId, module, patch, base string) error {
+func (ac *legacyClient) UpdatePatchModule(patchId, module, patch, base, message string) error {
 	data := struct {
 		Module  string `json:"module"`
 		Patch   string `json:"patch"`
 		Githash string `json:"githash"`
-	}{module, patch, base}
+		Message string `json:"message"`
+	}{module, patch, base, message}
 
 	rPipe, wPipe := io.Pipe()
 	encoder := json.NewEncoder(wPipe)

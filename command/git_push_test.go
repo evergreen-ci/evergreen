@@ -95,13 +95,13 @@ func TestGitPush(t *testing.T) {
 			}
 			c.base.jasper = manager
 			params := pushParams{
-				directory:   c.Directory,
-				authorName:  "baxterthehacker",
-				authorEmail: "baxter@thehacker.com",
-				files:       []string{"hello.txt"},
-				description: "testing 123",
-				branch:      "master",
-				token:       token,
+				directory:     c.Directory,
+				authorName:    "baxterthehacker",
+				authorEmail:   "baxter@thehacker.com",
+				files:         []string{"hello.txt"},
+				commitMessage: "testing 123",
+				branch:        "master",
+				token:         token,
 			}
 
 			assert.NoError(t, c.pushPatch(context.Background(), logger, params))
