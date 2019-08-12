@@ -28,6 +28,11 @@ func PersistTaskQueue(distro string, tasks []task.Task, distroQueueInfo model.Di
 			GroupMaxHosts:       t.TaskGroupMaxHosts,
 			Version:             t.Version,
 		})
+
+		if t.DistroId != distro {
+			distroQueueInfo.AliasQueue = true
+		}
+
 	}
 
 	queue := model.NewTaskQueue(distro, taskQueue, distroQueueInfo)

@@ -262,6 +262,10 @@ func BlockTaskGroupTasks(taskID string) error {
 }
 
 func (self *TaskQueue) Save() error {
+	if len(self.Queue) == 0 {
+		return nil
+	}
+
 	return updateTaskQueue(self.Distro, self.Queue, self.DistroQueueInfo)
 }
 
@@ -554,11 +558,14 @@ func FindTaskQueueGenerationTimes() (map[string]time.Time, error) {
 		return map[string]time.Time{}, errors.WithStack(err)
 	}
 
-	if len(out) != 1 {
-		return map[string]time.Time{}, errors.New("produced invalid results")
+	switch len(out) {
+	case 0:
+		return map[string]time.Time{}, nil
+	case 1:
+		return out[0], nil
+	default:
+		return map[string]time.Time{}, errors.Errorf("produced invalid main queue results: [%d]", len(out))
 	}
-
-	return out[0], nil
 }
 
 func FindTaskAliasQueueGenerationTimes() (map[string]time.Time, error) {
@@ -570,8 +577,13 @@ func FindTaskAliasQueueGenerationTimes() (map[string]time.Time, error) {
 		return map[string]time.Time{}, errors.WithStack(err)
 	}
 
-	if len(out) != 1 {
-		return map[string]time.Time{}, errors.New("produced invalid results")
+	switch len(out) {
+	case 0:
+		return map[string]time.Time{}, nil
+	case 1:
+		return out[0], nil
+	default:
+		return map[string]time.Time{}, errors.Errorf("produced invalid alias queue results: [%d]", len(out))
 	}
 
 	return out[0], nil
