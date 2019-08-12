@@ -139,6 +139,7 @@ type APIDistro struct {
 	CuratorDir            APIString              `json:"curator_dir"`
 	ClientDir             APIString              `json:"client_dir"`
 	JasperCredentialsPath APIString              `json:"jasper_credentials_path"`
+	UserDataDonePath      APIString              `json:"user_data_done_path"`
 	SSHKey                APIString              `json:"ssh_key"`
 	SSHOptions            []string               `json:"ssh_options"`
 	Expansions            []APIExpansion         `json:"expansions"`
@@ -196,6 +197,8 @@ func (apiDistro *APIDistro) BuildFromService(h interface{}) error {
 	apiDistro.ShellPath = ToAPIString(d.ShellPath)
 	apiDistro.CuratorDir = ToAPIString(d.CuratorDir)
 	apiDistro.ClientDir = ToAPIString(d.ClientDir)
+	apiDistro.JasperCredentialsPath = ToAPIString(d.JasperCredentialsPath)
+	apiDistro.UserDataDonePath = ToAPIString(d.UserDataDonePath)
 	apiDistro.SSHKey = ToAPIString(d.SSHKey)
 	apiDistro.Disabled = d.Disabled
 	apiDistro.ContainerPool = ToAPIString(d.ContainerPool)
@@ -254,6 +257,8 @@ func (apiDistro *APIDistro) ToService() (interface{}, error) {
 	d.ShellPath = FromAPIString(apiDistro.ShellPath)
 	d.CuratorDir = FromAPIString(apiDistro.CuratorDir)
 	d.ClientDir = FromAPIString(apiDistro.ClientDir)
+	d.JasperCredentialsPath = FromAPIString(apiDistro.JasperCredentialsPath)
+	d.UserDataDonePath = FromAPIString(apiDistro.UserDataDonePath)
 	d.SSHKey = FromAPIString(apiDistro.SSHKey)
 	d.SSHOptions = apiDistro.SSHOptions
 	d.SpawnAllowed = apiDistro.UserSpawnAllowed

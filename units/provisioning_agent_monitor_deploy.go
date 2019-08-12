@@ -72,7 +72,8 @@ func (j *agentMonitorDeployJob) Run(ctx context.Context) {
 	if err != nil {
 		j.AddError(err)
 		return
-	} else if disabled {
+	}
+	if disabled {
 		grip.Debug(message.Fields{
 			"mode":     "degraded",
 			"host":     j.HostID,
@@ -332,11 +333,14 @@ func (j *agentMonitorDeployJob) agentStartDisabled() (bool, error) {
 // populateIfUnset populates the unset job fields.
 func (j *agentMonitorDeployJob) populateIfUnset() error {
 	if j.host == nil {
-		host, err := host.FindOneId(j.HostID)
-		if err != nil || host == nil {
-			return errors.Wrapf(err, "could not find host %s for job %s", j.HostID, j.TaskID)
+		h, err := host.FindOneId(j.HostID)
+		if err != nil {
+			return errors.Wrapf(err, "could not find host %s for job %s", j.HostID, j.ID())
 		}
-		j.host = host
+		if h == nil {
+			return errors.Errorf("could not find host %s for job %s", j.HostID, j.ID())
+		}
+		j.host = h
 	}
 
 	if j.env == nil {

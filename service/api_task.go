@@ -536,6 +536,14 @@ func (as *APIServer) NextTask(w http.ResponseWriter, r *http.Request) {
 	begin := time.Now()
 	h := MustHaveHost(r)
 
+	grip.Error(message.WrapError(setUserDataHostProvisioned(h), message.Fields{
+		"message":   "failed to mark host as done provisioning with user data",
+		"host":      h.Id,
+		"distro":    h.Distro.Id,
+		"bootstrap": h.Distro.BootstrapMethod,
+		"operation": "next_task",
+	}))
+
 	// stopAgentMonitor is only used for debug log purposes.
 	var stopAgentMonitor bool
 	defer func() {
@@ -554,7 +562,7 @@ func (as *APIServer) NextTask(w http.ResponseWriter, r *http.Request) {
 		ctx, cancel := context.WithTimeout(r.Context(), 30*time.Second)
 		defer cancel()
 		env := evergreen.GetEnvironment()
-		stopAgentMonitor = true
+		stopAgentMonitor = !h.LegacyBootstrap()
 		if err = h.StopAgentMonitor(ctx, env); err != nil {
 			grip.Error(message.WrapError(err, message.Fields{
 				"message":   "problem stopping agent monitor",
@@ -731,6 +739,20 @@ func handleOldAgentRevision(response apimodels.NextTaskResponse, h *host.Host, w
 		}
 	}
 	return response, false
+}
+
+// setUserDataHostProvisioned sets the host to running if it was bootstrapped
+// with user data but has not yet been marked as done provisioning.
+func setUserDataHostProvisioned(h *host.Host) error {
+	if h.Distro.BootstrapMethod != distro.BootstrapMethodUserData {
+		return nil
+	}
+
+	if h.Status != evergreen.HostProvisioning {
+		return nil
+	}
+
+	return errors.Wrapf(h.UpdateProvisioningToRunning(), "could not mark host %s as done provisioning itself and now running", h.Id)
 }
 
 func sendBackRunningTask(h *host.Host, response apimodels.NextTaskResponse, w http.ResponseWriter) {

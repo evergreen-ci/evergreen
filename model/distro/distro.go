@@ -32,6 +32,7 @@ type Distro struct {
 	CuratorDir            string                  `bson:"curator_dir" json:"curator_dir" mapstructure:"curator_dir,omitempty"`
 	ClientDir             string                  `bson:"client_dir" json:"client_dir" mapstructure:"client_dir,omitempty"`
 	JasperCredentialsPath string                  `json:"jasper_credentials_path" bson:"jasper_credentials_path" mapstructure:"jasper_credentials_path,omitempty"`
+	UserDataDonePath      string                  `bson:"user_data_done_path" json:"user_data_done_path" mapstructure:"user_data_done_path,omitempty"`
 	SSHKey                string                  `bson:"ssh_key,omitempty" json:"ssh_key,omitempty" mapstructure:"ssh_key,omitempty"`
 	SSHOptions            []string                `bson:"ssh_options,omitempty" json:"ssh_options,omitempty" mapstructure:"ssh_options,omitempty"`
 	SpawnAllowed          bool                    `bson:"spawn_allowed" json:"spawn_allowed,omitempty" mapstructure:"spawn_allowed,omitempty"`

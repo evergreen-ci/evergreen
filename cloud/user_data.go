@@ -158,6 +158,11 @@ func bootstrapUserData(ctx context.Context, env evergreen.Environment, h *host.H
 		}
 	}
 
+	if h.Distro.UserDataDonePath == "" {
+		return "", errors.Wrap(err, "cannot generate user data done file without a distro setting for its path")
+	}
+	markDone := fmt.Sprintf("touch %s", h.Distro.UserDataDonePath)
+
 	creds, err := h.GenerateJasperCredentials(ctx, env)
 	if err != nil {
 		return customScript, errors.Wrap(err, "problem generating Jasper credentials for host")
@@ -165,7 +170,7 @@ func bootstrapUserData(ctx context.Context, env evergreen.Environment, h *host.H
 
 	bootstrapScript, err := h.BootstrapScript(env.Settings().HostJasper, creds,
 		[]string{setupScript},
-		[]string{fetchClient, postFetchClient},
+		[]string{fetchClient, postFetchClient, markDone},
 	)
 	if err != nil {
 		return customScript, errors.Wrap(err, "could not generate user data bootstrap script")

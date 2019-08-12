@@ -670,6 +670,11 @@ Evergreen - Distros
             class="form-control" ng-model="activeDistro.jasper_credentials_path" placeholder="Absolute native path to the directory containing the Jasper credentials">
         </div>
         <div>
+          <label class="distro-label">User Data Done File Path:</label>
+          <input type="text" ng-readonly="readOnly" name="userDataDoneFilePath"
+            class="form-control" ng-model="activeDistro.user_data_done_path" placeholder="Absolute native path to the file indicating user data is done">
+        </div>
+        <div>
           <div>
             <span style="float: right; margin-top: 20px;" class="distro-checkbox checkbox"><input ng-disabled="readOnly"
                 type="checkbox" ng-model="activeDistro.setup_as_sudo">Run scripts as sudo</span>

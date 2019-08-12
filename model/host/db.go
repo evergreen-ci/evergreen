@@ -719,6 +719,24 @@ func FindByNeedsNewAgentMonitor() ([]Host, error) {
 	return hosts, err
 }
 
+// FindUserDataSpawnHostsProvisioning finds all hosts that have been provisioned
+// by the app server but are not yet running.
+func FindUserDataSpawnHostsProvisioning() ([]Host, error) {
+	bootstrapKey := bsonutil.GetDottedKeyName(DistroKey, distro.BootstrapMethodKey)
+	query := bson.M{
+		StatusKey:      evergreen.HostProvisioning,
+		ProvisionedKey: true,
+		StartedByKey:   bson.M{"$ne": evergreen.User},
+		bootstrapKey:   distro.BootstrapMethodUserData,
+	}
+
+	var hosts []Host
+	if err := db.FindAll(Collection, query, db.NoProjection, db.NoSort, db.NoSkip, db.NoLimit, &hosts); err != nil {
+		return nil, errors.Wrap(err, "could not find user data spawn hosts that are still provisioning themselves")
+	}
+	return hosts, nil
+}
+
 // Removes host intents that have been been uninitialized for more than 3
 // minutes or spawning (but not started) for more than 15 minutes for the
 // specified distro.
