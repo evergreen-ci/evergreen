@@ -486,7 +486,7 @@ mciModule.controller('ProjectCtrl', function($scope, $window, $http, $location, 
 
   $scope.addPatchAlias = function() {
     if (!$scope.validPatchAlias($scope.patch_alias)){
-      $scope.invalidPatchAliasMessage = "A patch alias must have an alias name, variant regex, and exactly one of task regex or tag"
+      $scope.invalidPatchAliasMessage = "A patch alias must have an alias name, exactly one of variant regex or tag, and exactly one of task regex or tag"
       return
     }
     item = Object.assign({}, $scope.patch_alias)
@@ -650,8 +650,8 @@ mciModule.controller('ProjectCtrl', function($scope, $window, $http, $location, 
   }
 
   $scope.validPatchDefinition = function(alias){
-    // variant AND (task XOR tags)
-    return alias && alias.variant && (Boolean(alias.task) != !_.isEmpty(alias.tags))
+    // (variant XOR variant_tags) AND (task XOR tags)
+    return alias && (Boolean(alias.variant) != !_.isEmpty(alias.variant_tags)) && (Boolean(alias.task) != !_.isEmpty(alias.tags))
   }
 
   $scope.validPatchAlias = function(alias){

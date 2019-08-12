@@ -325,17 +325,18 @@ func (p *mergeParams) uploadMergePatch(conf *ClientSettings, ac *legacyClient) e
 		return errors.Wrap(err, "can't generate patches")
 	}
 
+	commitCount, err := gitCommitCount(ref.Branch, p.ref)
+	if err != nil {
+		return errors.Wrap(err, "can't get commit count")
+	}
+	if commitCount > 1 {
+		return errors.New("patch contains multiple commits, must contain 1")
+	}
+	if commitCount == 0 {
+		return errors.New("patch does not contain any commits")
+	}
+
 	if p.message == "" {
-		commitCount, err := gitCommitCount(ref.Branch, p.ref)
-		if err != nil {
-			return errors.Wrap(err, "can't get commit count")
-		}
-		if commitCount > 1 {
-			return errors.New("patch contains multiple commits, must contain 1")
-		}
-		if commitCount == 0 {
-			return errors.New("patch does not contain any commits")
-		}
 		message, err := gitCommitMessages(ref.Branch, p.ref)
 		if err != nil {
 			return errors.Wrap(err, "can't get commit messages")
@@ -391,7 +392,7 @@ func (p *moduleParams) addModule(ac *legacyClient, rc *legacyClient) error {
 	if err != nil {
 		return errors.WithStack(err)
 	}
-
+	grip.Info("Module updated.")
 	return nil
 }
 
