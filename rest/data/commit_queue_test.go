@@ -95,6 +95,25 @@ func (s *CommitQueueSuite) TestCommitQueueRemoveItem() {
 	s.Equal(restModel.ToAPIString("3"), cq.Queue[1].Issue)
 }
 
+func (s *CommitQueueSuite) TestIsItemOnCommitQueue() {
+	s.ctx = &DBConnector{}
+	pos, err := s.ctx.EnqueueItem("mci", restModel.APICommitQueueItem{Issue: restModel.ToAPIString("1")})
+	s.Require().NoError(err)
+	s.Require().Equal(1, pos)
+
+	exists, err := s.ctx.IsItemOnCommitQueue("mci", "1")
+	s.NoError(err)
+	s.True(exists)
+
+	exists, err = s.ctx.IsItemOnCommitQueue("mci", "2")
+	s.NoError(err)
+	s.False(exists)
+
+	exists, err = s.ctx.IsItemOnCommitQueue("not-a-project", "1")
+	s.Error(err)
+	s.False(exists)
+}
+
 func (s *CommitQueueSuite) TestCommitQueueClearAll() {
 	s.ctx = &DBConnector{}
 	pos, err := s.ctx.EnqueueItem("mci", restModel.APICommitQueueItem{Issue: restModel.ToAPIString("12")})

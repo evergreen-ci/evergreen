@@ -4,7 +4,6 @@ import (
 	"context"
 	"net/http"
 	"strconv"
-	"strings"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/commitqueue"
@@ -345,8 +344,7 @@ func (gh *githubHookApi) commitQueueEnqueue(ctx context.Context, event *github.I
 	return nil
 }
 
-// Because the PR isn't necessarily on a commit queue, we only error if we run into a database error,
-// or if the item exists but we can't remove it correctly
+// Because the PR isn't necessarily on a commit queue, we only error if item is on the queue and can't be removed correctly
 func (gh *githubHookApi) tryDequeueCommitQueueItemForPR(pr *github.PullRequest) error {
 	err := thirdparty.ValidatePR(pr)
 	if err != nil {
@@ -361,15 +359,15 @@ func (gh *githubHookApi) tryDequeueCommitQueueItemForPR(pr *github.PullRequest) 
 		return errors.Wrapf(err, "can't find valid project for %s/%s, branch %s", *pr.Base.Repo.Owner.Login, *pr.Base.Repo.Name, *pr.Base.Ref)
 	}
 
+	if exists, _ := gh.sc.IsItemOnCommitQueue(projRef.Identifier, strconv.Itoa(*pr.Number)); !exists {
+		return nil
+	}
+
 	_, err = gh.sc.CommitQueueRemoveItem(projRef.Identifier, strconv.Itoa(*pr.Number))
-	if err != nil && isValidTryDequeueError(err.Error()) {
+	if err != nil {
 		return errors.Wrapf(err, "can't remove item %d from commit queue %s", *pr.Number, projRef.Identifier)
 	}
 	return nil
-}
-
-func isValidTryDequeueError(errStr string) bool {
-	return strings.Contains(errStr, "can't prevent merge") || strings.Contains(errStr, "can't set processing")
 }
 
 func triggersRetry(action, comment string) bool {

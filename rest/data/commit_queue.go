@@ -93,6 +93,19 @@ func (pc *DBCommitQueueConnector) CommitQueueRemoveItem(id, item string) (bool, 
 	return removed, nil
 }
 
+func (pc *DBCommitQueueConnector) IsItemOnCommitQueue(id, item string) (bool, error) {
+	cq, err := commitqueue.FindOneId(id)
+	if err != nil {
+		return false, errors.Wrapf(err, "can't get commit queue for id '%s'", id)
+	}
+
+	pos := cq.FindItem(item)
+	if pos >= 0 {
+		return true, nil
+	}
+	return false, nil
+}
+
 func (pc *DBCommitQueueConnector) CommitQueueClearAll() (int, error) {
 	return commitqueue.ClearAllCommitQueues()
 }
@@ -247,6 +260,13 @@ func (pc *MockCommitQueueConnector) CommitQueueRemoveItem(id, item string) (bool
 	}
 
 	return false, nil
+}
+
+func (pc *MockCommitQueueConnector) IsItemOnCommitQueue(id, item string) (bool, error) {
+	if _, ok := pc.Queue[id]; !ok {
+		return false, nil
+	}
+	return true, nil
 }
 
 func (pc *MockCommitQueueConnector) CommitQueueClearAll() (int, error) {
