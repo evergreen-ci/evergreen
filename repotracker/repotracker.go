@@ -211,6 +211,12 @@ func (repoTracker *RepoTracker) FetchRevisions(ctx context.Context) error {
 	}
 
 	if len(revisions) > 0 {
+		grip.Debug(message.Fields{
+			"message":       "storing revisions",
+			"project":       repoTracker.ProjectRef.Identifier,
+			"new_revisions": revisions,
+			"last_revision": lastRevision,
+		})
 		err = repoTracker.StoreRevisions(ctx, revisions)
 		if err != nil {
 			grip.Error(message.WrapError(err, message.Fields{
