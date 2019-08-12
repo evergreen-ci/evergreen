@@ -392,7 +392,7 @@ func (p *moduleParams) addModule(ac *legacyClient, rc *legacyClient) error {
 	if err != nil {
 		return errors.WithStack(err)
 	}
-
+	fmt.Println("Module updated.")
 	return nil
 }
 
