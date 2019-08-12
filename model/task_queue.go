@@ -502,10 +502,8 @@ func FindDistroTaskQueue(distroID string) (TaskQueue, error) {
 	return queue, errors.WithStack(err)
 }
 
-func FindTaskQueueGenerationTimes() (map[string]time.Time, error) {
-	out := []map[string]time.Time{}
-
-	err := db.Aggregate(TaskQueuesCollection, []bson.M{
+func taskQueueGenerationTimesPipeline() []bson.M {
+	return []bson.M{
 		{
 			"$group": bson.M{
 				"_id": 0,
@@ -522,7 +520,30 @@ func FindTaskQueueGenerationTimes() (map[string]time.Time, error) {
 		{
 			"$replaceRoot": bson.M{"newRoot": "$root"},
 		},
-	}, &out)
+	}
+
+}
+
+func FindTaskQueueGenerationTimes() (map[string]time.Time, error) {
+	out := []map[string]time.Time{}
+
+	err := db.Aggregate(TaskQueuesCollection, taskQueueGenerationTimesPipeline(), &out)
+
+	if err != nil {
+		return map[string]time.Time{}, errors.WithStack(err)
+	}
+
+	if len(out) != 1 {
+		return map[string]time.Time{}, errors.New("produced invalid results")
+	}
+
+	return out[0], nil
+}
+
+func FindTaskAliasQueueGenerationTimes() (map[string]time.Time, error) {
+	out := []map[string]time.Time{}
+
+	err := db.Aggregate(TaskAliasQueuesCollection, taskQueueGenerationTimesPipeline(), &out)
 
 	if err != nil {
 		return map[string]time.Time{}, errors.WithStack(err)
