@@ -319,6 +319,9 @@ func (p *mergeParams) uploadMergePatch(conf *ClientSettings, ac *legacyClient) e
 		}
 		return errors.Wrap(err, "can't get project ref")
 	}
+	if !ref.CommitQueue.Enabled {
+		return errors.New("commit queue not enabled for project")
+	}
 
 	diffData, err := loadGitData(ref.Branch, p.ref)
 	if err != nil {
