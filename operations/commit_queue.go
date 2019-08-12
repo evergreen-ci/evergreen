@@ -392,7 +392,7 @@ func (p *moduleParams) addModule(ac *legacyClient, rc *legacyClient) error {
 	if err != nil {
 		return errors.WithStack(err)
 	}
-
+	grip.Info("Module updated.")
 	return nil
 }
 
