@@ -12,6 +12,7 @@ import (
 var (
 	// bson fields for the Distro struct
 	IdKey                    = bsonutil.MustHaveTag(Distro{}, "Id")
+	AliasesKey               = bsonutil.MustHaveTag(Distro{}, "Aliases")
 	ArchKey                  = bsonutil.MustHaveTag(Distro{}, "Arch")
 	PoolSizeKey              = bsonutil.MustHaveTag(Distro{}, "PoolSize")
 	ProviderKey              = bsonutil.MustHaveTag(Distro{}, "Provider")
@@ -65,6 +66,10 @@ func FindByID(id string) (*Distro, error) {
 	}
 
 	return &d, nil
+}
+
+func FindAll() ([]Distro, error) {
+	return Find(All)
 }
 
 // Insert writes the distro to the database.

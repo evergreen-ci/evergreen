@@ -7,6 +7,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/manifest"
 	"github.com/evergreen-ci/evergreen/model/user"
@@ -749,6 +750,11 @@ func createVersionItems(ctx context.Context, v *model.Version, ref *model.Projec
 	client := evergreen.GetEnvironment().Client()
 	const retryCount = 5
 
+	distroAliases, err := distro.NewDistroAliasesLookupTable()
+	if err != nil {
+		return err
+	}
+
 	txFunc := func(sessCtx mongo.SessionContext) (bool, error) {
 		// generate all task Ids so that we can easily reference them for dependencies
 		sourceRev := ""
@@ -768,7 +774,7 @@ func createVersionItems(ctx context.Context, v *model.Version, ref *model.Projec
 			}
 			var match bool
 			if len(aliases) > 0 {
-				match, err = aliases.HasMatchingVariant(buildvariant.Name)
+				match, err = aliases.HasMatchingVariant(buildvariant.Name, buildvariant.Tags)
 				if err != nil {
 					grip.Error(err)
 					continue
@@ -778,15 +784,16 @@ func createVersionItems(ctx context.Context, v *model.Version, ref *model.Projec
 				}
 			}
 			args := model.BuildCreateArgs{
-				Project:      *project,
-				Version:      *v,
-				TaskIDs:      taskIds,
-				BuildName:    buildvariant.Name,
-				Activated:    false,
-				SourceRev:    sourceRev,
-				DefinitionID: metadata.TriggerDefinitionID,
-				Aliases:      aliases,
-				Session:      sessCtx,
+				Project:       *project,
+				Version:       *v,
+				TaskIDs:       taskIds,
+				BuildName:     buildvariant.Name,
+				Activated:     false,
+				SourceRev:     sourceRev,
+				DefinitionID:  metadata.TriggerDefinitionID,
+				Aliases:       aliases,
+				Session:       sessCtx,
+				DistroAliases: distroAliases,
 			}
 			var buildId string
 			buildId, err = model.CreateBuildFromVersion(args)

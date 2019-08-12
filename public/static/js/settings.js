@@ -125,11 +125,13 @@ mciModule.controller('SettingsCtrl', ['$scope', '$http', '$window', 'notificatio
     data = {
         timezone: new_tz,
         use_spruce_options: use_spruce_options,
-        spruce_feedback: formatFeedback(spruce_feedback),
         github_user: {
             last_known_as: $scope.github_user,
         }
     };
+    if ($scope.opt_in_initially_checked && !use_spruce_options.patch_page) {
+      data.spruce_feedback = formatFeedback(spruce_feedback);
+    }
     var success = function() {
       window.location.reload();
     };

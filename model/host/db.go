@@ -626,8 +626,36 @@ func FindStaleRunningTasks(cutoff time.Duration) ([]task.Task, error) {
 	return tasks, nil
 }
 
-// LastCommunicationTimeElapsed returns hosts which have never communicated or have not communicated in too long.
-func LastCommunicationTimeElapsed(currentTime time.Time) bson.M {
+// AgentLastCommunicationTimeElapsed finds legacy hosts which do not have an
+// agent or whose agents have not communicated recently.
+func AgentLastCommunicationTimeElapsed(currentTime time.Time) bson.M {
+	bootstrapKey := bsonutil.GetDottedKeyName(DistroKey, distro.BootstrapMethodKey)
+	cutoffTime := currentTime.Add(-MaxLCTInterval)
+	return bson.M{
+		StatusKey:        evergreen.HostRunning,
+		StartedByKey:     evergreen.User,
+		HasContainersKey: bson.M{"$ne": true},
+		ParentIDKey:      bson.M{"$exists": false},
+		RunningTaskKey:   bson.M{"$exists": false},
+		"$and": []bson.M{
+			bson.M{"$or": []bson.M{
+				{LastCommunicationTimeKey: util.ZeroTime},
+				{LastCommunicationTimeKey: bson.M{"$lte": cutoffTime}},
+				{LastCommunicationTimeKey: bson.M{"$exists": false}},
+			}},
+			bson.M{"$or": []bson.M{
+				{bootstrapKey: bson.M{"$exists": false}},
+				{bootstrapKey: bson.M{"$in": []string{"", distro.BootstrapMethodLegacySSH}}},
+			}},
+		},
+	}
+}
+
+// AgentMonitorLastCommunicationTimeElapsed finds hosts which do not have an
+// agent monitor or which should have an agent monitor but their agent has not
+// communicated recently.
+func AgentMonitorLastCommunicationTimeElapsed(currentTime time.Time) bson.M {
+	bootstrapKey := bsonutil.GetDottedKeyName(DistroKey, distro.BootstrapMethodKey)
 	cutoffTime := currentTime.Add(-MaxLCTInterval)
 	return bson.M{
 		StatusKey:        evergreen.HostRunning,
@@ -640,6 +668,11 @@ func LastCommunicationTimeElapsed(currentTime time.Time) bson.M {
 			{LastCommunicationTimeKey: bson.M{"$lte": cutoffTime}},
 			{LastCommunicationTimeKey: bson.M{"$exists": false}},
 		},
+		bootstrapKey: bson.M{"$in": []string{
+			distro.BootstrapMethodSSH,
+			distro.BootstrapMethodUserData,
+			distro.BootstrapMethodPreconfiguredImage,
+		}},
 	}
 }
 
