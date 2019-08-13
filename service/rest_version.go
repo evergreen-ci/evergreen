@@ -11,6 +11,7 @@ import (
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/build"
+	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/mongodb/grip"
@@ -63,11 +64,12 @@ type restVersion struct {
 }
 
 type versionLessInfo struct {
-	Id       string         `json:"version_id"`
-	Author   string         `json:"author"`
-	Revision string         `json:"revision"`
-	Message  string         `json:"message"`
-	Builds   versionByBuild `json:"builds"`
+	Id       string              `json:"version_id"`
+	Author   string              `json:"author"`
+	Revision string              `json:"revision"`
+	Message  string              `json:"message"`
+	Builds   versionByBuild      `json:"builds"`
+	Tasks    versionStatusByTask `json:"tasks"`
 }
 
 type versionStatus struct {
@@ -79,12 +81,9 @@ type versionStatus struct {
 type versionByBuild map[string]versionBuildInfo
 
 type versionBuildInfo struct {
-	Id    string               `json:"build_id"`
-	Name  string               `json:"name"`
-	Tasks versionByBuildByTask `json:"tasks"`
+	Id   string `json:"build_id"`
+	Name string `json:"name"`
 }
-
-type versionByBuildByTask map[string]versionStatus
 
 type versionStatusByTask map[string]versionStatus
 
@@ -118,14 +117,25 @@ func copyVersion(srcVersion *model.Version, destVersion *restVersion) {
 // Returns a JSON response of an array with the NumRecentVersions
 // most recent versions (sorted on commit order number descending).
 func (restapi restAPI) getRecentVersions(w http.ResponseWriter, r *http.Request) {
+	var err error
 	projectId := gimlet.GetVars(r)["project_id"]
 	limit := r.FormValue("limit")
+	startStr := r.FormValue("start")
+	start := 0
+	if startStr != "" {
+		start, err = strconv.Atoi(startStr)
+		if err != nil {
+			gimlet.WriteJSONError(w, responseError{Message: "'start' query parameter must be a valid integer"})
+			return
+		}
+		if start < 0 {
+			gimlet.WriteJSONError(w, responseError{Message: "'start' must be a non-negative integer"})
+			return
+		}
+	}
 
-	var l int
-	var err error
-	if limit == "" {
-		l = NumRecentVersions
-	} else {
+	l := NumRecentVersions
+	if limit != "" {
 		l, err = strconv.Atoi(limit)
 		if err != nil {
 			msg := fmt.Sprintf("Error parsing %s as an integer", limit)
@@ -133,8 +143,9 @@ func (restapi restAPI) getRecentVersions(w http.ResponseWriter, r *http.Request)
 			return
 		}
 	}
-	versions, err := model.VersionFind(model.VersionByMostRecentSystemRequester(projectId).Limit(l))
 
+	// add one to limit to determine if a new page is necessary
+	versions, err := model.VersionFind(model.VersionBySystemRequesterOrdered(projectId, start).Limit(l + 1))
 	if err != nil {
 		msg := fmt.Sprintf("Error finding recent versions of project '%v'", projectId)
 		grip.Errorf("%v: %+v", msg, err)
@@ -142,33 +153,26 @@ func (restapi restAPI) getRecentVersions(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
+	nextPageStart := ""
+	// save the ID for the next page version, and remove this version from results
+	if len(versions) > l {
+		nextPageStart = strconv.Itoa(versions[len(versions)-1].RevisionOrderNumber)
+		versions = versions[:len(versions)-1]
+	}
 	// Create a slice of version ids to find all relevant builds
 	versionIds := make([]string, 0, len(versions))
 
 	// Cache the order of versions in a map for lookup by their id
 	versionIdx := make(map[string]int, len(versions))
-
 	for i, version := range versions {
 		versionIds = append(versionIds, version.Id)
 		versionIdx[version.Id] = i
-	}
-
-	// Find all builds corresponding the set of version ids
-	builds, err := build.Find(
-		build.ByVersions(versionIds).
-			WithFields(build.BuildVariantKey, build.DisplayNameKey, build.TasksKey, build.VersionKey))
-	if err != nil {
-		msg := fmt.Sprintf("Error finding recent versions of project '%v'", projectId)
-		grip.Errorf("%v: %+v", msg, err)
-		gimlet.WriteJSONInternalError(w, responseError{Message: msg})
-		return
 	}
 
 	result := recentVersionsContent{
 		Project:  projectId,
 		Versions: make([]versionLessInfo, 0, len(versions)),
 	}
-
 	for _, version := range versions {
 		versionInfo := versionLessInfo{
 			Id:       version.Id,
@@ -176,31 +180,72 @@ func (restapi restAPI) getRecentVersions(w http.ResponseWriter, r *http.Request)
 			Revision: version.Revision,
 			Message:  version.Message,
 			Builds:   make(versionByBuild),
+			Tasks:    make(versionStatusByTask),
 		}
 
 		result.Versions = append(result.Versions, versionInfo)
 	}
-
-	for _, build := range builds {
-		buildInfo := versionBuildInfo{
-			Id:    build.Id,
-			Name:  build.DisplayName,
-			Tasks: make(versionByBuildByTask, len(build.Tasks)),
-		}
-
-		for _, task := range build.Tasks {
-			buildInfo.Tasks[task.DisplayName] = versionStatus{
-				Id:        task.Id,
-				Status:    task.Status,
-				TimeTaken: task.TimeTaken,
-			}
-		}
-
-		versionInfo := result.Versions[versionIdx[build.Version]]
-		versionInfo.Builds[build.BuildVariant] = buildInfo
+	// Find all builds/tasks corresponding the set of version ids
+	if err = result.populateBuildsAndTasks(versionIds, versionIdx); err != nil {
+		msg := fmt.Sprintf("Error populating builds/tasks for recent versions of project '%v'", projectId)
+		grip.Errorf("%v: %+v", msg, err)
+		gimlet.WriteJSONInternalError(w, responseError{Message: msg})
 	}
 
+	// create a page header
+	if nextPageStart != "" {
+		responder := gimlet.NewResponseBuilder()
+		err = responder.SetPages(&gimlet.ResponsePages{
+			Next: &gimlet.Page{
+				Relation:        "next",
+				LimitQueryParam: "limit",
+				KeyQueryParam:   "start",
+				BaseURL:         restapi.GetSettings().ApiUrl,
+				Key:             nextPageStart,
+				Limit:           l,
+			},
+		})
+		if err != nil {
+			msg := "error setting pages"
+			grip.Errorf("%v: %+v", msg, err)
+			gimlet.WriteJSONInternalError(w, responseError{Message: msg})
+		}
+		w.Header().Set("Link", responder.Pages().GetLinks(r.URL.String()))
+	}
 	gimlet.WriteJSON(w, result)
+}
+
+func (r *recentVersionsContent) populateBuildsAndTasks(versionIds []string, versionIdx map[string]int) error {
+	builds, err := build.Find(
+		build.ByVersions(versionIds).
+			WithFields(build.BuildVariantKey, build.DisplayNameKey, build.TasksKey, build.VersionKey))
+	if err != nil {
+		return errors.Wrap(err, "Error finding recent versions")
+	}
+	tasks, err := task.Find(task.ByVersions(versionIds).
+		WithFields(task.IdKey, task.DisplayNameKey, task.StatusKey, task.TimeTakenKey, task.VersionKey))
+	if err != nil {
+		return errors.Wrap(err, "Error finding recent tasks for recent versions")
+	}
+
+	for _, b := range builds {
+		buildInfo := versionBuildInfo{
+			Id:   b.Id,
+			Name: b.DisplayName,
+		}
+		versionInfo := r.Versions[versionIdx[b.Version]]
+		versionInfo.Builds[b.BuildVariant] = buildInfo
+	}
+	for _, t := range tasks {
+		taskInfo := versionStatus{
+			Id:        t.Id,
+			Status:    t.Status,
+			TimeTaken: t.TimeTaken,
+		}
+		versionInfo := r.Versions[versionIdx[t.Version]]
+		versionInfo.Tasks[t.DisplayName] = taskInfo
+	}
+	return nil
 }
 
 // Returns a JSON response with the marshaled output of the version

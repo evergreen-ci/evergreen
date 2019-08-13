@@ -164,6 +164,11 @@ func ByVersion(version string) db.Q {
 	})
 }
 
+// ByVersion produces a query that returns tasks for the given version.
+func ByVersions(versions []string) db.Q {
+	return db.Query(bson.M{VersionKey: bson.M{"$in": versions}})
+}
+
 // ByIdsBuildIdAndStatus creates a query to return tasks with a certain build id and statuses
 func ByIdsBuildAndStatus(taskIds []string, buildId string, statuses []string) db.Q {
 	return db.Query(bson.M{
