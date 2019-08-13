@@ -536,7 +536,7 @@ func (as *APIServer) NextTask(w http.ResponseWriter, r *http.Request) {
 	begin := time.Now()
 	h := MustHaveHost(r)
 
-	grip.Error(message.WrapError(h.SetUserDataHostProvisioned()), message.Fields{
+	grip.Error(message.WrapError(h.SetUserDataHostProvisioned(), message.Fields{
 		"message":   "failed to mark host as done provisioning with user data",
 		"host":      h.Id,
 		"distro":    h.Distro.Id,
