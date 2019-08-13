@@ -146,7 +146,13 @@ func TestCLIFetchSource(t *testing.T) {
 		So(err, ShouldBeNil)
 		_, err = ac.GetPatches(0)
 		So(err, ShouldBeNil)
-		So(ac.UpdatePatchModule(newPatch.Id.Hex(), "render-module", testModulePatch, "1e5232709595db427893826ce19289461cba3f75", ""),
+		params := UpdatePatchModuleParams{
+			patchID: newPatch.Id.Hex(),
+			module:  "render-module",
+			patch:   testModulePatch,
+			base:    "1e5232709595db427893826ce19289461cba3f75",
+		}
+		So(ac.UpdatePatchModule(params),
 			ShouldBeNil)
 		So(ac.FinalizePatch(newPatch.Id.Hex()), ShouldBeNil)
 
@@ -372,7 +378,14 @@ func TestCLIFunctions(t *testing.T) {
 				})
 
 				Convey("Adding a module to the patch should work", func() {
-					err = ac.UpdatePatchModule(newPatch.Id.Hex(), "render-module", testPatch, "1e5232709595db427893826ce19289461cba3f75", "module changes")
+					params := UpdatePatchModuleParams{
+						patchID: newPatch.Id.Hex(),
+						module:  "render-module",
+						patch:   testPatch,
+						base:    "1e5232709595db427893826ce19289461cba3f75",
+						message: "module changes",
+					}
+					err = ac.UpdatePatchModule(params)
 					So(err, ShouldBeNil)
 					patches, err = ac.GetPatches(0)
 					So(err, ShouldBeNil)
@@ -485,7 +498,13 @@ func TestCLIFunctions(t *testing.T) {
 				})
 
 				Convey("Adding a module to the patch should still work as designed even with empty patch", func() {
-					err = ac.UpdatePatchModule(newPatch.Id.Hex(), "render-module", emptyPatch, "1e5232709595db427893826ce19289461cba3f75", "")
+					params := UpdatePatchModuleParams{
+						patchID: newPatch.Id.Hex(),
+						module:  "render-module",
+						patch:   emptyPatch,
+						base:    "1e5232709595db427893826ce19289461cba3f75",
+					}
+					err = ac.UpdatePatchModule(params)
 					So(err, ShouldBeNil)
 					patches, err := ac.GetPatches(0)
 					So(err, ShouldBeNil)

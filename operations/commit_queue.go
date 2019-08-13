@@ -408,7 +408,14 @@ func (p *moduleParams) addModule(ac *legacyClient, rc *legacyClient) error {
 		}
 	}
 
-	err = ac.UpdatePatchModule(p.patchID, p.module, diffData.fullPatch, diffData.base, p.message)
+	params := UpdatePatchModuleParams{
+		patchID: p.patchID,
+		module:  p.module,
+		patch:   diffData.fullPatch,
+		base:    diffData.base,
+		message: p.message,
+	}
+	err = ac.UpdatePatchModule(params)
 	if err != nil {
 		return errors.WithStack(err)
 	}

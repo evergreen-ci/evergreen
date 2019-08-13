@@ -150,7 +150,10 @@ func (as *APIServer) updatePatchModule(w http.ResponseWriter, r *http.Request) {
 	var moduleName, patchContent, githash, message string
 
 	if r.Header.Get("Content-Type") == formMimeType {
-		moduleName, patchContent, githash, message = r.FormValue("module"), r.FormValue("patch"), r.FormValue("githash"), r.FormValue("message")
+		moduleName = r.FormValue("module")
+		patchContent = r.FormValue("patch")
+		githash = r.FormValue("githash")
+		message = r.FormValue("message")
 	} else {
 		data := struct {
 			Module  string `json:"module"`
