@@ -15,7 +15,12 @@ import (
 	"github.com/pkg/errors"
 )
 
-// TODO rename this interface?
+// type TaskQueueItemDispatcher interface {
+// 	FindNextTask(string, TaskSpec) (*TaskQueueItem, error)
+// 	Refresh(string) error
+// 	RefreshFindNextTask(string, TaskSpec) (*TaskQueueItem, error)
+// }
+
 type TaskQueueService interface {
 	FindNextTask(string, TaskSpec) (*TaskQueueItem, error)
 	Refresh(string) error
@@ -99,36 +104,33 @@ func (s *taskDispatchService) ensureQueue(distroID string) (CachedDispatcher, er
 		return nil, errors.WithStack(err)
 	}
 
-	taskQueueItems := taskQueue.Queue
-
-	// TODO : do we need to make a call to the database to get the distro's PlannerSettings (which we probably also need to resolve a la GetResolvedPlannerSettings())
-	// Should we be using the distro.PlannerSettings.Version field to signify which DispatchService to use, or has the distro.PlannerSettings.Version field become overloaded?
-	// Do we need to independently toggle the task planning (PlannerSettings) and task dispatcher (DispatcherSettings) options for a given distro?
-	// Just going with this stop-gap for now to get things working...
-
 	d, err := distro.FindOne(distro.ById(distroID))
 	if err != nil {
 		return nil, errors.Wrapf(err, "Database error for find() by distro id '%s'", distroID)
 	}
 
-	switch d.PlannerSettings.Version {
+	config, err := evergreen.GetConfig()
+	if err != nil {
+		return nil, errors.Wrap(err, "error retrieving Evergreen config")
+	}
+	plannerSettings, err := d.GetResolvedPlannerSettings(config)
+	if err != nil {
+		return nil, errors.Wrapf(err, "error resolving the PlannerSettings for distro '%s'", d.Id)
+	}
+
+	switch plannerSettings.Version {
 	case evergreen.PlannerVersionTunable:
-		distroDispatchService, err := newDistroTaskDAGDispatchService(distroID, taskQueueItems, s.ttl)
+		distroDispatchService, err := newDistroTaskDAGDispatchService(taskQueue, s.ttl)
 		if err != nil {
 			return nil, err
 		}
 		s.cachedDispatchers[distroID] = distroDispatchService
 		return distroDispatchService, nil
 	default:
-		distroDispatchService = newDistroTaskDispatchService(distroID, taskQueueItems, s.ttl)
+		distroDispatchService = newDistroTaskDispatchService(taskQueue, s.ttl)
 		s.cachedDispatchers[distroID] = distroDispatchService
 		return distroDispatchService, nil
 	}
-
-	// distroDispatchService = newDistroTaskDispatchService(distroID, taskQueueItems, s.ttl)
-	// s.cachedDispatchers[distroID] = distroDispatchService
-	//
-	// return distroDispatchService, nil
 }
 
 // cachedDispatcher is an in-memory representation of schedulable tasks for a distro.
@@ -158,14 +160,14 @@ type schedulableUnit struct {
 }
 
 // newDistroTaskDispatchService creates a basicCachedDispatcherImpl from a slice of TaskQueueItems.
-func newDistroTaskDispatchService(distroID string, items []TaskQueueItem, ttl time.Duration) *basicCachedDispatcherImpl {
+func newDistroTaskDispatchService(taskQueue TaskQueue, ttl time.Duration) *basicCachedDispatcherImpl {
 	t := &basicCachedDispatcherImpl{
-		distroID: distroID,
+		distroID: taskQueue.Distro,
 		ttl:      ttl,
 	}
 
-	if len(items) != 0 {
-		t.rebuild(items)
+	if taskQueue.Length() != 0 {
+		t.rebuild(taskQueue.Queue)
 	}
 
 	grip.Debug(message.Fields{

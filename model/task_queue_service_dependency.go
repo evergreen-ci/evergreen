@@ -1,6 +1,7 @@
 package model
 
 import (
+	"fmt"
 	"sort"
 	"sync"
 	"time"
@@ -16,11 +17,6 @@ import (
 	"gonum.org/v1/gonum/graph/topo"
 )
 
-// TODO pass a TaskQueue struct and the ttl as the arguments to both newDistroTaskDAGDispatchService and newDistroTaskDispatchService.
-// TODO use the data from TaskQueue.DistroQueueInfo in both DispatchServices - we already know the task group names and their number of respective tasks etc.
-// TODO for taskGroupTasks.tasks: check that each task's dependencies have been met.  Currently, we only check that standalone tasks' dependencies have been satisfied.
-// TODO In func (t *basicCachedDAGDispatcherImpl) FindNextTask - consider checking if the state of any task has changed, which could unblock it.
-
 type basicCachedDAGDispatcherImpl struct {
 	mu          sync.RWMutex
 	distroID    string
@@ -34,18 +30,18 @@ type basicCachedDAGDispatcherImpl struct {
 }
 
 // newDistroTaskDAGDispatchService creates a basicCachedDAGDispatcherImpl from a slice of TaskQueueItems.
-func newDistroTaskDAGDispatchService(distroID string, items []TaskQueueItem, ttl time.Duration) (*basicCachedDAGDispatcherImpl, error) {
+func newDistroTaskDAGDispatchService(taskQueue TaskQueue, ttl time.Duration) (*basicCachedDAGDispatcherImpl, error) {
 	t := &basicCachedDAGDispatcherImpl{
-		distroID: distroID,
+		distroID: taskQueue.Distro,
 		ttl:      ttl,
 	}
 	t.graph = simple.NewDirectedGraph()
 	t.itemNodeMap = map[string]graph.Node{}     // map[TaskQueueItem.Id]Node{}
 	t.nodeItemMap = map[int64]*TaskQueueItem{}  // map[node.ID()]*TaskQueueItem{}
 	t.taskGroups = map[string]schedulableUnit{} // map[compositeGroupId(TaskQueueItem.Group, TaskQueueItem.BuildVariant, TaskQueueItem.Project, TaskQueueItem.Version)]schedulableUnit{}
-	if len(items) != 0 {
-		if err := t.rebuild(items); err != nil {
-			return nil, errors.Wrapf(err, "error creating newDistroTaskDAGDispatchService for distro '%s'", distroID)
+	if taskQueue.Length() != 0 {
+		if err := t.rebuild(taskQueue.Queue); err != nil {
+			return nil, errors.Wrapf(err, "error creating newDistroTaskDAGDispatchService for distro '%s'", taskQueue.Distro)
 		}
 	}
 
@@ -57,7 +53,7 @@ func newDistroTaskDAGDispatchService(distroID string, items []TaskQueueItem, ttl
 		"ttl":                        t.ttl,
 		"last_updated":               t.lastUpdated,
 		"num_task_groups":            len(t.taskGroups),
-		"initial_num_taskqueueitems": len(items),
+		"initial_num_taskqueueitems": taskQueue.Length(),
 		"sorted_num_taskqueueitems":  len(t.sorted),
 	})
 
@@ -128,8 +124,11 @@ func (t *basicCachedDAGDispatcherImpl) addEdge(from string, to string) error {
 			"dispatcher": "dependency-task-dispatcher",
 			"function":   "addEdge",
 			"message":    "cannot add a self edge to a Node",
+			"task_id":    from,
 			"node_id":    fromNodeID,
 		})
+
+		return errors.New(fmt.Sprintf("cannot add a self edge to task '%s'", from))
 	}
 
 	edge := simple.Edge{
@@ -176,13 +175,12 @@ func (t *basicCachedDAGDispatcherImpl) rebuild(items []TaskQueueItem) error {
 	for _, item := range items {
 		for _, dependency := range item.Dependencies {
 			if err := t.addEdge(item.Id, dependency); err != nil {
-				return errors.Wrapf(err, "Failed to create in-memory task queue of TaskQueueItems for distro '%s'; error defining a DirectedGraph incorporating task dependencies", t.distroID)
+				return errors.Wrapf(err, "failed to create in-memory task queue of TaskQueueItems for distro '%s'; error defining a DirectedGraph incorporating task dependencies", t.distroID)
 			}
 		}
 	}
 
-	// Sort the graph. Use a lexical sort to resolve ambiguities, because node order is the
-	// order that we received these in.
+	// Sort the graph. Use a lexical sort to resolve ambiguities, because node order is the order that we received these in.
 	sorted, err := topo.SortStabilized(t.graph, lexicalReversed)
 	if err != nil {
 		grip.Alert(message.WrapError(err, message.Fields{
@@ -190,7 +188,10 @@ func (t *basicCachedDAGDispatcherImpl) rebuild(items []TaskQueueItem) error {
 			"function":   "rebuild",
 			"message":    "problem sorting tasks within the DirectedGraph",
 		}))
+
+		return errors.Wrapf(err, "failed to create in-memory task queue of TaskQueueItems for distro '%s'; error sorting a DirectedGraph incorporating task dependencies", t.distroID)
 	}
+
 	t.sorted = sorted
 	t.lastUpdated = time.Now()
 
@@ -247,11 +248,10 @@ func (t *basicCachedDAGDispatcherImpl) FindNextTask(spec TaskSpec) *TaskQueueIte
 
 		// If maxHosts is not set, this is not a task group.
 		if item.GroupMaxHosts == 0 {
-
 			// Dispatch this standalone task if all of the following are true:
-			// (a) it hasn't already been dispatched
-			// (b) a record for the task actually exists in the database
-			// (c) its dependencies have been met
+			// (a) it hasn't already been dispatched.
+			// (b) a record of the task exists in the database.
+			// (c) its dependencies have been met.
 
 			if item.IsDispatched {
 				continue

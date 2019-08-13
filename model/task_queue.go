@@ -114,6 +114,7 @@ var (
 	taskQueueItemProjectKey       = bsonutil.MustHaveTag(TaskQueueItem{}, "Project")
 	taskQueueItemExpDurationKey   = bsonutil.MustHaveTag(TaskQueueItem{}, "ExpectedDuration")
 	taskQueueItemPriorityKey      = bsonutil.MustHaveTag(TaskQueueItem{}, "Priority")
+	// taskQueueItemDependenciesKey  = bsonutil.MustHaveTag(TaskQueueItem{}, "Dependencies")
 )
 
 // TaskSpec is an argument structure to formalize the way that callers
@@ -136,8 +137,8 @@ func NewTaskQueue(distroID string, queue []TaskQueueItem, distroQueueInfo Distro
 	}
 }
 
-func LoadTaskQueue(distro string) (*TaskQueue, error) {
-	return findTaskQueueForDistro(distro)
+func LoadTaskQueue(distroID string) (*TaskQueue, error) {
+	return findTaskQueueForDistro(distroID)
 }
 
 func (self *TaskQueue) Length() int {
@@ -393,6 +394,7 @@ func findTaskQueueForDistro(distroId string) (*TaskQueue, error) {
 						taskQueueItemProjectKey:       "$" + bsonutil.GetDottedKeyName(taskQueueQueueKey, taskQueueItemProjectKey),
 						taskQueueItemExpDurationKey:   "$" + bsonutil.GetDottedKeyName(taskQueueQueueKey, taskQueueItemExpDurationKey),
 						taskQueueItemPriorityKey:      "$" + bsonutil.GetDottedKeyName(taskQueueQueueKey, taskQueueItemPriorityKey),
+						// taskQueueItemDependenciesKey:  "$" + bsonutil.GetDottedKeyName(taskQueueQueueKey, taskQueueItemDependenciesKey),
 					},
 				},
 			},

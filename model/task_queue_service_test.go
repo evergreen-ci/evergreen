@@ -1,6 +1,5 @@
 package model
 
-// TODO Tests when adding a self-edge within the graph
 // TODO Test for dependencies for task(s) within a task group
 
 import (
@@ -21,7 +20,7 @@ import (
 type taskDAGDispatchServiceSuite struct {
 	suite.Suite
 
-	items []TaskQueueItem
+	taskQueue TaskQueue
 }
 
 func TestTaskDAGDispatchServiceSuite(t *testing.T) {
@@ -104,11 +103,22 @@ func (s *taskDAGDispatchServiceSuite) SetupTest() {
 		s.Require().NoError(t.Insert())
 	}
 
-	s.items = items
+	s.taskQueue = TaskQueue{
+		Distro: "distro_1",
+		Queue:  items,
+	}
+}
+
+func (s *taskDAGDispatchServiceSuite) TestAddingSelfEdge() {
+	service, err := newDistroTaskDAGDispatchService(s.taskQueue, time.Minute)
+	s.NoError(err)
+	err = service.addEdge("5", "5")
+	s.Error(err)
+	s.Contains(err.Error(), "cannot add a self edge to task")
 }
 
 func (s *taskDAGDispatchServiceSuite) TestConstructor() {
-	service, err := newDistroTaskDAGDispatchService("distro_1", s.items, time.Minute)
+	service, err := newDistroTaskDAGDispatchService(s.taskQueue, time.Minute)
 	s.NoError(err)
 	s.Equal("distro_1", service.distroID)
 	s.Equal(60*time.Second, service.ttl)
@@ -237,7 +247,7 @@ func (s *taskDAGDispatchServiceSuite) TestConstructor() {
 }
 
 func (s *taskDAGDispatchServiceSuite) TestNextTaskForDefaultTaskSpec() {
-	service, err := newDistroTaskDAGDispatchService("distro_1", s.items, time.Minute)
+	service, err := newDistroTaskDAGDispatchService(s.taskQueue, time.Minute)
 	spec := TaskSpec{}
 	s.NoError(err)
 	next := service.FindNextTask(spec)
@@ -357,7 +367,8 @@ func (s *taskDAGDispatchServiceSuite) TestSingleHostTaskGroupsBlock() {
 		s.Require().NoError(t.Insert())
 	}
 
-	service, err := newDistroTaskDAGDispatchService("distro_1", items, time.Minute)
+	s.taskQueue.Queue = items
+	service, err := newDistroTaskDAGDispatchService(s.taskQueue, time.Minute)
 	s.NoError(err)
 	spec := TaskSpec{
 		Group:        "group_1",
@@ -370,7 +381,7 @@ func (s *taskDAGDispatchServiceSuite) TestSingleHostTaskGroupsBlock() {
 }
 
 func (s *taskDAGDispatchServiceSuite) TestFindNextTask() {
-	service, e := newDistroTaskDAGDispatchService("distro_1", s.items, time.Minute)
+	service, e := newDistroTaskDAGDispatchService(s.taskQueue, time.Minute)
 	s.NoError(e)
 	var spec TaskSpec
 	var next *TaskQueueItem
@@ -555,7 +566,7 @@ func (s *taskDAGDispatchServiceSuite) TestTaskGroupTasksRunningHostsVersusMaxHos
 	}
 	s.Require().NoError(h1.Insert())
 
-	service, e := newDistroTaskDAGDispatchService("distro_1", s.items, time.Minute)
+	service, e := newDistroTaskDAGDispatchService(s.taskQueue, time.Minute)
 	s.NoError(e)
 
 	spec := TaskSpec{}
@@ -587,7 +598,7 @@ func (s *taskDAGDispatchServiceSuite) TestTaskGroupTasksRunningHostsVersusMaxHos
 type taskDispatchServiceSuite struct {
 	suite.Suite
 
-	items []TaskQueueItem
+	taskQueue TaskQueue
 }
 
 func TestTaskDispatchServiceSuite(t *testing.T) {
@@ -653,11 +664,14 @@ func (s *taskDispatchServiceSuite) SetupTest() {
 		s.Require().NoError(t.Insert())
 	}
 
-	s.items = items
+	s.taskQueue = TaskQueue{
+		Distro: "distro_1",
+		Queue:  items,
+	}
 }
 
 func (s *taskDispatchServiceSuite) TestConstructor() {
-	service := newDistroTaskDispatchService("distro_1", s.items, time.Minute)
+	service := newDistroTaskDispatchService(s.taskQueue, time.Minute)
 	//////////////////////////////////////////////////////////////////////////////
 	// basicCachedDispatcherImpl.order[0] = "0"
 	// basicCachedDispatcherImpl.order[1] = "group_1_variant_1_project_1_version_1"
@@ -754,12 +768,13 @@ func (s *taskDispatchServiceSuite) TestConstructor() {
 }
 
 func (s *taskDispatchServiceSuite) TestEmptyService() {
-	service := newDistroTaskDispatchService("distro_1", []TaskQueueItem{
+	s.taskQueue.Queue = []TaskQueueItem{
 		{
 			Id:    "a-standalone-task",
 			Group: "",
 		},
-	}, time.Minute)
+	}
+	service := newDistroTaskDispatchService(s.taskQueue, time.Minute)
 	next := service.FindNextTask(TaskSpec{})
 	s.Require().NotNil(next)
 	s.Equal("a-standalone-task", next.Id)
@@ -809,7 +824,9 @@ func (s *taskDispatchServiceSuite) TestSingleHostTaskGroupsBlock() {
 		}
 		s.Require().NoError(t.Insert())
 	}
-	service := newDistroTaskDispatchService("distro_1", items, time.Minute)
+
+	s.taskQueue.Queue = items
+	service := newDistroTaskDispatchService(s.taskQueue, time.Minute)
 	spec := TaskSpec{
 		Group:        "group_1",
 		BuildVariant: "variant_1",
@@ -822,7 +839,7 @@ func (s *taskDispatchServiceSuite) TestSingleHostTaskGroupsBlock() {
 }
 
 func (s *taskDispatchServiceSuite) TestFindNextTask() {
-	service := newDistroTaskDispatchService("distro_1", s.items, time.Minute)
+	service := newDistroTaskDispatchService(s.taskQueue, time.Minute)
 	var spec TaskSpec
 	var next *TaskQueueItem
 	//////////////////////////////////////////////////////////////////////////////
@@ -1055,7 +1072,7 @@ func (s *taskDispatchServiceSuite) TestSchedulableUnitsRunningHostsVersusMaxHost
 	}
 	s.Require().NoError(h1.Insert())
 
-	service := newDistroTaskDispatchService("distro_1", s.items, time.Minute)
+	service := newDistroTaskDispatchService(s.taskQueue, time.Minute)
 	//////////////////////////////////////////////////////////////////////////////
 	// basicCachedDispatcherImpl.order[0] = "0"
 	// basicCachedDispatcherImpl.order[1] = "group_1_variant_1_project_1_version_1"
