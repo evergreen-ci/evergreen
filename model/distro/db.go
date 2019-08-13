@@ -26,7 +26,6 @@ var (
 	CuratorDirKey            = bsonutil.MustHaveTag(Distro{}, "CuratorDir")
 	ClientDirKey             = bsonutil.MustHaveTag(Distro{}, "ClientDir")
 	JasperCredentialsPathKey = bsonutil.MustHaveTag(Distro{}, "JasperCredentialsPath")
-	UserDataDonePath         = bsonutil.MustHaveTag(Distro{}, "UserDataDonePath")
 	WorkDirKey               = bsonutil.MustHaveTag(Distro{}, "WorkDir")
 	SpawnAllowedKey          = bsonutil.MustHaveTag(Distro{}, "SpawnAllowed")
 	ExpansionsKey            = bsonutil.MustHaveTag(Distro{}, "Expansions")

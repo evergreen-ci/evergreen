@@ -252,7 +252,7 @@ func TestBootstrapUserData(t *testing.T) {
 					Arch:                  distro.ArchLinuxAmd64,
 					BootstrapMethod:       distro.BootstrapMethodUserData,
 					JasperCredentialsPath: "/bar",
-					UserDataDonePath:      "/bat",
+					ClientDir:             "/client_dir",
 				},
 					StartedBy:        evergreen.User,
 					ProvisionOptions: &host.ProvisionOptions{LoadCLI: true, OwnerId: userID},

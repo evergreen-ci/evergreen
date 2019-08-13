@@ -20,7 +20,6 @@ func TestUserDataDoneJob(t *testing.T) {
 
 	for testName, testCase := range map[string]func(ctx context.Context, t *testing.T, env evergreen.Environment, mngr *jasper.MockManager, h *host.Host){
 		"NewUserDataSpawnHostReadyJobPopulatesFields": func(ctx context.Context, t *testing.T, env evergreen.Environment, mngr *jasper.MockManager, h *host.Host) {
-			h.Distro.UserDataDonePath = ""
 			_, err := h.Upsert()
 			require.NoError(t, err)
 
@@ -39,8 +38,8 @@ func TestUserDataDoneJob(t *testing.T) {
 
 			assert.Empty(t, mngr.Procs)
 		},
-		"RunFailsWithoutUserDataDoneFile": func(ctx context.Context, t *testing.T, env evergreen.Environment, mngr *jasper.MockManager, h *host.Host) {
-			h.Distro.UserDataDonePath = ""
+		"RunFailsWithoutPathToFile": func(ctx context.Context, t *testing.T, env evergreen.Environment, mngr *jasper.MockManager, h *host.Host) {
+			h.Distro.ClientDir = ""
 			_, err := h.Upsert()
 			require.NoError(t, err)
 
@@ -48,7 +47,7 @@ func TestUserDataDoneJob(t *testing.T) {
 			j.Run(ctx)
 			assert.Error(t, j.Error())
 		},
-		"RunChecksUserDataDoneFile": func(ctx context.Context, t *testing.T, env evergreen.Environment, mngr *jasper.MockManager, h *host.Host) {
+		"RunChecksForPathToFile": func(ctx context.Context, t *testing.T, env evergreen.Environment, mngr *jasper.MockManager, h *host.Host) {
 			j := NewUserDataDoneJob(env, *h, "id")
 			j.Run(ctx)
 			require.NoError(t, j.Error())
@@ -56,7 +55,10 @@ func TestUserDataDoneJob(t *testing.T) {
 			require.Len(t, mngr.Procs, 1)
 			info := mngr.Procs[0].Info(ctx)
 
-			expectedCmd := []string{"ls", h.Distro.UserDataDonePath}
+			path, err := h.UserDataDoneFilePath()
+			require.NoError(t, err)
+
+			expectedCmd := []string{"mkdir", "-p", h.Distro.ClientDir, "&&", "ls", path}
 			require.Equal(t, len(expectedCmd), len(info.Options.Args))
 
 			for i := range expectedCmd {
@@ -82,7 +84,7 @@ func TestUserDataDoneJob(t *testing.T) {
 				Id:   "host_id",
 				Host: "localhost",
 				Distro: distro.Distro{
-					UserDataDonePath:    "/user_data_done_file",
+					ClientDir:           "/client_dir",
 					BootstrapMethod:     distro.BootstrapMethodUserData,
 					CommunicationMethod: distro.CommunicationMethodRPC,
 				},

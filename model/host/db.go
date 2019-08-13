@@ -723,15 +723,14 @@ func FindByNeedsNewAgentMonitor() ([]Host, error) {
 // provisioned by the app server but are still being provisioned by user data.
 func FindUserDataSpawnHostsProvisioning() ([]Host, error) {
 	bootstrapKey := bsonutil.GetDottedKeyName(DistroKey, distro.BootstrapMethodKey)
-	query := bson.M{
+
+	hosts, err := Find(db.Query(bson.M{
 		StatusKey:      evergreen.HostProvisioning,
 		ProvisionedKey: true,
 		StartedByKey:   bson.M{"$ne": evergreen.User},
 		bootstrapKey:   distro.BootstrapMethodUserData,
-	}
-
-	var hosts []Host
-	if err := db.FindAll(Collection, query, db.NoProjection, db.NoSort, db.NoSkip, db.NoLimit, &hosts); err != nil {
+	}))
+	if err != nil {
 		return nil, errors.Wrap(err, "could not find user data spawn hosts that are still provisioning themselves")
 	}
 	return hosts, nil

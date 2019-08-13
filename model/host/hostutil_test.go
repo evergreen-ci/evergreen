@@ -777,15 +777,65 @@ func TestMarkUserDataDoneCommand(t *testing.T) {
 		"SucceedsWithPathToDoneFile": func(t *testing.T) {
 			h := &Host{
 				Id:     "id",
-				Distro: distro.Distro{UserDataDonePath: "/etc/done.txt"},
+				Distro: distro.Distro{ClientDir: "/client_dir"},
 			}
 			cmd, err := h.MarkUserDataDoneCommand()
 			require.NoError(t, err)
-			assert.Equal(t, "touch /etc/done.txt", cmd)
+			assert.Equal(t, "mkdir -p /client_dir && touch /client_dir/user_data_done", cmd)
 		},
 	} {
 		t.Run(testName, func(t *testing.T) {
 			testCase(t)
+		})
+	}
+}
+
+// kim: TODO
+func TestSetUserDataHostProvisioned(t *testing.T) {
+	for testName, testCase := range map[string]func(t *testing.T, h *Host){
+		"Succeeds": func(t *testing.T, h *Host) {
+			require.NoError(t, h.SetUserDataHostProvisioned())
+			assert.Equal(t, evergreen.HostRunning, h.Status)
+
+			dbHost, err := FindOneId(h.Id)
+			require.NoError(t, err)
+			assert.Equal(t, evergreen.HostRunning, dbHost.Status)
+		},
+		"IgnoresNonUserDataBootstrappedHost": func(t *testing.T, h *Host) {
+			h.Distro.BootstrapMethod = distro.BootstrapMethodSSH
+			_, err := h.Upsert()
+			require.NoError(t, err)
+
+			require.NoError(t, h.SetUserDataHostProvisioned())
+			assert.Equal(t, evergreen.HostProvisioning, h.Status)
+
+			dbHost, err := FindOneId(h.Id)
+			require.NoError(t, err)
+			assert.Equal(t, evergreen.HostProvisioning, dbHost.Status)
+		},
+		"IgnoresNonProvisioningHosts": func(t *testing.T, h *Host) {
+			require.NoError(t, h.SetDecommissioned(evergreen.User, ""))
+
+			require.NoError(t, h.SetUserDataHostProvisioned())
+			assert.Equal(t, evergreen.HostDecommissioned, h.Status)
+
+			dbHost, err := FindOneId(h.Id)
+			require.NoError(t, err)
+			assert.Equal(t, evergreen.HostDecommissioned, dbHost.Status)
+		},
+	} {
+		t.Run(testName, func(t *testing.T) {
+			require.NoError(t, db.Clear(Collection))
+			defer func() {
+				assert.NoError(t, db.Clear(Collection))
+			}()
+			h := &Host{
+				Id:     "id",
+				Distro: distro.Distro{BootstrapMethod: distro.BootstrapMethodUserData},
+				Status: evergreen.HostProvisioning,
+			}
+			require.NoError(t, h.Insert())
+			testCase(t, h)
 		})
 	}
 }

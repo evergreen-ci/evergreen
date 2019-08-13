@@ -741,28 +741,6 @@ func handleOldAgentRevision(response apimodels.NextTaskResponse, h *host.Host, w
 	return response, false
 }
 
-// setUserDataHostProvisioned sets the host to running if it was bootstrapped
-// with user data but has not yet been marked as done provisioning.
-func setUserDataHostProvisioned(h *host.Host) error {
-	if h.Distro.BootstrapMethod != distro.BootstrapMethodUserData {
-		return nil
-	}
-
-	if h.Status != evergreen.HostProvisioning {
-		return nil
-	}
-
-	grip.Info(message.Fields{
-		"message":              "host successfully provisioned",
-		"host":                 h.Id,
-		"distro":               h.Distro.Id,
-		"op":                   "next_task",
-		"time_to_running_secs": time.Since(h.CreationTime).Seconds(),
-	})
-
-	return errors.Wrapf(h.UpdateProvisioningToRunning(), "could not mark host %s as done provisioning itself and now running", h.Id)
-}
-
 func sendBackRunningTask(h *host.Host, response apimodels.NextTaskResponse, w http.ResponseWriter) {
 	var err error
 	var t *task.Task

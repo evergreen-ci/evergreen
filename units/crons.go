@@ -977,13 +977,13 @@ func PopulatePeriodicBuilds(part int) amboy.QueueOperation {
 func PopulateUserDataDoneJobs(env evergreen.Environment) amboy.QueueOperation {
 	return func(ctx context.Context, queue amboy.Queue) error {
 		hosts, err := host.FindUserDataSpawnHostsProvisioning()
-		if err != nil && !adb.ResultsNotFound(errors.Cause(err)) {
+		if err != nil {
 			return errors.Wrap(err, "error finding user data hosts that are still provisioning")
 		}
 		catcher := grip.NewBasicCatcher()
 		for _, h := range hosts {
 			catcher.Add(queue.Put(ctx, NewUserDataDoneJob(env, h, util.RoundPartOfMinute(15).Format(tsFormat))))
 		}
-		return nil
+		return catcher.Resolve()
 	}
 }

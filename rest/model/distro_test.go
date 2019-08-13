@@ -18,7 +18,6 @@ func TestDistroBuildFromService(t *testing.T) {
 		CommunicationMethod:   distro.CommunicationMethodRPC,
 		CuratorDir:            "/curator_dir",
 		JasperCredentialsPath: "/jasper_credentials_path",
-		UserDataDonePath:      "/user_data_done",
 	}
 	apiDistro := &APIDistro{}
 	err := apiDistro.BuildFromService(d)
@@ -29,7 +28,6 @@ func TestDistroBuildFromService(t *testing.T) {
 	assert.Equal(t, d.ShellPath, FromAPIString(apiDistro.ShellPath))
 	assert.Equal(t, d.CuratorDir, FromAPIString(apiDistro.CuratorDir))
 	assert.Equal(t, d.JasperCredentialsPath, FromAPIString(apiDistro.JasperCredentialsPath))
-	assert.Equal(t, d.UserDataDonePath, FromAPIString(apiDistro.UserDataDonePath))
 }
 
 func TestDistroBuildFromServiceDefaults(t *testing.T) {
@@ -54,7 +52,6 @@ func TestDistroToService(t *testing.T) {
 		ShellPath:             ToAPIString("/shell_path"),
 		CuratorDir:            ToAPIString("/curator_dir"),
 		JasperCredentialsPath: ToAPIString("/jasper_credentials_path"),
-		UserDataDonePath:      ToAPIString("/user_data_done"),
 	}
 
 	res, err := apiDistro.ToService()
@@ -69,7 +66,6 @@ func TestDistroToService(t *testing.T) {
 	assert.Equal(t, apiDistro.ShellPath, ToAPIString(d.ShellPath))
 	assert.Equal(t, apiDistro.CuratorDir, ToAPIString(d.CuratorDir))
 	assert.Equal(t, apiDistro.JasperCredentialsPath, ToAPIString(d.JasperCredentialsPath))
-	assert.Equal(t, apiDistro.UserDataDonePath, ToAPIString(d.UserDataDonePath))
 }
 
 func TestDistroToServiceDefaults(t *testing.T) {

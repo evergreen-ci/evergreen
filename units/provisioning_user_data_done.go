@@ -80,10 +80,10 @@ func (j *userDataDoneJob) Run(ctx context.Context) {
 		return
 	}
 
-	if j.host.Distro.UserDataDonePath == "" {
-		err := errors.New("distro must have path to user data done file")
+	path ,err := j.host.UserDataDoneFilePath()
+	if err !== nil {
 		grip.Error(message.WrapError(err, message.Fields{
-			"message": "cannot check user data done file without a distro setting for its path",
+			"message": "error getting user data done file path",
 			"host":    j.host.Id,
 			"distro":  j.host.Distro.Id,
 			"job":     j.ID(),
@@ -92,7 +92,7 @@ func (j *userDataDoneJob) Run(ctx context.Context) {
 		return
 	}
 
-	if output, err := j.host.RunJasperProcess(ctx, j.env, &jasper.CreateOptions{Args: []string{"ls", j.host.Distro.UserDataDonePath}}); err != nil {
+	if output, err := j.host.RunJasperProcess(ctx, j.env, &jasper.CreateOptions{Args: []string{"ls", path}}); err != nil {
 		grip.Debug(message.WrapError(err, message.Fields{
 			"message": "host was checked but is not yet ready",
 			"output":  output,
@@ -104,9 +104,9 @@ func (j *userDataDoneJob) Run(ctx context.Context) {
 		return
 	}
 
-	if err := j.host.UpdateProvisioningToRunning(); err != nil {
+	if err := j.host.SetUserDataHostProvisioned(); err != nil {
 		grip.Error(message.WrapError(err, message.Fields{
-			"message": "could not mark host as done provisioning itself and now running",
+			"message": "could not mark host that has finished running user data as done provisioning",
 			"host":    j.host.Id,
 			"distro":  j.host.Distro.Id,
 			"job":     j.ID(),
@@ -114,14 +114,6 @@ func (j *userDataDoneJob) Run(ctx context.Context) {
 		j.AddError(err)
 		return
 	}
-
-	grip.Info(message.Fields{
-		"message":              "host successfully provisioned",
-		"host":                 j.host.Id,
-		"distro":               j.host.Distro.Id,
-		"job":                  j.ID(),
-		"time_to_running_secs": time.Since(j.host.CreationTime).Seconds(),
-	})
 }
 
 func (j *userDataDoneJob) populateIfUnset() error {
