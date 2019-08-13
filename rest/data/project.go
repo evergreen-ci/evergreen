@@ -15,7 +15,6 @@ import (
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
-	"gopkg.in/mgo.v2"
 )
 
 // DBProjectConnector is a struct that implements the Project related methods
@@ -400,7 +399,7 @@ func (pc *MockProjectConnector) GetProjectWithCommitQueueByOwnerRepoAndBranch(ow
 		}
 	}
 
-	return nil, errors.Wrapf(mgo.ErrNotFound, "can't query for projectRef %s/%s tracking %s", owner, repo, branch)
+	return nil, errors.Wrapf(errors.New("not found"), "can't query for projectRef %s/%s tracking %s", owner, repo, branch)
 }
 func (pc *MockProjectConnector) EnableWebhooks(ctx context.Context, projectRef *model.ProjectRef) (bool, error) {
 	return false, nil
