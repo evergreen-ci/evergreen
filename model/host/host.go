@@ -71,8 +71,11 @@ type Host struct {
 	ExpirationTime   time.Time `bson:"expiration_time,omitempty" json:"expiration_time"`
 
 	// creation is when the host document was inserted to the DB, start is when it was started on the cloud provider
-	CreationTime    time.Time `bson:"creation_time" json:"creation_time"`
-	StartTime       time.Time `bson:"start_time" json:"start_time"`
+	CreationTime time.Time `bson:"creation_time" json:"creation_time"`
+	StartTime    time.Time `bson:"start_time" json:"start_time"`
+	// AgentStartTime is when the agent first initiates contact with the app
+	// server.
+	AgentStartTime  time.Time `bson:"agent_start_time" json:"agent_start_time"`
 	TerminationTime time.Time `bson:"termination_time" json:"termination_time"`
 	TaskCount       int       `bson:"task_count" json:"task_count"`
 
@@ -337,6 +340,18 @@ func (h *Host) CreateSecret() error {
 		return err
 	}
 	h.Secret = secret
+	return nil
+}
+
+func (h *Host) SetAgentStartTime() error {
+	now := time.Now()
+	if err := UpdateOne(
+		bson.M{IdKey: h.Id},
+		bson.M{"$set": bson.M{AgentStartTimeKey: now}},
+	); err != nil {
+		return errors.Wrap(err, "could not set agent start time")
+	}
+	h.AgentStartTime = now
 	return nil
 }
 
