@@ -15,7 +15,6 @@ import (
 	"github.com/evergreen-ci/gimlet"
 	"github.com/google/go-github/github"
 	"github.com/mongodb/amboy"
-	adb "github.com/mongodb/anser/db"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
@@ -314,7 +313,10 @@ func (gh *githubHookApi) commitQueueEnqueue(ctx context.Context, event *github.I
 	baseBranch := *pr.Base.Ref
 	projectRef, err := gh.sc.GetProjectWithCommitQueueByOwnerRepoAndBranch(userRepo.Owner, userRepo.Repo, baseBranch)
 	if err != nil {
-		return errors.Wrapf(err, "can't find project for '%s:%s' tracking branch '%s'", userRepo.Owner, userRepo.Repo, baseBranch)
+		return errors.Wrapf(err, "can't get project for '%s:%s' tracking branch '%s'", userRepo.Owner, userRepo.Repo, baseBranch)
+	}
+	if projectRef == nil {
+		return errors.Errorf("no project with commit queue enabled for '%s:%s' tracking branch '%s'", userRepo.Owner, userRepo.Repo, baseBranch)
 	}
 	item := model.APICommitQueueItem{
 		Issue:   model.ToAPIString(strconv.Itoa(PRNum)),
@@ -353,10 +355,10 @@ func (gh *githubHookApi) tryDequeueCommitQueueItemForPR(pr *github.PullRequest) 
 
 	projRef, err := gh.sc.GetProjectWithCommitQueueByOwnerRepoAndBranch(*pr.Base.Repo.Owner.Login, *pr.Base.Repo.Name, *pr.Base.Ref)
 	if err != nil {
-		if adb.ResultsNotFound(err) {
-			return nil
-		}
 		return errors.Wrapf(err, "can't find valid project for %s/%s, branch %s", *pr.Base.Repo.Owner.Login, *pr.Base.Repo.Name, *pr.Base.Ref)
+	}
+	if projRef == nil {
+		return nil
 	}
 
 	if exists, _ := gh.sc.IsItemOnCommitQueue(projRef.Identifier, strconv.Itoa(*pr.Number)); !exists {

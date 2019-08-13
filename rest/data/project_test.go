@@ -464,10 +464,12 @@ func (s *ProjectConnectorGetSuite) TestGetProjectEvents() {
 
 func (s *ProjectConnectorGetSuite) TestGetProjectWithCommitQueueByOwnerRepoAndBranch() {
 	projRef, err := s.ctx.GetProjectWithCommitQueueByOwnerRepoAndBranch("octocat", "hello-world", "master")
-	s.Error(err)
+	s.NoError(err)
+	s.Nil(projRef)
 
 	projRef, err = s.ctx.GetProjectWithCommitQueueByOwnerRepoAndBranch("evergreen-ci", "evergreen", "master")
 	s.NoError(err)
+	s.NotNil(projRef)
 	s.Equal("projectB", projRef.Identifier)
 }
 
