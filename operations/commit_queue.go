@@ -200,7 +200,7 @@ func listCommitQueue(ctx context.Context, client client.Communicator, ac *legacy
 
 	grip.Infof("Queue Length: %d\n", len(cq.Queue))
 	for i, item := range cq.Queue {
-		grip.Infof("%d:", i+1)
+		grip.Infof("%d:", i)
 		author, _ := client.GetCommitQueueItemAuthor(ctx, projectID, restModel.FromAPIString(item.Issue))
 		if author != "" {
 			grip.Infof("Author: %s", author)
@@ -319,6 +319,9 @@ func (p *mergeParams) uploadMergePatch(conf *ClientSettings, ac *legacyClient) e
 		}
 		return errors.Wrap(err, "can't get project ref")
 	}
+	if !ref.CommitQueue.Enabled || ref.CommitQueue.PatchType != commitqueue.CLIPatchType {
+		return errors.New("CLI commit queue not enabled for project")
+	}
 
 	diffData, err := loadGitData(ref.Branch, p.ref)
 	if err != nil {
@@ -392,7 +395,7 @@ func (p *moduleParams) addModule(ac *legacyClient, rc *legacyClient) error {
 	if err != nil {
 		return errors.WithStack(err)
 	}
-
+	grip.Info("Module updated.")
 	return nil
 }
 

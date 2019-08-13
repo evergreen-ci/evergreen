@@ -188,7 +188,7 @@ func TestParseValid(t *testing.T) {
 	assert.Equal(handler.filter.Sort, stats.SortLatestFirst)
 	assert.Equal(handler.filter.Significance, reliability.DefaultSignificance)
 
-	assert.Equal(handler.filter.BeforeDate, truncatedTime(dayInHours))
+	assert.Equal(handler.filter.BeforeDate, truncatedTime(0))
 	assert.Equal(handler.filter.AfterDate, truncatedTime(-20*dayInHours))
 
 	values = url.Values{
@@ -275,7 +275,11 @@ func TestRunNoSuchTask(t *testing.T) {
 	handler := makeGetProjectTaskReliability(sc).(*taskReliabilityHandler)
 	assert.NoError(err)
 
-	handler.filter = reliability.TaskReliabilityFilter{Limit: 1}
+	handler.filter = reliability.TaskReliabilityFilter{
+		StatsFilter: stats.StatsFilter{
+			Limit: 1,
+		},
+	}
 
 	// code subtracts 1
 	handler.filter.Limit++
@@ -305,7 +309,11 @@ func TestRunLimit1(t *testing.T) {
 	// 1 document will be returned
 	sc.MockTaskReliabilityConnector.SetTaskReliabilityScores("aggregation_expression_multiversion_fuzzer", 100)
 
-	handler.filter = reliability.TaskReliabilityFilter{Limit: 1}
+	handler.filter = reliability.TaskReliabilityFilter{
+		StatsFilter: stats.StatsFilter{
+			Limit: 1,
+		},
+	}
 
 	// code subtracts 1
 	handler.filter.Limit++
@@ -334,7 +342,11 @@ func TestRunLimit1000(t *testing.T) {
 	// 1000 documents will be returned
 	sc.MockTaskReliabilityConnector.SetTaskReliabilityScores("aggregation_expression_multiversion_fuzzer", 1001)
 
-	handler.filter = reliability.TaskReliabilityFilter{Limit: 1000}
+	handler.filter = reliability.TaskReliabilityFilter{
+		StatsFilter: stats.StatsFilter{
+			Limit: 1000,
+		},
+	}
 
 	// code subtracts 1
 	handler.filter.Limit++
@@ -362,7 +374,11 @@ func TestRunTestHandler(t *testing.T) {
 
 	// 100 documents will be returned
 	sc.MockTaskReliabilityConnector.SetTaskReliabilityScores("aggregation_expression_multiversion_fuzzer", 100)
-	handler.filter = reliability.TaskReliabilityFilter{Limit: 101}
+	handler.filter = reliability.TaskReliabilityFilter{
+		StatsFilter: stats.StatsFilter{
+			Limit: 101,
+		},
+	}
 
 	resp := handler.Run(context.Background())
 
@@ -372,7 +388,11 @@ func TestRunTestHandler(t *testing.T) {
 
 	// 101 documents will be returned
 	sc.MockTaskReliabilityConnector.SetTaskReliabilityScores("aggregation_expression_multiversion_fuzzer", 101)
-	handler.filter = reliability.TaskReliabilityFilter{Limit: 101}
+	handler.filter = reliability.TaskReliabilityFilter{
+		StatsFilter: stats.StatsFilter{
+			Limit: 101,
+		},
+	}
 
 	resp = handler.Run(context.Background())
 

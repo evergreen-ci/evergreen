@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/evergreen-ci/evergreen/model/reliability"
+	"github.com/evergreen-ci/evergreen/model/stats"
 
 	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/stretchr/testify/assert"
@@ -14,7 +15,11 @@ func TestMockGetTaskReliability(t *testing.T) {
 	assert := assert.New(t)
 
 	mock := MockTaskReliabilityConnector{}
-	filter := reliability.TaskReliabilityFilter{Limit: 100}
+	filter := reliability.TaskReliabilityFilter{
+		StatsFilter: stats.StatsFilter{
+			Limit: 100,
+		},
+	}
 
 	stats, err := mock.GetTaskReliabilityScores(filter)
 	assert.NoError(err)

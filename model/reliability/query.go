@@ -21,40 +21,14 @@ const (
 
 // TaskReliabilityFilter represents search and aggregation parameters when querying the test or task statistics.
 type TaskReliabilityFilter struct {
-	Project       string
-	Requesters    []string
-	AfterDate     time.Time
-	BeforeDate    time.Time
-	Tasks         []string
-	BuildVariants []string
-	Distros       []string
-	GroupNumDays  int
-	GroupBy       stats.GroupBy
-	StartAt       *stats.StartAt
-	Limit         int
-	Sort          stats.Sort
-	Significance  float64
+	stats.StatsFilter
+	Significance float64
 }
 
 // ValidateForTaskReliability validates that the StartAt struct is valid for use with test stats.
 func (f *TaskReliabilityFilter) ValidateForTaskReliability() error {
 	catcher := grip.NewBasicCatcher()
-	statsFilter := stats.StatsFilter{
-		Project:       f.Project,
-		Requesters:    f.Requesters,
-		AfterDate:     f.AfterDate,
-		BeforeDate:    f.BeforeDate,
-		Tasks:         f.Tasks,
-		BuildVariants: f.BuildVariants,
-		Distros:       f.Distros,
-		GroupNumDays:  f.GroupNumDays,
-		GroupBy:       f.GroupBy,
-		StartAt:       f.StartAt,
-		Limit:         f.Limit,
-		Sort:          f.Sort,
-	}
-
-	catcher.Add(statsFilter.ValidateCommon())
+	catcher.Add(f.ValidateCommon())
 
 	if f.Limit > MaxQueryLimit || f.Limit <= 0 {
 		catcher.Add(errors.New("Invalid Limit value"))

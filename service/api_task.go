@@ -614,6 +614,8 @@ func (as *APIServer) NextTask(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	var nextTask *task.Task
+
 	// retrieve the next task off the task queue and attempt to assign it to the host.
 	// If there is already a host that has the task, it will error
 	taskQueue, err := model.LoadTaskQueue(h.Distro.Id)
@@ -623,35 +625,53 @@ func (as *APIServer) NextTask(w http.ResponseWriter, r *http.Request) {
 		gimlet.WriteResponse(w, gimlet.MakeJSONInternalErrorResponder(err))
 		return
 	}
-	if taskQueue == nil {
-		grip.Info(message.Fields{
-			"message":   "nil task queue found",
-			"op":        "next_task",
-			"host_id":   h.Id,
-			"distro_id": h.Distro.Id,
-		})
-		gimlet.WriteJSON(w, response)
-		return
-	}
-	// assign the task to a host and retrieve the task
-	nextTask, err := assignNextAvailableTask(taskQueue, as.taskQueueService, h)
-	if err != nil {
-		err = errors.WithStack(err)
-		grip.Error(err)
-		gimlet.WriteResponse(w, gimlet.MakeJSONErrorResponder(err))
-		return
-	}
-	if nextTask == nil {
-		// if the task is empty, still send it with an status ok and check it on the other side
-		grip.Info(message.Fields{
-			"op":      "next_task",
-			"message": "no task to assign to host",
-			"host_id": h.Id,
-		})
-		gimlet.WriteJSON(w, response)
-		return
+
+	// if the task queue exists, try to assign a task from it:
+	if taskQueue != nil {
+		// assign the task to a host and retrieve the task
+		nextTask, err = assignNextAvailableTask(taskQueue, as.taskQueueService, h)
+		if err != nil {
+			err = errors.WithStack(err)
+			grip.Error(err)
+			gimlet.WriteResponse(w, gimlet.MakeJSONErrorResponder(err))
+			return
+		}
 	}
 
+	// if we didn't find a task in the "primary" queue, then we
+	// try again from the alias queue. (this code runs if the
+	// primary queue doesn't exist or is empty)
+	if nextTask == nil {
+		// if we couldn't find a task in the task queue,
+		// check the alias queue...
+		aliasQueue, err := model.LoadDistroAliasTaskQueue(h.Distro.Id)
+		if err != nil {
+			gimlet.WriteResponse(w, gimlet.MakeJSONErrorResponder(err))
+			return
+		}
+		if aliasQueue != nil {
+			nextTask, err = assignNextAvailableTask(aliasQueue, as.taskAliasQueueService, h)
+			if err != nil {
+				gimlet.WriteResponse(w, gimlet.MakeJSONErrorResponder(err))
+				return
+			}
+		}
+
+		// if we haven't assigned a task here, then we need to
+		// return early.
+		if nextTask == nil {
+			// if the task is empty, still send it with an status ok and check it on the other side
+			grip.Info(message.Fields{
+				"op":      "next_task",
+				"message": "no task to assign to host",
+				"host_id": h.Id,
+			})
+			gimlet.WriteJSON(w, response)
+			return
+		}
+	}
+
+	// otherwise we've dispatched a task, so we
 	// mark the task as dispatched
 	if err := model.MarkTaskDispatched(nextTask, h.Id, h.Distro.Id); err != nil {
 		err = errors.WithStack(err)
