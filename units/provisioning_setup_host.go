@@ -237,7 +237,7 @@ func (j *setupHostJob) runHostSetup(ctx context.Context, targetHost *host.Host, 
 		// Do not set the host to running - hosts bootstrapped with user data
 		// are not considered done provisioning until user data has finished
 		// running.
-		if err := targetHost.SetProvisionedNotRunning(); err != nil {
+		if err = targetHost.SetProvisionedNotRunning(); err != nil {
 			return errors.Wrapf(err, "error marking host %s as provisioned", targetHost.Id)
 		}
 

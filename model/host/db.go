@@ -719,8 +719,8 @@ func FindByNeedsNewAgentMonitor() ([]Host, error) {
 	return hosts, err
 }
 
-// FindUserDataSpawnHostsProvisioning finds all hosts that have been provisioned
-// by the app server but are not yet running.
+// FindUserDataSpawnHostsProvisioning finds all spawn hosts that have been
+// provisioned by the app server but are still being provisioned by user data.
 func FindUserDataSpawnHostsProvisioning() ([]Host, error) {
 	bootstrapKey := bsonutil.GetDottedKeyName(DistroKey, distro.BootstrapMethodKey)
 	query := bson.M{

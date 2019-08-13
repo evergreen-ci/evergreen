@@ -158,10 +158,10 @@ func bootstrapUserData(ctx context.Context, env evergreen.Environment, h *host.H
 		}
 	}
 
-	if h.Distro.UserDataDonePath == "" {
-		return "", errors.Wrap(err, "cannot generate user data done file without a distro setting for its path")
+	markDone, err := h.MarkUserDataDoneCommand()
+	if err != nil {
+		return "", errors.Wrap(err, "error creating command to mark when user data is done")
 	}
-	markDone := fmt.Sprintf("touch %s", h.Distro.UserDataDonePath)
 
 	creds, err := h.GenerateJasperCredentials(ctx, env)
 	if err != nil {

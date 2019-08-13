@@ -764,6 +764,32 @@ func TestSetupSpawnHostCommand(t *testing.T) {
 	assert.Equal(t, expected, cmd)
 }
 
+func TestMarkUserDataDoneCommand(t *testing.T) {
+	for testName, testCase := range map[string]func(t *testing.T){
+		"FailsWithoutPathToDoneFile": func(t *testing.T) {
+			h := &Host{
+				Id: "id",
+			}
+			cmd, err := h.MarkUserDataDoneCommand()
+			assert.Error(t, err)
+			assert.Empty(t, cmd)
+		},
+		"SucceedsWithPathToDoneFile": func(t *testing.T) {
+			h := &Host{
+				Id:     "id",
+				Distro: distro.Distro{UserDataDonePath: "/etc/done.txt"},
+			}
+			cmd, err := h.MarkUserDataDoneCommand()
+			require.NoError(t, err)
+			assert.Equal(t, "touch /etc/done.txt", cmd)
+		},
+	} {
+		t.Run(testName, func(t *testing.T) {
+			testCase(t)
+		})
+	}
+}
+
 func newMockCredentials() (*rpc.Credentials, error) {
 	return rpc.NewCredentials([]byte("foo"), []byte("bar"), []byte("bat"))
 }
@@ -823,9 +849,9 @@ func withJasperServiceSetupAndTeardown(ctx context.Context, env *mock.Environmen
 		grip.Error(errors.Wrap(teardownJasperService(ctx, nil), "problem tearing down test"))
 		return errors.Wrapf(err, "problem setting up credentials collection")
 	}
-	var closeService jasper.CloseFunc
-	var err error
-	if closeService, err = setupJasperService(ctx, env, manager, h); err != nil {
+
+	closeService, err := setupJasperService(ctx, env, manager, h)
+	if err != nil {
 		grip.Error(errors.Wrap(teardownJasperService(ctx, closeService), "problem tearing down test"))
 		return err
 	}

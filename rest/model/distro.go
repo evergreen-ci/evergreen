@@ -182,6 +182,10 @@ func (apiDistro *APIDistro) BuildFromService(h interface{}) error {
 	apiDistro.Setup = ToAPIString(d.Setup)
 	apiDistro.Teardown = ToAPIString(d.Teardown)
 	apiDistro.User = ToAPIString(d.User)
+	if d.CloneMethod == "" {
+		d.CloneMethod = distro.CloneMethodLegacySSH
+	}
+	apiDistro.CloneMethod = ToAPIString(d.CloneMethod)
 	if d.BootstrapMethod == "" {
 		d.BootstrapMethod = distro.BootstrapMethodLegacySSH
 	}
@@ -190,10 +194,6 @@ func (apiDistro *APIDistro) BuildFromService(h interface{}) error {
 		d.CommunicationMethod = distro.CommunicationMethodLegacySSH
 	}
 	apiDistro.CommunicationMethod = ToAPIString(d.CommunicationMethod)
-	if d.CloneMethod == "" {
-		d.CloneMethod = distro.CloneMethodLegacySSH
-	}
-	apiDistro.CloneMethod = ToAPIString(d.CloneMethod)
 	apiDistro.ShellPath = ToAPIString(d.ShellPath)
 	apiDistro.CuratorDir = ToAPIString(d.CuratorDir)
 	apiDistro.ClientDir = ToAPIString(d.ClientDir)

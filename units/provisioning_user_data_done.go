@@ -18,10 +18,10 @@ import (
 )
 
 const (
-	userDataSpawnHostReadyJobName = "spawn-host-ready"
+	userDataDoneJobName = "user-data-done"
 )
 
-type userDataSpawnHostReadyJob struct {
+type userDataDoneJob struct {
 	HostID   string `bson:"host_id" json:"host_id" yaml:"host_id"`
 	job.Base `bson:"base" json:"base" yaml:"base"`
 
@@ -30,16 +30,16 @@ type userDataSpawnHostReadyJob struct {
 }
 
 func init() {
-	registry.AddJobType(userDataSpawnHostReadyJobName, func() amboy.Job {
-		return makeUserDataSpawnHostReadyJob()
+	registry.AddJobType(userDataDoneJobName, func() amboy.Job {
+		return makeUserDataDoneJob()
 	})
 }
 
-func makeUserDataSpawnHostReadyJob() *userDataSpawnHostReadyJob {
-	j := &userDataSpawnHostReadyJob{
+func makeUserDataDoneJob() *userDataDoneJob {
+	j := &userDataDoneJob{
 		Base: job.Base{
 			JobType: amboy.JobType{
-				Name:    userDataSpawnHostReadyJobName,
+				Name:    userDataDoneJobName,
 				Version: 0,
 			},
 		},
@@ -49,21 +49,20 @@ func makeUserDataSpawnHostReadyJob() *userDataSpawnHostReadyJob {
 	return j
 }
 
-// NewUserDataSpawnHostReadyJob creates a job that checks if the spawn
-// host is done running its user data if bootstrapped with user data. Once the
-// host is ready, the host is set to running.
-func NewUserDataSpawnHostReadyJob(env evergreen.Environment, h host.Host, id string) amboy.Job {
-	j := makeUserDataSpawnHostReadyJob()
+// NewUserDataDoneJob creates a job that checks if the host is done running its
+// user data if bootstrapped with user data.
+func NewUserDataDoneJob(env evergreen.Environment, h host.Host, id string) amboy.Job {
+	j := makeUserDataDoneJob()
 	j.host = &h
 	j.HostID = h.Id
 	j.env = env
 	j.SetPriority(1)
-	j.SetID(fmt.Sprintf("%s.%s.%s", userDataSpawnHostReadyJobName, j.HostID, id))
+	j.SetID(fmt.Sprintf("%s.%s.%s", userDataDoneJobName, j.HostID, id))
 
 	return j
 }
 
-func (j *userDataSpawnHostReadyJob) Run(ctx context.Context) {
+func (j *userDataDoneJob) Run(ctx context.Context) {
 	defer j.MarkComplete()
 
 	if err := j.populateIfUnset(); err != nil {
@@ -73,10 +72,10 @@ func (j *userDataSpawnHostReadyJob) Run(ctx context.Context) {
 
 	if j.host.Status != evergreen.HostProvisioning {
 		grip.Info(message.Fields{
-			"message": "skipping user data spawn host check because host is no longer provisioning",
-			"job":     j.ID(),
+			"message": "skipping user data check because host is no longer provisioning",
 			"host":    j.host.Id,
 			"distro":  j.host.Distro.Id,
+			"job":     j.ID(),
 		})
 		return
 	}
@@ -117,15 +116,15 @@ func (j *userDataSpawnHostReadyJob) Run(ctx context.Context) {
 	}
 
 	grip.Info(message.Fields{
-		"message":                 "host successfully provisioned",
-		"host":                    j.host.Id,
-		"distro":                  j.host.Distro.Id,
-		"job":                     j.ID(),
-		"provision_duration_secs": time.Since(j.host.CreationTime).Seconds(),
+		"message":              "host successfully provisioned",
+		"host":                 j.host.Id,
+		"distro":               j.host.Distro.Id,
+		"job":                  j.ID(),
+		"time_to_running_secs": time.Since(j.host.CreationTime).Seconds(),
 	})
 }
 
-func (j *userDataSpawnHostReadyJob) populateIfUnset() error {
+func (j *userDataDoneJob) populateIfUnset() error {
 	if j.host == nil {
 		h, err := host.FindOneId(j.HostID)
 		if err != nil {
@@ -134,6 +133,7 @@ func (j *userDataSpawnHostReadyJob) populateIfUnset() error {
 		if h == nil {
 			return errors.Errorf("could not find host %s for job %s", j.HostID, j.ID())
 		}
+		j.host = h
 	}
 
 	if j.env == nil {

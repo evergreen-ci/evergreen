@@ -972,17 +972,17 @@ func PopulatePeriodicBuilds(part int) amboy.QueueOperation {
 	}
 }
 
-// PopulateUserDataSpawnHostReadyJobs enqueues the jobs to check whether a spawn
-// host provisioning with user data is done provisioning yet.
-func PopulateUserDataSpawnHostReadyJobs(env evergreen.Environment) amboy.QueueOperation {
+// PopulateUserDataDoneJobs enqueues the jobs to check whether a spawn host
+// provisioning with user data is done running its user data script yet.
+func PopulateUserDataDoneJobs(env evergreen.Environment) amboy.QueueOperation {
 	return func(ctx context.Context, queue amboy.Queue) error {
 		hosts, err := host.FindUserDataSpawnHostsProvisioning()
-		if err != nil {
-			return errors.Wrap(err, "error finding user data spawn hosts that are still provisioning")
+		if err != nil && !adb.ResultsNotFound(errors.Cause(err)) {
+			return errors.Wrap(err, "error finding user data hosts that are still provisioning")
 		}
 		catcher := grip.NewBasicCatcher()
 		for _, h := range hosts {
-			catcher.Add(queue.Put(ctx, NewUserDataSpawnHostReadyJob(env, h, util.RoundPartOfMinute(15).Format(tsFormat))))
+			catcher.Add(queue.Put(ctx, NewUserDataDoneJob(env, h, util.RoundPartOfMinute(15).Format(tsFormat))))
 		}
 		return nil
 	}

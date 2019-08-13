@@ -668,3 +668,12 @@ func (h *Host) SetupSpawnHostCommand(settings *evergreen.Settings) (string, erro
 
 	return script, nil
 }
+
+// MarkUserDataDoneCommand
+func (h *Host) MarkUserDataDoneCommand() (string, error) {
+	if h.Distro.UserDataDonePath == "" {
+		return "", errors.New("cannot generate user data done file without a distro setting for its path")
+	}
+
+	return fmt.Sprintf("touch %s", h.Distro.UserDataDonePath), nil
+}
