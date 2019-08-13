@@ -83,16 +83,16 @@ func (uis *UIServer) patchPage(w http.ResponseWriter, r *http.Request) {
 	commitQueuePosition := 0
 	if projCtx.Patch.Alias == evergreen.CommitQueueAlias {
 		cq, err := commitqueue.FindOneId(project.Identifier)
+		// still display patch page if problem finding commit queue
 		if err != nil {
 			uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrap(err, "error finding commit queue"))
 		}
-		if cq == nil {
-			uis.LoggedError(w, r, http.StatusNotFound, errors.New("commit queue not found"))
-		}
-		commitQueuePosition = cq.FindItem(projCtx.Patch.Id.Hex())
-		// if CLI commit queue, an item not on the queue may be paused
-		if commitQueuePosition < 0 && projCtx.ProjectRef.CommitQueue.PatchType != commitqueue.CLIPatchType {
-			uis.LoggedError(w, r, http.StatusNotFound, errors.New("item not on commit queue"))
+		if cq != nil {
+			commitQueuePosition = cq.FindItem(projCtx.Patch.Id.Hex())
+			// if CLI commit queue, an item not on the queue may be paused
+			if commitQueuePosition < 0 && projCtx.ProjectRef.CommitQueue.PatchType != commitqueue.CLIPatchType {
+				uis.LoggedError(w, r, http.StatusNotFound, errors.New("item not on commit queue"))
+			}
 		}
 	}
 
