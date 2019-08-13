@@ -263,10 +263,16 @@ func (pc *MockCommitQueueConnector) CommitQueueRemoveItem(id, item string) (bool
 }
 
 func (pc *MockCommitQueueConnector) IsItemOnCommitQueue(id, item string) (bool, error) {
-	if _, ok := pc.Queue[id]; !ok {
-		return false, nil
+	queue, ok := pc.Queue[id]
+	if !ok {
+		return false, errors.Errorf("can't get commit queue for id '%s'", id)
 	}
-	return true, nil
+	for _, queueItem := range queue {
+		if restModel.FromAPIString(queueItem.Issue) == item {
+			return true, nil
+		}
+	}
+	return false, nil
 }
 
 func (pc *MockCommitQueueConnector) CommitQueueClearAll() (int, error) {
