@@ -25,15 +25,17 @@ func createValidFilter() TaskReliabilityFilter {
 	tasks := []string{"task1", "task2"}
 
 	return TaskReliabilityFilter{
-		Project:      project,
-		Requesters:   requesters,
-		AfterDate:    day1,
-		BeforeDate:   day2,
-		Tasks:        tasks,
-		GroupBy:      stats.GroupByDistro,
-		GroupNumDays: 1,
-		Sort:         stats.SortLatestFirst,
-		Limit:        MaxQueryLimit,
+		StatsFilter: stats.StatsFilter{
+			Project:      project,
+			Requesters:   requesters,
+			AfterDate:    day1,
+			BeforeDate:   day2,
+			Tasks:        tasks,
+			GroupBy:      stats.GroupByDistro,
+			GroupNumDays: 1,
+			Sort:         stats.SortLatestFirst,
+			Limit:        MaxQueryLimit,
+		},
 		Significance: DefaultSignificance,
 	}
 
@@ -254,9 +256,12 @@ func TestValidateForTaskReliability(t *testing.T) {
 	assert := assert.New(t)
 	require := require.New(t)
 
-	filter := TaskReliabilityFilter{}
-	filter.Limit = MaxQueryLimit + 1
-	filter.Significance = MaxSignificanceLimit + 1
+	filter := TaskReliabilityFilter{
+		StatsFilter: stats.StatsFilter{
+			Limit: MaxQueryLimit + 1,
+		},
+		Significance: MaxSignificanceLimit + 1,
+	}
 	err := filter.ValidateForTaskReliability()
 	require.Error(err)
 	message := err.Error()
