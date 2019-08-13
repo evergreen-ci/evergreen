@@ -3,7 +3,6 @@ package units
 import (
 	"context"
 	"fmt"
-	"time"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/host"
@@ -71,17 +70,11 @@ func (j *userDataDoneJob) Run(ctx context.Context) {
 	}
 
 	if j.host.Status != evergreen.HostProvisioning {
-		grip.Info(message.Fields{
-			"message": "skipping user data check because host is no longer provisioning",
-			"host":    j.host.Id,
-			"distro":  j.host.Distro.Id,
-			"job":     j.ID(),
-		})
 		return
 	}
 
-	path ,err := j.host.UserDataDoneFilePath()
-	if err !== nil {
+	path, err := j.host.UserDataDoneFilePath()
+	if err != nil {
 		grip.Error(message.WrapError(err, message.Fields{
 			"message": "error getting user data done file path",
 			"host":    j.host.Id,

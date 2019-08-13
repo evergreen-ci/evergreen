@@ -58,7 +58,7 @@ func TestUserDataDoneJob(t *testing.T) {
 			path, err := h.UserDataDoneFilePath()
 			require.NoError(t, err)
 
-			expectedCmd := []string{"mkdir", "-p", h.Distro.ClientDir, "&&", "ls", path}
+			expectedCmd := []string{"ls", path}
 			require.Equal(t, len(expectedCmd), len(info.Options.Args))
 
 			for i := range expectedCmd {
