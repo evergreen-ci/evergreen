@@ -157,7 +157,7 @@ func (apiDistro *APIDistro) BuildFromService(h interface{}) error {
 	apiDistro.Name = ToAPIString(d.Id)
 	apiDistro.UserSpawnAllowed = d.SpawnAllowed
 	apiDistro.Provider = ToAPIString(d.Provider)
-	if d.ProviderSettings != nil && (d.Provider == evergreen.ProviderNameEc2Auto || d.Provider == evergreen.ProviderNameEc2OnDemand || d.Provider == evergreen.ProviderNameEc2Spot || d.Provider == evergreen.ProviderNameEc2Fleet) {
+	if d.ProviderSettings != nil && cloud.IsEc2Provider(d.Provider) {
 		ec2Settings := &cloud.EC2ProviderSettings{}
 		err := mapstructure.Decode(d.ProviderSettings, ec2Settings)
 		if err != nil {

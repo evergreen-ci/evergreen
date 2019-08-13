@@ -458,3 +458,10 @@ func validateEc2DescribeVpcsOutput(describeVpcsOutput *ec2aws.DescribeVpcsOutput
 
 	return nil
 }
+
+func IsEc2Provider(provider string) bool {
+	return provider == evergreen.ProviderNameEc2Auto ||
+		provider == evergreen.ProviderNameEc2OnDemand ||
+		provider == evergreen.ProviderNameEc2Spot ||
+		provider == evergreen.ProviderNameEc2Fleet
+}
