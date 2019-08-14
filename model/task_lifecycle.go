@@ -448,7 +448,6 @@ func MarkEnd(t *task.Task, caller string, finishTime time.Time, detail *apimodel
 				"status":     t.DisplayTask.Status,
 				"time_taken": t.TimeTaken,
 			}))
-			return errors.Wrap(err, "error updating cached display task")
 		}
 		if err = checkResetDisplayTask(t.DisplayTask); err != nil {
 			return errors.Wrap(err, "can't check display task reset")
@@ -790,7 +789,17 @@ func updateDisplayTaskAndCache(t *task.Task) error {
 	if err != nil {
 		return errors.Wrap(err, "error updating display task")
 	}
-	return build.UpdateCachedTask(t.DisplayTask, 0)
+	err = build.UpdateCachedTask(t.DisplayTask, 0)
+	if err != nil {
+		grip.Error(message.WrapError(err, message.Fields{
+			"message":  "failed to update cached display task",
+			"function": "updateDisplayTaskAndCache",
+			"build_id": t.BuildId,
+			"task_id":  t.Id,
+			"status":   t.Status,
+		}))
+	}
+	return nil
 }
 
 // RestartFailedTasks attempts to restart failed tasks that started between 2 times
