@@ -230,7 +230,9 @@ mciModule.controller('PerfController', function PerfController(
     var chartsScope = scope.$new()
     for (var i = 0; i < tests.length; i++) {
       var key = tests[i];
-      var series = trendSamples.seriesByName[key] || [];
+      var series = _.filter(trendSamples.seriesByName[key] || [], function(sample) {
+        return sample[scope.metricSelect.value.key];
+      });
       var containerId = 'perf-trendchart-' + cleanId(taskId) + '-' + i;
       var cps = scope.changePoints || {};
       var bfs = scope.buildFailures || {};
