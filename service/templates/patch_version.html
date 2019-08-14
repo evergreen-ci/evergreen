@@ -28,7 +28,12 @@ Evergreen - Configure Patch
       <a href="/version/[[patch.Version]]">View Existing Tasks&hellip;</a>
     </div>
     <div ng-show="patch.Version.length == 0">
-      <h3>This patch is at position [[commitQueuePosition]] in the commit queue.</h3>
+      <div ng-show="commitQueuePosition >= 0">
+        <h3>This patch is at position [[commitQueuePosition]] in the commit queue.</h3>
+      </div>
+      <div ng-show="commitQueuePosition < 0">
+        <h3>This patch is not on the queue (paused or deleted).</h3>
+      </div>
     </div>
   </div>
   <div ng-show="patch.Alias != '__commit_queue'">
