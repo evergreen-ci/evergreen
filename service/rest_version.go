@@ -182,7 +182,6 @@ func (restapi restAPI) getRecentVersions(w http.ResponseWriter, r *http.Request)
 			Revision: version.Revision,
 			Message:  version.Message,
 			Builds:   make(versionByBuild),
-			//Tasks:    make(versionStatusByTask),
 		}
 
 		result.Versions = append(result.Versions, versionInfo)
