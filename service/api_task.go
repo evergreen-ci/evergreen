@@ -305,7 +305,7 @@ func (as *APIServer) EndTask(w http.ResponseWriter, r *http.Request) {
 
 // assignNextAvailableTask gets the next task from the queue and sets the running task field
 // of currentHost.
-func assignNextAvailableTask(taskQueue *model.TaskQueue, taskQueueService model.TaskQueueService, currentHost *host.Host) (*task.Task, error) {
+func assignNextAvailableTask(ctx context.Context, taskQueue *model.TaskQueue, taskQueueService model.TaskQueueService, currentHost *host.Host) (*task.Task, error) {
 	if currentHost.RunningTask != "" {
 		grip.Error(message.Fields{
 			"message":      "tried to assign task to a host already running task",
@@ -356,22 +356,15 @@ func assignNextAvailableTask(taskQueue *model.TaskQueue, taskQueueService model.
 	// continue must be preceded by dequeueing the current task from the
 	// queue to prevent an infinite loop.
 	for taskQueue.Length() != 0 {
+		if err := ctx.Err(); err != nil {
+			return nil, errors.WithStack(err)
+		}
+
 		var queueItem *model.TaskQueueItem
 		switch d.PlannerSettings.Version {
 		case evergreen.PlannerVersionTunable, evergreen.PlannerVersionRevised:
 			queueItem, err = taskQueueService.RefreshFindNextTask(d.Id, spec)
 			if err != nil {
-				grip.Critical(message.WrapError(err, message.Fields{
-					"message":                  "problem getting next task for the given host",
-					"distro_id":                d.Id,
-					"host_id":                  currentHost.Id,
-					"host_last_task_id":        currentHost.LastTask,
-					"taskspec_group":           spec.Group,
-					"taskspec_build_variant":   spec.BuildVariant,
-					"taskspec_version":         spec.Version,
-					"taskspec_project_id":      spec.ProjectID,
-					"taskspec_group_max_hosts": spec.GroupMaxHosts,
-				}))
 				return nil, errors.Wrap(err, "problem getting next task")
 			}
 		default:
@@ -399,39 +392,12 @@ func assignNextAvailableTask(taskQueue *model.TaskQueue, taskQueueService model.
 		}
 
 		if nextTask == nil {
-			grip.Error(message.Fields{
-				"message":                  "cannot find a db.tasks document for the next task to be assigned to this host",
-				"distro_id":                d.Id,
-				"host_id":                  currentHost.Id,
-				"next_task_id":             queueItem.Id,
-				"last_task_id":             currentHost.LastTask,
-				"taskspec_group":           spec.Group,
-				"taskspec_build_variant":   spec.BuildVariant,
-				"taskspec_version":         spec.Version,
-				"taskspec_project_id":      spec.ProjectID,
-				"taskspec_group_max_hosts": spec.GroupMaxHosts,
-			})
-
 			// An error is not returned in this situation due to https://jira.mongodb.org/browse/EVG-6214
 			return nil, nil
 		}
 
 		// validate that the task can be run, if not fetch the next one in the queue.
 		if !nextTask.IsDispatchable() {
-			grip.Warning(message.Fields{
-				"message":                  "skipping un-dispatchable task",
-				"distro_id":                d.Id,
-				"task_id":                  nextTask.Id,
-				"status":                   nextTask.Status,
-				"activated":                nextTask.Activated,
-				"host_id":                  currentHost.Id,
-				"taskspec_group":           spec.Group,
-				"taskspec_build_variant":   spec.BuildVariant,
-				"taskspec_version":         spec.Version,
-				"taskspec_project_id":      spec.ProjectID,
-				"taskspec_group_max_hosts": spec.GroupMaxHosts,
-			})
-
 			// Dequeue the task so we don't get it on another iteration of the loop.
 			grip.Warning(message.WrapError(taskQueue.DequeueTask(nextTask.Id), message.Fields{
 				"message":                  "nextTask.IsDispatchable() is false, but there was an issue dequeuing the task",
@@ -460,13 +426,6 @@ func assignNextAvailableTask(taskQueue *model.TaskQueue, taskQueueService model.
 		}
 
 		if !projectRef.Enabled {
-			grip.Warning(message.Fields{
-				"task_id": nextTask.Id,
-				"project": nextTask.Project,
-				"host_id": currentHost.Id,
-				"message": "skipping task because of disabled project",
-			})
-
 			grip.Warning(message.WrapError(taskQueue.DequeueTask(nextTask.Id), message.Fields{
 				"message":                  "projectRef.Enabled is false, but there was an issue dequeuing the task",
 				"distro_id":                nextTask.DistroId,
@@ -514,6 +473,8 @@ func assignNextAvailableTask(taskQueue *model.TaskQueue, taskQueueService model.
 func (as *APIServer) NextTask(w http.ResponseWriter, r *http.Request) {
 	begin := time.Now()
 	h := MustHaveHost(r)
+	ctx, cancel := context.WithCancel(r.Context())
+	defer cancel()
 
 	if h.AgentStartTime.IsZero() {
 		if err := h.SetAgentStartTime(); err != nil {
@@ -616,7 +577,7 @@ func (as *APIServer) NextTask(w http.ResponseWriter, r *http.Request) {
 	// if the task queue exists, try to assign a task from it:
 	if taskQueue != nil {
 		// assign the task to a host and retrieve the task
-		nextTask, err = assignNextAvailableTask(taskQueue, as.taskQueueService, h)
+		nextTask, err = assignNextAvailableTask(ctx, taskQueue, as.taskQueueService, h)
 		if err != nil {
 			err = errors.WithStack(err)
 			grip.Error(err)
@@ -637,7 +598,7 @@ func (as *APIServer) NextTask(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		if aliasQueue != nil {
-			nextTask, err = assignNextAvailableTask(aliasQueue, as.taskAliasQueueService, h)
+			nextTask, err = assignNextAvailableTask(ctx, aliasQueue, as.taskAliasQueueService, h)
 			if err != nil {
 				gimlet.WriteResponse(w, gimlet.MakeJSONErrorResponder(err))
 				return
