@@ -790,7 +790,6 @@ func TestMarkUserDataDoneCommand(t *testing.T) {
 	}
 }
 
-// kim: TODO
 func TestSetUserDataHostProvisioned(t *testing.T) {
 	for testName, testCase := range map[string]func(t *testing.T, h *Host){
 		"Succeeds": func(t *testing.T, h *Host) {
