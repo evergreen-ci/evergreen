@@ -418,6 +418,26 @@ func TestHostCreateSecret(t *testing.T) {
 	})
 }
 
+func TestHostSetAgentStartTime(t *testing.T) {
+	require.NoError(t, db.Clear(Collection))
+	defer func() {
+		assert.NoError(t, db.Clear(Collection))
+	}()
+
+	h := &Host{
+		Id: "id",
+	}
+	require.NoError(t, h.Insert())
+
+	now := time.Now()
+	require.NoError(t, h.SetAgentStartTime())
+	assert.True(t, now.Sub(h.AgentStartTime) < time.Second)
+
+	dbHost, err := FindOneId(h.Id)
+	require.NoError(t, err)
+	assert.True(t, now.Sub(dbHost.AgentStartTime) < time.Second)
+}
+
 func TestHostSetExpirationTime(t *testing.T) {
 
 	Convey("With a host", t, func() {

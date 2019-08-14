@@ -69,6 +69,7 @@ var (
 	ProvisionAttemptsKey         = bsonutil.MustHaveTag(Host{}, "ProvisionAttempts")
 	TaskCountKey                 = bsonutil.MustHaveTag(Host{}, "TaskCount")
 	StartTimeKey                 = bsonutil.MustHaveTag(Host{}, "StartTime")
+	AgentStartTimeKey            = bsonutil.MustHaveTag(Host{}, "AgentStartTime")
 	ComputeCostPerHourKey        = bsonutil.MustHaveTag(Host{}, "ComputeCostPerHour")
 	TotalCostKey                 = bsonutil.MustHaveTag(Host{}, "TotalCost")
 	TotalIdleTimeKey             = bsonutil.MustHaveTag(Host{}, "TotalIdleTime")

@@ -545,6 +545,11 @@ func TestNextTask(t *testing.T) {
 					So(nextTask.Status, ShouldEqual, evergreen.TaskDispatched)
 				})
 			})
+			Convey("and should set the agent start time", func() {
+				dbHost, err := host.FindOneId(sampleHost.Id)
+				require.NoError(t, err)
+				So(dbHost.AgentStartTime.Second(), ShouldNotEqual, 0)
+			})
 			Convey("with degraded mode set", func() {
 				serviceFlags := evergreen.ServiceFlags{
 					TaskDispatchDisabled: true,
