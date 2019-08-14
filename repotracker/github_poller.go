@@ -58,7 +58,7 @@ func githubCommitToRevision(repoCommit *github.RepositoryCommit) model.Revision 
 
 // GetRemoteConfig fetches the contents of a remote github repository's
 // configuration data as at a given revision
-func (gRepoPoller *GithubRepositoryPoller) GetRemoteConfig(ctx context.Context, projectFileRevision string) (*model.Project, *model.ParserProject, error) {
+func (gRepoPoller *GithubRepositoryPoller) GetRemoteConfig(ctx context.Context, projectFileRevision string) (projectConfig *model.Project, err error) {
 	var cancel context.CancelFunc
 	ctx, cancel = context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
@@ -70,22 +70,21 @@ func (gRepoPoller *GithubRepositoryPoller) GetRemoteConfig(ctx context.Context, 
 		projectRef.Owner, projectRef.Repo, projectRef.RemotePath,
 		projectFileRevision)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 
 	projectFileBytes, err := base64.StdEncoding.DecodeString(*githubFile.Content)
 	if err != nil {
-		return nil, nil, thirdparty.FileDecodeError{Message: err.Error()}
+		return nil, thirdparty.FileDecodeError{Message: err.Error()}
 	}
 
-	projectConfig := &model.Project{}
-	pp, err := model.LoadProjectInto(projectFileBytes, projectRef.Identifier, projectConfig)
-
+	projectConfig = &model.Project{}
+	err = model.LoadProjectInto(projectFileBytes, projectRef.Identifier, projectConfig)
 	if err != nil {
-		return nil, nil, thirdparty.YAMLFormatError{Message: err.Error()}
+		return nil, thirdparty.YAMLFormatError{Message: err.Error()}
 	}
 
-	return projectConfig, pp, nil
+	return projectConfig, nil
 }
 
 // GetRemoteConfig fetches the contents of a remote github repository's

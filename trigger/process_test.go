@@ -324,7 +324,7 @@ func TestProjectTriggerIntegration(t *testing.T) {
 		assert.Equal(upstreamTask.Id, v.TriggerID)
 		assert.Equal("task", v.TriggerType)
 		assert.Equal(e.ID, v.TriggerEvent)
-		assert.NotNil(v.ParserProject)
+		assert.NotEmpty(v.Config)
 	}
 	builds, err := build.Find(build.ByVersion(downstreamVersions[0].Id))
 	assert.NoError(err)

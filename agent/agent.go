@@ -267,7 +267,7 @@ func (a *Agent) fetchProjectConfig(ctx context.Context, tc *taskContext) error {
 		return errors.Wrap(err, "error getting version")
 	}
 	project := &model.Project{}
-	_, err = model.LoadProjectInto([]byte(v.Config), v.Identifier, project)
+	err = model.LoadProjectInto([]byte(v.Config), v.Identifier, project)
 	if err != nil {
 		return errors.Wrapf(err, "error reading project config")
 	}
