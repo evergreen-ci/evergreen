@@ -64,12 +64,11 @@ type restVersion struct {
 }
 
 type versionLessInfo struct {
-	Id       string              `json:"version_id"`
-	Author   string              `json:"author"`
-	Revision string              `json:"revision"`
-	Message  string              `json:"message"`
-	Builds   versionByBuild      `json:"builds"`
-	Tasks    versionStatusByTask `json:"tasks"`
+	Id       string         `json:"version_id"`
+	Author   string         `json:"author"`
+	Revision string         `json:"revision"`
+	Message  string         `json:"message"`
+	Builds   versionByBuild `json:"builds"`
 }
 
 type versionStatus struct {
@@ -81,9 +80,12 @@ type versionStatus struct {
 type versionByBuild map[string]versionBuildInfo
 
 type versionBuildInfo struct {
-	Id   string `json:"build_id"`
-	Name string `json:"name"`
+	Id    string               `json:"build_id"`
+	Name  string               `json:"name"`
+	Tasks versionByBuildByTask `json:"tasks"`
 }
+
+type versionByBuildByTask map[string]versionStatus
 
 type versionStatusByTask map[string]versionStatus
 
@@ -180,7 +182,7 @@ func (restapi restAPI) getRecentVersions(w http.ResponseWriter, r *http.Request)
 			Revision: version.Revision,
 			Message:  version.Message,
 			Builds:   make(versionByBuild),
-			Tasks:    make(versionStatusByTask),
+			//Tasks:    make(versionStatusByTask),
 		}
 
 		result.Versions = append(result.Versions, versionInfo)
@@ -223,15 +225,16 @@ func (r *recentVersionsContent) populateBuildsAndTasks(versionIds []string, vers
 		return errors.Wrap(err, "Error finding recent versions")
 	}
 	tasks, err := task.Find(task.ByVersions(versionIds).
-		WithFields(task.IdKey, task.DisplayNameKey, task.StatusKey, task.TimeTakenKey, task.VersionKey))
+		WithFields(task.IdKey, task.DisplayNameKey, task.StatusKey, task.TimeTakenKey, task.VersionKey, task.BuildVariantKey))
 	if err != nil {
 		return errors.Wrap(err, "Error finding recent tasks for recent versions")
 	}
 
 	for _, b := range builds {
 		buildInfo := versionBuildInfo{
-			Id:   b.Id,
-			Name: b.DisplayName,
+			Id:    b.Id,
+			Name:  b.DisplayName,
+			Tasks: make(versionByBuildByTask),
 		}
 		versionInfo := r.Versions[versionIdx[b.Version]]
 		versionInfo.Builds[b.BuildVariant] = buildInfo
@@ -242,8 +245,14 @@ func (r *recentVersionsContent) populateBuildsAndTasks(versionIds []string, vers
 			Status:    t.Status,
 			TimeTaken: t.TimeTaken,
 		}
+		// save task with the corresponding build for the corresponding version
 		versionInfo := r.Versions[versionIdx[t.Version]]
-		versionInfo.Tasks[t.DisplayName] = taskInfo
+		buildInfo := versionInfo.Builds[t.BuildVariant]
+		if buildInfo.Tasks == nil {
+			buildInfo.Tasks = make(versionByBuildByTask)
+			buildInfo.Id = t.BuildId
+		}
+		buildInfo.Tasks[t.DisplayName] = taskInfo
 	}
 	return nil
 }

@@ -128,11 +128,12 @@ func TestGetRecentVersions(t *testing.T) {
 			builds = append(builds, build)
 
 			task := &task.Task{
-				Id:          fmt.Sprintf(taskIdPreface, i),
-				Version:     versions[i].Id,
-				DisplayName: "some-task-name",
-				Status:      "success",
-				TimeTaken:   time.Duration(100 * time.Millisecond),
+				Id:           fmt.Sprintf(taskIdPreface, i),
+				Version:      versions[i].Id,
+				DisplayName:  "some-task-name",
+				Status:       "success",
+				TimeTaken:    time.Duration(100 * time.Millisecond),
+				BuildVariant: build.BuildVariant,
 			}
 			So(task.Insert(), ShouldBeNil)
 			tasks = append(tasks, task)
@@ -191,7 +192,7 @@ func TestGetRecentVersions(t *testing.T) {
 				So(jsonBuild["build_id"], ShouldEqual, builds[i].Id)
 				So(jsonBuild["name"], ShouldEqual, builds[i].DisplayName)
 
-				_jsonTasks, ok := jsonVersion["tasks"]
+				_jsonTasks, ok := jsonBuild["tasks"]
 				So(ok, ShouldBeTrue)
 				jsonTasks, ok := _jsonTasks.(map[string]interface{})
 				So(ok, ShouldBeTrue)
