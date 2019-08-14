@@ -30,41 +30,43 @@ mciModule.factory('TrendSamples', function() {
     for (var i = 0; i < samples.length; i++) {
       var sample = samples[i];
 
-      for (var j = 0; j < sample.data.results.length; j++) {
-        var rec = sample.data.results[j];
+      if (sample) {
+        for (var j = 0; j < sample.data.results.length; j++) {
+          var rec = sample.data.results[j];
 
-        // Create entry if not exists
-        if (!(rec.name in this.seriesByName)) {
-          this.seriesByName[rec.name] = [];
-        }
+          // Create entry if not exists
+          if (!(rec.name in this.seriesByName)) {
+            this.seriesByName[rec.name] = [];
+          }
 
-        var maxValues = _.max(rec.results, function(d) {
-          return null;
-        })
-
-        // Sort items by thread level
-        // Change dict to array
-        var threadResults = _.chain(rec.results)
-          .omit(NON_THREAD_LEVELS)
-          .map(function(v, k) {
-            _.each(_.keys(v), (d) => metricsSet.add(d))
-            v.threadLevel = k
-            return v
+          var maxValues = _.max(rec.results, function(d) {
+            return null;
           })
-          .sortBy('-threadLevel')
-          .value()
 
-        let newSample = {
-          revision: sample.revision,
-          task_id: sample.task_id,
-          order: sample.order,
-          createTime: sample.create_time,
-          threadResults: threadResults,
+          // Sort items by thread level
+          // Change dict to array
+          var threadResults = _.chain(rec.results)
+            .omit(NON_THREAD_LEVELS)
+            .map(function(v, k) {
+              _.each(_.keys(v), (d) => metricsSet.add(d))
+              v.threadLevel = k
+              return v
+            })
+            .sortBy('-threadLevel')
+            .value()
+
+          let newSample = {
+            revision: sample.revision,
+            task_id: sample.task_id,
+            order: sample.order,
+            createTime: sample.create_time,
+            threadResults: threadResults,
+          }
+
+          Object.assign(newSample, maxValues);
+
+          this.seriesByName[rec.name].push(newSample);
         }
-
-        Object.assign(newSample, maxValues);
-
-        this.seriesByName[rec.name].push(newSample);
       }
     }
 
