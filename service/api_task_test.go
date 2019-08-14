@@ -115,6 +115,9 @@ func getStartTaskEndpoint(t *testing.T, as *APIServer, hostId, taskId string) *h
 }
 
 func TestAssignNextAvailableTaskWithPlannerSettingVersionLegacy(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	Convey("with a task queue and a host", t, func() {
 		settings := distro.PlannerSettings{
 			Version: evergreen.PlannerVersionLegacy,
@@ -176,7 +179,7 @@ func TestAssignNextAvailableTaskWithPlannerSettingVersionLegacy(t *testing.T) {
 		So(pref.Insert(), ShouldBeNil)
 
 		Convey("a host should get the task at the top of the queue", func() {
-			t, err := assignNextAvailableTask(taskQueue, model.NewTaskDispatchService(taskQueueServiceTTL), &theHostWhoCanBoastTheMostRoast)
+			t, err := assignNextAvailableTask(ctx, taskQueue, model.NewTaskDispatchService(taskQueueServiceTTL), &theHostWhoCanBoastTheMostRoast)
 			So(err, ShouldBeNil)
 			So(t, ShouldNotBeNil)
 			So(t.Id, ShouldEqual, "task1")
@@ -200,7 +203,7 @@ func TestAssignNextAvailableTaskWithPlannerSettingVersionLegacy(t *testing.T) {
 					Status: evergreen.TaskStarted,
 				}
 				So(undispatchedTask.Insert(), ShouldBeNil)
-				t, err := assignNextAvailableTask(taskQueue, model.NewTaskDispatchService(taskQueueServiceTTL), &theHostWhoCanBoastTheMostRoast)
+				t, err := assignNextAvailableTask(ctx, taskQueue, model.NewTaskDispatchService(taskQueueServiceTTL), &theHostWhoCanBoastTheMostRoast)
 				So(err, ShouldBeNil)
 				So(t.Id, ShouldEqual, "task2")
 
@@ -211,14 +214,14 @@ func TestAssignNextAvailableTaskWithPlannerSettingVersionLegacy(t *testing.T) {
 			Convey("an empty task queue should return a nil task", func() {
 				taskQueue.Queue = []model.TaskQueueItem{}
 				So(taskQueue.Save(), ShouldBeNil)
-				t, err := assignNextAvailableTask(taskQueue, model.NewTaskDispatchService(taskQueueServiceTTL), &theHostWhoCanBoastTheMostRoast)
+				t, err := assignNextAvailableTask(ctx, taskQueue, model.NewTaskDispatchService(taskQueueServiceTTL), &theHostWhoCanBoastTheMostRoast)
 				So(err, ShouldBeNil)
 				So(t, ShouldBeNil)
 			})
 			Convey("a tasks queue with a task that does not exist should continue", func() {
 				taskQueue.Queue = []model.TaskQueueItem{{Id: "notatask"}}
 				So(taskQueue.Save(), ShouldBeNil)
-				t, err := assignNextAvailableTask(taskQueue, model.NewTaskDispatchService(taskQueueServiceTTL), &theHostWhoCanBoastTheMostRoast)
+				t, err := assignNextAvailableTask(ctx, taskQueue, model.NewTaskDispatchService(taskQueueServiceTTL), &theHostWhoCanBoastTheMostRoast)
 				So(err, ShouldBeNil)
 				So(t, ShouldBeNil)
 			})
@@ -263,7 +266,7 @@ func TestAssignNextAvailableTaskWithPlannerSettingVersionLegacy(t *testing.T) {
 				}
 				So(taskQueue.Save(), ShouldBeNil)
 				Convey("the task that is in the other host should not be assigned to another host", func() {
-					t, err := assignNextAvailableTask(taskQueue, model.NewTaskDispatchService(taskQueueServiceTTL), &h2)
+					t, err := assignNextAvailableTask(ctx, taskQueue, model.NewTaskDispatchService(taskQueueServiceTTL), &h2)
 					So(err, ShouldBeNil)
 					So(t, ShouldNotBeNil)
 					So(t.Id, ShouldEqual, t2.Id)
@@ -272,7 +275,7 @@ func TestAssignNextAvailableTaskWithPlannerSettingVersionLegacy(t *testing.T) {
 					So(h.RunningTask, ShouldEqual, t2.Id)
 				})
 				Convey("a host with a running task should return an error", func() {
-					_, err := assignNextAvailableTask(taskQueue, model.NewTaskDispatchService(taskQueueServiceTTL), &anotherHost)
+					_, err := assignNextAvailableTask(ctx, taskQueue, model.NewTaskDispatchService(taskQueueServiceTTL), &anotherHost)
 					So(err, ShouldNotBeNil)
 				})
 			})
@@ -281,6 +284,9 @@ func TestAssignNextAvailableTaskWithPlannerSettingVersionLegacy(t *testing.T) {
 }
 
 func TestAssignNextAvailableTaskWithPlannerSettingVersionTunable(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	Convey("with a task queue and a host", t, func() {
 		settings := distro.PlannerSettings{
 			Version: evergreen.PlannerVersionTunable,
@@ -342,7 +348,7 @@ func TestAssignNextAvailableTaskWithPlannerSettingVersionTunable(t *testing.T) {
 		So(pref.Insert(), ShouldBeNil)
 
 		Convey("a host should get the task at the top of the queue", func() {
-			t, err := assignNextAvailableTask(taskQueue, model.NewTaskDispatchService(taskQueueServiceTTL), &theHostWhoCanBoastTheMostRoast)
+			t, err := assignNextAvailableTask(ctx, taskQueue, model.NewTaskDispatchService(taskQueueServiceTTL), &theHostWhoCanBoastTheMostRoast)
 			So(err, ShouldBeNil)
 			So(t, ShouldNotBeNil)
 			So(t.Id, ShouldEqual, "task1")
@@ -366,7 +372,7 @@ func TestAssignNextAvailableTaskWithPlannerSettingVersionTunable(t *testing.T) {
 					Status: evergreen.TaskStarted,
 				}
 				So(undispatchedTask.Insert(), ShouldBeNil)
-				t, err := assignNextAvailableTask(taskQueue, model.NewTaskDispatchService(taskQueueServiceTTL), &theHostWhoCanBoastTheMostRoast)
+				t, err := assignNextAvailableTask(ctx, taskQueue, model.NewTaskDispatchService(taskQueueServiceTTL), &theHostWhoCanBoastTheMostRoast)
 				So(err, ShouldBeNil)
 				So(t.Id, ShouldEqual, "task2")
 
@@ -377,14 +383,14 @@ func TestAssignNextAvailableTaskWithPlannerSettingVersionTunable(t *testing.T) {
 			Convey("an empty task queue should return a nil task", func() {
 				taskQueue.Queue = []model.TaskQueueItem{}
 				So(taskQueue.Save(), ShouldBeNil)
-				t, err := assignNextAvailableTask(taskQueue, model.NewTaskDispatchService(taskQueueServiceTTL), &theHostWhoCanBoastTheMostRoast)
+				t, err := assignNextAvailableTask(ctx, taskQueue, model.NewTaskDispatchService(taskQueueServiceTTL), &theHostWhoCanBoastTheMostRoast)
 				So(err, ShouldBeNil)
 				So(t, ShouldBeNil)
 			})
 			Convey("a tasks queue with a task that does not exist should error", func() {
 				taskQueue.Queue = []model.TaskQueueItem{{Id: "notatask"}}
 				So(taskQueue.Save(), ShouldBeNil)
-				t, err := assignNextAvailableTask(taskQueue, model.NewTaskDispatchService(taskQueueServiceTTL), &theHostWhoCanBoastTheMostRoast)
+				t, err := assignNextAvailableTask(ctx, taskQueue, model.NewTaskDispatchService(taskQueueServiceTTL), &theHostWhoCanBoastTheMostRoast)
 				So(err, ShouldBeNil)
 				So(t, ShouldBeNil)
 			})
@@ -429,7 +435,7 @@ func TestAssignNextAvailableTaskWithPlannerSettingVersionTunable(t *testing.T) {
 				}
 				So(taskQueue.Save(), ShouldBeNil)
 				Convey("the task that is in the other host should not be assigned to another host", func() {
-					t, err := assignNextAvailableTask(taskQueue, model.NewTaskDispatchService(taskQueueServiceTTL), &h2)
+					t, err := assignNextAvailableTask(ctx, taskQueue, model.NewTaskDispatchService(taskQueueServiceTTL), &h2)
 					So(err, ShouldBeNil)
 					So(t, ShouldNotBeNil)
 					So(t.Id, ShouldEqual, t2.Id)
@@ -438,7 +444,7 @@ func TestAssignNextAvailableTaskWithPlannerSettingVersionTunable(t *testing.T) {
 					So(h.RunningTask, ShouldEqual, t2.Id)
 				})
 				Convey("a host with a running task should return an error", func() {
-					_, err := assignNextAvailableTask(taskQueue, model.NewTaskDispatchService(taskQueueServiceTTL), &anotherHost)
+					_, err := assignNextAvailableTask(ctx, taskQueue, model.NewTaskDispatchService(taskQueueServiceTTL), &anotherHost)
 					So(err, ShouldNotBeNil)
 				})
 			})
