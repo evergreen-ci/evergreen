@@ -96,6 +96,10 @@ type AWSClient interface {
 	GetKey(context.Context, *host.Host) (string, error)
 
 	SetTags(context.Context, []string, *host.Host) error
+
+	GetVolumeIDs(context.Context, *host.Host) ([]string, error)
+
+	GetPublicDNSName(ctx context.Context, h *host.Host) (string, error)
 }
 
 // awsClientImpl wraps ec2.EC2.
@@ -719,6 +723,62 @@ func (c *awsClientImpl) SetTags(ctx context.Context, resources []string, h *host
 	return nil
 }
 
+func (c *awsClientImpl) GetVolumeIDs(ctx context.Context, h *host.Host) ([]string, error) {
+	if h.VolumeIDs != nil {
+		return h.VolumeIDs, nil
+	}
+
+	id, err := c.getHostInstanceID(ctx, h)
+	if err != nil {
+		return nil, errors.Wrapf(err, "can't get instance ID for '%s'", h.Id)
+	}
+
+	instance, err := c.GetInstanceInfo(ctx, id)
+	if err != nil {
+		return nil, errors.Wrap(err, "error getting instance info")
+	}
+
+	volumeIDs := []string{}
+	for _, device := range instance.BlockDeviceMappings {
+		volumeIDs = append(volumeIDs, *device.Ebs.VolumeId)
+	}
+
+	return volumeIDs, nil
+}
+
+func (c *awsClientImpl) GetPublicDNSName(ctx context.Context, h *host.Host) (string, error) {
+	if h.PublicDNSName != "" {
+		return h.PublicDNSName, nil
+	}
+
+	id, err := c.getHostInstanceID(ctx, h)
+	if err != nil {
+		return "", errors.Wrapf(err, "can't get instance ID for '%s'", h.Id)
+	}
+
+	instance, err := c.GetInstanceInfo(ctx, id)
+	if err != nil {
+		return "", errors.Wrap(err, "error getting instance info")
+	}
+
+	return *instance.PublicDnsName, nil
+}
+
+func (c *awsClientImpl) getHostInstanceID(ctx context.Context, h *host.Host) (string, error) {
+	id := h.Id
+	if isHostSpot(h) {
+		id, err := c.GetSpotInstanceId(ctx, h)
+		if err != nil {
+			return "", errors.Wrapf(err, "failed to get spot request info for %s", h.Id)
+		}
+		if id == "" {
+			return "", errors.WithStack(errors.New("spot instance does not yet have an instanceId"))
+		}
+	}
+
+	return id, nil
+}
+
 // awsClientMock mocks ec2.EC2.
 type awsClientMock struct { //nolint
 	*credentials.Credentials
@@ -1022,6 +1082,22 @@ func (c *awsClientMock) GetKey(ctx context.Context, h *host.Host) (string, error
 
 func (c *awsClientMock) SetTags(ctx context.Context, resources []string, h *host.Host) error {
 	return nil
+}
+
+func (c *awsClientMock) GetVolumeIDs(ctx context.Context, h *host.Host) ([]string, error) {
+	if h.VolumeIDs != nil {
+		return h.VolumeIDs, nil
+	}
+
+	return []string{}, nil
+}
+
+func (c *awsClientMock) GetPublicDNSName(h *host.Host) (string, error) {
+	if h.PublicDNSName != "" {
+		return h.PublicDNSName, nil
+	}
+
+	return "", nil
 }
 
 func makeAWSLogMessage(name, client string, args interface{}) message.Fields {
