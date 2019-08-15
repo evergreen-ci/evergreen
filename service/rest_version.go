@@ -150,7 +150,7 @@ func (restapi restAPI) getRecentVersions(w http.ResponseWriter, r *http.Request)
 	versions, err := model.VersionFind(model.VersionBySystemRequesterOrdered(projectId, start).Limit(l + 1))
 	if err != nil {
 		msg := fmt.Sprintf("Error finding recent versions of project '%v'", projectId)
-		grip.Errorf("%v: %+v", msg, err)
+		grip.Error(errors.Wrap(err, msg))
 		gimlet.WriteJSONInternalError(w, responseError{Message: msg})
 		return
 	}
@@ -189,7 +189,7 @@ func (restapi restAPI) getRecentVersions(w http.ResponseWriter, r *http.Request)
 	// Find all builds/tasks corresponding the set of version ids
 	if err = result.populateBuildsAndTasks(versionIds, versionIdx); err != nil {
 		msg := fmt.Sprintf("Error populating builds/tasks for recent versions of project '%v'", projectId)
-		grip.Errorf("%v: %+v", msg, err)
+		grip.Error(errors.Wrap(err, msg))
 		gimlet.WriteJSONInternalError(w, responseError{Message: msg})
 	}
 
@@ -208,7 +208,7 @@ func (restapi restAPI) getRecentVersions(w http.ResponseWriter, r *http.Request)
 		})
 		if err != nil {
 			msg := "error setting pages"
-			grip.Errorf("%v: %+v", msg, err)
+			grip.Error(errors.Wrap(err, msg))
 			gimlet.WriteJSONInternalError(w, responseError{Message: msg})
 		}
 		w.Header().Set("Link", responder.Pages().GetLinks(r.URL.String()))
@@ -217,14 +217,11 @@ func (restapi restAPI) getRecentVersions(w http.ResponseWriter, r *http.Request)
 }
 
 func (r *recentVersionsContent) populateBuildsAndTasks(versionIds []string, versionIdx map[string]int) error {
-	builds, err := build.Find(
-		build.ByVersions(versionIds).
-			WithFields(build.BuildVariantKey, build.DisplayNameKey, build.TasksKey, build.VersionKey))
+	builds, err := build.FindBuildsByVersions(versionIds)
 	if err != nil {
 		return errors.Wrap(err, "Error finding recent versions")
 	}
-	tasks, err := task.Find(task.ByVersions(versionIds).
-		WithFields(task.IdKey, task.DisplayNameKey, task.StatusKey, task.TimeTakenKey, task.VersionKey, task.BuildVariantKey))
+	tasks, err := task.FindTasksFromVersions(versionIds)
 	if err != nil {
 		return errors.Wrap(err, "Error finding recent tasks for recent versions")
 	}

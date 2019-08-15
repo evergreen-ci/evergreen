@@ -817,6 +817,11 @@ func FindAllTasksFromVersionWithDependencies(versionId string) ([]Task, error) {
 	return tasks, nil
 }
 
+func FindTasksFromVersions(versionIds []string) ([]Task, error) {
+	return Find(ByVersions(versionIds).
+		WithFields(IdKey, DisplayNameKey, StatusKey, TimeTakenKey, VersionKey, BuildVariantKey))
+}
+
 func FindAllTaskIDsFromBuild(buildId string) ([]string, error) {
 	q := db.Query(bson.M{BuildIdKey: buildId}).WithFields(IdKey)
 	return findAllTaskIDs(q)
