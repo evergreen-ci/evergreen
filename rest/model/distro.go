@@ -142,11 +142,11 @@ func (s *APIBootstrapSettings) BuildFromService(h interface{}) error {
 	}
 
 	s.Method = ToAPIString(settings.Method)
-	if s.Method == ToAPIString("") {
+	if FromAPIString(s.Method) == "" {
 		s.Method = ToAPIString(distro.BootstrapMethodLegacySSH)
 	}
 	s.Communication = ToAPIString(settings.Communication)
-	if s.Communication == ToAPIString("") {
+	if FromAPIString(s.Communication) == "" {
 		s.Communication = ToAPIString(distro.CommunicationMethodLegacySSH)
 	}
 	s.ShellPath = ToAPIString(settings.ShellPath)
@@ -315,7 +315,8 @@ func (apiDistro *APIDistro) ToService() (interface{}, error) {
 		if err != nil {
 			return nil, errors.Wrap(err, "Error converting from model.APIExpansion to distro.Expansion")
 		}
-		expansion, ok := i.(distro.Expansion)
+		var expansion distro.Expansion
+		expansion, ok = i.(distro.Expansion)
 		if !ok {
 			return nil, errors.Errorf("Unexpected type %T for distro.Expansion", i)
 		}

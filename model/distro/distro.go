@@ -38,13 +38,60 @@ type Distro struct {
 	FinderSettings    FinderSettings          `bson:"finder_settings" json:"finder_settings,omitempty" mapstructure:"finder_settings,omitempty"`
 }
 
+// BootstrapSettings encapsulates all settings related to bootstrapping hosts.
 type BootstrapSettings struct {
 	Method                string `bson:"method" json:"method" mapstructure:"method"`
 	Communication         string `bson:"communcation,omitempty" json:"communication,omitempty" mapstructure:"communcation,omitempty"`
+	ClientDir             string `bson:"client_dir,omitempty" json:"client_dir,omitempty" mapstructure:"client_dir,omitempty"`
+	CuratorDir            string `bson:"curator_dir,omitempty" json:"curator_dir,omitempty" mapstructure:"curator_dir,omitempty"`
 	JasperCredentialsPath string `json:"jasper_credentials_path,omitempty" bson:"jasper_credentials_path,omitempty" mapstructure:"jasper_credentials_path,omitempty"`
 	ShellPath             string `bson:"shell_path,omitempty" json:"shell_path,omitempty" mapstructure:"shell_path,omitempty"`
-	CuratorDir            string `bson:"curator_dir,omitempty" json:"curator_dir,omitempty" mapstructure:"curator_dir,omitempty"`
-	ClientDir             string `bson:"client_dir,omitempty" json:"client_dir,omitempty" mapstructure:"client_dir,omitempty"`
+}
+
+// Validate checks if all of the bootstrap settings are valid for legacy or
+// non-legacy bootstrapping.
+func (s *BootstrapSettings) Validate() error {
+	catcher := grip.NewBasicCatcher()
+	if !util.StringSliceContains(validBootstrapMethods, s.Method) {
+		catcher.Errorf("'%s' is not a valid bootstrap method", s.Method)
+	}
+
+	if !util.StringSliceContains(validCommunicationMethods, s.Communication) {
+		catcher.Errorf("'%s' is not a valid communication method", s.Communication)
+	}
+
+	switch s.Method {
+	case BootstrapMethodLegacySSH:
+		if s.Communication != CommunicationMethodLegacySSH {
+			catcher.New("bootstrapping hosts using legacy SSH is incompatible with non-legacy host communication")
+		}
+	default:
+		if s.Communication == CommunicationMethodLegacySSH {
+			catcher.New("communicating with hosts using legacy SSH is incompatible with non-legacy host bootstrapping")
+		}
+	}
+
+	if s.Method == BootstrapMethodLegacySSH || s.Communication == CommunicationMethodLegacySSH {
+		return catcher.Resolve()
+	}
+
+	if s.ClientDir == "" {
+		catcher.New("client directory cannot be empty for non-legacy bootstrapping")
+	}
+
+	if s.CuratorDir == "" {
+		catcher.New("curator directory cannot be empty for non-legacy bootstrapping")
+	}
+
+	if s.JasperCredentialsPath == "" {
+		catcher.New("Jasper credentials path cannot be empty for non-legacy bootstrapping")
+	}
+
+	if s.ShellPath == "" {
+		catcher.New("shell path cannot be empty for non-legacy bootstrapping")
+	}
+
+	return catcher.Resolve()
 }
 
 type PlannerSettings struct {
@@ -350,44 +397,6 @@ func ValidateArch(arch string) error {
 		return errors.Errorf("'%s' is not a recognized architecture", arch)
 	}
 	return nil
-}
-
-// ValidateBootstrapMethod checks that the bootstrap mechanism is one of the
-// supported methods.
-func ValidateBootstrapMethod(method string) error {
-	if !util.StringSliceContains(validBootstrapMethods, method) {
-		return errors.Errorf("'%s' is not a valid bootstrap method", method)
-	}
-	return nil
-}
-
-// ValidateCommunicationMethod checks that the communication mechanism is one of
-// the supported methods.
-func ValidateCommunicationMethod(method string) error {
-	if !util.StringSliceContains(validCommunicationMethods, method) {
-		return errors.Errorf("'%s' is not a valid communication method", method)
-	}
-	return nil
-}
-
-// ValidateBootstrapAndCommunicationMethods checks that the bootstrap and
-// communication mechanisms are recognized, and that the combination of the two
-// is allowed.
-func ValidateBootstrapAndCommunicationMethods(bootstrap string, communication string) error {
-	catcher := grip.NewBasicCatcher()
-	catcher.Add(ValidateBootstrapMethod(bootstrap))
-	catcher.Add(ValidateCommunicationMethod(communication))
-	switch bootstrap {
-	case BootstrapMethodLegacySSH:
-		if communication != CommunicationMethodLegacySSH {
-			catcher.New("bootstrapping hosts using legacy SSH is incompatible with non-legacy host communication")
-		}
-	default:
-		if communication == CommunicationMethodLegacySSH {
-			catcher.New("communicating with hosts using legacy SSH is incompatible with non-legacy host bootstrapping")
-		}
-	}
-	return catcher.Resolve()
 }
 
 // ValidateCloneMethod checks that the clone mechanism is one of the supported

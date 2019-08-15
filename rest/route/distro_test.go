@@ -964,7 +964,6 @@ func (s *DistroPatchByIDSuite) TestRunValidFinderSettingsVersion() {
 	s.Equal(model.ToAPIString("legacy"), apiDistro.PlannerSettings.Version)
 }
 
-//  kim: TODO: add tests for BootstrapSettings.
 func (s *DistroPatchByIDSuite) TestRunValidBootstrapMethod() {
 	ctx := context.Background()
 	json := []byte(`{"bootstrap_settings": {"method": "legacy-ssh"}}`)
@@ -1040,11 +1039,10 @@ func (s *DistroPatchByIDSuite) TestRunValidBootstrapAndCommunicationMethods() {
 	s.Equal(model.ToAPIString(distro.CommunicationMethodLegacySSH), apiDistro.BootstrapSettings.Communication)
 }
 
-// kim: TODO: change this test to add other required parameters.
 func (s *DistroPatchByIDSuite) TestRunInvalidBootstrapAndCommunicationMethods() {
 	ctx := context.Background()
 	json := []byte(fmt.Sprintf(
-		`{"bootstrap_settings": {"method": "%s", "communication_method": "%s"}}`,
+		`{"bootstrap_settings": {"method": "%s", "communication": "%s"}}`,
 		distro.BootstrapMethodUserData, distro.CommunicationMethodLegacySSH))
 	h := s.rm.(*distroIDPatchHandler)
 	h.distroID = "fedora8"
@@ -1053,6 +1051,42 @@ func (s *DistroPatchByIDSuite) TestRunInvalidBootstrapAndCommunicationMethods() 
 	resp := s.rm.Run(ctx)
 	s.NotNil(resp.Data())
 	s.Equal(http.StatusBadRequest, resp.Status())
+}
+
+func (s *DistroPatchByIDSuite) TestRunMissingNonLegacyBootstrapSettings() {
+	ctx := context.Background()
+	json := []byte(fmt.Sprintf(
+		`{"bootstrap_settings": {"method": "%s", "communication": "%s"}}`,
+		distro.BootstrapMethodUserData, distro.CommunicationMethodSSH))
+	h := s.rm.(*distroIDPatchHandler)
+	h.distroID = "fedora8"
+	h.body = json
+
+	resp := s.rm.Run(ctx)
+	s.NotNil(resp.Data())
+	s.Equal(http.StatusBadRequest, resp.Status())
+	err := (resp.Data()).(gimlet.ErrorResponse)
+	s.Contains(err.Message, "client directory cannot be empty for non-legacy bootstrapping")
+	s.Contains(err.Message, "curator directory cannot be empty for non-legacy bootstrapping")
+	s.Contains(err.Message, "Jasper credentials path cannot be empty for non-legacy bootstrapping")
+	s.Contains(err.Message, "client directory cannot be empty")
+}
+
+func (s *DistroPatchByIDSuite) TestRunValidNonLegacyBootstrapSettings() {
+	ctx := context.Background()
+	json := []byte(fmt.Sprintf(
+		`{"bootstrap_settings": {"method": "%s", "communication": "%s",
+		  "client_dir": "/client_dir", "curator_dir": "/curator_dir",
+		  "jasper_credentials_path": "/jasper_credentials_path", "shell_path": "/shell_path"}
+	     }`,
+		distro.BootstrapMethodUserData, distro.CommunicationMethodSSH))
+	h := s.rm.(*distroIDPatchHandler)
+	h.distroID = "fedora8"
+	h.body = json
+
+	resp := s.rm.Run(ctx)
+	s.NotNil(resp.Data())
+	s.Equal(http.StatusOK, resp.Status())
 }
 
 func (s *DistroPatchByIDSuite) TestRunValidCloneMethod() {

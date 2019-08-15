@@ -29,7 +29,7 @@ var distroSyntaxValidators = []distroValidator{
 	ensureStaticHostsAreNotSpawnable,
 	ensureValidContainerPool,
 	ensureValidArch,
-	ensureValidBootstrapAndCommunicationMethods,
+	ensureValidBootstrapSettings,
 	ensureValidCloneMethod,
 	ensureHasNoUnauthorizedCharacters,
 	ensureHasValidPlannerSettings,
@@ -203,11 +203,11 @@ func ensureValidArch(ctx context.Context, d *distro.Distro, s *evergreen.Setting
 	return nil
 }
 
-// ensureValidBootstrapAndCommunicationMethods checks that the bootstrap method
+// ensureValidBootstrapSettings checks that the bootstrap method
 // is one of the supported methods, the communication method is one of the
 // supported methods, and the two together form a valid combination.
-func ensureValidBootstrapAndCommunicationMethods(ctx context.Context, d *distro.Distro, s *evergreen.Settings) ValidationErrors {
-	if err := distro.ValidateBootstrapAndCommunicationMethods(d.BootstrapSettings.Method, d.BootstrapSettings.Communication); err != nil {
+func ensureValidBootstrapSettings(ctx context.Context, d *distro.Distro, s *evergreen.Settings) ValidationErrors {
+	if err := d.BootstrapSettings.Validate(); err != nil {
 		return ValidationErrors{{Level: Error, Message: err.Error()}}
 	}
 	return nil
