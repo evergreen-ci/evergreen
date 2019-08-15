@@ -394,12 +394,11 @@ func (pc *MockProjectConnector) GetProjectEventLog(id string, before time.Time, 
 
 func (pc *MockProjectConnector) GetProjectWithCommitQueueByOwnerRepoAndBranch(owner, repo, branch string) (*model.ProjectRef, error) {
 	for _, p := range pc.CachedProjects {
-		if p.Owner == owner && p.Repo == repo && p.Branch == branch {
+		if p.Owner == owner && p.Repo == repo && p.Branch == branch && p.CommitQueue.Enabled == true {
 			return &p, nil
 		}
 	}
-
-	return nil, errors.Errorf("can't query for projectRef %s/%s tracking %s", owner, repo, branch)
+	return nil, nil
 }
 func (pc *MockProjectConnector) EnableWebhooks(ctx context.Context, projectRef *model.ProjectRef) (bool, error) {
 	return false, nil
