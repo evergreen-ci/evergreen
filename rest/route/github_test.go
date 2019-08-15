@@ -79,6 +79,11 @@ func (s *GithubWebhookRouteSuite) SetupTest() {
 				},
 			},
 		},
+		MockCommitQueueConnector: data.MockCommitQueueConnector{
+			Queue: map[string][]restModel.APICommitQueueItem{
+				"bth": []restModel.APICommitQueueItem{},
+			},
+		},
 	}
 
 	s.rm = makeGithubHooksRoute(s.sc, s.queue, []byte(s.conf.Api.GithubWebhookSecret), evergreen.GetEnvironment().Settings())
