@@ -239,8 +239,8 @@ func (h *Host) FetchAndReinstallJasperCommand(config evergreen.HostJasperConfig)
 // new configuration, and restart the service.
 func (h *Host) ForceReinstallJasperCommand(config evergreen.HostJasperConfig) string {
 	params := []string{"--host=0.0.0.0", fmt.Sprintf("--port=%d", config.Port)}
-	if h.Distro.JasperCredentialsPath != "" {
-		params = append(params, fmt.Sprintf("--creds_path=%s", h.Distro.JasperCredentialsPath))
+	if h.Distro.BootstrapSettings.JasperCredentialsPath != "" {
+		params = append(params, fmt.Sprintf("--creds_path=%s", h.Distro.BootstrapSettings.JasperCredentialsPath))
 	}
 	if h.Distro.User != "" {
 		params = append(params, fmt.Sprintf("--user=%s", h.Distro.User))
@@ -276,7 +276,7 @@ func (h *Host) fetchJasperCommands(config evergreen.HostJasperConfig) []string {
 	downloadedFile := h.jasperDownloadedFileName(config)
 	extractedFile := h.jasperBinaryFileName(config)
 	return []string{
-		fmt.Sprintf("cd \"%s\"", h.Distro.CuratorDir),
+		fmt.Sprintf("cd \"%s\"", h.Distro.BootstrapSettings.CuratorDir),
 		fmt.Sprintf("curl -LO '%s/%s' %s", config.URL, downloadedFile, curlRetryArgs(CurlDefaultNumRetries, CurlDefaultMaxSecs)),
 		fmt.Sprintf("tar xzf '%s'", downloadedFile),
 		fmt.Sprintf("chmod +x '%s'", extractedFile),
@@ -311,7 +311,7 @@ func (h *Host) jasperBinaryFileName(config evergreen.HostJasperConfig) string {
 
 // jasperBinaryFilePath returns the full path to the Jasper binary.
 func (h *Host) jasperBinaryFilePath(config evergreen.HostJasperConfig) string {
-	return filepath.Join(h.Distro.CuratorDir, h.jasperBinaryFileName(config))
+	return filepath.Join(h.Distro.BootstrapSettings.CuratorDir, h.jasperBinaryFileName(config))
 }
 
 // BootstrapScript creates the user data script to bootstrap the host.
@@ -335,7 +335,7 @@ func (h *Host) BootstrapScript(config evergreen.HostJasperConfig, creds *rpc.Cre
 
 		powershellCmds := []string{
 			"<powershell>",
-			fmt.Sprintf("%s -c %s", h.Distro.ShellPath, bashCmdsLiteral),
+			fmt.Sprintf("%s -c %s", h.Distro.BootstrapSettings.ShellPath, bashCmdsLiteral),
 			"</powershell>",
 		}
 
@@ -359,7 +359,7 @@ func (h *Host) buildLocalJasperClientRequest(config evergreen.HostJasperConfig, 
 		return "", errors.Wrap(err, "could not marshal input")
 	}
 
-	flags := fmt.Sprintf("--service=%s --port=%d --creds_path=%s", jaspercli.RPCService, config.Port, h.Distro.JasperCredentialsPath)
+	flags := fmt.Sprintf("--service=%s --port=%d --creds_path=%s", jaspercli.RPCService, config.Port, h.Distro.BootstrapSettings.JasperCredentialsPath)
 
 	clientInput := fmt.Sprintf("<<EOF\n%s\nEOF", inputBytes)
 
@@ -374,14 +374,14 @@ func (h *Host) buildLocalJasperClientRequest(config evergreen.HostJasperConfig, 
 // WriteJasperCredentialsCommand builds the command to write the Jasper
 // credentials to a file.
 func (h *Host) WriteJasperCredentialsFileCommand(creds *rpc.Credentials) (string, error) {
-	if h.Distro.JasperCredentialsPath == "" {
+	if h.Distro.BootstrapSettings.JasperCredentialsPath == "" {
 		return "", errors.New("cannot write Jasper credentials without a credentials file path")
 	}
 	exportedCreds, err := creds.Export()
 	if err != nil {
 		return "", errors.Wrap(err, "problem exporting credentials to file format")
 	}
-	return fmt.Sprintf("cat > '%s' <<EOF\n%s\nEOF", h.Distro.JasperCredentialsPath, exportedCreds), nil
+	return fmt.Sprintf("cat > '%s' <<EOF\n%s\nEOF", h.Distro.BootstrapSettings.JasperCredentialsPath, exportedCreds), nil
 }
 
 // RunJasperProcess makes a request to the host's Jasper service to create the
@@ -440,7 +440,7 @@ func (h *Host) JasperClient(ctx context.Context, env evergreen.Environment) (jas
 	settings := env.Settings()
 
 	if h.JasperCommunication() {
-		switch h.Distro.CommunicationMethod {
+		switch h.Distro.BootstrapSettings.Communication {
 		case distro.CommunicationMethodSSH:
 			hostInfo, err := h.GetSSHInfo()
 			if err != nil {
@@ -460,7 +460,7 @@ func (h *Host) JasperClient(ctx context.Context, env evergreen.Environment) (jas
 				BinaryPath:          h.jasperBinaryFilePath(settings.HostJasper),
 				Type:                jaspercli.RPCService,
 				Port:                settings.HostJasper.Port,
-				CredentialsFilePath: h.Distro.JasperCredentialsPath,
+				CredentialsFilePath: h.Distro.BootstrapSettings.JasperCredentialsPath,
 			}
 
 			return jaspercli.NewSSHClient(remoteOpts, clientOpts, true)
@@ -493,7 +493,7 @@ func (h *Host) JasperClient(ctx context.Context, env evergreen.Environment) (jas
 		}
 	}
 
-	return nil, errors.Errorf("host does not have recognized communication method '%s'", h.Distro.CommunicationMethod)
+	return nil, errors.Errorf("host does not have recognized communication method '%s'", h.Distro.BootstrapSettings.Communication)
 }
 
 // SetupScriptCommands returns the commands contained in the setup script with
@@ -565,7 +565,7 @@ func (h *Host) StopAgentMonitor(ctx context.Context, env evergreen.Environment) 
 // agent monitor.
 func (h *Host) AgentMonitorOptions(settings *evergreen.Settings) *jasper.CreateOptions {
 	binary := filepath.Join(h.Distro.HomeDir(), h.Distro.BinaryName())
-	clientPath := filepath.Join(h.Distro.ClientDir, h.Distro.BinaryName())
+	clientPath := filepath.Join(h.Distro.BootstrapSettings.ClientDir, h.Distro.BinaryName())
 
 	args := []string{
 		binary,
@@ -582,7 +582,7 @@ func (h *Host) AgentMonitorOptions(settings *evergreen.Settings) *jasper.CreateO
 		fmt.Sprintf("--client_url=%s", h.ClientURL(settings)),
 		fmt.Sprintf("--client_path=%s", clientPath),
 		fmt.Sprintf("--jasper_port=%d", settings.HostJasper.Port),
-		fmt.Sprintf("--credentials=%s", h.Distro.JasperCredentialsPath),
+		fmt.Sprintf("--credentials=%s", h.Distro.BootstrapSettings.JasperCredentialsPath),
 	}
 
 	return &jasper.CreateOptions{

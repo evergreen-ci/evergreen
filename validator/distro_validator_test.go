@@ -35,8 +35,10 @@ func TestCheckDistro(t *testing.T) {
 				PlannerSettings: distro.PlannerSettings{
 					Version: evergreen.PlannerVersionTunable,
 				},
-				BootstrapMethod:     distro.BootstrapMethodLegacySSH,
-				CommunicationMethod: distro.CommunicationMethodLegacySSH,
+				BootstrapSettings: distro.BootstrapSettings{
+					Method: distro.BootstrapMethodLegacySSH,
+					Communication: distro.CommunicationMethodLegacySSH,
+				},
 				CloneMethod:         distro.CloneMethodLegacySSH,
 				FinderSettings: distro.FinderSettings{
 					Version: evergreen.FinderVersionLegacy,
@@ -57,8 +59,10 @@ func TestCheckDistro(t *testing.T) {
 					"security_group_ids": []string{"a"},
 					"mount_points":       nil,
 				},
-				BootstrapMethod:     distro.BootstrapMethodLegacySSH,
-				CommunicationMethod: distro.CommunicationMethodLegacySSH,
+				BootstrapSettings: distro.BootstrapSettings{
+					Method: distro.BootstrapMethodLegacySSH,
+					Communication: distro.CommunicationMethodLegacySSH,
+				},
 				CloneMethod:         distro.CloneMethodLegacySSH,
 			}
 			// simulate duplicate id
@@ -82,8 +86,10 @@ func TestCheckDistro(t *testing.T) {
 				PlannerSettings: distro.PlannerSettings{
 					Version: evergreen.PlannerVersionTunable,
 				},
-				BootstrapMethod:     distro.BootstrapMethodLegacySSH,
-				CommunicationMethod: distro.CommunicationMethodLegacySSH,
+				BootstrapSettings: distro.BootstrapSettings{
+					Method: distro.BootstrapMethodLegacySSH,
+					Communication: distro.CommunicationMethodLegacySSH,
+				},
 				CloneMethod:         distro.CloneMethodLegacySSH,
 				FinderSettings: distro.FinderSettings{
 					Version: evergreen.FinderVersionLegacy,
@@ -378,7 +384,7 @@ func TestEnsureValidBootstrapAndCommunicationMethods(t *testing.T) {
 			distro.CommunicationMethodSSH,
 			distro.CommunicationMethodRPC,
 		} {
-			d := &distro.Distro{BootstrapMethod: bootstrap, CommunicationMethod: communication}
+			d := &distro.Distro{BootstrapSettings:distro.BootstrapSettings{Method: bootstrap, Communication: communication}}
 			switch bootstrap {
 			case distro.BootstrapMethodLegacySSH:
 				if communication == distro.CommunicationMethodLegacySSH {
@@ -395,13 +401,13 @@ func TestEnsureValidBootstrapAndCommunicationMethods(t *testing.T) {
 			}
 		}
 	}
-	assert.NotNil(t, ensureValidBootstrapAndCommunicationMethods(ctx, &distro.Distro{BootstrapMethod: "foobar", CommunicationMethod: distro.CommunicationMethodLegacySSH}, &evergreen.Settings{}))
-	assert.NotNil(t, ensureValidBootstrapAndCommunicationMethods(ctx, &distro.Distro{BootstrapMethod: distro.BootstrapMethodLegacySSH}, &evergreen.Settings{}))
-	assert.NotNil(t, ensureValidBootstrapAndCommunicationMethods(ctx, &distro.Distro{CommunicationMethod: distro.CommunicationMethodLegacySSH}, &evergreen.Settings{}))
+	assert.NotNil(t, ensureValidBootstrapAndCommunicationMethods(ctx, &distro.Distro{BootstrapSettings: distro.BootstrapSettings{Method: "foobar", Communication: distro.CommunicationMethodLegacySSH}}, &evergreen.Settings{}))
+	assert.NotNil(t, ensureValidBootstrapAndCommunicationMethods(ctx, &distro.Distro{BootstrapSettings: distro.BootstrapSettings{Method: distro.BootstrapMethodLegacySSH}}, &evergreen.Settings{}))
+	assert.NotNil(t, ensureValidBootstrapAndCommunicationMethods(ctx, &distro.Distro{BootstrapSettings: distro.BootstrapSettings{Communication: distro.CommunicationMethodLegacySSH}}, &evergreen.Settings{}))
 
-	assert.NotNil(t, ensureValidBootstrapAndCommunicationMethods(ctx, &distro.Distro{BootstrapMethod: "foobar", CommunicationMethod: distro.CommunicationMethodSSH}, &evergreen.Settings{}))
-	assert.NotNil(t, ensureValidBootstrapAndCommunicationMethods(ctx, &distro.Distro{BootstrapMethod: distro.BootstrapMethodSSH}, &evergreen.Settings{}))
-	assert.NotNil(t, ensureValidBootstrapAndCommunicationMethods(ctx, &distro.Distro{CommunicationMethod: distro.CommunicationMethodSSH}, &evergreen.Settings{}))
+	assert.NotNil(t, ensureValidBootstrapAndCommunicationMethods(ctx, &distro.Distro{BootstrapSettings: distro.BootstrapSettings{Method: "foobar", Communication: distro.CommunicationMethodSSH}}, &evergreen.Settings{}))
+	assert.NotNil(t, ensureValidBootstrapAndCommunicationMethods(ctx, &distro.Distro{BootstrapSettings: distro.BootstrapSettings{Method: distro.BootstrapMethodSSH}}, &evergreen.Settings{}))
+	assert.NotNil(t, ensureValidBootstrapAndCommunicationMethods(ctx, &distro.Distro{BootstrapSettings: distro.BootstrapSettings{Communication: distro.CommunicationMethodSSH}}, &evergreen.Settings{}))
 }
 
 func TestEnsureValidCloneMethod(t *testing.T) {

@@ -746,19 +746,19 @@ func (h *Host) SetNeedsNewAgentMonitorAtomically(needsAgentMonitor bool) error {
 // LegacyBootstrap returns whether the host was bootstrapped using the legacy
 // method.
 func (h *Host) LegacyBootstrap() bool {
-	return h.Distro.BootstrapMethod == "" || h.Distro.BootstrapMethod == distro.BootstrapMethodLegacySSH
+	return h.Distro.BootstrapSettings.Method == "" || h.Distro.BootstrapSettings.Method == distro.BootstrapMethodLegacySSH
 }
 
 // LegacyCommunication returns whether the app server is communicating with this
 // host using the legacy method.
 func (h *Host) LegacyCommunication() bool {
-	return h.Distro.CommunicationMethod == "" || h.Distro.CommunicationMethod == distro.CommunicationMethodLegacySSH
+	return h.Distro.BootstrapSettings.Communication == "" || h.Distro.BootstrapSettings.Communication == distro.CommunicationMethodLegacySSH
 }
 
 // JasperCommunication returns whether or not the app server is communicating
 // with this host's Jasper service.
 func (h *Host) JasperCommunication() bool {
-	return h.Distro.CommunicationMethod == distro.CommunicationMethodSSH || h.Distro.CommunicationMethod == distro.CommunicationMethodRPC
+	return h.Distro.BootstrapSettings.Communication == distro.CommunicationMethodSSH || h.Distro.BootstrapSettings.Communication == distro.CommunicationMethodRPC
 }
 
 // SetNeedsAgentDeploy indicates that the host's agent or agent monitor needs

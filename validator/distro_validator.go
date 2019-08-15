@@ -207,7 +207,7 @@ func ensureValidArch(ctx context.Context, d *distro.Distro, s *evergreen.Setting
 // is one of the supported methods, the communication method is one of the
 // supported methods, and the two together form a valid combination.
 func ensureValidBootstrapAndCommunicationMethods(ctx context.Context, d *distro.Distro, s *evergreen.Settings) ValidationErrors {
-	if err := distro.ValidateBootstrapAndCommunicationMethods(d.BootstrapMethod, d.CommunicationMethod); err != nil {
+	if err := distro.ValidateBootstrapAndCommunicationMethods(d.BootstrapSettings.Method, d.BootstrapSettings.Communication); err != nil {
 		return ValidationErrors{{Level: Error, Message: err.Error()}}
 	}
 	return nil

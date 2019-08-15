@@ -222,7 +222,7 @@ func TestBootstrapUserData(t *testing.T) {
 			assert.NotNil(t, creds)
 		},
 		"ReturnsUserDataUnmodifiedIfNotBootstrapping": func(ctx context.Context, t *testing.T, env evergreen.Environment, h *host.Host, userID string) {
-			h.Distro.BootstrapMethod = distro.BootstrapMethodSSH
+			h.Distro.BootstrapSettings.Method = distro.BootstrapMethodSSH
 			customUserData := "foo bar"
 			userData, err := bootstrapUserData(ctx, env, h, customUserData)
 			require.NoError(t, err)
@@ -241,9 +241,11 @@ func TestBootstrapUserData(t *testing.T) {
 				require.NoError(t, user.Insert())
 
 				h := &host.Host{Id: "host", Distro: distro.Distro{
-					Arch:                  distro.ArchLinuxAmd64,
-					BootstrapMethod:       distro.BootstrapMethodUserData,
-					JasperCredentialsPath: "/bar",
+					Arch: distro.ArchLinuxAmd64,
+					BootstrapSettings: distro.BootstrapSettings{
+						Method:                distro.BootstrapMethodUserData,
+						JasperCredentialsPath: "/bar",
+					},
 				},
 					StartedBy:        evergreen.User,
 					ProvisionOptions: &host.ProvisionOptions{LoadCLI: true, OwnerId: userID},

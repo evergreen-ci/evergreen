@@ -132,7 +132,7 @@ func parseUserDataContentType(userData string) (string, error) {
 // bootstrapUserData returns the multipart user data with logic to bootstrap and
 // set up the host and the custom user data.
 func bootstrapUserData(ctx context.Context, env evergreen.Environment, h *host.Host, customScript string) (string, error) {
-	if h.Distro.BootstrapMethod != distro.BootstrapMethodUserData {
+	if h.Distro.BootstrapSettings.Method != distro.BootstrapMethodUserData {
 		return customScript, nil
 	}
 

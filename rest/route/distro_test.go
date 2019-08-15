@@ -265,9 +265,11 @@ func (s *DistroByIDSuite) SetupSuite() {
 					PatchZipperFactor:      7,
 					TaskOrdering:           evergreen.TaskOrderingInterleave,
 				},
-				BootstrapMethod:     distro.BootstrapMethodLegacySSH,
-				CommunicationMethod: distro.CommunicationMethodLegacySSH,
-				CloneMethod:         distro.CloneMethodLegacySSH,
+				BootstrapSettings: distro.BootstrapSettings{
+					Method:        distro.BootstrapMethodLegacySSH,
+					Communication: distro.CommunicationMethodLegacySSH,
+				},
+				CloneMethod: distro.CloneMethodLegacySSH,
 			},
 			{Id: "distro2"},
 		},
@@ -304,8 +306,8 @@ func (s *DistroByIDSuite) TestFindByIdFound() {
 	s.Equal(true, *d.PlannerSettings.GroupVersions)
 	s.EqualValues(7, d.PlannerSettings.PatchZipperFactor)
 	s.Equal(model.ToAPIString(evergreen.TaskOrderingInterleave), d.PlannerSettings.TaskOrdering)
-	s.Equal(model.ToAPIString(distro.BootstrapMethodLegacySSH), d.BootstrapMethod)
-	s.Equal(model.ToAPIString(distro.CommunicationMethodLegacySSH), d.CommunicationMethod)
+	s.Equal(model.ToAPIString(distro.BootstrapMethodLegacySSH), d.BootstrapSettings.Method)
+	s.Equal(model.ToAPIString(distro.CommunicationMethodLegacySSH), d.BootstrapSettings.Communication)
 	s.Equal(model.ToAPIString(distro.CloneMethodLegacySSH), d.CloneMethod)
 	s.Equal(model.ToAPIString(evergreen.FinderVersionLegacy), d.FinderSettings.Version)
 }
@@ -376,8 +378,7 @@ func (s *DistroPutSuite) TestParse() {
     		"task_ordering": "interleave" ,
     		"patch_first": false
   		},
-		"bootstrap_method": "legacy-ssh",
-		"communication_method": "legacy-ssh",
+		"bootstrap_settings": {"method": "legacy-ssh", "communication": "legacy-ssh"},
 		"clone_method": "legacy-ssh",
     }`,
 	)
@@ -406,8 +407,7 @@ func (s *DistroPutSuite) TestRunNewWithInvalidEntity() {
 		"arch": "linux_amd64",
 		"work_dir": "/data/mci",
 		"ssh_key": "",
-		"bootstrap_method": "foo",
-		"communication_method": "bar",
+		"bootstrap_settings": {"method": "foo", "communication": "bar"},
 		"clone_method": "bat",
 		"provider": "mock",
 		"user": "tibor",
@@ -964,9 +964,10 @@ func (s *DistroPatchByIDSuite) TestRunValidFinderSettingsVersion() {
 	s.Equal(model.ToAPIString("legacy"), apiDistro.PlannerSettings.Version)
 }
 
+//  kim: TODO: add tests for BootstrapSettings.
 func (s *DistroPatchByIDSuite) TestRunValidBootstrapMethod() {
 	ctx := context.Background()
-	json := []byte(`{"bootstrap_method": "legacy-ssh"}`)
+	json := []byte(`{"bootstrap_settings": {"method": "legacy-ssh"}}`)
 	h := s.rm.(*distroIDPatchHandler)
 	h.distroID = "fedora8"
 	h.body = json
@@ -977,12 +978,12 @@ func (s *DistroPatchByIDSuite) TestRunValidBootstrapMethod() {
 
 	apiDistro, ok := (resp.Data()).(*model.APIDistro)
 	s.Require().True(ok)
-	s.Equal(model.ToAPIString(distro.BootstrapMethodLegacySSH), apiDistro.BootstrapMethod)
+	s.Equal(model.ToAPIString(distro.BootstrapMethodLegacySSH), apiDistro.BootstrapSettings.Method)
 }
 
 func (s *DistroPatchByIDSuite) TestRunInvalidBootstrapMethod() {
 	ctx := context.Background()
-	json := []byte(`{"bootstrap_method": "foobar"}`)
+	json := []byte(`{"bootstrap_settings": {"method": "foobar"}}`)
 	h := s.rm.(*distroIDPatchHandler)
 	h.distroID = "fedora8"
 	h.body = json
@@ -994,7 +995,7 @@ func (s *DistroPatchByIDSuite) TestRunInvalidBootstrapMethod() {
 
 func (s *DistroPatchByIDSuite) TestRunValidCommunicationMethod() {
 	ctx := context.Background()
-	json := []byte(`{"communication_method": "legacy-ssh"}`)
+	json := []byte(`{"bootstrap_settings": {"communication": "legacy-ssh"}}`)
 	h := s.rm.(*distroIDPatchHandler)
 	h.distroID = "fedora8"
 	h.body = json
@@ -1005,12 +1006,12 @@ func (s *DistroPatchByIDSuite) TestRunValidCommunicationMethod() {
 
 	apiDistro, ok := (resp.Data()).(*model.APIDistro)
 	s.Require().True(ok)
-	s.Equal(model.ToAPIString(distro.CommunicationMethodLegacySSH), apiDistro.CommunicationMethod)
+	s.Equal(model.ToAPIString(distro.CommunicationMethodLegacySSH), apiDistro.BootstrapSettings.Communication)
 }
 
 func (s *DistroPatchByIDSuite) TestRunInvalidCommunicationMethod() {
 	ctx := context.Background()
-	json := []byte(`{"communication_method": "foobar"}`)
+	json := []byte(`{"bootstrap_settings": {"communication": "foobar"}}`)
 	h := s.rm.(*distroIDPatchHandler)
 	h.distroID = "fedora8"
 	h.body = json
@@ -1023,7 +1024,7 @@ func (s *DistroPatchByIDSuite) TestRunInvalidCommunicationMethod() {
 func (s *DistroPatchByIDSuite) TestRunValidBootstrapAndCommunicationMethods() {
 	ctx := context.Background()
 	json := []byte(fmt.Sprintf(
-		`{"bootstrap_method": "%s", "communication_method": "%s"} `,
+		`{"bootstrap_settings": {"method": "%s", "communication": "%s"}}`,
 		distro.BootstrapMethodLegacySSH, distro.CommunicationMethodLegacySSH))
 	h := s.rm.(*distroIDPatchHandler)
 	h.distroID = "fedora8"
@@ -1035,14 +1036,15 @@ func (s *DistroPatchByIDSuite) TestRunValidBootstrapAndCommunicationMethods() {
 
 	apiDistro, ok := (resp.Data()).(*model.APIDistro)
 	s.Require().True(ok)
-	s.Equal(model.ToAPIString(distro.BootstrapMethodLegacySSH), apiDistro.BootstrapMethod)
-	s.Equal(model.ToAPIString(distro.CommunicationMethodLegacySSH), apiDistro.CommunicationMethod)
+	s.Equal(model.ToAPIString(distro.BootstrapMethodLegacySSH), apiDistro.BootstrapSettings.Method)
+	s.Equal(model.ToAPIString(distro.CommunicationMethodLegacySSH), apiDistro.BootstrapSettings.Communication)
 }
 
+// kim: TODO: change this test to add other required parameters.
 func (s *DistroPatchByIDSuite) TestRunInvalidBootstrapAndCommunicationMethods() {
 	ctx := context.Background()
 	json := []byte(fmt.Sprintf(
-		`{"bootstrap_method": "%s", "communication_method": "%s"} `,
+		`{"bootstrap_settings": {"method": "%s", "communication_method": "%s"}}`,
 		distro.BootstrapMethodUserData, distro.CommunicationMethodLegacySSH))
 	h := s.rm.(*distroIDPatchHandler)
 	h.distroID = "fedora8"
@@ -1104,13 +1106,15 @@ func (s *DistroPatchByIDSuite) TestValidFindAndReplaceFullDocument() {
 				"setup" : "~Set-up script",
 				"teardown" : "~Tear-down script",
 				"user" : "~root",
-				"bootstrap_method": "legacy-ssh",
-				"communication_method": "legacy-ssh",
+				"bootstrap_settings": {
+					"method": "legacy-ssh",
+					"communication": "legacy-ssh",
+					"shell_path": "/usr/bin/bash",
+					"curator_dir": "/usr/local/bin",
+					"client_dir": "/usr/bin",
+					"jasper_credentials_path": "/etc/credentials"
+				},
 				"clone_method": "legacy-ssh",
-				"shell_path": "/usr/bin/bash",
-				"curator_dir": "/usr/local/bin",
-				"client_dir": "/usr/bin",
-				"jasper_credentials_path": "/etc/credentials",
 				"ssh_key" : "~SSH string",
 				"ssh_options" : [
 					"~StrictHostKeyChecking=no",
@@ -1167,13 +1171,13 @@ func (s *DistroPatchByIDSuite) TestValidFindAndReplaceFullDocument() {
 	s.Equal(apiDistro.SetupAsSudo, false)
 	s.Equal(apiDistro.Setup, model.ToAPIString("~Set-up script"))
 	s.Equal(apiDistro.Teardown, model.ToAPIString("~Tear-down script"))
-	s.Equal(model.ToAPIString(distro.BootstrapMethodLegacySSH), apiDistro.BootstrapMethod)
-	s.Equal(model.ToAPIString(distro.CommunicationMethodLegacySSH), apiDistro.CommunicationMethod)
+	s.Equal(model.ToAPIString(distro.BootstrapMethodLegacySSH), apiDistro.BootstrapSettings.Method)
+	s.Equal(model.ToAPIString(distro.CommunicationMethodLegacySSH), apiDistro.BootstrapSettings.Communication)
 	s.Equal(model.ToAPIString(distro.CloneMethodLegacySSH), apiDistro.CloneMethod)
-	s.Equal(model.ToAPIString("/usr/bin/bash"), apiDistro.ShellPath)
-	s.Equal(model.ToAPIString("/usr/local/bin"), apiDistro.CuratorDir)
-	s.Equal(model.ToAPIString("/etc/credentials"), apiDistro.JasperCredentialsPath)
-	s.Equal(model.ToAPIString("/usr/bin"), apiDistro.ClientDir)
+	s.Equal(model.ToAPIString("/usr/bin/bash"), apiDistro.BootstrapSettings.ShellPath)
+	s.Equal(model.ToAPIString("/usr/local/bin"), apiDistro.BootstrapSettings.CuratorDir)
+	s.Equal(model.ToAPIString("/etc/credentials"), apiDistro.BootstrapSettings.JasperCredentialsPath)
+	s.Equal(model.ToAPIString("/usr/bin"), apiDistro.BootstrapSettings.ClientDir)
 	s.Equal(apiDistro.User, model.ToAPIString("~root"))
 	s.Equal(apiDistro.SSHKey, model.ToAPIString("~SSH string"))
 	s.Equal(apiDistro.SSHOptions, []string{"~StrictHostKeyChecking=no", "~BatchMode=no", "~ConnectTimeout=10"})

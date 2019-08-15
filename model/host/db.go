@@ -377,7 +377,7 @@ func FindByFirstProvisioningAttempt() ([]Host, error) {
 // credentials will expire within the given cutoff.
 func FindByExpiringJasperCredentials(cutoff time.Duration) ([]Host, error) {
 	deadline := time.Now().Add(cutoff)
-	bootstrapKey := bsonutil.GetDottedKeyName(DistroKey, distro.BootstrapMethodKey)
+	bootstrapKey := bsonutil.GetDottedKeyName(DistroKey, distro.BootstrapSettingsKey, distro.BootstrapSettingsMethodKey)
 	credentialsKey := credentials.Collection
 	expirationKey := bsonutil.GetDottedKeyName(credentialsKey, credentials.TTLKey)
 
@@ -630,7 +630,7 @@ func FindStaleRunningTasks(cutoff time.Duration) ([]task.Task, error) {
 // AgentLastCommunicationTimeElapsed finds legacy hosts which do not have an
 // agent or whose agents have not communicated recently.
 func AgentLastCommunicationTimeElapsed(currentTime time.Time) bson.M {
-	bootstrapKey := bsonutil.GetDottedKeyName(DistroKey, distro.BootstrapMethodKey)
+	bootstrapKey := bsonutil.GetDottedKeyName(DistroKey, distro.BootstrapSettingsKey, distro.BootstrapSettingsMethodKey)
 	cutoffTime := currentTime.Add(-MaxLCTInterval)
 	return bson.M{
 		StatusKey:        evergreen.HostRunning,
@@ -656,7 +656,7 @@ func AgentLastCommunicationTimeElapsed(currentTime time.Time) bson.M {
 // agent monitor or which should have an agent monitor but their agent has not
 // communicated recently.
 func AgentMonitorLastCommunicationTimeElapsed(currentTime time.Time) bson.M {
-	bootstrapKey := bsonutil.GetDottedKeyName(DistroKey, distro.BootstrapMethodKey)
+	bootstrapKey := bsonutil.GetDottedKeyName(DistroKey, distro.BootstrapSettingsKey, distro.BootstrapSettingsMethodKey)
 	cutoffTime := currentTime.Add(-MaxLCTInterval)
 	return bson.M{
 		StatusKey:        evergreen.HostRunning,
@@ -679,7 +679,7 @@ func AgentMonitorLastCommunicationTimeElapsed(currentTime time.Time) bson.M {
 
 // NeedsNewAgentFlagSet returns legacy hosts with NeedsNewAgent set to true.
 func NeedsNewAgentFlagSet() db.Q {
-	bootstrapKey := bsonutil.GetDottedKeyName(DistroKey, distro.BootstrapMethodKey)
+	bootstrapKey := bsonutil.GetDottedKeyName(DistroKey, distro.BootstrapSettingsKey, distro.BootstrapSettingsMethodKey)
 	return db.Query(bson.M{
 		"$or": []bson.M{
 			{bootstrapKey: bson.M{"$exists": false}},
@@ -697,7 +697,7 @@ func NeedsNewAgentFlagSet() db.Q {
 // FindByNeedsNewAgentMonitor returns running hosts that need a new agent
 // monitor.
 func FindByNeedsNewAgentMonitor() ([]Host, error) {
-	bootstrapKey := bsonutil.GetDottedKeyName(DistroKey, distro.BootstrapMethodKey)
+	bootstrapKey := bsonutil.GetDottedKeyName(DistroKey, distro.BootstrapSettingsKey, distro.BootstrapSettingsMethodKey)
 	hosts := []Host{}
 	query := bson.M{
 		bootstrapKey: bson.M{

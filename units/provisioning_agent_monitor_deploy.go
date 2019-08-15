@@ -198,7 +198,7 @@ func (j *agentMonitorDeployJob) fetchClient(ctx context.Context, settings *everg
 		"message":       "fetching latest evergreen binary for agent monitor",
 		"host":          j.host.Id,
 		"distro":        j.host.Distro.Id,
-		"communication": j.host.Distro.CommunicationMethod,
+		"communication": j.host.Distro.BootstrapSettings.Communication,
 		"job":           j.ID(),
 	})
 
@@ -213,7 +213,7 @@ func (j *agentMonitorDeployJob) fetchClient(ctx context.Context, settings *everg
 			"host":          j.host.Id,
 			"distro":        j.host.Distro.Id,
 			"output":        output,
-			"communication": j.host.Distro.CommunicationMethod,
+			"communication": j.host.Distro.BootstrapSettings.Communication,
 			"job":           j.ID(),
 		}))
 		return errors.WithStack(err)
@@ -229,7 +229,7 @@ func (j *agentMonitorDeployJob) runSetupScript(ctx context.Context) error {
 		"message":       "running setup script on host",
 		"host":          j.host.Id,
 		"distro":        j.host.Distro.Id,
-		"communication": j.host.Distro.CommunicationMethod,
+		"communication": j.host.Distro.BootstrapSettings.Communication,
 		"job":           j.ID(),
 	})
 
@@ -244,7 +244,7 @@ func (j *agentMonitorDeployJob) runSetupScript(ctx context.Context) error {
 			"host":          j.host.Id,
 			"distro":        j.host.Distro.Id,
 			"output":        output,
-			"communication": j.host.Distro.CommunicationMethod,
+			"communication": j.host.Distro.BootstrapSettings.Communication,
 			"job":           j.ID(),
 		}))
 
