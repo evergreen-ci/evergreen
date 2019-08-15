@@ -228,6 +228,10 @@ func (s *EC2Suite) TestMakeDeviceMappingsTemplate() {
 	s.Equal("snapshot-1", *b[0].Ebs.SnapshotId)
 }
 
+func (s *EC2Suite) TestGetSettings() {
+	s.Equal(&EC2ProviderSettings{}, s.onDemandManager.GetSettings())
+}
+
 func (s *EC2Suite) TestConfigure() {
 	settings := &evergreen.Settings{}
 	ctx, cancel := context.WithCancel(context.Background())
@@ -872,7 +876,7 @@ func (s *EC2Suite) TestCacheHostData() {
 	s.Equal("2001:0db8:85a3:0000:0000:8a2e:0370:7334", h.IP)
 }
 
-func (s *EC2Suite) TestGetSettings() {
+func (s *EC2Suite) TestFromDistroSettings() {
 	d := distro.Distro{
 		ProviderSettings: &map[string]interface{}{
 			"key_name":           "key",

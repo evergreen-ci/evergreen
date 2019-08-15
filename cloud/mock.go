@@ -160,6 +160,10 @@ func (mockMgr *mockManager) GetDNSName(ctx context.Context, host *host.Host) (st
 	return instance.DNSName, nil
 }
 
+func (_ *mockManager) GetSettings() ProviderSettings {
+	return &mockManager{}
+}
+
 func (_ *mockManager) Validate() error {
 	return nil
 }

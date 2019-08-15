@@ -50,6 +50,12 @@ func (opts *openStackSettings) Validate() error {
 	return nil
 }
 
+// GetSettings returns an empty ProviderSettings struct since settings are configured on
+// instance creation.
+func (m *openStackManager) GetSettings() ProviderSettings {
+	return &openStackSettings{}
+}
+
 // Configure loads the necessary credentials from the global config object.
 func (m *openStackManager) Configure(ctx context.Context, s *evergreen.Settings) error {
 	config := s.Providers.OpenStack

@@ -17,6 +17,9 @@ type ProviderSettings interface {
 //Manager is an interface which handles creating new hosts or modifying
 //them via some third-party API.
 type Manager interface {
+	// Returns a pointer to the manager's configuration settings struct
+	GetSettings() ProviderSettings
+
 	//Load credentials or other settings from the config file
 	Configure(context.Context, *evergreen.Settings) error
 
@@ -113,27 +116,6 @@ func GetManager(ctx context.Context, providerName string, settings *evergreen.Se
 	}
 
 	return provider, nil
-}
-
-func GetSettings(manager Manager) ProviderSettings {
-	switch manager.(type) {
-	case *staticManager:
-		return &StaticSettings{}
-	case *mockManager:
-		return &mockManager{}
-	case *ec2Manager, *ec2FleetManager:
-		return &EC2ProviderSettings{}
-	case *dockerManager:
-		return &dockerSettings{}
-	case *openStackManager:
-		return &openStackSettings{}
-	case *gceManager:
-		return &GCESettings{}
-	case *vsphereManager:
-		return &vsphereSettings{}
-	}
-
-	return nil
 }
 
 // ConvertContainerManager converts a regular manager into a container manager,
