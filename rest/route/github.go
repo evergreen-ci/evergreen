@@ -361,7 +361,11 @@ func (gh *githubHookApi) tryDequeueCommitQueueItemForPR(pr *github.PullRequest) 
 		return nil
 	}
 
-	if exists, _ := gh.sc.IsItemOnCommitQueue(projRef.Identifier, strconv.Itoa(*pr.Number)); !exists {
+	exists, err := gh.sc.IsItemOnCommitQueue(projRef.Identifier, strconv.Itoa(*pr.Number))
+	if err != nil {
+		return errors.Wrapf(err, "can't determine if item is on commit queue %s", projRef.Identifier)
+	}
+	if !exists {
 		return nil
 	}
 
