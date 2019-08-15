@@ -8,18 +8,22 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/model/commitqueue"
 	"github.com/evergreen-ci/evergreen/model/patch"
+	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/level"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
+	mgobson "gopkg.in/mgo.v2/bson"
 )
 
 type TaskVariantPairs struct {
@@ -118,7 +122,7 @@ func GetPatchedProject(ctx context.Context, p *patch.Patch, githubOauthToken str
 	project := &Project{}
 	// if the patched config exists, use that as the project file bytes.
 	if p.PatchedConfig != "" {
-		if err = LoadProjectInto([]byte(p.PatchedConfig), projectRef.Identifier, project); err != nil {
+		if _, err = LoadProjectInto([]byte(p.PatchedConfig), projectRef.Identifier, project); err != nil {
 			return nil, errors.WithStack(err)
 		}
 		return project, nil
@@ -166,7 +170,7 @@ func GetPatchedProject(ctx context.Context, p *patch.Patch, githubOauthToken str
 		}
 	}
 
-	if err := LoadProjectInto(projectFileBytes, projectRef.Identifier, project); err != nil {
+	if _, err := LoadProjectInto(projectFileBytes, projectRef.Identifier, project); err != nil {
 		return nil, errors.WithStack(err)
 	}
 
@@ -277,7 +281,7 @@ func MakePatchedConfig(ctx context.Context, env evergreen.Environment, p *patch.
 func FinalizePatch(ctx context.Context, p *patch.Patch, requester string, githubOauthToken string) (*Version, error) {
 	// unmarshal the project YAML for storage
 	project := &Project{}
-	err := LoadProjectInto([]byte(p.PatchedConfig), p.Project, project)
+	intermediateProject, err := LoadProjectInto([]byte(p.PatchedConfig), p.Project, project)
 	if err != nil {
 		return nil, errors.Wrapf(err,
 			"Error marshaling patched project config from repository revision “%v”",
@@ -306,6 +310,7 @@ func FinalizePatch(ctx context.Context, p *patch.Patch, requester string, github
 		Message:             p.Description,
 		BuildIds:            []string{},
 		BuildVariants:       []VersionBuildStatus{},
+		ParserProject:       intermediateProject,
 		Config:              p.PatchedConfig,
 		Status:              evergreen.PatchCreated,
 		Requester:           requester,
@@ -429,4 +434,158 @@ func AbortPatchesWithGithubPatchData(createdBefore time.Time, owner, repo string
 	}
 
 	return errors.Wrap(catcher.Resolve(), "error aborting patches")
+}
+
+func RetryCommitQueueItems(projectID string, patchType string, opts RestartOptions) ([]string, []string, error) {
+	patches, err := patch.FindFailedCommitQueuePatchesinTimeRange(projectID, opts.StartTime, opts.EndTime)
+	if err != nil {
+		return nil, nil, errors.Wrap(err, "error finding failed commit queue patches for project in time range")
+	}
+	cq, err := commitqueue.FindOneId(projectID)
+	if err != nil {
+		return nil, nil, errors.Wrapf(err, "error finding commit queue '%s'", projectID)
+	}
+	if cq == nil {
+		return nil, nil, errors.New("commit queue '%s' not found")
+	}
+
+	// don't requeue items, just return what would be requeued
+	if opts.DryRun {
+		toBeRequeued := []string{}
+		for _, p := range patches {
+			toBeRequeued = append(toBeRequeued, p.Id.Hex())
+		}
+		return toBeRequeued, nil, nil
+	}
+	if patchType == commitqueue.PRPatchType {
+		restarted, notRestarted := restartPRItems(patches, cq)
+		return restarted, notRestarted, nil
+	}
+	if patchType == commitqueue.CLIPatchType {
+		restarted, notRestarted := restartCLIItems(patches, cq)
+		return restarted, notRestarted, nil
+	}
+	return nil, nil, errors.Errorf("patch type '%s' is invalid", patchType)
+}
+
+func restartPRItems(patches []patch.Patch, cq *commitqueue.CommitQueue) ([]string, []string) {
+	restartedPatches := []string{}
+	patchesWithErrors := []string{}
+	for _, p := range patches {
+		// reconstruct commit queue item from patch
+		modules := []commitqueue.Module{}
+		for _, modulePatch := range p.Patches {
+			if modulePatch.ModuleName != "" {
+				module := commitqueue.Module{
+					Module: modulePatch.ModuleName,
+					Issue:  modulePatch.PatchSet.Patch,
+				}
+				modules = append(modules, module)
+			}
+		}
+		item := commitqueue.CommitQueueItem{
+			Issue:   strconv.Itoa(p.GithubPatchData.PRNumber),
+			Modules: modules,
+		}
+		if _, err := cq.Enqueue(item); err != nil {
+			grip.Error(message.WrapError(err, message.Fields{
+				"patch":             p.Id,
+				"commit_queue":      cq.ProjectID,
+				"commit_queue_type": commitqueue.PRPatchType,
+				"item":              item.Issue,
+				"message":           "error enqueuing item",
+				"operation":         "restart failed commit queue versions",
+			}))
+			patchesWithErrors = append(patchesWithErrors, p.Id.Hex())
+			continue
+		}
+		restartedPatches = append(restartedPatches, p.Id.Hex())
+	}
+	return restartedPatches, patchesWithErrors
+}
+
+func restartCLIItems(patches []patch.Patch, cq *commitqueue.CommitQueue) ([]string, []string) {
+	restartedPatches := []string{}
+	patchesWithErrors := []string{}
+	for _, p := range patches {
+		u, err := user.FindOne(user.ById(p.Author))
+		if err != nil {
+			grip.Error(message.WrapError(err, message.Fields{
+				"patch":             p.Id,
+				"commit_queue":      cq.ProjectID,
+				"commit_queue_type": commitqueue.CLIPatchType,
+				"user":              p.Author,
+				"message":           "error finding user patch",
+				"operation":         "restart failed commit queue versions",
+			}))
+			patchesWithErrors = append(patchesWithErrors, p.Id.Hex())
+			continue
+		}
+		if u == nil {
+			grip.Error(message.WrapError(err, message.Fields{
+				"patch":             p.Id,
+				"commit_queue":      cq.ProjectID,
+				"commit_queue_type": commitqueue.CLIPatchType,
+				"user":              p.Author,
+				"message":           "user for patch not found",
+				"operation":         "restart failed commit queue versions",
+			}))
+			patchesWithErrors = append(patchesWithErrors, p.Id.Hex())
+			continue
+		}
+		patchNumber, err := u.IncPatchNumber()
+		if err != nil {
+			grip.Error(message.WrapError(err, message.Fields{
+				"patch":             p.Id,
+				"commit_queue":      cq.ProjectID,
+				"commit_queue_type": commitqueue.CLIPatchType,
+				"user":              p.Author,
+				"message":           "error computing patch number",
+				"operation":         "restart failed commit queue versions",
+			}))
+			patchesWithErrors = append(patchesWithErrors, p.Id.Hex())
+			continue
+		}
+		newPatch := patch.Patch{
+			Id:              mgobson.NewObjectId(),
+			Project:         p.Project,
+			Author:          p.Author,
+			Githash:         p.Githash,
+			CreateTime:      time.Now(),
+			Status:          evergreen.PatchCreated,
+			Description:     p.Description,
+			GithubPatchData: p.GithubPatchData,
+			Tasks:           p.Tasks,
+			VariantsTasks:   p.VariantsTasks,
+			BuildVariants:   p.BuildVariants,
+			Alias:           p.Alias,
+			Patches:         p.Patches,
+			PatchNumber:     patchNumber,
+		}
+
+		if err = newPatch.Insert(); err != nil {
+			grip.Error(message.WrapError(err, message.Fields{
+				"patch":             p.Id,
+				"commit_queue":      cq.ProjectID,
+				"commit_queue_type": commitqueue.CLIPatchType,
+				"message":           "error inserting new patch",
+				"operation":         "restart failed commit queue versions",
+			}))
+			patchesWithErrors = append(patchesWithErrors, p.Id.Hex())
+			continue
+		}
+		if _, err = cq.Enqueue(commitqueue.CommitQueueItem{Issue: newPatch.Id.Hex()}); err != nil {
+			grip.Error(message.WrapError(err, message.Fields{
+				"patch":             p.Id,
+				"commit_queue":      cq.ProjectID,
+				"commit_queue_type": commitqueue.CLIPatchType,
+				"message":           "error enqueueing item",
+				"operation":         "restart failed commit queue versions",
+			}))
+			patchesWithErrors = append(patchesWithErrors, p.Id.Hex())
+			continue
+		}
+		restartedPatches = append(restartedPatches, p.Id.Hex())
+	}
+	return restartedPatches, patchesWithErrors
 }

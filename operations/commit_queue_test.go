@@ -70,6 +70,7 @@ func (s *CommitQueueSuite) TestListContentsForCLI() {
 	p1 := patch.Patch{
 		Id:          bson.NewObjectId(),
 		Project:     "mci",
+		Author:      "annie.black",
 		Activated:   true,
 		Description: "fix things",
 		CreateTime:  now,
@@ -78,12 +79,14 @@ func (s *CommitQueueSuite) TestListContentsForCLI() {
 	s.NoError(p1.Insert())
 	p2 := patch.Patch{
 		Id:          bson.NewObjectId(),
+		Author:      "annie.black",
 		Project:     "mci",
 		Description: "do things",
 	}
 	s.NoError(p2.Insert())
 	p3 := patch.Patch{
 		Id:          bson.NewObjectId(),
+		Author:      "john.liu",
 		Project:     "mci",
 		Description: "no things",
 	}
@@ -124,9 +127,12 @@ func (s *CommitQueueSuite) TestListContentsForCLI() {
 	s.Contains(stringOut, "Project: mci")
 	s.Contains(stringOut, fmt.Sprintf("Type of queue: %s", commitqueue.CLIPatchType))
 	s.Contains(stringOut, "Description : do things")
+	s.Contains(stringOut, "0:")
 	s.Contains(stringOut, fmt.Sprintf("ID : %s", p1.Id.Hex()))
 	s.Contains(stringOut, fmt.Sprintf("ID : %s", p2.Id.Hex()))
 	s.Contains(stringOut, fmt.Sprintf("ID : %s", p3.Id.Hex()))
+	s.Contains(stringOut, fmt.Sprintf("Author: %s", p1.Author))
+	s.Contains(stringOut, fmt.Sprintf("Author: %s", p3.Author))
 	versionURL := fmt.Sprintf("Build : %s/version/%s", s.conf.UIServerHost, p1.Id.Hex())
 	patchURL := fmt.Sprintf("Build : %s/patch/%s", s.conf.UIServerHost, p2.Id.Hex())
 	s.Contains(stringOut, versionURL)
@@ -177,6 +183,7 @@ func (s *CommitQueueSuite) TestListContentsForPRs() {
 	s.Contains(stringOut, "Repo: evergreen")
 	s.Contains(stringOut, fmt.Sprintf("Type of queue: %s", commitqueue.PRPatchType))
 	s.Contains(stringOut, "Owner: evergreen-ci")
+	s.Contains(stringOut, "0:")
 	s.Contains(stringOut, "PR # : 123")
 	s.Contains(stringOut, "PR # : 456")
 	s.Contains(stringOut, "PR # : 789")

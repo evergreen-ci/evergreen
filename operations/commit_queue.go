@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"net/http"
-	"strings"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
@@ -201,7 +200,11 @@ func listCommitQueue(ctx context.Context, client client.Communicator, ac *legacy
 
 	grip.Infof("Queue Length: %d\n", len(cq.Queue))
 	for i, item := range cq.Queue {
-		grip.Infof("%d:", i+1)
+		grip.Infof("%d:", i)
+		author, _ := client.GetCommitQueueItemAuthor(ctx, projectID, restModel.FromAPIString(item.Issue))
+		if author != "" {
+			grip.Infof("Author: %s", author)
+		}
 		if projectRef.CommitQueue.PatchType == commitqueue.PRPatchType {
 			listPRCommitQueueItem(ctx, item, projectRef, uiServerHost)
 		}
@@ -215,19 +218,19 @@ func listCommitQueue(ctx context.Context, client client.Communicator, ac *legacy
 }
 
 func listPRCommitQueueItem(ctx context.Context, item restModel.APICommitQueueItem, projectRef *model.ProjectRef, uiServerHost string) {
+	issue := restModel.FromAPIString(item.Issue)
 	prDisplay := `
            PR # : %s
             URL : %s
 `
-	prDisplayVersion := "          Build : %s/version/%s"
-
-	issue := restModel.FromAPIString(item.Issue)
 	url := fmt.Sprintf("https://github.com/%s/%s/pull/%s", projectRef.Owner, projectRef.Repo, issue)
 	grip.Infof(prDisplay, issue, url)
 
+	prDisplayVersion := "          Build : %s/version/%s"
 	if restModel.FromAPIString(item.Version) != "" {
 		grip.Infof(prDisplayVersion, uiServerHost, restModel.FromAPIString(item.Version))
 	}
+
 	grip.Info("\n")
 }
 
@@ -238,6 +241,7 @@ func listCLICommitQueueItem(ctx context.Context, item restModel.APICommitQueueIt
 		grip.Error(message.WrapError(err, "\terror getting patch"))
 		return
 	}
+
 	disp, err := getPatchDisplay(p, false, uiServerHost)
 	if err != nil {
 		grip.Error(message.WrapError(err, "\terror getting patch display"))
@@ -285,7 +289,7 @@ func (p *mergeParams) mergeBranch(ctx context.Context, conf *ClientSettings, cli
 		}
 	}
 	if !p.pause {
-		position, err := client.EnqueueItem(ctx, p.projectID, p.id)
+		position, err := client.EnqueueItem(ctx, p.id)
 		if err != nil {
 			return err
 		}
@@ -296,14 +300,6 @@ func (p *mergeParams) mergeBranch(ctx context.Context, conf *ClientSettings, cli
 }
 
 func (p *mergeParams) uploadMergePatch(conf *ClientSettings, ac *legacyClient) error {
-	if p.message == "" {
-		msg, err := gitCmd("rev-parse", "--abbrev-ref", p.ref)
-		if err != nil {
-			return errors.Wrapf(err, "can't get branch name for ref %s", p.ref)
-		}
-		p.message = strings.TrimSpace(msg)
-	}
-
 	patchParams := &patchParams{
 		Project:     p.projectID,
 		SkipConfirm: p.skipConfirm,
@@ -323,10 +319,32 @@ func (p *mergeParams) uploadMergePatch(conf *ClientSettings, ac *legacyClient) e
 		}
 		return errors.Wrap(err, "can't get project ref")
 	}
+	if !ref.CommitQueue.Enabled || ref.CommitQueue.PatchType != commitqueue.CLIPatchType {
+		return errors.New("CLI commit queue not enabled for project")
+	}
 
 	diffData, err := loadGitData(ref.Branch, p.ref)
 	if err != nil {
 		return errors.Wrap(err, "can't generate patches")
+	}
+
+	commitCount, err := gitCommitCount(ref.Branch, p.ref)
+	if err != nil {
+		return errors.Wrap(err, "can't get commit count")
+	}
+	if commitCount > 1 {
+		return errors.New("patch contains multiple commits, must contain 1")
+	}
+	if commitCount == 0 {
+		return errors.New("patch does not contain any commits")
+	}
+
+	if p.message == "" {
+		message, err := gitCommitMessages(ref.Branch, p.ref)
+		if err != nil {
+			return errors.Wrap(err, "can't get commit messages")
+		}
+		patchParams.Description = message
 	}
 
 	patch, err := patchParams.createPatch(ac, conf, diffData)
@@ -377,7 +395,7 @@ func (p *moduleParams) addModule(ac *legacyClient, rc *legacyClient) error {
 	if err != nil {
 		return errors.WithStack(err)
 	}
-
+	grip.Info("Module updated.")
 	return nil
 }
 

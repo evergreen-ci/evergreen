@@ -136,6 +136,9 @@ func (d *mgoDriver) setupDB() error {
 	if d.opts.CheckWaitUntil {
 		indexKey = append(indexKey, "time_info.wait_until")
 	}
+	if d.opts.CheckDispatchBy {
+		indexKey = append(indexKey, "time_info.dispatch_by")
+	}
 
 	// priority must be at the end for the sort
 	if d.opts.Priority {
@@ -144,6 +147,12 @@ func (d *mgoDriver) setupDB() error {
 
 	catcher.Add(jobs.EnsureIndexKey(indexKey...))
 	catcher.Add(jobs.EnsureIndexKey("status.mod_ts"))
+	if d.opts.TTL > 0 {
+		catcher.Add(jobs.EnsureIndex(mgo.Index{
+			Key:         []string{"time_info.created"},
+			ExpireAfter: d.opts.TTL,
+		}))
+	}
 
 	return errors.Wrap(catcher.Resolve(), "problem building indexes")
 }
@@ -390,16 +399,19 @@ func (d *mgoDriver) Next(ctx context.Context) amboy.Job {
 		},
 	}
 
+	timeLimits := bson.M{}
+	now := time.Now()
 	if d.opts.CheckWaitUntil {
-		qd = bson.M{
-			"$and": []bson.M{
-				qd,
-				{"$or": []bson.M{
-					{"time_info.wait_until": bson.M{"$lte": time.Now()}},
-					{"time_info.wait_until": bson.M{"$exists": false}}},
-				},
-			},
+		timeLimits["time_info.wait_until"] = bson.M{"$lte": now}
+	}
+	if d.opts.CheckDispatchBy {
+		timeLimits["$or"] = []bson.M{
+			{"time_info.dispatch_by": bson.M{"$gt": now}},
+			{"time_info.dispatch_by": time.Time{}},
 		}
+	}
+	if len(timeLimits) > 0 {
+		qd = bson.M{"$and": []bson.M{qd, timeLimits}}
 	}
 
 	query := jobs.Find(qd).Batch(4)
@@ -447,6 +459,21 @@ func (d *mgoDriver) Next(ctx context.Context) amboy.Job {
 
 				// try for the next thing in the iterator if we can
 				timer.Reset(time.Nanosecond)
+				continue
+			}
+
+			if job.TimeInfo().IsStale() {
+				err = jobs.RemoveId(job.ID())
+				msg := message.Fields{
+					"id":        d.instanceID,
+					"service":   "amboy.queue.mgo",
+					"message":   "found stale job",
+					"operation": "job staleness check",
+					"job":       job.ID(),
+					"job_type":  job.Type().Name,
+				}
+				grip.Warning(message.WrapError(err, msg))
+				grip.NoticeWhen(err == nil, msg)
 				continue
 			}
 

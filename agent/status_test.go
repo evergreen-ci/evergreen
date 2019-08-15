@@ -4,6 +4,7 @@ import (
 	"context"
 	"net/http"
 	"os"
+	"runtime"
 	"strings"
 	"testing"
 	"time"
@@ -137,6 +138,9 @@ func (s *StatusSuite) TestAgentFailsToStartTwice() {
 }
 
 func (s *StatusSuite) TestCheckOOMSucceeds() {
+	if runtime.GOOS == "darwin" {
+		s.T().Skip("OOM tests will not work on static mac hosts because logs are never cleared and will be too long to parse")
+	}
 	agt, err := New(s.testOpts, client.NewMock("url"))
 	s.Require().NoError(err)
 	mockCommunicator := agt.comm.(*client.Mock)

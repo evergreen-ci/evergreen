@@ -365,23 +365,7 @@ func (s *EC2Suite) TestSpawnHostClassicSpot() {
 	s.Equal("sg-123456", *requestInput.LaunchSpecification.SecurityGroups[0])
 	s.Nil(requestInput.LaunchSpecification.SecurityGroupIds)
 	s.Nil(requestInput.LaunchSpecification.SubnetId)
-	tagsInput := *mock.CreateTagsInput
-	s.Equal("instance_id", *tagsInput.Resources[0])
-	s.Len(tagsInput.Tags, 8)
-	var foundInstanceName bool
-	var foundDistroID bool
-	for _, tag := range tagsInput.Tags {
-		if *tag.Key == "name" {
-			foundInstanceName = true
-			s.Equal(*tag.Value, "instance_id")
-		}
-		if *tag.Key == "distro" {
-			foundDistroID = true
-			s.Equal(*tag.Value, "distro_id")
-		}
-	}
-	s.True(foundInstanceName)
-	s.True(foundDistroID)
+	s.Nil(mock.CreateTagsInput)
 	s.Equal(base64OfSomeUserData, *requestInput.LaunchSpecification.UserData)
 }
 
@@ -421,23 +405,7 @@ func (s *EC2Suite) TestSpawnHostVPCSpot() {
 	s.Nil(requestInput.LaunchSpecification.SecurityGroupIds)
 	s.Nil(requestInput.LaunchSpecification.SecurityGroups)
 	s.Nil(requestInput.LaunchSpecification.SubnetId)
-	tagsInput := *mock.CreateTagsInput
-	s.Equal("instance_id", *tagsInput.Resources[0])
-	s.Len(tagsInput.Tags, 8)
-	var foundInstanceName bool
-	var foundDistroID bool
-	for _, tag := range tagsInput.Tags {
-		if *tag.Key == "name" {
-			foundInstanceName = true
-			s.Equal(*tag.Value, "instance_id")
-		}
-		if *tag.Key == "distro" {
-			foundDistroID = true
-			s.Equal(*tag.Value, "distro_id")
-		}
-	}
-	s.True(foundInstanceName)
-	s.True(foundDistroID)
+	s.Nil(mock.CreateTagsInput)
 	s.Equal(base64OfSomeUserData, *requestInput.LaunchSpecification.UserData)
 }
 

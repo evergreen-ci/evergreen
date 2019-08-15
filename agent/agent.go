@@ -139,7 +139,10 @@ LOOP:
 			grip.Info("agent loop canceled")
 			return nil
 		case <-timer.C:
-			nextTask, err := a.comm.GetNextTask(ctx, &apimodels.GetNextTaskDetails{TaskGroup: tc.taskGroup})
+			nextTask, err := a.comm.GetNextTask(ctx, &apimodels.GetNextTaskDetails{
+				TaskGroup:     tc.taskGroup,
+				AgentRevision: evergreen.BuildRevision,
+			})
 			if err != nil {
 				// task secret doesn't match, get another task
 				if errors.Cause(err) == client.HTTPConflictError {
@@ -264,7 +267,7 @@ func (a *Agent) fetchProjectConfig(ctx context.Context, tc *taskContext) error {
 		return errors.Wrap(err, "error getting version")
 	}
 	project := &model.Project{}
-	err = model.LoadProjectInto([]byte(v.Config), v.Identifier, project)
+	_, err = model.LoadProjectInto([]byte(v.Config), v.Identifier, project)
 	if err != nil {
 		return errors.Wrapf(err, "error reading project config")
 	}

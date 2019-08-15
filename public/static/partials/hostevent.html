@@ -5,7 +5,11 @@
     <span ng-switch-when="HOST_STARTED">Host started</span>
     <span ng-switch-when="HOST_PROVISION_ERROR">Host encountered error during provisioning</span>
     <span ng-switch-when="HOST_AGENT_DEPLOY_FAILED">New agent deploy failed</span>
-    <span ng-switch-when="HOST_AGENT_DEPLOYED">Agent Deployed with revision <b>[[eventLogObj.data.agent_revision]]</b></span>
+    <span ng-switch-when="HOST_AGENT_DEPLOYED">Agent deployed with revision <b>[[eventLogObj.data.agent_revision]]</b></span>
+    <span ng-switch-when="HOST_AGENT_MONITOR_DEPLOYED">Agent monitor deployed with revision <b>[[eventLogObj.data.agent_revision]]</b></span>
+    <span ng-switch-when="HOST_AGENT_MONITOR_DEPLOY_FAILED">New agent monitor deploy failed</span>
+    <span ng-switch-when="HOST_JASPER_DEPLOYED">Jasper service deployed with revision <b>[[eventLogObj.data.jasper_revision]]</b></span>
+    <span ng-switch-when="HOST_JASPER_DEPLOY_FAILED">New Jasper service deploy failed</span>
     <span ng-switch-when="HOST_STATUS_CHANGED">
       Status changed from <b class="status">[[eventLogObj.data.old_status]]</b> to <b>[[eventLogObj.data.new_status]]</b> by <b>[[eventLogObj.data.user]]</b>.
       <div class="toggle pointer" ng-click="showlogs = !showlogs"><i class="fa" ng-class="showlogs | conditional:'fa-caret-down':'fa-caret-right'"></i> [[showlogs | conditional:'hide':'show']] additional details </div>

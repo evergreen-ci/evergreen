@@ -10,6 +10,7 @@ import (
 // MockManager implements the Manager interface with exported fields to
 // configure and introspect the mock's behavior.
 type MockManager struct {
+	ManagerID    string
 	FailCreate   bool
 	Create       func(*CreateOptions) MockProcess
 	CreateConfig MockProcess
@@ -27,6 +28,10 @@ func mockFail() error {
 	frames := runtime.CallersFrames(progCounter[:n])
 	frame, _ := frames.Next()
 	return errors.Errorf("function failed: %s", frame.Function)
+}
+
+func (m *MockManager) ID() string {
+	return m.ManagerID
 }
 
 // CreateProcess creates a new MockProcess. If Create is set, it is

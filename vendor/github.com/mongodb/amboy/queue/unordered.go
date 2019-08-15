@@ -21,6 +21,8 @@ import (
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/amboy/pool"
 	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
+	"github.com/mongodb/grip/recovery"
 	"github.com/pkg/errors"
 )
 
@@ -63,8 +65,6 @@ func NewLocalUnordered(workers int) amboy.Queue {
 
 	q.tasks.m = make(map[string]amboy.Job)
 
-	grip.Debugln("queue buffer size:", bufferSize)
-
 	r := pool.NewLocalWorkers(workers, q)
 	q.runner = r
 
@@ -81,16 +81,20 @@ func (q *unorderedLocal) Put(ctx context.Context, j amboy.Job) error {
 		return errors.Errorf("cannot add %s because queue has not started", name)
 	}
 
+	j.UpdateTimeInfo(amboy.JobTimeInfo{
+		Created: time.Now(),
+	})
+
+	if err := j.TimeInfo().Validate(); err != nil {
+		return errors.Wrap(err, "invalid job timeinfo")
+	}
+
 	q.tasks.Lock()
 	defer q.tasks.Unlock()
 
 	if _, ok := q.tasks.m[name]; ok {
 		return errors.Errorf("cannot add %s, because a job exists with that name", name)
 	}
-
-	j.UpdateTimeInfo(amboy.JobTimeInfo{
-		Created: time.Now(),
-	})
 
 	select {
 	case <-ctx.Done():
@@ -144,7 +148,6 @@ func (q *unorderedLocal) Start(ctx context.Context) error {
 
 	q.started = true
 
-	grip.Info("job server running")
 	return nil
 }
 
@@ -157,6 +160,24 @@ func (q *unorderedLocal) Next(ctx context.Context) amboy.Job {
 		case <-ctx.Done():
 			return nil
 		case job := <-q.channel:
+			ti := job.TimeInfo()
+			if ti.IsStale() {
+				grip.Notice(message.Fields{
+					"state":    "stale, discard",
+					"job":      job.ID(),
+					"job_type": job.Type().Name,
+				})
+				continue
+			}
+
+			if !ti.IsDispatchable() {
+				go func() {
+					defer recovery.LogStackTraceAndContinue("re-queue waiting job", job.ID())
+					q.channel <- job
+				}()
+				continue
+			}
+
 			return job
 		}
 	}

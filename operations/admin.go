@@ -8,6 +8,8 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/rest/model"
+	"github.com/evergreen-ci/evergreen/util"
+	amboyCLI "github.com/mongodb/amboy/cli"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 	"github.com/urfave/cli"
@@ -27,6 +29,7 @@ func Admin() cli.Command {
 			listEvents(),
 			revert(),
 			fetchAllProjectConfigs(),
+			amboyCmd(),
 		},
 	}
 }
@@ -343,4 +346,38 @@ func revert() cli.Command {
 			return nil
 		},
 	}
+}
+
+func amboyCmd() cli.Command {
+	const useLocalFlagName = "local"
+
+	opts := &amboyCLI.ServiceOptions{
+		BaseURL:          "http://localhost:2285",
+		ReportingPrefix:  "/amboy/remote/reporting",
+		ManagementPrefix: "/amboy/remote/pool",
+	}
+
+	cmd := amboyCLI.Amboy(opts)
+	cmd.Flags = []cli.Flag{
+		cli.BoolFlag{
+			Name:  useLocalFlagName,
+			Usage: "set the default to use the local queue.",
+		},
+	}
+
+	cmd.Before = func(c *cli.Context) error {
+		opts.Client = util.GetHTTPClient()
+		if c.Bool(useLocalFlagName) {
+			opts.ReportingPrefix = "/amboy/local/reporting"
+			opts.ManagementPrefix = "/amboy/local/pool"
+		}
+		return nil
+	}
+
+	cmd.After = func(c *cli.Context) error {
+		util.PutHTTPClient(opts.Client)
+		return nil
+	}
+
+	return cmd
 }

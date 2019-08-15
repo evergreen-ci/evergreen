@@ -42,6 +42,7 @@ func TestFindProject(t *testing.T) {
 		Convey("if the project file exists and is valid, the project spec within"+
 			"should be unmarshalled and returned", func() {
 			v := &Version{
+				Id:         "my_version",
 				Owner:      "fakeowner",
 				Repo:       "fakerepo",
 				Branch:     "fakebranch",
@@ -267,12 +268,14 @@ task_groups:
   - example_task_1
   - example_task_2
 `
-	proj, errs := projectFromYAML([]byte(projYml))
+	proj := &Project{}
+	pp, err := LoadProjectInto([]byte(projYml), "id", proj)
 	assert.NotNil(proj)
-	assert.Empty(errs)
+	assert.NoError(err)
 	v := Version{
-		Id:     "v1",
-		Config: projYml,
+		Id:            "v1",
+		ParserProject: pp,
+		Config:        projYml,
 	}
 	t1 := task.Task{
 		Id:        "t1",
@@ -356,7 +359,7 @@ buildvariants:
 	assert.Equal("master", expansions.Get("branch_name"))
 	assert.Equal("somebody", expansions.Get("author"))
 	assert.Equal("d1", expansions.Get("distro_id"))
-	assert.Equal("globalGitHubOauthToken", expansions.Get("global_github_oauth_token"))
+	assert.Equal("globalGitHubOauthToken", expansions.Get(evergreen.GlobalGitHubTokenExpansion))
 	assert.True(expansions.Exists("created_at"))
 	assert.Equal("42", expansions.Get("revision_order_id"))
 	assert.False(expansions.Exists("is_patch"))
@@ -485,7 +488,7 @@ func (s *projectSuite) SetupTest() {
 			ProjectID: "project",
 			Alias:     "aTags",
 			Variant:   ".*",
-			Tags:      []string{"a"},
+			TaskTags:  []string{"a"},
 		},
 		{
 			ProjectID: "project",
@@ -509,7 +512,13 @@ func (s *projectSuite) SetupTest() {
 			ProjectID: "project",
 			Alias:     "part_of_memes",
 			Variant:   "bv_1",
-			Tags:      []string{"part_of_memes"},
+			TaskTags:  []string{"part_of_memes"},
+		},
+		{
+			ProjectID:   "project",
+			Alias:       "even_bvs",
+			VariantTags: []string{"even"},
+			TaskTags:    []string{"a"},
 		},
 	}
 	for _, alias := range s.aliases {
@@ -573,6 +582,7 @@ func (s *projectSuite) SetupTest() {
 			},
 			{
 				Name: "bv_2",
+				Tags: []string{"even"},
 				Tasks: []BuildVariantTaskUnit{
 					{
 						Name: "a_task_1",
@@ -743,6 +753,13 @@ func (s *projectSuite) TestAliasResolution() {
 	s.NoError(err)
 	s.Require().Len(pairs, 1)
 	s.Equal("bv_3/disabled_task", pairs[0].String())
+	s.Empty(displayTaskPairs)
+
+	pairs, displayTaskPairs, err = s.project.BuildProjectTVPairsWithAlias(s.aliases[8].Alias)
+	s.NoError(err)
+	s.Require().Len(pairs, 2)
+	s.Equal("bv_2/a_task_1", pairs[0].String())
+	s.Equal("bv_2/a_task_2", pairs[1].String())
 	s.Empty(displayTaskPairs)
 }
 
@@ -1061,11 +1078,11 @@ tasks:
   depends_on:
     - name: dist-test
 `
-	intermediate, errs := createIntermediateProject([]byte(projYml))
-	s.Len(errs, 0)
+	intermediate, err := createIntermediateProject([]byte(projYml))
+	s.NoError(err)
 	marshaled, err := yaml.Marshal(intermediate)
 	s.NoError(err)
-	unmarshaled := parserProject{}
+	unmarshaled := ParserProject{}
 	s.NoError(yaml.Unmarshal(marshaled, &unmarshaled))
 }
 

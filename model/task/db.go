@@ -37,6 +37,7 @@ var (
 	ActivatedKey            = bsonutil.MustHaveTag(Task{}, "Activated")
 	BuildIdKey              = bsonutil.MustHaveTag(Task{}, "BuildId")
 	DistroIdKey             = bsonutil.MustHaveTag(Task{}, "DistroId")
+	DistroAliasesKey        = bsonutil.MustHaveTag(Task{}, "DistroAliases")
 	BuildVariantKey         = bsonutil.MustHaveTag(Task{}, "BuildVariant")
 	DependsOnKey            = bsonutil.MustHaveTag(Task{}, "DependsOn")
 	OverrideDependenciesKey = bsonutil.MustHaveTag(Task{}, "OverrideDependencies")
@@ -69,6 +70,7 @@ var (
 	GeneratedByKey          = bsonutil.MustHaveTag(Task{}, "GeneratedBy")
 	ResetWhenFinishedKey    = bsonutil.MustHaveTag(Task{}, "ResetWhenFinished")
 	LogsKey                 = bsonutil.MustHaveTag(Task{}, "Logs")
+	CommitQueueMergeKey     = bsonutil.MustHaveTag(Task{}, "CommitQueueMerge")
 
 	// BSON fields for the test result struct
 	TestResultStatusKey    = bsonutil.MustHaveTag(TestResult{}, "Status")
@@ -300,11 +302,21 @@ func ByTimeRun(startTime, endTime time.Time) db.Q {
 }
 
 // ByTimeStartedAndFailed returns all failed tasks that started between 2 given times
+// If task not started (but is failed), returns if finished within the time range
 func ByTimeStartedAndFailed(startTime, endTime time.Time, commandTypes []string) db.Q {
 	query := bson.M{
-		StartTimeKey: bson.M{"$lte": endTime},
-		StartTimeKey: bson.M{"$gte": startTime},
-		StatusKey:    evergreen.TaskFailed,
+		"$or": []bson.M{
+			{"$and": []bson.M{
+				{StartTimeKey: bson.M{"$lte": endTime}},
+				{StartTimeKey: bson.M{"$gte": startTime}},
+			}},
+			{"$and": []bson.M{
+				{StartTimeKey: time.Time{}},
+				{FinishTimeKey: bson.M{"$lte": endTime}},
+				{FinishTimeKey: bson.M{"$gte": startTime}},
+			}},
+		},
+		StatusKey: evergreen.TaskFailed,
 	}
 	if len(commandTypes) > 0 {
 		query[bsonutil.GetDottedKeyName(DetailsKey, "type")] = bson.M{
@@ -820,6 +832,17 @@ func FindTasksFromBuildWithDependencies(buildId string) ([]Task, error) {
 		return nil, errors.Wrap(err, "error finding task ids for versions")
 	}
 	return tasks, nil
+}
+
+func FindMergeTaskForVersion(versionId string) (*Task, error) {
+	task := &Task{}
+	query := db.Query(bson.M{
+		VersionKey:          versionId,
+		CommitQueueMergeKey: true,
+	})
+	err := db.FindOneQ(Collection, query, task)
+
+	return task, err
 }
 
 // FindOneOld returns one task from the old tasks collection that satisfies the query.

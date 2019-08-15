@@ -82,11 +82,16 @@ func (q *adaptiveLocalOrdering) Put(ctx context.Context, j amboy.Job) error {
 
 	out := make(chan error)
 	op := func(ctx context.Context, items *adaptiveOrderItems, fixed *fixedStorage) {
+		defer close(out)
 		j.UpdateTimeInfo(amboy.JobTimeInfo{
 			Created: time.Now(),
 		})
+		if err := j.TimeInfo().Validate(); err != nil {
+			out <- err
+			return
+		}
+
 		out <- items.add(j)
-		close(out)
 	}
 
 	select {

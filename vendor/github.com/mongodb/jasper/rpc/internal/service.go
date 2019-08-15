@@ -3,7 +3,6 @@ package internal
 import (
 	"fmt"
 	"io"
-	"net/http"
 	"os"
 	"strings"
 	"sync"
@@ -71,7 +70,6 @@ func getProcInfoNoHang(ctx context.Context, p jasper.Process) *ProcessInfo {
 type jasperService struct {
 	hostID     string
 	manager    jasper.Manager
-	client     http.Client
 	cache      *lru.Cache
 	cacheOpts  jasper.CacheOptions
 	cacheMutex sync.RWMutex
@@ -84,35 +82,33 @@ func (s *jasperService) Status(ctx context.Context, _ *empty.Empty) (*StatusResp
 	}, nil
 }
 
+func (s *jasperService) ID(ctx context.Context, _ *empty.Empty) (*IDResponse, error) {
+	return &IDResponse{Value: s.manager.ID()}, nil
+}
+
 func (s *jasperService) Create(ctx context.Context, opts *CreateOptions) (*ProcessInfo, error) {
 	jopts := opts.Export()
 
 	// Spawn a new context so that the process' context is not potentially
 	// canceled by the request's. See how rest_service.go's createProcess() does
 	// this same thing.
-	var cctx context.Context
-	var cancel context.CancelFunc
-	if jopts.Timeout > 0 {
-		cctx, cancel = context.WithTimeout(context.Background(), jopts.Timeout)
-	} else {
-		cctx, cancel = context.WithCancel(context.Background())
-	}
+	pctx, cancel := context.WithCancel(context.Background())
 
-	proc, err := s.manager.CreateProcess(cctx, jopts)
+	proc, err := s.manager.CreateProcess(pctx, jopts)
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}
 
-	if err := proc.RegisterTrigger(cctx, func(_ jasper.ProcessInfo) {
+	if err := proc.RegisterTrigger(ctx, func(_ jasper.ProcessInfo) {
 		cancel()
 	}); err != nil {
-		if !proc.Info(cctx).Complete {
-			return ConvertProcessInfo(proc.Info(cctx)), nil
+		if !proc.Info(ctx).Complete {
+			return ConvertProcessInfo(proc.Info(ctx)), nil
 		}
 		cancel()
 	}
 
-	return getProcInfoNoHang(cctx, proc), nil
+	return getProcInfoNoHang(ctx, proc), nil
 }
 
 func (s *jasperService) List(f *Filter, stream JasperProcessManager_ListServer) error {

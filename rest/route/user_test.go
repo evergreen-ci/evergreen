@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"testing"
+	"time"
 
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model"
@@ -35,7 +36,7 @@ func (s *UserRouteSuite) SetupSuite() {
 }
 
 func (s *UserRouteSuite) SetupTest() {
-	s.NoError(db.ClearCollections(user.Collection))
+	s.NoError(db.ClearCollections(user.Collection, model.FeedbackCollection))
 }
 
 func (s *UserRouteSuite) TestUpdateNotifications() {
@@ -124,4 +125,36 @@ func (s *UserRouteSuite) TestUserAuthorInfo() {
 	s.NoError(err)
 	s.Equal(dbUser.DisplayName(), restModel.FromAPIString(authorInfo.DisplayName))
 	s.Equal(dbUser.Email(), restModel.FromAPIString(authorInfo.Email))
+}
+
+func (s *UserRouteSuite) TestSaveFeedback() {
+	_, err := model.GetOrCreateUser("me", "me", "foo@bar.com")
+	s.NoError(err)
+	ctx := context.Background()
+	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "me"})
+	body := map[string]interface{}{
+		"spruce_feedback": map[string]interface{}{
+			"type": "someType",
+			"questions": []map[string]interface{}{
+				{"id": "1", "prompt": "this is a question", "answer": "this is an answer"},
+			},
+		},
+	}
+	jsonBody, err := json.Marshal(body)
+	s.NoError(err)
+	buffer := bytes.NewBuffer(jsonBody)
+	request, err := http.NewRequest(http.MethodPost, "/users/settings", buffer)
+	s.NoError(err)
+	s.NoError(s.postHandler.Parse(ctx, request))
+
+	resp := s.postHandler.Run(ctx)
+	s.NotNil(resp)
+	s.Equal(http.StatusOK, resp.Status())
+
+	feedback, err := model.FindFeedbackOfType("someType")
+	s.NoError(err)
+	s.Len(feedback, 1)
+	s.Equal("me", feedback[0].User)
+	s.NotEqual(time.Time{}, feedback[0].SubmittedAt)
+	s.Len(feedback[0].Questions, 1)
 }

@@ -83,7 +83,9 @@ func (q *remoteUnordered) Next(ctx context.Context) amboy.Job {
 				continue
 			}
 
-			if !isDispatchable(job.Status()) {
+			status := job.Status()
+			if !isDispatchable(status) {
+				dispatchableErrors++
 				continue
 			}
 
@@ -98,16 +100,18 @@ func (q *remoteUnordered) Next(ctx context.Context) amboy.Job {
 			}
 
 			dispatchSecs := time.Since(start).Seconds()
-			grip.DebugWhen(dispatchSecs > dispatchWarningThreshold.Seconds() || count > 3, message.Fields{
-				"message":             "returning job from remote source",
-				"threshold_secs":      dispatchWarningThreshold.Seconds(),
-				"dispatch_secs":       dispatchSecs,
-				"attempts":            count,
-				"job":                 job.ID(),
-				"get_errors":          getErrors,
-				"locking_errors":      lockingErrors,
-				"dispatchable_errors": dispatchableErrors,
-			})
+			grip.DebugWhen(dispatchSecs > dispatchWarningThreshold.Seconds() || count > 3,
+				message.Fields{
+					"message":             "returning job from remote source",
+					"threshold_secs":      dispatchWarningThreshold.Seconds(),
+					"dispatch_secs":       dispatchSecs,
+					"attempts":            count,
+					"stat":                status,
+					"job":                 job.ID(),
+					"get_errors":          getErrors,
+					"locking_errors":      lockingErrors,
+					"dispatchable_errors": dispatchableErrors,
+				})
 
 			return job
 		}

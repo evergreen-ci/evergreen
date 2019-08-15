@@ -3,6 +3,7 @@ package operations
 import (
 	"io/ioutil"
 	"os"
+	"strings"
 	"testing"
 
 	"github.com/evergreen-ci/evergreen/testutil"
@@ -70,4 +71,14 @@ func runCloneTest(t *testing.T, opts cloneOptions, pass bool) {
 		return
 	}
 	assert.NoError(t, clone(opts))
+}
+
+func TestTruncateName(t *testing.T) {
+	fileName := strings.Repeat("a", 300) + ".tar.gz"
+	newName := truncateFilename(fileName)
+	assert.NotEqual(t, newName, fileName)
+	assert.Len(t, newName, 250)
+	assert.Equal(t, strings.Repeat("a", 243)+".tar.gz", newName)
+
+	assert.Equal(t, newName, truncateFilename(newName))
 }

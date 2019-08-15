@@ -186,18 +186,18 @@ func TestBlockingProcess(t *testing.T) {
 					<-signal
 				},
 				"WaitSomeBeforeCanceling": func(ctx context.Context, t *testing.T, proc *blockingProcess) {
-					proc.opts.Args = []string{"sleep", "1"}
+					proc.opts = *sleepCreateOpts(10)
 					proc.complete = make(chan struct{})
 					cctx, cancel := context.WithTimeout(ctx, 600*time.Millisecond)
 					defer cancel()
 
 					cmd, deadline, err := proc.opts.Resolve(ctx)
-					assert.NoError(t, err)
+					require.NoError(t, err)
 					assert.NoError(t, cmd.Start())
 
 					go proc.reactor(ctx, deadline, cmd)
 					_, err = proc.Wait(cctx)
-					assert.Error(t, err)
+					require.Error(t, err)
 					assert.Contains(t, err.Error(), "operation canceled")
 				},
 				"WaitShouldReturnNilForSuccessfulCommandsWithoutIDs": func(ctx context.Context, t *testing.T, proc *blockingProcess) {

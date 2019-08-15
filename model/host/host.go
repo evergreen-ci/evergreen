@@ -91,6 +91,10 @@ type Host struct {
 	// for non-legacy hosts.
 	JasperCredentialsID string `bson:"jasper_credentials_id" json:"jasper_credentials_id"`
 
+	// JasperDeployAttempts is the current number of times the app server has
+	// attempted to deploy a new Jasper service to the host.
+	JasperDeployAttempts int `bson:"jasper_deploy_attempts" json:"jasper_deploy_attempts"`
+
 	// for ec2 dynamic hosts, the instance type requested
 	InstanceType string `bson:"instance_type" json:"instance_type,omitempty"`
 	// for ec2 dynamic hosts, the total size of the volumes requested, in GiB
@@ -343,25 +347,37 @@ func (h *Host) JasperCredentials(ctx context.Context, env evergreen.Environment)
 	return credentials.FindByID(ctx, env, h.JasperCredentialsID)
 }
 
+// JasperCredentialsExpiration returns the time at which the host's Jasper
+// credentials will expire.
+func (h *Host) JasperCredentialsExpiration(ctx context.Context, env evergreen.Environment) (time.Time, error) {
+	return credentials.FindExpirationByID(ctx, env, h.JasperCredentialsID)
+}
+
 // JasperClientCredentials gets the Jasper credentials for a client to
 // communicate with the host's running Jasper service. These credentials should
 // be used only to connect to the host's Jasper service.
 func (h *Host) JasperClientCredentials(ctx context.Context, env evergreen.Environment) (*rpc.Credentials, error) {
-	creds, err := credentials.FindByID(ctx, env, h.JasperCredentialsID)
+	creds, err := credentials.ForJasperClient(ctx, env)
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}
-	creds.ServerName = h.Id
+	creds.ServerName = h.JasperCredentialsID
 	return creds, nil
 }
 
 // GenerateJasperCredentials creates the Jasper credentials for the given host
-// without saving them to the database.
+// without saving them to the database. If credentials already exist in the
+// database, they are deleted.
 func (h *Host) GenerateJasperCredentials(ctx context.Context, env evergreen.Environment) (*rpc.Credentials, error) {
 	if h.JasperCredentialsID == "" {
 		if err := h.UpdateJasperCredentialsID(h.Id); err != nil {
 			return nil, errors.Wrap(err, "problem setting Jasper credentials ID")
 		}
+	}
+	// We have to delete this host's credentials because GenerateInMemory will
+	// fail if credentials already exist in the database.
+	if err := credentials.DeleteByID(ctx, env, h.JasperCredentialsID); err != nil {
+		return nil, errors.Wrap(err, "problem deleting existing Jasper credentials")
 	}
 	return credentials.GenerateInMemory(ctx, env, h.JasperCredentialsID)
 }
@@ -372,13 +388,13 @@ func (h *Host) SaveJasperCredentials(ctx context.Context, env evergreen.Environm
 	if h.JasperCredentialsID == "" {
 		return errors.New("Jasper credentials ID is empty")
 	}
-	return credentials.SaveCredentials(ctx, env, h.JasperCredentialsID, creds)
+	return credentials.SaveByID(ctx, env, h.JasperCredentialsID, creds)
 }
 
 // DeleteJasperCredentials deletes the Jasper credentials for the host and
 // updates the host both in memory and in the database.
 func (h *Host) DeleteJasperCredentials(ctx context.Context, env evergreen.Environment) error {
-	return credentials.DeleteCredentials(ctx, env, h.JasperCredentialsID)
+	return credentials.DeleteByID(ctx, env, h.JasperCredentialsID)
 }
 
 // UpdateJasperCredentialsID sets the ID of the host's Jasper credentials.
@@ -640,10 +656,14 @@ func (h *Host) SetAgentRevision(agentRevision string) error {
 	return nil
 }
 
-// IsWaitingForAgent provides a local predicate for the logic in the
-// "NeedsNewAgent" query.
+// IsWaitingForAgent provides a local predicate for the logic for
+// whether the host needs either a new agent or agent monitor.
 func (h *Host) IsWaitingForAgent() bool {
-	if h.NeedsNewAgent {
+	if h.LegacyBootstrap() && h.NeedsNewAgent {
+		return true
+	}
+
+	if !h.LegacyBootstrap() && h.NeedsNewAgentMonitor {
 		return true
 	}
 
@@ -658,8 +678,13 @@ func (h *Host) IsWaitingForAgent() bool {
 	return false
 }
 
-// SetNeedsNewAgent sets the "needs new agent" flag on the host.
+// SetNeedsNewAgent sets the "needs new agent" flag on the host. This is a no-op
+// on non-legacy hosts.
 func (h *Host) SetNeedsNewAgent(needsAgent bool) error {
+	if !h.LegacyBootstrap() {
+		return nil
+	}
+
 	err := UpdateOne(bson.M{IdKey: h.Id},
 		bson.M{"$set": bson.M{NeedsNewAgentKey: needsAgent}})
 	if err != nil {
@@ -721,11 +746,13 @@ func (h *Host) JasperCommunication() bool {
 	return h.Distro.CommunicationMethod == distro.CommunicationMethodSSH || h.Distro.CommunicationMethod == distro.CommunicationMethodRPC
 }
 
-// SetNeedsAgentDeploy indicates that the host's agent needs to be deployed.
+// SetNeedsAgentDeploy indicates that the host's agent or agent monitor needs
+// to be deployed.
 func (h *Host) SetNeedsAgentDeploy(needsDeploy bool) error {
 	if h.LegacyBootstrap() {
 		return errors.Wrap(h.SetNeedsNewAgent(needsDeploy), "error setting host needs new agent")
 	}
+
 	return errors.Wrap(h.SetNeedsNewAgentMonitor(needsDeploy), "error setting host needs new agent monitor")
 }
 
@@ -792,22 +819,25 @@ func (h *Host) Upsert() (*adb.ChangeInfo, error) {
 				// If adding or removing fields here, make sure that all callers will work
 				// correctly after the change. Any fields defined here but not set by the
 				// caller will insert the zero value into the document
-				DNSKey:               h.Host,
-				UserKey:              h.User,
-				DistroKey:            h.Distro,
-				ProvisionedKey:       h.Provisioned,
-				StartedByKey:         h.StartedBy,
-				ExpirationTimeKey:    h.ExpirationTime,
-				ProviderKey:          h.Provider,
-				TagKey:               h.Tag,
-				InstanceTypeKey:      h.InstanceType,
-				ZoneKey:              h.Zone,
-				ProjectKey:           h.Project,
-				ProvisionAttemptsKey: h.ProvisionAttempts,
-				ProvisionOptionsKey:  h.ProvisionOptions,
-				StartTimeKey:         h.StartTime,
-				HasContainersKey:     h.HasContainers,
-				ContainerImagesKey:   h.ContainerImages,
+				DNSKey:                  h.Host,
+				UserKey:                 h.User,
+				DistroKey:               h.Distro,
+				ProvisionedKey:          h.Provisioned,
+				StartedByKey:            h.StartedBy,
+				ExpirationTimeKey:       h.ExpirationTime,
+				ProviderKey:             h.Provider,
+				TagKey:                  h.Tag,
+				InstanceTypeKey:         h.InstanceType,
+				ZoneKey:                 h.Zone,
+				ProjectKey:              h.Project,
+				ProvisionAttemptsKey:    h.ProvisionAttempts,
+				ProvisionOptionsKey:     h.ProvisionOptions,
+				StartTimeKey:            h.StartTime,
+				HasContainersKey:        h.HasContainers,
+				ContainerImagesKey:      h.ContainerImages,
+				NeedsNewAgentMonitorKey: h.NeedsNewAgentMonitor,
+				JasperCredentialsIDKey:  h.JasperCredentialsID,
+				JasperDeployAttemptsKey: h.JasperDeployAttempts,
 			},
 			"$setOnInsert": bson.M{
 				StatusKey:     h.Status,
@@ -1241,6 +1271,8 @@ func FindHostsSpawnedByBuild(buildID string) ([]Host, error) {
 	return hosts, nil
 }
 
+// FindTerminatedHostsRunningTasks finds all hosts that were running tasks when
+// they were either terminated or needed to be re-provisioned.
 func FindTerminatedHostsRunningTasks() ([]Host, error) {
 	hosts, err := Find(db.Query(bson.M{
 		StatusKey: evergreen.HostTerminated,

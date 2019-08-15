@@ -2,6 +2,7 @@ package evergreen
 
 import (
 	"os"
+	"time"
 
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
@@ -125,11 +126,17 @@ const (
 	StepbackTaskActivator  = "stepback"
 	APIServerTaskActivator = "apiserver"
 
+	// Restart Types
+	RestartVersions = "versions"
+	RestartTasks    = "tasks"
+
 	RestRoutePrefix = "rest"
 	APIRoutePrefix  = "api"
 
 	AgentAPIVersion  = 2
 	APIRoutePrefixV2 = "/rest/v2"
+
+	AgentMonitorTag = "agent-monitor"
 
 	DegradedLoggingPercent = 10
 
@@ -142,6 +149,10 @@ const (
 	PlannerVersionLegacy  = "legacy"
 	PlannerVersionRevised = "revised"
 	PlannerVersionTunable = "tunable"
+
+	// maximum turnaround we want to maintain for all hosts for a given distro
+	MaxDurationPerDistroHost               = 30 * time.Minute
+	MaxDurationPerDistroHostWithContainers = 2 * time.Minute
 
 	FinderVersionLegacy    = "legacy"
 	FinderVersionParallel  = "parallel"
@@ -164,7 +175,11 @@ const (
 
 	MaxTeardownGroupTimeoutSecs = 30 * 60
 
-	DefaultJasperPort = 2385
+	DefaultJasperPort          = 2385
+	GlobalGitHubTokenExpansion = "global_github_oauth_token"
+
+	// TODO: remove this when degrading YAML
+	UseParserProject = false
 )
 
 func IsFinishedTaskStatus(status string) bool {
@@ -235,6 +250,11 @@ var (
 		ProviderNameVsphere,
 		ProviderNameMock,
 	}
+
+	ProviderContainer = []string{
+		ProviderNameDocker,
+	}
+
 	SystemVersionRequesterTypes = []string{
 		RepotrackerVersionRequester,
 		TriggerRequester,
@@ -312,13 +332,17 @@ func (k SenderKey) String() string {
 }
 
 const (
-	defaultLogBufferingDuration  = 20
-	defaultAmboyPoolSize         = 2
-	defaultAmboyLocalStorageSize = 1024
-	defaultAmboyQueueName        = "evg.service"
-	defaultSingleAmboyQueueName  = "evg.single"
-	defaultAmboyDBName           = "amboy"
-	maxNotificationsPerSecond    = 100
+	defaultLogBufferingDuration                  = 20
+	defaultAmboyPoolSize                         = 2
+	defaultAmboyLocalStorageSize                 = 1024
+	defaultAmboyQueueName                        = "evg.service"
+	defaultSingleAmboyQueueName                  = "evg.single"
+	defaultAmboyDBName                           = "amboy"
+	defaultGroupWorkers                          = 1
+	defaultGroupBackgroundCreateFrequencyMinutes = 10
+	defaultGroupPruneFrequencyMinutes            = 10
+	defaultGroupTTLMinutes                       = 1
+	maxNotificationsPerSecond                    = 100
 
 	EnableAmboyRemoteReporting = false
 )

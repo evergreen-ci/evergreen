@@ -242,7 +242,8 @@ func listAliases(ctx context.Context, confPath, project, filename string) error 
 
 	for _, alias := range aliases {
 		if alias.Alias != patch.GithubAlias {
-			fmt.Printf("%s\t%s\t%s\t%s\n", alias.Alias, alias.Variant, alias.Task, strings.Join(alias.Tags, ", "))
+			fmt.Printf("%s\t%s\t%s\t%s\t%s\n", alias.Alias, alias.Variant, strings.Join(alias.VariantTags, ","),
+				alias.Task, strings.Join(alias.TaskTags, ", "))
 		}
 	}
 
@@ -280,6 +281,19 @@ func listDistros(ctx context.Context, confPath string, onlyUserSpawnable bool) e
 		for _, distro := range distros {
 			fmt.Println(restmodel.FromAPIString(distro.Name))
 		}
+
+		aliases := map[string][]string{}
+		for _, d := range distros {
+			for _, a := range d.Aliases {
+				aliases[a] = append(aliases[a], d.Aliases...)
+			}
+		}
+		if len(aliases) > 0 {
+			fmt.Println("\n", len(aliases), "distro aliases:")
+			for a, names := range aliases {
+				fmt.Println(a, "=>", names)
+			}
+		}
 	}
 
 	return nil
@@ -293,8 +307,7 @@ func loadLocalConfig(filepath string) (*model.Project, error) {
 	}
 
 	project := &model.Project{}
-	err = model.LoadProjectInto(configBytes, "", project)
-	if err != nil {
+	if _, err = model.LoadProjectInto(configBytes, "", project); err != nil {
 		return nil, errors.Wrap(err, "error loading project")
 	}
 
