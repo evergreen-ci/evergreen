@@ -230,7 +230,9 @@ mciModule.controller('PerfController', function PerfController(
     var chartsScope = scope.$new()
     for (var i = 0; i < tests.length; i++) {
       var key = tests[i];
-      var series = trendSamples.seriesByName[key] || [];
+      var series = _.filter(trendSamples.seriesByName[key] || [], function(sample) {
+        return sample[scope.metricSelect.value.key];
+      });
       var containerId = 'perf-trendchart-' + cleanId(taskId) + '-' + i;
       var cps = scope.changePoints || {};
       var bfs = scope.buildFailures || {};
@@ -294,7 +296,8 @@ mciModule.controller('PerfController', function PerfController(
       var margin = { top: 20, right: 50, bottom: 30, left: 80 };
       var width = 450 - margin.left - margin.right;
       var height = 200 - margin.top - margin.bottom;
-      var svg = d3.select("#chart-" + cleanId(taskId) + "-" + i)
+      var id = "chart-" + cleanId(taskId) + "-" + i;
+      var svg = d3.select('[id="' + id + '"]')
         .append("svg")
         .attr("width", width + margin.left + margin.right)
         .attr("height", height + margin.top + margin.bottom)
@@ -728,7 +731,8 @@ mciModule.controller('PerfController', function PerfController(
       });
     }
 
-    let historyPromise = $http.get(cedarApp + "/rest/v1/perf/task_name/" + $scope.task.display_name + "?variant=" + $scope.task.build_variant).then(
+    let historyPromise = $http.get(cedarApp + "/rest/v1/perf/task_name/" + $scope.task.display_name + 
+    "?variant=" + $scope.task.build_variant + "&project=" + $scope.task.branch).then(
       function(resp) {
         let converted = $filter("expandedHistoryConverter")(resp.data, $scope.task.execution);
         trendDataSuccess(converted);

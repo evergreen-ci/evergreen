@@ -8,12 +8,16 @@ import (
 )
 
 type AmboyConfig struct {
-	Name           string `bson:"name" json:"name" yaml:"name"`
-	SingleName     string `bson:"single_name" json:"single_name" yaml:"single_name"`
-	DB             string `bson:"database" json:"database" yaml:"database"`
-	PoolSizeLocal  int    `bson:"pool_size_local" json:"pool_size_local" yaml:"pool_size_local"`
-	PoolSizeRemote int    `bson:"pool_size_remote" json:"pool_size_remote" yaml:"pool_size_remote"`
-	LocalStorage   int    `bson:"local_storage_size" json:"local_storage_size" yaml:"local_storage_size"`
+	Name                                  string `bson:"name" json:"name" yaml:"name"`
+	SingleName                            string `bson:"single_name" json:"single_name" yaml:"single_name"`
+	DB                                    string `bson:"database" json:"database" yaml:"database"`
+	PoolSizeLocal                         int    `bson:"pool_size_local" json:"pool_size_local" yaml:"pool_size_local"`
+	PoolSizeRemote                        int    `bson:"pool_size_remote" json:"pool_size_remote" yaml:"pool_size_remote"`
+	LocalStorage                          int    `bson:"local_storage_size" json:"local_storage_size" yaml:"local_storage_size"`
+	GroupDefaultWorkers                   int    `bson:"group_default_workers" json:"group_default_workers" yaml:"group_default_workers"`
+	GroupBackgroundCreateFrequencyMinutes int    `bson:"group_background_create_frequency" json:"group_background_create_frequency" yaml:"group_background_create_frequency"`
+	GroupPruneFrequencyMinutes            int    `bson:"group_prune_frequency" json:"group_prune_frequency" yaml:"group_prune_frequency"`
+	GroupTTLMinutes                       int    `bson:"group_ttl" json:"group_ttl" yaml:"group_ttl"`
 }
 
 func (c *AmboyConfig) SectionId() string { return "amboy" }
@@ -48,12 +52,16 @@ func (c *AmboyConfig) Set() error {
 
 	_, err := coll.UpdateOne(ctx, byId(c.SectionId()), bson.M{
 		"$set": bson.M{
-			"name":               c.Name,
-			"single_name":        c.SingleName,
-			"database":           c.DB,
-			"pool_size_local":    c.PoolSizeLocal,
-			"pool_size_remote":   c.PoolSizeRemote,
-			"local_storage_size": c.LocalStorage,
+			"name":                              c.Name,
+			"single_name":                       c.SingleName,
+			"database":                          c.DB,
+			"pool_size_local":                   c.PoolSizeLocal,
+			"pool_size_remote":                  c.PoolSizeRemote,
+			"local_storage_size":                c.LocalStorage,
+			"group_default_workers":             c.GroupDefaultWorkers,
+			"group_background_create_frequency": c.GroupBackgroundCreateFrequencyMinutes,
+			"group_prune_frequency":             c.GroupPruneFrequencyMinutes,
+			"group_ttl":                         c.GroupTTLMinutes,
 		},
 	}, options.Update().SetUpsert(true))
 
@@ -83,6 +91,22 @@ func (c *AmboyConfig) ValidateAndDefault() error {
 
 	if c.LocalStorage == 0 {
 		c.LocalStorage = defaultAmboyLocalStorageSize
+	}
+
+	if c.GroupDefaultWorkers <= 0 {
+		c.GroupDefaultWorkers = defaultGroupWorkers
+	}
+
+	if c.GroupBackgroundCreateFrequencyMinutes <= 0 {
+		c.GroupBackgroundCreateFrequencyMinutes = defaultGroupBackgroundCreateFrequencyMinutes
+	}
+
+	if c.GroupPruneFrequencyMinutes <= 0 {
+		c.GroupPruneFrequencyMinutes = defaultGroupPruneFrequencyMinutes
+	}
+
+	if c.GroupTTLMinutes <= 0 {
+		c.GroupTTLMinutes = defaultGroupTTLMinutes
 	}
 
 	return nil

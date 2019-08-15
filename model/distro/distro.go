@@ -16,6 +16,7 @@ import (
 
 type Distro struct {
 	Id                    string                  `bson:"_id" json:"_id,omitempty" mapstructure:"_id,omitempty"`
+	Aliases               []string                `bson:"aliases,omitempty" json:"aliases,omitempty" mapstructure:"aliases,omitempty"`
 	Arch                  string                  `bson:"arch" json:"arch,omitempty" mapstructure:"arch,omitempty"`
 	WorkDir               string                  `bson:"work_dir" json:"work_dir,omitempty" mapstructure:"work_dir,omitempty"`
 	PoolSize              int                     `bson:"pool_size,omitempty" json:"pool_size,omitempty" mapstructure:"pool_size,omitempty" yaml:"poolsize"`
@@ -49,8 +50,12 @@ type PlannerSettings struct {
 	TargetTime             time.Duration `bson:"target_time" json:"target_time" mapstructure:"target_time,omitempty"`
 	AcceptableHostIdleTime time.Duration `bson:"acceptable_host_idle_time" json:"acceptable_host_idle_time" mapstructure:"acceptable_host_idle_time,omitempty"`
 	GroupVersions          *bool         `bson:"group_versions" json:"group_versions" mapstructure:"group_versions,omitempty"`
-	PatchZipperFactor      int           `bson:"patch_zipper_factor" json:"patch_zipper_factor" mapstructure:"patch_zipper_factor,omitempty"`
 	TaskOrdering           string        `bson:"task_ordering" json:"task_ordering" mapstructure:"task_ordering,omitempty"`
+	PatchZipperFactor      int64         `bson:"patch_zipper_factor" json:"patch_zipper_factor" mapstructure:"patch_zipper_factor"`
+	TimeInQueueFactor      int64         `bson:"time_in_queue_factor" json:"time_in_queue_factor" mapstructure:"time_in_queue_factor"`
+	ExpectedRuntimeFactor  int64         `bson:"expected_runtime_factor" json:"expected_runtime_factor" mapstructure:"expected_runtime_factor"`
+
+	maxDurationPerHost time.Duration
 }
 
 type FinderSettings struct {
@@ -159,6 +164,48 @@ func (d *Distro) GenerateName() string {
 	return name
 }
 
+func (d *Distro) ShouldGroupVersions() bool {
+	if d.PlannerSettings.GroupVersions == nil {
+		return false
+	}
+
+	return *d.PlannerSettings.GroupVersions
+}
+
+func (d *Distro) GetPatchZipperFactor() int64 {
+	if d.PlannerSettings.PatchZipperFactor <= 0 {
+		return 1
+	}
+	return d.PlannerSettings.PatchZipperFactor
+}
+
+func (d *Distro) GetTimeInQueueFactor() int64 {
+	if d.PlannerSettings.TimeInQueueFactor <= 0 {
+		return 1
+	}
+	return d.PlannerSettings.TimeInQueueFactor
+}
+
+func (d *Distro) GetExpectedRuntimeFactor() int64 {
+	if d.PlannerSettings.ExpectedRuntimeFactor <= 0 {
+		return 1
+	}
+
+	return d.PlannerSettings.ExpectedRuntimeFactor
+}
+
+func (d *Distro) MaxDurationPerHost() time.Duration {
+	if d.PlannerSettings.maxDurationPerHost != 0 {
+		return d.PlannerSettings.maxDurationPerHost
+	}
+
+	if d.ContainerPool != "" {
+		return evergreen.MaxDurationPerDistroHostWithContainers
+	}
+
+	return evergreen.MaxDurationPerDistroHost
+}
+
 func (d *Distro) IsWindows() bool {
 	// XXX: if this is-windows check is updated, make sure to also update
 	// public/static/js/spawned_hosts.js as well
@@ -185,6 +232,17 @@ func (d *Distro) BinaryName() string {
 // ExecutableSubPath returns the directory containing the compiled agents.
 func (d *Distro) ExecutableSubPath() string {
 	return filepath.Join(d.Arch, d.BinaryName())
+}
+
+// HomeDir gets the absolute path to the home directory for this distro's user.
+func (d *Distro) HomeDir() string {
+	if d.User == "root" {
+		return filepath.Join("/", d.User)
+	}
+	if d.Arch == ArchDarwinAmd64 {
+		return filepath.Join("/Users", d.User)
+	}
+	return filepath.Join("/home", d.User)
 }
 
 // IsParent returns whether the distro is the parent distro for any container pool
@@ -239,6 +297,25 @@ func (d *Distro) GetImageID() (string, error) {
 		return "", errors.New("cannot extract image ID from provider settings")
 	}
 	return s, nil
+}
+
+func (d *Distro) GetPoolSize() int {
+	switch d.Provider {
+	case evergreen.ProviderNameStatic:
+		if d.ProviderSettings == nil {
+			return 0
+		}
+
+		hosts, ok := (*d.ProviderSettings)["hosts"].([]interface{})
+		if !ok {
+			return 0
+		}
+
+		return len(hosts)
+	default:
+		return d.PoolSize + d.PlannerSettings.MaximumHosts
+	}
+
 }
 
 // ValidateContainerPoolDistros ensures that container pools have valid distros
@@ -329,8 +406,8 @@ func (distros DistroGroup) GetDistroIds() []string {
 
 // GetResolvedPlannerSettings combines the distro's PlannerSettings fields with the
 // SchedulerConfig defaults to resolve and validate a canonical set of PlannerSettings' field values.
-func (d *Distro) GetResolvedPlannerSettings(config evergreen.SchedulerConfig) (PlannerSettings, error) {
-	catcher := grip.NewBasicCatcher()
+func (d *Distro) GetResolvedPlannerSettings(s *evergreen.Settings) (PlannerSettings, error) {
+	config := s.Scheduler
 	ps := d.PlannerSettings
 	resolved := PlannerSettings{
 		Version:                ps.Version,
@@ -339,22 +416,37 @@ func (d *Distro) GetResolvedPlannerSettings(config evergreen.SchedulerConfig) (P
 		TargetTime:             ps.TargetTime,
 		AcceptableHostIdleTime: ps.AcceptableHostIdleTime,
 		GroupVersions:          ps.GroupVersions,
-		PatchZipperFactor:      ps.PatchZipperFactor,
 		TaskOrdering:           ps.TaskOrdering,
+		PatchZipperFactor:      ps.PatchZipperFactor,
+		TimeInQueueFactor:      ps.TimeInQueueFactor,
+		ExpectedRuntimeFactor:  ps.ExpectedRuntimeFactor,
+		maxDurationPerHost:     evergreen.MaxDurationPerDistroHost,
 	}
+
+	catcher := grip.NewBasicCatcher()
+	catcher.Add(config.ValidateAndDefault())
+
+	if d.ContainerPool != "" {
+		if s.ContainerPools.GetContainerPool(d.ContainerPool) == nil {
+			catcher.Errorf("could not find pool '%s' for distro '%s'", d.ContainerPool, d.Id)
+		}
+		resolved.maxDurationPerHost = evergreen.MaxDurationPerDistroHostWithContainers
+	}
+
 	// Validate the resolved PlannerSettings.Version
 	if resolved.Version == "" {
 		resolved.Version = config.Planner
 	}
+
 	if !util.StringSliceContains(evergreen.ValidPlannerVersions, resolved.Version) {
-		catcher.Add(errors.Errorf("'%s' is not a valid PlannerSettings.Version", resolved.Version))
+		catcher.Errorf("'%s' is not a valid PlannerSettings.Version", resolved.Version)
 	}
 	// Validate the PlannerSettings.MinimumHosts and PlannerSettings.MaximumHosts
 	if resolved.MinimumHosts < 0 {
-		catcher.Add(errors.Errorf("%d is not a valid PlannerSettings.MinimumHosts", resolved.MinimumHosts))
+		catcher.Errorf("%d is not a valid PlannerSettings.MinimumHosts", resolved.MinimumHosts)
 	}
 	if resolved.MaximumHosts < 0 {
-		catcher.Add(errors.Errorf("%d is not a valid PlannerSettings.MaximumHosts", resolved.MaximumHosts))
+		catcher.Errorf("%d is not a valid PlannerSettings.MaximumHosts", resolved.MaximumHosts)
 	}
 	// Resolve PlannerSettings.TargetTime and PlannerSettings.AcceptableHostIdleTime
 	if resolved.TargetTime == 0 {
@@ -370,12 +462,20 @@ func (d *Distro) GetResolvedPlannerSettings(config evergreen.SchedulerConfig) (P
 	if resolved.PatchZipperFactor == 0 {
 		resolved.PatchZipperFactor = config.PatchZipperFactor
 	}
+	if resolved.TimeInQueueFactor == 0 {
+		resolved.TimeInQueueFactor = config.TimeInQueueFactor
+	}
+	if resolved.ExpectedRuntimeFactor == 0 {
+		resolved.ExpectedRuntimeFactor = config.ExpectedRuntimeFactor
+	}
+
 	// Resolve and validate the PlannerSettings.TaskOrdering
 	if resolved.TaskOrdering == "" {
 		resolved.TaskOrdering = config.TaskOrdering
 	}
-	if !util.StringSliceContains(evergreen.ValidTaskOrderings, resolved.TaskOrdering) || resolved.TaskOrdering == "" {
-		catcher.Add(errors.Errorf("'%s' is not a valid PlannerSettings.TaskOrdering", resolved.TaskOrdering))
+
+	if !util.StringSliceContains(evergreen.ValidTaskOrderings, resolved.TaskOrdering) {
+		catcher.Errorf("'%s' is not a valid PlannerSettings.TaskOrdering", resolved.TaskOrdering)
 	}
 
 	// Any validation errors?
@@ -383,5 +483,6 @@ func (d *Distro) GetResolvedPlannerSettings(config evergreen.SchedulerConfig) (P
 		return PlannerSettings{}, errors.Wrapf(catcher.Resolve(), "cannot resolve PlannerSettings for distro '%s'", d.Id)
 	}
 
+	d.PlannerSettings = resolved
 	return resolved, nil
 }

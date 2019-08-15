@@ -78,7 +78,7 @@ func (s *GitGetProjectSuite) SetupTest() {
 
 	s.modelData1, err = modelutil.SetupAPITestData(s.settings, "testtask1", "rhel55", configPath1, modelutil.NoPatch)
 	s.Require().NoError(err)
-	s.modelData1.TaskConfig.Expansions = util.NewExpansions(map[string]string{"global_github_oauth_token": fmt.Sprintf("token " + globalGitHubToken)})
+	s.modelData1.TaskConfig.Expansions = util.NewExpansions(map[string]string{evergreen.GlobalGitHubTokenExpansion: fmt.Sprintf("token " + globalGitHubToken)})
 
 	s.modelData2, err = modelutil.SetupAPITestData(s.settings, "testtask1", "rhel55", configPath2, modelutil.NoPatch)
 	s.Require().NoError(err)
@@ -221,7 +221,7 @@ func (s *GitGetProjectSuite) TestTokenScrubbedFromLogger() {
 	conf.Distro.CloneMethod = distro.CloneMethodOAuth
 	token, err := s.settings.GetGithubOauthToken()
 	s.Require().NoError(err)
-	conf.Expansions.Put("global_github_oauth_token", token)
+	conf.Expansions.Put(evergreen.GlobalGitHubTokenExpansion, token)
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	comm := client.NewMock("http://localhost.com")
@@ -309,7 +309,7 @@ func (s *GitGetProjectSuite) TestValidateGitCommands() {
 	conf.Distro.CloneMethod = distro.CloneMethodOAuth
 	token, err := s.settings.GetGithubOauthToken()
 	s.Require().NoError(err)
-	conf.Expansions.Put("global_github_oauth_token", token)
+	conf.Expansions.Put(evergreen.GlobalGitHubTokenExpansion, token)
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	comm := client.NewMock("http://localhost.com")
@@ -609,7 +609,14 @@ func (s *GitGetProjectSuite) TestBuildModuleCommand() {
 
 func (s *GitGetProjectSuite) TestCorrectModuleRevision() {
 	conf := s.modelData2.TaskConfig
-	ctx := context.WithValue(context.Background(), "githash", "b27779f856b211ffaf97cbc124b7082a20ea8bc0")
+	ctx := context.WithValue(context.Background(), "patch", &patch.Patch{
+		Patches: []patch.ModulePatch{
+			{
+				ModuleName: "sample",
+				Githash:    "b27779f856b211ffaf97cbc124b7082a20ea8bc0",
+			},
+		},
+	})
 	comm := client.NewMock("http://localhost.com")
 	logger, err := comm.GetLoggerProducer(ctx, client.TaskData{ID: conf.Task.Id, Secret: conf.Task.Secret}, nil)
 	s.NoError(err)

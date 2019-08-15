@@ -117,7 +117,11 @@ func (p *sshProcess) Wait(ctx context.Context) (int, error) {
 		return resp.ExitCode, errors.WithStack(err)
 	}
 
-	return resp.ExitCode, errors.New(resp.Error)
+	if resp.Error != "" {
+		return resp.ExitCode, errors.New(resp.Error)
+	}
+
+	return resp.ExitCode, nil
 }
 
 func (p *sshProcess) Respawn(ctx context.Context) (jasper.Process, error) {

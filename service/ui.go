@@ -214,6 +214,16 @@ func (uis *UIServer) GetServiceApp() *gimlet.APIApp {
 	app.AddRoute("/login/key").Handler(uis.userGetKey).Post()
 	app.AddRoute("/logout").Handler(uis.logout).Get()
 
+	app.AddRoute("/robots.txt").Get().Handler(func(rw http.ResponseWriter, r *http.Request) {
+		_, err := rw.Write([]byte(strings.Join([]string{
+			"User-agent: *",
+			"Disallow: /",
+		}, "\n")))
+		if err != nil {
+			gimlet.WriteResponse(rw, gimlet.MakeTextErrorResponder(err))
+		}
+	})
+
 	if h := uis.UserManager.GetLoginHandler(uis.RootURL); h != nil {
 		app.AddRoute("/login/redirect").Handler(h).Get()
 	}

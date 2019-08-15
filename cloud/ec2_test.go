@@ -398,6 +398,7 @@ func (s *EC2Suite) TestSpawnHostClassicSpot() {
 	s.Equal("sg-123456", *requestInput.LaunchSpecification.SecurityGroups[0])
 	s.Nil(requestInput.LaunchSpecification.SecurityGroupIds)
 	s.Nil(requestInput.LaunchSpecification.SubnetId)
+	s.Nil(mock.CreateTagsInput)
 	s.Equal(base64OfSomeUserData, *requestInput.LaunchSpecification.UserData)
 }
 
@@ -437,6 +438,7 @@ func (s *EC2Suite) TestSpawnHostVPCSpot() {
 	s.Nil(requestInput.LaunchSpecification.SecurityGroupIds)
 	s.Nil(requestInput.LaunchSpecification.SecurityGroups)
 	s.Nil(requestInput.LaunchSpecification.SubnetId)
+	s.Nil(mock.CreateTagsInput)
 	s.Equal(base64OfSomeUserData, *requestInput.LaunchSpecification.UserData)
 }
 

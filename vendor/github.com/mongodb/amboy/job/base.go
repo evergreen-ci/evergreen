@@ -218,6 +218,10 @@ func (b *Base) UpdateTimeInfo(i amboy.JobTimeInfo) {
 		b.timeInfo.WaitUntil = i.WaitUntil
 	}
 
+	if !i.DispatchBy.IsZero() {
+		b.timeInfo.DispatchBy = i.DispatchBy
+	}
+
 	if i.MaxTime != 0 {
 		b.timeInfo.MaxTime = i.MaxTime
 	}

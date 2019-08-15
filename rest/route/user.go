@@ -90,6 +90,14 @@ func (h *userSettingsPostHandler) Run(ctx context.Context) gimlet.Responder {
 		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "Error saving user settings"))
 	}
 
+	if h.settings.SpruceFeedback != nil {
+		h.settings.SpruceFeedback.SubmittedAt = time.Now()
+		h.settings.SpruceFeedback.User = model.ToAPIString(u.Username())
+		if err = h.sc.SubmitFeedback(*h.settings.SpruceFeedback); err != nil {
+			return gimlet.MakeJSONErrorResponder(err)
+		}
+	}
+
 	return gimlet.NewJSONResponse(struct{}{})
 }
 

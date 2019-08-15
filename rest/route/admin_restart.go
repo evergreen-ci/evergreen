@@ -5,18 +5,20 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/evergreen-ci/evergreen"
+
 	dataModel "github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/rest/data"
-	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/mongodb/amboy"
 	"github.com/pkg/errors"
 )
 
-func makeRestartRoute(sc data.Connector, queue amboy.Queue) gimlet.RouteHandler {
+func makeRestartRoute(sc data.Connector, restartType string, queue amboy.Queue) gimlet.RouteHandler {
 	return &restartHandler{
-		queue: queue,
-		sc:    sc,
+		queue:       queue,
+		restartType: restartType,
+		sc:          sc,
 	}
 }
 
@@ -28,14 +30,16 @@ type restartHandler struct {
 	IncludeSysFailed   bool      `json:"include_sys_failed"`
 	IncludeSetupFailed bool      `json:"include_setup_failed"`
 
-	sc    data.Connector
-	queue amboy.Queue
+	restartType string
+	sc          data.Connector
+	queue       amboy.Queue
 }
 
 func (h *restartHandler) Factory() gimlet.RouteHandler {
 	return &restartHandler{
-		queue: h.queue,
-		sc:    h.sc,
+		queue:       h.queue,
+		restartType: h.restartType,
+		sc:          h.sc,
 	}
 }
 
@@ -50,13 +54,19 @@ func (h *restartHandler) Parse(ctx context.Context, r *http.Request) error {
 			Message:    "End time cannot be before start time",
 		}
 	}
+	if h.restartType != evergreen.RestartTasks && h.restartType != evergreen.RestartVersions {
+		return gimlet.ErrorResponse{
+			StatusCode: http.StatusBadRequest,
+			Message:    "Restart type must be tasks or versions",
+		}
+	}
 
 	return nil
 }
 
 func (h *restartHandler) Run(ctx context.Context) gimlet.Responder {
 	u := MustHaveUser(ctx)
-	opts := dataModel.RestartTaskOptions{
+	opts := dataModel.RestartOptions{
 		DryRun:             h.DryRun,
 		IncludeTestFailed:  h.IncludeTestFailed,
 		IncludeSysFailed:   h.IncludeSysFailed,
@@ -65,16 +75,17 @@ func (h *restartHandler) Run(ctx context.Context) gimlet.Responder {
 		EndTime:            h.EndTime,
 		User:               u.Username(),
 	}
+	if h.restartType == evergreen.RestartVersions {
+		resp, err := h.sc.RestartFailedCommitQueueVersions(opts)
+		if err != nil {
+			return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "error restarting versions"))
+		}
+		return gimlet.NewJSONResponse(resp)
+	}
+
 	resp, err := h.sc.RestartFailedTasks(h.queue, opts)
 	if err != nil {
-		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "Error restarting tasks"))
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "Error restarting tasks"))
 	}
-
-	restartModel := &model.RestartTasksResponse{}
-
-	if err = restartModel.BuildFromService(resp); err != nil {
-		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "API model error"))
-	}
-
-	return gimlet.NewJSONResponse(restartModel)
+	return gimlet.NewJSONResponse(resp)
 }

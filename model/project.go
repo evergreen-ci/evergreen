@@ -18,8 +18,8 @@ import (
 	"github.com/mongodb/anser/bsonutil"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
-	"github.com/sabhiram/go-git-ignore"
-	"gopkg.in/yaml.v2"
+	ignore "github.com/sabhiram/go-git-ignore"
+	yaml "gopkg.in/yaml.v2"
 )
 
 const (
@@ -29,30 +29,30 @@ const (
 )
 
 type Project struct {
-	Enabled         bool                       `yaml:"enabled,omitempty" bson:"enabled"`
-	Stepback        bool                       `yaml:"stepback,omitempty" bson:"stepback"`
-	IgnorePreError  bool                       `yaml:"ignore_pre_err,omitempty" bson:"ignore_pre_err,omitempty"`
-	BatchTime       int                        `yaml:"batchtime,omitempty" bson:"batch_time"`
-	Owner           string                     `yaml:"owner,omitempty" bson:"owner_name"`
-	Repo            string                     `yaml:"repo,omitempty" bson:"repo_name"`
-	RemotePath      string                     `yaml:"remote_path,omitempty" bson:"remote_path"`
-	RepoKind        string                     `yaml:"repokind,omitempty" bson:"repo_kind"`
-	Branch          string                     `yaml:"branch,omitempty" bson:"branch_name"`
-	Identifier      string                     `yaml:"identifier,omitempty" bson:"identifier"`
-	DisplayName     string                     `yaml:"display_name,omitempty" bson:"display_name"`
-	CommandType     string                     `yaml:"command_type,omitempty" bson:"command_type"`
-	Ignore          []string                   `yaml:"ignore,omitempty" bson:"ignore"`
-	Pre             *YAMLCommandSet            `yaml:"pre,omitempty" bson:"pre"`
-	Post            *YAMLCommandSet            `yaml:"post,omitempty" bson:"post"`
-	Timeout         *YAMLCommandSet            `yaml:"timeout,omitempty" bson:"timeout"`
-	CallbackTimeout int                        `yaml:"callback_timeout_secs,omitempty" bson:"callback_timeout_secs"`
-	Modules         ModuleList                 `yaml:"modules,omitempty" bson:"modules"`
-	BuildVariants   BuildVariants              `yaml:"buildvariants,omitempty" bson:"build_variants"`
-	Functions       map[string]*YAMLCommandSet `yaml:"functions,omitempty" bson:"functions"`
-	TaskGroups      []TaskGroup                `yaml:"task_groups,omitempty" bson:"task_groups"`
-	Tasks           []ProjectTask              `yaml:"tasks,omitempty" bson:"tasks"`
-	ExecTimeoutSecs int                        `yaml:"exec_timeout_secs,omitempty" bson:"exec_timeout_secs"`
-	Loggers         *LoggerConfig              `yaml:"loggers,omitempty" bson:"loggers,omitempty"`
+	Enabled           bool                       `yaml:"enabled,omitempty" bson:"enabled"`
+	Stepback          bool                       `yaml:"stepback,omitempty" bson:"stepback"`
+	PreErrorFailsTask bool                       `yaml:"pre_error_fails_task,omitempty" bson:"pre_error_fails_task,omitempty"`
+	BatchTime         int                        `yaml:"batchtime,omitempty" bson:"batch_time"`
+	Owner             string                     `yaml:"owner,omitempty" bson:"owner_name"`
+	Repo              string                     `yaml:"repo,omitempty" bson:"repo_name"`
+	RemotePath        string                     `yaml:"remote_path,omitempty" bson:"remote_path"`
+	RepoKind          string                     `yaml:"repokind,omitempty" bson:"repo_kind"`
+	Branch            string                     `yaml:"branch,omitempty" bson:"branch_name"`
+	Identifier        string                     `yaml:"identifier,omitempty" bson:"identifier"`
+	DisplayName       string                     `yaml:"display_name,omitempty" bson:"display_name"`
+	CommandType       string                     `yaml:"command_type,omitempty" bson:"command_type"`
+	Ignore            []string                   `yaml:"ignore,omitempty" bson:"ignore"`
+	Pre               *YAMLCommandSet            `yaml:"pre,omitempty" bson:"pre"`
+	Post              *YAMLCommandSet            `yaml:"post,omitempty" bson:"post"`
+	Timeout           *YAMLCommandSet            `yaml:"timeout,omitempty" bson:"timeout"`
+	CallbackTimeout   int                        `yaml:"callback_timeout_secs,omitempty" bson:"callback_timeout_secs"`
+	Modules           ModuleList                 `yaml:"modules,omitempty" bson:"modules"`
+	BuildVariants     BuildVariants              `yaml:"buildvariants,omitempty" bson:"build_variants"`
+	Functions         map[string]*YAMLCommandSet `yaml:"functions,omitempty" bson:"functions"`
+	TaskGroups        []TaskGroup                `yaml:"task_groups,omitempty" bson:"task_groups"`
+	Tasks             []ProjectTask              `yaml:"tasks,omitempty" bson:"tasks"`
+	ExecTimeoutSecs   int                        `yaml:"exec_timeout_secs,omitempty" bson:"exec_timeout_secs"`
+	Loggers           *LoggerConfig              `yaml:"loggers,omitempty" bson:"loggers,omitempty"`
 
 	// Flag that indicates a project as requiring user authentication
 	Private bool `yaml:"private,omitempty" bson:"private"`
@@ -264,7 +264,7 @@ type PluginCommandConf struct {
 
 	// Params are used to supply configuration specific information.
 	// map[string]interface{} is stored as a JSON string.
-	Params map[string]interface{} `yaml:"params" bson:"params"`
+	Params map[string]interface{} `yaml:"params,omitempty" bson:"params"`
 
 	// YAML string of Params to store in database
 	ParamsYAML string `yaml:"params_yaml,omitempty" bson:"params_yaml"`
@@ -275,18 +275,18 @@ type PluginCommandConf struct {
 	Loggers *LoggerConfig `yaml:"loggers,omitempty" bson:"loggers,omitempty"`
 }
 
-func (c *PluginCommandConf) resolveParams() (map[string]interface{}, error) {
+func (c *PluginCommandConf) resolveParams() error {
 	out := map[string]interface{}{}
 	if c == nil {
-		return out, nil
+		return nil
 	}
 	if c.ParamsYAML != "" {
 		if err := yaml.Unmarshal([]byte(c.ParamsYAML), &out); err != nil {
-			return nil, errors.Wrapf(err, "error unmarshalling params")
+			return errors.Wrapf(err, "error unmarshalling params")
 		}
 		c.Params = out
 	}
-	return c.Params, nil
+	return nil
 }
 
 func (c *PluginCommandConf) UnmarshalYAML(unmarshal func(interface{}) error) error {
@@ -330,11 +330,13 @@ func (c *PluginCommandConf) unmarshalParams() error {
 		c.Params = out
 		return nil
 	}
-	bytes, err := yaml.Marshal(c.Params)
-	if err != nil {
-		return errors.Wrap(err, "error marshalling params into yaml")
+	if len(c.Params) != 0 {
+		bytes, err := yaml.Marshal(c.Params)
+		if err != nil {
+			return errors.Wrap(err, "error marshalling params into yaml")
+		}
+		c.ParamsYAML = string(bytes)
 	}
-	c.ParamsYAML = string(bytes)
 	return nil
 }
 
@@ -363,12 +365,10 @@ func (c *YAMLCommandSet) MarshalYAML() (interface{}, error) {
 		return nil, nil
 	}
 	res := c.List()
-	for idx, cmd := range res {
-		params, err := cmd.resolveParams()
-		if err != nil {
+	for idx := range res {
+		if err := res[idx].resolveParams(); err != nil {
 			return nil, errors.Wrap(err, "error resolving params for command set")
 		}
-		res[idx].Params = params
 	}
 	return res, nil
 }
@@ -475,16 +475,18 @@ func (c *LoggerConfig) IsValid() error {
 	}
 	catcher := grip.NewBasicCatcher()
 	for _, opts := range c.Agent {
-		catcher.Add(errors.Wrap(opts.IsValid(), "invalid agent logger config"))
+		catcher.Wrap(opts.IsValid(), "invalid agent logger config")
 	}
 	for _, opts := range c.System {
-		catcher.Add(errors.Wrap(opts.IsValid(), "invalid system logger config"))
+		catcher.Wrap(opts.IsValid(), "invalid system logger config")
 		if opts.Type == FileLogSender {
-			catcher.Add(errors.New("file logger is disallowed for system logs; will use Evergreen logger"))
+			catcher.New("file logger is disallowed for system logs; will use Evergreen logger")
+		} else if opts.Type == LogkeeperLogSender {
+			catcher.New("logkeepr is disallowed for system logs; will use Evergreen logger")
 		}
 	}
 	for _, opts := range c.Task {
-		catcher.Add(errors.Wrap(opts.IsValid(), "invalid task logger config"))
+		catcher.Wrap(opts.IsValid(), "invalid task logger config")
 	}
 
 	return catcher.Resolve()
@@ -493,13 +495,13 @@ func (c *LoggerConfig) IsValid() error {
 func (o *LogOpts) IsValid() error {
 	catcher := grip.NewBasicCatcher()
 	if !util.StringSliceContains(ValidLogSenders, o.Type) {
-		catcher.Add(errors.Errorf("%s is not a valid log sender", o.Type))
+		catcher.Errorf("%s is not a valid log sender", o.Type)
 	}
 	if o.Type == SplunkLogSender && o.SplunkServer == "" {
-		catcher.Add(errors.New("Splunk logger requires a server URL"))
+		catcher.New("Splunk logger requires a server URL")
 	}
 	if o.Type == SplunkLogSender && o.SplunkToken == "" {
-		catcher.Add(errors.New("Splunk logger requires a token"))
+		catcher.New("Splunk logger requires a token")
 	}
 
 	return catcher.Resolve()
@@ -513,10 +515,10 @@ const (
 )
 
 var ValidLogSenders = []string{
-	string(EvergreenLogSender),
-	string(FileLogSender),
-	string(LogkeeperLogSender),
-	string(SplunkLogSender),
+	EvergreenLogSender,
+	FileLogSender,
+	LogkeeperLogSender,
+	SplunkLogSender,
 }
 
 // TaskIdTable is a map of [variant, task display name]->[task id].
@@ -769,7 +771,7 @@ func PopulateExpansions(t *task.Task, h *host.Host, oauthToken string) (util.Exp
 	expansions.Put("build_variant", t.BuildVariant)
 	expansions.Put("revision", t.Revision)
 	expansions.Put("project", t.Project)
-	expansions.Put("global_github_oauth_token", oauthToken)
+	expansions.Put(evergreen.GlobalGitHubTokenExpansion, oauthToken)
 	expansions.Put("distro_id", h.Distro.Id)
 
 	if t.TriggerID != "" {
@@ -949,7 +951,7 @@ func GetTaskGroup(taskGroup string, tc *TaskConfig) (*TaskGroup, error) {
 			SetupTask:          p.Pre,
 			TeardownTask:       p.Post,
 			Timeout:            p.Timeout,
-			SetupGroupFailTask: p.Pre == nil || !p.IgnorePreError,
+			SetupGroupFailTask: p.Pre == nil || p.PreErrorFailsTask,
 		}, nil
 	}
 	tg := p.FindTaskGroup(taskGroup)
@@ -1374,13 +1376,12 @@ func (p *Project) BuildProjectTVPairsWithAlias(alias string) ([]TVPair, []TVPair
 		}
 
 		for _, variant := range p.BuildVariants {
-			if variantRegex.MatchString(variant.Name) {
+			if isValidRegexOrTag(variant.Name, v.Variant, variant.Tags, v.VariantTags, variantRegex) {
 				for _, task := range p.Tasks {
 					if task.Patchable != nil && !(*task.Patchable) {
 						continue
 					}
-					if !((v.Task != "" && taskRegex.MatchString(task.Name)) ||
-						(len(v.Tags) > 0 && len(util.StringSliceIntersection(task.Tags, v.Tags)) > 0)) {
+					if !isValidRegexOrTag(task.Name, v.Task, task.Tags, v.TaskTags, taskRegex) {
 						continue
 					}
 

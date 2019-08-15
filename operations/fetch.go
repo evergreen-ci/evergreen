@@ -29,6 +29,7 @@ import (
 )
 
 const defaultCloneDepth = 500
+const fileNameMaxLength = 250
 
 func Fetch() cli.Command {
 	const (
@@ -63,7 +64,7 @@ func Fetch() cli.Command {
 			},
 			cli.BoolFlag{
 				Name:  artifactsFlagName,
-				Usage: "fetch artifats for the task and all of its recursive dependents",
+				Usage: "fetch artifacts for the task and all of its recursive dependents",
 			},
 			cli.BoolFlag{
 				Name:  shallowFlagName,
@@ -467,6 +468,21 @@ func fileNameWithIndex(filename string, index int) string {
 	return fmt.Sprintf("%s_(%d).%s", parts[0], index-1, strings.Join(parts[1:], "."))
 }
 
+// truncateFilename truncates the filename (minus any extensions) so the entire filename length is less than the max
+func truncateFilename(fileName string) string {
+	if len(fileName) > fileNameMaxLength {
+		parts := strings.Split(fileName, ".")
+		if len(parts) == 0 {
+			return fileName
+		}
+		toTruncate := len(fileName) - fileNameMaxLength
+		newEndIdx := len(parts[0]) - toTruncate
+		parts[0] = parts[0][0:newEndIdx]
+		fileName = strings.Join(parts, ".")
+	}
+	return fileName
+}
+
 // downloadUrls pulls a set of artifacts from the given channel and downloads them, using up to
 // the given number of workers in parallel. The given root directory determines the base location
 // where all the artifact files will be downloaded to.
@@ -507,10 +523,7 @@ func downloadUrls(root string, urls chan artifactDownload, workers int) error {
 					}
 				}
 
-				fileName := filepath.Join(folder, justFile)
-				if len(fileName) > 250 {
-					fileName = fileName[0:249]
-				}
+				fileName := truncateFilename(filepath.Join(folder, justFile))
 				fileNamesUsed.Lock()
 				for {
 					fileNamesUsed.nameCounts[fileName]++

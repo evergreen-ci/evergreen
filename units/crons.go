@@ -554,6 +554,52 @@ func PopulateSchedulerJobs(env evergreen.Environment) amboy.QueueOperation {
 	}
 }
 
+func PopulateAliasSchedulerJobs(env evergreen.Environment) amboy.QueueOperation {
+	return func(ctx context.Context, queue amboy.Queue) error {
+		flags, err := evergreen.GetServiceFlags()
+		if err != nil {
+			return errors.WithStack(err)
+		}
+
+		if flags.SchedulerDisabled {
+			grip.InfoWhen(sometimes.Percent(evergreen.DegradedLoggingPercent), message.Fields{
+				"message": "scheduler is disabled",
+				"impact":  "new tasks are not enqueued",
+				"mode":    "degraded",
+			})
+			return nil
+		}
+
+		catcher := grip.NewBasicCatcher()
+
+		lastPlanned, err := model.FindTaskAliasQueueGenerationTimes()
+		catcher.Add(err)
+
+		// find all active distros
+		distros, err := distro.Find(distro.ByActiveOrStatic())
+		catcher.Add(err)
+
+		settings := env.Settings()
+		ts := util.RoundPartOfMinute(30)
+
+		for _, d := range distros {
+			// do not create scheduler jobs for parent distros
+			if d.IsParent(settings) {
+				continue
+			}
+
+			lastRun, ok := lastPlanned[d.Id]
+			if ok && time.Since(lastRun) < time.Minute {
+				continue
+			}
+
+			catcher.Add(queue.Put(ctx, NewDistroAliasSchedulerJob(d.Id, ts)))
+		}
+
+		return catcher.Resolve()
+	}
+}
+
 // PopulateHostAlertJobs adds alerting tasks infrequently for host
 // utilization monitoring.
 func PopulateHostAlertJobs(parts int) amboy.QueueOperation {
@@ -598,7 +644,7 @@ func PopulateAgentDeployJobs(env evergreen.Environment) amboy.QueueOperation {
 			return nil
 		}
 
-		err = host.UpdateAll(host.LastCommunicationTimeElapsed(time.Now()), bson.M{"$set": bson.M{
+		err = host.UpdateAll(host.AgentLastCommunicationTimeElapsed(time.Now()), bson.M{"$set": bson.M{
 			host.NeedsNewAgentKey: true,
 		}})
 		if err != nil && !adb.ResultsNotFound(err) {
@@ -662,7 +708,7 @@ func PopulateAgentMonitorDeployJobs(env evergreen.Environment) amboy.QueueOperat
 		// The agent monitor deploy job will atomically clear the
 		// NeedsNewAgentMonitor field to prevent other jobs from running
 		// concurrently.
-		if err = host.UpdateAll(host.LastCommunicationTimeElapsed(time.Now()), bson.M{"$set": bson.M{
+		if err = host.UpdateAll(host.AgentMonitorLastCommunicationTimeElapsed(time.Now()), bson.M{"$set": bson.M{
 			host.NeedsNewAgentMonitorKey: true,
 		}}); err != nil && !adb.ResultsNotFound(err) {
 			grip.Error(message.WrapError(err, message.Fields{
@@ -789,6 +835,54 @@ func PopulateHostSetupJobs(env evergreen.Environment) amboy.QueueOperation {
 		}
 
 		catcher.Add(queue.Put(ctx, NewCloudHostReadyJob(env, ts)))
+
+		return catcher.Resolve()
+	}
+}
+
+// PopulateJasperDeployJobs enqueues the jobs to deploy new Jasper service
+// credentials to any host whose credentials are set to expire soon.
+func PopulateJasperDeployJobs(env evergreen.Environment) amboy.QueueOperation {
+	return func(ctx context.Context, queue amboy.Queue) error {
+		flags, err := evergreen.GetServiceFlags()
+		if err != nil {
+			return errors.WithStack(err)
+		}
+
+		if flags.HostInitDisabled {
+			grip.InfoWhen(sometimes.Percent(evergreen.DegradedLoggingPercent), message.Fields{
+				"message": "host init disabled",
+				"impact":  "existing hosts are not provisioned with new Jasper credentials, which may expire soon",
+				"mode":    "degraded",
+			})
+			return nil
+		}
+
+		hosts, err := host.FindByExpiringJasperCredentials(expirationCutoff)
+		if err != nil {
+			grip.Error(message.WrapError(err, message.Fields{
+				"operation": "Jasper service redeployment",
+				"cron":      jasperDeployJobName,
+				"impact":    "existing hosts are not provisioned with new Jasper credentials, which may expire soon",
+			}))
+			return errors.Wrap(err, "problem finding hosts with expiring credentials")
+		}
+
+		ts := util.RoundPartOfDay(0).Format(tsFormat)
+		catcher := grip.NewBasicCatcher()
+		for _, h := range hosts {
+			if err := h.ResetJasperDeployAttempts(); err != nil {
+				catcher.Add(errors.Wrapf(err, "problem resetting Jasper deploy attempts for host %s", h.Id))
+				continue
+			}
+			expiration, err := h.JasperCredentialsExpiration(ctx, env)
+			if err != nil {
+				catcher.Add(errors.Wrapf(err, "problem getting expiration time on credentials for host %s", h.Id))
+				continue
+			}
+
+			catcher.Add(queue.Put(ctx, NewJasperDeployJob(env, &h, expiration, h.Distro.CommunicationMethod == distro.CommunicationMethodRPC, ts)))
+		}
 
 		return catcher.Resolve()
 	}

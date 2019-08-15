@@ -61,6 +61,10 @@ mciModule
   .constant('FORMAT', {
     ISO_DATE: 'YYYY-MM-DD',
   })
+  .constant('OUTLIERS', {
+    HIGH_CONFIDENCE: 'detected-high-confidence',
+    LOW_CONFIDENCE: 'detected-low-confidence',
+  })
 
   .constant('BF', {
     OPEN_STATUSES: ['Open', 'In Progress', 'Waiting for bug fix'],

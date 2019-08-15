@@ -314,7 +314,7 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 	if commitQueueParams.Enabled {
 		var projRef *model.ProjectRef
 		projRef, err = model.FindOneProjectRefWithCommitQueueByOwnerRepoAndBranch(responseRef.Owner, responseRef.Repo, responseRef.Branch)
-		if err != nil && !adb.ResultsNotFound(err) {
+		if err != nil {
 			uis.LoggedError(w, r, http.StatusInternalServerError, err)
 			return
 		}
@@ -415,10 +415,17 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 				Type: "project",
 				Data: projectRef.Identifier,
 			},
-			{
+		}
+		if subscription.TriggerData != nil && subscription.TriggerData[event.SelectorRequester] != "" {
+			subscription.Selectors = append(subscription.Selectors, event.Selector{
+				Type: "requester",
+				Data: subscription.TriggerData[event.SelectorRequester],
+			})
+		} else {
+			subscription.Selectors = append(subscription.Selectors, event.Selector{
 				Type: "requester",
 				Data: evergreen.RepotrackerVersionRequester,
-			},
+			})
 		}
 		subscription.OwnerType = event.OwnerTypeProject
 		if subscription.Owner != projectRef.Identifier {

@@ -18,6 +18,12 @@ func TestCLIManager(t *testing.T) {
 	} {
 		t.Run(remoteType, func(t *testing.T) {
 			for testName, testCase := range map[string]func(ctx context.Context, t *testing.T, c *cli.Context, jasperProcID string){
+				"IDReturnsNonempty": func(ctx context.Context, t *testing.T, c *cli.Context, jasperProcID string) {
+					resp := &IDResponse{}
+					require.NoError(t, execCLICommandOutput(t, c, managerID(), resp))
+					require.True(t, resp.Successful())
+					assert.NotEmpty(t, resp.ID)
+				},
 				"CommandsWithInputFailWithInvalidInput": func(ctx context.Context, t *testing.T, c *cli.Context, jasperProcID string) {
 					input, err := json.Marshal(jasper.MockProcess{})
 					require.NoError(t, err)

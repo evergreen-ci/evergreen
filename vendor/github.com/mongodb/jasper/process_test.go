@@ -1,12 +1,13 @@
 package jasper
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"io/ioutil"
-	"net/http"
 	"os"
 	"runtime"
+	"strings"
 	"syscall"
 	"testing"
 	"time"
@@ -20,7 +21,8 @@ func TestProcessImplementations(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	httpClient := &http.Client{}
+	httpClient := GetHTTPClient()
+	defer PutHTTPClient(httpClient)
 
 	for cname, makeProc := range map[string]ProcessConstructor{
 		"BlockingNoLock":   newBlockingProcess,
@@ -553,6 +555,103 @@ func TestProcessImplementations(t *testing.T) {
 						assert.Equal(t, int(syscall.SIGKILL), exitCode)
 					}
 					assert.True(t, proc.Info(ctx).Timeout)
+				},
+				"CallingSignalOnDeadProcessDoesError": func(ctx context.Context, t *testing.T, opts *CreateOptions, makep ProcessConstructor) {
+					proc, err := makep(ctx, opts)
+					require.NoError(t, err)
+
+					_, err = proc.Wait(ctx)
+					assert.NoError(t, err)
+
+					err = proc.Signal(ctx, syscall.SIGTERM)
+					require.Error(t, err)
+					assert.True(t, strings.Contains(err.Error(), "cannot signal a process that has terminated"))
+				},
+				"StandardInput": func(ctx context.Context, t *testing.T, opts *CreateOptions, makep ProcessConstructor) {
+					if cname == "REST" {
+						t.Skip("standard input behavior should be tested separately on remote interfaces")
+					}
+					for subTestName, subTestCase := range map[string]func(ctx context.Context, t *testing.T, opts *CreateOptions, expectedOutput string, stdin []byte, output *bytes.Buffer){
+						"ReaderSetsProcessStandardInput": func(ctx context.Context, t *testing.T, opts *CreateOptions, expectedOutput string, stdin []byte, output *bytes.Buffer) {
+							opts.StandardInput = bytes.NewBuffer(stdin)
+
+							proc, err := makep(ctx, opts)
+							require.NoError(t, err)
+
+							_, err = proc.Wait(ctx)
+							require.NoError(t, err)
+
+							assert.Equal(t, expectedOutput, strings.TrimSpace(output.String()))
+						},
+						"BytesSetsProcessStandardInput": func(ctx context.Context, t *testing.T, opts *CreateOptions, expectedOutput string, stdin []byte, output *bytes.Buffer) {
+							opts.StandardInputBytes = stdin
+
+							proc, err := makep(ctx, opts)
+							require.NoError(t, err)
+
+							_, err = proc.Wait(ctx)
+							require.NoError(t, err)
+
+							assert.Equal(t, expectedOutput, strings.TrimSpace(output.String()))
+						},
+						"ReaderNotRereadByRespawn": func(ctx context.Context, t *testing.T, opts *CreateOptions, expectedOutput string, stdin []byte, output *bytes.Buffer) {
+							opts.StandardInput = bytes.NewBuffer(stdin)
+
+							proc, err := makep(ctx, opts)
+							require.NoError(t, err)
+
+							_, err = proc.Wait(ctx)
+							require.NoError(t, err)
+
+							assert.Equal(t, expectedOutput, strings.TrimSpace(output.String()))
+
+							output.Reset()
+
+							newProc, err := proc.Respawn(ctx)
+							require.NoError(t, err)
+
+							_, err = newProc.Wait(ctx)
+							require.NoError(t, err)
+
+							assert.Empty(t, output.String())
+
+							assert.Equal(t, proc.Info(ctx).Options.StandardInput, newProc.Info(ctx).Options.StandardInput)
+						},
+						"BytesCopiedByRespawn": func(ctx context.Context, t *testing.T, opts *CreateOptions, expectedOutput string, stdin []byte, output *bytes.Buffer) {
+							opts.StandardInputBytes = stdin
+
+							proc, err := makep(ctx, opts)
+							require.NoError(t, err)
+
+							_, err = proc.Wait(ctx)
+							require.NoError(t, err)
+
+							assert.Equal(t, expectedOutput, strings.TrimSpace(output.String()))
+
+							output.Reset()
+
+							newProc, err := proc.Respawn(ctx)
+							require.NoError(t, err)
+
+							_, err = newProc.Wait(ctx)
+							require.NoError(t, err)
+
+							assert.Equal(t, expectedOutput, strings.TrimSpace(output.String()))
+						},
+					} {
+						t.Run(subTestName, func(t *testing.T) {
+							output := &bytes.Buffer{}
+							opts = &CreateOptions{
+								Args: []string{"bash", "-s"},
+								Output: OutputOptions{
+									Output: output,
+								},
+							}
+							expectedOutput := "foobar"
+							stdin := []byte("echo " + expectedOutput)
+							subTestCase(ctx, t, opts, expectedOutput, stdin, output)
+						})
+					}
 				},
 				// "": func(ctx context.Context, t *testing.T, opts *CreateOptions, makep ProcessConstructor) {},
 			} {

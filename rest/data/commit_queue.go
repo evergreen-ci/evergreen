@@ -5,7 +5,10 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/commitqueue"
+	"github.com/evergreen-ci/evergreen/model/event"
+	"github.com/evergreen-ci/evergreen/model/task"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/evergreen-ci/evergreen/util"
@@ -75,11 +78,93 @@ func (pc *DBCommitQueueConnector) CommitQueueRemoveItem(id, item string) (bool, 
 		return false, errors.Wrapf(err, "can't get commit queue for id '%s'", id)
 	}
 
-	return cq.Remove(item)
+	head := cq.Next()
+	removed, err := cq.Remove(item)
+	if err != nil {
+		return removed, errors.Wrapf(err, "can't remove item '%s' from queue '%s'", item, id)
+	}
+
+	if removed && head.Issue == item {
+		if err = preventMergeForItem(id, head); err != nil {
+			return removed, errors.Wrapf(err, "can't prevent merge for item '%s' on queue '%s'", item, id)
+		}
+	}
+
+	return removed, nil
+}
+
+func (pc *DBCommitQueueConnector) IsItemOnCommitQueue(id, item string) (bool, error) {
+	cq, err := commitqueue.FindOneId(id)
+	if err != nil {
+		return false, errors.Wrapf(err, "can't get commit queue for id '%s'", id)
+	}
+
+	pos := cq.FindItem(item)
+	if pos >= 0 {
+		return true, nil
+	}
+	return false, nil
 }
 
 func (pc *DBCommitQueueConnector) CommitQueueClearAll() (int, error) {
 	return commitqueue.ClearAllCommitQueues()
+}
+
+func preventMergeForItem(projectID string, item *commitqueue.CommitQueueItem) error {
+	projectRef, err := model.FindOneProjectRef(projectID)
+	if err != nil {
+		return errors.Wrapf(err, "can't find projectRef for '%s'", projectID)
+	}
+	if projectRef == nil {
+		return errors.Errorf("can't find project ref for '%s'", projectID)
+	}
+
+	if projectRef.CommitQueue.PatchType == commitqueue.PRPatchType && item.Version != "" {
+		if err = clearVersionPatchSubscriber(item.Version, event.GithubMergeSubscriberType); err != nil {
+			return errors.Wrap(err, "can't clear subscriptions")
+		}
+	}
+
+	if projectRef.CommitQueue.PatchType == commitqueue.CLIPatchType {
+		version, err := model.VersionFindOneId(item.Issue)
+		if err != nil {
+			return errors.Wrapf(err, "can't find patch '%s'", item.Issue)
+		}
+		if version != nil {
+			if err = clearVersionPatchSubscriber(version.Id, event.CommitQueueDequeueSubscriberType); err != nil {
+				return errors.Wrap(err, "can't clear subscriptions")
+			}
+
+			// Blacklist the merge task
+			mergeTask, err := task.FindMergeTaskForVersion(version.Id)
+			if err != nil {
+				return errors.Wrapf(err, "can't find merge task for '%s'", version.Id)
+			}
+			err = mergeTask.SetPriority(-1, evergreen.User)
+			if err != nil {
+				return errors.Wrap(err, "can't blacklist merge task")
+			}
+		}
+	}
+
+	return nil
+}
+
+func clearVersionPatchSubscriber(versionID, subscriberType string) error {
+	subscriptions, err := event.FindSubscriptions(event.ResourceTypePatch, []event.Selector{{Type: event.SelectorID, Data: versionID}})
+	if err != nil {
+		return errors.Wrapf(err, "can't find subscription to patch '%s'", versionID)
+	}
+	for _, subscription := range subscriptions {
+		if subscription.Subscriber.Type == subscriberType {
+			err = event.RemoveSubscription(subscription.ID)
+			if err != nil {
+				return errors.Wrapf(err, "can't remove subscription for '%s', type '%s'", versionID, subscriberType)
+			}
+		}
+	}
+
+	return nil
 }
 
 type UserRepoInfo struct {
@@ -127,11 +212,13 @@ type MockCommitQueueConnector struct {
 
 func (pc *MockCommitQueueConnector) GetGitHubPR(ctx context.Context, owner, repo string, PRNum int) (*github.PullRequest, error) {
 	userID := 1234
+	userLogin := "github.user"
 	ref := "master"
 	sha := "abcdef1234"
 	return &github.PullRequest{
 		User: &github.User{
-			ID: &userID,
+			ID:    &userID,
+			Login: &userLogin,
 		},
 		Base: &github.PullRequestBranch{
 			Ref: &ref,
@@ -172,6 +259,19 @@ func (pc *MockCommitQueueConnector) CommitQueueRemoveItem(id, item string) (bool
 		}
 	}
 
+	return false, nil
+}
+
+func (pc *MockCommitQueueConnector) IsItemOnCommitQueue(id, item string) (bool, error) {
+	queue, ok := pc.Queue[id]
+	if !ok {
+		return false, errors.Errorf("can't get commit queue for id '%s'", id)
+	}
+	for _, queueItem := range queue {
+		if restModel.FromAPIString(queueItem.Issue) == item {
+			return true, nil
+		}
+	}
 	return false, nil
 }
 

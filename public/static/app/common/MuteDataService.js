@@ -29,6 +29,9 @@ mciModule.factory('MuteDataService', function(
         .collection(STITCH_CONFIG.PERF.COLL_MUTE_OUTLIERS)
         .updateOne(mute_identifier,
                   {
+                    '$currentDate': {
+                      'last_updated_at': true
+                    },
                     $set: { enabled: true },
                     $setOnInsert: mute
                   },

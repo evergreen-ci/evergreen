@@ -7,6 +7,7 @@ import (
 	"github.com/evergreen-ci/evergreen/db"
 	. "github.com/smartystreets/goconvey/convey"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 var (
@@ -69,6 +70,10 @@ func TestUpdateLastRevision(t *testing.T) {
 		},
 	} {
 		t.Run(name, func(t *testing.T) {
+			require.NoError(t, db.Clear(RepositoriesCollection))
+			defer func() {
+				assert.NoError(t, db.Clear(RepositoriesCollection))
+			}()
 			test(t, "my-project", "my-revision")
 		})
 	}

@@ -1,6 +1,6 @@
 mciModule.controller('PerfBBOutliersCtrl', function (
   $scope, $window, uiGridConstants, OutlierState,
-  STITCH_CONFIG, Stitch, Settings, $timeout, $log, OutliersDataService, Lock, $q, MuteHandler, MarkHandler, Operations
+  STITCH_CONFIG, Stitch, Settings, $timeout, $log, Lock, $q, MuteHandler, MarkHandler, Operations
 ) {
   // Perf Outliers View-Model.
   const vm = this;
@@ -270,7 +270,7 @@ mciModule.controller('PerfBBOutliersCtrl', function (
     };
 
     static getMuteIdentifier(mute) {
-      return _.pick(mute, "project", "revision", "task", "test", "thread_level", "variant", "create_time", "end", "last_updated_at", "order", "task_id", "version_id");
+      return _.pick(mute, "project", "revision", "task", "test", "thread_level", "variant", "create_time", "start", "end", "last_updated_at", "order", "task_id", "version_id");
     }
 
   }
@@ -367,7 +367,7 @@ mciModule.controller('PerfBBOutliersCtrl', function (
   }
 
   return MarkHandler;
-}).factory('OutlierState', function(FORMAT, MDBQueryAdaptor, EvgUtil, EvgUiGridUtil, uiGridConstants, OutliersDataService, MuteDataService, $q) {
+}).factory('OutlierState', function(FORMAT, OUTLIERS ,MDBQueryAdaptor, EvgUtil, EvgUiGridUtil, uiGridConstants, OutliersDataService, PointsDataService, MuteDataService, $q) {
   class OutlierState {
     // Create a new state instance to encapsulate filtering, sorting and generating queries.
     //
@@ -531,7 +531,7 @@ mciModule.controller('PerfBBOutliersCtrl', function (
         defaultFilters = [{
           field: 'type',
           type: 'string',
-          term: '=detected'
+          term: '=' + OUTLIERS.HIGH_CONFIDENCE
         }];
       }
 
@@ -606,11 +606,25 @@ mciModule.controller('PerfBBOutliersCtrl', function (
         mutes: MuteDataService.queryQ({project: this.project}),
         marks: OutliersDataService.getMarkedOutliersQ({project: this.project}),
         operation: operation
+      }).then(results => {
+        const {outliers, mutes, marks} = results;
+        let pointsQ = [];
+        if (outliers.length) {
+          const pointsQuery = {$or:_.chain(outliers).collect(doc => _.pick(doc, 'revision', 'project', 'variant', 'task', 'test')).value()};
+          pointsQ = PointsDataService.getPointsQ(pointsQuery);
+        }
+        return $q.all({
+          outliers: outliers,
+          mutes: mutes,
+          marks: marks,
+          operation: operation,
+          points: pointsQ
+        });
       });
     }
 
     hydrateData(results) {
-      const {outliers, mutes, marks} = results;
+      const {points, outliers, mutes, marks} = results;
       let data = _.chain(outliers).each(doc => {
         doc._buildId = EvgUtil.generateBuildId({
           project: this.project,
@@ -618,6 +632,11 @@ mciModule.controller('PerfBBOutliersCtrl', function (
           buildVariant: doc.variant,
           createTime: doc.create_time,
         });
+        const pointMatcher = _.pick(doc, 'revision', 'project', 'variant', 'task', 'test');
+        const point = _.findWhere(points, pointMatcher);
+        doc.start = point.start;
+        doc.end = point.end;
+
         const matcher = _.pick(doc, 'revision', 'project', 'variant', 'task', 'test', 'thread_level');
         const mute = _.findWhere(mutes, matcher);
         if (mute) {
@@ -669,11 +688,11 @@ mciModule.controller('PerfBBOutliersCtrl', function (
   }
 
   return Operation;
-}).filter('outlierTypeToConfidence', function() {
+}).filter('outlierTypeToConfidence', function(OUTLIERS) {
   return function(type) {
-    if (type === 'detected') {
+    if (type === OUTLIERS.HIGH_CONFIDENCE) {
       return  "high" ;
-    } else if (type === 'suspicious') {
+    } else if (type === OUTLIERS.LOW_CONFIDENCE) {
       return "low";
     }
   }

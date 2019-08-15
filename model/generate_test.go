@@ -314,24 +314,20 @@ func (s *GenerateSuite) TestParseProjectFromJSON() {
 	s.Contains(g.Functions, "echo-hi")
 	s.Equal("shell.exec", g.Functions["echo-hi"].List()[0].Command)
 
-	params, err := g.Functions["echo-hi"].List()[0].resolveParams()
-	s.Require().NoError(err)
-	s.Equal("echo hi", params["script"])
+	s.Require().NoError(g.Functions["echo-hi"].List()[0].resolveParams())
+	s.Equal("echo hi", g.Functions["echo-hi"].List()[0].Params["script"])
 
-	params, err = g.Functions["echo-bye"].List()[0].resolveParams()
-	s.Require().NoError(err)
-	s.Equal("echo bye", params["script"])
+	s.Require().NoError(g.Functions["echo-bye"].List()[0].resolveParams())
+	s.Equal("echo bye", g.Functions["echo-bye"].List()[0].Params["script"])
 
-	params, err = g.Functions["echo-bye"].List()[1].resolveParams()
-	s.Require().NoError(err)
-	s.Equal("echo bye again", params["script"])
+	s.Require().NoError(g.Functions["echo-bye"].List()[1].resolveParams())
+	s.Equal("echo bye again", g.Functions["echo-bye"].List()[1].Params["script"])
 
 	s.Len(g.Tasks, 1)
 	s.Equal("git.get_project", g.Tasks[0].Commands[0].Command)
 
-	params, err = g.Tasks[0].Commands[0].resolveParams()
-	s.NoError(err)
-	s.Equal("src", params["directory"])
+	s.Require().NoError(g.Tasks[0].Commands[0].resolveParams())
+	s.Equal("src", g.Tasks[0].Commands[0].Params["directory"])
 	s.Equal("echo-hi", g.Tasks[0].Commands[1].Function)
 	s.Equal("test", g.Tasks[0].Name)
 

@@ -8,6 +8,8 @@ import (
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/commitqueue"
+	"github.com/evergreen-ci/evergreen/model/event"
+	"github.com/evergreen-ci/evergreen/model/task"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/stretchr/testify/suite"
@@ -17,6 +19,9 @@ type CommitQueueSuite struct {
 	ctx      Connector
 	settings *evergreen.Settings
 	suite.Suite
+
+	projectRef *model.ProjectRef
+	queue      *commitqueue.CommitQueue
 }
 
 func TestCommitQueueSuite(t *testing.T) {
@@ -28,7 +33,7 @@ func TestCommitQueueSuite(t *testing.T) {
 func (s *CommitQueueSuite) SetupTest() {
 	s.Require().NoError(db.Clear(commitqueue.Collection))
 	s.Require().NoError(db.Clear(model.ProjectRefCollection))
-	projRef := model.ProjectRef{
+	s.projectRef = &model.ProjectRef{
 		Identifier: "mci",
 		Owner:      "evergreen-ci",
 		Repo:       "evergreen",
@@ -37,9 +42,9 @@ func (s *CommitQueueSuite) SetupTest() {
 			Enabled: true,
 		},
 	}
-	s.Require().NoError(projRef.Insert())
-	q := &commitqueue.CommitQueue{ProjectID: "mci"}
-	s.Require().NoError(commitqueue.InsertQueue(q))
+	s.Require().NoError(s.projectRef.Insert())
+	s.queue = &commitqueue.CommitQueue{ProjectID: "mci"}
+	s.Require().NoError(commitqueue.InsertQueue(s.queue))
 }
 
 func (s *CommitQueueSuite) TestEnqueue() {
@@ -75,6 +80,8 @@ func (s *CommitQueueSuite) TestCommitQueueRemoveItem() {
 	s.Require().NoError(err)
 	s.Require().Equal(3, pos)
 
+	s.NoError(s.queue.SetProcessing(true))
+
 	found, err := s.ctx.CommitQueueRemoveItem("mci", "not_here")
 	s.NoError(err)
 	s.False(found)
@@ -86,6 +93,25 @@ func (s *CommitQueueSuite) TestCommitQueueRemoveItem() {
 	s.NoError(err)
 	s.Equal(restModel.ToAPIString("2"), cq.Queue[0].Issue)
 	s.Equal(restModel.ToAPIString("3"), cq.Queue[1].Issue)
+}
+
+func (s *CommitQueueSuite) TestIsItemOnCommitQueue() {
+	s.ctx = &DBConnector{}
+	pos, err := s.ctx.EnqueueItem("mci", restModel.APICommitQueueItem{Issue: restModel.ToAPIString("1")})
+	s.Require().NoError(err)
+	s.Require().Equal(1, pos)
+
+	exists, err := s.ctx.IsItemOnCommitQueue("mci", "1")
+	s.NoError(err)
+	s.True(exists)
+
+	exists, err = s.ctx.IsItemOnCommitQueue("mci", "2")
+	s.NoError(err)
+	s.False(exists)
+
+	exists, err = s.ctx.IsItemOnCommitQueue("not-a-project", "1")
+	s.Error(err)
+	s.False(exists)
 }
 
 func (s *CommitQueueSuite) TestCommitQueueClearAll() {
@@ -141,6 +167,85 @@ func (s *CommitQueueSuite) TestIsAuthorizedToPatchAndMerge() {
 	authorized, err = s.ctx.IsAuthorizedToPatchAndMerge(ctx, s.settings, args)
 	s.NoError(err)
 	s.False(authorized)
+}
+
+func (s *CommitQueueSuite) TestPreventMergeForItemPR() {
+	s.NoError(db.ClearCollections(event.SubscriptionsCollection))
+
+	s.projectRef.CommitQueue.PatchType = commitqueue.PRPatchType
+	s.NoError(s.projectRef.Upsert())
+
+	patchID := "abcdef012345"
+	patchSub := event.NewPatchOutcomeSubscription(patchID, event.NewGithubMergeSubscriber(event.GithubMergeSubscriber{}))
+	s.Require().NoError(patchSub.Upsert())
+
+	item := commitqueue.CommitQueueItem{
+		Issue:   "1234",
+		Version: patchID,
+	}
+	_, err := s.queue.Enqueue(item)
+	s.Require().NoError(err)
+
+	s.NoError(preventMergeForItem(s.projectRef.Identifier, &item))
+	subscriptions, err := event.FindSubscriptions(event.ResourceTypePatch, []event.Selector{{Type: event.SelectorID, Data: item.Version}})
+	s.NoError(err)
+	s.Empty(subscriptions)
+}
+
+func (s *CommitQueueSuite) TestPreventMergeForItemCLI() {
+	s.NoError(db.ClearCollections(event.SubscriptionsCollection, task.Collection, model.VersionCollection))
+
+	s.projectRef.CommitQueue.PatchType = commitqueue.CLIPatchType
+	s.NoError(s.projectRef.Upsert())
+
+	patchID := "abcdef012345"
+	patchSub := event.NewPatchOutcomeSubscription(patchID, event.NewCommitQueueDequeueSubscriber())
+	s.Require().NoError(patchSub.Upsert())
+
+	item := commitqueue.CommitQueueItem{
+		Issue: patchID,
+	}
+	_, err := s.queue.Enqueue(item)
+	s.Require().NoError(err)
+
+	mergeTask := &task.Task{Id: "t1", CommitQueueMerge: true, Version: patchID}
+	s.Require().NoError(mergeTask.Insert())
+
+	// Without a corresponding version
+	s.NoError(preventMergeForItem(s.projectRef.Identifier, &item))
+	subscriptions, err := event.FindSubscriptions(event.ResourceTypePatch, []event.Selector{{Type: event.SelectorID, Data: patchID}})
+	s.NoError(err)
+	s.NotEmpty(subscriptions)
+
+	mergeTask, err = task.FindOneId("t1")
+	s.NoError(err)
+	s.Equal(int64(0), mergeTask.Priority)
+
+	// With a corresponding version
+	version := model.Version{Id: patchID}
+	s.Require().NoError(version.Insert())
+
+	s.NoError(preventMergeForItem(s.projectRef.Identifier, &item))
+	subscriptions, err = event.FindSubscriptions(event.ResourceTypePatch, []event.Selector{{Type: event.SelectorID, Data: patchID}})
+	s.NoError(err)
+	s.Empty(subscriptions)
+
+	mergeTask, err = task.FindOneId("t1")
+	s.NoError(err)
+	s.Equal(int64(-1), mergeTask.Priority)
+}
+
+func (s *CommitQueueSuite) TestClearVersionPatchSubscriber() {
+	s.Require().NoError(db.Clear(event.SubscriptionsCollection))
+
+	patchID := "abcdef012345"
+	patchSub := event.NewPatchOutcomeSubscription(patchID, event.NewCommitQueueDequeueSubscriber())
+	s.Require().NoError(patchSub.Upsert())
+
+	s.NoError(clearVersionPatchSubscriber(patchID, event.CommitQueueDequeueSubscriberType))
+	subs, err := event.FindSubscriptions(event.ResourceTypePatch, []event.Selector{{Type: event.SelectorID, Data: patchID}})
+	s.NoError(err)
+	s.Empty(subs)
 }
 
 func (s *CommitQueueSuite) TestMockGetGitHubPR() {
@@ -203,6 +308,25 @@ func (s *CommitQueueSuite) TestMockCommitQueueRemoveItem() {
 	s.NoError(err)
 	s.Equal(restModel.ToAPIString("2"), cq.Queue[0].Issue)
 	s.Equal(restModel.ToAPIString("3"), cq.Queue[1].Issue)
+}
+
+func (s *CommitQueueSuite) TestMockIsItemOnCommitQueue() {
+	s.ctx = &MockConnector{}
+	pos, err := s.ctx.EnqueueItem("mci", restModel.APICommitQueueItem{Issue: restModel.ToAPIString("1")})
+	s.Require().NoError(err)
+	s.Require().Equal(1, pos)
+
+	exists, err := s.ctx.IsItemOnCommitQueue("mci", "1")
+	s.NoError(err)
+	s.True(exists)
+
+	exists, err = s.ctx.IsItemOnCommitQueue("mci", "2")
+	s.NoError(err)
+	s.False(exists)
+
+	exists, err = s.ctx.IsItemOnCommitQueue("not-a-project", "1")
+	s.Error(err)
+	s.False(exists)
 }
 
 func (s *CommitQueueSuite) TestMockCommitQueueClearAll() {

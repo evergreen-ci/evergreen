@@ -81,12 +81,15 @@ func NewLocalOrdered(workers int) amboy.Queue {
 func (q *depGraphOrderedLocal) Put(ctx context.Context, j amboy.Job) error {
 	name := j.ID()
 
-	q.mutex.Lock()
-	defer q.mutex.Unlock()
-
 	j.UpdateTimeInfo(amboy.JobTimeInfo{
 		Created: time.Now(),
 	})
+
+	if err := j.TimeInfo().Validate(); err != nil {
+		return errors.Wrap(err, "invalid job timeinfo")
+	}
+	q.mutex.Lock()
+	defer q.mutex.Unlock()
 
 	if q.started {
 		return errors.Errorf("cannot add %s because ordered task dispatching has begun", name)

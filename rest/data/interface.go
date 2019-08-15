@@ -18,6 +18,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/manifest"
 	"github.com/evergreen-ci/evergreen/model/patch"
+	"github.com/evergreen-ci/evergreen/model/reliability"
 	"github.com/evergreen-ci/evergreen/model/stats"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/testresult"
@@ -109,6 +110,7 @@ type Connector interface {
 	GetVersionsAndVariants(int, int, *model.Project) (*restModel.VersionVariantData, error)
 	GetProjectEventLog(string, time.Time, int) ([]restModel.APIProjectEvent, error)
 	CreateVersionFromConfig(context.Context, string, []byte, *user.DBUser, string, bool) (*model.Version, error)
+	GetVersionsInProject(string, string, int, int) ([]restModel.APIVersion, error)
 
 	// FindByProjectAndCommit is a method to find a set of tasks which ran as part of
 	// certain version in a project. It takes the projectId, commit hash, and a taskId
@@ -198,7 +200,9 @@ type Connector interface {
 	SetBannerTheme(string, *user.DBUser) error
 	// SetAdminBanner sets set the service flags in the system-wide settings document
 	SetServiceFlags(evergreen.ServiceFlags, *user.DBUser) error
-	RestartFailedTasks(amboy.Queue, model.RestartTaskOptions) (*restModel.RestartTasksResponse, error)
+	RestartFailedTasks(amboy.Queue, model.RestartOptions) (*restModel.RestartResponse, error)
+	//RestartFailedCommitQueueVersions takes in a time range
+	RestartFailedCommitQueueVersions(opts model.RestartOptions) (*restModel.RestartResponse, error)
 	RevertConfigTo(string, string) error
 	GetAdminEventLog(time.Time, int) ([]restModel.APIAdminEvent, error)
 
@@ -214,6 +218,7 @@ type Connector interface {
 	AddPublicKey(*user.DBUser, string, string) error
 	DeletePublicKey(*user.DBUser, string) error
 	UpdateSettings(*user.DBUser, user.UserSettings) error
+	SubmitFeedback(restModel.APIFeedbackSubmission) error
 
 	AddPatchIntent(patch.Intent, amboy.Queue) error
 
@@ -265,12 +270,17 @@ type Connector interface {
 	GetTestStats(stats.StatsFilter) ([]restModel.APITestStats, error)
 	GetTaskStats(stats.StatsFilter) ([]restModel.APITaskStats, error)
 
+	// Get task reliability scores
+	GetTaskReliabilityScores(reliability.TaskReliabilityFilter) ([]restModel.APITaskReliability, error)
+
 	// Commit queue methods
+	// GetGithubPR takes the owner, repo, and PR number.
 	GetGitHubPR(context.Context, string, string, int) (*github.PullRequest, error)
 	EnqueueItem(string, restModel.APICommitQueueItem) (int, error)
 	FindCommitQueueByID(string) (*restModel.APICommitQueue, error)
 	EnableCommitQueue(*model.ProjectRef, model.CommitQueueParams) error
 	CommitQueueRemoveItem(string, string) (bool, error)
+	IsItemOnCommitQueue(string, string) (bool, error)
 	CommitQueueClearAll() (int, error)
 	IsAuthorizedToPatchAndMerge(context.Context, *evergreen.Settings, UserRepoInfo) (bool, error)
 

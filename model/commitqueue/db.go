@@ -4,6 +4,7 @@ import (
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/mongodb/anser/bsonutil"
 	adb "github.com/mongodb/anser/db"
+	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson"
 )
@@ -53,14 +54,14 @@ func insert(q *CommitQueue) error {
 func add(id string, queue []CommitQueueItem, item CommitQueueItem) error {
 	err := updateOne(
 		bson.M{
-			IdKey:    id,
-			QueueKey: queue,
+			IdKey: id,
 		},
 		bson.M{"$push": bson.M{QueueKey: item}},
 	)
 
 	if adb.ResultsNotFound(err) {
-		return errors.New("queue has changed in the database")
+		grip.Error(errors.Wrapf(err, "update failed for queue '%s', %+v", id, queue))
+		return errors.Errorf("update failed for queue '%s', %+v", id, queue)
 	}
 
 	return err

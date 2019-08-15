@@ -1533,7 +1533,7 @@ func TestFailedTaskRestart(t *testing.T) {
 	assert.NoError(p.Insert())
 
 	// test a dry run
-	opts := RestartTaskOptions{
+	opts := RestartOptions{
 		DryRun:             true,
 		IncludeTestFailed:  true,
 		IncludeSysFailed:   false,
@@ -1545,26 +1545,26 @@ func TestFailedTaskRestart(t *testing.T) {
 
 	results, err := RestartFailedTasks(opts)
 	assert.NoError(err)
-	assert.Nil(results.TasksErrored)
-	assert.Equal(1, len(results.TasksRestarted))
-	assert.Equal("taskOutsideOfTimeRange", results.TasksRestarted[0])
+	assert.Nil(results.ItemsErrored)
+	assert.Equal(1, len(results.ItemsRestarted))
+	assert.Equal("taskOutsideOfTimeRange", results.ItemsRestarted[0])
 
 	opts.IncludeTestFailed = true
 	opts.IncludeSysFailed = true
 	results, err = RestartFailedTasks(opts)
 	assert.NoError(err)
-	assert.Nil(results.TasksErrored)
-	assert.Equal(2, len(results.TasksRestarted))
-	assert.Equal("taskToRestart", results.TasksRestarted[0])
+	assert.Nil(results.ItemsErrored)
+	assert.Equal(2, len(results.ItemsRestarted))
+	assert.Equal("taskToRestart", results.ItemsRestarted[0])
 
 	opts.IncludeTestFailed = false
 	opts.IncludeSysFailed = false
 	opts.IncludeSetupFailed = true
 	results, err = RestartFailedTasks(opts)
 	assert.NoError(err)
-	assert.Nil(results.TasksErrored)
-	assert.Equal(1, len(results.TasksRestarted))
-	assert.Equal("setupFailed", results.TasksRestarted[0])
+	assert.Nil(results.ItemsErrored)
+	assert.Equal(1, len(results.ItemsRestarted))
+	assert.Equal("setupFailed", results.ItemsRestarted[0])
 
 	// test restarting all tasks
 	opts.StartTime = time.Date(2017, time.June, 12, 11, 0, 0, 0, time.Local)
@@ -1574,9 +1574,9 @@ func TestFailedTaskRestart(t *testing.T) {
 	opts.IncludeSetupFailed = false
 	results, err = RestartFailedTasks(opts)
 	assert.NoError(err)
-	assert.Equal(0, len(results.TasksErrored))
-	assert.Equal(2, len(results.TasksRestarted))
-	assert.Equal(testTask1.Id, results.TasksRestarted[0])
+	assert.Equal(0, len(results.ItemsErrored))
+	assert.Equal(2, len(results.ItemsRestarted))
+	assert.Equal(testTask1.Id, results.ItemsRestarted[0])
 	dbTask, err := task.FindOne(task.ById(testTask1.Id))
 	assert.NoError(err)
 	assert.Equal(dbTask.Status, evergreen.TaskUndispatched)

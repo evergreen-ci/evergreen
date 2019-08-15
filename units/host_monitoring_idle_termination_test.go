@@ -227,6 +227,93 @@ func TestFlaggingIdleHosts(t *testing.T) {
 		assert.NoError(t, err)
 		assert.Equal(t, 0, len(idle))
 	})
+
+	t.Run("LegacyHostsThatNeedNewAgentsShouldNotBeMarkedIdle", func(t *testing.T) {
+		testFlaggingIdleHostsSetupTest(t)
+
+		// insert a reference distro.Distro
+		distro1 := distro.Distro{
+			Id:                  "distro1",
+			BootstrapMethod:     distro.BootstrapMethodLegacySSH,
+			CommunicationMethod: distro.CommunicationMethodLegacySSH,
+		}
+		require.NoError(t, distro1.Insert(), "error inserting distro '%s'", distro1.Id)
+
+		host1 := host.Host{
+			Id:                    "h1",
+			Distro:                distro1,
+			Provider:              evergreen.ProviderNameMock,
+			Status:                evergreen.HostRunning,
+			CreationTime:          time.Now().Add(-30 * time.Minute),
+			LastCommunicationTime: time.Now(),
+			StartedBy:             evergreen.User,
+			NeedsNewAgent:         true,
+		}
+		require.NoError(t, host1.Insert(), "error inserting host '%s'", host1.Id)
+
+		// finding idle hosts should not return the host
+		idle, err := flagIdleHosts(ctx, env)
+		require.NoError(t, err)
+		assert.Equal(t, 0, len(idle))
+	})
+
+	t.Run("NonLegacyHostsThatNeedNewAgentMonitorsShouldNotBeMarkedIdle", func(t *testing.T) {
+		testFlaggingIdleHostsSetupTest(t)
+
+		// insert a reference distro.Distro
+		distro1 := distro.Distro{
+			Id:                  "distro1",
+			BootstrapMethod:     distro.BootstrapMethodSSH,
+			CommunicationMethod: distro.CommunicationMethodSSH,
+		}
+		require.NoError(t, distro1.Insert(), "error inserting distro '%s'", distro1.Id)
+
+		host1 := host.Host{
+			Id:                    "h1",
+			Distro:                distro1,
+			Provider:              evergreen.ProviderNameMock,
+			Status:                evergreen.HostRunning,
+			CreationTime:          time.Now().Add(-30 * time.Minute),
+			LastCommunicationTime: time.Now(),
+			StartedBy:             evergreen.User,
+			NeedsNewAgentMonitor:  true,
+		}
+		require.NoError(t, host1.Insert(), "error inserting host '%s'", host1.Id)
+
+		// finding idle hosts should not return the host
+		idle, err := flagIdleHosts(ctx, env)
+		require.NoError(t, err)
+		assert.Equal(t, 0, len(idle))
+	})
+
+	t.Run("NonLegacyHostsThatDoNotNeedNewAgentMonitorsShouldBeMarkedIdle", func(t *testing.T) {
+		testFlaggingIdleHostsSetupTest(t)
+
+		// insert a reference distro.Distro
+		distro1 := distro.Distro{
+			Id:                  "distro1",
+			BootstrapMethod:     distro.BootstrapMethodSSH,
+			CommunicationMethod: distro.CommunicationMethodSSH,
+		}
+		require.NoError(t, distro1.Insert(), "error inserting distro '%s'", distro1.Id)
+
+		host1 := host.Host{
+			Id:                    "h1",
+			Distro:                distro1,
+			Provider:              evergreen.ProviderNameMock,
+			Status:                evergreen.HostRunning,
+			CreationTime:          time.Now().Add(-24 * time.Hour),
+			LastCommunicationTime: time.Now(),
+			StartedBy:             evergreen.User,
+			NeedsNewAgent:         true,
+		}
+		require.NoError(t, host1.Insert(), "error inserting host '%s'", host1.Id)
+
+		// finding idle hosts should not return the host
+		idle, err := flagIdleHosts(ctx, env)
+		require.NoError(t, err)
+		assert.Equal(t, 1, len(idle))
+	})
 }
 
 ////////////////////////////////////////////////////////////////////////

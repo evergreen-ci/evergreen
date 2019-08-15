@@ -2,6 +2,7 @@ package task
 
 import (
 	"context"
+	"fmt"
 	"testing"
 	"time"
 
@@ -11,6 +12,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/testresult"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/evergreen/util"
+	adb "github.com/mongodb/anser/db"
 	. "github.com/smartystreets/goconvey/convey"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -1228,4 +1230,67 @@ func TestUpdateDependencies(t *testing.T) {
 	}
 	assert.Error(t, t1.UpdateDependencies(dependsOn))
 
+}
+
+func TestDisplayTaskCache(t *testing.T) {
+	assert := assert.New(t)
+	assert.NoError(db.Clear(Collection))
+	const displayTaskCount = 50
+	const execPerDisplay = 10
+
+	for i := 0; i < displayTaskCount; i++ {
+		dt := Task{
+			Id:          fmt.Sprintf("d%d", i),
+			DisplayOnly: true,
+		}
+		for j := 0; j < execPerDisplay; j++ {
+			et := Task{
+				Id: fmt.Sprintf("%d-%d", i, j),
+			}
+			assert.NoError(et.Insert())
+			dt.ExecutionTasks = append(dt.ExecutionTasks, et.Id)
+		}
+		assert.NoError(dt.Insert())
+	}
+
+	cache := NewDisplayTaskCache()
+	dt, err := cache.Get(&Task{Id: "1-1"})
+	assert.NoError(err)
+	assert.Equal("d1", dt.Id)
+	dt, err = cache.Get(&Task{Id: "1-5"})
+	assert.NoError(err)
+	assert.Equal("d1", dt.Id)
+	assert.Len(cache.displayTasks, 1)
+	assert.Len(cache.execToDisplay, execPerDisplay)
+
+	for i := 0; i < displayTaskCount; i++ {
+		_, err = cache.Get(&Task{Id: fmt.Sprintf("%d-1", i)})
+		assert.NoError(err)
+	}
+	assert.Len(cache.execToDisplay, displayTaskCount*execPerDisplay)
+	assert.Len(cache.List(), displayTaskCount)
+}
+
+func TestFindMergeTaskForVersion(t *testing.T) {
+	assert.NoError(t, db.ClearCollections(Collection))
+	t1 := &Task{
+		Id:               "t1",
+		Version:          "abcdef123456",
+		CommitQueueMerge: false,
+	}
+	assert.NoError(t, t1.Insert())
+
+	_, err := FindMergeTaskForVersion("abcdef123456")
+	assert.Error(t, err)
+	assert.True(t, adb.ResultsNotFound(err))
+
+	t2 := &Task{
+		Id:               "t2",
+		Version:          "abcdef123456",
+		CommitQueueMerge: true,
+	}
+	assert.NoError(t, t2.Insert())
+	t2Db, err := FindMergeTaskForVersion("abcdef123456")
+	assert.NoError(t, err)
+	assert.Equal(t, "t2", t2Db.Id)
 }

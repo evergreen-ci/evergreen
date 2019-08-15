@@ -35,6 +35,10 @@ func newBasicProcessManager(procs map[string]Process, skipDefaultTrigger bool, b
 	return &m, nil
 }
 
+func (m *basicProcessManager) ID() string {
+	return m.id
+}
+
 func (m *basicProcessManager) CreateProcess(ctx context.Context, opts *CreateOptions) (Process, error) {
 	opts.AddEnvVar(ManagerEnvironID, m.id)
 

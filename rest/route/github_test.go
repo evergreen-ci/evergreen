@@ -79,6 +79,11 @@ func (s *GithubWebhookRouteSuite) SetupTest() {
 				},
 			},
 		},
+		MockCommitQueueConnector: data.MockCommitQueueConnector{
+			Queue: map[string][]restModel.APICommitQueueItem{
+				"bth": []restModel.APICommitQueueItem{},
+			},
+		},
 	}
 
 	s.rm = makeGithubHooksRoute(s.sc, s.queue, []byte(s.conf.Api.GithubWebhookSecret), evergreen.GetEnvironment().Settings())
@@ -286,6 +291,11 @@ func (s *GithubWebhookRouteSuite) TestTryDequeueCommitQueueItemForPR() {
 	// try dequeue errors if the PR is missing information (PR number)
 	s.Error(s.h.tryDequeueCommitQueueItemForPR(pr))
 
+	// try dequeue returns no error if there is no matching item
+	newNumber := 2
+	pr.Number = &newNumber
+	s.NoError(s.h.tryDequeueCommitQueueItemForPR(pr))
+
 	pr.Number = &number
 	// try dequeue returns no errors if there is no matching queue
 	s.NoError(s.h.tryDequeueCommitQueueItemForPR(pr))
@@ -298,7 +308,7 @@ func (s *GithubWebhookRouteSuite) TestTryDequeueCommitQueueItemForPR() {
 	s.NoError(err)
 	s.Empty(queue.Queue)
 
-	// try dequeue errors if no projectRef matches the PR
+	// try dequeue returns no error if no projectRef matches the PR
 	owner = "octocat"
-	s.Error(s.h.tryDequeueCommitQueueItemForPR(pr))
+	s.NoError(s.h.tryDequeueCommitQueueItemForPR(pr))
 }

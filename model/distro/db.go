@@ -4,12 +4,15 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/mongodb/anser/bsonutil"
+	adb "github.com/mongodb/anser/db"
+	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson"
 )
 
 var (
 	// bson fields for the Distro struct
 	IdKey                    = bsonutil.MustHaveTag(Distro{}, "Id")
+	AliasesKey               = bsonutil.MustHaveTag(Distro{}, "Aliases")
 	ArchKey                  = bsonutil.MustHaveTag(Distro{}, "Arch")
 	PoolSizeKey              = bsonutil.MustHaveTag(Distro{}, "PoolSize")
 	ProviderKey              = bsonutil.MustHaveTag(Distro{}, "Provider")
@@ -51,6 +54,22 @@ func Find(query db.Q) ([]Distro, error) {
 	distros := []Distro{}
 	err := db.FindAllQ(Collection, query, &distros)
 	return distros, err
+}
+
+func FindByID(id string) (*Distro, error) {
+	d, err := FindOne(ById(id))
+	if adb.ResultsNotFound(err) {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, errors.Wrap(err, "problem finding distro")
+	}
+
+	return &d, nil
+}
+
+func FindAll() ([]Distro, error) {
+	return Find(All)
 }
 
 // Insert writes the distro to the database.

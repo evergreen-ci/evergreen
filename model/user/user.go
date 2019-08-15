@@ -51,11 +51,15 @@ type PubKey struct {
 }
 
 type UserSettings struct {
-	Timezone      string                  `json:"timezone" bson:"timezone"`
-	NewWaterfall  bool                    `json:"new_waterfall" bson:"new_waterfall"`
-	GithubUser    GithubUser              `json:"github_user" bson:"github_user,omitempty"`
-	SlackUsername string                  `bson:"slack_username,omitempty" json:"slack_username,omitempty"`
-	Notifications NotificationPreferences `bson:"notifications,omitempty" json:"notifications,omitempty"`
+	Timezone         string                  `json:"timezone" bson:"timezone"`
+	GithubUser       GithubUser              `json:"github_user" bson:"github_user,omitempty"`
+	SlackUsername    string                  `bson:"slack_username,omitempty" json:"slack_username,omitempty"`
+	Notifications    NotificationPreferences `bson:"notifications,omitempty" json:"notifications,omitempty"`
+	UseSpruceOptions UseSpruceOptions        `json:"use_spruce_options" bson:"use_spruce_options"`
+}
+
+type UseSpruceOptions struct {
+	PatchPage bool `json:"patch_page" bson:"patch_page"`
 }
 
 type NotificationPreferences struct {
@@ -182,6 +186,37 @@ func (u *DBUser) IncPatchNumber() (int, error) {
 		return 0, err
 	}
 	return dbUser.PatchNumber, nil
+}
+
+func (u *DBUser) AddRole(role string) error {
+	if util.StringSliceContains(u.SystemRoles, role) {
+		return errors.Errorf("cannot add duplicate role '%s'", role)
+	}
+	update := bson.M{
+		"$push": bson.M{RolesKey: role},
+	}
+	if err := UpdateOne(bson.M{IdKey: u.Id}, update); err != nil {
+		return err
+	}
+	u.SystemRoles = append(u.SystemRoles, role)
+
+	return nil
+}
+
+func (u *DBUser) RemoveRole(role string) error {
+	update := bson.M{
+		"$pull": bson.M{RolesKey: role},
+	}
+	if err := UpdateOne(bson.M{IdKey: u.Id}, update); err != nil {
+		return err
+	}
+	for i := len(u.SystemRoles) - 1; i >= 0; i-- {
+		if u.SystemRoles[i] == role {
+			u.SystemRoles = append(u.SystemRoles[:i], u.SystemRoles[i+1:]...)
+		}
+	}
+
+	return nil
 }
 
 func GetPatchUser(gitHubUID int) (*DBUser, error) {

@@ -131,6 +131,10 @@ func (s *AdminDataSuite) TestSetAndGetSettings() {
 	s.Equal(len(testSettings.Alerts.SMTP.AdminEmail), len(settingsFromConnector.Alerts.SMTP.AdminEmail))
 	s.EqualValues(testSettings.Amboy.Name, settingsFromConnector.Amboy.Name)
 	s.EqualValues(testSettings.Amboy.LocalStorage, settingsFromConnector.Amboy.LocalStorage)
+	s.EqualValues(testSettings.Amboy.GroupDefaultWorkers, settingsFromConnector.Amboy.GroupDefaultWorkers)
+	s.EqualValues(testSettings.Amboy.GroupBackgroundCreateFrequencyMinutes, settingsFromConnector.Amboy.GroupBackgroundCreateFrequencyMinutes)
+	s.EqualValues(testSettings.Amboy.GroupPruneFrequencyMinutes, settingsFromConnector.Amboy.GroupPruneFrequencyMinutes)
+	s.EqualValues(testSettings.Amboy.GroupTTLMinutes, settingsFromConnector.Amboy.GroupTTLMinutes)
 	s.EqualValues(testSettings.Api.HttpListenAddr, settingsFromConnector.Api.HttpListenAddr)
 	s.EqualValues(testSettings.AuthConfig.LDAP.URL, settingsFromConnector.AuthConfig.LDAP.URL)
 	s.EqualValues(testSettings.AuthConfig.Naive.Users[0].Username, settingsFromConnector.AuthConfig.Naive.Users[0].Username)
@@ -231,6 +235,10 @@ func (s *AdminDataSuite) TestSetAndGetSettings() {
 	s.Equal(len(testSettings.Alerts.SMTP.AdminEmail), len(settingsFromConnector.Alerts.SMTP.AdminEmail))
 	s.EqualValues(testSettings.Amboy.Name, settingsFromConnector.Amboy.Name)
 	s.EqualValues(testSettings.Amboy.LocalStorage, settingsFromConnector.Amboy.LocalStorage)
+	s.EqualValues(testSettings.Amboy.GroupDefaultWorkers, settingsFromConnector.Amboy.GroupDefaultWorkers)
+	s.EqualValues(testSettings.Amboy.GroupBackgroundCreateFrequencyMinutes, settingsFromConnector.Amboy.GroupBackgroundCreateFrequencyMinutes)
+	s.EqualValues(testSettings.Amboy.GroupPruneFrequencyMinutes, settingsFromConnector.Amboy.GroupPruneFrequencyMinutes)
+	s.EqualValues(testSettings.Amboy.GroupTTLMinutes, settingsFromConnector.Amboy.GroupTTLMinutes)
 	s.EqualValues(testSettings.Api.HttpListenAddr, settingsFromConnector.Api.HttpListenAddr)
 	s.EqualValues(testSettings.AuthConfig.LDAP.URL, settingsFromConnector.AuthConfig.LDAP.URL)
 	s.EqualValues(testSettings.AuthConfig.Naive.Users[0].Username, settingsFromConnector.AuthConfig.Naive.Users[0].Username)
@@ -262,7 +270,7 @@ func (s *AdminDataSuite) TestRestart() {
 	userName := "user"
 
 	// test dry run
-	opts := model.RestartTaskOptions{
+	opts := model.RestartOptions{
 		DryRun:    true,
 		StartTime: startTime,
 		EndTime:   endTime,
@@ -270,8 +278,8 @@ func (s *AdminDataSuite) TestRestart() {
 	}
 	dryRunResp, err := s.ctx.RestartFailedTasks(s.env.LocalQueue(), opts)
 	s.NoError(err)
-	s.NotZero(len(dryRunResp.TasksRestarted))
-	s.Nil(dryRunResp.TasksErrored)
+	s.NotZero(len(dryRunResp.ItemsRestarted))
+	s.Nil(dryRunResp.ItemsErrored)
 
 	// test that restarting tasks successfully puts a job on the queue
 	opts.DryRun = false

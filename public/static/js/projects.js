@@ -28,61 +28,75 @@ mciModule.controller('ProjectCtrl', function($scope, $window, $http, $location, 
   };
 
   $scope.isDirty = false;
+  const failureTypeSubscriberConfig = {text: "Failure type", key:"failure-type", type:"select", options:{"any":"Any","test":"Test","system":"System","setup":"Setup"}, default: "any"}
+  const requesterSubscriberConfig = {text: "Build initiator", key:"requester", type:"select", options:{
+    "gitter_request":"Commit",
+    "patch_request":"Patch",
+    "github_pull_request":"Pull Request",
+    "merge_test":"Commit Queue",
+    "ad_hoc":"Periodic Build"
+  }, default: "gitter_request"} 
   $scope.triggers = [
     {
       trigger: "outcome",
       resource_type: "VERSION",
       label: "any version finishes",
+      extraFields: [ requesterSubscriberConfig ]
     },
     {
       trigger: "failure",
       resource_type: "VERSION",
       label: "any version fails",
+      extraFields: [ requesterSubscriberConfig ]
     },
     {
       trigger: "outcome",
       resource_type: "BUILD",
       label: "any build finishes",
       regex_selectors: buildRegexSelectors(),
+      extraFields: [ requesterSubscriberConfig ]
     },
     {
       trigger: "failure",
       resource_type: "BUILD",
       label: "any build fails",
       regex_selectors: buildRegexSelectors(),
+      extraFields: [ requesterSubscriberConfig ]
     },
     {
       trigger: "outcome",
       resource_type: "TASK",
       label: "any task finishes",
       regex_selectors: taskRegexSelectors(),
+      extraFields: [ requesterSubscriberConfig ]
     },
     {
       trigger: "failure",
       resource_type: "TASK",
       label: "any task fails",
       regex_selectors: taskRegexSelectors(),
-      extraFields: [
-        {text: "Failure type", key:"failure-type", type:"select", options:["any","test","system","setup"], default: "any"}
-      ]
+      extraFields: [ failureTypeSubscriberConfig, requesterSubscriberConfig ]
     },
     {
       trigger: "first-failure-in-version",
       resource_type: "TASK",
       label: "the first failure in a version occurs",
       regex_selectors: taskRegexSelectors(),
+      extraFields: [ requesterSubscriberConfig ]
     },
     {
       trigger: "first-failure-in-build",
       resource_type: "TASK",
       label: "the first failure in each build occurs",
       regex_selectors: taskRegexSelectors(),
+      extraFields: [ requesterSubscriberConfig ]
     },
     {
       trigger: "first-failure-in-version-with-name",
       resource_type: "TASK",
       label: "the first failure in each version for each task name occurs",
       regex_selectors: taskRegexSelectors(),
+      extraFields: [ requesterSubscriberConfig ]
     },
     {
       trigger: "regression",
@@ -91,7 +105,7 @@ mciModule.controller('ProjectCtrl', function($scope, $window, $http, $location, 
       regex_selectors: taskRegexSelectors(),
       extraFields: [
         {text: "Re-notify after how many hours", key: "renotify-interval", validator: validateDuration, default: "48"},
-        {text: "Failure type", key:"failure-type", type:"select", options:["any","test","system","setup"], default: "any"}
+        failureTypeSubscriberConfig
       ]
     },
     {
@@ -102,7 +116,7 @@ mciModule.controller('ProjectCtrl', function($scope, $window, $http, $location, 
       extraFields: [
         {text: "Test names matching regex", key: "test-regex", validator: null},
         {text: "Re-notify after how many hours", key: "renotify-interval", validator: validateDuration, default: "48"},
-        {text: "Failure type", key:"failure-type", type:"select", options:["any","test","system","setup"], default: "any"}
+        failureTypeSubscriberConfig
       ]
     },
     {
@@ -472,7 +486,7 @@ mciModule.controller('ProjectCtrl', function($scope, $window, $http, $location, 
 
   $scope.addPatchAlias = function() {
     if (!$scope.validPatchAlias($scope.patch_alias)){
-      $scope.invalidPatchAliasMessage = "A patch alias must have an alias name, variant regex, and exactly one of task regex or tag"
+      $scope.invalidPatchAliasMessage = "A patch alias must have an alias name, exactly one of variant regex or tag, and exactly one of task regex or tag"
       return
     }
     item = Object.assign({}, $scope.patch_alias)
@@ -636,8 +650,8 @@ mciModule.controller('ProjectCtrl', function($scope, $window, $http, $location, 
   }
 
   $scope.validPatchDefinition = function(alias){
-    // variant AND (task XOR tags)
-    return alias && alias.variant && (Boolean(alias.task) != !_.isEmpty(alias.tags))
+    // (variant XOR variant_tags) AND (task XOR tags)
+    return alias && (Boolean(alias.variant) != !_.isEmpty(alias.variant_tags)) && (Boolean(alias.task) != !_.isEmpty(alias.tags))
   }
 
   $scope.validPatchAlias = function(alias){

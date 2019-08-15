@@ -19,10 +19,15 @@ type QueueOperation func(context.Context, Queue) error
 
 // QueueOperationConfig describes the behavior of the periodic
 // interval schedulers.
+//
+// The theshold, if ResepectThreshold is set, causes the periodic
+// scheduler to noop if there are more than that many pending jobs.
 type QueueOperationConfig struct {
-	ContinueOnError bool `bson:"continue_on_error" json:"continue_on_error" yaml:"continue_on_error"`
-	LogErrors       bool `bson:"log_errors" json:"log_errors" yaml:"log_errors"`
-	DebugLogging    bool `bson:"debug_logging" json:"debug_logging" yaml:"debug_logging"`
+	ContinueOnError  bool `bson:"continue_on_error" json:"continue_on_error" yaml:"continue_on_error"`
+	LogErrors        bool `bson:"log_errors" json:"log_errors" yaml:"log_errors"`
+	DebugLogging     bool `bson:"debug_logging" json:"debug_logging" yaml:"debug_logging"`
+	RespectThreshold bool `bson:"respect_threshold" json:"respect_threshold" yaml:"respect_threshold"`
+	Threshold        int  `bson:"threshold" json:"threshold" yaml:"threshold"`
 }
 
 // ScheduleJobFactory produces a QueueOpertion that calls a single
@@ -214,6 +219,10 @@ func IntervalQueueOperation(ctx context.Context, q Queue, interval time.Duration
 }
 
 func scheduleOp(ctx context.Context, q Queue, op QueueOperation, conf QueueOperationConfig) error {
+	if conf.RespectThreshold && q.Stats(ctx).Pending > conf.Threshold {
+		return nil
+	}
+
 	if err := errors.Wrap(op(ctx, q), "problem encountered during periodic job scheduling"); err != nil {
 		if conf.ContinueOnError {
 			grip.WarningWhen(conf.LogErrors, err)

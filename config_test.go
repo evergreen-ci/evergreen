@@ -224,12 +224,16 @@ func (s *AdminSuite) TestAlertsConfig() {
 
 func (s *AdminSuite) TestAmboyConfig() {
 	config := AmboyConfig{
-		Name:           "amboy",
-		SingleName:     "single",
-		DB:             "db",
-		PoolSizeLocal:  10,
-		PoolSizeRemote: 20,
-		LocalStorage:   30,
+		Name:                                  "amboy",
+		SingleName:                            "single",
+		DB:                                    "db",
+		PoolSizeLocal:                         10,
+		PoolSizeRemote:                        20,
+		LocalStorage:                          30,
+		GroupDefaultWorkers:                   40,
+		GroupBackgroundCreateFrequencyMinutes: 50,
+		GroupPruneFrequencyMinutes:            60,
+		GroupTTLMinutes:                       70,
 	}
 
 	err := config.Set()

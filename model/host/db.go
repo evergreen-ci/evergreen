@@ -7,6 +7,7 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/build"
+	"github.com/evergreen-ci/evergreen/model/credentials"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/util"
@@ -55,6 +56,7 @@ var (
 	NeedsNewAgentKey             = bsonutil.MustHaveTag(Host{}, "NeedsNewAgent")
 	NeedsNewAgentMonitorKey      = bsonutil.MustHaveTag(Host{}, "NeedsNewAgentMonitor")
 	JasperCredentialsIDKey       = bsonutil.MustHaveTag(Host{}, "JasperCredentialsID")
+	JasperDeployAttemptsKey      = bsonutil.MustHaveTag(Host{}, "JasperDeployAttempts")
 	StartedByKey                 = bsonutil.MustHaveTag(Host{}, "StartedBy")
 	InstanceTypeKey              = bsonutil.MustHaveTag(Host{}, "InstanceType")
 	VolumeSizeKey                = bsonutil.MustHaveTag(Host{}, "VolumeTotalSize")
@@ -67,6 +69,7 @@ var (
 	ProvisionAttemptsKey         = bsonutil.MustHaveTag(Host{}, "ProvisionAttempts")
 	TaskCountKey                 = bsonutil.MustHaveTag(Host{}, "TaskCount")
 	StartTimeKey                 = bsonutil.MustHaveTag(Host{}, "StartTime")
+	AgentStartTimeKey            = bsonutil.MustHaveTag(Host{}, "AgentStartTime")
 	ComputeCostPerHourKey        = bsonutil.MustHaveTag(Host{}, "ComputeCostPerHour")
 	TotalCostKey                 = bsonutil.MustHaveTag(Host{}, "TotalCost")
 	TotalIdleTimeKey             = bsonutil.MustHaveTag(Host{}, "TotalIdleTime")
@@ -313,7 +316,12 @@ func ByUnprovisionedSince(threshold time.Time) db.Q {
 
 // ByTaskSpec returns a query that finds all running hosts that are running a
 // task with the given group, buildvariant, project, and version.
-func NumHostsByTaskSpec(group, bv, project, version string) (int, error) {
+func NumHostsByTaskSpec(group, buildVariant, project, version string) (int, error) {
+	if group == "" || buildVariant == "" || project == "" || version == "" {
+		s := "all arguments passed to host.NumHostsByTaskSpec must be non-empty strings: "
+		s += fmt.Sprintf("group is '%s', buildVariant is '%s', project is '%s' and version is '%s'", group, buildVariant, project, version)
+		return 0, errors.New(s)
+	}
 	q := db.Query(
 		bson.M{
 			StatusKey: evergreen.HostRunning,
@@ -321,14 +329,14 @@ func NumHostsByTaskSpec(group, bv, project, version string) (int, error) {
 				{
 					RunningTaskKey:             bson.M{"$exists": "true"},
 					RunningTaskGroupKey:        group,
-					RunningTaskBuildVariantKey: bv,
+					RunningTaskBuildVariantKey: buildVariant,
 					RunningTaskProjectKey:      project,
 					RunningTaskVersionKey:      version,
 				},
 				{
 					LTCTaskKey:    bson.M{"$exists": "true"},
 					LTCGroupKey:   group,
-					LTCBVKey:      bv,
+					LTCBVKey:      buildVariant,
 					LTCProjectKey: project,
 					LTCVersionKey: version,
 				},
@@ -363,6 +371,48 @@ func FindByFirstProvisioningAttempt() ([]Host, error) {
 		ProvisionAttemptsKey: 0,
 		StatusKey:            evergreen.HostProvisioning,
 	}))
+}
+
+// FindByExpiringJasperCredentials finds all hosts whose Jasper service
+// credentials will expire within the given cutoff.
+func FindByExpiringJasperCredentials(cutoff time.Duration) ([]Host, error) {
+	deadline := time.Now().Add(cutoff)
+	bootstrapKey := bsonutil.GetDottedKeyName(DistroKey, distro.BootstrapMethodKey)
+	credentialsKey := credentials.Collection
+	expirationKey := bsonutil.GetDottedKeyName(credentialsKey, credentials.TTLKey)
+
+	var hosts []Host
+
+	pipeline := []bson.M{
+		bson.M{"$match": bson.M{
+			bootstrapKey: bson.M{
+				"$exists": true,
+				"$ne":     distro.BootstrapMethodLegacySSH,
+			},
+			StatusKey:        evergreen.HostRunning,
+			HasContainersKey: bson.M{"$ne": true},
+			ParentIDKey:      bson.M{"$exists": false},
+		}},
+		bson.M{"$lookup": bson.M{
+			"from":         credentials.Collection,
+			"localField":   JasperCredentialsIDKey,
+			"foreignField": credentials.IDKey,
+			"as":           credentialsKey,
+		}},
+		bson.M{"$match": bson.M{
+			expirationKey: bson.M{"$lte": deadline},
+		}},
+		bson.M{"$project": bson.M{
+			credentialsKey: 0,
+		}},
+	}
+
+	err := db.Aggregate(Collection, pipeline, &hosts)
+	if adb.ResultsNotFound(err) {
+		return nil, nil
+	}
+
+	return hosts, err
 }
 
 // IsRunningAndSpawned is a query that returns all running hosts
@@ -425,6 +475,16 @@ func ByIds(ids []string) db.Q {
 			},
 		},
 	})
+}
+
+// FindByJasperCredentialsID finds a host with the given Jasper credentials ID.
+func FindOneByJasperCredentialsID(id string) (*Host, error) {
+	h := &Host{}
+	query := bson.M{JasperCredentialsIDKey: id}
+	if err := db.FindOne(Collection, query, db.NoProjection, db.NoSort, h); err != nil {
+		return nil, errors.Wrapf(err, "could not find host with Jasper credentials ID '%s'", id)
+	}
+	return h, nil
 }
 
 // ByRunningTaskId returns a host running the task with the given id.
@@ -567,8 +627,36 @@ func FindStaleRunningTasks(cutoff time.Duration) ([]task.Task, error) {
 	return tasks, nil
 }
 
-// LastCommunicationTimeElapsed returns hosts which have never communicated or have not communicated in too long.
-func LastCommunicationTimeElapsed(currentTime time.Time) bson.M {
+// AgentLastCommunicationTimeElapsed finds legacy hosts which do not have an
+// agent or whose agents have not communicated recently.
+func AgentLastCommunicationTimeElapsed(currentTime time.Time) bson.M {
+	bootstrapKey := bsonutil.GetDottedKeyName(DistroKey, distro.BootstrapMethodKey)
+	cutoffTime := currentTime.Add(-MaxLCTInterval)
+	return bson.M{
+		StatusKey:        evergreen.HostRunning,
+		StartedByKey:     evergreen.User,
+		HasContainersKey: bson.M{"$ne": true},
+		ParentIDKey:      bson.M{"$exists": false},
+		RunningTaskKey:   bson.M{"$exists": false},
+		"$and": []bson.M{
+			bson.M{"$or": []bson.M{
+				{LastCommunicationTimeKey: util.ZeroTime},
+				{LastCommunicationTimeKey: bson.M{"$lte": cutoffTime}},
+				{LastCommunicationTimeKey: bson.M{"$exists": false}},
+			}},
+			bson.M{"$or": []bson.M{
+				{bootstrapKey: bson.M{"$exists": false}},
+				{bootstrapKey: bson.M{"$in": []string{"", distro.BootstrapMethodLegacySSH}}},
+			}},
+		},
+	}
+}
+
+// AgentMonitorLastCommunicationTimeElapsed finds hosts which do not have an
+// agent monitor or which should have an agent monitor but their agent has not
+// communicated recently.
+func AgentMonitorLastCommunicationTimeElapsed(currentTime time.Time) bson.M {
+	bootstrapKey := bsonutil.GetDottedKeyName(DistroKey, distro.BootstrapMethodKey)
 	cutoffTime := currentTime.Add(-MaxLCTInterval)
 	return bson.M{
 		StatusKey:        evergreen.HostRunning,
@@ -581,6 +669,11 @@ func LastCommunicationTimeElapsed(currentTime time.Time) bson.M {
 			{LastCommunicationTimeKey: bson.M{"$lte": cutoffTime}},
 			{LastCommunicationTimeKey: bson.M{"$exists": false}},
 		},
+		bootstrapKey: bson.M{"$in": []string{
+			distro.BootstrapMethodSSH,
+			distro.BootstrapMethodUserData,
+			distro.BootstrapMethodPreconfiguredImage,
+		}},
 	}
 }
 
@@ -684,7 +777,7 @@ func FindOneByIdOrTag(id string) (*Host, error) {
 	})
 	host, err := FindOne(query) // try to find by tag
 	if err != nil {
-		return nil, errors.Wrap(err, "error finding '%s' by _id or tag field")
+		return nil, errors.Wrapf(err, "error finding '%s' by _id or tag field", id)
 	}
 	return host, nil
 }

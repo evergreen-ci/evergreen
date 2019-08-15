@@ -32,12 +32,13 @@ type APIProjectVars struct {
 }
 
 type APIProjectAlias struct {
-	Alias   APIString   `json:"alias"`
-	Variant APIString   `json:"variant"`
-	Task    APIString   `json:"task"`
-	Tags    []APIString `json:"tags,omitempty"`
-	Delete  bool        `json:"delete,omitempty"`
-	ID      APIString   `json:"_id,omitempty"`
+	Alias       APIString   `json:"alias"`
+	Variant     APIString   `json:"variant"`
+	Task        APIString   `json:"task"`
+	VariantTags []APIString `json:"variant_tags,omitempty"`
+	TaskTags    []APIString `json:"tags,omitempty"`
+	Delete      bool        `json:"delete,omitempty"`
+	ID          APIString   `json:"_id,omitempty"`
 }
 
 func (e *APIProjectEvent) BuildFromService(h interface{}) error {
@@ -124,16 +125,12 @@ func (p *APIProjectVars) BuildFromService(h interface{}) error {
 }
 
 func (a *APIProjectAlias) ToService() (interface{}, error) {
-	tags := []string{}
-	for _, tag := range a.Tags {
-		tags = append(tags, FromAPIString(tag))
-	}
-
 	res := model.ProjectAlias{
-		Alias:   FromAPIString(a.Alias),
-		Task:    FromAPIString(a.Task),
-		Variant: FromAPIString(a.Variant),
-		Tags:    tags,
+		Alias:       FromAPIString(a.Alias),
+		Task:        FromAPIString(a.Task),
+		Variant:     FromAPIString(a.Variant),
+		TaskTags:    FromAPIStringList(a.TaskTags),
+		VariantTags: FromAPIStringList(a.VariantTags),
 	}
 	if model.IsValidId(FromAPIString(a.ID)) {
 		res.ID = model.NewId(FromAPIString(a.ID))
@@ -144,24 +141,24 @@ func (a *APIProjectAlias) ToService() (interface{}, error) {
 func (a *APIProjectAlias) BuildFromService(h interface{}) error {
 	switch v := h.(type) {
 	case *model.ProjectAlias:
-		APITags := []APIString{}
-		for _, tag := range v.Tags {
-			APITags = append(APITags, ToAPIString(tag))
-		}
+		APITaskTags := ToAPIStringList(v.TaskTags)
+		APIVariantTags := ToAPIStringList(v.VariantTags)
+
 		a.Alias = ToAPIString(v.Alias)
 		a.Variant = ToAPIString(v.Variant)
 		a.Task = ToAPIString(v.Task)
-		a.Tags = APITags
+		a.VariantTags = APIVariantTags
+		a.TaskTags = APITaskTags
 		a.ID = ToAPIString(v.ID.Hex())
 	case model.ProjectAlias:
-		APITags := []APIString{}
-		for _, tag := range v.Tags {
-			APITags = append(APITags, ToAPIString(tag))
-		}
+		APITaskTags := ToAPIStringList(v.TaskTags)
+		APIVariantTags := ToAPIStringList(v.VariantTags)
+
 		a.Alias = ToAPIString(v.Alias)
 		a.Variant = ToAPIString(v.Variant)
 		a.Task = ToAPIString(v.Task)
-		a.Tags = APITags
+		a.VariantTags = APIVariantTags
+		a.TaskTags = APITaskTags
 		a.ID = ToAPIString(v.ID.Hex())
 	default:
 		return errors.New("Invalid type of argument")
@@ -172,15 +169,12 @@ func (a *APIProjectAlias) BuildFromService(h interface{}) error {
 func DbProjectAliasesToRestModel(aliases []model.ProjectAlias) []APIProjectAlias {
 	result := []APIProjectAlias{}
 	for _, alias := range aliases {
-		APITags := []APIString{}
-		for _, tag := range alias.Tags {
-			APITags = append(APITags, ToAPIString(tag))
-		}
 		apiAlias := APIProjectAlias{
-			Alias:   ToAPIString(alias.Alias),
-			Variant: ToAPIString(alias.Variant),
-			Task:    ToAPIString(alias.Task),
-			Tags:    APITags,
+			Alias:       ToAPIString(alias.Alias),
+			Variant:     ToAPIString(alias.Variant),
+			Task:        ToAPIString(alias.Task),
+			TaskTags:    ToAPIStringList(alias.TaskTags),
+			VariantTags: ToAPIStringList(alias.VariantTags),
 		}
 		result = append(result, apiAlias)
 	}

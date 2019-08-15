@@ -228,6 +228,10 @@ func TestGenerateTasks(t *testing.T) {
 	assert.Len(p.BuildVariants[1].Tasks, 4)
 	assert.Len(p.TaskGroups, 1)
 	assert.Len(p.TaskGroups[0].Tasks, 2)
+
+	b, err := build.FindOneId("sample_build_id")
+	assert.NoError(err)
+	assert.Equal("mci_race_detector_display_my_display_task__01_01_01_00_00_00", b.Tasks[0].Id)
 }
 
 func TestParseProjects(t *testing.T) {
