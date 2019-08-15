@@ -683,7 +683,7 @@ func NeedsNewAgentFlagSet() db.Q {
 	return db.Query(bson.M{
 		"$or": []bson.M{
 			{bootstrapKey: bson.M{"$exists": false}},
-			{bootstrapKey: distro.BootstrapMethodLegacySSH},
+			{bootstrapKey: bson.M{"$in": []string{"", distro.BootstrapMethodLegacySSH}}},
 		},
 		StatusKey:        evergreen.HostRunning,
 		StartedByKey:     evergreen.User,

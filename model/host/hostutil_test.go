@@ -252,12 +252,12 @@ func TestJasperCommandsWindows(t *testing.T) {
 
 			for testName, testCase := range map[string]func(t *testing.T){
 				"WithoutJasperCredentialsPath": func(t *testing.T) {
-					h.Distro.JasperCredentialsPath = ""
+					h.Distro.BootstrapSettings.JasperCredentialsPath = ""
 					_, err := h.WriteJasperCredentialsFileCommand(creds)
 					assert.Error(t, err)
 				},
 				"WithJasperCredentialsPath": func(t *testing.T) {
-					h.Distro.JasperCredentialsPath = "/bar"
+					h.Distro.BootstrapSettings.JasperCredentialsPath = "/bar"
 					cmd, err := h.WriteJasperCredentialsFileCommand(creds)
 					require.NoError(t, err)
 
@@ -279,7 +279,7 @@ func TestJasperCommandsWindows(t *testing.T) {
 			creds, err := newMockCredentials()
 			require.NoError(t, err)
 
-			h.Distro.JasperCredentialsPath = ""
+			h.Distro.BootstrapSettings.JasperCredentialsPath = ""
 			_, err = h.WriteJasperCredentialsFileCommand(creds)
 			assert.Error(t, err)
 		},
