@@ -236,7 +236,7 @@ func SpawnHosts(ctx context.Context, d distro.Distro, newHostsNeeded int, pool *
 		hostsSpawned = append(hostsSpawned, containerIntents...)
 	} else { // create intent documents for regular hosts
 		for i := 0; i < numHostsToSpawn; i++ {
-			intent, err := generateIntentHost(d)
+			intent, err := generateIntentHost(d, pool)
 			if err != nil {
 				return nil, errors.Wrap(err, "error generating intent host")
 			}
@@ -285,9 +285,13 @@ func getDockerOptionsFromProviderSettings(settings map[string]interface{}) (*hos
 }
 
 // generateIntentHost creates a host intent document for a regular host
-func generateIntentHost(d distro.Distro) (*host.Host, error) {
+func generateIntentHost(d distro.Distro, pool *evergreen.ContainerPool) (*host.Host, error) {
 	hostOptions := host.CreateOptions{
 		UserName: evergreen.User,
+	}
+	if pool != nil {
+		hostOptions.ContainerPoolSettings = pool
+		hostOptions.HasContainers = true
 	}
 	return host.NewIntent(d, d.GenerateName(), d.Provider, hostOptions), nil
 }
