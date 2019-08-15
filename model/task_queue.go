@@ -271,6 +271,9 @@ func (self *TaskQueue) Save() error {
 	if len(self.Queue) == 0 {
 		return nil
 	}
+	if len(self.Queue) > 10000 {
+		self.Queue = self.Queue[:10000]
+	}
 
 	return updateTaskQueue(self.Distro, self.Queue, self.DistroQueueInfo)
 }
