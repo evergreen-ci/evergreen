@@ -9,6 +9,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/rest/client"
+	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mitchellh/mapstructure"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
@@ -84,20 +85,14 @@ func (c *xunitResults) Execute(ctx context.Context,
 // getFilePaths is a helper function that returns a slice of all absolute paths
 // which match the given file path parameters.
 func getFilePaths(workDir string, files []string) ([]string, error) {
-	catcher := grip.NewBasicCatcher()
-	out := []string{}
-
-	for _, fileSpec := range files {
-		paths, err := filepath.Glob(filepath.Join(workDir, fileSpec))
-		catcher.Add(err)
-		out = append(out, paths...)
+	paths, err := util.BuildFileList(workDir, files...)
+	if err != nil {
+		return nil, errors.Wrap(err, "incorrect file specifications")
 	}
-
-	if catcher.HasErrors() {
-		return nil, errors.Wrapf(catcher.Resolve(), "%d incorrect file specifications", catcher.Len())
+	for i, path := range paths {
+		paths[i] = filepath.Join(workDir, path)
 	}
-
-	return out, nil
+	return paths, nil
 }
 
 func (c *xunitResults) parseAndUploadResults(ctx context.Context, conf *model.TaskConfig,

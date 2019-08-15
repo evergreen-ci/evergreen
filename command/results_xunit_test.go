@@ -174,3 +174,13 @@ func TestParseAndUpload(t *testing.T) {
 	}
 	assert.Equal(len(messagesToCheck), count)
 }
+
+func TestFilePathGetIgnoreGlobbing(t *testing.T) {
+	assert := assert.New(t)
+	workdir := filepath.Join(testutil.GetDirectoryOfFile(), "testdata", "xunit")
+	files := []string{"*.xml", "!mocha.xml"}
+	paths, err := getFilePaths(workdir, files)
+	assert.NoError(err)
+	assert.Len(paths, 6)
+	assert.NotContains(paths, filepath.Join(workdir, "mocha.xml"))
+}
