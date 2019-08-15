@@ -272,6 +272,8 @@ func (d *Distro) GetImageID() (string, error) {
 		i = (*d.ProviderSettings)["ami"]
 	case evergreen.ProviderNameEc2Spot:
 		i = (*d.ProviderSettings)["ami"]
+	case evergreen.ProviderNameEc2Fleet:
+		i = (*d.ProviderSettings)["ami"]
 	case evergreen.ProviderNameDocker:
 		i = (*d.ProviderSettings)["image_url"]
 	case evergreen.ProviderNameDockerMock:

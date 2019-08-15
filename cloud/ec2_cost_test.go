@@ -170,6 +170,7 @@ type CostIntegrationSuite struct {
 	suite.Suite
 	m      *ec2Manager
 	client AWSClient
+	h      *host.Host
 }
 
 func TestCostIntegrationSuite(t *testing.T) {
@@ -189,6 +190,20 @@ func (s *CostIntegrationSuite) SetupSuite() {
 
 func (s *CostIntegrationSuite) SetupTest() {
 	pkgCachingPriceFetcher.ec2Prices = nil
+	s.h = &host.Host{
+		Id: "h1",
+		Distro: distro.Distro{
+			ProviderSettings: &map[string]interface{}{
+				"key_name":           "key",
+				"aws_access_key_id":  "key_id",
+				"ami":                "ami",
+				"instance_type":      "instance",
+				"security_group_ids": []string{"abcdef"},
+				"bid_price":          float64(0.001),
+			},
+			Provider: evergreen.ProviderNameEc2OnDemand,
+		},
+	}
 }
 
 func (s *CostIntegrationSuite) TestSpotPriceHistory() {
@@ -338,7 +353,6 @@ func (s *CostIntegrationSuite) TestFetchOnDemandPricingUncached() {
 }
 
 func (s *CostIntegrationSuite) TestGetProviderStatic() {
-	h := &host.Host{}
 	settings := &EC2ProviderSettings{}
 	settings.InstanceType = "m4.large"
 	settings.IsVpc = true
@@ -347,79 +361,75 @@ func (s *CostIntegrationSuite) TestGetProviderStatic() {
 	defer cancel()
 
 	s.m.provider = onDemandProvider
-	provider, err := s.m.getProvider(ctx, h, settings)
+	provider, err := s.m.getProvider(ctx, s.h, settings)
 	s.NoError(err)
 	s.Equal(onDemandProvider, provider)
 
 	s.m.provider = spotProvider
-	provider, err = s.m.getProvider(ctx, h, settings)
+	provider, err = s.m.getProvider(ctx, s.h, settings)
 	s.NoError(err)
 	s.Equal(spotProvider, provider)
 
 	s.m.provider = 5
-	_, err = s.m.getProvider(ctx, h, settings)
+	_, err = s.m.getProvider(ctx, s.h, settings)
 	s.Error(err)
 
 	s.m.provider = -5
-	_, err = s.m.getProvider(ctx, h, settings)
+	_, err = s.m.getProvider(ctx, s.h, settings)
 	s.Error(err)
 }
 
 func (s *CostIntegrationSuite) TestGetProviderAuto() {
-	h := &host.Host{
-		Distro: distro.Distro{
-			Arch: "linux",
-		},
-	}
+	s.h.Distro.Arch = "linux"
 	settings := &EC2ProviderSettings{}
 	s.m.provider = autoProvider
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	m4LargeOnDemand, err := pkgCachingPriceFetcher.getEC2OnDemandCost(context.Background(), s.m.client, getOsName(h), "m4.large", defaultRegion)
+	m4LargeOnDemand, err := pkgCachingPriceFetcher.getEC2OnDemandCost(context.Background(), s.m.client, getOsName(s.h), "m4.large", defaultRegion)
 	s.InDelta(.1, m4LargeOnDemand, .05)
 	s.NoError(err)
 
-	t2MicroOnDemand, err := pkgCachingPriceFetcher.getEC2OnDemandCost(context.Background(), s.m.client, getOsName(h), "t2.micro", defaultRegion)
+	t2MicroOnDemand, err := pkgCachingPriceFetcher.getEC2OnDemandCost(context.Background(), s.m.client, getOsName(s.h), "t2.micro", defaultRegion)
 	s.InDelta(.0116, t2MicroOnDemand, .01)
 	s.NoError(err)
 
 	settings.InstanceType = "m4.large"
 	settings.IsVpc = true
-	m4LargeSpot, az, err := pkgCachingPriceFetcher.getLatestLowestSpotCostForInstance(ctx, s.m.client, settings, getOsName(h))
+	m4LargeSpot, az, err := pkgCachingPriceFetcher.getLatestLowestSpotCostForInstance(ctx, s.m.client, settings, getOsName(s.h))
 	s.Contains(az, "us-east")
 	s.True(m4LargeSpot > 0)
 	s.NoError(err)
 
 	settings.InstanceType = "t2.micro"
 	settings.IsVpc = true
-	t2MicroSpot, az, err := pkgCachingPriceFetcher.getLatestLowestSpotCostForInstance(ctx, s.m.client, settings, getOsName(h))
+	t2MicroSpot, az, err := pkgCachingPriceFetcher.getLatestLowestSpotCostForInstance(ctx, s.m.client, settings, getOsName(s.h))
 	s.Contains(az, "us-east")
 	s.True(t2MicroSpot > 0)
 	s.NoError(err)
 
 	settings.InstanceType = "m4.large"
 	settings.IsVpc = true
-	provider, err := s.m.getProvider(ctx, h, settings)
+	provider, err := s.m.getProvider(ctx, s.h, settings)
 	s.NoError(err)
 	if m4LargeSpot < m4LargeOnDemand {
 		s.Equal(spotProvider, provider)
-		s.Equal(evergreen.ProviderNameEc2Spot, h.Distro.Provider)
+		s.Equal(evergreen.ProviderNameEc2Spot, s.h.Distro.Provider)
 	} else {
 		s.Equal(onDemandProvider, provider)
-		s.Equal(evergreen.ProviderNameEc2OnDemand, h.Distro.Provider)
+		s.Equal(evergreen.ProviderNameEc2OnDemand, s.h.Distro.Provider)
 	}
 
 	settings.InstanceType = "t2.micro"
 	settings.IsVpc = true
-	provider, err = s.m.getProvider(ctx, h, settings)
+	provider, err = s.m.getProvider(ctx, s.h, settings)
 	s.NoError(err)
 	if t2MicroSpot < t2MicroOnDemand {
 		s.Equal(spotProvider, provider)
-		s.Equal(evergreen.ProviderNameEc2Spot, h.Distro.Provider)
+		s.Equal(evergreen.ProviderNameEc2Spot, s.h.Distro.Provider)
 	} else {
 		s.Equal(onDemandProvider, provider)
-		s.Equal(evergreen.ProviderNameEc2OnDemand, h.Distro.Provider)
+		s.Equal(evergreen.ProviderNameEc2OnDemand, s.h.Distro.Provider)
 	}
 }

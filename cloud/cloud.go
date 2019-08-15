@@ -95,6 +95,8 @@ func GetManager(ctx context.Context, providerName string, settings *evergreen.Se
 		provider = NewEC2Manager(&EC2ManagerOptions{client: &awsClientImpl{}, provider: spotProvider})
 	case evergreen.ProviderNameEc2Auto:
 		provider = NewEC2Manager(&EC2ManagerOptions{client: &awsClientImpl{}, provider: autoProvider})
+	case evergreen.ProviderNameEc2Fleet:
+		provider = &ec2FleetManager{client: &awsClientImpl{}}
 	case evergreen.ProviderNameDocker:
 		provider = &dockerManager{}
 	case evergreen.ProviderNameDockerMock:

@@ -237,7 +237,7 @@ func (j *jasperDeployJob) Run(ctx context.Context) {
 			return
 		}
 	} else {
-		sshOpts, err := j.host.GetSSHOptions(j.settings)
+		sshOpts, err := j.host.GetSSHOptions(j.settings.Keys[j.host.Distro.SSHKey])
 		if err != nil {
 			grip.Error(message.WrapError(err, message.Fields{
 				"message": "could not get SSH options",

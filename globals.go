@@ -222,6 +222,7 @@ const (
 	ProviderNameEc2Auto     = "ec2-auto"
 	ProviderNameEc2OnDemand = "ec2-ondemand"
 	ProviderNameEc2Spot     = "ec2-spot"
+	ProviderNameEc2Fleet    = "ec2-fleet"
 	ProviderNameDocker      = "docker"
 	ProviderNameDockerMock  = "docker-mock"
 	ProviderNameGce         = "gce"
@@ -242,6 +243,7 @@ var (
 		ProviderNameEc2OnDemand,
 		ProviderNameEc2Spot,
 		ProviderNameEc2Auto,
+		ProviderNameEc2Fleet,
 		ProviderNameGce,
 		ProviderNameOpenstack,
 		ProviderNameVsphere,
