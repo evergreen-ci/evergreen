@@ -23,8 +23,11 @@ import (
 	"github.com/mitchellh/mapstructure"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/level"
+	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 )
+
+const GitFetchProjectRetries = 5
 
 // gitFetchProject is a command that fetches source code from git for the project
 // associated with the current task
@@ -277,7 +280,27 @@ func (c *gitFetchProject) buildModuleCloneCommand(conf *model.TaskConfig, opts c
 }
 
 // Execute gets the source code required by the project
-func (c *gitFetchProject) Execute(ctx context.Context,
+// Retries some number of times before failing
+func (c *gitFetchProject) Execute(ctx context.Context, comm client.Communicator, logger client.LoggerProducer, conf *model.TaskConfig) error {
+	var err error
+	for iter := 1; iter <= GitFetchProjectRetries; iter++ {
+		err = c.executeLoop(ctx, comm, logger, conf)
+		if err == nil {
+			return nil
+		}
+		grip.Error(message.WrapError(err, message.Fields{
+			"operation": "git.get_project",
+			"message":   "cloning failed",
+			"attempt":   iter,
+			"owner":     conf.ProjectRef.Owner,
+			"repo":      conf.ProjectRef.Repo,
+			"branch":    conf.ProjectRef.Branch,
+		}))
+	}
+	return err
+}
+
+func (c *gitFetchProject) executeLoop(ctx context.Context,
 	comm client.Communicator, logger client.LoggerProducer, conf *model.TaskConfig) error {
 
 	var err error
