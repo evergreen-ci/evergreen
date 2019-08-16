@@ -485,9 +485,10 @@ func (as *APIServer) NextTask(w http.ResponseWriter, r *http.Request) {
 			}))
 		} else {
 			grip.Info(message.Fields{
-				"message": "agent initiated first contact with server",
-				"host":    h.Id,
-				"distro":  h.Distro.Id,
+				"message":                   "agent initiated first contact with server",
+				"host":                      h.Id,
+				"distro":                    h.Distro.Id,
+				"agent_start_duration_secs": time.Since(h.CreationTime).Seconds(),
 			})
 		}
 	}
