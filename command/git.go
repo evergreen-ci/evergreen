@@ -12,6 +12,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
@@ -282,19 +283,23 @@ func (c *gitFetchProject) buildModuleCloneCommand(conf *model.TaskConfig, opts c
 // Execute gets the source code required by the project
 // Retries some number of times before failing
 func (c *gitFetchProject) Execute(ctx context.Context, comm client.Communicator, logger client.LoggerProducer, conf *model.TaskConfig) error {
-	var err error
-	for iter := 1; iter <= GitFetchProjectRetries; iter++ {
-		err = c.executeLoop(ctx, comm, logger, conf)
-		if err == nil {
-			return nil
-		}
-		grip.Error(message.WrapError(err, message.Fields{
-			"operation": "git.get_project",
-			"message":   "cloning failed",
-			"attempt":   iter,
-			"owner":     conf.ProjectRef.Owner,
-			"repo":      conf.ProjectRef.Repo,
-			"branch":    conf.ProjectRef.Branch,
+	err := util.Retry(
+		ctx,
+		func() (bool, error) {
+			err := c.executeLoop(ctx, comm, logger, conf)
+			if err != nil {
+				return true, err
+			}
+			return false, nil
+		}, GitFetchProjectRetries, time.Second, 10*time.Second)
+	if err != nil {
+		logger.Task().Error(message.WrapError(err, message.Fields{
+			"operation":    "git.get_project",
+			"message":      "cloning failed",
+			"num_attempts": GitFetchProjectRetries,
+			"owner":        conf.ProjectRef.Owner,
+			"repo":         conf.ProjectRef.Repo,
+			"branch":       conf.ProjectRef.Branch,
 		}))
 	}
 	return err
@@ -304,7 +309,6 @@ func (c *gitFetchProject) executeLoop(ctx context.Context,
 	comm client.Communicator, logger client.LoggerProducer, conf *model.TaskConfig) error {
 
 	var err error
-
 	// expand the github parameters before running the task
 	if err = util.ExpandValues(c, conf.Expansions); err != nil {
 		return errors.Wrap(err, "error expanding github parameters")
