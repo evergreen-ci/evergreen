@@ -266,6 +266,14 @@ func (j *createHostJob) createHost(ctx context.Context) error {
 	j.host.StartTime = j.start
 
 	if err := j.host.Insert(); err != nil {
+		if j.host.Distro.BootstrapMethod == distro.BootstrapMethodUserData {
+			grip.Error(message.WrapError(j.host.DeleteJasperCredentials(ctx, j.env), message.Fields{
+				"message": "problem cleaning up Jasper credentials",
+				"host":    j.host.Id,
+				"distro":  j.host.Distro.Id,
+				"job":     j.ID(),
+			}))
+		}
 		return errors.Wrapf(err, "error updating host %v", j.host.Id)
 	}
 
