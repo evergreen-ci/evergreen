@@ -520,8 +520,9 @@ func (m *ec2Manager) GetInstanceStatuses(ctx context.Context, hosts []host.Host)
 		for i := range hostsToCheck {
 			status := ec2StatusToEvergreenStatus(*reservationsMap[*hostsToCheck[i]].State.Name)
 			if status == StatusRunning {
+				// cache instance information so we can make fewer calls to AWS's API
 				if err = cacheHostData(ctx, instanceIdToHostMap[*hostsToCheck[i]], reservationsMap[*hostsToCheck[i]], m.client); err != nil {
-					return nil, errors.Wrapf(err, "can't cache host data for '%s'")
+					return nil, errors.Wrapf(err, "can't cache host data for '%s'", *hostsToCheck[i])
 				}
 			}
 			hostToStatusMap[instanceIdToHostMap[*hostsToCheck[i]].Id] = status
@@ -586,9 +587,9 @@ func (m *ec2Manager) GetInstanceStatus(ctx context.Context, h *host.Host) (Cloud
 	status = ec2StatusToEvergreenStatus(*instance.State.Name)
 
 	if status == StatusRunning {
-		// save data out of the instance now so we don't need to keep asking for it
+		// cache instance information so we can make fewer calls to AWS's API
 		if err = cacheHostData(ctx, h, instance, m.client); err != nil {
-			return status, errors.Wrap(err, "can't cache host data")
+			return status, errors.Wrapf(err, "can't cache host data for '%s'", h.Id)
 		}
 	}
 
@@ -789,6 +790,16 @@ func (m *ec2Manager) OnUp(ctx context.Context, h *host.Host) error {
 
 // GetDNSName returns the DNS name for the host.
 func (m *ec2Manager) GetDNSName(ctx context.Context, h *host.Host) (string, error) {
+	ec2Settings := &EC2ProviderSettings{}
+	err := ec2Settings.fromDistroSettings(h.Distro)
+	if err != nil {
+		return "", errors.Wrap(err, "problem getting region from host")
+	}
+	if err = m.client.Create(m.credentials, ec2Settings.getRegion()); err != nil {
+		return "", errors.Wrap(err, "error creating client")
+	}
+	defer m.client.Close()
+
 	return m.client.GetPublicDNSName(ctx, h)
 }
 

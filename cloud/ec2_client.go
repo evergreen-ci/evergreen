@@ -957,7 +957,14 @@ func (c *awsClientMock) CancelSpotInstanceRequests(ctx context.Context, input *e
 // DescribeVolumes is a mock for ec2.DescribeVolumes.
 func (c *awsClientMock) DescribeVolumes(ctx context.Context, input *ec2.DescribeVolumesInput) (*ec2.DescribeVolumesOutput, error) {
 	c.DescribeVolumesInput = input
-	return &ec2.DescribeVolumesOutput{}, nil
+	return &ec2.DescribeVolumesOutput{
+		Volumes: []*ec2.Volume{
+			&ec2.Volume{
+				VolumeId: input.VolumeIds[0],
+				Size:     aws.Int64(10),
+			},
+		},
+	}, nil
 }
 
 // DescribeSpotPriceHistory is a mock for ec2.DescribeSpotPriceHistory.
@@ -1017,6 +1024,14 @@ func (c *awsClientMock) GetInstanceInfo(ctx context.Context, id string) (*ec2.In
 	}
 	instance.State = &ec2.InstanceState{}
 	instance.State.Name = aws.String("running")
+	instance.BlockDeviceMappings = []*ec2.InstanceBlockDeviceMapping{
+		&ec2.InstanceBlockDeviceMapping{
+			Ebs: &ec2.EbsInstanceBlockDevice{
+				VolumeId: aws.String("volume_id"),
+			},
+		},
+	}
+	instance.LaunchTime = aws.Time(time.Date(2009, time.November, 10, 23, 0, 0, 0, time.UTC))
 	return instance, nil
 }
 
@@ -1092,7 +1107,7 @@ func (c *awsClientMock) GetVolumeIDs(ctx context.Context, h *host.Host) ([]strin
 	return []string{}, nil
 }
 
-func (c *awsClientMock) GetPublicDNSName(h *host.Host) (string, error) {
+func (c *awsClientMock) GetPublicDNSName(ctx context.Context, h *host.Host) (string, error) {
 	if h.PublicDNSName != "" {
 		return h.PublicDNSName, nil
 	}
