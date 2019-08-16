@@ -1029,7 +1029,7 @@ func TestFindByNeedsNewAgentMonitor(t *testing.T) {
 		},
 	} {
 		t.Run(testName, func(t *testing.T) {
-			require.NoError(t, db.Clear(Collection), "error clearing %s collection", Collection)
+			require.NoError(t, db.Clear(Collection))
 			defer func() {
 				assert.NoError(t, db.Clear(Collection))
 			}()
@@ -1038,6 +1038,70 @@ func TestFindByNeedsNewAgentMonitor(t *testing.T) {
 				Status:               evergreen.HostRunning,
 				StartedBy:            evergreen.User,
 				NeedsNewAgentMonitor: true,
+			}
+			testCase(t, &h)
+		})
+	}
+}
+
+func TestFindUserDataSpawnHostsProvisioning(t *testing.T) {
+	for testName, testCase := range map[string]func(t *testing.T, h *Host){
+		"ReturnsHostsProvisionedButNotRunning": func(t *testing.T, h *Host) {
+			require.NoError(t, h.Insert())
+
+			hosts, err := FindUserDataSpawnHostsProvisioning()
+			require.NoError(t, err)
+			require.Len(t, hosts, 1)
+			assert.Equal(t, h.Id, hosts[0].Id)
+		},
+		"IgnoresNonUserDataBootstrap": func(t *testing.T, h *Host) {
+			h.Distro.BootstrapMethod = distro.BootstrapMethodSSH
+			require.NoError(t, h.Insert())
+
+			hosts, err := FindUserDataSpawnHostsProvisioning()
+			require.NoError(t, err)
+			assert.Empty(t, hosts)
+		},
+		"IgnoresUnprovisionedHosts": func(t *testing.T, h *Host) {
+			h.Provisioned = false
+			require.NoError(t, h.Insert())
+
+			hosts, err := FindUserDataSpawnHostsProvisioning()
+			require.NoError(t, err)
+			assert.Empty(t, hosts)
+		},
+		"IgnoresHostsSpawnedByEvergreen": func(t *testing.T, h *Host) {
+			h.StartedBy = evergreen.User
+			require.NoError(t, h.Insert())
+
+			hosts, err := FindUserDataSpawnHostsProvisioning()
+			require.NoError(t, err)
+			assert.Empty(t, hosts)
+		},
+		"IgnoresRunningSpawnHosts": func(t *testing.T, h *Host) {
+			h.Status = evergreen.HostRunning
+			require.NoError(t, h.Insert())
+
+			hosts, err := FindUserDataSpawnHostsProvisioning()
+			require.NoError(t, err)
+			assert.Empty(t, hosts)
+		},
+	} {
+		t.Run(testName, func(t *testing.T) {
+			require.NoError(t, db.Clear(Collection), "error clearing %s collection", Collection)
+			defer func() {
+				assert.NoError(t, db.Clear(Collection))
+			}()
+			h := Host{
+				Id:          "host_id",
+				Status:      evergreen.HostProvisioning,
+				Provisioned: true,
+				StartedBy:   "user",
+				Distro: distro.Distro{
+					Id:                  "distro_id",
+					BootstrapMethod:     distro.BootstrapMethodUserData,
+					CommunicationMethod: distro.CommunicationMethodSSH,
+				},
 			}
 			testCase(t, &h)
 		})

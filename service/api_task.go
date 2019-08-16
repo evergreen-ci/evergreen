@@ -492,6 +492,14 @@ func (as *APIServer) NextTask(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	grip.Error(message.WrapError(h.SetUserDataHostProvisioned(), message.Fields{
+		"message":   "failed to mark host as done provisioning with user data",
+		"host":      h.Id,
+		"distro":    h.Distro.Id,
+		"bootstrap": h.Distro.BootstrapMethod,
+		"operation": "next_task",
+	}))
+
 	// stopAgentMonitor is only used for debug log purposes.
 	var stopAgentMonitor bool
 	defer func() {
@@ -510,7 +518,7 @@ func (as *APIServer) NextTask(w http.ResponseWriter, r *http.Request) {
 		ctx, cancel := context.WithTimeout(r.Context(), 30*time.Second)
 		defer cancel()
 		env := evergreen.GetEnvironment()
-		stopAgentMonitor = true
+		stopAgentMonitor = !h.LegacyBootstrap()
 		if err = h.StopAgentMonitor(ctx, env); err != nil {
 			grip.Error(message.WrapError(err, message.Fields{
 				"message":   "problem stopping agent monitor",
