@@ -672,11 +672,6 @@ mciModule.controller('TaskHistoryDrawerCtrl', function($scope, $window, $locatio
             if (scope.barWidth < 5) {
               scope.barWidth = 5;
             }
-            var timeInNano = scope.timeTaken * 1000 * 1000 * 1000;
-            $(element).tooltip({
-              title: $filter('stringifyNanoseconds')(timeInNano),
-              animation: false,
-            });
           });
         }
       }
