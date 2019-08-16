@@ -191,7 +191,7 @@ func (m *ec2Manager) Configure(ctx context.Context, settings *evergreen.Settings
 	return nil
 }
 
-func (m *ec2Manager) spawnOnDemandHost(ctx context.Context, h *host.Host, ec2Settings *EC2ProviderSettings, blockDevices []*ec2.BlockDeviceMapping) ([]string, error) {
+func (m *ec2Manager) spawnOnDemandHost(ctx context.Context, h *host.Host, ec2Settings *EC2ProviderSettings, blockDevices []*ec2.BlockDeviceMapping) error {
 	input := &ec2.RunInstancesInput{
 		MinCount:            aws.Int64(1),
 		MaxCount:            aws.Int64(1),
@@ -220,14 +220,14 @@ func (m *ec2Manager) spawnOnDemandHost(ctx context.Context, h *host.Host, ec2Set
 	if ec2Settings.UserData != "" {
 		expanded, err := expandUserData(ec2Settings.UserData, m.settings.Expansions)
 		if err != nil {
-			return nil, errors.Wrap(err, "problem expanding user data")
+			return errors.Wrap(err, "problem expanding user data")
 		}
 		ec2Settings.UserData = expanded
 	}
 
 	userData, err := bootstrapUserData(ctx, evergreen.GetEnvironment(), h, ec2Settings.UserData)
 	if err != nil {
-		return nil, errors.Wrap(err, "could not add bootstrap script to user data")
+		return errors.Wrap(err, "could not add bootstrap script to user data")
 	}
 	ec2Settings.UserData = userData
 
@@ -259,7 +259,7 @@ func (m *ec2Manager) spawnOnDemandHost(ctx context.Context, h *host.Host, ec2Set
 			"distro":        h.Distro.Id,
 		}))
 		if err != nil {
-			return nil, errors.Wrap(err, msg)
+			return errors.Wrap(err, msg)
 		}
 		msg = "reservation was nil"
 		grip.Error(message.Fields{
@@ -268,11 +268,11 @@ func (m *ec2Manager) spawnOnDemandHost(ctx context.Context, h *host.Host, ec2Set
 			"host_provider": h.Distro.Provider,
 			"distro":        h.Distro.Id,
 		})
-		return nil, errors.New(msg)
+		return errors.New(msg)
 	}
 
 	if len(reservation.Instances) < 1 {
-		return nil, errors.New("reservation has no instances")
+		return errors.New("reservation has no instances")
 	}
 
 	instance := reservation.Instances[0]
@@ -283,11 +283,8 @@ func (m *ec2Manager) spawnOnDemandHost(ctx context.Context, h *host.Host, ec2Set
 		"host_provider": h.Distro.Provider,
 	})
 	h.Id = *instance.InstanceId
-	resources := []string{h.Id}
-	for _, vol := range instance.BlockDeviceMappings {
-		resources = append(resources, *vol.Ebs.VolumeId)
-	}
-	return resources, nil
+
+	return nil
 }
 
 func (m *ec2Manager) spawnSpotHost(ctx context.Context, h *host.Host, ec2Settings *EC2ProviderSettings, blockDevices []*ec2.BlockDeviceMapping) error {
@@ -417,7 +414,7 @@ func (m *ec2Manager) SpawnHost(ctx context.Context, h *host.Host) (*host.Host, e
 		return nil, errors.Wrap(err, msg)
 	}
 	if provider == onDemandProvider {
-		resources, err := m.spawnOnDemandHost(ctx, h, ec2Settings, blockDevices)
+		err := m.spawnOnDemandHost(ctx, h, ec2Settings, blockDevices)
 		if err != nil {
 			msg := "error spawning on-demand host"
 			grip.Error(message.WrapError(err, message.Fields{
@@ -434,34 +431,6 @@ func (m *ec2Manager) SpawnHost(ctx context.Context, h *host.Host) (*host.Host, e
 			"host_provider": h.Distro.Provider,
 			"distro":        h.Distro.Id,
 		})
-
-		grip.Debug(message.Fields{
-			"message":       "attaching tags for host",
-			"host":          h.Id,
-			"host_provider": h.Distro.Provider,
-			"distro":        h.Distro.Id,
-		})
-
-		tags := makeTags(h)
-		tagSlice := []*ec2.Tag{}
-		for tag := range tags {
-			key := tag
-			val := tags[tag]
-			tagSlice = append(tagSlice, &ec2.Tag{Key: &key, Value: &val})
-		}
-		if _, err = m.client.CreateTags(ctx, &ec2.CreateTagsInput{
-			Resources: aws.StringSlice(resources),
-			Tags:      tagSlice,
-		}); err != nil {
-			grip.Error(message.WrapError(err, message.Fields{
-				"message":       "error attaching tags",
-				"host":          h.Id,
-				"host_provider": h.Distro.Provider,
-				"distro":        h.Distro.Id,
-			}))
-			err = errors.Wrapf(err, "failed to attach tags for %s", h.Id)
-			return nil, err
-		}
 	} else if provider == spotProvider {
 		err = m.spawnSpotHost(ctx, h, ec2Settings, blockDevices)
 		if err != nil {
@@ -750,23 +719,27 @@ func (m *ec2Manager) IsUp(ctx context.Context, h *host.Host) (bool, error) {
 
 // OnUp is called when the host is up.
 func (m *ec2Manager) OnUp(ctx context.Context, h *host.Host) error {
+	grip.Debug(message.Fields{
+		"message":       "host is up",
+		"host":          h.Id,
+		"host_provider": h.Distro.Provider,
+		"distro":        h.Distro.Id,
+		"is_spot":       isHostSpot(h),
+	})
+
+	ec2Settings := &EC2ProviderSettings{}
+	err := ec2Settings.fromDistroSettings(h.Distro)
+	if err != nil {
+		return errors.Wrap(err, "problem getting region from host")
+	}
+	if err = m.client.Create(m.credentials, ec2Settings.getRegion()); err != nil {
+		return errors.Wrap(err, "error creating client")
+	}
+	defer m.client.Close()
+
+	instanceID := h.Id
 	if isHostSpot(h) {
-		grip.Debug(message.Fields{
-			"message":       "spot host is up, attaching tags",
-			"host":          h.Id,
-			"host_provider": h.Distro.Provider,
-			"distro":        h.Distro.Id,
-		})
-		ec2Settings := &EC2ProviderSettings{}
-		err := ec2Settings.fromDistroSettings(h.Distro)
-		if err != nil {
-			return errors.Wrap(err, "problem getting region from host")
-		}
-		if err = m.client.Create(m.credentials, ec2Settings.getRegion()); err != nil {
-			return errors.Wrap(err, "error creating client")
-		}
-		defer m.client.Close()
-		instanceId, err := m.client.GetSpotInstanceId(ctx, h)
+		instanceID, err = m.client.GetSpotInstanceId(ctx, h)
 		if err != nil {
 			grip.Error(message.WrapError(err, message.Fields{
 				"message":       "error getting spot request info",
@@ -776,38 +749,40 @@ func (m *ec2Manager) OnUp(ctx context.Context, h *host.Host) error {
 			}))
 			return errors.Wrapf(err, "failed to get spot request info for %s", h.Id)
 		}
-		if instanceId == "" {
+		if instanceID == "" {
 			return errors.WithStack(errors.New("spot instance does not yet have an instanceId"))
 		}
-		tags := makeTags(h)
-		tags["spot"] = "true" // mark this as a spot instance
+	}
 
-		volumeIDs, err := m.client.GetVolumeIDs(ctx, h)
-		if err != nil {
-			return errors.Wrapf(err, "can't get volume IDs for '%s'", h.Id)
-		}
-		resources := []string{instanceId}
-		resources = append(resources, volumeIDs...)
-		tagSlice := []*ec2.Tag{}
-		for tag := range tags {
-			key := tag
-			val := tags[tag]
-			tagSlice = append(tagSlice, &ec2.Tag{Key: &key, Value: &val})
-		}
+	tags := makeTags(h)
+	tags["spot"] = "true" // mark this as a spot instance
 
-		if _, err = m.client.CreateTags(ctx, &ec2.CreateTagsInput{
-			Resources: aws.StringSlice(resources),
-			Tags:      tagSlice,
-		}); err != nil {
-			grip.Error(message.WrapError(err, message.Fields{
-				"message":       "error attaching tags",
-				"host":          h.Id,
-				"host_provider": h.Distro.Provider,
-				"distro":        h.Distro.Id,
-			}))
-			err = errors.Wrapf(err, "failed to attach tags for %s", h.Id)
-			return err
-		}
+	volumeIDs, err := m.client.GetVolumeIDs(ctx, h)
+	if err != nil {
+		return errors.Wrapf(err, "can't get volume IDs for '%s'", h.Id)
+	}
+	resources := []string{instanceID}
+	resources = append(resources, volumeIDs...)
+
+	tagSlice := []*ec2.Tag{}
+	for tag := range tags {
+		key := tag
+		val := tags[tag]
+		tagSlice = append(tagSlice, &ec2.Tag{Key: &key, Value: &val})
+	}
+
+	if _, err = m.client.CreateTags(ctx, &ec2.CreateTagsInput{
+		Resources: aws.StringSlice(resources),
+		Tags:      tagSlice,
+	}); err != nil {
+		grip.Error(message.WrapError(err, message.Fields{
+			"message":       "error attaching tags",
+			"host":          h.Id,
+			"host_provider": h.Distro.Provider,
+			"distro":        h.Distro.Id,
+		}))
+		err = errors.Wrapf(err, "failed to attach tags for %s", h.Id)
+		return err
 	}
 	return nil
 }

@@ -103,8 +103,8 @@ type Host struct {
 	// for ec2 dynamic hosts, the total size of the volumes requested, in GiB
 	VolumeTotalSize int64 `bson:"volume_total_size" json:"volume_total_size,omitempty"`
 
-	VolumeIDs     []string `bson:"volume_ids" json"volume_ids"`
-	PublicDNSName string   `bson:"public_dns_name" json:"public_dns_name"`
+	VolumeIDs     []string `bson:"volume_ids,omitempty" json"volume_ids,omitempty"`
+	PublicDNSName string   `bson:"public_dns_name,omitempty" json:"public_dns_name,omitempty"`
 
 	// stores information on expiration notifications for spawn hosts
 	Notifications map[string]bool `bson:"notifications,omitempty" json:"notifications,omitempty"`
