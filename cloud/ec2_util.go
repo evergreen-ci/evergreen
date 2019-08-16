@@ -13,7 +13,6 @@ import (
 	"github.com/aws/aws-sdk-go/service/ec2"
 	ec2aws "github.com/aws/aws-sdk-go/service/ec2"
 	"github.com/evergreen-ci/evergreen"
-	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/anser/bsonutil"
@@ -465,12 +464,4 @@ func IsEc2Provider(provider string) bool {
 		provider == evergreen.ProviderNameEc2OnDemand ||
 		provider == evergreen.ProviderNameEc2Spot ||
 		provider == evergreen.ProviderNameEc2Fleet
-}
-
-// deleteCreds removes Jasper credentials generated for user data.
-func deleteCreds(ctx context.Context, env evergreen.Environment, h *host.Host) error {
-	if h.Distro.BootstrapMethod == distro.BootstrapMethodUserData {
-		return nil
-	}
-	return errors.Wrap(h.DeleteJasperCredentials(ctx, env), "could not delete Jasper credentials")
 }

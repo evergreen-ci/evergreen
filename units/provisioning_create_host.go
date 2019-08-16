@@ -7,6 +7,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/cloud"
+	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/amboy/dependency"
@@ -221,6 +222,14 @@ func (j *createHostJob) createHost(ctx context.Context) error {
 	// remove the intent host to insert started host
 	intentHost, err := host.FindOneId(j.HostID)
 	if err != nil {
+		if j.host.Distro.BootstrapMethod == distro.BootstrapMethodUserData {
+			grip.Error(message.WrapError(j.host.DeleteJasperCredentials(ctx, j.env), message.Fields{
+				"message": "problem cleaning up Jasper credentials",
+				"host":    j.host.Id,
+				"distro":  j.host.Distro.Id,
+				"job":     j.ID(),
+			}))
+		}
 		return errors.Wrapf(err, "problem retrieving intent host '%s'", j.HostID)
 	}
 	if intentHost == nil {
@@ -230,6 +239,14 @@ func (j *createHostJob) createHost(ctx context.Context) error {
 			"host":    j.HostID,
 		})
 	} else if err := intentHost.Remove(); err != nil {
+		if j.host.Distro.BootstrapMethod == distro.BootstrapMethodUserData {
+			grip.Error(message.WrapError(j.host.DeleteJasperCredentials(ctx, j.env), message.Fields{
+				"message": "problem cleaning up Jasper credentials",
+				"host":    j.host.Id,
+				"distro":  j.host.Distro.Id,
+				"job":     j.ID(),
+			}))
+		}
 		grip.Notice(message.WrapError(err, message.Fields{
 			"message": "problem removing intent host",
 			"job":     j.ID(),

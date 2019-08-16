@@ -246,11 +246,13 @@ func (m *ec2Manager) spawnOnDemandHost(ctx context.Context, h *host.Host, ec2Set
 	})
 	reservation, err := m.client.RunInstances(ctx, input)
 	if err != nil || reservation == nil {
-		grip.Error(message.WrapError(deleteCreds(ctx, env, h), message.Fields{
-			"message": "problem cleaning up user data credentials",
-			"host":    h.Id,
-			"distro":  h.Distro.Id,
-		}))
+		if h.Distro.BootstrapMethod == distro.BootstrapMethodUserData {
+			grip.Error(message.WrapError(h.DeleteJasperCredentials(ctx, env), message.Fields{
+				"message": "problem cleaning up user data credentials",
+				"host":    h.Id,
+				"distro":  h.Distro.Id,
+			}))
+		}
 		msg := "RunInstances API call returned an error"
 		grip.Error(message.WrapError(err, message.Fields{
 			"message":       msg,
@@ -278,11 +280,13 @@ func (m *ec2Manager) spawnOnDemandHost(ctx context.Context, h *host.Host, ec2Set
 	}
 
 	if len(reservation.Instances) < 1 {
-		grip.Error(message.WrapError(deleteCreds(ctx, env, h), message.Fields{
-			"message": "problem cleaning up user data credentials",
-			"host":    h.Id,
-			"distro":  h.Distro.Id,
-		}))
+		if h.Distro.BootstrapMethod == distro.BootstrapMethodUserData {
+			grip.Error(message.WrapError(h.DeleteJasperCredentials(ctx, env), message.Fields{
+				"message": "problem cleaning up user data credentials",
+				"host":    h.Id,
+				"distro":  h.Distro.Id,
+			}))
+		}
 		return nil, errors.New("reservation has no instances")
 	}
 
@@ -298,11 +302,13 @@ func (m *ec2Manager) spawnOnDemandHost(ctx context.Context, h *host.Host, ec2Set
 		InstanceIds: []*string{instance.InstanceId},
 	})
 	if err != nil {
-		grip.Error(message.WrapError(deleteCreds(ctx, env, h), message.Fields{
-			"message": "problem cleaning up user data credentials",
-			"host":    h.Id,
-			"distro":  h.Distro.Id,
-		}))
+		if h.Distro.BootstrapMethod == distro.BootstrapMethodUserData {
+			grip.Error(message.WrapError(h.DeleteJasperCredentials(ctx, env), message.Fields{
+				"message": "problem cleaning up user data credentials",
+				"host":    h.Id,
+				"distro":  h.Distro.Id,
+			}))
+		}
 		grip.Error(message.WrapError(err, message.Fields{
 			"host_provider": h.Distro.Provider,
 			"host":          h.Id,
@@ -321,11 +327,13 @@ func (m *ec2Manager) spawnOnDemandHost(ctx context.Context, h *host.Host, ec2Set
 	})
 
 	if len(resp.Reservations) < 1 {
-		grip.Error(message.WrapError(deleteCreds(ctx, env, h), message.Fields{
-			"message": "problem cleaning up user data credentials",
-			"host":    h.Id,
-			"distro":  h.Distro.Id,
-		}))
+		if h.Distro.BootstrapMethod == distro.BootstrapMethodUserData {
+			grip.Error(message.WrapError(h.DeleteJasperCredentials(ctx, env), message.Fields{
+				"message": "problem cleaning up user data credentials",
+				"host":    h.Id,
+				"distro":  h.Distro.Id,
+			}))
+		}
 		return nil, errors.New("describe instances response has no reservations")
 	}
 
@@ -399,22 +407,26 @@ func (m *ec2Manager) spawnSpotHost(ctx context.Context, h *host.Host, ec2Setting
 	})
 	spotResp, err := m.client.RequestSpotInstances(ctx, spotRequest)
 	if err != nil {
-		grip.Error(message.WrapError(deleteCreds(ctx, env, h), message.Fields{
-			"message": "problem cleaning up user data credentials",
-			"host":    h.Id,
-			"distro":  h.Distro.Id,
-		}))
+		if h.Distro.BootstrapMethod == distro.BootstrapMethodUserData {
+			grip.Error(message.WrapError(h.DeleteJasperCredentials(ctx, env), message.Fields{
+				"message": "problem cleaning up user data credentials",
+				"host":    h.Id,
+				"distro":  h.Distro.Id,
+			}))
+		}
 		grip.Error(errors.Wrapf(h.Remove(), "error removing intent host %s", h.Id))
 		return errors.Wrap(err, "RequestSpotInstances API call returned an error")
 	}
 
 	spotReqRes := spotResp.SpotInstanceRequests[0]
 	if *spotReqRes.State != SpotStatusOpen && *spotReqRes.State != SpotStatusActive {
-		grip.Error(message.WrapError(deleteCreds(ctx, env, h), message.Fields{
-			"message": "problem cleaning up user data credentials",
-			"host":    h.Id,
-			"distro":  h.Distro.Id,
-		}))
+		if h.Distro.BootstrapMethod == distro.BootstrapMethodUserData {
+			grip.Error(message.WrapError(h.DeleteJasperCredentials(ctx, env), message.Fields{
+				"message": "problem cleaning up user data credentials",
+				"host":    h.Id,
+				"distro":  h.Distro.Id,
+			}))
+		}
 		err = errors.Errorf("Spot request %s was found in state %s on intent host %s",
 			*spotReqRes.SpotInstanceRequestId, *spotReqRes.State, h.Id)
 		return err
@@ -661,11 +673,13 @@ func (m *ec2Manager) TerminateInstance(ctx context.Context, h *host.Host, user s
 		return err
 	}
 
-	grip.Error(message.WrapError(deleteCreds(ctx, evergreen.GetEnvironment(), h), message.Fields{
-		"message": "problem deleting Jasper credentials during host termination",
-		"host":    h.Id,
-		"distro":  h.Distro.Id,
-	}))
+	if h.Distro.BootstrapMethod == distro.BootstrapMethodUserData {
+		grip.Error(message.WrapError(h.DeleteJasperCredentials(ctx, env), message.Fields{
+			"message": "problem deleting Jasper credentials during host termination",
+			"host":    h.Id,
+			"distro":  h.Distro.Id,
+		}))
+	}
 
 	ec2Settings := &EC2ProviderSettings{}
 	err := ec2Settings.fromDistroSettings(h.Distro)
