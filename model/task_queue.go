@@ -268,9 +268,14 @@ func (self *TaskQueue) FindNextTask(spec TaskSpec) *TaskQueueItem {
 	if self.Length() == 0 {
 		return nil
 	}
+
 	// With a spec, find a matching task.
 	if spec.Group != "" && spec.ProjectID != "" && spec.BuildVariant != "" && spec.Version != "" {
 		for _, it := range self.Queue {
+			if it.IsDispatched {
+				continue
+			}
+
 			if it.Project != spec.ProjectID {
 				continue
 			}
@@ -293,6 +298,10 @@ func (self *TaskQueue) FindNextTask(spec TaskSpec) *TaskQueueItem {
 	// Otherwise, find the next dispatchable task.
 	spec = TaskSpec{}
 	for _, it := range self.Queue {
+		if it.IsDispatched {
+			continue
+		}
+
 		// Always return a task if the task group is empty.
 		if it.Group == "" {
 			return &it
