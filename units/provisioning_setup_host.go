@@ -134,6 +134,16 @@ func (j *setupHostJob) setupHost(ctx context.Context, h *host.Host, settings *ev
 	if err := j.provisionHost(ctx, h, settings); err != nil {
 		event.LogHostProvisionError(h.Id)
 
+		if h.Distro.BootstrapMethod == distro.BootstrapMethodSSH {
+			grip.Error(message.WrapError(j.host.DeleteJasperCredentials(ctx, j.env), message.Fields{
+				"message":  "could not delete Jasper credentials after failed provision attempt",
+				"host":     j.host.Id,
+				"distro":   j.host.Distro.Id,
+				"attempts": h.ProvisionAttempts,
+				"job":      j.ID(),
+			}))
+		}
+
 		grip.Error(message.WrapError(err, message.Fields{
 			"message":  "provisioning host encountered error",
 			"job":      j.ID(),
