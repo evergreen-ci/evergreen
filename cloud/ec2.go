@@ -674,7 +674,7 @@ func (m *ec2Manager) TerminateInstance(ctx context.Context, h *host.Host, user s
 	}
 
 	if h.Distro.BootstrapMethod == distro.BootstrapMethodUserData {
-		grip.Error(message.WrapError(h.DeleteJasperCredentials(ctx, env), message.Fields{
+		grip.Error(message.WrapError(h.DeleteJasperCredentials(ctx, evergreen.GetEnvironment()), message.Fields{
 			"message": "problem deleting Jasper credentials during host termination",
 			"host":    h.Id,
 			"distro":  h.Distro.Id,
