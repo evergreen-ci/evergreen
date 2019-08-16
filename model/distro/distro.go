@@ -16,7 +16,6 @@ import (
 
 type Distro struct {
 	Id                    string                  `bson:"_id" json:"_id,omitempty" mapstructure:"_id,omitempty"`
-	Aliases               []string                `bson:"aliases,omitempty" json:"aliases,omitempty" mapstructure:"aliases,omitempty"`
 	Arch                  string                  `bson:"arch" json:"arch,omitempty" mapstructure:"arch,omitempty"`
 	WorkDir               string                  `bson:"work_dir" json:"work_dir,omitempty" mapstructure:"work_dir,omitempty"`
 	PoolSize              int                     `bson:"pool_size,omitempty" json:"pool_size,omitempty" mapstructure:"pool_size,omitempty" yaml:"poolsize"`
@@ -297,25 +296,6 @@ func (d *Distro) GetImageID() (string, error) {
 		return "", errors.New("cannot extract image ID from provider settings")
 	}
 	return s, nil
-}
-
-func (d *Distro) GetPoolSize() int {
-	switch d.Provider {
-	case evergreen.ProviderNameStatic:
-		if d.ProviderSettings == nil {
-			return 0
-		}
-
-		hosts, ok := (*d.ProviderSettings)["hosts"].([]interface{})
-		if !ok {
-			return 0
-		}
-
-		return len(hosts)
-	default:
-		return d.PoolSize + d.PlannerSettings.MaximumHosts
-	}
-
 }
 
 // ValidateContainerPoolDistros ensures that container pools have valid distros

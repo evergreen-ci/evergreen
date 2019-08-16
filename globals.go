@@ -249,11 +249,6 @@ var (
 		ProviderNameVsphere,
 		ProviderNameMock,
 	}
-
-	ProviderContainer = []string{
-		ProviderNameDocker,
-	}
-
 	SystemVersionRequesterTypes = []string{
 		RepotrackerVersionRequester,
 		TriggerRequester,

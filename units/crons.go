@@ -554,52 +554,6 @@ func PopulateSchedulerJobs(env evergreen.Environment) amboy.QueueOperation {
 	}
 }
 
-func PopulateAliasSchedulerJobs(env evergreen.Environment) amboy.QueueOperation {
-	return func(ctx context.Context, queue amboy.Queue) error {
-		flags, err := evergreen.GetServiceFlags()
-		if err != nil {
-			return errors.WithStack(err)
-		}
-
-		if flags.SchedulerDisabled {
-			grip.InfoWhen(sometimes.Percent(evergreen.DegradedLoggingPercent), message.Fields{
-				"message": "scheduler is disabled",
-				"impact":  "new tasks are not enqueued",
-				"mode":    "degraded",
-			})
-			return nil
-		}
-
-		catcher := grip.NewBasicCatcher()
-
-		lastPlanned, err := model.FindTaskAliasQueueGenerationTimes()
-		catcher.Add(err)
-
-		// find all active distros
-		distros, err := distro.Find(distro.ByActiveOrStatic())
-		catcher.Add(err)
-
-		settings := env.Settings()
-		ts := util.RoundPartOfMinute(30)
-
-		for _, d := range distros {
-			// do not create scheduler jobs for parent distros
-			if d.IsParent(settings) {
-				continue
-			}
-
-			lastRun, ok := lastPlanned[d.Id]
-			if ok && time.Since(lastRun) < time.Minute {
-				continue
-			}
-
-			catcher.Add(queue.Put(ctx, NewDistroAliasSchedulerJob(d.Id, ts)))
-		}
-
-		return catcher.Resolve()
-	}
-}
-
 // PopulateHostAlertJobs adds alerting tasks infrequently for host
 // utilization monitoring.
 func PopulateHostAlertJobs(parts int) amboy.QueueOperation {

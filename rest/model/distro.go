@@ -121,7 +121,6 @@ func (s *APIFinderSettings) ToService() (interface{}, error) {
 
 type APIDistro struct {
 	Name                  APIString              `json:"name"`
-	Aliases               []string               `json:"aliases"`
 	UserSpawnAllowed      bool                   `json:"user_spawn_allowed"`
 	Provider              APIString              `json:"provider"`
 	ProviderSettings      map[string]interface{} `json:"settings"`
@@ -162,7 +161,6 @@ func (apiDistro *APIDistro) BuildFromService(h interface{}) error {
 	}
 
 	apiDistro.Name = ToAPIString(d.Id)
-	apiDistro.Aliases = d.Aliases
 	apiDistro.UserSpawnAllowed = d.SpawnAllowed
 	apiDistro.Provider = ToAPIString(d.Provider)
 	if d.ProviderSettings != nil && cloud.IsEc2Provider(d.Provider) {
@@ -231,7 +229,6 @@ func (apiDistro *APIDistro) BuildFromService(h interface{}) error {
 func (apiDistro *APIDistro) ToService() (interface{}, error) {
 	d := distro.Distro{}
 	d.Id = FromAPIString(apiDistro.Name)
-	d.Aliases = apiDistro.Aliases
 	d.Arch = FromAPIString(apiDistro.Arch)
 	d.WorkDir = FromAPIString(apiDistro.WorkDir)
 	d.PoolSize = apiDistro.PoolSize

@@ -36,7 +36,7 @@ func runTunablePlanner(id string, d *distro.Distro, tasks []task.Task) ([]task.T
 
 	plan := PrepareTasksForPlanning(d, tasks).Export()
 
-	info := GetDistroQueueInfo(d.Id, plan, d.MaxDurationPerHost())
+	info := GetDistroQueueInfo(plan, d.MaxDurationPerHost())
 
 	if err = PersistTaskQueue(d.Id, plan, info); err != nil {
 		return nil, errors.WithStack(err)
@@ -90,22 +90,23 @@ type distroScheduler struct {
 	TaskPrioritizer
 }
 
-func (s *distroScheduler) scheduleDistro(distroID string, runnableTasks []task.Task, versions map[string]model.Version, maxThreshold time.Duration) ([]task.Task, error) {
+func (s *distroScheduler) scheduleDistro(distroID string, runnableTasksForDistro []task.Task, versions map[string]model.Version, maxDurationThreshold time.Duration) (
+	[]task.Task, error) {
 
 	grip.Info(message.Fields{
 		"runner":    RunnerName,
 		"distro":    distroID,
-		"num_tasks": len(runnableTasks),
+		"num_tasks": len(runnableTasksForDistro),
 		"instance":  s.runtimeID,
 	})
 
-	prioritizedTasks, err := s.PrioritizeTasks(distroID, runnableTasks, versions)
+	prioritizedTasks, err := s.PrioritizeTasks(distroID, runnableTasksForDistro, versions)
 	if err != nil {
 		return nil, errors.Wrapf(err, "error prioritizing tasks for distro '%s'", distroID)
 
 	}
 
-	distroQueueInfo := GetDistroQueueInfo(distroID, prioritizedTasks, maxThreshold)
+	distroQueueInfo := GetDistroQueueInfo(prioritizedTasks, maxDurationThreshold)
 
 	grip.Debug(message.Fields{
 		"runner":    RunnerName,
@@ -124,10 +125,9 @@ func (s *distroScheduler) scheduleDistro(distroID string, runnableTasks []task.T
 }
 
 // Returns the distroQueueInfo for the given set of tasks having set the task.ExpectedDuration for each task.
-func GetDistroQueueInfo(distroID string, tasks []task.Task, maxDurationThreshold time.Duration) model.DistroQueueInfo {
+func GetDistroQueueInfo(tasks []task.Task, maxDurationThreshold time.Duration) model.DistroQueueInfo {
 	var distroExpectedDuration time.Duration
 	var distroCountOverThreshold int
-	var isAliasQueue bool
 	taskGroupInfosMap := make(map[string]model.TaskGroupInfo)
 
 	for i, task := range tasks {
@@ -140,10 +140,6 @@ func GetDistroQueueInfo(distroID string, tasks []task.Task, maxDurationThreshold
 		duration := task.FetchExpectedDuration()
 		task.ExpectedDuration = duration
 		distroExpectedDuration += duration
-
-		if task.DistroId != distroID {
-			isAliasQueue = true
-		}
 
 		var taskGroupInfo model.TaskGroupInfo
 		if info, exists := taskGroupInfosMap[name]; exists {
@@ -178,7 +174,6 @@ func GetDistroQueueInfo(distroID string, tasks []task.Task, maxDurationThreshold
 		MaxDurationThreshold: maxDurationThreshold,
 		CountOverThreshold:   distroCountOverThreshold,
 		TaskGroupInfos:       taskGroupInfos,
-		AliasQueue:           isAliasQueue,
 	}
 
 	return distroQueueInfo
