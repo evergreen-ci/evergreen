@@ -590,7 +590,7 @@ func (as *APIServer) NextTask(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// assign the task to a host and retrieve the task
-	nextTask, err := assignNextAvailableTask(taskQueue, as.taskQueueService, h)
+	nextTask, err := assignNextAvailableTask(ctx, taskQueue, as.taskQueueService, h)
 	if err != nil {
 		err = errors.WithStack(err)
 		grip.Error(err)
