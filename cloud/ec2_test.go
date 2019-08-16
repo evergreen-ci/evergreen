@@ -561,6 +561,7 @@ func (s *EC2Suite) TestTerminateInstanceWithUserDataBootstrappedHost() {
 	defer cancel()
 
 	withBootstrapEnv(s.T(), func(env evergreen.Environment) {
+		s.h.Distro.BootstrapMethod = distro.BootstrapMethodUserData
 		s.NoError(s.h.Insert())
 
 		creds, err := s.h.GenerateJasperCredentials(ctx, env)
