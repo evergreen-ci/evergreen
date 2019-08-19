@@ -747,8 +747,8 @@ func (c *awsClientImpl) GetVolumeIDs(ctx context.Context, h *host.Host) ([]strin
 }
 
 func (c *awsClientImpl) GetPublicDNSName(ctx context.Context, h *host.Host) (string, error) {
-	if h.PublicDNSName != "" {
-		return h.PublicDNSName, nil
+	if h.Host != "" {
+		return h.Host, nil
 	}
 
 	id, err := c.getHostInstanceID(ctx, h)
@@ -839,7 +839,7 @@ func (c *awsClientMock) DescribeInstances(ctx context.Context, input *ec2.Descri
 			&ec2.Reservation{
 				Instances: []*ec2.Instance{
 					&ec2.Instance{
-						InstanceId:   aws.String("instance_id"),
+						InstanceId:   input.InstanceIds[0],
 						InstanceType: aws.String("instance_type"),
 						State: &ec2.InstanceState{
 							Name: aws.String(ec2.InstanceStateNameRunning),
@@ -854,6 +854,14 @@ func (c *awsClientMock) DescribeInstances(ctx context.Context, input *ec2.Descri
 						},
 						Placement: &ec2.Placement{
 							AvailabilityZone: aws.String("us-east-1a"),
+						},
+						LaunchTime: aws.Time(time.Date(2009, time.November, 10, 23, 0, 0, 0, time.UTC)),
+						BlockDeviceMappings: []*ec2.InstanceBlockDeviceMapping{
+							&ec2.InstanceBlockDeviceMapping{
+								Ebs: &ec2.EbsInstanceBlockDevice{
+									VolumeId: aws.String("volume_id"),
+								},
+							},
 						},
 					},
 				},
@@ -1100,19 +1108,19 @@ func (c *awsClientMock) SetTags(ctx context.Context, resources []string, h *host
 }
 
 func (c *awsClientMock) GetVolumeIDs(ctx context.Context, h *host.Host) ([]string, error) {
-	if h.VolumeIDs != nil {
+	if len(h.VolumeIDs) != 0 {
 		return h.VolumeIDs, nil
 	}
 
-	return []string{}, nil
+	return []string{"volume_id"}, nil
 }
 
 func (c *awsClientMock) GetPublicDNSName(ctx context.Context, h *host.Host) (string, error) {
-	if h.PublicDNSName != "" {
-		return h.PublicDNSName, nil
+	if h.Host != "" {
+		return h.Host, nil
 	}
 
-	return "", nil
+	return "public_dns_name", nil
 }
 
 func makeAWSLogMessage(name, client string, args interface{}) message.Fields {

@@ -402,7 +402,7 @@ func (s *EC2Suite) TestSpawnHostClassicSpot() {
 	s.Equal(base64OfSomeUserData, *requestInput.LaunchSpecification.UserData)
 
 	// Compute cost is cached
-	s.Equal(.1, h.ComputeCostPerHour)
+	s.Equal(1.0, h.ComputeCostPerHour)
 }
 
 func (s *EC2Suite) TestSpawnHostVPCSpot() {
@@ -444,7 +444,7 @@ func (s *EC2Suite) TestSpawnHostVPCSpot() {
 	s.Equal(base64OfSomeUserData, *requestInput.LaunchSpecification.UserData)
 
 	// Compute cost is cached
-	s.Equal(.1, h.ComputeCostPerHour)
+	s.Equal(1.0, h.ComputeCostPerHour)
 }
 
 func (s *EC2Suite) TestNoKeyAndNotSpawnHostForTaskShouldFail() {
@@ -531,6 +531,7 @@ func (s *EC2Suite) TestSpawnHostForTask() {
 func (s *EC2Suite) TestGetInstanceStatus() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
+	s.Require().NoError(s.h.Insert())
 
 	s.h.Distro.Provider = evergreen.ProviderNameEc2OnDemand
 	status, err := s.onDemandManager.GetInstanceStatus(ctx, s.h)
@@ -540,8 +541,8 @@ func (s *EC2Suite) TestGetInstanceStatus() {
 	// instance information is cached in the host
 	s.Equal("us-east-1a", s.h.Zone)
 	s.True(s.h.StartTime.Equal(time.Date(2009, time.November, 10, 23, 0, 0, 0, time.UTC)))
-	s.Equal("public_dns_name", s.h.PublicDNSName)
-	s.Equal(aws.StringSlice([]string{"volume_id"}), s.h.VolumeIDs)
+	s.Equal("public_dns_name", s.h.Host)
+	s.Equal([]string{"volume_id"}, s.h.VolumeIDs)
 
 	manager, ok := s.onDemandManager.(*ec2Manager)
 	s.True(ok)
@@ -549,7 +550,7 @@ func (s *EC2Suite) TestGetInstanceStatus() {
 	s.True(ok)
 	volumesInput := *mock.DescribeVolumesInput
 	s.Len(volumesInput.VolumeIds, 1)
-	s.Equal("volume_ids", *volumesInput.VolumeIds[0])
+	s.Equal("volume_id", *volumesInput.VolumeIds[0])
 
 	s.h.Distro.Provider = evergreen.ProviderNameEc2Spot
 	s.h.Id = "instance_id"
@@ -596,13 +597,13 @@ func (s *EC2Suite) TestOnUp() {
 	s.True(ok)
 	s.Nil(mock.DescribeVolumesInput)
 
-	s.Len(mock.CreateTagsInput.Tags, 2)
-	s.Equal(s.h.Id, mock.CreateTagsInput.Tags[0].Value)
-	s.Equal("volume_id", mock.CreateTagsInput.Tags[1].Value)
+	s.Len(mock.CreateTagsInput.Resources, 2)
+	s.Equal(s.h.Id, *mock.CreateTagsInput.Resources[0])
+	s.Equal("volume_id", *mock.CreateTagsInput.Resources[1])
 }
 
 func (s *EC2Suite) TestGetDNSName() {
-	s.h.PublicDNSName = "public_dns_name"
+	s.h.Host = "public_dns_name"
 	dns, err := s.onDemandManager.GetDNSName(context.Background(), s.h)
 	s.Equal("public_dns_name", dns)
 	s.NoError(err)
@@ -680,7 +681,10 @@ func (s *EC2Suite) TestPersistInstanceId() {
 	s.h.Id = "instance_id"
 	s.h.Distro.Provider = evergreen.ProviderNameEc2Spot
 	s.Require().NoError(s.h.Insert())
-	_, err := s.onDemandManager.GetDNSName(context.Background(), s.h)
+	manager, ok := s.onDemandManager.(*ec2Manager)
+	s.True(ok)
+	instanceID, err := manager.client.GetSpotInstanceId(context.Background(), s.h)
+	s.Equal("instance_id", instanceID)
 	s.NoError(err)
 	s.Equal("instance_id", s.h.ExternalIdentifier)
 }
@@ -771,6 +775,17 @@ func (s *EC2Suite) TestGetInstanceStatuses() {
 							Name: aws.String(ec2.InstanceStateNameRunning),
 						},
 						PublicDnsName: aws.String("public_dns_name_2"),
+						Placement: &ec2.Placement{
+							AvailabilityZone: aws.String("us-east-1a"),
+						},
+						LaunchTime: aws.Time(time.Date(2009, time.November, 10, 23, 0, 0, 0, time.UTC)),
+						BlockDeviceMappings: []*ec2.InstanceBlockDeviceMapping{
+							&ec2.InstanceBlockDeviceMapping{
+								Ebs: &ec2.EbsInstanceBlockDevice{
+									VolumeId: aws.String("volume_id"),
+								},
+							},
+						},
 					},
 				},
 			},
@@ -782,6 +797,17 @@ func (s *EC2Suite) TestGetInstanceStatuses() {
 							Name: aws.String(ec2.InstanceStateNameRunning),
 						},
 						PublicDnsName: aws.String("public_dns_name_1"),
+						Placement: &ec2.Placement{
+							AvailabilityZone: aws.String("us-east-1a"),
+						},
+						LaunchTime: aws.Time(time.Date(2009, time.November, 10, 23, 0, 0, 0, time.UTC)),
+						BlockDeviceMappings: []*ec2.InstanceBlockDeviceMapping{
+							&ec2.InstanceBlockDeviceMapping{
+								Ebs: &ec2.EbsInstanceBlockDevice{
+									VolumeId: aws.String("volume_id"),
+								},
+							},
+						},
 					},
 				},
 			},
@@ -803,6 +829,17 @@ func (s *EC2Suite) TestGetInstanceStatuses() {
 							Name: aws.String(ec2.InstanceStateNameRunning),
 						},
 						PublicDnsName: aws.String("public_dns_name_3"),
+						Placement: &ec2.Placement{
+							AvailabilityZone: aws.String("us-east-1a"),
+						},
+						LaunchTime: aws.Time(time.Date(2009, time.November, 10, 23, 0, 0, 0, time.UTC)),
+						BlockDeviceMappings: []*ec2.InstanceBlockDeviceMapping{
+							&ec2.InstanceBlockDeviceMapping{
+								Ebs: &ec2.EbsInstanceBlockDevice{
+									VolumeId: aws.String("volume_id"),
+								},
+							},
+						},
 					},
 				},
 			},
@@ -822,11 +859,11 @@ func (s *EC2Suite) TestGetInstanceStatuses() {
 	s.NoError(err)
 	s.Len(mock.DescribeSpotInstanceRequestsInput.SpotInstanceRequestIds, 2)
 	s.Len(mock.DescribeInstancesInput.InstanceIds, 5)
-	s.Equal(*mock.DescribeInstancesInput.InstanceIds[0], "i-3")
-	s.Equal(*mock.DescribeInstancesInput.InstanceIds[1], "i-2")
-	s.Equal(*mock.DescribeInstancesInput.InstanceIds[2], "i-4")
-	s.Equal(*mock.DescribeInstancesInput.InstanceIds[3], "i-5")
-	s.Equal(*mock.DescribeInstancesInput.InstanceIds[4], "i-6")
+	s.Equal("i-2", *mock.DescribeInstancesInput.InstanceIds[0])
+	s.Equal("i-4", *mock.DescribeInstancesInput.InstanceIds[1])
+	s.Equal("i-5", *mock.DescribeInstancesInput.InstanceIds[2])
+	s.Equal("i-6", *mock.DescribeInstancesInput.InstanceIds[3])
+	s.Equal("i-3", *mock.DescribeInstancesInput.InstanceIds[4])
 	s.Len(statuses, 6)
 	s.Equal(statuses, []CloudStatus{
 		StatusFailed,
@@ -837,9 +874,9 @@ func (s *EC2Suite) TestGetInstanceStatuses() {
 		StatusTerminated,
 	})
 
-	s.Equal("public_dns_name_1", hosts[1].PublicDNSName)
-	s.Equal("public_dns_name_2", hosts[2].PublicDNSName)
-	s.Equal("public_dns_name_3", hosts[3].PublicDNSName)
+	s.Equal("public_dns_name_1", hosts[1].Host)
+	s.Equal("public_dns_name_2", hosts[2].Host)
+	s.Equal("public_dns_name_3", hosts[3].Host)
 
 	s.Equal("i-3", hosts[2].ExternalIdentifier)
 }
@@ -908,6 +945,7 @@ func (s *EC2Suite) TestCacheHostData() {
 			},
 		},
 	}
+	instance.PublicDnsName = aws.String("public_dns_name")
 
 	s.NoError(cacheHostData(context.Background(), h, instance, ec2m.client))
 
@@ -915,7 +953,7 @@ func (s *EC2Suite) TestCacheHostData() {
 	s.True(instance.LaunchTime.Equal(h.StartTime))
 	s.Equal("2001:0db8:85a3:0000:0000:8a2e:0370:7334", h.IP)
 	s.Equal([]string{"volume_id"}, h.VolumeIDs)
-	s.Equal(10, h.VolumeTotalSize)
+	s.Equal(int64(10), h.VolumeTotalSize)
 
 	h, err := host.FindOneId("h1")
 	s.Require().NoError(err)
@@ -924,7 +962,7 @@ func (s *EC2Suite) TestCacheHostData() {
 	s.True(instance.LaunchTime.Equal(h.StartTime))
 	s.Equal("2001:0db8:85a3:0000:0000:8a2e:0370:7334", h.IP)
 	s.Equal([]string{"volume_id"}, h.VolumeIDs)
-	s.Equal(10, h.VolumeTotalSize)
+	s.Equal(int64(10), h.VolumeTotalSize)
 }
 
 func (s *EC2Suite) TestFromDistroSettings() {

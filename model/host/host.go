@@ -103,8 +103,7 @@ type Host struct {
 	// for ec2 dynamic hosts, the total size of the volumes requested, in GiB
 	VolumeTotalSize int64 `bson:"volume_total_size" json:"volume_total_size,omitempty"`
 
-	VolumeIDs     []string `bson:"volume_ids,omitempty" json"volume_ids,omitempty"`
-	PublicDNSName string   `bson:"public_dns_name,omitempty" json:"public_dns_name,omitempty"`
+	VolumeIDs []string `bson:"volume_ids,omitempty" json"volume_ids,omitempty"`
 
 	// stores information on expiration notifications for spawn hosts
 	Notifications map[string]bool `bson:"notifications,omitempty" json:"notifications,omitempty"`
@@ -500,7 +499,6 @@ func (h *Host) SetIPv6Address(ipv6Address string) error {
 	err := UpdateOne(
 		bson.M{
 			IdKey: h.Id,
-			IPKey: "",
 		},
 		bson.M{
 			"$set": bson.M{
@@ -872,11 +870,11 @@ func (h *Host) CacheHostData() error {
 		},
 		bson.M{
 			"$set": bson.M{
-				ZoneKey:          h.Zone,
-				StartTimeKey:     h.StartTime,
-				VolumeSizeKey:    h.VolumeTotalSize,
-				VolumeIDsKey:     h.VolumeIDs,
-				PublicDNSNameKey: h.PublicDNSName,
+				ZoneKey:       h.Zone,
+				StartTimeKey:  h.StartTime,
+				VolumeSizeKey: h.VolumeTotalSize,
+				VolumeIDsKey:  h.VolumeIDs,
+				DNSKey:        h.Host,
 			},
 		},
 	)

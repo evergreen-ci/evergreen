@@ -342,8 +342,8 @@ func TestHostSetIPv6Address(t *testing.T) {
 	assert.NoError(err)
 	assert.Equal(host.IP, ipv6Address)
 
-	// if the host is already updated, no new updates should work
-	assert.Error(host.SetIPv6Address(ipv6Address2))
+	// if the host is already updated, new updates should work
+	assert.NoError(host.SetIPv6Address(ipv6Address2))
 	assert.Equal(host.IP, ipv6Address)
 
 	host, err = FindOne(ById(host.Id))
