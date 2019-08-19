@@ -154,6 +154,8 @@ func (j *jasperDeployJob) Run(ctx context.Context) {
 			j.AddError(err)
 			return
 		}
+		defer client.CloseConnection()
+
 		// We use this ID to later verify the current running Jasper service.
 		// When Jasper is redeployed, its ID should be different to indicate it
 		// is a new Jasper service.
@@ -210,6 +212,7 @@ func (j *jasperDeployJob) Run(ctx context.Context) {
 			j.AddError(err)
 			return
 		}
+		defer client.CloseConnection()
 
 		newServiceID := client.ID()
 		if newServiceID == "" {
@@ -326,7 +329,6 @@ func (j *jasperDeployJob) Run(ctx context.Context) {
 			"task":    j.host.RunningTask,
 		}))
 	}
-
 }
 
 // credentialsExpireBefore returns whether or not the host's Jasper credentials
