@@ -121,13 +121,14 @@ imports:
     version: 32e668cd99410328bf6659e55671c11a6c727d9a
   - name: github.com/evergreen-ci/pail
     version: 7b2f8e0b2d972ca621cad3777d68276a54da13d0
+    # kim: TODO: upgrade version to include Splunk logging
   - name: github.com/mongodb/jasper
     version: a356ec7a64a3b1a5f4a9c8733ecb6e6656e598fd
   - name: go.mongodb.org/mongo-driver
     version: 305bc4a5e4131420fe8ba5628e6faa9e6ade4e86
 
   - name: github.com/evergreen-ci/certdepot
-    version: a6cc94cf0e46afba3bc91ceb537ece1009016839
+    version: 33d8798844fbafb7a2be5221debc8ed2cf36b463
 
   # git library and its dependencies
   - name: gopkg.in/src-d/go-git.v4

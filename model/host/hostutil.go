@@ -17,6 +17,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/level"
 	"github.com/mongodb/grip/message"
 	"github.com/mongodb/jasper"
 	jaspercli "github.com/mongodb/jasper/cli"
@@ -227,26 +228,34 @@ func initSystemCommand() string {
 
 // FetchAndReinstallJasperCommand returns the command to fetch Jasper and
 // restart the service with the latest version.
-func (h *Host) FetchAndReinstallJasperCommand(config evergreen.HostJasperConfig) string {
+func (h *Host) FetchAndReinstallJasperCommand(settings *evergreen.Settings) string {
 	return strings.Join([]string{
-		h.FetchJasperCommand(config),
-		h.ForceReinstallJasperCommand(config),
+		h.FetchJasperCommand(settings.HostJasper),
+		h.ForceReinstallJasperCommand(settings),
 	}, " && ")
 }
 
 // ForceReinstallJasperCommand returns the command to stop the Jasper service,
 // delete the current Jasper service configuration (if it exists), install the
 // new configuration, and restart the service.
-func (h *Host) ForceReinstallJasperCommand(config evergreen.HostJasperConfig) string {
-	params := []string{"--host=0.0.0.0", fmt.Sprintf("--port=%d", config.Port)}
+func (h *Host) ForceReinstallJasperCommand(settings *evergreen.Settings) string {
+	params := []string{"--host=0.0.0.0", fmt.Sprintf("--port=%d", settings.HostJasper.Port)}
 	if h.Distro.BootstrapSettings.JasperCredentialsPath != "" {
 		params = append(params, fmt.Sprintf("--creds_path=%s", h.Distro.BootstrapSettings.JasperCredentialsPath))
 	}
 	if h.Distro.User != "" {
 		params = append(params, fmt.Sprintf("--user=%s", h.Distro.User))
 	}
+	if settings.Splunk.Populated() {
+		params = append(params,
+			fmt.Sprintf("--log_level=%s", level.Error.String()),
+			fmt.Sprintf("--splunk_url=%s", settings.Splunk.ServerURL),
+			fmt.Sprintf("--splunk_token=%s", settings.Splunk.Token),
+			fmt.Sprintf("--splunk_channel=%s", settings.Splunk.Channel),
+		)
+	}
 
-	return h.jasperServiceCommand(config, jaspercli.ForceReinstallCommand, params...)
+	return h.jasperServiceCommand(settings.HostJasper, jaspercli.ForceReinstallCommand, params...)
 }
 
 // RestartJasperCommand returns the command to restart the Jasper service with
@@ -315,7 +324,7 @@ func (h *Host) jasperBinaryFilePath(config evergreen.HostJasperConfig) string {
 }
 
 // BootstrapScript creates the user data script to bootstrap the host.
-func (h *Host) BootstrapScript(config evergreen.HostJasperConfig, creds *rpc.Credentials, preJasperSetup, postJasperSetup []string) (string, error) {
+func (h *Host) BootstrapScript(settings *evergreen.Settings, creds *rpc.Credentials, preJasperSetup, postJasperSetup []string) (string, error) {
 	bashCmds := append([]string{"set -o errexit"}, preJasperSetup...)
 
 	writeCredentialsCmd, err := h.WriteJasperCredentialsFileCommand(creds)
@@ -325,9 +334,9 @@ func (h *Host) BootstrapScript(config evergreen.HostJasperConfig, creds *rpc.Cre
 
 	if h.Distro.IsWindows() {
 		bashCmds = append(bashCmds,
-			h.FetchJasperCommandWithPath(config, "/bin"),
+			h.FetchJasperCommandWithPath(settings.HostJasper, "/bin"),
 			writeCredentialsCmd,
-			h.ForceReinstallJasperCommand(config),
+			h.ForceReinstallJasperCommand(settings),
 		)
 		bashCmds = append(bashCmds, postJasperSetup...)
 
@@ -342,7 +351,7 @@ func (h *Host) BootstrapScript(config evergreen.HostJasperConfig, creds *rpc.Cre
 		return strings.Join(powershellCmds, "\r\n"), nil
 	}
 
-	bashCmds = append(bashCmds, h.FetchJasperCommand(config), writeCredentialsCmd, h.ForceReinstallJasperCommand(config))
+	bashCmds = append(bashCmds, h.FetchJasperCommand(settings.HostJasper), writeCredentialsCmd, h.ForceReinstallJasperCommand(settings))
 	bashCmds = append(bashCmds, postJasperSetup...)
 
 	return strings.Join(append([]string{"#!/bin/bash"}, bashCmds...), "\n"), nil
