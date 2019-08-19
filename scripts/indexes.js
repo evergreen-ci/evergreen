@@ -86,7 +86,8 @@ db.tasks.ensureIndex({ "branch": 1, "r" : 1, "build_variant" : 1})
 db.tasks.ensureIndex({ "finish_time": 1, "_id": 1})
 db.tasks.ensureIndex({ "build_variant": 1, "branch" : 1, "order" : 1})
 db.tasks.ensureIndex({ "execution_tasks": 1})
-db.tasks.createIndex({ "distro": 1, "status": 1, "activated": 1, "priority": 1 }, { background: true })
+db.tasks.createIndex({ "distro": 1, "status": 1, "activated": 1, "priority": 1 }, { background: true }) 
+db.tasks.createIndex({ "distro_aliases": 1, "status": 1, "activated": 1, "priority": 1 }, { background: true })
 db.tasks.createIndex({ "branch": 1, "finish_time": 1 })
 
 //======old_tasks======//
@@ -95,9 +96,7 @@ db.old_tasks.ensureIndex({ "branch": 1, "r" : 1, "status" : 1})
 db.old_tasks.ensureIndex({ "branch": 1, "r" : 1, "build_variant" : 1})
 db.old_tasks.ensureIndex({ "old_task_id": 1})
 db.old_tasks.ensureIndex({ "branch": 1, "finish_time": 1})
-db.old_tasks.createIndex({ "execution_tasks": 1})
-
-//======versions======//
+db.old_tasks.createIndex({ "execution_tasks": 1})0
 db.versions.ensureIndex({ "order" : 1 })
 db.versions.ensureIndex({ "builds" : 1 })
 db.versions.ensureIndex({ "identifier" : 1, "r" : 1, "order" : 1 })

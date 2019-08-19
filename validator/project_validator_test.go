@@ -1631,42 +1631,6 @@ func TestEnsureHasNecessaryBVFields(t *testing.T) {
 	})
 }
 
-func TestRunOnDeprecationWarnings(t *testing.T) {
-	assert := assert.New(t) //nolint
-
-	project := &model.Project{
-		Identifier: "projectId",
-		BuildVariants: []model.BuildVariant{
-			{
-				Name: "import",
-				Tasks: []model.BuildVariantTaskUnit{
-					{
-						Name: "silhouettes",
-						Distros: []string{
-							"foo",
-						},
-					},
-				},
-			},
-		},
-	}
-
-	errs := checkRunOnOnlyOneDistro(project)
-	assert.Len(errs, 0)
-
-	project.BuildVariants[0].Tasks[0].Distros = []string{"foo", "bar"}
-	errs = checkRunOnOnlyOneDistro(project)
-	assert.Len(errs, 1)
-
-	project.BuildVariants[0].RunOn = []string{"foo", "bar", "baz"}
-	errs = checkRunOnOnlyOneDistro(project)
-	assert.Len(errs, 2)
-
-	project.BuildVariants[0].Tasks[0].Distros = []string{"foo"}
-	errs = checkRunOnOnlyOneDistro(project)
-	assert.Len(errs, 1)
-}
-
 func TestTaskGroupValidation(t *testing.T) {
 	assert := assert.New(t)
 
