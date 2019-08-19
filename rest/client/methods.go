@@ -315,11 +315,10 @@ func (c *communicatorImpl) SendLogMessages(ctx context.Context, taskData TaskDat
 	info.setTaskPathSuffix("log")
 	var cancel context.CancelFunc
 	now := time.Now()
-	grip.Debugf("sending log messages at %s", now.String())
+	grip.Debugf("sending %d log messages", payload.MessageCount)
 	ctx, cancel = context.WithDeadline(ctx, now.Add(10*time.Minute))
 	defer cancel()
 	backupTimer := time.NewTimer(15 * time.Minute)
-	start := time.Now()
 	defer backupTimer.Stop()
 	doneChan := make(chan struct{})
 	defer func() {
@@ -329,12 +328,12 @@ func (c *communicatorImpl) SendLogMessages(ctx context.Context, taskData TaskDat
 		defer recovery.LogStackTraceAndExit("backup timer")
 		select {
 		case <-ctx.Done():
-			grip.Info("task ending, stopping backup timer thread")
+			grip.Info("request completed or task ending, stopping backup timer thread")
 			return
 		case t := <-backupTimer.C:
 			grip.Alert(message.Fields{
 				"message":  "retryRequest exceeded 15 minutes",
-				"start":    start.String(),
+				"start":    now.String(),
 				"end":      t.String(),
 				"task":     taskData.ID,
 				"messages": msgs,
@@ -348,6 +347,7 @@ func (c *communicatorImpl) SendLogMessages(ctx context.Context, taskData TaskDat
 	if _, err := c.retryRequest(ctx, info, &payload); err != nil {
 		return errors.Wrapf(err, "problem sending %d log messages for task %s", len(msgs), taskData.ID)
 	}
+	grip.Debugf("successfully sent %d log messages", payload.MessageCount)
 
 	return nil
 }

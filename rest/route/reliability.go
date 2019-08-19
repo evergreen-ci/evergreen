@@ -28,6 +28,7 @@ const (
 /////////////////////////////////////////////////////
 
 type taskReliabilityHandler struct {
+	StatsHandler
 	filter reliability.TaskReliabilityFilter
 	sc     data.Connector
 }
@@ -43,7 +44,7 @@ func (trh *taskReliabilityHandler) Factory() gimlet.RouteHandler {
 // Get the default before_date.
 func getDefaultBeforeDate() string {
 	before := time.Now().UTC()
-	before = before.Add(dayInHours).Truncate(dayInHours)
+	before = before.Truncate(dayInHours)
 	return before.Format(statsAPIDateFormat)
 }
 
@@ -54,45 +55,18 @@ func getDefaultAfterDate() string {
 	return after.Format(statsAPIDateFormat)
 }
 
-// parseCommonFilter parses common query parameter values and fills the filter struct fields.
-func (trh *taskReliabilityHandler) parseCommonFilter(vals url.Values) error {
-	var err error
-	statsHandler := StatsHandler{stats.StatsFilter{Project: trh.filter.Project}}
-	err = statsHandler.ParseCommonFilter(vals)
+// ParseCommonFilter wraps StatsHandler.ParseCommonFilter and copies the Statshandler
+// struct contents into the TaslReiabilitityHandler filter fields.
+func (trh *taskReliabilityHandler) ParseCommonFilter(vals url.Values) error {
+	err := trh.StatsHandler.ParseCommonFilter(vals)
 	if err == nil {
-		trh.filter.Requesters = statsHandler.filter.Requesters
-		trh.filter.BuildVariants = statsHandler.filter.BuildVariants
-		trh.filter.Distros = statsHandler.filter.Distros
-		trh.filter.GroupNumDays = statsHandler.filter.GroupNumDays
-		trh.filter.GroupBy = statsHandler.filter.GroupBy
-		trh.filter.StartAt = statsHandler.filter.StartAt
-		trh.filter.Sort = statsHandler.filter.Sort
-
-		// limit
-		trh.filter.Limit, err = statsHandler.readInt(vals.Get("limit"), 1, reliabilityAPIMaxNumTasksLimit, reliabilityAPIMaxNumTasksLimit)
-		if err != nil {
-			return gimlet.ErrorResponse{
-				Message:    "Invalid limit value",
-				StatusCode: http.StatusBadRequest,
-			}
-		}
-		// Add 1 for pagination
-		trh.filter.Limit++
-
-		// tasks
-		trh.filter.Tasks = statsHandler.readStringList(vals["tasks"])
-		if len(trh.filter.Tasks) == 0 {
-			return gimlet.ErrorResponse{
-				Message:    "Missing Tasks values",
-				StatusCode: http.StatusBadRequest,
-			}
-		}
-		if len(trh.filter.Tasks) > reliabilityAPIMaxNumTasksLimit {
-			return gimlet.ErrorResponse{
-				Message:    "Too many Tasks values",
-				StatusCode: http.StatusBadRequest,
-			}
-		}
+		trh.filter.Requesters = trh.StatsHandler.filter.Requesters
+		trh.filter.BuildVariants = trh.StatsHandler.filter.BuildVariants
+		trh.filter.Distros = trh.StatsHandler.filter.Distros
+		trh.filter.GroupNumDays = trh.StatsHandler.filter.GroupNumDays
+		trh.filter.GroupBy = trh.StatsHandler.filter.GroupBy
+		trh.filter.StartAt = trh.StatsHandler.filter.StartAt
+		trh.filter.Sort = trh.StatsHandler.filter.Sort
 	}
 	return err
 }
@@ -101,9 +75,34 @@ func (trh *taskReliabilityHandler) parseCommonFilter(vals url.Values) error {
 func (trh *taskReliabilityHandler) parseTaskReliabilityFilter(vals url.Values) error {
 	var err error
 
-	err = trh.parseCommonFilter(vals)
+	err = trh.ParseCommonFilter(vals)
 	if err != nil {
 		return err
+	}
+	// limit
+	trh.filter.Limit, err = trh.readInt(vals.Get("limit"), 1, reliabilityAPIMaxNumTasksLimit, reliabilityAPIMaxNumTasksLimit)
+	if err != nil {
+		return gimlet.ErrorResponse{
+			Message:    "Invalid limit value",
+			StatusCode: http.StatusBadRequest,
+		}
+	}
+	// Add 1 for pagination
+	trh.filter.Limit++
+
+	// tasks
+	trh.filter.Tasks = trh.readStringList(vals["tasks"])
+	if len(trh.filter.Tasks) == 0 {
+		return gimlet.ErrorResponse{
+			Message:    "Missing Tasks values",
+			StatusCode: http.StatusBadRequest,
+		}
+	}
+	if len(trh.filter.Tasks) > reliabilityAPIMaxNumTasksLimit {
+		return gimlet.ErrorResponse{
+			Message:    "Too many Tasks values",
+			StatusCode: http.StatusBadRequest,
+		}
 	}
 
 	// before_date, defaults to tomorrow
@@ -191,7 +190,7 @@ func (trh *taskReliabilityHandler) readSort(sortValue string) (stats.Sort, error
 
 func (trh *taskReliabilityHandler) Parse(ctx context.Context, r *http.Request) error {
 	trh.filter = reliability.TaskReliabilityFilter{
-		Project:      gimlet.GetVars(r)["project_id"],
+		StatsFilter:  stats.StatsFilter{Project: gimlet.GetVars(r)["project_id"]},
 		Significance: reliability.DefaultSignificance,
 	}
 

@@ -209,16 +209,17 @@ func MarkVersionCompleted(versionId string, finishTime time.Time, updates *Statu
 	if err != nil {
 		return errors.Wrap(err, "error finding tasks with dependencies")
 	}
+	startPhaseAt := time.Now()
 	for _, b := range builds {
 		if b.Activated {
-			activeBuilds += 1
+			activeBuilds++
 		}
 		complete, buildStatus, err := b.AllUnblockedTasksFinished(tasksWithDeps)
 		if err != nil {
 			return errors.WithStack(err)
 		}
 		if complete {
-			buildsWithAllActiveTasksComplete += 1
+			buildsWithAllActiveTasksComplete++
 			if buildStatus != evergreen.BuildSucceeded {
 				versionStatusFromTasks = evergreen.VersionFailed
 			}
@@ -231,6 +232,14 @@ func MarkVersionCompleted(versionId string, finishTime time.Time, updates *Statu
 			status = evergreen.VersionFailed
 		}
 	}
+	grip.DebugWhen(time.Since(startPhaseAt) > time.Second, message.Fields{
+		"function":      "MarkVersionCompleted",
+		"operation":     "build loop",
+		"message":       "slow operation",
+		"duration_secs": time.Since(startPhaseAt).Seconds(),
+		"version":       versionId,
+		"num_builds":    len(builds),
+	})
 	if activeBuilds > 0 && buildsWithAllActiveTasksComplete >= activeBuilds {
 		updates.VersionComplete = true
 		updates.VersionNewStatus = versionStatusFromTasks
@@ -489,10 +498,39 @@ func AddTasksToBuild(ctx context.Context, b *build.Build, project *Project, v *V
 	if err = tasks.InsertUnordered(ctx); err != nil {
 		return nil, errors.Wrapf(err, "error inserting tasks for build '%s'", b.Id)
 	}
+	if generatedBy != "" {
+		taskIds := []string{}
+		for _, t := range tasks {
+			taskIds = append(taskIds, t.Id)
+		}
+		grip.Debug(message.Fields{
+			"message":      "adding generated tasks to build",
+			"build":        b.Id,
+			"project":      v.Identifier,
+			"version":      v.Id,
+			"generated_by": generatedBy,
+			"tasks":        taskIds,
+		})
+	}
 
 	// update the build to hold the new tasks
 	if err := RefreshTasksCache(b.Id); err != nil {
 		return nil, errors.Wrapf(err, "error updating task cache for '%s'", b.Id)
+	}
+
+	if generatedBy != "" {
+		taskIds := []string{}
+		for _, t := range tasks {
+			taskIds = append(taskIds, t.Id)
+		}
+		grip.Debug(message.Fields{
+			"message":      "refreshing build cache with generated tasks",
+			"build":        b.Id,
+			"project":      v.Identifier,
+			"version":      v.Id,
+			"generated_by": generatedBy,
+			"cache":        b.Tasks,
+		})
 	}
 
 	return b, nil

@@ -25,9 +25,9 @@ type Distro struct {
 	Setup                 string                  `bson:"setup,omitempty" json:"setup,omitempty" mapstructure:"setup,omitempty"`
 	Teardown              string                  `bson:"teardown,omitempty" json:"teardown,omitempty" mapstructure:"teardown,omitempty"`
 	User                  string                  `bson:"user,omitempty" json:"user,omitempty" mapstructure:"user,omitempty"`
+	CloneMethod           string                  `bson:"clone_method" json:"clone_method,omitempty" mapstructure:"clone_method,omitempty"`
 	BootstrapMethod       string                  `bson:"bootstrap_method,omitempty" json:"bootstrap_method,omitempty" mapstructure:"bootstrap_method,omitempty"`
 	CommunicationMethod   string                  `bson:"communication_method,omitempty" json:"communication_method,omitempty" mapstructure:"communication_method,omitempty"`
-	CloneMethod           string                  `bson:"clone_method" json:"clone_method,omitempty" mapstructure:"clone_method,omitempty"`
 	ShellPath             string                  `bson:"shell_path" json:"shell_path" mapstructure:"shell_path,omitempty"`
 	CuratorDir            string                  `bson:"curator_dir" json:"curator_dir" mapstructure:"curator_dir,omitempty"`
 	ClientDir             string                  `bson:"client_dir" json:"client_dir" mapstructure:"client_dir,omitempty"`
@@ -270,6 +270,8 @@ func (d *Distro) GetImageID() (string, error) {
 	case evergreen.ProviderNameEc2OnDemand:
 		i = (*d.ProviderSettings)["ami"]
 	case evergreen.ProviderNameEc2Spot:
+		i = (*d.ProviderSettings)["ami"]
+	case evergreen.ProviderNameEc2Fleet:
 		i = (*d.ProviderSettings)["ami"]
 	case evergreen.ProviderNameDocker:
 		i = (*d.ProviderSettings)["image_url"]

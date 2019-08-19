@@ -15,7 +15,6 @@ import (
 	"github.com/evergreen-ci/gimlet"
 	"github.com/google/go-github/github"
 	"github.com/mongodb/amboy"
-	adb "github.com/mongodb/anser/db"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
@@ -185,7 +184,7 @@ func (gh *githubHookApi) Run(ctx context.Context) gimlet.Responder {
 					"msg_id":  gh.msgID,
 					"event":   gh.eventType,
 					"action":  *event.Action,
-					"message": err.Error(),
+					"message": "commit queue item not dequeued",
 				}))
 				return gimlet.MakeJSONErrorResponder(err)
 			}
@@ -314,7 +313,10 @@ func (gh *githubHookApi) commitQueueEnqueue(ctx context.Context, event *github.I
 	baseBranch := *pr.Base.Ref
 	projectRef, err := gh.sc.GetProjectWithCommitQueueByOwnerRepoAndBranch(userRepo.Owner, userRepo.Repo, baseBranch)
 	if err != nil {
-		return errors.Wrapf(err, "can't find project for '%s:%s' tracking branch '%s'", userRepo.Owner, userRepo.Repo, baseBranch)
+		return errors.Wrapf(err, "can't get project for '%s:%s' tracking branch '%s'", userRepo.Owner, userRepo.Repo, baseBranch)
+	}
+	if projectRef == nil {
+		return errors.Errorf("no project with commit queue enabled for '%s:%s' tracking branch '%s'", userRepo.Owner, userRepo.Repo, baseBranch)
 	}
 	item := model.APICommitQueueItem{
 		Issue:   model.ToAPIString(strconv.Itoa(PRNum)),
@@ -344,6 +346,7 @@ func (gh *githubHookApi) commitQueueEnqueue(ctx context.Context, event *github.I
 	return nil
 }
 
+// Because the PR isn't necessarily on a commit queue, we only error if item is on the queue and can't be removed correctly
 func (gh *githubHookApi) tryDequeueCommitQueueItemForPR(pr *github.PullRequest) error {
 	err := thirdparty.ValidatePR(pr)
 	if err != nil {
@@ -352,15 +355,24 @@ func (gh *githubHookApi) tryDequeueCommitQueueItemForPR(pr *github.PullRequest) 
 
 	projRef, err := gh.sc.GetProjectWithCommitQueueByOwnerRepoAndBranch(*pr.Base.Repo.Owner.Login, *pr.Base.Repo.Name, *pr.Base.Ref)
 	if err != nil {
-		return errors.Wrapf(err, "can't find projectRef for %s/%s, branch %s", *pr.Base.Repo.Owner.Login, *pr.Base.Repo.Name, *pr.Base.Ref)
+		return errors.Wrapf(err, "can't find valid project for %s/%s, branch %s", *pr.Base.Repo.Owner.Login, *pr.Base.Repo.Name, *pr.Base.Ref)
+	}
+	if projRef == nil {
+		return nil
+	}
+
+	exists, err := gh.sc.IsItemOnCommitQueue(projRef.Identifier, strconv.Itoa(*pr.Number))
+	if err != nil {
+		return errors.Wrapf(err, "can't determine if item is on commit queue %s", projRef.Identifier)
+	}
+	if !exists {
+		return nil
 	}
 
 	_, err = gh.sc.CommitQueueRemoveItem(projRef.Identifier, strconv.Itoa(*pr.Number))
-	// it's okay if there's no matching commit queue or it's not on the queue: there's nothing for us to do
-	if err != nil && !adb.ResultsNotFound(err) {
+	if err != nil {
 		return errors.Wrapf(err, "can't remove item %d from commit queue %s", *pr.Number, projRef.Identifier)
 	}
-
 	return nil
 }
 

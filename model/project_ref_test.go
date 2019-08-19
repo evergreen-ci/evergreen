@@ -162,7 +162,7 @@ func TestFindOneProjectRefWithCommitQueueByOwnerRepoAndBranch(t *testing.T) {
 	require.NoError(db.Clear(ProjectRefCollection))
 
 	projectRef, err := FindOneProjectRefWithCommitQueueByOwnerRepoAndBranch("mongodb", "mci", "master")
-	assert.Error(err)
+	assert.NoError(err)
 	assert.Nil(projectRef)
 
 	doc := &ProjectRef{
@@ -178,7 +178,7 @@ func TestFindOneProjectRefWithCommitQueueByOwnerRepoAndBranch(t *testing.T) {
 	require.NoError(doc.Insert())
 
 	projectRef, err = FindOneProjectRefWithCommitQueueByOwnerRepoAndBranch("mongodb", "mci", "master")
-	assert.Error(err)
+	assert.NoError(err)
 	assert.Nil(projectRef)
 
 	doc.CommitQueue.Enabled = true

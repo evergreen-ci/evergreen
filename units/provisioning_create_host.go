@@ -270,9 +270,13 @@ func (j *createHostJob) tryRequeue(ctx context.Context) {
 		if j.host.ParentID != "" {
 			wait = 10 * time.Second
 		}
+		maxTime := j.TimeInfo().MaxTime - (time.Since(j.start)) - time.Minute
+		if maxTime < 0 {
+			maxTime = 0
+		}
 		job.UpdateTimeInfo(amboy.JobTimeInfo{
 			WaitUntil: j.start.Add(wait),
-			MaxTime:   j.TimeInfo().MaxTime - (time.Since(j.start)) - time.Minute,
+			MaxTime:   maxTime,
 		})
 		err := j.env.RemoteQueue().Put(ctx, job)
 		grip.Error(message.WrapError(err, message.Fields{

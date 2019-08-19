@@ -219,6 +219,7 @@ type Connector interface {
 	DeletePublicKey(*user.DBUser, string) error
 	UpdateSettings(*user.DBUser, user.UserSettings) error
 	SubmitFeedback(restModel.APIFeedbackSubmission) error
+	GetAllRoles() ([]restModel.APIRole, error)
 
 	AddPatchIntent(patch.Intent, amboy.Queue) error
 
@@ -280,6 +281,7 @@ type Connector interface {
 	FindCommitQueueByID(string) (*restModel.APICommitQueue, error)
 	EnableCommitQueue(*model.ProjectRef, model.CommitQueueParams) error
 	CommitQueueRemoveItem(string, string) (bool, error)
+	IsItemOnCommitQueue(string, string) (bool, error)
 	CommitQueueClearAll() (int, error)
 	IsAuthorizedToPatchAndMerge(context.Context, *evergreen.Settings, UserRepoInfo) (bool, error)
 
