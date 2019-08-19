@@ -31,10 +31,11 @@ var (
 	PubKeyKey           = bsonutil.MustHaveTag(PubKey{}, "Key")
 	PubKeyNCreatedAtKey = bsonutil.MustHaveTag(PubKey{}, "CreatedAt")
 	RoleIdKey           = bsonutil.MustHaveTag(Role{}, "Id")
-	NameKey             = bsonutil.MustHaveTag(Role{}, "Name")
-	ScopeTypeKey        = bsonutil.MustHaveTag(Role{}, "ScopeType")
-	ScopeKey            = bsonutil.MustHaveTag(Role{}, "Scope")
-	PermissionsKey      = bsonutil.MustHaveTag(Role{}, "Permissions")
+	RoleNameKey         = bsonutil.MustHaveTag(Role{}, "Name")
+	RoleScopeTypeKey    = bsonutil.MustHaveTag(Role{}, "ScopeType")
+	RoleScopeKey        = bsonutil.MustHaveTag(Role{}, "Scope")
+	RolePermissionsKey  = bsonutil.MustHaveTag(Role{}, "Permissions")
+	RoleOwnersKey       = bsonutil.MustHaveTag(Role{}, "Owners")
 )
 
 //nolint: deadcode, megacheck, unused
@@ -155,10 +156,11 @@ func UpsertOne(query interface{}, update interface{}) (*adb.ChangeInfo, error) {
 
 func (r *Role) Upsert() (*adb.ChangeInfo, error) {
 	update := bson.M{
-		NameKey:        r.Name,
-		ScopeTypeKey:   r.ScopeType,
-		ScopeKey:       r.Scope,
-		PermissionsKey: r.Permissions,
+		RoleNameKey:        r.Name,
+		RoleScopeTypeKey:   r.ScopeType,
+		RoleScopeKey:       r.Scope,
+		RolePermissionsKey: r.Permissions,
+		RoleOwnersKey:      r.Owners,
 	}
 	return db.Upsert(RoleCollection, bson.M{RoleIdKey: r.Id}, update)
 }

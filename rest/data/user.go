@@ -169,6 +169,20 @@ func (u *DBUserConnector) GetAllRoles() ([]restModel.APIRole, error) {
 	return apiRoles, nil
 }
 
+func (u *DBUserConnector) UpdateRole(r *restModel.APIRole) error {
+	roleInterface, err := r.ToService()
+	if err != nil {
+		return errors.Wrap(err, "error converting role")
+	}
+	dbRole, valid := roleInterface.(user.Role)
+	if !valid {
+		return errors.New("unexpected type when converting role")
+	}
+
+	_, err = dbRole.Upsert()
+	return errors.Wrap(err, "error updating role")
+}
+
 // MockUserConnector stores a cached set of users that are queried against by the
 // implementations of the UserConnector interface's functions.
 type MockUserConnector struct {
@@ -235,4 +249,8 @@ func (u *MockUserConnector) SubmitFeedback(feedback restModel.APIFeedbackSubmiss
 
 func (u *MockUserConnector) GetAllRoles() ([]restModel.APIRole, error) {
 	return nil, errors.New("GetRoles not implemented for mock connector")
+}
+
+func (u *MockUserConnector) UpdateRole(r *restModel.APIRole) error {
+	return errors.New("UpdateRole not implemented for mock connector")
 }

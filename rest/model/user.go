@@ -304,6 +304,7 @@ type APIRole struct {
 	ScopeType   APIString         `json:"scope_type"`
 	Scope       APIString         `json:"scope"`
 	Permissions map[string]string `json:"permissions"`
+	Owners      []string          `json:"owners"`
 }
 
 func (r *APIRole) BuildFromService(h interface{}) error {
@@ -320,16 +321,21 @@ func (r *APIRole) BuildFromService(h interface{}) error {
 	r.ScopeType = ToAPIString(string(v.ScopeType))
 	r.Scope = ToAPIString(v.Scope)
 	r.Permissions = v.Permissions
+	r.Owners = v.Owners
 
 	return nil
 }
 
 func (r *APIRole) ToService() (interface{}, error) {
+	if r == nil {
+		return nil, errors.New("cannot convert nil role")
+	}
 	return user.Role{
 		Id:          FromAPIString(r.Id),
 		Name:        FromAPIString(r.Name),
 		ScopeType:   user.ScopeType(FromAPIString(r.ScopeType)),
 		Scope:       FromAPIString(r.Scope),
 		Permissions: r.Permissions,
+		Owners:      r.Owners,
 	}, nil
 }

@@ -220,6 +220,7 @@ type Connector interface {
 	UpdateSettings(*user.DBUser, user.UserSettings) error
 	SubmitFeedback(restModel.APIFeedbackSubmission) error
 	GetAllRoles() ([]restModel.APIRole, error)
+	UpdateRole(*restModel.APIRole) error
 
 	AddPatchIntent(patch.Intent, amboy.Queue) error
 

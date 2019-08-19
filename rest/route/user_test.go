@@ -160,39 +160,69 @@ func (s *UserRouteSuite) TestSaveFeedback() {
 	s.Len(feedback[0].Questions, 1)
 }
 
-func TestGetRoles(t *testing.T) {
+func TestRoleRoutes(t *testing.T) {
 	assert := assert.New(t)
 	assert.NoError(db.Clear(user.RoleCollection))
-	r1 := user.Role{
-		Id:        "r1",
-		Name:      "role1",
-		ScopeType: user.ScopeTypeProject,
-		Scope:     "myProj",
-		Permissions: map[string]string{
-			"something": "yes",
-		},
-	}
-	_, err := r1.Upsert()
-	assert.NoError(err)
-	r2 := user.Role{
-		Id:        "r2",
-		Name:      "role2",
-		ScopeType: user.ScopeTypeAllDistros,
-	}
-	_, err = r2.Upsert()
-	assert.NoError(err)
-	handler := makeGetAllRolesHandler(&data.DBConnector{})
 
 	ctx := context.Background()
-	resp := handler.Run(ctx)
+	body := map[string]interface{}{}
+	jsonBody, err := json.Marshal(body)
+	assert.NoError(err)
+	buffer := bytes.NewBuffer(jsonBody)
+	request, err := http.NewRequest(http.MethodPost, "/roles", buffer)
+	assert.NoError(err)
+	postHandler := makeUpdateRoleHandler(&data.DBConnector{})
+	assert.EqualError(postHandler.Parse(ctx, request), "role ID must be set")
+
+	// test inserting a role
+	body = map[string]interface{}{
+		"id":          "myRole",
+		"permissions": map[string]string{"p1": "true"},
+		"owners":      []string{"me"},
+	}
+	jsonBody, err = json.Marshal(body)
+	assert.NoError(err)
+	buffer = bytes.NewBuffer(jsonBody)
+	request, err = http.NewRequest(http.MethodPost, "/roles", buffer)
+	assert.NoError(err)
+	postHandler = makeUpdateRoleHandler(&data.DBConnector{})
+	assert.NoError(postHandler.Parse(ctx, request))
+	resp := postHandler.Run(ctx)
+	assert.NotNil(resp)
+	assert.Equal(http.StatusOK, resp.Status())
+
+	// test reading that role
+	getHandler := makeGetAllRolesHandler(&data.DBConnector{})
+	resp = getHandler.Run(ctx)
 	assert.NotNil(resp)
 	assert.Equal(http.StatusOK, resp.Status())
 	roles, valid := resp.Data().([]restModel.APIRole)
 	assert.True(valid)
-	assert.Equal(r1.Id, restModel.FromAPIString(roles[0].Id))
-	assert.Equal(r1.Name, restModel.FromAPIString(roles[0].Name))
-	assert.EqualValues(r1.ScopeType, restModel.FromAPIString(roles[0].ScopeType))
-	assert.Equal(r1.Scope, restModel.FromAPIString(roles[0].Scope))
-	assert.Equal(r1.Permissions, roles[0].Permissions)
-	assert.Equal(r2.Id, restModel.FromAPIString(roles[1].Id))
+	assert.Equal(body["id"], restModel.FromAPIString(roles[0].Id))
+	assert.Equal(body["permissions"], roles[0].Permissions)
+	assert.Equal(body["owners"], roles[0].Owners)
+
+	// updating a role
+	body = map[string]interface{}{
+		"id":          "myRole",
+		"permissions": map[string]string{"p2": "false"},
+		"owners":      []string{"me"},
+	}
+	jsonBody, err = json.Marshal(body)
+	assert.NoError(err)
+	buffer = bytes.NewBuffer(jsonBody)
+	request, err = http.NewRequest(http.MethodPost, "/roles", buffer)
+	assert.NoError(err)
+	assert.NoError(postHandler.Parse(ctx, request))
+	resp = postHandler.Run(ctx)
+	assert.NotNil(resp)
+	assert.Equal(http.StatusOK, resp.Status())
+
+	resp = getHandler.Run(ctx)
+	assert.NotNil(resp)
+	assert.Equal(http.StatusOK, resp.Status())
+	roles, valid = resp.Data().([]restModel.APIRole)
+	assert.True(valid)
+	assert.Equal(body["id"], restModel.FromAPIString(roles[0].Id))
+	assert.Equal(body["permissions"], roles[0].Permissions)
 }

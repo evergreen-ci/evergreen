@@ -40,7 +40,7 @@ func (h *userSettingsPostHandler) Factory() gimlet.RouteHandler {
 
 func (h *userSettingsPostHandler) Parse(ctx context.Context, r *http.Request) error {
 	h.settings = model.APIUserSettings{}
-	return errors.WithStack(util.ReadJSONInto(r.Body, &h.settings))
+	return errors.Wrap(util.ReadJSONInto(r.Body, &h.settings), "error parsing request body")
 }
 
 func (h *userSettingsPostHandler) Run(ctx context.Context) gimlet.Responder {
@@ -183,7 +183,7 @@ func makeGetAllRolesHandler(sc data.Connector) gimlet.RouteHandler {
 }
 
 func (h *getAllRolesHandler) Factory() gimlet.RouteHandler {
-	return &userAuthorGetHandler{
+	return &getAllRolesHandler{
 		sc: h.sc,
 	}
 }
@@ -199,4 +199,42 @@ func (h *getAllRolesHandler) Run(ctx context.Context) gimlet.Responder {
 	}
 
 	return gimlet.NewJSONResponse(roles)
+}
+
+type updateRoleHandler struct {
+	sc   data.Connector
+	role *model.APIRole
+}
+
+func makeUpdateRoleHandler(sc data.Connector) gimlet.RouteHandler {
+	return &updateRoleHandler{
+		sc: sc,
+	}
+}
+
+func (h *updateRoleHandler) Factory() gimlet.RouteHandler {
+	return &updateRoleHandler{
+		sc: h.sc,
+	}
+}
+
+func (h *updateRoleHandler) Parse(ctx context.Context, r *http.Request) error {
+	h.role = &model.APIRole{}
+	err := util.ReadJSONInto(r.Body, h.role)
+	if err != nil {
+		return errors.Wrap(err, "error reading request body")
+	}
+	if h.role.Id == model.ToAPIString("") || h.role.Id == nil {
+		return errors.New("role ID must be set")
+	}
+	return nil
+}
+
+func (h *updateRoleHandler) Run(ctx context.Context) gimlet.Responder {
+	err := h.sc.UpdateRole(h.role)
+	if err != nil {
+		gimlet.NewJSONErrorResponse(err)
+	}
+
+	return gimlet.NewJSONResponse(h.role)
 }

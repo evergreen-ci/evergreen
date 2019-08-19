@@ -10,6 +10,7 @@ type Role struct {
 	ScopeType   ScopeType         `bson:"scope_type"`
 	Scope       string            `bson:"scope"`
 	Permissions map[string]string `bson:"permissions"`
+	Owners      []string          `bson:"owners"`
 }
 
 type ScopeType string
