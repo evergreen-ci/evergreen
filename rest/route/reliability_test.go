@@ -501,12 +501,6 @@ func TestReliability(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	// withCancelledContext := func(ctx context.Context, fn func(context.Context)) {
-	// 	ctx, cancel := context.WithCancel(ctx)
-	// 	cancel()
-	// 	fn(ctx)
-	// }
-
 	for opName, opTests := range map[string]func(ctx context.Context, t *testing.T, env evergreen.Environment){
 		"Pagination": func(ctx context.Context, t *testing.T, env evergreen.Environment) {
 			pageSize := 50
