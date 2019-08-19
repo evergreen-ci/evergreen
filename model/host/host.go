@@ -40,7 +40,8 @@ type Host struct {
 	Project string `bson:"project" json:"project"`
 	Zone    string `bson:"zone" json:"zone"`
 
-	// true if the host has been set up properly
+	// True if the app server has done all necessary host setup work (although
+	// the host may need to do additional provisioning before it is running).
 	Provisioned       bool      `bson:"provisioned" json:"provisioned"`
 	ProvisionAttempts int       `bson:"priv_attempts" json:"provision_attempts"`
 	ProvisionTime     time.Time `bson:"prov_time,omitempty" json:"prov_time,omitempty"`
@@ -516,6 +517,7 @@ func (h *Host) SetIPv6Address(ipv6Address string) error {
 
 func (h *Host) MarkAsProvisioned() error {
 	event.LogHostProvisioned(h.Id)
+	now := time.Now()
 	err := UpdateOne(
 		bson.M{
 			IdKey: h.Id,
@@ -527,7 +529,7 @@ func (h *Host) MarkAsProvisioned() error {
 			"$set": bson.M{
 				StatusKey:        evergreen.HostRunning,
 				ProvisionedKey:   true,
-				ProvisionTimeKey: h.ProvisionTime,
+				ProvisionTimeKey: now,
 			},
 		},
 	)
@@ -538,7 +540,57 @@ func (h *Host) MarkAsProvisioned() error {
 
 	h.Status = evergreen.HostRunning
 	h.Provisioned = true
-	h.ProvisionTime = time.Now()
+	h.ProvisionTime = now
+	return nil
+}
+
+// SetProvisionedNotRunning marks the host as having been provisioned by the app
+// server but the host is not necessarily running yet.
+func (h *Host) SetProvisionedNotRunning() error {
+	now := time.Now()
+	if err := UpdateOne(
+		bson.M{
+			IdKey: h.Id,
+			StatusKey: bson.M{
+				"$nin": evergreen.DownHostStatus,
+			},
+		},
+		bson.M{
+			"$set": bson.M{
+				ProvisionedKey:   true,
+				ProvisionTimeKey: now,
+			},
+		},
+	); err != nil {
+		return errors.Wrap(err, "problem setting host as provisioned but not running")
+	}
+
+	h.Provisioned = true
+	h.ProvisionTime = now
+	return nil
+}
+
+// UpdateProvisioningToRunning changes the host status from provisioning to
+// running, as well as logging that the host has finished provisioning.
+func (h *Host) UpdateProvisioningToRunning() error {
+	if h.Status != evergreen.HostProvisioning {
+		return nil
+	}
+
+	if err := UpdateOne(
+		bson.M{
+			IdKey:     h.Id,
+			StatusKey: evergreen.HostProvisioning,
+		},
+		bson.M{"$set": bson.M{StatusKey: evergreen.HostRunning}},
+	); err != nil {
+		return errors.Wrap(err, "problem changing host status from provisioning to running")
+	}
+
+	h.Status = evergreen.HostRunning
+
+	event.LogHostProvisioned(h.Id)
+
 	return nil
 }
 

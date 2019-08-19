@@ -160,12 +160,12 @@ func (r *Role) Upsert() (*adb.ChangeInfo, error) {
 		ScopeKey:       r.Scope,
 		PermissionsKey: r.Permissions,
 	}
-	return db.Upsert(Collection, bson.M{RoleIdKey: r.Id}, update)
+	return db.Upsert(RoleCollection, bson.M{RoleIdKey: r.Id}, update)
 }
 
 func FindOneRole(query bson.M) (*Role, error) {
 	r := &Role{}
-	err := db.FindOneQ(Collection, db.Query(query), r)
+	err := db.FindOneQ(RoleCollection, db.Query(query), r)
 	if adb.ResultsNotFound(err) {
 		return nil, nil
 	}
@@ -174,4 +174,13 @@ func FindOneRole(query bson.M) (*Role, error) {
 
 func FindOneRoleId(id string) (*Role, error) {
 	return FindOneRole(bson.M{RoleIdKey: id})
+}
+
+func FindAllRoles() ([]Role, error) {
+	r := []Role{}
+	err := db.FindAllQ(RoleCollection, db.Query(bson.M{}), &r)
+	if adb.ResultsNotFound(err) {
+		return nil, nil
+	}
+	return r, err
 }

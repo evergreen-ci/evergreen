@@ -19,8 +19,7 @@ import (
 )
 
 const (
-	TaskQueuesCollection      = "task_queues"
-	TaskAliasQueuesCollection = "task_alias_queues"
+	TaskQueuesCollection = "task_queues"
 )
 
 var useModernDequeueOp = true
@@ -40,7 +39,6 @@ type DistroQueueInfo struct {
 	MaxDurationThreshold time.Duration   `bson:"max_duration_threshold" json:"max_duration_threshold"`
 	CountOverThreshold   int             `bson:"count_over_threshold" json:"count_over_threshold"`
 	TaskGroupInfos       []TaskGroupInfo `bson:"task_group_infos" json:"task_group_infos"`
-	AliasQueue           bool            `bson:"alias_queue" json:"alias_queue"`
 }
 
 func GetDistroQueueInfo(distroID string) (DistroQueueInfo, error) {
@@ -58,14 +56,6 @@ func GetDistroQueueInfo(distroID string) (DistroQueueInfo, error) {
 	}
 
 	return taskQueue.DistroQueueInfo, nil
-}
-
-func (q *DistroQueueInfo) GetQueueCollection() string {
-	if q.AliasQueue {
-		return TaskAliasQueuesCollection
-	}
-
-	return TaskQueuesCollection
 }
 
 // represents the next n tasks to be run on hosts of the distro
@@ -146,11 +136,7 @@ func NewTaskQueue(distroID string, queue []TaskQueueItem, distroQueueInfo Distro
 }
 
 func LoadTaskQueue(distro string) (*TaskQueue, error) {
-	return findTaskQueueForDistro(taskQueueQuery{DistroID: distro, Collection: TaskQueuesCollection})
-}
-
-func LoadDistroAliasTaskQueue(distro string) (*TaskQueue, error) {
-	return findTaskQueueForDistro(taskQueueQuery{DistroID: distro, Collection: TaskAliasQueuesCollection})
+	return findTaskQueueForDistro(distro)
 }
 
 func (self *TaskQueue) Length() int {
@@ -338,7 +324,7 @@ func (self *TaskQueue) FindNextTask(spec TaskSpec) *TaskQueueItem {
 
 func updateTaskQueue(distro string, taskQueue []TaskQueueItem, distroQueueInfo DistroQueueInfo) error {
 	_, err := db.Upsert(
-		distroQueueInfo.GetQueueCollection(),
+		TaskQueuesCollection,
 		bson.M{
 			taskQueueDistroKey: distro,
 		},
@@ -373,17 +359,12 @@ func ClearTaskQueue(distro string) error {
 	return errors.Wrap(err, "error clearing task queue")
 }
 
-type taskQueueQuery struct {
-	Collection string
-	DistroID   string
-}
-
-func findTaskQueueForDistro(q taskQueueQuery) (*TaskQueue, error) {
+func findTaskQueueForDistro(distroId string) (*TaskQueue, error) {
 	isDispatchedKey := bsonutil.GetDottedKeyName(taskQueueQueueKey, taskQueueItemIsDispatchedKey)
 
 	pipeline := []bson.M{
 		{
-			"$match": bson.M{taskQueueDistroKey: q.DistroID},
+			"$match": bson.M{taskQueueDistroKey: distroId},
 		},
 		{
 			"$unwind": bson.M{
@@ -432,19 +413,19 @@ func findTaskQueueForDistro(q taskQueueQuery) (*TaskQueue, error) {
 
 	out := []TaskQueue{}
 
-	err := db.Aggregate(q.Collection, pipeline, &out)
+	err := db.Aggregate(TaskQueuesCollection, pipeline, &out)
 	if err != nil {
 		if adb.ResultsNotFound(err) {
 			return nil, nil
 		}
-		return nil, errors.Wrapf(err, "problem building task queue for '%s'", q.DistroID)
+		return nil, errors.Wrapf(err, "problem building task queue for '%s'", distroId)
 	}
 	if len(out) == 0 {
 		return nil, nil
 	}
 	if len(out) > 1 {
 		return nil, errors.Errorf("task queue result malformed [num=%d, id=%s], programmer error",
-			len(out), q.DistroID)
+			len(out), distroId)
 	}
 
 	val := &out[0]
@@ -452,7 +433,7 @@ func findTaskQueueForDistro(q taskQueueQuery) (*TaskQueue, error) {
 	if len(val.Queue) == 1 && val.Queue[0].Id == "" {
 		val.Queue = nil
 	}
-	val.Distro = q.DistroID
+	val.Distro = distroId
 
 	return val, nil
 }
@@ -524,20 +505,10 @@ func FindDistroTaskQueue(distroID string) (TaskQueue, error) {
 	return queue, errors.WithStack(err)
 }
 
-func FindDistroAliasTaskQueue(distroID string) (TaskQueue, error) {
-	queue := TaskQueue{}
-	err := db.FindOne(
-		TaskAliasQueuesCollection,
-		bson.M{taskQueueDistroKey: distroID},
-		db.NoProjection,
-		db.NoSort,
-		&queue)
+func FindTaskQueueGenerationTimes() (map[string]time.Time, error) {
+	out := []map[string]time.Time{}
 
-	return queue, errors.WithStack(err)
-}
-
-func taskQueueGenerationTimesPipeline() []bson.M {
-	return []bson.M{
+	err := db.Aggregate(TaskQueuesCollection, []bson.M{
 		{
 			"$group": bson.M{
 				"_id": 0,
@@ -554,46 +525,17 @@ func taskQueueGenerationTimesPipeline() []bson.M {
 		{
 			"$replaceRoot": bson.M{"newRoot": "$root"},
 		},
-	}
-
-}
-
-func FindTaskQueueGenerationTimes() (map[string]time.Time, error) {
-	out := []map[string]time.Time{}
-
-	err := db.Aggregate(TaskQueuesCollection, taskQueueGenerationTimesPipeline(), &out)
+	}, &out)
 
 	if err != nil {
 		return map[string]time.Time{}, errors.WithStack(err)
 	}
 
-	switch len(out) {
-	case 0:
-		return map[string]time.Time{}, nil
-	case 1:
-		return out[0], nil
-	default:
-		return map[string]time.Time{}, errors.Errorf("produced invalid main queue results: [%d]", len(out))
-	}
-}
-
-func FindTaskAliasQueueGenerationTimes() (map[string]time.Time, error) {
-	out := []map[string]time.Time{}
-
-	err := db.Aggregate(TaskAliasQueuesCollection, taskQueueGenerationTimesPipeline(), &out)
-
-	if err != nil {
-		return map[string]time.Time{}, errors.WithStack(err)
+	if len(out) != 1 {
+		return map[string]time.Time{}, errors.New("produced invalid results")
 	}
 
-	switch len(out) {
-	case 0:
-		return map[string]time.Time{}, nil
-	case 1:
-		return out[0], nil
-	default:
-		return map[string]time.Time{}, errors.Errorf("produced invalid alias queue results: [%d]", len(out))
-	}
+	return out[0], nil
 }
 
 // pull out the task with the specified id from both the in-memory and db

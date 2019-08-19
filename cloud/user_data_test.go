@@ -155,6 +155,10 @@ func TestBootstrapUserData(t *testing.T) {
 			cmd, err = h.SetupSpawnHostCommand(env.Settings())
 			require.NoError(t, err)
 			assert.NotContains(t, userData, cmd)
+
+			cmd, err = h.MarkUserDataDoneCommand()
+			require.NoError(t, err)
+			assert.Contains(t, userData, cmd)
 		},
 		"ContainsCommandsToSetupSpawnHost": func(ctx context.Context, t *testing.T, env evergreen.Environment, h *host.Host, userID string) {
 			h.StartedBy = ""
@@ -174,6 +178,10 @@ func TestBootstrapUserData(t *testing.T) {
 			assert.NotContains(t, userData, cmd)
 
 			cmd, err = h.SetupSpawnHostCommand(env.Settings())
+			require.NoError(t, err)
+			assert.Contains(t, userData, cmd)
+
+			cmd, err = h.MarkUserDataDoneCommand()
 			require.NoError(t, err)
 			assert.Contains(t, userData, cmd)
 		},
@@ -245,6 +253,7 @@ func TestBootstrapUserData(t *testing.T) {
 					BootstrapSettings: distro.BootstrapSettings{
 						Method:                distro.BootstrapMethodUserData,
 						JasperCredentialsPath: "/bar",
+						ClientDir:             "/client_dir",
 					},
 				},
 					StartedBy:        evergreen.User,

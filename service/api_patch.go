@@ -147,21 +147,25 @@ func (as *APIServer) updatePatchModule(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var moduleName, patchContent, githash string
+	var moduleName, patchContent, githash, message string
 
 	if r.Header.Get("Content-Type") == formMimeType {
-		moduleName, patchContent, githash = r.FormValue("module"), r.FormValue("patch"), r.FormValue("githash")
+		moduleName = r.FormValue("module")
+		patchContent = r.FormValue("patch")
+		githash = r.FormValue("githash")
+		message = r.FormValue("message")
 	} else {
 		data := struct {
 			Module  string `json:"module"`
 			Patch   string `json:"patch"`
 			Githash string `json:"githash"`
+			Message string `json:"message"`
 		}{}
 		if err = util.ReadJSONInto(util.NewRequestReader(r), &data); err != nil {
 			as.LoggedError(w, r, http.StatusBadRequest, err)
 			return
 		}
-		moduleName, patchContent, githash = data.Module, data.Patch, data.Githash
+		moduleName, patchContent, githash, message = data.Module, data.Patch, data.Githash, data.Message
 	}
 
 	projectRef, err := model.FindOneProjectRef(p.Project)
@@ -211,6 +215,7 @@ func (as *APIServer) updatePatchModule(w http.ResponseWriter, r *http.Request) {
 
 	modulePatch := patch.ModulePatch{
 		ModuleName: moduleName,
+		Message:    message,
 		Githash:    githash,
 		PatchSet: patch.PatchSet{
 			PatchFileId: patchFileId,

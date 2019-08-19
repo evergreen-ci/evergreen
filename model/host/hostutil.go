@@ -667,3 +667,50 @@ func (h *Host) SetupSpawnHostCommand(settings *evergreen.Settings) (string, erro
 
 	return script, nil
 }
+
+const userDataDoneFileName = "user_data_done"
+
+// UserDataDoneFilePath returns the path to the user data done marker file.
+func (h *Host) UserDataDoneFilePath() (string, error) {
+	if h.Distro.BootstrapSettings.ClientDir == "" {
+		return "", errors.New("distro client directory must be specified")
+	}
+
+	return filepath.Join(h.Distro.BootstrapSettings.ClientDir, userDataDoneFileName), nil
+}
+
+// MarkUserDataDoneCommand creates the command to make the marker file
+// indicating user data has finished executing.
+func (h *Host) MarkUserDataDoneCommand() (string, error) {
+	path, err := h.UserDataDoneFilePath()
+	if err != nil {
+		return "", errors.Wrap(err, "could not get path to user data done file")
+	}
+
+	return fmt.Sprintf("mkdir -p %s && touch %s", h.Distro.BootstrapSettings.ClientDir, path), nil
+}
+
+// SetUserDataHostProvisioned sets the host to running if it was bootstrapped
+// with user data but has not yet been marked as done provisioning.
+func (h *Host) SetUserDataHostProvisioned() error {
+	if h.Distro.BootstrapSettings.Method != distro.BootstrapMethodUserData {
+		return nil
+	}
+
+	if h.Status != evergreen.HostProvisioning {
+		return nil
+	}
+
+	if err := h.UpdateProvisioningToRunning(); err != nil {
+		return errors.Wrapf(err, "could not mark host %s as done provisioning itself and now running", h.Id)
+	}
+
+	grip.Info(message.Fields{
+		"message":              "host successfully provisioned",
+		"host":                 h.Id,
+		"distro":               h.Distro.Id,
+		"time_to_running_secs": time.Since(h.CreationTime).Seconds(),
+	})
+
+	return nil
+}

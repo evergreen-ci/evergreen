@@ -83,7 +83,6 @@ func PlanDistro(ctx context.Context, conf Configuration, s *evergreen.Settings) 
 	grip.Info(message.Fields{
 		"runner":        RunnerName,
 		"distro":        distro.Id,
-		"alias":         false,
 		"operation":     "runtime-stats",
 		"phase":         "planning-distro",
 		"instance":      schedulerInstanceID,

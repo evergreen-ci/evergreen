@@ -791,11 +791,12 @@ func updateDisplayTaskAndCache(t *task.Task) error {
 	}
 	err = build.UpdateCachedTask(t.DisplayTask, 0)
 	grip.Error(message.WrapError(err, message.Fields{
-		"message":  "failed to update cached display task",
-		"function": "updateDisplayTaskAndCache",
-		"build_id": t.BuildId,
-		"task_id":  t.Id,
-		"status":   t.Status,
+		"message":      "failed to update cached display task",
+		"function":     "updateDisplayTaskAndCache",
+		"build_id":     t.BuildId,
+		"task_id":      t.Id,
+		"display_task": t.DisplayTask.Id,
+		"status":       t.Status,
 	}))
 	return nil
 }

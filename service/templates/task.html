@@ -424,6 +424,7 @@ Evergreen - {{Trunc .Task.Revision 10}} / {{.Task.BuildVariantDisplay}} / {{.Tas
                             <div style="clear: both"></div>
                           </td>
                           <td class="col-lg-3">
+                            <md-tooltip style="margin:0;background-color:black;color:white;" md-direction="top"> [[test.test_result.time_taken * 1000 * 1000 * 1000 | stringifyNanoseconds]]</md-tooltip>
                             <div class="progress [[progressBarClass]]" test-result-bar="test.test_result" style="width: [[barWidth]]%"></div>
                           </td>
                           <td class="col-lg-3">

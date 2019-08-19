@@ -219,7 +219,6 @@ func (apiDistro *APIDistro) BuildFromService(h interface{}) error {
 	}
 
 	apiDistro.Name = ToAPIString(d.Id)
-	apiDistro.Aliases = d.Aliases
 	apiDistro.UserSpawnAllowed = d.SpawnAllowed
 	apiDistro.Provider = ToAPIString(d.Provider)
 	if d.ProviderSettings != nil && cloud.IsEc2Provider(d.Provider) {
@@ -281,7 +280,6 @@ func (apiDistro *APIDistro) BuildFromService(h interface{}) error {
 func (apiDistro *APIDistro) ToService() (interface{}, error) {
 	d := distro.Distro{}
 	d.Id = FromAPIString(apiDistro.Name)
-	d.Aliases = apiDistro.Aliases
 	d.Arch = FromAPIString(apiDistro.Arch)
 	d.WorkDir = FromAPIString(apiDistro.WorkDir)
 	d.PoolSize = apiDistro.PoolSize
