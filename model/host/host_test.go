@@ -344,11 +344,11 @@ func TestHostSetIPv6Address(t *testing.T) {
 
 	// if the host is already updated, new updates should work
 	assert.NoError(host.SetIPv6Address(ipv6Address2))
-	assert.Equal(host.IP, ipv6Address)
+	assert.Equal(host.IP, ipv6Address2)
 
 	host, err = FindOne(ById(host.Id))
 	assert.NoError(err)
-	assert.Equal(host.IP, ipv6Address)
+	assert.Equal(host.IP, ipv6Address2)
 }
 
 func TestMarkAsProvisioned(t *testing.T) {
