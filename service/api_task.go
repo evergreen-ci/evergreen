@@ -425,17 +425,6 @@ func assignNextAvailableTask(taskQueue *model.TaskQueue, taskQueueService model.
 		case evergreen.PlannerVersionTunable, evergreen.PlannerVersionRevised:
 			queueItem, err = taskQueueService.RefreshFindNextTask(d.Id, spec)
 			if err != nil {
-				grip.Critical(message.WrapError(err, message.Fields{
-					"message":                  "problem getting next task for the given host",
-					"distro_id":                d.Id,
-					"host_id":                  currentHost.Id,
-					"host_last_task_id":        currentHost.LastTask,
-					"taskspec_group":           spec.Group,
-					"taskspec_build_variant":   spec.BuildVariant,
-					"taskspec_version":         spec.Version,
-					"taskspec_project":         spec.Project,
-					"taskspec_group_max_hosts": spec.GroupMaxHosts,
-				}))
 				return nil, errors.Wrap(err, "problem getting next task")
 			}
 		default:
