@@ -26,6 +26,7 @@ func (m *Module) UnmarshalBSON(in []byte) error { return mgobson.Unmarshal(in, m
 
 type CommitQueueItem struct {
 	Issue   string   `bson:"issue"`
+	Version string   `bson:"version,omitempty"`
 	Modules []Module `bson:"modules"`
 }
 
@@ -46,13 +47,13 @@ func InsertQueue(q *CommitQueue) error {
 }
 
 func (q *CommitQueue) Enqueue(item CommitQueueItem) (int, error) {
-	position := q.findItem(item.Issue)
+	position := q.FindItem(item.Issue)
 	if !(position < 0) {
 		return position + 1, errors.New("item already in queue")
 	}
 
 	if err := add(q.ProjectID, q.Queue, item); err != nil {
-		return 0, err
+		return 0, errors.Wrapf(err, "can't add '%s' to queue '%s'", item.Issue, q.ProjectID)
 	}
 
 	q.Queue = append(q.Queue, item)
@@ -60,7 +61,7 @@ func (q *CommitQueue) Enqueue(item CommitQueueItem) (int, error) {
 }
 
 func (q *CommitQueue) Next() *CommitQueueItem {
-	if len(q.Queue) == 0 || q.Processing {
+	if len(q.Queue) == 0 {
 		return nil
 	}
 
@@ -68,7 +69,7 @@ func (q *CommitQueue) Next() *CommitQueueItem {
 }
 
 func (q *CommitQueue) Remove(issue string) (bool, error) {
-	itemIndex := q.findItem(issue)
+	itemIndex := q.FindItem(issue)
 	if itemIndex < 0 {
 		return false, nil
 	}
@@ -82,13 +83,17 @@ func (q *CommitQueue) Remove(issue string) (bool, error) {
 	// clearing the front of the queue
 	if itemIndex == 0 {
 		if err := q.SetProcessing(false); err != nil {
-			return false, err
+			return false, errors.Wrap(err, "can't set processing to false")
 		}
 	}
 	return true, nil
 }
 
-func (q *CommitQueue) findItem(issue string) int {
+func (q *CommitQueue) UpdateVersion(item CommitQueueItem) error {
+	return errors.Wrapf(addVersionID(q.ProjectID, item), "error updating version")
+}
+
+func (q *CommitQueue) FindItem(issue string) int {
 	for i, queued := range q.Queue {
 		if queued.Issue == issue {
 			return i

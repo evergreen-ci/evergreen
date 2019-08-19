@@ -30,7 +30,7 @@ func NewOOMTracker() OOMTracker                 { return &oomTrackerImpl{} }
 func (o *oomTrackerImpl) Report() (bool, []int) { return o.WasOOMKilled, o.Pids }
 
 func isSudo(ctx context.Context) (bool, error) {
-	if err := exec.CommandContext(ctx, "sudo", "date").Run(); err != nil {
+	if err := exec.CommandContext(ctx, "sudo", "-n", "date").Run(); err != nil {
 		switch err.(type) {
 		case *exec.ExitError:
 			return false, nil

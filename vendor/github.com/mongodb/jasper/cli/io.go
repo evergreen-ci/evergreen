@@ -1,10 +1,17 @@
 package cli
 
 import (
+	"encoding/json"
+
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/level"
 	"github.com/mongodb/jasper"
 	"github.com/pkg/errors"
+)
+
+const (
+	unmarshalFailed           = "failed to unmarshal response"
+	unspecifiedRequestFailure = "request failed for unspecified reason"
 )
 
 // Validator represents an input that can be validated.
@@ -22,14 +29,35 @@ type OutcomeResponse struct {
 }
 
 // Successful returns whether the request was successfully processed.
-func (o OutcomeResponse) Successful() bool {
-	return o.Success
+func (resp OutcomeResponse) Successful() bool {
+	return resp.Success
 }
 
 // ErrorMessage returns the error message if the request was not successfully
 // processed.
-func (o OutcomeResponse) ErrorMessage() string {
-	return o.Message
+func (resp OutcomeResponse) ErrorMessage() string {
+	reason := resp.Message
+	if !resp.Successful() && reason == "" {
+		reason = unspecifiedRequestFailure
+	}
+	return reason
+}
+
+// ExtractOutcomeResponse unmarshals the input bytes into an OutcomeResponse and
+// checks if the request was successful.
+func ExtractOutcomeResponse(input []byte) (OutcomeResponse, error) {
+	resp := OutcomeResponse{}
+	if err := json.Unmarshal(input, &resp); err != nil {
+		return resp, errors.Wrap(err, unmarshalFailed)
+	}
+	return resp, resp.successOrError()
+}
+
+func (resp OutcomeResponse) successOrError() error {
+	if !resp.Successful() {
+		return errors.New(resp.ErrorMessage())
+	}
+	return nil
 }
 
 func makeOutcomeResponse(err error) *OutcomeResponse {
@@ -46,11 +74,31 @@ type InfoResponse struct {
 	Info            jasper.ProcessInfo `json:"info,omitempty"`
 }
 
+// ExtractInfoResponse unmarshals the input bytes into an InfoResponse and
+// checks if the request was successful.
+func ExtractInfoResponse(input []byte) (InfoResponse, error) {
+	resp := InfoResponse{}
+	if err := json.Unmarshal(input, &resp); err != nil {
+		return resp, errors.Wrap(err, unmarshalFailed)
+	}
+	return resp, resp.successOrError()
+}
+
 // InfosResponse represents CLI-specific output containing the request outcome
 // and information for multiple processes.
 type InfosResponse struct {
 	OutcomeResponse `json:"outcome"`
 	Infos           []jasper.ProcessInfo `json:"infos,omitempty"`
+}
+
+// ExtractInfosResponse unmarshals the input bytes into a TagsResponse and
+// checks if the request was successful.
+func ExtractInfosResponse(input []byte) (InfosResponse, error) {
+	resp := InfosResponse{}
+	if err := json.Unmarshal(input, &resp); err != nil {
+		return resp, errors.Wrap(err, unmarshalFailed)
+	}
+	return resp, resp.successOrError()
 }
 
 // TagsResponse represents CLI-specific output containing the request outcome
@@ -60,6 +108,16 @@ type TagsResponse struct {
 	Tags            []string `json:"tags,omitempty"`
 }
 
+// ExtractTagsResponse unmarshals the input bytes into a TagsResponse and checks
+// if the request was successful.
+func ExtractTagsResponse(input []byte) (TagsResponse, error) {
+	resp := TagsResponse{}
+	if err := json.Unmarshal(input, &resp); err != nil {
+		return resp, errors.Wrap(err, unmarshalFailed)
+	}
+	return resp, resp.successOrError()
+}
+
 // RunningResponse represents CLI-specific output containing the request outcome
 // and whether the process is running or not.
 type RunningResponse struct {
@@ -67,11 +125,31 @@ type RunningResponse struct {
 	Running         bool `json:"running,omitempty"`
 }
 
+// ExtractRunningResponse unmarshals the input bytes into a RunningResponse and
+// checks if the request was successful.
+func ExtractRunningResponse(input []byte) (RunningResponse, error) {
+	resp := RunningResponse{}
+	if err := json.Unmarshal(input, &resp); err != nil {
+		return resp, errors.Wrap(err, unmarshalFailed)
+	}
+	return resp, resp.successOrError()
+}
+
 // CompleteResponse represents CLI-specific output containing the request
 // outcome and whether the process is complete or not.
 type CompleteResponse struct {
 	OutcomeResponse `json:"outcome"`
 	Complete        bool `json:"complete,omitempty"`
+}
+
+// ExtractCompleteResponse unmarshals the input bytes into a CompleteResponse and
+// checks if the request was successful.
+func ExtractCompleteResponse(input []byte) (CompleteResponse, error) {
+	resp := CompleteResponse{}
+	if err := json.Unmarshal(input, &resp); err != nil {
+		return resp, errors.Wrap(err, unmarshalFailed)
+	}
+	return resp, resp.successOrError()
 }
 
 // WaitResponse represents CLI-specific output containing the request outcome,
@@ -82,14 +160,92 @@ type WaitResponse struct {
 	Error           string `json:"error,omitempty"`
 }
 
+// ExtractWaitResponse unmarshals the input bytes into a WaitResponse and checks if the
+// request was successful.
+func ExtractWaitResponse(input []byte) (WaitResponse, error) {
+	resp := WaitResponse{}
+	if err := json.Unmarshal(input, &resp); err != nil {
+		return resp, errors.Wrap(err, unmarshalFailed)
+	}
+	if err := resp.successOrError(); err != nil {
+		resp.ExitCode = -1
+		return resp, err
+	}
+	return resp, nil
+}
+
+// ServiceStatusResponse represents CLI-specific output containing the request
+// outcome and the service status.
+type ServiceStatusResponse struct {
+	OutcomeResponse `json:"outcome"`
+	Status          ServiceStatus `json:"status,omitempty"`
+}
+
+// ExtractServiceStatusResponse unmarshals the input bytes into a
+// ServiceStatusResponse and checks if the request was successful.
+func ExtractServiceStatusResponse(input []byte) (ServiceStatusResponse, error) {
+	resp := ServiceStatusResponse{}
+	if err := json.Unmarshal(input, &resp); err != nil {
+		return resp, errors.Wrap(err, unmarshalFailed)
+	}
+	return resp, resp.successOrError()
+}
+
+// LogStreamResponse represents CLI-specific output containing the log stream
+// data.
+type LogStreamResponse struct {
+	OutcomeResponse  `json:"outcome"`
+	jasper.LogStream `json:"log_stream,omitempty"`
+}
+
+// ExtractLogStreamResponse unmarshals the input bytes into a LogStreamResponse
+// and checks if the request was successful.
+func ExtractLogStreamResponse(input []byte) (LogStreamResponse, error) {
+	resp := LogStreamResponse{}
+	if err := json.Unmarshal(input, &resp); err != nil {
+		return resp, errors.Wrap(err, unmarshalFailed)
+	}
+	return resp, resp.successOrError()
+}
+
+// BuildloggerURLsResponse represents CLI-specific output containing the
+// Buildlogger URLs for a process.
+type BuildloggerURLsResponse struct {
+	OutcomeResponse `json:"outcome"`
+	URLs            []string `json:"urls,omitempty"`
+}
+
+// ExtractBuildloggerURLsResponse unmarshals the input bytes into a
+// BuildloggerURLsResponse and checks if the request was successful.
+func ExtractBuildloggerURLsResponse(input []byte) (BuildloggerURLsResponse, error) {
+	resp := BuildloggerURLsResponse{}
+	if err := json.Unmarshal(input, &resp); err != nil {
+		return resp, errors.Wrap(err, unmarshalFailed)
+	}
+	return resp, resp.successOrError()
+}
+
+type IDResponse struct {
+	OutcomeResponse `json:"outcome"`
+	ID              string `json:"id,omitempty"`
+}
+
+func ExtractIDResponse(input []byte) (IDResponse, error) {
+	resp := IDResponse{}
+	if err := json.Unmarshal(input, &resp); err != nil {
+		return resp, errors.Wrap(err, unmarshalFailed)
+	}
+	return resp, resp.successOrError()
+}
+
 // IDInput represents CLI-specific input representing a Jasper process ID.
 type IDInput struct {
 	ID string `json:"id"`
 }
 
 // Validate checks that the Jasper process ID is non-empty.
-func (id *IDInput) Validate() error {
-	if len(id.ID) == 0 {
+func (in *IDInput) Validate() error {
+	if len(in.ID) == 0 {
 		return errors.New("Jasper process ID must not be empty")
 	}
 	return nil
@@ -103,12 +259,12 @@ type SignalInput struct {
 
 // Validate checks that the SignalInput has a non-empty Jasper process ID and
 // positive Signal.
-func (sig *SignalInput) Validate() error {
+func (in *SignalInput) Validate() error {
 	catcher := grip.NewBasicCatcher()
-	if len(sig.ID) == 0 {
+	if len(in.ID) == 0 {
 		catcher.Add(errors.New("Jasper process ID must not be empty"))
 	}
-	if sig.Signal <= 0 {
+	if in.Signal <= 0 {
 		catcher.Add(errors.New("signal must be greater than 0"))
 	}
 	return catcher.Resolve()
@@ -123,14 +279,14 @@ type SignalTriggerIDInput struct {
 
 // Validate checks that the SignalTriggerIDInput has a non-empty Jasper process
 // ID and a recognized signal trigger ID.
-func (sig *SignalTriggerIDInput) Validate() error {
+func (in *SignalTriggerIDInput) Validate() error {
 	catcher := grip.NewBasicCatcher()
-	if len(sig.ID) == 0 {
+	if len(in.ID) == 0 {
 		catcher.Add(errors.New("Jasper process ID must not be empty"))
 	}
-	_, ok := jasper.GetSignalTriggerFactory(sig.SignalTriggerID)
+	_, ok := jasper.GetSignalTriggerFactory(in.SignalTriggerID)
 	if !ok {
-		return errors.Errorf("could not find signal trigger with id '%s'", sig.SignalTriggerID)
+		return errors.Errorf("could not find signal trigger with id '%s'", in.SignalTriggerID)
 	}
 	return nil
 }
@@ -146,18 +302,18 @@ type CommandInput struct {
 }
 
 // Validate checks that the input to the jasper.Command is valid.
-func (c *CommandInput) Validate() error {
+func (in *CommandInput) Validate() error {
 	catcher := grip.NewBasicCatcher()
 	// The semantics of CreateOptions expects Args to be non-empty, but
 	// jasper.Command ignores (CreateOptions).Args.
-	if len(c.CreateOptions.Args) == 0 {
-		c.CreateOptions.Args = []string{""}
+	if len(in.CreateOptions.Args) == 0 {
+		in.CreateOptions.Args = []string{""}
 	}
-	catcher.Add(c.CreateOptions.Validate())
-	if c.Priority != 0 && !level.IsValidPriority(c.Priority) {
+	catcher.Add(in.CreateOptions.Validate())
+	if in.Priority != 0 && !level.IsValidPriority(in.Priority) {
 		catcher.Add(errors.New("priority is not in the valid range of values"))
 	}
-	if len(c.Commands) == 0 {
+	if len(in.Commands) == 0 {
 		catcher.Add(errors.New("must specify at least one command"))
 	}
 	return catcher.Resolve()
@@ -171,11 +327,11 @@ type TagIDInput struct {
 
 // Validate checks that the TagIDInput has a non-empty Jasper process ID and a
 // non-empty tag.
-func (t *TagIDInput) Validate() error {
-	if len(t.ID) == 0 {
+func (in *TagIDInput) Validate() error {
+	if len(in.ID) == 0 {
 		return errors.New("Jasper process ID must not be empty")
 	}
-	if len(t.Tag) == 0 {
+	if len(in.Tag) == 0 {
 		return errors.New("tag must not be empty")
 	}
 	return nil
@@ -187,8 +343,8 @@ type TagInput struct {
 }
 
 // Validate checks that the tag is non-empty.
-func (t *TagInput) Validate() error {
-	if len(t.Tag) == 0 {
+func (in *TagInput) Validate() error {
+	if len(in.Tag) == 0 {
 		return errors.New("tag must not be empty")
 	}
 	return nil
@@ -200,6 +356,33 @@ type FilterInput struct {
 }
 
 // Validate checks that the jasper.Filter is a recognized filter.
-func (f *FilterInput) Validate() error {
-	return f.Filter.Validate()
+func (in *FilterInput) Validate() error {
+	return in.Filter.Validate()
+}
+
+// LogStreamInput represents the CLI-specific input to stream in-memory logs.
+type LogStreamInput struct {
+	ID    string `json:"id"`
+	Count int    `json:"count"`
+}
+
+// Validate checks that the number of logs requested is positive.
+func (in *LogStreamInput) Validate() error {
+	if in.Count <= 0 {
+		return errors.New("count must be greater than zero")
+	}
+	return nil
+}
+
+// EventInput represents the CLI-specific input to signal a named event.
+type EventInput struct {
+	Name string `json:"name"`
+}
+
+// Validate checks that the event name is set.
+func (e *EventInput) Validate() error {
+	if e.Name == "" {
+		return errors.New("event name cannot be empty")
+	}
+	return nil
 }

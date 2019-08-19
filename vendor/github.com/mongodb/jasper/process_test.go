@@ -1,12 +1,13 @@
 package jasper
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"io/ioutil"
-	"net/http"
 	"os"
 	"runtime"
+	"strings"
 	"syscall"
 	"testing"
 	"time"
@@ -20,7 +21,8 @@ func TestProcessImplementations(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	httpClient := &http.Client{}
+	httpClient := GetHTTPClient()
+	defer PutHTTPClient(httpClient)
 
 	for cname, makeProc := range map[string]ProcessConstructor{
 		"BlockingNoLock":   newBlockingProcess,
@@ -28,9 +30,9 @@ func TestProcessImplementations(t *testing.T) {
 		"BasicNoLock":      newBasicProcess,
 		"BasicWithLock":    makeLockingProcess(newBasicProcess),
 		"REST": func(ctx context.Context, opts *CreateOptions) (Process, error) {
-			srv, port := makeAndStartService(ctx, httpClient)
-			if port < 100 || srv == nil {
-				return nil, errors.New("fixture creation failure")
+			_, port, err := startRESTService(ctx, httpClient)
+			if err != nil {
+				return nil, errors.WithStack(err)
 			}
 
 			client := &restClient{
@@ -56,6 +58,9 @@ func TestProcessImplementations(t *testing.T) {
 					assert.Nil(t, proc)
 				},
 				"WithCanceledContextProcessCreationFails": func(ctx context.Context, t *testing.T, opts *CreateOptions, makep ProcessConstructor) {
+					if cname == "REST" {
+						t.Skip("context cancellation in test also stops REST service")
+					}
 					pctx, pcancel := context.WithCancel(ctx)
 					pcancel()
 					proc, err := makep(pctx, opts)
@@ -63,17 +68,17 @@ func TestProcessImplementations(t *testing.T) {
 					assert.Nil(t, proc)
 				},
 				"CanceledContextTimesOutEarly": func(ctx context.Context, t *testing.T, opts *CreateOptions, makep ProcessConstructor) {
-					pctx, pcancel := context.WithTimeout(ctx, 200*time.Millisecond)
+					pctx, pcancel := context.WithTimeout(ctx, 5*time.Second)
 					defer pcancel()
 					startAt := time.Now()
-					opts.Args = []string{"sleep", "20"}
+					opts = sleepCreateOpts(20)
 					proc, err := makep(pctx, opts)
-					assert.NoError(t, err)
-
-					time.Sleep(100 * time.Millisecond) // let time pass...
+					require.NoError(t, err)
 					require.NotNil(t, proc)
+
+					time.Sleep(5 * time.Millisecond) // let time pass...
 					assert.False(t, proc.Info(ctx).Successful)
-					assert.True(t, time.Since(startAt) < 400*time.Millisecond)
+					assert.True(t, time.Since(startAt) < 20*time.Second)
 				},
 				"ProcessLacksTagsByDefault": func(ctx context.Context, t *testing.T, opts *CreateOptions, makep ProcessConstructor) {
 					proc, err := makep(ctx, opts)
@@ -107,7 +112,7 @@ func TestProcessImplementations(t *testing.T) {
 					proc, err := makep(ctx, opts)
 					require.NoError(t, err)
 
-					for i := 0; i < 100; i++ {
+					for i := 0; i < 10; i++ {
 						proc.Tag("foo")
 					}
 
@@ -534,6 +539,119 @@ func TestProcessImplementations(t *testing.T) {
 						assert.Fail(t, "call to Wait() took too long to finish")
 					}
 					require.NoError(t, Terminate(ctx, proc)) // Clean up.
+				},
+				"InfoHasTimeoutWhenProcessTimesOut": func(ctx context.Context, t *testing.T, opts *CreateOptions, makep ProcessConstructor) {
+					opts = sleepCreateOpts(100)
+					opts.Timeout = time.Second
+					opts.TimeoutSecs = 1
+					proc, err := makep(ctx, opts)
+					require.NoError(t, err)
+
+					exitCode, err := proc.Wait(ctx)
+					assert.Error(t, err)
+					if runtime.GOOS == "windows" {
+						assert.Equal(t, 1, exitCode)
+					} else {
+						assert.Equal(t, int(syscall.SIGKILL), exitCode)
+					}
+					assert.True(t, proc.Info(ctx).Timeout)
+				},
+				"CallingSignalOnDeadProcessDoesError": func(ctx context.Context, t *testing.T, opts *CreateOptions, makep ProcessConstructor) {
+					proc, err := makep(ctx, opts)
+					require.NoError(t, err)
+
+					_, err = proc.Wait(ctx)
+					assert.NoError(t, err)
+
+					err = proc.Signal(ctx, syscall.SIGTERM)
+					require.Error(t, err)
+					assert.True(t, strings.Contains(err.Error(), "cannot signal a process that has terminated"))
+				},
+				"StandardInput": func(ctx context.Context, t *testing.T, opts *CreateOptions, makep ProcessConstructor) {
+					if cname == "REST" {
+						t.Skip("standard input behavior should be tested separately on remote interfaces")
+					}
+					for subTestName, subTestCase := range map[string]func(ctx context.Context, t *testing.T, opts *CreateOptions, expectedOutput string, stdin []byte, output *bytes.Buffer){
+						"ReaderSetsProcessStandardInput": func(ctx context.Context, t *testing.T, opts *CreateOptions, expectedOutput string, stdin []byte, output *bytes.Buffer) {
+							opts.StandardInput = bytes.NewBuffer(stdin)
+
+							proc, err := makep(ctx, opts)
+							require.NoError(t, err)
+
+							_, err = proc.Wait(ctx)
+							require.NoError(t, err)
+
+							assert.Equal(t, expectedOutput, strings.TrimSpace(output.String()))
+						},
+						"BytesSetsProcessStandardInput": func(ctx context.Context, t *testing.T, opts *CreateOptions, expectedOutput string, stdin []byte, output *bytes.Buffer) {
+							opts.StandardInputBytes = stdin
+
+							proc, err := makep(ctx, opts)
+							require.NoError(t, err)
+
+							_, err = proc.Wait(ctx)
+							require.NoError(t, err)
+
+							assert.Equal(t, expectedOutput, strings.TrimSpace(output.String()))
+						},
+						"ReaderNotRereadByRespawn": func(ctx context.Context, t *testing.T, opts *CreateOptions, expectedOutput string, stdin []byte, output *bytes.Buffer) {
+							opts.StandardInput = bytes.NewBuffer(stdin)
+
+							proc, err := makep(ctx, opts)
+							require.NoError(t, err)
+
+							_, err = proc.Wait(ctx)
+							require.NoError(t, err)
+
+							assert.Equal(t, expectedOutput, strings.TrimSpace(output.String()))
+
+							output.Reset()
+
+							newProc, err := proc.Respawn(ctx)
+							require.NoError(t, err)
+
+							_, err = newProc.Wait(ctx)
+							require.NoError(t, err)
+
+							assert.Empty(t, output.String())
+
+							assert.Equal(t, proc.Info(ctx).Options.StandardInput, newProc.Info(ctx).Options.StandardInput)
+						},
+						"BytesCopiedByRespawn": func(ctx context.Context, t *testing.T, opts *CreateOptions, expectedOutput string, stdin []byte, output *bytes.Buffer) {
+							opts.StandardInputBytes = stdin
+
+							proc, err := makep(ctx, opts)
+							require.NoError(t, err)
+
+							_, err = proc.Wait(ctx)
+							require.NoError(t, err)
+
+							assert.Equal(t, expectedOutput, strings.TrimSpace(output.String()))
+
+							output.Reset()
+
+							newProc, err := proc.Respawn(ctx)
+							require.NoError(t, err)
+
+							_, err = newProc.Wait(ctx)
+							require.NoError(t, err)
+
+							assert.Equal(t, expectedOutput, strings.TrimSpace(output.String()))
+						},
+					} {
+						t.Run(subTestName, func(t *testing.T) {
+							output := &bytes.Buffer{}
+							opts = &CreateOptions{
+								Args: []string{"bash", "-s"},
+								Output: OutputOptions{
+									Output: output,
+								},
+							}
+							expectedOutput := "foobar"
+							stdin := []byte("echo " + expectedOutput)
+							subTestCase(ctx, t, opts, expectedOutput, stdin, output)
+						})
+					}
 				},
 				// "": func(ctx context.Context, t *testing.T, opts *CreateOptions, makep ProcessConstructor) {},
 			} {

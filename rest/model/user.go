@@ -2,7 +2,9 @@ package model
 
 import (
 	"reflect"
+	"time"
 
+	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/pkg/errors"
 )
@@ -30,10 +32,16 @@ func (apiPubKey *APIPubKey) ToService() (interface{}, error) {
 }
 
 type APIUserSettings struct {
-	Timezone      APIString                   `json:"timezone"`
-	GithubUser    *APIGithubUser              `json:"github_user"`
-	SlackUsername APIString                   `json:"slack_username"`
-	Notifications *APINotificationPreferences `json:"notifications"`
+	Timezone         APIString                   `json:"timezone"`
+	UseSpruceOptions *APIUseSpruceOptions        `json:"use_spruce_options"`
+	GithubUser       *APIGithubUser              `json:"github_user"`
+	SlackUsername    APIString                   `json:"slack_username"`
+	Notifications    *APINotificationPreferences `json:"notifications"`
+	SpruceFeedback   *APIFeedbackSubmission      `json:"spruce_feedback"`
+}
+
+type APIUseSpruceOptions struct {
+	PatchPage bool `json:"patch_page,omitempty" bson:"patch_page,omitempty"`
 }
 
 func (s *APIUserSettings) BuildFromService(h interface{}) error {
@@ -41,6 +49,9 @@ func (s *APIUserSettings) BuildFromService(h interface{}) error {
 	case user.UserSettings:
 		s.Timezone = ToAPIString(v.Timezone)
 		s.SlackUsername = ToAPIString(v.SlackUsername)
+		s.UseSpruceOptions = &APIUseSpruceOptions{
+			PatchPage: v.UseSpruceOptions.PatchPage,
+		}
 		s.GithubUser = &APIGithubUser{}
 		err := s.GithubUser.BuildFromService(v.GithubUser)
 		if err != nil {
@@ -74,11 +85,16 @@ func (s *APIUserSettings) ToService() (interface{}, error) {
 	if !ok {
 		return nil, errors.New("unable to convert NotificationPreferences")
 	}
+	useSpruceOptions := user.UseSpruceOptions{}
+	if s.UseSpruceOptions != nil {
+		useSpruceOptions.PatchPage = s.UseSpruceOptions.PatchPage
+	}
 	return user.UserSettings{
-		Timezone:      FromAPIString(s.Timezone),
-		SlackUsername: FromAPIString(s.SlackUsername),
-		GithubUser:    githubUser,
-		Notifications: preferences,
+		Timezone:         FromAPIString(s.Timezone),
+		SlackUsername:    FromAPIString(s.SlackUsername),
+		GithubUser:       githubUser,
+		Notifications:    preferences,
+		UseSpruceOptions: useSpruceOptions,
 	}, nil
 }
 
@@ -237,4 +253,83 @@ func (u *APIUserAuthorInformation) BuildFromService(h interface{}) error {
 
 func (u *APIUserAuthorInformation) ToService() (interface{}, error) {
 	return nil, errors.New("not implemented for read-only route")
+}
+
+type APIFeedbackSubmission struct {
+	Type        APIString           `json:"type"`
+	User        APIString           `json:"user"`
+	SubmittedAt time.Time           `json:"submitted_at"`
+	Questions   []APIQuestionAnswer `json:"questions"`
+}
+
+func (a *APIFeedbackSubmission) BuildFromService(h interface{}) error {
+	return errors.New("BuildFromService not implemented for APIFeedbackSubmission")
+}
+
+func (a *APIFeedbackSubmission) ToService() (interface{}, error) {
+	result := model.FeedbackSubmission{
+		Type:        FromAPIString(a.Type),
+		User:        FromAPIString(a.User),
+		SubmittedAt: a.SubmittedAt,
+	}
+	for _, question := range a.Questions {
+		answerInterface, _ := question.ToService()
+		answer := answerInterface.(model.QuestionAnswer)
+		result.Questions = append(result.Questions, answer)
+	}
+	return result, nil
+}
+
+type APIQuestionAnswer struct {
+	ID     APIString `json:"id"`
+	Prompt APIString `json:"prompt"`
+	Answer APIString `json:"answer"`
+}
+
+func (a *APIQuestionAnswer) BuildFromService(h interface{}) error {
+	return errors.New("BuildFromService not implemented for APIQuestionAnswer")
+}
+
+func (a *APIQuestionAnswer) ToService() (interface{}, error) {
+	return model.QuestionAnswer{
+		ID:     FromAPIString(a.ID),
+		Prompt: FromAPIString(a.Prompt),
+		Answer: FromAPIString(a.Answer),
+	}, nil
+}
+
+type APIRole struct {
+	Id          APIString         `json:"id"`
+	Name        APIString         `json:"name"`
+	ScopeType   APIString         `json:"scope_type"`
+	Scope       APIString         `json:"scope"`
+	Permissions map[string]string `json:"permissions"`
+}
+
+func (r *APIRole) BuildFromService(h interface{}) error {
+	v, ok := h.(*user.Role)
+	if !ok {
+		return errors.Errorf("incorrect type '%T' for role", h)
+	}
+	if v == nil {
+		return errors.New("can't build from nil role")
+	}
+
+	r.Id = ToAPIString(v.Id)
+	r.Name = ToAPIString(v.Name)
+	r.ScopeType = ToAPIString(string(v.ScopeType))
+	r.Scope = ToAPIString(v.Scope)
+	r.Permissions = v.Permissions
+
+	return nil
+}
+
+func (r *APIRole) ToService() (interface{}, error) {
+	return user.Role{
+		Id:          FromAPIString(r.Id),
+		Name:        FromAPIString(r.Name),
+		ScopeType:   user.ScopeType(FromAPIString(r.ScopeType)),
+		Scope:       FromAPIString(r.Scope),
+		Permissions: r.Permissions,
+	}, nil
 }

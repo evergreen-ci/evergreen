@@ -73,8 +73,7 @@ func (l *lockManager) lockPinger(ctx context.Context) {
 		case op := <-l.ops:
 			op(activeLocks)
 		case <-timer.C:
-			startAt := time.Now()
-			nextLoopAt := time.Now().Add(l.timeout / 2)
+			nextLoopAt := time.Now().Add(l.timeout)
 			for name, op := range activeLocks {
 				if nextLoopAt.After(op.ts) {
 					// make sure that we loop
@@ -83,8 +82,9 @@ func (l *lockManager) lockPinger(ctx context.Context) {
 					nextLoopAt = op.ts
 				}
 
-				if op.ts.Before(startAt) {
-					// don't update locks that are too fresh.
+				// avoid checking locks that have been
+				// updated recently:
+				if time.Since(op.ts.Add(-l.timeout)) < l.timeout/2 {
 					continue
 				}
 
@@ -125,14 +125,12 @@ func (l *lockManager) lockPinger(ctx context.Context) {
 					continue
 				}
 
-				if ctx.Err() != nil {
-					return
-				}
-
+				// this supports jobs with deadlines
+				// and abortable execution.
 				if op.ctx.Err() != nil {
 					grip.Debug(message.Fields{
 						"message":  "removing locally tracked lock",
-						"cause":    "context canceled",
+						"cause":    "job context canceled",
 						"job_id":   name,
 						"stat":     stat,
 						"job_type": j.Type().Name,
@@ -154,9 +152,10 @@ func (l *lockManager) lockPinger(ctx context.Context) {
 				}
 
 				activeLocks[name] = lockPingOp{
-					ts:  time.Now().Add(l.timeout / 2),
+					ts:  time.Now().Add(l.timeout),
 					ctx: op.ctx,
 				}
+
 			}
 
 			timer.Reset(-time.Since(nextLoopAt))
@@ -207,12 +206,13 @@ func (l *lockManager) Lock(ctx context.Context, j amboy.Job) error {
 
 	stat := job.Status()
 
-	// previous versions of this allowed operation allowed one
-	// client to "take" the lock more than once. This covered a
-	// deadlock/bug in queue implementations in marking jobs
-	// complete, *and* allowed queues implementations with more
-	// than one worker, to potentially repeat work.
 	if stat.InProgress && stat.ModificationTime.Add(l.timeout).After(time.Now()) {
+		// previous versions of this allowed operation allowed one
+		// client to "take" the lock more than once. This covered a
+		// deadlock/bug in queue implementations in marking jobs
+		// complete, *and* allowed queues implementations with more
+		// than one worker, to potentially repeat work.
+
 		return errors.Errorf("cannot take lock, for job: '%s', job locked at %s by %s",
 			j.ID(), stat.ModificationTime, stat.Owner)
 	}
@@ -248,10 +248,11 @@ func (l *lockManager) Unlock(ctx context.Context, j amboy.Job) error {
 
 	if err := l.d.SaveStatus(ctx, j, stat); err != nil {
 		grip.Info(message.WrapError(err, message.Fields{
-			"job":  j.ID(),
-			"type": j.Type(),
-			"stat": stat,
-			"op":   "unlocking job",
+			"job":      j.ID(),
+			"type":     j.Type().Name,
+			"stat":     stat,
+			"previous": j.Status(),
+			"op":       "unlocking job",
 		}))
 
 		// it seems like we should error here, but if we hit

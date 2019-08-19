@@ -1,24 +1,17 @@
 package scheduler
 
 import (
+	"time"
+
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/pkg/errors"
 )
 
-// TaskQueuePersister is responsible for taking a task queue for a particular distro
-// and saving it.
-type TaskQueuePersister interface {
-	// distro, tasks, duration cache
-	PersistTaskQueue(string, []task.Task, model.DistroQueueInfo) ([]model.TaskQueueItem, error)
-}
-
-// DBTaskQueuePersister saves a queue to the database.
-type DBTaskQueuePersister struct{}
-
 // PersistTaskQueue saves the task queue to the database.
 // Returns an error if the db call returns an error.
-func (self *DBTaskQueuePersister) PersistTaskQueue(distro string, tasks []task.Task, distroQueueInfo model.DistroQueueInfo) ([]model.TaskQueueItem, error) {
+func PersistTaskQueue(distro string, tasks []task.Task, distroQueueInfo model.DistroQueueInfo) error {
+	startAt := time.Now()
 	taskQueue := make([]model.TaskQueueItem, 0, len(tasks))
 	for _, t := range tasks {
 		taskQueue = append(taskQueue, model.TaskQueueItem{
@@ -38,7 +31,15 @@ func (self *DBTaskQueuePersister) PersistTaskQueue(distro string, tasks []task.T
 	}
 
 	queue := model.NewTaskQueue(distro, taskQueue, distroQueueInfo)
-	err := queue.Save() // queue.Save() will only save the first 500 tasks
+	err := queue.Save()
+	if err != nil {
+		return errors.WithStack(err)
+	}
 
-	return taskQueue, errors.WithStack(err)
+	// track scheduled time for prioritized tasks
+	if err := task.SetTasksScheduledTime(tasks, startAt); err != nil {
+		return errors.Wrapf(err, "error setting scheduled time for prioritized tasks for distro '%s'", distro)
+	}
+
+	return nil
 }

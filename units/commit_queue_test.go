@@ -24,8 +24,9 @@ import (
 
 type commitQueueSuite struct {
 	suite.Suite
-	env *mock.Environment
-	ctx context.Context
+	env      *mock.Environment
+	ctx      context.Context
+	settings *evergreen.Settings
 
 	prBody     []byte
 	pr         *github.PullRequest
@@ -33,7 +34,13 @@ type commitQueueSuite struct {
 }
 
 func TestCommitQueueJob(t *testing.T) {
-	suite.Run(t, &commitQueueSuite{})
+	s := &commitQueueSuite{}
+	env := testutil.NewEnvironment(context.Background(), t)
+	settings := env.Settings()
+	testutil.ConfigureIntegrationTest(t, settings, "TestGitGetProjectSuite")
+	s.settings = settings
+
+	suite.Run(t, s)
 }
 
 func (s *commitQueueSuite) SetupSuite() {
@@ -95,7 +102,7 @@ func (s *commitQueueSuite) TestNewCommitQueueJob() {
 
 func (s *commitQueueSuite) TestSubscribeMerge() {
 	s.NoError(db.ClearCollections(event.SubscriptionsCollection))
-	s.NoError(subscribeMerge(s.projectRef.Identifier, s.projectRef.Owner, s.projectRef.Repo, "squash", "abcdef", s.pr))
+	s.NoError(subscribeGitHubPRs(s.pr, nil, s.projectRef, "abcdef"))
 
 	selectors := []event.Selector{
 		event.Selector{
@@ -113,9 +120,10 @@ func (s *commitQueueSuite) TestSubscribeMerge() {
 	s.Equal(event.ResourceTypePatch, subscription.ResourceType)
 	target, ok := subscription.Subscriber.Target.(*event.GithubMergeSubscriber)
 	s.True(ok)
-	s.Equal(s.projectRef.Owner, target.Owner)
-	s.Equal(s.projectRef.Repo, target.Repo)
-	s.Equal(s.pr.GetTitle()+fmt.Sprintf(" (#%d)", *s.pr.Number), target.CommitTitle)
+	s.Require().Len(target.PRs, 1)
+	s.Equal(s.projectRef.Owner, target.PRs[0].Owner)
+	s.Equal(s.projectRef.Repo, target.PRs[0].Repo)
+	s.Equal(fmt.Sprintf("%s (#%d)", s.pr.GetTitle(), *s.pr.Number), target.PRs[0].CommitTitle)
 }
 
 func (s *commitQueueSuite) TestWritePatchInfo() {
@@ -184,14 +192,18 @@ func (s *commitQueueSuite) TestAddMergeTaskAndVariant() {
 	s.NoError(addMergeTaskAndVariant(patchDoc, project))
 
 	s.Require().Len(patchDoc.BuildVariants, 1)
-	s.Equal("commit-queue-merge", patchDoc.BuildVariants[0])
+	s.Equal(evergreen.MergeTaskVariant, patchDoc.BuildVariants[0])
 	s.Require().Len(patchDoc.Tasks, 1)
-	s.Equal("merge-patch", patchDoc.Tasks[0])
+	s.Equal(evergreen.MergeTaskName, patchDoc.Tasks[0])
 
 	s.Require().Len(project.BuildVariants, 1)
-	s.Equal("commit-queue-merge", project.BuildVariants[0].Name)
+	s.Equal(evergreen.MergeTaskVariant, project.BuildVariants[0].Name)
+	s.Require().Len(project.BuildVariants[0].Tasks, 1)
+	s.True(project.BuildVariants[0].Tasks[0].CommitQueueMerge)
 	s.Require().Len(project.Tasks, 1)
-	s.Equal("merge-patch", project.Tasks[0].Name)
+	s.Equal(evergreen.MergeTaskName, project.Tasks[0].Name)
+	s.Require().Len(project.TaskGroups, 1)
+	s.Equal(evergreen.MergeTaskGroup, project.TaskGroups[0].Name)
 }
 
 func (s *commitQueueSuite) TestSetDefaultNotification() {
@@ -229,4 +241,35 @@ func (s *commitQueueSuite) TestSetDefaultNotification() {
 
 	s.EqualValues("none", u2.Settings.Notifications.CommitQueue)
 	s.Equal("", u2.Settings.Notifications.CommitQueueID)
+}
+
+func (s *commitQueueSuite) TestUpdateGithashes() {
+	githubToken, err := s.settings.GetGithubOauthToken()
+	s.NoError(err)
+
+	projectRef := &model.ProjectRef{
+		Owner:  "evergreen-ci",
+		Repo:   "evergreen",
+		Branch: "master",
+	}
+
+	project := &model.Project{
+		Modules: model.ModuleList{
+			{Name: "evergreen-module", Repo: "git@github.com:evergreen-ci/evergreen.git", Branch: "master"},
+		},
+	}
+
+	patchDoc := &patch.Patch{
+		Patches: []patch.ModulePatch{
+			{ModuleName: "", Githash: "abcdef"},
+			{ModuleName: "evergreen-module", Githash: "abcdef"},
+		},
+	}
+
+	err = updateGithashes(context.Background(), githubToken, projectRef, project, patchDoc)
+	s.NoError(err)
+
+	for _, mod := range patchDoc.Patches {
+		s.NotEqual("abcdef", mod.Githash)
+	}
 }

@@ -38,13 +38,17 @@ func NewQueueTesterInstance() *QueueTester {
 	}
 }
 
-func (q *QueueTester) Put(j amboy.Job) error {
-	q.toProcess <- j
-	q.storage[j.ID()] = j
-	return nil
+func (q *QueueTester) Put(ctx context.Context, j amboy.Job) error {
+	select {
+	case <-ctx.Done():
+		return ctx.Err()
+	case q.toProcess <- j:
+		q.storage[j.ID()] = j
+		return nil
+	}
 }
 
-func (q *QueueTester) Get(name string) (amboy.Job, bool) {
+func (q *QueueTester) Get(ctx context.Context, name string) (amboy.Job, bool) {
 	job, ok := q.storage[name]
 	return job, ok
 }
@@ -63,7 +67,7 @@ func (q *QueueTester) Complete(ctx context.Context, j amboy.Job) {
 	q.numComplete++
 }
 
-func (q *QueueTester) Stats() amboy.QueueStats {
+func (q *QueueTester) Stats(ctx context.Context) amboy.QueueStats {
 	q.mutex.RLock()
 	defer q.mutex.RUnlock()
 

@@ -250,6 +250,7 @@ func TestDistroByIDSuite(t *testing.T) {
 }
 
 func (s *DistroByIDSuite) SetupSuite() {
+	pTrue := true
 	s.data = data.MockDistroConnector{
 		CachedDistros: []*distro.Distro{
 			{
@@ -260,10 +261,9 @@ func (s *DistroByIDSuite) SetupSuite() {
 					MaximumHosts:           10,
 					TargetTime:             60000000000,
 					AcceptableHostIdleTime: 10000000000,
-					GroupVersions:          true,
+					GroupVersions:          &pTrue,
 					PatchZipperFactor:      7,
-					MainlineFirst:          false,
-					PatchFirst:             true,
+					TaskOrdering:           evergreen.TaskOrderingInterleave,
 				},
 				BootstrapMethod:     distro.BootstrapMethodLegacySSH,
 				CommunicationMethod: distro.CommunicationMethodLegacySSH,
@@ -301,10 +301,9 @@ func (s *DistroByIDSuite) TestFindByIdFound() {
 	s.Equal(10, d.PlannerSettings.MaximumHosts)
 	s.Equal(model.NewAPIDuration(60000000000), d.PlannerSettings.TargetTime)
 	s.Equal(model.NewAPIDuration(10000000000), d.PlannerSettings.AcceptableHostIdleTime)
-	s.Equal(true, d.PlannerSettings.GroupVersions)
-	s.Equal(7, d.PlannerSettings.PatchZipperFactor)
-	s.Equal(false, d.PlannerSettings.MainlineFirst)
-	s.Equal(true, d.PlannerSettings.PatchFirst)
+	s.Equal(true, *d.PlannerSettings.GroupVersions)
+	s.EqualValues(7, d.PlannerSettings.PatchZipperFactor)
+	s.Equal(model.ToAPIString(evergreen.TaskOrderingInterleave), d.PlannerSettings.TaskOrdering)
 	s.Equal(model.ToAPIString(distro.BootstrapMethodLegacySSH), d.BootstrapMethod)
 	s.Equal(model.ToAPIString(distro.CommunicationMethodLegacySSH), d.CommunicationMethod)
 	s.Equal(model.ToAPIString(distro.CloneMethodLegacySSH), d.CloneMethod)
@@ -374,7 +373,7 @@ func (s *DistroPutSuite) TestParse() {
     		"acceptable_host_idle_time": 5000000000,
     		"group_versions": false,
     		"patch_zipper_factor": 2,
-    		"mainline_first": true,
+    		"task_ordering": "interleave" ,
     		"patch_first": false
   		},
 		"bootstrap_method": "legacy-ssh",
@@ -427,7 +426,7 @@ func (s *DistroPutSuite) TestRunNewWithInvalidEntity() {
 	s.Contains(err.Message, "'foo' is not a valid bootstrap method")
 	s.Contains(err.Message, "'bar' is not a valid communication method")
 	s.Contains(err.Message, "'bat' is not a valid clone method")
-	s.Contains(err.Message, "ERROR: invalid PlannerSettings.Version 'invalid' for distro 'distro4'")
+	s.Contains(err.Message, "ERROR: invalid planner_settings.version 'invalid' for distro 'distro4'")
 }
 
 func (s *DistroPutSuite) TestRunNewConflictingName() {
@@ -1109,6 +1108,9 @@ func (s *DistroPatchByIDSuite) TestValidFindAndReplaceFullDocument() {
 				"communication_method": "legacy-ssh",
 				"clone_method": "legacy-ssh",
 				"shell_path": "/usr/bin/bash",
+				"curator_dir": "/usr/local/bin",
+				"client_dir": "/usr/bin",
+				"jasper_credentials_path": "/etc/credentials",
 				"ssh_key" : "~SSH string",
 				"ssh_options" : [
 					"~StrictHostKeyChecking=no",
@@ -1169,6 +1171,9 @@ func (s *DistroPatchByIDSuite) TestValidFindAndReplaceFullDocument() {
 	s.Equal(model.ToAPIString(distro.CommunicationMethodLegacySSH), apiDistro.CommunicationMethod)
 	s.Equal(model.ToAPIString(distro.CloneMethodLegacySSH), apiDistro.CloneMethod)
 	s.Equal(model.ToAPIString("/usr/bin/bash"), apiDistro.ShellPath)
+	s.Equal(model.ToAPIString("/usr/local/bin"), apiDistro.CuratorDir)
+	s.Equal(model.ToAPIString("/etc/credentials"), apiDistro.JasperCredentialsPath)
+	s.Equal(model.ToAPIString("/usr/bin"), apiDistro.ClientDir)
 	s.Equal(apiDistro.User, model.ToAPIString("~root"))
 	s.Equal(apiDistro.SSHKey, model.ToAPIString("~SSH string"))
 	s.Equal(apiDistro.SSHOptions, []string{"~StrictHostKeyChecking=no", "~BatchMode=no", "~ConnectTimeout=10"})

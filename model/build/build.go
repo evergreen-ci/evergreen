@@ -170,6 +170,9 @@ func UpdateActivation(buildId string, active bool, caller string) error {
 
 // UpdateStatus sets the build status to the given string.
 func (b *Build) UpdateStatus(status string) error {
+	if b.Status == status {
+		return nil
+	}
 	b.Status = status
 	return UpdateOne(
 		bson.M{IdKey: b.Id},
@@ -250,12 +253,33 @@ func (b *Build) SetCachedTaskFinished(taskID, status string, detail *apimodels.T
 			continue
 		}
 
-		b.Tasks[i].Id = taskID
 		b.Tasks[i].Status = status
 		b.Tasks[i].TimeTaken = timeTaken
 		b.Tasks[i].StatusDetails = *detail
 		break
 	}
+	return nil
+}
+
+func (b *Build) UpdateCachedTasks(tasks []task.Task) error {
+	cache := b.Tasks
+cacheLoop:
+	for i, cacheTask := range b.Tasks {
+		for _, realTask := range tasks {
+			if cacheTask.Id == realTask.Id {
+				cache[i].Id = realTask.Id
+				cache[i].Status = realTask.Status
+				cache[i].TimeTaken = realTask.TimeTaken
+				cache[i].StatusDetails = realTask.Details
+				continue cacheLoop
+			}
+		}
+	}
+	err := SetTasksCache(b.Id, cache)
+	if err != nil {
+		return errors.Wrap(err, "unable to update task cache")
+	}
+	b.Tasks = cache
 	return nil
 }
 

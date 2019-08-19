@@ -15,12 +15,66 @@ import (
 	"github.com/pkg/errors"
 )
 
+type TaskPlanner func(string, *distro.Distro, []task.Task) ([]task.Task, error)
+
+func PrioritizeTasks(id string, d *distro.Distro, tasks []task.Task) ([]task.Task, error) {
+	switch d.PlannerSettings.TaskOrdering {
+	case evergreen.PlannerVersionTunable:
+		return runTunablePlanner(id, d, tasks)
+	default:
+		return runLegacyPlanner(id, d, tasks)
+	}
+}
+
+func runTunablePlanner(id string, d *distro.Distro, tasks []task.Task) ([]task.Task, error) {
+	var err error
+
+	tasks, err = PopulateCaches(id, d.Id, tasks)
+	if err != nil {
+		return nil, errors.WithStack(err)
+	}
+
+	plan := PrepareTasksForPlanning(d, tasks).Export()
+
+	info := GetDistroQueueInfo(plan, d.MaxDurationPerHost())
+
+	if err = PersistTaskQueue(d.Id, plan, info); err != nil {
+		return nil, errors.WithStack(err)
+	}
+
+	return plan, nil
+}
+
+////////////////////////////////////////////////////////////////////////
+//
+// Legacy Scheduler Implementation
+
+func runLegacyPlanner(id string, d *distro.Distro, tasks []task.Task) ([]task.Task, error) {
+	runnableTasks, versions, err := filterTasksWithVersionCache(tasks)
+	if err != nil {
+		return nil, errors.Wrap(err, "error while filtering tasks against the versions' cache")
+	}
+
+	ds := &distroScheduler{
+		TaskPrioritizer: &CmpBasedTaskPrioritizer{
+			runtimeID: id,
+		},
+		runtimeID: id,
+	}
+
+	prioritizedTasks, err := ds.scheduleDistro(d.Id, runnableTasks, versions, d.MaxDurationPerHost())
+	if err != nil {
+		return nil, errors.Wrapf(err, "problem calculating distro plan for distro '%s'", d.Id)
+	}
+
+	return prioritizedTasks, nil
+}
+
 // Responsible for prioritizing and scheduling tasks to be run, on a per-distro
 // basis.
 type Scheduler struct {
 	*evergreen.Settings
 	TaskPrioritizer
-	TaskQueuePersister
 	HostAllocator
 
 	FindRunnableTasks TaskFinder
@@ -34,7 +88,6 @@ const (
 type distroScheduler struct {
 	runtimeID string
 	TaskPrioritizer
-	TaskQueuePersister
 }
 
 func (s *distroScheduler) scheduleDistro(distroID string, runnableTasksForDistro []task.Task, versions map[string]model.Version, maxDurationThreshold time.Duration) (
@@ -63,15 +116,9 @@ func (s *distroScheduler) scheduleDistro(distroID string, runnableTasksForDistro
 	})
 
 	// persist the queue of tasks and its associated distroQueueInfo
-	_, err = s.PersistTaskQueue(distroID, prioritizedTasks, distroQueueInfo)
+	err = PersistTaskQueue(distroID, prioritizedTasks, distroQueueInfo)
 	if err != nil {
 		return nil, errors.Wrapf(err, "database error saving the task queue for distro '%s'", distroID)
-	}
-
-	// track scheduled time for prioritized tasks
-	err = task.SetTasksScheduledTime(prioritizedTasks, time.Now())
-	if err != nil {
-		return nil, errors.Wrapf(err, "error setting scheduled time for prioritized tasks for distro '%s'", distroID)
 	}
 
 	return prioritizedTasks, nil
@@ -184,7 +231,7 @@ func SpawnHosts(ctx context.Context, d distro.Distro, newHostsNeeded int, pool *
 		hostsSpawned = append(hostsSpawned, containerIntents...)
 	} else { // create intent documents for regular hosts
 		for i := 0; i < numHostsToSpawn; i++ {
-			intent, err := generateIntentHost(d)
+			intent, err := generateIntentHost(d, pool)
 			if err != nil {
 				return nil, errors.Wrap(err, "error generating intent host")
 			}
@@ -233,9 +280,13 @@ func getDockerOptionsFromProviderSettings(settings map[string]interface{}) (*hos
 }
 
 // generateIntentHost creates a host intent document for a regular host
-func generateIntentHost(d distro.Distro) (*host.Host, error) {
+func generateIntentHost(d distro.Distro, pool *evergreen.ContainerPool) (*host.Host, error) {
 	hostOptions := host.CreateOptions{
 		UserName: evergreen.User,
+	}
+	if pool != nil {
+		hostOptions.ContainerPoolSettings = pool
+		hostOptions.HasContainers = true
 	}
 	return host.NewIntent(d, d.GenerateName(), d.Provider, hostOptions), nil
 }

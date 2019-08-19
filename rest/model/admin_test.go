@@ -58,11 +58,11 @@ func TestModelConversion(t *testing.T) {
 	assert.EqualValues(testSettings.BannerTheme, *apiSettings.BannerTheme)
 	assert.Equal(testSettings.ClientBinariesDir, *apiSettings.ClientBinariesDir)
 	assert.Equal(testSettings.ConfigDir, *apiSettings.ConfigDir)
-	assert.Equal(testSettings.JasperConfig.BinaryName, FromAPIString(apiSettings.JasperConfig.BinaryName))
-	assert.Equal(testSettings.JasperConfig.DownloadFileName, FromAPIString(apiSettings.JasperConfig.DownloadFileName))
-	assert.Equal(testSettings.JasperConfig.Port, apiSettings.JasperConfig.Port)
-	assert.Equal(testSettings.JasperConfig.URL, FromAPIString(apiSettings.JasperConfig.URL))
-	assert.Equal(testSettings.JasperConfig.Version, FromAPIString(apiSettings.JasperConfig.Version))
+	assert.Equal(testSettings.HostJasper.BinaryName, FromAPIString(apiSettings.HostJasper.BinaryName))
+	assert.Equal(testSettings.HostJasper.DownloadFileName, FromAPIString(apiSettings.HostJasper.DownloadFileName))
+	assert.Equal(testSettings.HostJasper.Port, apiSettings.HostJasper.Port)
+	assert.Equal(testSettings.HostJasper.URL, FromAPIString(apiSettings.HostJasper.URL))
+	assert.Equal(testSettings.HostJasper.Version, FromAPIString(apiSettings.HostJasper.Version))
 	assert.Equal(testSettings.GithubPRCreatorOrg, *apiSettings.GithubPRCreatorOrg)
 	assert.Equal(testSettings.LogPath, *apiSettings.LogPath)
 	assert.Equal(testSettings.PprofPort, *apiSettings.PprofPort)
@@ -91,6 +91,10 @@ func TestModelConversion(t *testing.T) {
 	assert.Equal(len(testSettings.Alerts.SMTP.AdminEmail), len(apiSettings.Alerts.SMTP.AdminEmail))
 	assert.EqualValues(testSettings.Amboy.Name, FromAPIString(apiSettings.Amboy.Name))
 	assert.EqualValues(testSettings.Amboy.LocalStorage, apiSettings.Amboy.LocalStorage)
+	assert.EqualValues(testSettings.Amboy.GroupDefaultWorkers, apiSettings.Amboy.GroupDefaultWorkers)
+	assert.EqualValues(testSettings.Amboy.GroupBackgroundCreateFrequencyMinutes, apiSettings.Amboy.GroupBackgroundCreateFrequencyMinutes)
+	assert.EqualValues(testSettings.Amboy.GroupPruneFrequencyMinutes, apiSettings.Amboy.GroupPruneFrequencyMinutes)
+	assert.EqualValues(testSettings.Amboy.GroupTTLMinutes, apiSettings.Amboy.GroupTTLMinutes)
 	assert.EqualValues(testSettings.Api.HttpListenAddr, FromAPIString(apiSettings.Api.HttpListenAddr))
 	assert.EqualValues(testSettings.AuthConfig.LDAP.URL, FromAPIString(apiSettings.AuthConfig.LDAP.URL))
 	assert.EqualValues(testSettings.AuthConfig.Naive.Users[0].Username, FromAPIString(apiSettings.AuthConfig.Naive.Users[0].Username))
@@ -133,6 +137,10 @@ func TestModelConversion(t *testing.T) {
 	assert.Equal(len(testSettings.Alerts.SMTP.AdminEmail), len(dbSettings.Alerts.SMTP.AdminEmail))
 	assert.EqualValues(testSettings.Amboy.Name, dbSettings.Amboy.Name)
 	assert.EqualValues(testSettings.Amboy.LocalStorage, dbSettings.Amboy.LocalStorage)
+	assert.EqualValues(testSettings.Amboy.GroupDefaultWorkers, dbSettings.Amboy.GroupDefaultWorkers)
+	assert.EqualValues(testSettings.Amboy.GroupBackgroundCreateFrequencyMinutes, dbSettings.Amboy.GroupBackgroundCreateFrequencyMinutes)
+	assert.EqualValues(testSettings.Amboy.GroupPruneFrequencyMinutes, dbSettings.Amboy.GroupPruneFrequencyMinutes)
+	assert.EqualValues(testSettings.Amboy.GroupTTLMinutes, dbSettings.Amboy.GroupTTLMinutes)
 	assert.EqualValues(testSettings.Api.HttpListenAddr, dbSettings.Api.HttpListenAddr)
 	assert.EqualValues(testSettings.AuthConfig.LDAP.URL, dbSettings.AuthConfig.LDAP.URL)
 	assert.EqualValues(testSettings.AuthConfig.Naive.Users[0].Username, dbSettings.AuthConfig.Naive.Users[0].Username)
@@ -169,15 +177,15 @@ func TestModelConversion(t *testing.T) {
 
 func TestRestart(t *testing.T) {
 	assert := assert.New(t)
-	restartResp := &RestartTasksResponse{
-		TasksRestarted: []string{"task1", "task2", "task3"},
-		TasksErrored:   []string{"task4", "task5"},
+	restartResp := &RestartResponse{
+		ItemsRestarted: []string{"task1", "task2", "task3"},
+		ItemsErrored:   []string{"task4", "task5"},
 	}
 
-	apiResp := RestartTasksResponse{}
+	apiResp := RestartResponse{}
 	assert.NoError(apiResp.BuildFromService(restartResp))
-	assert.Equal(3, len(apiResp.TasksRestarted))
-	assert.Equal(2, len(apiResp.TasksErrored))
+	assert.Equal(3, len(apiResp.ItemsRestarted))
+	assert.Equal(2, len(apiResp.ItemsErrored))
 }
 
 func TestEventConversion(t *testing.T) {

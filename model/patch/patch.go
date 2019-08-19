@@ -75,6 +75,7 @@ type ModulePatch struct {
 	ModuleName string   `bson:"name"`
 	Githash    string   `bson:"githash"`
 	PatchSet   PatchSet `bson:"patch_set"`
+	Message    string   `bson:"message"`
 }
 
 // PatchSet stores information about the actual patch
@@ -349,6 +350,7 @@ func (p *Patch) UpdateGithashProjectAndTasks() error {
 	update := bson.M{
 		"$set": bson.M{
 			GithashKey:       p.Githash,
+			PatchesKey:       p.Patches,
 			PatchedConfigKey: p.PatchedConfig,
 			VariantsTasksKey: p.VariantsTasks,
 			BuildVariantsKey: p.BuildVariants,

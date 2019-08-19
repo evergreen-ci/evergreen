@@ -174,16 +174,21 @@ func FetchFailures(current model.Version, depth int) (Failures, error) {
 				"task_id":   "$" + task.IdKey,
 				"execution": "$" + task.ExecutionKey,
 			},
-			"pipeline": []bson.M{{
-				"$match": bson.M{
+			"pipeline": []bson.M{
+				{"$match": bson.M{
 					"$expr": bson.M{
 						"$and": []bson.M{
 							{"$eq": []string{"$" + testresult.TaskIDKey, "$$task_id"}},
 							{"$eq": []string{"$" + testresult.ExecutionKey, "$$execution"}},
 						},
 					},
-				},
-			}},
+				}},
+				{"$project": bson.M{
+					testresult.StatusKey:   1,
+					testresult.TestFileKey: 1,
+					testresult.IDKey:       0,
+				}},
+			},
 		}},
 		// Project only relevant fields.
 		{"$project": bson.M{
@@ -196,6 +201,8 @@ func FetchFailures(current model.Version, depth int) (Failures, error) {
 		// this returns the most recently completed grouped by task display name
 		// and by variant. We take only the first test results (adding its task
 		// id) for each task/variant group.
+		// NOTE: this stage seems to drastically change the query plan for the aggregation. If the size of intermediate pipeline
+		// documents gets too large and causes an error, refactor this stage
 		{"$group": bson.M{
 			"_id": bson.M{
 				"t": "$" + task.DisplayNameKey,
@@ -297,16 +304,21 @@ func FetchRevisionOrderFailures(current model.Version, depth int) (RevisionFailu
 				"task_id":   "$" + task.IdKey,
 				"execution": "$" + task.ExecutionKey,
 			},
-			"pipeline": []bson.M{{
-				"$match": bson.M{
+			"pipeline": []bson.M{
+				{"$match": bson.M{
 					"$expr": bson.M{
 						"$and": []bson.M{
 							{"$eq": []string{"$" + testresult.TaskIDKey, "$$task_id"}},
 							{"$eq": []string{"$" + testresult.ExecutionKey, "$$execution"}},
 						},
 					},
-				},
-			}},
+				}},
+				{"$project": bson.M{
+					testresult.StatusKey:   1,
+					testresult.TestFileKey: 1,
+					testresult.IDKey:       0,
+				}},
+			},
 		}},
 		// Project only relevant fields.
 		{"$project": bson.M{

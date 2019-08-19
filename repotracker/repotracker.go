@@ -5,8 +5,6 @@ import (
 	"fmt"
 	"time"
 
-	"go.mongodb.org/mongo-driver/mongo"
-
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/event"
@@ -20,6 +18,8 @@ import (
 	"github.com/mongodb/grip/level"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
+	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/x/network/command"
 	mgobson "gopkg.in/mgo.v2/bson"
 	yaml "gopkg.in/yaml.v2"
 )
@@ -48,16 +48,17 @@ type VersionErrors struct {
 
 // VersionMetadata is used to pass information about upstream versions to downstream version creation
 type VersionMetadata struct {
-	Revision      model.Revision
-	TriggerID     string
-	TriggerType   string
-	EventID       string
-	DefinitionID  string
-	SourceVersion *model.Version
-	IsAdHoc       bool
-	User          *user.DBUser
-	Message       string
-	Alias         string
+	Revision            model.Revision
+	TriggerID           string
+	TriggerType         string
+	EventID             string
+	TriggerDefinitionID string
+	SourceVersion       *model.Version
+	IsAdHoc             bool
+	User                *user.DBUser
+	Message             string
+	Alias               string
+	PeriodicBuildID     string
 }
 
 // The RepoPoller interface specifies behavior required of all repository poller
@@ -175,6 +176,12 @@ func (repoTracker *RepoTracker) FetchRevisions(ctx context.Context) error {
 	}
 
 	if len(revisions) > 0 {
+		grip.Debug(message.Fields{
+			"message":       "storing revisions",
+			"project":       repoTracker.ProjectRef.Identifier,
+			"new_revisions": revisions,
+			"last_revision": lastRevision,
+		})
 		err = repoTracker.StoreRevisions(ctx, revisions)
 		if err != nil {
 			grip.Error(message.WrapError(err, message.Fields{
@@ -656,9 +663,10 @@ func shellVersionFromRevision(ref *model.ProjectRef, metadata VersionMetadata) (
 		TriggerID:           metadata.TriggerID,
 		TriggerType:         metadata.TriggerType,
 		TriggerEvent:        metadata.EventID,
+		PeriodicBuildID:     metadata.PeriodicBuildID,
 	}
 	if metadata.TriggerType != "" {
-		v.Id = util.CleanName(fmt.Sprintf("%s_%s_%s", ref.String(), metadata.SourceVersion.Revision, metadata.DefinitionID))
+		v.Id = util.CleanName(fmt.Sprintf("%s_%s_%s", ref.String(), metadata.SourceVersion.Revision, metadata.TriggerDefinitionID))
 		v.Requester = evergreen.TriggerRequester
 		v.CreateTime = metadata.SourceVersion.CreateTime
 	} else if metadata.IsAdHoc {
@@ -707,19 +715,19 @@ func sanityCheckOrderNum(revOrderNum int, projectId, revision string) error {
 // the given project config.
 func createVersionItems(ctx context.Context, v *model.Version, ref *model.ProjectRef, metadata VersionMetadata, project *model.Project, aliases model.ProjectAliases) error {
 	client := evergreen.GetEnvironment().Client()
+	const retryCount = 5
 
-	return client.UseSession(ctx, func(sessCtx mongo.SessionContext) error {
-		start := time.Now()
+	txFunc := func(sessCtx mongo.SessionContext) (bool, error) {
 		// generate all task Ids so that we can easily reference them for dependencies
 		sourceRev := ""
 		if metadata.SourceVersion != nil {
 			sourceRev = metadata.SourceVersion.Revision
 		}
-		taskIds := model.NewTaskIdTable(project, v, sourceRev, metadata.DefinitionID)
+		taskIds := model.NewTaskIdTable(project, v, sourceRev, metadata.TriggerDefinitionID)
 
 		err := sessCtx.StartTransaction()
 		if err != nil {
-			return errors.Wrap(err, "error starting transaction")
+			return false, errors.Wrap(err, "error starting transaction")
 		}
 		// create all builds for the version
 		for _, buildvariant := range project.BuildVariants {
@@ -728,7 +736,7 @@ func createVersionItems(ctx context.Context, v *model.Version, ref *model.Projec
 			}
 			var match bool
 			if len(aliases) > 0 {
-				match, err = aliases.HasMatchingVariant(buildvariant.Name)
+				match, err = aliases.HasMatchingVariant(buildvariant.Name, buildvariant.Tags)
 				if err != nil {
 					grip.Error(err)
 					continue
@@ -744,21 +752,16 @@ func createVersionItems(ctx context.Context, v *model.Version, ref *model.Projec
 				BuildName:    buildvariant.Name,
 				Activated:    false,
 				SourceRev:    sourceRev,
-				DefinitionID: metadata.DefinitionID,
+				DefinitionID: metadata.TriggerDefinitionID,
 				Aliases:      aliases,
 				Session:      sessCtx,
 			}
 			var buildId string
-			buildStart := time.Now()
 			buildId, err = model.CreateBuildFromVersion(args)
-			grip.Debug(message.Fields{
-				"ticket":          "EVG-5823",
-				"op":              "CreateBuildFromVersion",
-				"duration":        time.Since(buildStart),
-				"duration_string": time.Since(buildStart).String(),
-				"version":         v.Id,
-			})
 			if err != nil {
+				if isTransientTxErr(err, v) {
+					return true, nil
+				}
 				abortErr := sessCtx.AbortTransaction(sessCtx)
 				grip.Notice(message.Fields{
 					"message":    "aborting transaction",
@@ -768,34 +771,33 @@ func createVersionItems(ctx context.Context, v *model.Version, ref *model.Projec
 					"insert_err": err.Error(),
 					"abort_err":  abortErr.Error(),
 				})
-				return errors.Wrapf(err, "error inserting build %s", buildId)
+				return false, errors.Wrapf(err, "error inserting build %s", buildId)
 			}
 
 			var lastActivated *model.Version
-			lastActivated, err = model.VersionFindOne(model.VersionByLastVariantActivation(ref.Identifier, buildvariant.Name))
-			if err != nil {
-				grip.Error(message.WrapError(err, message.Fields{
-					"message": "error finding last activated",
-					"version": v.Id,
-				}))
-			}
+			activateAt := time.Now()
+			if metadata.TriggerID == "" && v.Requester != evergreen.AdHocRequester {
+				lastActivated, err = model.VersionFindOne(model.VersionByLastVariantActivation(ref.Identifier, buildvariant.Name))
+				if err != nil {
+					grip.Error(message.WrapError(err, message.Fields{
+						"message": "error finding last activated",
+						"version": v.Id,
+					}))
+				}
 
-			var lastActivation *time.Time
-			if lastActivated != nil {
-				for _, buildStatus := range lastActivated.BuildVariants {
-					if buildStatus.BuildVariant == buildvariant.Name && buildStatus.Activated {
-						lastActivation = &buildStatus.ActivateAt
-						break
+				var lastActivation *time.Time
+				if lastActivated != nil {
+					for _, buildStatus := range lastActivated.BuildVariants {
+						if buildStatus.BuildVariant == buildvariant.Name && buildStatus.Activated {
+							lastActivation = &buildStatus.ActivateAt
+							break
+						}
 					}
 				}
-			}
 
-			var activateAt time.Time
-			if lastActivation == nil {
-				// if we don't have a last activation time then prepare to activate it immediately.
-				activateAt = time.Now()
-			} else {
-				activateAt = lastActivation.Add(time.Minute * time.Duration(ref.GetBatchTime(&buildvariant)))
+				if lastActivation != nil {
+					activateAt = lastActivation.Add(time.Minute * time.Duration(ref.GetBatchTime(&buildvariant)))
+				}
 			}
 
 			grip.Debug(message.Fields{
@@ -817,6 +819,9 @@ func createVersionItems(ctx context.Context, v *model.Version, ref *model.Projec
 
 		_, err = evergreen.GetEnvironment().DB().Collection(model.VersionCollection).InsertOne(sessCtx, v)
 		if err != nil {
+			if isTransientTxErr(err, v) {
+				return true, nil
+			}
 			abortErr := sessCtx.AbortTransaction(sessCtx)
 			grip.Notice(message.Fields{
 				"message":    "aborting transaction",
@@ -825,15 +830,18 @@ func createVersionItems(ctx context.Context, v *model.Version, ref *model.Projec
 				"insert_err": err.Error(),
 				"abort_err":  abortErr.Error(),
 			})
-			return errors.Wrapf(err, "error inserting version %s", v.Id)
+			return false, errors.Wrapf(err, "error inserting version %s", v.Id)
 		}
 		err = sessCtx.CommitTransaction(sessCtx)
 		if err != nil {
+			if isTransientTxErr(err, v) {
+				return true, nil
+			}
 			grip.Error(message.WrapError(err, message.Fields{
 				"message": "unable to commit transaction",
 				"version": v.Id,
 			}))
-			return errors.Wrapf(err, "error committing transaction for version %s", v.Id)
+			return false, errors.Wrapf(err, "error committing transaction for version %s", v.Id)
 		}
 		grip.Info(message.Fields{
 			"message": "successfully created version",
@@ -842,13 +850,35 @@ func createVersionItems(ctx context.Context, v *model.Version, ref *model.Projec
 			"project": v.Branch,
 			"runner":  RunnerName,
 		})
-		grip.Debug(message.Fields{
-			"ticket":          "EVG-5823",
-			"op":              "createVersionItems",
-			"duration":        time.Since(start),
-			"duration_string": time.Since(start).String(),
-			"version":         v.Id,
-		})
+		return false, nil
+	}
+
+	return client.UseSession(ctx, func(sessCtx mongo.SessionContext) error {
+		for i := 0; i < retryCount; i++ {
+			shouldRetry, err := txFunc(sessCtx)
+			if err != nil {
+				return err
+			}
+			if !shouldRetry {
+				break
+			}
+			if i >= retryCount-1 {
+				return errors.Errorf("hit max retries for version %s", v.Id)
+			}
+		}
 		return nil
 	})
+}
+
+func isTransientTxErr(err error, version *model.Version) bool {
+	rootErr := errors.Cause(err)
+	cmdErr, isCmdErr := rootErr.(mongo.CommandError)
+	if isCmdErr && cmdErr.HasErrorLabel(command.TransientTransactionError) {
+		grip.Notice(message.WrapError(err, message.Fields{
+			"message": "hit transient transaction error, will retry",
+			"version": version.Id,
+		}))
+		return true
+	}
+	return false
 }

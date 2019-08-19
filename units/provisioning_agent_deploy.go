@@ -150,13 +150,19 @@ func (j *agentDeployJob) Run(ctx context.Context) {
 	}
 
 	if stat.LastAttemptFailed() && stat.AllAttemptsFailed() && stat.Count >= agentPutRetries {
+		externallyTerminated, err := handleExternallyTerminatedHost(ctx, j.ID(), j.env, j.host)
+		j.AddError(errors.Wrapf(err, "can't check if host '%s' was externally terminated", j.HostID))
+		if externallyTerminated {
+			return
+		}
+
 		if disableErr := j.host.DisablePoisonedHost(fmt.Sprintf("failed %d times to put agent on host", agentPutRetries)); disableErr != nil {
 			j.AddError(errors.Wrapf(disableErr, "error terminating host %s", j.host.Id))
 			return
 		}
 
 		job := NewDecoHostNotifyJob(j.env, j.host, nil, "error starting agent on host")
-		grip.Error(message.WrapError(j.env.RemoteQueue().Put(job),
+		grip.Error(message.WrapError(j.env.RemoteQueue().Put(ctx, job),
 			message.Fields{
 				"message": fmt.Sprintf("tried %d times to put agent on host", agentPutRetries),
 				"host_id": j.host.Id,
@@ -265,7 +271,7 @@ func (j *agentDeployJob) startAgentOnHost(ctx context.Context, settings *evergre
 // Prepare the remote machine to run a task.
 func (j *agentDeployJob) prepRemoteHost(ctx context.Context, hostObj host.Host, sshOptions []string, settings *evergreen.Settings) error {
 	// copy over the correct agent binary to the remote host
-	if logs, err := hostObj.RunSSHCommand(ctx, hostObj.CurlCommand(settings.Ui.Url), sshOptions); err != nil {
+	if logs, err := hostObj.RunSSHCommand(ctx, hostObj.CurlCommand(settings), sshOptions); err != nil {
 		return errors.Wrapf(err, "error downloading agent binary on remote host: %s", logs)
 	}
 
@@ -291,7 +297,7 @@ func (j *agentDeployJob) prepRemoteHost(ctx context.Context, hostObj host.Host, 
 		}
 
 		job := NewDecoHostNotifyJob(j.env, j.host, nil, "error running setup script on host")
-		grip.Error(message.WrapError(j.env.RemoteQueue().Put(job),
+		grip.Error(message.WrapError(j.env.RemoteQueue().Put(ctx, job),
 			message.Fields{
 				"message": fmt.Sprintf("tried %d times to put agent on host", agentPutRetries),
 				"host_id": hostObj.Id,
@@ -364,7 +370,7 @@ func (j *agentDeployJob) startAgentOnRemote(ctx context.Context, settings *everg
 	remoteCmd = fmt.Sprintf("nohup %s > /tmp/start 2>1 &", remoteCmd)
 
 	startAgentCmd := j.env.JasperManager().CreateCommand(ctx).Environment(env).Append(remoteCmd).
-		User(hostObj.User).Host(hostInfo.Hostname).ExtendSSHArgs("-p", hostInfo.Port).ExtendSSHArgs(sshOptions...)
+		User(hostObj.User).Host(hostInfo.Hostname).ExtendRemoteArgs("-p", hostInfo.Port).ExtendRemoteArgs(sshOptions...)
 
 	if err = startAgentCmd.Run(ctx); err != nil {
 		return errors.Wrapf(err, "error starting agent (%v)", hostObj.Id)

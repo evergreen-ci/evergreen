@@ -80,12 +80,16 @@ func MockConfig() *evergreen.Settings {
 			},
 		},
 		Amboy: evergreen.AmboyConfig{
-			Name:           "amboy",
-			SingleName:     "single",
-			DB:             "db",
-			PoolSizeLocal:  10,
-			PoolSizeRemote: 20,
-			LocalStorage:   30,
+			Name:                                  "amboy",
+			SingleName:                            "single",
+			DB:                                    "db",
+			PoolSizeLocal:                         10,
+			PoolSizeRemote:                        20,
+			LocalStorage:                          30,
+			GroupDefaultWorkers:                   40,
+			GroupBackgroundCreateFrequencyMinutes: 50,
+			GroupPruneFrequencyMinutes:            60,
+			GroupTTLMinutes:                       70,
 		},
 		Api: evergreen.APIConfig{
 			HttpListenAddr:      "addr",
@@ -131,13 +135,14 @@ func MockConfig() *evergreen.Settings {
 			},
 		},
 		Credentials:        map[string]string{"k1": "v1"},
+		DomainName:         "example.com",
 		Expansions:         map[string]string{"k2": "v2"},
 		Bugsnag:            "u-12345",
 		GithubPRCreatorOrg: "org",
 		HostInit: evergreen.HostInitConfig{
 			SSHTimeoutSeconds: 10,
 		},
-		JasperConfig: evergreen.JasperConfig{
+		HostJasper: evergreen.HostJasperConfig{
 			BinaryName:       "binary",
 			DownloadFileName: "download",
 			Port:             12345,

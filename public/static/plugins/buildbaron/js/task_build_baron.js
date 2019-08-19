@@ -1,4 +1,4 @@
-mciModule.controller('TaskBuildBaronCtrl', function($scope, $http, $window) {
+mciModule.controller('TaskBuildBaronCtrl', function($scope, $http, $window, $interval) {
   $scope.conf = $window.plugins["buildbaron"];
 
   var statusKeys = {
@@ -115,6 +115,7 @@ mciModule.controller('TaskBuildBaronCtrl', function($scope, $http, $window) {
       function(resp) {
         $scope.creatingTicket = false;
         $scope.createdTicket = true;
+        $scope.getTickets = $interval($scope.getCreatedTickets, 1000);
       },
     function(resp) {
       var jqXHR = resp.data;
@@ -224,6 +225,17 @@ mciModule.controller('TaskBuildBaronCtrl', function($scope, $http, $window) {
     $scope.getNote();
   }
   $scope.getCreatedTickets();
+
+  $scope.stopGetTickets = function() {
+    if (angular.isDefined($scope.getTickets)) {
+      $interval.cancel($scope.getTickets);
+      $scope.getTickets = undefined;
+    }
+  }
+
+  $scope.$on("$destroy", function() {
+    $scope.stopGetTickets();
+  });
 
   $scope.clearTicket = function(){
     $scope.newTicket = true;

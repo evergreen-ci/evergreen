@@ -23,7 +23,7 @@ type spawnHostTriggers struct {
 func makeSpawnHostTriggers() eventHandler {
 	t := &spawnHostTriggers{}
 	t.triggers = map[string]trigger{
-		triggerOutcome: t.hostSpawnOutcome,
+		event.TriggerOutcome: t.hostSpawnOutcome,
 	}
 	return t
 }
@@ -59,7 +59,7 @@ func (t *spawnHostTriggers) slack() *notification.SlackPayload {
 			})
 	}
 
-	if t.host.Provisioned {
+	if t.host.Provisioned && t.host.Status == evergreen.HostRunning {
 		text = "Host has spawned"
 		attachment.Title = fmt.Sprintf("Evergreen Host: %s", t.host.Id)
 		attachment.TitleLink = spawnHostURL(t.uiConfig.Url)
@@ -97,7 +97,7 @@ func (t *spawnHostTriggers) email() *message.Email {
 	status := "failed to spawn"
 	url := spawnHostURL(t.uiConfig.Url)
 	cmd := "N/A"
-	if t.host.Provisioned {
+	if t.host.Provisioned && t.host.Status == evergreen.HostRunning {
 		status = "spawned"
 		cmd = sshCommand(t.host)
 	}

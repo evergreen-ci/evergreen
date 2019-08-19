@@ -2,6 +2,7 @@ package evergreen
 
 import (
 	"os"
+	"time"
 
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
@@ -20,6 +21,8 @@ const (
 	HostProvisionFailed = "provision failed"
 	HostQuarantined     = "quarantined"
 	HostDecommissioned  = "decommissioned"
+
+	HostExternalUserName = "external"
 
 	HostStatusSuccess = "success"
 	HostStatusFailed  = "failed"
@@ -126,11 +129,17 @@ const (
 	StepbackTaskActivator  = "stepback"
 	APIServerTaskActivator = "apiserver"
 
+	// Restart Types
+	RestartVersions = "versions"
+	RestartTasks    = "tasks"
+
 	RestRoutePrefix = "rest"
 	APIRoutePrefix  = "api"
 
 	AgentAPIVersion  = 2
 	APIRoutePrefixV2 = "/rest/v2"
+
+	AgentMonitorTag = "agent-monitor"
 
 	DegradedLoggingPercent = 10
 
@@ -144,14 +153,33 @@ const (
 	PlannerVersionRevised = "revised"
 	PlannerVersionTunable = "tunable"
 
+	// maximum turnaround we want to maintain for all hosts for a given distro
+	MaxDurationPerDistroHost               = 30 * time.Minute
+	MaxDurationPerDistroHostWithContainers = 2 * time.Minute
+
 	FinderVersionLegacy    = "legacy"
 	FinderVersionParallel  = "parallel"
 	FinderVersionPipeline  = "pipeline"
 	FinderVersionAlternate = "alternate"
 
+	HostAllocatorDuration    = "duration"
+	HostAllocatorDeficit     = "deficit"
+	HostAllocatorUtilization = "utilization"
+
+	TaskOrderingNotDeclared   = ""
+	TaskOrderingInterleave    = "interleave"
+	TaskOrderingMainlineFirst = "mainlinefirst"
+	TaskOrderingPatchFirst    = "patchfirst"
+
 	CommitQueueAlias = "__commit_queue"
+	MergeTaskVariant = "commit-queue-merge"
+	MergeTaskName    = "merge-patch"
+	MergeTaskGroup   = "merge-task-group"
 
 	MaxTeardownGroupTimeoutSecs = 30 * 60
+
+	DefaultJasperPort          = 2385
+	GlobalGitHubTokenExpansion = "global_github_oauth_token"
 )
 
 func IsFinishedTaskStatus(status string) bool {
@@ -197,6 +225,7 @@ const (
 	ProviderNameEc2Auto     = "ec2-auto"
 	ProviderNameEc2OnDemand = "ec2-ondemand"
 	ProviderNameEc2Spot     = "ec2-spot"
+	ProviderNameEc2Fleet    = "ec2-fleet"
 	ProviderNameDocker      = "docker"
 	ProviderNameDockerMock  = "docker-mock"
 	ProviderNameGce         = "gce"
@@ -217,6 +246,7 @@ var (
 		ProviderNameEc2OnDemand,
 		ProviderNameEc2Spot,
 		ProviderNameEc2Auto,
+		ProviderNameEc2Fleet,
 		ProviderNameGce,
 		ProviderNameOpenstack,
 		ProviderNameVsphere,
@@ -299,13 +329,17 @@ func (k SenderKey) String() string {
 }
 
 const (
-	defaultLogBufferingDuration  = 20
-	defaultAmboyPoolSize         = 2
-	defaultAmboyLocalStorageSize = 1024
-	defaultAmboyQueueName        = "evg.service"
-	defaultSingleAmboyQueueName  = "evg.single"
-	defaultAmboyDBName           = "amboy"
-	maxNotificationsPerSecond    = 100
+	defaultLogBufferingDuration                  = 20
+	defaultAmboyPoolSize                         = 2
+	defaultAmboyLocalStorageSize                 = 1024
+	defaultAmboyQueueName                        = "evg.service"
+	defaultSingleAmboyQueueName                  = "evg.single"
+	defaultAmboyDBName                           = "amboy"
+	defaultGroupWorkers                          = 1
+	defaultGroupBackgroundCreateFrequencyMinutes = 10
+	defaultGroupPruneFrequencyMinutes            = 10
+	defaultGroupTTLMinutes                       = 1
+	maxNotificationsPerSecond                    = 100
 
 	EnableAmboyRemoteReporting = false
 )
@@ -372,9 +406,24 @@ var (
 	// Set of valid FinderSettings.Version strings that can be user set via the API
 	ValidFinderVersions = []string{
 		FinderVersionLegacy,
+		FinderVersionAlternate,
 		FinderVersionParallel,
 		FinderVersionPipeline,
-		FinderVersionAlternate,
+	}
+
+	// Set of valid Host Allocators types
+	ValidHostAllocators = []string{
+		HostAllocatorDuration,
+		HostAllocatorDeficit,
+		HostAllocatorUtilization,
+	}
+
+	// Set of valid Task Ordering options that can be user set via the API
+	ValidTaskOrderings = []string{
+		TaskOrderingNotDeclared,
+		TaskOrderingInterleave,
+		TaskOrderingMainlineFirst,
+		TaskOrderingPatchFirst,
 	}
 
 	// constant arrays for db update logic

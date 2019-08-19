@@ -61,6 +61,10 @@ mciModule
   .constant('FORMAT', {
     ISO_DATE: 'YYYY-MM-DD',
   })
+  .constant('OUTLIERS', {
+    HIGH_CONFIDENCE: 'detected-high-confidence',
+    LOW_CONFIDENCE: 'detected-low-confidence',
+  })
 
   .constant('BF', {
     OPEN_STATUSES: ['Open', 'In Progress', 'Waiting for bug fix'],
@@ -136,4 +140,4 @@ mciModule
   .constant('MPA_UI', {
     BUILD_BY_ID: _.template('/build/{build_id}'),
     TASK_BY_ID: _.template('/task/{task_id}'),
-  })
+  }).constant('CANARY_EXCLUSION_REGEX', /^((?!canary_|fio_|iperf|NetworkBandwidth).*)$/);

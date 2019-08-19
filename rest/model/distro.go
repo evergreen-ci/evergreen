@@ -18,10 +18,11 @@ type APIPlannerSettings struct {
 	MaximumHosts           int         `json:"maximum_hosts"`
 	TargetTime             APIDuration `json:"target_time"`
 	AcceptableHostIdleTime APIDuration `json:"acceptable_host_idle_time"`
-	GroupVersions          bool        `json:"group_versions"`
-	PatchZipperFactor      int         `json:"patch_zipper_factor"`
-	MainlineFirst          bool        `json:"mainline_first"`
-	PatchFirst             bool        `json:"patch_first"`
+	GroupVersions          *bool       `json:"group_versions"`
+	TaskOrdering           APIString   `json:"task_ordering"`
+	PatchZipperFactor      int64       `json:"patch_zipper_factor"`
+	TimeInQueueFactor      int64       `json:"time_in_queue_factor"`
+	ExpectedRuntimeFactor  int64       `json:"expected_runtime_factor_factor"`
 }
 
 // BuildFromService converts from service level distro.PlannerSetting to an APIPlannerSettings
@@ -46,9 +47,10 @@ func (s *APIPlannerSettings) BuildFromService(h interface{}) error {
 	s.TargetTime = NewAPIDuration(settings.TargetTime)
 	s.AcceptableHostIdleTime = NewAPIDuration(settings.AcceptableHostIdleTime)
 	s.GroupVersions = settings.GroupVersions
+	s.TaskOrdering = ToAPIString(settings.TaskOrdering)
 	s.PatchZipperFactor = settings.PatchZipperFactor
-	s.MainlineFirst = settings.MainlineFirst
-	s.PatchFirst = settings.PatchFirst
+	s.ExpectedRuntimeFactor = settings.ExpectedRuntimeFactor
+	s.TimeInQueueFactor = settings.TimeInQueueFactor
 
 	return nil
 }
@@ -65,9 +67,10 @@ func (s *APIPlannerSettings) ToService() (interface{}, error) {
 	settings.TargetTime = s.TargetTime.ToDuration()
 	settings.AcceptableHostIdleTime = s.AcceptableHostIdleTime.ToDuration()
 	settings.GroupVersions = s.GroupVersions
+	settings.TaskOrdering = FromAPIString(s.TaskOrdering)
 	settings.PatchZipperFactor = s.PatchZipperFactor
-	settings.MainlineFirst = s.MainlineFirst
-	settings.PatchFirst = s.PatchFirst
+	settings.TimeInQueueFactor = s.TimeInQueueFactor
+	settings.ExpectedRuntimeFactor = s.ExpectedRuntimeFactor
 
 	return interface{}(settings), nil
 }
@@ -117,29 +120,32 @@ func (s *APIFinderSettings) ToService() (interface{}, error) {
 // APIDistro is the model to be returned by the API whenever distros are fetched
 
 type APIDistro struct {
-	Name                APIString              `json:"name"`
-	UserSpawnAllowed    bool                   `json:"user_spawn_allowed"`
-	Provider            APIString              `json:"provider"`
-	ProviderSettings    map[string]interface{} `json:"settings"`
-	ImageID             APIString              `json:"image_id"`
-	Arch                APIString              `json:"arch"`
-	WorkDir             APIString              `json:"work_dir"`
-	PoolSize            int                    `json:"pool_size"`
-	SetupAsSudo         bool                   `json:"setup_as_sudo"`
-	Setup               APIString              `json:"setup"`
-	Teardown            APIString              `json:"teardown"`
-	User                APIString              `json:"user"`
-	BootstrapMethod     APIString              `json:"bootstrap_method"`
-	CommunicationMethod APIString              `json:"communication_method"`
-	CloneMethod         APIString              `json:"clone_method"`
-	ShellPath           APIString              `json:"shell_path"`
-	SSHKey              APIString              `json:"ssh_key"`
-	SSHOptions          []string               `json:"ssh_options"`
-	Expansions          []APIExpansion         `json:"expansions"`
-	Disabled            bool                   `json:"disabled"`
-	ContainerPool       APIString              `json:"container_pool"`
-	PlannerSettings     APIPlannerSettings     `json:"planner_settings"`
-	FinderSettings      APIFinderSettings      `json:"finder_settings"`
+	Name                  APIString              `json:"name"`
+	UserSpawnAllowed      bool                   `json:"user_spawn_allowed"`
+	Provider              APIString              `json:"provider"`
+	ProviderSettings      map[string]interface{} `json:"settings"`
+	ImageID               APIString              `json:"image_id"`
+	Arch                  APIString              `json:"arch"`
+	WorkDir               APIString              `json:"work_dir"`
+	PoolSize              int                    `json:"pool_size"`
+	SetupAsSudo           bool                   `json:"setup_as_sudo"`
+	Setup                 APIString              `json:"setup"`
+	Teardown              APIString              `json:"teardown"`
+	User                  APIString              `json:"user"`
+	BootstrapMethod       APIString              `json:"bootstrap_method"`
+	CommunicationMethod   APIString              `json:"communication_method"`
+	CloneMethod           APIString              `json:"clone_method"`
+	ShellPath             APIString              `json:"shell_path"`
+	CuratorDir            APIString              `json:"curator_dir"`
+	ClientDir             APIString              `json:"client_dir"`
+	JasperCredentialsPath APIString              `json:"jasper_credentials_path"`
+	SSHKey                APIString              `json:"ssh_key"`
+	SSHOptions            []string               `json:"ssh_options"`
+	Expansions            []APIExpansion         `json:"expansions"`
+	Disabled              bool                   `json:"disabled"`
+	ContainerPool         APIString              `json:"container_pool"`
+	PlannerSettings       APIPlannerSettings     `json:"planner_settings"`
+	FinderSettings        APIFinderSettings      `json:"finder_settings"`
 }
 
 // BuildFromService converts from service level distro.Distro to an APIDistro
@@ -157,7 +163,7 @@ func (apiDistro *APIDistro) BuildFromService(h interface{}) error {
 	apiDistro.Name = ToAPIString(d.Id)
 	apiDistro.UserSpawnAllowed = d.SpawnAllowed
 	apiDistro.Provider = ToAPIString(d.Provider)
-	if d.ProviderSettings != nil && (d.Provider == evergreen.ProviderNameEc2Auto || d.Provider == evergreen.ProviderNameEc2OnDemand || d.Provider == evergreen.ProviderNameEc2Spot) {
+	if d.ProviderSettings != nil && cloud.IsEc2Provider(d.Provider) {
 		ec2Settings := &cloud.EC2ProviderSettings{}
 		err := mapstructure.Decode(d.ProviderSettings, ec2Settings)
 		if err != nil {
@@ -175,6 +181,10 @@ func (apiDistro *APIDistro) BuildFromService(h interface{}) error {
 	apiDistro.Setup = ToAPIString(d.Setup)
 	apiDistro.Teardown = ToAPIString(d.Teardown)
 	apiDistro.User = ToAPIString(d.User)
+	if d.CloneMethod == "" {
+		d.CloneMethod = distro.CloneMethodLegacySSH
+	}
+	apiDistro.CloneMethod = ToAPIString(d.CloneMethod)
 	if d.BootstrapMethod == "" {
 		d.BootstrapMethod = distro.BootstrapMethodLegacySSH
 	}
@@ -183,11 +193,10 @@ func (apiDistro *APIDistro) BuildFromService(h interface{}) error {
 		d.CommunicationMethod = distro.CommunicationMethodLegacySSH
 	}
 	apiDistro.CommunicationMethod = ToAPIString(d.CommunicationMethod)
-	if d.CloneMethod == "" {
-		d.CloneMethod = distro.CloneMethodLegacySSH
-	}
-	apiDistro.CloneMethod = ToAPIString(d.CloneMethod)
 	apiDistro.ShellPath = ToAPIString(d.ShellPath)
+	apiDistro.CuratorDir = ToAPIString(d.CuratorDir)
+	apiDistro.ClientDir = ToAPIString(d.ClientDir)
+	apiDistro.JasperCredentialsPath = ToAPIString(d.JasperCredentialsPath)
 	apiDistro.SSHKey = ToAPIString(d.SSHKey)
 	apiDistro.Disabled = d.Disabled
 	apiDistro.ContainerPool = ToAPIString(d.ContainerPool)
@@ -244,6 +253,9 @@ func (apiDistro *APIDistro) ToService() (interface{}, error) {
 		d.CloneMethod = distro.CloneMethodLegacySSH
 	}
 	d.ShellPath = FromAPIString(apiDistro.ShellPath)
+	d.CuratorDir = FromAPIString(apiDistro.CuratorDir)
+	d.ClientDir = FromAPIString(apiDistro.ClientDir)
+	d.JasperCredentialsPath = FromAPIString(apiDistro.JasperCredentialsPath)
 	d.SSHKey = FromAPIString(apiDistro.SSHKey)
 	d.SSHOptions = apiDistro.SSHOptions
 	d.SpawnAllowed = apiDistro.UserSpawnAllowed

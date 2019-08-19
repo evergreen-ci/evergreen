@@ -20,11 +20,12 @@ import (
 )
 
 // getUiTaskCache takes a build object and returns a slice of
-// uiTask objects suitable for front-end
-func getUiTaskCache(build *build.Build) ([]uiTask, error) {
+// uiTask objects suitable for front-end as well as the time spent and makespan
+// of the build's tasks
+func getUiTaskCache(build *build.Build) ([]uiTask, time.Duration, time.Duration, error) {
 	tasks, err := task.FindWithDisplayTasks(task.ByBuildId(build.Id))
 	if err != nil {
-		return nil, errors.WithStack(err)
+		return nil, 0, 0, errors.WithStack(err)
 	}
 
 	idToTask := make(map[string]task.Task)
@@ -38,7 +39,18 @@ func getUiTaskCache(build *build.Build) ([]uiTask, error) {
 		taskAsUI := uiTask{Task: idToTask[taskCache.Id]}
 		uiTasks = append(uiTasks, taskAsUI)
 	}
-	return uiTasks, nil
+
+	filteredTasks := make([]task.Task, 0, len(tasks))
+	// remove display tasks
+	for i := range tasks {
+		if tasks[i].DisplayOnly {
+			continue
+		}
+		filteredTasks = append(filteredTasks, tasks[i])
+	}
+	timeTaken, makespan := task.GetTimeSpent(filteredTasks)
+
+	return uiTasks, timeTaken, makespan, nil
 }
 
 func (uis *UIServer) buildPage(w http.ResponseWriter, r *http.Request) {
@@ -60,12 +72,14 @@ func (uis *UIServer) buildPage(w http.ResponseWriter, r *http.Request) {
 		buildAsUI.Repo = projCtx.ProjectRef.Repo
 	}
 
-	uiTasks, err := getUiTaskCache(projCtx.Build)
+	uiTasks, timeTaken, makespan, err := getUiTaskCache(projCtx.Build)
 	if err != nil {
 		uis.LoggedError(w, r, http.StatusInternalServerError, err)
 		return
 	}
 	buildAsUI.Tasks = uiTasks
+	buildAsUI.TimeTaken = timeTaken
+	buildAsUI.Makespan = makespan
 
 	if projCtx.Build.TriggerID != "" {
 		var projectName string
@@ -214,12 +228,15 @@ func (uis *UIServer) modifyBuild(w http.ResponseWriter, r *http.Request) {
 		Version:     *projCtx.Version,
 	}
 
-	uiTasks, err := getUiTaskCache(projCtx.Build)
+	uiTasks, timeTaken, makespan, err := getUiTaskCache(projCtx.Build)
 	if err != nil {
 		uis.LoggedError(w, r, http.StatusInternalServerError, err)
 		return
 	}
 	updatedBuild.Tasks = uiTasks
+	updatedBuild.TimeTaken = timeTaken
+	updatedBuild.Makespan = makespan
+
 	gimlet.WriteJSON(w, updatedBuild)
 }
 

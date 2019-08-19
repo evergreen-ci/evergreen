@@ -5,16 +5,16 @@
       <strong ng-bind-html="commit.message | escapeHtml | jiraLinkify: jiraHost | ansi"></strong>
     </div>
     <div class="commit-message-author">
-      <span class="semi-muted">
+      <span ng-if="commit.author" class="semi-muted">
         [[commit.author]]
         ([[commit.author_email]])
       </span>
       <span class="muted">
-        authored at [[(commit.ingest_time || commit.create_time) | convertDateToUserTimezone:timezone:"MMM D, YYYY h:mm:ss a"]]
+        [[ commit.author ? 'authored' : 'Created' ]] at [[(commit.ingest_time || commit.create_time) | convertDateToUserTimezone:timezone:"MMM D, YYYY h:mm:ss a"]]
       </span>
     </div>
   </div>
-  <div class="pull-right">
+  <div class="pull-right" ng-if="commit.gitspec">
     <a class="btn btn-default btn-hash btn-xs" ng-href="https://github.com/[[commit.repo_owner]]/[[commit.repo_name]]/commit/[[commit.gitspec]]">[[commit.gitspec.substr(0, 5)]]</a>
   </div>
 </div>

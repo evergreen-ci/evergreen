@@ -26,15 +26,19 @@ type APIProjectSettings struct {
 }
 
 type APIProjectVars struct {
-	Vars        map[string]string `json:"vars"`
-	PrivateVars map[string]bool   `json:"private_vars"`
+	Vars         map[string]string `json:"vars"`
+	PrivateVars  map[string]bool   `json:"private_vars"`
+	VarsToDelete []string          `json:"vars_to_delete,omitempty"`
 }
 
 type APIProjectAlias struct {
-	Alias   APIString   `json:"alias"`
-	Variant APIString   `json:"variant"`
-	Task    APIString   `json:"task"`
-	Tags    []APIString `json:"tags,omitempty"`
+	Alias       APIString   `json:"alias"`
+	Variant     APIString   `json:"variant"`
+	Task        APIString   `json:"task"`
+	VariantTags []APIString `json:"variant_tags,omitempty"`
+	TaskTags    []APIString `json:"tags,omitempty"`
+	Delete      bool        `json:"delete,omitempty"`
+	ID          APIString   `json:"_id,omitempty"`
 }
 
 func (e *APIProjectEvent) BuildFromService(h interface{}) error {
@@ -81,34 +85,96 @@ func DbProjectSettingsToRestModel(settings model.ProjectSettingsEvent) (APIProje
 		return APIProjectSettings{}, err
 	}
 
+	apiProjectVars := APIProjectVars{}
+	if err := apiProjectVars.BuildFromService(&settings.Vars); err != nil {
+		return APIProjectSettings{}, err
+	}
+
 	return APIProjectSettings{
 		ProjectRef:            apiProjectRef,
 		GitHubWebhooksEnabled: settings.GitHubHooksEnabled,
-		Vars:                  DbProjectVarsToRestModel(settings.Vars),
+		Vars:                  apiProjectVars,
 		Aliases:               DbProjectAliasesToRestModel(settings.Aliases),
 		Subscriptions:         apiSubscriptions,
 	}, nil
 }
 
-func DbProjectVarsToRestModel(vars model.ProjectVars) APIProjectVars {
-	return APIProjectVars{
-		Vars:        vars.Vars,
-		PrivateVars: vars.PrivateVars,
+func (p *APIProjectVars) ToService() (interface{}, error) {
+	privateVars := map[string]bool{}
+	// ignore false inputs
+	for key, val := range p.PrivateVars {
+		if val {
+			privateVars[key] = val
+		}
 	}
+	return &model.ProjectVars{
+		Vars:        p.Vars,
+		PrivateVars: privateVars,
+	}, nil
+}
+
+func (p *APIProjectVars) BuildFromService(h interface{}) error {
+	switch v := h.(type) {
+	case *model.ProjectVars:
+		p.PrivateVars = v.PrivateVars
+		p.Vars = v.Vars
+	default:
+		return errors.New("Invalid type of the argument")
+	}
+	return nil
+}
+
+func (a *APIProjectAlias) ToService() (interface{}, error) {
+	res := model.ProjectAlias{
+		Alias:       FromAPIString(a.Alias),
+		Task:        FromAPIString(a.Task),
+		Variant:     FromAPIString(a.Variant),
+		TaskTags:    FromAPIStringList(a.TaskTags),
+		VariantTags: FromAPIStringList(a.VariantTags),
+	}
+	if model.IsValidId(FromAPIString(a.ID)) {
+		res.ID = model.NewId(FromAPIString(a.ID))
+	}
+	return res, nil
+}
+
+func (a *APIProjectAlias) BuildFromService(h interface{}) error {
+	switch v := h.(type) {
+	case *model.ProjectAlias:
+		APITaskTags := ToAPIStringList(v.TaskTags)
+		APIVariantTags := ToAPIStringList(v.VariantTags)
+
+		a.Alias = ToAPIString(v.Alias)
+		a.Variant = ToAPIString(v.Variant)
+		a.Task = ToAPIString(v.Task)
+		a.VariantTags = APIVariantTags
+		a.TaskTags = APITaskTags
+		a.ID = ToAPIString(v.ID.Hex())
+	case model.ProjectAlias:
+		APITaskTags := ToAPIStringList(v.TaskTags)
+		APIVariantTags := ToAPIStringList(v.VariantTags)
+
+		a.Alias = ToAPIString(v.Alias)
+		a.Variant = ToAPIString(v.Variant)
+		a.Task = ToAPIString(v.Task)
+		a.VariantTags = APIVariantTags
+		a.TaskTags = APITaskTags
+		a.ID = ToAPIString(v.ID.Hex())
+	default:
+		return errors.New("Invalid type of argument")
+	}
+	return nil
 }
 
 func DbProjectAliasesToRestModel(aliases []model.ProjectAlias) []APIProjectAlias {
 	result := []APIProjectAlias{}
 	for _, alias := range aliases {
-		APITags := []APIString{}
-		for _, tag := range alias.Tags {
-			APITags = append(APITags, ToAPIString(tag))
-		}
 		apiAlias := APIProjectAlias{
-			Alias:   ToAPIString(alias.Alias),
-			Variant: ToAPIString(alias.Variant),
-			Task:    ToAPIString(alias.Task),
-			Tags:    APITags,
+			Alias:       ToAPIString(alias.Alias),
+			Variant:     ToAPIString(alias.Variant),
+			Task:        ToAPIString(alias.Task),
+			TaskTags:    ToAPIStringList(alias.TaskTags),
+			VariantTags: ToAPIStringList(alias.VariantTags),
 		}
 		result = append(result, apiAlias)
 	}

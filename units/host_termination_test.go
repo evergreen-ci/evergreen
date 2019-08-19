@@ -96,14 +96,16 @@ func TestHostCosts(t *testing.T) {
 	}
 	assert.NoError(t1.Insert())
 
-	j := NewHostTerminationJob(&mock.Environment{}, *h, true)
+	env := &mock.Environment{}
+	require.NoError(t, env.Configure(ctx, "", nil))
+	j := NewHostTerminationJob(env, *h, true)
 	j.Run(ctx)
 	assert.NoError(j.Error())
 	dbHost, err := host.FindOne(host.ById(h.Id))
 	assert.NoError(err)
 	assert.NotNil(dbHost)
 	assert.Equal(evergreen.HostTerminated, dbHost.Status)
-	assert.InDelta(5, dbHost.TotalCost, 0.001)
+	assert.InDelta(5, dbHost.TotalCost, 0.002)
 	dbTask, err := task.FindOneId(t1.Id)
 	assert.NoError(err)
 	assert.InDelta(5, dbTask.SpawnedHostCost, 0.001)

@@ -11,6 +11,8 @@ import (
 	"gopkg.in/yaml.v2"
 )
 
+const LoadProjectError = "load project error(s)"
+
 // This file contains the infrastructure for turning a YAML project configuration
 // into a usable Project struct. A basic overview of the project parsing process is:
 //
@@ -37,33 +39,33 @@ import (
 // configuration YAML. It implements the Unmarshaler interface
 // to allow for flexible handling.
 type parserProject struct {
-	Enabled         bool                       `yaml:"enabled,omitempty"`
-	Stepback        bool                       `yaml:"stepback,omitempty"`
-	IgnorePreError  bool                       `yaml:"ignore_pre_err,omitempty"`
-	BatchTime       int                        `yaml:"batchtime,omitempty"`
-	Owner           string                     `yaml:"owner,omitempty"`
-	Repo            string                     `yaml:"repo,omitempty"`
-	RemotePath      string                     `yaml:"remote_path,omitempty"`
-	RepoKind        string                     `yaml:"repokind,omitempty"`
-	Branch          string                     `yaml:"branch,omitempty"`
-	Identifier      string                     `yaml:"identifier,omitempty"`
-	DisplayName     string                     `yaml:"display_name,omitempty"`
-	CommandType     string                     `yaml:"command_type,omitempty"`
-	Ignore          parserStringSlice          `yaml:"ignore,omitempty"`
-	Pre             *YAMLCommandSet            `yaml:"pre,omitempty"`
-	Post            *YAMLCommandSet            `yaml:"post,omitempty"`
-	Timeout         *YAMLCommandSet            `yaml:"timeout,omitempty"`
-	CallbackTimeout int                        `yaml:"callback_timeout_secs,omitempty"`
-	Modules         []Module                   `yaml:"modules,omitempty"`
-	BuildVariants   []parserBV                 `yaml:"buildvariants,omitempty"`
-	Functions       map[string]*YAMLCommandSet `yaml:"functions,omitempty"`
-	TaskGroups      []parserTaskGroup          `yaml:"task_groups,omitempty"`
-	Tasks           []parserTask               `yaml:"tasks,omitempty"`
-	ExecTimeoutSecs int                        `yaml:"exec_timeout_secs,omitempty"`
-	Loggers         *LoggerConfig              `yaml:"loggers,omitempty"`
+	Enabled           bool                       `yaml:"enabled,omitempty" bson:"enabled,omitempty"`
+	Stepback          bool                       `yaml:"stepback,omitempty" bson:"stepback,omitempty"`
+	PreErrorFailsTask bool                       `yaml:"pre_error_fails_task,omitempty" bson:"pre_error_fails_task,omitempty"`
+	BatchTime         int                        `yaml:"batchtime,omitempty" bson:"batchtime,omitempty"`
+	Owner             string                     `yaml:"owner,omitempty" bson:"owner,omitempty"`
+	Repo              string                     `yaml:"repo,omitempty" bson:"repo,omitempty"`
+	RemotePath        string                     `yaml:"remote_path,omitempty" bson:"remote_path,omitempty"`
+	RepoKind          string                     `yaml:"repokind,omitempty" bson:"repokind,omitempty"`
+	Branch            string                     `yaml:"branch,omitempty" bson:"branch,omitempty"`
+	Identifier        string                     `yaml:"identifier,omitempty" bson:"identifier,omitempty"`
+	DisplayName       string                     `yaml:"display_name,omitempty" bson:"display_name,omitempty"`
+	CommandType       string                     `yaml:"command_type,omitempty" bson:"command_type,omitempty"`
+	Ignore            parserStringSlice          `yaml:"ignore,omitempty" bson:"ignore,omitempty"`
+	Pre               *YAMLCommandSet            `yaml:"pre,omitempty" bson:"pre,omitempty"`
+	Post              *YAMLCommandSet            `yaml:"post,omitempty" bson:"post,omitempty"`
+	Timeout           *YAMLCommandSet            `yaml:"timeout,omitempty" bson:"timeout,omitempty"`
+	CallbackTimeout   int                        `yaml:"callback_timeout_secs,omitempty" bson:"callback_timeout_secs,omitempty"`
+	Modules           []Module                   `yaml:"modules,omitempty" bson:"modules,omitempty"`
+	BuildVariants     []parserBV                 `yaml:"buildvariants,omitempty" bson:"buildvariants,omitempty"`
+	Functions         map[string]*YAMLCommandSet `yaml:"functions,omitempty" bson:"functions,omitempty"`
+	TaskGroups        []parserTaskGroup          `yaml:"task_groups,omitempty" bson:"task_groups,omitempty"`
+	Tasks             []parserTask               `yaml:"tasks,omitempty" bson:"tasks,omitempty"`
+	ExecTimeoutSecs   int                        `yaml:"exec_timeout_secs,omitempty" bson:"exec_timeout_secs,omitempty"`
+	Loggers           *LoggerConfig              `yaml:"loggers,omitempty" bson:"loggers:omitempty"`
 
 	// Matrix code
-	Axes []matrixAxis `yaml:"axes,omitempty"`
+	Axes []matrixAxis `yaml:"axes,omitempty" bson:"axes,omitempty"`
 }
 
 type parserTaskGroup struct {
@@ -103,6 +105,18 @@ type parserTask struct {
 	Patchable       *bool               `yaml:"patchable,omitempty"`
 	PatchOnly       *bool               `yaml:"patch_only,omitempty"`
 	Stepback        *bool               `yaml:"stepback,omitempty"`
+}
+
+func (pp *parserProject) MarshalYAML() (interface{}, error) {
+	for i, pt := range pp.Tasks {
+		for j := range pt.Commands {
+			if err := pp.Tasks[i].Commands[j].resolveParams(); err != nil {
+				return nil, errors.Wrapf(err, "error marshalling commands for task")
+			}
+		}
+	}
+
+	return pp, nil
 }
 
 type displayTask struct {
@@ -163,7 +177,7 @@ func (pd *parserDependency) UnmarshalYAML(unmarshal func(interface{}) error) err
 // in the context of dependencies and requirements fields. //TODO no export?
 type taskSelector struct {
 	Name    string           `yaml:"name,omitempty"`
-	Variant *variantSelector `yaml:"variant,omitempty"`
+	Variant *variantSelector `yaml:"variant,omitempty" bson:"variant"`
 }
 
 // TaskSelectors is a helper type for parsing arrays of TaskSelector.
@@ -172,8 +186,8 @@ type taskSelectors []taskSelector
 // VariantSelector handles the selection of a variant, either by a id/tag selector
 // or by matching against matrix axis values.
 type variantSelector struct {
-	stringSelector string
-	matrixSelector matrixDefinition
+	StringSelector string           `yaml:"string_selector" bson:"string_selector"`
+	MatrixSelector matrixDefinition `yaml:"matrix_selector" bson:"matrix_selector"`
 }
 
 // UnmarshalYAML allows variants to be referenced as single selector strings or
@@ -184,7 +198,7 @@ func (vs *variantSelector) UnmarshalYAML(unmarshal func(interface{}) error) erro
 	var onlySelector string
 	if err := unmarshal(&onlySelector); err == nil {
 		if onlySelector != "" {
-			vs.stringSelector = onlySelector
+			vs.StringSelector = onlySelector
 			return nil
 		}
 	}
@@ -196,17 +210,17 @@ func (vs *variantSelector) UnmarshalYAML(unmarshal func(interface{}) error) erro
 	if len(md) == 0 {
 		return errors.New("variant selector must not be empty")
 	}
-	vs.matrixSelector = md
+	vs.MatrixSelector = md
 	return nil
 }
 
 func (vs *variantSelector) MarshalYAML() (interface{}, error) {
-	if vs == nil || vs.stringSelector == "" {
+	if vs == nil || vs.StringSelector == "" {
 		return nil, nil
 	}
 	// Note: Generate tasks will not work with matrix variant selectors,
 	// since this will only marshal the string part of a variant selector.
-	return vs.stringSelector, nil
+	return vs.StringSelector, nil
 }
 
 // UnmarshalYAML reads YAML into an array of TaskSelector. It will
@@ -408,10 +422,7 @@ func LoadProjectInto(data []byte, identifier string, project *Project) error {
 			}
 			buf.WriteString(e.Error())
 		}
-		if len(errs) > 1 {
-			return errors.Errorf("project errors: %v", buf.String())
-		}
-		return errors.Errorf("project error: %v", buf.String())
+		return errors.Errorf("%s: %s", LoadProjectError, buf.String())
 	}
 	*project = *p
 	project.Identifier = identifier
@@ -451,27 +462,27 @@ func createIntermediateProject(yml []byte) (*parserProject, []error) {
 func translateProject(pp *parserProject) (*Project, []error) {
 	// Transfer top level fields
 	proj := &Project{
-		Enabled:         pp.Enabled,
-		Stepback:        pp.Stepback,
-		IgnorePreError:  pp.IgnorePreError,
-		BatchTime:       pp.BatchTime,
-		Owner:           pp.Owner,
-		Repo:            pp.Repo,
-		RemotePath:      pp.RemotePath,
-		RepoKind:        pp.RepoKind,
-		Branch:          pp.Branch,
-		Identifier:      pp.Identifier,
-		DisplayName:     pp.DisplayName,
-		CommandType:     pp.CommandType,
-		Ignore:          pp.Ignore,
-		Pre:             pp.Pre,
-		Post:            pp.Post,
-		Timeout:         pp.Timeout,
-		CallbackTimeout: pp.CallbackTimeout,
-		Modules:         pp.Modules,
-		Functions:       pp.Functions,
-		ExecTimeoutSecs: pp.ExecTimeoutSecs,
-		Loggers:         pp.Loggers,
+		Enabled:           pp.Enabled,
+		Stepback:          pp.Stepback,
+		PreErrorFailsTask: pp.PreErrorFailsTask,
+		BatchTime:         pp.BatchTime,
+		Owner:             pp.Owner,
+		Repo:              pp.Repo,
+		RemotePath:        pp.RemotePath,
+		RepoKind:          pp.RepoKind,
+		Branch:            pp.Branch,
+		Identifier:        pp.Identifier,
+		DisplayName:       pp.DisplayName,
+		CommandType:       pp.CommandType,
+		Ignore:            pp.Ignore,
+		Pre:               pp.Pre,
+		Post:              pp.Post,
+		Timeout:           pp.Timeout,
+		CallbackTimeout:   pp.CallbackTimeout,
+		Modules:           pp.Modules,
+		Functions:         pp.Functions,
+		ExecTimeoutSecs:   pp.ExecTimeoutSecs,
+		Loggers:           pp.Loggers,
 	}
 	tse := NewParserTaskSelectorEvaluator(pp.Tasks)
 	tgse := newTaskGroupSelectorEvaluator(pp.TaskGroups)

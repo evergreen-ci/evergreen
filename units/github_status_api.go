@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
-	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/commitqueue"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/mongodb/amboy"
@@ -25,10 +24,22 @@ import (
 const (
 	githubStatusUpdateJobName = "github-status-update"
 
-	githubUpdateTypeNewPatch          = "new-patch"
-	githubUpdateTypeRequestAuth       = "request-auth"
-	githubUpdateTypePushToCommitQueue = "commit-queue"
-	githubUpdateTypeBadConfig         = "bad-config"
+	githubUpdateTypeNewPatch              = "new-patch"
+	githubUpdateTypeRequestAuth           = "request-auth"
+	githubUpdateTypePushToCommitQueue     = "commit-queue-push"
+	githubUpdateTypeDeleteFromCommitQueue = "commit-queue-delete"
+	githubUpdateTypeProcessingError       = "processing-error"
+
+	evergreenContext = "evergreen"
+)
+
+const (
+	// GitHub intent processing errors
+	ProjectDisabled     = "project was disabled"
+	PatchingDisabled    = "patching was disabled"
+	GitHubInternalError = "GitHub returned an error"
+	InvalidConfig       = "config file was invalid"
+	OtherErrors         = "Evergreen error"
 )
 
 func init() {
@@ -41,11 +52,13 @@ type githubStatusUpdateJob struct {
 	urlBase  string
 	sender   send.Sender
 
-	FetchID    string `bson:"fetch_id" json:"fetch_id" yaml:"fetch_id"`
-	UpdateType string `bson:"update_type" json:"update_type" yaml:"update_type"`
-	Owner      string `bson:"owner" json:"owner" yaml:"owner"`
-	Repo       string `bson:"repo" json:"repo" yaml:"repo"`
-	Ref        string `bson:"ref" json:"ref" yaml:"ref"`
+	FetchID       string `bson:"fetch_id" json:"fetch_id" yaml:"fetch_id"`
+	UpdateType    string `bson:"update_type" json:"update_type" yaml:"update_type"`
+	Owner         string `bson:"owner" json:"owner" yaml:"owner"`
+	Repo          string `bson:"repo" json:"repo" yaml:"repo"`
+	Ref           string `bson:"ref" json:"ref" yaml:"ref"`
+	GitHubContext string `bson:"github_context" json:"github_context" yaml:"github_context"`
+	Description   string `bson:"description" json:"description" yaml:"description"`
 }
 
 func makeGithubStatusUpdateJob() *githubStatusUpdateJob {
@@ -97,17 +110,29 @@ func NewGithubStatusUpdateJobForPushToCommitQueue(owner, repo, ref string, prNum
 	return job
 }
 
-// NewGithubStatusUpdateJobForBadConfig marks a ref as failed because the
-// evergreen configuration is bad
-func NewGithubStatusUpdateJobForBadConfig(projectRef *model.ProjectRef, hash, senderID string) amboy.Job {
+func NewGithubStatusUpdateJobForDeleteFromCommitQueue(owner, repo, ref string, prNumber int) amboy.Job {
 	job := makeGithubStatusUpdateJob()
-	job.FetchID = projectRef.Identifier
-	job.Owner = projectRef.Owner
-	job.Repo = projectRef.Repo
-	job.Ref = hash
-	job.UpdateType = githubUpdateTypeBadConfig
+	job.UpdateType = githubUpdateTypeDeleteFromCommitQueue
+	job.Owner = owner
+	job.Repo = repo
+	job.Ref = ref
 
-	job.SetID(fmt.Sprintf("%s:%s-%s-%s", githubStatusUpdateJobName, job.UpdateType, senderID, time.Now().String()))
+	job.SetID(fmt.Sprintf("%s:%s-%s-%s-%d-%s", githubStatusUpdateJobName, job.UpdateType, owner, repo, prNumber, time.Now().String()))
+	return job
+}
+
+// NewGithubStatusUpdateJobForProcessingError marks a ref as failed because the
+// evergreen encountered an error creating a patch
+func NewGithubStatusUpdateJobForProcessingError(githubContext, owner, repo, ref, description string) amboy.Job {
+	job := makeGithubStatusUpdateJob()
+	job.Owner = owner
+	job.Repo = repo
+	job.Ref = ref
+	job.UpdateType = githubUpdateTypeProcessingError
+	job.GitHubContext = githubContext
+	job.Description = description
+
+	job.SetID(fmt.Sprintf("%s:%s-%s-%s-%s-%s", githubStatusUpdateJobName, job.UpdateType, owner, repo, description, time.Now().String()))
 
 	return job
 }
@@ -152,11 +177,10 @@ func (j *githubStatusUpdateJob) fetch() (*message.GithubStatus, error) {
 	var patchDoc *patch.Patch
 	status := message.GithubStatus{}
 
-	if j.UpdateType == githubUpdateTypeBadConfig {
-		status.URL = fmt.Sprintf("%s/waterfall/%s", j.urlBase, j.FetchID)
-		status.Context = "evergreen"
+	if j.UpdateType == githubUpdateTypeProcessingError {
+		status.Context = j.GitHubContext
 		status.State = message.GithubStateFailure
-		status.Description = "project config was invalid"
+		status.Description = j.Description
 
 		status.Owner = j.Owner
 		status.Repo = j.Repo
@@ -167,19 +191,30 @@ func (j *githubStatusUpdateJob) fetch() (*message.GithubStatus, error) {
 
 	} else if j.UpdateType == githubUpdateTypeNewPatch {
 		status.URL = fmt.Sprintf("%s/version/%s", j.urlBase, j.FetchID)
-		status.Context = "evergreen"
+		status.Context = evergreenContext
 		status.State = message.GithubStatePending
 		status.Description = "preparing to run tasks"
 
 	} else if j.UpdateType == githubUpdateTypeRequestAuth {
 		status.URL = fmt.Sprintf("%s/patch/%s", j.urlBase, j.FetchID)
-		status.Context = "evergreen"
+		status.Context = evergreenContext
 		status.Description = "patch must be manually authorized"
 		status.State = message.GithubStateFailure
 	} else if j.UpdateType == githubUpdateTypePushToCommitQueue {
 		status.Context = commitqueue.Context
 		status.Description = "added to queue"
 		status.State = message.GithubStatePending
+
+		status.Owner = j.Owner
+		status.Repo = j.Repo
+		status.Ref = j.Ref
+
+		// Since there is no patch document, we return early.
+		return &status, nil
+	} else if j.UpdateType == githubUpdateTypeDeleteFromCommitQueue {
+		status.Context = commitqueue.Context
+		status.Description = "removed from queue"
+		status.State = message.GithubStateSuccess
 
 		status.Owner = j.Owner
 		status.Repo = j.Repo

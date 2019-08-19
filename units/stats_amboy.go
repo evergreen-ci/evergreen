@@ -82,7 +82,7 @@ func (j *amboyStatsCollector) Run(ctx context.Context) {
 	if !j.ExcludeLocal && (localQueue != nil && localQueue.Started()) {
 		j.logger.Info(message.Fields{
 			"message": "amboy local queue stats",
-			"stats":   localQueue.Stats(),
+			"stats":   localQueue.Stats(ctx),
 		})
 	}
 
@@ -90,7 +90,7 @@ func (j *amboyStatsCollector) Run(ctx context.Context) {
 	if !j.ExcludeRemote && (remoteQueue != nil && remoteQueue.Started()) {
 		j.logger.Info(message.Fields{
 			"message": "amboy remote queue stats",
-			"stats":   remoteQueue.Stats(),
+			"stats":   remoteQueue.Stats(ctx),
 		})
 
 		if evergreen.EnableAmboyRemoteReporting {
@@ -107,7 +107,10 @@ func (j *amboyStatsCollector) collectExtendedRemoteStats(ctx context.Context) er
 	opts.DB = settings.Amboy.DB
 	opts.Priority = true
 
-	reporter, err := reporting.MakeDBQueueState(ctx, settings.Amboy.Name, opts, j.env.Client())
+	reporter, err := reporting.MakeDBQueueState(ctx, reporting.DBQueueReporterOptions{
+		Name:    settings.Amboy.Name,
+		Options: opts,
+	}, j.env.Client())
 	if err != nil {
 		return err
 	}

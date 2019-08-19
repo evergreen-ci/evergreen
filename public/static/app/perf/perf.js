@@ -14,7 +14,7 @@ var findIndex = function(list, predicate) {
 mciModule.controller('PerfController', function PerfController(
   $scope, $window, $http, $location, $log, $q, $filter, ChangePointsService,
   DrawPerfTrendChart, PROCESSED_TYPE, Settings, Stitch, STITCH_CONFIG,
-  TestSample, TrendSamples, PointsDataService, WhitelistDataService
+  TestSample, TrendSamples, PointsDataService, WhitelistDataService, CANARY_EXCLUSION_REGEX
 ) {
     /* for debugging
     $sce, $compile){
@@ -222,12 +222,17 @@ mciModule.controller('PerfController', function PerfController(
       tests = scope.perfSample.testNames(),
       taskId = scope.task.id,
       compareSamples = scope.comparePerfSamples;
+    if (!trendSamples) {
+      return;
+    }
 
     // Creates new, non-isolated scope for charts
     var chartsScope = scope.$new()
     for (var i = 0; i < tests.length; i++) {
       var key = tests[i];
-      var series = trendSamples.seriesByName[key] || [];
+      var series = _.filter(trendSamples.seriesByName[key] || [], function(sample) {
+        return sample[scope.metricSelect.value.key];
+      });
       var containerId = 'perf-trendchart-' + cleanId(taskId) + '-' + i;
       var cps = scope.changePoints || {};
       var bfs = scope.buildFailures || {};
@@ -291,7 +296,8 @@ mciModule.controller('PerfController', function PerfController(
       var margin = { top: 20, right: 50, bottom: 30, left: 80 };
       var width = 450 - margin.left - margin.right;
       var height = 200 - margin.top - margin.bottom;
-      var svg = d3.select("#chart-" + cleanId(taskId) + "-" + i)
+      var id = "chart-" + cleanId(taskId) + "-" + i;
+      var svg = d3.select('[id="' + id + '"]')
         .append("svg")
         .attr("width", width + margin.left + margin.right)
         .attr("height", height + margin.top + margin.bottom)
@@ -560,6 +566,18 @@ mciModule.controller('PerfController', function PerfController(
     }
   }
 
+  $scope.isCanary = function(test) {
+    return !test.match(CANARY_EXCLUSION_REGEX);
+  }
+
+  $scope.hideCanaries = function() {
+    $scope.perfSample.testNames().forEach(function(name) {
+      if($scope.isCanary(name)) {
+        $scope.hiddenGraphs[name] = true;
+      }
+    });
+  }
+
   $scope.processAndDrawGraphs = function() {
     setTimeout(function(){drawDetailGraph($scope.perfSample, $scope.comparePerfSamples, $scope.task.id, $scope.metricSelect.value.key)},0);
 
@@ -713,7 +731,8 @@ mciModule.controller('PerfController', function PerfController(
       });
     }
 
-    let historyPromise = $http.get(cedarApp + "/rest/v1/perf/task_name/" + $scope.task.display_name + "?variant=" + $scope.task.build_variant).then(
+    let historyPromise = $http.get(cedarApp + "/rest/v1/perf/task_name/" + $scope.task.display_name + 
+    "?variant=" + $scope.task.build_variant + "&project=" + $scope.task.branch).then(
       function(resp) {
         let converted = $filter("expandedHistoryConverter")(resp.data, $scope.task.execution);
         trendDataSuccess(converted);
@@ -726,6 +745,7 @@ mciModule.controller('PerfController', function PerfController(
     // Once trend chart data and change points get loaded
     var onHistoryRetrieved = function() {
       $scope.hideEmptyGraphs();
+      $scope.hideCanaries();
       setTimeout(drawTrendGraph, 0, $scope);
     };
     $q.all([historyPromise, changePointsQ.catch(), buildFailuresQ.catch()])

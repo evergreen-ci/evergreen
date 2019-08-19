@@ -4,6 +4,7 @@ import (
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/mongodb/anser/bsonutil"
 	adb "github.com/mongodb/anser/db"
+	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson"
 )
@@ -16,6 +17,7 @@ var (
 	QueueKey      = bsonutil.MustHaveTag(CommitQueue{}, "Queue")
 	ProcessingKey = bsonutil.MustHaveTag(CommitQueue{}, "Processing")
 	IssueKey      = bsonutil.MustHaveTag(CommitQueueItem{}, "Issue")
+	VersionKey    = bsonutil.MustHaveTag(CommitQueueItem{}, "Version")
 )
 
 func updateOne(query interface{}, update interface{}) error {
@@ -52,17 +54,28 @@ func insert(q *CommitQueue) error {
 func add(id string, queue []CommitQueueItem, item CommitQueueItem) error {
 	err := updateOne(
 		bson.M{
-			IdKey:    id,
-			QueueKey: queue,
+			IdKey: id,
 		},
 		bson.M{"$push": bson.M{QueueKey: item}},
 	)
 
 	if adb.ResultsNotFound(err) {
-		return errors.New("queue has changed in the database")
+		grip.Error(errors.Wrapf(err, "update failed for queue '%s', %+v", id, queue))
+		return errors.Errorf("update failed for queue '%s', %+v", id, queue)
 	}
 
 	return err
+}
+
+func addVersionID(id string, item CommitQueueItem) error {
+	return updateOne(
+		bson.M{
+			IdKey: id,
+			bsonutil.GetDottedKeyName(QueueKey, IssueKey): item.Issue,
+		},
+		bson.M{
+			"$set": bson.M{bsonutil.GetDottedKeyName(QueueKey, "$", VersionKey): item.Version},
+		})
 }
 
 func remove(id, issue string) error {

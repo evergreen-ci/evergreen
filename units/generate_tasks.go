@@ -17,6 +17,7 @@ import (
 	"github.com/mongodb/amboy/registry"
 	adb "github.com/mongodb/anser/db"
 	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 )
 
@@ -59,6 +60,7 @@ func NewGenerateTasksJob(id string, json []json.RawMessage) amboy.Job {
 
 func (j *generateTasksJob) Run(ctx context.Context) {
 	defer j.MarkComplete()
+	start := time.Now()
 
 	projects, err := parseProjects(j.JSON)
 	if err != nil {
@@ -68,10 +70,14 @@ func (j *generateTasksJob) Run(ctx context.Context) {
 	g := model.MergeGeneratedProjects(projects)
 	g.TaskID = j.TaskID
 
+	var attempt int
 	err = util.Retry(
 		ctx,
 		func() (bool, error) {
-			p, v, t, pm, prevConfig, err := g.NewVersion() // nolint
+			attemptStart := time.Now()
+			attempt++
+
+			p, v, t, pm, err := g.NewVersion() // nolint
 			if err != nil {
 				return false, err
 			}
@@ -81,7 +87,7 @@ func (j *generateTasksJob) Run(ctx context.Context) {
 			if err = validator.CheckProjectConfigurationIsValid(p); err != nil {
 				return false, err
 			}
-			err = g.Save(ctx, p, v, t, pm, prevConfig)
+			err = g.Save(ctx, p, v, t, pm)
 			if err != nil && adb.ResultsNotFound(err) {
 				return true, gimlet.ErrorResponse{
 					StatusCode: http.StatusInternalServerError,
@@ -94,6 +100,14 @@ func (j *generateTasksJob) Run(ctx context.Context) {
 					Message:    errors.Wrapf(err, "problem marking task '%s' as having generated tasks", t.Id).Error(),
 				}
 			}
+			grip.Info(message.Fields{
+				"message":               "generate.tasks succeeded",
+				"attempt":               attempt,
+				"attempt_duration_secs": time.Since(attemptStart).Seconds(),
+				"total_duration_secs":   time.Since(start).Seconds(),
+				"task":                  t.Id,
+				"version":               t.Version,
+			})
 			return false, nil
 		}, 100, time.Second, 15*time.Second)
 	j.AddError(err)

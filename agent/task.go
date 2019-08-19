@@ -174,9 +174,7 @@ func (a *Agent) runPreTaskCommands(ctx context.Context, tc *taskContext) error {
 	}
 
 	if taskGroup.SetupTask != nil {
-		// TODO EVG-6009 uncomment the following line once we are ready to change the behavior
-		//opts.shouldSetupFail = taskGroup.SetupGroupFailTask
-		opts.shouldSetupFail = false
+		opts.shouldSetupFail = taskGroup.SetupGroupFailTask
 		err = a.runCommands(ctx, tc, taskGroup.SetupTask.List(), opts)
 	}
 	if err != nil {

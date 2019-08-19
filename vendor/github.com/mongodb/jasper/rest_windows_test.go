@@ -3,7 +3,6 @@ package jasper
 import (
 	"context"
 	"fmt"
-	"net/http"
 	"syscall"
 	"testing"
 
@@ -12,7 +11,8 @@ import (
 )
 
 func TestWindowsRESTService(t *testing.T) {
-	httpClient := &http.Client{}
+	httpClient := GetHTTPClient()
+	defer PutHTTPClient(httpClient)
 
 	for testName, testCase := range map[string]func(context.Context, *testing.T, *Service, *restClient){
 		"SignalEventWithNonexistentEvent": func(ctx context.Context, t *testing.T, srv *Service, client *restClient) {
@@ -35,7 +35,8 @@ func TestWindowsRESTService(t *testing.T) {
 			ctx, cancel := context.WithTimeout(context.Background(), longTaskTimeout)
 			defer cancel()
 
-			srv, port := makeAndStartService(ctx, httpClient)
+			srv, port, err := startRESTService(ctx, httpClient)
+			require.NoError(t, err)
 			require.NotNil(t, srv)
 
 			client := &restClient{

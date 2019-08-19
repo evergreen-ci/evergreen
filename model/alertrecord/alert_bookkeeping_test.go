@@ -51,7 +51,7 @@ func (s *alertRecordSuite) TestInsertNewTaskRegressionByTestRecord() {
 	s.Equal("variant", record.Variant)
 	s.Equal("test", record.TestName)
 	s.Equal(5, record.RevisionOrderNumber)
-	s.InDelta(time.Now().UnixNano(), record.AlertTime.UnixNano(), float64(10*time.Millisecond))
+	s.Equal(time.Now().Round(time.Second), record.AlertTime.Round(time.Second))
 }
 
 func (s *alertRecordSuite) TestByLastFailureTransition() {

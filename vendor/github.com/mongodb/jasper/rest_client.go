@@ -22,7 +22,7 @@ import (
 func NewRESTClient(addr net.Addr) RemoteClient {
 	return &restClient{
 		prefix: fmt.Sprintf("http://%s/jasper/v1", addr.String()),
-		client: http.DefaultClient,
+		client: GetHTTPClient(),
 	}
 }
 
@@ -32,6 +32,7 @@ type restClient struct {
 }
 
 func (c *restClient) CloseConnection() error {
+	PutHTTPClient(c.client)
 	return nil
 }
 
@@ -86,6 +87,22 @@ func (c *restClient) doRequest(ctx context.Context, method string, url string, b
 	}
 
 	return resp, nil
+}
+
+func (c *restClient) ID() string {
+	resp, err := c.doRequest(context.Background(), http.MethodGet, c.getURL("/id"), nil)
+	if err != nil {
+		grip.Debug(errors.Wrap(err, "request returned error"))
+		return ""
+	}
+	defer resp.Body.Close()
+
+	var id string
+	if err = gimlet.GetJSON(resp.Body, &id); err != nil {
+		return ""
+	}
+
+	return id
 }
 
 func (c *restClient) CreateProcess(ctx context.Context, opts *CreateOptions) (Process, error) {
@@ -238,19 +255,19 @@ func (c *restClient) GetBuildloggerURLs(ctx context.Context, id string) ([]strin
 	return urls, nil
 }
 
-func (c *restClient) GetLogs(ctx context.Context, id string) ([]string, error) {
-	resp, err := c.doRequest(ctx, http.MethodGet, c.getURL("/process/%s/logs", id), nil)
+func (c *restClient) GetLogStream(ctx context.Context, id string, count int) (LogStream, error) {
+	resp, err := c.doRequest(ctx, http.MethodGet, c.getURL("/process/%s/logs/%d", id, count), nil)
 	if err != nil {
-		return nil, err
+		return LogStream{}, err
 	}
 	defer resp.Body.Close()
 
-	logs := []string{}
-	if err = gimlet.GetJSON(resp.Body, &logs); err != nil {
-		return nil, errors.Wrap(err, "problem reading logs from response")
+	stream := LogStream{}
+	if err = gimlet.GetJSON(resp.Body, &stream); err != nil {
+		return LogStream{}, errors.Wrap(err, "problem reading logs from response")
 	}
 
-	return logs, nil
+	return stream, nil
 }
 
 func (c *restClient) DownloadFile(ctx context.Context, info DownloadInfo) error {
@@ -311,9 +328,8 @@ func (c *restClient) SignalEvent(ctx context.Context, name string) error {
 }
 
 type restProcess struct {
-	id              string
-	client          *restClient
-	buildloggerURLs []string
+	id     string
+	client *restClient
 }
 
 func (p *restProcess) ID() string { return p.id }

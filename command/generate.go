@@ -21,6 +21,10 @@ import (
 type generateTask struct {
 	// Files are a list of JSON documents.
 	Files []string `mapstructure:"files" plugin:"expand"`
+
+	// Optional causes generate.tasks to noop if no files match
+	Optional bool `mapstructure:"optional"`
+
 	base
 }
 
@@ -39,10 +43,6 @@ func (c *generateTask) ParseParams(params map[string]interface{}) error {
 
 func (c *generateTask) Execute(ctx context.Context, comm client.Communicator, logger client.LoggerProducer, conf *model.TaskConfig) error {
 	var err error
-	if conf.Task.Execution > 0 {
-		logger.Task().Warning("Refusing to generate tasks on an execution other than the first one")
-		return nil
-	}
 	if err = util.ExpandValues(c, conf.Expansions); err != nil {
 		return errors.Wrap(err, "error expanding params")
 	}
@@ -52,7 +52,11 @@ func (c *generateTask) Execute(ctx context.Context, comm client.Communicator, lo
 	}
 
 	if len(c.Files) == 0 {
-		return errors.New("expanded file specification had no items")
+		if c.Optional {
+			logger.Task().Info("No files found and optional is true, skipping generate.tasks")
+			return nil
+		}
+		return errors.New("No files found for generate.tasks")
 	}
 
 	catcher := grip.NewBasicCatcher()
@@ -96,7 +100,7 @@ func (c *generateTask) Execute(ctx context.Context, comm client.Communicator, lo
 				return false, nil
 			}
 			return true, errors.New("task generation unfinished")
-		}, 200, time.Second, 15*time.Second)
+		}, 250, time.Second, 15*time.Second)
 	if err != nil {
 		return errors.WithMessage(err, "problem polling for generate tasks job")
 	}

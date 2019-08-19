@@ -2,7 +2,6 @@ package jasper
 
 import (
 	"context"
-	"runtime"
 	"syscall"
 
 	"github.com/mongodb/grip"
@@ -38,12 +37,7 @@ func TerminateAll(ctx context.Context, procs []Process) error {
 	}
 
 	for _, proc := range procs {
-		if runtime.GOOS == "windows" {
-			_, _ = proc.Wait(ctx)
-		} else {
-			_, err := proc.Wait(ctx)
-			catcher.Add(err)
-		}
+		_, _ = proc.Wait(ctx)
 	}
 
 	return catcher.Resolve()

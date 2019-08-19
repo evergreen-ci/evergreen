@@ -21,6 +21,8 @@ import (
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/amboy/pool"
 	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
+	"github.com/mongodb/grip/recovery"
 	"github.com/pkg/errors"
 )
 
@@ -63,8 +65,6 @@ func NewLocalUnordered(workers int) amboy.Queue {
 
 	q.tasks.m = make(map[string]amboy.Job)
 
-	grip.Debugln("queue buffer size:", bufferSize)
-
 	r := pool.NewLocalWorkers(workers, q)
 	q.runner = r
 
@@ -74,11 +74,19 @@ func NewLocalUnordered(workers int) amboy.Queue {
 // Put adds a job to the amboy.Job Queue. Returns an error if the
 // Queue has not yet started or if an amboy.Job with the
 // same name (i.e. amboy.Job.ID()) exists.
-func (q *unorderedLocal) Put(j amboy.Job) error {
+func (q *unorderedLocal) Put(ctx context.Context, j amboy.Job) error {
 	name := j.ID()
 
 	if !q.started {
 		return errors.Errorf("cannot add %s because queue has not started", name)
+	}
+
+	j.UpdateTimeInfo(amboy.JobTimeInfo{
+		Created: time.Now(),
+	})
+
+	if err := j.TimeInfo().Validate(); err != nil {
+		return errors.Wrap(err, "invalid job timeinfo")
 	}
 
 	q.tasks.Lock()
@@ -88,16 +96,16 @@ func (q *unorderedLocal) Put(j amboy.Job) error {
 		return errors.Errorf("cannot add %s, because a job exists with that name", name)
 	}
 
-	j.UpdateTimeInfo(amboy.JobTimeInfo{
-		Created: time.Now(),
-	})
+	select {
+	case <-ctx.Done():
+		return errors.Errorf("timed out adding %s to queue", name)
+	case q.channel <- j:
+		q.tasks.m[name] = j
+		q.numStarted++
+		grip.Debugf("added job (%s) to queue", j.ID())
+		return nil
+	}
 
-	q.tasks.m[name] = j
-	q.numStarted++
-	q.channel <- j
-	grip.Debugf("added job (%s) to queue", j.ID())
-
-	return nil
 }
 
 // Runner returns the embedded task runner.
@@ -140,7 +148,6 @@ func (q *unorderedLocal) Start(ctx context.Context) error {
 
 	q.started = true
 
-	grip.Info("job server running")
 	return nil
 }
 
@@ -153,6 +160,24 @@ func (q *unorderedLocal) Next(ctx context.Context) amboy.Job {
 		case <-ctx.Done():
 			return nil
 		case job := <-q.channel:
+			ti := job.TimeInfo()
+			if ti.IsStale() {
+				grip.Notice(message.Fields{
+					"state":    "stale, discard",
+					"job":      job.ID(),
+					"job_type": job.Type().Name,
+				})
+				continue
+			}
+
+			if !ti.IsDispatchable() {
+				go func() {
+					defer recovery.LogStackTraceAndContinue("re-queue waiting job", job.ID())
+					q.channel <- job
+				}()
+				continue
+			}
+
 			return job
 		}
 	}
@@ -203,7 +228,12 @@ func (q *unorderedLocal) JobStats(ctx context.Context) <-chan amboy.JobStatusInf
 
 			stat := job.Status()
 			stat.ID = job.ID()
-			out <- stat
+			select {
+			case <-ctx.Done():
+				return
+			case out <- stat:
+			}
+
 		}
 
 	}()
@@ -212,7 +242,7 @@ func (q *unorderedLocal) JobStats(ctx context.Context) <-chan amboy.JobStatusInf
 }
 
 // Get takes a name and returns a completed job.
-func (q *unorderedLocal) Get(name string) (amboy.Job, bool) {
+func (q *unorderedLocal) Get(ctx context.Context, name string) (amboy.Job, bool) {
 	q.tasks.RLock()
 	defer q.tasks.RUnlock()
 
@@ -223,7 +253,7 @@ func (q *unorderedLocal) Get(name string) (amboy.Job, bool) {
 
 // Stats returns a statistics object with data about the total number
 // of jobs tracked by the queue.
-func (q *unorderedLocal) Stats() amboy.QueueStats {
+func (q *unorderedLocal) Stats(ctx context.Context) amboy.QueueStats {
 	s := amboy.QueueStats{}
 
 	q.tasks.RLock()
@@ -239,6 +269,9 @@ func (q *unorderedLocal) Stats() amboy.QueueStats {
 // Complete marks a job as complete, moving it from the in progress
 // state to the completed state. This operation is asynchronous and non-blocking.
 func (q *unorderedLocal) Complete(ctx context.Context, j amboy.Job) {
+	if ctx.Err() != nil {
+		return
+	}
 	go func() {
 		grip.Debugf("marking job (%s) as complete", j.ID())
 		q.tasks.Lock()

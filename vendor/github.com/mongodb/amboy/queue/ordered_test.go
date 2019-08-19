@@ -11,11 +11,7 @@ import (
 	"github.com/mongodb/amboy/dependency"
 	"github.com/mongodb/amboy/job"
 	"github.com/mongodb/amboy/pool"
-	"github.com/mongodb/grip"
-	uuid "github.com/satori/go.uuid"
 	"github.com/stretchr/testify/suite"
-	mgo "gopkg.in/mgo.v2"
-	"gopkg.in/mgo.v2/bson"
 )
 
 type OrderedQueueSuite struct {
@@ -42,49 +38,7 @@ func TestLocalOrderedQueueSuiteThreeWorker(t *testing.T) {
 	suite.Run(t, s)
 }
 
-func TestRemoteMgoOrderedQueueSuiteFourWorkers(t *testing.T) {
-	s := &OrderedQueueSuite{}
-	name := "test-" + uuid.NewV4().String()
-	uri := "mongodb://localhost"
-	opts := DefaultMongoDBOptions()
-	opts.DB = "amboy_test"
-	ctx, cancel := context.WithCancel(context.Background())
-
-	session, err := mgo.Dial(uri)
-	if err != nil || session == nil {
-		t.Fatal("problem configuring connection to:", uri)
-	}
-	defer session.Close()
-
-	s.size = 4
-
-	s.setup = func() {
-		remote := NewSimpleRemoteOrdered(s.size).(*remoteSimpleOrdered)
-		d := NewMgoDriver(name, opts)
-		s.Require().NoError(d.Open(ctx))
-		s.Require().NoError(remote.SetDriver(d))
-		s.queue = remote
-		s.Require().NotNil(remote.remoteBase)
-	}
-
-	s.tearDown = func() {
-		cancel()
-
-		grip.Error(session.DB("amboy_test").C(addJobsSuffix(name)).DropCollection())
-		grip.Error(session.DB("amboy_test").C(name + ".locks").DropCollection())
-	}
-
-	s.reset = func() {
-		_, err = session.DB("amboy_test").C(addJobsSuffix(name)).RemoveAll(bson.M{})
-		grip.Error(err)
-		_, err = session.DB("amboy_test").C(name + ".locks").RemoveAll(bson.M{})
-		grip.Error(err)
-	}
-
-	suite.Run(t, s)
-}
-
-func TestRemoteInternalOrderedQueueSuite(t *testing.T) {
+func TestRemotePriorityOrderedQueueSuite(t *testing.T) {
 	s := &OrderedQueueSuite{}
 	ctx, cancel := context.WithCancel(context.Background())
 
@@ -110,7 +64,7 @@ func TestRemoteInternalOrderedQueueSuite(t *testing.T) {
 	suite.Run(t, s)
 }
 
-func TestRemotePriorityOrderedQueueSuite(t *testing.T) {
+func TestRemoteInternalOrderedQueueSuite(t *testing.T) {
 	s := &OrderedQueueSuite{}
 	ctx, cancel := context.WithCancel(context.Background())
 
@@ -155,34 +109,40 @@ func (s *OrderedQueueSuite) TearDownSuite() {
 }
 
 func (s *OrderedQueueSuite) TestPutReturnsErrorForDuplicateNameTasks() {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	j := job.NewShellJob("true", "")
 
-	s.Equal(0, s.queue.Stats().Total)
-	s.NoError(s.queue.Put(j))
-	s.Equal(1, s.queue.Stats().Total)
-	s.Error(s.queue.Put(j))
-	s.Equal(1, s.queue.Stats().Total)
-
+	s.Equal(0, s.queue.Stats(ctx).Total)
+	s.NoError(s.queue.Put(ctx, j))
+	s.Equal(1, s.queue.Stats(ctx).Total)
+	s.Error(s.queue.Put(ctx, j))
+	s.Equal(1, s.queue.Stats(ctx).Total)
 }
 
 func (s *OrderedQueueSuite) TestPuttingAJobIntoAQueueImpactsStats() {
-	stats := s.queue.Stats()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	stats := s.queue.Stats(ctx)
 	s.Equal(0, stats.Total)
 	s.Equal(0, stats.Pending)
 	s.Equal(0, stats.Running)
 	s.Equal(0, stats.Completed)
 
 	j := job.NewShellJob("true", "")
-	s.NoError(s.queue.Put(j))
+	s.NoError(s.queue.Put(ctx, j))
 
-	jReturn, ok := s.queue.Get(j.ID())
+	jReturn, ok := s.queue.Get(ctx, j.ID())
 	s.True(ok)
 
-	jActual := jReturn.(*job.ShellJob)
+	jActual, ok := jReturn.(*job.ShellJob)
+	s.Require().True(ok)
 
 	j.Base.SetDependency(jActual.Dependency())
 
-	stats = s.queue.Stats()
+	stats = s.queue.Stats(ctx)
 	s.Equal(1, stats.Total)
 	s.Equal(1, stats.Pending)
 	s.Equal(0, stats.Running)
@@ -216,13 +176,14 @@ func (s *OrderedQueueSuite) TestResultsChannelProducesPointersToConsistentJobObj
 	j := job.NewShellJob("echo true", "")
 	s.False(j.Status().Completed)
 
-	s.NoError(s.queue.Put(j))
-
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
+
+	s.NoError(s.queue.Put(ctx, j))
+
 	s.NoError(s.queue.Start(ctx))
 
-	amboy.WaitCtxInterval(ctx, s.queue, 250*time.Millisecond)
+	amboy.WaitInterval(ctx, s.queue, 250*time.Millisecond)
 
 	for result := range s.queue.Results(ctx) {
 		s.Equal(j.ID(), result.ID())
@@ -238,7 +199,7 @@ func (s *OrderedQueueSuite) TestQueueCanOnlyBeStartedOnce() {
 	s.NoError(s.queue.Start(ctx))
 	s.True(s.queue.Started())
 
-	amboy.Wait(s.queue)
+	amboy.Wait(ctx, s.queue)
 	s.True(s.queue.Started())
 
 	// you can call start more than once until the queue has
@@ -263,22 +224,22 @@ func (s *OrderedQueueSuite) TestPassedIsCompletedButDoesNotRun() {
 
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
-	s.NoError(s.queue.Put(j2))
-	s.NoError(s.queue.Put(j1))
+	s.NoError(s.queue.Put(ctx, j2))
+	s.NoError(s.queue.Put(ctx, j1))
 
 	s.NoError(s.queue.Start(ctx))
 
-	amboy.WaitCtxInterval(ctx, s.queue, 250*time.Millisecond)
+	amboy.WaitInterval(ctx, s.queue, 10*time.Millisecond)
 
-	j1Refreshed, ok1 := s.queue.Get(j1.ID())
-	j2Refreshed, ok2 := s.queue.Get(j2.ID())
+	j1Refreshed, ok1 := s.queue.Get(ctx, j1.ID())
+	j2Refreshed, ok2 := s.queue.Get(ctx, j2.ID())
 	if s.True(ok1) {
 		stat := j1Refreshed.Status()
-		s.False(stat.Completed || stat.InProgress)
+		s.False(stat.Completed)
 	}
 	if s.True(ok2) {
 		stat := j2Refreshed.Status()
-		s.True(stat.Completed || stat.InProgress, "%+v", j2Refreshed.Status())
+		s.True(stat.Completed)
 	}
 }
 
@@ -312,7 +273,7 @@ func (s *LocalOrderedSuite) TestLocalQueueFailsToStartIfGraphIsOutOfSync() {
 	// first simulate a put bug
 	j := job.NewShellJob("true", "")
 
-	s.NoError(s.queue.Put(j))
+	s.NoError(s.queue.Put(ctx, j))
 
 	jtwo := job.NewShellJob("echo foo", "")
 	s.queue.tasks.m["foo"] = jtwo
@@ -332,11 +293,11 @@ func (s *LocalOrderedSuite) TestQueueFailsToStartIfDependencyDoesNotExist() {
 	s.Len(j1.Dependency().Edges(), 0)
 	s.Len(j2.Dependency().Edges(), 2)
 
-	s.NoError(s.queue.Put(j1))
-	s.NoError(s.queue.Put(j2))
-
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
+
+	s.NoError(s.queue.Put(ctx, j1))
+	s.NoError(s.queue.Put(ctx, j2))
 
 	s.Error(s.queue.Start(ctx))
 }
@@ -351,24 +312,24 @@ func (s *LocalOrderedSuite) TestQueueFailsToStartIfTaskGraphIsCyclic() {
 	s.Len(j1.Dependency().Edges(), 1)
 	s.Len(j2.Dependency().Edges(), 1)
 
-	s.NoError(s.queue.Put(j1))
-	s.NoError(s.queue.Put(j2))
-
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
+
+	s.NoError(s.queue.Put(ctx, j1))
+	s.NoError(s.queue.Put(ctx, j2))
 
 	s.Error(s.queue.Start(ctx))
 }
 
 func (s *LocalOrderedSuite) TestPuttingJobIntoQueueAfterStartingReturnsError() {
-	j := job.NewShellJob("true", "")
-	s.NoError(s.queue.Put(j))
-
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
+	j := job.NewShellJob("true", "")
+	s.NoError(s.queue.Put(ctx, j))
+
 	s.NoError(s.queue.Start(ctx))
-	s.Error(s.queue.Put(j))
+	s.Error(s.queue.Put(ctx, j))
 }
 
 func GetDirectoryOfFile() string {

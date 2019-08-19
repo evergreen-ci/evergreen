@@ -29,8 +29,12 @@ type DownloadInfo struct {
 func (info DownloadInfo) Validate() error {
 	catcher := grip.NewBasicCatcher()
 
+	if info.URL == "" {
+		catcher.New("download url cannot be empty")
+	}
+
 	if !filepath.IsAbs(info.Path) {
-		catcher.Add(errors.New("download path must be an absolute path"))
+		catcher.New("download path must be an absolute path")
 	}
 
 	catcher.Add(info.ArchiveOpts.Validate())
@@ -228,8 +232,10 @@ func createDownloadJobs(path string, urls <-chan string, catcher grip.Catcher) <
 
 func processDownloadJobs(ctx context.Context, processFile func(string) error) func(amboy.Queue) error {
 	return func(q amboy.Queue) error {
-		grip.Infof("waiting for %d download jobs to complete", q.Stats().Total)
-		_ = amboy.WaitCtxInterval(ctx, q, 1000*time.Millisecond)
+		grip.Infof("waiting for %d download jobs to complete", q.Stats(ctx).Total)
+		if !amboy.WaitInterval(ctx, q, time.Second) {
+			return errors.New("download job timed out")
+		}
 		grip.Info("all download tasks complete, processing errors now")
 
 		if err := amboy.ResolveErrors(ctx, q); err != nil {
@@ -238,12 +244,13 @@ func processDownloadJobs(ctx context.Context, processFile func(string) error) fu
 
 		catcher := grip.NewBasicCatcher()
 		for job := range q.Results(ctx) {
+			catcher.Add(job.Error())
 			downloadJob, ok := job.(*recall.DownloadFileJob)
 			if !ok {
 				catcher.Add(errors.New("problem retrieving download job from queue"))
 				continue
 			}
-			if err := processFile(downloadJob.FileName); err != nil {
+			if err := processFile(filepath.Join(downloadJob.Directory, downloadJob.FileName)); err != nil {
 				catcher.Add(err)
 			}
 		}

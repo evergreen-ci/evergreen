@@ -25,16 +25,17 @@ import (
 )
 
 type GithubWebhookRouteSuite struct {
-	sc          *data.MockConnector
-	rm          gimlet.RouteHandler
-	canceler    context.CancelFunc
-	conf        *evergreen.Settings
-	prBody      []byte
-	pushBody    []byte
-	commentBody []byte
-	h           *githubHookApi
-	queue       amboy.Queue
-	env         evergreen.Environment
+	sc                     *data.MockConnector
+	rm                     gimlet.RouteHandler
+	canceler               context.CancelFunc
+	conf                   *evergreen.Settings
+	prBody                 []byte
+	pushBody               []byte
+	commitQueueCommentBody []byte
+	retryCommentBody       []byte
+	h                      *githubHookApi
+	queue                  amboy.Queue
+	env                    evergreen.Environment
 	suite.Suite
 }
 
@@ -78,6 +79,11 @@ func (s *GithubWebhookRouteSuite) SetupTest() {
 				},
 			},
 		},
+		MockCommitQueueConnector: data.MockCommitQueueConnector{
+			Queue: map[string][]restModel.APICommitQueueItem{
+				"bth": []restModel.APICommitQueueItem{},
+			},
+		},
 	}
 
 	s.rm = makeGithubHooksRoute(s.sc, s.queue, []byte(s.conf.Api.GithubWebhookSecret), evergreen.GetEnvironment().Settings())
@@ -89,9 +95,12 @@ func (s *GithubWebhookRouteSuite) SetupTest() {
 	s.pushBody, err = ioutil.ReadFile(filepath.Join(testutil.GetDirectoryOfFile(), "testdata", "push_event.json"))
 	s.NoError(err)
 	s.Len(s.pushBody, 7603)
-	s.commentBody, err = ioutil.ReadFile(filepath.Join(testutil.GetDirectoryOfFile(), "testdata", "comment_event.json"))
+	s.commitQueueCommentBody, err = ioutil.ReadFile(filepath.Join(testutil.GetDirectoryOfFile(), "testdata", "commit_queue_comment_event.json"))
 	s.NoError(err)
-	s.Len(s.commentBody, 11496)
+	s.Len(s.commitQueueCommentBody, 11496)
+	s.retryCommentBody, err = ioutil.ReadFile(filepath.Join(testutil.GetDirectoryOfFile(), "testdata", "retry_comment_event.json"))
+	s.NoError(err)
+	s.Len(s.retryCommentBody, 11470)
 
 	var ok bool
 	s.h, ok = s.rm.Factory().(*githubHookApi)
@@ -162,7 +171,7 @@ func (s *GithubWebhookRouteSuite) TestParseAndValidate() {
 	s.Equal("push", s.h.eventType)
 	s.Equal("2", s.h.msgID)
 
-	req, err = makeRequest("3", "issue_comment", s.commentBody, secret)
+	req, err = makeRequest("3", "issue_comment", s.commitQueueCommentBody, secret)
 	s.NoError(err)
 	s.NotNil(req)
 
@@ -216,7 +225,7 @@ func (s *GithubWebhookRouteSuite) TestPushEventTriggersRepoTracker() {
 }
 
 func (s *GithubWebhookRouteSuite) TestCommitQueueCommentTrigger() {
-	event, err := github.ParseWebHook("issue_comment", s.commentBody)
+	event, err := github.ParseWebHook("issue_comment", s.commitQueueCommentBody)
 	s.NotNil(event)
 	s.NoError(err)
 	s.h.event = event
@@ -233,4 +242,73 @@ func (s *GithubWebhookRouteSuite) TestCommitQueueCommentTrigger() {
 		s.Equal("test_module", restModel.FromAPIString(s.sc.MockCommitQueueConnector.Queue["bth"][0].Modules[0].Module))
 		s.Equal("1234", restModel.FromAPIString(s.sc.MockCommitQueueConnector.Queue["bth"][0].Modules[0].Issue))
 	}
+}
+
+func (s *GithubWebhookRouteSuite) TestRetryCommentTrigger() {
+	event, err := github.ParseWebHook("issue_comment", s.retryCommentBody)
+	s.NoError(err)
+	s.NotNil(event)
+
+	issueComment, ok := event.(*github.IssueCommentEvent)
+	s.True(ok)
+	commentString := issueComment.Comment.GetBody()
+	s.Equal(retryComment, commentString)
+
+	s.True(triggersRetry("created", commentString))
+	s.False(triggersRetry("deleted", commentString))
+}
+
+func (s *GithubWebhookRouteSuite) TestTryDequeueCommitQueueItemForPR() {
+	s.NoError(db.ClearCollections(model.ProjectRefCollection, commitqueue.Collection))
+
+	owner := "baxterthehacker"
+	repo := "public-repo"
+	branch := "master"
+	number := 1
+
+	fillerString := "a"
+	fillerBool := false
+	pr := &github.PullRequest{
+		MergeCommitSHA: &fillerString,
+		User:           &github.User{Login: &fillerString},
+		Base: &github.PullRequestBranch{
+			Repo: &github.Repository{
+				Owner: &github.User{
+					Login: &owner,
+				},
+				Name:     &repo,
+				FullName: &fillerString,
+			},
+			Ref: &branch,
+			SHA: &fillerString,
+		},
+		Head:    &github.PullRequestBranch{SHA: &fillerString},
+		Title:   &fillerString,
+		HTMLURL: &fillerString,
+		Merged:  &fillerBool,
+	}
+
+	// try dequeue errors if the PR is missing information (PR number)
+	s.Error(s.h.tryDequeueCommitQueueItemForPR(pr))
+
+	// try dequeue returns no error if there is no matching item
+	newNumber := 2
+	pr.Number = &newNumber
+	s.NoError(s.h.tryDequeueCommitQueueItemForPR(pr))
+
+	pr.Number = &number
+	// try dequeue returns no errors if there is no matching queue
+	s.NoError(s.h.tryDequeueCommitQueueItemForPR(pr))
+
+	// try dequeue works when an item matches
+	_, err := s.sc.EnqueueItem("bth", restModel.APICommitQueueItem{Issue: restModel.ToAPIString("1")})
+	s.NoError(err)
+	s.NoError(s.h.tryDequeueCommitQueueItemForPR(pr))
+	queue, err := s.sc.FindCommitQueueByID("bth")
+	s.NoError(err)
+	s.Empty(queue.Queue)
+
+	// try dequeue returns no error if no projectRef matches the PR
+	owner = "octocat"
+	s.NoError(s.h.tryDequeueCommitQueueItemForPR(pr))
 }

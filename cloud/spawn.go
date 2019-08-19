@@ -120,7 +120,7 @@ func CreateSpawnHost(so SpawnOptions) (*host.Host, error) {
 	d.Setup += fmt.Sprintf("\necho \"\n%v\" >> ~%v/.ssh/authorized_keys\n", so.PublicKey, d.User)
 
 	// fake out replacing spot instances with on-demand equivalents
-	if d.Provider == evergreen.ProviderNameEc2Spot {
+	if d.Provider == evergreen.ProviderNameEc2Spot || d.Provider == evergreen.ProviderNameEc2Fleet {
 		d.Provider = evergreen.ProviderNameEc2OnDemand
 	}
 
@@ -207,7 +207,7 @@ func constructPwdUpdateCommand(ctx context.Context, env evergreen.Environment, h
 	}
 
 	return env.JasperManager().CreateCommand(ctx).Host(hostInfo.Hostname).User(hostObj.User).
-		ExtendSSHArgs("-p", hostInfo.Port).ExtendSSHArgs(sshOptions...).
+		ExtendRemoteArgs("-p", hostInfo.Port).ExtendRemoteArgs(sshOptions...).
 		Append(fmt.Sprintf("echo -e \"%s\" | passwd", password)), nil
 }
 

@@ -103,6 +103,8 @@ func (c *TaskConfig) GetWorkingDirectory(dir string) (string, error) {
 
 	if stat, err := os.Stat(dir); os.IsNotExist(err) {
 		return "", errors.Errorf("directory %s does not exist", dir)
+	} else if err != nil || stat == nil {
+		return "", errors.Wrapf(err, "error retrieving file info for %s", dir)
 	} else if !stat.IsDir() {
 		return "", errors.Errorf("path %s is not a directory", dir)
 	}

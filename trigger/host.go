@@ -19,9 +19,6 @@ func init() {
 }
 
 const (
-	objectHost        = "host"
-	triggerExpiration = "expiration"
-
 	// notification templates
 	expiringHostTitle = `{{.Distro}} host termination reminder`
 	expiringHostBody  = `Your {{.Distro}} host with id {{.ID}} will be terminated at {{.ExpirationTime}}. Visit {{.URL}} to extend its lifetime.`
@@ -63,15 +60,15 @@ func (t *hostBase) Fetch(e *event.EventLogEntry) error {
 func (t *hostBase) Selectors() []event.Selector {
 	return []event.Selector{
 		{
-			Type: selectorID,
+			Type: event.SelectorID,
 			Data: t.host.Id,
 		},
 		{
-			Type: selectorObject,
-			Data: objectHost,
+			Type: event.SelectorObject,
+			Data: event.ObjectHost,
 		},
 		{
-			Type: selectorOwner,
+			Type: event.SelectorOwner,
 			Data: t.host.StartedBy,
 		},
 	}
@@ -87,7 +84,7 @@ type hostTemplateData struct {
 func makeHostTriggers() eventHandler {
 	t := &hostTriggers{}
 	t.hostBase.base.triggers = map[string]trigger{
-		triggerExpiration: t.hostExpiration,
+		event.TriggerExpiration: t.hostExpiration,
 	}
 
 	return t

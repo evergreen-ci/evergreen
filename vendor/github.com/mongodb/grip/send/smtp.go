@@ -329,7 +329,7 @@ func (o *SMTPOptions) sendMail(m message.Composer) error {
 	}
 
 	if err := o.client.Mail(fromAddr.Address); err != nil {
-		return fmt.Errorf("Error establishing mail sender (%s): %+v", fromAddr, err)
+		return fmt.Errorf("error establishing mail sender (%s): %+v", fromAddr, err)
 	}
 
 	var err error

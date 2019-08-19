@@ -20,6 +20,7 @@ type selfClearingProcessManager struct {
 //
 // The self clearing process manager is not thread safe. Wrap with the
 // local process manager for multithreaded use.
+// TODO: MAKE-803: allow local process manager to wrap other managers.
 func NewSelfClearingProcessManager(maxProcs int, trackProcs bool) (Manager, error) {
 	pm, err := newBasicProcessManager(map[string]Process{}, false, false, trackProcs)
 	if err != nil {
@@ -42,6 +43,7 @@ func NewSelfClearingProcessManager(maxProcs int, trackProcs bool) (Manager, erro
 //
 // The self clearing process manager is not thread safe. Wrap with the
 // local process manager for multithreaded use.
+// TODO: MAKE-803: allow local process manager to wrap other managers.
 func NewSelfClearingProcessManagerBlockingProcesses(maxProcs int, trackProcs bool) (Manager, error) {
 	pm, err := newBasicProcessManager(map[string]Process{}, false, true, trackProcs)
 	if err != nil {

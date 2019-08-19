@@ -1,6 +1,7 @@
 package service
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	"time"
@@ -87,7 +88,7 @@ func (as *APIServer) StartTask(w http.ResponseWriter, r *http.Request) {
 
 	if h.Distro.IsEphemeral() {
 		job := units.NewCollectHostIdleDataJob(h, t, idleTimeStartAt, t.StartTime)
-		if err = as.queue.Put(job); err != nil {
+		if err = as.queue.Put(r.Context(), job); err != nil {
 			as.LoggedError(w, r, http.StatusInternalServerError, errors.Wrapf(err, "error queuing host idle stats for %s", msg))
 			return
 		}
@@ -118,7 +119,7 @@ func checkHostHealth(h *host.Host) bool {
 // agentRevisionIsOld checks that the agent revision is current.
 func agentRevisionIsOld(h *host.Host) bool {
 	if h.AgentRevision != evergreen.BuildRevision {
-		grip.Info(message.Fields{
+		grip.InfoWhen(h.LegacyBootstrap(), message.Fields{
 			"message":        "agent has wrong revision, so it should exit",
 			"host_revision":  h.AgentRevision,
 			"agent_revision": evergreen.BuildRevision,
@@ -132,8 +133,8 @@ func agentRevisionIsOld(h *host.Host) bool {
 // It then acquires the lock, and with it, marks tasks as finished or inactive if aborted.
 // If the task is a patch, it will alert the users based on failures
 // It also updates the expected task duration of the task for scheduling.
-// NOTE this should eventually become the default code path.
 func (as *APIServer) EndTask(w http.ResponseWriter, r *http.Request) {
+	const slowThreshold = 1 * time.Second
 	finishTime := time.Now()
 
 	t := MustHaveTask(r)
@@ -167,7 +168,7 @@ func (as *APIServer) EndTask(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// clear the running task on the host now that the task has finished
+	// clear the running task on the host startPhaseAt that the task has finished
 	if err := currentHost.ClearRunningAndSetLastTask(t); err != nil {
 		err = errors.Wrapf(err, "error clearing running task %s for host %s", t.Id, currentHost.Id)
 		grip.Errorf(err.Error())
@@ -222,7 +223,7 @@ func (as *APIServer) EndTask(w http.ResponseWriter, r *http.Request) {
 	}
 
 	job := units.NewCollectTaskEndDataJob(t, currentHost)
-	if err = as.queue.Put(job); err != nil {
+	if err = as.queue.Put(r.Context(), job); err != nil {
 		as.LoggedError(w, r, http.StatusInternalServerError,
 			errors.Wrap(err, "couldn't queue job to update task cost accounting"))
 		return
@@ -234,10 +235,22 @@ func (as *APIServer) EndTask(w http.ResponseWriter, r *http.Request) {
 		grip.Warning(message.WrapError(err, "problem updating expected duration"))
 	}
 
+	env := evergreen.GetEnvironment()
 	if checkHostHealth(currentHost) {
-		// set the needs new agent flag on the host
-		if err := currentHost.SetNeedsNewAgent(true); err != nil {
-			grip.Error(message.WrapErrorf(err, "error indicating host %s needs new agent", currentHost.Id))
+		ctx, cancel := context.WithTimeout(r.Context(), 30*time.Second)
+		defer cancel()
+		if err = currentHost.StopAgentMonitor(ctx, env); err != nil {
+			grip.Error(message.WrapError(err, message.Fields{
+				"message":   "problem stopping agent monitor",
+				"host":      currentHost.Id,
+				"operation": "next_task",
+				"revision":  evergreen.BuildRevision,
+			}))
+			gimlet.WriteResponse(w, gimlet.MakeJSONInternalErrorResponder(err))
+			return
+		}
+		if err = currentHost.SetNeedsAgentDeploy(true); err != nil {
+			grip.Error(message.WrapErrorf(err, "error indicating host %s needs deploy", currentHost.Id))
 			gimlet.WriteResponse(w, gimlet.MakeJSONInternalErrorResponder(err))
 			return
 		}
@@ -250,11 +263,10 @@ func (as *APIServer) EndTask(w http.ResponseWriter, r *http.Request) {
 	if event.AllRecentHostEventsMatchStatus(currentHost.Id, consecutiveSystemFailureThreshold, evergreen.TaskSystemFailed) {
 		msg := "host encountered consecutive system failures"
 		if currentHost.Provider != evergreen.ProviderNameStatic {
-			err := currentHost.DisablePoisonedHost(msg)
-			env := evergreen.GetEnvironment()
+			err = currentHost.DisablePoisonedHost(msg)
 
 			job := units.NewDecoHostNotifyJob(env, currentHost, err, msg)
-			grip.Critical(message.WrapError(as.queue.Put(job),
+			grip.Critical(message.WrapError(as.queue.Put(r.Context(), job),
 				message.Fields{
 					"host_id": currentHost.Id,
 					"task_id": t.Id,
@@ -265,12 +277,25 @@ func (as *APIServer) EndTask(w http.ResponseWriter, r *http.Request) {
 				return
 			}
 		}
+
+		ctx, cancel := context.WithTimeout(r.Context(), 30*time.Second)
+		defer cancel()
+		if err = currentHost.StopAgentMonitor(ctx, env); err != nil {
+			grip.Error(message.WrapError(err, message.Fields{
+				"message":   "problem stopping agent monitor",
+				"host":      currentHost.Id,
+				"operation": "next_task",
+				"revision":  evergreen.BuildRevision,
+			}))
+			gimlet.WriteResponse(w, gimlet.MakeJSONInternalErrorResponder(err))
+			return
+		}
 		endTaskResp.ShouldExit = true
 	}
 
 	grip.Info(message.Fields{
 		"message":   "Successfully marked task as finished",
-		"task":      t.Id,
+		"task_id":   t.Id,
 		"execution": t.Execution,
 		"operation": "mark end",
 		"duration":  time.Since(finishTime),
@@ -280,7 +305,7 @@ func (as *APIServer) EndTask(w http.ResponseWriter, r *http.Request) {
 
 // assignNextAvailableTask gets the next task from the queue and sets the running task field
 // of currentHost.
-func assignNextAvailableTask(taskQueue *model.TaskQueue, taskQueueService model.TaskQueueService, currentHost *host.Host) (*task.Task, error) {
+func assignNextAvailableTask(ctx context.Context, taskQueue *model.TaskQueue, taskQueueService model.TaskQueueService, currentHost *host.Host) (*task.Task, error) {
 	if currentHost.RunningTask != "" {
 		grip.Error(message.Fields{
 			"message":      "tried to assign task to a host already running task",
@@ -291,16 +316,27 @@ func assignNextAvailableTask(taskQueue *model.TaskQueue, taskQueueService model.
 
 	var spec model.TaskSpec
 	if currentHost.LastTask != "" {
-		t, err := task.FindOneId(currentHost.LastTask)
-		if err != nil {
-			return nil, errors.Wrap(err, "error finding last task")
-		}
 		spec = model.TaskSpec{
-			Group:        t.TaskGroup,
-			BuildVariant: t.BuildVariant,
-			ProjectID:    t.Project,
-			Version:      t.Version,
+			Group:        currentHost.LastGroup,
+			BuildVariant: currentHost.LastBuildVariant,
+			ProjectID:    currentHost.LastProject,
+			Version:      currentHost.LastVersion,
 		}
+	}
+
+	d, err := distro.FindOne(distro.ById(currentHost.Distro.Id))
+	if err != nil {
+		// Should we bailout if there is a database error leaving us unsure if the distro document actual exists?
+		m := "database error while retrieving distro document;"
+		if adb.ResultsNotFound(err) {
+			m = "cannot find the db.distro document for the given distro;"
+		}
+		grip.Warning(message.Fields{
+			"message":   m + " falling back to host.Distro",
+			"distro_id": currentHost.Distro.Id,
+			"host_id":   currentHost.Id,
+		})
+		d = currentHost.Distro
 	}
 
 	// This loop does the following:
@@ -320,31 +356,15 @@ func assignNextAvailableTask(taskQueue *model.TaskQueue, taskQueueService model.
 	// continue must be preceded by dequeueing the current task from the
 	// queue to prevent an infinite loop.
 	for taskQueue.Length() != 0 {
-		var queueItem *model.TaskQueueItem
-		var err error
-		d, err := distro.FindOne(distro.ById(currentHost.Distro.Id))
-		if err != nil {
-			if adb.ResultsNotFound(err) {
-				grip.Warning(message.Fields{
-					"message": "distro not found",
-					"distro":  currentHost.Distro.Id,
-					"host":    currentHost.Id,
-				})
-				d = currentHost.Distro
-			} else {
-				return nil, errors.Wrapf(err, "problem finding distro %s", currentHost.Distro.Id)
-			}
+		if err := ctx.Err(); err != nil {
+			return nil, errors.WithStack(err)
 		}
+
+		var queueItem *model.TaskQueueItem
 		switch d.PlannerSettings.Version {
 		case evergreen.PlannerVersionTunable, evergreen.PlannerVersionRevised:
-			queueItem, err = taskQueueService.RefreshFindNextTask(currentHost.Distro.Id, spec)
+			queueItem, err = taskQueueService.RefreshFindNextTask(d.Id, spec)
 			if err != nil {
-				grip.Critical(message.WrapError(err, message.Fields{
-					"distro":  currentHost.Distro.Id,
-					"host":    currentHost.Id,
-					"message": "problem getting next task",
-					"spec":    spec,
-				}))
 				return nil, errors.Wrap(err, "problem getting next task")
 			}
 		default:
@@ -354,32 +374,41 @@ func assignNextAvailableTask(taskQueue *model.TaskQueue, taskQueueService model.
 			return nil, nil
 		}
 
-		nextTask, err := task.FindOne(task.ById(queueItem.Id))
+		nextTask, err := task.FindOneNoMerge(task.ById(queueItem.Id))
 		if err != nil {
+			grip.Error(message.WrapError(err, message.Fields{
+				"message":                  "database error while retrieving the db.tasks document for the next task to be assigned to this host",
+				"distro_id":                d.Id,
+				"host_id":                  currentHost.Id,
+				"next_task_id":             queueItem.Id,
+				"last_task_id":             currentHost.LastTask,
+				"taskspec_group":           spec.Group,
+				"taskspec_build_variant":   spec.BuildVariant,
+				"taskspec_version":         spec.Version,
+				"taskspec_project_id":      spec.ProjectID,
+				"taskspec_group_max_hosts": spec.GroupMaxHosts,
+			}))
 			return nil, err
 		}
+
 		if nextTask == nil {
-			return nil, errors.New("nil task on the queue")
+			// An error is not returned in this situation due to https://jira.mongodb.org/browse/EVG-6214
+			return nil, nil
 		}
 
-		// validate that the task can be run, if not fetch the next one in
-		// the queue.
+		// validate that the task can be run, if not fetch the next one in the queue.
 		if !nextTask.IsDispatchable() {
-			grip.Warning(message.Fields{
-				"message":   "skipping un-dispatchable task",
-				"task_id":   nextTask.Id,
-				"status":    nextTask.Status,
-				"activated": nextTask.Activated,
-				"host":      currentHost.Id,
-			})
-
 			// Dequeue the task so we don't get it on another iteration of the loop.
 			grip.Warning(message.WrapError(taskQueue.DequeueTask(nextTask.Id), message.Fields{
-				"message":   "could not find task in queue",
-				"next_task": nextTask.Id,
-				"distro":    nextTask.DistroId,
-				"spec":      spec,
-				"host":      currentHost.Id,
+				"message":                  "nextTask.IsDispatchable() is false, but there was an issue dequeuing the task",
+				"distro_id":                d.Id,
+				"task_id":                  nextTask.Id,
+				"host_id":                  currentHost.Id,
+				"taskspec_group":           spec.Group,
+				"taskspec_build_variant":   spec.BuildVariant,
+				"taskspec_version":         spec.Version,
+				"taskspec_project_id":      spec.ProjectID,
+				"taskspec_group_max_hosts": spec.GroupMaxHosts,
 			}))
 
 			continue
@@ -391,37 +420,45 @@ func assignNextAvailableTask(taskQueue *model.TaskQueue, taskQueueService model.
 				"task_id": nextTask.Id,
 				"message": "could not find project ref for next task, skipping",
 				"project": nextTask.Project,
-				"host":    currentHost.Id,
+				"host_id": currentHost.Id,
 			})
 			return nil, errors.Wrapf(err, "could not find project ref for next task %s", nextTask.Id)
 		}
 
 		if !projectRef.Enabled {
-			grip.Warning(message.Fields{
-				"task_id": nextTask.Id,
-				"project": nextTask.Project,
-				"host":    currentHost.Id,
-				"message": "skipping task because of disabled project",
-			})
-			// Dequeue the task so we don't get it on another iteration of the loop.
-			if err = taskQueue.DequeueTask(nextTask.Id); err != nil {
-				return nil, errors.Wrapf(err,
-					"error pulling task with id %s from queue for distro %s",
-					nextTask.Id, nextTask.DistroId)
-			}
+			grip.Warning(message.WrapError(taskQueue.DequeueTask(nextTask.Id), message.Fields{
+				"message":                  "projectRef.Enabled is false, but there was an issue dequeuing the task",
+				"distro_id":                nextTask.DistroId,
+				"task_id":                  nextTask.Id,
+				"host_id":                  currentHost.Id,
+				"taskspec_group":           spec.Group,
+				"taskspec_build_variant":   spec.BuildVariant,
+				"taskspec_version":         spec.Version,
+				"taskspec_project_id":      spec.ProjectID,
+				"taskspec_group_max_hosts": spec.GroupMaxHosts,
+			}))
+
 			continue
 		}
 
+		// UpdateRunningTask updates the running task in the host document
 		ok, err := currentHost.UpdateRunningTask(nextTask)
 		if err != nil {
 			return nil, errors.WithStack(err)
 		}
 		// Dequeue the task so we don't get it on another iteration of the loop.
-		if err = taskQueue.DequeueTask(nextTask.Id); err != nil {
-			return nil, errors.Wrapf(err,
-				"error pulling task with id %s from queue for distro %s",
-				nextTask.Id, nextTask.DistroId)
-		}
+		grip.Warning(message.WrapError(taskQueue.DequeueTask(nextTask.Id), message.Fields{
+			"message":                  "updated the relevant running task fields for the given host, but there was an issue dequeuing the task",
+			"distro_id":                nextTask.DistroId,
+			"task_id":                  nextTask.Id,
+			"host_id":                  currentHost.Id,
+			"taskspec_group":           spec.Group,
+			"taskspec_build_variant":   spec.BuildVariant,
+			"taskspec_version":         spec.Version,
+			"taskspec_project_id":      spec.ProjectID,
+			"taskspec_group_max_hosts": spec.GroupMaxHosts,
+		}))
+
 		if !ok {
 			continue
 		}
@@ -434,15 +471,71 @@ func assignNextAvailableTask(taskQueue *model.TaskQueue, taskQueueService model.
 // NextTask retrieves the next task's id given the host name and host secret by retrieving the task queue
 // and popping the next task off the task queue.
 func (as *APIServer) NextTask(w http.ResponseWriter, r *http.Request) {
+	begin := time.Now()
 	h := MustHaveHost(r)
+	ctx, cancel := context.WithCancel(r.Context())
+	defer cancel()
+
+	if h.AgentStartTime.IsZero() {
+		if err := h.SetAgentStartTime(); err != nil {
+			grip.Warning(message.WrapError(err, message.Fields{
+				"message": "could not set host's agent start time for first contact",
+				"host":    h.Id,
+				"distro":  h.Distro.Id,
+			}))
+		} else {
+			grip.Info(message.Fields{
+				"message":                   "agent initiated first contact with server",
+				"host":                      h.Id,
+				"distro":                    h.Distro.Id,
+				"agent_start_duration_secs": time.Since(h.CreationTime).Seconds(),
+			})
+		}
+	}
+
+	grip.Error(message.WrapError(h.SetUserDataHostProvisioned(), message.Fields{
+		"message":   "failed to mark host as done provisioning with user data",
+		"host":      h.Id,
+		"distro":    h.Distro.Id,
+		"bootstrap": h.Distro.BootstrapMethod,
+		"operation": "next_task",
+	}))
+
+	// stopAgentMonitor is only used for debug log purposes.
+	var stopAgentMonitor bool
+	defer func() {
+		grip.DebugWhen(time.Since(begin) > time.Second, message.Fields{
+			"message":            "slow next_task operation",
+			"host_id":            h.Id,
+			"distro":             h.Distro.Id,
+			"latency":            time.Since(begin),
+			"stop_agent_monitor": stopAgentMonitor,
+		})
+	}()
+
 	var response apimodels.NextTaskResponse
 	var err error
 	if checkHostHealth(h) {
-		if err = h.SetNeedsNewAgent(true); err != nil {
+		ctx, cancel := context.WithTimeout(r.Context(), 30*time.Second)
+		defer cancel()
+		env := evergreen.GetEnvironment()
+		stopAgentMonitor = !h.LegacyBootstrap()
+		if err = h.StopAgentMonitor(ctx, env); err != nil {
+			grip.Error(message.WrapError(err, message.Fields{
+				"message":   "problem stopping agent monitor",
+				"host":      h.Id,
+				"operation": "next_task",
+				"revision":  evergreen.BuildRevision,
+			}))
+			gimlet.WriteResponse(w, gimlet.MakeJSONInternalErrorResponder(err))
+			return
+		}
+
+		if err = h.SetNeedsAgentDeploy(true); err != nil {
 			grip.Error(message.WrapError(err, message.Fields{
 				"host":      h.Id,
 				"operation": "next_task",
-				"message":   "problem indicating that host needs new agent",
+				"message":   "problem indicating that host needs new agent or agent monitor deploy",
 				"source":    "database error",
 				"revision":  evergreen.BuildRevision,
 			}))
@@ -453,6 +546,7 @@ func (as *APIServer) NextTask(w http.ResponseWriter, r *http.Request) {
 		gimlet.WriteJSON(w, response)
 		return
 	}
+
 	var agentExit bool
 	response, agentExit = handleOldAgentRevision(response, h, w, r)
 	if agentExit {
@@ -497,7 +591,7 @@ func (as *APIServer) NextTask(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// assign the task to a host and retrieve the task
-	nextTask, err := assignNextAvailableTask(taskQueue, as.taskQueueService, h)
+	nextTask, err := assignNextAvailableTask(ctx, taskQueue, as.taskQueueService, h)
 	if err != nil {
 		err = errors.WithStack(err)
 		grip.Error(err)
@@ -552,6 +646,26 @@ func handleOldAgentRevision(response apimodels.NextTaskResponse, h *host.Host, w
 			gimlet.WriteJSON(w, response)
 			return apimodels.NextTaskResponse{}, true
 		}
+
+		// Non-legacy hosts deploying agents via the agent monitor may be
+		// running an agent on the current revision, but the database host has
+		// yet to be updated.
+		if !h.LegacyBootstrap() && details.AgentRevision != h.AgentRevision {
+			err := h.SetAgentRevision(details.AgentRevision)
+			if err == nil {
+				event.LogHostAgentDeployed(h.Id)
+				return response, false
+			}
+			grip.Error(message.WrapError(err, message.Fields{
+				"message":       "problem updating host agent revision",
+				"operation":     "next_task",
+				"host":          h.Id,
+				"source":        "database error",
+				"host_revision": details.AgentRevision,
+				"revsision":     evergreen.BuildRevision,
+			}))
+		}
+
 		if details.TaskGroup == "" {
 			if err := h.SetNeedsNewAgent(true); err != nil {
 				grip.Error(message.WrapError(err, message.Fields{

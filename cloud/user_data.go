@@ -2,12 +2,16 @@ package cloud
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"io"
 	"mime/multipart"
 	"net/textproto"
 	"strings"
 
+	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/model/distro"
+	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 )
@@ -123,4 +127,62 @@ func parseUserDataContentType(userData string) (string, error) {
 		}
 	}
 	return "", errors.Errorf("user data format is not recognized from first line: '%s'", firstLine)
+}
+
+// bootstrapUserData returns the multipart user data with logic to bootstrap and
+// set up the host and the custom user data.
+func bootstrapUserData(ctx context.Context, env evergreen.Environment, h *host.Host, customScript string) (string, error) {
+	if h.Distro.BootstrapMethod != distro.BootstrapMethodUserData {
+		return customScript, nil
+	}
+
+	settings := env.Settings()
+
+	setupScript, err := h.SetupScriptCommands(settings)
+	if err != nil {
+		return "", errors.Wrap(err, "error creating setup script for user data")
+	}
+
+	fetchClient := h.CurlCommandWithRetry(settings, host.CurlDefaultNumRetries, host.CurlDefaultMaxSecs)
+
+	var postFetchClient string
+	if h.StartedBy == evergreen.User {
+		// Start the host with an agent monitor to run tasks.
+		if postFetchClient, err = h.StartAgentMonitorRequest(settings); err != nil {
+			return "", errors.Wrap(err, "error creating command to start agent monitor")
+		}
+	} else if h.ProvisionOptions != nil && h.ProvisionOptions.LoadCLI {
+		// Set up a spawn host.
+		if postFetchClient, err = h.SetupSpawnHostCommand(settings); err != nil {
+			return "", errors.Wrap(err, "error creating commands to load task data")
+		}
+	}
+
+	markDone, err := h.MarkUserDataDoneCommand()
+	if err != nil {
+		return "", errors.Wrap(err, "error creating command to mark when user data is done")
+	}
+
+	creds, err := h.GenerateJasperCredentials(ctx, env)
+	if err != nil {
+		return customScript, errors.Wrap(err, "problem generating Jasper credentials for host")
+	}
+
+	bootstrapScript, err := h.BootstrapScript(env.Settings().HostJasper, creds,
+		[]string{setupScript},
+		[]string{fetchClient, postFetchClient, markDone},
+	)
+	if err != nil {
+		return customScript, errors.Wrap(err, "could not generate user data bootstrap script")
+	}
+
+	multipartUserData, err := makeMultipartUserData(map[string]string{
+		"bootstrap.txt": bootstrapScript,
+		"user-data.txt": customScript,
+	})
+	if err != nil {
+		return customScript, errors.Wrap(err, "error creating user data with multiple parts")
+	}
+
+	return multipartUserData, errors.Wrap(h.SaveJasperCredentials(ctx, env, creds), "problem saving Jasper credentials to host")
 }

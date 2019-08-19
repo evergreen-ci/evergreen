@@ -8,6 +8,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/task"
+	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 	yaml "gopkg.in/yaml.v2"
 )
@@ -19,6 +20,25 @@ type sortSetupFunc func(comparator *CmpBasedTaskComparator) error
 // project is a type for holding a subset of the model.Project type.
 type project struct {
 	TaskGroups []model.TaskGroup `yaml:"task_groups"`
+}
+
+// PopulateCaches runs setup functions and is used by the new/tunable
+// scheduler to reprocess tasks before running the new planner.
+func PopulateCaches(id string, distroID string, tasks []task.Task) ([]task.Task, error) {
+	cmp := &CmpBasedTaskComparator{
+		tasks:     tasks,
+		runtimeID: id,
+		setupFuncs: []sortSetupFunc{
+			cacheTaskGroups,
+			backfillTaskGroups,
+			cacheExpectedDurations,
+		},
+	}
+	if err := cmp.setupForSortingTasks(distroID); err != nil {
+		return nil, errors.WithStack(err)
+	}
+
+	return cmp.tasks, nil
 }
 
 // cacheTaskGroups caches task groups by version. It uses yaml.Unmarshal instead
@@ -33,6 +53,33 @@ func cacheTaskGroups(comparator *CmpBasedTaskComparator) error {
 		comparator.projects[v.Id] = p
 	}
 	return nil
+}
+
+func backfillTaskGroups(comparator *CmpBasedTaskComparator) error {
+	catcher := grip.NewBasicCatcher()
+
+OUTERLOOP:
+	for _, t := range comparator.tasks {
+		if t.TaskGroup != "" && t.TaskGroupOrder == 0 {
+			proj := comparator.projects[t.Version]
+			for _, g := range proj.TaskGroups {
+				if g.Name == t.TaskGroup {
+					for idx, tn := range g.Tasks {
+						if t.DisplayName == tn {
+							t.TaskGroupOrder = idx + 1
+							t.TaskGroupMaxHosts = g.MaxHosts
+							catcher.Add(t.SetTaskGroupInfo())
+							continue OUTERLOOP
+						}
+					}
+					catcher.Errorf("task '%s' is missing from task group '%s' in version '%s'",
+						t.DisplayName, t.TaskGroup, t.Version)
+				}
+			}
+		}
+	}
+
+	return catcher.Resolve()
 }
 
 // groupTaskGroups puts tasks that have the same build and task group next to

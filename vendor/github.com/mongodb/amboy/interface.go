@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/mongodb/amboy/dependency"
+	"github.com/mongodb/grip"
 )
 
 // Job describes a unit of work. Implementations of Job instances are
@@ -89,19 +90,53 @@ type JobStatusInfo struct {
 
 // JobTimeInfo stores timing information for a job and is used by both
 // the Runner and Job implementations to track how long jobs take to
-// execute. Additionally, the Queue implementations __may__ use this
-// data to delay execution of a job when WaitUntil refers to a time
-// in the future.
+// execute.
+//
+// Additionally, the Queue implementations __may__ use WaitUntil to
+// defer the execution of a job, until WaitUntil refers to a time in
+// the past.
+//
+// If the deadline is specified, and the queue
+// implementation supports it, the queue may drop the job if the
+// deadline is in the past when the job would be dispatched.
 type JobTimeInfo struct {
-	Created   time.Time     `bson:"created,omitempty" json:"created,omitempty" yaml:"created,omitempty"`
-	Start     time.Time     `bson:"start" json:"start,omitempty" yaml:"start,omitempty"`
-	End       time.Time     `bson:"end" json:"end,omitempty" yaml:"end,omitempty"`
-	WaitUntil time.Time     `bson:"wait_until" json:"wait_until,omitempty" yaml:"wait_until,omitempty"`
-	MaxTime   time.Duration `bson:"max_time" json:"max_time,omitempty" yaml:"max_time,omitempty"`
+	Created    time.Time     `bson:"created,omitempty" json:"created,omitempty" yaml:"created,omitempty"`
+	Start      time.Time     `bson:"start,omitempty" json:"start,omitempty" yaml:"start,omitempty"`
+	End        time.Time     `bson:"end,omitempty" json:"end,omitempty" yaml:"end,omitempty"`
+	WaitUntil  time.Time     `bson:"wait_until" json:"wait_until,omitempty" yaml:"wait_until,omitempty"`
+	DispatchBy time.Time     `bson:"dispatch_by" json:"dispatch_by,omitempty" yaml:"dispatch_by,omitempty"`
+	MaxTime    time.Duration `bson:"max_time" json:"max_time,omitempty" yaml:"max_time,omitempty"`
 }
 
 // Duration is a convenience function to return a duration for a job.
 func (j JobTimeInfo) Duration() time.Duration { return j.End.Sub(j.Start) }
+
+// IsStale determines if the job is too old to be dispatched, and if
+// so, queues may remove or drop the job entirely.
+func (j JobTimeInfo) IsStale() bool {
+	if j.DispatchBy.IsZero() {
+		return false
+	}
+
+	return j.DispatchBy.Before(time.Now())
+}
+
+// IsDispatchable determines if the job should be dispatched based on
+// the value of WaitUntil.
+func (j JobTimeInfo) IsDispatchable() bool {
+	return time.Now().After(j.WaitUntil)
+}
+
+// Validate ensures that the structure has reasonable values set.
+func (j JobTimeInfo) Validate() error {
+	catcher := grip.NewBasicCatcher()
+
+	catcher.NewWhen(!j.DispatchBy.IsZero() && j.WaitUntil.After(j.DispatchBy), "invalid for wait_until to be after dispatch_by")
+	catcher.NewWhen(j.Created.IsZero(), "must specify non-zero created timestamp")
+	catcher.NewWhen(j.MaxTime < 0, "must specify 0 or positive max_time")
+
+	return catcher.Resolve()
+}
 
 // Queue describes a very simple Job queue interface that allows users
 // to define Job objects, add them to a worker queue and execute tasks
@@ -112,12 +147,12 @@ func (j JobTimeInfo) Duration() time.Duration { return j.End.Sub(j.Start) }
 type Queue interface {
 	// Used to add a job to the queue. Should only error if the
 	// Queue cannot accept jobs.
-	Put(Job) error
+	Put(context.Context, Job) error
 
 	// Given a job id, get that job. The second return value is a
 	// Boolean, which indicates if the named job had been
 	// registered by a Queue.
-	Get(string) (Job, bool)
+	Get(context.Context, string) (Job, bool)
 
 	// Returns the next job in the queue. These calls are
 	// blocking, but may be interrupted with a canceled context.
@@ -140,7 +175,7 @@ type Queue interface {
 
 	// Returns an object that contains statistics about the
 	// current state of the Queue.
-	Stats() QueueStats
+	Stats(context.Context) QueueStats
 
 	// Getter for the Runner implementation embedded in the Queue
 	// instance.

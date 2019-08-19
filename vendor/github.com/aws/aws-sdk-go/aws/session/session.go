@@ -3,22 +3,39 @@ package session
 import (
 	"crypto/tls"
 	"crypto/x509"
-	"fmt"
 	"io"
 	"io/ioutil"
 	"net/http"
 	"os"
+	"time"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/awserr"
 	"github.com/aws/aws-sdk-go/aws/client"
 	"github.com/aws/aws-sdk-go/aws/corehandlers"
 	"github.com/aws/aws-sdk-go/aws/credentials"
-	"github.com/aws/aws-sdk-go/aws/credentials/stscreds"
+	"github.com/aws/aws-sdk-go/aws/csm"
 	"github.com/aws/aws-sdk-go/aws/defaults"
 	"github.com/aws/aws-sdk-go/aws/endpoints"
 	"github.com/aws/aws-sdk-go/aws/request"
 )
+
+const (
+	// ErrCodeSharedConfig represents an error that occurs in the shared
+	// configuration logic
+	ErrCodeSharedConfig = "SharedConfigErr"
+)
+
+// ErrSharedConfigSourceCollision will be returned if a section contains both
+// source_profile and credential_source
+var ErrSharedConfigSourceCollision = awserr.New(ErrCodeSharedConfig, "only source profile or credential source can be specified, not both", nil)
+
+// ErrSharedConfigECSContainerEnvVarEmpty will be returned if the environment
+// variables are empty and Environment was set as the credential source
+var ErrSharedConfigECSContainerEnvVarEmpty = awserr.New(ErrCodeSharedConfig, "EcsContainer was specified as the credential_source, but 'AWS_CONTAINER_CREDENTIALS_RELATIVE_URI' was not set", nil)
+
+// ErrSharedConfigInvalidCredSource will be returned if an invalid credential source was provided
+var ErrSharedConfigInvalidCredSource = awserr.New(ErrCodeSharedConfig, "credential source values must be EcsContainer, Ec2InstanceMetadata, or Environment", nil)
 
 // A Session provides a central location to create service clients from and
 // store configurations and request handlers for those services.
@@ -26,7 +43,7 @@ import (
 // Sessions are safe to create service clients concurrently, but it is not safe
 // to mutate the Session concurrently.
 //
-// The Session satisfies the service client's client.ClientConfigProvider.
+// The Session satisfies the service client's client.ConfigProvider.
 type Session struct {
 	Config   *aws.Config
 	Handlers request.Handlers
@@ -58,7 +75,12 @@ func New(cfgs ...*aws.Config) *Session {
 	envCfg := loadEnvConfig()
 
 	if envCfg.EnableSharedConfig {
-		s, err := newSession(Options{}, envCfg, cfgs...)
+		var cfg aws.Config
+		cfg.MergeIn(cfgs...)
+		s, err := NewSessionWithOptions(Options{
+			Config:            cfg,
+			SharedConfigState: SharedConfigEnable,
+		})
 		if err != nil {
 			// Old session.New expected all errors to be discovered when
 			// a request is made, and would report the errors then. This
@@ -76,10 +98,16 @@ func New(cfgs ...*aws.Config) *Session {
 				r.Error = err
 			})
 		}
+
 		return s
 	}
 
-	return deprecatedNewSession(cfgs...)
+	s := deprecatedNewSession(cfgs...)
+	if envCfg.CSMEnabled {
+		enableCSM(&s.Handlers, envCfg.CSMClientID, envCfg.CSMPort, s.Config.Logger)
+	}
+
+	return s
 }
 
 // NewSession returns a new Session created from SDK defaults, config files,
@@ -179,6 +207,12 @@ type Options struct {
 	// the config enables assume role wit MFA via the mfa_serial field.
 	AssumeRoleTokenProvider func() (string, error)
 
+	// When the SDK's shared config is configured to assume a role this option
+	// may be provided to set the expiry duration of the STS credentials.
+	// Defaults to 15 minutes if not set as documented in the
+	// stscreds.AssumeRoleProvider.
+	AssumeRoleDuration time.Duration
+
 	// Reader for a custom Credentials Authority (CA) bundle in PEM format that
 	// the SDK will use instead of the default system's root CA bundle. Use this
 	// only if you want to replace the CA bundle the SDK uses for TLS requests.
@@ -193,6 +227,12 @@ type Options struct {
 	// to also enable this feature. CustomCABundle session option field has priority
 	// over the AWS_CA_BUNDLE environment variable, and will be used if both are set.
 	CustomCABundle io.Reader
+
+	// The handlers that the session and all API clients will be created with.
+	// This must be a complete set of handlers. Use the defaults.Handlers()
+	// function to initialize this value before changing the handlers to be
+	// used by the SDK.
+	Handlers request.Handlers
 }
 
 // NewSessionWithOptions returns a new Session created from SDK defaults, config files,
@@ -241,13 +281,6 @@ func NewSessionWithOptions(opts Options) (*Session, error) {
 		envCfg.EnableSharedConfig = false
 	case SharedConfigEnable:
 		envCfg.EnableSharedConfig = true
-	}
-
-	if len(envCfg.SharedCredentialsFile) == 0 {
-		envCfg.SharedCredentialsFile = defaults.SharedCredentialsFilename()
-	}
-	if len(envCfg.SharedConfigFile) == 0 {
-		envCfg.SharedConfigFile = defaults.SharedConfigFilename()
 	}
 
 	// Only use AWS_CA_BUNDLE if session option is not provided.
@@ -302,13 +335,29 @@ func deprecatedNewSession(cfgs ...*aws.Config) *Session {
 	}
 
 	initHandlers(s)
-
 	return s
+}
+
+func enableCSM(handlers *request.Handlers, clientID string, port string, logger aws.Logger) {
+	logger.Log("Enabling CSM")
+	if len(port) == 0 {
+		port = csm.DefaultPort
+	}
+
+	r, err := csm.Start(clientID, "127.0.0.1:"+port)
+	if err != nil {
+		return
+	}
+	r.InjectHandlers(handlers)
 }
 
 func newSession(opts Options, envCfg envConfig, cfgs ...*aws.Config) (*Session, error) {
 	cfg := defaults.Config()
-	handlers := defaults.Handlers()
+
+	handlers := opts.Handlers
+	if handlers.IsEmpty() {
+		handlers = defaults.Handlers()
+	}
 
 	// Get a merged version of the user provided config to determine if
 	// credentials were.
@@ -345,6 +394,9 @@ func newSession(opts Options, envCfg envConfig, cfgs ...*aws.Config) (*Session, 
 	}
 
 	initHandlers(s)
+	if envCfg.CSMEnabled {
+		enableCSM(&s.Handlers, envCfg.CSMClientID, envCfg.CSMPort, s.Config.Logger)
+	}
 
 	// Setup HTTP client with custom cert bundle if enabled
 	if opts.CustomCABundle != nil {
@@ -368,7 +420,10 @@ func loadCustomCABundle(s *Session, bundle io.Reader) error {
 		}
 	}
 	if t == nil {
-		t = &http.Transport{}
+		// Nil transport implies `http.DefaultTransport` should be used. Since
+		// the SDK cannot modify, nor copy the `DefaultTransport` specifying
+		// the values the next closest behavior.
+		t = getCABundleTransport()
 	}
 
 	p, err := loadCertPool(bundle)
@@ -401,7 +456,11 @@ func loadCertPool(r io.Reader) (*x509.CertPool, error) {
 	return p, nil
 }
 
-func mergeConfigSrcs(cfg, userCfg *aws.Config, envCfg envConfig, sharedCfg sharedConfig, handlers request.Handlers, sessOpts Options) error {
+func mergeConfigSrcs(cfg, userCfg *aws.Config,
+	envCfg envConfig, sharedCfg sharedConfig,
+	handlers request.Handlers,
+	sessOpts Options,
+) error {
 	// Merge in user provided configuration
 	cfg.MergeIn(userCfg)
 
@@ -414,101 +473,25 @@ func mergeConfigSrcs(cfg, userCfg *aws.Config, envCfg envConfig, sharedCfg share
 		}
 	}
 
-	// Configure credentials if not already set
-	if cfg.Credentials == credentials.AnonymousCredentials && userCfg.Credentials == nil {
-		if len(envCfg.Creds.AccessKeyID) > 0 {
-			cfg.Credentials = credentials.NewStaticCredentialsFromCreds(
-				envCfg.Creds,
-			)
-		} else if envCfg.EnableSharedConfig && len(sharedCfg.AssumeRole.RoleARN) > 0 && sharedCfg.AssumeRoleSource != nil {
-			cfgCp := *cfg
-			cfgCp.Credentials = credentials.NewStaticCredentialsFromCreds(
-				sharedCfg.AssumeRoleSource.Creds,
-			)
-			if len(sharedCfg.AssumeRole.MFASerial) > 0 && sessOpts.AssumeRoleTokenProvider == nil {
-				// AssumeRole Token provider is required if doing Assume Role
-				// with MFA.
-				return AssumeRoleTokenProviderNotSetError{}
-			}
-			cfg.Credentials = stscreds.NewCredentials(
-				&Session{
-					Config:   &cfgCp,
-					Handlers: handlers.Copy(),
-				},
-				sharedCfg.AssumeRole.RoleARN,
-				func(opt *stscreds.AssumeRoleProvider) {
-					opt.RoleSessionName = sharedCfg.AssumeRole.RoleSessionName
-
-					// Assume role with external ID
-					if len(sharedCfg.AssumeRole.ExternalID) > 0 {
-						opt.ExternalID = aws.String(sharedCfg.AssumeRole.ExternalID)
-					}
-
-					// Assume role with MFA
-					if len(sharedCfg.AssumeRole.MFASerial) > 0 {
-						opt.SerialNumber = aws.String(sharedCfg.AssumeRole.MFASerial)
-						opt.TokenProvider = sessOpts.AssumeRoleTokenProvider
-					}
-				},
-			)
-		} else if len(sharedCfg.Creds.AccessKeyID) > 0 {
-			cfg.Credentials = credentials.NewStaticCredentialsFromCreds(
-				sharedCfg.Creds,
-			)
-		} else {
-			// Fallback to default credentials provider, include mock errors
-			// for the credential chain so user can identify why credentials
-			// failed to be retrieved.
-			cfg.Credentials = credentials.NewCredentials(&credentials.ChainProvider{
-				VerboseErrors: aws.BoolValue(cfg.CredentialsChainVerboseErrors),
-				Providers: []credentials.Provider{
-					&credProviderError{Err: awserr.New("EnvAccessKeyNotFound", "failed to find credentials in the environment.", nil)},
-					&credProviderError{Err: awserr.New("SharedCredsLoad", fmt.Sprintf("failed to load profile, %s.", envCfg.Profile), nil)},
-					defaults.RemoteCredProvider(*cfg, handlers),
-				},
-			})
+	if cfg.EnableEndpointDiscovery == nil {
+		if envCfg.EnableEndpointDiscovery != nil {
+			cfg.WithEndpointDiscovery(*envCfg.EnableEndpointDiscovery)
+		} else if envCfg.EnableSharedConfig && sharedCfg.EnableEndpointDiscovery != nil {
+			cfg.WithEndpointDiscovery(*sharedCfg.EnableEndpointDiscovery)
 		}
 	}
 
+	// Configure credentials if not already set by the user when creating the
+	// Session.
+	if cfg.Credentials == credentials.AnonymousCredentials && userCfg.Credentials == nil {
+		creds, err := resolveCredentials(cfg, envCfg, sharedCfg, handlers, sessOpts)
+		if err != nil {
+			return err
+		}
+		cfg.Credentials = creds
+	}
+
 	return nil
-}
-
-// AssumeRoleTokenProviderNotSetError is an error returned when creating a session when the
-// MFAToken option is not set when shared config is configured load assume a
-// role with an MFA token.
-type AssumeRoleTokenProviderNotSetError struct{}
-
-// Code is the short id of the error.
-func (e AssumeRoleTokenProviderNotSetError) Code() string {
-	return "AssumeRoleTokenProviderNotSetError"
-}
-
-// Message is the description of the error
-func (e AssumeRoleTokenProviderNotSetError) Message() string {
-	return fmt.Sprintf("assume role with MFA enabled, but AssumeRoleTokenProvider session option not set.")
-}
-
-// OrigErr is the underlying error that caused the failure.
-func (e AssumeRoleTokenProviderNotSetError) OrigErr() error {
-	return nil
-}
-
-// Error satisfies the error interface.
-func (e AssumeRoleTokenProviderNotSetError) Error() string {
-	return awserr.SprintError(e.Code(), e.Message(), "", nil)
-}
-
-type credProviderError struct {
-	Err error
-}
-
-var emptyCreds = credentials.Value{}
-
-func (c credProviderError) Retrieve() (credentials.Value, error) {
-	return credentials.Value{}, c.Err
-}
-func (c credProviderError) IsExpired() bool {
-	return true
 }
 
 func initHandlers(s *Session) {
@@ -573,11 +556,12 @@ func (s *Session) clientConfigWithErr(serviceName string, cfgs ...*aws.Config) (
 	}
 
 	return client.Config{
-		Config:        s.Config,
-		Handlers:      s.Handlers,
-		Endpoint:      resolved.URL,
-		SigningRegion: resolved.SigningRegion,
-		SigningName:   resolved.SigningName,
+		Config:             s.Config,
+		Handlers:           s.Handlers,
+		Endpoint:           resolved.URL,
+		SigningRegion:      resolved.SigningRegion,
+		SigningNameDerived: resolved.SigningNameDerived,
+		SigningName:        resolved.SigningName,
 	}, err
 }
 
@@ -597,10 +581,11 @@ func (s *Session) ClientConfigNoResolveEndpoint(cfgs ...*aws.Config) client.Conf
 	}
 
 	return client.Config{
-		Config:        s.Config,
-		Handlers:      s.Handlers,
-		Endpoint:      resolved.URL,
-		SigningRegion: resolved.SigningRegion,
-		SigningName:   resolved.SigningName,
+		Config:             s.Config,
+		Handlers:           s.Handlers,
+		Endpoint:           resolved.URL,
+		SigningRegion:      resolved.SigningRegion,
+		SigningNameDerived: resolved.SigningNameDerived,
+		SigningName:        resolved.SigningName,
 	}
 }

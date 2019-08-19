@@ -167,7 +167,7 @@ func (j *buildingContainerImageJob) tryRequeue(ctx context.Context) {
 		job.UpdateTimeInfo(amboy.JobTimeInfo{
 			WaitUntil: time.Now().Add(time.Second * 10),
 		})
-		err := j.env.RemoteQueue().Put(job)
+		err := j.env.RemoteQueue().Put(ctx, job)
 		grip.Error(message.WrapError(err, message.Fields{
 			"message":   "failed to requeue setup job",
 			"operation": "container build",

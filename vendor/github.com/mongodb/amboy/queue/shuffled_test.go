@@ -54,17 +54,18 @@ func (s *ShuffledQueueSuite) TestCannotStartQueueWithNilRunner() {
 }
 
 func (s *ShuffledQueueSuite) TestPutFailsWithUnstartedQueue() {
-	s.False(s.queue.Started())
-	s.Error(s.queue.Put(job.NewShellJob("echo 1", "")))
-
-	// now validate the inverse
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
+
+	s.False(s.queue.Started())
+	s.Error(s.queue.Put(ctx, job.NewShellJob("echo 1", "")))
+
+	// now validate the inverse
 	s.NoError(s.queue.SetRunner(pool.NewSingle()))
 	s.NoError(s.queue.Start(ctx))
 	s.True(s.queue.Started())
 
-	s.NoError(s.queue.Put(job.NewShellJob("echo 1", "")))
+	s.NoError(s.queue.Put(ctx, job.NewShellJob("echo 1", "")))
 }
 
 func (s *ShuffledQueueSuite) TestPutFailsIfJobIsTracked() {
@@ -76,18 +77,21 @@ func (s *ShuffledQueueSuite) TestPutFailsIfJobIsTracked() {
 	j := job.NewShellJob("echo 1", "")
 
 	// first, attempt works fine
-	s.NoError(s.queue.Put(j))
+	s.NoError(s.queue.Put(ctx, j))
 
 	// afterwords, attempts should fail
 	for i := 0; i < 10; i++ {
-		s.Error(s.queue.Put(j))
+		s.Error(s.queue.Put(ctx, j))
 	}
 }
 
 func (s *ShuffledQueueSuite) TestStatsShouldReturnNilObjectifQueueIsNotRunning() {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	s.False(s.queue.Started())
 	for i := 0; i < 20; i++ {
-		s.Equal(amboy.QueueStats{}, s.queue.Stats())
+		s.Equal(amboy.QueueStats{}, s.queue.Stats(ctx))
 	}
 }
 
@@ -109,25 +113,25 @@ func (s *ShuffledQueueSuite) TestGetMethodRetrieves() {
 
 	j := job.NewShellJob("true", "")
 
-	jReturn, ok := s.queue.Get(j.ID())
+	jReturn, ok := s.queue.Get(ctx, j.ID())
 	s.False(ok)
 	s.Nil(jReturn)
 
 	s.NoError(s.queue.SetRunner(pool.NewSingle()))
 	s.NoError(s.queue.Start(ctx))
 
-	jReturn, ok = s.queue.Get(j.ID())
+	jReturn, ok = s.queue.Get(ctx, j.ID())
 	s.False(ok)
 	s.Nil(jReturn)
 
-	s.NoError(s.queue.Put(j))
+	s.NoError(s.queue.Put(ctx, j))
 
-	jReturn, ok = s.queue.Get(j.ID())
+	jReturn, ok = s.queue.Get(ctx, j.ID())
 	s.True(ok)
 	s.Exactly(jReturn, j)
-	amboy.Wait(s.queue)
+	amboy.Wait(ctx, s.queue)
 
-	jReturn, ok = s.queue.Get(j.ID())
+	jReturn, ok = s.queue.Get(ctx, j.ID())
 	s.True(ok)
 	s.Exactly(jReturn, j)
 }
@@ -156,6 +160,6 @@ func (s *ShuffledQueueSuite) TestCompleteReturnsIfContextisCanceled() {
 	j := job.NewShellJob("false", "")
 	cancel2()
 	s.queue.Complete(ctx2, j)
-	stat := s.queue.Stats()
+	stat := s.queue.Stats(ctx)
 	s.Equal(0, stat.Completed)
 }

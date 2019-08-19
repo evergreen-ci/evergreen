@@ -4,6 +4,7 @@ import (
 	"context"
 	"net/http"
 	"os"
+	"runtime"
 	"strings"
 	"testing"
 	"time"
@@ -88,15 +89,36 @@ func (s *StatusSuite) TestAgentFailsToStartTwice() {
 
 	mockCommunicator := agt.comm.(*client.Mock)
 	mockCommunicator.NextTaskIsNil = true
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	s.cancel = cancel
 
 	first := make(chan error, 1)
 	go func(c chan error) {
 		c <- agt.Start(ctx)
 	}(first)
-	time.Sleep(100 * time.Millisecond)
+
 	resp, err = http.Get("http://127.0.0.1:2287/status")
+	if err != nil {
+		// the service hasn't started.
+
+		timer := time.NewTimer(0)
+		defer timer.Stop()
+	retryLoop:
+		for {
+			select {
+			case <-ctx.Done():
+				break retryLoop
+			case <-timer.C:
+				resp, err = http.Get("http://127.0.0.1:2287/status")
+				if err == nil {
+					break retryLoop
+				}
+				timer.Reset(10 * time.Millisecond)
+			}
+		}
+	}
+
+	s.Require().NoError(err)
 	s.Equal(200, resp.StatusCode)
 
 	second := make(chan error, 1)
@@ -116,18 +138,41 @@ func (s *StatusSuite) TestAgentFailsToStartTwice() {
 }
 
 func (s *StatusSuite) TestCheckOOMSucceeds() {
+	if runtime.GOOS == "darwin" {
+		s.T().Skip("OOM tests will not work on static mac hosts because logs are never cleared and will be too long to parse")
+	}
 	agt, err := New(s.testOpts, client.NewMock("url"))
 	s.Require().NoError(err)
 	mockCommunicator := agt.comm.(*client.Mock)
 	mockCommunicator.NextTaskIsNil = true
 	ctx, cancel := context.WithCancel(context.Background())
 	s.cancel = cancel
+
 	go func() {
 		_ = agt.Start(ctx)
 	}()
-	time.Sleep(100 * time.Millisecond)
 
 	resp, err := http.Get("http://127.0.0.1:2286/jasper/v1/list/oom")
+	if err != nil {
+		// the service hasn't started.
+
+		timer := time.NewTimer(0)
+		defer timer.Stop()
+	retryLoop:
+		for {
+			select {
+			case <-ctx.Done():
+				break retryLoop
+			case <-timer.C:
+				resp, err = http.Get("http://127.0.0.1:2286/jasper/v1/list/oom")
+				if err == nil {
+					break retryLoop
+				}
+				timer.Reset(10 * time.Millisecond)
+			}
+		}
+	}
+
 	s.Require().NoError(err)
 	s.Equal(200, resp.StatusCode)
 

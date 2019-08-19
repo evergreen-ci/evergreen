@@ -9,6 +9,7 @@ import (
 	"github.com/evergreen-ci/gimlet"
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 )
 
@@ -21,12 +22,12 @@ type jobStatusResponse struct {
 	Job         interface{} `bson:"job,omitempty" json:"job,omitempty" yaml:"job,omitempty"`
 }
 
-func (s *QueueService) getJobStatusResponse(name string) (*jobStatusResponse, error) {
+func (s *QueueService) getJobStatusResponse(ctx context.Context, name string) (*jobStatusResponse, error) {
 	var msg string
 	var err error
 
 	resp := &jobStatusResponse{}
-	resp.JobsPending = s.queue.Stats().Pending
+	resp.JobsPending = s.queue.Stats(ctx).Pending
 	resp.ID = name
 
 	if name == "" {
@@ -37,7 +38,7 @@ func (s *QueueService) getJobStatusResponse(name string) (*jobStatusResponse, er
 		return resp, err
 	}
 
-	j, exists := s.queue.Get(name)
+	j, exists := s.queue.Get(ctx, name)
 	resp.Exists = exists
 
 	if !exists {
@@ -59,7 +60,7 @@ func (s *QueueService) getJobStatusResponse(name string) (*jobStatusResponse, er
 func (s *QueueService) JobStatus(w http.ResponseWriter, r *http.Request) {
 	name := gimlet.GetVars(r)["name"]
 
-	response, err := s.getJobStatusResponse(name)
+	response, err := s.getJobStatusResponse(r.Context(), name)
 	if err != nil {
 		grip.Error(err)
 		gimlet.WriteJSONError(w, response)
@@ -73,8 +74,9 @@ func (s *QueueService) JobStatus(w http.ResponseWriter, r *http.Request) {
 // argument, which defaults to 10 seconds, and returns 408 (request
 // timeout) if the timeout is reached before the job completes.
 func (s *QueueService) WaitJob(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
 	name := gimlet.GetVars(r)["name"]
-	response, err := s.getJobStatusResponse(name)
+	response, err := s.getJobStatusResponse(ctx, name)
 	if err != nil {
 		grip.Error(err)
 		gimlet.WriteJSONError(w, response)
@@ -82,10 +84,14 @@ func (s *QueueService) WaitJob(w http.ResponseWriter, r *http.Request) {
 
 	timeout, err := parseTimeout(r)
 	if err != nil {
-		grip.Infof("problem parsing timeout for name %s: %v", name, err)
+		grip.Info(message.WrapError(err, message.Fields{
+			"message": "problem parsing timeout",
+			"name":    name,
+		}))
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	var cancel context.CancelFunc
+	ctx, cancel = context.WithTimeout(ctx, timeout)
 	defer cancel()
 
 	response, code, err := s.waitForJob(ctx, name)
@@ -111,17 +117,17 @@ func parseTimeout(r *http.Request) (time.Duration, error) {
 }
 
 func (s *QueueService) waitForJob(ctx context.Context, name string) (*jobStatusResponse, int, error) {
-	job, ok := s.queue.Get(name)
+	job, ok := s.queue.Get(ctx, name)
 	if !ok {
-		response, err := s.getJobStatusResponse(name)
+		response, err := s.getJobStatusResponse(ctx, name)
 		grip.Error(err)
 		return response, http.StatusNotFound, errors.Errorf(
 			"problem finding job: %s", name)
 	}
 
-	ok = amboy.WaitJobCtxInterval(ctx, job, s.queue, 500*time.Millisecond)
+	ok = amboy.WaitJobInterval(ctx, job, s.queue, 100*time.Millisecond)
 
-	response, err := s.getJobStatusResponse(name)
+	response, err := s.getJobStatusResponse(ctx, name)
 	if err != nil {
 		return response, http.StatusInternalServerError, errors.Wrapf(err,
 			"problem constructing response for while waiting for job %s", name)

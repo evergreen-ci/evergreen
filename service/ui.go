@@ -214,6 +214,16 @@ func (uis *UIServer) GetServiceApp() *gimlet.APIApp {
 	app.AddRoute("/login/key").Handler(uis.userGetKey).Post()
 	app.AddRoute("/logout").Handler(uis.logout).Get()
 
+	app.AddRoute("/robots.txt").Get().Handler(func(rw http.ResponseWriter, r *http.Request) {
+		_, err := rw.Write([]byte(strings.Join([]string{
+			"User-agent: *",
+			"Disallow: /",
+		}, "\n")))
+		if err != nil {
+			gimlet.WriteResponse(rw, gimlet.MakeTextErrorResponder(err))
+		}
+	})
+
 	if h := uis.UserManager.GetLoginHandler(uis.RootURL); h != nil {
 		app.AddRoute("/login/redirect").Handler(h).Get()
 	}
@@ -236,9 +246,9 @@ func (uis *UIServer) GetServiceApp() *gimlet.APIApp {
 
 	app.AddRoute("/timeline/{project_id}").Wrap(needsContext).Handler(uis.timeline).Get()
 	app.AddRoute("/timeline").Wrap(needsContext).Handler(uis.timeline).Get()
-	app.AddRoute("/json/timeline/{project_id}").Wrap(needsContext).Handler(uis.timelineJson).Get()
-	app.AddRoute("/json/patches/project/{project_id}").Wrap(needsContext).Handler(uis.patchTimelineJson).Get()
-	app.AddRoute("/json/patches/user/{user_id}").Wrap(needsContext).Handler(uis.patchTimelineJson).Get()
+	app.AddRoute("/json/timeline/{project_id}").Wrap(needsContext, allowsCORS).Handler(uis.timelineJson).Get()
+	app.AddRoute("/json/patches/project/{project_id}").Wrap(needsContext, allowsCORS).Handler(uis.patchTimelineJson).Get()
+	app.AddRoute("/json/patches/user/{user_id}").Wrap(needsContext, allowsCORS).Handler(uis.patchTimelineJson).Get()
 
 	// Grid page
 	app.AddRoute("/grid").Wrap(needsContext).Handler(uis.grid).Get()

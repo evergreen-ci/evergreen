@@ -151,6 +151,7 @@ func (c *cliIntent) NewPatch() *Patch {
 			{
 				ModuleName: c.Module,
 				Githash:    c.BaseHash,
+				Message:    c.Description,
 				PatchSet: PatchSet{
 					PatchFileId: c.PatchFileID.Hex(),
 				},

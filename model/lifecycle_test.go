@@ -67,7 +67,7 @@ func TestBuildRestart(t *testing.T) {
 		Convey("with task abort should update the status of"+
 			" non in-progress tasks and abort in-progress ones", func() {
 
-			require.NoError(t, db.ClearCollections(build.Collection, task.Collection),
+			require.NoError(t, db.ClearCollections(build.Collection, task.Collection, task.OldCollection),
 				"Error clearing test collection")
 			b := &build.Build{
 				Id: "build",
@@ -91,6 +91,7 @@ func TestBuildRestart(t *testing.T) {
 				DisplayName: "task1",
 				BuildId:     b.Id,
 				Status:      evergreen.TaskSucceeded,
+				Activated:   true,
 			}
 			So(taskOne.Insert(), ShouldBeNil)
 
@@ -99,6 +100,7 @@ func TestBuildRestart(t *testing.T) {
 				DisplayName: "task2",
 				BuildId:     b.Id,
 				Status:      evergreen.TaskDispatched,
+				Activated:   true,
 			}
 			So(taskTwo.Insert(), ShouldBeNil)
 
@@ -157,6 +159,7 @@ func TestBuildRestart(t *testing.T) {
 				DisplayName: "task3",
 				BuildId:     b.Id,
 				Status:      evergreen.TaskSucceeded,
+				Activated:   true,
 			}
 			So(taskThree.Insert(), ShouldBeNil)
 
@@ -165,6 +168,7 @@ func TestBuildRestart(t *testing.T) {
 				DisplayName: "task4",
 				BuildId:     b.Id,
 				Status:      evergreen.TaskDispatched,
+				Activated:   true,
 			}
 			So(taskFour.Insert(), ShouldBeNil)
 

@@ -5,16 +5,23 @@ import (
 
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
+	restModel "github.com/evergreen-ci/evergreen/rest/model"
+	"github.com/stretchr/testify/suite"
 )
 
-func TestFindProjectAliases(t *testing.T) {
-	assert := assert.New(t)
-	session, _, _ := db.GetGlobalSessionFactory().GetSession()
-	require.NoError(t, session.DB(testConfig.Database.DB).DropDatabase(), "Error dropping database")
+type AliasSuite struct {
+	sc *DBConnector
+	suite.Suite
+}
 
-	sc := &DBConnector{}
+func TestAliasSuite(t *testing.T) {
+	suite.Run(t, new(AliasSuite))
+}
+
+func (a *AliasSuite) SetupTest() {
+	a.sc = &DBConnector{}
+	session, _, _ := db.GetGlobalSessionFactory().GetSession()
+	a.Require().NoError(session.DB(testConfig.Database.DB).DropDatabase(), "Error dropping database")
 
 	aliases := []model.ProjectAlias{
 		{
@@ -41,11 +48,74 @@ func TestFindProjectAliases(t *testing.T) {
 			Variant:   "variant",
 			Task:      "task",
 		},
+		{
+			ProjectID: "other_project_id",
+			Alias:     "delete_me",
+			Variant:   "variant",
+			Task:      "task",
+		},
 	}
 	for _, v := range aliases {
-		assert.NoError(v.Upsert())
+		a.NoError(v.Upsert())
 	}
-	found, err := sc.FindProjectAliases("project_id")
-	assert.Nil(err)
-	assert.Len(found, 3)
+}
+
+func (a *AliasSuite) TestFindProjectAliases() {
+	found, err := a.sc.FindProjectAliases("project_id")
+	a.NoError(err)
+	a.Len(found, 3)
+
+	found, err = a.sc.FindProjectAliases("non-existent")
+	a.NoError(err)
+	a.Len(found, 0)
+}
+
+func (a *AliasSuite) TestCopyProjectAliases() {
+	res, err := a.sc.FindProjectAliases("new_project_id")
+	a.NoError(err)
+	a.Len(res, 0)
+
+	a.NoError(a.sc.CopyProjectAliases("project_id", "new_project_id"))
+
+	res, err = a.sc.FindProjectAliases("project_id")
+	a.NoError(err)
+	a.Len(res, 3)
+
+	res, err = a.sc.FindProjectAliases("new_project_id")
+	a.NoError(err)
+	a.Len(res, 3)
+
+}
+
+func (a *AliasSuite) TestUpdateProjectAliases() {
+	found, err := a.sc.FindProjectAliases("other_project_id")
+	a.NoError(err)
+	a.Require().Len(found, 2)
+	toUpdate := found[0]
+	toDelete := found[1]
+	toUpdate.Alias = restModel.ToAPIString("different_alias")
+	toDelete.Delete = true
+	aliasUpdates := []restModel.APIProjectAlias{
+		toUpdate,
+		toDelete,
+		{
+			Alias:   restModel.ToAPIString("new_alias"),
+			Task:    restModel.ToAPIString("new_task"),
+			Variant: restModel.ToAPIString("new_variant"),
+		},
+	}
+	a.NoError(a.sc.UpdateProjectAliases("other_project_id", aliasUpdates))
+	found, err = a.sc.FindProjectAliases("other_project_id")
+	a.NoError(err)
+	a.Require().Len(found, 2) // added one alias, deleted another
+
+	a.NotEqual(restModel.FromAPIString(toDelete.ID), found[0].ID)
+	a.NotEqual(restModel.FromAPIString(toDelete.ID), found[1].ID)
+	a.Equal(restModel.FromAPIString(toUpdate.ID), restModel.FromAPIString(found[0].ID))
+	a.Equal("different_alias", restModel.FromAPIString(found[0].Alias))
+
+	a.NotEmpty(found[1].ID)
+	a.Equal("new_alias", restModel.FromAPIString(found[1].Alias))
+	a.Equal("new_task", restModel.FromAPIString(found[1].Task))
+	a.Equal("new_variant", restModel.FromAPIString(found[1].Variant))
 }

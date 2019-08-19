@@ -2,13 +2,15 @@ package queue
 
 import (
 	"context"
-	"errors"
 	"sync"
 	"time"
 
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/amboy/pool"
 	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
+	"github.com/mongodb/grip/recovery"
+	"github.com/pkg/errors"
 )
 
 // LocalPriorityQueue is an amboy.Queue implementation that dispatches
@@ -43,10 +45,14 @@ func NewLocalPriorityQueue(workers, capacity int) amboy.Queue {
 // Put adds a job to the priority queue. If the Job already exists,
 // this operation updates it in the queue, potentially reordering the
 // queue accordingly.
-func (q *priorityLocalQueue) Put(j amboy.Job) error {
+func (q *priorityLocalQueue) Put(ctx context.Context, j amboy.Job) error {
 	j.UpdateTimeInfo(amboy.JobTimeInfo{
 		Created: time.Now(),
 	})
+
+	if err := j.TimeInfo().Validate(); err != nil {
+		return errors.Wrap(err, "invalid job timeinfo")
+	}
 
 	return q.storage.Insert(j)
 }
@@ -54,7 +60,7 @@ func (q *priorityLocalQueue) Put(j amboy.Job) error {
 // Get takes the name of a job and returns the job from the queue that
 // matches that ID. Use the second return value to check if a job
 // object with that ID exists in the queue.e
-func (q *priorityLocalQueue) Get(name string) (amboy.Job, bool) {
+func (q *priorityLocalQueue) Get(ctx context.Context, name string) (amboy.Job, bool) {
 	return q.storage.Get(name)
 }
 
@@ -62,14 +68,36 @@ func (q *priorityLocalQueue) Get(name string) (amboy.Job, bool) {
 // if the context is canceled. Otherwise, this operation blocks until
 // a job is available for dispatching.
 func (q *priorityLocalQueue) Next(ctx context.Context) amboy.Job {
-	select {
-	case <-ctx.Done():
-		return nil
-	case job := <-q.channel:
-		q.counters.Lock()
-		defer q.counters.Unlock()
-		q.counters.started++
-		return job
+	for {
+		select {
+		case <-ctx.Done():
+			return nil
+		case job := <-q.channel:
+			ti := job.TimeInfo()
+			if ti.IsStale() {
+				q.storage.Remove(job.ID())
+				grip.Notice(message.Fields{
+					"state":    "stale",
+					"job":      job.ID(),
+					"job_type": job.Type().Name,
+				})
+				continue
+			}
+
+			if !ti.IsDispatchable() {
+				go func() {
+					defer recovery.LogStackTraceAndContinue("re-queue waiting job", job.ID())
+					q.channel <- job
+				}()
+				continue
+			}
+
+			q.counters.Lock()
+			q.counters.started++
+			q.counters.Unlock()
+
+			return job
+		}
 	}
 }
 
@@ -111,7 +139,12 @@ func (q *priorityLocalQueue) JobStats(ctx context.Context) <-chan amboy.JobStatu
 			}
 			stat := job.Status()
 			stat.ID = job.ID()
-			out <- stat
+			select {
+			case <-ctx.Done():
+				return
+			case out <- stat:
+			}
+
 		}
 	}()
 
@@ -140,7 +173,7 @@ func (q *priorityLocalQueue) SetRunner(r amboy.Runner) error {
 
 // Stats returns an amboy.QueueStats object that reflects the queue's
 // current state.
-func (q *priorityLocalQueue) Stats() amboy.QueueStats {
+func (q *priorityLocalQueue) Stats(ctx context.Context) amboy.QueueStats {
 	stats := amboy.QueueStats{
 		Total:   q.storage.Size(),
 		Pending: q.storage.Pending(),
@@ -158,6 +191,9 @@ func (q *priorityLocalQueue) Stats() amboy.QueueStats {
 // Complete marks a job complete. The operation is asynchronous in
 // this implementation.
 func (q *priorityLocalQueue) Complete(ctx context.Context, j amboy.Job) {
+	if ctx.Err() != nil {
+		return
+	}
 	id := j.ID()
 	grip.Debugf("marking job (%s) as complete", id)
 	q.counters.Lock()

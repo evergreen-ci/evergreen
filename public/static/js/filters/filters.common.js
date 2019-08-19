@@ -33,27 +33,27 @@ var bannerText = function() {
 }
 
 var convertSingleTest = function(test, execution) {
+  if (execution && test.info.execution !== execution) {
+    return null;
+  }
   let output = {
     data: {
       "results": []
     }
   };
+  output.create_time = test.created_at;
   if (test.info) {
     output.order = test.info.order;
     output.version_id = test.info.version;
     output.project_id = test.info.project;
     output.task_name = test.info.task_name;
     output.task_id = test.info.task_id;
-    output.create_time = test.info.created_at;
     output.order = test.info.order;
 
     let versionParts = output.version_id.split("_");
     if (versionParts.length > 1) {
       output.revision = versionParts[versionParts.length - 1];
     }
-  }
-  if (execution && test.info.execution !== execution) {
-    return output;
   }
   var result = {};
   var threads
@@ -477,7 +477,9 @@ filters.common.filter('conditional', function() {
 
     _.each(data, function(test) {
       let singleTest = convertSingleTest(test, execution);
-      output.data.results = output.data.results.concat(singleTest.data.results);
+      if (singleTest) {
+        output.data.results = output.data.results.concat(singleTest.data.results);
+      }
     })
 
     return output;

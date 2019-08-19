@@ -299,14 +299,16 @@ func (s *QueueClientSuite) TestGetStatsHelperWithCanceledContextReturnsError() {
 
 func (s *QueueClientSuite) TestGetStatsHelperWithActualJob() {
 	var err error
-	ctx := context.Background()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	s.client, err = NewQueueClient(s.info.host, s.info.port, "")
 	s.NoError(err)
 
 	j := job.NewShellJob("true", "")
 
-	s.NoError(s.service.queue.Put(j))
-	amboy.Wait(s.service.queue)
+	s.NoError(s.service.queue.Put(ctx, j))
+	amboy.Wait(ctx, s.service.queue)
 
 	st, err := s.client.getStats(ctx)
 	s.NoError(err, fmt.Sprintf("%+v", st))
@@ -353,13 +355,15 @@ func (s *QueueClientSuite) TestJobStatusWithNonExistingJobReturnsError() {
 
 func (s *QueueClientSuite) TestJobStatusWithValidJob() {
 	var err error
-	ctx := context.Background()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	s.client, err = NewQueueClient(s.info.host, s.info.port, "")
 	s.NoError(err)
 
 	j := job.NewShellJob("echo foo", "")
-	s.NoError(s.service.queue.Put(j))
-	amboy.Wait(s.service.queue)
+	s.NoError(s.service.queue.Put(ctx, j))
+	amboy.Wait(ctx, s.service.queue)
 	st, err := s.client.jobStatus(ctx, j.ID())
 	s.NoError(err)
 	s.Equal(j.ID(), st.ID)
@@ -431,9 +435,12 @@ func (s *QueueClientSuite) TestPendingJobsWithCanceledContextReturnsError() {
 }
 
 func (s *QueueClientSuite) TestPendingJobsIsZeroAfterWaitingOnTheQueue() {
-	amboy.Wait(s.service.queue)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	amboy.Wait(ctx, s.service.queue)
 	var err error
-	ctx := context.Background()
+
 	s.client, err = NewQueueClient(s.info.host, s.info.port, "")
 	s.NoError(err)
 	pending, err := s.client.PendingJobs(ctx)
@@ -457,16 +464,19 @@ func (s *QueueClientSuite) TestJobCompleteWithCanceledContextReturnsError() {
 }
 
 func (s *QueueClientSuite) TestJobCompleteIsZeroAfterWaitingOnTheQueue() {
-	amboy.Wait(s.service.queue)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	amboy.Wait(ctx, s.service.queue)
 	var err error
-	ctx := context.Background()
+
 	s.client, err = NewQueueClient(s.info.host, s.info.port, "")
 	s.NoError(err)
 
 	j := job.NewShellJob("echo foo", "")
-	s.NoError(s.service.queue.Put(j))
+	s.NoError(s.service.queue.Put(ctx, j))
 
-	amboy.Wait(s.service.queue)
+	amboy.Wait(ctx, s.service.queue)
 
 	isComplete, err := s.client.JobComplete(ctx, j.ID())
 	s.True(isComplete)
@@ -541,21 +551,24 @@ func (s *QueueClientSuite) TestWhenWaitAllMethodReturnsAllJobsAreComplete() {
 	var err error
 
 	s.client, err = NewQueueClient(s.info.host, s.info.port, "")
-	ctx := context.Background()
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	s.NoError(err)
 
 	for i := 0; i < 100; i++ {
-		err = s.service.queue.Put(job.NewShellJob(fmt.Sprintf("echo %d", i), ""))
+		err = s.service.queue.Put(ctx, job.NewShellJob(fmt.Sprintf("echo %d", i), ""))
 		s.NoError(err)
 	}
 
-	qst := s.service.queue.Stats()
+	qst := s.service.queue.Stats(ctx)
 	s.NotEqual(0, qst.Pending)
 
 	ok := s.client.WaitAll(ctx)
 	s.True(ok)
 
-	qst = s.service.queue.Stats()
+	qst = s.service.queue.Stats(ctx)
 	s.Equal(0, qst.Pending)
 }
 

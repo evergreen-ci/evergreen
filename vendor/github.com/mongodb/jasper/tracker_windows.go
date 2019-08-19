@@ -14,7 +14,7 @@ func (t *windowsProcessTracker) setJobIfInvalid() error {
 	if t.job != nil {
 		return nil
 	}
-	job, err := NewJob(t.Name)
+	job, err := NewWindowsJobObject(t.Name)
 	if err != nil {
 		return errors.Wrap(err, "error creating new job object")
 	}

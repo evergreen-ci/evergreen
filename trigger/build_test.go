@@ -63,13 +63,13 @@ func (s *buildSuite) SetupTest() {
 	}
 
 	s.subs = []event.Subscription{
-		event.NewSubscriptionByID(event.ResourceTypeBuild, triggerOutcome, s.event.ResourceId, apiSub),
-		event.NewSubscriptionByID(event.ResourceTypeBuild, triggerSuccess, s.event.ResourceId, apiSub),
-		event.NewSubscriptionByID(event.ResourceTypeBuild, triggerFailure, s.event.ResourceId, apiSub),
+		event.NewSubscriptionByID(event.ResourceTypeBuild, event.TriggerOutcome, s.event.ResourceId, apiSub),
+		event.NewSubscriptionByID(event.ResourceTypeBuild, event.TriggerSuccess, s.event.ResourceId, apiSub),
+		event.NewSubscriptionByID(event.ResourceTypeBuild, event.TriggerFailure, s.event.ResourceId, apiSub),
 		{
 			ID:           mgobson.NewObjectId().Hex(),
 			ResourceType: event.ResourceTypeBuild,
-			Trigger:      triggerExceedsDuration,
+			Trigger:      event.TriggerExceedsDuration,
 			Selectors: []event.Selector{
 				{
 					Type: "id",
@@ -88,7 +88,7 @@ func (s *buildSuite) SetupTest() {
 		{
 			ID:           mgobson.NewObjectId().Hex(),
 			ResourceType: event.ResourceTypeBuild,
-			Trigger:      triggerRuntimeChangeByPercent,
+			Trigger:      event.TriggerRuntimeChangeByPercent,
 			Selectors: []event.Selector{
 				{
 					Type: "id",

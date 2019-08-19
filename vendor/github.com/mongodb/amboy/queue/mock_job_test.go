@@ -54,7 +54,7 @@ func newMockJob() *mockJob {
 		Base: job.Base{
 			JobType: amboy.JobType{
 				Name:    "mock",
-				Version: 1,
+				Version: 0,
 			},
 		},
 	}

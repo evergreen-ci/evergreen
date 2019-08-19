@@ -67,6 +67,10 @@ func (uis *UIServer) hostPage(w http.ResponseWriter, r *http.Request) {
 			uis.LoggedError(w, r, http.StatusInternalServerError, err)
 			return
 		}
+		if runningTask == nil {
+			uis.LoggedError(w, r, http.StatusInternalServerError, errors.Errorf("task %s running on host not found", h.RunningTask))
+			return
+		}
 	}
 
 	var containers []host.Host

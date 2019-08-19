@@ -262,7 +262,7 @@ func getVersionsAndVariants(skip, numVersionElements int, project *model.Project
 				}
 
 				if buildVariant.DisplayName == "" {
-					buildVariant.DisplayName = b.BuildVariant
+					buildVariant.DisplayName = b.DisplayName
 				}
 
 				// The version is marked active if there are any

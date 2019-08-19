@@ -121,6 +121,7 @@ func (s *AgentSuite) TestErrorGettingNextTask() {
 
 func (s *AgentSuite) TestCanceledContext() {
 	s.a.opts.AgentSleepInterval = time.Millisecond
+	s.a.opts.MaxAgentSleepInterval = time.Millisecond
 	s.mockCommunicator.NextTaskIsNil = true
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Millisecond)
 	defer cancel()
@@ -245,6 +246,7 @@ func (s *AgentSuite) TestPreFailsTask() {
 		WorkDir: s.tc.taskDirectory,
 	}
 	projYml := `
+pre_error_fails_task: true
 pre:
   - command: subprocess.exec
     params:
@@ -257,8 +259,7 @@ pre:
 	s.tc.taskConfig.Version = v
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	// TODO EVG-6009 change the next line to s.Error when ready
-	s.NoError(s.a.runPreTaskCommands(ctx, s.tc))
+	s.Error(s.a.runPreTaskCommands(ctx, s.tc))
 	s.NoError(s.tc.logger.Close())
 }
 

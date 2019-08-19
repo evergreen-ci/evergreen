@@ -81,6 +81,9 @@ func (j *hostTerminationJob) Run(ctx context.Context) {
 			return
 		}
 	}
+	if j.env == nil {
+		j.env = evergreen.GetEnvironment()
+	}
 
 	if !j.host.IsEphemeral() {
 		grip.Notice(message.Fields{
@@ -92,6 +95,17 @@ func (j *hostTerminationJob) Run(ctx context.Context) {
 			"message":  "host termination for a non-spawnable distro",
 			"cause":    "programmer error",
 		})
+		return
+	}
+
+	if err = j.host.DeleteJasperCredentials(ctx, j.env); err != nil {
+		j.AddError(err)
+		grip.Error(message.WrapError(err, message.Fields{
+			"message":  "problem deleting Jasper credentials",
+			"host":     j.host.Id,
+			"provider": j.host.Distro.Provider,
+			"job":      j.ID(),
+		}))
 		return
 	}
 
@@ -161,6 +175,7 @@ func (j *hostTerminationJob) Run(ctx context.Context) {
 		j.AddError(fmt.Errorf("could not find host %s for job %s", j.HostID, j.TaskID))
 		return
 	}
+
 	// check if running task has been assigned since status changed
 	if j.host.RunningTask != "" {
 		if j.TerminateIfBusy {
@@ -221,10 +236,6 @@ func (j *hostTerminationJob) Run(ctx context.Context) {
 			}))
 		}
 		return
-	}
-
-	if j.env == nil {
-		j.env = evergreen.GetEnvironment()
 	}
 
 	settings := j.env.Settings()

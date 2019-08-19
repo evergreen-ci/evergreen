@@ -86,7 +86,7 @@ func (j *taskExecutionTimeoutJob) Run(ctx context.Context) {
 		})
 		return
 	}
-	defer j.tryRequeue()
+	defer j.tryRequeue(ctx)
 
 	t, err := task.FindOneId(j.Task)
 	if err != nil {
@@ -121,7 +121,7 @@ func (j *taskExecutionTimeoutJob) Run(ctx context.Context) {
 	grip.Debug(msg)
 }
 
-func (j *taskExecutionTimeoutJob) tryRequeue() {
+func (j *taskExecutionTimeoutJob) tryRequeue(ctx context.Context) {
 	if j.successful || j.Attempt >= maxAttempts {
 		return
 	}
@@ -130,7 +130,7 @@ func (j *taskExecutionTimeoutJob) tryRequeue() {
 	newJob.UpdateTimeInfo(amboy.JobTimeInfo{
 		WaitUntil: time.Now().Add(time.Minute),
 	})
-	err := evergreen.GetEnvironment().RemoteQueue().Put(newJob)
+	err := evergreen.GetEnvironment().RemoteQueue().Put(ctx, newJob)
 	grip.Error(message.WrapError(err, message.Fields{
 		"message":  "failed to requeue task timeout job",
 		"task":     j.Task,
@@ -269,7 +269,7 @@ func (j *taskExecutionTimeoutPopulationJob) Run(ctx context.Context) {
 
 	for id, execution := range taskIDs {
 		ts := util.RoundPartOfHour(15)
-		j.AddError(queue.Put(NewTaskExecutionMonitorJob(id, execution, 1, ts.Format(tsFormat))))
+		j.AddError(queue.Put(ctx, NewTaskExecutionMonitorJob(id, execution, 1, ts.Format(tsFormat))))
 	}
 	grip.Info(message.Fields{
 		"operation": "task-execution-timeout-populate",

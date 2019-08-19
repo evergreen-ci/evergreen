@@ -356,7 +356,7 @@ buildvariants:
 	assert.Equal("master", expansions.Get("branch_name"))
 	assert.Equal("somebody", expansions.Get("author"))
 	assert.Equal("d1", expansions.Get("distro_id"))
-	assert.Equal("globalGitHubOauthToken", expansions.Get("global_github_oauth_token"))
+	assert.Equal("globalGitHubOauthToken", expansions.Get(evergreen.GlobalGitHubTokenExpansion))
 	assert.True(expansions.Exists("created_at"))
 	assert.Equal("42", expansions.Get("revision_order_id"))
 	assert.False(expansions.Exists("is_patch"))
@@ -485,7 +485,7 @@ func (s *projectSuite) SetupTest() {
 			ProjectID: "project",
 			Alias:     "aTags",
 			Variant:   ".*",
-			Tags:      []string{"a"},
+			TaskTags:  []string{"a"},
 		},
 		{
 			ProjectID: "project",
@@ -509,7 +509,13 @@ func (s *projectSuite) SetupTest() {
 			ProjectID: "project",
 			Alias:     "part_of_memes",
 			Variant:   "bv_1",
-			Tags:      []string{"part_of_memes"},
+			TaskTags:  []string{"part_of_memes"},
+		},
+		{
+			ProjectID:   "project",
+			Alias:       "even_bvs",
+			VariantTags: []string{"even"},
+			TaskTags:    []string{"a"},
 		},
 	}
 	for _, alias := range s.aliases {
@@ -573,6 +579,7 @@ func (s *projectSuite) SetupTest() {
 			},
 			{
 				Name: "bv_2",
+				Tags: []string{"even"},
 				Tasks: []BuildVariantTaskUnit{
 					{
 						Name: "a_task_1",
@@ -743,6 +750,13 @@ func (s *projectSuite) TestAliasResolution() {
 	s.NoError(err)
 	s.Require().Len(pairs, 1)
 	s.Equal("bv_3/disabled_task", pairs[0].String())
+	s.Empty(displayTaskPairs)
+
+	pairs, displayTaskPairs, err = s.project.BuildProjectTVPairsWithAlias(s.aliases[8].Alias)
+	s.NoError(err)
+	s.Require().Len(pairs, 2)
+	s.Equal("bv_2/a_task_1", pairs[0].String())
+	s.Equal("bv_2/a_task_2", pairs[1].String())
 	s.Empty(displayTaskPairs)
 }
 
@@ -1193,4 +1207,41 @@ func TestLoggerConfigValidate(t *testing.T) {
 		System: []LogOpts{{Type: SplunkLogSender}},
 	}
 	assert.EqualError(config.IsValid(), "invalid system logger config: Splunk logger requires a server URL\nSplunk logger requires a token")
+}
+
+func TestInjectTaskGroupInfo(t *testing.T) {
+	tg := TaskGroup{
+		Name:     "group-one",
+		MaxHosts: 42,
+		Tasks:    []string{"one", "two"},
+	}
+
+	t.Run("PopulatedFirst", func(t *testing.T) {
+		tk := &task.Task{
+			DisplayName: "one",
+		}
+
+		tg.InjectInfo(tk)
+
+		assert.Equal(t, 42, tk.TaskGroupMaxHosts)
+		assert.Equal(t, 1, tk.TaskGroupOrder)
+	})
+	t.Run("PopulatedSecond", func(t *testing.T) {
+		tk := &task.Task{
+			DisplayName: "two",
+		}
+
+		tg.InjectInfo(tk)
+
+		assert.Equal(t, 42, tk.TaskGroupMaxHosts)
+		assert.Equal(t, 2, tk.TaskGroupOrder)
+	})
+	t.Run("Missed", func(t *testing.T) {
+		tk := &task.Task{}
+
+		tg.InjectInfo(tk)
+
+		assert.Equal(t, 42, tk.TaskGroupMaxHosts)
+		assert.Equal(t, 0, tk.TaskGroupOrder)
+	})
 }

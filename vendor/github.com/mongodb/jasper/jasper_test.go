@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"net/http"
-	"syscall"
 	"time"
 
 	"github.com/mongodb/grip"
@@ -86,26 +85,31 @@ func createProcs(ctx context.Context, opts *CreateOptions, manager Manager, num 
 	return out, catcher.Resolve()
 }
 
-func makeAndStartService(ctx context.Context, client *http.Client) (*Service, int) {
+func startRESTService(ctx context.Context, client *http.Client) (*Service, int, error) {
 outerRetry:
 	for {
 		select {
 		case <-ctx.Done():
-			grip.Warning("timed out starting test service service")
-			return nil, -1
+			grip.Warning("timed out starting test service")
+			return nil, -1, errors.WithStack(ctx.Err())
 		default:
-			port := getPortNumber()
 			localManager, err := NewLocalManager(false)
 			if err != nil {
-				return nil, -1
+				return nil, -1, errors.WithStack(err)
 			}
 			srv := NewManagerService(localManager)
 			app := srv.App(ctx)
 			app.SetPrefix("jasper")
+
+			if err := app.SetHost("localhost"); err != nil {
+				continue outerRetry
+			}
+
+			port := getPortNumber()
 			if err := app.SetPort(port); err != nil {
 				continue outerRetry
-
 			}
+
 			go func() {
 				app.Run(ctx)
 			}()
@@ -117,14 +121,13 @@ outerRetry:
 			trials := 0
 		checkLoop:
 			for {
-				if trials > 40 {
+				if trials > 10 {
 					continue outerRetry
 				}
 
 				select {
 				case <-ctx.Done():
-					fmt.Println("HAPPENS")
-					return nil, -1
+					return nil, -1, errors.WithStack(ctx.Err())
 				case <-timer.C:
 					req, err := http.NewRequest(http.MethodGet, url, nil)
 					if err != nil {
@@ -132,7 +135,9 @@ outerRetry:
 						trials++
 						continue checkLoop
 					}
-					req = req.WithContext(ctx)
+					rctx, cancel := context.WithTimeout(ctx, time.Second)
+					defer cancel()
+					req = req.WithContext(rctx)
 					resp, err := client.Do(req)
 					if err != nil {
 						timer.Reset(5 * time.Millisecond)
@@ -145,144 +150,43 @@ outerRetry:
 						continue checkLoop
 					}
 
-					return srv, port
+					return srv, port, nil
 				}
 			}
 		}
 	}
 }
 
-////////////////////////////////////////////////////////////////////////
-//
-// mock of manager with configurable failures
+// waitForRESTService waits until the REST service becomes available to serve
+// requests or the context times out.
+func waitForRESTService(ctx context.Context, url string) error {
+	client := GetHTTPClient()
+	defer PutHTTPClient(client)
 
-type MockManager struct {
-	FailCreate   bool
-	FailRegister bool
-	FailList     bool
-	FailGroup    bool
-	FailGet      bool
-	FailClose    bool
-	Process      *MockProcess
-	Array        []Process
-}
-
-func (m *MockManager) CreateProcess(_ context.Context, opts *CreateOptions) (Process, error) {
-	if m.FailCreate {
-		return nil, errors.New("always fail")
+	// Block until the service comes up
+	timeoutInterval := 10 * time.Millisecond
+	timer := time.NewTimer(timeoutInterval)
+	for {
+		select {
+		case <-ctx.Done():
+			return errors.WithStack(ctx.Err())
+		case <-timer.C:
+			req, err := http.NewRequest(http.MethodGet, url, nil)
+			if err != nil {
+				timer.Reset(timeoutInterval)
+				continue
+			}
+			req = req.WithContext(ctx)
+			resp, err := client.Do(req)
+			if err != nil {
+				timer.Reset(timeoutInterval)
+				continue
+			}
+			if resp.StatusCode != http.StatusOK {
+				timer.Reset(timeoutInterval)
+				continue
+			}
+			return nil
+		}
 	}
-
-	return m.Process, nil
-}
-
-func (m *MockManager) CreateCommand(_ context.Context) *Command {
-	return NewCommand().ProcConstructor(m.CreateProcess)
-}
-
-func (m *MockManager) Register(_ context.Context, proc Process) error {
-	if m.FailRegister {
-		return errors.New("always fail")
-	}
-	return nil
-}
-
-func (m *MockManager) List(_ context.Context, f Filter) ([]Process, error) {
-	if m.FailList {
-		return nil, errors.New("always fail")
-	}
-	return m.Array, nil
-}
-
-func (m *MockManager) Group(_ context.Context, name string) ([]Process, error) {
-	if m.FailGroup {
-		return nil, errors.New("always fail")
-	}
-
-	return m.Array, nil
-}
-
-func (m *MockManager) Get(_ context.Context, name string) (Process, error) {
-	if m.FailGet {
-		return nil, errors.New("always fail")
-	}
-
-	return m.Process, nil
-}
-
-func (m *MockManager) Clear(_ context.Context) {
-	return
-}
-
-func (m *MockManager) Close(_ context.Context) error {
-	if m.FailClose {
-		return errors.New("always fail")
-	}
-	return nil
-}
-
-type MockProcess struct {
-	ProcID                    string
-	ProcInfo                  ProcessInfo
-	IsRunning                 bool
-	IsComplete                bool
-	FailSignal                bool
-	FailWait                  bool
-	FailRespawn               bool
-	FailRegisterTrigger       bool
-	FailRegisterSignalTrigger bool
-}
-
-func (p *MockProcess) ID() string                         { return p.ProcID }
-func (p *MockProcess) Info(_ context.Context) ProcessInfo { return p.ProcInfo }
-func (p *MockProcess) Running(_ context.Context) bool     { return p.IsRunning }
-func (p *MockProcess) Complete(_ context.Context) bool    { return p.IsComplete }
-func (p *MockProcess) GetTags() []string                  { return nil }
-func (p *MockProcess) Tag(s string)                       {}
-func (p *MockProcess) ResetTags()                         {}
-func (p *MockProcess) Signal(_ context.Context, s syscall.Signal) error {
-	if p.FailSignal {
-		return errors.New("always fail")
-	}
-
-	return nil
-}
-
-func (p *MockProcess) Wait(_ context.Context) (int, error) {
-	if p.FailWait {
-		return -1, errors.New("always fail")
-	}
-
-	return 0, nil
-}
-
-func (p *MockProcess) Respawn(_ context.Context) (Process, error) {
-	if p.FailRespawn {
-		return nil, errors.New("always fail")
-	}
-
-	return nil, nil
-}
-
-func (p *MockProcess) RegisterTrigger(_ context.Context, t ProcessTrigger) error {
-	if p.FailRegisterTrigger {
-		return errors.New("always fail")
-	}
-
-	return nil
-}
-
-func (p *MockProcess) RegisterSignalTrigger(_ context.Context, _ SignalTrigger) error {
-	if p.FailRegisterSignalTrigger {
-		return errors.New("always fail")
-	}
-
-	return nil
-}
-
-func (p *MockProcess) RegisterSignalTriggerID(_ context.Context, _ SignalTriggerID) error {
-	if p.FailRegisterSignalTrigger {
-		return errors.New("always fail")
-	}
-
-	return nil
 }

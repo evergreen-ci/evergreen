@@ -358,7 +358,7 @@ mciServices.rest.factory('mciAdminRestService', ['mciBaseRestService', function(
       baseSvc.postResource(resource + "/settings", [], config, callbacks);
     }
 
-    service.restartTasks = function(from, to, isDryRun, restartRed, restartPurple, restartLavender, callbacks) {
+    service.restartItems = function(from, to, isDryRun, restartType, restartRed, restartPurple, restartLavender, callbacks) {
       var config = {}
       config.data = {
         start_time: from,
@@ -368,7 +368,7 @@ mciServices.rest.factory('mciAdminRestService', ['mciBaseRestService', function(
         include_sys_failed: restartPurple,
         include_setup_failed: restartLavender,
       };
-      baseSvc.postResource(resource + "/restart", [], config, callbacks);
+      baseSvc.postResource(resource + "/restart/" + restartType, [], config, callbacks);
     }
 
     service.getEvents = function(timestamp, limit, callbacks) {

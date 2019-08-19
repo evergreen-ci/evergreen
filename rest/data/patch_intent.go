@@ -1,6 +1,7 @@
 package data
 
 import (
+	"context"
 	"net/http"
 
 	"github.com/evergreen-ci/evergreen/model"
@@ -42,7 +43,7 @@ func (p *DBPatchIntentConnector) AddPatchIntent(intent patch.Intent, queue amboy
 
 	job := units.NewPatchIntentProcessor(mgobson.NewObjectId(), intent)
 	job.SetPriority(1)
-	if err := queue.Put(job); err != nil {
+	if err := queue.Put(context.TODO(), job); err != nil {
 		grip.Error(message.WrapError(err, message.Fields{
 			"source":    "github hook",
 			"message":   "Github pull request not queued for processing",

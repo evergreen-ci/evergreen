@@ -17,7 +17,7 @@ type status struct {
 	SupportedJobTypes []string `bson:"supported_job_types" json:"supported_job_types" yaml:"supported_job_types"`
 }
 
-func (s *QueueService) getStatus() status {
+func (s *QueueService) getStatus(ctx context.Context) status {
 	output := status{
 		SupportedJobTypes: s.registeredTypes,
 	}
@@ -25,7 +25,7 @@ func (s *QueueService) getStatus() status {
 	if s.queue != nil && s.queue.Started() {
 		output.Status = "ok"
 		output.QueueRunning = true
-		output.PendingJobs = s.queue.Stats().Pending
+		output.PendingJobs = s.queue.Stats(ctx).Pending
 	} else {
 		output.Status = "degraded"
 	}
@@ -36,7 +36,7 @@ func (s *QueueService) getStatus() status {
 // Status defines an http.HandlerFunc that returns health check and
 // current staus status information for the entire service.
 func (s *QueueService) Status(w http.ResponseWriter, r *http.Request) {
-	gimlet.WriteJSON(w, s.getStatus())
+	gimlet.WriteJSON(w, s.getStatus(r.Context()))
 }
 
 // WaitAll blocks waiting for all pending jobs in the queue to
@@ -47,11 +47,11 @@ func (s *QueueService) WaitAll(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		grip.Infof("problem parsing timeout for wait-all operation: %v", err)
 	}
-	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	ctx, cancel := context.WithTimeout(r.Context(), timeout)
 	defer cancel()
 
-	ok := amboy.WaitCtxInterval(ctx, s.queue, 500*time.Millisecond)
-	st := s.getStatus()
+	ok := amboy.WaitInterval(ctx, s.queue, 100*time.Millisecond)
+	st := s.getStatus(ctx)
 	if !ok {
 		gimlet.WriteJSONResponse(w, http.StatusRequestTimeout, st)
 		return

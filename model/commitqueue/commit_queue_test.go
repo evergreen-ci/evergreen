@@ -52,14 +52,31 @@ func (s *CommitQueueSuite) TestEnqueue() {
 	s.Equal(1, pos)
 	s.Require().Len(s.q.Queue, 1)
 	s.Equal("c123", s.q.Next().Issue)
-	s.NotEqual(-1, s.q.findItem("c123"))
+	s.NotEqual(-1, s.q.FindItem("c123"))
 
 	// Persisted to db
 	dbq, err := FindOneId("mci")
 	s.NoError(err)
 	s.Len(dbq.Queue, 1)
 	s.Equal(sampleCommitQueueItem, *dbq.Next())
-	s.NotEqual(-1, dbq.findItem("c123"))
+	s.NotEqual(-1, dbq.FindItem("c123"))
+}
+
+func (s *CommitQueueSuite) TestUpdateVersion() {
+	_, err := s.q.Enqueue(sampleCommitQueueItem)
+	s.NoError(err)
+
+	item := s.q.Next()
+	s.Equal("c123", item.Issue)
+	s.Equal("", s.q.Next().Version)
+	item.Version = "my_version"
+	s.NoError(s.q.UpdateVersion(*item))
+	s.Equal("my_version", s.q.Next().Version)
+
+	dbq, err := FindOneId("mci")
+	s.NoError(err)
+	s.Len(dbq.Queue, 1)
+	s.Equal(item, dbq.Next())
 }
 
 func (s *CommitQueueSuite) TestNext() {
@@ -67,11 +84,6 @@ func (s *CommitQueueSuite) TestNext() {
 	s.NoError(err)
 	s.Equal(1, pos)
 	s.Len(s.q.Queue, 1)
-
-	s.NoError(s.q.SetProcessing(true))
-	s.Nil(s.q.Next())
-
-	s.NoError(s.q.SetProcessing(false))
 	s.Require().NotNil(s.q.Next())
 	s.Equal(s.q.Next().Issue, "c123")
 }
@@ -113,12 +125,12 @@ func (s *CommitQueueSuite) TestRemoveOne() {
 	s.Equal("e345", items[1].Issue)
 
 	s.NoError(s.q.SetProcessing(true))
-	s.Nil(s.q.Next())
 	found, err = s.q.Remove("c123")
 	s.True(found)
 	s.NoError(err)
 	s.NotNil(s.q.Next())
 	s.Equal(s.q.Next().Issue, "e345")
+	s.False(s.q.Processing)
 }
 
 func (s *CommitQueueSuite) TestClearAll() {

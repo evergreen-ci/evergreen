@@ -34,7 +34,7 @@ var (
 				DependsOn: []parserDependency{
 					{TaskSelector: taskSelector{
 						Name:    "a-depended-on-task",
-						Variant: &variantSelector{stringSelector: "*"},
+						Variant: &variantSelector{StringSelector: "*"},
 					}},
 				},
 			},
@@ -313,12 +313,20 @@ func (s *GenerateSuite) TestParseProjectFromJSON() {
 	s.Len(g.Functions, 2)
 	s.Contains(g.Functions, "echo-hi")
 	s.Equal("shell.exec", g.Functions["echo-hi"].List()[0].Command)
+
+	s.Require().NoError(g.Functions["echo-hi"].List()[0].resolveParams())
 	s.Equal("echo hi", g.Functions["echo-hi"].List()[0].Params["script"])
+
+	s.Require().NoError(g.Functions["echo-bye"].List()[0].resolveParams())
 	s.Equal("echo bye", g.Functions["echo-bye"].List()[0].Params["script"])
+
+	s.Require().NoError(g.Functions["echo-bye"].List()[1].resolveParams())
 	s.Equal("echo bye again", g.Functions["echo-bye"].List()[1].Params["script"])
 
 	s.Len(g.Tasks, 1)
 	s.Equal("git.get_project", g.Tasks[0].Commands[0].Command)
+
+	s.Require().NoError(g.Tasks[0].Commands[0].resolveParams())
 	s.Equal("src", g.Tasks[0].Commands[0].Params["directory"])
 	s.Equal("echo-hi", g.Tasks[0].Commands[1].Function)
 	s.Equal("test", g.Tasks[0].Name)
@@ -551,18 +559,20 @@ func (s *GenerateSuite) TestSaveNewBuildsAndTasks() {
 		BuildVariant: "a_variant",
 	}
 	v := &Version{
-		Id:       "version_that_called_generate_task",
-		BuildIds: []string{"sample_build"},
-		Config:   sampleProjYml,
+		Id:                 "version_that_called_generate_task",
+		BuildIds:           []string{"sample_build"},
+		Config:             sampleProjYml,
+		ConfigUpdateNumber: 4,
 	}
 	s.NoError(sampleBuild.Insert())
 	s.NoError(v.Insert())
 
 	g := sampleGeneratedProject
 	g.TaskID = "task_that_called_generate_task"
-	p, v, t, pm, prevConfig, err := g.NewVersion()
+	p, v, t, pm, err := g.NewVersion()
 	s.NoError(err)
-	s.NoError(g.Save(context.Background(), p, v, t, pm, prevConfig))
+	s.NoError(g.Save(context.Background(), p, v, t, pm))
+	s.Equal(5, v.ConfigUpdateNumber)
 	builds, err := build.Find(db.Query(bson.M{}))
 	s.NoError(err)
 	tasks := []task.Task{}
@@ -622,9 +632,10 @@ func (s *GenerateSuite) TestSaveNewTasksWithDependencies() {
 
 	g := sampleGeneratedProjectAddToBVOnly
 	g.TaskID = "task_that_called_generate_task"
-	p, v, t, pm, prevConfig, err := g.NewVersion()
+	p, v, t, pm, err := g.NewVersion()
 	s.NoError(err)
-	s.NoError(g.Save(context.Background(), p, v, t, pm, prevConfig))
+	s.NoError(g.Save(context.Background(), p, v, t, pm))
+	s.Equal(1, v.ConfigUpdateNumber)
 	tasks := []task.Task{}
 	err = db.FindAllQ(task.Collection, db.Query(bson.M{}), &tasks)
 	s.NoError(err)
@@ -667,9 +678,10 @@ func (s *GenerateSuite) TestSaveNewTaskWithExistingExecutionTask() {
 
 	g := smallGeneratedProject
 	g.TaskID = "task_that_called_generate_task"
-	p, v, t, pm, prevConfig, err := g.NewVersion()
+	p, v, t, pm, err := g.NewVersion()
 	s.Require().NoError(err)
-	s.NoError(g.Save(context.Background(), p, v, t, pm, prevConfig))
+	s.NoError(g.Save(context.Background(), p, v, t, pm))
+	s.Equal(1, v.ConfigUpdateNumber)
 
 	tasks := []task.Task{}
 	s.NoError(db.FindAllQ(task.Collection, db.Query(bson.M{}), &tasks))

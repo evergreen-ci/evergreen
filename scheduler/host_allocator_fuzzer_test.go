@@ -113,7 +113,7 @@ func (s *HostAllocatorFuzzerSuite) randomizeData() {
 		}
 		s.NoError(t.Insert())
 		// add up the fraction of hosts free for comparison later
-		fractionFree := float64(time.Duration(offset)*time.Minute) / float64(MaxDurationPerDistroHost)
+		fractionFree := float64(time.Duration(offset)*time.Minute) / float64(evergreen.MaxDurationPerDistroHost)
 		if fractionFree > 1 {
 			fractionFree = 1
 		}
@@ -158,7 +158,7 @@ func (s *HostAllocatorFuzzerSuite) TestHeuristics() {
 		numFree := float64(newHosts+s.freeHosts) + math.Ceil(s.soonToBeFree*s.freeHostFraction)
 		// the task duration per host will always be less than 2x the max duration per host (30min)
 		// because the longest task used in this test is 1 hr
-		s.True(queueDuration.Hours()/numFree < float64(2*MaxDurationPerDistroHost),
+		s.True(queueDuration.Hours()/numFree < float64(2*evergreen.MaxDurationPerDistroHost),
 			"queue: %v, new: %d, free: %d, soon: %f", queueDuration, newHosts, s.freeHosts, s.soonToBeFree)
 	}
 }

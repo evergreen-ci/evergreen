@@ -17,8 +17,8 @@ const opAbortMultipartUpload = "AbortMultipartUpload"
 
 // AbortMultipartUploadRequest generates a "aws/request.Request" representing the
 // client's request for the AbortMultipartUpload operation. The "output" return
-// value will be populated with the request's response once the request complets
-// successfuly.
+// value will be populated with the request's response once the request completes
+// successfully.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
 // the "output" return value is not valid until after Send returns without error.
@@ -50,8 +50,7 @@ func (c *Glacier) AbortMultipartUploadRequest(input *AbortMultipartUploadInput) 
 
 	output = &AbortMultipartUploadOutput{}
 	req = c.newRequest(op, input, output)
-	req.Handlers.Unmarshal.Remove(restjson.UnmarshalHandler)
-	req.Handlers.Unmarshal.PushBackNamed(protocol.UnmarshalDiscardBodyHandler)
+	req.Handlers.Unmarshal.Swap(restjson.UnmarshalHandler.Name, protocol.UnmarshalDiscardBodyHandler)
 	return
 }
 
@@ -124,8 +123,8 @@ const opAbortVaultLock = "AbortVaultLock"
 
 // AbortVaultLockRequest generates a "aws/request.Request" representing the
 // client's request for the AbortVaultLock operation. The "output" return
-// value will be populated with the request's response once the request complets
-// successfuly.
+// value will be populated with the request's response once the request completes
+// successfully.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
 // the "output" return value is not valid until after Send returns without error.
@@ -157,8 +156,7 @@ func (c *Glacier) AbortVaultLockRequest(input *AbortVaultLockInput) (req *reques
 
 	output = &AbortVaultLockOutput{}
 	req = c.newRequest(op, input, output)
-	req.Handlers.Unmarshal.Remove(restjson.UnmarshalHandler)
-	req.Handlers.Unmarshal.PushBackNamed(protocol.UnmarshalDiscardBodyHandler)
+	req.Handlers.Unmarshal.Swap(restjson.UnmarshalHandler.Name, protocol.UnmarshalDiscardBodyHandler)
 	return
 }
 
@@ -227,8 +225,8 @@ const opAddTagsToVault = "AddTagsToVault"
 
 // AddTagsToVaultRequest generates a "aws/request.Request" representing the
 // client's request for the AddTagsToVault operation. The "output" return
-// value will be populated with the request's response once the request complets
-// successfuly.
+// value will be populated with the request's response once the request completes
+// successfully.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
 // the "output" return value is not valid until after Send returns without error.
@@ -260,8 +258,7 @@ func (c *Glacier) AddTagsToVaultRequest(input *AddTagsToVaultInput) (req *reques
 
 	output = &AddTagsToVaultOutput{}
 	req = c.newRequest(op, input, output)
-	req.Handlers.Unmarshal.Remove(restjson.UnmarshalHandler)
-	req.Handlers.Unmarshal.PushBackNamed(protocol.UnmarshalDiscardBodyHandler)
+	req.Handlers.Unmarshal.Swap(restjson.UnmarshalHandler.Name, protocol.UnmarshalDiscardBodyHandler)
 	return
 }
 
@@ -323,8 +320,8 @@ const opCompleteMultipartUpload = "CompleteMultipartUpload"
 
 // CompleteMultipartUploadRequest generates a "aws/request.Request" representing the
 // client's request for the CompleteMultipartUpload operation. The "output" return
-// value will be populated with the request's response once the request complets
-// successfuly.
+// value will be populated with the request's response once the request completes
+// successfully.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
 // the "output" return value is not valid until after Send returns without error.
@@ -452,8 +449,8 @@ const opCompleteVaultLock = "CompleteVaultLock"
 
 // CompleteVaultLockRequest generates a "aws/request.Request" representing the
 // client's request for the CompleteVaultLock operation. The "output" return
-// value will be populated with the request's response once the request complets
-// successfuly.
+// value will be populated with the request's response once the request completes
+// successfully.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
 // the "output" return value is not valid until after Send returns without error.
@@ -485,8 +482,7 @@ func (c *Glacier) CompleteVaultLockRequest(input *CompleteVaultLockInput) (req *
 
 	output = &CompleteVaultLockOutput{}
 	req = c.newRequest(op, input, output)
-	req.Handlers.Unmarshal.Remove(restjson.UnmarshalHandler)
-	req.Handlers.Unmarshal.PushBackNamed(protocol.UnmarshalDiscardBodyHandler)
+	req.Handlers.Unmarshal.Swap(restjson.UnmarshalHandler.Name, protocol.UnmarshalDiscardBodyHandler)
 	return
 }
 
@@ -554,8 +550,8 @@ const opCreateVault = "CreateVault"
 
 // CreateVaultRequest generates a "aws/request.Request" representing the
 // client's request for the CreateVault operation. The "output" return
-// value will be populated with the request's response once the request complets
-// successfuly.
+// value will be populated with the request's response once the request completes
+// successfully.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
 // the "output" return value is not valid until after Send returns without error.
@@ -614,7 +610,7 @@ func (c *Glacier) CreateVaultRequest(input *CreateVaultInput) (req *request.Requ
 //
 // For conceptual information and underlying REST API, see Creating a Vault
 // in Amazon Glacier (http://docs.aws.amazon.com/amazonglacier/latest/dev/creating-vaults.html)
-// and Create Vault  (http://docs.aws.amazon.com/amazonglacier/latest/dev/api-vault-put.html)
+// and Create Vault (http://docs.aws.amazon.com/amazonglacier/latest/dev/api-vault-put.html)
 // in the Amazon Glacier Developer Guide.
 //
 // Returns awserr.Error for service API and SDK errors. Use runtime type assertions
@@ -662,8 +658,8 @@ const opDeleteArchive = "DeleteArchive"
 
 // DeleteArchiveRequest generates a "aws/request.Request" representing the
 // client's request for the DeleteArchive operation. The "output" return
-// value will be populated with the request's response once the request complets
-// successfuly.
+// value will be populated with the request's response once the request completes
+// successfully.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
 // the "output" return value is not valid until after Send returns without error.
@@ -695,8 +691,7 @@ func (c *Glacier) DeleteArchiveRequest(input *DeleteArchiveInput) (req *request.
 
 	output = &DeleteArchiveOutput{}
 	req = c.newRequest(op, input, output)
-	req.Handlers.Unmarshal.Remove(restjson.UnmarshalHandler)
-	req.Handlers.Unmarshal.PushBackNamed(protocol.UnmarshalDiscardBodyHandler)
+	req.Handlers.Unmarshal.Swap(restjson.UnmarshalHandler.Name, protocol.UnmarshalDiscardBodyHandler)
 	return
 }
 
@@ -774,8 +769,8 @@ const opDeleteVault = "DeleteVault"
 
 // DeleteVaultRequest generates a "aws/request.Request" representing the
 // client's request for the DeleteVault operation. The "output" return
-// value will be populated with the request's response once the request complets
-// successfuly.
+// value will be populated with the request's response once the request completes
+// successfully.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
 // the "output" return value is not valid until after Send returns without error.
@@ -807,8 +802,7 @@ func (c *Glacier) DeleteVaultRequest(input *DeleteVaultInput) (req *request.Requ
 
 	output = &DeleteVaultOutput{}
 	req = c.newRequest(op, input, output)
-	req.Handlers.Unmarshal.Remove(restjson.UnmarshalHandler)
-	req.Handlers.Unmarshal.PushBackNamed(protocol.UnmarshalDiscardBodyHandler)
+	req.Handlers.Unmarshal.Swap(restjson.UnmarshalHandler.Name, protocol.UnmarshalDiscardBodyHandler)
 	return
 }
 
@@ -835,7 +829,7 @@ func (c *Glacier) DeleteVaultRequest(input *DeleteVaultInput) (req *request.Requ
 //
 // For conceptual information and underlying REST API, see Deleting a Vault
 // in Amazon Glacier (http://docs.aws.amazon.com/amazonglacier/latest/dev/deleting-vaults.html)
-// and Delete Vault  (http://docs.aws.amazon.com/amazonglacier/latest/dev/api-vault-delete.html)
+// and Delete Vault (http://docs.aws.amazon.com/amazonglacier/latest/dev/api-vault-delete.html)
 // in the Amazon Glacier Developer Guide.
 //
 // Returns awserr.Error for service API and SDK errors. Use runtime type assertions
@@ -884,8 +878,8 @@ const opDeleteVaultAccessPolicy = "DeleteVaultAccessPolicy"
 
 // DeleteVaultAccessPolicyRequest generates a "aws/request.Request" representing the
 // client's request for the DeleteVaultAccessPolicy operation. The "output" return
-// value will be populated with the request's response once the request complets
-// successfuly.
+// value will be populated with the request's response once the request completes
+// successfully.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
 // the "output" return value is not valid until after Send returns without error.
@@ -917,8 +911,7 @@ func (c *Glacier) DeleteVaultAccessPolicyRequest(input *DeleteVaultAccessPolicyI
 
 	output = &DeleteVaultAccessPolicyOutput{}
 	req = c.newRequest(op, input, output)
-	req.Handlers.Unmarshal.Remove(restjson.UnmarshalHandler)
-	req.Handlers.Unmarshal.PushBackNamed(protocol.UnmarshalDiscardBodyHandler)
+	req.Handlers.Unmarshal.Swap(restjson.UnmarshalHandler.Name, protocol.UnmarshalDiscardBodyHandler)
 	return
 }
 
@@ -981,8 +974,8 @@ const opDeleteVaultNotifications = "DeleteVaultNotifications"
 
 // DeleteVaultNotificationsRequest generates a "aws/request.Request" representing the
 // client's request for the DeleteVaultNotifications operation. The "output" return
-// value will be populated with the request's response once the request complets
-// successfuly.
+// value will be populated with the request's response once the request completes
+// successfully.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
 // the "output" return value is not valid until after Send returns without error.
@@ -1014,8 +1007,7 @@ func (c *Glacier) DeleteVaultNotificationsRequest(input *DeleteVaultNotification
 
 	output = &DeleteVaultNotificationsOutput{}
 	req = c.newRequest(op, input, output)
-	req.Handlers.Unmarshal.Remove(restjson.UnmarshalHandler)
-	req.Handlers.Unmarshal.PushBackNamed(protocol.UnmarshalDiscardBodyHandler)
+	req.Handlers.Unmarshal.Swap(restjson.UnmarshalHandler.Name, protocol.UnmarshalDiscardBodyHandler)
 	return
 }
 
@@ -1030,11 +1022,11 @@ func (c *Glacier) DeleteVaultNotificationsRequest(input *DeleteVaultNotification
 // AWS Identity and Access Management (IAM) users don't have any permissions
 // by default. You must grant them explicit permission to perform specific actions.
 // For more information, see Access Control Using AWS Identity and Access Management
-// (IAM) (http://docs.aws.amazon.com/latest/dev/using-iam-with-amazon-glacier.html).
+// (IAM) (http://docs.aws.amazon.com/amazonglacier/latest/dev/using-iam-with-amazon-glacier.html).
 //
 // For conceptual information and underlying REST API, see Configuring Vault
 // Notifications in Amazon Glacier (http://docs.aws.amazon.com/amazonglacier/latest/dev/configuring-notifications.html)
-// and Delete Vault Notification Configuration  (http://docs.aws.amazon.com/amazonglacier/latest/dev/api-vault-notifications-delete.html)
+// and Delete Vault Notification Configuration (http://docs.aws.amazon.com/amazonglacier/latest/dev/api-vault-notifications-delete.html)
 // in the Amazon Glacier Developer Guide.
 //
 // Returns awserr.Error for service API and SDK errors. Use runtime type assertions
@@ -1083,8 +1075,8 @@ const opDescribeJob = "DescribeJob"
 
 // DescribeJobRequest generates a "aws/request.Request" representing the
 // client's request for the DescribeJob operation. The "output" return
-// value will be populated with the request's response once the request complets
-// successfuly.
+// value will be populated with the request's response once the request completes
+// successfully.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
 // the "output" return value is not valid until after Send returns without error.
@@ -1190,8 +1182,8 @@ const opDescribeVault = "DescribeVault"
 
 // DescribeVaultRequest generates a "aws/request.Request" representing the
 // client's request for the DescribeVault operation. The "output" return
-// value will be populated with the request's response once the request complets
-// successfuly.
+// value will be populated with the request's response once the request completes
+// successfully.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
 // the "output" return value is not valid until after Send returns without error.
@@ -1246,7 +1238,7 @@ func (c *Glacier) DescribeVaultRequest(input *DescribeVaultInput) (req *request.
 //
 // For conceptual information and underlying REST API, see Retrieving Vault
 // Metadata in Amazon Glacier (http://docs.aws.amazon.com/amazonglacier/latest/dev/retrieving-vault-info.html)
-// and Describe Vault  (http://docs.aws.amazon.com/amazonglacier/latest/dev/api-vault-get.html)
+// and Describe Vault (http://docs.aws.amazon.com/amazonglacier/latest/dev/api-vault-get.html)
 // in the Amazon Glacier Developer Guide.
 //
 // Returns awserr.Error for service API and SDK errors. Use runtime type assertions
@@ -1295,8 +1287,8 @@ const opGetDataRetrievalPolicy = "GetDataRetrievalPolicy"
 
 // GetDataRetrievalPolicyRequest generates a "aws/request.Request" representing the
 // client's request for the GetDataRetrievalPolicy operation. The "output" return
-// value will be populated with the request's response once the request complets
-// successfuly.
+// value will be populated with the request's response once the request completes
+// successfully.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
 // the "output" return value is not valid until after Send returns without error.
@@ -1379,8 +1371,8 @@ const opGetJobOutput = "GetJobOutput"
 
 // GetJobOutputRequest generates a "aws/request.Request" representing the
 // client's request for the GetJobOutput operation. The "output" return
-// value will be populated with the request's response once the request complets
-// successfuly.
+// value will be populated with the request's response once the request completes
+// successfully.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
 // the "output" return value is not valid until after Send returns without error.
@@ -1460,7 +1452,7 @@ func (c *Glacier) GetJobOutputRequest(input *GetJobOutputInput) (req *request.Re
 // For conceptual information and the underlying REST API, see Downloading a
 // Vault Inventory (http://docs.aws.amazon.com/amazonglacier/latest/dev/vault-inventory.html),
 // Downloading an Archive (http://docs.aws.amazon.com/amazonglacier/latest/dev/downloading-an-archive.html),
-// and Get Job Output  (http://docs.aws.amazon.com/amazonglacier/latest/dev/api-job-output-get.html)
+// and Get Job Output (http://docs.aws.amazon.com/amazonglacier/latest/dev/api-job-output-get.html)
 //
 // Returns awserr.Error for service API and SDK errors. Use runtime type assertions
 // with awserr.Error's Code and Message methods to get detailed information about
@@ -1508,8 +1500,8 @@ const opGetVaultAccessPolicy = "GetVaultAccessPolicy"
 
 // GetVaultAccessPolicyRequest generates a "aws/request.Request" representing the
 // client's request for the GetVaultAccessPolicy operation. The "output" return
-// value will be populated with the request's response once the request complets
-// successfuly.
+// value will be populated with the request's response once the request completes
+// successfully.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
 // the "output" return value is not valid until after Send returns without error.
@@ -1599,8 +1591,8 @@ const opGetVaultLock = "GetVaultLock"
 
 // GetVaultLockRequest generates a "aws/request.Request" representing the
 // client's request for the GetVaultLock operation. The "output" return
-// value will be populated with the request's response once the request complets
-// successfuly.
+// value will be populated with the request's response once the request completes
+// successfully.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
 // the "output" return value is not valid until after Send returns without error.
@@ -1704,8 +1696,8 @@ const opGetVaultNotifications = "GetVaultNotifications"
 
 // GetVaultNotificationsRequest generates a "aws/request.Request" representing the
 // client's request for the GetVaultNotifications operation. The "output" return
-// value will be populated with the request's response once the request complets
-// successfuly.
+// value will be populated with the request's response once the request completes
+// successfully.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
 // the "output" return value is not valid until after Send returns without error.
@@ -1759,7 +1751,7 @@ func (c *Glacier) GetVaultNotificationsRequest(input *GetVaultNotificationsInput
 //
 // For conceptual information and underlying REST API, see Configuring Vault
 // Notifications in Amazon Glacier (http://docs.aws.amazon.com/amazonglacier/latest/dev/configuring-notifications.html)
-// and Get Vault Notification Configuration  (http://docs.aws.amazon.com/amazonglacier/latest/dev/api-vault-notifications-get.html)
+// and Get Vault Notification Configuration (http://docs.aws.amazon.com/amazonglacier/latest/dev/api-vault-notifications-get.html)
 // in the Amazon Glacier Developer Guide.
 //
 // Returns awserr.Error for service API and SDK errors. Use runtime type assertions
@@ -1808,8 +1800,8 @@ const opInitiateJob = "InitiateJob"
 
 // InitiateJobRequest generates a "aws/request.Request" representing the
 // client's request for the InitiateJob operation. The "output" return
-// value will be populated with the request's response once the request complets
-// successfuly.
+// value will be populated with the request's response once the request completes
+// successfully.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
 // the "output" return value is not valid until after Send returns without error.
@@ -1906,8 +1898,8 @@ const opInitiateMultipartUpload = "InitiateMultipartUpload"
 
 // InitiateMultipartUploadRequest generates a "aws/request.Request" representing the
 // client's request for the InitiateMultipartUpload operation. The "output" return
-// value will be populated with the request's response once the request complets
-// successfuly.
+// value will be populated with the request's response once the request completes
+// successfully.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
 // the "output" return value is not valid until after Send returns without error.
@@ -2026,8 +2018,8 @@ const opInitiateVaultLock = "InitiateVaultLock"
 
 // InitiateVaultLockRequest generates a "aws/request.Request" representing the
 // client's request for the InitiateVaultLock operation. The "output" return
-// value will be populated with the request's response once the request complets
-// successfuly.
+// value will be populated with the request's response once the request completes
+// successfully.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
 // the "output" return value is not valid until after Send returns without error.
@@ -2140,8 +2132,8 @@ const opListJobs = "ListJobs"
 
 // ListJobsRequest generates a "aws/request.Request" representing the
 // client's request for the ListJobs operation. The "output" return
-// value will be populated with the request's response once the request complets
-// successfuly.
+// value will be populated with the request's response once the request completes
+// successfully.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
 // the "output" return value is not valid until after Send returns without error.
@@ -2207,7 +2199,7 @@ func (c *Glacier) ListJobsRequest(input *ListJobsInput) (req *request.Request, o
 // List Jobs request.
 //
 // You can set a maximum limit for the number of jobs returned in the response
-// by specifying the limit parameter in the request. The default limit is 1000.
+// by specifying the limit parameter in the request. The default limit is 50.
 // The number of jobs returned might be fewer than the limit, but the number
 // of returned jobs never exceeds the limit.
 //
@@ -2274,7 +2266,7 @@ func (c *Glacier) ListJobsWithContext(ctx aws.Context, input *ListJobsInput, opt
 //    // Example iterating over at most 3 pages of a ListJobs operation.
 //    pageNum := 0
 //    err := client.ListJobsPages(params,
-//        func(page *ListJobsOutput, lastPage bool) bool {
+//        func(page *glacier.ListJobsOutput, lastPage bool) bool {
 //            pageNum++
 //            fmt.Println(page)
 //            return pageNum <= 3
@@ -2317,8 +2309,8 @@ const opListMultipartUploads = "ListMultipartUploads"
 
 // ListMultipartUploadsRequest generates a "aws/request.Request" representing the
 // client's request for the ListMultipartUploads operation. The "output" return
-// value will be populated with the request's response once the request complets
-// successfuly.
+// value will be populated with the request's response once the request completes
+// successfully.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
 // the "output" return value is not valid until after Send returns without error.
@@ -2368,7 +2360,7 @@ func (c *Glacier) ListMultipartUploadsRequest(input *ListMultipartUploadsInput) 
 // order.
 //
 // The List Multipart Uploads operation supports pagination. By default, this
-// operation returns up to 1,000 multipart uploads in the response. You should
+// operation returns up to 50 multipart uploads in the response. You should
 // always check the response for a marker at which to continue the list; if
 // there are no more items the marker is null. To return a list of multipart
 // uploads that begins at a specific upload, set the marker request parameter
@@ -2389,7 +2381,7 @@ func (c *Glacier) ListMultipartUploadsRequest(input *ListMultipartUploadsInput) 
 //
 // For conceptual information and the underlying REST API, see Working with
 // Archives in Amazon Glacier (http://docs.aws.amazon.com/amazonglacier/latest/dev/working-with-archives.html)
-// and List Multipart Uploads  (http://docs.aws.amazon.com/amazonglacier/latest/dev/api-multipart-list-uploads.html)
+// and List Multipart Uploads (http://docs.aws.amazon.com/amazonglacier/latest/dev/api-multipart-list-uploads.html)
 // in the Amazon Glacier Developer Guide.
 //
 // Returns awserr.Error for service API and SDK errors. Use runtime type assertions
@@ -2445,7 +2437,7 @@ func (c *Glacier) ListMultipartUploadsWithContext(ctx aws.Context, input *ListMu
 //    // Example iterating over at most 3 pages of a ListMultipartUploads operation.
 //    pageNum := 0
 //    err := client.ListMultipartUploadsPages(params,
-//        func(page *ListMultipartUploadsOutput, lastPage bool) bool {
+//        func(page *glacier.ListMultipartUploadsOutput, lastPage bool) bool {
 //            pageNum++
 //            fmt.Println(page)
 //            return pageNum <= 3
@@ -2488,8 +2480,8 @@ const opListParts = "ListParts"
 
 // ListPartsRequest generates a "aws/request.Request" representing the
 // client's request for the ListParts operation. The "output" return
-// value will be populated with the request's response once the request complets
-// successfuly.
+// value will be populated with the request's response once the request completes
+// successfully.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
 // the "output" return value is not valid until after Send returns without error.
@@ -2539,7 +2531,7 @@ func (c *Glacier) ListPartsRequest(input *ListPartsInput) (req *request.Request,
 // List Parts response is sorted by part range.
 //
 // The List Parts operation supports pagination. By default, this operation
-// returns up to 1,000 uploaded parts in the response. You should always check
+// returns up to 50 uploaded parts in the response. You should always check
 // the response for a marker at which to continue the list; if there are no
 // more items the marker is null. To return a list of parts that begins at a
 // specific part, set the marker request parameter to the value you obtained
@@ -2610,7 +2602,7 @@ func (c *Glacier) ListPartsWithContext(ctx aws.Context, input *ListPartsInput, o
 //    // Example iterating over at most 3 pages of a ListParts operation.
 //    pageNum := 0
 //    err := client.ListPartsPages(params,
-//        func(page *ListPartsOutput, lastPage bool) bool {
+//        func(page *glacier.ListPartsOutput, lastPage bool) bool {
 //            pageNum++
 //            fmt.Println(page)
 //            return pageNum <= 3
@@ -2653,8 +2645,8 @@ const opListProvisionedCapacity = "ListProvisionedCapacity"
 
 // ListProvisionedCapacityRequest generates a "aws/request.Request" representing the
 // client's request for the ListProvisionedCapacity operation. The "output" return
-// value will be populated with the request's response once the request complets
-// successfuly.
+// value will be populated with the request's response once the request completes
+// successfully.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
 // the "output" return value is not valid until after Send returns without error.
@@ -2736,8 +2728,8 @@ const opListTagsForVault = "ListTagsForVault"
 
 // ListTagsForVaultRequest generates a "aws/request.Request" representing the
 // client's request for the ListTagsForVault operation. The "output" return
-// value will be populated with the request's response once the request complets
-// successfuly.
+// value will be populated with the request's response once the request completes
+// successfully.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
 // the "output" return value is not valid until after Send returns without error.
@@ -2824,8 +2816,8 @@ const opListVaults = "ListVaults"
 
 // ListVaultsRequest generates a "aws/request.Request" representing the
 // client's request for the ListVaults operation. The "output" return
-// value will be populated with the request's response once the request complets
-// successfuly.
+// value will be populated with the request's response once the request completes
+// successfully.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
 // the "output" return value is not valid until after Send returns without error.
@@ -2871,7 +2863,7 @@ func (c *Glacier) ListVaultsRequest(input *ListVaultsInput) (req *request.Reques
 // This operation lists all vaults owned by the calling user's account. The
 // list returned in the response is ASCII-sorted by vault name.
 //
-// By default, this operation returns up to 1,000 items. If there are more vaults
+// By default, this operation returns up to 10 items. If there are more vaults
 // to list, the response marker field contains the vault Amazon Resource Name
 // (ARN) at which to continue the list with a new List Vaults request; otherwise,
 // the marker field is null. To return a list of vaults that begins at a specific
@@ -2887,7 +2879,7 @@ func (c *Glacier) ListVaultsRequest(input *ListVaultsInput) (req *request.Reques
 //
 // For conceptual information and underlying REST API, see Retrieving Vault
 // Metadata in Amazon Glacier (http://docs.aws.amazon.com/amazonglacier/latest/dev/retrieving-vault-info.html)
-// and List Vaults  (http://docs.aws.amazon.com/amazonglacier/latest/dev/api-vaults-get.html)
+// and List Vaults (http://docs.aws.amazon.com/amazonglacier/latest/dev/api-vaults-get.html)
 // in the Amazon Glacier Developer Guide.
 //
 // Returns awserr.Error for service API and SDK errors. Use runtime type assertions
@@ -2943,7 +2935,7 @@ func (c *Glacier) ListVaultsWithContext(ctx aws.Context, input *ListVaultsInput,
 //    // Example iterating over at most 3 pages of a ListVaults operation.
 //    pageNum := 0
 //    err := client.ListVaultsPages(params,
-//        func(page *ListVaultsOutput, lastPage bool) bool {
+//        func(page *glacier.ListVaultsOutput, lastPage bool) bool {
 //            pageNum++
 //            fmt.Println(page)
 //            return pageNum <= 3
@@ -2986,8 +2978,8 @@ const opPurchaseProvisionedCapacity = "PurchaseProvisionedCapacity"
 
 // PurchaseProvisionedCapacityRequest generates a "aws/request.Request" representing the
 // client's request for the PurchaseProvisionedCapacity operation. The "output" return
-// value will be populated with the request's response once the request complets
-// successfuly.
+// value will be populated with the request's response once the request completes
+// successfully.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
 // the "output" return value is not valid until after Send returns without error.
@@ -3071,8 +3063,8 @@ const opRemoveTagsFromVault = "RemoveTagsFromVault"
 
 // RemoveTagsFromVaultRequest generates a "aws/request.Request" representing the
 // client's request for the RemoveTagsFromVault operation. The "output" return
-// value will be populated with the request's response once the request complets
-// successfuly.
+// value will be populated with the request's response once the request completes
+// successfully.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
 // the "output" return value is not valid until after Send returns without error.
@@ -3104,8 +3096,7 @@ func (c *Glacier) RemoveTagsFromVaultRequest(input *RemoveTagsFromVaultInput) (r
 
 	output = &RemoveTagsFromVaultOutput{}
 	req = c.newRequest(op, input, output)
-	req.Handlers.Unmarshal.Remove(restjson.UnmarshalHandler)
-	req.Handlers.Unmarshal.PushBackNamed(protocol.UnmarshalDiscardBodyHandler)
+	req.Handlers.Unmarshal.Swap(restjson.UnmarshalHandler.Name, protocol.UnmarshalDiscardBodyHandler)
 	return
 }
 
@@ -3163,8 +3154,8 @@ const opSetDataRetrievalPolicy = "SetDataRetrievalPolicy"
 
 // SetDataRetrievalPolicyRequest generates a "aws/request.Request" representing the
 // client's request for the SetDataRetrievalPolicy operation. The "output" return
-// value will be populated with the request's response once the request complets
-// successfuly.
+// value will be populated with the request's response once the request completes
+// successfully.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
 // the "output" return value is not valid until after Send returns without error.
@@ -3196,8 +3187,7 @@ func (c *Glacier) SetDataRetrievalPolicyRequest(input *SetDataRetrievalPolicyInp
 
 	output = &SetDataRetrievalPolicyOutput{}
 	req = c.newRequest(op, input, output)
-	req.Handlers.Unmarshal.Remove(restjson.UnmarshalHandler)
-	req.Handlers.Unmarshal.PushBackNamed(protocol.UnmarshalDiscardBodyHandler)
+	req.Handlers.Unmarshal.Swap(restjson.UnmarshalHandler.Name, protocol.UnmarshalDiscardBodyHandler)
 	return
 }
 
@@ -3253,8 +3243,8 @@ const opSetVaultAccessPolicy = "SetVaultAccessPolicy"
 
 // SetVaultAccessPolicyRequest generates a "aws/request.Request" representing the
 // client's request for the SetVaultAccessPolicy operation. The "output" return
-// value will be populated with the request's response once the request complets
-// successfuly.
+// value will be populated with the request's response once the request completes
+// successfully.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
 // the "output" return value is not valid until after Send returns without error.
@@ -3286,8 +3276,7 @@ func (c *Glacier) SetVaultAccessPolicyRequest(input *SetVaultAccessPolicyInput) 
 
 	output = &SetVaultAccessPolicyOutput{}
 	req = c.newRequest(op, input, output)
-	req.Handlers.Unmarshal.Remove(restjson.UnmarshalHandler)
-	req.Handlers.Unmarshal.PushBackNamed(protocol.UnmarshalDiscardBodyHandler)
+	req.Handlers.Unmarshal.Swap(restjson.UnmarshalHandler.Name, protocol.UnmarshalDiscardBodyHandler)
 	return
 }
 
@@ -3347,8 +3336,8 @@ const opSetVaultNotifications = "SetVaultNotifications"
 
 // SetVaultNotificationsRequest generates a "aws/request.Request" representing the
 // client's request for the SetVaultNotifications operation. The "output" return
-// value will be populated with the request's response once the request complets
-// successfuly.
+// value will be populated with the request's response once the request completes
+// successfully.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
 // the "output" return value is not valid until after Send returns without error.
@@ -3380,8 +3369,7 @@ func (c *Glacier) SetVaultNotificationsRequest(input *SetVaultNotificationsInput
 
 	output = &SetVaultNotificationsOutput{}
 	req = c.newRequest(op, input, output)
-	req.Handlers.Unmarshal.Remove(restjson.UnmarshalHandler)
-	req.Handlers.Unmarshal.PushBackNamed(protocol.UnmarshalDiscardBodyHandler)
+	req.Handlers.Unmarshal.Swap(restjson.UnmarshalHandler.Name, protocol.UnmarshalDiscardBodyHandler)
 	return
 }
 
@@ -3417,7 +3405,7 @@ func (c *Glacier) SetVaultNotificationsRequest(input *SetVaultNotificationsInput
 //
 // For conceptual information and underlying REST API, see Configuring Vault
 // Notifications in Amazon Glacier (http://docs.aws.amazon.com/amazonglacier/latest/dev/configuring-notifications.html)
-// and Set Vault Notification Configuration  (http://docs.aws.amazon.com/amazonglacier/latest/dev/api-vault-notifications-put.html)
+// and Set Vault Notification Configuration (http://docs.aws.amazon.com/amazonglacier/latest/dev/api-vault-notifications-put.html)
 // in the Amazon Glacier Developer Guide.
 //
 // Returns awserr.Error for service API and SDK errors. Use runtime type assertions
@@ -3466,8 +3454,8 @@ const opUploadArchive = "UploadArchive"
 
 // UploadArchiveRequest generates a "aws/request.Request" representing the
 // client's request for the UploadArchive operation. The "output" return
-// value will be populated with the request's response once the request complets
-// successfuly.
+// value will be populated with the request's response once the request completes
+// successfully.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
 // the "output" return value is not valid until after Send returns without error.
@@ -3591,8 +3579,8 @@ const opUploadMultipartPart = "UploadMultipartPart"
 
 // UploadMultipartPartRequest generates a "aws/request.Request" representing the
 // client's request for the UploadMultipartPart operation. The "output" return
-// value will be populated with the request's response once the request complets
-// successfuly.
+// value will be populated with the request's response once the request completes
+// successfully.
 //
 // Use "Send" method on the returned Request to send the API call to the service.
 // the "output" return value is not valid until after Send returns without error.
@@ -3646,12 +3634,10 @@ func (c *Glacier) UploadMultipartPartRequest(input *UploadMultipartPartInput) (r
 //    * Part size does not matchThe size of each part except the last must match
 //    the size specified in the corresponding InitiateMultipartUpload request.
 //    The size of the last part must be the same size as, or smaller than, the
-//    specified size.
-//
-// If you upload a part whose size is smaller than the part size you specified
-//    in your initiate multipart upload request and that part is not the last
-//    part, then the upload part request will succeed. However, the subsequent
-//    Complete Multipart Upload request will fail.
+//    specified size. If you upload a part whose size is smaller than the part
+//    size you specified in your initiate multipart upload request and that
+//    part is not the last part, then the upload part request will succeed.
+//    However, the subsequent Complete Multipart Upload request will fail.
 //
 //    * Range does not alignThe byte range value in the request does not align
 //    with the part size specified in the corresponding initiate request. For
@@ -3659,7 +3645,6 @@ func (c *Glacier) UploadMultipartPartRequest(input *UploadMultipartPartInput) (r
 //    4194303 bytes (4 MB - 1) and 4194304 (4 MB) to 8388607 (8 MB - 1) are
 //    valid part ranges. However, if you set a range value of 2 MB to 6 MB,
 //    the range does not align with the part size and the upload will fail.
-//
 //
 // This operation is idempotent. If you upload the same part multiple times,
 // the data included in the most recent request overwrites the previously uploaded
@@ -3673,7 +3658,7 @@ func (c *Glacier) UploadMultipartPartRequest(input *UploadMultipartPartInput) (r
 //
 // For conceptual information and underlying REST API, see Uploading Large Archives
 // in Parts (Multipart Upload) (http://docs.aws.amazon.com/amazonglacier/latest/dev/uploading-archive-mpu.html)
-// and Upload Part  (http://docs.aws.amazon.com/amazonglacier/latest/dev/api-upload-part.html)
+// and Upload Part (http://docs.aws.amazon.com/amazonglacier/latest/dev/api-upload-part.html)
 // in the Amazon Glacier Developer Guide.
 //
 // Returns awserr.Error for service API and SDK errors. Use runtime type assertions
@@ -3766,11 +3751,20 @@ func (s *AbortMultipartUploadInput) Validate() error {
 	if s.AccountId == nil {
 		invalidParams.Add(request.NewErrParamRequired("AccountId"))
 	}
+	if s.AccountId != nil && len(*s.AccountId) < 1 {
+		invalidParams.Add(request.NewErrParamMinLen("AccountId", 1))
+	}
 	if s.UploadId == nil {
 		invalidParams.Add(request.NewErrParamRequired("UploadId"))
 	}
+	if s.UploadId != nil && len(*s.UploadId) < 1 {
+		invalidParams.Add(request.NewErrParamMinLen("UploadId", 1))
+	}
 	if s.VaultName == nil {
 		invalidParams.Add(request.NewErrParamRequired("VaultName"))
+	}
+	if s.VaultName != nil && len(*s.VaultName) < 1 {
+		invalidParams.Add(request.NewErrParamMinLen("VaultName", 1))
 	}
 
 	if invalidParams.Len() > 0 {
@@ -3847,8 +3841,14 @@ func (s *AbortVaultLockInput) Validate() error {
 	if s.AccountId == nil {
 		invalidParams.Add(request.NewErrParamRequired("AccountId"))
 	}
+	if s.AccountId != nil && len(*s.AccountId) < 1 {
+		invalidParams.Add(request.NewErrParamMinLen("AccountId", 1))
+	}
 	if s.VaultName == nil {
 		invalidParams.Add(request.NewErrParamRequired("VaultName"))
+	}
+	if s.VaultName != nil && len(*s.VaultName) < 1 {
+		invalidParams.Add(request.NewErrParamMinLen("VaultName", 1))
 	}
 
 	if invalidParams.Len() > 0 {
@@ -3922,8 +3922,14 @@ func (s *AddTagsToVaultInput) Validate() error {
 	if s.AccountId == nil {
 		invalidParams.Add(request.NewErrParamRequired("AccountId"))
 	}
+	if s.AccountId != nil && len(*s.AccountId) < 1 {
+		invalidParams.Add(request.NewErrParamMinLen("AccountId", 1))
+	}
 	if s.VaultName == nil {
 		invalidParams.Add(request.NewErrParamRequired("VaultName"))
+	}
+	if s.VaultName != nil && len(*s.VaultName) < 1 {
+		invalidParams.Add(request.NewErrParamMinLen("VaultName", 1))
 	}
 
 	if invalidParams.Len() > 0 {
@@ -4200,11 +4206,20 @@ func (s *CompleteMultipartUploadInput) Validate() error {
 	if s.AccountId == nil {
 		invalidParams.Add(request.NewErrParamRequired("AccountId"))
 	}
+	if s.AccountId != nil && len(*s.AccountId) < 1 {
+		invalidParams.Add(request.NewErrParamMinLen("AccountId", 1))
+	}
 	if s.UploadId == nil {
 		invalidParams.Add(request.NewErrParamRequired("UploadId"))
 	}
+	if s.UploadId != nil && len(*s.UploadId) < 1 {
+		invalidParams.Add(request.NewErrParamMinLen("UploadId", 1))
+	}
 	if s.VaultName == nil {
 		invalidParams.Add(request.NewErrParamRequired("VaultName"))
+	}
+	if s.VaultName != nil && len(*s.VaultName) < 1 {
+		invalidParams.Add(request.NewErrParamMinLen("VaultName", 1))
 	}
 
 	if invalidParams.Len() > 0 {
@@ -4284,11 +4299,20 @@ func (s *CompleteVaultLockInput) Validate() error {
 	if s.AccountId == nil {
 		invalidParams.Add(request.NewErrParamRequired("AccountId"))
 	}
+	if s.AccountId != nil && len(*s.AccountId) < 1 {
+		invalidParams.Add(request.NewErrParamMinLen("AccountId", 1))
+	}
 	if s.LockId == nil {
 		invalidParams.Add(request.NewErrParamRequired("LockId"))
 	}
+	if s.LockId != nil && len(*s.LockId) < 1 {
+		invalidParams.Add(request.NewErrParamMinLen("LockId", 1))
+	}
 	if s.VaultName == nil {
 		invalidParams.Add(request.NewErrParamRequired("VaultName"))
+	}
+	if s.VaultName != nil && len(*s.VaultName) < 1 {
+		invalidParams.Add(request.NewErrParamMinLen("VaultName", 1))
 	}
 
 	if invalidParams.Len() > 0 {
@@ -4365,8 +4389,14 @@ func (s *CreateVaultInput) Validate() error {
 	if s.AccountId == nil {
 		invalidParams.Add(request.NewErrParamRequired("AccountId"))
 	}
+	if s.AccountId != nil && len(*s.AccountId) < 1 {
+		invalidParams.Add(request.NewErrParamMinLen("AccountId", 1))
+	}
 	if s.VaultName == nil {
 		invalidParams.Add(request.NewErrParamRequired("VaultName"))
+	}
+	if s.VaultName != nil && len(*s.VaultName) < 1 {
+		invalidParams.Add(request.NewErrParamMinLen("VaultName", 1))
 	}
 
 	if invalidParams.Len() > 0 {
@@ -4515,11 +4545,20 @@ func (s *DeleteArchiveInput) Validate() error {
 	if s.AccountId == nil {
 		invalidParams.Add(request.NewErrParamRequired("AccountId"))
 	}
+	if s.AccountId != nil && len(*s.AccountId) < 1 {
+		invalidParams.Add(request.NewErrParamMinLen("AccountId", 1))
+	}
 	if s.ArchiveId == nil {
 		invalidParams.Add(request.NewErrParamRequired("ArchiveId"))
 	}
+	if s.ArchiveId != nil && len(*s.ArchiveId) < 1 {
+		invalidParams.Add(request.NewErrParamMinLen("ArchiveId", 1))
+	}
 	if s.VaultName == nil {
 		invalidParams.Add(request.NewErrParamRequired("VaultName"))
+	}
+	if s.VaultName != nil && len(*s.VaultName) < 1 {
+		invalidParams.Add(request.NewErrParamMinLen("VaultName", 1))
 	}
 
 	if invalidParams.Len() > 0 {
@@ -4595,8 +4634,14 @@ func (s *DeleteVaultAccessPolicyInput) Validate() error {
 	if s.AccountId == nil {
 		invalidParams.Add(request.NewErrParamRequired("AccountId"))
 	}
+	if s.AccountId != nil && len(*s.AccountId) < 1 {
+		invalidParams.Add(request.NewErrParamMinLen("AccountId", 1))
+	}
 	if s.VaultName == nil {
 		invalidParams.Add(request.NewErrParamRequired("VaultName"))
+	}
+	if s.VaultName != nil && len(*s.VaultName) < 1 {
+		invalidParams.Add(request.NewErrParamMinLen("VaultName", 1))
 	}
 
 	if invalidParams.Len() > 0 {
@@ -4666,8 +4711,14 @@ func (s *DeleteVaultInput) Validate() error {
 	if s.AccountId == nil {
 		invalidParams.Add(request.NewErrParamRequired("AccountId"))
 	}
+	if s.AccountId != nil && len(*s.AccountId) < 1 {
+		invalidParams.Add(request.NewErrParamMinLen("AccountId", 1))
+	}
 	if s.VaultName == nil {
 		invalidParams.Add(request.NewErrParamRequired("VaultName"))
+	}
+	if s.VaultName != nil && len(*s.VaultName) < 1 {
+		invalidParams.Add(request.NewErrParamMinLen("VaultName", 1))
 	}
 
 	if invalidParams.Len() > 0 {
@@ -4724,8 +4775,14 @@ func (s *DeleteVaultNotificationsInput) Validate() error {
 	if s.AccountId == nil {
 		invalidParams.Add(request.NewErrParamRequired("AccountId"))
 	}
+	if s.AccountId != nil && len(*s.AccountId) < 1 {
+		invalidParams.Add(request.NewErrParamMinLen("AccountId", 1))
+	}
 	if s.VaultName == nil {
 		invalidParams.Add(request.NewErrParamRequired("VaultName"))
+	}
+	if s.VaultName != nil && len(*s.VaultName) < 1 {
+		invalidParams.Add(request.NewErrParamMinLen("VaultName", 1))
 	}
 
 	if invalidParams.Len() > 0 {
@@ -4814,11 +4871,20 @@ func (s *DescribeJobInput) Validate() error {
 	if s.AccountId == nil {
 		invalidParams.Add(request.NewErrParamRequired("AccountId"))
 	}
+	if s.AccountId != nil && len(*s.AccountId) < 1 {
+		invalidParams.Add(request.NewErrParamMinLen("AccountId", 1))
+	}
 	if s.JobId == nil {
 		invalidParams.Add(request.NewErrParamRequired("JobId"))
 	}
+	if s.JobId != nil && len(*s.JobId) < 1 {
+		invalidParams.Add(request.NewErrParamMinLen("JobId", 1))
+	}
 	if s.VaultName == nil {
 		invalidParams.Add(request.NewErrParamRequired("VaultName"))
+	}
+	if s.VaultName != nil && len(*s.VaultName) < 1 {
+		invalidParams.Add(request.NewErrParamMinLen("VaultName", 1))
 	}
 
 	if invalidParams.Len() > 0 {
@@ -4880,8 +4946,14 @@ func (s *DescribeVaultInput) Validate() error {
 	if s.AccountId == nil {
 		invalidParams.Add(request.NewErrParamRequired("AccountId"))
 	}
+	if s.AccountId != nil && len(*s.AccountId) < 1 {
+		invalidParams.Add(request.NewErrParamMinLen("AccountId", 1))
+	}
 	if s.VaultName == nil {
 		invalidParams.Add(request.NewErrParamRequired("VaultName"))
+	}
+	if s.VaultName != nil && len(*s.VaultName) < 1 {
+		invalidParams.Add(request.NewErrParamMinLen("VaultName", 1))
 	}
 
 	if invalidParams.Len() > 0 {
@@ -4988,7 +5060,7 @@ type Encryption struct {
 	EncryptionType *string `type:"string" enum:"EncryptionType"`
 
 	// Optional. If the encryption type is aws:kms, you can use this value to specify
-	// the encryption context for the restore results.
+	// the encryption context for the job results.
 	KMSContext *string `type:"string"`
 
 	// The AWS KMS key ID to use for object encryption. All GET and PUT requests
@@ -5055,6 +5127,9 @@ func (s *GetDataRetrievalPolicyInput) Validate() error {
 	invalidParams := request.ErrInvalidParams{Context: "GetDataRetrievalPolicyInput"}
 	if s.AccountId == nil {
 		invalidParams.Add(request.NewErrParamRequired("AccountId"))
+	}
+	if s.AccountId != nil && len(*s.AccountId) < 1 {
+		invalidParams.Add(request.NewErrParamMinLen("AccountId", 1))
 	}
 
 	if invalidParams.Len() > 0 {
@@ -5164,11 +5239,20 @@ func (s *GetJobOutputInput) Validate() error {
 	if s.AccountId == nil {
 		invalidParams.Add(request.NewErrParamRequired("AccountId"))
 	}
+	if s.AccountId != nil && len(*s.AccountId) < 1 {
+		invalidParams.Add(request.NewErrParamMinLen("AccountId", 1))
+	}
 	if s.JobId == nil {
 		invalidParams.Add(request.NewErrParamRequired("JobId"))
 	}
+	if s.JobId != nil && len(*s.JobId) < 1 {
+		invalidParams.Add(request.NewErrParamMinLen("JobId", 1))
+	}
 	if s.VaultName == nil {
 		invalidParams.Add(request.NewErrParamRequired("VaultName"))
+	}
+	if s.VaultName != nil && len(*s.VaultName) < 1 {
+		invalidParams.Add(request.NewErrParamMinLen("VaultName", 1))
 	}
 
 	if invalidParams.Len() > 0 {
@@ -5336,8 +5420,14 @@ func (s *GetVaultAccessPolicyInput) Validate() error {
 	if s.AccountId == nil {
 		invalidParams.Add(request.NewErrParamRequired("AccountId"))
 	}
+	if s.AccountId != nil && len(*s.AccountId) < 1 {
+		invalidParams.Add(request.NewErrParamMinLen("AccountId", 1))
+	}
 	if s.VaultName == nil {
 		invalidParams.Add(request.NewErrParamRequired("VaultName"))
+	}
+	if s.VaultName != nil && len(*s.VaultName) < 1 {
+		invalidParams.Add(request.NewErrParamMinLen("VaultName", 1))
 	}
 
 	if invalidParams.Len() > 0 {
@@ -5417,8 +5507,14 @@ func (s *GetVaultLockInput) Validate() error {
 	if s.AccountId == nil {
 		invalidParams.Add(request.NewErrParamRequired("AccountId"))
 	}
+	if s.AccountId != nil && len(*s.AccountId) < 1 {
+		invalidParams.Add(request.NewErrParamMinLen("AccountId", 1))
+	}
 	if s.VaultName == nil {
 		invalidParams.Add(request.NewErrParamRequired("VaultName"))
+	}
+	if s.VaultName != nil && len(*s.VaultName) < 1 {
+		invalidParams.Add(request.NewErrParamMinLen("VaultName", 1))
 	}
 
 	if invalidParams.Len() > 0 {
@@ -5528,8 +5624,14 @@ func (s *GetVaultNotificationsInput) Validate() error {
 	if s.AccountId == nil {
 		invalidParams.Add(request.NewErrParamRequired("AccountId"))
 	}
+	if s.AccountId != nil && len(*s.AccountId) < 1 {
+		invalidParams.Add(request.NewErrParamMinLen("AccountId", 1))
+	}
 	if s.VaultName == nil {
 		invalidParams.Add(request.NewErrParamRequired("VaultName"))
+	}
+	if s.VaultName != nil && len(*s.VaultName) < 1 {
+		invalidParams.Add(request.NewErrParamMinLen("VaultName", 1))
 	}
 
 	if invalidParams.Len() > 0 {
@@ -5735,8 +5837,14 @@ func (s *InitiateJobInput) Validate() error {
 	if s.AccountId == nil {
 		invalidParams.Add(request.NewErrParamRequired("AccountId"))
 	}
+	if s.AccountId != nil && len(*s.AccountId) < 1 {
+		invalidParams.Add(request.NewErrParamMinLen("AccountId", 1))
+	}
 	if s.VaultName == nil {
 		invalidParams.Add(request.NewErrParamRequired("VaultName"))
+	}
+	if s.VaultName != nil && len(*s.VaultName) < 1 {
+		invalidParams.Add(request.NewErrParamMinLen("VaultName", 1))
 	}
 	if s.JobParameters != nil {
 		if err := s.JobParameters.Validate(); err != nil {
@@ -5857,8 +5965,14 @@ func (s *InitiateMultipartUploadInput) Validate() error {
 	if s.AccountId == nil {
 		invalidParams.Add(request.NewErrParamRequired("AccountId"))
 	}
+	if s.AccountId != nil && len(*s.AccountId) < 1 {
+		invalidParams.Add(request.NewErrParamMinLen("AccountId", 1))
+	}
 	if s.VaultName == nil {
 		invalidParams.Add(request.NewErrParamRequired("VaultName"))
+	}
+	if s.VaultName != nil && len(*s.VaultName) < 1 {
+		invalidParams.Add(request.NewErrParamMinLen("VaultName", 1))
 	}
 
 	if invalidParams.Len() > 0 {
@@ -5964,8 +6078,14 @@ func (s *InitiateVaultLockInput) Validate() error {
 	if s.AccountId == nil {
 		invalidParams.Add(request.NewErrParamRequired("AccountId"))
 	}
+	if s.AccountId != nil && len(*s.AccountId) < 1 {
+		invalidParams.Add(request.NewErrParamMinLen("AccountId", 1))
+	}
 	if s.VaultName == nil {
 		invalidParams.Add(request.NewErrParamRequired("VaultName"))
+	}
+	if s.VaultName != nil && len(*s.VaultName) < 1 {
+		invalidParams.Add(request.NewErrParamMinLen("VaultName", 1))
 	}
 
 	if invalidParams.Len() > 0 {
@@ -6062,8 +6182,7 @@ type InventoryRetrievalJobDescription struct {
 	// An opaque string that represents where to continue pagination of the vault
 	// inventory retrieval results. You use the marker in a new InitiateJob request
 	// to obtain additional inventory items. If there are no more inventory items,
-	// this value is null. For more information, see  Range Inventory Retrieval
-	// (http://docs.aws.amazon.com/amazonglacier/latest/dev/api-initiate-job-post.html#api-initiate-job-post-vault-inventory-list-filtering).
+	// this value is null. For more information, see Range Inventory Retrieval (http://docs.aws.amazon.com/amazonglacier/latest/dev/api-initiate-job-post.html#api-initiate-job-post-vault-inventory-list-filtering).
 	Marker *string `type:"string"`
 
 	// The start of the date range in Universal Coordinated Time (UTC) for vault
@@ -6256,7 +6375,7 @@ type JobDescription struct {
 	// An Amazon SNS topic that receives notification.
 	SNSTopic *string `type:"string"`
 
-	// Contains the parameters that define a select job.
+	// Contains the parameters used for a select.
 	SelectParameters *SelectParameters `type:"structure"`
 
 	// The status code can be InProgress, Succeeded, or Failed, and indicates the
@@ -6266,7 +6385,7 @@ type JobDescription struct {
 	// A friendly message that describes the job status.
 	StatusMessage *string `type:"string"`
 
-	// The retrieval option to use for the archive retrieval. Valid values are Expedited,
+	// The tier to use for a select or an archive retrieval. Valid values are Expedited,
 	// Standard, or Bulk. Standard is the default.
 	Tier *string `type:"string"`
 
@@ -6458,8 +6577,8 @@ type JobParameters struct {
 	// Contains the parameters that define a job.
 	SelectParameters *SelectParameters `type:"structure"`
 
-	// The retrieval option to use for a select or archive retrieval job. Valid
-	// values are Expedited, Standard, or Bulk. Standard is the default.
+	// The tier to use for a select or an archive retrieval job. Valid values are
+	// Expedited, Standard, or Bulk. Standard is the default.
 	Tier *string `type:"string"`
 
 	// The job type. You can initiate a job to perform a select query on an archive,
@@ -6569,9 +6688,9 @@ type ListJobsInput struct {
 	// The state of the jobs to return. You can specify true or false.
 	Completed *string `location:"querystring" locationName:"completed" type:"string"`
 
-	// The maximum number of jobs to be returned. The default limit is 1000. The
-	// number of jobs returned might be fewer than the specified limit, but the
-	// number of returned jobs never exceeds the limit.
+	// The maximum number of jobs to be returned. The default limit is 50. The number
+	// of jobs returned might be fewer than the specified limit, but the number
+	// of returned jobs never exceeds the limit.
 	Limit *string `location:"querystring" locationName:"limit" type:"string"`
 
 	// An opaque string used for pagination. This value specifies the job at which
@@ -6606,8 +6725,14 @@ func (s *ListJobsInput) Validate() error {
 	if s.AccountId == nil {
 		invalidParams.Add(request.NewErrParamRequired("AccountId"))
 	}
+	if s.AccountId != nil && len(*s.AccountId) < 1 {
+		invalidParams.Add(request.NewErrParamMinLen("AccountId", 1))
+	}
 	if s.VaultName == nil {
 		invalidParams.Add(request.NewErrParamRequired("VaultName"))
+	}
+	if s.VaultName != nil && len(*s.VaultName) < 1 {
+		invalidParams.Add(request.NewErrParamMinLen("VaultName", 1))
 	}
 
 	if invalidParams.Len() > 0 {
@@ -6703,7 +6828,7 @@ type ListMultipartUploadsInput struct {
 	AccountId *string `location:"uri" locationName:"accountId" type:"string" required:"true"`
 
 	// Specifies the maximum number of uploads returned in the response body. If
-	// this value is not specified, the List Uploads operation returns up to 1,000
+	// this value is not specified, the List Uploads operation returns up to 50
 	// uploads.
 	Limit *string `location:"querystring" locationName:"limit" type:"string"`
 
@@ -6735,8 +6860,14 @@ func (s *ListMultipartUploadsInput) Validate() error {
 	if s.AccountId == nil {
 		invalidParams.Add(request.NewErrParamRequired("AccountId"))
 	}
+	if s.AccountId != nil && len(*s.AccountId) < 1 {
+		invalidParams.Add(request.NewErrParamMinLen("AccountId", 1))
+	}
 	if s.VaultName == nil {
 		invalidParams.Add(request.NewErrParamRequired("VaultName"))
+	}
+	if s.VaultName != nil && len(*s.VaultName) < 1 {
+		invalidParams.Add(request.NewErrParamMinLen("VaultName", 1))
 	}
 
 	if invalidParams.Len() > 0 {
@@ -6818,7 +6949,7 @@ type ListPartsInput struct {
 	// AccountId is a required field
 	AccountId *string `location:"uri" locationName:"accountId" type:"string" required:"true"`
 
-	// The maximum number of parts to be returned. The default limit is 1000. The
+	// The maximum number of parts to be returned. The default limit is 50. The
 	// number of parts returned might be fewer than the specified limit, but the
 	// number of returned parts never exceeds the limit.
 	Limit *string `location:"querystring" locationName:"limit" type:"string"`
@@ -6857,11 +6988,20 @@ func (s *ListPartsInput) Validate() error {
 	if s.AccountId == nil {
 		invalidParams.Add(request.NewErrParamRequired("AccountId"))
 	}
+	if s.AccountId != nil && len(*s.AccountId) < 1 {
+		invalidParams.Add(request.NewErrParamMinLen("AccountId", 1))
+	}
 	if s.UploadId == nil {
 		invalidParams.Add(request.NewErrParamRequired("UploadId"))
 	}
+	if s.UploadId != nil && len(*s.UploadId) < 1 {
+		invalidParams.Add(request.NewErrParamMinLen("UploadId", 1))
+	}
 	if s.VaultName == nil {
 		invalidParams.Add(request.NewErrParamRequired("VaultName"))
+	}
+	if s.VaultName != nil && len(*s.VaultName) < 1 {
+		invalidParams.Add(request.NewErrParamMinLen("VaultName", 1))
 	}
 
 	if invalidParams.Len() > 0 {
@@ -7013,6 +7153,9 @@ func (s *ListProvisionedCapacityInput) Validate() error {
 	if s.AccountId == nil {
 		invalidParams.Add(request.NewErrParamRequired("AccountId"))
 	}
+	if s.AccountId != nil && len(*s.AccountId) < 1 {
+		invalidParams.Add(request.NewErrParamMinLen("AccountId", 1))
+	}
 
 	if invalidParams.Len() > 0 {
 		return invalidParams
@@ -7084,8 +7227,14 @@ func (s *ListTagsForVaultInput) Validate() error {
 	if s.AccountId == nil {
 		invalidParams.Add(request.NewErrParamRequired("AccountId"))
 	}
+	if s.AccountId != nil && len(*s.AccountId) < 1 {
+		invalidParams.Add(request.NewErrParamMinLen("AccountId", 1))
+	}
 	if s.VaultName == nil {
 		invalidParams.Add(request.NewErrParamRequired("VaultName"))
+	}
+	if s.VaultName != nil && len(*s.VaultName) < 1 {
+		invalidParams.Add(request.NewErrParamMinLen("VaultName", 1))
 	}
 
 	if invalidParams.Len() > 0 {
@@ -7145,7 +7294,7 @@ type ListVaultsInput struct {
 	// AccountId is a required field
 	AccountId *string `location:"uri" locationName:"accountId" type:"string" required:"true"`
 
-	// The maximum number of vaults to be returned. The default limit is 1000. The
+	// The maximum number of vaults to be returned. The default limit is 10. The
 	// number of vaults returned might be fewer than the specified limit, but the
 	// number of returned vaults never exceeds the limit.
 	Limit *string `location:"querystring" locationName:"limit" type:"string"`
@@ -7170,6 +7319,9 @@ func (s *ListVaultsInput) Validate() error {
 	invalidParams := request.ErrInvalidParams{Context: "ListVaultsInput"}
 	if s.AccountId == nil {
 		invalidParams.Add(request.NewErrParamRequired("AccountId"))
+	}
+	if s.AccountId != nil && len(*s.AccountId) < 1 {
+		invalidParams.Add(request.NewErrParamMinLen("AccountId", 1))
 	}
 
 	if invalidParams.Len() > 0 {
@@ -7235,7 +7387,7 @@ func (s *ListVaultsOutput) SetVaultList(v []*DescribeVaultOutput) *ListVaultsOut
 type OutputLocation struct {
 	_ struct{} `type:"structure"`
 
-	// Describes an S3 location that will receive the results of the restore request.
+	// Describes an S3 location that will receive the results of the job request.
 	S3 *S3Location `type:"structure"`
 }
 
@@ -7401,6 +7553,9 @@ func (s *PurchaseProvisionedCapacityInput) Validate() error {
 	if s.AccountId == nil {
 		invalidParams.Add(request.NewErrParamRequired("AccountId"))
 	}
+	if s.AccountId != nil && len(*s.AccountId) < 1 {
+		invalidParams.Add(request.NewErrParamMinLen("AccountId", 1))
+	}
 
 	if invalidParams.Len() > 0 {
 		return invalidParams
@@ -7475,8 +7630,14 @@ func (s *RemoveTagsFromVaultInput) Validate() error {
 	if s.AccountId == nil {
 		invalidParams.Add(request.NewErrParamRequired("AccountId"))
 	}
+	if s.AccountId != nil && len(*s.AccountId) < 1 {
+		invalidParams.Add(request.NewErrParamMinLen("AccountId", 1))
+	}
 	if s.VaultName == nil {
 		invalidParams.Add(request.NewErrParamRequired("VaultName"))
+	}
+	if s.VaultName != nil && len(*s.VaultName) < 1 {
+		invalidParams.Add(request.NewErrParamMinLen("VaultName", 1))
 	}
 
 	if invalidParams.Len() > 0 {
@@ -7525,26 +7686,26 @@ type S3Location struct {
 	// A list of grants that control access to the staged results.
 	AccessControlList []*Grant `type:"list"`
 
-	// The name of the bucket where the restore results are stored.
+	// The name of the Amazon S3 bucket where the job results are stored.
 	BucketName *string `type:"string"`
 
-	// The canned ACL to apply to the restore results.
+	// The canned access control list (ACL) to apply to the job results.
 	CannedACL *string `type:"string" enum:"CannedACL"`
 
 	// Contains information about the encryption used to store the job results in
 	// Amazon S3.
 	Encryption *Encryption `type:"structure"`
 
-	// The prefix that is prepended to the restore results for this request.
+	// The prefix that is prepended to the results for this request.
 	Prefix *string `type:"string"`
 
-	// The storage class used to store the restore results.
+	// The storage class used to store the job results.
 	StorageClass *string `type:"string" enum:"StorageClass"`
 
-	// The tag-set that is applied to the restore results.
+	// The tag-set that is applied to the job results.
 	Tagging map[string]*string `type:"map"`
 
-	// A map of metadata to store with the restore results in Amazon S3.
+	// A map of metadata to store with the job results in Amazon S3.
 	UserMetadata map[string]*string `type:"map"`
 }
 
@@ -7711,6 +7872,9 @@ func (s *SetDataRetrievalPolicyInput) Validate() error {
 	if s.AccountId == nil {
 		invalidParams.Add(request.NewErrParamRequired("AccountId"))
 	}
+	if s.AccountId != nil && len(*s.AccountId) < 1 {
+		invalidParams.Add(request.NewErrParamMinLen("AccountId", 1))
+	}
 
 	if invalidParams.Len() > 0 {
 		return invalidParams
@@ -7782,8 +7946,14 @@ func (s *SetVaultAccessPolicyInput) Validate() error {
 	if s.AccountId == nil {
 		invalidParams.Add(request.NewErrParamRequired("AccountId"))
 	}
+	if s.AccountId != nil && len(*s.AccountId) < 1 {
+		invalidParams.Add(request.NewErrParamMinLen("AccountId", 1))
+	}
 	if s.VaultName == nil {
 		invalidParams.Add(request.NewErrParamRequired("VaultName"))
+	}
+	if s.VaultName != nil && len(*s.VaultName) < 1 {
+		invalidParams.Add(request.NewErrParamMinLen("VaultName", 1))
 	}
 
 	if invalidParams.Len() > 0 {
@@ -7863,8 +8033,14 @@ func (s *SetVaultNotificationsInput) Validate() error {
 	if s.AccountId == nil {
 		invalidParams.Add(request.NewErrParamRequired("AccountId"))
 	}
+	if s.AccountId != nil && len(*s.AccountId) < 1 {
+		invalidParams.Add(request.NewErrParamMinLen("AccountId", 1))
+	}
 	if s.VaultName == nil {
 		invalidParams.Add(request.NewErrParamRequired("VaultName"))
+	}
+	if s.VaultName != nil && len(*s.VaultName) < 1 {
+		invalidParams.Add(request.NewErrParamMinLen("VaultName", 1))
 	}
 
 	if invalidParams.Len() > 0 {
@@ -7949,8 +8125,14 @@ func (s *UploadArchiveInput) Validate() error {
 	if s.AccountId == nil {
 		invalidParams.Add(request.NewErrParamRequired("AccountId"))
 	}
+	if s.AccountId != nil && len(*s.AccountId) < 1 {
+		invalidParams.Add(request.NewErrParamMinLen("AccountId", 1))
+	}
 	if s.VaultName == nil {
 		invalidParams.Add(request.NewErrParamRequired("VaultName"))
+	}
+	if s.VaultName != nil && len(*s.VaultName) < 1 {
+		invalidParams.Add(request.NewErrParamMinLen("VaultName", 1))
 	}
 
 	if invalidParams.Len() > 0 {
@@ -8104,11 +8286,20 @@ func (s *UploadMultipartPartInput) Validate() error {
 	if s.AccountId == nil {
 		invalidParams.Add(request.NewErrParamRequired("AccountId"))
 	}
+	if s.AccountId != nil && len(*s.AccountId) < 1 {
+		invalidParams.Add(request.NewErrParamMinLen("AccountId", 1))
+	}
 	if s.UploadId == nil {
 		invalidParams.Add(request.NewErrParamRequired("UploadId"))
 	}
+	if s.UploadId != nil && len(*s.UploadId) < 1 {
+		invalidParams.Add(request.NewErrParamMinLen("UploadId", 1))
+	}
 	if s.VaultName == nil {
 		invalidParams.Add(request.NewErrParamRequired("VaultName"))
+	}
+	if s.VaultName != nil && len(*s.VaultName) < 1 {
+		invalidParams.Add(request.NewErrParamMinLen("VaultName", 1))
 	}
 
 	if invalidParams.Len() > 0 {

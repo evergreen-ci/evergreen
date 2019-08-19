@@ -8,6 +8,8 @@ import (
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/units"
 	"github.com/mongodb/amboy"
+	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 )
 
@@ -19,11 +21,20 @@ func (gc *GenerateConnector) GenerateTasks(ctx context.Context, taskID string, j
 	if err != nil {
 		return errors.Wrapf(err, "problem finding task %s", taskID)
 	}
-	q, err := group.Get(ctx, t.Version)
+
+	// in the future this operation should receive a context tied
+	// to the lifetime of the application (e.g. env.Context())
+	// rather than a context tied to the lifetime of the request
+	// (e.g. ctx above.)
+	q, err := group.Get(context.TODO(), t.Version)
 	if err != nil {
 		return errors.Wrapf(err, "problem getting queue for version %s", t.Version)
 	}
-	return q.Put(units.NewGenerateTasksJob(taskID, jsonBytes))
+	err = q.Put(ctx, units.NewGenerateTasksJob(taskID, jsonBytes))
+	grip.Debug(message.WrapError(err, message.Fields{
+		"message": "problem saving new generate tasks job for task",
+		"task_id": taskID}))
+	return nil
 }
 
 func (gc *GenerateConnector) GeneratePoll(ctx context.Context, taskID string, group amboy.QueueGroup) (bool, []string, error) {
@@ -31,12 +42,17 @@ func (gc *GenerateConnector) GeneratePoll(ctx context.Context, taskID string, gr
 	if err != nil {
 		return false, nil, errors.Wrapf(err, "problem finding task %s", taskID)
 	}
-	q, err := group.Get(ctx, t.Version)
+
+	// in the future this operation should receive a context tied
+	// to the lifetime of the application (e.g. env.Context())
+	// rather than a context tied to the lifetime of the request
+	// (e.g. ctx above.)
+	q, err := group.Get(context.TODO(), t.Version)
 	if err != nil {
 		return false, nil, errors.Wrapf(err, "problem getting queue for version %s", t.Version)
 	}
 	jobID := fmt.Sprintf("generate-tasks-%s", taskID)
-	j, exists := q.Get(jobID)
+	j, exists := q.Get(ctx, jobID)
 	if !exists {
 		return false, nil, errors.Errorf("task %s not in queue", taskID)
 	}

@@ -73,7 +73,7 @@ func (opts cloneOpts) validate() error {
 }
 
 func (opts cloneOpts) sshLocation() string {
-	return fmt.Sprintf("git@github.com:%s/%s.git", opts.owner, opts.repo)
+	return thirdparty.FormGitUrl("github.com", opts.owner, opts.repo, "")
 }
 
 func (opts cloneOpts) httpLocation() string {
@@ -147,7 +147,7 @@ func (opts cloneOpts) buildHTTPCloneCommand() ([]string, error) {
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to parse URL from location")
 	}
-	clone := fmt.Sprintf("git clone https://%s@%s/%s/%s.git '%s'", opts.token, urlLocation.Host, opts.owner, opts.repo, opts.dir)
+	clone := fmt.Sprintf("git clone %s '%s'", thirdparty.FormGitUrl(urlLocation.Host, opts.owner, opts.repo, opts.token), opts.dir)
 	if opts.branch != "" {
 		clone = fmt.Sprintf("%s --branch '%s'", clone, opts.branch)
 	}
@@ -289,7 +289,7 @@ func (c *gitFetchProject) Execute(ctx context.Context,
 
 	var projectMethod string
 	var projectToken string
-	projectMethod, projectToken, err = getProjectMethodAndToken(c.Token, conf.Expansions.Get("global_github_oauth_token"), conf.Distro.CloneMethod)
+	projectMethod, projectToken, err = getProjectMethodAndToken(c.Token, conf.Expansions.Get(evergreen.GlobalGitHubTokenExpansion), conf.Distro.CloneMethod)
 	if err != nil {
 		return errors.Wrap(err, "failed to get method of cloning and token")
 	}

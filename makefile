@@ -1,12 +1,12 @@
 # start project configuration
 name := evergreen
 buildDir := bin
-tmpDir := $(buildDir)/tmp
+tmpDir := $(abspath $(buildDir)/tmp)
 nodeDir := public
 packages := $(name) agent operations cloud command db util plugin units
 packages += thirdparty auth scheduler model validator service monitor repotracker
 packages += model-patch model-artifact model-host model-build model-event model-task model-user model-distro model-manifest model-testresult
-packages += model-grid rest-client rest-data rest-route rest-model migrations trigger model-alertrecord model-notification model-stats
+packages += model-grid rest-client rest-data rest-route rest-model migrations trigger model-alertrecord model-notification model-stats model-reliability
 lintOnlyPackages := testutil model-manifest
 orgPath := github.com/evergreen-ci
 projectPath := $(orgPath)/$(name)
@@ -240,6 +240,13 @@ vendor-clean:
 	rm -rf vendor/github.com/docker/docker/vendor/github.com/Microsoft/go-winio/
 	rm -rf vendor/github.com/docker/docker/vendor/github.com/docker/go-connections/
 	rm -rf vendor/github.com/docker/docker/vendor/golang.org/x/net/
+	rm -rf vendor/github.com/evergreen-ci/certdepot/vendor/github.com/mongodb/grip/
+	rm -rf vendor/github.com/evergreen-ci/certdepot/vendor/github.com/mongodb/anser/
+	rm -rf vendor/github.com/evergreen-ci/certdepot/vendor/github.com/pkg/errors/
+	rm -rf vendor/github.com/evergreen-ci/certdepot/vendor/github.com/stretchr/testify/
+	rm -rf vendor/github.com/evergreen-ci/certdepot/vendor/github.com/square/certstrap/
+	rm -rf vendor/github.com/evergreen-ci/certdepot/vendor/go.mongodb.org/mongo-driver/
+	rm -rf vendor/github.com/evergreen-ci/certdepot/vendor/gopkg.in/mgo.v2/
 	rm -rf vendor/github.com/evergreen-ci/gimlet/vendor/github.com/mongodb/grip/
 	rm -rf vendor/github.com/evergreen-ci/gimlet/vendor/github.com/pkg/errors/
 	rm -rf vendor/github.com/evergreen-ci/gimlet/vendor/github.com/stretchr/testify/
@@ -264,8 +271,8 @@ vendor-clean:
 	rm -rf vendor/github.com/mongodb/amboy/vendor/github.com/mongodb/grip/
 	rm -rf vendor/github.com/mongodb/amboy/vendor/github.com/pkg/errors/
 	rm -rf vendor/github.com/mongodb/amboy/vendor/github.com/stretchr/testify/
-	rm -rf vendor/github.com/mongodb/amboy/vendor/go.mongodb.org/
 	rm -rf vendor/github.com/mongodb/amboy/vendor/go.mongodb.org/mongo-driver/
+	rm -rf vendor/github.com/mongodb/amboy/vendor/github.com/urfave/cli/
 	rm -rf vendor/github.com/mongodb/amboy/vendor/gopkg.in/mgo.v2/
 	rm -rf vendor/github.com/mongodb/amboy/vendor/gopkg.in/yaml.v2/
 	rm -rf vendor/github.com/mongodb/grip/vendor/github.com/google/go-github/
@@ -280,6 +287,9 @@ vendor-clean:
 	rm -rf vendor/github.com/mongodb/jasper/vendor/github.com/pkg/
 	rm -rf vendor/github.com/mongodb/jasper/vendor/github.com/stretchr/
 	rm -rf vendor/github.com/smartystreets/goconvey/web/
+	rm -rf vendor/github.com/square/certstrap/vendor/github.com/urfave/cli/
+	rm -rf vendor/github.com/square/certstrap/vendor/golang.org/x/sys/windows/
+	rm -rf vendor/github.com/square/certstrap/vendor/golang.org/x/sys/unix/
 	rm -rf vendor/go.mongodb.org/mongo-driver/data/
 	rm -rf vendor/go.mongodb.org/mongo-driver/vendor/github.com/davecgh
 	rm -rf vendor/go.mongodb.org/mongo-driver/vendor/github.com/montanaflynn
@@ -313,6 +323,8 @@ endif
 # specific package.
 test-%:$(buildDir)/output.%.test
 	@grep -s -q -e "^PASS" $< && ! grep -s -q "^WARNING: DATA RACE" $<
+dlv-%:$(buildDir)/output-dlv.%.test
+	@grep -s -q -e "^PASS" $< && ! grep -s -q "^WARNING: DATA RACE" $<
 coverage-%:$(buildDir)/output.%.coverage
 	@grep -s -q -e "^PASS" $(subst coverage,test,$<)
 html-coverage-%:$(buildDir)/output.%.coverage $(buildDir)/output.%.coverage.html
@@ -327,7 +339,8 @@ lint-%:$(buildDir)/output.%.lint
 #    run. (The "build" target is intentional and makes these targetsb
 #    rerun as expected.)
 testRunDeps := $(name)
-testArgs := -ldflags=$(ldFlags) -v
+testArgs := -v
+dlvArgs := -test.v
 testRunEnv := EVGHOME=$(shell pwd) GOCONVEY_REPORTER=silent GOPATH=$(gopath)
 ifeq ($(OS),Windows_NT)
 testRunEnv := EVGHOME=$(shell cygpath -m `pwd`) GOPATH=$(gopath)
@@ -342,20 +355,26 @@ testRunEnv += TMPDIR=$(tmpDir)
 endif
 ifneq (,$(RUN_TEST))
 testArgs += -run='$(RUN_TEST)'
+dlvArgs += -test.run='$(RUN_TEST)'
 endif
 ifneq (,$(SKIP_LONG))
 testArgs += -short
+dlvArgs += -test.short
 endif
 ifneq (,$(RUN_COUNT))
 testArgs += -count='$(RUN_COUNT)'
+dlvArgs += -test.count='$(RUN_COUNT)'
 endif
 ifneq (,$(RACE_DETECTOR))
 testArgs += -race
+dlvArgs += -test.race
 endif
 ifneq (,$(TEST_TIMEOUT))
 testArgs += -timeout=$(TEST_TIMEOUT)
+dlvArgs += -test.timeout=$(TEST_TIMEOUT)
 else
 testArgs += -timeout=10m
+dlvArgs += -test.timeout=10m
 endif
 #  targets to run any tests in the top-level package
 $(buildDir):
@@ -363,9 +382,11 @@ $(buildDir):
 $(tmpDir):$(buildDir)
 	mkdir -p $@
 $(buildDir)/output.%.test:$(tmpDir) .FORCE
-	$(testRunEnv) $(gobin) test $(testArgs) ./$(if $(subst $(name),,$*),$(subst -,/,$*),) 2>&1 | tee $@
+	$(testRunEnv) $(gobin) test -ldflags=$(ldFlags) $(testArgs) ./$(if $(subst $(name),,$*),$(subst -,/,$*),) 2>&1 | tee $@
+$(buildDir)/output-dlv.%.test:$(tmpDir) .FORCE
+	$(testRunEnv) dlv test -ldflags=$(ldFlags) ./$(if $(subst $(name),,$*),$(subst -,/,$*),) -- $(dlvArgs) 2>&1 | tee $@
 $(buildDir)/output.%.coverage:$(tmpDir) .FORCE
-	$(testRunEnv) $(gobin) test $(testArgs) ./$(if $(subst $(name),,$*),$(subst -,/,$*),) -covermode=count -coverprofile $@ | tee $(buildDir)/output.$*.test
+	$(testRunEnv) $(gobin) test -ldflags=$(ldFlags) $(testArgs) ./$(if $(subst $(name),,$*),$(subst -,/,$*),) -covermode=count -coverprofile $@ | tee $(buildDir)/output.$*.test
 	@-[ -f $@ ] && go tool cover -func=$@ | sed 's%$(projectPath)/%%' | column -t
 #  targets to generate gotest output from the linter.
 $(buildDir)/output.%.lint:$(buildDir)/run-linter $(testSrcFiles) .FORCE
@@ -395,7 +416,7 @@ mongodb/.get-mongodb:
 get-mongodb: mongodb/.get-mongodb
 	@touch $<
 start-mongod: mongodb/.get-mongodb
-	./mongodb/mongod --dbpath ./mongodb/db_files --port 27017 --replSet evg --bind_ip localhost --smallfiles --oplogSize 10
+	./mongodb/mongod --dbpath ./mongodb/db_files --port 27017 --replSet evg --smallfiles --oplogSize 10
 	@echo "waiting for mongod to start up"
 init-rs: mongodb/.get-mongodb
 	./mongodb/mongo --eval 'rs.initiate()'

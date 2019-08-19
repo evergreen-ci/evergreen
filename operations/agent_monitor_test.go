@@ -10,6 +10,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/evergreen-ci/evergreen"
 	"github.com/mongodb/jasper"
 	"github.com/mongodb/jasper/rpc"
 	"github.com/stretchr/testify/assert"
@@ -22,13 +23,13 @@ func TestAgentMonitorWithJasper(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	jasperPort := defaultJasperPort
+	jasperPort := evergreen.DefaultJasperPort
 	port := defaultMonitorPort
 	manager, err := jasper.NewLocalManager(false)
 	require.NoError(t, err)
 	addr, err := net.ResolveTCPAddr("tcp", fmt.Sprintf("localhost:%d", jasperPort))
 	require.NoError(t, err)
-	closeServer, err := rpc.StartService(ctx, manager, addr, "", "")
+	closeServer, err := rpc.StartService(ctx, manager, addr, nil)
 	require.NoError(t, err)
 	defer func() {
 		assert.NoError(t, closeServer())

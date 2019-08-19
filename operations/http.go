@@ -14,6 +14,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/patch"
+	restModel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/service"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/evergreen/validator"
@@ -170,6 +171,46 @@ func (ac *legacyClient) GetPatches(n int) ([]patch.Patch, error) {
 	return patches, nil
 }
 
+// GetRestPatch gets a patch from the server given a patch id and returns it as a RestPatch.
+func (ac *legacyClient) GetRestPatch(patchId string) (*service.RestPatch, error) {
+	resp, err := ac.get(fmt.Sprintf("patches/%v", patchId), nil)
+	if err != nil {
+		return nil, err
+	}
+	if resp.StatusCode != http.StatusOK {
+		return nil, NewAPIError(resp)
+	}
+	result := &service.RestPatch{}
+	if err := util.ReadJSONInto(resp.Body, result); err != nil {
+		return nil, err
+	}
+	return result, nil
+}
+
+// GetPatch gets a patch from the server given a patch id and returns it as a Patch.
+func (ac *legacyClient) GetPatch(patchId string) (*patch.Patch, error) {
+	resp, err := ac.get2(fmt.Sprintf("patches/%v", patchId), nil)
+	if err != nil {
+		return nil, err
+	}
+	if resp.StatusCode != http.StatusOK {
+		return nil, NewAPIError(resp)
+	}
+	apiModel := &restModel.APIPatch{}
+	if err = util.ReadJSONInto(resp.Body, apiModel); err != nil {
+		return nil, err
+	}
+	i, err := apiModel.ToService()
+	if err != nil {
+		return nil, errors.Wrapf(err, "error building to patch")
+	}
+	res, ok := i.(patch.Patch)
+	if !ok {
+		return nil, errors.Wrapf(err, "error converting type %T to Patch", res)
+	}
+	return &res, nil
+}
+
 // GetProjectRef requests project details from the API server for a given project ID.
 func (ac *legacyClient) GetProjectRef(projectId string) (*model.ProjectRef, error) {
 	resp, err := ac.get(fmt.Sprintf("/ref/%s", projectId), nil)
@@ -180,22 +221,6 @@ func (ac *legacyClient) GetProjectRef(projectId string) (*model.ProjectRef, erro
 		return nil, NewAPIError(resp)
 	}
 	ref := &model.ProjectRef{}
-	if err := util.ReadJSONInto(resp.Body, ref); err != nil {
-		return nil, err
-	}
-	return ref, nil
-}
-
-// GetPatch gets a patch from the server given a patch id.
-func (ac *legacyClient) GetPatch(patchId string) (*service.RestPatch, error) {
-	resp, err := ac.get(fmt.Sprintf("patches/%v", patchId), nil)
-	if err != nil {
-		return nil, err
-	}
-	if resp.StatusCode != http.StatusOK {
-		return nil, NewAPIError(resp)
-	}
-	ref := &service.RestPatch{}
 	if err := util.ReadJSONInto(resp.Body, ref); err != nil {
 		return nil, err
 	}
@@ -267,13 +292,22 @@ func (ac *legacyClient) DeletePatchModule(patchId, module string) error {
 	return nil
 }
 
+type UpdatePatchModuleParams struct {
+	patchID string
+	module  string
+	patch   string
+	base    string
+	message string
+}
+
 // UpdatePatchModule makes a request to the API server to set a module patch on the given patch ID.
-func (ac *legacyClient) UpdatePatchModule(patchId, module, patch, base string) error {
+func (ac *legacyClient) UpdatePatchModule(params UpdatePatchModuleParams) error {
 	data := struct {
 		Module  string `json:"module"`
 		Patch   string `json:"patch"`
 		Githash string `json:"githash"`
-	}{module, patch, base}
+		Message string `json:"message"`
+	}{params.module, params.patch, params.base, params.message}
 
 	rPipe, wPipe := io.Pipe()
 	encoder := json.NewEncoder(wPipe)
@@ -283,7 +317,7 @@ func (ac *legacyClient) UpdatePatchModule(patchId, module, patch, base string) e
 	}()
 	defer rPipe.Close()
 
-	resp, err := ac.post(fmt.Sprintf("patches/%s/modules", patchId), rPipe)
+	resp, err := ac.post(fmt.Sprintf("patches/%s/modules", params.patchID), rPipe)
 	if err != nil {
 		return err
 	}

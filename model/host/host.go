@@ -1,12 +1,14 @@
 package host
 
 import (
+	"context"
 	"fmt"
 	"math"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/model/credentials"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/task"
@@ -15,6 +17,7 @@ import (
 	adb "github.com/mongodb/anser/db"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
+	"github.com/mongodb/jasper/rpc"
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson"
 	mgobson "gopkg.in/mgo.v2/bson"
@@ -37,7 +40,8 @@ type Host struct {
 	Project string `bson:"project" json:"project"`
 	Zone    string `bson:"zone" json:"zone"`
 
-	// true if the host has been set up properly
+	// True if the app server has done all necessary host setup work (although
+	// the host may need to do additional provisioning before it is running).
 	Provisioned       bool      `bson:"provisioned" json:"provisioned"`
 	ProvisionAttempts int       `bson:"priv_attempts" json:"provision_attempts"`
 	ProvisionTime     time.Time `bson:"prov_time,omitempty" json:"prov_time,omitempty"`
@@ -68,8 +72,11 @@ type Host struct {
 	ExpirationTime   time.Time `bson:"expiration_time,omitempty" json:"expiration_time"`
 
 	// creation is when the host document was inserted to the DB, start is when it was started on the cloud provider
-	CreationTime    time.Time `bson:"creation_time" json:"creation_time"`
-	StartTime       time.Time `bson:"start_time" json:"start_time"`
+	CreationTime time.Time `bson:"creation_time" json:"creation_time"`
+	StartTime    time.Time `bson:"start_time" json:"start_time"`
+	// AgentStartTime is when the agent first initiates contact with the app
+	// server.
+	AgentStartTime  time.Time `bson:"agent_start_time" json:"agent_start_time"`
 	TerminationTime time.Time `bson:"termination_time" json:"termination_time"`
 	TaskCount       int       `bson:"task_count" json:"task_count"`
 
@@ -79,9 +86,18 @@ type Host struct {
 	Status    string `bson:"status" json:"status"`
 	StartedBy string `bson:"started_by" json:"started_by"`
 	// True if this host was created manually by a user (i.e. with spawnhost)
-	UserHost      bool   `bson:"user_host" json:"user_host"`
-	AgentRevision string `bson:"agent_revision" json:"agent_revision"`
-	NeedsNewAgent bool   `bson:"needs_agent" json:"needs_agent"`
+	UserHost             bool   `bson:"user_host" json:"user_host"`
+	AgentRevision        string `bson:"agent_revision" json:"agent_revision"`
+	NeedsNewAgent        bool   `bson:"needs_agent" json:"needs_agent"`
+	NeedsNewAgentMonitor bool   `bson:"needs_agent_monitor" json:"needs_agent_monitor"`
+
+	// JasperCredentialsID is used to match hosts to their Jasper credentials
+	// for non-legacy hosts.
+	JasperCredentialsID string `bson:"jasper_credentials_id" json:"jasper_credentials_id"`
+
+	// JasperDeployAttempts is the current number of times the app server has
+	// attempted to deploy a new Jasper service to the host.
+	JasperDeployAttempts int `bson:"jasper_deploy_attempts" json:"jasper_deploy_attempts"`
 
 	// for ec2 dynamic hosts, the instance type requested
 	InstanceType string `bson:"instance_type" json:"instance_type,omitempty"`
@@ -328,6 +344,87 @@ func (h *Host) CreateSecret() error {
 	return nil
 }
 
+func (h *Host) SetAgentStartTime() error {
+	now := time.Now()
+	if err := UpdateOne(
+		bson.M{IdKey: h.Id},
+		bson.M{"$set": bson.M{AgentStartTimeKey: now}},
+	); err != nil {
+		return errors.Wrap(err, "could not set agent start time")
+	}
+	h.AgentStartTime = now
+	return nil
+}
+
+// JasperCredentials gets the Jasper credentials for this host's running Jasper
+// service from the database. These credentials should not be used to connect to
+// the Jasper service - use JasperClientCredentials for this purpose.
+func (h *Host) JasperCredentials(ctx context.Context, env evergreen.Environment) (*rpc.Credentials, error) {
+	return credentials.FindByID(ctx, env, h.JasperCredentialsID)
+}
+
+// JasperCredentialsExpiration returns the time at which the host's Jasper
+// credentials will expire.
+func (h *Host) JasperCredentialsExpiration(ctx context.Context, env evergreen.Environment) (time.Time, error) {
+	return credentials.FindExpirationByID(ctx, env, h.JasperCredentialsID)
+}
+
+// JasperClientCredentials gets the Jasper credentials for a client to
+// communicate with the host's running Jasper service. These credentials should
+// be used only to connect to the host's Jasper service.
+func (h *Host) JasperClientCredentials(ctx context.Context, env evergreen.Environment) (*rpc.Credentials, error) {
+	creds, err := credentials.ForJasperClient(ctx, env)
+	if err != nil {
+		return nil, errors.WithStack(err)
+	}
+	creds.ServerName = h.JasperCredentialsID
+	return creds, nil
+}
+
+// GenerateJasperCredentials creates the Jasper credentials for the given host
+// without saving them to the database. If credentials already exist in the
+// database, they are deleted.
+func (h *Host) GenerateJasperCredentials(ctx context.Context, env evergreen.Environment) (*rpc.Credentials, error) {
+	if h.JasperCredentialsID == "" {
+		if err := h.UpdateJasperCredentialsID(h.Id); err != nil {
+			return nil, errors.Wrap(err, "problem setting Jasper credentials ID")
+		}
+	}
+	// We have to delete this host's credentials because GenerateInMemory will
+	// fail if credentials already exist in the database.
+	if err := credentials.DeleteByID(ctx, env, h.JasperCredentialsID); err != nil {
+		return nil, errors.Wrap(err, "problem deleting existing Jasper credentials")
+	}
+	return credentials.GenerateInMemory(ctx, env, h.JasperCredentialsID)
+}
+
+// SaveJasperCredentials saves the given Jasper credentials in the database for
+// the host.
+func (h *Host) SaveJasperCredentials(ctx context.Context, env evergreen.Environment, creds *rpc.Credentials) error {
+	if h.JasperCredentialsID == "" {
+		return errors.New("Jasper credentials ID is empty")
+	}
+	return credentials.SaveByID(ctx, env, h.JasperCredentialsID, creds)
+}
+
+// DeleteJasperCredentials deletes the Jasper credentials for the host and
+// updates the host both in memory and in the database.
+func (h *Host) DeleteJasperCredentials(ctx context.Context, env evergreen.Environment) error {
+	return credentials.DeleteByID(ctx, env, h.JasperCredentialsID)
+}
+
+// UpdateJasperCredentialsID sets the ID of the host's Jasper credentials.
+func (h *Host) UpdateJasperCredentialsID(id string) error {
+	if err := UpdateOne(
+		bson.M{IdKey: h.Id},
+		bson.M{"$set": bson.M{JasperCredentialsIDKey: id}},
+	); err != nil {
+		return err
+	}
+	h.JasperCredentialsID = id
+	return nil
+}
+
 // UpdateLastCommunicated sets the host's last communication time to the current time.
 func (h *Host) UpdateLastCommunicated() error {
 	now := time.Now()
@@ -420,6 +517,7 @@ func (h *Host) SetIPv6Address(ipv6Address string) error {
 
 func (h *Host) MarkAsProvisioned() error {
 	event.LogHostProvisioned(h.Id)
+	now := time.Now()
 	err := UpdateOne(
 		bson.M{
 			IdKey: h.Id,
@@ -431,7 +529,7 @@ func (h *Host) MarkAsProvisioned() error {
 			"$set": bson.M{
 				StatusKey:        evergreen.HostRunning,
 				ProvisionedKey:   true,
-				ProvisionTimeKey: h.ProvisionTime,
+				ProvisionTimeKey: now,
 			},
 		},
 	)
@@ -442,7 +540,57 @@ func (h *Host) MarkAsProvisioned() error {
 
 	h.Status = evergreen.HostRunning
 	h.Provisioned = true
-	h.ProvisionTime = time.Now()
+	h.ProvisionTime = now
+	return nil
+}
+
+// SetProvisionedNotRunning marks the host as having been provisioned by the app
+// server but the host is not necessarily running yet.
+func (h *Host) SetProvisionedNotRunning() error {
+	now := time.Now()
+	if err := UpdateOne(
+		bson.M{
+			IdKey: h.Id,
+			StatusKey: bson.M{
+				"$nin": evergreen.DownHostStatus,
+			},
+		},
+		bson.M{
+			"$set": bson.M{
+				ProvisionedKey:   true,
+				ProvisionTimeKey: now,
+			},
+		},
+	); err != nil {
+		return errors.Wrap(err, "problem setting host as provisioned but not running")
+	}
+
+	h.Provisioned = true
+	h.ProvisionTime = now
+	return nil
+}
+
+// UpdateProvisioningToRunning changes the host status from provisioning to
+// running, as well as logging that the host has finished provisioning.
+func (h *Host) UpdateProvisioningToRunning() error {
+	if h.Status != evergreen.HostProvisioning {
+		return nil
+	}
+
+	if err := UpdateOne(
+		bson.M{
+			IdKey:     h.Id,
+			StatusKey: evergreen.HostProvisioning,
+		},
+		bson.M{"$set": bson.M{StatusKey: evergreen.HostRunning}},
+	); err != nil {
+		return errors.Wrap(err, "problem changing host status from provisioning to running")
+	}
+
+	h.Status = evergreen.HostRunning
+
+	event.LogHostProvisioned(h.Id)
+
 	return nil
 }
 
@@ -575,10 +723,14 @@ func (h *Host) SetAgentRevision(agentRevision string) error {
 	return nil
 }
 
-// IsWaitingForAgent provides a local predicate for the logic in the
-// "NeedsNewAgent" query.
+// IsWaitingForAgent provides a local predicate for the logic for
+// whether the host needs either a new agent or agent monitor.
 func (h *Host) IsWaitingForAgent() bool {
-	if h.NeedsNewAgent {
+	if h.LegacyBootstrap() && h.NeedsNewAgent {
+		return true
+	}
+
+	if !h.LegacyBootstrap() && h.NeedsNewAgentMonitor {
 		return true
 	}
 
@@ -593,8 +745,13 @@ func (h *Host) IsWaitingForAgent() bool {
 	return false
 }
 
-// SetNeedsNewAgent sets the "needs new agent" flag on the host.
+// SetNeedsNewAgent sets the "needs new agent" flag on the host. This is a no-op
+// on non-legacy hosts.
 func (h *Host) SetNeedsNewAgent(needsAgent bool) error {
+	if !h.LegacyBootstrap() {
+		return nil
+	}
+
 	err := UpdateOne(bson.M{IdKey: h.Id},
 		bson.M{"$set": bson.M{NeedsNewAgentKey: needsAgent}})
 	if err != nil {
@@ -613,6 +770,57 @@ func (h *Host) SetNeedsNewAgentAtomically(needsAgent bool) error {
 	}
 	h.NeedsNewAgent = needsAgent
 	return nil
+}
+
+// SetNeedsNewAgentMonitor sets the "needs new agent monitor" flag on the host
+// to indicate that the host needs to have the agent monitor deployed.
+func (h *Host) SetNeedsNewAgentMonitor(needsAgentMonitor bool) error {
+	err := UpdateOne(bson.M{IdKey: h.Id},
+		bson.M{"$set": bson.M{NeedsNewAgentMonitorKey: needsAgentMonitor}})
+	if err != nil {
+		return err
+	}
+	h.NeedsNewAgentMonitor = needsAgentMonitor
+	return nil
+}
+
+// SetNeedsNewAgentMonitorAtomically is the same as SetNeedsNewAgentMonitor but
+// performs an atomic update on the host in the database.
+func (h *Host) SetNeedsNewAgentMonitorAtomically(needsAgentMonitor bool) error {
+	if err := UpdateOne(bson.M{IdKey: h.Id, NeedsNewAgentMonitorKey: !needsAgentMonitor},
+		bson.M{"$set": bson.M{NeedsNewAgentMonitorKey: needsAgentMonitor}}); err != nil {
+		return err
+	}
+	h.NeedsNewAgentMonitor = needsAgentMonitor
+	return nil
+}
+
+// LegacyBootstrap returns whether the host was bootstrapped using the legacy
+// method.
+func (h *Host) LegacyBootstrap() bool {
+	return h.Distro.BootstrapMethod == "" || h.Distro.BootstrapMethod == distro.BootstrapMethodLegacySSH
+}
+
+// LegacyCommunication returns whether the app server is communicating with this
+// host using the legacy method.
+func (h *Host) LegacyCommunication() bool {
+	return h.Distro.CommunicationMethod == "" || h.Distro.CommunicationMethod == distro.CommunicationMethodLegacySSH
+}
+
+// JasperCommunication returns whether or not the app server is communicating
+// with this host's Jasper service.
+func (h *Host) JasperCommunication() bool {
+	return h.Distro.CommunicationMethod == distro.CommunicationMethodSSH || h.Distro.CommunicationMethod == distro.CommunicationMethodRPC
+}
+
+// SetNeedsAgentDeploy indicates that the host's agent or agent monitor needs
+// to be deployed.
+func (h *Host) SetNeedsAgentDeploy(needsDeploy bool) error {
+	if h.LegacyBootstrap() {
+		return errors.Wrap(h.SetNeedsNewAgent(needsDeploy), "error setting host needs new agent")
+	}
+
+	return errors.Wrap(h.SetNeedsNewAgentMonitor(needsDeploy), "error setting host needs new agent monitor")
 }
 
 // SetExpirationTime updates the expiration time of a spawn host
@@ -678,22 +886,25 @@ func (h *Host) Upsert() (*adb.ChangeInfo, error) {
 				// If adding or removing fields here, make sure that all callers will work
 				// correctly after the change. Any fields defined here but not set by the
 				// caller will insert the zero value into the document
-				DNSKey:               h.Host,
-				UserKey:              h.User,
-				DistroKey:            h.Distro,
-				ProvisionedKey:       h.Provisioned,
-				StartedByKey:         h.StartedBy,
-				ExpirationTimeKey:    h.ExpirationTime,
-				ProviderKey:          h.Provider,
-				TagKey:               h.Tag,
-				InstanceTypeKey:      h.InstanceType,
-				ZoneKey:              h.Zone,
-				ProjectKey:           h.Project,
-				ProvisionAttemptsKey: h.ProvisionAttempts,
-				ProvisionOptionsKey:  h.ProvisionOptions,
-				StartTimeKey:         h.StartTime,
-				HasContainersKey:     h.HasContainers,
-				ContainerImagesKey:   h.ContainerImages,
+				DNSKey:                  h.Host,
+				UserKey:                 h.User,
+				DistroKey:               h.Distro,
+				ProvisionedKey:          h.Provisioned,
+				StartedByKey:            h.StartedBy,
+				ExpirationTimeKey:       h.ExpirationTime,
+				ProviderKey:             h.Provider,
+				TagKey:                  h.Tag,
+				InstanceTypeKey:         h.InstanceType,
+				ZoneKey:                 h.Zone,
+				ProjectKey:              h.Project,
+				ProvisionAttemptsKey:    h.ProvisionAttempts,
+				ProvisionOptionsKey:     h.ProvisionOptions,
+				StartTimeKey:            h.StartTime,
+				HasContainersKey:        h.HasContainers,
+				ContainerImagesKey:      h.ContainerImages,
+				NeedsNewAgentMonitorKey: h.NeedsNewAgentMonitor,
+				JasperCredentialsIDKey:  h.JasperCredentialsID,
+				JasperDeployAttemptsKey: h.JasperDeployAttempts,
 			},
 			"$setOnInsert": bson.M{
 				StatusKey:     h.Status,
@@ -1127,6 +1338,8 @@ func FindHostsSpawnedByBuild(buildID string) ([]Host, error) {
 	return hosts, nil
 }
 
+// FindTerminatedHostsRunningTasks finds all hosts that were running tasks when
+// they were either terminated or needed to be re-provisioned.
 func FindTerminatedHostsRunningTasks() ([]Host, error) {
 	hosts, err := Find(db.Query(bson.M{
 		StatusKey: evergreen.HostTerminated,
@@ -1173,6 +1386,50 @@ func (hosts HostGroup) GetHostIds() []string {
 		ids = append(ids, h.Id)
 	}
 	return ids
+}
+
+type HostGroupStats struct {
+	Quarantined    int `bson:"quarantined" json:"quarantined" yaml:"quarantined"`
+	Decommissioned int `bson:"decommissioned" json:"decommissioned" yaml:"decommissioned"`
+	Idle           int `bson:"idle" json:"idle" yaml:"idle"`
+	Active         int `bson:"active" json:"active" yaml:"active"`
+	Provisioning   int `bson:"provisioning" json:"provisioning" yaml:"provisioning"`
+	Total          int `bson:"total" json:"total" yaml:"total"`
+}
+
+func (hosts HostGroup) Stats() HostGroupStats {
+	out := HostGroupStats{}
+
+	for _, h := range hosts {
+		out.Total++
+
+		if h.Status == evergreen.HostQuarantined {
+			out.Quarantined++
+		} else if h.Status == evergreen.HostDecommissioned {
+			out.Decommissioned++
+		} else if h.Status != evergreen.HostRunning {
+			out.Provisioning++
+		} else if h.Status == evergreen.HostRunning {
+			if h.RunningTask == "" {
+				out.Idle++
+			} else {
+				out.Active++
+			}
+		}
+	}
+
+	return out
+}
+
+func (hosts HostGroup) Uphosts() HostGroup {
+	out := HostGroup{}
+
+	for _, h := range hosts {
+		if util.StringSliceContains(evergreen.UpHostStatus, h.Status) {
+			out = append(out, h)
+		}
+	}
+	return out
 }
 
 // getNumContainersOnParents returns a slice of uphost parents and their respective
@@ -1353,33 +1610,34 @@ func StaleRunningTaskIDs(staleness time.Duration) ([]task.Task, error) {
 			task.LastHeartbeatKey: bson.M{"$lte": time.Now().Add(-staleness)},
 		}},
 		{"$lookup": bson.M{
-			"from":         Collection,
-			"localField":   task.HostIdKey,
-			"foreignField": IdKey,
-			"as":           "hosts",
+			"from": Collection,
+			"as":   "host",
+			"let":  bson.M{"id": "$" + task.IdKey},
+			"pipeline": []bson.M{
+				{
+					"$match": bson.M{
+						"$expr": bson.M{
+							"$and": []bson.M{
+								{"$eq": []string{"$$id", "$" + RunningTaskKey}},
+								{"$or": []bson.M{ // this expression checks that the host is not currently running teardown_group of a different task
+									{"$not": []bson.M{{"$ifNull": []interface{}{"$" + RunningTeardownForTaskKey, nil}}}},
+									{"$eq": []string{"$" + RunningTeardownForTaskKey, ""}},
+									{"$and": []bson.M{
+										{"$ifNull": []interface{}{"$" + RunningTeardownForTaskKey, nil}},
+										{"$lt": []interface{}{"$" + RunningTeardownSinceKey, time.Now().Add(-1*evergreen.MaxTeardownGroupTimeoutSecs*time.Second - 5*time.Minute)}},
+									}},
+								}},
+							},
+						},
+					},
+				},
+			},
 		}},
+		{"$unwind": "$host"},
 		{"$project": bson.M{
 			task.IdKey:        1,
 			task.ExecutionKey: 1,
-			"host": bson.M{
-				"$arrayElemAt": []interface{}{"$hosts", 0},
-			},
-		}},
-		{"$match": bson.M{
-			"$expr": bson.M{
-				"$and": []bson.M{
-					{"$eq": []string{"$_id", bsonutil.GetDottedKeyName("$host", RunningTaskKey)}},
-					{"$or": []bson.M{ // this expression checks that the host is not currently running teardown_group of a different task
-						{"$not": []bson.M{{"$ifNull": []interface{}{bsonutil.GetDottedKeyName("$host", RunningTeardownForTaskKey), nil}}}},
-						{"$eq": []string{bsonutil.GetDottedKeyName("$host", RunningTeardownForTaskKey), ""}},
-						{"$and": []bson.M{
-							{"$ifNull": []interface{}{bsonutil.GetDottedKeyName("$host", RunningTeardownForTaskKey), nil}},
-							{"$lt": []interface{}{bsonutil.GetDottedKeyName("$host", RunningTeardownSinceKey),
-								time.Now().Add(-1*evergreen.MaxTeardownGroupTimeoutSecs*time.Second - 5*time.Minute)}},
-						}},
-					}},
-				},
-			},
+			"host":            1,
 		}},
 	}
 
