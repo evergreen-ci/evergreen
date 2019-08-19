@@ -442,26 +442,6 @@ func assignNextAvailableTask(taskQueue *model.TaskQueue, taskQueueService model.
 			queueItem = taskQueue.FindNextTask(spec)
 		}
 		if queueItem == nil {
-			grip.DebugWhen(d.PlannerSettings.Version == evergreen.PlannerVersionRevised, message.Fields{
-				"function":                      "assignNextAvailableTask",
-				"message":                       "taskQueueService.RefreshFindNextTask returned no task - returning nil",
-				"distro_id":                     d.Id,
-				"host_id":                       currentHost.Id,
-				"host_last_task_id":             currentHost.LastTask,
-				"host_last_group":               currentHost.LastGroup,
-				"host_last_build_variant":       currentHost.LastBuildVariant,
-				"host_last_version":             currentHost.LastVersion,
-				"host_last_project":             currentHost.LastProject,
-				"host_task_count":               currentHost.TaskCount,
-				"host_last_task_completed_time": currentHost.LastTaskCompletedTime,
-				"taskspec_group":                spec.Group,
-				"taskspec_build_variant":        spec.BuildVariant,
-				"taskspec_version":              spec.Version,
-				"taskspec_project":              spec.Project,
-				"taskspec_group_max_hosts":      spec.GroupMaxHosts,
-				"task_queue_length":             taskQueue.Length(),
-			})
-
 			return nil, nil
 		}
 
@@ -483,39 +463,12 @@ func assignNextAvailableTask(taskQueue *model.TaskQueue, taskQueueService model.
 		}
 
 		if nextTask == nil {
-			grip.Error(message.Fields{
-				"message":                  "cannot find a db.tasks document for the next task to be assigned to this host",
-				"distro_id":                d.Id,
-				"host_id":                  currentHost.Id,
-				"next_task_id":             queueItem.Id,
-				"last_task_id":             currentHost.LastTask,
-				"taskspec_group":           spec.Group,
-				"taskspec_build_variant":   spec.BuildVariant,
-				"taskspec_version":         spec.Version,
-				"taskspec_project":         spec.Project,
-				"taskspec_group_max_hosts": spec.GroupMaxHosts,
-			})
-
 			// An error is not returned in this situation due to https://jira.mongodb.org/browse/EVG-6214
 			return nil, nil
 		}
 
 		// validate that the task can be run, if not fetch the next one in the queue.
 		if !nextTask.IsDispatchable() {
-			grip.Warning(message.Fields{
-				"message":                  "skipping un-dispatchable task",
-				"distro_id":                d.Id,
-				"task_id":                  nextTask.Id,
-				"status":                   nextTask.Status,
-				"activated":                nextTask.Activated,
-				"host_id":                  currentHost.Id,
-				"taskspec_group":           spec.Group,
-				"taskspec_build_variant":   spec.BuildVariant,
-				"taskspec_version":         spec.Version,
-				"taskspec_project":         spec.Project,
-				"taskspec_group_max_hosts": spec.GroupMaxHosts,
-			})
-
 			// Dequeue the task so we don't get it on another iteration of the loop.
 			grip.Warning(message.WrapError(taskQueue.DequeueTask(nextTask.Id), message.Fields{
 				"message":                  "nextTask.IsDispatchable() is false, but there was an issue dequeuing the task",

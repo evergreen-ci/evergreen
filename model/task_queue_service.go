@@ -170,16 +170,6 @@ func newDistroTaskDispatchService(taskQueue TaskQueue, ttl time.Duration) *basic
 		t.rebuild(taskQueue.Queue)
 	}
 
-	grip.Debug(message.Fields{
-		"dispatcher":   "schedulableunit-task-dispatcher",
-		"function":     "newDistroTaskDispatchService",
-		"message":      "initializing new basicCachedDispatcherImpl for a distro",
-		"distro_id":    t.distroID,
-		"order_length": len(t.order),
-		"units_length": len(t.units),
-		"ttl":          t.ttl,
-		"last_updated": t.lastUpdated,
-	})
 	return t
 }
 
@@ -199,30 +189,10 @@ func (t *basicCachedDispatcherImpl) Refresh() error {
 	taskQueueItems := taskQueue.Queue
 	t.rebuild(taskQueueItems)
 
-	grip.Debug(message.Fields{
-		"dispatcher":   "schedulableunit-task-dispatcher",
-		"function":     "Refresh",
-		"message":      "refresh was successful",
-		"distro_id":    t.distroID,
-		"order_length": len(t.order),
-		"units_length": len(t.units),
-	})
-
 	return nil
 }
 
 func shouldRefreshCached(ttl time.Duration, lastUpdated time.Time, distroID string) bool {
-	grip.DebugWhen(time.Since(lastUpdated) > ttl, message.Fields{
-		"dispatcher":            "schedulableunit-task-dispatcher",
-		"function":              "shouldRefreshCached",
-		"message":               "it's time to rebuild the order and units representations from the distro's TaskQueueItems",
-		"distro_id":             distroID,
-		"ttl":                   ttl.Seconds(),
-		"current_time":          time.Now(),
-		"last_updated":          lastUpdated,
-		"sec_since_last_update": time.Now().Sub(lastUpdated).Seconds(),
-	})
-
 	return lastUpdated.IsZero() || time.Since(lastUpdated) > ttl
 }
 
@@ -277,32 +247,10 @@ func (t *basicCachedDispatcherImpl) rebuild(items []TaskQueueItem) {
 
 // FindNextTask returns the next dispatchable task in the queue.
 func (t *basicCachedDispatcherImpl) FindNextTask(spec TaskSpec) *TaskQueueItem {
-	grip.Debug(message.Fields{
-		"dispatcher":               "schedulableunit-task-dispatcher",
-		"function":                 "FindNextTask",
-		"message":                  "entered function",
-		"order_length":             len(t.order),
-		"units_length":             len(t.units),
-		"taskspec_group":           spec.Group,
-		"taskspec_build_variant":   spec.BuildVariant,
-		"taskspec_version":         spec.Version,
-		"taskspec_project":         spec.Project,
-		"taskspec_group_max_hosts": spec.GroupMaxHosts,
-		"distro_id":                t.distroID,
-	})
 	t.mu.Lock()
 	defer t.mu.Unlock()
 
 	if len(t.units) == 0 && len(t.order) > 0 {
-		grip.Debug(message.Fields{
-			"dispatcher":   "schedulableunit-task-dispatcher",
-			"function":     "FindNextTask",
-			"message":      "t.units (map[string]schedulableUnit) is empty, but t.order ([]string) is not; resetting t.order = []string{} - returning nil",
-			"distro_id":    t.distroID,
-			"order_length": len(t.order),
-			"units_length": len(t.units),
-		})
-
 		t.order = []string{}
 		return nil
 	}
@@ -320,18 +268,6 @@ func (t *basicCachedDispatcherImpl) FindNextTask(spec TaskSpec) *TaskQueueItem {
 		}
 		// If the task group is not present in the task group map, it has been dispatched.
 		// Fall through to get a task that's not in that task group.
-		grip.Debug(message.Fields{
-			"dispatcher":               "schedulableunit-task-dispatcher",
-			"function":                 "FindNextTask",
-			"message":                  "basicCachedDispatcherImpl.units[key] was not found - assuming it has been dispatched; falling through to try and get a task not in the current task group",
-			"key":                      compositeGroupId(spec.Group, spec.BuildVariant, spec.Project, spec.Version),
-			"taskspec_group":           spec.Group,
-			"taskspec_build_variant":   spec.BuildVariant,
-			"taskspec_version":         spec.Version,
-			"taskspec_project":         spec.Project,
-			"taskspec_group_max_hosts": spec.GroupMaxHosts,
-			"distro_id":                t.distroID,
-		})
 	}
 
 	var numHosts int
@@ -340,19 +276,6 @@ func (t *basicCachedDispatcherImpl) FindNextTask(spec TaskSpec) *TaskQueueItem {
 	for _, schedulableUnitID := range t.order {
 		unit, ok = t.units[schedulableUnitID]
 		if !ok {
-			grip.Debug(message.Fields{
-				"dispatcher":         "schedulableunit-task-dispatcher",
-				"function":           "FindNextTask",
-				"message":            "basicCachedDispatcherImpl.units[schedulableUnitID] was not found",
-				"distro_id":          t.distroID,
-				"order_length":       len(t.order),
-				"units_length":       len(t.units),
-				"schedulableunit_id": schedulableUnitID,
-				"taskspec_group":     spec.Group,
-				"taskspec_variant":   spec.BuildVariant,
-				"taskspec_project":   spec.Project,
-				"taskspec_version":   spec.Version,
-			})
 			continue
 		}
 
@@ -378,22 +301,6 @@ func (t *basicCachedDispatcherImpl) FindNextTask(spec TaskSpec) *TaskQueueItem {
 
 				return nil
 			}
-
-			grip.Debug(message.Fields{
-				"dispatcher":                    "schedulableunit-task-dispatcher",
-				"function":                      "FindNextTask",
-				"message":                       "schedulableUnit.maxHosts == 0 - this is not a task group",
-				"distro_id":                     t.distroID,
-				"schedulableunit_id":            unit.id,
-				"schedulableunit_group":         unit.group,
-				"schedulableunit_project":       unit.project,
-				"schedulableunit_version":       unit.version,
-				"schedulableunit_variant":       unit.variant,
-				"schedulableunit_running_hosts": unit.runningHosts,
-				"schedulableunit_max_hosts":     unit.maxHosts,
-				"schedulableunit_num_tasks":     len(unit.tasks),
-				"task_id_returned":              unit.tasks[0].Id,
-			})
 
 			// A non-task group schedulableUnit's tasks ([]TaskQueueItem) only contain a single element.
 			return &unit.tasks[0]
@@ -437,45 +344,9 @@ func (t *basicCachedDispatcherImpl) FindNextTask(spec TaskSpec) *TaskQueueItem {
 				if next = t.nextTaskGroupTask(unit); next != nil {
 					return next
 				}
-			} else {
-				grip.Debug(message.Fields{
-					"dispatcher":                    "schedulableunit-task-dispatcher",
-					"function":                      "FindNextTask",
-					"message":                       "schedulableUnit.runningHosts < schedulableUnit.maxHosts is false",
-					"distro_id":                     t.distroID,
-					"order_length":                  len(t.order),
-					"units_length":                  len(t.units),
-					"schedulableunit_id":            unit.id,
-					"schedulableunit_group":         unit.group,
-					"schedulableunit_project":       unit.project,
-					"schedulableunit_version":       unit.version,
-					"schedulableunit_variant":       unit.variant,
-					"schedulableunit_running_hosts": unit.runningHosts,
-					"schedulableunit_max_hosts":     unit.maxHosts,
-					"schedulableunit_num_tasks":     len(unit.tasks),
-					"taskspec_group":                spec.Group,
-					"taskspec_build_variant":        spec.BuildVariant,
-					"taskspec_project":              spec.Project,
-					"taskspec_version":              spec.Version,
-					"taskspec_group_max_hosts":      spec.GroupMaxHosts,
-				})
 			}
 		}
 	}
-
-	grip.Debug(message.Fields{
-		"dispatcher":               "schedulableunit-task-dispatcher",
-		"function":                 "FindNextTask",
-		"message":                  "no task - returning nil",
-		"distro_id":                t.distroID,
-		"order_length":             len(t.order),
-		"units_length":             len(t.units),
-		"taskspec_group":           spec.Group,
-		"taskspec_build_variant":   spec.BuildVariant,
-		"taskspec_version":         spec.Version,
-		"taskspec_project":         spec.Project,
-		"taskspec_group_max_hosts": spec.GroupMaxHosts,
-	})
 
 	return nil
 }
@@ -507,20 +378,6 @@ func (t *basicCachedDispatcherImpl) nextTaskGroupTask(unit schedulableUnit) *Tas
 		}
 
 		if isBlockedSingleHostTaskGroup(unit, nextTaskFromDB) {
-			grip.Debug(message.Fields{
-				"dispatcher":                    "schedulableunit-task-dispatcher",
-				"function":                      "nextTaskGroupTask",
-				"message":                       "a task running in a 1-host task group, has finished, but did not succeed; deleting from t.units[unit_id]",
-				"distro_id":                     t.distroID,
-				"schedulableunit_id":            unit.id,
-				"schedulableunit_group":         unit.group,
-				"schedulableunit_project":       unit.project,
-				"schedulableunit_version":       unit.version,
-				"schedulableunit_variant":       unit.variant,
-				"schedulableunit_running_hosts": unit.runningHosts,
-				"schedulableunit_max_hosts":     unit.maxHosts,
-				"schedulableunit_num_tasks":     len(unit.tasks),
-			})
 			delete(t.units, unit.id)
 			return nil
 		}
@@ -531,23 +388,6 @@ func (t *basicCachedDispatcherImpl) nextTaskGroupTask(unit schedulableUnit) *Tas
 
 		// It's running (or already ran) on another host.
 		if nextTaskFromDB.StartTime != util.ZeroTime {
-			grip.Debug(message.Fields{
-				"dispatcher":                    "schedulableunit-task-dispatcher",
-				"function":                      "nextTaskGroupTask",
-				"message":                       "nextTaskFromDB.StartTime != util.ZeroTime - this task is running or already ran on another host; let's check for a next TaskQueueItem in schedulableUnit.tasks[]",
-				"task_id":                       nextTaskQueueItem.Id,
-				"distro_id":                     t.distroID,
-				"schedulableunit_id":            unit.id,
-				"schedulableunit_group":         unit.group,
-				"schedulableunit_project":       unit.project,
-				"schedulableunit_version":       unit.version,
-				"schedulableunit_variant":       unit.variant,
-				"schedulableunit_running_hosts": unit.runningHosts,
-				"schedulableunit_max_hosts":     unit.maxHosts,
-				"schedulableunit_num_tasks":     len(unit.tasks),
-				"schedulableunit_index_of_task": i,
-			})
-
 			continue
 		}
 
