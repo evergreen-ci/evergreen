@@ -739,6 +739,8 @@ func (m *ec2Manager) OnUp(ctx context.Context, h *host.Host) error {
 	defer m.client.Close()
 
 	instanceID := h.Id
+	tags := makeTags(h)
+
 	if isHostSpot(h) {
 		instanceID, err = m.client.GetSpotInstanceId(ctx, h)
 		if err != nil {
@@ -753,10 +755,9 @@ func (m *ec2Manager) OnUp(ctx context.Context, h *host.Host) error {
 		if instanceID == "" {
 			return errors.WithStack(errors.New("spot instance does not yet have an instanceId"))
 		}
-	}
 
-	tags := makeTags(h)
-	tags["spot"] = "true" // mark this as a spot instance
+		tags["spot"] = "true" // mark this as a spot instance
+	}
 
 	volumeIDs, err := m.client.GetVolumeIDs(ctx, h)
 	if err != nil {

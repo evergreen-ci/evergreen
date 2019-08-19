@@ -321,6 +321,9 @@ func (s *EC2Suite) TestSpawnHostClassicOnDemand() {
 }
 
 func (s *EC2Suite) TestSpawnHostVPCOnDemand() {
+	pkgCachingPriceFetcher.ec2Prices = map[odInfo]float64{
+		odInfo{"Linux", "instanceType", "US East (N. Virginia)"}: .1,
+	}
 	h := &host.Host{}
 	h.Distro.Id = "distro_id"
 	h.Distro.Provider = evergreen.ProviderNameEc2OnDemand
