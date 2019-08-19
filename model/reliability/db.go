@@ -26,8 +26,72 @@ import (
 	"go.mongodb.org/mongo-driver/bson"
 )
 
+// DateBoundaries returns the date boundaries when splitting the period between 'start' and 'end' in groups of 'numDays' days.
+// The boundaries are the start dates of the periods of 'numDays' (or less for the last period), starting with 'start'.
+func (filter TaskReliabilityFilter) DateBoundaries() []time.Time {
+	start := filter.AfterDate
+	end := filter.BeforeDate
+	numDays := filter.GroupNumDays
+
+	if numDays <= 0 {
+		numDays = 1
+	}
+
+	start = util.GetUTCDay(start)
+	end = util.GetUTCDay(end)
+
+	boundaries := []time.Time{}
+	duration := 24 * time.Hour * time.Duration(numDays)
+	duration = -1 * duration
+	boundary := end.Add(24 * time.Hour)
+
+	for boundary.After(start) {
+		boundaries = append(boundaries, boundary)
+		boundary = boundary.Add(duration)
+	}
+	boundaries = append(boundaries, boundary)
+	return boundaries
+}
+
+// BuildTaskPaginationOrBranches builds an expression for the conditions imposed by the filter StartAt field.
+func (filter TaskReliabilityFilter) BuildTaskPaginationOrBranches() []bson.M {
+	var dateDescending = filter.Sort == stats.SortLatestFirst
+	var nextDate interface{}
+
+	if filter.GroupNumDays > 1 {
+		nextDate = filter.StartAt.Date
+	}
+
+	var fields []stats.PaginationField
+
+	switch filter.GroupBy {
+	case stats.GroupByTask:
+		fields = []stats.PaginationField{
+			{Field: stats.DbTaskStatsIdDateKeyFull, Descending: dateDescending, Strict: true, Value: filter.StartAt.Date, NextValue: nextDate},
+			{Field: stats.DbTaskStatsIdTaskNameKeyFull, Strict: true, Value: filter.StartAt.Task},
+		}
+	case stats.GroupByVariant:
+		fields = []stats.PaginationField{
+			{Field: stats.DbTaskStatsIdDateKeyFull, Descending: dateDescending, Strict: true, Value: filter.StartAt.Date, NextValue: nextDate},
+			{Field: stats.DbTaskStatsIdBuildVariantKeyFull, Strict: true, Value: filter.StartAt.BuildVariant},
+			{Field: stats.DbTaskStatsIdTaskNameKeyFull, Strict: true, Value: filter.StartAt.Task},
+		}
+	case stats.GroupByDistro:
+		fields = []stats.PaginationField{
+			{Field: stats.DbTaskStatsIdDateKeyFull, Descending: dateDescending, Strict: true, Value: filter.StartAt.Date, NextValue: nextDate},
+			{Field: stats.DbTaskStatsIdBuildVariantKeyFull, Strict: true, Value: filter.StartAt.BuildVariant},
+			{Field: stats.DbTaskStatsIdTaskNameKeyFull, Strict: true, Value: filter.StartAt.Task},
+			{Field: stats.DbTaskStatsIdDistroKeyFull, Strict: true, Value: filter.StartAt.Distro},
+		}
+	}
+
+	return stats.BuildPaginationOrBranches(fields)
+}
+
 // BuildMatchStageForTask builds the match stage of the task query pipeline based on the filter options.
-func (filter TaskReliabilityFilter) BuildMatchStageForTask(boundaries []time.Time) bson.M {
+func (filter TaskReliabilityFilter) BuildMatchStageForTask() bson.M {
+	boundaries := filter.DateBoundaries()
+
 	start := boundaries[0]
 	end := boundaries[len(boundaries)-1]
 
@@ -52,41 +116,18 @@ func (filter TaskReliabilityFilter) BuildMatchStageForTask(boundaries []time.Tim
 	if filter.StartAt != nil {
 		match["$or"] = filter.BuildTaskPaginationOrBranches()
 	}
-
 	return bson.M{"$match": match}
-}
-
-// dateBoundaries returns the date boundaries when splitting the period between 'start' and 'end' in groups of 'numDays' days.
-// The boundaries are the start dates of the periods of 'numDays' (or less for the last period), starting with 'start'.
-func dateBoundaries(start time.Time, end time.Time, numDays int) []time.Time {
-	if numDays <= 0 {
-		numDays = 1
-	}
-
-	start = util.GetUTCDay(start)
-	end = util.GetUTCDay(end)
-
-	boundaries := []time.Time{}
-	duration := 24 * time.Hour * time.Duration(numDays)
-	duration = -1 * duration
-	boundary := end.Add(24 * time.Hour)
-
-	for boundary.After(start) {
-		boundaries = append(boundaries, boundary)
-		boundary = boundary.Add(duration)
-	}
-	boundaries = append(boundaries, boundary)
-	return boundaries
 }
 
 // buildDateStageGroupID builds the date of the grouped
 // period the stats document belongs in.
-func buildDateStageGroupID(fieldName string, inputDateFieldName string, start time.Time, end time.Time, numDays int) interface{} {
+func (filter TaskReliabilityFilter) buildDateStageGroupID(fieldName string, inputDateFieldName string) interface{} {
+	numDays := filter.GroupNumDays
 	inputDateFieldRef := "$" + inputDateFieldName
 	if numDays <= 1 {
 		return inputDateFieldRef
 	}
-	boundaries := dateBoundaries(start, end, numDays)
+	boundaries := filter.DateBoundaries()
 	branches := make([]bson.M, 0, len(boundaries)-1)
 
 	for i := 0; i < len(boundaries)-1; i++ {
@@ -103,7 +144,7 @@ func buildDateStageGroupID(fieldName string, inputDateFieldName string, start ti
 
 // buildGroupID builds the _id field for the $group stage corresponding to the GroupBy value.
 func (filter TaskReliabilityFilter) buildGroupID() bson.M {
-	id := bson.M{stats.TestStatsDateKey: buildDateStageGroupID("date", stats.DbTaskStatsIdDateKeyFull, filter.AfterDate, filter.BeforeDate, filter.GroupNumDays)}
+	id := bson.M{stats.TestStatsDateKey: filter.buildDateStageGroupID("date", stats.DbTaskStatsIdDateKeyFull)}
 	switch filter.GroupBy {
 	case stats.GroupByDistro:
 		id[stats.TestStatsDistroKey] = "$" + stats.DbTestStatsIdDistroKeyFull
@@ -137,10 +178,8 @@ func (filter TaskReliabilityFilter) BuildTaskStatsQueryGroupStage() bson.M {
 
 // TaskReliabilityQueryPipeline creates an aggregation pipeline to query task statistics for reliability.
 func (filter TaskReliabilityFilter) TaskReliabilityQueryPipeline() []bson.M {
-	boundaries := dateBoundaries(filter.AfterDate, filter.BeforeDate, filter.GroupNumDays)
-
 	return []bson.M{
-		filter.BuildMatchStageForTask(boundaries),
+		filter.BuildMatchStageForTask(),
 		filter.BuildTaskStatsQueryGroupStage(),
 		filter.BuildTaskStatsQueryProjectStage(),
 		filter.BuildTaskStatsQuerySortStage(),

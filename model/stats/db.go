@@ -143,9 +143,9 @@ func (d *dbTestStats) UnmarshalBSON(in []byte) error { return mgobson.Unmarshal(
 var (
 	// BSON fields for the test stats id struct
 	dbTestStatsIdTestFileKey     = bsonutil.MustHaveTag(DbTestStatsId{}, "TestFile")
-	dbTestStatsIdTaskNameKey     = bsonutil.MustHaveTag(DbTestStatsId{}, "TaskName")
-	dbTestStatsIdBuildVariantKey = bsonutil.MustHaveTag(DbTestStatsId{}, "BuildVariant")
-	dbTestStatsIdDistroKey       = bsonutil.MustHaveTag(DbTestStatsId{}, "Distro")
+	DbTestStatsIdTaskNameKey     = bsonutil.MustHaveTag(DbTestStatsId{}, "TaskName")
+	DbTestStatsIdBuildVariantKey = bsonutil.MustHaveTag(DbTestStatsId{}, "BuildVariant")
+	DbTestStatsIdDistroKey       = bsonutil.MustHaveTag(DbTestStatsId{}, "Distro")
 	dbTestStatsIdProjectKey      = bsonutil.MustHaveTag(DbTestStatsId{}, "Project")
 	dbTestStatsIdRequesterKey    = bsonutil.MustHaveTag(DbTestStatsId{}, "Requester")
 	dbTestStatsIdDateKey         = bsonutil.MustHaveTag(DbTestStatsId{}, "Date")
@@ -159,9 +159,9 @@ var (
 
 	// BSON dotted field names for test stats id elements
 	DbTestStatsIdTestFileKeyFull     = bsonutil.GetDottedKeyName(dbTestStatsIdKey, dbTestStatsIdTestFileKey)
-	DbTestStatsIdTaskNameKeyFull     = bsonutil.GetDottedKeyName(dbTestStatsIdKey, dbTestStatsIdTaskNameKey)
-	DbTestStatsIdBuildVariantKeyFull = bsonutil.GetDottedKeyName(dbTestStatsIdKey, dbTestStatsIdBuildVariantKey)
-	DbTestStatsIdDistroKeyFull       = bsonutil.GetDottedKeyName(dbTestStatsIdKey, dbTestStatsIdDistroKey)
+	DbTestStatsIdTaskNameKeyFull     = bsonutil.GetDottedKeyName(dbTestStatsIdKey, DbTestStatsIdTaskNameKey)
+	DbTestStatsIdBuildVariantKeyFull = bsonutil.GetDottedKeyName(dbTestStatsIdKey, DbTestStatsIdBuildVariantKey)
+	DbTestStatsIdDistroKeyFull       = bsonutil.GetDottedKeyName(dbTestStatsIdKey, DbTestStatsIdDistroKey)
 	DbTestStatsIdProjectKeyFull      = bsonutil.GetDottedKeyName(dbTestStatsIdKey, dbTestStatsIdProjectKey)
 	DbTestStatsIdRequesterKeyFull    = bsonutil.GetDottedKeyName(dbTestStatsIdKey, dbTestStatsIdRequesterKey)
 	DbTestStatsIdDateKeyFull         = bsonutil.GetDottedKeyName(dbTestStatsIdKey, dbTestStatsIdDateKey)
@@ -235,9 +235,9 @@ func getHourlyTestStatsPipeline(projectId string, requester string, start time.T
 			"task_id":                    taskIdExpr,
 			"execution":                  taskExecutionKeyRef,
 			dbTestStatsIdProjectKey:      taskProjectKeyRef,
-			dbTestStatsIdTaskNameKey:     taskDisplayNameKeyRef,
-			dbTestStatsIdBuildVariantKey: taskBuildVariantKeyRef,
-			dbTestStatsIdDistroKey:       taskDistroIdKeyRef,
+			DbTestStatsIdTaskNameKey:     taskDisplayNameKeyRef,
+			DbTestStatsIdBuildVariantKey: taskBuildVariantKeyRef,
+			DbTestStatsIdDistroKey:       taskDistroIdKeyRef,
 			dbTestStatsIdRequesterKey:    taskRequesterKeyRef}},
 		{"$lookup": bson.M{
 			"from":         displayTaskLookupCollection,
@@ -265,9 +265,9 @@ func getHourlyTestStatsPipeline(projectId string, requester string, start time.T
 		{"$project": bson.M{
 			dbTestStatsIdTestFileKey: "$testresults." + testresult.TestFileKey,
 			// We use the name of the display task if there is one.
-			dbTestStatsIdTaskNameKey:     bson.M{"$ifNull": Array{"$display_task." + task.DisplayNameKey, "$task_name"}},
-			dbTestStatsIdBuildVariantKey: 1,
-			dbTestStatsIdDistroKey:       1,
+			DbTestStatsIdTaskNameKey:     bson.M{"$ifNull": Array{"$display_task." + task.DisplayNameKey, "$task_name"}},
+			DbTestStatsIdBuildVariantKey: 1,
+			DbTestStatsIdDistroKey:       1,
 			dbTestStatsIdProjectKey:      1,
 			dbTestStatsIdRequesterKey:    1,
 			"status":                     "$testresults." + task.StatusKey,
@@ -275,9 +275,9 @@ func getHourlyTestStatsPipeline(projectId string, requester string, start time.T
 		{"$group": bson.M{
 			"_id": bson.D{
 				{Key: dbTestStatsIdTestFileKey, Value: "$" + dbTestStatsIdTestFileKey},
-				{Key: dbTestStatsIdTaskNameKey, Value: "$" + dbTestStatsIdTaskNameKey},
-				{Key: dbTestStatsIdBuildVariantKey, Value: "$" + dbTestStatsIdBuildVariantKey},
-				{Key: dbTestStatsIdDistroKey, Value: "$" + dbTestStatsIdDistroKey},
+				{Key: DbTestStatsIdTaskNameKey, Value: "$" + DbTestStatsIdTaskNameKey},
+				{Key: DbTestStatsIdBuildVariantKey, Value: "$" + DbTestStatsIdBuildVariantKey},
+				{Key: DbTestStatsIdDistroKey, Value: "$" + DbTestStatsIdDistroKey},
 				{Key: dbTestStatsIdProjectKey, Value: "$" + dbTestStatsIdProjectKey},
 				{Key: dbTestStatsIdRequesterKey, Value: "$" + dbTestStatsIdRequesterKey},
 			},
@@ -313,9 +313,9 @@ func dailyTestStatsFromHourlyPipeline(projectId string, requester string, start 
 			"$group": bson.M{
 				"_id": bson.D{
 					{Key: dbTestStatsIdTestFileKey, Value: "$" + DbTestStatsIdTestFileKeyFull},
-					{Key: dbTestStatsIdTaskNameKey, Value: "$" + DbTestStatsIdTaskNameKeyFull},
-					{Key: dbTestStatsIdBuildVariantKey, Value: "$" + DbTestStatsIdBuildVariantKeyFull},
-					{Key: dbTestStatsIdDistroKey, Value: "$" + DbTestStatsIdDistroKeyFull},
+					{Key: DbTestStatsIdTaskNameKey, Value: "$" + DbTestStatsIdTaskNameKeyFull},
+					{Key: DbTestStatsIdBuildVariantKey, Value: "$" + DbTestStatsIdBuildVariantKeyFull},
+					{Key: DbTestStatsIdDistroKey, Value: "$" + DbTestStatsIdDistroKeyFull},
 					{Key: dbTestStatsIdProjectKey, Value: "$" + DbTestStatsIdProjectKeyFull},
 					{Key: dbTestStatsIdRequesterKey, Value: "$" + DbTestStatsIdRequesterKeyFull},
 				},
@@ -754,29 +754,29 @@ func (filter StatsFilter) buildTestPaginationOrBranches() []bson.M {
 		nextDate = filter.getNextDate()
 	}
 
-	var fields []paginationField
+	var fields []PaginationField
 
 	switch filter.GroupBy {
 	case GroupByTest:
-		fields = []paginationField{
+		fields = []PaginationField{
 			{Field: DbTestStatsIdDateKeyFull, Descending: dateDescending, Strict: true, Value: filter.StartAt.Date, NextValue: nextDate},
 			{Field: DbTestStatsIdTestFileKeyFull, Strict: false, Value: filter.StartAt.Test},
 		}
 	case GroupByTask:
-		fields = []paginationField{
+		fields = []PaginationField{
 			{Field: DbTestStatsIdDateKeyFull, Descending: dateDescending, Strict: true, Value: filter.StartAt.Date, NextValue: nextDate},
 			{Field: DbTestStatsIdTaskNameKeyFull, Strict: true, Value: filter.StartAt.Task},
 			{Field: DbTestStatsIdTestFileKeyFull, Strict: false, Value: filter.StartAt.Test},
 		}
 	case GroupByVariant:
-		fields = []paginationField{
+		fields = []PaginationField{
 			{Field: DbTestStatsIdDateKeyFull, Descending: dateDescending, Strict: true, Value: filter.StartAt.Date, NextValue: nextDate},
 			{Field: DbTestStatsIdBuildVariantKeyFull, Strict: true, Value: filter.StartAt.BuildVariant},
 			{Field: DbTestStatsIdTaskNameKeyFull, Strict: true, Value: filter.StartAt.Task},
 			{Field: DbTestStatsIdTestFileKeyFull, Strict: false, Value: filter.StartAt.Test},
 		}
 	case GroupByDistro:
-		fields = []paginationField{
+		fields = []PaginationField{
 			{Field: DbTestStatsIdDateKeyFull, Descending: dateDescending, Strict: true, Value: filter.StartAt.Date, NextValue: nextDate},
 			{Field: DbTestStatsIdBuildVariantKeyFull, Strict: true, Value: filter.StartAt.BuildVariant},
 			{Field: DbTestStatsIdTaskNameKeyFull, Strict: true, Value: filter.StartAt.Task},
@@ -785,7 +785,7 @@ func (filter StatsFilter) buildTestPaginationOrBranches() []bson.M {
 		}
 	}
 
-	return buildPaginationOrBranches(fields)
+	return BuildPaginationOrBranches(fields)
 }
 
 // TaskStatsQueryPipeline creates an aggregation pipeline to query task statistics.
@@ -882,22 +882,22 @@ func (filter StatsFilter) BuildTaskPaginationOrBranches() []bson.M {
 		nextDate = filter.getNextDate()
 	}
 
-	var fields []paginationField
+	var fields []PaginationField
 
 	switch filter.GroupBy {
 	case GroupByTask:
-		fields = []paginationField{
+		fields = []PaginationField{
 			{Field: DbTaskStatsIdDateKeyFull, Descending: dateDescending, Strict: true, Value: filter.StartAt.Date, NextValue: nextDate},
 			{Field: DbTaskStatsIdTaskNameKeyFull, Strict: false, Value: filter.StartAt.Task},
 		}
 	case GroupByVariant:
-		fields = []paginationField{
+		fields = []PaginationField{
 			{Field: DbTaskStatsIdDateKeyFull, Descending: dateDescending, Strict: true, Value: filter.StartAt.Date, NextValue: nextDate},
 			{Field: DbTaskStatsIdBuildVariantKeyFull, Strict: true, Value: filter.StartAt.BuildVariant},
 			{Field: DbTaskStatsIdTaskNameKeyFull, Strict: false, Value: filter.StartAt.Task},
 		}
 	case GroupByDistro:
-		fields = []paginationField{
+		fields = []PaginationField{
 			{Field: DbTaskStatsIdDateKeyFull, Descending: dateDescending, Strict: true, Value: filter.StartAt.Date, NextValue: nextDate},
 			{Field: DbTaskStatsIdBuildVariantKeyFull, Strict: true, Value: filter.StartAt.BuildVariant},
 			{Field: DbTaskStatsIdTaskNameKeyFull, Strict: true, Value: filter.StartAt.Task},
@@ -905,14 +905,14 @@ func (filter StatsFilter) BuildTaskPaginationOrBranches() []bson.M {
 		}
 	}
 
-	return buildPaginationOrBranches(fields)
+	return BuildPaginationOrBranches(fields)
 }
 
-// buildPaginationOrBranches builds and returns the $or branches of the pagination constraints.
+// BuildPaginationOrBranches builds and returns the $or branches of the pagination constraints.
 // fields is an array of field names, they must be in the same order as the sort order.
 // operators is a list of MongoDB comparison operators ("$gte", "$gt", "$lte", "$lt") for the fields.
 // values is a list of values for the fields.
-func buildPaginationOrBranches(fields []paginationField) []bson.M {
+func BuildPaginationOrBranches(fields []PaginationField) []bson.M {
 	baseConstraints := bson.M{}
 	branches := []bson.M{}
 
@@ -921,9 +921,9 @@ func buildPaginationOrBranches(fields []paginationField) []bson.M {
 		for k, v := range baseConstraints {
 			branch[k] = v
 		}
-		branch[field.Field] = field.getNextExpression()
+		branch[field.Field] = field.GetNextExpression()
 		branches = append(branches, branch)
-		baseConstraints[field.Field] = field.getEqExpression()
+		baseConstraints[field.Field] = field.GetEqExpression()
 	}
 	return branches
 }
@@ -957,8 +957,8 @@ func SortDateOrder(sort Sort) int {
 	}
 }
 
-// paginationField represents a statistics document field that is used to determine where to resume during pagination.
-type paginationField struct {
+// PaginationField represents a statistics document field that is used to determine where to resume during pagination.
+type PaginationField struct {
 	Field      string
 	Descending bool
 	Strict     bool
@@ -966,9 +966,9 @@ type paginationField struct {
 	NextValue  interface{}
 }
 
-// getEqExpression returns an expression that can be used to match the documents which have the same field value or
-// are in the same range as this paginationField.
-func (pf paginationField) getEqExpression() interface{} {
+// GetEqExpression returns an expression that can be used to match the documents which have the same field value or
+// are in the same range as this PaginationField.
+func (pf PaginationField) GetEqExpression() interface{} {
 	if pf.NextValue == nil {
 		return pf.Value
 	}
@@ -985,9 +985,9 @@ func (pf paginationField) getEqExpression() interface{} {
 	}
 }
 
-// getNextExpression returns an expression that can be used to match the documents which have a field value
-// greater or smaller than the this paginationField.
-func (pf paginationField) getNextExpression() bson.M {
+// GetNextExpression returns an expression that can be used to match the documents which have a field value
+// greater or smaller than the this PaginationField.
+func (pf PaginationField) GetNextExpression() bson.M {
 	var operator string
 	var value interface{}
 	var strict bool

@@ -13,7 +13,7 @@ import (
 )
 
 const (
-	MaxQueryLimit        = 51 // route.ReliabilityAPIMaxNumTasks + 1
+	MaxQueryLimit        = 1000 // route.ReliabilityAPIMaxNumTasks
 	MaxSignificanceLimit = 1.0
 	MinSignificanceLimit = 0.0
 	DefaultSignificance  = 0.05
