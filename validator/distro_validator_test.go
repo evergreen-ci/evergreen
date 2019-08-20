@@ -374,7 +374,7 @@ func TestEnsureValidContainerPool(t *testing.T) {
 func nonLegacyBootstrapSettings() distro.BootstrapSettings {
 	return distro.BootstrapSettings{
 		ClientDir:             "/client_dir",
-		CuratorDir:            "/curator_dir",
+		JasperBinaryDir:       "/jasper_binary_dir",
 		JasperCredentialsPath: "/jasper_credentials_path",
 		ShellPath:             "/shell_path",
 	}

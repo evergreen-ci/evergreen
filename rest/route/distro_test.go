@@ -1076,7 +1076,7 @@ func (s *DistroPatchByIDSuite) TestRunValidNonLegacyBootstrapSettings() {
 	ctx := context.Background()
 	json := []byte(fmt.Sprintf(
 		`{"bootstrap_settings": {"method": "%s", "communication": "%s",
-		  "client_dir": "/client_dir", "curator_dir": "/curator_dir",
+		  "client_dir": "/client_dir", "jasper_binary_dir": "/jasper_binary_dir",
 		  "jasper_credentials_path": "/jasper_credentials_path", "shell_path": "/shell_path"}
 	     }`,
 		distro.BootstrapMethodUserData, distro.CommunicationMethodSSH))
@@ -1144,7 +1144,7 @@ func (s *DistroPatchByIDSuite) TestValidFindAndReplaceFullDocument() {
 					"method": "legacy-ssh",
 					"communication": "legacy-ssh",
 					"shell_path": "/usr/bin/bash",
-					"curator_dir": "/usr/local/bin",
+					"jasper_binary_dir": "/usr/local/bin",
 					"client_dir": "/usr/bin",
 					"jasper_credentials_path": "/etc/credentials"
 				},
@@ -1209,7 +1209,7 @@ func (s *DistroPatchByIDSuite) TestValidFindAndReplaceFullDocument() {
 	s.Equal(model.ToAPIString(distro.CommunicationMethodLegacySSH), apiDistro.BootstrapSettings.Communication)
 	s.Equal(model.ToAPIString(distro.CloneMethodLegacySSH), apiDistro.CloneMethod)
 	s.Equal(model.ToAPIString("/usr/bin/bash"), apiDistro.BootstrapSettings.ShellPath)
-	s.Equal(model.ToAPIString("/usr/local/bin"), apiDistro.BootstrapSettings.CuratorDir)
+	s.Equal(model.ToAPIString("/usr/local/bin"), apiDistro.BootstrapSettings.JasperBinaryDir)
 	s.Equal(model.ToAPIString("/etc/credentials"), apiDistro.BootstrapSettings.JasperCredentialsPath)
 	s.Equal(model.ToAPIString("/usr/bin"), apiDistro.BootstrapSettings.ClientDir)
 	s.Equal(apiDistro.User, model.ToAPIString("~root"))

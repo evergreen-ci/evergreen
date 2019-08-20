@@ -123,7 +123,7 @@ type APIBootstrapSettings struct {
 	Method                APIString `json:"method"`
 	Communication         APIString `json:"communication"`
 	ShellPath             APIString `json:"shell_path"`
-	CuratorDir            APIString `json:"curator_dir"`
+	JasperBinaryDir       APIString `json:"jasper_binary_dir"`
 	ClientDir             APIString `json:"client_dir"`
 	JasperCredentialsPath APIString `json:"jasper_credentials_path"`
 }
@@ -150,7 +150,7 @@ func (s *APIBootstrapSettings) BuildFromService(h interface{}) error {
 		s.Communication = ToAPIString(distro.CommunicationMethodLegacySSH)
 	}
 	s.ShellPath = ToAPIString(settings.ShellPath)
-	s.CuratorDir = ToAPIString(settings.CuratorDir)
+	s.JasperBinaryDir = ToAPIString(settings.JasperBinaryDir)
 	s.ClientDir = ToAPIString(settings.ClientDir)
 	s.JasperCredentialsPath = ToAPIString(settings.JasperCredentialsPath)
 
@@ -170,7 +170,7 @@ func (s *APIBootstrapSettings) ToService() (interface{}, error) {
 		settings.Communication = distro.CommunicationMethodLegacySSH
 	}
 	settings.ShellPath = FromAPIString(s.ShellPath)
-	settings.CuratorDir = FromAPIString(s.CuratorDir)
+	settings.JasperBinaryDir = FromAPIString(s.JasperBinaryDir)
 	settings.ClientDir = FromAPIString(s.ClientDir)
 	settings.JasperCredentialsPath = FromAPIString(s.JasperCredentialsPath)
 

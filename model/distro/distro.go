@@ -43,7 +43,7 @@ type BootstrapSettings struct {
 	Method                string `bson:"method" json:"method" mapstructure:"method"`
 	Communication         string `bson:"communcation,omitempty" json:"communication,omitempty" mapstructure:"communcation,omitempty"`
 	ClientDir             string `bson:"client_dir,omitempty" json:"client_dir,omitempty" mapstructure:"client_dir,omitempty"`
-	CuratorDir            string `bson:"curator_dir,omitempty" json:"curator_dir,omitempty" mapstructure:"curator_dir,omitempty"`
+	JasperBinaryDir       string `bson:"jasper_binary_dir,omitempty" json:"jasper_binary_dir,omitempty" mapstructure:"jasper_binary_dir,omitempty"`
 	JasperCredentialsPath string `json:"jasper_credentials_path,omitempty" bson:"jasper_credentials_path,omitempty" mapstructure:"jasper_credentials_path,omitempty"`
 	ShellPath             string `bson:"shell_path,omitempty" json:"shell_path,omitempty" mapstructure:"shell_path,omitempty"`
 }
@@ -79,7 +79,7 @@ func (s *BootstrapSettings) Validate() error {
 		catcher.New("client directory cannot be empty for non-legacy bootstrapping")
 	}
 
-	if s.CuratorDir == "" {
+	if s.JasperBinaryDir == "" {
 		catcher.New("curator directory cannot be empty for non-legacy bootstrapping")
 	}
 

@@ -603,10 +603,10 @@ Evergreen - Distros
             <div class="icon fa fa-warning distro-error" ng-show="form.shellPath.$invalid"> Shell path is required</div><br>
           </div>
           <div ng-show="activeDistro.bootstrap_settings.method != 'legacy-ssh' || activeDistro.bootstrap_settings.communication != 'legacy-ssh'">
-            <label class="distro-label">Curator Directory:</label>
-            <input type="text" ng-required="activeDistro.bootstrap_settings.method != 'legacy-ssh' || activeDistro.bootstrap_settings.communication != 'legacy-ssh'" ng-readonly="readOnly" name="curatorDir"
-              class="form-control" ng-model="activeDistro.bootstrap_settings.curator_dir" placeholder="Absolute native path to the directory of the curator binary">
-            <div class="icon fa fa-warning distro-error" ng-show="form.curatorDir.$invalid"> Curator directory is required</div><br>
+            <label class="distro-label">Jasper Binary Directory:</label>
+            <input type="text" ng-required="activeDistro.bootstrap_settings.method != 'legacy-ssh' || activeDistro.bootstrap_settings.communication != 'legacy-ssh'" ng-readonly="readOnly" name="jasperBinaryDir"
+              class="form-control" ng-model="activeDistro.bootstrap_settings.jasper_binary_dir" placeholder="Absolute native path to the directory of the Jasper binary">
+            <div class="icon fa fa-warning distro-error" ng-show="form.jasperBinaryDir.$invalid"> Jasper binary directory is required</div><br>
           </div>
           <div ng-show="activeDistro.bootstrap_settings.method != 'legacy-ssh' || activeDistro.bootstrap_settings.communication != 'legacy-ssh'">
             <label class="distro-label">Client Directory:</label>

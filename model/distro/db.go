@@ -36,7 +36,7 @@ var (
 	BootstrapSettingsMethodKey                = bsonutil.MustHaveTag(BootstrapSettings{}, "Method")
 	BootstrapSettingsCommunicationKey         = bsonutil.MustHaveTag(BootstrapSettings{}, "Communication")
 	BootstrapSettingsShellPathKey             = bsonutil.MustHaveTag(BootstrapSettings{}, "ShellPath")
-	BootstrapSettingsCuratorDirKey            = bsonutil.MustHaveTag(BootstrapSettings{}, "CuratorDir")
+	BootstrapSettingsJasperBinaryDirKey       = bsonutil.MustHaveTag(BootstrapSettings{}, "JasperBinaryDir")
 	BootstrapSettingsClientDirKey             = bsonutil.MustHaveTag(BootstrapSettings{}, "ClientDir")
 	BootstrapSettingsJasperCredentialsPathKey = bsonutil.MustHaveTag(BootstrapSettings{}, "JasperCredentialsPath")
 )

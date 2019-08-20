@@ -17,7 +17,7 @@ func TestDistroBuildFromService(t *testing.T) {
 		BootstrapSettings: distro.BootstrapSettings{
 			Method:                distro.BootstrapMethodUserData,
 			Communication:         distro.CommunicationMethodRPC,
-			CuratorDir:            "/curator_dir",
+			JasperBinaryDir:       "/jasper_binary_dir",
 			JasperCredentialsPath: "/jasper_credentials_path",
 		},
 	}
@@ -28,7 +28,7 @@ func TestDistroBuildFromService(t *testing.T) {
 	assert.Equal(t, d.BootstrapSettings.Method, FromAPIString(apiDistro.BootstrapSettings.Method))
 	assert.Equal(t, d.BootstrapSettings.Communication, FromAPIString(apiDistro.BootstrapSettings.Communication))
 	assert.Equal(t, d.BootstrapSettings.ShellPath, FromAPIString(apiDistro.BootstrapSettings.ShellPath))
-	assert.Equal(t, d.BootstrapSettings.CuratorDir, FromAPIString(apiDistro.BootstrapSettings.CuratorDir))
+	assert.Equal(t, d.BootstrapSettings.JasperBinaryDir, FromAPIString(apiDistro.BootstrapSettings.JasperBinaryDir))
 	assert.Equal(t, d.BootstrapSettings.JasperCredentialsPath, FromAPIString(apiDistro.BootstrapSettings.JasperCredentialsPath))
 }
 
@@ -53,7 +53,7 @@ func TestDistroToService(t *testing.T) {
 			Method:                ToAPIString(distro.BootstrapMethodSSH),
 			Communication:         ToAPIString(distro.CommunicationMethodSSH),
 			ShellPath:             ToAPIString("/shell_path"),
-			CuratorDir:            ToAPIString("/curator_dir"),
+			JasperBinaryDir:       ToAPIString("/jasper_binary_dir"),
 			JasperCredentialsPath: ToAPIString("/jasper_credentials_path"),
 		},
 	}
@@ -68,7 +68,7 @@ func TestDistroToService(t *testing.T) {
 	assert.Equal(t, apiDistro.BootstrapSettings.Method, ToAPIString(d.BootstrapSettings.Method))
 	assert.Equal(t, apiDistro.BootstrapSettings.Communication, ToAPIString(d.BootstrapSettings.Communication))
 	assert.Equal(t, apiDistro.BootstrapSettings.ShellPath, ToAPIString(d.BootstrapSettings.ShellPath))
-	assert.Equal(t, apiDistro.BootstrapSettings.CuratorDir, ToAPIString(d.BootstrapSettings.CuratorDir))
+	assert.Equal(t, apiDistro.BootstrapSettings.JasperBinaryDir, ToAPIString(d.BootstrapSettings.JasperBinaryDir))
 	assert.Equal(t, apiDistro.BootstrapSettings.JasperCredentialsPath, ToAPIString(d.BootstrapSettings.JasperCredentialsPath))
 }
 

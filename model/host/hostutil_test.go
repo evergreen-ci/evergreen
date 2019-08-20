@@ -149,7 +149,7 @@ func TestJasperCommands(t *testing.T) {
 				Distro: distro.Distro{
 					Arch: distro.ArchLinuxAmd64,
 					BootstrapSettings: distro.BootstrapSettings{
-						CuratorDir:            "/foo",
+						JasperBinaryDir:       "/foo",
 						JasperCredentialsPath: "/bar",
 					},
 					User: "user",
@@ -288,7 +288,7 @@ func TestJasperCommandsWindows(t *testing.T) {
 			h := &Host{Distro: distro.Distro{
 				Arch: distro.ArchWindowsAmd64,
 				BootstrapSettings: distro.BootstrapSettings{
-					CuratorDir:            "/foo",
+					JasperBinaryDir:       "/foo",
 					JasperCredentialsPath: "/bar",
 				},
 				User: "user",
@@ -524,7 +524,7 @@ func TestBuildLocalJasperClientRequest(t *testing.T) {
 	h := &Host{
 		Distro: distro.Distro{
 			BootstrapSettings: distro.BootstrapSettings{
-				CuratorDir:            "/curator",
+				JasperBinaryDir:       "/curator",
 				JasperCredentialsPath: "/jasper/credentials",
 			},
 		},

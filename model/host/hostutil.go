@@ -276,7 +276,7 @@ func (h *Host) fetchJasperCommands(config evergreen.HostJasperConfig) []string {
 	downloadedFile := h.jasperDownloadedFileName(config)
 	extractedFile := h.jasperBinaryFileName(config)
 	return []string{
-		fmt.Sprintf("cd \"%s\"", h.Distro.BootstrapSettings.CuratorDir),
+		fmt.Sprintf("cd \"%s\"", h.Distro.BootstrapSettings.JasperBinaryDir),
 		fmt.Sprintf("curl -LO '%s/%s' %s", config.URL, downloadedFile, curlRetryArgs(CurlDefaultNumRetries, CurlDefaultMaxSecs)),
 		fmt.Sprintf("tar xzf '%s'", downloadedFile),
 		fmt.Sprintf("chmod +x '%s'", extractedFile),
@@ -311,7 +311,7 @@ func (h *Host) jasperBinaryFileName(config evergreen.HostJasperConfig) string {
 
 // jasperBinaryFilePath returns the full path to the Jasper binary.
 func (h *Host) jasperBinaryFilePath(config evergreen.HostJasperConfig) string {
-	return filepath.Join(h.Distro.BootstrapSettings.CuratorDir, h.jasperBinaryFileName(config))
+	return filepath.Join(h.Distro.BootstrapSettings.JasperBinaryDir, h.jasperBinaryFileName(config))
 }
 
 // BootstrapScript creates the user data script to bootstrap the host.
