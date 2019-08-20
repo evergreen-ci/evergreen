@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"io/ioutil"
+	"path/filepath"
 	"reflect"
 	"strings"
 	"time"
@@ -86,6 +87,8 @@ type Settings struct {
 	RepoTracker             RepoTrackerConfig         `yaml:"repotracker" bson:"repotracker" json:"repotracker" id:"repotracker"`
 	Scheduler               SchedulerConfig           `yaml:"scheduler" bson:"scheduler" json:"scheduler" id:"scheduler"`
 	ServiceFlags            ServiceFlags              `bson:"service_flags" json:"service_flags" id:"service_flags" yaml:"service_flags"`
+	SSHKeyDirectory         string                    `yaml:"ssh_key_directory" bson:"ssh_key_directory" json:"ssh_key_directory"`
+	SSHKeyPairs             []SSHKeyPair              `yaml:"ssh_key_pairs" bson:"ssh_key_pairs" json:"ssh_key_pairs"`
 	Slack                   SlackConfig               `yaml:"slack" bson:"slack" json:"slack" id:"slack"`
 	SpawnHostsPerUser       int                       `yaml:"spawn_hosts_per_user" bson:"spawn_hosts_per_user" json:"spawn_hosts_per_user"`
 	Splunk                  send.SplunkConnectionInfo `yaml:"splunk" bson:"splunk" json:"splunk"`
@@ -150,6 +153,8 @@ func (c *Settings) Set() error {
 			pluginsKey:            c.Plugins,
 			pluginsNewKey:         c.PluginsNew,
 			splunkKey:             c.Splunk,
+			sshKeyDirectoryKey:    c.SSHKeyDirectory,
+			sshKeyPairsKey:        c.SSHKeyPairs,
 			superUsersKey:         c.SuperUsers,
 			spawnHostsKey:         c.SpawnHostsPerUser,
 			unexpirableHostsKey:   c.UnexpirableHostsPerUser,
@@ -203,6 +208,18 @@ func (c *Settings) ValidateAndDefault() error {
 			catcher.Add(errors.Errorf("duplicate LDAP group value %s found in LDAP-role mappings", mapping.LDAPGroup))
 		}
 		keys[mapping.LDAPGroup] = true
+	}
+
+	if len(c.SSHKeyPairs) != 0 && c.SSHKeyDirectory == "" {
+		catcher.New("cannot use SSH key pairs without setting a directory for them")
+	}
+	for i := 0; i < len(c.SSHKeyPairs); i++ {
+		if c.SSHKeyPairs[i].PublicPath == "" {
+			c.SSHKeyPairs[i].PublicPath = filepath.Join(c.SSHKeyDirectory, fmt.Sprintf("%s.pub", c.SSHKeyPairs[i].Name))
+		}
+		if c.SSHKeyPairs[i].PrivatePath == "" {
+			c.SSHKeyPairs[i].PrivatePath = filepath.Join(c.SSHKeyDirectory, c.SSHKeyPairs[i].Name)
+		}
 	}
 
 	if catcher.HasErrors() {
@@ -535,6 +552,15 @@ func GetServiceFlags() (*ServiceFlags, error) {
 // PluginConfig holds plugin-specific settings, which are handled.
 // manually by their respective plugins
 type PluginConfig map[string]map[string]interface{}
+
+// SSHKeyPair represents a public and private SSH key pair.
+type SSHKeyPair struct {
+	Name        string `yaml:"name" bson:"name" json:"name"`
+	Public      string `yaml:"public" bson:"public" json:"public"`
+	PublicPath  string `yaml:"path" bson:"path" json:"path"`
+	Private     string `yaml:"private" bson:"private" json:"private"`
+	PrivatePath string `yaml:"private_path" bson:"private_path" json:"private_path"`
+}
 
 type WriteConcern struct {
 	W        int    `yaml:"w"`

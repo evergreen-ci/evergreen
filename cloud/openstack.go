@@ -239,3 +239,8 @@ func (m *openStackManager) DeleteVolume(context.Context, *host.Volume) error {
 func (m *openStackManager) TimeTilNextPayment(host *host.Host) time.Duration {
 	return time.Duration(0)
 }
+
+//  TODO: this must be implemented to support adding SSH keys.
+func (m *openStackManager) AddSSHKey(ctx context.Context, pair evergreen.SSHKeyPair) error {
+	return nil
+}

@@ -120,3 +120,7 @@ func (staticMgr *staticManager) DeleteVolume(context.Context, *host.Volume) erro
 func (staticMgr *staticManager) TimeTilNextPayment(host *host.Host) time.Duration {
 	return time.Duration(0)
 }
+
+func (staticMgr *staticManager) AddSSHKey(ctx context.Context, pair evergreen.SSHKeyPair) error {
+	return nil
+}

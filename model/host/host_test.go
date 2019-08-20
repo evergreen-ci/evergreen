@@ -4550,3 +4550,105 @@ func TestRemoveAndReplace(t *testing.T) {
 	assert.NoError(t, err)
 	assert.NotNil(t, dbHost)
 }
+
+func TestFindNeedsNewSSHKeys(t *testing.T) {
+	keyName := "key"
+	for testName, testCase := range map[string]func(t *testing.T, settings *evergreen.Settings, h *Host){
+		"IgnoresHostsWithMatchingKeys": func(t *testing.T, settings *evergreen.Settings, h *Host) {
+			require.NoError(t, h.Insert())
+
+			hosts, err := FindNeedsNewSSHKeys(settings)
+			require.NoError(t, err)
+			assert.Empty(t, hosts)
+		},
+		"FindsHostsMissingAllKeys": func(t *testing.T, settings *evergreen.Settings, h *Host) {
+			h.SSHKeyNames = []string{}
+			require.NoError(t, h.Insert())
+
+			hosts, err := FindNeedsNewSSHKeys(settings)
+			require.NoError(t, err)
+			require.Len(t, hosts, 1)
+			assert.Equal(t, h.Id, hosts[0].Id)
+		},
+		"FindsHostsMissingSubsetOfKeys": func(t *testing.T, settings *evergreen.Settings, h *Host) {
+			require.NoError(t, h.Insert())
+
+			newKeyName := "new_key"
+			settings.SSHKeyPairs = append(settings.SSHKeyPairs, evergreen.SSHKeyPair{
+				Name:    newKeyName,
+				Public:  "new_public",
+				Private: "new_private",
+			})
+
+			hosts, err := FindNeedsNewSSHKeys(settings)
+			require.NoError(t, err)
+			require.Len(t, hosts, 1)
+			assert.Equal(t, h.Id, hosts[0].Id)
+		},
+		"IgnoresNonstaticHosts": func(t *testing.T, settings *evergreen.Settings, h *Host) {
+			h.SSHKeyNames = []string{}
+			h.Provider = evergreen.ProviderNameMock
+			require.NoError(t, h.Insert())
+
+			hosts, err := FindNeedsNewSSHKeys(settings)
+			require.NoError(t, err)
+			assert.Empty(t, hosts)
+		},
+		"IgnoresHostsWithExtraKeys": func(t *testing.T, settings *evergreen.Settings, h *Host) {
+			h.SSHKeyNames = append(h.SSHKeyNames, "other_key")
+			require.NoError(t, h.Insert())
+
+			hosts, err := FindNeedsNewSSHKeys(settings)
+			require.NoError(t, err)
+			assert.Empty(t, hosts)
+		},
+	} {
+		t.Run(testName, func(t *testing.T) {
+			require.NoError(t, db.Clear(Collection))
+			defer func() {
+				assert.NoError(t, db.Clear(Collection))
+			}()
+
+			settings := &evergreen.Settings{
+				SSHKeyDirectory: "/ssh_key_directory",
+				SSHKeyPairs: []evergreen.SSHKeyPair{
+					{
+						Name:    keyName,
+						Public:  "public",
+						Private: "private",
+					},
+				},
+			}
+
+			h := &Host{
+				Id:          "id",
+				Provider:    evergreen.ProviderNameStatic,
+				Status:      evergreen.HostRunning,
+				SSHKeyNames: []string{keyName},
+			}
+
+			testCase(t, settings, h)
+		})
+	}
+}
+
+func TestSetNewSSHKeys(t *testing.T) {
+	require.NoError(t, db.Clear(Collection))
+	defer func() {
+		assert.NoError(t, db.Clear(Collection))
+	}()
+	names := []string{"foo", "bar"}
+	h := &Host{
+		Id: "foo",
+	}
+	assert.Error(t, h.SetSSHKeyNames(names))
+	assert.Empty(t, h.SSHKeyNames)
+
+	require.NoError(t, h.Insert())
+	require.NoError(t, h.SetSSHKeyNames(names))
+	assert.Equal(t, names, h.SSHKeyNames)
+
+	dbHost, err := FindOneId(h.Id)
+	require.NoError(t, err)
+	assert.Equal(t, names, dbHost.SSHKeyNames)
+}

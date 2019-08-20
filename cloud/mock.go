@@ -413,3 +413,7 @@ func getMockManagerOptions(provider string, providerSettings *map[string]interfa
 
 	return opts, nil
 }
+
+func (m *mockManager) AddSSHKey(ctx context.Context, pair evergreen.SSHKeyPair) error {
+	return nil
+}

@@ -4,6 +4,11 @@ mciModule.controller('AdminSettingsController', ['$scope', '$window', '$http', '
 
   $scope.load = function() {
     $scope.Settings = {};
+
+    $scope.newSSHKeyPair = {};
+    $scope.tempSSHKeyPairs = [];
+    $scope.Settings.ssh_key_pairs = [];
+
     $scope.getSettings();
     $scope.disableRestart = false;
     $scope.disableSubmit = false;
@@ -38,6 +43,10 @@ mciModule.controller('AdminSettingsController', ['$scope', '$window', '$http', '
         obj[key] = val;
         $scope.tempExpansions.push(obj);
       });
+
+      $scope.newSSHKeyPair = {};
+      $scope.tempSSHKeyPairs = [];
+      $scope.Settings.ssh_key_pairs = resp.data.ssh_key_pairs || [];
 
       $scope.tempPlugins = resp.data.plugins ? jsyaml.safeDump(resp.data.plugins) : ""
       $scope.tempContainerPools = resp.data.container_pools.pools ? jsyaml.safeDump(resp.data.container_pools.pools) : ""
@@ -119,6 +128,10 @@ mciModule.controller('AdminSettingsController', ['$scope', '$window', '$http', '
       }
       uniqueIds[p.id] = true
     }
+
+    for (var pair in $scope.newSSHKeyPairs) {
+      $scope.Settings.ssh_key_pairs.push(pair);
+    } 
 
     $scope.Settings.container_pools.pools = parsedContainerPools;
 
@@ -325,6 +338,11 @@ mciModule.controller('AdminSettingsController', ['$scope', '$window', '$http', '
     obj[key] = pieces[1];
     $scope.tempCredentials[key] = pieces[1];
     return obj;
+  }
+
+  $scope.addSSHKeyPair = function() {
+    $scope.tempSSHKeyPairs.push($scope.newSSHKeyPair);
+    $scope.newSSHKeyPair = {};
   }
 
   $scope.addExpansion = function(chip) {

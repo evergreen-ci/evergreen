@@ -152,6 +152,8 @@ func (s *AdminSuite) TestBaseConfig() {
 		LogPath:            "logpath",
 		Plugins:            map[string]map[string]interface{}{"k4": {"k5": "v5"}},
 		PprofPort:          "port",
+		SSHKeyDirectory:    "/ssh_key_directory",
+		SSHKeyPairs:        []SSHKeyPair{{Name: "key", Public: "public", Private: "private"}},
 		Splunk: send.SplunkConnectionInfo{
 			ServerURL: "server",
 			Token:     "token",
@@ -180,6 +182,14 @@ func (s *AdminSuite) TestBaseConfig() {
 	s.Equal(config.LogPath, settings.LogPath)
 	s.Equal(config.Plugins, settings.Plugins)
 	s.Equal(config.PprofPort, settings.PprofPort)
+	s.Require().Len(settings.SSHKeyPairs, len(config.SSHKeyPairs))
+	for i := 0; i < len(settings.SSHKeyPairs); i++ {
+		s.Equal(config.SSHKeyPairs[i].Name, settings.SSHKeyPairs[i].Name)
+		s.Equal(config.SSHKeyPairs[i].Public, settings.SSHKeyPairs[i].Public)
+		s.Equal(config.SSHKeyPairs[i].PublicPath, settings.SSHKeyPairs[i].PublicPath)
+		s.Equal(config.SSHKeyPairs[i].Private, settings.SSHKeyPairs[i].Private)
+		s.Equal(config.SSHKeyPairs[i].PrivatePath, settings.SSHKeyPairs[i].PrivatePath)
+	}
 	s.Equal(config.SuperUsers, settings.SuperUsers)
 }
 
@@ -475,6 +485,10 @@ func (s *AdminSuite) TestConfigDefaults() {
 	s.Equal(defaultAmboyPoolSize, config.Amboy.PoolSizeLocal)
 	s.Equal("v1", config.Expansions["k1"])
 	s.Equal("v2", config.Expansions["k2"])
+	for _, pair := range config.SSHKeyPairs {
+		s.Equal(filepath.Join(config.SSHKeyDirectory, pair.Name+".pub"), pair.PublicPath)
+		s.Equal(filepath.Join(config.SSHKeyDirectory, pair.Name), pair.PrivatePath)
+	}
 }
 
 func (s *AdminSuite) TestKeyValPairsToMap() {

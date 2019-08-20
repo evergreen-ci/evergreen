@@ -143,6 +143,10 @@ type Host struct {
 
 	// InstanceTags stores user-specified tags for instances
 	InstanceTags []Tag `bson:"instance_tags,omitempty" json:"instance_tags,omitempty"`
+
+	// SSHKeyNames contains the names of the SSH key that have been distributed
+	// to this host.
+	SSHKeyNames []string `bson:"ssh_key_names,omitempty" json:"ssh_key_names,omitempty"`
 }
 
 type Tag struct {
@@ -1335,6 +1339,15 @@ func (h *Host) SetExtId() error {
 	)
 }
 
+// SetSSHKeyNames updates the host with the given SSH key names.
+func (h *Host) SetSSHKeyNames(names []string) error {
+	if err := UpdateOne(bson.M{IdKey: h.Id}, bson.M{"$set": bson.M{SSHKeyNamesKey: names}}); err != nil {
+		return errors.Wrap(err, "could not update SSH key names")
+	}
+	h.SSHKeyNames = names
+	return nil
+}
+
 func FindHostsToTerminate() ([]Host, error) {
 	const (
 		// provisioningCutoff is the threshold to consider as too long for a host to take provisioning
@@ -2187,4 +2200,19 @@ func FindHostWithVolume(volumeID string) (*Host, error) {
 		},
 	)
 	return FindOne(q)
+}
+
+// FindNeedsNewSSHKeys finds all hosts that do not have the same set of SSH keys
+// as those in the global settings.
+func FindNeedsNewSSHKeys(settings *evergreen.Settings) ([]Host, error) {
+	names := []string{}
+	for _, pair := range settings.SSHKeyPairs {
+		names = append(names, pair.Name)
+	}
+
+	return Find(db.Query(bson.M{
+		StatusKey:      bson.M{"$ne": evergreen.HostTerminated},
+		ProviderKey:    evergreen.ProviderNameStatic,
+		SSHKeyNamesKey: bson.M{"$not": bson.M{"$all": names}},
+	}))
 }

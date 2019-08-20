@@ -58,6 +58,8 @@ var (
 	ldapRoleMapKey        = bsonutil.MustHaveTag(Settings{}, "LDAPRoleMap")
 	backupConfig          = bsonutil.MustHaveTag(Settings{}, "Backup")
 	aclEnabledKey         = bsonutil.MustHaveTag(Settings{}, "ACLCheckingEnabled")
+	sshKeyPairsKey        = bsonutil.MustHaveTag(Settings{}, "SSHKeyPairs")
+	sshKeyDirectoryKey    = bsonutil.MustHaveTag(Settings{}, "SSHKeyDirectory")
 
 	// degraded mode flags
 	taskDispatchKey                 = bsonutil.MustHaveTag(ServiceFlags{}, "TaskDispatchDisabled")

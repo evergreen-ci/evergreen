@@ -390,3 +390,7 @@ func (m *dockerManager) GetContainerImage(ctx context.Context, parent *host.Host
 
 	return nil
 }
+
+func (m *dockerManager) AddSSHKey(ctx context.Context, pair evergreen.SSHKeyPair) error {
+	return nil
+}

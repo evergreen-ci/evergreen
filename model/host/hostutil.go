@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"math/rand"
 	"net"
+	"os"
 	"os/exec"
 	"path/filepath"
 	"regexp"
@@ -147,17 +148,33 @@ func (h *Host) GetSSHKeyPath(settings *evergreen.Settings) (string, error) {
 }
 
 // GetSSHOptions returns the options to SSH into this host.
-// EVG-6389: this currently relies on the fact that the EC2 provider has a
+// TODO (kim): EVG-6389: this currently relies on the fact that the EC2 provider has a
 // single distro-level SSH key name corresponding to an existing SSH key file on
 // the app servers. We should be able to handle multiple keys configured in
 // admin settings rather than from a file name in distro settings.
 func (h *Host) GetSSHOptions(settings *evergreen.Settings) ([]string, error) {
-	keyPath, err := h.GetSSHKeyPath(settings)
-	if err != nil {
-		return nil, errors.WithStack(err)
+	keyPaths := []string{}
+
+	// Fallback SSH key
+	if defaultKeyPath := settings.Keys[h.Distro.SSHKey]; defaultKeyPath != "" {
+		keyPaths = append(keyPaths, defaultKeyPath)
 	}
 
-	opts := []string{"-i", keyPath}
+	for _, pair := range settings.SSHKeyPairs {
+		if _, err := os.Stat(pair.PrivatePath); err == nil {
+			keyPaths = append(keyPaths, pair.PrivatePath)
+		}
+	}
+
+	if len(keyPaths) == 0 {
+		return nil, errors.New("no SSH identity files available")
+	}
+
+	opts := []string{}
+	for _, path := range keyPaths {
+		opts = append(opts, "-i", path)
+	}
+
 	hasKnownHostsFile := false
 
 	for _, opt := range h.Distro.SSHOptions {

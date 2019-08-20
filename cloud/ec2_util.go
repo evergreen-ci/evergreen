@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go/aws/awserr"
 	"github.com/aws/aws-sdk-go/service/ec2"
 	ec2aws "github.com/aws/aws-sdk-go/service/ec2"
 	"github.com/evergreen-ci/evergreen"
@@ -25,7 +26,8 @@ import (
 )
 
 const (
-	EC2ErrorNotFound = "InvalidInstanceID.NotFound"
+	EC2ErrorNotFound    = "InvalidInstanceID.NotFound"
+	EC2DuplicateKeyPair = "InvalidKeyPair.Duplicate"
 )
 
 type MountPoint struct {
@@ -565,5 +567,20 @@ func validateEC2HostModifyOptions(h *host.Host, opts host.HostModifyOptions) err
 		return errors.Errorf("cannot extend host '%s' expiration by '%s' -- maximum host duration is limited to %s", h.Id, opts.AddHours.String(), MaxSpawnHostExpirationDurationHours.String())
 	}
 
+	return nil
+}
+
+// addSSHKey adds an SSH key for the given client. If an SSH key already exists
+// with the given name, this no-ops.
+func addSSHKey(ctx context.Context, client AWSClient, pair evergreen.SSHKeyPair) error {
+	if _, err := client.ImportKeyPair(ctx, &ec2.ImportKeyPairInput{
+		KeyName:           aws.String(pair.Name),
+		PublicKeyMaterial: []byte(pair.Public),
+	}); err != nil {
+		if ec2err, ok := err.(awserr.Error); ok && ec2err.Code() == EC2DuplicateKeyPair {
+			return nil
+		}
+		return errors.Wrap(err, "could not add new SSH key")
+	}
 	return nil
 }

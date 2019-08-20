@@ -11,7 +11,10 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/commitqueue"
+	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/service"
+	"github.com/evergreen-ci/evergreen/units"
+	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/amboy/queue"
@@ -59,6 +62,21 @@ func startWebService() cli.Command {
 			grip.Notice(message.Fields{"build": evergreen.BuildRevision, "process": grip.Name()})
 
 			grip.EmergencyFatal(errors.Wrap(startSystemCronJobs(ctx, env), "problem starting background work"))
+
+			// Enqueue jobs to synchronize SSH keys.
+			ts := util.RoundPartOfHour(30).Format(units.TSFormat)
+			grip.Error(env.LocalQueue().Put(ctx, units.NewLocalUpdateSSHKeysJob(ts)))
+			// TODO: we using the default provider and region here. This will
+			// not work once we support multiple regions or cloud providers,
+			grip.Error(queue.Put(ctx, units.NewCloudUpdateSSHKeysJob("", "", ts)))
+			hosts, err := host.FindNeedsNewSSHKeys(settings)
+			if err != nil {
+				grip.Error(errors.Wrap(err, "could not find hosts needing SSH keys"))
+			} else {
+				for _, h := range hosts {
+					queue.Put(ctx, units.NewStaticUpdateSSHKeysJob(h, ts))
+				}
+			}
 
 			var (
 				apiServer *http.Server

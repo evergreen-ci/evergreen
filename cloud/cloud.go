@@ -70,6 +70,10 @@ type Manager interface {
 	// TimeTilNextPayment returns how long there is until the next payment
 	// is due for a particular host
 	TimeTilNextPayment(*host.Host) time.Duration
+
+	// AddSSHKey adds an SSH key for this manager's hosts. Adding an existing
+	// key is a no-op.
+	AddSSHKey(context.Context, evergreen.SSHKeyPair) error
 }
 
 type ContainerManager interface {
