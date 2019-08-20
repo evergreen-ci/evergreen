@@ -53,20 +53,13 @@ func truncatedTime(deltaHours time.Duration) time.Time {
 	return time.Now().UTC().Add(deltaHours).Truncate(24 * time.Hour)
 }
 
-// func getURL(projectID string, tasks []string) string {
 func getURL(projectID string, parameters map[string]interface{}) string {
 	url := fmt.Sprintf("https://example.net/api/rest/v2/projects/%s/logs/task_reliability", projectID)
 	params := []string{}
 	for key, value := range parameters {
 		switch value.(type) {
-		// case int:
-		// 	params = append(params, fmt.Sprintf("%s=%v", key, value))
 		case []string:
 			params = append(params, fmt.Sprintf("%s=%s", key, strings.Join(value.([]string), ",")))
-			// params = fmt.Sprintf("%s%c%s=%s", params, sep, key, strings.Join(value.([]string), ","))
-		// case string:
-		// 	params = append(params, fmt.Sprintf("%s=%s", key, value))
-		// 	// params = fmt.Sprintf("%s%c%s=%s", params, sep, key, value)
 		default:
 			params = append(params, fmt.Sprintf("%s=%v", key, value))
 		}
@@ -195,8 +188,8 @@ func TestParseInvalidStartAt(t *testing.T) {
 	handler := taskReliabilityHandler{}
 
 	values := url.Values{
-		"tasks":        []string{"aggregation_expression_multiversion_fuzzer"},
-		"significance": []string{"-1.0"},
+		"tasks":    []string{"aggregation_expression_multiversion_fuzzer"},
+		"start_at": []string{"2.0"},
 	}
 
 	err := handler.parseTaskReliabilityFilter(values)
@@ -204,19 +197,7 @@ func TestParseInvalidStartAt(t *testing.T) {
 
 	resp := err.(gimlet.ErrorResponse)
 	assert.Equal(http.StatusBadRequest, resp.StatusCode)
-	assert.Equal("Invalid Significance value", resp.Message)
-
-	values = url.Values{
-		"tasks":    []string{"aggregation_expression_multiversion_fuzzer"},
-		"start_at": []string{"2.0"},
-	}
-
-	err = handler.parseTaskReliabilityFilter(values)
-	assert.NotNil(err)
-
-	resp = err.(gimlet.ErrorResponse)
-	assert.Equal(http.StatusBadRequest, resp.StatusCode)
-	assert.Equal("Invalid Significance value", resp.Message)
+	assert.Equal("Invalid start_at value", resp.Message)
 
 }
 
@@ -262,9 +243,9 @@ func TestParseValid(t *testing.T) {
 	assert.Equal([]string{"enterprise-rhel-62-64-bit", "enterprise-windows", "enterprise-rhel-80-64-bit"}, handler.filter.BuildVariants)
 	assert.Nil(handler.filter.Distros)
 	assert.Nil(handler.filter.StartAt)
-	assert.Equal(stats.GroupByDistro, handler.filter.GroupBy)          // default value
-	assert.Equal(stats.SortLatestFirst, handler.filter.Sort)           // default value
-	assert.Equal(reliabilityAPIMaxNumTasksLimit, handler.filter.Limit) // default value
+	assert.Equal(reliability.GroupByDistro, handler.filter.GroupBy) // default value
+	assert.Equal(reliability.SortLatestFirst, handler.filter.Sort)  // default value
+	assert.Equal(reliability.MaxQueryLimit, handler.filter.Limit)   // default value
 	assert.Equal(handler.filter.Significance, 0.1)
 
 }
@@ -272,12 +253,6 @@ func TestParseValid(t *testing.T) {
 func TestParse(t *testing.T) {
 	assert := assert.New(t)
 
-	// parameters := map[string]interface{}{
-	// 	"tasks":         "aggregation_expression_multiversion_fuzzer",
-	// 	"after_date":    "2019-01-02",
-	// 	"group_by_days": "10",
-	// }
-	// url := getURL(projectID, parameters) // []string{"aggregation_expression_multiversion_fuzzer"})
 	url := getURL(projectID, map[string]interface{}{
 		"tasks":         "aggregation_expression_multiversion_fuzzer",
 		"after_date":    "2019-01-02",
@@ -323,7 +298,6 @@ func TestRunNoSuchTask(t *testing.T) {
 	assert := assert.New(t)
 	err := setupTest(t)
 	assert.NoError(err)
-	// url := getURL(projectID, []string{"no_such_task"})
 	url := getURL(projectID, map[string]interface{}{
 		"tasks":         "no_such_task",
 		"after_date":    "2019-01-02",
@@ -359,7 +333,6 @@ func TestRunLimit1(t *testing.T) {
 	assert := assert.New(t)
 	err := setupTest(t)
 	assert.NoError(err)
-	// url := getURL(projectID, []string{"aggregation_expression_multiversion_fuzzer"})
 	url := getURL(projectID, map[string]interface{}{
 		"tasks":         "aggregation_expression_multiversion_fuzzer",
 		"after_date":    "2019-01-02",
@@ -397,7 +370,6 @@ func TestRunLimit1000(t *testing.T) {
 	assert := assert.New(t)
 	err := setupTest(t)
 	assert.NoError(err)
-	// url := getURL(projectID, []string{"aggregation_expression_multiversion_fuzzer"})
 	url := getURL(projectID, map[string]interface{}{
 		"tasks":         "aggregation_expression_multiversion_fuzzer",
 		"after_date":    "2019-01-02",
@@ -433,7 +405,6 @@ func TestRunTestHandler(t *testing.T) {
 	assert := assert.New(t)
 	err := setupTest(t)
 	assert.NoError(err)
-	// url := getURL(projectID, []string{"aggregation_expression_multiversion_fuzzer"})
 	url := getURL(projectID, map[string]interface{}{
 		"tasks":         "aggregation_expression_multiversion_fuzzer",
 		"after_date":    "2019-01-02",

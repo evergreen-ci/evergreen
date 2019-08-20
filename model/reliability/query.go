@@ -13,10 +13,16 @@ import (
 )
 
 const (
-	MaxQueryLimit        = 1000 // route.ReliabilityAPIMaxNumTasks
+	MaxQueryLimit        = stats.MaxQueryLimit - 1 // 1000 // route.ReliabilityAPIMaxNumTasks
 	MaxSignificanceLimit = 1.0
 	MinSignificanceLimit = 0.0
 	DefaultSignificance  = 0.05
+
+	GroupByTask       = stats.GroupByTask
+	GroupByVariant    = stats.GroupByVariant
+	GroupByDistro     = stats.GroupByDistro
+	SortEarliestFirst = stats.SortEarliestFirst
+	SortLatestFirst   = stats.SortLatestFirst
 )
 
 // TaskReliabilityFilter represents search and aggregation parameters when querying the test or task statistics.
