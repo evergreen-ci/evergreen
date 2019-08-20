@@ -1067,7 +1067,7 @@ func (s *DistroPatchByIDSuite) TestRunMissingNonLegacyBootstrapSettings() {
 	s.Equal(http.StatusBadRequest, resp.Status())
 	err := (resp.Data()).(gimlet.ErrorResponse)
 	s.Contains(err.Message, "client directory cannot be empty for non-legacy bootstrapping")
-	s.Contains(err.Message, "curator directory cannot be empty for non-legacy bootstrapping")
+	s.Contains(err.Message, "Jasper binary directory cannot be empty for non-legacy bootstrapping")
 	s.Contains(err.Message, "Jasper credentials path cannot be empty for non-legacy bootstrapping")
 	s.Contains(err.Message, "client directory cannot be empty")
 }

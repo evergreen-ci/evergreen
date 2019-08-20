@@ -80,7 +80,7 @@ func (s *BootstrapSettings) Validate() error {
 	}
 
 	if s.JasperBinaryDir == "" {
-		catcher.New("curator directory cannot be empty for non-legacy bootstrapping")
+		catcher.New("Jasper binary directory cannot be empty for non-legacy bootstrapping")
 	}
 
 	if s.JasperCredentialsPath == "" {
