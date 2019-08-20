@@ -1057,7 +1057,7 @@ func TestFindUserDataSpawnHostsProvisioning(t *testing.T) {
 			assert.Equal(t, h.Id, hosts[0].Id)
 		},
 		"IgnoresNonUserDataBootstrap": func(t *testing.T, h *Host) {
-			h.Distro.BootstrapMethod = distro.BootstrapMethodSSH
+			h.Distro.BootstrapSettings.Method = distro.BootstrapMethodSSH
 			require.NoError(t, h.Insert())
 
 			hosts, err := FindUserDataSpawnHostsProvisioning()
@@ -1100,9 +1100,11 @@ func TestFindUserDataSpawnHostsProvisioning(t *testing.T) {
 				Provisioned: true,
 				StartedBy:   "user",
 				Distro: distro.Distro{
-					Id:                  "distro_id",
-					BootstrapMethod:     distro.BootstrapMethodUserData,
-					CommunicationMethod: distro.CommunicationMethodSSH,
+					Id: "distro_id",
+					BootstrapSettings: distro.BootstrapSettings{
+						Method:        distro.BootstrapMethodUserData,
+						Communication: distro.CommunicationMethodSSH,
+					},
 				},
 			}
 			testCase(t, &h)

@@ -803,7 +803,7 @@ func TestMarkUserDataDoneCommand(t *testing.T) {
 		"SucceedsWithPathToDoneFile": func(t *testing.T) {
 			h := &Host{
 				Id:     "id",
-				Distro: distro.Distro{ClientDir: "/client_dir"},
+				Distro: distro.Distro{BootstrapSettings: distro.BootstrapSettings{ClientDir: "/client_dir"}},
 			}
 			cmd, err := h.MarkUserDataDoneCommand()
 			require.NoError(t, err)
@@ -827,7 +827,7 @@ func TestSetUserDataHostProvisioned(t *testing.T) {
 			assert.Equal(t, evergreen.HostRunning, dbHost.Status)
 		},
 		"IgnoresNonUserDataBootstrappedHost": func(t *testing.T, h *Host) {
-			h.Distro.BootstrapMethod = distro.BootstrapMethodSSH
+			h.Distro.BootstrapSettings.Method = distro.BootstrapMethodSSH
 			_, err := h.Upsert()
 			require.NoError(t, err)
 
@@ -855,8 +855,10 @@ func TestSetUserDataHostProvisioned(t *testing.T) {
 				assert.NoError(t, db.Clear(Collection))
 			}()
 			h := &Host{
-				Id:     "id",
-				Distro: distro.Distro{BootstrapMethod: distro.BootstrapMethodUserData},
+				Id: "id",
+				Distro: distro.Distro{BootstrapSettings: distro.BootstrapSettings{
+					Method: distro.BootstrapMethodUserData,
+				}},
 				Status: evergreen.HostProvisioning,
 			}
 			require.NoError(t, h.Insert())
