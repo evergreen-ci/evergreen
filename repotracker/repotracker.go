@@ -73,7 +73,7 @@ func (p *ProjectInfo) notPopulated() bool {
 
 // PopulateVersion updates the version's ParserProject if we have or can create it
 func (p *ProjectInfo) populateVersion(v *model.Version) error {
-	if evergreen.UseParserProject && p.IntermediateProject != nil {
+	if p.IntermediateProject != nil {
 		config, err := yaml.Marshal(p.IntermediateProject)
 		if err != nil {
 			return errors.Wrap(err, "error marshalling intermediate project")

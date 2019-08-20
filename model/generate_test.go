@@ -517,7 +517,7 @@ func (s *GenerateSuite) TestAddGeneratedProjectToConfig() {
 	s.NoError(err)
 	cachedProject := cacheProjectData(p)
 	g := sampleGeneratedProject
-	newPP, newConfig, err := g.addGeneratedProjectToConfig(pp, cachedProject)
+	newPP, newConfig, err := g.addGeneratedProjectToConfig(pp, "", cachedProject)
 	s.NoError(err)
 	s.NotEmpty(newPP)
 	s.NotNil(newConfig)
@@ -530,6 +530,11 @@ func (s *GenerateSuite) TestAddGeneratedProjectToConfig() {
 	s.Equal(newPP.Tasks[3].Name, "task_that_has_dependencies")
 	s.Equal(newPP.Tasks[4].Name, "new_task")
 	s.Equal(newPP.Tasks[5].Name, "another_task")
+
+	newPP2, newConfig2, err := g.addGeneratedProjectToConfig(nil, sampleProjYml, cachedProject)
+	s.NoError(err)
+	s.NotEmpty(newPP2)
+	s.Equal(newConfig, newConfig2)
 
 	s.Equal(newPP.BuildVariants[0].Name, "a_variant")
 	s.Require().Len(newPP.BuildVariants[0].DisplayTasks, 1)
@@ -554,7 +559,7 @@ func (s *GenerateSuite) TestAddGeneratedProjectToConfig() {
 
 	pp, err = LoadProjectInto([]byte(sampleProjYmlNoFunctions), "", p)
 	s.NoError(err)
-	newPP, newConfig, err = g.addGeneratedProjectToConfig(pp, cachedProject)
+	newPP, newConfig, err = g.addGeneratedProjectToConfig(pp, "", cachedProject)
 	s.NoError(err)
 	s.NotEmpty(newConfig)
 	s.NotNil(newPP)
@@ -565,6 +570,10 @@ func (s *GenerateSuite) TestAddGeneratedProjectToConfig() {
 	s.Equal(newPP.Tasks[1].Name, "say-bye")
 	s.Equal(newPP.Tasks[3].Name, "new_task")
 
+	newPP2, newConfig2, err = g.addGeneratedProjectToConfig(nil, sampleProjYmlNoFunctions, cachedProject)
+	s.NoError(err)
+	s.NotEmpty(newPP2)
+	s.Equal(newConfig, newConfig2)
 }
 
 func (s *GenerateSuite) TestSaveNewBuildsAndTasks() {
@@ -591,7 +600,7 @@ func (s *GenerateSuite) TestSaveNewBuildsAndTasks() {
 	g := sampleGeneratedProject
 	g.TaskID = "task_that_called_generate_task"
 	p, v, t, pm, err := g.NewVersion()
-	s.NoError(err)
+	s.Require().NoError(err)
 	s.NoError(g.Save(context.Background(), p, v, t, pm))
 	s.Equal(5, v.ConfigUpdateNumber)
 	builds, err := build.Find(db.Query(bson.M{}))

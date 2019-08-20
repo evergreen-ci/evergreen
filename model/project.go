@@ -847,7 +847,7 @@ func PopulateExpansions(t *task.Task, h *host.Host, oauthToken string) (util.Exp
 	for _, e := range h.Distro.Expansions {
 		expansions.Put(e.Key, e.Value)
 	}
-	proj, err := LoadProjectFromVersion(v, t.Project, true)
+	proj, err := LoadProjectFromVersion(v, t.Project, false)
 	if err != nil {
 		return nil, errors.Wrap(err, "error unmarshaling project")
 	}

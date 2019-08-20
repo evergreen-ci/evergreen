@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/build"
@@ -238,7 +239,7 @@ func (restapi restAPI) getVersionConfig(w http.ResponseWriter, r *http.Request) 
 
 	var config []byte
 	var err error
-	if projCtx.Version.ParserProject != nil {
+	if evergreen.UseParserProject && projCtx.Version.ParserProject != nil {
 		config, err = yaml.Marshal(projCtx.Version.ParserProject)
 		if err != nil {
 			gimlet.WriteJSONResponse(w, http.StatusInternalServerError, responseError{Message: "problem marshalling project"})

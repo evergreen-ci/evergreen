@@ -41,7 +41,7 @@ func (as *APIServer) manifestLoadHandler(w http.ResponseWriter, r *http.Request)
 	}
 
 	var project *model.Project
-	project, err = model.LoadProjectFromVersion(v, v.Identifier, true)
+	project, err = model.LoadProjectFromVersion(v, v.Identifier, false)
 	if err != nil {
 		as.LoggedError(w, r, http.StatusBadRequest, errors.Wrap(err, "error loading project from version"))
 		return

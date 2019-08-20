@@ -140,11 +140,13 @@ func (g *GeneratedProject) NewVersion() (*Project, *Version, *task.Task, *projec
 		return nil, nil, nil, nil,
 			gimlet.ErrorResponse{StatusCode: http.StatusBadRequest, Message: errors.Wrap(err, "generated project is invalid").Error()}
 	}
-	newPP, newConfig, err := g.addGeneratedProjectToConfig(v.ParserProject, cachedProject)
+
+	newPP, newConfig, err := g.addGeneratedProjectToConfig(v.ParserProject, v.Config, cachedProject)
 	if err != nil {
 		return nil, nil, nil, nil,
 			gimlet.ErrorResponse{StatusCode: http.StatusBadRequest, Message: errors.Wrap(err, "error creating config from generated config").Error()}
 	}
+
 	v.Config = newConfig
 	v.ParserProject = newPP
 	p, err = LoadProjectFromVersion(v, t.Project, false)
@@ -267,8 +269,17 @@ func appendTasks(pairs TaskVariantPairs, bv parserBV, p *Project) TaskVariantPai
 	return pairs
 }
 
-// addGeneratedProjectToConfig takes a YML config and returns a new one with the GeneratedProject included.
-func (g *GeneratedProject) addGeneratedProjectToConfig(intermediateProject *ParserProject, cachedProject projectMaps) (*ParserProject, string, error) {
+// addGeneratedProjectToConfig takes a ParserProject and a YML config and returns a new one with the GeneratedProject included.
+// support for YML config will be degraded.
+func (g *GeneratedProject) addGeneratedProjectToConfig(intermediateProject *ParserProject, config string, cachedProject projectMaps) (*ParserProject, string, error) {
+	var err error
+	if intermediateProject == nil {
+		intermediateProject, err = createIntermediateProject([]byte(config))
+		if err != nil {
+			return nil, "", errors.Wrapf(err, "error creating intermediate project")
+		}
+	}
+
 	// Append buildvariants, tasks, and functions to the config.
 	intermediateProject.TaskGroups = append(intermediateProject.TaskGroups, g.TaskGroups...)
 	intermediateProject.Tasks = append(intermediateProject.Tasks, g.Tasks...)

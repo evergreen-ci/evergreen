@@ -86,7 +86,7 @@ func SetupAPITestData(testConfig *evergreen.Settings, taskDisplayName string, va
 		Branch:      project.Branch,
 		Enabled:     project.Enabled,
 		BatchTime:   project.BatchTime,
-		LocalConfig: string(projectYamlBytes),
+		LocalConfig: string(projectConfig),
 	}
 	if err = projectRef.Insert(); err != nil {
 		return nil, errors.Wrap(err, "failed to insert projectRef")
@@ -170,7 +170,7 @@ func SetupAPITestData(testConfig *evergreen.Settings, taskDisplayName string, va
 		Config:        string(projectYamlBytes),
 	}
 	if err = v.Insert(); err != nil {
-		return nil, errors.Wrap(err, "failed to insert version: ")
+		return nil, errors.Wrap(err, "failed to insert version")
 	}
 
 	// Insert the build that contains the tasks

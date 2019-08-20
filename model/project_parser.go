@@ -432,7 +432,7 @@ func LoadProjectFromVersion(v *Version, identifier string, shouldSave bool) (*Pr
 		return nil, errors.Wrap(err, "error loading project")
 	}
 	if shouldSave {
-		if err := UpdateVersionProject(v.Id, v.ConfigUpdateNumber, pp); err != nil {
+		if err = UpdateVersionProject(v.Id, v.ConfigUpdateNumber, pp); err != nil {
 			grip.Error(message.WrapError(err, message.Fields{
 				"project":       identifier,
 				"version":       v.Id,
@@ -441,8 +441,8 @@ func LoadProjectFromVersion(v *Version, identifier string, shouldSave bool) (*Pr
 			}))
 			return nil, errors.Wrap(err, "error updating version with project")
 		}
+		v.ParserProject = pp
 	}
-	v.ParserProject = pp
 	return p, nil
 }
 
@@ -514,11 +514,11 @@ func translateProject(pp *ParserProject) (*Project, error) {
 	var errs []error
 	matrixVariants, errs := buildMatrixVariants(pp.Axes, ase, matrices)
 	catcher.Extend(errs)
-	pp.BuildVariants = append(regularBVs, matrixVariants...)
-	vse := NewVariantSelectorEvaluator(pp.BuildVariants, ase)
+	buildVariants := append(regularBVs, matrixVariants...)
+	vse := NewVariantSelectorEvaluator(buildVariants, ase)
 	proj.Tasks, proj.TaskGroups, errs = evaluateTaskUnits(tse, tgse, vse, pp.Tasks, pp.TaskGroups)
 	catcher.Extend(errs)
-	proj.BuildVariants, errs = evaluateBuildVariants(tse, tgse, vse, pp.BuildVariants, pp.Tasks, proj.TaskGroups)
+	proj.BuildVariants, errs = evaluateBuildVariants(tse, tgse, vse, buildVariants, pp.Tasks, proj.TaskGroups)
 	catcher.Extend(errs)
 	return proj, errors.Wrap(catcher.Resolve(), LoadProjectError)
 }
