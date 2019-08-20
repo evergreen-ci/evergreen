@@ -7,7 +7,6 @@ import (
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/mongodb/anser/bsonutil"
 	adb "github.com/mongodb/anser/db"
-	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson"
 )
 
@@ -174,6 +173,22 @@ func VersionByMostRecentSystemRequester(projectId string) db.Q {
 	).Sort([]string{"-" + VersionRevisionOrderNumberKey})
 }
 
+// if startOrder is specified, only returns older versions (i.e. with a smaller revision number)
+func VersionBySystemRequesterOrdered(projectId string, startOrder int) db.Q {
+	q := bson.M{
+		VersionRequesterKey: bson.M{
+			"$in": evergreen.SystemVersionRequesterTypes,
+		},
+		VersionIdentifierKey: projectId,
+	}
+	if startOrder > 0 {
+		q[VersionRevisionOrderNumberKey] = bson.M{
+			"$lt": startOrder,
+		}
+	}
+	return db.Query(q).Sort([]string{"-" + VersionRevisionOrderNumberKey})
+}
+
 // ByMostRecentNonIgnored finds all non-ignored versions within a project,
 // ordered by most recently created to oldest.
 func VersionByMostRecentNonIgnored(projectId string) db.Q {
@@ -270,24 +285,6 @@ func VersionUpdateOne(query interface{}, update interface{}) error {
 		query,
 		update,
 	)
-}
-
-// UpdateVersionProject updates the ParserProject field for the version.
-// Note this does not increment the config update number, as we are not changing the used config, simply updating a new field.
-func UpdateVersionProject(versionID string, versionNumber int, pp *ParserProject) error {
-	if versionID == "" {
-		return errors.New("no version ID given")
-	}
-	return errors.Wrap(VersionUpdateOne(
-		bson.M{
-			VersionIdKey:           versionID,
-			VersionConfigNumberKey: versionNumber,
-		},
-		bson.M{
-			"$set": bson.M{
-				VersionProjectKey: pp,
-			},
-		}), "error updating version")
 }
 
 func AddSatisfiedTrigger(versionID, definitionID string) error {

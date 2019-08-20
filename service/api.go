@@ -20,7 +20,6 @@ import (
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
-	"gopkg.in/yaml.v2"
 )
 
 const (
@@ -31,11 +30,12 @@ const (
 
 // APIServer handles communication with Evergreen agents and other back-end requests.
 type APIServer struct {
-	UserManager    gimlet.UserManager
-	Settings       evergreen.Settings
-	queue          amboy.Queue
-	queueGroup     amboy.QueueGroup
-	taskDispatcher model.TaskQueueItemDispatcher
+	UserManager         gimlet.UserManager
+	Settings            evergreen.Settings
+	queue               amboy.Queue
+	queueGroup          amboy.QueueGroup
+	taskDispatcher      model.TaskQueueItemDispatcher
+	taskAliasDispatcher model.TaskQueueItemDispatcher
 }
 
 // NewAPIServer returns an APIServer initialized with the given settings and plugins.
@@ -50,11 +50,12 @@ func NewAPIServer(settings *evergreen.Settings, queue amboy.Queue, queueGroup am
 	}
 
 	as := &APIServer{
-		UserManager:    authManager,
-		Settings:       *settings,
-		queue:          queue,
-		queueGroup:     queueGroup,
-		taskDispatcher: model.NewTaskDispatchService(taskDispatcherTTL),
+		UserManager:         authManager,
+		Settings:            *settings,
+		queue:               queue,
+		queueGroup:          queueGroup,
+		taskDispatcher:      model.NewTaskDispatchService(taskDispatcherTTL),
+		taskAliasDispatcher: model.NewTaskDispatchAliasService(taskDispatcherTTL),
 	}
 
 	return as, nil
@@ -147,7 +148,7 @@ func (as *APIServer) checkProject(next http.HandlerFunc) http.HandlerFunc {
 			return
 		}
 
-		r = setProjectRefContext(r, projectRef)
+		r = setProjectReftContext(r, projectRef)
 		r = setProjectContext(r, p)
 
 		next(w, r)
@@ -184,16 +185,7 @@ func (as *APIServer) GetVersion(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "version not found", http.StatusNotFound)
 		return
 	}
-	// safety check
-	if v.Config == "" && v.ParserProject != nil {
-		config, err := yaml.Marshal(v.ParserProject)
-		if err != nil {
-			as.LoggedError(w, r, http.StatusInternalServerError, err)
-			return
-		}
-		v.Config = string(config)
-	}
-	v.ParserProject = nil
+
 	gimlet.WriteJSON(w, v)
 }
 
@@ -428,7 +420,7 @@ func (as *APIServer) validateProjectConfig(w http.ResponseWriter, r *http.Reques
 
 	project := &model.Project{}
 	validationErr := validator.ValidationError{}
-	if _, err = model.LoadProjectInto(yamlBytes, "", project); err != nil {
+	if err = model.LoadProjectInto(yamlBytes, "", project); err != nil {
 		validationErr.Message = err.Error()
 		gimlet.WriteJSONError(w, validator.ValidationErrors{validationErr})
 		return

@@ -121,6 +121,7 @@ func (s *APIFinderSettings) ToService() (interface{}, error) {
 
 type APIDistro struct {
 	Name                  APIString              `json:"name"`
+	Aliases               []string               `json:"aliases"`
 	UserSpawnAllowed      bool                   `json:"user_spawn_allowed"`
 	Provider              APIString              `json:"provider"`
 	ProviderSettings      map[string]interface{} `json:"settings"`
@@ -161,9 +162,10 @@ func (apiDistro *APIDistro) BuildFromService(h interface{}) error {
 	}
 
 	apiDistro.Name = ToAPIString(d.Id)
+	apiDistro.Aliases = d.Aliases
 	apiDistro.UserSpawnAllowed = d.SpawnAllowed
 	apiDistro.Provider = ToAPIString(d.Provider)
-	if d.ProviderSettings != nil && (d.Provider == evergreen.ProviderNameEc2Auto || d.Provider == evergreen.ProviderNameEc2OnDemand || d.Provider == evergreen.ProviderNameEc2Spot) {
+	if d.ProviderSettings != nil && cloud.IsEc2Provider(d.Provider) {
 		ec2Settings := &cloud.EC2ProviderSettings{}
 		err := mapstructure.Decode(d.ProviderSettings, ec2Settings)
 		if err != nil {
@@ -181,6 +183,10 @@ func (apiDistro *APIDistro) BuildFromService(h interface{}) error {
 	apiDistro.Setup = ToAPIString(d.Setup)
 	apiDistro.Teardown = ToAPIString(d.Teardown)
 	apiDistro.User = ToAPIString(d.User)
+	if d.CloneMethod == "" {
+		d.CloneMethod = distro.CloneMethodLegacySSH
+	}
+	apiDistro.CloneMethod = ToAPIString(d.CloneMethod)
 	if d.BootstrapMethod == "" {
 		d.BootstrapMethod = distro.BootstrapMethodLegacySSH
 	}
@@ -189,13 +195,10 @@ func (apiDistro *APIDistro) BuildFromService(h interface{}) error {
 		d.CommunicationMethod = distro.CommunicationMethodLegacySSH
 	}
 	apiDistro.CommunicationMethod = ToAPIString(d.CommunicationMethod)
-	if d.CloneMethod == "" {
-		d.CloneMethod = distro.CloneMethodLegacySSH
-	}
-	apiDistro.CloneMethod = ToAPIString(d.CloneMethod)
 	apiDistro.ShellPath = ToAPIString(d.ShellPath)
 	apiDistro.CuratorDir = ToAPIString(d.CuratorDir)
 	apiDistro.ClientDir = ToAPIString(d.ClientDir)
+	apiDistro.JasperCredentialsPath = ToAPIString(d.JasperCredentialsPath)
 	apiDistro.SSHKey = ToAPIString(d.SSHKey)
 	apiDistro.Disabled = d.Disabled
 	apiDistro.ContainerPool = ToAPIString(d.ContainerPool)
@@ -228,6 +231,7 @@ func (apiDistro *APIDistro) BuildFromService(h interface{}) error {
 func (apiDistro *APIDistro) ToService() (interface{}, error) {
 	d := distro.Distro{}
 	d.Id = FromAPIString(apiDistro.Name)
+	d.Aliases = apiDistro.Aliases
 	d.Arch = FromAPIString(apiDistro.Arch)
 	d.WorkDir = FromAPIString(apiDistro.WorkDir)
 	d.PoolSize = apiDistro.PoolSize
@@ -254,6 +258,7 @@ func (apiDistro *APIDistro) ToService() (interface{}, error) {
 	d.ShellPath = FromAPIString(apiDistro.ShellPath)
 	d.CuratorDir = FromAPIString(apiDistro.CuratorDir)
 	d.ClientDir = FromAPIString(apiDistro.ClientDir)
+	d.JasperCredentialsPath = FromAPIString(apiDistro.JasperCredentialsPath)
 	d.SSHKey = FromAPIString(apiDistro.SSHKey)
 	d.SSHOptions = apiDistro.SSHOptions
 	d.SpawnAllowed = apiDistro.UserSpawnAllowed

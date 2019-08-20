@@ -16,6 +16,7 @@ import (
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/build"
+	"github.com/evergreen-ci/evergreen/model/task"
 	modelutil "github.com/evergreen-ci/evergreen/model/testutil"
 	serviceutil "github.com/evergreen-ci/evergreen/service/testutil"
 	"github.com/evergreen-ci/evergreen/testutil"
@@ -56,8 +57,7 @@ func TestGetRecentVersions(t *testing.T) {
 	require.NoError(t, err, "Error loading local config render")
 
 	Convey("When finding recent versions", t, func() {
-		require.NoError(t, db.ClearCollections(model.VersionCollection, build.Collection),
-			"Error clearing '%v' collection", model.VersionCollection)
+		require.NoError(t, db.ClearCollections(model.VersionCollection, build.Collection, task.Collection))
 
 		projectName := "project_test"
 
@@ -67,6 +67,7 @@ func TestGetRecentVersions(t *testing.T) {
 		So(projectName, ShouldNotEqual, otherProjectName) // sanity-check
 
 		buildIdPreface := "build-id-for-version%v"
+		taskIdPreface := "task-id-for-version%v"
 
 		So(NumRecentVersions, ShouldBeGreaterThan, 0)
 		versions := make([]*model.Version, 0, NumRecentVersions)
@@ -114,12 +115,7 @@ func TestGetRecentVersions(t *testing.T) {
 		So(otherVersion.Insert(), ShouldBeNil)
 
 		builds := make([]*build.Build, 0, NumRecentVersions)
-		task := build.TaskCache{
-			Id:          "some-task-id",
-			DisplayName: "some-task-name",
-			Status:      "success",
-			TimeTaken:   time.Duration(100 * time.Millisecond),
-		}
+		tasks := make([]*task.Task, 0, NumRecentVersions)
 
 		for i := 0; i < NumRecentVersions; i++ {
 			build := &build.Build{
@@ -127,10 +123,20 @@ func TestGetRecentVersions(t *testing.T) {
 				Version:      versions[i].Id,
 				BuildVariant: "some-build-variant",
 				DisplayName:  "Some Build Variant",
-				Tasks:        []build.TaskCache{task},
 			}
 			So(build.Insert(), ShouldBeNil)
 			builds = append(builds, build)
+
+			task := &task.Task{
+				Id:           fmt.Sprintf(taskIdPreface, i),
+				Version:      versions[i].Id,
+				DisplayName:  "some-task-name",
+				Status:       "success",
+				TimeTaken:    time.Duration(100 * time.Millisecond),
+				BuildVariant: build.BuildVariant,
+			}
+			So(task.Insert(), ShouldBeNil)
+			tasks = append(tasks, task)
 		}
 
 		url := "/rest/v1/projects/" + projectName + "/versions"
@@ -142,13 +148,16 @@ func TestGetRecentVersions(t *testing.T) {
 		// Need match variables to be set so can call mux.Vars(request)
 		// in the actual handler function
 		router.ServeHTTP(response, request)
-
 		So(response.Code, ShouldEqual, http.StatusOK)
 
 		Convey("response should match contents of database", func() {
 			var jsonBody map[string]interface{}
 			err = json.Unmarshal(response.Body.Bytes(), &jsonBody)
 			So(err, ShouldBeNil)
+			link := response.Header().Get("Link")
+			So(link, ShouldNotBeEmpty)
+			So(link, ShouldContainSubstring, "/versions")
+			So(link, ShouldContainSubstring, "limit=10&start=0")
 
 			var rawJsonBody map[string]*json.RawMessage
 			err = json.Unmarshal(response.Body.Bytes(), &rawJsonBody)
@@ -189,14 +198,14 @@ func TestGetRecentVersions(t *testing.T) {
 				So(ok, ShouldBeTrue)
 				So(len(jsonTasks), ShouldEqual, 1)
 
-				_jsonTask, ok := jsonTasks[task.DisplayName]
+				_jsonTask, ok := jsonTasks[tasks[i].DisplayName]
 				So(ok, ShouldBeTrue)
 				jsonTask, ok := _jsonTask.(map[string]interface{})
 				So(ok, ShouldBeTrue)
 
-				So(jsonTask["task_id"], ShouldEqual, task.Id)
-				So(jsonTask["status"], ShouldEqual, task.Status)
-				So(jsonTask["time_taken"], ShouldEqual, task.TimeTaken)
+				So(jsonTask["task_id"], ShouldEqual, tasks[i].Id)
+				So(jsonTask["status"], ShouldEqual, tasks[i].Status)
+				So(jsonTask["time_taken"], ShouldEqual, tasks[i].TimeTaken)
 			}
 		})
 	})

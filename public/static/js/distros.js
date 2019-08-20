@@ -67,6 +67,9 @@ mciModule.controller('DistrosCtrl', function($scope, $window, $location, $anchor
     'id': 'ec2-spot',
     'display': 'EC2 Spot'
   }, {
+    'id': 'ec2-fleet',
+    'display': 'EC2 Fleet'
+  }, {
     'id': 'static',
     'display': 'Static IP/VM'
   }, {

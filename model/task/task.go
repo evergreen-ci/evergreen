@@ -1300,6 +1300,14 @@ func FindSchedulable(distroID string) ([]Task, error) {
 	return Find(db.Query(query))
 }
 
+func FindSchedulableForAlias(id string) ([]Task, error) {
+	q := scheduleableTasksQuery()
+
+	q[DistroAliasesKey] = id
+
+	return FindAll(db.Query(q))
+}
+
 func FindRunnable(distroID string, removeDeps bool) ([]Task, error) {
 	expectedStatuses := []string{evergreen.TaskSucceeded, evergreen.TaskFailed, ""}
 
@@ -1648,10 +1656,6 @@ func (t *Task) blockedStatePrivate() (string, error) {
 	for _, dependency := range t.DependsOn {
 		depTask := taskMap[dependency.TaskId]
 		if depTask == nil {
-			grip.Error(message.Fields{
-				"message": "task does not exist",
-				"task_id": dependency.TaskId,
-			})
 			continue
 		}
 		state, err := depTask.blockedStatePrivate()

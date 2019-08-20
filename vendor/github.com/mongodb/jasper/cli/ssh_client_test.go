@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"io/ioutil"
+	"bytes"
 	"strings"
 	"testing"
 
@@ -268,8 +269,8 @@ func TestSSHClient(t *testing.T) {
 			)
 			assert.Error(t, client.Close(ctx))
 		},
-		"CloseConnectionFails": func(ctx context.Context, t *testing.T, client *sshClient, baseManager *jasper.MockManager) {
-			assert.Error(t, client.CloseConnection())
+		"CloseConnectionPasses": func(ctx context.Context, t *testing.T, client *sshClient, baseManager *jasper.MockManager) {
+			assert.NoError(t, client.CloseConnection())
 		},
 		"ConfigureCachePassesWithValidResponse": func(ctx context.Context, t *testing.T, client *sshClient, baseManager *jasper.MockManager) {
 			inputChecker := jasper.CacheOptions{}
@@ -477,8 +478,8 @@ func TestSSHClient(t *testing.T) {
 // expectedResponse back to the user.
 func makeCreateFunc(t *testing.T, client *sshClient, expectedClientSubcommand []string, inputChecker interface{}, expectedResponse interface{}) func(*jasper.CreateOptions) jasper.MockProcess {
 	return func(opts *jasper.CreateOptions) jasper.MockProcess {
-		if opts.StandardInput != nil && inputChecker != nil {
-			input, err := ioutil.ReadAll(opts.StandardInput)
+		if opts.StandardInputBytes != nil && inputChecker != nil {
+			input, err := ioutil.ReadAll(bytes.NewBuffer(opts.StandardInputBytes))
 			require.NoError(t, err)
 			require.NoError(t, json.Unmarshal(input, inputChecker))
 		}

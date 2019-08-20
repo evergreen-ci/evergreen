@@ -3,7 +3,6 @@ package units
 import (
 	"context"
 	"fmt"
-	"path/filepath"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
@@ -73,7 +72,8 @@ func (j *agentMonitorDeployJob) Run(ctx context.Context) {
 	if err != nil {
 		j.AddError(err)
 		return
-	} else if disabled {
+	}
+	if disabled {
 		grip.Debug(message.Fields{
 			"mode":     "degraded",
 			"host":     j.HostID,
@@ -272,7 +272,7 @@ func (j *agentMonitorDeployJob) startAgentMonitor(ctx context.Context, settings 
 	}
 
 	grip.Info(j.deployMessage())
-	if err := j.host.StartJasperProcess(ctx, j.env, j.agentMonitorOptions(settings)); err != nil {
+	if err := j.host.StartJasperProcess(ctx, j.env, j.host.AgentMonitorOptions(settings)); err != nil {
 		grip.Error(message.WrapError(err, message.Fields{
 			"message": "failed to start agent monitor on host",
 			"host":    j.host.Id,
@@ -285,59 +285,6 @@ func (j *agentMonitorDeployJob) startAgentMonitor(ctx context.Context, settings 
 	event.LogHostAgentMonitorDeployed(j.host.Id)
 
 	return nil
-}
-
-// agentMonitorOptions assembles the input to a Jasper request to create the
-// agent monitor.
-func (j *agentMonitorDeployJob) agentMonitorOptions(settings *evergreen.Settings) *jasper.CreateOptions {
-	binary := filepath.Join(j.host.Distro.HomeDir(), j.host.Distro.BinaryName())
-
-	agentMonitorParams := []string{
-		binary,
-		"agent",
-		fmt.Sprintf("--api_server='%s'", settings.ApiUrl),
-		fmt.Sprintf("--host_id='%s'", j.host.Id),
-		fmt.Sprintf("--host_secret='%s'", j.host.Secret),
-		fmt.Sprintf("--log_prefix='%s'", filepath.Join(j.host.Distro.WorkDir, "agent")),
-		fmt.Sprintf("--working_directory='%s'", j.host.Distro.WorkDir),
-		fmt.Sprintf("--logkeeper_url='%s'", settings.LoggerConfig.LogkeeperURL),
-		"--cleanup",
-		"monitor",
-		fmt.Sprintf("--log_prefix='%s'", filepath.Join(j.host.Distro.WorkDir, "agent.monitor")),
-		fmt.Sprintf("--client_url='%s'", j.host.ClientURL(settings)),
-		fmt.Sprintf("--client_path='%s'", filepath.Join(j.host.Distro.ClientDir, j.host.Distro.BinaryName())),
-		fmt.Sprintf("--jasper_port=%d", settings.HostJasper.Port),
-		fmt.Sprintf("--credentials='%s'", j.host.Distro.JasperCredentialsPath),
-	}
-
-	return &jasper.CreateOptions{
-		Args:        agentMonitorParams,
-		Environment: j.agentEnv(settings),
-		Tags:        []string{evergreen.AgentMonitorTag},
-	}
-}
-
-// agentEnv returns the agent environment variables.
-func (j *agentMonitorDeployJob) agentEnv(settings *evergreen.Settings) map[string]string {
-	env := map[string]string{
-		"S3_KEY":    settings.Providers.AWS.S3Key,
-		"S3_SECRET": settings.Providers.AWS.S3Secret,
-		"S3_BUCKET": settings.Providers.AWS.Bucket,
-	}
-
-	if sumoEndpoint, ok := settings.Credentials["sumologic"]; ok {
-		env["GRIP_SUMO_ENDPOINT"] = sumoEndpoint
-	}
-
-	if settings.Splunk.Populated() {
-		env["GRIP_SPLUNK_SERVER_URL"] = settings.Splunk.ServerURL
-		env["GRIP_SPLUNK_CLIENT_TOKEN"] = settings.Splunk.Token
-		if settings.Splunk.Channel != "" {
-			env["GRIP_SPLUNK_CHANNEL"] = settings.Splunk.Channel
-		}
-	}
-
-	return env
 }
 
 // deployMessage builds the message containing information preceding an agent
@@ -386,11 +333,14 @@ func (j *agentMonitorDeployJob) agentStartDisabled() (bool, error) {
 // populateIfUnset populates the unset job fields.
 func (j *agentMonitorDeployJob) populateIfUnset() error {
 	if j.host == nil {
-		host, err := host.FindOneId(j.HostID)
-		if err != nil || host == nil {
-			return errors.Wrapf(err, "could not find host %s for job %s", j.HostID, j.TaskID)
+		h, err := host.FindOneId(j.HostID)
+		if err != nil {
+			return errors.Wrapf(err, "could not find host %s for job %s", j.HostID, j.ID())
 		}
-		j.host = host
+		if h == nil {
+			return errors.Errorf("could not find host %s for job %s", j.HostID, j.ID())
+		}
+		j.host = h
 	}
 
 	if j.env == nil {

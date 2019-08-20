@@ -16,6 +16,7 @@ import (
 
 type Distro struct {
 	Id                    string                  `bson:"_id" json:"_id,omitempty" mapstructure:"_id,omitempty"`
+	Aliases               []string                `bson:"aliases,omitempty" json:"aliases,omitempty" mapstructure:"aliases,omitempty"`
 	Arch                  string                  `bson:"arch" json:"arch,omitempty" mapstructure:"arch,omitempty"`
 	WorkDir               string                  `bson:"work_dir" json:"work_dir,omitempty" mapstructure:"work_dir,omitempty"`
 	PoolSize              int                     `bson:"pool_size,omitempty" json:"pool_size,omitempty" mapstructure:"pool_size,omitempty" yaml:"poolsize"`
@@ -25,9 +26,9 @@ type Distro struct {
 	Setup                 string                  `bson:"setup,omitempty" json:"setup,omitempty" mapstructure:"setup,omitempty"`
 	Teardown              string                  `bson:"teardown,omitempty" json:"teardown,omitempty" mapstructure:"teardown,omitempty"`
 	User                  string                  `bson:"user,omitempty" json:"user,omitempty" mapstructure:"user,omitempty"`
+	CloneMethod           string                  `bson:"clone_method" json:"clone_method,omitempty" mapstructure:"clone_method,omitempty"`
 	BootstrapMethod       string                  `bson:"bootstrap_method,omitempty" json:"bootstrap_method,omitempty" mapstructure:"bootstrap_method,omitempty"`
 	CommunicationMethod   string                  `bson:"communication_method,omitempty" json:"communication_method,omitempty" mapstructure:"communication_method,omitempty"`
-	CloneMethod           string                  `bson:"clone_method" json:"clone_method,omitempty" mapstructure:"clone_method,omitempty"`
 	ShellPath             string                  `bson:"shell_path" json:"shell_path" mapstructure:"shell_path,omitempty"`
 	CuratorDir            string                  `bson:"curator_dir" json:"curator_dir" mapstructure:"curator_dir,omitempty"`
 	ClientDir             string                  `bson:"client_dir" json:"client_dir" mapstructure:"client_dir,omitempty"`
@@ -238,6 +239,9 @@ func (d *Distro) HomeDir() string {
 	if d.User == "root" {
 		return filepath.Join("/", d.User)
 	}
+	if d.Arch == ArchDarwinAmd64 {
+		return filepath.Join("/Users", d.User)
+	}
 	return filepath.Join("/home", d.User)
 }
 
@@ -268,6 +272,8 @@ func (d *Distro) GetImageID() (string, error) {
 		i = (*d.ProviderSettings)["ami"]
 	case evergreen.ProviderNameEc2Spot:
 		i = (*d.ProviderSettings)["ami"]
+	case evergreen.ProviderNameEc2Fleet:
+		i = (*d.ProviderSettings)["ami"]
 	case evergreen.ProviderNameDocker:
 		i = (*d.ProviderSettings)["image_url"]
 	case evergreen.ProviderNameDockerMock:
@@ -291,6 +297,25 @@ func (d *Distro) GetImageID() (string, error) {
 		return "", errors.New("cannot extract image ID from provider settings")
 	}
 	return s, nil
+}
+
+func (d *Distro) GetPoolSize() int {
+	switch d.Provider {
+	case evergreen.ProviderNameStatic:
+		if d.ProviderSettings == nil {
+			return 0
+		}
+
+		hosts, ok := (*d.ProviderSettings)["hosts"].([]interface{})
+		if !ok {
+			return 0
+		}
+
+		return len(hosts)
+	default:
+		return d.PoolSize + d.PlannerSettings.MaximumHosts
+	}
+
 }
 
 // ValidateContainerPoolDistros ensures that container pools have valid distros

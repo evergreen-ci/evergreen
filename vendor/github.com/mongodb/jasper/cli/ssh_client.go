@@ -161,7 +161,7 @@ func (c *sshClient) Close(ctx context.Context) error {
 }
 
 func (c *sshClient) CloseConnection() error {
-	return errors.New("cannot close connection on an SSH client")
+	return nil
 }
 
 func (c *sshClient) ConfigureCache(ctx context.Context, opts jasper.CacheOptions) error {

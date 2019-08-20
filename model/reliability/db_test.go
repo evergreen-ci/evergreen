@@ -1,0 +1,254 @@
+package reliability
+
+import (
+	"context"
+	"testing"
+	"time"
+
+	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/mock"
+	"github.com/evergreen-ci/evergreen/model/stats"
+	"github.com/pkg/errors"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+	"go.mongodb.org/mongo-driver/bson"
+)
+
+func setupEnv(ctx context.Context) (*mock.Environment, error) {
+	env := &mock.Environment{}
+
+	if err := env.Configure(ctx, "", nil); err != nil {
+		return nil, errors.WithStack(err)
+	}
+	return env, nil
+}
+
+func withSetupAndTeardown(t *testing.T, env evergreen.Environment, fn func()) {
+	require.NoError(t, db.ClearCollections(stats.DailyTaskStatsCollection))
+	defer func() {
+		assert.NoError(t, db.ClearCollections(stats.DailyTaskStatsCollection))
+	}()
+
+	fn()
+}
+
+func TestPipeline(t *testing.T) {
+	after := time.Date(2018, 8, 12, 0, 0, 0, 0, time.UTC)
+	before := time.Date(2018, 8, 13, 0, 0, 0, 0, time.UTC)
+	requesters := []string{
+		evergreen.PatchVersionRequester,
+		evergreen.GithubPRRequester,
+		evergreen.MergeTestRequester,
+	}
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	// Set up expected values for simple aggregations.
+	match := bson.M{
+		"$match": bson.M{
+			"_id.project":   project,
+			"_id.date":      bson.M{"$gte": after, "$lt": before.Add(24 * time.Hour)},
+			"_id.requester": bson.M{"$in": requesters},
+		},
+	}
+
+	simpleGroup := bson.M{
+		"$group": bson.M{
+			"_id":                    bson.M{"date": "$_id.date"},
+			"num_failed":             bson.M{"$sum": "$num_failed"},
+			"num_setup_failed":       bson.M{"$sum": "$num_setup_failed"},
+			"num_success":            bson.M{"$sum": "$num_success"},
+			"num_system_failed":      bson.M{"$sum": "$num_system_failed"},
+			"num_test_failed":        bson.M{"$sum": "$num_test_failed"},
+			"num_timeout":            bson.M{"$sum": "$num_timeout"},
+			"total_duration_success": bson.M{"$sum": bson.M{"$multiply": stats.Array{"$num_success", "$avg_duration_success"}}},
+		},
+	}
+	projection := bson.M{
+		"$project": bson.M{
+			"avg_duration_success": bson.M{
+				"$cond": bson.M{
+					"else": nil,
+					"if": bson.M{
+						"$ne": stats.Array{
+							"$num_success",
+							0,
+						},
+					},
+					"then": bson.M{
+						"$divide": stats.Array{
+							"$total_duration_success",
+							"$num_success",
+						},
+					},
+				},
+			},
+			"date":              "$_id.date",
+			"distro":            "$_id.distro",
+			"num_failed":        1,
+			"num_setup_failed":  1,
+			"num_success":       1,
+			"num_system_failed": 1,
+			"num_test_failed":   1,
+			"num_timeout":       1,
+			"num_total":         bson.M{"$add": stats.Array{"$num_success", "$num_failed"}},
+			"task_name":         "$_id.task_name",
+			"variant":           "$_id.variant",
+		},
+	}
+	sort := bson.M{
+		"$sort": bson.D{
+			{Key: "date", Value: 1},
+			{Key: "variant", Value: 1},
+			{Key: "task_name", Value: 1},
+			{Key: "distro", Value: 1},
+		},
+	}
+	limit := bson.M{"$limit": 1}
+
+	withCancelledContext := func(ctx context.Context, fn func(context.Context)) {
+		ctx, cancel := context.WithCancel(ctx)
+		cancel()
+		fn(ctx)
+	}
+
+	for opName, opTests := range map[string]func(ctx context.Context, t *testing.T, env evergreen.Environment){
+		"BuildMatchStageForTask": func(ctx context.Context, t *testing.T, env evergreen.Environment) {
+			for testName, testCase := range map[string]func(ctx context.Context, t *testing.T, filter *TaskReliabilityFilter){
+				"Simple": func(ctx context.Context, t *testing.T, filter *TaskReliabilityFilter) {
+
+					// Adding 1 day to to before for consistency with TaskReliabilityQueryPipeline.
+					boundaries := []time.Time{before.Add(24 * time.Hour), after}
+					withCancelledContext(ctx, func(ctx context.Context) {
+						stage := filter.BuildMatchStageForTask(boundaries)
+						assert.Equal(t, stage, match)
+					})
+				},
+			} {
+				t.Run(testName, func(t *testing.T) {
+					withSetupAndTeardown(t, env, func() {
+						filter := TaskReliabilityFilter{
+							StatsFilter: stats.StatsFilter{
+								Project:    project,
+								Requesters: requesters},
+						}
+						testCase(ctx, t, &filter)
+					})
+				})
+			}
+		},
+		"BuildTaskStatsQueryGroupStage": func(ctx context.Context, t *testing.T, env evergreen.Environment) {
+			for testName, testCase := range map[string]func(ctx context.Context, t *testing.T, filter *TaskReliabilityFilter){
+				"Simple": func(ctx context.Context, t *testing.T, filter *TaskReliabilityFilter) {
+
+					withCancelledContext(ctx, func(ctx context.Context) {
+						stage := filter.BuildTaskStatsQueryGroupStage()
+						assert.Equal(t, stage, simpleGroup)
+					})
+				},
+				"WithAfterBefore": func(ctx context.Context, t *testing.T, filter *TaskReliabilityFilter) {
+					withCancelledContext(ctx, func(ctx context.Context) {
+						filter.StatsFilter.AfterDate = after
+						filter.StatsFilter.BeforeDate = before
+						filter.StatsFilter.GroupNumDays = 2
+						stage := filter.BuildTaskStatsQueryGroupStage()
+						assert.Equal(t, stage, bson.M{
+							"$group": bson.M{
+								"_id": bson.M{
+									"date": bson.M{
+										"$switch": bson.M{
+											"branches": []bson.M{
+												bson.M{
+													"case": bson.M{
+														"$and": stats.Array{
+															bson.M{
+																"$lt": stats.Array{
+																	"$_id.date",
+																	before.Add(24 * time.Hour),
+																},
+															},
+															bson.M{
+																"$gte": stats.Array{
+																	"$_id.date",
+																	after,
+																},
+															},
+														},
+													},
+													"then": after,
+												},
+											},
+										},
+									},
+								},
+								"num_failed":             bson.M{"$sum": "$num_failed"},
+								"num_setup_failed":       bson.M{"$sum": "$num_setup_failed"},
+								"num_success":            bson.M{"$sum": "$num_success"},
+								"num_system_failed":      bson.M{"$sum": "$num_system_failed"},
+								"num_test_failed":        bson.M{"$sum": "$num_test_failed"},
+								"num_timeout":            bson.M{"$sum": "$num_timeout"},
+								"total_duration_success": bson.M{"$sum": bson.M{"$multiply": stats.Array{"$num_success", "$avg_duration_success"}}},
+							},
+						})
+					})
+				},
+			} {
+				t.Run(testName, func(t *testing.T) {
+					withSetupAndTeardown(t, env, func() {
+						filter := TaskReliabilityFilter{
+							StatsFilter: stats.StatsFilter{
+								Project:    project,
+								Requesters: requesters},
+						}
+						testCase(ctx, t, &filter)
+					})
+				})
+			}
+		},
+		"TaskReliabilityQueryPipeline": func(ctx context.Context, t *testing.T, env evergreen.Environment) {
+			for testName, testCase := range map[string]func(ctx context.Context, t *testing.T, filter *TaskReliabilityFilter){
+				"Simple": func(ctx context.Context, t *testing.T, filter *TaskReliabilityFilter) {
+					filter.StatsFilter.AfterDate = after
+					filter.StatsFilter.BeforeDate = before
+					filter.StatsFilter.GroupNumDays = 1
+					filter.StatsFilter.Limit = 1
+
+					withCancelledContext(ctx, func(ctx context.Context) {
+						pipeline := filter.TaskReliabilityQueryPipeline()
+						assert.Equal(t, pipeline, []bson.M{
+							match,
+							simpleGroup,
+							projection,
+							sort,
+							limit,
+						})
+					})
+				},
+			} {
+				t.Run(testName, func(t *testing.T) {
+					withSetupAndTeardown(t, env, func() {
+						filter := TaskReliabilityFilter{
+							StatsFilter: stats.StatsFilter{
+								Project:    project,
+								Requesters: requesters},
+						}
+						testCase(ctx, t, &filter)
+					})
+				})
+			}
+		},
+	} {
+		t.Run(opName, func(t *testing.T) {
+			env, err := setupEnv(ctx)
+			require.NoError(t, err)
+
+			tctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+			defer cancel()
+
+			env.Settings().DomainName = "test"
+			opTests(tctx, t, env)
+		})
+	}
+}

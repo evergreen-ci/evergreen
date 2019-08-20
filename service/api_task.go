@@ -142,18 +142,10 @@ func (as *APIServer) EndTask(w http.ResponseWriter, r *http.Request) {
 
 	details := &apimodels.TaskEndDetail{}
 	endTaskResp := &apimodels.EndTaskResponse{}
-	startPhaseAt := time.Now()
 	if err := util.ReadJSONInto(util.NewRequestReader(r), details); err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	grip.NoticeWhen(time.Since(startPhaseAt) > slowThreshold, message.Fields{
-		"message":       "slow operation",
-		"function":      "EndTask",
-		"step":          "parse request",
-		"task":          t.Id,
-		"duration_secs": time.Since(startPhaseAt).Seconds(),
-	})
 
 	// Check that finishing status is a valid constant
 	if !validateTaskEndDetails(details) {
@@ -176,7 +168,6 @@ func (as *APIServer) EndTask(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	startPhaseAt = time.Now()
 	// clear the running task on the host startPhaseAt that the task has finished
 	if err := currentHost.ClearRunningAndSetLastTask(t); err != nil {
 		err = errors.Wrapf(err, "error clearing running task %s for host %s", t.Id, currentHost.Id)
@@ -184,13 +175,6 @@ func (as *APIServer) EndTask(w http.ResponseWriter, r *http.Request) {
 		as.LoggedError(w, r, http.StatusInternalServerError, err)
 		return
 	}
-	grip.NoticeWhen(time.Since(startPhaseAt) > slowThreshold, message.Fields{
-		"message":       "slow operation",
-		"function":      "EndTask",
-		"step":          "ClearRunningAndSetLastTask",
-		"task":          t.Id,
-		"duration_secs": time.Since(startPhaseAt).Seconds(),
-	})
 
 	projectRef, err := model.FindOneProjectRef(t.Project)
 	if err != nil {
@@ -202,7 +186,6 @@ func (as *APIServer) EndTask(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// mark task as finished
-	startPhaseAt = time.Now()
 	updates := model.StatusChanges{}
 	err = model.MarkEnd(t, APIServerLockTitle, finishTime, details, projectRef.DeactivatePrevious, &updates)
 	if err != nil {
@@ -210,13 +193,6 @@ func (as *APIServer) EndTask(w http.ResponseWriter, r *http.Request) {
 		as.LoggedError(w, r, http.StatusInternalServerError, err)
 		return
 	}
-	grip.NoticeWhen(time.Since(startPhaseAt) > slowThreshold, message.Fields{
-		"message":       "slow operation",
-		"function":      "EndTask",
-		"step":          "MarkEnd",
-		"task":          t.Id,
-		"duration_secs": time.Since(startPhaseAt).Seconds(),
-	})
 
 	// the task was aborted if it is still in undispatched.
 	// the active state should be inactive.
@@ -233,7 +209,6 @@ func (as *APIServer) EndTask(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// For a single-host task group, if a task fails, block and dequeue later tasks in that group.
-	startPhaseAt = time.Now()
 	if t.TaskGroup != "" && t.TaskGroupMaxHosts == 1 && details.Status != evergreen.TaskSucceeded {
 		if err = model.BlockTaskGroupTasks(t.Id); err != nil {
 			grip.Error(message.WrapError(err, message.Fields{
@@ -246,45 +221,21 @@ func (as *APIServer) EndTask(w http.ResponseWriter, r *http.Request) {
 			"task_id": t.Id,
 		})
 	}
-	grip.NoticeWhen(time.Since(startPhaseAt) > slowThreshold, message.Fields{
-		"message":       "slow operation",
-		"function":      "EndTask",
-		"step":          "BlockTaskGroupTasks",
-		"task":          t.Id,
-		"duration_secs": time.Since(startPhaseAt).Seconds(),
-	})
 
-	startPhaseAt = time.Now()
 	job := units.NewCollectTaskEndDataJob(t, currentHost)
 	if err = as.queue.Put(r.Context(), job); err != nil {
 		as.LoggedError(w, r, http.StatusInternalServerError,
 			errors.Wrap(err, "couldn't queue job to update task cost accounting"))
 		return
 	}
-	grip.NoticeWhen(time.Since(startPhaseAt) > slowThreshold, message.Fields{
-		"message":       "slow operation",
-		"function":      "EndTask",
-		"step":          "collect task data job",
-		"task":          t.Id,
-		"duration_secs": time.Since(startPhaseAt).Seconds(),
-	})
 
 	// update the bookkeeping entry for the task
-	startPhaseAt = time.Now()
 	err = task.UpdateExpectedDuration(t, t.TimeTaken)
-	grip.NoticeWhen(time.Since(startPhaseAt) > slowThreshold, message.Fields{
-		"message":       "slow operation",
-		"function":      "EndTask",
-		"step":          "UpdateExpectedDuration",
-		"task":          t.Id,
-		"duration_secs": time.Since(startPhaseAt).Seconds(),
-	})
 	if err != nil {
 		grip.Warning(message.WrapError(err, "problem updating expected duration"))
 	}
 
 	env := evergreen.GetEnvironment()
-	startPhaseAt = time.Now()
 	if checkHostHealth(currentHost) {
 		ctx, cancel := context.WithTimeout(r.Context(), 30*time.Second)
 		defer cancel()
@@ -305,18 +256,10 @@ func (as *APIServer) EndTask(w http.ResponseWriter, r *http.Request) {
 		}
 		endTaskResp.ShouldExit = true
 	}
-	grip.NoticeWhen(time.Since(startPhaseAt) > slowThreshold, message.Fields{
-		"message":       "slow operation",
-		"function":      "EndTask",
-		"step":          "check host health",
-		"task":          t.Id,
-		"duration_secs": time.Since(startPhaseAt).Seconds(),
-	})
 
 	// we should disable hosts and prevent them from performing
 	// more work if they appear to be in a bad state
 	// (e.g. encountered 5 consecutive system failures)
-	startPhaseAt = time.Now()
 	if event.AllRecentHostEventsMatchStatus(currentHost.Id, consecutiveSystemFailureThreshold, evergreen.TaskSystemFailed) {
 		msg := "host encountered consecutive system failures"
 		if currentHost.Provider != evergreen.ProviderNameStatic {
@@ -349,13 +292,6 @@ func (as *APIServer) EndTask(w http.ResponseWriter, r *http.Request) {
 		}
 		endTaskResp.ShouldExit = true
 	}
-	grip.NoticeWhen(time.Since(startPhaseAt) > slowThreshold, message.Fields{
-		"message":       "slow operation",
-		"function":      "EndTask",
-		"step":          "clean up poisoned hosts",
-		"task":          t.Id,
-		"duration_secs": time.Since(startPhaseAt).Seconds(),
-	})
 
 	grip.Info(message.Fields{
 		"message":   "Successfully marked task as finished",
@@ -369,7 +305,7 @@ func (as *APIServer) EndTask(w http.ResponseWriter, r *http.Request) {
 
 // assignNextAvailableTask gets the next task from the queue and sets the running task field
 // of currentHost.
-func assignNextAvailableTask(taskQueue *model.TaskQueue, dispatcher model.TaskQueueItemDispatcher, currentHost *host.Host) (*task.Task, error) {
+func assignNextAvailableTask(ctx context.Context, taskQueue *model.TaskQueue, dispatcher model.TaskQueueItemDispatcher, currentHost *host.Host) (*task.Task, error) {
 	if currentHost.RunningTask != "" {
 		grip.Error(message.Fields{
 			"message":      "tried to assign task to a host already running task",
@@ -420,6 +356,10 @@ func assignNextAvailableTask(taskQueue *model.TaskQueue, dispatcher model.TaskQu
 	// continue must be preceded by dequeueing the current task from the
 	// queue to prevent an infinite loop.
 	for taskQueue.Length() != 0 {
+		if err = ctx.Err(); err != nil {
+			return nil, errors.WithStack(err)
+		}
+
 		var queueItem *model.TaskQueueItem
 		switch d.PlannerSettings.Version {
 		case evergreen.PlannerVersionTunable, evergreen.PlannerVersionRevised:
@@ -486,13 +426,6 @@ func assignNextAvailableTask(taskQueue *model.TaskQueue, dispatcher model.TaskQu
 		}
 
 		if !projectRef.Enabled {
-			grip.Warning(message.Fields{
-				"task_id": nextTask.Id,
-				"project": nextTask.Project,
-				"host_id": currentHost.Id,
-				"message": "skipping task because of disabled project",
-			})
-
 			grip.Warning(message.WrapError(taskQueue.DequeueTask(nextTask.Id), message.Fields{
 				"message":                  "projectRef.Enabled is false, but there was an issue dequeuing the task",
 				"distro_id":                nextTask.DistroId,
@@ -540,6 +473,33 @@ func assignNextAvailableTask(taskQueue *model.TaskQueue, dispatcher model.TaskQu
 func (as *APIServer) NextTask(w http.ResponseWriter, r *http.Request) {
 	begin := time.Now()
 	h := MustHaveHost(r)
+	ctx, cancel := context.WithCancel(r.Context())
+	defer cancel()
+
+	if h.AgentStartTime.IsZero() {
+		if err := h.SetAgentStartTime(); err != nil {
+			grip.Warning(message.WrapError(err, message.Fields{
+				"message": "could not set host's agent start time for first contact",
+				"host":    h.Id,
+				"distro":  h.Distro.Id,
+			}))
+		} else {
+			grip.Info(message.Fields{
+				"message":                   "agent initiated first contact with server",
+				"host":                      h.Id,
+				"distro":                    h.Distro.Id,
+				"agent_start_duration_secs": time.Since(h.CreationTime).Seconds(),
+			})
+		}
+	}
+
+	grip.Error(message.WrapError(h.SetUserDataHostProvisioned(), message.Fields{
+		"message":   "failed to mark host as done provisioning with user data",
+		"host":      h.Id,
+		"distro":    h.Distro.Id,
+		"bootstrap": h.Distro.BootstrapMethod,
+		"operation": "next_task",
+	}))
 
 	// stopAgentMonitor is only used for debug log purposes.
 	var stopAgentMonitor bool
@@ -556,10 +516,10 @@ func (as *APIServer) NextTask(w http.ResponseWriter, r *http.Request) {
 	var response apimodels.NextTaskResponse
 	var err error
 	if checkHostHealth(h) {
-		ctx, cancel := context.WithTimeout(r.Context(), 30*time.Second)
+		ctx, cancel = context.WithTimeout(r.Context(), 30*time.Second)
 		defer cancel()
 		env := evergreen.GetEnvironment()
-		stopAgentMonitor = true
+		stopAgentMonitor = !h.LegacyBootstrap()
 		if err = h.StopAgentMonitor(ctx, env); err != nil {
 			grip.Error(message.WrapError(err, message.Fields{
 				"message":   "problem stopping agent monitor",
@@ -611,6 +571,8 @@ func (as *APIServer) NextTask(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	var nextTask *task.Task
+
 	// retrieve the next task off the task queue and attempt to assign it to the host.
 	// If there is already a host that has the task, it will error
 	taskQueue, err := model.LoadTaskQueue(h.Distro.Id)
@@ -620,35 +582,53 @@ func (as *APIServer) NextTask(w http.ResponseWriter, r *http.Request) {
 		gimlet.WriteResponse(w, gimlet.MakeJSONInternalErrorResponder(err))
 		return
 	}
-	if taskQueue == nil {
-		grip.Info(message.Fields{
-			"message":   "nil task queue found",
-			"op":        "next_task",
-			"host_id":   h.Id,
-			"distro_id": h.Distro.Id,
-		})
-		gimlet.WriteJSON(w, response)
-		return
-	}
-	// assign the task to a host and retrieve the task
-	nextTask, err := assignNextAvailableTask(taskQueue, as.taskDispatcher, h)
-	if err != nil {
-		err = errors.WithStack(err)
-		grip.Error(err)
-		gimlet.WriteResponse(w, gimlet.MakeJSONErrorResponder(err))
-		return
-	}
-	if nextTask == nil {
-		// if the task is empty, still send it with an status ok and check it on the other side
-		grip.Info(message.Fields{
-			"op":      "next_task",
-			"message": "no task to assign to host",
-			"host_id": h.Id,
-		})
-		gimlet.WriteJSON(w, response)
-		return
+
+	// if the task queue exists, try to assign a task from it:
+	if taskQueue != nil {
+		// assign the task to a host and retrieve the task
+		nextTask, err = assignNextAvailableTask(ctx, taskQueue, as.taskDispatcher, h)
+		if err != nil {
+			err = errors.WithStack(err)
+			grip.Error(err)
+			gimlet.WriteResponse(w, gimlet.MakeJSONErrorResponder(err))
+			return
+		}
 	}
 
+	// if we didn't find a task in the "primary" queue, then we
+	// try again from the alias queue. (this code runs if the
+	// primary queue doesn't exist or is empty)
+	if nextTask == nil {
+		// if we couldn't find a task in the task queue,
+		// check the alias queue...
+		aliasQueue, err := model.LoadDistroAliasTaskQueue(h.Distro.Id)
+		if err != nil {
+			gimlet.WriteResponse(w, gimlet.MakeJSONErrorResponder(err))
+			return
+		}
+		if aliasQueue != nil {
+			nextTask, err = assignNextAvailableTask(ctx, aliasQueue, as.taskAliasDispatcher, h)
+			if err != nil {
+				gimlet.WriteResponse(w, gimlet.MakeJSONErrorResponder(err))
+				return
+			}
+		}
+
+		// if we haven't assigned a task here, then we need to
+		// return early.
+		if nextTask == nil {
+			// if the task is empty, still send it with an status ok and check it on the other side
+			grip.Info(message.Fields{
+				"op":      "next_task",
+				"message": "no task to assign to host",
+				"host_id": h.Id,
+			})
+			gimlet.WriteJSON(w, response)
+			return
+		}
+	}
+
+	// otherwise we've dispatched a task, so we
 	// mark the task as dispatched
 	if err := model.MarkTaskDispatched(nextTask, h.Id, h.Distro.Id); err != nil {
 		err = errors.WithStack(err)

@@ -1631,42 +1631,6 @@ func TestEnsureHasNecessaryBVFields(t *testing.T) {
 	})
 }
 
-func TestRunOnDeprecationWarnings(t *testing.T) {
-	assert := assert.New(t) //nolint
-
-	project := &model.Project{
-		Identifier: "projectId",
-		BuildVariants: []model.BuildVariant{
-			{
-				Name: "import",
-				Tasks: []model.BuildVariantTaskUnit{
-					{
-						Name: "silhouettes",
-						Distros: []string{
-							"foo",
-						},
-					},
-				},
-			},
-		},
-	}
-
-	errs := checkRunOnOnlyOneDistro(project)
-	assert.Len(errs, 0)
-
-	project.BuildVariants[0].Tasks[0].Distros = []string{"foo", "bar"}
-	errs = checkRunOnOnlyOneDistro(project)
-	assert.Len(errs, 1)
-
-	project.BuildVariants[0].RunOn = []string{"foo", "bar", "baz"}
-	errs = checkRunOnOnlyOneDistro(project)
-	assert.Len(errs, 2)
-
-	project.BuildVariants[0].Tasks[0].Distros = []string{"foo"}
-	errs = checkRunOnOnlyOneDistro(project)
-	assert.Len(errs, 1)
-}
-
 func TestTaskGroupValidation(t *testing.T) {
 	assert := assert.New(t)
 
@@ -1687,9 +1651,8 @@ func TestTaskGroupValidation(t *testing.T) {
     - name: example_task_group
   `
 	var proj model.Project
-	pp, err := model.LoadProjectInto([]byte(duplicateYml), "", &proj)
+	err := model.LoadProjectInto([]byte(duplicateYml), "", &proj)
 	assert.NotNil(proj)
-	assert.NotNil(pp)
 	assert.NoError(err)
 	validationErrs := validateTaskGroups(&proj)
 	assert.Len(validationErrs, 1)
@@ -1709,9 +1672,8 @@ func TestTaskGroupValidation(t *testing.T) {
     tasks:
     - name: foo
   `
-	pp, err = model.LoadProjectInto([]byte(duplicateTaskYml), "", &proj)
+	err = model.LoadProjectInto([]byte(duplicateTaskYml), "", &proj)
 	assert.NotNil(proj)
-	assert.NotNil(pp)
 	assert.NoError(err)
 	validationErrs = validateTaskGroups(&proj)
 	assert.Len(validationErrs, 1)
@@ -1738,9 +1700,8 @@ buildvariants:
   tasks:
   - name: example_task_group
 `
-	pp, err = model.LoadProjectInto([]byte(attachInGroupTeardownYml), "", &proj)
+	err = model.LoadProjectInto([]byte(attachInGroupTeardownYml), "", &proj)
 	assert.NotNil(proj)
-	assert.NotNil(pp)
 	assert.NoError(err)
 	validationErrs = validateTaskGroups(&proj)
 	assert.Len(validationErrs, 1)
@@ -1764,9 +1725,8 @@ buildvariants:
   tasks:
   - name: example_task_group
 `
-	pp, err = model.LoadProjectInto([]byte(largeMaxHostYml), "", &proj)
+	err = model.LoadProjectInto([]byte(largeMaxHostYml), "", &proj)
 	assert.NotNil(proj)
-	assert.NotNil(pp)
 	assert.NoError(err)
 	validationErrs = checkTaskGroups(&proj)
 	assert.Len(validationErrs, 1)
@@ -1808,10 +1768,9 @@ buildvariants:
   - name: example_task_group
 `
 	proj := model.Project{}
-	pp, err := model.LoadProjectInto([]byte(exampleYml), "example_project", &proj)
+	err := model.LoadProjectInto([]byte(exampleYml), "example_project", &proj)
 	assert.NotNil(proj)
-	assert.NotNil(pp)
-	assert.NoError(err)
+	assert.Empty(err)
 	assert.Len(proj.TaskGroups, 1)
 	tg := proj.TaskGroups[0]
 	assert.Equal("example_task_group", tg.Name)
@@ -1851,10 +1810,9 @@ buildvariants:
   - name: example_task_group
 `
 	proj := model.Project{}
-	pp, err := model.LoadProjectInto([]byte(exampleYml), "example_project", &proj)
+	err := model.LoadProjectInto([]byte(exampleYml), "example_project", &proj)
 	assert.NotNil(proj)
-	assert.NotNil(pp)
-	assert.NoError(err)
+	assert.Empty(err)
 	assert.Len(proj.TaskGroups, 1)
 	tg := proj.TaskGroups[0]
 	assert.Equal("example_task_group", tg.Name)
@@ -1898,9 +1856,8 @@ buildvariants:
     - two
 `
 	proj := model.Project{}
-	pp, err := model.LoadProjectInto([]byte(exampleYml), "example_project", &proj)
+	err := model.LoadProjectInto([]byte(exampleYml), "example_project", &proj)
 	assert.NotNil(proj)
-	assert.NotNil(pp)
 	assert.NoError(err)
 
 	proj.BuildVariants[0].DisplayTasks[0].ExecutionTasks = append(proj.BuildVariants[0].DisplayTasks[0].ExecutionTasks,
@@ -1931,9 +1888,8 @@ func TestValidateCreateHosts(t *testing.T) {
     - name: t_1
   `
 	var p model.Project
-	pp, err := model.LoadProjectInto([]byte(yml), "id", &p)
+	err := model.LoadProjectInto([]byte(yml), "id", &p)
 	require.NoError(err)
-	require.NotNil(pp)
 	errs := validateCreateHosts(&p)
 	assert.Len(errs, 0)
 
@@ -1951,9 +1907,8 @@ func TestValidateCreateHosts(t *testing.T) {
     tasks:
     - name: t_1
   `
-	pp, err = model.LoadProjectInto([]byte(yml), "id", &p)
+	err = model.LoadProjectInto([]byte(yml), "id", &p)
 	require.NoError(err)
-	require.NotNil(pp)
 	errs = validateCreateHosts(&p)
 	assert.Len(errs, 1)
 
@@ -2030,9 +1985,8 @@ func TestValidateCreateHosts(t *testing.T) {
     - name: t_10
     - name: t_11
   `
-	pp, err = model.LoadProjectInto([]byte(yml), "id", &p)
+	err = model.LoadProjectInto([]byte(yml), "id", &p)
 	require.NoError(err)
-	require.NotNil(pp)
 	errs = validateCreateHosts(&p)
 	assert.Len(errs, 1)
 }
@@ -2055,9 +2009,8 @@ func TestDuplicateTaskInBV(t *testing.T) {
     - t1
   `
 	var p model.Project
-	pp, err := model.LoadProjectInto([]byte(yml), "", &p)
+	err := model.LoadProjectInto([]byte(yml), "", &p)
 	assert.NoError(err)
-	assert.NotNil(pp)
 	errs := validateDuplicateTaskDefinition(&p)
 	assert.Len(errs, 1)
 	assert.Contains(errs[0].Message, "task 't1' in 'bv' is listed more than once")
@@ -2076,9 +2029,8 @@ func TestDuplicateTaskInBV(t *testing.T) {
     - t1
     - tg1
   `
-	pp, err = model.LoadProjectInto([]byte(yml), "", &p)
+	err = model.LoadProjectInto([]byte(yml), "", &p)
 	assert.NoError(err)
-	assert.NotNil(pp)
 	errs = validateDuplicateTaskDefinition(&p)
 	assert.Len(errs, 1)
 	assert.Contains(errs[0].Message, "task 't1' in 'bv' is listed more than once")
@@ -2100,9 +2052,8 @@ func TestDuplicateTaskInBV(t *testing.T) {
     - tg1
     - tg2
   `
-	pp, err = model.LoadProjectInto([]byte(yml), "", &p)
+	err = model.LoadProjectInto([]byte(yml), "", &p)
 	assert.NoError(err)
-	assert.NotNil(pp)
 	errs = validateDuplicateTaskDefinition(&p)
 	assert.Len(errs, 1)
 	assert.Contains(errs[0].Message, "task 't1' in 'bv' is listed more than once")
@@ -2127,9 +2078,8 @@ tasks:
       - type: commandLogger
 `
 	project := &model.Project{}
-	pp, err := model.LoadProjectInto([]byte(yml), "", project)
+	err := model.LoadProjectInto([]byte(yml), "", project)
 	assert.NoError(err)
-	assert.NotNil(pp)
 	errs := checkLoggerConfig(project)
 	assert.Contains(errs.String(), "error in project-level logger config: invalid agent logger config: Splunk logger requires a server URL")
 	assert.Contains(errs.String(), "invalid task logger config: somethingElse is not a valid log sender")
@@ -2146,9 +2096,8 @@ tasks:
     `
 
 	project = &model.Project{}
-	pp, err = model.LoadProjectInto([]byte(yml), "", project)
+	err = model.LoadProjectInto([]byte(yml), "", project)
 	assert.NoError(err)
-	assert.NotNil(pp)
 	errs = checkLoggerConfig(project)
 	assert.Len(errs, 0)
 }
@@ -2182,10 +2131,9 @@ buildvariants:
   - name: two
 `
 	proj := model.Project{}
-	pp, err := model.LoadProjectInto([]byte(exampleYml), "example_project", &proj)
+	err := model.LoadProjectInto([]byte(exampleYml), "example_project", &proj)
 	assert.NotNil(proj)
 	assert.NoError(err)
-	assert.NotNil(pp)
 	errs := CheckProjectSyntax(&proj)
 	assert.Len(errs, 1, "one warning was found")
 	assert.NoError(CheckProjectConfigurationIsValid(&proj), "no errors are reported because they are warnings")

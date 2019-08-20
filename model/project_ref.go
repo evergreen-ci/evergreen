@@ -357,10 +357,12 @@ func FindOneProjectRefWithCommitQueueByOwnerRepoAndBranch(owner, repo, branch st
 		db.NoSort,
 		projRef,
 	)
+	if adb.ResultsNotFound(err) {
+		return nil, nil
+	}
 	if err != nil {
 		return nil, errors.Wrapf(err, "can't query for project with commit queue. owner: %s, repo: %s, branch: %s", owner, repo, branch)
 	}
-
 	return projRef, nil
 }
 
@@ -440,7 +442,7 @@ func FindProjectRefs(key string, limit int, sortDir int, isAuthenticated bool) (
 
 func (projectRef *ProjectRef) CanEnableCommitQueue() (bool, error) {
 	resultRef, err := FindOneProjectRefWithCommitQueueByOwnerRepoAndBranch(projectRef.Owner, projectRef.Repo, projectRef.Branch)
-	if err != nil && !adb.ResultsNotFound(err) {
+	if err != nil {
 		return false, errors.Wrapf(err, "database error finding project by repo and branch")
 	}
 	if resultRef != nil && resultRef.Identifier != projectRef.Identifier {

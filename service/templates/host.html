@@ -71,7 +71,7 @@ Evergreen - Host {{.Host.Id}}
         </div>
         <div class="row">
           <div class="host-info col-lg-3 col-md-3 col-sm-3" style="margin-top: 5px;"><b>SSH Command</b> </div>
-          <div class="entry col-lg-9 col-md-9 col-sm-9" ng-show="!host.isTerminated && host.host.length > 0">
+          <div class="entry col-lg-9 col-md-9 col-sm-9" ng-show="!host.isTerminated && host.host.length > 0 && (host.distro.bootstrap_method != 'user-data' || host.status == 'running')">
             <pre readonly>ssh [[host.user]]@[[host.host]]</pre>
           </div>
         </div>

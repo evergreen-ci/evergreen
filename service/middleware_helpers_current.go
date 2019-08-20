@@ -16,7 +16,7 @@ func setAPIHostContext(r *http.Request, h *host.Host) *http.Request {
 func setAPITaskContext(r *http.Request, t *task.Task) *http.Request {
 	return r.WithContext(context.WithValue(r.Context(), model.ApiTaskKey, t))
 }
-func setProjectRefContext(r *http.Request, p *model.ProjectRef) *http.Request {
+func setProjectReftContext(r *http.Request, p *model.ProjectRef) *http.Request {
 	return r.WithContext(context.WithValue(r.Context(), model.ApiProjectRefKey, p))
 }
 func setProjectContext(r *http.Request, p *model.Project) *http.Request {

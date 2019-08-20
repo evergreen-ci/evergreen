@@ -554,6 +554,52 @@ func PopulateSchedulerJobs(env evergreen.Environment) amboy.QueueOperation {
 	}
 }
 
+func PopulateAliasSchedulerJobs(env evergreen.Environment) amboy.QueueOperation {
+	return func(ctx context.Context, queue amboy.Queue) error {
+		flags, err := evergreen.GetServiceFlags()
+		if err != nil {
+			return errors.WithStack(err)
+		}
+
+		if flags.SchedulerDisabled {
+			grip.InfoWhen(sometimes.Percent(evergreen.DegradedLoggingPercent), message.Fields{
+				"message": "scheduler is disabled",
+				"impact":  "new tasks are not enqueued",
+				"mode":    "degraded",
+			})
+			return nil
+		}
+
+		catcher := grip.NewBasicCatcher()
+
+		lastPlanned, err := model.FindTaskAliasQueueGenerationTimes()
+		catcher.Add(err)
+
+		// find all active distros
+		distros, err := distro.Find(distro.ByActiveOrStatic())
+		catcher.Add(err)
+
+		settings := env.Settings()
+		ts := util.RoundPartOfMinute(30)
+
+		for _, d := range distros {
+			// do not create scheduler jobs for parent distros
+			if d.IsParent(settings) {
+				continue
+			}
+
+			lastRun, ok := lastPlanned[d.Id]
+			if ok && time.Since(lastRun) < time.Minute {
+				continue
+			}
+
+			catcher.Add(queue.Put(ctx, NewDistroAliasSchedulerJob(d.Id, ts)))
+		}
+
+		return catcher.Resolve()
+	}
+}
+
 // PopulateHostAlertJobs adds alerting tasks infrequently for host
 // utilization monitoring.
 func PopulateHostAlertJobs(parts int) amboy.QueueOperation {
@@ -598,7 +644,7 @@ func PopulateAgentDeployJobs(env evergreen.Environment) amboy.QueueOperation {
 			return nil
 		}
 
-		err = host.UpdateAll(host.LastCommunicationTimeElapsed(time.Now()), bson.M{"$set": bson.M{
+		err = host.UpdateAll(host.AgentLastCommunicationTimeElapsed(time.Now()), bson.M{"$set": bson.M{
 			host.NeedsNewAgentKey: true,
 		}})
 		if err != nil && !adb.ResultsNotFound(err) {
@@ -623,7 +669,7 @@ func PopulateAgentDeployJobs(env evergreen.Environment) amboy.QueueOperation {
 		}
 
 		// 3x / minute
-		ts := util.RoundPartOfMinute(20).Format(tsFormat)
+		ts := util.RoundPartOfMinute(15).Format(tsFormat)
 		catcher := grip.NewBasicCatcher()
 
 		// For each host, set its last communication time to now and its needs new agent
@@ -662,7 +708,7 @@ func PopulateAgentMonitorDeployJobs(env evergreen.Environment) amboy.QueueOperat
 		// The agent monitor deploy job will atomically clear the
 		// NeedsNewAgentMonitor field to prevent other jobs from running
 		// concurrently.
-		if err = host.UpdateAll(host.LastCommunicationTimeElapsed(time.Now()), bson.M{"$set": bson.M{
+		if err = host.UpdateAll(host.AgentMonitorLastCommunicationTimeElapsed(time.Now()), bson.M{"$set": bson.M{
 			host.NeedsNewAgentMonitorKey: true,
 		}}); err != nil && !adb.ResultsNotFound(err) {
 			grip.Error(message.WrapError(err, message.Fields{
@@ -969,5 +1015,22 @@ func PopulatePeriodicBuilds(part int) amboy.QueueOperation {
 			catcher.Add(queue.Put(ctx, NewPeriodicBuildJob(project.Identifier, util.RoundPartOfMinute(30).Format(tsFormat))))
 		}
 		return nil
+	}
+}
+
+// PopulateUserDataDoneJobs enqueues the jobs to check whether a spawn host
+// provisioning with user data is done running its user data script yet.
+func PopulateUserDataDoneJobs(env evergreen.Environment) amboy.QueueOperation {
+	return func(ctx context.Context, queue amboy.Queue) error {
+		hosts, err := host.FindUserDataSpawnHostsProvisioning()
+		if err != nil {
+			return errors.Wrap(err, "error finding user data hosts that are still provisioning")
+		}
+		catcher := grip.NewBasicCatcher()
+		ts := util.RoundPartOfMinute(15).Format(tsFormat)
+		for _, h := range hosts {
+			catcher.Add(queue.Put(ctx, NewUserDataDoneJob(env, h, ts)))
+		}
+		return catcher.Resolve()
 	}
 }

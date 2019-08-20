@@ -230,7 +230,9 @@ mciModule.controller('PerfController', function PerfController(
     var chartsScope = scope.$new()
     for (var i = 0; i < tests.length; i++) {
       var key = tests[i];
-      var series = trendSamples.seriesByName[key] || [];
+      var series = _.filter(trendSamples.seriesByName[key] || [], function(sample) {
+        return sample[scope.metricSelect.value.key];
+      });
       var containerId = 'perf-trendchart-' + cleanId(taskId) + '-' + i;
       var cps = scope.changePoints || {};
       var bfs = scope.buildFailures || {};
@@ -557,7 +559,9 @@ mciModule.controller('PerfController', function PerfController(
             hasMetric = true;
           }
         })
-        if (!hasMetric) {
+        if (hasMetric) {
+          delete($scope.hiddenGraphs[test.name]);
+        } else {
           $scope.hiddenGraphs[test.name] = true;
         }
       })
@@ -716,8 +720,7 @@ mciModule.controller('PerfController', function PerfController(
     };
 
     // Populate the trend data
-    let getLegactHistory = function() {
-      $http.get("/plugin/json/history/" + $scope.task.id + "/perf").then(function(resp){
+    let legacyHistoryPromise = $http.get("/plugin/json/history/" + $scope.task.id + "/perf").then(function(resp){
         trendDataSuccess(resp.data);
       }, function() {
         if (!$scope.allTrendSamples) {
@@ -726,18 +729,15 @@ mciModule.controller('PerfController', function PerfController(
         if (!$scope.filteredTrendSamples) {
           $scope.filteredTrendSamples = new TrendSamples([]);
         }
-      });
-    }
+      }
+    );
 
-    let historyPromise = $http.get(cedarApp + "/rest/v1/perf/task_name/" + $scope.task.display_name + "?variant=" + $scope.task.build_variant).then(
+    let historyPromise = $http.get(cedarApp + "/rest/v1/perf/task_name/" + $scope.task.display_name + 
+    "?variant=" + $scope.task.build_variant + "&project=" + $scope.task.branch).then(
       function(resp) {
         let converted = $filter("expandedHistoryConverter")(resp.data, $scope.task.execution);
         trendDataSuccess(converted);
-        getLegactHistory();
-      }, function(err) {
-        getLegactHistory();
-      }
-    )
+      });
 
     // Once trend chart data and change points get loaded
     var onHistoryRetrieved = function() {
@@ -745,7 +745,7 @@ mciModule.controller('PerfController', function PerfController(
       $scope.hideCanaries();
       setTimeout(drawTrendGraph, 0, $scope);
     };
-    $q.all([historyPromise, changePointsQ.catch(), buildFailuresQ.catch()])
+    $q.all([historyPromise, legacyHistoryPromise, changePointsQ.catch(), buildFailuresQ.catch()])
       .then(onHistoryRetrieved, onHistoryRetrieved);
   }
 

@@ -30,30 +30,30 @@ import (
 
 func TestCurlCommand(t *testing.T) {
 	assert := assert.New(t)
-	h := &Host{Distro: distro.Distro{Arch: distro.ArchWindowsAmd64}}
+	h := &Host{Distro: distro.Distro{Arch: distro.ArchWindowsAmd64, User: "user"}}
 	settings := &evergreen.Settings{
 		Ui:                evergreen.UIConfig{Url: "www.example.com"},
 		ClientBinariesDir: "clients",
 	}
-	expected := "cd ~ && curl -LO 'www.example.com/clients/windows_amd64/evergreen.exe' && chmod +x evergreen.exe"
+	expected := "cd /home/user && curl -LO 'www.example.com/clients/windows_amd64/evergreen.exe' && chmod +x evergreen.exe"
 	assert.Equal(expected, h.CurlCommand(settings))
 
-	h = &Host{Distro: distro.Distro{Arch: distro.ArchLinuxAmd64}}
-	expected = "cd ~ && curl -LO 'www.example.com/clients/linux_amd64/evergreen' && chmod +x evergreen"
+	h = &Host{Distro: distro.Distro{Arch: distro.ArchLinuxAmd64, User: "user"}}
+	expected = "cd /home/user && curl -LO 'www.example.com/clients/linux_amd64/evergreen' && chmod +x evergreen"
 	assert.Equal(expected, h.CurlCommand(settings))
 }
 
 func TestCurlCommandWithRetry(t *testing.T) {
-	h := &Host{Distro: distro.Distro{Arch: distro.ArchWindowsAmd64}}
+	h := &Host{Distro: distro.Distro{Arch: distro.ArchWindowsAmd64, User: "user"}}
 	settings := &evergreen.Settings{
 		Ui:                evergreen.UIConfig{Url: "www.example.com"},
 		ClientBinariesDir: "clients",
 	}
-	expected := "cd ~ && curl -LO 'www.example.com/clients/windows_amd64/evergreen.exe' --retry 5 --retry-max-time 10 && chmod +x evergreen.exe"
+	expected := "cd /home/user && curl -LO 'www.example.com/clients/windows_amd64/evergreen.exe' --retry 5 --retry-max-time 10 && chmod +x evergreen.exe"
 	assert.Equal(t, expected, h.CurlCommandWithRetry(settings, 5, 10))
 
-	h = &Host{Distro: distro.Distro{Arch: distro.ArchLinuxAmd64}}
-	expected = "cd ~ && curl -LO 'www.example.com/clients/linux_amd64/evergreen' --retry 5 --retry-max-time 10 && chmod +x evergreen"
+	h = &Host{Distro: distro.Distro{Arch: distro.ArchLinuxAmd64, User: "user"}}
+	expected = "cd /home/user && curl -LO 'www.example.com/clients/linux_amd64/evergreen' --retry 5 --retry-max-time 10 && chmod +x evergreen"
 	assert.Equal(t, expected, h.CurlCommandWithRetry(settings, 5, 10))
 }
 
@@ -413,6 +413,11 @@ func TestJasperClient(t *testing.T) {
 
 			doTest := func() {
 				client, err := testCase.h.JasperClient(tctx, env)
+				defer func() {
+					if client != nil {
+						assert.NoError(t, client.CloseConnection())
+					}
+				}()
 				if testCase.expectError {
 					assert.Error(t, err)
 					assert.Nil(t, client)
@@ -618,7 +623,7 @@ func TestStartAgentMonitorRequest(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, h.Secret, dbHost.Secret)
 
-	expectedCmd, err := json.Marshal(h.agentMonitorCommand(settings))
+	expectedCmd, err := json.Marshal(h.AgentMonitorOptions(settings))
 	require.NoError(t, err)
 	assert.Contains(t, cmd, string(expectedCmd))
 
@@ -736,6 +741,7 @@ func TestSetupSpawnHostCommand(t *testing.T) {
 		Distro: distro.Distro{
 			Arch:    distro.ArchLinuxAmd64,
 			WorkDir: "/dir",
+			User:    "user",
 		},
 		ProvisionOptions: &ProvisionOptions{
 			OwnerId: user.Id,
@@ -753,14 +759,89 @@ func TestSetupSpawnHostCommand(t *testing.T) {
 	cmd, err := h.SetupSpawnHostCommand(settings)
 	require.NoError(t, err)
 
-	expected := `mkdir -m 777 -p ~/cli_bin && echo '{"api_key":"key","api_server_host":"www.example0.com/api","ui_server_host":"www.example1.com","user":"user"}' > ~/cli_bin/.evergreen.yml && cp ~/evergreen ~/cli_bin && (echo 'PATH=${PATH}:~/cli_bin' >> ~/.profile || true; echo 'PATH=${PATH}:~/cli_bin' >> ~/.bash_profile || true)`
+	expected := `mkdir -m 777 -p /home/user/cli_bin && echo '{"api_key":"key","api_server_host":"www.example0.com/api","ui_server_host":"www.example1.com","user":"user"}' > /home/user/cli_bin/.evergreen.yml && cp /home/user/evergreen /home/user/cli_bin && (echo 'PATH=${PATH}:/home/user/cli_bin' >> /home/user/.profile || true; echo 'PATH=${PATH}:/home/user/cli_bin' >> /home/user/.bash_profile || true)`
 	assert.Equal(t, expected, cmd)
 
 	h.ProvisionOptions.TaskId = "task_id"
 	cmd, err = h.SetupSpawnHostCommand(settings)
 	require.NoError(t, err)
-	expected += " && ~/evergreen -c ~/cli_bin/.evergreen.yml fetch -t task_id --source --artifacts --dir='/dir'"
+	expected += " && /home/user/evergreen -c /home/user/cli_bin/.evergreen.yml fetch -t task_id --source --artifacts --dir='/dir'"
 	assert.Equal(t, expected, cmd)
+}
+
+func TestMarkUserDataDoneCommand(t *testing.T) {
+	for testName, testCase := range map[string]func(t *testing.T){
+		"FailsWithoutPathToDoneFile": func(t *testing.T) {
+			h := &Host{
+				Id: "id",
+			}
+			cmd, err := h.MarkUserDataDoneCommand()
+			assert.Error(t, err)
+			assert.Empty(t, cmd)
+		},
+		"SucceedsWithPathToDoneFile": func(t *testing.T) {
+			h := &Host{
+				Id:     "id",
+				Distro: distro.Distro{ClientDir: "/client_dir"},
+			}
+			cmd, err := h.MarkUserDataDoneCommand()
+			require.NoError(t, err)
+			assert.Equal(t, "mkdir -p /client_dir && touch /client_dir/user_data_done", cmd)
+		},
+	} {
+		t.Run(testName, func(t *testing.T) {
+			testCase(t)
+		})
+	}
+}
+
+func TestSetUserDataHostProvisioned(t *testing.T) {
+	for testName, testCase := range map[string]func(t *testing.T, h *Host){
+		"Succeeds": func(t *testing.T, h *Host) {
+			require.NoError(t, h.SetUserDataHostProvisioned())
+			assert.Equal(t, evergreen.HostRunning, h.Status)
+
+			dbHost, err := FindOneId(h.Id)
+			require.NoError(t, err)
+			assert.Equal(t, evergreen.HostRunning, dbHost.Status)
+		},
+		"IgnoresNonUserDataBootstrappedHost": func(t *testing.T, h *Host) {
+			h.Distro.BootstrapMethod = distro.BootstrapMethodSSH
+			_, err := h.Upsert()
+			require.NoError(t, err)
+
+			require.NoError(t, h.SetUserDataHostProvisioned())
+			assert.Equal(t, evergreen.HostProvisioning, h.Status)
+
+			dbHost, err := FindOneId(h.Id)
+			require.NoError(t, err)
+			assert.Equal(t, evergreen.HostProvisioning, dbHost.Status)
+		},
+		"IgnoresNonProvisioningHosts": func(t *testing.T, h *Host) {
+			require.NoError(t, h.SetDecommissioned(evergreen.User, ""))
+
+			require.NoError(t, h.SetUserDataHostProvisioned())
+			assert.Equal(t, evergreen.HostDecommissioned, h.Status)
+
+			dbHost, err := FindOneId(h.Id)
+			require.NoError(t, err)
+			assert.Equal(t, evergreen.HostDecommissioned, dbHost.Status)
+		},
+	} {
+		t.Run(testName, func(t *testing.T) {
+			require.NoError(t, db.Clear(Collection))
+			defer func() {
+				assert.NoError(t, db.Clear(Collection))
+			}()
+			h := &Host{
+				Id:     "id",
+				Distro: distro.Distro{BootstrapMethod: distro.BootstrapMethodUserData},
+				Status: evergreen.HostProvisioning,
+			}
+			require.NoError(t, h.Insert())
+			testCase(t, h)
+		})
+	}
 }
 
 func newMockCredentials() (*rpc.Credentials, error) {
@@ -822,9 +903,9 @@ func withJasperServiceSetupAndTeardown(ctx context.Context, env *mock.Environmen
 		grip.Error(errors.Wrap(teardownJasperService(ctx, nil), "problem tearing down test"))
 		return errors.Wrapf(err, "problem setting up credentials collection")
 	}
-	var closeService jasper.CloseFunc
-	var err error
-	if closeService, err = setupJasperService(ctx, env, manager, h); err != nil {
+
+	closeService, err := setupJasperService(ctx, env, manager, h)
+	if err != nil {
 		grip.Error(errors.Wrap(teardownJasperService(ctx, closeService), "problem tearing down test"))
 		return err
 	}

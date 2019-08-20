@@ -12,6 +12,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
@@ -23,8 +24,11 @@ import (
 	"github.com/mitchellh/mapstructure"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/level"
+	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 )
+
+const GitFetchProjectRetries = 5
 
 // gitFetchProject is a command that fetches source code from git for the project
 // associated with the current task
@@ -277,11 +281,34 @@ func (c *gitFetchProject) buildModuleCloneCommand(conf *model.TaskConfig, opts c
 }
 
 // Execute gets the source code required by the project
-func (c *gitFetchProject) Execute(ctx context.Context,
+// Retries some number of times before failing
+func (c *gitFetchProject) Execute(ctx context.Context, comm client.Communicator, logger client.LoggerProducer, conf *model.TaskConfig) error {
+	err := util.Retry(
+		ctx,
+		func() (bool, error) {
+			err := c.executeLoop(ctx, comm, logger, conf)
+			if err != nil {
+				return true, err
+			}
+			return false, nil
+		}, GitFetchProjectRetries, time.Second, 10*time.Second)
+	if err != nil {
+		logger.Task().Error(message.WrapError(err, message.Fields{
+			"operation":    "git.get_project",
+			"message":      "cloning failed",
+			"num_attempts": GitFetchProjectRetries,
+			"owner":        conf.ProjectRef.Owner,
+			"repo":         conf.ProjectRef.Repo,
+			"branch":       conf.ProjectRef.Branch,
+		}))
+	}
+	return err
+}
+
+func (c *gitFetchProject) executeLoop(ctx context.Context,
 	comm client.Communicator, logger client.LoggerProducer, conf *model.TaskConfig) error {
 
 	var err error
-
 	// expand the github parameters before running the task
 	if err = util.ExpandValues(c, conf.Expansions); err != nil {
 		return errors.Wrap(err, "error expanding github parameters")
@@ -289,7 +316,7 @@ func (c *gitFetchProject) Execute(ctx context.Context,
 
 	var projectMethod string
 	var projectToken string
-	projectMethod, projectToken, err = getProjectMethodAndToken(c.Token, conf.Expansions.Get("global_github_oauth_token"), conf.Distro.CloneMethod)
+	projectMethod, projectToken, err = getProjectMethodAndToken(c.Token, conf.Expansions.Get(evergreen.GlobalGitHubTokenExpansion), conf.Distro.CloneMethod)
 	if err != nil {
 		return errors.Wrap(err, "failed to get method of cloning and token")
 	}

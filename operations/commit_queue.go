@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"net/http"
-	"strings"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
@@ -154,7 +153,12 @@ func setModuleCommand() cli.Command {
 	return cli.Command{
 		Name:  "set-module",
 		Usage: "update or add module to an existing merge patch",
-		Flags: mergeFlagSlices(addLargeFlag(), addPatchIDFlag(), addModuleFlag(), addYesFlag(), addRefFlag()),
+		Flags: mergeFlagSlices(addLargeFlag(), addPatchIDFlag(), addModuleFlag(), addYesFlag(), addRefFlag(
+			cli.StringFlag{
+				Name:  joinFlagNames(messageFlagName, "m", "description", "d"),
+				Usage: "commit message",
+			},
+		)),
 		Before: mergeBeforeFuncs(
 			requirePatchIDFlag,
 			requireModuleFlag,
@@ -164,6 +168,7 @@ func setModuleCommand() cli.Command {
 				patchID:     c.String(patchIDFlagName),
 				module:      c.String(moduleFlagName),
 				ref:         c.String(refFlagName),
+				message:     c.String(messageFlagName),
 				large:       c.Bool(largeFlagName),
 				skipConfirm: c.Bool(yesFlagName),
 			}
@@ -201,7 +206,7 @@ func listCommitQueue(ctx context.Context, client client.Communicator, ac *legacy
 
 	grip.Infof("Queue Length: %d\n", len(cq.Queue))
 	for i, item := range cq.Queue {
-		grip.Infof("%d:", i+1)
+		grip.Infof("%d:", i)
 		author, _ := client.GetCommitQueueItemAuthor(ctx, projectID, restModel.FromAPIString(item.Issue))
 		if author != "" {
 			grip.Infof("Author: %s", author)
@@ -301,14 +306,6 @@ func (p *mergeParams) mergeBranch(ctx context.Context, conf *ClientSettings, cli
 }
 
 func (p *mergeParams) uploadMergePatch(conf *ClientSettings, ac *legacyClient) error {
-	if p.message == "" {
-		msg, err := gitCmd("rev-parse", "--abbrev-ref", p.ref)
-		if err != nil {
-			return errors.Wrapf(err, "can't get branch name for ref %s", p.ref)
-		}
-		p.message = strings.TrimSpace(msg)
-	}
-
 	patchParams := &patchParams{
 		Project:     p.projectID,
 		SkipConfirm: p.skipConfirm,
@@ -328,10 +325,29 @@ func (p *mergeParams) uploadMergePatch(conf *ClientSettings, ac *legacyClient) e
 		}
 		return errors.Wrap(err, "can't get project ref")
 	}
+	if !ref.CommitQueue.Enabled || ref.CommitQueue.PatchType != commitqueue.CLIPatchType {
+		return errors.New("CLI commit queue not enabled for project")
+	}
 
 	diffData, err := loadGitData(ref.Branch, p.ref)
 	if err != nil {
 		return errors.Wrap(err, "can't generate patches")
+	}
+
+	commitCount, err := gitCommitCount(ref.Branch, p.ref)
+	if err != nil {
+		return errors.Wrap(err, "can't get commit count")
+	}
+	if commitCount > 1 {
+		return errors.New("patch contains multiple commits, must contain 1")
+	}
+
+	if p.message == "" && commitCount != 0 {
+		message, err := gitCommitMessages(ref.Branch, p.ref)
+		if err != nil {
+			return errors.Wrap(err, "can't get commit messages")
+		}
+		patchParams.Description = message
 	}
 
 	patch, err := patchParams.createPatch(ac, conf, diffData)
@@ -348,25 +364,42 @@ type moduleParams struct {
 	patchID     string
 	module      string
 	ref         string
+	message     string
 	large       bool
 	skipConfirm bool
 }
 
 func (p *moduleParams) addModule(ac *legacyClient, rc *legacyClient) error {
-	diffData, err := p.getModulePatch(rc)
+	proj, err := rc.GetPatchedConfig(p.patchID)
 	if err != nil {
-		return errors.Wrap(err, "can't get patch")
+		return err
 	}
 
-	if len(diffData.fullPatch) == 0 {
-		if p.skipConfirm {
-			return errors.New("empty patch aborted")
-		}
-		if !confirm("Patch submission is empty. Continue?(y/n)", true) {
-			return errors.New("empty patch aborted")
-		}
+	moduleBranch, err := getModuleBranch(p.module, proj)
+	if err != nil {
+		return errors.Wrapf(err, "could not set specified module: '%s'", p.module)
 	}
 
+	commitCount, err := gitCommitCount(moduleBranch, p.ref)
+	if err != nil {
+		return errors.Wrap(err, "can't get commit count")
+	}
+	if commitCount != 1 {
+		return errors.Errorf("patch contains %d commits, must contain 1", commitCount)
+	}
+
+	if p.message == "" {
+		message, err := gitCommitMessages(moduleBranch, p.ref)
+		if err != nil {
+			return errors.Wrap(err, "can't get commit messages")
+		}
+		p.message = message
+	}
+
+	diffData, err := loadGitData(moduleBranch, p.ref)
+	if err != nil {
+		return errors.Wrap(err, "can't get patch data")
+	}
 	if err = validatePatchSize(diffData, p.large); err != nil {
 		return err
 	}
@@ -378,29 +411,17 @@ func (p *moduleParams) addModule(ac *legacyClient, rc *legacyClient) error {
 		}
 	}
 
-	err = ac.UpdatePatchModule(p.patchID, p.module, diffData.fullPatch, diffData.base)
+	params := UpdatePatchModuleParams{
+		patchID: p.patchID,
+		module:  p.module,
+		patch:   diffData.fullPatch,
+		base:    diffData.base,
+		message: p.message,
+	}
+	err = ac.UpdatePatchModule(params)
 	if err != nil {
 		return errors.WithStack(err)
 	}
-
+	grip.Info("Module updated.")
 	return nil
-}
-
-func (p *moduleParams) getModulePatch(rc *legacyClient) (*localDiff, error) {
-	proj, err := rc.GetPatchedConfig(p.patchID)
-	if err != nil {
-		return nil, err
-	}
-
-	moduleBranch, err := getModuleBranch(p.module, proj)
-	if err != nil {
-		return nil, errors.Wrapf(err, "could not set specified module: '%s'", p.module)
-	}
-
-	diffData, err := loadGitData(moduleBranch, p.ref)
-	if err != nil {
-		return nil, errors.Wrap(err, "can't get patch data")
-	}
-
-	return diffData, nil
 }

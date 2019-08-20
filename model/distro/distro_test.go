@@ -186,6 +186,13 @@ func TestGetImageID(t *testing.T) {
 			expectedOutput: "imageID",
 		},
 		{
+			name:           "Ec2Fleet",
+			provider:       evergreen.ProviderNameEc2Fleet,
+			key:            "ami",
+			value:          "imageID",
+			expectedOutput: "imageID",
+		},
+		{
 			name:           "Docker",
 			provider:       evergreen.ProviderNameDocker,
 			key:            "image_url",

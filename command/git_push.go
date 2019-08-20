@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/rest/client"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
@@ -24,6 +25,7 @@ type gitPush struct {
 	DryRun         bool   `yaml:"dry_run" mapstructure:"dry_run"`
 	CommitterName  string `yaml:"committer_name" mapstructure:"committer_name"`
 	CommitterEmail string `yaml:"committer_email" mapstructure:"committer_email"`
+	Token          string `yaml:"token" plugin:"expand" mapstructure:"token"`
 
 	base
 }
@@ -85,10 +87,15 @@ func (c *gitPush) Execute(ctx context.Context, comm client.Communicator, logger 
 		return errors.Wrapf(err, "can't get author information for user '%s'", p.Author)
 	}
 
+	_, projectToken, err := getProjectMethodAndToken(c.Token, conf.Expansions.Get(evergreen.GlobalGitHubTokenExpansion), conf.Distro.CloneMethod)
+	if err != nil {
+		return errors.Wrap(err, "failed to get token")
+	}
+
 	params := pushParams{
 		authorName:  restModel.FromAPIString(u.DisplayName),
 		authorEmail: restModel.FromAPIString(u.Email),
-		description: p.Description,
+		token:       projectToken,
 	}
 
 	// push module patches
@@ -121,6 +128,7 @@ func (c *gitPush) Execute(ctx context.Context, comm client.Communicator, logger 
 		logger.Execution().Infof("Pushing patch for module %s", module.Name)
 		params.directory = filepath.ToSlash(filepath.Join(conf.WorkDir, c.Directory, moduleBase))
 		params.branch = module.Branch
+		params.commitMessage = modulePatch.Message
 
 		// File list
 		params.files = make([]string, 0, len(modulePatch.PatchSet.Summary))
@@ -153,6 +161,7 @@ func (c *gitPush) Execute(ctx context.Context, comm client.Communicator, logger 
 		logger.Execution().Info("Pushing patch")
 		params.directory = filepath.ToSlash(filepath.Join(conf.WorkDir, c.Directory))
 		params.branch = conf.ProjectRef.Branch
+		params.commitMessage = modulePatch.Message
 		if err = c.pushPatch(ctx, logger, params); err != nil {
 			return errors.Wrap(err, "can't push patch")
 		}
@@ -162,12 +171,13 @@ func (c *gitPush) Execute(ctx context.Context, comm client.Communicator, logger 
 }
 
 type pushParams struct {
-	directory   string
-	authorName  string
-	authorEmail string
-	description string
-	branch      string
-	files       []string
+	token         string
+	directory     string
+	authorName    string
+	authorEmail   string
+	commitMessage string
+	branch        string
+	files         []string
 }
 
 func (c *gitPush) pushPatch(ctx context.Context, logger client.LoggerProducer, p pushParams) error {
@@ -192,19 +202,26 @@ func (c *gitPush) pushPatch(ctx context.Context, logger client.LoggerProducer, p
 		`--author="%s"`,
 		c.CommitterName, c.CommitterEmail, author)
 	logger.Execution().Debugf("git commit command: %s", commitCommand)
-	cmd = jpm.CreateCommand(ctx).Directory(p.directory).Append(commitCommand).SetInput(bytes.NewBufferString(p.description)).
+	cmd = jpm.CreateCommand(ctx).Directory(p.directory).Append(commitCommand).SetInput(bytes.NewBufferString(p.commitMessage)).
 		SetOutputSender(level.Info, logger.Task().GetSender()).SetErrorSender(level.Error, logger.Task().GetSender())
 	if err := cmd.Run(ctx); err != nil {
 		return errors.Wrap(err, "can't create commit from files")
 	}
 
 	if !c.DryRun {
+		stdErr := noopWriteCloser{&bytes.Buffer{}}
 		pushCommand := fmt.Sprintf("git push origin %s", p.branch)
 		logger.Execution().Debugf("git push command: %s", pushCommand)
 		cmd = jpm.CreateCommand(ctx).Directory(p.directory).Append(pushCommand).
-			SetOutputSender(level.Info, logger.Task().GetSender()).SetErrorSender(level.Error, logger.Task().GetSender())
+			SetOutputSender(level.Info, logger.Task().GetSender()).SetErrorWriter(stdErr)
 		if err := cmd.Run(ctx); err != nil {
 			return errors.Wrap(err, "can't add files")
+		}
+
+		errorOutput := stdErr.String()
+		if errorOutput != "" && p.token != "" {
+			errorOutput = strings.Replace(errorOutput, p.token, "[redacted oauth token]", -1)
+			logger.Execution().Error(errorOutput)
 		}
 	}
 
