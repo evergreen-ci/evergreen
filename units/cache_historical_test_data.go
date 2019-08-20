@@ -66,6 +66,17 @@ func makeCacheHistoricalTestDataJob() *cacheHistoricalTestDataJob {
 
 func (j *cacheHistoricalTestDataJob) Run(ctx context.Context) {
 	defer j.MarkComplete()
+	timingMsg := message.Fields{
+		"job_id":   j.ID(),
+		"project":  j.ProjectID,
+		"job_type": j.Type().Name,
+		"message":  "timing-info",
+	}
+	defer func() {
+		timingMsg["has_errors"] = j.HasErrors()
+		timingMsg["aborted"] = ctx.Done() != nil
+		grip.Info(timingMsg)
+	}()
 
 	// Check for degraded mode flag.
 	flags, err := evergreen.GetServiceFlags()
@@ -78,16 +89,24 @@ func (j *cacheHistoricalTestDataJob) Run(ctx context.Context) {
 		return
 	}
 
-	// Lookup last sync date for project
-	statsStatus, err := stats.GetStatsStatus(j.ProjectID)
-	if err != nil {
+	var statsStatus stats.StatsStatus
+	timingMsg["status_check"] = reportTiming(func() {
+		// Lookup last sync date for project
+		var err error
+		statsStatus, err = stats.GetStatsStatus(j.ProjectID)
 		j.AddError(errors.Wrap(err, "error retrieving last sync date"))
+	}).Seconds()
+	if j.HasErrors() {
 		return
 	}
 
-	tasksToIgnore, err := getTasksToIgnore(j.ProjectID)
-	if err != nil {
+	var tasksToIgnore []*regexp.Regexp
+	timingMsg["tasks_to_ignore_lookup"] = reportTiming(func() {
+		var err error
+		tasksToIgnore, err = getTasksToIgnore(j.ProjectID)
 		j.AddError(errors.Wrap(err, "error retrieving project settings"))
+	}).Seconds()
+	if j.HasErrors() {
 		return
 	}
 
@@ -95,6 +114,7 @@ func (j *cacheHistoricalTestDataJob) Run(ctx context.Context) {
 		ProjectID:     j.ProjectID,
 		JobTime:       time.Now(),
 		TasksToIgnore: tasksToIgnore,
+		catcher:       grip.NewBasicCatcher(),
 		ShouldFilterTasks: map[string]bool{
 			"test": true,
 			"task": false,
@@ -103,17 +123,15 @@ func (j *cacheHistoricalTestDataJob) Run(ctx context.Context) {
 
 	syncFromTime := statsStatus.ProcessedTasksUntil
 	syncToTime := findTargetTimeForSync(syncFromTime)
-
-	grip.Info(message.Fields{
-		"job_id":    j.ID(),
-		"sync_from": syncFromTime,
-		"sync_to":   syncToTime,
-		"message":   "running sync",
-	})
-
-	statsToUpdate, err := stats.FindStatsToUpdate(j.ProjectID, j.Requesters, syncFromTime, syncToTime)
-	if err != nil {
+	timingMsg["sync_from"] = syncFromTime
+	timingMsg["sync_to"] = syncToTime
+	var statsToUpdate []stats.StatsToUpdate
+	timingMsg["find_stats_to_update"] = reportTiming(func() {
+		var err error
+		statsToUpdate, err = stats.FindStatsToUpdate(j.ProjectID, j.Requesters, syncFromTime, syncToTime)
 		j.AddError(errors.Wrap(err, "error finding tasks to update"))
+	}).Seconds()
+	if j.HasErrors() {
 		return
 	}
 
@@ -127,16 +145,24 @@ func (j *cacheHistoricalTestDataJob) Run(ctx context.Context) {
 		},
 	}
 
-	err = jobContext.updateHourlyAndDailyStats(statsToUpdate, generateMap)
-	if err != nil {
-		j.AddError(errors.Wrap(err, "error generating hourly test stats"))
+	timingMsg["update_hourly_daily"] = reportTiming(func() {
+		timingInfo := jobContext.updateHourlyAndDailyStats(statsToUpdate, generateMap)
+		for k, v := range timingInfo {
+			timingMsg[k] = v.Seconds()
+		}
+	}).Seconds()
+	j.AddError(jobContext.catcher.Resolve())
+	if j.HasErrors() {
 		return
 	}
 
-	// update last sync
-	err = stats.UpdateStatsStatus(j.ProjectID, jobContext.JobTime, syncToTime)
-	if err != nil {
+	timingMsg["save_stats_status"] = reportTiming(func() {
+		// update last sync
+		err = stats.UpdateStatsStatus(j.ProjectID, jobContext.JobTime, syncToTime)
 		j.AddError(errors.Wrap(err, "error updating last synced date"))
+	})
+	j.AddError(jobContext.catcher.Resolve())
+	if j.HasErrors() {
 		return
 	}
 }
@@ -146,6 +172,13 @@ type cacheHistoricalJobContext struct {
 	JobTime           time.Time
 	TasksToIgnore     []*regexp.Regexp
 	ShouldFilterTasks map[string]bool
+	catcher           grip.Catcher
+}
+
+func reportTiming(fn func()) time.Duration {
+	startAt := time.Now()
+	fn()
+	return time.Since(startAt)
 }
 
 func getTasksToIgnore(projectId string) ([]*regexp.Regexp, error) {
@@ -176,24 +209,32 @@ func createRegexpFromStrings(filePatterns []string) ([]*regexp.Regexp, error) {
 	return tasksToIgnore, nil
 }
 
-func (c *cacheHistoricalJobContext) updateHourlyAndDailyStats(statsToUpdate []stats.StatsToUpdate, generateFns generateFunctions) error {
+func (c *cacheHistoricalJobContext) updateHourlyAndDailyStats(statsToUpdate []stats.StatsToUpdate, generateFns generateFunctions) map[string]time.Duration {
+	timingInfo := map[string]time.Duration{}
+	var err error
 	for name, genFn := range generateFns.HourlyFns {
-		err := c.iteratorOverHourlyStats(statsToUpdate, genFn, name)
+		timingInfo[fmt.Sprintf("update_hourly_%s", name)] = reportTiming(func() {
+			err = c.iteratorOverHourlyStats(statsToUpdate, genFn, name)
+			c.catcher.Add(err)
+		})
 		if err != nil {
-			return err
+			return timingInfo
 		}
 	}
 
 	dailyStats := buildDailyStatsRollup(statsToUpdate)
 
 	for name, genFn := range generateFns.DailyFns {
-		err := c.iteratorOverDailyStats(dailyStats, genFn, name)
+		timingInfo[fmt.Sprintf("update_daily_%s", name)] = reportTiming(func() {
+			err = c.iteratorOverDailyStats(dailyStats, genFn, name)
+			c.catcher.Add(err)
+		})
 		if err != nil {
-			return err
+			return timingInfo
 		}
 	}
 
-	return nil
+	return timingInfo
 }
 
 func (c *cacheHistoricalJobContext) iteratorOverDailyStats(dailyStats dailyStatsRollup, fn generateStatsFn, queryType string) error {
