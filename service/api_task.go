@@ -25,7 +25,7 @@ import (
 
 // if a host encounters more than this number of system failures, then it should be disabled.
 const consecutiveSystemFailureThreshold = 3
-const taskQueueServiceTTL = time.Minute
+const taskDispatcherTTL = time.Minute
 
 // StartTask is the handler function that retrieves the task from the request
 // and acquires the global lock
@@ -305,7 +305,7 @@ func (as *APIServer) EndTask(w http.ResponseWriter, r *http.Request) {
 
 // assignNextAvailableTask gets the next task from the queue and sets the running task field
 // of currentHost.
-func assignNextAvailableTask(ctx context.Context, taskQueue *model.TaskQueue, taskQueueService model.TaskQueueService, currentHost *host.Host) (*task.Task, error) {
+func assignNextAvailableTask(ctx context.Context, taskQueue *model.TaskQueue, dispatcher model.TaskQueueItemDispatcher, currentHost *host.Host) (*task.Task, error) {
 	if currentHost.RunningTask != "" {
 		grip.Error(message.Fields{
 			"message":      "tried to assign task to a host already running task",
@@ -319,7 +319,7 @@ func assignNextAvailableTask(ctx context.Context, taskQueue *model.TaskQueue, ta
 		spec = model.TaskSpec{
 			Group:        currentHost.LastGroup,
 			BuildVariant: currentHost.LastBuildVariant,
-			ProjectID:    currentHost.LastProject,
+			Project:      currentHost.LastProject,
 			Version:      currentHost.LastVersion,
 		}
 	}
@@ -356,14 +356,14 @@ func assignNextAvailableTask(ctx context.Context, taskQueue *model.TaskQueue, ta
 	// continue must be preceded by dequeueing the current task from the
 	// queue to prevent an infinite loop.
 	for taskQueue.Length() != 0 {
-		if err := ctx.Err(); err != nil {
+		if err = ctx.Err(); err != nil {
 			return nil, errors.WithStack(err)
 		}
 
 		var queueItem *model.TaskQueueItem
 		switch d.PlannerSettings.Version {
 		case evergreen.PlannerVersionTunable, evergreen.PlannerVersionRevised:
-			queueItem, err = taskQueueService.RefreshFindNextTask(d.Id, spec)
+			queueItem, err = dispatcher.RefreshFindNextTask(d.Id, spec)
 			if err != nil {
 				return nil, errors.Wrap(err, "problem getting next task")
 			}
@@ -385,7 +385,7 @@ func assignNextAvailableTask(ctx context.Context, taskQueue *model.TaskQueue, ta
 				"taskspec_group":           spec.Group,
 				"taskspec_build_variant":   spec.BuildVariant,
 				"taskspec_version":         spec.Version,
-				"taskspec_project_id":      spec.ProjectID,
+				"taskspec_project":         spec.Project,
 				"taskspec_group_max_hosts": spec.GroupMaxHosts,
 			}))
 			return nil, err
@@ -407,7 +407,7 @@ func assignNextAvailableTask(ctx context.Context, taskQueue *model.TaskQueue, ta
 				"taskspec_group":           spec.Group,
 				"taskspec_build_variant":   spec.BuildVariant,
 				"taskspec_version":         spec.Version,
-				"taskspec_project_id":      spec.ProjectID,
+				"taskspec_project":         spec.Project,
 				"taskspec_group_max_hosts": spec.GroupMaxHosts,
 			}))
 
@@ -434,7 +434,7 @@ func assignNextAvailableTask(ctx context.Context, taskQueue *model.TaskQueue, ta
 				"taskspec_group":           spec.Group,
 				"taskspec_build_variant":   spec.BuildVariant,
 				"taskspec_version":         spec.Version,
-				"taskspec_project_id":      spec.ProjectID,
+				"taskspec_project":         spec.Project,
 				"taskspec_group_max_hosts": spec.GroupMaxHosts,
 			}))
 
@@ -455,7 +455,7 @@ func assignNextAvailableTask(ctx context.Context, taskQueue *model.TaskQueue, ta
 			"taskspec_group":           spec.Group,
 			"taskspec_build_variant":   spec.BuildVariant,
 			"taskspec_version":         spec.Version,
-			"taskspec_project_id":      spec.ProjectID,
+			"taskspec_project":         spec.Project,
 			"taskspec_group_max_hosts": spec.GroupMaxHosts,
 		}))
 
@@ -516,7 +516,7 @@ func (as *APIServer) NextTask(w http.ResponseWriter, r *http.Request) {
 	var response apimodels.NextTaskResponse
 	var err error
 	if checkHostHealth(h) {
-		ctx, cancel := context.WithTimeout(r.Context(), 30*time.Second)
+		ctx, cancel = context.WithTimeout(r.Context(), 30*time.Second)
 		defer cancel()
 		env := evergreen.GetEnvironment()
 		stopAgentMonitor = !h.LegacyBootstrap()
@@ -586,7 +586,7 @@ func (as *APIServer) NextTask(w http.ResponseWriter, r *http.Request) {
 	// if the task queue exists, try to assign a task from it:
 	if taskQueue != nil {
 		// assign the task to a host and retrieve the task
-		nextTask, err = assignNextAvailableTask(ctx, taskQueue, as.taskQueueService, h)
+		nextTask, err = assignNextAvailableTask(ctx, taskQueue, as.taskDispatcher, h)
 		if err != nil {
 			err = errors.WithStack(err)
 			grip.Error(err)
@@ -607,7 +607,7 @@ func (as *APIServer) NextTask(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		if aliasQueue != nil {
-			nextTask, err = assignNextAvailableTask(ctx, aliasQueue, as.taskAliasQueueService, h)
+			nextTask, err = assignNextAvailableTask(ctx, aliasQueue, as.taskAliasDispatcher, h)
 			if err != nil {
 				gimlet.WriteResponse(w, gimlet.MakeJSONErrorResponder(err))
 				return

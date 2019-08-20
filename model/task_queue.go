@@ -98,6 +98,7 @@ type TaskQueueItem struct {
 	Project             string        `bson:"project" json:"project"`
 	ExpectedDuration    time.Duration `bson:"exp_dur" json:"exp_dur"`
 	Priority            int64         `bson:"priority" json:"priority"`
+	Dependencies        []string      `bson:"dependencies" json:"dependencies"`
 }
 
 // must not no-lint these values
@@ -131,7 +132,7 @@ var (
 type TaskSpec struct {
 	Group         string `json:"group"`
 	BuildVariant  string `json:"build_variant"`
-	ProjectID     string `json:"project_id"`
+	Project       string `json:"project"`
 	Version       string `json:"version"`
 	GroupMaxHosts int    `json:"group_max_hosts"`
 }
@@ -149,8 +150,8 @@ func LoadTaskQueue(distro string) (*TaskQueue, error) {
 	return findTaskQueueForDistro(taskQueueQuery{DistroID: distro, Collection: TaskQueuesCollection})
 }
 
-func LoadDistroAliasTaskQueue(distro string) (*TaskQueue, error) {
-	return findTaskQueueForDistro(taskQueueQuery{DistroID: distro, Collection: TaskAliasQueuesCollection})
+func LoadDistroAliasTaskQueue(distroID string) (*TaskQueue, error) {
+	return findTaskQueueForDistro(taskQueueQuery{DistroID: distroID, Collection: TaskAliasQueuesCollection})
 }
 
 func (self *TaskQueue) Length() int {
@@ -167,7 +168,7 @@ func (self *TaskQueue) NextTask() *TaskQueueItem {
 // shouldRunTaskGroup returns true if the number of hosts running a task is less than the maximum for that task group.
 func shouldRunTaskGroup(taskId string, spec TaskSpec) bool {
 	// Get number of hosts running this spec.
-	numHosts, err := host.NumHostsByTaskSpec(spec.Group, spec.BuildVariant, spec.ProjectID, spec.Version)
+	numHosts, err := host.NumHostsByTaskSpec(spec.Group, spec.BuildVariant, spec.Project, spec.Version)
 	if err != nil {
 		grip.Error(message.WrapError(err, message.Fields{
 			"message":    "error finding hosts for spec",
@@ -283,9 +284,9 @@ func (self *TaskQueue) FindNextTask(spec TaskSpec) *TaskQueueItem {
 		return nil
 	}
 	// With a spec, find a matching task.
-	if spec.Group != "" && spec.ProjectID != "" && spec.BuildVariant != "" && spec.Version != "" {
+	if spec.Group != "" && spec.Project != "" && spec.BuildVariant != "" && spec.Version != "" {
 		for _, it := range self.Queue {
-			if it.Project != spec.ProjectID {
+			if it.Project != spec.Project {
 				continue
 			}
 
@@ -315,7 +316,7 @@ func (self *TaskQueue) FindNextTask(spec TaskSpec) *TaskQueueItem {
 		// If we already determined that this task group is not runnable, continue.
 		if it.Group == spec.Group &&
 			it.BuildVariant == spec.BuildVariant &&
-			it.Project == spec.ProjectID &&
+			it.Project == spec.Project &&
 			it.Version == spec.Version &&
 			it.GroupMaxHosts == spec.GroupMaxHosts {
 			continue
@@ -325,7 +326,7 @@ func (self *TaskQueue) FindNextTask(spec TaskSpec) *TaskQueueItem {
 		spec = TaskSpec{
 			Group:         it.Group,
 			BuildVariant:  it.BuildVariant,
-			ProjectID:     it.Project,
+			Project:       it.Project,
 			Version:       it.Version,
 			GroupMaxHosts: it.GroupMaxHosts,
 		}
@@ -511,7 +512,6 @@ func FindDistroTaskQueue(distroID string) (TaskQueue, error) {
 		&queue)
 
 	grip.DebugWhen(err == nil, message.Fields{
-		"ticket":                               "EVG-6289",
 		"message":                              "fetched the distro's TaskQueueItems to create its TaskQueue",
 		"distro":                               distroID,
 		"task_queue_generated_at":              queue.GeneratedAt,
@@ -599,23 +599,16 @@ func FindTaskAliasQueueGenerationTimes() (map[string]time.Time, error) {
 // pull out the task with the specified id from both the in-memory and db
 // versions of the task queue
 func (self *TaskQueue) DequeueTask(taskId string) error {
-	// first, remove from the in-memory queue
-	found := false
+	// first, remove it from the in-memory queue if it is present
 outer:
 	for {
 		for idx, queueItem := range self.Queue {
 			if queueItem.Id == taskId {
-				found = true
 				self.Queue = append(self.Queue[:idx], self.Queue[idx+1:]...)
 				continue outer
 			}
 		}
 		break
-	}
-
-	// validate that the task is there
-	if !found {
-		return errors.Errorf("TaskQueueItem with id '%s' not found in the in-memory TaskQueue.Queue for distro '%s'", taskId, self.Distro)
 	}
 
 	// When something is dequeued from the in-memory queue on one app server, it
