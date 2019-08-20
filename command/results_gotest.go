@@ -136,7 +136,6 @@ func (c *goTestResults) allOutputFiles() ([]string, error) {
 	}
 
 	return outputFiles, nil
-
 }
 
 // ParseTestOutputFiles parses all of the files that are passed in, and returns the
