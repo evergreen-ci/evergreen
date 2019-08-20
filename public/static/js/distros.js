@@ -27,8 +27,8 @@ mciModule.controller('DistrosCtrl', function($scope, $window, $location, $anchor
     $scope.distros[i].planner_settings.task_ordering = $scope.distros[i].planner_settings.task_ordering || "";
     $scope.distros[i].finder_settings = $scope.distros[i].finder_settings || {};
     $scope.distros[i].finder_settings.version = $scope.distros[i].finder_settings.version || "legacy";
-    $scope.distros[i].bootstrap_method = $scope.distros[i].bootstrap_method || 'legacy-ssh';
-    $scope.distros[i].communication_method = $scope.distros[i].communication_method || 'legacy-ssh';
+    $scope.distros[i].bootstrap_settings.method = $scope.distros[i].bootstrap_settings.method || 'legacy-ssh';
+    $scope.distros[i].bootstrap_settings.communication = $scope.distros[i].bootstrap_settings.communication || 'legacy-ssh';
     $scope.distros[i].clone_method = $scope.distros[i].clone_method || 'legacy-ssh';
   }
 
@@ -376,8 +376,10 @@ mciModule.controller('DistrosCtrl', function($scope, $window, $location, $anchor
         '_id': 'new distro',
         'arch': 'linux_amd64',
         'provider': 'ec2',
-        'bootstrap_method': 'legacy-ssh',
-        'communication_method': 'legacy-ssh',
+        'bootstrap_settings': {
+            'method': 'legacy-ssh',
+            'communication': 'legacy-ssh'
+        },
         'clone_method': 'legacy-ssh',
         'settings': {},
         'planner_settings': {
@@ -416,8 +418,7 @@ mciModule.controller('DistrosCtrl', function($scope, $window, $location, $anchor
         'setup': $scope.activeDistro.user_data,
         'pool_size': $scope.activeDistro.pool_size,
         'setup_as_sudo' : $scope.activeDistro.setup_as_sudo,
-        'bootstrap_method': $scope.activeDistro.bootstrap_method,
-        'communication_method': $scope.activeDistro.communication_method,
+        'bootstrap_settings': $scope.activeDistro.bootstrap_settings,
         'clone_method': $scope.activeDistro.clone_method,
       };
       newDistro.settings = _.clone($scope.activeDistro.settings);
@@ -477,11 +478,23 @@ mciModule.controller('DistrosCtrl', function($scope, $window, $location, $anchor
 
   // checks that the form is valid for the given active distro
   $scope.validForm = function() {
+    if (!$scope.validBootstrapAndCommunication()) {
+      return false;
+    }
     if ($scope.activeDistro.provider.startsWith('ec2')) {
-      return $scope.validSecurityGroup() && $scope.validSubnetId;
+      return $scope.validSecurityGroup() && $scope.validSubnetId();
     }
     return true;
   }
+
+  $scope.validBootstrapAndCommunication = function() {
+    if ($scope.activeDistro) {
+      return ($scope.activeDistro.bootstrap_settings.method == 'legacy-ssh' && $scope.activeDistro.bootstrap_settings.communication == 'legacy-ssh') ||
+             ($scope.activeDistro.bootstrap_settings.method != 'legacy-ssh' && $scope.activeDistro.bootstrap_settings.communication != 'legacy-ssh');
+    }
+    return true;
+  };
+
 
   // if a security group is in a vpc it needs to be the id which starts with 'sg-'
   $scope.validSecurityGroup = function(){

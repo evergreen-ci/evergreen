@@ -222,7 +222,7 @@ func (j *createHostJob) createHost(ctx context.Context) error {
 	// remove the intent host to insert started host
 	intentHost, err := host.FindOneId(j.HostID)
 	if err != nil {
-		if j.host.Distro.BootstrapMethod == distro.BootstrapMethodUserData {
+		if j.host.Distro.BootstrapSettings.Method == distro.BootstrapMethodUserData {
 			grip.Error(message.WrapError(j.host.DeleteJasperCredentials(ctx, j.env), message.Fields{
 				"message": "problem cleaning up Jasper credentials",
 				"host":    j.host.Id,
@@ -239,7 +239,7 @@ func (j *createHostJob) createHost(ctx context.Context) error {
 			"host":    j.HostID,
 		})
 	} else if err := intentHost.Remove(); err != nil {
-		if j.host.Distro.BootstrapMethod == distro.BootstrapMethodUserData {
+		if j.host.Distro.BootstrapSettings.Method == distro.BootstrapMethodUserData {
 			grip.Error(message.WrapError(j.host.DeleteJasperCredentials(ctx, j.env), message.Fields{
 				"message": "problem cleaning up Jasper credentials",
 				"host":    j.host.Id,
@@ -266,7 +266,7 @@ func (j *createHostJob) createHost(ctx context.Context) error {
 	j.host.StartTime = j.start
 
 	if err := j.host.Insert(); err != nil {
-		if j.host.Distro.BootstrapMethod == distro.BootstrapMethodUserData {
+		if j.host.Distro.BootstrapSettings.Method == distro.BootstrapMethodUserData {
 			grip.Error(message.WrapError(j.host.DeleteJasperCredentials(ctx, j.env), message.Fields{
 				"message": "problem cleaning up Jasper credentials",
 				"host":    j.host.Id,

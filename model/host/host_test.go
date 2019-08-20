@@ -853,7 +853,7 @@ func TestFindNeedsNewAgent(t *testing.T) {
 				Status:        evergreen.HostRunning,
 				StartedBy:     evergreen.User,
 				NeedsNewAgent: true,
-				Distro:        distro.Distro{BootstrapMethod: distro.BootstrapMethodLegacySSH},
+				Distro:        distro.Distro{BootstrapSettings: distro.BootstrapSettings{Method: distro.BootstrapMethodLegacySSH}},
 			}
 			So(h.Insert(), ShouldBeNil)
 
@@ -892,8 +892,8 @@ func TestSetNeedsNewAgent(t *testing.T) {
 			assert.True(t, dbHost.NeedsNewAgent)
 		},
 		"NoopsOnNonLegacyHosts": func(t *testing.T, h *Host) {
-			h.Distro.BootstrapMethod = distro.BootstrapMethodUserData
-			h.Distro.CommunicationMethod = distro.CommunicationMethodSSH
+			h.Distro.BootstrapSettings.Method = distro.BootstrapMethodUserData
+			h.Distro.BootstrapSettings.Communication = distro.CommunicationMethodSSH
 			require.NoError(t, h.Insert())
 
 			require.NoError(t, h.SetNeedsNewAgent(true))
@@ -935,8 +935,8 @@ func TestAgentMonitorLastCommunicationTimeElapsed(t *testing.T) {
 			assert.Empty(t, hosts)
 		},
 		"DoesNotFindLegacyHosts": func(t *testing.T, h *Host) {
-			h.Distro.BootstrapMethod = distro.BootstrapMethodLegacySSH
-			h.Distro.CommunicationMethod = distro.CommunicationMethodLegacySSH
+			h.Distro.BootstrapSettings.Method = distro.BootstrapMethodLegacySSH
+			h.Distro.BootstrapSettings.Communication = distro.CommunicationMethodLegacySSH
 			require.NoError(t, h.Insert())
 
 			hosts, err := Find(db.Query(AgentMonitorLastCommunicationTimeElapsed(time.Now())))
@@ -945,8 +945,8 @@ func TestAgentMonitorLastCommunicationTimeElapsed(t *testing.T) {
 			assert.Empty(t, hosts)
 		},
 		"DoesNotFindHostsWithoutBootstrapMethod": func(t *testing.T, h *Host) {
-			h.Distro.BootstrapMethod = ""
-			h.Distro.CommunicationMethod = ""
+			h.Distro.BootstrapSettings.Method = ""
+			h.Distro.BootstrapSettings.Communication = ""
 			require.NoError(t, h.Insert())
 
 			hosts, err := Find(db.Query(AgentMonitorLastCommunicationTimeElapsed(time.Now())))
@@ -963,8 +963,10 @@ func TestAgentMonitorLastCommunicationTimeElapsed(t *testing.T) {
 			h := Host{
 				Id: "id",
 				Distro: distro.Distro{
-					BootstrapMethod:     distro.BootstrapMethodSSH,
-					CommunicationMethod: distro.CommunicationMethodRPC,
+					BootstrapSettings: distro.BootstrapSettings{
+						Method:        distro.BootstrapMethodSSH,
+						Communication: distro.CommunicationMethodRPC,
+					},
 				},
 				Status:    evergreen.HostRunning,
 				StartedBy: evergreen.User,
@@ -993,7 +995,7 @@ func TestFindByNeedsNewAgentMonitor(t *testing.T) {
 			require.Len(t, hosts, 0)
 		},
 		"BootstrapLegacySSH": func(t *testing.T, h *Host) {
-			h.Distro.BootstrapMethod = distro.BootstrapMethodLegacySSH
+			h.Distro.BootstrapSettings.Method = distro.BootstrapMethodLegacySSH
 			require.NoError(t, h.Insert())
 
 			hosts, err := FindByNeedsNewAgentMonitor()
@@ -1001,7 +1003,7 @@ func TestFindByNeedsNewAgentMonitor(t *testing.T) {
 			require.Len(t, hosts, 0)
 		},
 		"BootstrapSSH": func(t *testing.T, h *Host) {
-			h.Distro.BootstrapMethod = distro.BootstrapMethodSSH
+			h.Distro.BootstrapSettings.Method = distro.BootstrapMethodSSH
 			require.NoError(t, h.Insert())
 
 			hosts, err := FindByNeedsNewAgentMonitor()
@@ -1010,7 +1012,7 @@ func TestFindByNeedsNewAgentMonitor(t *testing.T) {
 			assert.Equal(t, h.Id, hosts[0].Id)
 		},
 		"BootstrapUserData": func(t *testing.T, h *Host) {
-			h.Distro.BootstrapMethod = distro.BootstrapMethodUserData
+			h.Distro.BootstrapSettings.Method = distro.BootstrapMethodUserData
 			require.NoError(t, h.Insert())
 
 			hosts, err := FindByNeedsNewAgentMonitor()
@@ -1019,7 +1021,7 @@ func TestFindByNeedsNewAgentMonitor(t *testing.T) {
 			assert.Equal(t, h.Id, hosts[0].Id)
 		},
 		"BootstrapPreconfiguredImage": func(t *testing.T, h *Host) {
-			h.Distro.BootstrapMethod = distro.BootstrapMethodPreconfiguredImage
+			h.Distro.BootstrapSettings.Method = distro.BootstrapMethodPreconfiguredImage
 			require.NoError(t, h.Insert())
 
 			hosts, err := FindByNeedsNewAgentMonitor()
@@ -1055,7 +1057,7 @@ func TestFindUserDataSpawnHostsProvisioning(t *testing.T) {
 			assert.Equal(t, h.Id, hosts[0].Id)
 		},
 		"IgnoresNonUserDataBootstrap": func(t *testing.T, h *Host) {
-			h.Distro.BootstrapMethod = distro.BootstrapMethodSSH
+			h.Distro.BootstrapSettings.Method = distro.BootstrapMethodSSH
 			require.NoError(t, h.Insert())
 
 			hosts, err := FindUserDataSpawnHostsProvisioning()
@@ -1098,9 +1100,11 @@ func TestFindUserDataSpawnHostsProvisioning(t *testing.T) {
 				Provisioned: true,
 				StartedBy:   "user",
 				Distro: distro.Distro{
-					Id:                  "distro_id",
-					BootstrapMethod:     distro.BootstrapMethodUserData,
-					CommunicationMethod: distro.CommunicationMethodSSH,
+					Id: "distro_id",
+					BootstrapSettings: distro.BootstrapSettings{
+						Method:        distro.BootstrapMethodUserData,
+						Communication: distro.CommunicationMethodSSH,
+					},
 				},
 			}
 			testCase(t, &h)
@@ -1117,8 +1121,10 @@ func TestFindByExpiringJasperCredentials(t *testing.T) {
 			h := &Host{
 				Id: "id",
 				Distro: distro.Distro{
-					BootstrapMethod:     distro.BootstrapMethodLegacySSH,
-					CommunicationMethod: distro.CommunicationMethodLegacySSH,
+					BootstrapSettings: distro.BootstrapSettings{
+						Method:        distro.BootstrapMethodLegacySSH,
+						Communication: distro.CommunicationMethodLegacySSH,
+					},
 				},
 				JasperCredentialsID: "cid",
 				Status:              evergreen.HostRunning,
@@ -1137,8 +1143,10 @@ func TestFindByExpiringJasperCredentials(t *testing.T) {
 			h := &Host{
 				Id: "id",
 				Distro: distro.Distro{
-					BootstrapMethod:     distro.BootstrapMethodSSH,
-					CommunicationMethod: distro.CommunicationMethodSSH,
+					BootstrapSettings: distro.BootstrapSettings{
+						Method:        distro.BootstrapMethodSSH,
+						Communication: distro.CommunicationMethodSSH,
+					},
 				},
 				JasperCredentialsID: "cid",
 				Status:              evergreen.HostRunning,
@@ -1153,8 +1161,10 @@ func TestFindByExpiringJasperCredentials(t *testing.T) {
 			h := &Host{
 				Id: "id",
 				Distro: distro.Distro{
-					BootstrapMethod:     distro.BootstrapMethodSSH,
-					CommunicationMethod: distro.CommunicationMethodSSH,
+					BootstrapSettings: distro.BootstrapSettings{
+						Method:        distro.BootstrapMethodSSH,
+						Communication: distro.CommunicationMethodSSH,
+					},
 				},
 				JasperCredentialsID: "cid",
 				Status:              evergreen.HostRunning,
@@ -1173,8 +1183,10 @@ func TestFindByExpiringJasperCredentials(t *testing.T) {
 			h := &Host{
 				Id: "id",
 				Distro: distro.Distro{
-					BootstrapMethod:     distro.BootstrapMethodSSH,
-					CommunicationMethod: distro.CommunicationMethodSSH,
+					BootstrapSettings: distro.BootstrapSettings{
+						Method:        distro.BootstrapMethodSSH,
+						Communication: distro.CommunicationMethodSSH,
+					},
 				},
 				JasperCredentialsID: "cid",
 				Status:              evergreen.HostRunning,
@@ -1194,8 +1206,10 @@ func TestFindByExpiringJasperCredentials(t *testing.T) {
 			h := &Host{
 				Id: "id",
 				Distro: distro.Distro{
-					BootstrapMethod:     distro.BootstrapMethodSSH,
-					CommunicationMethod: distro.CommunicationMethodSSH,
+					BootstrapSettings: distro.BootstrapSettings{
+						Method:        distro.BootstrapMethodSSH,
+						Communication: distro.CommunicationMethodSSH,
+					},
 				},
 				JasperCredentialsID: "cid",
 				Status:              evergreen.HostTerminated,
@@ -1214,8 +1228,10 @@ func TestFindByExpiringJasperCredentials(t *testing.T) {
 			h := &Host{
 				Id: "id",
 				Distro: distro.Distro{
-					BootstrapMethod:     distro.BootstrapMethodSSH,
-					CommunicationMethod: distro.CommunicationMethodSSH,
+					BootstrapSettings: distro.BootstrapSettings{
+						Method:        distro.BootstrapMethodSSH,
+						Communication: distro.CommunicationMethodSSH,
+					},
 				},
 				JasperCredentialsID: "cid",
 				Status:              evergreen.HostRunning,

@@ -497,7 +497,7 @@ func (as *APIServer) NextTask(w http.ResponseWriter, r *http.Request) {
 		"message":   "failed to mark host as done provisioning with user data",
 		"host":      h.Id,
 		"distro":    h.Distro.Id,
-		"bootstrap": h.Distro.BootstrapMethod,
+		"bootstrap": h.Distro.BootstrapSettings.Method,
 		"operation": "next_task",
 	}))
 

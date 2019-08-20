@@ -608,9 +608,12 @@ func TestNextTask(t *testing.T) {
 				nonLegacyHost := host.Host{
 					Id: "nonLegacyHost",
 					Distro: distro.Distro{
-						Id:                  distroID,
-						BootstrapMethod:     distro.BootstrapMethodUserData,
-						CommunicationMethod: distro.CommunicationMethodRPC,
+						Id: distroID,
+						BootstrapSettings: distro.BootstrapSettings{
+
+							Method:        distro.BootstrapMethodUserData,
+							Communication: distro.CommunicationMethodRPC,
+						},
 					},
 					Secret:        hostSecret,
 					Status:        evergreen.HostRunning,

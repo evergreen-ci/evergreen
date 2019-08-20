@@ -221,7 +221,7 @@ func TestJasperDeployJob(t *testing.T) {
 
 			require.Len(t, mngr.Procs, 2)
 
-			writeCredsCmd := fmt.Sprintf("cat > '%s'", h.Distro.JasperCredentialsPath)
+			writeCredsCmd := fmt.Sprintf("cat > '%s'", h.Distro.BootstrapSettings.JasperCredentialsPath)
 			writeCredentialsProc := mngr.Procs[0]
 
 			var writeCredsCmdFound bool
@@ -260,10 +260,12 @@ func TestJasperDeployJob(t *testing.T) {
 				Id:   "host_id",
 				Host: "localhost",
 				Distro: distro.Distro{
-					JasperCredentialsPath: "/etc/creds.pem",
-					BootstrapMethod:       distro.BootstrapMethodUserData,
-					CommunicationMethod:   distro.CommunicationMethodRPC,
-					SSHKey:                "/etc/mci.pem",
+					BootstrapSettings: distro.BootstrapSettings{
+						Method:                distro.BootstrapMethodUserData,
+						Communication:         distro.CommunicationMethodRPC,
+						JasperCredentialsPath: "/etc/creds.pem",
+					},
+					SSHKey: "/etc/mci.pem",
 				},
 			}
 			_, err := h.Upsert()
