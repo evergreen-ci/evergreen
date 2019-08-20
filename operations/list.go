@@ -281,6 +281,19 @@ func listDistros(ctx context.Context, confPath string, onlyUserSpawnable bool) e
 		for _, distro := range distros {
 			fmt.Println(restmodel.FromAPIString(distro.Name))
 		}
+
+		aliases := map[string][]string{}
+		for _, d := range distros {
+			for _, a := range d.Aliases {
+				aliases[a] = append(aliases[a], d.Aliases...)
+			}
+		}
+		if len(aliases) > 0 {
+			fmt.Println("\n", len(aliases), "distro aliases:")
+			for a, names := range aliases {
+				fmt.Println(a, "=>", names)
+			}
+		}
 	}
 
 	return nil

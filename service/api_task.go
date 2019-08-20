@@ -25,7 +25,7 @@ import (
 
 // if a host encounters more than this number of system failures, then it should be disabled.
 const consecutiveSystemFailureThreshold = 3
-const taskQueueServiceTTL = time.Minute
+const taskDispatcherTTL = time.Minute
 
 // StartTask is the handler function that retrieves the task from the request
 // and acquires the global lock
@@ -305,7 +305,7 @@ func (as *APIServer) EndTask(w http.ResponseWriter, r *http.Request) {
 
 // assignNextAvailableTask gets the next task from the queue and sets the running task field
 // of currentHost.
-func assignNextAvailableTask(ctx context.Context, taskQueue *model.TaskQueue, taskQueueService model.TaskQueueService, currentHost *host.Host) (*task.Task, error) {
+func assignNextAvailableTask(ctx context.Context, taskQueue *model.TaskQueue, dispatcher model.TaskQueueItemDispatcher, currentHost *host.Host) (*task.Task, error) {
 	if currentHost.RunningTask != "" {
 		grip.Error(message.Fields{
 			"message":      "tried to assign task to a host already running task",
@@ -319,7 +319,7 @@ func assignNextAvailableTask(ctx context.Context, taskQueue *model.TaskQueue, ta
 		spec = model.TaskSpec{
 			Group:        currentHost.LastGroup,
 			BuildVariant: currentHost.LastBuildVariant,
-			ProjectID:    currentHost.LastProject,
+			Project:      currentHost.LastProject,
 			Version:      currentHost.LastVersion,
 		}
 	}
@@ -356,14 +356,14 @@ func assignNextAvailableTask(ctx context.Context, taskQueue *model.TaskQueue, ta
 	// continue must be preceded by dequeueing the current task from the
 	// queue to prevent an infinite loop.
 	for taskQueue.Length() != 0 {
-		if err := ctx.Err(); err != nil {
+		if err = ctx.Err(); err != nil {
 			return nil, errors.WithStack(err)
 		}
 
 		var queueItem *model.TaskQueueItem
 		switch d.PlannerSettings.Version {
 		case evergreen.PlannerVersionTunable, evergreen.PlannerVersionRevised:
-			queueItem, err = taskQueueService.RefreshFindNextTask(d.Id, spec)
+			queueItem, err = dispatcher.RefreshFindNextTask(d.Id, spec)
 			if err != nil {
 				return nil, errors.Wrap(err, "problem getting next task")
 			}
@@ -385,7 +385,7 @@ func assignNextAvailableTask(ctx context.Context, taskQueue *model.TaskQueue, ta
 				"taskspec_group":           spec.Group,
 				"taskspec_build_variant":   spec.BuildVariant,
 				"taskspec_version":         spec.Version,
-				"taskspec_project_id":      spec.ProjectID,
+				"taskspec_project":         spec.Project,
 				"taskspec_group_max_hosts": spec.GroupMaxHosts,
 			}))
 			return nil, err
@@ -407,7 +407,7 @@ func assignNextAvailableTask(ctx context.Context, taskQueue *model.TaskQueue, ta
 				"taskspec_group":           spec.Group,
 				"taskspec_build_variant":   spec.BuildVariant,
 				"taskspec_version":         spec.Version,
-				"taskspec_project_id":      spec.ProjectID,
+				"taskspec_project":         spec.Project,
 				"taskspec_group_max_hosts": spec.GroupMaxHosts,
 			}))
 
@@ -434,7 +434,7 @@ func assignNextAvailableTask(ctx context.Context, taskQueue *model.TaskQueue, ta
 				"taskspec_group":           spec.Group,
 				"taskspec_build_variant":   spec.BuildVariant,
 				"taskspec_version":         spec.Version,
-				"taskspec_project_id":      spec.ProjectID,
+				"taskspec_project":         spec.Project,
 				"taskspec_group_max_hosts": spec.GroupMaxHosts,
 			}))
 
@@ -455,7 +455,7 @@ func assignNextAvailableTask(ctx context.Context, taskQueue *model.TaskQueue, ta
 			"taskspec_group":           spec.Group,
 			"taskspec_build_variant":   spec.BuildVariant,
 			"taskspec_version":         spec.Version,
-			"taskspec_project_id":      spec.ProjectID,
+			"taskspec_project":         spec.Project,
 			"taskspec_group_max_hosts": spec.GroupMaxHosts,
 		}))
 
@@ -516,7 +516,7 @@ func (as *APIServer) NextTask(w http.ResponseWriter, r *http.Request) {
 	var response apimodels.NextTaskResponse
 	var err error
 	if checkHostHealth(h) {
-		ctx, cancel := context.WithTimeout(r.Context(), 30*time.Second)
+		ctx, cancel = context.WithTimeout(r.Context(), 30*time.Second)
 		defer cancel()
 		env := evergreen.GetEnvironment()
 		stopAgentMonitor = !h.LegacyBootstrap()
@@ -571,6 +571,8 @@ func (as *APIServer) NextTask(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	var nextTask *task.Task
+
 	// retrieve the next task off the task queue and attempt to assign it to the host.
 	// If there is already a host that has the task, it will error
 	taskQueue, err := model.LoadTaskQueue(h.Distro.Id)
@@ -580,35 +582,53 @@ func (as *APIServer) NextTask(w http.ResponseWriter, r *http.Request) {
 		gimlet.WriteResponse(w, gimlet.MakeJSONInternalErrorResponder(err))
 		return
 	}
-	if taskQueue == nil {
-		grip.Info(message.Fields{
-			"message":   "nil task queue found",
-			"op":        "next_task",
-			"host_id":   h.Id,
-			"distro_id": h.Distro.Id,
-		})
-		gimlet.WriteJSON(w, response)
-		return
-	}
-	// assign the task to a host and retrieve the task
-	nextTask, err := assignNextAvailableTask(ctx, taskQueue, as.taskQueueService, h)
-	if err != nil {
-		err = errors.WithStack(err)
-		grip.Error(err)
-		gimlet.WriteResponse(w, gimlet.MakeJSONErrorResponder(err))
-		return
-	}
-	if nextTask == nil {
-		// if the task is empty, still send it with an status ok and check it on the other side
-		grip.Info(message.Fields{
-			"op":      "next_task",
-			"message": "no task to assign to host",
-			"host_id": h.Id,
-		})
-		gimlet.WriteJSON(w, response)
-		return
+
+	// if the task queue exists, try to assign a task from it:
+	if taskQueue != nil {
+		// assign the task to a host and retrieve the task
+		nextTask, err = assignNextAvailableTask(ctx, taskQueue, as.taskDispatcher, h)
+		if err != nil {
+			err = errors.WithStack(err)
+			grip.Error(err)
+			gimlet.WriteResponse(w, gimlet.MakeJSONErrorResponder(err))
+			return
+		}
 	}
 
+	// if we didn't find a task in the "primary" queue, then we
+	// try again from the alias queue. (this code runs if the
+	// primary queue doesn't exist or is empty)
+	if nextTask == nil {
+		// if we couldn't find a task in the task queue,
+		// check the alias queue...
+		aliasQueue, err := model.LoadDistroAliasTaskQueue(h.Distro.Id)
+		if err != nil {
+			gimlet.WriteResponse(w, gimlet.MakeJSONErrorResponder(err))
+			return
+		}
+		if aliasQueue != nil {
+			nextTask, err = assignNextAvailableTask(ctx, aliasQueue, as.taskAliasDispatcher, h)
+			if err != nil {
+				gimlet.WriteResponse(w, gimlet.MakeJSONErrorResponder(err))
+				return
+			}
+		}
+
+		// if we haven't assigned a task here, then we need to
+		// return early.
+		if nextTask == nil {
+			// if the task is empty, still send it with an status ok and check it on the other side
+			grip.Info(message.Fields{
+				"op":      "next_task",
+				"message": "no task to assign to host",
+				"host_id": h.Id,
+			})
+			gimlet.WriteJSON(w, response)
+			return
+		}
+	}
+
+	// otherwise we've dispatched a task, so we
 	// mark the task as dispatched
 	if err := model.MarkTaskDispatched(nextTask, h.Id, h.Distro.Id); err != nil {
 		err = errors.WithStack(err)

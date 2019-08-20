@@ -392,6 +392,8 @@ func (h *Host) RunJasperProcess(ctx context.Context, env evergreen.Environment, 
 	if err != nil {
 		return "", errors.Wrap(err, "could not get a Jasper client")
 	}
+	defer client.CloseConnection()
+
 	output := &util.CappedWriter{
 		Buffer:   &bytes.Buffer{},
 		MaxBytes: 1024 * 1024, // 1 MB
@@ -420,6 +422,7 @@ func (h *Host) StartJasperProcess(ctx context.Context, env evergreen.Environment
 	if err != nil {
 		return errors.Wrap(err, "could not get a Jasper client")
 	}
+	defer client.CloseConnection()
 
 	if _, err := client.CreateProcess(ctx, opts); err != nil {
 		return errors.Wrap(err, "problem creating Jasper process")
@@ -539,6 +542,7 @@ func (h *Host) StopAgentMonitor(ctx context.Context, env evergreen.Environment) 
 	if err != nil {
 		return errors.Wrap(err, "could not get a Jasper client")
 	}
+	defer client.CloseConnection()
 
 	procs, err := client.Group(ctx, evergreen.AgentMonitorTag)
 	if err != nil {

@@ -50,6 +50,7 @@ func CheckDistro(ctx context.Context, d *distro.Distro, s *evergreen.Settings, n
 		}
 	}
 	validationErrs = append(validationErrs, ensureUniqueId(d, distroIds)...)
+	validationErrs = append(validationErrs, ensureValidAliases(d, distroIds)...)
 
 	for _, v := range distroSyntaxValidators {
 		validationErrs = append(validationErrs, v(ctx, d, s)...)
@@ -152,6 +153,25 @@ func ensureUniqueId(d *distro.Distro, distroIds []string) ValidationErrors {
 		return ValidationErrors{{Error, fmt.Sprintf("distro '%v' uses an existing identifier", d.Id)}}
 	}
 	return nil
+}
+
+func ensureValidAliases(d *distro.Distro, distroIDs []string) ValidationErrors {
+	errs := ValidationErrors{}
+
+	for _, a := range d.Aliases {
+		if !util.StringSliceContains(distroIDs, a) {
+			errs = append(errs, ValidationError{
+				Level:   Error,
+				Message: fmt.Sprintf("'%s' is not a valid distro name", a),
+			})
+
+		}
+
+	}
+	if len(errs) == 0 {
+		return nil
+	}
+	return errs
 }
 
 // ensureValidExpansions checks that no expansion option key is blank.

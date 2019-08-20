@@ -6,8 +6,6 @@ import (
 	"context"
 	"testing"
 
-	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/service/ec2"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/distro"
@@ -90,32 +88,7 @@ func TestSpawnEC2InstanceOnDemand(t *testing.T) {
 	assert.NoError(err)
 	assert.Len(foundHosts, 1)
 	assert.NoError(m.OnUp(ctx, h))
-	foundHost := foundHosts[0]
-	out, err := m.client.DescribeInstances(ctx, &ec2.DescribeInstancesInput{
-		InstanceIds: []*string{aws.String(foundHost.Id)},
-	})
-	assert.NoError(err)
-	tags := out.Reservations[0].Instances[0].Tags
-	requiredTags := map[string]string{
-		"start-time":        "",
-		"expire-on":         "",
-		"owner":             "",
-		"mode":              "",
-		"name":              "",
-		"evergreen-service": "",
-		"distro":            "",
-	}
-	for i := range tags {
-		key := *tags[i].Key
-		val := *tags[i].Value
-		requiredTags[key] = val
-	}
-	delete(requiredTags, "username")
-	assert.Equal("test_distro", requiredTags["distro"])
-	assert.Equal("mci", requiredTags["owner"])
-	for requiredKey, requiredValue := range requiredTags {
-		assert.NotEmptyf(requiredValue, "%s is empty", requiredKey)
-	}
+
 	assert.NoError(m.TerminateInstance(ctx, h, evergreen.User))
 	foundHosts, err = host.Find(host.IsTerminated)
 	assert.NoError(err)

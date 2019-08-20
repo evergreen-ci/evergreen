@@ -431,6 +431,11 @@ func TestJasperClient(t *testing.T) {
 
 			doTest := func() {
 				client, err := testCase.h.JasperClient(tctx, env)
+				defer func() {
+					if client != nil {
+						assert.NoError(t, client.CloseConnection())
+					}
+				}()
 				if testCase.expectError {
 					assert.Error(t, err)
 					assert.Nil(t, client)

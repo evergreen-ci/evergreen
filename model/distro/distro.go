@@ -350,6 +350,25 @@ func (d *Distro) GetImageID() (string, error) {
 	return s, nil
 }
 
+func (d *Distro) GetPoolSize() int {
+	switch d.Provider {
+	case evergreen.ProviderNameStatic:
+		if d.ProviderSettings == nil {
+			return 0
+		}
+
+		hosts, ok := (*d.ProviderSettings)["hosts"].([]interface{})
+		if !ok {
+			return 0
+		}
+
+		return len(hosts)
+	default:
+		return d.PoolSize + d.PlannerSettings.MaximumHosts
+	}
+
+}
+
 // ValidateContainerPoolDistros ensures that container pools have valid distros
 func ValidateContainerPoolDistros(s *evergreen.Settings) error {
 	catcher := grip.NewSimpleCatcher()
