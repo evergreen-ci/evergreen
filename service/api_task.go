@@ -25,7 +25,7 @@ import (
 
 // if a host encounters more than this number of system failures, then it should be disabled.
 const consecutiveSystemFailureThreshold = 3
-const taskQueueServiceTTL = time.Minute
+const taskDispatcherTTL = time.Minute
 
 // StartTask is the handler function that retrieves the task from the request
 // and acquires the global lock
@@ -369,7 +369,7 @@ func (as *APIServer) EndTask(w http.ResponseWriter, r *http.Request) {
 
 // assignNextAvailableTask gets the next task from the queue and sets the running task field
 // of currentHost.
-func assignNextAvailableTask(taskQueue *model.TaskQueue, taskQueueService model.TaskQueueService, currentHost *host.Host) (*task.Task, error) {
+func assignNextAvailableTask(taskQueue *model.TaskQueue, dispatcher model.TaskQueueItemDispatcher, currentHost *host.Host) (*task.Task, error) {
 	if currentHost.RunningTask != "" {
 		grip.Error(message.Fields{
 			"message":      "tried to assign task to a host already running task",
@@ -423,7 +423,7 @@ func assignNextAvailableTask(taskQueue *model.TaskQueue, taskQueueService model.
 		var queueItem *model.TaskQueueItem
 		switch d.PlannerSettings.Version {
 		case evergreen.PlannerVersionTunable, evergreen.PlannerVersionRevised:
-			queueItem, err = taskQueueService.RefreshFindNextTask(d.Id, spec)
+			queueItem, err = dispatcher.RefreshFindNextTask(d.Id, spec)
 			if err != nil {
 				return nil, errors.Wrap(err, "problem getting next task")
 			}
@@ -631,7 +631,7 @@ func (as *APIServer) NextTask(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// assign the task to a host and retrieve the task
-	nextTask, err := assignNextAvailableTask(taskQueue, as.taskQueueService, h)
+	nextTask, err := assignNextAvailableTask(taskQueue, as.taskDispatcher, h)
 	if err != nil {
 		err = errors.WithStack(err)
 		grip.Error(err)

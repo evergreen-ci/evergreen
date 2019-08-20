@@ -36,17 +36,17 @@ func TestDequeueTask(t *testing.T) {
 
 		So(db.Clear(TaskQueuesCollection), ShouldBeNil)
 
-		Convey("if the task queue is empty, an error should be thrown", func() {
+		Convey("if the task queue is empty, an error should not be thrown", func() {
 			So(taskQueue.Save(), ShouldBeNil)
-			So(taskQueue.DequeueTask(taskIds[0]), ShouldNotBeNil)
+			So(taskQueue.DequeueTask(taskIds[0]), ShouldBeNil)
 		})
 
-		Convey("if the task is not present in the queue, an error should be"+
+		Convey("if the task is not present in the queue, an error should not be"+
 			" thrown", func() {
 			taskQueue.Queue = append(taskQueue.Queue,
 				TaskQueueItem{Id: taskIds[1]})
 			So(taskQueue.Save(), ShouldBeNil)
-			So(taskQueue.DequeueTask(taskIds[0]), ShouldNotBeNil)
+			So(taskQueue.DequeueTask(taskIds[0]), ShouldBeNil)
 		})
 
 		Convey("if the task is present in the in-memory queue but not in the db queue"+
@@ -90,7 +90,7 @@ func TestDequeueTask(t *testing.T) {
 			So(taskQueue.DequeueTask(taskIds[0]), ShouldBeNil)
 			So(taskQueue.Length(), ShouldEqual, 0)
 
-			So(taskQueue.DequeueTask("foo"), ShouldNotBeNil)
+			So(taskQueue.DequeueTask("foo"), ShouldBeNil)
 			So(taskQueue.Length(), ShouldEqual, 0)
 
 		})
@@ -126,7 +126,7 @@ func TestDequeueTask(t *testing.T) {
 			So(taskQueue.DequeueTask(taskIds[0]), ShouldBeNil)
 			So(taskQueue.Length(), ShouldEqual, 0)
 
-			So(taskQueue.DequeueTask("foo"), ShouldNotBeNil)
+			So(taskQueue.DequeueTask("foo"), ShouldBeNil)
 			So(taskQueue.Length(), ShouldEqual, 0)
 		})
 		Convey("modern: duplicate tasks shouldn't lead to anics", func() {

@@ -114,7 +114,6 @@ var (
 	taskQueueItemProjectKey       = bsonutil.MustHaveTag(TaskQueueItem{}, "Project")
 	taskQueueItemExpDurationKey   = bsonutil.MustHaveTag(TaskQueueItem{}, "ExpectedDuration")
 	taskQueueItemPriorityKey      = bsonutil.MustHaveTag(TaskQueueItem{}, "Priority")
-	// taskQueueItemDependenciesKey  = bsonutil.MustHaveTag(TaskQueueItem{}, "Dependencies")
 )
 
 // TaskSpec is an argument structure to formalize the way that callers
@@ -394,7 +393,6 @@ func findTaskQueueForDistro(distroId string) (*TaskQueue, error) {
 						taskQueueItemProjectKey:       "$" + bsonutil.GetDottedKeyName(taskQueueQueueKey, taskQueueItemProjectKey),
 						taskQueueItemExpDurationKey:   "$" + bsonutil.GetDottedKeyName(taskQueueQueueKey, taskQueueItemExpDurationKey),
 						taskQueueItemPriorityKey:      "$" + bsonutil.GetDottedKeyName(taskQueueQueueKey, taskQueueItemPriorityKey),
-						// taskQueueItemDependenciesKey:  "$" + bsonutil.GetDottedKeyName(taskQueueQueueKey, taskQueueItemDependenciesKey),
 					},
 				},
 			},
@@ -530,23 +528,16 @@ func FindTaskQueueGenerationTimes() (map[string]time.Time, error) {
 // pull out the task with the specified id from both the in-memory and db
 // versions of the task queue
 func (self *TaskQueue) DequeueTask(taskId string) error {
-	// first, remove from the in-memory queue
-	found := false
+	// first, remove it from the in-memory queue if it is present
 outer:
 	for {
 		for idx, queueItem := range self.Queue {
 			if queueItem.Id == taskId {
-				found = true
 				self.Queue = append(self.Queue[:idx], self.Queue[idx+1:]...)
 				continue outer
 			}
 		}
 		break
-	}
-
-	// validate that the task is there
-	if !found {
-		return errors.Errorf("TaskQueueItem with id '%s' not found in the in-memory TaskQueue.Queue for distro '%s'", taskId, self.Distro)
 	}
 
 	// When something is dequeued from the in-memory queue on one app server, it

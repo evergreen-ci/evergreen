@@ -15,13 +15,7 @@ import (
 	"github.com/pkg/errors"
 )
 
-// type TaskQueueItemDispatcher interface {
-// 	FindNextTask(string, TaskSpec) (*TaskQueueItem, error)
-// 	Refresh(string) error
-// 	RefreshFindNextTask(string, TaskSpec) (*TaskQueueItem, error)
-// }
-
-type TaskQueueService interface {
+type TaskQueueItemDispatcher interface {
 	FindNextTask(string, TaskSpec) (*TaskQueueItem, error)
 	Refresh(string) error
 	RefreshFindNextTask(string, TaskSpec) (*TaskQueueItem, error)
@@ -38,7 +32,7 @@ type taskDispatchService struct {
 	ttl               time.Duration
 }
 
-func NewTaskDispatchService(ttl time.Duration) TaskQueueService {
+func NewTaskDispatchService(ttl time.Duration) TaskQueueItemDispatcher {
 	return &taskDispatchService{
 		ttl:               ttl,
 		cachedDispatchers: map[string]CachedDispatcher{},
