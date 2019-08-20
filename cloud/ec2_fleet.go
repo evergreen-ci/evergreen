@@ -85,8 +85,7 @@ func (m *ec2FleetManager) SpawnHost(ctx context.Context, h *host.Host) (*host.Ho
 		return nil, errors.Wrap(err, "error making block device mappings")
 	}
 
-	resources, err := m.spawnFleetSpotHost(ctx, h, ec2Settings, blockDevices)
-	if err != nil {
+	if err := m.spawnFleetSpotHost(ctx, h, ec2Settings, blockDevices); err != nil {
 		msg := "error spawning spot host with Fleet"
 		grip.Error(message.WrapError(err, message.Fields{
 			"message":       msg,
@@ -98,22 +97,6 @@ func (m *ec2FleetManager) SpawnHost(ctx context.Context, h *host.Host) (*host.Ho
 	}
 	grip.Debug(message.Fields{
 		"message":       "spawned spot host with Fleet",
-		"host":          h.Id,
-		"host_provider": h.Distro.Provider,
-		"distro":        h.Distro.Id,
-	})
-
-	if err = m.client.SetTags(ctx, resources, h); err != nil {
-		grip.Error(message.WrapError(err, message.Fields{
-			"message":       "error attaching tags",
-			"host":          h.Id,
-			"host_provider": h.Distro.Provider,
-			"distro":        h.Distro.Id,
-		}))
-		return nil, errors.Wrapf(err, "failed to attach tags for %s", h.Id)
-	}
-	grip.Debug(message.Fields{
-		"message":       "attached tags for host",
 		"host":          h.Id,
 		"host_provider": h.Distro.Provider,
 		"distro":        h.Distro.Id,
@@ -149,49 +132,56 @@ func (m *ec2FleetManager) GetInstanceStatuses(ctx context.Context, hosts []host.
 		return nil, errors.Errorf("AWS returned %d statuses for %d hosts", len(describeInstancesOutput.Reservations), len(instanceIDs))
 	}
 
-	statusMap := map[string]CloudStatus{}
+	instanceMap := map[string]*ec2.Instance{}
 	for i := range describeInstancesOutput.Reservations {
-		statusMap[*describeInstancesOutput.Reservations[i].Instances[0].InstanceId] = ec2StatusToEvergreenStatus(*describeInstancesOutput.Reservations[i].Instances[0].State.Name)
+		instanceMap[*describeInstancesOutput.Reservations[i].Instances[0].InstanceId] = describeInstancesOutput.Reservations[i].Instances[0]
 	}
 
 	// Return as an ordered slice of statuses
 	statuses := []CloudStatus{}
 	for _, h := range hosts {
-		statuses = append(statuses, statusMap[h.Id])
+		status := ec2StatusToEvergreenStatus(*instanceMap[h.Id].State.Name)
+		if status == StatusRunning {
+			// cache instance information so we can make fewer calls to AWS's API
+			if err = cacheHostData(ctx, &h, instanceMap[h.Id], m.client); err != nil {
+				return nil, errors.Wrapf(err, "can't cache host data for '%s'", h.Id)
+			}
+		}
+		statuses = append(statuses, status)
 	}
 	return statuses, nil
 }
 
 func (m *ec2FleetManager) GetInstanceStatus(ctx context.Context, h *host.Host) (CloudStatus, error) {
-	ec2Settings := &EC2ProviderSettings{}
-	err := ec2Settings.fromDistroSettings(h.Distro)
-	if err != nil {
-		return StatusUnknown, errors.Wrap(err, "problem getting settings from host")
-	}
-	if err = m.client.Create(m.credentials, ec2Settings.getRegion()); err != nil {
-		return StatusUnknown, errors.Wrap(err, "error creating client")
+	status := StatusUnknown
+
+	if err := m.configureClient(h); err != nil {
+		return status, errors.Wrapf(err, "can't configure client for '%s'", h.Id)
 	}
 	defer m.client.Close()
 
 	instance, err := m.getInstance(ctx, h)
 	if err != nil {
-		return StatusUnknown, errors.Wrapf(err, "can't get instance status")
+		return status, errors.Wrapf(err, "can't get instance status")
 	}
 
-	return ec2StatusToEvergreenStatus(*instance.State.Name), nil
+	status = ec2StatusToEvergreenStatus(*instance.State.Name)
+	if status == StatusRunning {
+		// cache instance information so we can make fewer calls to AWS's API
+		if err = cacheHostData(ctx, h, instance, m.client); err != nil {
+			return status, errors.Wrapf(err, "can't update host '%s'", h.Id)
+		}
+	}
+
+	return status, nil
 }
 
 func (m *ec2FleetManager) TerminateInstance(ctx context.Context, h *host.Host, user string) error {
 	if h.Status == evergreen.HostTerminated {
 		return errors.Errorf("Can not terminate %s - already marked as terminated!", h.Id)
 	}
-	ec2Settings := &EC2ProviderSettings{}
-	err := ec2Settings.fromDistroSettings(h.Distro)
-	if err != nil {
-		return errors.Wrap(err, "problem getting settings from host")
-	}
-	if err = m.client.Create(m.credentials, ec2Settings.getRegion()); err != nil {
-		return errors.Wrap(err, "error creating client")
+	if err := m.configureClient(h); err != nil {
+		return errors.Wrapf(err, "can't configure client for '%s'", h.Id)
 	}
 	defer m.client.Close()
 
@@ -244,35 +234,46 @@ func (m *ec2FleetManager) IsUp(ctx context.Context, h *host.Host) (bool, error) 
 	return false, nil
 }
 
-// OnUp is a noop for ec2Fleet
-func (m *ec2FleetManager) OnUp(context.Context, *host.Host) error {
+// OnUp sets tags on the instance created by Fleet
+func (m *ec2FleetManager) OnUp(ctx context.Context, h *host.Host) error {
+	if err := m.configureClient(h); err != nil {
+		return errors.Wrapf(err, "can't configure client for '%s'", h.Id)
+	}
+	defer m.client.Close()
+
+	resources := []string{h.Id}
+	volumeIDs, err := m.client.GetVolumeIDs(ctx, h)
+	if err != nil {
+		return errors.Wrapf(err, "can't get volume IDs for '%s'", h.Id)
+	}
+	resources = append(resources, volumeIDs...)
+
+	if err := m.client.SetTags(ctx, resources, h); err != nil {
+		grip.Error(message.WrapError(err, message.Fields{
+			"message":       "error attaching tags",
+			"host":          h.Id,
+			"host_provider": h.Distro.Provider,
+			"distro":        h.Distro.Id,
+		}))
+		return errors.Wrapf(err, "failed to attach tags for %s", h.Id)
+	}
+	grip.Debug(message.Fields{
+		"message":       "attached tags for host",
+		"host":          h.Id,
+		"host_provider": h.Distro.Provider,
+		"distro":        h.Distro.Id,
+	})
+
 	return nil
 }
 
 func (m *ec2FleetManager) GetDNSName(ctx context.Context, h *host.Host) (string, error) {
-	ec2Settings := &EC2ProviderSettings{}
-	err := ec2Settings.fromDistroSettings(h.Distro)
-	if err != nil {
-		return "", errors.Wrap(err, "problem getting settings from host")
-	}
-	if err = m.client.Create(m.credentials, ec2Settings.getRegion()); err != nil {
-		return "", errors.Wrap(err, "error creating client")
+	if err := m.configureClient(h); err != nil {
+		return "", errors.Wrapf(err, "can't configure client for '%s'", h.Id)
 	}
 	defer m.client.Close()
 
-	instance, err := m.getInstance(ctx, h)
-	if err != nil {
-		return "", errors.Wrapf(err, "can't get instance information for '%s", h.Id)
-	}
-
-	// Cache availability zone, launch time, and volume size in host document, since we
-	// have access to this information now. Cost jobs will use this
-	// information later.
-	if err = cacheHostData(ctx, h, instance, m.client); err != nil {
-		return "", errors.Wrapf(err, "can't update host '%s'", h.Id)
-	}
-
-	return *instance.PublicDnsName, nil
+	return m.client.GetPublicDNSName(ctx, h)
 }
 
 func (m *ec2FleetManager) GetSSHOptions(h *host.Host, keyName string) ([]string, error) {
@@ -302,7 +303,7 @@ func (m *ec2FleetManager) getInstance(ctx context.Context, h *host.Host) (*ec2.I
 	return instance, nil
 }
 
-func (m *ec2FleetManager) spawnFleetSpotHost(ctx context.Context, h *host.Host, ec2Settings *EC2ProviderSettings, blockDevices []*ec2.LaunchTemplateBlockDeviceMappingRequest) ([]string, error) {
+func (m *ec2FleetManager) spawnFleetSpotHost(ctx context.Context, h *host.Host, ec2Settings *EC2ProviderSettings, blockDevices []*ec2.LaunchTemplateBlockDeviceMappingRequest) error {
 	// Cleanup
 	var templateID *string
 	defer func() {
@@ -321,31 +322,16 @@ func (m *ec2FleetManager) spawnFleetSpotHost(ctx context.Context, h *host.Host, 
 	var templateVersion *int64
 	templateID, templateVersion, err = m.uploadLaunchTemplate(ctx, h, ec2Settings, blockDevices)
 	if err != nil {
-		return nil, errors.Wrapf(err, "unable to upload launch template for '%s'", h.Id)
+		return errors.Wrapf(err, "unable to upload launch template for '%s'", h.Id)
 	}
 
 	instanceID, err := m.requestFleet(ctx, ec2Settings, templateID, templateVersion)
 	if err != nil {
-		return nil, errors.Wrapf(err, "can't request fleet")
+		return errors.Wrapf(err, "can't request fleet")
 	}
 	h.Id = *instanceID
 
-	instanceInfo, err := m.client.GetInstanceInfo(ctx, h.Id)
-	if err != nil {
-		return nil, errors.Wrap(err, "can't get instance descriptions")
-	}
-
-	// return a slice of resources to be tagged
-	resources := []string{h.Id}
-	for _, vol := range instanceInfo.BlockDeviceMappings {
-		if *vol.DeviceName == "" {
-			continue
-		}
-
-		resources = append(resources, *vol.Ebs.VolumeId)
-	}
-
-	return resources, nil
+	return nil
 }
 
 func (m *ec2FleetManager) uploadLaunchTemplate(ctx context.Context, h *host.Host, ec2Settings *EC2ProviderSettings, blockDevices []*ec2.LaunchTemplateBlockDeviceMappingRequest) (*string, *int64, error) {
@@ -489,6 +475,19 @@ func (m *ec2FleetManager) makeOverrides(ctx context.Context, ec2Settings *EC2Pro
 	}
 
 	return overrides, nil
+}
+
+func (m *ec2FleetManager) configureClient(h *host.Host) error {
+	ec2Settings := &EC2ProviderSettings{}
+	err := ec2Settings.fromDistroSettings(h.Distro)
+	if err != nil {
+		return errors.Wrap(err, "problem getting settings from host")
+	}
+	if err = m.client.Create(m.credentials, ec2Settings.getRegion()); err != nil {
+		return errors.Wrap(err, "error creating client")
+	}
+
+	return nil
 }
 
 func subnetMatchesAz(subnet *ec2.Subnet) bool {

@@ -173,6 +173,22 @@ func VersionByMostRecentSystemRequester(projectId string) db.Q {
 	).Sort([]string{"-" + VersionRevisionOrderNumberKey})
 }
 
+// if startOrder is specified, only returns older versions (i.e. with a smaller revision number)
+func VersionBySystemRequesterOrdered(projectId string, startOrder int) db.Q {
+	q := bson.M{
+		VersionRequesterKey: bson.M{
+			"$in": evergreen.SystemVersionRequesterTypes,
+		},
+		VersionIdentifierKey: projectId,
+	}
+	if startOrder > 0 {
+		q[VersionRevisionOrderNumberKey] = bson.M{
+			"$lt": startOrder,
+		}
+	}
+	return db.Query(q).Sort([]string{"-" + VersionRevisionOrderNumberKey})
+}
+
 // ByMostRecentNonIgnored finds all non-ignored versions within a project,
 // ordered by most recently created to oldest.
 func VersionByMostRecentNonIgnored(projectId string) db.Q {

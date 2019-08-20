@@ -297,3 +297,39 @@ func (a *APIQuestionAnswer) ToService() (interface{}, error) {
 		Answer: FromAPIString(a.Answer),
 	}, nil
 }
+
+type APIRole struct {
+	Id          APIString         `json:"id"`
+	Name        APIString         `json:"name"`
+	ScopeType   APIString         `json:"scope_type"`
+	Scope       APIString         `json:"scope"`
+	Permissions map[string]string `json:"permissions"`
+}
+
+func (r *APIRole) BuildFromService(h interface{}) error {
+	v, ok := h.(*user.Role)
+	if !ok {
+		return errors.Errorf("incorrect type '%T' for role", h)
+	}
+	if v == nil {
+		return errors.New("can't build from nil role")
+	}
+
+	r.Id = ToAPIString(v.Id)
+	r.Name = ToAPIString(v.Name)
+	r.ScopeType = ToAPIString(string(v.ScopeType))
+	r.Scope = ToAPIString(v.Scope)
+	r.Permissions = v.Permissions
+
+	return nil
+}
+
+func (r *APIRole) ToService() (interface{}, error) {
+	return user.Role{
+		Id:          FromAPIString(r.Id),
+		Name:        FromAPIString(r.Name),
+		ScopeType:   user.ScopeType(FromAPIString(r.ScopeType)),
+		Scope:       FromAPIString(r.Scope),
+		Permissions: r.Permissions,
+	}, nil
+}

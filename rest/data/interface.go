@@ -60,8 +60,7 @@ type Connector interface {
 
 	// FindTasksByBuildId is a method to find a set of tasks which all have the same
 	// BuildId. It takes the buildId being queried for as its first parameter,
-	// as well as a taskId and limit for paginating through the results.
-	// It returns a list of tasks which match.
+	// as well as a taskId, status, and limit for paginating through the results.
 	FindTasksByBuildId(string, string, string, int, int) ([]task.Task, error)
 
 	// FindBuildById is a method to find the build matching the same BuildId.
@@ -219,6 +218,7 @@ type Connector interface {
 	DeletePublicKey(*user.DBUser, string) error
 	UpdateSettings(*user.DBUser, user.UserSettings) error
 	SubmitFeedback(restModel.APIFeedbackSubmission) error
+	GetAllRoles() ([]restModel.APIRole, error)
 
 	AddPatchIntent(patch.Intent, amboy.Queue) error
 

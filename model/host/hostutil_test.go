@@ -413,6 +413,11 @@ func TestJasperClient(t *testing.T) {
 
 			doTest := func() {
 				client, err := testCase.h.JasperClient(tctx, env)
+				defer func() {
+					if client != nil {
+						assert.NoError(t, client.CloseConnection())
+					}
+				}()
 				if testCase.expectError {
 					assert.Error(t, err)
 					assert.Nil(t, client)
@@ -764,6 +769,81 @@ func TestSetupSpawnHostCommand(t *testing.T) {
 	assert.Equal(t, expected, cmd)
 }
 
+func TestMarkUserDataDoneCommand(t *testing.T) {
+	for testName, testCase := range map[string]func(t *testing.T){
+		"FailsWithoutPathToDoneFile": func(t *testing.T) {
+			h := &Host{
+				Id: "id",
+			}
+			cmd, err := h.MarkUserDataDoneCommand()
+			assert.Error(t, err)
+			assert.Empty(t, cmd)
+		},
+		"SucceedsWithPathToDoneFile": func(t *testing.T) {
+			h := &Host{
+				Id:     "id",
+				Distro: distro.Distro{ClientDir: "/client_dir"},
+			}
+			cmd, err := h.MarkUserDataDoneCommand()
+			require.NoError(t, err)
+			assert.Equal(t, "mkdir -p /client_dir && touch /client_dir/user_data_done", cmd)
+		},
+	} {
+		t.Run(testName, func(t *testing.T) {
+			testCase(t)
+		})
+	}
+}
+
+func TestSetUserDataHostProvisioned(t *testing.T) {
+	for testName, testCase := range map[string]func(t *testing.T, h *Host){
+		"Succeeds": func(t *testing.T, h *Host) {
+			require.NoError(t, h.SetUserDataHostProvisioned())
+			assert.Equal(t, evergreen.HostRunning, h.Status)
+
+			dbHost, err := FindOneId(h.Id)
+			require.NoError(t, err)
+			assert.Equal(t, evergreen.HostRunning, dbHost.Status)
+		},
+		"IgnoresNonUserDataBootstrappedHost": func(t *testing.T, h *Host) {
+			h.Distro.BootstrapMethod = distro.BootstrapMethodSSH
+			_, err := h.Upsert()
+			require.NoError(t, err)
+
+			require.NoError(t, h.SetUserDataHostProvisioned())
+			assert.Equal(t, evergreen.HostProvisioning, h.Status)
+
+			dbHost, err := FindOneId(h.Id)
+			require.NoError(t, err)
+			assert.Equal(t, evergreen.HostProvisioning, dbHost.Status)
+		},
+		"IgnoresNonProvisioningHosts": func(t *testing.T, h *Host) {
+			require.NoError(t, h.SetDecommissioned(evergreen.User, ""))
+
+			require.NoError(t, h.SetUserDataHostProvisioned())
+			assert.Equal(t, evergreen.HostDecommissioned, h.Status)
+
+			dbHost, err := FindOneId(h.Id)
+			require.NoError(t, err)
+			assert.Equal(t, evergreen.HostDecommissioned, dbHost.Status)
+		},
+	} {
+		t.Run(testName, func(t *testing.T) {
+			require.NoError(t, db.Clear(Collection))
+			defer func() {
+				assert.NoError(t, db.Clear(Collection))
+			}()
+			h := &Host{
+				Id:     "id",
+				Distro: distro.Distro{BootstrapMethod: distro.BootstrapMethodUserData},
+				Status: evergreen.HostProvisioning,
+			}
+			require.NoError(t, h.Insert())
+			testCase(t, h)
+		})
+	}
+}
+
 func newMockCredentials() (*rpc.Credentials, error) {
 	return rpc.NewCredentials([]byte("foo"), []byte("bar"), []byte("bat"))
 }
@@ -823,9 +903,9 @@ func withJasperServiceSetupAndTeardown(ctx context.Context, env *mock.Environmen
 		grip.Error(errors.Wrap(teardownJasperService(ctx, nil), "problem tearing down test"))
 		return errors.Wrapf(err, "problem setting up credentials collection")
 	}
-	var closeService jasper.CloseFunc
-	var err error
-	if closeService, err = setupJasperService(ctx, env, manager, h); err != nil {
+
+	closeService, err := setupJasperService(ctx, env, manager, h)
+	if err != nil {
 		grip.Error(errors.Wrap(teardownJasperService(ctx, closeService), "problem tearing down test"))
 		return err
 	}

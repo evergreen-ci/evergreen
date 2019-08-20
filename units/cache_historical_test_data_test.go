@@ -13,6 +13,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/testresult"
 	_ "github.com/evergreen-ci/evergreen/testutil"
+	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/suite"
 	mgobson "gopkg.in/mgo.v2/bson"
@@ -124,10 +125,11 @@ func (s *cacheHistoryTestDataSuite) TestUpdateHourlyAndDailyStats() {
 	c := cacheHistoricalJobContext{
 		ProjectID: s.projectId,
 		JobTime:   now,
+		catcher:   grip.NewBasicCatcher(),
 	}
 
-	err := c.updateHourlyAndDailyStats(s.statsList, mockGenFns)
-	s.NoError(err)
+	_ = c.updateHourlyAndDailyStats(s.statsList, mockGenFns)
+	s.NoError(c.catcher.Resolve())
 	s.Equal(len(mockGenFns.HourlyFns)*3, callCountFn0)
 	s.Equal(len(mockGenFns.DailyFns)*2, callCountFn1)
 }
@@ -154,9 +156,10 @@ func (s *cacheHistoryTestDataSuite) TestUpdateHourlyAndDailyStatsWithAnHourlyErr
 	c := cacheHistoricalJobContext{
 		ProjectID: s.projectId,
 		JobTime:   time.Now(),
+		catcher:   grip.NewBasicCatcher(),
 	}
-	err := c.updateHourlyAndDailyStats(s.statsList, mockGenFns)
-	s.Error(err)
+	_ = c.updateHourlyAndDailyStats(s.statsList, mockGenFns)
+	s.Error(c.catcher.Resolve())
 }
 
 func (s *cacheHistoryTestDataSuite) TestUpdateHourlyAndDailyStatsWithADailyError() {
@@ -181,9 +184,10 @@ func (s *cacheHistoryTestDataSuite) TestUpdateHourlyAndDailyStatsWithADailyError
 	c := cacheHistoricalJobContext{
 		ProjectID: s.projectId,
 		JobTime:   time.Now(),
+		catcher:   grip.NewBasicCatcher(),
 	}
-	err := c.updateHourlyAndDailyStats(s.statsList, mockGenFns)
-	s.Error(err)
+	_ = c.updateHourlyAndDailyStats(s.statsList, mockGenFns)
+	s.Error(c.catcher.Resolve())
 }
 
 func (s *cacheHistoryTestDataSuite) TestIteratorOverHourlyStats() {

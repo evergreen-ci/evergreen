@@ -60,6 +60,7 @@ var (
 	StartedByKey                 = bsonutil.MustHaveTag(Host{}, "StartedBy")
 	InstanceTypeKey              = bsonutil.MustHaveTag(Host{}, "InstanceType")
 	VolumeSizeKey                = bsonutil.MustHaveTag(Host{}, "VolumeTotalSize")
+	VolumeIDsKey                 = bsonutil.MustHaveTag(Host{}, "VolumeIDs")
 	NotificationsKey             = bsonutil.MustHaveTag(Host{}, "Notifications")
 	LastCommunicationTimeKey     = bsonutil.MustHaveTag(Host{}, "LastCommunicationTime")
 	UserHostKey                  = bsonutil.MustHaveTag(Host{}, "UserHost")
@@ -718,6 +719,23 @@ func FindByNeedsNewAgentMonitor() ([]Host, error) {
 	}
 
 	return hosts, err
+}
+
+// FindUserDataSpawnHostsProvisioning finds all spawn hosts that have been
+// provisioned by the app server but are still being provisioned by user data.
+func FindUserDataSpawnHostsProvisioning() ([]Host, error) {
+	bootstrapKey := bsonutil.GetDottedKeyName(DistroKey, distro.BootstrapMethodKey)
+
+	hosts, err := Find(db.Query(bson.M{
+		StatusKey:      evergreen.HostProvisioning,
+		ProvisionedKey: true,
+		StartedByKey:   bson.M{"$ne": evergreen.User},
+		bootstrapKey:   distro.BootstrapMethodUserData,
+	}))
+	if err != nil {
+		return nil, errors.Wrap(err, "could not find user data spawn hosts that are still provisioning themselves")
+	}
+	return hosts, nil
 }
 
 // Removes host intents that have been been uninitialized for more than 3

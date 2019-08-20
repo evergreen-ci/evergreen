@@ -158,6 +158,11 @@ func bootstrapUserData(ctx context.Context, env evergreen.Environment, h *host.H
 		}
 	}
 
+	markDone, err := h.MarkUserDataDoneCommand()
+	if err != nil {
+		return "", errors.Wrap(err, "error creating command to mark when user data is done")
+	}
+
 	creds, err := h.GenerateJasperCredentials(ctx, env)
 	if err != nil {
 		return customScript, errors.Wrap(err, "problem generating Jasper credentials for host")
@@ -165,7 +170,7 @@ func bootstrapUserData(ctx context.Context, env evergreen.Environment, h *host.H
 
 	bootstrapScript, err := h.BootstrapScript(env.Settings().HostJasper, creds,
 		[]string{setupScript},
-		[]string{fetchClient, postFetchClient},
+		[]string{fetchClient, postFetchClient, markDone},
 	)
 	if err != nil {
 		return customScript, errors.Wrap(err, "could not generate user data bootstrap script")

@@ -87,7 +87,7 @@ func (j *setupHostJob) Run(ctx context.Context) {
 			return
 		}
 	}
-	if j.host.Status == evergreen.HostRunning {
+	if j.host.Status == evergreen.HostRunning || j.host.Provisioned {
 		grip.Info(message.Fields{
 			"job":     j.ID(),
 			"host":    j.host.Id,
@@ -244,21 +244,22 @@ func (j *setupHostJob) runHostSetup(ctx context.Context, targetHost *host.Host, 
 			"job":     j.ID(),
 		}))
 
-		// The setup is done at this point for a host bootstrapped with user
-		// data, because this host only needs to perform operations that must be
-		// done after the host is already running (e.g. setting DNS name).
-		if err = targetHost.MarkAsProvisioned(); err != nil {
+		// Do not set the host to running - hosts bootstrapped with user data
+		// are not considered done provisioning until user data has finished
+		// running.
+		if err = targetHost.SetProvisionedNotRunning(); err != nil {
 			return errors.Wrapf(err, "error marking host %s as provisioned", targetHost.Id)
 		}
 
 		grip.Info(message.Fields{
+			"message":                 "host successfully provisioned by app server, awaiting host to finish provisioning itself",
 			"host":                    targetHost.Id,
 			"distro":                  targetHost.Distro.Id,
+			"bootstrap_method":        targetHost.Distro.BootstrapMethod,
 			"provider":                targetHost.Provider,
 			"attempts":                targetHost.ProvisionAttempts,
 			"job":                     j.ID(),
-			"message":                 "host successfully provisioned",
-			"provision_duration_secs": targetHost.ProvisionTime.Sub(targetHost.CreationTime).Seconds(),
+			"provision_duration_secs": time.Now().Sub(targetHost.CreationTime).Seconds(),
 		})
 		return nil
 	case distro.BootstrapMethodSSH:

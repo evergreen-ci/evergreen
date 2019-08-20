@@ -669,7 +669,7 @@ func PopulateAgentDeployJobs(env evergreen.Environment) amboy.QueueOperation {
 		}
 
 		// 3x / minute
-		ts := util.RoundPartOfMinute(20).Format(tsFormat)
+		ts := util.RoundPartOfMinute(15).Format(tsFormat)
 		catcher := grip.NewBasicCatcher()
 
 		// For each host, set its last communication time to now and its needs new agent
@@ -1015,5 +1015,22 @@ func PopulatePeriodicBuilds(part int) amboy.QueueOperation {
 			catcher.Add(queue.Put(ctx, NewPeriodicBuildJob(project.Identifier, util.RoundPartOfMinute(30).Format(tsFormat))))
 		}
 		return nil
+	}
+}
+
+// PopulateUserDataDoneJobs enqueues the jobs to check whether a spawn host
+// provisioning with user data is done running its user data script yet.
+func PopulateUserDataDoneJobs(env evergreen.Environment) amboy.QueueOperation {
+	return func(ctx context.Context, queue amboy.Queue) error {
+		hosts, err := host.FindUserDataSpawnHostsProvisioning()
+		if err != nil {
+			return errors.Wrap(err, "error finding user data hosts that are still provisioning")
+		}
+		catcher := grip.NewBasicCatcher()
+		ts := util.RoundPartOfMinute(15).Format(tsFormat)
+		for _, h := range hosts {
+			catcher.Add(queue.Put(ctx, NewUserDataDoneJob(env, h, ts)))
+		}
+		return catcher.Resolve()
 	}
 }

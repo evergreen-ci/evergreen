@@ -122,12 +122,12 @@ imports:
   - name: github.com/evergreen-ci/pail
     version: 7b2f8e0b2d972ca621cad3777d68276a54da13d0
   - name: github.com/mongodb/jasper
-    version: fcc3d8b2414af740e10ae77caa3d333d39888595
+    version: a356ec7a64a3b1a5f4a9c8733ecb6e6656e598fd
   - name: go.mongodb.org/mongo-driver
     version: 305bc4a5e4131420fe8ba5628e6faa9e6ade4e86
 
   - name: github.com/evergreen-ci/certdepot
-    version: 6f75adcd0e46b0a2eb99560d517b5879ccf3ad07
+    version: a6cc94cf0e46afba3bc91ceb537ece1009016839
 
   # git library and its dependencies
   - name: gopkg.in/src-d/go-git.v4
@@ -150,3 +150,5 @@ imports:
     version: ec4a0fea49c7b46c2aeb0b51aac55779c607e52b
   - name: golang.org/x/text
     version: 905a57155faa8230500121607930ebb9dd8e139c
+  - name: gonum.org/v1/gonum
+    version: aff0e10c44138b1247d90efb9117f68ba7c76f0c
