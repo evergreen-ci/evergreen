@@ -191,7 +191,7 @@ func (m *ec2Manager) Configure(ctx context.Context, settings *evergreen.Settings
 	return nil
 }
 
-func (m *ec2Manager) spawnOnDemandHost(ctx context.Context, h *host.Host, ec2Settings *EC2ProviderSettings, blockDevices []*ec2.BlockDeviceMapping) ([]string, error) {
+func (m *ec2Manager) spawnOnDemandHost(ctx context.Context, h *host.Host, ec2Settings *EC2ProviderSettings, blockDevices []*ec2.BlockDeviceMapping) error {
 	input := &ec2.RunInstancesInput{
 		MinCount:            aws.Int64(1),
 		MaxCount:            aws.Int64(1),
@@ -220,14 +220,14 @@ func (m *ec2Manager) spawnOnDemandHost(ctx context.Context, h *host.Host, ec2Set
 	if ec2Settings.UserData != "" {
 		expanded, err := expandUserData(ec2Settings.UserData, m.settings.Expansions)
 		if err != nil {
-			return nil, errors.Wrap(err, "problem expanding user data")
+			return errors.Wrap(err, "problem expanding user data")
 		}
 		ec2Settings.UserData = expanded
 	}
 
 	userData, err := bootstrapUserData(ctx, evergreen.GetEnvironment(), h, ec2Settings.UserData)
 	if err != nil {
-		return nil, errors.Wrap(err, "could not add bootstrap script to user data")
+		return errors.Wrap(err, "could not add bootstrap script to user data")
 	}
 	ec2Settings.UserData = userData
 
@@ -259,7 +259,7 @@ func (m *ec2Manager) spawnOnDemandHost(ctx context.Context, h *host.Host, ec2Set
 			"distro":        h.Distro.Id,
 		}))
 		if err != nil {
-			return nil, errors.Wrap(err, msg)
+			return errors.Wrap(err, msg)
 		}
 		msg = "reservation was nil"
 		grip.Error(message.Fields{
@@ -268,11 +268,11 @@ func (m *ec2Manager) spawnOnDemandHost(ctx context.Context, h *host.Host, ec2Set
 			"host_provider": h.Distro.Provider,
 			"distro":        h.Distro.Id,
 		})
-		return nil, errors.New(msg)
+		return errors.New(msg)
 	}
 
 	if len(reservation.Instances) < 1 {
-		return nil, errors.New("reservation has no instances")
+		return errors.New("reservation has no instances")
 	}
 
 	instance := reservation.Instances[0]
@@ -282,43 +282,9 @@ func (m *ec2Manager) spawnOnDemandHost(ctx context.Context, h *host.Host, ec2Set
 		"distro":        h.Distro.Id,
 		"host_provider": h.Distro.Provider,
 	})
-
-	resp, err := m.client.DescribeInstances(ctx, &ec2.DescribeInstancesInput{
-		InstanceIds: []*string{instance.InstanceId},
-	})
-	if err != nil {
-		grip.Error(message.WrapError(err, message.Fields{
-			"host_provider": h.Distro.Provider,
-			"host":          h.Id,
-			"distro":        h.Distro.Id,
-			"message":       "error describing instance",
-		}))
-		return nil, errors.Wrap(err, "error describing instance")
-	}
-
-	grip.Debug(message.Fields{
-		"message":       "describe instances returned data",
-		"host_provider": h.Distro.Provider,
-		"host":          h.Id,
-		"distro":        h.Distro.Id,
-		"response":      resp,
-	})
-
-	if len(resp.Reservations) < 1 {
-		return nil, errors.New("describe instances response has no reservations")
-	}
-
-	instance = resp.Reservations[0].Instances[0]
 	h.Id = *instance.InstanceId
-	resources := []string{h.Id}
-	for _, vol := range instance.BlockDeviceMappings {
-		if *vol.DeviceName == "" {
-			continue
-		}
 
-		resources = append(resources, *vol.Ebs.VolumeId)
-	}
-	return resources, nil
+	return nil
 }
 
 func (m *ec2Manager) spawnSpotHost(ctx context.Context, h *host.Host, ec2Settings *EC2ProviderSettings, blockDevices []*ec2.BlockDeviceMapping) error {
@@ -448,7 +414,7 @@ func (m *ec2Manager) SpawnHost(ctx context.Context, h *host.Host) (*host.Host, e
 		return nil, errors.Wrap(err, msg)
 	}
 	if provider == onDemandProvider {
-		resources, err := m.spawnOnDemandHost(ctx, h, ec2Settings, blockDevices)
+		err := m.spawnOnDemandHost(ctx, h, ec2Settings, blockDevices)
 		if err != nil {
 			msg := "error spawning on-demand host"
 			grip.Error(message.WrapError(err, message.Fields{
@@ -465,34 +431,6 @@ func (m *ec2Manager) SpawnHost(ctx context.Context, h *host.Host) (*host.Host, e
 			"host_provider": h.Distro.Provider,
 			"distro":        h.Distro.Id,
 		})
-
-		grip.Debug(message.Fields{
-			"message":       "attaching tags for host",
-			"host":          h.Id,
-			"host_provider": h.Distro.Provider,
-			"distro":        h.Distro.Id,
-		})
-
-		tags := makeTags(h)
-		tagSlice := []*ec2.Tag{}
-		for tag := range tags {
-			key := tag
-			val := tags[tag]
-			tagSlice = append(tagSlice, &ec2.Tag{Key: &key, Value: &val})
-		}
-		if _, err = m.client.CreateTags(ctx, &ec2.CreateTagsInput{
-			Resources: aws.StringSlice(resources),
-			Tags:      tagSlice,
-		}); err != nil {
-			grip.Error(message.WrapError(err, message.Fields{
-				"message":       "error attaching tags",
-				"host":          h.Id,
-				"host_provider": h.Distro.Provider,
-				"distro":        h.Distro.Id,
-			}))
-			err = errors.Wrapf(err, "failed to attach tags for %s", h.Id)
-			return nil, err
-		}
 	} else if provider == spotProvider {
 		err = m.spawnSpotHost(ctx, h, ec2Settings, blockDevices)
 		if err != nil {
@@ -523,50 +461,51 @@ func (m *ec2Manager) GetInstanceStatuses(ctx context.Context, hosts []host.Host)
 		return nil, errors.Wrap(err, "error creating client")
 	}
 
-	spotHostIDs := []*string{}
-	onDemandHostIDs := []*string{}
-	instanceIdToHostMap := map[string]string{}
+	spotHosts := []*host.Host{}
+	instanceIdToHostMap := map[string]*host.Host{}
 	hostToStatusMap := map[string]CloudStatus{}
 	hostsToCheck := []*string{}
 
 	// Populate spot and on-demand slices
 	for i := range hosts {
-		if isHostSpot(&hosts[i]) {
-			spotHostIDs = append(spotHostIDs, &hosts[i].Id)
-		}
 		if isHostOnDemand(&hosts[i]) {
-			instanceIdToHostMap[hosts[i].Id] = hosts[i].Id
-			onDemandHostIDs = append(onDemandHostIDs, &hosts[i].Id)
+			instanceIdToHostMap[hosts[i].Id] = &hosts[i]
+			hostsToCheck = append(hostsToCheck, &hosts[i].Id)
+		}
+		if isHostSpot(&hosts[i]) {
+			if hosts[i].ExternalIdentifier != "" {
+				instanceIdToHostMap[hosts[i].ExternalIdentifier] = &hosts[i]
+				hostsToCheck = append(hostsToCheck, &hosts[i].ExternalIdentifier)
+			} else {
+				spotHosts = append(spotHosts, &hosts[i])
+			}
 		}
 	}
 
 	// Get instance IDs for spot instances
-	if len(spotHostIDs) > 0 {
-		spotOut, err := m.client.DescribeSpotInstanceRequests(ctx, &ec2.DescribeSpotInstanceRequestsInput{
-			SpotInstanceRequestIds: spotHostIDs,
-		})
+	if len(spotHosts) > 0 {
+		spotOut, err := m.client.DescribeSpotRequestsAndSave(ctx, spotHosts)
 		if err != nil {
 			return nil, errors.Wrap(err, "error describing spot instances")
 		}
-		if len(spotOut.SpotInstanceRequests) != len(spotHostIDs) {
+		if len(spotOut.SpotInstanceRequests) != len(spotHosts) {
 			return nil, errors.New("programmer error: length of spot instance requests != length of spot host IDs")
 		}
 		spotInstanceRequestsMap := map[string]*ec2.SpotInstanceRequest{}
 		for i := range spotOut.SpotInstanceRequests {
 			spotInstanceRequestsMap[*spotOut.SpotInstanceRequests[i].SpotInstanceRequestId] = spotOut.SpotInstanceRequests[i]
 		}
-		for i := range spotHostIDs {
-			if spotInstanceRequestsMap[*spotHostIDs[i]].InstanceId == nil || *spotInstanceRequestsMap[*spotHostIDs[i]].InstanceId == "" {
-				hostToStatusMap[*spotHostIDs[i]] = cloudStatusFromSpotStatus(*spotInstanceRequestsMap[*spotHostIDs[i]].State)
+		for i := range spotHosts {
+			if spotInstanceRequestsMap[spotHosts[i].Id].InstanceId == nil || *spotInstanceRequestsMap[spotHosts[i].Id].InstanceId == "" {
+				hostToStatusMap[spotHosts[i].Id] = cloudStatusFromSpotStatus(*spotInstanceRequestsMap[spotHosts[i].Id].State)
 				continue
 			}
-			hostsToCheck = append(hostsToCheck, spotInstanceRequestsMap[*spotHostIDs[i]].InstanceId)
-			instanceIdToHostMap[*spotInstanceRequestsMap[*spotHostIDs[i]].InstanceId] = *spotHostIDs[i]
+			hostsToCheck = append(hostsToCheck, spotInstanceRequestsMap[spotHosts[i].Id].InstanceId)
+			instanceIdToHostMap[*spotInstanceRequestsMap[spotHosts[i].Id].InstanceId] = spotHosts[i]
 		}
 	}
 
 	// Get host statuses
-	hostsToCheck = append(hostsToCheck, onDemandHostIDs...)
 	if len(hostsToCheck) > 0 {
 		out, err := m.client.DescribeInstances(ctx, &ec2.DescribeInstancesInput{
 			InstanceIds: hostsToCheck,
@@ -574,12 +513,19 @@ func (m *ec2Manager) GetInstanceStatuses(ctx context.Context, hosts []host.Host)
 		if err != nil {
 			return nil, errors.Wrap(err, "error describing instances")
 		}
-		reservationsMap := map[string]string{}
+		reservationsMap := map[string]*ec2.Instance{}
 		for i := range out.Reservations {
-			reservationsMap[*out.Reservations[i].Instances[0].InstanceId] = *out.Reservations[i].Instances[0].State.Name
+			reservationsMap[*out.Reservations[i].Instances[0].InstanceId] = out.Reservations[i].Instances[0]
 		}
 		for i := range hostsToCheck {
-			hostToStatusMap[instanceIdToHostMap[*hostsToCheck[i]]] = ec2StatusToEvergreenStatus(reservationsMap[*hostsToCheck[i]])
+			status := ec2StatusToEvergreenStatus(*reservationsMap[*hostsToCheck[i]].State.Name)
+			if status == StatusRunning {
+				// cache instance information so we can make fewer calls to AWS's API
+				if err = cacheHostData(ctx, instanceIdToHostMap[*hostsToCheck[i]], reservationsMap[*hostsToCheck[i]], m.client); err != nil {
+					return nil, errors.Wrapf(err, "can't cache host data for '%s'", *hostsToCheck[i])
+				}
+			}
+			hostToStatusMap[instanceIdToHostMap[*hostsToCheck[i]].Id] = status
 		}
 	}
 
@@ -593,31 +539,61 @@ func (m *ec2Manager) GetInstanceStatuses(ctx context.Context, hosts []host.Host)
 
 // GetInstanceStatus returns the current status of an EC2 instance.
 func (m *ec2Manager) GetInstanceStatus(ctx context.Context, h *host.Host) (CloudStatus, error) {
+	status := StatusUnknown
+
 	ec2Settings := &EC2ProviderSettings{}
 	err := ec2Settings.fromDistroSettings(h.Distro)
 	if err != nil {
-		return StatusUnknown, errors.Wrap(err, "problem getting settings from host")
+		return status, errors.Wrap(err, "problem getting settings from host")
 	}
 	if err := m.client.Create(m.credentials, ec2Settings.getRegion()); err != nil {
-		return StatusUnknown, errors.Wrap(err, "error creating client")
+		return status, errors.Wrap(err, "error creating client")
 	}
 	defer m.client.Close()
-	if isHostOnDemand(h) {
-		info, err := m.client.GetInstanceInfo(ctx, h.Id)
-		if err != nil {
-			grip.Error(message.WrapError(err, message.Fields{
-				"message":       "error getting instance info",
-				"host":          h.Id,
-				"host_provider": h.Distro.Provider,
-				"distro":        h.Distro.Id,
-			}))
-			return StatusUnknown, err
+
+	id := h.Id
+	if isHostSpot(h) {
+		if h.ExternalIdentifier != "" {
+			id = h.ExternalIdentifier
+		} else {
+			spotDetails, err := m.client.DescribeSpotRequestsAndSave(ctx, []*host.Host{h})
+			if err != nil {
+				err = errors.Wrapf(err, "failed to get spot request info for %s", h.Id)
+				return status, err
+			}
+			if len(spotDetails.SpotInstanceRequests) == 0 {
+				return status, errors.Errorf("'%s' has no corresponding spot instance request", h.Id)
+			}
+			spotInstance := spotDetails.SpotInstanceRequests[0]
+			if spotInstance.InstanceId == nil || *spotInstance.InstanceId == "" {
+				return cloudStatusFromSpotStatus(*spotInstance.State), nil
+			}
+
+			id = *spotInstance.InstanceId
 		}
-		return ec2StatusToEvergreenStatus(*info.State.Name), nil
-	} else if isHostSpot(h) {
-		return m.getSpotInstanceStatus(ctx, h)
 	}
-	return StatusUnknown, errors.New("type must be on-demand or spot")
+
+	instance, err := m.client.GetInstanceInfo(ctx, id)
+	if err != nil {
+		grip.Error(message.WrapError(err, message.Fields{
+			"message":       "error getting instance info",
+			"host":          h.Id,
+			"instance_id":   id,
+			"host_provider": h.Distro.Provider,
+			"distro":        h.Distro.Id,
+		}))
+		return status, err
+	}
+	status = ec2StatusToEvergreenStatus(*instance.State.Name)
+
+	if status == StatusRunning {
+		// cache instance information so we can make fewer calls to AWS's API
+		if err = cacheHostData(ctx, h, instance, m.client); err != nil {
+			return status, errors.Wrapf(err, "can't cache host data for '%s'", h.Id)
+		}
+	}
+
+	return status, nil
 }
 
 // TerminateInstance terminates the EC2 instance.
@@ -744,23 +720,29 @@ func (m *ec2Manager) IsUp(ctx context.Context, h *host.Host) (bool, error) {
 
 // OnUp is called when the host is up.
 func (m *ec2Manager) OnUp(ctx context.Context, h *host.Host) error {
+	grip.Debug(message.Fields{
+		"message":       "host is up",
+		"host":          h.Id,
+		"host_provider": h.Distro.Provider,
+		"distro":        h.Distro.Id,
+		"is_spot":       isHostSpot(h),
+	})
+
+	ec2Settings := &EC2ProviderSettings{}
+	err := ec2Settings.fromDistroSettings(h.Distro)
+	if err != nil {
+		return errors.Wrap(err, "problem getting region from host")
+	}
+	if err = m.client.Create(m.credentials, ec2Settings.getRegion()); err != nil {
+		return errors.Wrap(err, "error creating client")
+	}
+	defer m.client.Close()
+
+	instanceID := h.Id
+	tags := makeTags(h)
+
 	if isHostSpot(h) {
-		grip.Debug(message.Fields{
-			"message":       "spot host is up, attaching tags",
-			"host":          h.Id,
-			"host_provider": h.Distro.Provider,
-			"distro":        h.Distro.Id,
-		})
-		ec2Settings := &EC2ProviderSettings{}
-		err := ec2Settings.fromDistroSettings(h.Distro)
-		if err != nil {
-			return errors.Wrap(err, "problem getting region from host")
-		}
-		if err = m.client.Create(m.credentials, ec2Settings.getRegion()); err != nil {
-			return errors.Wrap(err, "error creating client")
-		}
-		defer m.client.Close()
-		instanceId, err := m.client.GetSpotInstanceId(ctx, h)
+		instanceID, err = m.client.GetSpotInstanceId(ctx, h)
 		if err != nil {
 			grip.Error(message.WrapError(err, message.Fields{
 				"message":       "error getting spot request info",
@@ -770,123 +752,56 @@ func (m *ec2Manager) OnUp(ctx context.Context, h *host.Host) error {
 			}))
 			return errors.Wrapf(err, "failed to get spot request info for %s", h.Id)
 		}
-		if instanceId == "" {
+		if instanceID == "" {
 			return errors.WithStack(errors.New("spot instance does not yet have an instanceId"))
 		}
-		tags := makeTags(h)
+
 		tags["spot"] = "true" // mark this as a spot instance
-		resources := []*string{
-			&instanceId,
-		}
-		tagSlice := []*ec2.Tag{}
-		for tag := range tags {
-			key := tag
-			val := tags[tag]
-			tagSlice = append(tagSlice, &ec2.Tag{Key: &key, Value: &val})
-		}
+	}
 
-		resp, err := m.client.DescribeInstances(ctx, &ec2.DescribeInstancesInput{
-			InstanceIds: []*string{&instanceId},
-		})
-		if err != nil {
-			grip.Error(message.WrapError(err, message.Fields{
-				"message":       "error running describe instances",
-				"host":          h.Id,
-				"host_provider": h.Distro.Provider,
-				"distro":        h.Distro.Id,
-			}))
-		}
-		if resp == nil || len(resp.Reservations) == 0 || len(resp.Reservations[0].Instances) == 0 {
-			grip.Error(message.Fields{
-				"message":       "error finding instance",
-				"host":          h.Id,
-				"host_provider": h.Distro.Provider,
-				"distro":        h.Distro.Id,
-			})
-			return errors.Errorf("error finding instance for %s", h.Id)
-		}
-		instance := resp.Reservations[0].Instances[0]
-		for _, vol := range instance.BlockDeviceMappings {
-			if *vol.DeviceName == "" {
-				continue
-			}
-			resources = append(resources, vol.Ebs.VolumeId)
-		}
+	volumeIDs, err := m.client.GetVolumeIDs(ctx, h)
+	if err != nil {
+		return errors.Wrapf(err, "can't get volume IDs for '%s'", h.Id)
+	}
+	resources := []string{instanceID}
+	resources = append(resources, volumeIDs...)
 
-		if _, err = m.client.CreateTags(ctx, &ec2.CreateTagsInput{
-			Resources: resources,
-			Tags:      tagSlice,
-		}); err != nil {
-			grip.Error(message.WrapError(err, message.Fields{
-				"message":       "error attaching tags",
-				"host":          h.Id,
-				"host_provider": h.Distro.Provider,
-				"distro":        h.Distro.Id,
-			}))
-			err = errors.Wrapf(err, "failed to attach tags for %s", h.Id)
-			return err
-		}
+	tagSlice := []*ec2.Tag{}
+	for tag := range tags {
+		key := tag
+		val := tags[tag]
+		tagSlice = append(tagSlice, &ec2.Tag{Key: &key, Value: &val})
+	}
+
+	if _, err = m.client.CreateTags(ctx, &ec2.CreateTagsInput{
+		Resources: aws.StringSlice(resources),
+		Tags:      tagSlice,
+	}); err != nil {
+		grip.Error(message.WrapError(err, message.Fields{
+			"message":       "error attaching tags",
+			"host":          h.Id,
+			"host_provider": h.Distro.Provider,
+			"distro":        h.Distro.Id,
+		}))
+		err = errors.Wrapf(err, "failed to attach tags for %s", h.Id)
+		return err
 	}
 	return nil
 }
 
-func (m *ec2Manager) retrieveInstance(ctx context.Context, h *host.Host) (*ec2.Instance, error) {
-	var instance *ec2.Instance
-
+// GetDNSName returns the DNS name for the host.
+func (m *ec2Manager) GetDNSName(ctx context.Context, h *host.Host) (string, error) {
 	ec2Settings := &EC2ProviderSettings{}
 	err := ec2Settings.fromDistroSettings(h.Distro)
 	if err != nil {
-		return nil, errors.Wrap(err, "problem getting region from host")
+		return "", errors.Wrap(err, "problem getting region from host")
 	}
 	if err = m.client.Create(m.credentials, ec2Settings.getRegion()); err != nil {
-		return nil, errors.Wrap(err, "error creating client")
+		return "", errors.Wrap(err, "error creating client")
 	}
 	defer m.client.Close()
 
-	if isHostOnDemand(h) {
-		instance, err = m.client.GetInstanceInfo(ctx, h.Id)
-		if err != nil {
-			grip.Error(message.WrapError(err, message.Fields{
-				"message":       "error getting instance info",
-				"host":          h.Id,
-				"host_provider": h.Distro.Provider,
-				"distro":        h.Distro.Id,
-			}))
-			return nil, errors.Wrap(err, "error getting instance info")
-		}
-	} else {
-		var instanceId string
-		instanceId, err = m.client.GetSpotInstanceId(ctx, h)
-		if err != nil {
-			return nil, errors.Wrapf(err, "failed to get spot request info for %s", h.Id)
-		}
-		if instanceId == "" {
-			return nil, errors.WithStack(errors.New("spot instance does not yet have an instanceId"))
-		}
-		instance, err = m.client.GetInstanceInfo(ctx, instanceId)
-		if err != nil {
-			return nil, errors.Wrap(err, "error getting instance info")
-		}
-	}
-
-	// Cache launch time and availability zone in host document, since we
-	// have access to this information now. Cost jobs will use this
-	// information later.
-	if err = cacheHostData(ctx, h, instance, m.client); err != nil {
-		return nil, errors.Wrapf(err, "can't update host '%s'", h.Id)
-	}
-
-	return instance, nil
-}
-
-// GetDNSName returns the DNS name for the host.
-func (m *ec2Manager) GetDNSName(ctx context.Context, h *host.Host) (string, error) {
-	instance, err := m.retrieveInstance(ctx, h)
-	if err != nil {
-		return "", errors.Wrapf(err, "error retrieving instance")
-	}
-
-	return *instance.PublicDnsName, nil
+	return m.client.GetPublicDNSName(ctx, h)
 }
 
 // GetSSHOptions returns the command-line args to pass to SSH.
@@ -897,31 +812,6 @@ func (m *ec2Manager) GetSSHOptions(h *host.Host, keyName string) ([]string, erro
 // TimeTilNextPayment returns how long until the next payment is due for a host.
 func (m *ec2Manager) TimeTilNextPayment(host *host.Host) time.Duration {
 	return timeTilNextEC2Payment(host)
-}
-
-func (m *ec2Manager) getSpotInstanceStatus(ctx context.Context, h *host.Host) (CloudStatus, error) {
-	spotDetails, err := m.client.DescribeSpotRequestsAndSave(ctx, []*host.Host{h})
-	if err != nil {
-		err = errors.Wrapf(err, "failed to get spot request info for %s", h.Id)
-		return StatusUnknown, err
-	}
-	if len(spotDetails.SpotInstanceRequests) == 0 {
-		return StatusUnknown, errors.Errorf("failed to get spot request info for %s", h.Id)
-	}
-
-	spotInstance := spotDetails.SpotInstanceRequests[0]
-	//Spot request has been fulfilled, so get status of the instance itself
-	if spotInstance.InstanceId != nil && *spotInstance.InstanceId != "" {
-		instanceInfo, err := m.client.GetInstanceInfo(ctx, *spotInstance.InstanceId)
-		if err != nil {
-			return StatusUnknown, errors.Wrap(err, "Got an error checking spot details")
-		}
-		return ec2StatusToEvergreenStatus(*instanceInfo.State.Name), nil
-	}
-
-	//Spot request is not fulfilled. Either it's failed/closed for some reason,
-	//or still pending evaluation
-	return cloudStatusFromSpotStatus(*spotInstance.State), nil
 }
 
 func cloudStatusFromSpotStatus(state string) CloudStatus {
