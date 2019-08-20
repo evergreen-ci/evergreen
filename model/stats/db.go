@@ -96,7 +96,6 @@ var (
 	taskStatusKeyRef       = "$" + task.StatusKey
 	taskDetailsKeyRef      = "$" + task.DetailsKey
 	taskTimeTakenKeyRef    = "$" + task.TimeTakenKey
-	taskOldTaskIdKeyRef    = "$" + task.OldTaskIdKey
 	testResultTaskIdKeyRef = "$" + testresult.TaskIDKey
 	testResultExecutionRef = "$" + testresult.ExecutionKey
 )
