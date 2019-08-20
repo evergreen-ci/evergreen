@@ -348,6 +348,9 @@ tasks:
   - <<: *run-go-test-suite
     tags: ["nodb", "test"]
     name: test-auth
+  - <<: *run-go-test-suite
+    tags: ["nodb", "test"]
+    name: test-util-docker
   - <<: *run-go-test-suite-with-mongodb
     tags: ["db", "test"]
     name: test-rest-route
@@ -604,3 +607,14 @@ buildvariants:
       mongodb_url: https://downloads.mongodb.com/linux/mongodb-linux-arm64-enterprise-ubuntu1604-4.0.3.tgz
     tasks:
       - name: ".agent .test"
+  - name: linux-docker
+    display_name: ArchLinux (Docker)
+    run_on:
+      - archlinux-test
+    expansions:
+      goos: linux
+      goarch: amd64
+      gobin: /opt/golang/go1.9/bin/go
+      goroot: /opt/golang/go1.9
+    tasks:
+      -  name: "test-util-docker"
