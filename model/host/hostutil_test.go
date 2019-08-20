@@ -147,10 +147,12 @@ func TestJasperCommands(t *testing.T) {
 		t.Run(opName, func(t *testing.T) {
 			h := &Host{
 				Distro: distro.Distro{
-					Arch:                  distro.ArchLinuxAmd64,
-					CuratorDir:            "/foo",
-					JasperCredentialsPath: "/bar",
-					User:                  "user",
+					Arch: distro.ArchLinuxAmd64,
+					BootstrapSettings: distro.BootstrapSettings{
+						JasperBinaryDir:       "/foo",
+						JasperCredentialsPath: "/bar",
+					},
+					User: "user",
 				}}
 			config := evergreen.HostJasperConfig{
 				BinaryName:       "jasper_cli",
@@ -250,12 +252,12 @@ func TestJasperCommandsWindows(t *testing.T) {
 
 			for testName, testCase := range map[string]func(t *testing.T){
 				"WithoutJasperCredentialsPath": func(t *testing.T) {
-					h.Distro.JasperCredentialsPath = ""
+					h.Distro.BootstrapSettings.JasperCredentialsPath = ""
 					_, err := h.WriteJasperCredentialsFileCommand(creds)
 					assert.Error(t, err)
 				},
 				"WithJasperCredentialsPath": func(t *testing.T) {
-					h.Distro.JasperCredentialsPath = "/bar"
+					h.Distro.BootstrapSettings.JasperCredentialsPath = "/bar"
 					cmd, err := h.WriteJasperCredentialsFileCommand(creds)
 					require.NoError(t, err)
 
@@ -277,17 +279,19 @@ func TestJasperCommandsWindows(t *testing.T) {
 			creds, err := newMockCredentials()
 			require.NoError(t, err)
 
-			h.Distro.JasperCredentialsPath = ""
+			h.Distro.BootstrapSettings.JasperCredentialsPath = ""
 			_, err = h.WriteJasperCredentialsFileCommand(creds)
 			assert.Error(t, err)
 		},
 	} {
 		t.Run(opName, func(t *testing.T) {
 			h := &Host{Distro: distro.Distro{
-				Arch:                  distro.ArchWindowsAmd64,
-				CuratorDir:            "/foo",
-				JasperCredentialsPath: "/bar",
-				User:                  "user",
+				Arch: distro.ArchWindowsAmd64,
+				BootstrapSettings: distro.BootstrapSettings{
+					JasperBinaryDir:       "/foo",
+					JasperCredentialsPath: "/bar",
+				},
+				User: "user",
 			}}
 			config := evergreen.HostJasperConfig{
 				BinaryName:       "jasper_cli",
@@ -316,9 +320,11 @@ func TestJasperClient(t *testing.T) {
 			h: &Host{
 				Id: "test-host",
 				Distro: distro.Distro{
-					CommunicationMethod: distro.CommunicationMethodLegacySSH,
-					BootstrapMethod:     distro.BootstrapMethodLegacySSH,
-					SSHKey:              sshKeyName,
+					BootstrapSettings: distro.BootstrapSettings{
+						Method:        distro.BootstrapMethodLegacySSH,
+						Communication: distro.CommunicationMethodLegacySSH,
+					},
+					SSHKey: sshKeyName,
 				},
 			},
 			expectError: true,
@@ -327,9 +333,11 @@ func TestJasperClient(t *testing.T) {
 			h: &Host{
 				Id: "test-host",
 				Distro: distro.Distro{
-					BootstrapMethod:     distro.BootstrapMethodSSH,
-					CommunicationMethod: distro.CommunicationMethodSSH,
-					SSHKey:              sshKeyName,
+					BootstrapSettings: distro.BootstrapSettings{
+						Method:        distro.BootstrapMethodSSH,
+						Communication: distro.CommunicationMethodSSH,
+					},
+					SSHKey: sshKeyName,
 				},
 				User: "foo",
 				Host: "bar",
@@ -340,8 +348,10 @@ func TestJasperClient(t *testing.T) {
 			h: &Host{
 				Id: "test-host",
 				Distro: distro.Distro{
-					BootstrapMethod:     distro.BootstrapMethodSSH,
-					CommunicationMethod: distro.CommunicationMethodSSH,
+					BootstrapSettings: distro.BootstrapSettings{
+						Method:        distro.BootstrapMethodSSH,
+						Communication: distro.CommunicationMethodSSH,
+					},
 				},
 				User: "foo",
 				Host: "bar",
@@ -352,9 +362,11 @@ func TestJasperClient(t *testing.T) {
 			h: &Host{
 				Id: "test-host",
 				Distro: distro.Distro{
-					BootstrapMethod:     distro.BootstrapMethodSSH,
-					CommunicationMethod: distro.CommunicationMethodSSH,
-					SSHKey:              sshKeyName,
+					BootstrapSettings: distro.BootstrapSettings{
+						Method:        distro.BootstrapMethodSSH,
+						Communication: distro.CommunicationMethodSSH,
+					},
+					SSHKey: sshKeyName,
 				},
 			},
 			expectError: true,
@@ -364,8 +376,10 @@ func TestJasperClient(t *testing.T) {
 			h: &Host{
 				Id: "test-host",
 				Distro: distro.Distro{
-					BootstrapMethod:     distro.BootstrapMethodSSH,
-					CommunicationMethod: distro.CommunicationMethodRPC,
+					BootstrapSettings: distro.BootstrapSettings{
+						Method:        distro.BootstrapMethodSSH,
+						Communication: distro.CommunicationMethodRPC,
+					},
 				},
 			},
 			expectError: true,
@@ -382,8 +396,10 @@ func TestJasperClient(t *testing.T) {
 			h: &Host{
 				Id: "test-host",
 				Distro: distro.Distro{
-					BootstrapMethod:     distro.BootstrapMethodSSH,
-					CommunicationMethod: distro.CommunicationMethodRPC,
+					BootstrapSettings: distro.BootstrapSettings{
+						Method:        distro.BootstrapMethodSSH,
+						Communication: distro.CommunicationMethodRPC,
+					},
 				},
 				Host: "localhost",
 			},
@@ -394,8 +410,10 @@ func TestJasperClient(t *testing.T) {
 			h: &Host{
 				Id: "test-host",
 				Distro: distro.Distro{
-					BootstrapMethod:     distro.BootstrapMethodSSH,
-					CommunicationMethod: distro.CommunicationMethodRPC,
+					BootstrapSettings: distro.BootstrapSettings{
+						Method:        distro.BootstrapMethodSSH,
+						Communication: distro.CommunicationMethodRPC,
+					},
 				},
 				Host: "localhost",
 			},
@@ -476,8 +494,10 @@ func TestJasperProcess(t *testing.T) {
 			testCase(tctx, t, env, manager, &Host{
 				Id: "test",
 				Distro: distro.Distro{
-					CommunicationMethod: distro.CommunicationMethodRPC,
-					BootstrapMethod:     distro.BootstrapMethodUserData,
+					BootstrapSettings: distro.BootstrapSettings{
+						Method:        distro.BootstrapMethodUserData,
+						Communication: distro.CommunicationMethodRPC,
+					},
 				},
 				Host: "localhost",
 			}, opts)
@@ -508,8 +528,10 @@ func TestInitSystemCommand(t *testing.T) {
 func TestBuildLocalJasperClientRequest(t *testing.T) {
 	h := &Host{
 		Distro: distro.Distro{
-			CuratorDir:            "/curator",
-			JasperCredentialsPath: "/jasper/credentials",
+			BootstrapSettings: distro.BootstrapSettings{
+				JasperBinaryDir:       "/curator",
+				JasperCredentialsPath: "/jasper/credentials",
+			},
 		},
 	}
 
@@ -684,8 +706,10 @@ func TestStopAgentMonitor(t *testing.T) {
 		},
 		"NoopsOnLegacyHost": func(ctx context.Context, t *testing.T, env evergreen.Environment, manager *jasper.MockManager, h *Host) {
 			h.Distro = distro.Distro{
-				BootstrapMethod:     distro.BootstrapMethodLegacySSH,
-				CommunicationMethod: distro.CommunicationMethodLegacySSH,
+				BootstrapSettings: distro.BootstrapSettings{
+					Method:        distro.BootstrapMethodLegacySSH,
+					Communication: distro.CommunicationMethodLegacySSH,
+				},
 			}
 
 			proc, err := manager.CreateProcess(ctx, &jasper.CreateOptions{
@@ -716,8 +740,10 @@ func TestStopAgentMonitor(t *testing.T) {
 				Id:   "id",
 				Host: "localhost",
 				Distro: distro.Distro{
-					BootstrapMethod:     distro.BootstrapMethodUserData,
-					CommunicationMethod: distro.CommunicationMethodRPC,
+					BootstrapSettings: distro.BootstrapSettings{
+						Method:        distro.BootstrapMethodUserData,
+						Communication: distro.CommunicationMethodRPC,
+					},
 				},
 			}
 
@@ -782,7 +808,7 @@ func TestMarkUserDataDoneCommand(t *testing.T) {
 		"SucceedsWithPathToDoneFile": func(t *testing.T) {
 			h := &Host{
 				Id:     "id",
-				Distro: distro.Distro{ClientDir: "/client_dir"},
+				Distro: distro.Distro{BootstrapSettings: distro.BootstrapSettings{ClientDir: "/client_dir"}},
 			}
 			cmd, err := h.MarkUserDataDoneCommand()
 			require.NoError(t, err)
@@ -806,7 +832,7 @@ func TestSetUserDataHostProvisioned(t *testing.T) {
 			assert.Equal(t, evergreen.HostRunning, dbHost.Status)
 		},
 		"IgnoresNonUserDataBootstrappedHost": func(t *testing.T, h *Host) {
-			h.Distro.BootstrapMethod = distro.BootstrapMethodSSH
+			h.Distro.BootstrapSettings.Method = distro.BootstrapMethodSSH
 			_, err := h.Upsert()
 			require.NoError(t, err)
 
@@ -834,8 +860,10 @@ func TestSetUserDataHostProvisioned(t *testing.T) {
 				assert.NoError(t, db.Clear(Collection))
 			}()
 			h := &Host{
-				Id:     "id",
-				Distro: distro.Distro{BootstrapMethod: distro.BootstrapMethodUserData},
+				Id: "id",
+				Distro: distro.Distro{BootstrapSettings: distro.BootstrapSettings{
+					Method: distro.BootstrapMethodUserData,
+				}},
 				Status: evergreen.HostProvisioning,
 			}
 			require.NoError(t, h.Insert())

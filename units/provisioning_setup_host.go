@@ -223,7 +223,7 @@ func (j *setupHostJob) runHostSetup(ctx context.Context, targetHost *host.Host, 
 		return err
 	}
 
-	switch targetHost.Distro.BootstrapMethod {
+	switch targetHost.Distro.BootstrapSettings.Method {
 	case distro.BootstrapMethodUserData:
 		// Updating the host LCT prevents the agent monitor deploy job from
 		// running. The agent monitor should be started by the user data script.
@@ -245,7 +245,7 @@ func (j *setupHostJob) runHostSetup(ctx context.Context, targetHost *host.Host, 
 			"message":                 "host successfully provisioned by app server, awaiting host to finish provisioning itself",
 			"host":                    targetHost.Id,
 			"distro":                  targetHost.Distro.Id,
-			"bootstrap_method":        targetHost.Distro.BootstrapMethod,
+			"bootstrap_method":        targetHost.Distro.BootstrapSettings.Method,
 			"provider":                targetHost.Provider,
 			"attempts":                targetHost.ProvisionAttempts,
 			"job":                     j.ID(),
@@ -296,7 +296,7 @@ func (j *setupHostJob) setupJasper(ctx context.Context) error {
 		return errors.Wrapf(err, "error getting ssh options for host %s", j.host.Id)
 	}
 
-	if err := j.putJasperCredentials(ctx, j.host.Distro.JasperCredentialsPath, sshOptions); err != nil {
+	if err := j.putJasperCredentials(ctx, j.host.Distro.BootstrapSettings.JasperCredentialsPath, sshOptions); err != nil {
 		return errors.Wrap(err, "error putting Jasper credentials on remote host")
 	}
 
@@ -560,7 +560,7 @@ func (j *setupHostJob) provisionHost(ctx context.Context, h *host.Host, settings
 
 		return errors.Wrapf(err, "error initializing host %s", h.Id)
 	}
-	if h.Distro.BootstrapMethod == distro.BootstrapMethodUserData {
+	if h.Distro.BootstrapSettings.Method == distro.BootstrapMethodUserData {
 		return nil
 	}
 

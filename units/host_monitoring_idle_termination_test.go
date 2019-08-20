@@ -233,9 +233,11 @@ func TestFlaggingIdleHosts(t *testing.T) {
 
 		// insert a reference distro.Distro
 		distro1 := distro.Distro{
-			Id:                  "distro1",
-			BootstrapMethod:     distro.BootstrapMethodLegacySSH,
-			CommunicationMethod: distro.CommunicationMethodLegacySSH,
+			Id: "distro1",
+			BootstrapSettings: distro.BootstrapSettings{
+				Method:        distro.BootstrapMethodLegacySSH,
+				Communication: distro.CommunicationMethodLegacySSH,
+			},
 		}
 		require.NoError(t, distro1.Insert(), "error inserting distro '%s'", distro1.Id)
 
@@ -262,9 +264,11 @@ func TestFlaggingIdleHosts(t *testing.T) {
 
 		// insert a reference distro.Distro
 		distro1 := distro.Distro{
-			Id:                  "distro1",
-			BootstrapMethod:     distro.BootstrapMethodSSH,
-			CommunicationMethod: distro.CommunicationMethodSSH,
+			Id: "distro1",
+			BootstrapSettings: distro.BootstrapSettings{
+				Method:        distro.BootstrapMethodSSH,
+				Communication: distro.CommunicationMethodSSH,
+			},
 		}
 		require.NoError(t, distro1.Insert(), "error inserting distro '%s'", distro1.Id)
 
@@ -291,9 +295,11 @@ func TestFlaggingIdleHosts(t *testing.T) {
 
 		// insert a reference distro.Distro
 		distro1 := distro.Distro{
-			Id:                  "distro1",
-			BootstrapMethod:     distro.BootstrapMethodSSH,
-			CommunicationMethod: distro.CommunicationMethodSSH,
+			Id: "distro1",
+			BootstrapSettings: distro.BootstrapSettings{
+				Method:        distro.BootstrapMethodSSH,
+				Communication: distro.CommunicationMethodSSH,
+			},
 		}
 		require.NoError(t, distro1.Insert(), "error inserting distro '%s'", distro1.Id)
 

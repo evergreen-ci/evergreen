@@ -39,7 +39,7 @@ func TestUserDataDoneJob(t *testing.T) {
 			assert.Empty(t, mngr.Procs)
 		},
 		"RunFailsWithoutPathToFile": func(ctx context.Context, t *testing.T, env evergreen.Environment, mngr *jasper.MockManager, h *host.Host) {
-			h.Distro.ClientDir = ""
+			h.Distro.BootstrapSettings.ClientDir = ""
 			_, err := h.Upsert()
 			require.NoError(t, err)
 
@@ -84,9 +84,11 @@ func TestUserDataDoneJob(t *testing.T) {
 				Id:   "host_id",
 				Host: "localhost",
 				Distro: distro.Distro{
-					ClientDir:           "/client_dir",
-					BootstrapMethod:     distro.BootstrapMethodUserData,
-					CommunicationMethod: distro.CommunicationMethodRPC,
+					BootstrapSettings: distro.BootstrapSettings{
+						Method:        distro.BootstrapMethodUserData,
+						Communication: distro.CommunicationMethodRPC,
+						ClientDir:     "/client_dir",
+					},
 				},
 				Status:      evergreen.HostProvisioning,
 				Provisioned: true,
