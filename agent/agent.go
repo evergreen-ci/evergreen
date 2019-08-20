@@ -514,16 +514,25 @@ func (a *Agent) killProcs(ctx context.Context, tc *taskContext, ignoreTaskGroupC
 				grip.Critical(msg)
 			}
 		}
-
-		if err := docker.Cleanup(ctx, tc.logger.Task()); err != nil {
-			msg := fmt.Sprintf("Error cleaning up Docker artifacts (agent-exit): %s", err)
-			grip.Critical(msg)
-		}
-
 		if tc.logger != nil && !tc.logger.Closed() {
 			tc.logger.Task().Infof("cleaned up processes for task: %s", tc.task.ID)
 		} else {
 			grip.Infof("cleaned up processes for task: %s", tc.task.ID)
+		}
+
+		if tc.logger != nil && !tc.logger.Closed() {
+			tc.logger.Task().Info("cleaning up Docker artifacts")
+		} else {
+			grip.Info("cleaning up Docker artifacts")
+		}
+		if err := docker.Cleanup(ctx, tc.logger.Task()); err != nil {
+			msg := fmt.Sprintf("Error cleaning up Docker artifacts (agent-exit): %s", err)
+			grip.Critical(msg)
+		}
+		if tc.logger != nil && !tc.logger.Closed() {
+			tc.logger.Task().Info("cleaned up Docker artifacts")
+		} else {
+			grip.Info("cleaned up Docker artifacts")
 		}
 	}
 }
