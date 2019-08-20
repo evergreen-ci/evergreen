@@ -169,60 +169,16 @@ var (
 
 // hourlyTestStatsPipeline returns a pipeline aggregating task documents into hourly test stats.
 func hourlyTestStatsPipeline(projectId string, requester string, start time.Time, end time.Time, tasks []string, lastUpdate time.Time) []bson.M {
-	return getHourlyTestStatsPipeline(projectId, requester, start, end, tasks, lastUpdate, false)
-}
-
-// hourlyTestStatsForOldTasksPipeline returns a pipeline aggregating old task documents into hourly test stats.
-func hourlyTestStatsForOldTasksPipeline(projectId string, requester string, start time.Time, end time.Time, tasks []string, lastUpdate time.Time) []bson.M {
-	// Using the same pipeline as for the tasks collection as the base.
-	basePipeline := getHourlyTestStatsPipeline(projectId, requester, start, end, tasks, lastUpdate, true)
-	// And the merge the documents with the existing ones.
-	mergePipeline := []bson.M{
-		{"$lookup": bson.M{
-			"from":         hourlyTestStatsCollection,
-			"localField":   dbTestStatsIdKey,
-			"foreignField": dbTestStatsIdKey,
-			"as":           "existing",
-		}},
-		{"$unwind": bson.M{
-			"path":                       "$existing",
-			"preserveNullAndEmptyArrays": true,
-		}},
-		{"$project": bson.M{
-			"_id":                 1,
-			dbTestStatsNumPassKey: bson.M{"$add": Array{"$" + dbTestStatsNumPassKey, "$existing." + dbTestStatsNumPassKey}},
-			dbTestStatsNumFailKey: bson.M{"$add": Array{"$" + dbTestStatsNumFailKey, "$existing." + dbTestStatsNumFailKey}},
-			"total_duration_pass": bson.M{"$add": Array{
-				bson.M{"$ifNull": Array{bson.M{"$multiply": Array{"$" + dbTestStatsNumPassKey, "$" + dbTestStatsAvgDurationPassKey}}, 0}},
-				bson.M{"$ifNull": Array{bson.M{"$multiply": Array{"$existing." + dbTestStatsNumPassKey, "$existing." + dbTestStatsAvgDurationPassKey}}, 0}},
-			}},
-			dbTestStatsLastUpdateKey: 1,
-		}},
-		{"$project": bson.M{
-			"_id":                 1,
-			dbTestStatsNumPassKey: 1,
-			dbTestStatsNumFailKey: 1,
-			dbTestStatsAvgDurationPassKey: bson.M{"$cond": bson.M{"if": bson.M{"$ne": Array{"$" + dbTestStatsNumPassKey, 0}},
-				"then": bson.M{"$divide": Array{"$total_duration_pass", "$" + dbTestStatsNumPassKey}},
-				"else": nil}},
-			dbTestStatsLastUpdateKey: 1,
-		}},
-	}
-	return append(basePipeline, mergePipeline...)
+	return getHourlyTestStatsPipeline(projectId, requester, start, end, tasks, lastUpdate)
 }
 
 // getHourlyTestStatsPipeline is an internal helper function to create a pipeline aggregating task
 // documents into hourly test stats.
-func getHourlyTestStatsPipeline(projectId string, requester string, start time.Time, end time.Time, tasks []string, lastUpdate time.Time, oldTasks bool) []bson.M {
+func getHourlyTestStatsPipeline(projectId string, requester string, start time.Time, end time.Time, tasks []string, lastUpdate time.Time) []bson.M {
 	var taskIdExpr string
 	var displayTaskLookupCollection string
-	if oldTasks {
-		taskIdExpr = taskOldTaskIdKeyRef
-		displayTaskLookupCollection = task.OldCollection
-	} else {
-		taskIdExpr = taskIdKeyRef
-		displayTaskLookupCollection = task.Collection
-	}
+	taskIdExpr = taskIdKeyRef
+	displayTaskLookupCollection = task.Collection
 	pipeline := []bson.M{
 		{"$match": bson.M{
 			task.ProjectKey:     projectId,
@@ -401,69 +357,16 @@ var (
 
 // dailyTaskStatsPipeline returns a pipeline aggregating task documents into daily task stats.
 func dailyTaskStatsPipeline(projectId string, requester string, start time.Time, end time.Time, tasks []string, lastUpdate time.Time) []bson.M {
-	return getDailyTaskStatsPipeline(projectId, requester, start, end, tasks, lastUpdate, false)
-}
-
-// dailyTaskStatsForOldTasksPipeline returns a pipeline aggregating old task documents into daily task stats.
-func dailyTaskStatsForOldTasksPipeline(projectId string, requester string, start time.Time, end time.Time, tasks []string, lastUpdate time.Time) []bson.M {
-	// Using the same pipeline as for the tasks collection as the base.
-	basePipeline := getDailyTaskStatsPipeline(projectId, requester, start, end, tasks, lastUpdate, true)
-	// And the merge the documents with the existing ones.
-	mergePipeline := []bson.M{
-		{"$lookup": bson.M{
-			"from":         DailyTaskStatsCollection,
-			"localField":   DbTaskStatsIdKey,
-			"foreignField": DbTaskStatsIdKey,
-			"as":           "existing",
-		}},
-		{"$unwind": bson.M{
-			"path":                       "$existing",
-			"preserveNullAndEmptyArrays": true,
-		}},
-		{"$project": bson.M{
-			"_id":                         1,
-			DbTaskStatsNumSuccessKey:      bson.M{"$add": Array{"$" + DbTaskStatsNumSuccessKey, "$existing." + DbTaskStatsNumSuccessKey}},
-			DbTaskStatsNumFailedKey:       bson.M{"$add": Array{"$" + DbTaskStatsNumFailedKey, "$existing." + DbTaskStatsNumFailedKey}},
-			DbTaskStatsNumTestFailedKey:   bson.M{"$add": Array{"$" + DbTaskStatsNumTestFailedKey, "$existing." + DbTaskStatsNumTestFailedKey}},
-			DbTaskStatsNumSetupFailedKey:  bson.M{"$add": Array{"$" + DbTaskStatsNumSetupFailedKey, "$existing." + DbTaskStatsNumSetupFailedKey}},
-			DbTaskStatsNumSystemFailedKey: bson.M{"$add": Array{"$" + DbTaskStatsNumSystemFailedKey, "$existing." + DbTaskStatsNumSystemFailedKey}},
-			DbTaskStatsNumTimeoutKey:      bson.M{"$add": Array{"$" + DbTaskStatsNumTimeoutKey, "$existing." + DbTaskStatsNumTimeoutKey}},
-			"total_duration_success": bson.M{"$add": Array{
-				bson.M{"$ifNull": Array{bson.M{"$multiply": Array{"$" + DbTaskStatsNumSuccessKey, "$" + DbTaskStatsAvgDurationSuccessKey}}, 0}},
-				bson.M{"$ifNull": Array{bson.M{"$multiply": Array{"$existing." + DbTaskStatsNumSuccessKey, "$existing." + DbTaskStatsAvgDurationSuccessKey}}, 0}},
-			}},
-			DbTaskStatsLastUpdateKey: 1,
-		}},
-		{"$project": bson.M{
-			"_id":                         1,
-			DbTaskStatsNumSuccessKey:      1,
-			DbTaskStatsNumFailedKey:       1,
-			DbTaskStatsNumTestFailedKey:   1,
-			DbTaskStatsNumSetupFailedKey:  1,
-			DbTaskStatsNumSystemFailedKey: 1,
-			DbTaskStatsNumTimeoutKey:      1,
-			DbTaskStatsAvgDurationSuccessKey: bson.M{"$cond": bson.M{"if": bson.M{"$ne": Array{"$" + DbTaskStatsNumSuccessKey, 0}},
-				"then": bson.M{"$divide": Array{"$total_duration_success", "$" + DbTaskStatsNumSuccessKey}},
-				"else": nil}},
-			DbTaskStatsLastUpdateKey: 1,
-		}},
-	}
-	return append(basePipeline, mergePipeline...)
-
+	return getDailyTaskStatsPipeline(projectId, requester, start, end, tasks, lastUpdate)
 }
 
 // getDailyTaskStatsPipeline is an internal helper function to create a pipeline aggregating task
 // documents into daily task stats.
-func getDailyTaskStatsPipeline(projectId string, requester string, start time.Time, end time.Time, tasks []string, lastUpdate time.Time, oldTasks bool) []bson.M {
+func getDailyTaskStatsPipeline(projectId string, requester string, start time.Time, end time.Time, tasks []string, lastUpdate time.Time) []bson.M {
 	var taskIdExpr string
 	var displayTaskLookupCollection string
-	if oldTasks {
-		taskIdExpr = taskOldTaskIdKeyRef
-		displayTaskLookupCollection = task.OldCollection
-	} else {
-		taskIdExpr = taskIdKeyRef
-		displayTaskLookupCollection = task.Collection
-	}
+	taskIdExpr = taskIdKeyRef
+	displayTaskLookupCollection = task.Collection
 	pipeline := []bson.M{
 		{"$match": bson.M{
 			task.ProjectKey:     projectId,

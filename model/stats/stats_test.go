@@ -146,7 +146,7 @@ func (s *statsSuite) TestGenerateHourlyTestStats() {
 	// Testing old tasks.
 	err = GenerateHourlyTestStats("p2", "r1", baseHour, []string{"task1"}, jobTime)
 	require.NoError(err)
-	require.Equal(8, s.countHourlyTestDocs()) // 3 more tests combination were added to the collection
+	require.Equal(7, s.countHourlyTestDocs()) // 3 more tests combination were added to the collection
 
 	doc, err = GetHourlyTestDoc(DbTestStatsId{
 		Project:      "p2",
@@ -160,7 +160,7 @@ func (s *statsSuite) TestGenerateHourlyTestStats() {
 	require.NoError(err)
 	require.NotNil(doc)
 	require.Equal(0, doc.NumPass)
-	require.Equal(3, doc.NumFail)
+	require.Equal(2, doc.NumFail)
 	require.Equal(float64(0), doc.AvgDurationPass)
 	require.WithinDuration(jobTime, doc.LastUpdate, 0)
 
@@ -174,16 +174,16 @@ func (s *statsSuite) TestGenerateHourlyTestStats() {
 		Date:         baseHour,
 	})
 	require.NoError(err)
-	require.Equal(1, doc.NumPass)
+	require.Equal(0, doc.NumPass)
 	require.Equal(2, doc.NumFail)
-	require.Equal(float64(120), doc.AvgDurationPass)
+	require.Equal(float64(0), doc.AvgDurationPass)
 	require.WithinDuration(jobTime, doc.LastUpdate, 0)
 
 	// Generate hourly stats for project p3.
 	// Testing display task / execution task.
 	err = GenerateHourlyTestStats("p3", "r1", baseHour, []string{"task_exec_1"}, jobTime)
 	require.NoError(err)
-	require.Equal(10, s.countHourlyTestDocs()) // 2 more tests combination were added to the collection
+	require.Equal(9, s.countHourlyTestDocs()) // 2 more tests combination were added to the collection
 
 	doc, err = GetHourlyTestDoc(DbTestStatsId{
 		Project:      "p3",
@@ -230,7 +230,7 @@ func (s *statsSuite) TestGenerateHourlyTestStats() {
 	// Testing tests with status 'skip'.
 	err = GenerateHourlyTestStats("p5", "r1", baseHour, []string{"task1", "task2"}, jobTime)
 	require.NoError(err)
-	require.Equal(12, s.countHourlyTestDocs()) // 2 more tests combination were added to the collection.
+	require.Equal(11, s.countHourlyTestDocs()) // 2 more tests combination were added to the collection.
 
 	// test1.js passed once and was skipped once.
 	doc, err = GetHourlyTestDoc(DbTestStatsId{
@@ -387,13 +387,12 @@ func (s *statsSuite) TestGenerateDailyTaskStats() {
 	})
 	require.NoError(err)
 	require.NotNil(doc)
-	require.Equal(1, doc.NumSuccess) // 1 old task
-	require.Equal(3, doc.NumFailed)  // 2 tasks + 1 old tasks
-	require.Equal(3, doc.NumTestFailed)
+	require.Equal(2, doc.NumFailed) // 2 tasks + no old tasks
+	require.Equal(2, doc.NumTestFailed)
 	require.Equal(0, doc.NumSystemFailed)
 	require.Equal(0, doc.NumSetupFailed)
 	require.Equal(0, doc.NumTimeout)
-	require.Equal(float64(100), doc.AvgDurationSuccess)
+	require.Equal(float64(0), doc.AvgDurationSuccess)
 	require.WithinDuration(jobTime, doc.LastUpdate, 0)
 }
 

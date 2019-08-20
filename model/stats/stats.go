@@ -97,19 +97,6 @@ func GenerateHourlyTestStats(projectId string, requester string, hour time.Time,
 		return errors.Wrap(err, "Failed to generate hourly stats")
 	}
 
-	grip.Info(message.Fields{
-		"message":   "Generating hourly test stats from old tasks",
-		"project":   projectId,
-		"requester": requester,
-		"hour":      hour,
-		"tasks":     tasks,
-	})
-	// Generate/Update the stats for old tasks.
-	pipeline = hourlyTestStatsForOldTasksPipeline(projectId, requester, start, end, tasks, jobRunTime)
-	err = aggregateIntoCollection(task.OldCollection, pipeline, hourlyTestStatsCollection)
-	if err != nil {
-		return errors.Wrap(err, "Failed to generate hourly stats for old tasks")
-	}
 	return nil
 }
 
@@ -157,20 +144,6 @@ func GenerateDailyTaskStats(projectId string, requester string, day time.Time, t
 		return errors.Wrap(err, "Failed to aggregate daily task stats")
 	}
 
-	grip.Info(message.Fields{
-		"message":   "Generating daily task stats from old tasks",
-		"project":   projectId,
-		"requester": requester,
-		"day":       day,
-		"tasks":     tasks,
-	})
-	start = util.GetUTCDay(day)
-	end = start.Add(24 * time.Hour)
-	pipeline = dailyTaskStatsForOldTasksPipeline(projectId, requester, start, end, tasks, jobRunTime)
-	err = aggregateIntoCollection(task.OldCollection, pipeline, DailyTaskStatsCollection)
-	if err != nil {
-		return errors.Wrap(err, "Failed to aggregate daily task stats")
-	}
 	return nil
 }
 
