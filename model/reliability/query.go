@@ -4,7 +4,6 @@ import (
 	"math"
 	"time"
 
-	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/stats"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
@@ -147,9 +146,7 @@ func GetTaskReliabilityScores(filter TaskReliabilityFilter) ([]TaskReliability, 
 	if err != nil {
 		return nil, errors.Wrap(err, "The provided StatsFilter is invalid")
 	}
-	var taskStats []stats.TaskStats
-	pipeline := filter.TaskReliabilityQueryPipeline()
-	err = db.Aggregate(stats.DailyTaskStatsCollection, pipeline, &taskStats)
+	taskStats, err := filter.GetTaskStats()
 	if err != nil {
 		return nil, errors.Wrap(err, "Failed to aggregate task statistics")
 	}

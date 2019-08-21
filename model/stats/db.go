@@ -803,7 +803,7 @@ func (filter StatsFilter) BuildTaskStatsQueryGroupStage() bson.M {
 		}}
 }
 
-// BuildTaskStatsQuerySortStage creates an aggregation sort stage to query task statistics.
+// buildTaskStatsQuerySortStage creates an aggregation sort stage to query task statistics.
 func (filter StatsFilter) BuildTaskStatsQuerySortStage() bson.M {
 	return bson.M{"$sort": bson.D{
 		{Key: TaskStatsDateKey, Value: SortDateOrder(filter.Sort)},
@@ -813,7 +813,7 @@ func (filter StatsFilter) BuildTaskStatsQuerySortStage() bson.M {
 	}}
 }
 
-// BuildTaskStatsQueryProjectStage creates an aggregation project stage to query task statistics.
+// buildTaskStatsQueryProjectStage creates an aggregation project stage to query task statistics.
 func (filter StatsFilter) BuildTaskStatsQueryProjectStage() bson.M {
 	return bson.M{"$project": bson.M{
 		TaskStatsTaskNameKey:        "$" + DbTaskStatsIdTaskNameKeyFull,
@@ -837,7 +837,7 @@ func (filter StatsFilter) BuildTaskStatsQueryProjectStage() bson.M {
 func (filter StatsFilter) TaskStatsQueryPipeline() []bson.M {
 
 	return []bson.M{
-		filter.BuildMatchStageForTask(),
+		filter.buildMatchStageForTask(),
 		buildAddFieldsDateStage("date", DbTaskStatsIdDateKeyFull, filter.AfterDate, filter.BeforeDate, filter.GroupNumDays),
 		filter.BuildTaskStatsQueryGroupStage(),
 		filter.BuildTaskStatsQueryProjectStage(),
@@ -847,7 +847,7 @@ func (filter StatsFilter) TaskStatsQueryPipeline() []bson.M {
 }
 
 // BuildMatchStageForTask builds the match stage of the task query pipeline based on the filter options.
-func (filter StatsFilter) BuildMatchStageForTask() bson.M {
+func (filter StatsFilter) buildMatchStageForTask() bson.M {
 	match := bson.M{
 		DbTaskStatsIdDateKeyFull: bson.M{
 			"$gte": filter.AfterDate,
@@ -867,14 +867,14 @@ func (filter StatsFilter) BuildMatchStageForTask() bson.M {
 	}
 
 	if filter.StartAt != nil {
-		match["$or"] = filter.BuildTaskPaginationOrBranches()
+		match["$or"] = filter.buildTaskPaginationOrBranches()
 	}
 
 	return bson.M{"$match": match}
 }
 
 // BuildTaskPaginationOrBranches builds an expression for the conditions imposed by the filter StartAt field.
-func (filter StatsFilter) BuildTaskPaginationOrBranches() []bson.M {
+func (filter StatsFilter) buildTaskPaginationOrBranches() []bson.M {
 	var dateDescending = filter.Sort == SortLatestFirst
 	var nextDate interface{}
 
@@ -912,6 +912,7 @@ func (filter StatsFilter) BuildTaskPaginationOrBranches() []bson.M {
 // fields is an array of field names, they must be in the same order as the sort order.
 // operators is a list of MongoDB comparison operators ("$gte", "$gt", "$lte", "$lt") for the fields.
 // values is a list of values for the fields.
+// func (filter StatsFilter) buildPaginationOrBranches(fields []PaginationField) []bson.M {
 func BuildPaginationOrBranches(fields []PaginationField) []bson.M {
 	baseConstraints := bson.M{}
 	branches := []bson.M{}

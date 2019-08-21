@@ -75,7 +75,7 @@ func TestPipeline(t *testing.T) {
 				"Simple": func(ctx context.Context, t *testing.T, filter *TaskReliabilityFilter) {
 					withCancelledContext(ctx, func(ctx context.Context) {
 						expected := []time.Time{before.Add(24 * time.Hour), before, after}
-						boundaries := filter.DateBoundaries()
+						boundaries := filter.dateBoundaries()
 						assert.Equal(t, len(expected), len(boundaries))
 						assert.Equal(t, expected, boundaries)
 					})
@@ -84,7 +84,7 @@ func TestPipeline(t *testing.T) {
 					filter.StatsFilter.BeforeDate = before.Add(24 * time.Hour)
 					withCancelledContext(ctx, func(ctx context.Context) {
 						expected := []time.Time{before.Add(2 * 24 * time.Hour), before.Add(24 * time.Hour), before, after}
-						boundaries := filter.DateBoundaries()
+						boundaries := filter.dateBoundaries()
 						assert.Equal(t, len(expected), len(boundaries))
 						assert.Equal(t, expected, boundaries)
 					})
@@ -94,7 +94,7 @@ func TestPipeline(t *testing.T) {
 					filter.StatsFilter.AfterDate = after.Add(-24 * time.Hour)
 					withCancelledContext(ctx, func(ctx context.Context) {
 						expected := []time.Time{before.Add(2 * 24 * time.Hour), before.Add(24 * time.Hour), before, after, after.Add(-24 * time.Hour)}
-						boundaries := filter.DateBoundaries()
+						boundaries := filter.dateBoundaries()
 						assert.Equal(t, len(expected), len(boundaries))
 						assert.Equal(t, expected, boundaries)
 					})
@@ -103,7 +103,7 @@ func TestPipeline(t *testing.T) {
 					filter.StatsFilter.AfterDate = after.Add(-24 * time.Hour)
 					withCancelledContext(ctx, func(ctx context.Context) {
 						expected := []time.Time{before.Add(24 * time.Hour), before, after, after.Add(-24 * time.Hour)}
-						boundaries := filter.DateBoundaries()
+						boundaries := filter.dateBoundaries()
 						assert.Equal(t, len(expected), len(boundaries))
 						assert.Equal(t, expected, boundaries)
 					})
@@ -136,7 +136,7 @@ func TestPipeline(t *testing.T) {
 							bson.M{"_id.date": bson.M{"$lt": filter.StatsFilter.StartAt.Date}},
 							bson.M{"_id.date": filter.StatsFilter.StartAt.Date, "_id.task_name": bson.M{"$gt": task}},
 						}
-						branches := filter.BuildTaskPaginationOrBranches()
+						branches := filter.buildTaskPaginationOrBranches()
 						assert.Equal(t, expected, branches)
 					})
 				},
@@ -147,7 +147,7 @@ func TestPipeline(t *testing.T) {
 							bson.M{"_id.date": bson.M{"$gt": filter.StatsFilter.StartAt.Date}},
 							bson.M{"_id.date": filter.StatsFilter.StartAt.Date, "_id.task_name": bson.M{"$gt": task}},
 						}
-						branches := filter.BuildTaskPaginationOrBranches()
+						branches := filter.buildTaskPaginationOrBranches()
 						assert.Equal(t, expected, branches)
 					})
 				},
@@ -162,7 +162,7 @@ func TestPipeline(t *testing.T) {
 							bson.M{"_id.date": bson.M{"$lte": startAtDate}},
 							bson.M{"_id.date": bson.M{"$lte": startAtDate, "$gt": startAtDate}, "_id.task_name": bson.M{"$gt": task}},
 						}
-						branches := filter.BuildTaskPaginationOrBranches()
+						branches := filter.buildTaskPaginationOrBranches()
 						assert.Equal(t, expected, branches)
 					})
 				},
@@ -175,7 +175,7 @@ func TestPipeline(t *testing.T) {
 							bson.M{"_id.date": filter.StatsFilter.StartAt.Date, "_id.variant": bson.M{"$gt": variant}},
 							bson.M{"_id.date": filter.StatsFilter.StartAt.Date, "_id.variant": variant, "_id.task_name": bson.M{"$gt": task}},
 						}
-						branches := filter.BuildTaskPaginationOrBranches()
+						branches := filter.buildTaskPaginationOrBranches()
 						assert.Equal(t, expected, branches)
 					})
 				},
@@ -188,7 +188,7 @@ func TestPipeline(t *testing.T) {
 							bson.M{"_id.date": filter.StatsFilter.StartAt.Date, "_id.variant": bson.M{"$gt": variant}},
 							bson.M{"_id.date": filter.StatsFilter.StartAt.Date, "_id.variant": variant, "_id.task_name": bson.M{"$gt": task}},
 						}
-						branches := filter.BuildTaskPaginationOrBranches()
+						branches := filter.buildTaskPaginationOrBranches()
 						assert.Equal(t, expected, branches)
 					})
 				},
@@ -205,7 +205,7 @@ func TestPipeline(t *testing.T) {
 							bson.M{"_id.date": bson.M{"$lte": filter.StatsFilter.StartAt.Date, "$gt": filter.StatsFilter.StartAt.Date}, "_id.variant": bson.M{"$gt": variant}},
 							bson.M{"_id.date": bson.M{"$lte": filter.StatsFilter.StartAt.Date, "$gt": filter.StatsFilter.StartAt.Date}, "_id.variant": variant, "_id.task_name": bson.M{"$gt": task}},
 						}
-						branches := filter.BuildTaskPaginationOrBranches()
+						branches := filter.buildTaskPaginationOrBranches()
 						assert.Equal(t, expected, branches)
 					})
 				},
@@ -221,7 +221,7 @@ func TestPipeline(t *testing.T) {
 							bson.M{"_id.date": filter.StatsFilter.StartAt.Date, "_id.variant": variant, "_id.task_name": bson.M{"$gt": task}},
 							bson.M{"_id.date": filter.StatsFilter.StartAt.Date, "_id.variant": variant, "_id.task_name": task, "_id.distro": bson.M{"$gt": distro}},
 						}
-						branches := filter.BuildTaskPaginationOrBranches()
+						branches := filter.buildTaskPaginationOrBranches()
 						assert.Equal(t, expected, branches)
 					})
 				},
@@ -236,7 +236,7 @@ func TestPipeline(t *testing.T) {
 							bson.M{"_id.date": filter.StatsFilter.StartAt.Date, "_id.variant": variant, "_id.task_name": bson.M{"$gt": task}},
 							bson.M{"_id.date": filter.StatsFilter.StartAt.Date, "_id.variant": variant, "_id.task_name": task, "_id.distro": bson.M{"$gt": distro}},
 						}
-						branches := filter.BuildTaskPaginationOrBranches()
+						branches := filter.buildTaskPaginationOrBranches()
 						assert.Equal(t, expected, branches)
 					})
 				},
@@ -253,7 +253,7 @@ func TestPipeline(t *testing.T) {
 							bson.M{"_id.date": bson.M{"$lte": filter.StatsFilter.StartAt.Date, "$gt": filter.StatsFilter.StartAt.Date}, "_id.variant": variant, "_id.task_name": bson.M{"$gt": task}},
 							bson.M{"_id.date": bson.M{"$lte": filter.StatsFilter.StartAt.Date, "$gt": filter.StatsFilter.StartAt.Date}, "_id.variant": variant, "_id.task_name": task, "_id.distro": bson.M{"$gt": distro}},
 						}
-						branches := filter.BuildTaskPaginationOrBranches()
+						branches := filter.buildTaskPaginationOrBranches()
 						assert.Equal(t, expected, branches)
 					})
 				},
@@ -264,7 +264,7 @@ func TestPipeline(t *testing.T) {
 					filter.StatsFilter.BeforeDate = before.Add(24 * time.Hour)
 					withCancelledContext(ctx, func(ctx context.Context) {
 						expected := []time.Time{before.Add(2 * 24 * time.Hour), before.Add(24 * time.Hour), before, after}
-						boundaries := filter.DateBoundaries()
+						boundaries := filter.dateBoundaries()
 						assert.Equal(t, len(expected), len(boundaries))
 						assert.Equal(t, expected, boundaries)
 					})
@@ -276,7 +276,7 @@ func TestPipeline(t *testing.T) {
 					filter.StatsFilter.AfterDate = after.Add(-24 * time.Hour)
 					withCancelledContext(ctx, func(ctx context.Context) {
 						expected := []time.Time{before.Add(2 * 24 * time.Hour), before.Add(24 * time.Hour), before, after, after.Add(-24 * time.Hour)}
-						boundaries := filter.DateBoundaries()
+						boundaries := filter.dateBoundaries()
 						assert.Equal(t, len(expected), len(boundaries))
 						assert.Equal(t, expected, boundaries)
 					})
@@ -288,7 +288,7 @@ func TestPipeline(t *testing.T) {
 					filter.StatsFilter.BeforeDate = before
 					withCancelledContext(ctx, func(ctx context.Context) {
 						expected := []time.Time{before.Add(24 * time.Hour), before, after, after.Add(-24 * time.Hour)}
-						boundaries := filter.DateBoundaries()
+						boundaries := filter.dateBoundaries()
 						assert.Equal(t, len(expected), len(boundaries))
 						assert.Equal(t, expected, boundaries)
 					})
@@ -324,7 +324,7 @@ func TestPipeline(t *testing.T) {
 			for testName, testCase := range map[string]func(ctx context.Context, t *testing.T, filter *TaskReliabilityFilter, expected bson.M){
 				"Simple": func(ctx context.Context, t *testing.T, filter *TaskReliabilityFilter, expected bson.M) {
 					withCancelledContext(ctx, func(ctx context.Context) {
-						stage := filter.BuildMatchStageForTask()
+						stage := filter.buildMatchStageForTask()
 						assert.Equal(t, stage, expected)
 					})
 				},
@@ -332,7 +332,7 @@ func TestPipeline(t *testing.T) {
 					filter.Tasks = []string{task}
 					expected["$match"].(bson.M)["_id.task_name"] = filter.Tasks[0]
 					withCancelledContext(ctx, func(ctx context.Context) {
-						stage := filter.BuildMatchStageForTask()
+						stage := filter.buildMatchStageForTask()
 						assert.Equal(t, stage, expected)
 					})
 				},
@@ -340,7 +340,7 @@ func TestPipeline(t *testing.T) {
 					filter.Tasks = []string{task, "compile"}
 					expected["$match"].(bson.M)["_id.task_name"] = bson.M{"$in": filter.Tasks}
 					withCancelledContext(ctx, func(ctx context.Context) {
-						stage := filter.BuildMatchStageForTask()
+						stage := filter.buildMatchStageForTask()
 						assert.Equal(t, stage, expected)
 					})
 				},
@@ -348,7 +348,7 @@ func TestPipeline(t *testing.T) {
 					filter.BuildVariants = []string{variant}
 					expected["$match"].(bson.M)["_id.variant"] = filter.BuildVariants[0]
 					withCancelledContext(ctx, func(ctx context.Context) {
-						stage := filter.BuildMatchStageForTask()
+						stage := filter.buildMatchStageForTask()
 						assert.Equal(t, stage, expected)
 					})
 				},
@@ -356,7 +356,7 @@ func TestPipeline(t *testing.T) {
 					filter.BuildVariants = []string{variant, "rhel76-build"}
 					expected["$match"].(bson.M)["_id.variant"] = bson.M{"$in": filter.BuildVariants}
 					withCancelledContext(ctx, func(ctx context.Context) {
-						stage := filter.BuildMatchStageForTask()
+						stage := filter.buildMatchStageForTask()
 						assert.Equal(t, stage, expected)
 					})
 				},
@@ -364,7 +364,7 @@ func TestPipeline(t *testing.T) {
 					filter.Distros = []string{distro}
 					expected["$match"].(bson.M)["_id.distro"] = filter.Distros[0]
 					withCancelledContext(ctx, func(ctx context.Context) {
-						stage := filter.BuildMatchStageForTask()
+						stage := filter.buildMatchStageForTask()
 						assert.Equal(t, stage, expected)
 					})
 				},
@@ -372,7 +372,7 @@ func TestPipeline(t *testing.T) {
 					filter.Distros = []string{distro, "debian71-build"}
 					expected["$match"].(bson.M)["_id.distro"] = bson.M{"$in": filter.Distros}
 					withCancelledContext(ctx, func(ctx context.Context) {
-						stage := filter.BuildMatchStageForTask()
+						stage := filter.buildMatchStageForTask()
 						assert.Equal(t, stage, expected)
 					})
 				},
@@ -391,7 +391,7 @@ func TestPipeline(t *testing.T) {
 						bson.M{"_id.date": startAt, "_id.variant": variant, "_id.task_name": task, "_id.distro": bson.M{"$gt": distro}},
 					}
 					withCancelledContext(ctx, func(ctx context.Context) {
-						stage := filter.BuildMatchStageForTask()
+						stage := filter.buildMatchStageForTask()
 						assert.Equal(t, stage, expected)
 					})
 				},
@@ -544,7 +544,7 @@ func TestPipeline(t *testing.T) {
 					filter.StatsFilter.Limit = 1
 
 					withCancelledContext(ctx, func(ctx context.Context) {
-						pipeline := filter.TaskReliabilityQueryPipeline()
+						pipeline := filter.taskReliabilityQueryPipeline()
 						assert.Equal(t, pipeline, []bson.M{
 							match,
 							simpleGroup,

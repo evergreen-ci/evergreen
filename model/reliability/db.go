@@ -21,6 +21,7 @@ package reliability
 import (
 	"time"
 
+	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/stats"
 	"github.com/evergreen-ci/evergreen/util"
 	"go.mongodb.org/mongo-driver/bson"
@@ -28,7 +29,7 @@ import (
 
 // DateBoundaries returns the date boundaries when splitting the period between 'start' and 'end' in groups of 'numDays' days.
 // The boundaries are the start dates of the periods of 'numDays' (or less for the last period), starting with 'start'.
-func (filter TaskReliabilityFilter) DateBoundaries() []time.Time {
+func (filter TaskReliabilityFilter) dateBoundaries() []time.Time {
 	start := filter.AfterDate
 	end := filter.BeforeDate
 	numDays := filter.GroupNumDays
@@ -54,7 +55,7 @@ func (filter TaskReliabilityFilter) DateBoundaries() []time.Time {
 }
 
 // BuildTaskPaginationOrBranches builds an expression for the conditions imposed by the filter StartAt field.
-func (filter TaskReliabilityFilter) BuildTaskPaginationOrBranches() []bson.M {
+func (filter TaskReliabilityFilter) buildTaskPaginationOrBranches() []bson.M {
 	var dateDescending = filter.Sort == stats.SortLatestFirst
 	var nextDate interface{}
 
@@ -89,8 +90,8 @@ func (filter TaskReliabilityFilter) BuildTaskPaginationOrBranches() []bson.M {
 }
 
 // BuildMatchStageForTask builds the match stage of the task query pipeline based on the filter options.
-func (filter TaskReliabilityFilter) BuildMatchStageForTask() bson.M {
-	boundaries := filter.DateBoundaries()
+func (filter TaskReliabilityFilter) buildMatchStageForTask() bson.M {
+	boundaries := filter.dateBoundaries()
 
 	start := boundaries[0]
 	end := boundaries[len(boundaries)-1]
@@ -114,7 +115,7 @@ func (filter TaskReliabilityFilter) BuildMatchStageForTask() bson.M {
 	}
 
 	if filter.StartAt != nil {
-		match["$or"] = filter.BuildTaskPaginationOrBranches()
+		match["$or"] = filter.buildTaskPaginationOrBranches()
 	}
 	return bson.M{"$match": match}
 }
@@ -127,7 +128,7 @@ func (filter TaskReliabilityFilter) buildDateStageGroupID(fieldName string, inpu
 	if numDays <= 1 {
 		return inputDateFieldRef
 	}
-	boundaries := filter.DateBoundaries()
+	boundaries := filter.dateBoundaries()
 	branches := make([]bson.M, 0, len(boundaries)-1)
 
 	for i := 0; i < len(boundaries)-1; i++ {
@@ -177,12 +178,19 @@ func (filter TaskReliabilityFilter) BuildTaskStatsQueryGroupStage() bson.M {
 }
 
 // TaskReliabilityQueryPipeline creates an aggregation pipeline to query task statistics for reliability.
-func (filter TaskReliabilityFilter) TaskReliabilityQueryPipeline() []bson.M {
+func (filter TaskReliabilityFilter) taskReliabilityQueryPipeline() []bson.M {
 	return []bson.M{
-		filter.BuildMatchStageForTask(),
+		filter.buildMatchStageForTask(),
 		filter.BuildTaskStatsQueryGroupStage(),
 		filter.BuildTaskStatsQueryProjectStage(),
 		filter.BuildTaskStatsQuerySortStage(),
 		{"$limit": filter.Limit},
 	}
+}
+
+// GetTaskStats create an aggregation to find task stats matching the filter state.
+func (filter TaskReliabilityFilter) GetTaskStats() (taskStats []stats.TaskStats, err error) {
+	pipeline := filter.taskReliabilityQueryPipeline()
+	err = db.Aggregate(stats.DailyTaskStatsCollection, pipeline, &taskStats)
+	return
 }
