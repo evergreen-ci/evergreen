@@ -349,7 +349,7 @@ tasks:
     tags: ["nodb", "test"]
     name: test-auth
   - <<: *run-go-test-suite
-    tags: ["nodb", "test"]
+    tags: ["nodb", "test", "agent"]
     name: test-thirdparty-docker
   - <<: *run-go-test-suite-with-mongodb
     tags: ["db", "test"]
