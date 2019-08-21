@@ -21,12 +21,8 @@ func Cleanup(ctx context.Context, logger grip.Journaler) error {
 
 	info, err := dockerClient.Info(ctx)
 	if err != nil {
-		if client.IsErrConnectionFailed(err) {
-			// the daemon isn't running so there's nothing to clean up
-			logger.Info("Docker daemon isn't running")
-			return nil
-		}
-		return errors.Wrap(err, "can't get Docker info")
+		logger.Info("Can't connect to Docker. It's probably not running")
+		return nil
 	}
 
 	logger.Info(message.Fields{

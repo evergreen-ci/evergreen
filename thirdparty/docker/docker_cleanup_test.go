@@ -24,12 +24,9 @@ func TestCleanup(t *testing.T) {
 	// check if the Docker daemon is running
 	_, err = dockerClient.Ping(ctx)
 	if err != nil {
-		if client.IsErrConnectionFailed(err) {
-			// the daemon isn't running. Make sure Cleanup noops
-			assert.NoError(t, Cleanup(context.Background(), grip.NewJournaler("")))
-			return
-		}
-		require.NoError(t, err)
+		// the daemon isn't running. Make sure Cleanup noops
+		assert.NoError(t, Cleanup(context.Background(), grip.NewJournaler("")))
+		return
 	}
 
 	for name, test := range map[string]func(*testing.T){
