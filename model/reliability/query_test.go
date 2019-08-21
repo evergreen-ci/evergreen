@@ -1,11 +1,13 @@
 package reliability
 
 import (
-        "fmt"
-        "strings"
+        "context"
+	"fmt"
+	"strings"
 	"testing"
 	"time"
 
+        "github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/stats"
 	_ "github.com/evergreen-ci/evergreen/testutil"
@@ -289,83 +291,142 @@ func TestGetTaskStatsTwoDocuments(t *testing.T) {
 	assert.Equal(docs[1].SuccessRate, float64(.42))
 }
 
-func TestGetTaskReliabilityNoMatching(t *testing.T) {
-        // assert := assert.New(t)
-        require := require.New(t)
-        filter := createValidFilter()
-        task1 := "task1"
-        task2 := "task2"
-
-        variant1 := "v1"
-        variant2 := "v2"
-
-        distro1 := "d1"
-        distro2 := "d2"
-
-        err := clearCollection()
-        require.NoError(err)
-
-        require.NoError(insertDailyTaskStats(project, "r1", task1, variant1, distro1, day1, 10, 5, 1, 1, 1, 2, 10.5))
-        require.NoError(insertDailyTaskStats(project, "r1", task1, variant1, distro1, day2.Add(-1*time.Hour), 20, 7, 7, 0, 0, 0, 20.0))
-
-        require.NoError(insertDailyTaskStats(project, "r1", task2, variant2, distro2, day1, 10, 5, 1, 1, 1, 2, 10.5))
-        require.NoError(insertDailyTaskStats(project, "r1", task2, variant2, distro2, day2.Add(-1*time.Hour), 20, 7, 7, 0, 0, 0, 20.0))
-
-        docs, err := GetTaskReliabilityScores(filter)
-        require.NoError(err)
-        require.NotEqual(len(docs), 0)
-
-        filter.StatsFilter.Tasks = []string{task1}
-        filter.StatsFilter.BuildVariants = []string{variant1, variant2}
-        filter.StatsFilter.Distros = []string{distro1, distro2}
-        docs, err = GetTaskReliabilityScores(filter)
-        require.NoError(err)
-        require.Len(docs, 2)
-        for _, doc := range docs {
-                require.Equal(doc.TaskName, task1)
-                require.NotEqual(doc.BuildVariant, variant2)
-                require.NotEqual(doc.Distro, distro2)
+func GetTaskReliability(t *testing.T) {
+        requesters := []string{
+                evergreen.PatchVersionRequester,
+                evergreen.GithubPRRequester,
+                evergreen.MergeTestRequester,
         }
 
-        filter.StatsFilter.Tasks = []string{task2}
-        filter.StatsFilter.BuildVariants = []string{variant1, variant2}
-        filter.StatsFilter.Distros = []string{distro1, distro2}
-        docs, err = GetTaskReliabilityScores(filter)
-        require.NoError(err)
-        require.Len(docs, 2)
-        for _, doc := range docs {
-                require.Equal(doc.TaskName, task2)
-                require.NotEqual(doc.BuildVariant, variant1)
-                require.NotEqual(doc.Distro, distro1)
+        ctx, cancel := context.WithCancel(context.Background())
+        defer cancel()
+
+        withCancelledContext := func(ctx context.Context, fn func(context.Context)) {
+                ctx, cancel := context.WithCancel(ctx)
+                cancel()
+                fn(ctx)
         }
 
-        filter.StatsFilter.Tasks = []string{task1}
-        filter.StatsFilter.Tasks = []string{task1}
-        filter.StatsFilter.BuildVariants = []string{variant2}
-        filter.StatsFilter.Distros = []string{distro2}
-        docs, err = GetTaskReliabilityScores(filter)
-        require.NoError(err)
-        require.Len(docs, 0)
+	task1 := "task1"
+	task2 := "task2"
 
-        filter.StatsFilter.Tasks = []string{task2}
-        filter.StatsFilter.BuildVariants = []string{variant1}
-        filter.StatsFilter.Distros = []string{distro1}
-        docs, err = GetTaskReliabilityScores(filter)
-        require.NoError(err)
-        require.Len(docs, 0)
+	variant1 := "v1"
+	variant2 := "v2"
 
-        task3 := "task3"
-        variantFmt := "variant %04d"
-        distroFmt := "distro %04d"
+	distro1 := "d1"
+	distro2 := "d2"
 
-        require.NoError(insertManyDailyTaskStats(MaxQueryLimit, project, "r1", task3, variantFmt, distroFmt, day1, 10, 5, 1, 1, 1, 2, 10.5))
+        for opName, opTests := range map[string]func(ctx context.Context, t *testing.T, env evergreen.Environment){
+                "GetTaskReliability": func(ctx context.Context, t *testing.T, env evergreen.Environment) {
+                        for testName, testCase := range map[string]func(ctx context.Context, t *testing.T, filter TaskReliabilityFilter){
+                                "No Matches": func(ctx context.Context, t *testing.T, filter TaskReliabilityFilter) {
+                                        require := require.New(t)
+                                        withCancelledContext(ctx, func(ctx context.Context) {
+                                                docs, err := GetTaskReliabilityScores(filter)
+                                                require.NoError(err)
+                                                require.NotEqual(len(docs), 0)
+                                        })
+                                },
+                                "Invalid Combination task1": func(ctx context.Context, t *testing.T, filter TaskReliabilityFilter) {
+                                        require := require.New(t)
+                                        withCancelledContext(ctx, func(ctx context.Context) {
+                                                filter.StatsFilter.Tasks = []string{task1}
+                                                filter.StatsFilter.BuildVariants = []string{variant2}
+                                                filter.StatsFilter.Distros = []string{distro2}
+                                                docs, err := GetTaskReliabilityScores(filter)
+                                                require.NoError(err)
+                                                require.Len(docs, 0)
+                                        })
+                                },
+                                "Invalid Combination task2": func(ctx context.Context, t *testing.T, filter TaskReliabilityFilter) {
+                                        require := require.New(t)
+                                        withCancelledContext(ctx, func(ctx context.Context) {
+                                                filter.StatsFilter.Tasks = []string{task2}
+                                                filter.StatsFilter.BuildVariants = []string{variant1}
+                                                filter.StatsFilter.Distros = []string{distro1}
+                                                docs, err := GetTaskReliabilityScores(filter)
+                                                require.NoError(err)
+                                                require.Len(docs, 0)
+                                        })
+                                },
+                                "task1": func(ctx context.Context, t *testing.T, filter TaskReliabilityFilter) {
+                                        require := require.New(t)
+                                        withCancelledContext(ctx, func(ctx context.Context) {
+                                                filter.StatsFilter.Tasks = []string{task1}
+                                                filter.StatsFilter.BuildVariants = []string{variant1, variant2}
+                                                filter.StatsFilter.Distros = []string{distro1, distro2}
+                                                docs, err := GetTaskReliabilityScores(filter)
+                                                require.NoError(err)
+                                                require.Len(docs, 2)
+                                                for _, doc := range docs {
+                                                        require.Equal(doc.TaskName, task1)
+                                                        require.NotEqual(doc.BuildVariant, variant2)
+                                                        require.NotEqual(doc.Distro, distro2)
+                                                }
+                                        })
+                                },
+                                "task2": func(ctx context.Context, t *testing.T, filter TaskReliabilityFilter) {
+                                        require := require.New(t)
+                                        withCancelledContext(ctx, func(ctx context.Context) {
+                                                filter.StatsFilter.Tasks = []string{task2}
+                                                filter.StatsFilter.BuildVariants = []string{variant1, variant2}
+                                                filter.StatsFilter.Distros = []string{distro1, distro2}
+                                                docs, err := GetTaskReliabilityScores(filter)
+                                                require.NoError(err)
+                                                require.Len(docs, 2)
+                                                for _, doc := range docs {
+                                                        require.Equal(doc.TaskName, task2)
+                                                        require.NotEqual(doc.BuildVariant, variant1)
+                                                        require.NotEqual(doc.Distro, distro1)
+                                                }
+                                        })
+                                },
+                                "MaxQueryLimit": func(ctx context.Context, t *testing.T, filter TaskReliabilityFilter) {
+                                        require := require.New(t)
+                                        withCancelledContext(ctx, func(ctx context.Context) {
+                                                task3 := "task3"
+                                                variantFmt := "variant %04d"
+                                                distroFmt := "distro %04d"
 
-        filter.StatsFilter.Tasks = []string{task1, task2, task3}
-        filter.StatsFilter.BuildVariants = []string{}
-        filter.StatsFilter.Distros = []string{}
-        docs, err = GetTaskReliabilityScores(filter)
-        require.NoError(err)
-        require.Len(docs, MaxQueryLimit)
+                                                require.NoError(insertManyDailyTaskStats(MaxQueryLimit, project, "r1", task3, variantFmt, distroFmt, day1, 10, 5, 1, 1, 1, 2, 10.5))
+
+                                                filter.StatsFilter.Tasks = []string{task1, task2, task3}
+                                                filter.StatsFilter.BuildVariants = []string{}
+                                                filter.StatsFilter.Distros = []string{}
+                                                docs, err := GetTaskReliabilityScores(filter)
+                                                require.NoError(err)
+                                                require.Len(docs, MaxQueryLimit)
+                                        })
+                                },
+                        } {
+                                t.Run(testName, func(t *testing.T) {
+                                        withSetupAndTeardown(t, env, func() {
+                                                filter := createValidFilter()
+                                                err := clearCollection()
+                                                require.NoError(t, err)
+
+                                                require.NoError(t, insertDailyTaskStats(project, requesters[0], task1, variant1, distro1, day1, 10, 5, 1, 1, 1, 2, 10.5))
+                                                require.NoError(t, insertDailyTaskStats(project, requesters[0], task1, variant1, distro1, day2.Add(-1*time.Hour), 20, 7, 7, 0, 0, 0, 20.0))
+
+                                                require.NoError(t, insertDailyTaskStats(project, requesters[0], task2, variant2, distro2, day1, 10, 5, 1, 1, 1, 2, 10.5))
+                                                require.NoError(t, insertDailyTaskStats(project, requesters[0], task2, variant2, distro2, day2.Add(-1*time.Hour), 20, 7, 7, 0, 0, 0, 20.0))
+                                                testCase(ctx, t, filter)
+                                        })
+                                })
+                        }
+                },
+        } {
+                t.Run(opName, func(t *testing.T) {
+                        env, err := setupEnv(ctx)
+                        require.NoError(t, err)
+
+                        tctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+                        defer cancel()
+
+                        env.Settings().DomainName = "test"
+                        opTests(tctx, t, env)
+                })
+	}
 }
 
 func TestValidateForTaskReliability(t *testing.T) {
