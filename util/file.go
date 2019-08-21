@@ -8,7 +8,7 @@ import (
 	"strings"
 
 	"github.com/pkg/errors"
-	ignore "github.com/sabhiram/go-git-ignore"
+	"github.com/sabhiram/go-git-ignore"
 )
 
 // FileExists returns true if 'path' exists.

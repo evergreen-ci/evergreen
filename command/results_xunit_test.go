@@ -174,3 +174,58 @@ func TestParseAndUpload(t *testing.T) {
 	}
 	assert.Equal(len(messagesToCheck), count)
 }
+
+func TestFilePathGetIgnoreGlobbing(t *testing.T) {
+	assert := assert.New(t)
+	workdir := filepath.Join(testutil.GetDirectoryOfFile(), "testdata", "xunit")
+	files := []string{"*.xml", "!mocha.xml"}
+	paths, err := getFilePaths(workdir, files)
+	assert.NoError(err)
+	assert.Len(paths, 7)
+	assert.NotContains(paths, filepath.Join(workdir, "mocha.xml"))
+
+	files = []string{"junit_[1-3].xml"}
+	paths, err = getFilePaths(workdir, files)
+	assert.NoError(err)
+	assert.Len(paths, 3)
+	assert.Contains(paths, filepath.Join(workdir, "junit_1.xml"))
+	assert.Contains(paths, filepath.Join(workdir, "junit_2.xml"))
+	assert.Contains(paths, filepath.Join(workdir, "junit_3.xml"))
+
+	files = []string{"junit_[!12].xml"}
+	paths, err = getFilePaths(workdir, files)
+	assert.NoError(err)
+	assert.Len(paths, 3)
+	assert.NotContains(paths, filepath.Join(workdir, "junit_1.xml"))
+	assert.NotContains(paths, filepath.Join(workdir, "junit_2.xml"))
+	assert.NotContains(paths, filepath.Join(workdir, "junit_12.xml"))
+
+	files = []string{"junit_[12].xml"}
+	paths, err = getFilePaths(workdir, files)
+	assert.NoError(err)
+	assert.Len(paths, 2)
+	assert.Contains(paths, filepath.Join(workdir, "junit_1.xml"))
+	assert.Contains(paths, filepath.Join(workdir, "junit_2.xml"))
+	assert.NotContains(paths, filepath.Join(workdir, "junit_12.xml"))
+
+	workdir = filepath.Join(testutil.GetDirectoryOfFile(), "testdata")
+	files = []string{"archive/**/testfile.txt"}
+	paths, err = getFilePaths(workdir, files)
+	assert.NoError(err)
+	assert.Len(paths, 5)
+	for _, path := range paths {
+		assert.Contains(path, "archive")
+		assert.Contains(path, "testfile.txt")
+	}
+
+	files = []string{"archive/artifacts_*/**/testfile.txt"}
+	paths, err = getFilePaths(workdir, files)
+	assert.NoError(err)
+	assert.Len(paths, 3)
+
+	files = []string{"testfile.txt", "!artifacts_in/**/testfile.txt"}
+	paths, err = getFilePaths(workdir, files)
+	assert.NoError(err)
+	assert.Len(paths, 4)
+	assert.NotContains(paths, filepath.Join(workdir, "artifacts_in/dir1/dir2/testfile.txt"))
+}
