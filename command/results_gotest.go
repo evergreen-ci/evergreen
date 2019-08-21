@@ -44,6 +44,7 @@ func (c *goTestResults) ParseParams(params map[string]interface{}) error {
 // back to the server.
 func (c *goTestResults) Execute(ctx context.Context,
 	comm client.Communicator, logger client.LoggerProducer, conf *model.TaskConfig) error {
+
 	if err := util.ExpandValues(c, conf.Expansions); err != nil {
 		err = errors.Wrap(err, "error expanding params")
 		logger.Task().Errorf("Error parsing goTest files: %+v", err)
@@ -116,13 +117,16 @@ func (c *goTestResults) Execute(ctx context.Context,
 // AllOutputFiles creates a list of all test output files that will be parsed, by expanding
 // all of the file patterns specified to the command.
 func (c *goTestResults) allOutputFiles() ([]string, error) {
-	dir, err := os.Getwd()
-	if err != nil {
-		return nil, errors.Wrap(err, "error retrieving working directory path")
-	}
-	outputFiles, err := getFilePaths(dir, c.Files)
-	if err != nil {
-		return nil, errors.Wrap(err, "error expanding file patterns")
+
+	outputFiles := []string{}
+
+	// walk through all specified file patterns
+	for _, pattern := range c.Files {
+		matches, err := filepath.Glob(pattern)
+		if err != nil {
+			return nil, errors.Wrap(err, "error expanding file patterns")
+		}
+		outputFiles = append(outputFiles, matches...)
 	}
 
 	// uniquify the list
@@ -136,6 +140,7 @@ func (c *goTestResults) allOutputFiles() ([]string, error) {
 	}
 
 	return outputFiles, nil
+
 }
 
 // ParseTestOutputFiles parses all of the files that are passed in, and returns the

@@ -5,12 +5,10 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"strings"
 
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/rest/client"
-	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mitchellh/mapstructure"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
@@ -86,39 +84,20 @@ func (c *xunitResults) Execute(ctx context.Context,
 // getFilePaths is a helper function that returns a slice of all absolute paths
 // which match the given file path parameters.
 func getFilePaths(workDir string, files []string) ([]string, error) {
-	filePatterns := expandFilePatterns(files)
-	paths, err := util.BuildFileList(workDir, filePatterns...)
-	if err != nil {
-		return nil, errors.Wrap(err, "incorrect file specifications")
-	}
-	for i, path := range paths {
-		paths[i] = filepath.Join(workDir, path)
-	}
-	return paths, nil
-}
+	catcher := grip.NewBasicCatcher()
+	out := []string{}
 
-// this specifically cases on patterns like *[!12] that match any character except those in the given set
-func expandFilePatterns(files []string) []string {
-	res := []string{}
-	for _, file := range files {
-
-		pieces := strings.Split(file, "[!")
-		if len(pieces) <= 1 || !strings.Contains(pieces[1], "]") {
-			res = append(res, file)
-			continue
-		}
-		suffix := strings.Split(pieces[1], "]")[1]
-		newFilesToIgnore := []string{fmt.Sprintf("%s*%s", pieces[0], suffix)}
-		for _, char := range strings.Split(pieces[1], "") { // get the characters to ignore
-			if char == "]" {
-				break
-			}
-			newFilePattern := fmt.Sprintf("!%s*%s*%s", pieces[0], char, suffix)
-			newFilesToIgnore = append(newFilesToIgnore, newFilePattern)
-		}
-		res = append(res, newFilesToIgnore...)
+	for _, fileSpec := range files {
+		paths, err := filepath.Glob(filepath.Join(workDir, fileSpec))
+		catcher.Add(err)
+		out = append(out, paths...)
 	}
-	return res
+
+	if catcher.HasErrors() {
+		return nil, errors.Wrapf(catcher.Resolve(), "%d incorrect file specifications", catcher.Len())
+	}
+
+	return out, nil
 }
 
 func (c *xunitResults) parseAndUploadResults(ctx context.Context, conf *model.TaskConfig,
