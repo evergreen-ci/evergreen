@@ -70,383 +70,584 @@ func getURL(projectID string, parameters map[string]interface{}) string {
 	return url
 }
 
-func TestParseNoTasks(t *testing.T) {
-	assert := assert.New(t)
-	values := url.Values{}
-	handler := taskReliabilityHandler{}
+func TestParseParameters(t *testing.T) {
 
-	err := handler.parseTaskReliabilityFilter(values)
-	assert.NotNil(err)
+	groupContext, cancel := context.WithCancel(context.Background())
+	defer cancel()
 
-	resp := err.(gimlet.ErrorResponse)
-	assert.Equal(http.StatusBadRequest, resp.StatusCode)
-	assert.Equal("Missing Tasks values", resp.Message)
-}
+	for opName, opTests := range map[string]func(context.Context, *testing.T, evergreen.Environment){
+		"Tasks": func(paginationContext context.Context, t *testing.T, env evergreen.Environment) {
+			for testName, testCase := range map[string]func(ctx context.Context, t *testing.T, handler taskReliabilityHandler){
+				"invalid: No Tasks": func(ctx context.Context, t *testing.T, handler taskReliabilityHandler) {
+					err := setupTest(t)
+					require.NoError(t, err)
 
-func TestParseTooManyTasks(t *testing.T) {
-	assert := assert.New(t)
-	handler := taskReliabilityHandler{}
+					values := url.Values{}
 
-	values := url.Values{
-		"tasks": make([]string, reliabilityAPIMaxNumTasksLimit+1, reliabilityAPIMaxNumTasksLimit+1),
+					err = handler.parseTaskReliabilityFilter(values)
+					require.NotNil(t, err)
+
+					resp := err.(gimlet.ErrorResponse)
+					assert.Equal(t, http.StatusBadRequest, resp.StatusCode)
+					assert.Equal(t, "Missing Tasks values", resp.Message)
+				},
+				"invalid: Too Many Tasks": func(ctx context.Context, t *testing.T, handler taskReliabilityHandler) {
+					err := setupTest(t)
+					require.NoError(t, err)
+
+					values := url.Values{
+						"tasks": make([]string, reliabilityAPIMaxNumTasksLimit+1, reliabilityAPIMaxNumTasksLimit+1),
+					}
+
+					err = handler.parseTaskReliabilityFilter(values)
+					require.NotNil(t, err)
+
+					resp := err.(gimlet.ErrorResponse)
+					assert.Equal(t, http.StatusBadRequest, resp.StatusCode)
+					assert.Equal(t, "Too many Tasks values", resp.Message)
+				},
+				"valid": func(ctx context.Context, t *testing.T, handler taskReliabilityHandler) {
+					err := setupTest(t)
+					require.NoError(t, err)
+
+					values := url.Values{
+						"tasks": []string{"aggregation_expression_multiversion_fuzzer"},
+					}
+
+					err = handler.parseTaskReliabilityFilter(values)
+					require.Nil(t, err)
+				},
+			} {
+				t.Run(testName, func(t *testing.T) {
+					handler := taskReliabilityHandler{}
+					withSetupAndTeardown(t, env, func() {
+						testCase(paginationContext, t, handler)
+					})
+				})
+			}
+		},
+		"Dates": func(paginationContext context.Context, t *testing.T, env evergreen.Environment) {
+			for testName, testCase := range map[string]func(ctx context.Context, t *testing.T, handler taskReliabilityHandler){
+				"invalid: after_date": func(ctx context.Context, t *testing.T, handler taskReliabilityHandler) {
+					assert := assert.New(t)
+					values := url.Values{
+						"tasks":      []string{"aggregation_expression_multiversion_fuzzer"},
+						"after_date": []string{"invalid date"},
+					}
+
+					err := handler.parseTaskReliabilityFilter(values)
+					require.NotNil(t, err)
+
+					resp := err.(gimlet.ErrorResponse)
+					assert.Equal(http.StatusBadRequest, resp.StatusCode)
+					assert.Equal("Invalid after_date value", resp.Message)
+				},
+				"invalid: before_date": func(ctx context.Context, t *testing.T, handler taskReliabilityHandler) {
+					assert := assert.New(t)
+					values := url.Values{
+						"tasks":       []string{"aggregation_expression_multiversion_fuzzer"},
+						"before_date": []string{"before_date date"},
+					}
+
+					err := handler.parseTaskReliabilityFilter(values)
+					require.NotNil(t, err)
+
+					resp := err.(gimlet.ErrorResponse)
+					assert.Equal(http.StatusBadRequest, resp.StatusCode)
+					assert.Equal("Invalid before_date value", resp.Message)
+				},
+				"valid": func(ctx context.Context, t *testing.T, handler taskReliabilityHandler) {
+					values := url.Values{
+						"tasks":       []string{"aggregation_expression_multiversion_fuzzer"},
+						"before_date": []string{"2019-08-21"},
+						"after_date":  []string{"2019-08-20"},
+					}
+
+					err := handler.parseTaskReliabilityFilter(values)
+					require.Nil(t, err)
+				},
+			} {
+				t.Run(testName, func(t *testing.T) {
+					handler := taskReliabilityHandler{}
+					withSetupAndTeardown(t, env, func() {
+						testCase(paginationContext, t, handler)
+					})
+				})
+			}
+		},
+		"Sort": func(paginationContext context.Context, t *testing.T, env evergreen.Environment) {
+			for testName, testCase := range map[string]func(ctx context.Context, t *testing.T, handler taskReliabilityHandler){
+				"invalid": func(ctx context.Context, t *testing.T, handler taskReliabilityHandler) {
+					assert := assert.New(t)
+					values := url.Values{
+						"tasks": []string{"aggregation_expression_multiversion_fuzzer"},
+						"sort":  []string{"invalid sort"},
+					}
+
+					err := handler.parseTaskReliabilityFilter(values)
+					require.NotNil(t, err)
+
+					resp := err.(gimlet.ErrorResponse)
+					assert.Equal(http.StatusBadRequest, resp.StatusCode)
+					assert.Equal("Invalid sort value", resp.Message)
+				},
+				"valid: earliest": func(ctx context.Context, t *testing.T, handler taskReliabilityHandler) {
+					values := url.Values{
+						"tasks": []string{"aggregation_expression_multiversion_fuzzer"},
+						"sort":  []string{"earliest"},
+					}
+
+					err := handler.parseTaskReliabilityFilter(values)
+					require.Nil(t, err)
+				},
+				"valid: latest": func(ctx context.Context, t *testing.T, handler taskReliabilityHandler) {
+					values := url.Values{
+						"tasks": []string{"aggregation_expression_multiversion_fuzzer"},
+						"sort":  []string{"latest"},
+					}
+
+					err := handler.parseTaskReliabilityFilter(values)
+					require.Nil(t, err)
+				},
+			} {
+				t.Run(testName, func(t *testing.T) {
+					handler := taskReliabilityHandler{}
+					withSetupAndTeardown(t, env, func() {
+						testCase(paginationContext, t, handler)
+					})
+				})
+			}
+		},
+		"Significance": func(paginationContext context.Context, t *testing.T, env evergreen.Environment) {
+			for testName, testCase := range map[string]func(ctx context.Context, t *testing.T, handler taskReliabilityHandler){
+				"invalid: Less Than zero": func(ctx context.Context, t *testing.T, handler taskReliabilityHandler) {
+					err := setupTest(t)
+					require.NoError(t, err)
+
+					values := url.Values{
+						"tasks":        []string{"aggregation_expression_multiversion_fuzzer"},
+						"significance": []string{"-1.0"},
+					}
+
+					err = handler.parseTaskReliabilityFilter(values)
+					require.NotNil(t, err)
+
+					resp := err.(gimlet.ErrorResponse)
+					assert.Equal(t, http.StatusBadRequest, resp.StatusCode)
+					assert.Equal(t, "Invalid Significance value", resp.Message)
+				},
+				"invalid: greater Than one": func(ctx context.Context, t *testing.T, handler taskReliabilityHandler) {
+					err := setupTest(t)
+					require.NoError(t, err)
+
+					values := url.Values{
+						"tasks":        []string{"aggregation_expression_multiversion_fuzzer"},
+						"significance": []string{"2.0"},
+					}
+
+					err = handler.parseTaskReliabilityFilter(values)
+					require.NotNil(t, err)
+
+					resp := err.(gimlet.ErrorResponse)
+					assert.Equal(t, http.StatusBadRequest, resp.StatusCode)
+					assert.Equal(t, "Invalid Significance value", resp.Message)
+				},
+				"valid: 0.05": func(ctx context.Context, t *testing.T, handler taskReliabilityHandler) {
+					err := setupTest(t)
+					require.NoError(t, err)
+
+					values := url.Values{
+						"tasks":        []string{"aggregation_expression_multiversion_fuzzer"},
+						"significance": []string{"0.05"},
+					}
+
+					err = handler.parseTaskReliabilityFilter(values)
+					require.Nil(t, err)
+				},
+				"valid: 0": func(ctx context.Context, t *testing.T, handler taskReliabilityHandler) {
+					err := setupTest(t)
+					require.NoError(t, err)
+
+					values := url.Values{
+						"tasks":        []string{"aggregation_expression_multiversion_fuzzer"},
+						"significance": []string{"0"},
+					}
+
+					err = handler.parseTaskReliabilityFilter(values)
+					require.Nil(t, err)
+				},
+				"valid: 1": func(ctx context.Context, t *testing.T, handler taskReliabilityHandler) {
+					err := setupTest(t)
+					require.NoError(t, err)
+
+					values := url.Values{
+						"tasks":        []string{"aggregation_expression_multiversion_fuzzer"},
+						"significance": []string{"1"},
+					}
+
+					err = handler.parseTaskReliabilityFilter(values)
+					require.Nil(t, err)
+				},
+			} {
+				t.Run(testName, func(t *testing.T) {
+					handler := taskReliabilityHandler{}
+					withSetupAndTeardown(t, env, func() {
+						testCase(paginationContext, t, handler)
+					})
+				})
+			}
+		},
+		"StartAt": func(paginationContext context.Context, t *testing.T, env evergreen.Environment) {
+			for testName, testCase := range map[string]func(ctx context.Context, t *testing.T, handler taskReliabilityHandler){
+				"invalid": func(ctx context.Context, t *testing.T, handler taskReliabilityHandler) {
+					err := setupTest(t)
+					require.NoError(t, err)
+
+					values := url.Values{
+						"tasks":    []string{"aggregation_expression_multiversion_fuzzer"},
+						"start_at": []string{"2.0"},
+					}
+
+					err = handler.parseTaskReliabilityFilter(values)
+					require.NotNil(t, err)
+
+					resp := err.(gimlet.ErrorResponse)
+					require.Equal(t, http.StatusBadRequest, resp.StatusCode)
+					require.Equal(t, "Invalid start_at value", resp.Message)
+				},
+				"valid: blank": func(ctx context.Context, t *testing.T, handler taskReliabilityHandler) {
+					err := setupTest(t)
+					require.NoError(t, err)
+
+					values := url.Values{
+						"tasks":    []string{"aggregation_expression_multiversion_fuzzer"},
+						"start_at": []string{""},
+					}
+
+					err = handler.parseTaskReliabilityFilter(values)
+					require.Nil(t, err)
+				},
+				"valid": func(ctx context.Context, t *testing.T, handler taskReliabilityHandler) {
+					err := setupTest(t)
+					require.NoError(t, err)
+
+					values := url.Values{
+						"tasks":    []string{"aggregation_expression_multiversion_fuzzer"},
+						"start_at": []string{"2019-08-21||||"},
+					}
+
+					err = handler.parseTaskReliabilityFilter(values)
+					require.Nil(t, err)
+				},
+			} {
+				t.Run(testName, func(t *testing.T) {
+					handler := taskReliabilityHandler{}
+					withSetupAndTeardown(t, env, func() {
+						testCase(paginationContext, t, handler)
+					})
+				})
+			}
+		},
+	} {
+		t.Run(opName, func(t *testing.T) {
+			env, err := setupEnv(groupContext)
+			require.NoError(t, err)
+
+			testContext, cancel := context.WithTimeout(groupContext, 5*time.Second)
+			defer cancel()
+
+			env.Settings().DomainName = "test"
+			opTests(testContext, t, env)
+		})
 	}
-
-	err := handler.parseTaskReliabilityFilter(values)
-	assert.NotNil(err)
-
-	resp := err.(gimlet.ErrorResponse)
-	assert.Equal(http.StatusBadRequest, resp.StatusCode)
-	assert.Equal("Too many Tasks values", resp.Message)
-}
-
-func TestParseInvalidAfterDate(t *testing.T) {
-	assert := assert.New(t)
-	handler := taskReliabilityHandler{}
-
-	values := url.Values{
-		"tasks":      []string{"aggregation_expression_multiversion_fuzzer"},
-		"after_date": []string{"invalid date"},
-	}
-
-	err := handler.parseTaskReliabilityFilter(values)
-	assert.NotNil(err)
-
-	resp := err.(gimlet.ErrorResponse)
-	assert.Equal(http.StatusBadRequest, resp.StatusCode)
-	assert.Equal("Invalid after_date value", resp.Message)
-
-}
-
-func TestParseInvalidBeforeDate(t *testing.T) {
-	assert := assert.New(t)
-	handler := taskReliabilityHandler{}
-
-	values := url.Values{
-		"tasks":       []string{"aggregation_expression_multiversion_fuzzer"},
-		"before_date": []string{"invalid date"},
-	}
-
-	err := handler.parseTaskReliabilityFilter(values)
-	assert.NotNil(err)
-
-	resp := err.(gimlet.ErrorResponse)
-	assert.Equal(http.StatusBadRequest, resp.StatusCode)
-	assert.Equal("Invalid before_date value", resp.Message)
-
-}
-
-func TestParseInvalidSort(t *testing.T) {
-	assert := assert.New(t)
-	handler := taskReliabilityHandler{}
-
-	values := url.Values{
-		"tasks": []string{"aggregation_expression_multiversion_fuzzer"},
-		"sort":  []string{"invalid sort"},
-	}
-
-	err := handler.parseTaskReliabilityFilter(values)
-	assert.NotNil(err)
-
-	resp := err.(gimlet.ErrorResponse)
-	assert.Equal(http.StatusBadRequest, resp.StatusCode)
-	assert.Equal("Invalid sort value", resp.Message)
-
-}
-
-func TestParseInvalidSignificance(t *testing.T) {
-	assert := assert.New(t)
-	handler := taskReliabilityHandler{}
-
-	values := url.Values{
-		"tasks":        []string{"aggregation_expression_multiversion_fuzzer"},
-		"significance": []string{"-1.0"},
-	}
-
-	err := handler.parseTaskReliabilityFilter(values)
-	assert.NotNil(err)
-
-	resp := err.(gimlet.ErrorResponse)
-	assert.Equal(http.StatusBadRequest, resp.StatusCode)
-	assert.Equal("Invalid Significance value", resp.Message)
-
-	values = url.Values{
-		"tasks":        []string{"aggregation_expression_multiversion_fuzzer"},
-		"significance": []string{"2.0"},
-	}
-
-	err = handler.parseTaskReliabilityFilter(values)
-	assert.NotNil(err)
-
-	resp = err.(gimlet.ErrorResponse)
-	assert.Equal(http.StatusBadRequest, resp.StatusCode)
-	assert.Equal("Invalid Significance value", resp.Message)
-
-}
-
-func TestParseInvalidStartAt(t *testing.T) {
-	assert := assert.New(t)
-	handler := taskReliabilityHandler{}
-
-	values := url.Values{
-		"tasks":    []string{"aggregation_expression_multiversion_fuzzer"},
-		"start_at": []string{"2.0"},
-	}
-
-	err := handler.parseTaskReliabilityFilter(values)
-	assert.NotNil(err)
-
-	resp := err.(gimlet.ErrorResponse)
-	assert.Equal(http.StatusBadRequest, resp.StatusCode)
-	assert.Equal("Invalid start_at value", resp.Message)
-
-}
-
-func TestParseValid(t *testing.T) {
-	assert := assert.New(t)
-	handler := taskReliabilityHandler{}
-
-	// Defaults
-	values := url.Values{
-		"tasks": []string{"aggregation_expression_multiversion_fuzzer"},
-	}
-
-	err := handler.parseTaskReliabilityFilter(values)
-	assert.NoError(err)
-	assert.Equal(values["tasks"], handler.filter.Tasks)
-	assert.Equal(handler.filter.Sort, stats.SortLatestFirst)
-	assert.Equal(handler.filter.Significance, reliability.DefaultSignificance)
-
-	assert.Equal(handler.filter.BeforeDate, truncatedTime(0))
-	assert.Equal(handler.filter.AfterDate, truncatedTime(-20*dayInHours))
-
-	values = url.Values{
-		"requesters":   []string{statsAPIRequesterMainline, statsAPIRequesterPatch},
-		"after_date":   []string{"1998-07-12"},
-		"before_date":  []string{"2018-07-15"},
-		"tasks":        []string{"aggregation_expression_multiversion_fuzzer", "compile"},
-		"variants":     []string{"enterprise-rhel-62-64-bit,enterprise-windows", "enterprise-rhel-80-64-bit"},
-		"significance": []string{"0.1"},
-	}
-
-	err = handler.parseTaskReliabilityFilter(values)
-	assert.NoError(err)
-
-	assert.Equal([]string{
-		evergreen.RepotrackerVersionRequester,
-		evergreen.PatchVersionRequester,
-		evergreen.GithubPRRequester,
-		evergreen.MergeTestRequester,
-	}, handler.filter.Requesters)
-	assert.Equal(time.Date(1998, 7, 12, 0, 0, 0, 0, time.UTC), handler.filter.AfterDate)
-	assert.Equal(time.Date(2018, 7, 15, 0, 0, 0, 0, time.UTC), handler.filter.BeforeDate)
-	assert.Equal(values["tasks"], handler.filter.Tasks)
-	assert.Equal([]string{"enterprise-rhel-62-64-bit", "enterprise-windows", "enterprise-rhel-80-64-bit"}, handler.filter.BuildVariants)
-	assert.Nil(handler.filter.Distros)
-	assert.Nil(handler.filter.StartAt)
-	assert.Equal(reliability.GroupByDistro, handler.filter.GroupBy) // default value
-	assert.Equal(reliability.SortLatestFirst, handler.filter.Sort)  // default value
-	assert.Equal(reliability.MaxQueryLimit, handler.filter.Limit)   // default value
-	assert.Equal(handler.filter.Significance, 0.1)
-
 }
 
 func TestParse(t *testing.T) {
-	assert := assert.New(t)
 
-	url := getURL(projectID, map[string]interface{}{
-		"tasks":         "aggregation_expression_multiversion_fuzzer",
-		"after_date":    "2019-01-02",
-		"group_by_days": "10",
-	})
-	request, err := http.NewRequest("GET", url, bytes.NewReader(nil))
-	assert.NoError(err)
+	groupContext, cancel := context.WithCancel(context.Background())
+	defer cancel()
 
-	options := map[string]string{"project_id": projectID}
-	request = gimlet.SetURLVars(request, options)
+	for opName, opTests := range map[string]func(context.Context, *testing.T, evergreen.Environment){
+		"Parse": func(paginationContext context.Context, t *testing.T, env evergreen.Environment) {
+			for testName, testCase := range map[string]func(ctx context.Context, t *testing.T, handler taskReliabilityHandler){
+				"Defaults": func(ctx context.Context, t *testing.T, handler taskReliabilityHandler) {
+					err := setupTest(t)
+					require.NoError(t, err)
 
-	sc := &data.MockConnector{
-		MockStatsConnector: data.MockStatsConnector{},
-		URL:                url,
+					// Defaults
+					values := url.Values{
+						"tasks": []string{"aggregation_expression_multiversion_fuzzer"},
+					}
+
+					err = handler.parseTaskReliabilityFilter(values)
+					require.NoError(t, err)
+					require.Equal(t, values["tasks"], handler.filter.Tasks)
+					require.Equal(t, handler.filter.Sort, stats.SortLatestFirst)
+					require.Equal(t, handler.filter.Significance, reliability.DefaultSignificance)
+
+					require.Equal(t, handler.filter.BeforeDate, truncatedTime(0))
+					require.Equal(t, handler.filter.AfterDate, truncatedTime(-20*dayInHours))
+				},
+				"All Values": func(ctx context.Context, t *testing.T, handler taskReliabilityHandler) {
+					err := setupTest(t)
+					require.NoError(t, err)
+
+					values := url.Values{
+						"requesters":   []string{statsAPIRequesterMainline, statsAPIRequesterPatch},
+						"after_date":   []string{"1998-07-12"},
+						"before_date":  []string{"2018-07-15"},
+						"tasks":        []string{"aggregation_expression_multiversion_fuzzer", "compile"},
+						"variants":     []string{"enterprise-rhel-62-64-bit,enterprise-windows", "enterprise-rhel-80-64-bit"},
+						"significance": []string{"0.1"},
+					}
+
+					err = handler.parseTaskReliabilityFilter(values)
+					require.NoError(t, err)
+
+					require.Equal(t, []string{
+						evergreen.RepotrackerVersionRequester,
+						evergreen.PatchVersionRequester,
+						evergreen.GithubPRRequester,
+						evergreen.MergeTestRequester,
+					}, handler.filter.Requesters)
+					require.Equal(t, time.Date(1998, 7, 12, 0, 0, 0, 0, time.UTC), handler.filter.AfterDate)
+					require.Equal(t, time.Date(2018, 7, 15, 0, 0, 0, 0, time.UTC), handler.filter.BeforeDate)
+					require.Equal(t, values["tasks"], handler.filter.Tasks)
+					require.Equal(t, []string{"enterprise-rhel-62-64-bit", "enterprise-windows", "enterprise-rhel-80-64-bit"}, handler.filter.BuildVariants)
+					require.Nil(t, handler.filter.Distros)
+					require.Nil(t, handler.filter.StartAt)
+					require.Equal(t, reliability.GroupByDistro, handler.filter.GroupBy) // default value
+					require.Equal(t, reliability.SortLatestFirst, handler.filter.Sort)  // default value
+					require.Equal(t, reliability.MaxQueryLimit, handler.filter.Limit)   // default value
+					require.Equal(t, handler.filter.Significance, 0.1)
+				},
+				"Some Values": func(ctx context.Context, t *testing.T, handler taskReliabilityHandler) {
+					err := setupTest(t)
+					require.NoError(t, err)
+
+					url := getURL(projectID, map[string]interface{}{
+						"tasks":         "aggregation_expression_multiversion_fuzzer",
+						"after_date":    "2019-01-02",
+						"group_by_days": "10",
+					})
+					request, err := http.NewRequest("GET", url, bytes.NewReader(nil))
+					require.NoError(t, err)
+
+					options := map[string]string{"project_id": projectID}
+					request = gimlet.SetURLVars(request, options)
+
+					err = handler.Parse(context.Background(), request)
+					require.NoError(t, err)
+				},
+			} {
+				t.Run(testName, func(t *testing.T) {
+					handler := taskReliabilityHandler{}
+					withSetupAndTeardown(t, env, func() {
+						testCase(paginationContext, t, handler)
+					})
+				})
+			}
+		},
+	} {
+		t.Run(opName, func(t *testing.T) {
+			env, err := setupEnv(groupContext)
+			require.NoError(t, err)
+
+			testContext, cancel := context.WithTimeout(groupContext, 5*time.Second)
+			defer cancel()
+
+			env.Settings().DomainName = "test"
+			opTests(testContext, t, env)
+		})
 	}
-	handler := makeGetProjectTaskReliability(sc).(*taskReliabilityHandler)
-	err = handler.Parse(context.Background(), request)
-	assert.NoError(err)
 }
 
-func TestDisabledRunTestHandler(t *testing.T) {
-	assert := assert.New(t)
-	err := setupTest(t)
-	assert.NoError(err)
-	sc := &data.MockConnector{
-		MockStatsConnector: data.MockStatsConnector{},
-		URL:                "https://example.net/test",
-	}
+func TestRun(t *testing.T) {
 
-	err = disableTaskReliability()
-	assert.NoError(err)
+	groupContext, cancel := context.WithCancel(context.Background())
+	defer cancel()
 
-	handler := makeGetProjectTaskReliability(sc).(*taskReliabilityHandler)
+	for opName, opTests := range map[string]func(context.Context, *testing.T, evergreen.Environment){
+		"Run": func(paginationContext context.Context, t *testing.T, env evergreen.Environment) {
+			for testName, testCase := range map[string]func(ctx context.Context, t *testing.T, handler *taskReliabilityHandler){
+				"Disabled": func(ctx context.Context, t *testing.T, handler *taskReliabilityHandler) {
+					err := setupTest(t)
+					require.NoError(t, err)
 
-	resp := handler.Run(context.Background())
+					// taskReliabilityHandler.sc.(&data.MockConnector).URL
+					err = disableTaskReliability()
+					assert.NoError(t, err)
 
-	assert.NotNil(resp)
-	assert.Equal(http.StatusServiceUnavailable, resp.Status())
-	assert.Nil(resp.Pages())
-}
+					resp := handler.Run(ctx)
 
-func TestRunNoSuchTask(t *testing.T) {
-	assert := assert.New(t)
-	err := setupTest(t)
-	assert.NoError(err)
-	url := getURL(projectID, map[string]interface{}{
-		"tasks":         "no_such_task",
-		"after_date":    "2019-01-02",
-		"group_by_days": "10",
-	})
+					require.NotNil(t, resp)
+					require.Equal(t, http.StatusServiceUnavailable, resp.Status())
+					require.Nil(t, resp.Pages())
+				},
+				"NoSuchTask": func(ctx context.Context, t *testing.T, handler *taskReliabilityHandler) {
+					err := setupTest(t)
+					require.NoError(t, err)
+					url := getURL(projectID, map[string]interface{}{
+						"tasks":         "no_such_task",
+						"after_date":    "2019-01-02",
+						"group_by_days": "10",
+					})
 
-	sc := &data.MockConnector{
-		MockTaskReliabilityConnector: data.MockTaskReliabilityConnector{},
-		URL:                          url,
-	}
-	handler := makeGetProjectTaskReliability(sc).(*taskReliabilityHandler)
-	assert.NoError(err)
+					handler.sc.(*data.MockConnector).URL = url
+					handler.filter = reliability.TaskReliabilityFilter{
+						StatsFilter: stats.StatsFilter{
+							Limit: 1,
+						},
+					}
 
-	handler.filter = reliability.TaskReliabilityFilter{
-		StatsFilter: stats.StatsFilter{
-			Limit: 1,
+					resp := handler.Run(ctx)
+
+					require.NotNil(t, resp)
+					require.Equal(t, http.StatusOK, resp.Status())
+					data := resp.Data().([]interface{})
+					require.Equal(t, 0, len(data))
+					require.Nil(t, resp.Pages())
+				},
+				"Limit 1": func(ctx context.Context, t *testing.T, handler *taskReliabilityHandler) {
+					err := setupTest(t)
+					require.NoError(t, err)
+					url := getURL(projectID, map[string]interface{}{
+						"tasks":         "aggregation_expression_multiversion_fuzzer",
+						"after_date":    "2019-01-02",
+						"group_by_days": "10",
+					})
+					sc := handler.sc.(*data.MockConnector)
+					sc.URL = url
+
+					// 100 documents are available but only 1 will be returned
+					sc.MockTaskReliabilityConnector.SetTaskReliabilityScores("aggregation_expression_multiversion_fuzzer", 100)
+
+					handler.filter = reliability.TaskReliabilityFilter{
+						StatsFilter: stats.StatsFilter{
+							Limit: 1,
+						},
+					}
+
+					resp := handler.Run(ctx)
+
+					require.NotNil(t, resp)
+					require.Equal(t, http.StatusOK, resp.Status())
+					data := resp.Data().([]interface{})
+					require.Equal(t, 1, len(data))
+					require.NotNil(t, resp.Pages())
+				},
+				"Limit 1000": func(ctx context.Context, t *testing.T, handler *taskReliabilityHandler) {
+					err := setupTest(t)
+					require.NoError(t, err)
+					url := getURL(projectID, map[string]interface{}{
+						"tasks":         "aggregation_expression_multiversion_fuzzer",
+						"after_date":    "2019-01-02",
+						"group_by_days": "10",
+					})
+					sc := handler.sc.(*data.MockConnector)
+					sc.URL = url
+
+					// 1001 documents are available but only 1000 will be returned
+					sc.MockTaskReliabilityConnector.SetTaskReliabilityScores("aggregation_expression_multiversion_fuzzer", 1001)
+
+					handler.filter = reliability.TaskReliabilityFilter{
+						StatsFilter: stats.StatsFilter{
+							Limit: 1000,
+						},
+					}
+
+					resp := handler.Run(ctx)
+
+					require.NotNil(t, resp)
+					require.Equal(t, http.StatusOK, resp.Status())
+					data := resp.Data().([]interface{})
+					require.Equal(t, 1000, len(data))
+					require.NotNil(t, resp.Pages())
+				},
+				"StartAt Not Set": func(ctx context.Context, t *testing.T, handler *taskReliabilityHandler) {
+					err := setupTest(t)
+					require.NoError(t, err)
+					url := getURL(projectID, map[string]interface{}{
+						"tasks":         "aggregation_expression_multiversion_fuzzer",
+						"after_date":    "2019-01-02",
+						"group_by_days": "10",
+					})
+					sc := handler.sc.(*data.MockConnector)
+					sc.URL = url
+
+					// 100 are available but only 100 documents will be returned
+					sc.MockTaskReliabilityConnector.SetTaskReliabilityScores("aggregation_expression_multiversion_fuzzer", 100)
+
+					handler.filter = reliability.TaskReliabilityFilter{
+						StatsFilter: stats.StatsFilter{
+							Limit: 101,
+						},
+					}
+
+					resp := handler.Run(ctx)
+
+					require.NotNil(t, resp)
+					require.Equal(t, http.StatusOK, resp.Status())
+					data := resp.Data().([]interface{})
+					require.Equal(t, 100, len(data))
+					require.NotNil(t, resp.Pages())
+					require.Nil(t, resp.Pages().Next.Key)
+				},
+				"StartAt Set": func(ctx context.Context, t *testing.T, handler *taskReliabilityHandler) {
+					err := setupTest(t)
+					require.NoError(t, err)
+					url := getURL(projectID, map[string]interface{}{
+						"tasks":         "aggregation_expression_multiversion_fuzzer",
+						"after_date":    "2019-01-02",
+						"group_by_days": "10",
+					})
+					sc := handler.sc.(*data.MockConnector)
+					sc.URL = url
+
+					sc.MockTaskReliabilityConnector.SetTaskReliabilityScores("aggregation_expression_multiversion_fuzzer", 101)
+
+					handler.filter = reliability.TaskReliabilityFilter{
+						StatsFilter: stats.StatsFilter{
+							Limit: 101,
+						},
+					}
+
+					resp := handler.Run(ctx)
+
+					require.NotNil(t, resp)
+					require.Equal(t, http.StatusOK, resp.Status())
+					data := resp.Data().([]interface{})
+					require.Equal(t, 1000, len(data))
+					require.NotNil(t, resp.Pages())
+					lastDoc := sc.MockTaskReliabilityConnector.CachedTaskReliability[100]
+					require.Equal(t, lastDoc.StartAtKey(), resp.Pages().Next.Key)
+				},
+			} {
+				t.Run(testName, func(t *testing.T) {
+					sc := &data.MockConnector{
+						MockStatsConnector: data.MockStatsConnector{},
+						URL:                "https://example.net/test",
+					}
+
+					handler := makeGetProjectTaskReliability(sc).(*taskReliabilityHandler)
+					withSetupAndTeardown(t, env, func() {
+						testCase(paginationContext, t, handler)
+					})
+				})
+			}
 		},
+	} {
+		t.Run(opName, func(t *testing.T) {
+			env, err := setupEnv(groupContext)
+			require.NoError(t, err)
+
+			testContext, cancel := context.WithTimeout(groupContext, 5*time.Second)
+			defer cancel()
+
+			env.Settings().DomainName = "test"
+			opTests(testContext, t, env)
+		})
 	}
-
-	// code subtracts 1
-	handler.filter.Limit++
-
-	resp := handler.Run(context.Background())
-
-	assert.NotNil(resp)
-	assert.Equal(http.StatusOK, resp.Status())
-	data := resp.Data().([]interface{})
-	assert.Equal(0, len(data))
-	assert.Nil(resp.Pages())
-}
-
-func TestRunLimit1(t *testing.T) {
-	assert := assert.New(t)
-	err := setupTest(t)
-	assert.NoError(err)
-	url := getURL(projectID, map[string]interface{}{
-		"tasks":         "aggregation_expression_multiversion_fuzzer",
-		"after_date":    "2019-01-02",
-		"group_by_days": "10",
-	})
-
-	sc := &data.MockConnector{
-		MockTaskReliabilityConnector: data.MockTaskReliabilityConnector{},
-		URL:                          url,
-	}
-	handler := makeGetProjectTaskReliability(sc).(*taskReliabilityHandler)
-	assert.NoError(err)
-
-	// 1 document will be returned
-	sc.MockTaskReliabilityConnector.SetTaskReliabilityScores("aggregation_expression_multiversion_fuzzer", 100)
-
-	handler.filter = reliability.TaskReliabilityFilter{
-		StatsFilter: stats.StatsFilter{
-			Limit: 1,
-		},
-	}
-
-	// code subtracts 1
-	// handler.filter.Limit++
-	resp := handler.Run(context.Background())
-
-	assert.NotNil(resp)
-	assert.Equal(http.StatusOK, resp.Status())
-	data := resp.Data().([]interface{})
-	assert.Equal(1, len(data))
-	assert.NotNil(resp.Pages())
-}
-
-func TestRunLimit1000(t *testing.T) {
-	assert := assert.New(t)
-	err := setupTest(t)
-	assert.NoError(err)
-	url := getURL(projectID, map[string]interface{}{
-		"tasks":         "aggregation_expression_multiversion_fuzzer",
-		"after_date":    "2019-01-02",
-		"group_by_days": "10",
-	})
-
-	sc := &data.MockConnector{
-		MockTaskReliabilityConnector: data.MockTaskReliabilityConnector{},
-		URL:                          url,
-	}
-	handler := makeGetProjectTaskReliability(sc).(*taskReliabilityHandler)
-	assert.NoError(err)
-
-	// 1000 documents will be returned
-	sc.MockTaskReliabilityConnector.SetTaskReliabilityScores("aggregation_expression_multiversion_fuzzer", 1001)
-
-	handler.filter = reliability.TaskReliabilityFilter{
-		StatsFilter: stats.StatsFilter{
-			Limit: 1000,
-		},
-	}
-
-	resp := handler.Run(context.Background())
-
-	assert.NotNil(resp)
-	assert.Equal(http.StatusOK, resp.Status())
-	data := resp.Data().([]interface{})
-	assert.Equal(1000, len(data))
-	assert.NotNil(resp.Pages())
-}
-
-func TestRunTestHandler(t *testing.T) {
-	assert := assert.New(t)
-	err := setupTest(t)
-	assert.NoError(err)
-	url := getURL(projectID, map[string]interface{}{
-		"tasks":         "aggregation_expression_multiversion_fuzzer",
-		"after_date":    "2019-01-02",
-		"group_by_days": "10",
-	})
-
-	sc := &data.MockConnector{
-		MockTaskReliabilityConnector: data.MockTaskReliabilityConnector{},
-		URL:                          url,
-	}
-	handler := makeGetProjectTaskReliability(sc).(*taskReliabilityHandler)
-	assert.NoError(err)
-
-	// 100 documents will be returned
-	sc.MockTaskReliabilityConnector.SetTaskReliabilityScores("aggregation_expression_multiversion_fuzzer", 100)
-	handler.filter = reliability.TaskReliabilityFilter{
-		StatsFilter: stats.StatsFilter{
-			Limit: 101,
-		},
-	}
-
-	resp := handler.Run(context.Background())
-
-	assert.NotNil(resp)
-	assert.Equal(http.StatusOK, resp.Status())
-	assert.Nil(resp.Pages())
-
-	// 101 documents will be returned
-	sc.MockTaskReliabilityConnector.SetTaskReliabilityScores("aggregation_expression_multiversion_fuzzer", 101)
-	handler.filter = reliability.TaskReliabilityFilter{
-		StatsFilter: stats.StatsFilter{
-			Limit: 101,
-		},
-	}
-
-	resp = handler.Run(context.Background())
-
-	assert.NotNil(resp)
-	assert.Equal(http.StatusOK, resp.Status())
-	assert.NotNil(resp.Pages())
-	lastDoc := sc.MockTaskReliabilityConnector.CachedTaskReliability[100]
-	assert.Equal(lastDoc.StartAtKey(), resp.Pages().Next.Key)
 }
 
 func setupEnv(ctx context.Context) (*mock.Environment, error) {
@@ -469,17 +670,16 @@ func withSetupAndTeardown(t *testing.T, env evergreen.Environment, fn func()) {
 
 func TestReliability(t *testing.T) {
 
-	ctx, cancel := context.WithCancel(context.Background())
+	groupContext, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	for opName, opTests := range map[string]func(ctx context.Context, t *testing.T, env evergreen.Environment){
-		"Pagination": func(ctx context.Context, t *testing.T, env evergreen.Environment) {
+	for opName, opTests := range map[string]func(context.Context, *testing.T, evergreen.Environment){
+		"Pagination": func(paginationContext context.Context, t *testing.T, env evergreen.Environment) {
 			pageSize := 50
 			for testName, testCase := range map[string]func(ctx context.Context, t *testing.T){
 				"Less Than One Page": func(ctx context.Context, t *testing.T) {
-					assert := assert.New(t)
 					err := setupTest(t)
-					assert.NoError(err)
+					require.NoError(t, err)
 					url := getURL(projectID, map[string]interface{}{
 						"tasks":         "aggregation_expression_multiversion_fuzzer",
 						"after_date":    "2019-01-02",
@@ -491,7 +691,7 @@ func TestReliability(t *testing.T) {
 						URL:                          url,
 					}
 					handler := makeGetProjectTaskReliability(sc).(*taskReliabilityHandler)
-					assert.NoError(err)
+					require.NoError(t, err)
 
 					// 1 page size of documents are available but 2 page sizes requested.
 					sc.MockTaskReliabilityConnector.SetTaskReliabilityScores("aggregation_expression_multiversion_fuzzer", pageSize)
@@ -501,16 +701,15 @@ func TestReliability(t *testing.T) {
 						},
 					}
 
-					resp := handler.Run(context.Background())
+					resp := handler.Run(ctx)
 
-					assert.NotNil(resp)
-					assert.Equal(http.StatusOK, resp.Status())
-					assert.Nil(resp.Pages())
+					require.NotNil(t, resp)
+					require.Equal(t, http.StatusOK, resp.Status())
+					require.Nil(t, resp.Pages())
 				},
 				"Exactly One Page": func(ctx context.Context, t *testing.T) {
-					assert := assert.New(t)
 					err := setupTest(t)
-					assert.NoError(err)
+					require.NoError(t, err)
 					url := getURL(projectID, map[string]interface{}{
 						"tasks":         "aggregation_expression_multiversion_fuzzer",
 						"after_date":    "2019-01-02",
@@ -522,7 +721,7 @@ func TestReliability(t *testing.T) {
 						URL:                          url,
 					}
 					handler := makeGetProjectTaskReliability(sc).(*taskReliabilityHandler)
-					assert.NoError(err)
+					require.NoError(t, err)
 
 					// 1 page size of documents will be returned
 					sc.MockTaskReliabilityConnector.SetTaskReliabilityScores("aggregation_expression_multiversion_fuzzer", pageSize)
@@ -532,18 +731,17 @@ func TestReliability(t *testing.T) {
 						},
 					}
 
-					resp := handler.Run(context.Background())
+					resp := handler.Run(ctx)
 
-					assert.NotNil(resp)
-					assert.Equal(http.StatusOK, resp.Status())
-					assert.NotNil(resp.Pages())
+					require.NotNil(t, resp)
+					require.Equal(t, http.StatusOK, resp.Status())
+					require.NotNil(t, resp.Pages())
 					lastDoc := sc.MockTaskReliabilityConnector.CachedTaskReliability[pageSize-1]
-					assert.Equal(lastDoc.StartAtKey(), resp.Pages().Next.Key)
+					require.Equal(t, lastDoc.StartAtKey(), resp.Pages().Next.Key)
 				},
 				"More Than One Page": func(ctx context.Context, t *testing.T) {
-					assert := assert.New(t)
 					err := setupTest(t)
-					assert.NoError(err)
+					require.NoError(t, err)
 					url := getURL(projectID, map[string]interface{}{
 						"tasks":         "aggregation_expression_multiversion_fuzzer",
 						"after_date":    "2019-01-02",
@@ -555,7 +753,7 @@ func TestReliability(t *testing.T) {
 						URL:                          url,
 					}
 					handler := makeGetProjectTaskReliability(sc).(*taskReliabilityHandler)
-					assert.NoError(err)
+					require.NoError(t, err)
 
 					// 2 pages of documents are available.
 					sc.MockTaskReliabilityConnector.SetTaskReliabilityScores("aggregation_expression_multiversion_fuzzer", pageSize*2)
@@ -565,16 +763,15 @@ func TestReliability(t *testing.T) {
 						},
 					}
 
-					resp := handler.Run(context.Background())
+					resp := handler.Run(ctx)
 
-					assert.NotNil(resp)
-					assert.Equal(http.StatusOK, resp.Status())
-					assert.NotNil(resp.Pages())
+					require.NotNil(t, resp)
+					require.Equal(t, http.StatusOK, resp.Status())
+					require.NotNil(t, resp.Pages())
 					lastDoc := sc.MockTaskReliabilityConnector.CachedTaskReliability[pageSize-1]
-					assert.Equal(lastDoc.StartAtKey(), resp.Pages().Next.Key)
+					require.Equal(t, lastDoc.StartAtKey(), resp.Pages().Next.Key)
 				},
 				"Invalid Start At": func(ctx context.Context, t *testing.T) {
-					assert := assert.New(t)
 					handler := taskReliabilityHandler{}
 
 					values := url.Values{
@@ -583,30 +780,30 @@ func TestReliability(t *testing.T) {
 					}
 
 					err := handler.parseTaskReliabilityFilter(values)
-					assert.NotNil(err)
+					require.NotNil(t, err)
 
 					resp := err.(gimlet.ErrorResponse)
-					assert.Equal(http.StatusBadRequest, resp.StatusCode)
-					assert.Equal("Invalid start_at value", resp.Message)
+					require.Equal(t, http.StatusBadRequest, resp.StatusCode)
+					require.Equal(t, "Invalid start_at value", resp.Message)
 				},
 			} {
 				t.Run(testName, func(t *testing.T) {
 					withSetupAndTeardown(t, env, func() {
-						testCase(ctx, t)
+						testCase(paginationContext, t)
 					})
 				})
 			}
 		},
 	} {
 		t.Run(opName, func(t *testing.T) {
-			env, err := setupEnv(ctx)
+			env, err := setupEnv(groupContext)
 			require.NoError(t, err)
 
-			tctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+			testContext, cancel := context.WithTimeout(groupContext, 5*time.Second)
 			defer cancel()
 
 			env.Settings().DomainName = "test"
-			opTests(tctx, t, env)
+			opTests(testContext, t, env)
 		})
 	}
 }

@@ -19,6 +19,9 @@ import (
 )
 
 const (
+	// reliabilityAPIMaxNumTasksLimit is the max number of structs returned in a single
+	// page of results. That is, the 'limit' URL param is math.Min(limit, reliabilityAPIMaxNumTasksLimit).
+	// A high value like 1000 will generally ensures that there will only be a single page of results.
 	reliabilityAPIMaxNumTasksLimit = 1000
 	dayInHours                     = 24 * time.Hour
 )
