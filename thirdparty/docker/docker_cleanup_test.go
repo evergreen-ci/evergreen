@@ -89,8 +89,10 @@ func TestCleanup(t *testing.T) {
 	} {
 		out, err := dockerClient.ImagePull(ctx, "hello-world", types.ImagePullOptions{})
 		require.NoError(t, err)
-		defer out.Close()
-		io.Copy(ioutil.Discard, out)
+		_, err = io.Copy(ioutil.Discard, out)
+		require.NoError(t, err)
+		out.Close()
+
 		info, err := dockerClient.Info(ctx)
 		require.NoError(t, err)
 		require.Equal(t, 1, info.Images)

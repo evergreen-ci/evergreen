@@ -68,11 +68,8 @@ func cleanImages(ctx context.Context, dockerClient *client.Client) error {
 
 	catcher := grip.NewBasicCatcher()
 	for _, image := range images {
-		resp, err := dockerClient.ImageRemove(ctx, image.ID, types.ImageRemoveOptions{Force: true})
+		_, err := dockerClient.ImageRemove(ctx, image.ID, types.ImageRemoveOptions{Force: true})
 		catcher.Wrapf(err, "can't remove image '%s'", image.ID)
-		if len(resp) != 1 || resp[0].Deleted != image.ID {
-			catcher.Errorf("image '%s' wasn't deleted", image.ID)
-		}
 	}
 
 	return catcher.Resolve()
