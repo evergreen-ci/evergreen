@@ -21,6 +21,17 @@ func TestCleanup(t *testing.T) {
 	require.NoError(t, err)
 	ctx := context.Background()
 
+	// check if the Docker daemon is running
+	_, err = dockerClient.Ping(ctx)
+	if err != nil {
+		if client.IsErrConnectionFailed(err) {
+			// the daemon isn't running. Make sure Cleanup noops
+			assert.NoError(t, Cleanup(context.Background(), grip.NewJournaler("")))
+			return
+		}
+		require.NoError(t, err)
+	}
+
 	for name, test := range map[string]func(*testing.T){
 		"cleanContainers": func(*testing.T) {
 			resp, err := dockerClient.ContainerCreate(ctx, &container.Config{
@@ -91,7 +102,7 @@ func TestCleanup(t *testing.T) {
 		require.NoError(t, err)
 		_, err = io.Copy(ioutil.Discard, out)
 		require.NoError(t, err)
-		out.Close()
+		require.NoError(t, out.Close())
 
 		info, err := dockerClient.Info(ctx)
 		require.NoError(t, err)
