@@ -68,6 +68,9 @@ func (gc *GenerateConnector) GeneratePoll(ctx context.Context, taskID string, gr
 	var j amboy.Job
 	var exists bool
 	for {
+		if ctx.Err() != nil {
+			return false, []string{}, errors.WithStack(errors.New("context canceled"))
+		}
 		if t.GenerateAttempt == 0 {
 			jobID = fmt.Sprintf("generate-tasks-%s", taskID) // legacy job id
 		} else {
