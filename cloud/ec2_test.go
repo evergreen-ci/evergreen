@@ -575,6 +575,28 @@ func (s *EC2Suite) TestTerminateInstance() {
 	s.NoError(err)
 }
 
+func (s *EC2Suite) TestTerminateInstanceWithUserDataBootstrappedHost() {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	withBootstrapEnv(s.T(), func(env evergreen.Environment) {
+		s.h.Distro.BootstrapSettings.Method = distro.BootstrapMethodUserData
+		s.NoError(s.h.Insert())
+
+		creds, err := s.h.GenerateJasperCredentials(ctx, env)
+		s.Require().NoError(err)
+		s.Require().NoError(s.h.SaveJasperCredentials(ctx, env, creds))
+
+		_, err = s.h.JasperCredentials(ctx, env)
+		s.Require().NoError(err)
+
+		s.NoError(s.onDemandManager.TerminateInstance(ctx, s.h, evergreen.User))
+
+		_, err = s.h.JasperCredentials(ctx, env)
+		s.Error(err)
+	})
+}
+
 func (s *EC2Suite) TestIsUp() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
