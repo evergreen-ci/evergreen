@@ -525,6 +525,9 @@ func (a *Agent) killProcs(ctx context.Context, tc *taskContext, ignoreTaskGroupC
 		} else {
 			grip.Info("cleaning up Docker artifacts")
 		}
+
+		ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+		defer cancel()
 		if err := docker.Cleanup(ctx, tc.logger.Task()); err != nil {
 			msg := fmt.Sprintf("Error cleaning up Docker artifacts (agent-exit): %s", err)
 			grip.Critical(msg)
