@@ -190,6 +190,7 @@ func TestGitPush(t *testing.T) {
 			}
 		},
 	} {
+		c.DryRun = false
 		t.Run(name, test)
 	}
 }
