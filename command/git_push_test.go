@@ -71,7 +71,6 @@ func TestGitPush(t *testing.T) {
 			commands := []string{
 				"git checkout master",
 				"git rev-parse HEAD",
-				`git add "hello.txt"`,
 				`git -c "user.name=octocat" -c "user.email=octocat@github.com" commit --file - --author="evergreen <evergreen@mongodb.com>"`,
 				"git push origin master",
 			}
@@ -98,7 +97,6 @@ func TestGitPush(t *testing.T) {
 				directory:     c.Directory,
 				authorName:    "baxterthehacker",
 				authorEmail:   "baxter@thehacker.com",
-				files:         []string{"hello.txt"},
 				commitMessage: "testing 123",
 				branch:        "master",
 				token:         token,
@@ -106,7 +104,6 @@ func TestGitPush(t *testing.T) {
 
 			assert.NoError(t, c.pushPatch(context.Background(), logger, params))
 			commands := []string{
-				`git add "hello.txt"`,
 				`git -c "user.name=octocat" -c "user.email=octocat@github.com" commit --file - --author="baxterthehacker <baxter@thehacker.com>"`,
 				"git push origin master",
 			}

@@ -130,12 +130,6 @@ func (c *gitPush) Execute(ctx context.Context, comm client.Communicator, logger 
 		params.branch = module.Branch
 		params.commitMessage = modulePatch.Message
 
-		// File list
-		params.files = make([]string, 0, len(modulePatch.PatchSet.Summary))
-		for _, summary := range modulePatch.PatchSet.Summary {
-			params.files = append(params.files, summary.Name)
-		}
-
 		if err = c.pushPatch(ctx, logger, params); err != nil {
 			return errors.Wrap(err, "can't push module patch")
 		}
@@ -150,12 +144,6 @@ func (c *gitPush) Execute(ctx context.Context, comm client.Communicator, logger 
 		if len(modulePatch.PatchSet.Summary) == 0 {
 			logger.Execution().Infof("Skipping empty main patch on patch id '%s'", p.Id.Hex())
 			continue
-		}
-
-		// File list
-		params.files = make([]string, 0, len(modulePatch.PatchSet.Summary))
-		for _, summary := range modulePatch.PatchSet.Summary {
-			params.files = append(params.files, summary.Name)
 		}
 
 		logger.Execution().Info("Pushing patch")
@@ -177,22 +165,10 @@ type pushParams struct {
 	authorEmail   string
 	commitMessage string
 	branch        string
-	files         []string
 }
 
 func (c *gitPush) pushPatch(ctx context.Context, logger client.LoggerProducer, p pushParams) error {
-	commands := []string{}
-	for _, file := range p.files {
-		commands = append(commands, fmt.Sprintf(`git add "%s"`, file))
-		logger.Execution().Debugf(`git add "%s"`, file)
-	}
-
 	jpm := c.JasperManager()
-	cmd := jpm.CreateCommand(ctx).Directory(p.directory).Append(commands...).
-		SetOutputSender(level.Info, logger.Task().GetSender()).SetErrorSender(level.Error, logger.Task().GetSender())
-	if err := cmd.Run(ctx); err != nil {
-		return errors.Wrap(err, "can't add files")
-	}
 
 	author := fmt.Sprintf("%s <%s>", p.authorName, p.authorEmail)
 	commitCommand := fmt.Sprintf("git "+
@@ -202,7 +178,7 @@ func (c *gitPush) pushPatch(ctx context.Context, logger client.LoggerProducer, p
 		`--author="%s"`,
 		c.CommitterName, c.CommitterEmail, author)
 	logger.Execution().Debugf("git commit command: %s", commitCommand)
-	cmd = jpm.CreateCommand(ctx).Directory(p.directory).Append(commitCommand).SetInput(bytes.NewBufferString(p.commitMessage)).
+	cmd := jpm.CreateCommand(ctx).Directory(p.directory).Append(commitCommand).SetInput(bytes.NewBufferString(p.commitMessage)).
 		SetOutputSender(level.Info, logger.Task().GetSender()).SetErrorSender(level.Error, logger.Task().GetSender())
 	if err := cmd.Run(ctx); err != nil {
 		return errors.Wrap(err, "can't create commit from files")
@@ -215,7 +191,7 @@ func (c *gitPush) pushPatch(ctx context.Context, logger client.LoggerProducer, p
 		cmd = jpm.CreateCommand(ctx).Directory(p.directory).Append(pushCommand).
 			SetOutputSender(level.Info, logger.Task().GetSender()).SetErrorWriter(stdErr)
 		if err := cmd.Run(ctx); err != nil {
-			return errors.Wrap(err, "can't add files")
+			return errors.Wrap(err, "can't push to remote")
 		}
 
 		errorOutput := stdErr.String()
