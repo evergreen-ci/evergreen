@@ -30,7 +30,9 @@ func (gc *GenerateConnector) GenerateTasks(ctx context.Context, taskID string, j
 	if err != nil {
 		return errors.Wrapf(err, "problem getting queue for version %s", t.Version)
 	}
-	t.SetGeneratedJSON(jsonBytes)
+	if err = t.SetGeneratedJSON(jsonBytes); err != nil {
+		return errors.Wrapf(err, "problem setting generated json in task document for %s", t.Id)
+	}
 
 	// Make sure legacy attempt does not exist. This could be a task restart.
 	if t.GenerateAttempt == 0 {
@@ -41,7 +43,9 @@ func (gc *GenerateConnector) GenerateTasks(ctx context.Context, taskID string, j
 		}
 	}
 
-	t.IncrementGenerateAttempt()
+	if err = t.IncrementGenerateAttempt(); err != nil {
+		return errors.Wrapf(err, "problem incrementing generator for %s", t.Id)
+	}
 	err = q.Put(ctx, units.NewGenerateTasksJob(taskID, t.GenerateAttempt))
 	grip.Debug(message.WrapError(err, message.Fields{
 		"message": "problem saving new generate tasks job for task",
