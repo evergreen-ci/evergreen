@@ -73,7 +73,7 @@ type TaskReliability struct {
 }
 
 // calculateSuccessRate using
-// // https://en.wikipedia.org/wiki/Binomial_proportion_confidence_interval#Wilson_score_interval
+// https://en.wikipedia.org/wiki/Binomial_proportion_confidence_interval#Wilson_score_interval
 // and return the lower value (for success rates).
 func (s *TaskReliability) calculateSuccessRate() {
 	total := float64(s.NumTotal)

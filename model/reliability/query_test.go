@@ -1,6 +1,8 @@
 package reliability
 
 import (
+        "fmt"
+        "strings"
 	"testing"
 	"time"
 
@@ -65,6 +67,41 @@ func insertDailyTaskStats(project string, requester string, taskName string, var
 		"avg_duration_success": avgDuration,
 	})
 	return err
+}
+
+func handleNoFormat(format string, i int) string {
+        n := strings.Count(format, "%")
+        if n > 0 {
+                return fmt.Sprintf(format, i)
+        }
+        return format
+}
+
+func insertManyDailyTaskStats(many int, projectFmt string, requesterFmt string, taskNameFmt string, variantFmt string, distroFmt string, date time.Time, numSuccess, numFailed, numTimeout, numTestFailed, numSystemFailed, numSetupFailed int, avgDuration float64) error {
+
+        items := []interface{}{}
+        for i := 0; i < many; i++ {
+                items = append(items, bson.M{
+                        "_id": stats.DbTaskStatsId{
+                                Project:      handleNoFormat(projectFmt, i),
+                                Requester:    handleNoFormat(requesterFmt, i),
+                                TaskName:     handleNoFormat(taskNameFmt, i),
+                                BuildVariant: handleNoFormat(variantFmt, i),
+                                Distro:       handleNoFormat(distroFmt, i),
+                                Date:         date,
+                        },
+                        "num_success":          numSuccess,
+                        "num_failed":           numFailed,
+                        "num_timeout":          numTimeout,
+                        "num_test_failed":      numTestFailed,
+                        "num_system_failed":    numSystemFailed,
+                        "num_setup_failed":     numSetupFailed,
+                        "avg_duration_success": avgDuration,
+                })
+        }
+
+        err := db.InsertManyUnordered(stats.DailyTaskStatsCollection, items...)
+        return err
 }
 
 func TestValidFilter(t *testing.T) {
@@ -250,6 +287,85 @@ func TestGetTaskStatsTwoDocuments(t *testing.T) {
 	require.Len(docs, 2)
 	assert.Equal(docs[0].SuccessRate, float64(.56))
 	assert.Equal(docs[1].SuccessRate, float64(.42))
+}
+
+func TestGetTaskReliabilityNoMatching(t *testing.T) {
+        // assert := assert.New(t)
+        require := require.New(t)
+        filter := createValidFilter()
+        task1 := "task1"
+        task2 := "task2"
+
+        variant1 := "v1"
+        variant2 := "v2"
+
+        distro1 := "d1"
+        distro2 := "d2"
+
+        err := clearCollection()
+        require.NoError(err)
+
+        require.NoError(insertDailyTaskStats(project, "r1", task1, variant1, distro1, day1, 10, 5, 1, 1, 1, 2, 10.5))
+        require.NoError(insertDailyTaskStats(project, "r1", task1, variant1, distro1, day2.Add(-1*time.Hour), 20, 7, 7, 0, 0, 0, 20.0))
+
+        require.NoError(insertDailyTaskStats(project, "r1", task2, variant2, distro2, day1, 10, 5, 1, 1, 1, 2, 10.5))
+        require.NoError(insertDailyTaskStats(project, "r1", task2, variant2, distro2, day2.Add(-1*time.Hour), 20, 7, 7, 0, 0, 0, 20.0))
+
+        docs, err := GetTaskReliabilityScores(filter)
+        require.NoError(err)
+        require.NotEqual(len(docs), 0)
+
+        filter.StatsFilter.Tasks = []string{task1}
+        filter.StatsFilter.BuildVariants = []string{variant1, variant2}
+        filter.StatsFilter.Distros = []string{distro1, distro2}
+        docs, err = GetTaskReliabilityScores(filter)
+        require.NoError(err)
+        require.Len(docs, 2)
+        for _, doc := range docs {
+                require.Equal(doc.TaskName, task1)
+                require.NotEqual(doc.BuildVariant, variant2)
+                require.NotEqual(doc.Distro, distro2)
+        }
+
+        filter.StatsFilter.Tasks = []string{task2}
+        filter.StatsFilter.BuildVariants = []string{variant1, variant2}
+        filter.StatsFilter.Distros = []string{distro1, distro2}
+        docs, err = GetTaskReliabilityScores(filter)
+        require.NoError(err)
+        require.Len(docs, 2)
+        for _, doc := range docs {
+                require.Equal(doc.TaskName, task2)
+                require.NotEqual(doc.BuildVariant, variant1)
+                require.NotEqual(doc.Distro, distro1)
+        }
+
+        filter.StatsFilter.Tasks = []string{task1}
+        filter.StatsFilter.Tasks = []string{task1}
+        filter.StatsFilter.BuildVariants = []string{variant2}
+        filter.StatsFilter.Distros = []string{distro2}
+        docs, err = GetTaskReliabilityScores(filter)
+        require.NoError(err)
+        require.Len(docs, 0)
+
+        filter.StatsFilter.Tasks = []string{task2}
+        filter.StatsFilter.BuildVariants = []string{variant1}
+        filter.StatsFilter.Distros = []string{distro1}
+        docs, err = GetTaskReliabilityScores(filter)
+        require.NoError(err)
+        require.Len(docs, 0)
+
+        task3 := "task3"
+        variantFmt := "variant %04d"
+        distroFmt := "distro %04d"
+
+        require.NoError(insertManyDailyTaskStats(MaxQueryLimit, project, "r1", task3, variantFmt, distroFmt, day1, 10, 5, 1, 1, 1, 2, 10.5))
+
+        filter.StatsFilter.Tasks = []string{task1, task2, task3}
+        filter.StatsFilter.BuildVariants = []string{}
+        filter.StatsFilter.Distros = []string{}
+        docs, err = GetTaskReliabilityScores(filter)
+        require.NoError(err)
+        require.Len(docs, MaxQueryLimit)
 }
 
 func TestValidateForTaskReliability(t *testing.T) {
