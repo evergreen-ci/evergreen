@@ -162,15 +162,15 @@ func (f *StatsFilter) ValidateCommon() error {
 	if f.GroupNumDays <= 0 {
 		catcher.Add(errors.New("Invalid GroupNumDays value"))
 	}
-	if !f.AfterDate.Equal(util.GetUTCDay(f.AfterDate)) {
-		catcher.Add(errors.New("Invalid AfterDate value"))
-	}
-	if !f.BeforeDate.Equal(util.GetUTCDay(f.BeforeDate)) {
-		catcher.Add(errors.New("Invalid BeforeDate value"))
-	}
-	if !f.BeforeDate.After(f.AfterDate) {
-		catcher.Add(errors.New("Invalid AfterDate/BeforeDate values"))
-	}
+        // if !f.AfterDate.Equal(util.GetUTCDay(f.AfterDate)) {
+        // 	catcher.Add(errors.New("Invalid AfterDate value"))
+        // }
+        // if !f.BeforeDate.Equal(util.GetUTCDay(f.BeforeDate)) {
+        // 	catcher.Add(errors.New("Invalid BeforeDate value"))
+        // }
+        // if !f.BeforeDate.After(f.AfterDate) {
+        // 	catcher.Add(errors.New("Invalid AfterDate/BeforeDate values"))
+        // }
 	if len(f.Requesters) == 0 {
 		catcher.Add(errors.New("Missing Requesters values"))
 	}
@@ -185,6 +185,16 @@ func (f *StatsFilter) ValidateForTests() error {
 	catcher := grip.NewBasicCatcher()
 
 	catcher.Add(f.ValidateCommon())
+        if !f.AfterDate.Equal(util.GetUTCDay(f.AfterDate)) {
+                catcher.Add(errors.New("Invalid AfterDate value"))
+        }
+        if !f.BeforeDate.Equal(util.GetUTCDay(f.BeforeDate)) {
+                catcher.Add(errors.New("Invalid BeforeDate value"))
+        }
+        if !f.BeforeDate.After(f.AfterDate) {
+                catcher.Add(errors.New("Invalid AfterDate/BeforeDate values"))
+        }
+
 	if f.Limit > MaxQueryLimit || f.Limit <= 0 {
 		catcher.Add(errors.New("Invalid Limit value"))
 	}
