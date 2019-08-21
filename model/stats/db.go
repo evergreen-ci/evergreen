@@ -80,7 +80,7 @@ const (
 	dailyTestStatsCollection   = "daily_test_stats"
 	DailyTaskStatsCollection   = "daily_task_stats"
 	dailyStatsStatusCollection = "daily_stats_status"
-	bulkSize                   = 1000
+	bulkSize                   = 10000
 	nsInASecond                = time.Second / time.Nanosecond
 )
 
