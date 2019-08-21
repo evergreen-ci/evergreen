@@ -210,7 +210,6 @@ func TestFilePathGetIgnoreGlobbing(t *testing.T) {
 
 	workdir = filepath.Join(testutil.GetDirectoryOfFile(), "testdata")
 	files = []string{"archive/**/testfile.txt"}
-	assert.NoError(err)
 	paths, err = getFilePaths(workdir, files)
 	assert.NoError(err)
 	assert.Len(paths, 5)
@@ -220,13 +219,13 @@ func TestFilePathGetIgnoreGlobbing(t *testing.T) {
 	}
 
 	files = []string{"archive/artifacts_*/**/testfile.txt"}
-	assert.NoError(err)
 	paths, err = getFilePaths(workdir, files)
+	assert.NoError(err)
 	assert.Len(paths, 3)
 
 	files = []string{"testfile.txt", "!artifacts_in/**/testfile.txt"}
-	assert.NoError(err)
 	paths, err = getFilePaths(workdir, files)
+	assert.NoError(err)
 	assert.Len(paths, 4)
 	assert.NotContains(paths, filepath.Join(workdir, "artifacts_in/dir1/dir2/testfile.txt"))
 }
