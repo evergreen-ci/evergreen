@@ -30,7 +30,19 @@ func (gc *GenerateConnector) GenerateTasks(ctx context.Context, taskID string, j
 	if err != nil {
 		return errors.Wrapf(err, "problem getting queue for version %s", t.Version)
 	}
-	err = q.Put(ctx, units.NewGenerateTasksJob(taskID, jsonBytes))
+	t.SetGeneratedJSON(jsonBytes)
+
+	// Make sure legacy attempt does not exist. This could be a task restart.
+	if t.GenerateAttempt == 0 {
+		jobID := fmt.Sprintf("generate-tasks-%s", taskID)
+		_, exists := q.Get(ctx, jobID)
+		if exists {
+			return nil
+		}
+	}
+
+	t.IncrementGenerateAttempt()
+	err = q.Put(ctx, units.NewGenerateTasksJob(taskID, t.GenerateAttempt))
 	grip.Debug(message.WrapError(err, message.Fields{
 		"message": "problem saving new generate tasks job for task",
 		"task_id": taskID}))
@@ -51,10 +63,29 @@ func (gc *GenerateConnector) GeneratePoll(ctx context.Context, taskID string, gr
 	if err != nil {
 		return false, nil, errors.Wrapf(err, "problem getting queue for version %s", t.Version)
 	}
-	jobID := fmt.Sprintf("generate-tasks-%s", taskID)
-	j, exists := q.Get(ctx, jobID)
-	if !exists {
-		return false, nil, errors.Errorf("task %s not in queue", taskID)
+
+	var jobID string
+	var j amboy.Job
+	var exists bool
+	for {
+		if t.GenerateAttempt == 0 {
+			jobID = fmt.Sprintf("generate-tasks-%s", taskID) // legacy job id
+		} else {
+			jobID = fmt.Sprintf("generate-tasks-%s-%d", taskID, t.GenerateAttempt)
+		}
+		generateAttempt := t.GenerateAttempt
+		j, exists = q.Get(ctx, jobID)
+		if !exists {
+			return false, nil, errors.Errorf("task %s not in queue", taskID)
+		}
+		t, err := task.FindOneId(taskID)
+		if err != nil {
+			return false, nil, errors.Wrapf(err, "problem finding task %s", taskID)
+		}
+		// If attempt has incremented, the requeue job has raced with the poll job. Try again. Otherwise break.
+		if generateAttempt == t.GenerateAttempt {
+			break
+		}
 	}
 	return j.Status().Completed, j.Status().Errors, nil
 }

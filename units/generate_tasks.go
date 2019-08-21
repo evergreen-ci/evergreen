@@ -4,13 +4,12 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"net/http"
 	"time"
 
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
-	"github.com/evergreen-ci/evergreen/util"
+	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/validator"
-	"github.com/evergreen-ci/gimlet"
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/amboy/dependency"
 	"github.com/mongodb/amboy/job"
@@ -22,7 +21,8 @@ import (
 )
 
 const (
-	generateTasksJobName = "generate-tasks"
+	generateTasksJobName    = "generate-tasks"
+	generateTaskRequeueWait = 15 * time.Second
 )
 
 func init() {
@@ -31,8 +31,10 @@ func init() {
 
 type generateTasksJob struct {
 	job.Base `bson:"job_base" json:"job_base" yaml:"job_base"`
-	TaskID   string            `bson:"task_id" json:"task_id" yaml:"task_id"`
-	JSON     []json.RawMessage `bson:"json" json:"json" yaml:"json"`
+	TaskID   string `bson:"task_id" json:"task_id" yaml:"task_id"`
+	Attempt  int    `bson:"attempt" json:"attempt" yaml:"attempt"`
+
+	requeue bool
 }
 
 func makeGenerateTaskJob() *generateTasksJob {
@@ -49,20 +51,67 @@ func makeGenerateTaskJob() *generateTasksJob {
 	return j
 }
 
-func NewGenerateTasksJob(id string, json []json.RawMessage) amboy.Job {
+func NewGenerateTasksJob(id string, attempt int) amboy.Job {
 	j := makeGenerateTaskJob()
 	j.TaskID = id
-	j.JSON = json
 
-	j.SetID(fmt.Sprintf("%s-%s", generateTasksJobName, id))
+	j.SetID(fmt.Sprintf("%s-%s-%d", generateTasksJobName, id, attempt))
 	return j
+}
+
+func (j *generateTasksJob) tryRequeue(taskID string) {
+	ctx, cancel := context.WithTimeout(context.Background(), generateTaskRequeueWait)
+	defer cancel()
+	if !j.requeue {
+		if err := task.MarkGeneratedTasks(taskID); err != nil {
+			j.AddError(errors.Wrapf(err, "problem marking task '%s' as having generated tasks", taskID))
+			return
+		}
+		return
+	}
+	newJob := NewGenerateTasksJob(j.TaskID, j.Attempt+1)
+	newJob.UpdateTimeInfo(amboy.JobTimeInfo{
+		WaitUntil: time.Now().Add(generateTaskRequeueWait),
+	})
+	err := evergreen.GetEnvironment().RemoteQueue().Put(ctx, newJob)
+	grip.Error(message.WrapError(err, message.Fields{
+		"message":  "failed to requeue generate task job",
+		"task":     j.TaskID,
+		"job":      j.ID(),
+		"attempts": j.Attempt,
+	}))
+	j.AddError(err)
 }
 
 func (j *generateTasksJob) Run(ctx context.Context) {
 	defer j.MarkComplete()
+	defer j.tryRequeue(j.TaskID)
 	start := time.Now()
 
-	projects, err := parseProjects(j.JSON)
+	if ctx.Err() != nil {
+		j.requeue = true
+		return
+	}
+
+	t, err := task.FindOneId(j.TaskID)
+	if err != nil {
+		j.AddError(err)
+		return
+	}
+	if t == nil {
+		j.AddError(errors.Errorf("task %s does not exist", j.TaskID))
+		return
+	}
+	if t.GeneratedTasks {
+		grip.Error(message.Fields{
+			"message": "attempted to generate tasks, but generator already ran for this task",
+			"task":    t.Id,
+			"version": t.Version,
+		})
+		return
+	}
+
+	projects, err := parseProjects(t.GeneratedJSON)
 	if err != nil {
 		j.AddError(errors.Wrap(err, "error parsing JSON from `generate.tasks`"))
 		return
@@ -70,47 +119,40 @@ func (j *generateTasksJob) Run(ctx context.Context) {
 	g := model.MergeGeneratedProjects(projects)
 	g.TaskID = j.TaskID
 
-	var attempt int
-	err = util.Retry(
-		ctx,
-		func() (bool, error) {
-			attemptStart := time.Now()
-			attempt++
+	p, v, t, pm, err := g.NewVersion()
+	if err != nil {
+		j.AddError(err)
+		return
+	}
+	if err = validator.CheckProjectConfigurationIsValid(p); err != nil {
+		j.AddError(err)
+		return
+	}
 
-			p, v, t, pm, err := g.NewVersion() // nolint
-			if err != nil {
-				return false, err
-			}
-			if t.GeneratedTasks {
-				return false, nil // already generated tasks, noop
-			}
-			if err = validator.CheckProjectConfigurationIsValid(p); err != nil {
-				return false, err
-			}
-			err = g.Save(ctx, p, v, t, pm)
-			if err != nil && adb.ResultsNotFound(err) {
-				return true, gimlet.ErrorResponse{
-					StatusCode: http.StatusInternalServerError,
-					Message:    errors.Wrap(err, "error updating config in `generate.tasks`").Error(),
-				}
-			}
-			if err = t.MarkGeneratedTasks(); err != nil {
-				return true, gimlet.ErrorResponse{
-					StatusCode: http.StatusInternalServerError,
-					Message:    errors.Wrapf(err, "problem marking task '%s' as having generated tasks", t.Id).Error(),
-				}
-			}
-			grip.Info(message.Fields{
-				"message":               "generate.tasks succeeded",
-				"attempt":               attempt,
-				"attempt_duration_secs": time.Since(attemptStart).Seconds(),
-				"total_duration_secs":   time.Since(start).Seconds(),
-				"task":                  t.Id,
-				"version":               t.Version,
-			})
-			return false, nil
-		}, 100, time.Second, 15*time.Second)
-	j.AddError(err)
+	if ctx.Err() != nil {
+		j.requeue = true
+		return
+	}
+	err = g.Save(ctx, p, v, t, pm)
+	if adb.ResultsNotFound(err) {
+		j.requeue = true
+		return
+	}
+	if err != nil {
+		if ctx.Err() == nil {
+			j.AddError(errors.Wrap(err, "error updating config in `generate.tasks`"))
+		} else {
+			j.requeue = true
+		}
+		return
+	}
+	grip.Info(message.Fields{
+		"message":       "generate.tasks succeeded",
+		"attempt":       j.Attempt,
+		"duration_secs": time.Since(start).Seconds(),
+		"task":          t.Id,
+		"version":       t.Version,
+	})
 }
 
 func parseProjects(jsonBytes []json.RawMessage) ([]model.GeneratedProject, error) {

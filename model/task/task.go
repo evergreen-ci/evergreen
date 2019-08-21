@@ -1,6 +1,7 @@
 package task
 
 import (
+	"encoding/json"
 	"fmt"
 	"regexp"
 	"strings"
@@ -81,7 +82,7 @@ type Task struct {
 
 	// only relevant if the task is runnin.  the time of the last heartbeat
 	// sent back by the agent
-	LastHeartbeat time.Time `bson:"last_heartbeat"`
+	LastHeartbeat time.Time `bson:"last_heartbeat" json:"last_heartbeat"`
 
 	// used to indicate whether task should be scheduled to run
 	Activated            bool         `bson:"activated" json:"activated"`
@@ -155,6 +156,10 @@ type Task struct {
 	GeneratedTasks bool `bson:"generated_tasks,omitempty" json:"generated_tasks,omitempty"`
 	// GeneratedBy, if present, is the ID of the task that generated this task.
 	GeneratedBy string `bson:"generated_by,omitempty" json:"generated_by,omitempty"`
+	// GeneratedJSON is the the configuration information to create new tasks from.
+	GeneratedJSON []json.RawMessage `bson:"generate_json" json:"generate_json"`
+	// GenerateAttempt is the current generate tasks attempt. Before EVG-6517 this field was not set.
+	GenerateAttempt int `bson:"generate_attempt,omitempty" json:"generate_attempt,omitempty"`
 
 	// Fields set if triggered by an upstream build
 	TriggerID    string `bson:"trigger_id,omitempty" json:"trigger_id,omitempty"`
@@ -576,11 +581,10 @@ func (t *Task) MarkAsUndispatched() error {
 }
 
 // MarkGeneratedTasks marks that the task has generated tasks.
-func (t *Task) MarkGeneratedTasks() error {
-	t.GeneratedTasks = true
+func MarkGeneratedTasks(taskID string) error {
 	return UpdateOne(
 		bson.M{
-			IdKey: t.Id,
+			IdKey: taskID,
 		},
 		bson.M{
 			"$set": bson.M{
@@ -588,6 +592,36 @@ func (t *Task) MarkGeneratedTasks() error {
 			},
 		},
 	)
+}
+
+// SetGeneratedJSON sets JSON data to generate tasks from.
+func (t *Task) SetGeneratedJSON(json []json.RawMessage) error {
+	t.GeneratedJSON = json
+	return UpdateOne(
+		bson.M{
+			IdKey: t.Id,
+		},
+		bson.M{
+			"$set": bson.M{
+				GeneratedJSONKey: json,
+			},
+		},
+	)
+}
+
+// IncrementGenerateAttempt increments the attempt integer for generate.tasks.
+func (t *Task) IncrementGenerateAttempt() error {
+	err := UpdateOne(
+		bson.M{
+			IdKey:              t.Id,
+			GenerateAttemptKey: t.GenerateAttempt,
+		},
+		bson.M{
+			"$inc": bson.M{GenerateAttemptKey: 1},
+		},
+	)
+	t.GenerateAttempt++
+	return err
 }
 
 // SetTasksScheduledTime takes a list of tasks and a time, and then sets

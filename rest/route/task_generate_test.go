@@ -14,8 +14,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/gimlet"
-	"github.com/mongodb/amboy"
-	"github.com/mongodb/amboy/queue"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -60,14 +58,6 @@ func TestGenerateExecute(t *testing.T) {
 	r := h.Run(context.Background())
 	assert.Equal(t, r.Data(), struct{}{})
 	assert.Equal(t, r.Status(), http.StatusOK)
-}
-
-func localConstructor(ctx context.Context) (amboy.Queue, error) {
-	return queue.NewLocalUnordered(1), nil
-}
-
-func remoteConstructor(ctx context.Context) (queue.Remote, error) {
-	return queue.NewRemoteUnordered(1), nil
 }
 
 func TestGeneratePollParse(t *testing.T) {
