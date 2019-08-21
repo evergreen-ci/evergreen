@@ -108,7 +108,7 @@ func TestHostCosts(t *testing.T) {
 	assert.InDelta(5, dbHost.TotalCost, 0.002)
 	dbTask, err := task.FindOneId(t1.Id)
 	assert.NoError(err)
-	assert.InDelta(5, dbTask.SpawnedHostCost, 0.001)
+	assert.InDelta(5, dbTask.SpawnedHostCost, 0.002)
 }
 
 ////////////////////////////////////////////////////////////////////////
