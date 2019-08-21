@@ -58,6 +58,7 @@ package stats
 // }
 
 import (
+	"context"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
@@ -1022,16 +1023,14 @@ func (pf paginationField) getNextExpression() bson.M {
 
 // aggregateIntoCollection runs an aggregation pipeline on a collection and bulk upserts all the documents
 // into the target collection.
-func aggregateIntoCollection(collection string, pipeline []bson.M, outputCollection string) error {
+func aggregateIntoCollection(ctx context.Context, collection string, pipeline []bson.M, outputCollection string) error {
 	env := evergreen.GetEnvironment()
-	ctx, cancel := env.Context()
-	defer cancel()
 
 	opts := adb.BufferedWriteOptions{
 		DB:         env.Settings().Database.DB,
 		Collection: outputCollection,
 		Count:      bulkSize,
-		Duration:   10 * time.Second,
+		Duration:   time.Minute,
 	}
 
 	writer, err := adb.NewBufferedUpsertByID(ctx, env.Session().DB(opts.DB), opts)

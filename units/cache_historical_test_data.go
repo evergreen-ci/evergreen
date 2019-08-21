@@ -37,7 +37,7 @@ type cacheHistoricalTestDataJob struct {
 
 type dailyStatsRollup map[time.Time]map[string][]string
 
-type generateStatsFn func(projectId string, requester string, timePeriod time.Time, tasks []string, jobDate time.Time) error
+type generateStatsFn func(ctx context.Context, projectId string, requester string, timePeriod time.Time, tasks []string, jobDate time.Time) error
 type generateFunctions struct {
 	HourlyFns map[string]generateStatsFn
 	DailyFns  map[string]generateStatsFn
@@ -146,7 +146,7 @@ func (j *cacheHistoricalTestDataJob) Run(ctx context.Context) {
 	}
 
 	timingMsg["update_hourly_daily"] = reportTiming(func() {
-		timingInfo := jobContext.updateHourlyAndDailyStats(statsToUpdate, generateMap)
+		timingInfo := jobContext.updateHourlyAndDailyStats(ctx, statsToUpdate, generateMap)
 		for k, v := range timingInfo {
 			timingMsg[k] = v.Seconds()
 		}
@@ -209,12 +209,12 @@ func createRegexpFromStrings(filePatterns []string) ([]*regexp.Regexp, error) {
 	return tasksToIgnore, nil
 }
 
-func (c *cacheHistoricalJobContext) updateHourlyAndDailyStats(statsToUpdate []stats.StatsToUpdate, generateFns generateFunctions) map[string]time.Duration {
+func (c *cacheHistoricalJobContext) updateHourlyAndDailyStats(ctx context.Context, statsToUpdate []stats.StatsToUpdate, generateFns generateFunctions) map[string]time.Duration {
 	timingInfo := map[string]time.Duration{}
 	var err error
 	for name, genFn := range generateFns.HourlyFns {
 		timingInfo[fmt.Sprintf("update_hourly_%s", name)] = reportTiming(func() {
-			err = c.iteratorOverHourlyStats(statsToUpdate, genFn, name)
+			err = c.iteratorOverHourlyStats(ctx, statsToUpdate, genFn, name)
 			c.catcher.Add(err)
 		})
 		if err != nil {
@@ -226,7 +226,7 @@ func (c *cacheHistoricalJobContext) updateHourlyAndDailyStats(statsToUpdate []st
 
 	for name, genFn := range generateFns.DailyFns {
 		timingInfo[fmt.Sprintf("update_daily_%s", name)] = reportTiming(func() {
-			err = c.iteratorOverDailyStats(dailyStats, genFn, name)
+			err = c.iteratorOverDailyStats(ctx, dailyStats, genFn, name)
 			c.catcher.Add(err)
 		})
 		if err != nil {
@@ -237,12 +237,12 @@ func (c *cacheHistoricalJobContext) updateHourlyAndDailyStats(statsToUpdate []st
 	return timingInfo
 }
 
-func (c *cacheHistoricalJobContext) iteratorOverDailyStats(dailyStats dailyStatsRollup, fn generateStatsFn, queryType string) error {
+func (c *cacheHistoricalJobContext) iteratorOverDailyStats(ctx context.Context, dailyStats dailyStatsRollup, fn generateStatsFn, queryType string) error {
 	for day, stats := range dailyStats {
 		for requester, tasks := range stats {
 			taskList := c.filterIgnoredTasks(tasks, queryType)
 			if len(taskList) > 0 {
-				err := errors.Wrap(fn(c.ProjectID, requester, day, taskList, c.JobTime), "Could not sync daily stats")
+				err := errors.Wrap(fn(ctx, c.ProjectID, requester, day, taskList, c.JobTime), "Could not sync daily stats")
 				grip.Warning(message.WrapError(err, message.Fields{
 					"project_id": c.ProjectID,
 					"sync_date":  day,
@@ -259,11 +259,11 @@ func (c *cacheHistoricalJobContext) iteratorOverDailyStats(dailyStats dailyStats
 	return nil
 }
 
-func (c *cacheHistoricalJobContext) iteratorOverHourlyStats(stats []stats.StatsToUpdate, fn generateStatsFn, queryType string) error {
+func (c *cacheHistoricalJobContext) iteratorOverHourlyStats(ctx context.Context, stats []stats.StatsToUpdate, fn generateStatsFn, queryType string) error {
 	for _, stat := range stats {
 		taskList := c.filterIgnoredTasks(stat.Tasks, queryType)
 		if len(taskList) > 0 {
-			err := errors.Wrap(fn(stat.ProjectId, stat.Requester, stat.Hour, taskList, c.JobTime), "Could not sync hourly stats")
+			err := errors.Wrap(fn(ctx, stat.ProjectId, stat.Requester, stat.Hour, taskList, c.JobTime), "Could not sync hourly stats")
 			grip.Warning(message.WrapError(err, message.Fields{
 				"project_id": stat.ProjectId,
 				"sync_date":  stat.Hour,
