@@ -432,6 +432,11 @@ func MarkEnd(t *task.Task, caller string, finishTime time.Time, detail *apimodel
 	if err != nil {
 		return errors.Wrap(err, "could not mark task finished")
 	}
+
+	if err = t.UpdateBlockedDependencies(false); err != nil {
+		return errors.Wrap(err, "could not update blocked dependencies")
+	}
+
 	status := t.ResultStatus()
 	event.LogTaskFinished(t.Id, t.Execution, t.HostId, status)
 
