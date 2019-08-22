@@ -143,11 +143,10 @@ func (j *generateTasksJob) Run(ctx context.Context) {
 		return
 	}
 
-	err = g.Save(ctx, p, v, t, pm)
+	// Don't use the job's context, because it's better to finish than to exit early after a SIGTERM from a deploy.
+	err = g.Save(context.Background(), p, v, t, pm)
 	if err != nil {
-		// If there was a race, or if the context was canceled, retry the job. If not this means
-		// that there was some actual error in processing the job. Return that error.
-		if adb.ResultsNotFound(err) || ctx.Err() != nil {
+		if adb.ResultsNotFound(err) {
 			j.requeue = true
 		} else {
 			j.AddError(errors.Wrap(err, "error updating config in `generate.tasks`"))
