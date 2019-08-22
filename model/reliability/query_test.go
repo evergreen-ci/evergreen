@@ -322,12 +322,13 @@ func GetTaskReliability(t *testing.T) {
                                 "No Matches": func(ctx context.Context, t *testing.T, filter TaskReliabilityFilter) {
                                         require := require.New(t)
                                         withCancelledContext(ctx, func(ctx context.Context) {
+                                                filter.StatsFilter.Tasks = []string{"this won't match anything"}
                                                 docs, err := GetTaskReliabilityScores(filter)
                                                 require.NoError(err)
-                                                require.NotEqual(len(docs), 0)
+                                                require.Equal(len(docs), 0)
                                         })
                                 },
-                                "Invalid Combination task1": func(ctx context.Context, t *testing.T, filter TaskReliabilityFilter) {
+                                "Non matching task1 combination": func(ctx context.Context, t *testing.T, filter TaskReliabilityFilter) {
                                         require := require.New(t)
                                         withCancelledContext(ctx, func(ctx context.Context) {
                                                 filter.StatsFilter.Tasks = []string{task1}
@@ -338,7 +339,7 @@ func GetTaskReliability(t *testing.T) {
                                                 require.Len(docs, 0)
                                         })
                                 },
-                                "Invalid Combination task2": func(ctx context.Context, t *testing.T, filter TaskReliabilityFilter) {
+                                "Non matching task2 combination": func(ctx context.Context, t *testing.T, filter TaskReliabilityFilter) {
                                         require := require.New(t)
                                         withCancelledContext(ctx, func(ctx context.Context) {
                                                 filter.StatsFilter.Tasks = []string{task2}
@@ -381,6 +382,15 @@ func GetTaskReliability(t *testing.T) {
                                                 }
                                         })
                                 },
+                                "All Tasks Match": func(ctx context.Context, t *testing.T, filter TaskReliabilityFilter) {
+                                        require := require.New(t)
+                                        withCancelledContext(ctx, func(ctx context.Context) {
+                                                filter.StatsFilter.Tasks = []string{task1, task2}
+                                                docs, err := GetTaskReliabilityScores(filter)
+                                                require.NoError(err)
+                                                require.NotEqual(len(docs), 0)
+                                        })
+                                },
                                 "MaxQueryLimit": func(ctx context.Context, t *testing.T, filter TaskReliabilityFilter) {
                                         require := require.New(t)
                                         withCancelledContext(ctx, func(ctx context.Context) {
@@ -388,6 +398,7 @@ func GetTaskReliability(t *testing.T) {
                                                 variantFmt := "variant %04d"
                                                 distroFmt := "distro %04d"
 
+                                                // Note the withSetupAndTeardown inserts 4 documents so there are 1004 in the database after the next line runs.
                                                 require.NoError(insertManyDailyTaskStats(MaxQueryLimit, project, "r1", task3, variantFmt, distroFmt, day1, 10, 5, 1, 1, 1, 2, 10.5))
 
                                                 filter.StatsFilter.Tasks = []string{task1, task2, task3}
