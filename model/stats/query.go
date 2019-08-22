@@ -89,25 +89,25 @@ func StartAtFromTaskStats(taskStats *TaskStats) StartAt {
 func (s *StartAt) validateCommon(groupBy GroupBy) error {
 	catcher := grip.NewBasicCatcher()
 	if s == nil {
-		catcher.Add(errors.New("StartAt should not be nil"))
+                catcher.New("StartAt should not be nil")
 	}
 	if !s.Date.Equal(util.GetUTCDay(s.Date)) {
-		catcher.Add(errors.New("Invalid StartAt Date value"))
+                catcher.New("Invalid StartAt Date value")
 	}
 	switch groupBy {
 	case GroupByDistro:
 		if len(s.Distro) == 0 {
-			catcher.Add(errors.New("Missing StartAt Distro value"))
+                        catcher.New("Missing StartAt Distro value")
 		}
 		fallthrough
 	case GroupByVariant:
 		if len(s.BuildVariant) == 0 {
-			catcher.Add(errors.New("Missing StartAt BuildVariant value"))
+                        catcher.New("Missing StartAt BuildVariant value")
 		}
 		fallthrough
 	case GroupByTask:
 		if len(s.Task) == 0 {
-			catcher.Add(errors.New("Missing StartAt Task value"))
+                        catcher.New("Missing StartAt Task value")
 		}
 	}
 	return catcher.Resolve()
@@ -118,7 +118,7 @@ func (s *StartAt) validateForTests(groupBy GroupBy) error {
 	catcher := grip.NewBasicCatcher()
 	catcher.Add(s.validateCommon(groupBy))
 	if len(s.Test) == 0 {
-		catcher.Add(errors.New("Missing Start Test value"))
+                catcher.New("Missing Start Test value")
 	}
 	return catcher.Resolve()
 }
@@ -128,7 +128,7 @@ func (s *StartAt) validateForTasks(groupBy GroupBy) error {
 	catcher := grip.NewBasicCatcher()
 	catcher.Add(s.validateCommon(groupBy))
 	if len(s.Test) != 0 {
-		catcher.Add(errors.New("StartAt for task stats should not have a Test value"))
+                catcher.New("StartAt for task stats should not have a Test value")
 	}
 	return catcher.Resolve()
 }
@@ -154,28 +154,19 @@ type StatsFilter struct {
 
 // validateCommon performs common validations regardless of the filter's intended use.
 func (f *StatsFilter) ValidateCommon() error {
-	catcher := grip.NewBasicCatcher()
-	if f == nil {
-		catcher.Add(errors.New("StatsFilter should not be nil"))
-	}
+        catcher := grip.NewBasicCatcher()
+        if f == nil {
+                catcher.New("StatsFilter should not be nil")
+        }
 
-	if f.GroupNumDays <= 0 {
-		catcher.Add(errors.New("Invalid GroupNumDays value"))
-	}
-        // if !f.AfterDate.Equal(util.GetUTCDay(f.AfterDate)) {
-        // 	catcher.Add(errors.New("Invalid AfterDate value"))
-        // }
-        // if !f.BeforeDate.Equal(util.GetUTCDay(f.BeforeDate)) {
-        // 	catcher.Add(errors.New("Invalid BeforeDate value"))
-        // }
-        // if !f.BeforeDate.After(f.AfterDate) {
-        // 	catcher.Add(errors.New("Invalid AfterDate/BeforeDate values"))
-        // }
-	if len(f.Requesters) == 0 {
-		catcher.Add(errors.New("Missing Requesters values"))
-	}
-	catcher.Add(f.Sort.validate())
-	catcher.Add(f.GroupBy.validate())
+        if f.GroupNumDays <= 0 {
+                catcher.New("Invalid GroupNumDays value")
+        }
+        if len(f.Requesters) == 0 {
+                catcher.New("Missing Requesters values")
+        }
+        catcher.Add(f.Sort.validate())
+        catcher.Add(f.GroupBy.validate())
 
 	return catcher.Resolve()
 }
@@ -184,28 +175,28 @@ func (f *StatsFilter) ValidateCommon() error {
 func (f *StatsFilter) ValidateForTests() error {
 	catcher := grip.NewBasicCatcher()
 
-	catcher.Add(f.ValidateCommon())
+        catcher.Add(f.ValidateCommon())
         if !f.AfterDate.Equal(util.GetUTCDay(f.AfterDate)) {
-                catcher.Add(errors.New("Invalid AfterDate value"))
+                catcher.New("Invalid AfterDate value")
         }
         if !f.BeforeDate.Equal(util.GetUTCDay(f.BeforeDate)) {
-                catcher.Add(errors.New("Invalid BeforeDate value"))
+                catcher.New("Invalid BeforeDate value")
         }
         if !f.BeforeDate.After(f.AfterDate) {
-                catcher.Add(errors.New("Invalid AfterDate/BeforeDate values"))
+                catcher.New("Invalid AfterDate/BeforeDate values")
         }
 
-	if f.Limit > MaxQueryLimit || f.Limit <= 0 {
-		catcher.Add(errors.New("Invalid Limit value"))
-	}
-	if f.StartAt != nil {
-		catcher.Add(f.StartAt.validateForTests(f.GroupBy))
-	}
-	if len(f.Tests) == 0 && len(f.Tasks) == 0 {
-		catcher.Add(errors.New("Missing Tests or Tasks values"))
-	}
+        if f.Limit > MaxQueryLimit || f.Limit <= 0 {
+                catcher.New("Invalid Limit value")
+        }
+        if f.StartAt != nil {
+                catcher.Add(f.StartAt.validateForTests(f.GroupBy))
+        }
+        if len(f.Tests) == 0 && len(f.Tasks) == 0 {
+                catcher.New("Missing Tests or Tasks values")
+        }
 
-	return catcher.Resolve()
+        return catcher.Resolve()
 }
 
 //use with test stats validates that the StatsFilter struct is valid for use with task stats.
@@ -214,19 +205,19 @@ func (f *StatsFilter) ValidateForTasks() error {
 
 	catcher.Add(f.ValidateCommon())
 	if f.Limit > MaxQueryLimit || f.Limit <= 0 {
-		catcher.Add(errors.New("Invalid Limit value"))
+                catcher.New("Invalid Limit value")
 	}
 	if f.StartAt != nil {
 		catcher.Add(f.StartAt.validateForTasks(f.GroupBy))
 	}
 	if len(f.Tests) > 0 {
-		catcher.Add(errors.New("Invalid Tests value, should be nil or empty"))
+                catcher.New("Invalid Tests value, should be nil or empty")
 	}
 	if len(f.Tasks) == 0 {
-		catcher.Add(errors.New("Missing Tasks values"))
+                catcher.New("Missing Tasks values")
 	}
 	if f.GroupBy == GroupByTest {
-		catcher.Add(errors.New("Invalid GroupBy value for a task filter"))
+                catcher.New("Invalid GroupBy value for a task filter")
 	}
 
 	return catcher.Resolve()
