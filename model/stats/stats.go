@@ -5,6 +5,7 @@
 package stats
 
 import (
+	"context"
 	"time"
 
 	"github.com/evergreen-ci/evergreen/db"
@@ -80,7 +81,7 @@ func UpdateStatsStatus(projectId string, lastJobRun time.Time, processedTasksUnt
 // GenerateHourlyTestStats aggregates task and testresults prsent in the database and saves the
 // resulting hourly test stats documents for the project, requester, hour, and tasks specified.
 // The hour covered is the UTC hour corresponding to the given `hour` parameter.
-func GenerateHourlyTestStats(projectId string, requester string, hour time.Time, tasks []string, jobRunTime time.Time) error {
+func GenerateHourlyTestStats(ctx context.Context, projectId string, requester string, hour time.Time, tasks []string, jobRunTime time.Time) error {
 	grip.Info(message.Fields{
 		"message":   "Generating hourly test stats",
 		"project":   projectId,
@@ -92,7 +93,7 @@ func GenerateHourlyTestStats(projectId string, requester string, hour time.Time,
 	end := start.Add(time.Hour)
 	// Generate the stats based on tasks.
 	pipeline := hourlyTestStatsPipeline(projectId, requester, start, end, tasks, jobRunTime)
-	err := aggregateIntoCollection(task.Collection, pipeline, hourlyTestStatsCollection)
+	err := aggregateIntoCollection(ctx, task.Collection, pipeline, hourlyTestStatsCollection)
 	if err != nil {
 		return errors.Wrap(err, "Failed to generate hourly stats")
 	}
@@ -106,7 +107,7 @@ func GenerateHourlyTestStats(projectId string, requester string, hour time.Time,
 	})
 	// Generate/Update the stats for old tasks.
 	pipeline = hourlyTestStatsForOldTasksPipeline(projectId, requester, start, end, tasks, jobRunTime)
-	err = aggregateIntoCollection(task.OldCollection, pipeline, hourlyTestStatsCollection)
+	err = aggregateIntoCollection(ctx, task.OldCollection, pipeline, hourlyTestStatsCollection)
 	if err != nil {
 		return errors.Wrap(err, "Failed to generate hourly stats for old tasks")
 	}
@@ -116,7 +117,7 @@ func GenerateHourlyTestStats(projectId string, requester string, hour time.Time,
 // GenerateDailyTestStatsFromHourly aggregates the hourly test stats present in the database and
 // saves the resulting daily test stats documents for the project, requester, day, and tasks specified.
 // The day covered is the UTC day corresponding to the given `day` parameter.
-func GenerateDailyTestStatsFromHourly(projectId string, requester string, day time.Time, tasks []string, jobRunTime time.Time) error {
+func GenerateDailyTestStatsFromHourly(ctx context.Context, projectId string, requester string, day time.Time, tasks []string, jobRunTime time.Time) error {
 	grip.Info(message.Fields{
 		"message":   "Generating daily test stats",
 		"project":   projectId,
@@ -127,7 +128,7 @@ func GenerateDailyTestStatsFromHourly(projectId string, requester string, day ti
 	start := util.GetUTCDay(day)
 	end := start.Add(24 * time.Hour)
 	pipeline := dailyTestStatsFromHourlyPipeline(projectId, requester, start, end, tasks, jobRunTime)
-	err := aggregateIntoCollection(hourlyTestStatsCollection, pipeline, dailyTestStatsCollection)
+	err := aggregateIntoCollection(ctx, hourlyTestStatsCollection, pipeline, dailyTestStatsCollection)
 	if err != nil {
 		return errors.Wrap(err, "Failed to aggregate hourly stats into daily stats")
 	}
@@ -141,7 +142,7 @@ func GenerateDailyTestStatsFromHourly(projectId string, requester string, day ti
 // GenerateDailyTaskStats aggregates the hourly task stats present in the database and saves
 // the resulting daily task stats documents for the project, requester, day, and tasks specified.
 // The day covered is the UTC day corresponding to the given `day` parameter.
-func GenerateDailyTaskStats(projectId string, requester string, day time.Time, tasks []string, jobRunTime time.Time) error {
+func GenerateDailyTaskStats(ctx context.Context, projectId string, requester string, day time.Time, tasks []string, jobRunTime time.Time) error {
 	grip.Info(message.Fields{
 		"message":   "Generating daily task stats",
 		"project":   projectId,
@@ -152,7 +153,7 @@ func GenerateDailyTaskStats(projectId string, requester string, day time.Time, t
 	start := util.GetUTCDay(day)
 	end := start.Add(24 * time.Hour)
 	pipeline := dailyTaskStatsPipeline(projectId, requester, start, end, tasks, jobRunTime)
-	err := aggregateIntoCollection(task.Collection, pipeline, DailyTaskStatsCollection)
+	err := aggregateIntoCollection(ctx, task.Collection, pipeline, DailyTaskStatsCollection)
 	if err != nil {
 		return errors.Wrap(err, "Failed to aggregate daily task stats")
 	}
@@ -167,7 +168,7 @@ func GenerateDailyTaskStats(projectId string, requester string, day time.Time, t
 	start = util.GetUTCDay(day)
 	end = start.Add(24 * time.Hour)
 	pipeline = dailyTaskStatsForOldTasksPipeline(projectId, requester, start, end, tasks, jobRunTime)
-	err = aggregateIntoCollection(task.OldCollection, pipeline, DailyTaskStatsCollection)
+	err = aggregateIntoCollection(ctx, task.OldCollection, pipeline, DailyTaskStatsCollection)
 	if err != nil {
 		return errors.Wrap(err, "Failed to aggregate daily task stats")
 	}
