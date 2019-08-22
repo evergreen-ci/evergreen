@@ -1345,6 +1345,7 @@ func FindRunnable(distroID string, removeDeps bool) ([]Task, error) {
 		"$project": bson.M{
 			LogsKey:      0,
 			OldTaskIdKey: 0,
+			DependsOnKey + "." + DependencyUnattainableKey: 0,
 		},
 	}
 
