@@ -107,11 +107,6 @@ func (j *generateTasksJob) Run(ctx context.Context) {
 	defer j.tryRequeue()
 	start := time.Now()
 
-	if ctx.Err() != nil {
-		j.requeue = true
-		return
-	}
-
 	t, err := task.FindOneId(j.TaskID)
 	if err != nil {
 		j.AddError(err)
@@ -148,20 +143,14 @@ func (j *generateTasksJob) Run(ctx context.Context) {
 		return
 	}
 
-	if ctx.Err() != nil {
-		j.requeue = true
-		return
-	}
 	err = g.Save(ctx, p, v, t, pm)
-	if adb.ResultsNotFound(err) {
-		j.requeue = true
-		return
-	}
 	if err != nil {
-		if ctx.Err() == nil {
-			j.AddError(errors.Wrap(err, "error updating config in `generate.tasks`"))
-		} else {
+		// If there was a race, or if the context was canceled, retry the job. If not this means
+		// that there was some actual error in processing the job. Return that error.
+		if adb.ResultsNotFound(err) || ctx.Err() != nil {
 			j.requeue = true
+		} else {
+			j.AddError(errors.Wrap(err, "error updating config in `generate.tasks`"))
 		}
 		return
 	}
