@@ -22,7 +22,8 @@ import (
 
 const (
 	generateTasksJobName    = "generate-tasks"
-	generateTaskRequeueWait = 15 * time.Second
+	generateTaskRequeueWait = 10 * time.Second
+	generateTaskMaxAttempts = 6 * 60 // 1 hour, if generateTaskRequeueWait is 10 seconds
 )
 
 func init() {
@@ -67,6 +68,10 @@ func (j *generateTasksJob) tryRequeue(taskID string) {
 			j.AddError(errors.Wrapf(err, "problem marking task '%s' as having generated tasks", taskID))
 			return
 		}
+		return
+	}
+	if j.Attempt == generateTaskMaxAttempts {
+		j.AddError(errors.Errorf("reached max max attempts %d, aborting generate.tasks job", generateTaskMaxAttempts))
 		return
 	}
 	newJob := NewGenerateTasksJob(j.TaskID, j.Attempt+1)
