@@ -266,6 +266,12 @@ functions:
       params:
         working_dir: gopath/src/github.com/evergreen-ci/evergreen/
         command: make init-rs
+  setup_docker:
+    - command: shell.exec
+      params:
+        shell: bash
+        script: |
+            gopath/src/github.com/evergreen-ci/evergreen/scripts/setup-docker.sh
 #  setup-docker-host:
 #    - command: host.create
 #      type: setup
@@ -462,6 +468,16 @@ tasks:
   - <<: *run-go-test-suite-with-mongodb
     tags: ["db", "test"]
     name: test-model-grid
+  - name: docker-cleanup
+    commands:
+      - func: get-project
+      - func: setup-credentials
+      - func: setup_docker
+      - func: run-make
+        vars:
+          target: revendor
+      - func: run-make
+        vars: { target: "test-thirdparty-docker" }
 
 
 buildvariants:
@@ -615,4 +631,4 @@ buildvariants:
       goos: linux
       goarch: amd64
     tasks:
-      -  name: "test-thirdparty-docker"
+      -  name: "docker-cleanup"
