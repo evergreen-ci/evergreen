@@ -297,6 +297,14 @@ func TestGetTaskReliability(t *testing.T) {
 		evergreen.GithubPRRequester,
 		evergreen.MergeTestRequester,
 	}
+	const (
+		task1    = "task1"
+		task2    = "task2"
+		variant1 = "v1"
+		variant2 = "v2"
+		distro1  = "d1"
+		distro2  = "d2"
+	)
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -307,14 +315,18 @@ func TestGetTaskReliability(t *testing.T) {
 		fn(ctx)
 	}
 
-	task1 := "task1"
-	task2 := "task2"
+	// Common DB setup. Clear the database and insert some tasks.
+	// taskN only has variantN and distroN (e.g. "task1", "variant1", "distro1").
+	setupDB := func(t *testing.T) {
+		err := clearCollection()
+		require.NoError(t, err)
 
-	variant1 := "v1"
-	variant2 := "v2"
+		require.NoError(t, insertDailyTaskStats(project, requesters[0], task1, variant1, distro1, day1, 10, 5, 1, 1, 1, 2, 10.5))
+		require.NoError(t, insertDailyTaskStats(project, requesters[0], task1, variant1, distro1, day2.Add(-1*time.Hour), 20, 7, 7, 0, 0, 0, 20.0))
 
-	distro1 := "d1"
-	distro2 := "d2"
+		require.NoError(t, insertDailyTaskStats(project, requesters[0], task2, variant2, distro2, day1, 10, 5, 1, 1, 1, 2, 10.5))
+		require.NoError(t, insertDailyTaskStats(project, requesters[0], task2, variant2, distro2, day2.Add(-1*time.Hour), 20, 7, 7, 0, 0, 0, 20.0))
+	}
 
 	for opName, opTests := range map[string]func(ctx context.Context, t *testing.T, env evergreen.Environment){
 		"GetTaskReliability": func(ctx context.Context, t *testing.T, env evergreen.Environment) {
@@ -412,15 +424,8 @@ func TestGetTaskReliability(t *testing.T) {
 			} {
 				t.Run(testName, func(t *testing.T) {
 					withSetupAndTeardown(t, env, func() {
+						setupDB(t)
 						filter := createValidFilter()
-						err := clearCollection()
-						require.NoError(t, err)
-
-						require.NoError(t, insertDailyTaskStats(project, requesters[0], task1, variant1, distro1, day1, 10, 5, 1, 1, 1, 2, 10.5))
-						require.NoError(t, insertDailyTaskStats(project, requesters[0], task1, variant1, distro1, day2.Add(-1*time.Hour), 20, 7, 7, 0, 0, 0, 20.0))
-
-						require.NoError(t, insertDailyTaskStats(project, requesters[0], task2, variant2, distro2, day1, 10, 5, 1, 1, 1, 2, 10.5))
-						require.NoError(t, insertDailyTaskStats(project, requesters[0], task2, variant2, distro2, day2.Add(-1*time.Hour), 20, 7, 7, 0, 0, 0, 20.0))
 						testCase(ctx, t, filter)
 					})
 				})
