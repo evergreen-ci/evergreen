@@ -50,13 +50,8 @@ func (c *goTestResults) Execute(ctx context.Context,
 		return err
 	}
 
-	// make sure the file patterns are relative to the task's working directory
-	for idx, file := range c.Files {
-		c.Files[idx] = filepath.Join(conf.WorkDir, file)
-	}
-
 	// will be all files containing test results
-	outputFiles, err := c.allOutputFiles()
+	outputFiles, err := c.allOutputFiles(conf.WorkDir)
 	if err != nil {
 		return errors.Wrap(err, "error obtaining names of output files")
 	}
@@ -115,12 +110,8 @@ func (c *goTestResults) Execute(ctx context.Context,
 
 // AllOutputFiles creates a list of all test output files that will be parsed, by expanding
 // all of the file patterns specified to the command.
-func (c *goTestResults) allOutputFiles() ([]string, error) {
-	dir, err := os.Getwd()
-	if err != nil {
-		return nil, errors.Wrap(err, "error retrieving working directory path")
-	}
-	outputFiles, err := getFilePaths(dir, c.Files)
+func (c *goTestResults) allOutputFiles(workDir string) ([]string, error) {
+	outputFiles, err := getFilePaths(workDir, c.Files)
 	if err != nil {
 		return nil, errors.Wrap(err, "error expanding file patterns")
 	}
