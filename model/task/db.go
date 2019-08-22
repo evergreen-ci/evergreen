@@ -166,6 +166,11 @@ func ByVersion(version string) db.Q {
 	})
 }
 
+// ByVersion produces a query that returns tasks for the given version.
+func ByVersions(versions []string) db.Q {
+	return db.Query(bson.M{VersionKey: bson.M{"$in": versions}})
+}
+
 // ByIdsBuildIdAndStatus creates a query to return tasks with a certain build id and statuses
 func ByIdsBuildAndStatus(taskIds []string, buildId string, statuses []string) db.Q {
 	return db.Query(bson.M{
@@ -812,6 +817,11 @@ func FindAllTasksFromVersionWithDependencies(versionId string) ([]Task, error) {
 		return nil, errors.Wrap(err, "error finding task ids for versions")
 	}
 	return tasks, nil
+}
+
+func FindTasksFromVersions(versionIds []string) ([]Task, error) {
+	return Find(ByVersions(versionIds).
+		WithFields(IdKey, DisplayNameKey, StatusKey, TimeTakenKey, VersionKey, BuildVariantKey))
 }
 
 func FindAllTaskIDsFromBuild(buildId string) ([]string, error) {

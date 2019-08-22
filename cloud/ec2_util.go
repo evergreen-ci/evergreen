@@ -231,6 +231,13 @@ func expandUserData(userData string, expansions map[string]string) (string, erro
 func cacheHostData(ctx context.Context, h *host.Host, instance *ec2.Instance, client AWSClient) error {
 	h.Zone = *instance.Placement.AvailabilityZone
 	h.StartTime = *instance.LaunchTime
+	h.Host = *instance.PublicDnsName
+
+	volumeIDs := []string{}
+	for _, device := range instance.BlockDeviceMappings {
+		volumeIDs = append(volumeIDs, *device.Ebs.VolumeId)
+	}
+	h.VolumeIDs = volumeIDs
 
 	var err error
 	h.VolumeTotalSize, err = getVolumeSize(ctx, client, h)

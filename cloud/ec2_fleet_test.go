@@ -32,7 +32,7 @@ func TestFleet(t *testing.T) {
 			assert.Equal(t, "i-12345", h.Id)
 		},
 		"GetInstanceStatuses": func(*testing.T) {
-			hosts := []host.Host{{Id: "instance_id"}}
+			hosts := []host.Host{*h}
 
 			statuses, err := m.GetInstanceStatuses(context.Background(), hosts)
 			assert.NoError(t, err)
@@ -42,12 +42,21 @@ func TestFleet(t *testing.T) {
 
 			mockClient := m.client.(*awsClientMock)
 			assert.Len(t, mockClient.DescribeInstancesInput.InstanceIds, 1)
-			assert.Equal(t, "instance_id", *mockClient.DescribeInstancesInput.InstanceIds[0])
+			assert.Equal(t, "h1", *mockClient.DescribeInstancesInput.InstanceIds[0])
+
+			hDb, err := host.FindOneId("h1")
+			assert.NoError(t, err)
+			assert.Equal(t, "us-east-1a", hDb.Zone)
 		},
 		"GetInstanceStatus": func(*testing.T) {
 			status, err := m.GetInstanceStatus(context.Background(), h)
 			assert.NoError(t, err)
 			assert.Equal(t, StatusRunning, status)
+
+			assert.Equal(t, "us-east-1a", h.Zone)
+			hDb, err := host.FindOneId("h1")
+			assert.NoError(t, err)
+			assert.Equal(t, "us-east-1a", hDb.Zone)
 		},
 		"TerminateInstance": func(*testing.T) {
 			assert.NoError(t, m.TerminateInstance(context.Background(), h, "evergreen"))
@@ -64,17 +73,9 @@ func TestFleet(t *testing.T) {
 			dnsName, err := m.GetDNSName(context.Background(), h)
 			assert.NoError(t, err)
 			assert.Equal(t, "public_dns_name", dnsName)
-
-			assert.Equal(t, "us-east-1a", h.Zone)
-			hDb, err := host.FindOneId("h1")
-			assert.NoError(t, err)
-			assert.Equal(t, "us-east-1a", hDb.Zone)
 		},
 		"SpawnFleetSpotHost": func(*testing.T) {
-			resources, err := m.spawnFleetSpotHost(context.Background(), &host.Host{}, &EC2ProviderSettings{}, []*ec2.LaunchTemplateBlockDeviceMappingRequest{})
-			assert.NoError(t, err)
-			assert.Len(t, resources, 1)
-			assert.Equal(t, "i-12345", resources[0])
+			assert.NoError(t, m.spawnFleetSpotHost(context.Background(), &host.Host{}, &EC2ProviderSettings{}, []*ec2.LaunchTemplateBlockDeviceMappingRequest{}))
 
 			mockClient := m.client.(*awsClientMock)
 			assert.Equal(t, "templateID", *mockClient.DeleteLaunchTemplateInput.LaunchTemplateId)

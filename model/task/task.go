@@ -1333,6 +1333,14 @@ func FindSchedulable(distroID string) ([]Task, error) {
 	return Find(db.Query(query))
 }
 
+func FindSchedulableForAlias(id string) ([]Task, error) {
+	q := scheduleableTasksQuery()
+
+	q[DistroAliasesKey] = id
+
+	return FindAll(db.Query(q))
+}
+
 func FindRunnable(distroID string, removeDeps bool) ([]Task, error) {
 	expectedStatuses := []string{evergreen.TaskSucceeded, evergreen.TaskFailed, ""}
 

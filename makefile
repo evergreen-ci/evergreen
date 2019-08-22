@@ -266,6 +266,7 @@ vendor-clean:
 	rm -rf vendor/github.com/mholt/archiver/tarlz4.go
 	rm -rf vendor/github.com/mholt/archiver/tarsz.go
 	rm -rf vendor/github.com/mholt/archiver/tarxz.go
+	rm -rf vendor/github.com/mongodb/amboy/vendor/gonum.org/v1/gonum
 	rm -rf vendor/github.com/mongodb/amboy/vendor/github.com/aws/
 	rm -rf vendor/github.com/mongodb/amboy/vendor/github.com/evergreen-ci/gimlet/
 	rm -rf vendor/github.com/mongodb/amboy/vendor/github.com/mongodb/grip/

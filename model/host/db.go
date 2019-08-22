@@ -60,6 +60,7 @@ var (
 	StartedByKey                 = bsonutil.MustHaveTag(Host{}, "StartedBy")
 	InstanceTypeKey              = bsonutil.MustHaveTag(Host{}, "InstanceType")
 	VolumeSizeKey                = bsonutil.MustHaveTag(Host{}, "VolumeTotalSize")
+	VolumeIDsKey                 = bsonutil.MustHaveTag(Host{}, "VolumeIDs")
 	NotificationsKey             = bsonutil.MustHaveTag(Host{}, "Notifications")
 	LastCommunicationTimeKey     = bsonutil.MustHaveTag(Host{}, "LastCommunicationTime")
 	UserHostKey                  = bsonutil.MustHaveTag(Host{}, "UserHost")
@@ -377,7 +378,7 @@ func FindByFirstProvisioningAttempt() ([]Host, error) {
 // credentials will expire within the given cutoff.
 func FindByExpiringJasperCredentials(cutoff time.Duration) ([]Host, error) {
 	deadline := time.Now().Add(cutoff)
-	bootstrapKey := bsonutil.GetDottedKeyName(DistroKey, distro.BootstrapMethodKey)
+	bootstrapKey := bsonutil.GetDottedKeyName(DistroKey, distro.BootstrapSettingsKey, distro.BootstrapSettingsMethodKey)
 	credentialsKey := credentials.Collection
 	expirationKey := bsonutil.GetDottedKeyName(credentialsKey, credentials.TTLKey)
 
@@ -630,7 +631,7 @@ func FindStaleRunningTasks(cutoff time.Duration) ([]task.Task, error) {
 // AgentLastCommunicationTimeElapsed finds legacy hosts which do not have an
 // agent or whose agents have not communicated recently.
 func AgentLastCommunicationTimeElapsed(currentTime time.Time) bson.M {
-	bootstrapKey := bsonutil.GetDottedKeyName(DistroKey, distro.BootstrapMethodKey)
+	bootstrapKey := bsonutil.GetDottedKeyName(DistroKey, distro.BootstrapSettingsKey, distro.BootstrapSettingsMethodKey)
 	cutoffTime := currentTime.Add(-MaxLCTInterval)
 	return bson.M{
 		StatusKey:        evergreen.HostRunning,
@@ -656,7 +657,7 @@ func AgentLastCommunicationTimeElapsed(currentTime time.Time) bson.M {
 // agent monitor or which should have an agent monitor but their agent has not
 // communicated recently.
 func AgentMonitorLastCommunicationTimeElapsed(currentTime time.Time) bson.M {
-	bootstrapKey := bsonutil.GetDottedKeyName(DistroKey, distro.BootstrapMethodKey)
+	bootstrapKey := bsonutil.GetDottedKeyName(DistroKey, distro.BootstrapSettingsKey, distro.BootstrapSettingsMethodKey)
 	cutoffTime := currentTime.Add(-MaxLCTInterval)
 	return bson.M{
 		StatusKey:        evergreen.HostRunning,
@@ -679,11 +680,11 @@ func AgentMonitorLastCommunicationTimeElapsed(currentTime time.Time) bson.M {
 
 // NeedsNewAgentFlagSet returns legacy hosts with NeedsNewAgent set to true.
 func NeedsNewAgentFlagSet() db.Q {
-	bootstrapKey := bsonutil.GetDottedKeyName(DistroKey, distro.BootstrapMethodKey)
+	bootstrapKey := bsonutil.GetDottedKeyName(DistroKey, distro.BootstrapSettingsKey, distro.BootstrapSettingsMethodKey)
 	return db.Query(bson.M{
 		"$or": []bson.M{
 			{bootstrapKey: bson.M{"$exists": false}},
-			{bootstrapKey: distro.BootstrapMethodLegacySSH},
+			{bootstrapKey: bson.M{"$in": []string{"", distro.BootstrapMethodLegacySSH}}},
 		},
 		StatusKey:        evergreen.HostRunning,
 		StartedByKey:     evergreen.User,
@@ -697,7 +698,7 @@ func NeedsNewAgentFlagSet() db.Q {
 // FindByNeedsNewAgentMonitor returns running hosts that need a new agent
 // monitor.
 func FindByNeedsNewAgentMonitor() ([]Host, error) {
-	bootstrapKey := bsonutil.GetDottedKeyName(DistroKey, distro.BootstrapMethodKey)
+	bootstrapKey := bsonutil.GetDottedKeyName(DistroKey, distro.BootstrapSettingsKey, distro.BootstrapSettingsMethodKey)
 	hosts := []Host{}
 	query := bson.M{
 		bootstrapKey: bson.M{
@@ -723,7 +724,7 @@ func FindByNeedsNewAgentMonitor() ([]Host, error) {
 // FindUserDataSpawnHostsProvisioning finds all spawn hosts that have been
 // provisioned by the app server but are still being provisioned by user data.
 func FindUserDataSpawnHostsProvisioning() ([]Host, error) {
-	bootstrapKey := bsonutil.GetDottedKeyName(DistroKey, distro.BootstrapMethodKey)
+	bootstrapKey := bsonutil.GetDottedKeyName(DistroKey, distro.BootstrapSettingsKey, distro.BootstrapSettingsMethodKey)
 
 	hosts, err := Find(db.Query(bson.M{
 		StatusKey:      evergreen.HostProvisioning,

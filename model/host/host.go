@@ -104,6 +104,8 @@ type Host struct {
 	// for ec2 dynamic hosts, the total size of the volumes requested, in GiB
 	VolumeTotalSize int64 `bson:"volume_total_size" json:"volume_total_size,omitempty"`
 
+	VolumeIDs []string `bson:"volume_ids,omitempty" json:"volume_ids,omitempty"`
+
 	// stores information on expiration notifications for spawn hosts
 	Notifications map[string]bool `bson:"notifications,omitempty" json:"notifications,omitempty"`
 
@@ -498,7 +500,6 @@ func (h *Host) SetIPv6Address(ipv6Address string) error {
 	err := UpdateOne(
 		bson.M{
 			IdKey: h.Id,
-			IPKey: "",
 		},
 		bson.M{
 			"$set": bson.M{
@@ -798,19 +799,19 @@ func (h *Host) SetNeedsNewAgentMonitorAtomically(needsAgentMonitor bool) error {
 // LegacyBootstrap returns whether the host was bootstrapped using the legacy
 // method.
 func (h *Host) LegacyBootstrap() bool {
-	return h.Distro.BootstrapMethod == "" || h.Distro.BootstrapMethod == distro.BootstrapMethodLegacySSH
+	return h.Distro.BootstrapSettings.Method == "" || h.Distro.BootstrapSettings.Method == distro.BootstrapMethodLegacySSH
 }
 
 // LegacyCommunication returns whether the app server is communicating with this
 // host using the legacy method.
 func (h *Host) LegacyCommunication() bool {
-	return h.Distro.CommunicationMethod == "" || h.Distro.CommunicationMethod == distro.CommunicationMethodLegacySSH
+	return h.Distro.BootstrapSettings.Communication == "" || h.Distro.BootstrapSettings.Communication == distro.CommunicationMethodLegacySSH
 }
 
 // JasperCommunication returns whether or not the app server is communicating
 // with this host's Jasper service.
 func (h *Host) JasperCommunication() bool {
-	return h.Distro.CommunicationMethod == distro.CommunicationMethodSSH || h.Distro.CommunicationMethod == distro.CommunicationMethodRPC
+	return h.Distro.BootstrapSettings.Communication == distro.CommunicationMethodSSH || h.Distro.BootstrapSettings.Communication == distro.CommunicationMethodRPC
 }
 
 // SetNeedsAgentDeploy indicates that the host's agent or agent monitor needs
@@ -924,6 +925,8 @@ func (h *Host) CacheHostData() error {
 				ZoneKey:       h.Zone,
 				StartTimeKey:  h.StartTime,
 				VolumeSizeKey: h.VolumeTotalSize,
+				VolumeIDsKey:  h.VolumeIDs,
+				DNSKey:        h.Host,
 			},
 		},
 	)

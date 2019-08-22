@@ -94,11 +94,11 @@ func (uis *UIServer) modifyDistro(w http.ResponseWriter, r *http.Request) {
 	if newDistro.PlannerSettings.Version == "" {
 		newDistro.PlannerSettings.Version = evergreen.PlannerVersionLegacy
 	}
-	if newDistro.BootstrapMethod == "" {
-		newDistro.BootstrapMethod = distro.BootstrapMethodLegacySSH
+	if newDistro.BootstrapSettings.Method == "" {
+		newDistro.BootstrapSettings.Method = distro.BootstrapMethodLegacySSH
 	}
-	if newDistro.CommunicationMethod == "" {
-		newDistro.CommunicationMethod = distro.BootstrapMethodLegacySSH
+	if newDistro.BootstrapSettings.Communication == "" {
+		newDistro.BootstrapSettings.Communication = distro.BootstrapMethodLegacySSH
 	}
 	if newDistro.CloneMethod == "" {
 		newDistro.CloneMethod = distro.CloneMethodLegacySSH
