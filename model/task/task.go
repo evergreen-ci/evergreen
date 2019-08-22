@@ -613,8 +613,7 @@ func (t *Task) SetGeneratedJSON(json []json.RawMessage) error {
 func (t *Task) IncrementGenerateAttempt() error {
 	err := UpdateOne(
 		bson.M{
-			IdKey:              t.Id,
-			GenerateAttemptKey: t.GenerateAttempt,
+			IdKey: t.Id,
 		},
 		bson.M{
 			"$inc": bson.M{GenerateAttemptKey: 1},

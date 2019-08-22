@@ -60,12 +60,12 @@ func NewGenerateTasksJob(id string, attempt int) amboy.Job {
 	return j
 }
 
-func (j *generateTasksJob) tryRequeue(taskID string) {
+func (j *generateTasksJob) tryRequeue() {
 	ctx, cancel := context.WithTimeout(context.Background(), generateTaskRequeueWait)
 	defer cancel()
 	if !j.requeue {
-		if err := task.MarkGeneratedTasks(taskID); err != nil {
-			j.AddError(errors.Wrapf(err, "problem marking task '%s' as having generated tasks", taskID))
+		if err := task.MarkGeneratedTasks(j.TaskID); err != nil {
+			j.AddError(errors.Wrapf(err, "problem marking task '%s' as having generated tasks", j.TaskID))
 			return
 		}
 		return
@@ -78,19 +78,33 @@ func (j *generateTasksJob) tryRequeue(taskID string) {
 	newJob.UpdateTimeInfo(amboy.JobTimeInfo{
 		WaitUntil: time.Now().Add(generateTaskRequeueWait),
 	})
-	err := evergreen.GetEnvironment().RemoteQueue().Put(ctx, newJob)
-	grip.Error(message.WrapError(err, message.Fields{
-		"message":  "failed to requeue generate task job",
-		"task":     j.TaskID,
-		"job":      j.ID(),
-		"attempts": j.Attempt,
-	}))
-	j.AddError(err)
+	t, err := task.FindOneId(j.TaskID)
+	if err != nil {
+		j.AddError(errors.Wrapf(err, "problem finding task %s", j.TaskID))
+		return
+	}
+	if t == nil {
+		j.AddError(errors.Errorf("task %s does not exist", j.TaskID))
+		return
+	}
+	q, err := evergreen.GetEnvironment().RemoteQueueGroup().Get(ctx, t.Version)
+	if err != nil {
+		j.AddError(errors.Wrapf(err, "problem getting queue for version %s", t.Version))
+		return
+	}
+	if err = t.IncrementGenerateAttempt(); err != nil {
+		j.AddError(errors.Wrapf(err, "problem incrementing generator for %s", t.Id))
+		return
+	}
+	if err = q.Put(ctx, newJob); err != nil {
+		j.AddError(errors.Wrapf(err, "problem putting generate.tasks for %s", t.Id))
+		return
+	}
 }
 
 func (j *generateTasksJob) Run(ctx context.Context) {
 	defer j.MarkComplete()
-	defer j.tryRequeue(j.TaskID)
+	defer j.tryRequeue()
 	start := time.Now()
 
 	if ctx.Err() != nil {
