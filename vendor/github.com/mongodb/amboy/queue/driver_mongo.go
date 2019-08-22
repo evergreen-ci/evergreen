@@ -240,6 +240,7 @@ func (d *mongoDriver) Save(ctx context.Context, j amboy.Job) error {
 	stat.Owner = d.instanceID
 	stat.ModificationCount++
 	stat.ModificationTime = time.Now()
+	stat.ErrorCount = len(stat.Errors)
 	j.SetStatus(stat)
 
 	job, err := registry.MakeJobInterchange(j, d.opts.Format)
@@ -274,6 +275,7 @@ func (d *mongoDriver) SaveStatus(ctx context.Context, j amboy.Job, stat amboy.Jo
 	query := getAtomicQuery(d.instanceID, id, stat.ModificationCount)
 	stat.Owner = d.instanceID
 	stat.ModificationCount++
+	stat.ErrorCount = len(stat.Errors)
 	stat.ModificationTime = time.Now()
 	timeInfo := j.TimeInfo()
 

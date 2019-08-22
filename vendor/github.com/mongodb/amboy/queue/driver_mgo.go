@@ -234,6 +234,7 @@ func (d *mgoDriver) Save(_ context.Context, j amboy.Job) error {
 
 	stat := j.Status()
 	stat.Owner = d.instanceID
+	stat.ErrorCount = len(stat.Errors)
 	stat.ModificationCount++
 	stat.ModificationTime = time.Now()
 	j.SetStatus(stat)
@@ -275,6 +276,7 @@ func (d *mgoDriver) SaveStatus(_ context.Context, j amboy.Job, stat amboy.JobSta
 	id := j.ID()
 	query := getAtomicQuery(d.instanceID, id, stat.ModificationCount)
 	stat.Owner = d.instanceID
+	stat.ErrorCount = len(stat.Errors)
 	stat.ModificationCount++
 	stat.ModificationTime = time.Now()
 	timeInfo := j.TimeInfo()
