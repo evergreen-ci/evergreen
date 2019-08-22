@@ -168,14 +168,12 @@ func (f *StatsFilter) ValidateCommon() error {
         catcher.Add(f.Sort.validate())
         catcher.Add(f.GroupBy.validate())
 
-	return catcher.Resolve()
+        return catcher.Resolve()
 }
 
-// validateForTests validates that the StatsFilter struct is valid for use with test stats.
-func (f *StatsFilter) ValidateForTests() error {
-	catcher := grip.NewBasicCatcher()
-
-        catcher.Add(f.ValidateCommon())
+// validateDates performs common date validation for test / task stats.
+func (f *StatsFilter) validateDates() error {
+        catcher := grip.NewBasicCatcher()
         if !f.AfterDate.Equal(util.GetUTCDay(f.AfterDate)) {
                 catcher.New("Invalid AfterDate value")
         }
@@ -185,6 +183,16 @@ func (f *StatsFilter) ValidateForTests() error {
         if !f.BeforeDate.After(f.AfterDate) {
                 catcher.New("Invalid AfterDate/BeforeDate values")
         }
+
+        return catcher.Resolve()
+}
+
+// ValidateForTests validates that the StatsFilter struct is valid for use with test stats.
+func (f *StatsFilter) ValidateForTests() error {
+        catcher := grip.NewBasicCatcher()
+
+        catcher.Add(f.ValidateCommon())
+        catcher.Add(f.validateDates())
 
         if f.Limit > MaxQueryLimit || f.Limit <= 0 {
                 catcher.New("Invalid Limit value")
@@ -199,14 +207,16 @@ func (f *StatsFilter) ValidateForTests() error {
         return catcher.Resolve()
 }
 
-//use with test stats validates that the StatsFilter struct is valid for use with task stats.
+// ValidateForTasks use with test stats validates that the StatsFilter struct is valid for use with task stats.
 func (f *StatsFilter) ValidateForTasks() error {
-	catcher := grip.NewBasicCatcher()
+        catcher := grip.NewBasicCatcher()
 
-	catcher.Add(f.ValidateCommon())
-	if f.Limit > MaxQueryLimit || f.Limit <= 0 {
+        catcher.Add(f.ValidateCommon())
+        catcher.Add(f.validateDates())
+
+        if f.Limit > MaxQueryLimit || f.Limit <= 0 {
                 catcher.New("Invalid Limit value")
-	}
+        }
 	if f.StartAt != nil {
 		catcher.Add(f.StartAt.validateForTasks(f.GroupBy))
 	}
